@@ -192,6 +192,11 @@ int main(int argc, char **argv)
 					"PID = %ld\n", (long)getpid());
 		}
 		log_server_info("PID stored in %s\n", pidfile);
+		size_t zcount = server->nameserver->zone_db->zone_count;
+		if (!zcount) {
+			log_server_warning("Server started, but no zones served.\n");
+		}
+
 
 		// Setup signal handler
 		struct sigaction sa;

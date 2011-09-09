@@ -18,6 +18,7 @@
 #include "libknot/nameserver/name-server.h"
 #include "libknot/zone/zonedb.h"
 #include "knot/conf/conf.h"
+#include "knot/server/notify.h"
 #include "knot/server/server.h"
 #include "knot/server/journal.h"
 #include "libknot/zone/zone.h"
@@ -230,6 +231,20 @@ int zones_apply_changesets(knot_ns_xfr_t *xfr);
  * \retval KNOTD_ERROR
  */
 int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch);
+
+/*!
+ * \brief Cancel pending NOTIFY timer.
+ *
+ * \warning Expects locked zonedata lock.
+ *
+ * \param zd Zone data.
+ * \param ev NOTIFY event.
+ *
+ * \retval KNOTD_EOK
+ * \retval KNOTD_ERROR
+ * \retval KNOTD_EINVAL
+ */
+int zones_cancel_notify(zonedata_t *zd, notify_ev_t *ev);
 
 #endif // _KNOTD_ZONES_H_
 
