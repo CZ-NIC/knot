@@ -64,12 +64,9 @@ int udp_handle(uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 	case KNOT_RESPONSE_NORMAL:
 		res = zones_process_response(ns, addr, packet,
 					     qbuf, resp_len);
-//			res = knot_ns_process_response();
 		break;
 	case KNOT_RESPONSE_AXFR:
 	case KNOT_RESPONSE_IXFR:
-		/*! \todo SLAVE DISABLED */
-		break;
 	case KNOT_RESPONSE_NOTIFY:
 		res = notify_process_response(ns, packet, addr,
 					      qbuf, resp_len);
@@ -91,8 +88,6 @@ int udp_handle(uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 	case KNOT_QUERY_NOTIFY:
 		res = notify_process_request(ns, packet, addr,
 					     qbuf, resp_len);
-		*resp_len = 0;
-		res = KNOTD_EOK;
 		break;
 	case KNOT_QUERY_UPDATE:
 	default:
