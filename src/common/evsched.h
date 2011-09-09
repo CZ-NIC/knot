@@ -73,6 +73,8 @@ typedef enum evsched_ev_t {
  * Scheduler is terminated with a special EVSCHED_TERM event type.
  */
 typedef struct {
+	pthread_mutex_t rl;      /*!< Event running lock. */
+	event_t *current;        /*!< Current running event. */
 	pthread_mutex_t mx;      /*!< Event queue locking. */
 	pthread_cond_t notify;   /*!< Event queue notification. */
 	list calendar;           /*!< Event calendar. */
@@ -122,12 +124,26 @@ void evsched_event_free(evsched_t *s, event_t *ev);
  * Scheduler may block until a next event is available.
  * Send scheduler an EVSCHED_NOOP or EVSCHED_TERM event to unblock it.
  *
+ * \warning Returned event must be marked as finished, or deadlock occurs.
+ *
  * \param s Event scheduler.
  *
  * \retval Scheduled event.
  * \retval NULL on error.
  */
 event_t* evsched_next(evsched_t *s);
+
+/*!
+ * \brief Mark running event as finished.
+ *
+ * Need to call this after each event returned by evsched_next() is finished.
+ *
+ * \param s Event scheduler.
+ *
+ * \retval 0 if successful.
+ * \retval -1 on errors.
+ */
+int evsched_event_finished(evsched_t *s);
 
 /*!
  * \brief Schedule an event.
@@ -171,6 +187,12 @@ event_t* evsched_schedule_term(evsched_t *s, uint32_t dt);
 
 /*!
  * \brief Cancel a scheduled event.
+ *
+ * \warning May block until current running event is finished (as it cannot
+ *          interrupt running event).
+ *
+ * \warning Never cancel event in it's callback. As it never finishes,
+ *          it deadlocks.
  *
  * \param s Event scheduler.
  * \param ev Scheduled event.
