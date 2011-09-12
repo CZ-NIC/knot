@@ -1810,10 +1810,10 @@ int process_rr(void)
 			    knot_node_rrset(knot_zone_contents_apex(contents),
 			    KNOT_RRTYPE_SOA), KNOT_RRSET_COMPARE_WHOLE) != 0) {
 				return KNOTDZCOMPILE_ESOA;
-			} else
-			{
+			} else {
 				zc_warning_prev_line("encountered identical "
 				                     "extra SOA record");
+				return KNOTDZCOMPILE_EOK;
 			}
 		}
 	}
