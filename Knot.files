@@ -107,6 +107,10 @@ src/common/general-tree.h
 src/common/general-tree.c
 src/common/WELL1024a.c
 src/common/WELL1024a.h
+src/common/os_fdset.h
+src/common/os_fdset.c
+src/common/os_fdset_poll.c
+src/common/os_fdset_epoll.c
 src/zcompile/parser-descriptor.h
 src/zcompile/parser-descriptor.c
 src/zcompile/parser-util.h
