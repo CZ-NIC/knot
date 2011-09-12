@@ -175,8 +175,10 @@ libknots_la_SOURCES =				\
 	common/ref.c				\
 	common/errors.h				\
 	common/errors.c				\
-	common/WELL1024a.h				\
-	common/WELL1024a.c				
+        common/WELL1024a.h			\
+        common/WELL1024a.c			\
+        common/os_fdset.h			\
+        common/os_fdset.c
 
 libknotd_la_SOURCES =				\
 	knot/stat/gatherer.c				\
