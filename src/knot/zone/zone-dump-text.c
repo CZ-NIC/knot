@@ -27,6 +27,12 @@ enum uint_max_length {
 #define APL_NEGATION_MASK      0x80U
 #define APL_LENGTH_MASK	       (~APL_NEGATION_MASK)
 
+/* RFC 4025 - codes for different types that IPSECKEY can hold. */
+#define IPSECKEY_NOGATEWAY 0
+#define IPSECKEY_IP4 1
+#define IPSECKEY_IP6 2
+#define IPSECKEY_DNAME 3
+
 /* Following copyrights are only valid for b64_ntop function */
 /*
  * Copyright (c) 1996, 1998 by Internet Software Consortium.
@@ -706,29 +712,43 @@ char *rdata_services_to_string(knot_rdata_item_t item)
 	*/
 }
 
-char *rdata_ipsecgateway_to_string(knot_rdata_item_t item)
+char *rdata_ipsecgateway_to_string(knot_rdata_item_t item,
+                                   const knot_rrset_t *rrset)
 {
-	return NULL;
-	/*
-	int gateway_type = rdata_item_data(rr->rdatas[1])[0];
-	switch(gateway_type) {
-	case IPSECKEY_NOGATEWAY:
-		buffer_printf(output, ".");
-		break;
-	case IPSECKEY_IP4:
-		rdata_a_to_string(output, rdata, rr);
-		break;
-	case IPSECKEY_IP6:
-		rdata_aaaa_to_string(output, rdata, rr);
-		break;
-	case IPSECKEY_DNAME:
-		rdata_dname_to_string(output, rdata, rr);
-		break;
-	default:
-		return 0;
+	const knot_rdata_item_t *gateway_type_item =
+		knot_rdata_item(knot_rrset_rdata(rrset), 1);
+	if (gateway_type_item == NULL) {
+		return NULL;
 	}
-	return 1;
-	*/
+	/* First two bytes store length. */
+	int gateway_type = ((uint8_t *)(gateway_type_item->raw_data))[2];
+	switch(gateway_type) {
+	case IPSECKEY_NOGATEWAY: {
+		char *ret = malloc(sizeof(char) * 4);
+		if (ret == NULL) {
+			ERR_ALLOC_FAILED;
+			return NULL;
+		}
+		memset(ret, 0, sizeof(char) * 4);
+		memcpy(ret, ".", 4);
+/*		ret[0] = '\"';
+		ret[1] = '.';
+		ret[2] = '\"';
+		ret[3] = '\0'; */
+		return ret;
+	}
+	case IPSECKEY_IP4:
+		return rdata_a_to_string(item);
+	case IPSECKEY_IP6:
+		return rdata_aaaa_to_string(item);
+	case IPSECKEY_DNAME:
+		return rdata_dname_to_string(item);
+	default:
+		return NULL;
+	}
+
+	/* Flow *should* not get here. */
+	return NULL;
 }
 
 char *rdata_nxt_to_string(knot_rdata_item_t item)
@@ -861,7 +881,7 @@ static item_to_string_t item_to_string_table[KNOT_RDATA_ZF_UNKNOWN + 1] = {
 	rdata_hexlen_to_string,
 	rdata_nsap_to_string,
 	rdata_apl_to_string,
-	rdata_ipsecgateway_to_string,
+	NULL, //rdata_ipsecgateway_to_string,
 	rdata_services_to_string,
 	rdata_nxt_to_string,
 	rdata_nsec_to_string,
@@ -879,14 +899,21 @@ char *rdata_item_to_string(knot_rdata_zoneformat_t type,
                               void (*function)(knot_node_t *node, void *data),
                               void *data); */
 
-void rdata_dump_text(knot_rdata_t *rdata, uint16_t type, FILE *f)
+void rdata_dump_text(const knot_rdata_t *rdata, uint16_t type, FILE *f,
+                     const knot_rrset_t *rrset)
 {
 	knot_rrtype_descriptor_t *desc =
 		knot_rrtype_descriptor_by_type(type);
 	char *item_str = NULL;
 	for (int i = 0; i < rdata->count; i++) {
-		item_str = rdata_item_to_string(desc->zoneformat[i],
+		/* Workaround for IPSec gateway. */
+		if (desc->zoneformat[i] == KNOT_RDATA_ZF_IPSECGATEWAY) {
+			item_str = rdata_ipsecgateway_to_string(rdata->items[i],
+			                                        rrset);
+		} else {
+			item_str = rdata_item_to_string(desc->zoneformat[i],
 						rdata->items[i]);
+		}
 		if (item_str == NULL) {
 			item_str =
 				rdata_item_to_string(KNOT_RDATA_ZF_UNKNOWN,
@@ -918,12 +945,12 @@ void rrsig_set_dump_text(knot_rrset_t *rrsig, FILE *f)
 	knot_rdata_t *tmp = rrsig->rdata;
 
 	while (tmp->next != rrsig->rdata) {
-		rdata_dump_text(tmp, KNOT_RRTYPE_RRSIG, f);
+		rdata_dump_text(tmp, KNOT_RRTYPE_RRSIG, f, rrsig);
 		dump_rrset_header(rrsig, f);
 		tmp = tmp->next;
 	}
 
-	rdata_dump_text(tmp, KNOT_RRTYPE_RRSIG, f);
+	rdata_dump_text(tmp, KNOT_RRTYPE_RRSIG, f, rrsig);
 }
 
 
@@ -933,12 +960,12 @@ void rrset_dump_text(const knot_rrset_t *rrset, FILE *f)
 	knot_rdata_t *tmp = rrset->rdata;
 
 	while (tmp->next != rrset->rdata) {
-		rdata_dump_text(tmp, rrset->type, f);
+		rdata_dump_text(tmp, rrset->type, f, rrset);
 		dump_rrset_header(rrset, f);
 		tmp = tmp->next;
 	}
 
-	rdata_dump_text(tmp, rrset->type, f);
+	rdata_dump_text(tmp, rrset->type, f, rrset);
 	knot_rrset_t *rrsig_set = rrset->rrsigs;
 	if (rrsig_set != NULL) {
 		rrsig_set_dump_text(rrsig_set, f);
