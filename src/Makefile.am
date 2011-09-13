@@ -58,6 +58,8 @@ unittests_SOURCES =				\
 	tests/common/skiplist_tests.h		\
 	tests/common/slab_tests.c		\
 	tests/common/slab_tests.h		\
+        tests/common/os_fdset_tests.c		\
+        tests/common/os_fdset_tests.h		\
 	tests/knot/conf_tests.c			\
 	tests/knot/conf_tests.h			\
 	tests/knot/dthreads_tests.c		\
