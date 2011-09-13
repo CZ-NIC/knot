@@ -21,20 +21,20 @@
 #include <stddef.h>
 
 /*! \brief Opaque pointer to implementation-specific fdset data. */
-struct os_fdset_t;
+typedef struct os_fdset_t os_fdset_t;
 
 /*! \brief Single event descriptor. */
-typedef struct os_fd_t {
-    int fd;
-    int events;
-    size_t pos;
-} os_fd_t;
+typedef struct os_fdset_it {
+	int fd;
+	int events;
+	size_t pos;
+} os_fdset_it;
 
 /*! \brief Unified event types. */
 enum os_ev_t {
-    OS_EV_READ  = 1 << 0,
-    OS_EV_WRITE = 1 << 1,
-    OS_EV_ERROR = 1 << 2
+	OS_EV_READ  = 1 << 0,
+	OS_EV_WRITE = 1 << 1,
+	OS_EV_ERROR = 1 << 2
 };
 
 /*!
@@ -99,7 +99,7 @@ int os_fdset_poll(struct os_fdset_t *fdset);
  * \retval 0 if successful.
  * \retval -1 on errors.
  */
-int os_fdset_begin(struct os_fdset_t *fdset, os_fd_t *it);
+int os_fdset_begin(struct os_fdset_t *fdset, os_fdset_it *it);
 
 /*!
  * \brief Set event iterator to the end of last polled events.
@@ -110,7 +110,7 @@ int os_fdset_begin(struct os_fdset_t *fdset, os_fd_t *it);
  * \retval 0 if successful.
  * \retval -1 on errors.
  */
-int os_fdset_end(struct os_fdset_t *fdset, os_fd_t *it);
+int os_fdset_end(struct os_fdset_t *fdset, os_fdset_it *it);
 
 /*!
  * \brief Set event iterator to the next event.
@@ -123,7 +123,7 @@ int os_fdset_end(struct os_fdset_t *fdset, os_fd_t *it);
  * \retval 0 if successful.
  * \retval -1 on errors.
  */
-int os_fdset_next(struct os_fdset_t *fdset, os_fd_t *it);
+int os_fdset_next(struct os_fdset_t *fdset, os_fdset_it *it);
 
 
 /*!
