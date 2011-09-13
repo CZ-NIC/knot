@@ -182,6 +182,8 @@ src/tests/common/skiplist_tests.c
 src/tests/common/skiplist_tests.h
 src/tests/common/slab_tests.c
 src/tests/common/slab_tests.h
+src/tests/common/os_fdset_tests.c
+src/tests/common/os_fdset_tests.h
 src/tests/knot/dthreads_tests.c
 src/tests/knot/dthreads_tests.h
 src/tests/knot/conf_tests.c
