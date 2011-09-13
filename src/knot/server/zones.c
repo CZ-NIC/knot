@@ -540,10 +540,11 @@ static int zones_set_acl(acl_t **acl, list* acl_list)
 	WALK_LIST(r, *acl_list) {
 
 		/* Initialize address. */
+		/*! Port matching disabled, port = 0. */
 		sockaddr_t addr;
 		conf_iface_t *cfg_if = r->remote;
 		int ret = sockaddr_set(&addr, cfg_if->family,
-				       cfg_if->address, cfg_if->port);
+				       cfg_if->address, 0);
 
 		/* Load rule. */
 		if (ret > 0) {
