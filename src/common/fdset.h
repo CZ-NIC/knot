@@ -1,5 +1,5 @@
 /*!
- * \file os_fdset.h
+ * \file fdset.h
  *
  * \author Marek Vavrusa <marek.vavrusa@nic.cz>
  *
@@ -15,8 +15,8 @@
  * @{
  */
 
-#ifndef _KNOTD_OS_FDSET_H_
-#define _KNOTD_OS_FDSET_H_
+#ifndef _KNOTD_FDSET_H_
+#define _KNOTD_FDSET_H_
 
 #include <stddef.h>
 
@@ -133,6 +133,6 @@ int fdset_next(fdset_t *fdset, fdset_it_t *it);
  */
 const char* fdset_method();
 
-#endif /* _KNOTD_OS_FDSET_H_ */
+#endif /* _KNOTD_FDSET_H_ */
 
 /*! @} */

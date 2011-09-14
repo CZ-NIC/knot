@@ -107,10 +107,10 @@ src/common/general-tree.h
 src/common/general-tree.c
 src/common/WELL1024a.c
 src/common/WELL1024a.h
-src/common/os_fdset.h
-src/common/os_fdset.c
-src/common/os_fdset_poll.c
-src/common/os_fdset_epoll.c
+src/common/fdset.h
+src/common/fdset.c
+src/common/fdset_poll.c
+src/common/fdset_epoll.c
 src/zcompile/parser-descriptor.h
 src/zcompile/parser-descriptor.c
 src/zcompile/parser-util.h
@@ -182,8 +182,8 @@ src/tests/common/skiplist_tests.c
 src/tests/common/skiplist_tests.h
 src/tests/common/slab_tests.c
 src/tests/common/slab_tests.h
-src/tests/common/os_fdset_tests.c
-src/tests/common/os_fdset_tests.h
+src/tests/common/fdset_tests.c
+src/tests/common/fdset_tests.h
 src/tests/knot/dthreads_tests.c
 src/tests/knot/dthreads_tests.h
 src/tests/knot/conf_tests.c

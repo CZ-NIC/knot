@@ -8,7 +8,7 @@
 #include "tests/common/events_tests.h"
 #include "tests/common/da_tests.h"
 #include "tests/common/acl_tests.h"
-#include "tests/common/os_fdset_tests.h"
+#include "tests/common/fdset_tests.h"
 #include "tests/knot/dthreads_tests.h"
 #include "tests/knot/journal_tests.h"
 #include "tests/knot/server_tests.h"
@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
 		&events_tests_api,   //! Events testing unit
 		&da_tests_api,       //! Dynamic array unit
 		&acl_tests_api,      //! ACLs
-		&os_fdset_tests_api, //! FDSET polling wrapper
+		&fdset_tests_api, //! FDSET polling wrapper
 
 		/* Server parts. */
 		&conf_tests_api,     //! Configuration parser tests
