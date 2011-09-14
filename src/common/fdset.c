@@ -1,35 +1,59 @@
-#include "fdset.h"
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE /* Required for RTLD_DEFAULT. */
+#endif
+
+#include <dlfcn.h>
+#include <string.h>
+#include <stdio.h>
+#include "common/fdset.h"
 #include "config.h"
 
-/* Attempt to use epoll_wait(). */
+struct fdset_backend_t _fdset_backend = {
+};
+
+/*! \brief Set backend implementation. */
+static void fdset_set_backend(struct fdset_backend_t *backend) {
+	memcpy(&_fdset_backend, backend, sizeof(struct fdset_backend_t));
+}
+
+/* Linux epoll API. */
 #ifdef HAVE_EPOLL_WAIT
-  #include "fdset_epoll.c"
-#else
-  /* Attempt to use kqueue(). */
-  #ifdef HAVE_KQUEUE
-    #warning "fdset: kqueue backend N/A, fallback to poll()"
-    #include "fdset_poll.c"
-  #else
-    /* poll() API */
-    #ifdef HAVE_POLL
-      #include "fdset_poll.c"
-    #else
-      #error "fdset: no socket polling API found"
-    #endif /* HAVE_POLL */
-  #endif /* HAVE_KQUEUE */
+  #include "common/fdset_epoll.h"
 #endif /* HAVE_EPOLL_WAIT */
 
-/*! \todo Implement switchable backends on run-time. */
-///*! \brief Bootstrap polling subsystem (it is called automatically). */
-//#include <stdio.h>
-//#define _GNU_SOURCE /* Required for RTLD_DEFAULT. */
-//#include <dlfcn.h>
-//void __attribute__ ((constructor)) fdset_init()
-//{
-//	int poll_ok = dlsym(RTLD_DEFAULT, "poll") != 0;
-//	int epoll_ok = dlsym(RTLD_DEFAULT, "epoll_wait") != 0;
-//	int kqueue_ok = dlsym(RTLD_DEFAULT, "kqueue") != 0;
+/* BSD kqueue API */
+#ifdef HAVE_KQUEUE
+  #warning "fixme: missing kqueue backend"
+  //#include "common/fdset_kqueue.h"
+#endif /* HAVE_KQUEUE */
 
-//	fprintf(stderr, "using polling subsystem %s (poll %d epoll %d kqueue %d)\n",
-//		fdset_method(), poll_ok, epoll_ok, kqueue_ok);
-//}
+/* POSIX poll API */
+#ifdef HAVE_POLL
+  #include "common/fdset_poll.h"
+#endif /* HAVE_POLL */
+
+/*! \brief Bootstrap polling subsystem (it is called automatically). */
+void __attribute__ ((constructor)) fdset_init()
+{
+	/* Preference: epoll */
+	if (dlsym(RTLD_DEFAULT, "epoll_wait") != 0) {
+		fdset_set_backend(&_fdset_epoll);
+		return;
+	}
+
+	/* Preference: kqueue */
+//	if (dlsym(RTLD_DEFAULT, "kqueue") != 0) {
+//		fdset_set_backend(&_fdset_kqueue);
+//		return;
+//	}
+
+	/* Preference: poll */
+	if (dlsym(RTLD_DEFAULT, "poll") != 0) {
+		fdset_set_backend(&_fdset_poll);
+		return;
+	}
+
+	/* This shouldn't happen. */
+	fprintf(stderr, "fdset: fatal error - no valid fdset backend found\n");
+	return;
+}

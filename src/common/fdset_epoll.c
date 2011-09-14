@@ -16,7 +16,7 @@ struct fdset_t {
 	size_t polled;
 };
 
-fdset_t *fdset_new()
+fdset_t *fdset_epoll_new()
 {
 	fdset_t *set = malloc(sizeof(fdset_t));
 	if (!set) {
@@ -32,7 +32,7 @@ fdset_t *fdset_new()
 	return set;
 }
 
-int fdset_destroy(fdset_t * fdset)
+int fdset_epoll_destroy(fdset_t * fdset)
 {
 	if(!fdset) {
 		return -1;
@@ -47,7 +47,7 @@ int fdset_destroy(fdset_t * fdset)
 	return 0;
 }
 
-int fdset_add(fdset_t *fdset, int fd, int events)
+int fdset_epoll_add(fdset_t *fdset, int fd, int events)
 {
 	if (!fdset || fd < 0 || events <= 0) {
 		return -1;
@@ -84,7 +84,7 @@ int fdset_add(fdset_t *fdset, int fd, int events)
 	return 0;
 }
 
-int fdset_remove(fdset_t *fdset, int fd)
+int fdset_epoll_remove(fdset_t *fdset, int fd)
 {
 	if (!fdset || fd < 0) {
 		return -1;
@@ -104,7 +104,7 @@ int fdset_remove(fdset_t *fdset, int fd)
 	return 0;
 }
 
-int fdset_wait(fdset_t *fdset)
+int fdset_epoll_wait(fdset_t *fdset)
 {
 	if (!fdset || fdset->nfds < 1 || !fdset->events) {
 		return -1;
@@ -124,7 +124,7 @@ int fdset_wait(fdset_t *fdset)
 	return nfds;
 }
 
-int fdset_begin(fdset_t *fdset, fdset_it_t *it)
+int fdset_epoll_begin(fdset_t *fdset, fdset_it_t *it)
 {
 	if (!fdset || !it) {
 		return -1;
@@ -135,7 +135,7 @@ int fdset_begin(fdset_t *fdset, fdset_it_t *it)
 	return fdset_next(fdset, it);
 }
 
-int fdset_end(fdset_t *fdset, fdset_it_t *it)
+int fdset_epoll_end(fdset_t *fdset, fdset_it_t *it)
 {
 	if (!fdset || !it || fdset->nfds < 1) {
 		return -1;
@@ -156,7 +156,7 @@ int fdset_end(fdset_t *fdset, fdset_it_t *it)
 	return -1;
 }
 
-int fdset_next(fdset_t *fdset, fdset_it_t *it)
+int fdset_epoll_next(fdset_t *fdset, fdset_it_t *it)
 {
 	if (!fdset || !it || fdset->nfds < 1) {
 		return -1;
@@ -174,7 +174,20 @@ int fdset_next(fdset_t *fdset, fdset_it_t *it)
 	return 0;
 }
 
-const char* fdset_method()
+const char* fdset_epoll_method()
 {
 	return "epoll";
 }
+
+/* Package APIs. */
+struct fdset_backend_t _fdset_epoll = {
+	.fdset_new = fdset_epoll_new,
+	.fdset_destroy = fdset_epoll_destroy,
+	.fdset_add = fdset_epoll_add,
+	.fdset_remove = fdset_epoll_remove,
+	.fdset_wait = fdset_epoll_wait,
+	.fdset_begin = fdset_epoll_begin,
+	.fdset_end = fdset_epoll_end,
+	.fdset_next = fdset_epoll_next,
+	.fdset_method = fdset_epoll_method
+};
