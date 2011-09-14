@@ -21,21 +21,21 @@
 #include <stddef.h>
 
 /*! \brief Opaque pointer to implementation-specific fdset data. */
-typedef struct os_fdset_t os_fdset_t;
-
-/*! \brief Single event descriptor. */
-typedef struct os_fdset_it {
-	int fd;
-	int events;
-	size_t pos;
-} os_fdset_it;
+typedef struct fdset_t fdset_t;
 
 /*! \brief Unified event types. */
-enum os_ev_t {
-	OS_EV_READ  = 1 << 0,
-	OS_EV_WRITE = 1 << 1,
-	OS_EV_ERROR = 1 << 2
+enum fdset_event_t {
+	OS_EV_READ  = 1 << 0, /*!< Readable event. */
+	OS_EV_WRITE = 1 << 1, /*!< Writeable event. */
+	OS_EV_ERROR = 1 << 2  /*!< Error event. */
 };
+
+/*! \brief File descriptor set iterator. */
+typedef struct fdset_it_t {
+	int fd;     /*!< Current file descriptor. */
+	int events; /*!< Returned events. */
+	size_t pos; /* Internal usage. */
+} fdset_it_t;
 
 /*!
  * \brief Create new fdset.
@@ -45,7 +45,7 @@ enum os_ev_t {
  * \retval Pointer to initialized FDSET structure if successful.
  * \retval NULL on error.
  */
-struct os_fdset_t *os_fdset_new();
+fdset_t *fdset_new();
 
 /*!
  * \brief Destroy FDSET.
@@ -53,7 +53,7 @@ struct os_fdset_t *os_fdset_new();
  * \retval 0 if successful.
  * \retval -1 on error.
  */
-int os_fdset_destroy(struct os_fdset_t * fdset);
+int fdset_destroy(fdset_t * fdset);
 
 /*!
  * \brief Add file descriptor to watched set.
@@ -65,7 +65,7 @@ int os_fdset_destroy(struct os_fdset_t * fdset);
  * \retval 0 if successful.
  * \retval -1 on errors.
  */
-int os_fdset_add(struct os_fdset_t *fdset, int fd, int events);
+int fdset_add(fdset_t *fdset, int fd, int events);
 
 /*!
  * \brief Remove file descriptor from watched set.
@@ -76,7 +76,7 @@ int os_fdset_add(struct os_fdset_t *fdset, int fd, int events);
  * \retval 0 if successful.
  * \retval -1 on errors.
  */
-int os_fdset_remove(struct os_fdset_t *fdset, int fd);
+int fdset_remove(fdset_t *fdset, int fd);
 
 /*!
  * \brief Poll set for new events.
@@ -88,7 +88,7 @@ int os_fdset_remove(struct os_fdset_t *fdset, int fd);
  *
  * \todo Timeout.
  */
-int os_fdset_poll(struct os_fdset_t *fdset);
+int fdset_wait(fdset_t *fdset);
 
 /*!
  * \brief Set event iterator to the beginning of last polled events.
@@ -99,7 +99,7 @@ int os_fdset_poll(struct os_fdset_t *fdset);
  * \retval 0 if successful.
  * \retval -1 on errors.
  */
-int os_fdset_begin(struct os_fdset_t *fdset, os_fdset_it *it);
+int fdset_begin(fdset_t *fdset, fdset_it_t *it);
 
 /*!
  * \brief Set event iterator to the end of last polled events.
@@ -110,7 +110,7 @@ int os_fdset_begin(struct os_fdset_t *fdset, os_fdset_it *it);
  * \retval 0 if successful.
  * \retval -1 on errors.
  */
-int os_fdset_end(struct os_fdset_t *fdset, os_fdset_it *it);
+int fdset_end(fdset_t *fdset, fdset_it_t *it);
 
 /*!
  * \brief Set event iterator to the next event.
@@ -123,8 +123,7 @@ int os_fdset_end(struct os_fdset_t *fdset, os_fdset_it *it);
  * \retval 0 if successful.
  * \retval -1 on errors.
  */
-int os_fdset_next(struct os_fdset_t *fdset, os_fdset_it *it);
-
+int fdset_next(fdset_t *fdset, fdset_it_t *it);
 
 /*!
  * \brief Returned name of underlying poll method.
@@ -132,7 +131,7 @@ int os_fdset_next(struct os_fdset_t *fdset, os_fdset_it *it);
  * \retval Name if successful.
  * \retval NULL if no method was loaded (shouldn't happen).
  */
-const char* os_fdset_method();
+const char* fdset_method();
 
 #endif /* _KNOTD_OS_FDSET_H_ */
 
