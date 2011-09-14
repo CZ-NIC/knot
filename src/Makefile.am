@@ -58,8 +58,8 @@ unittests_SOURCES =				\
 	tests/common/skiplist_tests.h		\
 	tests/common/slab_tests.c		\
 	tests/common/slab_tests.h		\
-        tests/common/os_fdset_tests.c		\
-        tests/common/os_fdset_tests.h		\
+        tests/common/fdset_tests.c		\
+        tests/common/fdset_tests.h		\
 	tests/knot/conf_tests.c			\
 	tests/knot/conf_tests.h			\
 	tests/knot/dthreads_tests.c		\
@@ -179,8 +179,8 @@ libknots_la_SOURCES =				\
 	common/errors.c				\
         common/WELL1024a.h			\
         common/WELL1024a.c			\
-        common/os_fdset.h			\
-        common/os_fdset.c
+        common/fdset.h			\
+        common/fdset.c
 
 libknotd_la_SOURCES =				\
 	knot/stat/gatherer.c				\

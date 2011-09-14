@@ -3,8 +3,8 @@
 #include <sys/time.h>
 #include <pthread.h>
 
-#include "tests/common/os_fdset_tests.h"
-#include "common/os_fdset.h"
+#include "tests/common/fdset_tests.h"
+#include "common/fdset.h"
 
 #define WRITE_PATTERN ((char) 0xde)
 #define WRITE_PATTERN_LEN sizeof(char)
@@ -44,15 +44,15 @@ static size_t timeval_diff(struct timeval *from, struct timeval *to) {
 	return res.tv_sec*1000 + res.tv_usec/1000;
 }
 
-static int os_fdset_tests_count(int argc, char *argv[]);
-static int os_fdset_tests_run(int argc, char *argv[]);
+static int fdset_tests_count(int argc, char *argv[]);
+static int fdset_tests_run(int argc, char *argv[]);
 
 /*! Exported unit API.
  */
-unit_api os_fdset_tests_api = {
+unit_api fdset_tests_api = {
 	"Native fdset poll wrapper",   //! Unit name
-	&os_fdset_tests_count,  //! Count scheduled tests
-	&os_fdset_tests_run     //! Run scheduled tests
+	&fdset_tests_count,  //! Count scheduled tests
+	&fdset_tests_run     //! Run scheduled tests
 };
 
 void* thr_action(void *arg)
@@ -73,28 +73,28 @@ void* thr_action(void *arg)
 	return 0;
 }
 
-static int os_fdset_tests_count(int argc, char *argv[])
+static int fdset_tests_count(int argc, char *argv[])
 {
 	return 11;
 }
 
-static int os_fdset_tests_run(int argc, char *argv[])
+static int fdset_tests_run(int argc, char *argv[])
 {
-	diag("os_fdset: implements '%s'", fdset_method());
+	diag("fdset: implements '%s'", fdset_method());
 
 	/* 1. Create fdset. */
 	fdset_t *set = fdset_new();
-	ok(set != 0, "os_fdset: new");
+	ok(set != 0, "fdset: new");
 
 	/* 2. Create pipe. */
 	int fds[2], tmpfds[2];
 	int ret = pipe(fds);
-	ok(ret >= 0, "os_fdset: pipe() works");
+	ok(ret >= 0, "fdset: pipe() works");
 	ret = pipe(tmpfds);
 
 	/* 3. Add fd to set. */
 	ret = fdset_add(set, fds[0], OS_EV_READ);
-	ok(ret == 0, "os_fdset: add to set works");
+	ok(ret == 0, "fdset: add to set works");
 	fdset_add(set, tmpfds[0], OS_EV_READ);
 
 	/* Schedule write. */
@@ -109,25 +109,25 @@ static int os_fdset_tests_run(int argc, char *argv[])
 	size_t diff = timeval_diff(&ts, &te);
 
 	ok(ret > 0 && diff > 99 && diff < 10000,
-	   "os_fdset: poll returned events in %zu ms", diff);
+	   "fdset: poll returned events in %zu ms", diff);
 
 	/* 5. Prepare event set. */
 	fdset_it_t it;
 	ret = fdset_begin(set, &it);
-	ok(ret == 0 && it.fd == fds[0], "os_fdset: begin is valid, ret=%d", ret);
+	ok(ret == 0 && it.fd == fds[0], "fdset: begin is valid, ret=%d", ret);
 
 	/* 6. Receive data. */
 	char buf = 0x00;
 	ret = read(it.fd, &buf, WRITE_PATTERN_LEN);
-	ok(ret >= 0 && buf == WRITE_PATTERN, "os_fdset: contains valid data, fd=%d", it.fd);
+	ok(ret >= 0 && buf == WRITE_PATTERN, "fdset: contains valid data, fd=%d", it.fd);
 
 	/* 7. Iterate event set. */
 	ret = fdset_next(set, &it);
-	ok(ret < 0, "os_fdset: boundary check works");
+	ok(ret < 0, "fdset: boundary check works");
 
 	/* 8. Remove from event set. */
 	ret = fdset_remove(set, fds[0]);
-	ok(ret == 0, "os_fdset: remove from fdset works");
+	ok(ret == 0, "fdset: remove from fdset works");
 	close(fds[0]);
 	close(fds[1]);
 	ret = fdset_remove(set, tmpfds[0]);
@@ -136,7 +136,7 @@ static int os_fdset_tests_run(int argc, char *argv[])
 
 	/* 9. Poll empty fdset. */
 	ret = fdset_wait(set);
-	ok(ret <= 0, "os_fdset: polling empty fdset returns -1 (ret=%d)", ret);
+	ok(ret <= 0, "fdset: polling empty fdset returns -1 (ret=%d)", ret);
 
 	/* 10. Crash test. */
 	lives_ok({
@@ -148,11 +148,11 @@ static int os_fdset_tests_run(int argc, char *argv[])
 		 fdset_end(0, 0);
 		 fdset_next(0, 0);
 		 fdset_method();
-	}, "os_fdset: crash test successful");
+	}, "fdset: crash test successful");
 
 	/* 11. Destroy fdset. */
 	ret = fdset_destroy(set);
-	ok(ret == 0, "os_fdset: destroyed");
+	ok(ret == 0, "fdset: destroyed");
 
 	/* Cleanup. */
 	pthread_join(t, 0);
