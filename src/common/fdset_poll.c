@@ -3,7 +3,7 @@
 #include <sys/poll.h>
 #include <stddef.h>
 
-#include "fdset.h"
+#include "common/fdset_poll.h"
 
 #define OS_FDS_CHUNKSIZE 8   /*!< Number of pollfd structs in a chunk. */
 #define OS_FDS_KEEPCHUNKS 32 /*!< Will attempt to free memory when reached. */
@@ -16,7 +16,7 @@ struct fdset_t {
 	size_t begin;
 };
 
-fdset_t *fdset_new()
+fdset_t *fdset_poll_new()
 {
 	fdset_t *set = malloc(sizeof(fdset_t));
 	if (!set) {
@@ -28,7 +28,7 @@ fdset_t *fdset_new()
 	return set;
 }
 
-int fdset_destroy(fdset_t * fdset)
+int fdset_poll_destroy(fdset_t * fdset)
 {
 	if(!fdset) {
 		return -1;
@@ -42,7 +42,7 @@ int fdset_destroy(fdset_t * fdset)
 	return 0;
 }
 
-int fdset_add(fdset_t *fdset, int fd, int events)
+int fdset_poll_add(fdset_t *fdset, int fd, int events)
 {
 	if (!fdset || fd < 0 || events <= 0) {
 		return -1;
@@ -72,7 +72,7 @@ int fdset_add(fdset_t *fdset, int fd, int events)
 	return 0;
 }
 
-int fdset_remove(fdset_t *fdset, int fd)
+int fdset_poll_remove(fdset_t *fdset, int fd)
 {
 	if (!fdset || fd < 0) {
 		return -1;
@@ -104,7 +104,7 @@ int fdset_remove(fdset_t *fdset, int fd)
 	return 0;
 }
 
-int fdset_wait(fdset_t *fdset)
+int fdset_poll_wait(fdset_t *fdset)
 {
 	if (!fdset || fdset->nfds < 1 || !fdset->fds) {
 		return -1;
@@ -126,7 +126,7 @@ int fdset_wait(fdset_t *fdset)
 	return ret;
 }
 
-int fdset_begin(fdset_t *fdset, fdset_it_t *it)
+int fdset_poll_begin(fdset_t *fdset, fdset_it_t *it)
 {
 	if (!fdset || !it) {
 		return -1;
@@ -137,7 +137,7 @@ int fdset_begin(fdset_t *fdset, fdset_it_t *it)
 	return fdset_next(fdset, it);
 }
 
-int fdset_end(fdset_t *fdset, fdset_it_t *it)
+int fdset_poll_end(fdset_t *fdset, fdset_it_t *it)
 {
 	if (!fdset || !it || fdset->nfds < 1) {
 		return -1;
@@ -166,7 +166,7 @@ int fdset_end(fdset_t *fdset, fdset_it_t *it)
 	return -1;
 }
 
-int fdset_next(fdset_t *fdset, fdset_it_t *it)
+int fdset_poll_next(fdset_t *fdset, fdset_it_t *it)
 {
 	if (!fdset || !it || fdset->nfds < 1) {
 		return -1;
@@ -189,7 +189,20 @@ int fdset_next(fdset_t *fdset, fdset_it_t *it)
 	return -1;
 }
 
-const char* fdset_method()
+const char* fdset_poll_method()
 {
 	return "poll";
 }
+
+/* Package APIs. */
+struct fdset_backend_t _fdset_poll = {
+	.fdset_new = fdset_poll_new,
+	.fdset_destroy = fdset_poll_destroy,
+	.fdset_add = fdset_poll_add,
+	.fdset_remove = fdset_poll_remove,
+	.fdset_wait = fdset_poll_wait,
+	.fdset_begin = fdset_poll_begin,
+	.fdset_end = fdset_poll_end,
+	.fdset_next = fdset_poll_next,
+	.fdset_method = fdset_poll_method
+};

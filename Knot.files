@@ -109,7 +109,9 @@ src/common/WELL1024a.c
 src/common/WELL1024a.h
 src/common/fdset.h
 src/common/fdset.c
+src/common/fdset_poll.h
 src/common/fdset_poll.c
+src/common/fdset_epoll.h
 src/common/fdset_epoll.c
 src/zcompile/parser-descriptor.h
 src/zcompile/parser-descriptor.c

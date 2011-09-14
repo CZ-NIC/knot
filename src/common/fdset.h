@@ -38,6 +38,30 @@ typedef struct fdset_it_t {
 } fdset_it_t;
 
 /*!
+ * \brief File descriptor set implementation backend.
+ * \notice Functions documentation following.
+ * \internal
+ */
+struct fdset_backend_t
+{
+	fdset_t* (*fdset_new)();
+	int (*fdset_destroy)(fdset_t*);
+	int (*fdset_add)(fdset_t*, int, int);
+	int (*fdset_remove)(fdset_t*, int);
+	int (*fdset_wait)(fdset_t*);
+	int (*fdset_begin)(fdset_t*, fdset_it_t*);
+	int (*fdset_end)(fdset_t*, fdset_it_t*);
+	int (*fdset_next)(fdset_t*, fdset_it_t*);
+	const char* (*fdset_method)();
+};
+
+/*!
+ * \brief Selected backend.
+ * \internal
+ */
+struct fdset_backend_t _fdset_backend;
+
+/*!
  * \brief Create new fdset.
  *
  * FDSET implementation depends on system.
@@ -45,7 +69,9 @@ typedef struct fdset_it_t {
  * \retval Pointer to initialized FDSET structure if successful.
  * \retval NULL on error.
  */
-fdset_t *fdset_new();
+static inline fdset_t *fdset_new() {
+	return _fdset_backend.fdset_new();
+}
 
 /*!
  * \brief Destroy FDSET.
@@ -53,7 +79,9 @@ fdset_t *fdset_new();
  * \retval 0 if successful.
  * \retval -1 on error.
  */
-int fdset_destroy(fdset_t * fdset);
+static inline int fdset_destroy(fdset_t * fdset) {
+	return _fdset_backend.fdset_destroy(fdset);
+}
 
 /*!
  * \brief Add file descriptor to watched set.
@@ -65,7 +93,10 @@ int fdset_destroy(fdset_t * fdset);
  * \retval 0 if successful.
  * \retval -1 on errors.
  */
-int fdset_add(fdset_t *fdset, int fd, int events);
+static inline int fdset_add(fdset_t *fdset, int fd, int events) {
+	return _fdset_backend.fdset_add(fdset, fd, events);
+}
+
 
 /*!
  * \brief Remove file descriptor from watched set.
@@ -76,7 +107,9 @@ int fdset_add(fdset_t *fdset, int fd, int events);
  * \retval 0 if successful.
  * \retval -1 on errors.
  */
-int fdset_remove(fdset_t *fdset, int fd);
+static inline int fdset_remove(fdset_t *fdset, int fd) {
+	return _fdset_backend.fdset_remove(fdset, fd);
+}
 
 /*!
  * \brief Poll set for new events.
@@ -88,7 +121,9 @@ int fdset_remove(fdset_t *fdset, int fd);
  *
  * \todo Timeout.
  */
-int fdset_wait(fdset_t *fdset);
+static inline int fdset_wait(fdset_t *fdset) {
+	return _fdset_backend.fdset_wait(fdset);
+}
 
 /*!
  * \brief Set event iterator to the beginning of last polled events.
@@ -99,7 +134,9 @@ int fdset_wait(fdset_t *fdset);
  * \retval 0 if successful.
  * \retval -1 on errors.
  */
-int fdset_begin(fdset_t *fdset, fdset_it_t *it);
+static inline int fdset_begin(fdset_t *fdset, fdset_it_t *it) {
+	return _fdset_backend.fdset_begin(fdset, it);
+}
 
 /*!
  * \brief Set event iterator to the end of last polled events.
@@ -110,7 +147,9 @@ int fdset_begin(fdset_t *fdset, fdset_it_t *it);
  * \retval 0 if successful.
  * \retval -1 on errors.
  */
-int fdset_end(fdset_t *fdset, fdset_it_t *it);
+static inline int fdset_end(fdset_t *fdset, fdset_it_t *it) {
+	return _fdset_backend.fdset_end(fdset, it);
+}
 
 /*!
  * \brief Set event iterator to the next event.
@@ -123,7 +162,9 @@ int fdset_end(fdset_t *fdset, fdset_it_t *it);
  * \retval 0 if successful.
  * \retval -1 on errors.
  */
-int fdset_next(fdset_t *fdset, fdset_it_t *it);
+static inline int fdset_next(fdset_t *fdset, fdset_it_t *it) {
+	return _fdset_backend.fdset_next(fdset, it);
+}
 
 /*!
  * \brief Returned name of underlying poll method.
@@ -131,7 +172,9 @@ int fdset_next(fdset_t *fdset, fdset_it_t *it);
  * \retval Name if successful.
  * \retval NULL if no method was loaded (shouldn't happen).
  */
-const char* fdset_method();
+static inline const char* fdset_method() {
+	return _fdset_backend.fdset_method();
+}
 
 #endif /* _KNOTD_FDSET_H_ */
 
