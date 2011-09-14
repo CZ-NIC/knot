@@ -80,10 +80,10 @@ static int os_fdset_tests_count(int argc, char *argv[])
 
 static int os_fdset_tests_run(int argc, char *argv[])
 {
-	diag("os_fdset: implements '%s'", os_fdset_method());
+	diag("os_fdset: implements '%s'", fdset_method());
 
 	/* 1. Create fdset. */
-	os_fdset_t *set = os_fdset_new();
+	fdset_t *set = fdset_new();
 	ok(set != 0, "os_fdset: new");
 
 	/* 2. Create pipe. */
@@ -93,9 +93,9 @@ static int os_fdset_tests_run(int argc, char *argv[])
 	ret = pipe(tmpfds);
 
 	/* 3. Add fd to set. */
-	ret = os_fdset_add(set, fds[0], OS_EV_READ);
+	ret = fdset_add(set, fds[0], OS_EV_READ);
 	ok(ret == 0, "os_fdset: add to set works");
-	os_fdset_add(set, tmpfds[0], OS_EV_READ);
+	fdset_add(set, tmpfds[0], OS_EV_READ);
 
 	/* Schedule write. */
 	struct timeval ts, te;
@@ -104,7 +104,7 @@ static int os_fdset_tests_run(int argc, char *argv[])
 	pthread_create(&t, 0, thr_action, &fds[1]);
 
 	/* 4. Watch fdset. */
-	ret = os_fdset_poll(set);
+	ret = fdset_wait(set);
 	gettimeofday(&te, 0);
 	size_t diff = timeval_diff(&ts, &te);
 
@@ -112,8 +112,8 @@ static int os_fdset_tests_run(int argc, char *argv[])
 	   "os_fdset: poll returned events in %zu ms", diff);
 
 	/* 5. Prepare event set. */
-	os_fdset_it it;
-	ret = os_fdset_begin(set, &it);
+	fdset_it_t it;
+	ret = fdset_begin(set, &it);
 	ok(ret == 0 && it.fd == fds[0], "os_fdset: begin is valid, ret=%d", ret);
 
 	/* 6. Receive data. */
@@ -122,36 +122,36 @@ static int os_fdset_tests_run(int argc, char *argv[])
 	ok(ret >= 0 && buf == WRITE_PATTERN, "os_fdset: contains valid data, fd=%d", it.fd);
 
 	/* 7. Iterate event set. */
-	ret = os_fdset_next(set, &it);
+	ret = fdset_next(set, &it);
 	ok(ret < 0, "os_fdset: boundary check works");
 
 	/* 8. Remove from event set. */
-	ret = os_fdset_remove(set, fds[0]);
+	ret = fdset_remove(set, fds[0]);
 	ok(ret == 0, "os_fdset: remove from fdset works");
 	close(fds[0]);
 	close(fds[1]);
-	ret = os_fdset_remove(set, tmpfds[0]);
+	ret = fdset_remove(set, tmpfds[0]);
 	close(tmpfds[1]);
 	close(tmpfds[1]);
 
 	/* 9. Poll empty fdset. */
-	ret = os_fdset_poll(set);
+	ret = fdset_wait(set);
 	ok(ret <= 0, "os_fdset: polling empty fdset returns -1 (ret=%d)", ret);
 
 	/* 10. Crash test. */
 	lives_ok({
-		 os_fdset_destroy(0);
-		 os_fdset_add(0, -1, 0);
-		 os_fdset_remove(0, -1);
-		 os_fdset_poll(0);
-		 os_fdset_begin(0, 0);
-		 os_fdset_end(0, 0);
-		 os_fdset_next(0, 0);
-		 os_fdset_method();
+		 fdset_destroy(0);
+		 fdset_add(0, -1, 0);
+		 fdset_remove(0, -1);
+		 fdset_wait(0);
+		 fdset_begin(0, 0);
+		 fdset_end(0, 0);
+		 fdset_next(0, 0);
+		 fdset_method();
 	}, "os_fdset: crash test successful");
 
 	/* 11. Destroy fdset. */
-	ret = os_fdset_destroy(set);
+	ret = fdset_destroy(set);
 	ok(ret == 0, "os_fdset: destroyed");
 
 	/* Cleanup. */

@@ -8,7 +8,7 @@
 #define OS_FDS_CHUNKSIZE 8   /*!< Number of pollfd structs in a chunk. */
 #define OS_FDS_KEEPCHUNKS 32 /*!< Will attempt to free memory when reached. */
 
-struct os_fdset_t {
+struct fdset_t {
 	int epfd;
 	struct epoll_event *events;
 	size_t nfds;
@@ -16,15 +16,15 @@ struct os_fdset_t {
 	size_t polled;
 };
 
-struct os_fdset_t *os_fdset_new()
+fdset_t *fdset_new()
 {
-	struct os_fdset_t *set = malloc(sizeof(struct os_fdset_t));
+	fdset_t *set = malloc(sizeof(fdset_t));
 	if (!set) {
 		return 0;
 	}
 
 	/* Blank memory. */
-	memset(set, 0, sizeof(struct os_fdset_t));
+	memset(set, 0, sizeof(fdset_t));
 
 	/* Create epoll fd. */
 	set->epfd = epoll_create(OS_FDS_CHUNKSIZE);
@@ -32,7 +32,7 @@ struct os_fdset_t *os_fdset_new()
 	return set;
 }
 
-int os_fdset_destroy(struct os_fdset_t * fdset)
+int fdset_destroy(fdset_t * fdset)
 {
 	if(!fdset) {
 		return -1;
@@ -47,7 +47,7 @@ int os_fdset_destroy(struct os_fdset_t * fdset)
 	return 0;
 }
 
-int os_fdset_add(struct os_fdset_t *fdset, int fd, int events)
+int fdset_add(fdset_t *fdset, int fd, int events)
 {
 	if (!fdset || fd < 0 || events <= 0) {
 		return -1;
@@ -84,7 +84,7 @@ int os_fdset_add(struct os_fdset_t *fdset, int fd, int events)
 	return 0;
 }
 
-int os_fdset_remove(struct os_fdset_t *fdset, int fd)
+int fdset_remove(fdset_t *fdset, int fd)
 {
 	if (!fdset || fd < 0) {
 		return -1;
@@ -104,7 +104,7 @@ int os_fdset_remove(struct os_fdset_t *fdset, int fd)
 	return 0;
 }
 
-int os_fdset_poll(struct os_fdset_t *fdset)
+int fdset_wait(fdset_t *fdset)
 {
 	if (!fdset || fdset->nfds < 1 || !fdset->events) {
 		return -1;
@@ -124,7 +124,7 @@ int os_fdset_poll(struct os_fdset_t *fdset)
 	return nfds;
 }
 
-int os_fdset_begin(struct os_fdset_t *fdset, os_fdset_it *it)
+int fdset_begin(fdset_t *fdset, fdset_it_t *it)
 {
 	if (!fdset || !it) {
 		return -1;
@@ -132,10 +132,10 @@ int os_fdset_begin(struct os_fdset_t *fdset, os_fdset_it *it)
 
 	/* Find first. */
 	it->pos = 0;
-	return os_fdset_next(fdset, it);
+	return fdset_next(fdset, it);
 }
 
-int os_fdset_end(struct os_fdset_t *fdset, os_fdset_it *it)
+int fdset_end(fdset_t *fdset, fdset_it_t *it)
 {
 	if (!fdset || !it || fdset->nfds < 1) {
 		return -1;
@@ -156,7 +156,7 @@ int os_fdset_end(struct os_fdset_t *fdset, os_fdset_it *it)
 	return -1;
 }
 
-int os_fdset_next(struct os_fdset_t *fdset, os_fdset_it *it)
+int fdset_next(fdset_t *fdset, fdset_it_t *it)
 {
 	if (!fdset || !it || fdset->nfds < 1) {
 		return -1;
@@ -174,7 +174,7 @@ int os_fdset_next(struct os_fdset_t *fdset, os_fdset_it *it)
 	return 0;
 }
 
-const char* os_fdset_method()
+const char* fdset_method()
 {
 	return "epoll";
 }
