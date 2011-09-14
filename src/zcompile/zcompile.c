@@ -2094,7 +2094,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	zp_lex_destroy(scanner);
 
 	/* Unlock zone file. */
-	int fd = fileno(zp_get_in(scanner));
+//	int fd = fileno(zp_get_in(scanner));
 //	if (fcntl(fd, F_SETLK, knot_file_lock(F_UNLCK, SEEK_SET)) == -1) {
 //		fprintf(stderr, "Could not lock zone file for read!\n");
 //		return 0;
