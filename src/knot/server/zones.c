@@ -2069,7 +2069,9 @@ int zones_cancel_notify(zonedata_t *zd, notify_ev_t *ev)
 	}
 
 	/* Wait for event to finish running. */
+#ifdef KNOTD_NOTIFY_DEBUG
 	int pkt_id = ev->msgid; /*< Do not optimize! */
+#endif
 	event_t *tmr = ev->timer;
 	ev->timer = 0;
 	pthread_mutex_unlock(&zd->lock);
