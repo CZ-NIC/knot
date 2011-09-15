@@ -704,7 +704,7 @@ static int ns_put_covering_nsec3(const knot_zone_contents_t *zone,
 	const knot_node_t *prev, *node;
 	/*! \todo Check version. */
 	int match = knot_zone_contents_find_nsec3_for_name(zone, name,
-	                                                     &node, &prev);
+	                                                     &node, &prev, 1);
 	assert(match >= 0);
 	node = knot_node_current(node);
 	prev = knot_node_current(prev);
@@ -2942,7 +2942,7 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		assert(zone != NULL);
 
 		debug_knot_ns("ns_process_axfrin: adjusting zone.\n");
-		knot_zone_contents_adjust(zone);
+		knot_zone_contents_adjust(zone, 0);
 
 		/* Create and fill hash table */
 		debug_knot_ns("ns_process_axfrin: filling hash table.\n");

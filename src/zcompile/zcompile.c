@@ -1931,7 +1931,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	rrset_list_delete(&parser->rrsig_orphans);
 
-	knot_zone_contents_adjust(contents);
+	knot_zone_contents_adjust(contents, 0);
 
 	debug_zp("rdata adjusted\n");
 

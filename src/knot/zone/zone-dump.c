@@ -840,7 +840,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 			if (knot_zone_contents_find_nsec3_for_name(zone,
 						knot_node_owner(node),
 						&nsec3_node,
-						&nsec3_previous) != 0) {
+						&nsec3_previous, 0) != 0) {
 				err_handler_handle_error(handler, node,
 						 ZC_ERR_NSEC3_NOT_FOUND);
 			}

@@ -447,7 +447,7 @@ const knot_node_t *knot_node_previous(const knot_node_t *node,
 knot_node_t *knot_node_get_previous(const knot_node_t *node, 
                                         int check_version)
 {
-//	printf("node: %s zone: %p\n", knot_dname_to_str(node->owner),
+//	fprintf(stderr, "node: %s zone: %p\n", knot_dname_to_str(node->owner),
 //	       node->zone);
 	assert(!check_version
 	       || (node->zone != NULL && node->zone->contents != NULL));
