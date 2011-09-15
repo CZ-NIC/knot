@@ -2928,7 +2928,7 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	debug_knot_ns("ns_process_axfrin: incoming packet\n");
 
 	int ret = xfrin_process_axfr_packet(xfr->wire, xfr->wire_size,
-	                               (knot_zone_contents_t **)(&xfr->data));
+	                             (xfrin_constructed_zone_t **)(&xfr->data));
 
 	if (ret > 0) { // transfer finished
 		debug_knot_ns("ns_process_axfrin: AXFR finished, zone created.\n");
@@ -2936,8 +2936,10 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		 * Adjust zone so that node count is set properly and nodes are
 		 * marked authoritative / delegation point.
 		 */
-		knot_zone_contents_t *zone = 
-				(knot_zone_contents_t *)xfr->data;
+		xfrin_constructed_zone_t *constr_zone = 
+				(xfrin_constructed_zone_t *)xfr->data;
+		knot_zone_contents_t *zone = constr_zone->contents;
+		assert(zone != NULL);
 
 		debug_knot_ns("ns_process_axfrin: adjusting zone.\n");
 		knot_zone_contents_adjust(zone);

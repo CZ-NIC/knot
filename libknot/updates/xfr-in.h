@@ -36,6 +36,20 @@
 #include "nameserver/name-server.h"
 #include "updates/changesets.h"
 
+/*----------------------------------------------------------------------------*/
+
+typedef struct xfrin_orphan_rrsig {
+	knot_rrset_t *rrsig;
+	struct xfrin_orphan_rrsig *next;
+} xfrin_orphan_rrsig_t;
+
+typedef struct xfrin_constructed_zone {
+	knot_zone_contents_t *contents;
+	xfrin_orphan_rrsig_t *rrsigs;
+} xfrin_constructed_zone_t;
+
+/*----------------------------------------------------------------------------*/
+
 /*!
  * \brief Creates normal query for the given zone name and the SOA type.
  *
@@ -121,7 +135,7 @@ int xfrin_zone_transferred(knot_nameserver_t *nameserver,
  * \todo Refactor!!!
  */
 int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
-                              knot_zone_contents_t **zone);
+                              xfrin_constructed_zone_t **zone);
 
 /*!
  * \brief Destroys the whole changesets structure.

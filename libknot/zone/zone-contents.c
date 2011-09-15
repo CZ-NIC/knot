@@ -1215,6 +1215,17 @@ int knot_zone_contents_add_rrsigs(knot_zone_contents_t *zone,
 {
 	if (zone == NULL || rrsigs == NULL || rrset == NULL || node == NULL
 	    || zone->apex == NULL || zone->apex->owner == NULL) {
+DEBUG_KNOT_ZONE(
+		debug_knot_zone("Parameters: zone=%p, rrsigs=%p, rrset=%p, "
+				"node=%p\n", zone, rrsigs, rrset, node);
+		if (zone != NULL) {
+			debug_knot_zone("zone->apex=%p\n", zone->apex);
+			if (zone->apex != NULL) {
+				debug_knot_zone("zone->apex->owner=%p\n", 
+						zone->apex->owner);
+			}
+		}
+);
 		return KNOT_EBADARG;
 	}
 
@@ -1231,6 +1242,7 @@ int knot_zone_contents_add_rrsigs(knot_zone_contents_t *zone,
 	if (*rrset != NULL
 	    && (knot_dname_compare(knot_rrset_owner(rrsigs),
 	                             knot_rrset_owner(*rrset)) != 0)) {
+		debug_knot_zone("RRSIGs does not belong to the given RRSet.\n");
 		return KNOT_EBADARG;
 	}
 
@@ -1249,7 +1261,7 @@ int knot_zone_contents_add_rrsigs(knot_zone_contents_t *zone,
 		    && (*node = get_node(
 		                   zone, knot_rrset_owner(rrsigs))) == NULL) {
 			debug_knot_zone("Failed to find node for RRSIGs.\n");
-			return KNOT_EBADARG;  /*! \todo Other error code? */
+			return KNOT_ENONODE;
 		}
 
 		assert(*node != NULL);
@@ -1265,7 +1277,7 @@ int knot_zone_contents_add_rrsigs(knot_zone_contents_t *zone,
 		                      knot_rrset_rdata(rrsigs)));
 		if (*rrset == NULL) {
 			debug_knot_zone("Failed to find RRSet for RRSIGs.\n");
-			return KNOT_EBADARG;  /*! \todo Other error code? */
+			return KNOT_ENORRSET;
 		}
 	}
 
