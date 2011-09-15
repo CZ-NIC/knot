@@ -183,6 +183,7 @@ line:	NL
 		}
 
 		assert(parser->current_rrset->owner != NULL);
+//		knot_dname_retain(parser->current_rrset->owner);
 		int ret = 0;
 		if ((ret = process_rr()) != 0) {
 			fprintf(stderr, "Error: could not process RRSet\n"
@@ -292,17 +293,21 @@ rr:	owner classttl type_and_rdata
 
 owner:	dname sp
     {
+    	char *name = knot_dname_to_str($1);
 //	printf("Totally new dname: %p %s\n", $1,
-//	knot_dname_to_str($1));
-	knot_dname_free(&parser->prev_dname);
-	    parser->prev_dname = knot_dname_deep_copy($1);
-	    $$ = $1;
+//	name);
+	free(name);
+	knot_dname_release(parser->prev_dname);
+	parser->prev_dname = $1;//knot_dname_deep_copy($1);
+//	knot_dname_retain(parser->prev_dname);
+	$$ = $1;
     }
     |	PREV
     {
 //	    printf("Name from prev_dname!: %p %s\n", parser->prev_dname,
 //	    knot_dname_to_str(parser->prev_dname));
-	    $$ = knot_dname_deep_copy(parser->prev_dname);
+	    knot_dname_retain(parser->prev_dname);
+	    $$ = parser->prev_dname;//knot_dname_deep_copy(parser->prev_dname);
     }
     ;
 
@@ -379,9 +384,7 @@ label:	STR
 		    $$ = error_dname;
 	    } else {
 		    $$ = knot_dname_new_from_str($1.str, $1.len, NULL);
-		    /*! \todo implement refcounting correctly. */
-		    ref_init(&$$->ref, 0); /* disable dtor */
-		    ref_retain(&$$->ref);
+//	    printf("Creating new (label): %s %p\n", $1.str, $$);
 	//printf("new: %p %s\n", $$, knot_dname_to_str($$));
 	    }
 
@@ -407,7 +410,7 @@ rel_dname:	label
 		    $$ = error_dname;
 	    } else {
 		    $$ = knot_dname_cat($1, $3);
-		    knot_dname_free(&$3);
+		    knot_dname_release($3);
 		}
     }
     ;
@@ -1317,8 +1320,6 @@ rdata_rrsig:	STR sp STR sp STR sp STR sp STR sp STR
 	    if (dname == NULL) {
 	    	parser->error_occurred = KNOTDZCOMPILE_ENOMEM;
 	    } else {
-	    	ref_init(&dname->ref, 0); /* disable dtor */
-	    	ref_retain(&dname->ref);
 	    	knot_dname_cat(dname, parser->root_domain);
 	    }
 
@@ -1346,9 +1347,6 @@ rdata_nsec:	wire_dname nsec_seq
 
 	    knot_dname_t *dname =
 		knot_dname_new_from_wire((uint8_t *)$1.str, $1.len, NULL);
-	    /*! \todo implement refcounting correctly. */
-	    ref_init(&dname->ref, 0); /* disable dtor */
-	    ref_retain(&dname->ref);
 
 	    free($1.str);
 
@@ -1445,10 +1443,6 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 			name = knot_dname_new_from_wire((uint8_t*)$7.str + 1,
 							  strlen($7.str + 1),
 							  NULL);
-			/*! \todo implement refcounting correctly. */
-			ref_init(&name->ref, 0); /* disable dtor */
-			ref_retain(&name->ref);
-
 			if(!name) {
 				zc_error_prev_line("IPSECKEY bad gateway"
 						   "dname %s", $7.str);
@@ -1471,8 +1465,6 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 				                      0);
 				YYABORT;
 			    }
-			    ref_init(&tmpd->ref, 0); /* disable dtor */
-			    ref_retain(&tmpd->ref);
 			    name = knot_dname_cat(tmpd,
 				    knot_node_parent(parser->origin, 0)->owner);
 			}
@@ -1590,7 +1582,7 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 	parser->default_class = rclass;
 
 	parser->origin = origin;
-	parser->prev_dname = knot_dname_deep_copy(parser->origin->owner);
+	parser->prev_dname = parser->origin->owner;
 
 	parser->default_apex = origin;
 	parser->error_occurred = 0;
@@ -1601,9 +1593,6 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 
 	parser->last_node = origin;
 	parser->root_domain = knot_dname_new_from_str(".", 1, NULL);
-	/*! \todo implement refcounting correctly. */
-	ref_init(&parser->root_domain->ref, 0); /* disable dtor */
-	ref_retain(&parser->root_domain->ref);
 
 	/* Create zone */
 	parser->current_zone = knot_zone_new(origin, 0, 1);
@@ -1618,7 +1607,7 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 
 void zparser_free()
 {
-	knot_dname_free(&(parser->root_domain));
+	knot_dname_release(parser->root_domain);
 	free(parser->temporary_items);
 	if (parser->current_rrset != NULL) {
 		knot_rrset_free(&parser->current_rrset);

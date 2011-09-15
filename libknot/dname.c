@@ -966,6 +966,13 @@ void knot_dname_free(knot_dname_t **dname)
 		return;
 	}
 
+//		char *name = knot_dname_to_str((*dname));
+
+//	printf("freeing in dname: %s %p\n", name, *dname);
+
+//	free(name);
+
+
 	if ((*dname)->name != NULL) {
 		free((*dname)->name);
 	}
@@ -973,6 +980,7 @@ void knot_dname_free(knot_dname_t **dname)
 	if((*dname)->labels != NULL) {
 		free((*dname)->labels);
 	}
+
 
 //	slab_free(*dname);
 	free(*dname);
