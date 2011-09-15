@@ -285,7 +285,8 @@ origin_directive:	DOLLAR_ORIGIN sp abs_dname trail
 rr:	owner classttl type_and_rdata
     {
 	    /* Save the pointer, it might get freed! */
-	    parser->current_rrset->owner = $1;
+	    knot_rrset_set_owner(parser->current_rrset, $1);
+//	    parser->current_rrset->owner = $1;
 //	    printf("new owner assigned: %p\n", $1);
 	    parser->current_rrset->type = $3;
     }
@@ -900,8 +901,10 @@ rdata_domain_name:	dname trail
 	    /* convert a single dname record */
 		if ($1 != NULL) {
 			if (!knot_dname_is_fqdn($1)) {
-			parser->current_rrset->owner =
-				knot_dname_cat($1, parser->root_domain);
+			knot_rrset_set_owner(parser->current_rrset,
+			knot_dname_cat($1, parser->root_domain));
+//			parser->current_rrset->owner =
+//				knot_dname_cat($1, parser->root_domain);
 			}
 		}
 	    zadd_rdata_domain($1);
@@ -913,13 +916,18 @@ rdata_soa:	dname sp dname sp STR sp STR sp STR sp STR sp STR trail
 	    /* convert the soa data */
 			if (!knot_dname_is_fqdn($1)) {
 
-			parser->current_rrset->owner =
-				knot_dname_cat($1, parser->root_domain);
+			knot_rrset_set_owner(parser->current_rrset,
+			knot_dname_cat($1, parser->root_domain));
+
+//			parser->current_rrset->owner =
+//				knot_dname_cat($1, parser->root_domain);
 
 		}
 					if (!knot_dname_is_fqdn($3)) {
-			parser->current_rrset->owner =
-				knot_dname_cat($3, parser->root_domain);
+			knot_rrset_set_owner(parser->current_rrset,
+			knot_dname_cat($3, parser->root_domain));
+//			parser->current_rrset->owner =
+//				knot_dname_cat($3, parser->root_domain);
 
 		}
 	    zadd_rdata_domain($1);	/* prim. ns */
