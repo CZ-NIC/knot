@@ -12,23 +12,28 @@
 #ifndef _KNOTD_XFRHANDLER_H_
 #define _KNOTD_XFRHANDLER_H_
 
-#include <ev.h>
-
 #include "knot/server/dthreads.h"
 #include "libknot/nameserver/name-server.h"
 #include "common/evqueue.h"
+#include "common/fdset.h"
+
+typedef struct xfrworker_t
+{
+	knot_nameserver_t *ns;  /*!< \brief Pointer to nameserver.*/
+	evqueue_t          *q;  /*!< \brief Shared XFR requests queue.*/
+	fdset_t        *fdset; /*!< \brief File descriptor set. */
+} xfrworker_t;
 
 /*!
  * \brief XFR handler structure.
  */
 typedef struct xfrhandler_t
 {
-	dt_unit_t     *unit;  /*!< \brief Threading unit. */
-	knot_nameserver_t *ns;  /*!< \brief Pointer to nameserver.*/
-	evqueue_t        *q;  /*!< \brief Shared XFR requests queue.*/
-	evqueue_t       *cq;  /*!< \brief XFR client requests queue.*/
-	struct ev_loop *loop; /*!< \brief Event loop. */
+	dt_unit_t       *unit;  /*!< \brief Threading unit. */
+	xfrworker_t **workers;  /*!< \brief Workers. */
 	void (*interrupt)(struct xfrhandler_t *h); /*!< Interrupt handler. */
+	unsigned rr; /*!< \brief Round-Robin counter. */
+	pthread_mutex_t rr_mx; /*!< \brief RR mutex. */
 } xfrhandler_t;
 
 /*!
@@ -105,20 +110,6 @@ static inline int xfr_join(xfrhandler_t *handler) {
 int xfr_request(xfrhandler_t *handler, knot_ns_xfr_t *req);
 
 /*!
- * \brief Enqueue XFR/IN related request.
- *
- * Request is processed in threads for XFR/IN.
- *
- * \param handler XFR handler instance.
- * \param req XFR request.
- *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL on NULL handler or request.
- * \retval KNOTD_ERROR on error.
- */
-int xfr_client_relay(xfrhandler_t *handler, knot_ns_xfr_t *req);
-
-/*!
  * \brief XFR master runnable.
  *
  * Processes incoming AXFR/IXFR requests asynchonously.
@@ -129,19 +120,7 @@ int xfr_client_relay(xfrhandler_t *handler, knot_ns_xfr_t *req);
  * \retval KNOTD_EOK on success.
  * \retval KNOTD_EINVAL invalid parameters.
  */
-int xfr_master(dthread_t *thread);
-
-/*!
-  * \brief XFR client runnable.
-  *
-  * Processess AXFR/IXFR client sessions.
-  *
-  * \param thread Associated thread from DThreads unit.
-  *
-  * \retval KNOTD_EOK on success.
-  * \retval KNOTD_EINVAL invalid parameters.
-  */
-int xfr_client(dthread_t *thread);
+int xfr_worker(dthread_t *thread);
 
 #endif // _KNOTD_XFRHANDLER_H_
 

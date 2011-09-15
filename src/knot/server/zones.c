@@ -352,7 +352,7 @@ static int zones_refresh_ev(event_t *e)
 		req.session = sock;
 		req.type = XFR_TYPE_SOA;
 		sockaddr_init(&req.addr, master->family);
-		xfr_client_relay(zd->server->xfr_h, &req);
+		xfr_request(zd->server->xfr_h, &req);
 	}
 
 	/* Schedule EXPIRE timer on first attempt. */
@@ -449,7 +449,7 @@ static int zones_notify_send(event_t *e)
 		req.session = sock;
 		req.type = XFR_TYPE_NOTIFY;
 		sockaddr_init(&req.addr, ev->addr.family);
-		xfr_client_relay(zd->server->xfr_h, &req);
+		xfr_request(zd->server->xfr_h, &req);
 
 	}
 
