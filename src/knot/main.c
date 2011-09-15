@@ -259,6 +259,7 @@ int main(int argc, char **argv)
 				}
 			}
 		}
+		pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
 
 		if ((res = server_wait(server)) != KNOTD_EOK) {
 			log_server_error("An error occured while "
