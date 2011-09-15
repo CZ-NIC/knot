@@ -179,7 +179,7 @@ line:	NL
 				                      0);
 				YYABORT;
 			}
-			parser->current_rrset->owner = tmp_dname;
+			knot_rrset_set_owner(parser->current_rrset, tmp_dname);
 		}
 
 		assert(parser->current_rrset->owner != NULL);
