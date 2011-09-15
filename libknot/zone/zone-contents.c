@@ -35,6 +35,7 @@ typedef struct {
 	knot_node_t *first_node;
 	knot_zone_contents_t *zone;
 	knot_node_t *previous_node;
+	int check_ver;
 } knot_zone_adjust_arg_t;
 
 /*----------------------------------------------------------------------------*/
@@ -341,7 +342,8 @@ static void knot_zone_contents_adjust_rrsets(knot_node_t *node,
  * \param zone Zone the node belongs to.
  */
 static void knot_zone_contents_adjust_node(knot_node_t *node,
-                                             knot_zone_contents_t *zone)
+                                             knot_zone_contents_t *zone,
+					     int check_ver)
 {
 
 DEBUG_KNOT_ZONE(
@@ -356,13 +358,13 @@ DEBUG_KNOT_ZONE(
 DEBUG_KNOT_ZONE(
 	if (knot_node_parent(node, 1)) {
 		char *name = knot_dname_to_str(knot_node_owner(
-				knot_node_parent(node, 1)));
+				knot_node_parent(node, check_ver)));
 		debug_knot_zone("Parent: %s\n", name);
 		debug_knot_zone("Parent is delegation point: %s\n",
-		       knot_node_is_deleg_point(knot_node_parent(node, 1))
+		       knot_node_is_deleg_point(knot_node_parent(node, check_ver))
 		       ? "yes" : "no");
 		debug_knot_zone("Parent is non-authoritative: %s\n",
-		       knot_node_is_non_auth(knot_node_parent(node, 1))
+		       knot_node_is_non_auth(knot_node_parent(node, check_ver))
 		       ? "yes" : "no");
 		free(name);
 	} else {
@@ -370,9 +372,9 @@ DEBUG_KNOT_ZONE(
 	}
 );
 	// delegation point / non-authoritative node
-	if (knot_node_parent(node, 1)
-	    && (knot_node_is_deleg_point(knot_node_parent(node, 1))
-		|| knot_node_is_non_auth(knot_node_parent(node, 1)))) {
+	if (knot_node_parent(node, check_ver)
+	    && (knot_node_is_deleg_point(knot_node_parent(node, check_ver))
+		|| knot_node_is_non_auth(knot_node_parent(node, check_ver)))) {
 		knot_node_set_non_auth(node);
 	} else if (knot_node_rrset(node, KNOT_RRTYPE_NS) != NULL
 		   && node != zone->apex) {
@@ -395,7 +397,7 @@ DEBUG_KNOT_ZONE(
 	const knot_node_t *nsec3;
 	int match = knot_zone_contents_find_nsec3_for_name(zone,
 	                                                knot_node_owner(node),
-	                                                &nsec3, &prev);
+	                                                &nsec3, &prev, check_ver);
 	if (match != KNOT_ZONE_NAME_FOUND) {
 		nsec3 = NULL;
 	}
@@ -435,7 +437,7 @@ static void knot_zone_contents_adjust_node_in_tree(
 	}
 	knot_zone_contents_t *zone = args->zone;
 
-	knot_zone_contents_adjust_node(node, zone);
+	knot_zone_contents_adjust_node(node, zone, args->check_ver);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1861,7 +1863,8 @@ const knot_node_t *knot_zone_contents_find_nsec3_node(
 int knot_zone_contents_find_nsec3_for_name(const knot_zone_contents_t *zone,
                                     const knot_dname_t *name,
                                     const knot_node_t **nsec3_node,
-                                    const knot_node_t **nsec3_previous)
+                                    const knot_node_t **nsec3_previous,
+				    int check_ver)
 {
 	if (zone == NULL || name == NULL
 	    || nsec3_node == NULL || nsec3_previous == NULL) {
@@ -1885,7 +1888,7 @@ DEBUG_KNOT_ZONE(
 
 	// create dummy node to use for lookup
 	int exact_match = knot_zone_tree_find_less_or_equal(
-		zone->nsec3_nodes, nsec3_name, &found, &prev, 1);
+		zone->nsec3_nodes, nsec3_name, &found, &prev, check_ver);
 	assert(exact_match >= 0);
 
 	knot_dname_release(nsec3_name);
@@ -1916,7 +1919,7 @@ DEBUG_KNOT_ZONE(
 		// set the previous node of the found node
 		assert(exact_match);
 		assert(*nsec3_node != NULL);
-		*nsec3_previous = knot_node_previous(*nsec3_node, 1);
+		*nsec3_previous = knot_node_previous(*nsec3_node, check_ver);
 	} else {
 		*nsec3_previous = prev;
 	}
@@ -1964,7 +1967,7 @@ knot_node_t *knot_zone_contents_get_apex(const knot_zone_contents_t *zone)
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_contents_adjust(knot_zone_contents_t *zone)
+int knot_zone_contents_adjust(knot_zone_contents_t *zone, int check_ver)
 {
 	if (zone == NULL) {
 		return KNOT_EBADARG;
@@ -1977,13 +1980,16 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone)
 	adjust_arg.zone = zone;
 	adjust_arg.first_node = NULL;
 	adjust_arg.previous_node = NULL;
+	adjust_arg.check_ver = check_ver;
 
+	debug_knot_zone("Adjusting normal nodes.\n");
 	int ret = knot_zone_tree_forward_apply_inorder(zone->nodes,
 	                        knot_zone_contents_adjust_node_in_tree,
 	                        &adjust_arg);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
+	debug_knot_zone("Done.\n");
 
 	assert(zone->apex == adjust_arg.first_node);
 	knot_node_set_previous(zone->apex, adjust_arg.previous_node);
@@ -1991,11 +1997,13 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone)
 	adjust_arg.first_node = NULL;
 	adjust_arg.previous_node = NULL;
 
+	debug_knot_zone("Adjusting NSEC3 nodes.\n");
 	ret = knot_zone_tree_forward_apply_inorder(
 	              zone->nsec3_nodes,
 	              knot_zone_contents_adjust_nsec3_node_in_tree,
 	                        &adjust_arg);
 
+	debug_knot_zone("Done.\n");
 	if (adjust_arg.first_node) {
 		knot_node_set_previous(adjust_arg.first_node,
 		                         adjust_arg.previous_node);
