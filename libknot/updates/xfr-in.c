@@ -393,7 +393,8 @@ DEBUG_KNOT_XFR(
 			ret = knot_zone_contents_add_rrsigs(*zone, rr,
 			         &tmp_rrset, &node, KNOT_RRSET_DUPL_MERGE, 1);
 			if (ret < 0) {
-				debug_knot_xfr("Failed to add RRSIGs.\n");
+				debug_knot_xfr("Failed to add RRSIGs (%s).\n",
+				               knot_strerror(ret));
 				knot_packet_free(&packet);
 				knot_node_free(&node, 1, 0); // ???
 				knot_rrset_deep_free(&rr, 1, 1, 1);
@@ -449,7 +450,8 @@ DEBUG_KNOT_XFR(
 			// insert the node into the zone
 			ret = knot_node_add_rrset(node, rr, 1);
 			if (ret < 0) {
-				debug_knot_xfr("Failed to add RRSet to node\n");
+				debug_knot_xfr("Failed to add RRSet to node (%s"
+				               ")\n", knot_strerror(ret));
 				knot_packet_free(&packet);
 				knot_node_free(&node, 1, 0); // ???
 				knot_rrset_deep_free(&rr, 1, 1, 1);
@@ -463,7 +465,8 @@ DEBUG_KNOT_XFR(
 			ret = add_node(*zone, node, 1, 0, 1);
 			assert(node != NULL);
 			if (ret != KNOT_EOK) {
-				debug_knot_xfr("Failed to add node to zone.\n");
+				debug_knot_xfr("Failed to add node to zone (%s)"
+				               ".\n", knot_strerror(ret));
 				knot_packet_free(&packet);
 				knot_node_free(&node, 1, 0); // ???
 				knot_rrset_deep_free(&rr, 1, 1, 1);
@@ -514,7 +517,8 @@ DEBUG_KNOT_XFR(
 		assert(node != NULL);
 		ret = knot_zone_contents_add_node(*zone, node, 1, 0, 1);
 		if (ret != KNOT_EOK) {
-			debug_knot_xfr("Failed to add last node into zone.\n");
+			debug_knot_xfr("Failed to add last node into zone (%s)"
+			               ".\n", knot_strerror(ret));
 			knot_packet_free(&packet);
 			knot_node_free(&node, 1, 0);
 			return KNOT_ERROR;	/*! \todo Other error */
