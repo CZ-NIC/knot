@@ -178,6 +178,9 @@ static inline void xfr_client_ev(struct ev_loop *loop, ev_io *w, int revents)
 		/*! \todo Log error. */
 		debug_xfr("xfr_client_ev: closing socket %d\n",
 			  ((ev_io *)w)->fd);
+		log_server_error("%cxfr_in: Failed to process response - %s\n",
+				 request->type == XFR_TYPE_AIN ? 'a' : 'i',
+				 knotd_strerror(ret));
 		ev_io_stop(loop, (ev_io *)w);
 		close(((ev_io *)w)->fd);
 		free(xfr_w);
