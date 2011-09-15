@@ -307,9 +307,6 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 			dname = knot_dname_new_from_str((char *)wireformat,
 							  length,
 							  NULL);
-			/*! \todo implement refcounting correctly. */
-			ref_init(&dname->ref, 0); /* disable dtor */
-			ref_retain(&dname->ref);
 
 			if (dname == NULL) {
 				dbg_rdata("malformed dname!\n");
@@ -341,7 +338,7 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 				memcpy(temp_rdatas[i].raw_data + 1,
 				       dname->name, dname->size);
 
-				knot_dname_free(&dname);
+				knot_dname_release(dname);
 			} else {
 				temp_rdatas[i].dname = dname;
 			}
@@ -1548,6 +1545,7 @@ void zadd_rdata_txt_wireformat(uint16_t *data, int first)
 
 void zadd_rdata_domain(knot_dname_t *dname)
 {
+//	knot_dname_retain(dname);
 	parser->temporary_items[parser->rdata_count].dname = dname;
 	parser->rdata_count++;
 }
@@ -2045,9 +2043,6 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	if (dname == NULL) {
 		return KNOTDZCOMPILE_ENOMEM;
 	}
-	/*! \todo implement refcounting correctly. */
-	ref_init(&dname->ref, 0); /* disable dtor */
-	ref_retain(&dname->ref);
 
 	knot_node_t *origin_node = knot_node_new(dname, NULL, 0);
 
@@ -2055,7 +2050,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	assert(knot_node_parent(origin_node, 0) == NULL);
 	if (origin_node == NULL) {
-		knot_dname_free(&dname);
+		knot_dname_release(dname);
 		return KNOTDZCOMPILE_ENOMEM;
 	}
 
