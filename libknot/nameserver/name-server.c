@@ -2950,6 +2950,13 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		if (rc != KNOT_EOK) {
 			return KNOT_ERROR;	// TODO: change error code
 		}
+		
+		// save the zone contents to the xfr->data
+		xfr->data = zone;
+		
+		// free the structure used for processing XFR
+		assert(constr_zone->rrsigs == NULL);
+		free(constr_zone);
 
 		//knot_zone_contents_dump(zone, 0);
 	}
