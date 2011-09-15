@@ -1128,7 +1128,7 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 			             ((server_t *)knot_ns_get_data(ns))->sched);
 		}
 
-		knot_zone_contents_dump(knot_zone_get_contents(zone), 1);
+//		knot_zone_contents_dump(knot_zone_get_contents(zone), 1);
 
 		/* Directly discard zone. */
 		knot_dname_free(&zone_name);

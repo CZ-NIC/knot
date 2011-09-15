@@ -608,7 +608,7 @@ int dt_start(dt_unit_t *unit)
 int dt_start_id(dthread_t *thread)
 {
 	// Check input
-	if (thread == 0) {
+	if (thread == 0 || thread->run == 0) {
 		return KNOTD_EINVAL;
 	}
 
@@ -824,7 +824,7 @@ int dt_repurpose(dthread_t *thread, runnable_t runnable, void *data)
 	if (thread == 0) {
 		return KNOTD_EINVAL;
 	}
-
+	
 	// Stop here if thread isn't a member of a unit
 	dt_unit_t *unit = thread->unit;
 	if (unit == 0) {
