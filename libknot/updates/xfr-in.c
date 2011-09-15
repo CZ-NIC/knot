@@ -425,6 +425,8 @@ DEBUG_KNOT_XFR(
 		in_zone = 1;
 		assert(node->owner == rr->owner);
 		zone = (*constr)->contents;
+		assert(zone->apex == node);
+		assert(zone->apex->owner == rr->owner);
 		// add the RRSet to the node
 		//ret = knot_node_add_rrset(node, rr, 0);
 		ret = knot_zone_contents_add_rrset(zone, rr, &node,
@@ -438,6 +440,7 @@ DEBUG_KNOT_XFR(
 			/*! \todo Cleanup. */
 			return KNOT_ERROR;
 		} else if (ret > 0) {
+			debug_knot_xfr("Merged SOA RRSet.\n");
 			// merged, free the RRSet
 			//knot_rrset_deep_free(&rr, 1, 0, 0);
 			knot_rrset_free(&rr);
@@ -450,7 +453,7 @@ DEBUG_KNOT_XFR(
 	}
 	
 	assert(zone != NULL);
-	
+
 	while (ret == KNOT_EOK && rr != NULL) {
 		// process the parsed RR
 
@@ -530,12 +533,28 @@ DEBUG_KNOT_XFR(
 				knot_rrset_deep_free(&rr, 1, 1, 1);
 				return KNOT_ERROR;  /*! \todo Other error code. */
 			} else if (ret == 1) {
+				assert(node != NULL);
+DEBUG_KNOT_XFR(
+				char *name = knot_dname_to_str(node->owner);
+				debug_knot_xfr("Found node for the record in "
+					       "zone: %s.\n", name);
+				free(name);
+);
+				in_zone = 1;
 				knot_rrset_deep_free(&rr, 1, 0, 0);
 			} else if (ret == 2) {
 				// should not happen
 				assert(0);
 //				knot_rrset_deep_free(&rr, 1, 1, 1);
 			} else {
+				assert(node != NULL);
+DEBUG_KNOT_XFR(
+				char *name = knot_dname_to_str(node->owner);
+				debug_knot_xfr("Found node for the record in "
+					       "zone: %s.\n", name);
+				free(name);
+);
+				in_zone = 1;
 				assert(tmp_rrset->rrsigs == rr);
 			}
 
