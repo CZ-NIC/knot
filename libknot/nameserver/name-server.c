@@ -1774,7 +1774,12 @@ DEBUG_KNOT_NS(
 
 	ret = ns_answer_from_node(node, closest_encloser, previous, zone, qname,
 	                          qtype, resp);
-	if (ret != KNOT_EOK) {
+	if (ret == NS_ERR_SERVFAIL) {
+		// in this case we should drop the response and send an error
+		// for now, just send the error code with a non-complete answer
+		knot_response_set_rcode(resp, KNOT_RCODE_SERVFAIL);
+		goto finalize;
+	} else if (ret != KNOT_EOK) {
 		/*! \todo Handle RCODE return values!!! */
 		goto finalize;
 	}
