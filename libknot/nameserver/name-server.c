@@ -1059,10 +1059,13 @@ static int ns_put_nsec3_nxdomain(const knot_zone_contents_t *zone,
 {
 	/*! \todo Change to zone contents. */
 	// 1) Closest encloser proof
+	debug_knot_ns("Putting closest encloser proof.\n");
 	int ret = ns_put_nsec3_closest_encloser_proof(zone, &closest_encloser,
 	                                              qname, resp);
 	// 2) NSEC3 covering non-existent wildcard
 	if (ret == KNOT_EOK) {
+		debug_knot_ns("Putting NSEC3 for no wildcard child of closest "
+		              "encloser.\n");
 		ret = ns_put_nsec3_no_wildcard_child(zone, closest_encloser,
 		                                     resp);
 	}
