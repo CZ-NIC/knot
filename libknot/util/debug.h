@@ -89,7 +89,7 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
  * Debug macros
  */
 //#define KNOT_ZONE_DEBUG
-#define KNOT_RESPONSE_DEBUG
+//#define KNOT_RESPONSE_DEBUG
 //#define KNOT_ZONEDB_DEBUG
 //#define KNOT_DNAME_DEBUG
 //#define KNOT_NODE_DEBUG
@@ -99,7 +99,7 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 //#define KNOT_NSEC3_DEBUG
 //#define CUCKOO_DEBUG
 //#define CUCKOO_DEBUG_HASH
-#define KNOT_NS_DEBUG
+//#define KNOT_NS_DEBUG
 //#define KNOT_XFR_DEBUG
 //#define KNOT_DDNS_DEBUG
 
