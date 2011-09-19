@@ -1426,12 +1426,16 @@ static int ns_answer_from_node(const knot_node_t *node,
 		if (knot_node_rrset_count(node) == 0) {
 			// node is an empty non-terminal => NSEC for NXDOMAIN
 			//assert(knot_node_rrset_count(closest_encloser) > 0);
+			debug_knot_ns("Adding NSEC/NSEC3 for NXDOMAIN.\n");
 			ret = ns_put_nsec_nsec3_nxdomain(zone,
 				knot_node_previous(node, 1), closest_encloser,
 				qname, resp);
 		} else {
+			debug_knot_ns("Adding NSEC/NSEC3 for NODATA.\n");
 			ns_put_nsec_nsec3_nodata(node, resp);
 			if (knot_dname_is_wildcard(node->owner)) {
+				debug_knot_ns("Putting NSEC/NSEC3 for wildcard"
+				              " NODATA\n");
 				ret = ns_put_nsec_nsec3_wildcard_nodata(node,
 					closest_encloser, previous, zone, qname,
 					resp);
@@ -1440,6 +1444,7 @@ static int ns_answer_from_node(const knot_node_t *node,
 		ns_put_authority_soa(zone, resp);
 	} else {  // else put authority NS
 		// if wildcard answer, add NSEC / NSEC3
+		debug_knot_ns("Adding NSEC/NSEC3 for wildcard answer.\n");
 		ret = ns_put_nsec_nsec3_wildcard_answer(node, closest_encloser,
 		                                  previous, zone, qname, resp);
 		ns_put_authority_ns(zone, resp);
@@ -2588,6 +2593,8 @@ int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_packet_t *query,
 	size_t resp_max_size = 0;
 	
 	assert(*rsize >= MAX_UDP_PAYLOAD);
+
+	knot_packet_dump(query);
 	
 	if (knot_query_edns_supported(query)) {
 		if (knot_edns_get_payload(&query->opt_rr) <
