@@ -48,10 +48,10 @@ void __attribute__ ((constructor)) fdset_init()
 {
 	/* Preference: epoll */
 #ifdef HAVE_EPOLL_WAIT
-	if (dlsym(RTLD_DEFAULT, "epoll_wait") != 0) {
-		fdset_set_backend(&_fdset_epoll);
-		return;
-	}
+//	if (dlsym(RTLD_DEFAULT, "epoll_wait") != 0) {
+//		fdset_set_backend(&_fdset_epoll);
+//		return;
+//	}
 #endif
 
 	/* Preference: kqueue */
@@ -64,12 +64,10 @@ void __attribute__ ((constructor)) fdset_init()
 
 	/* Preference: poll */
 #ifdef HAVE_POLL
-#ifndef HAVE_EPOLL_WAIT
 	if (dlsym(RTLD_DEFAULT, "poll") != 0) {
 		fdset_set_backend(&_fdset_poll);
 		return;
 	}
-#endif
 #endif
 
 	/* This shouldn't happen. */

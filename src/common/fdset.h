@@ -59,7 +59,7 @@ struct fdset_backend_t
  * \brief Selected backend.
  * \internal
  */
-struct fdset_backend_t _fdset_backend;
+extern struct fdset_backend_t _fdset_backend;
 
 /*!
  * \brief Create new fdset.
