@@ -321,8 +321,12 @@ int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 	size_t readb = 0;
 	while (to_read > 0) {
 		/*! \todo Implement timeout to prevent keeping recv() locked. */
-		n = recv(fd, buf + readb, to_read, 0);
-		if (n < 0) {
+		n = recv(fd, buf + readb, to_read, MSG_WAITALL);
+		if (n <= 0) {
+			/* Ignore interrupted calls. */
+			if (n < 0 && errno == EINTR) {
+				continue;
+			}
 			return KNOTD_ERROR;
 		}
 
@@ -339,7 +343,7 @@ int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 	debug_net("tcp: received packet size=%hu on fd=%d\n",
 		  pktsize, fd);
 
-	return readb;
+	return pktsize;
 }
 
 int tcp_loop_master(dthread_t *thread)
