@@ -317,9 +317,17 @@ int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 	}
 
 	/* Receive payload. */
-	n = recv(fd, buf, pktsize, MSG_WAITALL);
-	if (n <= 0) {
-		return KNOTD_ERROR;
+	size_t to_read = pktsize;
+	size_t readb = 0;
+	while (to_read > 0) {
+		/*! \todo Implement timeout to prevent keeping recv() locked. */
+		n = recv(fd, buf + readb, to_read, 0);
+		if (n < 0) {
+			return KNOTD_ERROR;
+		}
+
+		readb += n;
+		to_read -= n;
 	}
 
 	/* Get peer name. */
@@ -331,7 +339,7 @@ int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 	debug_net("tcp: received packet size=%hu on fd=%d\n",
 		  pktsize, fd);
 
-	return n;
+	return readb;
 }
 
 int tcp_loop_master(dthread_t *thread)
