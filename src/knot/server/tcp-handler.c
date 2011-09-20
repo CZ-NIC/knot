@@ -317,7 +317,7 @@ int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 	}
 
 	/* Receive payload. */
-	n = recv(fd, buf, pktsize, 0);
+	n = recv(fd, buf, pktsize, MSG_WAITALL);
 	if (n <= 0) {
 		return KNOTD_ERROR;
 	}
