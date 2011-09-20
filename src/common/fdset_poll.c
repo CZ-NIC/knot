@@ -1,3 +1,5 @@
+#ifdef HAVE_POLL
+
 #include <stdlib.h>
 #include <string.h>
 #include <sys/poll.h>
@@ -206,3 +208,5 @@ struct fdset_backend_t _fdset_poll = {
 	.fdset_next = fdset_poll_next,
 	.fdset_method = fdset_poll_method
 };
+
+#endif
