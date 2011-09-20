@@ -3010,6 +3010,7 @@ int knot_ns_switch_zone(knot_nameserver_t *nameserver,
 		free(name);
 	} else {
 		xfr->zone = z;
+		zone->zone = z;
 	}
 
 	knot_zone_contents_t *old = rcu_xchg_pointer(&z->contents, zone);
