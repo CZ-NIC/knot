@@ -1,4 +1,4 @@
-#ifdef HAVE_EPOLL
+#ifdef HAVE_EPOLL_WAIT
 
 #include <sys/epoll.h>
 #include <string.h>
