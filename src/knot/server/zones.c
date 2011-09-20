@@ -351,7 +351,8 @@ static int zones_refresh_ev(event_t *e)
 		memset(&req, 0, sizeof(req));
 		req.session = sock;
 		req.type = XFR_TYPE_SOA;
-		sockaddr_init(&req.addr, master->family);
+		memcpy(&req.addr, master, sizeof(sockaddr_t));
+		sockaddr_update(&req.addr);
 		xfr_request(zd->server->xfr_h, &req);
 	}
 
@@ -1420,6 +1421,8 @@ int zones_process_response(knot_nameserver_t *nameserver,
 
 			evsched_schedule(sched, refresh_ev, ref_tmr);
 			rcu_read_unlock();
+			log_zone_info("SOA query for zone %s answered, no "
+				      "transfer needed.\n", zd->conf->name);
 			return KNOTD_EOK;
 		}
 
