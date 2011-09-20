@@ -2946,7 +2946,8 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	 *  - incoming packet size is in xfr->wire_size
 	 *  - signalize caller, that transfer is finished/error (ret. code?)
 	 */
-	debug_knot_ns("ns_process_axfrin: incoming packet\n");
+	debug_knot_ns("ns_process_axfrin: incoming packet, wire size: %zu\n",
+	              xfr->wire_size);
 
 	int ret = xfrin_process_axfr_packet(xfr->wire, xfr->wire_size,
 	                             (xfrin_constructed_zone_t **)(&xfr->data));

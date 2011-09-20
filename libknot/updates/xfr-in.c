@@ -311,6 +311,8 @@ int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
 		debug_knot_xfr("Wrong parameters supported.\n");
 		return KNOT_EBADARG;
 	}
+	
+	debug_knot_xfr("Processing AXFR packet of size %zu.\n", size);
 
 	knot_packet_t *packet =
 			knot_packet_new(KNOT_PACKET_PREALLOC_NONE);

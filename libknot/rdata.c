@@ -185,14 +185,23 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 	                            desc->length * sizeof(knot_rdata_item_t));
 	CHECK_ALLOC_LOG(items, KNOT_ENOMEM);
 
-	size_t item_size;
+	size_t item_size = 0;
 	uint8_t gateway_type = 0;  // only to handle IPSECKEY record
-	knot_dname_t *dname;
+	knot_dname_t *dname = NULL;
+	
+//	if (desc->type == 50) {
+//		fprintf(stderr, "Parsing NSEC3 RDATA, RDLENGTH=%zu\n", rdlength);
+//	}
 
 //	printf("Parsing RDATA of size %zu of type %s\n",
 //	       rdlength, knot_rrtype_to_string(desc->type));
 
-	while (parsed < rdlength && i < desc->length) {
+	while (i < desc->length && (desc->fixed_items || parsed < rdlength)) {
+		
+//		if (desc->type == 50) {
+//			fprintf(stderr, "Parsing NSEC3 RDATA, item %d\n", i);
+//		}
+		
 //		printf("Parsed: %zu\n", parsed);
 		item_type = desc->wireformat[i];
 		item_size = 0;
@@ -250,6 +259,10 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 //			printf("Next item - Binary data.\n");
 			// the rest of the RDATA is this item
 			item_size = rdlength - parsed;
+//			if (desc->type == 50) {
+//				fprintf(stderr, "parsed=%zu, item_size=%zu\n", 
+//				        parsed, item_size);
+//			}
 //			printf("Binary item, size: %zu\n", item_size);
 			break;
 		case KNOT_RDATA_WF_BINARYWITHLENGTH:
@@ -315,10 +328,25 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 			memcpy(items[i].raw_data + 1, wire + *pos, item_size);
 			*pos += item_size;
 			parsed += item_size;
+		} else if (item_type == KNOT_RDATA_WF_BINARY) {
+			// in this case we are at the end of the RDATA
+			// and should create an empty RDATA item
+			items[i].raw_data = (uint16_t *)malloc(2);
+			if (items[i].raw_data == NULL) {
+				free(items);
+				return KNOT_ENOMEM;
+			}
+			memcpy(items[i].raw_data, &item_size, 2);
 		}
 
 		++i;
 	}
+	
+//	if (desc->type == 50) {
+//		fprintf(stderr, "Parsed %d items of NSEC3\n", i);
+//	}
+	
+	assert(!desc->fixed_items || i == desc->length);
 
 	// all items are parsed, insert into the RDATA
 	int rc;
