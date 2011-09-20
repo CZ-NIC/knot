@@ -38,7 +38,9 @@ static void fdset_set_backend(struct fdset_backend_t *backend) {
 
 /* POSIX poll API */
 #ifdef HAVE_POLL
+#ifndef HAVE_EPOLL_WAIT
   #include "common/fdset_poll.c"
+#endif
 #endif /* HAVE_POLL */
 
 /*! \brief Bootstrap polling subsystem (it is called automatically). */
@@ -62,10 +64,12 @@ void __attribute__ ((constructor)) fdset_init()
 
 	/* Preference: poll */
 #ifdef HAVE_POLL
+#ifndef HAVE_EPOLL_WAIT
 	if (dlsym(RTLD_DEFAULT, "poll") != 0) {
 		fdset_set_backend(&_fdset_poll);
 		return;
 	}
+#endif
 #endif
 
 	/* This shouldn't happen. */
