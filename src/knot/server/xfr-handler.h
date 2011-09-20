@@ -16,12 +16,19 @@
 #include "libknot/nameserver/name-server.h"
 #include "common/evqueue.h"
 #include "common/fdset.h"
+#include "common/skip-list.h" /*!< \todo Consider another data struct. */
 
+struct xfrhandler_t;
+
+/*!
+ * \brief XFR worker structure.
+ */
 typedef struct xfrworker_t
 {
 	knot_nameserver_t *ns;  /*!< \brief Pointer to nameserver.*/
 	evqueue_t          *q;  /*!< \brief Shared XFR requests queue.*/
 	fdset_t        *fdset; /*!< \brief File descriptor set. */
+	struct xfrhandler_t *master; /*! \brief Worker master. */
 } xfrworker_t;
 
 /*!
@@ -31,6 +38,8 @@ typedef struct xfrhandler_t
 {
 	dt_unit_t       *unit;  /*!< \brief Threading unit. */
 	xfrworker_t **workers;  /*!< \brief Workers. */
+	skip_list_t *tasks; /*!< \brief Pending tasks. */
+	pthread_mutex_t tasks_mx; /*!< \brief Tasks synchronisation. */
 	void (*interrupt)(struct xfrhandler_t *h); /*!< Interrupt handler. */
 	unsigned rr; /*!< \brief Round-Robin counter. */
 	pthread_mutex_t rr_mx; /*!< \brief RR mutex. */
