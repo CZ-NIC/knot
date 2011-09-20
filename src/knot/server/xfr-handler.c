@@ -178,7 +178,7 @@ static int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 	/* Read DNS/TCP packet. */
 	int ret = tcp_recv(fd, buf, sizeof(buf), 0);
 	if (ret <= 0) {
-		debug_xfr("xfr: closing socket %d\n", fd);
+		debug_xfr("xfr: recv() failed, ret=%d\n", fd);
 		return KNOTD_ERROR;
 	}
 	data->wire_size = ret;
@@ -200,7 +200,6 @@ static int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 	debug_xfr("xfr: processed incoming XFR packet (res =  %d)\n",
 		  ret);
 	if (ret < 0) {
-		debug_xfr("xfr: closing socket %d\n", fd);
 		log_server_error("%cxfr_in: Failed to process response - %s\n",
 				 data->type == XFR_TYPE_AIN ? 'a' : 'i',
 				 knotd_strerror(ret));
