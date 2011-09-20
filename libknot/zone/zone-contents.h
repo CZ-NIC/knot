@@ -338,7 +338,8 @@ int knot_zone_contents_find_nsec3_for_name(
                                     const knot_zone_contents_t *contents,
                                     const knot_dname_t *name,
                                     const knot_node_t **nsec3_node,
-                                    const knot_node_t **nsec3_previous);
+                                    const knot_node_t **nsec3_previous,
+				    int check_ver);
 /*!
  * \brief Returns the apex node of the zone.
  *
@@ -361,7 +362,7 @@ knot_node_t *knot_zone_contents_get_apex(
  *
  * \param zone Zone to adjust domain names in.
  */
-int knot_zone_contents_adjust(knot_zone_contents_t *contents);
+int knot_zone_contents_adjust(knot_zone_contents_t *contents, int check_ver);
 
 /*!
  * \brief Parses the NSEC3PARAM record stored in the zone.
