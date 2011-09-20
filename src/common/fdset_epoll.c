@@ -4,7 +4,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <fcntl.h>
 
 #include "fdset.h"
 
@@ -75,10 +74,6 @@ int fdset_epoll_add(fdset_t *fdset, int fd, int events)
 		fdset->reserved += chunk;
 	}
 
-	/* Set non-blocking. */
-	int flags = fcntl(fd, F_GETFL, 0);
-	fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-	
 	/* Add to epoll set. */
 	struct epoll_event ev;
 	ev.events = EPOLLIN; /*! \todo MAP events. */
