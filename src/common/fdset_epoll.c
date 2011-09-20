@@ -1,3 +1,5 @@
+#ifdef HAVE_EPOLL
+
 #include <sys/epoll.h>
 #include <string.h>
 #include <stdlib.h>
@@ -196,3 +198,5 @@ struct fdset_backend_t _fdset_epoll = {
 	.fdset_next = fdset_epoll_next,
 	.fdset_method = fdset_epoll_method
 };
+
+#endif
