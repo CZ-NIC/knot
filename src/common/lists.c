@@ -99,6 +99,8 @@ rem_node(node *n)
 
   z->next = x;
   x->prev = z;
+  n->prev = 0;
+  n->next = 0;
 }
 
 /**
