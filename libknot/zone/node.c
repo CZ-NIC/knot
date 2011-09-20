@@ -345,7 +345,7 @@ knot_rrset_t **knot_node_get_rrsets(const knot_node_t *node)
 
 const knot_rrset_t **knot_node_rrsets(const knot_node_t *node)
 {
-	knot_node_dump((knot_node_t *)node, (void*)1);
+	//knot_node_dump((knot_node_t *)node, (void*)1);
 //	printf("RRset count: %u\n", node->rrset_count);
 	if (node->rrset_count == 0) {
 		return NULL;
@@ -447,7 +447,7 @@ const knot_node_t *knot_node_previous(const knot_node_t *node,
 knot_node_t *knot_node_get_previous(const knot_node_t *node, 
                                         int check_version)
 {
-//	printf("node: %s zone: %p\n", knot_dname_to_str(node->owner),
+//	fprintf(stderr, "node: %s zone: %p\n", knot_dname_to_str(node->owner),
 //	       node->zone);
 	assert(!check_version
 	       || (node->zone != NULL && node->zone->contents != NULL));

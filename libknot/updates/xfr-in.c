@@ -222,10 +222,92 @@ int xfrin_create_ixfr_query(const knot_zone_contents_t *zone, uint8_t *buffer,
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
-                              knot_zone_contents_t **zone)
+static int xfrin_add_orphan_rrsig(xfrin_orphan_rrsig_t *rrsigs, 
+                                  knot_rrset_t *rr)
 {
-	if (pkt == NULL || zone == NULL) {
+	// try to find similar RRSIGs (check owner and type covered) in the list
+	assert(knot_rrset_type(rr) == KNOT_RRTYPE_RRSIG);
+	
+	int ret = 0;
+	xfrin_orphan_rrsig_t **last = &rrsigs;
+	while (*last != NULL) {
+		// check if the RRSIG is not similar to the one we want to add
+		assert((*last)->rrsig != NULL);
+		if (knot_rrset_compare((*last)->rrsig, rr, 
+		                       KNOT_RRSET_COMPARE_HEADER) == 1
+		    && knot_rdata_rrsig_type_covered(knot_rrset_rdata(
+		                                      (*last)->rrsig))
+		       == knot_rdata_rrsig_type_covered(knot_rrset_rdata(rr))) {
+			ret = knot_rrset_merge((void **)&(*last)->rrsig, 
+			                       (void **)&rr);
+			if (ret != KNOT_EOK) {
+				return ret;
+			} else {
+				return 1;
+			}
+		}
+		last = &((*last)->next);
+	}
+	
+	assert(*last == NULL);
+	// we did not find the right RRSIGs, add to the end
+	*last = (xfrin_orphan_rrsig_t *)malloc(sizeof(xfrin_orphan_rrsig_t));
+	CHECK_ALLOC_LOG(*last, KNOT_ENOMEM);
+	
+	(*last)->rrsig = rr;
+	(*last)->next = NULL;
+	
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int xfrin_process_orphan_rrsigs(knot_zone_contents_t *zone, 
+                                       xfrin_orphan_rrsig_t *rrsigs)
+{
+	xfrin_orphan_rrsig_t **last = &rrsigs;
+	int ret = 0;
+	while (*last != NULL) {
+		knot_rrset_t *rrset = NULL;
+		knot_node_t *node = NULL;
+		ret = knot_zone_contents_add_rrsigs(zone, (*last)->rrsig, 
+		                                    &rrset, &node, 
+		                                    KNOT_RRSET_DUPL_MERGE, 1);
+		if (ret > 0) {
+			knot_rrset_free(&(*last)->rrsig);
+		} else if (ret != KNOT_EOK) {
+			debug_knot_xfr("Failed to add orphan RRSIG to zone.\n");
+			return ret;
+		} else {
+			(*last)->rrsig = NULL;
+		}
+		
+		last = &((*last)->next);
+	}
+	
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static void xfrin_free_orphan_rrsigs(xfrin_orphan_rrsig_t **rrsigs)
+{
+	xfrin_orphan_rrsig_t *r = *rrsigs;
+	while (r != NULL) {
+		xfrin_orphan_rrsig_t *prev = r;
+		r = r->next;
+		free(prev);
+	}
+	
+	*rrsigs = NULL;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
+                              xfrin_constructed_zone_t **constr)
+{
+	if (pkt == NULL || constr == NULL) {
 		debug_knot_xfr("Wrong parameters supported.\n");
 		return KNOT_EBADARG;
 	}
@@ -270,8 +352,9 @@ int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
 
 	knot_node_t *node = NULL;
 	int in_zone = 0;
+	knot_zone_contents_t *zone = NULL;
 
-	if (*zone == NULL) {
+	if (*constr == NULL) {
 		// create new zone
 		/*! \todo Ensure that the packet is the first one. */
 		if (knot_rrset_type(rr) != KNOT_RRTYPE_SOA) {
@@ -315,10 +398,22 @@ DEBUG_KNOT_XFR(
 
 		// the first RR is SOA and its owner and QNAME are the same
 		// create the zone
-		/*! \todo Set the zone pointer to the contents. */
-		*zone = knot_zone_contents_new(node, 0, 1, NULL);
+		
+		*constr = (xfrin_constructed_zone_t *)malloc(
+				sizeof(xfrin_constructed_zone_t));
+		if (*constr == NULL) {
+			debug_knot_xfr("Failed to create new constr. zone.\n");
+			knot_packet_free(&packet);
+			knot_node_free(&node, 0, 0);
+			knot_rrset_deep_free(&rr, 1, 1, 1);
+			return KNOT_ENOMEM;
+		}
+		
+		memset(*constr, 0, sizeof(xfrin_constructed_zone_t));
+		
+		(*constr)->contents = knot_zone_contents_new(node, 0, 1, NULL);
 //		assert(0);
-		if (*zone == NULL) {
+		if ((*constr)->contents== NULL) {
 			debug_knot_xfr("Failed to create new zone.\n");
 			knot_packet_free(&packet);
 			knot_node_free(&node, 0, 0);
@@ -329,9 +424,12 @@ DEBUG_KNOT_XFR(
 
 		in_zone = 1;
 		assert(node->owner == rr->owner);
+		zone = (*constr)->contents;
+		assert(zone->apex == node);
+		assert(zone->apex->owner == rr->owner);
 		// add the RRSet to the node
 		//ret = knot_node_add_rrset(node, rr, 0);
-		ret = knot_zone_contents_add_rrset(*zone, rr, &node,
+		ret = knot_zone_contents_add_rrset(zone, rr, &node,
 		                                    KNOT_RRSET_DUPL_MERGE, 1);
 		if (ret < 0) {
 			debug_knot_xfr("Failed to add RRSet to zone node: %s.\n",
@@ -342,13 +440,19 @@ DEBUG_KNOT_XFR(
 			/*! \todo Cleanup. */
 			return KNOT_ERROR;
 		} else if (ret > 0) {
+			debug_knot_xfr("Merged SOA RRSet.\n");
 			// merged, free the RRSet
-			knot_rrset_deep_free(&rr, 1, 0, 0);
+			//knot_rrset_deep_free(&rr, 1, 0, 0);
+			knot_rrset_free(&rr);
 		}
 
 		// take next RR
 		ret = knot_packet_parse_next_rr_answer(packet, &rr);
+	} else {
+		zone = (*constr)->contents;
 	}
+	
+	assert(zone != NULL);
 
 	while (ret == KNOT_EOK && rr != NULL) {
 		// process the parsed RR
@@ -377,12 +481,25 @@ DEBUG_KNOT_XFR(
 		if (knot_rrset_type(rr) == KNOT_RRTYPE_SOA) {
 			// this must be the last SOA, do not do anything more
 			// discard the RR
-			assert(knot_zone_contents_apex((*zone)) != NULL);
-			assert(knot_node_rrset(knot_zone_contents_apex((*zone)),
+			assert(knot_zone_contents_apex((zone)) != NULL);
+			assert(knot_node_rrset(knot_zone_contents_apex((zone)),
 			                       KNOT_RRTYPE_SOA) != NULL);
 			debug_knot_xfr("Found last SOA, transfer finished.\n");
 			knot_rrset_deep_free(&rr, 1, 1, 1);
 			knot_packet_free(&packet);
+			
+			// we must now find place for all orphan RRSIGs
+			ret = xfrin_process_orphan_rrsigs(zone, 
+			                                  (*constr)->rrsigs);
+			if (ret != KNOT_EOK) {
+				debug_knot_xfr("Failed to process orphan "
+				               "RRSIGs\n");
+				/*! \todo Cleanup?? */
+				return ret;
+			}
+			
+			xfrin_free_orphan_rrsigs(&(*constr)->rrsigs);
+			
 			return 1;
 		}
 
@@ -390,21 +507,54 @@ DEBUG_KNOT_XFR(
 			// RRSIGs require special handling, as there are no
 			// nodes for them
 			knot_rrset_t *tmp_rrset = NULL;
-			ret = knot_zone_contents_add_rrsigs(*zone, rr,
+			ret = knot_zone_contents_add_rrsigs(zone, rr,
 			         &tmp_rrset, &node, KNOT_RRSET_DUPL_MERGE, 1);
-			if (ret < 0) {
-				debug_knot_xfr("Failed to add RRSIGs.\n");
+			if (ret == KNOT_ENONODE || ret == KNOT_ENORRSET) {
+				debug_knot_xfr("No node or RRSet for RRSIGs\n");
+				debug_knot_xfr("Saving for later insertion.\n");
+				ret = xfrin_add_orphan_rrsig((*constr)->rrsigs, 
+				                             rr);
+				if (ret > 0) {
+					debug_knot_xfr("Merged RRSIGs.\n");
+					knot_rrset_free(&rr);
+				} else if (ret != KNOT_EOK) {
+					debug_knot_xfr("Failed to save orphan"
+						       " RRSIGs.\n");
+					knot_packet_free(&packet);
+					knot_node_free(&node, 1, 0); // ???
+					knot_rrset_deep_free(&rr, 1, 1, 1);
+					return ret;
+				}
+			} else if (ret < 0) {
+				debug_knot_xfr("Failed to add RRSIGs (%s).\n",
+				               knot_strerror(ret));
 				knot_packet_free(&packet);
 				knot_node_free(&node, 1, 0); // ???
 				knot_rrset_deep_free(&rr, 1, 1, 1);
 				return KNOT_ERROR;  /*! \todo Other error code. */
 			} else if (ret == 1) {
+				assert(node != NULL);
+DEBUG_KNOT_XFR(
+				char *name = knot_dname_to_str(node->owner);
+				debug_knot_xfr("Found node for the record in "
+					       "zone: %s.\n", name);
+				free(name);
+);
+				in_zone = 1;
 				knot_rrset_deep_free(&rr, 1, 0, 0);
 			} else if (ret == 2) {
 				// should not happen
 				assert(0);
 //				knot_rrset_deep_free(&rr, 1, 1, 1);
 			} else {
+				assert(node != NULL);
+DEBUG_KNOT_XFR(
+				char *name = knot_dname_to_str(node->owner);
+				debug_knot_xfr("Found node for the record in "
+					       "zone: %s.\n", name);
+				free(name);
+);
+				in_zone = 1;
 				assert(tmp_rrset->rrsigs == rr);
 			}
 
@@ -427,7 +577,7 @@ DEBUG_KNOT_XFR(
 			add_node = knot_zone_contents_add_node;
 		}
 
-		if (node == NULL && (node = get_node(*zone,
+		if (node == NULL && (node = get_node(zone,
 		                               knot_rrset_owner(rr))) != NULL) {
 			// the node for this RR was found in the zone
 			debug_knot_xfr("Found node for the record in zone.\n");
@@ -446,10 +596,11 @@ DEBUG_KNOT_XFR(
 			}
 			debug_knot_xfr("Created new node for the record.\n");
 
-			// insert the node into the zone
+			// insert the RRSet to the node
 			ret = knot_node_add_rrset(node, rr, 1);
 			if (ret < 0) {
-				debug_knot_xfr("Failed to add RRSet to node\n");
+				debug_knot_xfr("Failed to add RRSet to node (%s"
+				               ")\n", knot_strerror(ret));
 				knot_packet_free(&packet);
 				knot_node_free(&node, 1, 0); // ???
 				knot_rrset_deep_free(&rr, 1, 1, 1);
@@ -460,10 +611,12 @@ DEBUG_KNOT_XFR(
 //				knot_rrset_deep_free(&rr, 1, 0, 0);
 			}
 
-			ret = add_node(*zone, node, 1, 0, 1);
+			// insert the node into the zone
+			ret = add_node(zone, node, 1, 0, 1);
 			assert(node != NULL);
 			if (ret != KNOT_EOK) {
-				debug_knot_xfr("Failed to add node to zone.\n");
+				debug_knot_xfr("Failed to add node to zone (%s)"
+				               ".\n", knot_strerror(ret));
 				knot_packet_free(&packet);
 				knot_node_free(&node, 1, 0); // ???
 				knot_rrset_deep_free(&rr, 1, 1, 1);
@@ -474,7 +627,7 @@ DEBUG_KNOT_XFR(
 		} else {
 			assert(in_zone);
 
-			ret = knot_zone_contents_add_rrset(*zone, rr, &node,
+			ret = knot_zone_contents_add_rrset(zone, rr, &node,
 			                            KNOT_RRSET_DUPL_MERGE, 1);
 			if (ret < 0) {
 				debug_knot_xfr("Failed to add RRSet to zone:"
@@ -482,7 +635,8 @@ DEBUG_KNOT_XFR(
 				return KNOT_ERROR;
 			} else if (ret > 0) {
 				// merged, free the RRSet
-				knot_rrset_deep_free(&rr, 1, 0, 0);
+//				knot_rrset_deep_free(&rr, 1, 0, 0);
+				knot_rrset_free(&rr);
 			}
 
 		}
@@ -512,9 +666,10 @@ DEBUG_KNOT_XFR(
 	// if the last node is not yet in the zone, insert
 	if (!in_zone) {
 		assert(node != NULL);
-		ret = knot_zone_contents_add_node(*zone, node, 1, 0, 1);
+		ret = knot_zone_contents_add_node(zone, node, 1, 0, 1);
 		if (ret != KNOT_EOK) {
-			debug_knot_xfr("Failed to add last node into zone.\n");
+			debug_knot_xfr("Failed to add last node into zone (%s)"
+			               ".\n", knot_strerror(ret));
 			knot_packet_free(&packet);
 			knot_node_free(&node, 1, 0);
 			return KNOT_ERROR;	/*! \todo Other error */

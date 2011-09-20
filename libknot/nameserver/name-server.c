@@ -704,7 +704,7 @@ static int ns_put_covering_nsec3(const knot_zone_contents_t *zone,
 	const knot_node_t *prev, *node;
 	/*! \todo Check version. */
 	int match = knot_zone_contents_find_nsec3_for_name(zone, name,
-	                                                     &node, &prev);
+	                                                     &node, &prev, 1);
 	assert(match >= 0);
 	node = knot_node_current(node);
 	prev = knot_node_current(prev);
@@ -794,7 +794,10 @@ DEBUG_KNOT_NS(
 	assert(nsec3_node != NULL);
 
 DEBUG_KNOT_NS(
-	char *name = knot_dname_to_str((*closest_encloser)->owner);
+	char *name = knot_dname_to_str(nsec3_node->owner);
+	debug_knot_ns("NSEC3 node: %s\n", name);
+	free(name);
+	name = knot_dname_to_str((*closest_encloser)->owner);
 	debug_knot_ns("Closest provable encloser: %s\n", name);
 	free(name);
 	if (next_closer != NULL) {
@@ -1059,10 +1062,13 @@ static int ns_put_nsec3_nxdomain(const knot_zone_contents_t *zone,
 {
 	/*! \todo Change to zone contents. */
 	// 1) Closest encloser proof
+	debug_knot_ns("Putting closest encloser proof.\n");
 	int ret = ns_put_nsec3_closest_encloser_proof(zone, &closest_encloser,
 	                                              qname, resp);
 	// 2) NSEC3 covering non-existent wildcard
 	if (ret == KNOT_EOK) {
+		debug_knot_ns("Putting NSEC3 for no wildcard child of closest "
+		              "encloser.\n");
 		ret = ns_put_nsec3_no_wildcard_child(zone, closest_encloser,
 		                                     resp);
 	}
@@ -1141,6 +1147,7 @@ static int ns_put_nsec3_wildcard(const knot_zone_contents_t *zone,
 	 * NSEC3 that covers the "next closer" name.
 	 */
 	// create the "next closer" name by appending from qname
+	debug_knot_ns("Finding next closer name for wildcard NSEC3.\n");
 	knot_dname_t *next_closer =
 		ns_next_closer(closest_encloser->owner, qname);
 
@@ -1422,15 +1429,20 @@ static int ns_answer_from_node(const knot_node_t *node,
 
 	int ret = KNOT_EOK;
 	if (answers == 0) {  // if NODATA response, put SOA
-		if (knot_node_rrset_count(node) == 0) {
+		if (knot_node_rrset_count(node) == 0
+		    && !knot_zone_contents_nsec3_enabled(zone)) {
 			// node is an empty non-terminal => NSEC for NXDOMAIN
 			//assert(knot_node_rrset_count(closest_encloser) > 0);
+			debug_knot_ns("Adding NSEC/NSEC3 for NXDOMAIN.\n");
 			ret = ns_put_nsec_nsec3_nxdomain(zone,
 				knot_node_previous(node, 1), closest_encloser,
 				qname, resp);
 		} else {
+			debug_knot_ns("Adding NSEC/NSEC3 for NODATA.\n");
 			ns_put_nsec_nsec3_nodata(node, resp);
 			if (knot_dname_is_wildcard(node->owner)) {
+				debug_knot_ns("Putting NSEC/NSEC3 for wildcard"
+				              " NODATA\n");
 				ret = ns_put_nsec_nsec3_wildcard_nodata(node,
 					closest_encloser, previous, zone, qname,
 					resp);
@@ -1439,6 +1451,7 @@ static int ns_answer_from_node(const knot_node_t *node,
 		ns_put_authority_soa(zone, resp);
 	} else {  // else put authority NS
 		// if wildcard answer, add NSEC / NSEC3
+		debug_knot_ns("Adding NSEC/NSEC3 for wildcard answer.\n");
 		ret = ns_put_nsec_nsec3_wildcard_answer(node, closest_encloser,
 		                                  previous, zone, qname, resp);
 		ns_put_authority_ns(zone, resp);
@@ -1761,7 +1774,13 @@ DEBUG_KNOT_NS(
 
 	ret = ns_answer_from_node(node, closest_encloser, previous, zone, qname,
 	                          qtype, resp);
-	if (ret != KNOT_EOK) {
+	if (ret == NS_ERR_SERVFAIL) {
+		// in this case we should drop the response and send an error
+		// for now, just send the error code with a non-complete answer
+		knot_response_set_rcode(resp, KNOT_RCODE_SERVFAIL);
+		goto finalize;
+	} else if (ret != KNOT_EOK) {
+		/*! \todo Handle RCODE return values!!! */
 		goto finalize;
 	}
 	knot_response_set_aa(resp);
@@ -2587,6 +2606,8 @@ int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_packet_t *query,
 	size_t resp_max_size = 0;
 	
 	assert(*rsize >= MAX_UDP_PAYLOAD);
+
+	knot_packet_dump(query);
 	
 	if (knot_query_edns_supported(query)) {
 		if (knot_edns_get_payload(&query->opt_rr) <
@@ -2928,7 +2949,7 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	debug_knot_ns("ns_process_axfrin: incoming packet\n");
 
 	int ret = xfrin_process_axfr_packet(xfr->wire, xfr->wire_size,
-	                               (knot_zone_contents_t **)(&xfr->data));
+	                             (xfrin_constructed_zone_t **)(&xfr->data));
 
 	if (ret > 0) { // transfer finished
 		debug_knot_ns("ns_process_axfrin: AXFR finished, zone created.\n");
@@ -2936,11 +2957,13 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		 * Adjust zone so that node count is set properly and nodes are
 		 * marked authoritative / delegation point.
 		 */
-		knot_zone_contents_t *zone = 
-				(knot_zone_contents_t *)xfr->data;
+		xfrin_constructed_zone_t *constr_zone = 
+				(xfrin_constructed_zone_t *)xfr->data;
+		knot_zone_contents_t *zone = constr_zone->contents;
+		assert(zone != NULL);
 
 		debug_knot_ns("ns_process_axfrin: adjusting zone.\n");
-		knot_zone_contents_adjust(zone);
+		knot_zone_contents_adjust(zone, 0);
 
 		/* Create and fill hash table */
 		debug_knot_ns("ns_process_axfrin: filling hash table.\n");
@@ -2948,6 +2971,13 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		if (rc != KNOT_EOK) {
 			return KNOT_ERROR;	// TODO: change error code
 		}
+		
+		// save the zone contents to the xfr->data
+		xfr->data = zone;
+		
+		// free the structure used for processing XFR
+		assert(constr_zone->rrsigs == NULL);
+		free(constr_zone);
 
 		//knot_zone_contents_dump(zone, 0);
 	}
