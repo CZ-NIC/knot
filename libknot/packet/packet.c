@@ -367,6 +367,7 @@ static knot_rdata_t *knot_packet_parse_rdata(const uint8_t *wire,
 
 	int rc = knot_rdata_from_wire(rdata, wire, pos, total_size, rdlength,
 	                                desc);
+
 	if (rc != KNOT_EOK) {
 		debug_knot_packet("rdata_from_wire() returned: %s\n",
 		                    knot_strerror(rc));
@@ -385,10 +386,14 @@ static knot_rrset_t *knot_packet_parse_rr(const uint8_t *wire, size_t *pos,
 //	knot_rrset_t *rrset =
 //		(knot_rrset_t *)malloc(sizeof(knot_rrset_t));
 //	CHECK_ALLOC_LOG(rrset, NULL);
+	
+	debug_knot_packet("Parsing RR from position: %zu, total size: %zu\n",
+	                  *pos, size);
 
 	knot_dname_t *owner = knot_dname_parse_from_wire(wire, pos, size,
 	                                                     NULL);
-	debug_knot_packet("Created owner: %p\n", owner);
+	debug_knot_packet("Created owner: %p, actual position: %zu\n", owner,
+	                  *pos);
 	if (owner == NULL) {
 		return NULL;
 	}
@@ -435,7 +440,8 @@ DEBUG_KNOT_PACKET(
 
 	if (size - *pos < rdlength) {
 		debug_knot_packet("Malformed RR: Not enough data to parse RR"
-		                    " RDATA.\n");
+		                    " RDATA (size: %zu, position: %zu).\n",
+		                   size, *pos);
 		knot_rrset_deep_free(&rrset, 1, 1, 0);
 //		free(rrset);
 		return NULL;
@@ -762,7 +768,8 @@ int knot_packet_parse_from_wire(knot_packet_t *packet,
 	size_t pos = 0;
 	//size_t remaining = size;
 
-	debug_knot_packet("Parsing wire format of packet.\nHeader...\n");
+	debug_knot_packet("Parsing wire format of packet (size %zu).\nHeader\n",
+	                  size);
 	if ((err = knot_packet_parse_header(wireformat, &pos, size,
 	                                      &packet->header)) != KNOT_EOK) {
 		return err;
