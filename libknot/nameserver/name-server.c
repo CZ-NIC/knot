@@ -3009,7 +3009,6 @@ int knot_ns_switch_zone(knot_nameserver_t *nameserver,
 		                   "not found\n", name);
 		free(name);
 	} else {
-		xfr->zone = z;
 		zone->zone = z;
 	}
 

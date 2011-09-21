@@ -102,9 +102,7 @@ int xfr_stop(xfrhandler_t *handler);
  * \retval KNOTD_EOK on success.
  * \retval KNOTD_ERROR on error.
  */
-static inline int xfr_join(xfrhandler_t *handler) {
-	return dt_join(handler->unit);
-}
+int xfr_join(xfrhandler_t *handler);
 
 /*!
  * \brief Enqueue XFR request.

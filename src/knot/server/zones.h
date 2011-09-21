@@ -54,6 +54,8 @@ typedef struct zonedata_t
 		struct event_t *timer;  /*!< Timer for REFRESH/RETRY. */
 		struct event_t *expire; /*!< Timer for REFRESH. */
 		int next_id;            /*!< ID of the next awaited SOA resp.*/
+		pthread_mutex_t lock;   /*!< Pending XFR/IN lock. */
+		void           *wrkr;   /*!< Pending XFR/IN worker. */
 	} xfr_in;
 
 	/*! \brief List of pending NOTIFY events. */

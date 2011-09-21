@@ -546,6 +546,9 @@ int server_start(server_t *server)
 
 int server_wait(server_t *server)
 {
+	/* Join threading unit. */
+	xfr_join(server->xfr_h);
+	
 	/* Lock RCU. */
 	rcu_read_lock();
 
@@ -575,6 +578,11 @@ int server_wait(server_t *server)
 	/* Unlock RCU. */
 	rcu_read_unlock();
 
+	return ret;
+}
+
+void server_stop(server_t *server)
+{
 	/* Wait for XFR master. */
 	xfr_stop(server->xfr_h);
 
@@ -582,15 +590,7 @@ int server_wait(server_t *server)
 	if (server->xfr_h->interrupt) {
 		server->xfr_h->interrupt(server->xfr_h);
 	}
-
-	/* Join threading unit. */
-	xfr_join(server->xfr_h);
-
-	return ret;
-}
-
-void server_stop(server_t *server)
-{
+	
 	/* Send termination event. */
 	evsched_schedule_term(server->sched, 0);
 
@@ -624,6 +624,9 @@ void server_destroy(server_t **server)
 	if (!*server) {
 		return;
 	}
+	
+	// Free XFR master
+	xfr_free((*server)->xfr_h);
 
 	// Free interfaces
 	node *n = 0, *nxt = 0;
@@ -634,9 +637,6 @@ void server_destroy(server_t **server)
 		}
 		free((*server)->ifaces);
 	}
-
-	// Free XFR master
-	xfr_free((*server)->xfr_h);
 
 	stat_static_gath_free();
 	knot_ns_destroy(&(*server)->nameserver);
