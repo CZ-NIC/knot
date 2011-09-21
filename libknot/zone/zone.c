@@ -63,11 +63,10 @@ knot_zone_t *knot_zone_new_empty(knot_dname_t *name)
 
 /*----------------------------------------------------------------------------*/
 
-
 knot_zone_t *knot_zone_new(knot_node_t *apex, uint node_count,
                                int use_domain_table)
 {
-	knot_zone_t * zone = knot_zone_new_empty(
+	knot_zone_t *zone = knot_zone_new_empty(
 			knot_dname_deep_copy(knot_node_owner(apex)));
 	if (zone == NULL) {
 		return NULL;
@@ -159,6 +158,13 @@ const void *knot_zone_data(const knot_zone_t *zone)
 void knot_zone_set_data(knot_zone_t *zone, void *data)
 {
 	zone->data = data;
+}
+
+/*----------------------------------------------------------------------------*/
+
+const knot_dname_t *knot_zone_name(const knot_zone_t *zone)
+{
+	return zone->name;
 }
 
 /*----------------------------------------------------------------------------*/
