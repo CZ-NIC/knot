@@ -183,6 +183,8 @@ libknots_la_SOURCES =				\
         common/fdset.c				\
         common/fdset_poll.h			\
         common/fdset_poll.c			\
+        common/fdset_kqueue.h			\
+        common/fdset_kqueue.c			\
         common/fdset_epoll.h			\
         common/fdset_epoll.c			
 
