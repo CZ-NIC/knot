@@ -133,8 +133,7 @@ int fdset_kqueue_remove(fdset_t *fdset, int fd)
 
 	/* Attempt to remove from set. */
 	size_t remaining = ((fdset->nfds - pos) - 1) * sizeof(struct kevent);
-	memmove(fdset->fds + pos, fdset->fds + (pos + 1), remaining);
-	memset(&ev, 0, sizeof(struct kevent));
+	memmove(fdset->events + pos, fdset->events + (pos + 1), remaining);
 	
 	/* Overwrite current item. */
 	--fdset->nfds;
