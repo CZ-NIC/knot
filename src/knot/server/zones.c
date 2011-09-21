@@ -1003,8 +1003,9 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 		                                              zone_name);
 		int reload = 0;
 
+		/* Attempt to bootstrap if db or source does not exist. */
 		struct stat s;
-		int stat_ret = stat(z->db, &s);
+		int stat_ret = stat(z->file, &s);
 		if (zone != NULL) {
 			// if found, check timestamp of the file against the
 			// loaded zone
@@ -1056,11 +1057,11 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 					    " version is old, loading...\n");
 				ret = zones_load_zone(db_new, z->name,
 							  z->file, z->db);
-				log_server_info("Loaded zone: %s\n", z->name);
-				if (ret != KNOTD_EOK) {
-					log_server_error("Error loading new zone to"
-							 " the new database: %s\n",
-							 knotd_strerror(ret));
+				if (ret == KNOTD_EOK) {
+					log_server_info("Loaded zone: %s\n", z->name);
+				} else {
+					log_server_error("Failed to load zone: "
+					                 "%s\n", z->name);
 				}
 			}
 
