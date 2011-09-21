@@ -126,6 +126,8 @@ const void *knot_zone_data(const knot_zone_t *zone);
 
 void knot_zone_set_data(knot_zone_t *zone, void *data);
 
+const knot_dname_t *knot_zone_name(const knot_zone_t *zone);
+
 knot_zone_contents_t *knot_zone_switch_contents(knot_zone_t *zone,
                                           knot_zone_contents_t *new_contents);
 
