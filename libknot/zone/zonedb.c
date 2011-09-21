@@ -134,11 +134,12 @@ DEBUG_KNOT_ZONEDB(
 
 /*----------------------------------------------------------------------------*/
 
-knot_zone_t *knot_zonedb_remove_zone(knot_zonedb_t *db, knot_dname_t *zone_name)
+knot_zone_t *knot_zonedb_remove_zone(knot_zonedb_t *db,
+                                     const knot_dname_t *zone_name)
 {
 	knot_zone_t dummy_zone;
 	memset(&dummy_zone, 0, sizeof(knot_zone_t));
-	dummy_zone.name = zone_name;
+	dummy_zone.name = (knot_dname_t *)zone_name;
 
 	// add some lock to avoid multiple removals
 	knot_zone_t *z = (knot_zone_t *)gen_tree_find(db->zone_tree,
@@ -272,7 +273,7 @@ size_t knot_zonedb_zone_count(const knot_zonedb_t *db)
 }
 
 struct knot_zone_db_tree_arg {
-	knot_zone_t **zones;
+	const knot_zone_t **zones;
 	size_t count;
 };
 
@@ -285,7 +286,7 @@ static void save_zone_to_array(void *node, void *data)
 	args->zones[args->count++] = zone;
 }
 
-knot_zone_t **knot_zonedb_zones(const knot_zonedb_t *db)
+const knot_zone_t **knot_zonedb_zones(const knot_zonedb_t *db)
 {
 	struct knot_zone_db_tree_arg args;
 	args.zones = malloc(sizeof(knot_zone_t) * db->zone_count);

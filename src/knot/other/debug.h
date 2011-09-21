@@ -21,7 +21,7 @@
 //#define KNOTD_JOURNAL_DEBUG
 //#define KNOTD_NET_DEBUG
 //#define KNOTD_ZONES_DEBUG
-#define KNOTD_XFR_DEBUG
+//#define KNOTD_XFR_DEBUG
 //#define KNOTD_NOTIFY_DEBUG
 //#define KNOTD_ZDUMP_DEBUG
 //#define KNOTD_ZLOAD_DEBUG
@@ -77,11 +77,11 @@
 #ifdef KNOTD_ZONES_DEBUG
 #define debug_zones(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
 #define debug_zones_hex(data, len) hex_log(LOG_SERVER, (data), (len))
-#define DEBUG_zones(cmds) do { cmds } while (0)
+#define DEBUG_ZONES(cmds) do { cmds } while (0)
 #else
 #define debug_zones(msg...)
 #define debug_zones_hex(data, len)
-#define DEBUG_zones(cmds)
+#define DEBUG_ZONES(cmds)
 #endif
 
 #ifdef KNOTD_XFR_DEBUG

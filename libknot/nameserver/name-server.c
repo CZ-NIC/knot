@@ -3078,7 +3078,7 @@ DEBUG_KNOT_NS(
 	debug_knot_ns("Zone db contents: (zone count: %zu)\n", 
 	              nameserver->zone_db->zone_count);
 
-	knot_zone_t **zones = knot_zonedb_zones(nameserver->zone_db);
+	const knot_zone_t **zones = knot_zonedb_zones(nameserver->zone_db);
 	for (int i = 0; i < knot_zonedb_zone_count
 	     (nameserver->zone_db); i++) {
 		debug_knot_ns("%d. zone: %p", i, zones[i]);
