@@ -1777,8 +1777,9 @@ DEBUG_KNOT_NS(
 	if (ret == NS_ERR_SERVFAIL) {
 		// in this case we should drop the response and send an error
 		// for now, just send the error code with a non-complete answer
-		knot_response_set_rcode(resp, KNOT_RCODE_SERVFAIL);
-		goto finalize;
+//		knot_response_set_rcode(resp, KNOT_RCODE_SERVFAIL);
+//		goto finalize;
+		return ret;
 	} else if (ret != KNOT_EOK) {
 		/*! \todo Handle RCODE return values!!! */
 		goto finalize;
@@ -1874,6 +1875,71 @@ static int ns_response_to_wire(knot_packet_t *resp, uint8_t *wire,
 	size_t rsize = 0;
 	int ret = 0;
 
+	if ((ret = knot_packet_to_wire(resp, &rwire, &rsize))
+	     != KNOT_EOK) {
+		debug_knot_ns("Error converting response packet "
+		                 "to wire format (error %d).\n", ret);
+		return NS_ERR_SERVFAIL;
+	}
+
+	if (rsize > *wire_size) {
+		debug_knot_ns("Reponse size (%zu) larger than allowed wire size "
+		         "(%zu).\n", rsize, *wire_size);
+		return NS_ERR_SERVFAIL;
+	}
+
+	if (rwire != wire) {
+		debug_knot_ns("Wire format reallocated, copying to place for "
+		              "wire.\n");
+		memcpy(wire, rwire, rsize);
+	} else {
+		debug_knot_ns("Using the same space or wire format.\n");
+	}
+	
+	*wire_size = rsize;
+	//free(rwire);
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Creates a wire format of an error response from partially created
+ *        response.
+ *
+ * \param resp Response to use.
+ * \param wire Place for the wire format of the response.
+ * \param wire_size In: space available for the wire format in bytes.
+ *                  Out: actual size of the wire format in bytes.
+ *
+ * \retval KNOT_EOK
+ * \retval NS_ERR_SERVFAIL
+ */
+static int ns_error_response_to_wire(knot_packet_t *resp, uint8_t *wire,
+                                     size_t *wire_size)
+{
+	uint8_t *rwire = NULL;
+	size_t rsize = 0;
+	int ret = 0;
+
+	/* Do not call the packet conversion function
+	 * wire format is assembled, but COUNTs in header are not set.
+	 * This is ideal, we just truncate the packet after the question.
+	 */
+	
+	size_t qsize = knot_packet_size(knot_packet_query(resp));
+	debug_knot_ns("Query size");
+	
+	
+//	/*
+//	 * We will use the query wireformat and just set the proper flags
+//	 * and RCODE.
+//	 */
+//	const uint8_t *qwire = knot_packet_wireformat(knot_packet_query(resp));
+//	assert(qwire != NULL)
+	
+	// 
+	
 	if ((ret = knot_packet_to_wire(resp, &rwire, &rsize))
 	     != KNOT_EOK) {
 		debug_knot_ns("Error converting response packet "
@@ -2570,7 +2636,7 @@ void knot_ns_error_response_full(knot_nameserver_t *nameserver,
 {
 	knot_response_set_rcode(response, rcode);
 
-	if (ns_response_to_wire(response, response_wire, rsize) != 0) {
+	if (ns_err_response_to_wire(response, response_wire, rsize) != 0) {
 		knot_ns_error_response(nameserver, knot_packet_id(
 		                       knot_packet_query(response)),
 		                       KNOT_RCODE_SERVFAIL, response_wire,
