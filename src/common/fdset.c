@@ -26,8 +26,8 @@ static void fdset_set_backend(struct fdset_backend_t *backend) {
 
 /* Linux epoll API. */
 #ifdef HAVE_EPOLL_WAIT
-  /*! \todo Implement correctly. */
-  #include "common/fdset_epoll.c"
+//  /*! \todo Implement correctly. */
+//  #include "common/fdset_epoll.c"
 #endif /* HAVE_EPOLL_WAIT */
 
 /* BSD kqueue API */
@@ -38,9 +38,7 @@ static void fdset_set_backend(struct fdset_backend_t *backend) {
 
 /* POSIX poll API */
 #ifdef HAVE_POLL
-#ifndef HAVE_EPOLL_WAIT
   #include "common/fdset_poll.c"
-#endif
 #endif /* HAVE_POLL */
 
 /*! \brief Bootstrap polling subsystem (it is called automatically). */
