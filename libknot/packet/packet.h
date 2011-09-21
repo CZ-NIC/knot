@@ -275,6 +275,9 @@ int knot_packet_parse_next_rr_answer(knot_packet_t *packet,
 
 size_t knot_packet_size(const knot_packet_t *packet);
 
+/*! \brief Returns size of the wireformat of Header and Question sections. */
+size_t knot_packet_question_size(const knot_packet_t *packet);
+
 size_t knot_packet_parsed(const knot_packet_t *packet);
 
 /*!
