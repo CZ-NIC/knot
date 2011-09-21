@@ -1918,51 +1918,28 @@ static int ns_response_to_wire(knot_packet_t *resp, uint8_t *wire,
 static int ns_error_response_to_wire(knot_packet_t *resp, uint8_t *wire,
                                      size_t *wire_size)
 {
-	uint8_t *rwire = NULL;
-	size_t rsize = 0;
-	int ret = 0;
-
 	/* Do not call the packet conversion function
 	 * wire format is assembled, but COUNTs in header are not set.
 	 * This is ideal, we just truncate the packet after the question.
 	 */
+	debug_knot_ns("Creating error response.\n");
 	
-	size_t qsize = knot_packet_size(knot_packet_query(resp));
-	debug_knot_ns("Query size");
-	
-	
-//	/*
-//	 * We will use the query wireformat and just set the proper flags
-//	 * and RCODE.
-//	 */
-//	const uint8_t *qwire = knot_packet_wireformat(knot_packet_query(resp));
-//	assert(qwire != NULL)
-	
-	// 
-	
-	if ((ret = knot_packet_to_wire(resp, &rwire, &rsize))
-	     != KNOT_EOK) {
-		debug_knot_ns("Error converting response packet "
-		                 "to wire format (error %d).\n", ret);
-		return NS_ERR_SERVFAIL;
-	}
+	size_t rsize = knot_packet_question_size(knot_packet_query(resp));
+	debug_knot_ns("Error response (~ query) size: %zu\n", rsize);
 
+	// take 'qsize' from the current wireformat of the response
+	// it is already assembled - Header and Question section are copied
+	const uint8_t *rwire = knot_packet_wireformat(resp);
 	if (rsize > *wire_size) {
-		debug_knot_ns("Reponse size (%zu) larger than allowed wire size "
-		         "(%zu).\n", rsize, *wire_size);
+		debug_knot_ns("Reponse size (%zu) larger than allowed wire size"
+		         " (%zu).\n", rsize, *wire_size);
 		return NS_ERR_SERVFAIL;
 	}
 
-	if (rwire != wire) {
-		debug_knot_ns("Wire format reallocated, copying to place for "
-		              "wire.\n");
-		memcpy(wire, rwire, rsize);
-	} else {
-		debug_knot_ns("Using the same space or wire format.\n");
-	}
-	
+	assert(rwire != wire);
+	memcpy(wire, rwire, rsize);
+
 	*wire_size = rsize;
-	//free(rwire);
 
 	return KNOT_EOK;
 }
@@ -2636,7 +2613,7 @@ void knot_ns_error_response_full(knot_nameserver_t *nameserver,
 {
 	knot_response_set_rcode(response, rcode);
 
-	if (ns_err_response_to_wire(response, response_wire, rsize) != 0) {
+	if (ns_error_response_to_wire(response, response_wire, rsize) != 0) {
 		knot_ns_error_response(nameserver, knot_packet_id(
 		                       knot_packet_query(response)),
 		                       KNOT_RCODE_SERVFAIL, response_wire,

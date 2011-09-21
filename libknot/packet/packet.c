@@ -867,6 +867,14 @@ size_t knot_packet_size(const knot_packet_t *packet)
 
 /*----------------------------------------------------------------------------*/
 
+size_t knot_packet_question_size(const knot_packet_t *packet)
+{
+	return (KNOT_WIRE_HEADER_SIZE + 4
+	        + knot_dname_size(packet->question.qname));
+}
+
+/*----------------------------------------------------------------------------*/
+
 size_t knot_packet_parsed(const knot_packet_t *packet)
 {
 	return packet->parsed;
