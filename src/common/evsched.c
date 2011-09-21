@@ -1,5 +1,6 @@
 #include <sys/time.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "common/evsched.h"
 
@@ -128,9 +129,9 @@ event_t* evsched_next(evsched_t *s)
 			/* Immediately return. */
 			if (timercmp(&dt, &next_ev->tv, >=)) {
 				rem_node(&next_ev->n);
+				pthread_mutex_unlock(&s->mx);
 				pthread_mutex_lock(&s->rl);
 				s->current = next_ev;
-				pthread_mutex_unlock(&s->mx);
 				return next_ev;
 			}
 
@@ -182,12 +183,14 @@ int evsched_schedule(evsched_t *s, event_t *ev, uint32_t dt)
 
 	/* Schedule event. */
 	node *n = 0, *prev = 0;
-	WALK_LIST(n, s->calendar) {
-		event_t* cur = (event_t *)n;
-		if (timercmp(&cur->tv, &ev->tv, <)) {
-			prev = n;
-		} else {
-			break;
+	if (!EMPTY_LIST(s->calendar)) {
+		WALK_LIST(n, s->calendar) {
+			event_t* cur = (event_t *)n;
+			if (timercmp(&cur->tv, &ev->tv, <)) {
+				prev = n;
+			} else {
+				break;
+			}
 		}
 	}
 
@@ -263,8 +266,20 @@ int evsched_cancel(evsched_t *s, event_t *ev)
 	/* Make sure not running. */
 	pthread_mutex_lock(&s->rl);
 
+	/* Find in list. */
+	event_t *n = 0;
+	int found = 0;
+	WALK_LIST(n, s->calendar) {
+		if (n == ev) {
+			found = 1;
+			break;
+		}
+	}
+
 	/* Remove from list. */
-	rem_node(&ev->n);
+	if (found) {
+		rem_node(&ev->n);
+	}
 
 	/* Enable running events. */
 	pthread_mutex_unlock(&s->rl);
