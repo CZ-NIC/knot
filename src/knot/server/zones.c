@@ -1148,30 +1148,35 @@ static int zones_insert_zones(knot_nameserver_t *ns,
  * \retval KNOTD_EOK
  * \retval KNOTD_ERROR
  */
-static int zones_remove_zones(const list *zone_conf, knot_zonedb_t *db_old)
+static int zones_remove_zones(const knot_zonedb_t *db_new,
+                              knot_zonedb_t *db_old)
 {
-	node *n;
-	// for all zones in the configuration
-	WALK_LIST(n, *zone_conf) {
-		conf_zone_t *z = (conf_zone_t *)n;
-
-		/* Convert the zone name into a domain name. */
-		/* Local allocation, will be discarded. */
-		knot_dname_t *zone_name = knot_dname_new_from_str(z->name,
-		                                         strlen(z->name), NULL);
-		if (zone_name == NULL) {
-			log_server_error("Error creating domain name from zone"
-			                 " name\n");
-			return KNOTD_ERROR;
-		}
-		debug_zones("Removing zone %s from the old database.\n",
-		            z->name);
-		// remove the zone from the old zone db, but do not delete it
-		(void)knot_zonedb_remove_zone(db_old, zone_name);
-
-		/* Directly discard. */
-		knot_dname_free(&zone_name);
+	const knot_zone_t **new_zones = knot_zonedb_zones(db_new);
+	if (new_zones == NULL) {
+		return KNOTD_ENOMEM;
 	}
+
+	for (int i = 0; i < knot_zonedb_zone_count(db_new); ++i) {
+		// try to find the new zone in the old DB
+		// if the pointers match, remove the zone from old DB
+		/*! \todo Find better way of removing zone with given pointer.*/
+		knot_zone_t *old_zone = knot_zonedb_find_zone(
+				db_old, knot_zone_name(new_zones[i]));
+		if (old_zone == new_zones[i]) {
+DEBUG_ZONES(
+			char *name = knot_dname_to_str(knot_zone_name(old_zone));
+			debug_zones("Zone pointers match, removing zone %s "
+			            "from database.\n", name);
+			free(name);
+);
+			knot_zone_t * rm = knot_zonedb_remove_zone(db_old,
+			                              knot_zone_name(old_zone));
+			assert(rm == old_zone);
+		}
+	}
+
+	free(new_zones);
+
 	return KNOTD_EOK;
 }
 
@@ -1226,11 +1231,14 @@ int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
 	            ns->zone_db, *db_old, db_new);
 
 	/*
-	 *  Remove all zones present in the new DB from the old DB.
-	 *  No new thread can access these zones in the old DB, as the
-	 *  databases are already switched.
+	 * Remove all zones present in the new DB from the old DB.
+	 * No new thread can access these zones in the old DB, as the
+	 * databases are already switched.
+	 *
+	 * Beware - only the exact same zones (same pointer) may be removed.
+	 * All other have been loaded again so that the old must be destroyed.
 	 */
-	int ret = zones_remove_zones(&conf->zones, *db_old);
+	int ret = zones_remove_zones(db_new, *db_old);
 	if (ret != KNOTD_EOK) {
 		return ret;
 	}
