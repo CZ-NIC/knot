@@ -122,6 +122,7 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 	zd->xfr_in.next_id = -1;
 	zd->xfr_in.acl = 0;
 	zd->xfr_in.wrkr = 0;
+	zd->xfr_in.bootstrap_retry = 0;
 	pthread_mutex_init(&zd->xfr_in.lock, 0);
 
 	/* Initialize NOTIFY. */
@@ -1995,10 +1996,15 @@ int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
 	if (zd->xfr_in.master.ptr) {
 
 		/* Schedule REFRESH timer. */
-		uint32_t refresh_tmr = zones_soa_refresh(zone);
+		uint32_t refresh_tmr = 0;
+		if (knot_zone_contents(zone)) {
+			refresh_tmr = zones_soa_refresh(zone);
+		} else {
+			refresh_tmr = zd->xfr_in.bootstrap_retry;
+		}
 		zd->xfr_in.timer = evsched_schedule_cb(sch, zones_refresh_ev,
 							 zone, refresh_tmr);
-		debug_zones("notify: REFRESH set to %u\n", refresh_tmr);
+		debug_zones("zone: REFRESH set to %u\n", refresh_tmr);
 	}
 
 	/* Schedule IXFR database syncing. */

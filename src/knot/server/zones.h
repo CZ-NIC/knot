@@ -12,6 +12,8 @@
 #ifndef _KNOTD_ZONES_H_
 #define _KNOTD_ZONES_H_
 
+#include <stddef.h>
+
 #include "common/lists.h"
 #include "common/acl.h"
 #include "common/evsched.h"
@@ -27,6 +29,7 @@
 /* Constants. */
 #define SOA_QRY_TIMEOUT 10000 /*!< SOA query timeout (ms). */
 #define IXFR_DBSYNC_TIMEOUT (60*1000) /*!< Database sync timeout = 60s. */
+#define AXFR_BOOTSTRAP_RETRY (60*1000) /*!< Interval between AXFR BS retries. */
 
 /*!
  * \brief Zone-related data.
@@ -49,13 +52,14 @@ typedef struct zonedata_t
 
 	/*! \brief XFR-IN scheduler. */
 	struct {
-		acl_t         *acl;     /*!< ACL for xfr-in.*/
-		sockaddr_t     master;  /*!< Master server for xfr-in.*/
-		struct event_t *timer;  /*!< Timer for REFRESH/RETRY. */
-		struct event_t *expire; /*!< Timer for REFRESH. */
-		int next_id;            /*!< ID of the next awaited SOA resp.*/
-		pthread_mutex_t lock;   /*!< Pending XFR/IN lock. */
-		void           *wrkr;   /*!< Pending XFR/IN worker. */
+		acl_t         *acl;      /*!< ACL for xfr-in.*/
+		sockaddr_t     master;   /*!< Master server for xfr-in.*/
+		struct event_t *timer;   /*!< Timer for REFRESH/RETRY. */
+		struct event_t *expire;  /*!< Timer for REFRESH. */
+		int next_id;             /*!< ID of the next awaited SOA resp.*/
+		pthread_mutex_t lock;    /*!< Pending XFR/IN lock. */
+		void           *wrkr;    /*!< Pending XFR/IN worker. */
+		uint32_t bootstrap_retry;/*!< AXFR/IN bootstrap retry. */
 	} xfr_in;
 
 	/*! \brief List of pending NOTIFY events. */
