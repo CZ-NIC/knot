@@ -37,9 +37,13 @@ int gen_tree_add(general_tree_t *tree,
 	}
 	memset(tree_node, 0, sizeof(struct general_tree_node));
 	tree_node->data = node;
+	int merged = 0;
 	MOD_TREE_INSERT(tree->tree, general_tree_node, avl,
-	                tree_node, mrg_func);
-	return 0;
+	                tree_node, mrg_func, &merged);
+	if (merged) {
+		free(tree_node);
+	}
+	return merged;
 }
 
 void gen_tree_remove(general_tree_t *tree,
@@ -107,9 +111,15 @@ void gen_tree_apply_inorder(general_tree_t *tree,
 	                   app_func, data);
 }
 
+/*static void print_node(void *n, void *data)
+{
+	printf("node: %p\n", n);
+}*/
+
 void gen_tree_destroy(general_tree_t **tree,
                       void (*dest_func)(void *node, void *data), void *data)
 {
+//	gen_tree_apply_inorder(*tree, print_node, NULL);
 	MOD_TREE_DESTROY((*tree)->tree, general_tree_node, avl, dest_func,
 	                 gen_rem_func, data);
 	free((*tree)->tree);
@@ -127,11 +137,6 @@ void gen_tree_clear(general_tree_t *tree)
 //{
 //	general_tree_t *tree = (general_tree_t *)data;
 //	gen_tree_add(tree, n, NULL);
-//}
-
-//static void print_node(void *n, void *data)
-//{
-//	printf("node: %p\n", n);
 //}
 
 static int gen_tree_copy_node(const struct general_tree_node *from,

@@ -112,19 +112,21 @@
   }													\
 													\
   struct node *MOD_TREE_INSERT_##node##_##field								\
-    (struct node *self, struct node *elm, int (*compare)(void *lhs, void *rhs), int (*merge)(void **lhs, void **rhs))\
+    (struct node *self, struct node *elm, int (*compare)(void *lhs, void *rhs), int (*merge)(void **lhs, void **rhs), int *merged)\
   {													\
-    if (!self)												\
-      return elm;											\
+    if (!self) {											\
+      *merged = 0;											\
+      return elm; }											\
     int cmp = compare(elm->data, self->data);									\
     if (cmp < 0)											\
-      self->field.avl_left= MOD_TREE_INSERT_##node##_##field(self->field.avl_left, elm, compare, merge);	\
+      self->field.avl_left= MOD_TREE_INSERT_##node##_##field(self->field.avl_left, elm, compare, merge, merged);	\
     else if (cmp > 0)											\
-      self->field.avl_right= MOD_TREE_INSERT_##node##_##field(self->field.avl_right, elm, compare, merge);	\
-    else if (merge)											\
-      merge(&(elm->data), &(self->data));										\
+      self->field.avl_right= MOD_TREE_INSERT_##node##_##field(self->field.avl_right, elm, compare, merge, merged);	\
+    else if (merge) {											\
+      merge(&(elm->data), &(self->data));								\
+      *merged = 1; }											\
     else												\
-      self->field.avl_right= MOD_TREE_INSERT_##node##_##field(self->field.avl_right, elm, compare, merge);	\
+      self->field.avl_right= MOD_TREE_INSERT_##node##_##field(self->field.avl_right, elm, compare, merge, merged);	\
     return MOD_TREE_BALANCE_##node##_##field(self);								\
   }													\
 													\
@@ -251,8 +253,8 @@ void MOD_TREE_DESTROY_ALL_##node##_##field							\
       }													\
 }
 
-#define MOD_TREE_INSERT(head, node, field, elm, merge)						\
-  ((head)->th_root= MOD_TREE_INSERT_##node##_##field((head)->th_root, (elm), (head)->th_cmp, merge))
+#define MOD_TREE_INSERT(head, node, field, elm, merge, merged)						\
+  ((head)->th_root= MOD_TREE_INSERT_##node##_##field((head)->th_root, (elm), (head)->th_cmp, merge, merged))
 
 #define MOD_TREE_FIND(head, node, field, elm)				\
   (MOD_TREE_FIND_##node##_##field((head)->th_root, (elm), (head)->th_cmp))
