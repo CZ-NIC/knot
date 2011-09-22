@@ -1084,6 +1084,8 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 		} else {
 			// just insert the zone into the new zone db
 			debug_zones("Found in old database, copying to new.\n");
+			log_server_info("Zone '%s' is up-to-date, no need "
+			                "for reload.\n", z->name);
 			int ret = knot_zonedb_add_zone(db_new, zone);
 			if (ret != KNOTD_EOK) {
 				log_server_error("Error adding old zone to"
