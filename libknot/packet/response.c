@@ -161,7 +161,7 @@ static int knot_response_store_dname_pos(knot_compressed_dnames_t *table,
                                            size_t unmatched_offset,
                                            int compr_cs)
 {
-DEBUG_KNOT_RESPONSE(
+debug_knot_response_exec(
 	char *name = knot_dname_to_str(dname);
 	debug_knot_response("Putting dname %s into compression table."
 	                      " Labels not matched: %d, position: %zu,"
@@ -209,7 +209,7 @@ DEBUG_KNOT_RESPONSE(
 			parent_pos = unmatched_offset;
 		}
 
-DEBUG_KNOT_RESPONSE(
+debug_knot_response_exec(
 		char *name = knot_dname_to_str(to_save);
 		debug_knot_response("Putting dname %s into compression table."
 		                      " Position: %zu, pointer: %p\n",
@@ -268,7 +268,7 @@ static size_t knot_response_find_dname_pos(
 	for (int i = 0; i < table->count; ++i) {
 //		debug_knot_response("Comparing dnames %p and %p\n",
 //		                      dname, table->dnames[i]);
-//DEBUG_KNOT_RESPONSE(
+//debug_knot_response_exec(
 //		char *name = knot_dname_to_str(dname);
 //		debug_knot_response("(%s and ", name);
 //		name = knot_dname_to_str(table->dnames[i]);
@@ -360,7 +360,7 @@ static int knot_response_compress_dname(const knot_dname_t *dname,
 	int not_matched = 0;
 
 	while (to_find != NULL && knot_dname_label_count(to_find) != 0) {
-DEBUG_KNOT_RESPONSE(
+debug_knot_response_exec(
 		char *name = knot_dname_to_str(to_find);
 		debug_knot_response("Searching for name %s in the compression"
 		                      " table, not matched labels: %d\n", name,
@@ -665,7 +665,7 @@ static int knot_response_rrset_to_wire(const knot_rrset_t *rrset,
                                          knot_compressed_dnames_t *compr,
                                          int compr_cs)
 {
-DEBUG_KNOT_RESPONSE(
+debug_knot_response_exec(
 	char *name = knot_dname_to_str(rrset->owner);
 	debug_knot_response("Converting RRSet with owner %s, type %s\n",
 	                      name, knot_rrtype_to_string(rrset->type));
@@ -774,7 +774,7 @@ static int knot_response_try_add_rrset(const knot_rrset_t **rrsets,
 {
 	//short size = knot_response_rrset_size(rrset, &resp->compression);
 
-DEBUG_KNOT_RESPONSE(
+debug_knot_response_exec(
 	char *name = knot_dname_to_str(rrset->owner);
 	debug_knot_response("\nAdding RRSet with owner %s and type %s: \n",
 	                      name, knot_rrtype_to_string(rrset->type));
