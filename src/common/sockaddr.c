@@ -112,9 +112,19 @@ int sockaddr_tostr(sockaddr_t *addr, char *dst, size_t size)
 	}
 
 	/* Convert. */
-	const char *ret = inet_ntop(addr->family, addr->ptr, dst, size);
-	if (ret == 0) {
-		return -1;
+#ifdef DISABLE_IPV6
+	dst[0] = '\0';
+#else
+	/* Load IPv6 addr if default. */
+	if (addr->family == AF_INET6) {
+		inet_ntop(addr->family, &addr->addr6.sin6_addr,
+			  dst, size);
+	}
+#endif
+	/* Load IPv4 if set. */
+	if (addr->family == AF_INET) {
+		inet_ntop(addr->family, &addr->addr4.sin_addr,
+			  dst, size);
 	}
 
 	return 0;
@@ -130,13 +140,13 @@ int sockaddr_portnum(sockaddr_t *addr)
 
 	/* IPv4 */
 	case AF_INET:
-		return addr->addr4.sin_port;
+		return ntohs(addr->addr4.sin_port);
 		break;
 
 	/* IPv6 */
 #ifndef DISABLE_IPV6
 	case AF_INET6:
-		return addr->addr6.sin6_port;
+		return ntohs(addr->addr6.sin6_port);
 		break;
 #endif
 

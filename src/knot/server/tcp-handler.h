@@ -26,9 +26,6 @@
 #include "knot/server/server.h"
 #include "knot/server/dthreads.h"
 
-/*! \brief TCP event callback. */
-typedef void (*tcp_cb_t)(struct ev_loop *, ev_io*, int);
-
 /*!
  * \brief Send TCP message.
  *
@@ -56,20 +53,6 @@ int tcp_send(int fd, uint8_t *msg, size_t msglen);
 int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr);
 
 /*!
- * \brief Generic TCP event loop.
- *
- * Run TCP handler event loop.
- *
- * \param thread Associated thread from DThreads unit.
- * \param fd First descriptor to be watched (or -1).
- * \param cb Callback on fd event.
- *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL invalid parameters.
- */
-int tcp_loop(dthread_t *thread, int fd, tcp_cb_t cb);
-
-/*!
  * \brief TCP event loop for accepting connections.
  *
  * \param thread Associated thread from DThreads unit.
@@ -94,12 +77,13 @@ int tcp_loop_worker(dthread_t *thread);
  *
  * Set-up threading unit for processing TCP requests.
  *
+ * \param ioh Associated I/O handler.
  * \param thread Associated thread from DThreads unit.
  *
  * \retval KNOTD_EOK on success.
  * \retval KNOTD_EINVAL invalid parameters.
  */
-int tcp_loop_unit(dt_unit_t *unit);
+int tcp_loop_unit(iohandler_t *ioh, dt_unit_t *unit);
 
 #endif // _KNOTD_TCPHANDLER_H_
 

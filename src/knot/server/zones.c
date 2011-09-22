@@ -351,8 +351,9 @@ static int zones_refresh_ev(event_t *e)
 		memset(&req, 0, sizeof(req));
 		req.session = sock;
 		req.type = XFR_TYPE_SOA;
-		sockaddr_init(&req.addr, master->family);
-		xfr_client_relay(zd->server->xfr_h, &req);
+		memcpy(&req.addr, master, sizeof(sockaddr_t));
+		sockaddr_update(&req.addr);
+		xfr_request(zd->server->xfr_h, &req);
 	}
 
 	/* Schedule EXPIRE timer on first attempt. */
@@ -449,7 +450,7 @@ static int zones_notify_send(event_t *e)
 		req.session = sock;
 		req.type = XFR_TYPE_NOTIFY;
 		sockaddr_init(&req.addr, ev->addr.family);
-		xfr_client_relay(zd->server->xfr_h, &req);
+		xfr_request(zd->server->xfr_h, &req);
 
 	}
 
@@ -540,10 +541,11 @@ static int zones_set_acl(acl_t **acl, list* acl_list)
 	WALK_LIST(r, *acl_list) {
 
 		/* Initialize address. */
+		/*! Port matching disabled, port = 0. */
 		sockaddr_t addr;
 		conf_iface_t *cfg_if = r->remote;
 		int ret = sockaddr_set(&addr, cfg_if->family,
-				       cfg_if->address, cfg_if->port);
+				       cfg_if->address, 0);
 
 		/* Load rule. */
 		if (ret > 0) {
@@ -1427,6 +1429,8 @@ int zones_process_response(knot_nameserver_t *nameserver,
 
 			evsched_schedule(sched, refresh_ev, ref_tmr);
 			rcu_read_unlock();
+			log_zone_info("SOA query for zone %s answered, no "
+				      "transfer needed.\n", zd->conf->name);
 			return KNOTD_EOK;
 		}
 
@@ -2076,7 +2080,9 @@ int zones_cancel_notify(zonedata_t *zd, notify_ev_t *ev)
 	}
 
 	/* Wait for event to finish running. */
+#ifdef KNOTD_NOTIFY_DEBUG
 	int pkt_id = ev->msgid; /*< Do not optimize! */
+#endif
 	event_t *tmr = ev->timer;
 	ev->timer = 0;
 	pthread_mutex_unlock(&zd->lock);

@@ -314,9 +314,6 @@ static int server_bind_handlers(server_t *server)
 		tcp_unit_size = 3;
 	}
 
-	/*! \bug Bug prevents multithreading with libev-based TCP. */
-	tcp_unit_size = 1;
-
 	/* Lock config. */
 	conf_read_lock();
 
@@ -344,9 +341,9 @@ static int server_bind_handlers(server_t *server)
 
 		/* Create TCP handlers. */
 		if (!iface->handler[TCP_ID]) {
-			unit = dt_create(tcp_unit_size); /*! \todo Multithreaded TCP. */
-			tcp_loop_unit(unit);
+			unit = dt_create(tcp_unit_size);
 			h = server_create_handler(server, iface->fd[TCP_ID], unit);
+			tcp_loop_unit(h, unit);
 			h->type = iface->type[TCP_ID];
 			h->iface = iface;
 
@@ -430,7 +427,9 @@ iohandler_t *server_create_handler(server_t *server, int fd, dt_unit_t *unit)
 	// Update unit data object
 	for (int i = 0; i < unit->size; ++i) {
 		dthread_t *thread = unit->threads[i];
-		dt_repurpose(thread, thread->run, handler);
+		if (thread->run) {
+			dt_repurpose(thread, thread->run, handler);
+		}
 	}
 
 	/*! \todo This requires either RCU compatible ptr swap or locking. */
