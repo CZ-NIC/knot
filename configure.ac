@@ -53,13 +53,32 @@ AC_PROG_CPP_WERROR
 AC_PROG_CC_C99
 
 AC_ARG_ENABLE([ldns],
-     [  --enable-ldns    Enable tests with ldns],
+     AC_HELP_STRING([--enable-ldns=yes|no], [Enable tests with ldns [default=no]]),
      [case "${enableval}" in
        yes) AC_SEARCH_LIBS([ldns_rr_list_pop_rrset], [ldns], [AC_DEFINE([HAVE_LDNS], [1], [ldns present])],
        AC_MSG_ERROR([ldns not found])) ;;
        no)  ldns=false ;;
        *) AC_MSG_ERROR([bad value ${enableval} for --enable-ldns]) ;;
      esac],[ldns=false])
+
+# Debug level
+AC_ARG_ENABLE([debug],
+    AS_HELP_STRING([--enable-debug=brief|verbose|details], [enable given debug level [default=disabled]]),
+    # Not all shells support fall-through with ;& so I have to duplicate
+    [case "x${enableval}" in
+      xdetails)
+        AC_DEFINE([DEBUG_ENABLE_DETAILS], [1], [Enable details debugging messages.])
+        AC_DEFINE([DEBUG_ENABLE_VERBOSE], [1], [Enable verbose debugging messages.])
+        AC_DEFINE([DEBUG_ENABLE_BRIEF], [1], [Enable brief debugging messages.])
+	;;
+      xverbose)
+        AC_DEFINE([DEBUG_ENABLE_VERBOSE], [1], [Enable verbose debugging messages.])
+        AC_DEFINE([DEBUG_ENABLE_BRIEF], [1], [Enable brief debugging messages.])
+	;;
+      xbrief)
+        AC_DEFINE([DEBUG_ENABLE_BRIEF], [1], [Enable brief debugging messages.])
+        ;;
+    esac], [])
 
 # Checks for libraries.
 # FIXME: Replace `main' with a function in `-lm':
