@@ -198,9 +198,6 @@ ANY     [^\"\n\\]|\\.
 			dname = knot_dname_new_from_wire((uint8_t*)tmp + 1,
 							   strlen(tmp + 1),
 							   NULL);
-			/*! \todo implement refcounting correctly. */
-			ref_init(&dname->ref, 0); /* disable dtor */
-			ref_retain(&dname->ref);
 			if (!dname) {
 				zc_error("incorrect include origin '%s'",
 					 tmp + 1);
