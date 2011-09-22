@@ -1,7 +1,6 @@
 #include <sys/stat.h>
 
 #include "common/lists.h"
-#include "libknot/util/debug.h"
 #include "libknot/dname.h"
 #include "libknot/util/wire.h"
 #include "knot/zone/zone-dump-text.h"
@@ -730,8 +729,8 @@ static int zones_changesets_from_binary(knot_changesets_t *chgsets)
 		size_t remaining = chs->size;
 		ret = knot_zload_rrset_deserialize(&rrset, chs->data, &remaining);
 		if (ret != KNOT_EOK) {
-			debug_knot_xfr("ixfr_db: failed to deserialize data "
-				       "from changeset, %s\n", knot_strerror(ret));
+			debug_xfr("ixfr_db: failed to deserialize data "
+			          "from changeset, %s\n", knot_strerror(ret));
 			return KNOT_EMALF;
 		}
 
@@ -745,7 +744,7 @@ static int zones_changesets_from_binary(knot_changesets_t *chgsets)
 		knot_changeset_store_soa(&chs->soa_from, &chs->serial_from,
 					 rrset);
 
-		debug_knot_xfr("ixfr_db: reading RRSets to REMOVE\n");
+		debug_xfr("ixfr_db: reading RRSets to REMOVE\n");
 
 		/* Read remaining RRSets */
 		int in_remove_section = 1;
@@ -756,8 +755,8 @@ static int zones_changesets_from_binary(knot_changesets_t *chgsets)
 			uint8_t *stream = chs->data + (chs->size - remaining);
 			ret = knot_zload_rrset_deserialize(&rrset, stream, &remaining);
 			if (ret != KNOT_EOK) {
-				debug_knot_xfr("ixfr_db: failed to deserialize data "
-					       "from changeset, %s\n", knot_strerror(ret));
+				debug_xfr("ixfr_db: failed to deserialize data "
+				          "from changeset, %s\n", knot_strerror(ret));
 				return KNOT_EMALF;
 			}
 
@@ -770,11 +769,11 @@ static int zones_changesets_from_binary(knot_changesets_t *chgsets)
 						&chgsets->sets[i].soa_to,
 						&chgsets->sets[i].serial_to,
 						rrset);
-					debug_knot_xfr("ixfr_db: reading RRSets"
-						       " to ADD\n");
+					debug_xfr("ixfr_db: reading RRSets"
+					          " to ADD\n");
 				} else {
 					/* Final SOA. */
-					debug_knot_xfr("ixfr_db: extra SOA\n");
+					debug_xfr("ixfr_db: extra SOA\n");
 					knot_rrset_free(&rrset);
 					break;
 				}
@@ -798,9 +797,9 @@ static int zones_changesets_from_binary(knot_changesets_t *chgsets)
 
 				/* Check result. */
 				if (ret != KNOT_EOK) {
-					debug_knot_xfr("ixfr_db: failed "
-						       "to add/remove RRSet to "
-						       "changeset\n");
+					debug_xfr("ixfr_db: failed "
+					          "to add/remove RRSet to "
+					          "changeset\n");
 					return ret;
 				}
 			}
@@ -848,13 +847,13 @@ static int zones_load_changesets(const knot_zone_t *zone,
 		--dst->count;
 		if (ret != KNOT_EOK) {
 			--dst->count;
-			debug_knot_xfr("ixfr_db: failed to check changesets size\n");
+			debug_xfr("ixfr_db: failed to check changesets size\n");
 			return ret;
 		}
 
 		/* Initialize changeset. */
-		debug_knot_xfr("ixfr_db: reading entry #%zu id=%llu\n",
-			       dst->count, (unsigned long long)n->id);
+		debug_xfr("ixfr_db: reading entry #%zu id=%llu\n",
+		          dst->count, (unsigned long long)n->id);
 		knot_changeset_t *chs = dst->sets + dst->count;
 		chs->serial_from = ixfrdb_key_from(n->id);
 		chs->serial_to = ixfrdb_key_to(n->id);
@@ -867,7 +866,7 @@ static int zones_load_changesets(const knot_zone_t *zone,
 		ret = journal_read(zd->ixfr_db, n->id,
 				   0, (char*)chs->data);
 		if (ret != KNOTD_EOK) {
-			debug_knot_xfr("ixfr_db: failed to read data from journal\n");
+			debug_xfr("ixfr_db: failed to read data from journal\n");
 			free(chs->data);
 			return KNOT_ERROR;
 		}
@@ -886,8 +885,8 @@ static int zones_load_changesets(const knot_zone_t *zone,
 	/* Unpack binary data. */
 	ret = zones_changesets_from_binary(dst);
 	if (ret != KNOT_EOK) {
-		debug_knot_xfr("ixfr_db: failed to unpack changesets "
-			       "from binary, %s\n", knot_strerror(ret));
+		debug_xfr("ixfr_db: failed to unpack changesets "
+		          "from binary, %s\n", knot_strerror(ret));
 		return ret;
 	}
 
@@ -1517,12 +1516,12 @@ static char *zones_find_free_filename(const char *old_name)
 	new_name[name_size] = '.';
 	new_name[name_size + 2] = 0;
 
-	debug_knot_ns("Finding free name for the zone file.\n");
+	debug_zones("Finding free name for the zone file.\n");
 	int c = 48;
 	FILE *file;
 	while (!free_name && c < 58) {
 		new_name[name_size + 1] = c;
-		debug_knot_ns("Trying file name %s\n", new_name);
+		debug_zones("Trying file name %s\n", new_name);
 		if ((file = fopen(new_name, "r")) != NULL) {
 			fclose(file);
 			++c;
@@ -1861,13 +1860,13 @@ int zones_store_changesets(knot_ns_xfr_t *xfr)
 				/* Cancel sync timer. */
 				event_t *tmr = zd->ixfr_dbsync;
 				if (tmr) {
-					debug_knot_xfr("ixfr_db: cancelling SYNC "
+					debug_xfr("ixfr_db: cancelling SYNC "
 							 "timer\n");
 					evsched_cancel(tmr->parent, tmr);
 				}
 
 				/* Synchronize. */
-				debug_knot_xfr("ixfr_db: forcing zonefile SYNC\n");
+				debug_xfr("ixfr_db: forcing zonefile SYNC\n");
 				ret = zones_zonefile_sync(zone);
 				if (ret != KNOTD_EOK) {
 					continue;
@@ -1882,7 +1881,7 @@ int zones_store_changesets(knot_ns_xfr_t *xfr)
 					conf_read_unlock();
 
 					/* Reschedule. */
-					debug_knot_xfr("ixfr_db: resuming SYNC "
+					debug_xfr("ixfr_db: resuming SYNC "
 							 "timer\n");
 					evsched_schedule(tmr->parent, tmr,
 							 timeout);
