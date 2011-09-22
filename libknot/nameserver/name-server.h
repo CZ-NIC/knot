@@ -84,6 +84,7 @@ typedef struct knot_ns_xfr {
 	size_t wire_size;
 	void *data;
 	knot_zone_t *zone;
+	void *owner;
 } knot_ns_xfr_t;
 
 /*----------------------------------------------------------------------------*/

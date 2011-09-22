@@ -9,10 +9,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <ev.h>
-
 #include "common/sockaddr.h"
 #include "common/skip-list.h"
+#include "common/fdset.h"
 #include "knot/common.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/server/xfr-handler.h"
@@ -22,15 +21,12 @@
 #include "libknot/util/wire.h"
 #include "knot/server/zones.h"
 
-/*! \brief TCP watcher. */
-typedef struct tcp_io_t {
-	ev_io io;
-	struct ev_loop   *loop;   /*!< Associated event loop. */
-	server_t         *server; /*!< Name server */
-	iohandler_t      *io_h;   /*!< Master I/O handler. */
-	stat_t           *stat;   /*!< Statistics gatherer */
-	unsigned         data;    /*!< Watcher-related data. */
-} tcp_io_t;
+/*! \brief TCP worker data. */
+typedef struct tcp_worker_t {
+	iohandler_t *ioh; /*!< Shortcut to I/O handler. */
+	fdset_t *fdset;   /*!< File descriptor set. */ 
+	int pipe[2];      /*!< Master-worker signalization pipes. */
+} tcp_worker_t;
 
 /*
  * Forward decls.
@@ -43,38 +39,6 @@ static int xfr_send_cb(int session, sockaddr_t *addr, uint8_t *msg, size_t msgle
 	return tcp_send(session, msg, msglen);
 }
 
-/*! \brief Create new TCP connection watcher. */
-static inline tcp_io_t* tcp_conn_new(struct ev_loop *loop, int fd, tcp_cb_t cb)
-{
-	tcp_io_t *w = malloc(sizeof(tcp_io_t));
-	if (w) {
-		/* Omit invalid filedescriptors. */
-		w->io.fd = -1;
-		if (fd >= 0) {
-			ev_io_init((ev_io *)w, cb, fd, EV_READ);
-			ev_io_start(loop, (ev_io *)w);
-		}
-
-		w->data = 0;
-		w->loop = loop;
-	}
-
-	return w;
-}
-
-/*! \brief Delete a TCP connection watcher. */
-static inline void tcp_conn_free(struct ev_loop *loop, tcp_io_t *w)
-{
-	ev_io_stop(loop, (ev_io *)w);
-	close(((ev_io *)w)->fd);
-	free(w);
-}
-
-/*! \brief Noop event handler. */
-static void tcp_noop(struct ev_loop *loop, ev_io *w, int revents)
-{
-}
-
 /*!
  * \brief TCP event handler function.
  *
@@ -83,31 +47,35 @@ static void tcp_noop(struct ev_loop *loop, ev_io *w, int revents)
  * \param w Associated I/O event.
  * \param revents Returned events.
  */
-static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
+static void tcp_handle(tcp_worker_t *w, int fd)
 {
+	if (fd < 0 || !w || !w->ioh) {
+		return;
+	}
+	
 	debug_net("tcp: handling TCP event in thread %p.\n",
 		  (void*)pthread_self());
 
-	tcp_io_t *tcp_w = (tcp_io_t *)w;
-	knot_nameserver_t *ns = tcp_w->server->nameserver;
-	xfrhandler_t *xfr_h = tcp_w->server->xfr_h;
+	knot_nameserver_t *ns = w->ioh->server->nameserver;
+	xfrhandler_t *xfr_h = w->ioh->server->xfr_h;
 
 	/* Check address type. */
 	sockaddr_t addr;
-	if (sockaddr_init(&addr, tcp_w->io_h->type) != KNOTD_EOK) {
+	if (sockaddr_init(&addr, w->ioh->type) != KNOTD_EOK) {
 		log_server_error("Socket type %d is not supported, "
 				 "IPv6 support is probably disabled.\n",
-				 tcp_w->io_h->type);
+				 w->ioh->type);
 		return;
 	}
 
 	/* Receive data. */
 	uint8_t qbuf[65535]; /*! \todo This may be problematic. */
 	size_t qbuf_maxlen = sizeof(qbuf);
-	int n = tcp_recv(w->fd, qbuf, qbuf_maxlen, &addr);
+	int n = tcp_recv(fd, qbuf, qbuf_maxlen, &addr);
 	if (n <= 0) {
 		debug_net("tcp: client disconnected\n");
-		tcp_conn_free(loop, tcp_w);
+		fdset_remove(w->fdset, fd);
+		close(fd);
 		return;
 	}
 
@@ -172,12 +140,12 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 //		packet->wireformat = wire_copy;
 //		xfr.query = packet; /* Will be freed after processing. */
 //		xfr.send = xfr_send_cb;
-//		xfr.session = w->fd;
+//		xfr.session = fd;
 //		memcpy(&xfr.addr, &addr, sizeof(sockaddr_t));
 //		xfr_request(xfr_h, &xfr);
-//		debug_net("tcp: enqueued IXFR query on fd=%d\n", w->fd);
+//		debug_net("tcp: enqueued IXFR query on fd=%d\n", fd);
 //		return;
-		debug_net("tcp: IXFR not supported, will answer as AXFR on fd=%d\n", w->fd);
+		debug_net("tcp: IXFR not supported, will answer as AXFR on fd=%d\n", fd);
 	case KNOT_QUERY_AXFR:
 		memset(&xfr, 0, sizeof(knot_ns_xfr_t));
 		xfr.type = XFR_TYPE_AOUT;
@@ -191,10 +159,10 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 		packet->wireformat = wire_copy;
 		xfr.query = packet;
 		xfr.send = xfr_send_cb;
-		xfr.session = w->fd;
+		xfr.session = fd;
 		memcpy(&xfr.addr, &addr, sizeof(sockaddr_t));
 		xfr_request(xfr_h, &xfr);
-		debug_net("tcp: enqueued AXFR query on fd=%d\n", w->fd);
+		debug_net("tcp: enqueued AXFR query on fd=%d\n", fd);
 		return;
 	case KNOT_QUERY_NOTIFY:
 	case KNOT_QUERY_UPDATE:
@@ -214,7 +182,7 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 	/* Send answer. */
 	if (res == KNOTD_EOK) {
 		assert(resp_len > 0);
-		res = tcp_send(w->fd, qbuf, resp_len);
+		res = tcp_send(fd, qbuf, resp_len);
 
 		/* Check result. */
 		if (res != (int)resp_len) {
@@ -227,13 +195,10 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 	return;
 }
 
-static void tcp_accept(struct ev_loop *loop, ev_io *w, int revents)
+static int tcp_accept(int fd)
 {
-	tcp_io_t *tcp_w = (tcp_io_t *)w;
-
 	/* Accept incoming connection. */
-	debug_net("tcp: accepting connection on fd = %d\n", w->fd);
-	int incoming = accept(w->fd, 0, 0);
+	int incoming = accept(fd, 0, 0);
 
 	/* Evaluate connection. */
 	if (incoming < 0) {
@@ -242,141 +207,53 @@ static void tcp_accept(struct ev_loop *loop, ev_io *w, int revents)
 					 "(%d).\n", errno);
 		}
 	} else {
-		/*! \todo Improve allocation performance. */
-		tcp_io_t *conn = tcp_conn_new(loop, incoming, tcp_handle);
-		if (conn) {
-			conn->server = tcp_w->server;
-			conn->stat = tcp_w->stat;
-			conn->io_h = tcp_w->io_h;
-		}
-	}
-}
-
-static void tcp_interrupt(iohandler_t *h)
-{
-	/* For each thread in unit. */
-	for (unsigned i = 0; i < h->unit->size; ++i) {
-		tcp_io_t *w = (tcp_io_t *)(h->unit->threads[i]->data);
-
-		/* Only if watcher exists and isn't I/O handler. */
-		if (w && (void*)w != (void*)h) {
-			/* Stop master socket watcher. */
-			if (w->io.fd >= 0) {
-				ev_io_stop(w->loop, (ev_io *)w);
-			}
-
-			/* Break loop. */
-			ev_unloop(w->loop, EVUNLOOP_ALL);
-		}
-	}
-}
-
-static void tcp_loop_install(dthread_t *thread, int fd, tcp_cb_t cb)
-{
-	iohandler_t *handler = (iohandler_t *)thread->data;
-
-	/* Install interrupt handler. */
-	handler->interrupt = tcp_interrupt;
-
-	/* Create event loop. */
-	/*! \todo Maybe check for EVFLAG_NOSIGMASK support? */
-	struct ev_loop *loop = ev_loop_new(0);
-
-	/* Watch bound socket if exists. */
-	tcp_io_t *w = tcp_conn_new(loop, fd, cb);
-	if (w) {
-		w->io_h = handler;
-		w->server = handler->server;
-		w->stat = 0; //!< \todo Implement stat.
+		debug_net("tcp: accepted connection fd = %d\n", incoming);
 	}
 
-	/* Reinstall as thread-specific data. */
-	thread->data = w;
+	return incoming;
 }
 
-static void tcp_loop_uninstall(dthread_t *thread)
+tcp_worker_t* tcp_worker_create()
 {
-	tcp_io_t *w = (tcp_io_t *)thread->data;
-
-	/* Free watcher if exists. */
-	if (w) {
-		ev_loop_destroy(w->loop);
+	tcp_worker_t *w = malloc(sizeof(tcp_worker_t));
+	if (!w) {
+		debug_net("tcp_master: out of memory when creating worker\n");
+		return 0;
+	}
+	
+	/* Create signal pipes. */
+	memset(w, 0, sizeof(tcp_worker_t));
+	if (pipe(w->pipe) < 0) {
+		free(w);
+		return 0;
+	}
+	
+	/* Create fdset. */
+	w->fdset = fdset_new();
+	if (!w->fdset) {
+		close(w->pipe[0]);
+		close(w->pipe[1]);
 		free(w);
 	}
-
-	/* Invalidate thread data. */
-	thread->data = 0;
+	
+	fdset_add(w->fdset, w->pipe[0], OS_EV_READ);
+	
+	return w;
 }
 
-/*! \brief Switch event loop in threading unit in RR fashion
- *         and accept connection in it.
- */
-static void tcp_accept_rr(struct ev_loop *loop, ev_io *w, int revents)
+void tcp_worker_free(tcp_worker_t* w)
 {
-	tcp_io_t *tcp_w = (tcp_io_t *)w;
-
-	/* Select next loop thread. */
-	dt_unit_t *unit = tcp_w->io_h->unit;
-	dthread_t *thr = unit->threads[tcp_w->data];
-
-	/* Select loop from selected thread. */
-	tcp_io_t *thr_w = (tcp_io_t *)thr->data;
-	if (thr_w) {
-		loop = thr_w->loop;
+	if (!w) {
+		return;
 	}
-
-	/* Move to next thread in unit. */
-	tcp_w->data = get_next_rr(tcp_w->data, unit->size);
-
-	/* Accept incoming connection in target loop. */
-	tcp_accept(loop, w, revents);
-}
-
-static int tcp_loop_run(dthread_t *thread)
-{
-	debug_dt("dthreads: [%p] running TCP loop, state: %d\n",
-		 thread, thread->state);
-
-	/* Fetch loop. */
-	tcp_io_t *w = (tcp_io_t *)thread->data;
-
-	/* Accept clients. */
-	debug_net("tcp: loop started, backend = 0x%x\n", ev_backend(w->loop));
-	for (;;) {
-
-		/* Cancellation point. */
-		if (dt_is_cancelled(thread)) {
-			break;
-		}
-
-		/* Run event loop for accepting connections. */
-		ev_loop(w->loop, 0);
-	}
-
-	/* Stop whole unit. */
-	debug_net("tcp: loop finished\n");
-
-	return KNOTD_EOK;
-}
-
-int tcp_loop_master_rr(dthread_t *thread)
-{
-	iohandler_t *handler = (iohandler_t *)thread->data;
-
-	/* Check socket. */
-	if (handler->fd < 0) {
-		debug_net("tcp_master: null socket recevied, finishing.\n");
-		return KNOTD_EINVAL;
-	}
-
-	debug_net("tcp_master: threading unit master with %d workers\n",
-		  thread->unit->size - 1);
-
-	int dupfd = dup(handler->fd);
-	int ret = tcp_loop(thread, dupfd, tcp_accept_rr);
-	close(dupfd);
-
-	return ret;
+	
+	/* Destroy fdset. */
+	fdset_destroy(w->fdset);
+	
+	/* Close pipe write end and worker. */
+	close(w->pipe[0]);
+	close(w->pipe[1]);
+	free(w);
 }
 
 /*
@@ -440,9 +317,21 @@ int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 	}
 
 	/* Receive payload. */
-	n = recv(fd, buf, pktsize, MSG_WAITALL);
-	if (n <= 0) {
-		return KNOTD_ERROR;
+	size_t to_read = pktsize;
+	size_t readb = 0;
+	while (to_read > 0) {
+		/*! \todo Implement timeout to prevent keeping recv() locked. */
+		n = recv(fd, buf + readb, to_read, MSG_WAITALL);
+		if (n <= 0) {
+			/* Ignore interrupted calls. */
+			if (n < 0 && errno == EINTR) {
+				continue;
+			}
+			return KNOTD_ERROR;
+		}
+
+		readb += n;
+		to_read -= n;
 	}
 
 	/* Get peer name. */
@@ -454,66 +343,156 @@ int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 	debug_net("tcp: received packet size=%hu on fd=%d\n",
 		  pktsize, fd);
 
-	return n;
-}
-
-int tcp_loop(dthread_t *thread, int fd, tcp_cb_t cb)
-{
-	/* Install event loop. */
-	tcp_loop_install(thread, fd, cb);
-
-	/* Run event loop. */
-	int ret = tcp_loop_run(thread);
-
-	/* Uninstall event loop. */
-	tcp_loop_uninstall(thread);
-
-	return ret;
+	return pktsize;
 }
 
 int tcp_loop_master(dthread_t *thread)
 {
 	iohandler_t *handler = (iohandler_t *)thread->data;
+	dt_unit_t *unit = thread->unit;
+	tcp_worker_t **workers = handler->data;
 
 	/* Check socket. */
-	if (handler->fd < 0) {
-		debug_net("tcp_master: null socket recevied, finishing.\n");
+	if (!handler || handler->fd < 0 || !workers) {
+		debug_net("tcp_master: failed to initialize\n");
 		return KNOTD_EINVAL;
 	}
 
-	debug_net("tcp_master: created with %d workers\n",
-		  thread->unit->size - 1);
+	/* Accept connections. */
+	int id = 0;
+	debug_net("tcp_master: created with %d workers\n", unit->size - 1);
+	while(1) {
+		/* Check for cancellation. */
+		if (dt_is_cancelled(thread)) {
+			break;
+		}
 
-	int dupfd = dup(handler->fd);
-	int ret = tcp_loop(thread, dupfd, tcp_accept);
-	close(dupfd);
+		/* Accept client. */
+		int client = tcp_accept(handler->fd);
+		if (client < 0) {
+			continue;
+		}
 
-	return ret;
+		/* Add to worker in RR fashion. */
+		if (write(workers[id]->pipe[1], &client, sizeof(int)) < 0) {
+			debug_net("tcp_master: failed to register fd=%d to "
+			          "worker=%d\n", client, id);
+			close(client);
+			continue;
+		}
+		id = get_next_rr(id, unit->size - 1);
+	}
+
+	debug_net("tcp_master: finished\n");
+	free(workers);
+	
+	return KNOTD_EOK;
 }
 
 int tcp_loop_worker(dthread_t *thread)
 {
-	return tcp_loop(thread, -1, tcp_noop);
+	tcp_worker_t *w = thread->data;
+	if (!w) {
+		return KNOTD_EINVAL;
+	}
+
+	/* Accept clients. */
+	debug_net("tcp: worker started, backend = %s\n", fdset_method());
+	for (;;) {
+
+		/* Cancellation point. */
+		if (dt_is_cancelled(thread)) {
+			break;
+		}
+
+		/* Wait for events. */
+		int nfds = fdset_wait(w->fdset);
+		if (nfds <= 0) {
+			continue;
+		}
+
+		/* Process incoming events. */
+		debug_net("tcp_worker: registered %d events\n",
+		          nfds);
+		fdset_it_t it;
+		fdset_begin(w->fdset, &it);
+		while(1) {
+			
+			/* Handle incoming clients. */
+			if (it.fd == w->pipe[0]) {
+				int client = 0;
+				if (read(it.fd, &client, sizeof(int)) < 0) {
+					continue;
+				}
+
+				debug_net("tcp_worker: registered client %d\n",
+				          client);
+				fdset_add(w->fdset, client, OS_EV_READ);
+			} else {
+				/* Handle other events. */
+				tcp_handle(w, it.fd);
+			}
+			
+			/* Check if next exists. */
+			if (fdset_next(w->fdset, &it) != 0) {
+				break;
+			}
+		}
+		
+	}
+
+	/* Stop whole unit. */
+	debug_net("tcp_worker: worker finished\n");
+	tcp_worker_free(w);
+	return KNOTD_EOK;
 }
 
-int tcp_loop_unit(dt_unit_t *unit)
+int tcp_loop_unit(iohandler_t *ioh, dt_unit_t *unit)
 {
 	if (unit->size < 1) {
 		return KNOTD_EINVAL;
 	}
-
-	/*! \todo Implement working master+worker threads. */
-	/* Repurpose first thread as master (unit controller). */
-	//dt_repurpose(unit->threads[0], tcp_loop_master_rr, 0);
-
-	/* Repurpose remaining threads as workers. */
-	//for (unsigned i = 1; i < unit->size; ++i) {
-	//	dt_repurpose(unit->threads[i], tcp_loop_worker, 0);
-	//}
-
-	for (unsigned i = 0; i < 1; ++i) {
-		dt_repurpose(unit->threads[i], tcp_loop_master, 0);
+	
+	/* Create unit data. */
+	tcp_worker_t **workers = malloc((unit->size - 1) *
+	                                sizeof(tcp_worker_t *));
+	if (!workers) {
+		debug_net("tcp_master: out of memory\n");
+		return KNOTD_EINVAL;
 	}
+
+	/* Prepare worker data. */
+	unsigned allocated = 0;
+	for (unsigned i = 0; i < unit->size - 1; ++i) {
+		workers[i] = tcp_worker_create();
+		if (workers[i] == 0) {
+			break;
+		}
+		workers[i]->ioh = ioh;
+		++allocated;
+	}
+	
+	/* Check allocated workers. */
+	if (allocated != unit->size - 1) {
+		for (unsigned i = 0; i < allocated; ++i) {
+			tcp_worker_free(workers[i]);
+		}
+	
+		free(workers);
+		debug_net("tcp_master: out of memory when allocated workers\n");
+		return KNOTD_EINVAL;
+	}
+	
+	/* Store worker data. */
+	ioh->data = workers;
+	
+	/* Repurpose workers. */
+	for (unsigned i = 0; i < allocated; ++i) {
+		dt_repurpose(unit->threads[i + 1], tcp_loop_worker, workers[i]);
+	}
+
+	/* Repurpose first thread as master (unit controller). */
+	dt_repurpose(unit->threads[0], tcp_loop_master, ioh);
 
 	return KNOTD_EOK;
 }
