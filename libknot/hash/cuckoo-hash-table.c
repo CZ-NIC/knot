@@ -1214,7 +1214,7 @@ int ck_apply(ck_hash_table_t *table,
 
 int ck_rehash(ck_hash_table_t *table)
 {
-	debug_ck_rehash("Rehashing items in table.\n");
+	debug_ck_hash("Rehashing items in table.\n");
 	SET_REHASHING_ON(&table->generation);
 
 	ck_stash_item_t *free_stash_items = NULL;

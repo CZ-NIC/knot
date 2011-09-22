@@ -294,7 +294,7 @@ static int knot_dname_find_labels(knot_dname_t *dname, int alloc)
 static int knot_dname_cmp(const knot_dname_t *d1, const knot_dname_t *d2,
                             int cs)
 {
-DEBUG_KNOT_DNAME(
+debug_knot_dname_exec(
 	char *name1 = knot_dname_to_str(d1);
 	char *name2 = knot_dname_to_str(d2);
 
@@ -800,7 +800,7 @@ void knot_dname_left_chop_no_copy(knot_dname_t *dname)
 int knot_dname_is_subdomain(const knot_dname_t *sub,
                               const knot_dname_t *domain)
 {
-DEBUG_KNOT_DNAME(
+debug_knot_dname_exec(
 	char *name1 = knot_dname_to_str(sub);
 	char *name2 = knot_dname_to_str(domain);
 
@@ -917,7 +917,7 @@ knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *dname,
                                             int size,
                                             const knot_dname_t *suffix)
 {
-DEBUG_KNOT_DNAME(
+debug_knot_dname_exec(
 	char *name = knot_dname_to_str(dname);
 	debug_knot_dname("Replacing suffix of name %s, size %d with ", name,
 	                   size);

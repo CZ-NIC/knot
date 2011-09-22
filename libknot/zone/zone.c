@@ -221,7 +221,7 @@ void knot_zone_deep_free(knot_zone_t **zone, int free_rdata_dnames)
 		                  "update.\n");
 	}
 
-DEBUG_KNOT_ZONE(
+debug_knot_zone_exec(
 	char *name = knot_dname_to_str((*zone)->name);
 	debug_knot_zone("Destroying zone %p, name: %s.\n", *zone, name);
 	free(name);
