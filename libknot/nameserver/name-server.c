@@ -280,6 +280,9 @@ static void ns_follow_cname(const knot_node_t **node,
 		   wildcard name with qname */
 
 		assert(cname_rrset != NULL);
+		
+		debug_knot_ns("CNAME RRSet: %p, owner: %p\n", cname_rrset,
+			      cname_rrset->owner);
 
 		const knot_rrset_t *rrset = cname_rrset;
 
@@ -291,6 +294,9 @@ static void ns_follow_cname(const knot_node_t **node,
 			knot_packet_add_tmp_rrset(resp,
 			                            (knot_rrset_t *)rrset);
 		}
+		
+		debug_knot_ns("Using RRSet: %p, owner: %p\n", rrset, 
+			      rrset->owner);
 
 		add_rrset_to_resp(resp, rrset, tc, 0, 0);
 		ns_add_rrsigs(rrset, resp, *qname, add_rrset_to_resp, tc);
@@ -303,9 +309,11 @@ DEBUG_KNOT_NS(
 
 		// get the name from the CNAME RDATA
 		const knot_dname_t *cname = knot_rdata_cname_name(
-				knot_rrset_rdata(rrset));
+				knot_rrset_rdata(cname_rrset));
+		debug_knot_ns("CNAME name from RDATA: %p\n", cname);
 		// change the node to the node of that name
-		(*node) = knot_dname_node(cname, 1);
+		*node = knot_dname_node(cname, 1);
+		debug_knot_ns("This name's node: %p\n", *node);
 //		// it is not an old node and if yes, skip it
 //		if (knot_node_is_old(*node)) {
 //			*node = knot_node_new_node(*node);
@@ -1752,9 +1760,11 @@ DEBUG_KNOT_NS(
 		ns_follow_cname(&node, &act_name, resp,
 		                knot_response_add_rrset_answer, 1);
 DEBUG_KNOT_NS(
+		char *name = knot_dname_to_str(node->owner);
 		char *name2 = knot_dname_to_str(act_name);
-		debug_knot_ns("Canonical name: %s, node found: %p\n",
-			 name2, node);
+		debug_knot_ns("Canonical name: %s (%p), node found: %p\n",
+			 name2, act_name, node);
+		debug_knot_ns("The node's owner: %s (%p)\n", name, node->owner);
 		free(name2);
 );
 		qname = act_name;
@@ -1975,7 +1985,7 @@ static int ns_axfr_send_and_clear(knot_ns_xfr_t *xfr)
 
 	// Send the response
 	debug_knot_ns("Sending response (size %zu)..\n", real_size);
-	debug_knot_ns_hex((const char *)xfr->wire, real_size);
+	//debug_knot_ns_hex((const char *)xfr->wire, real_size);
 	int res = xfr->send(xfr->session, &xfr->addr, xfr->wire, real_size);
 	if (res < 0) {
 		debug_knot_ns("Send returned %d\n", res);
@@ -2532,7 +2542,7 @@ int knot_ns_parse_packet(const uint8_t *query_wire, size_t qsize,
 	}
 
 	debug_knot_ns("ns_parse_packet() called with query size %zu.\n", qsize);
-	debug_knot_ns_hex((char *)query_wire, qsize);
+	//debug_knot_ns_hex((char *)query_wire, qsize);
 
 	if (qsize < 2) {
 		return KNOT_EMALF;
@@ -2592,9 +2602,9 @@ int knot_ns_parse_packet(const uint8_t *query_wire, size_t qsize,
 void knot_ns_error_response(knot_nameserver_t *nameserver, uint16_t query_id,
                        uint8_t rcode, uint8_t *response_wire, size_t *rsize)
 {
-	debug_knot_ns("Error response: \n");
-	debug_knot_ns_hex((const char *)nameserver->err_response,
-	             nameserver->err_resp_size);
+	//debug_knot_ns("Error response: \n");
+	//debug_knot_ns_hex((const char *)nameserver->err_response,
+	//             nameserver->err_resp_size);
 
 	memcpy(response_wire, nameserver->err_response,
 	       nameserver->err_resp_size);
@@ -2757,7 +2767,7 @@ int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_packet_t *query,
 	knot_packet_free(&response);
 
 	debug_knot_ns("Returning response with wire size %zu\n", *rsize);
-	debug_knot_ns_hex((char *)response_wire, *rsize);
+	//debug_knot_ns_hex((char *)response_wire, *rsize);
 
 	return KNOT_EOK;
 }
