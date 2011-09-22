@@ -215,25 +215,19 @@ knot_node_t *knot_node_new(knot_dname_t *owner, knot_node_t *parent,
 int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset,
                           int merge)
 {
-	int ret;
-	int unique_rrset_type = 1;
-	if (gen_tree_find(node->rrset_tree, rrset) && merge) {
-		unique_rrset_type = 0;
-	}
-//	printf("Add: %p (%p - %s:%s)\n", node->rrset_tree, rrset,
-//	       knot_dname_to_str(rrset->owner),
-//	       knot_rrtype_to_string(rrset->type));
+	int ret = 0;
+
 	if ((ret = (gen_tree_add(node->rrset_tree, rrset,
-	                         (merge) ? knot_rrset_merge : NULL))) != 0) {
+	                         (merge) ? knot_rrset_merge : NULL))) < 0) {
 		debug_knot_node("Failed to add rrset to node->rrset_tree.\n");
 		return KNOT_ERROR;
 	}
 
-	if (ret == 0) {
-		node->rrset_count += unique_rrset_type;
-		return KNOT_EOK;
+	if (ret >= 0) {
+		node->rrset_count += (ret > 0 ? 0 : 1);
+		return ret;
 	} else {
-		return 1;
+		return KNOT_ERROR;
 	}
 }
 
@@ -242,8 +236,6 @@ int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset,
 const knot_rrset_t *knot_node_rrset(const knot_node_t *node,
                                         uint16_t type)
 {
-//	printf("Find: %p (%s - %p)\n", node->rrset_tree,
-//	       knot_dname_to_str(node->owner), node);
 	assert(node != NULL);
 	assert(node->rrset_tree != NULL);
 	knot_rrset_t rrset;
@@ -255,8 +247,6 @@ const knot_rrset_t *knot_node_rrset(const knot_node_t *node,
 
 knot_rrset_t *knot_node_get_rrset(knot_node_t *node, uint16_t type)
 {
-//	printf("Find: %p (%s - %p)\n", node->rrset_tree,
-//	       knot_dname_to_str(node->owner), node);
 	knot_rrset_t rrset;
 	rrset.type = type;
 	return (knot_rrset_t *)gen_tree_find(node->rrset_tree, &rrset);
@@ -304,9 +294,6 @@ struct knot_node_save_rrset_arg {
 static void save_rrset_to_array(void *node, void *data)
 {
 	knot_rrset_t *rrset = (knot_rrset_t *)node;
-//	printf("%p\n", rrset);
-//	debug_knot_node("Returning rrset from tree: %s\n",
-//	                  knot_dname_to_str(rrset->owner));
 	struct knot_node_save_rrset_arg *args =
 		(struct knot_node_save_rrset_arg *)data;
 	args->array[args->count++] = rrset;
@@ -825,6 +812,9 @@ void knot_node_free_rrsets(knot_node_t *node, int free_rdata_dnames)
 	
 //	free(rrsets);
 
+	char *name = knot_dname_to_str(node->owner);
+	free(name);
+
 	gen_tree_destroy(&node->rrset_tree, knot_node_free_rrsets_from_tree, 
 	                 (void *)&free_rdata_dnames);
 }
@@ -836,7 +826,7 @@ void knot_node_free(knot_node_t **node, int free_owner, int fix_refs)
 	if (node == NULL || *node == NULL) {
 		return;
 	}
-	
+
 	debug_knot_node("Freeing node.\n");
 	if ((*node)->rrset_tree != NULL) {
 		debug_knot_node("Freeing RRSets.\n");
