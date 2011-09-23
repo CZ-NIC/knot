@@ -771,6 +771,7 @@ static int zones_changesets_from_binary(knot_changesets_t *chgsets)
 						rrset);
 					debug_xfr("ixfr_db: reading RRSets"
 					          " to ADD\n");
+					in_remove_section = 0;
 				} else {
 					/* Final SOA. */
 					debug_xfr("ixfr_db: extra SOA\n");
@@ -804,6 +805,8 @@ static int zones_changesets_from_binary(knot_changesets_t *chgsets)
 				}
 			}
 		}
+		
+		debug_xfr("ixfr_db: read all RRSets in changeset\n");
 	}
 
 	return KNOT_EOK;
@@ -1460,7 +1463,7 @@ int zones_process_response(knot_nameserver_t *nameserver,
 xfr_type_t zones_transfer_to_use(const knot_zone_contents_t *zone)
 {
 	/*! \todo Implement. */
-	return XFR_TYPE_AIN;
+	return XFR_TYPE_IIN;
 }
 
 /*----------------------------------------------------------------------------*/
