@@ -54,7 +54,8 @@ enum knot_error {
 	KNOT_ECRC,            /*!< Wrong dump CRC. */
 	KNOT_EPREREQ,         /*!< UPDATE prerequisity not met. */
 	KNOT_ENOXFR,          /*!< Transfer was not sent. */
-	KNOT_ERROR_COUNT = 24
+	KNOT_ENOIXFR,         /*!< Transfer is not IXFR (is in AXFR format). */
+	KNOT_ERROR_COUNT = 25
 };
 
 /*! \brief Table linking error messages to error codes. */

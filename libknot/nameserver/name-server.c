@@ -3102,37 +3102,32 @@ debug_knot_ns_exec(
 }
 
 /*----------------------------------------------------------------------------*/
-
-int knot_ns_apply_ixfr_changes(knot_zone_t *zone, knot_changesets_t *chgsets)
-{
-	/*! \todo Apply changes to the zone when they are parsed. */
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
+/*! \todo In this function, xfr->zone is properly set. If this is so, we do not
+ *        have to search for the zone after the transfer has finished.
+ */
 int knot_ns_process_ixfrin(knot_nameserver_t *nameserver, 
                              knot_ns_xfr_t *xfr)
 {
-	/*! \todo Implement me.
-	 *  - xfr contains partially-built IXFR journal entry or NULL
-	 *    (xfr->data)
-	 *  - incoming packet is in xfr->wire
-	 *  - incoming packet size is in xfr->wire_size
-	 *  - signalize caller, that transfer is finished/error (ret. code?)
-	 */
 	debug_knot_ns("ns_process_ixfrin: incoming packet\n");
 
 	int ret = xfrin_process_ixfr_packet(xfr->wire, xfr->wire_size,
 	                                   (knot_changesets_t **)(&xfr->data));
 	
-	/*! \todo Save zone into the XFR structure. */
-
+	if (ret == XFRIN_RES_FALLBACK) {
+		debug_knot_ns("ns_process_ixfrin: Fallback to AXFR.\n");
+		assert(xfr->data == NULL);
+//		debug_knot_ns("xfr->zone = %p\n", xfr->zone);
+//		debug_knot_ns("Zone name: %.*s\n", 
+//		              xfr->zone->name->size, xfr->zone->name->name);
+//		assert(xfr->zone == NULL);
+		return KNOT_ENOIXFR;
+	}
+	
 	if (ret > 0) {
 		debug_knot_ns("ns_process_ixfrin: IXFR finished\n");
 
 		knot_changesets_t *chgsets = (knot_changesets_t *)xfr->data;
-		if (chgsets == NULL || chgsets->count == 0) {
+		if (chgsets == NULL || chgsets->first_soa == NULL) {
 			// nothing to be done??
 			debug_knot_ns("No changesets created for incoming IXFR!\n");
 			return ret;
@@ -3141,7 +3136,7 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 		// find zone associated with the changesets
 		knot_zone_t *zone = knot_zonedb_find_zone(
 		                 nameserver->zone_db,
-		                 knot_rrset_owner(chgsets->sets[0].soa_from));
+		                 knot_rrset_owner(chgsets->first_soa));
 		if (zone == NULL) {
 			debug_knot_ns("No zone found for incoming IXFR!\n");
 			knot_free_changesets(
@@ -3149,9 +3144,11 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 			return KNOT_ENOZONE;  /*! \todo Other error code? */
 		}
 		
-		if (ret == XFRIN_RES_COMPLETE) { // transfer finished
+		switch (ret) {
+		case XFRIN_RES_COMPLETE:
 			xfr->zone = zone;
-		} else if (ret == XFRIN_RES_SOA_ONLY) {
+			break;
+		case XFRIN_RES_SOA_ONLY: {
 			// compare the SERIAL from the changeset with the zone's
 			// serial
 			const knot_node_t *apex = knot_zone_contents_apex(
@@ -3167,7 +3164,7 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 			}
 			
 			if (knot_rdata_soa_serial(knot_rrset_rdata(
-			        chgsets->sets[0].soa_from))
+			        chgsets->first_soa))
 			    != knot_rdata_soa_serial(knot_rrset_rdata(
 			        zone_soa))) {
 				debug_knot_ns("Update did not fit.\n");
@@ -3179,6 +3176,7 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 					(knot_changesets_t **)(&xfr->data));
 				return KNOT_ENOXFR;
 			}
+		} break;
 		}
 	}
 	

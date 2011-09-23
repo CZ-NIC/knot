@@ -782,6 +782,9 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 		
 		// parse the next one
 		ret = knot_packet_parse_next_rr_answer(packet, &rr);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
 		
 		/*
 		 * If there is no other records in the response than the SOA, it
@@ -800,11 +803,15 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 			debug_knot_xfr("Response containing only SOA,\n");
 			knot_packet_free(&packet);
 			return XFRIN_RES_SOA_ONLY;
+		} else if (knot_rrset_type(rr) != KNOT_RRTYPE_SOA) {
+			debug_knot_xfr("Fallback to AXFR.\n");
+			ret = XFRIN_RES_FALLBACK;
+			goto cleanup;
 		}
 	} else {
 		if ((*chs)->first_soa == NULL) {
 			debug_knot_xfr("Changesets don't contain frist SOA!\n");
-			res = KNOT_EBADARG;
+			ret = KNOT_EBADARG;
 			goto cleanup;
 		}
 		debug_knot_xfr("Changesets present.\n");

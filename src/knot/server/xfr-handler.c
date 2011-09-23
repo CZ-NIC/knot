@@ -221,11 +221,24 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 	}
 
 	/* Check return code for errors. */
-	debug_xfr("xfr: processed incoming XFR packet (res =  %d)\n",
-		  ret);
+	debug_xfr("xfr: processed incoming XFR packet (res =  %d)\n", ret);
+	
+	/*! 
+	 * \todo Handle KNOT_ENOXFR - this is not an error, but the connection
+	 *       should be closed.
+	 *
+	 * \todo Handle KNOT_ENOIXFR - fallback to AXFR.
+	 */
+	if (ret == KNOT_ENOIXFR) {
+		debug_xfr("xfr: Fallback to AXFR.\n");
+		assert(data->type == XFR_TYPE_IIN);
+		data->type = XFR_TYPE_AIN;
+		ret = knot_ns_process_axfrin(w->ns, data);
+	}
+	
 	if (ret < 0) {
 		log_server_error("%cXFR/IN request failed - %s\n",
-				 data->type == XFR_TYPE_AIN ? 'A' : 'I',
+		                 data->type == XFR_TYPE_AIN ? 'A' : 'I',
 		                 knot_strerror(ret));
 		return KNOTD_ERROR;
 	}
