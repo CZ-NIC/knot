@@ -51,10 +51,10 @@ static int knot_zonedb_compare_zone_names(void *p1, void *p2)
 
 	int ret = knot_dname_compare(zone1->name, zone2->name);
 
-dbg_knot_zonedb_exec(
+dbg_zonedb_exec(
 	char *name1 = knot_dname_to_str(zone1->name);
 	char *name2 = knot_dname_to_str(zone2->name);
-	dbg_knot_zonedb("Compared names %s and %s, result: %d.\n",
+	dbg_zonedb("Compared names %s and %s, result: %d.\n",
 			    name1, name2, ret);
 	free(name1);
 	free(name2);
@@ -72,7 +72,7 @@ dbg_knot_zonedb_exec(
 //	assert(new_zone != NULL);
 //	assert(*new_zone != NULL);
 
-//	dbg_knot_zonedb("Replacing list item %p with new zone %p\n",
+//	dbg_zonedb("Replacing list item %p with new zone %p\n",
 //	                    *list_item, *new_zone);
 
 //	*list_item = *new_zone;
@@ -108,9 +108,9 @@ int knot_zonedb_add_zone(knot_zonedb_t *db, knot_zone_t *zone)
 	if (db == NULL || zone == NULL) {
 		return KNOT_EBADARG;
 	}
-dbg_knot_zonedb_exec(
+dbg_zonedb_exec(
 	char *name = knot_dname_to_str(zone->name);
-	dbg_knot_zonedb("Inserting zone %s into zone db.\n", name);
+	dbg_zonedb("Inserting zone %s into zone db.\n", name);
 	free(name);
 );
 
@@ -176,7 +176,7 @@ knot_zone_t *knot_zonedb_remove_zone(knot_zonedb_t *db,
 	
 //	/*! \todo The replace should be atomic!!! */
 
-//	dbg_knot_zonedb("Found zone: %p\n", z);
+//	dbg_zonedb("Found zone: %p\n", z);
 
 //	int ret = skip_remove(db->zones,
 //	                      (void *)knot_node_owner(knot_zone_apex(zone)),
@@ -185,14 +185,14 @@ knot_zone_t *knot_zonedb_remove_zone(knot_zonedb_t *db,
 //		return NULL;
 //	}
 
-//	dbg_knot_zonedb("Removed zone, return value: %d\n", ret);
-//	dbg_knot_zonedb("Old zone: %p\n", z);
+//	dbg_zonedb("Removed zone, return value: %d\n", ret);
+//	dbg_zonedb("Old zone: %p\n", z);
 
 //	ret = skip_insert(db->zones,
 //	                  (void *)knot_node_owner(knot_zone_apex(zone)),
 //	                  (void *)zone, NULL);
 
-//	dbg_knot_zonedb("Inserted zone, return value: %d\n", ret);
+//	dbg_zonedb("Inserted zone, return value: %d\n", ret);
 
 //	if (ret != 0) {
 //		// return the removed zone back
@@ -236,9 +236,9 @@ const knot_zone_t *knot_zonedb_find_zone_for_name(knot_zonedb_t *db,
 
 	knot_zone_t *zone = (found) ? (knot_zone_t *)found : NULL;
 
-dbg_knot_zonedb_exec(
+dbg_zonedb_exec(
 	char *name = knot_dname_to_str(dname);
-	dbg_knot_zonedb("Found zone for name %s: %p\n", name, zone);
+	dbg_zonedb("Found zone for name %s: %p\n", name, zone);
 	free(name);
 );
 	if (zone != NULL && zone->contents != NULL
@@ -322,19 +322,19 @@ static void delete_zone_from_db(void *node, void *data)
 
 void knot_zonedb_deep_free(knot_zonedb_t **db)
 {
-	dbg_knot_zonedb("Deleting zone db (%p).\n", *db);
-//	dbg_knot_zonedb("Is it empty (%p)? %s\n",
+	dbg_zonedb("Deleting zone db (%p).\n", *db);
+//	dbg_zonedb("Is it empty (%p)? %s\n",
 //	       (*db)->zones, skip_is_empty((*db)->zones) ? "yes" : "no");
 
-//dbg_knot_zonedb_exec(
+//dbg_zonedb_exec(
 //	int i = 1;
 //	char *name = NULL;
 //	while (zn != NULL) {
-//		dbg_knot_zonedb("%d. zone: %p, key: %p\n", i, zn->value,
+//		dbg_zonedb("%d. zone: %p, key: %p\n", i, zn->value,
 //		                    zn->key);
 //		assert(zn->key == ((knot_zone_t *)zn->value)->apex->owner);
 //		name = knot_dname_to_str((knot_dname_t *)zn->key);
-//		dbg_knot_zonedb("    zone name: %s\n", name);
+//		dbg_zonedb("    zone name: %s\n", name);
 //		free(name);
 
 //		zn = skip_next(zn);
