@@ -702,6 +702,13 @@ static int xfrin_parse_first_rr(knot_packet_t **packet, const uint8_t *pkt,
 		knot_packet_free(packet);
 		return KNOT_EMALF;
 	}
+	
+	// check if the TC bit is set (it must not be)
+	if (knot_wire_get_tc(pkt)) {
+		debug_knot_xfr("IXFR response has TC bit set.\n");
+		knot_packet_free(packet);
+		return KNOT_EMALF;
+	}
 
 	ret = knot_packet_parse_next_rr_answer(*packet, rr);
 
@@ -732,8 +739,7 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 
 	int ret;
 	
-	if ((ret = xfrin_parse_first_rr(&packet, pkt, size, &rr))
-	     != KNOT_EOK) {
+	if ((ret = xfrin_parse_first_rr(&packet, pkt, size, &rr)) != KNOT_EOK) {
 		return ret;
 	}
 
@@ -776,10 +782,30 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 		
 		// parse the next one
 		ret = knot_packet_parse_next_rr_answer(packet, &rr);
+		
+		/*
+		 * If there is no other records in the response than the SOA, it
+		 * means one of these two cases:
+		 *
+		 * 1) The server does not have newer zone than ours.
+		 *    This is indicated by serial equal to the one of our zone.
+		 * 2) The server wants to send the transfer but is unable to fit
+		 *    it in the packet. This is indicated by serial different 
+		 *    (newer) from the one of our zone. 
+		 *
+		 * The serials must be compared in other parts of the server, so
+		 * just indicate that the answer contains only one SOA.
+		 */
+		if (rr == NULL) {
+			debug_knot_xfr("Response containing only SOA,\n");
+			knot_packet_free(&packet);
+			return XFRIN_RES_SOA_ONLY;
+		}
 	} else {
 		if ((*chs)->first_soa == NULL) {
 			debug_knot_xfr("Changesets don't contain frist SOA!\n");
-			return KNOT_EBADARG;
+			res = KNOT_EBADARG;
+			goto cleanup;
 		}
 		debug_knot_xfr("Changesets present.\n");
 	}
@@ -871,7 +897,8 @@ debug_knot_xfr_exec(
 			           knot_rrset_rdata((*chs)->first_soa))) {
 				// last SOA, discard and end
 				knot_rrset_deep_free(&rr, 1, 1, 1);
-				return 1;
+				knot_packet_free(&packet);
+				return XFRIN_RES_COMPLETE;
 			} else {
 				// normal SOA, start new changeset
 				(*chs)->count++;
@@ -951,6 +978,7 @@ debug_knot_xfr_exec(
 	
 	// here no RRs remain in the packet but the transfer is not finished
 	// yet, return EOK
+	knot_packet_free(&packet);
 	return KNOT_EOK;
 	
 	/*

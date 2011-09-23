@@ -48,6 +48,11 @@ typedef struct xfrin_constructed_zone {
 	xfrin_orphan_rrsig_t *rrsigs;
 } xfrin_constructed_zone_t;
 
+typedef enum xfrin_transfer_result {
+	XFRIN_RES_COMPLETE = 1,
+	XFRIN_RES_SOA_ONLY = 2
+} xfrin_transfer_result_t;
+
 /*----------------------------------------------------------------------------*/
 
 /*!
