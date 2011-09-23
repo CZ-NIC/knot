@@ -215,6 +215,22 @@ int knot_ns_switch_zone(knot_nameserver_t *nameserver,
  * \param nameserver Name server structure to provide the data for answering.
  * \param xfr Persistent transfer-specific data.
  *
+ * \retval KNOT_EOK If this packet was processed successfuly and another packet
+ *                  is expected. (RFC1995bis, case c)
+ * \retval KNOT_ENOXFR If the transfer is not taking place because server's 
+ *                     SERIAL is the same as this client's SERIAL. The client
+ *                     should close the connection and do no further processing.
+ *                     (RFC1995bis case a).
+ * \retval KNOT_EAGAIN If the server could not fit the transfer into the packet.
+ *                     This should happen only if UDP was used. In this case
+ *                     the client should retry the request via TCP. If UDP was
+ *                     not used, it should be considered that the transfer was 
+ *                     malformed and the connection should be closed.
+ *                     (RFC1995bis case b).
+ * \retval >0 Transfer successully finished. Changesets are created and furter
+ *            processing is needed.
+ * \retval Other If any other error occured. The connection should be closed.
+ *
  * \todo Document me.
  */
 int knot_ns_process_ixfrin(knot_nameserver_t *nameserver, 

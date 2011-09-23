@@ -3128,7 +3128,7 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 	
 	/*! \todo Save zone into the XFR structure. */
 
-	if (ret > 0) { // transfer finished
+	if (ret > 0) {
 		debug_knot_ns("ns_process_ixfrin: IXFR finished\n");
 
 		knot_changesets_t *chgsets = (knot_changesets_t *)xfr->data;
@@ -3149,26 +3149,39 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 			return KNOT_ENOZONE;  /*! \todo Other error code? */
 		}
 		
-		xfr->zone = zone;
-
-//		ret = xfrin_store_changesets(zone, chgsets);
-//		if (ret != KNOT_EOK) {
-//			debug_knot_ns("Failed to save changesets to journal.\n");
-//			xfrin_free_changesets(
-//				(knot_changesets_t **)(&xfr->data));
-//			return ret;
-//		}
-
-//		ret = knot_ns_apply_ixfr_changes(zone, chgsets);
-//		if (ret != KNOT_EOK) {
-//			debug_knot_ns("Failed to apply changes to the zone.");
-//			// left the changes to be applied later..?
-//			// they are already stored
-//		}
-
-//		// we may free the changesets, they are stored and maybe applied
-//		xfrin_free_changesets((knot_changesets_t **)(&xfr->data));
+		if (ret == XFRIN_RES_COMPLETE) { // transfer finished
+			xfr->zone = zone;
+		} else if (ret == XFRIN_RES_SOA_ONLY) {
+			// compare the SERIAL from the changeset with the zone's
+			// serial
+			const knot_node_t *apex = knot_zone_contents_apex(
+					knot_zone_contents(zone));
+			if (apex == NULL) {
+				return KNOT_ERROR;
+			}
+			
+			const knot_rrset_t *zone_soa = knot_node_rrset(
+					apex, KNOT_RRTYPE_SOA);
+			if (zone_soa == NULL) {
+				return KNOT_ERROR;
+			}
+			
+			if (knot_rdata_soa_serial(knot_rrset_rdata(
+			        chgsets->sets[0].soa_from))
+			    != knot_rdata_soa_serial(knot_rrset_rdata(
+			        zone_soa))) {
+				debug_knot_ns("Update did not fit.\n");
+				return KNOT_EAGAIN;
+			} else {
+				// free changesets
+				debug_knot_ns("No update needed.\n");
+				knot_free_changesets(
+					(knot_changesets_t **)(&xfr->data));
+				return KNOT_ENOXFR;
+			}
+		}
 	}
+	
 	return ret;
 }
 
