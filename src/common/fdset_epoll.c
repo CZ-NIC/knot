@@ -1,3 +1,5 @@
+#include "config.h"
+
 #ifdef HAVE_EPOLL_WAIT
 
 #include <sys/epoll.h>
@@ -5,7 +7,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "fdset.h"
+#include "fdset_epoll.h"
 
 #define OS_FDS_CHUNKSIZE 8   /*!< Number of pollfd structs in a chunk. */
 #define OS_FDS_KEEPCHUNKS 32 /*!< Will attempt to free memory when reached. */
@@ -182,7 +184,7 @@ const char* fdset_epoll_method()
 }
 
 /* Package APIs. */
-struct fdset_backend_t _fdset_epoll = {
+struct fdset_backend_t FDSET_EPOLL = {
 	.fdset_new = fdset_epoll_new,
 	.fdset_destroy = fdset_epoll_destroy,
 	.fdset_add = fdset_epoll_add,

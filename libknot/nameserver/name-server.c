@@ -300,7 +300,7 @@ static void ns_follow_cname(const knot_node_t **node,
 
 		add_rrset_to_resp(resp, rrset, tc, 0, 0);
 		ns_add_rrsigs(rrset, resp, *qname, add_rrset_to_resp, tc);
-DEBUG_KNOT_NS(
+debug_knot_ns_exec(
 		char *name = knot_dname_to_str(knot_rrset_owner(rrset));
 		debug_knot_ns("CNAME record for owner %s put to response.\n",
 			 name);
@@ -341,7 +341,7 @@ static int ns_put_answer(const knot_node_t *node, const knot_dname_t *name,
                           uint16_t type, knot_packet_t *resp)
 {
 	int added = 0;
-DEBUG_KNOT_NS(
+debug_knot_ns_exec(
 	char *name_str = knot_dname_to_str(node->owner);
 	debug_knot_ns("Putting answers from node %s.\n", name_str);
 	free(name_str);
@@ -491,7 +491,7 @@ static void ns_put_additional_for_rrset(knot_packet_t *resp,
 		const knot_rrset_t *rrset_add;
 
 		if (node != NULL) {
-DEBUG_KNOT_NS(
+debug_knot_ns_exec(
 			char *name = knot_dname_to_str(node->owner);
 			debug_knot_ns("Putting additional from node %s\n", name);
 			free(name);
@@ -728,7 +728,7 @@ static int ns_put_covering_nsec3(const knot_zone_contents_t *zone,
 //		assert(prev != NULL);
 //	}
 
-DEBUG_KNOT_NS(
+debug_knot_ns_exec(
 	char *name = knot_dname_to_str(prev->owner);
 	debug_knot_ns("Covering NSEC3 node: %s\n", name);
 	free(name);
@@ -772,7 +772,7 @@ static int ns_put_nsec3_closest_encloser_proof(
 	assert(resp != NULL);
 
 	if (knot_zone_contents_nsec3params(zone) == NULL) {
-DEBUG_KNOT_NS(
+debug_knot_ns_exec(
 		char *name = knot_dname_to_str(knot_node_owner(
 				knot_zone_contents_apex(zone)));
 		debug_knot_ns("No NSEC3PARAM found in zone %s.\n", name);
@@ -781,7 +781,7 @@ DEBUG_KNOT_NS(
 		return KNOT_EOK;
 	}
 
-DEBUG_KNOT_NS(
+debug_knot_ns_exec(
 	char *name = knot_dname_to_str(knot_node_owner(*closest_encloser));
 	debug_knot_ns("Closest encloser: %s\n", name);
 	free(name);
@@ -801,7 +801,7 @@ DEBUG_KNOT_NS(
 
 	assert(nsec3_node != NULL);
 
-DEBUG_KNOT_NS(
+debug_knot_ns_exec(
 	char *name = knot_dname_to_str(nsec3_node->owner);
 	debug_knot_ns("NSEC3 node: %s\n", name);
 	free(name);
@@ -831,7 +831,7 @@ DEBUG_KNOT_NS(
 		if (next_closer == NULL) {
 			return NS_ERR_SERVFAIL;
 		}
-DEBUG_KNOT_NS(
+debug_knot_ns_exec(
 		char *name = knot_dname_to_str(next_closer);
 		debug_knot_ns("Next closer name: %s\n", name);
 		free(name);
@@ -870,7 +870,7 @@ static knot_dname_t *ns_wildcard_child_name(const knot_dname_t *name)
 		return NULL;
 	}
 
-DEBUG_KNOT_NS(
+debug_knot_ns_exec(
 	char *name = knot_dname_to_str(wildcard);
 	debug_knot_ns("Wildcard: %s\n", name);
 	free(name);
@@ -1162,7 +1162,7 @@ static int ns_put_nsec3_wildcard(const knot_zone_contents_t *zone,
 	if (next_closer == NULL) {
 		return NS_ERR_SERVFAIL;
 	}
-DEBUG_KNOT_NS(
+debug_knot_ns_exec(
 	char *name = knot_dname_to_str(next_closer);
 	debug_knot_ns("Next closer name: %s\n", name);
 	free(name);
@@ -1509,7 +1509,7 @@ static knot_rrset_t *ns_cname_from_dname(const knot_rrset_t *dname_rrset,
 	knot_dname_t *cname = knot_dname_replace_suffix(qname,
 	      knot_dname_size(knot_rrset_owner(dname_rrset)),
 	      knot_rdata_get_item(knot_rrset_rdata(dname_rrset), 0)->dname);
-DEBUG_KNOT_NS(
+debug_knot_ns_exec(
 	char *name = knot_dname_to_str(cname);
 	debug_knot_ns("CNAME canonical name: %s.\n", name);
 	free(name);
@@ -1567,7 +1567,7 @@ static void ns_process_dname(const knot_rrset_t *dname_rrset,
                              const knot_dname_t *qname,
                              knot_packet_t *resp)
 {
-DEBUG_KNOT_NS(
+debug_knot_ns_exec(
 	char *name = knot_dname_to_str(knot_rrset_owner(dname_rrset));
 	debug_knot_ns("Processing DNAME for owner %s...\n", name);
 	free(name);
@@ -1658,7 +1658,7 @@ search:
 		return NS_ERR_SERVFAIL;
 	}
 
-DEBUG_KNOT_NS(
+debug_knot_ns_exec(
 	char *name;
 	if (node) {
 		name = knot_dname_to_str(node->owner);
@@ -1750,7 +1750,7 @@ have_node:
 	}
 
 	if (knot_node_rrset(node, KNOT_RRTYPE_CNAME) != NULL) {
-DEBUG_KNOT_NS(
+debug_knot_ns_exec(
 		char *name = knot_dname_to_str(node->owner);
 		debug_knot_ns("Node %s has CNAME record, resolving...\n",
 		         name);
@@ -1759,7 +1759,7 @@ DEBUG_KNOT_NS(
 		const knot_dname_t *act_name = qname;
 		ns_follow_cname(&node, &act_name, resp,
 		                knot_response_add_rrset_answer, 1);
-DEBUG_KNOT_NS(
+debug_knot_ns_exec(
 		char *name = knot_dname_to_str(node->owner);
 		char *name2 = knot_dname_to_str(act_name);
 		debug_knot_ns("Canonical name: %s (%p), node found: %p\n",
@@ -1835,7 +1835,7 @@ static int ns_answer(knot_zonedb_t *db, knot_packet_t *resp)
 	assert(qname != NULL);
 
 	uint16_t qtype = knot_packet_qtype(resp);
-DEBUG_KNOT_NS(
+debug_knot_ns_exec(
 	char *name_str = knot_dname_to_str(qname);
 	debug_knot_ns("Trying to find zone for QNAME %s\n", name_str);
 	free(name_str);
@@ -1853,7 +1853,7 @@ DEBUG_KNOT_NS(
 		return KNOT_EOK;
 	}
 
-DEBUG_KNOT_NS(
+debug_knot_ns_exec(
 	char *name_str2 = knot_dname_to_str(zone->contents->apex->owner);
 	debug_knot_ns("Found zone for QNAME %s\n", name_str2);
 	free(name_str2);
@@ -2023,7 +2023,7 @@ static void ns_axfr_from_node(knot_node_t *node, void *data)
 	}
 
 	debug_knot_ns("Params OK, answering AXFR from node %p.\n", node);
-DEBUG_KNOT_NS(
+debug_knot_ns_exec(
 	char *name = knot_dname_to_str(knot_node_owner(node));
 	debug_knot_ns("Node ownerr: %s\n", name);
 	free(name);
@@ -2839,7 +2839,7 @@ int knot_ns_init_xfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	assert(knot_packet_qtype(xfr->response) == KNOT_RRTYPE_AXFR ||
 	       knot_packet_qtype(xfr->response) == KNOT_RRTYPE_IXFR);
 
-DEBUG_KNOT_NS(
+debug_knot_ns_exec(
 	char *name_str = knot_dname_to_str(qname);
 	debug_knot_ns("Trying to find zone with name %s\n", name_str);
 	free(name_str);
@@ -2855,7 +2855,7 @@ DEBUG_KNOT_NS(
 		return KNOT_ENOZONE;
 	}
 
-DEBUG_KNOT_NS(
+debug_knot_ns_exec(
 	char *name_str2 = knot_dname_to_str(zone->contents->apex->owner);
 	debug_knot_ns("Found zone for QNAME %s\n", name_str2);
 	free(name_str2);
@@ -3062,7 +3062,6 @@ int knot_ns_switch_zone(knot_nameserver_t *nameserver,
 		                   "not found\n", name);
 		free(name);
 	} else {
-		xfr->zone = z;
 		zone->zone = z;
 	}
 
@@ -3085,7 +3084,7 @@ int knot_ns_switch_zone(knot_nameserver_t *nameserver,
 	debug_knot_ns("Freeing old zone: %p\n", old);
 	knot_zone_contents_deep_free(&old);
 
-DEBUG_KNOT_NS(
+debug_knot_ns_exec(
 	debug_knot_ns("Zone db contents: (zone count: %zu)\n", 
 	              nameserver->zone_db->zone_count);
 

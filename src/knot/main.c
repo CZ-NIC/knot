@@ -176,8 +176,10 @@ int main(int argc, char **argv)
 	if ((res = server_start(server)) == KNOTD_EOK) {
 
 		// Save PID
+		int has_pid = 1;
 		int rc = pid_write(pidfile);
 		if (rc < 0) {
+			has_pid = 0;
 			log_server_warning("Failed to create "
 					   "PID file '%s'.\n", pidfile);
 		}
@@ -191,12 +193,15 @@ int main(int argc, char **argv)
 			log_server_info("Server started in foreground, "
 					"PID = %ld\n", (long)getpid());
 		}
-		log_server_info("PID stored in %s\n", pidfile);
+		if (has_pid) {
+			log_server_info("PID stored in %s\n", pidfile);
+		} else {
+			log_server_warning("Server running without PID file.\n");
+		}
 		size_t zcount = server->nameserver->zone_db->zone_count;
 		if (!zcount) {
 			log_server_warning("Server started, but no zones served.\n");
 		}
-
 
 		// Setup signal handler
 		struct sigaction sa;

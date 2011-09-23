@@ -51,7 +51,7 @@ static int knot_zonedb_compare_zone_names(void *p1, void *p2)
 
 	int ret = knot_dname_compare(zone1->name, zone2->name);
 
-DEBUG_KNOT_ZONEDB(
+debug_knot_zonedb_exec(
 	char *name1 = knot_dname_to_str(zone1->name);
 	char *name2 = knot_dname_to_str(zone2->name);
 	debug_knot_zonedb("Compared names %s and %s, result: %d.\n",
@@ -108,7 +108,7 @@ int knot_zonedb_add_zone(knot_zonedb_t *db, knot_zone_t *zone)
 	if (db == NULL || zone == NULL) {
 		return KNOT_EBADARG;
 	}
-DEBUG_KNOT_ZONEDB(
+debug_knot_zonedb_exec(
 	char *name = knot_dname_to_str(zone->name);
 	debug_knot_zonedb("Inserting zone %s into zone db.\n", name);
 	free(name);
@@ -236,7 +236,7 @@ const knot_zone_t *knot_zonedb_find_zone_for_name(knot_zonedb_t *db,
 
 	knot_zone_t *zone = (found) ? (knot_zone_t *)found : NULL;
 
-DEBUG_KNOT_ZONEDB(
+debug_knot_zonedb_exec(
 	char *name = knot_dname_to_str(dname);
 	debug_knot_zonedb("Found zone for name %s: %p\n", name, zone);
 	free(name);
@@ -326,7 +326,7 @@ void knot_zonedb_deep_free(knot_zonedb_t **db)
 //	debug_knot_zonedb("Is it empty (%p)? %s\n",
 //	       (*db)->zones, skip_is_empty((*db)->zones) ? "yes" : "no");
 
-//DEBUG_KNOT_ZONEDB(
+//debug_knot_zonedb_exec(
 //	int i = 1;
 //	char *name = NULL;
 //	while (zn != NULL) {
