@@ -464,7 +464,7 @@ int knot_ddns_process_prereqs(knot_packet_t *query,
 		                           knot_packet_answer_rrset(query, i),
 		                           knot_packet_qclass(query));
 		if (ret != KNOT_EOK) {
-			dbg_knot_ddns("Failed to add prerequisity RRSet:%s\n",
+			dbg_ddns("Failed to add prerequisity RRSet:%s\n",
 			                knot_strerror(ret));
 			*rcode = (ret == KNOT_EMALF) ? KNOT_RCODE_FORMERR
 			                             : KNOT_RCODE_SERVFAIL;
@@ -595,7 +595,7 @@ int knot_ddns_process_update(knot_packet_t *query,
 		                          knot_packet_qclass(query));
 
 		if (ret != KNOT_EOK) {
-			dbg_knot_ddns("Failed to add update RRSet:%s\n",
+			dbg_ddns("Failed to add update RRSet:%s\n",
 			                knot_strerror(ret));
 			*rcode = (ret == KNOT_EMALF) ? KNOT_RCODE_FORMERR
 			                             : KNOT_RCODE_SERVFAIL;

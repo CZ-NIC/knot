@@ -1243,7 +1243,7 @@ int ck_rehash(ck_hash_table_t *table)
 		// (added to the beginning) will be properly ignored
 		while (item != NULL) {
 			dbg_ck_rehash("Rehashing item with "
-			  "key (length %u): %.*s, generation: %hu, "
+			  "key (length %zu): %.*s, generation: %hu, "
 			  "table generation: %hu.\n", item->item->key_length,
 			  (int)item->item->key_length, item->item->key,
 			  GET_GENERATION(
@@ -1311,7 +1311,7 @@ int ck_rehash(ck_hash_table_t *table)
 				}
 
 				dbg_ck_rehash("Rehashing item with hash %u, "
-				  "key (length %u): %.*s, generation: %hu, "
+				  "key (length %zu): %.*s, generation: %hu, "
 				  "table generation: %hu.\n", rehashed,
 				  table->tables[t][rehashed]->key_length,
 				  (int)(table->tables[t][rehashed]->key_length),

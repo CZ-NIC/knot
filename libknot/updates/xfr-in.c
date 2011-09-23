@@ -1273,9 +1273,9 @@ static void xfrin_zone_contents_free(knot_zone_contents_t **contents)
 
 	// free the zone tree, but only the structure
 	// (nodes are already destroyed)
-	dbg_knot_zone("Destroying zone tree.\n");
+	dbg_zone("Destroying zone tree.\n");
 	knot_zone_tree_free(&(*contents)->nodes);
-	dbg_knot_zone("Destroying NSEC3 zone tree.\n");
+	dbg_zone("Destroying NSEC3 zone tree.\n");
 	knot_zone_tree_free(&(*contents)->nsec3_nodes);
 
 	knot_nsec3_params_free(&(*contents)->nsec3_params);
@@ -2548,7 +2548,7 @@ int xfrin_apply_changesets_to_zone(knot_zone_t *zone,
 	if (!knot_zone_contents_gen_is_old(old_contents)) {
 		// this would mean that a previous update was not completed
 		// abort
-		dbg_knot_zone("Trying to apply changesets to zone that is "
+		dbg_zone("Trying to apply changesets to zone that is "
 		                  "being updated. Aborting.\n");
 		return KNOT_EAGAIN;
 	}

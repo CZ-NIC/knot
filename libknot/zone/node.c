@@ -225,7 +225,7 @@ int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset,
 //	       knot_rrtype_to_string(rrset->type));
 	if ((ret = (gen_tree_add(node->rrset_tree, rrset,
 	                         (merge) ? knot_rrset_merge : NULL))) != 0) {
-		dbg_knot_xfr("Failed to add rrset to node->rrset_tree.\n");
+		dbg_node("Failed to add rrset to node->rrset_tree.\n");
 		return KNOT_ERROR;
 	}
 
@@ -305,7 +305,7 @@ static void save_rrset_to_array(void *node, void *data)
 {
 	knot_rrset_t *rrset = (knot_rrset_t *)node;
 //	printf("%p\n", rrset);
-//	dbg_knot_node("Returning rrset from tree: %s\n",
+//	dbg_node("Returning rrset from tree: %s\n",
 //	                  knot_dname_to_str(rrset->owner));
 	struct knot_node_save_rrset_arg *args =
 		(struct knot_node_save_rrset_arg *)data;
@@ -837,15 +837,15 @@ void knot_node_free(knot_node_t **node, int free_owner, int fix_refs)
 		return;
 	}
 	
-	dbg_knot_node("Freeing node.\n");
+	dbg_node("Freeing node.\n");
 	if ((*node)->rrset_tree != NULL) {
-		dbg_knot_node("Freeing RRSets.\n");
+		dbg_node("Freeing RRSets.\n");
 		gen_tree_destroy(&(*node)->rrset_tree, NULL, NULL);
 	}
 
 	/*! \todo Always release owner? */
 	//if (free_owner) {
-		dbg_knot_node("Releasing owner.\n");
+		dbg_node("Releasing owner.\n");
 		knot_dname_release((*node)->owner);
 	//}
 
@@ -853,31 +853,31 @@ void knot_node_free(knot_node_t **node, int free_owner, int fix_refs)
 
 	if (fix_refs) {
 		// previous node
-		dbg_knot_node("Checking previous.\n");
+		dbg_node("Checking previous.\n");
 		if ((*node)->prev && (*node)->prev->next == (*node)) {
 			(*node)->prev->next = (*node)->next;
 		}
 
-		dbg_knot_node("Checking next.\n");
+		dbg_node("Checking next.\n");
 		if ((*node)->next && (*node)->next->prev == (*node)) {
 			(*node)->next->prev = (*node)->prev;
 		}
 
 		// NSEC3 node
-		dbg_knot_node("Checking NSEC3.\n");
+		dbg_node("Checking NSEC3.\n");
 		if ((*node)->nsec3_node
 		    && (*node)->nsec3_node->nsec3_referer == (*node)) {
 			(*node)->nsec3_node->nsec3_referer = NULL;
 		}
 
-		dbg_knot_node("Checking NSEC3 ref.\n");
+		dbg_node("Checking NSEC3 ref.\n");
 		if ((*node)->nsec3_referer
 		    && (*node)->nsec3_referer->nsec3_node == (*node)) {
 			(*node)->nsec3_referer->nsec3_node = NULL;
 		}
 
 		// wildcard child node
-		dbg_knot_node("Checking parent's wildcard child.\n");
+		dbg_node("Checking parent's wildcard child.\n");
 		if ((*node)->parent
 		    && (*node)->parent->wildcard_child == (*node)) {
 			(*node)->parent->wildcard_child = NULL;
@@ -892,7 +892,7 @@ void knot_node_free(knot_node_t **node, int free_owner, int fix_refs)
 	free(*node);
 	*node = NULL;
 
-	dbg_knot_node("Done.\n");
+	dbg_node("Done.\n");
 }
 
 /*----------------------------------------------------------------------------*/
