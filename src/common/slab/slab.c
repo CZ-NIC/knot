@@ -324,7 +324,7 @@ slab_t* slab_create(slab_cache_t* cache)
 	slab_t* slab = slab_depot_alloc(cache->bufsize);
 
 	if (unlikely(slab < 0)) {
-		debug_mem("%s: failed to allocate aligned memory block\n",
+		dbg_mem("%s: failed to allocate aligned memory block\n",
 		          __func__);
 		return 0;
 	}
@@ -386,7 +386,7 @@ slab_t* slab_create(slab_cache_t* cache)
 	*((void**)item) = (void*)0;
 
 	// Ensure the last item has a NULL next
-	debug_mem("%s: created slab (%p, %p) (%zu B)\n",
+	dbg_mem("%s: created slab (%p, %p) (%zu B)\n",
 	          __func__, slab, slab + size, size);
 	return slab;
 }
@@ -400,7 +400,7 @@ void slab_destroy(slab_t** slab)
 	slab_depot_free(*slab);
 
 	/* Invalidate pointer. */
-	debug_mem("%s: deleted slab %p\n", __func__, *slab);
+	dbg_mem("%s: deleted slab %p\n", __func__, *slab);
 	*slab = 0;
 }
 
@@ -490,7 +490,7 @@ void slab_free(void* ptr)
 #endif
 
 		// Unmap
-		debug_mem("%s: unmapping large block of %zu bytes at %p\n",
+		dbg_mem("%s: unmapping large block of %zu bytes at %p\n",
 		          __func__, bs->size, ptr);
 		free(bs);
 	}
@@ -510,7 +510,7 @@ int slab_cache_init(slab_cache_t* cache, size_t bufsize)
 	/* Initialize stats */
 	cache->stat_allocs = cache->stat_frees = 0;
 
-	debug_mem("%s: created cache of size %zu\n",
+	dbg_mem("%s: created cache of size %zu\n",
 	          __func__, bufsize);
 
 	return 0;
@@ -525,7 +525,7 @@ void slab_cache_destroy(slab_cache_t* cache) {
 	UNUSED(free_s);
 	UNUSED(full_s);
 #else
-	debug_mem("%s: %u empty/partial, %u full caches\n",
+	dbg_mem("%s: %u empty/partial, %u full caches\n",
 	          __func__, free_s, full_s);
 #endif
 
@@ -607,7 +607,7 @@ void* slab_alloc_alloc(slab_alloc_t* alloc, size_t size)
 		slab_obj_t* p = 0;
 		p = malloc(size);
 
-		debug_mem("%s: mapping large block of %zu bytes at %p\n",
+		dbg_mem("%s: mapping large block of %zu bytes at %p\n",
 		          __func__, size, p + 1);
 
 		/* Initialize. */
@@ -645,7 +645,7 @@ void* slab_alloc_alloc(slab_alloc_t* alloc, size_t size)
 		}
 
 		// Create cache
-		debug_mem("%s: creating cache of %zuB (req. %zuB) (id=%u)\n",
+		dbg_mem("%s: creating cache of %zuB (req. %zuB) (id=%u)\n",
 		          __func__, bufsize, size, cache_id);
 
 		slab_cache_t* cache = slab_cache_alloc(&alloc->descriptors);

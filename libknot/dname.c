@@ -163,7 +163,7 @@ static int knot_dname_str_to_wire(const char *name, uint size,
 		return -1;
 	}
 
-	debug_knot_dname("Allocated space for wire format of dname: %p\n",
+	dbg_knot_dname("Allocated space for wire format of dname: %p\n",
 	                   wire);
 
 	if (root) {
@@ -182,7 +182,7 @@ static int knot_dname_str_to_wire(const char *name, uint size,
 		assert(w - wire - 1 == ch - (const uint8_t *)name);
 
 		if (*ch == '.') {
-			debug_knot_dname("Position %zd (%p): "
+			dbg_knot_dname("Position %zd (%p): "
 			                   "label length: %u\n",
 			                   label_start - wire,
 			                   label_start, label_length);
@@ -192,7 +192,7 @@ static int knot_dname_str_to_wire(const char *name, uint size,
 			label_length = 0;
 		} else {
 			assert(w - wire < wire_size);
-			debug_knot_dname("Position %zd (%p): character: %c\n",
+			dbg_knot_dname("Position %zd (%p): character: %c\n",
 			                   w - wire, w, *ch);
 			*w = *ch;
 			++label_length;
@@ -206,11 +206,11 @@ static int knot_dname_str_to_wire(const char *name, uint size,
 	--ch;
 	if (*ch == '.') { // put 0 for root label if the name ended with .
 		--w;
-		debug_knot_dname("Position %zd (%p): character: (null)\n",
+		dbg_knot_dname("Position %zd (%p): character: (null)\n",
 				   w - wire, w);
 		*w = 0;
 	} else { // otherwise we did not save the last label length
-		debug_knot_dname("Position %zd (%p): "
+		dbg_knot_dname("Position %zd (%p): "
 		                   "label length: %u\n",
 		                   label_start - wire,
 		                   label_start, label_length);
@@ -271,8 +271,8 @@ static int knot_dname_find_labels(knot_dname_t *dname, int alloc)
 
 	// TODO: how to check if the domain name has right format?
 //	if (pos - name < size && *pos != '0') {
-//		debug_knot_dname("Wrong wire format of domain name!\n");
-//		debug_knot_dname("Position: %d, character: %d, expected"
+//		dbg_knot_dname("Wrong wire format of domain name!\n");
+//		dbg_knot_dname("Position: %d, character: %d, expected"
 //				   " size: %d\n", pos - name, *pos, size);
 //		return -1;
 //	}
@@ -294,11 +294,11 @@ static int knot_dname_find_labels(knot_dname_t *dname, int alloc)
 static int knot_dname_cmp(const knot_dname_t *d1, const knot_dname_t *d2,
                             int cs)
 {
-debug_knot_dname_exec(
+dbg_knot_dname_exec(
 	char *name1 = knot_dname_to_str(d1);
 	char *name2 = knot_dname_to_str(d2);
 
-	debug_knot_dname("Comparing dnames %s and %s\n",
+	dbg_knot_dname("Comparing dnames %s and %s\n",
 	                   name1, name2);
 
 	for (int i = 0; i < strlen(name1); ++i) {
@@ -308,7 +308,7 @@ debug_knot_dname_exec(
 		name2[i] = knot_tolower(name2[i]);
 	}
 
-	debug_knot_dname("After to lower: %s and %s\n",
+	dbg_knot_dname("After to lower: %s and %s\n",
 	                   name1, name2);
 
 	free(name1);
@@ -321,15 +321,15 @@ debug_knot_dname_exec(
 
 	int l1 = d1->label_count;
 	int l2 = d2->label_count;
-	debug_knot_dname("Label counts: %d and %d\n", l1, l2);
+	dbg_knot_dname("Label counts: %d and %d\n", l1, l2);
 	assert(l1 >= 0);
 	assert(l2 >= 0);
 
 	// compare labels from last to first
 	while (l1 > 0 && l2 > 0) {
-		debug_knot_dname("Comparing labels %d and %d\n",
+		dbg_knot_dname("Comparing labels %d and %d\n",
 				   l1 - 1, l2 - 1);
-		debug_knot_dname(" at offsets: %d and %d\n",
+		dbg_knot_dname(" at offsets: %d and %d\n",
 				   d1->labels[l1 - 1], d2->labels[l2 - 1]);
 		int res = knot_dname_compare_labels(
 		                   &d1->name[d1->labels[--l1]],
@@ -400,12 +400,12 @@ knot_dname_t *knot_dname_new_from_str(const char *name, uint size,
 	}
 
 	knot_dname_str_to_wire(name, size, dname);
-	debug_knot_dname("Created dname with size: %d\n", dname->size);
-	debug_knot_dname("Label offsets: ");
+	dbg_knot_dname("Created dname with size: %d\n", dname->size);
+	dbg_knot_dname("Label offsets: ");
 	for (int i = 0; i < dname->label_count; ++i) {
-		debug_knot_dname("%d, ", dname->labels[i]);
+		dbg_knot_dname("%d, ", dname->labels[i]);
 	}
-	debug_knot_dname("\n");
+	dbg_knot_dname("\n");
 
 	if (dname->size <= 0) {
 		fprintf(stderr, "Could not parse domain name "
@@ -445,7 +445,7 @@ knot_dname_t *knot_dname_new_from_wire(const uint8_t *name, uint size,
                                            struct knot_node *node)
 {
 	if (name == NULL) { /* && size != 0) { !OS: Nerozumjaju */
-		debug_knot_dname("No name given!\n");
+		dbg_knot_dname("No name given!\n");
 		return NULL;
 	}
 
@@ -492,7 +492,7 @@ knot_dname_t *knot_dname_parse_from_wire(const uint8_t *wire,
 
 	while (p < size && wire[p] != 0) {
 		labels[l] = i;
-		debug_knot_dname("Next label (%d.) position: %zu\n", l, i);
+		dbg_knot_dname("Next label (%d.) position: %zu\n", l, i);
 
 		if (knot_wire_is_pointer(wire + p)) {
 			// pointer.
@@ -800,11 +800,11 @@ void knot_dname_left_chop_no_copy(knot_dname_t *dname)
 int knot_dname_is_subdomain(const knot_dname_t *sub,
                               const knot_dname_t *domain)
 {
-debug_knot_dname_exec(
+dbg_knot_dname_exec(
 	char *name1 = knot_dname_to_str(sub);
 	char *name2 = knot_dname_to_str(domain);
 
-	debug_knot_dname("Checking if %s is subdomain of %s\n",
+	dbg_knot_dname("Checking if %s is subdomain of %s\n",
 	                   name1, name2);
 	free(name1);
 	free(name2);
@@ -825,7 +825,7 @@ debug_knot_dname_exec(
 	int l1 = sub->label_count;
 	int l2 = domain->label_count;
 
-	debug_knot_dname("Label counts: %d and %d\n", l1, l2);
+	dbg_knot_dname("Label counts: %d and %d\n", l1, l2);
 
 	if (l1 <= l2) {  // if sub does not have more labes than domain
 		return 0;  // it is not its subdomain
@@ -833,9 +833,9 @@ debug_knot_dname_exec(
 
 	// compare labels from last to first
 	while (l1 > 0 && l2 > 0) {
-		debug_knot_dname("Comparing labels %d and %d\n",
+		dbg_knot_dname("Comparing labels %d and %d\n",
 				   l1 - 1, l2 - 1);
-		debug_knot_dname(" at offsets: %d and %d\n",
+		dbg_knot_dname(" at offsets: %d and %d\n",
 				   sub->labels[l1 - 1], domain->labels[l2 - 1]);
 		// if some labels do not match
 		if (knot_dname_compare_labels(&sub->name[sub->labels[--l1]],
@@ -917,13 +917,13 @@ knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *dname,
                                             int size,
                                             const knot_dname_t *suffix)
 {
-debug_knot_dname_exec(
+dbg_knot_dname_exec(
 	char *name = knot_dname_to_str(dname);
-	debug_knot_dname("Replacing suffix of name %s, size %d with ", name,
+	dbg_knot_dname("Replacing suffix of name %s, size %d with ", name,
 	                   size);
 	free(name);
 	name = knot_dname_to_str(suffix);
-	debug_knot_dname("%s (size %d)\n", name, suffix->size);
+	dbg_knot_dname("%s (size %d)\n", name, suffix->size);
 	free(name);
 );
 	knot_dname_t *res = knot_dname_new();
@@ -931,24 +931,24 @@ debug_knot_dname_exec(
 
 	res->size = dname->size - size + suffix->size;
 
-	debug_knot_dname("Allocating %d bytes...\n", res->size);
+	dbg_knot_dname("Allocating %d bytes...\n", res->size);
 	res->name = (uint8_t *)malloc(res->size);
 	if (res->name == NULL) {
 		knot_dname_free(&res);
 		return NULL;
 	}
 
-	debug_knot_dname_hex((char *)res->name, res->size);
+	dbg_knot_dname_hex((char *)res->name, res->size);
 
-	debug_knot_dname("Copying %d bytes from the original name.\n",
+	dbg_knot_dname("Copying %d bytes from the original name.\n",
 	                   dname->size - size);
 	memcpy(res->name, dname->name, dname->size - size);
-	debug_knot_dname_hex((char *)res->name, res->size);
+	dbg_knot_dname_hex((char *)res->name, res->size);
 
-	debug_knot_dname("Copying %d bytes from the suffix.\n", suffix->size);
+	dbg_knot_dname("Copying %d bytes from the suffix.\n", suffix->size);
 	memcpy(res->name + dname->size - size, suffix->name, suffix->size);
 
-	debug_knot_dname_hex((char *)res->name, res->size);
+	dbg_knot_dname_hex((char *)res->name, res->size);
 
 	knot_dname_find_labels(res, 1);
 
@@ -1014,12 +1014,12 @@ knot_dname_t *knot_dname_cat(knot_dname_t *d1, const knot_dname_t *d2)
 		return NULL;
 	}
 
-	debug_knot_dname("1: copying %d bytes from adress %p to %p\n",
+	dbg_knot_dname("1: copying %d bytes from adress %p to %p\n",
 	                   d1->size, d1->name, new_dname);
 
 	memcpy(new_dname, d1->name, d1->size);
 
-	debug_knot_dname("2: copying %d bytes from adress %p to %p\n",
+	dbg_knot_dname("2: copying %d bytes from adress %p to %p\n",
 	                   d2->size, d2->name, new_dname + d1->size);
 
 	memcpy(new_dname + d1->size, d2->name, d2->size);

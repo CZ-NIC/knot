@@ -46,7 +46,7 @@ knot_zone_t *knot_zone_new_empty(knot_dname_t *name)
 		return 0;
 	}
 
-	debug_knot_zone("Creating new zone!\n");
+	dbg_knot_zone("Creating new zone!\n");
 
 	knot_zone_t *zone = malloc(sizeof(knot_zone_t));
 	if (zone == NULL) {
@@ -56,7 +56,7 @@ knot_zone_t *knot_zone_new_empty(knot_dname_t *name)
 	memset(zone, 0, sizeof(knot_zone_t));
 
 	// save the zone name
-	debug_knot_zone("Setting zone name.\n");
+	dbg_knot_zone("Setting zone name.\n");
 	zone->name = name;
 	return zone;
 }
@@ -72,7 +72,7 @@ knot_zone_t *knot_zone_new(knot_node_t *apex, uint node_count,
 		return NULL;
 	}
 
-	debug_knot_zone("Creating zone contents.\n");
+	dbg_knot_zone("Creating zone contents.\n");
 	zone->contents = knot_zone_contents_new(apex, node_count,
 	                                          use_domain_table, zone);
 	if (zone->contents == NULL) {
@@ -189,12 +189,12 @@ void knot_zone_free(knot_zone_t **zone)
 		return;
 	}
 
-	debug_knot_zone("zone_free().\n");
+	dbg_knot_zone("zone_free().\n");
 
 	if ((*zone)->contents 
 	    && !knot_zone_contents_gen_is_old((*zone)->contents)) {
 		// zone is in the middle of an update, report
-		debug_knot_zone("Destroying zone that is in the middle of an "
+		dbg_knot_zone("Destroying zone that is in the middle of an "
 		                  "update.\n");
 	}
 
@@ -209,7 +209,7 @@ void knot_zone_free(knot_zone_t **zone)
 	free(*zone);
 	*zone = NULL;
 
-	debug_knot_zone("Done.\n");
+	dbg_knot_zone("Done.\n");
 }
 
 /*----------------------------------------------------------------------------*/
@@ -223,13 +223,13 @@ void knot_zone_deep_free(knot_zone_t **zone, int free_rdata_dnames)
 	if ((*zone)->contents
 	    && !knot_zone_contents_gen_is_old((*zone)->contents)) {
 		// zone is in the middle of an update, report
-		debug_knot_zone("Destroying zone that is in the middle of an "
+		dbg_knot_zone("Destroying zone that is in the middle of an "
 		                  "update.\n");
 	}
 
-debug_knot_zone_exec(
+dbg_knot_zone_exec(
 	char *name = knot_dname_to_str((*zone)->name);
-	debug_knot_zone("Destroying zone %p, name: %s.\n", *zone, name);
+	dbg_knot_zone("Destroying zone %p, name: %s.\n", *zone, name);
 	free(name);
 );
 

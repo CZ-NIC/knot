@@ -145,7 +145,7 @@ static void stat_sleep_compute()
 		for (int i = 0; i < FREQ_BUFFER_SIZE; i++) {
 			if (local_gath->freq_array[i] >
 			    ACTIVE_FLOW_THRESHOLD) {
-				debug_st("too much activity at index %d:"
+				dbg_st("too much activity at index %d:"
 					 " %d queries adress: %s port %d"
 					 " protocol %d\n",
 					 i, local_gath->freq_array[i],
@@ -185,13 +185,13 @@ static void stat_sleep_compute()
 
 		stat_reset_gatherer_array(local_gath);
 
-		debug_st("qps_udp: %f\n", local_gath->udp_qps);
-/*		debug_st("mean_lat_udp: %f\n", local_gath->udp_mean_latency); */
+		dbg_st("qps_udp: %f\n", local_gath->udp_qps);
+/*		dbg_st("mean_lat_udp: %f\n", local_gath->udp_mean_latency); */
 
-		debug_st("qps_tcp: %f\n", local_gath->tcp_qps);
-/*		debug_st("mean_lat_tcp: %f\n", local_gath->tcp_mean_latency); */
+		dbg_st("qps_tcp: %f\n", local_gath->tcp_qps);
+/*		dbg_st("mean_lat_tcp: %f\n", local_gath->tcp_mean_latency); */
 
-		debug_st("UDP/TCP ratio %f\n",
+		dbg_st("UDP/TCP ratio %f\n",
 			 local_gath->udp_qps / local_gath->tcp_qps);
 	}
 }
