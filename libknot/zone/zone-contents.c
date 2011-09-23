@@ -79,7 +79,7 @@ static int knot_zone_contents_check_node(
 
 	if (!knot_dname_is_subdomain(node->owner,
 	                               knot_node_owner(contents->apex))) {
-DEBUG_KNOT_ZONE(
+debug_knot_zone_exec(
 		char *node_owner = knot_dname_to_str(knot_node_owner(node));
 		char *apex_owner = knot_dname_to_str(contents->apex->owner);
 		debug_knot_zone("zone: Trying to insert foreign node to a "
@@ -346,7 +346,7 @@ static void knot_zone_contents_adjust_node(knot_node_t *node,
 					     int check_ver)
 {
 
-DEBUG_KNOT_ZONE(
+debug_knot_zone_exec(
 	char *name = knot_dname_to_str(node->owner);
 	debug_knot_zone("----- Adjusting node %s -----\n", name);
 	free(name);
@@ -355,7 +355,7 @@ DEBUG_KNOT_ZONE(
 	// adjust domain names in RDATA
 	knot_zone_contents_adjust_rrsets(node, zone);
 
-DEBUG_KNOT_ZONE(
+debug_knot_zone_exec(
 	if (knot_node_parent(node, 1)) {
 		char *name = knot_dname_to_str(knot_node_owner(
 				knot_node_parent(node, check_ver)));
@@ -499,7 +499,7 @@ static int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
 		knot_zone_contents_nsec3params(zone);
 
 	if (nsec3_params == NULL) {
-DEBUG_KNOT_ZONE(
+debug_knot_zone_exec(
 		char *n = knot_dname_to_str(zone->apex->owner);
 		debug_knot_zone("No NSEC3PARAM for zone %s.\n", n);
 		free(n);
@@ -510,7 +510,7 @@ DEBUG_KNOT_ZONE(
 	uint8_t *hashed_name = NULL;
 	size_t hash_size = 0;
 
-DEBUG_KNOT_ZONE(
+debug_knot_zone_exec(
 	char *n = knot_dname_to_str(name);
 	debug_knot_zone("Hashing name %s.\n", n);
 	free(n);
@@ -652,7 +652,7 @@ static void knot_zone_contents_node_to_hash(knot_zone_tree_node_t *tnode,
 	 */
 
 #ifdef USE_HASH_TABLE
-//DEBUG_KNOT_ZONE(
+//debug_knot_zone_exec(
 //	char *name = knot_dname_to_str(node->owner);
 //	debug_knot_zone("Adding node with owner %s to hash table.\n", name);
 //	free(name);
@@ -1078,7 +1078,7 @@ int knot_zone_contents_add_node(knot_zone_contents_t *zone,
 			}
 
 #ifdef USE_HASH_TABLE
-DEBUG_KNOT_ZONE(
+debug_knot_zone_exec(
 			char *name = knot_dname_to_str(
 					knot_node_owner(next_node));
 			debug_knot_zone("Adding new node with owner %s to "
@@ -1217,7 +1217,7 @@ int knot_zone_contents_add_rrsigs(knot_zone_contents_t *zone,
 {
 	if (zone == NULL || rrsigs == NULL || rrset == NULL || node == NULL
 	    || zone->apex == NULL || zone->apex->owner == NULL) {
-DEBUG_KNOT_ZONE(
+debug_knot_zone_exec(
 		debug_knot_zone("Parameters: zone=%p, rrsigs=%p, rrset=%p, "
 				"node=%p\n", zone, rrsigs, rrset, node);
 		if (zone != NULL) {
@@ -1612,7 +1612,7 @@ int knot_zone_contents_find_dname(const knot_zone_contents_t *zone,
 		return KNOT_EBADARG;
 	}
 
-DEBUG_KNOT_ZONE(
+debug_knot_zone_exec(
 	char *name_str = knot_dname_to_str(name);
 	char *zone_str = knot_dname_to_str(zone->apex->owner);
 	debug_knot_zone("Searching for name %s in zone %s...\n",
@@ -1641,7 +1641,7 @@ DEBUG_KNOT_ZONE(
 	*node = found;
 	*previous = prev;
 
-DEBUG_KNOT_ZONE(
+debug_knot_zone_exec(
 	char *name_str = (*node) ? knot_dname_to_str((*node)->owner)
 	                         : "(nil)";
 	char *name_str2 = (*previous != NULL)
@@ -1679,7 +1679,7 @@ DEBUG_KNOT_ZONE(
 			assert(*closest_encloser);
 		}
 	}
-DEBUG_KNOT_ZONE(
+debug_knot_zone_exec(
 	char *n = knot_dname_to_str(knot_node_owner((*closest_encloser)));
 	debug_knot_zone("Closest encloser: %s\n", n);
 	free(n);
@@ -1768,7 +1768,7 @@ int knot_zone_contents_find_dname_hash(const knot_zone_contents_t *zone,
 		return KNOT_EBADARG;
 	}
 
-DEBUG_KNOT_ZONE(
+debug_knot_zone_exec(
 	char *name_str = knot_dname_to_str(name);
 	char *zone_str = knot_dname_to_str(zone->apex->owner);
 	debug_knot_zone("Searching for name %s in zone %s...\n",
@@ -1818,7 +1818,7 @@ DEBUG_KNOT_ZONE(
 	// copy the name for chopping
 	/* Local allocation, will be discarded. */
 	//knot_dname_t *name_copy = knot_dname_deep_copy(name);
-DEBUG_KNOT_ZONE(
+debug_knot_zone_exec(
 	//char *n = knot_dname_to_str(name_copy);
 	debug_knot_zone("Finding closest encloser..\nStarting with: %.*s\n", 
 			(int)name_size, name_tmp);
@@ -1828,7 +1828,7 @@ DEBUG_KNOT_ZONE(
 	while (item == NULL) {
 		//knot_dname_left_chop_no_copy(name_copy);
 		knot_zone_contents_left_chop(name_tmp, &name_size);
-DEBUG_KNOT_ZONE(
+debug_knot_zone_exec(
 		//char *n = knot_dname_to_str(name_copy);
 		debug_knot_zone("Chopped leftmost label: %.*s\n",
 				(int)name_size, name_tmp);
@@ -1878,7 +1878,7 @@ int knot_zone_contents_find_nsec3_for_name(const knot_zone_contents_t *zone,
 		return ret;
 	}
 
-DEBUG_KNOT_ZONE(
+debug_knot_zone_exec(
 	char *n = knot_dname_to_str(nsec3_name);
 	debug_knot_zone("NSEC3 node name: %s.\n", n);
 	free(n);
@@ -1893,7 +1893,7 @@ DEBUG_KNOT_ZONE(
 
 	knot_dname_release(nsec3_name);
 
-DEBUG_KNOT_ZONE(
+debug_knot_zone_exec(
 	if (found) {
 		char *n = knot_dname_to_str(found->owner);
 		debug_knot_zone("Found NSEC3 node: %s.\n", n);

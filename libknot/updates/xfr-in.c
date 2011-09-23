@@ -168,7 +168,7 @@ int xfrin_transfer_needed(const knot_zone_contents_t *zone,
 	int64_t local_serial = knot_rdata_soa_serial(
 		knot_rrset_rdata(soa_rrset));
 	if (local_serial < 0) {
-DEBUG_KNOT_XFR(
+debug_knot_xfr_exec(
 		char *name = knot_dname_to_str(knot_rrset_owner(soa_rrset));
 		debug_knot_xfr("Malformed data in SOA of zone %s\n", name);
 		free(name);
@@ -371,7 +371,7 @@ int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
 
 		if (knot_dname_compare(knot_rrset_owner(rr),
 		                       knot_packet_qname(packet)) != 0) {
-DEBUG_KNOT_XFR(
+debug_knot_xfr_exec(
 			char *rr_owner =
 				knot_dname_to_str(knot_rrset_owner(rr));
 			char *qname = knot_dname_to_str(
@@ -464,7 +464,7 @@ DEBUG_KNOT_XFR(
 
 		if (node != NULL
 		    && knot_dname_compare(rr->owner, node->owner) != 0) {
-DEBUG_KNOT_XFR(
+debug_knot_xfr_exec(
 			char *name = knot_dname_to_str(node->owner);
 			debug_knot_xfr("Node owner: %s\n", name);
 			free(name);
@@ -536,7 +536,7 @@ DEBUG_KNOT_XFR(
 				return KNOT_ERROR;  /*! \todo Other error code. */
 			} else if (ret == 1) {
 				assert(node != NULL);
-DEBUG_KNOT_XFR(
+debug_knot_xfr_exec(
 				char *name = knot_dname_to_str(node->owner);
 				debug_knot_xfr("Found node for the record in "
 					       "zone: %s.\n", name);
@@ -550,7 +550,7 @@ DEBUG_KNOT_XFR(
 //				knot_rrset_deep_free(&rr, 1, 1, 1);
 			} else {
 				assert(node != NULL);
-DEBUG_KNOT_XFR(
+debug_knot_xfr_exec(
 				char *name = knot_dname_to_str(node->owner);
 				debug_knot_xfr("Found node for the record in "
 					       "zone: %s.\n", name);
@@ -844,7 +844,7 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 	/*! \todo This may be implemented with much less IFs! */
 	
 	while (ret == KNOT_EOK && rr != NULL) {
-DEBUG_KNOT_XFR(
+debug_knot_xfr_exec(
 		debug_knot_xfr("Next loop, state: %d\n", state);
 		char *name = knot_dname_to_str(knot_rrset_owner(rr));
 		debug_knot_xfr("Actual RR: %s, type %s.\n", name, 
@@ -1598,7 +1598,7 @@ static int xfrin_apply_remove_normal(xfrin_changes_t *changes,
 		return 1;
 	}
 	
-DEBUG_KNOT_XFR(
+debug_knot_xfr_exec(
 	char *name = knot_dname_to_str(knot_rrset_owner(*rrset));
 	debug_knot_xfr("Updating RRSet with owner %s, type %s\n", name,
 		  knot_rrtype_to_string(knot_rrset_type(*rrset)));
@@ -1873,7 +1873,7 @@ static int xfrin_apply_add_normal(xfrin_changes_t *changes,
 
 	knot_rrset_t *old = *rrset;
 
-DEBUG_KNOT_XFR(
+debug_knot_xfr_exec(
 	char *name = knot_dname_to_str(knot_rrset_owner(*rrset));
 	debug_knot_xfr("Found RRSet with owner %s, type %s\n", name,
 	          knot_rrtype_to_string(knot_rrset_type(*rrset)));
@@ -1971,7 +1971,7 @@ static int xfrin_apply_add_rrsig(xfrin_changes_t *changes,
 		}
 	}
 
-DEBUG_KNOT_XFR(
+debug_knot_xfr_exec(
 		char *name = knot_dname_to_str(knot_rrset_owner(*rrset));
 		debug_knot_xfr("Found RRSet with owner %s, type %s\n", name,
 			  knot_rrtype_to_string(knot_rrset_type(*rrset)));

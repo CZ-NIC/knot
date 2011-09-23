@@ -680,10 +680,10 @@ int dt_join(dt_unit_t *unit)
 		int active_threads = 0;
 		for (int i = 0; i < unit->size; ++i) {
 
-			// Count active threads
+			// Count active or cancelled but pending threads
 			dthread_t *thread = unit->threads[i];
 			lock_thread_rw(thread);
-			if (thread->state & ThreadActive) {
+			if (thread->state & (ThreadActive|ThreadCancelled)) {
 				++active_threads;
 			}
 

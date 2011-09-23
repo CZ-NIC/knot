@@ -1,3 +1,5 @@
+#include "config.h"
+
 #ifdef HAVE_POLL
 
 #include <stdlib.h>
@@ -5,7 +7,7 @@
 #include <sys/poll.h>
 #include <stddef.h>
 
-//#include "common/fdset_poll.h"
+#include "common/fdset_poll.h"
 
 #define OS_FDS_CHUNKSIZE 8   /*!< Number of pollfd structs in a chunk. */
 #define OS_FDS_KEEPCHUNKS 32 /*!< Will attempt to free memory when reached. */
@@ -197,7 +199,7 @@ const char* fdset_poll_method()
 }
 
 /* Package APIs. */
-struct fdset_backend_t _fdset_poll = {
+struct fdset_backend_t FDSET_POLL = {
 	.fdset_new = fdset_poll_new,
 	.fdset_destroy = fdset_poll_destroy,
 	.fdset_add = fdset_poll_add,

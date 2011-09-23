@@ -398,7 +398,7 @@ static knot_rrset_t *knot_packet_parse_rr(const uint8_t *wire, size_t *pos,
 		return NULL;
 	}
 
-DEBUG_KNOT_PACKET(
+debug_knot_packet_exec(
 	char *name = knot_dname_to_str(owner);
 	debug_knot_packet("Parsed name: %s\n", name);
 	free(name);
@@ -492,7 +492,7 @@ static int knot_packet_add_rrset(knot_rrset_t *rrset,
 	assert(rrset_count != NULL);
 	assert(max_rrsets != NULL);
 
-DEBUG_KNOT_PACKET(
+debug_knot_packet_exec(
 	char *name = knot_dname_to_str(rrset->owner);
 	debug_knot_packet("packet_add_rrset(), owner: %s, type: %s\n",
 	                    name, knot_rrtype_to_string(rrset->type));
@@ -516,7 +516,7 @@ DEBUG_KNOT_PACKET(
 		// try to find the RRSet in this array of RRSets
 		for (int i = 0; i < *rrset_count; ++i) {
 
-DEBUG_KNOT_PACKET(
+debug_knot_packet_exec(
 			char *name = knot_dname_to_str((*rrsets)[i]->owner);
 			debug_knot_packet("Comparing to RRSet: owner: %s, "
 			                    "type: %s\n", name,
@@ -1138,7 +1138,7 @@ void knot_packet_free_tmp_rrsets(knot_packet_t *pkt)
 	}
 
 	for (int i = 0; i < pkt->tmp_rrsets_count; ++i) {
-DEBUG_KNOT_PACKET(
+debug_knot_packet_exec(
 		char *name = knot_dname_to_str(
 			(((knot_rrset_t **)(pkt->tmp_rrsets))[i])->owner);
 		debug_knot_packet("Freeing tmp RRSet on ptr: %p (ptr to ptr:"
