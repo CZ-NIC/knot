@@ -34,39 +34,39 @@
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define debug_notify(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define debug_notify_hex(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_notify(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_notify_hex(data, len) hex_log(LOG_SERVER, (data), (len))
 #else
-#define debug_notify(msg...)
-#define debug_notify_hex(data, len)
+#define dbg_notify(msg...)
+#define dbg_notify_hex(data, len)
 #endif
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define debug_notify_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define debug_notify_hex_verb(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_notify_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_notify_hex_verb(data, len) hex_log(LOG_SERVER, (data), (len))
 #else
-#define debug_notify_verb(msg...)
-#define debug_notify_hex_verb(data, len)
+#define dbg_notify_verb(msg...)
+#define dbg_notify_hex_verb(data, len)
 #endif
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define debug_notify_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define debug_notify_hex_detail(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_notify_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_notify_hex_detail(data, len) hex_log(LOG_SERVER, (data), (len))
 #else
-#define debug_notify_detail(msg...)
-#define debug_notify_hex_detail(data, len)
+#define dbg_notify_detail(msg...)
+#define dbg_notify_hex_detail(data, len)
 #endif
 
 /* No messages. */
 #else
-#define debug_notify(msg...)
-#define debug_notify_hex(data, len)
-#define debug_notify_verb(msg...)
-#define debug_notify_hex_verb(data, len)
-#define debug_notify_detail(msg...)
-#define debug_notify_hex_detail(data, len)
+#define dbg_notify(msg...)
+#define dbg_notify_hex(data, len)
+#define dbg_notify_verb(msg...)
+#define dbg_notify_hex_verb(data, len)
+#define dbg_notify_detail(msg...)
+#define dbg_notify_hex_detail(data, len)
 #endif
 
 /******************************************************************************/
@@ -75,39 +75,39 @@
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define debug_server(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define debug_server_hex(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_server(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_server_hex(data, len) hex_log(LOG_SERVER, (data), (len))
 #else
-#define debug_server(msg...)
-#define debug_server_hex(data, len)
+#define dbg_server(msg...)
+#define dbg_server_hex(data, len)
 #endif
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define debug_server_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define debug_server_hex_verb(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_server_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_server_hex_verb(data, len) hex_log(LOG_SERVER, (data), (len))
 #else
-#define debug_server_verb(msg...)
-#define debug_server_hex_verb(data, len)
+#define dbg_server_verb(msg...)
+#define dbg_server_hex_verb(data, len)
 #endif
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define debug_server_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define debug_server_hex_detail(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_server_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_server_hex_detail(data, len) hex_log(LOG_SERVER, (data), (len))
 #else
-#define debug_server_detail(msg...)
-#define debug_server_hex_detail(data, len)
+#define dbg_server_detail(msg...)
+#define dbg_server_hex_detail(data, len)
 #endif
 
 /* No messages. */
 #else
-#define debug_server(msg...)
-#define debug_server_hex(data, len)
-#define debug_server_verb(msg...)
-#define debug_server_hex_verb(data, len)
-#define debug_server_detail(msg...)
-#define debug_server_hex_detail(data, len)
+#define dbg_server(msg...)
+#define dbg_server_hex(data, len)
+#define dbg_server_verb(msg...)
+#define dbg_server_hex_verb(data, len)
+#define dbg_server_detail(msg...)
+#define dbg_server_hex_detail(data, len)
 #endif
 
 /******************************************************************************/
@@ -116,39 +116,39 @@
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define debug_net(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define debug_net_hex(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_net(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_net_hex(data, len) hex_log(LOG_SERVER, (data), (len))
 #else
-#define debug_net(msg...)
-#define debug_net_hex(data, len)
+#define dbg_net(msg...)
+#define dbg_net_hex(data, len)
 #endif
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define debug_net_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define debug_net_hex_verb(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_net_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_net_hex_verb(data, len) hex_log(LOG_SERVER, (data), (len))
 #else
-#define debug_net_verb(msg...)
-#define debug_net_hex_verb(data, len)
+#define dbg_net_verb(msg...)
+#define dbg_net_hex_verb(data, len)
 #endif
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define debug_net_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define debug_net_hex_detail(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_net_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_net_hex_detail(data, len) hex_log(LOG_SERVER, (data), (len))
 #else
-#define debug_net_detail(msg...)
-#define debug_net_hex_detail(data, len)
+#define dbg_net_detail(msg...)
+#define dbg_net_hex_detail(data, len)
 #endif
 
 /* No messages. */
 #else
-#define debug_net(msg...)
-#define debug_net_hex(data, len)
-#define debug_net_verb(msg...)
-#define debug_net_hex_verb(data, len)
-#define debug_net_detail(msg...)
-#define debug_net_hex_detail(data, len)
+#define dbg_net(msg...)
+#define dbg_net_hex(data, len)
+#define dbg_net_verb(msg...)
+#define dbg_net_hex_verb(data, len)
+#define dbg_net_detail(msg...)
+#define dbg_net_hex_detail(data, len)
 #endif
 
 /******************************************************************************/
@@ -157,39 +157,39 @@
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define debug_dt(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define debug_dt_hex(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_dt(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_dt_hex(data, len) hex_log(LOG_SERVER, (data), (len))
 #else
-#define debug_dt(msg...)
-#define debug_dt_hex(data, len)
+#define dbg_dt(msg...)
+#define dbg_dt_hex(data, len)
 #endif
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define debug_dt_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define debug_dt_hex_verb(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_dt_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_dt_hex_verb(data, len) hex_log(LOG_SERVER, (data), (len))
 #else
-#define debug_dt_verb(msg...)
-#define debug_dt_hex_verb(data, len)
+#define dbg_dt_verb(msg...)
+#define dbg_dt_hex_verb(data, len)
 #endif
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define debug_dt_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define debug_dt_hex_detail(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_dt_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_dt_hex_detail(data, len) hex_log(LOG_SERVER, (data), (len))
 #else
-#define debug_dt_detail(msg...)
-#define debug_dt_hex_detail(data, len)
+#define dbg_dt_detail(msg...)
+#define dbg_dt_hex_detail(data, len)
 #endif
 
 /* No messages. */
 #else
-#define debug_dt(msg...)
-#define debug_dt_hex(data, len)
-#define debug_dt_verb(msg...)
-#define debug_dt_hex_verb(data, len)
-#define debug_dt_detail(msg...)
-#define debug_dt_hex_detail(data, len)
+#define dbg_dt(msg...)
+#define dbg_dt_hex(data, len)
+#define dbg_dt_verb(msg...)
+#define dbg_dt_hex_verb(data, len)
+#define dbg_dt_detail(msg...)
+#define dbg_dt_hex_detail(data, len)
 #endif
 
 /******************************************************************************/
@@ -198,39 +198,39 @@
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define debug_journal(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define debug_journal_hex(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_journal(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_journal_hex(data, len) hex_log(LOG_SERVER, (data), (len))
 #else
-#define debug_journal(msg...)
-#define debug_journal_hex(data, len)
+#define dbg_journal(msg...)
+#define dbg_journal_hex(data, len)
 #endif
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define debug_journal_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define debug_journal_hex_verb(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_journal_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_journal_hex_verb(data, len) hex_log(LOG_SERVER, (data), (len))
 #else
-#define debug_journal_verb(msg...)
-#define debug_journal_hex_verb(data, len)
+#define dbg_journal_verb(msg...)
+#define dbg_journal_hex_verb(data, len)
 #endif
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define debug_journal_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define debug_journal_hex_detail(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_journal_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_journal_hex_detail(data, len) hex_log(LOG_SERVER, (data), (len))
 #else
-#define debug_journal_detail(msg...)
-#define debug_journal_hex_detail(data, len)
+#define dbg_journal_detail(msg...)
+#define dbg_journal_hex_detail(data, len)
 #endif
 
 /* No messages. */
 #else
-#define debug_journal(msg...)
-#define debug_journal_hex(data, len)
-#define debug_journal_verb(msg...)
-#define debug_journal_hex_verb(data, len)
-#define debug_journal_detail(msg...)
-#define debug_journal_hex_detail(data, len)
+#define dbg_journal(msg...)
+#define dbg_journal_hex(data, len)
+#define dbg_journal_verb(msg...)
+#define dbg_journal_hex_verb(data, len)
+#define dbg_journal_detail(msg...)
+#define dbg_journal_hex_detail(data, len)
 #endif
 
 /******************************************************************************/
@@ -239,46 +239,46 @@
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define debug_zones(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define debug_zones_hex(data, len) hex_log(LOG_SERVER, (data), (len))
-#define debug_zones_exec(cmds) do { cmds } while (0)
+#define dbg_zones(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_zones_hex(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_zones_exec(cmds) do { cmds } while (0)
 #else
-#define debug_zones(msg...)
-#define debug_zones_hex(data, len)
-#define debug_zones_exec(cmds)
+#define dbg_zones(msg...)
+#define dbg_zones_hex(data, len)
+#define dbg_zones_exec(cmds)
 #endif
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define debug_zones_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define debug_zones_hex_verb(data, len) hex_log(LOG_SERVER, (data), (len))
-#define debug_zones_exec_verb(cmds) do { cmds } while (0)
+#define dbg_zones_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_zones_hex_verb(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_zones_exec_verb(cmds) do { cmds } while (0)
 #else
-#define debug_zones_verb(msg...)
-#define debug_zones_hex_verb(data, len)
-#define debug_zones_exec_verb(cmds)
+#define dbg_zones_verb(msg...)
+#define dbg_zones_hex_verb(data, len)
+#define dbg_zones_exec_verb(cmds)
 #endif
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define debug_zones_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define debug_zones_hex_detail(data, len) hex_log(LOG_SERVER, (data), (len))
-#define debug_zones_exec_detail(cmds) do { cmds } while (0)
+#define dbg_zones_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_zones_hex_detail(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_zones_exec_detail(cmds) do { cmds } while (0)
 #else
-#define debug_zones_detail(msg...)
-#define debug_zones_hex_detail(data, len)
-#define debug_zones_exec_detail(cmds)
+#define dbg_zones_detail(msg...)
+#define dbg_zones_hex_detail(data, len)
+#define dbg_zones_exec_detail(cmds)
 #endif
 
 /* No messages. */
 #else
-#define debug_zones(msg...)
-#define debug_zones_hex(data, len)
-#define debug_zones_verb(msg...)
-#define debug_zones_hex_verb(data, len)
-#define debug_zones_detail(msg...)
-#define debug_zones_hex_detail(data, len)
-#define debug_zones_exec(cmds)
+#define dbg_zones(msg...)
+#define dbg_zones_hex(data, len)
+#define dbg_zones_verb(msg...)
+#define dbg_zones_hex_verb(data, len)
+#define dbg_zones_detail(msg...)
+#define dbg_zones_hex_detail(data, len)
+#define dbg_zones_exec(cmds)
 #endif
 
 /******************************************************************************/
@@ -287,39 +287,39 @@
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define debug_xfr(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define debug_xfr_hex(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_xfr(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_xfr_hex(data, len) hex_log(LOG_SERVER, (data), (len))
 #else
-#define debug_xfr(msg...)
-#define debug_xfr_hex(data, len)
+#define dbg_xfr(msg...)
+#define dbg_xfr_hex(data, len)
 #endif
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define debug_xfr_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define debug_xfr_hex_verb(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_xfr_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_xfr_hex_verb(data, len) hex_log(LOG_SERVER, (data), (len))
 #else
-#define debug_xfr_verb(msg...)
-#define debug_xfr_hex_verb(data, len)
+#define dbg_xfr_verb(msg...)
+#define dbg_xfr_hex_verb(data, len)
 #endif
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define debug_xfr_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define debug_xfr_hex_detail(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_xfr_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_xfr_hex_detail(data, len) hex_log(LOG_SERVER, (data), (len))
 #else
-#define debug_xfr_detail(msg...)
-#define debug_xfr_hex_detail(data, len)
+#define dbg_xfr_detail(msg...)
+#define dbg_xfr_hex_detail(data, len)
 #endif
 
 /* No messages. */
 #else
-#define debug_xfr(msg...)
-#define debug_xfr_hex(data, len)
-#define debug_xfr_verb(msg...)
-#define debug_xfr_hex_verb(data, len)
-#define debug_xfr_detail(msg...)
-#define debug_xfr_hex_detail(data, len)
+#define dbg_xfr(msg...)
+#define dbg_xfr_hex(data, len)
+#define dbg_xfr_verb(msg...)
+#define dbg_xfr_hex_verb(data, len)
+#define dbg_xfr_detail(msg...)
+#define dbg_xfr_hex_detail(data, len)
 #endif
 
 /******************************************************************************/
@@ -328,39 +328,39 @@
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define debug_zdump(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define debug_zdump_hex(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_zdump(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_zdump_hex(data, len) hex_log(LOG_SERVER, (data), (len))
 #else
-#define debug_zdump(msg...)
-#define debug_zdump_hex(data, len)
+#define dbg_zdump(msg...)
+#define dbg_zdump_hex(data, len)
 #endif
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define debug_zdump_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define debug_zdump_hex_verb(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_zdump_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_zdump_hex_verb(data, len) hex_log(LOG_SERVER, (data), (len))
 #else
-#define debug_zdump_verb(msg...)
-#define debug_zdump_hex_verb(data, len)
+#define dbg_zdump_verb(msg...)
+#define dbg_zdump_hex_verb(data, len)
 #endif
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define debug_zdump_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define debug_zdump_hex_detail(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_zdump_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_zdump_hex_detail(data, len) hex_log(LOG_SERVER, (data), (len))
 #else
-#define debug_zdump_detail(msg...)
-#define debug_zdump_hex_detail(data, len)
+#define dbg_zdump_detail(msg...)
+#define dbg_zdump_hex_detail(data, len)
 #endif
 
 /* No messages. */
 #else
-#define debug_zdump(msg...)
-#define debug_zdump_hex(data, len)
-#define debug_zdump_verb(msg...)
-#define debug_zdump_hex_verb(data, len)
-#define debug_zdump_detail(msg...)
-#define debug_zdump_hex_detail(data, len)
+#define dbg_zdump(msg...)
+#define dbg_zdump_hex(data, len)
+#define dbg_zdump_verb(msg...)
+#define dbg_zdump_hex_verb(data, len)
+#define dbg_zdump_detail(msg...)
+#define dbg_zdump_hex_detail(data, len)
 #endif
 
 /******************************************************************************/
@@ -369,39 +369,39 @@
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define debug_zload(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define debug_zload_hex(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_zload(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_zload_hex(data, len) hex_log(LOG_SERVER, (data), (len))
 #else
-#define debug_zload(msg...)
-#define debug_zload_hex(data, len)
+#define dbg_zload(msg...)
+#define dbg_zload_hex(data, len)
 #endif
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define debug_zload_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define debug_zload_hex_verb(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_zload_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_zload_hex_verb(data, len) hex_log(LOG_SERVER, (data), (len))
 #else
-#define debug_zload_verb(msg...)
-#define debug_zload_hex_verb(data, len)
+#define dbg_zload_verb(msg...)
+#define dbg_zload_hex_verb(data, len)
 #endif
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define debug_zload_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define debug_zload_hex_detail(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_zload_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_zload_hex_detail(data, len) hex_log(LOG_SERVER, (data), (len))
 #else
-#define debug_zload_detail(msg...)
-#define debug_zload_hex_detail(data, len)
+#define dbg_zload_detail(msg...)
+#define dbg_zload_hex_detail(data, len)
 #endif
 
 /* No messages. */
 #else
-#define debug_zload(msg...)
-#define debug_zload_hex(data, len)
-#define debug_zload_verb(msg...)
-#define debug_zload_hex_verb(data, len)
-#define debug_zload_detail(msg...)
-#define debug_zload_hex_detail(data, len)
+#define dbg_zload(msg...)
+#define dbg_zload_hex(data, len)
+#define dbg_zload_verb(msg...)
+#define dbg_zload_hex_verb(data, len)
+#define dbg_zload_detail(msg...)
+#define dbg_zload_hex_detail(data, len)
 #endif
 
 /******************************************************************************/

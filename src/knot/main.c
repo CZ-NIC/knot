@@ -256,7 +256,7 @@ int main(int argc, char **argv)
 			if (ret > 0) {
 				event_t ev;
 				if (evqueue_get(evqueue(), &ev) == 0) {
-					debug_server("Event: "
+					dbg_server("Event: "
 						     "received new event.\n");
 					if (ev.cb) {
 						ev.cb(&ev);

@@ -61,9 +61,9 @@
 //#define ZP_DEBUG
 
 #ifdef ZP_DEBUG
-#define debug_zp(msg...) fprintf(stderr, msg)
+#define dbg_zp(msg...) fprintf(stderr, msg)
 #else
-#define debug_zp(msg...)
+#define dbg_zp(msg...)
 #endif
 
 /*!
@@ -772,7 +772,7 @@ uint16_t * zparser_conv_text(const char *text, size_t len)
 {
 	uint16_t *r = NULL;
 
-	debug_zp("Converting text: %s\n", text);
+	dbg_zp("Converting text: %s\n", text);
 
 	if (len > 255) {
 		zc_error_prev_line("text string is longer than 255 characters,"
@@ -1356,7 +1356,7 @@ void zadd_rdata_wireformat(uint16_t *data)
  */
 void zadd_rdata_txt_wireformat(uint16_t *data, int first)
 {
-	debug_zp("Adding text!\n");
+	dbg_zp("Adding text!\n");
 //	hex_print(data + 1, data[0]);
 	knot_rdata_item_t *rd;
 
@@ -1389,7 +1389,7 @@ void zadd_rdata_txt_wireformat(uint16_t *data, int first)
 	memcpy((uint8_t *)rd->raw_data + 2 + rd->raw_data[0],
 	       data + 1, data[0]);
 	rd->raw_data[0] += data[0];
-	debug_zp("Item after add\n");
+	dbg_zp("Item after add\n");
 //	hex_print(rd->raw_data + 1, rd->raw_data[0]);
 }
 
@@ -1602,9 +1602,9 @@ int process_rr(void)
 	knot_rrtype_descriptor_t *descriptor =
 		knot_rrtype_descriptor_by_type(current_rrset->type);
 
-	debug_zp("%s\n", knot_dname_to_str(parser->current_rrset->owner));
-	debug_zp("type: %s\n", knot_rrtype_to_string(parser->current_rrset->type));
-	debug_zp("rdata count: %d\n", parser->current_rrset->rdata->count);
+	dbg_zp("%s\n", knot_dname_to_str(parser->current_rrset->owner));
+	dbg_zp("type: %s\n", knot_rrtype_to_string(parser->current_rrset->type));
+	dbg_zp("rdata count: %d\n", parser->current_rrset->rdata->count);
 //	hex_print(parser->current_rrset->rdata->items[0].raw_data,
 //	          parser->current_rrset->rdata->items[0].raw_data[0]);
 
@@ -1842,7 +1842,7 @@ static uint find_rrsets_orphans(knot_zone_contents_t *zone, rrset_list_t
 	while (head != NULL) {
 		if (find_rrset_for_rrsig_in_zone(zone, head->data) == 0) {
 			found_rrsets += 1;
-			debug_zp("RRSET succesfully found: owner %s type %s\n",
+			dbg_zp("RRSET succesfully found: owner %s type %s\n",
 				 knot_dname_to_str(head->data->owner),
 				 knot_rrtype_to_string(head->data->type));
 		}
@@ -1912,7 +1912,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 		rrset_list_delete(&parser->node_rrsigs);
 	}
 
-	debug_zp("zone parsed\n");
+	dbg_zp("zone parsed\n");
 
 	if (!(parser->current_zone &&
 	      knot_node_rrset(parser->current_zone->contents->apex,
@@ -1927,13 +1927,13 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	found_orphans = find_rrsets_orphans(contents,
 					    parser->rrsig_orphans);
 
-	debug_zp("%u orphans found\n", found_orphans);
+	dbg_zp("%u orphans found\n", found_orphans);
 
 	rrset_list_delete(&parser->rrsig_orphans);
 
 	knot_zone_contents_adjust(contents, 0);
 
-	debug_zp("rdata adjusted\n");
+	dbg_zp("rdata adjusted\n");
 
 	if (parser->errors != 0) {
 		fprintf(stderr,
@@ -1941,7 +1941,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	} else {
 		knot_zdump_binary(contents,
 		                    outfile, semantic_checks, zonefile);
-		debug_zp("zone dumped.\n");
+		dbg_zp("zone dumped.\n");
 	}
 
 	/* This is *almost* unnecessary */

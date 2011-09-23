@@ -334,7 +334,7 @@ static int server_bind_handlers(server_t *server)
 
 			/* Save pointer. */
 			rcu_set_pointer(&iface->handler[UDP_ID], h);
-			debug_server("Creating UDP socket handlers for '%s:%d'\n",
+			dbg_server("Creating UDP socket handlers for '%s:%d'\n",
 			             iface->addr, iface->port);
 
 		}
@@ -349,7 +349,7 @@ static int server_bind_handlers(server_t *server)
 
 			/* Save pointer. */
 			rcu_set_pointer(&iface->handler[TCP_ID], h);
-			debug_server("Creating TCP socket handlers for '%s:%d'\n",
+			dbg_server("Creating TCP socket handlers for '%s:%d'\n",
 			             iface->addr, iface->port);
 		}
 
@@ -376,21 +376,21 @@ server_t *server_create()
 	init_list(server->ifaces);
 
 	// Create event scheduler
-	debug_server("Creating event scheduler...\n");
+	dbg_server("Creating event scheduler...\n");
 	server->sched = evsched_new();
 	dt_unit_t *unit = dt_create_coherent(1, evsched_run, 0);
 	iohandler_t *h = server_create_handler(server, -1, unit);
 	h->data = server->sched;
 
 	// Create name server
-	debug_server("Creating Name Server structure...\n");
+	dbg_server("Creating Name Server structure...\n");
 	server->nameserver = knot_ns_create();
 	if (server->nameserver == NULL) {
 		free(server);
 		return NULL;
 	}
 	knot_ns_set_data(server->nameserver, server);
-	debug_server("Initializing OpenSSL...\n");
+	dbg_server("Initializing OpenSSL...\n");
 	OpenSSL_add_all_digests();
 
 	// Create XFR handler
@@ -401,7 +401,7 @@ server_t *server_create()
 		return NULL;
 	}
 
-	debug_server("Done.\n");
+	dbg_server("Done.\n");
 	return server;
 }
 
@@ -510,7 +510,7 @@ int server_start(server_t *server)
 		return KNOTD_EINVAL;
 	}
 
-	debug_server("Starting handlers...\n");
+	dbg_server("Starting handlers...\n");
 
 	/* Start XFR handler. */
 	xfr_start(server->xfr_h);
@@ -539,7 +539,7 @@ int server_start(server_t *server)
 	/* Unlock configuration. */
 	conf_read_unlock();
 
-	debug_server("Done.\n");
+	dbg_server("Done.\n");
 
 	return ret;
 }
@@ -556,7 +556,7 @@ int server_wait(server_t *server)
 	int ret = 0;
 	iohandler_t *h = 0, *nxt = 0;
 	WALK_LIST_DELSAFE(h, nxt, server->handlers) {
-		debug_server("server: [%p] joining threading unit\n",
+		dbg_server("server: [%p] joining threading unit\n",
 			     h);
 
 		/* Unlock RCU. */
@@ -572,7 +572,7 @@ int server_wait(server_t *server)
 		/* Relock RCU. */
 		rcu_read_lock();
 
-		debug_server("server: joined threading unit\n");
+		dbg_server("server: joined threading unit\n");
 	}
 
 	/* Unlock RCU. */

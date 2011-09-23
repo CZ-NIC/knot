@@ -53,7 +53,7 @@ static void tcp_handle(tcp_worker_t *w, int fd)
 		return;
 	}
 	
-	debug_net("tcp: handling TCP event in thread %p.\n",
+	dbg_net("tcp: handling TCP event in thread %p.\n",
 		  (void*)pthread_self());
 
 	knot_nameserver_t *ns = w->ioh->server->nameserver;
@@ -73,7 +73,7 @@ static void tcp_handle(tcp_worker_t *w, int fd)
 	size_t qbuf_maxlen = sizeof(qbuf);
 	int n = tcp_recv(fd, qbuf, qbuf_maxlen, &addr);
 	if (n <= 0) {
-		debug_net("tcp: client disconnected\n");
+		dbg_net("tcp: client disconnected\n");
 		fdset_remove(w->fdset, fd);
 		close(fd);
 		return;
@@ -143,9 +143,9 @@ static void tcp_handle(tcp_worker_t *w, int fd)
 //		xfr.session = fd;
 //		memcpy(&xfr.addr, &addr, sizeof(sockaddr_t));
 //		xfr_request(xfr_h, &xfr);
-//		debug_net("tcp: enqueued IXFR query on fd=%d\n", fd);
+//		dbg_net("tcp: enqueued IXFR query on fd=%d\n", fd);
 //		return;
-		debug_net("tcp: IXFR not supported, will answer as AXFR on fd=%d\n", fd);
+		dbg_net("tcp: IXFR not supported, will answer as AXFR on fd=%d\n", fd);
 	case KNOT_QUERY_AXFR:
 		memset(&xfr, 0, sizeof(knot_ns_xfr_t));
 		xfr.type = XFR_TYPE_AOUT;
@@ -162,7 +162,7 @@ static void tcp_handle(tcp_worker_t *w, int fd)
 		xfr.session = fd;
 		memcpy(&xfr.addr, &addr, sizeof(sockaddr_t));
 		xfr_request(xfr_h, &xfr);
-		debug_net("tcp: enqueued AXFR query on fd=%d\n", fd);
+		dbg_net("tcp: enqueued AXFR query on fd=%d\n", fd);
 		return;
 	case KNOT_QUERY_NOTIFY:
 	case KNOT_QUERY_UPDATE:
@@ -174,7 +174,7 @@ static void tcp_handle(tcp_worker_t *w, int fd)
 		break;
 	}
 
-	debug_net("tcp: got answer of size %zd.\n",
+	dbg_net("tcp: got answer of size %zd.\n",
 		  resp_len);
 
 	knot_packet_free(&packet);
@@ -186,7 +186,7 @@ static void tcp_handle(tcp_worker_t *w, int fd)
 
 		/* Check result. */
 		if (res != (int)resp_len) {
-			debug_net("tcp: %s: failed: %d - %d.\n",
+			dbg_net("tcp: %s: failed: %d - %d.\n",
 				  "socket_send()",
 				  res, errno);
 		}
@@ -207,7 +207,7 @@ static int tcp_accept(int fd)
 					 "(%d).\n", errno);
 		}
 	} else {
-		debug_net("tcp: accepted connection fd = %d\n", incoming);
+		dbg_net("tcp: accepted connection fd = %d\n", incoming);
 	}
 
 	return incoming;
@@ -217,7 +217,7 @@ tcp_worker_t* tcp_worker_create()
 {
 	tcp_worker_t *w = malloc(sizeof(tcp_worker_t));
 	if (!w) {
-		debug_net("tcp_master: out of memory when creating worker\n");
+		dbg_net("tcp_master: out of memory when creating worker\n");
 		return 0;
 	}
 	
@@ -308,7 +308,7 @@ int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 		return KNOTD_ERROR;
 	}
 
-	debug_net("tcp: incoming packet size=%hu on fd=%d\n",
+	dbg_net("tcp: incoming packet size=%hu on fd=%d\n",
 		  pktsize, fd);
 
 	// Check packet size
@@ -325,7 +325,7 @@ int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 		getpeername(fd, addr->ptr, &alen);
 	}
 
-	debug_net("tcp: received packet size=%d on fd=%d\n",
+	dbg_net("tcp: received packet size=%d on fd=%d\n",
 		  n, fd);
 
 	return n;
@@ -339,13 +339,13 @@ int tcp_loop_master(dthread_t *thread)
 
 	/* Check socket. */
 	if (!handler || handler->fd < 0 || !workers) {
-		debug_net("tcp_master: failed to initialize\n");
+		dbg_net("tcp_master: failed to initialize\n");
 		return KNOTD_EINVAL;
 	}
 
 	/* Accept connections. */
 	int id = 0;
-	debug_net("tcp_master: created with %d workers\n", unit->size - 1);
+	dbg_net("tcp_master: created with %d workers\n", unit->size - 1);
 	while(1) {
 		/* Check for cancellation. */
 		if (dt_is_cancelled(thread)) {
@@ -360,7 +360,7 @@ int tcp_loop_master(dthread_t *thread)
 
 		/* Add to worker in RR fashion. */
 		if (write(workers[id]->pipe[1], &client, sizeof(int)) < 0) {
-			debug_net("tcp_master: failed to register fd=%d to "
+			dbg_net("tcp_master: failed to register fd=%d to "
 			          "worker=%d\n", client, id);
 			close(client);
 			continue;
@@ -368,7 +368,7 @@ int tcp_loop_master(dthread_t *thread)
 		id = get_next_rr(id, unit->size - 1);
 	}
 
-	debug_net("tcp_master: finished\n");
+	dbg_net("tcp_master: finished\n");
 	free(workers);
 	
 	return KNOTD_EOK;
@@ -382,7 +382,7 @@ int tcp_loop_worker(dthread_t *thread)
 	}
 
 	/* Accept clients. */
-	debug_net("tcp: worker started, backend = %s\n", fdset_method());
+	dbg_net("tcp: worker started, backend = %s\n", fdset_method());
 	for (;;) {
 
 		/* Cancellation point. */
@@ -397,7 +397,7 @@ int tcp_loop_worker(dthread_t *thread)
 		}
 
 		/* Process incoming events. */
-		debug_net("tcp_worker: registered %d events\n",
+		dbg_net("tcp_worker: registered %d events\n",
 		          nfds);
 		fdset_it_t it;
 		fdset_begin(w->fdset, &it);
@@ -410,7 +410,7 @@ int tcp_loop_worker(dthread_t *thread)
 					continue;
 				}
 
-				debug_net("tcp_worker: registered client %d\n",
+				dbg_net("tcp_worker: registered client %d\n",
 				          client);
 				fdset_add(w->fdset, client, OS_EV_READ);
 			} else {
@@ -427,7 +427,7 @@ int tcp_loop_worker(dthread_t *thread)
 	}
 
 	/* Stop whole unit. */
-	debug_net("tcp_worker: worker finished\n");
+	dbg_net("tcp_worker: worker finished\n");
 	tcp_worker_free(w);
 	return KNOTD_EOK;
 }
@@ -442,7 +442,7 @@ int tcp_loop_unit(iohandler_t *ioh, dt_unit_t *unit)
 	tcp_worker_t **workers = malloc((unit->size - 1) *
 	                                sizeof(tcp_worker_t *));
 	if (!workers) {
-		debug_net("tcp_master: out of memory\n");
+		dbg_net("tcp_master: out of memory\n");
 		return KNOTD_EINVAL;
 	}
 
@@ -464,7 +464,7 @@ int tcp_loop_unit(iohandler_t *ioh, dt_unit_t *unit)
 		}
 	
 		free(workers);
-		debug_net("tcp_master: out of memory when allocated workers\n");
+		dbg_net("tcp_master: out of memory when allocated workers\n");
 		return KNOTD_EINVAL;
 	}
 	

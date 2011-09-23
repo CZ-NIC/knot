@@ -1382,7 +1382,7 @@ static int fwrite_wrapper(const void *src,
 static void knot_labels_dump_binary(const knot_dname_t *dname, FILE *f,
                                     uint8_t **stream, size_t *stream_size)
 {
-	debug_zdump("label count: %d\n", dname->label_count);
+	dbg_zdump("label count: %d\n", dname->label_count);
 	uint16_t label_count = dname->label_count;
 	fwrite_wrapper(&label_count, sizeof(label_count), 1, f, stream,
 	               stream_size);
@@ -1404,7 +1404,7 @@ static void knot_dname_dump_binary(const knot_dname_t *dname, FILE *f,
 	               stream_size);
 	fwrite_wrapper(dname->name, sizeof(uint8_t), dname->size, f,
 	               stream, stream_size);
-	debug_zdump("dname size: %d\n", dname->size);
+	dbg_zdump("dname size: %d\n", dname->size);
 	knot_labels_dump_binary(dname, f, stream, stream_size);
 }
 
@@ -1436,7 +1436,7 @@ static void knot_rdata_dump_binary(knot_rdata_t *rdata,
 		knot_rrtype_descriptor_by_type(type);
 	assert(desc != NULL);
 
-	debug_zdump("Dumping type: %d\n", type);
+	dbg_zdump("Dumping type: %d\n", type);
 
 	if (desc->fixed_items) {
 		assert(desc->length == rdata->count);
@@ -1448,10 +1448,10 @@ static void knot_rdata_dump_binary(knot_rdata_t *rdata,
 
 	for (int i = 0; i < rdata->count; i++) {
 		if (&(rdata->items[i]) == NULL) {
-			debug_zdump("Item n. %d is not set!\n", i);
+			dbg_zdump("Item n. %d is not set!\n", i);
 			continue;
 		}
-		debug_zdump("Item n: %d\n", i);
+		dbg_zdump("Item n: %d\n", i);
 		if (desc->wireformat[i] == KNOT_RDATA_WF_COMPRESSED_DNAME ||
 		desc->wireformat[i] == KNOT_RDATA_WF_UNCOMPRESSED_DNAME ||
 		desc->wireformat[i] == KNOT_RDATA_WF_LITERAL_DNAME )	{
@@ -1465,7 +1465,7 @@ static void knot_rdata_dump_binary(knot_rdata_t *rdata,
 
 			if (use_ids) {
 				/* Write ID. */
-				debug_zload("%s \n",
+				dbg_zload("%s \n",
 				    knot_dname_to_str(rdata->items[i].dname));
 				assert(rdata->items[i].dname->id != 0);
 
@@ -1504,7 +1504,7 @@ static void knot_rdata_dump_binary(knot_rdata_t *rdata,
 			}
 
 		} else {
-			debug_zdump("Writing raw data. Item nr.: %d\n",
+			dbg_zdump("Writing raw data. Item nr.: %d\n",
 			                 i);
 			assert(rdata->items[i].raw_data != NULL);
 			fwrite_wrapper(rdata->items[i].raw_data,
@@ -1512,7 +1512,7 @@ static void knot_rdata_dump_binary(knot_rdata_t *rdata,
 			       rdata->items[i].raw_data[0] + 2, f,
 			               stream, stream_size);
 
-			debug_zdump("Written %d long raw data\n",
+			dbg_zdump("Written %d long raw data\n",
 					   rdata->items[i].raw_data[0]);
 		}
 	}
@@ -1528,7 +1528,7 @@ static void knot_rrsig_set_dump_binary(knot_rrset_t *rrsig, arg_t *data,
                                        int use_ids,
                                        uint8_t **stream, size_t *stream_size)
 {
-	debug_zdump("Dumping rrset \\w owner: %s\n",
+	dbg_zdump("Dumping rrset \\w owner: %s\n",
 	                   knot_dname_to_str(rrsig->owner));
 	assert(rrsig->type == KNOT_RRTYPE_RRSIG);
 	assert(rrsig->rdata);
@@ -1635,7 +1635,7 @@ static void knot_node_dump_binary(knot_node_t *node, void *data,
 	assert(node->owner != NULL);
 
 	/* Write owner ID. */
-	debug_zdump("Dumping node owned by %s\n",
+	dbg_zdump("Dumping node owned by %s\n",
 	                   knot_dname_to_str(node->owner));
 	assert(node->owner->id != 0);
 	uint32_t owner_id = node->owner->id;
@@ -1657,14 +1657,14 @@ static void knot_node_dump_binary(knot_node_t *node, void *data,
 	fwrite_wrapper(&(node->flags), sizeof(node->flags), 1, f,
 	               stream, stream_size);
 
-	debug_zdump("Written flags: %u\n", node->flags);
+	dbg_zdump("Written flags: %u\n", node->flags);
 
 	if (knot_node_nsec3_node(node, 0) != NULL) {
 		uint32_t nsec3_id =
 			knot_node_owner(knot_node_nsec3_node(node, 0))->id;
 		fwrite_wrapper(&nsec3_id, sizeof(nsec3_id), 1, f,
 		               stream, stream_size);
-		debug_zdump("Written nsec3 node id: %u\n",
+		dbg_zdump("Written nsec3 node id: %u\n",
 			 knot_node_owner(knot_node_nsec3_node(node, 0))->id);
 	} else {
 		uint32_t nsec3_id = 0;
@@ -1702,9 +1702,9 @@ static void knot_node_dump_binary(knot_node_t *node, void *data,
 
 	free(node_rrsets);
 
-	debug_zdump("Position after all rrsets: %ld\n", ftell(f));
-	debug_zdump("Writing here: %ld\n", ftell(f));
-	debug_zdump("Function ends with: %ld\n\n", ftell(f));
+	dbg_zdump("Position after all rrsets: %ld\n", ftell(f));
+	dbg_zdump("Writing here: %ld\n", ftell(f));
+	dbg_zdump("Function ends with: %ld\n\n", ftell(f));
 }
 
 /*!
@@ -1918,7 +1918,7 @@ int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
 		return KNOT_EBADARG;
 	}
 
-	debug_zdump("dumping zone\n");
+	dbg_zdump("dumping zone\n");
 
 //	skip_list_t *encloser_list = skip_create_list(compare_pointers);
 	arg_t arguments;
@@ -2040,7 +2040,7 @@ int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
 	crc_path = strcat(crc_path, ".crc");
 	FILE *f_crc = fopen(crc_path, "w");
 	if (unlikely(!f_crc)) {
-		debug_zload("knot_zload_open: failed to open '%s'\n",
+		dbg_zload("knot_zload_open: failed to open '%s'\n",
 		                   crc_path);
 		fclose(f);
 		free(crc_path);
@@ -2096,7 +2096,7 @@ int knot_zdump_dump_and_swap(knot_zone_contents_t *zone,
 	int rc = knot_zdump_binary(zone, temp_zonedb, 0, sfilename);
 
 	if (rc != KNOT_EOK) {
-		debug_zdump("Failed to save the zone to binary zone db %s."
+		dbg_zdump("Failed to save the zone to binary zone db %s."
 		                 "\n", temp_zonedb);
 		return KNOT_ERROR;
 	}
@@ -2121,7 +2121,7 @@ int knot_zdump_dump_and_swap(knot_zone_contents_t *zone,
 		}
 
 		if (rename(temp_zonedb_crc, destination_zonedb_crc) != 0) {
-			debug_zdump("Failed to replace old zonedb CRC %s "
+			dbg_zdump("Failed to replace old zonedb CRC %s "
 					 "with new CRC zone file %s.\n",
 					 destination_zonedb_crc,
 					 temp_zonedb_crc);
@@ -2132,7 +2132,7 @@ int knot_zdump_dump_and_swap(knot_zone_contents_t *zone,
 
 		/* Rename zonedb. */
 		if (rename(temp_zonedb, destination_zonedb) != 0) {
-			debug_zdump("Failed to replace old zonedb %s "
+			dbg_zdump("Failed to replace old zonedb %s "
 					 "with new zone file %s.\n",
 					 temp_zonedb,
 					 destination_zonedb);
@@ -2142,7 +2142,7 @@ int knot_zdump_dump_and_swap(knot_zone_contents_t *zone,
 			return KNOT_ERROR;
 		}
 	} else {
-		debug_zdump("Failed to replace old zonedb '%s'', %s.\n",
+		dbg_zdump("Failed to replace old zonedb '%s'', %s.\n",
 				 destination_zonedb, strerror(errno));
 		return KNOT_ERROR;
 	}

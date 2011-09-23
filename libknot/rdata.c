@@ -632,7 +632,7 @@ void knot_rdata_deep_free(knot_rdata_t **rdata, uint type,
 //	}
 
 //	if (copied > buf_size) {
-//		debug_knot_rdata("Not enough place allocated for function "
+//		dbg_knot_rdata("Not enough place allocated for function "
 //		            "knot_rdata_to_wire(). Allocated %u, need %u\n",
 //		            buf_size, copied);
 //		return -1;

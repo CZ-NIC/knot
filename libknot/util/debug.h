@@ -114,48 +114,48 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define debug_knot_ns(msg...) fprintf(stderr, msg)
-#define debug_knot_ns_hex(data, len)  hex_print((data), (len))
-#define debug_knot_ns_exec(cmds) do { cmds } while (0)
+#define dbg_knot_ns(msg...) fprintf(stderr, msg)
+#define dbg_knot_ns_hex(data, len)  hex_print((data), (len))
+#define dbg_knot_ns_exec(cmds) do { cmds } while (0)
 #else
-#define debug_knot_ns(msg...)
-#define debug_knot_ns_hex(data, len)
-#define debug_knot_ns_exec(cmds)
+#define dbg_knot_ns(msg...)
+#define dbg_knot_ns_hex(data, len)
+#define dbg_knot_ns_exec(cmds)
 #endif
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define debug_knot_ns_verb(msg...) fprintf(stderr, msg)
-#define debug_knot_ns_hex_verb(data, len)  hex_print((data), (len))
-#define debug_knot_ns_exec_verb(cmds) do { cmds } while (0)
+#define dbg_knot_ns_verb(msg...) fprintf(stderr, msg)
+#define dbg_knot_ns_hex_verb(data, len)  hex_print((data), (len))
+#define dbg_knot_ns_exec_verb(cmds) do { cmds } while (0)
 #else
-#define debug_knot_ns_verb(msg...)
-#define debug_knot_ns_hex_verb(data, len)
-#define debug_knot_ns_exec_verb(cmds)
+#define dbg_knot_ns_verb(msg...)
+#define dbg_knot_ns_hex_verb(data, len)
+#define dbg_knot_ns_exec_verb(cmds)
 #endif
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define debug_knot_ns_detail(msg...) fprintf(stderr, msg)
-#define debug_knot_ns_hex_detail(data, len)  hex_print((data), (len))
-#define debug_knot_ns_exec_detail(cmds) do { cmds } while (0)
+#define dbg_knot_ns_detail(msg...) fprintf(stderr, msg)
+#define dbg_knot_ns_hex_detail(data, len)  hex_print((data), (len))
+#define dbg_knot_ns_exec_detail(cmds) do { cmds } while (0)
 #else
-#define debug_knot_ns_detail(msg...)
-#define debug_knot_ns_hex_detail(data, len)
-#define debug_knot_ns_exec_verb(cmds)
+#define dbg_knot_ns_detail(msg...)
+#define dbg_knot_ns_hex_detail(data, len)
+#define dbg_knot_ns_exec_verb(cmds)
 #endif
 
 /* No messages. */
 #else
-#define debug_knot_ns(msg...)
-#define debug_knot_ns_hex(data, len)
-#define debug_knot_ns_exec(cmds)
-#define debug_knot_ns_verb(msg...)
-#define debug_knot_ns_hex_verb(data, len)
-#define debug_knot_ns_exec_verb(cmds)
-#define debug_knot_ns_detail(msg...)
-#define debug_knot_ns_hex_detail(data, len)
-#define debug_knot_ns_exec_detail(cmds)
+#define dbg_knot_ns(msg...)
+#define dbg_knot_ns_hex(data, len)
+#define dbg_knot_ns_exec(cmds)
+#define dbg_knot_ns_verb(msg...)
+#define dbg_knot_ns_hex_verb(data, len)
+#define dbg_knot_ns_exec_verb(cmds)
+#define dbg_knot_ns_detail(msg...)
+#define dbg_knot_ns_hex_detail(data, len)
+#define dbg_knot_ns_exec_detail(cmds)
 #endif
 
 /******************************************************************************/
@@ -164,48 +164,48 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define debug_knot_dname(msg...) fprintf(stderr, msg)
-#define debug_knot_dname_hex(data, len)  hex_print((data), (len))
-#define debug_knot_dname_exec(cmds) do { cmds } while (0)
+#define dbg_knot_dname(msg...) fprintf(stderr, msg)
+#define dbg_knot_dname_hex(data, len)  hex_print((data), (len))
+#define dbg_knot_dname_exec(cmds) do { cmds } while (0)
 #else
-#define debug_knot_dname(msg...)
-#define debug_knot_dname_hex(data, len)
-#define debug_knot_dname_exec(cmds)
+#define dbg_knot_dname(msg...)
+#define dbg_knot_dname_hex(data, len)
+#define dbg_knot_dname_exec(cmds)
 #endif
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define debug_knot_dname_verb(msg...) fprintf(stderr, msg)
-#define debug_knot_dname_hex_verb(data, len)  hex_print((data), (len))
-#define debug_knot_dname_exec_verb(cmds) do { cmds } while (0)
+#define dbg_knot_dname_verb(msg...) fprintf(stderr, msg)
+#define dbg_knot_dname_hex_verb(data, len)  hex_print((data), (len))
+#define dbg_knot_dname_exec_verb(cmds) do { cmds } while (0)
 #else
-#define debug_knot_dname_verb(msg...)
-#define debug_knot_dname_hex_verb(data, len)
-#define debug_knot_dname_exec_verb(cmds)
+#define dbg_knot_dname_verb(msg...)
+#define dbg_knot_dname_hex_verb(data, len)
+#define dbg_knot_dname_exec_verb(cmds)
 #endif
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define debug_knot_dname_detail(msg...) fprintf(stderr, msg)
-#define debug_knot_dname_hex_detail(data, len)  hex_print((data), (len))
-#define debug_knot_dname_exec_detail(cmds) do { cmds } while (0)
+#define dbg_knot_dname_detail(msg...) fprintf(stderr, msg)
+#define dbg_knot_dname_hex_detail(data, len)  hex_print((data), (len))
+#define dbg_knot_dname_exec_detail(cmds) do { cmds } while (0)
 #else
-#define debug_knot_dname_detail(msg...)
-#define debug_knot_dname_hex_detail(data, len)
-#define debug_knot_dname_exec_detail(cmds)
+#define dbg_knot_dname_detail(msg...)
+#define dbg_knot_dname_hex_detail(data, len)
+#define dbg_knot_dname_exec_detail(cmds)
 #endif
 
 /* No messages. */
 #else
-#define debug_knot_dname(msg...)
-#define debug_knot_dname_hex(data, len)
-#define debug_knot_dname_exec(cmds)
-#define debug_knot_dname_verb(msg...)
-#define debug_knot_dname_hex_verb(data, len)
-#define debug_knot_dname_exec_verb(cmds)
-#define debug_knot_dname_detail(msg...)
-#define debug_knot_dname_hex_detail(data, len)
-#define debug_knot_dname_exec_detail(cmds)
+#define dbg_knot_dname(msg...)
+#define dbg_knot_dname_hex(data, len)
+#define dbg_knot_dname_exec(cmds)
+#define dbg_knot_dname_verb(msg...)
+#define dbg_knot_dname_hex_verb(data, len)
+#define dbg_knot_dname_exec_verb(cmds)
+#define dbg_knot_dname_detail(msg...)
+#define dbg_knot_dname_hex_detail(data, len)
+#define dbg_knot_dname_exec_detail(cmds)
 #endif
 
 /******************************************************************************/
@@ -214,39 +214,39 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define debug_knot_node(msg...) fprintf(stderr, msg)
-#define debug_knot_node_hex(data, len)  hex_print((data), (len))
+#define dbg_knot_node(msg...) fprintf(stderr, msg)
+#define dbg_knot_node_hex(data, len)  hex_print((data), (len))
 #else
-#define debug_knot_node(msg...)
-#define debug_knot_node_hex(data, len)
+#define dbg_knot_node(msg...)
+#define dbg_knot_node_hex(data, len)
 #endif
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define debug_knot_node_verb(msg...) fprintf(stderr, msg)
-#define debug_knot_node_hex_verb(data, len)  hex_print((data), (len))
+#define dbg_knot_node_verb(msg...) fprintf(stderr, msg)
+#define dbg_knot_node_hex_verb(data, len)  hex_print((data), (len))
 #else
-#define debug_knot_node_verb(msg...)
-#define debug_knot_node_hex_verb(data, len)
+#define dbg_knot_node_verb(msg...)
+#define dbg_knot_node_hex_verb(data, len)
 #endif
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define debug_knot_node_detail(msg...) fprintf(stderr, msg)
-#define debug_knot_node_hex_detail(data, len)  hex_print((data), (len))
+#define dbg_knot_node_detail(msg...) fprintf(stderr, msg)
+#define dbg_knot_node_hex_detail(data, len)  hex_print((data), (len))
 #else
-#define debug_knot_node_detail(msg...)
-#define debug_knot_node_hex_detail(data, len)
+#define dbg_knot_node_detail(msg...)
+#define dbg_knot_node_hex_detail(data, len)
 #endif
 
 /* No messages. */
 #else
-#define debug_knot_node(msg...)
-#define debug_knot_node_hex(data, len)
-#define debug_knot_node_verb(msg...)
-#define debug_knot_node_hex_verb(data, len)
-#define debug_knot_node_detail(msg...)
-#define debug_knot_node_hex_detail(data, len)
+#define dbg_knot_node(msg...)
+#define dbg_knot_node_hex(data, len)
+#define dbg_knot_node_verb(msg...)
+#define dbg_knot_node_hex_verb(data, len)
+#define dbg_knot_node_detail(msg...)
+#define dbg_knot_node_hex_detail(data, len)
 #endif
 
 /******************************************************************************/
@@ -255,48 +255,48 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define debug_knot_zone(msg...) fprintf(stderr, msg)
-#define debug_knot_zone_hex(data, len)  hex_print((data), (len))
-#define debug_knot_zone_exec(cmds) do { cmds } while (0)
+#define dbg_knot_zone(msg...) fprintf(stderr, msg)
+#define dbg_knot_zone_hex(data, len)  hex_print((data), (len))
+#define dbg_knot_zone_exec(cmds) do { cmds } while (0)
 #else
-#define debug_knot_zone(msg...)
-#define debug_knot_zone_hex(data, len)
-#define debug_knot_zone_exec(cmds)
+#define dbg_knot_zone(msg...)
+#define dbg_knot_zone_hex(data, len)
+#define dbg_knot_zone_exec(cmds)
 #endif
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define debug_knot_zone_verb(msg...) fprintf(stderr, msg)
-#define debug_knot_zone_hex_verb(data, len)  hex_print((data), (len))
-#define debug_knot_zone_exec_verb(cmds) do { cmds } while (0)
+#define dbg_knot_zone_verb(msg...) fprintf(stderr, msg)
+#define dbg_knot_zone_hex_verb(data, len)  hex_print((data), (len))
+#define dbg_knot_zone_exec_verb(cmds) do { cmds } while (0)
 #else
-#define debug_knot_zone_verb(msg...)
-#define debug_knot_zone_hex_verb(data, len)
-#define debug_knot_zone_exec_verb(cmds)
+#define dbg_knot_zone_verb(msg...)
+#define dbg_knot_zone_hex_verb(data, len)
+#define dbg_knot_zone_exec_verb(cmds)
 #endif
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define debug_knot_zone_detail(msg...) fprintf(stderr, msg)
-#define debug_knot_zone_hex_detail(data, len)  hex_print((data), (len))
-#define debug_knot_zone_exec_detail(cmds) do { cmds } while (0)
+#define dbg_knot_zone_detail(msg...) fprintf(stderr, msg)
+#define dbg_knot_zone_hex_detail(data, len)  hex_print((data), (len))
+#define dbg_knot_zone_exec_detail(cmds) do { cmds } while (0)
 #else
-#define debug_knot_zone_detail(msg...)
-#define debug_knot_zone_hex_detail(data, len)
-#define debug_knot_zone_exec_detail(cmds)
+#define dbg_knot_zone_detail(msg...)
+#define dbg_knot_zone_hex_detail(data, len)
+#define dbg_knot_zone_exec_detail(cmds)
 #endif
 
 /* No messages. */
 #else
-#define debug_knot_zone(msg...)
-#define debug_knot_zone_hex(data, len)
-#define debug_knot_zone_exec(cmds)
-#define debug_knot_zone_verb(msg...)
-#define debug_knot_zone_hex_verb(data, len)
-#define debug_knot_zone_exec_verb(cmds)
-#define debug_knot_zone_detail(msg...)
-#define debug_knot_zone_hex_detail(data, len)
-#define debug_knot_zone_exec_detail(cmds)
+#define dbg_knot_zone(msg...)
+#define dbg_knot_zone_hex(data, len)
+#define dbg_knot_zone_exec(cmds)
+#define dbg_knot_zone_verb(msg...)
+#define dbg_knot_zone_hex_verb(data, len)
+#define dbg_knot_zone_exec_verb(cmds)
+#define dbg_knot_zone_detail(msg...)
+#define dbg_knot_zone_hex_detail(data, len)
+#define dbg_knot_zone_exec_detail(cmds)
 #endif
 
 /******************************************************************************/
@@ -305,48 +305,48 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define debug_knot_zonedb(msg...) fprintf(stderr, msg)
-#define debug_knot_zonedb_hex(data, len)  hex_print((data), (len))
-#define debug_knot_zonedb_exec(cmds) do { cmds } while (0)
+#define dbg_knot_zonedb(msg...) fprintf(stderr, msg)
+#define dbg_knot_zonedb_hex(data, len)  hex_print((data), (len))
+#define dbg_knot_zonedb_exec(cmds) do { cmds } while (0)
 #else
-#define debug_knot_zonedb(msg...)
-#define debug_knot_zonedb_hex(data, len)
-#define debug_knot_zonedb_exec(cmds)
+#define dbg_knot_zonedb(msg...)
+#define dbg_knot_zonedb_hex(data, len)
+#define dbg_knot_zonedb_exec(cmds)
 #endif
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define debug_knot_zonedb_verb(msg...) fprintf(stderr, msg)
-#define debug_knot_zonedb_hex_verb(data, len)  hex_print((data), (len))
-#define debug_knot_zonedb_exec_verb(cmds) do { cmds } while (0)
+#define dbg_knot_zonedb_verb(msg...) fprintf(stderr, msg)
+#define dbg_knot_zonedb_hex_verb(data, len)  hex_print((data), (len))
+#define dbg_knot_zonedb_exec_verb(cmds) do { cmds } while (0)
 #else
-#define debug_knot_zonedb_verb(msg...)
-#define debug_knot_zonedb_hex_verb(data, len)
-#define debug_knot_zonedb_exec_verb(cmds)
+#define dbg_knot_zonedb_verb(msg...)
+#define dbg_knot_zonedb_hex_verb(data, len)
+#define dbg_knot_zonedb_exec_verb(cmds)
 #endif
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define debug_knot_zonedb_detail(msg...) fprintf(stderr, msg)
-#define debug_knot_zonedb_hex_detail(data, len)  hex_print((data), (len))
-#define debug_knot_zonedb_exec_detail(cmds) do { cmds } while (0)
+#define dbg_knot_zonedb_detail(msg...) fprintf(stderr, msg)
+#define dbg_knot_zonedb_hex_detail(data, len)  hex_print((data), (len))
+#define dbg_knot_zonedb_exec_detail(cmds) do { cmds } while (0)
 #else
-#define debug_knot_zonedb_detail(msg...)
-#define debug_knot_zonedb_hex_detail(data, len)
-#define debug_knot_zonedb_exec_detail(cmds)
+#define dbg_knot_zonedb_detail(msg...)
+#define dbg_knot_zonedb_hex_detail(data, len)
+#define dbg_knot_zonedb_exec_detail(cmds)
 #endif
 
 /* No messages. */
 #else
-#define debug_knot_zonedb(msg...)
-#define debug_knot_zonedb_hex(data, len)
-#define debug_knot_zonedb_exec(cmds)
-#define debug_knot_zonedb_verb(msg...)
-#define debug_knot_zonedb_hex_verb(data, len)
-#define debug_knot_zonedb_exec_verb(cmds)
-#define debug_knot_zonedb_detail(msg...)
-#define debug_knot_zonedb_hex_detail(data, len)
-#define debug_knot_zonedb_exec_detail(cmds)
+#define dbg_knot_zonedb(msg...)
+#define dbg_knot_zonedb_hex(data, len)
+#define dbg_knot_zonedb_exec(cmds)
+#define dbg_knot_zonedb_verb(msg...)
+#define dbg_knot_zonedb_hex_verb(data, len)
+#define dbg_knot_zonedb_exec_verb(cmds)
+#define dbg_knot_zonedb_detail(msg...)
+#define dbg_knot_zonedb_hex_detail(data, len)
+#define dbg_knot_zonedb_exec_detail(cmds)
 #endif
 
 /******************************************************************************/
@@ -355,48 +355,48 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define debug_knot_response(msg...) fprintf(stderr, msg)
-#define debug_knot_response_hex(data, len)  hex_print((data), (len))
-#define debug_knot_response_exec(cmds) do { cmds } while (0)
+#define dbg_knot_response(msg...) fprintf(stderr, msg)
+#define dbg_knot_response_hex(data, len)  hex_print((data), (len))
+#define dbg_knot_response_exec(cmds) do { cmds } while (0)
 #else
-#define debug_knot_response(msg...)
-#define debug_knot_response_hex(data, len)
-#define debug_knot_response_exec(cmds)
+#define dbg_knot_response(msg...)
+#define dbg_knot_response_hex(data, len)
+#define dbg_knot_response_exec(cmds)
 #endif
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define debug_knot_response_verb(msg...) fprintf(stderr, msg)
-#define debug_knot_response_hex_verb(data, len)  hex_print((data), (len))
-#define debug_knot_response_exec_verb(cmds) do { cmds } while (0)
+#define dbg_knot_response_verb(msg...) fprintf(stderr, msg)
+#define dbg_knot_response_hex_verb(data, len)  hex_print((data), (len))
+#define dbg_knot_response_exec_verb(cmds) do { cmds } while (0)
 #else
-#define debug_knot_response_verb(msg...)
-#define debug_knot_response_hex_verb(data, len)
-#define debug_knot_response_exec_verb(cmds)
+#define dbg_knot_response_verb(msg...)
+#define dbg_knot_response_hex_verb(data, len)
+#define dbg_knot_response_exec_verb(cmds)
 #endif
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define debug_knot_response_detail(msg...) fprintf(stderr, msg)
-#define debug_knot_response_hex_detail(data, len)  hex_print((data), (len))
-#define debug_knot_response_exec_detail(cmds) do { cmds } while (0)
+#define dbg_knot_response_detail(msg...) fprintf(stderr, msg)
+#define dbg_knot_response_hex_detail(data, len)  hex_print((data), (len))
+#define dbg_knot_response_exec_detail(cmds) do { cmds } while (0)
 #else
-#define debug_knot_response_detail(msg...)
-#define debug_knot_response_hex_detail(data, len)
-#define debug_knot_response_exec_detail(cmds)
+#define dbg_knot_response_detail(msg...)
+#define dbg_knot_response_hex_detail(data, len)
+#define dbg_knot_response_exec_detail(cmds)
 #endif
 
 /* No messages. */
 #else
-#define debug_knot_response(msg...)
-#define debug_knot_response_hex(data, len)
-#define debug_knot_response_exec(cmds)
-#define debug_knot_response_verb(msg...)
-#define debug_knot_response_hex_verb(data, len)
-#define debug_knot_response_exec_verb(cmds)
-#define debug_knot_response_detail(msg...)
-#define debug_knot_response_hex_detail(data, len)
-#define debug_knot_response_exec_detail(cmds)
+#define dbg_knot_response(msg...)
+#define dbg_knot_response_hex(data, len)
+#define dbg_knot_response_exec(cmds)
+#define dbg_knot_response_verb(msg...)
+#define dbg_knot_response_hex_verb(data, len)
+#define dbg_knot_response_exec_verb(cmds)
+#define dbg_knot_response_detail(msg...)
+#define dbg_knot_response_hex_detail(data, len)
+#define dbg_knot_response_exec_detail(cmds)
 #endif
 
 /******************************************************************************/
@@ -405,48 +405,48 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define debug_knot_packet(msg...) fprintf(stderr, msg)
-#define debug_knot_packet_hex(data, len)  hex_print((data), (len))
-#define debug_knot_packet_exec(cmds) do { cmds } while (0)
+#define dbg_knot_packet(msg...) fprintf(stderr, msg)
+#define dbg_knot_packet_hex(data, len)  hex_print((data), (len))
+#define dbg_knot_packet_exec(cmds) do { cmds } while (0)
 #else
-#define debug_knot_packet(msg...)
-#define debug_knot_packet_hex(data, len)
-#define debug_knot_packet_exec(cmds)
+#define dbg_knot_packet(msg...)
+#define dbg_knot_packet_hex(data, len)
+#define dbg_knot_packet_exec(cmds)
 #endif
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define debug_knot_packet_verb(msg...) fprintf(stderr, msg)
-#define debug_knot_packet_hex_verb(data, len)  hex_print((data), (len))
-#define debug_knot_packet_exec_verb(cmds) do { cmds } while (0)
+#define dbg_knot_packet_verb(msg...) fprintf(stderr, msg)
+#define dbg_knot_packet_hex_verb(data, len)  hex_print((data), (len))
+#define dbg_knot_packet_exec_verb(cmds) do { cmds } while (0)
 #else
-#define debug_knot_packet_verb(msg...)
-#define debug_knot_packet_hex_verb(data, len)
-#define debug_knot_packet_exec_verb(cmds)
+#define dbg_knot_packet_verb(msg...)
+#define dbg_knot_packet_hex_verb(data, len)
+#define dbg_knot_packet_exec_verb(cmds)
 #endif
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define debug_knot_packet_detail(msg...) fprintf(stderr, msg)
-#define debug_knot_packet_hex_detail(data, len)  hex_print((data), (len))
-#define debug_knot_packet_exec_detail(cmds) do { cmds } while (0)
+#define dbg_knot_packet_detail(msg...) fprintf(stderr, msg)
+#define dbg_knot_packet_hex_detail(data, len)  hex_print((data), (len))
+#define dbg_knot_packet_exec_detail(cmds) do { cmds } while (0)
 #else
-#define debug_knot_packet_detail(msg...)
-#define debug_knot_packet_hex_detail(data, len)
-#define debug_knot_packet_exec_detail(cmds)
+#define dbg_knot_packet_detail(msg...)
+#define dbg_knot_packet_hex_detail(data, len)
+#define dbg_knot_packet_exec_detail(cmds)
 #endif
 
 /* No messages. */
 #else
-#define debug_knot_packet(msg...)
-#define debug_knot_packet_hex(data, len)
-#define debug_knot_packet_exec(cmds)
-#define debug_knot_packet_verb(msg...)
-#define debug_knot_packet_hex_verb(data, len)
-#define debug_knot_packet_exec_verb(cmds)
-#define debug_knot_packet_detail(msg...)
-#define debug_knot_packet_hex_detail(data, len)
-#define debug_knot_packet_exec_detail(cmds)
+#define dbg_knot_packet(msg...)
+#define dbg_knot_packet_hex(data, len)
+#define dbg_knot_packet_exec(cmds)
+#define dbg_knot_packet_verb(msg...)
+#define dbg_knot_packet_hex_verb(data, len)
+#define dbg_knot_packet_exec_verb(cmds)
+#define dbg_knot_packet_detail(msg...)
+#define dbg_knot_packet_hex_detail(data, len)
+#define dbg_knot_packet_exec_detail(cmds)
 #endif
 
 /******************************************************************************/
@@ -455,39 +455,39 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define debug_knot_edns(msg...) fprintf(stderr, msg)
-#define debug_knot_edns_hex(data, len)  hex_print((data), (len))
+#define dbg_knot_edns(msg...) fprintf(stderr, msg)
+#define dbg_knot_edns_hex(data, len)  hex_print((data), (len))
 #else
-#define debug_knot_edns(msg...)
-#define debug_knot_edns_hex(data, len)
+#define dbg_knot_edns(msg...)
+#define dbg_knot_edns_hex(data, len)
 #endif
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define debug_knot_edns_verb(msg...) fprintf(stderr, msg)
-#define debug_knot_edns_hex_verb(data, len)  hex_print((data), (len))
+#define dbg_knot_edns_verb(msg...) fprintf(stderr, msg)
+#define dbg_knot_edns_hex_verb(data, len)  hex_print((data), (len))
 #else
-#define debug_knot_edns_verb(msg...)
-#define debug_knot_edns_hex_verb(data, len)
+#define dbg_knot_edns_verb(msg...)
+#define dbg_knot_edns_hex_verb(data, len)
 #endif
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define debug_knot_edns_detail(msg...) fprintf(stderr, msg)
-#define debug_knot_edns_hex_detail(data, len)  hex_print((data), (len))
+#define dbg_knot_edns_detail(msg...) fprintf(stderr, msg)
+#define dbg_knot_edns_hex_detail(data, len)  hex_print((data), (len))
 #else
-#define debug_knot_edns_detail(msg...)
-#define debug_knot_edns_hex_detail(data, len)
+#define dbg_knot_edns_detail(msg...)
+#define dbg_knot_edns_hex_detail(data, len)
 #endif
 
 /* No messages. */
 #else
-#define debug_knot_edns(msg...)
-#define debug_knot_edns_hex(data, len)
-#define debug_knot_edns_verb(msg...)
-#define debug_knot_edns_hex_verb(data, len)
-#define debug_knot_edns_detail(msg...)
-#define debug_knot_edns_hex_detail(data, len)
+#define dbg_knot_edns(msg...)
+#define dbg_knot_edns_hex(data, len)
+#define dbg_knot_edns_verb(msg...)
+#define dbg_knot_edns_hex_verb(data, len)
+#define dbg_knot_edns_detail(msg...)
+#define dbg_knot_edns_hex_detail(data, len)
 #endif
 
 /******************************************************************************/
@@ -496,39 +496,39 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define debug_knot_nsec3(msg...) fprintf(stderr, msg)
-#define debug_knot_nsec3_hex(data, len)  hex_print((data), (len))
+#define dbg_knot_nsec3(msg...) fprintf(stderr, msg)
+#define dbg_knot_nsec3_hex(data, len)  hex_print((data), (len))
 #else
-#define debug_knot_nsec3(msg...)
-#define debug_knot_nsec3_hex(data, len)
+#define dbg_knot_nsec3(msg...)
+#define dbg_knot_nsec3_hex(data, len)
 #endif
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define debug_knot_nsec3_verb(msg...) fprintf(stderr, msg)
-#define debug_knot_nsec3_hex_verb(data, len)  hex_print((data), (len))
+#define dbg_knot_nsec3_verb(msg...) fprintf(stderr, msg)
+#define dbg_knot_nsec3_hex_verb(data, len)  hex_print((data), (len))
 #else
-#define debug_knot_nsec3_verb(msg...)
-#define debug_knot_nsec3_hex_verb(data, len)
+#define dbg_knot_nsec3_verb(msg...)
+#define dbg_knot_nsec3_hex_verb(data, len)
 #endif
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define debug_knot_nsec3_detail(msg...) fprintf(stderr, msg)
-#define debug_knot_nsec3_hex_detail(data, len)  hex_print((data), (len))
+#define dbg_knot_nsec3_detail(msg...) fprintf(stderr, msg)
+#define dbg_knot_nsec3_hex_detail(data, len)  hex_print((data), (len))
 #else
-#define debug_knot_nsec3_detail(msg...)
-#define debug_knot_nsec3_hex_detail(data, len)
+#define dbg_knot_nsec3_detail(msg...)
+#define dbg_knot_nsec3_hex_detail(data, len)
 #endif
 
 /* No messages. */
 #else
-#define debug_knot_nsec3(msg...)
-#define debug_knot_nsec3_hex(data, len)
-#define debug_knot_nsec3_verb(msg...)
-#define debug_knot_nsec3_hex_verb(data, len)
-#define debug_knot_nsec3_detail(msg...)
-#define debug_knot_nsec3_hex_detail(data, len)
+#define dbg_knot_nsec3(msg...)
+#define dbg_knot_nsec3_hex(data, len)
+#define dbg_knot_nsec3_verb(msg...)
+#define dbg_knot_nsec3_hex_verb(data, len)
+#define dbg_knot_nsec3_detail(msg...)
+#define dbg_knot_nsec3_hex_detail(data, len)
 #endif
 
 /******************************************************************************/
@@ -537,39 +537,39 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define debug_ck(msg...) fprintf(stderr, msg)
-#define debug_ck_hex(data, len)  hex_print((data), (len))
+#define dbg_ck(msg...) fprintf(stderr, msg)
+#define dbg_ck_hex(data, len)  hex_print((data), (len))
 #else
-#define debug_ck(msg...)
-#define debug_ck_hex(data, len)
+#define dbg_ck(msg...)
+#define dbg_ck_hex(data, len)
 #endif
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define debug_ck_verb(msg...) fprintf(stderr, msg)
-#define debug_ck_hex_verb(data, len)  hex_print((data), (len))
+#define dbg_ck_verb(msg...) fprintf(stderr, msg)
+#define dbg_ck_hex_verb(data, len)  hex_print((data), (len))
 #else
-#define debug_ck_verb(msg...)
-#define debug_ck_hex_verb(data, len)
+#define dbg_ck_verb(msg...)
+#define dbg_ck_hex_verb(data, len)
 #endif
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define debug_ck_detail(msg...) fprintf(stderr, msg)
-#define debug_ck_hex_detail(data, len)  hex_print((data), (len))
+#define dbg_ck_detail(msg...) fprintf(stderr, msg)
+#define dbg_ck_hex_detail(data, len)  hex_print((data), (len))
 #else
-#define debug_ck_detail(msg...)
-#define debug_ck_hex_detail(data, len)
+#define dbg_ck_detail(msg...)
+#define dbg_ck_hex_detail(data, len)
 #endif
 
 /* No messages. */
 #else
-#define debug_ck(msg...)
-#define debug_ck_hex(data, len)
-#define debug_ck_verb(msg...)
-#define debug_ck_hex_verb(data, len)
-#define debug_ck_detail(msg...)
-#define debug_ck_hex_detail(data, len)
+#define dbg_ck(msg...)
+#define dbg_ck_hex(data, len)
+#define dbg_ck_verb(msg...)
+#define dbg_ck_hex_verb(data, len)
+#define dbg_ck_detail(msg...)
+#define dbg_ck_hex_detail(data, len)
 #endif
 
 /******************************************************************************/
@@ -578,42 +578,42 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define debug_ck_hash(msg...) fprintf(stderr, msg)
-#define debug_ck_rehash(msg...) fprintf(stderr, msg)
-#define debug_ck_hash_hex(data, len)  hex_print((data), (len))
+#define dbg_ck_hash(msg...) fprintf(stderr, msg)
+#define dbg_ck_rehash(msg...) fprintf(stderr, msg)
+#define dbg_ck_hash_hex(data, len)  hex_print((data), (len))
 #else
-#define debug_ck_hash(msg...)
-#define debug_ck_rehash(msg...)
-#define debug_ck_hash_hex(data, len)
+#define dbg_ck_hash(msg...)
+#define dbg_ck_rehash(msg...)
+#define dbg_ck_hash_hex(data, len)
 #endif
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define debug_ck_hash_verb(msg...) fprintf(stderr, msg)
-#define debug_ck_hash_hex_verb(data, len)  hex_print((data), (len))
+#define dbg_ck_hash_verb(msg...) fprintf(stderr, msg)
+#define dbg_ck_hash_hex_verb(data, len)  hex_print((data), (len))
 #else
-#define debug_ck_hash_verb(msg...)
-#define debug_ck_hash_hex_verb(data, len)
+#define dbg_ck_hash_verb(msg...)
+#define dbg_ck_hash_hex_verb(data, len)
 #endif
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define debug_ck_hash_detail(msg...) fprintf(stderr, msg)
-#define debug_ck_hash_hex_detail(data, len)  hex_print((data), (len))
+#define dbg_ck_hash_detail(msg...) fprintf(stderr, msg)
+#define dbg_ck_hash_hex_detail(data, len)  hex_print((data), (len))
 #else
-#define debug_ck_hash_detail(msg...)
-#define debug_ck_hash_hex_detail(data, len)
+#define dbg_ck_hash_detail(msg...)
+#define dbg_ck_hash_hex_detail(data, len)
 #endif
 
 /* No messages. */
 #else
-#define debug_ck_hash(msg...)
-#define debug_ck_rehash(msg...)
-#define debug_ck_hash_hex(data, len)
-#define debug_ck_hash_verb(msg...)
-#define debug_ck_hash_hex_verb(data, len)
-#define debug_ck_hash_detail(msg...)
-#define debug_ck_hash_hex_detail(data, len)
+#define dbg_ck_hash(msg...)
+#define dbg_ck_rehash(msg...)
+#define dbg_ck_hash_hex(data, len)
+#define dbg_ck_hash_verb(msg...)
+#define dbg_ck_hash_hex_verb(data, len)
+#define dbg_ck_hash_detail(msg...)
+#define dbg_ck_hash_hex_detail(data, len)
 #endif
 
 /******************************************************************************/
@@ -622,48 +622,48 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define debug_knot_xfr(msg...) fprintf(stderr, msg)
-#define debug_knot_xfr_hex(data, len)  hex_print((data), (len))
-#define debug_knot_xfr_exec(cmds) do { cmds } while (0)
+#define dbg_knot_xfr(msg...) fprintf(stderr, msg)
+#define dbg_knot_xfr_hex(data, len)  hex_print((data), (len))
+#define dbg_knot_xfr_exec(cmds) do { cmds } while (0)
 #else
-#define debug_knot_xfr(msg...)
-#define debug_knot_xfr_hex(data, len)
-#define debug_knot_xfr_exec(cmds)
+#define dbg_knot_xfr(msg...)
+#define dbg_knot_xfr_hex(data, len)
+#define dbg_knot_xfr_exec(cmds)
 #endif
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define debug_knot_xfr_verb(msg...) fprintf(stderr, msg)
-#define debug_knot_xfr_hex_verb(data, len)  hex_print((data), (len))
-#define debug_knot_xfr_exec_verb(cmds) do { cmds } while (0)
+#define dbg_knot_xfr_verb(msg...) fprintf(stderr, msg)
+#define dbg_knot_xfr_hex_verb(data, len)  hex_print((data), (len))
+#define dbg_knot_xfr_exec_verb(cmds) do { cmds } while (0)
 #else
-#define debug_knot_xfr_verb(msg...)
-#define debug_knot_xfr_hex_verb(data, len)
-#define debug_knot_xfr_exec_verb(cmds)
+#define dbg_knot_xfr_verb(msg...)
+#define dbg_knot_xfr_hex_verb(data, len)
+#define dbg_knot_xfr_exec_verb(cmds)
 #endif
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define debug_knot_xfr_detail(msg...) fprintf(stderr, msg)
-#define debug_knot_xfr_hex_detail(data, len)  hex_print((data), (len))
-#define debug_knot_xfr_exec_detail(cmds) do { cmds } while (0)
+#define dbg_knot_xfr_detail(msg...) fprintf(stderr, msg)
+#define dbg_knot_xfr_hex_detail(data, len)  hex_print((data), (len))
+#define dbg_knot_xfr_exec_detail(cmds) do { cmds } while (0)
 #else
-#define debug_knot_xfr_detail(msg...)
-#define debug_knot_xfr_hex_detail(data, len)
-#define debug_knot_xfr_exec_detail(cmds)
+#define dbg_knot_xfr_detail(msg...)
+#define dbg_knot_xfr_hex_detail(data, len)
+#define dbg_knot_xfr_exec_detail(cmds)
 #endif
 
 /* No messages. */
 #else
-#define debug_knot_xfr(msg...)
-#define debug_knot_xfr_hex(data, len)
-#define debug_knot_xfr_exec(cmds)
-#define debug_knot_xfr_verb(msg...)
-#define debug_knot_xfr_hex_verb(data, len)
-#define debug_knot_xfr_exec_verb(cmds)
-#define debug_knot_xfr_detail(msg...)
-#define debug_knot_xfr_hex_detail(data, len)
-#define debug_knot_xfr_exec_detail(cmds)
+#define dbg_knot_xfr(msg...)
+#define dbg_knot_xfr_hex(data, len)
+#define dbg_knot_xfr_exec(cmds)
+#define dbg_knot_xfr_verb(msg...)
+#define dbg_knot_xfr_hex_verb(data, len)
+#define dbg_knot_xfr_exec_verb(cmds)
+#define dbg_knot_xfr_detail(msg...)
+#define dbg_knot_xfr_hex_detail(data, len)
+#define dbg_knot_xfr_exec_detail(cmds)
 #endif
 
 /******************************************************************************/
@@ -672,39 +672,39 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define debug_knot_ddns(msg...) fprintf(stderr, msg)
-#define debug_knot_ddns_hex(data, len)  hex_print((data), (len))
+#define dbg_knot_ddns(msg...) fprintf(stderr, msg)
+#define dbg_knot_ddns_hex(data, len)  hex_print((data), (len))
 #else
-#define debug_knot_ddns(msg...)
-#define debug_knot_ddns_hex(data, len)
+#define dbg_knot_ddns(msg...)
+#define dbg_knot_ddns_hex(data, len)
 #endif
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define debug_knot_ddns_verb(msg...) fprintf(stderr, msg)
-#define debug_knot_ddns_hex_verb(data, len)  hex_print((data), (len))
+#define dbg_knot_ddns_verb(msg...) fprintf(stderr, msg)
+#define dbg_knot_ddns_hex_verb(data, len)  hex_print((data), (len))
 #else
-#define debug_knot_ddns_verb(msg...)
-#define debug_knot_ddns_hex_verb(data, len)
+#define dbg_knot_ddns_verb(msg...)
+#define dbg_knot_ddns_hex_verb(data, len)
 #endif
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define debug_knot_ddns_detail(msg...) fprintf(stderr, msg)
-#define debug_knot_ddns_hex_detail(data, len)  hex_print((data), (len))
+#define dbg_knot_ddns_detail(msg...) fprintf(stderr, msg)
+#define dbg_knot_ddns_hex_detail(data, len)  hex_print((data), (len))
 #else
-#define debug_knot_ddns_detail(msg...)
-#define debug_knot_ddns_hex_detail(data, len)
+#define dbg_knot_ddns_detail(msg...)
+#define dbg_knot_ddns_hex_detail(data, len)
 #endif
 
 /* No messages. */
 #else
-#define debug_knot_ddns(msg...)
-#define debug_knot_ddns_hex(data, len)
-#define debug_knot_ddns_verb(msg...)
-#define debug_knot_ddns_hex_verb(data, len)
-#define debug_knot_ddns_detail(msg...)
-#define debug_knot_ddns_hex_detail(data, len)
+#define dbg_knot_ddns(msg...)
+#define dbg_knot_ddns_hex(data, len)
+#define dbg_knot_ddns_verb(msg...)
+#define dbg_knot_ddns_hex_verb(data, len)
+#define dbg_knot_ddns_detail(msg...)
+#define dbg_knot_ddns_hex_detail(data, len)
 #endif
 
 /******************************************************************************/
