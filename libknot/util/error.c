@@ -41,5 +41,6 @@ const error_table_t knot_error_msgs[KNOT_ERROR_COUNT] = {
 	{KNOT_ECRC, "CRC check failed."},
 	{KNOT_EPREREQ, "UPDATE prerequisity not met."},
 	{KNOT_ENOXFR, "Transfer was not sent."},
+	{KNOT_ENOIXFR, "Transfer is not IXFR (is in AXFR format)."},
 	{KNOT_ERROR, 0}
 };

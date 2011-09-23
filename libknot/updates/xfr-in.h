@@ -50,7 +50,8 @@ typedef struct xfrin_constructed_zone {
 
 typedef enum xfrin_transfer_result {
 	XFRIN_RES_COMPLETE = 1,
-	XFRIN_RES_SOA_ONLY = 2
+	XFRIN_RES_SOA_ONLY = 2,
+	XFRIN_RES_FALLBACK = 3
 } xfrin_transfer_result_t;
 
 /*----------------------------------------------------------------------------*/
