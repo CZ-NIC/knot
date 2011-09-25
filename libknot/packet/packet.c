@@ -1003,6 +1003,28 @@ const knot_packet_t *knot_packet_query(const knot_packet_t *packet)
 
 /*----------------------------------------------------------------------------*/
 
+int knot_packet_rcode(const knot_packet_t *packet)
+{
+	if (packet == NULL) {
+		return KNOT_EBADARG;
+	}
+	
+	return knot_wire_flags_get_rcode(packet->header.flags2);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_packet_tc(const knot_packet_t *packet)
+{
+	if (packet == NULL) {
+		return KNOT_EBADARG;
+	}
+	
+	return knot_wire_flags_get_tc(packet->header.flags1);
+}
+
+/*----------------------------------------------------------------------------*/
+
 short knot_packet_answer_rrset_count(const knot_packet_t *packet)
 {
 	if (packet == NULL) {
