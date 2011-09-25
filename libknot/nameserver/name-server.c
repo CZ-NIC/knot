@@ -3096,6 +3096,7 @@ dbg_ns_exec(
 		dbg_ns("    zone name: %s\n", name);
 		free(name);
 	}
+	free(zones);
 );
 
 	return KNOT_EOK;
