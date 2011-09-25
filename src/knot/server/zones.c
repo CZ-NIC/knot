@@ -1367,11 +1367,16 @@ int zones_process_response(knot_nameserver_t *nameserver,
 		return KNOTD_EINVAL;
 	}
 
-	/*! \todo Handle SOA query response, cancel EXPIRE timer
-	 *        and start AXFR transfer if needed.
-	 *        Reset REFRESH timer on finish.
+	/* Handle SOA query response, cancel EXPIRE timer
+	 * and start AXFR transfer if needed.
+	 * Reset REFRESH timer on finish.
 	 */
 	if (knot_packet_qtype(packet) == KNOT_RRTYPE_SOA) {
+		
+		if (knot_packet_rcode(packet) != KNOT_RCODE_NOERROR) {
+			/*! \todo Handle error response. */
+			return KNOTD_ERROR;
+		}
 
 		/* No response. */
 		*rsize = 0;
@@ -1419,7 +1424,14 @@ int zones_process_response(knot_nameserver_t *nameserver,
 		}
 
 		/* Check SOA SERIAL. */
-		if (xfrin_transfer_needed(contents, packet) < 1) {
+		int ret = xfrin_transfer_needed(contents, packet);
+		
+		if (ret < 0) {
+			/*! \todo Handle error condition -> retry. */
+			return KNOTD_ERROR;
+		}
+		
+		if (ret == 0) {
 
 			/* Reinstall REFRESH timer. */
 			uint32_t ref_tmr = 0;
@@ -1443,6 +1455,8 @@ int zones_process_response(knot_nameserver_t *nameserver,
 				      "transfer needed.\n", zd->conf->name);
 			return KNOTD_EOK;
 		}
+		
+		assert(ret > 0);
 
 		/* Prepare XFR client transfer. */
 		knot_ns_xfr_t xfr_req;
