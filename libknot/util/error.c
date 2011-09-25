@@ -42,5 +42,6 @@ const error_table_t knot_error_msgs[KNOT_ERROR_COUNT] = {
 	{KNOT_EPREREQ, "UPDATE prerequisity not met."},
 	{KNOT_ENOXFR, "Transfer was not sent."},
 	{KNOT_ENOIXFR, "Transfer is not IXFR (is in AXFR format)."},
+	{KNOT_EXFRREFUSED, "Zone transfer refused by the server."},
 	{KNOT_ERROR, 0}
 };

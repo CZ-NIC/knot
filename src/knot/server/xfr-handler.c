@@ -240,6 +240,7 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 		log_server_error("%cXFR/IN request failed - %s\n",
 		                 data->type == XFR_TYPE_AIN ? 'A' : 'I',
 		                 knot_strerror(ret));
+		/*! \todo In this case, the retry timer should also apply! */
 		return KNOTD_ERROR;
 	}
 

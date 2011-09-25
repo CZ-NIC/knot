@@ -313,6 +313,13 @@ int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
 	}
 	
 	dbg_xfrin("Processing AXFR packet of size %zu.\n", size);
+	
+	// check if the response is OK
+	if (knot_wire_get_rcode(pkt) != KNOT_RCODE_NOERROR) {
+		return KNOT_EXFRREFUSED;
+	}
+	
+	/*! \todo Should TC bit be checked? */
 
 	knot_packet_t *packet =
 			knot_packet_new(KNOT_PACKET_PREALLOC_NONE);
@@ -730,6 +737,11 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 	if (pkt == NULL || chs == NULL) {
 		dbg_xfrin("Wrong parameters supported.\n");
 		return KNOT_EBADARG;
+	}
+	
+	// check if the response is OK
+	if (knot_wire_get_rcode(pkt) != KNOT_RCODE_NOERROR) {
+		return KNOT_EXFRREFUSED;
 	}
 
 	knot_packet_t *packet = NULL;

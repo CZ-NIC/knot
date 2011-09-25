@@ -55,7 +55,8 @@ enum knot_error {
 	KNOT_EPREREQ,         /*!< UPDATE prerequisity not met. */
 	KNOT_ENOXFR,          /*!< Transfer was not sent. */
 	KNOT_ENOIXFR,         /*!< Transfer is not IXFR (is in AXFR format). */
-	KNOT_ERROR_COUNT = 25
+	KNOT_EXFRREFUSED,     /*!< Zone transfer refused by the server. */
+	KNOT_ERROR_COUNT = 26
 };
 
 /*! \brief Table linking error messages to error codes. */
