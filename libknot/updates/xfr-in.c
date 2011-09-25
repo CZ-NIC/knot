@@ -816,6 +816,7 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 			knot_packet_free(&packet);
 			return XFRIN_RES_SOA_ONLY;
 		} else if (knot_rrset_type(rr) != KNOT_RRTYPE_SOA) {
+			knot_rrset_deep_free(&rr, 1, 1, 1);
 			dbg_xfrin("Fallback to AXFR.\n");
 			ret = XFRIN_RES_FALLBACK;
 			goto cleanup;
