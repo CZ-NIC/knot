@@ -1156,10 +1156,8 @@ int ck_shallow_copy(const ck_hash_table_t *from, ck_hash_table_t **to)
 			return -2;
 		}
 
-		fprintf(stderr, "Copying stash item: %p with item %p, ", si,
-		        si->item);
-		fprintf(stderr, "key: %.*s\n", si->item->key_length,
-		        si->item->key);
+		dbg_ck("Copying stash item: %p with item %p, ", si, si->item);
+		dbg_ck("key: %.*s\n", (int)si->item->key_length, si->item->key);
 
 		si_new->item = si->item;
 		*pos = si_new;
@@ -1167,13 +1165,12 @@ int ck_shallow_copy(const ck_hash_table_t *from, ck_hash_table_t **to)
 		si = si->next;
 
 
-		fprintf(stderr, "Old stash item: %p with item %p, ", si,
-		        si->item);
-		fprintf(stderr, "key: %.*s\n", si->item->key_length,
-		        si->item->key);
-		fprintf(stderr, "New stash item: %p with item %p, ", si_new,
-		        si_new->item);
-		fprintf(stderr, "key: %.*s\n", si_new->item->key_length, si_new->item->key);
+		dbg_ck("Old stash item: %p with item %p, ", si, si->item);
+		dbg_ck("key: %.*s\n", (int)si->item->key_length, si->item->key);
+		dbg_ck("New stash item: %p with item %p, ", si_new,
+		       si_new->item);
+		dbg_ck("key: %.*s\n", (int)si_new->item->key_length, 
+		       si_new->item->key);
 	}
 	
 	*pos = NULL;
