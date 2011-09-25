@@ -278,13 +278,12 @@ void knot_free_changesets(knot_changesets_t **changesets)
 
 	for (int i = 0; i < (*changesets)->count; ++i) {
 		knot_changeset_t *ch = &(*changesets)->sets[i];
-
 		knot_free_changeset(&ch);
 	}
 
 	free((*changesets)->sets);
 	
-	knot_rrset_deep_free((*changesets)->first_soa, 1, 1, 1);
+	knot_rrset_deep_free(&(*changesets)->first_soa, 1, 1, 1);
 	
 	free(*changesets);
 	*changesets = NULL;
