@@ -350,6 +350,10 @@ int knot_packet_is_query(const knot_packet_t *packet);
 
 const knot_packet_t *knot_packet_query(const knot_packet_t *packet);
 
+int knot_packet_rcode(const knot_packet_t *packet);
+
+int knot_packet_tc(const knot_packet_t *packet);
+
 /*!
  * \brief Returns number of RRSets in Answer section of the packet.
  *
