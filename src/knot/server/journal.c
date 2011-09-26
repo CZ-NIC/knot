@@ -382,7 +382,7 @@ int journal_walk(journal_t *journal, journal_apply_t apply)
 		ret = apply(journal, journal->nodes + i);
 	}
 
-	return KNOTD_EOK;
+	return ret;
 }
 
 int journal_update(journal_t *journal, journal_node_t *n)

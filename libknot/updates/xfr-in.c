@@ -1762,7 +1762,7 @@ static int xfrin_apply_add_normal(xfrin_changes_t *changes,
                                   knot_rrset_t **rrset)
 {
 	assert(changes != NULL);
-	assert(remove != NULL);
+	assert(add != NULL);
 	assert(node != NULL);
 	assert(rrset != NULL);
 
@@ -1856,7 +1856,7 @@ static int xfrin_apply_add_rrsig(xfrin_changes_t *changes,
                                   knot_rrset_t **rrset)
 {
 	assert(changes != NULL);
-	assert(remove != NULL);
+	assert(add != NULL);
 	assert(node != NULL);
 	assert(rrset != NULL);
 	assert(knot_rrset_type(add) == KNOT_RRTYPE_RRSIG);
