@@ -337,6 +337,6 @@ int udp_master(dthread_t *thread)
 
 	stat_free(thread_stat);
 	dbg_net("udp: worker %p finished.\n", thread);
-	return KNOTD_EOK;
+	return ret;
 }
 
