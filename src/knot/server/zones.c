@@ -245,20 +245,8 @@ static int zones_expire_ev(event_t *e)
 		return KNOTD_EINVAL;
 	}
 
-	/* Cancel pending timers. */
+	/* Remove zone from db. */
 	zonedata_t *zd = (zonedata_t *)zone->data;
-	if (zd->xfr_in.timer) {
-		evsched_cancel(e->parent, zd->xfr_in.timer);
-		if (zd->xfr_in.timer) {
-			evsched_event_free(e->parent, zd->xfr_in.timer);
-			zd->xfr_in.timer = 0;
-		}
-	}
-
-	/* Delete self. */
-	evsched_event_free(e->parent, e);
-	zd->xfr_in.expire = 0;
-	zd->xfr_in.next_id = -1;
 
 	/*! \todo API */
 	knot_zone_t *old_zone = knot_zonedb_remove_zone(
@@ -271,9 +259,14 @@ static int zones_expire_ev(event_t *e)
 	
 	assert(old_zone == zone);
 	
+	dbg_zones("xfr_in: removing zone from db\n");
 	rcu_read_unlock();
 	synchronize_rcu();
 	
+	log_server_info("Zone '%s' expired.\n", zd->conf->name);
+	
+	/* Early finish this event to prevent lockup during cancellation. */
+	evsched_event_finished(e->parent);
 	knot_zone_deep_free(&old_zone, 1);
 
 	return 0;
@@ -1406,53 +1399,23 @@ int zones_process_response(knot_nameserver_t *nameserver,
 			return KNOTD_ERROR;
 		}
 
-		/* Cancel EXPIRE timer. */
-		evsched_t *sched =
-			((server_t *)knot_ns_get_data(nameserver))->sched;
-		event_t *expire_ev = zd->xfr_in.expire;
-		if (expire_ev) {
-			evsched_cancel(sched, expire_ev);
-			evsched_event_free(sched, expire_ev);
-			zd->xfr_in.expire = 0;
-		}
-
-		/* Cancel REFRESH/RETRY timer. */
-		event_t *refresh_ev = zd->xfr_in.timer;
-		if (refresh_ev) {
-			dbg_zones("zone: canceling REFRESH timer\n");
-			evsched_cancel(sched, refresh_ev);
-		}
-
 		/* Check SOA SERIAL. */
 		int ret = xfrin_transfer_needed(contents, packet);
-		
 		if (ret < 0) {
-			/*! \todo Handle error condition -> retry. */
+			/* RETRY/EXPIRE timers running, do not interfere. */
 			return KNOTD_ERROR;
 		}
 		
+		/* No updates available. */
+		evsched_t *sched =
+			((server_t *)knot_ns_get_data(nameserver))->sched;
 		if (ret == 0) {
-
-			/* Reinstall REFRESH timer. */
-			uint32_t ref_tmr = 0;
-
-			/* Retrieve SOA RDATA. */
-			const knot_rrset_t *soa_rrs = 0;
-			const knot_rdata_t *soa_rr = 0;
-			soa_rrs = knot_node_rrset(
-			             knot_zone_contents_apex(contents),
-			             KNOT_RRTYPE_SOA);
-			soa_rr = knot_rrset_rdata(soa_rrs);
-			ref_tmr = knot_rdata_soa_refresh(soa_rr);
-			ref_tmr *= 1000; /* Convert to miliseconds. */
-
-			dbg_zones("zone: reinstalling REFRESH timer (%u ms)\n",
-				ref_tmr);
-
-			evsched_schedule(sched, refresh_ev, ref_tmr);
-			rcu_read_unlock();
 			log_zone_info("SOA query for zone %s answered, no "
 				      "transfer needed.\n", zd->conf->name);
+			rcu_read_unlock();
+
+			/* Reinstall timers. */
+			zones_timers_update(zone, zd->conf, sched);
 			return KNOTD_EOK;
 		}
 		

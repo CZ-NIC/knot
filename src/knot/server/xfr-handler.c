@@ -177,13 +177,93 @@ static knot_ns_xfr_t *xfr_register_task(xfrworker_t *w, knot_ns_xfr_t *req)
 }
 
 /*!
+ * \brief Finalize XFR/IN transfer.
+ *
+ * \param w XFR worker.
+ * \param data Associated data.
+ *
+ * \retval KNOTD_EOK on success.
+ * \retval KNOTD_ERROR
+ */
+static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
+{
+	knot_zone_t *zone = (knot_zone_t *)data->zone;
+	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
+	const char *zorigin = zd->conf->name;
+	
+	int ret = KNOTD_EOK;
+	
+	switch(data->type) {
+	case XFR_TYPE_AIN:
+		dbg_xfr("xfr: AXFR/IN saving new zone\n");
+		ret = zones_save_zone(data);
+		if (ret != KNOTD_EOK) {
+			knot_zone_contents_deep_free(
+			    (knot_zone_contents_t **)&data->data);
+			data->data = 0;
+			log_zone_error("AXFR/IN failed to save "
+			               "transferred zone '%s' - %s\n",
+			               zorigin, knotd_strerror(ret));
+		} else {
+			dbg_xfr("AXFR/IN new zone saved.\n");
+			ret = knot_ns_switch_zone(w->ns, data);
+			if (ret != KNOTD_EOK) {
+				log_zone_error("AXFR/IN failed to "
+				               "switch in-memory zone "
+				               "'%s' - %s\n",
+				               zorigin,
+				               knotd_strerror(ret));
+			}
+		}
+		log_zone_info("AXFR/IN transfer of zone '%s' "
+		              "%s.\n", zorigin,
+		              ret == KNOTD_EOK ? "finished" : "failed");
+		break;
+	case XFR_TYPE_IIN:
+		/* Save changesets. */
+		dbg_xfr("xfr: IXFR/IN saving changesets\n");
+		ret = zones_store_changesets(data);
+		if (ret != KNOTD_EOK) {
+			log_zone_error("IXFR/IN failed to save "
+			               "transferred changesets "
+			               "for zone '%s' - %s\n",
+			               zorigin, knotd_strerror(ret));
+		} else {
+			/* Update zone. */
+			ret = zones_apply_changesets(data);
+			if (ret != KNOTD_EOK) {
+				log_zone_error("IXFR/IN failed to "
+				               "apply changesets to "
+				               "zone '%s' - %s\n",
+				               zorigin, 
+				               knotd_strerror(ret));
+			}
+		}
+		/* Free changesets, but not the data. */
+		knot_changesets_t *chs = (knot_changesets_t *)data->data;
+		free(chs->sets);
+		free(chs);
+		data->data = 0;
+		log_zone_info("IXFR/IN transfer of zone '%s' "
+		              "%s.\n", zorigin,
+		              ret == KNOTD_EOK ? "finished" : "failed");
+		break;
+	default:
+		ret = KNOTD_EINVAL;
+		break;
+	}
+	
+	return ret;
+}
+
+/*!
  * \brief XFR-IN event handler function.
  *
  * Handle single XFR client event.
  *
- * \param loop Associated event pool.
- * \param w Associated socket watcher.
- * \param revents Returned events.
+ * \param w Associated XFR worker.
+ * \param fd Associated file descriptor.
+ * \param data Transfer data.
  */
 int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 {
@@ -220,114 +300,63 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 		break;
 	}
 
-	/* Check return code for errors. */
-	dbg_xfr("xfr: processed incoming XFR packet (res =  %d)\n", ret);
-	
-	/*! 
-	 * \todo Handle KNOT_ENOXFR - this is not an error, but the connection
-	 *       should be closed.
-	 *
-	 * \todo Handle KNOT_ENOIXFR - fallback to AXFR.
-	 */
+	/* AXFR-style IXFR. */
 	if (ret == KNOT_ENOIXFR) {
 		dbg_xfr("xfr: Fallback to AXFR.\n");
 		assert(data->type == XFR_TYPE_IIN);
 		data->type = XFR_TYPE_AIN;
 		ret = knot_ns_process_axfrin(w->ns, data);
 	}
+
+	/* Check return code for errors. */
+	dbg_xfr("xfr: processed incoming XFR packet (res =  %d)\n", ret);
 	
-	if (ret < 0) {
+	/* Finished xfers. */
+	int xfer_finished = 0;
+	if (ret != KNOT_EOK) {
+		xfer_finished = 1;
+	}
+
+	/* Handle errors. */
+	if (ret < 0 && ret != KNOT_ENOXFR) {
 		log_server_error("%cXFR/IN request failed - %s\n",
 		                 data->type == XFR_TYPE_AIN ? 'A' : 'I',
 		                 knot_strerror(ret));
-		/*! \todo In this case, the retry timer should also apply! */
-		return KNOTD_ERROR;
 	}
 
+
 	/* Check finished zone. */
-	if (ret > 0) {
+	if (xfer_finished) {
 		
 		knot_zone_t *zone = (knot_zone_t *)data->zone;
 		zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 		const char *zorigin = zd->conf->name;
 
-		switch(data->type) {
-		case XFR_TYPE_AIN:
-			dbg_xfr("xfr: AXFR/IN saving new zone\n");
-			ret = zones_save_zone(data);
-			if (ret != KNOTD_EOK) {
-				knot_zone_contents_deep_free(
-				    (knot_zone_contents_t **)&data->data);
-				data->data = 0;
-				log_zone_error("AXFR/IN failed to save "
-				               "transferred zone '%s' - %s\n",
-				               zorigin, knotd_strerror(ret));
-			} else {
-				dbg_xfr("AXFR/IN new zone saved\n");
-				ret = knot_ns_switch_zone(w->ns, data);
-				if (ret != KNOTD_EOK) {
-					log_zone_error("AXFR/IN failed to "
-					               "switch in-memory zone "
-					               "'%s' - %s\n",
-					               zorigin,
-					               knotd_strerror(ret));
-				}
+		/* Only for successful xfers. */
+		if (ret > 0) {
+			ret = xfr_xfrin_finalize(w, data);
+			
+			/* AXFR bootstrap timeout. */
+			rcu_read_lock();
+			if (!knot_zone_contents(zone) && data->type == XFR_TYPE_AIN) {
+				/* Schedule request (60 - 90s random delay). */
+				int tmr_s = AXFR_BOOTSTRAP_RETRY;
+				tmr_s += (30.0 * 1000) * (rand() / (RAND_MAX + 1.0));
+				zd->xfr_in.bootstrap_retry = tmr_s;
+				log_zone_info("Another attempt to AXFR bootstrap "
+				              "zone '%s' in %d seconds.\n",
+				              zorigin, tmr_s/1000);
 			}
-			log_zone_info("AXFR/IN transfer of zone '%s' "
-			              "%s.\n", zorigin,
-			              ret == KNOTD_EOK ? "finished" : "failed");
-			break;
-		case XFR_TYPE_IIN:
-			/* Save changesets. */
-			dbg_xfr("xfr: IXFR/IN saving changesets\n");
-			ret = zones_store_changesets(data);
-			if (ret != KNOTD_EOK) {
-				log_zone_error("IXFR/IN failed to save "
-				               "transferred changesets "
-				               "for zone '%s' - %s\n",
-				               zorigin, knotd_strerror(ret));
-			} else {
-				/* Update zone. */
-				ret = zones_apply_changesets(data);
-				if (ret != KNOTD_EOK) {
-					log_zone_error("IXFR/IN failed to "
-					               "apply changesets to "
-					               "zone '%s' - %s\n",
-					               zorigin, 
-					               knotd_strerror(ret));
-				}
-			}
-			/* Free changesets, but not the data. */
-			knot_changesets_t *chs = (knot_changesets_t *)data->data;
-			free(chs->sets);
-			free(chs);
-			data->data = 0;
-			log_zone_info("IXFR/IN transfer of zone '%s' "
-			              "%s.\n", zorigin,
-			              ret == KNOTD_EOK ? "finished" : "failed");
-			break;
-		default:
-			ret = KNOTD_EINVAL;
-			break;
+			rcu_read_unlock();
+			
+			/* Update timers. */
+			server_t *server = (server_t *)knot_ns_get_data(w->ns);
+			zones_timers_update(zone, zd->conf, server->sched);
+			
+		} else {
+			/*! \todo May need some cleanup to prevent leaks. */
 		}
 		
-		/* AXFR bootstrap timeout. */
-		rcu_read_lock();
-		if (!knot_zone_contents(zone) && data->type == XFR_TYPE_AIN) {
-			/* Schedule request (60 - 90s random delay). */
-			int tmr_s = AXFR_BOOTSTRAP_RETRY;
-			tmr_s += (30.0 * 1000) * (rand() / (RAND_MAX + 1.0));
-			zd->xfr_in.bootstrap_retry = tmr_s;
-			log_zone_info("Another attempt to AXFR bootstrap "
-			              "zone '%s' in %d seconds.\n",
-			              zorigin, tmr_s/1000);
-		}
-		rcu_read_unlock();
-
-		/* Update timers. */
-		server_t *server = (server_t *)knot_ns_get_data(w->ns);
-		zones_timers_update(zone, zd->conf, server->sched);
-
 		/* Disconnect. */
 		ret = KNOTD_ECONNREFUSED; /* Make it disconnect. */
 	} else {
