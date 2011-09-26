@@ -215,7 +215,7 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 				               knotd_strerror(ret));
 			}
 		}
-		log_zone_info("AXFR/IN transfer of zone '%s' "
+		log_zone_info("AXFR/IN transfer of zone '%s/IN' "
 		              "%s.\n", zorigin,
 		              ret == KNOTD_EOK ? "finished" : "failed");
 		break;
@@ -244,7 +244,7 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 		free(chs->sets);
 		free(chs);
 		data->data = 0;
-		log_zone_info("IXFR/IN transfer of zone '%s' "
+		log_zone_info("IXFR/IN transfer of zone '%s/IN' "
 		              "%s.\n", zorigin,
 		              ret == KNOTD_EOK ? "finished" : "failed");
 		break;
@@ -466,20 +466,22 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 		break;
 	}
 
-	/* Unlock zone contents. */
-	rcu_read_unlock();
-
 	/* Handle errors. */
 	if (ret != KNOTD_EOK) {
 		dbg_xfr("xfr: failed to create XFR query type %d\n",
-			  data->type);
+		        data->type);
 		return ret;
 	}
 
 	/* Send XFR query. */
-	log_server_info("Sending %cXFR query to %s:%d (fd=%d, %zu bytes).\n",
+	log_server_info("%cXFR transfer of '%s/IN' with %s:%d started.\n",
 			data->type == XFR_TYPE_AIN ? 'A' : 'I',
-			r_addr, r_port, data->session, bufsize);
+	                zd->conf->name,
+			r_addr, r_port);
+	
+	/* Unlock zone contents. */
+	rcu_read_unlock();
+	
 	ret = data->send(data->session, &data->addr, data->wire, bufsize);
 	if (ret != bufsize) {
 		log_server_notice("Failed to send %cXFR query.",
@@ -696,6 +698,8 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 	evsched_t *sch = 0;
 	const char *req_type = "";
 	knot_rcode_t rcode = 0;
+	knot_zone_t *zone = xfr.zone;
+	zonedata_t *zd = zone->data;
 	
 	dbg_xfr("xfr_process_request: request type %d.\n", xfr.type);
 	switch(xfr.type) {
@@ -704,8 +708,9 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		
 		ret = knot_ns_init_xfr(w->ns, &xfr);
 		if (ret != KNOT_EOK) {
-			log_server_notice("AXFR/OUT transfer initialization "
-					  "to %s:%d failed: %s\n",
+			log_server_notice("AXFR transfer of '%s/OUT' %s:%d - "
+			                  "initialization failed: %s\n",
+			                  zd->conf->name,
 					  r_addr, r_port,
 					  knot_strerror(ret));
 			socket_close(xfr.session);
@@ -717,8 +722,9 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 			if (!init_failed) {
 				knot_ns_xfr_send_error(&xfr, rcode);
 				socket_close(xfr.session);
-				log_server_notice("AXFR/OUT transfer check "
-						  "to %s:%d failed: %s\n",
+				log_server_notice("AXFR transfer of '%s/OUT' "
+				                  "%s:%d - check failed: %s\n",
+				                  zd->conf->name,
 						  r_addr, r_port,
 						  knotd_strerror(ret));
 			}
@@ -729,8 +735,9 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 			if (ret != KNOTD_EOK) {
 				socket_close(xfr.session);
 			} else {
-				log_server_info("AXFR/OUT transfer "
+				log_server_info("AXFR transfer of '%s/OUT' "
 						"to %s:%d successful.\n",
+				                zd->conf->name,
 						r_addr, r_port);
 			}
 		}
@@ -768,8 +775,9 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		if (ret != KNOTD_EOK) {
 			socket_close(xfr.session);
 		} else{
-			log_server_info("IXFR/OUT transfer "
+			log_server_info("IXFR transfer of '%s/OUT'"
 					"to %s:%d successful.\n",
+			                zd->conf->name,
 					r_addr, r_port);
 		}
 		break;
