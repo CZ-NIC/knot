@@ -314,8 +314,15 @@ static int zones_refresh_ev(event_t *e)
 		rcu_read_unlock();
 
 		/* Enqueue XFR request. */
-		log_zone_info("Attempting to bootstrap zone %s from master\n",
-			      zd->conf->name);
+		int locked = pthread_mutex_trylock(&zd->xfr_in.lock);
+		if (locked) {
+			dbg_zones("xfr_in: already bootstrapping\n");
+			pthread_mutex_unlock(&zd->xfr_in.lock);
+		} else {
+			log_zone_info("Attempting to bootstrap zone %s from master\n",
+			              zd->conf->name);
+		}
+		
 		return xfr_request(zd->server->xfr_h, &xfr_req);
 	}
 
