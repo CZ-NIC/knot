@@ -309,7 +309,7 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 	}
 
 	/* Check return code for errors. */
-	dbg_xfr("xfr: processed incoming XFR packet (res =  %d)\n", ret);
+	dbg_xfr_verb("xfr: processed incoming XFR packet (res =  %d)\n", ret);
 	
 	/* Finished xfers. */
 	int xfer_finished = 0;
@@ -385,6 +385,8 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 	/* Enqueue to worker that has zone locked for XFR/IN. */
 	int ret = pthread_mutex_trylock(&zd->xfr_in.lock);
 	if (ret < 0) {
+		dbg_xfr("xfr_client_start: switching to another thread, zones"
+		        "is already in transfer\n");
 		xfrworker_t *nextw = (xfrworker_t *)zd->xfr_in.wrkr;
 		assert(nextw != w);
 		evqueue_write(nextw->q, data, sizeof(knot_ns_xfr_t));
@@ -766,7 +768,7 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		if (xfr.type == XFR_TYPE_IIN) {
 			req_type = "IXFR/IN";
 		}
-		dbg_xfr("xfr: starting %s transfer\n", req_type);
+		
 		xfr_client_start(w, &xfr);
 		ret = KNOTD_EOK;
 		break;
@@ -861,8 +863,8 @@ int xfr_worker(dthread_t *thread)
 				pthread_mutex_lock(&h->tasks_mx);
 				data = skip_find(h->tasks, (void*)((size_t)it.fd));
 				pthread_mutex_unlock(&h->tasks_mx);
-				dbg_xfr("xfr_worker: processing event on "
-				          "fd=%d data=%p.\n", it.fd, data);
+				dbg_xfr_verb("xfr_worker: processing event on "
+				             "fd=%d data=%p.\n", it.fd, data);
 				ret = xfr_process_event(w, it.fd, data);
 				if (ret != KNOTD_EOK) {
 					xfr_free_task(data);

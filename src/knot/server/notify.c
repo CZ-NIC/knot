@@ -179,17 +179,8 @@ static int notify_check_and_schedule(knot_nameserver_t *nameserver,
 
 	/*! \todo Packet may contain updated RRs. */
 
-	/* Cancel EXPIRE timer. */
-	evsched_t *sched = ((server_t *)knot_ns_get_data(nameserver))->sched;
-	event_t *expire_ev = zd->xfr_in.expire;
-	if (expire_ev) {
-		dbg_notify("notify: canceling EXPIRE timer\n");
-		evsched_cancel(sched, expire_ev);
-		evsched_event_free(sched, expire_ev);
-		zd->xfr_in.expire = 0;
-	}
-
 	/* Cancel REFRESH/RETRY timer. */
+	evsched_t *sched = ((server_t *)knot_ns_get_data(nameserver))->sched;
 	event_t *refresh_ev = zd->xfr_in.timer;
 	if (refresh_ev) {
 		dbg_notify("notify: canceling REFRESH timer for XFRIN\n");
