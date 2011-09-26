@@ -201,21 +201,21 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 			knot_zone_contents_deep_free(
 			    (knot_zone_contents_t **)&data->data);
 			data->data = 0;
-			log_zone_error("AXFR/IN failed to save "
-			               "transferred zone '%s' - %s\n",
+			log_zone_error("AXFR failed to save "
+			               "transferred zone '%s/IN' - %s\n",
 			               zorigin, knotd_strerror(ret));
 		} else {
 			dbg_xfr("AXFR/IN new zone saved.\n");
 			ret = knot_ns_switch_zone(w->ns, data);
 			if (ret != KNOTD_EOK) {
-				log_zone_error("AXFR/IN failed to "
+				log_zone_error("AXFR failed to "
 				               "switch in-memory zone "
-				               "'%s' - %s\n",
+				               "'%s/IN' - %s\n",
 				               zorigin,
 				               knotd_strerror(ret));
 			}
 		}
-		log_zone_info("AXFR/IN transfer of zone '%s/IN' "
+		log_zone_info("AXFR transfer of zone '%s/IN' "
 		              "%s.\n", zorigin,
 		              ret == KNOTD_EOK ? "finished" : "failed");
 		break;
@@ -224,17 +224,17 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 		dbg_xfr("xfr: IXFR/IN saving changesets\n");
 		ret = zones_store_changesets(data);
 		if (ret != KNOTD_EOK) {
-			log_zone_error("IXFR/IN failed to save "
+			log_zone_error("IXFR failed to save "
 			               "transferred changesets "
-			               "for zone '%s' - %s\n",
+			               "for zone '%s/IN' - %s\n",
 			               zorigin, knotd_strerror(ret));
 		} else {
 			/* Update zone. */
 			ret = zones_apply_changesets(data);
 			if (ret != KNOTD_EOK) {
-				log_zone_error("IXFR/IN failed to "
+				log_zone_error("IXFR failed to "
 				               "apply changesets to "
-				               "zone '%s' - %s\n",
+				               "zone '%s/IN' - %s\n",
 				               zorigin, 
 				               knotd_strerror(ret));
 			}
@@ -244,7 +244,7 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 		free(chs->sets);
 		free(chs);
 		data->data = 0;
-		log_zone_info("IXFR/IN transfer of zone '%s/IN' "
+		log_zone_info("IXFR transfer of zone '%s/IN' "
 		              "%s.\n", zorigin,
 		              ret == KNOTD_EOK ? "finished" : "failed");
 		break;
