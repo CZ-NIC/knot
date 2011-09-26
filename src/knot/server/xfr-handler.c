@@ -419,7 +419,18 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 					   data->type == XFR_TYPE_AIN ? 'A' : 'I',
 					   r_addr, r_port);
 			if (!knot_zone_contents(zone)) {
-				log_zone_notice("Zone AXFR bootstrap failed.\n");
+				/* Reschedule request (120 - 240s random delay). */
+				int tmr_s = AXFR_BOOTSTRAP_RETRY * 2; /* Malus x2 */
+				tmr_s += (int)((120.0 * 1000) * 
+				               (rand() / (RAND_MAX + 1.0)));
+				event_t *ev = zd->xfr_in.timer;
+				if (ev) {
+					evsched_cancel(ev->parent, ev);
+					evsched_schedule(ev->parent, ev, tmr_s);
+				}
+				log_zone_notice("Zone AXFR bootstrap failed, "
+				                "another attempt in %d seconds."
+				                "\n", tmr_s / 1000);
 			}
 			return KNOTD_ERROR;
 		}
