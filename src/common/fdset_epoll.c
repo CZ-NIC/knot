@@ -78,6 +78,7 @@ int fdset_epoll_add(fdset_t *fdset, int fd, int events)
 
 	/* Add to epoll set. */
 	struct epoll_event ev;
+	memset(&ev, 0, sizeof(struct epoll_event));
 	ev.events = EPOLLIN; /*! \todo MAP events. */
 	ev.data.fd = fd;
 	if (epoll_ctl(fdset->epfd, EPOLL_CTL_ADD, fd, &ev) < 0) {
