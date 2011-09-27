@@ -54,6 +54,7 @@ static int xfr_udp_timeout(event_t *e)
 	cr.type = XFR_TYPE_CLOSE;
 	cr.session = data->session;
 	cr.data = data;
+	cr.zone = data->zone;
 	xfrworker_t *w = (xfrworker_t *)data->owner;
 	if (w) {
 		evqueue_write(w->q, &cr, sizeof(knot_ns_xfr_t));
