@@ -453,6 +453,7 @@ static int zones_notify_send(event_t *e)
 		memset(&req, 0, sizeof(req));
 		req.session = sock;
 		req.type = XFR_TYPE_NOTIFY;
+		req.zone = zone;
 		sockaddr_init(&req.addr, ev->addr.family);
 		xfr_request(zd->server->xfr_h, &req);
 
