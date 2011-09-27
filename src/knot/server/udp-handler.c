@@ -240,12 +240,18 @@ static inline int udp_master_recvmmsg(dthread_t *thread, stat_t *thread_stat)
 		}
 
 		/* Handle each received msg. */
+		int ret = 0;
 		for (unsigned i = 0; i < n; ++i) {
 			struct iovec *cvec = msgs[i].msg_hdr.msg_iov;
 			size_t resp_len = msgs[i].msg_len;
-			udp_handle(cvec->iov_base, resp_len, &resp_len,
-				   addrs + i, ns);
-			msgs[i].msg_len = resp_len;
+			ret = udp_handle(cvec->iov_base, resp_len, &resp_len,
+			                 addrs + i, ns);
+			if (ret == KNOTD_EOK) {
+				msgs[i].msg_len = resp_len;
+			} else {
+				msgs[i].msg_len = 0;
+			}
+			
 		}
 
 		/* Gather results. */
