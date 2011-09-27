@@ -700,18 +700,25 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 	const char *req_type = "";
 	knot_rcode_t rcode = 0;
 	knot_zone_t *zone = xfr.zone;
-	zonedata_t *zd = zone->data;
+	const char *zname = "?";
+	if (zone) {
+		zonedata_t *zd = xfr.zone->data;
+		zname = zd->conf->name;
+	}
 	
 	dbg_xfr("xfr_process_request: request type %d.\n", xfr.type);
 	switch(xfr.type) {
 	case XFR_TYPE_AOUT:
 		req_type = "AXFR/OUT";
-		
 		ret = knot_ns_init_xfr(w->ns, &xfr);
+		if (xfr.zone) {
+			zonedata_t *zd = xfr.zone->data;
+			zname = zd->conf->name;
+		}
 		if (ret != KNOT_EOK) {
 			log_server_notice("AXFR transfer of zone '%s/OUT' "
 			                  "%s:%d - initialization failed: %s\n",
-			                  zd->conf->name,
+			                  zname,
 					  r_addr, r_port,
 					  knot_strerror(ret));
 			socket_close(xfr.session);
@@ -725,7 +732,7 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 				socket_close(xfr.session);
 				log_server_notice("AXFR transfer of zone '%s/OUT' "
 				                  "%s:%d - check failed: %s\n",
-				                  zd->conf->name,
+				                  zname,
 						  r_addr, r_port,
 						  knotd_strerror(ret));
 			}
@@ -738,7 +745,7 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 			} else {
 				log_server_info("AXFR transfer of zone '%s/OUT' "
 						"to %s:%d successful.\n",
-				                zd->conf->name,
+				                zname,
 						r_addr, r_port);
 			}
 		}
@@ -749,8 +756,11 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		break;
 	case XFR_TYPE_IOUT:
 		req_type = "IXFR/OUT";
-		
 		ret = knot_ns_init_xfr(w->ns, &xfr);
+		if (xfr.zone) {
+			zonedata_t *zd = xfr.zone->data;
+			zname = zd->conf->name;
+		}
 		if (ret != KNOT_EOK) {
 			dbg_xfr("xfr: failed to init XFR: %s\n",
 			          knotd_strerror(ret));
@@ -778,7 +788,7 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		} else{
 			log_server_info("IXFR transfer of zone '%s/OUT'"
 					"to %s:%d successful.\n",
-			                zd->conf->name,
+			                zname,
 					r_addr, r_port);
 		}
 		break;
