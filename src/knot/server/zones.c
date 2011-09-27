@@ -355,6 +355,7 @@ static int zones_refresh_ev(event_t *e)
 		memset(&req, 0, sizeof(req));
 		req.session = sock;
 		req.type = XFR_TYPE_SOA;
+		req.zone = zone;
 		memcpy(&req.addr, master, sizeof(sockaddr_t));
 		sockaddr_update(&req.addr);
 		xfr_request(zd->server->xfr_h, &req);
