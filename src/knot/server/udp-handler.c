@@ -38,7 +38,7 @@ int udp_handle(uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		uint16_t pkt_id = knot_wire_get_id(qbuf);
 		knot_ns_error_response(ns, pkt_id, KNOT_RCODE_SERVFAIL,
 				  qbuf, resp_len);
-		return KNOTD_ENOMEM;
+		return KNOTD_EOK; /* Created error response. */
 	}
 
 	/* Parse query. */
@@ -53,7 +53,7 @@ int udp_handle(uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		}
 
 		knot_packet_free(&packet);
-		return KNOTD_ERROR;
+		return KNOTD_EOK; /* Created error response. */
 	}
 
 	/* Handle query. */
