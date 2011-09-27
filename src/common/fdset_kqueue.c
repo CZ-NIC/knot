@@ -2,11 +2,12 @@
 
 #ifdef HAVE_KQUEUE
 
-#include <sys/event.h>
-#include <sys/time.h> 
+#include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/event.h>
+#include <sys/time.h>
 
 #include "fdset_kqueue.h"
 
