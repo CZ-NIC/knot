@@ -8,7 +8,6 @@
 #include "knot/zone/zone-dump.h"
 #include "libknot/libknot.h"
 #include "knot/other/debug.h"
-#include "libknot/util/debug.h"
 #include "common/skip-list.h"
 #include "common/base32hex.h"
 #include "common/crc.h"

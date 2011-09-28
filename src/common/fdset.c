@@ -6,7 +6,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "common/fdset.h"
-#include "config.h"
+#include <config.h>
 
 struct fdset_backend_t _fdset_backend = {
 };
