@@ -296,7 +296,7 @@ int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 {
 	/* Receive size. */
 	unsigned short pktsize = 0;
-	int n = recv(fd, &pktsize, sizeof(unsigned short), 0);
+	int n = recv(fd, &pktsize, sizeof(unsigned short), MSG_WAITALL);
 	if (n < 0) {
 		return KNOTD_ERROR;
 	}

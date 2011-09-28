@@ -17,7 +17,6 @@
 #include "knot/stat/stat.h"
 #include "libknot/zone/zonedb.h"
 #include "knot/zone/zone-load.h"
-#include "libknot/util/debug.h"
 #include "libknot/dname.h"
 #include "knot/conf/conf.h"
 #include "knot/server/zones.h"
