@@ -2584,8 +2584,11 @@ int knot_ns_parse_packet(const uint8_t *query_wire, size_t qsize,
 		         ? KNOT_QUERY_NOTIFY : KNOT_RESPONSE_NOTIFY;
 		break;
 	case KNOT_OPCODE_UPDATE:
-		assert(knot_packet_is_query(packet));
-		*type = KNOT_QUERY_UPDATE;
+		if(knot_packet_is_query(packet)) {
+			*type = KNOT_QUERY_UPDATE;
+		} else {
+			return KNOT_RCODE_FORMERR;
+		}
 		break;
 	default:
 		return KNOT_RCODE_NOTIMPL;
