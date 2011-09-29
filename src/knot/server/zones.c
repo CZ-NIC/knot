@@ -90,6 +90,10 @@ static int zonedata_destroy(knot_zone_t *zone)
 	journal_close(zd->ixfr_db);
 
 	free(zd);
+	
+	/* Invalidate. */
+	zone->dtor = 0;
+	zone->data = 0;
 
 	return KNOTD_EOK;
 }
@@ -282,12 +286,12 @@ static int zones_refresh_ev(event_t *e)
 	if (!zone) {
 		return KNOTD_EINVAL;
 	}
-	if (!zone->data) {
-		return KNOTD_EINVAL;
-	}
 
 	/* Cancel pending timers. */
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
+	if (!zd) {
+		return KNOTD_EINVAL;
+	}
 
 	/* Prepare buffer for query. */
 	uint8_t qbuf[SOCKET_MTU_SZ];
@@ -499,12 +503,12 @@ static int zones_zonefile_sync_ev(event_t *e)
 	if (!zone) {
 		return KNOTD_EINVAL;
 	}
-	if (!zone->data) {
-		return KNOTD_EINVAL;
-	}
 
 	/* Fetch zone data. */
 	zonedata_t *zd = (zonedata_t *)zone->data;
+	if (!zd) {
+		return KNOTD_EINVAL;
+	}
 
 	/* Execute zonefile sync. */
 	int ret =  zones_zonefile_sync(zone);

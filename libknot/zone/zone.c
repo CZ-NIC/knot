@@ -219,7 +219,7 @@ void knot_zone_deep_free(knot_zone_t **zone, int free_rdata_dnames)
 	if (zone == NULL || *zone == NULL) {
 		return;
 	}
-
+	
 	if ((*zone)->contents
 	    && !knot_zone_contents_gen_is_old((*zone)->contents)) {
 		// zone is in the middle of an update, report
@@ -232,13 +232,13 @@ dbg_zone_exec(
 	dbg_zone("Destroying zone %p, name: %s.\n", *zone, name);
 	free(name);
 );
-
-	knot_dname_release((*zone)->name);
-
+	
 	/* Call zone data destructor if exists. */
 	if ((*zone)->dtor) {
 		(*zone)->dtor(*zone);
 	}
+
+	knot_dname_release((*zone)->name);
 
 	knot_zone_contents_deep_free(&(*zone)->contents);
 	free(*zone);
