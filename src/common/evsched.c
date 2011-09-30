@@ -39,6 +39,7 @@ evsched_t *evsched_new()
 	}
 
 	/* Initialize event calendar. */
+	pthread_mutex_init(&s->rl, 0);
 	pthread_mutex_init(&s->mx, 0);
 	pthread_cond_init(&s->notify, 0);
 	pthread_mutex_init(&s->cache.lock, 0);
@@ -57,6 +58,7 @@ void evsched_delete(evsched_t **s)
 	}
 
 	/* Deinitialize event calendar. */
+	pthread_mutex_destroy(&(*s)->rl);
 	pthread_mutex_destroy(&(*s)->mx);
 	pthread_cond_destroy(&(*s)->notify);
 	node *n = 0, *nxt = 0;
@@ -126,6 +128,8 @@ event_t* evsched_next(evsched_t *s)
 			/* Immediately return. */
 			if (timercmp(&dt, &next_ev->tv, >=)) {
 				rem_node(&next_ev->n);
+				pthread_mutex_lock(&s->rl);
+				s->current = next_ev;
 				pthread_mutex_unlock(&s->mx);
 				return next_ev;
 			}
@@ -145,6 +149,23 @@ event_t* evsched_next(evsched_t *s)
 	pthread_mutex_unlock(&s->mx);
 	return 0;
 
+}
+
+int evsched_event_finished(evsched_t *s)
+{
+	if (!s) {
+		return -1;
+	}
+
+	/* Mark as finished. */
+	if (s->current) {
+		s->current = 0;
+		pthread_mutex_unlock(&s->rl);
+		return 0;
+	}
+
+	/* Finished event is not current. */
+	return -1;
 }
 
 int evsched_schedule(evsched_t *s, event_t *ev, uint32_t dt)
@@ -239,8 +260,14 @@ int evsched_cancel(evsched_t *s, event_t *ev)
 	/* Lock calendar. */
 	pthread_mutex_lock(&s->mx);
 
+	/* Make sure not running. */
+	pthread_mutex_lock(&s->rl);
+
 	/* Remove from list. */
 	rem_node(&ev->n);
+
+	/* Enable running events. */
+	pthread_mutex_unlock(&s->rl);
 
 	/* Unlock calendar. */
 	pthread_cond_signal(&s->notify);

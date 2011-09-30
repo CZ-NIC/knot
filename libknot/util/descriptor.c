@@ -502,7 +502,7 @@ knot_rrtype_descriptor_t *knot_rrtype_descriptor_by_name(const char *name)
 {
 	int i;
 
-	for (i = 0; i < KNOT_RRTYPE_LAST + 1; ++i) {
+	for (i = 0; i < KNOT_RRTYPE_DLV + 1; ++i) {
 		if (knot_rrtype_descriptors[i].name &&
 		    strcasecmp(knot_rrtype_descriptors[i].name, name) == 0) {
 			return &knot_rrtype_descriptors[i];

@@ -96,7 +96,6 @@ static inline void qr_response_ev(struct ev_loop *loop, ev_io *w, int revents)
 	msg.msg_namelen = qw->addr.len;
 
 	/* Receive msg. */
-	debug_xfr("qr_response_ev: reading response\n");
 	ssize_t n = recvmsg(w->fd, &msg, 0);
 	size_t resp_len = sizeof(qbuf);
 	if (n > 0) {
@@ -109,8 +108,10 @@ static inline void qr_response_ev(struct ev_loop *loop, ev_io *w, int revents)
 		((server_t *)knot_ns_get_data(qw->ns))->sched;
 	if (qw->ev) {
 		evsched_cancel(sched, qw->ev);
-		evsched_event_free(sched, qw->ev);
-		qw->ev = 0;
+		if (qw->ev) {
+			evsched_event_free(sched, qw->ev);
+			qw->ev = 0;
+		}
 	}
 
 	/* Close after receiving response. */
@@ -175,6 +176,11 @@ static inline void xfr_client_ev(struct ev_loop *loop, ev_io *w, int revents)
 		  ret);
 	if (ret < 0) {
 		/*! \todo Log error. */
+		debug_xfr("xfr_client_ev: closing socket %d\n",
+			  ((ev_io *)w)->fd);
+		ev_io_stop(loop, (ev_io *)w);
+		close(((ev_io *)w)->fd);
+		free(xfr_w);
 		return;
 	}
 
@@ -199,7 +205,7 @@ static inline void xfr_client_ev(struct ev_loop *loop, ev_io *w, int revents)
 							 knotd_strerror(ret));
 				}
 			}
-			debug_xfr("xfr_client_ev: AXFR/IN transfer finished\n");
+			log_server_info("AXFR/IN transfer finished.\n");
 			break;
 		case XFR_TYPE_IIN:
 			/* Save changesets. */
@@ -223,7 +229,7 @@ static inline void xfr_client_ev(struct ev_loop *loop, ev_io *w, int revents)
 			free(chs->sets);
 			free(chs);
 			request->data = 0;
-			debug_xfr("xfr_client_ev: IXFR/IN transfer finished\n");
+			log_server_info("IXFR/IN transfer finished.\n");
 			break;
 		default:
 			ret = KNOTD_EINVAL;
@@ -309,14 +315,49 @@ static inline void xfr_bridge_ev(struct ev_loop *loop, ev_io *w, int revents)
 		return;
 	}
 
+	/* Update address. */
+	sockaddr_update(&req->addr);
+	int r_port = -1;
+#ifdef DISABLE_IPV6
+	char r_addr[INET_ADDRSTRLEN];
+	memset(r_addr, 0, sizeof(r_addr));
+#else
+	/* Load IPv6 addr if default. */
+	char r_addr[INET6_ADDRSTRLEN];
+	memset(r_addr, 0, sizeof(r_addr));
+	if (req->addr.family == AF_INET6) {
+		r_port = ntohs(req->addr.addr6.sin6_port);
+		inet_ntop(req->addr.family, &req->addr.addr6.sin6_addr,
+			  r_addr, sizeof(r_addr));
+	}
+#endif
+	/* Load IPv4 if set. */
+	if (req->addr.family == AF_INET) {
+		r_port = ntohs(req->addr.addr4.sin_port);
+		inet_ntop(req->addr.family, &req->addr.addr4.sin_addr,
+			  r_addr, sizeof(r_addr));
+	}
+
 	/* Connect to remote. */
 	if (req->session <= 0) {
 		int fd = socket_create(req->addr.family, SOCK_STREAM);
 		if (fd < 0) {
+			log_server_warning("Failed to create socket "
+					   "(type=%s, family=%s).\n",
+					   "SOCK_STREAM",
+					   req->addr.family == AF_INET ?
+					   "AF_INET" : "AF_INET6");
 			return;
 		}
 		ret = connect(fd, req->addr.ptr, req->addr.len);
 		if (ret < 0) {
+			log_server_warning("Failed to connect to %cXFR master "
+					   "at %s:%d.\n",
+					   req->type == XFR_TYPE_AIN ? 'A' : 'I',
+					   r_addr, r_port);
+			if (!knot_zone_contents(zone)) {
+				log_zone_notice("Zone AXFR bootstrap failed.\n");
+			}
 			return;
 		}
 
@@ -332,7 +373,8 @@ static inline void xfr_bridge_ev(struct ev_loop *loop, ev_io *w, int revents)
 	const knot_zone_contents_t *contents = knot_zone_contents(zone);
 	if (!contents && req->type == XFR_TYPE_IIN) {
 		rcu_read_unlock();
-		debug_xfr("xfr_in: failed start IXFR on zone with no contents\n");
+		log_server_warning("Failed start IXFR on zone with no "
+				   "contents\n");
 		socket_close(req->session);
 		return;
 	}
@@ -364,11 +406,13 @@ static inline void xfr_bridge_ev(struct ev_loop *loop, ev_io *w, int revents)
 	}
 
 	/* Send XFR query. */
-	debug_xfr("xfr_in: sending XFR query (%zu bytes)\n", bufsize);
+	log_server_info("Sending %cXFR query to %s:%d (%zu bytes).\n",
+			req->type == XFR_TYPE_AIN ? 'A' : 'I',
+			r_addr, r_port, bufsize);
 	ret = req->send(req->session, &req->addr, req->wire, bufsize);
 	if (ret != bufsize) {
-		debug_xfr("xfr_in: failed to send XFR query type %d\n",
-			  req->type);
+		log_server_notice("Failed to send %cXFR query.",
+				  req->type == XFR_TYPE_AIN ? 'A' : 'I');
 		socket_close(req->session);
 		return;
 	}
@@ -564,14 +608,14 @@ int xfr_master(dthread_t *thread)
 		char r_addr[INET6_ADDRSTRLEN];
 		memset(r_addr, 0, sizeof(r_addr));
 		if (xfr.addr.family == AF_INET6) {
-			r_port = xfr.addr.addr6.sin6_port;
+			r_port = ntohs(xfr.addr.addr6.sin6_port);
 			inet_ntop(xfr.addr.family, &xfr.addr.addr6.sin6_addr,
 				  r_addr, sizeof(r_addr));
 		}
 #endif
 		/* Load IPv4 if set. */
 		if (xfr.addr.family == AF_INET) {
-			r_port = xfr.addr.addr4.sin_port;
+			r_port = ntohs(xfr.addr.addr4.sin_port);
 			inet_ntop(xfr.addr.family, &xfr.addr.addr4.sin_addr,
 				  r_addr, sizeof(r_addr));
 		}
