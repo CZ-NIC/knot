@@ -91,7 +91,7 @@ static int xfr_process_udp_query(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 	size_t resp_len = data->wire_size;
 	if (n > 0) {
 		dbg_xfr("xfr: processing UDP query response\n");
-		udp_handle(data->wire, n, &resp_len, &data->addr, w->ns);
+		udp_handle(fd, data->wire, n, &resp_len, &data->addr, w->ns);
 	}
 
 	/* Disable timeout. */
@@ -653,6 +653,32 @@ int xfr_stop(xfrhandler_t *handler)
 
 int xfr_join(xfrhandler_t *handler) {
 	return dt_join(handler->unit);
+}
+
+int xfr_request_init(knot_ns_xfr_t *r, int type, int flags, knot_packet_t *pkt)
+{
+	if (!r || type < 0 || flags < 0) {
+		return KNOTD_EINVAL;
+	}
+	
+	/* Blank and init. */
+	memset(r, 0, sizeof(knot_ns_xfr_t));
+	r->type = type;
+	r->flags = flags;
+	
+	/* Copy packet if applicable. */
+	if (pkt != 0) {
+		uint8_t *wire_copy = malloc(sizeof(uint8_t) * pkt->size);
+		if (!wire_copy) {
+			ERR_ALLOC_FAILED;
+			return KNOTD_ENOMEM;
+		}
+		memcpy(wire_copy, pkt->wireformat, pkt->size);
+		pkt->wireformat = wire_copy;
+		r->query = pkt;
+	}
+	
+	return KNOTD_EOK;
 }
 
 int xfr_request(xfrhandler_t *handler, knot_ns_xfr_t *req)

@@ -115,60 +115,65 @@ static void tcp_handle(tcp_worker_t *w, int fd)
 	res = KNOTD_ERROR;
 	switch(qtype) {
 
-	/* Response types. */
-	case KNOT_RESPONSE_NORMAL:
-	case KNOT_RESPONSE_AXFR:
-	case KNOT_RESPONSE_IXFR:
-	case KNOT_RESPONSE_NOTIFY:
-		/*! Implement packet handling. */
-		break;
-
 	/* Query types. */
 	case KNOT_QUERY_NORMAL:
 		res = knot_ns_answer_normal(ns, packet, qbuf, &resp_len);
 		break;
 	case KNOT_QUERY_IXFR:
-//		memset(&xfr, 0, sizeof(knot_ns_xfr_t));
-//		xfr.type = XFR_TYPE_IOUT;
-//		wire_copy = malloc(sizeof(uint8_t) * packet->size);
-//		if (!wire_copy) {
-//			/*!< \todo Cleanup. */
-//			ERR_ALLOC_FAILED;
-//			return;
-//		}
-//		memcpy(wire_copy, packet->wireformat, packet->size);
-//		packet->wireformat = wire_copy;
-//		xfr.query = packet; /* Will be freed after processing. */
-//		xfr.send = xfr_send_cb;
-//		xfr.session = fd;
-//		memcpy(&xfr.addr, &addr, sizeof(sockaddr_t));
-//		xfr_request(xfr_h, &xfr);
-//		dbg_net("tcp: enqueued IXFR query on fd=%d\n", fd);
-//		return;
-		dbg_net("tcp: IXFR not supported, will answer as AXFR on fd=%d\n", fd);
-	case KNOT_QUERY_AXFR:
-		memset(&xfr, 0, sizeof(knot_ns_xfr_t));
-		xfr.type = XFR_TYPE_AOUT;
-		uint8_t *wire_copy = malloc(sizeof(uint8_t) * packet->size);
-		if (!wire_copy) {
-			/*!< \todo Cleanup. */
-			ERR_ALLOC_FAILED;
-			return;
+		res = xfr_request_init(&xfr, XFR_TYPE_IOUT, XFR_FLAG_TCP, packet);
+		if (res != KNOTD_EOK) {
+			knot_ns_error_response(ns, knot_packet_id(packet),
+			                       KNOT_RCODE_SERVFAIL, qbuf,
+			                       &resp_len);
+			res = KNOTD_EOK;
+			break;
 		}
-		memcpy(wire_copy, packet->wireformat, packet->size);
-		packet->wireformat = wire_copy;
-		xfr.query = packet;
+		xfr.send = xfr_send_cb;
+		xfr.session = fd;
+		memcpy(&xfr.addr, &addr, sizeof(sockaddr_t));
+		xfr_request(xfr_h, &xfr);
+		dbg_net("tcp: enqueued IXFR query on fd=%d\n", fd);
+		return;
+	case KNOT_QUERY_AXFR:
+		res = xfr_request_init(&xfr, XFR_TYPE_AOUT, XFR_FLAG_TCP, packet);
+		if (res != KNOTD_EOK) {
+			knot_ns_error_response(ns, knot_packet_id(packet),
+			                       KNOT_RCODE_SERVFAIL, qbuf,
+			                       &resp_len);
+			res = KNOTD_EOK;
+			break;
+		}
 		xfr.send = xfr_send_cb;
 		xfr.session = fd;
 		memcpy(&xfr.addr, &addr, sizeof(sockaddr_t));
 		xfr_request(xfr_h, &xfr);
 		dbg_net("tcp: enqueued AXFR query on fd=%d\n", fd);
 		return;
-	case KNOT_QUERY_NOTIFY:
+		
+	/*! \todo Implement query notify/update. */
 	case KNOT_QUERY_UPDATE:
-		/*! \todo Implement query notify/update. */
 		knot_ns_error_response(ns, knot_packet_id(packet),
 				       KNOT_RCODE_NOTIMPL, qbuf,
+				       &resp_len);
+		res = KNOTD_EOK;
+		break;
+		
+	/* Unhandled opcodes. */
+	case KNOT_QUERY_NOTIFY:    /*!< Only in UDP. */
+	case KNOT_RESPONSE_NOTIFY: /*!< Only in UDP. */
+	case KNOT_RESPONSE_NORMAL: /*!< TCP handler doesn't send queries. */
+	case KNOT_RESPONSE_AXFR:   /*!< Processed in XFR handler. */
+	case KNOT_RESPONSE_IXFR:   /*!< Processed in XFR handler. */
+		knot_ns_error_response(ns, knot_packet_id(packet),
+				       KNOT_RCODE_REFUSED, qbuf,
+				       &resp_len);
+		res = KNOTD_EOK;
+		break;
+		
+	/* Unknown opcodes. */
+	default:
+		knot_ns_error_response(ns, knot_packet_id(packet),
+				       KNOT_RCODE_FORMERR, qbuf,
 				       &resp_len);
 		res = KNOTD_EOK;
 		break;

@@ -40,7 +40,9 @@ static int zones_send_cb(int fd, sockaddr_t *addr, uint8_t *msg, size_t msglen)
 /*! \brief Zone data destructor function. */
 static int zonedata_destroy(knot_zone_t *zone)
 {
-	zonedata_t *zd = (zonedata_t *)zone->data;
+	dbg_zones("zones: destroying zone data\n");
+	
+	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 	if (!zd) {
 		return KNOTD_EINVAL;
 	}
@@ -392,6 +394,8 @@ static int zones_refresh_ev(event_t *e)
  */
 static int zones_notify_send(event_t *e)
 {
+	dbg_notify("notify: NOTIFY timer event\n");
+	
 	notify_ev_t *ev = (notify_ev_t *)e->data;
 	knot_zone_t *zone = ev->zone;
 	if (!zone) {
@@ -404,8 +408,6 @@ static int zones_notify_send(event_t *e)
 	/* Check for answered/cancelled query. */
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 	knot_zone_contents_t *contents = knot_zone_get_contents(zone);
-
-	dbg_notify("notify: NOTIFY timer event\n");
 
 	/* Reduce number of available retries. */
 	--ev->retries;
@@ -1458,7 +1460,7 @@ int zones_process_response(knot_nameserver_t *nameserver,
 
 /*----------------------------------------------------------------------------*/
 
-xfr_type_t zones_transfer_to_use(const knot_zone_contents_t *zone)
+knot_ns_xfr_type_t zones_transfer_to_use(const knot_zone_contents_t *zone)
 {
 	/*! \todo Implement. */
 	return XFR_TYPE_AIN;
