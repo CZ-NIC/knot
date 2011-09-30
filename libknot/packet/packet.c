@@ -973,6 +973,14 @@ uint16_t knot_packet_qtype(const knot_packet_t *packet)
 
 /*----------------------------------------------------------------------------*/
 
+void knot_packet_set_qtype(knot_packet_t *packet, knot_rr_type_t qtype)
+{
+	assert(packet != NULL);
+	packet->question.qtype = qtype;
+}
+
+/*----------------------------------------------------------------------------*/
+
 uint16_t knot_packet_qclass(const knot_packet_t *packet)
 {
 	assert(packet != NULL);

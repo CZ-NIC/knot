@@ -30,8 +30,6 @@
 #include "packet/response.h"
 #include "packet/query.h"
 #include "consts.h"
-// #include "knot/zone/zone-dump-text.h"
-// #include "knot/zone/zone-dump.h"
 #include "updates/changesets.h"
 #include "updates/ddns.h"
 
@@ -2183,6 +2181,7 @@ static int ns_axfr_from_zone(knot_zone_contents_t *zone, knot_ns_xfr_t *xfr)
 	ret = knot_response_add_rrset_answer(xfr->response, soa_rrset, 0, 0,
 	                                        1);
 	if (ret == KNOT_ESPACE) {
+			
 		// if there is not enough space, send the response and
 		// add the SOA record to a new packet
 		dbg_ns("Packet full, sending..\n");

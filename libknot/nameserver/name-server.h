@@ -72,9 +72,14 @@ typedef struct knot_nameserver {
 typedef int (*xfr_callback_t)(int session, sockaddr_t *addr,
 			      uint8_t *packet, size_t size);
 
-/*! \todo Document me. */
+/*!
+ * \brief Single XFR operation structure.
+ *
+ * Used for communication with XFR handler.
+ */
 typedef struct knot_ns_xfr {
 	int type;
+	int flags;
 	sockaddr_t addr;
 	knot_packet_t *query;
 	knot_packet_t *response;
@@ -86,6 +91,30 @@ typedef struct knot_ns_xfr {
 	knot_zone_t *zone;
 	void *owner;
 } knot_ns_xfr_t;
+
+/*!
+ * \brief XFR request flags.
+ */
+enum knot_ns_xfr_flag_t {
+	XFR_FLAG_TCP = 1 << 0, /*!< XFR request is on TCP. */
+	XFR_FLAG_UDP = 1 << 1  /*!< XFR request is on UDP. */
+};
+
+/*!
+ * \brief XFR request types.
+ */
+typedef enum knot_ns_xfr_type_t {
+	/* Special events. */
+	XFR_TYPE_CLOSE = -1, /*!< Close connection event. */
+
+	/* DNS events. */
+	XFR_TYPE_AIN = 0,   /*!< AXFR-IN request (start transfer). */
+	XFR_TYPE_AOUT,  /*!< AXFR-OUT request (incoming transfer). */
+	XFR_TYPE_IIN,   /*!< IXFR-IN request (start transfer). */
+	XFR_TYPE_IOUT,  /*!< IXFR-OUT request (incoming transfer). */
+	XFR_TYPE_SOA,   /*!< Pending SOA request. */
+	XFR_TYPE_NOTIFY /*!< Pending NOTIFY query. */
+} knot_ns_xfr_type_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
