@@ -338,6 +338,15 @@ const knot_dname_t *knot_packet_qname(const knot_packet_t *packet);
 uint16_t knot_packet_qtype(const knot_packet_t *packet);
 
 /*!
+ * \brief Set the QTYPE of the packet.
+ *
+ * \param packet Packet containing question.
+ * \param qtype New QTYPE for question.
+ */
+void knot_packet_set_qtype(knot_packet_t *packet, knot_rr_type_t qtype);
+
+
+/*!
  * \brief Returns the QCLASS from the packet.
  *
  * \param response Packet (with parsed query) to get the QCLASS from.
