@@ -105,6 +105,20 @@ int xfr_stop(xfrhandler_t *handler);
 int xfr_join(xfrhandler_t *handler);
 
 /*!
+ * \brief Prepare XFR request.
+ *
+ * \param r XFR request.
+ * \param type Request type.
+ * \param flags Request flags.
+ * \param pkt Query packet or NULL.
+ *
+ * \retval KNOTD_EOK
+ * \retval KNOTD_ENOMEM
+ * \retval KNOTD_EINVAL
+ */
+int xfr_request_init(knot_ns_xfr_t *r, int type, int flags, knot_packet_t *pkt);
+
+/*!
  * \brief Enqueue XFR request.
  *
  * \param handler XFR handler instance.

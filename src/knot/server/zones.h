@@ -71,20 +71,6 @@ typedef struct zonedata_t
 	uint32_t zonefile_serial;
 } zonedata_t;
 
-/*! \todo Document me. */
-typedef enum xfr_type_t {
-	/* Special events. */
-	XFR_TYPE_CLOSE = -1, /*!< Close connection event. */
-
-	/* DNS events. */
-	XFR_TYPE_AIN = 0,   /*!< AXFR-IN request (start transfer). */
-	XFR_TYPE_AOUT,  /*!< AXFR-OUT request (incoming transfer). */
-	XFR_TYPE_IIN,   /*!< IXFR-IN request (start transfer). */
-	XFR_TYPE_IOUT,  /*!< IXFR-OUT request (incoming transfer). */
-	XFR_TYPE_SOA,   /*!< Pending SOA request. */
-	XFR_TYPE_NOTIFY /*!< Pending NOTIFY query. */
-} xfr_type_t;
-
 /*!
  * \brief Update zone database according to configuration.
  *
@@ -155,7 +141,7 @@ int zones_process_response(knot_nameserver_t *nameserver,
  *
  * \retval
  */
-xfr_type_t zones_transfer_to_use(const knot_zone_contents_t *zone);
+knot_ns_xfr_type_t zones_transfer_to_use(const knot_zone_contents_t *zone);
 
 int zones_save_zone(const knot_ns_xfr_t *xfr);
 

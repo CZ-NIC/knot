@@ -23,11 +23,17 @@
 #include "knot/server/zones.h"
 #include "knot/server/notify.h"
 
-int udp_handle(uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
+/*! \brief Wrapper for UDP send. */
+static int xfr_send_udp(int session, sockaddr_t *addr, uint8_t *msg, size_t msglen)
+{
+	return sendto(session, msg, msglen, 0, addr->ptr, addr->len);
+}
+
+int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 	       sockaddr_t* addr, knot_nameserver_t *ns)
 {
 	dbg_net("udp: received %zd bytes.\n", qbuflen);
-
+	
 	knot_packet_type_t qtype = KNOT_QUERY_NORMAL;
 	*resp_len = SOCKET_MTU_SZ;
 
@@ -57,6 +63,8 @@ int udp_handle(uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 	}
 
 	/* Handle query. */
+	server_t *srv = (server_t *)knot_ns_get_data(ns);
+	knot_ns_xfr_t xfr;
 	res = KNOTD_ERROR;
 	switch(qtype) {
 
@@ -65,35 +73,95 @@ int udp_handle(uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		res = zones_process_response(ns, addr, packet,
 					     qbuf, resp_len);
 		break;
-	case KNOT_RESPONSE_AXFR:
-	case KNOT_RESPONSE_IXFR:
 	case KNOT_RESPONSE_NOTIFY:
 		res = notify_process_response(ns, packet, addr,
 					      qbuf, resp_len);
 		break;
-
+	
 	/* Query types. */
 	case KNOT_QUERY_NORMAL:
 		res = knot_ns_answer_normal(ns, packet, qbuf,
 					      resp_len);
 		break;
 	case KNOT_QUERY_AXFR:
-	case KNOT_QUERY_IXFR:
-		/* Send error, not available on UDP. */
+		/* RFC1034, p.28 requires reliable transfer protocol.
+		 * Bind responds with FORMERR.
+ 		 */
+		/*! \todo Draft exists for AXFR/UDP, but has not been standardized. */
 		knot_ns_error_response(ns, knot_packet_id(packet),
-				       KNOT_RCODE_SERVFAIL, qbuf,
+				       KNOT_RCODE_FORMERR, qbuf,
 				       resp_len);
 		res = KNOTD_EOK;
 		break;
+		
+//		/* Process AXFR over UDP. */
+//		res = xfr_request_init(&xfr, XFR_TYPE_AOUT, XFR_FLAG_UDP, packet);
+//		if (res != KNOTD_EOK) {
+//			knot_ns_error_response(ns, knot_packet_id(packet),
+//			                       KNOT_RCODE_SERVFAIL, qbuf,
+//			                       resp_len);
+//			res = KNOTD_EOK;
+//			break;
+//		}
+//		xfr.send = xfr_send_udp;
+//		xfr.session = dup(fd);
+//		memcpy(&xfr.addr, addr, sizeof(sockaddr_t));
+//		xfr_request(srv->xfr_h, &xfr);
+//		dbg_net("udp: enqueued AXFR query on fd=%d\n", xfr.session);
+//		*resp_len = 0;
+//		return KNOTD_EOK;
+	case KNOT_QUERY_IXFR:
+		/* According to RFC1035, respond with SOA. 
+		 * Draft proposes trying to fit response into one packet,
+		 * but I have found no tool or slave server to actually attempt
+		 * IXFR/UDP.
+		 */
+		knot_packet_set_qtype(packet, KNOT_RRTYPE_SOA);
+		res = knot_ns_answer_normal(ns, packet, qbuf,
+		                            resp_len);
+		break;
+//		/* Process IXFR over UDP. */
+//		res = xfr_request_init(&xfr, XFR_TYPE_IOUT, XFR_FLAG_UDP, packet);
+//		if (res != KNOTD_EOK) {
+//			knot_ns_error_response(ns, knot_packet_id(packet),
+//			                       KNOT_RCODE_SERVFAIL, qbuf,
+//			                       resp_len);
+//			res = KNOTD_EOK;
+//			break;
+//		}
+//		xfr.send = xfr_send_udp;
+//		xfr.session = dup(fd);
+//		memcpy(&xfr.addr, addr, sizeof(sockaddr_t));
+//		xfr_request(srv->xfr_h, &xfr);
+//		dbg_net("udp: enqueued IXFR query on fd=%d\n", xfr.session);
+//		*resp_len = 0;
+//		return KNOTD_EOK;
 	case KNOT_QUERY_NOTIFY:
 		res = notify_process_request(ns, packet, addr,
 					     qbuf, resp_len);
 		break;
+		
+	/*! \todo Implement query notify/update. */
 	case KNOT_QUERY_UPDATE:
-	default:
-		/*! \todo Implement query notify/update. */
 		knot_ns_error_response(ns, knot_packet_id(packet),
 				       KNOT_RCODE_NOTIMPL, qbuf,
+				       resp_len);
+		res = KNOTD_EOK;
+		break;
+		
+	/* Unhandled opcodes. */
+	case KNOT_RESPONSE_AXFR: /*!< Processed in XFR handler. */
+	case KNOT_RESPONSE_IXFR: /*!< Processed in XFR handler. */
+		knot_ns_error_response(ns, knot_packet_id(packet),
+		                       KNOT_RCODE_REFUSED, qbuf,
+		                       resp_len);
+		res = KNOTD_EOK;
+		break;
+			
+	/* Unknown opcodes */
+	default:
+		knot_ns_error_response(ns, knot_packet_id(packet),
+				       KNOT_RCODE_FORMERR, qbuf,
 				       resp_len);
 		res = KNOTD_EOK;
 		break;
@@ -161,7 +229,7 @@ static inline int udp_master_recvfrom(dthread_t *thread, stat_t *thread_stat)
 
 		/* Handle received pkt. */
 		size_t resp_len = 0;
-		int rc = udp_handle(qbuf, n, &resp_len, &addr, ns);
+		int rc = udp_handle(sock, qbuf, n, &resp_len, &addr, ns);
 
 		/* Send response. */
 		if (rc == KNOTD_EOK && resp_len > 0) {
@@ -244,7 +312,7 @@ static inline int udp_master_recvmmsg(dthread_t *thread, stat_t *thread_stat)
 		for (unsigned i = 0; i < n; ++i) {
 			struct iovec *cvec = msgs[i].msg_hdr.msg_iov;
 			size_t resp_len = msgs[i].msg_len;
-			ret = udp_handle(cvec->iov_base, resp_len, &resp_len,
+			ret = udp_handle(sock, cvec->iov_base, resp_len, &resp_len,
 			                 addrs + i, ns);
 			if (ret == KNOTD_EOK) {
 				msgs[i].msg_len = resp_len;
