@@ -42,6 +42,7 @@ static int evsched_run(dthread_t *thread)
 
 		/* Process termination event. */
 		if (ev->type == EVSCHED_TERM) {
+			evsched_event_finished(s);
 			evsched_event_free(s, ev);
 			break;
 		}
@@ -49,7 +50,9 @@ static int evsched_run(dthread_t *thread)
 		/* Process event. */
 		if (ev->type == EVSCHED_CB && ev->cb) {
 			ev->cb(ev);
+			evsched_event_finished(s);
 		} else {
+			evsched_event_finished(s);
 			evsched_event_free(s, ev);
 		}
 

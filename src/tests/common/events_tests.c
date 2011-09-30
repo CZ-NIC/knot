@@ -116,6 +116,7 @@ static int events_tests_run(int argc, char *argv[])
 
 	// 3. Wait for next event
 	e = evsched_next(s);
+	evsched_event_finished(s);
 	gettimeofday(&rt, 0);
 	ok(e != 0, "evsched: received valid event");
 
@@ -135,7 +136,7 @@ static int events_tests_run(int argc, char *argv[])
 	lives_ok({evsched_event_free(s, e);}, "evsched: deleted event");
 
 	// 7. Insert and immediately cancel an event
-	e = evsched_schedule_cb(s, 0, (void*)0xdead, 10);
+	e = evsched_schedule_cb(s, 0, (void*)0xdead, 1000);
 	ret = evsched_cancel(s, e);
 	ok(ret == 0, "evsched: inserted and cancelled an event");
 	if (e) {
@@ -146,6 +147,7 @@ static int events_tests_run(int argc, char *argv[])
 	pthread_t t;
 	pthread_create(&t, 0, term_thr, s);
 	e = evsched_next(s);
+	evsched_event_finished(s);
 	ok(e != 0, "evsched: received termination event");
 
 	// 9. Termination event is valid

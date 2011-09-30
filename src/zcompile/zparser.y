@@ -871,6 +871,7 @@ type_and_rdata:
     |	T_DNSKEY sp rdata_dnskey
     |	T_DNSKEY sp rdata_unknown { $$ = $1; parse_unknown_rdata($1, $3); }
     |	T_UTYPE sp rdata_unknown { $$ = $1; parse_unknown_rdata($1, $3); }
+
     |	STR error NL
     {
 	    zc_error_prev_line("unrecognized RR type '%s'", $1.str);

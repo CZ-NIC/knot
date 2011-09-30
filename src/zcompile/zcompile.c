@@ -2138,9 +2138,6 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	/* This is *almost* unnecessary */
 	knot_zone_deep_free(&(parser->current_zone), 0);
 
-//	knot_zone_t *zone = knot_zload_load(knot_zload_open(outfile));
-//	assert(zone);
-//	printf("apex: %s\n", zone->contents->apex->owner->name);
 
 	fflush(stdout);
 	totalerrors += parser->errors;
