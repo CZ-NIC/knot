@@ -555,8 +555,6 @@ int server_wait(server_t *server)
 	int ret = 0;
 	iohandler_t *h = 0, *nxt = 0;
 	WALK_LIST_DELSAFE(h, nxt, server->handlers) {
-		dbg_server("server: [%p] joining threading unit\n",
-			     h);
 
 		/* Unlock RCU. */
 		rcu_read_unlock();
@@ -570,8 +568,6 @@ int server_wait(server_t *server)
 
 		/* Relock RCU. */
 		rcu_read_lock();
-
-		dbg_server("server: joined threading unit\n");
 	}
 
 	/* Unlock RCU. */
