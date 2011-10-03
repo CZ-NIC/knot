@@ -40,7 +40,7 @@ static int zones_send_cb(int fd, sockaddr_t *addr, uint8_t *msg, size_t msglen)
 /*! \brief Zone data destructor function. */
 static int zonedata_destroy(knot_zone_t *zone)
 {
-	dbg_zones("zones: destroying zone data\n");
+	dbg_zones_verb("zones: zonedata_destroy(%p) called\n", zone);
 	
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 	if (!zd) {
@@ -190,7 +190,8 @@ static uint32_t zones_soa_timer(knot_zone_t *zone,
                                 uint32_t (*rr_func)(const knot_rdata_t*))
 {
 	if (!zone) {
-		dbg_zones("zones: zones_soa_timer() called with NULL zone\n");
+		dbg_zones_verb("zones: zones_soa_timer() called "
+		               "with NULL zone\n");
 	}
 
 	uint32_t ret = 0;
@@ -251,7 +252,7 @@ static uint32_t zones_soa_expire(knot_zone_t *zone)
 static int zones_expire_ev(event_t *e)
 {
 	rcu_read_lock();
-	dbg_zones("xfr_in: EXPIRE timer event\n");
+	dbg_zones("zones: EXPIRE timer event\n");
 	knot_zone_t *zone = (knot_zone_t *)e->data;
 	if (!zone) {
 		return KNOTD_EINVAL;
@@ -267,20 +268,20 @@ static int zones_expire_ev(event_t *e)
 	knot_zone_t *old_zone = knot_zonedb_remove_zone(
 		zd->server->nameserver->zone_db, zone->name);
 	if (old_zone == NULL) {
-		log_server_warning("Non-existent zone EXPIREd. Ignoring.\n");
+		log_server_warning("Non-existent zone expired. Ignoring.\n");
 		rcu_read_unlock();
 		return 0;
 	}
 	
 	assert(old_zone == zone);
 	
-	dbg_zones("xfr_in: removing zone from db\n");
 	rcu_read_unlock();
 	synchronize_rcu();
 	
 	log_server_info("Zone '%s' expired.\n", zd->conf->name);
 	
 	/* Early finish this event to prevent lockup during cancellation. */
+	dbg_zones("zones: zone expired, removing from database\n");
 	evsched_event_finished(e->parent);
 	knot_zone_deep_free(&old_zone, 1);
 
@@ -292,7 +293,7 @@ static int zones_expire_ev(event_t *e)
  */
 static int zones_refresh_ev(event_t *e)
 {
-	dbg_zones("xfr_in: REFRESH or RETRY timer event\n");
+	dbg_zones("zones: REFRESH or RETRY timer event\n");
 	knot_zone_t *zone = (knot_zone_t *)e->data;
 	if (!zone) {
 		return KNOTD_EINVAL;
@@ -331,7 +332,8 @@ static int zones_refresh_ev(event_t *e)
 		/* Enqueue XFR request. */
 		int locked = pthread_mutex_trylock(&zd->xfr_in.lock);
 		if (locked) {
-			dbg_zones("xfr_in: already bootstrapping\n");
+			dbg_zones("zones: already bootstrapping '%s'\n",
+			          zd->conf->name);
 			pthread_mutex_unlock(&zd->xfr_in.lock);
 		} else {
 			log_zone_info("Attempting to bootstrap zone %s from master\n",
@@ -361,8 +363,9 @@ static int zones_refresh_ev(event_t *e)
 		/* Store ID of the awaited response. */
 		if (ret == buflen) {
 			zd->xfr_in.next_id = knot_wire_get_id(qbuf);
-			dbg_zones("xfr_in: expecting SOA response ID=%d\n",
-				    zd->xfr_in.next_id);
+			dbg_zones("zones: expecting SOA response "
+			          "ID=%d for '%s'\n",
+			          zd->xfr_in.next_id, zd->conf->name);
 		}
 
 		/* Watch socket. */
@@ -383,14 +386,14 @@ static int zones_refresh_ev(event_t *e)
 					      e->parent,
 					      zones_expire_ev,
 					      zone, expire_tmr);
-		dbg_zones("xfr_in: scheduling EXPIRE timer after %u secs\n",
-			    expire_tmr / 1000);
+		dbg_zones("zones: EXPIRE of '%s' after %u seconds\n",
+		          zd->conf->name, expire_tmr / 1000);
 	}
 
 	/* Reschedule as RETRY timer. */
 	evsched_schedule(e->parent, e, zones_soa_retry(zone));
-	dbg_zones("xfr_in: RETRY after %u secs\n",
-		    zones_soa_retry(zone) / 1000);
+	dbg_zones("zones: RETRY of '%s' after %u seconds\n",
+	          zd->conf->name, zones_soa_retry(zone) / 1000);
 
 	/* Unlock RCU. */
 	rcu_read_unlock();
@@ -479,8 +482,8 @@ static int zones_notify_send(event_t *e)
 	/* Reschedule. */
 	evsched_schedule(e->parent, e, retry_tmr);
 
-	dbg_notify("notify: RETRY after %u secs\n",
-		     retry_tmr / 1000);
+	dbg_notify("notify: Query RETRY after %u secs (zone '%s')\n",
+	           retry_tmr / 1000, zd->conf->name);
 	return ret;
 }
 
@@ -505,7 +508,7 @@ static int zones_ixfrdb_sync_apply(journal_t *j, journal_node_t *n)
  */
 static int zones_zonefile_sync_ev(event_t *e)
 {
-	dbg_zones("ixfr_db: SYNC timer event\n");
+	dbg_zones("zones: IXFR database SYNC timer event\n");
 
 	/* Fetch zone. */
 	knot_zone_t *zone = (knot_zone_t *)e->data;
@@ -520,11 +523,21 @@ static int zones_zonefile_sync_ev(event_t *e)
 	}
 
 	/* Execute zonefile sync. */
-	int ret =  zones_zonefile_sync(zone);
+	int ret = zones_zonefile_sync(zone);
+	if (ret == KNOTD_EOK) {
+		log_zone_info("Applied differences of '%s' to zonefile.\n",
+		              zd->conf->name);
+	} else {
+		log_zone_warning("Failed to apply differences of '%s' "
+		                 "to zonefile.\n",
+		                 zd->conf->name);
+	}
 
 	/* Reschedule. */
 	conf_read_lock();
 	evsched_schedule(e->parent, e, zd->conf->dbsync_timeout * 1000);
+	dbg_zones("zones: next IXFR database SYNC of '%s' in %d seconds\n",
+	          zd->conf->name, zd->conf->dbsync_timeout);
 	conf_read_unlock();
 
 	return ret;
@@ -937,7 +950,8 @@ static int zones_journal_apply(knot_zone_t *zone)
 	}
 
 	knot_zone_contents_t *contents = knot_zone_get_contents(zone);
-	if (!contents) {
+	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
+	if (!contents || !zd) {
 		return KNOTD_ENOENT;
 	}
 
@@ -954,25 +968,28 @@ static int zones_journal_apply(knot_zone_t *zone)
 	uint32_t serial = (uint32_t)serial_ret;
 
 	/* Load all pending changesets. */
-	dbg_zones("update_zone: loading all changesets from %u\n", serial);
+	dbg_zones_verb("zones: loading all changesets of '%s' from SERIAL %u\n",
+	               zd->conf->name, serial);
 	knot_changesets_t* chsets = malloc(sizeof(knot_changesets_t));
 	memset(chsets, 0, sizeof(knot_changesets_t));
 	int ret = zones_load_changesets(zone, chsets, serial, serial - 1);
 	if (ret == KNOT_EOK || ret == KNOT_ERANGE) {
 		if (chsets->count > 0) {
 			/* Apply changesets. */
-			dbg_zones("update_zone: applying %zu changesets\n",
-				    chsets->count);
+			log_server_info("Applying '%zu' changesets from journal "
+			                "to zone '%s'.\n",
+			                chsets->count, zd->conf->name);
 			ret = xfrin_apply_changesets_to_zone(zone, chsets);
 			if (ret != KNOT_EOK) {
-				dbg_zones("update_zone: application of "
-					    "changesets failed with '%s'\n",
-					    knotd_strerror(ret));
+				log_server_error("Failed to apply changesets to "
+				                 "'%s' - %s\n",
+				                 zd->conf->name,
+				                 knot_strerror(ret));
 			}
 		}
 	} else {
-		dbg_zones("update_zone: failed to load changeset, %s\n",
-			    knotd_strerror(ret));
+		dbg_zones("zones: failed to load changesets - %s\n",
+		          knotd_strerror(ret));
 	}
 
 	/* Free changesets and return. */
@@ -1017,12 +1034,12 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 			return inserted;
 		}
 
-		dbg_zones("Inserting zone %s into the new database.\n",
-		            z->name);
+		dbg_zones_verb("zones: inserting zone %s into the new database.\n",
+		               z->name);
 
 		// try to find the zone in the current zone db
 		knot_zone_t *zone = knot_zonedb_find_zone(db_old,
-		                                              zone_name);
+		                                          zone_name);
 		int reload = 0;
 
 		/* Attempt to bootstrap if db or source does not exist. */
@@ -1046,7 +1063,9 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 			if (stat_ret < 0 && !EMPTY_LIST(z->acl.xfr_in)) {
 
 				/* Create stub database. */
-				dbg_zones("Loading stub zone for bootstrap.\n");
+				dbg_zones_verb("zones: loading stub zone '%s' "
+				               "for bootstrap.\n",
+				               z->name);
 				knot_dname_t *owner = 0;
 				owner = knot_dname_deep_copy(zone_name);
 				knot_zone_t* sz = knot_zone_new_empty(owner);
@@ -1054,8 +1073,9 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 					/* Add stub zone to db_new. */
 					ret = knot_zonedb_add_zone(db_new, sz);
 					if (ret != KNOT_EOK) {
-						dbg_zones("Failed to add "
-							    "stub zone.\n");
+						dbg_zones("zones: failed to add "
+						          "stub zone '%'s.\n",
+						          z->name);
 						knot_zone_deep_free(&sz, 0);
 						sz = 0;
 					} else {
@@ -1068,22 +1088,27 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 					}
 
 				} else {
-					dbg_zones("Failed to create "
-						    "stub zone.\n");
+					dbg_zones("zones: failed to create "
+					          "stub zone '%'s.\n",
+					          z->name);
 					ret = KNOT_ERROR;
 				}
 
 			} else {
-
-				dbg_zones("Not found in old database or the loaded"
-					    " version is old, loading...\n");
+				dbg_zones_verb("zones: loading zone '%s' "
+				               "from '%s'\n",
+				               z->name,
+				               z->db);
 				ret = zones_load_zone(db_new, z->name,
 							  z->file, z->db);
 				if (ret == KNOTD_EOK) {
-					log_server_info("Loaded zone: %s\n", z->name);
+					log_server_info("Loaded zone '%s'\n",
+					                z->name);
 				} else {
-					log_server_error("Failed to load zone: "
-					                 "%s\n", z->name);
+					log_server_error("Failed to load zone "
+					                 "'%s' - %s\n",
+					                 z->name,
+					                 knotd_strerror(ret));
 				}
 			}
 
@@ -1091,8 +1116,12 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 			if (ret == KNOTD_EOK) {
 				// Find the new zone
 				zone = knot_zonedb_find_zone(db_new,
-				                               zone_name);
+				                             zone_name);
 				++inserted;
+				
+				dbg_zones_verb("zones: inserted '%s' into "
+				               "database, initializing data\n",
+				               z->name)
 
 				/* Initialize zone-related data. */
 				zonedata_init(z, zone);
@@ -1101,14 +1130,16 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 			// unused return value, if not loaded, just continue
 		} else {
 			// just insert the zone into the new zone db
-			dbg_zones("Found in old database, copying to new.\n");
+			dbg_zones_verb("zones: found '%s' in old database, "
+			               "copying to new.\n",
+			               z->name);
 			log_server_info("Zone '%s' is up-to-date, no need "
 			                "for reload.\n", z->name);
 			int ret = knot_zonedb_add_zone(db_new, zone);
 			if (ret != KNOTD_EOK) {
-				log_server_error("Error adding old zone to"
-				                 " the new database: %s\n",
-				                 knotd_strerror(ret));
+				log_server_error("Error adding known zone '%s' to"
+				                 " the new database - %s\n",
+				                 z->name, knotd_strerror(ret));
 			} else {
 				++inserted;
 			}
@@ -1141,9 +1172,11 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 					     cfg_if->address,
 					     cfg_if->port);
 
-				dbg_zones("Using %s:%d as zone XFR master.\n",
-					    cfg_if->address,
-					    cfg_if->port);
+				dbg_zones("zones: using %s:%d as XFR master "
+				          "for '%s'\n",
+				          cfg_if->address,
+				          cfg_if->port,
+				          z->name);
 			}
 
 			/* Apply changesets from journal. */
@@ -1188,12 +1221,12 @@ static int zones_remove_zones(const knot_zonedb_t *db_new,
 		// if the pointers match, remove the zone from old DB
 		/*! \todo Find better way of removing zone with given pointer.*/
 		knot_zone_t *old_zone = knot_zonedb_find_zone(
-				db_old, knot_zone_name(new_zones[i]));
+		                        db_old, knot_zone_name(new_zones[i]));
 		if (old_zone == new_zones[i]) {
 dbg_zones_exec(
 			char *name = knot_dname_to_str(knot_zone_name(old_zone));
-			dbg_zones("Zone pointers match, removing zone %s "
-			            "from database.\n", name);
+			dbg_zones_verb("zones: zone pointers match, removing zone %s "
+                                       "from database.\n", name);
 			free(name);
 );
 			knot_zone_t * rm = knot_zonedb_remove_zone(db_old,
@@ -1248,14 +1281,14 @@ int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
 		log_server_warning("Not all the zones were loaded.\n");
 	}
 
-	dbg_zones("Old db in nameserver: %p, old db stored: %p, new db: %p\n",
-	            ns->zone_db, *db_old, db_new);
+	dbg_zones_detail("zones: old db in nameserver: %p, old db stored: %p, new db: %p\n",
+	                 ns->zone_db, *db_old, db_new);
 
 	// Switch the databases.
 	(void)rcu_xchg_pointer(&ns->zone_db, db_new);
 
-	dbg_zones("db in nameserver: %p, old db stored: %p, new db: %p\n",
-	            ns->zone_db, *db_old, db_new);
+	dbg_zones_detail("db in nameserver: %p, old db stored: %p, new db: %p\n",
+	                 ns->zone_db, *db_old, db_new);
 
 	/*
 	 * Remove all zones present in the new DB from the old DB.
@@ -1314,20 +1347,25 @@ int zones_zonefile_sync(knot_zone_t *zone)
 
 		/* Save zone to zonefile. */
 		conf_read_lock();
-		dbg_zones("ixfr_db: syncing '%s' to '%s' (SOA serial %u)\n",
-			   zd->conf->name, zd->conf->file, serial_to);
+		dbg_zones("zones: syncing '%s' differences to '%s' "
+		          "(SOA serial %u)\n",
+		          zd->conf->name, zd->conf->file, serial_to);
 		zone_dump_text(contents, zd->conf->file);
 		conf_read_unlock();
 
 		/* Update journal entries. */
-		dbg_zones("ixfr_db: unmarking all dirty nodes in journal\n");
+		dbg_zones_verb("zones: unmarking all dirty nodes "
+		               "in '%s' journal\n",
+		               zd->conf->name);
 		journal_walk(zd->ixfr_db, zones_ixfrdb_sync_apply);
 
 		/* Update zone file serial. */
-		dbg_zones("ixfr_db: new zonefile serial is %u\n", serial_to);
+		dbg_zones("zones: new '%s' zonefile serial is %u\n",
+		          zd->conf->name, serial_to);
 		zd->zonefile_serial = serial_to;
 	} else {
-		dbg_zones("ixfr_db: nothing to sync\n");
+		dbg_zones_verb("zones: '%s' zonefile is in sync "
+		               "with differences\n", zd->conf->name);
 	}
 
 	/* Unlock zone data. */
@@ -1354,18 +1392,20 @@ int zones_xfr_check_zone(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 	/* Check zone data. */
 	zonedata_t *zd = (zonedata_t *)xfr->zone->data;
 	if (zd == NULL) {
-		dbg_zones("Invalid zone data.\n");
+		dbg_zones("zones: invalid zone data for zone %p\n", xfr->zone);
 		*rcode = KNOT_RCODE_SERVFAIL;
 		return KNOTD_ERROR;
 	}
 
 	// Check xfr-out ACL
 	if (acl_match(zd->xfr_out, &xfr->addr) == ACL_DENY) {
-		log_answer_warning("Unauthorized request for AXFR/OUT.\n");
+		log_answer_warning("Unauthorized request for AXFR '%s/OUT'.\n",
+		                   zd->conf->name);
 		*rcode = KNOT_RCODE_REFUSED;
 		return KNOTD_EACCES;
 	} else {
-		dbg_zones("Authorized AXFR OUT request.\n");
+		dbg_zones("zones: authorized AXFR '%s/OUT'\n",
+		          zd->conf->name);
 	}
 	return KNOTD_EOK;
 }
@@ -1432,7 +1472,7 @@ int zones_process_response(knot_nameserver_t *nameserver,
 		evsched_t *sched =
 			((server_t *)knot_ns_get_data(nameserver))->sched;
 		if (ret == 0) {
-			log_zone_info("SOA query for zone %s answered, no "
+			log_zone_info("SOA query for zone '%s' answered, no "
 				      "transfer needed.\n", zd->conf->name);
 			rcu_read_unlock();
 
@@ -1505,8 +1545,8 @@ static int zones_find_zone_for_xfr(const knot_zone_contents_t *zone,
 
 	char *name = knot_dname_to_str(knot_node_owner(
 	                 knot_zone_contents_apex(zone)));
-	dbg_zones("No zone found for the zone received by transfer "
-	                 "(%s).\n", name);
+	dbg_zones("zones: no zone found for the zone received by transfer "
+	          "(%s).\n", name);
 	free(name);
 
 	return KNOTD_ENOENT;
@@ -1528,12 +1568,12 @@ static char *zones_find_free_filename(const char *old_name)
 	new_name[name_size] = '.';
 	new_name[name_size + 2] = 0;
 
-	dbg_zones("Finding free name for the zone file.\n");
+	dbg_zones_verb("zones: finding free name for the zone file.\n");
 	int c = 48;
 	FILE *file;
 	while (!free_name && c < 58) {
 		new_name[name_size + 1] = c;
-		dbg_zones("Trying file name %s\n", new_name);
+		dbg_zones_verb("zones: trying file name %s\n", new_name);
 		if ((file = fopen(new_name, "r")) != NULL) {
 			fclose(file);
 			++c;
@@ -1566,16 +1606,16 @@ static int zones_dump_xfr_zone_text(knot_zone_contents_t *zone,
 	char *new_zonefile = zones_find_free_filename(zonefile);
 
 	if (new_zonefile == NULL) {
-		dbg_zones("Failed to find free filename for temporary "
-		                 "storage of the zone text file.\n");
+		dbg_zones("zones: failed to find free filename for temporary "
+		          "storage of the zone text file.\n");
 		return KNOTD_ERROR;	/*! \todo New error code? */
 	}
 
 	int rc = zone_dump_text(zone, new_zonefile);
 
 	if (rc != KNOTD_EOK) {
-		dbg_zones("Failed to save the zone to text zone file %s."
-		                 "\n", new_zonefile);
+		dbg_zones("Failed to save the zone to text zone file '%s'.\n",
+		          new_zonefile);
 		free(new_zonefile);
 		return KNOTD_ERROR;
 	}
@@ -1585,8 +1625,8 @@ static int zones_dump_xfr_zone_text(knot_zone_contents_t *zone,
 	rc = stat(zonefile, &s);
 	if (rc < 0 || remove(zonefile) == 0) {
 		if (rename(new_zonefile, zonefile) != 0) {
-			dbg_zones("Failed to replace old zonefile %s with new"
-				    " zone file %s.\n", zonefile, new_zonefile);
+			dbg_zones("Failed to replace old zonefile '%s'' with new"
+			          " zone file '%s'.\n", zonefile, new_zonefile);
 			/*! \todo with proper locking, this shouldn't happen,
 			 *        revise it later on.
 			 */
@@ -1594,7 +1634,8 @@ static int zones_dump_xfr_zone_text(knot_zone_contents_t *zone,
 			return KNOTD_ERROR;
 		}
 	} else {
-		dbg_zones("Failed to replace old zonefile %s.\n", zonefile);
+		dbg_zones("zones: failed to replace old zonefile '%s'.\n",
+		          zonefile);
 		return KNOTD_ERROR;
 	}
 
@@ -1618,8 +1659,9 @@ static int ns_dump_xfr_zone_binary(knot_zone_contents_t *zone,
 	char *new_zonedb = zones_find_free_filename(zonedb);
 
 	if (new_zonedb == NULL) {
-		dbg_zones("Failed to find free filename for temporary "
-		                 "storage of the zone binary file.\n");
+		dbg_zones("zones: failed to find free filename for temporary "
+		          "storage of the zone binary file '%s'\n",
+		          zonedb);
 		return KNOTD_ERROR;	/*! \todo New error code? */
 	}
 
@@ -1675,7 +1717,7 @@ int zones_save_zone(const knot_ns_xfr_t *xfr)
 int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 {
 	knot_nameserver_t *ns = (knot_nameserver_t *)data;
-	dbg_zones("Event: reconfiguring name server.\n");
+	dbg_zones_verb("zones: reconfiguring name server.\n");
 
 	knot_zonedb_t *old_db = 0;
 
@@ -1686,8 +1728,8 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 	// Wait until all readers finish with reading the zones.
 	synchronize_rcu();
 
-	dbg_zones("Nameserver's zone db: %p, old db: %p\n", ns->zone_db,
-	            old_db);
+	dbg_zones_verb("zones: nameserver's zone db: %p, old db: %p\n",
+	               ns->zone_db, old_db);
 
 	// Delete all deprecated zones and delete the old database.
 	knot_zonedb_deep_free(&old_db);
