@@ -23,24 +23,24 @@
 #include "knot/server/zones.h"
 #include "knot/server/notify.h"
 
-/*! \brief Wrapper for UDP send. */
-static int xfr_send_udp(int session, sockaddr_t *addr, uint8_t *msg, size_t msglen)
-{
-	return sendto(session, msg, msglen, 0, addr->ptr, addr->len);
-}
+///*! \brief Wrapper for UDP send. */
+//static int xfr_send_udp(int session, sockaddr_t *addr, uint8_t *msg, size_t msglen)
+//{
+//	return sendto(session, msg, msglen, 0, addr->ptr, addr->len);
+//}
 
 int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 	       sockaddr_t* addr, knot_nameserver_t *ns)
 {
-	dbg_net("udp: received %zd bytes.\n", qbuflen);
+	dbg_net("udp: fd=%d received %zd bytes.\n", fd, qbuflen);
 	
 	knot_packet_type_t qtype = KNOT_QUERY_NORMAL;
 	*resp_len = SOCKET_MTU_SZ;
 
-	//knot_response_t *resp = knot_response_new(4 * 1024); // 4K
 	knot_packet_t *packet =
 		knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
 	if (packet == NULL) {
+		dbg_net("udp: failed to create packet on fd=%d\n", fd);
 		uint16_t pkt_id = knot_wire_get_id(qbuf);
 		knot_ns_error_response(ns, pkt_id, KNOT_RCODE_SERVFAIL,
 				  qbuf, resp_len);
@@ -50,7 +50,7 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 	/* Parse query. */
 	int res = knot_ns_parse_packet(qbuf, qbuflen, packet, &qtype);
 	if (unlikely(res != KNOTD_EOK)) {
-		dbg_net("udp: sending back error response.\n");
+		dbg_net("udp: failed to parse packet on fd=%d\n", fd);
 		/* Send error response on dnslib RCODE. */
 		if (res > 0) {
 			uint16_t pkt_id = knot_wire_get_id(qbuf);
@@ -63,8 +63,8 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 	}
 
 	/* Handle query. */
-	server_t *srv = (server_t *)knot_ns_get_data(ns);
-	knot_ns_xfr_t xfr;
+//	server_t *srv = (server_t *)knot_ns_get_data(ns);
+//	knot_ns_xfr_t xfr;
 	res = KNOTD_ERROR;
 	switch(qtype) {
 
@@ -143,6 +143,7 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		
 	/*! \todo Implement query notify/update. */
 	case KNOT_QUERY_UPDATE:
+		dbg_net("udp: UPDATE query on fd=%d not implemented\n", fd);
 		knot_ns_error_response(ns, knot_packet_id(packet),
 				       KNOT_RCODE_NOTIMPL, qbuf,
 				       resp_len);
@@ -205,8 +206,6 @@ static inline int udp_master_recvfrom(dthread_t *thread, stat_t *thread_stat)
 		/* Receive packet. */
 		n = recvmsg(sock, &msg, 0);
 
-        	dbg_net("udp: received %zd bytes\n", n); 
-
 		/* Cancellation point. */
 		if (dt_is_cancelled(thread)) {
 			break;
@@ -215,12 +214,11 @@ static inline int udp_master_recvfrom(dthread_t *thread, stat_t *thread_stat)
 		/* Error and interrupt handling. */
 		if (unlikely(n <= 0)) {
 			if (errno != EINTR && errno != 0) {
-				dbg_net("udp: recvfrom() failed: %d\n",
+				dbg_net("udp: recvmsg() failed: %d\n",
 					  errno);
 			}
 
 			if (!(h->state & ServerRunning)) {
-				dbg_net("udp: stopping\n");
 				break;
 			} else {
 				continue;
@@ -234,7 +232,8 @@ static inline int udp_master_recvfrom(dthread_t *thread, stat_t *thread_stat)
 		/* Send response. */
 		if (rc == KNOTD_EOK && resp_len > 0) {
 
-			dbg_net("udp: got answer of size %zd.\n", resp_len);
+			dbg_net("udp: on fd=%d, sending answer size=%zd.\n",
+			        sock, resp_len);
 
 			// Send datagram
 			rc = sendto(sock, qbuf, resp_len,
@@ -242,9 +241,8 @@ static inline int udp_master_recvfrom(dthread_t *thread, stat_t *thread_stat)
 
 			// Check result
 			if (rc != (int)resp_len) {
-				dbg_net("udp: %s: failed: %d - %d.\n",
-					  "socket_sendto()",
-					  rc, errno);
+				dbg_net("udp: sendto(): failed: %d - %d.\n",
+				        rc, errno);
 			}
 		}
 	}
@@ -296,11 +294,10 @@ static inline int udp_master_recvmmsg(dthread_t *thread, stat_t *thread_stat)
 		if (unlikely(n <= 0)) {
 			if (errno != EINTR && errno != 0) {
 				dbg_net("udp: recvmmsg() failed: %d\n",
-					  errno);
+				        errno);
 			}
 
 			if (!(h->state & ServerRunning)) {
-				dbg_net("udp: stopping\n");
 				break;
 			} else {
 				continue;
@@ -327,8 +324,8 @@ static inline int udp_master_recvmmsg(dthread_t *thread, stat_t *thread_stat)
 		for (unsigned i = 0; i < n; ++i) {
 			const size_t resp_len = msgs[i].msg_len;
 			if (resp_len > 0) {
-				dbg_net("udp: got answer of size %zd.\n",
-					  resp_len);
+				dbg_net("udp: on fd=%d, sending answer size=%zd.\n",
+				        sock, resp_len);
 
 				// Send datagram
 				sockaddr_t *addr = addrs + i;
@@ -338,9 +335,8 @@ static inline int udp_master_recvmmsg(dthread_t *thread, stat_t *thread_stat)
 
 				// Check result
 				if (res != (int)resp_len) {
-					dbg_net("udp: %s: failed: %d - %d.\n",
-						  "socket_sendto()",
-						  res, errno);
+					dbg_net("udp: sendto(): failed: %d - %d.\n",
+					        rc, errno);
 				}
 			}
 		}
@@ -363,7 +359,7 @@ int udp_master(dthread_t *thread)
 
 	/* Check socket. */
 	if (sock < 0) {
-		dbg_net("udp_master: null socket recevied, finishing.\n");
+		dbg_net("udp: null socket recevied, finishing.\n");
 		return KNOTD_EINVAL;
 	}
 
@@ -399,7 +395,7 @@ int udp_master(dthread_t *thread)
 	stat_set_protocol(thread_stat, stat_UDP);
 
 	/* Execute proper handler. */
-	dbg_net("udp: thread started (worker %p).\n", thread);
+	dbg_net_verb("udp: thread started (worker %p).\n", thread);
 	int ret = KNOTD_EOK;
 
 #ifdef MSG_WAITFORONE
@@ -410,7 +406,7 @@ int udp_master(dthread_t *thread)
 
 
 	stat_free(thread_stat);
-	dbg_net("udp: worker %p finished.\n", thread);
+	dbg_net_verb("udp: worker %p finished.\n", thread);
 	return ret;
 }
 

@@ -50,11 +50,12 @@ static int xfr_send_cb(int session, sockaddr_t *addr, uint8_t *msg, size_t msgle
 static void tcp_handle(tcp_worker_t *w, int fd)
 {
 	if (fd < 0 || !w || !w->ioh) {
+		dbg_net("tcp: tcp_handle(%p, %d) - invalid parameters\n", w, fd);
 		return;
 	}
 	
-	dbg_net("tcp: handling TCP event in thread %p.\n",
-		  (void*)pthread_self());
+	dbg_net("tcp: handling TCP event on fd=%d in thread %p.\n",
+	        fd, (void*)pthread_self());
 
 	knot_nameserver_t *ns = w->ioh->server->nameserver;
 	xfrhandler_t *xfr_h = w->ioh->server->xfr_h;
@@ -73,7 +74,7 @@ static void tcp_handle(tcp_worker_t *w, int fd)
 	size_t qbuf_maxlen = sizeof(qbuf);
 	int n = tcp_recv(fd, qbuf, qbuf_maxlen, &addr);
 	if (n <= 0) {
-		dbg_net("tcp: client disconnected\n");
+		dbg_net("tcp: client on fd=%d disconnected\n", fd);
 		fdset_remove(w->fdset, fd);
 		close(fd);
 		return;
@@ -179,13 +180,14 @@ static void tcp_handle(tcp_worker_t *w, int fd)
 		break;
 	}
 
-	dbg_net("tcp: got answer of size %zd.\n",
-		  resp_len);
-
 	knot_packet_free(&packet);
 
 	/* Send answer. */
 	if (res == KNOTD_EOK) {
+		
+		dbg_net("tcp: got answer of size %zd.\n",
+		        resp_len);
+		
 		assert(resp_len > 0);
 		res = tcp_send(fd, qbuf, resp_len);
 
@@ -195,6 +197,9 @@ static void tcp_handle(tcp_worker_t *w, int fd)
 				  "socket_send()",
 				  res, errno);
 		}
+	} else {
+		dbg_net("tcp: failed to respond to query type=%d on fd=%d - %s\n",
+		        qtype, fd, knotd_strerr(res));;
 	}
 
 	return;
@@ -212,7 +217,7 @@ static int tcp_accept(int fd)
 					 "(%d).\n", errno);
 		}
 	} else {
-		dbg_net("tcp: accepted connection fd = %d\n", incoming);
+		dbg_net("tcp: accepted connection fd=%d\n", incoming);
 	}
 
 	return incoming;
@@ -222,7 +227,7 @@ tcp_worker_t* tcp_worker_create()
 {
 	tcp_worker_t *w = malloc(sizeof(tcp_worker_t));
 	if (!w) {
-		dbg_net("tcp_master: out of memory when creating worker\n");
+		dbg_net("tcp: out of memory when creating worker\n");
 		return 0;
 	}
 	
@@ -344,13 +349,14 @@ int tcp_loop_master(dthread_t *thread)
 
 	/* Check socket. */
 	if (!handler || handler->fd < 0 || !workers) {
-		dbg_net("tcp_master: failed to initialize\n");
+		dbg_net("tcp: failed to initialize master thread\n");
 		return KNOTD_EINVAL;
 	}
 
 	/* Accept connections. */
 	int id = 0;
-	dbg_net("tcp_master: created with %d workers\n", unit->size - 1);
+	dbg_net("tcp: created 1 master with %d workers, backend is '%s' \n",
+	        unit->size - 1, fdset_method());
 	while(1) {
 		/* Check for cancellation. */
 		if (dt_is_cancelled(thread)) {
@@ -365,15 +371,15 @@ int tcp_loop_master(dthread_t *thread)
 
 		/* Add to worker in RR fashion. */
 		if (write(workers[id]->pipe[1], &client, sizeof(int)) < 0) {
-			dbg_net("tcp_master: failed to register fd=%d to "
-			          "worker=%d\n", client, id);
+			dbg_net("tcp: failed to register fd=%d to worker=%d\n",
+			        client, id);
 			close(client);
 			continue;
 		}
 		id = get_next_rr(id, unit->size - 1);
 	}
 
-	dbg_net("tcp_master: finished\n");
+	dbg_net("tcp: master thread finished\n");
 	free(workers);
 	
 	return KNOTD_EOK;
@@ -387,7 +393,7 @@ int tcp_loop_worker(dthread_t *thread)
 	}
 
 	/* Accept clients. */
-	dbg_net("tcp: worker started, backend = %s\n", fdset_method());
+	dbg_net_verb("tcp: worker %p started", w);
 	for (;;) {
 
 		/* Cancellation point. */
@@ -402,8 +408,8 @@ int tcp_loop_worker(dthread_t *thread)
 		}
 
 		/* Process incoming events. */
-		dbg_net("tcp_worker: registered %d events\n",
-		          nfds);
+		dbg_net_verb("tcp: worker %p registered %d events\n",
+		             w, nfds);
 		fdset_it_t it;
 		fdset_begin(w->fdset, &it);
 		while(1) {
@@ -415,8 +421,9 @@ int tcp_loop_worker(dthread_t *thread)
 					continue;
 				}
 
-				dbg_net("tcp_worker: registered client %d\n",
-				          client);
+				dbg_net_verb("tcp: worker %p registered "
+				             "client %d\n",
+				             w, client);
 				fdset_add(w->fdset, client, OS_EV_READ);
 			} else {
 				/* Handle other events. */
@@ -432,7 +439,7 @@ int tcp_loop_worker(dthread_t *thread)
 	}
 
 	/* Stop whole unit. */
-	dbg_net("tcp_worker: worker finished\n");
+	dbg_net_verb("tcp: worker %p finished\n", w);
 	tcp_worker_free(w);
 	return KNOTD_EOK;
 }
@@ -447,7 +454,7 @@ int tcp_loop_unit(iohandler_t *ioh, dt_unit_t *unit)
 	tcp_worker_t **workers = malloc((unit->size - 1) *
 	                                sizeof(tcp_worker_t *));
 	if (!workers) {
-		dbg_net("tcp_master: out of memory\n");
+		dbg_net("tcp: cannot allocate list of workers\n");
 		return KNOTD_EINVAL;
 	}
 
@@ -469,7 +476,7 @@ int tcp_loop_unit(iohandler_t *ioh, dt_unit_t *unit)
 		}
 	
 		free(workers);
-		dbg_net("tcp_master: out of memory when allocated workers\n");
+		dbg_net("tcp: cannot create workers\n");
 		return KNOTD_EINVAL;
 	}
 	
