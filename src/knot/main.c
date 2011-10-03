@@ -256,8 +256,8 @@ int main(int argc, char **argv)
 			if (ret > 0) {
 				event_t ev;
 				if (evqueue_get(evqueue(), &ev) == 0) {
-					dbg_server("Event: "
-						     "received new event.\n");
+					dbg_server_verb("Event: "
+					                "received new event.\n");
 					if (ev.cb) {
 						ev.cb(&ev);
 					}
