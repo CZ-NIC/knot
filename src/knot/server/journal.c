@@ -74,7 +74,7 @@ int journal_create(const char *fn, uint16_t max_nodes)
 		return KNOTD_ERROR;
 	}
 
-	dbg_journal("journal: creating free segment descriptor\n");
+	dbg_journal_verb("journal: creating free segment descriptor\n");
 
 	/* Create free segment descriptor. */
 	journal_node_t jn;
@@ -138,7 +138,7 @@ journal_t* journal_open(const char *fn, size_t fslimit, uint16_t bflags)
 	}
 	
 	/* Attempt to lock. */
-	dbg_journal("journal: locking journal %s\n", fn);
+	dbg_journal_verb("journal: locking journal %s\n", fn);
 	int ret = fcntl(fd, F_SETLK, &fl);
 	
 	/* Lock. */
@@ -260,12 +260,12 @@ int journal_read(journal_t *journal, uint64_t id, journal_cmp_t cf, char *dst)
 	/* Check valid flag. */
 	if (!(n->flags & JOURNAL_VALID)) {
 		dbg_journal("journal: node with id=%llu is invalid "
-			      "(flags=0x%hx)\n", (unsigned long long)id, n->flags);
+		            "(flags=0x%hx)\n", (unsigned long long)id, n->flags);
 		return KNOTD_EINVAL;
 	}
 
 	dbg_journal("journal: reading node with id=%llu, data=<%u, %u>, flags=0x%hx\n",
-		      (unsigned long long)id, n->pos, n->pos + n->len, n->flags);
+	            (unsigned long long)id, n->pos, n->pos + n->len, n->flags);
 
 	/* Seek journal node. */
 	lseek(journal->fd, n->pos, SEEK_SET);
@@ -297,14 +297,15 @@ int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
 	journal_node_t *n = journal->nodes + journal->qtail;
 	if (journal->free.pos + journal->free.len == journal->fsize) {
 
-		dbg_journal("journal: * is last node\n");
+		dbg_journal_verb("journal: * is last node\n");
 
 		/* Grow journal file until the size limit. */
 		if(journal->free.len < size && size <= fs_remaining) {
 			size_t diff = size - journal->free.len;
-			dbg_journal("journal: * growing by +%zu, pos=%u, new fsize=%zu\n",
-				      diff, journal->free.pos,
-				      journal->fsize + diff);
+			dbg_journal("journal: * growing by +%zu, pos=%u, "
+			            "new fsize=%zu\n",
+			            diff, journal->free.pos,
+			            journal->fsize + diff);
 			journal->fsize += diff; /* Appending increases file size. */
 			journal->free.len += diff;
 
@@ -316,10 +317,11 @@ int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
 			journal->fsize = journal->free.pos;
 			journal->free.pos = head->pos;
 			journal->free.len = 0;
-			dbg_journal("journal: * fslimit reached, rewinding to %u\n",
-				      head->pos);
-			dbg_journal("journal: * file size trimmed to %zu\n",
-				      journal->fsize);
+			dbg_journal_verb("journal: * fslimit reached, "
+			                 "rewinding to %u\n",
+			                 head->pos);
+			dbg_journal_verb("journal: * file size trimmed to %zu\n",
+			                 journal->fsize);
 		}
 	}
 
@@ -377,8 +379,8 @@ int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
 	if (journal->qtail > jnext && journal->fslimit == FSLIMIT_INF) {
 		/* Trim free space. */
 		journal->fsize -= journal->free.len;
-		dbg_journal("journal: * trimmed filesize to %zu\n",
-			      journal->fsize);
+		dbg_journal_verb("journal: * trimmed filesize to %zu\n",
+		                 journal->fsize);
 
 		/* Rewind free segment. */
 		journal_node_t *n = journal->nodes + jnext;
@@ -391,8 +393,9 @@ int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
 		journal->free.len -= size;
 	}
 	dbg_journal("journal: finished node=%u, data=<%u, %u> free=<%u, %u>\n",
-		      journal->qtail, n->pos, n->pos + n->len,
-		      journal->free.pos, journal->free.pos + journal->free.len);
+	            journal->qtail, n->pos, n->pos + n->len,
+	            journal->free.pos,
+	            journal->free.pos + journal->free.len);
 
 	/* Node write successful. */
 	journal->qtail = jnext;
@@ -403,23 +406,25 @@ int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
 		/*! \todo Node is marked valid and failed to shrink free space,
 			  node will be overwritten on the next open - this may be
 			  a problem, how to solve it properly? */
+		dbg_journal("journal: failed to write back "
+		            "free segment descriptor\n");
 		return KNOTD_ERROR;
 	}
 
-	/* Write back query state, not essential as it may be recovered.
+	/* Write back queue state, not essential as it may be recovered.
 	 * qhead - lowest valid node identifier (least recent)
 	 * qtail - highest valid node identifier (most recently used)
 	 */
 	uint16_t qstate[2] = {journal->qhead, journal->qtail};
 	lseek(journal->fd, JOURNAL_HSIZE - 2 * sizeof(uint16_t), SEEK_SET);
 	if (!sfwrite(qstate, 2 * sizeof(uint16_t), journal->fd)) {
+		dbg_journal("journal: failed to write back queue state\n");
 		return KNOTD_ERROR;
 	}
 
 	/*! \todo Delayed write-back? */
-
-	dbg_journal("journal: write finished, nqueue=<%u, %u>\n",
-		      journal->qhead, journal->qtail);
+	dbg_journal_verb("journal: write of finished, nqueue=<%u, %u>\n",
+	                 journal->qhead, journal->qtail);
 
 	return KNOTD_EOK;
 }
