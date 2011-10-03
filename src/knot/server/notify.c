@@ -156,8 +156,6 @@ static int notify_check_and_schedule(knot_nameserver_t *nameserver,
                                      sockaddr_t *from)
 {
 	if (zone == NULL || from == NULL || knot_zone_data(zone) == NULL) {
-		dbg_notify("notify: invalid parameters for check and "
-			     "schedule\n");
 		return KNOTD_EINVAL;
 	}
 	
@@ -168,9 +166,10 @@ static int notify_check_and_schedule(knot_nameserver_t *nameserver,
 			/* rfc1996: Ignore request and report incident. */
 			char straddr[SOCKADDR_STRLEN];
 			sockaddr_tostr(from, straddr, sizeof(straddr));
-			dbg_notify("Unauthorized NOTIFY request "
-			                 "from %s:%d.\n",
-			                 straddr, sockaddr_portnum(from));
+			log_zone_notice("Unauthorized NOTIFY query "
+			                "from %s:%d to zone '%s'.\n",
+			                straddr, sockaddr_portnum(from),
+			                zd->conf->name);
 			return KNOT_ERROR;
 		} else {
 			dbg_notify("notify: authorized NOTIFY query.\n");
@@ -183,7 +182,7 @@ static int notify_check_and_schedule(knot_nameserver_t *nameserver,
 	evsched_t *sched = ((server_t *)knot_ns_get_data(nameserver))->sched;
 	event_t *refresh_ev = zd->xfr_in.timer;
 	if (refresh_ev) {
-		dbg_notify("notify: canceling REFRESH timer for XFRIN\n");
+		dbg_notify("notify: expiring REFRESH timer\n");
 		evsched_cancel(sched, refresh_ev);
 
 		/* Set REFRESH timer for now. */
@@ -206,7 +205,8 @@ int notify_process_request(knot_nameserver_t *ns,
 
 	if (notify == NULL || ns == NULL || buffer == NULL
 	    || size == NULL || from == NULL) {
-		dbg_notify("notify: invalid parameters for query\n");
+		dbg_notify("notify: invalid parameters for %s()\n",
+		           "notify_process_request");
 		return KNOTD_EINVAL;
 	}
 
@@ -236,7 +236,6 @@ int notify_process_request(knot_nameserver_t *ns,
 	}
 
 	// find the zone
-	dbg_notify("notify: looking up zone by name\n");
 	const knot_dname_t *qname = knot_packet_qname(notify);
 	const knot_zone_t *z = knot_zonedb_find_zone_for_name(
 			ns->zone_db, qname);

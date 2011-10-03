@@ -427,8 +427,6 @@ static int zones_notify_send(event_t *e)
 				  "for zone %s exceeded.\n",
 				  zd->conf->name);
 		pthread_mutex_lock(&zd->lock);
-		dbg_notify("notify: Deleting NOTIFY event because "
-			     "maximum number of retries was reached.\n");
 		rem_node(&ev->n);
 		evsched_event_free(e->parent, e);
 		free(ev);
@@ -2119,16 +2117,16 @@ int zones_cancel_notify(zonedata_t *zd, notify_ev_t *ev)
 
 	/* Event deleted before cancelled. */
 	if (!match_exists) {
-		dbg_notify("notify: NOTIFY event for query ID=%u was"
-			     " deleted before cancellation.\n",
-			     pkt_id);
+		dbg_notify("notify: NOTIFY event for query ID=%u was "
+		           "deleted before cancellation.\n",
+		           pkt_id);
 		return KNOTD_EOK;
 
 	}
 
 	/* Free event (won't be scheduled again). */
 	dbg_notify("notify: NOTIFY query ID=%u event cancelled.\n",
-		     pkt_id);
+	           pkt_id);
 	rem_node(&ev->n);
 	evsched_event_free(tmr->parent, tmr);
 	free(ev);
