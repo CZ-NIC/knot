@@ -757,8 +757,8 @@ static int zones_changesets_from_binary(knot_changesets_t *chgsets)
 		size_t remaining = chs->size;
 		ret = knot_zload_rrset_deserialize(&rrset, chs->data, &remaining);
 		if (ret != KNOT_EOK) {
-			dbg_xfr("ixfr_db: failed to deserialize data "
-			          "from changeset, %s\n", knot_strerror(ret));
+			dbg_xfr("xfr: failed to deserialize data "
+			        "from changeset, %s\n", knot_strerror(ret));
 			return KNOT_EMALF;
 		}
 
@@ -772,7 +772,7 @@ static int zones_changesets_from_binary(knot_changesets_t *chgsets)
 		knot_changeset_store_soa(&chs->soa_from, &chs->serial_from,
 					 rrset);
 
-		dbg_xfr("ixfr_db: reading RRSets to REMOVE\n");
+		dbg_xfr_verb("xfr: reading RRSets to REMOVE\n");
 
 		/* Read remaining RRSets */
 		int in_remove_section = 1;
@@ -783,8 +783,9 @@ static int zones_changesets_from_binary(knot_changesets_t *chgsets)
 			uint8_t *stream = chs->data + (chs->size - remaining);
 			ret = knot_zload_rrset_deserialize(&rrset, stream, &remaining);
 			if (ret != KNOT_EOK) {
-				dbg_xfr("ixfr_db: failed to deserialize data "
-				          "from changeset, %s\n", knot_strerror(ret));
+				dbg_xfr("xfr: failed to deserialize data "
+				        "from changeset, %s\n",
+				        knot_strerror(ret));
 				return KNOT_EMALF;
 			}
 
@@ -797,12 +798,12 @@ static int zones_changesets_from_binary(knot_changesets_t *chgsets)
 						&chgsets->sets[i].soa_to,
 						&chgsets->sets[i].serial_to,
 						rrset);
-					dbg_xfr("ixfr_db: reading RRSets"
-					          " to ADD\n");
+					dbg_xfr_verb("xfr: reading RRSets"
+					             " to ADD\n");
 					in_remove_section = 0;
 				} else {
 					/* Final SOA. */
-					dbg_xfr("ixfr_db: extra SOA\n");
+					dbg_xfr_verb("xfr: extra SOA\n");
 					knot_rrset_free(&rrset);
 					break;
 				}
@@ -826,15 +827,14 @@ static int zones_changesets_from_binary(knot_changesets_t *chgsets)
 
 				/* Check result. */
 				if (ret != KNOT_EOK) {
-					dbg_xfr("ixfr_db: failed "
-					          "to add/remove RRSet to "
-					          "changeset\n");
+					dbg_xfr("xfr: failed to add/remove "
+					        "RRSet to changeset\n");
 					return ret;
 				}
 			}
 		}
 		
-		dbg_xfr("ixfr_db: read all RRSets in changeset\n");
+		dbg_xfr_verb("xfr: read all RRSets in changeset\n");
 	}
 
 	return KNOT_EOK;
@@ -878,13 +878,13 @@ static int zones_load_changesets(const knot_zone_t *zone,
 		--dst->count;
 		if (ret != KNOT_EOK) {
 			--dst->count;
-			dbg_xfr("ixfr_db: failed to check changesets size\n");
+			dbg_xfr("xfr: failed to check changesets size\n");
 			return ret;
 		}
 
 		/* Initialize changeset. */
-		dbg_xfr("ixfr_db: reading entry #%zu id=%llu\n",
-		          dst->count, (unsigned long long)n->id);
+		dbg_xfr_detail("xfr: reading entry #%zu id=%llu\n",
+		               dst->count, (unsigned long long)n->id);
 		knot_changeset_t *chs = dst->sets + dst->count;
 		chs->serial_from = ixfrdb_key_from(n->id);
 		chs->serial_to = ixfrdb_key_to(n->id);
@@ -897,7 +897,7 @@ static int zones_load_changesets(const knot_zone_t *zone,
 		ret = journal_read(zd->ixfr_db, n->id,
 				   0, (char*)chs->data);
 		if (ret != KNOTD_EOK) {
-			dbg_xfr("ixfr_db: failed to read data from journal\n");
+			dbg_xfr("xfr: failed to read data from journal\n");
 			free(chs->data);
 			return KNOT_ERROR;
 		}
@@ -916,8 +916,8 @@ static int zones_load_changesets(const knot_zone_t *zone,
 	/* Unpack binary data. */
 	ret = zones_changesets_from_binary(dst);
 	if (ret != KNOT_EOK) {
-		dbg_xfr("ixfr_db: failed to unpack changesets "
-		          "from binary, %s\n", knot_strerror(ret));
+		dbg_xfr("xfr: failed to unpack changesets "
+		        "from binary, %s\n", knot_strerror(ret));
 		return ret;
 	}
 
@@ -1914,13 +1914,16 @@ int zones_store_changesets(knot_ns_xfr_t *xfr)
 				/* Cancel sync timer. */
 				event_t *tmr = zd->ixfr_dbsync;
 				if (tmr) {
-					dbg_xfr("ixfr_db: cancelling SYNC "
-							 "timer\n");
+					dbg_xfr_verb("xfr: cancelling zonefile "
+					             "SYNC timer of '%'s\n",
+					             zd->conf->name);
 					evsched_cancel(tmr->parent, tmr);
 				}
 
 				/* Synchronize. */
-				dbg_xfr("ixfr_db: forcing zonefile SYNC\n");
+				dbg_xfr_verb("xfr: forcing zonefile SYNC "
+				             "of '%'s\n",
+				             zd->conf->name);
 				ret = zones_zonefile_sync(zone);
 				if (ret != KNOTD_EOK) {
 					continue;
@@ -1935,10 +1938,11 @@ int zones_store_changesets(knot_ns_xfr_t *xfr)
 					conf_read_unlock();
 
 					/* Reschedule. */
-					dbg_xfr("ixfr_db: resuming SYNC "
-							 "timer\n");
+					dbg_xfr_verb("xfr: resuming SYNC "
+					             "of '%'s\n",
+					             zd->conf->name);
 					evsched_schedule(tmr->parent, tmr,
-							 timeout);
+					                 timeout);
 
 				}
 
