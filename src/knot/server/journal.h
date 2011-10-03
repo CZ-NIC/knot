@@ -27,6 +27,7 @@
 #define _KNOTD_JOURNAL_H_
 
 #include <stdint.h>
+#include <fcntl.h>
 
 /*!
  * \brief Journal entry flags.
@@ -65,7 +66,8 @@ typedef struct journal_node_t
  */
 typedef struct journal_t
 {
-	FILE *fp;
+	int fd;
+	struct flock fl;        /*!< File lock. */
 	uint16_t max_nodes;     /*!< Number of nodes. */
 	uint16_t qhead;         /*!< Node queue head. */
 	uint16_t qtail;         /*!< Node queue tail. */

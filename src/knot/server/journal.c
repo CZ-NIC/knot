@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 
 #include "knot/other/error.h"
 #include "knot/other/debug.h"
@@ -11,14 +12,14 @@
 /*! \brief Infinite file size limit. */
 #define FSLIMIT_INF (~((size_t)0))
 
-static inline int sfread(void *dst, size_t len, FILE *fp)
+static inline int sfread(void *dst, size_t len, int fd)
 {
-	return fread(dst, len, 1, fp) == 1;
+	return read(fd, dst, len) == len;
 }
 
-static inline int sfwrite(const void *src, size_t len, FILE *fp)
+static inline int sfwrite(const void *src, size_t len, int fd)
 {
-	return fwrite(src, len, 1, fp) == 1;
+	return write(fd, src, len) == len;
 }
 
 /*! \brief Equality compare function. */
@@ -29,33 +30,46 @@ static inline int journal_cmp_eq(uint64_t k1, uint64_t k2)
 
 int journal_create(const char *fn, uint16_t max_nodes)
 {
+	/* File lock. */
+	struct flock fl;
+	memset(&fl, 0, sizeof(struct flock));
+	fl.l_type = F_WRLCK;
+	fl.l_whence = SEEK_SET;
+	fl.l_start = 0;
+	fl.l_len = 0;
+	fl.l_pid = getpid();
+	
 	/* Create journal file. */
-	FILE *fp = fopen(fn, "w");
-	if (!fp) {
+	int fd = open(fn, O_RDWR|O_CREAT|O_TRUNC, S_IRWXU|S_IRWXG);
+	if (fd < 0) {
 		dbg_journal("journal: failed to create file '%s'\n", fn);
 		return KNOTD_EINVAL;
 	}
-
-	/* Disable buffering. */
-	setvbuf(fp, (char *)0, _IONBF, 0);
+	
+	/* Lock. */
+	fcntl(fd, F_SETLKW, &fl);
+	fl.l_type  = F_UNLCK;
 
 	/* Create journal header. */
 	dbg_journal("journal: creating header\n");
-	if (!sfwrite(&max_nodes, sizeof(uint16_t), fp)) {
-		fclose(fp);
+	if (!sfwrite(&max_nodes, sizeof(uint16_t), fd)) {
+		fcntl(fd, F_SETLK, &fl);
+		close(fd);
 		remove(fn);
 		return KNOTD_ERROR;
 	}
 
 	/* Create empty queue head + tail. */
 	uint16_t zval = 0;
-	if (!sfwrite(&zval, sizeof(uint16_t), fp)) {
-		fclose(fp);
+	if (!sfwrite(&zval, sizeof(uint16_t), fd)) {
+		fcntl(fd, F_SETLK, &fl);
+		close(fd);
 		remove(fn);
 		return KNOTD_ERROR;
 	}
-	if (!sfwrite(&zval, sizeof(uint16_t), fp)) {
-		fclose(fp);
+	if (!sfwrite(&zval, sizeof(uint16_t), fd)) {
+		fcntl(fd, F_SETLK, &fl);
+		close(fd);
 		remove(fn);
 		return KNOTD_ERROR;
 	}
@@ -69,8 +83,9 @@ int journal_create(const char *fn, uint16_t max_nodes)
 	jn.flags = JOURNAL_VALID;
 	jn.pos = JOURNAL_HSIZE + (max_nodes + 1) * sizeof(journal_node_t);
 	jn.len = 0;
-	if (!sfwrite(&jn, sizeof(journal_node_t), fp)) {
-		fclose(fp);
+	if (!sfwrite(&jn, sizeof(journal_node_t), fd)) {
+		fcntl(fd, F_SETLK, &fl);
+		close(fd);
 		remove(fn);
 		return KNOTD_ERROR;
 	}
@@ -79,12 +94,17 @@ int journal_create(const char *fn, uint16_t max_nodes)
 	dbg_journal("journal: creating node table, size=%u\n", max_nodes);
 	memset(&jn, 0, sizeof(journal_node_t));
 	for(uint16_t i = 0; i < max_nodes; ++i) {
-		if (!sfwrite(&jn, sizeof(journal_node_t), fp)) {
-			fclose(fp);
+		if (!sfwrite(&jn, sizeof(journal_node_t), fd)) {
+			fcntl(fd, F_SETLK, &fl);
+			close(fd);
 			remove(fn);
 			return KNOTD_ERROR;
 		}
 	}
+	
+	/* Unlock and close. */
+	fcntl(fd, F_SETLK, &fl);
+	close(fd);
 
 	/* Journal file created. */
 	dbg_journal("journal: file '%s' initialized\n", fn);
@@ -95,7 +115,14 @@ journal_t* journal_open(const char *fn, size_t fslimit, uint16_t bflags)
 {
 	/*! \todo Memory mapping may be faster than stdio? */
 
-	/*! \todo Lock file. */
+	/* File lock. */
+	struct flock fl;
+	memset(&fl, 0, sizeof(struct flock));
+	fl.l_type = F_WRLCK;
+	fl.l_whence = SEEK_SET;
+	fl.l_start = 0;
+	fl.l_len = 0;
+	fl.l_pid = getpid();
 
 	/* Check file. */
 	struct stat st;
@@ -104,19 +131,35 @@ journal_t* journal_open(const char *fn, size_t fslimit, uint16_t bflags)
 	}
 
 	/* Open journal file for r/w. */
-	FILE *fp = fopen(fn, "r+");
-	if (!fp) {
+	int fd = open(fn, O_RDWR);
+	if (fd < 0) {
 		dbg_journal("journal: failed to open file '%s'\n", fn);
 		return 0;
 	}
-
-	/* Disable buffering. */
-	setvbuf(fp, (char *)0, _IONBF, 0);
+	
+	/* Attempt to lock. */
+	dbg_journal("journal: locking journal %s\n", fn);
+	int ret = fcntl(fd, F_SETLK, &fl);
+	
+	/* Lock. */
+	if (ret < 0) {
+		struct flock efl;
+		memcpy(&efl, &fl, sizeof(struct flock));
+		fcntl(fd, F_GETLK, &efl);
+		log_server_warning("Journal file '%s' is locked by process "
+		                   "PID=%d, waiting for process to "
+		                   "release lock.\n",
+		                   fn, efl.l_pid);
+		ret = fcntl(fd, F_SETLKW, &fl);
+	}
+	fl.l_type  = F_UNLCK;
+	dbg_journal("journal: locked journal %s (returned %d)\n", fn, ret);
 
 	/* Read maximum number of entries. */
 	uint16_t max_nodes = 512;
-	if (!sfread(&max_nodes, sizeof(uint16_t), fp)) {
-		fclose(fp);
+	if (!sfread(&max_nodes, sizeof(uint16_t), fd)) {
+		fcntl(fd, F_SETLK, &fl);
+		close(fd);
 		return 0;
 	}
 
@@ -124,38 +167,43 @@ journal_t* journal_open(const char *fn, size_t fslimit, uint16_t bflags)
 	const size_t node_len = sizeof(journal_node_t);
 	journal_t *j = malloc(sizeof(journal_t) + max_nodes * node_len);
 	if (!j) {
-		fclose(fp);
+		fcntl(fd, F_SETLK, &fl);
+		close(fd);
 		return 0;
 	}
 	j->qhead = j->qtail = 0;
-	j->fp = fp;
+	j->fd = fd;
 	j->max_nodes = max_nodes;
 	j->bflags = bflags;
 
 	/* Load node queue state. */
-	if (!sfread(&j->qhead, sizeof(uint16_t), fp)) {
-		fclose(fp);
+	if (!sfread(&j->qhead, sizeof(uint16_t), fd)) {
+		fcntl(fd, F_SETLK, &fl);
+		close(fd);
 		free(j);
 		return 0;
 	}
 
 	/* Load queue tail. */
-	if (!sfread(&j->qtail, sizeof(uint16_t), fp)) {
-		fclose(fp);
+	if (!sfread(&j->qtail, sizeof(uint16_t), fd)) {
+		fcntl(fd, F_SETLK, &fl);
+		close(fd);
 		free(j);
 		return 0;
 	}
 
 	/* Load empty segment descriptor. */
-	if (!sfread(&j->free, node_len, fp)) {
-		fclose(fp);
+	if (!sfread(&j->free, node_len, fd)) {
+		fcntl(fd, F_SETLK, &fl);
+		close(fd);
 		free(j);
 		return 0;
 	}
 
 	/* Read journal descriptors table. */
-	if (fread(&j->nodes, node_len, max_nodes, fp) != max_nodes) {
-		fclose(fp);
+	if (!sfread(&j->nodes, max_nodes * node_len, fd)) {
+		fcntl(fd, F_SETLK, &fl);
+		close(fd);
 		free(j);
 		return 0;
 	}
@@ -170,7 +218,11 @@ journal_t* journal_open(const char *fn, size_t fslimit, uint16_t bflags)
 
 	/*! \todo Some file checksum, check node integrity. */
 	dbg_journal("journal: opened journal size=%u, queue=<%u, %u>, fd=%d\n",
-		      max_nodes, j->qhead, j->qtail, fileno(j->fp));
+		      max_nodes, j->qhead, j->qtail, j->fd);
+	
+	/* Save file lock. */
+	fl.l_type = F_WRLCK;
+	memcpy(&j->fl, &fl, sizeof(struct flock));
 
 	return j;
 }
@@ -201,26 +253,25 @@ int journal_read(journal_t *journal, uint64_t id, journal_cmp_t cf, char *dst)
 	journal_node_t *n = 0;
 	if(journal_fetch(journal, id, cf, &n) != 0) {
 		dbg_journal("journal: failed to fetch node with id=%llu\n",
-			      id);
+		            (unsigned long long)id);
 		return KNOTD_ENOENT;
 	}
 
 	/* Check valid flag. */
 	if (!(n->flags & JOURNAL_VALID)) {
 		dbg_journal("journal: node with id=%llu is invalid "
-			      "(flags=0x%hx)\n", id, n->flags);
+			      "(flags=0x%hx)\n", (unsigned long long)id, n->flags);
 		return KNOTD_EINVAL;
 	}
 
 	dbg_journal("journal: reading node with id=%llu, data=<%u, %u>, flags=0x%hx\n",
-		      id, n->pos, n->pos + n->len, n->flags);
+		      (unsigned long long)id, n->pos, n->pos + n->len, n->flags);
 
 	/* Seek journal node. */
-	fseek(journal->fp, n->pos, SEEK_SET);
+	lseek(journal->fd, n->pos, SEEK_SET);
 
 	/* Read journal node content. */
-	int ret = fread(dst, n->len, 1, journal->fp);
-	if (ret != 1) {
+	if (!sfread(dst, n->len, journal->fd)) {
 		return KNOTD_ERROR;
 	}
 
@@ -237,7 +288,7 @@ int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
 	uint16_t jnext = (journal->qtail + 1) % journal->max_nodes;
 
 	dbg_journal("journal: will write id=%llu, node=%u, size=%zu, fsize=%zu\n",
-		      id, journal->qtail, size, journal->fsize);
+	            (unsigned long long)id, journal->qtail, size, journal->fsize);
 
 	/* Calculate remaining bytes to reach file size limit. */
 	size_t fs_remaining = journal->fslimit - journal->fsize;
@@ -285,8 +336,8 @@ int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
 
 		/* Write back evicted node. */
 		head->flags = JOURNAL_FREE;
-		fseek(journal->fp, JOURNAL_HSIZE + (journal->qhead + 1) * node_len, SEEK_SET);
-		if (!sfwrite(head, node_len, journal->fp)) {
+		lseek(journal->fd, JOURNAL_HSIZE + (journal->qhead + 1) * node_len, SEEK_SET);
+		if (!sfwrite(head, node_len, journal->fd)) {
 			return KNOTD_ERROR;
 		}
 
@@ -296,8 +347,8 @@ int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
 		/* Write back query state. */
 		journal->qhead = (journal->qhead + 1) % journal->max_nodes;
 		uint16_t qstate[2] = {journal->qhead, journal->qtail};
-		fseek(journal->fp, JOURNAL_HSIZE - 2 * sizeof(uint16_t), SEEK_SET);
-		if (!sfwrite(qstate, 2 * sizeof(uint16_t), journal->fp)) {
+		lseek(journal->fd, JOURNAL_HSIZE - 2 * sizeof(uint16_t), SEEK_SET);
+		if (!sfwrite(qstate, 2 * sizeof(uint16_t), journal->fd)) {
 			return KNOTD_ERROR;
 		}
 
@@ -313,8 +364,8 @@ int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
 	journal_update(journal, n);
 
 	/* Write data to permanent storage. */
-	fseek(journal->fp, n->pos, SEEK_SET);
-	if (!sfwrite(src, size, journal->fp)) {
+	lseek(journal->fd, n->pos, SEEK_SET);
+	if (!sfwrite(src, size, journal->fd)) {
 		return KNOTD_ERROR;
 	}
 
@@ -347,8 +398,8 @@ int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
 	journal->qtail = jnext;
 
 	/* Write back free segment state. */
-	fseek(journal->fp, JOURNAL_HSIZE, SEEK_SET);
-	if (!sfwrite(&journal->free, node_len, journal->fp)) {
+	lseek(journal->fd, JOURNAL_HSIZE, SEEK_SET);
+	if (!sfwrite(&journal->free, node_len, journal->fd)) {
 		/*! \todo Node is marked valid and failed to shrink free space,
 			  node will be overwritten on the next open - this may be
 			  a problem, how to solve it properly? */
@@ -360,8 +411,8 @@ int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
 	 * qtail - highest valid node identifier (most recently used)
 	 */
 	uint16_t qstate[2] = {journal->qhead, journal->qtail};
-	fseek(journal->fp, JOURNAL_HSIZE - 2 * sizeof(uint16_t), SEEK_SET);
-	if (!sfwrite(qstate, 2 * sizeof(uint16_t), journal->fp)) {
+	lseek(journal->fd, JOURNAL_HSIZE - 2 * sizeof(uint16_t), SEEK_SET);
+	if (!sfwrite(qstate, 2 * sizeof(uint16_t), journal->fd)) {
 		return KNOTD_ERROR;
 	}
 
@@ -405,10 +456,10 @@ int journal_update(journal_t *journal, journal_node_t *n)
 		      i, jn_fpos);
 
 	/* Write back. */
-	fseek(journal->fp, jn_fpos, SEEK_SET);
-	if (!sfwrite(n, node_len, journal->fp)) {
+	lseek(journal->fd, jn_fpos, SEEK_SET);
+	if (!sfwrite(n, node_len, journal->fd)) {
 		dbg_journal("journal: failed to writeback node=%llu to %ld\n",
-			      n->id, jn_fpos);
+		            (unsigned long long)n->id, jn_fpos);
 		return KNOTD_ERROR;
 	}
 
@@ -421,9 +472,14 @@ int journal_close(journal_t *journal)
 	if (!journal) {
 		return KNOTD_EINVAL;
 	}
+	
+	/* Unlock journal file. */
+	journal->fl.l_type = F_UNLCK;
+	fcntl(journal->fd, F_SETLK, &journal->fl);
+	dbg_journal("journal: unlocked journal %p\n", journal);
 
 	/* Close file. */
-	fclose(journal->fp);
+	close(journal->fd);
 
 	dbg_journal("journal: closed journal %p\n", journal);
 

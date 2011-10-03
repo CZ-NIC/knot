@@ -135,11 +135,20 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 
 	/* Initialize IXFR database. */
 	zd->ixfr_db = journal_open(cfg->ixfr_db, cfg->ixfr_fslimit,
-				   JOURNAL_DIRTY);
+	                           JOURNAL_DIRTY);
 	if (!zd->ixfr_db) {
-		journal_create(cfg->ixfr_db, JOURNAL_NCOUNT);
+		int ret = journal_create(cfg->ixfr_db, JOURNAL_NCOUNT);
+		if (ret != KNOTD_EOK) {
+			log_server_error("Failed to create journal file "
+			                 "'%s'\n", cfg->ixfr_db);
+		}
 		zd->ixfr_db = journal_open(cfg->ixfr_db, cfg->ixfr_fslimit,
-					   JOURNAL_DIRTY);
+		                           JOURNAL_DIRTY);
+	}
+	
+	if (zd->ixfr_db == 0) {
+		log_server_error("Failed to open journal file "
+		                 "'%s'\n", cfg->ixfr_db);
 	}
 
 	/* Initialize IXFR database syncing event. */
@@ -2019,9 +2028,11 @@ int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
 		evsched_event_free(sch, zd->ixfr_dbsync);
 		zd->ixfr_dbsync = 0;
 	}
-	zd->ixfr_dbsync = evsched_schedule_cb(sch,
-					      zones_zonefile_sync_ev,
-					      zone, sync_timeout);
+	if (zd->ixfr_db) {
+		zd->ixfr_dbsync = evsched_schedule_cb(sch,
+		                                      zones_zonefile_sync_ev,
+		                                      zone, sync_timeout);
+	}
 
 	/* Do not issue NOTIFY queries if stub. */
 	if (!knot_zone_contents(zone)) {
