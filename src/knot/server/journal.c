@@ -49,25 +49,13 @@ static inline int journal_cmp_eq(uint64_t k1, uint64_t k2)
 static int journal_recover(journal_t *j)
 {
 	/* Attempt to recover queue. */
-	int recovered = 0;
-	uint16_t qstate[2] = { 0, 0 };
+	int qstate[2] = { -1, -1 };
 	unsigned c = 0, p = j->max_nodes - 1;
 	while (1) {
 		
 		/* Fetch previous and current node. */
 		journal_node_t *np = j->nodes + p;
 		journal_node_t *nc = j->nodes + c;
-		
-		/* Check flags
-		 * p next (X = null)
-		 * X X - null queue
-		 */
-		if (nc->flags == JOURNAL_NULL &&
-		   (nc + 1)->flags == JOURNAL_NULL) {
-			/* Leave qstate=<0, 0> */
-			recovered = 2;
-			break;
-		}
 
 		/* Check flags
 		 * p c (0 = free, 1 = non-free)
@@ -78,19 +66,19 @@ static int journal_recover(journal_t *j)
 		 */
 		unsigned c_set = (nc->flags > JOURNAL_FREE);
 		unsigned p_set = (np->flags > JOURNAL_FREE);
-		if (!p_set && c_set) {
+		if (!p_set && c_set && qstate[0] < 0) {
 			qstate[0] = c; /* Recovered qhead. */
 			dbg_journal_verb("journal: recovered qhead=%u\n",
 			                 qstate[0]);
-			++recovered;
 		}
-		if (p_set && !c_set) {\
+		if (p_set && !c_set && qstate[1] < 0) {\
 			qstate[1] = c; /* Recovered qtail. */
 			dbg_journal_verb("journal: recovered qtail=%u\n",
 			                 qstate[1]);
-			++recovered;
 		}
-		if (recovered == 2) {
+		
+		/* Both qstates set. */
+		if (qstate[0] > -1 && qstate[1] > -1) {
 			break;
 		}
 
@@ -106,7 +94,7 @@ static int journal_recover(journal_t *j)
 	}
 	
 	/* Evaluate */
-	if (recovered < 2) {
+	if (qstate[0] < 0 || qstate[1] < 0) {
 		return KNOTD_ERANGE;
 	}
 	
@@ -324,12 +312,12 @@ journal_t* journal_open(const char *fn, size_t fslimit, uint16_t bflags)
 	            max_nodes, j->qhead, j->qtail, j->fd);	
 	
 	/* Check node queue. */
-	unsigned qtail_free = (jnode_flags(j, j->qtail) == JOURNAL_FREE);
+	unsigned qtail_free = (jnode_flags(j, j->qtail) <= JOURNAL_FREE);
 	unsigned qhead_free = j->max_nodes - 1; /* Left of qhead must be free.*/
 	if (j->qhead > 0) { 
 		qhead_free = (j->qhead - 1);
 	}
-	qhead_free = (jnode_flags(j, qhead_free) == JOURNAL_FREE);
+	qhead_free = (jnode_flags(j, qhead_free) <= JOURNAL_FREE);
 	if ((j->qhead != j->qtail) && (!qtail_free || !qhead_free)) {
 		log_server_warning("Recovering journal '%s' metadata "
 		                   "after crash.\n",
