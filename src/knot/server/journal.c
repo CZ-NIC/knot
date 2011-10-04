@@ -12,6 +12,9 @@
 /*! \brief Infinite file size limit. */
 #define FSLIMIT_INF (~((size_t)0))
 
+/*! \brief Node classification macros. */
+#define jnode_flags(j, i) ((j)->nodes[(i)].flags)
+
 static inline int sfread(void *dst, size_t len, int fd)
 {
 	return read(fd, dst, len) == len;
@@ -25,7 +28,97 @@ static inline int sfwrite(const void *src, size_t len, int fd)
 /*! \brief Equality compare function. */
 static inline int journal_cmp_eq(uint64_t k1, uint64_t k2)
 {
-	return k1 - k2;
+	if (k1 == k2) {
+		return 0;
+	}
+	
+	if (k1 < k2) {
+		return -1;
+	}
+	
+	return 1;
+}
+
+/*! \brief Recover metadata from journal. */
+static int journal_recover(journal_t *j)
+{
+	/* Attempt to recover queue. */
+	int recovered = 0;
+	uint16_t qstate[2] = { 0, 0 };
+	unsigned c = 0, p = j->max_nodes - 1;
+	while (1) {
+		
+		/* Fetch previous and current node. */
+		journal_node_t *np = j->nodes + p;
+		journal_node_t *nc = j->nodes + c;
+		
+		/* Check flags
+		 * p next (X = null)
+		 * X X - null queue
+		 */
+		if (nc->flags == JOURNAL_NULL &&
+		   (nc + 1)->flags == JOURNAL_NULL) {
+			/* Leave qstate=<0, 0> */
+			recovered = 2;
+			break;
+		}
+
+		/* Check flags
+		 * p c (0 = free, 1 = non-free)
+		 * 0 0 - in free segment
+		 * 0 1 - c-node is qhead
+		 * 1 0 - c-node is qtail
+		 * 1 1 - in full segment
+		 */
+		unsigned c_set = (nc->flags > JOURNAL_FREE);
+		unsigned p_set = (np->flags > JOURNAL_FREE);
+		if (!p_set && c_set) {
+			qstate[0] = c; /* Recovered qhead. */
+			dbg_journal_verb("journal: recovered qhead=%u\n",
+			                 qstate[0]);
+			++recovered;
+		}
+		if (p_set && !c_set) {\
+			qstate[1] = c; /* Recovered qtail. */
+			dbg_journal_verb("journal: recovered qtail=%u\n",
+			                 qstate[1]);
+			++recovered;
+		}
+		if (recovered == 2) {
+			break;
+		}
+
+		/* Set prev and next. */
+		p = c;
+		c = (c + 1) % j->max_nodes;
+		
+		/* All nodes probed. */
+		if (c == 0) {
+			dbg_journal("journal: failed to recover node queue\n");
+			break;
+		}
+	}
+	
+	/* Evaluate */
+	if (recovered < 2) {
+		return KNOTD_ERANGE;
+	}
+	
+	/* Write back. */
+	lseek(j->fd, JOURNAL_HSIZE - 2 * sizeof(uint16_t), SEEK_SET);
+	if (!sfwrite(qstate, 2 * sizeof(uint16_t), j->fd)) {
+		dbg_journal("journal: failed to write back queue state\n");
+		return KNOTD_ERROR;
+	}
+	
+	/* Reset queue state. */
+	j->qhead = qstate[0];
+	j->qtail = qstate[1];
+	dbg_journal("journal: node queue=<%u,%u> recovered\n",
+	            qstate[0], qstate[1]);
+	
+	
+	return KNOTD_EOK;
 }
 
 int journal_create(const char *fn, uint16_t max_nodes)
@@ -59,7 +152,11 @@ int journal_create(const char *fn, uint16_t max_nodes)
 		return KNOTD_ERROR;
 	}
 
-	/* Create empty queue head + tail. */
+	/* Create node queue head + tail.
+	 * qhead points to least recent node
+	 * qtail points to next free node
+	 * qhead == qtail means empty queue
+	 */
 	uint16_t zval = 0;
 	if (!sfwrite(&zval, sizeof(uint16_t), fd)) {
 		fcntl(fd, F_SETLK, &fl);
@@ -67,6 +164,7 @@ int journal_create(const char *fn, uint16_t max_nodes)
 		remove(fn);
 		return KNOTD_ERROR;
 	}
+	
 	if (!sfwrite(&zval, sizeof(uint16_t), fd)) {
 		fcntl(fd, F_SETLK, &fl);
 		close(fd);
@@ -215,11 +313,33 @@ journal_t* journal_open(const char *fn, size_t fslimit, uint16_t bflags)
 	} else {
 		j->fslimit = (size_t)fslimit;
 	}
-
-	/*! \todo Some file checksum, check node integrity. */
-	dbg_journal("journal: opened journal size=%u, queue=<%u, %u>, fd=%d\n",
-		      max_nodes, j->qhead, j->qtail, j->fd);
 	
+	dbg_journal("journal: opened journal size=%u, queue=<%u, %u>, fd=%d\n",
+	            max_nodes, j->qhead, j->qtail, j->fd);	
+	
+	/* Check node queue. */
+	unsigned qtail_free = (jnode_flags(j, j->qtail) == JOURNAL_FREE);
+	unsigned qhead_free = j->max_nodes - 1; /* Left of qhead must be free.*/
+	if (j->qhead > 0) { 
+		qhead_free = (j->qhead - 1);
+	}
+	qhead_free = (jnode_flags(j, qhead_free) == JOURNAL_FREE);
+	if ((j->qhead != j->qtail) && (!qtail_free || !qhead_free)) {
+		log_server_warning("Recovering journal '%s' metadata "
+		                   "after crash.\n",
+		                   fn);
+		ret = journal_recover(j);
+		if (ret != KNOTD_EOK) {
+			log_server_error("Journal file '%s' is unrecoverable, "
+			                 "metadata corrupted - %s\n",
+			                 fn, knotd_strerror(ret));
+			fcntl(fd, F_SETLK, &fl);
+			close(fd);
+			free(j);
+			return 0;
+		}
+	}
+
 	/* Save file lock. */
 	fl.l_type = F_WRLCK;
 	memcpy(&j->fl, &fl, sizeof(struct flock));
@@ -230,6 +350,10 @@ journal_t* journal_open(const char *fn, size_t fslimit, uint16_t bflags)
 int journal_fetch(journal_t *journal, uint64_t id,
 		  journal_cmp_t cf, journal_node_t** dst)
 {
+	if (journal == 0 || dst == 0) {
+		return KNOTD_EINVAL;
+	}
+	
 	/* Check compare function. */
 	if (!cf) {
 		cf = journal_cmp_eq;
@@ -250,6 +374,10 @@ int journal_fetch(journal_t *journal, uint64_t id,
 
 int journal_read(journal_t *journal, uint64_t id, journal_cmp_t cf, char *dst)
 {
+	if (journal == 0 || dst == 0) {
+		return KNOTD_EINVAL;
+	}
+	
 	journal_node_t *n = 0;
 	if(journal_fetch(journal, id, cf, &n) != 0) {
 		dbg_journal("journal: failed to fetch node with id=%llu\n",
@@ -280,6 +408,10 @@ int journal_read(journal_t *journal, uint64_t id, journal_cmp_t cf, char *dst)
 
 int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
 {
+	if (journal == 0 || src == 0) {
+		return KNOTD_EINVAL;
+	}
+	
 	/*! \todo Find key with already existing identifier? */
 
 	const size_t node_len = sizeof(journal_node_t);
@@ -324,9 +456,10 @@ int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
 			                 journal->fsize);
 		}
 	}
-
+	
 	/* Evict occupied nodes if necessary. */
-	while (journal->free.len < size) {
+	while (journal->free.len < size ||
+	       journal->nodes[jnext].flags > JOURNAL_FREE) {
 
 		/* Evict least recent node if not empty. */
 		journal_node_t *head = journal->nodes + journal->qhead;
@@ -397,19 +530,19 @@ int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
 	            journal->free.pos,
 	            journal->free.pos + journal->free.len);
 
-	/* Node write successful. */
-	journal->qtail = jnext;
-
 	/* Write back free segment state. */
 	lseek(journal->fd, JOURNAL_HSIZE, SEEK_SET);
 	if (!sfwrite(&journal->free, node_len, journal->fd)) {
-		/*! \todo Node is marked valid and failed to shrink free space,
-			  node will be overwritten on the next open - this may be
-			  a problem, how to solve it properly? */
+		/* Node is marked valid and failed to shrink free space,
+		 * node will be overwritten on the next write. Return error.
+		 */
 		dbg_journal("journal: failed to write back "
 		            "free segment descriptor\n");
 		return KNOTD_ERROR;
 	}
+	
+	/* Node write successful. */
+	journal->qtail = jnext;
 
 	/* Write back queue state, not essential as it may be recovered.
 	 * qhead - lowest valid node identifier (least recent)
