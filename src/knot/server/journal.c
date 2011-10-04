@@ -15,6 +15,12 @@
 /*! \brief Node classification macros. */
 #define jnode_flags(j, i) ((j)->nodes[(i)].flags)
 
+/*! \brief Next node. */
+#define jnode_next(j, i) (((i) + 1) % (j)->max_nodes)
+
+/*! \brief Previous node. */
+#define jnode_prev(j, i) (((i) == 0) ? (j)->max_nodes - 1 : (i) - 1)
+
 static inline int sfread(void *dst, size_t len, int fd)
 {
 	return read(fd, dst, len) == len;
@@ -360,9 +366,9 @@ int journal_fetch(journal_t *journal, uint64_t id,
 	}
 
 	/*! \todo Organize journal descriptors in btree? */
-	/*! \todo Or store pointer to last fetch for sequential lookup? */
-	for(uint16_t i = 0; i != journal->max_nodes; ++i) {
-
+	size_t i = jnode_prev(journal, journal->qtail);
+	size_t endp = jnode_prev(journal, journal->qhead);
+	for(; i != endp; i = jnode_prev(journal, i)) {
 		if (cf(journal->nodes[i].id, id) == 0) {
 			*dst = journal->nodes + i;
 			return KNOTD_EOK;
@@ -412,8 +418,6 @@ int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
 		return KNOTD_EINVAL;
 	}
 	
-	/*! \todo Find key with already existing identifier? */
-
 	const size_t node_len = sizeof(journal_node_t);
 
 	/* Find next free node. */
