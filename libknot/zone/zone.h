@@ -148,7 +148,8 @@ void knot_zone_free(knot_zone_t **zone);
  *                          present in RDATA. Set to 0 otherwise. (See
  *                          knot_rdata_deep_free().)
  */
-void knot_zone_deep_free(knot_zone_t **zone, int free_rdata_dnames);
+void knot_zone_deep_free(knot_zone_t **zone, int free_rdata_dnames,
+                         int destroy_dname_table);
 
 #endif
 

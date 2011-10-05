@@ -547,7 +547,8 @@ int knot_zone_contents_shallow_copy(const knot_zone_contents_t *from,
 
 void knot_zone_contents_free(knot_zone_contents_t **contents);
 
-void knot_zone_contents_deep_free(knot_zone_contents_t **contents);
+void knot_zone_contents_deep_free(knot_zone_contents_t **contents,
+                                  int destroy_dname_table);
 
 #endif
 
