@@ -482,15 +482,17 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 	/* Unlock zone contents. */
 	rcu_read_unlock();
 	
+	/* Add to pending transfers. */
+	knot_ns_xfr_t *task = xfr_register_task(w, data);
+	
 	ret = data->send(data->session, &data->addr, data->wire, bufsize);
 	if (ret != bufsize) {
 		log_server_notice("Failed to send %cXFR query.",
 				  data->type == XFR_TYPE_AIN ? 'A' : 'I');
+		xfr_free_task(task);
 		return KNOTD_ERROR;
 	}
 
-	/* Add to pending transfers. */
-	xfr_register_task(w, data);
 	return KNOTD_EOK;
 }
 

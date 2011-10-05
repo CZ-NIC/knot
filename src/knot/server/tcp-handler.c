@@ -199,7 +199,7 @@ static void tcp_handle(tcp_worker_t *w, int fd)
 		}
 	} else {
 		dbg_net("tcp: failed to respond to query type=%d on fd=%d - %s\n",
-		        qtype, fd, knotd_strerr(res));;
+		        qtype, fd, knotd_strerror(res));;
 	}
 
 	return;
