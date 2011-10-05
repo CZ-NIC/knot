@@ -252,6 +252,25 @@ dbg_zonedb_exec(
 
 /*----------------------------------------------------------------------------*/
 
+knot_zone_contents_t *knot_zonedb_expire_zone(knot_zonedb_t *db,
+                                              const knot_dname_t *zone_name)
+{
+	if (db == NULL || zone_name == NULL) {
+		return NULL;
+	}
+
+	// Remove the contents from the zone, but keep the zone in the zonedb.
+
+	knot_zone_t *zone = knot_zonedb_find_zone(db, zone_name);
+	if (zone == NULL) {
+		return NULL;
+	}
+
+	return knot_zone_switch_contents(zone, NULL);
+}
+
+/*----------------------------------------------------------------------------*/
+
 knot_zonedb_t *knot_zonedb_copy(const knot_zonedb_t *db)
 {
 	knot_zonedb_t *db_new =

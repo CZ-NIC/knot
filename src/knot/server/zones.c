@@ -261,19 +261,19 @@ static int zones_expire_ev(event_t *e)
 		return KNOTD_EINVAL;
 	}
 
-	/* Remove zone from db. */
 	zonedata_t *zd = (zonedata_t *)zone->data;
 
-	/*! \todo API */
-	knot_zone_t *old_zone = knot_zonedb_remove_zone(
-		zd->server->nameserver->zone_db, zone->name);
-	if (old_zone == NULL) {
+	/* Mark the zone as expired. This will remove the zone contents. */
+	knot_zone_contents_t *contents = knot_zonedb_expire_zone(
+			zd->server->nameserver->zone_db, zone->name);
+
+	if (contents == NULL) {
 		log_server_warning("Non-existent zone expired. Ignoring.\n");
 		rcu_read_unlock();
 		return 0;
 	}
 	
-	assert(old_zone == zone);
+	assert(contents == knot_zone_contents(zone));
 	
 	rcu_read_unlock();
 	synchronize_rcu();
@@ -283,7 +283,7 @@ static int zones_expire_ev(event_t *e)
 	/* Early finish this event to prevent lockup during cancellation. */
 	dbg_zones("zones: zone expired, removing from database\n");
 	evsched_event_finished(e->parent);
-	knot_zone_deep_free(&old_zone, 0);
+	knot_zone_contents_deep_free(&contents, 0);
 
 	return 0;
 }
