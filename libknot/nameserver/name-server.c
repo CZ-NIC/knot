@@ -1843,10 +1843,14 @@ dbg_ns_exec(
 	const knot_zone_contents_t *contents = knot_zone_contents(zone);
 
 	// if no zone found, return REFUSED
-	if (zone == NULL || contents == NULL) {
+	if (zone == NULL) {
 		dbg_ns("No zone found.\n");
 		knot_response_set_rcode(resp, KNOT_RCODE_REFUSED);
 		//knot_dname_free(&qname);
+		return KNOT_EOK;
+	} else if (contents == NULL) {
+		dbg_ns("Zone expired or not bootstrapped. Reply SERVFAIL.\n");
+		knot_response_set_rcode(resp, KNOT_RCODE_SERVFAIL);
 		return KNOT_EOK;
 	}
 
@@ -2891,7 +2895,7 @@ int knot_ns_answer_axfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	if (!contents) {
 		dbg_ns("AXFR failed on stub zone\n");
 		knot_ns_error_response(nameserver, xfr->query->header.id,
-					 KNOT_RCODE_REFUSED, xfr->wire,
+					 KNOT_RCODE_SERVFAIL, xfr->wire,
 					 &xfr->wire_size);
 		ret = xfr->send(xfr->session, &xfr->addr, xfr->wire,
 				xfr->wire_size);
@@ -2934,26 +2938,29 @@ int knot_ns_answer_ixfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	    || xfr->response == NULL) {
 		return KNOT_EBADARG;
 	}
+
+	uint8_t *wire = NULL;
+	size_t size = 0;
 	
 	// parse rest of the packet (we need the Authority record)
 	int ret = knot_packet_parse_rest(xfr->query);
 	if (ret != KNOT_EOK) {
-		dbg_ns("Failed to parse rest of the packet.\n");
-
-		/*! \todo Extract this to some function. */
-		knot_response_set_rcode(xfr->response, KNOT_RCODE_FORMERR);
-		uint8_t *wire = NULL;
-		size_t size = 0;
-		ret = knot_packet_to_wire(xfr->response, &wire, &size);
-		if (ret != KNOT_EOK) {
-			knot_ns_error_response(nameserver, 
-			                         xfr->query->header.id,
-			                         KNOT_RCODE_FORMERR, wire, 
-			                         &size);
-		}
+		dbg_ns("Failed to parse rest of the packet. Reply FORMERR.\n");
+		knot_ns_error_response_full(nameserver, xfr->response,
+		                            KNOT_RCODE_FORMERR, wire, &size);
 
 		ret = xfr->send(xfr->session, &xfr->addr, wire, size);
+		knot_packet_free(&xfr->response);
+		return ret;
+	}
 
+	// check if the zone has contents
+	if (knot_zone_contents(xfr->zone) == NULL) {
+		dbg_ns("Zone expired or not bootstrapped. Reply SERVFAIL.\n");
+		knot_ns_error_response_full(nameserver, xfr->response,
+		                            KNOT_RCODE_SERVFAIL, wire, &size);
+
+		ret = xfr->send(xfr->session, &xfr->addr, wire, size);
 		knot_packet_free(&xfr->response);
 		return ret;
 	}
@@ -2970,8 +2977,6 @@ int knot_ns_answer_ixfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 
 		/*! \todo Extract this to some function. */
 		knot_response_set_rcode(xfr->response, KNOT_RCODE_SERVFAIL);
-		uint8_t *wire = NULL;
-		size_t size = 0;
 		ret = knot_packet_to_wire(xfr->response, &wire, &size);
 		if (ret != KNOT_EOK) {
 			knot_ns_error_response(nameserver, 
