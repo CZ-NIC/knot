@@ -2660,7 +2660,21 @@ int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_packet_t *query,
 		                       rsize);
 		return KNOT_EOK;
 	}
-	
+
+	/*
+	 * Semantic checks - if ANCOUNT > 0 or NSCOUNT > 0, return FORMERR.
+	 * Trailing garbage is ignored for now. If it should not be ignored,
+	 * the packet_parse_rest() function must be altered.
+	 */
+	if (knot_packet_ancount(query) > 0
+	    || knot_packet_nscount(query) > 0) {
+		dbg_ns("ANCOUNT or NSCOUNT not 0 in query, reply FORMERR.\n");
+		knot_ns_error_response(nameserver, knot_packet_id(query),
+		                       KNOT_RCODE_FORMERR, response_wire,
+		                       rsize);
+		return KNOT_EOK;
+	}
+
 	size_t resp_max_size = 0;
 	
 	assert(*rsize >= MAX_UDP_PAYLOAD);
