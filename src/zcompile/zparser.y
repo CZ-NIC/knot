@@ -167,6 +167,8 @@ line:	NL
 		    != 0) {
 		    	fprintf(stderr, "Could not add rdata!\n");
 		    }
+//		tmp_rdata->next = tmp_rdata;
+//		parser->current_rrset->rdata = tmp_rdata;
 
 		if (!knot_dname_is_fqdn(parser->current_rrset->owner)) {
 			knot_dname_t *tmp_dname =
@@ -179,11 +181,11 @@ line:	NL
 				                      0);
 				YYABORT;
 			}
-			knot_rrset_set_owner(parser->current_rrset, tmp_dname);
+//			knot_rrset_set_owner(parser->current_rrset, tmp_dname);
 		}
 
 		assert(parser->current_rrset->owner != NULL);
-//		knot_dname_retain(parser->current_rrset->owner);
+		knot_dname_retain(parser->current_rrset->owner);
 		int ret = 0;
 		if ((ret = process_rr()) != 0) {
 			fprintf(stderr, "Error: could not process RRSet\n"
@@ -232,6 +234,8 @@ line:	NL
 //	printf("Current rrset name: %p (%s)\n", parser->current_rrset->owner->name,
 //	knot_dname_to_str(parser->current_rrset->owner));
 //	getchar();
+
+//	knot_dname_release(parser->current_rrset->owner);
 
 	    parser->current_rrset->type = 0;
 	    parser->rdata_count = 0;
@@ -285,7 +289,7 @@ origin_directive:	DOLLAR_ORIGIN sp abs_dname trail
 rr:	owner classttl type_and_rdata
     {
 	    /* Save the pointer, it might get freed! */
-	    knot_rrset_set_owner(parser->current_rrset, $1);
+	    parser->current_rrset->owner = $1;
 //	    parser->current_rrset->owner = $1;
 //	    printf("new owner assigned: %p\n", $1);
 	    parser->current_rrset->type = $3;
@@ -295,18 +299,20 @@ rr:	owner classttl type_and_rdata
 owner:	dname sp
     {
     	char *name = knot_dname_to_str($1);
-//	printf("Totally new dname: %p %s\n", $1,
-//	name);
+	printf("Totally new dname: %p %s\n", $1,
+	name);
 	free(name);
-	knot_dname_release(parser->prev_dname);
+	if (parser->prev_dname != NULL) {
+	//	knot_dname_release(parser->prev_dname);
+	}
 	parser->prev_dname = $1;//knot_dname_deep_copy($1);
 //	knot_dname_retain(parser->prev_dname);
 	$$ = $1;
     }
     |	PREV
     {
-//	    printf("Name from prev_dname!: %p %s\n", parser->prev_dname,
-//	    knot_dname_to_str(parser->prev_dname));
+	    printf("Name from prev_dname!: %p %s\n", parser->prev_dname,
+	    knot_dname_to_str(parser->prev_dname));
 	    knot_dname_retain(parser->prev_dname);
 	    $$ = parser->prev_dname;//knot_dname_deep_copy(parser->prev_dname);
     }
@@ -360,7 +366,7 @@ dname:	abs_dname
 
 abs_dname:	'.'
     {
-	    $$ = knot_dname_deep_copy(parser->root_domain);
+	    $$ = parser->root_domain;
 	    /* TODO how about concatenation now? */
     }
     |	'@'
@@ -371,7 +377,6 @@ abs_dname:	'.'
     {
 	    if ($1 != error_dname) {
 		    $$ = $1;
-
 	    } else {
 		    $$ = error_domain;
 	    }
@@ -384,9 +389,11 @@ label:	STR
 		    zc_error("label exceeds %d character limit", MAXLABELLEN);
 		    $$ = error_dname;
 	    } else {
+	    printf("%s\n", $1.str);
 		    $$ = knot_dname_new_from_str($1.str, $1.len, NULL);
-//	    printf("Creating new (label): %s %p\n", $1.str, $$);
-	//printf("new: %p %s\n", $$, knot_dname_to_str($$));
+	    printf("Creating new (label): %s %p\n", $1.str, $$);
+	printf("new: %p %s\n", $$, $1.str);
+	$$->ref.count = 0;
 	    }
 
 	    free($1.str);
@@ -411,7 +418,8 @@ rel_dname:	label
 		    $$ = error_dname;
 	    } else {
 		    $$ = knot_dname_cat($1, $3);
-		    knot_dname_release($3);
+//		    knot_dname_release($1); /*!< \todo check! */
+		    knot_dname_free(&$3);
 		}
     }
     ;
@@ -902,8 +910,7 @@ rdata_domain_name:	dname trail
 	    /* convert a single dname record */
 		if ($1 != NULL) {
 			if (!knot_dname_is_fqdn($1)) {
-			knot_rrset_set_owner(parser->current_rrset,
-			knot_dname_cat($1, parser->root_domain));
+			knot_dname_cat($1, parser->root_domain);
 //			parser->current_rrset->owner =
 //				knot_dname_cat($1, parser->root_domain);
 			}
@@ -916,17 +923,13 @@ rdata_soa:	dname sp dname sp STR sp STR sp STR sp STR sp STR trail
     {
 	    /* convert the soa data */
 			if (!knot_dname_is_fqdn($1)) {
-
-			knot_rrset_set_owner(parser->current_rrset,
-			knot_dname_cat($1, parser->root_domain));
-
+			knot_dname_cat($1, parser->root_domain);
 //			parser->current_rrset->owner =
 //				knot_dname_cat($1, parser->root_domain);
 
 		}
-					if (!knot_dname_is_fqdn($3)) {
-			knot_rrset_set_owner(parser->current_rrset,
-			knot_dname_cat($3, parser->root_domain));
+			if (!knot_dname_is_fqdn($3)) {
+			knot_dname_cat($3, parser->root_domain);
 //			parser->current_rrset->owner =
 //				knot_dname_cat($3, parser->root_domain);
 
@@ -973,14 +976,12 @@ rdata_minfo:	dname sp dname trail
     {
 				if (!knot_dname_is_fqdn($1)) {
 
-			parser->current_rrset->owner =
-				knot_dname_cat($1, parser->root_domain);
+			knot_dname_cat($1, parser->root_domain);
 
 		}
 					if (!knot_dname_is_fqdn($3)) {
 
-			parser->current_rrset->owner =
-				knot_dname_cat($3, parser->root_domain);
+			knot_dname_cat($3, parser->root_domain);
 
 		}
 
@@ -993,11 +994,7 @@ rdata_minfo:	dname sp dname trail
 rdata_mx:	STR sp dname trail
     {
 					if (!knot_dname_is_fqdn($3)) {
-
-
-			parser->current_rrset->owner =
-				knot_dname_cat($3, parser->root_domain);
-
+			knot_dname_cat($3, parser->root_domain);
 		}
 
 	    zadd_rdata_wireformat(zparser_conv_short($1.str));  /* priority */
@@ -1017,16 +1014,10 @@ rdata_txt:	str_seq trail
 rdata_rp:	dname sp dname trail
     {
 					if (!knot_dname_is_fqdn($1)) {
-
-			parser->current_rrset->owner =
-				knot_dname_cat($1, parser->root_domain);
-
+			knot_dname_cat($1, parser->root_domain);
 		}
 					if (!knot_dname_is_fqdn($3)) {
-
-			parser->current_rrset->owner =
-				knot_dname_cat($3, parser->root_domain);
-
+			knot_dname_cat($3, parser->root_domain);
 		}
 
 	    zadd_rdata_domain($1); /* mbox d-name */
@@ -1038,11 +1029,7 @@ rdata_rp:	dname sp dname trail
 rdata_afsdb:	STR sp dname trail
     {
 					if (!knot_dname_is_fqdn($3)) {
-
-
-			parser->current_rrset->owner =
-				knot_dname_cat($3, parser->root_domain);
-
+			knot_dname_cat($3, parser->root_domain);
 		}
 
 	    zadd_rdata_wireformat(zparser_conv_short($1.str)); /* subtype */
@@ -1086,10 +1073,7 @@ rdata_isdn:	STR trail
 rdata_rt:	STR sp dname trail
     {
 						if (!knot_dname_is_fqdn($3)) {
-
-			parser->current_rrset->owner =
-				knot_dname_cat($3, parser->root_domain);
-
+			knot_dname_cat($3, parser->root_domain);
 		}
 
 	    zadd_rdata_wireformat(zparser_conv_short($1.str)); /* preference */
@@ -1119,14 +1103,10 @@ rdata_nsap:	str_dot_seq trail
 rdata_px:	STR sp dname sp dname trail
     {
 			if (!knot_dname_is_fqdn($3)) {
-			parser->current_rrset->owner =
 				knot_dname_cat($3, parser->root_domain);
-
 		}
 					if (!knot_dname_is_fqdn($5)) {
-			parser->current_rrset->owner =
 				knot_dname_cat($5, parser->root_domain);
-
 		}
 	    zadd_rdata_wireformat(zparser_conv_short($1.str)); /* preference */
 	    zadd_rdata_domain($3); /* MAP822 */
@@ -1156,9 +1136,7 @@ rdata_loc:	concatenated_str_seq trail
 rdata_nxt:	dname sp nxt_seq trail
     {
 				if (!knot_dname_is_fqdn($1)) {
-			parser->current_rrset->owner =
 				knot_dname_cat($1, parser->root_domain);
-
 		}
 	    zadd_rdata_domain($1); /* nxt name */
 	    zadd_rdata_wireformat(zparser_conv_nxt(nxtbits)); /* nxt bitlist */
@@ -1169,7 +1147,6 @@ rdata_nxt:	dname sp nxt_seq trail
 rdata_srv:	STR sp STR sp STR sp dname trail
     {
 				if (!knot_dname_is_fqdn($7)) {
-			parser->current_rrset->owner =
 				knot_dname_cat($7, parser->root_domain);
 
 		}
@@ -1188,7 +1165,6 @@ rdata_srv:	STR sp STR sp STR sp dname trail
 rdata_naptr:	STR sp STR sp STR sp STR sp STR sp dname trail
     {
 				if (!knot_dname_is_fqdn($11)) {
-			parser->current_rrset->owner =
 				knot_dname_cat($11, parser->root_domain);
 
 		}
@@ -1214,9 +1190,7 @@ rdata_naptr:	STR sp STR sp STR sp STR sp STR sp dname trail
 rdata_kx:	STR sp dname trail
     {
 				if (!knot_dname_is_fqdn($3)) {
-			parser->current_rrset->owner =
 				knot_dname_cat($3, parser->root_domain);
-
 		}
 	    zadd_rdata_wireformat(zparser_conv_short($1.str)); /* preference */
 	    zadd_rdata_domain($3); /* exchanger */
@@ -1563,11 +1537,13 @@ zparser_type *zparser_create()
 	}
 
 	result->root_domain = knot_dname_new_from_str(".", 1, NULL);
+	printf("THE NEW ROOT: %p\n", result->root_domain);
 	if (result->root_domain == NULL) {
 		ERR_ALLOC_FAILED;
 		free(result->temporary_items);
 		free(result->current_rrset);
 		free(result);
+		return NULL;
 	}
 
 	return result;
@@ -1591,7 +1567,7 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 	parser->default_class = rclass;
 
 	parser->origin = origin;
-	parser->prev_dname = parser->origin->owner;
+	parser->prev_dname = NULL;//parser->origin->owner;
 
 	parser->default_apex = origin;
 	parser->error_occurred = 0;
@@ -1601,7 +1577,7 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 	parser->rdata_count = 0;
 
 	parser->last_node = origin;
-	parser->root_domain = knot_dname_new_from_str(".", 1, NULL);
+//	parser->root_domain = NULL;
 
 	/* Create zone */
 	parser->current_zone = knot_zone_new(origin, 0, 1);
@@ -1616,10 +1592,11 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 
 void zparser_free()
 {
-	knot_dname_release(parser->root_domain);
+//	knot_dname_release(parser->root_domain);
+//	knot_dname_release(parser->prev_dname);
 	free(parser->temporary_items);
 	if (parser->current_rrset != NULL) {
-		knot_rrset_free(&parser->current_rrset);
+		free(parser->current_rrset);
 	}
 	free(parser);
 }

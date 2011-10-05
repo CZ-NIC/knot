@@ -387,7 +387,7 @@ unsigned int knot_dname_get_id(const knot_dname_t *dname);
  *
  * \param dname Referenced dname.
  */
-static inline void knot_dname_retain(knot_dname_t *dname) {
+static inline void knot_dname_retain_(knot_dname_t *dname) {
 	if (dname) {
 		ref_retain(&dname->ref);
 //		char *name = knot_dname_to_str(dname);
@@ -397,18 +397,18 @@ static inline void knot_dname_retain(knot_dname_t *dname) {
 	}
 }
 
-//#define knot_dname_retain(d) \
-//	knot_dname_retain_((d));\
-//	if ((d))\
-//	printf("dname_retain: %s() at %s:%d, %p refcount=%zu\n",\
-//	__func__, __FILE__, __LINE__, d, (d)->ref.count)
+#define knot_dname_retain(d) \
+	knot_dname_retain_((d));\
+	if ((d))\
+	printf("dname_retain: %s() at %s:%d, %p refcount=%zu\n",\
+	__func__, __FILE__, __LINE__, d, (d)->ref.count)
 
 /*!
  * \brief Decrement reference counter for dname.
  *
  * \param dname Referenced dname.
  */
-static inline void knot_dname_release(knot_dname_t *dname) {
+static inline void knot_dname_release_(knot_dname_t *dname) {
 	if (dname) {
 //		char *name = knot_dname_to_str(dname);
 //		printf("releasing: %p %s %d\n", dname, name, dname->ref.count - 1);
@@ -417,11 +417,11 @@ static inline void knot_dname_release(knot_dname_t *dname) {
 	}
 }
 
-//#define knot_dname_release(d) \
-//	if ((d))\
-//	printf("dname_release: %s() at %s:%d, %p refcount=%zu\n",\
-//	__func__, __FILE__, __LINE__, d, (d)->ref.count-1);\
-//	knot_dname_release_((d))
+#define knot_dname_release(d) \
+	if ((d))\
+	printf("dname_release: %s() at %s:%d, %p refcount=%zu\n",\
+	__func__, __FILE__, __LINE__, d, (d)->ref.count-1);\
+	knot_dname_release_((d))
 
 #endif /* _KNOT_DNAME_H_ */
 
