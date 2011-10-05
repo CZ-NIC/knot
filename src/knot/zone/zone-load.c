@@ -1058,7 +1058,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 		    != 0) {
 			fprintf(stderr, "!! cannot add first nsec3 node, "
 				"exiting.\n");
-			knot_zone_deep_free(&zone, 1, 0);
+			knot_zone_deep_free(&zone, 0);
 			free(id_array);
 			/* TODO this will leak dnames from id_array that were
 			 * not assigned. */
