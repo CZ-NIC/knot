@@ -336,7 +336,7 @@ static inline int udp_master_recvmmsg(dthread_t *thread, stat_t *thread_stat)
 				// Check result
 				if (res != (int)resp_len) {
 					dbg_net("udp: sendto(): failed: %d - %d.\n",
-					        rc, errno);
+					        res, errno);
 				}
 			}
 		}
