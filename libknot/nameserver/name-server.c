@@ -2999,7 +2999,7 @@ int knot_ns_switch_zone(knot_nameserver_t *nameserver,
 	synchronize_rcu();
 	// destroy the old zone
 	debug_knot_ns("Freeing old zone: %p\n", old);
-	knot_zone_contents_deep_free(&old);
+	knot_zone_contents_deep_free(&old, 0);
 
 DEBUG_KNOT_NS(
 	debug_knot_ns("Zone db contents: (zone count: %zu)\n", 

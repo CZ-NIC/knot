@@ -2114,7 +2114,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	      knot_node_rrset(parser->current_zone->contents->apex,
 	                        KNOT_RRTYPE_SOA))) {
 		zc_error_prev_line("Zone file does not contain SOA record!\n");
-		knot_zone_deep_free(&parser->current_zone, 0);
+		knot_zone_deep_free(&parser->current_zone, 1, 1);
 		zparser_free();
 		return KNOTDZCOMPILE_EZONEINVAL;
 	}
@@ -2141,8 +2141,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	}
 
 	/* This is *almost* unnecessary */
-	knot_zone_deep_free(&(parser->current_zone), 1);
-
+	knot_zone_deep_free(&(parser->current_zone), 1, 1);
 
 	fflush(stdout);
 	totalerrors += parser->errors;
