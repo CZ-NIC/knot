@@ -298,10 +298,10 @@ rr:	owner classttl type_and_rdata
 
 owner:	dname sp
     {
-    	char *name = knot_dname_to_str($1);
-	printf("Totally new dname: %p %s\n", $1,
-	name);
-	free(name);
+//    	char *name = knot_dname_to_str($1);
+//	printf("Totally new dname: %p %s\n", $1,
+//	name);
+//	free(name);
 	if (parser->prev_dname != NULL) {
 	//	knot_dname_release(parser->prev_dname);
 	}
@@ -311,8 +311,8 @@ owner:	dname sp
     }
     |	PREV
     {
-	    printf("Name from prev_dname!: %p %s\n", parser->prev_dname,
-	    knot_dname_to_str(parser->prev_dname));
+//	    printf("Name from prev_dname!: %p %s\n", parser->prev_dname,
+//	    knot_dname_to_str(parser->prev_dname));
 	    knot_dname_retain(parser->prev_dname);
 	    $$ = parser->prev_dname;//knot_dname_deep_copy(parser->prev_dname);
     }
@@ -389,10 +389,10 @@ label:	STR
 		    zc_error("label exceeds %d character limit", MAXLABELLEN);
 		    $$ = error_dname;
 	    } else {
-	    printf("%s\n", $1.str);
+//	    printf("%s\n", $1.str);
 		    $$ = knot_dname_new_from_str($1.str, $1.len, NULL);
-	    printf("Creating new (label): %s %p\n", $1.str, $$);
-	printf("new: %p %s\n", $$, $1.str);
+//	    printf("Creating new (label): %s %p\n", $1.str, $$);
+//	printf("new: %p %s\n", $$, $1.str);
 	$$->ref.count = 0;
 	    }
 
@@ -1537,7 +1537,7 @@ zparser_type *zparser_create()
 	}
 
 	result->root_domain = knot_dname_new_from_str(".", 1, NULL);
-	printf("THE NEW ROOT: %p\n", result->root_domain);
+//	printf("THE NEW ROOT: %p\n", result->root_domain);
 	if (result->root_domain == NULL) {
 		ERR_ALLOC_FAILED;
 		free(result->temporary_items);

@@ -323,7 +323,6 @@ static parser_rrtype_descriptor_t
 
 parser_rrtype_descriptor_t *parser_rrtype_descriptor_by_type(uint16_t type)
 {
-	printf("%d\n", type);
 	if (type < PARSER_RRTYPE_LAST + 1) {
 		return &knot_rrtype_descriptors[type];
 	} else if (type == PARSER_RRTYPE_DLV) {

@@ -1546,7 +1546,7 @@ void zadd_rdata_txt_wireformat(uint16_t *data, int first)
 void zadd_rdata_domain(knot_dname_t *dname)
 {
 	knot_dname_retain(dname);
-	printf("Adding rdata name: %s %p\n", dname->name, dname);
+//	printf("Adding rdata name: %s %p\n", dname->name, dname);
 	parser->temporary_items[parser->rdata_count].dname = dname;
 	parser->rdata_count++;
 }
