@@ -966,11 +966,11 @@ void knot_dname_free(knot_dname_t **dname)
 		return;
 	}
 
-//		char *name = knot_dname_to_str((*dname));
+		char *name = knot_dname_to_str((*dname));
 
-//	printf("freeing in dname: %s %p\n", name, *dname);
+	printf("freeing in dname: %s %p\n", name, *dname);
 
-//	free(name);
+	free(name);
 
 
 	if ((*dname)->name != NULL) {

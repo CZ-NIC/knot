@@ -1519,7 +1519,6 @@ void zadd_rdata_txt_wireformat(uint16_t *data, int first)
 //			zc_error_prev_line("Could not allocate memory for TXT RR");
 //			return;
 //		}
-		/*!< \todo Disabled until multiple TXT's are supported. */
 		rd->raw_data = alloc_rdata(65535 * sizeof(uint8_t));
 		if (rd->raw_data == NULL) {
 			parser->error_occurred = KNOTDZCOMPILE_ENOMEM;
@@ -1539,13 +1538,15 @@ void zadd_rdata_txt_wireformat(uint16_t *data, int first)
 	memcpy((uint8_t *)rd->raw_data + 2 + rd->raw_data[0],
 	       data + 1, data[0]);
 	rd->raw_data[0] += data[0];
+	free(data);
 	debug_zp("Item after add\n");
 //	hex_print(rd->raw_data + 1, rd->raw_data[0]);
 }
 
 void zadd_rdata_domain(knot_dname_t *dname)
 {
-//	knot_dname_retain(dname);
+	knot_dname_retain(dname);
+	printf("Adding rdata name: %s %p\n", dname->name, dname);
 	parser->temporary_items[parser->rdata_count].dname = dname;
 	parser->rdata_count++;
 }
@@ -1729,6 +1730,7 @@ static knot_node_t *create_node(knot_zone_contents_t *zone,
 {
 	knot_node_t *node =
 		knot_node_new(current_rrset->owner, NULL, 0);
+//	knot_dname_release(current_rrset->owner);
 	if (node_add_func(zone, node, 1, 0, 1) != 0) {
 		return NULL;
 	}
@@ -1848,6 +1850,7 @@ int process_rr(void)
 					     KNOT_RRTYPE_RRSIG,
 					     current_rrset->rclass,
 					     current_rrset->ttl);
+//			knot_dname_release(current_rrset->owner);
 		if (tmp_rrsig == NULL) {
 			return KNOTDZCOMPILE_ENOMEM;
 		}
@@ -1954,6 +1957,8 @@ int process_rr(void)
 			free(rrset);
 			return KNOTDZCOMPILE_EBRDATA;
 		}
+
+//		knot_dname_release(current_rrset->owner);
 
 //		knot_rrset_merge((void *)&rrset, (void *)&current_rrset);
 
@@ -2136,7 +2141,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	}
 
 	/* This is *almost* unnecessary */
-	knot_zone_deep_free(&(parser->current_zone), 0);
+	knot_zone_deep_free(&(parser->current_zone), 1);
 
 
 	fflush(stdout);
