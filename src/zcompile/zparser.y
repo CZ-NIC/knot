@@ -188,10 +188,13 @@ line:	NL
 		knot_dname_retain(parser->current_rrset->owner);
 		int ret = 0;
 		if ((ret = process_rr()) != 0) {
+			char *name =
+				knot_dname_to_str(parser->current_rrset->owner);
 			fprintf(stderr, "Error: could not process RRSet\n"
 				"owner: %s reason: %s\n",
-				parser->current_rrset->owner->name,
+				name,
 				error_to_str(knot_zcompile_error_msgs, ret));
+			free(name);
 
 			/* If the owner is not already in the table, free it. */
 //			if (dnslib_dname_table_find_dname(parser->dname_table,
@@ -207,13 +210,14 @@ line:	NL
 						      1, 1);
 				YYABORT;
 			} else {
+				YYABORT;
 				/* Free rdata, it will not be added
 				 * and hence cannot be
 				 * freed with rest of the zone. */
-				knot_rdata_deep_free(&tmp_rdata,
+/*				knot_rdata_deep_free(&tmp_rdata,
 				                       parser->
 				                       current_rrset->type,
-				                       0);
+				                       0); */
 			}
 		}
 	} else {

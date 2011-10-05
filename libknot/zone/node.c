@@ -218,7 +218,7 @@ int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset,
 	int ret = 0;
 
 	if ((ret = (gen_tree_add(node->rrset_tree, rrset,
-	                         (merge) ? knot_rrset_merge : NULL))) != 0) {
+	                         (merge) ? knot_rrset_merge : NULL))) < 0) {
 		dbg_node("Failed to add rrset to node->rrset_tree.\n");
 		return KNOT_ERROR;
 	}

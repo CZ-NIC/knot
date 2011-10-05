@@ -1954,7 +1954,7 @@ int process_rr(void)
 		if (knot_zone_contents_add_rrset(contents, current_rrset,
 		                          &node,
 		                   KNOT_RRSET_DUPL_MERGE, 1) < 0) {
-			free(rrset);
+//			free(rrset);
 			return KNOTDZCOMPILE_EBRDATA;
 		}
 
@@ -2100,7 +2100,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 //		return 0;
 //	}
 
-	debug_zp("zp complete %p\n", parser->current_zone);
+	dbg_zp("zp complete %p\n", parser->current_zone);
 
 	if (parser->last_node && parser->node_rrsigs != NULL) {
 		/* assign rrsigs to last node in the zone*/
