@@ -833,9 +833,22 @@ int knot_packet_parse_next_rr_answer(knot_packet_t *packet,
 		return KNOT_EBADARG;
 	}
 
-	if (packet->parsed >= packet->size
-	    || packet->an_rrsets == packet->header.ancount) {
-		*rr = NULL;
+	*rr = NULL;
+
+	if (packet->parsed >= packet->size) {
+		assert(packet->an_rrsets <= packet->header.ancount);
+		if (packet->an_rrsets != packet->header.ancount) {
+			dbg_packet("Parsed less RRs than expected.\n");
+			return KNOT_EMALF;
+		} else {
+			dbg_packet("Whole packet parsed\n");
+			return KNOT_EOK;
+		}
+	}
+
+	if (packet->an_rrsets == packet->header.ancount) {
+		assert(packet->parsed < packet->size);
+		dbg_packet("Trailing garbage, ignoring...\n");
 		return KNOT_EOK;
 	}
 
@@ -1029,6 +1042,39 @@ int knot_packet_tc(const knot_packet_t *packet)
 	}
 	
 	return knot_wire_flags_get_tc(packet->header.flags1);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_packet_ancount(const knot_packet_t *packet)
+{
+	if (packet == NULL) {
+		return KNOT_EBADARG;
+	}
+
+	return packet->header.ancount;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_packet_nscount(const knot_packet_t *packet)
+{
+	if (packet == NULL) {
+		return KNOT_EBADARG;
+	}
+
+	return packet->header.nscount;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_packet_arcount(const knot_packet_t *packet)
+{
+	if (packet == NULL) {
+		return KNOT_EBADARG;
+	}
+
+	return packet->header.arcount;
 }
 
 /*----------------------------------------------------------------------------*/

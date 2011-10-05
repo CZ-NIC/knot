@@ -214,8 +214,7 @@ void knot_zone_free(knot_zone_t **zone)
 
 /*----------------------------------------------------------------------------*/
 
-void knot_zone_deep_free(knot_zone_t **zone, int free_rdata_dnames,
-                         int destroy_dname_table)
+void knot_zone_deep_free(knot_zone_t **zone, int destroy_dname_table)
 {
 	if (zone == NULL || *zone == NULL) {
 		return;
