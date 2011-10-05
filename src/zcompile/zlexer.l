@@ -198,9 +198,6 @@ ANY     [^\"\n\\]|\\.
 			dname = knot_dname_new_from_wire((uint8_t*)tmp + 1,
 							   strlen(tmp + 1),
 							   NULL);
-			/*! \todo implement refcounting correctly. */
-			ref_init(&dname->ref, 0); /* disable dtor */
-			ref_retain(&dname->ref);
 			if (!dname) {
 				zc_error("incorrect include origin '%s'",
 					 tmp + 1);
@@ -445,13 +442,19 @@ static int parse_token(void *scanner, int token, char *in_str,
 		}
 	}
 
-	str = strdup(in_str);
+	str = strdup(yytext);
+	if (str == NULL) {
+		/* Out of memory */
+		ERR_ALLOC_FAILED;
+		return NO_MEM;
+	}
 	len = zoctet(str);
 
 	yylval->data.str = str;
+	assert(yylval->data.str != NULL);
 	yylval->data.len = len;
 
-	if (strcmp(str, ".") == 0) {
+	if (strcmp(yytext, ".") == 0) {
 		free(str);
 		yylval->data.str=".";
 	} else if (strcmp(str, "@") == 0) {

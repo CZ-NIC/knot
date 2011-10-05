@@ -17,6 +17,8 @@
 #include <config.h>
 #include <string.h>
 #include <pthread.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "common.h"
 #include "util/utils.h"
@@ -111,3 +113,15 @@ uint16_t knot_random_id()
 {
 	return (uint16_t)(tls_rand() * ((uint16_t)~0));
 }
+
+struct flock* knot_file_lock(short type, short whence)
+{
+	static struct flock ret;
+	ret.l_type = type;
+	ret.l_start = 0;
+	ret.l_whence = whence;
+	ret.l_len = 0;
+	ret.l_pid = getpid();
+	return &ret;
+}
+
