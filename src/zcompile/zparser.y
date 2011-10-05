@@ -141,7 +141,7 @@ line:	NL
 			knot_rrset_deep_free(&(parser->current_rrset),
 					       0, 0, 0);
 			knot_zone_deep_free(&(parser->current_zone),
-					      1, 1);
+					      1);
 			YYABORT;
 		}
 		knot_rdata_t *tmp_rdata = knot_rdata_new();
@@ -149,7 +149,7 @@ line:	NL
 			knot_rrset_deep_free(&(parser->current_rrset),
 					       0, 0, 0);
 			knot_zone_deep_free(&(parser->current_zone),
-					      1, 1);
+					      1);
 			YYABORT;
 		}
 
@@ -158,7 +158,7 @@ line:	NL
 		    parser->rdata_count) != 0) {
 			knot_rdata_free(&tmp_rdata);
 			knot_rrset_deep_free(&(parser->current_rrset), 0, 0, 0);
-			knot_zone_deep_free(&(parser->current_zone), 1, 1);
+			knot_zone_deep_free(&(parser->current_zone), 1);
 			YYABORT;
 		}
 
@@ -178,7 +178,7 @@ line:	NL
 				knot_rrset_deep_free(&(parser->current_rrset),
 				                       0, 0, 0);
 				knot_zone_deep_free(&(parser->current_zone),
-				                      1, 1);
+				                      1);
 				YYABORT;
 			}
 //			knot_rrset_set_owner(parser->current_rrset, tmp_dname);
@@ -207,7 +207,7 @@ line:	NL
 				knot_rrset_deep_free(&(parser->current_rrset),
 						       0, 0, 0);
 				knot_zone_deep_free(&(parser->current_zone),
-						      1, 1);
+						      1);
 				YYABORT;
 			} else {
 				YYABORT;
@@ -230,7 +230,7 @@ line:	NL
 			knot_rrset_deep_free(&(parser->current_rrset),
 					       0, 0, 0);
 			knot_zone_deep_free(&(parser->current_zone),
-					      1, 1);
+					      1);
 			YYABORT;
 		}
 	}
@@ -444,7 +444,7 @@ wire_abs_dname:	'.'
 	    	knot_rrset_deep_free(&(parser->current_rrset),
 		                       0, 0, 0);
 	        knot_zone_deep_free(&(parser->current_zone),
-		                      1, 1);
+		                      1);
 		YYABORT;
 	    }
 	    result[0] = 0;
@@ -460,7 +460,7 @@ wire_abs_dname:	'.'
 	    	knot_rrset_deep_free(&(parser->current_rrset),
 		                       0, 0, 0);
 	        knot_zone_deep_free(&(parser->current_zone),
-		                      1, 1);
+		                      1);
 		YYABORT;
 	    }
 	    memcpy(result, $1.str, $1.len);
@@ -482,7 +482,7 @@ wire_label:	STR
 	    	knot_rrset_deep_free(&(parser->current_rrset),
 		                       0, 0, 0);
 	        knot_zone_deep_free(&(parser->current_zone),
-		                      1, 1);
+		                      1);
 		YYABORT;
 	    }
 
@@ -515,7 +515,7 @@ wire_rel_dname:	wire_label
 	    	knot_rrset_deep_free(&(parser->current_rrset),
 		                       0, 0, 0);
 		knot_zone_deep_free(&(parser->current_zone),
-		                      1, 1);
+		                      1);
 		YYABORT;
 	    }
 	    memcpy($$.str, $1.str, $1.len);
@@ -563,7 +563,7 @@ concatenated_str_seq:	STR
 	    	knot_rrset_deep_free(&(parser->current_rrset),
 		                       0, 0, 0);
 	        knot_zone_deep_free(&(parser->current_zone),
-		                      1, 1);
+		                      1);
 		YYABORT;
 	    }
 
@@ -584,7 +584,7 @@ concatenated_str_seq:	STR
 	    	knot_rrset_deep_free(&(parser->current_rrset),
 		                       0, 0, 0);
 	        knot_zone_deep_free(&(parser->current_zone),
-		                      1, 1);
+		                      1);
 		YYABORT;
 	    }
 	    memcpy($$.str, $1.str, $1.len);
@@ -663,7 +663,7 @@ str_sp_seq:	STR
 	    	knot_rrset_deep_free(&(parser->current_rrset),
 		                       0, 0, 0);
 	        knot_zone_deep_free(&(parser->current_zone),
-		                      1, 1);
+		                      1);
 		YYABORT;
 	    }
 	    memcpy(result, $1.str, $1.len);
@@ -691,7 +691,7 @@ str_dot_seq:	STR
 	    	knot_rrset_deep_free(&(parser->current_rrset),
 		                       0, 0, 0);
 	        knot_zone_deep_free(&(parser->current_zone),
-		                      1, 1);
+		                      1);
 		YYABORT;
 	    }
 	    memcpy(result, $1.str, $1.len);
@@ -723,7 +723,7 @@ dotted_str:	STR
 	    	knot_rrset_deep_free(&(parser->current_rrset),
 		                       0, 0, 0);
 	        knot_zone_deep_free(&(parser->current_zone),
-		                      1, 1);
+		                      1);
 		YYABORT;
 	    }
 	    memcpy(result, $1.str, $1.len);
@@ -743,7 +743,7 @@ dotted_str:	STR
 	    	knot_rrset_deep_free(&(parser->current_rrset),
 		                       0, 0, 0);
 	        knot_zone_deep_free(&(parser->current_zone),
-		                      1, 1);
+		                      1);
 		YYABORT;
 	    }
 	    memcpy(result, $1.str, $1.len);
@@ -1436,7 +1436,7 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 				knot_rrset_deep_free(&(parser->current_rrset),
 						                          0, 0, 0);
 				knot_zone_deep_free(&(parser->current_zone),
-						      1, 1);
+						      1);
 				YYABORT;
 			}
 			if($7.str[strlen($7.str)-1] != '.') {
@@ -1449,7 +1449,7 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 				knot_rrset_deep_free(&(parser->current_rrset),
 				                       0, 0, 0);
 			        knot_zone_deep_free(&(parser->current_zone),
-				                      1, 1);
+				                      1);
 				YYABORT;
 			    }
 			    name = knot_dname_cat(tmpd,
@@ -1467,7 +1467,7 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 			    knot_rrset_deep_free(&(parser->current_rrset),
 			                           0, 0, 0);
 			    knot_zone_deep_free(&(parser->current_zone),
-			                          1, 1);
+			                          1);
 			    YYABORT;
 			}
 			memcpy(dncpy, name->name, name->size);
