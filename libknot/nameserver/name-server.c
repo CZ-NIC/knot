@@ -3083,10 +3083,10 @@ int knot_ns_switch_zone(knot_nameserver_t *nameserver,
 	synchronize_rcu();
 	// destroy the old zone
 	dbg_ns("Freeing old zone: %p\n", old);
-	knot_zone_contents_deep_free(&old);
+	knot_zone_contents_deep_free(&old, 0);
 
 dbg_ns_exec(
-	dbg_ns("Zone db contents: (zone count: %zu)\n", 
+	debug_knot_ns("Zone db contents: (zone count: %zu)\n", 
 	              nameserver->zone_db->zone_count);
 
 	const knot_zone_t **zones = knot_zonedb_zones(nameserver->zone_db);

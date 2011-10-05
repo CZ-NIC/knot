@@ -283,7 +283,7 @@ static int zones_expire_ev(event_t *e)
 	/* Early finish this event to prevent lockup during cancellation. */
 	dbg_zones("zones: zone expired, removing from database\n");
 	evsched_event_finished(e->parent);
-	knot_zone_deep_free(&old_zone, 1);
+	knot_zone_deep_free(&old_zone, 1, 0);
 
 	return 0;
 }
@@ -655,7 +655,7 @@ static int zones_load_zone(knot_zonedb_t *zonedb, const char *zone_name,
 			knot_zone_set_version(zone, s.st_mtime);
 
 			if (knot_zonedb_add_zone(zonedb, zone) != 0){
-				knot_zone_deep_free(&zone, 0);
+				knot_zone_deep_free(&zone, 0, 0);
 				zone = 0;
 			}
 		}
@@ -1076,7 +1076,7 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 						dbg_zones("zones: failed to add "
 						          "stub zone '%'s.\n",
 						          z->name);
-						knot_zone_deep_free(&sz, 0);
+						knot_zone_deep_free(&sz, 0, 0);
 						sz = 0;
 					} else {
 						log_server_info("Will attempt to "

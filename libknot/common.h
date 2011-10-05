@@ -73,6 +73,7 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 /*! \brief Optimize for x to be false value. */
 #define unlikely(x)     __builtin_expect((x),0)
 #endif
+
 /*! \todo Refactor theese. We should have an allocator function handling this.*/
 #ifndef ERR_ALLOC_FAILED
 #define ERR_ALLOC_FAILED fprintf(stderr, "Allocation failed at %s:%d (%s ver.%s)\n", \

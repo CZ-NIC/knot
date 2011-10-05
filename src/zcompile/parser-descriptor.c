@@ -278,6 +278,8 @@ static parser_rrtype_descriptor_t
 
     /* There's a GNU extension that works like this: [first ... last] = value */
 
+        [53 ... 98] = { PARSER_RRTYPE_TYPEXXX, T_UTYPE, NULL, 1, { PARSER_RDATA_WF_BINARY }},
+
 	/* 99 */
 	[99] = { PARSER_RRTYPE_SPF, T_SPF, "SPF", PARSER_MAX_RDATA_ITEMS,
 	  { PARSER_RDATA_WF_TEXT, PARSER_RDATA_WF_TEXT,
@@ -312,6 +314,7 @@ static parser_rrtype_descriptor_t
 	    PARSER_RDATA_WF_TEXT, PARSER_RDATA_WF_TEXT,
 	    PARSER_RDATA_WF_TEXT, PARSER_RDATA_WF_TEXT,
 	    PARSER_RDATA_WF_TEXT, PARSER_RDATA_WF_TEXT }, false },
+	[100 ... 32768] = { PARSER_RRTYPE_TYPEXXX, T_UTYPE, NULL, 1, { PARSER_RDATA_WF_BINARY }},
 	/* 32769 */
 	[32769] = { PARSER_RRTYPE_DLV, T_DLV, "DLV", 4,
 	  { PARSER_RDATA_WF_SHORT, PARSER_RDATA_WF_BYTE,

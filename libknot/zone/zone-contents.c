@@ -2332,7 +2332,8 @@ void knot_zone_contents_free(knot_zone_contents_t **contents)
 
 /*----------------------------------------------------------------------------*/
 
-void knot_zone_contents_deep_free(knot_zone_contents_t **contents)
+void knot_zone_contents_deep_free(knot_zone_contents_t **contents,
+                                  int destroy_dname_table)
 {
 	if (contents == NULL || *contents == NULL) {
 		return;
@@ -2377,7 +2378,11 @@ void knot_zone_contents_deep_free(knot_zone_contents_t **contents)
 
 		knot_nsec3_params_free(&(*contents)->nsec3_params);
 
-		knot_dname_table_deep_free(&(*contents)->dname_table);
+		if (destroy_dname_table) {
+			knot_dname_table_destroy(&(*contents)->dname_table);
+		} else {
+			knot_dname_table_deep_free(&(*contents)->dname_table);
+		}
 	}
 
 	free((*contents));

@@ -120,7 +120,8 @@ enum parser_rr_type {
 
 	// totally weird numbers (cannot use for indexing)
 	PARSER_RRTYPE_TA = 32768, /*!< DNSSEC Trust Authorities */
-	PARSER_RRTYPE_DLV = 32769 /*!< RFC 4431 */
+	PARSER_RRTYPE_DLV = 32769, /*!< RFC 4431 */
+	PARSER_RRTYPE_TYPEXXX = 32770
 };
 
 /*!

@@ -214,7 +214,8 @@ void knot_zone_free(knot_zone_t **zone)
 
 /*----------------------------------------------------------------------------*/
 
-void knot_zone_deep_free(knot_zone_t **zone, int free_rdata_dnames)
+void knot_zone_deep_free(knot_zone_t **zone, int free_rdata_dnames,
+                         int destroy_dname_table)
 {
 	if (zone == NULL || *zone == NULL) {
 		return;
@@ -232,15 +233,15 @@ dbg_zone_exec(
 	dbg_zone("Destroying zone %p, name: %s.\n", *zone, name);
 	free(name);
 );
-	
+
+	knot_dname_release((*zone)->name);
+
 	/* Call zone data destructor if exists. */
 	if ((*zone)->dtor) {
 		(*zone)->dtor(*zone);
 	}
 
-	knot_dname_release((*zone)->name);
-
-	knot_zone_contents_deep_free(&(*zone)->contents);
+	knot_zone_contents_deep_free(&(*zone)->contents, destroy_dname_table);
 	free(*zone);
 	*zone = NULL;
 }

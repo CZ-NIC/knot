@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <assert.h>
 #include <netinet/in.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 #include "libknot/common.h"
 #include "knot/zone/zone-dump.h"
@@ -15,22 +17,20 @@
 
 #define ZONECHECKS_VERBOSE
 
-/*! \note For space and speed purposes, dname ID (to be later used in loading)
- * is being stored in dname->node field. Not to be confused with dname's actual
- * node.
- */
-
-/*! \note Contents of dump file:
- * MAGIC(knotxx) NUMBER_OF_NORMAL_NODES NUMBER_OF_NSEC3_NODES
+/*! \note Contents of a dump file:
+ * MAGIC(knotxx) db_filename dname_table
+ * NUMBER_OF_NORMAL_NODES NUMBER_OF_NSEC3_NODES
  * [normal_nodes] [nsec3_nodes]
+ * --------------------------------------------
+ * dname_table is dumped as follows:
+ * NUMBER_OF_DNAMES [dname_wire_length dname_wire label_count dname_labels ID]
  * node has following format:
- * owner_size owner_wire owner_label_size owner_labels owner_id
+ * owner_id
  * node_flags node_rrset_count [node_rrsets]
  * rrset has following format:
  * rrset_type rrset_class rrset_ttl rrset_rdata_count rrset_rrsig_count
  * [rrset_rdata] [rrset_rrsigs]
- * rdata can either contain full dnames (that is with labels but without ID)
- * or dname ID, if dname is in the zone
+ * rdata can contain either dname ID,
  * or raw data stored like this: data_len [data]
  */
 
@@ -41,7 +41,7 @@ static const uint MAX_CNAME_CYCLE_DEPTH = 15;
  *       so that code does not have to change if new errors are added.
  */
 enum zonechecks_errors {
-	ZC_ERR_ALLOC = -37,
+	ZC_ERR_ALLOC = -40,
 	ZC_ERR_UNKNOWN,
 
 	ZC_ERR_MISSING_SOA,
@@ -80,9 +80,12 @@ enum zonechecks_errors {
 	ZC_ERR_NSEC3_GENERAL_ERROR,
 
 	ZC_ERR_CNAME_CYCLE,
+	ZC_ERR_DNAME_CYCLE,
 	ZC_ERR_CNAME_EXTRA_RECORDS,
+	ZC_ERR_DNAME_EXTRA_RECORDS,
 	ZC_ERR_CNAME_EXTRA_RECORDS_DNSSEC,
 	ZC_ERR_CNAME_MULTIPLE,
+	ZC_ERR_DNAME_MULTIPLE,
 
 	ZC_ERR_CNAME_GENERAL_ERROR,
 
@@ -147,12 +150,17 @@ static char *error_messages[(-ZC_ERR_ALLOC) + 1] = {
 
 	[-ZC_ERR_CNAME_CYCLE] =
 	"CNAME: CNAME cycle!\n",
+	[-ZC_ERR_DNAME_CYCLE] =
+	"CNAME: DNAME cycle!\n",
 	[-ZC_ERR_CNAME_EXTRA_RECORDS] =
 	"CNAME: Node with CNAME record has other records!\n",
+	[-ZC_ERR_DNAME_EXTRA_RECORDS] =
+	"DNAME: Node with DNAME record has other records!\n",
 	[-ZC_ERR_CNAME_EXTRA_RECORDS_DNSSEC] =
 	"CNAME: Node with CNAME record has other "
 	"records than RRSIG and NSEC/NSEC3!\n",
 	[-ZC_ERR_CNAME_MULTIPLE] = "CNAME: Multiple CNAME records!\n",
+	[-ZC_ERR_DNAME_MULTIPLE] = "DNAME: Multiple DNAME records!\n",
 
 	/* ^
 	   | Important errors (to be logged on first occurence and counted) */
@@ -222,6 +230,8 @@ static err_handler_t *handler_new(char log_cname, char log_glue,
 /*!
  * \brief Prints error message with node information.
  *
+ * \note If \a node is NULL, only total number of errors is printed.
+ *
  * \param handler Error handler.
  * \param node Node with semantic error in it.
  * \param error Type of error.
@@ -230,7 +240,6 @@ static void log_error_from_node(err_handler_t *handler,
 				const knot_node_t *node,
 				uint error)
 {
-	/* TODO not like this */
 	if (node != NULL) {
 		char *name =
 			knot_dname_to_str(knot_node_owner(node));
@@ -260,6 +269,7 @@ static int err_handler_handle_error(err_handler_t *handler,
 				    const knot_node_t *node,
 				    uint error)
 {
+	assert(handler && node);
 	if ((error != 0) &&
 	    (error > ZC_ERR_GLUE_GENERAL_ERROR)) {
 		return ZC_ERR_UNKNOWN;
@@ -275,7 +285,6 @@ static int err_handler_handle_error(err_handler_t *handler,
 
 	if ((error != 0) &&
 	    (error < ZC_ERR_GENERIC_GENERAL_ERROR)) {
-
 		/* The two errors before SOA were handled */
 		log_error_from_node(handler, node, error);
 
@@ -326,6 +335,10 @@ static int err_handler_handle_error(err_handler_t *handler,
  */
 static void err_handler_log_all(err_handler_t *handler)
 {
+	if (handler == NULL) {
+		return;
+	}
+
 	for (int i = ZC_ERR_ALLOC; i < ZC_ERR_GLUE_GENERAL_ERROR; i++) {
 		if (handler->errors[-i] > 0) {
 			log_error_from_node(handler, NULL, i);
@@ -334,8 +347,8 @@ static void err_handler_log_all(err_handler_t *handler)
 }
 
 /*!
- * \brief General argument structure, used to pass multiple
- *        agruments to tree functions.
+ * \brief Arguments to be used with tree traversal functions. Uses void pointers
+ *        to be more versatile.
  *
  */
 struct arg {
@@ -440,7 +453,7 @@ uint16_t type_covered_from_rdata(const knot_rdata_t *rdata)
 static int check_dnskey_rdata(const knot_rdata_t *rdata)
 {
 	/* check that Zone key bit it set - position 7 in net order */
-	/*! \todo FIXME: endian? */
+	/*! \todo FIXME: endian? I swear I've fixed this already, it was 7 i guesss*/
 	uint16_t mask = 1 << 8; //0b0000000100000000;
 
 	uint16_t flags =
@@ -534,6 +547,9 @@ static int dnskey_to_wire(const knot_rdata_t *rdata, uint8_t **wire,
 	/* copy the wire octet by octet */
 
 	/* TODO check if we really have that many items */
+	if (rdata->count < 4) {
+		return KNOT_ERROR;
+	}
 
 	(*wire)[0] = ((uint8_t *)(knot_rdata_item(rdata, 0)->raw_data))[2];
 	(*wire)[1] = ((uint8_t *)(knot_rdata_item(rdata, 0)->raw_data))[3];
@@ -562,6 +578,10 @@ static int check_rrsig_rdata(const knot_rdata_t *rdata_rrsig,
 			     const knot_rrset_t *rrset,
 			     const knot_rrset_t *dnskey_rrset)
 {
+	if (rdata_rrsig == NULL) {
+		return ZC_ERR_RRSIG_NO_RRSIG;
+	}
+
 	if (type_covered_from_rdata(rdata_rrsig) !=
 	    knot_rrset_type(rrset)) {
 		/* zoneparser would not let this happen
@@ -636,9 +656,10 @@ static int check_rrsig_rdata(const knot_rdata_t *rdata_rrsig,
 		uint8_t *dnskey_wire = NULL;
 		uint dnskey_wire_size = 0;
 
-		if (dnskey_to_wire(tmp_dnskey_rdata, &dnskey_wire,
-				   &dnskey_wire_size) != 0) {
-			return ZC_ERR_ALLOC;
+		int ret = 0;
+		if ((ret = dnskey_to_wire(tmp_dnskey_rdata, &dnskey_wire,
+				   &dnskey_wire_size)) != KNOT_EOK) {
+			return ret;
 		}
 
 		uint16_t key_tag_dnskey =
@@ -713,21 +734,22 @@ static int check_rrsig_in_rrset(const knot_rrset_t *rrset,
 	assert(tmp_rdata);
 	assert(tmp_rrsig_rdata);
 	int ret = 0;
+	char all_signed = tmp_rdata && tmp_rrsig_rdata;
 	do {
 		if ((ret = check_rrsig_rdata(tmp_rrsig_rdata,
 					     rrset,
 					     dnskey_rrset)) != 0) {
 			return ret;
 		}
-	} while ((tmp_rdata = knot_rrset_rdata_next(rrset, tmp_rdata))
-		!= NULL &&
+
+		all_signed = tmp_rdata && tmp_rrsig_rdata;
+	} while (((tmp_rdata = knot_rrset_rdata_next(rrset, tmp_rdata))
+		!= NULL) &&
 		((tmp_rrsig_rdata =
 			knot_rrset_rdata_next(rrsigs, tmp_rrsig_rdata))
 		!= NULL));
 
-	if (tmp_rdata != NULL &&
-	    tmp_rrsig_rdata != NULL) {
-		/* Not all records in rrset are signed */
+	if (!all_signed) {
 		return ZC_ERR_RRSIG_NOT_ALL;
 	}
 
@@ -782,6 +804,11 @@ static int rdata_nsec_to_type_array(const knot_rdata_item_t *item,
 
 		uint8_t *bitmap =
 			malloc(sizeof(uint8_t) * (bitmap_size));
+		if (bitmap == NULL) {
+			ERR_ALLOC_FAILED;
+			free(*array);
+			return KNOT_ENOMEM;
+		}
 
 		memcpy(bitmap, data + i + increment,
 		       bitmap_size);
@@ -794,7 +821,12 @@ static int rdata_nsec_to_type_array(const knot_rdata_item_t *item,
 				void *tmp = realloc(*array,
 						    sizeof(uint16_t) *
 						    *count);
-				CHECK_ALLOC_LOG(tmp, KNOT_ENOMEM);
+				if (tmp == NULL) {
+					ERR_ALLOC_FAILED;
+					free(bitmap);
+					free(*array);
+					return KNOT_ENOMEM;
+				}
 				*array = tmp;
 				(*array)[*count - 1] = j + window * 256;
 			}
@@ -844,11 +876,10 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 						 ZC_ERR_NSEC3_NOT_FOUND);
 			}
 
-/* ???			if (nsec3_node == NULL) {
-				return -3;
-			} */
-
-			assert(nsec3_node == NULL); /* TODO error */
+			if (nsec3_node == NULL) {
+				/* Probably should not ever happen */
+				return ZC_ERR_NSEC3_NOT_FOUND;
+			}
 
 			assert(nsec3_previous);
 
@@ -862,8 +893,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 			uint8_t flags =
 		((uint8_t *)(previous_rrset->rdata->items[1].raw_data))[2];
 
-			/*! \todo FIXME: check this. */
-			uint8_t opt_out_mask = 1 << 0; //0b00000001;
+			uint8_t opt_out_mask = 1;
 
 			if (!(flags & opt_out_mask)) {
 				err_handler_handle_error(handler, node,
@@ -876,6 +906,11 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 		knot_node_rrset(nsec3_node, KNOT_RRTYPE_NSEC3);
 
 	assert(nsec3_rrset);
+
+	const knot_rrset_t *soa_rrset =
+		knot_node_rrset(knot_zone_contents_apex(zone),
+	                        KNOT_RRTYPE_SOA);
+	assert(soa_rrset);
 
 	uint32_t minimum_ttl =
 		knot_wire_read_u32((uint8_t *)
@@ -1000,31 +1035,46 @@ static int semantic_checks_plain(knot_zone_contents_t *zone,
 			err_handler_handle_error(handler, node,
 						 ZC_ERR_CNAME_CYCLE);
 		}
-	}
 
-	/* TODO move things below to the if above */
-
-	/* No DNSSEC and yet there is more than one rrset in node */
-	if (cname_rrset && do_checks == 1 &&
-	    knot_node_rrset_count(node) != 1) {
-		err_handler_handle_error(handler, node,
-					 ZC_ERR_CNAME_EXTRA_RECORDS);
-	} else if (cname_rrset &&
-		   knot_node_rrset_count(node) != 1) {
-		/* With DNSSEC node can contain RRSIG or NSEC */
-		if (!(knot_node_rrset(node, KNOT_RRTYPE_RRSIG) ||
-		      knot_node_rrset(node, KNOT_RRTYPE_NSEC))) {
+		/* No DNSSEC and yet there is more than one rrset in node */
+		if (do_checks == 1 &&
+		                knot_node_rrset_count(node) != 1) {
 			err_handler_handle_error(handler, node,
-					 ZC_ERR_CNAME_EXTRA_RECORDS_DNSSEC);
+			                         ZC_ERR_CNAME_EXTRA_RECORDS);
+		} else if (knot_node_rrset_count(node) != 1) {
+			/* With DNSSEC node can contain RRSIG or NSEC */
+			if (!(knot_node_rrset(node, KNOT_RRTYPE_RRSIG) ||
+			      knot_node_rrset(node, KNOT_RRTYPE_NSEC)) ||
+			    knot_node_rrset_count(node) > 3) {
+				err_handler_handle_error(handler, node,
+				ZC_ERR_CNAME_EXTRA_RECORDS_DNSSEC);
+			}
+		}
+
+		if (knot_rrset_rdata(cname_rrset)->count != 1) {
+			err_handler_handle_error(handler, node,
+			                         ZC_ERR_CNAME_MULTIPLE);
 		}
 	}
 
-	/* same thing */
+	const knot_rrset_t *dname_rrset =
+		knot_node_rrset(node, KNOT_RRTYPE_DNAME);
+	if (dname_rrset != NULL) {
+		if (check_cname_cycles_in_zone(zone, dname_rrset) !=
+				KNOT_EOK) {
+			err_handler_handle_error(handler, node,
+						 ZC_ERR_DNAME_CYCLE);
+		}
 
-	if (cname_rrset &&
-	    knot_rrset_rdata(cname_rrset)->count != 1) {
-		err_handler_handle_error(handler, node,
-					 ZC_ERR_CNAME_MULTIPLE);
+		if (knot_node_rrset(node, KNOT_RRTYPE_CNAME)) {
+			err_handler_handle_error(handler, node,
+			                         ZC_ERR_DNAME_EXTRA_RECORDS);
+		}
+
+		if (knot_rrset_rdata(dname_rrset)->count != 1) {
+			err_handler_handle_error(handler, node,
+			                         ZC_ERR_DNAME_MULTIPLE);
+		}
 	}
 
 	/* check for glue records at zone cuts */
@@ -1095,10 +1145,9 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 
 	int ret = 0;
 
-	/* there is no point in checking non_authoritative node */
-	for (int i = 0; i < rrset_count && auth; i++) {
+	for (int i = 0; i < rrset_count; i++) {
 		const knot_rrset_t *rrset = rrsets[i];
-		if (!deleg &&
+		if (auth && !deleg &&
 		    (ret = check_rrsig_in_rrset(rrset, dnskey_rrset,
 						nsec3)) != 0) {
 /*			log_zone_error("RRSIG %d node %s\n", ret,
@@ -1274,7 +1323,7 @@ static void do_checks_in_tree(knot_node_t *node, void *data)
 	char do_checks = *((char *)(args->arg3));
 
 	if (do_checks) {
-		 semantic_checks_plain(zone, node, do_checks, handler);
+		semantic_checks_plain(zone, node, do_checks, handler);
 	}
 
 	if (do_checks > 1) {
@@ -1318,9 +1367,9 @@ void zone_do_sem_checks(knot_zone_contents_t *zone, char do_checks,
 static crc_t knot_dump_crc; /*!< \brief Global CRC variable. */
 
 static inline int fwrite_to_file_crc(const void *src,
-                                     size_t size, size_t n, FILE *fp)
+                                     size_t size, size_t n, FILE *f)
 {
-	int rc = fwrite(src, size, n, fp);
+	int rc = fwrite(src, size, n, f);
 	if (rc != n) {
 		fprintf(stderr, "fwrite: invalid write %d (expected %zu)\n", rc,
 			n);
@@ -1458,7 +1507,9 @@ static void knot_rdata_dump_binary(knot_rdata_t *rdata,
 			assert(rdata->items[i].dname != NULL);
 			knot_dname_t *wildcard = NULL;
 
-			if (rdata->items[i].dname->node != NULL) {
+			if (rdata->items[i].dname->node != NULL &&
+				rdata->items[i].dname->node->owner !=
+				rdata->items[i].dname) {
 				wildcard = rdata->items[i].dname->node->owner;
 			}
 
@@ -1479,7 +1530,7 @@ static void knot_rdata_dump_binary(knot_rdata_t *rdata,
 			}
 
 			/* Write in the zone bit */
-			if (rdata->items[i].dname->node != NULL) {
+			if (rdata->items[i].dname->node != NULL && !wildcard) {
 				fwrite_wrapper((uint8_t *)"\1",
 				       sizeof(uint8_t), 1, f, stream,
 				               stream_size);
@@ -1911,13 +1962,18 @@ static void dump_node_to_file(knot_node_t *node, void *data)
 int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
 			int do_checks, const char *sfilename)
 {
-	FILE *f;
-	f = fopen(filename, "wb");
-	if (f == NULL) {
+	/* Open .new file. */
+	char new_path[strlen(filename) + strlen(".new") + 1];
+	memcpy(new_path, filename, strlen(filename) + 1);
+	strcat(new_path, ".new");
+	mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+	int fd = open(new_path, O_WRONLY | O_CREAT | O_TRUNC, mode);
+	if (fd == -1) {
 		return KNOT_EBADARG;
 	}
 
-	dbg_zdump("dumping zone\n");
+	FILE *f = fdopen(fd, "wb");
+	assert(f);
 
 //	skip_list_t *encloser_list = skip_create_list(compare_pointers);
 	arg_t arguments;
@@ -2013,8 +2069,7 @@ int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
 		return KNOT_ERROR;
 	}
 
-	arguments.arg1 = f;
-//	arguments.arg2 = encloser_list;
+	arguments.arg1 = (void *)f;
 	arguments.arg3 = zone;
 
 	/* TODO is there a way how to stop the traversal upon error? */
@@ -2023,13 +2078,14 @@ int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
 
 	knot_zone_contents_nsec3_apply_inorder(zone, dump_node_to_file,
 					(void *)&arguments);
+	fclose(f);
 
 	knot_dump_crc = crc_finalize(knot_dump_crc);
 	/* Write CRC to separate .crc file. */
 	char *crc_path =
 		malloc(sizeof(char) * (strlen(filename) + strlen(".crc") + 1));
 	if (unlikely(!crc_path)) {
-		fclose(f);
+		close(fd);
 		return KNOT_ENOMEM;
 	}
 	memset(crc_path, 0,
@@ -2041,7 +2097,7 @@ int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
 	if (unlikely(!f_crc)) {
 		dbg_zload("knot_zload_open: failed to open '%s'\n",
 		                   crc_path);
-		fclose(f);
+		close(fd);
 		free(crc_path);
 		return ENOENT;
 	}
@@ -2050,7 +2106,42 @@ int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
 	fprintf(f_crc, "%lu\n", (unsigned long)knot_dump_crc);
 	fclose(f_crc);
 
-	fclose(f);
+	close(fd);
+	mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+	fd = open(filename, O_WRONLY | O_CREAT, mode);
+	if (fd == -1) {
+		fprintf(stderr, "%s\n", strerror(errno));
+		fprintf(stderr, "Could not open destination file! Use '%s' "
+		        "file instead.\n", new_path);
+		return KNOT_ERROR;
+	}
+
+	/* Try to obtain exclusive lock for originally given file. */
+	if (fcntl(fd, F_SETLK, knot_file_lock(F_WRLCK, SEEK_SET)) == -1) {
+		fprintf(stderr, "Could not lock destination file for write! "
+		        "Use '%s' file instead.\n", new_path);
+		close(fd);
+		return KNOT_ERROR;
+	}
+
+	/* Move .new file to original file. */
+	if (rename(new_path, filename) != 0) {
+		fprintf(stderr, "Could not move to originally given file! "
+		        "Use '%s' file instead.\n", new_path);
+		close(fd);
+		return KNOT_ERROR;
+	}
+
+//	printf("Renamed, holding the lock\n");
+//	getchar();
+
+	/* Release the lock. */
+	if (fcntl(fd, F_SETLK, knot_file_lock(F_UNLCK, SEEK_SET)) == -1) {
+		fprintf(stderr, "Could not unlock destination file!\n");
+		return KNOT_ERROR;
+	}
+
+	close(fd);
 
 	return KNOT_EOK;
 }

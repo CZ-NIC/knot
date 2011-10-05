@@ -64,8 +64,10 @@ static int compare_dname_table_nodes(struct dname_table_node *n1,
  */
 static void delete_dname_table_node(struct dname_table_node *node, void *data)
 {
-	if (data) {
+	if ((int)data == 1) {
 		knot_dname_release(node->dname);
+	} else if ((int)data == 2) {
+		knot_dname_free(&node->dname);
 	}
 
 	/*!< \todo it would be nice to set pointers to NULL. */
@@ -280,6 +282,22 @@ void knot_dname_table_deep_free(knot_dname_table_t **table)
 	/* Walk the tree and free each node, but free the dnames. */
 	TREE_POST_ORDER_APPLY((*table)->tree, dname_table_node, avl,
 			      delete_dname_table_node, (void *) 1);
+
+	free((*table)->tree);
+
+	free(*table);
+	*table = NULL;
+}
+
+void knot_dname_table_destroy(knot_dname_table_t **table)
+{
+	if (table == NULL || *table == NULL) {
+		return;
+	}
+
+	/* Walk the tree and free each node, but free the dnames. */
+	TREE_POST_ORDER_APPLY((*table)->tree, dname_table_node, avl,
+			      delete_dname_table_node, (void *) 2);
 
 	free((*table)->tree);
 
