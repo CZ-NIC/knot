@@ -1800,7 +1800,7 @@ static int xfrin_apply_add_normal(xfrin_changes_t *changes,
 			dbg_xfrin("Failed to add RRSet to node.\n");
 			return KNOT_ERROR;
 		}
-		return KNOT_EOK; // done, continue
+		return 1; // return 1 to indicate the add RRSet was used
 	}
 
 	knot_rrset_t *old = *rrset;
@@ -1917,7 +1917,7 @@ dbg_xfrin_exec(
 			return KNOT_ERROR;
 		}
 		
-		return KNOT_EOK;
+		return 1;
 	} else {
 		knot_rrset_t *old = knot_rrset_get_rrsigs(*rrset);
 		assert(old != NULL);
@@ -1994,7 +1994,24 @@ static int xfrin_apply_add(knot_zone_contents_t *contents,
 			                             node, &rrset);
 		}
 		
-		if (ret != KNOT_EOK) {
+		if (ret > 0) {
+			// the ADD RRSet was used, i.e. it should be removed
+			// from the changeset and saved in the list of new
+			// RRSets
+			ret = xfrin_changes_check_rrsets(
+				&changes->new_rrsets,
+				&changes->new_rrsets_count,
+				&changes->new_rrsets_allocated, 1);
+			if (ret != KNOT_EOK) {
+				dbg_xfrin("Failed to add old RRSet to list.\n");
+				return ret;
+			}
+
+			changes->new_rrsets[changes->new_rrsets_count++] =
+					chset->add[i];
+
+			chset->add[i] = NULL;
+		} else if (ret != KNOT_EOK) {
 			return ret;
 		}
 	}
@@ -2066,12 +2083,28 @@ static int xfrin_apply_replace_soa(knot_zone_contents_t *contents,
 
 	changes->old_rrsets[changes->old_rrsets_count++] = rrset;
 
-	// and just insert the new SOA RRSet to the node
+	// save the SOA to the new RRSet, so that it is deleted if the
+	// apply fails
+	ret = xfrin_changes_check_rrsets(&changes->new_rrsets,
+	                                 &changes->new_rrsets_count,
+	                                 &changes->new_rrsets_allocated, 1);
+	if (ret != KNOT_EOK) {
+		dbg_xfrin("Failed to add old RRSet to list.\n");
+		return ret;
+	}
+
+	// insert the new SOA RRSet to the node
 	ret = knot_node_add_rrset(node, chset->soa_to, 0);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to add RRSet to node.\n");
 		return KNOT_ERROR;
 	}
+
+	changes->new_rrsets[changes->new_rrsets_count++] = chset->soa_to;
+
+	// remove the SOA from the changeset, so it will not be deleted after
+	// successful apply
+	chset->soa_to = NULL;
 
 	return KNOT_EOK;
 }
