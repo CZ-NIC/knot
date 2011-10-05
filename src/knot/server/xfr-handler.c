@@ -198,7 +198,7 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 		ret = zones_save_zone(data);
 		if (ret != KNOTD_EOK) {
 			knot_zone_contents_deep_free(
-			    (knot_zone_contents_t **)&data->data);
+			    (knot_zone_contents_t **)&data->data, 0);
 			data->data = 0;
 			log_zone_error("AXFR failed to save "
 			               "transferred zone '%s/IN' - %s\n",
