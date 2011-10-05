@@ -1749,6 +1749,7 @@ static void process_rrsigs_in_node(knot_zone_contents_t *zone,
 						 tmp->data) != 0) {
 			rrset_list_add(&parser->rrsig_orphans,
 				       tmp->data);
+			parser->rrsig_orphan_count++;
 		}
 		tmp = tmp->next;
 	}
@@ -2127,6 +2128,12 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	dbg_zp("%u orphans found\n", found_orphans);
 
 	rrset_list_delete(&parser->rrsig_orphans);
+
+	if (found_orphans != parser->rrsig_orphan_count) {
+		fprintf(stderr,
+		        "There are unassigned RRSIGs in the zone!\n");
+		parser->errors++;
+	}
 
 	knot_zone_contents_adjust(contents, 0);
 

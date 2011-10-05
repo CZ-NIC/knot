@@ -102,6 +102,7 @@ struct zparser {
 	 * \brief list of RRSIGs that were not inside their nodes in zone file
 	 */
 	rrset_list_t *rrsig_orphans;
+	unsigned long rrsig_orphan_count; /*!< RRSIG orphan count */
 
 	knot_dname_t *root_domain; /*!< Root domain name. */
 	slab_cache_t *parser_slab; /*!< Slab for parser. */
