@@ -2379,6 +2379,10 @@ void knot_zone_contents_deep_free(knot_zone_contents_t **contents,
 		knot_nsec3_params_free(&(*contents)->nsec3_params);
 
 		if (destroy_dname_table) {
+			/*
+			 * Hack, used in zcompile - destroys the table using
+			 * dname_free() instead of dname_retain().
+			 */
 			knot_dname_table_destroy(&(*contents)->dname_table);
 		} else {
 			knot_dname_table_deep_free(&(*contents)->dname_table);
