@@ -273,8 +273,6 @@ static int zones_expire_ev(event_t *e)
 		return 0;
 	}
 	
-	assert(contents == knot_zone_contents(zone));
-	
 	rcu_read_unlock();
 	synchronize_rcu();
 	
