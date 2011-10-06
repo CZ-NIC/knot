@@ -79,6 +79,24 @@ AC_ARG_ENABLE([debug],
         AC_DEFINE([DEBUG_ENABLE_BRIEF], [1], [Enable brief debugging messages.])
         ;;
     esac], [])
+    
+# recvmmsg() (valgrind doesn't support it, so disable for debugging)
+AC_ARG_ENABLE([recvmmsg],
+    AS_HELP_STRING([--enable-recvmmsg=yes|no], [enable recvmmsg() (kernel support required) [default=yes]]),
+    [case "${enableval}" in
+      yes)
+         AC_DEFINE([ENABLE_RECVMMSG], [1], [recvmmsg enabled])
+         ;;
+      no)
+         recvmmsg=false
+         ;;
+      *) 
+         AC_MSG_ERROR([bad value ${enableval} for --enable-recvmmsg])
+         ;;
+    esac], [
+    AC_DEFINE([ENABLE_RECVMMSG], [1], [recvmmsg enabled])
+    recvmmsg=true
+    ])
 
 # Checks for libraries.
 # FIXME: Replace `main' with a function in `-lm':

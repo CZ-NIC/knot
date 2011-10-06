@@ -47,9 +47,14 @@ static int xfr_udp_timeout(event_t *e)
 	int r_port = sockaddr_portnum(&data->addr);
 
 	/* Close socket. */
-	log_zone_info("%s query to %s:%d - timeout exceeded.\n",
-		      data->type == XFR_TYPE_SOA ? "SOA" : "NOTIFY",
-		      r_addr, r_port);
+	knot_zone_t *z = data->zone;
+	if (z && knot_zone_get_contents(z) && knot_zone_data(z)) {
+		zonedata_t *zd = (zonedata_t *)knot_zone_data(z);
+		log_zone_info("%s '%s' query to %s:%d - timeout exceeded.\n",
+		              data->type == XFR_TYPE_SOA ? "SOA" : "NOTIFY",
+		              zd->conf->name,
+		              r_addr, r_port);
+	}
 	knot_ns_xfr_t cr = {};
 	cr.type = XFR_TYPE_CLOSE;
 	cr.session = data->session;
@@ -384,14 +389,16 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 	
 	/* Enqueue to worker that has zone locked for XFR/IN. */
 	int ret = pthread_mutex_trylock(&zd->xfr_in.lock);
-	if (ret < 0) {
+	if (ret != 0) {
 		dbg_xfr_verb("xfr: XFR/IN switching to another thread, "
 		             "zone '%s' is already in transfer\n",
 		             zd->conf->name);
 		xfrworker_t *nextw = (xfrworker_t *)zd->xfr_in.wrkr;
-		assert(nextw != w);
+		if (nextw == 0) {
+			nextw = w;
+		}
 		evqueue_write(nextw->q, data, sizeof(knot_ns_xfr_t));
-		return KNOTD_EBUSY;
+		return KNOTD_EOK;
 	} else {
 		zd->xfr_in.wrkr = w;
 	}
@@ -474,12 +481,6 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 		return ret;
 	}
 
-	/* Send XFR query. */
-	log_server_info("%cXFR transfer of zone '%s/IN' with %s:%d started.\n",
-			data->type == XFR_TYPE_AIN ? 'A' : 'I',
-	                zd->conf->name,
-			r_addr, r_port);
-	
 	/* Unlock zone contents. */
 	rcu_read_unlock();
 	
@@ -489,10 +490,16 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 	ret = data->send(data->session, &data->addr, data->wire, bufsize);
 	if (ret != bufsize) {
 		log_server_notice("Failed to send %cXFR query.",
-				  data->type == XFR_TYPE_AIN ? 'A' : 'I');
+		                  data->type == XFR_TYPE_AIN ? 'A' : 'I');
 		xfr_free_task(task);
 		return KNOTD_ERROR;
 	}
+	
+	/* Send XFR query. */
+	log_server_info("%cXFR transfer of zone '%s/IN' with %s:%d started.\n",
+			data->type == XFR_TYPE_AIN ? 'A' : 'I',
+	                zd->conf->name,
+			r_addr, r_port);
 
 	return KNOTD_EOK;
 }
@@ -821,14 +828,13 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		}
 		break;
 	case XFR_TYPE_AIN:
-	case XFR_TYPE_IIN:
 		req_type = "AXFR/IN";
+	case XFR_TYPE_IIN:
 		if (xfr.type == XFR_TYPE_IIN) {
 			req_type = "IXFR/IN";
 		}
 		
-		xfr_client_start(w, &xfr);
-		ret = KNOTD_EOK;
+		ret = xfr_client_start(w, &xfr);
 		break;
 	case XFR_TYPE_SOA:
 	case XFR_TYPE_NOTIFY:

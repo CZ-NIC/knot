@@ -253,9 +253,10 @@ static inline int udp_master_recvfrom(dthread_t *thread, stat_t *thread_stat)
 	return KNOTD_EOK;
 }
 
+#ifdef ENABLE_RECVMMSG
+#ifdef MSG_WAITFORONE
 static inline int udp_master_recvmmsg(dthread_t *thread, stat_t *thread_stat)
 {
-#ifdef MSG_WAITFORONE
 	iohandler_t *h = (iohandler_t *)thread->data;
 	knot_nameserver_t *ns = h->server->nameserver;
 	int sock = dup(h->fd);
@@ -348,9 +349,10 @@ static inline int udp_master_recvmmsg(dthread_t *thread, stat_t *thread_stat)
 	free(iov);
 	free(msgs);
 	close(sock);
-#endif
 	return KNOTD_EOK;
 }
+#endif
+#endif
 
 int udp_master(dthread_t *thread)
 {
@@ -366,6 +368,7 @@ int udp_master(dthread_t *thread)
 	/* Set socket options. */
 	int flag = 1;
 #ifndef DISABLE_IPV6
+#
 	if (handler->type == AF_INET6) {
 		/* Disable dual-stack for performance reasons. */
 		setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &flag, sizeof(flag));
@@ -378,12 +381,12 @@ int udp_master(dthread_t *thread)
 #endif
 	if (handler->type == AF_INET) {
 
-#ifdef IP_PMTUDISC_DONT
-		/* Disable fragmentation. */
-		flag = IP_PMTUDISC_DONT;
-		setsockopt(sock, IPPROTO_IP, IP_MTU_DISCOVER, &flag, sizeof(flag));
-		flag = 1;
-#endif
+//#ifdef IP_PMTUDISC_DONT
+//		/* Disable fragmentation. */
+//		flag = IP_PMTUDISC_DONT;
+//		setsockopt(sock, IPPROTO_IP, IP_MTU_DISCOVER, &flag, sizeof(flag));
+//		flag = 1;
+//#endif
 	}
 
 	/* in case of STAT_COMPILE the following code will declare thread_stat
@@ -398,9 +401,16 @@ int udp_master(dthread_t *thread)
 	dbg_net_verb("udp: thread started (worker %p).\n", thread);
 	int ret = KNOTD_EOK;
 
+#ifdef ENABLE_RECVMMSG
+	
+/* Check if MSG_WAITFORONE is supported. */
 #ifdef MSG_WAITFORONE
 	ret = udp_master_recvmmsg(thread, thread_stat);
-#else
+#else /* Don't have MSG_WAITFORONE */
+	ret = udp_master_recvfrom(thread, thread_stat);
+#endif
+	
+#else /* Don't have ENABLE_RECVMMSG */
 	ret = udp_master_recvfrom(thread, thread_stat);
 #endif
 

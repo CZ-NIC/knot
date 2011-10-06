@@ -262,6 +262,9 @@ static int zones_expire_ev(event_t *e)
 	}
 
 	zonedata_t *zd = (zonedata_t *)zone->data;
+	
+	/* Won't accept any pending SOA responses. */
+	zd->xfr_in.next_id = -1;
 
 	/* Mark the zone as expired. This will remove the zone contents. */
 	knot_zone_contents_t *contents = knot_zonedb_expire_zone(
@@ -281,6 +284,20 @@ static int zones_expire_ev(event_t *e)
 	/* Early finish this event to prevent lockup during cancellation. */
 	dbg_zones("zones: zone expired, removing from database\n");
 	evsched_event_finished(e->parent);
+	
+	/* Cancel REFRESH timer. */
+	if (zd->xfr_in.timer) {
+		evsched_cancel(e->parent, zd->xfr_in.timer);
+		evsched_event_free(e->parent, zd->xfr_in.timer);
+		zd->xfr_in.timer = 0;
+	}
+
+	/* Free EXPIRE timer. */
+	if (zd->xfr_in.expire) {
+		evsched_event_free(e->parent, zd->xfr_in.expire);
+		zd->xfr_in.expire = 0;
+	}
+	
 	knot_zone_contents_deep_free(&contents, 0);
 
 	return 0;
@@ -329,13 +346,14 @@ static int zones_refresh_ev(event_t *e)
 
 		/* Enqueue XFR request. */
 		int locked = pthread_mutex_trylock(&zd->xfr_in.lock);
-		if (locked) {
+		if (locked != 0) {
 			dbg_zones("zones: already bootstrapping '%s'\n",
 			          zd->conf->name);
-			pthread_mutex_unlock(&zd->xfr_in.lock);
+			return KNOTD_EOK;
 		} else {
 			log_zone_info("Attempting to bootstrap zone %s from master\n",
 			              zd->conf->name);
+			pthread_mutex_unlock(&zd->xfr_in.lock);
 		}
 		
 		return xfr_request(zd->server->xfr_h, &xfr_req);
@@ -1394,6 +1412,13 @@ int zones_xfr_check_zone(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 		*rcode = KNOT_RCODE_SERVFAIL;
 		return KNOTD_ERROR;
 	}
+	
+	/* Check zone contents. */
+	if (knot_zone_contents(xfr->zone) == NULL) {
+		dbg_zones("zones: invalid zone contents for zone %p\n", xfr->zone);
+		*rcode = KNOT_RCODE_SERVFAIL;
+		return KNOTD_EEXPIRED;
+	}
 
 	// Check xfr-out ACL
 	if (acl_match(zd->xfr_out, &xfr->addr) == ACL_DENY) {
@@ -1480,6 +1505,18 @@ int zones_process_response(knot_nameserver_t *nameserver,
 		}
 		
 		assert(ret > 0);
+		
+		/* Already transferring. */
+		if (pthread_mutex_trylock(&zd->xfr_in.lock) != 0) {
+			/* Unlock zone contents. */
+			dbg_zones("zones: SOA response received, but zone is "
+			          "being transferred, refusing to start another "
+			          "transfer");
+			rcu_read_unlock();
+			return KNOTD_EOK;
+		} else {
+			pthread_mutex_unlock(&zd->xfr_in.lock);
+		}
 
 		/* Prepare XFR client transfer. */
 		knot_ns_xfr_t xfr_req;
@@ -1913,14 +1950,14 @@ int zones_store_changesets(knot_ns_xfr_t *xfr)
 				event_t *tmr = zd->ixfr_dbsync;
 				if (tmr) {
 					dbg_xfr_verb("xfr: cancelling zonefile "
-					             "SYNC timer of '%'s\n",
+					             "SYNC timer of '%s'\n",
 					             zd->conf->name);
 					evsched_cancel(tmr->parent, tmr);
 				}
 
 				/* Synchronize. */
 				dbg_xfr_verb("xfr: forcing zonefile SYNC "
-				             "of '%'s\n",
+				             "of '%s'\n",
 				             zd->conf->name);
 				ret = zones_zonefile_sync(zone);
 				if (ret != KNOTD_EOK) {
@@ -1937,7 +1974,7 @@ int zones_store_changesets(knot_ns_xfr_t *xfr)
 
 					/* Reschedule. */
 					dbg_xfr_verb("xfr: resuming SYNC "
-					             "of '%'s\n",
+					             "of '%s'\n",
 					             zd->conf->name);
 					evsched_schedule(tmr->parent, tmr,
 					                 timeout);
