@@ -478,12 +478,6 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 		return ret;
 	}
 
-	/* Send XFR query. */
-	log_server_info("%cXFR transfer of zone '%s/IN' with %s:%d started.\n",
-			data->type == XFR_TYPE_AIN ? 'A' : 'I',
-	                zd->conf->name,
-			r_addr, r_port);
-	
 	/* Unlock zone contents. */
 	rcu_read_unlock();
 	
@@ -493,10 +487,16 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 	ret = data->send(data->session, &data->addr, data->wire, bufsize);
 	if (ret != bufsize) {
 		log_server_notice("Failed to send %cXFR query.",
-				  data->type == XFR_TYPE_AIN ? 'A' : 'I');
+		                  data->type == XFR_TYPE_AIN ? 'A' : 'I');
 		xfr_free_task(task);
 		return KNOTD_ERROR;
 	}
+	
+	/* Send XFR query. */
+	log_server_info("%cXFR transfer of zone '%s/IN' with %s:%d started.\n",
+			data->type == XFR_TYPE_AIN ? 'A' : 'I',
+	                zd->conf->name,
+			r_addr, r_port);
 
 	return KNOTD_EOK;
 }
