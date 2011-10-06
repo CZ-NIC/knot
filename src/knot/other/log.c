@@ -226,7 +226,7 @@ static int _log_msg(logsrc_t src, int level, const char *msg)
 int log_msg(logsrc_t src, int level, const char *msg, ...)
 {
 	/* Buffer for log message. */
-	char sbuf[2048];
+	char sbuf[4096];
 	char *buf = sbuf;
 	int buflen = sizeof(sbuf) - 1;
 
@@ -244,9 +244,11 @@ int log_msg(logsrc_t src, int level, const char *msg, ...)
 
 	/* Prepend prefix. */
 	int plen = strlen(prefix);
-	strcpy(buf, prefix);
-	buf += plen;
-	buflen -= plen;
+	if (plen > 0) {
+		strcpy(buf, prefix);
+		buf += plen;
+		buflen -= plen;
+	}
 
 	/* Compile log message. */
 	int ret = 0;
