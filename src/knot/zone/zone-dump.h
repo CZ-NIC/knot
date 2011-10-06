@@ -12,6 +12,7 @@
 #ifndef _KNOT_ZONEDUMP_H_
 #define _KNOT_ZONEDUMP_H_
 
+#include "common/crc.h"
 #include "libknot/zone/zone.h"
 
 /*!
