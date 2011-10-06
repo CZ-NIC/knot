@@ -47,8 +47,9 @@ enum knot_error_t {
 	KNOTD_ENOIPV6, /*!< \brief No IPv6 support. */
 	KNOTD_EMALF, /*!< \brief Malformed data. */
 	KNOTD_ESPACE, /*!< \brief Not enough space provided. */
+	KNOTD_EEXPIRED, /*!< \brief Resource is expired. */
 
-	KNOTD_ERROR_COUNT = 20
+	KNOTD_ERROR_COUNT = 21
 };
 
 /*! \brief Table linking error messages to error codes. */
