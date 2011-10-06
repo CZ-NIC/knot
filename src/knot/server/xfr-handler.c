@@ -240,8 +240,9 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 		}
 		/* Free changesets, but not the data. */
 		knot_changesets_t *chs = (knot_changesets_t *)data->data;
-		free(chs->sets);
-		free(chs);
+		knot_free_changesets(&chs);
+//		free(chs->sets);
+//		free(chs);
 		data->data = 0;
 		log_zone_info("IXFR transfer of zone '%s/IN' "
 		              "%s.\n", zorigin,
