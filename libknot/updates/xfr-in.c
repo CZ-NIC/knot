@@ -2146,7 +2146,16 @@ static int xfrin_apply_replace_soa(knot_zone_contents_t *contents,
 		return ret;
 	}
 
-	changes->old_rrsets[changes->old_rrsets_count++] = rrset;
+	// save also the SOA RDATA, because RDATA are not deleted with the
+	// RRSet
+	ret = xfrin_changes_check_rdata(&changes->old_rdata,
+	                                &changes->old_rdata_types,
+	                                changes->old_rdata_count,
+	                                &changes->old_rdata_allocated, 1);
+	if (ret != KNOT_EOK) {
+		dbg_xfrin("Failed to add old RDATA to list.\n");
+		return ret;
+	}
 
 	// save the SOA to the new RRSet, so that it is deleted if the
 	// apply fails
@@ -2157,6 +2166,13 @@ static int xfrin_apply_replace_soa(knot_zone_contents_t *contents,
 		dbg_xfrin("Failed to add old RRSet to list.\n");
 		return ret;
 	}
+
+	changes->old_rrsets[changes->old_rrsets_count++] = rrset;
+
+	/*! \todo Maybe check if the SOA does not have more RDATA? */
+	changes->old_rdata[changes->old_rdata_count] = rrset->rdata;
+	changes->old_rdata_types[changes->old_rdata_count] = KNOT_RRTYPE_SOA;
+	++changes->old_rdata_count;
 
 	// insert the new SOA RRSet to the node
 	ret = knot_node_add_rrset(node, chset->soa_to, 0);
