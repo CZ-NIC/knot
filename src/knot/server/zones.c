@@ -1950,14 +1950,14 @@ int zones_store_changesets(knot_ns_xfr_t *xfr)
 				event_t *tmr = zd->ixfr_dbsync;
 				if (tmr) {
 					dbg_xfr_verb("xfr: cancelling zonefile "
-					             "SYNC timer of '%'s\n",
+					             "SYNC timer of '%s'\n",
 					             zd->conf->name);
 					evsched_cancel(tmr->parent, tmr);
 				}
 
 				/* Synchronize. */
 				dbg_xfr_verb("xfr: forcing zonefile SYNC "
-				             "of '%'s\n",
+				             "of '%s'\n",
 				             zd->conf->name);
 				ret = zones_zonefile_sync(zone);
 				if (ret != KNOTD_EOK) {
@@ -1974,7 +1974,7 @@ int zones_store_changesets(knot_ns_xfr_t *xfr)
 
 					/* Reschedule. */
 					dbg_xfr_verb("xfr: resuming SYNC "
-					             "of '%'s\n",
+					             "of '%s'\n",
 					             zd->conf->name);
 					evsched_schedule(tmr->parent, tmr,
 					                 timeout);
