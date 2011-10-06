@@ -1023,7 +1023,10 @@ typedef struct {
 	/*!
 	 * Deleted after successful update.
 	 */
-	knot_rdata_t *old_rdata;
+	knot_rdata_t **old_rdata;
+	uint *old_rdata_types;
+	int old_rdata_count;
+	int old_rdata_allocated;
 
 	/*!
 	 * \brief Copied RRSets (i.e. modified by the update).
@@ -1059,6 +1062,8 @@ static void xfrin_changes_free(xfrin_changes_t **changes)
 {
 	free((*changes)->old_nodes);
 	free((*changes)->old_rrsets);
+	free((*changes)->old_rdata);
+	free((*changes)->old_rdata_types);
 	free((*changes)->new_rrsets);
 	free((*changes)->new_nodes);
 	free((*changes)->old_hash_items);
@@ -1130,6 +1135,46 @@ static int xfrin_changes_check_nodes(knot_node_t ***nodes,
 
 /*----------------------------------------------------------------------------*/
 
+static int xfrin_changes_check_rdata(knot_rdata_t ***rdatas, uint **types,
+                                     int count, int *allocated, int to_add)
+{
+	/* Ensure at least requested size is allocated. */
+	int new_count = (count + to_add);
+	assert(new_count >= 0);
+	if (new_count <= *allocated) {
+		return KNOT_EOK;
+	}
+
+	/* Allocate new memory block. */
+	knot_rdata_t **rdatas_new = malloc(new_count * sizeof(knot_rdata_t *));
+	if (rdatas_new == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	uint *types_new = malloc(new_count * sizeof(uint));
+	if (types_new == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	/* Initialize new memory and copy old data. */
+	memset(rdatas_new, 0, new_count * sizeof(knot_rdata_t *));
+	memcpy(rdatas_new, *rdatas, (*allocated) * sizeof(knot_rdata_t *));
+
+	memset(types_new, 0, new_count * sizeof(uint));
+	memcpy(types_new, *types, (*allocated) * sizeof(uint));
+
+	/* Free old rdatas and switch pointers. */
+	free(*rdatas);
+	free(*types);
+	*rdatas = rdatas_new;
+	*types = types_new;
+	*allocated = new_count;
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 static int xfrin_changes_check_hash_items(ck_hash_table_item_t ***items,
                                           int *count, int *allocated)
 {
@@ -1177,7 +1222,7 @@ static void xfrin_zone_contents_free(knot_zone_contents_t **contents)
 
 	knot_nsec3_params_free(&(*contents)->nsec3_params);
 
-	knot_dname_table_free(&(*contents)->dname_table);
+	knot_dname_table_deep_free(&(*contents)->dname_table);
 	
 	free(*contents);
 	*contents = NULL;
@@ -1485,8 +1530,18 @@ static int xfrin_apply_remove_rrsigs(xfrin_changes_t *changes,
 	}
 	
 	// connect the RDATA to the list of old RDATA
-	rdata->next = changes->old_rdata;
-	changes->old_rdata = rdata;
+	ret = xfrin_changes_check_rdata(&changes->old_rdata,
+	                                &changes->old_rdata_types,
+	                                changes->old_rdata_count,
+	                                &changes->old_rdata_allocated, 1);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	changes->old_rdata[changes->old_rdata_count] = rdata;
+	changes->old_rdata_types[changes->old_rdata_count] =
+			knot_rrset_type(remove);
+	++changes->old_rdata_count;
 	
 	return KNOT_EOK;
 }
@@ -1574,8 +1629,18 @@ dbg_xfrin_exec(
 	}
 	
 	// connect the RDATA to the list of old RDATA
-	rdata->next = changes->old_rdata;
-	changes->old_rdata = rdata;
+	ret = xfrin_changes_check_rdata(&changes->old_rdata,
+	                                &changes->old_rdata_types,
+	                                changes->old_rdata_count,
+	                                &changes->old_rdata_allocated, 1);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	changes->old_rdata[changes->old_rdata_count] = rdata;
+	changes->old_rdata_types[changes->old_rdata_count] =
+			knot_rrset_type(remove);
+	++changes->old_rdata_count;
 	
 	return KNOT_EOK;
 }
@@ -2438,8 +2503,30 @@ static void xfrin_cleanup_update(xfrin_changes_t *changes)
 
 	// free old RRSets, and destroy also domain names in them
 	// because of reference counting
+
+	// check if there are not some duplicate RRSets
+//	for (int i = 0; i < changes->old_rrsets_count; ++i) {
+//		for (int j = i + 1; j < changes->old_rrsets_count; ++j) {
+//			if (changes->old_rrsets[i] == changes->old_rrsets[j]) {
+//				assert(0);
+//			}
+//			if (changes->old_rrsets[i]->rdata != NULL
+//			    && changes->old_rrsets[i]->rdata
+//			       == changes->old_rrsets[j]->rdata) {
+//				assert(0);
+//			}
+//		}
+//	}
+
 	for (int i = 0; i < changes->old_rrsets_count; ++i) {
+//		knot_rrset_deep_free(&changes->old_rrsets[i], 1, 1, 1);
 		knot_rrset_free(&changes->old_rrsets[i]);
+	}
+
+	// delete old RDATA
+	for (int i = 0; i < changes->old_rdata_count; ++i) {
+		knot_rdata_deep_free(&changes->old_rdata[i],
+		                     changes->old_rdata_types[i], 1);
 	}
 	
 	// free old hash table items, but do not touch their contents
@@ -2453,6 +2540,8 @@ static void xfrin_cleanup_update(xfrin_changes_t *changes)
 	free(changes->old_nodes);
 	free(changes->new_rrsets);
 	free(changes->old_rrsets);
+	free(changes->old_rdata);
+	free(changes->old_rdata_types);
 }
 
 /*----------------------------------------------------------------------------*/
