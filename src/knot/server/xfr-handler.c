@@ -47,9 +47,14 @@ static int xfr_udp_timeout(event_t *e)
 	int r_port = sockaddr_portnum(&data->addr);
 
 	/* Close socket. */
-	log_zone_info("%s query to %s:%d - timeout exceeded.\n",
-		      data->type == XFR_TYPE_SOA ? "SOA" : "NOTIFY",
-		      r_addr, r_port);
+	knot_zone_t *z = data->zone;
+	if (z && knot_zone_get_contents(z) && knot_zone_data(z)) {
+		zonedata_t *zd = (zonedata_t *)knot_zone_data(z);
+		log_zone_info("%s '%s' query to %s:%d - timeout exceeded.\n",
+		              data->type == XFR_TYPE_SOA ? "SOA" : "NOTIFY",
+		              zd->conf->name,
+		              r_addr, r_port);
+	}
 	knot_ns_xfr_t cr = {};
 	cr.type = XFR_TYPE_CLOSE;
 	cr.session = data->session;

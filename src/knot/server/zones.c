@@ -262,6 +262,9 @@ static int zones_expire_ev(event_t *e)
 	}
 
 	zonedata_t *zd = (zonedata_t *)zone->data;
+	
+	/* Won't accept any pending SOA responses. */
+	zd->xfr_in.next_id = -1;
 
 	/* Mark the zone as expired. This will remove the zone contents. */
 	knot_zone_contents_t *contents = knot_zonedb_expire_zone(
@@ -281,6 +284,20 @@ static int zones_expire_ev(event_t *e)
 	/* Early finish this event to prevent lockup during cancellation. */
 	dbg_zones("zones: zone expired, removing from database\n");
 	evsched_event_finished(e->parent);
+	
+	/* Cancel REFRESH timer. */
+	if (zd->xfr_in.timer) {
+		evsched_cancel(e->parent, zd->xfr_in.timer);
+		evsched_event_free(e->parent, zd->xfr_in.timer);
+		zd->xfr_in.timer = 0;
+	}
+
+	/* Free EXPIRE timer. */
+	if (zd->xfr_in.expire) {
+		evsched_event_free(e->parent, zd->xfr_in.expire);
+		zd->xfr_in.expire = 0;
+	}
+	
 	knot_zone_contents_deep_free(&contents, 0);
 
 	return 0;
@@ -1393,6 +1410,13 @@ int zones_xfr_check_zone(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 		dbg_zones("zones: invalid zone data for zone %p\n", xfr->zone);
 		*rcode = KNOT_RCODE_SERVFAIL;
 		return KNOTD_ERROR;
+	}
+	
+	/* Check zone contents. */
+	if (knot_zone_contents(xfr->zone) == NULL) {
+		dbg_zones("zones: invalid zone contents for zone %p\n", xfr->zone);
+		*rcode = KNOT_RCODE_SERVFAIL;
+		return KNOTD_EEXPIRED;
 	}
 
 	// Check xfr-out ACL
