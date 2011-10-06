@@ -388,14 +388,16 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 	
 	/* Enqueue to worker that has zone locked for XFR/IN. */
 	int ret = pthread_mutex_trylock(&zd->xfr_in.lock);
-	if (ret < 0) {
+	if (ret != 0) {
 		dbg_xfr_verb("xfr: XFR/IN switching to another thread, "
 		             "zone '%s' is already in transfer\n",
 		             zd->conf->name);
 		xfrworker_t *nextw = (xfrworker_t *)zd->xfr_in.wrkr;
-		assert(nextw != w);
+		if (nextw == 0) {
+			nextw = w;
+		}
 		evqueue_write(nextw->q, data, sizeof(knot_ns_xfr_t));
-		return KNOTD_EBUSY;
+		return KNOTD_EOK;
 	} else {
 		zd->xfr_in.wrkr = w;
 	}
@@ -825,14 +827,13 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		}
 		break;
 	case XFR_TYPE_AIN:
-	case XFR_TYPE_IIN:
 		req_type = "AXFR/IN";
+	case XFR_TYPE_IIN:
 		if (xfr.type == XFR_TYPE_IIN) {
 			req_type = "IXFR/IN";
 		}
 		
-		xfr_client_start(w, &xfr);
-		ret = KNOTD_EOK;
+		ret = xfr_client_start(w, &xfr);
 		break;
 	case XFR_TYPE_SOA:
 	case XFR_TYPE_NOTIFY:

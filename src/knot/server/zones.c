@@ -346,13 +346,14 @@ static int zones_refresh_ev(event_t *e)
 
 		/* Enqueue XFR request. */
 		int locked = pthread_mutex_trylock(&zd->xfr_in.lock);
-		if (locked) {
+		if (locked != 0) {
 			dbg_zones("zones: already bootstrapping '%s'\n",
 			          zd->conf->name);
-			pthread_mutex_unlock(&zd->xfr_in.lock);
+			return KNOTD_EOK;
 		} else {
 			log_zone_info("Attempting to bootstrap zone %s from master\n",
 			              zd->conf->name);
+			pthread_mutex_unlock(&zd->xfr_in.lock);
 		}
 		
 		return xfr_request(zd->server->xfr_h, &xfr_req);
@@ -1504,6 +1505,18 @@ int zones_process_response(knot_nameserver_t *nameserver,
 		}
 		
 		assert(ret > 0);
+		
+		/* Already transferring. */
+		if (pthread_mutex_trylock(&zd->xfr_in.lock) != 0) {
+			/* Unlock zone contents. */
+			dbg_zones("zones: SOA response received, but zone is "
+			          "being transferred, refusing to start another "
+			          "transfer");
+			rcu_read_unlock();
+			return KNOTD_EOK;
+		} else {
+			pthread_mutex_unlock(&zd->xfr_in.lock);
+		}
 
 		/* Prepare XFR client transfer. */
 		knot_ns_xfr_t xfr_req;
