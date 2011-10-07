@@ -283,8 +283,16 @@ static char *rdata_txt_data_to_string(const uint8_t *data)
 	uint8_t length = data[0];
 	size_t i;
 
+	if (length == 0) {
+		return NULL;
+	}
+
 	/* 3 because: opening '"', closing '"', and \0 at the end */
 	char *ret = malloc(sizeof(char) * (length + 3));
+	if (ret == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
 	memset(ret, 0, sizeof(char) * (length + 3));
 
 	size_t current_length = sizeof(char) * (length + 3);
@@ -354,6 +362,7 @@ char *rdata_text_to_string(knot_rdata_item_t item)
 		del[1] = '\0';
 		strcat(ret, txt);
 		strcat(ret, del);
+		free(txt);
 	}
 
 	return ret;
