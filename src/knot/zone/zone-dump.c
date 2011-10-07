@@ -1417,7 +1417,7 @@ static int fwrite_wrapper(const void *src,
 {
 	if (fp == NULL) {
 		assert(stream && stream_size);
-		assert(*crc == 0);
+		assert(crc == NULL);
 		return fwrite_to_stream(src, size, n, stream, stream_size);
 	} else {
 		assert(stream == NULL && stream_size == NULL);
@@ -2180,7 +2180,7 @@ int knot_zdump_rrset_serialize(const knot_rrset_t *rrset, uint8_t **stream,
 	arg_t arguments;
 	memset(&arguments, 0, sizeof(arg_t));
 
-	knot_rrset_dump_binary(rrset, &arguments, 0, stream, size, 0);
+	knot_rrset_dump_binary(rrset, &arguments, 0, stream, size, NULL);
 
 	return KNOT_EOK;
 }
