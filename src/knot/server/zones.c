@@ -661,6 +661,21 @@ static int zones_load_zone(knot_zonedb_t *zonedb, const char *zone_name,
 		}
 
 		zone = knot_zload_load(zl);
+		
+		/* Check loaded name. */
+		const knot_dname_t *dname = knot_zone_name(zone);
+		knot_dname_t *dname_req = 0;
+		dname_req = knot_dname_new_from_str(zone_name,
+		                                    strlen(zone_name), 0);
+		if (knot_dname_compare(dname, dname_req) != 0) {
+			log_server_warning("Origin of the zone db file is "
+			                   "different than '%s'\n",
+			                   zone_name);
+			knot_zone_deep_free(&zone, 0);
+			zone = 0;
+			
+		}
+		knot_dname_free(&dname_req);
 
 		//knot_zone_contents_dump(zone->contents, 1);
 
