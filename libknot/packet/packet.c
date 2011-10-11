@@ -695,13 +695,14 @@ static int knot_packet_parse_rr_sections(knot_packet_t *packet,
 		}
 	}
 
+	packet->parsed = *pos;
+
 	if (*pos < packet->size) {
 		// some trailing garbage; ignore, but log
 		dbg_response("Packet: %zu bytes of trailing garbage "
 		                      "in packet.\n", (*pos) - packet->size);
+		return KNOT_EMALF;
 	}
-
-	packet->parsed = packet->size;
 
 	return KNOT_EOK;
 }
@@ -777,21 +778,26 @@ int knot_packet_parse_from_wire(knot_packet_t *packet,
 
 	packet->parsed = pos;
 
-	dbg_packet("Question (prealloc type: %d)...\n",
-	                    packet->prealloc_type);
-	if (packet->header.qdcount > 0) {
+	dbg_packet("Question (prealloc type: %d)...\n", packet->prealloc_type);
+
+	if (packet->header.qdcount > 1) {
+		dbg_packet("QDCOUNT larger than 1, FORMERR.\n");
+		return KNOT_EMALF;
+	}
+
+	knot_packet_dump(packet);
+
+	if (packet->header.qdcount == 1) {
 		if ((err = knot_packet_parse_question(wireformat, &pos, size,
 		             &packet->question, packet->prealloc_type 
 		                                == KNOT_PACKET_PREALLOC_NONE)
 		     ) != KNOT_EOK) {
 			return err;
 		}
-		dbg_packet("Original QDCOUNT: %u. Ignoring.\n", 
-		                  packet->header.qdcount);
-		packet->header.qdcount = 1;
-		
 		packet->parsed = pos;
 	}
+
+	knot_packet_dump(packet);
 
 	if (question_only) {
 		return KNOT_EOK;
@@ -1042,6 +1048,17 @@ int knot_packet_tc(const knot_packet_t *packet)
 	}
 	
 	return knot_wire_flags_get_tc(packet->header.flags1);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_packet_qdcount(const knot_packet_t *packet)
+{
+	if (packet == NULL) {
+		return KNOT_EBADARG;
+	}
+
+	return packet->header.qdcount;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1419,14 +1436,16 @@ void knot_packet_dump(const knot_packet_t *packet)
 	dbg_packet("  NSCOUNT: %u\n", packet->header.nscount);
 	dbg_packet("  ARCOUNT: %u\n", packet->header.arcount);
 
-	dbg_packet("\nQuestion:\n");
-	char *qname = knot_dname_to_str(packet->question.qname);
-	dbg_packet("  QNAME: %s\n", qname);
-	free(qname);
-	dbg_packet("  QTYPE: %u (%s)\n", packet->question.qtype,
-	       knot_rrtype_to_string(packet->question.qtype));
-	dbg_packet("  QCLASS: %u (%s)\n", packet->question.qclass,
-	       knot_rrclass_to_string(packet->question.qclass));
+	if (knot_packet_qdcount(packet) > 0) {
+		dbg_packet("\nQuestion:\n");
+		char *qname = knot_dname_to_str(packet->question.qname);
+		dbg_packet("  QNAME: %s\n", qname);
+		free(qname);
+		dbg_packet("  QTYPE: %u (%s)\n", packet->question.qtype,
+		       knot_rrtype_to_string(packet->question.qtype));
+		dbg_packet("  QCLASS: %u (%s)\n", packet->question.qclass,
+		       knot_rrclass_to_string(packet->question.qclass));
+	}
 
 	dbg_packet("\nAnswer RRSets:\n");
 	knot_packet_dump_rrsets(packet->answer, packet->an_rrsets);

@@ -363,6 +363,8 @@ int knot_packet_rcode(const knot_packet_t *packet);
 
 int knot_packet_tc(const knot_packet_t *packet);
 
+int knot_packet_qdcount(const knot_packet_t *packet);
+
 int knot_packet_ancount(const knot_packet_t *packet);
 
 int knot_packet_nscount(const knot_packet_t *packet);

@@ -2564,6 +2564,9 @@ int knot_ns_parse_packet(const uint8_t *query_wire, size_t qsize,
 		return KNOT_RCODE_FORMERR;
 	}
 
+	dbg_ns("Parsed packet header and Question:\n");
+	knot_packet_dump(packet);
+
 	// 3) determine the query type
 	switch (knot_packet_opcode(packet))  {
 	case KNOT_OPCODE_QUERY:
@@ -2663,11 +2666,16 @@ int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_packet_t *query,
 
 	/*
 	 * Semantic checks - if ANCOUNT > 0 or NSCOUNT > 0, return FORMERR.
-	 * Trailing garbage is ignored for now. If it should not be ignored,
-	 * the packet_parse_rest() function must be altered.
+	 *
+	 * If any xxCOUNT is less or more than actual RR count
+	 * the previously called knot_packet_parse_rest() will recognize this.
+	 *
+	 * Check the QDCOUNT and in case of anything but 1 send back
+	 * FORMERR
 	 */
 	if (knot_packet_ancount(query) > 0
-	    || knot_packet_nscount(query) > 0) {
+	    || knot_packet_nscount(query) > 0
+	    || knot_packet_qdcount(query) != 1) {
 		dbg_ns("ANCOUNT or NSCOUNT not 0 in query, reply FORMERR.\n");
 		knot_ns_error_response(nameserver, knot_packet_id(query),
 		                       KNOT_RCODE_FORMERR, response_wire,
@@ -3105,7 +3113,7 @@ int knot_ns_switch_zone(knot_nameserver_t *nameserver,
 	knot_zone_contents_deep_free(&old, 0);
 
 dbg_ns_exec(
-	debug_knot_ns("Zone db contents: (zone count: %zu)\n", 
+	dbg_ns("Zone db contents: (zone count: %zu)\n",
 	              nameserver->zone_db->zone_count);
 
 	const knot_zone_t **zones = knot_zonedb_zones(nameserver->zone_db);
