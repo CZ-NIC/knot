@@ -44,6 +44,32 @@ $ wget http://bd.archive.ubuntu.com/ubuntu/pool/universe/libu/liburcu/liburcu-de
 $ sudo dpkg -i liburcu0_0.5.4-1_i386.deb
 $ sudo dpkg -i liburcu-dev_0.5.4-1_i386.deb
 
+Installation on BSD
+===================
+
+Not all prerequisites are available as ports on BSD.
+
+- liburcu must be compiled from sources
+  - version 0.6.4 compiles on BSD without any source code modifications
+
+Knot requires more recent version of flex from ports, to prevent name clash, specify flex destination.
+$ cd <knot sources>
+$ autoreconf -if
+$ LEX_R=/usr/local/bin/flex ./configure
+$ make && sudo make install
+
+Installation on OS X
+====================
+
+Not all prerequisites are preinstalled for OS X.
+
+- liburcu must be compiled from sources
+  - liburcu requires gcc-4.6 from MacPorts, as it depends on __thread keyword
+  $ CC=gcc-mp-4.6 ARCH=x86_64 ./configure
+  $ make && sudo make install
+
+Compiling Knot with gcc-mp-4.6 is recommended, but not necessary. 
+
 Running
 =======
 
