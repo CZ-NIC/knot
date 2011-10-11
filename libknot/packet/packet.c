@@ -1433,14 +1433,16 @@ void knot_packet_dump(const knot_packet_t *packet)
 	dbg_packet("  NSCOUNT: %u\n", packet->header.nscount);
 	dbg_packet("  ARCOUNT: %u\n", packet->header.arcount);
 
-	dbg_packet("\nQuestion:\n");
-	char *qname = knot_dname_to_str(packet->question.qname);
-	dbg_packet("  QNAME: %s\n", qname);
-	free(qname);
-	dbg_packet("  QTYPE: %u (%s)\n", packet->question.qtype,
-	       knot_rrtype_to_string(packet->question.qtype));
-	dbg_packet("  QCLASS: %u (%s)\n", packet->question.qclass,
-	       knot_rrclass_to_string(packet->question.qclass));
+	if (knot_packet_qdcount(packet) > 0) {
+		dbg_packet("\nQuestion:\n");
+		char *qname = knot_dname_to_str(packet->question.qname);
+		dbg_packet("  QNAME: %s\n", qname);
+		free(qname);
+		dbg_packet("  QTYPE: %u (%s)\n", packet->question.qtype,
+		       knot_rrtype_to_string(packet->question.qtype));
+		dbg_packet("  QCLASS: %u (%s)\n", packet->question.qclass,
+		       knot_rrclass_to_string(packet->question.qclass));
+	}
 
 	dbg_packet("\nAnswer RRSets:\n");
 	knot_packet_dump_rrsets(packet->answer, packet->an_rrsets);
