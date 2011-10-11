@@ -88,14 +88,15 @@ int exec_cmd(const char *argv[], int argc)
 	if (chproc == 0) {
 
 		/* Duplicate, it doesn't run from stack address anyway. */
-		char **args = malloc(argc * sizeof(char*) + 1);
+		char **args = malloc((argc + 1) * sizeof(char*));
+		memset(args, 0, (argc + 1) * sizeof(char*));
 		int ci = 0;
 		for (int i = 0; i < argc; ++i) {
-			if (strlen(argv[i]) > 1) {
+			if (strlen(argv[i]) > 0) {
 				args[ci++] = strdup(argv[i]);
 			}
-			args[ci] = '\0';
 		}
+		args[ci] = 0;
 
 		/* Execute command. */
 		fflush(stdout);
@@ -365,21 +366,20 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 				continue;
 			}
 
-			// Prepare command
 			const char *args[] = {
 				ZONEPARSER_EXEC,
 				zone->enable_checks ? "-s" : "",
 				verbose ? "-v" : "",
 				"-o",
 				zone->db,
-				zone->name,
+			        zone->name,
 				zone->file
 			};
 
 			// Execute command
 			if (verbose) {
-				printf("Compiling '%s'...\n",
-				       zone->name);
+				printf("Compiling '%s' as '%s'...\n",
+				       zone->name, zone->db);
 			}
 			fflush(stdout);
 			fflush(stderr);
