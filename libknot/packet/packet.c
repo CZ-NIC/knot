@@ -780,17 +780,19 @@ int knot_packet_parse_from_wire(knot_packet_t *packet,
 
 	dbg_packet("Question (prealloc type: %d)...\n",
 	                    packet->prealloc_type);
-	if (packet->header.qdcount > 0) {
+
+	if (packet->header.qdcount > 1) {
+		dbg_packet("QDCOUNT larger than 1, FORMERR.\n");
+		return KNOT_EMALF;
+	}
+
+	if (packet->header.qdcount == 1) {
 		if ((err = knot_packet_parse_question(wireformat, &pos, size,
 		             &packet->question, packet->prealloc_type 
 		                                == KNOT_PACKET_PREALLOC_NONE)
 		     ) != KNOT_EOK) {
 			return err;
 		}
-		dbg_packet("Original QDCOUNT: %u. Ignoring.\n", 
-		                  packet->header.qdcount);
-		packet->header.qdcount = 1;
-		
 		packet->parsed = pos;
 	}
 
