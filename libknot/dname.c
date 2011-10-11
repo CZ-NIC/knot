@@ -270,12 +270,12 @@ static int knot_dname_find_labels(knot_dname_t *dname, int alloc)
 	}
 
 	// TODO: how to check if the domain name has right format?
-//	if (pos - name < size && *pos != '0') {
-//		dbg_dname("Wrong wire format of domain name!\n");
-//		dbg_dname("Position: %d, character: %d, expected"
-//				   " size: %d\n", pos - name, *pos, size);
-//		return -1;
-//	}
+	if (pos - name > size || *pos != '\0') {
+		dbg_dname("Wrong wire format of domain name!\n");
+		dbg_dname("Position: %d, character: %d, expected"
+				   " size: %d\n", pos - name, *pos, size);
+		return -1;
+	}
 
 	if (alloc) {
 		dname->labels
