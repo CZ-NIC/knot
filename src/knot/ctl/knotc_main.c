@@ -27,13 +27,14 @@ void help(int argc, char **argv)
 	       "compile\n",
 	       argv[0]);
 	printf("Parameters:\n"
-	       " -c [file] Select configuration file.\n"
-	       " -f\tForce operation - override some checks.\n"
-	       " -v\tVerbose mode - additional runtime information.\n"
-	       " -V\tPrint %s server version.\n"
-	       " -w\tWait for the server to finish start/stop operations.\n"
-	       " -i\tInteractive mode (do not daemonize).\n"
-	       " -h\tPrint help and usage.\n",
+	       " -c [file]\tSelect configuration file.\n"
+	       " -f\t\tForce operation - override some checks.\n"
+	       " -v\t\tVerbose mode - additional runtime information.\n"
+	       " -V\t\tPrint %s server version.\n"
+	       " -w\t\tWait for the server to finish start/stop operations.\n"
+	       " -i\t\tInteractive mode (do not daemonize).\n"
+	       " -j [num]\tNumber of parallel tasks to run (only for 'compile').\n"
+	       " -h\t\tPrint help and usage.\n",
 	       PACKAGE_NAME);
 	printf("Actions:\n"
 	       " start     Start %s server with given zone (no-op if running).\n"
@@ -82,7 +83,18 @@ int check_zone(const char *db, const char* source)
 	return ret;
 }
 
-int exec_cmd(const char *argv[], int argc)
+pid_t wait_cmd(pid_t proc, int *rc)
+{
+	/* Wait for finish. */
+	sigset_t newset;
+	sigfillset(&newset);
+	sigprocmask(SIG_BLOCK, &newset, 0);
+	proc = waitpid(proc, rc, 0);
+	sigprocmask(SIG_UNBLOCK, &newset, 0);
+	return proc;
+}
+
+pid_t start_cmd(const char *argv[], int argc)
 {
 	pid_t chproc = fork();
 	if (chproc == 0) {
@@ -113,16 +125,96 @@ int exec_cmd(const char *argv[], int argc)
 		exit(1);
 		return -1;
 	}
+	
+	return chproc;
+}
 
-
-	/* Wait for finish. */
+int exec_cmd(const char *argv[], int argc)
+{
 	int ret = 0;
-	sigset_t newset;
-	sigfillset(&newset);
-	sigprocmask(SIG_BLOCK, &newset, 0);
-	waitpid(chproc, &ret, 0);
-	sigprocmask(SIG_UNBLOCK, &newset, 0);
+	pid_t proc = start_cmd(argv, argc);
+	wait_cmd(proc, &ret);
 	return ret;
+}
+
+/*! \brief Zone compiler task. */
+typedef struct {
+	conf_zone_t *zone;
+	pid_t proc;
+} knotc_zctask_t;
+
+/*! \brief Create set of watched tasks. */
+knotc_zctask_t *zctask_create(int count)
+{
+	if (count <= 0) {
+		return 0;
+	}
+	
+	knotc_zctask_t *t = malloc(count * sizeof(knotc_zctask_t));
+	for (unsigned i = 0; i < count; ++i) {
+		t[i].proc = -1;
+		t[i].zone = 0;
+	}
+	
+	return t;
+}
+
+/*! \brief Wait for single task to finish. */
+int zctask_wait(knotc_zctask_t *tasks, int count)
+{
+	/* Wait for children to finish. */
+	int rc = 0;
+	pid_t pid = wait_cmd(-1, &rc);
+	
+	/* Find task. */
+	conf_zone_t *z = 0;
+	for (unsigned i = 0; i < count; ++i) {
+		if (tasks[i].proc == pid) {
+			tasks[i].proc = -1; /* Invalidate. */
+			z = tasks[i].zone;
+			break;
+		}
+	}
+	
+	if (z == 0) {
+		fprintf(stderr, "error: Failed to find zone for finished "
+		        "zone compilation process.\n");
+		return 1;
+	}
+	
+	/* Evaluate. */
+	if (!WIFEXITED(rc)) {
+		fprintf(stderr, "error: Compilation of '%s' "
+		        "failed, process was killed.\n",
+		        z->name);
+		return 1;
+	} else {
+		if (rc < 0 || WEXITSTATUS(rc) != 0) {
+			fprintf(stderr, "error: Compilation of "
+			        "'%s' failed, knot-zcompile "
+			        "return code was '%d'\n",
+			        z->name, WEXITSTATUS(rc));
+			return 1;
+		}
+	}
+	
+	return 0;
+}
+
+/*! \brief Register running zone compilation process. */
+int zctask_add(knotc_zctask_t *tasks, int count, pid_t pid, conf_zone_t *zone)
+{
+	/* Find free space. */
+	for (unsigned i = 0; i < count; ++i) {
+		if (tasks[i].proc == -1) {
+			tasks[i].proc = pid;
+			tasks[i].zone = zone;
+			return 0;
+		}
+	}
+	
+	/* Free space not found. */
+	return -1;
 }
 
 /*!
@@ -136,6 +228,7 @@ int exec_cmd(const char *argv[], int argc)
  * \param force True if forced operation is required.
  * \param wait Wait for the operation to finish.
  * \param interactive Interactive mode.
+ * \param jobs Number of parallel tasks to run.
  * \param pidfile Specified PID file for action.
  *
  * \retval 0 on success.
@@ -144,7 +237,7 @@ int exec_cmd(const char *argv[], int argc)
  * \todo Make enumerated flags instead of many parameters...
  */
 int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
-	    int force, int wait, int interactive, const char *pidfile)
+	    int force, int wait, int interactive, int jobs, const char *pidfile)
 {
 	int valid_cmd = 0;
 	int rc = 0;
@@ -265,7 +358,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 	if (strcmp(action, "restart") == 0) {
 		valid_cmd = 1;
 		execute("stop", argv, argc, pid, verbose, force, wait,
-			interactive, pidfile);
+			interactive, jobs, pidfile);
 
 		int i = 0;
 		while((pid = pid_read(pidfile)) > 0) {
@@ -287,7 +380,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 
 		printf("Restarting server.\n");
 		rc = execute("start", argv, argc, -1, verbose, force, wait,
-			     interactive, pidfile);
+			     interactive, jobs, pidfile);
 	}
 	if (strcmp(action, "reload") == 0) {
 
@@ -333,6 +426,13 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 		}
 	}
 	if (strcmp(action, "compile") == 0) {
+		
+		// Print job count
+		if (jobs > 1) {
+			printf("warning: Will attempt to compile %d zones "
+			       "in parallel, this increases memory consumption "
+			       "for large zones.\n", jobs);
+		}
 
 		// Check zone
 		valid_cmd = 1;
@@ -342,6 +442,8 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 
 		// Generate databases for all zones
 		node *n = 0;
+		int running = 0;
+		knotc_zctask_t *tasks = zctask_create(jobs);
 		WALK_LIST(n, conf()->zones) {
 
 			// Fetch zone
@@ -365,6 +467,12 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 			if (zone_status == KNOTD_ENOENT) {
 				continue;
 			}
+			
+			/* Evaluate space for new task. */
+			if (running == jobs) {
+				zctask_wait(tasks, jobs);
+				--running;
+			}
 
 			const char *args[] = {
 				ZONEPARSER_EXEC,
@@ -383,22 +491,17 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 			}
 			fflush(stdout);
 			fflush(stderr);
-			rc = exec_cmd(args, 7);
-			
-			if (!WIFEXITED(rc)) {
-				fprintf(stderr, "error: Compilation failed, "
-						"process was killed.\n");
-				rc = 1;
-			} else {
-				if (rc < 0 || WEXITSTATUS(rc) != 0) {
-					fprintf(stderr, "error: Compilation "
-					        "failed, knot-zcompile "
-					        "return code was '%d'\n",
-					        WEXITSTATUS(rc));
-					rc = 1;
-				}
-			}
+			pid_t zcpid = start_cmd(args, 7);
+			zctask_add(tasks, jobs, zcpid, zone);
+			++running;
 		}
+		
+		/* Wait for all running tasks. */
+		while (running > 0) {
+			zctask_wait(tasks, jobs);
+			--running;
+		}
+		free(tasks);
 
 		// Unlock configuration
 		conf_read_unlock();
@@ -423,8 +526,9 @@ int main(int argc, char **argv)
 	int verbose = 0;
 	int wait = 0;
 	int interactive = 0;
+	int jobs = 1;
 	const char* config_fn = 0;
-	while ((c = getopt (argc, argv, "wfc:viVh")) != -1) {
+	while ((c = getopt (argc, argv, "wfc:vij:Vh")) != -1) {
 		switch (c)
 		{
 		case 'w':
@@ -441,6 +545,16 @@ int main(int argc, char **argv)
 			break;
 		case 'i':
 			interactive = 1;
+			break;
+		case 'j':
+			jobs = atoi(optarg);
+			if (jobs < 1) {
+				fprintf(stderr, "Invalid parameter '%s' to "
+				        "'-j', expects number <1..n>\n",
+				        optarg);
+				help(argc, argv);
+				return 1;
+			}
 			break;
 		case 'V':
 			printf("%s, version %s\n", PACKAGE_NAME, PACKAGE_VERSION);
@@ -505,7 +619,7 @@ int main(int argc, char **argv)
 
 	// Execute action
 	int rc = execute(action, argv + optind + 1, argc - optind - 1,
-			 pid, verbose, force, wait, interactive, pidfile);
+			 pid, verbose, force, wait, interactive, jobs, pidfile);
 
 	// Finish
 	free(pidfile);
