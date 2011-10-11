@@ -31,8 +31,7 @@ static const char *DEFAULT_CONFIG[] = {
  * \brief Recursively create directories.
  *
  * Similar to "mkdir -p".
- *
- * \retval 0 on success.
+ * * \retval 0 on success.
  * \retval <0 on error.
  */
 static int rmkdir(char *path, int mode)
@@ -164,6 +163,11 @@ static void conf_update_hooks(conf_t *conf)
  */
 static int conf_process(conf_t *conf)
 {
+	// Check
+	if (!conf->storage) {
+		conf->storage = strdup("/var/lib/"PROJECT_EXEC);
+	}
+	
 	// Normalize paths
 	conf->storage = strcpath(conf->storage);
 	struct stat st;
@@ -628,6 +632,10 @@ int conf_open(const char* path)
 
 char* strcdup(const char *s1, const char *s2)
 {
+	if (!s1 || !s2) {
+		return 0;
+	}
+	
 	size_t slen = strlen(s1);
 	size_t nlen = slen + strlen(s2) + 1;
 	char* dst = malloc(nlen);
@@ -642,6 +650,11 @@ char* strcdup(const char *s1, const char *s2)
 
 char* strcpath(char *path)
 {
+	// NULL path
+	if (!path) {
+		return 0;
+	}
+	
 	// Remote trailing slash
 	size_t plen = strlen(path);
 	if (path[plen - 1] == '/') {
