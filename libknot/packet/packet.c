@@ -797,6 +797,8 @@ int knot_packet_parse_from_wire(knot_packet_t *packet,
 		packet->parsed = pos;
 	}
 
+	knot_packet_dump(packet);
+
 	if (question_only) {
 		return KNOT_EOK;
 	}
