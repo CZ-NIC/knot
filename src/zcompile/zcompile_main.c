@@ -5,7 +5,7 @@
 #include "zcompile/zcompile.h"
 #include "zcompile/zcompile-error.h"
 #include "common/errors.h"
-#include "config.h"
+#include <config.h>
 
 static void help(int argc, char **argv)
 {

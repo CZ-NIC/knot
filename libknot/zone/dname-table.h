@@ -134,12 +134,20 @@ int knot_dname_table_shallow_copy(knot_dname_table_t *from,
 void knot_dname_table_free(knot_dname_table_t **table);
 
 /*!
- * \brief Frees dname table and all its nodes (including dnames in the nodes)
+ * \brief Frees dname table and all its nodes (and release dnames in the nodes)
  *        Sets pointer to NULL.
  *
  * \param table Table to be freed.
  */
 void knot_dname_table_deep_free(knot_dname_table_t **table);
+
+/*!
+ * \brief Frees dname table and all its nodes (including dnames in the nodes)
+ *        Sets pointer to NULL.
+ *
+ * \param table Table to be freed.
+ */
+void knot_dname_table_destroy(knot_dname_table_t **table);
 
 /*!
  * \brief Encapsulation of domain name table tree traversal function.

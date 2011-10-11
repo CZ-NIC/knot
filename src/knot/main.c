@@ -176,8 +176,10 @@ int main(int argc, char **argv)
 	if ((res = server_start(server)) == KNOTD_EOK) {
 
 		// Save PID
+		int has_pid = 1;
 		int rc = pid_write(pidfile);
 		if (rc < 0) {
+			has_pid = 0;
 			log_server_warning("Failed to create "
 					   "PID file '%s'.\n", pidfile);
 		}
@@ -191,7 +193,15 @@ int main(int argc, char **argv)
 			log_server_info("Server started in foreground, "
 					"PID = %ld\n", (long)getpid());
 		}
-		log_server_info("PID stored in %s\n", pidfile);
+		if (has_pid) {
+			log_server_info("PID stored in %s\n", pidfile);
+		} else {
+			log_server_warning("Server running without PID file.\n");
+		}
+		size_t zcount = server->nameserver->zone_db->zone_count;
+		if (!zcount) {
+			log_server_warning("Server started, but no zones served.\n");
+		}
 
 		// Setup signal handler
 		struct sigaction sa;
@@ -246,14 +256,15 @@ int main(int argc, char **argv)
 			if (ret > 0) {
 				event_t ev;
 				if (evqueue_get(evqueue(), &ev) == 0) {
-					debug_server("Event: "
-						     "received new event.\n");
+					dbg_server_verb("Event: "
+					                "received new event.\n");
 					if (ev.cb) {
 						ev.cb(&ev);
 					}
 				}
 			}
 		}
+		pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
 
 		if ((res = server_wait(server)) != KNOTD_EOK) {
 			log_server_error("An error occured while "

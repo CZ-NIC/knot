@@ -32,7 +32,7 @@ typedef struct notify_ev_t {
 	int retries;           /*!< Number of retries. */
 	int msgid;             /*!< ID of pending NOTIFY. */
 	sockaddr_t addr;       /*!< Slave server address. */
-	volatile struct event_t *timer; /*!< Event timer. */
+	struct event_t *timer; /*!< Event timer. */
 	knot_zone_t *zone;   /*!< Associated zone. */
 } notify_ev_t;
 

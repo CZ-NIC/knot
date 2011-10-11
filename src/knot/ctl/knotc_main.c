@@ -40,7 +40,7 @@ void help(int argc, char **argv)
 	       " stop      Stop %s server (no-op if not running).\n"
 	       " restart   Stops and then starts %s server.\n"
 	       " reload    Reload %s configuration and compiled zones.\n"
-	       " running   Check if server is running.\n"
+	       " running   check if server is running.\n"
 	       "\n"
 	       " compile   Compile zone file.\n",
 	       PACKAGE_NAME, PACKAGE_NAME, PACKAGE_NAME, PACKAGE_NAME);
@@ -384,12 +384,19 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 			fflush(stdout);
 			fflush(stderr);
 			rc = exec_cmd(args, 7);
-
-			if (rc < 0 || !WIFEXITED(rc) || WEXITSTATUS(rc) != 0) {
-				fprintf(stderr, "error: Compilation failed "
-						"with %d error(s).\n",
-						WEXITSTATUS(rc));
+			
+			if (!WIFEXITED(rc)) {
+				fprintf(stderr, "error: Compilation failed, "
+						"process was killed.\n");
 				rc = 1;
+			} else {
+				if (rc < 0 || WEXITSTATUS(rc) != 0) {
+					fprintf(stderr, "error: Compilation "
+					        "failed, knot-zcompile "
+					        "return code was '%d'\n",
+					        WEXITSTATUS(rc));
+					rc = 1;
+				}
 			}
 		}
 

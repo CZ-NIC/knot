@@ -13,7 +13,6 @@
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zone-dump.h"
 #include "libknot/libknot.h"
-#include "libknot/util/debug.h"
 
 /*!
  * \brief Compares two time_t values.
@@ -161,7 +160,7 @@ static knot_dname_t *read_dname_with_id(FILE *f)
 		return NULL;
 	}
 	ret->size = dname_size;
-	debug_knot_zload("loaded: dname length: %u\n", ret->size);
+	dbg_zload("loaded: dname length: %u\n", ret->size);
 
 	assert(ret->size <= DNAME_MAX_WIRE_LENGTH);
 
@@ -200,7 +199,7 @@ static knot_dname_t *read_dname_with_id(FILE *f)
 		return NULL;
 	}
 
-	debug_knot_zload("loaded: %s (id: %d)\n", knot_dname_to_str(ret),
+	dbg_zload("loaded: %s (id: %d)\n", knot_dname_to_str(ret),
 			 ret->id);
 
 	return ret;
@@ -242,9 +241,9 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 
 	uint16_t raw_data_length;
 
-	debug_knot_zload("Reading %d items\n", rdata_count);
+	dbg_zload("Reading %d items\n", rdata_count);
 
-	debug_knot_zload("current type: %s\n", knot_rrtype_to_string(type));
+	dbg_zload("current type: %s\n", knot_rrtype_to_string(type));
 
 	for (int i = 0; i < rdata_count; i++) {
 		if (desc->wireformat[i] == KNOT_RDATA_WF_COMPRESSED_DNAME ||
@@ -318,7 +317,7 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 				load_rdata_purge(rdata, items, i + 1, desc, type);
 				return NULL;
 			}
-			debug_knot_zload("read raw_data len %d\n", raw_data_length);
+			dbg_zload("read raw_data len %d\n", raw_data_length);
 		}
 	}
 
@@ -330,7 +329,7 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 
 	free(items);
 
-	debug_knot_zload("knot_load_rdata: all %d items read\n",
+	dbg_zload("knot_load_rdata: all %d items read\n",
 			 desc->length);
 
 	assert(rdata->count == rdata_count);
@@ -366,16 +365,16 @@ static knot_rrset_t *knot_load_rrsig(FILE *f, knot_dname_t **id_array,
 		fprintf(stderr, "!! Error: rrsig has wrong type\n");
 		return NULL;
 	}
-	debug_knot_zload("rrset type: %d\n", rrset_type);
+	dbg_zload("rrset type: %d\n", rrset_type);
 	if (!fread_wrapper(&rrset_class, sizeof(rrset_class), 1, f)) {
 		return NULL;
 	}
-	debug_knot_zload("rrset class %d\n", rrset_class);
+	dbg_zload("rrset class %d\n", rrset_class);
 
 	if (!fread_wrapper(&rrset_ttl, sizeof(rrset_ttl), 1, f)) {
 		return NULL;
 	}
-	debug_knot_zload("rrset ttl %d\n", rrset_ttl);
+	dbg_zload("rrset ttl %d\n", rrset_ttl);
 
 	if (!fread_wrapper(&rdata_count, sizeof(rdata_count), 1, f)) {
 		return NULL;
@@ -385,7 +384,7 @@ static knot_rrset_t *knot_load_rrsig(FILE *f, knot_dname_t **id_array,
 
 	knot_rdata_t *tmp_rdata;
 
-	debug_knot_zload("loading %d rdata entries\n", rdata_count);
+	dbg_zload("loading %d rdata entries\n", rdata_count);
 
 	for (int i = 0; i < rdata_count; i++) {
 		tmp_rdata = knot_load_rdata(KNOT_RRTYPE_RRSIG, f,
@@ -450,7 +449,7 @@ static knot_rrset_t *knot_load_rrset(FILE *f, knot_dname_t **id_array,
 		owner = 0;
 	}
 
-	debug_knot_zload("RRSet type: %d\n", rrset->type);
+	dbg_zload("RRSet type: %d\n", rrset->type);
 
 	knot_rdata_t *tmp_rdata = NULL;
 
@@ -467,7 +466,7 @@ static knot_rrset_t *knot_load_rrset(FILE *f, knot_dname_t **id_array,
 
 	knot_rrset_t *tmp_rrsig = NULL;
 
-	debug_knot_zload("Reading: %d RRSIGs\n", rrsig_count);
+	dbg_zload("Reading: %d RRSIGs\n", rrsig_count);
 	if (rrsig_count) {
 		tmp_rrsig = knot_load_rrsig(f, id_array, use_ids);
 		if (!use_ids) {
@@ -477,7 +476,7 @@ static knot_rrset_t *knot_load_rrset(FILE *f, knot_dname_t **id_array,
 
 	knot_rrset_set_rrsigs(rrset, tmp_rrsig);
 
-	debug_knot_zload("Finished loading RRSet %p\n", rrset);
+	dbg_zload("Finished loading RRSet %p\n", rrset);
 
 	return rrset;
 }
@@ -520,9 +519,9 @@ static knot_node_t *knot_load_node(FILE *f, knot_dname_t **id_array)
 	}
 	knot_dname_t *owner = id_array[dname_id];
 
-	debug_knot_zload("Node owner id: %d\n", dname_id);
-	debug_knot_zload("Node owned by: %s\n", knot_dname_to_str(owner));
-	debug_knot_zload("Number of RRSets in a node: %d\n", rrset_count);
+	dbg_zload("Node owner id: %d\n", dname_id);
+	dbg_zload("Node owned by: %s\n", knot_dname_to_str(owner));
+	dbg_zload("Number of RRSets in a node: %d\n", rrset_count);
 
 	node = owner->node;
 
@@ -572,7 +571,7 @@ static knot_node_t *knot_load_node(FILE *f, knot_dname_t **id_array)
 		}
 	}
 	assert(node != NULL);
-	debug_knot_zload("Node loaded: %p\n", node);
+	dbg_zload("Node loaded: %p\n", node);
 	return node;
 }
 
@@ -684,7 +683,7 @@ int knot_zload_open(zloader_t **dst, const char *filename)
 	/* Open file for binary read. */
 	FILE *f = fopen(filename, "rb");
 	if (unlikely(!f)) {
-		debug_knot_zload("knot_zload_open: failed to open '%s'\n",
+		dbg_zload("knot_zload_open: failed to open '%s'\n",
 				   filename);
 		return KNOT_EFEWDATA; // No such file or directory (POSIX.1)
 	}
@@ -707,7 +706,7 @@ int knot_zload_open(zloader_t **dst, const char *filename)
 	crc_path = strcat(crc_path, ".crc");
 	FILE *f_crc = fopen(crc_path, "r");
 	if (unlikely(!f_crc)) {
-		debug_knot_zload("knot_zload_open: failed to open '%s'\n",
+		dbg_zload("knot_zload_open: failed to open '%s'\n",
 		                   crc_path);
 		fclose(f);
 		free(crc_path);
@@ -716,7 +715,7 @@ int knot_zload_open(zloader_t **dst, const char *filename)
 
 	unsigned long crc_from_file = 0;
 	if (fscanf(f_crc, "%lu\n", &crc_from_file) != 1) {
-		debug_knot_zload("knot_zload_open: could not read "
+		dbg_zload("knot_zload_open: could not read "
 		                   "CRC from file '%s'\n",
 		                   crc_path);
 		fclose(f_crc);
@@ -729,7 +728,7 @@ int knot_zload_open(zloader_t **dst, const char *filename)
 
 	/* Compare calculated and read CRCs. */
 	if (crc_from_file != crc_calculated) {
-		debug_knot_zload("knot_zload_open: CRC failed for "
+		dbg_zload("knot_zload_open: CRC failed for "
 		                   "file '%s'\n",
 		                   filename);
 		fclose(f);
@@ -740,7 +739,7 @@ int knot_zload_open(zloader_t **dst, const char *filename)
 	static const uint8_t MAGIC[MAGIC_LENGTH] = MAGIC_BYTES;
 	if (!knot_check_magic(f, MAGIC, MAGIC_LENGTH)) {
 		fclose(f);
-		debug_knot_zload("knot_zload_open: magic bytes "
+		dbg_zload("knot_zload_open: magic bytes "
 				   "in don't match '%*s' "
 			 "(%s)\n",
 			 (int)MAGIC_LENGTH, (const char*)MAGIC, filename);
@@ -750,7 +749,7 @@ int knot_zload_open(zloader_t **dst, const char *filename)
 	/* Read source file length. */
 	uint32_t sflen = 0;
 	if (!fread_wrapper(&sflen, 1, sizeof(uint32_t), f)) {
-		debug_knot_zload("knot_zload_open: failed to read "
+		dbg_zload("knot_zload_open: failed to read "
 				   "sfile length\n");
 		fclose(f);
 		return KNOT_ERROR;
@@ -759,13 +758,13 @@ int knot_zload_open(zloader_t **dst, const char *filename)
 	/* Read source file. */
 	char *sfile = malloc(sflen);
 	if (!sfile) {
-		debug_knot_zload("knot_zload_open: invalid sfile "
+		dbg_zload("knot_zload_open: invalid sfile "
 				   "length %u\n", sflen);
 		fclose(f);
 		return KNOT_ENOMEM;
 	}
 	if (!fread_wrapper(sfile, 1, sflen, f)) {
-		debug_knot_zload("knot_zload_open: failed to read %uB "
+		dbg_zload("knot_zload_open: failed to read %uB "
 				   "source file\n",
 			 sflen);
 		free(sfile);
@@ -781,7 +780,7 @@ int knot_zload_open(zloader_t **dst, const char *filename)
 		return KNOT_ENOMEM;
 	}
 
-	debug_knot_zload("knot_zload_open: opened '%s' as fp %p "
+	dbg_zload("knot_zload_open: opened '%s' as fp %p "
 			   "(source is '%s')\n",
 		 filename, f, sfile);
 	zl->filename = strdup(filename);
@@ -838,7 +837,7 @@ static knot_dname_table_t *create_dname_table_from_array(
 {
 	if (array == NULL) {
 		/* should I set errno or what ... ? */
-		debug_knot_zload("No array passed\n");
+		dbg_zload("No array passed\n");
 		return NULL;
 	}
 
@@ -852,7 +851,7 @@ static knot_dname_table_t *create_dname_table_from_array(
 		assert(array[i]);
 		if (knot_dname_table_add_dname(ret,
 						 array[i]) != KNOT_EOK) {
-			debug_knot_zload("Could not add: %s\n",
+			dbg_zload("Could not add: %s\n",
 			                   knot_dname_to_str(array[i]));
 			knot_dname_table_deep_free(&ret);
 			return NULL;
@@ -915,9 +914,9 @@ static knot_dname_t **create_dname_array(FILE *f, uint max_id)
 
 knot_zone_t *knot_zload_load(zloader_t *loader)
 {
-	debug_knot_zload("Loading zone, loader: %p\n", loader);
+	dbg_zload("Loading zone, loader: %p\n", loader);
 	if (!loader) {
-		debug_knot_zload("NULL loader!\n");
+		dbg_zload("NULL loader!\n");
 		return NULL;
 	}
 
@@ -939,22 +938,22 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	uint32_t auth_node_count;
 
 	if (!fread_wrapper(&node_count, sizeof(node_count), 1, f)) {
-		debug_knot_zload("wrong read!\n");
+		dbg_zload("wrong read!\n");
 		return NULL;
 	}
 
 	if (!fread_wrapper(&nsec3_node_count, sizeof(nsec3_node_count), 1, f)) {
-		debug_knot_zload("wrong read!\n");
+		dbg_zload("wrong read!\n");
 		return NULL;
 	}
 	if (!fread_wrapper(&auth_node_count,
 	      sizeof(auth_node_count), 1, f)) {
-		debug_knot_zload("wrong read!\n");
+		dbg_zload("wrong read!\n");
 		return NULL;
 	}
-	debug_knot_zload("authoritative nodes: %u\n", auth_node_count);
+	dbg_zload("authoritative nodes: %u\n", auth_node_count);
 
-	debug_knot_zload("loading %u nodes\n", node_count);
+	dbg_zload("loading %u nodes\n", node_count);
 
 	uint32_t total_dnames = 0;
 	/* First, read number of dnames in dname table. */
@@ -962,7 +961,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 		return NULL;
 	}
 
-	debug_knot_zload("total dname count: %d\n", total_dnames);
+	dbg_zload("total dname count: %d\n", total_dnames);
 
 	/* Create id array. */
 	knot_dname_t **id_array = create_dname_array(f, total_dnames);
@@ -988,13 +987,13 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 		return NULL;
 	}
 
-	debug_knot_zload("Apex node loaded: %p\n", apex);
+	dbg_zload("Apex node loaded: %p\n", apex);
 
 	knot_zone_t *zone = knot_zone_new(apex, auth_node_count, 0);
 	if (zone == NULL) {
 		cleanup_id_array(id_array, 1,
 				 node_count + nsec3_node_count + 1);
-		debug_knot_zload("Failed to create new zone from apex!\n");
+		dbg_zload("Failed to create new zone from apex!\n");
 		return NULL;
 	}
 
@@ -1046,7 +1045,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	knot_node_set_previous(knot_zone_contents_get_apex(contents),
 	                         last_node);
 
-	debug_knot_zload("loading %u nsec3 nodes\n", nsec3_node_count);
+	dbg_zload("loading %u nsec3 nodes\n", nsec3_node_count);
 
 	knot_node_t *nsec3_first = NULL;
 
@@ -1059,7 +1058,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 		    != 0) {
 			fprintf(stderr, "!! cannot add first nsec3 node, "
 				"exiting.\n");
-			knot_zone_deep_free(&zone, 1);
+			knot_zone_deep_free(&zone, 0);
 			free(id_array);
 			/* TODO this will leak dnames from id_array that were
 			 * not assigned. */
@@ -1105,7 +1104,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	}
 	free(id_array);
 
-	debug_knot_zload("zone loaded, returning: %p\n", zone);
+	dbg_zload("zone loaded, returning: %p\n", zone);
 	return zone;
 }
 

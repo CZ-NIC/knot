@@ -120,7 +120,8 @@ enum parser_rr_type {
 
 	// totally weird numbers (cannot use for indexing)
 	PARSER_RRTYPE_TA = 32768, /*!< DNSSEC Trust Authorities */
-	PARSER_RRTYPE_DLV = 32769 /*!< RFC 4431 */
+	PARSER_RRTYPE_DLV = 32769, /*!< RFC 4431 */
+	PARSER_RRTYPE_TYPEXXX = 32770
 };
 
 /*!
@@ -130,7 +131,7 @@ enum parser_rr_type {
  */
 typedef enum parser_rr_type parser_rr_type_t;
 
-static uint const PARSER_RRTYPE_LAST = PARSER_RRTYPE_NSEC3PARAM;
+static uint const PARSER_RRTYPE_LAST = PARSER_RRTYPE_DLV;
 
 enum parser_rdata_wireformat {
 	/*!
