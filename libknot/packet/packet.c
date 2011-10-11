@@ -778,8 +778,7 @@ int knot_packet_parse_from_wire(knot_packet_t *packet,
 
 	packet->parsed = pos;
 
-	dbg_packet("Question (prealloc type: %d)...\n",
-	                    packet->prealloc_type);
+	dbg_packet("Question (prealloc type: %d)...\n", packet->prealloc_type);
 
 	if (packet->header.qdcount > 1) {
 		dbg_packet("QDCOUNT larger than 1, FORMERR.\n");
