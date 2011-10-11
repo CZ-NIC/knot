@@ -2564,6 +2564,9 @@ int knot_ns_parse_packet(const uint8_t *query_wire, size_t qsize,
 		return KNOT_RCODE_FORMERR;
 	}
 
+	dbg_ns("Parsed packet header and Question:\n");
+	knot_packet_dump(query);
+
 	// 3) determine the query type
 	switch (knot_packet_opcode(packet))  {
 	case KNOT_OPCODE_QUERY:
