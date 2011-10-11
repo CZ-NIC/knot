@@ -83,7 +83,7 @@ int knot_zonedb_add_zone(knot_zonedb_t *db, knot_zone_t *zone);
  * \retval KNOT_ENOZONE
  */
 knot_zone_t * knot_zonedb_remove_zone(knot_zonedb_t *db, 
-                                      knot_dname_t *zone_name);
+                                      const knot_dname_t *zone_name);
 
 //knot_zone_t *knot_zonedb_replace_zone(knot_zonedb_t *db,
 //                                          knot_zone_t *zone);
@@ -113,8 +113,11 @@ knot_zone_t *knot_zonedb_find_zone(const knot_zonedb_t *db,
 const knot_zone_t *knot_zonedb_find_zone_for_name(knot_zonedb_t *db,
                                                    const knot_dname_t *dname);
 
+knot_zone_contents_t *knot_zonedb_expire_zone(knot_zonedb_t *db,
+                                              const knot_dname_t *zone_name);
+
 size_t knot_zonedb_zone_count(const knot_zonedb_t *db);
-knot_zone_t **knot_zonedb_zones(const knot_zonedb_t *db);
+const knot_zone_t **knot_zonedb_zones(const knot_zonedb_t *db);
 
 /*!
  * \brief Destroys and deallocates the zone database structure (but not the

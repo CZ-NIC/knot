@@ -12,12 +12,15 @@
 #ifndef _KNOTD_ZONES_H_
 #define _KNOTD_ZONES_H_
 
+#include <stddef.h>
+
 #include "common/lists.h"
 #include "common/acl.h"
 #include "common/evsched.h"
 #include "libknot/nameserver/name-server.h"
 #include "libknot/zone/zonedb.h"
 #include "knot/conf/conf.h"
+#include "knot/server/notify.h"
 #include "knot/server/server.h"
 #include "knot/server/journal.h"
 #include "libknot/zone/zone.h"
@@ -26,6 +29,7 @@
 /* Constants. */
 #define SOA_QRY_TIMEOUT 10000 /*!< SOA query timeout (ms). */
 #define IXFR_DBSYNC_TIMEOUT (60*1000) /*!< Database sync timeout = 60s. */
+#define AXFR_BOOTSTRAP_RETRY (60*1000) /*!< Interval between AXFR BS retries. */
 
 /*!
  * \brief Zone-related data.
@@ -48,11 +52,14 @@ typedef struct zonedata_t
 
 	/*! \brief XFR-IN scheduler. */
 	struct {
-		acl_t         *acl;     /*!< ACL for xfr-in.*/
-		sockaddr_t     master;  /*!< Master server for xfr-in.*/
-		struct event_t *timer;  /*!< Timer for REFRESH/RETRY. */
-		struct event_t *expire; /*!< Timer for REFRESH. */
-		int next_id;            /*!< ID of the next awaited SOA resp.*/
+		acl_t         *acl;      /*!< ACL for xfr-in.*/
+		sockaddr_t     master;   /*!< Master server for xfr-in.*/
+		struct event_t *timer;   /*!< Timer for REFRESH/RETRY. */
+		struct event_t *expire;  /*!< Timer for REFRESH. */
+		int next_id;             /*!< ID of the next awaited SOA resp.*/
+		pthread_mutex_t lock;    /*!< Pending XFR/IN lock. */
+		void           *wrkr;    /*!< Pending XFR/IN worker. */
+		uint32_t bootstrap_retry;/*!< AXFR/IN bootstrap retry. */
 	} xfr_in;
 
 	/*! \brief List of pending NOTIFY events. */
@@ -63,16 +70,6 @@ typedef struct zonedata_t
 	struct event_t *ixfr_dbsync;   /*!< Syncing IXFR db to zonefile. */
 	uint32_t zonefile_serial;
 } zonedata_t;
-
-/*! \todo Document me. */
-typedef enum xfr_type_t {
-	XFR_TYPE_AIN,   /*!< AXFR-IN request (start transfer). */
-	XFR_TYPE_AOUT,  /*!< AXFR-OUT request (incoming transfer). */
-	XFR_TYPE_IIN,   /*!< IXFR-IN request (start transfer). */
-	XFR_TYPE_IOUT,  /*!< IXFR-OUT request (incoming transfer). */
-	XFR_TYPE_SOA,   /*!< Pending SOA request. */
-	XFR_TYPE_NOTIFY /*!< Pending NOTIFY query. */
-} xfr_type_t;
 
 /*!
  * \brief Update zone database according to configuration.
@@ -144,7 +141,7 @@ int zones_process_response(knot_nameserver_t *nameserver,
  *
  * \retval
  */
-xfr_type_t zones_transfer_to_use(const knot_zone_contents_t *zone);
+knot_ns_xfr_type_t zones_transfer_to_use(const knot_zone_contents_t *zone);
 
 int zones_save_zone(const knot_ns_xfr_t *xfr);
 
@@ -230,6 +227,20 @@ int zones_apply_changesets(knot_ns_xfr_t *xfr);
  * \retval KNOTD_ERROR
  */
 int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch);
+
+/*!
+ * \brief Cancel pending NOTIFY timer.
+ *
+ * \warning Expects locked zonedata lock.
+ *
+ * \param zd Zone data.
+ * \param ev NOTIFY event.
+ *
+ * \retval KNOTD_EOK
+ * \retval KNOTD_ERROR
+ * \retval KNOTD_EINVAL
+ */
+int zones_cancel_notify(zonedata_t *zd, notify_ev_t *ev);
 
 #endif // _KNOTD_ZONES_H_
 

@@ -35,9 +35,9 @@
 #endif
 
 #ifdef MEM_DEBUG
-#define debug_mem(msg...) fprintf(stderr, msg)
+#define dbg_mem(msg...) fprintf(stderr, msg)
 #else
-#define debug_mem(msg...)
+#define dbg_mem(msg...)
 #endif
 
 

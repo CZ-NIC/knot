@@ -46,7 +46,7 @@ knot_zone_t *knot_zone_new_empty(knot_dname_t *name)
 		return 0;
 	}
 
-	debug_knot_zone("Creating new zone!\n");
+	dbg_zone("Creating new zone!\n");
 
 	knot_zone_t *zone = malloc(sizeof(knot_zone_t));
 	if (zone == NULL) {
@@ -56,24 +56,23 @@ knot_zone_t *knot_zone_new_empty(knot_dname_t *name)
 	memset(zone, 0, sizeof(knot_zone_t));
 
 	// save the zone name
-	debug_knot_zone("Setting zone name.\n");
+	dbg_zone("Setting zone name.\n");
 	zone->name = name;
 	return zone;
 }
 
 /*----------------------------------------------------------------------------*/
 
-
 knot_zone_t *knot_zone_new(knot_node_t *apex, uint node_count,
                                int use_domain_table)
 {
-	knot_zone_t * zone = knot_zone_new_empty(
+	knot_zone_t *zone = knot_zone_new_empty(
 			knot_dname_deep_copy(knot_node_owner(apex)));
 	if (zone == NULL) {
 		return NULL;
 	}
 
-	debug_knot_zone("Creating zone contents.\n");
+	dbg_zone("Creating zone contents.\n");
 	zone->contents = knot_zone_contents_new(apex, node_count,
 	                                          use_domain_table, zone);
 	if (zone->contents == NULL) {
@@ -163,6 +162,13 @@ void knot_zone_set_data(knot_zone_t *zone, void *data)
 
 /*----------------------------------------------------------------------------*/
 
+const knot_dname_t *knot_zone_name(const knot_zone_t *zone)
+{
+	return zone->name;
+}
+
+/*----------------------------------------------------------------------------*/
+
 knot_zone_contents_t *knot_zone_switch_contents(knot_zone_t *zone,
                                            knot_zone_contents_t *new_contents)
 {
@@ -183,12 +189,12 @@ void knot_zone_free(knot_zone_t **zone)
 		return;
 	}
 
-	debug_knot_zone("zone_free().\n");
+	dbg_zone("zone_free().\n");
 
 	if ((*zone)->contents 
 	    && !knot_zone_contents_gen_is_old((*zone)->contents)) {
 		// zone is in the middle of an update, report
-		debug_knot_zone("Destroying zone that is in the middle of an "
+		dbg_zone("Destroying zone that is in the middle of an "
 		                  "update.\n");
 	}
 
@@ -203,27 +209,27 @@ void knot_zone_free(knot_zone_t **zone)
 	free(*zone);
 	*zone = NULL;
 
-	debug_knot_zone("Done.\n");
+	dbg_zone("Done.\n");
 }
 
 /*----------------------------------------------------------------------------*/
 
-void knot_zone_deep_free(knot_zone_t **zone, int free_rdata_dnames)
+void knot_zone_deep_free(knot_zone_t **zone, int destroy_dname_table)
 {
 	if (zone == NULL || *zone == NULL) {
 		return;
 	}
-
+	
 	if ((*zone)->contents
 	    && !knot_zone_contents_gen_is_old((*zone)->contents)) {
 		// zone is in the middle of an update, report
-		debug_knot_zone("Destroying zone that is in the middle of an "
+		dbg_zone("Destroying zone that is in the middle of an "
 		                  "update.\n");
 	}
 
-DEBUG_KNOT_ZONE(
+dbg_zone_exec(
 	char *name = knot_dname_to_str((*zone)->name);
-	debug_knot_zone("Destroying zone %p, name: %s.\n", *zone, name);
+	dbg_zone("Destroying zone %p, name: %s.\n", *zone, name);
 	free(name);
 );
 
@@ -234,7 +240,7 @@ DEBUG_KNOT_ZONE(
 		(*zone)->dtor(*zone);
 	}
 
-	knot_zone_contents_deep_free(&(*zone)->contents);
+	knot_zone_contents_deep_free(&(*zone)->contents, destroy_dname_table);
 	free(*zone);
 	*zone = NULL;
 }

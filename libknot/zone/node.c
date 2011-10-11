@@ -215,25 +215,19 @@ knot_node_t *knot_node_new(knot_dname_t *owner, knot_node_t *parent,
 int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset,
                           int merge)
 {
-	int ret;
-	int unique_rrset_type = 1;
-	if (gen_tree_find(node->rrset_tree, rrset) && merge) {
-		unique_rrset_type = 0;
-	}
-//	printf("Add: %p (%p - %s:%s)\n", node->rrset_tree, rrset,
-//	       knot_dname_to_str(rrset->owner),
-//	       knot_rrtype_to_string(rrset->type));
+	int ret = 0;
+
 	if ((ret = (gen_tree_add(node->rrset_tree, rrset,
-	                         (merge) ? knot_rrset_merge : NULL))) != 0) {
-		debug_knot_xfr("Failed to add rrset to node->rrset_tree.\n");
+	                         (merge) ? knot_rrset_merge : NULL))) < 0) {
+		dbg_node("Failed to add rrset to node->rrset_tree.\n");
 		return KNOT_ERROR;
 	}
 
-	if (ret == 0) {
-		node->rrset_count += unique_rrset_type;
-		return KNOT_EOK;
+	if (ret >= 0) {
+		node->rrset_count += (ret > 0 ? 0 : 1);
+		return ret;
 	} else {
-		return 1;
+		return KNOT_ERROR;
 	}
 }
 
@@ -242,8 +236,6 @@ int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset,
 const knot_rrset_t *knot_node_rrset(const knot_node_t *node,
                                         uint16_t type)
 {
-//	printf("Find: %p (%s - %p)\n", node->rrset_tree,
-//	       knot_dname_to_str(node->owner), node);
 	assert(node != NULL);
 	assert(node->rrset_tree != NULL);
 	knot_rrset_t rrset;
@@ -255,8 +247,6 @@ const knot_rrset_t *knot_node_rrset(const knot_node_t *node,
 
 knot_rrset_t *knot_node_get_rrset(knot_node_t *node, uint16_t type)
 {
-//	printf("Find: %p (%s - %p)\n", node->rrset_tree,
-//	       knot_dname_to_str(node->owner), node);
 	knot_rrset_t rrset;
 	rrset.type = type;
 	return (knot_rrset_t *)gen_tree_find(node->rrset_tree, &rrset);
@@ -305,7 +295,7 @@ static void save_rrset_to_array(void *node, void *data)
 {
 	knot_rrset_t *rrset = (knot_rrset_t *)node;
 //	printf("%p\n", rrset);
-//	debug_knot_node("Returning rrset from tree: %s\n",
+//	dbg_node("Returning rrset from tree: %s\n",
 //	                  knot_dname_to_str(rrset->owner));
 	struct knot_node_save_rrset_arg *args =
 		(struct knot_node_save_rrset_arg *)data;
@@ -345,7 +335,7 @@ knot_rrset_t **knot_node_get_rrsets(const knot_node_t *node)
 
 const knot_rrset_t **knot_node_rrsets(const knot_node_t *node)
 {
-	knot_node_dump((knot_node_t *)node, (void*)1);
+	//knot_node_dump((knot_node_t *)node, (void*)1);
 //	printf("RRset count: %u\n", node->rrset_count);
 	if (node->rrset_count == 0) {
 		return NULL;
@@ -447,7 +437,7 @@ const knot_node_t *knot_node_previous(const knot_node_t *node,
 knot_node_t *knot_node_get_previous(const knot_node_t *node, 
                                         int check_version)
 {
-//	printf("node: %s zone: %p\n", knot_dname_to_str(node->owner),
+//	fprintf(stderr, "node: %s zone: %p\n", knot_dname_to_str(node->owner),
 //	       node->zone);
 	assert(!check_version
 	       || (node->zone != NULL && node->zone->contents != NULL));
@@ -825,6 +815,9 @@ void knot_node_free_rrsets(knot_node_t *node, int free_rdata_dnames)
 	
 //	free(rrsets);
 
+	char *name = knot_dname_to_str(node->owner);
+	free(name);
+
 	gen_tree_destroy(&node->rrset_tree, knot_node_free_rrsets_from_tree, 
 	                 (void *)&free_rdata_dnames);
 }
@@ -837,15 +830,15 @@ void knot_node_free(knot_node_t **node, int free_owner, int fix_refs)
 		return;
 	}
 	
-	debug_knot_node("Freeing node.\n");
+	dbg_node("Freeing node.\n");
 	if ((*node)->rrset_tree != NULL) {
-		debug_knot_node("Freeing RRSets.\n");
+		dbg_node("Freeing RRSets.\n");
 		gen_tree_destroy(&(*node)->rrset_tree, NULL, NULL);
 	}
 
 	/*! \todo Always release owner? */
 	//if (free_owner) {
-		debug_knot_node("Releasing owner.\n");
+		dbg_node("Releasing owner.\n");
 		knot_dname_release((*node)->owner);
 	//}
 
@@ -853,31 +846,31 @@ void knot_node_free(knot_node_t **node, int free_owner, int fix_refs)
 
 	if (fix_refs) {
 		// previous node
-		debug_knot_node("Checking previous.\n");
+		dbg_node("Checking previous.\n");
 		if ((*node)->prev && (*node)->prev->next == (*node)) {
 			(*node)->prev->next = (*node)->next;
 		}
 
-		debug_knot_node("Checking next.\n");
+		dbg_node("Checking next.\n");
 		if ((*node)->next && (*node)->next->prev == (*node)) {
 			(*node)->next->prev = (*node)->prev;
 		}
 
 		// NSEC3 node
-		debug_knot_node("Checking NSEC3.\n");
+		dbg_node("Checking NSEC3.\n");
 		if ((*node)->nsec3_node
 		    && (*node)->nsec3_node->nsec3_referer == (*node)) {
 			(*node)->nsec3_node->nsec3_referer = NULL;
 		}
 
-		debug_knot_node("Checking NSEC3 ref.\n");
+		dbg_node("Checking NSEC3 ref.\n");
 		if ((*node)->nsec3_referer
 		    && (*node)->nsec3_referer->nsec3_node == (*node)) {
 			(*node)->nsec3_referer->nsec3_node = NULL;
 		}
 
 		// wildcard child node
-		debug_knot_node("Checking parent's wildcard child.\n");
+		dbg_node("Checking parent's wildcard child.\n");
 		if ((*node)->parent
 		    && (*node)->parent->wildcard_child == (*node)) {
 			(*node)->parent->wildcard_child = NULL;
@@ -892,7 +885,7 @@ void knot_node_free(knot_node_t **node, int free_owner, int fix_refs)
 	free(*node);
 	*node = NULL;
 
-	debug_knot_node("Done.\n");
+	dbg_node("Done.\n");
 }
 
 /*----------------------------------------------------------------------------*/

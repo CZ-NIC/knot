@@ -106,7 +106,7 @@ static void *thread_ep(void *data)
 	sigaddset(&ignset, SIGHUP);
 	pthread_sigmask(SIG_BLOCK, &ignset, 0); /*! \todo Review under BSD. */
 
-	debug_dt("dthreads: [%p] entered ep\n", thread);
+	dbg_dt("dthreads: [%p] entered ep\n", thread);
 
 	// Run loop
 	for (;;) {
@@ -114,7 +114,7 @@ static void *thread_ep(void *data)
 		// Check thread state
 		lock_thread_rw(thread);
 		if (thread->state == ThreadDead) {
-			debug_dt("dthreads: [%p] marked as dead\n", thread);
+			dbg_dt("dthreads: [%p] marked as dead\n", thread);
 			unlock_thread_rw(thread);
 			break;
 		}
@@ -126,9 +126,9 @@ static void *thread_ep(void *data)
 		// Start runnable if thread is marked Active
 		if ((thread->state == ThreadActive) && (thread->run != 0)) {
 			unlock_thread_rw(thread);
-			debug_dt("dthreads: [%p] entering runnable\n", thread);
+			dbg_dt("dthreads: [%p] entering runnable\n", thread);
 			_run(thread);
-			debug_dt("dthreads: [%p] exited runnable\n", thread);
+			dbg_dt("dthreads: [%p] exited runnable\n", thread);
 		} else {
 			unlock_thread_rw(thread);
 		}
@@ -136,7 +136,7 @@ static void *thread_ep(void *data)
 		// If the runnable was cancelled, start new iteration
 		lock_thread_rw(thread);
 		if (thread->state & ThreadCancelled) {
-			debug_dt("dthreads: [%p] cancelled\n", thread);
+			dbg_dt("dthreads: [%p] cancelled\n", thread);
 			thread->state &= ~ThreadCancelled;
 			unlock_thread_rw(thread);
 			continue;
@@ -159,11 +159,11 @@ static void *thread_ep(void *data)
 			unit_signalize_change(unit);
 
 			// Wait for notification from unit
-			debug_dt("dthreads: [%p] going idle\n", thread);
+			dbg_dt("dthreads: [%p] going idle\n", thread);
 			/*! \todo Check return value. */
 			pthread_cond_wait(&unit->_notify, &unit->_notify_mx);
 			pthread_mutex_unlock(&unit->_notify_mx);
-			debug_dt("dthreads: [%p] resumed from idle\n", thread);
+			dbg_dt("dthreads: [%p] resumed from idle\n", thread);
 		} else {
 			unlock_thread_rw(thread);
 			pthread_mutex_unlock(&unit->_notify_mx);
@@ -171,9 +171,9 @@ static void *thread_ep(void *data)
 	}
 
 	// Report thread state change
-	debug_dt("dthreads: [%p] thread finished\n", thread);
+	dbg_dt("dthreads: [%p] thread finished\n", thread);
 	unit_signalize_change(unit);
-	debug_dt("dthreads: [%p] thread exited ep\n", thread);
+	dbg_dt("dthreads: [%p] thread exited ep\n", thread);
 	lock_thread_rw(thread);
 	thread->state |= ThreadJoinable;
 	unlock_thread_rw(thread);
@@ -427,8 +427,8 @@ int dt_resize(dt_unit_t *unit, int size)
 		dt_unit_lock(unit);
 
 		// Realloc threads
-		debug_dt("dt_resize: growing from %d to %d threads\n",
-		         unit->size, size);
+		dbg_dt("dthreads: growing from %d to %d threads\n",
+		       unit->size, size);
 
 		dthread_t **threads = realloc(unit->threads,
 		                              size * sizeof(dthread_t *));
@@ -456,8 +456,8 @@ int dt_resize(dt_unit_t *unit, int size)
 
 	// Unit shrinking
 	int remaining = size;
-	debug_dt("dt_resize: shrinking from %d to %d threads\n",
-		 unit->size, size);
+	dbg_dt("dthreads: shrinking from %d to %d threads\n",
+	       unit->size, size);
 
 	// New threads vector
 	dthread_t **threads = malloc(size * sizeof(dthread_t *));
@@ -499,8 +499,8 @@ int dt_resize(dt_unit_t *unit, int size)
 
 				// Invalidate in old vector
 				unit->threads[i] = 0;
-				debug_dt("dthreads: [%p] dt_resize: elected\n",
-				         thread);
+				dbg_dt_verb("dthreads: [%p] dt_resize: elected\n",
+				            thread);
 
 			} else if (remaining <= 0) {
 
@@ -514,8 +514,8 @@ int dt_resize(dt_unit_t *unit, int size)
 				// Signalize thread to stop
 				thread->state = ThreadDead | ThreadCancelled;
 				dt_signalize(thread, SIGALRM);
-				debug_dt("dthreads: [%p] dt_resize: "
-				         "is discarded\n", thread);
+				dbg_dt_verb("dthreads: [%p] dt_resize: "
+				            "is discarded\n", thread);
 			}
 
 			// Unlock thread and continue
@@ -588,13 +588,13 @@ int dt_start(dt_unit_t *unit)
 		dthread_t *thread = unit->threads[i];
 		int res = dt_start_id(thread);
 		if (res != 0) {
-			debug_dt("dthreads: Failed to create thread '%d'.", i);
+			dbg_dt("dthreads: failed to create thread '%d'.", i);
 			dt_unit_unlock(unit);
 			pthread_mutex_unlock(&unit->_notify_mx);
 			return res;
 		}
 
-		debug_dt("dthreads: [%p] %s: thread started\n",
+		dbg_dt("dthreads: [%p] %s: thread started\n",
 		         thread, __func__);
 	}
 
@@ -624,7 +624,7 @@ int dt_start_id(dthread_t *thread)
 
 	// Do not re-create running threads
 	if (prev_state != ThreadJoined) {
-		debug_dt("dthreads: [%p] %s: refused to recreate thread\n",
+		dbg_dt("dthreads: [%p] %s: refused to recreate thread\n",
 		         thread, __func__);
 		unlock_thread_rw(thread);
 		return 0;
@@ -680,20 +680,20 @@ int dt_join(dt_unit_t *unit)
 		int active_threads = 0;
 		for (int i = 0; i < unit->size; ++i) {
 
-			// Count active threads
+			// Count active or cancelled but pending threads
 			dthread_t *thread = unit->threads[i];
 			lock_thread_rw(thread);
-			if (thread->state & ThreadActive) {
+			if (thread->state & (ThreadActive|ThreadCancelled)) {
 				++active_threads;
 			}
 
 			// Reclaim dead threads, but only fast
 			if (thread->state & ThreadJoinable) {
 				unlock_thread_rw(thread);
-				debug_dt("dthreads: [%p] %s: reclaiming\n",
+				dbg_dt_verb("dthreads: [%p] %s: reclaiming\n",
 				         thread, __func__);
 				pthread_join(thread->_thr, 0);
-				debug_dt("dthreads: [%p] %s: reclaimed\n",
+				dbg_dt("dthreads: [%p] %s: reclaimed\n",
 				         thread, __func__);
 				thread->state = ThreadJoined;
 			} else {
@@ -763,7 +763,7 @@ int dt_stop(dt_unit_t *unit)
 		lock_thread_rw(thread);
 		if (thread->state & (ThreadIdle | ThreadActive)) {
 			thread->state = ThreadDead | ThreadCancelled;
-			debug_dt("dthreads: [%p] %s: stopping thread\n",
+			dbg_dt("dthreads: [%p] %s: stopping thread\n",
 			         thread, __func__);
 			dt_signalize(thread, SIGALRM);
 		}
@@ -804,8 +804,8 @@ int dt_setprio(dthread_t *thread, int prio)
 
 	/* Map error codes. */
 	if (ret < 0) {
-		debug_dt("dthreads: [%p] %s(%d): failed",
-			 thread, __func__, prio);
+		dbg_dt("dthreads: [%p] %s(%d): failed",
+		       thread, __func__, prio);
 
 		/* Map "not supported". */
 		if (ret == ENOTSUP) {
@@ -905,19 +905,19 @@ int dt_compact(dt_unit_t *unit)
 		dthread_t *thread = unit->threads[i];
 		lock_thread_rw(thread);
 		if (thread->state & (ThreadDead)) {
-			debug_dt("dthreads: [%p] %s: reclaiming thread\n",
-			         thread, __func__);
+			dbg_dt_verb("dthreads: [%p] %s: reclaiming thread\n",
+			            thread, __func__);
 			unlock_thread_rw(thread);
 			pthread_join(thread->_thr, 0);
-			debug_dt("dthreads: [%p] %s: thread reclaimed\n",
-			         thread, __func__);
+			dbg_dt("dthreads: [%p] %s: thread reclaimed\n",
+			       thread, __func__);
 			thread->state = ThreadJoined;
 		} else {
 			unlock_thread_rw(thread);
 		}
 	}
 
-	debug_dt("dthreads: compact: joined all threads\n");
+	dbg_dt_verb("dthreads: compact: joined all threads\n");
 
 	// Unlock unit
 	dt_unit_unlock(unit);
@@ -933,7 +933,7 @@ int dt_optimal_size()
 		return ret + CPU_ESTIMATE_MAGIC;
 	}
 #endif
-	debug_dt("dthreads: Failed to fetch the number of online CPUs.");
+	dbg_dt("dthreads: failed to fetch the number of online CPUs.");
 	return DEFAULT_THR_COUNT;
 }
 

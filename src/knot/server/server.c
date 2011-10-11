@@ -17,7 +17,6 @@
 #include "knot/stat/stat.h"
 #include "libknot/zone/zonedb.h"
 #include "knot/zone/zone-load.h"
-#include "libknot/util/debug.h"
 #include "libknot/dname.h"
 #include "knot/conf/conf.h"
 #include "knot/server/zones.h"
@@ -42,6 +41,7 @@ static int evsched_run(dthread_t *thread)
 
 		/* Process termination event. */
 		if (ev->type == EVSCHED_TERM) {
+			evsched_event_finished(s);
 			evsched_event_free(s, ev);
 			break;
 		}
@@ -49,7 +49,9 @@ static int evsched_run(dthread_t *thread)
 		/* Process event. */
 		if (ev->type == EVSCHED_CB && ev->cb) {
 			ev->cb(ev);
+			evsched_event_finished(s);
 		} else {
+			evsched_event_finished(s);
 			evsched_event_free(s, ev);
 		}
 
@@ -311,9 +313,6 @@ static int server_bind_handlers(server_t *server)
 		tcp_unit_size = 3;
 	}
 
-	/*! \bug Bug prevents multithreading with libev-based TCP. */
-	tcp_unit_size = 1;
-
 	/* Lock config. */
 	conf_read_lock();
 
@@ -334,22 +333,22 @@ static int server_bind_handlers(server_t *server)
 
 			/* Save pointer. */
 			rcu_set_pointer(&iface->handler[UDP_ID], h);
-			debug_server("Creating UDP socket handlers for '%s:%d'\n",
+			dbg_server("Creating UDP socket handlers for '%s:%d'\n",
 			             iface->addr, iface->port);
 
 		}
 
 		/* Create TCP handlers. */
 		if (!iface->handler[TCP_ID]) {
-			unit = dt_create(tcp_unit_size); /*! \todo Multithreaded TCP. */
-			tcp_loop_unit(unit);
+			unit = dt_create(tcp_unit_size);
 			h = server_create_handler(server, iface->fd[TCP_ID], unit);
+			tcp_loop_unit(h, unit);
 			h->type = iface->type[TCP_ID];
 			h->iface = iface;
 
 			/* Save pointer. */
 			rcu_set_pointer(&iface->handler[TCP_ID], h);
-			debug_server("Creating TCP socket handlers for '%s:%d'\n",
+			dbg_server("Creating TCP socket handlers for '%s:%d'\n",
 			             iface->addr, iface->port);
 		}
 
@@ -376,21 +375,21 @@ server_t *server_create()
 	init_list(server->ifaces);
 
 	// Create event scheduler
-	debug_server("Creating event scheduler...\n");
+	dbg_server("Creating event scheduler...\n");
 	server->sched = evsched_new();
 	dt_unit_t *unit = dt_create_coherent(1, evsched_run, 0);
 	iohandler_t *h = server_create_handler(server, -1, unit);
 	h->data = server->sched;
 
 	// Create name server
-	debug_server("Creating Name Server structure...\n");
+	dbg_server("Creating Name Server structure...\n");
 	server->nameserver = knot_ns_create();
 	if (server->nameserver == NULL) {
 		free(server);
 		return NULL;
 	}
 	knot_ns_set_data(server->nameserver, server);
-	debug_server("Initializing OpenSSL...\n");
+	dbg_server("Initializing OpenSSL...\n");
 	OpenSSL_add_all_digests();
 
 	// Create XFR handler
@@ -401,7 +400,7 @@ server_t *server_create()
 		return NULL;
 	}
 
-	debug_server("Done.\n");
+	dbg_server("Done.\n");
 	return server;
 }
 
@@ -427,7 +426,9 @@ iohandler_t *server_create_handler(server_t *server, int fd, dt_unit_t *unit)
 	// Update unit data object
 	for (int i = 0; i < unit->size; ++i) {
 		dthread_t *thread = unit->threads[i];
-		dt_repurpose(thread, thread->run, handler);
+		if (thread->run) {
+			dt_repurpose(thread, thread->run, handler);
+		}
 	}
 
 	/*! \todo This requires either RCU compatible ptr swap or locking. */
@@ -508,7 +509,7 @@ int server_start(server_t *server)
 		return KNOTD_EINVAL;
 	}
 
-	debug_server("Starting handlers...\n");
+	dbg_server("Starting handlers...\n");
 
 	/* Start XFR handler. */
 	xfr_start(server->xfr_h);
@@ -537,13 +538,16 @@ int server_start(server_t *server)
 	/* Unlock configuration. */
 	conf_read_unlock();
 
-	debug_server("Done.\n");
+	dbg_server("Done.\n");
 
 	return ret;
 }
 
 int server_wait(server_t *server)
 {
+	/* Join threading unit. */
+	xfr_join(server->xfr_h);
+	
 	/* Lock RCU. */
 	rcu_read_lock();
 
@@ -551,8 +555,6 @@ int server_wait(server_t *server)
 	int ret = 0;
 	iohandler_t *h = 0, *nxt = 0;
 	WALK_LIST_DELSAFE(h, nxt, server->handlers) {
-		debug_server("server: [%p] joining threading unit\n",
-			     h);
 
 		/* Unlock RCU. */
 		rcu_read_unlock();
@@ -566,13 +568,16 @@ int server_wait(server_t *server)
 
 		/* Relock RCU. */
 		rcu_read_lock();
-
-		debug_server("server: joined threading unit\n");
 	}
 
 	/* Unlock RCU. */
 	rcu_read_unlock();
 
+	return ret;
+}
+
+void server_stop(server_t *server)
+{
 	/* Wait for XFR master. */
 	xfr_stop(server->xfr_h);
 
@@ -580,15 +585,7 @@ int server_wait(server_t *server)
 	if (server->xfr_h->interrupt) {
 		server->xfr_h->interrupt(server->xfr_h);
 	}
-
-	/* Join threading unit. */
-	xfr_join(server->xfr_h);
-
-	return ret;
-}
-
-void server_stop(server_t *server)
-{
+	
 	/* Send termination event. */
 	evsched_schedule_term(server->sched, 0);
 
@@ -622,6 +619,9 @@ void server_destroy(server_t **server)
 	if (!*server) {
 		return;
 	}
+	
+	// Free XFR master
+	xfr_free((*server)->xfr_h);
 
 	// Free interfaces
 	node *n = 0, *nxt = 0;
@@ -632,9 +632,6 @@ void server_destroy(server_t **server)
 		}
 		free((*server)->ifaces);
 	}
-
-	// Free XFR master
-	xfr_free((*server)->xfr_h);
 
 	stat_static_gath_free();
 	knot_ns_destroy(&(*server)->nameserver);

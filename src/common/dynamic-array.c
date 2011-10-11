@@ -15,11 +15,11 @@
 
 //#define DA_DEBUG
 
-#ifndef debug_da
+#ifndef dbg_da
 #ifdef DA_DEBUG
-#define debug_da(msg...) fprintf(stderr, msg)
+#define dbg_da(msg...) fprintf(stderr, msg)
 #else
-#define debug_da(msg...)
+#define dbg_da(msg...)
 #endif
 #endif
 
@@ -40,7 +40,7 @@ typedef enum da_resize_type da_resize_type_t;
  */
 static int da_resize(da_array_t *array, da_resize_type_t type)
 {
-	debug_da("da_resize(): array pointer: %p, items pointer: %p\n", array,
+	dbg_da("da_resize(): array pointer: %p, items pointer: %p\n", array,
 	         array->items);
 
 	unsigned new_size = ((type == DA_LARGER)
@@ -53,7 +53,7 @@ static int da_resize(da_array_t *array, da_resize_type_t type)
 		return -1;
 	}
 
-	debug_da("Place for new items: %p\n", new_items);
+	dbg_da("Place for new items: %p\n", new_items);
 
 	// copy the contents from the old array to the new
 	memcpy(new_items, array->items, array->count * array->item_size);
@@ -62,12 +62,12 @@ static int da_resize(da_array_t *array, da_resize_type_t type)
 	void *old_items = rcu_xchg_pointer(&array->items, new_items);
 	array->allocated = new_size;
 
-	debug_da("Old items pointer: %p\n", old_items);
+	dbg_da("Old items pointer: %p\n", old_items);
 
 	// wait for readers to finish
 	synchronize_rcu();
 	// deallocate the old array
-	debug_da("RCU synchronized, deallocating old items array at address %p."
+	dbg_da("RCU synchronized, deallocating old items array at address %p."
 	         "\n", old_items);
 	free(old_items);
 
@@ -123,10 +123,10 @@ int da_reserve(da_array_t *array, unsigned count)
 
 	assert(array->allocated >= array->count);
 	if ((array->allocated - array->count) >= count) {
-		debug_da("Enough place in the array, no resize needed.\n");
+		dbg_da("Enough place in the array, no resize needed.\n");
 		res = 0;
 	} else {
-		debug_da("Resizing array.\n");
+		dbg_da("Resizing array.\n");
 		res = da_resize(array, DA_LARGER);
 	}
 	pthread_mutex_unlock(&array->mtx);
@@ -143,7 +143,7 @@ int da_occupy(da_array_t *array, unsigned count)
 	assert(array->allocated >= array->count);
 
 	if ((array->allocated - array->count) < count) {
-		debug_da("Not enough place to occupy.\n");
+		dbg_da("Not enough place to occupy.\n");
 		res = -1;
 	} else {
 		array->count += count;
@@ -173,7 +173,7 @@ void da_release(da_array_t *array, unsigned count)
 
 	assert(array->allocated >= array->count);
 	assert(array->count >= count);
-	debug_da("Decreasing count of items in array.\n");
+	dbg_da("Decreasing count of items in array.\n");
 	array->count -= count;
 
 	pthread_mutex_unlock(&array->mtx);

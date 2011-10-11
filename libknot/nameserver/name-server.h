@@ -72,9 +72,14 @@ typedef struct knot_nameserver {
 typedef int (*xfr_callback_t)(int session, sockaddr_t *addr,
 			      uint8_t *packet, size_t size);
 
-/*! \todo Document me. */
+/*!
+ * \brief Single XFR operation structure.
+ *
+ * Used for communication with XFR handler.
+ */
 typedef struct knot_ns_xfr {
 	int type;
+	int flags;
 	sockaddr_t addr;
 	knot_packet_t *query;
 	knot_packet_t *response;
@@ -84,7 +89,32 @@ typedef struct knot_ns_xfr {
 	size_t wire_size;
 	void *data;
 	knot_zone_t *zone;
+	void *owner;
 } knot_ns_xfr_t;
+
+/*!
+ * \brief XFR request flags.
+ */
+enum knot_ns_xfr_flag_t {
+	XFR_FLAG_TCP = 1 << 0, /*!< XFR request is on TCP. */
+	XFR_FLAG_UDP = 1 << 1  /*!< XFR request is on UDP. */
+};
+
+/*!
+ * \brief XFR request types.
+ */
+typedef enum knot_ns_xfr_type_t {
+	/* Special events. */
+	XFR_TYPE_CLOSE = -1, /*!< Close connection event. */
+
+	/* DNS events. */
+	XFR_TYPE_AIN = 0,   /*!< AXFR-IN request (start transfer). */
+	XFR_TYPE_AOUT,  /*!< AXFR-OUT request (incoming transfer). */
+	XFR_TYPE_IIN,   /*!< IXFR-IN request (start transfer). */
+	XFR_TYPE_IOUT,  /*!< IXFR-OUT request (incoming transfer). */
+	XFR_TYPE_SOA,   /*!< Pending SOA request. */
+	XFR_TYPE_NOTIFY /*!< Pending NOTIFY query. */
+} knot_ns_xfr_type_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -213,6 +243,22 @@ int knot_ns_switch_zone(knot_nameserver_t *nameserver,
  *
  * \param nameserver Name server structure to provide the data for answering.
  * \param xfr Persistent transfer-specific data.
+ *
+ * \retval KNOT_EOK If this packet was processed successfuly and another packet
+ *                  is expected. (RFC1995bis, case c)
+ * \retval KNOT_ENOXFR If the transfer is not taking place because server's 
+ *                     SERIAL is the same as this client's SERIAL. The client
+ *                     should close the connection and do no further processing.
+ *                     (RFC1995bis case a).
+ * \retval KNOT_EAGAIN If the server could not fit the transfer into the packet.
+ *                     This should happen only if UDP was used. In this case
+ *                     the client should retry the request via TCP. If UDP was
+ *                     not used, it should be considered that the transfer was 
+ *                     malformed and the connection should be closed.
+ *                     (RFC1995bis case b).
+ * \retval >0 Transfer successully finished. Changesets are created and furter
+ *            processing is needed.
+ * \retval Other If any other error occured. The connection should be closed.
  *
  * \todo Document me.
  */

@@ -275,6 +275,9 @@ int knot_packet_parse_next_rr_answer(knot_packet_t *packet,
 
 size_t knot_packet_size(const knot_packet_t *packet);
 
+/*! \brief Returns size of the wireformat of Header and Question sections. */
+size_t knot_packet_question_size(const knot_packet_t *packet);
+
 size_t knot_packet_parsed(const knot_packet_t *packet);
 
 /*!
@@ -335,6 +338,15 @@ const knot_dname_t *knot_packet_qname(const knot_packet_t *packet);
 uint16_t knot_packet_qtype(const knot_packet_t *packet);
 
 /*!
+ * \brief Set the QTYPE of the packet.
+ *
+ * \param packet Packet containing question.
+ * \param qtype New QTYPE for question.
+ */
+void knot_packet_set_qtype(knot_packet_t *packet, knot_rr_type_t qtype);
+
+
+/*!
  * \brief Returns the QCLASS from the packet.
  *
  * \param response Packet (with parsed query) to get the QCLASS from.
@@ -346,6 +358,16 @@ uint16_t knot_packet_qclass(const knot_packet_t *packet);
 int knot_packet_is_query(const knot_packet_t *packet);
 
 const knot_packet_t *knot_packet_query(const knot_packet_t *packet);
+
+int knot_packet_rcode(const knot_packet_t *packet);
+
+int knot_packet_tc(const knot_packet_t *packet);
+
+int knot_packet_ancount(const knot_packet_t *packet);
+
+int knot_packet_nscount(const knot_packet_t *packet);
+
+int knot_packet_arcount(const knot_packet_t *packet);
 
 /*!
  * \brief Returns number of RRSets in Answer section of the packet.

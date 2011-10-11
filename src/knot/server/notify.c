@@ -156,8 +156,6 @@ static int notify_check_and_schedule(knot_nameserver_t *nameserver,
                                      sockaddr_t *from)
 {
 	if (zone == NULL || from == NULL || knot_zone_data(zone) == NULL) {
-		debug_notify("notify: invalid parameters for check and "
-			     "schedule\n");
 		return KNOTD_EINVAL;
 	}
 	
@@ -168,31 +166,23 @@ static int notify_check_and_schedule(knot_nameserver_t *nameserver,
 			/* rfc1996: Ignore request and report incident. */
 			char straddr[SOCKADDR_STRLEN];
 			sockaddr_tostr(from, straddr, sizeof(straddr));
-			debug_notify("Unauthorized NOTIFY request "
-			                 "from %s:%d.\n",
-			                 straddr, sockaddr_portnum(from));
+			log_zone_notice("Unauthorized NOTIFY query "
+			                "from %s:%d to zone '%s'.\n",
+			                straddr, sockaddr_portnum(from),
+			                zd->conf->name);
 			return KNOT_ERROR;
 		} else {
-			debug_notify("notify: authorized NOTIFY query.\n");
+			dbg_notify("notify: authorized NOTIFY query.\n");
 		}
 	}
 
 	/*! \todo Packet may contain updated RRs. */
 
-	/* Cancel EXPIRE timer. */
-	evsched_t *sched = ((server_t *)knot_ns_get_data(nameserver))->sched;
-	event_t *expire_ev = zd->xfr_in.expire;
-	if (expire_ev) {
-		debug_notify("notify: canceling EXPIRE timer\n");
-		evsched_cancel(sched, expire_ev);
-		evsched_event_free(sched, expire_ev);
-		zd->xfr_in.expire = 0;
-	}
-
 	/* Cancel REFRESH/RETRY timer. */
+	evsched_t *sched = ((server_t *)knot_ns_get_data(nameserver))->sched;
 	event_t *refresh_ev = zd->xfr_in.timer;
 	if (refresh_ev) {
-		debug_notify("notify: canceling REFRESH timer for XFRIN\n");
+		dbg_notify("notify: expiring REFRESH timer\n");
 		evsched_cancel(sched, refresh_ev);
 
 		/* Set REFRESH timer for now. */
@@ -204,7 +194,7 @@ static int notify_check_and_schedule(knot_nameserver_t *nameserver,
 
 /*----------------------------------------------------------------------------*/
 
-int notify_process_request(knot_nameserver_t *nameserver,
+int notify_process_request(knot_nameserver_t *ns,
                            knot_packet_t *notify,
                            sockaddr_t *from,
                            uint8_t *buffer, size_t *size)
@@ -213,42 +203,51 @@ int notify_process_request(knot_nameserver_t *nameserver,
 	 *        - it will be fine to merge the code somehow.
 	 */
 
-	if (notify == NULL || nameserver == NULL || buffer == NULL 
+	if (notify == NULL || ns == NULL || buffer == NULL
 	    || size == NULL || from == NULL) {
-		debug_notify("notify: invalid parameters for query\n");
+		dbg_notify("notify: invalid parameters for %s()\n",
+		           "notify_process_request");
 		return KNOTD_EINVAL;
 	}
 
 	int ret = KNOTD_EOK;
 
-	debug_notify("notify: parsing rest of the packet\n");
+	dbg_notify("notify: parsing rest of the packet\n");
 	if (notify->parsed < notify->size) {
 		ret = knot_packet_parse_rest(notify);
 		if (ret != KNOT_EOK) {
-			debug_notify("notify: failed to parse NOTIFY query\n");
-			return KNOTD_EMALF;
+			dbg_notify("notify: failed to parse NOTIFY query\n");
+			knot_ns_error_response(ns, knot_packet_id(notify),
+					       KNOT_RCODE_FORMERR, buffer,
+					       size);
+			return KNOTD_EOK;
 		}
 	}
 
 	// create NOTIFY response
-	debug_notify("notify: creating response\n");
+	dbg_notify("notify: creating response\n");
 	ret = notify_create_response(notify, buffer, size);
 	if (ret != KNOTD_EOK) {
-		debug_notify("notify: failed to create NOTIFY response\n");
-		return KNOTD_ERROR;	/*! \todo Some other error. */
+		dbg_notify("notify: failed to create NOTIFY response\n");
+		knot_ns_error_response(ns, knot_packet_id(notify),
+				       KNOT_RCODE_SERVFAIL, buffer,
+				       size);
+		return KNOTD_EOK;
 	}
 
 	// find the zone
-	debug_notify("notify: looking up zone by name\n");
 	const knot_dname_t *qname = knot_packet_qname(notify);
 	const knot_zone_t *z = knot_zonedb_find_zone_for_name(
-			nameserver->zone_db, qname);
+			ns->zone_db, qname);
 	if (z == NULL) {
-		debug_notify("notify: failed to find zone by name\n");
-		return KNOTD_ERROR;	/*! \todo Some other error. */
+		dbg_notify("notify: failed to find zone by name\n");
+		knot_ns_error_response(ns, knot_packet_id(notify),
+				       KNOT_RCODE_REFUSED, buffer,
+				       size);
+		return KNOTD_EOK;
 	}
 
-	notify_check_and_schedule(nameserver, z, from);
+	notify_check_and_schedule(ns, z, from);
 
 	return KNOTD_EOK;
 }
@@ -281,9 +280,9 @@ int notify_process_response(knot_nameserver_t *nameserver,
 
 	/* Match ID against awaited. */
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
+	pthread_mutex_lock(&zd->lock);
 	uint16_t pkt_id = knot_packet_id(notify);
 	notify_ev_t *ev = 0, *match = 0;
-	pthread_mutex_lock(&zd->lock);
 	WALK_LIST(ev, zd->notify_pending) {
 		if ((int)pkt_id == ev->msgid) {
 			match = ev;
@@ -299,14 +298,9 @@ int notify_process_response(knot_nameserver_t *nameserver,
 	}
 
 	/* NOTIFY is now finished. */
-	evsched_t *sched = ((server_t *)knot_ns_get_data(nameserver))->sched;
-	if (match->timer) {
-		log_zone_info("NOTIFY query for zone %s answered.\n",
-			      zd->conf->name);
-		evsched_cancel(sched, (event_t *)match->timer);
-		evsched_schedule(sched, (event_t *)match->timer, 0);
-		match->timer = 0;
-	}
+	zones_cancel_notify(zd, match);
+
+	/* Zone was removed/reloaded. */
 	pthread_mutex_unlock(&zd->lock);
 
 	log_server_info("Received response for pending NOTIFY query ID=%u\n",

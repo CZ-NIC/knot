@@ -473,6 +473,9 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
 			tmp_rdata = next_rdata;
 		}
 
+		assert(tmp_rdata == NULL
+		       || tmp_rdata->next == (*rrset)->rdata);
+
 		knot_rdata_deep_free(&tmp_rdata, (*rrset)->type,
 		                       free_rdata_dnames);
 	}

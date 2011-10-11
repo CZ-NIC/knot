@@ -21,9 +21,9 @@
 				  __FILE__, __LINE__)
 
 #ifdef ST_DEBUG
-#define debug_st(msg...) fprintf(stderr, msg)
+#define dbg_st(msg...) fprintf(stderr, msg)
 #else
-#define debug_st(msg...)
+#define dbg_st(msg...)
 #endif
 
 #endif /* _KNOTD_STAT_COMMON_H_ */

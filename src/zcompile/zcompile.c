@@ -12,11 +12,8 @@
  * @{
  */
 
-
-
 #include <config.h>
 #include <assert.h>
-#include <fcntl.h>
 #include <ctype.h>
 #include <errno.h>
 #include <limits.h>
@@ -38,6 +35,7 @@
 #include "zcompile/zcompile-error.h"
 #include "knot/zone/zone-dump.h"
 #include "libknot/libknot.h"
+#include "libknot/util/utils.h"
 
 //#define DEBUG_UNKNOWN_RDATA
 
@@ -61,9 +59,9 @@
 //#define ZP_DEBUG
 
 #ifdef ZP_DEBUG
-#define debug_zp(msg...) fprintf(stderr, msg)
+#define dbg_zp(msg...) fprintf(stderr, msg)
 #else
-#define debug_zp(msg...)
+#define dbg_zp(msg...)
 #endif
 
 /*!
@@ -96,18 +94,28 @@ static uint16_t rrsig_type_covered(knot_rrset_t *rrset)
  * \param head Head of list.
  * \param rrsig RRSet to be added.
  */
-static void rrset_list_add(rrset_list_t **head, knot_rrset_t *rrsig)
+static int rrset_list_add(rrset_list_t **head, knot_rrset_t *rrsig)
 {
 	if (*head == NULL) {
 		*head = malloc(sizeof(rrset_list_t));
+		if (*head == NULL) {
+			ERR_ALLOC_FAILED;
+			return KNOTDZCOMPILE_ENOMEM;
+		}
 		(*head)->next = NULL;
 		(*head)->data = rrsig;
 	} else {
 		rrset_list_t *tmp = malloc(sizeof(*tmp));
+		if (tmp == NULL) {
+			ERR_ALLOC_FAILED;
+			return KNOTDZCOMPILE_ENOMEM;
+		}
 		tmp->next = *head;
 		tmp->data = rrsig;
 		*head = tmp;
 	}
+
+	return KNOTDZCOMPILE_EOK;
 }
 
 /*!
@@ -160,16 +168,11 @@ static inline int rdata_atom_is_domain(uint16_t type, size_t index)
  */
 static inline uint8_t rdata_atom_wireformat_type(uint16_t type, size_t index)
 {
-	const knot_rrtype_descriptor_t *descriptor
-	= knot_rrtype_descriptor_by_type(type);
+	const knot_rrtype_descriptor_t *descriptor =
+		knot_rrtype_descriptor_by_type(type);
 	assert(index < descriptor->length);
 	return descriptor->wireformat[index];
 }
-
-/*! \note this is untested, called only by parse_unknown data, which is
- * untested as well - probably will not be even needed, when zone is
- * properly formed i.e. by some tool
- */
 
 /*!
  * \brief Converts rdata wireformat to rdata items.
@@ -187,14 +190,17 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 					knot_rdata_item_t **items)
 {
 	dbg_rdata("read length: %d\n", data_size);
-//	hex_print(wireformat, data_size);
 	uint16_t const *end = (uint16_t *)((uint8_t *)wireformat + (data_size));
 	dbg_rdata("set end pointer: %p which means length: %d\n", end,
 	          (uint8_t *)end - (uint8_t *)wireformat);
 	size_t i;
 	knot_rdata_item_t *temp_rdatas =
-		malloc(sizeof(knot_rdata_item_t) * MAXRDATALEN);
-	memset(temp_rdatas, 0, sizeof(temp_rdatas));
+		malloc(sizeof(*temp_rdatas) * MAXRDATALEN);
+	if (temp_rdatas == NULL) {
+		ERR_ALLOC_FAILED;
+		return KNOTDZCOMPILE_ENOMEM;
+	}
+	memset(temp_rdatas, 0, sizeof(*temp_rdatas) * MAXRDATALEN);
 
 	knot_rrtype_descriptor_t *descriptor =
 		knot_rrtype_descriptor_by_type(rrtype);
@@ -301,12 +307,11 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 			dname = knot_dname_new_from_str((char *)wireformat,
 							  length,
 							  NULL);
-			/*! \todo implement refcounting correctly. */
-			ref_init(&dname->ref, 0); /* disable dtor */
-			ref_retain(&dname->ref);
 
 			if (dname == NULL) {
 				dbg_rdata("malformed dname!\n");
+				/*! \todo rdata purge */
+				free(temp_rdatas);
 				return KNOTDZCOMPILE_EBRDATA;
 			}
 			dbg_rdata("%d: created dname: %s\n", i,
@@ -322,9 +327,10 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 				temp_rdatas[i].raw_data =
 					malloc(sizeof(uint16_t) +
 					       sizeof(uint8_t) * dname->size);
-
 				if (temp_rdatas[i].raw_data == NULL) {
 					ERR_ALLOC_FAILED;
+					/*! \todo rdata purge */
+					free(temp_rdatas);
 					return KNOTDZCOMPILE_ENOMEM;
 				}
 
@@ -332,7 +338,7 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 				memcpy(temp_rdatas[i].raw_data + 1,
 				       dname->name, dname->size);
 
-				knot_dname_free(&dname);
+				knot_dname_release(dname);
 			} else {
 				temp_rdatas[i].dname = dname;
 			}
@@ -344,6 +350,8 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 			if ((uint8_t *)wireformat + length > (uint8_t *)end) {
 				if (required) {
 					/* Truncated RDATA.  */
+					/*! \todo rdata purge */
+					free(temp_rdatas);
 					dbg_rdata("truncated rdata\n");
 					return KNOTDZCOMPILE_EBRDATA;
 				} else {
@@ -356,9 +364,10 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 			          wireformat, length);
 			temp_rdatas[i].raw_data = alloc_rdata_init(wireformat,
 			                                           length);
-
 			if (temp_rdatas[i].raw_data == NULL) {
 				ERR_ALLOC_FAILED;
+				/*! \todo rdata purge */
+				free(temp_rdatas);
 				return -1;
 			}
 
@@ -388,6 +397,7 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 		/* Trailing garbage.  */
 		dbg_rdata("w: %p e: %p %d\n", wireformat, end, end - wireformat);
 //		region_destroy(temp_region);
+		free(temp_rdatas);
 		return KNOTDZCOMPILE_EBRDATA;
 	}
 
@@ -481,15 +491,22 @@ uint16_t * zparser_conv_hex(const char *hex, size_t len)
 	int i;
 
 	if (len % 2 != 0) {
-		zc_error_prev_line("number of hex digits must be a multiple of 2");
+		zc_error_prev_line("number of hex digits "
+		                   "must be a multiple of 2");
+		parser->error_occurred = KNOTDZCOMPILE_EBRDATA;
 	} else if (len > MAX_RDLENGTH * 2) {
 		zc_error_prev_line("hex data exceeds maximum rdata length (%d)",
 			MAX_RDLENGTH);
+		parser->error_occurred = KNOTDZCOMPILE_EBRDATA;
 	} else {
 		/* the length part */
 
 		r = alloc_rdata(len / 2);
-
+		if (r == NULL) {
+			ERR_ALLOC_FAILED;
+			parser->error_occurred = KNOTDZCOMPILE_ENOMEM;
+			return NULL;
+		}
 		t = (uint8_t *)(r + 1);
 
 		/* Now process octet by octet... */
@@ -502,6 +519,8 @@ uint16_t * zparser_conv_hex(const char *hex, size_t len)
 					zc_error_prev_line(
 						"illegal hex character '%c'",
 						(int) *hex);
+					parser->error_occurred =
+						KNOTDZCOMPILE_EBRDATA;
 					free(r);
 					return NULL;
 				}
@@ -521,14 +540,23 @@ uint16_t * zparser_conv_hex_length(const char *hex, size_t len)
 	uint8_t *t;
 	int i;
 	if (len % 2 != 0) {
-		zc_error_prev_line("number of hex digits must be a multiple of 2");
+		zc_error_prev_line("number of hex digits must be a "
+		                   "multiple of 2");
+		parser->error_occurred = KNOTDZCOMPILE_EBRDATA;
 	} else if (len > 255 * 2) {
 		zc_error_prev_line("hex data exceeds 255 bytes");
+		parser->error_occurred = KNOTDZCOMPILE_EBRDATA;
 	} else {
 		uint8_t *l;
 
 		/* the length part */
 		r = alloc_rdata(len / 2 + 1);
+		if (r == NULL) {
+			ERR_ALLOC_FAILED;
+			parser->error_occurred = KNOTDZCOMPILE_ENOMEM;
+			return NULL;
+		}
+
 		t = (uint8_t *)(r + 1);
 
 		l = t++;
@@ -544,6 +572,8 @@ uint16_t * zparser_conv_hex_length(const char *hex, size_t len)
 					zc_error_prev_line(
 						"illegal hex character '%c'",
 						(int) *hex);
+					parser->error_occurred =
+						KNOTDZCOMPILE_EBRDATA;
 					free(r);
 					return NULL;
 				}
@@ -565,9 +595,15 @@ uint16_t * zparser_conv_time(const char *time)
 	/* Try to scan the time... */
 	if (!strptime(time, "%Y%m%d%H%M%S", &tm)) {
 		zc_error_prev_line("date and time is expected");
+		parser->error_occurred = KNOTDZCOMPILE_EBRDATA;
 	} else {
 		uint32_t l = htonl(mktime_from_utc(&tm));
 		r = alloc_rdata_init(&l, sizeof(l));
+		if (r == NULL) {
+			ERR_ALLOC_FAILED;
+			parser->error_occurred = KNOTDZCOMPILE_ENOMEM;
+			return NULL;
+		}
 	}
 	return r;
 }
@@ -595,6 +631,7 @@ uint16_t * zparser_conv_services(const char *protostr, char *servicestr)
 	}
 	if (!proto) {
 		zc_error_prev_line("unknown protocol '%s'", protostr);
+		parser->error_occurred = KNOTDZCOMPILE_EBRDATA;
 		return NULL;
 	}
 
@@ -615,6 +652,7 @@ uint16_t * zparser_conv_services(const char *protostr, char *servicestr)
 					"unknown service '%s' for"
 					" protocol '%s'",
 					word, protostr);
+				parser->error_occurred = KNOTDZCOMPILE_EBRDATA;
 				continue;
 			}
 		}
@@ -630,6 +668,12 @@ uint16_t * zparser_conv_services(const char *protostr, char *servicestr)
 	}
 
 	r = alloc_rdata(sizeof(uint8_t) + max_port / 8 + 1);
+	if (r == NULL) {
+		ERR_ALLOC_FAILED;
+		parser->error_occurred = KNOTDZCOMPILE_ENOMEM;
+		return NULL;
+	}
+
 	p = (uint8_t *)(r + 1);
 	*p = proto->p_proto;
 	memcpy(p + 1, bitmap, *r);
@@ -646,9 +690,15 @@ uint16_t * zparser_conv_serial(const char *serialstr)
 	serial = strtoserial(serialstr, &t);
 	if (*t != '\0') {
 		zc_error_prev_line("serial is expected");
+		parser->error_occurred = KNOTDZCOMPILE_EBRDATA;
 	} else {
 		serial = htonl(serial);
 		r = alloc_rdata_init(&serial, sizeof(serial));
+		if (r == NULL) {
+			ERR_ALLOC_FAILED;
+			parser->error_occurred = KNOTDZCOMPILE_ENOMEM;
+			return NULL;
+		}
 	}
 	return r;
 }
@@ -664,9 +714,15 @@ uint16_t * zparser_conv_period(const char *periodstr)
 	period = strtottl(periodstr, &end);
 	if (*end != '\0') {
 		zc_error_prev_line("time period is expected");
+		parser->error_occurred = KNOTDZCOMPILE_EBRDATA;
 	} else {
 		period = htonl(period);
 		r = alloc_rdata_init(&period, sizeof(period));
+		if (r == NULL) {
+			ERR_ALLOC_FAILED;
+			parser->error_occurred = KNOTDZCOMPILE_ENOMEM;
+			return NULL;
+		}
 	}
 	return r;
 }
@@ -680,8 +736,14 @@ uint16_t * zparser_conv_short(const char *text)
 	value = htons((uint16_t) strtol(text, &end, 10));
 	if (*end != '\0') {
 		zc_error_prev_line("integer value is expected");
+		parser->error_occurred = KNOTDZCOMPILE_EBRDATA;
 	} else {
 		r = alloc_rdata_init(&value, sizeof(value));
+		if (r == NULL) {
+			ERR_ALLOC_FAILED;
+			parser->error_occurred = KNOTDZCOMPILE_ENOMEM;
+			return NULL;
+		}
 	}
 	return r;
 }
@@ -695,8 +757,14 @@ uint16_t * zparser_conv_byte(const char *text)
 	value = (uint8_t) strtol(text, &end, 10);
 	if (*end != '\0') {
 		zc_error_prev_line("integer value is expected");
+		parser->error_occurred = KNOTDZCOMPILE_EBRDATA;
 	} else {
 		r = alloc_rdata_init(&value, sizeof(value));
+		if (r == NULL) {
+			ERR_ALLOC_FAILED;
+			parser->error_occurred = KNOTDZCOMPILE_ENOMEM;
+			return NULL;
+		}
 	}
 	return r;
 }
@@ -714,11 +782,19 @@ uint16_t * zparser_conv_algorithm(const char *text)
 		id = (uint8_t) strtol(text, &end, 10);
 		if (*end != '\0') {
 			zc_error_prev_line("algorithm is expected");
+			parser->error_occurred = KNOTDZCOMPILE_EBRDATA;
 			return NULL;
 		}
 	}
 
-	return alloc_rdata_init(&id, sizeof(id));
+	uint16_t *r = alloc_rdata_init(&id, sizeof(id));
+	if (r == NULL) {
+		ERR_ALLOC_FAILED;
+		parser->error_occurred = KNOTDZCOMPILE_ENOMEM;
+		return NULL;
+	}
+
+	return r;
 }
 
 uint16_t * zparser_conv_certificate_type(const char *text)
@@ -735,11 +811,19 @@ uint16_t * zparser_conv_certificate_type(const char *text)
 		id = htons((uint16_t) strtol(text, &end, 10));
 		if (*end != '\0') {
 			zc_error_prev_line("certificate type is expected");
+			parser->error_occurred = KNOTDZCOMPILE_EBRDATA;
 			return NULL;
 		}
 	}
 
-	return alloc_rdata_init(&id, sizeof(id));
+	uint16_t *r = alloc_rdata_init(&id, sizeof(id));
+	if (r == NULL) {
+		ERR_ALLOC_FAILED;
+		parser->error_occurred = KNOTDZCOMPILE_ENOMEM;
+		return NULL;
+	}
+
+	return r;
 }
 
 uint16_t * zparser_conv_a(const char *text)
@@ -749,9 +833,16 @@ uint16_t * zparser_conv_a(const char *text)
 
 	if (inet_pton(AF_INET, text, &address) != 1) {
 		zc_error_prev_line("invalid IPv4 address '%s'", text);
+		parser->error_occurred = KNOTDZCOMPILE_EBRDATA;
 	} else {
 		r = alloc_rdata_init(&address, sizeof(address));
+		if (r == NULL) {
+			ERR_ALLOC_FAILED;
+			parser->error_occurred = KNOTDZCOMPILE_ENOMEM;
+			return NULL;
+		}
 	}
+
 	return r;
 }
 
@@ -762,8 +853,14 @@ uint16_t * zparser_conv_aaaa(const char *text)
 
 	if (inet_pton(AF_INET6, text, address) != 1) {
 		zc_error_prev_line("invalid IPv6 address '%s'", text);
+		parser->error_occurred = KNOTDZCOMPILE_EBRDATA;
 	} else {
 		r = alloc_rdata_init(address, sizeof(address));
+		if (r == NULL) {
+			ERR_ALLOC_FAILED;
+			parser->error_occurred = KNOTDZCOMPILE_ENOMEM;
+			return NULL;
+		}
 	}
 	return r;
 }
@@ -772,14 +869,20 @@ uint16_t * zparser_conv_text(const char *text, size_t len)
 {
 	uint16_t *r = NULL;
 
-	debug_zp("Converting text: %s\n", text);
+	dbg_zp("Converting text: %s\n", text);
 
 	if (len > 255) {
 		zc_error_prev_line("text string is longer than 255 characters,"
 			" try splitting it into multiple parts");
+		parser->error_occurred = KNOTDZCOMPILE_EBRDATA;
 	} else {
 		uint8_t *p;
 		r = alloc_rdata(len + 1);
+		if (r == NULL) {
+			ERR_ALLOC_FAILED;
+			parser->error_occurred = KNOTDZCOMPILE_ENOMEM;
+			return NULL;
+		}
 		p = (uint8_t *)(r + 1);
 		*p = len;
 		memcpy(p + 1, text, len);
@@ -792,6 +895,11 @@ uint16_t * zparser_conv_dns_name(const uint8_t *name, size_t len)
 	uint16_t *r = NULL;
 	uint8_t *p = NULL;
 	r = alloc_rdata(len);
+	if (r == NULL) {
+		ERR_ALLOC_FAILED;
+		parser->error_occurred = KNOTDZCOMPILE_ENOMEM;
+		return NULL;
+	}
 	p = (uint8_t *)(r + 1);
 	memcpy(p, name, len);
 
@@ -805,7 +913,13 @@ uint16_t * zparser_conv_b32(const char *b32)
 	size_t i = B64BUFSIZE - 1;
 
 	if (strcmp(b32, "-") == 0) {
-		return alloc_rdata_init("", 1);
+		r = alloc_rdata_init("", 1);
+		if (r == NULL) {
+			ERR_ALLOC_FAILED;
+			parser->error_occurred = KNOTDZCOMPILE_ENOMEM;
+			return NULL;
+		}
+		return r;
 	}
 
 	/*!< \todo BLEEDING EYES! */
@@ -826,6 +940,11 @@ uint16_t * zparser_conv_b32(const char *b32)
 	} else {
 		buffer[0] = i; /* store length byte */
 		r = alloc_rdata_init(buffer, i + 1);
+		if (r == NULL) {
+			ERR_ALLOC_FAILED;
+			parser->error_occurred = KNOTDZCOMPILE_ENOMEM;
+			return NULL;
+		}
 	}
 	return r;
 }
@@ -839,8 +958,14 @@ uint16_t * zparser_conv_b64(const char *b64)
 	i = b64_pton(b64, buffer, B64BUFSIZE);
 	if (i == -1) {
 		zc_error_prev_line("invalid base64 data\n");
+		parser->error_occurred = KNOTDZCOMPILE_EBRDATA;
 	} else {
 		r = alloc_rdata_init(buffer, i);
+		if (r == NULL) {
+			ERR_ALLOC_FAILED;
+			parser->error_occurred = KNOTDZCOMPILE_ENOMEM;
+			return NULL;
+		}
 	}
 	return r;
 }
@@ -852,9 +977,15 @@ uint16_t * zparser_conv_rrtype(const char *text)
 
 	if (type == 0) {
 		zc_error_prev_line("unrecognized RR type '%s'", text);
+		parser->error_occurred = KNOTDZCOMPILE_EBRDATA;
 	} else {
 		type = htons(type);
 		r = alloc_rdata_init(&type, sizeof(type));
+		if (r == NULL) {
+			ERR_ALLOC_FAILED;
+			parser->error_occurred = KNOTDZCOMPILE_ENOMEM;
+			return NULL;
+		}
 	}
 	return r;
 }
@@ -874,7 +1005,14 @@ uint16_t * zparser_conv_nxt(uint8_t nxtbits[])
 		}
 	}
 
-	return alloc_rdata_init(nxtbits, last);
+	uint16_t *r = alloc_rdata_init(nxtbits, last);
+	if (r == NULL) {
+		ERR_ALLOC_FAILED;
+		parser->error_occurred = KNOTDZCOMPILE_ENOMEM;
+		return NULL;
+	}
+
+	return r;
 }
 
 
@@ -927,6 +1065,11 @@ uint16_t * zparser_conv_nsec(uint8_t nsecbits[NSEC_WINDOW_COUNT]
 	}
 
 	r = alloc_rdata(total_size);
+	if (r == NULL) {
+		ERR_ALLOC_FAILED;
+		parser->error_occurred = KNOTDZCOMPILE_EBRDATA;
+		return NULL;
+	}
 	ptr = (uint8_t *)(r + 1);
 
 	/* now walk used and copy it */
@@ -1210,6 +1353,10 @@ uint16_t * zparser_conv_loc(char *str)
 
 	/* Allocate required space... */
 	r = alloc_rdata(16);
+	if (r == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
 	p = (uint32_t *)(r + 1);
 
 	memmove(p, vszhpvp, 4);
@@ -1279,9 +1426,8 @@ uint16_t * zparser_conv_apl_rdata(char *str)
 		return NULL;
 	} else if (rc == -1) {
 		char ebuf[256];
-		strerror_r(errno, ebuf, sizeof(ebuf));
 		zc_error_prev_line("inet_pton failed: %s",
-			ebuf);
+			strerror_r(errno, ebuf, sizeof(ebuf)));
 		return NULL;
 	}
 
@@ -1305,6 +1451,10 @@ uint16_t * zparser_conv_apl_rdata(char *str)
 	rdlength = (sizeof(address_family) + sizeof(prefix) + sizeof(length)
 		    + length);
 	r = alloc_rdata(rdlength);
+	if (r == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
 	t = (uint8_t *)(r + 1);
 
 	memcpy(t, &address_family, sizeof(address_family));
@@ -1356,7 +1506,7 @@ void zadd_rdata_wireformat(uint16_t *data)
  */
 void zadd_rdata_txt_wireformat(uint16_t *data, int first)
 {
-	debug_zp("Adding text!\n");
+	dbg_zp("Adding text!\n");
 //	hex_print(data + 1, data[0]);
 	knot_rdata_item_t *rd;
 
@@ -1369,10 +1519,9 @@ void zadd_rdata_txt_wireformat(uint16_t *data, int first)
 //			zc_error_prev_line("Could not allocate memory for TXT RR");
 //			return;
 //		}
-		/*!< \todo Disabled until multiple TXT's are supported. */
 		rd->raw_data = alloc_rdata(65535 * sizeof(uint8_t));
 		if (rd->raw_data == NULL) {
-			parser->error_occurred = 1;
+			parser->error_occurred = KNOTDZCOMPILE_ENOMEM;
 		}
 		parser->rdata_count++;
 		rd->raw_data[0] = 0;
@@ -1389,12 +1538,15 @@ void zadd_rdata_txt_wireformat(uint16_t *data, int first)
 	memcpy((uint8_t *)rd->raw_data + 2 + rd->raw_data[0],
 	       data + 1, data[0]);
 	rd->raw_data[0] += data[0];
-	debug_zp("Item after add\n");
+	free(data);
+	dbg_zp("Item after add\n");
 //	hex_print(rd->raw_data + 1, rd->raw_data[0]);
 }
 
 void zadd_rdata_domain(knot_dname_t *dname)
 {
+	knot_dname_retain(dname);
+//	printf("Adding rdata name: %s %p\n", dname->name, dname);
 	parser->temporary_items[parser->rdata_count].dname = dname;
 	parser->rdata_count++;
 }
@@ -1467,6 +1619,16 @@ static int zone_open(const char *filename, uint32_t ttl, uint16_t rclass,
 			return 0;
 		}
 	}
+
+	int fd = fileno(zp_get_in(scanner));
+	if (fd == -1) {
+		return 0;
+	}
+
+//	if (fcntl(fd, F_SETLK, knot_file_lock(F_RDLCK, SEEK_SET)) == -1) {
+//		fprintf(stderr, "Could not lock zone file for read!\n");
+//		return 0;
+//	}
 
 	zparser_init(filename, ttl, rclass, origin);
 
@@ -1568,6 +1730,7 @@ static knot_node_t *create_node(knot_zone_contents_t *zone,
 {
 	knot_node_t *node =
 		knot_node_new(current_rrset->owner, NULL, 0);
+//	knot_dname_release(current_rrset->owner);
 	if (node_add_func(zone, node, 1, 0, 1) != 0) {
 		return NULL;
 	}
@@ -1586,6 +1749,7 @@ static void process_rrsigs_in_node(knot_zone_contents_t *zone,
 						 tmp->data) != 0) {
 			rrset_list_add(&parser->rrsig_orphans,
 				       tmp->data);
+			parser->rrsig_orphan_count++;
 		}
 		tmp = tmp->next;
 	}
@@ -1602,9 +1766,9 @@ int process_rr(void)
 	knot_rrtype_descriptor_t *descriptor =
 		knot_rrtype_descriptor_by_type(current_rrset->type);
 
-	debug_zp("%s\n", knot_dname_to_str(parser->current_rrset->owner));
-	debug_zp("type: %s\n", knot_rrtype_to_string(parser->current_rrset->type));
-	debug_zp("rdata count: %d\n", parser->current_rrset->rdata->count);
+	dbg_zp("%s\n", knot_dname_to_str(parser->current_rrset->owner));
+	dbg_zp("type: %s\n", knot_rrtype_to_string(parser->current_rrset->type));
+	dbg_zp("rdata count: %d\n", parser->current_rrset->rdata->count);
 //	hex_print(parser->current_rrset->rdata->items[0].raw_data,
 //	          parser->current_rrset->rdata->items[0].raw_data[0]);
 
@@ -1643,14 +1807,14 @@ int process_rr(void)
 		if (knot_node_rrset(knot_zone_contents_apex(contents),
 		                      KNOT_RRTYPE_SOA) != NULL) {
 			/* Receiving another SOA. */
-			if (knot_rrset_compare(current_rrset,
+			if (!knot_rrset_compare(current_rrset,
 			    knot_node_rrset(knot_zone_contents_apex(contents),
-			    KNOT_RRTYPE_SOA), KNOT_RRSET_COMPARE_WHOLE) != 0) {
+			    KNOT_RRTYPE_SOA), KNOT_RRSET_COMPARE_WHOLE)) {
 				return KNOTDZCOMPILE_ESOA;
-			} else
-			{
+			} else {
 				zc_warning_prev_line("encountered identical "
 				                     "extra SOA record");
+				return KNOTDZCOMPILE_EOK;
 			}
 		}
 	}
@@ -1687,12 +1851,19 @@ int process_rr(void)
 					     KNOT_RRTYPE_RRSIG,
 					     current_rrset->rclass,
 					     current_rrset->ttl);
+//			knot_dname_release(current_rrset->owner);
+		if (tmp_rrsig == NULL) {
+			return KNOTDZCOMPILE_ENOMEM;
+		}
 
-		knot_rrset_add_rdata(tmp_rrsig, current_rrset->rdata);
+		if (knot_rrset_add_rdata(tmp_rrsig,
+		                           current_rrset->rdata) != 0) {
+			return KNOTDZCOMPILE_EBRDATA;
+		}
 
 		if (parser->last_node &&
 		    knot_dname_compare(parser->last_node->owner,
-		    current_rrset->owner) != 0) {
+		                         current_rrset->owner) != 0) {
 			/* RRSIG is first in the node, so we have to create it
 			 * before we return
 			 */
@@ -1710,15 +1881,16 @@ int process_rr(void)
 			}
 		}
 
-		rrset_list_add(&parser->node_rrsigs, tmp_rrsig);
+		if (rrset_list_add(&parser->node_rrsigs, tmp_rrsig) != 0) {
+			return KNOTDZCOMPILE_ENOMEM;
+		}
 
 		return KNOTDZCOMPILE_EOK;
 	}
 
 	assert(current_rrset->type != KNOT_RRTYPE_RRSIG);
 
-	knot_node_t *node;
-
+	knot_node_t *node = NULL;
 	/* \note this could probably be much simpler */
 	if (parser->last_node && current_rrset->type != KNOT_RRTYPE_SOA &&
 	    knot_dname_compare(parser->last_node->owner,
@@ -1756,8 +1928,9 @@ int process_rr(void)
 					 current_rrset->type,
 					 current_rrset->rclass,
 					 current_rrset->ttl);
-
-		assert(rrset != NULL);
+		if (rrset == NULL) {
+			return KNOTDZCOMPILE_ENOMEM;
+		}
 
 		if (knot_rrset_add_rdata(rrset, current_rrset->rdata) != 0) {
 			free(rrset);
@@ -1782,9 +1955,11 @@ int process_rr(void)
 		if (knot_zone_contents_add_rrset(contents, current_rrset,
 		                          &node,
 		                   KNOT_RRSET_DUPL_MERGE, 1) < 0) {
-			free(rrset);
+//			free(rrset);
 			return KNOTDZCOMPILE_EBRDATA;
 		}
+
+//		knot_dname_release(current_rrset->owner);
 
 //		knot_rrset_merge((void *)&rrset, (void *)&current_rrset);
 
@@ -1842,7 +2017,7 @@ static uint find_rrsets_orphans(knot_zone_contents_t *zone, rrset_list_t
 	while (head != NULL) {
 		if (find_rrset_for_rrsig_in_zone(zone, head->data) == 0) {
 			found_rrsets += 1;
-			debug_zp("RRSET succesfully found: owner %s type %s\n",
+			dbg_zp("RRSET succesfully found: owner %s type %s\n",
 				 knot_dname_to_str(head->data->owner),
 				 knot_rrtype_to_string(head->data->type));
 		}
@@ -1864,22 +2039,26 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	if (!outfile) {
 		zc_error_prev_line("Missing output file for '%s'\n",
 			zonefile);
-		return -1;
+		return KNOTDZCOMPILE_EINVAL;
 	}
 
 //	char ebuf[256];
 
 	knot_dname_t *dname =
 		knot_dname_new_from_str(name, strlen(name), NULL);
-	/*! \todo implement refcounting correctly. */
-	ref_init(&dname->ref, 0); /* disable dtor */
-	ref_retain(&dname->ref);
+	if (dname == NULL) {
+		return KNOTDZCOMPILE_ENOMEM;
+	}
 
 	knot_node_t *origin_node = knot_node_new(dname, NULL, 0);
 
 	//assert(origin_node->next == NULL);
 
 	assert(knot_node_parent(origin_node, 0) == NULL);
+	if (origin_node == NULL) {
+		knot_dname_release(dname);
+		return KNOTDZCOMPILE_ENOMEM;
+	}
 
 	void *scanner = NULL;
 	zp_lex_init(&scanner);
@@ -1895,6 +2074,16 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	}
 
 	if (zp_parse(scanner) != 0) {
+		int fd = fileno(zp_get_in(scanner));
+		if (fcntl(fd, F_SETLK,
+		          knot_file_lock(F_UNLCK, SEEK_SET)) == -1) {
+			return KNOTDZCOMPILE_EACCES;
+		}
+
+		FILE *in_file = (FILE *)zp_get_in(scanner);
+		fclose(in_file);
+		zp_lex_destroy(scanner);
+
 		return KNOTDZCOMPILE_ESYNT;
 	}
 
@@ -1905,6 +2094,15 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	fclose(in_file);
 	zp_lex_destroy(scanner);
 
+	/* Unlock zone file. */
+//	int fd = fileno(zp_get_in(scanner));
+//	if (fcntl(fd, F_SETLK, knot_file_lock(F_UNLCK, SEEK_SET)) == -1) {
+//		fprintf(stderr, "Could not lock zone file for read!\n");
+//		return 0;
+//	}
+
+	dbg_zp("zp complete %p\n", parser->current_zone);
+
 	if (parser->last_node && parser->node_rrsigs != NULL) {
 		/* assign rrsigs to last node in the zone*/
 		process_rrsigs_in_node(contents,
@@ -1912,13 +2110,13 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 		rrset_list_delete(&parser->node_rrsigs);
 	}
 
-	debug_zp("zone parsed\n");
+	dbg_zp("zone parsed\n");
 
 	if (!(parser->current_zone &&
 	      knot_node_rrset(parser->current_zone->contents->apex,
 	                        KNOT_RRTYPE_SOA))) {
 		zc_error_prev_line("Zone file does not contain SOA record!\n");
-		knot_zone_deep_free(&parser->current_zone, 0);
+		knot_zone_deep_free(&parser->current_zone, 1);
 		zparser_free();
 		return KNOTDZCOMPILE_EZONEINVAL;
 	}
@@ -1927,13 +2125,19 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	found_orphans = find_rrsets_orphans(contents,
 					    parser->rrsig_orphans);
 
-	debug_zp("%u orphans found\n", found_orphans);
+	dbg_zp("%u orphans found\n", found_orphans);
 
 	rrset_list_delete(&parser->rrsig_orphans);
 
-	knot_zone_contents_adjust(contents);
+	if (found_orphans != parser->rrsig_orphan_count) {
+		fprintf(stderr,
+		        "There are unassigned RRSIGs in the zone!\n");
+		parser->errors++;
+	}
 
-	debug_zp("rdata adjusted\n");
+	knot_zone_contents_adjust(contents, 0);
+
+	dbg_zp("rdata adjusted\n");
 
 	if (parser->errors != 0) {
 		fprintf(stderr,
@@ -1941,15 +2145,11 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	} else {
 		knot_zdump_binary(contents,
 		                    outfile, semantic_checks, zonefile);
-		debug_zp("zone dumped.\n");
+		dbg_zp("zone dumped.\n");
 	}
 
 	/* This is *almost* unnecessary */
-	knot_zone_deep_free(&(parser->current_zone), 0);
-
-//	knot_zone_t *zone = knot_zload_load(knot_zload_open(outfile));
-//	assert(zone);
-//	printf("apex: %s\n", zone->contents->apex->owner->name);
+	knot_zone_deep_free(&(parser->current_zone), 1);
 
 	fflush(stdout);
 	totalerrors += parser->errors;

@@ -64,18 +64,18 @@ int knot_nsec3_params_from_wire(knot_nsec3_params_t *params,
 		params->salt = NULL;
 	}
 
-	debug_knot_nsec3("Parsed NSEC3PARAM:\n");
-	debug_knot_nsec3("Algorithm: %hu\n", params->algorithm);
-	debug_knot_nsec3("Flags: %hu\n", params->flags);
-	debug_knot_nsec3("Iterations: %hu\n", params->iterations);
-	debug_knot_nsec3("Salt length: %hu\n", params->salt_length);
-	debug_knot_nsec3("Salt: ");
+	dbg_nsec3("Parsed NSEC3PARAM:\n");
+	dbg_nsec3("Algorithm: %hu\n", params->algorithm);
+	dbg_nsec3("Flags: %hu\n", params->flags);
+	dbg_nsec3("Iterations: %hu\n", params->iterations);
+	dbg_nsec3("Salt length: %hu\n", params->salt_length);
+	dbg_nsec3("Salt: ");
 	if (params->salt != NULL) {
-		debug_knot_nsec3_hex((char *)params->salt,
+		dbg_nsec3_hex((char *)params->salt,
 		                       params->salt_length);
-		debug_knot_nsec3("\n");
+		dbg_nsec3("\n");
 	} else {
-		debug_knot_nsec3("none\n");
+		dbg_nsec3("none\n");
 	}
 
 	return KNOT_EOK;
@@ -157,7 +157,7 @@ int knot_nsec3_sha1(const knot_nsec3_params_t *params,
 #endif
 
 		if (res != 1) {
-			debug_knot_nsec3("Error calculating SHA-1 hash.\n");
+			dbg_nsec3("Error calculating SHA-1 hash.\n");
 			free(data_low);
 			free(*digest);
 			return -2;
@@ -166,7 +166,7 @@ int knot_nsec3_sha1(const knot_nsec3_params_t *params,
 
 	EVP_MD_CTX_cleanup(&mdctx);
 
-	debug_knot_nsec3("NSEC3 hashing: calls: %lu, avg time per call: %f."
+	dbg_nsec3("NSEC3 hashing: calls: %lu, avg time per call: %f."
 	                   "\n", calls, (double)(total_time) / calls);
 
 	free(data_low);
@@ -189,17 +189,17 @@ int knot_nsec3_sha1(const knot_nsec3_params_t *params,
 	uint8_t salt_length = params->salt_length;
 	uint16_t iterations = params->iterations;
 
-	debug_knot_nsec3("Hashing: \n");
-	debug_knot_nsec3("  Data: %.*s \n", size, data);
-	debug_knot_nsec3_hex((const char *)data, size);
-	debug_knot_nsec3(" (size %d)\n  Iterations: %u\n", (int)size, iterations);
-	debug_knot_nsec3("  Salt length: %u\n", salt_length);
-	debug_knot_nsec3("  Salt: ");
+	dbg_nsec3("Hashing: \n");
+	dbg_nsec3("  Data: %.*s \n", size, data);
+	dbg_nsec3_hex((const char *)data, size);
+	dbg_nsec3(" (size %d)\n  Iterations: %u\n", (int)size, iterations);
+	dbg_nsec3("  Salt length: %u\n", salt_length);
+	dbg_nsec3("  Salt: ");
 	if (salt_length > 0) {
-		debug_knot_nsec3_hex((char *)salt, salt_length);
-		debug_knot_nsec3("\n");
+		dbg_nsec3_hex((char *)salt, salt_length);
+		dbg_nsec3("\n");
 	} else {
-		debug_knot_nsec3("none\n");
+		dbg_nsec3("none\n");
 	}
 
 	SHA_CTX ctx;
@@ -237,7 +237,7 @@ int knot_nsec3_sha1(const knot_nsec3_params_t *params,
 		in_size = SHA_DIGEST_LENGTH;
 
 		if (res != 1) {
-			debug_knot_nsec3("Error calculating SHA-1 hash.\n");
+			dbg_nsec3("Error calculating SHA-1 hash.\n");
 			free(data_low);
 			free(*digest);
 			return KNOT_ECRYPTO;
@@ -246,9 +246,9 @@ int knot_nsec3_sha1(const knot_nsec3_params_t *params,
 
 	*digest_size = SHA_DIGEST_LENGTH;
 
-	debug_knot_nsec3("Hash: %.*s\n", *digest_size, *digest);
-	debug_knot_nsec3_hex((const char *)*digest, *digest_size);
-	debug_knot_nsec3("\n");
+	dbg_nsec3("Hash: %.*s\n", *digest_size, *digest);
+	dbg_nsec3_hex((const char *)*digest, *digest_size);
+	dbg_nsec3("\n");
 
 	free(data_low);
 	return KNOT_EOK;
