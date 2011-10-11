@@ -2565,7 +2565,7 @@ int knot_ns_parse_packet(const uint8_t *query_wire, size_t qsize,
 	}
 
 	dbg_ns("Parsed packet header and Question:\n");
-	knot_packet_dump(query);
+	knot_packet_dump(packet);
 
 	// 3) determine the query type
 	switch (knot_packet_opcode(packet))  {
