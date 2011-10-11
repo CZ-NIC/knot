@@ -695,13 +695,14 @@ static int knot_packet_parse_rr_sections(knot_packet_t *packet,
 		}
 	}
 
+	packet->parsed = *pos;
+
 	if (*pos < packet->size) {
 		// some trailing garbage; ignore, but log
 		dbg_response("Packet: %zu bytes of trailing garbage "
 		                      "in packet.\n", (*pos) - packet->size);
+		return KNOT_EMALF;
 	}
-
-	packet->parsed = packet->size;
 
 	return KNOT_EOK;
 }
@@ -1042,6 +1043,17 @@ int knot_packet_tc(const knot_packet_t *packet)
 	}
 	
 	return knot_wire_flags_get_tc(packet->header.flags1);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_packet_qdcount(const knot_packet_t *packet)
+{
+	if (packet == NULL) {
+		return KNOT_EBADARG;
+	}
+
+	return packet->header.qdcount;
 }
 
 /*----------------------------------------------------------------------------*/
