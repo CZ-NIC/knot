@@ -785,6 +785,8 @@ int knot_packet_parse_from_wire(knot_packet_t *packet,
 		return KNOT_EMALF;
 	}
 
+	knot_packet_dump(packet);
+
 	if (packet->header.qdcount == 1) {
 		if ((err = knot_packet_parse_question(wireformat, &pos, size,
 		             &packet->question, packet->prealloc_type 
