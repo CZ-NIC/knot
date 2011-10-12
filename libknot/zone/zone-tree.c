@@ -315,7 +315,7 @@ int knot_zone_tree_remove(knot_zone_tree_t *tree,
                             const knot_dname_t *owner,
                             knot_zone_tree_node_t **removed)
 {
-	if (tree == NULL || owner == NULL) {
+	if (tree == NULL || owner == NULL || removed == NULL) {
 		return KNOT_EBADARG;
 	}
 
@@ -429,6 +429,9 @@ int knot_zone_tree_reverse_apply_postorder(knot_zone_tree_t *tree,
 int knot_zone_tree_shallow_copy(knot_zone_tree_t *from,
                                   knot_zone_tree_t *to)
 {
+	if (to == NULL || from == NULL) {
+		return KNOT_EBADARG;
+	}
 	/*
 	 * This function will copy the tree by hand, so that the nodes
 	 * do not have to be inserted the normal way. It should be substantially
