@@ -26,8 +26,6 @@ unit_api nsec3_tests_api = {
 
 extern int compare_wires_simple(uint8_t *w1, uint8_t *w2, uint count);
 
-static knot_nsec3_params_t nsec3_test_params;
-
 static int test_nsec3_params_from_wire()
 {
 	/* Create sample NSEC3PARAM rdata */
@@ -48,14 +46,16 @@ static int test_nsec3_params_from_wire()
 	                         KNOT_CLASS_IN,
 	                         3600);
 	assert(rrset);
-	assert(knot_rrset_add_rdata(rrset, rdata) == KNOT_EOK);
+	int ret = knot_rrset_add_rdata(rrset, rdata);
+	assert(ret == KNOT_EOK);
 
-	knot_nsec3_params_t nsec3_tests_params;
-	UNUSED(nsec3_tests_params);
+	knot_nsec3_params_t nsec3_test_params;
 
 	int errors = 0;
 	int lived = 0;
 	lives_ok({
+		/* Create special variable for this block. */
+		knot_nsec3_params_t tmp_params;
 		if (knot_nsec3_params_from_wire(NULL, NULL) !=
 		    KNOT_EBADARG) {
 			errors++;
@@ -99,6 +99,7 @@ static int test_nsec3_params_from_wire()
 		diag("Iterations error %d", nsec3_test_params.iterations);
 		errors++;
 	}
+		printf("salt length: %d\n", nsec3_test_params.salt_length);
 
 	if (nsec3_test_params.salt_length != 14) {
 		diag("Salt length error %d", nsec3_test_params.salt_length);
@@ -106,8 +107,8 @@ static int test_nsec3_params_from_wire()
 	}
 
 	if (compare_wires_simple((uint8_t *)nsec3_test_params.salt,
-		(uint8_t *)"\xF\x0\xE\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF",
-		16) != 0) {
+		(uint8_t *)"\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF",
+		14) != 0) {
 		diag("Salt wire error");
 		errors++;
 	}
@@ -120,6 +121,8 @@ static int test_nsec3_sha1()
 {
 	int errors = 0;
 	int lived = 0;
+
+	knot_nsec3_params_t nsec3_test_params;
 
 	lives_ok({
 		if (knot_nsec3_sha1(NULL, NULL, 1, NULL, NULL) !=
