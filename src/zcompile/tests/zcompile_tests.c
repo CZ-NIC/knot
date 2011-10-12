@@ -341,26 +341,21 @@ static int test_zoneparser_zone_read(const char *origin, const char *filename,
 		return 0;
 	}
 
-	zloader_t *zloader = knot_zload_open(outfile);
-	if (zloader == NULL) {
-		diag("Problem creating zone loader structure.\n");
+	knot_zone_t *dnsl_zone = NULL;
+	zloader_t *loader = NULL;
+	if (knot_zload_open(&loader, outfile) != 0) {
+		diag("Could not create zone loader.\n");
 		return 0;
 	}
-
-	/* Loads created dump */
-	knot_zone_t *dnsl_zone = knot_zload_load(zloader);
-
-	assert(remove(outfile) == 0);
-
-	if (dnsl_zone == NULL) {
-		diag("Could not load parsed zone");
+	dnsl_zone = knot_zload_load(loader);
+	remove(outfile);
+	if (!dnsl_zone) {
+		diag("Could not load dumped zone.\n");
 		return 0;
 	}
-
-	FILE *f = fopen(filename, "r");
 
 	ldns_zone *ldns_zone = NULL;
-
+	FILE *f = fopen(filename, "r");
 	if (ldns_zone_new_frm_fp(&ldns_zone, f, NULL,
 				  0, LDNS_RR_CLASS_IN) != LDNS_STATUS_OK) {
 		diag("Could not load zone from file: %s (ldns)", filename);
@@ -383,13 +378,8 @@ static int test_zoneparser_zone_read(const char *origin, const char *filename,
 	}
 
 	knot_zone_deep_free(&dnsl_zone, 0);
-
 	ldns_zone_free(ldns_zone);
-
 	fclose(f);
-
-	knot_zload_close(zloader);
-
 	return 1;
 #endif
 }
