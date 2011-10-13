@@ -34,42 +34,48 @@
 /*!
  * \brief Generate TSIG signature of a message.
  *
+ * This function generates TSIG digest of the given message prepended with the
+ * given Request MAC (if any) and appended with TSIG Variables. It also appends
+ * the resulting TSIG RR to the message wire format and accordingly adjusts
+ * the message size.
+ *
  * \param msg Message to be signed.
  * \param msg_len Size of the message in bytes.
+ * \param msg_max_len Maximum size of the message in bytes.
  * \param request_mac Request MAC. (may be NULL).
  * \param request_mac_len Size of the request MAC in bytes.
  * \param tsig_rr RRSet containing the TSIG RR to be used. Data from the RR are 
  *                appended to the signed message.
- * \param mac Generated message digest.
- * \param size Size of the digest in bytes.
  *
  * \retval KNOT_EOK if everything went OK.
  * \retval TODO
  */
-int knot_tsig_sign(const uint8_t *msg, size_t msg_len, 
+int knot_tsig_sign(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
                    const uint8_t *request_mac, size_t request_mac_len,
-                   const knot_rrset_t *tsig_rr,
-                   uint8_t *mac, size_t size);
+                   const knot_rrset_t *tsig_rr);
 
 /*!
  * \brief Generate TSIG signature of a 2nd or later message in a TCP session.
  *
+ * This function generates TSIG digest of the given message prepended with the
+ * given Request MAC (if any) and appended with TSIG Variables. It also appends
+ * the resulting TSIG RR to the message wire format and accordingly adjusts
+ * the message size.
+ *
  * \param msg Message to be signed.
  * \param msg_len Size of the message in bytes.
+ * \param msg_max_len Maximum size of the message in bytes.
  * \param prev_digest Previous digest sent by the server in the session.
  * \param prev_digest_len Size of the previous digest in bytes.
  * \param tsig_rr RRSet containing the TSIG RR to be used. Data from the RR are 
  *                appended to the signed message.
- * \param mac Generated message digest.
- * \param size Size of the digest in bytes.
  *
  * \retval KNOT_EOK if successful.
  * \retval TODO
  */
-int knot_tsig_sign_next(const uint8_t *msg, size_t msg_len, 
+int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len, 
                         const uint8_t *prev_digest, size_t prev_digest_len,
-                        const knot_rrset_t *tsig_rr,
-                        uint8_t *mac, size_t size);
+                        const knot_rrset_t *tsig_rr);
 
 /*!
  * \brief Checks incoming request.
