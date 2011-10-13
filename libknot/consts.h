@@ -75,8 +75,14 @@ typedef enum knot_rcode {
 	KNOT_RCODE_YXRRSET  = 7,  /* rrset should not exist */
 	KNOT_RCODE_NXRRSET  = 8,  /* rrset does not exist */
 	KNOT_RCODE_NOTAUTH  = 9,  /* server not authoritative */
-	KNOT_RCODE_NOTZONE  = 10  /* name not inside zone */
+	KNOT_RCODE_NOTZONE  = 10,  /* name not inside zone */
 } knot_rcode_t;
+
+typedef enum knot_tsig_rcode {
+	KNOT_TSIG_RCODE_BADSIG  = 16,
+	KNOT_TSIG_RCODE_BADKEY  = 17,
+	KNOT_TSIG_RCODE_BADTIME = 18
+} knot_tsig_rcode_t;
 
 /*
  * CLASSes

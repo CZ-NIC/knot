@@ -102,4 +102,6 @@ libknot_la_SOURCES =				\
 	rrset.h				\
 	nsec3.h				\
 	tsig.h				\
-	tsig.c
+	tsig.c				\
+	tsig-op.h			\
+	tsig-op.c
