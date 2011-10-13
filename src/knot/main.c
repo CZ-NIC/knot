@@ -159,7 +159,8 @@ int main(int argc, char **argv)
 
 		log_server_error("Failed to parse configuration file '%s'.\n",
 				 config_fn);
-
+		server_destroy(&server);
+		free(config_fn);
 		return 1;
 	} else {
 		log_server_info("Configured %d interfaces and %d zones.\n",
