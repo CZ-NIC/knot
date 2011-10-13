@@ -3,20 +3,18 @@
 
 /*----------------------------------------------------------------------------*/
 
-int knot_tsig_sign(const uint8_t *msg, size_t msg_len, 
+int knot_tsig_sign(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
                    const uint8_t *request_mac, size_t request_mac_len,
-                   const knot_rrset_t *tsig_rr,
-                   uint8_t *mac, size_t size)
+                   const knot_rrset_t *tsig_rr)
 {
 	return KNOT_ENOTSUP;
 }
 
 /*----------------------------------------------------------------------------*/
 
-int knot_tsig_sign_next(const uint8_t *msg, size_t msg_len, 
+int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len, 
                         const uint8_t *prev_digest, size_t prev_digest_len,
-                        const knot_rrset_t *tsig_rr,
-                        uint8_t *mac, size_t size)
+                        const knot_rrset_t *tsig_rr)
 {
 	return KNOT_ENOTSUP;
 }
