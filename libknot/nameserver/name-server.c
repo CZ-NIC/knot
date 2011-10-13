@@ -1967,7 +1967,14 @@ typedef struct ns_axfr_params {
 
 /*----------------------------------------------------------------------------*/
 
-static int ns_axfr_send_and_clear(knot_ns_xfr_t *xfr)
+static int ns_tsig_required(int packet_nr) 
+{
+	return (packet_nr % KNOT_NS_TSIG_FREQ == 0);
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 {
 	assert(xfr != NULL);
 	assert(xfr->query != NULL);
@@ -1992,7 +1999,7 @@ static int ns_axfr_send_and_clear(knot_ns_xfr_t *xfr)
 	/*
 	 * Generate TSIG if required.
 	 */
-	if (xfr->tsig && xfr->packet_nr & KNOT_NS_TSIG_FREQ == 0) {
+	if (xfr->tsig && add_tsig) {
 		if (xfr->packet_nr == 0) {
 			res = knot_tsig_sign(xfr->wire, &real_size, 
 			               xfr->wire_size, xfr->prev_digest, 
@@ -2032,7 +2039,7 @@ static int ns_axfr_send_and_clear(knot_ns_xfr_t *xfr)
 	
 	// increment the packet number
 	++xfr->packet_nr;
-	if (xfr->tsig != NULL && xfr->packet_nr % KNOT_NS_TSIG_FREQ == 0) {
+	if (xfr->tsig != NULL && add_tsig) {
 		knot_packet_set_tsig_size(xfr->response, xfr->tsig_size);
 	} else {
 		knot_packet_set_tsig_size(xfr->response, 0);
@@ -2099,7 +2106,8 @@ rrset:
 		if (ret == KNOT_ESPACE) {
 			// TODO: send the packet and clean the structure
 			dbg_ns("Packet full, sending..\n");
-			ret = ns_axfr_send_and_clear(params->xfr);
+			ret = ns_xfr_send_and_clear(params->xfr, 
+				ns_tsig_required(params->xfr->packet_nr));
 			if (ret != KNOT_EOK) {
 				// some wierd problem, we should end
 				params->ret = KNOT_ERROR;
@@ -2127,7 +2135,8 @@ rrsigs:
 		if (ret == KNOT_ESPACE) {
 			// TODO: send the packet and clean the structure
 			dbg_ns("Packet full, sending..\n");
-			ret = ns_axfr_send_and_clear(params->xfr);
+			ret = ns_xfr_send_and_clear(params->xfr,
+				ns_tsig_required(params->xfr->packet_nr));
 			if (ret != KNOT_EOK) {
 				// some wierd problem, we should end
 				params->ret = KNOT_ERROR;
@@ -2226,7 +2235,8 @@ static int ns_axfr_from_zone(knot_zone_contents_t *zone, knot_ns_xfr_t *xfr)
 		// if there is not enough space, send the response and
 		// add the SOA record to a new packet
 		dbg_ns("Packet full, sending..\n");
-		ret = ns_axfr_send_and_clear(xfr);
+		ret = ns_xfr_send_and_clear(xfr,
+			ns_tsig_required(xfr->packet_nr));
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -2243,7 +2253,7 @@ static int ns_axfr_from_zone(knot_zone_contents_t *zone, knot_ns_xfr_t *xfr)
 	}
 
 	dbg_ns("Sending packet...\n");
-	return ns_axfr_send_and_clear(xfr);
+	return ns_xfr_send_and_clear(xfr, 1);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2255,7 +2265,7 @@ static int ns_ixfr_put_rrset(knot_ns_xfr_t *xfr, const knot_rrset_t *rrset)
 	if (res == KNOT_ESPACE) {
 		knot_response_set_rcode(xfr->response, KNOT_RCODE_NOERROR);
 		/*! \todo Probably rename the function. */
-		ns_axfr_send_and_clear(xfr);
+		ns_xfr_send_and_clear(xfr, ns_tsig_required(xfr->packet_nr));
 
 		res = knot_response_add_rrset_answer(xfr->response,
 		                                        rrset, 0, 0, 0);
@@ -2268,7 +2278,7 @@ static int ns_ixfr_put_rrset(knot_ns_xfr_t *xfr, const knot_rrset_t *rrset)
 		knot_response_set_rcode(xfr->response,
 		                           KNOT_RCODE_SERVFAIL);
 		/*! \todo Probably rename the function. */
-		ns_axfr_send_and_clear(xfr);
+		ns_xfr_send_and_clear(xfr, 1);
 		//socket_close(xfr->session);  /*! \todo Remove for UDP.*/
 		return KNOT_ERROR;
 	}
@@ -2367,7 +2377,7 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 		knot_response_set_rcode(xfr->response,
 		                           KNOT_RCODE_SERVFAIL);
 		/*! \todo Probably rename the function. */
-		ns_axfr_send_and_clear(xfr);
+		ns_xfr_send_and_clear(xfr, 1);
 //		socket_close(xfr->session);  /*! \todo Remove for UDP.*/
 		return 1;
 	}
@@ -2385,7 +2395,7 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 
 	if (res == KNOT_EOK) {
 		/*! \todo Probably rename the function. */
-		ns_axfr_send_and_clear(xfr);
+		ns_xfr_send_and_clear(xfr, 1);
 		//socket_close(xfr->session);  /*! \todo Remove for UDP.*/
 		return 1;
 	}
@@ -2408,7 +2418,7 @@ static int ns_ixfr(knot_ns_xfr_t *xfr)
 		dbg_ns("IXFR query does not contain authority record.\n");
 		knot_response_set_rcode(xfr->response, KNOT_RCODE_FORMERR);
 		/*! \todo Probably rename the function. */
-		ns_axfr_send_and_clear(xfr);
+		ns_xfr_send_and_clear(xfr, 1);
 		//socket_close(xfr->session);
 		return 1;
 	}
@@ -2425,7 +2435,7 @@ static int ns_ixfr(knot_ns_xfr_t *xfr)
 		dbg_ns("IXFR query is malformed.\n");
 		knot_response_set_rcode(xfr->response, KNOT_RCODE_FORMERR);
 		/*! \todo Probably rename the function. */
-		ns_axfr_send_and_clear(xfr);
+		ns_xfr_send_and_clear(xfr, 1);
 		//socket_close(xfr->session);  /*! \todo Remove for UDP. */
 		return 1;
 	}
@@ -2915,7 +2925,7 @@ dbg_ns_exec(
 	if (zone == NULL) {
 		dbg_ns("No zone found.\n");
 		knot_response_set_rcode(xfr->response, KNOT_RCODE_NOTAUTH);
-		ns_axfr_send_and_clear(xfr);
+		ns_xfr_send_and_clear(xfr, 1);
 		return KNOT_ENOZONE;
 	}
 
@@ -2935,7 +2945,7 @@ int knot_ns_xfr_send_error(knot_ns_xfr_t *xfr, knot_rcode_t rcode)
 {
 	knot_response_set_rcode(xfr->response, rcode);
 	/*! \todo Probably rename the function. */
-	return ns_axfr_send_and_clear(xfr);
+	return ns_xfr_send_and_clear(xfr, 1);
 }
 
 /*----------------------------------------------------------------------------*/
