@@ -480,8 +480,9 @@ static knot_rrtype_descriptor_t
 	    false },
         /* TSIG pseudo RR. */
         [250] = { KNOT_RRTYPE_TSIG, "TSIG", 5,
-		 { KNOT_RDATA_WF_UNCOMPRESSED_DNAME, KNOT_RDATA_WF_LONG,
+		 { KNOT_RDATA_WF_UNCOMPRESSED_DNAME, KNOT_RDATA_WF_UINT48,
                    KNOT_RDATA_WF_SHORT, KNOT_RDATA_WF_BINARYWITHSHORT,
+                   KNOT_RDATA_WF_SHORT, KNOT_RDATA_WF_SHORT,
                    KNOT_RDATA_WF_BINARYWITHSHORT },
                   /* Zoneformat not needed. */
                   {0, 0, 0, 0, 0}, true },
