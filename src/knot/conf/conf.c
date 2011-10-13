@@ -81,6 +81,18 @@ void cf_error(void *scanner, const char *msg)
  * Config helper functions.
  */
 
+/*! \brief Free TSIG key. */
+static void key_free(conf_key_t *k)
+{
+	/* Secure erase. */
+	if (k->secret) {
+		memset(k->secret, 0, strlen(k->secret));
+	}
+	free(k->secret);
+	free(k->name);
+	free(k);
+}
+
 /*! \brief Free config interfaces. */
 static void iface_free(conf_iface_t *iface)
 {
@@ -396,6 +408,7 @@ conf_t *conf_new(const char* path)
 	init_list(&c->zones);
 	init_list(&c->hooks);
 	init_list(&c->remotes);
+	init_list(&c->keys);
 
 	// Defaults
 	c->zone_checks = 0;
@@ -478,11 +491,10 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 		init_list(&conf->hooks);
 	}
 
-	// Free key
-	if (conf->key.secret) {
-		free(conf->key.secret);
+	// Free keys
+	WALK_LIST_DELSAFE(n, nxt, conf->keys) {
+		key_free((conf_key_t *)n);
 	}
-	memset(&conf->key, 0, sizeof(conf_key_t));
 
 	// Free interfaces
 	WALK_LIST_DELSAFE(n, nxt, conf->ifaces) {

@@ -29,31 +29,6 @@
 #define CONFIG_DBSYNC_TIMEOUT (60*60) /*!< 1 hour. */
 
 /*!
- * \brief Configuration for the interface
- *
- * This structure holds the configuration of the various interfaces
- * used in the configuration.  Same interface could be used for
- * listening and outgoing function.
- */
-typedef struct conf_iface_t {
-	node n;
-	char *name;       /*!< Internal name for the interface. */
-	char *address;    /*!< IP (IPv4/v6) address for this interface */
-	int   port;       /*!< Port number for this interface */
-	int family;       /*!< Address family. */
-} conf_iface_t;
-
-/*!
- * \brief Node containing poiner to remote.
- *
- * Used for zone ACL lists to prevent node duplication.
- */
-typedef struct conf_remote_t {
-	node n;	              /*!< List node. */
-	conf_iface_t *remote; /*!< Pointer to interface descriptor. */
-} conf_remote_t;
-
-/*!
  * \brief List of TSIG algoritms.
  *
  * Master list of TSIG algoritms as per IANA registry
@@ -73,9 +48,37 @@ typedef enum tsig_alg_t {
  * \brief Configuration for the TSIG key.
  */
 typedef struct conf_key_t {
+	node n;	              /*!< List node. */
+	char *name;           /*!< Key name. */
 	tsig_alg_t algorithm; /*!< Key algorithm.  */
 	char *secret;         /*!< Key data. */
 } conf_key_t;
+
+/*!
+ * \brief Configuration for the interface
+ *
+ * This structure holds the configuration of the various interfaces
+ * used in the configuration.  Same interface could be used for
+ * listening and outgoing function.
+ */
+typedef struct conf_iface_t {
+	node n;
+	char *name;       /*!< Internal name for the interface. */
+	char *address;    /*!< IP (IPv4/v6) address for this interface */
+	int   port;       /*!< Port number for this interface */
+	int family;       /*!< Address family. */
+	conf_key_t *key;  /*!< TSIG key (remotes only). */
+} conf_iface_t;
+
+/*!
+ * \brief Node containing poiner to remote.
+ *
+ * Used for zone ACL lists to prevent node duplication.
+ */
+typedef struct conf_remote_t {
+	node n;	              /*!< List node. */
+	conf_iface_t *remote; /*!< Pointer to interface descriptor. */
+} conf_remote_t;
 
 /*!
  * \brief Zone configuration.
@@ -91,15 +94,16 @@ typedef struct conf_key_t {
 typedef struct conf_zone_t {
 	node n;
 	char *name;               /*!< Zone name. */
-	enum knot_rr_class cls; /*!< Zone class (IN or CH). */
+	enum knot_rr_class cls;   /*!< Zone class (IN or CH). */
 	char *file;               /*!< Path to a zone file. */
 	char *db;                 /*!< Path to a database file. */
 	char *ixfr_db;            /*!< Path to a IXFR database file. */
-	size_t ixfr_fslimit;         /*!< File size limit for IXFR journal. */
+	size_t ixfr_fslimit;      /*!< File size limit for IXFR journal. */
 	int dbsync_timeout;       /*!< Interval between syncing to zonefile.*/
 	int enable_checks;        /*!< Semantic checks for parser.*/
 	int notify_retries;       /*!< NOTIFY query retries. */
 	int notify_timeout;       /*!< Timeout for NOTIFY response (s). */
+	conf_key_t *key;          /*!< TSIG key for zone. */
 	struct {
 		list xfr_in;      /*!< Remotes accepted for for xfr-in.*/
 		list xfr_out;     /*!< Remotes accepted for xfr-out.*/
@@ -152,7 +156,6 @@ typedef struct conf_t {
 	char *version;  /*!< Version for CH TXT version.{bind|server} */
 	char *storage;  /*!< Persistent storage path for databases and such. */
 	char *pidfile;  /*!< PID file path. */
-	conf_key_t key; /*!< Server TSIG key. */
 
 	/*
 	 * Log
@@ -167,7 +170,13 @@ typedef struct conf_t {
 	int ifaces_count; /*!< Count of interfaces. */
 
 	/*
-	 * Remotse
+	 * TSIG keys
+	 */
+	list keys;     /*!< List of TSIG keys. */
+	int key_count; /*!< Count of TSIG keys. */
+
+	/*
+	 * Remotes
 	 */
 	list remotes;     /*!< List of remotes. */
 	int remotes_count;/*!< Count of remotes. */
