@@ -2012,6 +2012,11 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 			 */
 			return NS_ERR_SERVFAIL;
 		}
+		
+		// save the new previous digest
+		/*! \todo Extract the digest from the TSIG RDATA and
+		 *        store it.
+		 */
 	}
 
 	// Send the response
@@ -3209,9 +3214,15 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
                              knot_ns_xfr_t *xfr)
 {
 	dbg_ns("ns_process_ixfrin: incoming packet\n");
+	
+	/*!
+	 * \todo Here we assume that 'xfr' contains TSIG information
+	 *       and the digest of the query sent to the master or the previous
+	 *       digest.
+	 */
 
-	int ret = xfrin_process_ixfr_packet(xfr->wire, xfr->wire_size,
-	                                   (knot_changesets_t **)(&xfr->data));
+	int ret = xfrin_process_ixfr_packet(xfr/*xfr->wire, xfr->wire_size,
+	                                   (knot_changesets_t **)(&xfr->data)*/);
 	
 	if (ret == XFRIN_RES_FALLBACK) {
 		dbg_ns("ns_process_ixfrin: Fallback to AXFR.\n");

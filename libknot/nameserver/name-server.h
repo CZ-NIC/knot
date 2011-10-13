@@ -101,7 +101,12 @@ typedef struct knot_ns_xfr {
 	size_t tsig_data_size; /*!< Size of the message(s) in bytes */
 	knot_rrset_t *tsig;    /*!< Response TSIG. */
 	size_t tsig_size;      /*!< Size of the TSIG RR wireformat in bytes.*/
-	uint8_t *prev_digest;  /*!< Previous digest or request digest. */
+	
+	/*! \brief Previous digest or request digest. 
+	 *
+	 *  Should be allocated before the transfer (known size).
+	 */
+	uint8_t *prev_digest;
 	size_t prev_digest_size; /*!< Size of previous digest in bytes. */
 	
 	/*! 
