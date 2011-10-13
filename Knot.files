@@ -249,3 +249,5 @@ src/tests/libknot/libknot/zone_tree_tests.h
 samples/Makefile.am
 libknot/tsig.h
 libknot/tsig.c
+libknot/tsig-op.c
+libknot/tsig-op.h
