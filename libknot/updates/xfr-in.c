@@ -31,6 +31,7 @@
 #include "packet/response.h"
 #include "util/error.h"
 #include "updates/changesets.h"
+#include "tsig-op.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -304,9 +305,82 @@ static void xfrin_free_orphan_rrsigs(xfrin_orphan_rrsig_t **rrsigs)
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
-                              xfrin_constructed_zone_t **constr)
+static int xfrin_check_tsig(knot_packet_t *packet, knot_ns_xfr_t *xfr,
+                            int tsig_req)
 {
+	assert(packet != NULL);
+	assert(xfr != NULL);
+	
+	/*
+	 * If we are expecting it (i.e. xfr->prev_digest_size > 0)
+	 *   a) it should be there (first, last or each 100th packet) and it
+	 *      is not
+	 *        Then we should discard the changes and close the connection.
+	 *   b) it should be there and it is or it may not be there (other 
+	 *      packets) and it is
+	 *        We validate the TSIG and reset packet number counting and
+	 *        data aggregation.
+	 *
+	 * If we are not expecting it (i.e. xfr->prev_digest_size <= 0) and
+	 * it is there => it should probably be considered an error
+	 */
+	knot_rrset_t *tsig = NULL;
+	int ret = knot_packet_parse_next_rr_additional(packet, &tsig);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	
+	if (xfr->prev_digest_size > 0) {
+		if (tsig_req && tsig == NULL) {
+			// TSIG missing!!
+			return KNOT_EMALF;
+		} else if (tsig != NULL) {
+			// TSIG there, either required or not, process
+			if (xfr->packet_nr == 0) {
+				ret = knot_tsig_client_check(xfr->tsig, 
+					xfr->wire, xfr->wire_size, 
+					xfr->prev_digest, xfr->prev_digest_size);
+			} else {
+				ret = knot_tsig_client_check_next(xfr->tsig, 
+					xfr->wire, xfr->wire_size, 
+					xfr->prev_digest, xfr->prev_digest_size);
+			}
+			
+			if (ret != KNOT_EOK) {
+				/*! \todo Check return value for TSIG errors! */
+				return ret;
+			}
+			
+			// and reset the counter and data storage
+			xfr->packet_nr = 1;
+			xfr->tsig_data_size = 0;
+		} else { // TSIG not required and not there
+			// just append the wireformat to the TSIG data
+			assert(KNOT_NS_TSIG_DATA_MAX_SIZE - xfr->tsig_data_size
+			       >= xfr->wire_size);
+			memcpy(xfr->tsig_data + xfr->tsig_data_size,
+			       xfr->wire, xfr->wire_size);
+			xfr->tsig_data_size += xfr->wire_size;
+		}
+	} else if (tsig != NULL) {
+		// TSIG where it should not be
+		return KNOT_EMALF;
+	}
+	
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int xfrin_process_axfr_packet(/*const uint8_t *pkt, size_t size,
+                              xfrin_constructed_zone_t **constr*/
+                              knot_ns_xfr_t *xfr)
+{
+	const uint8_t *pkt = xfr->wire;
+	size_t size = xfr->wire_size;
+	xfrin_constructed_zone_t **constr = 
+			(xfrin_constructed_zone_t **)(&xfr->data);
+	
 	if (pkt == NULL || constr == NULL) {
 		dbg_xfrin("Wrong parameters supported.\n");
 		return KNOT_EBADARG;
@@ -364,6 +438,10 @@ int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
 	knot_zone_contents_t *zone = NULL;
 
 	if (*constr == NULL) {
+		// this should be the first packet
+		xfr->packet_nr = 0;
+		xfr->tsig_data_size = 0;
+		
 		// create new zone
 		/*! \todo Ensure that the packet is the first one. */
 		if (knot_rrset_type(rr) != KNOT_RRTYPE_SOA) {
@@ -459,7 +537,16 @@ dbg_xfrin_exec(
 		ret = knot_packet_parse_next_rr_answer(packet, &rr);
 	} else {
 		zone = (*constr)->contents;
+		++xfr->packet_nr;
+		// add the packet wire size to the data to be verified by TSIG
 	}
+	
+	/*! \todo this may be optional. */
+	assert(KNOT_NS_TSIG_DATA_MAX_SIZE - xfr->tsig_data_size
+	       >= xfr->wire_size);
+	memcpy(xfr->tsig_data + xfr->tsig_data_size, xfr->wire, 
+	       xfr->wire_size);
+	xfr->tsig_data_size += xfr->wire_size;
 	
 	assert(zone != NULL);
 
@@ -571,6 +658,15 @@ dbg_xfrin_exec(
 			ret = knot_packet_parse_next_rr_answer(packet, &rr);
 
 			continue;
+		}
+		
+		if (knot_rrset_type(rr) == KNOT_RRTYPE_TSIG) {
+			// not allowed here
+			dbg_xfrin("TSIG in Answer section.\n");
+			knot_packet_free(&packet);
+			knot_node_free(&node, 1, 0); // ???
+			knot_rrset_deep_free(&rr, 1, 1, 1);
+			return KNOT_EMALF;
 		}
 
 		knot_node_t *(*get_node)(const knot_zone_contents_t *,
@@ -684,7 +780,15 @@ dbg_xfrin_exec(
 			return KNOT_ERROR;	/*! \todo Other error */
 		}
 	}
+	
+	/* Now check if there is not a TSIG record at the end of the 
+	 * packet. 
+	 */
+	ret = xfrin_check_tsig(packet, xfr, 
+	                       knot_ns_tsig_required(xfr->packet_nr));
 
+	/*! \todo Check return value for TSIG errors! */
+	
 	knot_packet_free(&packet);
 	dbg_xfrin("Processed one AXFR packet successfully.\n");
 

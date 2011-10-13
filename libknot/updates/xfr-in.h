@@ -140,8 +140,9 @@ int xfrin_zone_transferred(knot_nameserver_t *nameserver,
  *
  * \todo Refactor!!!
  */
-int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
-                              xfrin_constructed_zone_t **zone);
+int xfrin_process_axfr_packet(/*const uint8_t *pkt, size_t size,
+                              xfrin_constructed_zone_t **zone*/
+                              knot_ns_xfr_t *xfr);
 
 /*!
  * \brief Destroys the whole changesets structure.

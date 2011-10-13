@@ -92,14 +92,31 @@ typedef struct knot_ns_xfr {
 	void *owner;
 	
 	/* TSIG fields */
-	uint8_t *tsig_data;    /*!< Message(s) to sign in wireformat. */
+	/*! \brief Message(s) to sign in wireformat. 
+	 *
+	 *  This field should be allocated at the start of transfer and 
+	 *  freed at the end. During the transfer it is only rewritten.
+	 */
+	uint8_t *tsig_data;
 	size_t tsig_data_size; /*!< Size of the message(s) in bytes */
 	knot_rrset_t *tsig;    /*!< Response TSIG. */
 	size_t tsig_size;      /*!< Size of the TSIG RR wireformat in bytes.*/
-	uint8_t *prev_digest;  /*!< Prev. digest (request digest if 1st msg).*/
+	uint8_t *prev_digest;  /*!< Previous digest or request digest. */
 	size_t prev_digest_size; /*!< Size of previous digest in bytes. */
-	int packet_nr;         /*!< Number of the packet currently assembled.*/
+	
+	/*! 
+	 * \brief Number of the packet currently assembled.
+	 *
+	 * In case of XFR-in, this is not the overall number of packet, just 
+	 * number counted from last TSIG check.
+	 */
+	int packet_nr;
 } knot_ns_xfr_t;
+
+
+static const int      KNOT_NS_TSIG_FREQ    = 100;
+
+static const size_t KNOT_NS_TSIG_DATA_MAX_SIZE = 100 * 64 * 1024;
 
 /*!
  * \brief XFR request flags.
@@ -290,6 +307,8 @@ void *knot_ns_data(knot_nameserver_t *nameserver);
 void *knot_ns_get_data(knot_nameserver_t *nameserver);
 
 void knot_ns_set_data(knot_nameserver_t *nameserver, void *data);
+
+int knot_ns_tsig_required(int packet_nr);
 
 /*!
  * \brief Properly destroys the name server structure.
