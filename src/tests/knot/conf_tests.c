@@ -22,7 +22,7 @@ unit_api conf_tests_api = {
  */
 static int conf_tests_count(int argc, char *argv[])
 {
-	return 20;
+	return 22;
 }
 
 /*! Run all scheduled tests for given parameters.
@@ -58,8 +58,14 @@ static int conf_tests_run(int argc, char *argv[])
 	cmp_ok(iface->port, "==", 53, "interface1 default port check");
 
 	// Test 9,10: Check server key
-	cmp_ok(conf->key.algorithm, "==", HMAC_MD5, "TSIG key algorithm check");
-	is(conf->key.secret, "Wg==", "TSIG key secret check");
+	if(conf->key_count <= 0) {
+		ok(0, "TSIG key algorithm check - NO KEY FOUND");
+		ok(0, "TSIG key secret check - NO KEY FOUND");
+	} else {
+		conf_key_t *k = (conf_key_t *)HEAD(conf->keys);
+		cmp_ok(k->algorithm, "==", HMAC_MD5, "TSIG key algorithm check");
+		is(k->secret, "Wg==", "TSIG key secret check");
+	}
 
 	// Test 11,12,13,14,15,16,17,18: Check logging facilities
 	cmp_ok(conf->logs_count, "==", 4, "log facilites count check");
@@ -98,6 +104,11 @@ static int conf_tests_run(int argc, char *argv[])
 	}
 	endskip;
 
+	// Test 21,22: remote,zone -> key binding
+	conf_key_t *k = ((conf_iface_t*)HEAD(conf->remotes))->key;
+	is(k ? k->name : "", "key0", "remote is connected with correct key");
+	k = ((conf_zone_t*)HEAD(conf->zones))->key;
+	is(k ? k->name : "", "key1", "zone is connected with correct key");
 	}
 	endskip;
 
