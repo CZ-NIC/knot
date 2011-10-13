@@ -354,6 +354,11 @@ static int xfrin_check_tsig(knot_packet_t *packet, knot_ns_xfr_t *xfr,
 			// and reset the counter and data storage
 			xfr->packet_nr = 1;
 			xfr->tsig_data_size = 0;
+			// and save the new previous digest
+			/*! \todo Extract the digest from the TSIG RDATA and
+			 *        store it.
+			 */
+			
 		} else { // TSIG not required and not there
 			// just append the wireformat to the TSIG data
 			assert(KNOT_NS_TSIG_DATA_MAX_SIZE - xfr->tsig_data_size
@@ -835,9 +840,13 @@ static int xfrin_parse_first_rr(knot_packet_t **packet, const uint8_t *pkt,
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
-                              knot_changesets_t **chs)
+int xfrin_process_ixfr_packet(/*const uint8_t *pkt, size_t size,
+                              knot_changesets_t **chs*/knot_ns_xfr_t *xfr)
 {
+	size_t size = xfr->wire_size;
+	const uint8_t *pkt = xfr->wire;
+	knot_changesets_t **chs = (knot_changesets_t **)(&xfr->data);
+	
 	if (pkt == NULL || chs == NULL) {
 		dbg_xfrin("Wrong parameters supported.\n");
 		return KNOT_EBADARG;
@@ -1019,6 +1028,10 @@ dbg_xfrin_exec(
 			if (knot_rdata_soa_serial(knot_rrset_rdata(rr))
 			    == knot_rdata_soa_serial(
 			           knot_rrset_rdata((*chs)->first_soa))) {
+				
+				/* Check TSIG, we're at the end of transfer. */
+				ret = xfrin_check_tsig(packet, xfr, 1);
+				
 				// last SOA, discard and end
 				knot_rrset_deep_free(&rr, 1, 1, 1);
 				knot_packet_free(&packet);
@@ -1100,12 +1113,19 @@ dbg_xfrin_exec(
 		dbg_xfrin("Returned %d, %p.\n", ret, rr);
 	}
 	
+	/* Check TSIG, we're at the end of packet. It may not be required. */
+	ret = xfrin_check_tsig(packet, xfr, 
+	                       knot_ns_tsig_required(xfr->packet_nr));
+	
 	// here no RRs remain in the packet but the transfer is not finished
 	// yet, return EOK
 	knot_packet_free(&packet);
 	return KNOT_EOK;
 
 cleanup:
+	/* We should go here only if some error occured. */
+	assert(ret < 0);
+	
 	dbg_xfrin("Cleanup after processing IXFR/IN packet.\n");
 	knot_free_changesets(chs);
 	knot_packet_free(&packet);
