@@ -1018,7 +1018,8 @@ int knot_response_add_rrset_answer(knot_packet_t *response,
 	                                        &response->an_rrsets, response,
 	                                        response->max_size
 	                                        - response->size
-	                                        - response->opt_rr.size,
+	                                        - response->opt_rr.size
+	                                        - response->tsig_size,
 	                                        rrset, tc, compr_cs);
 
 	if (rrs >= 0) {
@@ -1059,7 +1060,8 @@ int knot_response_add_rrset_authority(knot_packet_t *response,
 	                                        &response->ns_rrsets, response,
 	                                        response->max_size
 	                                        - response->size
-	                                        - response->opt_rr.size,
+	                                        - response->opt_rr.size
+	                                        - response->tsig_size,
 	                                        rrset, tc, compr_cs);
 
 	if (rrs >= 0) {
@@ -1106,8 +1108,9 @@ int knot_response_add_rrset_additional(knot_packet_t *response,
 	int rrs = knot_response_try_add_rrset(response->additional,
 	                                        &response->ar_rrsets, response,
 	                                        response->max_size
-	                                        - response->size, rrset, tc,
-	                                        compr_cs);
+	                                        - response->size
+	                                        - response->tsig_size, rrset, 
+	                                        tc, compr_cs);
 
 	if (rrs >= 0) {
 		response->header.arcount += rrs;

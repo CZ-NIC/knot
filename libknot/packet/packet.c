@@ -1096,6 +1096,13 @@ int knot_packet_arcount(const knot_packet_t *packet)
 
 /*----------------------------------------------------------------------------*/
 
+void knot_packet_set_tsig_size(knot_packet_t *packet, size_t tsig_size)
+{
+	packet->tsig_size = tsig_size;
+}
+
+/*----------------------------------------------------------------------------*/
+
 short knot_packet_answer_rrset_count(const knot_packet_t *packet)
 {
 	if (packet == NULL) {
