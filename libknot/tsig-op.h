@@ -49,6 +49,9 @@
  *
  * \retval KNOT_EOK if everything went OK.
  * \retval TODO
+ *
+ * \todo This function should return TSIG errors by their codes which are 
+ *       positive values - this will be recognized by the caller.
  */
 int knot_tsig_sign(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
                    const uint8_t *request_mac, size_t request_mac_len,
@@ -72,6 +75,9 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
  *
  * \retval KNOT_EOK if successful.
  * \retval TODO
+ *
+ * \todo This function should return TSIG errors by their codes which are 
+ *       positive values - this will be recognized by the caller.
  */
 int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len, 
                         const uint8_t *prev_digest, size_t prev_digest_len,
@@ -86,6 +92,9 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
  *
  * \retval KNOT_EOK If the signature is valid.
  * \retval TODO
+ *
+ * \todo This function should return TSIG errors by their codes which are 
+ *       positive values - this will be recognized by the caller.
  */
 int knot_tsig_server_check(const knot_rrset_t *tsig_rr,
                            const uint8_t *wire, size_t size);
@@ -101,6 +110,9 @@ int knot_tsig_server_check(const knot_rrset_t *tsig_rr,
  *
  * \retval KNOT_EOK If the signature is valid.
  * \retval TODO
+ *
+ * \todo This function should return TSIG errors by their codes which are 
+ *       positive values - this will be recognized by the caller.
  */
 int knot_tsig_client_check(const knot_rrset_t *tsig_rr,
                            const uint8_t *wire, size_t size,
@@ -117,6 +129,9 @@ int knot_tsig_client_check(const knot_rrset_t *tsig_rr,
  *
  * \retval KNOT_EOK If the signature is valid.
  * \retval TODO
+ *
+ * \todo This function should return TSIG errors by their codes which are 
+ *       positive values - this will be recognized by the caller.
  */
 int knot_tsig_client_check_next(const knot_rrset_t *tsig_rr,
                                 const uint8_t *wire, size_t size,
