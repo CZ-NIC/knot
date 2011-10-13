@@ -1105,7 +1105,7 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 					ret = knot_zonedb_add_zone(db_new, sz);
 					if (ret != KNOT_EOK) {
 						dbg_zones("zones: failed to add "
-						          "stub zone '%'s.\n",
+						          "stub zone '%s'.\n",
 						          z->name);
 						knot_zone_deep_free(&sz, 0);
 						sz = 0;
@@ -1120,7 +1120,7 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 
 				} else {
 					dbg_zones("zones: failed to create "
-					          "stub zone '%'s.\n",
+					          "stub zone '%s'.\n",
 					          z->name);
 					ret = KNOT_ERROR;
 				}
@@ -1152,7 +1152,7 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 				
 				dbg_zones_verb("zones: inserted '%s' into "
 				               "database, initializing data\n",
-				               z->name)
+				               z->name);
 
 				/* Initialize zone-related data. */
 				zonedata_init(z, zone);
