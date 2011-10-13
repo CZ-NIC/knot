@@ -109,6 +109,19 @@ static inline uint32_t knot_wire_read_u32(const uint8_t *pos)
 }
 
 /*!
+ * \brief Reads 6 bytes from the wireformat data.
+ *
+ * \param pos Data to read the 6 bytes from.
+ *
+ * \return The 6 bytes read, in inverse endian.
+ */
+static inline uint64_t knot_wire_read_u48(const uint8_t *pos)
+{
+	return ((uint64_t)(pos[0]) << 40) | ((uint64_t)(pos[1]) << 32) | (pos[2] << 24) |
+	        (pos[3] << 16) | (pos[4] << 8) | pos[5];
+}
+
+/*!
  * \brief Writes 2 bytes in wireformat.
  *
  * The endian of the data is inverted.
@@ -136,6 +149,24 @@ static inline void knot_wire_write_u32(uint8_t *pos, uint32_t data)
 	pos[1] = (uint8_t)((data >> 16) & 0xff);
 	pos[2] = (uint8_t)((data >> 8) & 0xff);
 	pos[3] = (uint8_t)(data & 0xff);
+}
+
+/*!
+ * \brief Writes 6 bytes in wireformat.
+ *
+ * The endian of the data is inverted.
+ *
+ * \param pos Position where to put the 4 bytes.
+ * \param data Data to put.
+ */
+static inline void knot_wire_write_u48(uint8_t *pos, uint64_t data)
+{
+	pos[0] = (uint8_t)((data >> 40) & 0xff);
+	pos[1] = (uint8_t)((data >> 32) & 0xff);
+	pos[2] = (uint8_t)((data >> 24) & 0xff);
+	pos[3] = (uint8_t)((data >> 16) & 0xff);
+	pos[4] = (uint8_t)((data >> 8) & 0xff);
+	pos[5] = (uint8_t)(data & 0xff);
 }
 
 /*!
