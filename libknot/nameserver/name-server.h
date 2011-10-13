@@ -95,8 +95,10 @@ typedef struct knot_ns_xfr {
 	uint8_t *tsig_data;    /*!< Message(s) to sign in wireformat. */
 	size_t tsig_data_size; /*!< Size of the message(s) in bytes */
 	knot_rrset_t *tsig;    /*!< Response TSIG. */
+	size_t tsig_size;      /*!< Size of the TSIG RR wireformat in bytes.*/
 	uint8_t *prev_digest;  /*!< Prev. digest (request digest if 1st msg).*/
 	size_t prev_digest_size; /*!< Size of previous digest in bytes. */
+	int packet_nr;         /*!< Number of the packet currently assembled.*/
 } knot_ns_xfr_t;
 
 /*!

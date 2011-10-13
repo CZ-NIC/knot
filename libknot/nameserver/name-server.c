@@ -63,6 +63,8 @@ static const uint8_t  NSID_DATA[6] = {0x46, 0x6f, 0x6f, 0x42, 0x61, 0x72};
 /*! \brief Internal error code to propagate need for SERVFAIL response. */
 static const int      NS_ERR_SERVFAIL      = -999;
 
+static const int      KNOT_NS_TSIG_FREQ    = 100;
+
 /*----------------------------------------------------------------------------*/
 /* Private functions                                                          */
 /*----------------------------------------------------------------------------*/
@@ -2000,6 +2002,14 @@ static int ns_axfr_send_and_clear(knot_ns_xfr_t *xfr)
 	// Clean the response structure
 	dbg_ns("Clearing response structure..\n");
 	knot_response_clear(xfr->response, 0);
+	
+	// increment the packet number
+	++xfr->packet_nr;
+	if (xfr->tsig != NULL && xfr->packet_nr % KNOT_NS_TSIG_FREQ == 0) {
+		knot_packet_set_tsig_size(xfr->response, xfr->tsig_size);
+	} else {
+		knot_packet_set_tsig_size(xfr->response, 0);
+	}
 
 	dbg_ns("Response structure after clearing:\n");
 	knot_packet_dump(xfr->response);
@@ -2132,6 +2142,8 @@ static int ns_axfr_from_zone(knot_zone_contents_t *zone, knot_ns_xfr_t *xfr)
 	params.xfr = xfr;
 	params.ret = KNOT_EOK;
 
+	xfr->packet_nr = 0;
+	
 	/*
 	 * First SOA
 	 */
@@ -2181,8 +2193,7 @@ static int ns_axfr_from_zone(knot_zone_contents_t *zone, knot_ns_xfr_t *xfr)
 	 */
 
 	// try to add the SOA to the response again (last RR)
-	ret = knot_response_add_rrset_answer(xfr->response, soa_rrset, 0, 0,
-	                                        1);
+	ret = knot_response_add_rrset_answer(xfr->response, soa_rrset, 0, 0, 1);
 	if (ret == KNOT_ESPACE) {
 			
 		// if there is not enough space, send the response and
