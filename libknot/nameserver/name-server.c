@@ -32,6 +32,7 @@
 #include "consts.h"
 #include "updates/changesets.h"
 #include "updates/ddns.h"
+#include "tsig-op.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -1985,11 +1986,37 @@ static int ns_axfr_send_and_clear(knot_ns_xfr_t *xfr)
 //				  KNOT_RCODE_SERVFAIL, response_wire,
 //				  rsize);
 	}
+	
+	int res = 0;
+	
+	/*
+	 * Generate TSIG if required.
+	 */
+	if (xfr->tsig && xfr->packet_nr & KNOT_NS_TSIG_FREQ == 0) {
+		if (xfr->packet_nr == 0) {
+			res = knot_tsig_sign(xfr->wire, &real_size, 
+			               xfr->wire_size, xfr->prev_digest, 
+			               xfr->prev_digest_size, xfr->tsig);
+		} else {
+			res = knot_tsig_sign_next(xfr->wire, &real_size, 
+			                          xfr->wire_size, 
+			                          xfr->prev_digest,
+			                          xfr->prev_digest_size,
+			                          xfr->tsig);
+		}
+		
+		if (res != KNOT_EOK) {
+			/*! \todo Handle different types of errors, especially
+			 *        TSIG errors (positive values).
+			 */
+			return NS_ERR_SERVFAIL;
+		}
+	}
 
 	// Send the response
 	dbg_ns("Sending response (size %zu)..\n", real_size);
 	//dbg_ns_hex((const char *)xfr->wire, real_size);
-	int res = xfr->send(xfr->session, &xfr->addr, xfr->wire, real_size);
+	res = xfr->send(xfr->session, &xfr->addr, xfr->wire, real_size);
 	if (res < 0) {
 		dbg_ns("Send returned %d\n", res);
 		return res;
