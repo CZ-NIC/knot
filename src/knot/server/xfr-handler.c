@@ -773,6 +773,11 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 			}
 		} else {
 
+			/*!
+			 * \todo Getting TSIG info from zone configuration and
+			 *       validating query TSIG should probably come here.
+			 */
+			
 			ret = knot_ns_answer_axfr(w->ns, &xfr);
 			dbg_xfr("xfr: ns_answer_axfr() = %d.\n", ret);
 			if (ret != KNOTD_EOK) {
@@ -825,6 +830,11 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 			socket_close(xfr.session);
 			return KNOTD_EOK;
 		}
+		
+		/*!
+		 * \todo Getting TSIG info from zone configuration and
+		 *       validating query TSIG should probably come here.
+		 */
 		
 		ret = knot_ns_answer_ixfr(w->ns, &xfr);
 		free(xfr.query->wireformat);
