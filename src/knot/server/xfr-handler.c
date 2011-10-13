@@ -292,6 +292,11 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 	}
 	data->wire_size = ret;
 
+	/*!
+	 * \todo Somewhere before this fetch the query digest and the TSIG
+	 *       associated with this transfer and save them to 'data'.
+	 */
+	
 	/* Process incoming packet. */
 	switch(data->type) {
 	case XFR_TYPE_AIN:
@@ -776,6 +781,8 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 			/*!
 			 * \todo Getting TSIG info from zone configuration and
 			 *       validating query TSIG should probably come here.
+			 *       This will require parsing the rest of the query
+			 *       here (knot_packet_parse_rest()).
 			 */
 			
 			ret = knot_ns_answer_axfr(w->ns, &xfr);
@@ -834,6 +841,9 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		/*!
 		 * \todo Getting TSIG info from zone configuration and
 		 *       validating query TSIG should probably come here.
+		 *       This will require parsing the rest of the query
+		 *       here (knot_packet_parse_rest()) instead of in
+		 *       knot_ns_answer_ixfr() (remove from there afterwards).
 		 */
 		
 		ret = knot_ns_answer_ixfr(w->ns, &xfr);

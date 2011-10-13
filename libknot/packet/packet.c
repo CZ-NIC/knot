@@ -879,6 +879,15 @@ int knot_packet_parse_next_rr_answer(knot_packet_t *packet,
 
 /*----------------------------------------------------------------------------*/
 
+int knot_packet_parse_next_rr_additional(knot_packet_t *packet,
+                                         knot_rrset_t **rr)
+{
+	/*! \todo Implement. */
+	return KNOT_ENOTSUP;
+}
+
+/*----------------------------------------------------------------------------*/
+
 size_t knot_packet_size(const knot_packet_t *packet)
 {
 	return packet->size;

@@ -64,8 +64,6 @@ static const uint8_t  NSID_DATA[6] = {0x46, 0x6f, 0x6f, 0x42, 0x61, 0x72};
 /*! \brief Internal error code to propagate need for SERVFAIL response. */
 static const int      NS_ERR_SERVFAIL      = -999;
 
-static const int      KNOT_NS_TSIG_FREQ    = 100;
-
 /*----------------------------------------------------------------------------*/
 /* Private functions                                                          */
 /*----------------------------------------------------------------------------*/
@@ -973,7 +971,6 @@ static int ns_put_nsec_nxdomain(const knot_dname_t *qname,
                                 const knot_node_t *closest_encloser,
                                 knot_packet_t *resp)
 {
-	/*! \todo Change to zone contents. */
 	const knot_rrset_t *rrset = NULL;
 
 	// check if we have previous; if not, find one using the tree
@@ -1068,7 +1065,6 @@ static int ns_put_nsec3_nxdomain(const knot_zone_contents_t *zone,
                                  const knot_dname_t *qname,
                                  knot_packet_t *resp)
 {
-	/*! \todo Change to zone contents. */
 	// 1) Closest encloser proof
 	dbg_ns("Putting closest encloser proof.\n");
 	int ret = ns_put_nsec3_closest_encloser_proof(zone, &closest_encloser,
@@ -1326,7 +1322,6 @@ static inline int ns_referral(const knot_node_t *node,
                               const knot_dname_t *qname,
                               knot_packet_t *resp)
 {
-	/*! \todo Change to zone contents. */
 	dbg_ns("Referral response.\n");
 
 	while (!knot_node_is_deleg_point(node)) {
@@ -1431,7 +1426,6 @@ static int ns_answer_from_node(const knot_node_t *node,
                                const knot_dname_t *qname, uint16_t qtype,
                                knot_packet_t *resp)
 {
-	/*! \todo Change to zone contents. */
 	dbg_ns("Putting answers from found node to the response...\n");
 	int answers = ns_put_answer(node, qname, qtype, resp);
 
@@ -1967,7 +1961,7 @@ typedef struct ns_axfr_params {
 
 /*----------------------------------------------------------------------------*/
 
-static int ns_tsig_required(int packet_nr) 
+int knot_ns_tsig_required(int packet_nr) 
 {
 	return (packet_nr % KNOT_NS_TSIG_FREQ == 0);
 }
@@ -2107,7 +2101,7 @@ rrset:
 			// TODO: send the packet and clean the structure
 			dbg_ns("Packet full, sending..\n");
 			ret = ns_xfr_send_and_clear(params->xfr, 
-				ns_tsig_required(params->xfr->packet_nr));
+				knot_ns_tsig_required(params->xfr->packet_nr));
 			if (ret != KNOT_EOK) {
 				// some wierd problem, we should end
 				params->ret = KNOT_ERROR;
@@ -2136,7 +2130,7 @@ rrsigs:
 			// TODO: send the packet and clean the structure
 			dbg_ns("Packet full, sending..\n");
 			ret = ns_xfr_send_and_clear(params->xfr,
-				ns_tsig_required(params->xfr->packet_nr));
+				knot_ns_tsig_required(params->xfr->packet_nr));
 			if (ret != KNOT_EOK) {
 				// some wierd problem, we should end
 				params->ret = KNOT_ERROR;
@@ -2236,7 +2230,7 @@ static int ns_axfr_from_zone(knot_zone_contents_t *zone, knot_ns_xfr_t *xfr)
 		// add the SOA record to a new packet
 		dbg_ns("Packet full, sending..\n");
 		ret = ns_xfr_send_and_clear(xfr,
-			ns_tsig_required(xfr->packet_nr));
+			knot_ns_tsig_required(xfr->packet_nr));
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -2265,7 +2259,7 @@ static int ns_ixfr_put_rrset(knot_ns_xfr_t *xfr, const knot_rrset_t *rrset)
 	if (res == KNOT_ESPACE) {
 		knot_response_set_rcode(xfr->response, KNOT_RCODE_NOERROR);
 		/*! \todo Probably rename the function. */
-		ns_xfr_send_and_clear(xfr, ns_tsig_required(xfr->packet_nr));
+		ns_xfr_send_and_clear(xfr, knot_ns_tsig_required(xfr->packet_nr));
 
 		res = knot_response_add_rrset_answer(xfr->response,
 		                                        rrset, 0, 0, 0);
@@ -3093,17 +3087,18 @@ int knot_ns_answer_ixfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 
 int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 {
-	/*! \todo Implement me.
-	 *  - xfr contains partially-built zone or NULL (xfr->data)
-	 *  - incoming packet is in xfr->wire
-	 *  - incoming packet size is in xfr->wire_size
-	 *  - signalize caller, that transfer is finished/error (ret. code?)
+	/*!
+	 * \todo Here we assume that 'xfr' contains TSIG information
+	 *       and the digest of the query sent to the master or the previous
+	 *       digest.
 	 */
+	
 	dbg_ns("ns_process_axfrin: incoming packet, wire size: %zu\n",
 	              xfr->wire_size);
 
-	int ret = xfrin_process_axfr_packet(xfr->wire, xfr->wire_size,
-	                             (xfrin_constructed_zone_t **)(&xfr->data));
+	int ret = xfrin_process_axfr_packet(/*xfr->wire, xfr->wire_size,*/
+	                             /*(xfrin_constructed_zone_t **)(&xfr->data)*/
+	                                    xfr);
 
 	if (ret > 0) { // transfer finished
 		dbg_ns("ns_process_axfrin: AXFR finished, zone created.\n");
@@ -3135,6 +3130,10 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 
 		//knot_zone_contents_dump(zone, 0);
 	}
+	
+	/*!
+	 * \todo In case of error, shouldn't the zone be destroyed here?
+	 */
 	
 	return ret;
 }
@@ -3280,6 +3279,10 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 		} break;
 		}
 	}
+	
+	/*!
+	 * \todo In case of error, shouldn't the zone be destroyed here?
+	 */
 	
 	return ret;
 }
