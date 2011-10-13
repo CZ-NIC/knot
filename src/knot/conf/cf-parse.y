@@ -60,7 +60,7 @@ static void conf_acl_item(void *scanner, char *item)
 
       /* Append to list if found. */
      if (!found) {
-	char buf[256];
+	char buf[512];
 	snprintf(buf, sizeof(buf), "remote '%s' is not defined", item);
 	cf_error(scanner, buf);
      } else {
@@ -87,6 +87,22 @@ static void conf_acl_item(void *scanner, char *item)
      free(item);
    }
 
+static void conf_key_item(void *scanner, conf_key_t **key, char *item)
+{
+    /* Find existing node in keys. */
+    conf_key_t* r = 0;
+    WALK_LIST (r, new_config->keys) {
+	if (strcmp(r->name, item) == 0) {
+	    *key = r;
+	    return;
+	}
+    }
+
+    char buf[512];
+    snprintf(buf, sizeof(buf), "key '%s' is not defined", item);
+    cf_error(scanner, buf);
+}
+
 %}
 
 %pure-parser
@@ -110,7 +126,7 @@ static void conf_acl_item(void *scanner, char *item)
 %token <tok> SIZE
 %token <tok> BOOL
 
-%token <tok> SYSTEM IDENTITY VERSION STORAGE KEY
+%token <tok> SYSTEM IDENTITY VERSION STORAGE KEY KEYS
 %token <tok> TSIG_ALGO_NAME
 
 %token <tok> REMOTES
@@ -222,10 +238,23 @@ system:
  | system IDENTITY TEXT ';' { new_config->identity = $3.t; }
  | system STORAGE TEXT ';' { new_config->storage = $3.t; }
  | system KEY TSIG_ALGO_NAME TEXT ';' {
-     new_config->key.algorithm = $3.alg;
-     new_config->key.secret = $4.t;
-   }
+     fprintf(stderr, "warning: Config option 'system.key' is deprecated "
+		     "and has no effect.\n");
+     free($4.t);
+ }
  ;
+
+keys:
+   KEYS '{'
+ | keys TEXT TSIG_ALGO_NAME TEXT ';' {
+     conf_key_t *k = malloc(sizeof(conf_key_t));
+     memset(k, 0, sizeof(conf_key_t));
+     k->name = $2.t;
+     k->algorithm = $3.alg;
+     k->secret = $4.t;
+     add_tail(&new_config->keys, &k->n);
+     ++new_config->key_count;
+}
 
 remote_start:
  | TEXT { conf_start_remote($1.t); }
@@ -285,6 +314,14 @@ remote:
        }
      }
    }
+  | remote KEY TEXT ';' {
+      if (this_remote->key != 0) {
+	cf_error(scanner, "only one key definition is allowed in remote section\n");
+      } else {
+	conf_key_item(scanner, &this_remote->key, $3.t);
+	free($3.t);
+      }
+  }
  ;
 
 remotes:
@@ -422,6 +459,14 @@ zone:
 	   this_zone->notify_timeout = $3.i;
        }
    }
+ | zone KEY TEXT ';' {
+     if (this_zone->key != 0) {
+       cf_error(scanner, "only one key definition is allowed in zone section\n");
+     } else {
+       conf_key_item(scanner, &this_zone->key, $3.t);
+       free($3.t);
+     }
+   }
  ;
 
 zones:
@@ -537,7 +582,7 @@ log_start:
 log: LOG '{' log_start log_end;
 
 
-conf: ';' | system '}' | interfaces '}' | remotes '}' | zones '}' | log '}';
+conf: ';' | system '}' | interfaces '}' | keys '}' | remotes '}' | zones '}' | log '}';
 
 %%
 

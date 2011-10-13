@@ -58,6 +58,7 @@ identity        { lval.t = yytext; return IDENTITY; }
 version         { lval.t = yytext; return VERSION; }
 storage         { lval.t = yytext; return STORAGE; }
 key             { lval.t = yytext; return KEY; }
+keys            { lval.t = yytext; return KEYS; }
 remotes         { lval.t = yytext; return REMOTES; }
 
 zones           { lval.t = yytext; return ZONES; }

@@ -9,21 +9,26 @@ system {
   identity "I have no mouth and must scream";
   version "Infinitesimal";
   storage "/var/run/knot/";
-  key hmac-md5 "Wg==";
+}
 
+keys {
+  key0 hmac-md5 "Wg=="; # key special for one remote
+  key1 hmac-md5 "==gW"; # implicit key for whole zone
+}
+
+remotes {
+  remote0 { address 1.2.3.4; key key0; }
 }
 
 zones {
   example.net {
     file "/var/lib/knot/example.net";
+    xfr-out remote0;
+    key key1;
   }
 }
 
 interfaces {
-  # short notation
-  # name address@port
-  # interface0 10.10.1.1@53;
-  # will expand into long notation
   interface0 {
     address 10.10.1.1;
     port 53531;
