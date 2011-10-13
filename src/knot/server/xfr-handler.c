@@ -810,6 +810,17 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		
 		ret = zones_xfr_load_changesets(&xfr);
 		if (ret != KNOTD_EOK) {
+			/* History cannot be reconstructed, fallback to AXFR. */
+			if (ret == KNOTD_ERANGE) {
+				log_server_info("IXFR transfer of zone '%s/OUT'"
+						" - not enough data in journal,"
+						" fallback to AXFR.\n",
+						zname,
+						r_addr, r_port);
+				xfr.type = XFR_TYPE_AOUT;
+				xfr_request(w->master, &xfr);
+				return KNOTD_EOK;
+			}
 			knot_ns_xfr_send_error(&xfr, KNOT_RCODE_SERVFAIL);
 			socket_close(xfr.session);
 		}
