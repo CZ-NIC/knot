@@ -855,6 +855,7 @@ int knot_packet_parse_next_rr_answer(knot_packet_t *packet,
 	if (packet->an_rrsets == packet->header.ancount) {
 		assert(packet->parsed < packet->size);
 		dbg_packet("Trailing garbage, ignoring...\n");
+		/*! \todo Do not ignore. */
 		return KNOT_EOK;
 	}
 
@@ -883,7 +884,47 @@ int knot_packet_parse_next_rr_additional(knot_packet_t *packet,
                                          knot_rrset_t **rr)
 {
 	/*! \todo Implement. */
-	return KNOT_ENOTSUP;
+	if (packet == NULL || rr == NULL) {
+		return KNOT_EBADARG;
+	}
+
+	*rr = NULL;
+
+	if (packet->parsed >= packet->size) {
+		assert(packet->ar_rrsets <= packet->header.arcount);
+		if (packet->ar_rrsets != packet->header.arcount) {
+			dbg_packet("Parsed less RRs than expected.\n");
+			return KNOT_EMALF;
+		} else {
+			dbg_packet("Whole packet parsed\n");
+			return KNOT_EOK;
+		}
+	}
+
+	if (packet->ar_rrsets == packet->header.arcount) {
+		assert(packet->parsed < packet->size);
+		dbg_packet("Trailing garbage, ignoring...\n");
+		/*! \todo Do not ignore. */
+		return KNOT_EOK;
+	}
+
+	size_t pos = packet->parsed;
+
+	dbg_packet("Parsing next Additional RR (pos: %zu)...\n", pos);
+	*rr = knot_packet_parse_rr(packet->wireformat, &pos, packet->size);
+	if (*rr == NULL) {
+		dbg_packet("Failed to parse RR!\n");
+		return KNOT_EMALF;
+	}
+	
+	dbg_packet("Parsed. Pos: %zu.\n", pos);
+
+	packet->parsed = pos;
+	// increment the number of answer RRSets, though there are no saved
+	// in the packet; it is OK, because packet->answer is NULL
+	++packet->ar_rrsets;
+
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
