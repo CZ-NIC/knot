@@ -823,6 +823,7 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 			}
 			knot_ns_xfr_send_error(&xfr, KNOT_RCODE_SERVFAIL);
 			socket_close(xfr.session);
+			return KNOTD_EOK;
 		}
 		
 		ret = knot_ns_answer_ixfr(w->ns, &xfr);
