@@ -208,7 +208,8 @@ enum knot_rdata_wireformat {
 	 */
 	KNOT_RDATA_WF_BINARYWITHLENGTH = 55,
 	KNOT_RDATA_WF_APL = 56, /*!< APL data.  */
-	KNOT_RDATA_WF_IPSECGATEWAY = 57 /*!< IPSECKEY gateway ip4, ip6 or dname. */
+	KNOT_RDATA_WF_IPSECGATEWAY = 57, /*!< IPSECKEY gateway ip4, ip6 or dname. */
+	KNOT_RDATA_WF_BINARYWITHSHORT = 58
 };
 
 /*! \brief Constants characterising the format of RDATA items in zone file. */
