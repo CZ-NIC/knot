@@ -199,6 +199,7 @@ enum knot_rdata_wireformat {
 	KNOT_RDATA_WF_BYTE = 1, /*!< 8-bit integer.  */
 	KNOT_RDATA_WF_SHORT = 2, /*!< 16-bit integer.  */
 	KNOT_RDATA_WF_LONG = 4, /*!< 32-bit integer.  */
+	KNOT_RDATA_WF_UINT48 = 8, /*!< 48-bit integer.  */
 	KNOT_RDATA_WF_TEXT = 53, /*!< Text string.  */
 	KNOT_RDATA_WF_A = 58, /*!< 32-bit IPv4 address.  */
 	KNOT_RDATA_WF_AAAA = 16, /*!< 128-bit IPv6 address.  */

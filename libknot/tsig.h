@@ -27,6 +27,75 @@
 #ifndef _KNOT_TSIG_H_
 #define _KNOT_TSIG_H_
 
+#include <stdint.h>
+
+#include "rrset.h"
+#include "util/utils.h"
+
+/* The assigned numbers should not begin with 0 - reserved for error. */
+enum tsig_algorithm {
+	KNOT_TSIG_ALG_GSS_TSIG = 128, /*!< \brief gss-tsig. */
+	KNOT_TSIG_ALG_HMAC_MD5, /*!< \brief HMAC-MD5.SIG-ALG.REG.INT. */
+	KNOT_TSIG_ALG_HMAC_SHA1, /*!< \brief hmac-sha1. */
+	KNOT_TSIG_ALG_HMAC_SHA224, /*!< \brief hmac-sha224. */
+	KNOT_TSIG_ALG_HMAC_SHA256, /*!< \brief hmac-sha256. */
+	KNOT_TSIG_ALG_HMAC_SHA384, /*!< \brief hmac-sha384. */
+	KNOT_TSIG_ALG_HMAC_SHA512 /*!< \brief hmac-sha512. */
+};
+
+typedef enum tsig_algorithm tsig_algorithm_t;
+
+/*!< \todo FIND ALG LENGTHS */
+enum tsig_algorithm_digest_length {
+	KNOT_TSIG_ALG_DIG_LENGTH_GSS_TSIG = 1,
+	KNOT_TSIG_ALG_DIG_LENGTH_HMAC_MD5 = 32,
+	KNOT_TSIG_ALG_DIG_LENGTH_SHA1 = 1,
+	KNOT_TSIG_ALG_DIG_LENGTH_SHA224 = 1,
+	KNOT_TSIG_ALG_DIG_LENGTH_SHA256 = 1,
+	KNOT_TSIG_ALG_DIG_LENGTH_SHA384 = 1,
+	KNOT_TSIG_ALG_DIG_LENGTH_SHA512 = 1
+};
+
+static knot_lookup_table_t tsig_algorithm_table[] = {
+	{ KNOT_TSIG_ALG_GSS_TSIG, "gss-tsig" },
+	{ KNOT_TSIG_ALG_HMAC_MD5, "HMAC-MD5.SIG-ALG.REG.INT" },
+	{ KNOT_TSIG_ALG_HMAC_SHA1, "hmac-sha1" },
+	{ KNOT_TSIG_ALG_HMAC_SHA224, "hmac-sha224" },
+	{ KNOT_TSIG_ALG_HMAC_SHA256, "hmac-sha256" },
+	{ KNOT_TSIG_ALG_HMAC_SHA384, "hmac-sha384" },
+	{ KNOT_TSIG_ALG_HMAC_SHA512, "hmac-sha512" }
+};
+
+enum tsig_consts {
+	KNOT_TSIG_ITEM_COUNT = 7
+};
+
+int tsig_rdata_set_alg_name(knot_rrset_t *tsig, knot_dname_t *alg_name);
+int tsig_rdata_set_alg(knot_rrset_t *tsig, tsig_algorithm_t alg);
+int tsig_rdata_set_time_signed(knot_rrset_t *tsig, uint64_t time);
+int tsig_rdata_set_fudge(knot_rrset_t *tsig, uint16_t fudge);
+int tsig_rdata_set_mac(knot_rrset_t *tsig, uint16_t length,
+                       const uint8_t *mac);
+int tsig_rdata_set_orig_id(knot_rrset_t *tsig, uint16_t id);
+int tsig_rdata_set_error(knot_rrset_t *tsig, uint16_t id);
+int tsig_rdata_set_other_data(knot_rrset_t *tsig, uint16_t length,
+                              const uint8_t *other_data);
+
+const knot_dname_t *tsig_rdata_alg_name(const knot_rrset_t *tsig);
+tsig_algorithm_t tsig_rdata_alg(const knot_rrset_t *tsig);
+uint64_t tsig_rdata_time_signed(const knot_rrset_t *tsig);
+uint16_t tsig_rdata_fudge(const knot_rrset_t *tsig);
+const uint16_t *tsig_rdata_mac(const knot_rrset_t *tsig);
+uint16_t tsig_rdata_orig_id(const knot_rrset_t *tsig);
+uint16_t tsig_rdata_error(const knot_rrset_t *tsig);
+const uint16_t *tsig_rdata_other_data(const knot_rrset_t *tsig);
+
+int tsig_algorithm_name_to_code(const knot_dname_t *name);
+
+uint16_t tsig_algorithm_digest_length(tsig_algorithm_t alg);
+
+//k typu algoritmu vratit velikost digestu
+
 #endif /* _KNOT_TSIG_H_ */
 
 /*! @} */
