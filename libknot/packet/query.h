@@ -85,7 +85,7 @@ int knot_query_set_opcode(knot_packet_t *query, uint8_t opcode);
  * \retval KNOT_ESPACE
  */
 int knot_query_add_rrset_authority(knot_packet_t *query,
-				   const knot_rrset_t *rrset);
+                                   const knot_rrset_t *rrset);
 
 
 #endif /* _KNOT_QUERY_H_ */

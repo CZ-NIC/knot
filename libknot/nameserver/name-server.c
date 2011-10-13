@@ -2147,8 +2147,7 @@ static int ns_axfr_from_zone(knot_zone_contents_t *zone, knot_ns_xfr_t *xfr)
 	int ret;
 
 	// add SOA RR to the response
-	ret = knot_response_add_rrset_answer(xfr->response, soa_rrset, 0, 0,
-	                                        1);
+	ret = knot_response_add_rrset_answer(xfr->response, soa_rrset, 0, 0, 1);
 	if (ret != KNOT_EOK) {
 		// something is really wrong
 		return KNOT_ERROR;
@@ -2925,6 +2924,18 @@ int knot_ns_answer_axfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		knot_packet_free(&xfr->response);
 		return KNOT_EOK;
 	}
+	
+	/*!
+	 * \todo The TSIG data should already be stored in 'xfr'.
+	 *       Now just count the expected size of the TSIG RR and save it
+	 *       to the response structure.
+	 */
+	
+	/*! \todo Get the TSIG size from some API function. */
+	if (xfr->tsig != NULL) {
+		size_t tsig_size = 0;
+		knot_packet_set_tsig_size(xfr->response, tsig_size);
+	}
 
 	ret = ns_axfr_from_zone(contents, xfr);
 
@@ -2985,6 +2996,19 @@ int knot_ns_answer_ixfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		ret = xfr->send(xfr->session, &xfr->addr, wire, size);
 		knot_packet_free(&xfr->response);
 		return ret;
+	}
+	
+	/*!
+	 * \todo The TSIG data should already be stored in 'xfr'.
+	 *       Now just count the expected size of the TSIG RR and save it
+	 *       to the response structure. This should be optional, only if
+	 *       the request contained TSIG, i.e. if there is the data in 'xfr'.
+	 */
+	
+	/*! \todo Get the TSIG size from some API function. */
+	if (xfr->tsig != NULL) {
+		size_t tsig_size = 0;
+		knot_packet_set_tsig_size(xfr->response, tsig_size);
 	}
 	
 	ret = ns_ixfr(xfr);

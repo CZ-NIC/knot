@@ -204,6 +204,13 @@ int knot_query_add_rrset_authority(knot_packet_t *query,
 	/* Write to wire. */
 	uint8_t *startp = query->wireformat + query->size;
 	uint8_t *endp = query->wireformat + query->max_size;
+	
+	assert(endp - startp > query->opt_rr.size + query->tsig_size);
+	// reserve space for OPT RR
+	endp -= query->opt_rr.size;
+	// reserve space for TSIG RR
+	endp -= query->tsig_size;
+	
 	uint8_t *pos = startp;
 
 	const knot_rdata_t *rdata = 0;
