@@ -44,18 +44,18 @@
  * \param msg_max_len Maximum size of the message in bytes.
  * \param request_mac Request MAC. (may be NULL).
  * \param request_mac_len Size of the request MAC in bytes.
- * \param tsig_rr RRSet containing the TSIG RR to be used. Data from the RR are 
+ * \param tsig_rr RRSet containing the TSIG RR to be used. Data from the RR are
  *                appended to the signed message.
  *
  * \retval KNOT_EOK if everything went OK.
  * \retval TODO
  *
- * \todo This function should return TSIG errors by their codes which are 
+ * \todo This function should return TSIG errors by their codes which are
  *       positive values - this will be recognized by the caller.
  */
 int knot_tsig_sign(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
                    const uint8_t *request_mac, size_t request_mac_len,
-                   const knot_rrset_t *tsig_rr);
+                   const knot_rrset_t *tsig_rr, const knot_key_t *key);
 
 /*!
  * \brief Generate TSIG signature of a 2nd or later message in a TCP session.
@@ -70,16 +70,16 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
  * \param msg_max_len Maximum size of the message in bytes.
  * \param prev_digest Previous digest sent by the server in the session.
  * \param prev_digest_len Size of the previous digest in bytes.
- * \param tsig_rr RRSet containing the TSIG RR to be used. Data from the RR are 
+ * \param tsig_rr RRSet containing the TSIG RR to be used. Data from the RR are
  *                appended to the signed message.
  *
  * \retval KNOT_EOK if successful.
  * \retval TODO
  *
- * \todo This function should return TSIG errors by their codes which are 
+ * \todo This function should return TSIG errors by their codes which are
  *       positive values - this will be recognized by the caller.
  */
-int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len, 
+int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
                         const uint8_t *prev_digest, size_t prev_digest_len,
                         const knot_rrset_t *tsig_rr);
 
@@ -93,11 +93,12 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
  * \retval KNOT_EOK If the signature is valid.
  * \retval TODO
  *
- * \todo This function should return TSIG errors by their codes which are 
+ * \todo This function should return TSIG errors by their codes which are
  *       positive values - this will be recognized by the caller.
  */
 int knot_tsig_server_check(const knot_rrset_t *tsig_rr,
-                           const uint8_t *wire, size_t size);
+                           const uint8_t *wire, size_t size,
+                           const knot_key_t *tsig_key);
 
 /*!
  * \brief Checks incoming response.
@@ -111,7 +112,7 @@ int knot_tsig_server_check(const knot_rrset_t *tsig_rr,
  * \retval KNOT_EOK If the signature is valid.
  * \retval TODO
  *
- * \todo This function should return TSIG errors by their codes which are 
+ * \todo This function should return TSIG errors by their codes which are
  *       positive values - this will be recognized by the caller.
  */
 int knot_tsig_client_check(const knot_rrset_t *tsig_rr,
@@ -130,12 +131,12 @@ int knot_tsig_client_check(const knot_rrset_t *tsig_rr,
  * \retval KNOT_EOK If the signature is valid.
  * \retval TODO
  *
- * \todo This function should return TSIG errors by their codes which are 
+ * \todo This function should return TSIG errors by their codes which are
  *       positive values - this will be recognized by the caller.
  */
 int knot_tsig_client_check_next(const knot_rrset_t *tsig_rr,
                                 const uint8_t *wire, size_t size,
-                                const uint8_t *prev_digest, 
+                                const uint8_t *prev_digest,
                                 size_t prev_digest_len);
 
 #endif /* _KNOT_TSIG_H_ */

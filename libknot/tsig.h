@@ -47,13 +47,13 @@ typedef enum tsig_algorithm tsig_algorithm_t;
 
 /*!< \todo FIND ALG LENGTHS */
 enum tsig_algorithm_digest_length {
-	KNOT_TSIG_ALG_DIG_LENGTH_GSS_TSIG = 1,
-	KNOT_TSIG_ALG_DIG_LENGTH_HMAC_MD5 = 32,
-	KNOT_TSIG_ALG_DIG_LENGTH_SHA1 = 1,
-	KNOT_TSIG_ALG_DIG_LENGTH_SHA224 = 1,
-	KNOT_TSIG_ALG_DIG_LENGTH_SHA256 = 1,
-	KNOT_TSIG_ALG_DIG_LENGTH_SHA384 = 1,
-	KNOT_TSIG_ALG_DIG_LENGTH_SHA512 = 1
+	KNOT_TSIG_ALG_DIG_LENGTH_GSS_TSIG = 0,
+	KNOT_TSIG_ALG_DIG_LENGTH_HMAC_MD5 = 16,
+	KNOT_TSIG_ALG_DIG_LENGTH_SHA1 = 0,
+	KNOT_TSIG_ALG_DIG_LENGTH_SHA224 = 0,
+	KNOT_TSIG_ALG_DIG_LENGTH_SHA256 = 0,
+	KNOT_TSIG_ALG_DIG_LENGTH_SHA384 = 0,
+	KNOT_TSIG_ALG_DIG_LENGTH_SHA512 = 0
 };
 
 static knot_lookup_table_t tsig_algorithm_table[] = {
@@ -67,7 +67,12 @@ static knot_lookup_table_t tsig_algorithm_table[] = {
 };
 
 enum tsig_consts {
-	KNOT_TSIG_ITEM_COUNT = 7
+	KNOT_TSIG_ITEM_COUNT = 7,
+	KNOT_TSIG_VARIABLES_LENGTH = sizeof(uint16_t)	// class
+	                             + sizeof(uint32_t)	// ttl
+	                             + 6		// time signed
+	                             + sizeof(uint16_t)	// fudge
+	                             + sizeof(uint16_t)	// error
 };
 
 int tsig_rdata_set_alg_name(knot_rrset_t *tsig, knot_dname_t *alg_name);
@@ -90,9 +95,9 @@ uint16_t tsig_rdata_orig_id(const knot_rrset_t *tsig);
 uint16_t tsig_rdata_error(const knot_rrset_t *tsig);
 const uint16_t *tsig_rdata_other_data(const knot_rrset_t *tsig);
 
-int tsig_algorithm_name_to_code(const knot_dname_t *name);
+int tsig_alg_from_name(const knot_dname_t *name);
 
-uint16_t tsig_algorithm_digest_length(tsig_algorithm_t alg);
+uint16_t tsig_alg_digest_length(tsig_algorithm_t alg);
 
 //k typu algoritmu vratit velikost digestu
 

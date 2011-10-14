@@ -31,6 +31,14 @@
 #include <stdint.h>
 #include <stdio.h>
 
+struct knot_key {
+	char *name;           /*!< Key name. */
+	unsigned int algorithm; /*!< Key algorithm.  */
+	char *secret;         /*!< Key data. */
+};
+
+typedef struct knot_key knot_key_t;
+
 /*!
  * \brief A general purpose lookup table.
  *
