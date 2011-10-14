@@ -393,7 +393,7 @@ int tsig_algorithm_name_to_code(const knot_dname_t *alg_name)
 	return found->id;
 }
 
-uint16_t tsig_algorithm_digest_length(tsig_algorithm_t alg)
+uint16_t tsig_alg_digest_length(tsig_algorithm_t alg)
 {
 	switch (alg) {
 		case KNOT_TSIG_ALG_GSS_TSIG:

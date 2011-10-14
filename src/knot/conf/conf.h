@@ -19,6 +19,7 @@
 #include <urcu.h>
 
 #include "libknot/util/descriptor.h"
+#include "libknot/tsig.h"
 #include "common/lists.h"
 #include "knot/other/log.h"
 
@@ -29,28 +30,12 @@
 #define CONFIG_DBSYNC_TIMEOUT (60*60) /*!< 1 hour. */
 
 /*!
- * \brief List of TSIG algoritms.
- *
- * Master list of TSIG algoritms as per IANA registry
- * http://www.iana.org/assignments/tsig-algorithm-names/tsig-algorithm-names.xhtml
- */
-typedef enum tsig_alg_t {
-	GSS_TSIG,
-	HMAC_MD5,
-	HMAC_SHA1,
-	HMAC_SHA224,
-	HMAC_SHA256,
-	HMAC_SHA384,
-	HMAC_SHA512
-} tsig_alg_t;
-
-/*!
  * \brief Configuration for the TSIG key.
  */
 typedef struct conf_key_t {
 	node n;	              /*!< List node. */
 	char *name;           /*!< Key name. */
-	tsig_alg_t algorithm; /*!< Key algorithm.  */
+	knot_tsig_algorithm_t algorithm; /*!< Key algorithm.  */
 	char *secret;         /*!< Key data. */
 } conf_key_t;
 
