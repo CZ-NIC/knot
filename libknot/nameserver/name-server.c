@@ -1995,15 +1995,21 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 	 */
 	if (xfr->tsig && add_tsig) {
 		if (xfr->packet_nr == 0) {
-			res = knot_tsig_sign(xfr->wire, &real_size, 
+			/* Add key, digest and digest length. */
+			assert(0);
+			res = knot_tsig_sign(xfr->wire, &real_size,
 			               xfr->wire_size, xfr->prev_digest, 
-			               xfr->prev_digest_size, xfr->tsig);
+			               xfr->prev_digest_size, xfr->tsig, NULL,
+			               NULL, 0);
 		} else {
-			res = knot_tsig_sign_next(xfr->wire, &real_size, 
+			/* Add key, digest and digest length. */
+			assert(0);
+			res = knot_tsig_sign_next(xfr->wire, &real_size,
 			                          xfr->wire_size, 
 			                          xfr->prev_digest,
 			                          xfr->prev_digest_size,
-			                          xfr->tsig);
+			                          xfr->tsig, NULL,
+			                          NULL, 0);
 		}
 		
 		if (res != KNOT_EOK) {

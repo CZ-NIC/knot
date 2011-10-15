@@ -35,7 +35,7 @@
 typedef struct conf_key_t {
 	node n;	              /*!< List node. */
 	char *name;           /*!< Key name. */
-	knot_tsig_algorithm_t algorithm; /*!< Key algorithm.  */
+	tsig_algorithm_t algorithm; /*!< Key algorithm.  */
 	char *secret;         /*!< Key data. */
 } conf_key_t;
 

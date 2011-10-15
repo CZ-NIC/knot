@@ -115,7 +115,7 @@ static void conf_key_item(void *scanner, conf_key_t **key, char *item)
        char *t;
        long i;
        size_t l;
-       tsig_alg_t alg;
+       tsig_algorithm_t alg;
     } tok;
 }
 

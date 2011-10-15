@@ -35,6 +35,7 @@ struct knot_key {
 	char *name;           /*!< Key name. */
 	unsigned int algorithm; /*!< Key algorithm.  */
 	char *secret;         /*!< Key data. */
+	size_t secret_size;   /*!< Key length. */
 };
 
 typedef struct knot_key knot_key_t;

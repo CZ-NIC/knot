@@ -72,7 +72,15 @@ enum tsig_consts {
 	                             + sizeof(uint32_t)	// ttl
 	                             + 6		// time signed
 	                             + sizeof(uint16_t)	// fudge
-	                             + sizeof(uint16_t)	// error
+	                             + sizeof(uint16_t),// error
+	KNOT_TSIG_TIMERS_LENGTH = sizeof(uint16_t)	//fugde
+	                          + 6			// time signed
+};
+
+enum tsig_errors {
+	KNOT_TSIG_EBADSIG = 16,
+	KNOT_TSIG_EBADKEY = 17,
+	KNOT_TSIG_EBADTIME = 18
 };
 
 int tsig_rdata_set_alg_name(knot_rrset_t *tsig, knot_dname_t *alg_name);
