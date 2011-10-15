@@ -339,11 +339,13 @@ static int xfrin_check_tsig(knot_packet_t *packet, knot_ns_xfr_t *xfr,
 			if (xfr->packet_nr == 0) {
 				ret = knot_tsig_client_check(xfr->tsig, 
 					xfr->wire, xfr->wire_size, 
-					xfr->prev_digest, xfr->prev_digest_size);
+					xfr->prev_digest, xfr->prev_digest_size,
+					NULL);
 			} else {
 				ret = knot_tsig_client_check_next(xfr->tsig, 
 					xfr->wire, xfr->wire_size, 
-					xfr->prev_digest, xfr->prev_digest_size);
+					xfr->prev_digest, xfr->prev_digest_size,
+					NULL);
 			}
 			
 			if (ret != KNOT_EOK) {
