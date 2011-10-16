@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <openssl/hmac.h>
 #include <openssl/md5.h>
+#include <openssl/evp.h>
 
 #include "common.h"
 #include "tsig.h"
@@ -237,7 +238,7 @@ int knot_tsig_server_check(const knot_rrset_t *tsig_rr,
 
 	/* Algorithm OK, key name OK - do digest. */
 	HMAC_CTX ctx;
-	HMAC_Init(&ctx, tsig_key->secret, tsig_key->secret_size, EVP_MD5());
+	HMAC_Init(&ctx, tsig_key->secret, tsig_key->secret_size, EVP_md5());
 	HMAC_Update(&ctx, wire, size);
 
 	size_t digest_size = tsig_alg_digest_length(alg);

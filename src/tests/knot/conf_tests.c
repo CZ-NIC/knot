@@ -63,7 +63,8 @@ static int conf_tests_run(int argc, char *argv[])
 		ok(0, "TSIG key secret check - NO KEY FOUND");
 	} else {
 		conf_key_t *k = (conf_key_t *)HEAD(conf->keys);
-		cmp_ok(k->algorithm, "==", HMAC_MD5, "TSIG key algorithm check");
+		cmp_ok(k->algorithm, "==", KNOT_TSIG_ALG_HMAC_MD5,
+		       "TSIG key algorithm check");
 		is(k->secret, "Wg==", "TSIG key secret check");
 	}
 

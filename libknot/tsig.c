@@ -372,7 +372,7 @@ const uint16_t *tsig_rdata_other_data(const knot_rrset_t *tsig)
 	return knot_rdata_item(rdata, 6)->raw_data;
 }
 
-int tsig_algorithm_name_to_code(const knot_dname_t *alg_name)
+int tsig_alg_from_name(const knot_dname_t *alg_name)
 {
 	if (!alg_name) {
 		return 0;
