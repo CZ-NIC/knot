@@ -112,14 +112,16 @@ int knot_changeset_add_rrset(knot_rrset_t ***rrsets,
 int knot_changeset_add_rr(knot_rrset_t ***rrsets, size_t *count,
                            size_t *allocated, knot_rrset_t *rr)
 {
-	// try to find the RRSet in the list of RRSets
-	int i = 0;
-
-	while (i < *count && !knot_changeset_rrsets_match((*rrsets)[i], rr)) {
-		++i;
+	// try to find the RRSet in the list of RRSets, but search backwards
+	// as it is probable that the last RRSet is the one to which the RR
+	// belongs
+	int i = *count - 1;
+	
+	while (i >= 0 && !knot_changeset_rrsets_match((*rrsets)[i], rr)) {
+		--i;
 	}
 
-	if (i < *count) {
+	if (i >= 0) {
 		// found RRSet to merge the new one into
 		if (knot_rrset_merge((void **)&(*rrsets)[i],
 		                       (void **)&rr) != KNOT_EOK) {
