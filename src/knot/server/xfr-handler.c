@@ -804,12 +804,16 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		
 		ret = zones_xfr_check_zone(&xfr, &rcode);
 		if (ret != KNOTD_EOK) {
+			dbg_xfr("xfr: failed zone checking: %s\n",
+			        knotd_strerror(ret));
 			knot_ns_xfr_send_error(&xfr, rcode);
 			socket_close(xfr.session);
 		}
 		
 		ret = zones_xfr_load_changesets(&xfr);
 		if (ret != KNOTD_EOK) {
+			dbg_xfr("xfr: Failed to load changesets: %s\n",
+			        knotd_strerror(ret));
 			/* History cannot be reconstructed, fallback to AXFR. */
 			if (ret == KNOTD_ERANGE) {
 				log_server_info("IXFR transfer of zone '%s/OUT'"
