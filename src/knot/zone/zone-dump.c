@@ -1053,7 +1053,8 @@ static int semantic_checks_plain(knot_zone_contents_t *zone,
 			}
 		}
 
-		if (knot_rrset_rdata(cname_rrset)->count != 1) {
+		if (knot_rrset_rdata(cname_rrset)->next !=
+		                knot_rrset_rdata(cname_rrset)) {
 			err_handler_handle_error(handler, node,
 			                         ZC_ERR_CNAME_MULTIPLE);
 		}
@@ -1073,7 +1074,8 @@ static int semantic_checks_plain(knot_zone_contents_t *zone,
 			                         ZC_ERR_DNAME_EXTRA_RECORDS);
 		}
 
-		if (knot_rrset_rdata(dname_rrset)->count != 1) {
+		if (knot_rrset_rdata(dname_rrset)->next !=
+		    knot_rrset_rdata(dname_rrset)) {
 			err_handler_handle_error(handler, node,
 			                         ZC_ERR_DNAME_MULTIPLE);
 		}
