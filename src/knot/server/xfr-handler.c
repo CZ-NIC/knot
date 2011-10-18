@@ -827,8 +827,7 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 				log_server_info("IXFR transfer of zone '%s/OUT'"
 						" - not enough data in journal,"
 						" fallback to AXFR.\n",
-						zname,
-						r_addr, r_port);
+						zname);
 				xfr.type = XFR_TYPE_AOUT;
 				xfr_request(w->master, &xfr);
 				return KNOTD_EOK;
