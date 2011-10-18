@@ -2042,6 +2042,16 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 		return KNOTDZCOMPILE_EINVAL;
 	}
 
+	/* Check that we can write to outfile. */
+	FILE *f = fopen(outfile, "wb");
+	if (f == NULL) {
+		fprintf(stderr, "Cannot write zone db to file:%s .\n",
+		       outfile);
+		return KNOTDZCOMPILE_EINVAL;
+	}
+	fclose(f);
+
+
 //	char ebuf[256];
 
 	knot_dname_t *dname =
@@ -2143,8 +2153,12 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 		fprintf(stderr,
 		        "Parser finished with error, not dumping the zone!\n");
 	} else {
-		knot_zdump_binary(contents,
-		                    outfile, semantic_checks, zonefile);
+		if (knot_zdump_binary(contents,
+		                      outfile, semantic_checks,
+		                      zonefile) != 0) {
+			fprintf(stderr, "Could not dump zone!\n");
+			totalerrors++;
+		}
 		dbg_zp("zone dumped.\n");
 	}
 
