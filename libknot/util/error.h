@@ -32,6 +32,13 @@
 /*! \brief Error codes used in the library. */
 enum knot_error {
 	KNOT_EOK = 0,         /*!< OK */
+	
+	/* TSIG errors. */
+	KNOT_TSIG_EBADSIG = -16, /*!< Failed to verify TSIG MAC. */
+	KNOT_TSIG_EBADKEY = -17, /*!< TSIG key not recognized or invalid. */
+	KNOT_TSIG_EBADTIME = -18,/*!< TSIG signing time out of range. */
+	
+	/* General errors. */
 	KNOT_ERROR = -10000,  /*!< General error. */
 	KNOT_ENOMEM,          /*!< Not enough memory. */
 	KNOT_ENOTSUP,         /*!< Operation not supported. */
@@ -56,7 +63,7 @@ enum knot_error {
 	KNOT_ENOXFR,          /*!< Transfer was not sent. */
 	KNOT_ENOIXFR,         /*!< Transfer is not IXFR (is in AXFR format). */
 	KNOT_EXFRREFUSED,     /*!< Zone transfer refused by the server. */
-	KNOT_ERROR_COUNT = 26
+	KNOT_ERROR_COUNT = 29
 };
 
 /*! \brief Table linking error messages to error codes. */
