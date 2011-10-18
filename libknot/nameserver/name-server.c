@@ -2823,6 +2823,9 @@ int knot_ns_init_xfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		                xfr->wire_size);
 		return ret;
 	}
+	
+	dbg_packet("Parsed XFR query:\n");
+	knot_packet_dump(xfr->query);
 
 	// initialize response packet structure
 	knot_packet_t *response = knot_packet_new(
