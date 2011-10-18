@@ -285,24 +285,25 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 	}
 
 	/* Read DNS/TCP packet. */
-	int ret = tcp_recv(fd, buf, sizeof(buf), 0);
-	if (ret <= 0) {
-		dbg_xfr_verb("xfr: tcp_recv() failed, ret=%d\n", fd);
-		return KNOTD_ERROR;
-	}
+	int ret = 0;
+	int rcvd = tcp_recv(fd, buf, sizeof(buf), 0);
 	data->wire_size = ret;
-
-	/* Process incoming packet. */
-	switch(data->type) {
-	case XFR_TYPE_AIN:
-		ret = knot_ns_process_axfrin(w->ns, data);
-		break;
-	case XFR_TYPE_IIN:
-		ret = knot_ns_process_ixfrin(w->ns, data);
-		break;
-	default:
-		ret = KNOT_EBADARG;
-		break;
+	if (rcvd <= 0) {
+		data->wire_size = 0;
+		ret = KNOT_ECONN;
+	} else {
+		/* Process incoming packet. */
+		switch(data->type) {
+		case XFR_TYPE_AIN:
+			ret = knot_ns_process_axfrin(w->ns, data);
+			break;
+		case XFR_TYPE_IIN:
+			ret = knot_ns_process_ixfrin(w->ns, data);
+			break;
+		default:
+			ret = KNOT_EBADARG;
+			break;
+		}
 	}
 
 	/* AXFR-style IXFR. */
