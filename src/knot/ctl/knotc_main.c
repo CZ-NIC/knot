@@ -37,7 +37,7 @@ void help(int argc, char **argv)
 	       " -h\t\tPrint help and usage.\n",
 	       PACKAGE_NAME);
 	printf("Actions:\n"
-	       " start     Start %s server with given zone (no-op if running).\n"
+	       " start     Start %s server zone (no-op if running).\n"
 	       " stop      Stop %s server (no-op if not running).\n"
 	       " restart   Stops and then starts %s server.\n"
 	       " reload    Reload %s configuration and compiled zones.\n"
