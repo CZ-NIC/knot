@@ -31,6 +31,7 @@
 #include "packet/response.h"
 #include "util/error.h"
 #include "updates/changesets.h"
+#include "tsig.h"
 #include "tsig-op.h"
 
 /*----------------------------------------------------------------------------*/
@@ -349,7 +350,7 @@ static int xfrin_check_tsig(knot_packet_t *packet, knot_ns_xfr_t *xfr,
 			}
 			
 			if (ret != KNOT_EOK) {
-				/*! \todo Check return value for TSIG errors! */
+				/* No need to check TSIG error here, propagate. */
 				return ret;
 			}
 			
@@ -417,6 +418,8 @@ int xfrin_process_axfr_packet(/*const uint8_t *pkt, size_t size,
 		/*! \todo Cleanup. */
 		return KNOT_EMALF;
 	}
+	
+	/*! \todo If packet RCODE is NOTAUTH(9), process as TSIG error. */
 
 	knot_rrset_t *rr = NULL;
 	ret = knot_packet_parse_next_rr_answer(packet, &rr);
@@ -793,13 +796,15 @@ dbg_xfrin_exec(
 	 */
 	ret = xfrin_check_tsig(packet, xfr, 
 	                       knot_ns_tsig_required(xfr->packet_nr));
-
-	/*! \todo Check return value for TSIG errors! */
 	
 	knot_packet_free(&packet);
 	dbg_xfrin("Processed one AXFR packet successfully.\n");
+	
+	/* TSIG errors are propagated and reported in a standard manner,
+	 * as we're in response processing, no further error response should
+	 * be sent. */
 
-	return (ret == KNOT_EOK) ? KNOT_EOK : KNOT_EMALF;
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1037,7 +1042,14 @@ dbg_xfrin_exec(
 				// last SOA, discard and end
 				knot_rrset_deep_free(&rr, 1, 1, 1);
 				knot_packet_free(&packet);
-				return XFRIN_RES_COMPLETE;
+				
+				/* If TSIG validates, consider transfer
+				 * as complete. */
+				if (ret == KNOT_EOK) {
+					ret = XFRIN_RES_COMPLETE;
+				}
+				
+				return ret;
 			} else {
 				// normal SOA, start new changeset
 				(*chs)->count++;
@@ -1118,6 +1130,11 @@ dbg_xfrin_exec(
 	/* Check TSIG, we're at the end of packet. It may not be required. */
 	ret = xfrin_check_tsig(packet, xfr, 
 	                       knot_ns_tsig_required(xfr->packet_nr));
+	
+	/* Cleanup and propagate error if TSIG validation fails. */
+	if (ret != KNOT_EOK) {
+		goto cleanup;
+	}
 	
 	// here no RRs remain in the packet but the transfer is not finished
 	// yet, return EOK

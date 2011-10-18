@@ -55,7 +55,6 @@ static int test_nsec3_params_from_wire()
 	int lived = 0;
 	lives_ok({
 		/* Create special variable for this block. */
-		knot_nsec3_params_t tmp_params;
 		if (knot_nsec3_params_from_wire(NULL, NULL) !=
 		    KNOT_EBADARG) {
 			errors++;

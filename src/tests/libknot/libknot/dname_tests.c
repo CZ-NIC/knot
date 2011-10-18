@@ -466,14 +466,14 @@ static int test_dname_is_subdomain()
 
 	for (int i = 0; i < TEST_DOMAINS_OK; ++i) {
 		dnames_fqdn[i] = knot_dname_new_from_wire(
-		                (uint8_t *)test_domains_ok[i].wire,
+		                (const uint8_t *)test_domains_ok[i].wire,
 		                test_domains_ok[i].size, NULL);
 		assert(dnames_fqdn[i] != NULL);
 	}
 
 	for (int i = 0; i < TEST_DOMAINS_NON_FQDN; ++i) {
 		dnames_non_fqdn[i] = knot_dname_new_from_str(
-		                (uint8_t *)test_domains_non_fqdn[i].str,
+		                test_domains_non_fqdn[i].str,
 		                test_domains_non_fqdn[i].size, NULL);
 		assert(dnames_non_fqdn[i] != NULL);
 	}
@@ -743,7 +743,7 @@ static int test_dname_getters(uint type)
 	for (int i = 0; i < TEST_DOMAINS_NON_FQDN; i++) {
 		printf("Creating dname: %s size: %d\n", test_domains_non_fqdn[i].wire, test_domains_non_fqdn[i].size);
 		dnames_non_fqdn[i] = knot_dname_new_from_str(
-		                (uint8_t *)test_domains_non_fqdn[i].str,
+		                test_domains_non_fqdn[i].str,
 		                test_domains_non_fqdn[i].size, NODE_ADDRESS);
 		assert(dnames_non_fqdn[i] != NULL);
 	}

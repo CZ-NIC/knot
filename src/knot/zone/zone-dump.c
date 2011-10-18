@@ -1465,7 +1465,7 @@ static void knot_dname_dump_binary(const knot_dname_t *dname, FILE *f,
 /*!< \todo some global variable indicating error! */
 static void dump_dname_with_id(const knot_dname_t *dname, FILE *f,
                                uint8_t **stream, size_t *stream_size,
-                               size_t *crc)
+                               crc_t *crc)
 {
 	uint32_t id = dname->id;
 	fwrite_wrapper(&id, sizeof(id), 1, f, stream, stream_size, crc);
