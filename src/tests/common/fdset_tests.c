@@ -68,7 +68,7 @@ void* thr_action(void *arg)
 	/* Write pattern. */
 	char pattern = WRITE_PATTERN;
 	int ret = write(*fd, &pattern, WRITE_PATTERN_LEN);
-	ret = 0; /* Use variable. */
+	ret = ret; /* Use variable. */
 
 	return 0;
 }
