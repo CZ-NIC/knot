@@ -323,10 +323,8 @@ static parser_rrtype_descriptor_t
 
 parser_rrtype_descriptor_t *parser_rrtype_descriptor_by_type(uint16_t type)
 {
-	if (type < PARSER_RRTYPE_LAST + 1) {
+	if (type <= PARSER_RRTYPE_DLV) {
 		return &knot_rrtype_descriptors[type];
-	} else if (type == PARSER_RRTYPE_DLV) {
-		return &knot_rrtype_descriptors[PARSER_RRTYPE_DLV];
 	}
 	return &knot_rrtype_descriptors[0];
 }
@@ -335,6 +333,45 @@ parser_rrtype_descriptor_t *parser_rrtype_descriptor_by_type(uint16_t type)
  * could be better */
 parser_rrtype_descriptor_t *parser_rrtype_descriptor_by_name(const char *name)
 {
+	if (!name) {
+		return NULL;
+	}
+
+	if (strcasecmp(name, "IN") == 0) {
+		return NULL;
+	}
+
+	if (isdigit((int)name[0])) {
+		return NULL;
+	}
+
+//	/* The most common - A and NS. */
+//	if (strcasecmp(name, "NS") == 0) {
+//		return &knot_rrtype_descriptors[2];
+//	}
+
+//	if (strcasecmp(name, "A") == 0) {
+//		return &knot_rrtype_descriptors[1];
+//	}
+
+//	/* Then RRSIG */
+//	if (strcasecmp(name, "RRSIG") == 0) {
+//		return &knot_rrtype_descriptors[46];
+//	}
+
+//	/* Then DS */
+//	if (strcasecmp(name, "DS") == 0) {
+//		return &knot_rrtype_descriptors[43];
+//	}
+//	/* Then NSEC3 */
+//	if (strcasecmp(name, "NSEC3") == 0) {
+//		return &knot_rrtype_descriptors[50];
+//	}
+//	/* Then NSEC */
+//	if (strcasecmp(name, "NSEC") == 0) {
+//		return &knot_rrtype_descriptors[47];
+//	}
+
 	int i;
 
 	for (i = 0; i < PARSER_RRTYPE_LAST + 1; ++i) {
