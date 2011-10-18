@@ -77,11 +77,14 @@ enum tsig_consts {
 	                          + 6			// time signed
 };
 
-enum tsig_errors {
-	KNOT_TSIG_EBADSIG = 16,
-	KNOT_TSIG_EBADKEY = 17,
-	KNOT_TSIG_EBADTIME = 18
-};
+/*! TSIG errors are defined in util/error.h
+ *  and present negative value of the TSIG error to
+ *  comply with other parts of the library.
+ *
+ *  KNOT_TSIG_EBADSIG = -16
+ *  KNOT_TSIG_EBADKEY = -17
+ *  KNOT_TSIG_EBADTIME = -18
+ */
 
 int tsig_rdata_set_alg_name(knot_rrset_t *tsig, knot_dname_t *alg_name);
 int tsig_rdata_set_alg(knot_rrset_t *tsig, tsig_algorithm_t alg);
