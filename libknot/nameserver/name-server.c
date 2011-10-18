@@ -2976,17 +2976,18 @@ int knot_ns_answer_ixfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		return KNOT_EBADARG;
 	}
 
-	uint8_t *wire = NULL;
-	size_t size = 0;
+	//uint8_t *wire = NULL;
+	size_t size = xfr->wire_size;
 	
 	// parse rest of the packet (we need the Authority record)
 	int ret = knot_packet_parse_rest(xfr->query);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to parse rest of the packet. Reply FORMERR.\n");
 		knot_ns_error_response_full(nameserver, xfr->response,
-		                            KNOT_RCODE_FORMERR, wire, &size);
+		                            KNOT_RCODE_FORMERR, xfr->wire, 
+		                            &size);
 
-		ret = xfr->send(xfr->session, &xfr->addr, wire, size);
+		ret = xfr->send(xfr->session, &xfr->addr, xfr->wire, size);
 		knot_packet_free(&xfr->response);
 		return ret;
 	}
@@ -2995,9 +2996,10 @@ int knot_ns_answer_ixfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	if (knot_zone_contents(xfr->zone) == NULL) {
 		dbg_ns("Zone expired or not bootstrapped. Reply SERVFAIL.\n");
 		knot_ns_error_response_full(nameserver, xfr->response,
-		                            KNOT_RCODE_SERVFAIL, wire, &size);
+		                            KNOT_RCODE_SERVFAIL, xfr->wire, 
+		                            &size);
 
-		ret = xfr->send(xfr->session, &xfr->addr, wire, size);
+		ret = xfr->send(xfr->session, &xfr->addr, xfr->wire, size);
 		knot_packet_free(&xfr->response);
 		return ret;
 	}
@@ -3014,15 +3016,20 @@ int knot_ns_answer_ixfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 
 		/*! \todo Extract this to some function. */
 		knot_response_set_rcode(xfr->response, KNOT_RCODE_SERVFAIL);
+		uint8_t *wire = NULL;
 		ret = knot_packet_to_wire(xfr->response, &wire, &size);
 		if (ret != KNOT_EOK) {
 			knot_ns_error_response(nameserver, 
 			                         xfr->query->header.id,
-			                         KNOT_RCODE_SERVFAIL, wire, 
+			                         KNOT_RCODE_SERVFAIL, xfr->wire, 
 			                         &size);
+			ret = xfr->send(xfr->session, &xfr->addr, xfr->wire, 
+			                size);
+			knot_packet_free(&xfr->response);
+			return ret;
+		} else {
+			ret = xfr->send(xfr->session, &xfr->addr, wire, size);
 		}
-
-		ret = xfr->send(xfr->session, &xfr->addr, wire, size);
 	} else if (ret > 0) {
 		ret = KNOT_ERROR;
 	}
