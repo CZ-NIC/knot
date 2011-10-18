@@ -2045,7 +2045,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	/* Check that we can write to outfile. */
 	FILE *f = fopen(outfile, "wb");
 	if (f == NULL) {
-		fprintf(stderr, "Cannot write zone db to file:%s .\n",
+		fprintf(stderr, "Cannot write zone db to file '%s'\n",
 		       outfile);
 		return KNOTDZCOMPILE_EINVAL;
 	}
