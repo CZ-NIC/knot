@@ -86,6 +86,11 @@ typedef struct knot_ns_xfr {
 	xfr_callback_t send;
 	int session;
 	uint8_t *wire;
+	
+	/*! 
+	 * XFR-out: Size of the output buffer. 
+	 * XFR-in: Size of the current packet. 
+	 */
 	size_t wire_size;
 	void *data;
 	knot_zone_t *zone;

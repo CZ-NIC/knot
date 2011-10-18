@@ -2066,6 +2066,8 @@ int zones_xfr_load_changesets(knot_ns_xfr_t *xfr)
 	uint32_t xfr_serial = knot_rdata_soa_serial(knot_rrset_rdata(
 			knot_packet_authority_rrset(xfr->query, 0)));
 	
+	dbg_zones("Loading changesets...\n");
+	
 	int ret = zones_load_changesets(zone, chgsets, xfr_serial, zone_serial);
 	if (ret != KNOTD_EOK) {
 		dbg_zones("Loading changesets failed: %s\n",
