@@ -73,7 +73,7 @@ static int events_tests_run(int argc, char *argv[])
 	struct timespec ts;
 	ts.tv_sec = 0;
 	ts.tv_nsec = 100 * 1000 * 1000; // 100ms
-	ret = evqueue_poll(q, 0, 0);
+	ret = evqueue_poll(q, &ts, 0);
 	ok(ret > 0, "evqueue: polling queue for events");
 
 	// 7. Compare received event
