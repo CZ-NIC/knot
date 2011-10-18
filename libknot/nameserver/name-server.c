@@ -1948,6 +1948,8 @@ static int ns_error_response_to_wire(knot_packet_t *resp, uint8_t *wire,
 	}
 
 	assert(rwire != wire);
+	
+	/*! \todo Why is this copied?? Why we cannot use resp->wireformat?? */
 	memcpy(wire, rwire, rsize);
 
 	*wire_size = rsize;
@@ -2607,7 +2609,7 @@ int knot_ns_parse_packet(const uint8_t *query_wire, size_t qsize,
 
 /*----------------------------------------------------------------------------*/
 
-void knot_ns_error_response(knot_nameserver_t *nameserver, uint16_t query_id,
+void knot_ns_error_response(const knot_nameserver_t *nameserver, uint16_t query_id,
                        uint8_t rcode, uint8_t *response_wire, size_t *rsize)
 {
 	//dbg_ns("Error response: \n");
@@ -2909,11 +2911,20 @@ dbg_ns_exec(
 
 /*----------------------------------------------------------------------------*/
 
-int knot_ns_xfr_send_error(knot_ns_xfr_t *xfr, knot_rcode_t rcode)
+int knot_ns_xfr_send_error(const knot_nameserver_t *nameserver,
+                           knot_ns_xfr_t *xfr, knot_rcode_t rcode)
 {
 	knot_response_set_rcode(xfr->response, rcode);
 	/*! \todo Probably rename the function. */
-	return ns_axfr_send_and_clear(xfr);
+	int ret = 0;
+	if ((ret = ns_axfr_send_and_clear(xfr)) != KNOT_EOK) {
+		size_t size = 0;
+		knot_ns_error_response(nameserver, xfr->query->header.id,
+		                       KNOT_RCODE_SERVFAIL, xfr->wire, &size);
+		ret = xfr->send(xfr->session, &xfr->addr, xfr->wire, size);
+	}
+	
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2931,6 +2942,7 @@ int knot_ns_answer_axfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	knot_zone_contents_t *contents = knot_zone_get_contents(xfr->zone);
 	if (!contents) {
 		dbg_ns("AXFR failed on stub zone\n");
+		/*! \todo replace with knot_ns_xfr_send_error() */
 		knot_ns_error_response(nameserver, xfr->query->header.id,
 					 KNOT_RCODE_SERVFAIL, xfr->wire,
 					 &xfr->wire_size);
@@ -2951,6 +2963,7 @@ int knot_ns_answer_axfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		dbg_ns("AXFR failed, sending SERVFAIL.\n");
 		// now only one type of error (SERVFAIL), later maybe more
 		/*! \todo xfr->wire is not NULL, will fail on assert! */
+		/*! \todo replace with knot_ns_xfr_send_error() */
 		knot_ns_error_response(nameserver, xfr->query->header.id,
 		                         KNOT_RCODE_SERVFAIL, xfr->wire,
 		                         &xfr->wire_size);
@@ -2977,17 +2990,18 @@ int knot_ns_answer_ixfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	}
 
 	//uint8_t *wire = NULL;
-	size_t size = xfr->wire_size;
+	//size_t size = xfr->wire_size;
 	
 	// parse rest of the packet (we need the Authority record)
 	int ret = knot_packet_parse_rest(xfr->query);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to parse rest of the packet. Reply FORMERR.\n");
-		knot_ns_error_response_full(nameserver, xfr->response,
-		                            KNOT_RCODE_FORMERR, xfr->wire, 
-		                            &size);
+//		knot_ns_error_response_full(nameserver, xfr->response,
+//		                            KNOT_RCODE_FORMERR, xfr->wire, 
+//		                            &size);
+		knot_ns_xfr_send_error(nameserver, xfr, KNOT_RCODE_FORMERR);
 
-		ret = xfr->send(xfr->session, &xfr->addr, xfr->wire, size);
+		//ret = xfr->send(xfr->session, &xfr->addr, xfr->wire, size);
 		knot_packet_free(&xfr->response);
 		return ret;
 	}
@@ -2995,11 +3009,12 @@ int knot_ns_answer_ixfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	// check if the zone has contents
 	if (knot_zone_contents(xfr->zone) == NULL) {
 		dbg_ns("Zone expired or not bootstrapped. Reply SERVFAIL.\n");
-		knot_ns_error_response_full(nameserver, xfr->response,
-		                            KNOT_RCODE_SERVFAIL, xfr->wire, 
-		                            &size);
+		knot_ns_xfr_send_error(nameserver, xfr, KNOT_RCODE_SERVFAIL);
+//		knot_ns_error_response_full(nameserver, xfr->response,
+//		                            KNOT_RCODE_SERVFAIL, xfr->wire, 
+//		                            &size);
 
-		ret = xfr->send(xfr->session, &xfr->addr, xfr->wire, size);
+//		ret = xfr->send(xfr->session, &xfr->addr, xfr->wire, size);
 		knot_packet_free(&xfr->response);
 		return ret;
 	}
@@ -3015,21 +3030,23 @@ int knot_ns_answer_ixfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		// now only one type of error (SERVFAIL), later maybe more
 
 		/*! \todo Extract this to some function. */
-		knot_response_set_rcode(xfr->response, KNOT_RCODE_SERVFAIL);
-		uint8_t *wire = NULL;
-		ret = knot_packet_to_wire(xfr->response, &wire, &size);
-		if (ret != KNOT_EOK) {
-			knot_ns_error_response(nameserver, 
-			                         xfr->query->header.id,
-			                         KNOT_RCODE_SERVFAIL, xfr->wire, 
-			                         &size);
-			ret = xfr->send(xfr->session, &xfr->addr, xfr->wire, 
-			                size);
-			knot_packet_free(&xfr->response);
-			return ret;
-		} else {
-			ret = xfr->send(xfr->session, &xfr->addr, wire, size);
-		}
+//		knot_response_set_rcode(xfr->response, KNOT_RCODE_SERVFAIL);
+//		uint8_t *wire = NULL;
+//		ret = knot_packet_to_wire(xfr->response, &wire, &size);
+//		if (ret != KNOT_EOK) {
+////			knot_ns_error_response(nameserver, 
+////			                         xfr->query->header.id,
+////			                         KNOT_RCODE_SERVFAIL, xfr->wire, 
+////			                         &size);
+////			ret = xfr->send(xfr->session, &xfr->addr, xfr->wire, 
+////			                size);
+//			knot_ns_xfr_send_error(xfr, KNOT_RCODE_SERVFAIL);
+//			knot_packet_free(&xfr->response);
+//			return ret;
+//		} else {
+//			ret = xfr->send(xfr->session, &xfr->addr, wire, size);
+//		}
+		knot_ns_xfr_send_error(nameserver, xfr, KNOT_RCODE_SERVFAIL);
 	} else if (ret > 0) {
 		ret = KNOT_ERROR;
 	}

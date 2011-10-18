@@ -173,7 +173,7 @@ int knot_ns_parse_packet(const uint8_t *query_wire, size_t qsize,
  * \param response_wire Place for wire format of the response.
  * \param rsize Size of the error response will be stored here.
  */
-void knot_ns_error_response(knot_nameserver_t *nameserver, uint16_t query_id,
+void knot_ns_error_response(const knot_nameserver_t *nameserver, uint16_t query_id,
                        uint8_t rcode, uint8_t *response_wire, size_t *rsize);
 
 /*!
@@ -194,7 +194,8 @@ int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_packet_t *query,
 
 int knot_ns_init_xfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr);
 
-int knot_ns_xfr_send_error(knot_ns_xfr_t *xfr, knot_rcode_t rcode);
+int knot_ns_xfr_send_error(const knot_nameserver_t *nameserver,
+                           knot_ns_xfr_t *xfr, knot_rcode_t rcode);
 
 /*!
  * \brief Processes an AXFR query.
