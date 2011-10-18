@@ -131,7 +131,7 @@ enum parser_rr_type {
  */
 typedef enum parser_rr_type parser_rr_type_t;
 
-static uint const PARSER_RRTYPE_LAST = PARSER_RRTYPE_DLV;
+static uint const PARSER_RRTYPE_LAST = PARSER_RRTYPE_NSEC3PARAM;
 
 enum parser_rdata_wireformat {
 	/*!
