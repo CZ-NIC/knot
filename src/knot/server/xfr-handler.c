@@ -287,7 +287,7 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 	/* Read DNS/TCP packet. */
 	int ret = 0;
 	int rcvd = tcp_recv(fd, buf, sizeof(buf), 0);
-	data->wire_size = ret;
+	data->wire_size = rcvd;
 	if (rcvd <= 0) {
 		data->wire_size = 0;
 		ret = KNOT_ECONN;
@@ -816,8 +816,7 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 				log_server_info("IXFR transfer of zone '%s/OUT'"
 						" - not enough data in journal,"
 						" fallback to AXFR.\n",
-						zname,
-						r_addr, r_port);
+						zname);
 				xfr.type = XFR_TYPE_AOUT;
 				xfr_request(w->master, &xfr);
 				return KNOTD_EOK;
