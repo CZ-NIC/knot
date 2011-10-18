@@ -880,7 +880,8 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 	}
 
 	/* Report. */
-	if (ret != KNOTD_EOK && ret != KNOTD_EACCES) {
+	/*! \todo Check this condition! */
+	if (ret < KNOTD_EOK && ret != KNOTD_EACCES) {
 		log_server_error("%s request from %s:%d failed: %s\n",
 				 req_type, r_addr, r_port,
 				 knotd_strerror(ret));

@@ -2284,7 +2284,7 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 	assert(xfr->zone != NULL);
 	assert(xfr->query != NULL);
 	assert(xfr->response != NULL);
-	assert(knot_packet_additional_rrset_count(xfr->query) > 0);
+	assert(knot_packet_authority_rrset_count(xfr->query) > 0);
 	assert(xfr->data != NULL);
 
 	/*! \todo REMOVE start */
@@ -2346,7 +2346,9 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 		}
 	}
 
-	res = ns_ixfr_put_rrset(xfr, zone_soa);
+	if (chgsets->count > 0) {
+		res = ns_ixfr_put_rrset(xfr, zone_soa);
+	}
 
 	if (res == KNOT_EOK) {
 		/*! \todo Probably rename the function. */
@@ -2378,12 +2380,11 @@ static int ns_ixfr(knot_ns_xfr_t *xfr)
 		return 1;
 	}
 
-	const knot_rrset_t *soa = knot_packet_authority_rrset(xfr->query,
-	                                                          0);
+	const knot_rrset_t *soa = knot_packet_authority_rrset(xfr->query, 0);
 	const knot_dname_t *qname = knot_packet_qname(xfr->response);
 
 	// check if XFR QNAME and SOA correspond
-	if (knot_packet_qtype(xfr->query) != KNOT_RRTYPE_SOA
+	if (knot_packet_qtype(xfr->query) != KNOT_RRTYPE_IXFR
 	    || knot_rrset_type(soa) != KNOT_RRTYPE_SOA
 	    || knot_dname_compare(qname, knot_rrset_owner(soa)) != 0) {
 		// malformed packet
@@ -3047,9 +3048,9 @@ int knot_ns_answer_ixfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 //			ret = xfr->send(xfr->session, &xfr->addr, wire, size);
 //		}
 		knot_ns_xfr_send_error(nameserver, xfr, KNOT_RCODE_SERVFAIL);
-	} else if (ret > 0) {
+	} /*else if (ret > 0) {
 		ret = KNOT_ERROR;
-	}
+	}*/
 
 	knot_packet_free(&xfr->response);
 
