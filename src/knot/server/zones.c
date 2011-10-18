@@ -2050,7 +2050,7 @@ int zones_xfr_load_changesets(knot_ns_xfr_t *xfr)
 		return KNOTD_EINVAL;
 	}
 	
-	if (knot_packet_ancount(xfr->query) < 1) {
+	if (knot_packet_nscount(xfr->query) < 1) {
 		dbg_zones("No Authority record.\n");
 		return KNOTD_EMALF;
 	}
