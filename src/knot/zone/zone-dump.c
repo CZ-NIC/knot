@@ -1054,7 +1054,7 @@ static int semantic_checks_plain(knot_zone_contents_t *zone,
 		}
 
 		if (knot_rrset_rdata(cname_rrset)->next !=
-		                knot_rrset_rdata(cname_rrset) {
+		                knot_rrset_rdata(cname_rrset)) {
 			err_handler_handle_error(handler, node,
 			                         ZC_ERR_CNAME_MULTIPLE);
 		}
