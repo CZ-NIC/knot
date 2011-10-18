@@ -1437,12 +1437,12 @@ int zones_xfr_check_zone(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 
 	// Check xfr-out ACL
 	if (acl_match(zd->xfr_out, &xfr->addr) == ACL_DENY) {
-		log_answer_warning("Unauthorized request for AXFR '%s/OUT'.\n",
+		log_answer_warning("Unauthorized request for XFR '%s/OUT'.\n",
 		                   zd->conf->name);
 		*rcode = KNOT_RCODE_REFUSED;
 		return KNOTD_EACCES;
 	} else {
-		dbg_zones("zones: authorized AXFR '%s/OUT'\n",
+		dbg_zones("zones: authorized XFR '%s/OUT'\n",
 		          zd->conf->name);
 	}
 	return KNOTD_EOK;
@@ -2020,22 +2020,46 @@ int zones_store_changesets(knot_ns_xfr_t *xfr)
 
 int zones_xfr_load_changesets(knot_ns_xfr_t *xfr) 
 {
-	if (xfr == NULL || xfr->data == NULL || xfr->zone == NULL) {
+	if (xfr == NULL || xfr->zone == NULL) {
+		dbg_zones("xfr=%p, xfr->data=%p, xfr->zone=%p\n",
+			  xfr, xfr->data, xfr->zone);
 		return KNOTD_EINVAL;
 	}
 	
 	const knot_zone_t *zone = xfr->zone;
 	const knot_zone_contents_t *contents = knot_zone_contents(zone);
 	if (!contents) {
+		dbg_zones("No contents.\n");
+		return KNOTD_EINVAL;
+	}
+	
+	if (knot_zone_contents_apex(contents) == NULL) {
+		dbg_zones("No apex.\n");
 		return KNOTD_EINVAL;
 	}
 	
 	knot_changesets_t *chgsets = (knot_changesets_t *)
 	                               calloc(1, sizeof(knot_changesets_t));
+	CHECK_ALLOC_LOG(chgsets, KNOTD_ENOMEM);
 	
 	const knot_rrset_t *zone_soa =
 		knot_node_rrset(knot_zone_contents_apex(contents),
 		                  KNOT_RRTYPE_SOA);
+	if (zone_soa == NULL) {
+		dbg_zones("No SOA.\n");
+		return KNOTD_EINVAL;
+	}
+	
+	if (knot_packet_ancount(xfr->query) < 1) {
+		dbg_zones("No Authority record.\n");
+		return KNOTD_EMALF;
+	}
+	
+	if (knot_packet_authority_rrset(xfr->query, 0) == NULL) {
+		dbg_zones("Authority record missing.\n");
+		return KNOTD_ERROR;
+	}
+	
 	// retrieve origin (xfr) serial and target (zone) serial
 	uint32_t zone_serial = knot_rdata_soa_serial(
 	                             knot_rrset_rdata(zone_soa));
@@ -2044,6 +2068,8 @@ int zones_xfr_load_changesets(knot_ns_xfr_t *xfr)
 	
 	int ret = zones_load_changesets(zone, chgsets, xfr_serial, zone_serial);
 	if (ret != KNOTD_EOK) {
+		dbg_zones("Loading changesets failed: %s\n",
+		          knot_strerror(ret));
 		return ret;
 	}
 	

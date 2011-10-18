@@ -2811,6 +2811,18 @@ int knot_ns_init_xfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 
 	// no need to parse rest of the packet
 	/*! \todo Parse rest of packet because of EDNS. */
+	int ret = knot_packet_parse_rest(xfr->query);
+	if (ret != KNOT_EOK) {
+		dbg_ns("Failed to parse rest of the query: %s\n", 
+		       knot_strerror(ret));
+		knot_ns_error_response(nameserver, xfr->query->header.id,
+				  (ret == KNOT_EMALF) ? KNOT_RCODE_FORMERR
+				                      : KNOT_RCODE_SERVFAIL, 
+				  xfr->wire, &xfr->wire_size);
+		ret = xfr->send(xfr->session, &xfr->addr, xfr->wire, 
+		                xfr->wire_size);
+		return ret;
+	}
 
 	// initialize response packet structure
 	knot_packet_t *response = knot_packet_new(
@@ -2821,10 +2833,10 @@ int knot_ns_init_xfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		knot_ns_error_response(nameserver, xfr->query->header.id,
 				  KNOT_RCODE_SERVFAIL, xfr->wire,
 				  &xfr->wire_size);
-		int res = xfr->send(xfr->session, &xfr->addr, xfr->wire, 
-		                    xfr->wire_size);
+		ret = xfr->send(xfr->session, &xfr->addr, xfr->wire, 
+		                xfr->wire_size);
 		knot_packet_free(&response);
-		return res;
+		return ret;
 	}
 
 	//int ret = knot_packet_set_max_size(response, xfr->wire_size);
@@ -2843,7 +2855,7 @@ int knot_ns_init_xfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 //		return res;
 //	}
 
-	int ret = knot_response_init_from_query(response, xfr->query);
+	ret = knot_response_init_from_query(response, xfr->query);
 
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to init response structure.\n");
