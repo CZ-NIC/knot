@@ -277,6 +277,21 @@ knot_rdata_t *knot_rrset_rdata_get_next(knot_rrset_t *rrset,
 
 /*----------------------------------------------------------------------------*/
 
+int knot_rrset_rdata_rr_count(const knot_rrset_t *rrset)
+{
+	int count = 0;
+	const knot_rdata_t *rdata = rrset->rdata;
+	
+	while (rdata != NULL) {
+		++count;
+		rdata = knot_rrset_rdata_next(rrset, rdata);
+	}
+	
+	return count;
+}
+
+/*----------------------------------------------------------------------------*/
+
 const knot_rrset_t *knot_rrset_rrsigs(const knot_rrset_t *rrset)
 {
 	if (rrset == NULL) {
