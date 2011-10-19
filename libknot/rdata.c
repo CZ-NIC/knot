@@ -243,10 +243,13 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 //			printf("Next item - long, pos: %zu.\n", *pos);
 			item_size = 4;
 			break;
+		case KNOT_RDATA_WF_UINT48:
+			item_size = 6;
+			break;
 		case KNOT_RDATA_WF_TEXT:
 //			printf("Next item - text.\n");
 			// TODO!!!
-			item_size = *(wire + *pos) + 1;
+			item_size = rdlength - parsed;
 			break;
 		case KNOT_RDATA_WF_A:
 //			printf("Next item - A.\n");
@@ -270,8 +273,14 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 //			printf("Next item - Binary with length.\n");
 			item_size = *(wire + *pos) + 1;
 			break;
+		case KNOT_RDATA_WF_BINARYWITHSHORT:
+//			printf("Next item - Binary with length.\n");
+			item_size = knot_wire_read_u16(wire + *pos) + 2;
+			break;
 		case KNOT_RDATA_WF_APL:
 			// WTF? what to do with this??
+			// Same as TXT, I guess.
+			item_size = rdlength - parsed;
 			break;
 		case KNOT_RDATA_WF_IPSECGATEWAY:
 			// determine size based on the 'gateway type' field
