@@ -24,6 +24,7 @@
 #include "rrset.h"
 #include "util/descriptor.h"
 #include "util/error.h"
+#include "util/utils.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -351,6 +352,162 @@ int knot_rrset_compare_rdata(const knot_rrset_t *r1, const knot_rrset_t *r2)
 
 	// all RDATA found
 	return 1;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int knot_rrset_rr_to_wire(const knot_rrset_t *rrset, 
+                                 const knot_rdata_t *rdata, uint8_t **pos,
+                                 size_t max_size)
+{
+	int size = 0;
+	
+	assert(rrset != NULL);
+	assert(rrset->owner != NULL);
+	assert(rdata != NULL);
+	assert(pos != NULL);
+	assert(*pos != NULL);
+	
+	fprintf(stderr, "Max size: %zu, owner: %p, owner size: %d\n",
+	        max_size, rrset->owner, rrset->owner->size);
+
+	// check if owner fits
+	if (size + knot_dname_size(rrset->owner) + 10 > max_size) {
+		return KNOT_ESPACE;
+	}
+	
+	memcpy(*pos, knot_dname_name(rrset->owner), 
+	       knot_dname_size(rrset->owner));
+	*pos += knot_dname_size(rrset->owner);
+	size += knot_dname_size(rrset->owner);
+	
+	fprintf(stderr, "Max size: %zu, size: %d\n", max_size, size);
+
+	fprintf(stderr, "Wire format:\n");
+
+	// put rest of RR 'header'
+	knot_wire_write_u16(*pos, rrset->type);
+	fprintf(stderr, "  Type: %u\n", rrset->type);
+	*pos += 2;
+
+	knot_wire_write_u16(*pos, rrset->rclass);
+	fprintf(stderr, "  Class: %u\n", rrset->rclass);
+	*pos += 2;
+
+	knot_wire_write_u32(*pos, rrset->ttl);
+	fprintf(stderr, "  TTL: %u\n", rrset->ttl);
+	*pos += 4;
+
+	// save space for RDLENGTH
+	uint8_t *rdlength_pos = *pos;
+	*pos += 2;
+
+	size += 10;
+//	compr->wire_pos += size;
+	
+	fprintf(stderr, "Max size: %zu, size: %d\n", max_size, size);
+
+	knot_rrtype_descriptor_t *desc =
+		knot_rrtype_descriptor_by_type(rrset->type);
+
+	uint16_t rdlength = 0;
+
+	for (int i = 0; i < rdata->count; ++i) {
+		if (max_size < size + rdlength) {
+			return KNOT_ESPACE;
+		}
+		
+		switch (desc->wireformat[i]) {
+		case KNOT_RDATA_WF_COMPRESSED_DNAME:
+		case KNOT_RDATA_WF_UNCOMPRESSED_DNAME:
+		case KNOT_RDATA_WF_LITERAL_DNAME: {
+			knot_dname_t *dname =
+				knot_rdata_item(rdata, i)->dname;
+			if (size + rdlength + dname->size > max_size) {
+				return KNOT_ESPACE;
+			}
+
+			// save whole domain name
+			memcpy(*pos, knot_dname_name(dname), 
+			       knot_dname_size(dname));
+			fprintf(stderr, "Uncompressed dname size: %d\n",
+			        knot_dname_size(dname));
+			*pos += knot_dname_size(dname);
+			rdlength += knot_dname_size(dname);
+//			compr->wire_pos += dname->size;
+			break;
+		}
+		default: {
+			uint16_t *raw_data =
+				knot_rdata_item(rdata, i)->raw_data;
+
+			if (size + rdlength + raw_data[0] > max_size) {
+				return KNOT_ESPACE;
+			}
+
+			// copy just the rdata item data (without size)
+			memcpy(*pos, raw_data + 1, raw_data[0]);
+			fprintf(stderr, "Raw data size: %d\n", raw_data[0]);
+			*pos += raw_data[0];
+			rdlength += raw_data[0];
+//			compr->wire_pos += raw_data[0];
+			break;
+		}
+		}
+	}
+	
+	fprintf(stderr, "Max size: %zu, size: %d\n", max_size, size);
+
+	assert(size + rdlength <= max_size);
+	size += rdlength;
+	knot_wire_write_u16(rdlength_pos, rdlength);
+
+	return size;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
+                       int *rr_count)
+{
+	// if no RDATA in RRSet, return
+	if (rrset->rdata == NULL) {
+		*size = 0;
+		return KNOT_EOK;
+	}
+	
+
+	uint8_t *pos = wire;
+	int rrs = 0;
+	short rrset_size = 0;
+
+	const knot_rdata_t *rdata = rrset->rdata;
+	do {
+		int ret = knot_rrset_rr_to_wire(rrset, rdata, &pos, 
+		                                *size - rrset_size);
+
+		assert(ret != 0);
+
+		if (ret < 0) {
+			// some RR didn't fit in, so no RRs should be used
+			// TODO: remove last entries from compression table
+			fprintf(stderr, "Some RR didn't fit in.\n");
+			return KNOT_ESPACE;
+		}
+
+		fprintf(stderr, "RR of size %d added.\n", ret);
+		rrset_size += ret;
+		++rrs;
+	} while ((rdata = knot_rrset_rdata_next(rrset, rdata)) != NULL);
+
+	// the whole RRSet did fit in
+	assert(rrset_size <= *size);
+	assert(pos - wire == rrset_size);
+	*size += rrset_size;
+
+	fprintf(stderr, "  Size after: %zu\n", *size);
+
+	return rrs;
 }
 
 /*----------------------------------------------------------------------------*/
