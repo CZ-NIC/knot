@@ -16,7 +16,7 @@ knot.sample.conf: knot.sample.conf.in
 
 install-data-local: knot.sample.conf
 	[ -d $(sysconfdir) ] || \
-	  $(INSTALL_DATA) -d $(sysconfdir)
+	  $(INSTALL) -d $(sysconfdir)
 	[ -f $(sysconfdir)/knot.sample.conf ] || \
 	  $(INSTALL_DATA) knot.sample.conf example.com.zone $(sysconfdir)
 
