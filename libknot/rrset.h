@@ -210,6 +210,8 @@ knot_rdata_t *knot_rrset_get_rdata(knot_rrset_t *rrset);
 knot_rdata_t *knot_rrset_rdata_get_next(knot_rrset_t *rrset,
                                             knot_rdata_t *rdata);
 
+int knot_rrset_rdata_rr_count(const knot_rrset_t *rrset);
+
 /*!
  * \brief Returns the set of RRSIGs covering the given RRSet.
  *
