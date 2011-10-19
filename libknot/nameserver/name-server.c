@@ -1428,7 +1428,6 @@ static int ns_answer_from_node(const knot_node_t *node,
                                const knot_dname_t *qname, uint16_t qtype,
                                knot_packet_t *resp)
 {
-	/*! \todo Change to zone contents. */
 	dbg_ns("Putting answers from found node to the response...\n");
 	int answers = ns_put_answer(node, qname, qtype, resp);
 
@@ -1757,11 +1756,16 @@ dbg_ns_exec(
 		ns_follow_cname(&node, &act_name, resp,
 		                knot_response_add_rrset_answer, 1);
 dbg_ns_exec(
-		char *name = knot_dname_to_str(node->owner);
+		char *name = (node != NULL) ? knot_dname_to_str(node->owner)
+			: "(nil)";
 		char *name2 = knot_dname_to_str(act_name);
 		dbg_ns("Canonical name: %s (%p), node found: %p\n",
 			 name2, act_name, node);
-		dbg_ns("The node's owner: %s (%p)\n", name, node->owner);
+		dbg_ns("The node's owner: %s (%p)\n", name, (node != NULL)
+		       ? node->owner : NULL);
+		if (node != NULL) {
+			free(name);
+		}
 		free(name2);
 );
 		qname = act_name;
