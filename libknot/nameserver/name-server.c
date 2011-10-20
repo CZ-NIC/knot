@@ -288,19 +288,21 @@ static void ns_follow_cname(const knot_node_t **node,
 			/* if wildcard node, we must copy the RRSet and
 			   replace its owner */
 			rrset = ns_synth_from_wildcard(cname_rrset, *qname);
-			knot_packet_add_tmp_rrset(resp,
-			                            (knot_rrset_t *)rrset);
+			knot_packet_add_tmp_rrset(resp, (knot_rrset_t *)rrset);
+			add_rrset_to_resp(resp, rrset, tc, 0, 0);
+			ns_add_rrsigs(cname_rrset, resp, *qname, 
+			              add_rrset_to_resp, tc);
+		} else {
+			add_rrset_to_resp(resp, rrset, tc, 0, 0);
+			ns_add_rrsigs(rrset, resp, *qname, add_rrset_to_resp, 
+			              tc);
 		}
 		
-		dbg_ns("Using RRSet: %p, owner: %p\n", rrset, 
-			      rrset->owner);
-
-		add_rrset_to_resp(resp, rrset, tc, 0, 0);
-		ns_add_rrsigs(rrset, resp, *qname, add_rrset_to_resp, tc);
+		dbg_ns("Using RRSet: %p, owner: %p\n", rrset, rrset->owner);
+		
 dbg_ns_exec(
 		char *name = knot_dname_to_str(knot_rrset_owner(rrset));
-		dbg_ns("CNAME record for owner %s put to response.\n",
-			 name);
+		dbg_ns("CNAME record for owner %s put to response.\n", name);
 		free(name);
 );
 
