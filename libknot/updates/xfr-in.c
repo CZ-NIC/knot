@@ -357,10 +357,13 @@ static int xfrin_check_tsig(knot_packet_t *packet, knot_ns_xfr_t *xfr,
 			// and reset the counter and data storage
 			xfr->packet_nr = 1;
 			xfr->tsig_data_size = 0;
-			// and save the new previous digest
-			/*! \todo Extract the digest from the TSIG RDATA and
-			 *        store it.
-			 */
+
+			// Extract the digest from the TSIG RDATA and store it.
+			xfr->prev_digest = tsig_rdata_mac(tsig);
+			// the size should still be the same
+			/*! \todo Enable assert when API is complete. */
+//			assert(xfr->prev_digest_size == 
+//			       tsig_alg_digest_length(tsig_rdata_alg(tsig)));
 			
 		} else { // TSIG not required and not there
 			// just append the wireformat to the TSIG data
