@@ -780,7 +780,8 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 
 			/*!
 			 * \todo [TSIG] Getting TSIG info from zone configuration and
-			 *       validating query TSIG should probably come here.
+			 *       validating query TSIG should probably come here
+			 *       if not done in knot_ns_init_xfr().
 			 *       This will require parsing the rest of the query
 			 *       here (knot_packet_parse_rest()).
 			 */
@@ -839,7 +840,8 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		
 		/*!
 		 * \todo [TSIG] Getting TSIG info from zone configuration and
-		 *       validating query TSIG should probably come here.
+		 *       validating query TSIG should probably come here
+		 *       if not done in knot_ns_init_xfr()..
 		 *       This will require parsing the rest of the query
 		 *       here (knot_packet_parse_rest()) instead of in
 		 *       knot_ns_answer_ixfr() (remove from there afterwards).

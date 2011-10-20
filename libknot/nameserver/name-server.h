@@ -99,7 +99,8 @@ typedef struct knot_ns_xfr {
 	 */
 	uint8_t *tsig_data;
 	size_t tsig_data_size; /*!< Size of the message(s) in bytes */
-	knot_rrset_t *tsig;    /*!< Response TSIG. */
+	knot_rrset_t *tsig;    /*!< Response TSIG. 
+	                            \todo [TSIG] Replace with separate data. */
 	size_t tsig_size;      /*!< Size of the TSIG RR wireformat in bytes.*/
 	
 	/*! \brief Previous digest or request digest. 
