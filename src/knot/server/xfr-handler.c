@@ -293,7 +293,7 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 	data->wire_size = ret;
 
 	/*!
-	 * \todo Somewhere before this fetch the query digest and the TSIG
+	 * \todo [TSIG] Somewhere before this fetch the query digest and the TSIG
 	 *       associated with this transfer and save them to 'data'.
 	 */
 	
@@ -779,7 +779,7 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		} else {
 
 			/*!
-			 * \todo Getting TSIG info from zone configuration and
+			 * \todo [TSIG] Getting TSIG info from zone configuration and
 			 *       validating query TSIG should probably come here.
 			 *       This will require parsing the rest of the query
 			 *       here (knot_packet_parse_rest()).
@@ -838,7 +838,7 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		}
 		
 		/*!
-		 * \todo Getting TSIG info from zone configuration and
+		 * \todo [TSIG] Getting TSIG info from zone configuration and
 		 *       validating query TSIG should probably come here.
 		 *       This will require parsing the rest of the query
 		 *       here (knot_packet_parse_rest()) instead of in

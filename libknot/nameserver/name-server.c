@@ -2013,7 +2013,7 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 		}
 		
 		if (res != KNOT_EOK) {
-			/*! \todo Handle different types of errors, especially
+			/*! \todo [TSIG] Handle different types of errors, especially
 			 *        TSIG errors (positive values).
 			 */
 			return NS_ERR_SERVFAIL;
@@ -2023,7 +2023,7 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 		// Extract the digest from the TSIG RDATA and store it.
 		xfr->prev_digest = tsig_rdata_mac(tsig);
 		// the size should still be the same
-		/*! \todo Enable assert when API is complete. */
+		/*! \todo [TSIG] Enable assert when API is complete. */
 //		assert(xfr->prev_digest_size == 
 //		       tsig_alg_digest_length(tsig_rdata_alg(tsig)));
 	}
@@ -2944,6 +2944,8 @@ dbg_ns_exec(
 );
 	xfr->zone = zone;
 	
+	/*! \todo [TSIG] fetch TSIG data (algorithm, key) and save to xfr. */
+	
 	return KNOT_EOK;
 }
 
@@ -2982,12 +2984,12 @@ int knot_ns_answer_axfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	}
 	
 	/*!
-	 * \todo The TSIG data should already be stored in 'xfr'.
+	 * \todo [TSIG] The TSIG data should already be stored in 'xfr'.
 	 *       Now just count the expected size of the TSIG RR and save it
 	 *       to the response structure.
 	 */
 	
-	/*! \todo Get the TSIG size from some API function. */
+	/*! \todo [TSIG] Get the TSIG size from some API function. */
 	if (xfr->tsig != NULL) {
 		size_t tsig_size = 0;
 		knot_packet_set_tsig_size(xfr->response, tsig_size);
@@ -3055,13 +3057,13 @@ int knot_ns_answer_ixfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	}
 	
 	/*!
-	 * \todo The TSIG data should already be stored in 'xfr'.
+	 * \todo [TSIG] The TSIG data should already be stored in 'xfr'.
 	 *       Now just count the expected size of the TSIG RR and save it
 	 *       to the response structure. This should be optional, only if
 	 *       the request contained TSIG, i.e. if there is the data in 'xfr'.
 	 */
 	
-	/*! \todo Get the TSIG size from some API function. */
+	/*! \todo [TSIG] Get the TSIG size from some API function. */
 	if (xfr->tsig != NULL) {
 		size_t tsig_size = 0;
 		knot_packet_set_tsig_size(xfr->response, tsig_size);
@@ -3102,7 +3104,7 @@ int knot_ns_answer_ixfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 {
 	/*!
-	 * \todo Here we assume that 'xfr' contains TSIG information
+	 * \todo [TSIG] Here we assume that 'xfr' contains TSIG information
 	 *       and the digest of the query sent to the master or the previous
 	 *       digest.
 	 */
@@ -3225,7 +3227,7 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 	dbg_ns("ns_process_ixfrin: incoming packet\n");
 	
 	/*!
-	 * \todo Here we assume that 'xfr' contains TSIG information
+	 * \todo [TSIG] Here we assume that 'xfr' contains TSIG information
 	 *       and the digest of the query sent to the master or the previous
 	 *       digest.
 	 */
