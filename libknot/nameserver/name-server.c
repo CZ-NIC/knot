@@ -2021,7 +2021,7 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 		
 		// save the new previous digest
 		// Extract the digest from the TSIG RDATA and store it.
-		xfr->prev_digest = tsig_rdata_mac(tsig);
+		xfr->prev_digest = tsig_rdata_mac(xfr->tsig);
 		// the size should still be the same
 		/*! \todo [TSIG] Enable assert when API is complete. */
 //		assert(xfr->prev_digest_size == 
