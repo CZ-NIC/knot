@@ -91,7 +91,7 @@ typedef struct knot_ns_xfr {
 	knot_zone_t *zone;
 	void *owner;
 	
-	/* TSIG fields */
+	/*! \note [TSIG] TSIG fields */
 	/*! \brief Message(s) to sign in wireformat. 
 	 *
 	 *  This field should be allocated at the start of transfer and 
@@ -120,7 +120,7 @@ typedef struct knot_ns_xfr {
 } knot_ns_xfr_t;
 
 
-static const int      KNOT_NS_TSIG_FREQ    = 100;
+static const int KNOT_NS_TSIG_FREQ = 100;
 
 static const size_t KNOT_NS_TSIG_DATA_MAX_SIZE = 100 * 64 * 1024;
 

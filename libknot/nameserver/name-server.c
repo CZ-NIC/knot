@@ -1990,9 +1990,7 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 	
 	int res = 0;
 	
-	/*
-	 * Generate TSIG if required.
-	 */
+	/*! \note [TSIG] Generate TSIG if required. */
 	if (xfr->prev_digest_size > 0 && add_tsig) {
 		if (xfr->packet_nr == 0) {
 			/* Add key, digest and digest length. */
@@ -2013,8 +2011,8 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 		}
 		
 		if (res != KNOT_EOK) {
-			/*! \todo [TSIG] Handle different types of errors, especially
-			 *        TSIG errors (positive values).
+			/*! \todo [TSIG] Handle different types of errors, 
+			 *        especially TSIG errors (positive values).
 			 */
 			return NS_ERR_SERVFAIL;
 		}

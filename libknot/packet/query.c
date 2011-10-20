@@ -208,7 +208,7 @@ int knot_query_add_rrset_authority(knot_packet_t *query,
 	assert(endp - startp > query->opt_rr.size + query->tsig_size);
 	// reserve space for OPT RR
 	endp -= query->opt_rr.size;
-	// reserve space for TSIG RR
+	/*! \note [TSIG] reserve space for TSIG RR */
 	endp -= query->tsig_size;
 	
 	uint8_t *pos = startp;
