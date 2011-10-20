@@ -305,7 +305,7 @@ static void xfrin_free_orphan_rrsigs(xfrin_orphan_rrsig_t **rrsigs)
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*! \note [TSIG] */
 static int xfrin_check_tsig(knot_packet_t *packet, knot_ns_xfr_t *xfr,
                             int tsig_req)
 {
@@ -350,7 +350,8 @@ static int xfrin_check_tsig(knot_packet_t *packet, knot_ns_xfr_t *xfr,
 			}
 			
 			if (ret != KNOT_EOK) {
-				/* No need to check TSIG error here, propagate. */
+				/*! \note [TSIG] No need to check TSIG error 
+				 *        here, propagate and check elsewhere.*/
 				return ret;
 			}
 			
@@ -452,7 +453,9 @@ int xfrin_process_axfr_packet(/*const uint8_t *pkt, size_t size,
 
 	if (*constr == NULL) {
 		// this should be the first packet
+		/*! \note [TSIG] Packet number for checking TSIG validation. */
 		xfr->packet_nr = 0;
+		/*! \note [TSIG] Storing total size of data for TSIG digest. */
 		xfr->tsig_data_size = 0;
 		
 		// create new zone
@@ -551,9 +554,11 @@ dbg_xfrin_exec(
 	} else {
 		zone = (*constr)->contents;
 		++xfr->packet_nr;
-		// add the packet wire size to the data to be verified by TSIG
 	}
 	
+	/*! \note [TSIG] add the packet wire size to the data to be verified by 
+	 *               TSIG 
+	 */
 	/*! \todo this may be optional. */
 	assert(KNOT_NS_TSIG_DATA_MAX_SIZE - xfr->tsig_data_size
 	       >= xfr->wire_size);
@@ -673,9 +678,10 @@ dbg_xfrin_exec(
 			continue;
 		}
 		
-		if (knot_rrset_type(rr) == KNOT_RRTYPE_TSIG) {
+		/*! \note [TSIG] TSIG where it should not be - in Answer section.*/
+		if (knot_rrset_type(rr) == KNOT_RRTYPE_) {
 			// not allowed here
-			dbg_xfrin("TSIG in Answer section.\n");
+			dbg_xfrin(" in Answer section.\n");
 			knot_packet_free(&packet);
 			knot_node_free(&node, 1, 0); // ???
 			knot_rrset_deep_free(&rr, 1, 1, 1);
@@ -794,8 +800,8 @@ dbg_xfrin_exec(
 		}
 	}
 	
-	/* Now check if there is not a TSIG record at the end of the 
-	 * packet. 
+	/*! \note [TSIG] Now check if there is not a TSIG record at the end of
+	 *               the packet. 
 	 */
 	ret = xfrin_check_tsig(packet, xfr, 
 	                       knot_ns_tsig_required(xfr->packet_nr));
@@ -803,9 +809,10 @@ dbg_xfrin_exec(
 	knot_packet_free(&packet);
 	dbg_xfrin("Processed one AXFR packet successfully.\n");
 	
-	/* TSIG errors are propagated and reported in a standard manner,
-	 * as we're in response processing, no further error response should
-	 * be sent. */
+	/*! \note [TSIG] TSIG errors are propagated and reported in a standard 
+	 * manner, as we're in response processing, no further error response 
+	 * should be sent. 
+	 */
 
 	return ret;
 }
@@ -1039,15 +1046,17 @@ dbg_xfrin_exec(
 			    == knot_rdata_soa_serial(
 			           knot_rrset_rdata((*chs)->first_soa))) {
 				
-				/* Check TSIG, we're at the end of transfer. */
+				/*! \note [TSIG] Check TSIG, we're at the end of
+				 *               transfer. 
+				 */
 				ret = xfrin_check_tsig(packet, xfr, 1);
 				
 				// last SOA, discard and end
 				knot_rrset_deep_free(&rr, 1, 1, 1);
 				knot_packet_free(&packet);
 				
-				/* If TSIG validates, consider transfer
-				 * as complete. */
+				/*! \note [TSIG] If TSIG validates, consider 
+				 *        transfer complete. */
 				if (ret == KNOT_EOK) {
 					ret = XFRIN_RES_COMPLETE;
 				}
@@ -1130,11 +1139,13 @@ dbg_xfrin_exec(
 		dbg_xfrin("Returned %d, %p.\n", ret, rr);
 	}
 	
-	/* Check TSIG, we're at the end of packet. It may not be required. */
+	/*! \note Check TSIG, we're at the end of packet. It may not be 
+	 *        required. 
+	 */
 	ret = xfrin_check_tsig(packet, xfr, 
 	                       knot_ns_tsig_required(xfr->packet_nr));
 	
-	/* Cleanup and propagate error if TSIG validation fails. */
+	/*! \note [TSIG] Cleanup and propagate error if TSIG validation fails.*/
 	if (ret != KNOT_EOK) {
 		goto cleanup;
 	}
