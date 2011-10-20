@@ -361,7 +361,7 @@ static int xfrin_check_tsig(knot_packet_t *packet, knot_ns_xfr_t *xfr,
 			// Extract the digest from the TSIG RDATA and store it.
 			xfr->prev_digest = tsig_rdata_mac(tsig);
 			// the size should still be the same
-			/*! \todo Enable assert when API is complete. */
+			/*! \todo [TSIG] Enable assert when API is complete. */
 //			assert(xfr->prev_digest_size == 
 //			       tsig_alg_digest_length(tsig_rdata_alg(tsig)));
 			
@@ -422,7 +422,7 @@ int xfrin_process_axfr_packet(/*const uint8_t *pkt, size_t size,
 		return KNOT_EMALF;
 	}
 	
-	/*! \todo If packet RCODE is NOTAUTH(9), process as TSIG error. */
+	/*! \todo [TSIG] If packet RCODE is NOTAUTH(9), process as TSIG error. */
 
 	knot_rrset_t *rr = NULL;
 	ret = knot_packet_parse_next_rr_answer(packet, &rr);
