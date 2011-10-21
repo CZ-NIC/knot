@@ -18,6 +18,7 @@
 
 #include <urcu.h>
 
+#include "libknot/dname.h"
 #include "libknot/util/descriptor.h"
 #include "libknot/tsig.h"
 #include "common/lists.h"
@@ -33,8 +34,8 @@
  * \brief Configuration for the TSIG key.
  */
 typedef struct conf_key_t {
-	node n;	              /*!< List node. */
-	char *name;           /*!< Key name. */
+	node n;               /*!< List node. */
+	knot_dname_t *name;   /*!< Key name. */
 	tsig_algorithm_t algorithm; /*!< Key algorithm.  */
 	char *secret;         /*!< Key data. */
 } conf_key_t;
@@ -50,9 +51,8 @@ typedef struct conf_iface_t {
 	node n;
 	char *name;       /*!< Internal name for the interface. */
 	char *address;    /*!< IP (IPv4/v6) address for this interface */
-	int   port;       /*!< Port number for this interface */
+	int port;         /*!< Port number for this interface */
 	int family;       /*!< Address family. */
-	conf_key_t *key;  /*!< TSIG key (remotes only). */
 } conf_iface_t;
 
 /*!
@@ -61,7 +61,7 @@ typedef struct conf_iface_t {
  * Used for zone ACL lists to prevent node duplication.
  */
 typedef struct conf_remote_t {
-	node n;	              /*!< List node. */
+	node n;               /*!< List node. */
 	conf_iface_t *remote; /*!< Pointer to interface descriptor. */
 } conf_remote_t;
 
@@ -88,7 +88,6 @@ typedef struct conf_zone_t {
 	int enable_checks;        /*!< Semantic checks for parser.*/
 	int notify_retries;       /*!< NOTIFY query retries. */
 	int notify_timeout;       /*!< Timeout for NOTIFY response (s). */
-	conf_key_t *key;          /*!< TSIG key for zone. */
 	struct {
 		list xfr_in;      /*!< Remotes accepted for for xfr-in.*/
 		list xfr_out;     /*!< Remotes accepted for xfr-out.*/

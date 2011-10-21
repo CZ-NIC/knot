@@ -679,7 +679,7 @@ dbg_xfrin_exec(
 		}
 		
 		/*! \note [TSIG] TSIG where it should not be - in Answer section.*/
-		if (knot_rrset_type(rr) == KNOT_RRTYPE_) {
+		if (knot_rrset_type(rr) == KNOT_RRTYPE_TSIG) {
 			// not allowed here
 			dbg_xfrin(" in Answer section.\n");
 			knot_packet_free(&packet);

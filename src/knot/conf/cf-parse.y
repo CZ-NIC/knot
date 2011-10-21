@@ -87,20 +87,23 @@ static void conf_acl_item(void *scanner, char *item)
      free(item);
    }
 
-static void conf_key_item(void *scanner, conf_key_t **key, char *item)
+static int conf_key_exists(void *scanner, char *item)
 {
     /* Find existing node in keys. */
+    knot_dname_t *sample = knot_dname_new_from_str(item, strlen(item), 0);
+    char buf[512];
     conf_key_t* r = 0;
     WALK_LIST (r, new_config->keys) {
-	if (strcmp(r->name, item) == 0) {
-	    *key = r;
-	    return;
-	}
+        if (knot_dname_compare(r->name, sample) == 0) {
+           snprintf(buf, sizeof(buf), "key '%s' is already defined", item);
+           cf_error(scanner, buf);
+	   knot_dname_free(&sample);
+           return 1;
+        }
     }
 
-    char buf[512];
-    snprintf(buf, sizeof(buf), "key '%s' is not defined", item);
-    cf_error(scanner, buf);
+    knot_dname_free(&sample);
+    return 0;
 }
 
 %}
@@ -247,13 +250,29 @@ system:
 keys:
    KEYS '{'
  | keys TEXT TSIG_ALGO_NAME TEXT ';' {
-     conf_key_t *k = malloc(sizeof(conf_key_t));
-     memset(k, 0, sizeof(conf_key_t));
-     k->name = $2.t;
-     k->algorithm = $3.alg;
-     k->secret = $4.t;
-     add_tail(&new_config->keys, &k->n);
-     ++new_config->key_count;
+     if (!conf_key_exists(scanner, $2.t)) {
+         knot_dname_t *dname = knot_dname_new_from_str($2.t, strlen($2.t), 0);
+	 if (!dname) {
+	     char buf[512];
+             snprintf(buf, sizeof(buf), "key name '%s' not in valid domain "
+	                                "name format", $2.t);
+             cf_error(scanner, buf);
+	     free($2.t);
+	     free($4.t);
+	 } else {
+             conf_key_t *k = malloc(sizeof(conf_key_t));
+             memset(k, 0, sizeof(conf_key_t));
+             k->name = dname;
+             k->algorithm = $3.alg;
+             k->secret = $4.t;
+             add_tail(&new_config->keys, &k->n);
+             ++new_config->key_count;
+	     free($2.t);
+	 }
+     } else {
+         free($2.t);
+         free($4.t);
+     }
 }
 
 remote_start:
@@ -314,14 +333,6 @@ remote:
        }
      }
    }
-  | remote KEY TEXT ';' {
-      if (this_remote->key != 0) {
-	cf_error(scanner, "only one key definition is allowed in remote section\n");
-      } else {
-	conf_key_item(scanner, &this_remote->key, $3.t);
-	free($3.t);
-      }
-  }
  ;
 
 remotes:
@@ -458,14 +469,6 @@ zone:
        } else {
 	   this_zone->notify_timeout = $3.i;
        }
-   }
- | zone KEY TEXT ';' {
-     if (this_zone->key != 0) {
-       cf_error(scanner, "only one key definition is allowed in zone section\n");
-     } else {
-       conf_key_item(scanner, &this_zone->key, $3.t);
-       free($3.t);
-     }
    }
  ;
 
