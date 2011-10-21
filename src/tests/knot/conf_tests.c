@@ -22,7 +22,7 @@ unit_api conf_tests_api = {
  */
 static int conf_tests_count(int argc, char *argv[])
 {
-	return 22;
+	return 21;
 }
 
 /*! Run all scheduled tests for given parameters.
@@ -92,8 +92,7 @@ static int conf_tests_run(int argc, char *argv[])
 	    cmp_ok(m->prios, "==", 0xff, "rule for zone is: any level");
 	  }
 	  endskip;
-	}
-	endskip;
+	} endskip;
 
 	// Test 19,20: File facility checks
 	n = n->next;
@@ -102,16 +101,22 @@ static int conf_tests_run(int argc, char *argv[])
 	skip(!n, 1);
 	{
 	  is(log->file, "/var/log/knot/server.err", "log file matches");
+	} endskip;
+	
+	// Test 21: Load key dname
+	const char *sample_str = "key0.example.net";
+	knot_dname_t *sample = knot_dname_new_from_str(sample_str,
+	                                               strlen(sample_str), 0);
+	if (conf->key_count > 0) {
+		conf_key_t *k = (conf_key_t *)HEAD(conf->keys);
+		ok(knot_dname_compare(sample, k->name) == 0,
+		   "TSIG key dname check");
+	} else {
+		ok(0, "TSIG key dname check - NO KEY FOUND");
 	}
-	endskip;
-
-	// Test 21,22: remote,zone -> key binding
-	conf_key_t *k = ((conf_iface_t*)HEAD(conf->remotes))->key;
-	is(k ? k->name : "", "key0", "remote is connected with correct key");
-	k = ((conf_zone_t*)HEAD(conf->zones))->key;
-	is(k ? k->name : "", "key1", "zone is connected with correct key");
-	}
-	endskip;
+	knot_dname_free(&sample);
+	
+	} endskip;
 
 	// Deallocating config
 	conf_free(conf);
