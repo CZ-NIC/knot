@@ -1990,6 +1990,9 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 	
 	int res = 0;
 	
+	/*! \todo [TSIG] Following expects we're in XFR/IN mode,
+	 *               but the function is used in XFR/OUT as well.
+	 */
 	/*! \note [TSIG] Generate TSIG if required. */
 	if (xfr->prev_digest_size > 0 && add_tsig) {
 		if (xfr->packet_nr == 0) {
@@ -2011,10 +2014,7 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 		}
 		
 		if (res != KNOT_EOK) {
-			/*! \todo [TSIG] Handle different types of errors, 
-			 *        especially TSIG errors (positive values).
-			 */
-			return NS_ERR_SERVFAIL;
+			return res;
 		}
 		
 		// save the new previous digest
@@ -2045,7 +2045,7 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 	
 	// increment the packet number
 	++xfr->packet_nr;
-	if (xfr->prev_digest_size > 0 != NULL && add_tsig) {
+	if (xfr->prev_digest_size > 0 && add_tsig) {
 		knot_packet_set_tsig_size(xfr->response, xfr->tsig_size);
 	} else {
 		knot_packet_set_tsig_size(xfr->response, 0);
@@ -2942,7 +2942,10 @@ dbg_ns_exec(
 );
 	xfr->zone = zone;
 	
-	/*! \todo [TSIG] fetch TSIG data (algorithm, key) and save to xfr. */
+	/*! \todo [TSIG] fetch TSIG data (algorithm, key) and save to xfr.
+	 *  \todo [TSIG] Checked in xfr-handler.c, as we don't have access to
+	 *        config from here.
+	 */
 	
 	return KNOT_EOK;
 }
