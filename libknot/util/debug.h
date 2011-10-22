@@ -142,7 +142,7 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 #else
 #define dbg_ns_detail(msg...)
 #define dbg_ns_hex_detail(data, len)
-#define dbg_ns_exec_verb(cmds)
+#define dbg_ns_exec_detail(cmds)
 #endif
 
 /* No messages. */
