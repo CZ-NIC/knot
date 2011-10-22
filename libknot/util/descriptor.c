@@ -479,7 +479,7 @@ static knot_rrtype_descriptor_t
 	    KNOT_RDATA_ZF_TEXT, KNOT_RDATA_ZF_TEXT, KNOT_RDATA_ZF_TEXT, KNOT_RDATA_ZF_TEXT },
 	    false },
         /* TSIG pseudo RR. */
-        [250] = { KNOT_RRTYPE_TSIG, "TSIG", 5,
+        [250] = { KNOT_RRTYPE_TSIG, "TSIG", 7,
 		 { KNOT_RDATA_WF_UNCOMPRESSED_DNAME, KNOT_RDATA_WF_UINT48,
                    KNOT_RDATA_WF_SHORT, KNOT_RDATA_WF_BINARYWITHSHORT,
                    KNOT_RDATA_WF_SHORT, KNOT_RDATA_WF_SHORT,

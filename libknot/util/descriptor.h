@@ -165,7 +165,7 @@ enum knot_rr_type {
 	KNOT_RRTYPE_SPF = 99,      /*!< RFC 4408 */
 
 	// not designating any RRs
-	KNOT_RRTYPE_TSIG = 250, /*!< TSIG (not an actual RR). */
+	KNOT_RRTYPE_TSIG = 250, /*!< TSIG - RFC2845. */
 	KNOT_RRTYPE_IXFR = 251, /*!< IXFR (not an actual RR). */
 	KNOT_RRTYPE_AXFR = 252, /*!< AXFR (not an actual RR). */
 	/*!
@@ -183,7 +183,9 @@ enum knot_rr_type {
 	KNOT_RRTYPE_DLV = 32769, /*!< RFC 4431 */
 
 	/*! \brief Last normal RR type. */
-	KNOT_RRTYPE_LAST = KNOT_RRTYPE_NSEC3PARAM
+	KNOT_RRTYPE_LAST = KNOT_RRTYPE_TSIG
+	/*! \todo [TSIG] Is it allright to include all <= RR TSIG?
+	 * Because TSIG is normal RR type. */
 };
 
 typedef enum knot_rr_type knot_rr_type_t;
