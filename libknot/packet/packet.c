@@ -700,7 +700,7 @@ static int knot_packet_parse_rr_sections(knot_packet_t *packet,
 	if (*pos < packet->size) {
 		// some trailing garbage; ignore, but log
 		dbg_response("Packet: %zu bytes of trailing garbage "
-		                      "in packet.\n", (*pos) - packet->size);
+		                      "in packet.\n", packet->size - (*pos));
 		return KNOT_EMALF;
 	}
 
