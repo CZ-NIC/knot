@@ -22,6 +22,7 @@
 #include "libknot/updates/xfr-in.h"
 #include "knot/server/zones.h"
 #include "libknot/util/error.h"
+#include "libknot/tsig-op.h"
 #include "common/evsched.h"
 
 void xfr_interrupt(xfrhandler_t *h)
@@ -746,11 +747,18 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		zname = zd->conf->name;
 	}
 	
+	conf_read_lock();
+
+	/* XFR request state tracking. */
+	int init_failed = 0;
+	const char *errstr = "";
+
 	dbg_xfr_verb("xfr: processing request type '%d'\n", xfr.type);
 	switch(xfr.type) {
 	case XFR_TYPE_AOUT:
 		req_type = "AXFR/OUT";
 		ret = knot_ns_init_xfr(w->ns, &xfr);
+		init_failed = (ret != KNOT_EOK);
 		if (xfr.zone) {
 			zonedata_t *zd = xfr.zone->data;
 			zname = zd->conf->name;
@@ -761,31 +769,104 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 			                  zname,
 					  r_addr, r_port,
 					  knot_strerror(ret));
-			socket_close(xfr.session);
 		}
 
-		int init_failed = ret != KNOT_EOK;
+		/* Check requested zone. */
 		ret = zones_xfr_check_zone(&xfr, &rcode);
-		if (ret != KNOTD_EOK) {
-			if (!init_failed) {
-				knot_ns_xfr_send_error(&xfr, rcode);
-				socket_close(xfr.session);
-				log_server_notice("AXFR transfer of zone '%s/OUT' "
-				                  "%s:%d - check failed: %s\n",
-				                  zname,
-						  r_addr, r_port,
-						  knotd_strerror(ret));
-			}
-		} else {
+		init_failed = (ret != KNOT_EOK);
+		errstr = knotd_strerror(ret);
 
-			/*!
-			 * \todo [TSIG] Getting TSIG info from zone configuration and
-			 *       validating query TSIG should probably come here
-			 *       if not done in knot_ns_init_xfr().
-			 *       This will require parsing the rest of the query
-			 *       here (knot_packet_parse_rest()).
-			 */
-			
+		/* Check TSIG. */
+		/*!
+		 * \todo [TSIG] Getting TSIG info from zone configuration and
+		 *       validating query TSIG should probably come here
+		 *       if not done in knot_ns_init_xfr().
+		 *       This will require parsing the rest of the query
+		 *       here (knot_packet_parse_rest()).
+		 */
+
+		/* Parse rest of the packet. */
+		knot_key_t *key = 0;
+		const knot_rrset_t *tsig_rr = 0;
+		ret = knot_packet_parse_rest(xfr.query);
+		if (ret == KNOT_EOK) {
+			/* Find TSIG key name from query. */
+			const knot_dname_t* kname = 0;
+			int tsig_pos = knot_packet_additional_rrset_count(xfr.query) - 1;
+			if (tsig_pos >= 0) {
+				tsig_rr = knot_packet_additional_rrset(xfr.query, tsig_pos);
+				if (knot_rrset_type(tsig_rr) == KNOT_RRTYPE_TSIG) {
+					dbg_xfr("xfr: found TSIG in AR\n");
+					kname = knot_rrset_owner(tsig_rr);
+					ret = KNOT_TSIG_EBADKEY;
+				}
+			}
+			if (!kname) {
+				dbg_xfr("xfr: TSIG not found in AR\n");
+			}
+
+			/* Find configured key for claimed key name. */
+			conf_key_t *ck = 0;
+			WALK_LIST(ck, conf()->keys) {
+				if (!kname) {
+					break;
+				}
+				/* Compare stored keys to claimed. */
+				if (knot_dname_compare(ck->k.name,
+						       kname) == 0) {
+					dbg_xfr("xfr: found claimed "
+						"TSIG key for "
+						"comparison\n");
+					key = &ck->k;
+					break;
+				}
+			}
+
+			/* Validate with TSIG. */
+			if (key) {
+				dbg_xfr("xfr: validating TSIG...\n");
+				ret = knot_tsig_server_check(tsig_rr,
+							     knot_packet_wireformat(xfr.query),
+							     knot_packet_size(xfr.query),
+							     key);
+				/* Evaluate TSIG check results. */
+				switch(ret) {
+				case KNOT_EOK:
+					rcode = KNOT_RCODE_NOERROR;
+				case KNOT_TSIG_EBADKEY:
+				case KNOT_TSIG_EBADSIG:
+				case KNOT_TSIG_EBADTIME:
+					rcode = KNOT_RCODE_NOTAUTH;
+					/*! \todo [TSIG] How to set TSIG error? */
+					break;
+				case KNOT_EMALF:
+					rcode = KNOT_RCODE_FORMERR;
+				default:
+					rcode = KNOT_RCODE_SERVFAIL;
+				}
+			} else {
+				dbg_xfr("xfr: no claimed key configured, "
+					"treating as bad key\n");
+			}
+
+			init_failed = (ret != KNOT_EOK);
+			errstr = knot_strerror(ret);
+		} else {
+			dbg_xfr("xfr: failed to parse rest of the packet\n");
+			init_failed = (ret != KNOT_EOK);
+			errstr = knot_strerror(ret);
+			rcode = KNOT_RCODE_FORMERR;
+		}
+
+		if (init_failed) {
+			knot_ns_xfr_send_error(&xfr, rcode);
+			socket_close(xfr.session);
+			log_server_notice("AXFR transfer of zone '%s/OUT' "
+					  "%s:%d - check failed: %s\n",
+					  zname,
+					  r_addr, r_port,
+					  errstr);
+		} else {
 			ret = knot_ns_answer_axfr(w->ns, &xfr);
 			dbg_xfr("xfr: ns_answer_axfr() = %d.\n", ret);
 			if (ret != KNOTD_EOK) {
@@ -831,10 +912,12 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 						zname);
 				xfr.type = XFR_TYPE_AOUT;
 				xfr_request(w->master, &xfr);
+				conf_read_unlock();
 				return KNOTD_EOK;
 			}
 			knot_ns_xfr_send_error(&xfr, KNOT_RCODE_SERVFAIL);
 			socket_close(xfr.session);
+			conf_read_unlock();
 			return KNOTD_EOK;
 		}
 		
@@ -891,10 +974,12 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 	/* Socket close event. */
 	case XFR_TYPE_CLOSE:
 		xfr_free_task((knot_ns_xfr_t *)xfr.data);
-		return KNOTD_EOK;
+		ret = KNOTD_EOK;
 	default:
 		break;
 	}
+
+	conf_read_unlock();
 
 	/* Report. */
 	if (ret != KNOTD_EOK && ret != KNOTD_EACCES) {
