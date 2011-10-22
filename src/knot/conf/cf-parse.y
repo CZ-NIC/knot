@@ -94,7 +94,7 @@ static int conf_key_exists(void *scanner, char *item)
     char buf[512];
     conf_key_t* r = 0;
     WALK_LIST (r, new_config->keys) {
-        if (knot_dname_compare(r->name, sample) == 0) {
+        if (knot_dname_compare(r->k.name, sample) == 0) {
            snprintf(buf, sizeof(buf), "key '%s' is already defined", item);
            cf_error(scanner, buf);
 	   knot_dname_free(&sample);
@@ -262,9 +262,9 @@ keys:
 	 } else {
              conf_key_t *k = malloc(sizeof(conf_key_t));
              memset(k, 0, sizeof(conf_key_t));
-             k->name = dname;
-             k->algorithm = $3.alg;
-             k->secret = $4.t;
+             k->k.name = dname;
+             k->k.algorithm = $3.alg;
+             k->k.secret = $4.t;
              add_tail(&new_config->keys, &k->n);
              ++new_config->key_count;
 	     free($2.t);

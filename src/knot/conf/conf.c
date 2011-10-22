@@ -85,11 +85,11 @@ void cf_error(void *scanner, const char *msg)
 static void key_free(conf_key_t *k)
 {
 	/* Secure erase. */
-	if (k->secret) {
-		memset(k->secret, 0, strlen(k->secret));
+	if (k->k.secret) {
+		memset(k->k.secret, 0, strlen(k->k.secret));
 	}
-	free(k->secret);
-	free(k->name);
+	free(k->k.secret);
+	knot_dname_free(&k->k.name);
 	free(k);
 }
 

@@ -32,6 +32,15 @@
 #include "rrset.h"
 #include "util/utils.h"
 
+struct knot_key {
+	knot_dname_t *name;   /*!< Key name. */
+	unsigned int algorithm; /*!< Key algorithm.  */
+	char *secret;         /*!< Key data. */
+	size_t secret_size;   /*!< Key length. */
+};
+
+typedef struct knot_key knot_key_t;
+
 /* The assigned numbers should not begin with 0 - reserved for error. */
 enum tsig_algorithm {
 	KNOT_TSIG_ALG_GSS_TSIG = 128, /*!< \brief gss-tsig. */

@@ -62,7 +62,7 @@ static int conf_tests_run(int argc, char *argv[])
 		ok(0, "TSIG key algorithm check - NO KEY FOUND");
 		ok(0, "TSIG key secret check - NO KEY FOUND");
 	} else {
-		conf_key_t *k = (conf_key_t *)HEAD(conf->keys);
+		knot_key_t *k = (knot_key_t *)HEAD(conf->keys);
 		cmp_ok(k->algorithm, "==", KNOT_TSIG_ALG_HMAC_MD5,
 		       "TSIG key algorithm check");
 		is(k->secret, "Wg==", "TSIG key secret check");
@@ -108,7 +108,7 @@ static int conf_tests_run(int argc, char *argv[])
 	knot_dname_t *sample = knot_dname_new_from_str(sample_str,
 	                                               strlen(sample_str), 0);
 	if (conf->key_count > 0) {
-		conf_key_t *k = (conf_key_t *)HEAD(conf->keys);
+		knot_key_t *k = (knot_key_t *)HEAD(conf->keys);
 		ok(knot_dname_compare(sample, k->name) == 0,
 		   "TSIG key dname check");
 	} else {

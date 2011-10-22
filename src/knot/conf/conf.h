@@ -31,16 +31,6 @@
 #define CONFIG_DBSYNC_TIMEOUT (60*60) /*!< 1 hour. */
 
 /*!
- * \brief Configuration for the TSIG key.
- */
-typedef struct conf_key_t {
-	node n;               /*!< List node. */
-	knot_dname_t *name;   /*!< Key name. */
-	tsig_algorithm_t algorithm; /*!< Key algorithm.  */
-	char *secret;         /*!< Key data. */
-} conf_key_t;
-
-/*!
  * \brief Configuration for the interface
  *
  * This structure holds the configuration of the various interfaces
@@ -125,6 +115,14 @@ typedef enum conf_section_t {
 	CONF_OTHER  = 1 << 3, /*!< Other sections. */
 	CONF_ALL    = ~0      /*!< All sections. */
 } conf_section_t;
+
+/*!
+ * \brief TSIG key list item.
+ */
+typedef struct conf_key_t {
+	node n;
+	knot_key_t k;
+} conf_key_t;
 
 /*!
  * \brief Main config structure.
