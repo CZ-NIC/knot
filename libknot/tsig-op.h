@@ -29,6 +29,7 @@
 
 #include <stdint.h>
 
+#include "tsig.h"
 #include "rrset.h"
 
 /*!
