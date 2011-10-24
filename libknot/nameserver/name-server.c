@@ -1990,10 +1990,7 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 	
 	int res = 0;
 	
-	/*! \todo [TSIG] Following expects we're in XFR/IN mode,
-	 *               but the function is used in XFR/OUT as well.
-	 */
-	/*! \note [TSIG] Generate TSIG if required. */
+	/*! \note [TSIG] Generate TSIG if required (during XFR/IN). */
 	if (xfr->prev_digest_size > 0 && add_tsig) {
 		if (xfr->packet_nr == 0) {
 			/* Add key, digest and digest length. */
@@ -2001,7 +1998,7 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 			res = knot_tsig_sign(xfr->wire, &real_size,
 			               xfr->wire_size, xfr->prev_digest, 
 			               xfr->prev_digest_size, xfr->tsig,
-			               NULL);
+			               xfr->tsig_key);
 		} else {
 			/* Add key, digest and digest length. */
 			assert(0);
@@ -2010,7 +2007,7 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 			                          xfr->prev_digest,
 			                          xfr->prev_digest_size,
 			                          xfr->tsig,
-			                          NULL);
+			                          xfr->tsig_key);
 		}
 		
 		if (res != KNOT_EOK) {
@@ -2024,6 +2021,15 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 		/*! \todo [TSIG] Enable assert when API is complete. */
 //		assert(xfr->prev_digest_size == 
 //		       tsig_alg_digest_length(tsig_rdata_alg(tsig)));
+	}
+	
+	/*! \note [TSIG] Sign with TSIG if in XFR/OUT and TSIG was in query. */
+	if (add_tsig && xfr->tsig_key &&
+	    (xfr->type == XFR_TYPE_AOUT || xfr->type == XFR_TYPE_IOUT)) {
+		res = knot_tsig_sign(xfr->wire, &real_size,
+		               xfr->wire_size, xfr->prev_digest, 
+		               xfr->prev_digest_size, xfr->tsig,
+		               xfr->tsig_key);
 	}
 
 	// Send the response
@@ -2942,11 +2948,6 @@ dbg_ns_exec(
 );
 	xfr->zone = zone;
 	
-	/*! \todo [TSIG] fetch TSIG data (algorithm, key) and save to xfr.
-	 *  \todo [TSIG] Checked in xfr-handler.c, as we don't have access to
-	 *        config from here.
-	 */
-	
 	return KNOT_EOK;
 }
 
@@ -2955,6 +2956,7 @@ dbg_ns_exec(
 int knot_ns_xfr_send_error(knot_ns_xfr_t *xfr, knot_rcode_t rcode)
 {
 	knot_response_set_rcode(xfr->response, rcode);
+	
 	/*! \todo Probably rename the function. */
 	return ns_xfr_send_and_clear(xfr, 1);
 }

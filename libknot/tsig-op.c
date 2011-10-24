@@ -41,8 +41,7 @@ static int knot_tsig_check_key(const knot_rrset_t *tsig_rr,
 		return KNOT_EMALF;
 	}
 
-	if (strncasecmp(name, tsig_key->name,
-	                knot_dname_size(tsig_name)) != 0) {
+	if (knot_dname_compare(tsig_name, tsig_key->name) != 0) {
 		/*!< \todo which error. */
 		dbg_tsig("TSIG: unknown key: %s\n", name);
 		return KNOT_TSIG_EBADKEY;
