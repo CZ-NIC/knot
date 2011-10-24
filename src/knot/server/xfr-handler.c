@@ -267,14 +267,6 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
  */
 static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 {
-	/*!
-	 * \todo [TSIG] Getting TSIG info from zone configuration and
-	 *       validating query TSIG should probably come here
-	 *       if not done in knot_ns_init_xfr().
-	 *       This will require parsing the rest of the query
-	 *       here (knot_packet_parse_rest()).
-	 */
-
 	/* Parse rest of the packet. */
 	int ret = KNOT_EOK;
 	knot_packet_t *qry = xfr->query;
@@ -318,6 +310,12 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 		/* Validate with TSIG. */
 		if (key) {
 			dbg_xfr("xfr: validating TSIG...\n");
+			xfr->tsig_key = key;
+			xfr->tsig = tsig_rr; /* Will be destroyed with xfr->query free. */
+			/*! \todo [TSIG] How to prepare TSIG RR for appending
+			 *        in case of error response?
+			 */
+			
 			ret = knot_tsig_server_check(tsig_rr,
 						     knot_packet_wireformat(qry),
 						     knot_packet_size(qry),
@@ -329,8 +327,9 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 			case KNOT_TSIG_EBADKEY:
 			case KNOT_TSIG_EBADSIG:
 			case KNOT_TSIG_EBADTIME:
-				*rcode = KNOT_RCODE_NOTAUTH;
-				/*! \todo [TSIG] How to set TSIG error? */
+				/*! \note [TSIG] Set TSIG rcode in TSIG RR. */
+				
+				*rcode = KNOT_RCODE_NOTAUTH; 
 				break;
 			case KNOT_EMALF:
 				*rcode = KNOT_RCODE_FORMERR;
@@ -869,7 +868,7 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		/* Evaluate progress and answer if passed. */
 		if (init_failed) {
 			knot_ns_xfr_send_error(&xfr, rcode);
-			socket_close(xfr.session);
+			//socket_close(xfr.session);
 			log_server_notice("AXFR transfer of zone '%s/OUT' "
 			                  "%s:%d failed: %s\n",
 			                  zname,

@@ -41,6 +41,7 @@
 #include "zone/zonedb.h"
 #include "edns.h"
 #include "consts.h"
+#include "tsig.h"
 #include "packet/packet.h"
 #include "common/sockaddr.h"
 #include "updates/changesets.h"
@@ -99,9 +100,10 @@ typedef struct knot_ns_xfr {
 	 */
 	uint8_t *tsig_data;
 	size_t tsig_data_size; /*!< Size of the message(s) in bytes */
-	knot_rrset_t *tsig;    /*!< Response TSIG. 
+	const knot_rrset_t *tsig; /*!< Response TSIG. 
 	                            \todo [TSIG] Replace with separate data. */
 	size_t tsig_size;      /*!< Size of the TSIG RR wireformat in bytes.*/
+	knot_key_t *tsig_key;  /*!< Associated TSIG key for signing. */
 	
 	/*! \brief Previous digest or request digest. 
 	 *
