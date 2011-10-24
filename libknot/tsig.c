@@ -241,6 +241,12 @@ const knot_dname_t *tsig_rdata_alg_name(const knot_rrset_t *tsig)
 	return knot_rdata_item(rdata, 0)->dname;
 }
 
+tsig_algorithm_t tsig_rdata_alg(const knot_rrset_t *tsig)
+{
+	/*! \todo [TSIG] Implement me. */
+	return KNOT_TSIG_ALG_HMAC_MD5;
+}
+
 uint64_t tsig_rdata_time_signed(const knot_rrset_t *tsig)
 {
 	/*!< \note How about assert. Or maybe change API??? */
