@@ -2019,7 +2019,7 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 		
 		// save the new previous digest
 		// Extract the digest from the TSIG RDATA and store it.
-		xfr->prev_digest = tsig_rdata_mac(xfr->tsig);
+		xfr->prev_digest = (uint8_t*)tsig_rdata_mac(xfr->tsig);
 		// the size should still be the same
 		/*! \todo [TSIG] Enable assert when API is complete. */
 //		assert(xfr->prev_digest_size == 
@@ -3033,20 +3033,9 @@ int knot_ns_answer_ixfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 
 	uint8_t *wire = NULL;
 	size_t size = 0;
-	
-	// parse rest of the packet (we need the Authority record)
-	int ret = knot_packet_parse_rest(xfr->query);
-	if (ret != KNOT_EOK) {
-		dbg_ns("Failed to parse rest of the packet. Reply FORMERR.\n");
-		knot_ns_error_response_full(nameserver, xfr->response,
-		                            KNOT_RCODE_FORMERR, wire, &size);
-
-		ret = xfr->send(xfr->session, &xfr->addr, wire, size);
-		knot_packet_free(&xfr->response);
-		return ret;
-	}
 
 	// check if the zone has contents
+	int ret = KNOT_EOK;
 	if (knot_zone_contents(xfr->zone) == NULL) {
 		dbg_ns("Zone expired or not bootstrapped. Reply SERVFAIL.\n");
 		knot_ns_error_response_full(nameserver, xfr->response,
