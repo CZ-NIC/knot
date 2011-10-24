@@ -2000,8 +2000,8 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 			assert(0);
 			res = knot_tsig_sign(xfr->wire, &real_size,
 			               xfr->wire_size, xfr->prev_digest, 
-			               xfr->prev_digest_size, xfr->tsig, NULL,
-			               NULL, 0);
+			               xfr->prev_digest_size, xfr->tsig,
+			               NULL);
 		} else {
 			/* Add key, digest and digest length. */
 			assert(0);
@@ -2009,8 +2009,8 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 			                          xfr->wire_size, 
 			                          xfr->prev_digest,
 			                          xfr->prev_digest_size,
-			                          xfr->tsig, NULL,
-			                          NULL, 0);
+			                          xfr->tsig,
+			                          NULL);
 		}
 		
 		if (res != KNOT_EOK) {

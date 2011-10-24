@@ -59,6 +59,7 @@
 //#define KNOT_NS_DEBUG
 //#define KNOT_XFRIN_DEBUG
 //#define KNOT_DDNS_DEBUG
+//#define KNOT_TSIG_DEBUG
 
 /*!
  * \brief Dumps RDATA of the given type.
@@ -705,6 +706,45 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 #define dbg_ddns_hex_verb(data, len)
 #define dbg_ddns_detail(msg...)
 #define dbg_ddns_hex_detail(data, len)
+#endif
+
+#ifdef KNOT_TSIG_DEBUG
+
+/* Brief messages. */
+#ifdef DEBUG_ENABLE_BRIEF
+#define dbg_tsig(msg...) fprintf(stderr, msg)
+#define dbg_tsig_hex(data, len)  hex_print((data), (len))
+#else
+#define dbg_tsig(msg...)
+#define dbg_tsig_hex(data, len)
+#endif
+
+/* Verbose messages. */
+#ifdef DEBUG_ENABLE_VERBOSE
+#define dbg_tsig_verb(msg...) fprintf(stderr, msg)
+#define dbg_tsig_hex_verb(data, len)  hex_print((data), (len))
+#else
+#define dbg_tsig_verb(msg...)
+#define dbg_tsig_hex_verb(data, len)
+#endif
+
+/* Detail messages. */
+#ifdef DEBUG_ENABLE_DETAILS
+#define dbg_tsig_detail(msg...) fprintf(stderr, msg)
+#define dbg_tsig_hex_detail(data, len)  hex_print((data), (len))
+#else
+#define dbg_tsig_detail(msg...)
+#define dbg_tsig_hex_detail(data, len)
+#endif
+
+/* No messages. */
+#else
+#define dbg_tsig(msg...)
+#define dbg_tsig_hex(data, len)
+#define dbg_tsig_verb(msg...)
+#define dbg_tsig_hex_verb(data, len)
+#define tsig(msg...)
+#define dbg_tsig_hex_detail(data, len)
 #endif
 
 /******************************************************************************/

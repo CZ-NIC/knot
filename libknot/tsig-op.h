@@ -57,7 +57,6 @@
 int knot_tsig_sign(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
                    const uint8_t *request_mac, size_t request_mac_len,
                    const knot_rrset_t *tsig_rr,
-                   uint8_t **digest, size_t *digest_len,
                    const knot_key_t *key);
 
 /*!
@@ -84,8 +83,7 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
  */
 int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
                         const uint8_t *prev_digest, size_t prev_digest_len,
-                        const knot_rrset_t *tsig_rr, const knot_key_t *key,
-                        uint8_t **digest, size_t *digest_len);
+                        const knot_rrset_t *tsig_rr, const knot_key_t *key);
 
 /*!
  * \brief Checks incoming request.

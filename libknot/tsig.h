@@ -98,6 +98,7 @@ enum tsig_consts {
 int tsig_rdata_set_alg_name(knot_rrset_t *tsig, knot_dname_t *alg_name);
 int tsig_rdata_set_alg(knot_rrset_t *tsig, tsig_algorithm_t alg);
 int tsig_rdata_set_time_signed(knot_rrset_t *tsig, uint64_t time);
+int tsig_rdata_store_current_time(knot_rrset_t *tsig);
 int tsig_rdata_set_fudge(knot_rrset_t *tsig, uint16_t fudge);
 int tsig_rdata_set_mac(knot_rrset_t *tsig, uint16_t length,
                        const uint8_t *mac);
@@ -114,12 +115,11 @@ const uint16_t *tsig_rdata_mac(const knot_rrset_t *tsig);
 uint16_t tsig_rdata_orig_id(const knot_rrset_t *tsig);
 uint16_t tsig_rdata_error(const knot_rrset_t *tsig);
 const uint16_t *tsig_rdata_other_data(const knot_rrset_t *tsig);
+size_t tsig_rdata_tsig_variables_length(const knot_rrset_t *tsig);
 
 int tsig_alg_from_name(const knot_dname_t *name);
 
 uint16_t tsig_alg_digest_length(tsig_algorithm_t alg);
-
-//k typu algoritmu vratit velikost digestu
 
 #endif /* _KNOT_TSIG_H_ */
 
