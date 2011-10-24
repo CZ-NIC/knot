@@ -203,6 +203,7 @@ static int knot_tsig_wire_write_timers(uint8_t *wire,
 int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
                    size_t msg_max_len, const uint8_t *request_mac,
                    size_t request_mac_len,
+		   uint8_t **digest, size_t *digest_len,
 		   const knot_key_t *key)
 {
 	if (!msg || !msg_len || !key) {
@@ -245,12 +246,9 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 		return ret;
 	}
 
-	uint8_t *digest = NULL;
-	size_t digest_len = 0;
-
 	/* Compute digest. */
-	ret = knot_tsig_compute_digest(tmp_tsig, wire, wire_len,
-	                               &digest, &digest_len, key);
+	ret = knot_tsig_compute_digest(tsig_rr, wire, wire_len,
+	                               digest, digest_len, key);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -259,7 +257,7 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 
 	/* Set the digest. */
 	size_t tsig_wire_len = 0;
-	tsig_rdata_set_mac(tmp_tsig, digest_len, digest);
+	tsig_rdata_set_mac(tmp_tsig, *digest_len, *digest);
 	ret = knot_rrset_to_wire(tmp_tsig, msg + *msg_len,
 	                         msg_max_len - *msg_len, &tsig_wire_len);
 	if (ret != KNOT_EOK) {
@@ -278,6 +276,7 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 
 int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
                         const uint8_t *prev_digest, size_t prev_digest_len,
+                        uint8_t **digest, size_t *digest_len,
                         const knot_key_t *key)
 {
 	if (!msg || !msg_len || !key || !key) {
@@ -309,12 +308,9 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	/* Write timers. */
 	knot_tsig_wire_write_timers(msg + prev_digest_len + *msg_len, tmp_tsig);
 
-	uint8_t *digest = NULL;
-	size_t digest_len = 0;
-
 	int ret = 0;
 	ret = knot_tsig_compute_digest(tmp_tsig, wire, wire_len,
-	                               &digest, &digest_len, key);
+	                               digest, digest_len, key);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -322,7 +318,7 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	free(wire);
 
 	/* Set the MAC. */
-	tsig_rdata_set_mac(tmp_tsig, digest_len, digest);
+	tsig_rdata_set_mac(tmp_tsig, *digest_len, *digest);
 
 	size_t tsig_wire_size = 0;
 	ret = knot_rrset_to_wire(tmp_tsig, msg + *msg_len,
