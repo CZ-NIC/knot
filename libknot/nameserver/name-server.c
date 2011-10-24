@@ -1997,7 +1997,7 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 			assert(0);
 			res = knot_tsig_sign(xfr->wire, &real_size,
 			               xfr->wire_size, xfr->prev_digest, 
-			               xfr->prev_digest_size, xfr->tsig,
+			               xfr->prev_digest_size,
 			               xfr->tsig_key);
 		} else {
 			/* Add key, digest and digest length. */
@@ -2006,7 +2006,6 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 			                          xfr->wire_size, 
 			                          xfr->prev_digest,
 			                          xfr->prev_digest_size,
-			                          xfr->tsig,
 			                          xfr->tsig_key);
 		}
 		
@@ -2027,9 +2026,10 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 	if (add_tsig && xfr->tsig_key &&
 	    (xfr->type == XFR_TYPE_AOUT || xfr->type == XFR_TYPE_IOUT)) {
 		res = knot_tsig_sign(xfr->wire, &real_size,
-		               xfr->wire_size, xfr->prev_digest, 
-		               xfr->prev_digest_size, xfr->tsig,
-		               xfr->tsig_key);
+		                     xfr->wire_size,
+		                     (const uint8_t *)tsig_rdata_mac(xfr->tsig), 
+		                     tsig_alg_digest_length(tsig_rdata_alg(xfr->tsig)),
+		                     xfr->tsig_key);
 	}
 
 	// Send the response

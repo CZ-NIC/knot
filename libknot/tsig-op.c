@@ -205,11 +205,12 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
                    size_t request_mac_len,
 		   const knot_key_t *key)
 {
-	if (!msg || !msg_len || !tsig_rr || !key) {
+	if (!msg || !msg_len || !key) {
 		return KNOT_EBADARG;
 	}
 
 	/* Create tmp TSIG. */
+	int ret = KNOT_EOK;
 	knot_rrset_t *tmp_tsig =
 		knot_rrset_new(key->name, KNOT_RRTYPE_TSIG, KNOT_CLASS_ANY, 0);
 	if (!tmp_tsig) {
@@ -248,7 +249,7 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	size_t digest_len = 0;
 
 	/* Compute digest. */
-	ret = knot_tsig_compute_digest(tsig_rr, wire, wire_len,
+	ret = knot_tsig_compute_digest(tmp_tsig, wire, wire_len,
 	                               &digest, &digest_len, key);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -277,9 +278,9 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 
 int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
                         const uint8_t *prev_digest, size_t prev_digest_len,
-			const knot_key_t *key)
+                        const knot_key_t *key)
 {
-	if (!msg || !msg_len || !tsig_rr || !key || !key) {
+	if (!msg || !msg_len || !key || !key) {
 		return KNOT_EBADARG;
 	}
 
@@ -311,6 +312,7 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	uint8_t *digest = NULL;
 	size_t digest_len = 0;
 
+	int ret = 0;
 	ret = knot_tsig_compute_digest(tmp_tsig, wire, wire_len,
 	                               &digest, &digest_len, key);
 	if (ret != KNOT_EOK) {
