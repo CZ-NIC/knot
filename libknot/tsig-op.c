@@ -204,18 +204,17 @@ static int knot_tsig_wire_write_timers(uint8_t *wire,
 int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
                    size_t msg_max_len, const uint8_t *request_mac,
                    size_t request_mac_len,
-                   const knot_rrset_t *tsig_rr,
-                   const knot_key_t *key)
+		   const knot_key_t *key)
 {
 	if (!msg || !msg_len || !tsig_rr || !key) {
 		return KNOT_EBADARG;
 	}
 
 	/* Create tmp TSIG. */
-	knot_rrset_t *tmp_tsig = NULL;
-	int ret = knot_rrset_deep_copy(tsig_rr, &tmp_tsig);
-	if (ret != KNOT_EOK) {
-		return ret;
+	knot_rrset_t *tmp_tsig =
+		knot_rrset_new(key->name, KNOT_RRTYPE_TSIG, KNOT_CLASS_ANY, 0);
+	if (!tmp_tsig) {
+		return KNOT_ENOMEM;
 	}
 
 	tsig_rdata_store_current_time(tmp_tsig);
