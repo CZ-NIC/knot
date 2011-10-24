@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <assert.h>
+#include <time.h>
 
 #include "tsig.h"
 #include "util/error.h"
@@ -131,7 +132,7 @@ int tsig_rdata_set_mac(knot_rrset_t *tsig, uint16_t length, const uint8_t *mac)
 	/* Write the length. */
 	wire[0] = length;
 	/* Copy the actual MAC. */
-	memcpy(wire + 1, mac, sizeof(uint8_t) * length);
+	memcpy((uint8_t *)(wire + 1), mac, sizeof(uint8_t) * length);
 	knot_rdata_item_set_raw_data(rdata, 3, wire);
 
 	return KNOT_EOK;
@@ -413,5 +414,39 @@ uint16_t tsig_alg_digest_length(tsig_algorithm_t alg)
 		default:
 			return 0;
 	} /* switch(alg) */
+}
+
+size_t tsig_rdata_tsig_variables_length(const knot_rrset_t *tsig)
+{
+	/* Key name, Algorithm name and Other data have variable lengths. */
+	const knot_dname_t *key_name = knot_rrset_owner(tsig);
+	if (!key_name) {
+		return 0;
+	}
+
+	const knot_dname_t *alg_name = tsig_rdata_alg_name(tsig);
+	if (!alg_name) {
+		return 0;
+	}
+
+	const uint16_t *other_data = tsig_rdata_other_data(tsig);
+	if (!other_data) {
+		return 0;
+	}
+
+	return knot_dname_size(key_name) + knot_dname_size(alg_name) +
+	       other_data[0] + 1 + KNOT_TSIG_VARIABLES_LENGTH;
+}
+
+
+int tsig_rdata_store_current_time(knot_rrset_t *tsig)
+{
+	if (!tsig) {
+		return KNOT_EBADARG;
+	}
+	time_t curr_time = time(NULL);
+	/*!< \todo bleeding eyes. */
+	tsig_rdata_set_time_signed(tsig, (uint64_t)curr_time);
+	return KNOT_EOK;
 }
 
