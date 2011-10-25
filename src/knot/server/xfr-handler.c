@@ -313,10 +313,15 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 			dbg_xfr("xfr: validating TSIG...\n");
 			xfr->tsig_key = key;
 			xfr->tsig_size = tsig_wire_maxsize(key);
-			xfr->digest_size = 0;
 			xfr->digest_max_size = tsig_alg_digest_length(
 			                        key->algorithm);
 			xfr->digest = malloc(xfr->digest_max_size);
+			
+			/* Copy MAC from query. */
+			const uint8_t* mac = tsig_rdata_mac(tsig_rr);
+			size_t mac_len = tsig_rdata_mac_length(tsig_rr);
+			memcpy(xfr->digest, mac, mac_len);
+			xfr->digest_size = mac_len;
 			
 			/* Check query TSIG. */
 			ret = knot_tsig_server_check(tsig_rr,
