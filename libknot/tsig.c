@@ -137,16 +137,17 @@ int tsig_rdata_set_mac(knot_rrset_t *tsig, uint16_t length, const uint8_t *mac)
 	assert(knot_rdata_item_count(rdata) >= 4);
 
 	/* Create the wire format. */
-	uint16_t *wire = malloc(sizeof(uint8_t) * length + sizeof(uint16_t));
+	uint16_t *wire = malloc(sizeof(uint8_t) * length + 2 * sizeof(uint16_t));
 	if (!wire) {
 		ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
 
 	/* Write the length. */
-	wire[0] = length;
+	wire[1] = length;
+	wire[0] = length + 2;
 	/* Copy the actual MAC. */
-	memcpy((uint8_t *)(wire + 1), mac, sizeof(uint8_t) * length);
+	memcpy((uint8_t *)(wire + 2), mac, sizeof(uint8_t) * length);
 	knot_rdata_item_set_raw_data(rdata, 3, wire);
 
 	return KNOT_EOK;
@@ -222,16 +223,17 @@ int tsig_rdata_set_other_data(knot_rrset_t *tsig, uint16_t length,
 	assert(knot_rdata_item_count(rdata) >= 6);
 
 	/* Create the wire format. */
-	uint16_t *wire = malloc(sizeof(uint8_t) * length + sizeof(uint16_t));
+	uint16_t *wire = malloc(sizeof(uint8_t) * length + 2 * sizeof(uint16_t));
 	if (!wire) {
 		ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
 
 	/* Write the length. */
-	wire[0] = length;
+	wire[1] = length;
+	wire[0] = length + 2;
 	/* Copy the actual data. */
-	memcpy(wire + 1, other_data, sizeof(uint8_t) * length);
+	memcpy(wire + 2, other_data, sizeof(uint8_t) * length);
 	knot_rdata_item_set_raw_data(rdata, 6, wire);
 
 	return KNOT_EOK;

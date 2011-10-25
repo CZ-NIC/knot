@@ -86,8 +86,11 @@ enum tsig_consts {
  *  KNOT_TSIG_EBADTIME = -18
  */
 
+/*!
+ * \note Uses the given domain name, do not deallocate it!
+ */
 int tsig_rdata_set_alg_name(knot_rrset_t *tsig, knot_dname_t *alg_name);
-int tsig_rdata_set_alg(knot_rrset_t *tsig, tsig_algorithm_t alg);
+//int tsig_rdata_set_alg(knot_rrset_t *tsig, tsig_algorithm_t alg);
 int tsig_rdata_set_time_signed(knot_rrset_t *tsig, uint64_t time);
 int tsig_rdata_store_current_time(knot_rrset_t *tsig);
 int tsig_rdata_set_fudge(knot_rrset_t *tsig, uint16_t fudge);
