@@ -320,14 +320,20 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 			/* Copy MAC from query. */
 			const uint8_t* mac = tsig_rdata_mac(tsig_rr);
 			size_t mac_len = tsig_rdata_mac_length(tsig_rr);
-			memcpy(xfr->digest, mac, mac_len);
-			xfr->digest_size = mac_len;
+			if (mac_len > xfr->digest_max_size) {
+				ret = KNOT_EMALF;
+			} else {
+				memcpy(xfr->digest, mac, mac_len);
+				xfr->digest_size = mac_len;
+				
+				/* Check query TSIG. */
+				ret = knot_tsig_server_check(
+						tsig_rr,
+						knot_packet_wireformat(qry),
+						knot_packet_size(qry),
+						key);
+			}
 			
-			/* Check query TSIG. */
-			ret = knot_tsig_server_check(tsig_rr,
-						     knot_packet_wireformat(qry),
-						     knot_packet_size(qry),
-						     key);
 			/* Evaluate TSIG check results. */
 			switch(ret) {
 			case KNOT_EOK:
@@ -895,6 +901,10 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 			}
 		}
 		
+		if (xfr.digest) {
+			free(xfr.digest);
+			xfr.digest = xfr.digest_max_size = 0;
+		}
 		free(xfr.query->wireformat);
 		xfr.query->wireformat = 0;
 		knot_packet_free(&xfr.query); /* Free query. */
@@ -964,6 +974,10 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 				                zname,
 				                r_addr, r_port);
 			}
+		}
+		if (xfr.digest) {
+			free(xfr.digest);
+			xfr.digest = xfr.digest_max_size = 0;
 		}
 		free(xfr.query->wireformat);
 		knot_packet_free(&xfr.query); /* Free query. */
