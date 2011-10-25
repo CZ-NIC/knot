@@ -327,7 +327,7 @@ const uint8_t *tsig_rdata_mac(const knot_rrset_t *tsig)
 		return 0;
 	}
 
-	return (uint8_t*)(knot_rdata_item(rdata, 3)->raw_data + 1);
+	return (uint8_t*)(knot_rdata_item(rdata, 3)->raw_data + 2);
 }
 
 size_t tsig_rdata_mac_length(const knot_rrset_t *tsig)
@@ -341,7 +341,8 @@ size_t tsig_rdata_mac_length(const knot_rrset_t *tsig)
 		return 0;
 	}
 
-	return knot_rdata_item(rdata, 3)->raw_data[0];
+	return knot_wire_read_u16(
+	        (uint8_t *)(knot_rdata_item(rdata, 3)->raw_data + 1));
 }
 
 uint16_t tsig_rdata_orig_id(const knot_rrset_t *tsig)
