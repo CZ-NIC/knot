@@ -903,7 +903,8 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		
 		if (xfr.digest) {
 			free(xfr.digest);
-			xfr.digest = xfr.digest_max_size = 0;
+			xfr.digest_max_size = 0;
+			xfr.digest = 0;
 		}
 		free(xfr.query->wireformat);
 		xfr.query->wireformat = 0;
@@ -977,7 +978,8 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		}
 		if (xfr.digest) {
 			free(xfr.digest);
-			xfr.digest = xfr.digest_max_size = 0;
+			xfr.digest = 0;
+			xfr.digest_max_size = 0;
 		}
 		free(xfr.query->wireformat);
 		knot_packet_free(&xfr.query); /* Free query. */
