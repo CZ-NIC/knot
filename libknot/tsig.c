@@ -307,7 +307,7 @@ uint16_t tsig_rdata_fudge(const knot_rrset_t *tsig)
 	return knot_wire_read_u16((uint8_t *)wire);
 }
 
-const uint16_t *tsig_rdata_mac(const knot_rrset_t *tsig)
+const uint8_t *tsig_rdata_mac(const knot_rrset_t *tsig)
 {
 	/*!< \note How about assert. Or maybe change API??? */
 	if (!tsig) {
@@ -323,7 +323,21 @@ const uint16_t *tsig_rdata_mac(const knot_rrset_t *tsig)
 		return 0;
 	}
 
-	return knot_rdata_item(rdata, 3)->raw_data;
+	return (uint8_t*)(knot_rdata_item(rdata, 3)->raw_data + 1);
+}
+
+size_t tsig_rdata_mac_length(const knot_rrset_t *tsig)
+{
+	if (!tsig) {
+		return 0;
+	}
+
+	const knot_rdata_t *rdata = knot_rrset_rdata(tsig);
+	if (!rdata || knot_rdata_item_count(rdata) < 4) {
+		return 0;
+	}
+
+	return knot_rdata_item(rdata, 3)->raw_data[0];
 }
 
 uint16_t tsig_rdata_orig_id(const knot_rrset_t *tsig)
