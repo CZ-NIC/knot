@@ -11,6 +11,18 @@
 #include "rrset.h"
 #include "rdata.h"
 
+/*! \brief TSIG algorithms table. */
+#define TSIG_ALG_TABLE_SIZE 7
+static knot_lookup_table_t tsig_alg_table[TSIG_ALG_TABLE_SIZE] = {
+	{ KNOT_TSIG_ALG_GSS_TSIG, "gss-tsig" },
+	{ KNOT_TSIG_ALG_HMAC_MD5, "HMAC-MD5.SIG-ALG.REG.INT" },
+	{ KNOT_TSIG_ALG_HMAC_SHA1, "hmac-sha1" },
+	{ KNOT_TSIG_ALG_HMAC_SHA224, "hmac-sha224" },
+	{ KNOT_TSIG_ALG_HMAC_SHA256, "hmac-sha256" },
+	{ KNOT_TSIG_ALG_HMAC_SHA384, "hmac-sha384" },
+	{ KNOT_TSIG_ALG_HMAC_SHA512, "hmac-sha512" }
+};
+
 int tsig_rdata_init(knot_rrset_t *tsig)
 {
 	if (!tsig) {
@@ -454,5 +466,34 @@ int tsig_rdata_store_current_time(knot_rrset_t *tsig)
 	/*!< \todo bleeding eyes. */
 	tsig_rdata_set_time_signed(tsig, (uint64_t)curr_time);
 	return KNOT_EOK;
+}
+
+const char* tsig_alg_to_str(tsig_algorithm_t alg)
+{
+	for (unsigned i = 0; i < TSIG_ALG_TABLE_SIZE; ++i) {
+		if (tsig_alg_table[i].id == alg) {
+			return tsig_alg_table[i].name;
+		}
+	}
+
+	return "";
+}
+
+size_t tsig_wire_maxsize(const knot_key_t* key)
+{
+	return knot_dname_length(key->name) +
+	sizeof(uint16_t) + /* TYPE */
+	sizeof(uint16_t) + /* CLASS */
+	sizeof(uint32_t) + /* TTL */
+	sizeof(uint16_t) + /* RDLENGTH */
+	strlen(tsig_alg_from_name(key->algorithm)) + /* Alg. name */
+	6 * sizeof(uint8_t) + /* Time signed */
+	sizeof(uint16_t) + /* Fudge */
+	sizeof(uint16_t) + /* MAC size */
+	tsig_alg_digest_length(key->algorithm) + /* MAC */
+	sizeof(uint16_t) + /* Original ID */
+	sizeof(uint16_t) + /* Error */
+	sizeof(uint16_t) + /* Other len */
+	6* sizeof(uint8_t); /* uint48_t in case of BADTIME RCODE */
 }
 
