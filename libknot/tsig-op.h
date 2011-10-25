@@ -40,11 +40,17 @@
  * the resulting TSIG RR to the message wire format and accordingly adjusts
  * the message size.
  *
+ * \note This function does not save the new digest to the 'digest' parameter
+ *       unless everything went OK. This allows to sent the same buffer to
+ *       the 'request_mac' and 'digest' parameters.
+ *
  * \param msg Message to be signed.
  * \param msg_len Size of the message in bytes.
  * \param msg_max_len Maximum size of the message in bytes.
  * \param request_mac Request MAC. (may be NULL).
  * \param request_mac_len Size of the request MAC in bytes.
+ * \param digest Buffer to save the digest in.
+ * \param digest_len In: size of the buffer. Out: real size of the digest saved.
  * \param tsig_rr RRSet containing the TSIG RR to be used. Data from the RR are
  *                appended to the signed message.
  *
@@ -56,7 +62,7 @@
  */
 int knot_tsig_sign(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
                    const uint8_t *request_mac, size_t request_mac_len,
-                   uint8_t **digest, size_t *digest_len,
+                   uint8_t *digest, size_t *digest_len,
                    const knot_key_t *key);
 
 /*!
@@ -67,11 +73,17 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
  * the resulting TSIG RR to the message wire format and accordingly adjusts
  * the message size.
  *
+ * \note This function does not save the new digest to the 'digest' parameter
+ *       unless everything went OK. This allows to sent the same buffer to
+ *       the 'request_mac' and 'digest' parameters.
+ *
  * \param msg Message to be signed.
  * \param msg_len Size of the message in bytes.
  * \param msg_max_len Maximum size of the message in bytes.
  * \param prev_digest Previous digest sent by the server in the session.
  * \param prev_digest_len Size of the previous digest in bytes.
+ * \param digest Buffer to save the digest in.
+ * \param digest_len In: size of the buffer. Out: real size of the digest saved.
  * \param tsig_rr RRSet containing the TSIG RR to be used. Data from the RR are
  *                appended to the signed message.
  *
@@ -83,8 +95,8 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
  */
 int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
                         const uint8_t *prev_digest, size_t prev_digest_len,
-                        uint8_t **digest, size_t *digest_len,
-			const knot_key_t *key);
+                        uint8_t *digest, size_t *digest_len,
+                        const knot_key_t *key);
 
 /*!
  * \brief Checks incoming request.
