@@ -492,6 +492,13 @@ size_t tsig_rdata_tsig_variables_length(const knot_rrset_t *tsig)
 		return 0;
 	}
 
+//	dbg_tsig_detail("key_name: %.*s (size: %u) alg_name: %.*s (size: %u)\n", knot_dname_size(key_name),
+//	                key_name->name, alg_name->size,  alg_name->name,
+//	                key_name->size, alg_name->size);
+
+//	dbg_tsig_hex_detail(key_name->name, key_name->size);
+//	dbg_tsig_hex_detail(alg_name->name, alg_name->size);
+
 	uint16_t other_data_length = tsig_rdata_other_data_length(tsig);
 
 	return knot_dname_size(key_name) + knot_dname_size(alg_name) +

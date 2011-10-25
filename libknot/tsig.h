@@ -72,7 +72,8 @@ enum tsig_consts {
 	                             + sizeof(uint32_t)	// ttl
 	                             + 6		// time signed
 	                             + sizeof(uint16_t)	// fudge
-	                             + sizeof(uint16_t),// error
+	                             + sizeof(uint16_t)	// error
+	                             + sizeof(uint16_t),// other data length
 	KNOT_TSIG_TIMERS_LENGTH = sizeof(uint16_t)	//fugde
 	                          + 6			// time signed
 };
