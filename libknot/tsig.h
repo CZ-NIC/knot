@@ -65,16 +65,6 @@ enum tsig_algorithm_digest_length {
 	KNOT_TSIG_ALG_DIG_LENGTH_SHA512 = 0
 };
 
-static knot_lookup_table_t tsig_algorithm_table[] = {
-	{ KNOT_TSIG_ALG_GSS_TSIG, "gss-tsig" },
-	{ KNOT_TSIG_ALG_HMAC_MD5, "HMAC-MD5.SIG-ALG.REG.INT" },
-	{ KNOT_TSIG_ALG_HMAC_SHA1, "hmac-sha1" },
-	{ KNOT_TSIG_ALG_HMAC_SHA224, "hmac-sha224" },
-	{ KNOT_TSIG_ALG_HMAC_SHA256, "hmac-sha256" },
-	{ KNOT_TSIG_ALG_HMAC_SHA384, "hmac-sha384" },
-	{ KNOT_TSIG_ALG_HMAC_SHA512, "hmac-sha512" }
-};
-
 enum tsig_consts {
 	KNOT_TSIG_ITEM_COUNT = 7,
 	KNOT_TSIG_VARIABLES_LENGTH = sizeof(uint16_t)	// class
@@ -119,7 +109,26 @@ size_t tsig_rdata_tsig_variables_length(const knot_rrset_t *tsig);
 
 int tsig_alg_from_name(const knot_dname_t *name);
 
+/*!
+ * \brief Convert TSIG algorithm identifier to name.
+ *
+ * \param alg TSIG algorithm identifier.
+ *
+ * \retval TSIG algorithm string name.
+ * \retval Empty string if undefined.
+ */
+const char* tsig_alg_to_str(tsig_algorithm_t alg);
+
 uint16_t tsig_alg_digest_length(tsig_algorithm_t alg);
+
+/*!
+ * \brief Return TSIG RRSET maximum wire size for given algorithm.
+ *
+ * \param key Signing key descriptor.
+ *
+ * \return RRSET wire size.
+ */
+size_t tsig_wire_maxsize(const knot_key_t *key);
 
 #endif /* _KNOT_TSIG_H_ */
 
