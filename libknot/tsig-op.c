@@ -407,7 +407,7 @@ static int knot_tsig_compute_digest(const uint8_t *wire, size_t wire_len,
 			return KNOT_ENOTSUP;
 	} /* switch */
 
-	HMAC_Update(&ctx, wire, wire_len - 1);
+	HMAC_Update(&ctx, wire, wire_len);
 	HMAC_Final(&ctx, digest, digest_len);
 
 	return KNOT_EOK;
@@ -576,7 +576,7 @@ int knot_tsig_create_sign_wire(const uint8_t *msg, size_t msg_len,
 		return KNOT_ENOMEM;
 	}
 
-	memset(wire, 255, wire_len);
+	memset(wire, 0, wire_len);
 
 	/* Copy the request MAC - should work even if NULL. */
 	dbg_tsig("Copying request mac.\n");
@@ -599,7 +599,7 @@ int knot_tsig_create_sign_wire(const uint8_t *msg, size_t msg_len,
 	}
 
 	/* Compute digest. */
-	ret = knot_tsig_compute_digest(wire, wire_len - 1,
+	ret = knot_tsig_compute_digest(wire, wire_len,
 	                               digest, digest_len, key);
 	if (ret != KNOT_EOK) {
 		dbg_tsig("TSIG: create wire: failed to compute digest: %s\n",
@@ -878,7 +878,7 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
 	dbg_tsig("TSIG: given digest: ");
 	dbg_tsig_hex(tsig_mac, mac_length);
 
-	if (strncasecmp((char *)(tsig_mac + 1), (char *)digest_tmp,
+	if (strncasecmp((char *)(tsig_mac), (char *)digest_tmp,
 	                mac_length) != 0) {
 		return KNOT_TSIG_EBADSIG;
 	}
