@@ -430,6 +430,26 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 	if (ret != KNOT_EOK) {
 		xfer_finished = 1;
 	}
+	
+	/* IXFR refused, try again with AXFR. */
+	knot_zone_t *zone = (knot_zone_t *)data->zone;
+	if (zone && data->type == XFR_TYPE_IIN && ret == KNOT_EXFRREFUSED) {
+		log_server_notice("IXFR/IN failed, attempting to use "
+				  "AXFR/IN instead.\n");
+		size_t bufsize = data->wire_size;
+		ret = xfrin_create_axfr_query(zone->name, data->wire,
+					      &bufsize);
+		/* Send AXFR/IN query. */
+		if (ret == KNOTD_EOK) {
+			ret = data->send(data->session, &data->addr,
+					 data->wire, bufsize);
+			/* Switch to AIN type XFR and return now. */
+			if (ret == bufsize) {
+				data->type = XFR_TYPE_AIN;
+				return KNOTD_EOK;
+			}
+		}
+	}
 
 	/* Handle errors. */
 	if (ret < 0 && ret != KNOT_ENOXFR) {
@@ -437,7 +457,6 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 		                 data->type == XFR_TYPE_AIN ? 'A' : 'I',
 		                 knot_strerror(ret));
 	}
-
 
 	/* Check finished zone. */
 	if (xfer_finished) {
