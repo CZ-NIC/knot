@@ -309,13 +309,16 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 
 		/* Validate with TSIG. */
 		if (key) {
+			/* Prepare variables for TSIG */
 			dbg_xfr("xfr: validating TSIG...\n");
 			xfr->tsig_key = key;
-			xfr->tsig = tsig_rr; /* Will be destroyed with xfr->query free. */
-			/*! \todo [TSIG] How to prepare TSIG RR for appending
-			 *        in case of error response?
-			 */
+			xfr->tsig_size = tsig_wire_maxsize(key);
+			xfr->digest_size = 0;
+			xfr->digest_max_size = tsig_alg_digest_length(
+			                        key->algorithm);
+			xfr->digest = malloc(xfr->digest_max_size);
 			
+			/* Check query TSIG. */
 			ret = knot_tsig_server_check(tsig_rr,
 						     knot_packet_wireformat(qry),
 						     knot_packet_size(qry),
