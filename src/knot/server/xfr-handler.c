@@ -335,6 +335,8 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 						knot_packet_wireformat(qry),
 						knot_packet_size(qry),
 						key);
+				dbg_xfr("knot_tsig_server_check() returned %s\n",
+					knot_strerror(ret));
 			}
 			
 			/* Evaluate TSIG check results. */
@@ -343,6 +345,9 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 				*rcode = KNOT_RCODE_NOERROR;
 			case KNOT_TSIG_EBADKEY:
 			case KNOT_TSIG_EBADSIG:
+				// delete the TSIG key so that the error
+				// response is not signed
+				xfr->tsig_key = NULL;
 			case KNOT_TSIG_EBADTIME:
 				/*! \note [TSIG] Set TSIG rcode in TSIG RR. */
 				

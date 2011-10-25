@@ -248,10 +248,12 @@ const knot_dname_t *tsig_rdata_alg_name(const knot_rrset_t *tsig)
 
 	const knot_rdata_t *rdata = knot_rrset_rdata(tsig);
 	if (!rdata) {
+		dbg_tsig("TSIG: rdata: alg name: no rdata.\n");
 		return NULL;
 	}
 
 	if (knot_rdata_item_count(rdata) < 1) {
+		dbg_tsig("TSIG: rdata: alg name: not enough items.\n");
 		return NULL;
 	}
 

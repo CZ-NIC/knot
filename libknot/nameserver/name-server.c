@@ -2944,6 +2944,7 @@ dbg_ns_exec(
 
 int knot_ns_xfr_send_error(knot_ns_xfr_t *xfr, knot_rcode_t rcode)
 {
+	/*! \todo Handle TSIG errors differently. */
 	knot_response_set_rcode(xfr->response, rcode);
 	
 	/*! \todo Probably rename the function. */
