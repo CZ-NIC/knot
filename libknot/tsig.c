@@ -10,9 +10,10 @@
 #include "util/utils.h"
 #include "rrset.h"
 #include "rdata.h"
+#include "dname.h"
 
 /*! \brief TSIG algorithms table. */
-#define TSIG_ALG_TABLE_SIZE 7
+#define TSIG_ALG_TABLE_SIZE 8
 static knot_lookup_table_t tsig_alg_table[TSIG_ALG_TABLE_SIZE] = {
 	{ KNOT_TSIG_ALG_GSS_TSIG, "gss-tsig" },
 	{ KNOT_TSIG_ALG_HMAC_MD5, "HMAC-MD5.SIG-ALG.REG.INT" },
@@ -20,7 +21,8 @@ static knot_lookup_table_t tsig_alg_table[TSIG_ALG_TABLE_SIZE] = {
 	{ KNOT_TSIG_ALG_HMAC_SHA224, "hmac-sha224" },
 	{ KNOT_TSIG_ALG_HMAC_SHA256, "hmac-sha256" },
 	{ KNOT_TSIG_ALG_HMAC_SHA384, "hmac-sha384" },
-	{ KNOT_TSIG_ALG_HMAC_SHA512, "hmac-sha512" }
+	{ KNOT_TSIG_ALG_HMAC_SHA512, "hmac-sha512" },
+	{ KNOT_TSIG_ALG_NULL, NULL }
 };
 
 int tsig_rdata_init(knot_rrset_t *tsig)
@@ -419,7 +421,7 @@ int tsig_alg_from_name(const knot_dname_t *alg_name)
 	}
 
 	knot_lookup_table_t *found =
-		knot_lookup_by_name(tsig_algorithm_table, name);
+		knot_lookup_by_name(tsig_alg_table, name);
 
 	if (!found) {
 		return 0;
@@ -495,12 +497,14 @@ const char* tsig_alg_to_str(tsig_algorithm_t alg)
 
 size_t tsig_wire_maxsize(const knot_key_t* key)
 {
-	return knot_dname_length(key->name) +
+	size_t alg_name_size = strlen(tsig_alg_to_str(key->algorithm)) + 2;
+		
+	return knot_dname_size(key->name) +
 	sizeof(uint16_t) + /* TYPE */
 	sizeof(uint16_t) + /* CLASS */
 	sizeof(uint32_t) + /* TTL */
 	sizeof(uint16_t) + /* RDLENGTH */
-	strlen(tsig_alg_from_name(key->algorithm)) + /* Alg. name */
+	alg_name_size + /* Alg. name */
 	6 * sizeof(uint8_t) + /* Time signed */
 	sizeof(uint16_t) + /* Fudge */
 	sizeof(uint16_t) + /* MAC size */
