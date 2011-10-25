@@ -107,13 +107,14 @@ typedef struct knot_ns_xfr {
 	
 	uint8_t *digest;     /*!< Buffer for counting digest. */
 	size_t digest_size;  /*!< Size of the digest. */
+	size_t digest_max_size; /*!< Size of the buffer. */
 	
 	/*! \brief Previous digest or request digest. 
 	 *
 	 *  Should be allocated before the transfer (known size).
 	 */
-	uint8_t *prev_digest;
-	size_t prev_digest_size; /*!< Size of previous digest in bytes. */
+//	uint8_t *prev_digest;
+//	size_t prev_digest_size; /*!< Size of previous digest in bytes. */
 	
 	/*! 
 	 * \brief Number of the packet currently assembled.
