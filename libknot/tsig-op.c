@@ -407,7 +407,7 @@ static int knot_tsig_compute_digest(const uint8_t *wire, size_t wire_len,
 			return KNOT_ENOTSUP;
 	} /* switch */
 
-	HMAC_Update(&ctx, wire, wire_len);
+	HMAC_Update(&ctx, wire, wire_len - 1);
 	HMAC_Final(&ctx, digest, digest_len);
 
 	return KNOT_EOK;
@@ -452,19 +452,27 @@ static int knot_tsig_write_tsig_variables(uint8_t *wire,
 
 	int offset = 0;
 
-	dbg_tsig_detail("Copying TSIG owner.\n");
 	memcpy(wire + offset, knot_dname_name(tsig_owner),
 	       sizeof(uint8_t) * knot_dname_size(tsig_owner));
+	dbg_tsig("TSIG: write variables: written owner (tsig alg): ",
+	         knot_rrset_class(tsig_rr));
+	dbg_tsig_hex_detail(wire + offset, knot_dname_size(tsig_owner));
 	offset += knot_dname_size(tsig_owner);
 
 	/*!< \todo which order? */
 
 	/* Copy class. */
 	knot_wire_write_u16(wire + offset, knot_rrset_class(tsig_rr));
+	dbg_tsig("TSIG: write variables: written CLASS: %u - ",
+	         knot_rrset_class(tsig_rr));
+	dbg_tsig_hex_detail(wire + offset, sizeof(uint16_t));
 	offset += sizeof(uint16_t);
 
 	/* Copy TTL - always 0. */
 	knot_wire_write_u32(wire + offset, knot_rrset_ttl(tsig_rr));
+	dbg_tsig("TSIG: write variables: written TTL: %u - ",
+	         knot_rrset_ttl(tsig_rr));
+	dbg_tsig_hex_detail(wire + offset, sizeof(uint32_t));
 	offset += sizeof(uint32_t);
 
 	/* Copy alg name. */
@@ -473,24 +481,35 @@ static int knot_tsig_write_tsig_variables(uint8_t *wire,
 		dbg_tsig("TSIG: write variables: no algorithm name.\n");
 		return KNOT_EBADARG;
 	}
+//	alg_name = knot_dname_new_from_str("HMAC-MD5.SIG-ALG.REG.INT.",
+					   //strlen("HMAC-MD5.SIG-ALG.REG.INT."),
+					   //NULL);
 
-	dbg_tsig_detail("Copying TSIG algorithm name.\n");
 	memcpy(wire + offset, knot_dname_name(alg_name),
 	       sizeof(uint8_t) * knot_dname_size(alg_name));
 	offset += knot_dname_size(alg_name);
+	dbg_tsig_detail("TSIG: write variables: written alg name: %s\n",
+		 knot_dname_to_str(alg_name));
 
 	/* Following data are written in network order. */
 	/* Time signed. */
 	knot_wire_write_u48(wire + offset, tsig_rdata_time_signed(tsig_rr));
 	offset += 6;
+	dbg_tsig_detail("TSIG: write variables: time signed: %llu - ",
+		        tsig_rdata_time_signed(tsig_rr));
+	dbg_tsig_hex_detail(wire + offset - 6, 6);
 	/* Fudge. */
 	knot_wire_write_u16(wire + offset, tsig_rdata_fudge(tsig_rr));
 	offset += sizeof(uint16_t);
+	dbg_tsig_detail("TSIG: write variables: fudge: %lu\n",
+		 tsig_rdata_fudge(tsig_rr));
 	/* TSIG error. */
 	knot_wire_write_u16(wire + offset, tsig_rdata_error(tsig_rr));
 	offset += sizeof(uint16_t);
-	/* Get other data - contains its length. */
-	const uint16_t *other_data = tsig_rdata_other_data(tsig_rr);
+	/* Get other data length. */
+	uint16_t other_data_length = tsig_rdata_other_data_length(tsig_rr);
+	/* Get other data. */
+	const uint8_t *other_data = tsig_rdata_other_data(tsig_rr);
 	if (!other_data) {
 		dbg_tsig("TSIG: write variables: no other data.\n");
 		return KNOT_EBADARG;
@@ -500,15 +519,12 @@ static int knot_tsig_write_tsig_variables(uint8_t *wire,
 	 * We cannot write the whole other_data, as it contains its length in
 	 * machine order.
 	 */
-	uint16_t other_data_length = other_data[1];
 	knot_wire_write_u16(wire + offset, other_data_length);
 	offset += sizeof(uint16_t);
 
 	/* Skip the length. */
-	other_data++;
 	dbg_tsig_detail("Copying other data.\n");
 	memcpy(wire + offset, other_data, other_data_length);
-	offset += sizeof(uint16_t);
 
 	return KNOT_EOK;
 }
@@ -560,14 +576,18 @@ int knot_tsig_create_sign_wire(const uint8_t *msg, size_t msg_len,
 		return KNOT_ENOMEM;
 	}
 
-	memset(wire, 0, wire_len);
+	memset(wire, 255, wire_len);
 
 	/* Copy the request MAC - should work even if NULL. */
 	dbg_tsig("Copying request mac.\n");
 	memcpy(wire, request_mac, sizeof(uint8_t) * request_mac_len);
+	dbg_tsig_detail("TSIG: create wire: request mac: ");
+	dbg_tsig_hex_detail(wire, request_mac_len);
 	/* Copy the original message. */
 	dbg_tsig("Copying original message.\n");
 	memcpy(wire + request_mac_len, msg, msg_len);
+	dbg_tsig_detail("TSIG: create wire: original message: ");
+	dbg_tsig_hex_detail(wire + request_mac_len, msg_len);
 	/* Copy TSIG variables. */
 	dbg_tsig("Writing TSIG variables.\n");
 	ret = knot_tsig_write_tsig_variables(wire + request_mac_len + msg_len,
@@ -579,7 +599,7 @@ int knot_tsig_create_sign_wire(const uint8_t *msg, size_t msg_len,
 	}
 
 	/* Compute digest. */
-	ret = knot_tsig_compute_digest(wire, wire_len,
+	ret = knot_tsig_compute_digest(wire, wire_len - 1,
 	                               digest, digest_len, key);
 	if (ret != KNOT_EOK) {
 		dbg_tsig("TSIG: create wire: failed to compute digest: %s\n",
@@ -783,19 +803,16 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
 
 	/* Time OK algorithm OK, key name OK - do digest. */
 	/* Calculate the size of TSIG RR. */
-	size_t tsig_len = tsig_rdata_tsig_variables_length(tsig_rr);
-	/* TSIG variables do NOT contain MAC and its size. */
-	const uint8_t *tsig_mac = tsig_rdata_mac(tsig_rr);
-	if (!tsig_mac) {
-		return KNOT_EMALF;
-	}
+	size_t tsig_len = tsig_wire_actsize(tsig_rr);
 
-	tsig_len += sizeof(uint16_t);
-	uint16_t mac_length = tsig_rdata_mac_length(tsig_rr);
-	tsig_len += mac_length;
+	dbg_tsig_detail("TSIG: check digest: wire before strip: ");
+	dbg_tsig_hex_detail(wire, size);
 
 	/* Strip the TSIG. */
 	size -= tsig_len;
+
+	dbg_tsig_detail("TSIG: check digest: wire after strip: ");
+	dbg_tsig_hex_detail(wire, size);
 
 	uint8_t *wire_to_sign = malloc(sizeof(uint8_t) * size);
 	if (!wire_to_sign) {
@@ -845,6 +862,8 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
 	tsig_algorithm_t alg = tsig_alg_from_name(alg_name);
 
 	/*! \todo [TSIG] TRUNCATION */
+	uint16_t mac_length = tsig_rdata_mac_length(tsig_rr);
+	uint8_t *tsig_mac = tsig_rdata_mac(tsig_rr);
 
 	if (mac_length != tsig_alg_digest_length(alg)) {
 		dbg_tsig("TSIG: calculated digest length and given length do not match!\n");
