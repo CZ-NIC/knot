@@ -476,9 +476,15 @@ static int zones_notify_send(event_t *e)
 
 		/* Store ID of the awaited response. */
 		if (ret == buflen) {
+			char r_addr[SOCKADDR_STRLEN];
+			sockaddr_tostr(&ev->addr, r_addr, sizeof(r_addr));
+			int r_port = sockaddr_portnum(&ev->addr);
 			ev->msgid = knot_wire_get_id(qbuf);
-			log_server_info("Issued NOTIFY query, expecting "
-					"response ID=%d\n", ev->msgid);
+			log_server_info("Issued NOTIFY query to %s:%d, expecting "
+					"response ID=%d\n",
+					r_addr, r_port,
+					ev->msgid);
+			
 		}
 
 		/* Watch socket. */
@@ -487,7 +493,7 @@ static int zones_notify_send(event_t *e)
 		req.session = sock;
 		req.type = XFR_TYPE_NOTIFY;
 		req.zone = zone;
-		sockaddr_init(&req.addr, ev->addr.family);
+		memcpy(&req.addr, &ev->addr, sizeof(sockaddr_t));
 		xfr_request(zd->server->xfr_h, &req);
 
 	}
