@@ -322,6 +322,9 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 			size_t mac_len = tsig_rdata_mac_length(tsig_rr);
 			if (mac_len > xfr->digest_max_size) {
 				ret = KNOT_EMALF;
+				dbg_xfr("xfr: MAC length %zu exceeds digest "
+					"maximum size %zu\n",
+					mac_len, xfr->digest_max_size);
 			} else {
 				memcpy(xfr->digest, mac, mac_len);
 				xfr->digest_size = mac_len;
@@ -882,7 +885,7 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		/* Evaluate progress and answer if passed. */
 		if (init_failed) {
 			knot_ns_xfr_send_error(&xfr, rcode);
-			//socket_close(xfr.session);
+			socket_close(xfr.session);
 			log_server_notice("AXFR transfer of zone '%s/OUT' "
 			                  "%s:%d failed: %s\n",
 			                  zname,
