@@ -396,7 +396,7 @@ uint16_t tsig_rdata_error(const knot_rrset_t *tsig)
 	return knot_wire_read_u16((uint8_t *)wire);
 }
 
-const uint16_t *tsig_rdata_other_data(const knot_rrset_t *tsig)
+const uint8_t *tsig_rdata_other_data(const knot_rrset_t *tsig)
 {
 	/*!< \note How about assert. Or maybe change API??? */
 	if (!tsig) {
@@ -412,7 +412,26 @@ const uint16_t *tsig_rdata_other_data(const knot_rrset_t *tsig)
 		return 0;
 	}
 
-	return knot_rdata_item(rdata, 6)->raw_data;
+	return (uint8_t *)(knot_rdata_item(rdata, 6)->raw_data + 2);
+}
+
+uint16_t tsig_rdata_other_data_length(const knot_rrset_t *tsig)
+{
+	/*!< \note How about assert. Or maybe change API??? */
+	if (!tsig) {
+		return 0;
+	}
+
+	const knot_rdata_t *rdata = knot_rrset_rdata(tsig);
+	if (!rdata) {
+		return 0;
+	}
+
+	if (knot_rdata_item_count(rdata) < 7) {
+		return 0;
+	}
+
+	return knot_wire_read_u16(knot_rdata_item(rdata, 6)->raw_data + 1);
 }
 
 int tsig_alg_from_name(const knot_dname_t *alg_name)
@@ -473,13 +492,10 @@ size_t tsig_rdata_tsig_variables_length(const knot_rrset_t *tsig)
 		return 0;
 	}
 
-	const uint16_t *other_data = tsig_rdata_other_data(tsig);
-	if (!other_data) {
-		return 0;
-	}
+	uint16_t other_data_length = tsig_rdata_other_data_length(tsig);
 
 	return knot_dname_size(key_name) + knot_dname_size(alg_name) +
-	       other_data[0] + 1 + KNOT_TSIG_VARIABLES_LENGTH;
+	       other_data_length + KNOT_TSIG_VARIABLES_LENGTH;
 }
 
 
@@ -523,5 +539,23 @@ size_t tsig_wire_maxsize(const knot_key_t* key)
 	sizeof(uint16_t) + /* Error */
 	sizeof(uint16_t) + /* Other len */
 	6* sizeof(uint8_t); /* uint48_t in case of BADTIME RCODE */
+}
+
+size_t tsig_wire_actsize(const knot_rrset_t *tsig)
+{
+	return knot_dname_size(knot_rrset_owner(tsig)) +
+	sizeof(uint16_t) + /* TYPE */
+	sizeof(uint16_t) + /* CLASS */
+	sizeof(uint32_t) + /* TTL */
+	sizeof(uint16_t) + /* RDLENGTH */
+	knot_dname_size(tsig_rdata_alg_name(tsig)) +
+	6 * sizeof(uint8_t) + /* Time signed */
+	sizeof(uint16_t) + /* Fudge */
+	sizeof(uint16_t) + /* MAC size */
+	tsig_rdata_mac_length(tsig) +
+	sizeof(uint16_t) + /* Original ID */
+	sizeof(uint16_t) + /* Error */
+	sizeof(uint16_t) + /* Other len */
+	tsig_rdata_other_data_length(tsig);
 }
 

@@ -109,7 +109,8 @@ const uint8_t *tsig_rdata_mac(const knot_rrset_t *tsig);
 size_t tsig_rdata_mac_length(const knot_rrset_t *tsig);
 uint16_t tsig_rdata_orig_id(const knot_rrset_t *tsig);
 uint16_t tsig_rdata_error(const knot_rrset_t *tsig);
-const uint16_t *tsig_rdata_other_data(const knot_rrset_t *tsig);
+const uint8_t *tsig_rdata_other_data(const knot_rrset_t *tsig);
+uint16_t tsig_rdata_other_data_length(const knot_rrset_t *tsig);
 size_t tsig_rdata_tsig_variables_length(const knot_rrset_t *tsig);
 
 int tsig_alg_from_name(const knot_dname_t *name);
@@ -134,6 +135,7 @@ uint16_t tsig_alg_digest_length(tsig_algorithm_t alg);
  * \return RRSET wire size.
  */
 size_t tsig_wire_maxsize(const knot_key_t *key);
+size_t tsig_wire_actsize(const knot_rrset_t *tsig);
 
 #endif /* _KNOT_TSIG_H_ */
 
