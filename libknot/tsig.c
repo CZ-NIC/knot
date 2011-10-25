@@ -6,6 +6,7 @@
 
 #include "tsig.h"
 #include "util/error.h"
+#include "util/debug.h"
 #include "common.h"
 #include "util/utils.h"
 #include "rrset.h"
@@ -15,13 +16,13 @@
 /*! \brief TSIG algorithms table. */
 #define TSIG_ALG_TABLE_SIZE 8
 static knot_lookup_table_t tsig_alg_table[TSIG_ALG_TABLE_SIZE] = {
-	{ KNOT_TSIG_ALG_GSS_TSIG, "gss-tsig" },
-	{ KNOT_TSIG_ALG_HMAC_MD5, "HMAC-MD5.SIG-ALG.REG.INT" },
-	{ KNOT_TSIG_ALG_HMAC_SHA1, "hmac-sha1" },
-	{ KNOT_TSIG_ALG_HMAC_SHA224, "hmac-sha224" },
-	{ KNOT_TSIG_ALG_HMAC_SHA256, "hmac-sha256" },
-	{ KNOT_TSIG_ALG_HMAC_SHA384, "hmac-sha384" },
-	{ KNOT_TSIG_ALG_HMAC_SHA512, "hmac-sha512" },
+	{ KNOT_TSIG_ALG_GSS_TSIG, "gss-tsig." },
+	{ KNOT_TSIG_ALG_HMAC_MD5, "HMAC-MD5.SIG-ALG.REG.INT." },
+	{ KNOT_TSIG_ALG_HMAC_SHA1, "hmac-sha1." },
+	{ KNOT_TSIG_ALG_HMAC_SHA224, "hmac-sha224." },
+	{ KNOT_TSIG_ALG_HMAC_SHA256, "hmac-sha256." },
+	{ KNOT_TSIG_ALG_HMAC_SHA384, "hmac-sha384." },
+	{ KNOT_TSIG_ALG_HMAC_SHA512, "hmac-sha512." },
 	{ KNOT_TSIG_ALG_NULL, NULL }
 };
 
@@ -427,8 +428,12 @@ int tsig_alg_from_name(const knot_dname_t *alg_name)
 		knot_lookup_by_name(tsig_alg_table, name);
 
 	if (!found) {
+		dbg_tsig("Unknown algorithm: %s \n", name);
+		free(name);
 		return 0;
 	}
+
+	free(name);
 
 	return found->id;
 }
@@ -500,7 +505,7 @@ const char* tsig_alg_to_str(tsig_algorithm_t alg)
 
 size_t tsig_wire_maxsize(const knot_key_t* key)
 {
-	size_t alg_name_size = strlen(tsig_alg_to_str(key->algorithm)) + 2;
+	size_t alg_name_size = strlen(tsig_alg_to_str(key->algorithm)) + 1;
 		
 	return knot_dname_size(key->name) +
 	sizeof(uint16_t) + /* TYPE */
