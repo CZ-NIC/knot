@@ -331,21 +331,21 @@ static int xfrin_check_tsig(knot_packet_t *packet, knot_ns_xfr_t *xfr,
 		return ret;
 	}
 	
-	if (xfr->prev_digest_size > 0) {
+	if (xfr->tsig_key) {
 		if (tsig_req && tsig == NULL) {
 			// TSIG missing!!
 			return KNOT_EMALF;
 		} else if (tsig != NULL) {
 			// TSIG there, either required or not, process
 			if (xfr->packet_nr == 0) {
-				ret = knot_tsig_client_check(xfr->tsig, 
+				ret = knot_tsig_client_check(tsig, 
 					xfr->wire, xfr->wire_size, 
-					xfr->prev_digest, xfr->prev_digest_size,
+					xfr->digest, xfr->digest_size,
 					NULL);
 			} else {
-				ret = knot_tsig_client_check_next(xfr->tsig, 
+				ret = knot_tsig_client_check_next(tsig, 
 					xfr->wire, xfr->wire_size, 
-					xfr->prev_digest, xfr->prev_digest_size,
+					xfr->digest, xfr->digest_size,
 					NULL);
 			}
 			
@@ -360,11 +360,12 @@ static int xfrin_check_tsig(knot_packet_t *packet, knot_ns_xfr_t *xfr,
 			xfr->tsig_data_size = 0;
 
 			// Extract the digest from the TSIG RDATA and store it.
-			xfr->prev_digest = tsig_rdata_mac(tsig);
-			// the size should still be the same
-			/*! \todo [TSIG] Enable assert when API is complete. */
-//			assert(xfr->prev_digest_size == 
-//			       tsig_alg_digest_length(tsig_rdata_alg(tsig)));
+			if (xfr->digest_max_size < tsig_rdata_mac_length(tsig)) {
+				return KNOT_ESPACE;
+			}
+			memcpy(xfr->digest, tsig_rdata_mac(tsig), 
+			       tsig_rdata_mac_length(tsig));
+			xfr->digest_size = tsig_rdata_mac_length(tsig);
 			
 		} else { // TSIG not required and not there
 			// just append the wireformat to the TSIG data

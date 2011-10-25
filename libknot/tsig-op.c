@@ -11,6 +11,9 @@
 #include "util/error.h"
 #include "util/debug.h"
 
+const int KNOT_TSIG_MAX_DIGEST_SIZE = 64;    // size of HMAC-SHA512 digest
+
+
 static int knot_tsig_check_algorithm(const knot_rrset_t *tsig_rr)
 {
 	const knot_dname_t *alg_name = tsig_rdata_alg_name(tsig_rr);
@@ -50,33 +53,29 @@ static int knot_tsig_check_key(const knot_rrset_t *tsig_rr,
 	return KNOT_EOK;
 }
 
-static int knot_tsig_compute_digest(const knot_rrset_t *tsig_rr,
-                                    const uint8_t *wire, size_t wire_len,
-                                    uint8_t **digest, size_t *digest_len,
+static int knot_tsig_compute_digest(const uint8_t *wire, size_t wire_len,
+                                    uint8_t *digest, size_t *digest_len,
                                     const knot_key_t *key)
 {
-	if (!tsig_rr || !wire || !digest || !digest_len || !key) {
+	if (!wire || !digest || !digest_len || !key) {
 		return KNOT_EBADARG;
 	}
 
-	/* Get the algorithm. */
-	const knot_dname_t *alg_name = tsig_rdata_alg_name(tsig_rr);
-	if (!alg_name) {
+	if (!key->name) {
 		return KNOT_EMALF;
 	}
 
-	tsig_algorithm_t tsig_alg = tsig_alg_from_name(alg_name);
+	tsig_algorithm_t tsig_alg = tsig_alg_from_name(key->name);
 	if (tsig_alg == 0) {
 		return KNOT_TSIG_EBADSIG;
 	}
 
 	/* Create digest, using length of the algorithm. */
-	*digest =
-		malloc(sizeof(uint8_t) * tsig_alg_digest_length(tsig_alg));
-	if (!digest) {
-		ERR_ALLOC_FAILED;
-		return KNOT_ENOMEM;
-	}
+//	*digest = malloc(sizeof(uint8_t) * tsig_alg_digest_length(tsig_alg));
+//	if (!digest) {
+//		ERR_ALLOC_FAILED;
+//		return KNOT_ENOMEM;
+//	}
 
 	/* Compute digest. */
 	HMAC_CTX ctx;
@@ -91,7 +90,7 @@ static int knot_tsig_compute_digest(const knot_rrset_t *tsig_rr,
 	} /* switch */
 
 	HMAC_Update(&ctx, wire, wire_len);
-	HMAC_Final(&ctx, *digest, digest_len);
+	HMAC_Final(&ctx, digest, digest_len);
 
 	return KNOT_EOK;
 }
@@ -203,12 +202,15 @@ static int knot_tsig_wire_write_timers(uint8_t *wire,
 int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
                    size_t msg_max_len, const uint8_t *request_mac,
                    size_t request_mac_len,
-		   uint8_t **digest, size_t *digest_len,
-		   const knot_key_t *key)
+                   uint8_t *digest, size_t *digest_len,
+                   const knot_key_t *key)
 {
-	if (!msg || !msg_len || !key) {
+	if (!msg || !msg_len || !key || digest == NULL || digest_len == NULL) {
 		return KNOT_EBADARG;
 	}
+	
+	uint8_t digest_tmp[KNOT_TSIG_MAX_DIGEST_SIZE];
+	size_t digest_tmp_len = 0;
 
 	/* Create tmp TSIG. */
 	int ret = KNOT_EOK;
@@ -247,20 +249,29 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	}
 
 	/* Compute digest. */
-	ret = knot_tsig_compute_digest(tsig_rr, wire, wire_len,
-	                               digest, digest_len, key);
+	ret = knot_tsig_compute_digest(wire, wire_len,
+	                               digest_tmp, &digest_tmp_len, key);
 	if (ret != KNOT_EOK) {
+		*digest_len = 0;
 		return ret;
 	}
-
+	
+	assert(digest_tmp_len > 0);
 	free(wire);
+	
+	if (digest_tmp_len > *digest_len) {
+		*digest_len = 0;
+		return KNOT_ESPACE;
+	}
 
 	/* Set the digest. */
-	size_t tsig_wire_len = 0;
-	tsig_rdata_set_mac(tmp_tsig, *digest_len, *digest);
+	size_t tsig_wire_len = msg_max_len - *msg_len;
+	int rr_count = 0;
+	tsig_rdata_set_mac(tmp_tsig, digest_tmp_len, digest_tmp);
 	ret = knot_rrset_to_wire(tmp_tsig, msg + *msg_len,
-	                         msg_max_len - *msg_len, &tsig_wire_len);
+	                         &tsig_wire_len, &rr_count);
 	if (ret != KNOT_EOK) {
+		*digest_len = 0;
 		return ret;
 	}
 
@@ -270,18 +281,25 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 
 	uint16_t arcount = knot_wire_get_arcount(msg);
 	knot_wire_set_arcount(msg, ++arcount);
+	
+	// everything went ok, save the digest to the output parameter
+	memcpy(digest, digest_tmp, digest_tmp_len);
+	*digest_len = digest_tmp_len;
 
 	return KNOT_EOK;
 }
 
 int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
                         const uint8_t *prev_digest, size_t prev_digest_len,
-                        uint8_t **digest, size_t *digest_len,
+                        uint8_t *digest, size_t *digest_len,
                         const knot_key_t *key)
 {
-	if (!msg || !msg_len || !key || !key) {
+	if (!msg || !msg_len || !key || !key || !digest || !digest_len) {
 		return KNOT_EBADARG;
 	}
+	
+	uint8_t digest_tmp[KNOT_TSIG_MAX_DIGEST_SIZE];
+	size_t digest_tmp_len = 0;
 
 	/* Create tmp TSIG. */
 	knot_rrset_t *tmp_tsig =
@@ -309,21 +327,29 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	knot_tsig_wire_write_timers(msg + prev_digest_len + *msg_len, tmp_tsig);
 
 	int ret = 0;
-	ret = knot_tsig_compute_digest(tmp_tsig, wire, wire_len,
-	                               digest, digest_len, key);
+	ret = knot_tsig_compute_digest(wire, wire_len,
+	                               digest_tmp, &digest_tmp_len, key);
 	if (ret != KNOT_EOK) {
+		*digest_len = 0;
 		return ret;
+	}
+	
+	if (digest_tmp_len > *digest_len) {
+		*digest_len = 0;
+		return KNOT_ESPACE;
 	}
 
 	free(wire);
 
 	/* Set the MAC. */
-	tsig_rdata_set_mac(tmp_tsig, *digest_len, *digest);
+	tsig_rdata_set_mac(tmp_tsig, *digest_len, digest);
 
-	size_t tsig_wire_size = 0;
+	size_t tsig_wire_size = msg_max_len - *msg_len;
+	int rr_count = 0;
 	ret = knot_rrset_to_wire(tmp_tsig, msg + *msg_len,
-	                         msg_max_len - *msg_len, &tsig_wire_size);
+	                         &tsig_wire_size, &rr_count);
 	if (ret != KNOT_EOK) {
+		*digest_len = 0;
 		return ret;
 	}
 
@@ -332,6 +358,9 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	*msg_len += tsig_wire_size;
 	uint16_t arcount = knot_wire_get_arcount(msg);
 	knot_wire_set_arcount(msg, ++arcount);
+	
+	memcpy(digest, digest_tmp, digest_tmp_len);
+	*digest_len = digest_tmp_len;
 
 	return KNOT_EOK;
 }
@@ -366,21 +395,22 @@ int knot_tsig_server_check(const knot_rrset_t *tsig_rr,
 	/* Calculate the size of TSIG RR. */
 	size_t tsig_len = tsig_rdata_tsig_variables_length(tsig_rr);
 	/* TSIG variables do NOT contain MAC and its size. */
-	const uint16_t *tsig_mac = tsig_rdata_mac(tsig_rr);
+	const uint8_t *tsig_mac = tsig_rdata_mac(tsig_rr);
 	if (!tsig_mac) {
 		return KNOT_EMALF;
 	}
 
 	tsig_len += sizeof(uint16_t);
-	tsig_len += tsig_mac[0];
+	uint16_t mac_length = tsig_rdata_mac_length(tsig_rr);
+	tsig_len += mac_length;
 
 	/* Strip the TSIG. */
 	size -= tsig_len;
 
-	uint8_t *digest = NULL;
-	size_t digest_len = 0;
-	ret = knot_tsig_compute_digest(tsig_rr, wire, size, &digest,
-	                               &digest_len, tsig_key);
+	uint8_t digest_tmp[KNOT_TSIG_MAX_DIGEST_SIZE];
+	size_t digest_tmp_len = 0;
+	ret = knot_tsig_compute_digest(wire, size, digest_tmp,
+	                               &digest_tmp_len, tsig_key);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -391,15 +421,16 @@ int knot_tsig_server_check(const knot_rrset_t *tsig_rr,
 	const knot_dname_t *alg_name = tsig_rdata_alg_name(tsig_rr);
 	tsig_algorithm_t alg = tsig_alg_from_name(alg_name);
 
-	uint16_t mac_length = tsig_mac[0];
+	/*! \todo [TSIG] TRUNCATION */
+	
 	if (mac_length != tsig_alg_digest_length(alg)) {
 		return KNOT_TSIG_EBADSIG;
 	}
 
-	assert(tsig_alg_digest_length(alg) == mac_length);
+//	assert(tsig_alg_digest_length(alg) == mac_length);
 
-	if (strncasecmp((char *)(tsig_mac + 1), (char *)digest,
-	                tsig_alg_digest_length(alg)) != 0) {
+	if (strncasecmp((char *)(tsig_mac + 1), (char *)digest_tmp,
+	                mac_length) != 0) {
 		return KNOT_TSIG_EBADSIG;
 	}
 

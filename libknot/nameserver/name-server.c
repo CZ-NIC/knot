@@ -1990,46 +1990,35 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 	
 	int res = 0;
 	
+	size_t digest_real_size = xfr->digest_max_size;
+	
 	/*! \note [TSIG] Generate TSIG if required (during XFR/IN). */
-	if (xfr->prev_digest_size > 0 && add_tsig) {
+	if (xfr->tsig_key && add_tsig) {
 		if (xfr->packet_nr == 0) {
 			/* Add key, digest and digest length. */
-			assert(0);
 			res = knot_tsig_sign(xfr->wire, &real_size,
-			               xfr->wire_size, xfr->prev_digest, 
-			               xfr->prev_digest_size,
+			               xfr->wire_size, xfr->digest, 
+			               xfr->digest_size, xfr->digest, 
+			               &digest_real_size,
 			               xfr->tsig_key);
 		} else {
 			/* Add key, digest and digest length. */
-			assert(0);
 			res = knot_tsig_sign_next(xfr->wire, &real_size,
 			                          xfr->wire_size, 
-			                          xfr->prev_digest,
-			                          xfr->prev_digest_size,
+			                          xfr->digest,
+			                          xfr->digest_size,
+			                          xfr->digest, 
+			                          &digest_real_size,
 			                          xfr->tsig_key);
 		}
 		
 		if (res != KNOT_EOK) {
 			return res;
 		}
-		
-		// save the new previous digest
-		// Extract the digest from the TSIG RDATA and store it.
-		xfr->prev_digest = (uint8_t*)tsig_rdata_mac(xfr->tsig);
-		// the size should still be the same
-		/*! \todo [TSIG] Enable assert when API is complete. */
-//		assert(xfr->prev_digest_size == 
-//		       tsig_alg_digest_length(tsig_rdata_alg(tsig)));
-	}
 	
-	/*! \note [TSIG] Sign with TSIG if in XFR/OUT and TSIG was in query. */
-	if (add_tsig && xfr->tsig_key &&
-	    (xfr->type == XFR_TYPE_AOUT || xfr->type == XFR_TYPE_IOUT)) {
-		res = knot_tsig_sign(xfr->wire, &real_size,
-		                     xfr->wire_size,
-		                     (const uint8_t *)tsig_rdata_mac(xfr->tsig), 
-		                     tsig_alg_digest_length(tsig_rdata_alg(xfr->tsig)),
-		                     xfr->tsig_key);
+		assert(digest_real_size > 0);
+		// save the new previous digest size
+		xfr->digest_size = digest_real_size;
 	}
 
 	// Send the response
@@ -2051,7 +2040,7 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 	
 	// increment the packet number
 	++xfr->packet_nr;
-	if (xfr->prev_digest_size > 0 && add_tsig) {
+	if (xfr->tsig_key && add_tsig) {
 		knot_packet_set_tsig_size(xfr->response, xfr->tsig_size);
 	} else {
 		knot_packet_set_tsig_size(xfr->response, 0);
@@ -2993,9 +2982,8 @@ int knot_ns_answer_axfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	 */
 	
 	/*! \todo [TSIG] Get the TSIG size from some API function. */
-	if (xfr->tsig != NULL) {
-		size_t tsig_size = 0;
-		knot_packet_set_tsig_size(xfr->response, tsig_size);
+	if (xfr->tsig_size > 0) {
+		knot_packet_set_tsig_size(xfr->response, xfr->tsig_size);
 	}
 
 	ret = ns_axfr_from_zone(contents, xfr);
@@ -3056,9 +3044,8 @@ int knot_ns_answer_ixfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	 */
 	
 	/*! \todo [TSIG] Get the TSIG size from some API function. */
-	if (xfr->tsig != NULL) {
-		size_t tsig_size = 0;
-		knot_packet_set_tsig_size(xfr->response, tsig_size);
+	if (xfr->tsig_size > 0) {
+		knot_packet_set_tsig_size(xfr->response, xfr->tsig_size);
 	}
 	
 	ret = ns_ixfr(xfr);
