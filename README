@@ -32,6 +32,7 @@ $ git clone git://git.nic.cz/knot
 $ cd knot
 $ autoreconf -if
 $ ./configure
+$ make
 $ sudo make install
 $ sudo ldconfig
 
