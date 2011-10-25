@@ -32,17 +32,9 @@
 #include "rrset.h"
 #include "util/utils.h"
 
-struct knot_key {
-	knot_dname_t *name;   /*!< Key name. */
-	unsigned int algorithm; /*!< Key algorithm.  */
-	char *secret;         /*!< Key data. */
-	size_t secret_size;   /*!< Key length. */
-};
-
-typedef struct knot_key knot_key_t;
-
 /* The assigned numbers should not begin with 0 - reserved for error. */
 enum tsig_algorithm {
+	KNOT_TSIG_ALG_NULL = 0,
 	KNOT_TSIG_ALG_GSS_TSIG = 128, /*!< \brief gss-tsig. */
 	KNOT_TSIG_ALG_HMAC_MD5, /*!< \brief HMAC-MD5.SIG-ALG.REG.INT. */
 	KNOT_TSIG_ALG_HMAC_SHA1, /*!< \brief hmac-sha1. */
@@ -53,6 +45,15 @@ enum tsig_algorithm {
 };
 
 typedef enum tsig_algorithm tsig_algorithm_t;
+
+struct knot_key {
+	knot_dname_t *name;   /*!< Key name. */
+	tsig_algorithm_t algorithm; /*!< Key algorithm.  */
+	char *secret;         /*!< Key data. */
+	size_t secret_size;   /*!< Key length. */
+};
+
+typedef struct knot_key knot_key_t;
 
 /*!< \todo FIND ALG LENGTHS */
 enum tsig_algorithm_digest_length {
