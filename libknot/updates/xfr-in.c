@@ -560,12 +560,13 @@ dbg_xfrin_exec(
 	/*! \note [TSIG] add the packet wire size to the data to be verified by 
 	 *               TSIG 
 	 */
-	/*! \todo this may be optional. */
-	assert(KNOT_NS_TSIG_DATA_MAX_SIZE - xfr->tsig_data_size
-	       >= xfr->wire_size);
-	memcpy(xfr->tsig_data + xfr->tsig_data_size, xfr->wire, 
-	       xfr->wire_size);
-	xfr->tsig_data_size += xfr->wire_size;
+	if (xfr->tsig_key) {
+		assert(KNOT_NS_TSIG_DATA_MAX_SIZE - xfr->tsig_data_size
+		       >= xfr->wire_size);
+		memcpy(xfr->tsig_data + xfr->tsig_data_size, xfr->wire, 
+		       xfr->wire_size);
+		xfr->tsig_data_size += xfr->wire_size;
+	}
 	
 	assert(zone != NULL);
 
