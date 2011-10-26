@@ -635,28 +635,67 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 		return KNOT_EBADARG;
 	}
 
-	knot_rrset_t *tmp_tsig =
-		knot_rrset_new(key->name, KNOT_RRTYPE_TSIG, KNOT_CLASS_ANY, 0);
-	if (!tmp_tsig) {
+	knot_dname_t *key_name_copy = knot_dname_deep_copy(key->name);
+	if (!key_name_copy) {
+		dbg_tsig_detail("TSIG: key_name_copy = NULL\n");
 		return KNOT_ENOMEM;
 	}
 
+	knot_rrset_t *tmp_tsig =
+		knot_rrset_new(key_name_copy,
+			       KNOT_RRTYPE_TSIG, KNOT_CLASS_ANY, 0);
+	if (!tmp_tsig) {
+		dbg_tsig_detail("TSIG: tmp_tsig = NULL\n");
+		return KNOT_ENOMEM;
+	}
+
+	/* Create rdata for TSIG RR. */
+	knot_rdata_t *rdata = knot_rdata_new();
+	if (!rdata) {
+		dbg_tsig_detail("TSIG: rdata = NULL\n");
+		return KNOT_ENOMEM;
+	}
+
+	knot_rrset_add_rdata(tmp_tsig, rdata);
+
+	/* Create items for TSIG RR. */
+	knot_rrtype_descriptor_t *desc =
+		knot_rrtype_descriptor_by_type(KNOT_RRTYPE_TSIG);
+	assert(desc);
+
+	knot_rdata_item_t *items =
+		malloc(sizeof(knot_rdata_item_t) * desc->length);
+	if (!items) {
+		dbg_tsig_detail("TSIG: items = NULL\n");
+		ERR_ALLOC_FAILED;
+		return KNOT_ENOMEM;
+	}
+
+	int ret = knot_rdata_set_items(rdata, items, desc->length);
+	if (ret != KNOT_EOK) {
+		dbg_tsig_detail("TSIG: rdata_set_items returned %s\n", knot_strerror(ret));
+		return ret;
+	}
+	free(items);
+
+	tsig_rdata_set_alg(tmp_tsig, key->algorithm);
 	tsig_rdata_store_current_time(tmp_tsig);
+	tsig_rdata_set_fudge(tmp_tsig, 300);
+
+	/* Set original ID */
+	tsig_rdata_set_orig_id(tmp_tsig, knot_wire_get_id(msg));
+
+	/* Set error */
+	/*! \todo [TSIG] Set error and other data if appropriate. */
+	tsig_rdata_set_tsig_error(tmp_tsig, 0);
+
+	/* Set other len. */
+	tsig_rdata_set_other_data(tmp_tsig, 0, 0);
 
 	uint8_t digest_tmp[KNOT_TSIG_MAX_DIGEST_SIZE];
 	size_t digest_tmp_len = 0;
 
-	/*! \todo We need to fill in the tmp_tsig. */
-	const char *alg_ch = tsig_alg_to_str(key->algorithm);
-	knot_dname_t *alg_name = knot_dname_new_from_str(
-				alg_ch, strlen(alg_ch) + 1, NULL);
-	if (alg_name == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	tsig_rdata_set_alg_name(tmp_tsig, alg_name);
-
-	int ret = knot_tsig_create_sign_wire(msg, *msg_len, /*msg_max_len,*/
+	ret = knot_tsig_create_sign_wire(msg, *msg_len, /*msg_max_len,*/
 	                                     request_mac, request_mac_len,
 	                                     digest_tmp, &digest_tmp_len,
 					     tmp_tsig, key);
@@ -670,9 +709,14 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	size_t tsig_wire_len = msg_max_len - *msg_len;
 	int rr_count = 0;
 	tsig_rdata_set_mac(tmp_tsig, digest_tmp_len, digest_tmp);
+
+	knot_rrset_dump(tmp_tsig, 1);
+
+	/* Write RRSet to wire */
 	ret = knot_rrset_to_wire(tmp_tsig, msg + *msg_len,
 	                         &tsig_wire_len, &rr_count);
 	if (ret != KNOT_EOK) {
+		dbg_tsig_detail("TSIG: rrset_to_wire = %s\n", knot_strerror(ret));
 		*digest_len = 0;
 		return ret;
 	}
