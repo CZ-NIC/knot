@@ -39,12 +39,12 @@
 /*----------------------------------------------------------------------------*/
 
 static int xfrin_create_query(knot_dname_t *qname, uint16_t qtype,
-			      uint16_t qclass, uint8_t *buffer, size_t *size,
-			      const knot_rrset_t *soa)
+			      uint16_t qclass, knot_ns_xfr_t *xfr, size_t *size,
+			      const knot_rrset_t *soa, int use_tsig)
 {
 	knot_packet_t *pkt = knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
 	CHECK_ALLOC_LOG(pkt, KNOT_ENOMEM);
-
+	
 	/*! \todo Get rid of the numeric constant. */
 	int rc = knot_packet_set_max_size(pkt, 512);
 	if (rc != KNOT_EOK) {
@@ -102,8 +102,31 @@ static int xfrin_create_query(knot_dname_t *qname, uint16_t qtype,
 		knot_packet_free(&pkt);
 		return KNOT_ESPACE;
 	}
+	
+	// wire format created, sign it with TSIG if required
+	if (use_tsig && xfr->tsig_key) {
+		char *name = knot_dname_to_str(xfr->tsig_key->name);
+		dbg_xfrin_detail("Signing XFR query with key (name %s): \n",
+		                  name);
+		free(name);		
+		dbg_xfrin_hex_detail(xfr->tsig_key->secret, 
+		                     xfr->tsig_key->secret_size);
+		
+		xfr->digest_size = xfr->digest_max_size;
+		rc = knot_tsig_sign(wire, &wire_size, *size, NULL, 0, 
+		               xfr->digest, &xfr->digest_size, xfr->tsig_key);
+		if (rc != KNOT_EOK) {
+			/*! \todo [TSIG] Handle TSIG errors. */
+			knot_packet_free(&pkt);
+			return rc;
+		}
+		
+		dbg_xfrin_detail("Signed XFR query, new wire size: %zu, digest:"
+		                 "\n", wire_size);
+		dbg_xfrin_hex_detail(xfr->digest, xfr->digest_size);
+	}
 
-	memcpy(buffer, wire, wire_size);
+	memcpy(xfr->wire, wire, wire_size);
 	*size = wire_size;
 
 	dbg_xfrin("Created query of size %zu.\n", *size);
@@ -128,11 +151,12 @@ static uint32_t xfrin_serial_difference(uint32_t local, uint32_t remote)
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-int xfrin_create_soa_query(knot_dname_t *owner, uint8_t *buffer,
+int xfrin_create_soa_query(knot_dname_t *owner, knot_ns_xfr_t *xfr,
                            size_t *size)
 {
+	/*! \todo [TSIG] Should TSIG apply for SOA query too? */
 	return xfrin_create_query(owner, KNOT_RRTYPE_SOA,
-				  KNOT_CLASS_IN, buffer, size, 0);
+				  KNOT_CLASS_IN, xfr, size, 0, 0);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -200,17 +224,17 @@ dbg_xfrin_exec(
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_create_axfr_query(knot_dname_t *owner, uint8_t *buffer,
-                            size_t *size)
+int xfrin_create_axfr_query(knot_dname_t *owner, knot_ns_xfr_t *xfr,
+                            size_t *size, int use_tsig)
 {
 	return xfrin_create_query(owner, KNOT_RRTYPE_AXFR,
-				  KNOT_CLASS_IN, buffer, size, 0);
+				  KNOT_CLASS_IN, xfr, size, 0, use_tsig);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_create_ixfr_query(const knot_zone_contents_t *zone, uint8_t *buffer,
-                            size_t *size)
+int xfrin_create_ixfr_query(const knot_zone_contents_t *zone, 
+                            knot_ns_xfr_t *xfr, size_t *size, int use_tsig)
 {
 	/*!
 	 *  \todo Implement properly.
@@ -219,7 +243,7 @@ int xfrin_create_ixfr_query(const knot_zone_contents_t *zone, uint8_t *buffer,
 	const knot_rrset_t *soa = knot_node_rrset(apex, KNOT_RRTYPE_SOA);
 
 	return xfrin_create_query(knot_node_get_owner(apex), KNOT_RRTYPE_IXFR,
-				  KNOT_CLASS_IN, buffer, size, soa);
+	                          KNOT_CLASS_IN, xfr, size, soa, use_tsig);
 }
 
 /*----------------------------------------------------------------------------*/
