@@ -2029,9 +2029,9 @@ int zones_store_changesets(knot_ns_xfr_t *xfr)
 
 int zones_xfr_load_changesets(knot_ns_xfr_t *xfr) 
 {
-	if (xfr == NULL || xfr->data == NULL || xfr->zone == NULL) {
-		dbg_zones_detail("Wrong parameters: xfr=%p, xfr->data=%p,"
-		                " xfr->zone = %p\n", xfr, xfr->data, xfr->zone);
+	if (xfr == NULL || xfr->zone == NULL) {
+		dbg_zones_detail("Wrong parameters: xfr=%p,"
+		                " xfr->zone = %p\n", xfr, xfr->zone);
 		return KNOTD_EINVAL;
 	}
 	
