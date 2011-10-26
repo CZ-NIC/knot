@@ -592,6 +592,9 @@ dbg_xfrin_exec(
 	 *               TSIG 
 	 */
 	if (xfr->tsig_key) {
+		dbg_xfrin("Adding packet wire to TSIG data (size till now: %zu,"
+		          " adding: %zu).\n", xfr->tsig_data_size, 
+		          xfr->wire_size);
 		assert(KNOT_NS_TSIG_DATA_MAX_SIZE - xfr->tsig_data_size
 		       >= xfr->wire_size);
 		memcpy(xfr->tsig_data + xfr->tsig_data_size, xfr->wire, 
@@ -632,8 +635,20 @@ dbg_xfrin_exec(
 			assert(knot_node_rrset(knot_zone_contents_apex((zone)),
 			                       KNOT_RRTYPE_SOA) != NULL);
 			dbg_xfrin("Found last SOA, transfer finished.\n");
-			knot_rrset_deep_free(&rr, 1, 1, 1);
+			
+			dbg_xfrin("Verifying TSIG...\n");
+			/*! \note [TSIG] Now check if there is not a TSIG record
+			 *               at the end of the packet. 
+			 */
+			ret = xfrin_check_tsig(packet, xfr, 1);
+			
 			knot_packet_free(&packet);
+			knot_rrset_deep_free(&rr, 1, 1, 1);
+			
+			if (ret != KNOT_EOK) {
+				/*! \todo [TSIG] Handle TSIG errors. */
+				return ret;
+			}
 			
 			// we must now find place for all orphan RRSIGs
 			ret = xfrin_process_orphan_rrsigs(zone, 
