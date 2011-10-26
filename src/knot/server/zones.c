@@ -342,11 +342,9 @@ static int zones_refresh_ev(event_t *e)
 		xfr_req.zone = zone;
 		
 		/* Select TSIG key. */
-		/*!< \todo [TSIG] DISABLED */
-		xfr_req.tsig_key = 0;
-//		if (zd->xfr_in.tsig_key.name) {
-//			xfr_req.tsig_key = &zd->xfr_in.tsig_key;
-//		}
+		if (zd->xfr_in.tsig_key.name) {
+			xfr_req.tsig_key = &zd->xfr_in.tsig_key;
+		}
 
 		/* Unlock zone contents. */
 		rcu_read_unlock();
@@ -1241,12 +1239,12 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 					     cfg_if->family,
 					     cfg_if->address,
 					     cfg_if->port);
-				/*!< \todo [TSIG] DISABLED */
-//				if (cfg_if->key) {
-//					memcpy(&zd->xfr_in.tsig_key,
-//					       cfg_if->key,
-//					       sizeof(knot_key_t));
-//				}
+
+				if (cfg_if->key) {
+					memcpy(&zd->xfr_in.tsig_key,
+					       cfg_if->key,
+					       sizeof(knot_key_t));
+				}
 
 				dbg_zones("zones: using %s:%d as XFR master "
 				          "for '%s'\n",
@@ -1589,11 +1587,9 @@ int zones_process_response(knot_nameserver_t *nameserver,
 		xfr_req.type = zones_transfer_to_use(contents);
 		
 		/* Select TSIG key. */
-		/*!< \todo [TSIG] DISABLED */
-		xfr_req.tsig_key = 0;
-//		if (zd->xfr_in.tsig_key.name) {
-//			xfr_req.tsig_key = &zd->xfr_in.tsig_key;
-//		}
+		if (zd->xfr_in.tsig_key.name) {
+			xfr_req.tsig_key = &zd->xfr_in.tsig_key;
+		}
 
 		/* Unlock zone contents. */
 		rcu_read_unlock();
