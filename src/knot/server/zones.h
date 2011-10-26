@@ -54,6 +54,7 @@ typedef struct zonedata_t
 	struct {
 		acl_t         *acl;      /*!< ACL for xfr-in.*/
 		sockaddr_t     master;   /*!< Master server for xfr-in.*/
+		knot_key_t    tsig_key;  /*!< Master TSIG key. */
 		struct event_t *timer;   /*!< Timer for REFRESH/RETRY. */
 		struct event_t *expire;  /*!< Timer for REFRESH. */
 		int next_id;             /*!< ID of the next awaited SOA resp.*/

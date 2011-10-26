@@ -60,7 +60,7 @@
 #define KNOT_NS_DEBUG
 #define KNOT_XFRIN_DEBUG
 //#define KNOT_DDNS_DEBUG
-//#define KNOT_TSIG_DEBUG
+#define KNOT_TSIG_DEBUG
 
 /*!
  * \brief Dumps RDATA of the given type.
@@ -746,7 +746,6 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 #define dbg_tsig_hex_verb(data, len)
 #define dbg_tsig_detail(msg...)
 #define dbg_tsig_hex_detail(data, len)
-#define tsig(msg...)
 #endif
 
 /******************************************************************************/
