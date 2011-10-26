@@ -106,6 +106,30 @@ static int conf_key_exists(void *scanner, char *item)
     return 0;
 }
 
+static int conf_key_add(void *scanner, knot_key_t **key, char *item)
+{
+    /* Reset */
+    *key = 0;
+    
+    /* Find in keys */
+    knot_dname_t *sample = knot_dname_new_from_str(item, strlen(item), 0);
+    
+    conf_key_t* r = 0;
+    WALK_LIST (r, new_config->keys) {
+        if (knot_dname_compare(r->k.name, sample) == 0) {
+           *key = &r->k;
+           knot_dname_free(&sample);
+           return 0;
+        }
+    }
+
+    char buf[512];
+    snprintf(buf, sizeof(buf), "key '%s' is not defined", item);
+    cf_error(scanner, buf);
+    knot_dname_free(&sample);
+    return 1;
+}
+
 %}
 
 %pure-parser
@@ -250,14 +274,30 @@ system:
 keys:
    KEYS '{'
  | keys TEXT TSIG_ALGO_NAME TEXT ';' {
-     if (!conf_key_exists(scanner, $2.t)) {
-         knot_dname_t *dname = knot_dname_new_from_str($2.t, strlen($2.t), 0);
+     /* Normalize to FQDN */
+     char *fqdn = $2.t;
+     if (fqdn[strlen(fqdn) - 1] != '.') {
+        char* tmp = malloc(strlen(fqdn) + 1 + 1); /* '.', '\0' */
+	if (!tmp) {
+	   cf_error(scanner, "out of memory when allocating string");
+	   free(fqdn);
+	   fqdn = 0;
+	} else {
+	   strcpy(tmp, fqdn);
+	   strcat(tmp, ".");
+	   free(fqdn);
+	   fqdn = tmp;
+	}
+     }
+
+     if (!conf_key_exists(scanner, fqdn)) {
+         knot_dname_t *dname = knot_dname_new_from_str(fqdn, strlen(fqdn), 0);
 	 if (!dname) {
 	     char buf[512];
              snprintf(buf, sizeof(buf), "key name '%s' not in valid domain "
-	                                "name format", $2.t);
+	                                "name format", fqdn);
              cf_error(scanner, buf);
-	     free($2.t);
+	     free(fqdn);
 	     free($4.t);
 	 } else {
              conf_key_t *k = malloc(sizeof(conf_key_t));
@@ -267,10 +307,10 @@ keys:
              k->k.secret = $4.t;
              add_tail(&new_config->keys, &k->n);
              ++new_config->key_count;
-	     free($2.t);
+	     free(fqdn);
 	 }
      } else {
-         free($2.t);
+         free(fqdn);
          free($4.t);
      }
 }
@@ -331,6 +371,13 @@ remote:
        } else {
 	 this_remote->port = $5.i;
        }
+     }
+   }
+ | remote KEY TEXT ';' {
+     if (this_remote->key != 0) {
+       cf_error(scanner, "only one TSIG key definition is allowed in remote section\n");
+     } else {
+        conf_key_add(scanner, &this_remote->key, $3.t);
      }
    }
  ;

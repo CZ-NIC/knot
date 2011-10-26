@@ -267,6 +267,7 @@ void __attribute__ ((constructor)) conf_init()
 
 	/* Create default interface. */
 	conf_iface_t * iface = malloc(sizeof(conf_iface_t));
+	memset(iface, 0, sizeof(conf_iface_t));
 	iface->name = strdup("any");
 	iface->address = strdup("0.0.0.0");
 	iface->port = CONFIG_DEFAULT_PORT;
