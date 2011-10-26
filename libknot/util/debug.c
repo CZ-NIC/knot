@@ -39,6 +39,9 @@ void knot_rdata_dump(knot_rdata_t *rdata, uint32_t type, char loaded_zone)
 	char *name;
 
 	for (int i = 0; i < rdata->count; i++) {
+		if (rdata->items[i].raw_data == NULL) {
+			continue;
+		}
 		if (desc->wireformat[i] == KNOT_RDATA_WF_COMPRESSED_DNAME ||
 		    desc->wireformat[i] == KNOT_RDATA_WF_UNCOMPRESSED_DNAME ||
 		    desc->wireformat[i] == KNOT_RDATA_WF_LITERAL_DNAME ) {
