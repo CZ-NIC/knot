@@ -519,7 +519,7 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
 	// the whole RRSet did fit in
 	assert(rrset_size <= *size);
 	assert(pos - wire == rrset_size);
-	*size += rrset_size;
+	*size = rrset_size;
 
 	fprintf(stderr, "  Size after: %zu\n", *size);
 
