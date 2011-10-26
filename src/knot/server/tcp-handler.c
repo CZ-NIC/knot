@@ -393,7 +393,7 @@ int tcp_loop_worker(dthread_t *thread)
 	}
 
 	/* Accept clients. */
-	dbg_net_verb("tcp: worker %p started", w);
+	dbg_net_verb("tcp: worker %p started\n", w);
 	for (;;) {
 
 		/* Cancellation point. */
