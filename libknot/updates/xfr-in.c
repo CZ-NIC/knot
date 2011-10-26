@@ -372,12 +372,12 @@ static int xfrin_check_tsig(knot_packet_t *packet, knot_ns_xfr_t *xfr,
 				ret = knot_tsig_client_check(tsig, 
 					xfr->wire, xfr->wire_size, 
 					xfr->digest, xfr->digest_size,
-					NULL);
+					xfr->tsig_key);
 			} else {
 				ret = knot_tsig_client_check_next(tsig, 
 					xfr->wire, xfr->wire_size, 
 					xfr->digest, xfr->digest_size,
-					NULL);
+					xfr->tsig_key);
 			}
 			
 			if (ret != KNOT_EOK) {
