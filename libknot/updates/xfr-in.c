@@ -78,6 +78,13 @@ static int xfrin_create_query(knot_dname_t *qname, uint16_t qtype,
 		knot_packet_free(&pkt);
 		return KNOT_ERROR;
 	}
+	
+	/* Reserve space for TSIG. */
+	if (use_tsig && xfr->tsig_key) {
+		dbg_xfrin_detail("xfrin: setting packet TSIG size to %zu\n",
+				 xfr->tsig_size);
+		knot_packet_set_tsig_size(pkt, xfr->tsig_size);
+	}
 
 	/* Add SOA RR to authority section for IXFR. */
 	if (qtype == KNOT_RRTYPE_IXFR && soa) {
@@ -975,7 +982,8 @@ int xfrin_process_ixfr_packet(/*const uint8_t *pkt, size_t size,
 			knot_rrset_deep_free(&rr, 1, 1, 1);
 			dbg_xfrin("Fallback to AXFR.\n");
 			ret = XFRIN_RES_FALLBACK;
-			goto cleanup;
+			knot_free_changesets(chs);
+			return ret;
 		}
 	} else {
 		if ((*chs)->first_soa == NULL) {

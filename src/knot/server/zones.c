@@ -340,6 +340,11 @@ static int zones_refresh_ev(event_t *e)
 		/* Select transfer method. */
 		xfr_req.type = XFR_TYPE_AIN;
 		xfr_req.zone = zone;
+		
+		/* Select TSIG key. */
+		if (zd->xfr_in.tsig_key.name) {
+			xfr_req.tsig_key = &zd->xfr_in.tsig_key;
+		}
 
 		/* Unlock zone contents. */
 		rcu_read_unlock();
@@ -1225,6 +1230,7 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 			zd->server = (server_t *)knot_ns_get_data(ns);
 
 			/* Update master server address. */
+			memset(&zd->xfr_in.tsig_key, 0, sizeof(knot_key_t));
 			sockaddr_init(&zd->xfr_in.master, -1);
 			if (!EMPTY_LIST(z->acl.xfr_in)) {
 				conf_remote_t *r = HEAD(z->acl.xfr_in);
@@ -1233,6 +1239,11 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 					     cfg_if->family,
 					     cfg_if->address,
 					     cfg_if->port);
+				if (cfg_if->key) {
+					memcpy(&zd->xfr_in.tsig_key,
+					       cfg_if->key,
+					       sizeof(knot_key_t));
+				}
 
 				dbg_zones("zones: using %s:%d as XFR master "
 				          "for '%s'\n",
@@ -1573,6 +1584,11 @@ int zones_process_response(knot_nameserver_t *nameserver,
 
 		/* Select transfer method. */
 		xfr_req.type = zones_transfer_to_use(contents);
+		
+		/* Select TSIG key. */
+		if (zd->xfr_in.tsig_key.name) {
+			xfr_req.tsig_key = &zd->xfr_in.tsig_key;
+		}
 
 		/* Unlock zone contents. */
 		rcu_read_unlock();

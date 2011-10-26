@@ -295,6 +295,24 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 }
 
 /*!
+ * \brief Prepare TSIG for XFR.
+ */
+static int xfr_prepare_tsig(knot_ns_xfr_t *xfr, knot_key_t *key)
+{
+	int ret = KNOT_EOK;
+	xfr->tsig_key = key;
+	xfr->tsig_size = tsig_wire_maxsize(key);
+	xfr->digest_max_size = tsig_alg_digest_length(
+				key->algorithm);
+	xfr->digest = malloc(xfr->digest_max_size);
+	memset(xfr->digest, 0 , xfr->digest_max_size);
+	dbg_xfr("xfr: found TSIG key (MAC len=%zu), adding to transfer\n",
+		xfr->digest_max_size);
+	
+	return ret;
+}
+
+/*!
  * \brief Check TSIG if exists.
  */
 static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
@@ -342,14 +360,10 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 		/* Validate with TSIG. */
 		if (key) {
 			/* Prepare variables for TSIG */
-			dbg_xfr("xfr: validating TSIG...\n");
-			xfr->tsig_key = key;
-			xfr->tsig_size = tsig_wire_maxsize(key);
-			xfr->digest_max_size = tsig_alg_digest_length(
-			                        key->algorithm);
-			xfr->digest = malloc(xfr->digest_max_size);
+			xfr_prepare_tsig(xfr, key);
 			
 			/* Copy MAC from query. */
+			dbg_xfr("xfr: validating TSIG from query\n");
 			const uint8_t* mac = tsig_rdata_mac(tsig_rr);
 			size_t mac_len = tsig_rdata_mac_length(tsig_rr);
 			if (mac_len > xfr->digest_max_size) {
@@ -477,7 +491,8 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 	if (zone && data->type == XFR_TYPE_IIN && ret == KNOT_EXFRREFUSED) {
 		log_server_notice("IXFR/IN failed, attempting to use "
 				  "AXFR/IN instead.\n");
-		size_t bufsize = data->wire_size;
+		size_t bufsize = sizeof(buf);
+		data->wire_size = sizeof(buf); /* Reset maximum bufsize */
 		ret = xfrin_create_axfr_query(zone->name, data,
 					      &bufsize, 1);
 		/* Send AXFR/IN query. */
@@ -530,6 +545,18 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 		} else {
 			/* Cleanup */
 			xfr_xfrin_cleanup(w, data);
+		}
+		
+		/* Free TSIG buffers. */
+		if (data->digest) {
+			free(data->digest);
+			data->digest = 0;
+			data->digest_size = 0;
+		}
+		if (data->tsig_data) {
+			free(data->tsig_data);
+			data->tsig_data = 0;
+			data->tsig_data_size = 0;
 		}
 		
 		/* Disconnect. */
@@ -634,16 +661,31 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 	 *               use TSIG for this transfer and set appropriate fields
 	 *               in 'data'.
 	 */
-	int tsig = 1;
+	int add_tsig = 0;
+	if (data->tsig_key) {
+		if (xfr_prepare_tsig(data, data->tsig_key) == KNOT_EOK) {
+			size_t data_bufsize = KNOT_NS_TSIG_DATA_MAX_SIZE;
+			data->tsig_data = malloc(data_bufsize);
+			if (data->tsig_data) {
+				dbg_xfr("xfr: using TSIG for XFR/IN\n");
+				add_tsig = 1;
+				data->tsig_data_size = data_bufsize;
+			} else {
+				dbg_xfr("xfr: failed to allocate TSIG data "
+					"buffer (%zu kB)\n",
+					data_bufsize / 1024);
+			}
+		}
+	}
 
 	/* Create XFR query. */
 	size_t bufsize = data->wire_size;
 	switch(data->type) {
 	case XFR_TYPE_AIN:
-		ret = xfrin_create_axfr_query(zone->name, data, &bufsize, tsig);
+		ret = xfrin_create_axfr_query(zone->name, data, &bufsize, add_tsig);
 		break;
 	case XFR_TYPE_IIN:
-		ret = xfrin_create_ixfr_query(contents, data, &bufsize, tsig);
+		ret = xfrin_create_ixfr_query(contents, data, &bufsize, add_tsig);
 		break;
 	default:
 		ret = KNOTD_EINVAL;
@@ -651,9 +693,9 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 	}
 
 	/* Handle errors. */
-	if (ret != KNOTD_EOK) {
-		dbg_xfr("xfr: failed to create XFR query type %d\n",
-		        data->type);
+	if (ret != KNOT_EOK) {
+		dbg_xfr("xfr: failed to create XFR query type %d: %s\n",
+		        data->type, knot_strerror(ret));
 		return ret;
 	}
 

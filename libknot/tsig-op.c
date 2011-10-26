@@ -382,7 +382,8 @@ static int knot_tsig_compute_digest(const uint8_t *wire, size_t wire_len,
 	/* Decode key from Base64. */
 	char decoded_key[B64BUFSIZE];
 
-	int decoded_key_size = b64_pton(key->secret, decoded_key, B64BUFSIZE);
+	int decoded_key_size = b64_pton(key->secret, (uint8_t *)decoded_key,
+					B64BUFSIZE);
 	if (decoded_key_size < 0) {
 		dbg_tsig("TSIG: Could not decode Base64\n");
 		return KNOT_EMALF;
@@ -407,7 +408,7 @@ static int knot_tsig_compute_digest(const uint8_t *wire, size_t wire_len,
 			return KNOT_ENOTSUP;
 	} /* switch */
 
-	HMAC_Update(&ctx, wire, wire_len);
+	HMAC_Update(&ctx, (const unsigned char *)wire, wire_len);
 	HMAC_Final(&ctx, digest, digest_len);
 
 	return KNOT_EOK;
