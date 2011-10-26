@@ -86,6 +86,11 @@ typedef struct knot_ns_xfr {
 	knot_packet_t *response;
 	xfr_callback_t send;
 	int session;
+	
+	/*!
+	 * XFR-out: Output buffer.
+	 * XFR-in: Buffer for query or incoming packet.
+	 */
 	uint8_t *wire;
 	
 	/*! 

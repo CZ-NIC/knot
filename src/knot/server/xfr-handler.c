@@ -478,8 +478,8 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 		log_server_notice("IXFR/IN failed, attempting to use "
 				  "AXFR/IN instead.\n");
 		size_t bufsize = data->wire_size;
-		ret = xfrin_create_axfr_query(zone->name, data->wire,
-					      &bufsize);
+		ret = xfrin_create_axfr_query(zone->name, data,
+					      &bufsize, 1);
 		/* Send AXFR/IN query. */
 		if (ret == KNOTD_EOK) {
 			ret = data->send(data->session, &data->addr,
@@ -629,15 +629,21 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 				   "contents\n");
 		return KNOTD_ERROR;
 	}
+	
+	/*! \todo [TSIG] Somewhere before this determine if the server should
+	 *               use TSIG for this transfer and set appropriate fields
+	 *               in 'data'.
+	 */
+	int tsig = 1;
 
 	/* Create XFR query. */
 	size_t bufsize = data->wire_size;
 	switch(data->type) {
 	case XFR_TYPE_AIN:
-		ret = xfrin_create_axfr_query(zone->name, data->wire, &bufsize);
+		ret = xfrin_create_axfr_query(zone->name, data, &bufsize, tsig);
 		break;
 	case XFR_TYPE_IIN:
-		ret = xfrin_create_ixfr_query(contents, data->wire, &bufsize);
+		ret = xfrin_create_ixfr_query(contents, data, &bufsize, tsig);
 		break;
 	default:
 		ret = KNOTD_EINVAL;

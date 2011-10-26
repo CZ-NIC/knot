@@ -361,7 +361,13 @@ static int zones_refresh_ev(event_t *e)
 
 	/* Create query. */
 	/*! \todo API for retrieval of name. */
-	int ret = xfrin_create_soa_query(zone->name, qbuf, &buflen);
+	
+	/*! \todo [TSIG] CHANGE!!! only for compatibility now. */
+	knot_ns_xfr_t xfr_req;
+	memset(&xfr_req, 0, sizeof(knot_ns_xfr_t));
+	xfr_req.wire = qbuf;
+	
+	int ret = xfrin_create_soa_query(zone->name, &xfr_req, &buflen);
 	if (ret == KNOT_EOK) {
 
 		sockaddr_t *master = &zd->xfr_in.master;
