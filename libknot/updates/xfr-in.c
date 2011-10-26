@@ -343,6 +343,8 @@ static int xfrin_check_tsig(knot_packet_t *packet, knot_ns_xfr_t *xfr,
 	assert(packet != NULL);
 	assert(xfr != NULL);
 	
+	dbg_xfrin_verb("xfrin_check_tsig(): packet nr: %d\n", xfr->packet_nr);
+	
 	/*
 	 * If we are expecting it (i.e. xfr->prev_digest_size > 0)
 	 *   a) it should be there (first, last or each 100th packet) and it
@@ -641,6 +643,9 @@ dbg_xfrin_exec(
 			 *               at the end of the packet. 
 			 */
 			ret = xfrin_check_tsig(packet, xfr, 1);
+			
+			dbg_xfrin_detail("xfrin_check_tsig() returned %d\n", 
+			                 ret);
 			
 			knot_packet_free(&packet);
 			knot_rrset_deep_free(&rr, 1, 1, 1);
@@ -1194,6 +1199,7 @@ dbg_xfrin_exec(
 	 */
 	ret = xfrin_check_tsig(packet, xfr, 
 	                       knot_ns_tsig_required(xfr->packet_nr));
+	++xfr->packet_nr;
 	
 	/*! \note [TSIG] Cleanup and propagate error if TSIG validation fails.*/
 	if (ret != KNOT_EOK) {

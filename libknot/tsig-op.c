@@ -467,8 +467,8 @@ static int knot_tsig_write_tsig_variables(uint8_t *wire,
 
 	memcpy(wire + offset, knot_dname_name(tsig_owner),
 	       sizeof(uint8_t) * knot_dname_size(tsig_owner));
-	dbg_tsig("TSIG: write variables: written owner (tsig alg): \n",
-	         /*knot_rrset_class(tsig_rr)*/);
+	dbg_tsig("TSIG: write variables: written owner (tsig alg): \n");
+	         /*knot_rrset_class(tsig_rr));*/
 	dbg_tsig_hex_detail(wire + offset, knot_dname_size(tsig_owner));
 	offset += knot_dname_size(tsig_owner);
 
