@@ -18,6 +18,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stddef.h>
 
 #include "zone/dname-table.h"
 #include "util/error.h"
@@ -64,9 +65,9 @@ static int compare_dname_table_nodes(struct dname_table_node *n1,
  */
 static void delete_dname_table_node(struct dname_table_node *node, void *data)
 {
-	if ((int)data == 1) {
+	if ((ssize_t)data == 1) {
 		knot_dname_release(node->dname);
-	} else if ((int)data == 2) {
+	} else if ((ssize_t)data == 2) {
 		knot_dname_free(&node->dname);
 	}
 

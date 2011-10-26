@@ -130,7 +130,7 @@ static int xfrin_create_query(knot_dname_t *qname, uint16_t qtype,
 		
 		dbg_xfrin_detail("Signed XFR query, new wire size: %zu, digest:"
 		                 "\n", wire_size);
-		dbg_xfrin_hex_detail(xfr->digest, xfr->digest_size);
+		dbg_xfrin_hex_detail((const char*)xfr->digest, xfr->digest_size);
 	}
 
 	memcpy(xfr->wire, wire, wire_size);

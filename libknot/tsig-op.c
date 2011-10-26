@@ -408,8 +408,10 @@ static int knot_tsig_compute_digest(const uint8_t *wire, size_t wire_len,
 			return KNOT_ENOTSUP;
 	} /* switch */
 
+	unsigned tmp_dig_len = *digest_len;
 	HMAC_Update(&ctx, (const unsigned char *)wire, wire_len);
-	HMAC_Final(&ctx, digest, digest_len);
+	HMAC_Final(&ctx, digest, &tmp_dig_len);
+	*digest_len = tmp_dig_len;
 
 	return KNOT_EOK;
 }
@@ -514,7 +516,7 @@ static int knot_tsig_write_tsig_variables(uint8_t *wire,
 	/* Fudge. */
 	knot_wire_write_u16(wire + offset, tsig_rdata_fudge(tsig_rr));
 	offset += sizeof(uint16_t);
-	dbg_tsig_detail("TSIG: write variables: fudge: %lu\n",
+	dbg_tsig_detail("TSIG: write variables: fudge: %hu\n",
 		 tsig_rdata_fudge(tsig_rr));
 	/* TSIG error. */
 	knot_wire_write_u16(wire + offset, tsig_rdata_error(tsig_rr));
