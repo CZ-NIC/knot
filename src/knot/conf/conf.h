@@ -43,6 +43,7 @@ typedef struct conf_iface_t {
 	char *address;    /*!< IP (IPv4/v6) address for this interface */
 	int port;         /*!< Port number for this interface */
 	int family;       /*!< Address family. */
+	knot_key_t *key;  /*!< TSIG key (only valid for remotes). */
 } conf_iface_t;
 
 /*!
