@@ -945,7 +945,7 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 
 		/* Evaluate progress and answer if passed. */
 		if (init_failed) {
-			knot_ns_xfr_send_error(&xfr, rcode);
+			knot_ns_xfr_send_error(w->ns, &xfr, rcode);
 			socket_close(xfr.session);
 			log_server_notice("AXFR transfer of zone '%s/OUT' "
 			                  "%s:%d failed: %s\n",
@@ -1021,7 +1021,7 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		
 		/* Evaluate progress and answer if passed. */
 		if (init_failed) {
-			knot_ns_xfr_send_error(&xfr, rcode);
+			knot_ns_xfr_send_error(w->ns, &xfr, rcode);
 			log_server_notice("IXFR transfer of zone '%s/OUT' "
 			                  "%s:%d failed: %s\n",
 			                  zname,
