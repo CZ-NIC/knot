@@ -17,11 +17,10 @@ LT_INIT
 
 # Checks for programs.
 AC_PROG_CC
-AM_PROG_LEX
 
-AC_CACHE_CHECK([for reentrant lex], [ac_cv_path_LEX_R],
-  [AC_PATH_PROGS_FEATURE_CHECK([LEX_R], [$LEX flex gflex],
-    [[$ac_path_LEX_R -t>/dev/null 2>/dev/null<<END && ac_cv_path_LEX_R=$ac_path_LEX_R ac_path_LEX_R_found=true
+AC_CACHE_CHECK([for reentrant lex], [ac_cv_path_LEX],
+  [AC_PATH_PROGS_FEATURE_CHECK([LEX], [$LEX flex gflex],
+  [cat >conftest.l <<_ACEOF
 %{
 %}
 
@@ -36,10 +35,14 @@ BLANK [ \t\n]
 %%
 <<EOF>> return 0;
 %%
-END
-    ]],
-    [AC_MSG_ERROR([could not find lex that supports reentrant parsers])])])
-AC_SUBST([LEX], [$ac_cv_path_LEX_R])
+_ACEOF
+_AC_DO_VAR(ac_path_LEX conftest.l)
+test $ac_status -eq 0 && ac_cv_path_LEX=$ac_path_LEX ac_path_LEX_found=true
+rm -f conftest.l lexyy.c lex.yy.c
+],
+[AC_MSG_ERROR([could not find lex that supports reentrant parsers])])])
+AC_SUBST([LEX], [$ac_cv_path_LEX])
+AM_PROG_LEX
 
 AC_PROG_YACC
 YACC_BISON=`bison --version | awk '{print $1;exit}'`
