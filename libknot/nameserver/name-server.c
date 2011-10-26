@@ -1972,6 +1972,8 @@ typedef struct ns_axfr_params {
 
 int knot_ns_tsig_required(int packet_nr) 
 {
+	dbg_ns_detail("ns_tsig_required(%d): %d\n", packet_nr,
+	              (packet_nr % KNOT_NS_TSIG_FREQ == 0));
 	return (packet_nr % KNOT_NS_TSIG_FREQ == 0);
 }
 

@@ -343,7 +343,8 @@ static int xfrin_check_tsig(knot_packet_t *packet, knot_ns_xfr_t *xfr,
 	assert(packet != NULL);
 	assert(xfr != NULL);
 	
-	dbg_xfrin_verb("xfrin_check_tsig(): packet nr: %d\n", xfr->packet_nr);
+	dbg_xfrin_verb("xfrin_check_tsig(): packet nr: %d, required: %d\n", 
+	               xfr->packet_nr, tsig_req);
 	
 	/*
 	 * If we are expecting it (i.e. xfr->prev_digest_size > 0)
@@ -388,8 +389,8 @@ static int xfrin_check_tsig(knot_packet_t *packet, knot_ns_xfr_t *xfr,
 				return ret;
 			}
 			
-			// and reset the counter and data storage
-			xfr->packet_nr = 1;
+			// and reset the data storage
+			//xfr->packet_nr = 1;
 			xfr->tsig_data_size = 0;
 
 			// Extract the digest from the TSIG RDATA and store it.
@@ -858,6 +859,7 @@ dbg_xfrin_exec(
 	 */
 	ret = xfrin_check_tsig(packet, xfr, 
 	                       knot_ns_tsig_required(xfr->packet_nr));
+	++xfr->packet_nr;
 	
 	knot_packet_free(&packet);
 	dbg_xfrin("Processed one AXFR packet successfully.\n");
@@ -1199,6 +1201,7 @@ dbg_xfrin_exec(
 	 */
 	ret = xfrin_check_tsig(packet, xfr, 
 	                       knot_ns_tsig_required(xfr->packet_nr));
+	dbg_xfrin_detail("xfrin_check_tsig() returned %d\n", ret);
 	++xfr->packet_nr;
 	
 	/*! \note [TSIG] Cleanup and propagate error if TSIG validation fails.*/
