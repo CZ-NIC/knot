@@ -1992,10 +1992,16 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 	
 	size_t digest_real_size = xfr->digest_max_size;
 	
+	dbg_ns_detail("xfr->tsig_key=%p\n", xfr->tsig_key);
 	/*! \note [TSIG] Generate TSIG if required (during XFR/IN). */
 	if (xfr->tsig_key && add_tsig) {
 		if (xfr->packet_nr == 0) {
 			/* Add key, digest and digest length. */
+			dbg_ns_detail("Calling tsig_sign(): %p, %zu, %zu, "
+				      "%p, %zu, %p, %zu, %p\n",
+				      xfr->wire, real_size, xfr->wire_size,
+				      xfr->digest, xfr->digest_size, xfr->digest,
+				      digest_real_size, xfr->tsig_key);
 			res = knot_tsig_sign(xfr->wire, &real_size,
 			               xfr->wire_size, xfr->digest, 
 			               xfr->digest_size, xfr->digest, 
@@ -2003,6 +2009,7 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 			               xfr->tsig_key);
 		} else {
 			/* Add key, digest and digest length. */
+			dbg_ns_detail("Calling tsig_sign_next()\n");
 			res = knot_tsig_sign_next(xfr->wire, &real_size,
 			                          xfr->wire_size, 
 			                          xfr->digest,
@@ -2011,7 +2018,11 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 			                          &digest_real_size,
 			                          xfr->tsig_key);
 		}
-		
+
+		dbg_ns_detail("Sign function returned: %s\n",
+			      knot_strerror(res));
+		dbg_ns_detail("Real size of digest: %zu\n", digest_real_size);
+
 		if (res != KNOT_EOK) {
 			return res;
 		}
@@ -2984,6 +2995,8 @@ int knot_ns_answer_axfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	
 	/*! \todo [TSIG] Get the TSIG size from some API function. */
 	if (xfr->tsig_size > 0) {
+		dbg_ns_detail("Setting TSIG size in packet: %zu\n",
+		              xfr->tsig_size);
 		knot_packet_set_tsig_size(xfr->response, xfr->tsig_size);
 	}
 

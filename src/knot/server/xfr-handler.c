@@ -343,6 +343,7 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 			switch(ret) {
 			case KNOT_EOK:
 				*rcode = KNOT_RCODE_NOERROR;
+				break;
 			case KNOT_TSIG_EBADKEY:
 			case KNOT_TSIG_EBADSIG:
 				// delete the TSIG key so that the error
@@ -355,6 +356,7 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 				break;
 			case KNOT_EMALF:
 				*rcode = KNOT_RCODE_FORMERR;
+				break;
 			default:
 				*rcode = KNOT_RCODE_SERVFAIL;
 			}
