@@ -878,15 +878,18 @@ static int zones_load_changesets(const knot_zone_t *zone,
                                  uint32_t from, uint32_t to)
 {
 	if (!zone || !dst) {
+		dbg_zones_detail("Bad arguments: zone=%p, dst=%p\n", zone, dst);
 		return KNOT_EBADARG;
 	}
 	if (!zone->data) {
+		dbg_zones_detail("Bad arguments: zone->data=%p\n", zone->data);
 		return KNOT_EBADARG;
 	}
 
 	/* Fetch zone-specific data. */
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 	if (!zd->ixfr_db) {
+		dbg_zones_detail("Bad arguments: zd->ixfr_db=%p\n", zone->data);
 		return KNOT_EBADARG;
 	}
 
@@ -2021,12 +2024,15 @@ int zones_store_changesets(knot_ns_xfr_t *xfr)
 int zones_xfr_load_changesets(knot_ns_xfr_t *xfr) 
 {
 	if (xfr == NULL || xfr->data == NULL || xfr->zone == NULL) {
+		dbg_zones_detail("Wrong parameters: xfr=%p, xfr->data=%p,"
+		                " xfr->zone = %p\n", xfr, xfr->data, xfr->zone);
 		return KNOTD_EINVAL;
 	}
 	
 	const knot_zone_t *zone = xfr->zone;
 	const knot_zone_contents_t *contents = knot_zone_contents(zone);
 	if (!contents) {
+		dbg_zones_detail("Missing contents\n");
 		return KNOTD_EINVAL;
 	}
 	
@@ -2044,6 +2050,7 @@ int zones_xfr_load_changesets(knot_ns_xfr_t *xfr)
 	
 	int ret = zones_load_changesets(zone, chgsets, xfr_serial, zone_serial);
 	if (ret != KNOTD_EOK) {
+		
 		return ret;
 	}
 	
