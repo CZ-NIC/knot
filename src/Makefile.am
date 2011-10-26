@@ -15,8 +15,14 @@ BUILT_SOURCES =					\
 	tests/libknot/raw_data_queries.rc	\
 	tests/libknot/raw_data.rc		\
 	tests/libknot/realdata/raw_data.rc	\
-	tests/libknot/parsed_data_queries.rc     \
-	tests/sample_conf.rc
+	tests/libknot/parsed_data_queries.rc	\
+	tests/sample_conf.rc			\
+	zparser.h				\
+	zparser.c				\
+	zlexer.c				\
+	libknotd_la-cf-lex.c			\
+	libknotd_la-cf-parse.c			\
+	libknotd_la-cf-parse.h
 
 CLEANFILES =					\
 	tests/libknot/parsed_data.rc		\
@@ -24,7 +30,7 @@ CLEANFILES =					\
 	tests/libknot/raw_data_queries.rc	\
 	tests/libknot/raw_data.rc		\
 	tests/libknot/realdata/raw_data.rc	\
-	tests/libknot/parsed_data_queries.rc     \
+	tests/libknot/parsed_data_queries.rc	\
 	tests/sample_conf.rc                    \
 	zparser.h				\
 	zparser.c				\
