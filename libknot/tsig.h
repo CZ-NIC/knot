@@ -113,6 +113,8 @@ const uint8_t *tsig_rdata_other_data(const knot_rrset_t *tsig);
 uint16_t tsig_rdata_other_data_length(const knot_rrset_t *tsig);
 size_t tsig_rdata_tsig_variables_length(const knot_rrset_t *tsig);
 
+size_t tsig_rdata_tsig_timers_length();
+
 int tsig_alg_from_name(const knot_dname_t *name);
 
 /*!
