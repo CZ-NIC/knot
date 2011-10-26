@@ -72,7 +72,8 @@ enum tsig_consts {
 	                             + sizeof(uint32_t)	// ttl
 	                             + 6		// time signed
 	                             + sizeof(uint16_t)	// fudge
-	                             + sizeof(uint16_t),// error
+	                             + sizeof(uint16_t)	// error
+	                             + sizeof(uint16_t),// other data length
 	KNOT_TSIG_TIMERS_LENGTH = sizeof(uint16_t)	//fugde
 	                          + 6			// time signed
 };
@@ -90,14 +91,14 @@ enum tsig_consts {
  * \note Uses the given domain name, do not deallocate it!
  */
 int tsig_rdata_set_alg_name(knot_rrset_t *tsig, knot_dname_t *alg_name);
-//int tsig_rdata_set_alg(knot_rrset_t *tsig, tsig_algorithm_t alg);
+int tsig_rdata_set_alg(knot_rrset_t *tsig, tsig_algorithm_t alg);
 int tsig_rdata_set_time_signed(knot_rrset_t *tsig, uint64_t time);
 int tsig_rdata_store_current_time(knot_rrset_t *tsig);
 int tsig_rdata_set_fudge(knot_rrset_t *tsig, uint16_t fudge);
 int tsig_rdata_set_mac(knot_rrset_t *tsig, uint16_t length,
                        const uint8_t *mac);
 int tsig_rdata_set_orig_id(knot_rrset_t *tsig, uint16_t id);
-int tsig_rdata_set_error(knot_rrset_t *tsig, uint16_t id);
+int tsig_rdata_set_tsig_error(knot_rrset_t *tsig, uint16_t tsig_error);
 int tsig_rdata_set_other_data(knot_rrset_t *tsig, uint16_t length,
                               const uint8_t *other_data);
 

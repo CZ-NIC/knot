@@ -35,19 +35,17 @@ int tsig_rdata_init(knot_rrset_t *tsig)
 	/* Initializes rdata. */
 	tsig->rdata = knot_rdata_new();
 	if (!tsig->rdata) {
-		ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
 
 	tsig->rdata->items =
-		malloc(sizeof(knot_rdata_item_t *) * KNOT_TSIG_ITEM_COUNT);
+		malloc(sizeof(knot_rdata_item_t) * KNOT_TSIG_ITEM_COUNT);
 	if (!tsig->rdata->items) {
-		ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
 
 	memset(tsig->rdata->items, 0,
-	       sizeof(knot_rdata_item_t *) * KNOT_TSIG_ITEM_COUNT);
+	       sizeof(knot_rdata_item_t) * KNOT_TSIG_ITEM_COUNT);
 
 	return KNOT_EOK;
 }
@@ -64,7 +62,37 @@ int tsig_rdata_set_alg_name(knot_rrset_t *tsig, knot_dname_t *alg_name)
 	}
 	assert(knot_rdata_item_count(rdata) >= 1);
 
-	knot_rdata_item_set_dname(rdata, 0, alg_name);
+	knot_dname_t *alg_name_copy = knot_dname_deep_copy(alg_name);
+	if (!alg_name_copy) {
+		return KNOT_ENOMEM;
+	}
+
+	knot_rdata_item_set_dname(rdata, 0, alg_name_copy);
+
+	return KNOT_EOK;
+}
+
+int tsig_rdata_set_alg(knot_rrset_t *tsig, tsig_algorithm_t alg)
+{
+	if (!tsig) {
+		return KNOT_EBADARG;
+	}
+
+	knot_rdata_t *rdata = knot_rrset_get_rdata(tsig);
+	if (!rdata) {
+		return KNOT_EBADARG;
+	}
+	assert(knot_rdata_item_count(rdata) >= 1);
+
+	const char *alg_str = tsig_alg_to_str(alg);
+	knot_dname_t *alg_name_copy = knot_dname_new_from_str(alg_str,
+							      strlen(alg_str),
+							      0);
+	if (!alg_name_copy) {
+		return KNOT_ENOMEM;
+	}
+
+	knot_rdata_item_set_dname(rdata, 0, alg_name_copy);
 
 	return KNOT_EOK;
 }
@@ -117,7 +145,7 @@ int tsig_rdata_set_fudge(knot_rrset_t *tsig, uint16_t fudge)
 	}
 
 	/* Write the length - 2. */
-	wire[0] = 2;
+	wire[0] = sizeof(uint16_t);
 	knot_wire_write_u16((uint8_t *)(wire + 1), fudge);
 
 	knot_rdata_item_set_raw_data(rdata, 2, wire);
@@ -145,8 +173,8 @@ int tsig_rdata_set_mac(knot_rrset_t *tsig, uint16_t length, const uint8_t *mac)
 	}
 
 	/* Write the length. */
-	wire[1] = length;
-	wire[0] = length + 2;
+	wire[0] = length + sizeof(uint16_t);
+	knot_wire_write_u16((uint8_t *)(wire + 1), length);
 	/* Copy the actual MAC. */
 	memcpy((uint8_t *)(wire + 2), mac, sizeof(uint8_t) * length);
 	knot_rdata_item_set_raw_data(rdata, 3, wire);
@@ -174,7 +202,7 @@ int tsig_rdata_set_orig_id(knot_rrset_t *tsig, uint16_t id)
 	}
 
 	/* Write the length - 2. */
-	wire[0] = 2;
+	wire[0] = sizeof(uint16_t);
 	knot_wire_write_u16((uint8_t *)(wire + 1), id);
 
 	knot_rdata_item_set_raw_data(rdata, 4, wire);
@@ -202,7 +230,7 @@ int tsig_rdata_set_tsig_error(knot_rrset_t *tsig, uint16_t tsig_error)
 	}
 
 	/* Write the length - 2. */
-	wire[0] = 2;
+	wire[0] = sizeof(uint16_t);
 	knot_wire_write_u16((uint8_t *)(wire + 1), tsig_error);
 
 	knot_rdata_item_set_raw_data(rdata, 5, wire);
@@ -231,8 +259,8 @@ int tsig_rdata_set_other_data(knot_rrset_t *tsig, uint16_t length,
 	}
 
 	/* Write the length. */
-	wire[1] = length;
 	wire[0] = length + 2;
+	knot_wire_write_u16((uint8_t *)(wire + 1), length);
 	/* Copy the actual data. */
 	memcpy(wire + 2, other_data, sizeof(uint8_t) * length);
 	knot_rdata_item_set_raw_data(rdata, 6, wire);
@@ -492,6 +520,13 @@ size_t tsig_rdata_tsig_variables_length(const knot_rrset_t *tsig)
 	if (!alg_name) {
 		return 0;
 	}
+
+//	dbg_tsig_detail("key_name: %.*s (size: %u) alg_name: %.*s (size: %u)\n", knot_dname_size(key_name),
+//	                key_name->name, alg_name->size,  alg_name->name,
+//	                key_name->size, alg_name->size);
+
+//	dbg_tsig_hex_detail(key_name->name, key_name->size);
+//	dbg_tsig_hex_detail(alg_name->name, alg_name->size);
 
 	uint16_t other_data_length = tsig_rdata_other_data_length(tsig);
 
