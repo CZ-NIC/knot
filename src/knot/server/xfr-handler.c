@@ -396,29 +396,31 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 	}
 
 	/* Read DNS/TCP packet. */
-	int ret = tcp_recv(fd, buf, sizeof(buf), 0);
-	if (ret <= 0) {
-		dbg_xfr_verb("xfr: tcp_recv() failed, ret=%d\n", fd);
-		return KNOTD_ERROR;
-	}
-	data->wire_size = ret;
+	int ret = 0;
+	int rcvd = tcp_recv(fd, buf, sizeof(buf), 0);
+	data->wire_size = rcvd;
+	if (rcvd <= 0) {
+		data->wire_size = 0;
+		ret = KNOT_ECONN;
+	} else {
 
 	/*!
 	 * \todo [TSIG] Somewhere before this fetch the query digest and the TSIG
 	 *       associated with this transfer and save them to 'data'.
 	 */
-	
-	/* Process incoming packet. */
-	switch(data->type) {
-	case XFR_TYPE_AIN:
-		ret = knot_ns_process_axfrin(w->ns, data);
-		break;
-	case XFR_TYPE_IIN:
-		ret = knot_ns_process_ixfrin(w->ns, data);
-		break;
-	default:
-		ret = KNOT_EBADARG;
-		break;
+
+		/* Process incoming packet. */
+		switch(data->type) {
+		case XFR_TYPE_AIN:
+			ret = knot_ns_process_axfrin(w->ns, data);
+			break;
+		case XFR_TYPE_IIN:
+			ret = knot_ns_process_ixfrin(w->ns, data);
+			break;
+		default:
+			ret = KNOT_EBADARG;
+			break;
+		}
 	}
 
 	/* AXFR-style IXFR. */
@@ -1000,9 +1002,12 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 				socket_close(xfr.session);
 			} else {
 				log_server_info("IXFR transfer of zone '%s/OUT'"
-				                "to %s:%d successful.\n",
-				                zname,
-				                r_addr, r_port);
+						" - not enough data in journal,"
+						" fallback to AXFR.\n",
+						zname);
+				xfr.type = XFR_TYPE_AOUT;
+				xfr_request(w->master, &xfr);
+				return KNOTD_EOK;
 			}
 		}
 		if (xfr.digest) {
