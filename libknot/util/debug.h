@@ -744,8 +744,9 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 #define dbg_tsig_hex(data, len)
 #define dbg_tsig_verb(msg...)
 #define dbg_tsig_hex_verb(data, len)
-#define tsig(msg...)
+#define dbg_tsig_detail(msg...)
 #define dbg_tsig_hex_detail(data, len)
+#define tsig(msg...)
 #endif
 
 /******************************************************************************/
