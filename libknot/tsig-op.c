@@ -394,7 +394,7 @@ static int knot_tsig_compute_digest(const uint8_t *wire, size_t wire_len,
 
 	dbg_tsig("TSIG: using this wire for digest calculation\n");
 
-	dbg_tsig_hex(wire, wire_len);
+	//dbg_tsig_hex(wire, wire_len);
 
 	/* Compute digest. */
 	HMAC_CTX ctx;
@@ -609,7 +609,7 @@ int knot_tsig_create_sign_wire(const uint8_t *msg, size_t msg_len,
 	dbg_tsig("Copying original message.\n");
 	memcpy(pos, msg, msg_len);
 	dbg_tsig_detail("TSIG: create wire: original message: ");
-	dbg_tsig_hex_detail(pos, msg_len);
+	//dbg_tsig_hex_detail(pos, msg_len);
 	pos += msg_len;
 	/* Copy TSIG variables. */
 	dbg_tsig("Writing TSIG variables.\n");
@@ -689,7 +689,7 @@ static int knot_tsig_create_sign_wire_next(const uint8_t *msg, size_t msg_len,
 	dbg_tsig("Copying original message.\n");
 	memcpy(wire + prev_mac_len, msg, msg_len);
 	dbg_tsig_detail("TSIG: create wire: original message: ");
-	dbg_tsig_hex_detail(wire + prev_mac_len, msg_len);
+	//dbg_tsig_hex_detail(wire + prev_mac_len, msg_len);
 	/* Copy TSIG variables. */
 	
 	dbg_tsig("Writing TSIG timers.\n");
@@ -949,13 +949,14 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
 	size_t tsig_len = tsig_wire_actsize(tsig_rr);
 
 	dbg_tsig_detail("TSIG: check digest: wire before strip: ");
-	dbg_tsig_hex_detail(wire, size);
+	//dbg_tsig_hex_detail(wire, size);
 
 	/* Strip the TSIG. */
 	size -= tsig_len;
 
-	dbg_tsig_detail("TSIG: check digest: wire after strip: ");
-	dbg_tsig_hex_detail(wire, size);
+	dbg_tsig_detail("TSIG: check digest: wire after strip (stripped %zu):",
+	                tsig_len);
+	//dbg_tsig_hex_detail(wire, size);
 
 	uint8_t *wire_to_sign = malloc(sizeof(uint8_t) * size);
 	if (!wire_to_sign) {
