@@ -24,6 +24,8 @@ const error_table_t knot_error_msgs[KNOT_ERROR_COUNT] = {
 	{KNOT_ERROR, "General error."},
 	{KNOT_ENOMEM, "Not enough memory."},
 	{KNOT_ENOTSUP, "Operation not supported."},
+	{KNOT_EAGAIN, "OS lacked necessary resources."},
+	{KNOT_ERANGE, "Value is out of range."},
 	{KNOT_EBADARG, "Wrong argument supported."},
 	{KNOT_EFEWDATA, "Not enough data to parse."},
 	{KNOT_ESPACE, "Not enough space provided."},
