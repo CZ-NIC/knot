@@ -114,7 +114,14 @@ static int xfr_process_udp_query(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 	}
 
 	/* Close after receiving response. */
-	return KNOTD_ECONNREFUSED;
+	knot_ns_xfr_t cr = {};
+	cr.type = XFR_TYPE_CLOSE;
+	cr.session = data->session;
+	cr.data = data;
+	cr.zone = data->zone;
+	evqueue_write(w->q, &cr, sizeof(knot_ns_xfr_t));
+	
+	return KNOTD_EOK;
 }
 
 /*! \todo Document me. */
@@ -182,6 +189,33 @@ static knot_ns_xfr_t *xfr_register_task(xfrworker_t *w, knot_ns_xfr_t *req)
 }
 
 /*!
+ * \brief Clean pending transfer data.
+ */
+static int xfr_xfrin_cleanup(xfrworker_t *w, knot_ns_xfr_t *data)
+{
+	int ret = KNOTD_EOK;
+	knot_changesets_t *chs = 0;
+	
+	switch(data->type) {
+	case XFR_TYPE_AIN:
+		if (data->data) {
+			knot_zone_contents_deep_free(
+					(knot_zone_contents_t **)&data->data, 0);
+			data->data = 0;
+		}
+		break;
+	case XFR_TYPE_IIN:
+		if (data->data) {
+			chs = (knot_changesets_t *)data->data;
+			knot_free_changesets(&chs);
+		}
+		break;
+	}
+	
+	return ret;
+}
+
+/*!
  * \brief Finalize XFR/IN transfer.
  *
  * \param w XFR worker.
@@ -203,9 +237,7 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 		dbg_xfr("xfr: AXFR/IN saving new zone\n");
 		ret = zones_save_zone(data);
 		if (ret != KNOTD_EOK) {
-			knot_zone_contents_deep_free(
-			    (knot_zone_contents_t **)&data->data, 0);
-			data->data = 0;
+			xfr_xfrin_cleanup(w, data);
 			log_zone_error("AXFR failed to save "
 			               "transferred zone '%s/IN' - %s\n",
 			               zorigin, knotd_strerror(ret));
@@ -496,7 +528,8 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 			zones_timers_update(zone, zd->conf, server->sched);
 			
 		} else {
-			/*! \todo May need some cleanup to prevent leaks. */
+			/* Cleanup */
+			xfr_xfrin_cleanup(w, data);
 		}
 		
 		/* Disconnect. */
