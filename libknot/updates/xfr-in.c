@@ -983,6 +983,7 @@ int xfrin_process_ixfr_packet(/*const uint8_t *pkt, size_t size,
 			dbg_xfrin("Fallback to AXFR.\n");
 			ret = XFRIN_RES_FALLBACK;
 			knot_free_changesets(chs);
+			xfr->data = 0;
 			return ret;
 		}
 	} else {
@@ -1196,6 +1197,7 @@ cleanup:
 	dbg_xfrin("Cleanup after processing IXFR/IN packet.\n");
 	knot_free_changesets(chs);
 	knot_packet_free(&packet);
+	xfr->data = 0;
 	return ret;
 }
 
