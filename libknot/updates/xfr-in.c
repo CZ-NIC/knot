@@ -1354,6 +1354,7 @@ static int xfrin_changes_check_hash_items(ck_hash_table_item_t ***items,
 
 	memset(items_new, 0, new_count * item_len);
 	memcpy(items_new, *items, (*count) * item_len);
+	free(*items);
 	*items = items_new;
 	*allocated = new_count;
 

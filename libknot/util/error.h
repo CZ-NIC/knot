@@ -63,7 +63,8 @@ enum knot_error {
 	KNOT_ENOXFR,          /*!< Transfer was not sent. */
 	KNOT_ENOIXFR,         /*!< Transfer is not IXFR (is in AXFR format). */
 	KNOT_EXFRREFUSED,     /*!< Zone transfer refused by the server. */
-	KNOT_ERROR_COUNT = 29
+	KNOT_ECONN,           /*!< Connection reset. */
+	KNOT_ERROR_COUNT = 30
 };
 
 /*! \brief Table linking error messages to error codes. */
