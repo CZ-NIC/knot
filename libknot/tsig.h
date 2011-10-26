@@ -72,7 +72,8 @@ enum tsig_consts {
 	                             + sizeof(uint32_t)	// ttl
 	                             + 6		// time signed
 	                             + sizeof(uint16_t)	// fudge
-	                             + sizeof(uint16_t),// error
+	                             + sizeof(uint16_t)	// error
+	                             + sizeof(uint16_t),// other data length
 	KNOT_TSIG_TIMERS_LENGTH = sizeof(uint16_t)	//fugde
 	                          + 6			// time signed
 };
@@ -90,14 +91,14 @@ enum tsig_consts {
  * \note Uses the given domain name, do not deallocate it!
  */
 int tsig_rdata_set_alg_name(knot_rrset_t *tsig, knot_dname_t *alg_name);
-//int tsig_rdata_set_alg(knot_rrset_t *tsig, tsig_algorithm_t alg);
+int tsig_rdata_set_alg(knot_rrset_t *tsig, tsig_algorithm_t alg);
 int tsig_rdata_set_time_signed(knot_rrset_t *tsig, uint64_t time);
 int tsig_rdata_store_current_time(knot_rrset_t *tsig);
 int tsig_rdata_set_fudge(knot_rrset_t *tsig, uint16_t fudge);
 int tsig_rdata_set_mac(knot_rrset_t *tsig, uint16_t length,
                        const uint8_t *mac);
 int tsig_rdata_set_orig_id(knot_rrset_t *tsig, uint16_t id);
-int tsig_rdata_set_error(knot_rrset_t *tsig, uint16_t id);
+int tsig_rdata_set_tsig_error(knot_rrset_t *tsig, uint16_t tsig_error);
 int tsig_rdata_set_other_data(knot_rrset_t *tsig, uint16_t length,
                               const uint8_t *other_data);
 
@@ -109,8 +110,11 @@ const uint8_t *tsig_rdata_mac(const knot_rrset_t *tsig);
 size_t tsig_rdata_mac_length(const knot_rrset_t *tsig);
 uint16_t tsig_rdata_orig_id(const knot_rrset_t *tsig);
 uint16_t tsig_rdata_error(const knot_rrset_t *tsig);
-const uint16_t *tsig_rdata_other_data(const knot_rrset_t *tsig);
+const uint8_t *tsig_rdata_other_data(const knot_rrset_t *tsig);
+uint16_t tsig_rdata_other_data_length(const knot_rrset_t *tsig);
 size_t tsig_rdata_tsig_variables_length(const knot_rrset_t *tsig);
+
+size_t tsig_rdata_tsig_timers_length();
 
 int tsig_alg_from_name(const knot_dname_t *name);
 
@@ -134,6 +138,7 @@ uint16_t tsig_alg_digest_length(tsig_algorithm_t alg);
  * \return RRSET wire size.
  */
 size_t tsig_wire_maxsize(const knot_key_t *key);
+size_t tsig_wire_actsize(const knot_rrset_t *tsig);
 
 #endif /* _KNOT_TSIG_H_ */
 
