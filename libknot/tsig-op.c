@@ -467,8 +467,8 @@ static int knot_tsig_write_tsig_variables(uint8_t *wire,
 
 	memcpy(wire + offset, knot_dname_name(tsig_owner),
 	       sizeof(uint8_t) * knot_dname_size(tsig_owner));
-	dbg_tsig("TSIG: write variables: written owner (tsig alg): ",
-	         knot_rrset_class(tsig_rr));
+	dbg_tsig("TSIG: write variables: written owner (tsig alg): \n",
+	         /*knot_rrset_class(tsig_rr)*/);
 	dbg_tsig_hex_detail(wire + offset, knot_dname_size(tsig_owner));
 	offset += knot_dname_size(tsig_owner);
 
@@ -608,7 +608,7 @@ int knot_tsig_create_sign_wire(const uint8_t *msg, size_t msg_len,
 	/* Copy the original message. */
 	dbg_tsig("Copying original message.\n");
 	memcpy(pos, msg, msg_len);
-	dbg_tsig_detail("TSIG: create wire: original message: ");
+	dbg_tsig_detail("TSIG: create wire: original message: \n");
 	//dbg_tsig_hex_detail(pos, msg_len);
 	pos += msg_len;
 	/* Copy TSIG variables. */
@@ -688,7 +688,7 @@ static int knot_tsig_create_sign_wire_next(const uint8_t *msg, size_t msg_len,
 	/* Copy the original message. */
 	dbg_tsig("Copying original message.\n");
 	memcpy(wire + prev_mac_len, msg, msg_len);
-	dbg_tsig_detail("TSIG: create wire: original message: ");
+	dbg_tsig_detail("TSIG: create wire: original message: \n");
 	//dbg_tsig_hex_detail(wire + prev_mac_len, msg_len);
 	/* Copy TSIG variables. */
 	
@@ -948,13 +948,13 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
 	/* Calculate the size of TSIG RR. */
 	size_t tsig_len = tsig_wire_actsize(tsig_rr);
 
-	dbg_tsig_detail("TSIG: check digest: wire before strip: ");
+	dbg_tsig_detail("TSIG: check digest: wire before strip: \n");
 	//dbg_tsig_hex_detail(wire, size);
 
 	/* Strip the TSIG. */
 	size -= tsig_len;
 
-	dbg_tsig_detail("TSIG: check digest: wire after strip (stripped %zu):",
+	dbg_tsig_detail("TSIG: check digest: wire after strip (stripped %zu):\n",
 	                tsig_len);
 	//dbg_tsig_hex_detail(wire, size);
 
