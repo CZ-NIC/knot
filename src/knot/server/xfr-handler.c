@@ -764,7 +764,7 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		ret = zones_xfr_check_zone(&xfr, &rcode);
 		if (ret != KNOTD_EOK) {
 			if (!init_failed) {
-				knot_ns_xfr_send_error(&xfr, rcode);
+				knot_ns_xfr_send_error(w->ns, &xfr, rcode);
 				socket_close(xfr.session);
 				log_server_notice("AXFR transfer of zone '%s/OUT' "
 				                  "%s:%d - check failed: %s\n",
@@ -805,12 +805,16 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		
 		ret = zones_xfr_check_zone(&xfr, &rcode);
 		if (ret != KNOTD_EOK) {
-			knot_ns_xfr_send_error(&xfr, rcode);
+			dbg_xfr("xfr: failed zone checking: %s\n",
+			        knotd_strerror(ret));
+			knot_ns_xfr_send_error(w->ns, &xfr, rcode);
 			socket_close(xfr.session);
 		}
 		
 		ret = zones_xfr_load_changesets(&xfr);
 		if (ret != KNOTD_EOK) {
+			dbg_xfr("xfr: Failed to load changesets: %s\n",
+			        knot_strerror(ret));
 			/* History cannot be reconstructed, fallback to AXFR. */
 			if (ret == KNOTD_ERANGE) {
 				log_server_info("IXFR transfer of zone '%s/OUT'"
@@ -821,7 +825,7 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 				xfr_request(w->master, &xfr);
 				return KNOTD_EOK;
 			}
-			knot_ns_xfr_send_error(&xfr, KNOT_RCODE_SERVFAIL);
+			knot_ns_xfr_send_error(w->ns, &xfr, KNOT_RCODE_SERVFAIL);
 			socket_close(xfr.session);
 			return KNOTD_EOK;
 		}
@@ -876,7 +880,8 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 	}
 
 	/* Report. */
-	if (ret != KNOTD_EOK && ret != KNOTD_EACCES) {
+	/*! \todo Check this condition! */
+	if (ret < KNOTD_EOK && ret != KNOTD_EACCES) {
 		log_server_error("%s request from %s:%d failed: %s\n",
 				 req_type, r_addr, r_port,
 				 knotd_strerror(ret));
