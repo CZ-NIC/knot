@@ -440,6 +440,18 @@ static int knot_tsig_check_time_signed(const knot_rrset_t *tsig_rr)
 	return KNOT_EOK;
 }
 
+static int knot_tsig_write_tsig_timers(uint8_t *wire, 
+                                       const knot_rrset_t *tsig_rr)
+{
+	// put time signed
+	knot_wire_write_u48(wire, tsig_rdata_time_signed(tsig_rr));
+	
+	// put fudge
+	knot_wire_write_u16(wire + 6, tsig_rdata_fudge(tsig_rr));
+	
+	return KNOT_EOK;
+}
+
 static int knot_tsig_write_tsig_variables(uint8_t *wire,
                                          const knot_rrset_t *tsig_rr)
 {
@@ -630,6 +642,77 @@ int knot_tsig_create_sign_wire(const uint8_t *msg, size_t msg_len,
 	// everything went ok, save the digest to the output parameter
 //	memcpy(digest, digest_tmp, digest_tmp_len);
 //	*digest_len = digest_tmp_len;
+
+	return KNOT_EOK;
+}
+
+static int knot_tsig_create_sign_wire_next(const uint8_t *msg, size_t msg_len,
+				      const uint8_t *prev_mac,
+		                      size_t prev_mac_len,
+		                      uint8_t *digest, size_t *digest_len,
+				      const knot_rrset_t *tmp_tsig,
+		                      const knot_key_t *key)
+{
+	if (!msg || !key || digest_len == NULL) {
+		dbg_tsig("TSIG: create wire: bad args.\n");
+		return KNOT_EBADARG;
+	}
+
+	/* Create tmp TSIG. */
+	int ret = KNOT_EOK;
+
+	/*
+	 * Create tmp wire, it should contain message
+	 * plus request mac plus tsig varibles.
+	 */
+	dbg_tsig("Counting wire size: %zu, %zu, %zu.\n",
+	         msg_len, prev_mac_len,
+	         tsig_rdata_tsig_timers_length());
+	size_t wire_len = sizeof(uint8_t) *
+	                (msg_len + prev_mac_len +
+			tsig_rdata_tsig_timers_length());
+	uint8_t *wire = malloc(wire_len);
+	if (!wire) {
+		ERR_ALLOC_FAILED;
+		return KNOT_ENOMEM;
+	}
+
+	memset(wire, 0, wire_len);
+
+	/* Copy the request MAC - should work even if NULL. */
+	dbg_tsig("Copying request mac.\n");
+	memcpy(wire, prev_mac, sizeof(uint8_t) * prev_mac_len);
+	dbg_tsig_detail("TSIG: create wire: request mac: ");
+	dbg_tsig_hex_detail(wire, prev_mac_len);
+	/* Copy the original message. */
+	dbg_tsig("Copying original message.\n");
+	memcpy(wire + prev_mac_len, msg, msg_len);
+	dbg_tsig_detail("TSIG: create wire: original message: ");
+	dbg_tsig_hex_detail(wire + prev_mac_len, msg_len);
+	/* Copy TSIG variables. */
+	
+	dbg_tsig("Writing TSIG timers.\n");
+	ret = knot_tsig_write_tsig_timers(wire + prev_mac_len + msg_len, 
+	                                  tmp_tsig);
+//	ret = knot_tsig_write_tsig_variables(wire + prev_mac_len + msg_len,
+//	                                     tmp_tsig);
+	if (ret != KNOT_EOK) {
+		dbg_tsig("TSIG: create wire: failed to write TSIG "
+		         "timers: %s\n", knot_strerror(ret));
+		return ret;
+	}
+
+	/* Compute digest. */
+	ret = knot_tsig_compute_digest(wire, wire_len,
+	                               digest, digest_len, key);
+	if (ret != KNOT_EOK) {
+		dbg_tsig("TSIG: create wire: failed to compute digest: %s\n",
+		         knot_strerror(ret));
+		*digest_len = 0;
+		return ret;
+	}
+
+	free(wire);
 
 	return KNOT_EOK;
 }
@@ -829,7 +912,8 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
                                   const uint8_t *wire, size_t size,
                                   const uint8_t *request_mac,
                                   size_t request_mac_len,
-                                  const knot_key_t *tsig_key)
+                                  const knot_key_t *tsig_key,
+                                  int use_times)
 {
 	if (!tsig_rr || !wire || !tsig_key) {
 		return KNOT_EBADARG;
@@ -888,10 +972,18 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
 	uint8_t digest_tmp[KNOT_TSIG_MAX_DIGEST_SIZE];
 	size_t digest_tmp_len = 0;
 	assert(tsig_rr->rdata);
-	ret = knot_tsig_create_sign_wire(wire_to_sign, size, request_mac,
-	                                 request_mac_len,
-	                                 digest_tmp, &digest_tmp_len, tsig_rr,
-	                                 tsig_key);
+	
+	if (use_times) {
+		ret = knot_tsig_create_sign_wire_next(wire_to_sign, size, 
+		                                 request_mac, request_mac_len,
+		                                 digest_tmp, &digest_tmp_len, 
+		                                 tsig_rr, tsig_key);
+	} else {
+		ret = knot_tsig_create_sign_wire(wire_to_sign, size, 
+		                                 request_mac, request_mac_len,
+		                                 digest_tmp, &digest_tmp_len, 
+		                                 tsig_rr, tsig_key);
+	}
 
 	assert(tsig_rr->rdata);
 	free(wire_to_sign);
@@ -921,7 +1013,7 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
 
 	/*! \todo [TSIG] TRUNCATION */
 	uint16_t mac_length = tsig_rdata_mac_length(tsig_rr);
-	uint8_t *tsig_mac = tsig_rdata_mac(tsig_rr);
+	const uint8_t *tsig_mac = tsig_rdata_mac(tsig_rr);
 
 	if (mac_length != tsig_alg_digest_length(alg)) {
 		dbg_tsig("TSIG: calculated digest length and given length do not match!\n");
@@ -949,7 +1041,7 @@ int knot_tsig_server_check(const knot_rrset_t *tsig_rr,
                            const knot_key_t *tsig_key)
 {
 	dbg_tsig_verb("tsig_server_check()\n");
-	return knot_tsig_check_digest(tsig_rr, wire, size, NULL, 0, tsig_key);
+	return knot_tsig_check_digest(tsig_rr, wire, size, NULL, 0, tsig_key, 0);
 }
 
 int knot_tsig_client_check(const knot_rrset_t *tsig_rr,
@@ -959,7 +1051,7 @@ int knot_tsig_client_check(const knot_rrset_t *tsig_rr,
 {
 	dbg_tsig_verb("tsig_client_check()\n");
 	return knot_tsig_check_digest(tsig_rr, wire, size, request_mac,
-	                              request_mac_len, tsig_key);
+	                              request_mac_len, tsig_key, 0);
 }
 
 int knot_tsig_client_check_next(const knot_rrset_t *tsig_rr,
@@ -970,5 +1062,8 @@ int knot_tsig_client_check_next(const knot_rrset_t *tsig_rr,
 {
 //	return knot_tsig_client_check(tsig_rr, wire, size, prev_digest,
 //	                              prev_digest_len, tsig_key);
+	dbg_tsig_verb("tsig_client_check_next()\n");
+	return knot_tsig_check_digest(tsig_rr, wire, size, prev_digest,
+	                              prev_digest_len, tsig_key, 1);
 	return KNOT_ENOTSUP;
 }

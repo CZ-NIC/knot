@@ -459,7 +459,8 @@ uint16_t tsig_rdata_other_data_length(const knot_rrset_t *tsig)
 		return 0;
 	}
 
-	return knot_wire_read_u16(knot_rdata_item(rdata, 6)->raw_data + 1);
+	return knot_wire_read_u16((uint8_t *)
+	                          (knot_rdata_item(rdata, 6)->raw_data + 1));
 }
 
 int tsig_alg_from_name(const knot_dname_t *alg_name)
@@ -468,7 +469,7 @@ int tsig_alg_from_name(const knot_dname_t *alg_name)
 		return 0;
 	}
 
-	const char *name = knot_dname_to_str(alg_name);
+	char *name = knot_dname_to_str(alg_name);
 	if (!name) {
 		return 0;
 	}
@@ -531,6 +532,11 @@ size_t tsig_rdata_tsig_variables_length(const knot_rrset_t *tsig)
 
 	return knot_dname_size(key_name) + knot_dname_size(alg_name) +
 	       other_data_length + KNOT_TSIG_VARIABLES_LENGTH;
+}
+
+size_t tsig_rdata_tsig_timers_length()
+{
+	return KNOT_TSIG_TIMERS_LENGTH;
 }
 
 
