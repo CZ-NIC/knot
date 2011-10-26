@@ -2103,8 +2103,8 @@ int zones_xfr_load_changesets(knot_ns_xfr_t *xfr)
 	
 	int ret = zones_load_changesets(zone, chgsets, xfr_serial, zone_serial);
 	if (ret != KNOTD_EOK) {
-		dbg_zones_verbose("Loading changesets failed: %s\n",
-		                  knot_strerror(ret));
+		dbg_zones_verb("Loading changesets failed: %s\n",
+		               knot_strerror(ret));
 		return ret;
 	}
 	
