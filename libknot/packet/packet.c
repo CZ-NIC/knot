@@ -858,8 +858,9 @@ int knot_packet_parse_next_rr_answer(knot_packet_t *packet,
 
 	if (packet->an_rrsets == packet->header.ancount) {
 		assert(packet->parsed < packet->size);
-		dbg_packet("Trailing garbage, ignoring...\n");
-		/*! \todo Do not ignore. */
+		//dbg_packet("Trailing garbage, ignoring...\n");
+		// there may be other data in the packet 
+		// (authority or additional).
 		return KNOT_EOK;
 	}
 
