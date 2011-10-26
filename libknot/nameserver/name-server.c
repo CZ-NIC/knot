@@ -289,19 +289,21 @@ static void ns_follow_cname(const knot_node_t **node,
 			/* if wildcard node, we must copy the RRSet and
 			   replace its owner */
 			rrset = ns_synth_from_wildcard(cname_rrset, *qname);
-			knot_packet_add_tmp_rrset(resp,
-			                            (knot_rrset_t *)rrset);
+			knot_packet_add_tmp_rrset(resp, (knot_rrset_t *)rrset);
+			add_rrset_to_resp(resp, rrset, tc, 0, 0);
+			ns_add_rrsigs(cname_rrset, resp, *qname, 
+			              add_rrset_to_resp, tc);
+		} else {
+			add_rrset_to_resp(resp, rrset, tc, 0, 0);
+			ns_add_rrsigs(rrset, resp, *qname, add_rrset_to_resp, 
+			              tc);
 		}
 		
-		dbg_ns("Using RRSet: %p, owner: %p\n", rrset, 
-			      rrset->owner);
-
-		add_rrset_to_resp(resp, rrset, tc, 0, 0);
-		ns_add_rrsigs(rrset, resp, *qname, add_rrset_to_resp, tc);
+		dbg_ns("Using RRSet: %p, owner: %p\n", rrset, rrset->owner);
+		
 dbg_ns_exec(
 		char *name = knot_dname_to_str(knot_rrset_owner(rrset));
-		dbg_ns("CNAME record for owner %s put to response.\n",
-			 name);
+		dbg_ns("CNAME record for owner %s put to response.\n", name);
 		free(name);
 );
 
@@ -1754,11 +1756,16 @@ dbg_ns_exec(
 		ns_follow_cname(&node, &act_name, resp,
 		                knot_response_add_rrset_answer, 1);
 dbg_ns_exec(
-		char *name = knot_dname_to_str(node->owner);
+		char *name = (node != NULL) ? knot_dname_to_str(node->owner)
+			: "(nil)";
 		char *name2 = knot_dname_to_str(act_name);
 		dbg_ns("Canonical name: %s (%p), node found: %p\n",
 			 name2, act_name, node);
-		dbg_ns("The node's owner: %s (%p)\n", name, node->owner);
+		dbg_ns("The node's owner: %s (%p)\n", name, (node != NULL)
+		       ? node->owner : NULL);
+		if (node != NULL) {
+			free(name);
+		}
 		free(name2);
 );
 		qname = act_name;
@@ -1992,10 +1999,16 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 	
 	size_t digest_real_size = xfr->digest_max_size;
 	
+	dbg_ns_detail("xfr->tsig_key=%p\n", xfr->tsig_key);
 	/*! \note [TSIG] Generate TSIG if required (during XFR/IN). */
 	if (xfr->tsig_key && add_tsig) {
 		if (xfr->packet_nr == 0) {
 			/* Add key, digest and digest length. */
+			dbg_ns_detail("Calling tsig_sign(): %p, %zu, %zu, "
+				      "%p, %zu, %p, %zu, %p\n",
+				      xfr->wire, real_size, xfr->wire_size,
+				      xfr->digest, xfr->digest_size, xfr->digest,
+				      digest_real_size, xfr->tsig_key);
 			res = knot_tsig_sign(xfr->wire, &real_size,
 			               xfr->wire_size, xfr->digest, 
 			               xfr->digest_size, xfr->digest, 
@@ -2003,6 +2016,7 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 			               xfr->tsig_key);
 		} else {
 			/* Add key, digest and digest length. */
+			dbg_ns_detail("Calling tsig_sign_next()\n");
 			res = knot_tsig_sign_next(xfr->wire, &real_size,
 			                          xfr->wire_size, 
 			                          xfr->digest,
@@ -2011,7 +2025,11 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 			                          &digest_real_size,
 			                          xfr->tsig_key);
 		}
-		
+
+		dbg_ns_detail("Sign function returned: %s\n",
+			      knot_strerror(res));
+		dbg_ns_detail("Real size of digest: %zu\n", digest_real_size);
+
 		if (res != KNOT_EOK) {
 			return res;
 		}
@@ -2944,6 +2962,7 @@ dbg_ns_exec(
 
 int knot_ns_xfr_send_error(knot_ns_xfr_t *xfr, knot_rcode_t rcode)
 {
+	/*! \todo Handle TSIG errors differently. */
 	knot_response_set_rcode(xfr->response, rcode);
 	
 	/*! \todo Probably rename the function. */
@@ -2983,6 +3002,8 @@ int knot_ns_answer_axfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	
 	/*! \todo [TSIG] Get the TSIG size from some API function. */
 	if (xfr->tsig_size > 0) {
+		dbg_ns_detail("Setting TSIG size in packet: %zu\n",
+		              xfr->tsig_size);
 		knot_packet_set_tsig_size(xfr->response, xfr->tsig_size);
 	}
 

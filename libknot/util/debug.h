@@ -53,13 +53,14 @@
 //#define KNOT_PACKET_DEBUG
 //#define KNOT_EDNS_DEBUG
 //#define KNOT_RRSET_DEBUG
+//#define KNOT_RDATA_DEBUG
 //#define KNOT_NSEC3_DEBUG
 //#define CUCKOO_DEBUG
 //#define CUCKOO_DEBUG_HASH
-	//#define KNOT_NS_DEBUG
-#define KNOT_XFRIN_DEBUG
+//#define KNOT_NS_DEBUG
+//#define KNOT_XFRIN_DEBUG
 //#define KNOT_DDNS_DEBUG
-#define KNOT_TSIG_DEBUG
+//#define KNOT_TSIG_DEBUG
 
 /*!
  * \brief Dumps RDATA of the given type.
@@ -743,8 +744,9 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 #define dbg_tsig_hex(data, len)
 #define dbg_tsig_verb(msg...)
 #define dbg_tsig_hex_verb(data, len)
-#define tsig(msg...)
+#define dbg_tsig_detail(msg...)
 #define dbg_tsig_hex_detail(data, len)
+#define tsig(msg...)
 #endif
 
 /******************************************************************************/
