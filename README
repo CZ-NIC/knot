@@ -17,7 +17,7 @@ $ sudo apt-get upgrade
 $
 $ # ensure all prerequisites are installed
 $
-$ sudo apt-get install git-core autoconf libtool flex bison libssl-dev libev-dev
+$ sudo apt-get install git-core autoconf libtool flex bison libssl-dev
 $
 $ # the required version of liburcu is not available in the default package sources.
 $
