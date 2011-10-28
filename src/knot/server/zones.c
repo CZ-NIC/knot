@@ -921,8 +921,11 @@ static int zones_load_changesets(const knot_zone_t *zone,
 	uint32_t found_to = from;
 	journal_node_t *n = 0;
 	int ret = journal_fetch(zd->ixfr_db, from, ixfrdb_key_from_cmp, &n);
-	
-	/*! \todo Check ret! */
+	if (ret != KNOTD_EOK) {
+		dbg_xfr("xfr: failed to fetch starting changeset: %s\n",
+		        knotd_strerror(ret));
+		return ret;
+	}
 	
 	while (n != 0 && n != journal_end(zd->ixfr_db)) {
 
