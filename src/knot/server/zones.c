@@ -276,8 +276,17 @@ static int zones_expire_ev(event_t *e)
 		return 0;
 	}
 	
+	
 	rcu_read_unlock();
+	
+	dbg_zones_verb("zones: zone %s expired, waiting for xfers to finish\n",
+	               zd->conf->name);
+	pthread_mutex_lock(&zd->xfr_in.lock);
+	dbg_zones_verb("zones: zone %s locked, no xfers are running\n",
+	               zd->conf->name);
+	
 	synchronize_rcu();
+	pthread_mutex_unlock(&zd->xfr_in.lock);
 	
 	log_server_info("Zone '%s' expired.\n", zd->conf->name);
 	
@@ -299,7 +308,7 @@ static int zones_expire_ev(event_t *e)
 	}
 	
 	knot_zone_contents_deep_free(&contents, 0);
-
+	
 	return 0;
 }
 
@@ -364,6 +373,25 @@ static int zones_refresh_ev(event_t *e)
 		}
 		
 		return xfr_request(zd->server->xfr_h, &xfr_req);
+	}
+	
+	/* Do not issue SOA query if transfer is pending. */
+	int locked = pthread_mutex_trylock(&zd->xfr_in.lock);
+	if (locked != 0) {
+		dbg_zones("zones: zone '%s' is being transferred, "
+		          "deferring SOA query\n",
+		          zd->conf->name);
+		
+		/* Reschedule as RETRY timer. */
+		evsched_schedule(e->parent, e, zones_soa_retry(zone));
+		dbg_zones("zones: RETRY of '%s' after %u seconds\n",
+		          zd->conf->name, zones_soa_retry(zone) / 1000);
+		
+		/* Unlock RCU. */
+		rcu_read_unlock();
+		return KNOTD_EOK;
+	} else {
+		pthread_mutex_unlock(&zd->xfr_in.lock);
 	}
 
 	/* Create query. */
@@ -644,7 +672,7 @@ static int zones_load_zone(knot_zonedb_t *zonedb, const char *zone_name,
 
 	// Check path
 	if (filename) {
-		dbg_server("Parsing zone database '%s'\n", filename);
+		dbg_zones("zones: parsing zone database '%s'\n", filename);
 		zloader_t *zl = 0;
 		int ret = knot_zload_open(&zl, filename);
 		switch(ret) {
@@ -1576,7 +1604,7 @@ int zones_process_response(knot_nameserver_t *nameserver,
 			/* Unlock zone contents. */
 			dbg_zones("zones: SOA response received, but zone is "
 			          "being transferred, refusing to start another "
-			          "transfer");
+			          "transfer\n");
 			rcu_read_unlock();
 			return KNOTD_EOK;
 		} else {

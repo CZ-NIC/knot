@@ -72,6 +72,7 @@ xfr-in          { lval.t = yytext; return XFR_IN; }
 xfr-out         { lval.t = yytext; return XFR_OUT; }
 notify-in       { lval.t = yytext; return NOTIFY_IN; }
 notify-out      { lval.t = yytext; return NOTIFY_OUT; }
+workers         { lval.t = yytext; return WORKERS; }
 
 interfaces      { lval.t = yytext; return INTERFACES; }
 address         { lval.t = yytext; return ADDRESS; }
