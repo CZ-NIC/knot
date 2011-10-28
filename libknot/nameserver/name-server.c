@@ -2969,9 +2969,9 @@ dbg_ns_exec(
 	}
 
 dbg_ns_exec(
-	char *name_str2 = knot_dname_to_str(zone->contents->apex->owner);
-	dbg_ns("Found zone for QNAME %s\n", name_str2);
-	free(name_str2);
+	char *name2_str = knot_dname_to_str(qname);
+	dbg_ns("Found zone for name %s\n", name2_str);
+	free(name2_str);
 );
 	xfr->zone = zone;
 	
