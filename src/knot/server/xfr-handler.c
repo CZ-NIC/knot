@@ -1049,22 +1049,41 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 			errstr = knot_strerror(ret);
 		}
 		
+		uint32_t serial_from = 0;
+		uint32_t serial_to = 0;
+		
+		// Check serial differeces
+		if (!init_failed) {
+			dbg_xfr_verb("Loading serials for IXFR.\n");
+			ret = ns_ixfr_load_serials(&xfr, &serial_from, 
+			                           &serial_to);
+			dbg_xfr_detail("Loaded serials: from: %u, to: %u\n",
+			               serial_from, serial_to);
+			init_failed = (ret != KNOT_EOK);
+			errstr = knot_strerror(ret);
+		}
+		
 		/* Load changesets from journal. */
 		if (!init_failed) {
-			ret = zones_xfr_load_changesets(&xfr);
+			dbg_xfr_verb("Loading changesets from journal.\n");
+			ret = zones_xfr_load_changesets(&xfr, serial_from, 
+			                                serial_to);
 			if (ret != KNOTD_EOK) {
 				/* History cannot be reconstructed, fallback to AXFR. */
-				if (ret == KNOTD_ERANGE) {
+				if (ret == KNOTD_ERANGE || ret == KNOTD_ENOENT) {
 					log_server_info("IXFR transfer of zone '%s/OUT'"
-					                " - not enough data in journal,"
-					                " fallback to AXFR.\n",
-					                zname);
+					                " - failed to load data from journal: %s."
+					                " Fallback to AXFR.\n",
+					                knotd_strerror(ret), zname);
 					xfr.type = XFR_TYPE_AOUT;
 					xfr_request(w->master, &xfr);
 					conf_read_unlock();
 					return KNOTD_EOK;
+				} else if (ret == KNOTD_EMALF) {
+					rcode = KNOT_RCODE_FORMERR;
+				} else {
+					rcode = KNOT_RCODE_SERVFAIL;
 				}
-				rcode = KNOT_RCODE_SERVFAIL;
 				init_failed = (ret != KNOTD_EOK);
 				errstr = knotd_strerror(ret);
 			}
