@@ -197,7 +197,8 @@ int zones_store_changesets(knot_ns_xfr_t *xfr);
  *
  * \todo Expects the xfr structure to be initialized in some way.
  */
-int zones_xfr_load_changesets(knot_ns_xfr_t *xfr);
+int zones_xfr_load_changesets(knot_ns_xfr_t *xfr, uint32_t serial_from,
+                              uint32_t serial_to);
 
 /*!
  * \brief Apply changesets to zone.

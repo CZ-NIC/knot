@@ -148,13 +148,6 @@ static int xfrin_create_query(knot_dname_t *qname, uint16_t qtype,
 }
 
 /*----------------------------------------------------------------------------*/
-
-static uint32_t xfrin_serial_difference(uint32_t local, uint32_t remote)
-{
-	return (((int64_t)remote - local) % ((int64_t)1 << 32));
-}
-
-/*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
@@ -225,8 +218,7 @@ dbg_xfrin_exec(
 		return KNOT_EMALF;	// maybe some other error
 	}
 
-	uint32_t diff = xfrin_serial_difference(local_serial, remote_serial);
-	return (diff >= 1 && diff <= (((uint32_t)1 << 31) - 1)) ? 1 : 0;
+	return (ns_serial_compare(local_serial, remote_serial) > 0);
 }
 
 /*----------------------------------------------------------------------------*/

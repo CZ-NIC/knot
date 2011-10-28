@@ -478,6 +478,8 @@ static void ns_put_additional_for_rrset(knot_packet_t *resp,
 //		if (knot_node_is_old(node)) {
 //			node = knot_node_new_node(node);
 //		}
+		
+		dbg_ns_detail("Node saved in RDATA dname: %p\n", node);
 
 		if (node != NULL && node->owner != dname) {
 			// the stored node should be the closest encloser
@@ -2504,6 +2506,13 @@ static int knot_ns_prepare_response(knot_nameserver_t *nameserver,
 }
 
 /*----------------------------------------------------------------------------*/
+
+static int32_t ns_serial_difference(uint32_t s1, uint32_t s2)
+{
+	return (((int64_t)s1 - s2) % ((int64_t)1 << 32));
+}
+
+/*----------------------------------------------------------------------------*/
 /* Public functions                                                           */
 /*----------------------------------------------------------------------------*/
 
@@ -2974,6 +2983,68 @@ dbg_ns_exec(
 	free(name2_str);
 );
 	xfr->zone = zone;
+	
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int ns_serial_compare(uint32_t s1, uint32_t s2)
+{
+	int32_t diff = ns_serial_difference(s1, s2);
+	return (s1 == s2) /* s1 equal to s2 */
+	        ? 0 
+	        :((diff >= 1 && diff < ((uint32_t)1 << 31)) 
+	           ? 1	/* s1 larger than s2 */
+	           : -1); /* s1 less than s2 */
+}
+
+/*----------------------------------------------------------------------------*/
+
+int ns_ixfr_load_serials(const knot_ns_xfr_t *xfr, uint32_t *serial_from, 
+                         uint32_t *serial_to)
+{
+	if (xfr == NULL || xfr->zone == NULL || serial_from == NULL 
+	    || serial_to == NULL) {
+		dbg_ns_detail("Wrong parameters: xfr=%p,"
+		             " xfr->zone = %p\n", xfr, xfr->zone);
+		return KNOT_EBADARG;
+	}
+	
+	const knot_zone_t *zone = xfr->zone;
+	const knot_zone_contents_t *contents = knot_zone_contents(zone);
+	if (!contents) {
+		dbg_ns_detail("Missing contents\n");
+		return KNOT_EBADARG;
+	}
+	
+	if (knot_zone_contents_apex(contents) == NULL) {
+		dbg_ns_detail("No apex.\n");
+		return KNOT_EBADARG;
+	}
+	
+	const knot_rrset_t *zone_soa =
+		knot_node_rrset(knot_zone_contents_apex(contents),
+		                  KNOT_RRTYPE_SOA);
+	if (zone_soa == NULL) {
+		dbg_ns_verb("No SOA.\n");
+		return KNOT_EBADARG;
+	}
+	
+	if (knot_packet_nscount(xfr->query) < 1) {
+		dbg_ns_verb("No Authority record.\n");
+		return KNOT_EMALF;
+	}
+	
+	if (knot_packet_authority_rrset(xfr->query, 0) == NULL) {
+		dbg_ns_verb("Authority record missing.\n");
+		return KNOT_ERROR;
+	}
+	
+	// retrieve origin (xfr) serial and target (zone) serial
+	*serial_to = knot_rdata_soa_serial(knot_rrset_rdata(zone_soa));
+	*serial_from = knot_rdata_soa_serial(knot_rrset_rdata(
+			knot_packet_authority_rrset(xfr->query, 0)));
 	
 	return KNOT_EOK;
 }

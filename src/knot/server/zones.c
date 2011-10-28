@@ -1041,6 +1041,7 @@ static int zones_journal_apply(knot_zone_t *zone)
 	               zd->conf->name, serial);
 	knot_changesets_t* chsets = malloc(sizeof(knot_changesets_t));
 	memset(chsets, 0, sizeof(knot_changesets_t));
+	/*! \todo Check what should be the upper bound. */
 	int ret = zones_load_changesets(zone, chsets, serial, serial - 1);
 	if (ret == KNOTD_EOK || ret == KNOTD_ERANGE) {
 		if (chsets->count > 0) {
@@ -1549,6 +1550,7 @@ int zones_process_response(knot_nameserver_t *nameserver,
 
 		/* Check SOA SERIAL. */
 		int ret = xfrin_transfer_needed(contents, packet);
+		dbg_zones_verb("xfrin_transfer_needed() returned %d\n", ret);
 		if (ret < 0) {
 			/* RETRY/EXPIRE timers running, do not interfere. */
 			return KNOTD_ERROR;
@@ -2081,23 +2083,12 @@ int zones_store_changesets(knot_ns_xfr_t *xfr)
 
 /*----------------------------------------------------------------------------*/
 
-int zones_xfr_load_changesets(knot_ns_xfr_t *xfr) 
+int zones_xfr_load_changesets(knot_ns_xfr_t *xfr, uint32_t serial_from,
+                              uint32_t serial_to) 
 {
-	if (xfr == NULL || xfr->zone == NULL) {
+	if (!xfr || !xfr->zone || !knot_zone_contents(xfr->zone)) {
 		dbg_zones_detail("Wrong parameters: xfr=%p,"
 		                " xfr->zone = %p\n", xfr, xfr->zone);
-		return KNOTD_EINVAL;
-	}
-	
-	const knot_zone_t *zone = xfr->zone;
-	const knot_zone_contents_t *contents = knot_zone_contents(zone);
-	if (!contents) {
-		dbg_zones_detail("Missing contents\n");
-		return KNOTD_EINVAL;
-	}
-	
-	if (knot_zone_contents_apex(contents) == NULL) {
-		dbg_zones_detail("No apex.\n");
 		return KNOTD_EINVAL;
 	}
 	
@@ -2105,36 +2096,22 @@ int zones_xfr_load_changesets(knot_ns_xfr_t *xfr)
 	                               calloc(1, sizeof(knot_changesets_t));
 	CHECK_ALLOC_LOG(chgsets, KNOTD_ENOMEM);
 	
-	const knot_rrset_t *zone_soa =
-		knot_node_rrset(knot_zone_contents_apex(contents),
-		                  KNOT_RRTYPE_SOA);
-	if (zone_soa == NULL) {
-		dbg_zones("No SOA.\n");
-		return KNOTD_EINVAL;
-	}
+	int ret = ns_serial_compare(serial_to, serial_from);
+	dbg_zones_verb("Compared serials, result: %d\n", ret);
 	
-	if (knot_packet_nscount(xfr->query) < 1) {
-		dbg_zones("No Authority record.\n");
-		return KNOTD_EMALF;
+	// if serial_to is not larger than serial_from, do not load anything
+	if (ret <= 0) {
+		xfr->data = chgsets;
+		return KNOTD_EOK;
 	}
-	
-	if (knot_packet_authority_rrset(xfr->query, 0) == NULL) {
-		dbg_zones("Authority record missing.\n");
-		return KNOTD_ERROR;
-	}
-	
-	// retrieve origin (xfr) serial and target (zone) serial
-	uint32_t zone_serial = knot_rdata_soa_serial(
-	                             knot_rrset_rdata(zone_soa));
-	uint32_t xfr_serial = knot_rdata_soa_serial(knot_rrset_rdata(
-			knot_packet_authority_rrset(xfr->query, 0)));
 	
 	dbg_zones("Loading changesets...\n");
 	
-	int ret = zones_load_changesets(zone, chgsets, xfr_serial, zone_serial);
+	ret = zones_load_changesets(xfr->zone, chgsets,
+	                                serial_from, serial_to);
 	if (ret != KNOTD_EOK) {
 		dbg_zones_verb("Loading changesets failed: %s\n",
-		               knot_strerror(ret));
+		               knotd_strerror(ret));
 		return ret;
 	}
 	
