@@ -56,6 +56,7 @@ static int xfr_udp_timeout(event_t *e)
 		              zd->conf->name,
 		              r_addr, r_port);
 	}
+	
 	knot_ns_xfr_t cr = {};
 	cr.type = XFR_TYPE_CLOSE;
 	cr.session = data->session;
@@ -111,15 +112,15 @@ static int xfr_process_udp_query(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 			evsched_event_free(sched, ev);
 			data->data = 0;
 		}
+		
+		/* Close after receiving response. */
+		knot_ns_xfr_t cr = {};
+		cr.type = XFR_TYPE_CLOSE;
+		cr.session = data->session;
+		cr.data = data;
+		cr.zone = data->zone;
+		evqueue_write(w->q, &cr, sizeof(knot_ns_xfr_t));
 	}
-
-	/* Close after receiving response. */
-	knot_ns_xfr_t cr = {};
-	cr.type = XFR_TYPE_CLOSE;
-	cr.session = data->session;
-	cr.data = data;
-	cr.zone = data->zone;
-	evqueue_write(w->q, &cr, sizeof(knot_ns_xfr_t));
 	
 	return KNOTD_EOK;
 }
@@ -127,6 +128,10 @@ static int xfr_process_udp_query(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 /*! \todo Document me. */
 static void xfr_free_task(knot_ns_xfr_t *task)
 {
+	if (!task) {
+		return;
+	}
+	
 	xfrworker_t *w = (xfrworker_t *)task->owner;
 	if (!w) {
 		free(task);

@@ -139,6 +139,7 @@ typedef struct conf_t {
 	char *version;  /*!< Version for CH TXT version.{bind|server} */
 	char *storage;  /*!< Persistent storage path for databases and such. */
 	char *pidfile;  /*!< PID file path. */
+	int   workers;  /*!< Number of workers per interface. */
 
 	/*
 	 * Log

@@ -275,13 +275,11 @@ ttl_directive:	DOLLAR_TTL sp STR trail
 
 origin_directive:	DOLLAR_ORIGIN sp abs_dname trail
     {
-/*	    knot_node_t *origin_node = knot_node_new(knot_dname_cat($3,
-							 parser->root_domain),
-							 NULL);
+	    knot_node_t *origin_node = knot_node_new($3 ,NULL, 0);
 	if (parser->origin != NULL) {
-		knot_node_free(&parser->origin, 1);
+//		knot_node_free(&parser->origin, 1);
 	}
-	    parser->origin = origin_node; */
+	    parser->origin = origin_node;
     }
     |	DOLLAR_ORIGIN sp rel_dname trail
     {
@@ -1558,7 +1556,7 @@ zparser_type *zparser_create()
  */
 void
 zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
-	     knot_node_t *origin)
+	     knot_node_t *origin, knot_dname_t *origin_from_config)
 {
 	memset(nxtbits, 0, sizeof(nxtbits));
 	memset(nsecbits, 0, sizeof(nsecbits));
@@ -1579,6 +1577,7 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 	parser->line = 1;
 	parser->filename = filename;
 	parser->rdata_count = 0;
+	parser->origin_from_config = origin_from_config;
 
 	parser->last_node = origin;
 //	parser->root_domain = NULL;
@@ -1599,6 +1598,7 @@ void zparser_free()
 {
 //	knot_dname_release(parser->root_domain);
 //	knot_dname_release(parser->prev_dname);
+	knot_dname_free(&parser->origin_from_config);
 	free(parser->temporary_items);
 	if (parser->current_rrset != NULL) {
 		free(parser->current_rrset);

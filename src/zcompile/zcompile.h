@@ -85,6 +85,7 @@ struct zparser {
 	knot_zone_t *current_zone; /*!< Current zone. */
 	knot_node_t *origin; /*!< Origin node. */
 	knot_dname_t *prev_dname; /*!< Previous dname. */
+	knot_dname_t *origin_from_config; /*!< Zone origin from config. */
 	knot_node_t *default_apex; /*!< Zone default apex. */
 
 	knot_node_t *last_node; /*!< Last processed node. */
@@ -428,7 +429,7 @@ zparser_type *zparser_create();
  * \param origin Zone origin.
  */
 void zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
-		  knot_node_t *origin);
+		  knot_node_t *origin, knot_dname_t *owner_from_config);
 
 /*!
  * \brief Frees zoneparser structure.
