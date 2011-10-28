@@ -672,7 +672,7 @@ static int zones_load_zone(knot_zonedb_t *zonedb, const char *zone_name,
 
 	// Check path
 	if (filename) {
-		dbg_server("Parsing zone database '%s'\n", filename);
+		dbg_zones("zones: parsing zone database '%s'\n", filename);
 		zloader_t *zl = 0;
 		int ret = knot_zload_open(&zl, filename);
 		switch(ret) {

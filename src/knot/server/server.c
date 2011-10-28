@@ -305,16 +305,25 @@ static int server_bind_handlers(server_t *server)
 	if (!server || !server->ifaces) {
 		return KNOTD_EINVAL;
 	}
-
-	/* Estimate number of threads/manager. */
-	int thr_count = dt_optimal_size();
-	int tcp_unit_size = (thr_count >> 1);
-	if (tcp_unit_size < 3) {
-		tcp_unit_size = 3;
-	}
-
+	
 	/* Lock config. */
 	conf_read_lock();
+
+	/* Estimate number of threads/manager. */
+	int thr_count = 0;
+	int tcp_unit_size = 0;
+	if (conf()->workers < 1) {
+		thr_count = dt_optimal_size();
+		tcp_unit_size = (thr_count * 2) + 1; /* Will be always odd. */
+	} else {
+		thr_count = conf()->workers;
+		tcp_unit_size = thr_count + 1; /* Force configured value. */
+	}
+	
+	dbg_server("server: configured %d worker%s per UDP iface\n",
+	           thr_count, thr_count > 1 ? "s" : "");
+	dbg_server("server: configured %d worker%s per TCP iface\n",
+	           tcp_unit_size - 1, (tcp_unit_size - 1) > 1 ? "s" : "");
 
 	/* Create socket handlers. */
 	node *n = 0;
@@ -333,7 +342,7 @@ static int server_bind_handlers(server_t *server)
 
 			/* Save pointer. */
 			rcu_set_pointer(&iface->handler[UDP_ID], h);
-			dbg_server("Creating UDP socket handlers for '%s:%d'\n",
+			dbg_server("server: creating UDP socket handlers for '%s:%d'\n",
 			             iface->addr, iface->port);
 
 		}
@@ -348,7 +357,7 @@ static int server_bind_handlers(server_t *server)
 
 			/* Save pointer. */
 			rcu_set_pointer(&iface->handler[TCP_ID], h);
-			dbg_server("Creating TCP socket handlers for '%s:%d'\n",
+			dbg_server("server: creating TCP socket handlers for '%s:%d'\n",
 			             iface->addr, iface->port);
 		}
 
@@ -375,21 +384,21 @@ server_t *server_create()
 	init_list(server->ifaces);
 
 	// Create event scheduler
-	dbg_server("Creating event scheduler...\n");
+	dbg_server("server: creating event scheduler\n");
 	server->sched = evsched_new();
 	dt_unit_t *unit = dt_create_coherent(1, evsched_run, 0);
 	iohandler_t *h = server_create_handler(server, -1, unit);
 	h->data = server->sched;
 
 	// Create name server
-	dbg_server("Creating Name Server structure...\n");
+	dbg_server("server: creating Name Server structure\n");
 	server->nameserver = knot_ns_create();
 	if (server->nameserver == NULL) {
 		free(server);
 		return NULL;
 	}
 	knot_ns_set_data(server->nameserver, server);
-	dbg_server("Initializing OpenSSL...\n");
+	dbg_server("server: initializing OpenSSL\n");
 	OpenSSL_add_all_digests();
 
 	// Create XFR handler
@@ -400,7 +409,7 @@ server_t *server_create()
 		return NULL;
 	}
 
-	dbg_server("Done.\n");
+	dbg_server("server: created server instance\n");
 	return server;
 }
 
@@ -509,7 +518,7 @@ int server_start(server_t *server)
 		return KNOTD_EINVAL;
 	}
 
-	dbg_server("Starting handlers...\n");
+	dbg_server("server: starting server instance\n");
 
 	/* Start XFR handler. */
 	xfr_start(server->xfr_h);
@@ -538,7 +547,7 @@ int server_start(server_t *server)
 	/* Unlock configuration. */
 	conf_read_unlock();
 
-	dbg_server("Done.\n");
+	dbg_server("server: server started\n");
 
 	return ret;
 }
@@ -578,6 +587,8 @@ int server_wait(server_t *server)
 
 void server_stop(server_t *server)
 {
+	dbg_server("server: stopping server\n");
+	
 	/* Wait for XFR master. */
 	xfr_stop(server->xfr_h);
 
@@ -619,6 +630,8 @@ void server_destroy(server_t **server)
 	if (!*server) {
 		return;
 	}
+	
+	dbg_server("server: destroying server instance\n");
 	
 	// Free XFR master
 	xfr_free((*server)->xfr_h);
