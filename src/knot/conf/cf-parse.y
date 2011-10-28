@@ -155,6 +155,7 @@ static int conf_key_add(void *scanner, knot_key_t **key, char *item)
 
 %token <tok> SYSTEM IDENTITY VERSION STORAGE KEY KEYS
 %token <tok> TSIG_ALGO_NAME
+%token <tok> WORKERS
 
 %token <tok> REMOTES
 
@@ -240,9 +241,9 @@ interface:
        this_iface->address = $3.t;
        this_iface->family = AF_INET6;
        if (this_iface->port != CONFIG_DEFAULT_PORT) {
-	 cf_error(scanner, "only one port definition is allowed in interface section\n");
+          cf_error(scanner, "only one port definition is allowed in interface section\n");
        } else {
-	 this_iface->port = $5.i;
+          this_iface->port = $5.i;
        }
      }
    }
@@ -268,6 +269,13 @@ system:
      fprintf(stderr, "warning: Config option 'system.key' is deprecated "
 		     "and has no effect.\n");
      free($4.t);
+ }
+ | system WORKERS NUM ';' { 
+     if ($3.i <= 0) { 
+        cf_error(scanner, "worker count must be greater than 0\n");
+     } else {
+        new_config->workers = $3.i;
+     }
  }
  ;
 
