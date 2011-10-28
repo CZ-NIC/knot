@@ -1603,7 +1603,7 @@ void parse_unknown_rdata(uint16_t type, uint16_t *wireformat)
  *
  */
 static int zone_open(const char *filename, uint32_t ttl, uint16_t rclass,
-	  knot_node_t *origin, void *scanner)
+	  knot_node_t *origin, void *scanner, knot_dname_t *origin_from_config)
 {
 	/* Open the zone file... */
 	if (strcmp(filename, "-") == 0) {
@@ -1630,7 +1630,7 @@ static int zone_open(const char *filename, uint32_t ttl, uint16_t rclass,
 //		return 0;
 //	}
 
-	zparser_init(filename, ttl, rclass, origin);
+	zparser_init(filename, ttl, rclass, origin, origin_from_config);
 
 	return 1;
 }
@@ -1834,10 +1834,10 @@ int process_rr(void)
 
 	if (current_rrset->type == KNOT_RRTYPE_SOA) {
 		if (knot_dname_compare(current_rrset->owner,
-					 parser->origin->owner) != 0) {
+					 parser->origin_from_config) != 0) {
 			zc_error_prev_line("SOA record has a different "
 				"owner than the one specified "
-				"in config!\n");
+				"in config! \n");
 			/* Such SOA cannot even be added, because
 			 * it would not be in the zone apex. */
 			return KNOTDZCOMPILE_EBADSOA;
@@ -2062,6 +2062,13 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	knot_node_t *origin_node = knot_node_new(dname, NULL, 0);
 
+	/*!< \todo Another copy is probably not needed. */
+	knot_dname_t *origin_from_config =
+		knot_dname_new_from_str(name, strlen(name), NULL);
+	if (origin_from_config == NULL) {
+		return KNOTDZCOMPILE_ENOMEM;
+	}
+
 	//assert(origin_node->next == NULL);
 
 	assert(knot_node_parent(origin_node, 0) == NULL);
@@ -2076,7 +2083,8 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 		return KNOTDZCOMPILE_ENOMEM;
 	}
 
-	if (!zone_open(zonefile, 3600, KNOT_CLASS_IN, origin_node, scanner)) {
+	if (!zone_open(zonefile, 3600, KNOT_CLASS_IN, origin_node, scanner,
+	               origin_from_config)) {
 		zc_error_prev_line("Cannot open '%s'\n",
 			zonefile);
 		zparser_free();
@@ -2161,6 +2169,8 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 		}
 		dbg_zp("zone dumped.\n");
 	}
+
+	zone_dump_text(contents, "debug.zone");
 
 	/* This is *almost* unnecessary */
 	knot_zone_deep_free(&(parser->current_zone), 1);

@@ -152,6 +152,7 @@ static knot_dname_t *read_dname_with_id(FILE *f)
 	}
 
 	ret->id = dname_id;
+	dbg_zload("loaded: dname id: %u\n", dname_id);
 
 	/* Read size of dname. */
 	uint32_t dname_size = 0;
@@ -422,24 +423,33 @@ static knot_rrset_t *knot_load_rrset(FILE *f, knot_dname_t **id_array,
 	knot_dname_t *owner = NULL;
 
 	if (!use_ids) {
+		dbg_zload("Loading owner of new RRSet from wire.\n");
 		owner = read_dname_with_id(f);
 	}
 
 	if (!fread_wrapper(&rrset_type, sizeof(rrset_type), 1, f)) {
 		return NULL;
 	}
+	dbg_zload("Zone load: rrset load: type: %u\n", rrset_type);
 	if (!fread_wrapper(&rrset_class, sizeof(rrset_class), 1, f)) {
 		return NULL;
 	}
+	dbg_zload("Zone load: rrset class: type: %u\n", rrset_class);
 	if (!fread_wrapper(&rrset_ttl, sizeof(rrset_ttl), 1, f)) {
 		return NULL;
 	}
+	dbg_zload("Zone load: rrset ttl: type: %u\n", rrset_ttl);
 	if (!fread_wrapper(&rdata_count, sizeof(rdata_count), 1, f)) {
 		return NULL;
 	}
+	dbg_zload("Zone load: rrset load: rdata count: %u\n", rdata_count);
 	if (!fread_wrapper(&rrsig_count, sizeof(rrsig_count), 1, f)) {
 		return NULL;
 	}
+	dbg_zload("Zone load: rrset load: type: %u\n", rrset_type);
+
+	dbg_zload("Loading RRSet owned by: %s\n",
+	          knot_dname_to_str(owner));
 
 	rrset = knot_rrset_new(owner, rrset_type, rrset_class, rrset_ttl);
 
