@@ -798,7 +798,11 @@ dbg_ns_exec(
 	       == NULL) {
 		next_closer = knot_node_owner((*closest_encloser));
 		*closest_encloser = knot_node_parent(*closest_encloser, 1);
-		assert(*closest_encloser != NULL);
+		if (*closest_encloser == NULL) {
+			// there are no NSEC3s to add
+			/*! \todo What error should we return?? */
+			return NS_ERR_SERVFAIL;
+		}
 	}
 
 	assert(nsec3_node != NULL);
@@ -998,7 +1002,9 @@ static int ns_put_nsec_nxdomain(const knot_dname_t *qname,
 	rrset = knot_node_rrset(previous, KNOT_RRTYPE_NSEC);
 	if (rrset == NULL) {
 		// no NSEC records
-		return NS_ERR_SERVFAIL;
+		//return NS_ERR_SERVFAIL;
+		return KNOT_EOK;
+		
 	}
 
 	knot_response_add_rrset_authority(resp, rrset, 1, 0, 0);
@@ -1151,6 +1157,10 @@ static int ns_put_nsec3_wildcard(const knot_zone_contents_t *zone,
 	assert(DNSSEC_ENABLED
 	       && knot_query_dnssec_requested(knot_packet_query(resp)));
 
+	if (!knot_zone_contents_nsec3_enabled(zone)) {
+		return KNOT_EOK;
+	}
+	
 	/*
 	 * NSEC3 that covers the "next closer" name.
 	 */
