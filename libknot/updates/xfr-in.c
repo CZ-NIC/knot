@@ -218,7 +218,7 @@ dbg_xfrin_exec(
 		return KNOT_EMALF;	// maybe some other error
 	}
 
-	return (ns_serial_compare(local_serial, remote_serial) > 0);
+	return (ns_serial_compare(local_serial, remote_serial) < 0);
 }
 
 /*----------------------------------------------------------------------------*/
