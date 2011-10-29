@@ -3373,6 +3373,7 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 //		dbg_ns("Zone name: %.*s\n", 
 //		              xfr->zone->name->size, xfr->zone->name->name);
 //		assert(xfr->zone == NULL);
+		knot_packet_free(&xfr->query);
 		return KNOT_ENOIXFR;
 	}
 	
