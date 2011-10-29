@@ -837,7 +837,7 @@ static int zones_changesets_from_binary(knot_changesets_t *chgsets)
 		size_t remaining = chs->size;
 		ret = knot_zload_rrset_deserialize(&rrset, chs->data, &remaining);
 		if (ret != KNOT_EOK) {
-			dbg_xfr("xfr: failed to deserialize data "
+			dbg_xfr("xfr: SOA: failed to deserialize data "
 			        "from changeset, %s\n", knot_strerror(ret));
 			return KNOTD_EMALF;
 		}

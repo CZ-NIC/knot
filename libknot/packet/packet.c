@@ -355,10 +355,10 @@ static knot_rdata_t *knot_packet_parse_rdata(const uint8_t *wire,
 	size_t *pos, size_t total_size, size_t rdlength,
 	const knot_rrtype_descriptor_t *desc)
 {
-	if (desc->type == 0) {
-		dbg_packet("Unknown RR type.\n");
-		return NULL;
-	}
+//	if (desc->type == 0) {
+//		dbg_packet("Unknown RR type.\n");
+//		return NULL;
+//	}
 
 	knot_rdata_t *rdata = knot_rdata_new();
 	if (rdata == NULL) {

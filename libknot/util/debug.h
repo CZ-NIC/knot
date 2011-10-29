@@ -45,7 +45,7 @@
  * Debug macros
  */
 /*! \todo Set these during configure. */
-//#define KNOT_ZONE_DEBUG
+#define KNOT_ZONE_DEBUG
 //#define KNOT_RESPONSE_DEBUG
 //#define KNOT_ZONEDB_DEBUG
 //#define KNOT_DNAME_DEBUG
