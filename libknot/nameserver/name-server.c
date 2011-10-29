@@ -721,7 +721,7 @@ static int ns_put_covering_nsec3(const knot_zone_contents_t *zone,
 
 	if (match == KNOT_ZONE_NAME_FOUND){
 		// run-time collision => SERVFAIL
-		return NS_ERR_SERVFAIL;
+		return KNOT_EOK;
 	}
 	
 //	// check if the prev node is not old and if yes, take the new one
@@ -800,8 +800,7 @@ dbg_ns_exec(
 		*closest_encloser = knot_node_parent(*closest_encloser, 1);
 		if (*closest_encloser == NULL) {
 			// there are no NSEC3s to add
-			/*! \todo What error should we return?? */
-			return NS_ERR_SERVFAIL;
+			return KNOT_EOK;
 		}
 	}
 
@@ -1080,7 +1079,7 @@ static int ns_put_nsec3_nxdomain(const knot_zone_contents_t *zone,
 	int ret = ns_put_nsec3_closest_encloser_proof(zone, &closest_encloser,
 	                                              qname, resp);
 	// 2) NSEC3 covering non-existent wildcard
-	if (ret == KNOT_EOK) {
+	if (ret == KNOT_EOK && closest_encloser != NULL) {
 		dbg_ns("Putting NSEC3 for no wildcard child of closest "
 		              "encloser.\n");
 		ret = ns_put_nsec3_no_wildcard_child(zone, closest_encloser,
@@ -1263,7 +1262,7 @@ static int ns_put_nsec_nsec3_wildcard_nodata(const knot_node_t *node,
 			                                      qname, resp);
 
 			const knot_node_t *nsec3_node;
-			if (ret == 0
+			if (ret == KNOT_EOK
 			    && (nsec3_node = knot_node_nsec3_node(node, 1))
 			        != NULL) {
 				ns_put_nsec3_from_node(nsec3_node, resp);
@@ -1383,7 +1382,6 @@ static inline int ns_referral(const knot_node_t *node,
 					ret = ns_put_nsec3_closest_encloser_proof(zone,
 						&node, qname, resp);
 				}
-				/*! \todo What if there is no NSEC3? */
 			} else {
 				const knot_rrset_t *nsec = knot_node_rrset(
 					node, KNOT_RRTYPE_NSEC);
@@ -1396,7 +1394,6 @@ static inline int ns_referral(const knot_node_t *node,
 										     1, 0);
 					}
 				}
-				/*! \todo What if there is no NSEC? */
 			}
 		}
 	}
