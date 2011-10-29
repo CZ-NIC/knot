@@ -392,12 +392,12 @@ dbg_zone_exec(
 		knot_dname_set_node(knot_node_get_owner(node), node);
 	}
 
-	// NSEC3 node
+	// NSEC3 node (only if NSEC3 tree is not empty)
 	const knot_node_t *prev;
 	const knot_node_t *nsec3;
 	int match = knot_zone_contents_find_nsec3_for_name(zone,
-	                                                knot_node_owner(node),
-	                                                &nsec3, &prev, check_ver);
+					knot_node_owner(node),
+					&nsec3, &prev, check_ver);
 	if (match != KNOT_ZONE_NAME_FOUND) {
 		nsec3 = NULL;
 	}
@@ -2040,7 +2040,8 @@ int knot_zone_contents_nsec3_enabled(const knot_zone_contents_t *zone)
 		return KNOT_EBADARG;
 	}
 
-	return (zone->nsec3_params.algorithm != 0);
+	//return (zone->nsec3_params.algorithm != 0);
+	return (zone->nsec3_nodes->th_root != NULL);
 }
 
 /*----------------------------------------------------------------------------*/
