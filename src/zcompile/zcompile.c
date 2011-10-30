@@ -1100,7 +1100,7 @@ static int parse_int(const char *str,
 			max);
 		return 0;
 	} else {
-		*result = (int) r;
+		*result = (int) value;
 		return 1;
 	}
 }
