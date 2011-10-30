@@ -134,10 +134,10 @@ int main(int argc, char **argv)
 	{
 		// Get absolute path to cwd
 		size_t cwbuflen = 64;
-		char *cwbuf = malloc((cwbuflen + 1) * sizeof(char));
+		char *cwbuf = malloc((cwbuflen + 2) * sizeof(char));
 		while (getcwd(cwbuf, cwbuflen) == 0) {
-			cwbuflen += 64;
-			cwbuf = realloc(cwbuf, (cwbuflen + 1) * sizeof(char));
+			cwbuflen *= 2;
+			cwbuf = realloc(cwbuf, (cwbuflen + 2) * sizeof(char));
 		}
 		cwbuflen = strlen(cwbuf);
 
