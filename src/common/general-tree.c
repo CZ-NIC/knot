@@ -41,6 +41,7 @@ int gen_tree_add(general_tree_t *tree,
 	MOD_TREE_INSERT(tree->tree, general_tree_node, avl,
 	                tree_node, mrg_func, &merged);
 	if (merged) {
+		//fprintf(stderr, "Merged tree node.\n");
 		free(tree_node);
 	}
 	return merged;
