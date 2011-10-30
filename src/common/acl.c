@@ -113,7 +113,7 @@ void acl_delete(acl_t **acl)
 	}
 
 	/* Truncate rules. */
-	if (acl_truncate(*acl) != ACL_OK) {
+	if (acl_truncate(*acl) != ACL_ACCEPT) {
 		return;
 	}
 
