@@ -1085,28 +1085,30 @@ uint16_t * zparser_conv_nsec(uint8_t nsecbits[NSEC_WINDOW_COUNT]
 
 /* Parse an int terminated in the specified range. */
 static int parse_int(const char *str,
-	  char **end,
-	  int *result,
-	  const char *name,
-	  int min,
-	  int max)
+		     char **end,
+		     int *result,
+		     const char *name,
+		     int min,
+		     int max)
 {
-	*result = (int) strtol(str, end, 10);
-	if (*result < min || *result > max) {
+	long value;
+	value = strtol(str, end, 10);
+	if (value < min || value > max) {
 		zc_error_prev_line("%s must be within the range [%d .. %d]",
 			name,
 			min,
 			max);
 		return 0;
 	} else {
+		*result = (int) r;
 		return 1;
 	}
 }
 
 /* RFC1876 conversion routines */
-static unsigned int poweroften[10] = {1, 10, 100, 1000, 10000, 100000,
-				      1000000, 10000000, 100000000, 1000000000
-				     };
+static uint32_t poweroften[10] = {1, 10, 100, 1000, 10000, 100000,
+				  1000000, 10000000, 100000000, 1000000000
+				 };
 
 /*
  * Converts ascii size/precision X * 10**Y(cm) to 0xXY.
