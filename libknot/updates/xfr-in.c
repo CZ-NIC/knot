@@ -2246,6 +2246,8 @@ dbg_xfrin_exec(
 			dbg_xfrin("Failed to merge changeset RRSet to copy.\n");
 			return KNOT_ERROR;
 		}
+		
+		return 2;
 	}
 	
 	return KNOT_EOK;
