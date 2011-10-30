@@ -955,6 +955,8 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 	sockaddr_tostr(&xfr.addr, r_addr, sizeof(r_addr));
 	int r_port = sockaddr_portnum(&xfr.addr);
 
+	conf_read_lock();
+
 	/* Handle request. */
 	knot_ns_xfr_t *task = 0;
 	evsched_t *sch = 0;
@@ -967,7 +969,6 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		zname = zd->conf->name;
 	}
 	
-	conf_read_lock();
 
 	/* XFR request state tracking. */
 	int init_failed = 0;
