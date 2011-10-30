@@ -52,6 +52,8 @@ Not all prerequisites are available as ports on BSD.
 
 - liburcu must be compiled from sources
   - version 0.6.4 compiles on BSD without any source code modifications
+  - in case of x86_64 build, CFLAGS nad build type has to be set appropriately.
+    $ CFLAGS=-fPIC ./configure --build amd64
 
 Knot requires more recent version of flex from ports, to prevent name clash, specify flex destination.
 $ cd <knot sources>
