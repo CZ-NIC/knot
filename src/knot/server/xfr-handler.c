@@ -231,9 +231,16 @@ static int xfr_xfrin_cleanup(xfrworker_t *w, knot_ns_xfr_t *data)
  */
 static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 {
-	knot_zone_t *zone = (knot_zone_t *)data->zone;
-	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
-	const char *zorigin = zd->conf->name;
+	//knot_zone_t *zone = (knot_zone_t *)data->zone;
+	//zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
+	//const char *zorigin = zd->conf->name;
+	
+	// get the zone name from Question
+	const knot_dname_t *qname = knot_packet_qname(data->query);
+	char *zorigin = "(unknown)";
+	if (qname != NULL) {
+		zorigin = knot_dname_to_str(qname);
+	}
 	
 	int ret = KNOTD_EOK;
 	
@@ -294,6 +301,10 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 	default:
 		ret = KNOTD_EINVAL;
 		break;
+	}
+	
+	if (qname != NULL) {
+		free(zorigin);
 	}
 	
 	return ret;
@@ -962,17 +973,12 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 	evsched_t *sch = 0;
 	const char *req_type = "";
 	knot_rcode_t rcode = 0;
-	knot_zone_t *zone = xfr.zone;
-	const char *zname = "?";
-	if (zone) {
-		zonedata_t *zd = xfr.zone->data;
-		zname = zd->conf->name;
-	}
-	
+	char *zname = "(unknown)";
 
 	/* XFR request state tracking. */
 	int init_failed = 0;
 	const char *errstr = "";
+	const knot_dname_t *qname = NULL;
 
 	dbg_xfr_verb("xfr: processing request type '%d'\n", xfr.type);
 	switch(xfr.type) {
@@ -981,9 +987,12 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		ret = knot_ns_init_xfr(w->ns, &xfr);
 		init_failed = (ret != KNOT_EOK);
 		errstr = knot_strerror(ret);
-		if (xfr.zone) {
-			zonedata_t *zd = xfr.zone->data;
-			zname = zd->conf->name;
+
+		// use the QNAME as the zone name to get names also for
+		// zones that are not in the server
+		qname = knot_packet_qname(xfr.query);
+		if (qname != NULL) {
+			zname = knot_dname_to_str(qname);
 		}
 
 		/* Check requested zone. */
@@ -1030,15 +1039,21 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		free(xfr.query->wireformat);
 		xfr.query->wireformat = 0;
 		knot_packet_free(&xfr.query); /* Free query. */
+		
+		if (qname != NULL) {
+			free(zname);
+		}
+		
 		break;
 	case XFR_TYPE_IOUT:
 		req_type = "IXFR/OUT";
 		ret = knot_ns_init_xfr(w->ns, &xfr);
 		init_failed = (ret != KNOT_EOK);
 		errstr = knot_strerror(ret);
-		if (xfr.zone) {
-			zonedata_t *zd = xfr.zone->data;
-			zname = zd->conf->name;
+
+		qname = knot_packet_qname(xfr.query);
+		if (qname != NULL) {
+			zname = knot_dname_to_str(qname);
 		}
 		
 		/* Check requested zone. */
@@ -1126,6 +1141,11 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		}
 		free(xfr.query->wireformat);
 		knot_packet_free(&xfr.query); /* Free query. */
+		
+		if (qname) {
+			free(zname);
+		}
+		
 		break;
 	case XFR_TYPE_AIN:
 		req_type = "AXFR/IN";
