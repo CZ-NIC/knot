@@ -231,16 +231,17 @@ static int xfr_xfrin_cleanup(xfrworker_t *w, knot_ns_xfr_t *data)
  */
 static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 {
-	//knot_zone_t *zone = (knot_zone_t *)data->zone;
-	//zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
-	//const char *zorigin = zd->conf->name;
+	knot_zone_t *zone = (knot_zone_t *)data->zone;
+	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
+	const char *zorigin = zd->conf->name;
 	
-	// get the zone name from Question
-	const knot_dname_t *qname = knot_packet_qname(data->query);
-	char *zorigin = "(unknown)";
-	if (qname != NULL) {
-		zorigin = knot_dname_to_str(qname);
-	}
+//	// get the zone name from Question
+//	dbg_xfr_verb("Query: %p, response: %p\n", data->query, data->response);
+//	const knot_dname_t *qname = knot_packet_qname(data->query);
+//	char *zorigin = "(unknown)";
+//	if (qname != NULL) {
+//		zorigin = knot_dname_to_str(qname);
+//	}
 	
 	int ret = KNOTD_EOK;
 	
@@ -303,9 +304,9 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 		break;
 	}
 	
-	if (qname != NULL) {
-		free(zorigin);
-	}
+//	if (qname != NULL) {
+//		free(zorigin);
+//	}
 	
 	return ret;
 }
@@ -979,6 +980,8 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 	int init_failed = 0;
 	const char *errstr = "";
 	const knot_dname_t *qname = NULL;
+	
+	dbg_xfr_verb("Query ptr: %p\n", xfr.query);
 
 	dbg_xfr_verb("xfr: processing request type '%d'\n", xfr.type);
 	switch(xfr.type) {
