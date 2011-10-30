@@ -2136,6 +2136,8 @@ dbg_xfrin_exec(
 	dbg_xfrin("Merging RRSets with owners: %s %s types: %d %d\n",
 	       (*rrset)->owner->name, add->owner->name, (*rrset)->type,
 	                add->type);
+	dbg_xfrin_detail("RDATA in RRSet1: %p, RDATA in RRSet2: %p\n", 
+	                 (*rrset)->rdata, add->rdata);
 	ret = knot_rrset_merge((void **)rrset, (void **)&add);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to merge changeset RRSet to copy.\n");
@@ -2145,7 +2147,11 @@ dbg_xfrin_exec(
 	knot_rrset_dump(*rrset, 1);
 	ret = knot_node_add_rrset(node, *rrset, 0);
 
-	return KNOT_EOK;
+	// return 2 so that the add RRSet is removed from
+	// the changeset (and thus not deleted)
+	// and put to list of new RRSets (is this ok?)
+	// and deleted
+	return 2;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2299,7 +2305,7 @@ static int xfrin_apply_add(knot_zone_contents_t *contents,
 		dbg_xfrin("xfrin_apply_..() returned %d, rrset: %p\n", ret,
 		          rrset);
 		
-		if (ret > 0) {
+		if (ret == 1) {
 			// the ADD RRSet was used, i.e. it should be removed
 			// from the changeset and saved in the list of new
 			// RRSets
@@ -2316,6 +2322,12 @@ static int xfrin_apply_add(knot_zone_contents_t *contents,
 					chset->add[i];
 
 			chset->add[i] = NULL;
+		} else if (ret == 2) {
+			// the copy of the RRSet was used, but it was already
+			// stored in the new RRSets list			
+			// just delete the add RRSet, but without RDATA
+			// as these were merged to the copied RRSet
+			knot_rrset_free(&chset->add[i]);
 		} else if (ret != KNOT_EOK) {
 			
 			return ret;
