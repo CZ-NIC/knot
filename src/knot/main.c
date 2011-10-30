@@ -136,7 +136,7 @@ int main(int argc, char **argv)
 		size_t cwbuflen = 64;
 		char *cwbuf = malloc((cwbuflen + 2) * sizeof(char));
 		while (getcwd(cwbuf, cwbuflen) == 0) {
-			cwbuflen += 64;
+			cwbuflen *= 2;
 			cwbuf = realloc(cwbuf, (cwbuflen + 2) * sizeof(char));
 		}
 		cwbuflen = strlen(cwbuf);
