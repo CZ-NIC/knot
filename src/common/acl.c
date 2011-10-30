@@ -108,12 +108,14 @@ acl_t *acl_new(acl_rule_t default_rule, const char *name)
 
 void acl_delete(acl_t **acl)
 {
-	if (!acl) {
+	if ((acl == NULL) || (*acl == NULL)) {
 		return;
 	}
 
 	/* Truncate rules. */
-	acl_truncate(*acl);
+	if (acl_truncate(*acl) != ACL_OK) {
+		return;
+	}
 
 	/* Free ACL. */
 	free(*acl);
@@ -128,7 +130,7 @@ int acl_create(acl_t *acl, const sockaddr_t* addr, acl_rule_t rule)
 
 	/* Insert into skip list. */
 	sockaddr_t *key = malloc(sizeof(sockaddr_t));
-	memcpy(key,addr, sizeof(sockaddr_t));
+	memcpy(key, addr, sizeof(sockaddr_t));
 
 	skip_insert(acl->rules, key, (void*)((ssize_t)rule + 1), 0);
 
@@ -146,7 +148,7 @@ int acl_match(acl_t *acl, sockaddr_t* addr)
 	 * but we can be sure, that the value range is within <-1,1>.
 	 */
 	ssize_t val = ((ssize_t)skip_find(acl->rules, addr)) - 1;
-	if(val < 0) {
+	if (val < 0) {
 		return acl->default_rule;
 	}
 
@@ -156,7 +158,7 @@ int acl_match(acl_t *acl, sockaddr_t* addr)
 
 int acl_truncate(acl_t *acl)
 {
-	if (!acl) {
+	if (acl == NULL) {
 		return ACL_ERROR;
 	}
 
