@@ -48,9 +48,9 @@ static int acl_compare(void *k1, void *k2)
 		/* Compare address. */
 		/*! \todo Maybe use memcmp()? */
 		ldiff = 0;
-		const char *a6 = (const char*)&a1->addr6.sin6_addr;
-		const char *b6 = (const char*)&a1->addr6.sin6_addr;
-		for (int i = 0; i < sizeof(struct in6_addr); ++i) {
+		const unsigned int *a6 = (const unsigned int *)&a1->addr6.sin6_addr;
+		const unsigned int *b6 = (const unsigned int *)&a2->addr6.sin6_addr;
+		for (int i = 0; i <  (sizeof(struct in6_addr)/ sizeof(int)) ; ++i) {
 			ldiff = a6[i] - b6[i];
 			if (ldiff < 0) {
 				return -1;
