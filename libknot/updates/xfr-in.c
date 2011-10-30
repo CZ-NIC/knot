@@ -2416,7 +2416,7 @@ static int xfrin_apply_replace_soa(knot_zone_contents_t *contents,
 	++changes->old_rdata_count;
 
 	// insert the new SOA RRSet to the node
-	dbg_xfrin_verb(stderr, "Adding SOA.\n");
+	dbg_xfrin_verb("Adding SOA.\n");
 	ret = knot_node_add_rrset(node, chset->soa_to, 0);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to add RRSet to node.\n");
