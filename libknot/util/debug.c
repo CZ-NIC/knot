@@ -83,6 +83,9 @@ void knot_rrset_dump(const knot_rrset_t *rrset, char loaded_zone)
 #if defined(KNOT_ZONE_DEBUG) || defined(KNOT_RRSET_DEBUG)
 	fprintf(stderr, "  ------- RRSET -------\n");
 	fprintf(stderr, "  %p\n", rrset);
+	if (!rrset) {
+		return;
+	}
         char *name = knot_dname_to_str(rrset->owner);
         fprintf(stderr, "  owner: %s\n", name);
         free(name);
@@ -105,8 +108,8 @@ void knot_rrset_dump(const knot_rrset_t *rrset, char loaded_zone)
 
 	fprintf(stderr, "  rdata count: %d\n", rrset->rdata->count);
 	knot_rdata_t *tmp = rrset->rdata;
-
-	while (tmp->next != rrset->rdata) {
+	
+	while (tmp->next != rrset->rdata && tmp->next != NULL) {
 		knot_rdata_dump(tmp, rrset->type, loaded_zone);
 		tmp = tmp->next;
 	}
