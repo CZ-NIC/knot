@@ -149,6 +149,9 @@ void knot_node_dump(knot_node_t *node, void *loaded_zone)
 	}
 
 	if (node->parent != NULL) {
+		/*! \todo This causes segfault when parent was free'd,
+		 *        e.g. when applying changesets.
+		 */
 		name = knot_dname_to_str(node->parent->owner);
 		fprintf(stderr, "parent: %s\n", name);
 		free(name);
@@ -157,6 +160,10 @@ void knot_node_dump(knot_node_t *node, void *loaded_zone)
 	}
 
 	if (node->prev != NULL) {
+		fprintf(stderr, "previous node: %p\n", node->prev);
+		/*! \todo This causes segfault when prev was free'd,
+		 *        e.g. when applying changesets.
+		 */
 		name = knot_dname_to_str(node->prev->owner);
 		fprintf(stderr, "previous node: %s\n", name);
 		free(name);
@@ -169,6 +176,9 @@ void knot_node_dump(knot_node_t *node, void *loaded_zone)
 	fprintf(stderr, "Wildcard child: ");
 
 	if (node->wildcard_child != NULL) {
+		/*! \todo This causes segfault when wildcard child was free'd,
+		 *        e.g. when applying changesets.
+		 */
 		name = knot_dname_to_str(node->wildcard_child->owner);
 		fprintf(stderr, "%s\n", name);
 		free(name);
@@ -179,6 +189,9 @@ void knot_node_dump(knot_node_t *node, void *loaded_zone)
 	fprintf(stderr, "NSEC3 node: ");
 
 	if (node->nsec3_node != NULL) {
+		/*! \todo This causes segfault when nsec3_node was free'd,
+		 *        e.g. when applying changesets.
+		 */
 		name = knot_dname_to_str(node->nsec3_node->owner);
 		fprintf(stderr, "%s\n", name);
 		free(name);

@@ -2082,10 +2082,13 @@ static int xfrin_apply_add_normal(xfrin_changes_t *changes,
 	knot_rrset_dump(*rrset, 1);
 
 	if (*rrset == NULL) {
-		dbg_xfrin("RRSet to be added not found in zone.\n");
-		dbg_xfrin("owner: %s type: %s\n",
-		               knot_dname_to_str(add->owner),
+dbg_xfrin_exec_verb(
+		char *name = knot_dname_to_str(add->owner);
+		dbg_xfrin_verb("RRSet to be added not found in zone.\n");
+		dbg_xfrin_verb("owner: %s type: %s\n", name,
 		               knot_rrtype_to_string(add->type));
+		free(name);
+);
 //		getchar();
 		// add the RRSet from the changeset to the node
 		/*! \todo What about domain names?? Shouldn't we use the
