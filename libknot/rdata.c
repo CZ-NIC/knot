@@ -324,8 +324,8 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 		}
 
 		if (item_size != 0) {
-			fprintf(stderr, "Parsed: %zu, item size: %zu\n", parsed,
-			        item_size);
+//			fprintf(stderr, "Parsed: %zu, item size: %zu\n", parsed,
+//			        item_size);
 			if (parsed + item_size > rdlength) {
 				free(items);
 				return KNOT_EFEWDATA;
@@ -375,7 +375,7 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 	rc = knot_rdata_set_items(rdata, items, i);
 	
 	for (int j = 0; j < i; ++j) {
-		fprintf(stderr, "i: %d\n", j);
+		//fprintf(stderr, "i: %d\n", j);
 		assert(rdata->items[j].raw_data != NULL);
 	}
 	
