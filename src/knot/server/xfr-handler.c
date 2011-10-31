@@ -624,7 +624,7 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 	sockaddr_update(&data->addr);
 	char r_addr[SOCKADDR_STRLEN];
 	sockaddr_tostr(&data->addr, r_addr, sizeof(r_addr));
-	int r_port = sockaddr_portnum(&data->addr) ? sockaddr_portnum(&data->addr) : CONFIG_DEFAULT_PORT;
+	int r_port = sockaddr_portnum(&data->addr);
 
 	/* Connect to remote. */
 	if (data->session <= 0) {

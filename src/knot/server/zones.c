@@ -521,7 +521,7 @@ static int zones_notify_send(event_t *e)
 		if (ret == buflen) {
 			char r_addr[SOCKADDR_STRLEN];
 			sockaddr_tostr(&ev->addr, r_addr, sizeof(r_addr));
-			int r_port = sockaddr_portnum(&ev->addr) ? sockaddr_portnum(&ev->addr) : CONFIG_DEFAULT_PORT;
+			int r_port = sockaddr_portnum(&ev->addr);
 			ev->msgid = knot_wire_get_id(qbuf);
 			log_server_info("Issued NOTIFY query to %s:%d, expecting "
 					"response ID=%d\n",
