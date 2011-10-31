@@ -64,16 +64,6 @@ static void conf_acl_item(void *scanner, char *item)
 	snprintf(buf, sizeof(buf), "remote '%s' is not defined", item);
 	cf_error(scanner, buf);
      } else {
-	/* check port if xfrin/notify-out */
-	if (this_list == &this_zone->acl.xfr_in ||
-	   this_list == &this_zone->acl.notify_out) {
-	   if (found->port == 0) {
-	      cf_error(scanner, "remote specified for XFR/IN or NOTIFY/OUT "
-				" needs to have valid port!");
-	      free(item);
-	      return;
-	   }
-	}
 	conf_remote_t *remote = malloc(sizeof(conf_remote_t));
 	if (!remote) {
 	   cf_error(scanner, "out of memory");
