@@ -143,7 +143,7 @@ knot_rdata_t *knot_rrset_remove_rdata(knot_rrset_t *rrset,
 
 int knot_rrset_set_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs)
 {
-	if (rrset == NULL || rrsigs == NULL) {
+	if (rrset == NULL) {
 		return KNOT_EBADARG;
 	}
 
@@ -295,6 +295,7 @@ int knot_rrset_rdata_rr_count(const knot_rrset_t *rrset)
 const knot_rrset_t *knot_rrset_rrsigs(const knot_rrset_t *rrset)
 {
 	if (rrset == NULL) {
+		assert(0);
 		return NULL;
 	} else {
 		return rrset->rrsigs;
@@ -306,6 +307,7 @@ const knot_rrset_t *knot_rrset_rrsigs(const knot_rrset_t *rrset)
 knot_rrset_t *knot_rrset_get_rrsigs(knot_rrset_t *rrset)
 {
 	if (rrset == NULL) {
+		assert(0);
 		return NULL;
 	} else {
 		return rrset->rrsigs;
