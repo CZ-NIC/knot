@@ -44,6 +44,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef _KNOTD_PARSER_DESCRIPTOR_H_
 #define _KNOTD_PARSER_DESCRIPTOR_H_
 
 #include <stdint.h>
