@@ -682,7 +682,8 @@ static int knot_packet_parse_rr_sections(knot_packet_t *packet,
 
 	dbg_packet("Trying to find OPT RR in the packet.\n");
 
-	for (int i = 0; i < packet->header.arcount; ++i) {
+	for (int i = 0; i < packet->ar_rrsets; ++i) {
+		assert(packet->additional[i] != NULL);
 		if (knot_rrset_type(packet->additional[i])
 		    == KNOT_RRTYPE_OPT) {
 			dbg_packet("Found OPT RR, filling.\n");
