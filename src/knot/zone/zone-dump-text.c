@@ -339,6 +339,7 @@ static char *rdata_txt_data_to_string(const uint8_t *data)
 
 char *rdata_text_to_string(knot_rdata_item_t item)
 {
+	printf("Size of the whole item: %u\n", item.raw_data[0]);
 	uint16_t size = item.raw_data[0];
 	char *ret = malloc(sizeof(char) * size * 2) ;
 	if (ret == NULL) {
