@@ -1,3 +1,19 @@
+/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include <config.h>
 #include <assert.h>
 #include <stdio.h>
@@ -152,6 +168,7 @@ static knot_dname_t *read_dname_with_id(FILE *f)
 	}
 
 	ret->id = dname_id;
+	dbg_zload("loaded: dname id: %u\n", dname_id);
 
 	/* Read size of dname. */
 	uint32_t dname_size = 0;
@@ -294,9 +311,6 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 				if (id_array[dname_id]->node != NULL) {
 					knot_node_free(&id_array[dname_id]->
 							 node, 0, 0);
-//					printf("%p %s\n", id_array[dname_id]->node,
-	//				       knot_dname_to_str(id_array[dname_id]));
-		//			getchar();
 				}
 				/* Also sets node to NULL! */
 			}
@@ -422,24 +436,33 @@ static knot_rrset_t *knot_load_rrset(FILE *f, knot_dname_t **id_array,
 	knot_dname_t *owner = NULL;
 
 	if (!use_ids) {
+		dbg_zload("Loading owner of new RRSet from wire.\n");
 		owner = read_dname_with_id(f);
 	}
 
 	if (!fread_wrapper(&rrset_type, sizeof(rrset_type), 1, f)) {
 		return NULL;
 	}
+	dbg_zload("Zone load: rrset load: type: %u\n", rrset_type);
 	if (!fread_wrapper(&rrset_class, sizeof(rrset_class), 1, f)) {
 		return NULL;
 	}
+	dbg_zload("Zone load: rrset class: type: %u\n", rrset_class);
 	if (!fread_wrapper(&rrset_ttl, sizeof(rrset_ttl), 1, f)) {
 		return NULL;
 	}
+	dbg_zload("Zone load: rrset ttl: type: %u\n", rrset_ttl);
 	if (!fread_wrapper(&rdata_count, sizeof(rdata_count), 1, f)) {
 		return NULL;
 	}
+	dbg_zload("Zone load: rrset load: rdata count: %u\n", rdata_count);
 	if (!fread_wrapper(&rrsig_count, sizeof(rrsig_count), 1, f)) {
 		return NULL;
 	}
+	dbg_zload("Zone load: rrset load: type: %u\n", rrset_type);
+
+	dbg_zload("Loading RRSet owned by: %s\n",
+	          knot_dname_to_str(owner));
 
 	rrset = knot_rrset_new(owner, rrset_type, rrset_class, rrset_ttl);
 
@@ -532,9 +555,11 @@ static knot_node_t *knot_load_node(FILE *f, knot_dname_t **id_array)
 	/* XXX can it be 0, ever? I think not. */
 	if (nsec3_node_id != 0) {
 		knot_node_set_nsec3_node(node, id_array[nsec3_node_id]->node);
+		/* CLEANUP */
 //		node->nsec3_node = id_array[nsec3_node_id]->node;
 	} else {
 		knot_node_set_nsec3_node(node, NULL);
+		/* CLEANUP */
 //		node->nsec3_node = NULL;
 	}
 
@@ -877,7 +902,6 @@ static knot_dname_t **create_dname_array(FILE *f, uint max_id)
 
 	for (uint i = 0; i < max_id - 1; i++) {
 		knot_dname_t *read_dname = read_dname_with_id(f);
-//		printf("First dname: %s\n", knot_dname_to_str(array[i]));
 		if (read_dname == NULL) {
 			cleanup_id_array(array, 0, i);
 			return NULL;
@@ -906,7 +930,6 @@ static knot_dname_t **create_dname_array(FILE *f, uint max_id)
 			return NULL;
 		}
 
-//		assert(array[i]->id == i);
 	}
 
 	return array;
@@ -927,6 +950,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	knot_node_t *tmp_node;
 
 	/* Load the dname table. */
+	/* CLEANUP */
 //	const knot_dname_table_t *dname_table =
 //		create_dname_table(f, total_dnames);
 //	if (dname_table == NULL) {
@@ -1003,6 +1027,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	/* Assign dname table to the new zone. */
 	contents->dname_table = dname_table;
 
+	/* CLEANUP */
 //	apex->prev = NULL;
 	knot_node_set_previous(apex, NULL);
 
@@ -1025,6 +1050,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 			}
 
 			knot_node_set_previous(tmp_node, last_node);
+			/* CLEANUP */
 //			tmp_node->prev = last_node;
 
 			if (tmp_node->rrset_count &&
@@ -1066,6 +1092,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 		}
 
 		knot_node_set_previous(nsec3_first, NULL);
+		/* CLEANUP */
 //		nsec3_first->prev = NULL;
 
 		last_node = nsec3_first;
@@ -1082,6 +1109,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 			}
 
 			knot_node_set_previous(tmp_node, last_node);
+			/* CLEANUP */
 //			tmp_node->prev = last_node;
 
 			last_node = tmp_node;
@@ -1094,6 +1122,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	if (nsec3_node_count) {
 		assert(knot_node_previous(nsec3_first, 0) == NULL);
 		knot_node_set_previous(nsec3_first, last_node);
+		/* CLEANUP */
 //		nsec3_first->prev = last_node;
 	}
 
@@ -1150,7 +1179,7 @@ void knot_zload_close(zloader_t *loader)
 int knot_zload_rrset_deserialize(knot_rrset_t **rrset,
                                    uint8_t *stream, size_t *size)
 {
-	if (stream == NULL || size == 0 || *rrset != NULL) {
+	if (stream == NULL || size == 0) {
 		return KNOT_EBADARG;
 	}
 
@@ -1167,9 +1196,6 @@ int knot_zload_rrset_deserialize(knot_rrset_t **rrset,
 		knot_zload_stream_size = 0;
 		return KNOT_EMALF;
 	}
-
-//	printf("knot_zload_stream_size: %zu, knot_zload_stream_remaning: %zu\n",
-//	       knot_zload_stream_size, knot_zload_stream_remaining);
 
 	*size = knot_zload_stream_remaining;
 	*rrset = ret;

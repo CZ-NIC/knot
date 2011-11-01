@@ -1,3 +1,19 @@
+/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include <config.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -56,6 +72,7 @@ static int xfr_udp_timeout(event_t *e)
 		              zd->conf->name,
 		              r_addr, r_port);
 	}
+	
 	knot_ns_xfr_t cr = {};
 	cr.type = XFR_TYPE_CLOSE;
 	cr.session = data->session;
@@ -111,15 +128,15 @@ static int xfr_process_udp_query(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 			evsched_event_free(sched, ev);
 			data->data = 0;
 		}
+		
+		/* Close after receiving response. */
+		knot_ns_xfr_t cr = {};
+		cr.type = XFR_TYPE_CLOSE;
+		cr.session = data->session;
+		cr.data = data;
+		cr.zone = data->zone;
+		evqueue_write(w->q, &cr, sizeof(knot_ns_xfr_t));
 	}
-
-	/* Close after receiving response. */
-	knot_ns_xfr_t cr = {};
-	cr.type = XFR_TYPE_CLOSE;
-	cr.session = data->session;
-	cr.data = data;
-	cr.zone = data->zone;
-	evqueue_write(w->q, &cr, sizeof(knot_ns_xfr_t));
 	
 	return KNOTD_EOK;
 }
@@ -127,6 +144,10 @@ static int xfr_process_udp_query(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 /*! \todo Document me. */
 static void xfr_free_task(knot_ns_xfr_t *task)
 {
+	if (!task) {
+		return;
+	}
+	
 	xfrworker_t *w = (xfrworker_t *)task->owner;
 	if (!w) {
 		free(task);
@@ -229,6 +250,15 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 	knot_zone_t *zone = (knot_zone_t *)data->zone;
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 	const char *zorigin = zd->conf->name;
+
+	/* CLEANUP */
+//	// get the zone name from Question
+//	dbg_xfr_verb("Query: %p, response: %p\n", data->query, data->response);
+//	const knot_dname_t *qname = knot_packet_qname(data->query);
+//	char *zorigin = "(unknown)";
+//	if (qname != NULL) {
+//		zorigin = knot_dname_to_str(qname);
+//	}
 	
 	int ret = KNOTD_EOK;
 	
@@ -279,6 +309,7 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 		/* Free changesets, but not the data. */
 		knot_changesets_t *chs = (knot_changesets_t *)data->data;
 		knot_free_changesets(&chs);
+		/* CLEANUP */
 //		free(chs->sets);
 //		free(chs);
 		data->data = 0;
@@ -290,6 +321,11 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 		ret = KNOTD_EINVAL;
 		break;
 	}
+
+	/* CLEANUP */
+//	if (qname != NULL) {
+//		free(zorigin);
+//	}
 	
 	return ret;
 }
@@ -947,23 +983,21 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 	sockaddr_tostr(&xfr.addr, r_addr, sizeof(r_addr));
 	int r_port = sockaddr_portnum(&xfr.addr);
 
+	conf_read_lock();
+
 	/* Handle request. */
 	knot_ns_xfr_t *task = 0;
 	evsched_t *sch = 0;
 	const char *req_type = "";
 	knot_rcode_t rcode = 0;
-	knot_zone_t *zone = xfr.zone;
-	const char *zname = "?";
-	if (zone) {
-		zonedata_t *zd = xfr.zone->data;
-		zname = zd->conf->name;
-	}
-	
-	conf_read_lock();
+	char *zname = "(unknown)";
 
 	/* XFR request state tracking. */
 	int init_failed = 0;
 	const char *errstr = "";
+	const knot_dname_t *qname = NULL;
+	
+	dbg_xfr_verb("Query ptr: %p\n", xfr.query);
 
 	dbg_xfr_verb("xfr: processing request type '%d'\n", xfr.type);
 	switch(xfr.type) {
@@ -972,9 +1006,12 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		ret = knot_ns_init_xfr(w->ns, &xfr);
 		init_failed = (ret != KNOT_EOK);
 		errstr = knot_strerror(ret);
-		if (xfr.zone) {
-			zonedata_t *zd = xfr.zone->data;
-			zname = zd->conf->name;
+
+		// use the QNAME as the zone name to get names also for
+		// zones that are not in the server
+		qname = knot_packet_qname(xfr.query);
+		if (qname != NULL) {
+			zname = knot_dname_to_str(qname);
 		}
 
 		/* Check requested zone. */
@@ -1021,15 +1058,21 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		free(xfr.query->wireformat);
 		xfr.query->wireformat = 0;
 		knot_packet_free(&xfr.query); /* Free query. */
+		
+		if (qname != NULL) {
+			free(zname);
+		}
+		
 		break;
 	case XFR_TYPE_IOUT:
 		req_type = "IXFR/OUT";
 		ret = knot_ns_init_xfr(w->ns, &xfr);
 		init_failed = (ret != KNOT_EOK);
 		errstr = knot_strerror(ret);
-		if (xfr.zone) {
-			zonedata_t *zd = xfr.zone->data;
-			zname = zd->conf->name;
+
+		qname = knot_packet_qname(xfr.query);
+		if (qname != NULL) {
+			zname = knot_dname_to_str(qname);
 		}
 		
 		/* Check requested zone. */
@@ -1046,22 +1089,41 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 			errstr = knot_strerror(ret);
 		}
 		
+		uint32_t serial_from = 0;
+		uint32_t serial_to = 0;
+		
+		// Check serial differeces
+		if (!init_failed) {
+			dbg_xfr_verb("Loading serials for IXFR.\n");
+			ret = ns_ixfr_load_serials(&xfr, &serial_from, 
+			                           &serial_to);
+			dbg_xfr_detail("Loaded serials: from: %u, to: %u\n",
+			               serial_from, serial_to);
+			init_failed = (ret != KNOT_EOK);
+			errstr = knot_strerror(ret);
+		}
+		
 		/* Load changesets from journal. */
 		if (!init_failed) {
-			ret = zones_xfr_load_changesets(&xfr);
+			dbg_xfr_verb("Loading changesets from journal.\n");
+			ret = zones_xfr_load_changesets(&xfr, serial_from, 
+			                                serial_to);
 			if (ret != KNOTD_EOK) {
 				/* History cannot be reconstructed, fallback to AXFR. */
-				if (ret == KNOTD_ERANGE) {
+				if (ret == KNOTD_ERANGE || ret == KNOTD_ENOENT) {
 					log_server_info("IXFR transfer of zone '%s/OUT'"
-					                " - not enough data in journal,"
-					                " fallback to AXFR.\n",
-					                zname);
+					                " - failed to load data from journal: %s."
+					                " Fallback to AXFR.\n",
+					                knotd_strerror(ret), zname);
 					xfr.type = XFR_TYPE_AOUT;
 					xfr_request(w->master, &xfr);
 					conf_read_unlock();
 					return KNOTD_EOK;
+				} else if (ret == KNOTD_EMALF) {
+					rcode = KNOT_RCODE_FORMERR;
+				} else {
+					rcode = KNOT_RCODE_SERVFAIL;
 				}
-				rcode = KNOT_RCODE_SERVFAIL;
 				init_failed = (ret != KNOTD_EOK);
 				errstr = knotd_strerror(ret);
 			}
@@ -1098,6 +1160,11 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		}
 		free(xfr.query->wireformat);
 		knot_packet_free(&xfr.query); /* Free query. */
+		
+		if (qname) {
+			free(zname);
+		}
+		
 		break;
 	case XFR_TYPE_AIN:
 		req_type = "AXFR/IN";

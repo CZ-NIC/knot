@@ -16,7 +16,7 @@
  * \addtogroup query_processing
  * @{
  */
-/*  Copyright (C) 2011 CZ.NIC Labs
+/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -236,6 +236,18 @@ int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_packet_t *query,
                      uint8_t *response_wire, size_t *rsize);
 
 int knot_ns_init_xfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr);
+
+/*! 
+ * \brief Compares two zone serials.
+ *
+ * \retval < 0 if s1 is less than s2.
+ * \retval > 0 if s1 is larger than s2.
+ * \retval == 0 if s1 is equal to s2.
+ */
+int ns_serial_compare(uint32_t s1, uint32_t s2);
+
+int ns_ixfr_load_serials(const knot_ns_xfr_t *xfr, uint32_t *serial_from, 
+                         uint32_t *serial_to);
 
 int knot_ns_xfr_send_error(const knot_nameserver_t *nameserver,
                            knot_ns_xfr_t *xfr, knot_rcode_t rcode);

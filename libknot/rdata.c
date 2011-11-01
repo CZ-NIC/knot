@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC Labs
+/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -188,25 +188,11 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 	size_t item_size = 0;
 	uint8_t gateway_type = 0;  // only to handle IPSECKEY record
 	knot_dname_t *dname = NULL;
-	
-//	if (desc->type == 50) {
-//		fprintf(stderr, "Parsing NSEC3 RDATA, RDLENGTH=%zu\n", rdlength);
-//	}
-
-//	printf("Parsing RDATA of size %zu of type %s\n",
-//	       rdlength, knot_rrtype_to_string(desc->type));
 
 	while (i < desc->length && (desc->fixed_items || parsed < rdlength)) {
 		
-//		if (desc->type == 50) {
-//			fprintf(stderr, "Parsing NSEC3 RDATA, item %d\n", i);
-//		}
-		
-//		printf("Parsed: %zu\n", parsed);
 		item_type = desc->wireformat[i];
 		item_size = 0;
-
-//		printf("Parsing item of type %d\n", item_type);
 
 		size_t pos2;
 
@@ -214,7 +200,6 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 		case KNOT_RDATA_WF_COMPRESSED_DNAME:
 		case KNOT_RDATA_WF_UNCOMPRESSED_DNAME:
 		case KNOT_RDATA_WF_LITERAL_DNAME:
-//			printf("Next item - domain name, pos: %zu.\n", *pos);
 			pos2 = *pos;
 			dname = knot_dname_parse_from_wire(
 				wire, &pos2, total_size, NULL);
@@ -229,52 +214,39 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 			dname = 0;
 			break;
 		case KNOT_RDATA_WF_BYTE:
-//			printf("Next item - byte.\n");
 			if (desc->type == KNOT_RRTYPE_IPSECKEY && i == 1) {
 				gateway_type = *(wire + *pos);
 			}
 			item_size = 1;
 			break;
 		case KNOT_RDATA_WF_SHORT:
-//			printf("Next item - short.\n");
 			item_size = 2;
 			break;
 		case KNOT_RDATA_WF_LONG:
-//			printf("Next item - long, pos: %zu.\n", *pos);
 			item_size = 4;
 			break;
 		case KNOT_RDATA_WF_UINT48:
 			item_size = 6;
 			break;
 		case KNOT_RDATA_WF_TEXT:
-//			printf("Next item - text.\n");
-			// TODO!!!
 			item_size = rdlength - parsed;
 			break;
+		case KNOT_RDATA_WF_TEXT_SINGLE:
+			item_size = *(wire + *pos) + 1;
+			break;
 		case KNOT_RDATA_WF_A:
-//			printf("Next item - A.\n");
 			item_size = 4;
 			break;
 		case KNOT_RDATA_WF_AAAA:
-//			printf("Next item - AAAA.\n");
 			item_size = 16;
 			break;
 		case KNOT_RDATA_WF_BINARY:
-//			printf("Next item - Binary data.\n");
-			// the rest of the RDATA is this item
 			item_size = rdlength - parsed;
-//			if (desc->type == 50) {
-//				fprintf(stderr, "parsed=%zu, item_size=%zu\n", 
-//				        parsed, item_size);
-//			}
-//			printf("Binary item, size: %zu\n", item_size);
 			break;
 		case KNOT_RDATA_WF_BINARYWITHLENGTH:
-//			printf("Next item - Binary with length.\n");
 			item_size = *(wire + *pos) + 1;
 			break;
 		case KNOT_RDATA_WF_BINARYWITHSHORT:
-//			printf("Next item - Binary with length.\n");
 			item_size = knot_wire_read_u16(wire + *pos) + 2;
 			break;
 		case KNOT_RDATA_WF_APL:
@@ -296,6 +268,7 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 				break;
 			case 3:
 				pos2 = *pos;
+				fprintf(stderr, "reading dname from pos: %zu\n", pos2);
 				dname =
 					knot_dname_parse_from_wire(
 					         wire, &pos2, total_size, NULL);
@@ -305,6 +278,8 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 				items[i].dname = dname;
 				//*pos += dname->size;
 				parsed += pos2 - *pos;
+				
+				fprintf(stderr, "read %zu bytes.\n", parsed);
 				*pos = pos2;
 				dname = 0;
 				break;
@@ -314,14 +289,11 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 
 			break;
 		default:
-//			printf("Next item - unknown.\n");
 			return KNOT_EMALF;
 
 		}
 
 		if (item_size != 0) {
-//			printf("Parsed: %zu, item size: %zu\n", parsed,
-//			       item_size);
 			if (parsed + item_size > rdlength) {
 				free(items);
 				return KNOT_EFEWDATA;
@@ -332,13 +304,13 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 				free(items);
 				return KNOT_ENOMEM;
 			}
-			// TODO: save size to the RDATA item!!!
-//			printf("Read: %u\n", knot_wire_read_u32(wire + *pos));
 			memcpy(items[i].raw_data, &item_size, 2);
 			memcpy(items[i].raw_data + 1, wire + *pos, item_size);
 			*pos += item_size;
 			parsed += item_size;
-		} else if (item_type == KNOT_RDATA_WF_BINARY) {
+		} else if (item_type == KNOT_RDATA_WF_BINARY
+		           || item_type == KNOT_RDATA_WF_IPSECGATEWAY) {
+			fprintf(stderr, "item_size was 0, creating empty rdata item.\n");
 			// in this case we are at the end of the RDATA
 			// and should create an empty RDATA item
 			items[i].raw_data = (uint16_t *)malloc(2);
@@ -347,20 +319,27 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 				return KNOT_ENOMEM;
 			}
 			memcpy(items[i].raw_data, &item_size, 2);
+		} else if (item_type != KNOT_RDATA_WF_COMPRESSED_DNAME
+		           && item_type != KNOT_RDATA_WF_UNCOMPRESSED_DNAME
+		           && item_type != KNOT_RDATA_WF_LITERAL_DNAME) {
+				fprintf(stderr, "RDATA item not set (i: %d), type: %u"
+					" RDATA item type: %d\n", i, desc->type ,item_type);
+				assert(0);
 		}
 
 		++i;
 	}
-	
-//	if (desc->type == 50) {
-//		fprintf(stderr, "Parsed %d items of NSEC3\n", i);
-//	}
-	
+
 	assert(!desc->fixed_items || i == desc->length);
 
 	// all items are parsed, insert into the RDATA
 	int rc;
 	rc = knot_rdata_set_items(rdata, items, i);
+	
+	for (int j = 0; j < i; ++j) {
+		assert(rdata->items[j].raw_data != NULL);
+	}
+	
 	free(items);
 	return rc;
 }
@@ -533,7 +512,7 @@ void knot_rdata_deep_free(knot_rdata_t **rdata, uint type,
 }
 
 /*----------------------------------------------------------------------------*/
-
+/* CLEANUP */
 //uint knot_rdata_wire_size(const knot_rdata_t *rdata,
 //                            const uint8_t *format)
 //{
@@ -707,6 +686,7 @@ int knot_rdata_compare(const knot_rdata_t *r1, const knot_rdata_t *r2,
 	int cmp = 0;
 
 	for (int i = 0; i < count; ++i) {
+		/* CLEANUP */
 //		const uint8_t *data1, *data2;
 //		int size1, size2;
 

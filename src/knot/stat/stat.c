@@ -1,3 +1,19 @@
+/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include <config.h>
 #include <time.h>
 #include <pthread.h>
@@ -18,6 +34,7 @@
 /* Static local gatherer variable, to be used with all functions. */
 static gatherer_t *local_gath;
 
+/* CLEANUP */
 /*
 static void stat_inc_latency( stat_t *stat, uint increment )
 {
@@ -165,7 +182,7 @@ static void stat_sleep_compute()
 
 		/* following code needs usage of
 		 * gettimeofday, which is currently disabled */
-
+		/* CLEANUP */
 /*		local_gath->udp_mean_latency=((double)local_gath->udp_latency/
 		(double)local_gath->udp_queries);
 		local_gath->tcp_mean_latency=((double)local_gath->tcp_latency/
@@ -214,6 +231,7 @@ void stat_set_protocol(stat_t *stat, int protocol)
 
 void stat_get_first(stat_t *stat , struct sockaddr_in *s_addr)
 {
+	/* CLEANUP */
 //	gettimeofday(&stat->t2, NULL);
 	stat->s_addr = s_addr;
 //	check if s_addr does not get overwritten
@@ -221,6 +239,7 @@ void stat_get_first(stat_t *stat , struct sockaddr_in *s_addr)
 
 void stat_get_second(stat_t *stat)
 {
+	/* CLEANUP */
 //	gettimeofday(&stat->t2, NULL);
 	stat_inc_query(stat);
 //	stat_inc_latency(stat, stat_last_query_time(stat));

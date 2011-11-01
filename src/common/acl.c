@@ -1,3 +1,19 @@
+/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include <string.h>
 #include <stdlib.h>
 
@@ -48,9 +64,9 @@ static int acl_compare(void *k1, void *k2)
 		/* Compare address. */
 		/*! \todo Maybe use memcmp()? */
 		ldiff = 0;
-		const char *a6 = (const char*)&a1->addr6.sin6_addr;
-		const char *b6 = (const char*)&a1->addr6.sin6_addr;
-		for (int i = 0; i < sizeof(struct in6_addr); ++i) {
+		const unsigned int *a6 = (const unsigned int *)&a1->addr6.sin6_addr;
+		const unsigned int *b6 = (const unsigned int *)&a2->addr6.sin6_addr;
+		for (int i = 0; i <  (sizeof(struct in6_addr)/ sizeof(int)) ; ++i) {
 			ldiff = a6[i] - b6[i];
 			if (ldiff < 0) {
 				return -1;
@@ -108,12 +124,14 @@ acl_t *acl_new(acl_rule_t default_rule, const char *name)
 
 void acl_delete(acl_t **acl)
 {
-	if (!acl) {
+	if ((acl == NULL) || (*acl == NULL)) {
 		return;
 	}
 
 	/* Truncate rules. */
-	acl_truncate(*acl);
+	if (acl_truncate(*acl) != ACL_ACCEPT) {
+		return;
+	}
 
 	/* Free ACL. */
 	free(*acl);
@@ -128,7 +146,7 @@ int acl_create(acl_t *acl, const sockaddr_t* addr, acl_rule_t rule)
 
 	/* Insert into skip list. */
 	sockaddr_t *key = malloc(sizeof(sockaddr_t));
-	memcpy(key,addr, sizeof(sockaddr_t));
+	memcpy(key, addr, sizeof(sockaddr_t));
 
 	skip_insert(acl->rules, key, (void*)((ssize_t)rule + 1), 0);
 
@@ -146,7 +164,7 @@ int acl_match(acl_t *acl, sockaddr_t* addr)
 	 * but we can be sure, that the value range is within <-1,1>.
 	 */
 	ssize_t val = ((ssize_t)skip_find(acl->rules, addr)) - 1;
-	if(val < 0) {
+	if (val < 0) {
 		return acl->default_rule;
 	}
 
@@ -156,7 +174,7 @@ int acl_match(acl_t *acl, sockaddr_t* addr)
 
 int acl_truncate(acl_t *acl)
 {
-	if (!acl) {
+	if (acl == NULL) {
 		return ACL_ERROR;
 	}
 

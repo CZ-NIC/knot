@@ -1,3 +1,19 @@
+/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include <stdlib.h>
 #include <assert.h>
 
@@ -48,14 +64,11 @@ static int check_rdata(const knot_rdata_t *rdata,
 	//note("check_rdata(), RRType: %u", rrtype);
 
 	for (int i = 0; i < desc->length; ++i) {
-		uint size = 0;
 
 		switch (desc->wireformat[i]) {
 		case KNOT_RDATA_WF_COMPRESSED_DNAME:
 		case KNOT_RDATA_WF_UNCOMPRESSED_DNAME:
 		case KNOT_RDATA_WF_LITERAL_DNAME:
-			size = knot_dname_size(knot_rdata_item(
-						 rdata, i)->dname);
 			if (check_domain_name(rdata->items[i].dname,
 			               test_rdata->items[i].dname) != 0) {
 				errors++;

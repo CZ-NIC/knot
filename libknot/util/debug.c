@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC Labs
+/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -83,6 +83,9 @@ void knot_rrset_dump(const knot_rrset_t *rrset, char loaded_zone)
 #if defined(KNOT_ZONE_DEBUG) || defined(KNOT_RRSET_DEBUG)
 	fprintf(stderr, "  ------- RRSET -------\n");
 	fprintf(stderr, "  %p\n", rrset);
+	if (!rrset) {
+		return;
+	}
         char *name = knot_dname_to_str(rrset->owner);
         fprintf(stderr, "  owner: %s\n", name);
         free(name);
@@ -105,8 +108,8 @@ void knot_rrset_dump(const knot_rrset_t *rrset, char loaded_zone)
 
 	fprintf(stderr, "  rdata count: %d\n", rrset->rdata->count);
 	knot_rdata_t *tmp = rrset->rdata;
-
-	while (tmp->next != rrset->rdata) {
+	
+	while (tmp->next != rrset->rdata && tmp->next != NULL) {
 		knot_rdata_dump(tmp, rrset->type, loaded_zone);
 		tmp = tmp->next;
 	}
@@ -146,6 +149,9 @@ void knot_node_dump(knot_node_t *node, void *loaded_zone)
 	}
 
 	if (node->parent != NULL) {
+		/*! \todo This causes segfault when parent was free'd,
+		 *        e.g. when applying changesets.
+		 */
 		name = knot_dname_to_str(node->parent->owner);
 		fprintf(stderr, "parent: %s\n", name);
 		free(name);
@@ -154,6 +160,10 @@ void knot_node_dump(knot_node_t *node, void *loaded_zone)
 	}
 
 	if (node->prev != NULL) {
+		fprintf(stderr, "previous node: %p\n", node->prev);
+		/*! \todo This causes segfault when prev was free'd,
+		 *        e.g. when applying changesets.
+		 */
 		name = knot_dname_to_str(node->prev->owner);
 		fprintf(stderr, "previous node: %s\n", name);
 		free(name);
@@ -166,6 +176,9 @@ void knot_node_dump(knot_node_t *node, void *loaded_zone)
 	fprintf(stderr, "Wildcard child: ");
 
 	if (node->wildcard_child != NULL) {
+		/*! \todo This causes segfault when wildcard child was free'd,
+		 *        e.g. when applying changesets.
+		 */
 		name = knot_dname_to_str(node->wildcard_child->owner);
 		fprintf(stderr, "%s\n", name);
 		free(name);
@@ -176,6 +189,9 @@ void knot_node_dump(knot_node_t *node, void *loaded_zone)
 	fprintf(stderr, "NSEC3 node: ");
 
 	if (node->nsec3_node != NULL) {
+		/*! \todo This causes segfault when nsec3_node was free'd,
+		 *        e.g. when applying changesets.
+		 */
 		name = knot_dname_to_str(node->nsec3_node->owner);
 		fprintf(stderr, "%s\n", name);
 		free(name);

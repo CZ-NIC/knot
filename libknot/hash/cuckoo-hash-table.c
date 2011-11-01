@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC Labs
+/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1137,7 +1137,7 @@ int ck_shallow_copy(const ck_hash_table_t *from, ck_hash_table_t **to)
 	// copy the ck_hash_table_item_t within them.
 	ck_stash_item_t *si = from->stash;
 	ck_stash_item_t **pos = &(*to)->stash;
-	fprintf(stderr, "Copying hash table stash.\n");
+	dbg_ck_verb(stderr, "Copying hash table stash.\n");
 	while (si != NULL) {
 		ck_stash_item_t *si_new = (ck_stash_item_t *)
 		                           malloc(sizeof(ck_stash_item_t));

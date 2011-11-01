@@ -339,6 +339,7 @@ static char *rdata_txt_data_to_string(const uint8_t *data)
 
 char *rdata_text_to_string(knot_rdata_item_t item)
 {
+	printf("Size of the whole item: %u\n", item.raw_data[0]);
 	uint16_t size = item.raw_data[0];
 	char *ret = malloc(sizeof(char) * size * 2) ;
 	if (ret == NULL) {
@@ -783,6 +784,7 @@ char *rdata_nxt_to_string(knot_rdata_item_t item)
 
 char *rdata_nsec_to_string(knot_rdata_item_t item)
 {
+	/* CLEANUP */
 //	int insert_space = 0;
 
 	char *ret = malloc(sizeof(char) * MAX_NSEC_BIT_STR_LEN);
@@ -822,6 +824,7 @@ char *rdata_nsec_to_string(knot_rdata_item_t item)
 
 	return ret;
 
+	/* CLEANUP */
 /*	while (buffer_available(&packet, 2)) {
 		uint8_t window = buffer_read_u8(&packet);
 		uint8_t bitmap_size = buffer_read_u8(&packet);
@@ -904,6 +907,7 @@ char *rdata_item_to_string(knot_rdata_zoneformat_t type,
 	return item_to_string_table[type](item);
 }
 
+/* CLEANUP */
 /*void knot_zone_tree_apply_inorder(knot_zone_t *zone,
                               void (*function)(knot_node_t *node, void *data),
                               void *data); */

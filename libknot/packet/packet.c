@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC Labs
+/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -355,10 +355,10 @@ static knot_rdata_t *knot_packet_parse_rdata(const uint8_t *wire,
 	size_t *pos, size_t total_size, size_t rdlength,
 	const knot_rrtype_descriptor_t *desc)
 {
-	if (desc->type == 0) {
-		dbg_packet("Unknown RR type.\n");
-		return NULL;
-	}
+//	if (desc->type == 0) {
+//		dbg_packet("Unknown RR type.\n");
+//		return NULL;
+//	}
 
 	knot_rdata_t *rdata = knot_rdata_new();
 	if (rdata == NULL) {
@@ -682,7 +682,8 @@ static int knot_packet_parse_rr_sections(knot_packet_t *packet,
 
 	dbg_packet("Trying to find OPT RR in the packet.\n");
 
-	for (int i = 0; i < packet->header.arcount; ++i) {
+	for (int i = 0; i < packet->ar_rrsets; ++i) {
+		assert(packet->additional[i] != NULL);
 		if (knot_rrset_type(packet->additional[i])
 		    == KNOT_RRTYPE_OPT) {
 			dbg_packet("Found OPT RR, filling.\n");

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC Labs
+/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -184,7 +184,6 @@ int knot_dname_table_add_dname(knot_dname_table_t *table,
 	node->avl.avl_right = NULL;
 
 	node->dname->id = table->id_counter++;
-//	printf("Inserted dname got id %d\n", node->dname->id);
 	assert(node->dname->id != 0);
 
 	/* Increase reference counter. */
@@ -203,10 +202,6 @@ int knot_dname_table_add_dname_check(knot_dname_table_t *table,
 		return KNOT_EBADARG;
 	}
 
-//	char *name = knot_dname_to_str(*dname);
-//	printf("Inserting name %s to dname table.\n", name);
-//	free(name);
-
 	/* Fetch dname, need to release it later. */
 	found_dname = knot_dname_table_find_dname(table ,*dname);
 
@@ -216,10 +211,6 @@ int knot_dname_table_add_dname_check(knot_dname_table_t *table,
 	} else {
 		/*! \todo Remove the check for equality. */
 		if (found_dname != *dname) {
-			//name = knot_dname_to_str(found_dname);
-			//printf("Already there: %s (%p)\n", name, found_dname);
-			//free(name);
-
 			/* Replace dname with found. */
 			knot_dname_release(*dname);
 			*dname = found_dname;
@@ -233,8 +224,6 @@ int knot_dname_table_add_dname_check(knot_dname_table_t *table,
 			knot_dname_release(found_dname);
 		}
 	}
-
-//	printf("Done.\n");
 
 	return KNOT_EOK;
 }
