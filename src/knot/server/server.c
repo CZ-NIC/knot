@@ -113,8 +113,8 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 {
 	/* Initialize interface. */
 	char errbuf[128];
-	int opt = 1024 * 256;
-	int snd_opt = 1024 * 8;
+	int opt = 1024 * 1024;
+	int snd_opt = 1024 * 1024;
 	memset(new_if, 0, sizeof(iface_t));
 
 	/* Create UDP socket. */
