@@ -57,7 +57,6 @@ int gen_tree_add(general_tree_t *tree,
 	MOD_TREE_INSERT(tree->tree, general_tree_node, avl,
 	                tree_node, mrg_func, &merged);
 	if (merged) {
-		//fprintf(stderr, "Merged tree node.\n");
 		free(tree_node);
 	}
 	return merged;
@@ -127,11 +126,6 @@ void gen_tree_apply_inorder(general_tree_t *tree,
 	MOD_TREE_FORWARD_APPLY(tree->tree, general_tree_node, avl,
 	                   app_func, data);
 }
-
-/*static void print_node(void *n, void *data)
-{
-	printf("node: %p\n", n);
-}*/
 
 void gen_tree_destroy(general_tree_t **tree,
                       void (*dest_func)(void *node, void *data), void *data)
@@ -211,14 +205,10 @@ general_tree_t *gen_tree_shallow_copy(general_tree_t *tree)
 		return NULL;
 	}
 
+	/* CLEANUP */
 //	gen_tree_apply_inorder(tree, print_node, NULL);
 //	printf("--------------------------\n");
 //	gen_tree_apply_inorder(new_tree, print_node, NULL);
-
-	/* XXX */
-
-//	printf("new tree: %p from old tree: %p\n",
-//	       new_tree, tree);
 
 	return new_tree;
 }
