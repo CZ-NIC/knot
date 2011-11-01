@@ -3,6 +3,7 @@
  * \file zparser.y
  *
  * \author modifications by Jan Kadlec <jan.kadlec@nic.cz>,
+ *         notable changes: normal allocation, parser is reentrant.
  *         most of the code by NLnet Labs
  *         Copyright (c) 2001-2006, NLnet Labs. All rights reserved.
  *         See LICENSE for the license.
