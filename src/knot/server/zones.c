@@ -516,6 +516,16 @@ static int zones_notify_send(event_t *e)
 	uint8_t qbuf[SOCKET_MTU_SZ];
 	size_t buflen = sizeof(qbuf);
 
+        /* RFC suggests 60s, but it is configurable. */
+        int retry_tmr = ev->timeout * 1000;
+ 
+        /* Reschedule. */
+        conf_read_lock();
+        evsched_schedule(e->parent, e, retry_tmr);
+        dbg_notify("notify: Query RETRY after %u secs (zone '%s')\n",
+                   retry_tmr / 1000, zd->conf->name);
+        conf_read_unlock();
+
 	/* Create query. */
 	int ret = notify_create_request(contents, qbuf, &buflen);
 	if (ret == KNOTD_EOK && zd->server) {
@@ -555,16 +565,10 @@ static int zones_notify_send(event_t *e)
 		memcpy(&req.addr, &ev->addr, sizeof(sockaddr_t));
 		xfr_request(zd->server->xfr_h, &req);
 
+		/* Unlock RCU */
+		rcu_read_unlock();
 	}
 
-	/* RFC suggests 60s, but it is configurable. */
-	int retry_tmr = ev->timeout * 1000;
-
-	/* Reschedule. */
-	evsched_schedule(e->parent, e, retry_tmr);
-
-	dbg_notify("notify: Query RETRY after %u secs (zone '%s')\n",
-	           retry_tmr / 1000, zd->conf->name);
 	return ret;
 }
 
