@@ -34,6 +34,7 @@
 /* Static local gatherer variable, to be used with all functions. */
 static gatherer_t *local_gath;
 
+/* CLEANUP */
 /*
 static void stat_inc_latency( stat_t *stat, uint increment )
 {
@@ -181,7 +182,7 @@ static void stat_sleep_compute()
 
 		/* following code needs usage of
 		 * gettimeofday, which is currently disabled */
-
+		/* CLEANUP */
 /*		local_gath->udp_mean_latency=((double)local_gath->udp_latency/
 		(double)local_gath->udp_queries);
 		local_gath->tcp_mean_latency=((double)local_gath->tcp_latency/
@@ -230,6 +231,7 @@ void stat_set_protocol(stat_t *stat, int protocol)
 
 void stat_get_first(stat_t *stat , struct sockaddr_in *s_addr)
 {
+	/* CLEANUP */
 //	gettimeofday(&stat->t2, NULL);
 	stat->s_addr = s_addr;
 //	check if s_addr does not get overwritten
@@ -237,6 +239,7 @@ void stat_get_first(stat_t *stat , struct sockaddr_in *s_addr)
 
 void stat_get_second(stat_t *stat)
 {
+	/* CLEANUP */
 //	gettimeofday(&stat->t2, NULL);
 	stat_inc_query(stat);
 //	stat_inc_latency(stat, stat_last_query_time(stat));

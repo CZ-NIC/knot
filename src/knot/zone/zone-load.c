@@ -311,9 +311,6 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 				if (id_array[dname_id]->node != NULL) {
 					knot_node_free(&id_array[dname_id]->
 							 node, 0, 0);
-//					printf("%p %s\n", id_array[dname_id]->node,
-	//				       knot_dname_to_str(id_array[dname_id]));
-		//			getchar();
 				}
 				/* Also sets node to NULL! */
 			}
@@ -558,9 +555,11 @@ static knot_node_t *knot_load_node(FILE *f, knot_dname_t **id_array)
 	/* XXX can it be 0, ever? I think not. */
 	if (nsec3_node_id != 0) {
 		knot_node_set_nsec3_node(node, id_array[nsec3_node_id]->node);
+		/* CLEANUP */
 //		node->nsec3_node = id_array[nsec3_node_id]->node;
 	} else {
 		knot_node_set_nsec3_node(node, NULL);
+		/* CLEANUP */
 //		node->nsec3_node = NULL;
 	}
 
@@ -903,7 +902,6 @@ static knot_dname_t **create_dname_array(FILE *f, uint max_id)
 
 	for (uint i = 0; i < max_id - 1; i++) {
 		knot_dname_t *read_dname = read_dname_with_id(f);
-//		printf("First dname: %s\n", knot_dname_to_str(array[i]));
 		if (read_dname == NULL) {
 			cleanup_id_array(array, 0, i);
 			return NULL;
@@ -932,7 +930,6 @@ static knot_dname_t **create_dname_array(FILE *f, uint max_id)
 			return NULL;
 		}
 
-//		assert(array[i]->id == i);
 	}
 
 	return array;
@@ -953,6 +950,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	knot_node_t *tmp_node;
 
 	/* Load the dname table. */
+	/* CLEANUP */
 //	const knot_dname_table_t *dname_table =
 //		create_dname_table(f, total_dnames);
 //	if (dname_table == NULL) {
@@ -1029,6 +1027,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	/* Assign dname table to the new zone. */
 	contents->dname_table = dname_table;
 
+	/* CLEANUP */
 //	apex->prev = NULL;
 	knot_node_set_previous(apex, NULL);
 
@@ -1051,6 +1050,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 			}
 
 			knot_node_set_previous(tmp_node, last_node);
+			/* CLEANUP */
 //			tmp_node->prev = last_node;
 
 			if (tmp_node->rrset_count &&
@@ -1092,6 +1092,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 		}
 
 		knot_node_set_previous(nsec3_first, NULL);
+		/* CLEANUP */
 //		nsec3_first->prev = NULL;
 
 		last_node = nsec3_first;
@@ -1108,6 +1109,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 			}
 
 			knot_node_set_previous(tmp_node, last_node);
+			/* CLEANUP */
 //			tmp_node->prev = last_node;
 
 			last_node = tmp_node;
@@ -1120,6 +1122,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	if (nsec3_node_count) {
 		assert(knot_node_previous(nsec3_first, 0) == NULL);
 		knot_node_set_previous(nsec3_first, last_node);
+		/* CLEANUP */
 //		nsec3_first->prev = last_node;
 	}
 
@@ -1193,9 +1196,6 @@ int knot_zload_rrset_deserialize(knot_rrset_t **rrset,
 		knot_zload_stream_size = 0;
 		return KNOT_EMALF;
 	}
-
-//	printf("knot_zload_stream_size: %zu, knot_zload_stream_remaning: %zu\n",
-//	       knot_zload_stream_size, knot_zload_stream_remaining);
 
 	*size = knot_zload_stream_remaining;
 	*rrset = ret;

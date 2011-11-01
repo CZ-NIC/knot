@@ -43,6 +43,7 @@ gatherer_t *new_gatherer()
 	ret->udp_qps = 0.0;
 	ret->tcp_qps = 0.0;
 
+	/* CLEANUP */
 	/*  currently disabled */
 	/*  ret->mean_latency = 0.0;
 	    ret->udp_mean_latency = 0.0;

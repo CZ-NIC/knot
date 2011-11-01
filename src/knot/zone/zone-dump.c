@@ -1170,6 +1170,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 		if (auth && !deleg &&
 		    (ret = check_rrsig_in_rrset(rrset, dnskey_rrset,
 						nsec3)) != 0) {
+		  /* CLEANUP */
 /*			log_zone_error("RRSIG %d node %s\n", ret,
 				       knot_dname_to_str(node->owner));*/
 
@@ -1185,6 +1186,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 			if (nsec_rrset == NULL) {
 				err_handler_handle_error(handler, node,
 							 ZC_ERR_NO_NSEC);
+				/* CLEANUP */
 /*				char *name =
 					knot_dname_to_str(node->owner);
 				log_zone_error("Missing NSEC in node: "
@@ -1224,6 +1226,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 						handler,
 						node,
 						ZC_ERR_NSEC_RDATA_BITMAP);
+					/* CLEANUP */
 	/*					char *name =
 						knot_dname_to_str(
 						knot_node_owner(node));
@@ -1249,6 +1252,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 				err_handler_handle_error(handler,
 						 node,
 						 ZC_ERR_NSEC_RDATA_MULTIPLE);
+				/* CLEANUP */
 /*				char *name =
 					knot_dname_to_str(
 					knot_node_owner(node));
@@ -1280,6 +1284,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 					err_handler_handle_error(handler,
 						node,
 						ZC_ERR_NSEC_RDATA_CHAIN);
+					/* CLEANUP */
 /*					log_zone_error("NSEC chain is not "
 						       "coherent!\n"); */
 				}
@@ -1388,22 +1393,22 @@ static inline int fwrite_to_file_crc(const void *src,
                                      size_t size, size_t n, FILE *f,
                                      crc_t *crc)
 {
-	int rc = fwrite(src, size, n, f);
+	size_t rc = fwrite(src, size, n, f);
 	if (rc != n) {
-		fprintf(stderr, "fwrite: invalid write %d (expected %zu)\n", rc,
+		fprintf(stderr, "fwrite: invalid write %zu (expected %zu)\n", rc,
 			n);
 	}
+	/* \todo this seems to be wrong, if you fwrite less than n items, you probably should not continue */
 
 	if (size * n > 0) {
-//		printf("CRC before: %lu ", *crc);
 		*crc =
 			crc_update(*crc, (unsigned char *)src,
 		                   size * n);
-//		printf("after: %lu\n", *crc);
 	}
 
+	/* \todo the rc return is certainly wrong as it is used in the caller function */
 //	return rc == n;
-	return rc;
+	return (int)rc;
 
 }
 
@@ -1414,7 +1419,7 @@ static inline int fwrite_to_stream(const void *src,
 {
 	/* Resize the stream */
 	void *tmp = realloc(*stream,
-		(*stream_size + (size * n)) * sizeof(uint8_t));
+			    (*stream_size + (size * n)) * sizeof(uint8_t));
 	if (tmp != NULL) {
 		*stream = tmp;
 		memcpy(*stream + *stream_size, src,
@@ -1455,8 +1460,10 @@ static void knot_labels_dump_binary(const knot_dname_t *dname, FILE *f,
 {
 	dbg_zdump("label count: %d\n", dname->label_count);
 	uint16_t label_count = dname->label_count;
+	/* \todo check the return value */
 	fwrite_wrapper(&label_count, sizeof(label_count), 1, f, stream,
 	               stream_size, crc);
+	/* \todo check the return value */
 	fwrite_wrapper(dname->labels, sizeof(uint8_t), dname->label_count, f,
 	               stream, stream_size, crc);
 }
@@ -1472,8 +1479,10 @@ static void knot_dname_dump_binary(const knot_dname_t *dname, FILE *f,
                                    crc_t *crc)
 {
 	uint32_t dname_size = dname->size;
+	/* \todo check the return value */
 	fwrite_wrapper(&dname_size, sizeof(dname_size), 1, f, stream,
 	               stream_size, crc);
+	/* \todo check the return value */
 	fwrite_wrapper(dname->name, sizeof(uint8_t), dname->size, f,
 	               stream, stream_size, crc);
 	dbg_zdump("dname size: %d\n", dname->size);
@@ -1486,6 +1495,7 @@ static void dump_dname_with_id(const knot_dname_t *dname, FILE *f,
                                crc_t *crc)
 {
 	uint32_t id = dname->id;
+	/* \todo check the return value */
 	fwrite_wrapper(&id, sizeof(id), 1, f, stream, stream_size, crc);
 	knot_dname_dump_binary(dname, f, stream, stream_size, crc);
 /*	if (!fwrite_wrapper_safe(&dname->id, sizeof(dname->id), 1, f)) {
@@ -1517,6 +1527,7 @@ static void knot_rdata_dump_binary(knot_rdata_t *rdata,
 	}
 
 	/* Write rdata count. */
+	/* \todo check the return value */
 	fwrite_wrapper(&(rdata->count),
 	               sizeof(rdata->count), 1, f, stream, stream_size, crc);
 
@@ -1546,6 +1557,7 @@ static void knot_rdata_dump_binary(knot_rdata_t *rdata,
 				assert(rdata->items[i].dname->id != 0);
 
 				uint32_t id = rdata->items[i].dname->id;
+				/* \todo check the return value */
 				fwrite_wrapper(&id,
 				       sizeof(id), 1, f, stream, stream_size,
 				               crc);
@@ -1558,23 +1570,28 @@ static void knot_rdata_dump_binary(knot_rdata_t *rdata,
 
 			/* Write in the zone bit */
 			if (rdata->items[i].dname->node != NULL && !wildcard) {
+				/* \todo check the return value */
 				fwrite_wrapper((uint8_t *)"\1",
 				       sizeof(uint8_t), 1, f, stream,
 				               stream_size, crc);
 			} else {
+				/* \todo check the return value */
 				fwrite_wrapper((uint8_t *)"\0", sizeof(uint8_t),
 				       1, f, stream, stream_size, crc);
 			}
 
 			if (use_ids && wildcard) {
+				/* \todo check the return value */
 				fwrite_wrapper((uint8_t *)"\1",
 				       sizeof(uint8_t), 1, f, stream,
 				       stream_size, crc);
 				uint32_t wildcard_id = wildcard->id;
+				/* \todo check the return value */
 				fwrite_wrapper(&wildcard_id,
 				       sizeof(wildcard_id), 1, f, stream,
 				               stream_size, crc);
 			} else {
+				/* \todo check the return value */
 				fwrite_wrapper((uint8_t *)"\0", sizeof(uint8_t),
 				       1, f, stream,
 				       stream_size, crc);
@@ -1584,6 +1601,7 @@ static void knot_rdata_dump_binary(knot_rdata_t *rdata,
 			dbg_zdump("Writing raw data. Item nr.: %d\n",
 			                 i);
 			assert(rdata->items[i].raw_data != NULL);
+			/* \todo check the return value */
 			fwrite_wrapper(rdata->items[i].raw_data,
 			               sizeof(uint8_t),
 			       rdata->items[i].raw_data[0] + 2, f,
@@ -1611,6 +1629,7 @@ static void knot_rrsig_set_dump_binary(knot_rrset_t *rrsig, arg_t *data,
 	assert(rrsig->type == KNOT_RRTYPE_RRSIG);
 	assert(rrsig->rdata);
 	FILE *f = (FILE *)((arg_t *)data)->arg1;
+	/* \todo check the return value */
 	fwrite_wrapper(&rrsig->type, sizeof(rrsig->type), 1, f,
 	               stream, stream_size, crc);
 	fwrite_wrapper(&rrsig->rclass, sizeof(rrsig->rclass), 1, f,
@@ -1656,6 +1675,7 @@ static void knot_rrset_dump_binary(const knot_rrset_t *rrset, void *data,
 		dump_dname_with_id(rrset->owner, f, stream, stream_size, crc);
 	}
 
+	/* \todo check the return value */
 	fwrite_wrapper(&rrset->type, sizeof(rrset->type), 1, f,
 	               stream, stream_size, crc);
 	fwrite_wrapper(&rrset->rclass, sizeof(rrset->rclass), 1, f,
@@ -1719,10 +1739,9 @@ static void knot_node_dump_binary(knot_node_t *node, void *data,
 	                   knot_dname_to_str(node->owner));
 	assert(node->owner->id != 0);
 	uint32_t owner_id = node->owner->id;
+	/* \todo check the return value */
 	fwrite_wrapper(&owner_id, sizeof(owner_id), 1, f, stream, stream_size,
 	               crc);
-//	printf("ID write: %d (%s)\n", node->owner->id,
-//	       knot_dname_to_str(node->owner));
 
 	if (knot_node_parent(node, 0) != NULL) {
 		uint32_t parent_id = knot_dname_id(
@@ -1760,6 +1779,7 @@ static void knot_node_dump_binary(knot_node_t *node, void *data,
 	fwrite_wrapper(&rrset_count, sizeof(rrset_count), 1, f,
 	               stream, stream_size, crc);
 
+	/* CLEANUP */
 //	const skip_node_t *skip_node = skip_first(node->rrsets);
 
 	const knot_rrset_t **node_rrsets = knot_node_rrsets(node);
@@ -1769,6 +1789,7 @@ static void knot_node_dump_binary(knot_node_t *node, void *data,
 		                       stream, stream_size, crc);
 	}
 
+	/* CLEANUP */
 //	if (skip_node == NULL) {
 //		/* we can return, count is set to 0 */
 //		return;
@@ -1971,7 +1992,8 @@ static int knot_dump_dname_table(const knot_dname_table_t *dname_table,
 	arg.arg2 = crc;
 	/* Go through the tree and dump each dname along with its ID. */
 	knot_dname_table_tree_inorder_apply(dname_table,
-	                                      dump_dname_from_tree, &arg);
+					    dump_dname_from_tree, &arg);
+	/* CLEANUP */
 //	TREE_FORWARD_APPLY(dname_table->tree, dname_table_node, avl,
 //			   dump_dname_from_tree, (void *)f);
 
@@ -2012,6 +2034,7 @@ int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
 	FILE *f = fdopen(fd, "wb");
 	assert(f);
 
+	/* CLEANUP */
 //	skip_list_t *encloser_list = skip_create_list(compare_pointers);
 	arg_t arguments;
 	/* Memory to be derefenced in the save_node_from_tree function. */
@@ -2171,9 +2194,6 @@ int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
 		close(fd);
 		return KNOT_ERROR;
 	}
-
-//	printf("Renamed, holding the lock\n");
-//	getchar();
 
 	/* Release the lock. */
 	if (fcntl(fd, F_SETLK, knot_file_lock(F_UNLCK, SEEK_SET)) == -1) {
