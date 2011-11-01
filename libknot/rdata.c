@@ -248,8 +248,7 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 			break;
 		case KNOT_RDATA_WF_TEXT:
 //			printf("Next item - text.\n");
-			// TODO!!!
-			item_size = rdlength - parsed;
+			item_size = *(wire + *pos) + 1;
 			break;
 		case KNOT_RDATA_WF_A:
 //			printf("Next item - A.\n");
