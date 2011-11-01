@@ -250,7 +250,8 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 	knot_zone_t *zone = (knot_zone_t *)data->zone;
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 	const char *zorigin = zd->conf->name;
-	
+
+	/* CLEANUP */
 //	// get the zone name from Question
 //	dbg_xfr_verb("Query: %p, response: %p\n", data->query, data->response);
 //	const knot_dname_t *qname = knot_packet_qname(data->query);
@@ -308,6 +309,7 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 		/* Free changesets, but not the data. */
 		knot_changesets_t *chs = (knot_changesets_t *)data->data;
 		knot_free_changesets(&chs);
+		/* CLEANUP */
 //		free(chs->sets);
 //		free(chs);
 		data->data = 0;
@@ -319,7 +321,8 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 		ret = KNOTD_EINVAL;
 		break;
 	}
-	
+
+	/* CLEANUP */
 //	if (qname != NULL) {
 //		free(zorigin);
 //	}
