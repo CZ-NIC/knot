@@ -282,6 +282,10 @@ static int test_tree_finding_less_or_equal()
 		     "when given wrong arguments");
 	}
 
+	if (!lived) {
+		errors++;
+	}
+
 	const knot_node_t *previous_node = NULL;
 
 	/* Insert node - exact match. */

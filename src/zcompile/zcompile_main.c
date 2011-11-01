@@ -72,6 +72,8 @@ int main(int argc, char **argv)
 		}
 	}
 
+	UNUSED(verbose);
+
 	// Check if there's at least two remaining non-option
 	if (argc - optind < 2) {
 		help(argc, argv);
