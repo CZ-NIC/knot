@@ -752,8 +752,6 @@ static test_response_t *load_parsed_response(const char **src,
 
 	test_rrset_t *tmp_rrset = NULL;
 
-	uint rrsig_count = 0;
-
 	if (resp->ancount > 0) {
 		resp->answer =
 			malloc(sizeof(test_rrset_t *) * resp->ancount);
@@ -771,8 +769,6 @@ static test_response_t *load_parsed_response(const char **src,
 			return NULL;
 		}
 	}
-
-	rrsig_count = 0;
 
 	if (resp->nscount > 0) {
 		resp->authority =
@@ -792,8 +788,6 @@ static test_response_t *load_parsed_response(const char **src,
 			return NULL;
 		}
 	}
-
-	rrsig_count = 0;
 
 	if (resp->arcount > 0) {
 		resp->additional =

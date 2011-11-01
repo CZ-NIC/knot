@@ -59,6 +59,7 @@
 #include <netdb.h>
 
 //#include "common.h"
+#include "common/base32hex.h"
 #include "zcompile/parser-util.h"
 #include "zcompile/zcompile.h"
 #include "libknot/util/descriptor.h"
@@ -1050,7 +1051,6 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 
 	for (i = 0; i < descriptor->length; ++i) {
 		int is_domain = 0;
-		int is_normalized = 0;
 		int is_wirestore = 0;
 		size_t length = 0;
 		length = 0;
@@ -1060,7 +1060,6 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 		case KNOT_RDATA_WF_COMPRESSED_DNAME:
 		case KNOT_RDATA_WF_UNCOMPRESSED_DNAME:
 			is_domain = 1;
-			is_normalized = 1;
 			break;
 		case KNOT_RDATA_WF_LITERAL_DNAME:
 			is_domain = 1;
@@ -1128,7 +1127,6 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 				break;
 			case IPSECKEY_DNAME:
 				is_domain = 1;
-				is_normalized = 1;
 				is_wirestore = 1;
 				break;
 			}

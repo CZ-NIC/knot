@@ -64,14 +64,11 @@ static int check_rdata(const knot_rdata_t *rdata,
 	//note("check_rdata(), RRType: %u", rrtype);
 
 	for (int i = 0; i < desc->length; ++i) {
-		uint size = 0;
 
 		switch (desc->wireformat[i]) {
 		case KNOT_RDATA_WF_COMPRESSED_DNAME:
 		case KNOT_RDATA_WF_UNCOMPRESSED_DNAME:
 		case KNOT_RDATA_WF_LITERAL_DNAME:
-			size = knot_dname_size(knot_rdata_item(
-						 rdata, i)->dname);
 			if (check_domain_name(rdata->items[i].dname,
 			               test_rdata->items[i].dname) != 0) {
 				errors++;
