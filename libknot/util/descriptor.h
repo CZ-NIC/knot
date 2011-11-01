@@ -2,7 +2,7 @@
  * \file descriptor.h
  *
  * \author Modifications by Jan Kadlec <jan.kadlec@nic.cz>,
- *         most of the work by NLNet labs.
+ *         most of the work by NLnet Labs.
  *         Copyright (c) 2001-2011, NLnet Labs. All rights reserved.
  *
  * \note Most of the constants and functions were taken from NSD's dns.h.
