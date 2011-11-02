@@ -54,11 +54,12 @@ Not all prerequisites are available as ports on BSD.
   - version 0.6.4 compiles on BSD without any source code modifications
   - in case of x86_64 build, CFLAGS nad build type has to be set appropriately.
     $ CFLAGS=-fPIC ./configure --build amd64
+- flex must be newer version from ports that support reentrant parsers
 
 Knot requires more recent version of flex from ports, to prevent name clash, specify flex destination.
 $ cd <knot sources>
 $ autoreconf -if
-$ LEX_R=/usr/local/bin/flex ./configure
+$ ./configure
 $ make && sudo make install
 
 Installation on OS X
