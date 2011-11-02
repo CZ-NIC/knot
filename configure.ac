@@ -87,7 +87,7 @@ AC_ARG_ENABLE([debug],
     
 # recvmmsg() (valgrind doesn't support it, so disable for debugging)
 AC_ARG_ENABLE([recvmmsg],
-    AS_HELP_STRING([--enable-recvmmsg=yes|no], [enable recvmmsg() (kernel support required) [default=yes]]),
+    AS_HELP_STRING([--enable-recvmmsg=yes|no], [enable recvmmsg() network API under Linux (kernel support required) (set to 'no' if you have trouble running server under valgrind) [default=yes]]),
     [case "${enableval}" in
       yes)
          AC_DEFINE([ENABLE_RECVMMSG], [1], [recvmmsg enabled])
