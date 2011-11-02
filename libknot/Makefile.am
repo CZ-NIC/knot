@@ -11,7 +11,7 @@ libknot_common_SOURCES = \
 	common/slab/malloc.h			\
 	common/libtap/tap.c			\
 	common/libtap/tap.h			\
-	common/tap_unit.h			\
+	common/libtap/tap_unit.h		\
 	common/lists.c				\
 	common/base32.c				\
 	common/lists.h				\
@@ -27,7 +27,6 @@ libknot_common_SOURCES = \
 	common/dynamic-array.h			\
 	common/tree.h				\
 	common/base32hex.h			\
-	common/modified-tree.h			\
 	common/evqueue.h			\
 	common/evqueue.c			\
 	common/evsched.h			\
@@ -42,8 +41,16 @@ libknot_common_SOURCES = \
 	common/ref.c				\
 	common/errors.h				\
 	common/errors.c				\
-	common/WELL1024a.h			\
-	common/WELL1024a.c
+        common/WELL1024a.h			\
+        common/WELL1024a.c			\
+        common/fdset.h				\
+        common/fdset.c				\
+        common/fdset_poll.h			\
+        common/fdset_poll.c			\
+        common/fdset_kqueue.h			\
+        common/fdset_kqueue.c			\
+        common/fdset_epoll.h			\
+        common/fdset_epoll.c			
 
 libknot_la_SOURCES =				\
 	$(libknot_common_SOURCES)		\
