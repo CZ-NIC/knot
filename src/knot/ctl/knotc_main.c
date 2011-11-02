@@ -23,6 +23,7 @@
 #include <time.h>
 #include <sys/select.h>
 #include <sys/stat.h>
+#include <getopt.h>
 
 #include "knot/common.h"
 #include "knot/other/error.h"
@@ -39,18 +40,17 @@ enum knotc_constants_t {
 /*! \brief Print help. */
 void help(int argc, char **argv)
 {
-	printf("Usage: %s [parameters] start|stop|restart|reload|running|"
-	       "compile\n",
-	       argv[0]);
+	printf("Usage: %sc [parameters] start|stop|restart|reload|running|"
+	       "compile\n", PACKAGE_NAME);
 	printf("Parameters:\n"
-	       " -c [file]\tSelect configuration file.\n"
-	       " -f\t\tForce operation - override some checks.\n"
-	       " -v\t\tVerbose mode - additional runtime information.\n"
-	       " -V\t\tPrint %s server version.\n"
-	       " -w\t\tWait for the server to finish start/stop operations.\n"
-	       " -i\t\tInteractive mode (do not daemonize).\n"
-	       " -j [num]\tNumber of parallel tasks to run (only for 'compile').\n"
-	       " -h\t\tPrint help and usage.\n",
+	       " -c [file], --config=[file] Select configuration file.\n"
+	       " -j [num], --jobs=[num]     Number of parallel tasks to run (only for 'compile').\n"
+	       " -f, --force                Force operation - override some checks.\n"
+	       " -v, --verbose              Verbose mode - additional runtime information.\n"
+	       " -V, --version              Print %s server version.\n"
+	       " -w, --wait                 Wait for the server to finish start/stop operations.\n"
+	       " -i, --interactive          Interactive mode (do not daemonize).\n"
+	       " -h, --help                 Print help and usage.\n",
 	       PACKAGE_NAME);
 	printf("Actions:\n"
 	       " start     Start %s server zone (no-op if running).\n"
@@ -537,14 +537,28 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 int main(int argc, char **argv)
 {
 	// Parse command line arguments
-	int c = 0;
+	int c = 0, li = 0;
 	int force = 0;
 	int verbose = 0;
 	int wait = 0;
 	int interactive = 0;
 	int jobs = 1;
 	const char* config_fn = 0;
-	while ((c = getopt (argc, argv, "wfc:vij:Vh")) != -1) {
+	
+	/* Long options. */
+	struct option opts[] = {
+		{"wait",        no_argument,       0, 'w'},
+		{"force",       no_argument,       0, 'f'},
+		{"config",      required_argument, 0, 'c'},
+		{"verbose",     no_argument,       0, 'v'},
+		{"interactive", no_argument,       0, 'i'},
+		{"jobs",        required_argument, 0, 'c'},
+		{"version",     no_argument,       0, 'V'},
+		{"help",        no_argument,       0, 'h'},
+		{0, 0, 0, 0}
+	};
+	
+	while ((c = getopt_long(argc, argv, "wfc:vij:Vh", opts, &li)) != -1) {
 		switch (c)
 		{
 		case 'w':
