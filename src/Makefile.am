@@ -300,15 +300,15 @@ libknotd_la_SOURCES =				\
 	knot/zone/zone-dump.h			\
 	knot/server/server.h
 
-libknotd_la_LIBADD = ../libknot/libknot.la libknots.la @LIBOBJS@
+libknotd_la_LIBADD = libknot.la libknots.la @LIBOBJS@
 libknots_la_LIBADD = @LIBOBJS@
-knotd_LDADD = libknotd.la ../libknot/libknot.la libknots.la @LIBOBJS@
-knotc_LDADD = libknotd.la ../libknot/libknot.la libknots.la @LIBOBJS@
-knot_zcompile_LDADD = libknots.la ../libknot/libknot.la libknotd.la @LIBOBJS@
+knotd_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
+knotc_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
+knot_zcompile_LDADD = libknots.la libknot.la libknotd.la @LIBOBJS@
 unittests_LDADD = libknotd.la libknots.la @LIBOBJS@
-unittests_zcompile_LDADD = ../libknot/libknot.la libknots.la libknotd.la @LIBOBJS@
-unittests_libknot_LDADD = ../libknot/libknot.la libknots.la @LIBOBJS@
-unittests_libknot_realdata_LDADD = ../libknot/libknot.la libknots.la @LIBOBJS@
+unittests_zcompile_LDADD = libknot.la libknots.la libknotd.la @LIBOBJS@
+unittests_libknot_LDADD = libknot.la libknots.la @LIBOBJS@
+unittests_libknot_realdata_LDADD = libknot.la libknots.la @LIBOBJS@
 
 # automake complains on % rules:
 #   `%'-style pattern rules are a GNU make extension
