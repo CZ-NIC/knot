@@ -2,7 +2,7 @@ ACLOCAL_AMFLAGS = -I m4
 
 AM_CFLAGS = -Wall
 
-lib_LTLIBRARIES = libknot.la
+noinst_LTLIBRARIES = libknot.la
 
 libknot_common_SOURCES = \
 	common/slab/slab.c			\
