@@ -19,7 +19,8 @@ $ # ensure all prerequisites are installed
 $
 $ sudo apt-get install git-core autoconf libtool flex bison libssl-dev
 $
-$ # the required version of liburcu is not available in the default package sources.
+$ # the required version of liburcu is not available in the default package 
+$ # sources.
 $
 $ wget http://bd.archive.ubuntu.com/ubuntu/pool/universe/libu/liburcu/liburcu0_0.5.4-1_amd64.deb
 $ wget http://bd.archive.ubuntu.com/ubuntu/pool/universe/libu/liburcu/liburcu-dev_0.5.4-1_amd64.deb
@@ -38,7 +39,8 @@ $ sudo ldconfig
 
 Alternative packages for I386:
 
-$ # the required version of liburcu is not available in the default package sources.
+$ # the required version of liburcu is not available in the default package 
+$ # sources.
 $
 $ wget http://bd.archive.ubuntu.com/ubuntu/pool/universe/libu/liburcu/liburcu0_0.5.4-1_i386.deb
 $ wget http://bd.archive.ubuntu.com/ubuntu/pool/universe/libu/liburcu/liburcu-dev_0.5.4-1_i386.deb
@@ -56,7 +58,8 @@ Not all prerequisites are available as ports on BSD.
     $ CFLAGS=-fPIC ./configure --build amd64
 - flex must be newer version from ports that support reentrant parsers
 
-Knot DNS requires more recent version of flex from ports, to prevent name clash, specify flex destination.
+Knot DNS requires more recent version of flex from ports, to prevent name clash
+specify flex destination.
 $ cd <knot sources>
 $ autoreconf -if
 $ ./configure
@@ -77,8 +80,9 @@ Compiling Knot DNS with gcc-mp-4.6 is recommended, but not necessary.
 Running
 =======
 
-First, each server needs configuration file. Please see samples/knot.sample.conf
-for reference. Minimal configuration can be found in samples/knot.min.conf
+First, each server needs configuration file. 
+Please see samples/knot.sample.conf for reference. 
+Minimal configuration can be found in samples/knot.min.conf
 Configuration zone has to specify:
 * storage for PID files, compiled zones etc.
 * network interfaces
@@ -88,10 +92,10 @@ $ cp samples/knot.min.conf myserver.conf
 $ vim myserver.conf # or your favourite text editor
 
 Second, zone files have to be compiled to binary form in order for server to
-load them. Binary 'knotc' (controller) offers functionality for everything from zone file
-management to controlling server instance. Most important parameter is '-c' that
-specifies config file for our server. Compiled zones are saved to storage
-defined in 'storage' variable in configuration.
+load them. Binary 'knotc' (controller) offers functionality for everything from
+zone file management to controlling server instance. Most important parameter 
+is '-c' that specifies config file for our server. Compiled zones are saved to 
+storage defined in 'storage' variable in configuration.
 
 $ knotc -h # see what it can do
 $ knotc -c myserver.conf compile # compile zone files to binary format
@@ -107,8 +111,8 @@ Running as daemon
 
 Controller runs server in daemonized mode as default. Disadvantage is, that
 it closes stdout/stderr so you need to set up either syslog or logging to
-own files in the configuration. Controller parameter '-w' waits for the operation
-to finish. Let's test server functionality.
+own files in the configuration. Controller parameter '-w' waits for the 
+operation to finish. Let's test server functionality.
 
 $ knotc -c myserver.conf -w start # start server
 $ dig @$ADDR -p $PORT example.com # issue a query and see result
@@ -130,10 +134,11 @@ Supported features
 ==================
 
 DNS functions:
-* AXFR (master)
+* AXFR/IXFR (master and slave)
 * EDNS0
 * DNSSEC
 * NSEC3
+* Unknown RR types
 
 Server features:
 * Adding/removing zones on-the-fly
