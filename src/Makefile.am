@@ -1,7 +1,6 @@
 ACLOCAL_AMFLAGS = -I ../m4
-bin_PROGRAMS = knotc
 libexec_PROGRAMS = knot-zcompile unittests unittests-zcompile unittests-libknot-realdata unittests-libknot
-sbin_PROGRAMS = knotd
+sbin_PROGRAMS = knotc knotd
 man_MANS=$(MANPAGES)
 EXTRA_DIST=$(MANPAGES)
 
