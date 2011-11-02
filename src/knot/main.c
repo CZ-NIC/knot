@@ -18,6 +18,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <getopt.h>
+#include "common.h"
 
 #include "knot/common.h"
 #include "knot/other/error.h"
@@ -59,24 +61,35 @@ void interrupt_handle(int s)
 
 void help(int argc, char **argv)
 {
-	printf("Usage: %s [parameters]\n",
-	       argv[0]);
+	printf("Usage: %sd [parameters]\n",
+	       PACKAGE_NAME);
 	printf("Parameters:\n"
-	       " -c [file] Select configuration file.\n"
-	       " -d        Run server as a daemon.\n"
-	       " -v        Verbose mode - additional runtime information.\n"
-	       " -V        Print version of the server.\n"
-	       " -h        Print help and usage.\n");
+	       " -c, --config [file] Select configuration file.\n"
+	       " -d, --daemonize     Run server as a daemon.\n"
+	       " -v, --verbose       Verbose mode - additional runtime information.\n"
+	       " -V, --version       Print version of the server.\n"
+	       " -h, --help          Print help and usage.\n");
 }
 
 int main(int argc, char **argv)
 {
 	// Parse command line arguments
-	int c = 0;
+	int c = 0, li = 0;
 	int verbose = 0;
 	int daemonize = 0;
 	char* config_fn = 0;
-	while ((c = getopt (argc, argv, "c:dvVh")) != -1) {
+	
+	/* Long options. */
+	struct option opts[] = {
+		{"config",    required_argument, 0, 'c'},
+		{"daemonize", no_argument,       0, 'd'},
+		{"verbose",   no_argument,       0, 'v'},
+		{"version",   no_argument,       0, 'V'},
+		{"help",      no_argument,       0, 'h'},
+		{0, 0, 0, 0}
+	};
+	
+	while ((c = getopt_long(argc, argv, "c:dvVh", opts, &li)) != -1) {
 		switch (c)
 		{
 		case 'c':
