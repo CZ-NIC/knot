@@ -81,8 +81,6 @@ AC_ARG_ENABLE([debug],
       xbrief)
         AC_DEFINE([DEBUG_ENABLE_BRIEF], [1], [Enable brief debugging messages.])
         ;;
-      *) 
-         AC_MSG_ERROR([bad value ${enableval} for --enable-debug. Expected: {brief,verbose,details}.])
     esac], [])
     
 # recvmmsg() (valgrind doesn't support it, so disable for debugging)
@@ -118,7 +116,7 @@ AC_SEARCH_LIBS([OpenSSL_add_all_digests], [crypto],[], [AC_MSG_ERROR([libcrypto 
 
 # Checks for header files.
 AC_HEADER_RESOLV
-AC_CHECK_HEADERS([arpa/inet.h fcntl.h inttypes.h limits.h malloc.h netdb.h netinet/in.h stdint.h stdlib.h string.h strings.h sys/socket.h sys/time.h syslog.h unistd.h urcu.h])
+AC_CHECK_HEADERS([arpa/inet.h fcntl.h inttypes.h limits.h malloc.h netdb.h netinet/in.h stdint.h stdlib.h string.h strings.h sys/socket.h sys/time.h syslog.h unistd.h urcu.h ev.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL
@@ -141,7 +139,4 @@ AC_CONFIG_FILES([Makefile
                  libknot/Makefile
 		 samples/Makefile
                  src/Makefile])
-
-# Manual pages
-AC_PROG_HELP2MAN(["knotd.8 knotc.8"])
 AC_OUTPUT

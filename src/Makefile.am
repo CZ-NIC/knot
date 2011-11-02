@@ -1,8 +1,9 @@
 ACLOCAL_AMFLAGS = -I ../m4
 libexec_PROGRAMS = knot-zcompile unittests unittests-zcompile unittests-libknot-realdata unittests-libknot
 sbin_PROGRAMS = knotc knotd
-man8_MANS=$(MANPAGES)
-EXTRA_DIST=$(MANPAGES)
+MANPAGES = knotc.8 knotd.8
+man8_MANS = knotc.8 knotd.8
+EXTRA_DIST = $(man8_MANS)
 
 # $(YACC) will generate header file
 AM_CFLAGS = -Wall -I../ -I../libknot -DLIBEXECDIR='"$(libexecdir)"' -DSYSCONFDIR='"$(sysconfdir)"' -DSBINDIR='"$(sbindir)"'
@@ -38,8 +39,7 @@ CLEANFILES =					\
 	zlexer.c				\
 	libknotd_la-cf-lex.c			\
 	libknotd_la-cf-parse.c			\
-	libknotd_la-cf-parse.h			\
-	$(MANPAGES)
+	libknotd_la-cf-parse.h
 
 knotc_SOURCES =					\
 	knot/ctl/knotc_main.c
@@ -252,13 +252,6 @@ unittests_libknot_realdata_LDADD = ../libknot/libknot.la libknots.la @LIBOBJS@
 
 # automake complains on % rules:
 #   `%'-style pattern rules are a GNU make extension
-
-
-knotd.8: knotd$(EXEEXT)
-	$(HELP2MAN) -o $@ $<
-
-knotc.8: knotc$(EXEEXT)
-	$(HELP2MAN) -o $@ $<
 
 tests/libknot/parsed_data.rc: tests/libknot/files/parsed_data
 	../resource.sh tests/libknot/files/parsed_data >$@
