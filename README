@@ -56,7 +56,7 @@ Not all prerequisites are available as ports on BSD.
     $ CFLAGS=-fPIC ./configure --build amd64
 - flex must be newer version from ports that support reentrant parsers
 
-Knot requires more recent version of flex from ports, to prevent name clash, specify flex destination.
+Knot DNS requires more recent version of flex from ports, to prevent name clash, specify flex destination.
 $ cd <knot sources>
 $ autoreconf -if
 $ ./configure
@@ -72,7 +72,7 @@ Not all prerequisites are preinstalled for OS X.
   $ CC=gcc-mp-4.6 ARCH=x86_64 ./configure
   $ make && sudo make install
 
-Compiling Knot with gcc-mp-4.6 is recommended, but not necessary. 
+Compiling Knot DNS with gcc-mp-4.6 is recommended, but not necessary. 
 
 Running
 =======

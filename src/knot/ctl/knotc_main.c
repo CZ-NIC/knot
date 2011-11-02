@@ -587,7 +587,7 @@ int main(int argc, char **argv)
 			}
 			break;
 		case 'V':
-			printf("%s, version %s\n", PACKAGE_NAME, PACKAGE_VERSION);
+			printf("%s, version %s\n", "Knot DNS", PACKAGE_VERSION);
 			return 0;
 		case 'h':
 		case '?':
