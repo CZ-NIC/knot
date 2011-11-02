@@ -155,7 +155,7 @@ libknots_la_SOURCES =				\
 	common/slab/malloc.h			\
 	common/libtap/tap.c			\
 	common/libtap/tap.h			\
-	common/tap_unit.h			\
+	common/libtap/tap_unit.h		\
 	common/lists.c				\
 	common/base32.c				\
 	common/lists.h				\
@@ -171,15 +171,14 @@ libknots_la_SOURCES =				\
 	common/dynamic-array.h			\
 	common/tree.h				\
 	common/base32hex.h			\
-	common/modified-tree.h			\
-	common/evqueue.h		\
-	common/evqueue.c		\
-	common/evsched.h		\
-	common/evsched.c		\
+	common/evqueue.h			\
+	common/evqueue.c			\
+	common/evsched.h			\
+	common/evsched.c			\
 	common/acl.h				\
 	common/acl.c				\
-	common/sockaddr.h				\
-	common/sockaddr.c				\
+	common/sockaddr.h			\
+	common/sockaddr.c			\
 	common/crc.h				\
 	common/crc.c				\
 	common/ref.h				\
