@@ -369,7 +369,7 @@ static knot_rrset_t *knot_load_rrsig(FILE *f, knot_dname_t **id_array,
 	uint16_t rrset_class;
 	uint32_t rrset_ttl;
 
-	uint8_t rdata_count;
+	uint32_t rdata_count;
 
 	if (!fread_wrapper(&rrset_type, sizeof(rrset_type), 1, f)) {
 		return NULL;
