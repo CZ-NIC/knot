@@ -136,7 +136,6 @@ AC_FUNC_MMAP
 AC_CHECK_FUNCS([gethostbyname gettimeofday memmove memset munmap regcomp select socket sqrt strcasecmp strchr strdup strerror strncasecmp strtol strtoul poll epoll_wait kqueue])
 
 AC_CONFIG_FILES([Makefile
-                 libknot/Makefile
 		 samples/Makefile
                  src/Makefile])
 AC_OUTPUT
