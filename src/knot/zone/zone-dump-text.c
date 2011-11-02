@@ -324,15 +324,18 @@ static char *rdata_txt_data_to_string(const uint8_t *data)
 		return NULL;
 	}
 
-	/* 3 because: opening '"', closing '"', and \0 at the end */
-	char *ret = malloc(sizeof(char) * (length + 3));
+	/*
+	 * 3 because: opening '"', closing '"', and \0 at the end.
+	 * Times 2 because string can be all "double chars".
+	 */
+	size_t current_length = sizeof(char) * (length * 2 + 3);
+	char *ret = malloc(current_length);
 	if (ret == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
 	}
-	memset(ret, 0, sizeof(char) * (length + 3));
+	memset(ret, 0, sizeof(char) * (length * 2 + 3));
 
-	size_t current_length = sizeof(char) * (length + 3);
 
 	strcat(ret, "\"");
 
@@ -351,22 +354,10 @@ static char *rdata_txt_data_to_string(const uint8_t *data)
 		} else {
 			strcat(ret, "\\");
 			char tmp_str[2];
-			/* TODO convert to unsigned*/
 			tmp_str[0] = ch - '0';
 			tmp_str[1] = 0;
 
-			current_length += sizeof(char);
-
-			void *tmp = NULL;
-			if ((tmp = realloc(ret, current_length)) == NULL) {
-				ERR_ALLOC_FAILED;
-				free(tmp);
-				return NULL;
-			}
-			ret = tmp;
-
 			strcat(ret, tmp_str);
-//			buffer_printf(output, "\\%03u", (unsigned) ch);
 		}
 	}
 	strcat(ret, "\"");
@@ -376,7 +367,6 @@ static char *rdata_txt_data_to_string(const uint8_t *data)
 
 char *rdata_text_to_string(knot_rdata_item_t item)
 {
-	printf("Size of the whole item: %u\n", item.raw_data[0]);
 	uint16_t size = item.raw_data[0];
 	char *ret = malloc(sizeof(char) * size * 2) ;
 	if (ret == NULL) {
