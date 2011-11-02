@@ -6,7 +6,7 @@ man8_MANS = knotc.8 knotd.8
 EXTRA_DIST = $(man8_MANS)
 
 # $(YACC) will generate header file
-AM_CFLAGS = -Wall -I../ -I../libknot -DLIBEXECDIR='"$(libexecdir)"' -DSYSCONFDIR='"$(sysconfdir)"' -DSBINDIR='"$(sbindir)"'
+AM_CFLAGS = -Wall -Ilibknot -DLIBEXECDIR='"$(libexecdir)"' -DSYSCONFDIR='"$(sysconfdir)"' -DSBINDIR='"$(sbindir)"'
 AM_YFLAGS = -d
 libknotd_la_YFLAGS = -pcf_ -d
 libknotd_la_LFLAGS = # TODO: reentrant parser, prefix
@@ -145,7 +145,67 @@ nodist_unittests_SOURCES =			\
 knotd_SOURCES =					\
 	knot/main.c
 
-noinst_LTLIBRARIES = libknotd.la libknots.la
+noinst_LTLIBRARIES = libknot.la libknotd.la libknots.la
+
+libknot_la_SOURCES =				\
+	util/error.c				\
+	util/utils.c				\
+	util/debug.c				\
+	util/debug.h				\
+	util/utils.h				\
+	util/descriptor.c			\
+	util/tolower.h				\
+	util/tolower.c				\
+	util/descriptor.h			\
+	util/wire.h				\
+	packet/query.c				\
+	packet/response.c			\
+	packet/packet.c				\
+	packet/packet.h				\
+	packet/query.h				\
+	packet/response.h			\
+	zone/zone.c				\
+	zone/zone-contents.c			\
+	zone/zone-tree.c			\
+	zone/zone-tree.h			\
+	zone/node.h				\
+	zone/zone.h				\
+	zone/zone-contents.h			\
+	zone/zonedb.c				\
+	zone/zonedb.h				\
+	zone/node.c				\
+	zone/dname-table.h			\
+	zone/dname-table.c			\
+	hash/hash-functions.c			\
+	hash/cuckoo-hash-table.c		\
+	hash/universal-system.c			\
+	hash/universal-system.h			\
+	hash/cuckoo-hash-table.h		\
+	hash/hash-functions.h			\
+	nameserver/name-server.h		\
+	nameserver/name-server.c		\
+	updates/changesets.h			\
+	updates/changesets.c			\
+	updates/xfr-in.h			\
+	updates/xfr-in.c			\
+	updates/ddns.h				\
+	updates/ddns.c				\
+	edns.c					\
+	rrset.c					\
+	dname.c					\
+	rdata.c					\
+	nsec3.c					\
+	consts.h				\
+	edns.h					\
+	rdata.h					\
+	libknot.h				\
+	dname.h					\
+	rrset.h					\
+	nsec3.h					\
+	tsig.h					\
+	tsig.c					\
+	tsig-op.h				\
+	tsig-op.c
 
 libknots_la_SOURCES =				\
 	common/slab/slab.c			\
