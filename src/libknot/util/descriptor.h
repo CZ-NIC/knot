@@ -239,7 +239,7 @@ typedef enum knot_rdatawireformat knot_rdata_wireformat_t;
 struct knot_rrtype_descriptor {
 	uint16_t type;          /*!< RR type */
 	const char *name;       /*!< Textual name.  */
-	uint8_t length;         /*!< Maximum number of RDATA items.  */
+	uint32_t length;         /*!< Maximum number of RDATA items.  */
 
 	/*! \brief Wire format specification for the RDATA. */
 	uint8_t wireformat[KNOT_MAX_RDATA_ITEMS];
