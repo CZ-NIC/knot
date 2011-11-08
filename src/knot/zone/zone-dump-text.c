@@ -1,9 +1,46 @@
 /*!
  * \file zone-dump-text.c
  *
- * \author Jan Kadlec <jan.kadlec@nic.cz>, conversion functions by NLabs,
- *         see LICENSE. b64ntop by ISC.
+ * \author modifications (non-buffer implementation, zone-specific functions)
+ *         by Jan Kadlec <jan.kadlec@nic.cz>,
+ *         conversion functions by NLnet Labs,
+ *         Copyright (c) 2001-2011, NLnet Labs. All rights reserved.
+ *         b64ntop by ISC.
  */
+
+/*
+ * Copyright (c) 2001-2011, NLnet Labs. All rights reserved.
+ *
+ * This software is open source.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ *
+ * Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ *
+ * Neither the name of the NLNET LABS nor the names of its contributors may
+ * be used to endorse or promote products derived from this software without
+ * specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+
 #include <config.h>
 
 #include <ctype.h>
@@ -287,15 +324,18 @@ static char *rdata_txt_data_to_string(const uint8_t *data)
 		return NULL;
 	}
 
-	/* 3 because: opening '"', closing '"', and \0 at the end */
-	char *ret = malloc(sizeof(char) * (length + 3));
+	/*
+	 * 3 because: opening '"', closing '"', and \0 at the end.
+	 * Times 2 because string can be all "double chars".
+	 */
+	size_t current_length = sizeof(char) * (length * 2 + 3);
+	char *ret = malloc(current_length);
 	if (ret == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
 	}
-	memset(ret, 0, sizeof(char) * (length + 3));
+	memset(ret, 0, sizeof(char) * (length * 2 + 3));
 
-	size_t current_length = sizeof(char) * (length + 3);
 
 	strcat(ret, "\"");
 
@@ -314,22 +354,10 @@ static char *rdata_txt_data_to_string(const uint8_t *data)
 		} else {
 			strcat(ret, "\\");
 			char tmp_str[2];
-			/* TODO convert to unsigned*/
 			tmp_str[0] = ch - '0';
 			tmp_str[1] = 0;
 
-			current_length += sizeof(char);
-
-			void *tmp = NULL;
-			if ((tmp = realloc(ret, current_length)) == NULL) {
-				ERR_ALLOC_FAILED;
-				free(tmp);
-				return NULL;
-			}
-			ret = tmp;
-
 			strcat(ret, tmp_str);
-//			buffer_printf(output, "\\%03u", (unsigned) ch);
 		}
 	}
 	strcat(ret, "\"");
@@ -339,7 +367,6 @@ static char *rdata_txt_data_to_string(const uint8_t *data)
 
 char *rdata_text_to_string(knot_rdata_item_t item)
 {
-	printf("Size of the whole item: %u\n", item.raw_data[0]);
 	uint16_t size = item.raw_data[0];
 	char *ret = malloc(sizeof(char) * size * 2) ;
 	if (ret == NULL) {

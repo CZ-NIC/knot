@@ -1,10 +1,12 @@
 ACLOCAL_AMFLAGS = -I ../m4
-bin_PROGRAMS = knotc
 libexec_PROGRAMS = knot-zcompile unittests unittests-zcompile unittests-libknot-realdata unittests-libknot
-sbin_PROGRAMS = knotd
+sbin_PROGRAMS = knotc knotd
+MANPAGES = knotc.8 knotd.8
+man8_MANS = knotc.8 knotd.8
+EXTRA_DIST = $(man8_MANS)
 
 # $(YACC) will generate header file
-AM_CFLAGS = -Wall -I../ -I../libknot -DLIBEXECDIR='"$(libexecdir)"' -DSYSCONFDIR='"$(sysconfdir)"' -DSBINDIR='"$(sbindir)"'
+AM_CFLAGS = -Wall -Ilibknot -DLIBEXECDIR='"$(libexecdir)"' -DSYSCONFDIR='"$(sysconfdir)"' -DSBINDIR='"$(sbindir)"'
 AM_YFLAGS = -d
 libknotd_la_YFLAGS = -pcf_ -d
 libknotd_la_LFLAGS = # TODO: reentrant parser, prefix
@@ -143,7 +145,67 @@ nodist_unittests_SOURCES =			\
 knotd_SOURCES =					\
 	knot/main.c
 
-noinst_LTLIBRARIES = libknotd.la libknots.la
+noinst_LTLIBRARIES = libknot.la libknotd.la libknots.la
+
+libknot_la_SOURCES =				\
+	libknot/util/libknot_error.c		\
+	libknot/util/utils.c			\
+	libknot/util/debug.c			\
+	libknot/util/debug.h			\
+	libknot/util/utils.h			\
+	libknot/util/descriptor.c		\
+	libknot/util/tolower.h			\
+	libknot/util/tolower.c			\
+	libknot/util/descriptor.h		\
+	libknot/util/wire.h			\
+	libknot/packet/query.c			\
+	libknot/packet/response.c		\
+	libknot/packet/packet.c			\
+	libknot/packet/packet.h			\
+	libknot/packet/query.h			\
+	libknot/packet/response.h		\
+	libknot/zone/zone.c			\
+	libknot/zone/zone-contents.c		\
+	libknot/zone/zone-tree.c		\
+	libknot/zone/zone-tree.h		\
+	libknot/zone/node.h			\
+	libknot/zone/zone.h			\
+	libknot/zone/zone-contents.h		\
+	libknot/zone/zonedb.c			\
+	libknot/zone/zonedb.h			\
+	libknot/zone/node.c			\
+	libknot/zone/dname-table.h		\
+	libknot/zone/dname-table.c		\
+	libknot/hash/hash-functions.c		\
+	libknot/hash/cuckoo-hash-table.c	\
+	libknot/hash/universal-system.c		\
+	libknot/hash/universal-system.h		\
+	libknot/hash/cuckoo-hash-table.h	\
+	libknot/hash/hash-functions.h		\
+	libknot/nameserver/name-server.h	\
+	libknot/nameserver/name-server.c	\
+	libknot/updates/changesets.h		\
+	libknot/updates/changesets.c		\
+	libknot/updates/xfr-in.h		\
+	libknot/updates/xfr-in.c		\
+	libknot/updates/ddns.h			\
+	libknot/updates/ddns.c			\
+	libknot/edns.c				\
+	libknot/rrset.c				\
+	libknot/dname.c				\
+	libknot/rdata.c				\
+	libknot/nsec3.c				\
+	libknot/consts.h			\
+	libknot/edns.h				\
+	libknot/rdata.h				\
+	libknot/libknot.h			\
+	libknot/dname.h				\
+	libknot/rrset.h				\
+	libknot/nsec3.h				\
+	libknot/tsig.h				\
+	libknot/tsig.c				\
+	libknot/tsig-op.h			\
+	libknot/tsig-op.c
 
 libknots_la_SOURCES =				\
 	common/slab/slab.c			\
@@ -152,7 +214,7 @@ libknots_la_SOURCES =				\
 	common/slab/malloc.h			\
 	common/libtap/tap.c			\
 	common/libtap/tap.h			\
-	common/tap_unit.h			\
+	common/libtap/tap_unit.h		\
 	common/lists.c				\
 	common/base32.c				\
 	common/lists.h				\
@@ -168,15 +230,14 @@ libknots_la_SOURCES =				\
 	common/dynamic-array.h			\
 	common/tree.h				\
 	common/base32hex.h			\
-	common/modified-tree.h			\
-	common/evqueue.h		\
-	common/evqueue.c		\
-	common/evsched.h		\
-	common/evsched.c		\
+	common/evqueue.h			\
+	common/evqueue.c			\
+	common/evsched.h			\
+	common/evsched.c			\
 	common/acl.h				\
 	common/acl.c				\
-	common/sockaddr.h				\
-	common/sockaddr.c				\
+	common/sockaddr.h			\
+	common/sockaddr.c			\
 	common/crc.h				\
 	common/crc.c				\
 	common/ref.h				\
@@ -239,15 +300,15 @@ libknotd_la_SOURCES =				\
 	knot/zone/zone-dump.h			\
 	knot/server/server.h
 
-libknotd_la_LIBADD = ../libknot/libknot.la libknots.la @LIBOBJS@
+libknotd_la_LIBADD = libknot.la libknots.la @LIBOBJS@
 libknots_la_LIBADD = @LIBOBJS@
-knotd_LDADD = libknotd.la ../libknot/libknot.la libknots.la @LIBOBJS@
-knotc_LDADD = libknotd.la ../libknot/libknot.la libknots.la @LIBOBJS@
-knot_zcompile_LDADD = libknots.la ../libknot/libknot.la libknotd.la @LIBOBJS@
+knotd_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
+knotc_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
+knot_zcompile_LDADD = libknots.la libknot.la libknotd.la @LIBOBJS@
 unittests_LDADD = libknotd.la libknots.la @LIBOBJS@
-unittests_zcompile_LDADD = ../libknot/libknot.la libknots.la libknotd.la @LIBOBJS@
-unittests_libknot_LDADD = ../libknot/libknot.la libknots.la @LIBOBJS@
-unittests_libknot_realdata_LDADD = ../libknot/libknot.la libknots.la @LIBOBJS@
+unittests_zcompile_LDADD = libknot.la libknots.la libknotd.la @LIBOBJS@
+unittests_libknot_LDADD = libknot.la libknots.la @LIBOBJS@
+unittests_libknot_realdata_LDADD = libknot.la libknots.la @LIBOBJS@
 
 # automake complains on % rules:
 #   `%'-style pattern rules are a GNU make extension

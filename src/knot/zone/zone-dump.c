@@ -1637,7 +1637,7 @@ static void knot_rrsig_set_dump_binary(knot_rrset_t *rrsig, arg_t *data,
 	fwrite_wrapper(&rrsig->ttl, sizeof(rrsig->ttl), 1, f,
 	               stream, stream_size, crc);
 
-	uint8_t rdata_count = 1;
+	uint32_t rdata_count = 1;
 	/* Calculate rrset rdata count. */
 	knot_rdata_t *tmp_rdata = rrsig->rdata;
 	while(tmp_rdata->next != rrsig->rdata) {
@@ -1683,7 +1683,7 @@ static void knot_rrset_dump_binary(const knot_rrset_t *rrset, void *data,
 	fwrite_wrapper(&rrset->ttl, sizeof(rrset->ttl), 1, f,
 	               stream, stream_size, crc);
 
-	uint8_t rdata_count = 1;
+	uint32_t rdata_count = 1;
 	uint8_t has_rrsig = rrset->rrsigs != NULL;
 
 	/* Calculate rrset rdata count. */

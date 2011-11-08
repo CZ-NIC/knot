@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 
 AC_PREREQ([2.65])
-AC_INIT([knot], [0.3], [bug-me-knot@nic.cz])
+AC_INIT([knot], [0.8], [knot-dns@labs.nic.cz])
 AM_INIT_AUTOMAKE([gnu -Wall -Werror])
 AC_CONFIG_SRCDIR([src/knot/main.c])
 AC_CONFIG_HEADERS([src/config.h])
@@ -85,7 +85,7 @@ AC_ARG_ENABLE([debug],
     
 # recvmmsg() (valgrind doesn't support it, so disable for debugging)
 AC_ARG_ENABLE([recvmmsg],
-    AS_HELP_STRING([--enable-recvmmsg=yes|no], [enable recvmmsg() (kernel support required) [default=yes]]),
+    AS_HELP_STRING([--enable-recvmmsg=yes|no], [enable recvmmsg() network API under Linux (kernel support required) (set to 'no' if you have trouble running server under valgrind) [default=yes]]),
     [case "${enableval}" in
       yes)
          AC_DEFINE([ENABLE_RECVMMSG], [1], [recvmmsg enabled])
@@ -136,7 +136,6 @@ AC_FUNC_MMAP
 AC_CHECK_FUNCS([gethostbyname gettimeofday memmove memset munmap regcomp select socket sqrt strcasecmp strchr strdup strerror strncasecmp strtol strtoul poll epoll_wait kqueue])
 
 AC_CONFIG_FILES([Makefile
-                 libknot/Makefile
 		 samples/Makefile
                  src/Makefile])
 AC_OUTPUT
