@@ -883,9 +883,11 @@ char *rdata_unknown_to_string(knot_rdata_item_t item)
 {
  	uint16_t size = rdata_item_size(item);
 	char *ret =
-		malloc(sizeof(char) * (rdata_item_size(item) +
-				       strlen("\\# ") + U16_MAX_STR_LEN));
-	snprintf(ret, strlen("\\# ") + U16_MAX_STR_LEN, "%lu",
+		malloc(sizeof(char) * (2 * rdata_item_size(item) +
+				       strlen("\\# ") + U16_MAX_STR_LEN + 1));
+	memcpy(ret, "\\# \0", strlen("\\# \0"));
+	snprintf(ret + strlen("\\# "),
+	         strlen("\\# ") + U16_MAX_STR_LEN + 1, "%lu ",
 		 (unsigned long) size);
 	char *converted = hex_to_string(rdata_item_data(item), size);
 	strcat(ret, converted);
