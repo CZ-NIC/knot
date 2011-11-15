@@ -14,6 +14,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE /* Required for RTLD_DEFAULT. */
+#endif
+
+#include <dlfcn.h>
 #include <config.h>
 #include <time.h>
 #include <unistd.h>
@@ -21,6 +26,7 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/poll.h>
+#include <sys/syscall.h>
 #include <netinet/in.h>
 #include <string.h>
 #include <assert.h>
@@ -38,6 +44,14 @@
 #include "libknot/packet/packet.h"
 #include "knot/server/zones.h"
 #include "knot/server/notify.h"
+
+/* Check for sendmmsg syscall. */
+#ifdef SYS_sendmmsg
+#define ENABLE_SENDMMSG 1
+#endif
+
+/*! \brief Pointer to selected UDP master implementation. */
+static int (*_udp_master)(dthread_t *, stat_t *) = 0;
 
 ///*! \brief Wrapper for UDP send. */
 //static int xfr_send_udp(int session, sockaddr_t *addr, uint8_t *msg, size_t msglen)
@@ -271,6 +285,66 @@ static inline int udp_master_recvfrom(dthread_t *thread, stat_t *thread_stat)
 
 #ifdef ENABLE_RECVMMSG
 #ifdef MSG_WAITFORONE
+
+/*! \brief Pointer to selected UDP send implementation. */
+static int (*_send_mmsg)(int, sockaddr_t *, struct mmsghdr *, size_t) = 0;
+
+/*!
+ * \brief Send multiple packets.
+ * 
+ * Basic, sendto() based implementation.
+ */
+int udp_sendto(int sock, sockaddr_t * addrs, struct mmsghdr *msgs, size_t count)
+{
+	for (unsigned i = 0; i < count; ++i) {
+		
+		const size_t resp_len = msgs[i].msg_len;
+		if (resp_len > 0) {
+			dbg_net("udp: on fd=%d, sending answer size=%zd.\n",
+			        sock, resp_len);
+
+			// Send datagram
+			sockaddr_t *addr = addrs + i;
+			struct iovec *cvec = msgs[i].msg_hdr.msg_iov;
+			int res = sendto(sock, cvec->iov_base, resp_len,
+					 0, addr->ptr, addr->len);
+
+			// Check result
+			if (res != (int)resp_len) {
+				dbg_net("udp: sendto(): failed: %d - %d.\n",
+				        res, errno);
+			}
+		}
+	}
+	
+	return KNOTD_EOK;
+}
+
+#ifdef ENABLE_SENDMMSG
+/*! \brief sendmmsg() syscall interface. */
+static inline int sendmmsg(int fd, struct mmsghdr *mmsg, unsigned vlen,
+                           unsigned flags)
+{
+	return syscall(SYS_sendmmsg, fd, mmsg, vlen, flags, NULL);
+}
+
+/*!
+ * \brief Send multiple packets.
+ * 
+ * sendmmsg() implementation.
+ */
+int udp_sendmmsg(int sock, sockaddr_t *_, struct mmsghdr *msgs, size_t count)
+{
+	UNUSED(_);
+	dbg_net("udp: sending multiple responses\n");
+	if (sendmmsg(sock, msgs, count, 0) < 0) {
+		return KNOTD_ERROR;
+	}
+	
+	return KNOTD_EOK;
+}
+#endif
+
 static inline int udp_master_recvmmsg(dthread_t *thread, stat_t *thread_stat)
 {
 	iohandler_t *h = (iohandler_t *)thread->data;
@@ -330,32 +404,20 @@ static inline int udp_master_recvmmsg(dthread_t *thread, stat_t *thread_stat)
 			                 addrs + i, ns);
 			if (ret == KNOTD_EOK) {
 				msgs[i].msg_len = resp_len;
+				iov[i].iov_len = resp_len;
 			} else {
 				msgs[i].msg_len = 0;
+				iov[i].iov_len = 0;
 			}
 			
 		}
 
 		/* Gather results. */
-		/*! \todo Implement with sendmmsg() when it's ready. */
+		_send_mmsg(sock, addrs, msgs, n);
+		
+		/* Reset iov buffer size. */
 		for (unsigned i = 0; i < n; ++i) {
-			const size_t resp_len = msgs[i].msg_len;
-			if (resp_len > 0) {
-				dbg_net("udp: on fd=%d, sending answer size=%zd.\n",
-				        sock, resp_len);
-
-				// Send datagram
-				sockaddr_t *addr = addrs + i;
-				struct iovec *cvec = msgs[i].msg_hdr.msg_iov;
-				int res = sendto(sock, cvec->iov_base, resp_len,
-						 0, addr->ptr, addr->len);
-
-				// Check result
-				if (res != (int)resp_len) {
-					dbg_net("udp: sendto(): failed: %d - %d.\n",
-					        res, errno);
-				}
-			}
+			iov[i].iov_len = SOCKET_MTU_SZ;
 		}
 	}
 
@@ -370,6 +432,33 @@ static inline int udp_master_recvmmsg(dthread_t *thread, stat_t *thread_stat)
 #endif
 #endif
 
+/*! \brief Initialize UDP master routine on run-time. */
+void __attribute__ ((constructor)) udp_master_init()
+{
+	/* Initialize defaults. */
+	_udp_master = udp_master_recvfrom;
+
+	/* Optimized functions. */
+#ifdef ENABLE_RECVMMSG
+#ifdef MSG_WAITFORONE
+	/* Check for recvmmsg() support. */
+	if (dlsym(RTLD_DEFAULT, "recvmmsg") != 0) {
+		_udp_master = udp_master_recvmmsg;
+	}
+	
+	/* Check for sendmmsg() support. */
+#ifdef ENABLE_SENDMMSG
+	_send_mmsg = udp_sendto;
+	sendmmsg(0, 0, 0, 0); /* Just check if syscall exists */
+	if (errno != ENOSYS) {
+		_send_mmsg = udp_sendmmsg;
+	}
+#endif /* ENABLE_SENDMMSG */
+#endif /* MSG_WAITFORONE */
+#endif /* ENABLE_RECVMMSG */
+}
+	
+	
 int udp_master(dthread_t *thread)
 {
 	iohandler_t *handler = (iohandler_t *)thread->data;
@@ -416,20 +505,8 @@ int udp_master(dthread_t *thread)
 	/* Execute proper handler. */
 	dbg_net_verb("udp: thread started (worker %p).\n", thread);
 	int ret = KNOTD_EOK;
-
-#ifdef ENABLE_RECVMMSG
 	
-/* Check if MSG_WAITFORONE is supported. */
-#ifdef MSG_WAITFORONE
-	ret = udp_master_recvmmsg(thread, thread_stat);
-#else /* Don't have MSG_WAITFORONE */
-	ret = udp_master_recvfrom(thread, thread_stat);
-#endif
-	
-#else /* Don't have ENABLE_RECVMMSG */
-	ret = udp_master_recvfrom(thread, thread_stat);
-#endif
-
+	ret = _udp_master(thread, thread_stat);
 
 	stat_free(thread_stat);
 	dbg_net_verb("udp: worker %p finished.\n", thread);
