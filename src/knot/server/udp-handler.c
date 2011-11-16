@@ -473,7 +473,6 @@ int udp_master(dthread_t *thread)
 	/* Set socket options. */
 	int flag = 1;
 #ifndef DISABLE_IPV6
-#
 	if (handler->type == AF_INET6) {
 		/* Disable dual-stack for performance reasons. */
 		setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &flag, sizeof(flag));
