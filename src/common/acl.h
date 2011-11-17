@@ -42,10 +42,17 @@ typedef enum acl_rule_t {
 
 /*! \brief ACL structure. */
 typedef struct acl_t {
-	acl_rule_t default_rule;
-	skip_list_t *rules;
-	const char name[];
+	acl_rule_t default_rule; /*!< \brief Default rule. */
+	skip_list_t *rules;      /*!< \brief Data container. */
+	const char name[];       /*!< \brief ACL semantic name. */
 } acl_t;
+
+/*! \brief Single ACL value. */
+typedef struct acl_key_t {
+	sockaddr_t addr; /*!< \brief Address for comparison. */
+	acl_rule_t rule; /*!< \brief Rule for address. */
+	void *val;       /*!< \brief Associated value (or NULL). */
+} acl_key_t;
 
 /*!
  * \brief Create a new ACL.
@@ -71,25 +78,27 @@ void acl_delete(acl_t **acl);
  * \todo Support address subnets.
  *
  * \param acl Pointer to ACL instance.
- * \param addr IP address (will be duplicated).
- * \param rule Rule.
+ * \param addr IP address.
+ * \param rule Rule for given address.
+ * \param val Value to be stored for given address (or NULL).
  *
  * \retval ACL_ACCEPT if successful.
  * \retval ACP_ERROR on error.
  */
-int acl_create(acl_t *acl, const sockaddr_t* addr, acl_rule_t rule);
+int acl_create(acl_t *acl, const sockaddr_t* addr, acl_rule_t rule, void *val);
 
 /*!
  * \brief Match address against ACL.
  *
  * \param acl Pointer to ACL instance.
  * \param addr IP address.
+ * \param key Set to related key or NULL if not found.
  *
- * \retval ACL_ACCEPT if the address is accepted.
- * \retval ACL_DENY if the address is not accepted.
+ * \retval Address rule if the address is accepted.
+ * \retval Default rule if the address is not accepted.
  * \retval ACP_ERROR on error.
  */
-int acl_match(acl_t *acl, sockaddr_t* addr);
+int acl_match(acl_t *acl, sockaddr_t* addr, acl_key_t **key);
 
 /*!
  * \brief Truncate ACL.
