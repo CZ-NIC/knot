@@ -376,21 +376,28 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 			dbg_xfr("xfr: TSIG not found in AR\n");
 		}
 
-		/* Find configured key for claimed key name. */
-		conf_key_t *ck = 0;
-		WALK_LIST(ck, conf()->keys) {
-			if (!kname) {
-				break;
+		/* Evaluate configured key for claimed key name.*/
+		key = xfr->tsig_key; /* Expects already set key (check_zone) */
+		xfr->tsig_key = 0;
+		if (key && kname && knot_dname_compare(key->name, kname) == 0) {
+			dbg_xfr("xfr: found claimed TSIG key for comparison\n");
+		} else {
+			/* TSIG is mandatory if configured for interface. */
+			if (key && !kname) {
+				dbg_xfr("xfr: TSIG key is mandatory for "
+				        "this interface\n");
+				ret = KNOT_TSIG_EBADKEY;
+				*rcode = KNOT_RCODE_NOTAUTH;
 			}
-			/* Compare stored keys to claimed. */
-			if (knot_dname_compare(ck->k.name,
-					       kname) == 0) {
-				dbg_xfr("xfr: found claimed "
-					"TSIG key for "
-					"comparison\n");
-				key = &ck->k;
-				break;
+			
+			/* Configured, but doesn't match. */
+			if (kname) {
+				dbg_xfr("xfr: no claimed key configured, "
+				        "treating as bad key\n");
+				*rcode = KNOT_RCODE_NOTAUTH;
 			}
+			
+			key = 0; /* Invalidate, ret already set to BADKEY */
 		}
 
 		/* Validate with TSIG. */
@@ -442,9 +449,6 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 			default:
 				*rcode = KNOT_RCODE_SERVFAIL;
 			}
-		} else {
-			dbg_xfr("xfr: no claimed key configured, "
-				"treating as bad key\n");
 		}
 	} else {
 		dbg_xfr("xfr: failed to parse rest of the packet\n");

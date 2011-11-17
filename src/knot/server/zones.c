@@ -1535,7 +1535,7 @@ int zones_xfr_check_zone(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 		return KNOTD_EEXPIRED;
 	}
 
-	// Check xfr-out ACL
+	/* Check xfr-out ACL */
 	acl_key_t *match = 0;
 	if (acl_match(zd->xfr_out, &xfr->addr, &match) == ACL_DENY) {
 		log_answer_warning("Unauthorized request for XFR '%s/OUT'.\n",
@@ -1543,9 +1543,13 @@ int zones_xfr_check_zone(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 		*rcode = KNOT_RCODE_REFUSED;
 		return KNOTD_EACCES;
 	} else {
-		dbg_zones("zones: authorized XFR '%s/OUT'\n",
-		          zd->conf->name);
-		/*! \todo [TSIG] Store remote for later comparison or given key? */
+		dbg_zones("zones: authorized XFR '%s/OUT' match=%p\n",
+		          zd->conf->name, match);
+		if (match) {
+			/* Save configured TSIG key for comparison. */
+			conf_iface_t *iface = (conf_iface_t*)(match->val);
+			xfr->tsig_key = iface->key;
+		}
 	}
 	return KNOTD_EOK;
 }
