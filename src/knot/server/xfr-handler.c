@@ -370,10 +370,26 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 				dbg_xfr("xfr: found TSIG in AR\n");
 				kname = knot_rrset_owner(tsig_rr);
 				ret = KNOT_TSIG_EBADKEY;
+			} else {
+				tsig_rr = 0;
 			}
 		}
 		if (!kname) {
 			dbg_xfr("xfr: TSIG not found in AR\n");
+		}
+		if (tsig_rr) {
+			tsig_algorithm_t alg = tsig_rdata_alg(tsig_rr);
+			if (tsig_alg_digest_length(alg) == 0) {
+				log_server_info("Unsupported digest algorithm "
+				                "requested, treating as "
+				                "bad key.\n");
+				/*! \todo [TSIG] It is unclear from RFC if I
+				 *               should treat is as a bad key
+				 *               or some other error.
+				 */
+				*rcode = KNOT_RCODE_NOTAUTH;
+				return KNOT_TSIG_EBADKEY;
+			}
 		}
 
 		/* Evaluate configured key for claimed key name.*/

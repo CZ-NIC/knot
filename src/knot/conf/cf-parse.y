@@ -282,6 +282,11 @@ system:
 keys:
    KEYS '{'
  | keys TEXT TSIG_ALGO_NAME TEXT ';' {
+     /* Check algorithm length. */
+     if (tsig_alg_digest_length($3.alg) == 0) {
+        cf_error(scanner, "unsupported digest algorithm");
+     }
+     
      /* Normalize to FQDN */
      char *fqdn = $2.t;
      if (fqdn[strlen(fqdn) - 1] != '.') {
