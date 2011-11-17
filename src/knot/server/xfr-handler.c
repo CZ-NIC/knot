@@ -506,11 +506,6 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 		ret = KNOT_ECONN;
 	} else {
 
-	/*!
-	 * \todo [TSIG] Somewhere before this fetch the query digest and the TSIG
-	 *       associated with this transfer and save them to 'data'.
-	 */
-
 		/* Process incoming packet. */
 		switch(data->type) {
 		case XFR_TYPE_AIN:
@@ -712,11 +707,8 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 				   "contents\n");
 		return KNOTD_ERROR;
 	}
-	
-	/*! \todo [TSIG] Somewhere before this determine if the server should
-	 *               use TSIG for this transfer and set appropriate fields
-	 *               in 'data'.
-	 */
+
+	/* Prepare TSIG key if set. */
 	int add_tsig = 0;
 	if (data->tsig_key) {
 		if (xfr_prepare_tsig(data, data->tsig_key) == KNOT_EOK) {
