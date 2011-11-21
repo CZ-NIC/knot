@@ -109,12 +109,11 @@ static int knot_tsig_compute_digest(const uint8_t *wire, size_t wire_len,
 		return KNOT_EMALF;
 	}
 
-	dbg_tsig("TSIG: decoded key size: %d\n", decoded_key_size);
-	dbg_tsig("TSIG: decoded key: '%*s'\n", decoded_key_size, decoded_key);
+	dbg_tsig_detail("TSIG: decoded key size: %d\n", decoded_key_size);
+	dbg_tsig_detail("TSIG: decoded key: '%*s'\n", decoded_key_size, decoded_key);
 
-	dbg_tsig("TSIG: using this wire for digest calculation\n");
-
-	//dbg_tsig_hex(wire, wire_len);
+	dbg_tsig_detail("TSIG: using this wire for digest calculation\n");
+	dbg_tsig_hex_detail(wire, wire_len);
 
 	/* Compute digest. */
 	HMAC_CTX ctx;
@@ -123,6 +122,14 @@ static int knot_tsig_compute_digest(const uint8_t *wire, size_t wire_len,
 		case KNOT_TSIG_ALG_HMAC_MD5:
 			HMAC_Init(&ctx, decoded_key,
 			          decoded_key_size, EVP_md5());
+			break;
+		case KNOT_TSIG_ALG_HMAC_SHA1:
+			HMAC_Init(&ctx, decoded_key,
+			          decoded_key_size, EVP_sha1());
+			break;
+		case KNOT_TSIG_ALG_HMAC_SHA256:
+			HMAC_Init(&ctx, decoded_key,
+			          decoded_key_size, EVP_sha256());
 			break;
 		default:
 			return KNOT_ENOTSUP;
