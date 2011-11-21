@@ -306,8 +306,35 @@ const knot_dname_t *tsig_rdata_alg_name(const knot_rrset_t *tsig)
 
 tsig_algorithm_t tsig_rdata_alg(const knot_rrset_t *tsig)
 {
-	/*! \todo [TSIG] Implement me. */
-	return KNOT_TSIG_ALG_HMAC_MD5;
+	if (!tsig) {
+		return KNOT_TSIG_ALG_NULL;
+	}
+
+	/* Get the algorithm name. */
+	const knot_dname_t *alg_name = tsig_rdata_alg_name(tsig);
+	if (!alg_name) {
+		dbg_tsig_detail("TSIG: rdata: cannot get algorithm name.\n")
+		return KNOT_TSIG_ALG_NULL;
+	}
+
+	/* Convert alg name to string. */
+	char *name = knot_dname_to_str(alg_name);
+	if (!name) {
+		dbg_tsig_detail("TSIG: rdata: cannot convert alg name.\n")
+		return KNOT_TSIG_ALG_NULL;
+	}
+
+	knot_lookup_table_t *item = knot_lookup_by_name(tsig_alg_table, name);
+	if (!item) {
+		dbg_tsig_detail("TSIG: rdata: unknown algorithm.\n")
+		return KNOT_TSIG_ALG_NULL;
+	}
+	free(name);
+
+	int id = item->id;
+
+
+	return id;
 }
 
 uint64_t tsig_rdata_time_signed(const knot_rrset_t *tsig)
@@ -581,7 +608,7 @@ const char* tsig_alg_to_str(tsig_algorithm_t alg)
 size_t tsig_wire_maxsize(const knot_key_t* key)
 {
 	size_t alg_name_size = strlen(tsig_alg_to_str(key->algorithm)) + 1;
-		
+
 	return knot_dname_size(key->name) +
 	sizeof(uint16_t) + /* TYPE */
 	sizeof(uint16_t) + /* CLASS */
