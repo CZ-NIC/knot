@@ -32,7 +32,7 @@
 /*! \brief TSIG algorithms table. */
 #define TSIG_ALG_TABLE_SIZE 8
 static knot_lookup_table_t tsig_alg_table[TSIG_ALG_TABLE_SIZE] = {
-	{ KNOT_TSIG_ALG_GSS_TSIG, "gss-tsig." },
+	{ KNOT_TSIG_ALG_NULL, "gss-tsig." },
 	{ KNOT_TSIG_ALG_HMAC_MD5, "hmac-md5.sig-alg.reg.int." },
 	{ KNOT_TSIG_ALG_HMAC_SHA1, "hmac-sha1." },
 	{ KNOT_TSIG_ALG_HMAC_SHA224, "hmac-sha224." },

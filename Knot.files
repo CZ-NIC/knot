@@ -251,3 +251,5 @@ src/libknot/tsig.h
 src/libknot/tsig.c
 src/libknot/tsig-op.c
 src/libknot/tsig-op.h
+src/libknot/util/conv.c
+src/libknot/util/conv.h

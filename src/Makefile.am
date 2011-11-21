@@ -153,6 +153,8 @@ libknot_la_SOURCES =				\
 	libknot/util/debug.c			\
 	libknot/util/debug.h			\
 	libknot/util/utils.h			\
+	libknot/util/conv.h			\
+	libknot/util/conv.c			\
 	libknot/util/descriptor.c		\
 	libknot/util/tolower.h			\
 	libknot/util/tolower.c			\
