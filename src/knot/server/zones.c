@@ -610,7 +610,7 @@ static int zones_zonefile_sync_ev(event_t *e)
 	if (ret == KNOTD_EOK) {
 		log_zone_info("Applied differences of '%s' to zonefile.\n",
 		              zd->conf->name);
-	} else {
+	} else if (ret != KNOTD_ERANGE) {
 		log_zone_warning("Failed to apply differences of '%s' "
 		                 "to zonefile.\n",
 		                 zd->conf->name);
@@ -1450,6 +1450,7 @@ int zones_zonefile_sync(knot_zone_t *zone)
 	}
 
 	/* Fetch zone data. */
+	int ret = KNOTD_EOK;
 	zonedata_t *zd = (zonedata_t *)zone->data;
 
 	/* Lock zone data. */
@@ -1469,6 +1470,7 @@ int zones_zonefile_sync(knot_zone_t *zone)
 	soa_rr = knot_rrset_rdata(soa_rrs);
 	int64_t serial_ret = knot_rdata_soa_serial(soa_rr);
 	if (serial_ret < 0) {
+		pthread_mutex_unlock(&zd->lock);
 		return KNOTD_EINVAL;
 	}
 	uint32_t serial_to = (uint32_t)serial_ret;
@@ -1497,12 +1499,13 @@ int zones_zonefile_sync(knot_zone_t *zone)
 	} else {
 		dbg_zones_verb("zones: '%s' zonefile is in sync "
 		               "with differences\n", zd->conf->name);
+		ret = KNOTD_ERANGE;
 	}
 
 	/* Unlock zone data. */
 	pthread_mutex_unlock(&zd->lock);
 
-	return KNOTD_EOK;
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2095,7 +2098,7 @@ int zones_store_changesets(knot_ns_xfr_t *xfr)
 				             "of '%s'\n",
 				             zd->conf->name);
 				ret = zones_zonefile_sync(zone);
-				if (ret != KNOTD_EOK) {
+				if (ret != KNOTD_EOK && ret != KNOTD_ERANGE) {
 					continue;
 				}
 
