@@ -118,6 +118,9 @@ typedef struct knot_ns_xfr {
 	uint8_t *digest;     /*!< Buffer for counting digest. */
 	size_t digest_size;  /*!< Size of the digest. */
 	size_t digest_max_size; /*!< Size of the buffer. */
+
+	uint16_t tsig_rcode;
+	uint64_t tsig_req_time_signed;
 	
 	/*! \brief Previous digest or request digest. 
 	 *

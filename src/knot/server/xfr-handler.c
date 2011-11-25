@@ -369,7 +369,6 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 			if (knot_rrset_type(tsig_rr) == KNOT_RRTYPE_TSIG) {
 				dbg_xfr("xfr: found TSIG in AR\n");
 				kname = knot_rrset_owner(tsig_rr);
-				ret = KNOT_TSIG_EBADKEY;
 			} else {
 				tsig_rr = 0;
 			}
@@ -388,6 +387,10 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 				 *               or some other error.
 				 */
 				*rcode = KNOT_RCODE_NOTAUTH;
+				xfr->tsig_key = NULL;
+				xfr->tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
+				xfr->tsig_req_time_signed =
+				                tsig_rdata_time_signed(tsig_rr);
 				return KNOT_TSIG_EBADKEY;
 			}
 		}
@@ -398,19 +401,20 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 		if (key && kname && knot_dname_compare(key->name, kname) == 0) {
 			dbg_xfr("xfr: found claimed TSIG key for comparison\n");
 		} else {
+			/*! \todo These ifs are redundant. */
+
 			/* TSIG is mandatory if configured for interface. */
 			if (key && !kname) {
 				dbg_xfr("xfr: TSIG key is mandatory for "
 				        "this interface\n");
 				ret = KNOT_TSIG_EBADKEY;
-				*rcode = KNOT_RCODE_NOTAUTH;
 			}
 			
 			/* Configured, but doesn't match. */
 			if (kname) {
 				dbg_xfr("xfr: no claimed key configured, "
 				        "treating as bad key\n");
-				*rcode = KNOT_RCODE_NOTAUTH;
+				ret = KNOT_TSIG_EBADKEY;
 			}
 			
 			key = 0; /* Invalidate, ret already set to BADKEY */
@@ -450,14 +454,22 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 				*rcode = KNOT_RCODE_NOERROR;
 				break;
 			case KNOT_TSIG_EBADKEY:
-			case KNOT_TSIG_EBADSIG:
-				// delete the TSIG key so that the error
-				// response is not signed
+				xfr->tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
 				xfr->tsig_key = NULL;
+				*rcode = KNOT_RCODE_NOTAUTH;
+				break;
+			case KNOT_TSIG_EBADSIG:
+				xfr->tsig_rcode = KNOT_TSIG_RCODE_BADSIG;
+				xfr->tsig_key = NULL;
+				*rcode = KNOT_RCODE_NOTAUTH;
+				break;
 			case KNOT_TSIG_EBADTIME:
-				/*! \note [TSIG] Set TSIG rcode in TSIG RR. */
-				
-				*rcode = KNOT_RCODE_NOTAUTH; 
+				xfr->tsig_rcode = KNOT_TSIG_RCODE_BADTIME;
+				// store the time signed from the query
+				assert(tsig_rr != NULL);
+				xfr->tsig_req_time_signed =
+				                tsig_rdata_time_signed(tsig_rr);
+				*rcode = KNOT_RCODE_NOTAUTH;
 				break;
 			case KNOT_EMALF:
 				*rcode = KNOT_RCODE_FORMERR;

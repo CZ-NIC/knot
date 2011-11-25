@@ -2021,7 +2021,8 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 			               xfr->wire_size, xfr->digest, 
 			               xfr->digest_size, xfr->digest, 
 			               &digest_real_size,
-			               xfr->tsig_key, 0, 0);
+			               xfr->tsig_key, xfr->tsig_rcode,
+			               xfr->tsig_req_time_signed);
 		} else {
 			/* Add key, digest and digest length. */
 			dbg_ns_detail("Calling tsig_sign_next()\n");
@@ -2045,6 +2046,13 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 		assert(digest_real_size > 0);
 		// save the new previous digest size
 		xfr->digest_size = digest_real_size;
+	} else if (xfr->tsig_rcode != 0) {
+		// add TSIG without signing
+		res = knot_tsig_add(xfr->wire, &real_size, xfr->wire_size,
+		                    xfr->tsig_rcode, xfr->tsig_req_time_signed);
+		if (res != KNOT_EOK) {
+			return res;
+		}
 	}
 
 	// Send the response
@@ -2066,7 +2074,8 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 	
 	// increment the packet number
 	++xfr->packet_nr;
-	if (xfr->tsig_key && add_tsig) {
+	if ((xfr->tsig_key && add_tsig) || xfr->tsig_rcode != 0) {
+		/*! \todo Where is xfr->tsig_size set?? */
 		knot_packet_set_tsig_size(xfr->response, xfr->tsig_size);
 	} else {
 		knot_packet_set_tsig_size(xfr->response, 0);
