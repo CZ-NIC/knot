@@ -451,7 +451,8 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
                    size_t msg_max_len, const uint8_t *request_mac,
                    size_t request_mac_len,
                    uint8_t *digest, size_t *digest_len,
-                   const knot_key_t *key)
+                   const knot_key_t *key, uint16_t tsig_rcode,
+                   uint64_t request_time_signed)
 {
 	if (!msg || !msg_len || !key || digest == NULL || digest_len == NULL) {
 		return KNOT_EBADARG;
@@ -504,7 +505,7 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 
 	tsig_rdata_set_alg(tmp_tsig, key->algorithm);
 	tsig_rdata_store_current_time(tmp_tsig);
-	tsig_rdata_set_fudge(tmp_tsig, 300);
+	tsig_rdata_set_fudge(tmp_tsig, 300);   /*! Bleeding eyes :-) */
 
 	/* Set original ID */
 	tsig_rdata_set_orig_id(tmp_tsig, knot_wire_get_id(msg));
@@ -798,3 +799,10 @@ int knot_tsig_client_check_next(const knot_rrset_t *tsig_rr,
 	                              prev_digest_len, tsig_key, 1);
 	return KNOT_ENOTSUP;
 }
+
+int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
+                  uint16_t tsig_rcode)
+{
+	return KNOT_ENOTSUP;
+}
+

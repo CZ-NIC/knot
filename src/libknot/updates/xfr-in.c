@@ -121,7 +121,8 @@ static int xfrin_create_query(knot_dname_t *qname, uint16_t qtype,
 		
 		xfr->digest_size = xfr->digest_max_size;
 		rc = knot_tsig_sign(wire, &wire_size, *size, NULL, 0, 
-		               xfr->digest, &xfr->digest_size, xfr->tsig_key);
+		               xfr->digest, &xfr->digest_size, xfr->tsig_key,
+		               0, 0);
 		if (rc != KNOT_EOK) {
 			/*! \todo [TSIG] Handle TSIG errors. */
 			knot_packet_free(&pkt);

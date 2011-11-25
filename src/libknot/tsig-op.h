@@ -63,7 +63,8 @@
 int knot_tsig_sign(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
                    const uint8_t *request_mac, size_t request_mac_len,
                    uint8_t *digest, size_t *digest_len,
-                   const knot_key_t *key);
+                   const knot_key_t *key, uint16_t tsig_rcode,
+                   uint64_t request_time_signed);
 
 /*!
  * \brief Generate TSIG signature of a 2nd or later message in a TCP session.
@@ -155,6 +156,9 @@ int knot_tsig_client_check_next(const knot_rrset_t *tsig_rr,
                                 const uint8_t *prev_digest,
                                 size_t prev_digest_len,
                                 const knot_key_t *key);
+
+int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
+                  uint16_t tsig_rcode);
 
 #endif /* _KNOT_TSIG_H_ */
 
