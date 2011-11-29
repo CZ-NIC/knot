@@ -2022,7 +2022,7 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 			               xfr->digest_size, xfr->digest, 
 			               &digest_real_size,
 			               xfr->tsig_key, xfr->tsig_rcode,
-			               xfr->tsig_req_time_signed);
+			               xfr->tsig_prev_time_signed);
 		} else {
 			/* Add key, digest and digest length. */
 			dbg_ns_detail("Calling tsig_sign_next()\n");

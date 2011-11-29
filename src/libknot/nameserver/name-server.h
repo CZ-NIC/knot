@@ -120,7 +120,7 @@ typedef struct knot_ns_xfr {
 	size_t digest_max_size; /*!< Size of the buffer. */
 
 	uint16_t tsig_rcode;
-	uint64_t tsig_req_time_signed;
+	uint64_t tsig_prev_time_signed;
 	
 	/*! \brief Previous digest or request digest. 
 	 *

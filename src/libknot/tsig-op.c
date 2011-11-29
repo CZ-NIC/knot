@@ -144,7 +144,8 @@ static int knot_tsig_compute_digest(const uint8_t *wire, size_t wire_len,
 	return KNOT_EOK;
 }
 
-static int knot_tsig_check_time_signed(const knot_rrset_t *tsig_rr)
+static int knot_tsig_check_time_signed(const knot_rrset_t *tsig_rr,
+                                       uint64_t prev_time_signed)
 {
 	if (!tsig_rr) {
 		return KNOT_EBADARG;
@@ -164,7 +165,15 @@ static int knot_tsig_check_time_signed(const knot_rrset_t *tsig_rr)
 	time_t curr_time = time(NULL);
 
 	/*!< \todo bleeding eyes. */
-	if (difftime(curr_time, (time_t)time_signed) > fudge) {
+	double diff = difftime(curr_time, (time_t)time_signed);
+
+	if (diff > fudge || diff < -fudge) {
+		return KNOT_TSIG_EBADTIME;
+	}
+
+	diff = difftime((time_t)time_signed, prev_time_signed);
+
+	if (diff < 0) {
 		return KNOT_TSIG_EBADTIME;
 	}
 
@@ -668,6 +677,7 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
                                   const uint8_t *request_mac,
                                   size_t request_mac_len,
                                   const knot_key_t *tsig_key,
+                                  uint64_t prev_time_signed,
                                   int use_times)
 {
 	if (!tsig_rr || !wire || !tsig_key) {
@@ -675,7 +685,7 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
 	}
 
 	/* Check time signed. */
-	int ret = knot_tsig_check_time_signed(tsig_rr);
+	int ret = knot_tsig_check_time_signed(tsig_rr, prev_time_signed);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -797,30 +807,35 @@ int knot_tsig_server_check(const knot_rrset_t *tsig_rr,
                            const knot_key_t *tsig_key)
 {
 	dbg_tsig_verb("tsig_server_check()\n");
-	return knot_tsig_check_digest(tsig_rr, wire, size, NULL, 0, tsig_key, 0);
+	return knot_tsig_check_digest(tsig_rr, wire, size, NULL, 0, tsig_key,
+	                              0, 0);
 }
 
 int knot_tsig_client_check(const knot_rrset_t *tsig_rr,
                            const uint8_t *wire, size_t size,
                            const uint8_t *request_mac, size_t request_mac_len,
-                           const knot_key_t *tsig_key)
+                           const knot_key_t *tsig_key,
+                           uint64_t prev_time_signed)
 {
 	dbg_tsig_verb("tsig_client_check()\n");
 	return knot_tsig_check_digest(tsig_rr, wire, size, request_mac,
-	                              request_mac_len, tsig_key, 0);
+	                              request_mac_len, tsig_key,
+	                              prev_time_signed, 0);
 }
 
 int knot_tsig_client_check_next(const knot_rrset_t *tsig_rr,
                                 const uint8_t *wire, size_t size,
                                 const uint8_t *prev_digest,
                                 size_t prev_digest_len,
-                                const knot_key_t *tsig_key)
+                                const knot_key_t *tsig_key,
+                                uint64_t prev_time_signed)
 {
 //	return knot_tsig_client_check(tsig_rr, wire, size, prev_digest,
 //	                              prev_digest_len, tsig_key);
 	dbg_tsig_verb("tsig_client_check_next()\n");
 	return knot_tsig_check_digest(tsig_rr, wire, size, prev_digest,
-	                              prev_digest_len, tsig_key, 1);
+	                              prev_digest_len, tsig_key,
+	                              prev_time_signed, 1);
 	return KNOT_ENOTSUP;
 }
 
@@ -845,7 +860,7 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 			       KNOT_RRTYPE_TSIG, KNOT_CLASS_ANY, 0);
 	if (!tmp_tsig) {
 		dbg_tsig_detail("TSIG: tmp_tsig = NULL\n");
-		knot_dname_free(key_name);
+		knot_dname_free(&key_name);
 		return KNOT_ENOMEM;
 	}
 

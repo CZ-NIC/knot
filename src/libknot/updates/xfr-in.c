@@ -368,12 +368,14 @@ static int xfrin_check_tsig(knot_packet_t *packet, knot_ns_xfr_t *xfr,
 				ret = knot_tsig_client_check(tsig, 
 					xfr->wire, xfr->wire_size, 
 					xfr->digest, xfr->digest_size,
-					xfr->tsig_key);
+					xfr->tsig_key,
+					xfr->tsig_prev_time_signed);
 			} else {
 				ret = knot_tsig_client_check_next(tsig, 
 					xfr->wire, xfr->wire_size, 
 					xfr->digest, xfr->digest_size,
-					xfr->tsig_key);
+					xfr->tsig_key,
+					xfr->tsig_prev_time_signed);
 			}
 			
 			if (ret != KNOT_EOK) {
@@ -393,6 +395,12 @@ static int xfrin_check_tsig(knot_packet_t *packet, knot_ns_xfr_t *xfr,
 			memcpy(xfr->digest, tsig_rdata_mac(tsig), 
 			       tsig_rdata_mac_length(tsig));
 			xfr->digest_size = tsig_rdata_mac_length(tsig);
+
+			// Extract the time signed from the TSIG and store it
+			// We may rewrite the tsig_req_time_signed field
+			xfr->tsig_prev_time_signed =
+			                tsig_rdata_time_signed(tsig);
+
 			
 		} else { // TSIG not required and not there
 			// just append the wireformat to the TSIG data
