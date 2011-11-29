@@ -3417,12 +3417,12 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 				return KNOT_ERROR;
 			}
 			
-			if (knot_rdata_soa_serial(knot_rrset_rdata(
-			        chgsets->first_soa))
-			    != knot_rdata_soa_serial(knot_rrset_rdata(
-			        zone_soa))) {
+			if (ns_serial_compare(knot_rdata_soa_serial(
+			      knot_rrset_rdata(chgsets->first_soa)),
+			      knot_rdata_soa_serial(knot_rrset_rdata(zone_soa)))
+			    < 1) {
 				dbg_ns("Update did not fit.\n");
-				return KNOT_EAGAIN;
+				return KNOT_EIXFRSPACE;
 			} else {
 				// free changesets
 				dbg_ns("No update needed.\n");

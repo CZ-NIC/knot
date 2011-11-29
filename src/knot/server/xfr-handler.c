@@ -510,7 +510,7 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 
 	/* AXFR-style IXFR. */
 	if (ret == KNOT_ENOIXFR) {
-		dbg_xfr("xfr: Fallback to AXFR/IN.\n");
+		log_server_notice("IXFR/IN - Fallback to AXFR/IN.\n");
 		assert(data->type == XFR_TYPE_IIN);
 		data->type = XFR_TYPE_AIN;
 		ret = knot_ns_process_axfrin(w->ns, data);
