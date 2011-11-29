@@ -2047,9 +2047,10 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 		// save the new previous digest size
 		xfr->digest_size = digest_real_size;
 	} else if (xfr->tsig_rcode != 0) {
+		assert(xfr->tsig_rcode != KNOT_TSIG_RCODE_BADTIME);
 		// add TSIG without signing
 		res = knot_tsig_add(xfr->wire, &real_size, xfr->wire_size,
-		                    xfr->tsig_rcode, xfr->tsig_req_time_signed);
+		                    xfr->tsig_rcode);
 		if (res != KNOT_EOK) {
 			return res;
 		}

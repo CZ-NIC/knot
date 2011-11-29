@@ -508,18 +508,34 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	free(items);
 
 	tsig_rdata_set_alg(tmp_tsig, key->algorithm);
-	tsig_rdata_store_current_time(tmp_tsig);
-	tsig_rdata_set_fudge(tmp_tsig, 300);   /*! Bleeding eyes :-) */
+
+	/* Distinguish BADTIME response. */
+	if (tsig_rcode == KNOT_TSIG_RCODE_BADTIME) {
+		/* Set error */
+		tsig_rdata_set_tsig_error(tmp_tsig, tsig_rcode);
+		/* Set client's time signed into the time signed field. */
+		tsig_rdata_set_time_signed(tmp_tsig, request_time_signed);
+
+		/* Store current time into Other data. */
+		uint8_t time_signed[3];
+		time_t curr_time = time(NULL);
+
+		/*! \todo bleeding eyes. */
+		knot_wire_write_u48(time_signed, (uint64_t)curr_time);
+
+		tsig_rdata_set_other_data(tmp_tsig, 6, time_signed);
+	} else {
+		tsig_rdata_store_current_time(tmp_tsig);
+		tsig_rdata_set_tsig_error(tmp_tsig, 0);
+
+		/* Set other len. */
+		tsig_rdata_set_other_data(tmp_tsig, 0, 0);
+	}
+
+	tsig_rdata_set_fudge(tmp_tsig, 300);   /*! \todo Bleeding eyes :-) */
 
 	/* Set original ID */
 	tsig_rdata_set_orig_id(tmp_tsig, knot_wire_get_id(msg));
-
-	/* Set error */
-	/*! \todo [TSIG] Set error and other data if appropriate. */
-	tsig_rdata_set_tsig_error(tmp_tsig, 0);
-
-	/* Set other len. */
-	tsig_rdata_set_other_data(tmp_tsig, 0, 0);
 
 	uint8_t digest_tmp[KNOT_TSIG_MAX_DIGEST_SIZE];
 	size_t digest_tmp_len = 0;
@@ -809,7 +825,7 @@ int knot_tsig_client_check_next(const knot_rrset_t *tsig_rr,
 }
 
 int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
-                  uint16_t tsig_rcode, uint64_t req_time_signed)
+                  uint16_t tsig_rcode)
 {
 	/*! \todo Revise!! */
 
@@ -817,6 +833,7 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 		return KNOT_EBADARG;
 	}
 
+	/*! \todo What key to use, when we do not sign? Does this even work? */
 	knot_dname_t *key_name = knot_dname_new_from_str(".", 1, NULL);
 	if (!key_name) {
 		dbg_tsig_detail("TSIG: key_name = NULL\n");
@@ -860,15 +877,16 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 
 	int ret = knot_rdata_set_items(rdata, items, desc->length);
 	if (ret != KNOT_EOK) {
-		dbg_tsig_detail("TSIG: rdata_set_items returned %s\n", knot_strerror(ret));
+		dbg_tsig_detail("TSIG: rdata_set_items returned %s\n",
+		                knot_strerror(ret));
 		knot_rrset_deep_free(&tmp_tsig, 1, 1, 1);
 		return ret;
 	}
 	free(items);
 
 	//tsig_rdata_set_alg(tmp_tsig, key->algorithm);
-	tsig_rdata_store_current_time(req_time_signed);
-	tsig_rdata_set_fudge(tmp_tsig, 300);   /*! Bleeding eyes :-) */
+	tsig_rdata_set_time_signed(tmp_tsig, 0); /*! \todo What time to save? */
+	tsig_rdata_set_fudge(tmp_tsig, 300);   /*! \todo Bleeding eyes :-) */
 
 	/* Set original ID */
 	tsig_rdata_set_orig_id(tmp_tsig, knot_wire_get_id(msg));
@@ -876,12 +894,9 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	/* Set error */
 	tsig_rdata_set_tsig_error(tmp_tsig, tsig_rcode);
 
-	if (tsig_rcode == KNOT_TSIG_RCODE_BADTIME) {
-		/*! \todo Set appropriate data to Other data. */
-	} else {
-		/* Set other len. */
-		tsig_rdata_set_other_data(tmp_tsig, 0, 0);
-	}
+	assert(tsig_rcode != KNOT_TSIG_RCODE_BADTIME);
+	/* Set other len. */
+	tsig_rdata_set_other_data(tmp_tsig, 0, 0);
 
 	size_t tsig_wire_len = msg_max_len - *msg_len;
 	int rr_count = 0;
