@@ -116,6 +116,8 @@ unittests_libknot_SOURCES =			\
 	tests/libknot/libknot/rdata_tests.h	\
 	tests/libknot/libknot/rrset_tests.c	\
 	tests/libknot/libknot/rrset_tests.h	\
+	tests/libknot/libknot/tsig_tests.c	\
+	tests/libknot/libknot/tsig_tests.h	\
 	tests/libknot/libknot/zone_tests.c	\
 	tests/libknot/libknot/zone_tests.h	\
 	tests/libknot/libknot/zone_tree_tests.h\
