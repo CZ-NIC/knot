@@ -251,3 +251,7 @@ src/libknot/tsig.h
 src/libknot/tsig.c
 src/libknot/tsig-op.c
 src/libknot/tsig-op.h
+src/libknot/util/conv.c
+src/libknot/util/conv.h
+src/knot/zone/semantic-check.c
+src/knot/zone/semantic-check.h
