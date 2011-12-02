@@ -3363,16 +3363,11 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 	 *       digest.
 	 */
 
-	int ret = xfrin_process_ixfr_packet(xfr/*xfr->wire, xfr->wire_size,
-	                                   (knot_changesets_t **)(&xfr->data)*/);
+	int ret = xfrin_process_ixfr_packet(xfr);
 	
 	if (ret == XFRIN_RES_FALLBACK) {
 		dbg_ns("ns_process_ixfrin: Fallback to AXFR.\n");
-		assert(xfr->data == NULL);
-//		dbg_ns("xfr->zone = %p\n", xfr->zone);
-//		dbg_ns("Zone name: %.*s\n", 
-//		              xfr->zone->name->size, xfr->zone->name->name);
-//		assert(xfr->zone == NULL);
+		knot_free_changesets((knot_changesets_t **)&xfr->data);
 		knot_packet_free(&xfr->query);
 		return KNOT_ENOIXFR;
 	}
@@ -3421,8 +3416,20 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 			      knot_rrset_rdata(chgsets->first_soa)),
 			      knot_rdata_soa_serial(knot_rrset_rdata(zone_soa)))
 			    < 1) {
-				dbg_ns("Update did not fit.\n");
-				return KNOT_EIXFRSPACE;
+				if ((xfr->flags & XFR_FLAG_UDP) > 0) {
+					// IXFR over UDP
+					dbg_ns("Update did not fit.\n");
+					return KNOT_EIXFRSPACE;
+				} else {
+					// fallback to AXFR
+					dbg_ns("ns_process_ixfrin: "
+					       "Fallback to AXFR.\n");
+					knot_free_changesets(
+					      (knot_changesets_t **)&xfr->data);
+					knot_packet_free(&xfr->query);
+					return KNOT_ENOIXFR;
+				}
+
 			} else {
 				// free changesets
 				dbg_ns("No update needed.\n");

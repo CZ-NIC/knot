@@ -904,8 +904,7 @@ static int xfrin_parse_first_rr(knot_packet_t **packet, const uint8_t *pkt,
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_process_ixfr_packet(/*const uint8_t *pkt, size_t size,
-                              knot_changesets_t **chs*/knot_ns_xfr_t *xfr)
+int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 {
 	size_t size = xfr->wire_size;
 	const uint8_t *pkt = xfr->wire;
@@ -922,8 +921,6 @@ int xfrin_process_ixfr_packet(/*const uint8_t *pkt, size_t size,
 	}
 
 	knot_packet_t *packet = NULL;
-//	knot_rrset_t *soa1 = NULL;
-//	knot_rrset_t *soa2 = NULL;
 	knot_rrset_t *rr = NULL;
 
 	int ret;
@@ -977,13 +974,16 @@ int xfrin_process_ixfr_packet(/*const uint8_t *pkt, size_t size,
 		
 		/*
 		 * If there is no other records in the response than the SOA, it
-		 * means one of these two cases:
+		 * means one of these three cases:
 		 *
 		 * 1) The server does not have newer zone than ours.
 		 *    This is indicated by serial equal to the one of our zone.
 		 * 2) The server wants to send the transfer but is unable to fit
 		 *    it in the packet. This is indicated by serial different 
-		 *    (newer) from the one of our zone. 
+		 *    (newer) from the one of our zone, but applies only for
+		 *    IXFR/UDP.
+		 * 3) The master is weird and sends only SOA in the first packet
+		 *    of a fallback to AXFR answer (PowerDNS does this).
 		 *
 		 * The serials must be compared in other parts of the server, so
 		 * just indicate that the answer contains only one SOA.
@@ -996,8 +996,6 @@ int xfrin_process_ixfr_packet(/*const uint8_t *pkt, size_t size,
 			knot_rrset_deep_free(&rr, 1, 1, 1);
 			dbg_xfrin("Fallback to AXFR.\n");
 			ret = XFRIN_RES_FALLBACK;
-			knot_free_changesets(chs);
-			xfr->data = 0;
 			return ret;
 		}
 	} else {
