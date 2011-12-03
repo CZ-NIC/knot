@@ -192,6 +192,7 @@ static void conf_update_hooks(conf_t *conf)
 static int conf_process(conf_t *conf)
 {
 	// Check
+	int ret = 0;
 	if (!conf->storage) {
 		conf->storage = strdup("/var/lib/"PROJECT_EXEC);
 	}
@@ -240,29 +241,44 @@ static int conf_process(conf_t *conf)
 		zone->file = strcpath(zone->file);
 
 		// Create zone db filename
+		size_t zname_len = strlen(zone->name);
 		size_t stor_len = strlen(conf->storage);
-		size_t size = stor_len + strlen(zone->name) + 4; // db/,\0
+		size_t size = stor_len + zname_len + 4; // db/,\0
 		char *dest = malloc(size);
-		strcpy(dest, conf->storage);
+		if (dest == NULL) {
+			zone->db = NULL; /* Not enough memory. */
+			ret = KNOTD_ENOMEM; /* Error report. */
+			continue;
+		}
+		
+		/* Since we have already allocd dest to accomodate
+		 * storage/zname length strcpy is safe. */
+		strncpy(dest, conf->storage, stor_len + 1);
 		if (conf->storage[stor_len - 1] != '/') {
-			strcat(dest, "/");
+			strncat(dest, "/", 1);
 		}
 
-		strcat(dest, zone->name);
-		strcat(dest, "db");
+		strncat(dest, zone->name, zname_len);
+		strncat(dest, "db", 2);
 		zone->db = dest;
 
 		// Create IXFR db filename
 		stor_len = strlen(conf->storage);
-		size = stor_len + strlen(zone->name) + 9; // diff.db/,\0
+		size = stor_len + zname_len + 9; // diff.db/,\0
 		dest = malloc(size);
-		strcpy(dest, conf->storage);
+		if (dest == NULL) {
+			zone->ixfr_db = NULL; /* Not enough memory. */
+			ret = KNOTD_ENOMEM; /* Error report. */
+			continue;
+		}
+		strncpy(dest, conf->storage, stor_len + 1);
 		if (conf->storage[stor_len - 1] != '/') {
-			strcat(dest, "/");
+			strncat(dest, "/", 1);
 		}
 
-		strcat(dest, zone->name);
-		strcat(dest, "diff.db");
+		const char *dbext = "diff.db";
+		strncat(dest, zone->name, zname_len);
+		strncat(dest, dbext, strlen(dbext));
 		zone->ixfr_db = dest;
 	}
 
@@ -384,10 +400,6 @@ static int conf_strparser(conf_t *conf, const char *src)
 	// {
 	// Hook new configuration
 	new_config = conf;
-	if (src == 0) {
-		pthread_mutex_unlock(&_parser_lock);
-		return KNOTD_ENOENT;
-	}
 
 	// Parse config
 	_parser_res = KNOTD_EOK;
@@ -662,18 +674,19 @@ int conf_open(const char* path)
 char* strcdup(const char *s1, const char *s2)
 {
 	if (!s1 || !s2) {
-		return 0;
+		return NULL;
 	}
 	
 	size_t slen = strlen(s1);
-	size_t nlen = slen + strlen(s2) + 1;
+	size_t s2len = strlen(s2);
+	size_t nlen = slen + s2len + 1;
 	char* dst = malloc(nlen);
-	if (!dst) {
-		return 0;
+	if (dst == NULL) {
+		return NULL;
 	}
 
 	memcpy(dst, s1, slen);
-	strcpy(dst + slen, s2); // With trailing '\0'
+	strncpy(dst + slen, s2len + 1); // With trailing '\0'
 	return dst;
 }
 
@@ -691,8 +704,8 @@ char* strcpath(char *path)
 	}
 
 	// Expand '~'
-	char* tild_p = strchr(path,'~');
-	if (tild_p != 0) {
+	char* remainder = strchr(path,'~');
+	if (remainder != NULL) {
 		// Get full path
 		char *tild_exp = getenv("HOME");
 		size_t tild_len = strlen(tild_exp);
@@ -703,9 +716,13 @@ char* strcpath(char *path)
 		// Expand
 		char *npath = malloc(plen + tild_len + 1);
 		npath[0] = '\0';
-		strncpy(npath, path, (size_t)(tild_p - path));
-		strcat(npath, tild_exp);
-		strcat(npath, tild_p + 1);
+		strncpy(npath, path, (size_t)(remainder - path));
+		strncat(npath, tild_exp, tild_len);
+		
+		// Append remainder
+		++remainder;
+		size_t remainder_len = strlen(remainder);
+		strncat(npath, remainder, remainder_len);
 		free(path);
 		path = npath;
 	}
