@@ -32,10 +32,8 @@
 #include "libknot/nameserver/name-server.h"
 #include "knot/stat/stat.h"
 #include "libknot/zone/zonedb.h"
-#include "knot/zone/zone-load.h"
 #include "libknot/dname.h"
 #include "knot/conf/conf.h"
-#include "knot/server/zones.h"
 
 /*! \brief Event scheduler loop. */
 static int evsched_run(dthread_t *thread)
@@ -49,11 +47,6 @@ static int evsched_run(dthread_t *thread)
 	/* Run event loop. */
 	event_t *ev = 0;
 	while((ev = evsched_next(s))) {
-
-		/* Error. */
-		if (!ev) {
-			return KNOTD_ERROR;
-		}
 
 		/* Process termination event. */
 		if (ev->type == EVSCHED_TERM) {
@@ -128,26 +121,31 @@ static void server_remove_iface(iface_t *iface)
 static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 {
 	/* Initialize interface. */
+	int ret = 0;
+	int sock = 0;
 	char errbuf[128];
 	int opt = 1024 * 1024;
 	int snd_opt = 1024 * 1024;
 	memset(new_if, 0, sizeof(iface_t));
 
 	/* Create UDP socket. */
-	int sock = socket_create(cfg_if->family, SOCK_DGRAM);
-	if (sock <= 0) {
+	ret = socket_create(cfg_if->family, SOCK_DGRAM);
+	if (ret < 0) {
 		strerror_r(errno, errbuf, sizeof(errbuf));
 		log_server_error("Could not create UDP socket: %s.\n",
 				 errbuf);
-		return sock;
+		return ret;
+	} else {
+		sock = ret;
 	}
-	if (socket_bind(sock, cfg_if->family,
-	                cfg_if->address, cfg_if->port) < 0) {
+	
+	ret = socket_bind(sock, cfg_if->family, cfg_if->address, cfg_if->port);
+	if (ret < 0) {
 		socket_close(sock);
 		log_server_error("Could not bind to "
 		                 "UDP interface %s port %d.\n",
 		                 cfg_if->address, cfg_if->port);
-		return knot_map_errno(EACCES, EINVAL, ENOMEM);
+		return ret;
 	}
 
 	new_if->fd[UDP_ID] = sock;
@@ -163,14 +161,15 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	}
 
 	/* Create TCP socket. */
-	int ret = 0;
-	sock = socket_create(cfg_if->family, SOCK_STREAM);
-	if (sock <= 0) {
+	ret = socket_create(cfg_if->family, SOCK_STREAM);
+	if (ret < 0) {
 		socket_close(new_if->fd[UDP_ID]);
 		strerror_r(errno, errbuf, sizeof(errbuf));
 		log_server_error("Could not create TCP socket: %s.\n",
 				 errbuf);
-		return sock;
+		return ret;
+	} else {
+		sock = ret;
 	}
 
 	ret = socket_bind(sock, cfg_if->family, cfg_if->address, cfg_if->port);
@@ -357,7 +356,7 @@ static int server_bind_handlers(server_t *server)
 			h->iface = iface;
 
 			/* Save pointer. */
-			rcu_set_pointer(&iface->handler[UDP_ID], h);
+			iface->handler[UDP_ID] = h;  /* No need for cmpxchg */
 			dbg_server("server: creating UDP socket handlers for '%s:%d'\n",
 			             iface->addr, iface->port);
 
@@ -372,7 +371,7 @@ static int server_bind_handlers(server_t *server)
 			h->iface = iface;
 
 			/* Save pointer. */
-			rcu_set_pointer(&iface->handler[TCP_ID], h);
+			iface->handler[TCP_ID] = h; /* No need for cmpxchg */
 			dbg_server("server: creating TCP socket handlers for '%s:%d'\n",
 			             iface->addr, iface->port);
 		}

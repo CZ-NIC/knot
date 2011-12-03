@@ -139,7 +139,7 @@ int notify_create_response(knot_packet_t *request, uint8_t *buffer,
 	// TODO: copy the SOA in Answer section
 	uint8_t *wire = NULL;
 	size_t wire_size = 0;
-	int rc = knot_packet_to_wire(response, &wire, &wire_size);
+	rc = knot_packet_to_wire(response, &wire, &wire_size);
 	if (rc != KNOT_EOK) {
 		knot_packet_free(&response);
 		return rc;
