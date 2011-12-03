@@ -90,6 +90,7 @@ static inline int fwrite_to_stream(const void *src,
 		return KNOT_EOK;
 	} else {
 		free(*stream);
+		*stream = NULL;
 		return KNOT_ENOMEM;
 	}
 
