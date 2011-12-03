@@ -574,7 +574,7 @@ int dt_resize(dt_unit_t *unit, int size)
 		/* Thread is already joined and flagged, but anyway... */
 		lock_thread_rw(thread);
 		thread->state = ThreadJoined;
-		ulock_thread_rw(thread);
+		unlock_thread_rw(thread);
 
 		// Delete thread
 		dt_delete_thread(&thread);

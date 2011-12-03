@@ -686,7 +686,7 @@ char* strcdup(const char *s1, const char *s2)
 	}
 
 	memcpy(dst, s1, slen);
-	strncpy(dst + slen, s2len + 1); // With trailing '\0'
+	strncpy(dst + slen, s2, s2len + 1); // With trailing '\0'
 	return dst;
 }
 
