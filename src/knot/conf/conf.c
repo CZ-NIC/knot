@@ -694,7 +694,7 @@ char* strcpath(char *path)
 {
 	// NULL path
 	if (!path) {
-		return 0;
+		return NULL;
 	}
 	
 	// Remote trailing slash
@@ -707,14 +707,27 @@ char* strcpath(char *path)
 	char* remainder = strchr(path,'~');
 	if (remainder != NULL) {
 		// Get full path
-		char *tild_exp = getenv("HOME");
-		size_t tild_len = strlen(tild_exp);
+		char *tild_exp_unsafe = getenv("HOME");
+		if (tild_exp_unsafe == NULL) {
+			return NULL;
+		}
+		// Sanitize
+		size_t tild_len = strlen(tild_exp_unsafe);
+		char *tild_exp = malloc(tild_len);
+		if (tild_exp == NULL) {
+			return NULL;
+		}
+		strncpy(tild_exp, tild_exp_unsafe, tild_len + 1);
 		if (tild_exp[tild_len - 1] == '/') {
 			tild_exp[--tild_len] = '\0';
 		}
 
 		// Expand
 		char *npath = malloc(plen + tild_len + 1);
+		if (npath == NULL) {
+			free(tild_exp);
+			return NULL;
+		}
 		npath[0] = '\0';
 		strncpy(npath, path, (size_t)(remainder - path));
 		strncat(npath, tild_exp, tild_len);
@@ -725,6 +738,7 @@ char* strcpath(char *path)
 		strncat(npath, remainder, remainder_len);
 		free(path);
 		path = npath;
+		free(tild_exp);
 	}
 
 	return path;

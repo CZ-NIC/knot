@@ -260,8 +260,11 @@ int log_msg(logsrc_t src, int level, const char *msg, ...)
 
 	/* Prepend prefix. */
 	int plen = strlen(prefix);
+	if (plen > buflen) {
+		return KNOTD_ENOMEM;
+	}
 	if (plen > 0) {
-		strcpy(buf, prefix);
+		strncpy(buf, prefix, plen + 1);
 		buf += plen;
 		buflen -= plen;
 	}
