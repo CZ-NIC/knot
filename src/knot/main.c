@@ -24,7 +24,6 @@
 #include "knot/common.h"
 #include "knot/other/error.h"
 #include "knot/server/server.h"
-#include "zcompile/zcompile.h"
 #include "knot/ctl/process.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/logconf.h"
@@ -123,6 +122,7 @@ int main(int argc, char **argv)
 
 	// Register service and signal handler
 	struct sigaction emptyset;
+	memset(&emptyset, 0, sizeof(struct sigaction));
 	emptyset.sa_handler = interrupt_handle;
 	sigemptyset(&emptyset.sa_mask);
 	emptyset.sa_flags = 0;
@@ -172,7 +172,7 @@ int main(int argc, char **argv)
 
 		// Append ending slash
 		if (cwbuf[cwbuflen - 1] != '/') {
-			cwbuf = strcat(cwbuf, "/");
+			cwbuf = strncat(cwbuf, "/", 1);
 		}
 
 		// Assemble path to config file
@@ -263,7 +263,7 @@ int main(int argc, char **argv)
 			if (sig_req_reload) {
 				log_server_info("Reloading configuration...\n");
 				sig_req_reload = 0;
-				int cf_ret = cf_ret = conf_open(config_fn);
+				int cf_ret = conf_open(config_fn);
 				switch (cf_ret) {
 				case KNOTD_EOK:
 					log_server_info("Configuration "
