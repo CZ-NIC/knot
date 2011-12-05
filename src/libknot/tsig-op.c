@@ -290,7 +290,7 @@ static int knot_tsig_wire_write_timers(uint8_t *wire,
 	return KNOT_EOK;
 }
 
-int knot_tsig_create_sign_wire(const uint8_t *msg, size_t msg_len,
+static int knot_tsig_create_sign_wire(const uint8_t *msg, size_t msg_len,
 				      /*size_t msg_max_len, */const uint8_t *request_mac,
 		                      size_t request_mac_len,
 		                      uint8_t *digest, size_t *digest_len,
