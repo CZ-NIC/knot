@@ -22,17 +22,17 @@
 #include <stdarg.h>
 
 #define NO_PLAN          -1
-#define ok(...)          ok_at_loc(__FILE__, __LINE__, __VA_ARGS__, NULL)
+#define ok(...)          ok_at_loc(__FILE__, __LINE__, 1, __VA_ARGS__, NULL)
 #define pass(...)        ok(1, ## __VA_ARGS__)
 #define fail(...)        ok(0, ## __VA_ARGS__)
 #define is(...)          is_at_loc(__FILE__, __LINE__, __VA_ARGS__, NULL)
 #define isnt(...)        isnt_at_loc(__FILE__, __LINE__, __VA_ARGS__, NULL)
 #define cmp_ok(...)      cmp_ok_at_loc(__FILE__, __LINE__, __VA_ARGS__, NULL)
 
-int     vok_at_loc      (const char *file, int line, int test, const char *fmt,
+int     vok_at_loc      (const char *file, int line, int test, int verbose, const char *fmt,
                          va_list args);
 void    plan            (int tests);
-int     ok_at_loc       (const char *file, int line, int test, const char *fmt,
+int     ok_at_loc       (const char *file, int line, int test, int verbose, const char *fmt,
                          ...);
 int     diag            (const char *fmt, ...);
 int     note            (const char *fmt, ...);
@@ -41,9 +41,10 @@ void    skippy          (int n, const char *fmt, ...);
 void    ctodo           (int ignore, const char *fmt, ...);
 void    cendtodo        (void);
 int     is_at_loc       (const char *file, int line, const char *got,
-                         const char *expected, const char *fmt, ...);
+                         const char *expected,
+                         const char *fmt, ...);
 int     isnt_at_loc     (const char *file, int line, const char *got,
-                         const char *expected, const char *fmt, ...);
+                         const char *expected, int verbose, const char *fmt, ...);
 int     cmp_ok_at_loc   (const char *file, int line, int a, const char *op,
                          int b, const char *fmt, ...);
 
@@ -55,6 +56,7 @@ int     cmp_ok_at_loc   (const char *file, int line, int a, const char *op,
 #define unlike(...) like_at_loc(0, __FILE__, __LINE__, __VA_ARGS__, NULL)
 int     like_at_loc     (int for_match, const char *file, int line,
                          const char *got, const char *expected,
+                         int verbose,
                          const char *fmt, ...);
 #endif
 
