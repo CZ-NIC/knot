@@ -41,14 +41,14 @@ unit_api tsig_tests_api = {
 	&knot_tsig_tests_run     //! Run scheduled tests
 };
 
-static const int KNOT_TSIG_TEST_COUNT = 12;
+static const int KNOT_TSIG_TEST_COUNT = 6;
 
 static int test_knot_tsig_sign()
 {
 	int errors = 0;
 	/* Test bad arguments. */
 	int lived = 0;
-	lives_ok(
+	lives_ok_silent({
 		int ret = knot_tsig_sign(NULL, NULL, 0, NULL, 0, NULL,
 		               NULL, NULL, 0, 0);
 		if (ret != KNOT_EBADARG) {
@@ -101,9 +101,14 @@ static int test_knot_tsig_sign()
 			errors++;
 		}
 		lived = 1;
-	);
+	}, NULL);
 
 	errors += !lived;
+	
+	if (errors) {
+		assert(lived == 0);
+		diag("NULL tests crashed!");
+	}
 
 	/* Create some dummy variables. */
 	uint8_t msg[1024]; /* Should be random. */
@@ -145,7 +150,7 @@ static int test_knot_tsig_sign_next()
 	int errors = 0;
 	/* Test bad arguments. */
 	int lived = 0;
-	lives_ok(
+	lives_ok_silent({
 		int ret = knot_tsig_sign_next(NULL, NULL, 0, NULL, 0, NULL,
 		               NULL, NULL);
 		if (ret != KNOT_EBADARG) {
@@ -198,9 +203,13 @@ static int test_knot_tsig_sign_next()
 			errors++;
 		}
 		lived = 1;
-	);
+	}, NULL);
 
 	errors += !lived;
+	
+	if (errors) {
+		diag("NULL tests crashed!");
+	}
 	
 	/* Create some dummy variables. */
 	uint8_t msg[1024]; /* Should be random. */
@@ -209,7 +218,7 @@ static int test_knot_tsig_sign_next()
 	uint8_t *prev_digest = NULL;
 	size_t prev_digest_len = 0;
 	uint8_t digest[512];
-	size_t digest_len;
+	size_t digest_len = 512;
 
 	knot_key_t key;
 	key.algorithm = KNOT_TSIG_ALG_HMAC_MD5;
@@ -219,10 +228,11 @@ static int test_knot_tsig_sign_next()
 	key.secret_size = strlen("abcdefgh");
 
 	/* Test not enough space for wire. */
-	int ret = knot_tsig_sign_next(msg, &msg_len, 520, prev_digest, prev_digest_len,
+	int ret = knot_tsig_sign_next(msg, &msg_len, 513, prev_digest, prev_digest_len,
 	               digest, &digest_len, &key);
 	if (ret != KNOT_ESPACE) {
-		diag("knot_tsig_sign did not return error when given too litle space for wire!");
+		diag("knot_tsig_sign_next did not return error when given too litle space for wire!"
+		     " returned: %s", knot_strerror(ret));
 		errors++;
 	}
 
@@ -230,7 +240,8 @@ static int test_knot_tsig_sign_next()
 	ret = knot_tsig_sign_next(msg, &msg_len, msg_max_len, prev_digest, prev_digest_len,
 	               digest, &digest_len, &key);
 	if (ret != KNOT_EOK) {
-		diag("knot_tsig_sign failed when given right arguments!");
+		diag("knot_tsig_sign_next failed when given right arguments!"
+		     " returned: %s", knot_strerror(ret));
 		errors++;
 	}
 	
@@ -244,7 +255,7 @@ static int test_knot_tsig_server_check()
 	int errors = 0;
 	/* Test bad arguments. */
 	int lived = 0;
-	lives_ok(
+	lives_ok_silent({
 		int ret = knot_tsig_server_check(NULL, NULL, 0, NULL);
 		if (ret != KNOT_EBADARG) {
 			diag("NULL argument did not return KNOT_EBADARG!");
@@ -260,9 +271,14 @@ static int test_knot_tsig_server_check()
 			errors++;
 		}
 		lived = 1;
-	);
+	}, NULL);
 		
 	errors += !lived;
+	
+	if (errors) {
+		diag("NULL tests crashed!");
+	}
+	
 	knot_dname_t *tsig_owner =
 		knot_dname_new_from_str("dummy.key.name.",
 	                                strlen("dummy.key.name."), NULL);
@@ -290,7 +306,7 @@ static int test_knot_tsig_server_check()
 	tsig_rdata_set_alg_name(tsig_rr, alg_name);
 	/* Get current time and save it to TSIG rr. */
 	time_t current_time = time(NULL);
-	tsig_rdata_set_time_signed(tsig_rr, current_time);	
+	tsig_rdata_set_time_signed(tsig_rr, current_time);
 	tsig_rdata_set_fudge(tsig_rr, 300);
 	tsig_rdata_set_orig_id(tsig_rr, 0);
 	tsig_rdata_set_tsig_error(tsig_rr, 0);
@@ -303,7 +319,8 @@ static int test_knot_tsig_server_check()
 	/*!< \note Since there are no meaningful data in the wire, the function should fail. */
 	int ret = knot_tsig_server_check(tsig_rr, wire, wire_size, &key);
 	if (ret != KNOT_TSIG_EBADSIG) {
-		diag("tsig_server_check did not return TSIG_EBADSIG when given random wire!");
+		diag("tsig_server_check did not return TSIG_EBADSIG when given random wire!"
+		     " returned: %s", knot_strerror(ret));
 		errors++;
 	}
 	
@@ -323,7 +340,7 @@ static int test_knot_tsig_client_check()
 	int errors = 0;
 	/* Test bad arguments. */
 	int lived = 0;
-	lives_ok(
+	lives_ok({
 		int ret = knot_tsig_client_check(NULL, NULL, 0, NULL,
 	                                         0, NULL, 0);
 		if (ret != KNOT_EBADARG) {
@@ -358,9 +375,14 @@ static int test_knot_tsig_client_check()
 			errors++;
 		}
 		lived = 1;
-	);
+	}, NULL);
 		
 	errors += !lived;
+	
+	if (errors) {
+		diag("NULL tests crashed!");
+	}
+	
 	knot_dname_t *tsig_owner =
 		knot_dname_new_from_str("dummy.key.name.",
 	                                strlen("dummy.key.name."), NULL);
@@ -428,7 +450,7 @@ static int test_knot_tsig_test_tsig_add()
 	
 	/* Faulty arguments. */
 	int lived = 0;
-	lives_ok(
+	lives_ok({
 		int ret = knot_tsig_add(NULL, NULL, 0, 0);
 		if (ret != KNOT_EBADARG) {
 			diag("tsig_add did not return EBADARG when given NULL parameters.");
@@ -443,16 +465,21 @@ static int test_knot_tsig_test_tsig_add()
 			errors++;
 		}
 		lived = 1;
-	);
+	}, NULL);
 	
 	errors += !lived;
 	
-	size_t wire_size = 512;
-	uint8_t wire[wire_size];
+	if (errors) {
+		diag("NULL tests failed!");
+	}
 	
-	int ret = knot_tsig_add(wire, &wire_size, wire_size, 0);
+	size_t wire_size = 512;
+	uint8_t wire[wire_size * 2];
+	
+	int ret = knot_tsig_add(wire, &wire_size, wire_size * 2, 0);
 	if (ret != KNOT_EOK) {
-		diag("tsig_add did not return EOK when given valid parameters.");
+		diag("tsig_add did not return EOK when given valid parameters."
+		     " returned: %s", knot_strerror(ret));
 		errors++;
 	}
 	
