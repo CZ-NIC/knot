@@ -54,27 +54,30 @@ int
 vok_at_loc (const char *file, int line, int test, int verbose, const char *fmt,
             va_list args)
 {
-    char *name = vstrdupf(fmt, args);
-    printf("%sok %d", test ? "" : "not ", ++current_test);
-    if (*name)
-        printf(" - %s", name);
-    if (todo_mesg) {
-        printf(" # TODO");
-        if (*todo_mesg)
-            printf(" %s", todo_mesg);
+    if (verbose) {
+	    char *name = vstrdupf(fmt, args);
+	    printf("%sok %d", test ? "" : "not ", ++current_test);
+	    if (*name)
+	        printf(" - %s", name);
+	    if (todo_mesg) {
+	        printf(" # TODO");
+	        if (*todo_mesg)
+	            printf(" %s", todo_mesg);
+	    }
+	    printf("\n");
+	    if (!test) {
+	        if (*name)
+	            diag("  Failed%s test '%s'\n  at %s line %d.",
+	                todo_mesg ? " (TODO)" : "", name, file, line);
+	        else
+	            diag("  Failed%s test at %s line %d.",
+	                todo_mesg ? " (TODO)" : "", file, line);
+	        if (!todo_mesg)
+	            failed_tests++;
+	    
+	    free(name);
+	}
     }
-    printf("\n");
-    if (!test) {
-        if (*name)
-            diag("  Failed%s test '%s'\n  at %s line %d.",
-                todo_mesg ? " (TODO)" : "", name, file, line);
-        else
-            diag("  Failed%s test at %s line %d.",
-                todo_mesg ? " (TODO)" : "", file, line);
-        if (!todo_mesg)
-            failed_tests++;
-    }
-    free(name);
     return test;
 }
 

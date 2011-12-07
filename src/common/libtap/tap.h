@@ -66,8 +66,9 @@ int     like_at_loc     (int for_match, const char *file, int line,
 #define todo(...)        ctodo(0, ## __VA_ARGS__, NULL)
 #define endtodo          cendtodo()
 
-#define dies_ok(code, ...)  dies_ok_common(code, 1, ## __VA_ARGS__)
-#define lives_ok(code, ...) dies_ok_common(code, 0, ## __VA_ARGS__)
+#define dies_ok(code, ...)  dies_ok_common(code, 1, 1, ## __VA_ARGS__)
+#define lives_ok(code, ...) dies_ok_common(code, 0, 1, ## __VA_ARGS__)
+#define lives_ok_silent(code, ...) dies_ok_common(code, 0, 0, ## __VA_ARGS__)
 
 #ifdef _WIN32
 #define dies_ok_common(...) \
@@ -77,7 +78,7 @@ int     like_at_loc     (int for_match, const char *file, int line,
 #include <sys/types.h>
 #include <sys/wait.h>
 int tap_test_died (int status);
-#define dies_ok_common(code, for_death, ...)                \
+#define dies_ok_common(code, for_death, verbose, ...)                \
     do {                                                    \
         tap_test_died(1);                                   \
         int cpid = fork();                                  \
@@ -97,7 +98,7 @@ int tap_test_died (int status);
         }                                                   \
         int it_died = tap_test_died(0);                     \
         if (!it_died) {code}                                \
-        ok(for_death ? it_died : !it_died, ## __VA_ARGS__); \
+        ok_at_loc(__FILE__, __LINE__, verbose, for_death ? it_died : !it_died, ## __VA_ARGS__); \
     } while (0)
 #endif
 #endif
