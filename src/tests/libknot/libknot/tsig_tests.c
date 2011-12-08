@@ -17,16 +17,13 @@
 #include <assert.h>
 #include <time.h>
 
-#include "tests/libknot/libknot/rrset_tests.h"
 #include "libknot/common.h"
-#include "libknot/util/descriptor.h"
 #include "libknot/rrset.h"
+#include "libknot/packet/response.h"
 #include "libknot/dname.h"
 #include "libknot/util/error.h"
+#include "libknot/util/wire.h"
 #include "libknot/tsig-op.h"
-#include "libknot/util/utils.h"
-#include "libknot/zone/node.h"
-#include "libknot/util/debug.h"
 
 #include "tsig_tests.h"
 
@@ -106,13 +103,51 @@ static int test_knot_tsig_sign()
 	errors += !lived;
 	
 	if (errors) {
-		assert(lived == 0);
 		diag("NULL tests crashed!");
 	}
 
 	/* Create some dummy variables. */
-	uint8_t msg[1024]; /* Should be random. */
-	size_t msg_len = 512;
+	/* One NS rrset. */
+	knot_dname_t *ns_dname = knot_dname_new_from_str("test.cz.",
+	                                                 strlen("test.cz."),
+	                                                 NULL);
+	assert(ns_dname);
+	knot_rrset_t *ns_rrset = knot_rrset_new(ns_dname, KNOT_RRTYPE_NS, 
+	                                        KNOT_CLASS_IN, 3600);
+	assert(ns_rrset);
+	knot_packet_t *packet = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
+	assert(packet);
+	
+	/* Add rdata. */
+	knot_rdata_t *ns_rdata = knot_rdata_new();
+	assert(ns_rdata);
+	
+	knot_rdata_item_t items[1];
+	items[0].dname = ns_dname;
+	
+	int ret = knot_rdata_set_items(ns_rdata, items, 1);
+	assert(ret == KNOT_EOK);
+	ret = knot_rrset_add_rdata(ns_rrset, ns_rdata);
+	assert(ret == KNOT_EOK);
+	
+	knot_packet_set_max_size(packet, 2048);
+	
+	if ((ret = knot_response_add_rrset_answer(packet, ns_rrset,
+	                                   0, 0, 0)) != KNOT_EOK) {
+		diag("Could not add rrset to packet!"
+		     " %s\n", knot_strerror(ret));
+		/* No point in continuing. */
+		return 0;
+	}
+
+	uint8_t *msg = NULL;
+	size_t msg_len;
+	ret = knot_packet_to_wire(packet, &msg, &msg_len);
+	assert(ret == KNOT_EOK);
+	
+	uint8_t msg_copy[msg_len];
+	memcpy(msg, msg, msg_len);
+	
 	size_t msg_max_len = 1024;
 	uint8_t *request_mac = NULL;
 	size_t request_mac_length = 0;
@@ -127,7 +162,7 @@ static int test_knot_tsig_sign()
 	key.secret_size = strlen("abcdefgh");
 
 	/* Test not enough space for wire. */
-	int ret = knot_tsig_sign(msg, &msg_len, 520, request_mac, request_mac_length,
+	ret = knot_tsig_sign(msg, &msg_len, msg_len + 1, request_mac, request_mac_length,
 	               digest, &digest_len, &key, 0, 0);
 	if (ret != KNOT_ESPACE) {
 		diag("knot_tsig_sign did not return error when given too litle space for wire!");
@@ -139,6 +174,23 @@ static int test_knot_tsig_sign()
 	               digest, &digest_len, &key, 0, 0);
 	if (ret != KNOT_EOK) {
 		diag("knot_tsig_sign failed when given right arguments!");
+		errors++;
+	}
+	
+	/* Now check that the initial wire remained the same. (Except for arcount) */
+	
+	/* Read arcount. Should be 1. */
+	if (knot_wire_get_arcount(msg) != 1) {
+		diag("Signed wire did not have its arcount changed!");
+		errors++;
+	}
+	
+	knot_wire_set_arcount(msg, 0);
+	/* Wire now should be identical. Compare with is pre-signing copy. */
+	if (strncmp((char *)msg, (char *)msg_copy, msg_len) != 0) {
+//		hex_print(msg, msg_len);
+//		hex_print(msg, msg_len);
+		diag("knot_tsig_sign has changed the signed wire!");
 		errors++;
 	}
 
