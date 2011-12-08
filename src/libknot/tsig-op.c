@@ -899,9 +899,11 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	}
 	free(items);
 
-	//tsig_rdata_set_alg(tmp_tsig, key->algorithm);
+	/* Algorithm name - 0. */
+	tsig_rdata_set_alg_name(tmp_tsig, key_name);
 	tsig_rdata_set_time_signed(tmp_tsig, 0); /*! \todo What time to save? */
 	tsig_rdata_set_fudge(tmp_tsig, 300);   /*! \todo Bleeding eyes :-) */
+	tsig_rdata_set_mac(tmp_tsig, 0, NULL);
 
 	/* Set original ID */
 	tsig_rdata_set_orig_id(tmp_tsig, knot_wire_get_id(msg));
