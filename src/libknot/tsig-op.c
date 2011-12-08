@@ -113,8 +113,9 @@ static int knot_tsig_compute_digest(const uint8_t *wire, size_t wire_len,
 	dbg_tsig_detail("TSIG: decoded key size: %d\n", decoded_key_size);
 	dbg_tsig_detail("TSIG: decoded key: '%*s'\n", decoded_key_size, decoded_key);
 
-	dbg_tsig_detail("TSIG: using this wire for digest calculation\n");
-	dbg_tsig_hex_detail(wire, wire_len);
+//	dbg_tsig_detail("TSIG: using this wire for digest calculation\n");
+//	dbg_tsig_hex_detail(wire, wire_len);
+	dbg_tsig_detail("Wire for signing is %zu bytes long.\n", wire_len);
 
 	/* Compute digest. */
 	HMAC_CTX ctx;
@@ -599,7 +600,8 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
                         const uint8_t *prev_digest, size_t prev_digest_len,
                         uint8_t *digest, size_t *digest_len,
-                        const knot_key_t *key)
+                        const knot_key_t *key, uint8_t *to_sign,
+                        size_t to_sign_len)
 {
 	if (!msg || !msg_len || !key || !key || !digest || !digest_len) {
 		return KNOT_EBADARG;
@@ -653,8 +655,8 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	tsig_rdata_set_fudge(tmp_tsig, 300);
 	
 	/* Create wire to be signed. */
-	size_t wire_len = prev_digest_len + *msg_len + KNOT_TSIG_TIMERS_LENGTH
-	                  + 2;
+	size_t wire_len = prev_digest_len + to_sign_len
+	                  + KNOT_TSIG_TIMERS_LENGTH + 2;
 	uint8_t *wire = malloc(wire_len);
 	if (!wire) {
 		ERR_ALLOC_FAILED;
@@ -667,9 +669,9 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	/* Write previous digest. */
 	memcpy(wire + 2, prev_digest, sizeof(uint8_t) * prev_digest_len);
 	/* Write original message. */
-	memcpy(wire + prev_digest_len + 2, msg, *msg_len);
+	memcpy(wire + prev_digest_len + 2, to_sign, to_sign_len);
 	/* Write timers. */
-	knot_tsig_wire_write_timers(wire + prev_digest_len + *msg_len + 2,
+	knot_tsig_wire_write_timers(wire + prev_digest_len + to_sign_len + 2,
 	                            tmp_tsig);
 
 	dbg_tsig_detail("Previous digest: \n");
@@ -707,6 +709,9 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	
 	/* Set other data. */
 	tsig_rdata_set_other_data(tmp_tsig, 0, NULL);
+
+	dbg_tsig_detail("Message max length: %zu, message length: %zu\n",
+			msg_max_len, *msg_len);
 
 	size_t tsig_wire_size = msg_max_len - *msg_len;
 	int rr_count = 0;

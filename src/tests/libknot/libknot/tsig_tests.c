@@ -204,7 +204,7 @@ static int test_knot_tsig_sign_next()
 	int lived = 0;
 	lives_ok_silent({
 		int ret = knot_tsig_sign_next(NULL, NULL, 0, NULL, 0, NULL,
-		               NULL, NULL);
+		               NULL, NULL, NULL, 0); /*! \todo FIX */
 		if (ret != KNOT_EBADARG) {
 			diag("NULL argument did not return KNOT_EBADARG!");
 			errors++;
@@ -213,7 +213,7 @@ static int test_knot_tsig_sign_next()
 
 		lived = 0;
 		ret = knot_tsig_sign_next((uint8_t *)0x1, NULL, 0, NULL, 0, NULL,
-		               NULL, NULL);
+		               NULL, NULL, NULL, 0); /*! \todo FIX */
 		if (ret != KNOT_EBADARG) {
 			diag("NULL argument did not return KNOT_EBADARG!");
 			errors++;
@@ -222,7 +222,7 @@ static int test_knot_tsig_sign_next()
 
 		lived = 0;
 		ret = knot_tsig_sign_next((uint8_t *)0x1, (size_t *)0x1, 0, NULL, 0, NULL,
-		               NULL, NULL);
+		               NULL, NULL, NULL, 0); /*! \todo FIX */
 		if (ret != KNOT_EBADARG) {
 			diag("NULL argument did not return KNOT_EBADARG!");
 			errors++;
@@ -231,7 +231,7 @@ static int test_knot_tsig_sign_next()
 
 		lived = 0;
 		ret = knot_tsig_sign_next((uint8_t *)0x1, (size_t *)0x1, 0, (uint8_t *)0x1, 0, NULL,
-		               NULL, NULL);
+		               NULL, NULL, NULL, 0); /*! \todo FIX */
 		if (ret != KNOT_EBADARG) {
 			diag("NULL argument did not return KNOT_EBADARG!");
 			errors++;
@@ -240,7 +240,7 @@ static int test_knot_tsig_sign_next()
 
 		lived = 0;
 		ret = knot_tsig_sign_next((uint8_t *)0x12345678, (size_t *)0x1, 0,(uint8_t *)0x1, 0,(uint8_t *) 0x1,
-		               NULL, NULL);
+		               NULL, NULL, NULL, 0); /*! \todo FIX */
 		if (ret != KNOT_EBADARG) {
 			diag("NULL argument did not return KNOT_EBADARG!");
 			errors++;
@@ -249,7 +249,7 @@ static int test_knot_tsig_sign_next()
 
 		lived = 0;
 		ret = knot_tsig_sign_next((uint8_t *)0x12345678, (size_t *)0x1, 0, (uint8_t *)0x1, 0,(uint8_t *) 0x1,
-		               (size_t *)0x1, NULL);
+		               (size_t *)0x1, NULL, NULL, 0); /*! \todo FIX */
 		if (ret != KNOT_EBADARG) {
 			diag("NULL argument did not return KNOT_EBADARG!");
 			errors++;
@@ -281,7 +281,7 @@ static int test_knot_tsig_sign_next()
 
 	/* Test not enough space for wire. */
 	int ret = knot_tsig_sign_next(msg, &msg_len, 513, prev_digest, prev_digest_len,
-	               digest, &digest_len, &key);
+	               digest, &digest_len, &key, NULL, 0); /*! \todo FIX */
 	if (ret != KNOT_ESPACE) {
 		diag("knot_tsig_sign_next did not return error when given too litle space for wire!"
 		     " returned: %s", knot_strerror(ret));
@@ -292,7 +292,7 @@ static int test_knot_tsig_sign_next()
 
 	/* Test normal operation. */
 	ret = knot_tsig_sign_next(msg, &msg_len, msg_max_len, prev_digest, prev_digest_len,
-	               digest, &digest_len, &key);
+	               digest, &digest_len, &key, NULL, 0); /*! \todo FIX */
 	if (ret != KNOT_EOK) {
 		diag("knot_tsig_sign_next failed when given right arguments!"
 		     " returned: %s", knot_strerror(ret));

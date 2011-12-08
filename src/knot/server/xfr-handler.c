@@ -1074,6 +1074,18 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 			                  r_addr, r_port,
 			                  errstr);
 		} else {
+			/* Prepare place for TSIG data */
+			xfr.tsig_data = malloc(KNOT_NS_TSIG_DATA_MAX_SIZE);
+			if (xfr.tsig_data) {
+				dbg_xfr("xfr: TSIG data allocated: %zu.\n",
+					KNOT_NS_TSIG_DATA_MAX_SIZE);
+				xfr.tsig_data_size = 0;
+			} else {
+				dbg_xfr("xfr: failed to allocate TSIG data "
+					"buffer (%zu kB)\n",
+					KNOT_NS_TSIG_DATA_MAX_SIZE / 1024);
+			}
+
 			ret = knot_ns_answer_axfr(w->ns, &xfr);
 			dbg_xfr("xfr: ns_answer_axfr() = %d.\n", ret);
 			if (ret != KNOTD_EOK) {
@@ -1175,6 +1187,18 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 			                  errstr);
 			ret = KNOTD_ERROR;
 		} else {
+			/* Prepare place for TSIG data */
+			xfr.tsig_data = malloc(KNOT_NS_TSIG_DATA_MAX_SIZE);
+			if (xfr.tsig_data) {
+				dbg_xfr("xfr: TSIG data allocated: %zu.\n",
+					KNOT_NS_TSIG_DATA_MAX_SIZE);
+				xfr.tsig_data_size = 0;
+			} else {
+				dbg_xfr("xfr: failed to allocate TSIG data "
+					"buffer (%zu kB)\n",
+					KNOT_NS_TSIG_DATA_MAX_SIZE / 1024);
+			}
+
 			ret = knot_ns_answer_ixfr(w->ns, &xfr);
 			dbg_xfr("xfr: ns_answer_ixfr() = %d.\n", ret);
 			if (ret != KNOTD_EOK) {
