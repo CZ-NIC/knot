@@ -212,9 +212,9 @@ static int test_knot_tsig_sign_next()
 	}
 	
 	/* Create some dummy variables. */
-	uint8_t msg[1024]; /* Should be random. */
+	uint8_t msg[2048]; /* Should be random. */
 	size_t msg_len = 512;
-	size_t msg_max_len = 1024;
+	size_t msg_max_len = 2048;
 	uint8_t *prev_digest = NULL;
 	size_t prev_digest_len = 0;
 	uint8_t digest[512];
@@ -235,6 +235,8 @@ static int test_knot_tsig_sign_next()
 		     " returned: %s", knot_strerror(ret));
 		errors++;
 	}
+	
+	digest_len = 512;
 
 	/* Test normal operation. */
 	ret = knot_tsig_sign_next(msg, &msg_len, msg_max_len, prev_digest, prev_digest_len,
