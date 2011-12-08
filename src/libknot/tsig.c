@@ -313,20 +313,20 @@ tsig_algorithm_t tsig_rdata_alg(const knot_rrset_t *tsig)
 	/* Get the algorithm name. */
 	const knot_dname_t *alg_name = tsig_rdata_alg_name(tsig);
 	if (!alg_name) {
-		dbg_tsig_detail("TSIG: rdata: cannot get algorithm name.\n")
+		dbg_tsig_detail("TSIG: rdata: cannot get algorithm name.\n");
 		return KNOT_TSIG_ALG_NULL;
 	}
 
 	/* Convert alg name to string. */
 	char *name = knot_dname_to_str(alg_name);
 	if (!name) {
-		dbg_tsig_detail("TSIG: rdata: cannot convert alg name.\n")
+		dbg_tsig_detail("TSIG: rdata: cannot convert alg name.\n");
 		return KNOT_TSIG_ALG_NULL;
 	}
 
 	knot_lookup_table_t *item = knot_lookup_by_name(tsig_alg_table, name);
 	if (!item) {
-		dbg_tsig_detail("TSIG: rdata: unknown algorithm.\n")
+		dbg_tsig_detail("TSIG: rdata: unknown algorithm.\n");
 		return KNOT_TSIG_ALG_NULL;
 	}
 	free(name);
