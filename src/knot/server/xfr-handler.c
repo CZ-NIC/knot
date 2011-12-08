@@ -1058,7 +1058,7 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		}
 
 		/* Check TSIG. */
-		if (!init_failed) {
+		if (!init_failed && xfr.tsig_key != NULL) {
 			ret = xfr_check_tsig(&xfr, &rcode);
 			init_failed = (ret != KNOT_EOK);
 			errstr = knot_strerror(ret);
