@@ -653,7 +653,8 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	tsig_rdata_set_fudge(tmp_tsig, 300);
 	
 	/* Create wire to be signed. */
-	size_t wire_len = prev_digest_len + *msg_len + KNOT_TSIG_TIMERS_LENGTH;
+	size_t wire_len = prev_digest_len + *msg_len + KNOT_TSIG_TIMERS_LENGTH
+	                  + 2;
 	uint8_t *wire = malloc(wire_len);
 	if (!wire) {
 		ERR_ALLOC_FAILED;
@@ -661,12 +662,22 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	}
 	memset(wire, 0, wire_len);
 
+	/* Write previous digest length. */
+	knot_wire_write_u16(wire, prev_digest_len);
 	/* Write previous digest. */
-	memcpy(wire, prev_digest, sizeof(uint8_t) * prev_digest_len);
+	memcpy(wire + 2, prev_digest, sizeof(uint8_t) * prev_digest_len);
 	/* Write original message. */
-	memcpy(msg + prev_digest_len, msg, *msg_len);
+	memcpy(wire + prev_digest_len + 2, msg, *msg_len);
 	/* Write timers. */
-	knot_tsig_wire_write_timers(msg + prev_digest_len + *msg_len, tmp_tsig);
+	knot_tsig_wire_write_timers(wire + prev_digest_len + *msg_len + 2,
+	                            tmp_tsig);
+
+	dbg_tsig_detail("Previous digest: \n");
+	dbg_tsig_hex_detail(prev_digest, prev_digest_len);
+
+	dbg_tsig_detail("Timers: \n");
+	dbg_tsig_hex_detail(wire + prev_digest_len + *msg_len,
+			    KNOT_TSIG_TIMERS_LENGTH);
 
 	ret = knot_tsig_compute_digest(wire, wire_len,
 	                               digest_tmp, &digest_tmp_len, key);
@@ -683,13 +694,13 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	free(wire);
 
 	/* Set the MAC. */
-	tsig_rdata_set_mac(tmp_tsig, *digest_len, digest);
+	tsig_rdata_set_mac(tmp_tsig, digest_tmp_len, digest_tmp);
 	
 	/* Set algorithm. */
 	tsig_rdata_set_alg(tmp_tsig, key->algorithm);
 	
 	/* Set original id. */
-	tsig_rdata_set_orig_id(tmp_tsig, knot_wire_get_id(wire));
+	tsig_rdata_set_orig_id(tmp_tsig, knot_wire_get_id(msg));
 
 	/* Set TSIG error. */
 	tsig_rdata_set_tsig_error(tmp_tsig, 0);
