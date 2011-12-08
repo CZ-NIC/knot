@@ -1551,6 +1551,8 @@ int zones_xfr_check_zone(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 		if (match) {
 			/* Save configured TSIG key for comparison. */
 			conf_iface_t *iface = (conf_iface_t*)(match->val);
+			dbg_zones_detail("iface=%p, iface->key=%p\n",
+					 iface, iface->key);
 			xfr->tsig_key = iface->key;
 		}
 	}

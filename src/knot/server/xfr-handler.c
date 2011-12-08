@@ -375,6 +375,16 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 		}
 		if (!kname) {
 			dbg_xfr("xfr: TSIG not found in AR\n");
+			char *name = knot_dname_to_str(
+						knot_zone_name(xfr->zone));
+			log_answer_warning("Unauthorized request for XFR '%s/"
+			                   "OUT'.\n", name);
+			free(name);
+
+			// return REFUSED
+			xfr->tsig_key = 0;
+			*rcode = KNOT_RCODE_REFUSED;
+			return KNOT_EXFRREFUSED;
 		}
 		if (tsig_rr) {
 			tsig_algorithm_t alg = tsig_rdata_alg(tsig_rr);
