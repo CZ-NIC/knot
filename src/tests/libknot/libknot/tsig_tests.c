@@ -146,7 +146,7 @@ static int test_knot_tsig_sign()
 	assert(ret == KNOT_EOK);
 	
 	uint8_t msg_copy[msg_len];
-	memcpy(msg, msg, msg_len);
+	memcpy(msg_copy, msg, msg_len);
 	
 	size_t msg_max_len = 1024;
 	uint8_t *request_mac = NULL;
@@ -188,8 +188,8 @@ static int test_knot_tsig_sign()
 	knot_wire_set_arcount(msg, 0);
 	/* Wire now should be identical. Compare with is pre-signing copy. */
 	if (strncmp((char *)msg, (char *)msg_copy, msg_len) != 0) {
-//		hex_print(msg, msg_len);
-//		hex_print(msg, msg_len);
+		hex_print(msg, msg_len);
+		hex_print(msg_copy, msg_len);
 		diag("knot_tsig_sign has changed the signed wire!");
 		errors++;
 	}
