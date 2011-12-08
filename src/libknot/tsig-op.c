@@ -891,19 +891,20 @@ int knot_tsig_client_check_next(const knot_rrset_t *tsig_rr,
 }
 
 int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
-                  uint16_t tsig_rcode)
+                  uint16_t tsig_rcode, const knot_rrset_t *tsig_rr)
 {
 	/*! \todo Revise!! */
 
-	if (!msg || !msg_len) {
+	if (!msg || !msg_len || !tsig_rr) {
 		return KNOT_EBADARG;
 	}
 
 	/*! \todo What key to use, when we do not sign? Does this even work? */
-	knot_dname_t *key_name = knot_dname_new_from_str(".", 1, NULL);
-	if (!key_name) {
-		dbg_tsig_detail("TSIG: key_name = NULL\n");
-		return KNOT_ENOMEM;
+	knot_dname_t *key_name =
+			knot_dname_deep_copy(knot_rrset_owner(tsig_rr));
+	if (key_name == NULL) {
+		dbg_tsig_detail("TSIG: failed to copy owner\n");
+		return KNOT_ERROR;
 	}
 
 	knot_rrset_t *tmp_tsig =
@@ -950,10 +951,16 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	}
 	free(items);
 
-	/* Algorithm name - 0. */
-	tsig_rdata_set_alg_name(tmp_tsig, key_name);
-	tsig_rdata_set_time_signed(tmp_tsig, 0); /*! \todo What time to save? */
-	tsig_rdata_set_fudge(tmp_tsig, 300);   /*! \todo Bleeding eyes :-) */
+	knot_dname_t *alg_name =
+			knot_dname_deep_copy(tsig_rdata_alg_name(tsig_rr));
+	if (alg_name == NULL) {
+		dbg_tsig_detail("TSIG: failed to copy alg name\n");
+		return KNOT_ERROR;
+	}
+
+	tsig_rdata_set_alg_name(tmp_tsig, alg_name);
+	tsig_rdata_set_time_signed(tmp_tsig, tsig_rdata_time_signed(tsig_rr));
+	tsig_rdata_set_fudge(tmp_tsig, tsig_rdata_fudge(tsig_rr));
 	tsig_rdata_set_mac(tmp_tsig, 0, NULL);
 
 	/* Set original ID */

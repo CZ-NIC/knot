@@ -160,7 +160,7 @@ int knot_tsig_client_check_next(const knot_rrset_t *tsig_rr,
                                 uint64_t prev_time_signed);
 
 int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
-                  uint16_t tsig_rcode);
+                  uint16_t tsig_rcode, const knot_rrset_t *tsig_rr);
 
 #endif /* _KNOT_TSIG_H_ */
 

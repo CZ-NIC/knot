@@ -505,7 +505,7 @@ static int test_knot_tsig_test_tsig_add()
 	/* Faulty arguments. */
 	int lived = 0;
 	lives_ok({
-		int ret = knot_tsig_add(NULL, NULL, 0, 0);
+		int ret = knot_tsig_add(NULL, NULL, 0, 0, NULL);
 		if (ret != KNOT_EBADARG) {
 			diag("tsig_add did not return EBADARG when given NULL parameters.");
 			errors++;
@@ -513,7 +513,7 @@ static int test_knot_tsig_test_tsig_add()
 		lived = 1;
 		
 		lived = 0;
-		ret = knot_tsig_add((uint8_t *)0x1, NULL, 0, 0);
+		ret = knot_tsig_add((uint8_t *)0x1, NULL, 0, 0, NULL);
 		if (ret != KNOT_EBADARG) {
 			diag("tsig_add did not return EBADARG when given NULL parameters.");
 			errors++;
@@ -530,7 +530,8 @@ static int test_knot_tsig_test_tsig_add()
 	size_t wire_size = 512;
 	uint8_t wire[wire_size * 2];
 	
-	int ret = knot_tsig_add(wire, &wire_size, wire_size * 2, 0);
+	/*! \todo Fix */
+	int ret = knot_tsig_add(wire, &wire_size, wire_size * 2, 0, NULL);
 	if (ret != KNOT_EOK) {
 		diag("tsig_add did not return EOK when given valid parameters."
 		     " returned: %s", knot_strerror(ret));
