@@ -2012,6 +2012,8 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 
 	if (xfr->tsig_key) {
 		// add the data to TSIG data
+		assert(KNOT_NS_TSIG_DATA_MAX_SIZE - xfr->tsig_data_size
+		       >= xfr->wire_size);
 		memcpy(xfr->tsig_data + xfr->tsig_data_size,
 		       xfr->wire, real_size);
 		xfr->tsig_data_size += real_size;

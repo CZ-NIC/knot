@@ -388,11 +388,11 @@ static int knot_tsig_create_sign_wire(const uint8_t *msg, size_t msg_len,
 }
 
 static int knot_tsig_create_sign_wire_next(const uint8_t *msg, size_t msg_len,
-				      const uint8_t *prev_mac,
-		                      size_t prev_mac_len,
-		                      uint8_t *digest, size_t *digest_len,
-				      const knot_rrset_t *tmp_tsig,
-		                      const knot_key_t *key)
+                                           const uint8_t *prev_mac,
+                                           size_t prev_mac_len,
+                                           uint8_t *digest, size_t *digest_len,
+                                           const knot_rrset_t *tmp_tsig,
+                                           const knot_key_t *key)
 {
 	if (!msg || !key || digest_len == NULL) {
 		dbg_tsig("TSIG: create wire: bad args.\n");
