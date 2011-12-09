@@ -17,7 +17,6 @@
 #include <assert.h>
 #include <time.h>
 
-#include "libknot/common.h"
 #include "libknot/rrset.h"
 #include "libknot/packet/response.h"
 #include "libknot/dname.h"
@@ -39,6 +38,47 @@ unit_api tsig_tests_api = {
 };
 
 static const int KNOT_TSIG_TEST_COUNT = 6;
+
+static knot_rrset_t *create_dummy_tsig_rr()
+{
+	knot_dname_t *tsig_owner =
+		knot_dname_new_from_str("dummy.key.name.",
+	                                strlen("dummy.key.name."), NULL);
+	assert(tsig_owner);
+
+	/* Create dummy TSIG rr. */
+	knot_rrset_t *tsig_rr = knot_rrset_new(tsig_owner, KNOT_RRTYPE_TSIG,
+	                                       KNOT_CLASS_ANY, 0);
+	assert(tsig_rr);
+
+	knot_rdata_t *tsig_rdata = knot_rdata_new();
+	assert(tsig_rr);
+	/* Create TSIG items. */
+	knot_rdata_item_t items[9];
+
+	/*
+	 * I am not sure if 9 is the right count in our impl,
+	 * but it should work fine.
+	 */
+	knot_rdata_set_items(tsig_rdata, items, 9);
+	knot_dname_t *alg_name =
+		knot_dname_new_from_str("hmac-md5.sig-alg.reg.int.",
+	                                strlen("hmac-md5.sig-alg.reg.int."),
+	                                NULL);
+	assert(alg_name);
+	tsig_rdata_set_alg_name(tsig_rr, alg_name);
+
+	/* Get current time and save it to TSIG rr. */
+	time_t current_time = time(NULL);
+	tsig_rdata_set_time_signed(tsig_rr, current_time);
+	tsig_rdata_set_fudge(tsig_rr, 300);
+	tsig_rdata_set_orig_id(tsig_rr, 0);
+	tsig_rdata_set_tsig_error(tsig_rr, 0);
+	tsig_rdata_set_mac(tsig_rr, strlen("nonsensemac"),
+	                   (uint8_t *)"nonsensemac");
+
+	return tsig_rr;
+}
 
 static int test_knot_tsig_sign()
 {
@@ -64,7 +104,8 @@ static int test_knot_tsig_sign()
 		lived = 1;
 
 		lived = 0;
-		ret = knot_tsig_sign((uint8_t *)0x1, (size_t *)0x1, 0, NULL, 0, NULL,
+		ret = knot_tsig_sign((uint8_t *)0x1, (size_t *)0x1, 0, NULL,
+		                     0, NULL,
 		               NULL, NULL, 0, 0);
 		if (ret != KNOT_EBADARG) {
 			diag("NULL argument did not return KNOT_EBADARG!");
@@ -73,7 +114,8 @@ static int test_knot_tsig_sign()
 		lived = 1;
 
 		lived = 0;
-		ret = knot_tsig_sign((uint8_t *)0x1, (size_t *)0x1, 0, (uint8_t *)0x1, 0, NULL,
+		ret = knot_tsig_sign((uint8_t *)0x1, (size_t *)0x1, 0,
+		                     (uint8_t *)0x1, 0, NULL,
 		               NULL, NULL, 0, 0);
 		if (ret != KNOT_EBADARG) {
 			diag("NULL argument did not return KNOT_EBADARG!");
@@ -82,7 +124,8 @@ static int test_knot_tsig_sign()
 		lived = 1;
 
 		lived = 0;
-		ret = knot_tsig_sign((uint8_t *)0x12345678, (size_t *)0x1, 0,(uint8_t *)0x1, 0,(uint8_t *) 0x1,
+		ret = knot_tsig_sign((uint8_t *)0x12345678, (size_t *)0x1,
+		                     0,(uint8_t *)0x1, 0,(uint8_t *) 0x1,
 		               NULL, NULL, 0, 0);
 		if (ret != KNOT_EBADARG) {
 			diag("NULL argument did not return KNOT_EBADARG!");
@@ -91,7 +134,8 @@ static int test_knot_tsig_sign()
 		lived = 1;
 
 		lived = 0;
-		ret = knot_tsig_sign((uint8_t *)0x12345678, (size_t *)0x1, 0, (uint8_t *)0x1, 0,(uint8_t *) 0x1,
+		ret = knot_tsig_sign((uint8_t *)0x12345678, (size_t *)0x1, 0,
+		                     (uint8_t *)0x1, 0,(uint8_t *) 0x1,
 		               (size_t *)0x1, NULL, 0, 0);
 		if (ret != KNOT_EBADARG) {
 			diag("NULL argument did not return KNOT_EBADARG!");
@@ -144,12 +188,13 @@ static int test_knot_tsig_sign()
 	size_t msg_len;
 	ret = knot_packet_to_wire(packet, &msg, &msg_len);
 	assert(ret == KNOT_EOK);
-	
+
+	size_t msg_copy_length = msg_len;
 	uint8_t msg_copy[msg_len];
 	memcpy(msg_copy, msg, msg_len);
 	
 	size_t msg_max_len = 1024;
-	uint8_t *request_mac = NULL;
+	uint8_t request_mac[16];
 	size_t request_mac_length = 0;
 	uint8_t digest[512];
 	size_t digest_len;
@@ -162,22 +207,28 @@ static int test_knot_tsig_sign()
 	key.secret_size = strlen("abcdefgh");
 
 	/* Test not enough space for wire. */
-	ret = knot_tsig_sign(msg, &msg_len, msg_len + 1, request_mac, request_mac_length,
+	ret = knot_tsig_sign(msg, &msg_len, msg_len + 1, request_mac,
+	                     request_mac_length,
 	               digest, &digest_len, &key, 0, 0);
 	if (ret != KNOT_ESPACE) {
-		diag("knot_tsig_sign did not return error when given too litle space for wire!");
+		diag("knot_tsig_sign did not return error when given too"
+		     " litle space for wire!");
 		errors++;
 	}
 
 	/* Test normal operation. */
-	ret = knot_tsig_sign(msg, &msg_len, msg_max_len, request_mac, request_mac_length,
+	ret = knot_tsig_sign(msg, &msg_len, msg_max_len, request_mac,
+	                     request_mac_length,
 	               digest, &digest_len, &key, 0, 0);
 	if (ret != KNOT_EOK) {
 		diag("knot_tsig_sign failed when given right arguments!");
-		errors++;
+		return 0;
 	}
 	
-	/* Now check that the initial wire remained the same. (Except for arcount) */
+	/*
+	 * Now check that the initial wire remained the same.
+	 * (Except for arcount)
+	 */
 	
 	/* Read arcount. Should be 1. */
 	if (knot_wire_get_arcount(msg) != 1) {
@@ -186,7 +237,7 @@ static int test_knot_tsig_sign()
 	}
 	
 	knot_wire_set_arcount(msg, 0);
-	/* Wire now should be identical. Compare with is pre-signing copy. */
+	/* Wire now should be identical. Compare with its pre-signing copy. */
 	if (strncmp((char *)msg, (char *)msg_copy, msg_len) != 0) {
 		hex_print(msg, msg_len);
 		hex_print(msg_copy, msg_len);
@@ -194,6 +245,53 @@ static int test_knot_tsig_sign()
 		errors++;
 	}
 
+	/* Do exactly the same, but add the request_mac variable. */
+	request_mac_length = 16;
+	memcpy(msg, msg_copy, msg_copy_length);
+	msg = msg_copy;
+	ret = knot_tsig_sign(msg, &msg_len, msg_max_len, request_mac,
+	                     request_mac_length,
+	               digest, &digest_len, &key, 0, 0);
+	if (ret != KNOT_EOK) {
+		diag("knot_tsig_sign failed when given right arguments "
+		     "(request mac set)!");
+		return 0;
+	}
+
+	/* Read arcount. Should be 1. */
+	if (knot_wire_get_arcount(msg) != 1) {
+		diag("Signed wire did not have its arcount changed!");
+		errors++;
+	}
+
+	knot_wire_set_arcount(msg, 0);
+	/* Wire now should be identical. Compare with its pre-signing copy. */
+	if (strncmp((char *)msg, (char *)msg_copy, msg_len) != 0) {
+		hex_print(msg, msg_len);
+		hex_print(msg_copy, msg_len);
+		diag("knot_tsig_sign has changed the signed wire!");
+		errors++;
+	}
+
+	/*
+	 * Check that the wire is correctly signed
+	 * using knot_tsig_server_check.
+	 */
+
+	/* Create dummy tsig_rr. */
+	knot_rrset_t *tsig_rr = create_dummy_tsig_rr();
+	assert(tsig_rr);
+
+	/* Set the created digest. */
+	tsig_rdata_set_mac(tsig_rr, digest_len, digest);
+
+	ret = knot_tsig_server_check(tsig_rr, msg, msg_len, &key);
+	if (ret != KNOT_EOK) {
+		diag("Signed wire did not pass check!");
+		errors++;
+	}
+
+//	free(msg);
 	return errors == 0;
 }
 
@@ -212,7 +310,8 @@ static int test_knot_tsig_sign_next()
 		lived = 1;
 
 		lived = 0;
-		ret = knot_tsig_sign_next((uint8_t *)0x1, NULL, 0, NULL, 0, NULL,
+		ret = knot_tsig_sign_next((uint8_t *)0x1, NULL, 0, NULL, 0,
+		                          NULL,
 		               NULL, NULL, NULL, 0); /*! \todo FIX */
 		if (ret != KNOT_EBADARG) {
 			diag("NULL argument did not return KNOT_EBADARG!");
@@ -221,7 +320,8 @@ static int test_knot_tsig_sign_next()
 		lived = 1;
 
 		lived = 0;
-		ret = knot_tsig_sign_next((uint8_t *)0x1, (size_t *)0x1, 0, NULL, 0, NULL,
+		ret = knot_tsig_sign_next((uint8_t *)0x1, (size_t *)0x1, 0,
+		                          NULL, 0, NULL,
 		               NULL, NULL, NULL, 0); /*! \todo FIX */
 		if (ret != KNOT_EBADARG) {
 			diag("NULL argument did not return KNOT_EBADARG!");
@@ -230,7 +330,8 @@ static int test_knot_tsig_sign_next()
 		lived = 1;
 
 		lived = 0;
-		ret = knot_tsig_sign_next((uint8_t *)0x1, (size_t *)0x1, 0, (uint8_t *)0x1, 0, NULL,
+		ret = knot_tsig_sign_next((uint8_t *)0x1, (size_t *)0x1, 0,
+		                          (uint8_t *)0x1, 0, NULL,
 		               NULL, NULL, NULL, 0); /*! \todo FIX */
 		if (ret != KNOT_EBADARG) {
 			diag("NULL argument did not return KNOT_EBADARG!");
@@ -239,7 +340,8 @@ static int test_knot_tsig_sign_next()
 		lived = 1;
 
 		lived = 0;
-		ret = knot_tsig_sign_next((uint8_t *)0x12345678, (size_t *)0x1, 0,(uint8_t *)0x1, 0,(uint8_t *) 0x1,
+		ret = knot_tsig_sign_next((uint8_t *)0x12345678, (size_t *)0x1,
+		                          0,(uint8_t *)0x1, 0,(uint8_t *) 0x1,
 		               NULL, NULL, NULL, 0); /*! \todo FIX */
 		if (ret != KNOT_EBADARG) {
 			diag("NULL argument did not return KNOT_EBADARG!");
@@ -248,7 +350,8 @@ static int test_knot_tsig_sign_next()
 		lived = 1;
 
 		lived = 0;
-		ret = knot_tsig_sign_next((uint8_t *)0x12345678, (size_t *)0x1, 0, (uint8_t *)0x1, 0,(uint8_t *) 0x1,
+		ret = knot_tsig_sign_next((uint8_t *)0x12345678, (size_t *)0x1,
+		                          0, (uint8_t *)0x1, 0,(uint8_t *) 0x1,
 		               (size_t *)0x1, NULL, NULL, 0); /*! \todo FIX */
 		if (ret != KNOT_EBADARG) {
 			diag("NULL argument did not return KNOT_EBADARG!");
@@ -280,10 +383,12 @@ static int test_knot_tsig_sign_next()
 	key.secret_size = strlen("abcdefgh");
 
 	/* Test not enough space for wire. */
-	int ret = knot_tsig_sign_next(msg, &msg_len, 513, prev_digest, prev_digest_len,
+	int ret = knot_tsig_sign_next(msg, &msg_len, 513, prev_digest,
+	                              prev_digest_len,
 	               digest, &digest_len, &key, NULL, 0); /*! \todo FIX */
 	if (ret != KNOT_ESPACE) {
-		diag("knot_tsig_sign_next did not return error when given too litle space for wire!"
+		diag("knot_tsig_sign_next did not return error when "
+		     "given too litle space for wire!"
 		     " returned: %s", knot_strerror(ret));
 		errors++;
 	}
@@ -291,7 +396,8 @@ static int test_knot_tsig_sign_next()
 	digest_len = 512;
 
 	/* Test normal operation. */
-	ret = knot_tsig_sign_next(msg, &msg_len, msg_max_len, prev_digest, prev_digest_len,
+	ret = knot_tsig_sign_next(msg, &msg_len, msg_max_len, prev_digest,
+	                          prev_digest_len,
 	               digest, &digest_len, &key, NULL, 0); /*! \todo FIX */
 	if (ret != KNOT_EOK) {
 		diag("knot_tsig_sign_next failed when given right arguments!"
@@ -318,7 +424,8 @@ static int test_knot_tsig_server_check()
 		lived = 1;
 		
 		lived = 0;
-		ret = knot_tsig_server_check((knot_rrset_t *)0x1, (uint8_t *)0x1, 0,
+		ret = knot_tsig_server_check((knot_rrset_t *)0x1,
+		                             (uint8_t *)0x1, 0,
 		                                 NULL);
 		if (ret != KNOT_EBADARG) {
 			diag("NULL argument did not return KNOT_EBADARG!");
@@ -332,48 +439,32 @@ static int test_knot_tsig_server_check()
 	if (errors) {
 		diag("NULL tests crashed!");
 	}
+
+	/* Create dummy TSIG rr. */
+	knot_rrset_t *tsig_rr = create_dummy_tsig_rr();
+	assert(tsig_rr);
+
 	
-	knot_dname_t *tsig_owner =
-		knot_dname_new_from_str("dummy.key.name.",
-	                                strlen("dummy.key.name."), NULL);
-	assert(tsig_owner);
 	/* Create dummy key. */
 	knot_key_t key;
 	key.algorithm = KNOT_TSIG_ALG_HMAC_MD5;
 	key.secret = "supersecretsecret";
 	key.secret_size = strlen("supersecretsecret");
-	key.name = tsig_owner;
-	
-	/* Create dummy TSIG rr. */
-	knot_rrset_t *tsig_rr = knot_rrset_new(tsig_owner, KNOT_RRTYPE_TSIG, KNOT_CLASS_ANY, 0);
-	assert(tsig_rr);
-	
-	knot_rdata_t *tsig_rdata = knot_rdata_new();
-	assert(tsig_rr);
-	/* Create TSIG items. */
-	knot_rdata_item_t items[9];
-	/* I am not sure if 9 is the right count in our impl., but is should work fine. */
-	knot_rdata_set_items(tsig_rdata, items, 9);
-	knot_dname_t *alg_name = knot_dname_new_from_str("hmac-md5.sig-alg.reg.int.",
-	                                                      strlen("hmac-md5.sig-alg.reg.int."), NULL);
-	assert(alg_name);
-	tsig_rdata_set_alg_name(tsig_rr, alg_name);
-	/* Get current time and save it to TSIG rr. */
-	time_t current_time = time(NULL);
-	tsig_rdata_set_time_signed(tsig_rr, current_time);
-	tsig_rdata_set_fudge(tsig_rr, 300);
-	tsig_rdata_set_orig_id(tsig_rr, 0);
-	tsig_rdata_set_tsig_error(tsig_rr, 0);
-	tsig_rdata_set_mac(tsig_rr, strlen("nonsensemac"), (uint8_t *)"nonsensemac");
-		
+	/* Bleeding eyes, I know. */
+	key.name = (knot_dname_t *)knot_rrset_owner(tsig_rr);
+
 	/* Create dummy wire. */
 	uint8_t wire[500];
 	size_t wire_size = 500;
 	
-	/*!< \note Since there are no meaningful data in the wire, the function should fail. */
+	/*!< \note
+	 * Since there are no meaningful data in the wire,
+	 * the function should fail.
+	 */
 	int ret = knot_tsig_server_check(tsig_rr, wire, wire_size, &key);
 	if (ret != KNOT_TSIG_EBADSIG) {
-		diag("tsig_server_check did not return TSIG_EBADSIG when given random wire!"
+		diag("tsig_server_check did not return "
+		     "TSIG_EBADSIG when given random wire!"
 		     " returned: %s", knot_strerror(ret));
 		errors++;
 	}
@@ -382,7 +473,8 @@ static int test_knot_tsig_server_check()
 	tsig_rdata_set_time_signed(tsig_rr, 0);
 	ret = knot_tsig_server_check(tsig_rr, wire, wire_size, &key);
 	if (ret != KNOT_TSIG_EBADTIME) {
-		diag("tsig_server_check did not return TSIG_EBADTIME when given zero time!");
+		diag("tsig_server_check did not return TSIG_EBADTIME "
+		     "when given zero time!");
 		errors++;
 	}
 		
@@ -413,7 +505,8 @@ static int test_knot_tsig_client_check()
 		lived = 1;
 	
 		lived = 0;
-		ret = knot_tsig_client_check((knot_rrset_t *)0x1, (uint8_t *)0x1, 0, NULL,
+		ret = knot_tsig_client_check((knot_rrset_t *)0x1,
+		                             (uint8_t *)0x1, 0, NULL,
 	                                         0, NULL, 0);
 		if (ret != KNOT_EBADARG) {
 			diag("NULL argument did not return KNOT_EBADARG!");
@@ -422,7 +515,8 @@ static int test_knot_tsig_client_check()
 		lived = 1;
 		
 		lived = 0;
-		ret = knot_tsig_client_check((knot_rrset_t *)0x1, (uint8_t *)0x1, 0, NULL,
+		ret = knot_tsig_client_check((knot_rrset_t *)0x1,
+		                             (uint8_t *)0x1, 0, NULL,
 	                                         0, NULL, 0);
 		if (ret != KNOT_EBADARG) {
 			diag("NULL argument did not return KNOT_EBADARG!");
@@ -449,43 +543,59 @@ static int test_knot_tsig_client_check()
 	key.name = tsig_owner;
 	
 	/* Create dummy TSIG rr. */
-	knot_rrset_t *tsig_rr = knot_rrset_new(tsig_owner, KNOT_RRTYPE_TSIG, KNOT_CLASS_ANY, 0);
+	knot_rrset_t *tsig_rr = knot_rrset_new(tsig_owner,
+	                                       KNOT_RRTYPE_TSIG,
+	                                       KNOT_CLASS_ANY, 0);
 	assert(tsig_rr);
 	
 	knot_rdata_t *tsig_rdata = knot_rdata_new();
 	assert(tsig_rr);
 	/* Create TSIG items. */
 	knot_rdata_item_t items[9];
-	/* I am not sure if 9 is the right count in our impl., but is should work fine. */
+
+	/*
+	 * I am not sure if 9 is the right count in our impl.,
+	 * but is should work fine.
+	 */
 	knot_rdata_set_items(tsig_rdata, items, 9);
-	knot_dname_t *alg_name = knot_dname_new_from_str("hmac-md5.sig-alg.reg.int.",
-	                                                      strlen("hmac-md5.sig-alg.reg.int."), NULL);
+	knot_dname_t *alg_name =
+		knot_dname_new_from_str("hmac-md5.sig-alg.reg.int.",
+	                                strlen("hmac-md5.sig-alg.reg.int."),
+	                                NULL);
 	assert(alg_name);
 	tsig_rdata_set_alg_name(tsig_rr, alg_name);
 	/* Get current time and save it to TSIG rr. */
 	time_t current_time = time(NULL);
-	tsig_rdata_set_time_signed(tsig_rr, current_time);	
+	tsig_rdata_set_time_signed(tsig_rr, current_time);
 	tsig_rdata_set_fudge(tsig_rr, 300);
 	tsig_rdata_set_orig_id(tsig_rr, 0);
 	tsig_rdata_set_tsig_error(tsig_rr, 0);
-	tsig_rdata_set_mac(tsig_rr, strlen("nonsensemac"), (uint8_t *)"nonsensemac");
+	tsig_rdata_set_mac(tsig_rr, strlen("nonsensemac"),
+	                   (uint8_t *)"nonsensemac");
 		
 	/* Create dummy wire. */
 	uint8_t wire[500];
 	size_t wire_size = 500;
 	
-	/*!< \note Since there are no meaningful data in the wire, the function should fail. */
-	int ret = knot_tsig_client_check(tsig_rr, wire, wire_size, NULL, 0, &key, 0);
+	/*!< \note
+	 * Since there are no meaningful data in the wire,
+	 * the function should fail.
+	 */
+	int ret = knot_tsig_client_check(tsig_rr,
+	                                 wire, wire_size, NULL, 0, &key, 0);
 	if (ret != KNOT_TSIG_EBADSIG) {
-		diag("tsig_server_check did not return TSIG_EBADSIG when given random wire!");
+		diag("tsig_server_check did not return TSIG_EBADSIG when "
+		     "given random wire!");
 		errors++;
 	}
 	
 	/* Set 0 time - the error should be TSIG_EBADTIME. */
 	tsig_rdata_set_time_signed(tsig_rr, 0);
-	ret = knot_tsig_client_check(tsig_rr, wire, wire_size, NULL, 0, &key, 0);
+	ret = knot_tsig_client_check(tsig_rr, wire, wire_size, NULL,
+	                             0, &key, 0);
 	if (ret != KNOT_TSIG_EBADTIME) {
-		diag("tsig_server_check did not return TSIG_EBADTIME when given zero time!");
+		diag("tsig_server_check did not return "
+		     "TSIG_EBADTIME when given zero time!");
 		errors++;
 	}
 		
@@ -507,7 +617,8 @@ static int test_knot_tsig_test_tsig_add()
 	lives_ok({
 		int ret = knot_tsig_add(NULL, NULL, 0, 0, NULL);
 		if (ret != KNOT_EBADARG) {
-			diag("tsig_add did not return EBADARG when given NULL parameters.");
+			diag("tsig_add did not return EBADARG "
+			     "when given NULL parameters.");
 			errors++;
 		}
 		lived = 1;
@@ -515,7 +626,8 @@ static int test_knot_tsig_test_tsig_add()
 		lived = 0;
 		ret = knot_tsig_add((uint8_t *)0x1, NULL, 0, 0, NULL);
 		if (ret != KNOT_EBADARG) {
-			diag("tsig_add did not return EBADARG when given NULL parameters.");
+			diag("tsig_add did not return EBADARG when "
+			     "given NULL parameters.");
 			errors++;
 		}
 		lived = 1;
