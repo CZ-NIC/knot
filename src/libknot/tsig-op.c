@@ -388,11 +388,11 @@ static int knot_tsig_create_sign_wire(const uint8_t *msg, size_t msg_len,
 }
 
 static int knot_tsig_create_sign_wire_next(const uint8_t *msg, size_t msg_len,
-				      const uint8_t *prev_mac,
-		                      size_t prev_mac_len,
-		                      uint8_t *digest, size_t *digest_len,
-				      const knot_rrset_t *tmp_tsig,
-		                      const knot_key_t *key)
+                                           const uint8_t *prev_mac,
+                                           size_t prev_mac_len,
+                                           uint8_t *digest, size_t *digest_len,
+                                           const knot_rrset_t *tmp_tsig,
+                                           const knot_key_t *key)
 {
 	if (!msg || !key || digest_len == NULL) {
 		dbg_tsig("TSIG: create wire: bad args.\n");
@@ -411,7 +411,7 @@ static int knot_tsig_create_sign_wire_next(const uint8_t *msg, size_t msg_len,
 	         tsig_rdata_tsig_timers_length());
 	size_t wire_len = sizeof(uint8_t) *
 	                (msg_len + prev_mac_len +
-			tsig_rdata_tsig_timers_length());
+			tsig_rdata_tsig_timers_length() + 2);
 	uint8_t *wire = malloc(wire_len);
 	if (!wire) {
 		ERR_ALLOC_FAILED;
@@ -421,19 +421,21 @@ static int knot_tsig_create_sign_wire_next(const uint8_t *msg, size_t msg_len,
 	memset(wire, 0, wire_len);
 
 	/* Copy the request MAC - should work even if NULL. */
+	dbg_tsig("Copying request mac size.\n");
+	knot_wire_write_u16(wire, prev_mac_len);
 	dbg_tsig("Copying request mac.\n");
-	memcpy(wire, prev_mac, sizeof(uint8_t) * prev_mac_len);
+	memcpy(wire + 2, prev_mac, sizeof(uint8_t) * prev_mac_len);
 	dbg_tsig_detail("TSIG: create wire: request mac: ");
-	dbg_tsig_hex_detail(wire, prev_mac_len);
+	dbg_tsig_hex_detail(wire + 2, prev_mac_len);
 	/* Copy the original message. */
 	dbg_tsig("Copying original message.\n");
-	memcpy(wire + prev_mac_len, msg, msg_len);
+	memcpy(wire + prev_mac_len + 2, msg, msg_len);
 	dbg_tsig_detail("TSIG: create wire: original message: \n");
 	//dbg_tsig_hex_detail(wire + prev_mac_len, msg_len);
 	/* Copy TSIG variables. */
 	
 	dbg_tsig("Writing TSIG timers.\n");
-	ret = knot_tsig_write_tsig_timers(wire + prev_mac_len + msg_len, 
+	ret = knot_tsig_write_tsig_timers(wire + prev_mac_len + msg_len + 2, 
 	                                  tmp_tsig);
 //	ret = knot_tsig_write_tsig_variables(wire + prev_mac_len + msg_len,
 //	                                     tmp_tsig);
