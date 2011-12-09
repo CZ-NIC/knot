@@ -78,15 +78,12 @@ int socket_connect(int fd, const char *addr, unsigned short port)
 
 	/* Connect. */
 	ret = -1;
-	if (addr) {
-		ret = connect(fd, saddr, addrlen);
-		if (ret < 0) {
-			ret = knot_map_errno(EACCES, EADDRINUSE, EAGAIN,
-			                     ECONNREFUSED, EISCONN);
-		}
-	} else {
-		ret = KNOTD_EINVAL;
+	ret = connect(fd, saddr, addrlen);
+	if (ret < 0) {
+		ret = knot_map_errno(EACCES, EADDRINUSE, EAGAIN,
+		                     ECONNREFUSED, EISCONN);
 	}
+
 
 
 	/* Free addresses. */

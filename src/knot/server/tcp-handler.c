@@ -28,14 +28,16 @@
 #include "common/sockaddr.h"
 #include "common/skip-list.h"
 #include "common/fdset.h"
+#include "common/WELL1024a.h"
 #include "knot/common.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/server/xfr-handler.h"
 #include "libknot/nameserver/name-server.h"
 #include "knot/other/error.h"
-#include "knot/stat/stat.h"
 #include "libknot/util/wire.h"
-#include "knot/server/zones.h"
+
+/* Defines */
+#define TCP_BUFFER_SIZE 65536
 
 /*! \brief TCP worker data. */
 typedef struct tcp_worker_t {
@@ -47,6 +49,14 @@ typedef struct tcp_worker_t {
 /*
  * Forward decls.
  */
+#define TCP_THROTTLE_LO 10 /*!< Minimum recovery time on errors. */
+#define TCP_THROTTLE_HI 50 /*!< Maximum recovery time on errors. */
+
+/*! \brief Calculate TCP throttle time (random). */
+static inline int tcp_throttle() {
+	//(TCP_THROTTLE_LO + (int)(tls_rand() * TCP_THROTTLE_HI));
+	return (rand() % TCP_THROTTLE_HI) + TCP_THROTTLE_LO; 
+}
 
 /*! \brief Wrapper for TCP send. */
 static int xfr_send_cb(int session, sockaddr_t *addr, uint8_t *msg, size_t msglen)
@@ -63,7 +73,7 @@ static int xfr_send_cb(int session, sockaddr_t *addr, uint8_t *msg, size_t msgle
  * \param w Associated I/O event.
  * \param revents Returned events.
  */
-static void tcp_handle(tcp_worker_t *w, int fd)
+static void tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen)
 {
 	if (fd < 0 || !w || !w->ioh) {
 		dbg_net("tcp: tcp_handle(%p, %d) - invalid parameters\n", w, fd);
@@ -86,8 +96,6 @@ static void tcp_handle(tcp_worker_t *w, int fd)
 	}
 
 	/* Receive data. */
-	uint8_t qbuf[65535]; /*! \todo This may be problematic. */
-	size_t qbuf_maxlen = sizeof(qbuf);
 	int n = tcp_recv(fd, qbuf, qbuf_maxlen, &addr);
 	if (n <= 0) {
 		dbg_net("tcp: client on fd=%d disconnected\n", fd);
@@ -228,9 +236,21 @@ static int tcp_accept(int fd)
 
 	/* Evaluate connection. */
 	if (incoming < 0) {
-		if (errno != EINTR) {
+		int en = errno;
+		if (en != EINTR) {
 			log_server_error("Cannot accept connection "
 					 "(%d).\n", errno);
+			if (en == EMFILE || en == ENFILE ||
+			    en == ENOBUFS || en == ENOMEM) {
+				int throttle = tcp_throttle();
+				log_server_error("Throttling TCP connection pool"
+				                 " for %d seconds because of "
+				                 "too many open descriptors "
+				                 "or lack of memory.\n",
+				                 throttle);
+				sleep(throttle);
+			}
+			
 		}
 	} else {
 		dbg_net("tcp: accepted connection fd=%d\n", incoming);
@@ -242,16 +262,16 @@ static int tcp_accept(int fd)
 tcp_worker_t* tcp_worker_create()
 {
 	tcp_worker_t *w = malloc(sizeof(tcp_worker_t));
-	if (!w) {
+	if (w == NULL) {
 		dbg_net("tcp: out of memory when creating worker\n");
-		return 0;
+		return NULL;
 	}
 	
 	/* Create signal pipes. */
 	memset(w, 0, sizeof(tcp_worker_t));
 	if (pipe(w->pipe) < 0) {
 		free(w);
-		return 0;
+		return NULL;
 	}
 	
 	/* Create fdset. */
@@ -260,6 +280,7 @@ tcp_worker_t* tcp_worker_create()
 		close(w->pipe[0]);
 		close(w->pipe[1]);
 		free(w);
+		return NULL;
 	}
 	
 	fdset_add(w->fdset, w->pipe[0], OS_EV_READ);
@@ -361,13 +382,14 @@ int tcp_loop_master(dthread_t *thread)
 {
 	iohandler_t *handler = (iohandler_t *)thread->data;
 	dt_unit_t *unit = thread->unit;
-	tcp_worker_t **workers = handler->data;
 
 	/* Check socket. */
-	if (!handler || handler->fd < 0 || !workers) {
+	if (!handler || handler->fd < 0 || handler->data == NULL) {
 		dbg_net("tcp: failed to initialize master thread\n");
 		return KNOTD_EINVAL;
 	}
+	
+	tcp_worker_t **workers = handler->data;
 
 	/* Accept connections. */
 	int id = 0;
@@ -407,6 +429,13 @@ int tcp_loop_worker(dthread_t *thread)
 	if (!w) {
 		return KNOTD_EINVAL;
 	}
+	
+	/* Allocate buffer for requests. */
+	uint8_t *qbuf = malloc(TCP_BUFFER_SIZE);
+	if (qbuf == NULL) {
+		dbg_net("tcp: failed to allocate buffers for TCP worker\n");
+		return KNOTD_EINVAL;
+	}
 
 	/* Accept clients. */
 	dbg_net_verb("tcp: worker %p started\n", w);
@@ -443,7 +472,7 @@ int tcp_loop_worker(dthread_t *thread)
 				fdset_add(w->fdset, client, OS_EV_READ);
 			} else {
 				/* Handle other events. */
-				tcp_handle(w, it.fd);
+				tcp_handle(w, it.fd, qbuf, TCP_BUFFER_SIZE);
 			}
 			
 			/* Check if next exists. */
@@ -455,6 +484,7 @@ int tcp_loop_worker(dthread_t *thread)
 	}
 
 	/* Stop whole unit. */
+	free(qbuf);
 	dbg_net_verb("tcp: worker %p finished\n", w);
 	tcp_worker_free(w);
 	return KNOTD_EOK;

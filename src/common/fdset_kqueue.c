@@ -14,8 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
-
 #ifdef HAVE_KQUEUE
 
 #include <stdint.h>

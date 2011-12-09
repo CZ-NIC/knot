@@ -49,5 +49,6 @@ const error_table_t knot_error_msgs[KNOT_ERROR_COUNT] = {
 	{KNOT_TSIG_EBADKEY, "TSIG key not recognized or invalid." },
 	{KNOT_TSIG_EBADTIME, "TSIG signing time out of range." },
 	{KNOT_ECONN, "Connection reset."},
+	{KNOT_EIXFRSPACE, "IXFR reply did not fit in."},
 	{KNOT_ERROR, 0}
 };

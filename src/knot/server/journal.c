@@ -232,17 +232,11 @@ journal_t* journal_open(const char *fn, size_t fslimit, uint16_t bflags)
 	fl.l_len = 0;
 	fl.l_pid = getpid();
 
-	/* Check file. */
-	struct stat st;
-	if (stat(fn, &st) < 0) {
-		return 0;
-	}
-
-	/* Open journal file for r/w. */
+	/* Open journal file for r/w (returns error if not exists). */
 	int fd = open(fn, O_RDWR);
 	if (fd < 0) {
 		dbg_journal("journal: failed to open file '%s'\n", fn);
-		return 0;
+		return NULL;
 	}
 	
 	/* Attempt to lock. */
@@ -266,18 +260,28 @@ journal_t* journal_open(const char *fn, size_t fslimit, uint16_t bflags)
 	/* Read maximum number of entries. */
 	uint16_t max_nodes = 512;
 	if (!sfread(&max_nodes, sizeof(uint16_t), fd)) {
+		dbg_journal_detail("journal: cannot read max_nodes\n");
 		fcntl(fd, F_SETLK, &fl);
 		close(fd);
-		return 0;
+		return NULL;
+	}
+	
+	/* Check max_nodes, but this is riddiculous. */
+	if (max_nodes == 0) {
+		dbg_journal_detail("journal: max_nodes is invalid\n");
+		fcntl(fd, F_SETLK, &fl);
+		close(fd);
+		return NULL;
 	}
 
 	/* Allocate journal structure. */
 	const size_t node_len = sizeof(journal_node_t);
 	journal_t *j = malloc(sizeof(journal_t) + max_nodes * node_len);
 	if (!j) {
+		dbg_journal_detail("journal: cannot allocate journal\n");
 		fcntl(fd, F_SETLK, &fl);
 		close(fd);
-		return 0;
+		return NULL;
 	}
 	j->qhead = j->qtail = 0;
 	j->fd = fd;
@@ -286,34 +290,57 @@ journal_t* journal_open(const char *fn, size_t fslimit, uint16_t bflags)
 
 	/* Load node queue state. */
 	if (!sfread(&j->qhead, sizeof(uint16_t), fd)) {
+		dbg_journal_detail("journal: cannot read qhead\n");
 		fcntl(fd, F_SETLK, &fl);
 		close(fd);
 		free(j);
-		return 0;
+		return NULL;
 	}
 
 	/* Load queue tail. */
 	if (!sfread(&j->qtail, sizeof(uint16_t), fd)) {
+		dbg_journal_detail("journal: cannot read qtail\n");
 		fcntl(fd, F_SETLK, &fl);
 		close(fd);
 		free(j);
-		return 0;
+		return NULL;
+	}
+	
+	/* Check head + tail */
+	if (j->qtail > max_nodes || j->qhead > max_nodes) {
+		dbg_journal_detail("journal: queue pointers corrupted\n");
+		fcntl(fd, F_SETLK, &fl);
+		close(fd);
+		free(j);
+		return NULL;
 	}
 
 	/* Load empty segment descriptor. */
 	if (!sfread(&j->free, node_len, fd)) {
+		dbg_journal_detail("journal: cannot read free segment ptr\n");
 		fcntl(fd, F_SETLK, &fl);
 		close(fd);
 		free(j);
-		return 0;
+		return NULL;
 	}
 
 	/* Read journal descriptors table. */
 	if (!sfread(&j->nodes, max_nodes * node_len, fd)) {
+		dbg_journal_detail("journal: cannot read node table\n");
 		fcntl(fd, F_SETLK, &fl);
 		close(fd);
 		free(j);
-		return 0;
+		return NULL;
+	}
+	
+	/* Get journal file size. */
+	struct stat st;
+	if (stat(fn, &st) < 0) {
+		dbg_journal_detail("journal: cannot get journal fsize\n");
+		fcntl(fd, F_SETLK, &fl);
+		close(fd);
+		free(j);
+		return NULL;
 	}
 
 	/* Set file size. */
@@ -346,7 +373,7 @@ journal_t* journal_open(const char *fn, size_t fslimit, uint16_t bflags)
 			fcntl(fd, F_SETLK, &fl);
 			close(fd);
 			free(j);
-			return 0;
+			return NULL;
 		}
 	}
 
