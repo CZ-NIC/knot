@@ -123,13 +123,23 @@ int notify_create_response(knot_packet_t *request, uint8_t *buffer,
 	CHECK_ALLOC_LOG(response, KNOTD_ENOMEM);
 
 	/* Set maximum packet size. */
-	knot_packet_set_max_size(response, *size);
-	knot_response_init_from_query(response, request);
+	int rc = knot_packet_set_max_size(response, *size);
+	if (rc == KNOT_EOK) {
+		rc = knot_response_init_from_query(response, request);
+	}
+	
+	/* Aggregated result check. */
+	if (rc != KNOT_EOK) {
+		dbg_notify("%s: failed to init response packet: %s",
+			   "notify_create_response", knot_strerror(rc));
+		knot_packet_free(&response);
+		return KNOTD_EINVAL;
+	}
 
 	// TODO: copy the SOA in Answer section
 	uint8_t *wire = NULL;
 	size_t wire_size = 0;
-	int rc = knot_packet_to_wire(response, &wire, &wire_size);
+	rc = knot_packet_to_wire(response, &wire, &wire_size);
 	if (rc != KNOT_EOK) {
 		knot_packet_free(&response);
 		return rc;
@@ -230,8 +240,7 @@ int notify_process_request(knot_nameserver_t *ns,
 
 	dbg_notify("notify: parsing rest of the packet\n");
 	if (notify->parsed < notify->size) {
-		ret = knot_packet_parse_rest(notify);
-		if (ret != KNOT_EOK) {
+		if (knot_packet_parse_rest(notify) != KNOT_EOK) {
 			dbg_notify("notify: failed to parse NOTIFY query\n");
 			knot_ns_error_response(ns, knot_packet_id(notify),
 					       KNOT_RCODE_FORMERR, buffer,
@@ -310,6 +319,7 @@ int notify_process_response(knot_nameserver_t *nameserver,
 	if (!match) {
 		log_server_notice("No pending NOTIFY query found for ID=%u\n",
 			 pkt_id);
+		pthread_mutex_unlock(&zd->lock);
 		return KNOTD_ERROR;
 	}
 

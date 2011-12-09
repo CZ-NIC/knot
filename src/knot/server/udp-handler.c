@@ -206,8 +206,12 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 static inline int udp_master_recvfrom(dthread_t *thread, stat_t *thread_stat)
 {
 	iohandler_t *h = (iohandler_t *)thread->data;
+	if (h == NULL || h->server == NULL || h->server->nameserver == NULL) {
+		dbg_net("udp: invalid parameters for udp_master_recvfrom\n");
+		return KNOTD_EINVAL;
+	}
+	
 	knot_nameserver_t *ns = h->server->nameserver;
-	int sock = dup(h->fd);
 
 	sockaddr_t addr;
 	if (sockaddr_init(&addr, h->type) != KNOTD_EOK) {
@@ -217,6 +221,7 @@ static inline int udp_master_recvfrom(dthread_t *thread, stat_t *thread_stat)
 		return KNOTD_ENOTSUP;
 	}
 	
+	int sock = dup(h->fd);
 	uint8_t qbuf[SOCKET_MTU_SZ];
 	struct msghdr msg;
 	memset(&msg, 0, sizeof(struct msghdr));

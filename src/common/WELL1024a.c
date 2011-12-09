@@ -10,6 +10,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
+#include <sys/time.h>
 #include <stdio.h>
 
 #include "WELL1024a.h"
@@ -87,11 +88,27 @@ double tls_rand()
 		/* Initialize seed from system PRNG generator. */
 		unsigned init[WELL1024_WIDTH];
 		FILE *fp = fopen("/dev/urandom", "r");
-		for (unsigned i = 0; i < WELL1024_WIDTH; ++i) {
-			int rc = fread(&init[i], sizeof(unsigned), 1, fp);
-			rc = rc;
+		if (fp == NULL) {
+			fp = fopen("/dev/random", "r");
 		}
-		fclose(fp);
+		if (fp == NULL) {
+			fprintf(stderr, "error: PRNG: cannot seed from "
+				"/dev/urandom, seeding from local time\n");
+			struct timeval tv;
+			if (gettimeofday(&tv, NULL) == 0) {
+				memcpy(init, &tv, sizeof(struct timeval));
+			} else {
+				/* Last resort. */
+				time_t tm = time(NULL);
+				memcpy(init, &tm, sizeof(time_t));
+			}
+		} else {
+			for (unsigned i = 0; i < WELL1024_WIDTH; ++i) {
+				int rc = fread(&init[i], sizeof(unsigned), 1, fp);
+				rc = rc;
+			}
+			fclose(fp);
+		}
 
 		/* Initialize PRNG state. */
 		s = InitWELLRNG1024a(init);

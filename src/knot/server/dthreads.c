@@ -571,7 +571,10 @@ int dt_resize(dt_unit_t *unit, int size)
 		}
 
 		pthread_join(thread->_thr, 0);
+		/* Thread is already joined and flagged, but anyway... */
+		lock_thread_rw(thread);
 		thread->state = ThreadJoined;
+		unlock_thread_rw(thread);
 
 		// Delete thread
 		dt_delete_thread(&thread);
@@ -711,7 +714,9 @@ int dt_join(dt_unit_t *unit)
 				pthread_join(thread->_thr, 0);
 				dbg_dt("dthreads: [%p] %s: reclaimed\n",
 				         thread, __func__);
+				lock_thread_rw(thread);
 				thread->state = ThreadJoined;
+				unlock_thread_rw(thread);
 			} else {
 				unlock_thread_rw(thread);
 			}
@@ -812,19 +817,19 @@ int dt_setprio(dthread_t *thread, int prio)
 	int ret = pthread_attr_setschedpolicy(&thread->_attr, policy);
 
 	// Update priority
-	if (ret >= 0) {
+	if (ret == 0) {
 		struct sched_param sp;
 		sp.sched_priority = prio;
 		ret = pthread_attr_setschedparam(&thread->_attr, &sp);
 	}
 
 	/* Map error codes. */
-	if (ret < 0) {
+	if (ret != 0) {
 		dbg_dt("dthreads: [%p] %s(%d): failed",
 		       thread, __func__, prio);
 
 		/* Map "not supported". */
-		if (ret == ENOTSUP) {
+		if (errno == ENOTSUP) {
 			return KNOTD_ENOTSUP;
 		}
 
@@ -927,7 +932,9 @@ int dt_compact(dt_unit_t *unit)
 			pthread_join(thread->_thr, 0);
 			dbg_dt("dthreads: [%p] %s: thread reclaimed\n",
 			       thread, __func__);
+			lock_thread_rw(thread);
 			thread->state = ThreadJoined;
+			unlock_thread_rw(thread);
 		} else {
 			unlock_thread_rw(thread);
 		}

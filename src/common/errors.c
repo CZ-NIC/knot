@@ -64,6 +64,7 @@ int _map_errno(int fallback_value, int arg0, ...)
 		/* Error code matches with mapped. */
 		if (c == errno) {
 			/* Return negative value of the code. */
+			va_end(ap);
 			return -abs(c);
 		}
 	}

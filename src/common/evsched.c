@@ -187,7 +187,7 @@ int evsched_event_finished(evsched_t *s)
 
 int evsched_schedule(evsched_t *s, event_t *ev, uint32_t dt)
 {
-	if (!s || !ev || dt < 0) {
+	if (!s || !ev) {
 		return -1;
 	}
 
