@@ -255,3 +255,5 @@ src/libknot/util/conv.c
 src/libknot/util/conv.h
 src/tests/libknot/libknot/tsig_tests.h
 src/tests/libknot/libknot/tsig_tests.c
+src/knot/zone/semantic-check.c
+src/knot/zone/semantic-check.h

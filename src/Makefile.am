@@ -298,6 +298,8 @@ libknotd_la_SOURCES =				\
 	knot/server/zones.h				\
 	knot/zone/zone-load.c			\
 	knot/zone/zone-load.h			\
+	knot/zone/semantic-check.c		\
+	knot/zone/semantic-check.h		\
 	knot/zone/zone-dump.c			\
 	knot/zone/zone-dump-text.c			\
 	knot/zone/zone-dump-text.h			\
