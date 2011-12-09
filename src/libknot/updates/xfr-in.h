@@ -151,6 +151,8 @@ int xfrin_process_axfr_packet(/*const uint8_t *pkt, size_t size,
                               xfrin_constructed_zone_t **zone*/
                               knot_ns_xfr_t *xfr);
 
+void xfrin_free_orphan_rrsigs(xfrin_orphan_rrsig_t **rrsigs);
+
 /*!
  * \brief Destroys the whole changesets structure.
  *

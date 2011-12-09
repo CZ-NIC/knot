@@ -316,7 +316,7 @@ static int xfrin_process_orphan_rrsigs(knot_zone_contents_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-static void xfrin_free_orphan_rrsigs(xfrin_orphan_rrsig_t **rrsigs)
+void xfrin_free_orphan_rrsigs(xfrin_orphan_rrsig_t **rrsigs)
 {
 	xfrin_orphan_rrsig_t *r = *rrsigs;
 	while (r != NULL) {
