@@ -28,6 +28,7 @@
 #include "common/sockaddr.h"
 #include "common/skip-list.h"
 #include "common/fdset.h"
+#include "common/WELL1024a.h"
 #include "knot/common.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/server/xfr-handler.h"
@@ -47,6 +48,14 @@ typedef struct tcp_worker_t {
 /*
  * Forward decls.
  */
+#define TCP_THROTTLE_LO 10 /*!< Minimum recovery time on errors. */
+#define TCP_THROTTLE_HI 50 /*!< Maximum recovery time on errors. */
+
+/*! \brief Calculate TCP throttle time (random). */
+static inline int tcp_throttle() {
+	//(TCP_THROTTLE_LO + (int)(tls_rand() * TCP_THROTTLE_HI));
+	return (rand() % TCP_THROTTLE_HI) + TCP_THROTTLE_LO; 
+}
 
 /*! \brief Wrapper for TCP send. */
 static int xfr_send_cb(int session, sockaddr_t *addr, uint8_t *msg, size_t msglen)
@@ -228,9 +237,21 @@ static int tcp_accept(int fd)
 
 	/* Evaluate connection. */
 	if (incoming < 0) {
-		if (errno != EINTR) {
+		int en = errno;
+		if (en != EINTR) {
 			log_server_error("Cannot accept connection "
 					 "(%d).\n", errno);
+			if (en == EMFILE || en == ENFILE ||
+			    en == ENOBUFS || en == ENOMEM) {
+				int throttle = tcp_throttle();
+				log_server_error("Throttling TCP connection pool"
+				                 " for %d seconds because of "
+				                 "too many open descriptors "
+				                 "or lack of memory.\n",
+				                 throttle);
+				sleep(throttle);
+			}
+			
 		}
 	} else {
 		dbg_net("tcp: accepted connection fd=%d\n", incoming);

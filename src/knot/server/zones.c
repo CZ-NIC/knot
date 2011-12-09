@@ -427,29 +427,37 @@ static int zones_refresh_ev(event_t *e)
 		int sock = socket_create(master->family, SOCK_DGRAM);
 
 		/* Send query. */
-		ret = -1;
+		ret = KNOTD_ERROR;
 		if (sock > -1) {
-			ret = sendto(sock, qbuf, buflen, 0,
-				     master->ptr, master->len);
+			int sent = sendto(sock, qbuf, buflen, 0,
+			                  master->ptr, master->len);
+		
+			/* Store ID of the awaited response. */
+			if (sent == buflen) {
+				ret = KNOTD_EOK;
+			} else {
+				socket_close(sock);
+				sock = -1;
+			}
 		}
-
-		/* Store ID of the awaited response. */
-		if (ret == buflen) {
+		
+		/* Check result. */
+		if (ret == KNOTD_EOK) {
 			zd->xfr_in.next_id = knot_wire_get_id(qbuf);
 			dbg_zones("zones: expecting SOA response "
 			          "ID=%d for '%s'\n",
 			          zd->xfr_in.next_id, zd->conf->name);
+			
+			/* Watch socket. */
+			knot_ns_xfr_t req;
+			memset(&req, 0, sizeof(req));
+			req.session = sock;
+			req.type = XFR_TYPE_SOA;
+			req.zone = zone;
+			memcpy(&req.addr, master, sizeof(sockaddr_t));
+			sockaddr_update(&req.addr);
+			xfr_request(zd->server->xfr_h, &req);
 		}
-
-		/* Watch socket. */
-		knot_ns_xfr_t req;
-		memset(&req, 0, sizeof(req));
-		req.session = sock;
-		req.type = XFR_TYPE_SOA;
-		req.zone = zone;
-		memcpy(&req.addr, master, sizeof(sockaddr_t));
-		sockaddr_update(&req.addr);
-		xfr_request(zd->server->xfr_h, &req);
 	} else {
 		ret = KNOTD_ERROR;
 	}
