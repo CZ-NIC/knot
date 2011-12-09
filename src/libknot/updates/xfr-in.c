@@ -495,8 +495,8 @@ int xfrin_process_axfr_packet(/*const uint8_t *pkt, size_t size,
 		// this should be the first packet
 		/*! \note [TSIG] Packet number for checking TSIG validation. */
 		xfr->packet_nr = 0;
-		/*! \note [TSIG] Storing total size of data for TSIG digest. */
-		xfr->tsig_data_size = 0;
+//		/*! \note [TSIG] Storing total size of data for TSIG digest. */
+//		xfr->tsig_data_size = 0;
 		
 		// create new zone
 		/*! \todo Ensure that the packet is the first one. */

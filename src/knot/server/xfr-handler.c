@@ -745,7 +745,7 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 			if (data->tsig_data) {
 				dbg_xfr("xfr: using TSIG for XFR/IN\n");
 				add_tsig = 1;
-				data->tsig_data_size = data_bufsize;
+				data->tsig_data_size = 0;
 			} else {
 				dbg_xfr("xfr: failed to allocate TSIG data "
 					"buffer (%zu kB)\n",
