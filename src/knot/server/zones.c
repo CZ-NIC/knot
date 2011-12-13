@@ -1788,30 +1788,25 @@ static int zones_dump_xfr_zone_text(knot_zone_contents_t *zone,
 	int rc = zone_dump_text(zone, new_zonefile);
 
 	if (rc != KNOTD_EOK) {
-		dbg_zones("Failed to save the zone to text zone file '%s'.\n",
-		          new_zonefile);
+		log_zone_warning("Failed to save the zone to text zone file '%s'.\n",
+		                 new_zonefile);
 		free(new_zonefile);
 		return KNOTD_ERROR;
 	}
 
 	/*! \todo this would also need locking as well. */
-	if (remove(zonefile) == 0) {
-		if (rename(new_zonefile, zonefile) != 0) {
-			dbg_zones("Failed to replace old zonefile '%s'' with new"
-			          " zone file '%s'.\n", zonefile, new_zonefile);
-			/*! \todo with proper locking, this shouldn't happen,
-			 *        revise it later on.
-			 */
-			zone_dump_text(zone, zonefile);
-			free(new_zonefile);
-			return KNOTD_ERROR;
-		}
-	} else {
-		dbg_zones("zones: failed to replace old zonefile '%s'.\n",
-		          zonefile);
+	remove(zonefile); /* Don't care, as the rename will trigger the error. */
+	if (rename(new_zonefile, zonefile) != 0) {
+		log_zone_warning("Failed to replace old zonefile '%s'' with new"
+		                 " zone file '%s'.\n", zonefile, new_zonefile);
+		/*! \todo with proper locking, this shouldn't happen,
+		 *        revise it later on.
+		 */
+		zone_dump_text(zone, zonefile);
 		free(new_zonefile);
 		return KNOTD_ERROR;
 	}
+
 
 	free(new_zonefile);
 	return KNOTD_EOK;
