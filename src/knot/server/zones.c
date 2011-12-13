@@ -1780,15 +1780,15 @@ static int zones_dump_xfr_zone_text(knot_zone_contents_t *zone,
 	char *new_zonefile = zones_find_free_filename(zonefile);
 
 	if (new_zonefile == NULL) {
-		dbg_zones("zones: failed to find free filename for temporary "
-		          "storage of the zone text file.\n");
+		log_zone_warning("Failed to find filename for temporary "
+		                 "storage of the transferred zone.\n");
 		return KNOTD_ERROR;	/*! \todo New error code? */
 	}
 
 	int rc = zone_dump_text(zone, new_zonefile);
 
 	if (rc != KNOTD_EOK) {
-		log_zone_warning("Failed to save the zone to text zone file '%s'.\n",
+		log_zone_warning("Failed to save the transferred zone to '%s'.\n",
 		                 new_zonefile);
 		free(new_zonefile);
 		return KNOTD_ERROR;
@@ -1797,7 +1797,7 @@ static int zones_dump_xfr_zone_text(knot_zone_contents_t *zone,
 	/*! \todo this would also need locking as well. */
 	remove(zonefile); /* Don't care, as the rename will trigger the error. */
 	if (rename(new_zonefile, zonefile) != 0) {
-		log_zone_warning("Failed to replace old zonefile '%s'' with new"
+		log_zone_warning("Failed to replace old zone file '%s'' with a new"
 		                 " zone file '%s'.\n", zonefile, new_zonefile);
 		/*! \todo with proper locking, this shouldn't happen,
 		 *        revise it later on.
