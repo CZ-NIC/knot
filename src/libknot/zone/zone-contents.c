@@ -676,7 +676,9 @@ static int knot_zone_contents_dnames_from_rdata_to_table(
 {
 	unsigned int count = knot_rdata_item_count(rdata);
 	int rc = 0;
-	assert(count <= d->length);
+	if (d->fixed_items) {
+		assert(count <= d->length);
+	}
 	// for each RDATA item
 	for (unsigned int j = 0; j < count; ++j) {
 		if (d->wireformat[j]
