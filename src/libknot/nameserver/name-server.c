@@ -619,17 +619,35 @@ static void ns_put_authority_ns(const knot_zone_contents_t *zone,
  * \param zone Zone to take the SOA RRSet from.
  * \param resp Response where to add the RRSet.
  */
-static void ns_put_authority_soa(const knot_zone_contents_t *zone,
+static int ns_put_authority_soa(const knot_zone_contents_t *zone,
                                  knot_packet_t *resp)
 {
 	const knot_rrset_t *soa_rrset = knot_node_rrset(
 			knot_zone_contents_apex(zone), KNOT_RRTYPE_SOA);
 	assert(soa_rrset != NULL);
 
-	knot_response_add_rrset_authority(resp, soa_rrset, 0, 0, 0);
-	ns_add_rrsigs(soa_rrset, resp,
-	              knot_node_owner(knot_zone_contents_apex(zone)),
-	              knot_response_add_rrset_authority, 1);
+	// if SOA's TTL is larger than MINIMUM, copy the RRSet and set
+	// MINIMUM as TTL
+	uint32_t min = knot_rdata_soa_minimum(knot_rrset_rdata(soa_rrset));
+	if (min < knot_rrset_ttl(soa_rrset)) {
+		knot_rrset_t *soa_copy = NULL;
+		knot_rrset_deep_copy(soa_rrset, &soa_copy);
+		CHECK_ALLOC_LOG(soa_copy, KNOT_ENOMEM);
+
+		knot_rrset_set_ttl(soa_copy, min);
+		soa_rrset = soa_copy;
+	}
+
+	assert(soa_rrset != NULL);
+
+	int ret = knot_response_add_rrset_authority(resp, soa_rrset, 0, 0, 0);
+	if (ret == KNOT_EOK) {
+		ret = ns_add_rrsigs(soa_rrset, resp,
+		                    knot_node_owner(knot_zone_contents_apex(zone)),
+		                    knot_response_add_rrset_authority, 1);
+	}
+
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/

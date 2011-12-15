@@ -146,6 +146,8 @@ knot_dname_t *knot_rrset_get_owner(const knot_rrset_t *rrset);
  */
 void knot_rrset_set_owner(knot_rrset_t *rrset, knot_dname_t* owner);
 
+void knot_rrset_set_ttl(knot_rrset_t *rrset, uint32_t ttl);
+
 /*!
  * \brief Returns the TYPE of the RRSet.
  *

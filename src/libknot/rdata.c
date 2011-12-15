@@ -828,6 +828,22 @@ uint32_t knot_rdata_soa_expire(const knot_rdata_t *rdata)
 
 /*---------------------------------------------------------------------------*/
 
+uint32_t knot_rdata_soa_minimum(const knot_rdata_t *rdata)
+{
+	if (!rdata) {
+		return -1;
+	}
+
+	if (rdata->count < 7) {
+		return 0;	/*! \todo Some other error value. */
+	}
+
+	// the number is in network byte order, transform it
+	return knot_wire_read_u32((uint8_t *)(rdata->items[6].raw_data + 1));
+}
+
+/*---------------------------------------------------------------------------*/
+
 uint16_t knot_rdata_rrsig_type_covered(const knot_rdata_t *rdata)
 {
 	if (rdata->count < 1) {

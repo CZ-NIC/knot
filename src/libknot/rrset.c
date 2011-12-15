@@ -212,6 +212,15 @@ void knot_rrset_set_owner(knot_rrset_t *rrset, knot_dname_t* owner)
 
 /*----------------------------------------------------------------------------*/
 
+void knot_rrset_set_ttl(knot_rrset_t *rrset, uint32_t ttl)
+{
+	if (rrset) {
+		rrset->ttl = ttl;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
 uint16_t knot_rrset_type(const knot_rrset_t *rrset)
 {
 	return rrset->type;
