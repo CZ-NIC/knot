@@ -121,7 +121,8 @@ static int xfrin_create_query(knot_dname_t *qname, uint16_t qtype,
 		
 		xfr->digest_size = xfr->digest_max_size;
 		rc = knot_tsig_sign(wire, &wire_size, *size, NULL, 0, 
-		               xfr->digest, &xfr->digest_size, xfr->tsig_key);
+		               xfr->digest, &xfr->digest_size, xfr->tsig_key,
+		               0, 0);
 		if (rc != KNOT_EOK) {
 			/*! \todo [TSIG] Handle TSIG errors. */
 			knot_packet_free(&pkt);
@@ -315,7 +316,7 @@ static int xfrin_process_orphan_rrsigs(knot_zone_contents_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-static void xfrin_free_orphan_rrsigs(xfrin_orphan_rrsig_t **rrsigs)
+void xfrin_free_orphan_rrsigs(xfrin_orphan_rrsig_t **rrsigs)
 {
 	xfrin_orphan_rrsig_t *r = *rrsigs;
 	while (r != NULL) {
@@ -358,6 +359,15 @@ static int xfrin_check_tsig(knot_packet_t *packet, knot_ns_xfr_t *xfr,
 	}
 	
 	if (xfr->tsig_key) {
+		// just append the wireformat to the TSIG data
+		assert(KNOT_NS_TSIG_DATA_MAX_SIZE - xfr->tsig_data_size
+		       >= xfr->wire_size);
+		memcpy(xfr->tsig_data + xfr->tsig_data_size,
+		       xfr->wire, xfr->wire_size);
+		xfr->tsig_data_size += xfr->wire_size;
+	}
+	
+	if (xfr->tsig_key) {
 		if (tsig_req && tsig == NULL) {
 			// TSIG missing!!
 			return KNOT_EMALF;
@@ -367,12 +377,14 @@ static int xfrin_check_tsig(knot_packet_t *packet, knot_ns_xfr_t *xfr,
 				ret = knot_tsig_client_check(tsig, 
 					xfr->wire, xfr->wire_size, 
 					xfr->digest, xfr->digest_size,
-					xfr->tsig_key);
+					xfr->tsig_key,
+					xfr->tsig_prev_time_signed);
 			} else {
 				ret = knot_tsig_client_check_next(tsig, 
-					xfr->wire, xfr->wire_size, 
+					xfr->tsig_data, xfr->tsig_data_size, 
 					xfr->digest, xfr->digest_size,
-					xfr->tsig_key);
+					xfr->tsig_key,
+					xfr->tsig_prev_time_signed);
 			}
 			
 			if (ret != KNOT_EOK) {
@@ -392,15 +404,16 @@ static int xfrin_check_tsig(knot_packet_t *packet, knot_ns_xfr_t *xfr,
 			memcpy(xfr->digest, tsig_rdata_mac(tsig), 
 			       tsig_rdata_mac_length(tsig));
 			xfr->digest_size = tsig_rdata_mac_length(tsig);
+
+			// Extract the time signed from the TSIG and store it
+			// We may rewrite the tsig_req_time_signed field
+			xfr->tsig_prev_time_signed =
+			                tsig_rdata_time_signed(tsig);
+
 			
-		} else { // TSIG not required and not there
-			// just append the wireformat to the TSIG data
-			assert(KNOT_NS_TSIG_DATA_MAX_SIZE - xfr->tsig_data_size
-			       >= xfr->wire_size);
-			memcpy(xfr->tsig_data + xfr->tsig_data_size,
-			       xfr->wire, xfr->wire_size);
-			xfr->tsig_data_size += xfr->wire_size;
-		}
+		}/* else { // TSIG not required and not there
+			
+		}*/
 	} else if (tsig != NULL) {
 		// TSIG where it should not be
 		return KNOT_EMALF;
@@ -482,8 +495,8 @@ int xfrin_process_axfr_packet(/*const uint8_t *pkt, size_t size,
 		// this should be the first packet
 		/*! \note [TSIG] Packet number for checking TSIG validation. */
 		xfr->packet_nr = 0;
-		/*! \note [TSIG] Storing total size of data for TSIG digest. */
-		xfr->tsig_data_size = 0;
+//		/*! \note [TSIG] Storing total size of data for TSIG digest. */
+//		xfr->tsig_data_size = 0;
 		
 		// create new zone
 		/*! \todo Ensure that the packet is the first one. */
@@ -586,16 +599,16 @@ dbg_xfrin_exec(
 	/*! \note [TSIG] add the packet wire size to the data to be verified by 
 	 *               TSIG 
 	 */
-	if (xfr->tsig_key) {
-		dbg_xfrin("Adding packet wire to TSIG data (size till now: %zu,"
-		          " adding: %zu).\n", xfr->tsig_data_size, 
-		          xfr->wire_size);
-		assert(KNOT_NS_TSIG_DATA_MAX_SIZE - xfr->tsig_data_size
-		       >= xfr->wire_size);
-		memcpy(xfr->tsig_data + xfr->tsig_data_size, xfr->wire, 
-		       xfr->wire_size);
-		xfr->tsig_data_size += xfr->wire_size;
-	}
+//	if (xfr->tsig_key) {
+//		dbg_xfrin("Adding packet wire to TSIG data (size till now: %zu,"
+//		          " adding: %zu).\n", xfr->tsig_data_size, 
+//		          xfr->wire_size);
+//		assert(KNOT_NS_TSIG_DATA_MAX_SIZE - xfr->tsig_data_size
+//		       >= xfr->wire_size);
+//		memcpy(xfr->tsig_data + xfr->tsig_data_size, xfr->wire, 
+//		       xfr->wire_size);
+//		xfr->tsig_data_size += xfr->wire_size;
+//	}
 	
 	assert(zone != NULL);
 

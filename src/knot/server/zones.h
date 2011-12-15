@@ -123,11 +123,15 @@ int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
  * \param zone Evaluated zone.
  *
  * \retval KNOTD_EOK if successful.
+ * \retval KNOTD_ERANGE if zonefile is in sync with journal.
  * \retval KNOTD_EINVAL on invalid parameter.
  * \retval KNOTD_ERROR on unspecified error during processing.
  */
 int zones_zonefile_sync(knot_zone_t *zone);
 
+/*!
+ * \todo Document me.
+ */
 int zones_xfr_check_zone(knot_ns_xfr_t *xfr, knot_rcode_t *rcode);
 
 /*!

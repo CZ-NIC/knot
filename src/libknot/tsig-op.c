@@ -25,305 +25,10 @@
 #include "tsig.h"
 #include "tsig-op.h"
 #include "util/wire.h"
+#include "libknot/util/conv.h"
 #include "util/error.h"
 #include "util/debug.h"
-
-
-static const char Base64[] =
-	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-static const char Pad64 = '=';
-
-
-static int b64rmap_initialized = 0;
-static uint8_t b64rmap[256];
-
-static const uint8_t b64rmap_special = 0xf0;
-static const uint8_t b64rmap_end = 0xfd;
-static const uint8_t b64rmap_space = 0xfe;
-static const uint8_t b64rmap_invalid = 0xff;
-
-/**
- * Initializing the reverse map is not thread safe.
- * Which is fine for NSD. For now...
- **/
-void b64_initialize_rmap()
-{
-	int i;
-	char ch;
-
-	/* Null: end of string, stop parsing */
-	b64rmap[0] = b64rmap_end;
-
-	for (i = 1; i < 256; ++i) {
-		ch = (char)i;
-		/* Whitespaces */
-		if (isspace(ch)) {
-			b64rmap[i] = b64rmap_space;
-		}
-		/* Padding: stop parsing */
-		else if (ch == Pad64) {
-			b64rmap[i] = b64rmap_end;
-		}
-		/* Non-base64 char */
-		else {
-			b64rmap[i] = b64rmap_invalid;
-		}
-	}
-
-	/* Fill reverse mapping for base64 chars */
-	for (i = 0; Base64[i] != '\0'; ++i) {
-		b64rmap[(uint8_t)Base64[i]] = i;
-	}
-
-	b64rmap_initialized = 1;
-}
-
-int b64_pton_do(char const *src, uint8_t *target, size_t targsize)
-{
-	int tarindex, state, ch;
-	uint8_t ofs;
-
-	state = 0;
-	tarindex = 0;
-
-	while (1) {
-		ch = *src++;
-		ofs = b64rmap[ch];
-
-		if (ofs >= b64rmap_special) {
-			/* Ignore whitespaces */
-			if (ofs == b64rmap_space) {
-				continue;
-			}
-			/* End of base64 characters */
-			if (ofs == b64rmap_end) {
-				break;
-			}
-			/* A non-base64 character. */
-			return (-1);
-		}
-
-		switch (state) {
-		case 0:
-			if ((size_t)tarindex >= targsize) {
-				return (-1);
-			}
-			target[tarindex] = ofs << 2;
-			state = 1;
-			break;
-		case 1:
-			if ((size_t)tarindex + 1 >= targsize) {
-				return (-1);
-			}
-			target[tarindex]   |=  ofs >> 4;
-			target[tarindex+1]  = (ofs & 0x0f)
-					      << 4 ;
-			tarindex++;
-			state = 2;
-			break;
-		case 2:
-			if ((size_t)tarindex + 1 >= targsize) {
-				return (-1);
-			}
-			target[tarindex]   |=  ofs >> 2;
-			target[tarindex+1]  = (ofs & 0x03)
-					      << 6;
-			tarindex++;
-			state = 3;
-			break;
-		case 3:
-			if ((size_t)tarindex >= targsize) {
-				return (-1);
-			}
-			target[tarindex] |= ofs;
-			tarindex++;
-			state = 0;
-			break;
-		default:
-			abort();
-		}
-	}
-
-	/*
-	 * We are done decoding Base-64 chars.  Let's see if we ended
-	 * on a byte boundary, and/or with erroneous trailing characters.
-	 */
-
-	if (ch == Pad64) {		/* We got a pad char. */
-		ch = *src++;		/* Skip it, get next. */
-		switch (state) {
-		case 0:		/* Invalid = in first position */
-		case 1:		/* Invalid = in second position */
-			return (-1);
-
-		case 2:		/* Valid, means one byte of info */
-			/* Skip any number of spaces. */
-			for ((void)NULL; ch != '\0'; ch = *src++)
-				if (b64rmap[ch] != b64rmap_space) {
-					break;
-				}
-			/* Make sure there is another trailing = sign. */
-			if (ch != Pad64) {
-				return (-1);
-			}
-			ch = *src++;		/* Skip the = */
-			/* Fall through to "single trailing =" case. */
-			/* FALLTHROUGH */
-
-		case 3:		/* Valid, means two bytes of info */
-			/*
-			 * We know this char is an =.  Is there anything but
-			 * whitespace after it?
-			 */
-			for ((void)NULL; ch != '\0'; ch = *src++)
-				if (b64rmap[ch] != b64rmap_space) {
-					return (-1);
-				}
-
-			/*
-			 * Now make sure for cases 2 and 3 that the "extra"
-			 * bits that slopped past the last full byte were
-			 * zeros.  If we don't check them, they become a
-			 * subliminal channel.
-			 */
-			if (target[tarindex] != 0) {
-				return (-1);
-			}
-		}
-	} else {
-		/*
-		 * We ended by seeing the end of the string.  Make sure we
-		 * have no partial bytes lying around.
-		 */
-		if (state != 0) {
-			return (-1);
-		}
-	}
-
-	return (tarindex);
-}
-
-
-int b64_pton_len(char const *src)
-{
-	int tarindex, state, ch;
-	uint8_t ofs;
-
-	state = 0;
-	tarindex = 0;
-
-	while (1) {
-		ch = *src++;
-		ofs = b64rmap[ch];
-
-		if (ofs >= b64rmap_special) {
-			/* Ignore whitespaces */
-			if (ofs == b64rmap_space) {
-				continue;
-			}
-			/* End of base64 characters */
-			if (ofs == b64rmap_end) {
-				break;
-			}
-			/* A non-base64 character. */
-			return (-1);
-		}
-
-		switch (state) {
-		case 0:
-			state = 1;
-			break;
-		case 1:
-			tarindex++;
-			state = 2;
-			break;
-		case 2:
-			tarindex++;
-			state = 3;
-			break;
-		case 3:
-			tarindex++;
-			state = 0;
-			break;
-		default:
-			abort();
-		}
-	}
-
-	/*
-	 * We are done decoding Base-64 chars.  Let's see if we ended
-	 * on a byte boundary, and/or with erroneous trailing characters.
-	 */
-
-	if (ch == Pad64) {		/* We got a pad char. */
-		ch = *src++;		/* Skip it, get next. */
-		switch (state) {
-		case 0:		/* Invalid = in first position */
-		case 1:		/* Invalid = in second position */
-			return (-1);
-
-		case 2:		/* Valid, means one byte of info */
-			/* Skip any number of spaces. */
-			for ((void)NULL; ch != '\0'; ch = *src++)
-				if (b64rmap[ch] != b64rmap_space) {
-					break;
-				}
-			/* Make sure there is another trailing = sign. */
-			if (ch != Pad64) {
-				return (-1);
-			}
-			ch = *src++;		/* Skip the = */
-			/* Fall through to "single trailing =" case. */
-			/* FALLTHROUGH */
-
-		case 3:		/* Valid, means two bytes of info */
-			/*
-			 * We know this char is an =.  Is there anything but
-			 * whitespace after it?
-			 */
-			for ((void)NULL; ch != '\0'; ch = *src++)
-				if (b64rmap[ch] != b64rmap_space) {
-					return (-1);
-				}
-
-		}
-	} else {
-		/*
-		 * We ended by seeing the end of the string.  Make sure we
-		 * have no partial bytes lying around.
-		 */
-		if (state != 0) {
-			return (-1);
-		}
-	}
-
-	return (tarindex);
-}
-
-int b64_pton(char const *src, uint8_t *target, size_t targsize)
-{
-	if (!b64rmap_initialized) {
-		b64_initialize_rmap();
-	}
-
-	if (target) {
-		return b64_pton_do(src, target, targsize);
-	} else {
-		return b64_pton_len(src);
-	}
-}
-
-#define	B64BUFSIZE	65535	/*!< Buffer size for b64 conversion. */
-
-
-
-
-
-
-
-
-
-
+#include "consts.h"
 
 
 const int KNOT_TSIG_MAX_DIGEST_SIZE = 64;    // size of HMAC-SHA512 digest
@@ -405,12 +110,12 @@ static int knot_tsig_compute_digest(const uint8_t *wire, size_t wire_len,
 		return KNOT_EMALF;
 	}
 
-	dbg_tsig("TSIG: decoded key size: %d\n", decoded_key_size);
-	dbg_tsig("TSIG: decoded key: '%*s'\n", decoded_key_size, decoded_key);
+	dbg_tsig_detail("TSIG: decoded key size: %d\n", decoded_key_size);
+	dbg_tsig_detail("TSIG: decoded key: '%*s'\n", decoded_key_size, decoded_key);
 
-	dbg_tsig("TSIG: using this wire for digest calculation\n");
-
-	//dbg_tsig_hex(wire, wire_len);
+//	dbg_tsig_detail("TSIG: using this wire for digest calculation\n");
+//	dbg_tsig_hex_detail(wire, wire_len);
+	dbg_tsig_detail("Wire for signing is %zu bytes long.\n", wire_len);
 
 	/* Compute digest. */
 	HMAC_CTX ctx;
@@ -419,6 +124,14 @@ static int knot_tsig_compute_digest(const uint8_t *wire, size_t wire_len,
 		case KNOT_TSIG_ALG_HMAC_MD5:
 			HMAC_Init(&ctx, decoded_key,
 			          decoded_key_size, EVP_md5());
+			break;
+		case KNOT_TSIG_ALG_HMAC_SHA1:
+			HMAC_Init(&ctx, decoded_key,
+			          decoded_key_size, EVP_sha1());
+			break;
+		case KNOT_TSIG_ALG_HMAC_SHA256:
+			HMAC_Init(&ctx, decoded_key,
+			          decoded_key_size, EVP_sha256());
 			break;
 		default:
 			return KNOT_ENOTSUP;
@@ -432,7 +145,8 @@ static int knot_tsig_compute_digest(const uint8_t *wire, size_t wire_len,
 	return KNOT_EOK;
 }
 
-static int knot_tsig_check_time_signed(const knot_rrset_t *tsig_rr)
+static int knot_tsig_check_time_signed(const knot_rrset_t *tsig_rr,
+                                       uint64_t prev_time_signed)
 {
 	if (!tsig_rr) {
 		return KNOT_EBADARG;
@@ -452,7 +166,15 @@ static int knot_tsig_check_time_signed(const knot_rrset_t *tsig_rr)
 	time_t curr_time = time(NULL);
 
 	/*!< \todo bleeding eyes. */
-	if (difftime(curr_time, (time_t)time_signed) > fudge) {
+	double diff = difftime(curr_time, (time_t)time_signed);
+
+	if (diff > fudge || diff < -fudge) {
+		return KNOT_TSIG_EBADTIME;
+	}
+
+	diff = difftime((time_t)time_signed, prev_time_signed);
+
+	if (diff < 0) {
 		return KNOT_TSIG_EBADTIME;
 	}
 
@@ -569,7 +291,7 @@ static int knot_tsig_wire_write_timers(uint8_t *wire,
 	return KNOT_EOK;
 }
 
-int knot_tsig_create_sign_wire(const uint8_t *msg, size_t msg_len,
+static int knot_tsig_create_sign_wire(const uint8_t *msg, size_t msg_len,
 				      /*size_t msg_max_len, */const uint8_t *request_mac,
 		                      size_t request_mac_len,
 		                      uint8_t *digest, size_t *digest_len,
@@ -666,11 +388,11 @@ int knot_tsig_create_sign_wire(const uint8_t *msg, size_t msg_len,
 }
 
 static int knot_tsig_create_sign_wire_next(const uint8_t *msg, size_t msg_len,
-				      const uint8_t *prev_mac,
-		                      size_t prev_mac_len,
-		                      uint8_t *digest, size_t *digest_len,
-				      const knot_rrset_t *tmp_tsig,
-		                      const knot_key_t *key)
+                                           const uint8_t *prev_mac,
+                                           size_t prev_mac_len,
+                                           uint8_t *digest, size_t *digest_len,
+                                           const knot_rrset_t *tmp_tsig,
+                                           const knot_key_t *key)
 {
 	if (!msg || !key || digest_len == NULL) {
 		dbg_tsig("TSIG: create wire: bad args.\n");
@@ -689,7 +411,7 @@ static int knot_tsig_create_sign_wire_next(const uint8_t *msg, size_t msg_len,
 	         tsig_rdata_tsig_timers_length());
 	size_t wire_len = sizeof(uint8_t) *
 	                (msg_len + prev_mac_len +
-			tsig_rdata_tsig_timers_length());
+			tsig_rdata_tsig_timers_length() + 2);
 	uint8_t *wire = malloc(wire_len);
 	if (!wire) {
 		ERR_ALLOC_FAILED;
@@ -699,19 +421,21 @@ static int knot_tsig_create_sign_wire_next(const uint8_t *msg, size_t msg_len,
 	memset(wire, 0, wire_len);
 
 	/* Copy the request MAC - should work even if NULL. */
+	dbg_tsig("Copying request mac size.\n");
+	knot_wire_write_u16(wire, prev_mac_len);
 	dbg_tsig("Copying request mac.\n");
-	memcpy(wire, prev_mac, sizeof(uint8_t) * prev_mac_len);
+	memcpy(wire + 2, prev_mac, sizeof(uint8_t) * prev_mac_len);
 	dbg_tsig_detail("TSIG: create wire: request mac: ");
-	dbg_tsig_hex_detail(wire, prev_mac_len);
+	dbg_tsig_hex_detail(wire + 2, prev_mac_len);
 	/* Copy the original message. */
 	dbg_tsig("Copying original message.\n");
-	memcpy(wire + prev_mac_len, msg, msg_len);
+	memcpy(wire + prev_mac_len + 2, msg, msg_len);
 	dbg_tsig_detail("TSIG: create wire: original message: \n");
 	//dbg_tsig_hex_detail(wire + prev_mac_len, msg_len);
 	/* Copy TSIG variables. */
 	
 	dbg_tsig("Writing TSIG timers.\n");
-	ret = knot_tsig_write_tsig_timers(wire + prev_mac_len + msg_len, 
+	ret = knot_tsig_write_tsig_timers(wire + prev_mac_len + msg_len + 2, 
 	                                  tmp_tsig);
 //	ret = knot_tsig_write_tsig_variables(wire + prev_mac_len + msg_len,
 //	                                     tmp_tsig);
@@ -740,7 +464,8 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
                    size_t msg_max_len, const uint8_t *request_mac,
                    size_t request_mac_len,
                    uint8_t *digest, size_t *digest_len,
-                   const knot_key_t *key)
+                   const knot_key_t *key, uint16_t tsig_rcode,
+                   uint64_t request_time_signed)
 {
 	if (!msg || !msg_len || !key || digest == NULL || digest_len == NULL) {
 		return KNOT_EBADARG;
@@ -764,6 +489,7 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	knot_rdata_t *rdata = knot_rdata_new();
 	if (!rdata) {
 		dbg_tsig_detail("TSIG: rdata = NULL\n");
+		/*! \todo CLEANUP !!! */
 		return KNOT_ENOMEM;
 	}
 
@@ -779,6 +505,7 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	if (!items) {
 		dbg_tsig_detail("TSIG: items = NULL\n");
 		ERR_ALLOC_FAILED;
+		/*! \todo Free key_name_copy !!! */
 		return KNOT_ENOMEM;
 	}
 
@@ -787,23 +514,40 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	int ret = knot_rdata_set_items(rdata, items, desc->length);
 	if (ret != KNOT_EOK) {
 		dbg_tsig_detail("TSIG: rdata_set_items returned %s\n", knot_strerror(ret));
+		/*! \todo CLEANUP !!! */
 		return ret;
 	}
 	free(items);
 
 	tsig_rdata_set_alg(tmp_tsig, key->algorithm);
-	tsig_rdata_store_current_time(tmp_tsig);
-	tsig_rdata_set_fudge(tmp_tsig, 300);
+
+	/* Distinguish BADTIME response. */
+	if (tsig_rcode == KNOT_TSIG_RCODE_BADTIME) {
+		/* Set error */
+		tsig_rdata_set_tsig_error(tmp_tsig, tsig_rcode);
+		/* Set client's time signed into the time signed field. */
+		tsig_rdata_set_time_signed(tmp_tsig, request_time_signed);
+
+		/* Store current time into Other data. */
+		uint8_t time_signed[3];
+		time_t curr_time = time(NULL);
+
+		/*! \todo bleeding eyes. */
+		knot_wire_write_u48(time_signed, (uint64_t)curr_time);
+
+		tsig_rdata_set_other_data(tmp_tsig, 6, time_signed);
+	} else {
+		tsig_rdata_store_current_time(tmp_tsig);
+		tsig_rdata_set_tsig_error(tmp_tsig, 0);
+
+		/* Set other len. */
+		tsig_rdata_set_other_data(tmp_tsig, 0, 0);
+	}
+
+	tsig_rdata_set_fudge(tmp_tsig, 300);   /*! \todo Bleeding eyes :-) */
 
 	/* Set original ID */
 	tsig_rdata_set_orig_id(tmp_tsig, knot_wire_get_id(msg));
-
-	/* Set error */
-	/*! \todo [TSIG] Set error and other data if appropriate. */
-	tsig_rdata_set_tsig_error(tmp_tsig, 0);
-
-	/* Set other len. */
-	tsig_rdata_set_other_data(tmp_tsig, 0, 0);
 
 	uint8_t digest_tmp[KNOT_TSIG_MAX_DIGEST_SIZE];
 	size_t digest_tmp_len = 0;
@@ -818,6 +562,7 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	if (ret != KNOT_EOK) {
 		dbg_tsig("TSIG: could not create wire or sign wire: %s\n",
 		         knot_strerror(ret));
+		/*! \todo CLEANUP !!! */
 		return ret;
 	}
 
@@ -834,6 +579,7 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	if (ret != KNOT_EOK) {
 		dbg_tsig_detail("TSIG: rrset_to_wire = %s\n", knot_strerror(ret));
 		*digest_len = 0;
+		/*! \todo CLEANUP !!! */
 		return ret;
 	}
 
@@ -848,13 +594,16 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	memcpy(digest, digest_tmp, digest_tmp_len);
 	*digest_len = digest_tmp_len;
 
+	/*! \todo CLEANUP !!! */
+
 	return KNOT_EOK;
 }
 
 int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
                         const uint8_t *prev_digest, size_t prev_digest_len,
                         uint8_t *digest, size_t *digest_len,
-                        const knot_key_t *key)
+                        const knot_key_t *key, uint8_t *to_sign,
+                        size_t to_sign_len)
 {
 	if (!msg || !msg_len || !key || !key || !digest || !digest_len) {
 		return KNOT_EBADARG;
@@ -869,11 +618,47 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	if (!tmp_tsig) {
 		return KNOT_ENOMEM;
 	}
+	
+	/* Create rdata for TSIG RR. */
+	knot_rdata_t *rdata = knot_rdata_new();
+	if (!rdata) {
+		dbg_tsig_detail("TSIG: rdata = NULL\n");
+		/*! \todo CLEANUP !!! */
+		return KNOT_ENOMEM;
+	}
+
+	knot_rrset_add_rdata(tmp_tsig, rdata);
+
+	/* Create items for TSIG RR. */
+	knot_rrtype_descriptor_t *desc =
+		knot_rrtype_descriptor_by_type(KNOT_RRTYPE_TSIG);
+	assert(desc);
+
+	knot_rdata_item_t *items =
+		malloc(sizeof(knot_rdata_item_t) * desc->length);
+	if (!items) {
+		dbg_tsig_detail("TSIG: items = NULL\n");
+		ERR_ALLOC_FAILED;
+		/*! \todo Free key_name_copy !!! */
+		return KNOT_ENOMEM;
+	}
+
+	memset(items, 0, sizeof(knot_rdata_item_t) * desc->length);
+
+	int ret = knot_rdata_set_items(rdata, items, desc->length);
+	if (ret != KNOT_EOK) {
+		dbg_tsig_detail("TSIG: rdata_set_items returned %s\n", knot_strerror(ret));
+		/*! \todo CLEANUP !!! */
+		return ret;
+	}
+	free(items);
 
 	tsig_rdata_store_current_time(tmp_tsig);
-
+	tsig_rdata_set_fudge(tmp_tsig, 300);
+	
 	/* Create wire to be signed. */
-	size_t wire_len = prev_digest_len + *msg_len + KNOT_TSIG_TIMERS_LENGTH;
+	size_t wire_len = prev_digest_len + to_sign_len
+	                  + KNOT_TSIG_TIMERS_LENGTH + 2;
 	uint8_t *wire = malloc(wire_len);
 	if (!wire) {
 		ERR_ALLOC_FAILED;
@@ -881,14 +666,23 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	}
 	memset(wire, 0, wire_len);
 
+	/* Write previous digest length. */
+	knot_wire_write_u16(wire, prev_digest_len);
 	/* Write previous digest. */
-	memcpy(wire, prev_digest, sizeof(uint8_t) * prev_digest_len);
+	memcpy(wire + 2, prev_digest, sizeof(uint8_t) * prev_digest_len);
 	/* Write original message. */
-	memcpy(msg + prev_digest_len, msg, *msg_len);
+	memcpy(wire + prev_digest_len + 2, to_sign, to_sign_len);
 	/* Write timers. */
-	knot_tsig_wire_write_timers(msg + prev_digest_len + *msg_len, tmp_tsig);
+	knot_tsig_wire_write_timers(wire + prev_digest_len + to_sign_len + 2,
+	                            tmp_tsig);
 
-	int ret = 0;
+	dbg_tsig_detail("Previous digest: \n");
+	dbg_tsig_hex_detail(prev_digest, prev_digest_len);
+
+	dbg_tsig_detail("Timers: \n");
+	dbg_tsig_hex_detail(wire + prev_digest_len + *msg_len,
+			    KNOT_TSIG_TIMERS_LENGTH);
+
 	ret = knot_tsig_compute_digest(wire, wire_len,
 	                               digest_tmp, &digest_tmp_len, key);
 	if (ret != KNOT_EOK) {
@@ -904,7 +698,22 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	free(wire);
 
 	/* Set the MAC. */
-	tsig_rdata_set_mac(tmp_tsig, *digest_len, digest);
+	tsig_rdata_set_mac(tmp_tsig, digest_tmp_len, digest_tmp);
+	
+	/* Set algorithm. */
+	tsig_rdata_set_alg(tmp_tsig, key->algorithm);
+	
+	/* Set original id. */
+	tsig_rdata_set_orig_id(tmp_tsig, knot_wire_get_id(msg));
+
+	/* Set TSIG error. */
+	tsig_rdata_set_tsig_error(tmp_tsig, 0);
+	
+	/* Set other data. */
+	tsig_rdata_set_other_data(tmp_tsig, 0, NULL);
+
+	dbg_tsig_detail("Message max length: %zu, message length: %zu\n",
+			msg_max_len, *msg_len);
 
 	size_t tsig_wire_size = msg_max_len - *msg_len;
 	int rr_count = 0;
@@ -913,6 +722,11 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	if (ret != KNOT_EOK) {
 		*digest_len = 0;
 		return ret;
+	}
+
+	/* This should not happen, at least one rr has to be converted. */
+	if (rr_count == 0) {
+		return KNOT_EBADARG;
 	}
 
 	knot_rrset_deep_free(&tmp_tsig, 1, 1, 1);
@@ -932,6 +746,7 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
                                   const uint8_t *request_mac,
                                   size_t request_mac_len,
                                   const knot_key_t *tsig_key,
+                                  uint64_t prev_time_signed,
                                   int use_times)
 {
 	if (!tsig_rr || !wire || !tsig_key) {
@@ -939,7 +754,7 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
 	}
 
 	/* Check time signed. */
-	int ret = knot_tsig_check_time_signed(tsig_rr);
+	int ret = knot_tsig_check_time_signed(tsig_rr, prev_time_signed);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -1061,29 +876,140 @@ int knot_tsig_server_check(const knot_rrset_t *tsig_rr,
                            const knot_key_t *tsig_key)
 {
 	dbg_tsig_verb("tsig_server_check()\n");
-	return knot_tsig_check_digest(tsig_rr, wire, size, NULL, 0, tsig_key, 0);
+	return knot_tsig_check_digest(tsig_rr, wire, size, NULL, 0, tsig_key,
+	                              0, 0);
 }
 
 int knot_tsig_client_check(const knot_rrset_t *tsig_rr,
                            const uint8_t *wire, size_t size,
                            const uint8_t *request_mac, size_t request_mac_len,
-                           const knot_key_t *tsig_key)
+                           const knot_key_t *tsig_key,
+                           uint64_t prev_time_signed)
 {
 	dbg_tsig_verb("tsig_client_check()\n");
 	return knot_tsig_check_digest(tsig_rr, wire, size, request_mac,
-	                              request_mac_len, tsig_key, 0);
+	                              request_mac_len, tsig_key,
+	                              prev_time_signed, 0);
 }
 
 int knot_tsig_client_check_next(const knot_rrset_t *tsig_rr,
                                 const uint8_t *wire, size_t size,
                                 const uint8_t *prev_digest,
                                 size_t prev_digest_len,
-                                const knot_key_t *tsig_key)
+                                const knot_key_t *tsig_key,
+                                uint64_t prev_time_signed)
 {
 //	return knot_tsig_client_check(tsig_rr, wire, size, prev_digest,
 //	                              prev_digest_len, tsig_key);
 	dbg_tsig_verb("tsig_client_check_next()\n");
 	return knot_tsig_check_digest(tsig_rr, wire, size, prev_digest,
-	                              prev_digest_len, tsig_key, 1);
+	                              prev_digest_len, tsig_key,
+	                              prev_time_signed, 1);
 	return KNOT_ENOTSUP;
 }
+
+int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
+                  uint16_t tsig_rcode, const knot_rrset_t *tsig_rr)
+{
+	/*! \todo Revise!! */
+
+	if (!msg || !msg_len || !tsig_rr) {
+		return KNOT_EBADARG;
+	}
+
+	/*! \todo What key to use, when we do not sign? Does this even work? */
+	knot_dname_t *key_name =
+			knot_dname_deep_copy(knot_rrset_owner(tsig_rr));
+	if (key_name == NULL) {
+		dbg_tsig_detail("TSIG: failed to copy owner\n");
+		return KNOT_ERROR;
+	}
+
+	knot_rrset_t *tmp_tsig =
+		knot_rrset_new(key_name,
+			       KNOT_RRTYPE_TSIG, KNOT_CLASS_ANY, 0);
+	if (!tmp_tsig) {
+		dbg_tsig_detail("TSIG: tmp_tsig = NULL\n");
+		knot_dname_free(&key_name);
+		return KNOT_ENOMEM;
+	}
+
+	/* Create rdata for TSIG RR. */
+	knot_rdata_t *rdata = knot_rdata_new();
+	if (!rdata) {
+		dbg_tsig_detail("TSIG: rdata = NULL\n");
+		knot_rrset_deep_free(&tmp_tsig, 1, 1, 1);
+		return KNOT_ENOMEM;
+	}
+
+	knot_rrset_add_rdata(tmp_tsig, rdata);
+
+	/* Create items for TSIG RR. */
+	knot_rrtype_descriptor_t *desc =
+		knot_rrtype_descriptor_by_type(KNOT_RRTYPE_TSIG);
+	assert(desc);
+
+	knot_rdata_item_t *items =
+		malloc(sizeof(knot_rdata_item_t) * desc->length);
+	if (!items) {
+		dbg_tsig_detail("TSIG: items = NULL\n");
+		ERR_ALLOC_FAILED;
+		knot_rrset_deep_free(&tmp_tsig, 1, 1, 1);
+		return KNOT_ENOMEM;
+	}
+
+	memset(items, 0, sizeof(knot_rdata_item_t) * desc->length);
+
+	int ret = knot_rdata_set_items(rdata, items, desc->length);
+	if (ret != KNOT_EOK) {
+		dbg_tsig_detail("TSIG: rdata_set_items returned %s\n",
+		                knot_strerror(ret));
+		knot_rrset_deep_free(&tmp_tsig, 1, 1, 1);
+		return ret;
+	}
+	free(items);
+
+	knot_dname_t *alg_name =
+			knot_dname_deep_copy(tsig_rdata_alg_name(tsig_rr));
+	if (alg_name == NULL) {
+		dbg_tsig_detail("TSIG: failed to copy alg name\n");
+		return KNOT_ERROR;
+	}
+
+	tsig_rdata_set_alg_name(tmp_tsig, alg_name);
+	tsig_rdata_set_time_signed(tmp_tsig, tsig_rdata_time_signed(tsig_rr));
+	tsig_rdata_set_fudge(tmp_tsig, tsig_rdata_fudge(tsig_rr));
+	tsig_rdata_set_mac(tmp_tsig, 0, NULL);
+
+	/* Set original ID */
+	tsig_rdata_set_orig_id(tmp_tsig, knot_wire_get_id(msg));
+
+	/* Set error */
+	tsig_rdata_set_tsig_error(tmp_tsig, tsig_rcode);
+
+	assert(tsig_rcode != KNOT_TSIG_RCODE_BADTIME);
+	/* Set other len. */
+	tsig_rdata_set_other_data(tmp_tsig, 0, 0);
+
+	size_t tsig_wire_len = msg_max_len - *msg_len;
+	int rr_count = 0;
+
+	/* Write RRSet to wire */
+	ret = knot_rrset_to_wire(tmp_tsig, msg + *msg_len,
+	                         &tsig_wire_len, &rr_count);
+	if (ret != KNOT_EOK) {
+		dbg_tsig_detail("TSIG: rrset_to_wire = %s\n", knot_strerror(ret));
+		knot_rrset_deep_free(&tmp_tsig, 1, 1, 1);
+		return ret;
+	}
+
+	knot_rrset_deep_free(&tmp_tsig, 1, 1, 1);
+
+	*msg_len += tsig_wire_len;
+
+	uint16_t arcount = knot_wire_get_arcount(msg);
+	knot_wire_set_arcount(msg, ++arcount);
+
+	return KNOT_EOK;
+}
+

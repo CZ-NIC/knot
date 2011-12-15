@@ -223,8 +223,12 @@ static int xfr_xfrin_cleanup(xfrworker_t *w, knot_ns_xfr_t *data)
 	switch(data->type) {
 	case XFR_TYPE_AIN:
 		if (data->data) {
+			xfrin_constructed_zone_t *constr_zone = 
+					(xfrin_constructed_zone_t *)data->data;
 			knot_zone_contents_deep_free(
-					(knot_zone_contents_t **)&data->data, 0);
+					&(constr_zone->contents), 0);
+			xfrin_free_orphan_rrsigs(&(constr_zone->rrsigs));
+			free(data->data);
 			data->data = 0;
 		}
 		break;
@@ -340,14 +344,14 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 static int xfr_prepare_tsig(knot_ns_xfr_t *xfr, knot_key_t *key)
 {
 	int ret = KNOT_EOK;
-	xfr->tsig_key = 0; /*key;*/ /*!< \todo [TSIG] DISABLED */
-//	xfr->tsig_size = tsig_wire_maxsize(key);
-//	xfr->digest_max_size = tsig_alg_digest_length(
-//				key->algorithm);
-//	xfr->digest = malloc(xfr->digest_max_size);
-//	memset(xfr->digest, 0 , xfr->digest_max_size);
-//	dbg_xfr("xfr: found TSIG key (MAC len=%zu), adding to transfer\n",
-//		xfr->digest_max_size);
+	xfr->tsig_key = key;
+	xfr->tsig_size = tsig_wire_maxsize(key);
+	xfr->digest_max_size = tsig_alg_digest_length(
+				key->algorithm);
+	xfr->digest = malloc(xfr->digest_max_size);
+	memset(xfr->digest, 0 , xfr->digest_max_size);
+	dbg_xfr("xfr: found TSIG key (MAC len=%zu), adding to transfer\n",
+		xfr->digest_max_size);
 	
 	return ret;
 }
@@ -357,108 +361,149 @@ static int xfr_prepare_tsig(knot_ns_xfr_t *xfr, knot_key_t *key)
  */
 static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 {
-	/*!< \todo [TSIG] DISABLED */
-	return knot_packet_parse_rest(xfr->query);
-	
-//	/* Parse rest of the packet. */
-//	int ret = KNOT_EOK;
-//	knot_packet_t *qry = xfr->query;
-//	knot_key_t *key = 0;
-//	const knot_rrset_t *tsig_rr = 0;
-//	ret = knot_packet_parse_rest(qry);
-//	if (ret == KNOT_EOK) {
+	/* Parse rest of the packet. */
+	int ret = KNOT_EOK;
+	knot_packet_t *qry = xfr->query;
+	knot_key_t *key = 0;
+	const knot_rrset_t *tsig_rr = 0;
+	ret = knot_packet_parse_rest(qry);
+	if (ret == KNOT_EOK) {
 		
-//		/* Find TSIG key name from query. */
-//		const knot_dname_t* kname = 0;
-//		int tsig_pos = knot_packet_additional_rrset_count(qry) - 1;
-//		if (tsig_pos >= 0) {
-//			tsig_rr = knot_packet_additional_rrset(qry, tsig_pos);
-//			if (knot_rrset_type(tsig_rr) == KNOT_RRTYPE_TSIG) {
-//				dbg_xfr("xfr: found TSIG in AR\n");
-//				kname = knot_rrset_owner(tsig_rr);
-//				ret = KNOT_TSIG_EBADKEY;
-//			}
-//		}
-//		if (!kname) {
-//			dbg_xfr("xfr: TSIG not found in AR\n");
-//		}
+		/* Find TSIG key name from query. */
+		const knot_dname_t* kname = 0;
+		int tsig_pos = knot_packet_additional_rrset_count(qry) - 1;
+		if (tsig_pos >= 0) {
+			tsig_rr = knot_packet_additional_rrset(qry, tsig_pos);
+			if (knot_rrset_type(tsig_rr) == KNOT_RRTYPE_TSIG) {
+				dbg_xfr("xfr: found TSIG in AR\n");
+				kname = knot_rrset_owner(tsig_rr);
+			} else {
+				tsig_rr = 0;
+			}
+		}
+		if (!kname) {
+			dbg_xfr("xfr: TSIG not found in AR\n");
+			char *name = knot_dname_to_str(
+						knot_zone_name(xfr->zone));
+			log_answer_warning("Unauthorized request for XFR '%s/"
+			                   "OUT'.\n", name);
+			free(name);
 
-//		/* Find configured key for claimed key name. */
-//		conf_key_t *ck = 0;
-//		WALK_LIST(ck, conf()->keys) {
-//			if (!kname) {
-//				break;
-//			}
-//			/* Compare stored keys to claimed. */
-//			if (knot_dname_compare(ck->k.name,
-//					       kname) == 0) {
-//				dbg_xfr("xfr: found claimed "
-//					"TSIG key for "
-//					"comparison\n");
-//				key = &ck->k;
-//				break;
-//			}
-//		}
+			// return REFUSED
+			xfr->tsig_key = 0;
+			*rcode = KNOT_RCODE_REFUSED;
+			return KNOT_EXFRREFUSED;
+		}
+		if (tsig_rr) {
+			tsig_algorithm_t alg = tsig_rdata_alg(tsig_rr);
+			if (tsig_alg_digest_length(alg) == 0) {
+				log_server_info("Unsupported digest algorithm "
+				                "requested, treating as "
+				                "bad key.\n");
+				/*! \todo [TSIG] It is unclear from RFC if I
+				 *               should treat is as a bad key
+				 *               or some other error.
+				 */
+				*rcode = KNOT_RCODE_NOTAUTH;
+				xfr->tsig_key = NULL;
+				xfr->tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
+				xfr->tsig_prev_time_signed =
+				                tsig_rdata_time_signed(tsig_rr);
+				return KNOT_TSIG_EBADKEY;
+			}
+		}
 
-//		/* Validate with TSIG. */
-//		if (key) {
-//			/* Prepare variables for TSIG */
-//			xfr_prepare_tsig(xfr, key);
+		/* Evaluate configured key for claimed key name.*/
+		key = xfr->tsig_key; /* Expects already set key (check_zone) */
+		xfr->tsig_key = 0;
+		if (key && kname && knot_dname_compare(key->name, kname) == 0) {
+			dbg_xfr("xfr: found claimed TSIG key for comparison\n");
+		} else {
+			/*! \todo These ifs are redundant. */
+			*rcode = KNOT_RCODE_NOTAUTH;
+			/* TSIG is mandatory if configured for interface. */
+			if (key && !kname) {
+				dbg_xfr("xfr: TSIG key is mandatory for "
+				        "this interface\n");
+				ret = KNOT_TSIG_EBADKEY;
+				xfr->tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
+			}
 			
-//			/* Copy MAC from query. */
-//			dbg_xfr("xfr: validating TSIG from query\n");
-//			const uint8_t* mac = tsig_rdata_mac(tsig_rr);
-//			size_t mac_len = tsig_rdata_mac_length(tsig_rr);
-//			if (mac_len > xfr->digest_max_size) {
-//				ret = KNOT_EMALF;
-//				dbg_xfr("xfr: MAC length %zu exceeds digest "
-//					"maximum size %zu\n",
-//					mac_len, xfr->digest_max_size);
-//			} else {
-//				memcpy(xfr->digest, mac, mac_len);
-//				xfr->digest_size = mac_len;
-				
-//				/* Check query TSIG. */
-//				ret = knot_tsig_server_check(
-//						tsig_rr,
-//						knot_packet_wireformat(qry),
-//						knot_packet_size(qry),
-//						key);
-//				dbg_xfr("knot_tsig_server_check() returned %s\n",
-//					knot_strerror(ret));
-//			}
+			/* Configured, but doesn't match. */
+			if (kname) {
+				dbg_xfr("xfr: no claimed key configured, "
+				        "treating as bad key\n");
+				ret = KNOT_TSIG_EBADKEY;
+				xfr->tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
+			}
 			
-//			/* Evaluate TSIG check results. */
-//			switch(ret) {
-//			case KNOT_EOK:
-//				*rcode = KNOT_RCODE_NOERROR;
-//				break;
-//			case KNOT_TSIG_EBADKEY:
-//			case KNOT_TSIG_EBADSIG:
-//				// delete the TSIG key so that the error
-//				// response is not signed
-//				xfr->tsig_key = NULL;
-//			case KNOT_TSIG_EBADTIME:
-//				/*! \note [TSIG] Set TSIG rcode in TSIG RR. */
+			key = 0; /* Invalidate, ret already set to BADKEY */
+		}
+
+		/* Validate with TSIG. */
+		if (key) {
+			/* Prepare variables for TSIG */
+			xfr_prepare_tsig(xfr, key);
+			
+			/* Copy MAC from query. */
+			dbg_xfr("xfr: validating TSIG from query\n");
+			const uint8_t* mac = tsig_rdata_mac(tsig_rr);
+			size_t mac_len = tsig_rdata_mac_length(tsig_rr);
+			if (mac_len > xfr->digest_max_size) {
+				ret = KNOT_EMALF;
+				dbg_xfr("xfr: MAC length %zu exceeds digest "
+					"maximum size %zu\n",
+					mac_len, xfr->digest_max_size);
+			} else {
+				memcpy(xfr->digest, mac, mac_len);
+				xfr->digest_size = mac_len;
 				
-//				*rcode = KNOT_RCODE_NOTAUTH; 
-//				break;
-//			case KNOT_EMALF:
-//				*rcode = KNOT_RCODE_FORMERR;
-//				break;
-//			default:
-//				*rcode = KNOT_RCODE_SERVFAIL;
-//			}
-//		} else {
-//			dbg_xfr("xfr: no claimed key configured, "
-//				"treating as bad key\n");
-//		}
-//	} else {
-//		dbg_xfr("xfr: failed to parse rest of the packet\n");
-//		*rcode = KNOT_RCODE_FORMERR;
-//	}
+				/* Check query TSIG. */
+				ret = knot_tsig_server_check(
+						tsig_rr,
+						knot_packet_wireformat(qry),
+						knot_packet_size(qry),
+						key);
+				dbg_xfr("knot_tsig_server_check() returned %s\n",
+					knot_strerror(ret));
+			}
+			
+			/* Evaluate TSIG check results. */
+			switch(ret) {
+			case KNOT_EOK:
+				*rcode = KNOT_RCODE_NOERROR;
+				break;
+			case KNOT_TSIG_EBADKEY:
+				xfr->tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
+				xfr->tsig_key = NULL;
+				*rcode = KNOT_RCODE_NOTAUTH;
+				break;
+			case KNOT_TSIG_EBADSIG:
+				xfr->tsig_rcode = KNOT_TSIG_RCODE_BADSIG;
+				xfr->tsig_key = NULL;
+				*rcode = KNOT_RCODE_NOTAUTH;
+				break;
+			case KNOT_TSIG_EBADTIME:
+				xfr->tsig_rcode = KNOT_TSIG_RCODE_BADTIME;
+				// store the time signed from the query
+				assert(tsig_rr != NULL);
+				xfr->tsig_prev_time_signed =
+				                tsig_rdata_time_signed(tsig_rr);
+				*rcode = KNOT_RCODE_NOTAUTH;
+				break;
+			case KNOT_EMALF:
+				*rcode = KNOT_RCODE_FORMERR;
+				break;
+			default:
+				*rcode = KNOT_RCODE_SERVFAIL;
+			}
+		}
+	} else {
+		dbg_xfr("xfr: failed to parse rest of the packet\n");
+		*rcode = KNOT_RCODE_FORMERR;
+	}
 	
-//	return ret;
+	return ret;
 }
 
 /*!
@@ -489,11 +534,6 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 		data->wire_size = 0;
 		ret = KNOT_ECONN;
 	} else {
-
-	/*!
-	 * \todo [TSIG] Somewhere before this fetch the query digest and the TSIG
-	 *       associated with this transfer and save them to 'data'.
-	 */
 
 		/* Process incoming packet. */
 		switch(data->type) {
@@ -694,11 +734,8 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 				   "contents\n");
 		return KNOTD_ERROR;
 	}
-	
-	/*! \todo [TSIG] Somewhere before this determine if the server should
-	 *               use TSIG for this transfer and set appropriate fields
-	 *               in 'data'.
-	 */
+
+	/* Prepare TSIG key if set. */
 	int add_tsig = 0;
 	if (data->tsig_key) {
 		if (xfr_prepare_tsig(data, data->tsig_key) == KNOT_EOK) {
@@ -707,7 +744,7 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 			if (data->tsig_data) {
 				dbg_xfr("xfr: using TSIG for XFR/IN\n");
 				add_tsig = 1;
-				data->tsig_data_size = data_bufsize;
+				data->tsig_data_size = 0;
 			} else {
 				dbg_xfr("xfr: failed to allocate TSIG data "
 					"buffer (%zu kB)\n",
@@ -1027,7 +1064,7 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		}
 
 		/* Check TSIG. */
-		if (!init_failed) {
+		if (!init_failed && xfr.tsig_key != NULL) {
 			ret = xfr_check_tsig(&xfr, &rcode);
 			init_failed = (ret != KNOT_EOK);
 			errstr = knot_strerror(ret);
@@ -1043,6 +1080,18 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 			                  r_addr, r_port,
 			                  errstr);
 		} else {
+			/* Prepare place for TSIG data */
+			xfr.tsig_data = malloc(KNOT_NS_TSIG_DATA_MAX_SIZE);
+			if (xfr.tsig_data) {
+				dbg_xfr("xfr: TSIG data allocated: %zu.\n",
+					KNOT_NS_TSIG_DATA_MAX_SIZE);
+				xfr.tsig_data_size = 0;
+			} else {
+				dbg_xfr("xfr: failed to allocate TSIG data "
+					"buffer (%zu kB)\n",
+					KNOT_NS_TSIG_DATA_MAX_SIZE / 1024);
+			}
+
 			ret = knot_ns_answer_axfr(w->ns, &xfr);
 			dbg_xfr("xfr: ns_answer_axfr() = %d.\n", ret);
 			if (ret != KNOTD_EOK) {
@@ -1141,6 +1190,18 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 			                  errstr);
 			ret = KNOTD_ERROR;
 		} else {
+			/* Prepare place for TSIG data */
+			xfr.tsig_data = malloc(KNOT_NS_TSIG_DATA_MAX_SIZE);
+			if (xfr.tsig_data) {
+				dbg_xfr("xfr: TSIG data allocated: %zu.\n",
+					KNOT_NS_TSIG_DATA_MAX_SIZE);
+				xfr.tsig_data_size = 0;
+			} else {
+				dbg_xfr("xfr: failed to allocate TSIG data "
+					"buffer (%zu kB)\n",
+					KNOT_NS_TSIG_DATA_MAX_SIZE / 1024);
+			}
+
 			ret = knot_ns_answer_ixfr(w->ns, &xfr);
 			dbg_xfr("xfr: ns_answer_ixfr() = %d.\n", ret);
 			if (ret != KNOTD_EOK) {

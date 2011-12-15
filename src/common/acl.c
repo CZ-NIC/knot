@@ -62,18 +62,14 @@ static int acl_compare(void *k1, void *k2)
 	if (a1->len == sizeof(struct sockaddr_in6)) {
 
 		/* Compare address. */
-		/*! \todo Maybe use memcmp()? */
-		ldiff = 0;
-		const unsigned int *a6 = (const unsigned int *)&a1->addr6.sin6_addr;
-		const unsigned int *b6 = (const unsigned int *)&a2->addr6.sin6_addr;
-		for (int i = 0; i <  (sizeof(struct in6_addr)/ sizeof(int)) ; ++i) {
-			ldiff = a6[i] - b6[i];
-			if (ldiff < 0) {
-				return -1;
-			}
-			if (ldiff > 0) {
-				return 1;
-			}
+		ldiff = memcmp(&a1->addr6.sin6_addr,
+		               &a2->addr6.sin6_addr,
+		               sizeof(struct in6_addr));
+		if (ldiff < 0) {
+			return -1;
+		} 
+		if (ldiff > 0) {
+			return 1;
 		}
 
 		/* Port = 0 means any port match. */
@@ -138,38 +134,43 @@ void acl_delete(acl_t **acl)
 	*acl = 0;
 }
 
-int acl_create(acl_t *acl, const sockaddr_t* addr, acl_rule_t rule)
-{
-	if (!acl || !addr || rule < 0) {
-		return ACL_ERROR;
-	}
-
-	/* Insert into skip list. */
-	sockaddr_t *key = malloc(sizeof(sockaddr_t));
-	memcpy(key, addr, sizeof(sockaddr_t));
-
-	skip_insert(acl->rules, key, (void*)((ssize_t)rule + 1), 0);
-
-	return ACL_ACCEPT;
-}
-
-int acl_match(acl_t *acl, sockaddr_t* addr)
+int acl_create(acl_t *acl, const sockaddr_t* addr, acl_rule_t rule, void *val)
 {
 	if (!acl || !addr) {
 		return ACL_ERROR;
 	}
 
-	/* Return default rule if not found.
-	 * Conversion to the same length integer is made,
-	 * but we can be sure, that the value range is within <-1,1>.
-	 */
-	ssize_t val = ((ssize_t)skip_find(acl->rules, addr)) - 1;
-	if (val < 0) {
+	/* Insert into skip list. */
+	acl_key_t *key = malloc(sizeof(acl_key_t));
+	memcpy(&key->addr, addr, sizeof(sockaddr_t));
+	sockaddr_update(&key->addr);
+	key->rule = rule;
+	key->val = val;
+
+	skip_insert(acl->rules, &key->addr, key, 0);
+
+	return ACL_ACCEPT;
+}
+
+int acl_match(acl_t *acl, sockaddr_t* addr, acl_key_t **key)
+{
+	if (!acl || !addr) {
+		return ACL_ERROR;
+	}
+
+	acl_key_t *found = skip_find(acl->rules, addr);
+	
+	/* Set stored value if exists. */
+	if (key != 0) {
+		*key = found;
+	}
+	
+	/* Return appropriate rule. */
+	if (!found) {
 		return acl->default_rule;
 	}
 
-	/* Return stored rule if found. */
-	return (int)val;
+	return found->rule;
 }
 
 int acl_truncate(acl_t *acl)
@@ -179,7 +180,7 @@ int acl_truncate(acl_t *acl)
 	}
 
 	/* Destroy all rules. */
-	skip_destroy_list(&acl->rules, free, 0);
+	skip_destroy_list(&acl->rules, 0, free);
 
 	return ACL_ACCEPT;
 }

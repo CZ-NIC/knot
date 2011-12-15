@@ -2001,11 +2001,6 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 	size_t real_size = xfr->wire_size;
 	if (ns_response_to_wire(xfr->response, xfr->wire, &real_size) != 0) {
 		return NS_ERR_SERVFAIL;
-//		// send back SERVFAIL (as this is our problem)
-//		ns_error_response(nameserver,
-//				  knot_wire_get_id(query_wire),
-//				  KNOT_RCODE_SERVFAIL, response_wire,
-//				  rsize);
 	}
 	
 	int res = 0;
@@ -2013,6 +2008,17 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 	size_t digest_real_size = xfr->digest_max_size;
 	
 	dbg_ns_detail("xfr->tsig_key=%p\n", xfr->tsig_key);
+	dbg_ns_detail("xfr->tsig_rcode=%d\n", xfr->tsig_rcode);
+
+	if (xfr->tsig_key) {
+		// add the data to TSIG data
+		assert(KNOT_NS_TSIG_DATA_MAX_SIZE - xfr->tsig_data_size
+		       >= xfr->wire_size);
+		memcpy(xfr->tsig_data + xfr->tsig_data_size,
+		       xfr->wire, real_size);
+		xfr->tsig_data_size += real_size;
+	}
+
 	/*! \note [TSIG] Generate TSIG if required (during XFR/IN). */
 	if (xfr->tsig_key && add_tsig) {
 		if (xfr->packet_nr == 0) {
@@ -2026,7 +2032,8 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 			               xfr->wire_size, xfr->digest, 
 			               xfr->digest_size, xfr->digest, 
 			               &digest_real_size,
-			               xfr->tsig_key);
+			               xfr->tsig_key, xfr->tsig_rcode,
+			               xfr->tsig_prev_time_signed);
 		} else {
 			/* Add key, digest and digest length. */
 			dbg_ns_detail("Calling tsig_sign_next()\n");
@@ -2036,7 +2043,8 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 			                          xfr->digest_size,
 			                          xfr->digest, 
 			                          &digest_real_size,
-			                          xfr->tsig_key);
+			                          xfr->tsig_key, xfr->tsig_data,
+			                          xfr->tsig_data_size);
 		}
 
 		dbg_ns_detail("Sign function returned: %s\n",
@@ -2050,6 +2058,27 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 		assert(digest_real_size > 0);
 		// save the new previous digest size
 		xfr->digest_size = digest_real_size;
+
+		// clear the TSIG data
+		xfr->tsig_data_size = 0;
+
+	} else if (xfr->tsig_rcode != 0) {
+		dbg_ns_detail("Adding TSIG without signing, TSIG RCODE: %d.\n",
+		              xfr->tsig_rcode);
+		assert(xfr->tsig_rcode != KNOT_TSIG_RCODE_BADTIME);
+		// add TSIG without signing
+		assert(xfr->query != NULL);
+		assert(knot_packet_additional_rrset_count(xfr->query) > 0);
+
+		const knot_rrset_t *tsig = knot_packet_additional_rrset(
+			xfr->query,
+			knot_packet_additional_rrset_count(xfr->query) - 1);
+
+		res = knot_tsig_add(xfr->wire, &real_size, xfr->wire_size,
+		                    xfr->tsig_rcode, tsig);
+		if (res != KNOT_EOK) {
+			return res;
+		}
 	}
 
 	// Send the response
@@ -2071,7 +2100,9 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 	
 	// increment the packet number
 	++xfr->packet_nr;
-	if (xfr->tsig_key && add_tsig) {
+	if ((xfr->tsig_key && knot_ns_tsig_required(xfr->packet_nr))
+	     || xfr->tsig_rcode != 0) {
+		/*! \todo Where is xfr->tsig_size set?? */
 		knot_packet_set_tsig_size(xfr->response, xfr->tsig_size);
 	} else {
 		knot_packet_set_tsig_size(xfr->response, 0);
@@ -3158,12 +3189,7 @@ int knot_ns_answer_ixfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	int ret = knot_packet_parse_rest(xfr->query);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to parse rest of the packet. Reply FORMERR.\n");
-//		knot_ns_error_response_full(nameserver, xfr->response,
-//		                            KNOT_RCODE_FORMERR, xfr->wire, 
-//		                            &size);
 		knot_ns_xfr_send_error(nameserver, xfr, KNOT_RCODE_FORMERR);
-
-		//ret = xfr->send(xfr->session, &xfr->addr, xfr->wire, size);
 		knot_packet_free(&xfr->response);
 		return ret;
 	}
@@ -3172,11 +3198,6 @@ int knot_ns_answer_ixfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	if (knot_zone_contents(xfr->zone) == NULL) {
 		dbg_ns("Zone expired or not bootstrapped. Reply SERVFAIL.\n");
 		ret = knot_ns_xfr_send_error(nameserver, xfr, KNOT_RCODE_SERVFAIL);
-//		knot_ns_error_response_full(nameserver, xfr->response,
-//		                            KNOT_RCODE_SERVFAIL, xfr->wire, 
-//		                            &size);
-
-//		ret = xfr->send(xfr->session, &xfr->addr, xfr->wire, size);
 		knot_packet_free(&xfr->response);
 		return ret;
 	}
@@ -3202,28 +3223,8 @@ int knot_ns_answer_ixfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	if (ret < 0) {
 		dbg_ns("IXFR failed, sending SERVFAIL.\n");
 		// now only one type of error (SERVFAIL), later maybe more
-
-		/*! \todo Extract this to some function. */
-//		knot_response_set_rcode(xfr->response, KNOT_RCODE_SERVFAIL);
-//		uint8_t *wire = NULL;
-//		ret = knot_packet_to_wire(xfr->response, &wire, &size);
-//		if (ret != KNOT_EOK) {
-////			knot_ns_error_response(nameserver, 
-////			                         xfr->query->header.id,
-////			                         KNOT_RCODE_SERVFAIL, xfr->wire, 
-////			                         &size);
-////			ret = xfr->send(xfr->session, &xfr->addr, xfr->wire, 
-////			                size);
-//			knot_ns_xfr_send_error(xfr, KNOT_RCODE_SERVFAIL);
-//			knot_packet_free(&xfr->response);
-//			return ret;
-//		} else {
-//			ret = xfr->send(xfr->session, &xfr->addr, wire, size);
-//		}
 		knot_ns_xfr_send_error(nameserver, xfr, KNOT_RCODE_SERVFAIL);
-	} /*else if (ret > 0) {
-		ret = KNOT_ERROR;
-	}*/
+	}
 
 	knot_packet_free(&xfr->response);
 

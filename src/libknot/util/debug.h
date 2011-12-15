@@ -52,15 +52,15 @@
 //#define KNOT_NODE_DEBUG
 //#define KNOT_PACKET_DEBUG
 //#define KNOT_EDNS_DEBUG
-//#define KNOT_RRSET_DEBUG
+#define KNOT_RRSET_DEBUG
 //#define KNOT_RDATA_DEBUG
 //#define KNOT_NSEC3_DEBUG
 //#define CUCKOO_DEBUG
 //#define CUCKOO_DEBUG_HASH
-//#define KNOT_NS_DEBUG
+#define KNOT_NS_DEBUG
 //#define KNOT_XFRIN_DEBUG
 //#define KNOT_DDNS_DEBUG
-//#define KNOT_TSIG_DEBUG
+#define KNOT_TSIG_DEBUG
 
 /*!
  * \brief Dumps RDATA of the given type.
@@ -746,6 +746,45 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 #define dbg_tsig_hex_verb(data, len)
 #define dbg_tsig_detail(msg...)
 #define dbg_tsig_hex_detail(data, len)
+#endif
+
+#ifdef KNOT_RRSET_DEBUG
+
+/* Brief messages. */
+#ifdef DEBUG_ENABLE_BRIEF
+#define dbg_rrset(msg...) fprintf(stderr, msg)
+#define dbg_rrset_hex(data, len)  hex_print((data), (len))
+#else
+#define dbg_rrset(msg...)
+#define dbg_rrset_hex(data, len)
+#endif
+
+/* Verbose messages. */
+#ifdef DEBUG_ENABLE_VERBOSE
+#define dbg_rrset_verb(msg...) fprintf(stderr, msg)
+#define dbg_rrset_hex_verb(data, len)  hex_print((data), (len))
+#else
+#define dbg_rrset_verb(msg...)
+#define dbg_rrset_hex_verb(data, len)
+#endif
+
+/* Detail messages. */
+#ifdef DEBUG_ENABLE_DETAILS
+#define dbg_rrset_detail(msg...) fprintf(stderr, msg)
+#define dbg_rrset_hex_detail(data, len)  hex_print((data), (len))
+#else
+#define dbg_rrset_detail(msg...)
+#define dbg_rrset_hex_detail(data, len)
+#endif
+
+/* No messages. */
+#else
+#define dbg_rrset(msg...)
+#define dbg_rrset_hex(data, len)
+#define dbg_rrset_verb(msg...)
+#define dbg_rrset_hex_verb(data, len)
+#define dbg_rrset_detail(msg...)
+#define dbg_rrset_hex_detail(data, len)
 #endif
 
 /******************************************************************************/

@@ -22,17 +22,17 @@
 #include <stdarg.h>
 
 #define NO_PLAN          -1
-#define ok(...)          ok_at_loc(__FILE__, __LINE__, __VA_ARGS__, NULL)
+#define ok(...)          ok_at_loc(__FILE__, __LINE__, 1, __VA_ARGS__, NULL)
 #define pass(...)        ok(1, ## __VA_ARGS__)
 #define fail(...)        ok(0, ## __VA_ARGS__)
 #define is(...)          is_at_loc(__FILE__, __LINE__, __VA_ARGS__, NULL)
 #define isnt(...)        isnt_at_loc(__FILE__, __LINE__, __VA_ARGS__, NULL)
 #define cmp_ok(...)      cmp_ok_at_loc(__FILE__, __LINE__, __VA_ARGS__, NULL)
 
-int     vok_at_loc      (const char *file, int line, int test, const char *fmt,
+int     vok_at_loc      (const char *file, int line, int test, int verbose, const char *fmt,
                          va_list args);
 void    plan            (int tests);
-int     ok_at_loc       (const char *file, int line, int test, const char *fmt,
+int     ok_at_loc       (const char *file, int line, int test, int verbose, const char *fmt,
                          ...);
 int     diag            (const char *fmt, ...);
 int     note            (const char *fmt, ...);
@@ -41,9 +41,10 @@ void    skippy          (int n, const char *fmt, ...);
 void    ctodo           (int ignore, const char *fmt, ...);
 void    cendtodo        (void);
 int     is_at_loc       (const char *file, int line, const char *got,
-                         const char *expected, const char *fmt, ...);
+                         const char *expected,
+                         const char *fmt, ...);
 int     isnt_at_loc     (const char *file, int line, const char *got,
-                         const char *expected, const char *fmt, ...);
+                         const char *expected, int verbose, const char *fmt, ...);
 int     cmp_ok_at_loc   (const char *file, int line, int a, const char *op,
                          int b, const char *fmt, ...);
 
@@ -55,6 +56,7 @@ int     cmp_ok_at_loc   (const char *file, int line, int a, const char *op,
 #define unlike(...) like_at_loc(0, __FILE__, __LINE__, __VA_ARGS__, NULL)
 int     like_at_loc     (int for_match, const char *file, int line,
                          const char *got, const char *expected,
+                         int verbose,
                          const char *fmt, ...);
 #endif
 
@@ -64,8 +66,9 @@ int     like_at_loc     (int for_match, const char *file, int line,
 #define todo(...)        ctodo(0, ## __VA_ARGS__, NULL)
 #define endtodo          cendtodo()
 
-#define dies_ok(code, ...)  dies_ok_common(code, 1, ## __VA_ARGS__)
-#define lives_ok(code, ...) dies_ok_common(code, 0, ## __VA_ARGS__)
+#define dies_ok(code, ...)  dies_ok_common(code, 1, 1, ## __VA_ARGS__)
+#define lives_ok(code, ...) dies_ok_common(code, 0, 1, ## __VA_ARGS__)
+#define lives_ok_silent(code, ...) dies_ok_common(code, 0, 0, ## __VA_ARGS__)
 
 #ifdef _WIN32
 #define dies_ok_common(...) \
@@ -75,7 +78,7 @@ int     like_at_loc     (int for_match, const char *file, int line,
 #include <sys/types.h>
 #include <sys/wait.h>
 int tap_test_died (int status);
-#define dies_ok_common(code, for_death, ...)                \
+#define dies_ok_common(code, for_death, verbose, ...)                \
     do {                                                    \
         tap_test_died(1);                                   \
         int cpid = fork();                                  \
@@ -95,7 +98,7 @@ int tap_test_died (int status);
         }                                                   \
         int it_died = tap_test_died(0);                     \
         if (!it_died) {code}                                \
-        ok(for_death ? it_died : !it_died, ## __VA_ARGS__); \
+        ok_at_loc(__FILE__, __LINE__, verbose, for_death ? it_died : !it_died, ## __VA_ARGS__); \
     } while (0)
 #endif
 #endif

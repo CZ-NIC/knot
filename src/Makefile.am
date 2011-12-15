@@ -116,6 +116,8 @@ unittests_libknot_SOURCES =			\
 	tests/libknot/libknot/rdata_tests.h	\
 	tests/libknot/libknot/rrset_tests.c	\
 	tests/libknot/libknot/rrset_tests.h	\
+	tests/libknot/libknot/tsig_tests.c	\
+	tests/libknot/libknot/tsig_tests.h	\
 	tests/libknot/libknot/zone_tests.c	\
 	tests/libknot/libknot/zone_tests.h	\
 	tests/libknot/libknot/zone_tree_tests.h\
@@ -153,6 +155,8 @@ libknot_la_SOURCES =				\
 	libknot/util/debug.c			\
 	libknot/util/debug.h			\
 	libknot/util/utils.h			\
+	libknot/util/conv.h			\
+	libknot/util/conv.c			\
 	libknot/util/descriptor.c		\
 	libknot/util/tolower.h			\
 	libknot/util/tolower.c			\

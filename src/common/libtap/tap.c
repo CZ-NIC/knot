@@ -51,38 +51,41 @@ vstrdupf (const char *fmt, va_list args) {
 }
 
 int
-vok_at_loc (const char *file, int line, int test, const char *fmt,
+vok_at_loc (const char *file, int line, int test, int verbose, const char *fmt,
             va_list args)
 {
-    char *name = vstrdupf(fmt, args);
-    printf("%sok %d", test ? "" : "not ", ++current_test);
-    if (*name)
-        printf(" - %s", name);
-    if (todo_mesg) {
-        printf(" # TODO");
-        if (*todo_mesg)
-            printf(" %s", todo_mesg);
+    if (verbose) {
+	    char *name = vstrdupf(fmt, args);
+	    printf("%sok %d", test ? "" : "not ", ++current_test);
+	    if (*name)
+	        printf(" - %s", name);
+	    if (todo_mesg) {
+	        printf(" # TODO");
+	        if (*todo_mesg)
+	            printf(" %s", todo_mesg);
+	    }
+	    printf("\n");
+	    if (!test) {
+	        if (*name)
+	            diag("  Failed%s test '%s'\n  at %s line %d.",
+	                todo_mesg ? " (TODO)" : "", name, file, line);
+	        else
+	            diag("  Failed%s test at %s line %d.",
+	                todo_mesg ? " (TODO)" : "", file, line);
+	        if (!todo_mesg)
+	            failed_tests++;
+	    
+	    free(name);
+	}
     }
-    printf("\n");
-    if (!test) {
-        if (*name)
-            diag("  Failed%s test '%s'\n  at %s line %d.",
-                todo_mesg ? " (TODO)" : "", name, file, line);
-        else
-            diag("  Failed%s test at %s line %d.",
-                todo_mesg ? " (TODO)" : "", file, line);
-        if (!todo_mesg)
-            failed_tests++;
-    }
-    free(name);
     return test;
 }
 
 int
-ok_at_loc (const char *file, int line, int test, const char *fmt, ...) {
+ok_at_loc (const char *file, int line, int verbose, int test, const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
-    vok_at_loc(file, line, test, fmt, args);
+    vok_at_loc(file, line, test, verbose, fmt, args);
     va_end(args);
     return test;
 }
@@ -102,7 +105,7 @@ is_at_loc (const char *file, int line, const char *got, const char *expected,
     int test = eq(got, expected);
     va_list args;
     va_start(args, fmt);
-    vok_at_loc(file, line, test, fmt, args);
+    vok_at_loc(file, line, test, 1, fmt, args);
     va_end(args);
     if (!test) {
         diag("         got: '%s'", got);
@@ -113,12 +116,13 @@ is_at_loc (const char *file, int line, const char *got, const char *expected,
 
 int
 isnt_at_loc (const char *file, int line, const char *got, const char *expected,
+             int verbose,
              const char *fmt, ...)
 {
     int test = ne(got, expected);
     va_list args;
     va_start(args, fmt);
-    vok_at_loc(file, line, test, fmt, args);
+    vok_at_loc(file, line, test, verbose, fmt, args);
     va_end(args);
     if (!test) {
         diag("         got: '%s'", got);
@@ -152,7 +156,7 @@ cmp_ok_at_loc (const char *file, int line, int a, const char *op, int b,
              : diag("unrecognized operator '%s'", op);
     va_list args;
     va_start(args, fmt);
-    vok_at_loc(file, line, test, fmt, args);
+    vok_at_loc(file, line, test, 1, fmt, args);
     va_end(args);
     if (!test) {
         diag("    %d", a);
@@ -278,7 +282,7 @@ tap_test_died (int status) {
 
 int
 like_at_loc (int for_match, const char *file, int line, const char *got,
-             const char *expected, const char *fmt, ...)
+             const char *expected, int verbose, const char *fmt, ...)
 {
     int test;
     regex_t re;
@@ -295,7 +299,7 @@ like_at_loc (int for_match, const char *file, int line, const char *got,
     test = for_match ? !err : err;
     va_list args;
     va_start(args, fmt);
-    vok_at_loc(file, line, test, fmt, args);
+    vok_at_loc(file, line, test, verbose, fmt, args);
     va_end(args);
     if (!test) {
         if (for_match) {

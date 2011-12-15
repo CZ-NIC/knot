@@ -24,6 +24,7 @@
 #include "rrset.h"
 #include "util/descriptor.h"
 #include "util/error.h"
+#include "util/debug.h"
 #include "util/utils.h"
 
 /*----------------------------------------------------------------------------*/
@@ -385,7 +386,7 @@ static int knot_rrset_rr_to_wire(const knot_rrset_t *rrset,
 	assert(pos != NULL);
 	assert(*pos != NULL);
 	
-	fprintf(stderr, "Max size: %zu, owner: %p, owner size: %d\n",
+	dbg_rrset_detail("Max size: %zu, owner: %p, owner size: %d\n",
 	        max_size, rrset->owner, rrset->owner->size);
 
 	// check if owner fits
@@ -398,21 +399,21 @@ static int knot_rrset_rr_to_wire(const knot_rrset_t *rrset,
 	*pos += knot_dname_size(rrset->owner);
 	size += knot_dname_size(rrset->owner);
 	
-	fprintf(stderr, "Max size: %zu, size: %d\n", max_size, size);
+	dbg_rrset_detail("Max size: %zu, size: %d\n", max_size, size);
 
-	fprintf(stderr, "Wire format:\n");
+	dbg_rrset_detail("Wire format:\n");
 
 	// put rest of RR 'header'
 	knot_wire_write_u16(*pos, rrset->type);
-	fprintf(stderr, "  Type: %u\n", rrset->type);
+	dbg_rrset_detail("  Type: %u\n", rrset->type);
 	*pos += 2;
 
 	knot_wire_write_u16(*pos, rrset->rclass);
-	fprintf(stderr, "  Class: %u\n", rrset->rclass);
+	dbg_rrset_detail("  Class: %u\n", rrset->rclass);
 	*pos += 2;
 
 	knot_wire_write_u32(*pos, rrset->ttl);
-	fprintf(stderr, "  TTL: %u\n", rrset->ttl);
+	dbg_rrset_detail("  TTL: %u\n", rrset->ttl);
 	*pos += 4;
 
 	// save space for RDLENGTH
@@ -422,7 +423,7 @@ static int knot_rrset_rr_to_wire(const knot_rrset_t *rrset,
 	size += 10;
 //	compr->wire_pos += size;
 	
-	fprintf(stderr, "Max size: %zu, size: %d\n", max_size, size);
+	dbg_rrset_detail("Max size: %zu, size: %d\n", max_size, size);
 
 	knot_rrtype_descriptor_t *desc =
 		knot_rrtype_descriptor_by_type(rrset->type);
@@ -447,8 +448,9 @@ static int knot_rrset_rr_to_wire(const knot_rrset_t *rrset,
 			// save whole domain name
 			memcpy(*pos, knot_dname_name(dname), 
 			       knot_dname_size(dname));
-			fprintf(stderr, "Uncompressed dname size: %d\n",
-			        knot_dname_size(dname));
+			dbg_rrset_detail(stderr,
+			                 "Uncompressed dname size: %d\n",
+			                 knot_dname_size(dname));
 			*pos += knot_dname_size(dname);
 			rdlength += knot_dname_size(dname);
 //			compr->wire_pos += dname->size;
@@ -464,7 +466,7 @@ static int knot_rrset_rr_to_wire(const knot_rrset_t *rrset,
 
 			// copy just the rdata item data (without size)
 			memcpy(*pos, raw_data + 1, raw_data[0]);
-			fprintf(stderr, "Raw data size: %d\n", raw_data[0]);
+			dbg_rrset_detail("Raw data size: %d\n", raw_data[0]);
 			*pos += raw_data[0];
 			rdlength += raw_data[0];
 //			compr->wire_pos += raw_data[0];
@@ -473,7 +475,7 @@ static int knot_rrset_rr_to_wire(const knot_rrset_t *rrset,
 		}
 	}
 	
-	fprintf(stderr, "Max size: %zu, size: %d\n", max_size, size);
+	dbg_rrset_detail("Max size: %zu, size: %d\n", max_size, size);
 
 	assert(size + rdlength <= max_size);
 	size += rdlength;
@@ -509,11 +511,11 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
 		if (ret < 0) {
 			// some RR didn't fit in, so no RRs should be used
 			// TODO: remove last entries from compression table
-			fprintf(stderr, "Some RR didn't fit in.\n");
+			dbg_rrset_detail("Some RR didn't fit in.\n");
 			return KNOT_ESPACE;
 		}
 
-		fprintf(stderr, "RR of size %d added.\n", ret);
+		dbg_rrset_detail("RR of size %d added.\n", ret);
 		rrset_size += ret;
 		++rrs;
 	} while ((rdata = knot_rrset_rdata_next(rrset, rdata)) != NULL);
@@ -523,7 +525,7 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
 	assert(pos - wire == rrset_size);
 	*size = rrset_size;
 
-	fprintf(stderr, "  Size after: %zu\n", *size);
+	dbg_rrset_detail("Size after: %zu\n", *size);
 
 	*rr_count = rrs;
 
