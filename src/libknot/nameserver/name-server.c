@@ -34,6 +34,10 @@
 #include "updates/ddns.h"
 #include "tsig-op.h"
 
+/*! \warning Including server stuff into libknot. */
+#include "knot/server/zones.h"
+#include "knot/other/error.h"
+
 /*----------------------------------------------------------------------------*/
 
 /*! \brief Maximum UDP payload with EDNS enabled. */
@@ -1639,6 +1643,168 @@ static void ns_add_dnskey(const knot_node_t *apex, knot_packet_t *resp)
 }
 
 /*----------------------------------------------------------------------------*/
+
+static int knot_ns_verify_tsig_query(const knot_packet_t *query,
+                                     const knot_rrset_t *tsig_rr,
+                                     const knot_key_t *key,
+                                     knot_rcode_t *rcode, uint16_t *tsig_rcode)
+{
+	assert(tsig_rr != NULL);
+	assert(key != NULL);
+	assert(rcode != NULL);
+	assert(tsig_rcode != NULL);
+
+	/*
+	 * 1) Check if we support the requested algorithm.
+	 */
+	tsig_algorithm_t alg = tsig_rdata_alg(tsig_rr);
+	if (tsig_alg_digest_length(alg) == 0) {
+		log_answer_info("Unsupported digest algorithm "
+		                "requested, treating as bad key\n");
+		/*! \todo [TSIG] It is unclear from RFC if I
+		 *               should treat is as a bad key
+		 *               or some other error.
+		 */
+		*rcode = KNOT_RCODE_NOTAUTH;
+		*tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
+		return KNOT_TSIG_EBADKEY;
+	}
+
+	const knot_dname_t *kname = knot_rrset_owner(tsig_rr);
+	assert(kname != NULL);
+
+	/*
+	 * 2) Find the particular key used by the TSIG.
+	 */
+	if (key && kname && knot_dname_compare(key->name, kname) == 0) {
+		dbg_ns_verb("Found claimed TSIG key for comparison\n");
+	} else {
+		*rcode = KNOT_RCODE_NOTAUTH;
+		*tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
+		return KNOT_TSIG_EBADKEY;
+	}
+
+	/*
+	 * 3) Validate the query with TSIG.
+	 */
+	/* Prepare variables for TSIG */
+	/*! \todo These need to be saved to the response somehow. */
+	size_t tsig_size = tsig_wire_maxsize(key);
+	size_t digest_max_size = tsig_alg_digest_length(key->algorithm);
+	size_t digest_size = 0;
+	uint64_t tsig_prev_time_signed = 0;
+	uint8_t *digest = (uint8_t *)malloc(digest_max_size);
+	memset(digest, 0 , digest_max_size);
+
+	/* Copy MAC from query. */
+	dbg_ns_verb("Validating TSIG from query\n");
+
+	const uint8_t* mac = tsig_rdata_mac(tsig_rr);
+	size_t mac_len = tsig_rdata_mac_length(tsig_rr);
+
+	int ret = KNOT_EOK;
+
+	if (mac_len > digest_max_size) {
+		*rcode = KNOT_RCODE_FORMERR;
+		dbg_ns("MAC length %zu exceeds digest "
+		       "maximum size %zu\n", mac_len, digest_max_size);
+		return KNOT_EMALF;
+	} else {
+		memcpy(digest, mac, mac_len);
+		digest_size = mac_len;
+
+		/* Check query TSIG. */
+		ret = knot_tsig_server_check(tsig_rr,
+		                             knot_packet_wireformat(query),
+		                             knot_packet_size(query), key);
+		dbg_ns_verb("knot_tsig_server_check() returned %s\n",
+		            knot_strerror(ret));
+
+		/* Evaluate TSIG check results. */
+		switch(ret) {
+		case KNOT_EOK:
+			*rcode = KNOT_RCODE_NOERROR;
+			break;
+		case KNOT_TSIG_EBADKEY:
+			*tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
+			*rcode = KNOT_RCODE_NOTAUTH;
+			break;
+		case KNOT_TSIG_EBADSIG:
+			*tsig_rcode = KNOT_TSIG_RCODE_BADSIG;
+			*rcode = KNOT_RCODE_NOTAUTH;
+			break;
+		case KNOT_TSIG_EBADTIME:
+			*tsig_rcode = KNOT_TSIG_RCODE_BADTIME;
+			// store the time signed from the query
+			tsig_prev_time_signed = tsig_rdata_time_signed(tsig_rr);
+			*rcode = KNOT_RCODE_NOTAUTH;
+			break;
+		case KNOT_EMALF:
+			*rcode = KNOT_RCODE_FORMERR;
+			break;
+		default:
+			*rcode = KNOT_RCODE_SERVFAIL;
+		}
+	}
+
+	return ret;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int knot_ns_check_tsig_query(const knot_zone_t *zone,
+                                    const knot_packet_t *query,
+                                    knot_rcode_t *rcode)
+{
+	knot_rrset_t *tsig = NULL;
+
+	if (knot_packet_additional_rrset_count(query) > 0) {
+		/*! \todo warning */
+		tsig = knot_packet_additional_rrset(query,
+		                 knot_packet_additional_rrset_count(query) - 1);
+		if (knot_rrset_type(tsig) == KNOT_RRTYPE_TSIG) {
+			dbg_ns_verb("xfr: found TSIG in normal query\n");
+		}
+	}
+
+	if (tsig == NULL) {
+		// no TSIG, this is completely valid
+		return KNOT_EOK;
+	}
+
+	// if there is some TSIG in the query, find the TSIG associated with
+	// the zone
+	knot_key_t *tsig_key_zone = NULL;
+	int ret = zones_query_check_zone(zone, NULL, &tsig_key_zone, rcode);
+	if (ret == KNOTD_EOK) {
+		// everything OK, so check TSIG
+		assert(tsig_key_zone != NULL);
+
+		uint16_t tsig_rcode = 0;
+		ret = knot_ns_verify_tsig_query(query, tsig, tsig_key_zone,
+		                                rcode, &tsig_rcode);
+
+//		switch (ret) {
+//		case KNOT_TSIG_EBADKEY:
+//			break;
+//		case KNOT_TSIG_EBADSIG:
+//			break;
+//		case KNOT_TSIG_EBADTIME:
+//			break;
+//		case KNOT_EMALF:
+//			break;
+//		case KNOT_EOK:
+//			break;
+//		default:
+//		}
+	} else {
+		ret = KNOT_ERROR;
+	}
+
+	return ret;
+}
+
+/*----------------------------------------------------------------------------*/
 /*!
  * \brief Answers the query from the given zone.
  *
@@ -1889,7 +2055,20 @@ dbg_ns_exec(
 	char *name_str2 = knot_dname_to_str(zone->contents->apex->owner);
 	dbg_ns("Found zone for QNAME %s\n", name_str2);
 	free(name_str2);
-);
+)
+
+	/*
+	 * Now we have zone. Verify TSIG if it is in the packet.
+	 */
+	knot_rcode_t rcode = KNOT_RCODE_NOERROR;
+	int ret = knot_ns_check_tsig_query(zone, knot_packet_query(resp),
+	                                   &rcode);
+	if (ret != KNOT_EOK) {
+		knot_response_set_rcode(resp, rcode);
+		return KNOT_EOK;
+	}
+
+	dbg_ns_verb("TSIG check successful.\n");
 
 	// take the zone contents and use only them for answering
 
@@ -2863,23 +3042,6 @@ int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_packet_t *query,
 
 	// set the OPT RR to the response
 	if (knot_query_edns_supported(query)) {
-		/*! \todo API. */
-//		if (knot_edns_get_payload(&query->opt_rr) > MAX_UDP_PAYLOAD) {
-//			ret = knot_packet_set_max_size(response, 
-//				knot_edns_get_payload(&query->opt_rr));
-//		} else {
-//			ret = knot_packet_set_max_size(response, 
-//			                               MAX_UDP_PAYLOAD);
-//		}
-		
-//		if (ret != KNOT_EOK) {
-//			dbg_ns("Failed to set max size.\n");
-//			knot_ns_error_response_full(nameserver, response,
-//			                            KNOT_RCODE_SERVFAIL,
-//			                            response_wire, rsize);
-//			return KNOT_EOK;
-//		}
-		
 		ret = knot_response_add_opt(response, nameserver->opt_rr, 1);
 		if (ret != KNOT_EOK) {
 			dbg_ns("Failed to set OPT RR to the response"
@@ -2891,18 +3053,7 @@ int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_packet_t *query,
 				knot_edns_set_do(&response->opt_rr);
 			}
 		}
-	}/* else {
-		dbg_ns("Setting max size to %u.\n", MAX_UDP_PAYLOAD);
-		ret = knot_packet_set_max_size(response, MAX_UDP_PAYLOAD);
-		if (ret != KNOT_EOK) {
-			dbg_ns("Failed to set max size to %u\n",
-			              MAX_UDP_PAYLOAD);
-			knot_ns_error_response_full(nameserver, response,
-			                            KNOT_RCODE_SERVFAIL,
-			                            response_wire, rsize);
-			return KNOT_EOK;
-		}
-	}*/
+	}
 	
 	dbg_ns("Response max size: %zu\n", response->max_size);
 

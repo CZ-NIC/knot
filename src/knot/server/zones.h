@@ -132,6 +132,12 @@ int zones_zonefile_sync(knot_zone_t *zone);
 /*!
  * \todo Document me.
  */
+int zones_query_check_zone(const knot_zone_t *zone, sockaddr_t *addr,
+                           knot_key_t **tsig_key, knot_rcode_t *rcode);
+
+/*!
+ * \todo Document me.
+ */
 int zones_xfr_check_zone(knot_ns_xfr_t *xfr, knot_rcode_t *rcode);
 
 /*!

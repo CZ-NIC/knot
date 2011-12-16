@@ -331,6 +331,7 @@ int64_t knot_rdata_soa_serial(const knot_rdata_t *rdata);
 uint32_t knot_rdata_soa_refresh(const knot_rdata_t *rdata);
 uint32_t knot_rdata_soa_retry(const knot_rdata_t *rdata);
 uint32_t knot_rdata_soa_expire(const knot_rdata_t *rdata);
+uint32_t knot_rdata_soa_minimum(const knot_rdata_t *rdata);
 
 uint16_t knot_rdata_rrsig_type_covered(const knot_rdata_t *rdata);
 

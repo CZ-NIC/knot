@@ -1523,6 +1523,45 @@ int zones_zonefile_sync(knot_zone_t *zone)
 
 /*----------------------------------------------------------------------------*/
 
+int zones_query_check_zone(const knot_zone_t *zone, sockaddr_t *addr,
+                           knot_key_t **tsig_key, knot_rcode_t *rcode)
+{
+	if (addr == NULL || tsig_key == NULL || rcode == NULL) {
+		*rcode = KNOT_RCODE_SERVFAIL;
+		return KNOTD_EINVAL;
+	}
+
+	/* Check zone data. */
+	const zonedata_t *zd = (const zonedata_t *)knot_zone_data(zone->data);
+	if (zd == NULL) {
+		dbg_zones("zones: invalid zone data for zone %p\n", zone);
+		*rcode = KNOT_RCODE_SERVFAIL;
+		return KNOTD_ERROR;
+	}
+
+	/* Check xfr-out ACL */
+	acl_key_t *match = NULL;
+	if (acl_match(zd->xfr_out, addr, &match) == ACL_DENY) {
+		log_answer_warning("Unauthorized query or request for XFR "
+		                   "'%s/OUT'.\n", zd->conf->name);
+		*rcode = KNOT_RCODE_REFUSED;
+		return KNOTD_EACCES;
+	} else {
+		dbg_zones("zones: authorized query or request for XFR "
+		          "'%s/OUT'. match=%p\n", zd->conf->name, match);
+		if (match) {
+			/* Save configured TSIG key for comparison. */
+			conf_iface_t *iface = (conf_iface_t*)(match->val);
+			dbg_zones_detail("iface=%p, iface->key=%p\n",
+					 iface, iface->key);
+			*tsig_key = iface->key;
+		}
+	}
+	return KNOTD_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int zones_xfr_check_zone(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 {
 	if (xfr == NULL || rcode == NULL) {
@@ -1534,41 +1573,16 @@ int zones_xfr_check_zone(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 		*rcode = KNOT_RCODE_REFUSED;
 		return KNOTD_EACCES;
 	}
-	
-	/* Check zone data. */
-	zonedata_t *zd = (zonedata_t *)xfr->zone->data;
-	if (zd == NULL) {
-		dbg_zones("zones: invalid zone data for zone %p\n", xfr->zone);
-		*rcode = KNOT_RCODE_SERVFAIL;
-		return KNOTD_ERROR;
-	}
-	
+
 	/* Check zone contents. */
 	if (knot_zone_contents(xfr->zone) == NULL) {
-		dbg_zones("zones: invalid zone contents for zone %p\n", xfr->zone);
+		dbg_zones("zones: invalid zone contents for zone %p\n", zone);
 		*rcode = KNOT_RCODE_SERVFAIL;
 		return KNOTD_EEXPIRED;
 	}
 
-	/* Check xfr-out ACL */
-	acl_key_t *match = 0;
-	if (acl_match(zd->xfr_out, &xfr->addr, &match) == ACL_DENY) {
-		log_answer_warning("Unauthorized request for XFR '%s/OUT'.\n",
-		                   zd->conf->name);
-		*rcode = KNOT_RCODE_REFUSED;
-		return KNOTD_EACCES;
-	} else {
-		dbg_zones("zones: authorized XFR '%s/OUT' match=%p\n",
-		          zd->conf->name, match);
-		if (match) {
-			/* Save configured TSIG key for comparison. */
-			conf_iface_t *iface = (conf_iface_t*)(match->val);
-			dbg_zones_detail("iface=%p, iface->key=%p\n",
-					 iface, iface->key);
-			xfr->tsig_key = iface->key;
-		}
-	}
-	return KNOTD_EOK;
+	return zones_query_check_zone(xfr->zone, &xfr->addr, &xfr->tsig_key,
+	                              rcode);
 }
 
 /*----------------------------------------------------------------------------*/
