@@ -222,6 +222,14 @@ int knot_ns_parse_packet(const uint8_t *query_wire, size_t qsize,
 void knot_ns_error_response(const knot_nameserver_t *nameserver, uint16_t query_id,
                        uint8_t rcode, uint8_t *response_wire, size_t *rsize);
 
+void knot_ns_error_response_full(knot_nameserver_t *nameserver,
+                                 knot_packet_t *response, uint8_t rcode,
+                                 uint8_t *response_wire, size_t *rsize);
+
+int knot_ns_prep_normal_response(knot_nameserver_t *nameserver,
+                                 knot_packet_t *query, knot_packet_t **resp,
+                                 const knot_zone_t **zone);
+
 /*!
  * \brief Creates a response for the given normal query using the data of the
  *        nameserver.
@@ -235,8 +243,9 @@ void knot_ns_error_response(const knot_nameserver_t *nameserver, uint16_t query_
  * \retval KNOT_EOK if a valid response was created.
  * \retval KNOT_EMALF if an error occured and the response is not valid.
  */
-int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_packet_t *query,
-                     uint8_t *response_wire, size_t *rsize);
+int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_zone_t *zone,
+                          knot_packet_t *resp,
+                          uint8_t *response_wire, size_t *rsize);
 
 int knot_ns_init_xfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr);
 

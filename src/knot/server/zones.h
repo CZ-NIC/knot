@@ -140,6 +140,10 @@ int zones_query_check_zone(const knot_zone_t *zone, sockaddr_t *addr,
  */
 int zones_xfr_check_zone(knot_ns_xfr_t *xfr, knot_rcode_t *rcode);
 
+int zones_normal_query_answer(knot_nameserver_t *nameserver,
+                              knot_packet_t *query,
+                              uint8_t *response_wire, size_t *rsize);
+
 /*!
  * \brief Processes normal response packet.
  *

@@ -110,8 +110,9 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 	
 	/* Query types. */
 	case KNOT_QUERY_NORMAL:
-		res = knot_ns_answer_normal(ns, packet, qbuf,
-					      resp_len);
+		res = zones_normal_query_answer(ns, packet, qbuf, resp_len);
+//		res = knot_ns_answer_normal(ns, packet, qbuf,
+//					      resp_len);
 		break;
 	case KNOT_QUERY_AXFR:
 		/* RFC1034, p.28 requires reliable transfer protocol.
@@ -147,8 +148,9 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		 * IXFR/UDP.
 		 */
 		knot_packet_set_qtype(packet, KNOT_RRTYPE_SOA);
-		res = knot_ns_answer_normal(ns, packet, qbuf,
-		                            resp_len);
+		res = zones_normal_query_answer(ns, packet, qbuf, resp_len);
+//		res = knot_ns_answer_normal(ns, packet, qbuf,
+//		                            resp_len);
 		break;
 //		/* Process IXFR over UDP. */
 //		res = xfr_request_init(&xfr, XFR_TYPE_IOUT, XFR_FLAG_UDP, packet);
