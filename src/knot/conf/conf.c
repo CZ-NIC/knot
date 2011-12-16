@@ -192,7 +192,6 @@ static void conf_update_hooks(conf_t *conf)
 static int conf_process(conf_t *conf)
 {
 	// Check
-	int ret = 0;
 	if (!conf->storage) {
 		conf->storage = strdup("/var/lib/"PROJECT_EXEC);
 	}
@@ -208,6 +207,7 @@ static int conf_process(conf_t *conf)
 	conf->pidfile = strcdup(conf->storage, "/" PID_FILE);
 
 	// Postprocess zones
+	int ret = KNOTD_EOK;
 	node *n = 0;
 	WALK_LIST (n, conf->zones) {
 		conf_zone_t *zone = (conf_zone_t*)n;
@@ -282,7 +282,7 @@ static int conf_process(conf_t *conf)
 		zone->ixfr_db = dest;
 	}
 
-	return 0;
+	return ret;
 }
 
 /*
