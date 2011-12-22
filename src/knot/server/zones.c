@@ -1537,23 +1537,7 @@ static int zones_check_tsig_query(const knot_zone_t *zone,
 		dbg_zones_verb("Verifying TSIG.\n");
 		ret = zones_verify_tsig_query(query, tsig, tsig_key_zone,
 		                              rcode, &tsig_rcode);
-
-//		switch (ret) {
-//		case KNOT_TSIG_EBADKEY:
-//			break;
-//		case KNOT_TSIG_EBADSIG:
-//			break;
-//		case KNOT_TSIG_EBADTIME:
-//			break;
-//		case KNOT_EMALF:
-//			break;
-//		case KNOT_EOK:
-//			break;
-//		default:
-//		}
-	}/* else {
-		ret = KNOTD_ERROR;
-	}*/
+	}
 
 	return ret;
 }
@@ -1789,12 +1773,19 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 		break;
 	}
 
+	if (zone == NULL) {
+		rcode = KNOT_RCODE_REFUSED;
+	}
+
+	assert(resp != NULL);
+
 	if (rcode != KNOT_RCODE_NOERROR) {
 		dbg_zones_verb("Failed preparing response structure: %s.\n",
 		               knot_strerror(rcode));
 		knot_ns_error_response(nameserver, knot_packet_id(query),
 		                       rcode, resp_wire, rsize);
 	} else {
+		assert(zone != NULL);
 		/*
 		 * Now we have zone. Verify TSIG if it is in the packet.
 		 */
