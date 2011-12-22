@@ -110,7 +110,8 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 	
 	/* Query types. */
 	case KNOT_QUERY_NORMAL:
-		res = zones_normal_query_answer(ns, packet, qbuf, resp_len);
+		res = zones_normal_query_answer(ns, packet, addr, qbuf,
+		                                resp_len);
 //		res = knot_ns_answer_normal(ns, packet, qbuf,
 //					      resp_len);
 		break;
@@ -148,7 +149,8 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		 * IXFR/UDP.
 		 */
 		knot_packet_set_qtype(packet, KNOT_RRTYPE_SOA);
-		res = zones_normal_query_answer(ns, packet, qbuf, resp_len);
+		res = zones_normal_query_answer(ns, packet, addr,
+		                                qbuf, resp_len);
 //		res = knot_ns_answer_normal(ns, packet, qbuf,
 //		                            resp_len);
 		break;

@@ -36,6 +36,7 @@
 #include "knot/zone/zone-dump.h"
 #include "libknot/nameserver/name-server.h"
 #include "libknot/updates/changesets.h"
+#include "libknot/tsig-op.h"
 
 static const size_t XFRIN_CHANGESET_BINARY_SIZE = 100;
 static const size_t XFRIN_CHANGESET_BINARY_STEP = 100;
@@ -1496,8 +1497,13 @@ static int zones_verify_tsig_query(const knot_packet_t *query,
 
 static int zones_check_tsig_query(const knot_zone_t *zone,
                                   const knot_packet_t *query,
+                                  const sockaddr_t *addr,
                                   knot_rcode_t *rcode)
 {
+	assert(zone != NULL);
+	assert(query != NULL);
+	assert(rcode != NULL);
+
 	knot_rrset_t *tsig = NULL;
 
 	if (knot_packet_additional_rrset_count(query) > 0) {
@@ -1505,7 +1511,7 @@ static int zones_check_tsig_query(const knot_zone_t *zone,
 		tsig = knot_packet_additional_rrset(query,
 		                 knot_packet_additional_rrset_count(query) - 1);
 		if (knot_rrset_type(tsig) == KNOT_RRTYPE_TSIG) {
-			dbg_zones_verb("xfr: found TSIG in normal query\n");
+			dbg_zones_verb("found TSIG in normal query\n");
 		}
 	}
 
@@ -1517,12 +1523,18 @@ static int zones_check_tsig_query(const knot_zone_t *zone,
 	// if there is some TSIG in the query, find the TSIG associated with
 	// the zone
 	knot_key_t *tsig_key_zone = NULL;
-	int ret = zones_query_check_zone(zone, NULL, &tsig_key_zone, rcode);
+
+	dbg_zones_verb("Checking zone and ACL.\n");
+	int ret = zones_query_check_zone(zone, addr, &tsig_key_zone, rcode);
+
+	/*! \todo What if there is TSIG, but no key is configured? */
+
 	if (ret == KNOTD_EOK) {
 		// everything OK, so check TSIG
 		assert(tsig_key_zone != NULL);
 
 		uint16_t tsig_rcode = 0;
+		dbg_zones_verb("Verifying TSIG.\n");
 		ret = zones_verify_tsig_query(query, tsig, tsig_key_zone,
 		                              rcode, &tsig_rcode);
 
@@ -1539,9 +1551,9 @@ static int zones_check_tsig_query(const knot_zone_t *zone,
 //			break;
 //		default:
 //		}
-	} else {
-		ret = KNOT_ERROR;
-	}
+	}/* else {
+		ret = KNOTD_ERROR;
+	}*/
 
 	return ret;
 }
@@ -1685,16 +1697,17 @@ int zones_zonefile_sync(knot_zone_t *zone)
 
 /*----------------------------------------------------------------------------*/
 
-int zones_query_check_zone(const knot_zone_t *zone, sockaddr_t *addr,
+int zones_query_check_zone(const knot_zone_t *zone, const sockaddr_t *addr,
                            knot_key_t **tsig_key, knot_rcode_t *rcode)
 {
 	if (addr == NULL || tsig_key == NULL || rcode == NULL) {
+		dbg_zones_verb("Wrong arguments.\n");
 		*rcode = KNOT_RCODE_SERVFAIL;
 		return KNOTD_EINVAL;
 	}
 
 	/* Check zone data. */
-	const zonedata_t *zd = (const zonedata_t *)knot_zone_data(zone->data);
+	const zonedata_t *zd = (const zonedata_t *)knot_zone_data(zone);
 	if (zd == NULL) {
 		dbg_zones("zones: invalid zone data for zone %p\n", zone);
 		*rcode = KNOT_RCODE_SERVFAIL;
@@ -1738,7 +1751,8 @@ int zones_xfr_check_zone(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 
 	/* Check zone contents. */
 	if (knot_zone_contents(xfr->zone) == NULL) {
-		dbg_zones("zones: invalid zone contents for zone %p\n", zone);
+		dbg_zones("zones: invalid zone contents for zone %p\n",
+		          xfr->zone);
 		*rcode = KNOT_RCODE_SERVFAIL;
 		return KNOTD_EEXPIRED;
 	}
@@ -1750,16 +1764,18 @@ int zones_xfr_check_zone(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 /*----------------------------------------------------------------------------*/
 
 int zones_normal_query_answer(knot_nameserver_t *nameserver,
-                              knot_packet_t *query,
+                              knot_packet_t *query, const sockaddr_t *addr,
                               uint8_t *resp_wire, size_t *rsize)
 {
 	rcu_read_lock();
 
 	knot_packet_t *resp = NULL;
-	const knot_zone_t *zone = NULL;
+	knot_zone_t *zone = NULL;
+
+	dbg_zones_verb("Preparing response structure.\n");
 	int ret = knot_ns_prep_normal_response(nameserver, query, &resp, &zone);
 
-	uint8_t rcode = 0;
+	knot_rcode_t rcode = 0;
 
 	switch (ret) {
 	case KNOT_EOK:
@@ -1774,21 +1790,27 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 	}
 
 	if (rcode != KNOT_RCODE_NOERROR) {
+		dbg_zones_verb("Failed preparing response structure: %s.\n",
+		               knot_strerror(rcode));
 		knot_ns_error_response(nameserver, knot_packet_id(query),
 		                       rcode, resp_wire, rsize);
 	} else {
 		/*
 		 * Now we have zone. Verify TSIG if it is in the packet.
 		 */
-		knot_rcode_t rcode = KNOT_RCODE_NOERROR;
-		int ret = zones_check_tsig_query(zone, query, &rcode);
+		rcode = KNOT_RCODE_NOERROR;
+
+		dbg_zones_verb("Checking TSIG in query.\n");
+		int ret = zones_check_tsig_query(zone, query, addr, &rcode);
 
 		if (ret == KNOT_EOK) {
-			dbg_zones_verb("TSIG check successful.\n");
-
+			dbg_zones_verb("TSIG check successful. Answering "
+			               "query.\n");
 			ret = knot_ns_answer_normal(nameserver, zone, resp,
 			                            resp_wire, rsize);
 		} else {
+			dbg_zones_verb("Failed TSIG check: %s.\n",
+			               knotd_strerror(ret));
 			knot_ns_error_response_full(nameserver, resp, rcode,
 			                            resp_wire, rsize);
 		}

@@ -1891,7 +1891,7 @@ dbg_ns_exec(
 	char *name_str2 = knot_dname_to_str(zone->contents->apex->owner);
 	dbg_ns("Found zone for QNAME %s\n", name_str2);
 	free(name_str2);
-)
+);
 
 	// take the zone contents and use only them for answering
 
