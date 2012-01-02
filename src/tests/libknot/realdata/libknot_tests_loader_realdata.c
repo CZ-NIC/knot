@@ -988,9 +988,6 @@ static int add_rrset_to_node(const test_rrset_t *rrset, test_data_t *data)
 	tmp_node->next = NULL;
 
 
-//	printf("%s\n", rrset->owner->wire);
-//	getchar();
-
 /*	tmp_node->avl_left = NULL;
 	tmp_node->avl_right = NULL;
 	tmp_node->avl_height = 0; */
