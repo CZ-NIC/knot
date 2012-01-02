@@ -49,6 +49,7 @@
 #include <netdb.h>
 
 #include "libknot/libknot.h"
+#include "knot/other/error.h"
 #include "libknot/common.h"
 #include "common/skip-list.h"
 #include "common/base32hex.h"
@@ -328,14 +329,13 @@ static char *rdata_txt_data_to_string(const uint8_t *data)
 	 * 3 because: opening '"', closing '"', and \0 at the end.
 	 * Times 2 because string can be all "double chars".
 	 */
-	size_t current_length = sizeof(char) * (length * 2 + 3);
+	size_t current_length = sizeof(char) * (length * 2 + 4);
 	char *ret = malloc(current_length);
 	if (ret == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
 	}
-	memset(ret, 0, sizeof(char) * (length * 2 + 3));
-
+	memset(ret, 0,  current_length);
 
 	strcat(ret, "\"");
 
@@ -589,10 +589,25 @@ char *rdata_hexlen_to_string(knot_rdata_item_t item)
 
 char *rdata_nsap_to_string(knot_rdata_item_t item)
 {
-	char *ret = malloc(sizeof(char) * (rdata_item_size(item) + 3));
+	char *ret = malloc(sizeof(char) * ((rdata_item_size(item) * 2) + 7));
+	if (ret == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
+
+	memset(ret, 0, sizeof(char) * ((rdata_item_size(item) * 2) + 7));
+
+	/* String is already terminated. */
 	memcpy(ret, "0x", strlen("0x"));
 	char *converted = hex_to_string(rdata_item_data(item),
 	                                rdata_item_size(item));
+	if (converted == NULL) {
+		return NULL;
+	}
+
+//	printf("size: %d, string: %s\n", rdata_item_size(item),
+//	       converted);
+
 	strcat(ret, converted);
 	free(converted);
 	return ret;
@@ -885,6 +900,9 @@ char *rdata_unknown_to_string(knot_rdata_item_t item)
 	char *ret =
 		malloc(sizeof(char) * (2 * rdata_item_size(item) +
 				       strlen("\\# ") + U16_MAX_STR_LEN + 1));
+	if (ret == NULL) {
+		return NULL;
+	}
 	memcpy(ret, "\\# \0", strlen("\\# \0"));
 	snprintf(ret + strlen("\\# "),
 	         strlen("\\# ") + U16_MAX_STR_LEN + 1, "%lu ",
@@ -941,7 +959,7 @@ char *rdata_item_to_string(knot_rdata_zoneformat_t type,
                               void (*function)(knot_node_t *node, void *data),
                               void *data); */
 
-void rdata_dump_text(const knot_rdata_t *rdata, uint16_t type, FILE *f,
+int rdata_dump_text(const knot_rdata_t *rdata, uint16_t type, FILE *f,
                      const knot_rrset_t *rrset)
 {
 	knot_rrtype_descriptor_t *desc =
@@ -957,18 +975,30 @@ void rdata_dump_text(const knot_rdata_t *rdata, uint16_t type, FILE *f,
 						rdata->items[i]);
 		}
 		if (item_str == NULL) {
+			/*!< \todo Why this? */
+//			printf("Warning: fallback to unknown.\n");
 			item_str =
 				rdata_item_to_string(KNOT_RDATA_ZF_UNKNOWN,
 						     rdata->items[i]);
 		}
+
+		if (item_str == NULL) {
+			/* Fatal error. */
+			return KNOTD_ERROR;
+		}
+
 		if (i != rdata->count - 1) {
 			fprintf(f, "%s ", item_str);
 		} else {
 			fprintf(f, "%s", item_str);
 		}
+
+//		printf("Freeing %s\n", item_str);
 		free(item_str);
 	}
 	fprintf(f, "\n");
+
+	return KNOTD_EOK;
 }
 
 void dump_rrset_header(const knot_rrset_t *rrset, FILE *f)
@@ -981,28 +1011,40 @@ void dump_rrset_header(const knot_rrset_t *rrset, FILE *f)
 	fprintf(f, "%-5s ",  knot_rrtype_to_string(rrset->type));
 }
 
-void rrsig_set_dump_text(knot_rrset_t *rrsig, FILE *f)
+int rrsig_set_dump_text(knot_rrset_t *rrsig, FILE *f)
 {
 	dump_rrset_header(rrsig, f);
 	knot_rdata_t *tmp = rrsig->rdata;
 
 	while (tmp->next != rrsig->rdata) {
-		rdata_dump_text(tmp, KNOT_RRTYPE_RRSIG, f, rrsig);
+		int ret = rdata_dump_text(tmp, KNOT_RRTYPE_RRSIG, f, rrsig);
+		if (ret != KNOTD_EOK) {
+			return KNOTD_ERROR;
+		}
+
 		dump_rrset_header(rrsig, f);
 		tmp = tmp->next;
 	}
 
-	rdata_dump_text(tmp, KNOT_RRTYPE_RRSIG, f, rrsig);
+	int ret = rdata_dump_text(tmp, KNOT_RRTYPE_RRSIG, f, rrsig);
+	if (ret != KNOTD_EOK) {
+		return KNOTD_ERROR;
+	}
+
+	return KNOTD_EOK;
 }
 
 
-void rrset_dump_text(const knot_rrset_t *rrset, FILE *f)
+int rrset_dump_text(const knot_rrset_t *rrset, FILE *f)
 {
 	dump_rrset_header(rrset, f);
 	knot_rdata_t *tmp = rrset->rdata;
 
 	while (tmp->next != rrset->rdata) {
-		rdata_dump_text(tmp, rrset->type, f, rrset);
+		int ret = rdata_dump_text(tmp, rrset->type, f, rrset);
+		if (ret != KNOTD_EOK) {
+			return ret;
+		}
 		dump_rrset_header(rrset, f);
 		tmp = tmp->next;
 	}
@@ -1012,6 +1054,8 @@ void rrset_dump_text(const knot_rrset_t *rrset, FILE *f)
 	if (rrsig_set != NULL) {
 		rrsig_set_dump_text(rrsig_set, f);
 	}
+
+	return KNOTD_EOK;
 }
 
 struct dump_param {
@@ -1019,7 +1063,7 @@ struct dump_param {
 	const knot_dname_t *origin;
 };
 
-void apex_node_dump_text(knot_node_t *node, FILE *f)
+int apex_node_dump_text(knot_node_t *node, FILE *f)
 {
 	knot_rrset_t dummy_rrset;
 	dummy_rrset.type = KNOT_RRTYPE_SOA;
@@ -1027,18 +1071,26 @@ void apex_node_dump_text(knot_node_t *node, FILE *f)
 		(knot_rrset_t *)gen_tree_find(node->rrset_tree,
 		                                &dummy_rrset);
 	assert(tmp_rrset);
-	rrset_dump_text(tmp_rrset, f);
+	int ret = rrset_dump_text(tmp_rrset, f);
+	if (ret != KNOTD_EOK) {
+		return ret;
+	}
 
 	const knot_rrset_t **rrsets =
 		knot_node_rrsets(node);
 
 	for (int i = 0; i < node->rrset_count; i++) {
 		if (rrsets[i]->type != KNOT_RRTYPE_SOA) {
-			rrset_dump_text(rrsets[i], f);
+			ret = rrset_dump_text(rrsets[i], f);
+			if (ret != KNOTD_EOK) {
+				return ret;
+			}
 		}
 	}
 
 	free(rrsets);
+
+	return KNOTD_EOK;
 }
 
 void node_dump_text(knot_node_t *node, void *data)
@@ -1058,7 +1110,7 @@ void node_dump_text(knot_node_t *node, void *data)
 		knot_node_rrsets(node);
 
 	for (int i = 0; i < node->rrset_count; i++) {
-			rrset_dump_text(rrsets[i], f);
+		rrset_dump_text(rrsets[i], f);
 	}
 
 	free(rrsets);

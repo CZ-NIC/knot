@@ -116,7 +116,7 @@ extern uint32_t strtottl(const char *nptr, const char **endptr);
 #define scanner yyscanner
 extern int zp_lex(YYSTYPE *lvalp, void *scanner);
 
-#if 0
+#if 1
 #define LEXOUT(s)  printf s /* used ONLY when debugging */
 #else
 #define LEXOUT(s)
