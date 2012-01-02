@@ -1463,14 +1463,17 @@ uint16_t * zparser_conv_services(const char *protostr, char *servicestr)
 
 	char *sp = 0;
 	while ((word = strtok_r(servicestr, sep, &sp))) {
-		struct servent *service;
+//		printf("cycle %s (%s) %s\n", word, servicestr, sp);
+		struct servent *service = NULL;
 		int port;
 
 		service = getservbyname(word, proto->p_name);
 		if (service) {
 			/* Note: ntohs not ntohl!  Strange but true.  */
 			port = ntohs((uint16_t) service->s_port);
+//			printf("assigned port %d\n", port);
 		} else {
+//			printf("else\n");
 			char *end;
 			port = strtol(word, &end, 10);
 			if (*end != '\0') {
@@ -1479,7 +1482,7 @@ uint16_t * zparser_conv_services(const char *protostr, char *servicestr)
 					" protocol '%s'",
 					word, protostr);
 				parser->error_occurred = KNOTDZCOMPILE_EBRDATA;
-				continue;
+				return NULL;
 			}
 		}
 
@@ -1491,6 +1494,7 @@ uint16_t * zparser_conv_services(const char *protostr, char *servicestr)
 				max_port = port;
 			}
 		}
+		servicestr = NULL;
 	}
 
 	r = alloc_rdata(sizeof(uint8_t) + max_port / 8 + 1);
@@ -2334,6 +2338,10 @@ void zadd_rdata_wireformat(uint16_t *data)
  */
 void zadd_rdata_txt_wireformat(uint16_t *data, int first)
 {
+	if (data == NULL) {
+		parser->error_occurred = KNOTDZCOMPILE_EBRDATA;
+		return;
+	}
 	dbg_zp("Adding text!\n");
 //	hex_print(data + 1, data[0]);
 	knot_rdata_item_t *rd;
@@ -2356,6 +2364,10 @@ void zadd_rdata_txt_wireformat(uint16_t *data, int first)
 	} else {
 //		assert(0);
 		rd = &parser->temporary_items[parser->rdata_count-1];
+	}
+
+	if (rd == NULL || rd->raw_data == NULL) {
+		return;
 	}
 
 	if ((size_t)rd->raw_data[0] + (size_t)data[0] > 65535) {

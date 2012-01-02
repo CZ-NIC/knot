@@ -270,7 +270,6 @@ line:	NL
 
 //	printf("Current rrset name: %p (%s)\n", parser->current_rrset->owner->name,
 //	knot_dname_to_str(parser->current_rrset->owner));
-//	getchar();
 
 //	knot_dname_release(parser->current_rrset->owner);
 
@@ -394,7 +393,6 @@ dname:	abs_dname
 		    $$ = knot_dname_cat($1,
 					  parser->origin->owner);
 //		printf("leak: %s\n", knot_dname_to_str($$));
-//		getchar();
 	    }
     }
     ;
@@ -988,6 +986,7 @@ rdata_soa:	dname sp dname sp STR sp STR sp STR sp STR sp STR trail
 rdata_wks:	dotted_str sp STR sp concatenated_str_seq trail
     {
 	    zadd_rdata_wireformat(zparser_conv_a($1.str)); /* address */
+	    printf("Address added\n");
 	    zadd_rdata_wireformat(zparser_conv_services($3.str, $5.str));
 	    /* protocol and services */
 
