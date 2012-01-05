@@ -143,6 +143,7 @@ struct knot_packet {
 	knot_packet_prealloc_type_t prealloc_type;
 	
 	size_t tsig_size;	/*!< Space to reserve for the TSIG RR. */
+	knot_rrset_t *tsig_rr;  /*!< TSIG RR stored in the packet. */
 };
 
 typedef struct knot_packet knot_packet_t;
@@ -377,6 +378,10 @@ int knot_packet_nscount(const knot_packet_t *packet);
 int knot_packet_arcount(const knot_packet_t *packet);
 
 void knot_packet_set_tsig_size(knot_packet_t *packet, size_t tsig_size);
+
+const knot_rrset_t *knot_packet_tsig(knot_packet_t *packet);
+
+void knot_packet_set_tsig(knot_packet_t *packet, const knot_rrset_t *tsig_rr);
 
 /*!
  * \brief Returns number of RRSets in Answer section of the packet.
