@@ -289,28 +289,30 @@ keys:
      
      /* Normalize to FQDN */
      char *fqdn = $2.t;
-     if (fqdn[strlen(fqdn) - 1] != '.') {
-        char* tmp = malloc(strlen(fqdn) + 1 + 1); /* '.', '\0' */
+     size_t fqdnl = strlen(fqdn);
+     if (fqdn[fqdnl - 1] != '.') {
+        char* tmp = malloc(fqdnl + 2); /* '.', '\0' */
 	if (!tmp) {
 	   cf_error(scanner, "out of memory when allocating string");
 	   free(fqdn);
-	   fqdn = 0;
+	   fqdn = NULL;
 	} else {
-	   strcpy(tmp, fqdn);
-	   strcat(tmp, ".");
+	   memset(tmp, 0, fqdnl + 2);
+	   strncpy(tmp, fqdn, fqdnl);
+	   strncat(tmp, ".", 1);
 	   free(fqdn);
 	   fqdn = tmp;
+	   fqdnl = strlen(fqdn);
 	}
      }
 
-     if (!conf_key_exists(scanner, fqdn)) {
-         knot_dname_t *dname = knot_dname_new_from_str(fqdn, strlen(fqdn), 0);
+     if (fqdn != NULL && !conf_key_exists(scanner, fqdn)) {
+         knot_dname_t *dname = knot_dname_new_from_str(fqdn, fqdnl, 0);
 	 if (!dname) {
 	     char buf[512];
              snprintf(buf, sizeof(buf), "key name '%s' not in valid domain "
 	                                "name format", fqdn);
              cf_error(scanner, buf);
-	     free(fqdn);
 	     free($4.t);
 	 } else {
              conf_key_t *k = malloc(sizeof(conf_key_t));
@@ -320,12 +322,12 @@ keys:
              k->k.secret = $4.t;
              add_tail(&new_config->keys, &k->n);
              ++new_config->key_count;
-	     free(fqdn);
 	 }
      } else {
-         free(fqdn);
          free($4.t);
      }
+     
+     free(fqdn);
 }
 
 remote_start:
@@ -392,6 +394,7 @@ remote:
      } else {
         conf_key_add(scanner, &this_remote->key, $3.t);
      }
+     free($3.t);
    }
  ;
 

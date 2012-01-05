@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I ../m4
-libexec_PROGRAMS = knot-zcompile unittests unittests-zcompile unittests-libknot-realdata unittests-libknot
+libexec_PROGRAMS = knot-zcompile unittests unittests-zcompile unittests-libknot-realdata unittests-libknot unittests-xfr
 sbin_PROGRAMS = knotc knotd
 MANPAGES = knotc.8 knotd.8
 man8_MANS = knotc.8 knotd.8
@@ -66,8 +66,8 @@ unittests_SOURCES =				\
 	tests/common/skiplist_tests.h		\
 	tests/common/slab_tests.c		\
 	tests/common/slab_tests.h		\
-        tests/common/fdset_tests.c		\
-        tests/common/fdset_tests.h		\
+	tests/common/fdset_tests.c		\
+	tests/common/fdset_tests.h		\
 	tests/knot/conf_tests.c			\
 	tests/knot/conf_tests.h			\
 	tests/knot/dthreads_tests.c		\
@@ -120,7 +120,7 @@ unittests_libknot_SOURCES =			\
 	tests/libknot/libknot/tsig_tests.h	\
 	tests/libknot/libknot/zone_tests.c	\
 	tests/libknot/libknot/zone_tests.h	\
-	tests/libknot/libknot/zone_tree_tests.h\
+	tests/libknot/libknot/zone_tree_tests.h	\
 	tests/libknot/libknot/zone_tree_tests.c	\
 	tests/libknot/libknot/zonedb_tests.c	\
 	tests/libknot/libknot/zonedb_tests.h	\
@@ -136,6 +136,10 @@ unittests_zcompile_SOURCES =			\
 	zcompile/parser-util.c			\
 	zcompile/parser-descriptor.c		\
 	zcompile/tests/unittests_zp_main.c
+
+unittests_xfr_SOURCES = 			\
+	tests/xfr_tests.c		\
+	tests/xfr_tests.h
 
 nodist_unittests_SOURCES =			\
 	tests/libknot/parsed_data.rc		\
@@ -315,6 +319,7 @@ unittests_LDADD = libknotd.la libknots.la @LIBOBJS@
 unittests_zcompile_LDADD = libknot.la libknots.la libknotd.la @LIBOBJS@
 unittests_libknot_LDADD = libknot.la libknots.la @LIBOBJS@
 unittests_libknot_realdata_LDADD = libknot.la libknots.la @LIBOBJS@
+unittests_xfr_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 
 # automake complains on % rules:
 #   `%'-style pattern rules are a GNU make extension
