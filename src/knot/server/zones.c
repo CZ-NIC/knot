@@ -1775,6 +1775,17 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 	dbg_zones_verb("Preparing response structure.\n");
 	int ret = knot_ns_prep_normal_response(nameserver, query, &resp, &zone);
 
+	// check for TSIG in the query
+	if (knot_packet_additional_rrset_count(query) > 0) {
+		/*! \todo warning */
+		const knot_rrset_t *tsig = knot_packet_additional_rrset(query,
+		                 knot_packet_additional_rrset_count(query) - 1);
+		if (knot_rrset_type(tsig) == KNOT_RRTYPE_TSIG) {
+			dbg_zones_verb("found TSIG in normal query\n");
+			knot_packet_set_tsig(query, tsig);
+		}
+	}
+
 	knot_rcode_t rcode = 0;
 
 	switch (ret) {
@@ -1782,14 +1793,16 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 		rcode = KNOT_RCODE_NOERROR;
 		break;
 	case KNOT_EMALF:
+		// no TSIG signing in this case
 		rcode = KNOT_RCODE_FORMERR;
 		break;
 	default:
+		// no TSIG signing in this case
 		rcode = KNOT_RCODE_SERVFAIL;
 		break;
 	}
 
-	if (zone == NULL) {
+	if (zone == NULL && knot_packet_tsig(query) == NULL) {
 		/*! \todo If there is TSIG, this should be probably handled
 		 *        as a key error.
 		 */
@@ -1804,21 +1817,30 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 		knot_ns_error_response(nameserver, knot_packet_id(query),
 		                       rcode, resp_wire, rsize);
 	} else {
-		assert(zone != NULL);
 		/*
 		 * Now we have zone. Verify TSIG if it is in the packet.
 		 */
-		rcode = KNOT_RCODE_NOERROR;
+		assert(rcode == KNOT_RCODE_NOERROR);
 		uint16_t tsig_rcode = 0;
 		knot_key_t *tsig_key_zone = NULL;
 		uint64_t tsig_prev_time_signed;
 
 		size_t answer_size = *rsize;
+		int ret = KNOT_EOK;
 
-		dbg_zones_verb("Checking TSIG in query.\n");
-		int ret = zones_check_tsig_query(zone, query, addr, &rcode,
-		                                 &tsig_rcode, &tsig_key_zone,
-		                                 &tsig_prev_time_signed);
+		if (zone == NULL) {
+			assert(knot_packet_tsig(query) != NULL);
+			// treat as BADKEY error
+			rcode = KNOT_RCODE_NOTAUTH;
+			tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
+			ret = KNOT_TSIG_EBADKEY;
+		} else {
+			dbg_zones_verb("Checking TSIG in query.\n");
+			ret = zones_check_tsig_query(zone, query, addr,
+			                             &rcode, &tsig_rcode,
+			                             &tsig_key_zone,
+			                             &tsig_prev_time_signed);
+		}
 
 		if (ret == KNOT_EOK) {
 			dbg_zones_verb("TSIG check successful. Answering "
