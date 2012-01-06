@@ -358,6 +358,20 @@ void knot_ns_set_data(knot_nameserver_t *nameserver, void *data);
 int knot_ns_tsig_required(int packet_nr);
 
 /*!
+ * \brief Converts the response to wire format.
+ *
+ * \param resp Response to convert.
+ * \param wire Place for the wire format of the response.
+ * \param wire_size In: space available for the wire format in bytes.
+ *                  Out: actual size of the wire format in bytes.
+ *
+ * \retval KNOT_EOK
+ * \retval NS_ERR_SERVFAIL
+ */
+int ns_response_to_wire(knot_packet_t *resp, uint8_t *wire,
+                        size_t *wire_size);
+
+/*!
  * \brief Properly destroys the name server structure.
  *
  * \param nameserver Nameserver to destroy.

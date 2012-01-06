@@ -37,6 +37,7 @@
 #include "libknot/nameserver/name-server.h"
 #include "libknot/updates/changesets.h"
 #include "libknot/tsig-op.h"
+#include "libknot/packet/response.h"
 
 static const size_t XFRIN_CHANGESET_BINARY_SIZE = 100;
 static const size_t XFRIN_CHANGESET_BINARY_STEP = 100;
@@ -1536,13 +1537,19 @@ static int zones_check_tsig_query(const knot_zone_t *zone,
 	/*! \todo What if there is TSIG, but no key is configured? */
 
 	if (ret == KNOTD_EOK) {
-		// everything OK, so check TSIG
-		assert(*tsig_key_zone != NULL);
-
-		dbg_zones_verb("Verifying TSIG.\n");
-		ret = zones_verify_tsig_query(query, tsig, *tsig_key_zone,
-		                              rcode, tsig_rcode,
-		                              tsig_prev_time_signed);
+		if (*tsig_key_zone != NULL) {
+			// everything OK, so check TSIG
+			dbg_zones_verb("Verifying TSIG.\n");
+			ret = zones_verify_tsig_query(query, tsig, *tsig_key_zone,
+			                              rcode, tsig_rcode,
+			                              tsig_prev_time_signed);
+		} else {
+			dbg_zones_verb("No key configured for zone.\n");
+			// no key configured for zone, return BADKEY
+			*tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
+			*rcode = KNOT_RCODE_NOTAUTH;
+			ret = KNOT_TSIG_EBADKEY;
+		}
 	}
 
 	// save TSIG RR to query structure
@@ -1875,17 +1882,24 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 			}
 		} else {
 			dbg_zones_verb("Failed TSIG check: %s, TSIG err: %u.\n",
-			               knotd_strerror(ret), tsig_rcode);
+			               knot_strerror(ret), tsig_rcode);
 
 			if (tsig_rcode != 0) {
 				dbg_zones_verb("Sending TSIG error.\n");
 				// first, convert the response to wire format
-				ret = knot_packet_to_wire(resp, resp_wire,
+				answer_size = *rsize;
+				knot_response_set_rcode(resp, rcode);
+
+				ret = ns_response_to_wire(resp, resp_wire,
 				                          &answer_size);
+
+				dbg_zones_detail("Packet to wire returned %d\n",
+				                 ret);
 
 				// then add the TSIG to the wire format
 				if (ret == KNOT_EOK &&
-				    tsig_rcode != KNOT_TSIG_EBADTIME) {
+				    tsig_rcode != KNOT_TSIG_RCODE_BADTIME) {
+					dbg_zones_verb("Adding TSIG.\n");
 					ret = knot_tsig_add(resp_wire,
 					                    &answer_size,
 					                    *rsize, tsig_rcode,
@@ -1894,7 +1908,9 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 
 					*rsize = answer_size;
 
-				} else if (tsig_rcode == KNOT_TSIG_EBADTIME) {
+				} else if (tsig_rcode
+				           == KNOT_TSIG_RCODE_BADTIME) {
+					dbg_zones_verb("Signing error resp.\n");
 					//*rsize = answer_size;
 
 					const knot_rrset_t *tsig =
@@ -1922,6 +1938,7 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 
 					*rsize = answer_size;
 				} else {
+					dbg_zones_verb("Failed.\n");
 					rcode = KNOT_RCODE_SERVFAIL;
 				}
 			}

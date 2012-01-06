@@ -1901,19 +1901,9 @@ dbg_ns_exec(
 }
 
 /*----------------------------------------------------------------------------*/
-/*!
- * \brief Converts the response to wire format.
- *
- * \param resp Response to convert.
- * \param wire Place for the wire format of the response.
- * \param wire_size In: space available for the wire format in bytes.
- *                  Out: actual size of the wire format in bytes.
- *
- * \retval KNOT_EOK
- * \retval NS_ERR_SERVFAIL
- */
-static int ns_response_to_wire(knot_packet_t *resp, uint8_t *wire,
-                               size_t *wire_size)
+
+int ns_response_to_wire(knot_packet_t *resp, uint8_t *wire,
+                        size_t *wire_size)
 {
 	uint8_t *rwire = NULL;
 	size_t rsize = 0;
@@ -2445,7 +2435,7 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 	/*! \todo REMOVE end */
 	
 	knot_changesets_t *chgsets = (knot_changesets_t *)xfr->data;
-	knot_zone_contents_t* contents = knot_zone_get_contents(xfr->zone);
+	knot_zone_contents_t *contents = knot_zone_get_contents(xfr->zone);
 	assert(contents);
 	const knot_rrset_t *zone_soa =
 		knot_node_rrset(knot_zone_contents_apex(contents),
