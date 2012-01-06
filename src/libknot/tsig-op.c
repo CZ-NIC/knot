@@ -107,7 +107,7 @@ static int knot_tsig_compute_digest(const uint8_t *wire, size_t wire_len,
 					B64BUFSIZE);
 	if (decoded_key_size < 0) {
 		dbg_tsig("TSIG: Could not decode Base64\n");
-		return KNOT_EMALF;
+		return KNOT_ERROR;
 	}
 
 	dbg_tsig_detail("TSIG: decoded key size: %d\n", decoded_key_size);
