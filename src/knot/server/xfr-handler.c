@@ -1204,16 +1204,13 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 
 			ret = knot_ns_answer_ixfr(w->ns, &xfr);
 			dbg_xfr("xfr: ns_answer_ixfr() = %d.\n", ret);
-			if (ret != KNOTD_EOK) {
+            if (ret != KNOT_EOK) {
 				socket_close(xfr.session);
 			} else {
-				log_server_info("IXFR transfer of zone '%s/OUT'"
-						" - not enough data in journal,"
-						" fallback to AXFR.\n",
-						zname);
-				xfr.type = XFR_TYPE_AOUT;
-				xfr_request(w->master, &xfr);
-				return KNOTD_EOK;
+                log_server_info("IXFR transfer of zone '%s/OUT' "
+                                "to %s:%d successful.\n",
+                                zname,
+                                r_addr, r_port);
 			}
 		}
 		if (xfr.digest) {
