@@ -1783,6 +1783,9 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 	}
 
 	if (zone == NULL) {
+		/*! \todo If there is TSIG, this should be probably handled
+		 *        as a key error.
+		 */
 		rcode = KNOT_RCODE_REFUSED;
 	}
 
@@ -1922,6 +1925,8 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 					rcode = KNOT_RCODE_SERVFAIL;
 				}
 			}
+			// in other case the RCODE is set and ret != KNOT_EOK
+			// and a normal error is returned below
 		}
 
 		if (ret != KNOT_EOK) {
