@@ -1102,6 +1102,10 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 				                zname,
 				                r_addr, r_port);
 			}
+
+            /* Free allocated data. */
+            free(xfr.tsig_data);
+            xfr.tsig_data = NULL;
 		}
 		
 		if (xfr.digest) {
@@ -1212,16 +1216,26 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
                                 zname,
                                 r_addr, r_port);
 			}
+
+            /* Free allocated data. */
+            free(xfr.tsig_data);
+            xfr.tsig_data = NULL;
 		}
+
+        /* Cleanup. */
 		if (xfr.digest) {
 			free(xfr.digest);
-			xfr.digest = 0;
+            xfr.digest = NULL;
 			xfr.digest_max_size = 0;
 		}
-		free(xfr.query->wireformat);
-		knot_packet_free(&xfr.query); /* Free query. */
+        free(xfr.query->wireformat);   /* Free wireformat. */
+        xfr.query->wireformat = NULL;
+        knot_packet_free(&xfr.query);  /* Free query. */
+        xfr.query = NULL;
+        knot_packet_free(&xfr.response);  /* Free response. */
+        xfr.response = NULL;
 		
-		if (qname) {
+        if (zname) {
 			free(zname);
 		}
 		
