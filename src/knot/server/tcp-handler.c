@@ -32,6 +32,7 @@
 #include "knot/common.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/server/xfr-handler.h"
+#include "knot/server/zones.h"
 #include "libknot/nameserver/name-server.h"
 #include "knot/other/error.h"
 #include "libknot/util/wire.h"
@@ -143,7 +144,7 @@ static void tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxle
 	/* Query types. */
 	case KNOT_QUERY_NORMAL:
 		//res = knot_ns_answer_normal(ns, packet, qbuf, &resp_len);
-		res = zones_normal_query_answer(ns, packet, qbuf, resp_len);
+        res = zones_normal_query_answer(ns, packet, &addr, qbuf, &resp_len);
 		break;
 	case KNOT_QUERY_IXFR:
 		res = xfr_request_init(&xfr, XFR_TYPE_IOUT, XFR_FLAG_TCP, packet);
