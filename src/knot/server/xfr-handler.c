@@ -386,7 +386,7 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 			char *name = knot_dname_to_str(
 						knot_zone_name(xfr->zone));
 			log_answer_warning("Unauthorized request for XFR '%s/"
-			                   "OUT'.\n", name);
+                               "OUT'. (TSIG)\n", name);
 			free(name);
 
 			// return REFUSED
@@ -1141,7 +1141,7 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		}
 
 		/* Check TSIG. */
-		if (!init_failed) {
+        if (!init_failed && xfr.tsig_key != NULL) {
 			ret = xfr_check_tsig(&xfr, &rcode);
 			init_failed = (ret != KNOT_EOK);
 			errstr = knot_strerror(ret);
