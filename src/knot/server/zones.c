@@ -1498,7 +1498,7 @@ static int zones_verify_tsig_query(const knot_packet_t *query,
 /*----------------------------------------------------------------------------*/
 
 static int zones_check_tsig_query(const knot_zone_t *zone,
-                                  const knot_packet_t *query,
+                                  knot_packet_t *query,
                                   const sockaddr_t *addr,
                                   knot_rcode_t *rcode,
                                   uint16_t *tsig_rcode,
@@ -1825,7 +1825,7 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 		assert(rcode == KNOT_RCODE_NOERROR);
 		uint16_t tsig_rcode = 0;
 		knot_key_t *tsig_key_zone = NULL;
-		uint64_t tsig_prev_time_signed;
+        uint64_t tsig_prev_time_signed = 0; /*! \todo Verify, as it was uninitialized! */
 
 		size_t answer_size = *rsize;
 		int ret = KNOT_EOK;

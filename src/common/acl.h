@@ -98,7 +98,7 @@ int acl_create(acl_t *acl, const sockaddr_t* addr, acl_rule_t rule, void *val);
  * \retval Default rule if the address is not accepted.
  * \retval ACP_ERROR on error.
  */
-int acl_match(acl_t *acl, sockaddr_t* addr, acl_key_t **key);
+int acl_match(acl_t *acl, const sockaddr_t* addr, acl_key_t **key);
 
 /*!
  * \brief Truncate ACL.

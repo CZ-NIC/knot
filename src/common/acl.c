@@ -152,13 +152,13 @@ int acl_create(acl_t *acl, const sockaddr_t* addr, acl_rule_t rule, void *val)
 	return ACL_ACCEPT;
 }
 
-int acl_match(acl_t *acl, sockaddr_t* addr, acl_key_t **key)
+int acl_match(acl_t *acl, const sockaddr_t* addr, acl_key_t **key)
 {
 	if (!acl || !addr) {
 		return ACL_ERROR;
 	}
 
-	acl_key_t *found = skip_find(acl->rules, addr);
+    acl_key_t *found = skip_find(acl->rules, (void*)addr);
 	
 	/* Set stored value if exists. */
 	if (key != 0) {

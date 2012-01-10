@@ -444,7 +444,7 @@ const knot_rrset_t *knot_packet_authority_rrset(
  *         or NULL if there is no such RRSet.
  */
 const knot_rrset_t *knot_packet_additional_rrset(
-	knot_packet_t *packet, short pos);
+    knot_packet_t *packet, short pos);
 
 /*!
  * \brief Checks if the packet already contains the given RRSet.

@@ -1168,7 +1168,7 @@ const knot_rrset_t *knot_packet_tsig(knot_packet_t *packet)
 
 void knot_packet_set_tsig(knot_packet_t *packet, const knot_rrset_t *tsig_rr)
 {
-	packet->tsig_rr = tsig_rr;
+    packet->tsig_rr = (knot_rrset_t *)tsig_rr;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1231,7 +1231,7 @@ const knot_rrset_t *knot_packet_authority_rrset(
 /*----------------------------------------------------------------------------*/
 
 const knot_rrset_t *knot_packet_additional_rrset(
-	knot_packet_t *packet, short pos)
+    knot_packet_t *packet, short pos)
 {
 	if (packet == NULL || pos > packet->ar_rrsets) {
 		return NULL;
