@@ -1518,7 +1518,9 @@ static int zones_check_tsig_query(const knot_zone_t *zone,
 		                 knot_packet_additional_rrset_count(query) - 1);
 		if (knot_rrset_type(tsig) == KNOT_RRTYPE_TSIG) {
 			dbg_zones_verb("found TSIG in normal query\n");
-		}
+        } else {
+            tsig = NULL; /* Invalidate if not TSIG RRTYPE. */
+        }
 	}
 
 	if (tsig == NULL) {
