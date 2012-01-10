@@ -1183,15 +1183,15 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 				errstr = knotd_strerror(ret);
 			}
 		}
-		
+
 		/* Evaluate progress and answer if passed. */
 		if (init_failed) {
 			knot_ns_xfr_send_error(w->ns, &xfr, rcode);
 			log_server_notice("IXFR transfer of zone '%s/OUT' "
-			                  "%s:%d failed: %s\n",
-			                  zname,
-			                  r_addr, r_port,
-			                  errstr);
+					  "%s:%d failed: %s\n",
+					  zname,
+					  r_addr, r_port,
+					  errstr);
 			ret = KNOTD_ERROR;
 		} else {
 			/* Prepare place for TSIG data */
@@ -1208,34 +1208,40 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 
 			ret = knot_ns_answer_ixfr(w->ns, &xfr);
 			dbg_xfr("xfr: ns_answer_ixfr() = %d.\n", ret);
-            if (ret != KNOT_EOK) {
+			if (ret != KNOT_EOK) {
+				errstr = knot_strerror(ret);
+				log_server_notice("IXFR transfer of zone '%s/OUT' "
+						  "%s:%d failed: %s\n",
+						  zname,
+						  r_addr, r_port,
+						  errstr);
 				socket_close(xfr.session);
 			} else {
-                log_server_info("IXFR transfer of zone '%s/OUT' "
-                                "to %s:%d successful.\n",
-                                zname,
-                                r_addr, r_port);
+				log_server_info("IXFR transfer of zone '%s/OUT' "
+						"to %s:%d successful.\n",
+						zname,
+						r_addr, r_port);
 			}
 
-            /* Free allocated data. */
-            free(xfr.tsig_data);
-            xfr.tsig_data = NULL;
+			/* Free allocated data. */
+			free(xfr.tsig_data);
+			xfr.tsig_data = NULL;
 		}
 
-        /* Cleanup. */
+		/* Cleanup. */
 		if (xfr.digest) {
 			free(xfr.digest);
-            xfr.digest = NULL;
+			xfr.digest = NULL;
 			xfr.digest_max_size = 0;
 		}
-        free(xfr.query->wireformat);   /* Free wireformat. */
-        xfr.query->wireformat = NULL;
-        knot_packet_free(&xfr.query);  /* Free query. */
-        xfr.query = NULL;
-        knot_packet_free(&xfr.response);  /* Free response. */
-        xfr.response = NULL;
+		free(xfr.query->wireformat);   /* Free wireformat. */
+		xfr.query->wireformat = NULL;
+		knot_packet_free(&xfr.query);  /* Free query. */
+		xfr.query = NULL;
+		knot_packet_free(&xfr.response);  /* Free response. */
+		xfr.response = NULL;
 		
-        if (zname) {
+		if (zname) {
 			free(zname);
 		}
 		
