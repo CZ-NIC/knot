@@ -1103,9 +1103,9 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 				                r_addr, r_port);
 			}
 
-            /* Free allocated data. */
-            free(xfr.tsig_data);
-            xfr.tsig_data = NULL;
+			/* Free allocated data. */
+			free(xfr.tsig_data);
+			xfr.tsig_data = NULL;
 		}
 		
 		if (xfr.digest) {
@@ -1115,7 +1115,10 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		}
 		free(xfr.query->wireformat);
 		xfr.query->wireformat = 0;
-		knot_packet_free(&xfr.query); /* Free query. */
+		knot_packet_free(&xfr.query);  /* Free query. */
+		xfr.query = NULL;
+		knot_packet_free(&xfr.response);  /* Free response. */
+		xfr.response = NULL;
 		
 		if (qname != NULL) {
 			free(zname);
