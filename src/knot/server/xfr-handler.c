@@ -689,6 +689,7 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 	if (data->session <= 0) {
 		int fd = socket_create(data->addr.family, SOCK_STREAM);
 		if (fd < 0) {
+			pthread_mutex_unlock(&zd->xfr_in.lock);
 			log_server_warning("Failed to create socket "
 					   "(type=%s, family=%s).\n",
 					   "SOCK_STREAM",
@@ -698,6 +699,7 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 		}
 		ret = connect(fd, data->addr.ptr, data->addr.len);
 		if (ret < 0) {
+			pthread_mutex_unlock(&zd->xfr_in.lock);
 			log_server_warning("Failed to connect to %cXFR master "
 					   "at %s:%d.\n",
 					   data->type == XFR_TYPE_AIN ? 'A' : 'I',
@@ -707,6 +709,7 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 				int tmr_s = AXFR_BOOTSTRAP_RETRY * 2; /* Malus x2 */
 				tmr_s += (int)((120.0 * 1000) * tls_rand());
 				event_t *ev = zd->xfr_in.timer;
+				tmr_s = 5000;
 				if (ev) {
 					evsched_cancel(ev->parent, ev);
 					evsched_schedule(ev->parent, ev, tmr_s);
@@ -729,6 +732,7 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 	rcu_read_lock();
 	const knot_zone_contents_t *contents = knot_zone_contents(zone);
 	if (!contents && data->type == XFR_TYPE_IIN) {
+		pthread_mutex_unlock(&zd->xfr_in.lock);
 		rcu_read_unlock();
 		log_server_warning("Failed start IXFR on zone with no "
 				   "contents\n");
@@ -769,6 +773,7 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 
 	/* Handle errors. */
 	if (ret != KNOT_EOK) {
+		pthread_mutex_unlock(&zd->xfr_in.lock);
 		dbg_xfr("xfr: failed to create XFR query type %d: %s\n",
 		        data->type, knot_strerror(ret));
 		return KNOTD_ERROR;

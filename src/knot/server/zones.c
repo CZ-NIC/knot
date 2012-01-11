@@ -383,11 +383,11 @@ static int zones_refresh_ev(event_t *e)
 			dbg_zones("zones: already bootstrapping '%s'\n",
 			          zd->conf->name);
 			return KNOTD_EOK;
-		} else {
-			log_zone_info("Attempting to bootstrap zone %s from master\n",
-			              zd->conf->name);
-			pthread_mutex_unlock(&zd->xfr_in.lock);
 		}
+
+		log_zone_info("Attempting to bootstrap zone %s from master\n",
+			      zd->conf->name);
+		pthread_mutex_unlock(&zd->xfr_in.lock);
 		
 		return xfr_request(zd->server->xfr_h, &xfr_req);
 	}
