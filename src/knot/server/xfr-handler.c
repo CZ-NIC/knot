@@ -618,7 +618,7 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 				              zorigin, tmr_s/1000);
 			}
 			rcu_read_unlock();
-			
+
 			/* Update timers. */
 			server_t *server = (server_t *)knot_ns_get_data(w->ns);
 			zones_timers_update(zone, zd->conf, server->sched);
@@ -709,7 +709,6 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 				int tmr_s = AXFR_BOOTSTRAP_RETRY * 2; /* Malus x2 */
 				tmr_s += (int)((120.0 * 1000) * tls_rand());
 				event_t *ev = zd->xfr_in.timer;
-				tmr_s = 5000;
 				if (ev) {
 					evsched_cancel(ev->parent, ev);
 					evsched_schedule(ev->parent, ev, tmr_s);
