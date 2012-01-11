@@ -1772,7 +1772,7 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 	rcu_read_lock();
 
 	knot_packet_t *resp = NULL;
-	knot_zone_t *zone = NULL;
+	const knot_zone_t *zone = NULL;
 
 	dbg_zones_verb("Preparing response structure.\n");
 	int ret = knot_ns_prep_normal_response(nameserver, query, &resp, &zone);

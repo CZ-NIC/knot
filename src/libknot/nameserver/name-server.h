@@ -243,8 +243,8 @@ int knot_ns_prep_normal_response(knot_nameserver_t *nameserver,
  * \retval KNOT_EOK if a valid response was created.
  * \retval KNOT_EMALF if an error occured and the response is not valid.
  */
-int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_zone_t *zone,
-                          knot_packet_t *resp,
+int knot_ns_answer_normal(knot_nameserver_t *nameserver, 
+                          const knot_zone_t *zone, knot_packet_t *resp,
                           uint8_t *response_wire, size_t *rsize);
 
 int knot_ns_init_xfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr);

@@ -1159,7 +1159,7 @@ void knot_packet_set_tsig_size(knot_packet_t *packet, size_t tsig_size)
 
 /*----------------------------------------------------------------------------*/
 
-const knot_rrset_t *knot_packet_tsig(knot_packet_t *packet)
+const knot_rrset_t *knot_packet_tsig(const knot_packet_t *packet)
 {
 	return packet->tsig_rr;
 }

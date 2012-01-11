@@ -1859,7 +1859,7 @@ finalize:
  * \retval KNOT_EOK
  * \retval NS_ERR_SERVFAIL
  */
-static int ns_answer(knot_zone_t *zone, knot_packet_t *resp)
+static int ns_answer(const knot_zone_t *zone, knot_packet_t *resp)
 {
 //	const knot_dname_t *qname = knot_packet_qname(resp);
 //	assert(qname != NULL);
@@ -2353,7 +2353,7 @@ static int ns_ixfr_put_rrset(knot_ns_xfr_t *xfr, const knot_rrset_t *rrset)
 		/*! \todo Probably rename the function. */
 		ns_xfr_send_and_clear(xfr, 1);
 		//socket_close(xfr->session);  /*! \todo Remove for UDP.*/
-		return KNOT_ERROR;
+		return res;
 	}
 
 	return KNOT_EOK;
@@ -2404,35 +2404,6 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 	assert(xfr->response != NULL);
 	assert(knot_packet_authority_rrset_count(xfr->query) > 0);
 	assert(xfr->data != NULL);
-
-	/*! \todo REMOVE start */
-//	const knot_rrset_t *zone_soa =
-//		knot_node_rrset(knot_zone_contents_apex(
-//		                       knot_zone_contents(xfr->zone)),
-//		                  KNOT_RRTYPE_SOA);
-//	// retrieve origin (xfr) serial and target (zone) serial
-//	uint32_t zone_serial = knot_rdata_soa_serial(
-//	                             knot_rrset_rdata(zone_soa));
-//	uint32_t xfr_serial = knot_rdata_soa_serial(knot_rrset_rdata(
-//			knot_packet_authority_rrset(xfr->query, 0)));
-
-//	// 3) load changesets from journal
-//	knot_changesets_t *chgsets = (knot_changesets_t *)
-//	                               calloc(1, sizeof(knot_changesets_t));
-//	int res = xfr_load_changesets(xfr->zone, chgsets, xfr_serial, 
-//	                              zone_serial);
-//	if (res != KNOT_EOK) {
-//		dbg_ns("IXFR query cannot be answered: %s.\n",
-//		         knot_strerror(res));
-//		/*! \todo Probably send back AXFR instead. */
-//		knot_response_set_rcode(xfr->response, KNOT_RCODE_SERVFAIL);
-//		/*! \todo Probably rename the function. */
-//		ns_axfr_send_and_clear(xfr);
-//		//socket_close(xfr->session);  /*! \todo Remove for UDP. */
-//		return 1;
-//	}
-	
-	/*! \todo REMOVE end */
 	
 	knot_changesets_t *chgsets = (knot_changesets_t *)xfr->data;
 	knot_zone_contents_t *contents = knot_zone_get_contents(xfr->zone);
@@ -2452,15 +2423,15 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 		/*! \todo Probably rename the function. */
 		ns_xfr_send_and_clear(xfr, 1);
 //		socket_close(xfr->session);  /*! \todo Remove for UDP.*/
-		return 1;
+		return res;
 	}
 
 	// 5) put the changesets into the response while they fit in
 	for (int i = 0; i < chgsets->count; ++i) {
 		res = ns_ixfr_put_changeset(xfr, &chgsets->sets[i]);
 		if (res != KNOT_EOK) {
-			// answer is sent, socket is closed
-			return KNOT_EOK;
+			// answer is sent
+			return res;
 		}
 	}
 
@@ -2472,7 +2443,7 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 		/*! \todo Probably rename the function. */
 		ns_xfr_send_and_clear(xfr, 1);
 		//socket_close(xfr->session);  /*! \todo Remove for UDP.*/
-		return 1;
+//		return 1;
 	}
 
 	return KNOT_EOK;
@@ -2495,7 +2466,7 @@ static int ns_ixfr(knot_ns_xfr_t *xfr)
 		/*! \todo Probably rename the function. */
 		ns_xfr_send_and_clear(xfr, 1);
 		//socket_close(xfr->session);
-		return 1;
+		return KNOT_EMALF;
 	}
 
 	const knot_rrset_t *soa = knot_packet_authority_rrset(xfr->query, 0);
@@ -2511,7 +2482,7 @@ static int ns_ixfr(knot_ns_xfr_t *xfr)
 		/*! \todo Probably rename the function. */
 		ns_xfr_send_and_clear(xfr, 1);
 		//socket_close(xfr->session);  /*! \todo Remove for UDP. */
-		return 1;
+		return KNOT_EMALF;
 	}
 
 	return ns_ixfr_from_zone(xfr);
@@ -2880,8 +2851,8 @@ dbg_ns_exec(
 
 /*----------------------------------------------------------------------------*/
 
-int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_zone_t *zone,
-                          knot_packet_t *resp,
+int knot_ns_answer_normal(knot_nameserver_t *nameserver, 
+                          const knot_zone_t *zone, knot_packet_t *resp,
                           uint8_t *response_wire, size_t *rsize)
 {
 	dbg_ns("ns_answer_normal()\n");
@@ -3211,15 +3182,15 @@ int knot_ns_answer_ixfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	
 	ret = ns_ixfr(xfr);
 
-	/*! \todo Somehow distinguish when it makes sense to send the SERVFAIL
-	 *        and when it does not. E.g. if there was problem in sending
-	 *        packet, it will probably fail when sending the SERVFAIL also.
-	 */
-	if (ret < 0) {
-		dbg_ns("IXFR failed, sending SERVFAIL.\n");
-		// now only one type of error (SERVFAIL), later maybe more
-		knot_ns_xfr_send_error(nameserver, xfr, KNOT_RCODE_SERVFAIL);
-	}
+//	/*! \todo Somehow distinguish when it makes sense to send the SERVFAIL
+//	 *        and when it does not. E.g. if there was problem in sending
+//	 *        packet, it will probably fail when sending the SERVFAIL also.
+//	 */
+//	if (ret < 0) {
+//		dbg_ns("IXFR failed, sending SERVFAIL.\n");
+//		// now only one type of error (SERVFAIL), later maybe more
+//		knot_ns_xfr_send_error(nameserver, xfr, KNOT_RCODE_SERVFAIL);
+//	}
 
 	knot_packet_free(&xfr->response);
 
