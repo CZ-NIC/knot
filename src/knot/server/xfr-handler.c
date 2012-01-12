@@ -1347,7 +1347,7 @@ int xfr_worker(dthread_t *thread)
 		}
 		
 		/* Poll fdset. */
-		int nfds = fdset_wait(w->fdset);
+		int nfds = fdset_wait(w->fdset, OS_EV_FOREVER);
 		if (nfds <= 0) {
 			continue;
 		}

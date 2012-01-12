@@ -120,7 +120,7 @@ static int fdset_tests_run(int argc, char *argv[])
 	pthread_create(&t, 0, thr_action, &fds[1]);
 
 	/* 4. Watch fdset. */
-	ret = fdset_wait(set);
+	ret = fdset_wait(set, OS_EV_FOREVER);
 	gettimeofday(&te, 0);
 	size_t diff = timeval_diff(&ts, &te);
 
@@ -151,7 +151,7 @@ static int fdset_tests_run(int argc, char *argv[])
 	close(tmpfds[1]);
 
 	/* 9. Poll empty fdset. */
-	ret = fdset_wait(set);
+	ret = fdset_wait(set, OS_EV_FOREVER);
 	ok(ret <= 0, "fdset: polling empty fdset returns -1 (ret=%d)", ret);
 
 	/* 10. Crash test. */
@@ -159,7 +159,7 @@ static int fdset_tests_run(int argc, char *argv[])
 		 fdset_destroy(0);
 		 fdset_add(0, -1, 0);
 		 fdset_remove(0, -1);
-		 fdset_wait(0);
+		 fdset_wait(0, OS_EV_NOWAIT);
 		 fdset_begin(0, 0);
 		 fdset_end(0, 0);
 		 fdset_next(0, 0);

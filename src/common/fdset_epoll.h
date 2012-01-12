@@ -74,13 +74,12 @@ int fdset_epoll_remove(fdset_t *fdset, int fd);
  * \brief Poll set for new events.
  *
  * \param fdset Target set.
+ * \param timeout Timeout (OS_EV_FOREVER, OS_EV_NOWAIT or value in miliseconds).
  *
  * \retval Number of events if successful.
  * \retval -1 on errors.
- *
- * \todo Timeout.
  */
-int fdset_epoll_wait(fdset_t *fdset);
+int fdset_epoll_wait(fdset_t *fdset, int timeout);
 
 /*!
  * \brief Set event iterator to the beginning of last polled events.

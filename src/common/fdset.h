@@ -35,6 +35,12 @@
 
 #include <stddef.h>
 
+/*! \brief Waiting for completion constants. */
+enum fdset_wait_t {
+	OS_EV_FOREVER = -1, /*!< Wait forever. */
+	OS_EV_NOWAIT  =  0  /*!< Return immediately. */
+};
+
 /*! \brief Opaque pointer to implementation-specific fdset data. */
 typedef struct fdset_t fdset_t;
 
@@ -63,7 +69,7 @@ struct fdset_backend_t
 	int (*fdset_destroy)(fdset_t*);
 	int (*fdset_add)(fdset_t*, int, int);
 	int (*fdset_remove)(fdset_t*, int);
-	int (*fdset_wait)(fdset_t*);
+	int (*fdset_wait)(fdset_t*, int);
 	int (*fdset_begin)(fdset_t*, fdset_it_t*);
 	int (*fdset_end)(fdset_t*, fdset_it_t*);
 	int (*fdset_next)(fdset_t*, fdset_it_t*);
@@ -130,14 +136,13 @@ static inline int fdset_remove(fdset_t *fdset, int fd) {
  * \brief Poll set for new events.
  *
  * \param fdset Target set.
+ * \param timeout Timeout (OS_EV_FOREVER, OS_EV_NOWAIT or value in miliseconds).
  *
  * \retval Number of events if successful.
  * \retval -1 on errors.
- *
- * \todo Timeout.
  */
-static inline int fdset_wait(fdset_t *fdset) {
-	return _fdset_backend.fdset_wait(fdset);
+static inline int fdset_wait(fdset_t *fdset, int timeout) {
+	return _fdset_backend.fdset_wait(fdset, timeout);
 }
 
 /*!
