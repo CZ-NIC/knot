@@ -213,6 +213,7 @@ static inline const char* fdset_method() {
  * \param fdset Target set.
  * \param fd File descriptor.
  * \param interval Allowed interval without activity (seconds).
+ *                 <0 removes watchdog interval.
  *
  * \retval 0 if successful.
  * \retval -1 on errors.

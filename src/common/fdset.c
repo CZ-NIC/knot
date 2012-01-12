@@ -135,6 +135,12 @@ int fdset_set_watchdog(fdset_t* fdset, int fd, int interval)
 		return -1;
 	}
 	
+	/* Lift watchdog if interval is negative. */
+	if (interval < 0) {
+		skip_remove(base->atimes, (void*)((size_t)fd), NULL, free);
+		return 0;
+	}
+	
 	/* Find if exists. */
 	struct timespec *ts = NULL;
 	ts = (struct timespec*)skip_find(base->atimes, (void*)((size_t)fd));
