@@ -1248,6 +1248,11 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		knot_packet_free(&xfr.response);  /* Free response. */
 		xfr.response = NULL;
 		
+		if (xfr.data != NULL) {  /* Free changesets. */
+			knot_free_changesets((knot_changesets_t **)
+			                     (&xfr.data));
+		}
+		
 		if (zname) {
 			free(zname);
 		}
