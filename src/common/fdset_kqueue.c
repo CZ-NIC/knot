@@ -32,6 +32,7 @@
 #define OS_FDS_KEEPCHUNKS 32 /*!< Will attempt to free memory when reached. */
 
 struct fdset_t {
+	fdset_base_t _base;
 	int kq;
 	struct kevent *events;
 	struct kevent *revents;

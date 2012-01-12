@@ -29,6 +29,7 @@
 #define OS_FDS_KEEPCHUNKS 32 /*!< Will attempt to free memory when reached. */
 
 struct fdset_t {
+	fdset_base_t _base;
 	struct pollfd *fds;
 	nfds_t nfds;
 	size_t reserved;

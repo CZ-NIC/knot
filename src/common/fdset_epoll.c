@@ -24,11 +24,13 @@
 #include <unistd.h>
 
 #include "fdset_epoll.h"
+#include "skip-list.h"
 
 #define OS_FDS_CHUNKSIZE 8   /*!< Number of pollfd structs in a chunk. */
 #define OS_FDS_KEEPCHUNKS 32 /*!< Will attempt to free memory when reached. */
 
 struct fdset_t {
+	fdset_base_t _base;
 	int epfd;
 	struct epoll_event *events;
 	size_t nfds;
@@ -40,7 +42,7 @@ fdset_t *fdset_epoll_new()
 {
 	fdset_t *set = malloc(sizeof(fdset_t));
 	if (!set) {
-		return 0;
+		return NULL;
 	}
 
 	/* Blank memory. */
