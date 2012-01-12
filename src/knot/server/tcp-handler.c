@@ -449,7 +449,7 @@ int tcp_loop_worker(dthread_t *thread)
 		}
 
 		/* Wait for events. */
-		int nfds = fdset_wait(w->fdset);
+		int nfds = fdset_wait(w->fdset, OS_EV_FOREVER);
 		if (nfds <= 0) {
 			continue;
 		}

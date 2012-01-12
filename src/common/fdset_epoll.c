@@ -125,7 +125,7 @@ int fdset_epoll_remove(fdset_t *fdset, int fd)
 	return 0;
 }
 
-int fdset_epoll_wait(fdset_t *fdset)
+int fdset_epoll_wait(fdset_t *fdset, int timeout)
 {
 	if (!fdset || fdset->nfds < 1 || !fdset->events) {
 		return -1;
@@ -133,7 +133,7 @@ int fdset_epoll_wait(fdset_t *fdset)
 
 	/* Poll new events. */
 	fdset->polled = 0;
-	int nfds = epoll_wait(fdset->epfd, fdset->events, fdset->nfds, -1);
+	int nfds = epoll_wait(fdset->epfd, fdset->events, fdset->nfds, timeout);
 
 	/* Check. */
 	if (nfds < 0) {

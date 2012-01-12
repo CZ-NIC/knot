@@ -24,6 +24,7 @@
 #include <unistd.h>
 #include <sys/event.h>
 #include <sys/time.h>
+#include <time.h>
 
 #include "fdset_kqueue.h"
 
@@ -159,16 +160,29 @@ int fdset_kqueue_remove(fdset_t *fdset, int fd)
 	return 0;
 }
 
-int fdset_kqueue_wait(fdset_t *fdset)
+int fdset_kqueue_wait(fdset_t *fdset, int timeout)
 {
 	if (!fdset || fdset->nfds < 1 || !fdset->events) {
 		return -1;
 	}
 
+	/* Set timeout. */
+	struct timespec tmval;
+	struct timespec *tm = NULL;
+	if (timeout == 0) {
+		tmval.tv_sec = tmval.tv_nsec = 0;
+		tm = &tmval;
+	} else if (timeout > 0) {
+		tmval.tv_sec = timeout / 1000;     /* ms -> s */
+		timeout -= tmval.tv_sec * 1000;    /* Cut off */
+		tmval.tv_nsec = timeout * 1000000L; /* ms -> ns */
+		tm = &tmval;
+	}
+
 	/* Poll new events. */
 	fdset->polled = 0;
 	int nfds = kevent(fdset->kq, fdset->events, fdset->nfds,
-	                  fdset->revents, fdset->nfds, 0);
+	                  fdset->revents, fdset->nfds, tm);
 
 	/* Check. */
 	if (nfds < 0) {
