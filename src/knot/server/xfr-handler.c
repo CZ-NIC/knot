@@ -42,7 +42,7 @@
 #include "common/WELL1024a.h"
 
 /* Constants */
-#define XFR_BUFFER_SIZE 65536
+#define XFR_BUFFER_SIZE 65535 /*! Do not change this - maximum value for UDP packet length. */
 
 void xfr_interrupt(xfrhandler_t *h)
 {
