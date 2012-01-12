@@ -588,11 +588,16 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 	}
 
 	/* Handle errors. */
-	if (ret < 0 && ret != KNOT_ENOXFR) {
+	if (ret == KNOT_ENOXFR) {
+		log_server_error("%cXFR/IN request finished - %s\n",
+				 data->type == XFR_TYPE_AIN ? 'A' : 'I',
+				 knot_strerror(ret));
+	} else if (ret < 0) {
 		log_server_error("%cXFR/IN request failed - %s\n",
 		                 data->type == XFR_TYPE_AIN ? 'A' : 'I',
 		                 knot_strerror(ret));
 	}
+
 
 	/* Check finished zone. */
 	int result = KNOTD_EOK;
