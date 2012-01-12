@@ -570,15 +570,15 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 	knot_zone_t *zone = (knot_zone_t *)data->zone;
 	if (zone && data->type == XFR_TYPE_IIN && ret == KNOT_EXFRREFUSED) {
 		log_server_notice("IXFR/IN failed, attempting to use "
-				  "AXFR/IN instead.\n");
+		                  "AXFR/IN instead.\n");
 		size_t bufsize = buflen;
 		data->wire_size = buflen; /* Reset maximum bufsize */
 		ret = xfrin_create_axfr_query(zone->name, data,
-					      &bufsize, 1);
+		                              &bufsize, 1);
 		/* Send AXFR/IN query. */
 		if (ret == KNOT_EOK) {
 			ret = data->send(data->session, &data->addr,
-					 data->wire, bufsize);
+			                 data->wire, bufsize);
 			/* Switch to AIN type XFR and return now. */
 			if (ret == bufsize) {
 				data->type = XFR_TYPE_AIN;
@@ -589,9 +589,9 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 
 	/* Handle errors. */
 	if (ret == KNOT_ENOXFR) {
-		log_server_error("%cXFR/IN request finished - %s\n",
-				 data->type == XFR_TYPE_AIN ? 'A' : 'I',
-				 knot_strerror(ret));
+		log_server_warning("%cXFR/IN request finished - %s\n",
+		                   data->type == XFR_TYPE_AIN ? 'A' : 'I',
+		                   knot_strerror(ret));
 	} else if (ret < 0) {
 		log_server_error("%cXFR/IN request failed - %s\n",
 		                 data->type == XFR_TYPE_AIN ? 'A' : 'I',
