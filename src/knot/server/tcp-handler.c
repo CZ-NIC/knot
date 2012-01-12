@@ -38,7 +38,7 @@
 #include "libknot/util/wire.h"
 
 /* Defines */
-#define TCP_BUFFER_SIZE 65536
+#define TCP_BUFFER_SIZE 65535 /*! Do not change, as it is used for maximum DNS/TCP packet size. */
 
 /*! \brief TCP worker data. */
 typedef struct tcp_worker_t {
