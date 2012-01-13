@@ -648,6 +648,7 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 		dbg_tsig_detail("TSIG: could not add rdata\n");
 		knot_rrset_free(&tmp_tsig);
 		knot_rdata_free(&rdata);
+		return ret;
 	}
 
 	/* Create items for TSIG RR. */
