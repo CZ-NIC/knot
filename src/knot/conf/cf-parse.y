@@ -291,17 +291,19 @@ keys:
      char *fqdn = $2.t;
      size_t fqdnl = strlen(fqdn);
      if (fqdn[fqdnl - 1] != '.') {
-        char* tmp = malloc(fqdnl + 2); /* '.', '\0' */
-	if (!tmp) {
+        /*! \todo Oddly, it requires memory aligned to 4B */
+        fqdnl = ((fqdnl + 2)/4+1)*4; /* '.', '\0' */
+        char* tmpdn = malloc(fqdnl); 
+	if (!tmpdn) {
 	   cf_error(scanner, "out of memory when allocating string");
 	   free(fqdn);
 	   fqdn = NULL;
+	   fqdnl = 0;
 	} else {
-	   memset(tmp, 0, fqdnl + 2);
-	   strncpy(tmp, fqdn, fqdnl);
-	   strncat(tmp, ".", 1);
+	   strncpy(tmpdn, fqdn, fqdnl);
+	   strncat(tmpdn, ".", 1);
 	   free(fqdn);
-	   fqdn = tmp;
+	   fqdn = tmpdn;
 	   fqdnl = strlen(fqdn);
 	}
      }
