@@ -1890,6 +1890,8 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 				               digest, &digest_size,
 				               tsig_key_zone, tsig_rcode,
 				               tsig_prev_time_signed);
+				
+				/*! \todo Variable digest leaks here. */
 
 				dbg_zones_detail("answer_size = %zu\n",
 				                 answer_size);
