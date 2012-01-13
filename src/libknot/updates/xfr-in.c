@@ -2025,7 +2025,6 @@ static knot_node_t *xfrin_add_new_node(knot_zone_contents_t *contents,
 //	dbg_xfrin("Adding new node to zone. From owner: %s type %s\n",
 //	               knot_dname_to_str(node->owner),
 //	               knot_rrtype_to_string(rrset->type));
-//	getchar();
 	if (knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC3) {
 		ret = knot_zone_contents_add_nsec3_node(contents, node, 1, 0,
 		                                        1);
@@ -2078,7 +2077,6 @@ static int xfrin_apply_add_normal(xfrin_changes_t *changes,
 
 	dbg_xfrin("applying rrset:\n");
 	knot_rrset_dump(add, 0);
-//	getchar();
 	
 	if (!*rrset
 	    || knot_dname_compare(knot_rrset_owner(*rrset),
@@ -2100,7 +2098,6 @@ dbg_xfrin_exec_verb(
 		               knot_rrtype_to_string(add->type));
 		free(name);
 );
-//		getchar();
 		// add the RRSet from the changeset to the node
 		/*! \todo What about domain names?? Shouldn't we use the
 		 *        zone-contents' version of this function??

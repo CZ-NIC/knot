@@ -59,7 +59,7 @@ static int knot_tsig_check_key(const knot_rrset_t *tsig_rr,
 		return KNOT_EMALF;
 	}
 
-	const char *name = knot_dname_to_str(tsig_name);
+	char *name = knot_dname_to_str(tsig_name);
 	if (!name) {
 		return KNOT_EMALF;
 	}
@@ -67,9 +67,11 @@ static int knot_tsig_check_key(const knot_rrset_t *tsig_rr,
 	if (knot_dname_compare(tsig_name, tsig_key->name) != 0) {
 		/*!< \todo which error. */
 		dbg_tsig("TSIG: unknown key: %s\n", name);
+		free(name);
 		return KNOT_TSIG_EBADKEY;
 	}
 
+	free(name);
 	return KNOT_EOK;
 }
 
@@ -107,7 +109,7 @@ static int knot_tsig_compute_digest(const uint8_t *wire, size_t wire_len,
 					B64BUFSIZE);
 	if (decoded_key_size < 0) {
 		dbg_tsig("TSIG: Could not decode Base64\n");
-		return KNOT_EMALF;
+		return KNOT_ERROR;
 	}
 
 	dbg_tsig_detail("TSIG: decoded key size: %d\n", decoded_key_size);
@@ -480,6 +482,8 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	knot_rrset_t *tmp_tsig =
 		knot_rrset_new(key_name_copy,
 			       KNOT_RRTYPE_TSIG, KNOT_CLASS_ANY, 0);
+	/* Should be retained by rrsig or freed, release. */
+	knot_dname_release(key_name_copy);
 	if (!tmp_tsig) {
 		dbg_tsig_detail("TSIG: tmp_tsig = NULL\n");
 		return KNOT_ENOMEM;
@@ -489,7 +493,7 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	knot_rdata_t *rdata = knot_rdata_new();
 	if (!rdata) {
 		dbg_tsig_detail("TSIG: rdata = NULL\n");
-		/*! \todo CLEANUP !!! */
+		knot_rrset_free(&tmp_tsig);
 		return KNOT_ENOMEM;
 	}
 
@@ -505,7 +509,8 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	if (!items) {
 		dbg_tsig_detail("TSIG: items = NULL\n");
 		ERR_ALLOC_FAILED;
-		/*! \todo Free key_name_copy !!! */
+		knot_rrset_free(&tmp_tsig);
+		knot_rdata_free(&rdata);
 		return KNOT_ENOMEM;
 	}
 
@@ -514,7 +519,8 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	int ret = knot_rdata_set_items(rdata, items, desc->length);
 	if (ret != KNOT_EOK) {
 		dbg_tsig_detail("TSIG: rdata_set_items returned %s\n", knot_strerror(ret));
-		/*! \todo CLEANUP !!! */
+		knot_rrset_free(&tmp_tsig);
+		knot_rdata_free(&rdata);
 		return ret;
 	}
 	free(items);
@@ -593,8 +599,6 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	// everything went ok, save the digest to the output parameter
 	memcpy(digest, digest_tmp, digest_tmp_len);
 	*digest_len = digest_tmp_len;
-
-	/*! \todo CLEANUP !!! */
 
 	return KNOT_EOK;
 }

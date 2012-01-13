@@ -1159,6 +1159,20 @@ void knot_packet_set_tsig_size(knot_packet_t *packet, size_t tsig_size)
 
 /*----------------------------------------------------------------------------*/
 
+const knot_rrset_t *knot_packet_tsig(const knot_packet_t *packet)
+{
+	return packet->tsig_rr;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void knot_packet_set_tsig(knot_packet_t *packet, const knot_rrset_t *tsig_rr)
+{
+    packet->tsig_rr = (knot_rrset_t *)tsig_rr;
+}
+
+/*----------------------------------------------------------------------------*/
+
 short knot_packet_answer_rrset_count(const knot_packet_t *packet)
 {
 	if (packet == NULL) {
@@ -1217,7 +1231,7 @@ const knot_rrset_t *knot_packet_authority_rrset(
 /*----------------------------------------------------------------------------*/
 
 const knot_rrset_t *knot_packet_additional_rrset(
-	knot_packet_t *packet, short pos)
+    knot_packet_t *packet, short pos)
 {
 	if (packet == NULL || pos > packet->ar_rrsets) {
 		return NULL;
