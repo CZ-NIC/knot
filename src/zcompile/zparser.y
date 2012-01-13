@@ -1457,8 +1457,8 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 			if(strlen($7.str) == 0)
 				zc_error_prev_line("IPSECKEY must specify"
 						   "gateway name");
-			name = knot_dname_new_from_wire((uint8_t*)$7.str + 1,
-							  strlen($7.str + 1),
+			name = knot_dname_new_from_str($7.str,
+							  strlen($7.str),
 							  NULL);
 			if(!name) {
 				zc_error_prev_line("IPSECKEY bad gateway"
@@ -1469,21 +1469,15 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 						      1);
 				YYABORT;
 			}
-			if($7.str[strlen($7.str)-1] != '.') {
-			    knot_dname_t* tmpd =
-			    	knot_dname_new_from_wire(name->name,
-							   name->size,
-							   NULL);
-			    if (tmpd == NULL) {
-			    	zc_error_prev_line("Could not create dname!");
-				knot_rrset_deep_free(&(parser->current_rrset),
-				                       0, 0, 0);
-			        knot_zone_deep_free(&(parser->current_zone),
-				                      1);
+
+			if(!knot_dname_is_fqdn(name)) {
+			    assert(parser->origin);
+			    name = knot_dname_cat(name,
+				    parser->origin->owner);
+			    if (name == NULL) {
+			    	zc_error_prev_line("Cannot concatenete dnames, probably run out of memory!\n");
 				YYABORT;
 			    }
-			    name = knot_dname_cat(tmpd,
-				    knot_node_parent(parser->origin, 0)->owner);
 			}
 
 			free($1.str);
