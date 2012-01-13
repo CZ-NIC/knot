@@ -84,6 +84,9 @@ int tsig_rdata_set_alg_name(knot_rrset_t *tsig, knot_dname_t *alg_name)
 	}
 
 	knot_rdata_item_set_dname(rdata, 0, alg_name_copy);
+	
+	/* Release the dname. We want it to have 1 reference only. */
+	knot_dname_release(alg_name_copy);
 
 	return KNOT_EOK;
 }
@@ -107,8 +110,11 @@ int tsig_rdata_set_alg(knot_rrset_t *tsig, tsig_algorithm_t alg)
 	if (!alg_name_copy) {
 		return KNOT_ENOMEM;
 	}
-
+	
 	knot_rdata_item_set_dname(rdata, 0, alg_name_copy);
+	
+	/* Release the dname. We want it to have 1 reference only. */
+	knot_dname_release(alg_name_copy);
 
 	return KNOT_EOK;
 }
