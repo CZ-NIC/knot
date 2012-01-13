@@ -103,7 +103,7 @@ int tsig_rdata_set_alg(knot_rrset_t *tsig, tsig_algorithm_t alg)
 	const char *alg_str = tsig_alg_to_str(alg);
 	knot_dname_t *alg_name_copy = knot_dname_new_from_str(alg_str,
 							      strlen(alg_str),
-							      0);
+							      NULL);
 	if (!alg_name_copy) {
 		return KNOT_ENOMEM;
 	}
