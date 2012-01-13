@@ -1,0 +1,32 @@
+v0.8.1 - Dec 1, 2011
+--------------------
+
+Bugfixes:
+	* Handling SPF record.
+	* Wrong text dump of unknown records.
+
+
+v0.8.0 - Beta Release - Nov 3, 2011
+-----------------------------------
+
+Features:
+        * AXFR-in/-out
+        * IXFR-in/-out
+        * EDNS0
+        * DNSSEC
+        * NSEC3
+        * IPv6
+        * Runtime reconfiguration
+
+Known issues:
+        * Missing support for TSIG
+        * Root zone support
+        * NSID support
+        * Other DNS classes than IN
+        * RRSet rotation not implmented
+        * Dynamic update support
+        * IXFR code might be flaky sometimes
+        * IXFR may be slow when too much (10 000+) RRSets are transfered at once
+
+Platforms (tested on):
+	* Linux (2.6.x and newer), FreeBSD 8.2, Mac OS X 10.6, 10.7
