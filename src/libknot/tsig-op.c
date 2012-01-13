@@ -143,6 +143,8 @@ static int knot_tsig_compute_digest(const uint8_t *wire, size_t wire_len,
 	HMAC_Update(&ctx, (const unsigned char *)wire, wire_len);
 	HMAC_Final(&ctx, digest, &tmp_dig_len);
 	*digest_len = tmp_dig_len;
+	
+	HMAC_CTX_cleanup(&ctx);
 
 	return KNOT_EOK;
 }
