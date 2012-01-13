@@ -3382,7 +3382,7 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 			if (ns_serial_compare(knot_rdata_soa_serial(
 			      knot_rrset_rdata(chgsets->first_soa)),
 			      knot_rdata_soa_serial(knot_rrset_rdata(zone_soa)))
-			    < 1) {
+			    > 0) {
 				if ((xfr->flags & XFR_FLAG_UDP) > 0) {
 					// IXFR over UDP
 					dbg_ns("Update did not fit.\n");
