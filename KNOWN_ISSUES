@@ -4,7 +4,6 @@ Features not supported
 Here is a list of the most notable features that are not supported in the 
 current version of Knot.
 
-* TSIG
 * NSID (RFC5001)
 * RRSet rotation
 * Root zone support
