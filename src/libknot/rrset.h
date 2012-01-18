@@ -254,6 +254,9 @@ int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to);
 /*! \todo Add unit test. */
 int knot_rrset_shallow_copy(const knot_rrset_t *from, knot_rrset_t **to);
 
+/*! \brief Does round-robin rotation of the RRSet. */
+int knot_rrset_rotate(knot_rrset_t *rrset);
+
 /*!
  * \brief Destroys the RRSet structure.
  *

@@ -987,8 +987,9 @@ int knot_response_add_opt(knot_packet_t *resp,
 /*----------------------------------------------------------------------------*/
 
 int knot_response_add_rrset_answer(knot_packet_t *response,
-                                     const knot_rrset_t *rrset, int tc,
-                                     int check_duplicates, int compr_cs)
+                                   knot_rrset_t *rrset, int tc,
+                                   int check_duplicates, int compr_cs,
+                                   int rotate)
 {
 	if (response == NULL || rrset == NULL) {
 		return KNOT_EBADARG;
@@ -1024,6 +1025,12 @@ int knot_response_add_rrset_answer(knot_packet_t *response,
 
 	if (rrs >= 0) {
 		response->header.ancount += rrs;
+
+		if (rotate) {
+			// do round-robin rotation of the RRSet
+			knot_rrset_rotate(rrset);
+		}
+
 		return KNOT_EOK;
 	}
 
@@ -1033,8 +1040,9 @@ int knot_response_add_rrset_answer(knot_packet_t *response,
 /*----------------------------------------------------------------------------*/
 
 int knot_response_add_rrset_authority(knot_packet_t *response,
-                                        const knot_rrset_t *rrset, int tc,
-                                        int check_duplicates, int compr_cs)
+                                      knot_rrset_t *rrset, int tc,
+                                      int check_duplicates, int compr_cs,
+                                      int rotate)
 {
 	if (response == NULL || rrset == NULL) {
 		return KNOT_EBADARG;
@@ -1066,6 +1074,12 @@ int knot_response_add_rrset_authority(knot_packet_t *response,
 
 	if (rrs >= 0) {
 		response->header.nscount += rrs;
+
+		if (rotate) {
+			// do round-robin rotation of the RRSet
+			knot_rrset_rotate(rrset);
+		}
+
 		return KNOT_EOK;
 	}
 
@@ -1075,8 +1089,9 @@ int knot_response_add_rrset_authority(knot_packet_t *response,
 /*----------------------------------------------------------------------------*/
 
 int knot_response_add_rrset_additional(knot_packet_t *response,
-                                         const knot_rrset_t *rrset, int tc,
-                                         int check_duplicates, int compr_cs)
+                                       knot_rrset_t *rrset, int tc,
+                                       int check_duplicates, int compr_cs,
+                                       int rotate)
 {
 	if (response == NULL || rrset == NULL) {
 		return KNOT_EBADARG;
@@ -1114,6 +1129,12 @@ int knot_response_add_rrset_additional(knot_packet_t *response,
 
 	if (rrs >= 0) {
 		response->header.arcount += rrs;
+
+		if (rotate) {
+			// do round-robin rotation of the RRSet
+			knot_rrset_rotate(rrset);
+		}
+
 		return KNOT_EOK;
 	}
 
