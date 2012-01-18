@@ -291,17 +291,19 @@ keys:
      char *fqdn = $2.t;
      size_t fqdnl = strlen(fqdn);
      if (fqdn[fqdnl - 1] != '.') {
-        char* tmp = malloc(fqdnl + 2); /* '.', '\0' */
-	if (!tmp) {
+        /*! \todo Oddly, it requires memory aligned to 4B */
+        fqdnl = ((fqdnl + 2)/4+1)*4; /* '.', '\0' */
+        char* tmpdn = malloc(fqdnl); 
+	if (!tmpdn) {
 	   cf_error(scanner, "out of memory when allocating string");
 	   free(fqdn);
 	   fqdn = NULL;
+	   fqdnl = 0;
 	} else {
-	   memset(tmp, 0, fqdnl + 2);
-	   strncpy(tmp, fqdn, fqdnl);
-	   strncat(tmp, ".", 1);
+	   strncpy(tmpdn, fqdn, fqdnl);
+	   strncat(tmpdn, ".", 1);
 	   free(fqdn);
-	   fqdn = tmp;
+	   fqdn = tmpdn;
 	   fqdnl = strlen(fqdn);
 	}
      }
@@ -477,20 +479,28 @@ zone_start: TEXT {
    this_zone->notify_retries = 0; // Default policy applies
    this_zone->ixfr_fslimit = -1; // Default policy applies
    this_zone->dbsync_timeout = -1; // Default policy applies
-   this_zone->name = $1.t;
 
    // Append mising dot to ensure FQDN
-   size_t nlen = strlen(this_zone->name);
-   if (this_zone->name[nlen - 1] != '.') {
-     this_zone->name = realloc(this_zone->name, nlen + 1 + 1);
-     strcat(this_zone->name, ".");
+   char *name = $1.t;
+   size_t nlen = strlen(name);
+   if (name[nlen - 1] != '.') {
+      this_zone->name = malloc(nlen + 2);
+      if (this_zone->name != NULL) {
+	memcpy(this_zone->name, name, nlen);
+	this_zone->name[nlen] = '.';
+	this_zone->name[nlen + 1] = '\0';
+     }
+     free(name);
+   } else {
+      this_zone->name = name; /* Already FQDN */
    }
 
    /* Check domain name. */
-   knot_dname_t *dn = knot_dname_new_from_str(this_zone->name,
-                                                  nlen + 1,
-                                                  0);
-   if (dn == 0) {
+   knot_dname_t *dn = NULL;
+   if (this_zone->name != NULL) {
+      dn = knot_dname_new_from_str(this_zone->name, nlen + 1, 0);
+   }
+   if (dn == NULL) {
      free(this_zone->name);
      free(this_zone);
      cf_error(scanner, "invalid zone origin");

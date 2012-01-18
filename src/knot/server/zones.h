@@ -132,7 +132,20 @@ int zones_zonefile_sync(knot_zone_t *zone);
 /*!
  * \todo Document me.
  */
+int zones_query_check_zone(const knot_zone_t *zone, const sockaddr_t *addr,
+                           knot_key_t **tsig_key, knot_rcode_t *rcode);
+
+/*!
+ * \todo Document me.
+ */
 int zones_xfr_check_zone(knot_ns_xfr_t *xfr, knot_rcode_t *rcode);
+
+/*!
+ * \todo Document me.
+ */
+int zones_normal_query_answer(knot_nameserver_t *nameserver,
+                              knot_packet_t *query, const sockaddr_t *addr,
+                              uint8_t *response_wire, size_t *rsize);
 
 /*!
  * \brief Processes normal response packet.

@@ -419,6 +419,8 @@ static int xfrin_check_tsig(knot_packet_t *packet, knot_ns_xfr_t *xfr,
 		return KNOT_EMALF;
 	}
 	
+	knot_rrset_deep_free(&tsig, 1, 1, 1);
+	
 	return KNOT_EOK;
 }
 
