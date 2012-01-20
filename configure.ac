@@ -104,7 +104,7 @@ AC_ARG_ENABLE([recvmmsg],
 # Checks for libraries.
 # FIXME: Replace `main' with a function in `-lm':
 # TODO: check if paths exist before appending
-CFLAGS="$CFLAGS -I/usr/local/include"
+CFLAGS="$CFLAGS -I/usr/local/include $SIMD_FLAGS"
 LDFLAGS="$LDFLAGS -L/usr/local/lib"
 AC_SEARCH_LIBS([pow], [m])
 AC_SEARCH_LIBS([pthread_create], [pthread], [], [AC_MSG_ERROR([pthreads not found])])
