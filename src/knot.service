@@ -1,0 +1,13 @@
+[Unit]
+Description=Knot DNS daemon
+After=syslog.target network.target auditd.service
+
+[Service]
+EnvironmentFile=/etc/sysconfig/knot
+ExecReload=/usr/sbin/knotc reload
+ExecStart=/usr/sbin/knotd $KNOTARGS
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target
+
