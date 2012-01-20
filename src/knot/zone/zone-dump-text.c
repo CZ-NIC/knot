@@ -387,7 +387,7 @@ static char *rdata_txt_data_to_string(const uint8_t *data)
 char *rdata_text_to_string(knot_rdata_item_t item)
 {
 	uint16_t size = item.raw_data[0];
-	char *ret = malloc(sizeof(char) * size * 2) ;
+	char *ret = malloc(sizeof(char) * size * 2 + 1) ;
 	if (ret == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
