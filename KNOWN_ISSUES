@@ -5,7 +5,6 @@ Here is a list of the most notable features that are not supported in the
 current version of Knot.
 
 * NSID (RFC5001)
-* RRSet rotation
 * Root zone support
 * Other DNS classes than IN (CH, CS, HS)
 * Dynamic updates

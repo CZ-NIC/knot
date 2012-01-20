@@ -1,3 +1,18 @@
+v0.9.1 - Jan 20, 2012
+---------------------
+
+New features:
+	* RRSet rotation
+
+Bugfixes:
+	* Fixed build on BSD.
+	* Fixes in parsing and dumping of zone
+	  - types IPSECKEY, WKS, DLV, APL, SPF, NSAP
+
+Other changes:
+	* Replaced pseudo-random number generator by one with MIT/BSD license.
+
+
 v0.9 - Jan 13, 2012
 -------------------
 
