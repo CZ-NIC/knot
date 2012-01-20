@@ -1463,7 +1463,6 @@ uint16_t * zparser_conv_services(const char *protostr, char *servicestr)
 
 	char *sp = 0;
 	while ((word = strtok_r(servicestr, sep, &sp))) {
-//		printf("cycle %s (%s) %s\n", word, servicestr, sp);
 		struct servent *service = NULL;
 		int port;
 
@@ -1506,7 +1505,7 @@ uint16_t * zparser_conv_services(const char *protostr, char *servicestr)
 
 	p = (uint8_t *)(r + 1);
 	*p = proto->p_proto;
-	memcpy(p + 1, bitmap, *r);
+	memcpy(p + 1, bitmap, *r - 1);
 
 	return r;
 }

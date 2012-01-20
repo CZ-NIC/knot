@@ -986,7 +986,6 @@ rdata_soa:	dname sp dname sp STR sp STR sp STR sp STR sp STR trail
 rdata_wks:	dotted_str sp STR sp concatenated_str_seq trail
     {
 	    zadd_rdata_wireformat(zparser_conv_a($1.str)); /* address */
-	    printf("Address added\n");
 	    zadd_rdata_wireformat(zparser_conv_services($3.str, $5.str));
 	    /* protocol and services */
 
