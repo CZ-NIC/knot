@@ -3070,8 +3070,11 @@ static int xfrin_switch_nodes(knot_zone_contents_t *contents_copy)
 
 	// Then traverse the hash table and change each pointer in hash table
 	// item from old node to new node.
-	ck_apply(knot_zone_contents_get_hash_table(contents_copy),
-	         xfrin_switch_node_in_hash_table, NULL);
+	int ret = ck_apply(knot_zone_contents_get_hash_table(contents_copy),
+	                   xfrin_switch_node_in_hash_table, NULL);
+	assert(ret == 0);
+
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -3440,6 +3443,129 @@ static int xfrin_apply_changeset2(knot_zone_contents_t *contents,
 
 /*----------------------------------------------------------------------------*/
 
+//void xfrin_remove_empty_from_hash(ck_hash_table_item_t *item, void *data)
+//{
+//	UNUSED(data);
+//	assert(item != NULL);
+
+//	knot_node_t *node = (knot_node_t *)item->value;
+//	if (knot_node_rrset_count(node) == 0) {
+//		item->value = NULL;
+//	}
+//}
+
+/*----------------------------------------------------------------------------*/
+
+static void xfrin_mark_empty(knot_node_t *node, void *data)
+{
+	assert(node != NULL);
+	assert(data != NULL);
+
+	xfrin_changes_t *changes = (xfrin_changes_t *)data;
+
+	if (knot_node_rrset_count(node) == 0) {
+		int ret = xfrin_changes_check_nodes(&changes->old_nodes,
+		                                 &changes->old_nodes_count,
+		                                 &changes->old_nodes_allocated);
+		if (ret != KNOT_EOK) {
+			/*! \todo Stop on error? */
+			return;
+		}
+
+		changes->old_nodes[changes->old_nodes_count++] = node;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int xfrin_finalize_contents2(knot_zone_contents_t *contents,
+                                    xfrin_changes_t *changes)
+{
+	/*
+	 * 1) Delete empty nodes.
+	 *
+	 *    Walk through the trees and if a node is empty,
+	 *    store it in a list of nodes to be deleted.
+	 *    Then remove these nodes from the trees and the hash table.
+	 */
+
+	// walk through the normal node tree
+	int ret = knot_zone_contents_tree_apply_inorder(contents,
+	                                                xfrin_mark_empty,
+	                                                (void *)changes);
+	assert(ret == KNOT_EOK);
+
+	// remove these nodes from both hash table and the tree
+	ck_hash_table_t *table = knot_zone_contents_get_hash_table(contents);
+	assert(table != NULL);
+	ck_hash_table_item_t *hash_item = NULL;
+	knot_zone_tree_node_t *zone_node = NULL;
+
+	for (int i = 0; i < changes->old_nodes_count; ++i) {
+		zone_node = NULL;
+		hash_item = NULL;
+
+		ret = knot_zone_contents_remove_node(contents,
+		                                     changes->old_nodes[i],
+		                                     &zone_node, &hash_item);
+		assert(ret == KNOT_EOK);
+
+		free(hash_item);
+		free(zone_node);
+		knot_node_free(&changes->old_nodes[i], 1, 1);
+	}
+
+	changes->old_nodes_count = 0;
+
+	// walk through the NSEC3 node tree
+	ret = knot_zone_contents_nsec3_apply_inorder(contents, xfrin_mark_empty,
+	                                             (void *)changes);
+	assert(ret == KNOT_EOK);
+
+	for (int i = 0; i < changes->old_nodes_count; ++i) {
+		zone_node = NULL;
+		ret = knot_zone_contents_remove_nsec3_node(contents,
+		                                          changes->old_nodes[i],
+		                                          &zone_node);
+		assert(ret == KNOT_EOK);
+
+		free(zone_node);
+		knot_node_free(&changes->old_nodes[i], 1, 1);
+	}
+
+	/*
+	 * 2) Parse NSEC3PARAM from the zone apex.
+	 */
+	ret = knot_zone_contents_load_nsec3param(contents);
+	if (ret != KNOT_EOK) {
+		dbg_xfrin_verb("Failed to load NSEC3PARAM from zone: %s\n",
+		               knot_strerror(ret));
+		return ret;
+	}
+
+	/*
+	 * 3) Adjust nodes.
+	 *
+	 *    - Marks the nodes authoritative / non-authoritative / delegation.
+	 *    - Sets wildcard child references.
+	 *    - Saves pointer to closest encloser to RDATA dnames.
+	 *   TODO: this may require dnames to be stored in dname table already
+	 *    - Increases node count for every adjusted node.
+	 *   TODO: This is wrong!!!
+	 *    - Sets NSEC3 node reference.
+	 */
+	ret = knot_zone_contents_adjust(contents, 0);
+	if (ret != KNOT_EOK) {
+		dbg_xfrin_verb("Failed to adjust zoen contents: %s\n",
+		               knot_strerror(ret));
+		return ret;
+	}
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int xfrin_apply_changesets(knot_zone_t *zone,
                            knot_changesets_t *chsets)
 {
@@ -3518,11 +3644,18 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 
 	/*
 	 * Finalize the new zone contents:
+	 * - delete empty nodes
 	 * - parse NSEC3PARAM
 	 * - do adjusting of nodes and RDATA
-	 * - delete empty nodes
 	 * - ???
 	 */
+	ret = xfrin_finalize_contents2(contents_copy, &changes);
+	if (ret != KNOT_EOK) {
+		xfrin_rollback_update2(contents_copy, &changes);
+		dbg_xfrin("Failed to finalize zone contents: %s\n",
+		          knot_strerror(ret));
+		return ret;
+	}
 
 	return KNOT_EOK;
 }
