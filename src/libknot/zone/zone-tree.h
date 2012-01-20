@@ -276,6 +276,9 @@ int knot_zone_tree_reverse_apply_postorder(knot_zone_tree_t *tree,
 int knot_zone_tree_shallow_copy(knot_zone_tree_t *from, 
                                   knot_zone_tree_t *to);
 
+int knot_zone_tree_deep_copy(knot_zone_tree_t *from,
+                             knot_zone_tree_t *to);
+
 /*!
  * \brief Destroys the zone tree, not touching the saved data.
  *

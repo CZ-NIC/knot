@@ -2214,7 +2214,7 @@ int knot_zone_contents_dname_table_apply(knot_zone_contents_t *contents,
 /*----------------------------------------------------------------------------*/
 
 int knot_zone_contents_shallow_copy(const knot_zone_contents_t *from,
-                             knot_zone_contents_t **to)
+                                    knot_zone_contents_t **to)
 {
 	if (from == NULL || to == NULL) {
 		return KNOT_EBADARG;
@@ -2296,6 +2296,101 @@ int knot_zone_contents_shallow_copy(const knot_zone_contents_t *from,
 
 	dbg_zone("knot_zone_contents_shallow_copy: "
 			"finished OK\n");
+
+	*to = contents;
+	return KNOT_EOK;
+
+cleanup:
+	knot_zone_tree_free(&contents->nodes);
+	knot_zone_tree_free(&contents->nsec3_nodes);
+	free(contents->dname_table);
+	free(contents);
+	return ret;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_zone_contents_shallow_copy2(const knot_zone_contents_t *from,
+                                     knot_zone_contents_t **to)
+{
+	if (from == NULL || to == NULL) {
+		return KNOT_EBADARG;
+	}
+
+	/* Copy to same destination as source. */
+	if (from == *to) {
+		return KNOT_EBADARG;
+	}
+
+	int ret = KNOT_EOK;
+
+	knot_zone_contents_t *contents = (knot_zone_contents_t *)calloc(
+	                                     1, sizeof(knot_zone_contents_t));
+	if (contents == NULL) {
+		ERR_ALLOC_FAILED;
+		return KNOT_ENOMEM;
+	}
+
+	contents->apex = from->apex;
+
+	contents->nodes = malloc(sizeof(knot_zone_tree_t));
+	if (contents->nodes == NULL) {
+		ERR_ALLOC_FAILED;
+		ret = KNOT_ENOMEM;
+		goto cleanup;
+	}
+
+	contents->nsec3_nodes = malloc(sizeof(knot_zone_tree_t));
+	if (contents->nsec3_nodes == NULL) {
+		ERR_ALLOC_FAILED;
+		ret = KNOT_ENOMEM;
+		goto cleanup;
+	}
+
+	if (from->dname_table != NULL) {
+		contents->dname_table = knot_dname_table_new();
+		if (contents->dname_table == NULL) {
+			ERR_ALLOC_FAILED;
+			ret = KNOT_ENOMEM;
+			goto cleanup;
+		}
+		if ((ret = knot_dname_table_shallow_copy(from->dname_table,
+		                        contents->dname_table)) != KNOT_EOK) {
+			goto cleanup;
+		}
+	} else {
+		contents->dname_table = NULL;
+	}
+
+	contents->node_count = from->node_count;
+	contents->generation = from->generation;
+
+	contents->zone = from->zone;
+
+//	/* Initialize NSEC3 params */
+//	memcpy(&contents->nsec3_params, &from->nsec3_params,
+//	       sizeof(knot_nsec3_params_t));
+
+	if ((ret = knot_zone_tree_deep_copy(from->nodes,
+	                                    contents->nodes)) != KNOT_EOK
+	    || (ret = knot_zone_tree_deep_copy(from->nsec3_nodes,
+	                                  contents->nsec3_nodes)) != KNOT_EOK) {
+		goto cleanup;
+	}
+
+#ifdef USE_HASH_TABLE
+	if (from->table != NULL) {
+		ret = ck_deep_copy(from->table, &contents->table);
+		if (ret != 0) {
+			dbg_zone("knot_zone_contents_shallow_copy: "
+					"hash table copied\n");
+			ret = KNOT_ERROR;
+			goto cleanup;
+		}
+	}
+#endif
+
+	dbg_zone("knot_zone_contents_shallow_copy: finished OK\n");
 
 	*to = contents;
 	return KNOT_EOK;

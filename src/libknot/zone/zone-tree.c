@@ -87,6 +87,8 @@ static int knot_zone_tree_copy_node(knot_zone_tree_node_t *from,
 	if (ret != KNOT_EOK) {
 		knot_zone_tree_delete_subtree((*to)->avl.avl_left);
 		(*to)->avl.avl_left = NULL;
+		free(*to);
+		*to = NULL;
 		return ret;
 	}
 
@@ -111,6 +113,53 @@ static void knot_zone_tree_free_node(knot_zone_tree_node_t *node,
 	}
 
 	free(node);
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int knot_zone_tree_deep_copy_node(knot_zone_tree_node_t *from,
+                                         knot_zone_tree_node_t **to)
+{
+	if (from == NULL) {
+		*to = NULL;
+		return KNOT_EOK;
+	}
+
+	*to = (knot_zone_tree_node_t *)
+	      malloc(sizeof(knot_zone_tree_node_t));
+	if (*to == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	//(*to)->node = from->node;
+	int ret = knot_node_shallow_copy(from->node, &(*to)->node);
+	if (ret != KNOT_EOK) {
+		free(*to);
+		return ret;
+	}
+
+	(*to)->avl.avl_height = from->avl.avl_height;
+
+	ret = knot_zone_tree_deep_copy_node(from->avl.avl_left,
+	                                    &(*to)->avl.avl_left);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = knot_zone_tree_deep_copy_node(from->avl.avl_right,
+	                                    &(*to)->avl.avl_right);
+	if (ret != KNOT_EOK) {
+		knot_zone_tree_free_node((*to)->avl.avl_left, 1, 0);
+		(*to)->avl.avl_left = NULL;
+		knot_node_free(&(*to)->node, 0, 0);
+		free(*to);
+		*to = NULL;
+		return ret;
+	}
+
+	knot_node_set_new_node(from->node, (*to)->node);
+
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -441,6 +490,25 @@ int knot_zone_tree_shallow_copy(knot_zone_tree_t *from,
 	to->th_cmp = from->th_cmp;
 
 	return knot_zone_tree_copy_node(from->th_root, &to->th_root);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_zone_tree_deep_copy(knot_zone_tree_t *from,
+                             knot_zone_tree_t *to)
+{
+	if (to == NULL || from == NULL) {
+		return KNOT_EBADARG;
+	}
+	/*
+	 * This function will copy the tree by hand, so that the nodes
+	 * do not have to be inserted the normal way. It should be substantially
+	 * faster.
+	 */
+
+	to->th_cmp = from->th_cmp;
+
+	return knot_zone_tree_deep_copy_node(from->th_root, &to->th_root);
 }
 
 /*----------------------------------------------------------------------------*/

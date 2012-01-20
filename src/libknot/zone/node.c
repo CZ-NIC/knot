@@ -623,7 +623,10 @@ void knot_node_set_zone(knot_node_t *node, knot_zone_t *zone)
 
 void knot_node_update_ref(knot_node_t **ref)
 {
-	if (*ref != NULL && knot_node_is_old(*ref)) {
+//	if (*ref != NULL && knot_node_is_old(*ref)) {
+//		*ref = (*ref)->new_node;
+//	}
+	if (*ref != NULL && (*ref)->new_node != NULL) {
 		*ref = (*ref)->new_node;
 	}
 }
@@ -632,52 +635,18 @@ void knot_node_update_ref(knot_node_t **ref)
 
 void knot_node_update_refs(knot_node_t *node)
 {
-	/* CLEANUP */
-	/* OMG! */
 	// reference to previous node
 	knot_node_update_ref(&node->prev);
-//	if (node->prev && knot_node_is_old(node->prev)) {
-//		assert(node->prev->new_node != NULL);
-//		node->prev = node->prev->new_node;
-//	}
-
 	// reference to next node
 	knot_node_update_ref(&node->next);
-//	if (node->next && knot_node_is_old(node->next)) {
-//		assert(node->next->new_node != NULL);
-//		node->next = node->next->new_node;
-//	}
-
 	// reference to parent
-//	if (node->parent && knot_node_is_old(node->parent)) {
-//		assert(node->parent->new_node != NULL);
-//		// do not use the API function to set parent, so that children count
-//		// is not changed
-//		//knot_node_set_parent(node, node->parent->new_node);
-//		node->parent = node->parent->new_node;
-//	}
 	knot_node_update_ref(&node->parent);
-
 	// reference to wildcard child
 	knot_node_update_ref(&node->wildcard_child);
-//	if (node->wildcard_child && knot_node_is_old(node->wildcard_child)) {
-//		assert(node->wildcard_child->new_node != NULL);
-//		node->wildcard_child = node->wildcard_child->new_node;
-//	}
-
 	// reference to NSEC3 node
 	knot_node_update_ref(&node->nsec3_node);
-//	if (node->nsec3_node && knot_node_is_old(node->nsec3_node)) {
-//		assert(node->nsec3_node->new_node != NULL);
-//		node->nsec3_node = node->nsec3_node->new_node;
-//	}
-
 	// reference to NSEC3 referrer
 	knot_node_update_ref(&node->nsec3_referer);
-//	if (node->nsec3_referer && knot_node_is_old(node->nsec3_referer)) {
-//		assert(node->nsec3_referer->new_node != NULL);
-//		node->nsec3_referer = node->nsec3_referer->new_node;
-//	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -880,11 +849,8 @@ int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to)
 	memcpy(*to, from, sizeof(knot_node_t));
 
 	// copy RRSets
-	// copy the skip list with the old references
-	/* CLEANUP */
 	(*to)->rrset_tree = gen_tree_shallow_copy(from->rrset_tree);
-//	assert((*to)->rrset_tree != from->rrset_tree);
-//	(*to)->rrsets = skip_copy_list(from->rrsets);
+
 	if ((*to)->rrset_tree == NULL) {
 		free(*to);
 		*to = NULL;

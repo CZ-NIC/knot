@@ -544,7 +544,10 @@ int knot_zone_contents_dname_table_apply(knot_zone_contents_t *contents,
  * \retval KNOT_ENOMEM
  */
 int knot_zone_contents_shallow_copy(const knot_zone_contents_t *from,
-                                      knot_zone_contents_t **to);
+                                    knot_zone_contents_t **to);
+
+int knot_zone_contents_shallow_copy2(const knot_zone_contents_t *from,
+                                     knot_zone_contents_t **to);
 
 void knot_zone_contents_free(knot_zone_contents_t **contents);
 
