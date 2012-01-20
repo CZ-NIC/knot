@@ -17,7 +17,7 @@
 #include <sys/stat.h>
 
 #include "common/lists.h"
-#include "common/WELL1024a.h"
+#include "common/prng.h"
 #include "libknot/dname.h"
 #include "libknot/util/wire.h"
 #include "knot/zone/zone-dump-text.h"
