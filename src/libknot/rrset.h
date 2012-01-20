@@ -260,7 +260,7 @@ int knot_rrset_shallow_copy(const knot_rrset_t *from, knot_rrset_t **to);
  *       may rotate twice, or not rotate at all. This is not a big issue though.
  *       In future we may replace this with some per-thread counter.
  */
-int knot_rrset_rotate(knot_rrset_t *rrset);
+void knot_rrset_rotate(knot_rrset_t *rrset);
 
 /*!
  * \brief Destroys the RRSet structure.
