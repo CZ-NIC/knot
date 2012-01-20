@@ -177,7 +177,7 @@ static int test_knot_tsig_sign()
 	knot_packet_set_max_size(packet, 2048);
 	
 	if ((ret = knot_response_add_rrset_answer(packet, ns_rrset,
-	                                   0, 0, 0)) != KNOT_EOK) {
+	                                   0, 0, 0, 0)) != KNOT_EOK) {
 		diag("Could not add rrset to packet!"
 		     " %s\n", knot_strerror(ret));
 		/* No point in continuing. */

@@ -1,3 +1,20 @@
+v0.9 - Jan 13, 2012
+-------------------
+
+New features:
+        * TSIG support in both client and server.
+        * Use of sendmmsg() on Linux 3.0+ (improves performance).
+
+Bugfixes:
+        * Knot was not accepting AXFR-style IXFR with first SOA in a separate 
+          packet (i.e. from Power DNS).
+        * Wrong SOA TTL in negative answers.
+        * Wrong max packet size for outgoing transfers (was causing the 
+          packets to be malformed).
+        * Wrong handling of WKS record in zone compiler.
+        * Problems with zone bootstrapping.
+
+
 v0.8.1 - Dec 1, 2011
 --------------------
 
