@@ -252,8 +252,12 @@ libknots_la_SOURCES =				\
 	common/ref.c				\
 	common/errors.h				\
 	common/errors.c				\
-        common/WELL1024a.h			\
-        common/WELL1024a.c			\
+        common/dSFMT.h				\
+        common/dSFMT-params.h			\
+        common/dSFMT-params521.h		\
+        common/dSFMT.c				\
+        common/prng.h				\
+        common/prng.c				\
         common/fdset.h				\
         common/fdset.c				\
         common/fdset_poll.h			\

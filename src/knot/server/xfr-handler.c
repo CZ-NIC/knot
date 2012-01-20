@@ -39,7 +39,7 @@
 #include "libknot/util/error.h"
 #include "libknot/tsig-op.h"
 #include "common/evsched.h"
-#include "common/WELL1024a.h"
+#include "common/prng.h"
 
 /* Constants */
 #define XFR_BUFFER_SIZE 65535 /*! Do not change this - maximum value for UDP packet length. */

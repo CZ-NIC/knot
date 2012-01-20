@@ -130,6 +130,9 @@ AC_TYPE_UINT32_T
 AC_TYPE_UINT64_T
 AC_TYPE_UINT8_T
 
+# Set PRNG parameters
+AC_DEFINE([DSFMT_MEXP], [521], [DSFMT parameters.])
+
 # Checks for library functions.
 AC_FUNC_FORK
 AC_FUNC_MMAP
