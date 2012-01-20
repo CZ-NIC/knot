@@ -311,6 +311,25 @@ char *rdata_dname_to_string(knot_rdata_item_t item)
 	return knot_dname_to_str(item.dname);
 }
 
+char *rdata_binary_dname_to_string(knot_rdata_item_t item)
+{
+	if (item.raw_data == NULL) {
+		return NULL;
+	}
+	/* Create new dname frow raw data - probably the easiest way. */
+	knot_dname_t *dname = knot_dname_new_from_wire((uint8_t *)(item.raw_data + 1),
+	                                               item.raw_data[0], NULL);
+	if (dname == NULL) {
+		return NULL;
+	}
+	
+	/* Create string. */
+	char *str = knot_dname_to_str(dname);
+	knot_dname_free(&dname);
+	
+	return str;
+}
+
 char *rdata_dns_name_to_string(knot_rdata_item_t item)
 {
 	return knot_dname_to_str(item.dname);
@@ -605,9 +624,6 @@ char *rdata_nsap_to_string(knot_rdata_item_t item)
 		return NULL;
 	}
 
-//	printf("size: %d, string: %s\n", rdata_item_size(item),
-//	       converted);
-
 	strcat(ret, converted);
 	free(converted);
 	return ret;
@@ -782,11 +798,7 @@ char *rdata_ipsecgateway_to_string(knot_rdata_item_t item,
 			return NULL;
 		}
 		memset(ret, 0, sizeof(char) * 4);
-		memcpy(ret, ".", 4);
-/*		ret[0] = '\"';
-		ret[1] = '.';
-		ret[2] = '\"';
-		ret[3] = '\0'; */
+		memcpy(ret, "\".\"", 4);
 		return ret;
 	}
 	case IPSECKEY_IP4:
@@ -794,7 +806,7 @@ char *rdata_ipsecgateway_to_string(knot_rdata_item_t item,
 	case IPSECKEY_IP6:
 		return rdata_aaaa_to_string(item);
 	case IPSECKEY_DNAME:
-		return rdata_dname_to_string(item);
+		return rdata_binary_dname_to_string(item);
 	default:
 		return NULL;
 	}
@@ -965,6 +977,7 @@ int rdata_dump_text(const knot_rdata_t *rdata, uint16_t type, FILE *f,
 	knot_rrtype_descriptor_t *desc =
 		knot_rrtype_descriptor_by_type(type);
 	char *item_str = NULL;
+	assert(rdata->count <= desc->length);
 	for (int i = 0; i < rdata->count; i++) {
 		/* Workaround for IPSec gateway. */
 		if (desc->zoneformat[i] == KNOT_RDATA_ZF_IPSECGATEWAY) {
@@ -975,8 +988,6 @@ int rdata_dump_text(const knot_rdata_t *rdata, uint16_t type, FILE *f,
 						rdata->items[i]);
 		}
 		if (item_str == NULL) {
-			/*!< \todo Why this? */
-//			printf("Warning: fallback to unknown.\n");
 			item_str =
 				rdata_item_to_string(KNOT_RDATA_ZF_UNKNOWN,
 						     rdata->items[i]);
@@ -993,7 +1004,6 @@ int rdata_dump_text(const knot_rdata_t *rdata, uint16_t type, FILE *f,
 			fprintf(f, "%s", item_str);
 		}
 
-//		printf("Freeing %s\n", item_str);
 		free(item_str);
 	}
 	fprintf(f, "\n");

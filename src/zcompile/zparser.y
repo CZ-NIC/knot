@@ -328,7 +328,7 @@ rr:	owner classttl type_and_rdata
 //	    printf("new owner assigned: %p\n", $1);
 	    parser->current_rrset->type = $3;
     }
-    ;
+	;
 
 owner:	dname sp
     {
@@ -340,7 +340,7 @@ owner:	dname sp
 	//	knot_dname_release(parser->prev_dname);
 	}
 	parser->prev_dname = $1;//knot_dname_deep_copy($1);
-//	knot_dname_retain(parser->prev_dname);
+	knot_dname_retain(parser->prev_dname);
 	$$ = $1;
     }
     |	PREV
@@ -1334,6 +1334,7 @@ rdata_rrsig:	STR sp STR sp STR sp STR sp STR sp STR
 							 $15.len));*/
 	    knot_dname_t *dname =
 		knot_dname_new_from_wire((uint8_t *)$15.str, $15.len, NULL);
+	    knot_dname_retain(dname);
 	    if (dname == NULL) {
 	    	parser->error_occurred = KNOTDZCOMPILE_ENOMEM;
 	    } else {
@@ -1364,7 +1365,7 @@ rdata_nsec:	wire_dname nsec_seq
 
 	    knot_dname_t *dname =
 		knot_dname_new_from_wire((uint8_t *)$1.str, $1.len, NULL);
-
+	    knot_dname_retain(dname);
 	    free($1.str);
 
 	    knot_dname_cat(dname, parser->root_domain);
@@ -1485,7 +1486,8 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 			free($5.str);
 			free($7.str);
 
-			uint8_t* dncpy = malloc(sizeof(uint8_t) * name->size);
+			uint16_t* dncpy = malloc(sizeof(uint8_t) * name->size + 2);
+			dncpy[0] = name->size;
 			if (dncpy == NULL) {
 			    ERR_ALLOC_FAILED;
 			    knot_rrset_deep_free(&(parser->current_rrset),
@@ -1494,9 +1496,10 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 			                          1);
 			    YYABORT;
 			}
-			memcpy(dncpy, name->name, name->size);
-			zadd_rdata_wireformat((uint16_t *)dncpy);
-			//knot_dname_free(&name);
+			
+			memcpy((uint8_t *)(dncpy + 1), name->name, name->size);
+			zadd_rdata_wireformat(dncpy);
+			knot_dname_free(&name);
 			break;
 		default:
 			zc_error_prev_line("unknown IPSECKEY gateway type");
@@ -1574,6 +1577,7 @@ zparser_type *zparser_create()
 		return NULL;
 	}
 
+	knot_dname_retain(result->root_domain);
 	return result;
 }
 
