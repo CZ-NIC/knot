@@ -178,7 +178,7 @@ static knot_rrset_t *ns_synth_from_wildcard(
  * \param rrset RRSet to check (and possibly replace).
  */
 static void ns_check_wildcard(const knot_dname_t *name, knot_packet_t *resp,
-                              const knot_rrset_t **rrset)
+                              knot_rrset_t **rrset)
 {
 	assert(name != NULL);
 	assert(resp != NULL);
@@ -216,14 +216,14 @@ static void ns_check_wildcard(const knot_dname_t *name, knot_packet_t *resp,
  * \return KNOT_ENOMEM
  * \return KNOT_ESPACE
  */
-static int ns_add_rrsigs(const knot_rrset_t *rrset, knot_packet_t *resp,
+static int ns_add_rrsigs(knot_rrset_t *rrset, knot_packet_t *resp,
                          const knot_dname_t *name,
                          int (*add_rrset_to_resp)(knot_packet_t *,
-                                                   const knot_rrset_t *,
-                                                   int, int, int),
+                                                   knot_rrset_t *,
+                                                   int, int, int, int),
                          int tc)
 {
-	const knot_rrset_t *rrsigs;
+	knot_rrset_t *rrsigs;
 
 	dbg_ns("Adding RRSIGs for RRSet, type: %s.\n",
 		 knot_rrtype_to_string(knot_rrset_type(rrset)));
@@ -237,11 +237,11 @@ static int ns_add_rrsigs(const knot_rrset_t *rrset, knot_packet_t *resp,
 
 	if (DNSSEC_ENABLED
 	    && knot_query_dnssec_requested(knot_packet_query(resp))
-	    && (rrsigs = knot_rrset_rrsigs(rrset)) != NULL) {
+	    && (rrsigs = knot_rrset_get_rrsigs(rrset)) != NULL) {
 		if (name != NULL) {
 			ns_check_wildcard(name, resp, &rrsigs);
 		}
-		return add_rrset_to_resp(resp, rrsigs, tc, 0, 0);
+		return add_rrset_to_resp(resp, rrsigs, tc, 0, 0, 1);
 	}
 
 	return KNOT_EOK;
@@ -264,15 +264,15 @@ static void ns_follow_cname(const knot_node_t **node,
                             const knot_dname_t **qname,
                             knot_packet_t *resp,
                             int (*add_rrset_to_resp)(knot_packet_t *,
-                                                     const knot_rrset_t *,
-                                                     int, int, int),
+                                                     knot_rrset_t *,
+                                                     int, int, int, int),
                             int tc)
 {
 	dbg_ns("Resolving CNAME chain...\n");
-	const knot_rrset_t *cname_rrset;
+	knot_rrset_t *cname_rrset;
 
 	while (*node != NULL
-	       && (cname_rrset = knot_node_rrset(*node, KNOT_RRTYPE_CNAME))
+	       && (cname_rrset = knot_node_get_rrset(*node, KNOT_RRTYPE_CNAME))
 	          != NULL) {
 		/* put the CNAME record to answer, but replace the possible
 		   wildcard name with qname */
@@ -282,19 +282,19 @@ static void ns_follow_cname(const knot_node_t **node,
 		dbg_ns("CNAME RRSet: %p, owner: %p\n", cname_rrset,
 			      cname_rrset->owner);
 
-		const knot_rrset_t *rrset = cname_rrset;
+		knot_rrset_t *rrset = cname_rrset;
 
 		// ignoring other than the first record
 		if (knot_dname_is_wildcard(knot_node_owner(*node))) {
 			/* if wildcard node, we must copy the RRSet and
 			   replace its owner */
 			rrset = ns_synth_from_wildcard(cname_rrset, *qname);
-			knot_packet_add_tmp_rrset(resp, (knot_rrset_t *)rrset);
-			add_rrset_to_resp(resp, rrset, tc, 0, 0);
+			knot_packet_add_tmp_rrset(resp, rrset);
+			add_rrset_to_resp(resp, rrset, tc, 0, 0, 1);
 			ns_add_rrsigs(cname_rrset, resp, *qname, 
 			              add_rrset_to_resp, tc);
 		} else {
-			add_rrset_to_resp(resp, rrset, tc, 0, 0);
+			add_rrset_to_resp(resp, rrset, tc, 0, 0, 1);
 			ns_add_rrsigs(rrset, resp, *qname, add_rrset_to_resp, 
 			              tc);
 		}
@@ -350,13 +350,13 @@ dbg_ns_exec(
 	switch (type) {
 	case KNOT_RRTYPE_ANY: {
 		dbg_ns("Returning all RRTYPES.\n");
-		const knot_rrset_t **rrsets = knot_node_rrsets(node);
+		knot_rrset_t **rrsets = knot_node_get_rrsets(node);
 		if (rrsets == NULL) {
 			break;
 		}
 		int i = 0;
 		int ret = 0;
-		const knot_rrset_t *rrset;
+		knot_rrset_t *rrset;
 		while (i < knot_node_rrset_count(node)) {
 			assert(rrsets[i] != NULL);
 			rrset = rrsets[i];
@@ -366,7 +366,7 @@ dbg_ns_exec(
 
 			ns_check_wildcard(name, resp, &rrset);
 			ret = knot_response_add_rrset_answer(resp, rrset, 1,
-			                                        0, 0);
+			                                     0, 0, 1);
 			if (ret >= 0 && (added += 1)
 			    && (ret = ns_add_rrsigs(rrset, resp, name,
 			           knot_response_add_rrset_answer, 1))
@@ -387,16 +387,16 @@ dbg_ns_exec(
 	}
 	case KNOT_RRTYPE_RRSIG: {
 		dbg_ns("Returning all RRSIGs.\n");
-		const knot_rrset_t **rrsets = knot_node_rrsets(node);
+		knot_rrset_t **rrsets = knot_node_get_rrsets(node);
 		if (rrsets == NULL) {
 			break;
 		}
 		int i = 0;
 		int ret = 0;
-		const knot_rrset_t *rrset;
+		knot_rrset_t *rrset;
 		while (i < knot_node_rrset_count(node)) {
 			assert(rrsets[i] != NULL);
-			rrset = knot_rrset_rrsigs(rrsets[i]);
+			rrset = knot_rrset_get_rrsigs(rrsets[i]);
 
 			if (rrset == NULL) {
 				++i;
@@ -405,7 +405,7 @@ dbg_ns_exec(
 
 			ns_check_wildcard(name, resp, &rrset);
 			ret = knot_response_add_rrset_answer(resp, rrset, 1,
-			                                        0, 0);
+			                                     0, 0, 1);
 
 			if (ret < 0) {
 				break;
@@ -419,14 +419,14 @@ dbg_ns_exec(
 	}
 	default: {
 		int ret = 0;
-		const knot_rrset_t *rrset = knot_node_rrset(node, type);
-		const knot_rrset_t *rrset2 = rrset;
+		knot_rrset_t *rrset = knot_node_get_rrset(node, type);
+		knot_rrset_t *rrset2 = rrset;
 		if (rrset != NULL) {
 			dbg_ns("Found RRSet of type %s\n",
 				 knot_rrtype_to_string(type));
 			ns_check_wildcard(name, resp, &rrset2);
 			ret = knot_response_add_rrset_answer(resp, rrset2, 1,
-			                                        0, 0);
+			                                     0, 0, 1);
 			if (ret >= 0 && (added += 1)
 			    && (ret = ns_add_rrsigs(rrset, resp, name,
 			           knot_response_add_rrset_answer, 1)) > 0) {
@@ -490,7 +490,7 @@ static void ns_put_additional_for_rrset(knot_packet_t *resp,
 //			assert(!knot_node_is_old(node));
 		}
 
-		const knot_rrset_t *rrset_add;
+		knot_rrset_t *rrset_add;
 
 		if (node != NULL) {
 dbg_ns_exec(
@@ -510,26 +510,26 @@ dbg_ns_exec(
 
 			// A RRSet
 			dbg_ns("A RRSets...\n");
-			rrset_add = knot_node_rrset(node, KNOT_RRTYPE_A);
+			rrset_add = knot_node_get_rrset(node, KNOT_RRTYPE_A);
 			if (rrset_add != NULL) {
 				dbg_ns("Found A RRsets.\n");
-				const knot_rrset_t *rrset_add2 = rrset_add;
+				knot_rrset_t *rrset_add2 = rrset_add;
 				ns_check_wildcard(dname, resp, &rrset_add2);
 				knot_response_add_rrset_additional(
-					resp, rrset_add2, 0, 1, 0);
+					resp, rrset_add2, 0, 1, 0, 1);
 				ns_add_rrsigs(rrset_add, resp, dname,
 				      knot_response_add_rrset_additional, 0);
 			}
 
 			// AAAA RRSet
 			dbg_ns("AAAA RRSets...\n");
-			rrset_add = knot_node_rrset(node, KNOT_RRTYPE_AAAA);
+			rrset_add = knot_node_get_rrset(node, KNOT_RRTYPE_AAAA);
 			if (rrset_add != NULL) {
 				dbg_ns("Found AAAA RRsets.\n");
-				const knot_rrset_t *rrset_add2 = rrset_add;
+				knot_rrset_t *rrset_add2 = rrset_add;
 				ns_check_wildcard(dname, resp, &rrset_add2);
 				knot_response_add_rrset_additional(
-					resp, rrset_add2, 0, 1, 0);
+					resp, rrset_add2, 0, 1, 0, 1);
 				ns_add_rrsigs(rrset_add, resp, dname,
 				      knot_response_add_rrset_additional, 0);
 			}
@@ -601,11 +601,11 @@ static void ns_put_additional(knot_packet_t *resp)
 static void ns_put_authority_ns(const knot_zone_contents_t *zone,
                                 knot_packet_t *resp)
 {
-	const knot_rrset_t *ns_rrset = knot_node_rrset(
+	knot_rrset_t *ns_rrset = knot_node_get_rrset(
 			knot_zone_contents_apex(zone), KNOT_RRTYPE_NS);
 
 	if (ns_rrset != NULL) {
-		knot_response_add_rrset_authority(resp, ns_rrset, 0, 1, 0);
+		knot_response_add_rrset_authority(resp, ns_rrset, 0, 1, 0, 1);
 		ns_add_rrsigs(ns_rrset, resp, knot_node_owner(
 		              knot_zone_contents_apex(zone)),
 	                      knot_response_add_rrset_authority, 1);
@@ -622,7 +622,7 @@ static void ns_put_authority_ns(const knot_zone_contents_t *zone,
 static int ns_put_authority_soa(const knot_zone_contents_t *zone,
                                  knot_packet_t *resp)
 {
-	const knot_rrset_t *soa_rrset = knot_node_rrset(
+	knot_rrset_t *soa_rrset = knot_node_get_rrset(
 			knot_zone_contents_apex(zone), KNOT_RRTYPE_SOA);
 	assert(soa_rrset != NULL);
 
@@ -640,7 +640,7 @@ static int ns_put_authority_soa(const knot_zone_contents_t *zone,
 
 	assert(soa_rrset != NULL);
 
-	int ret = knot_response_add_rrset_authority(resp, soa_rrset, 0, 0, 0);
+	int ret = knot_response_add_rrset_authority(resp, soa_rrset, 0, 0, 0, 1);
 	if (ret == KNOT_EOK) {
 		ret = ns_add_rrsigs(soa_rrset, resp,
 		                    knot_node_owner(knot_zone_contents_apex(zone)),
@@ -701,14 +701,13 @@ static void ns_put_nsec3_from_node(const knot_node_t *node,
 	assert(DNSSEC_ENABLED
 	       && knot_query_dnssec_requested(knot_packet_query(resp)));
 
-	const knot_rrset_t *rrset = knot_node_rrset(node,
-	                                                KNOT_RRTYPE_NSEC3);
+	 knot_rrset_t *rrset = knot_node_get_rrset(node, KNOT_RRTYPE_NSEC3);
 	assert(rrset != NULL);
 
-	int res = knot_response_add_rrset_authority(resp, rrset, 1, 1, 0);
+	int res = knot_response_add_rrset_authority(resp, rrset, 1, 1, 0, 1);
 	// add RRSIG for the RRSet
-	if (res == 0 && (rrset = knot_rrset_rrsigs(rrset)) != NULL) {
-		knot_response_add_rrset_authority(resp, rrset, 1, 0, 0);
+	if (res == 0 && (rrset = knot_rrset_get_rrsigs(rrset)) != NULL) {
+		knot_response_add_rrset_authority(resp, rrset, 1, 0, 0, 1);
 	}
 }
 
@@ -958,16 +957,16 @@ static void ns_put_nsec_nsec3_nodata(const knot_node_t *node,
 		return;
 	}
 
-	const knot_node_t *nsec3_node = knot_node_nsec3_node(node, 1);
-	const knot_rrset_t *rrset = NULL;
-	if ((rrset = knot_node_rrset(node, KNOT_RRTYPE_NSEC)) != NULL
+	knot_node_t *nsec3_node = knot_node_get_nsec3_node(node, 1);
+	knot_rrset_t *rrset = NULL;
+	if ((rrset = knot_node_get_rrset(node, KNOT_RRTYPE_NSEC)) != NULL
 	    || (nsec3_node != NULL && (rrset =
-	         knot_node_rrset(nsec3_node, KNOT_RRTYPE_NSEC3)) != NULL)) {
-		knot_response_add_rrset_authority(resp, rrset, 1, 0, 0);
+	         knot_node_get_rrset(nsec3_node, KNOT_RRTYPE_NSEC3)) != NULL)) {
+		knot_response_add_rrset_authority(resp, rrset, 1, 0, 0, 1);
 		// add RRSIG for the RRSet
-		if ((rrset = knot_rrset_rrsigs(rrset)) != NULL) {
+		if ((rrset = knot_rrset_get_rrsigs(rrset)) != NULL) {
 			knot_response_add_rrset_authority(resp, rrset, 1,
-			                                     0, 0);
+			                                  0, 0, 1);
 		}
 	}
 }
@@ -996,7 +995,7 @@ static int ns_put_nsec_nxdomain(const knot_dname_t *qname,
                                 const knot_node_t *closest_encloser,
                                 knot_packet_t *resp)
 {
-	const knot_rrset_t *rrset = NULL;
+	knot_rrset_t *rrset = NULL;
 
 	// check if we have previous; if not, find one using the tree
 	if (previous == NULL) {
@@ -1016,7 +1015,7 @@ static int ns_put_nsec_nxdomain(const knot_dname_t *qname,
 	free(name);
 
 	// 1) NSEC proving that there is no node with the searched name
-	rrset = knot_node_rrset(previous, KNOT_RRTYPE_NSEC);
+	rrset = knot_node_get_rrset(previous, KNOT_RRTYPE_NSEC);
 	if (rrset == NULL) {
 		// no NSEC records
 		//return NS_ERR_SERVFAIL;
@@ -1024,10 +1023,10 @@ static int ns_put_nsec_nxdomain(const knot_dname_t *qname,
 		
 	}
 
-	knot_response_add_rrset_authority(resp, rrset, 1, 0, 0);
-	rrset = knot_rrset_rrsigs(rrset);
+	knot_response_add_rrset_authority(resp, rrset, 1, 0, 0, 1);
+	rrset = knot_rrset_get_rrsigs(rrset);
 	assert(rrset != NULL);
-	knot_response_add_rrset_authority(resp, rrset, 1, 0, 0);
+	knot_response_add_rrset_authority(resp, rrset, 1, 0, 0, 1);
 
 	// 2) NSEC proving that there is no wildcard covering the name
 	// this is only different from 1) if the wildcard would be
@@ -1060,12 +1059,12 @@ static int ns_put_nsec_nxdomain(const knot_dname_t *qname,
 	knot_dname_free(&wildcard);
 
 	if (prev_new != previous) {
-		rrset = knot_node_rrset(prev_new, KNOT_RRTYPE_NSEC);
+		rrset = knot_node_get_rrset(prev_new, KNOT_RRTYPE_NSEC);
 		assert(rrset != NULL);
-		knot_response_add_rrset_authority(resp, rrset, 1, 0, 0);
-		rrset = knot_rrset_rrsigs(rrset);
+		knot_response_add_rrset_authority(resp, rrset, 1, 0, 0, 1);
+		rrset = knot_rrset_get_rrsigs(rrset);
 		assert(rrset != NULL);
-		knot_response_add_rrset_authority(resp, rrset, 1, 0, 0);
+		knot_response_add_rrset_authority(resp, rrset, 1, 0, 0, 1);
 	}
 
 	return KNOT_EOK;
@@ -1236,14 +1235,14 @@ static void ns_put_nsec_wildcard(const knot_zone_contents_t *zone,
 		assert(previous != NULL);
 	}
 
-	const knot_rrset_t *rrset =
-		knot_node_rrset(previous, KNOT_RRTYPE_NSEC);
+	knot_rrset_t *rrset =
+		knot_node_get_rrset(previous, KNOT_RRTYPE_NSEC);
 	if (rrset != NULL) {
 		// NSEC proving that there is no node with the searched name
-		knot_response_add_rrset_authority(resp, rrset, 1, 0, 0);
-		rrset = knot_rrset_rrsigs(rrset);
+		knot_response_add_rrset_authority(resp, rrset, 1, 0, 0, 1);
+		rrset = knot_rrset_get_rrsigs(rrset);
 		assert(rrset != NULL);
-		knot_response_add_rrset_authority(resp, rrset, 1, 0, 0);
+		knot_response_add_rrset_authority(resp, rrset, 1, 0, 0, 1);
 	}
 }
 
@@ -1360,13 +1359,13 @@ static inline int ns_referral(const knot_node_t *node,
 		node = knot_node_parent(node, 1);
 	}
 
-	const knot_rrset_t *rrset = knot_node_rrset(node, KNOT_RRTYPE_NS);
+	knot_rrset_t *rrset = knot_node_get_rrset(node, KNOT_RRTYPE_NS);
 	assert(rrset != NULL);
 
 	// TODO: wildcards??
 	//ns_check_wildcard(name, resp, &rrset);
 
-	knot_response_add_rrset_authority(resp, rrset, 1, 0, 0);
+	knot_response_add_rrset_authority(resp, rrset, 1, 0, 0, 1);
 	ns_add_rrsigs(rrset, resp, node->owner,
 	              knot_response_add_rrset_authority, 1);
 
@@ -1377,10 +1376,10 @@ static inline int ns_referral(const knot_node_t *node,
 	dbg_ns("DS records: %p\n", knot_node_rrset(node, KNOT_RRTYPE_DS));
 	if (DNSSEC_ENABLED
 	    && knot_query_dnssec_requested(knot_packet_query(resp))) {
-		rrset = knot_node_rrset(node, KNOT_RRTYPE_DS);
+		rrset = knot_node_get_rrset(node, KNOT_RRTYPE_DS);
 		if (rrset != NULL) {
 			knot_response_add_rrset_authority(resp, rrset, 1, 0,
-			                                    0);
+			                                  0, 1);
 			ns_add_rrsigs(rrset, resp, node->owner,
 			              knot_response_add_rrset_authority, 1);
 		} else {
@@ -1401,15 +1400,15 @@ static inline int ns_referral(const knot_node_t *node,
 						&node, qname, resp);
 				}
 			} else {
-				const knot_rrset_t *nsec = knot_node_rrset(
+				knot_rrset_t *nsec = knot_node_get_rrset(
 					node, KNOT_RRTYPE_NSEC);
 				if (nsec) {
 					/*! \todo Check return value? */
 					knot_response_add_rrset_authority(
-						resp, nsec, 1, 1, 0);
+						resp, nsec, 1, 1, 0, 1);
 					if ((nsec = knot_rrset_rrsigs(nsec)) != NULL) {
-						knot_response_add_rrset_authority(resp, nsec, 1,
-										     1, 0);
+						knot_response_add_rrset_authority(
+						        resp, nsec, 1, 1, 0, 1);
 					}
 				}
 			}
@@ -1586,7 +1585,7 @@ static int ns_dname_is_too_long(const knot_rrset_t *dname_rrset,
  * \param qname Searched name.
  * \param resp Response.
  */
-static void ns_process_dname(const knot_rrset_t *dname_rrset,
+static void ns_process_dname(knot_rrset_t *dname_rrset,
                              const knot_dname_t *qname,
                              knot_packet_t *resp)
 {
@@ -1598,7 +1597,7 @@ dbg_ns_exec(
 	// TODO: check the number of RRs in the RRSet??
 
 	// put the DNAME RRSet into the answer
-	knot_response_add_rrset_answer(resp, dname_rrset, 1, 0, 0);
+	knot_response_add_rrset_answer(resp, dname_rrset, 1, 0, 0, 1);
 	ns_add_rrsigs(dname_rrset, resp, qname,
 	              knot_response_add_rrset_answer, 1);
 
@@ -1610,7 +1609,7 @@ dbg_ns_exec(
 	// synthetize CNAME (no way to tell that client supports DNAME)
 	knot_rrset_t *synth_cname = ns_cname_from_dname(dname_rrset, qname);
 	// add the synthetized RRSet to the Answer
-	knot_response_add_rrset_answer(resp, synth_cname, 1, 0, 0);
+	knot_response_add_rrset_answer(resp, synth_cname, 1, 0, 0, 1);
 
 	// no RRSIGs for this RRSet
 
@@ -1629,10 +1628,10 @@ dbg_ns_exec(
  */
 static void ns_add_dnskey(const knot_node_t *apex, knot_packet_t *resp)
 {
-	const knot_rrset_t *rrset =
-		knot_node_rrset(apex, KNOT_RRTYPE_DNSKEY);
+	knot_rrset_t *rrset =
+		knot_node_get_rrset(apex, KNOT_RRTYPE_DNSKEY);
 	if (rrset != NULL) {
-		knot_response_add_rrset_additional(resp, rrset, 0, 0, 0);
+		knot_response_add_rrset_additional(resp, rrset, 0, 0, 0, 1);
 		ns_add_rrsigs(rrset, resp, apex->owner,
 			      knot_response_add_rrset_additional, 0);
 	}
@@ -1732,7 +1731,7 @@ have_node:
 
 	if (find_ret == KNOT_ZONE_NAME_NOT_FOUND) {
 		// DNAME?
-		const knot_rrset_t *dname_rrset = knot_node_rrset(
+		knot_rrset_t *dname_rrset = knot_node_get_rrset(
 		                         closest_encloser, KNOT_RRTYPE_DNAME);
 		if (dname_rrset != NULL) {
 			ns_process_dname(dname_rrset, qname, resp);
@@ -2151,7 +2150,7 @@ dbg_ns_exec(
 		return;
 	}
 
-	const knot_rrset_t **rrsets = knot_node_rrsets(node);
+	knot_rrset_t **rrsets = knot_node_get_rrsets(node);
 	if (rrsets == NULL) {
 		params->ret = KNOT_ENOMEM;
 		return;
@@ -2159,7 +2158,7 @@ dbg_ns_exec(
 
 	int i = 0;
 	int ret = 0;
-	const knot_rrset_t *rrset = NULL;
+	knot_rrset_t *rrset = NULL;
 	while (i < knot_node_rrset_count(node)) {
 		assert(rrsets[i] != NULL);
 		rrset = rrsets[i];
@@ -2174,7 +2173,7 @@ rrset:
 		}
 
 		ret = knot_response_add_rrset_answer(params->xfr->response,
-		                                       rrset, 0, 0, 1);
+		                                       rrset, 0, 0, 1, 0);
 
 		if (ret == KNOT_ESPACE) {
 			// TODO: send the packet and clean the structure
@@ -2195,7 +2194,7 @@ rrset:
 		}
 
 		// we can send the RRSets in any order, so add the RRSIGs now
-		rrset = knot_rrset_rrsigs(rrset);
+		rrset = knot_rrset_get_rrsigs(rrset);
 rrsigs:
 		if (rrset == NULL) {
 			++i;
@@ -2203,7 +2202,7 @@ rrsigs:
 		}
 
 		ret = knot_response_add_rrset_answer(params->xfr->response,
-		                                        rrset, 0, 0, 1);
+		                                        rrset, 0, 0, 1, 0);
 
 		if (ret == KNOT_ESPACE) {
 			// TODO: send the packet and clean the structure
@@ -2258,7 +2257,7 @@ static int ns_axfr_from_zone(knot_zone_contents_t *zone, knot_ns_xfr_t *xfr)
 	 */
 
 	// retrieve SOA - must be send as first and last RR
-	const knot_rrset_t *soa_rrset = knot_node_rrset(
+	knot_rrset_t *soa_rrset = knot_node_get_rrset(
 		knot_zone_contents_apex(zone), KNOT_RRTYPE_SOA);
 	if (soa_rrset == NULL) {
 		// some really serious error
@@ -2268,17 +2267,18 @@ static int ns_axfr_from_zone(knot_zone_contents_t *zone, knot_ns_xfr_t *xfr)
 	int ret;
 
 	// add SOA RR to the response
-	ret = knot_response_add_rrset_answer(xfr->response, soa_rrset, 0, 0, 1);
+	ret = knot_response_add_rrset_answer(xfr->response, soa_rrset, 0, 0, 1,
+	                                     0);
 	if (ret != KNOT_EOK) {
 		// something is really wrong
 		return KNOT_ERROR;
 	}
 
 	// add the SOA's RRSIG
-	const knot_rrset_t *rrset = knot_rrset_rrsigs(soa_rrset);
+	knot_rrset_t *rrset = knot_rrset_get_rrsigs(soa_rrset);
 	if (rrset != NULL
 	    && (ret = knot_response_add_rrset_answer(xfr->response, rrset,
-	                                              0, 0, 1)) != KNOT_EOK) {
+	                                             0, 0, 1, 0)) != KNOT_EOK) {
 		// something is really wrong, these should definitely fit in
 		return KNOT_ERROR;
 	}
@@ -2302,7 +2302,8 @@ static int ns_axfr_from_zone(knot_zone_contents_t *zone, knot_ns_xfr_t *xfr)
 	 */
 
 	// try to add the SOA to the response again (last RR)
-	ret = knot_response_add_rrset_answer(xfr->response, soa_rrset, 0, 0, 1);
+	ret = knot_response_add_rrset_answer(xfr->response, soa_rrset, 0, 0, 1,
+	                                     0);
 	if (ret == KNOT_ESPACE) {
 			
 		// if there is not enough space, send the response and
@@ -2315,7 +2316,7 @@ static int ns_axfr_from_zone(knot_zone_contents_t *zone, knot_ns_xfr_t *xfr)
 		}
 
 		ret = knot_response_add_rrset_answer(xfr->response,
-		                                        soa_rrset, 0, 0, 1);
+		                                     soa_rrset, 0, 0, 1, 0);
 		if (ret != KNOT_EOK) {
 			return KNOT_ERROR;
 		}
@@ -2331,17 +2332,17 @@ static int ns_axfr_from_zone(knot_zone_contents_t *zone, knot_ns_xfr_t *xfr)
 
 /*----------------------------------------------------------------------------*/
 
-static int ns_ixfr_put_rrset(knot_ns_xfr_t *xfr, const knot_rrset_t *rrset)
+static int ns_ixfr_put_rrset(knot_ns_xfr_t *xfr, knot_rrset_t *rrset)
 {
 	int res = knot_response_add_rrset_answer(xfr->response, rrset,
-	                                            0, 0, 0);
+	                                         0, 0, 0, 0);
 	if (res == KNOT_ESPACE) {
 		knot_response_set_rcode(xfr->response, KNOT_RCODE_NOERROR);
 		/*! \todo Probably rename the function. */
 		ns_xfr_send_and_clear(xfr, knot_ns_tsig_required(xfr->packet_nr));
 
 		res = knot_response_add_rrset_answer(xfr->response,
-		                                        rrset, 0, 0, 0);
+		                                     rrset, 0, 0, 0, 0);
 	}
 
 	if (res != KNOT_EOK) {
@@ -2408,13 +2409,13 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 	knot_changesets_t *chgsets = (knot_changesets_t *)xfr->data;
 	knot_zone_contents_t *contents = knot_zone_get_contents(xfr->zone);
 	assert(contents);
-	const knot_rrset_t *zone_soa =
-		knot_node_rrset(knot_zone_contents_apex(contents),
-				KNOT_RRTYPE_SOA);
+	knot_rrset_t *zone_soa =
+		knot_node_get_rrset(knot_zone_contents_apex(contents),
+		                    KNOT_RRTYPE_SOA);
 
 	// 4) put the zone SOA as the first Answer RR
 	int res = knot_response_add_rrset_answer(xfr->response, zone_soa, 0, 
-	                                            0, 0);
+	                                         0, 0, 0);
 	if (res != KNOT_EOK) {
 		dbg_ns("IXFR query cannot be answered: %s.\n",
 			 knot_strerror(res));

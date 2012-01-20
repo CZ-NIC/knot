@@ -115,8 +115,9 @@ int knot_response_add_opt(knot_packet_t *resp,
  * \retval KNOT_ESPACE
  */
 int knot_response_add_rrset_answer(knot_packet_t *response,
-                                     const knot_rrset_t *rrset, int tc,
-                                     int check_duplicates, int compr_cs);
+                                   knot_rrset_t *rrset, int tc,
+                                   int check_duplicates, int compr_cs,
+                                   int rotate);
 
 /*!
  * \brief Adds a RRSet to the Authority section of the response.
@@ -135,8 +136,9 @@ int knot_response_add_rrset_answer(knot_packet_t *response,
  * \retval KNOT_ESPACE
  */
 int knot_response_add_rrset_authority(knot_packet_t *response,
-                                        const knot_rrset_t *rrset, int tc,
-                                        int check_duplicates, int compr_cs);
+                                      knot_rrset_t *rrset, int tc,
+                                      int check_duplicates, int compr_cs,
+                                      int rotate);
 
 /*!
  * \brief Adds a RRSet to the Additional section of the response.
@@ -155,8 +157,9 @@ int knot_response_add_rrset_authority(knot_packet_t *response,
  * \retval KNOT_ESPACE
  */
 int knot_response_add_rrset_additional(knot_packet_t *response,
-                                         const knot_rrset_t *rrset, int tc,
-                                         int check_duplicates, int compr_cs);
+                                       knot_rrset_t *rrset, int tc,
+                                       int check_duplicates, int compr_cs,
+                                       int rotate);
 
 /*!
  * \brief Sets the RCODE of the response.

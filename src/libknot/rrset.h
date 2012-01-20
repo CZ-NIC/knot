@@ -254,6 +254,14 @@ int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to);
 /*! \todo Add unit test. */
 int knot_rrset_shallow_copy(const knot_rrset_t *from, knot_rrset_t **to);
 
+/*! \brief Does round-robin rotation of the RRSet.
+ *
+ * \note This is not thread-safe. If two threads call this function, the RRSet
+ *       may rotate twice, or not rotate at all. This is not a big issue though.
+ *       In future we may replace this with some per-thread counter.
+ */
+void knot_rrset_rotate(knot_rrset_t *rrset);
+
 /*!
  * \brief Destroys the RRSet structure.
  *

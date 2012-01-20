@@ -625,6 +625,13 @@ int knot_rrset_shallow_copy(const knot_rrset_t *from, knot_rrset_t **to)
 
 /*----------------------------------------------------------------------------*/
 
+void knot_rrset_rotate(knot_rrset_t *rrset)
+{
+	rrset->rdata = rrset->rdata->next;
+}
+
+/*----------------------------------------------------------------------------*/
+
 void knot_rrset_free(knot_rrset_t **rrset)
 {
 	if (rrset == NULL || *rrset == NULL) {

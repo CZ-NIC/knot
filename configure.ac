@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 
 AC_PREREQ([2.65])
-AC_INIT([knot], [0.8], [knot-dns@labs.nic.cz])
+AC_INIT([knot], [0.9.1], [knot-dns@labs.nic.cz])
 AM_INIT_AUTOMAKE([gnu -Wall -Werror])
 AC_CONFIG_SRCDIR([src/knot/main.c])
 AC_CONFIG_HEADERS([src/config.h])
@@ -129,6 +129,9 @@ AC_TYPE_UINT16_T
 AC_TYPE_UINT32_T
 AC_TYPE_UINT64_T
 AC_TYPE_UINT8_T
+
+# Set PRNG parameters
+AC_DEFINE([DSFMT_MEXP], [521], [DSFMT parameters.])
 
 # Checks for library functions.
 AC_FUNC_FORK

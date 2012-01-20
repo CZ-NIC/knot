@@ -168,7 +168,7 @@ const knot_rrset_t *knot_node_rrset(const knot_node_t *node,
  * \return RRSet from node \a node having type \a type, or NULL if no such
  *         RRSet exists in this node.
  */
-knot_rrset_t *knot_node_get_rrset(knot_node_t *node, uint16_t type);
+knot_rrset_t *knot_node_get_rrset(const knot_node_t *node, uint16_t type);
 
 knot_rrset_t *knot_node_remove_rrset(knot_node_t *node, uint16_t type);
 
@@ -272,8 +272,21 @@ void knot_node_set_previous(knot_node_t *node, knot_node_t *prev);
  *         and the name of the zone \a node belongs to).
  * \retval NULL if the NSEC3 node is not set.
  */
+knot_node_t *knot_node_get_nsec3_node(const knot_node_t *node,
+                                      int check_version);
+
+/*!
+ * \brief Returns the NSEC3 node corresponding to the given node.
+ *
+ * \param node Node to get the NSEC3 node for.
+ *
+ * \return NSEC3 node corresponding to \a node (i.e. node with owner name
+ *         created by concatenating the hash of owner domain name of \a node
+ *         and the name of the zone \a node belongs to).
+ * \retval NULL if the NSEC3 node is not set.
+ */
 const knot_node_t *knot_node_nsec3_node(const knot_node_t *node, 
-                                            int check_version);
+                                        int check_version);
 
 /*!
  * \brief Sets the corresponding NSEC3 node of the given node.

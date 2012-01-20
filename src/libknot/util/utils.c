@@ -22,7 +22,7 @@
 
 #include "common.h"
 #include "util/utils.h"
-#include "common/WELL1024a.h"
+#include "common/prng.h"
 
 /*----------------------------------------------------------------------------*/
 

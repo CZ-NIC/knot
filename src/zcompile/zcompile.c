@@ -626,9 +626,6 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 		dbg_zp("zone dumped.\n");
 	}
 
-	/* This is *almost* unnecessary */
-	knot_zone_deep_free(&(parser->current_zone), 1);
-
 	fflush(stdout);
 	totalerrors += parser->errors;
 	zparser_free();

@@ -1476,7 +1476,7 @@ static void xfrin_rollback_update(knot_zone_contents_t *contents,
 	}
 
 	// discard new RRSets
-	for (int i = 0; i < changes->old_rrsets_count; ++i) {
+	for (int i = 0; i < changes->new_rrsets_count; ++i) {
 		knot_rrset_deep_free(&changes->new_rrsets[i], 0, 1, 0);
 	}
 

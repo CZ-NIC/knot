@@ -105,8 +105,12 @@ src/common/ref.h
 src/common/modified_tree.h
 src/common/general-tree.h
 src/common/general-tree.c
-src/common/WELL1024a.c
-src/common/WELL1024a.h
+src/common/dSFMT.c
+src/common/dSFMT.h
+src/common/dSFMT-params.h
+src/common/dSFMT-params521.h
+src/common/prng.c
+src/common/prng.h
 src/common/fdset.h
 src/common/fdset.c
 src/common/fdset_poll.h

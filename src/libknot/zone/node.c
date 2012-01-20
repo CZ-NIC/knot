@@ -245,7 +245,7 @@ const knot_rrset_t *knot_node_rrset(const knot_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
-knot_rrset_t *knot_node_get_rrset(knot_node_t *node, uint16_t type)
+knot_rrset_t *knot_node_get_rrset(const knot_node_t *node, uint16_t type)
 {
 	knot_rrset_t rrset;
 	rrset.type = type;
@@ -324,26 +324,7 @@ knot_rrset_t **knot_node_get_rrsets(const knot_node_t *node)
 
 const knot_rrset_t **knot_node_rrsets(const knot_node_t *node)
 {
-	//knot_node_dump((knot_node_t *)node, (void*)1);
-	if (node->rrset_count == 0) {
-		return NULL;
-	}
-	
-	knot_rrset_t **rrsets = (knot_rrset_t **)malloc(
-		node->rrset_count * sizeof(knot_rrset_t *));
-	CHECK_ALLOC_LOG(rrsets, NULL);
-	struct knot_node_save_rrset_arg args;
-	args.array = rrsets;
-	args.count = 0;
-
-	gen_tree_apply_inorder(node->rrset_tree, save_rrset_to_array,
-	                       &args);
-
-	assert(args.count == node->rrset_count);
-	assert(args.count);
-
-	return (const knot_rrset_t **)rrsets;
-
+	return (const knot_rrset_t **)knot_node_get_rrsets(node);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -461,8 +442,8 @@ void knot_node_set_previous(knot_node_t *node, knot_node_t *prev)
 
 /*----------------------------------------------------------------------------*/
 
-const knot_node_t *knot_node_nsec3_node(const knot_node_t *node, 
-                                            int check_version)
+knot_node_t *knot_node_get_nsec3_node(const knot_node_t *node,
+                                      int check_version)
 {
 	knot_node_t *nsec3_node = node->nsec3_node;
 	if (nsec3_node == NULL) {
@@ -482,6 +463,14 @@ const knot_node_t *knot_node_nsec3_node(const knot_node_t *node,
 	}
 	
 	return nsec3_node;
+}
+
+/*----------------------------------------------------------------------------*/
+
+const knot_node_t *knot_node_nsec3_node(const knot_node_t *node,
+                                        int check_version)
+{
+	return knot_node_get_nsec3_node(node, check_version);
 }
 
 /*----------------------------------------------------------------------------*/
