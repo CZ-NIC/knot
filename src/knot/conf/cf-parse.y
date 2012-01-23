@@ -297,9 +297,6 @@ system:
      struct passwd* pwd = getpwnam($3.t);
      if (pwd != NULL) {
        new_config->uid = pwd->pw_uid;
-       if (new_config->gid < 0) { // Fill default gid if not already set
-         new_config->gid = pwd->pw_gid;
-       }
      } else {
        snprintf(buf, sizeof(buf), "invalid user name '%s'", $3.t);
        cf_error(scanner, buf);
