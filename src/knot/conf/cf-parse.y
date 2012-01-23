@@ -10,6 +10,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <pwd.h>
+#include <grp.h>
 #include "libknot/dname.h"
 #include "knot/conf/conf.h"
 #include "libknotd_la-cf-parse.h" /* Automake generated header. */
@@ -156,6 +158,7 @@ static int conf_key_add(void *scanner, knot_key_t **key, char *item)
 %token <tok> SYSTEM IDENTITY VERSION STORAGE KEY KEYS
 %token <tok> TSIG_ALGO_NAME
 %token <tok> WORKERS
+%token <tok> USER
 
 %token <tok> REMOTES
 
@@ -276,6 +279,33 @@ system:
      } else {
         new_config->workers = $3.i;
      }
+ }
+ | system USER TEXT ';' {
+     char buf[512];
+     new_config->uid = new_config->gid = -1; // Invalidate
+     char* dpos = strchr($3.t, '.'); // Find uid.gid format
+     if (dpos != NULL) {
+        struct group *grp = getgrnam(dpos + 1); // Skip dot
+        if (grp != NULL) {
+          new_config->gid = grp->gr_gid;
+        } else {
+          snprintf(buf, sizeof(buf), "invalid group name '%s'", dpos + 1);
+          cf_error(scanner, buf);
+        }
+        *dpos = '\0'; // Cut off
+     }
+     struct passwd* pwd = getpwnam($3.t);
+     if (pwd != NULL) {
+       new_config->uid = pwd->pw_uid;
+       if (new_config->gid < 0) { // Fill default gid if not already set
+         new_config->gid = pwd->pw_gid;
+       }
+     } else {
+       snprintf(buf, sizeof(buf), "invalid user name '%s'", $3.t);
+       cf_error(scanner, buf);
+     }
+     
+     free($3.t);
  }
  ;
 
