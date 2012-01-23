@@ -149,8 +149,8 @@ int main(int argc, char **argv)
 	// Initialize configuration
 	conf_read_lock();
 	conf_add_hook(conf(), CONF_LOG, log_conf_hook, 0);
-	conf_add_hook(conf(), CONF_LOG, zones_ns_conf_hook, server->nameserver);
-	conf_add_hook(conf(), CONF_LOG, server_conf_hook, server);
+	conf_add_hook(conf(), CONF_ALL, server_conf_hook, server);
+	conf_add_hook(conf(), CONF_ALL, zones_ns_conf_hook, server->nameserver);
 	conf_read_unlock();
 
 	// Find implicit configuration file
@@ -196,30 +196,6 @@ int main(int argc, char **argv)
 				conf()->ifaces_count, conf()->zones_count);
 	}
 	log_server_info("\n");
-	
-	// Drop privileges
-	int priv_failed = 0;
-	if (conf()->uid >= 0) {
-		uid_t id = conf()->uid;
-		log_server_info("Changing user id to %d.\n", id);
-		if (setreuid(id, id) < 0) {
-			log_server_error("Failed to change uid to %d.\n", id);
-			priv_failed = 1;
-		}
-	}
-	if (conf()->gid >= 0 && !priv_failed) {
-		gid_t id = conf()->gid;
-		log_server_info("Changing group id to %d.\n", id);
-		if (setregid(id, id) < 0) {
-			log_server_error("Failed to change gid to %d.\n", id);
-			priv_failed = 1;
-		}
-	}
-	if (priv_failed) {
-		server_destroy(&server);
-		free(config_fn);
-		return 1;
-	}
 
 	// Create server instance
 	char* pidfile = pid_filename();

@@ -687,23 +687,44 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 	if ((ret = server_bind_sockets(server)) < 0) {
 		log_server_error("Failed to bind configured "
 		                 "interfaces.\n");
-		return KNOTD_ERROR;
+	} else {
+		/* Update handlers. */
+		if ((ret = server_bind_handlers(server)) < 0) {
+			log_server_error("Failed to create handlers for "
+			                 "configured interfaces.\n");
+		}
 	}
-
-	/* Update handlers. */
-	if ((ret = server_bind_handlers(server)) < 0) {
-		log_server_error("Failed to create handlers for "
-		                 "configured interfaces.\n");
-		return ret;
+	
+	/* Lock configuration. */
+	conf_read_lock();
+	
+	/* Watch uid/gid. */
+	int priv_failed = 0;
+	if (conf->uid > -1 && conf->uid != getuid()) {
+		log_server_info("Changing user id to %d.\n", conf->uid);
+		if (setreuid(conf->uid, conf->uid) < 0) {
+			log_server_error("Failed to change uid to %d.\n",
+			                 conf->uid);
+			priv_failed = 1;
+		}
+	}
+	if (conf->gid > -1 && conf->gid != getgid() && !priv_failed) {
+		log_server_info("Changing group id to %d.\n", conf->gid);
+		if (setregid(conf->gid, conf->gid) < 0) {
+			log_server_error("Failed to change gid to %d.\n",
+			                 conf->gid);
+			priv_failed = 1;
+		}
+	}
+	if (priv_failed) {
+		ret = KNOTD_EACCES;
 	}
 
 	/* Exit if the server is not running. */
-	if (!(server->state & ServerRunning)) {
+	if (ret != KNOTD_EOK || !(server->state & ServerRunning)) {
+		conf_read_unlock();
 		return KNOTD_ENOTRUNNING;
 	}
-
-	/* Lock configuration. */
-	conf_read_lock();
 
 	/* Start new handlers. */
 	iohandler_t *h = 0;
