@@ -741,6 +741,18 @@ int knot_dname_is_fqdn(const knot_dname_t *dname)
 
 knot_dname_t *knot_dname_left_chop(const knot_dname_t *dname)
 {
+	if (dname == NULL ||
+		/* Root domain. */
+		((knot_dname_label_count(dname) == 0) &&
+		 (knot_dname_is_fqdn(dname)))) {
+		return NULL;
+	}
+	
+	if (dname->label_count <= 1) {
+		/* Nothing to chop. */
+		return NULL;
+	}
+	
 	knot_dname_t *parent = knot_dname_new();
 	if (parent == NULL) {
 		return NULL;
@@ -763,6 +775,7 @@ knot_dname_t *knot_dname_left_chop(const knot_dname_t *dname)
 	}
 
 	memcpy(parent->name, &dname->name[dname->name[0] + 1], parent->size);
+	
 
 	short first_label_length = dname->labels[1];
 

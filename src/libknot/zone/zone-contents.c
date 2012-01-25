@@ -1030,6 +1030,13 @@ int knot_zone_contents_add_node(knot_zone_contents_t *zone,
 
 	knot_dname_t *chopped =
 		knot_dname_left_chop(knot_node_owner(node));
+	if(chopped == NULL) {
+		/* Root domain and root domain only. */
+		assert(node->owner && node->owner->labels && 
+		       node->owner->labels[0] == 0);
+		return KNOT_EOK;
+	}
+	
 	if (knot_dname_compare(knot_node_owner(zone->apex), chopped) == 0) {
 		dbg_zone("Zone apex is the parent.\n");
 		knot_node_set_parent(node, zone->apex);
