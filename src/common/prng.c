@@ -80,7 +80,7 @@ double tls_rand()
 		}
 
 		/* Initialize PRNG state. */
-		s = malloc(sizeof(dsfmt_t));
+		s = memalign(16, sizeof(dsfmt_t));
 		if (s == NULL) {
 			fprintf(stderr, "error: PRNG: not enough memory\n");
 			return .0;
@@ -88,6 +88,7 @@ double tls_rand()
 			dsfmt_init_gen_rand(s, seed);
 			(void)pthread_setspecific(tls_prng_key, s);
 		}
+		
 	}
 
 	return dsfmt_genrand_close_open(s);
