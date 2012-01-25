@@ -693,6 +693,14 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 	/* Connect to remote. */
 	if (data->session <= 0) {
 		int fd = socket_create(data->addr.family, SOCK_STREAM);
+		if (fd >= 0) {
+			/* Bind to specific address - if set. */
+			sockaddr_update(&data->saddr);
+			if (data->saddr.len > 0) {
+				/* Presume port is already preset. */
+				ret = bind(fd, data->saddr.ptr, data->saddr.len);
+			}
+		}
 		if (fd < 0) {
 			pthread_mutex_unlock(&zd->xfr_in.lock);
 			log_server_warning("Failed to create socket "
@@ -702,6 +710,7 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 					   "AF_INET" : "AF_INET6");
 			return KNOTD_ERROR;
 		}
+		
 		ret = connect(fd, data->addr.ptr, data->addr.len);
 		if (ret < 0) {
 			pthread_mutex_unlock(&zd->xfr_in.lock);
