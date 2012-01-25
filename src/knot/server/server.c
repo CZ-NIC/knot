@@ -702,13 +702,16 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 	
 #ifdef HAVE_SETGROUPS
 	/* Drop supplementary groups. */
-	ret = setgroups(0, NULL);
-	
-	/* Collect results. */
-	if (ret < 0) {
-		log_server_error("Failed to set supplementary groups "
-		                 "for uid=%d %s\n", getuid(), strerror(errno));
-		priv_failed = 1;
+	if (conf->gid > -1 || conf->uid > -1) {
+		ret = setgroups(0, NULL);
+		
+		/* Collect results. */
+		if (ret < 0) {
+			log_server_error("Failed to set supplementary groups "
+			                 "for uid=%d %s\n",
+			                 getuid(), strerror(errno));
+			priv_failed = 1;
+		}
 	}
 #endif
 	
