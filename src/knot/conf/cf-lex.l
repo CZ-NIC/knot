@@ -27,6 +27,20 @@ void switch_input(const char *str, void *scanner)
 	yy_scan_string(str, scanner);
 }
 
+/* Convert hex to binary. */
+static inline char xd(char d) {
+	if (d >= '0' && d <= '9') return d - '0';
+	if (d >= 'a' && d <= 'f') return d - 'a' + 10;
+	if (d >= 'A' && d <= 'F') return d - 'A' + 10;
+	return 0;
+}
+int hex2bin(const char* src, char *dst, size_t len) {
+	for (unsigned i = 0; i < len; ++i) {
+		dst[i] = (xd(src[i<<1])<<4) + xd(src[(i<<1)+1]);
+	}
+	return 0;
+}
+
 //#define YY_INPUT(buf,result,max) result = cf_read_hook(buf, max);
 #define YY_NO_UNPUT
 
@@ -56,6 +70,7 @@ BLANK [ \t\n]
 system          { lval.t = yytext;  return SYSTEM; }
 identity        { lval.t = yytext; return IDENTITY; }
 version         { lval.t = yytext; return VERSION; }
+nsid            { lval.t = yytext; return NSID; }
 storage         { lval.t = yytext; return STORAGE; }
 key             { lval.t = yytext; return KEY; }
 keys            { lval.t = yytext; return KEYS; }
@@ -190,6 +205,28 @@ on|off {
   }
   cf_error(yyscanner, "Invalid IPv6 address.");
 #endif
+}
+
+[0][x]{HEXA}+ {
+  lval.t = NULL;
+  yytext = yytext + 2; /* Cut off 0x */
+  size_t dlen = strlen(yytext);
+  if (dlen % 2 == 1) {
+    cf_error(yyscanner, "Invalid hex-string length.");
+  } else {
+    dlen = dlen / 2;
+    lval.t = malloc((dlen + 1) * sizeof(char));
+    if (lval.t == NULL) {
+      cf_error(yyscanner, "Out of memory when allocating hex-string.\n");
+    } else {
+       memset(lval.t, 0, dlen + 1);
+       if (hex2bin(yytext, lval.t, dlen) < 0) {
+         cf_error(yyscanner, "Failed to convert hex-string to binary.\n");
+       }
+    }
+  }
+  
+  return HEXSTR;
 }
 
 gss-tsig        { lval.alg = KNOT_TSIG_ALG_GSS_TSIG;    return TSIG_ALGO_NAME; }

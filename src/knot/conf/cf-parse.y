@@ -150,12 +150,13 @@ static int conf_key_add(void *scanner, knot_key_t **key, char *item)
 
 %token END INVALID_TOKEN
 %token <tok> TEXT
+%token <tok> HEXSTR
 %token <tok> NUM
 %token <tok> INTERVAL
 %token <tok> SIZE
 %token <tok> BOOL
 
-%token <tok> SYSTEM IDENTITY VERSION STORAGE KEY KEYS
+%token <tok> SYSTEM IDENTITY VERSION NSID STORAGE KEY KEYS
 %token <tok> TSIG_ALGO_NAME
 %token <tok> WORKERS
 %token <tok> USER
@@ -267,6 +268,7 @@ system:
    SYSTEM '{'
  | system VERSION TEXT ';' { new_config->version = $3.t; }
  | system IDENTITY TEXT ';' { new_config->identity = $3.t; }
+ | system NSID HEXSTR ';' { new_config->nsid = $3.t; }
  | system STORAGE TEXT ';' { new_config->storage = $3.t; }
  | system KEY TSIG_ALGO_NAME TEXT ';' {
      fprintf(stderr, "warning: Config option 'system.key' is deprecated "
