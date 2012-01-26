@@ -611,7 +611,6 @@ static void find_and_set_wildcard_child(knot_zone_contents_t *zone,
 				 knot_node_t *node, int nsec3)
 {
 	knot_dname_t *chopped = knot_dname_left_chop(node->owner);
-	assert(chopped);
 	knot_node_t *wildcard_parent;
 	if (!nsec3) {
 		wildcard_parent =
