@@ -128,7 +128,7 @@ knot_rdata_t *knot_rrset_remove_rdata(knot_rrset_t *rrset,
 	}
 
 	while (rr != NULL) {
-		/*! \todo maybe the dnames should be compared case-insensitive*/
+		/*! \todo dnames are compared case-insensitive. is it OK?*/
 		if (knot_rdata_compare(rr, rdata, desc->wireformat) == 0) {
 			knot_rrset_disconnect_rdata(rrset, prev, rr);
 			return rr;

@@ -1033,6 +1033,12 @@ int knot_zone_contents_add_node(knot_zone_contents_t *zone,
 	if (knot_dname_compare(knot_node_owner(zone->apex), chopped) == 0) {
 		dbg_zone("Zone apex is the parent.\n");
 		knot_node_set_parent(node, zone->apex);
+
+		// check if the node is not wildcard child of the parent
+		if (knot_dname_is_wildcard(
+				knot_node_owner(node))) {
+			knot_node_set_wildcard_child(next_node, node);
+		}
 	} else {
 		knot_node_t *next_node;
 		while ((next_node
@@ -1101,7 +1107,7 @@ dbg_zone_exec(
 				knot_dname_release(chopped);
 				return KNOT_EHASH;
 			}
-
+#endif
 			// set parent
 			knot_node_set_parent(node, next_node);
 
@@ -1113,7 +1119,7 @@ dbg_zone_exec(
 					knot_node_owner(node))) {
 				knot_node_set_wildcard_child(next_node, node);
 			}
-#endif
+
 			dbg_zone("Next parent.\n");
 			node = next_node;
 			knot_dname_t *chopped_last = chopped;

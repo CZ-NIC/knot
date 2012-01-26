@@ -1832,6 +1832,7 @@ dbg_xfrin_exec(
 	if (rdata == NULL) {
 		dbg_xfrin("Failed to remove RDATA from RRSet: %s.\n",
 			  knot_strerror(ret));
+		/*! \todo Shouldn't we return the error?? */
 		return 1;
 	}
 	
@@ -1846,6 +1847,20 @@ dbg_xfrin_exec_detail(
 		} while (r != NULL && r != rdata);
 	}
 );
+
+	// connect the RDATA to the list of old RDATA
+	ret = xfrin_changes_check_rdata(&changes->old_rdata,
+	                                &changes->old_rdata_types,
+	                                changes->old_rdata_count,
+	                                &changes->old_rdata_allocated, 1);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	changes->old_rdata[changes->old_rdata_count] = rdata;
+	changes->old_rdata_types[changes->old_rdata_count] =
+			knot_rrset_type(remove);
+	++changes->old_rdata_count;
 	
 	// if the RRSet is empty, remove from node and add to old RRSets
 	// check if there is no RRSIGs; if there are, leave the RRSet
@@ -1872,22 +1887,9 @@ dbg_xfrin_exec_detail(
 			return ret;
 		}
 	
+		/*! \todo Is this necessary, when the RRSet is empty?? */
 		changes->old_rrsets[changes->old_rrsets_count++] = *rrset;
 	}
-	
-	// connect the RDATA to the list of old RDATA
-	ret = xfrin_changes_check_rdata(&changes->old_rdata,
-	                                &changes->old_rdata_types,
-	                                changes->old_rdata_count,
-	                                &changes->old_rdata_allocated, 1);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	changes->old_rdata[changes->old_rdata_count] = rdata;
-	changes->old_rdata_types[changes->old_rdata_count] =
-			knot_rrset_type(remove);
-	++changes->old_rdata_count;
 	
 	return KNOT_EOK;
 }
@@ -2126,7 +2128,7 @@ dbg_xfrin_exec(
 	          knot_rrtype_to_string(knot_rrset_type(*rrset)));
 	free(name);
 );
-	knot_rrset_dump(*rrset, 1);
+//	knot_rrset_dump(*rrset, 1);
 	ret = xfrin_copy_old_rrset(old, rrset, changes);
 	if (ret != KNOT_EOK) {
 		assert(0);
@@ -3049,6 +3051,8 @@ static void xfrin_switch_node_in_hash_table(ck_hash_table_item_t *item,
 	knot_node_t *node = (knot_node_t *)item->value;
 	knot_node_t *new_node = knot_node_get_new_node(node);
 
+	assert(new_node != NULL);
+
 	if (new_node != NULL) {
 		item->value = new_node;
 	}
@@ -3215,8 +3219,6 @@ static int xfrin_apply_add2(knot_zone_contents_t *contents,
                             knot_changeset_t *chset,
                             xfrin_changes_t *changes)
 {
-	// iterate over removed RRSets, copy appropriate nodes and remove
-	// the rrsets from them
 	int ret = 0;
 	knot_node_t *node = NULL;
 	knot_rrset_t *rrset = NULL;
