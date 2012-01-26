@@ -2635,6 +2635,32 @@ knot_nameserver_t *knot_ns_create()
 
 /*----------------------------------------------------------------------------*/
 
+void knot_ns_set_nsid(knot_nameserver_t *nameserver, const char *nsid)
+{
+	if (nameserver == NULL) {
+		dbg_ns("NS: set_nsid: nameserver=NULL.\n");
+		return;
+	}
+	
+	if (nsid == NULL) {
+		/* This is fine. */
+		return;
+	}
+	
+	uint16_t nsid_length = strlen(nsid);
+	
+	int ret = knot_edns_add_option(nameserver->opt_rr, EDNS_OPTION_NSID,
+	                               nsid_length, (const uint8_t *)nsid);
+	if (ret != KNOT_EOK) {
+		dbg_ns("NS: set_nsid: could not add EDNS option.\n");
+		return;
+	}
+	
+	dbg_ns("NS: set_nsid: added successfully.\n");
+}
+
+/*----------------------------------------------------------------------------*/
+
 int knot_ns_parse_packet(const uint8_t *query_wire, size_t qsize,
                     knot_packet_t *packet, knot_packet_type_t *type)
 {
@@ -2820,7 +2846,8 @@ int knot_ns_prep_normal_response(knot_nameserver_t *nameserver,
 
 	// set the OPT RR to the response
 	if (knot_query_edns_supported(query)) {
-		ret = knot_response_add_opt(*resp, nameserver->opt_rr, 1);
+		ret = knot_response_add_opt(*resp, nameserver->opt_rr, 1,
+		                            knot_query_nsid_requested(query));
 		if (ret != KNOT_EOK) {
 			dbg_ns("Failed to set OPT RR to the response"
 			                  ": %s\n", knot_strerror(ret));
