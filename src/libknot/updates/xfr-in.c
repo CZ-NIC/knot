@@ -1260,22 +1260,30 @@ typedef struct {
 	int new_rrsets_allocated;
 
 	/*!
-	 * Deleted (without contents) after successful update.
+	 * Deleted after failed update.
 	 */
+	knot_rdata_t **new_rdata;
+	uint *new_rdata_types;
+	int new_rdata_count;
+	int new_rdata_allocated;
+
+//	/*!
+//	 * Deleted (without contents) after successful update.
+//	 */
 	knot_node_t **old_nodes;
 	int old_nodes_count;
 	int old_nodes_allocated;
 
-	/*!
-	 * Deleted (without contents) after failed update.
-	 */
-	knot_node_t **new_nodes;
-	int new_nodes_count;
-	int new_nodes_allocated;
+//	/*!
+//	 * Deleted (without contents) after failed update.
+//	 */
+//	knot_node_t **new_nodes;
+//	int new_nodes_count;
+//	int new_nodes_allocated;
 	
-	ck_hash_table_item_t **old_hash_items;
-	int old_hash_items_count;
-	int old_hash_items_allocated;
+//	ck_hash_table_item_t **old_hash_items;
+//	int old_hash_items_count;
+//	int old_hash_items_allocated;
 } xfrin_changes_t;
 
 /*----------------------------------------------------------------------------*/
@@ -1495,6 +1503,8 @@ static knot_rdata_t *xfrin_remove_rdata(knot_rrset_t *from,
 	const knot_rdata_t *rdata = knot_rrset_rdata(what);
 
 	while (rdata != NULL) {
+		// rdata - the RDATA to be removed
+		// old_actual - removed RDATA
 		old_actual = knot_rrset_remove_rdata(from, rdata);
 		if (old_actual != NULL) {
 			old_actual->next = old;
@@ -1503,6 +1513,7 @@ static knot_rdata_t *xfrin_remove_rdata(knot_rrset_t *from,
 		rdata = knot_rrset_rdata_next(what, rdata);
 	}
 
+	// returning chain of removed RDATA
 	return old;
 }
 
@@ -1677,6 +1688,7 @@ static int xfrin_apply_remove_rrsigs(xfrin_changes_t *changes,
 		                 knot_rrset_rdata(remove)));
 		// this RRSet should be the already copied RRSet so we may
 		// update it right away
+		/*! \todo Does this case even occur? */
 	}
 	
 	// get the old rrsigs
@@ -1687,7 +1699,7 @@ static int xfrin_apply_remove_rrsigs(xfrin_changes_t *changes,
 	
 	// copy the RRSIGs
 	/*! \todo This may be done unnecessarily more times. */
-	knot_rrset_t *rrsigs;
+	knot_rrset_t *rrsigs = NULL;
 	ret = xfrin_copy_old_rrset(old, &rrsigs, changes);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -1698,8 +1710,6 @@ static int xfrin_apply_remove_rrsigs(xfrin_changes_t *changes,
 		dbg_xfrin("Failed to set rrsigs.\n");
 		return KNOT_ERROR;
 	}
-	
-	
 
 	// now in '*rrset' we have a copy of the RRSet which holds the RRSIGs 
 	// and in 'rrsigs' we have the copy of the RRSIGs
@@ -1797,8 +1807,7 @@ static int xfrin_apply_remove_normal(xfrin_changes_t *changes,
 	if (!*rrset
 	    || knot_dname_compare(knot_rrset_owner(*rrset),
 	                          knot_node_owner(node)) != 0
-	    || knot_rrset_type(*rrset)
-	       != knot_rrset_type(remove)) {
+	    || knot_rrset_type(*rrset) != knot_rrset_type(remove)) {
 		/*!
 		 * \todo This may happen also with already 
 		 *       copied RRSet. In that case it would be
@@ -1812,7 +1821,7 @@ static int xfrin_apply_remove_normal(xfrin_changes_t *changes,
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-	}
+	} /*! \todo Does some other case even occur? */
 	
 	if (*rrset == NULL) {
 		dbg_xfrin("RRSet not found for RR to be removed.\n");
@@ -1830,9 +1839,8 @@ dbg_xfrin_exec(
 	// sets)
 	knot_rdata_t *rdata = xfrin_remove_rdata(*rrset, remove);
 	if (rdata == NULL) {
-		dbg_xfrin("Failed to remove RDATA from RRSet: %s.\n",
-			  knot_strerror(ret));
-		/*! \todo Shouldn't we return the error?? */
+		dbg_xfrin("Failed to remove RDATA from RRSet\n");
+		// In this case, the RDATA was not found in the RRSet
 		return 1;
 	}
 	
@@ -1887,7 +1895,6 @@ dbg_xfrin_exec_detail(
 			return ret;
 		}
 	
-		/*! \todo Is this necessary, when the RRSet is empty?? */
 		changes->old_rrsets[changes->old_rrsets_count++] = *rrset;
 	}
 	
@@ -2016,8 +2023,7 @@ static knot_node_t *xfrin_add_new_node(knot_zone_contents_t *contents,
 	//return NULL;
 
 	knot_node_t *node = knot_node_new(knot_rrset_get_owner(rrset),
-	                                  NULL, KNOT_NODE_FLAGS_NEW
-	                                  /*! \todo remove flags */);
+	                                  NULL, 0);
 	if (node == NULL) {
 		dbg_xfrin("Failed to create a new node.\n");
 		return NULL;
@@ -2034,9 +2040,7 @@ static knot_node_t *xfrin_add_new_node(knot_zone_contents_t *contents,
 		ret = knot_zone_contents_add_nsec3_node(contents, node, 1, 0,
 		                                        1);
 	} else {
-		ret = knot_zone_contents_add_node(contents, node, 1,
-		                                  KNOT_NODE_FLAGS_NEW,
-		                                  /*! \todo remove flags */ 1);
+		ret = knot_zone_contents_add_node(contents, node, 1, 0, 1);
 	}
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to add new node to zone contents.\n");
@@ -2107,6 +2111,11 @@ dbg_xfrin_exec_verb(
 		// add the RRSet from the changeset to the node
 		/*! \todo What about domain names?? Shouldn't we use the
 		 *        zone-contents' version of this function??
+		 */
+		/*!
+		 * \note The new zone must be adjusted nevertheless, so it
+		 *       doesn't matter whether there are some extra dnames to
+		 *       be added to the table or not.
 		 */
 		ret = knot_node_add_rrset(node, add, 0);
 //		ret = knot_zone_contents_add_rrset(node->zone->contents,
@@ -2217,13 +2226,28 @@ static int xfrin_apply_add_rrsig(xfrin_changes_t *changes,
 			dbg_xfrin("Failed to create new RRSet for RRSIGs.\n");
 			return KNOT_ENOMEM;
 		}
-		
+
+		// add the RRset to the list of new RRsets
+		ret = xfrin_changes_check_rrsets(
+			&changes->new_rrsets,
+			&changes->new_rrsets_count,
+			&changes->new_rrsets_allocated, 1);
+		if (ret != KNOT_EOK) {
+			dbg_xfrin("Failed to add old RRSet to "
+			          "list.\n");
+			knot_rrset_free(rrset);
+			return ret;
+		}
+
 		// add the RRSet from the changeset to the node
 		ret = knot_node_add_rrset(node, *rrset, 0);
 		if (ret != KNOT_EOK) {
 			dbg_xfrin("Failed to add RRSet to node.\n");
+			knot_rrset_free(rrset);
 			return KNOT_ERROR;
 		}
+
+		changes->new_rrsets[changes->new_rrsets_count++] = add;
 	}
 
 dbg_xfrin_exec(
@@ -2255,9 +2279,6 @@ dbg_xfrin_exec(
 		knot_rrset_set_rrsigs(*rrset, rrsig);
 	
 		// merge the changeset RRSet to the copy
-		/*! \todo What if the update fails?
-		 *
-		 */
 		ret = knot_rrset_merge((void **)&rrsig, (void **)&add);
 		if (ret != KNOT_EOK) {
 			dbg_xfrin("Failed to merge changeset RRSet to copy.\n");
@@ -3158,16 +3179,7 @@ static int xfrin_apply_remove2(knot_zone_contents_t *contents,
 			}
 		}
 
-//		// create a copy of the node if not already created
-//		if (!knot_node_is_new(node)) {
-//			ret = xfrin_get_node_copy(&node, changes);
-//			if (ret != KNOT_EOK) {
-//				return ret;
-//			}
-//		}
-
 		assert(node != NULL);
-//		assert(knot_node_is_new(node));
 
 		// first check if all RRSets should be removed
 		if (knot_rrset_class(chset->remove[i]) == KNOT_CLASS_ANY) {
@@ -3228,17 +3240,10 @@ static int xfrin_apply_add2(knot_zone_contents_t *contents,
 					          "in zone.\n");
 					return KNOT_ERROR;
 				}
-//				continue; // continue with another RRSet
 			}
 		}
 
-//		// create a copy of the node if not already created
-//		if (!knot_node_is_new(node)) {
-//			xfrin_get_node_copy(&node, changes);
-//		}
-
 		assert(node != NULL);
-//		assert(knot_node_is_new(node));
 
 		if (knot_rrset_type(chset->add[i]) == KNOT_RRTYPE_RRSIG) {
 			ret = xfrin_apply_add_rrsig(changes, chset->add[i],
@@ -3251,32 +3256,57 @@ static int xfrin_apply_add2(knot_zone_contents_t *contents,
 		dbg_xfrin("xfrin_apply_..() returned %d, rrset: %p\n", ret,
 		          rrset);
 
-		if (ret == 1) {
-			// the ADD RRSet was used, i.e. it should be removed
-			// from the changeset and saved in the list of new
-			// RRSets
-			ret = xfrin_changes_check_rrsets(
-				&changes->new_rrsets,
-				&changes->new_rrsets_count,
-				&changes->new_rrsets_allocated, 1);
+		if (ret > 0) {
+			// store the new RDATA
+			// in both cases it must be deleted if the transfer
+			// fails
+
+			// connect the RDATA to the list of old RDATA
+			ret = xfrin_changes_check_rdata(&changes->new_rdata,
+				&changes->new_rdata_types,
+				changes->new_rdata_count,
+				&changes->new_rdata_allocated, 1);
 			if (ret != KNOT_EOK) {
-				dbg_xfrin("Failed to add old RRSet to list.\n");
 				return ret;
 			}
 
-			changes->new_rrsets[changes->new_rrsets_count++] =
-					chset->add[i];
+			changes->new_rdata[changes->new_rdata_count] =
+			                knot_rrset_get_rdata(chset->add[i]);
+			changes->new_rdata_types[changes->new_rdata_count] =
+					knot_rrset_type(chset->add[i]);
+			++changes->new_rdata_count;
 
-			chset->add[i] = NULL;
-		} else if (ret == 2) {
-			// the copy of the RRSet was used, but it was already
-			// stored in the new RRSets list
-			// just delete the add RRSet, but without RDATA
-			// as these were merged to the copied RRSet
-			knot_rrset_free(&chset->add[i]);
+			if (ret == 1) {
+				// the ADD RRSet was used, i.e. it should be
+				// removed from the changeset and saved in the
+				// list of new RRSets
+				ret = xfrin_changes_check_rrsets(
+					&changes->new_rrsets,
+					&changes->new_rrsets_count,
+					&changes->new_rrsets_allocated, 1);
+				if (ret != KNOT_EOK) {
+					dbg_xfrin("Failed to add old RRSet to "
+					          "list.\n");
+					return ret;
+				}
+
+				changes->new_rrsets[changes->new_rrsets_count++] =
+						chset->add[i];
+
+				chset->add[i] = NULL;
+			} else if (ret == 2) {
+				// the copy of the RRSet was used, but it was
+				// already stored in the new RRSets list
+				// just delete the add RRSet, but without RDATA
+				// as these were merged to the copied RRSet
+				knot_rrset_free(&chset->add[i]);
+			}
+
 		} else if (ret != KNOT_EOK) {
 			return ret;
 		}
+
+		assert(ret != KNOT_EOK);
 	}
 
 	return KNOT_EOK;
@@ -3411,8 +3441,6 @@ static int xfrin_apply_changeset2(knot_zone_contents_t *contents,
 		dbg_xfrin("SOA serials do not match!!\n");
 		return KNOT_ERROR;
 	}
-
-	// TODO!!!
 
 	int ret = xfrin_apply_remove2(contents, chset, changes);
 	if (ret != KNOT_EOK) {
