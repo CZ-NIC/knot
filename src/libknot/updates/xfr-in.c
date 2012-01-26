@@ -2786,15 +2786,15 @@ dbg_xfrin_exec(
 
 /*----------------------------------------------------------------------------*/
 
-/*static void xfrin_cleanup_update(xfrin_changes_t *changes)
+static void xfrin_cleanup_update(xfrin_changes_t *changes)
 {
 	// free old nodes but do not destroy their RRSets
 	// remove owners also, because of reference counting
-	for (int i = 0; i < changes->old_nodes_count; ++i) {
-		dbg_xfrin_detail("Deleting old node: %p\n", changes->old_nodes[i]);
-		knot_node_dump(changes->old_nodes[i], 0);
-		knot_node_free(&changes->old_nodes[i], 1, 0);
-	}
+//	for (int i = 0; i < changes->old_nodes_count; ++i) {
+//		dbg_xfrin_detail("Deleting old node: %p\n", changes->old_nodes[i]);
+//		knot_node_dump(changes->old_nodes[i], 0);
+//		knot_node_free(&changes->old_nodes[i], 1, 0);
+//	}
 
 	// free old RRSets, and destroy also domain names in them
 	// because of reference counting
@@ -2815,7 +2815,8 @@ dbg_xfrin_exec(
 
 	for (int i = 0; i < changes->old_rrsets_count; ++i) {
 //		knot_rrset_deep_free(&changes->old_rrsets[i], 1, 1, 1);
-		dbg_xfrin_detail("Deleting old RRSet: %p\n", changes->old_rrsets[i]);
+		dbg_xfrin_detail("Deleting old RRSet: %p\n",
+		                 changes->old_rrsets[i]);
 		knot_rrset_dump(changes->old_rrsets[i], 0);
 		knot_rrset_free(&changes->old_rrsets[i]);
 	}
@@ -2823,9 +2824,10 @@ dbg_xfrin_exec(
 	// delete old RDATA
 	for (int i = 0; i < changes->old_rdata_count; ++i) {
 		dbg_xfrin_detail("Deleting old RDATA: %p, type: %s\n", 
-		                 changes->old_rdata[i],
-		                 knot_rrtype_to_string(changes->old_rdata_types[i]));
-		knot_rdata_dump(changes->old_rdata[i], changes->old_rdata_types[i], 0);
+		            changes->old_rdata[i],
+		            knot_rrtype_to_string(changes->old_rdata_types[i]));
+		knot_rdata_dump(changes->old_rdata[i],
+		                changes->old_rdata_types[i], 0);
 		knot_rdata_t *rdata = changes->old_rdata[i];
 		assert(rdata != NULL);
 		do {
@@ -2837,20 +2839,21 @@ dbg_xfrin_exec(
 		changes->old_rdata[i] = NULL;
 	}
 	
-	// free old hash table items, but do not touch their contents
-	for (int i = 0; i < changes->old_hash_items_count; ++i) {
-		free(changes->old_hash_items[i]);
-	}
-	free(changes->old_hash_items);
+//	// free old hash table items, but do not touch their contents
+//	for (int i = 0; i < changes->old_hash_items_count; ++i) {
+//		free(changes->old_hash_items[i]);
+//	}
+//	free(changes->old_hash_items);
 
 	// free allocated arrays of nodes and rrsets
-	free(changes->new_nodes);
-	free(changes->old_nodes);
 	free(changes->new_rrsets);
+	free(changes->new_rdata);
+	free(changes->new_rdata_types);
+	free(changes->old_nodes);
 	free(changes->old_rrsets);
 	free(changes->old_rdata);
 	free(changes->old_rdata_types);
-}*/
+}
 
 /*----------------------------------------------------------------------------*/
 
@@ -3119,33 +3122,16 @@ static void xfrin_zone_contents_free2(knot_zone_contents_t **contents)
 static void xfrin_rollback_update2(knot_zone_contents_t *contents,
                                    xfrin_changes_t *changes)
 {
-	/*
-	 * This function is called only when no references were actually set to
-	 * the new nodes, just the new nodes reference other.
-	 * We thus do not need to fix any references, just from the old nodes
-	 * to the new ones.
-	 */
-
-	// discard new nodes, but do not remove RRSets from them
-//	for (int i = 0; i < changes->new_nodes_count; ++i) {
-//		knot_node_free(&changes->new_nodes[i], 0, 0);
-//	}
-
-//	// set references from old nodes to new nodes to NULL and remove the
-//	// old flag
-//	for (int i = 0; i < changes->old_nodes_count; ++i) {
-//		knot_node_set_new_node(changes->old_nodes[i], NULL);
-//		//knot_node_clear_old(changes->old_nodes[i]);
-//	}
-
 	// discard new RRSets
-	/*! \todo This will create problems if some RRSet is copied more times.
-	 */
 	for (int i = 0; i < changes->new_rrsets_count; ++i) {
-		knot_rrset_deep_free(&changes->new_rrsets[i], 0, 1, 1);
+		//knot_rrset_deep_free(&changes->new_rrsets[i], 0, 1, 1);
+		knot_rrset_free(&changes->new_rrsets[i]);
 	}
 
-	/*! \todo What about RDATA?? */
+	for (int i = 0; i < changes->new_rdata_count; ++i) {
+		knot_rdata_deep_free(&changes->new_rdata[i],
+		                     changes->new_rdata_types[i], 1);
+	}
 
 	// destroy the shallow copy of zone
 	xfrin_zone_contents_free2(&contents);
@@ -3925,7 +3911,6 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 	/*
 	 * Apply the changesets.
 	 */
-
 	for (int i = 0; i < chsets->count; ++i) {
 		if ((ret = xfrin_apply_changeset2(contents_copy, &changes,
 		                                  &chsets->sets[i]))
@@ -3955,6 +3940,11 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 		          knot_strerror(ret));
 		return ret;
 	}
+
+	/*
+	 * Cleanup after successful changeset apply.
+	 */
+	xfrin_cleanup_update(&changes);
 
 	return KNOT_EOK;
 }
