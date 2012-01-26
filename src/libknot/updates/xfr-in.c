@@ -3480,135 +3480,6 @@ static void xfrin_mark_empty(knot_node_t *node, void *data)
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_finalize_contents2(knot_zone_contents_t *contents,
-                                    xfrin_changes_t *changes)
-{
-	/*
-	 * 1) Delete empty nodes.
-	 *
-	 *    Walk through the trees and if a node is empty,
-	 *    store it in a list of nodes to be deleted.
-	 *    Then remove these nodes from the trees and the hash table.
-	 */
-
-	// walk through the normal node tree
-	int ret = knot_zone_contents_tree_apply_inorder(contents,
-	                                                xfrin_mark_empty,
-	                                                (void *)changes);
-	assert(ret == KNOT_EOK);
-
-	// remove these nodes from both hash table and the tree
-	ck_hash_table_t *table = knot_zone_contents_get_hash_table(contents);
-	assert(table != NULL);
-	ck_hash_table_item_t *hash_item = NULL;
-	knot_zone_tree_node_t *zone_node = NULL;
-
-	for (int i = 0; i < changes->old_nodes_count; ++i) {
-		zone_node = NULL;
-		hash_item = NULL;
-
-		ret = knot_zone_contents_remove_node(contents,
-		                                     changes->old_nodes[i],
-		                                     &zone_node, &hash_item);
-		assert(ret == KNOT_EOK);
-
-		free(hash_item);
-		free(zone_node);
-		knot_node_free(&changes->old_nodes[i], 1, 1);
-	}
-
-	changes->old_nodes_count = 0;
-
-	// walk through the NSEC3 node tree
-	ret = knot_zone_contents_nsec3_apply_inorder(contents, xfrin_mark_empty,
-	                                             (void *)changes);
-	assert(ret == KNOT_EOK);
-
-	for (int i = 0; i < changes->old_nodes_count; ++i) {
-		zone_node = NULL;
-		ret = knot_zone_contents_remove_nsec3_node(contents,
-		                                          changes->old_nodes[i],
-		                                          &zone_node);
-		assert(ret == KNOT_EOK);
-
-		free(zone_node);
-		knot_node_free(&changes->old_nodes[i], 1, 1);
-	}
-
-	/*
-	 * 2) Parse NSEC3PARAM from the zone apex.
-	 */
-	ret = knot_zone_contents_load_nsec3param(contents);
-	if (ret != KNOT_EOK) {
-		dbg_xfrin_verb("Failed to load NSEC3PARAM from zone: %s\n",
-		               knot_strerror(ret));
-		return ret;
-	}
-
-	/*
-	 * 3) Adjust nodes.
-	 *
-	 *    - Marks the nodes authoritative / non-authoritative / delegation.
-	 *    - Sets wildcard child references.
-	 *    - Saves pointer to closest encloser to RDATA dnames.
-	 *   TODO: this may require dnames to be stored in dname table already
-	 *    - Increases node count for every adjusted node.
-	 *   TODO: This is wrong!!!
-	 *    - Sets NSEC3 node reference.
-	 */
-	ret = knot_zone_contents_adjust(contents, 0);
-	if (ret != KNOT_EOK) {
-		dbg_xfrin_verb("Failed to adjust zoen contents: %s\n",
-		               knot_strerror(ret));
-		return ret;
-	}
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-static void xfrin_check_contents_copy_node(knot_node_t *node, void *data)
-{
-	assert(node != NULL);
-	assert(data != NULL);
-
-	int *err = (int *)data;
-
-	if (*err != KNOT_EOK) {
-		return;
-	}
-
-	if (knot_node_new_node(node) == NULL) {
-		*err = KNOT_ENONODE;
-	}
-}
-
-/*----------------------------------------------------------------------------*/
-
-static int xfrin_check_contents_copy(knot_zone_contents_t *old_contents)
-{
-	int err = KNOT_EOK;
-
-	int ret = knot_zone_contents_tree_apply_inorder(old_contents,
-	                                         xfrin_check_contents_copy_node,
-	                                         &err);
-
-	assert(ret == KNOT_EOK);
-
-	if (err == KNOT_EOK) {
-		ret = knot_zone_contents_nsec3_apply_inorder(old_contents,
-		                                 xfrin_check_contents_copy_node,
-		                                 &err);
-	}
-
-	assert(ret == KNOT_EOK);
-
-	return err;
-}
-
-/*----------------------------------------------------------------------------*/
-
 typedef struct xfrin_adjust_data {
 	knot_zone_contents_t *contents;
 	xfrin_changes_t *changes;
@@ -3617,11 +3488,10 @@ typedef struct xfrin_adjust_data {
 
 /*----------------------------------------------------------------------------*/
 
-static void xfrin_adjust_node_in_tree(knot_zone_tree_node_t *tnode, void *data)
+static void xfrin_adjust_node_in_tree(knot_node_t *node, void *data)
 {
-	assert(tnode != NULL);
+	assert(node != NULL);
 	assert(data != NULL);
-	assert(tnode->node != NULL);
 
 	xfrin_adjust_data_t *adata = (xfrin_adjust_data_t *)data;
 
@@ -3633,7 +3503,6 @@ static void xfrin_adjust_node_in_tree(knot_zone_tree_node_t *tnode, void *data)
 		return;
 	}
 
-	knot_node_t *node = tnode->node;
 	assert(knot_node_new_node(node) == NULL);
 
 	xfrin_changes_t *changes = adata->changes;
@@ -3819,9 +3688,6 @@ static void xfrin_check_loops_in_tree(knot_zone_tree_node_t *tnode, void *data)
 static int xfrin_adjust_contents(knot_zone_contents_t *contents,
                                  xfrin_changes_t *changes)
 {
-	knot_zone_tree_t *t = knot_zone_contents_get_nodes(contents);
-	assert(t != NULL);
-
 	// first, load the NSEC3PARAM record, if there is one
 	const knot_node_t *apex = knot_node_new_node(contents->apex);
 	assert(apex != NULL);
@@ -3844,12 +3710,15 @@ static int xfrin_adjust_contents(knot_zone_contents_t *contents,
 	 * 1) Check node flags (authoritative / non-authoritative / deleg. pt.).
 	 * 2) For each node without NSEC3 node, try to find the NSEC3 node.
 	 * 3) Insert all dnames to dname table.
+	 * 4) Mark empty nodes.
 	 *
-	 * In second walkthrough check CNAME loops, including wildcards.
+	 * Setting previous and next nodes is not necessary as this is done
+	 * while adding the nodes.
 	 */
 
-	knot_zone_tree_forward_apply_inorder(t, xfrin_adjust_node_in_tree,
-	                                     (void *)&data);
+	knot_zone_contents_tree_apply_inorder(contents,
+	                                      xfrin_adjust_node_in_tree,
+	                                      (void *)&data);
 
 	if (data.err != KNOT_EOK) {
 		dbg_xfrin("Failed to adjust nodes after IXFR: %s\n",
@@ -3857,10 +3726,118 @@ static int xfrin_adjust_contents(knot_zone_contents_t *contents,
 		return data.err;
 	}
 
-	knot_zone_tree_forward_apply_inorder(t, xfrin_check_loops_in_tree,
-	                                     (void *)&data);
+	int ret;
+
+	/*
+	 * Remove empty normal nodes.
+	 */
+	// remove these nodes from both hash table and the tree
+	ck_hash_table_t *table = knot_zone_contents_get_hash_table(contents);
+	assert(table != NULL);
+	ck_hash_table_item_t *hash_item = NULL;
+	knot_zone_tree_node_t *zone_node = NULL;
+
+	for (int i = 0; i < changes->old_nodes_count; ++i) {
+		zone_node = NULL;
+		hash_item = NULL;
+
+		ret = knot_zone_contents_remove_node(contents,
+		                                     changes->old_nodes[i],
+		                                     &zone_node, &hash_item);
+		assert(ret == KNOT_EOK);
+
+		free(hash_item);
+		free(zone_node);
+		knot_node_free(&changes->old_nodes[i], 1, 1);
+	}
+
+	changes->old_nodes_count = 0;
+
+	// walk through the NSEC3 node tree
+	ret = knot_zone_contents_nsec3_apply_inorder(contents, xfrin_mark_empty,
+	                                             (void *)changes);
+	assert(ret == KNOT_EOK);
+
+	for (int i = 0; i < changes->old_nodes_count; ++i) {
+		zone_node = NULL;
+		ret = knot_zone_contents_remove_nsec3_node(contents,
+		                                          changes->old_nodes[i],
+		                                          &zone_node);
+		assert(ret == KNOT_EOK);
+
+		free(zone_node);
+		knot_node_free(&changes->old_nodes[i], 1, 1);
+	}
+
+	/*
+	 * In second walkthrough check CNAME loops, including wildcards.
+	 */
+	knot_zone_contents_tree_apply_inorder(contents,
+	                                      xfrin_check_loops_in_tree,
+	                                      (void *)&data);
 
 	return data.err;
+}
+
+/*----------------------------------------------------------------------------*/
+
+//static int xfrin_finalize_contents2(knot_zone_contents_t *contents,
+//                                    xfrin_changes_t *changes)
+//{
+
+//	/*
+//	 * 3) Adjust nodes.
+//	 */
+//	ret = xfrin_adjust_contents(contents, changes);
+////	ret = knot_zone_contents_adjust(contents, 0);
+//	if (ret != KNOT_EOK) {
+//		dbg_xfrin_verb("Failed to adjust zone contents: %s\n",
+//		               knot_strerror(ret));
+//		return ret;
+//	}
+
+//	return KNOT_EOK;
+//}
+
+/*----------------------------------------------------------------------------*/
+
+static void xfrin_check_contents_copy_node(knot_node_t *node, void *data)
+{
+	assert(node != NULL);
+	assert(data != NULL);
+
+	int *err = (int *)data;
+
+	if (*err != KNOT_EOK) {
+		return;
+	}
+
+	if (knot_node_new_node(node) == NULL) {
+		*err = KNOT_ENONODE;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int xfrin_check_contents_copy(knot_zone_contents_t *old_contents)
+{
+	int err = KNOT_EOK;
+
+	int ret = knot_zone_contents_tree_apply_inorder(old_contents,
+	                                         xfrin_check_contents_copy_node,
+	                                         &err);
+
+	assert(ret == KNOT_EOK);
+
+	if (err == KNOT_EOK) {
+		ret = knot_zone_contents_nsec3_apply_inorder(old_contents,
+		                                 xfrin_check_contents_copy_node,
+		                                 &err);
+	}
+
+	assert(ret == KNOT_EOK);
+
+	return err;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -3954,7 +3931,7 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 	 * - do adjusting of nodes and RDATA
 	 * - ???
 	 */
-	ret = xfrin_finalize_contents2(contents_copy, &changes);
+	ret = xfrin_adjust_contents(contents_copy, &changes);
 	if (ret != KNOT_EOK) {
 		xfrin_rollback_update2(contents_copy, &changes);
 		dbg_xfrin("Failed to finalize zone contents: %s\n",
