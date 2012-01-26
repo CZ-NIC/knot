@@ -1435,29 +1435,28 @@ static int xfrin_changes_check_rdata(knot_rdata_t ***rdatas, uint **types,
 
 /*----------------------------------------------------------------------------*/
 
-//static void xfrin_zone_contents_free(knot_zone_contents_t **contents)
-//{
-//	/*! \todo This should be all in some API!! */
+static void xfrin_zone_contents_free(knot_zone_contents_t **contents)
+{
+	/*! \todo This should be all in some API!! */
 	
-//	if ((*contents)->table != NULL) {
-////		ck_destroy_table(&(*contents)->table, NULL, 0);
+	if ((*contents)->table != NULL) {
+		ck_destroy_table(&(*contents)->table, NULL, 0);
 //		ck_table_free(&(*contents)->table);
-//	}
+	}
 
-//	// free the zone tree, but only the structure
-//	// (nodes are already destroyed)
-//	dbg_zone("Destroying zone tree.\n");
-//	knot_zone_tree_free(&(*contents)->nodes);
-//	dbg_zone("Destroying NSEC3 zone tree.\n");
-//	knot_zone_tree_free(&(*contents)->nsec3_nodes);
+	// free the zone tree with nodes
+	dbg_zone("Destroying zone tree.\n");
+	knot_zone_tree_deep_free(&(*contents)->nodes, 1);
+	dbg_zone("Destroying NSEC3 zone tree.\n");
+	knot_zone_tree_deep_free(&(*contents)->nsec3_nodes, 1);
 
-//	knot_nsec3_params_free(&(*contents)->nsec3_params);
+	knot_nsec3_params_free(&(*contents)->nsec3_params);
 
-//	knot_dname_table_deep_free(&(*contents)->dname_table);
+	knot_dname_table_deep_free(&(*contents)->dname_table);
 	
-//	free(*contents);
-//	*contents = NULL;
-//}
+	free(*contents);
+	*contents = NULL;
+}
 
 /*----------------------------------------------------------------------------*/
 
@@ -3239,6 +3238,8 @@ static int xfrin_apply_add2(knot_zone_contents_t *contents,
 			                             node, &rrset);
 		}
 
+		assert(ret != KNOT_EOK);
+
 		dbg_xfrin("xfrin_apply_..() returned %d, rrset: %p\n", ret,
 		          rrset);
 
@@ -3291,8 +3292,6 @@ static int xfrin_apply_add2(knot_zone_contents_t *contents,
 		} else if (ret != KNOT_EOK) {
 			return ret;
 		}
-
-		assert(ret != KNOT_EOK);
 	}
 
 	return KNOT_EOK;
@@ -3941,9 +3940,19 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 		return ret;
 	}
 
+	knot_zone_contents_t *old =
+		knot_zone_switch_contents(zone, contents_copy);
+	assert(old == old_contents);
+
 	/*
-	 * Cleanup after successful changeset apply.
+	 * Wait until all readers finish reading
 	 */
+	synchronize_rcu();
+
+	/*
+	 * Delete all old and unused data.
+	 */
+	xfrin_zone_contents_free(&old_contents);
 	xfrin_cleanup_update(&changes);
 
 	return KNOT_EOK;
