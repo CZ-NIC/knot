@@ -1209,14 +1209,18 @@ static int ck_copy_items(const ck_hash_table_item_t **from,
 	assert(to != NULL);
 
 	for (int i = 0; i < count; ++i) {
-		to[i] = (ck_hash_table_item_t *)
-		        malloc(sizeof(ck_hash_table_item_t));
+		if (from[i] != NULL) {
+			to[i] = (ck_hash_table_item_t *)
+				malloc(sizeof(ck_hash_table_item_t));
 
-		if (to[i] == NULL) {
-			return -2;
+			if (to[i] == NULL) {
+				return -2;
+			}
+
+			memcpy(to[i], from[i], sizeof(ck_hash_table_item_t));
+		} else {
+			to[i] = NULL;
 		}
-
-		memcpy(to[i], from[i], sizeof(ck_hash_table_item_t));
 	}
 
 	return 0;
@@ -1249,12 +1253,13 @@ void ck_deep_copy_cleanup(ck_hash_table_t *table, int table_count)
 
 /*----------------------------------------------------------------------------*/
 
-int ck_deep_copy(const ck_hash_table_t *from, ck_hash_table_t **to)
+int ck_deep_copy(ck_hash_table_t *from, ck_hash_table_t **to)
 {
 	if (from == NULL || to == NULL) {
 		return -1;
 	}
 
+	dbg_ck("Allocating new table...\n");
 	*to = (ck_hash_table_t *)malloc(sizeof(ck_hash_table_t));
 
 	if (*to == NULL) {
@@ -1293,9 +1298,11 @@ int ck_deep_copy(const ck_hash_table_t *from, ck_hash_table_t **to)
 		}
 
 		// copy the table with all hash table items
+		dbg_ck("Copying table %u...\n", t);
 		int ret = ck_copy_items(from->tables[t], (*to)->tables[t],
 		                        hashsize((*to)->table_size_exp));
 		if (ret != 0) {
+			dbg_ck("Failed!\n", t);
 			// free all tables created until now
 			ck_deep_copy_cleanup(*to, t);
 			return ret;
@@ -1370,7 +1377,7 @@ int ck_deep_copy(const ck_hash_table_t *from, ck_hash_table_t **to)
 
 /*----------------------------------------------------------------------------*/
 
-int ck_apply(ck_hash_table_t *table, 
+int ck_apply(ck_hash_table_t *table,
              void (*function)(ck_hash_table_item_t *item, void *data), 
              void *data)
 {
