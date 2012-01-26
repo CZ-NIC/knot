@@ -341,9 +341,8 @@ static void knot_zone_contents_adjust_rrsets(knot_node_t *node,
  * \param node Zone node to adjust.
  * \param zone Zone the node belongs to.
  */
-static void knot_zone_contents_adjust_node(knot_node_t *node,
-                                             knot_zone_contents_t *zone,
-					     int check_ver)
+void knot_zone_contents_adjust_node(knot_node_t *node,
+                                    knot_zone_contents_t *zone, int check_ver)
 {
 
 dbg_zone_exec(
@@ -381,14 +380,8 @@ dbg_zone_exec(
 		knot_node_set_deleg_point(node);
 	}
 
-	// authorative node?
-//	if (!knot_node_is_non_auth(node)) {
-		zone->node_count++;
-//	}
-
 	// assure that owner has proper node
 	if (knot_dname_node(knot_node_owner(node), 0) == NULL) {
-		knot_dname_set_node(knot_node_get_owner(node), node);
 		knot_dname_set_node(knot_node_get_owner(node), node);
 	}
 
@@ -396,8 +389,9 @@ dbg_zone_exec(
 	const knot_node_t *prev;
 	const knot_node_t *nsec3;
 	int match = knot_zone_contents_find_nsec3_for_name(zone,
-					knot_node_owner(node),
-					&nsec3, &prev, check_ver);
+	                                                  knot_node_owner(node),
+	                                                  &nsec3, &prev,
+	                                                  check_ver);
 	if (match != KNOT_ZONE_NAME_FOUND) {
 		nsec3 = NULL;
 	}
@@ -742,8 +736,10 @@ static int knot_zone_contents_dnames_from_rrset_to_table(
 }
 
 /*----------------------------------------------------------------------------*/
+/* API functions                                                              */
+/*----------------------------------------------------------------------------*/
 
-static int knot_zone_contents_dnames_from_node_to_table(
+int knot_zone_contents_dnames_from_node_to_table(
 	knot_dname_table_t *table, knot_node_t *node)
 {
 	/*
@@ -789,13 +785,11 @@ static int knot_zone_contents_dnames_from_node_to_table(
 }
 
 /*----------------------------------------------------------------------------*/
-/* API functions                                                              */
-/*----------------------------------------------------------------------------*/
 
 knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
-                                                 uint node_count,
-                                                 int use_domain_table,
-                                                 struct knot_zone *zone)
+                                             uint node_count,
+                                             int use_domain_table,
+                                             struct knot_zone *zone)
 {
 	knot_zone_contents_t *contents = (knot_zone_contents_t *)
 	                              calloc(1, sizeof(knot_zone_contents_t));
@@ -836,7 +830,7 @@ knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
 		contents->dname_table = NULL;
 	}
 
-	contents->node_count = node_count;
+	//contents->node_count = node_count;
 
 	/* Initialize NSEC3 params */
 	dbg_zone("Initializing NSEC3 parameters.\n");
@@ -859,9 +853,9 @@ knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
 	}
 
 #ifdef USE_HASH_TABLE
-	if (contents->node_count > 0) {
+	if (node_count > 0) {
 		dbg_zone("Creating hash table.\n");
-		contents->table = ck_create_table(contents->node_count);
+		contents->table = ck_create_table(node_count);
 		if (contents->table == NULL) {
 			goto cleanup;
 		}
@@ -1022,6 +1016,8 @@ int knot_zone_contents_add_node(knot_zone_contents_t *zone,
 
 	knot_node_set_zone(node, zone->zone);
 
+	++zone->node_count;
+
 	if (!create_parents) {
 		return KNOT_EOK;
 	}
@@ -1037,7 +1033,7 @@ int knot_zone_contents_add_node(knot_zone_contents_t *zone,
 		// check if the node is not wildcard child of the parent
 		if (knot_dname_is_wildcard(
 				knot_node_owner(node))) {
-			knot_node_set_wildcard_child(next_node, node);
+			knot_node_set_wildcard_child(zone->apex, node);
 		}
 	} else {
 		knot_node_t *next_node;
@@ -1119,6 +1115,8 @@ dbg_zone_exec(
 					knot_node_owner(node))) {
 				knot_node_set_wildcard_child(next_node, node);
 			}
+
+			++zone->node_count;
 
 			dbg_zone("Next parent.\n");
 			node = next_node;
