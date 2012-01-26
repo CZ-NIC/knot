@@ -3566,6 +3566,47 @@ static int xfrin_finalize_contents2(knot_zone_contents_t *contents,
 
 /*----------------------------------------------------------------------------*/
 
+static void xfrin_check_contents_copy_node(knot_node_t *node, void *data)
+{
+	assert(node != NULL);
+	assert(data != NULL);
+
+	int *err = (int *)data;
+
+	if (*err != KNOT_EOK) {
+		return;
+	}
+
+	if (knot_node_new_node(node) == NULL) {
+		*err = KNOT_ENONODE;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int xfrin_check_contents_copy(knot_zone_contents_t *old_contents)
+{
+	int err = KNOT_EOK;
+
+	int ret = knot_zone_contents_tree_apply_inorder(old_contents,
+	                                         xfrin_check_contents_copy_node,
+	                                         &err);
+
+	assert(ret == KNOT_EOK);
+
+	if (err == KNOT_EOK) {
+		ret = knot_zone_contents_nsec3_apply_inorder(old_contents,
+		                                 xfrin_check_contents_copy_node,
+		                                 &err);
+	}
+
+	assert(ret == KNOT_EOK);
+
+	return err;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int xfrin_apply_changesets(knot_zone_t *zone,
                            knot_changesets_t *chsets)
 {
@@ -3610,9 +3651,18 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 		return ret;
 	}
 
+	xfrin_changes_t changes;
+	memset(&changes, 0, sizeof(xfrin_changes_t));
+
 	/*!
 	 * \todo Check if all nodes have their copy.
 	 */
+	ret = xfrin_check_contents_copy(old_contents);
+	if (ret != KNOT_EOK) {
+		dbg_xfrin("Contents copy check failed!\n");
+		xfrin_rollback_update2(contents_copy, &changes);
+		return ret;
+	}
 
 	/*
 	 * Fix references to new nodes. Some references in new nodes may point
@@ -3623,9 +3673,6 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 	/*
 	 * Apply the changesets.
 	 */
-
-	xfrin_changes_t changes;
-	memset(&changes, 0, sizeof(xfrin_changes_t));
 
 	for (int i = 0; i < chsets->count; ++i) {
 		if ((ret = xfrin_apply_changeset2(contents_copy, &changes,
