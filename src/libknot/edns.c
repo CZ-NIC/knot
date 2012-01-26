@@ -174,15 +174,16 @@ int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr,
 	// i.e. preceded by their length
 	if (rdata != NULL) {
 		assert(knot_rdata_item_count(rdata) == 1);
+		uint16_t size = knot_rdata_item(rdata, 0)->raw_data[0];
 		const uint8_t *raw = (const uint8_t *)
 		                      knot_rdata_item(rdata, 0)->raw_data;
-		uint16_t size = knot_wire_read_u16(raw);
 		int pos = 2;
 		assert(size > 0);
 		while (pos - 2 < size) {
 			// ensure there is enough data to parse the OPTION CODE
 			// and OPTION LENGTH
 			if (size - pos + 2 < 4) {
+				dbg_edns("Not enough data to parse.\n");
 				return KNOT_EMALF;
 			}
 			uint16_t opt_code = knot_wire_read_u16(raw + pos);
@@ -191,16 +192,23 @@ int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr,
 			// there should be enough data for parsing the OPTION
 			// data
 			if (size - pos - 2 < opt_size) {
+				dbg_edns("Not enough data to parse options: "
+				         "size - pos - 2=%d, opt_size=%d\n",
+				         size - pos - 2, opt_size);
 				return KNOT_EMALF;
 			}
 			rc = knot_edns_add_option(opt_rr, opt_code, opt_size,
 			                          raw + pos + 4);
 			if (rc != KNOT_EOK) {
+				dbg_edns("Could not add option.\n");
 				return rc;
 			}
 			pos += 4 + opt_size;
 		}
 	}
+	
+	
+	dbg_edns("EDNS created.\n");
 
 	return KNOT_EOK;
 }
