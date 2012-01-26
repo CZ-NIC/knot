@@ -2339,7 +2339,7 @@ int knot_zone_contents_shallow_copy2(const knot_zone_contents_t *from,
 		return KNOT_ENOMEM;
 	}
 
-	contents->apex = from->apex;
+	//contents->apex = from->apex;
 
 	contents->nodes = malloc(sizeof(knot_zone_tree_t));
 	if (contents->nodes == NULL) {
@@ -2397,6 +2397,7 @@ int knot_zone_contents_shallow_copy2(const knot_zone_contents_t *from,
 		}
 	}
 #endif
+	contents->apex = knot_node_get_new_node(from->apex);
 
 	dbg_zone("knot_zone_contents_shallow_copy: finished OK\n");
 

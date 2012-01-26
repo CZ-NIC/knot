@@ -2246,7 +2246,7 @@ static int xfrin_apply_add_rrsig(xfrin_changes_t *changes,
 			return KNOT_ERROR;
 		}
 
-		changes->new_rrsets[changes->new_rrsets_count++] = add;
+		changes->new_rrsets[changes->new_rrsets_count++] = *rrset;
 	}
 
 dbg_xfrin_exec(
@@ -3217,7 +3217,8 @@ static int xfrin_apply_add2(knot_zone_contents_t *contents,
 			if (node == NULL) {
 				// create new node, connect it properly to the
 				// zone nodes
-				dbg_xfrin("Creating new node from.\n");
+				dbg_xfrin("Creating new node from: %p.\n",
+				          chset->add[i]);
 				node = xfrin_add_new_node(contents,
 				                          chset->add[i]);
 				if (node == NULL) {
@@ -3249,12 +3250,12 @@ static int xfrin_apply_add2(knot_zone_contents_t *contents,
 			// fails
 
 			// connect the RDATA to the list of old RDATA
-			ret = xfrin_changes_check_rdata(&changes->new_rdata,
+			int res = xfrin_changes_check_rdata(&changes->new_rdata,
 				&changes->new_rdata_types,
 				changes->new_rdata_count,
 				&changes->new_rdata_allocated, 1);
-			if (ret != KNOT_EOK) {
-				return ret;
+			if (res != KNOT_EOK) {
+				return res;
 			}
 
 			changes->new_rdata[changes->new_rdata_count] =
@@ -3277,8 +3278,8 @@ static int xfrin_apply_add2(knot_zone_contents_t *contents,
 					return ret;
 				}
 
-				changes->new_rrsets[changes->new_rrsets_count++] =
-						chset->add[i];
+				changes->new_rrsets[changes->new_rrsets_count++]
+					 = chset->add[i];
 
 				chset->add[i] = NULL;
 			} else if (ret == 2) {
@@ -3287,6 +3288,8 @@ static int xfrin_apply_add2(knot_zone_contents_t *contents,
 				// just delete the add RRSet, but without RDATA
 				// as these were merged to the copied RRSet
 				knot_rrset_free(&chset->add[i]);
+			} else {
+				assert(0);
 			}
 
 		} else if (ret != KNOT_EOK) {
@@ -3725,7 +3728,7 @@ static int xfrin_adjust_contents(knot_zone_contents_t *contents,
                                  xfrin_changes_t *changes)
 {
 	// first, load the NSEC3PARAM record, if there is one
-	const knot_node_t *apex = knot_node_new_node(contents->apex);
+	const knot_node_t *apex = knot_zone_contents_apex(contents);
 	assert(apex != NULL);
 	const knot_rrset_t *rrset = knot_node_rrset(apex,
 	                                            KNOT_RRTYPE_NSEC3PARAM);
@@ -3839,6 +3842,10 @@ static int xfrin_check_contents_copy(knot_zone_contents_t *old_contents)
 
 	assert(ret == KNOT_EOK);
 
+	if (knot_node_new_node(knot_zone_contents_apex(old_contents)) == NULL) {
+		return KNOT_ENONODE;
+	}
+
 	return err;
 }
 
@@ -3901,15 +3908,20 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 		return ret;
 	}
 
+	assert(knot_zone_contents_apex(contents_copy) != NULL);
+
 	/*
 	 * Fix references to new nodes. Some references in new nodes may point
 	 * to old nodes. Hash table contains only old nodes.
 	 */
+	dbg_xfrin("Switching ptrs pointing to old nodes to the new nodes.\n");
 	ret = xfrin_switch_nodes(contents_copy);
+	assert(knot_zone_contents_apex(contents_copy) != NULL);
 
 	/*
 	 * Apply the changesets.
 	 */
+	dbg_xfrin("Applying changesets.\n");
 	for (int i = 0; i < chsets->count; ++i) {
 		if ((ret = xfrin_apply_changeset2(contents_copy, &changes,
 		                                  &chsets->sets[i]))
@@ -3920,6 +3932,7 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 			return ret;
 		}
 	}
+	assert(knot_zone_contents_apex(contents_copy) != NULL);
 
 	/*!
 	 * \todo Test failure of IXFR.
@@ -3932,6 +3945,7 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 	 * - do adjusting of nodes and RDATA
 	 * - ???
 	 */
+	dbg_xfrin("Adjusting zone contents.\n");
 	ret = xfrin_adjust_contents(contents_copy, &changes);
 	if (ret != KNOT_EOK) {
 		xfrin_rollback_update2(contents_copy, &changes);
@@ -3939,7 +3953,9 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 		          knot_strerror(ret));
 		return ret;
 	}
+	assert(knot_zone_contents_apex(contents_copy) != NULL);
 
+	dbg_xfrin("Switching zone contents.\n");
 	knot_zone_contents_t *old =
 		knot_zone_switch_contents(zone, contents_copy);
 	assert(old == old_contents);
@@ -3952,6 +3968,7 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 	/*
 	 * Delete all old and unused data.
 	 */
+	dbg_xfrin("Cleaning up.\n");
 	xfrin_zone_contents_free(&old_contents);
 	xfrin_cleanup_update(&changes);
 

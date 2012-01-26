@@ -125,15 +125,14 @@ static int knot_zone_tree_deep_copy_node(knot_zone_tree_node_t *from,
 		return KNOT_EOK;
 	}
 
-	*to = (knot_zone_tree_node_t *)
-	      malloc(sizeof(knot_zone_tree_node_t));
+	*to = (knot_zone_tree_node_t *)malloc(sizeof(knot_zone_tree_node_t));
 	if (*to == NULL) {
 		return KNOT_ENOMEM;
 	}
 
-	//(*to)->node = from->node;
 	int ret = knot_node_shallow_copy(from->node, &(*to)->node);
 	if (ret != KNOT_EOK) {
+		dbg_zone_verb("Failed to do shallow copy of node.\n");
 		free(*to);
 		return ret;
 	}
@@ -143,12 +142,14 @@ static int knot_zone_tree_deep_copy_node(knot_zone_tree_node_t *from,
 	ret = knot_zone_tree_deep_copy_node(from->avl.avl_left,
 	                                    &(*to)->avl.avl_left);
 	if (ret != KNOT_EOK) {
+		dbg_zone_verb("Failed to do shallow copy of left subtree.\n");
 		return ret;
 	}
 
 	ret = knot_zone_tree_deep_copy_node(from->avl.avl_right,
 	                                    &(*to)->avl.avl_right);
 	if (ret != KNOT_EOK) {
+		dbg_zone_verb("Failed to do shallow copy of right subtree.\n");
 		knot_zone_tree_free_node((*to)->avl.avl_left, 1, 0);
 		(*to)->avl.avl_left = NULL;
 		knot_node_free(&(*to)->node, 0, 0);
