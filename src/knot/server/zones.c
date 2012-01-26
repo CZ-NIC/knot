@@ -1113,7 +1113,7 @@ static int zones_journal_apply(knot_zone_t *zone)
 			log_server_info("Applying '%zu' changesets from journal "
 			                "to zone '%s'.\n",
 			                chsets->count, zd->conf->name);
-			int apply_ret = xfrin_apply_changesets_to_zone(zone, chsets);
+			int apply_ret = xfrin_apply_changesets(zone, chsets);
 			if (apply_ret != KNOT_EOK) {
 				log_server_error("Failed to apply changesets to "
 				                 "'%s' - %s\n",
@@ -2609,8 +2609,8 @@ int zones_apply_changesets(knot_ns_xfr_t *xfr)
 		return KNOTD_EINVAL;
 	}
 	
-	return xfrin_apply_changesets_to_zone(xfr->zone, 
-	                                      (knot_changesets_t *)xfr->data);
+	return xfrin_apply_changesets(xfr->zone,
+	                              (knot_changesets_t *)xfr->data);
 }
 
 /*----------------------------------------------------------------------------*/
