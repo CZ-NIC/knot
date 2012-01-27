@@ -21,6 +21,7 @@
 #include "zone-tree.h"
 #include "zone/node.h"
 #include "util/error.h"
+#include "util/debug.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
