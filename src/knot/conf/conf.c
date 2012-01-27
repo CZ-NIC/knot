@@ -575,6 +575,10 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 		free(conf->pidfile);
 		conf->pidfile = 0;
 	}
+	if (conf->nsid) {
+		free(conf->nsid);
+		conf->nsid = 0;
+	}
 }
 
 void conf_free(conf_t *conf)

@@ -42,6 +42,7 @@ knot_opt_rr_t *knot_edns_new()
 	knot_opt_rr_t *opt_rr = (knot_opt_rr_t *)malloc(
 	                                               sizeof(knot_opt_rr_t));
 	CHECK_ALLOC_LOG(opt_rr, NULL);
+	memset(opt_rr, 0, sizeof(knot_opt_rr_t));
 	opt_rr->size = KNOT_EDNS_MIN_SIZE;
 	opt_rr->option_count = 0;
 	opt_rr->options_max = 0;
@@ -417,6 +418,13 @@ void knot_edns_free(knot_opt_rr_t **opt_rr)
 	}
 
 	if ((*opt_rr)->option_count > 0) {
+		/* Free the option data, if any. */
+		for (int i = 0; i < (*opt_rr)->option_count; i++) {
+			struct knot_opt_option option = (*opt_rr)->options[i];
+			if (option.data != NULL) {
+				free(option.data);
+			}
+		}
 		free((*opt_rr)->options);
 	}
 	free(*opt_rr);
