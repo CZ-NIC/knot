@@ -22,7 +22,11 @@
 #include <errno.h>
 #include <stdio.h>
 #include <netdb.h>
+#include <time.h>
 #include <sys/socket.h>
+#ifdef HAVE_NETINET_IN_SYSTM_H
+#include <netinet/in_systm.h>
+#endif
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <arpa/inet.h>

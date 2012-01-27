@@ -100,20 +100,8 @@ static int xfr_udp_timeout(event_t *e)
  */
 static int xfr_process_udp_query(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 {
-	/* Prepare msg header. */
-	struct msghdr msg;
-	memset(&msg, 0, sizeof(struct msghdr));
-	struct iovec iov;
-	memset(&iov, 0, sizeof(struct iovec));
-	iov.iov_base = data->wire;
-	iov.iov_len = data->wire_size;
-	msg.msg_iov = &iov;
-	msg.msg_iovlen = 1;
-	msg.msg_name = data->addr.ptr;
-	msg.msg_namelen = data->addr.len;
-
 	/* Receive msg. */
-	ssize_t n = recvmsg(data->session, &msg, 0);
+	ssize_t n = recvfrom(data->session, data->wire, data->wire_size, 0, data->addr.ptr, &data->addr.len);
 	size_t resp_len = data->wire_size;
 	if (n > 0) {
 		udp_handle(fd, data->wire, n, &resp_len, &data->addr, w->ns);

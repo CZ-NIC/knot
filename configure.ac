@@ -13,6 +13,7 @@ AX_EXT
 AM_MAINTAINER_MODE([enable])
 
 # Initialize libtool
+AC_PROG_LIBTOOL
 LT_INIT
 
 # Checks for programs.
@@ -116,7 +117,7 @@ AC_SEARCH_LIBS([OpenSSL_add_all_digests], [crypto],[], [AC_MSG_ERROR([libcrypto 
 
 # Checks for header files.
 AC_HEADER_RESOLV
-AC_CHECK_HEADERS([arpa/inet.h fcntl.h inttypes.h limits.h malloc.h netdb.h netinet/in.h stdint.h stdlib.h string.h strings.h sys/socket.h sys/time.h syslog.h unistd.h urcu.h ev.h])
+AC_CHECK_HEADERS([arpa/inet.h fcntl.h inttypes.h limits.h malloc.h netdb.h netinet/in_systm.h netinet/in.h stdint.h stdlib.h string.h strings.h sys/socket.h sys/time.h syslog.h unistd.h urcu.h ev.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL
@@ -136,7 +137,7 @@ AC_DEFINE([DSFMT_MEXP], [521], [DSFMT parameters.])
 # Checks for library functions.
 AC_FUNC_FORK
 AC_FUNC_MMAP
-AC_CHECK_FUNCS([gethostbyname gettimeofday memmove memset munmap regcomp select socket sqrt strcasecmp strchr strdup strerror strncasecmp strtol strtoul poll epoll_wait kqueue setgroups])
+AC_CHECK_FUNCS([gethostbyname gettimeofday memmove memset munmap regcomp pselect select socket sqrt strcasecmp strchr strdup strerror strncasecmp strtol strtoul poll epoll_wait kqueue setgroups])
 
 AC_CONFIG_FILES([Makefile
 		 samples/Makefile
