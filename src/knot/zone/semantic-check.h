@@ -32,7 +32,7 @@
  *       so that code does not have to change if new errors are added.
  */
 enum zonechecks_errors {
-	ZC_ERR_ALLOC = -40,
+	ZC_ERR_ALLOC = -50,
 	ZC_ERR_UNKNOWN,
 
 	ZC_ERR_MISSING_SOA,
@@ -73,10 +73,12 @@ enum zonechecks_errors {
 	ZC_ERR_CNAME_CYCLE,
 	ZC_ERR_DNAME_CYCLE,
 	ZC_ERR_CNAME_EXTRA_RECORDS,
-	ZC_ERR_DNAME_EXTRA_RECORDS,
+	ZC_ERR_DNAME_CHILDREN,
 	ZC_ERR_CNAME_EXTRA_RECORDS_DNSSEC,
 	ZC_ERR_CNAME_MULTIPLE,
 	ZC_ERR_DNAME_MULTIPLE,
+	ZC_ERR_CNAME_WILDCARD_SELF,
+	ZC_ERR_DNAME_WILDCARD_SELF,
 
 	ZC_ERR_CNAME_GENERAL_ERROR,
 
@@ -145,13 +147,17 @@ static char *error_messages[(-ZC_ERR_ALLOC) + 1] = {
 	"CNAME: DNAME cycle!\n",
 	[-ZC_ERR_CNAME_EXTRA_RECORDS] =
 	"CNAME: Node with CNAME record has other records!\n",
-	[-ZC_ERR_DNAME_EXTRA_RECORDS] =
-	"DNAME: Node with DNAME record has other records!\n",
+	[-ZC_ERR_DNAME_CHILDREN] =
+	"DNAME: Node with DNAME record has children!\n",
 	[-ZC_ERR_CNAME_EXTRA_RECORDS_DNSSEC] =
 	"CNAME: Node with CNAME record has other "
 	"records than RRSIG and NSEC/NSEC3!\n",
 	[-ZC_ERR_CNAME_MULTIPLE] = "CNAME: Multiple CNAME records!\n",
 	[-ZC_ERR_DNAME_MULTIPLE] = "DNAME: Multiple DNAME records!\n",
+	[-ZC_ERR_CNAME_WILDCARD_SELF] = "CNAME wildcard "
+				  "pointing to itself!\n",
+	[-ZC_ERR_DNAME_WILDCARD_SELF] = "DNAME wildcard "
+				  "pointing to itself!\n",
 
 	/* ^
 	   | Important errors (to be logged on first occurence and counted) */
@@ -201,6 +207,7 @@ struct err_handler {
 	/* Consider moving error messages here */
 	struct handler_options options; /*!< Handler options. */
 	uint errors[(-ZC_ERR_ALLOC) + 1]; /*!< Array with error messages */
+	uint error_count; /*!< Total error count */
 };
 
 typedef struct err_handler err_handler_t;
@@ -269,7 +276,7 @@ void err_handler_log_all(err_handler_t *handler);
  * \param handler Semantic error handler.
  * \param last_node Last checked node, which is part of NSEC(3) chain.
  */
-void zone_do_sem_checks(knot_zone_contents_t *zone, char do_checks,
+int zone_do_sem_checks(knot_zone_contents_t *zone, char do_checks,
                         err_handler_t *handler,
                         knot_node_t **last_node);
 

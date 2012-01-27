@@ -606,31 +606,32 @@ int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
 	if (do_checks && zone_is_secure(zone)) {
 		do_checks += zone_is_secure(zone);
 	}
-
-	err_handler_t *handler = NULL;
-
-	if (do_checks) {
-		handler = handler_new(1, 0, 1, 1, 1);
-		if (handler == NULL) {
-			/* disable checks and we can continue */
-			do_checks = 0;
-		} else { /* Do check for SOA right now */
-			if (knot_node_rrset(knot_zone_contents_apex(zone),
-					      KNOT_RRTYPE_SOA) == NULL) {
-				err_handler_handle_error(handler,
-							 knot_zone_contents_apex(zone),
-							 ZC_ERR_MISSING_SOA);
-			}
+	
+	err_handler_t *handler = handler_new(1, 1, 1, 1, 1);
+	if (handler == NULL) {
+		return KNOT_ENOMEM;
+	} else { /* Do check for SOA right now */
+		if (knot_node_rrset(knot_zone_contents_apex(zone),
+				      KNOT_RRTYPE_SOA) == NULL) {
+			err_handler_handle_error(handler,
+						 knot_zone_contents_apex(zone),
+						 ZC_ERR_MISSING_SOA);
 		}
+	}
 
-		knot_node_t *last_node = NULL;
-
-		zone_do_sem_checks(zone, do_checks, handler, &last_node);
-		log_cyclic_errors_in_zone(handler, zone, last_node,
-		                          first_nsec3_node, last_nsec3_node,
-		                          do_checks);
-		err_handler_log_all(handler);
-		free(handler);
+	knot_node_t *last_node = NULL;
+	int ret = zone_do_sem_checks(zone,
+	                             do_checks, handler, &last_node);
+	log_cyclic_errors_in_zone(handler, zone, last_node,
+	                          first_nsec3_node, last_nsec3_node,
+	                          do_checks);
+	err_handler_log_all(handler);
+	free(handler);
+		
+	if (ret != KNOT_EOK) {
+		fprintf(stderr, "Zone will not be dumped because of "
+		        "fatal semantic errors.\n");
+		return KNOT_ERROR;
 	}
 
 	crc_t crc = crc_init();
