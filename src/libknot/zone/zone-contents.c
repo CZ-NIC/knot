@@ -2535,15 +2535,15 @@ static void knot_zc_integrity_check_previous(const knot_node_t *node,
 			++check_data->errors;
 		}
 
-		if (knot_node_next(check_data->previous) != node) {
-			char *name2 = knot_dname_to_str(knot_node_owner(
-			                 knot_node_next(check_data->previous)));
-			fprintf(stderr, "Wrong next node: node %s, next %s. "
-			        "Should be %s.\n", name_prev, name2 ,name);
-			free(name2);
+//		if (knot_node_next(check_data->previous) != node) {
+//			char *name2 = knot_dname_to_str(knot_node_owner(
+//			                 knot_node_next(check_data->previous)));
+//			fprintf(stderr, "Wrong next node: node %s, next %s. "
+//			        "Should be %s.\n", name_prev, name2 ,name);
+//			free(name2);
 
-			++check_data->errors;
-		}
+//			++check_data->errors;
+//		}
 
 		free(name_prev);
 	}
@@ -2555,6 +2555,16 @@ static void knot_zc_integrity_check_flags(const knot_node_t *node,
                                           check_data_t *check_data,
                                           char *name)
 {
+	if (node == knot_zone_contents_apex(check_data->contents)) {
+		if (!knot_node_is_auth(node)) {
+			fprintf(stderr, "Wrong flags: node %s, flags: %u. "
+			        "Should be non-authoritative.\n", name,
+			        node->flags);
+			++check_data->errors;
+		}
+		return;
+	}
+
 	// check the flags
 	if (check_data->deleg_point != NULL
 	    && knot_dname_is_subdomain(knot_node_owner(node),
@@ -2588,8 +2598,10 @@ static void knot_zc_integrity_check_flags(const knot_node_t *node,
 		}
 
 		// in this case (authoritative or deleg-point), the node should
-		// be a previous of some next node
-		check_data->previous = node;
+		// be a previous of some next node only if it has some data
+		if (knot_node_rrset_count(node) > 0) {
+			check_data->previous = node;
+		}
 	}
 }
 
@@ -2602,6 +2614,7 @@ static void knot_zc_integrity_check_parent(const knot_node_t *node,
 	if (check_data->parent == NULL) {
 		// this is only possible for apex
 		assert(node == knot_zone_contents_apex(check_data->contents));
+		check_data->parent = node;
 		return;
 	}
 
@@ -2614,8 +2627,10 @@ static void knot_zc_integrity_check_parent(const knot_node_t *node,
 	    && knot_dname_matched_labels(node_owner, parent_owner)
 	       == knot_dname_label_count(parent_owner)) {
 
-		// increase the parent's children count
-		++check_data->children;
+//		// increase the parent's children count
+//		fprintf(stderr, "Parent: %s, node: %s. Increasing children count.\n",
+//		       pname, name);
+//		++check_data->children;
 
 		// check the parent pointer
 		const knot_node_t *parent = knot_node_parent(node, 0);
@@ -2657,23 +2672,24 @@ static void knot_zc_integrity_check_parent(const knot_node_t *node,
 		}
 	} else {
 		// not a direct child, check children count
-		if (check_data->parent
-		    && knot_node_children(check_data->parent)
-		       != check_data->children) {
-			fprintf(stderr, "Wrong children count: node %s, count: "
-			        "%u. Should be: %u\n", pname,
-			        knot_node_children(check_data->parent),
-			        check_data->children);
+//		if (check_data->parent
+//		    && knot_node_children(check_data->parent)
+//		       != check_data->children) {
+//			fprintf(stderr, "Wrong children count: node %s, count: "
+//			        "%u. Should be: %u\n", pname,
+//			        knot_node_children(check_data->parent),
+//			        check_data->children);
 
-			++check_data->errors;
-		}
+//			++check_data->errors;
+//		}
 
-		// reset the parent pointer and children count
-		check_data->parent = node;
-		check_data->children = 0;
+		// reset the children count
+		//check_data->parent = node;
+//		check_data->children = 0;
 	}
 
 	free(pname);
+	check_data->parent = node;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2867,6 +2883,96 @@ static void knot_zc_integrity_check_node(knot_node_t *node, void *data)
 
 /*----------------------------------------------------------------------------*/
 
+void reset_child_count(knot_zone_tree_node_t *tree_node, void *data)
+{
+	UNUSED(data);
+
+	if (tree_node->node != NULL) {
+		tree_node->node->children = 0;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+void count_children(knot_zone_tree_node_t *tree_node, void *data)
+{
+	UNUSED(data);
+	if (tree_node->node != NULL && tree_node->node->parent != NULL) {
+		assert(tree_node->node->parent->new_node != NULL);
+		// fix parent pointer
+//		printf("Setting new parent pointer. From %p to %p.\n",
+//		       tree_node->node->parent, tree_node->node->parent->new_node);
+		tree_node->node->parent = tree_node->node->parent->new_node;
+		++tree_node->node->parent->children;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+void check_child_count(knot_zone_tree_node_t *tree_node, void *data)
+{
+	assert(tree_node != NULL);
+	assert(data != NULL);
+
+	check_data_t *check_data = (check_data_t *)data;
+	knot_node_t *node = tree_node->node;
+
+	// find corresponding node in the given contents
+	const knot_node_t *found = NULL;
+	found = knot_zone_contents_find_node(check_data->contents,
+	                                     knot_node_owner(node));
+	assert(found != NULL);
+
+	if (knot_node_children(node) != knot_node_children(found)) {
+		char *name = knot_dname_to_str(knot_node_owner(node));
+		fprintf(stderr, "Wrong children count: node %s, count %u. "
+		        "Should be %u\n", name, knot_node_children(found),
+		        knot_node_children(node));
+		free(name);
+
+		++check_data->errors;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_zc_integrity_check_child_count(check_data_t *data)
+{
+	int errors = 0;
+
+	// do shallow copy of the node tree
+	knot_zone_tree_t *nodes_copy = (knot_zone_tree_t *)
+	                malloc(sizeof(knot_zone_tree_t));
+	if (nodes_copy == NULL) {
+		return 1;
+	}
+
+	knot_zone_tree_init(nodes_copy);
+
+	int ret = knot_zone_tree_deep_copy(data->contents->nodes,
+	                                   nodes_copy);
+	assert(ret == KNOT_EOK);
+
+	// set children count of all nodes to 0
+	knot_zone_tree_forward_apply_inorder(nodes_copy, reset_child_count,
+	                                     NULL);
+
+	// now count children of all nodes, presuming the parent pointers are ok
+	knot_zone_tree_forward_apply_inorder(nodes_copy, count_children, NULL);
+
+	// now compare the children counts
+	// iterate over the old zone and search for nodes in the copy
+	knot_zone_tree_forward_apply_inorder(nodes_copy, check_child_count,
+	                                     (void *)data);
+
+	// destroy the shallow copy
+	knot_zone_tree_deep_free(&nodes_copy, 1);
+
+	return errors;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int knot_zone_contents_integrity_check(const knot_zone_contents_t *contents)
 {
 	/*
@@ -2897,6 +3003,13 @@ int knot_zone_contents_integrity_check(const knot_zone_contents_t *contents)
 	                        (knot_zone_contents_t *)contents,
 	                        knot_zc_integrity_check_node, (void *)&data);
 	assert(ret == KNOT_EOK);
+
+	// if OK, we can continue with checking children count
+	// (we need the parent pointers to be set well)
+	if (data.errors == 0) {
+		data.contents = contents;
+		knot_zc_integrity_check_child_count(&data);
+	}
 
 	return data.errors;
 }

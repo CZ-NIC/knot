@@ -464,15 +464,15 @@ const knot_node_t *knot_node_next(const knot_node_t *node)
 void knot_node_set_previous(knot_node_t *node, knot_node_t *prev)
 {
 	node->prev = prev;
-	if (prev != NULL) {
-		// set the prev pointer of the next node to the given node
-		if (prev->next != NULL) {
-			assert(prev->next->prev == prev);
-			prev->next->prev = node;
-		}
-		node->next = prev->next;
-		prev->next = node;
-	}
+//	if (prev != NULL) {
+//		// set the prev pointer of the next node to the given node
+//		if (prev->next != NULL) {
+//			assert(prev->next->prev == prev);
+//			prev->next->prev = node;
+//		}
+//		node->next = prev->next;
+//		prev->next = node;
+//	}
 }
 
 /*----------------------------------------------------------------------------*/
