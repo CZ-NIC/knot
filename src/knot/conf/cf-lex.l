@@ -209,19 +209,22 @@ on|off {
 
 [0][x]{HEXA}+ {
   lval.t = NULL;
+  lval.l = 0;
   yytext = yytext + 2; /* Cut off 0x */
   size_t dlen = strlen(yytext);
   if (dlen % 2 == 1) {
     cf_error(yyscanner, "Invalid hex-string length.");
   } else {
     dlen = dlen / 2;
-    lval.t = malloc((dlen + 1) * sizeof(char));
+    lval.t = malloc((dlen) * sizeof(char));
     if (lval.t == NULL) {
       cf_error(yyscanner, "Out of memory when allocating hex-string.\n");
     } else {
-       memset(lval.t, 0, dlen + 1);
+       memset(lval.t, 0, dlen);
        if (hex2bin(yytext, lval.t, dlen) < 0) {
          cf_error(yyscanner, "Failed to convert hex-string to binary.\n");
+       } else {
+         lval.l = dlen;
        }
     }
   }

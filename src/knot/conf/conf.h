@@ -155,6 +155,7 @@ typedef struct conf_t {
 	char *storage;  /*!< Persistent storage path for databases and such. */
 	char *pidfile;  /*!< PID file path. */
 	char *nsid;     /*!< Server's NSID. */
+	size_t nsid_len;/*!< Server's NSID length. */
 	int   workers;  /*!< Number of workers per interface. */
 	int   uid;      /*!< Specified user id. */
 	int   gid;      /*!< Specified group id. */
