@@ -289,13 +289,20 @@ short knot_node_rrset_count(const knot_node_t *node)
 struct knot_node_save_rrset_arg {
 	knot_rrset_t **array;
 	size_t count;
+	size_t max_count;
 };
 
 static void save_rrset_to_array(void *node, void *data)
 {
-	knot_rrset_t *rrset = (knot_rrset_t *)node;
 	struct knot_node_save_rrset_arg *args =
 		(struct knot_node_save_rrset_arg *)data;
+	knot_rrset_t *rrset = (knot_rrset_t *)node;
+
+	if (args->count > args->max_count) {
+		++args->count;
+		return;
+	}
+
 	args->array[args->count++] = rrset;
 }
 
@@ -311,9 +318,9 @@ knot_rrset_t **knot_node_get_rrsets(const knot_node_t *node)
 	struct knot_node_save_rrset_arg args;
 	args.array = rrsets;
 	args.count = 0;
+	args.max_count = node->rrset_count;
 
-	gen_tree_apply_inorder(node->rrset_tree, save_rrset_to_array,
-	                       &args);
+	gen_tree_apply_inorder(node->rrset_tree, save_rrset_to_array, &args);
 
 	assert(args.count == node->rrset_count);
 
@@ -325,6 +332,27 @@ knot_rrset_t **knot_node_get_rrsets(const knot_node_t *node)
 const knot_rrset_t **knot_node_rrsets(const knot_node_t *node)
 {
 	return (const knot_rrset_t **)knot_node_get_rrsets(node);
+}
+
+/*----------------------------------------------------------------------------*/
+
+static void count_rrsets(void *node, void *data)
+{
+	assert(node != NULL);
+	assert(data != NULL);
+
+	int *count = (int *)data;
+	++(*count);
+}
+
+/*----------------------------------------------------------------------------*/
+
+const int knot_node_count_rrsets(const knot_node_t *node)
+{
+	int count = 0;
+	gen_tree_apply_inorder(node->rrset_tree, count_rrsets, (void *)&count);
+
+	return count;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -422,6 +450,13 @@ knot_node_t *knot_node_get_previous(const knot_node_t *node,
 	}
 	
 	return prev;
+}
+
+/*----------------------------------------------------------------------------*/
+
+const knot_node_t *knot_node_next(const knot_node_t *node)
+{
+	return node->next;
 }
 
 /*----------------------------------------------------------------------------*/
