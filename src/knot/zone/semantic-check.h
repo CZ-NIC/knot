@@ -241,7 +241,7 @@ err_handler_t *handler_new(char log_cname, char log_glue,
  */
 int err_handler_handle_error(err_handler_t *handler,
 				    const knot_node_t *node,
-				    uint error);
+				    int error);
 
 /*!
  * \brief Checks if last node in NSEC/NSEC3 chain points to first node in the

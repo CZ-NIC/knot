@@ -43,8 +43,13 @@ err_handler_t *handler_new(char log_cname, char log_glue,
  */
 static void log_error_from_node(err_handler_t *handler,
 				const knot_node_t *node,
-				uint error)
+				int error)
 {
+	if (error > (int)ZC_ERR_GLUE_RECORD) {
+		fprintf(stderr, "Unknown error.\n");
+		return;
+	}
+	
 	if (node != NULL) {
 		handler->error_count++;
 		char *name =
@@ -61,7 +66,7 @@ static void log_error_from_node(err_handler_t *handler,
 
 int err_handler_handle_error(err_handler_t *handler,
 				    const knot_node_t *node,
-				    uint error)
+				    int error)
 {
 	assert(handler && node);
 	if ((error != 0) &&
@@ -69,9 +74,10 @@ int err_handler_handle_error(err_handler_t *handler,
 		return ZC_ERR_UNKNOWN;
 	}
 
-	if (error == ZC_ERR_ALLOC) {
-		ERR_ALLOC_FAILED;
-		return ZC_ERR_ALLOC;
+	/*!< \todo this is so wrong! */
+	if (error == ZC_ERR_ALLOC || error == KNOT_ERROR
+	    || error == KNOT_EBADARG) {
+		return;
 	}
 
 	/* missing SOA can only occur once, so there
@@ -165,6 +171,7 @@ static int check_cname_cycles_in_zone(knot_zone_contents_t *zone,
 
 	const knot_dname_t *next_dname =
 		knot_rdata_cname_name(tmp_rdata);
+	/* (cname_name == dname_target) */
 
 	assert(next_dname);
 	
@@ -175,7 +182,8 @@ static int check_cname_cycles_in_zone(knot_zone_contents_t *zone,
 		knot_dname_t *chopped_wc =
 			knot_dname_left_chop(knot_rrset_owner(rrset));
 		if (!chopped_wc) {
-			return KNOT_ERROR;
+			/* Definitely not a cycle. */
+			return KNOT_EOK;
 		}
 		
 		/*
@@ -199,13 +207,22 @@ static int check_cname_cycles_in_zone(knot_zone_contents_t *zone,
 		}
 		
 		char error_found = 0;
+		char cut_offs = 1;
 		
-		while (knot_dname_compare(next_dname_copy, zone_origin) != 0 &&
+		while (knot_dname_compare(next_dname_copy,
+		                          zone_origin) != 0 &&
 		       !error_found) {
 			/* Compare chopped owner with current next dname. */
 			error_found =
 				knot_dname_compare(next_dname_copy,
 				                   chopped_wc) == 0;
+			if (error_found && cut_offs == 1) {
+				/* WC without * == link. */
+				knot_dname_free(&next_dname_copy);
+				knot_dname_free(&chopped_wc);
+				return KNOT_EOK;
+			}
+			
 			knot_dname_t *tmp_chopped =
 				knot_dname_left_chop(next_dname_copy);
 			knot_dname_free(&next_dname_copy);
@@ -215,23 +232,85 @@ static int check_cname_cycles_in_zone(knot_zone_contents_t *zone,
 				return KNOT_ERROR;
 			}
 			
+			cut_offs++;
+			
 			next_dname_copy = tmp_chopped;
 		}
 		
 		if (error_found) {
+			knot_dname_free(&next_dname_copy);
+			knot_dname_free(&chopped_wc);
+			assert(cut_offs > 1);
 			return ZC_ERR_CNAME_WILDCARD_SELF;
 		}
 		
 		knot_dname_free(&next_dname_copy);
 		knot_dname_free(&chopped_wc);
+		
+		/*
+		 * Test for transitive wildcard loops.
+		 * Basically the same as below, only we look for wildcards and
+		 * strip them in the same fashion as above.
+		 */
+		
 	}
-
+	
 	while (i < MAX_CNAME_CYCLE_DEPTH && next_dname != NULL) {
 		next_node = knot_zone_contents_get_node(zone, next_dname);
 		if (next_node == NULL) {
 			next_node =
-				knot_zone_contents_get_nsec3_node(zone, next_dname);
+				knot_zone_contents_get_nsec3_node(zone,
+			                                          next_dname);
 		}
+		
+/*!< \todo this might replace some of the code above. */
+//		/* Still NULL, try wildcards. */
+//		if (next_node == NULL && knot_dname_is_wildcard(next_dname)) {
+//			/* We can only use the wildcard so many times. */
+			
+//			/* Create chopped copy of wc. */
+//			knot_dname_t *chopped_wc =
+//				knot_dname_left_chop(next_dname);
+//			if (chopped_wc == NULL) {
+//				/* If name with this wc is in the zone,
+//				   we have a problem (eg. cycle continues). */
+//				next_node =
+//					knot_zone_contents_get_node(zone,
+//				                                    chopped_wc);
+//				/* (No need to consider NSEC3 nodes.) */
+//				knot_dname_free(&chopped_wc);
+//			}
+//		}
+		
+		/* Just a guess. */
+		knot_dname_t *chopped_next =
+			knot_dname_left_chop(next_dname);
+		if (chopped_next == NULL) {
+			/*!< \todo check. */
+			return KNOT_ERROR;
+		}
+		while (next_node == NULL && chopped_next != NULL) {
+			/* Cat '*' .*/
+			knot_dname_t *wc =
+				knot_dname_new_from_str("*", strlen("*"),
+			                                NULL);
+			if (wc == NULL) {
+				return KNOT_ENOMEM;
+			}
+			
+			if (knot_dname_cat(wc, chopped_next) == NULL) {
+				return KNOT_ERROR;
+			}
+			
+			next_node =
+				knot_zone_contents_get_node(zone, wc);
+			knot_dname_free(&wc);
+			knot_dname_t *tmp = chopped_next;
+			chopped_next = knot_dname_left_chop(chopped_next);
+			knot_dname_free(&chopped_next);
+		}
+		
+		knot_dname_free(&chopped_next);
 
 		if (next_node != NULL) {
 			next_rrset = knot_node_rrset(next_node,
