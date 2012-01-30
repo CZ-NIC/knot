@@ -74,10 +74,10 @@ int err_handler_handle_error(err_handler_t *handler,
 		return ZC_ERR_UNKNOWN;
 	}
 
-	/*!< \todo this is so wrong! */
+	/*!< \todo this is so wrong! This should not even return anything. */
 	if (error == ZC_ERR_ALLOC || error == KNOT_ERROR
 	    || error == KNOT_EBADARG) {
-		return;
+		return KNOT_EBADARG;
 	}
 
 	/* missing SOA can only occur once, so there
@@ -307,7 +307,7 @@ static int check_cname_cycles_in_zone(knot_zone_contents_t *zone,
 			knot_dname_free(&wc);
 			knot_dname_t *tmp = chopped_next;
 			chopped_next = knot_dname_left_chop(chopped_next);
-			knot_dname_free(&chopped_next);
+			knot_dname_free(&tmp);
 		}
 		
 		knot_dname_free(&chopped_next);
