@@ -79,7 +79,11 @@ double tls_rand()
 		}
 
 		/* Initialize PRNG state. */
+#ifdef __APPLE__
+		s = malloc(sizeof(dsfmt_t));
+#else
 		s = memalign(16, sizeof(dsfmt_t));
+#endif
 		if (s == NULL) {
 			fprintf(stderr, "error: PRNG: not enough memory\n");
 			return .0;
