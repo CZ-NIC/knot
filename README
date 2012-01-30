@@ -65,6 +65,22 @@ $ autoreconf -if
 $ ./configure
 $ make && sudo make install
 
+Installation on OpenBSD/NetBSD
+==============================
+Also works for OS X, if you don't want to install gcc from ports.
+Prerequisites:
+- liburcu needs patch for absent compiler TLS capability
+  - patch is located in "scripts/urcu-tls-compat.patch"
+- patch compatible with liburcu-0.6.7
+
+$ mkdir liburcu && cd liburcu
+$ wget "http://lttng.org/files/urcu/userspace-rcu-0.6.7.tar.bz2"
+$ patch -p1 < ../scripts/urcu-tls-compat.patch 
+$ autoconf && ./configure && make && sudo make install
+$ # or follow installation instructions in INSTALL
+
+Knot DNS installation is the same as in previous section (Installation on BSD).
+
 Installation on OS X
 ====================
 
