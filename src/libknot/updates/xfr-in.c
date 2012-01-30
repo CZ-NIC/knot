@@ -2198,7 +2198,18 @@ static void xfrin_zone_contents_free2(knot_zone_contents_t **contents)
 
 /*----------------------------------------------------------------------------*/
 
-static void xfrin_rollback_update2(knot_zone_contents_t *contents,
+static void xfrin_reset_new_nodes(knot_node_t *node, void *data)
+{
+	UNUSED(data);
+	assert(node != NULL);
+
+	knot_node_set_new_node(node, NULL);
+}
+
+/*----------------------------------------------------------------------------*/
+
+static void xfrin_rollback_update2(knot_zone_contents_t *old_contents,
+                                   knot_zone_contents_t *new_contents,
                                    xfrin_changes_t *changes)
 {
 	// discard new RRSets
@@ -2213,7 +2224,14 @@ static void xfrin_rollback_update2(knot_zone_contents_t *contents,
 	}
 
 	// destroy the shallow copy of zone
-	xfrin_zone_contents_free2(&contents);
+	xfrin_zone_contents_free2(&new_contents);
+
+	// cleanup old zone tree - reset pointers to new node to NULL
+	knot_zone_contents_tree_apply_inorder(old_contents,
+	                                      xfrin_reset_new_nodes, NULL);
+
+	knot_zone_contents_nsec3_apply_inorder(old_contents,
+	                                       xfrin_reset_new_nodes, NULL);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2917,7 +2935,7 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 	ret = xfrin_check_contents_copy(old_contents);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Contents copy check failed!\n");
-		xfrin_rollback_update2(contents_copy, &changes);
+		xfrin_rollback_update2(old_contents, contents_copy, &changes);
 		return ret;
 	}
 
@@ -2939,7 +2957,8 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 		if ((ret = xfrin_apply_changeset2(contents_copy, &changes,
 		                                  &chsets->sets[i]))
 		                                  != KNOT_EOK) {
-			xfrin_rollback_update2(contents_copy, &changes);
+			xfrin_rollback_update2(old_contents,
+			                       contents_copy, &changes);
 			dbg_xfrin("Failed to apply changesets to zone: "
 			          "%s\n", knot_strerror(ret));
 			return ret;
@@ -2961,7 +2980,7 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 	dbg_xfrin("Adjusting zone contents.\n");
 	ret = xfrin_adjust_contents(contents_copy, &changes);
 	if (ret != KNOT_EOK) {
-		xfrin_rollback_update2(contents_copy, &changes);
+		xfrin_rollback_update2(old_contents, contents_copy, &changes);
 		dbg_xfrin("Failed to finalize zone contents: %s\n",
 		          knot_strerror(ret));
 		return ret;

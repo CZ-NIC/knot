@@ -2936,6 +2936,17 @@ void check_child_count(knot_zone_tree_node_t *tree_node, void *data)
 
 /*----------------------------------------------------------------------------*/
 
+static void reset_new_nodes(knot_zone_tree_node_t *tree_node, void *data)
+{
+	assert(tree_node != NULL);
+	UNUSED(data);
+
+	knot_node_t *node = tree_node->node;
+	knot_node_set_new_node(node, NULL);
+}
+
+/*----------------------------------------------------------------------------*/
+
 int knot_zc_integrity_check_child_count(check_data_t *data)
 {
 	int errors = 0;
@@ -2964,6 +2975,10 @@ int knot_zc_integrity_check_child_count(check_data_t *data)
 	// iterate over the old zone and search for nodes in the copy
 	knot_zone_tree_forward_apply_inorder(nodes_copy, check_child_count,
 	                                     (void *)data);
+
+	// cleanup old zone tree - reset pointers to new node to NULL
+	knot_zone_tree_forward_apply_inorder(data->contents->nodes,
+	                                     reset_new_nodes, NULL);
 
 	// destroy the shallow copy
 	knot_zone_tree_deep_free(&nodes_copy, 1);
