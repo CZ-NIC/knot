@@ -112,7 +112,6 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 	        fd, (void*)pthread_self());
 
 	knot_nameserver_t *ns = w->ioh->server->nameserver;
-	xfrhandler_t *xfr_h = w->ioh->server->xfr_h;
 
 	/* Check address type. */
 	sockaddr_t addr;
@@ -164,6 +163,7 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 	}
 
 	/* Handle query. */
+	int xfrt = -1;
 	knot_ns_xfr_t xfr;
 	res = KNOTD_ERROR;
 	switch(qtype) {
@@ -173,23 +173,16 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 		//res = knot_ns_answer_normal(ns, packet, qbuf, &resp_len);
 		res = zones_normal_query_answer(ns, packet, &addr, qbuf, &resp_len);
 		break;
-	case KNOT_QUERY_IXFR:
-		res = xfr_request_init(&xfr, XFR_TYPE_IOUT, XFR_FLAG_TCP, packet);
-		if (res != KNOTD_EOK) {
-			knot_ns_error_response(ns, knot_packet_id(packet),
-			                       KNOT_RCODE_SERVFAIL, qbuf,
-			                       &resp_len);
-			res = KNOTD_EOK;
-			break;
-		}
-		xfr.send = xfr_send_cb;
-		xfr.session = fd;
-		memcpy(&xfr.addr, &addr, sizeof(sockaddr_t));
-		xfr_request(xfr_h, &xfr);
-		dbg_net("tcp: enqueued IXFR query on fd=%d\n", fd);
-		return KNOTD_EOK;
 	case KNOT_QUERY_AXFR:
-		res = xfr_request_init(&xfr, XFR_TYPE_AOUT, XFR_FLAG_TCP, packet);
+	case KNOT_QUERY_IXFR:
+		if (qtype == KNOT_QUERY_IXFR) {
+			xfrt = XFR_TYPE_IOUT;
+		} else {
+			xfrt = XFR_TYPE_AOUT;
+		}
+		
+		/* Prepare context. */
+		res = xfr_request_init(&xfr, xfrt, XFR_FLAG_TCP, packet);
 		if (res != KNOTD_EOK) {
 			knot_ns_error_response(ns, knot_packet_id(packet),
 			                       KNOT_RCODE_SERVFAIL, qbuf,
@@ -199,10 +192,12 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 		}
 		xfr.send = xfr_send_cb;
 		xfr.session = fd;
+		xfr.wire = qbuf;
+		xfr.wire_size = qbuf_maxlen;
 		memcpy(&xfr.addr, &addr, sizeof(sockaddr_t));
-		xfr_request(xfr_h, &xfr);
-		dbg_net("tcp: enqueued AXFR query on fd=%d\n", fd);
-		return KNOTD_EOK;
+		
+		/* Answer. */
+		return xfr_answer(ns, &xfr);;
 		
 	/*! \todo Implement query notify/update. */
 	case KNOT_QUERY_UPDATE:

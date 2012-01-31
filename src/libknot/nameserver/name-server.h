@@ -84,6 +84,7 @@ typedef struct knot_ns_xfr {
 	sockaddr_t addr;
 	knot_packet_t *query;
 	knot_packet_t *response;
+	knot_rcode_t rcode;
 	xfr_callback_t send;
 	int session;
 	
@@ -100,6 +101,7 @@ typedef struct knot_ns_xfr {
 	size_t wire_size;
 	void *data;
 	knot_zone_t *zone;
+	char* zname;
 	void *owner;
 	
 	/*! \note [TSIG] TSIG fields */
