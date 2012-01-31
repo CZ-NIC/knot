@@ -128,6 +128,14 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 		dbg_net("tcp: client on fd=%d disconnected\n", fd);
 		fdset_remove(w->fdset, fd);
 		close(fd);
+		if (n == KNOTD_EAGAIN) {
+			char r_addr[SOCKADDR_STRLEN];
+			sockaddr_tostr(&addr, r_addr, sizeof(r_addr));
+			int r_port = sockaddr_portnum(&addr);
+			log_server_warning("Couldn't receive query from %s:%d "
+			                  "within the time limit %ds.\n",
+			                  r_addr, r_port, TCP_ACTIVITY_WD);
+		}
 		return KNOTD_ECONNREFUSED;
 	}
 
@@ -279,6 +287,13 @@ static int tcp_accept(int fd)
 		}
 	} else {
 		dbg_net("tcp: accepted connection fd=%d\n", incoming);
+		/* Set recv() timeout. */
+#ifdef SO_RCVTIMEO
+		struct timeval tv;
+		tv.tv_sec = TCP_ACTIVITY_WD;
+		tv.tv_usec = 0;
+		setsockopt(incoming, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+#endif
 	}
 
 	return incoming;
@@ -370,7 +385,11 @@ int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 	unsigned short pktsize = 0;
 	int n = recv(fd, &pktsize, sizeof(unsigned short), MSG_WAITALL);
 	if (n < 0) {
-		return KNOTD_ERROR;
+		if (errno == EAGAIN) {
+			return KNOTD_EAGAIN;
+		} else {
+			return KNOTD_ERROR;
+		}
 	}
 
 	pktsize = ntohs(pktsize);
@@ -387,16 +406,22 @@ int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 	if (len < pktsize) {
 		return KNOTD_ENOMEM;
 	}
-
-	/* Receive payload. */
-	n = recv(fd, buf, pktsize, MSG_WAITALL);
-
+	
 	/* Get peer name. */
 	if (addr) {
 		socklen_t alen = addr->len;
 		getpeername(fd, addr->ptr, &alen);
 	}
 
+	/* Receive payload. */
+	n = recv(fd, buf, pktsize, MSG_WAITALL);
+	if (n < 0) {
+		if (errno == EAGAIN) {
+			return KNOTD_EAGAIN;
+		} else {
+			return KNOTD_ERROR;
+		}
+	}
 	dbg_net("tcp: received packet size=%d on fd=%d\n",
 		  n, fd);
 
