@@ -505,6 +505,12 @@ dbg_zone_exec(
 		knot_dname_set_node(knot_node_get_owner(node), node);
 	}
 
+	// check if this node is not a wildcard child of its parent
+	if (knot_dname_is_wildcard(knot_node_owner(node))) {
+		assert(knot_node_parent(node) != NULL);
+		knot_node_set_wildcard_child(knot_node_get_parent(node), node);
+	}
+
 	// NSEC3 node (only if NSEC3 tree is not empty)
 	const knot_node_t *prev;
 	const knot_node_t *nsec3;
@@ -585,7 +591,8 @@ static void knot_zone_contents_adjust_node_in_tree(
 	/*
 	 * 4) Store previous node depending on the type of this node.
 	 */
-	if (!knot_node_is_non_auth(node)) {
+	if (!knot_node_is_non_auth(node)
+	    && knot_node_rrset_count(node) > 0) {
 		args->previous_node = node;
 	}
 }
@@ -918,22 +925,22 @@ static void knot_zone_contents_check_loops_in_tree(knot_zone_tree_node_t *tnode,
 			                        args->zone, next_name,
 			                        &next_node, &ce);
 
-			char *name1 = knot_dname_to_str(next_name);
-			char *name2 = (next_node != NULL)
-			       ? knot_dname_to_str(knot_node_owner(next_node))
-			       : "none";
-			char *name3 = (ce != NULL)
-			       ? knot_dname_to_str(knot_node_owner(ce))
-			       : "none";
-			printf("Searched: %s, found: %p (%s), %p (%s); ret: %d"
-			       ".\n", name1, next_node, name2, ce, name3, ret);
-			free(name1);
-			if (next_node != NULL) {
-				free(name2);
-			}
-			if (ce != NULL) {
-				free(name3);
-			}
+//			char *name1 = knot_dname_to_str(next_name);
+//			char *name2 = (next_node != NULL)
+//			       ? knot_dname_to_str(knot_node_owner(next_node))
+//			       : "none";
+//			char *name3 = (ce != NULL)
+//			       ? knot_dname_to_str(knot_node_owner(ce))
+//			       : "none";
+//			printf("Searched: %s, found: %p (%s), %p (%s); ret: %d"
+//			       ".\n", name1, next_node, name2, ce, name3, ret);
+//			free(name1);
+//			if (next_node != NULL) {
+//				free(name2);
+//			}
+//			if (ce != NULL) {
+//				free(name3);
+//			}
 
 			if (ret != KNOT_ZONE_NAME_FOUND
 			    && ce != NULL) {
