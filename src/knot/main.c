@@ -19,6 +19,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <getopt.h>
+#ifdef HAVE_SYS_CAPABILITY_H
+#include <sys/capability.h>
+#endif
 #include "common.h"
 
 #include "knot/common.h"
@@ -57,6 +60,13 @@ void interrupt_handle(int s)
 		}
 	}
 }
+
+#ifdef HAVE_SYS_CAPABILITY_H
+static int cap_set_pe(cap_t caps, cap_value_t cp) {
+	return cap_set_flag(caps, CAP_EFFECTIVE, 1, &cp, CAP_SET)
+	       + cap_set_flag(caps, CAP_PERMITTED, 1, &cp, CAP_SET);
+}
+#endif
 
 void help(int argc, char **argv)
 {
@@ -196,6 +206,26 @@ int main(int argc, char **argv)
 				conf()->ifaces_count, conf()->zones_count);
 	}
 	log_server_info("\n");
+	
+	/* Linux capabilities. */
+#ifdef HAVE_SYS_CAPABILITY_H
+	cap_t caps = cap_init();
+	if (caps != NULL) {
+		/* Allow binding to privileged ports.
+		 * (Not inheritable)
+		 */
+		cap_set_pe(caps, CAP_NET_BIND_SERVICE);
+		/* Allow setuid/setgid. */
+		cap_set_pe(caps, CAP_SETUID);
+		cap_set_pe(caps, CAP_SETGID);
+		/*! \todo Config file read? DAC_OVERRIDE ? */
+		/* Allow priorities changing. */
+		cap_set_pe(caps, CAP_SYS_NICE);
+		/* Inherit nothing. */
+	} else {
+		log_server_error("Couldn't initialize Linux capabilities.\n");
+	}
+#endif
 
 	// Create server instance
 	char* pidfile = pid_filename();
