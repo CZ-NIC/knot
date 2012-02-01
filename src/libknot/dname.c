@@ -701,7 +701,7 @@ const struct knot_node *knot_dname_node(const knot_dname_t *dname)
 
 /*----------------------------------------------------------------------------*/
 
-struct knot_node *knot_dname_get_node(knot_dname_t *dname)
+struct knot_node *knot_dname_get_node(const knot_dname_t *dname)
 {
 	if (dname == NULL) {
 		return NULL;

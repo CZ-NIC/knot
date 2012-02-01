@@ -167,23 +167,23 @@ static int compare_rrset_types(void *rr1, void *rr2)
 
 /*----------------------------------------------------------------------------*/
 
-static int knot_node_zone_gen_is_new(const knot_node_t *node)
-{
-	assert(node->zone != NULL);
-	knot_zone_contents_t *cont = rcu_dereference(node->zone->contents);
-	assert(cont != NULL);
-	return knot_zone_contents_gen_is_new(cont);
-}
+//static int knot_node_zone_gen_is_new(const knot_node_t *node)
+//{
+//	assert(node->zone != NULL);
+//	knot_zone_contents_t *cont = rcu_dereference(node->zone->contents);
+//	assert(cont != NULL);
+//	return knot_zone_contents_gen_is_new(cont);
+//}
 
-/*----------------------------------------------------------------------------*/
+///*----------------------------------------------------------------------------*/
 
-static int knot_node_zone_gen_is_old(const knot_node_t *node)
-{
-	assert(node->zone != NULL);
-	knot_zone_contents_t *cont = rcu_dereference(node->zone->contents);
-	assert(cont != NULL);
-	return knot_zone_contents_gen_is_old(cont);
-}
+//static int knot_node_zone_gen_is_old(const knot_node_t *node)
+//{
+//	assert(node->zone != NULL);
+//	knot_zone_contents_t *cont = rcu_dereference(node->zone->contents);
+//	assert(cont != NULL);
+//	return knot_zone_contents_gen_is_old(cont);
+//}
 
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
@@ -359,10 +359,17 @@ const int knot_node_count_rrsets(const knot_node_t *node)
 
 const knot_node_t *knot_node_parent(const knot_node_t *node)
 {
+	return knot_node_get_parent(node);
+}
+
+/*----------------------------------------------------------------------------*/
+
+knot_node_t *knot_node_get_parent(const knot_node_t *node)
+{
 	if (node == NULL) {
 		return NULL;
 	}
-	
+
 	return node->parent;
 }
 
