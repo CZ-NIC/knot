@@ -32,7 +32,6 @@ static void conf_start_iface(char* ifname)
    this_iface = malloc(sizeof(conf_iface_t));
    memset(this_iface, 0, sizeof(conf_iface_t));
    this_iface->name = ifname;
-   this_iface->address = 0; // No default address (mandatory)
    this_iface->port = CONFIG_DEFAULT_PORT;
    add_tail(&new_config->ifaces, &this_iface->n);
    ++new_config->ifaces_count;
@@ -43,10 +42,28 @@ static void conf_start_remote(char *remote)
    this_remote = malloc(sizeof(conf_iface_t));
    memset(this_remote, 0, sizeof(conf_iface_t));
    this_remote->name = remote;
-   this_remote->address = 0; // No default address (mandatory)
-   this_remote->port = 0; // Port wildcard
    add_tail(&new_config->remotes, &this_remote->n);
    ++new_config->remotes_count;
+}
+
+static void conf_remote_set_via(void *scanner, char *item) {
+   /* Find existing node in remotes. */
+   node* r = 0; conf_iface_t* found = 0;
+   WALK_LIST (r, new_config->ifaces) {
+      if (strcmp(((conf_iface_t*)r)->name, item) == 0) {
+         found = (conf_iface_t*)r;
+         break;
+      }
+   }
+   
+   /* Check */
+   if (!found) {
+      char buf[512];
+      snprintf(buf, sizeof(buf), "remote '%s' is not defined", item);
+      cf_error(scanner, buf);
+   } else {
+      this_remote->via = found;
+   }
 }
 
 static void conf_acl_item(void *scanner, char *item)
@@ -177,6 +194,7 @@ static int conf_key_add(void *scanner, knot_key_t **key, char *item)
 %token <tok> INTERFACES ADDRESS PORT
 %token <tok> IPA
 %token <tok> IPA6
+%token <tok> VIA
 
 %token <tok> LOG
 %token <tok> LOG_DEST
@@ -426,6 +444,14 @@ remote:
         conf_key_add(scanner, &this_remote->key, $3.t);
      }
      free($3.t);
+   }
+ | remote VIA TEXT ';' {
+   if (this_remote->key != 0) {
+     cf_error(scanner, "only one 'via' definition is allowed in remote section\n");
+   } else {
+     conf_remote_set_via(scanner, $3.t);
+   }
+   free($3.t);
    }
  ;
 

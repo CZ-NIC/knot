@@ -81,7 +81,7 @@ typedef int (*xfr_callback_t)(int session, sockaddr_t *addr,
 typedef struct knot_ns_xfr {
 	int type;
 	int flags;
-	sockaddr_t addr;
+	sockaddr_t addr, saddr;
 	knot_packet_t *query;
 	knot_packet_t *response;
 	knot_rcode_t rcode;
