@@ -71,7 +71,7 @@ typedef struct stat_stat stat_t;
 #ifdef STAT_COMPILE
 stat_t *stat_new();
 #else
-inline stat_t *stat_new()
+static inline inline stat_t *stat_new()
 {
 	return NULL;
 }

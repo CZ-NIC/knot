@@ -445,6 +445,8 @@ conf_t *conf_new(const char* path)
 	c->notify_timeout = CONFIG_NOTIFY_TIMEOUT;
 	c->dbsync_timeout = CONFIG_DBSYNC_TIMEOUT;
 	c->ixfr_fslimit = -1;
+	c->uid = -1;
+	c->gid = -1;
 
 	return c;
 }
@@ -572,6 +574,10 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 	if (conf->pidfile) {
 		free(conf->pidfile);
 		conf->pidfile = 0;
+	}
+	if (conf->nsid) {
+		free(conf->nsid);
+		conf->nsid = 0;
 	}
 }
 

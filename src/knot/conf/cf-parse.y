@@ -10,6 +10,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <pwd.h>
+#include <grp.h>
 #include "libknot/dname.h"
 #include "knot/conf/conf.h"
 #include "libknotd_la-cf-parse.h" /* Automake generated header. */
@@ -148,14 +150,16 @@ static int conf_key_add(void *scanner, knot_key_t **key, char *item)
 
 %token END INVALID_TOKEN
 %token <tok> TEXT
+%token <tok> HEXSTR
 %token <tok> NUM
 %token <tok> INTERVAL
 %token <tok> SIZE
 %token <tok> BOOL
 
-%token <tok> SYSTEM IDENTITY VERSION STORAGE KEY KEYS
+%token <tok> SYSTEM IDENTITY VERSION NSID STORAGE KEY KEYS
 %token <tok> TSIG_ALGO_NAME
 %token <tok> WORKERS
+%token <tok> USER
 
 %token <tok> REMOTES
 
@@ -264,6 +268,7 @@ system:
    SYSTEM '{'
  | system VERSION TEXT ';' { new_config->version = $3.t; }
  | system IDENTITY TEXT ';' { new_config->identity = $3.t; }
+ | system NSID HEXSTR ';' { new_config->nsid = $3.t; new_config->nsid_len = $3.l; }
  | system STORAGE TEXT ';' { new_config->storage = $3.t; }
  | system KEY TSIG_ALGO_NAME TEXT ';' {
      fprintf(stderr, "warning: Config option 'system.key' is deprecated "
@@ -276,6 +281,30 @@ system:
      } else {
         new_config->workers = $3.i;
      }
+ }
+ | system USER TEXT ';' {
+     char buf[512];
+     new_config->uid = new_config->gid = -1; // Invalidate
+     char* dpos = strchr($3.t, '.'); // Find uid.gid format
+     if (dpos != NULL) {
+        struct group *grp = getgrnam(dpos + 1); // Skip dot
+        if (grp != NULL) {
+          new_config->gid = grp->gr_gid;
+        } else {
+          snprintf(buf, sizeof(buf), "invalid group name '%s'", dpos + 1);
+          cf_error(scanner, buf);
+        }
+        *dpos = '\0'; // Cut off
+     }
+     struct passwd* pwd = getpwnam($3.t);
+     if (pwd != NULL) {
+       new_config->uid = pwd->pw_uid;
+     } else {
+       snprintf(buf, sizeof(buf), "invalid user name '%s'", $3.t);
+       cf_error(scanner, buf);
+     }
+     
+     free($3.t);
  }
  ;
 

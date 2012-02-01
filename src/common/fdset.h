@@ -34,8 +34,28 @@
 #define _KNOTD_FDSET_H_
 
 #include <stddef.h>
+#include "skip-list.h"
 
-/*! \brief Opaque pointer to implementation-specific fdset data. */
+/*! \brief Waiting for completion constants. */
+enum fdset_wait_t {
+	OS_EV_FOREVER = -1, /*!< Wait forever. */
+	OS_EV_NOWAIT  =  0  /*!< Return immediately. */
+};
+
+/*! \brief Base for implementation-specific fdsets. */
+typedef struct fdset_base_t {
+	skip_list_t *atimes;
+} fdset_base_t;
+
+/*!
+ * \brief Opaque pointer to implementation-specific fdset data.
+ * \warning Implementation MUST have fdset_base_t member on the first place.
+ * Example:
+ * struct fdset_t {
+ *    fdset_base_t base;
+ *    ...other members...
+ * }
+ */
 typedef struct fdset_t fdset_t;
 
 /*! \brief Unified event types. */
@@ -63,7 +83,7 @@ struct fdset_backend_t
 	int (*fdset_destroy)(fdset_t*);
 	int (*fdset_add)(fdset_t*, int, int);
 	int (*fdset_remove)(fdset_t*, int);
-	int (*fdset_wait)(fdset_t*);
+	int (*fdset_wait)(fdset_t*, int);
 	int (*fdset_begin)(fdset_t*, fdset_it_t*);
 	int (*fdset_end)(fdset_t*, fdset_it_t*);
 	int (*fdset_next)(fdset_t*, fdset_it_t*);
@@ -84,9 +104,7 @@ extern struct fdset_backend_t _fdset_backend;
  * \retval Pointer to initialized FDSET structure if successful.
  * \retval NULL on error.
  */
-static inline fdset_t *fdset_new() {
-	return _fdset_backend.fdset_new();
-}
+fdset_t *fdset_new();
 
 /*!
  * \brief Destroy FDSET.
@@ -94,9 +112,7 @@ static inline fdset_t *fdset_new() {
  * \retval 0 if successful.
  * \retval -1 on error.
  */
-static inline int fdset_destroy(fdset_t * fdset) {
-	return _fdset_backend.fdset_destroy(fdset);
-}
+int fdset_destroy(fdset_t* fdset);
 
 /*!
  * \brief Add file descriptor to watched set.
@@ -122,22 +138,19 @@ static inline int fdset_add(fdset_t *fdset, int fd, int events) {
  * \retval 0 if successful.
  * \retval -1 on errors.
  */
-static inline int fdset_remove(fdset_t *fdset, int fd) {
-	return _fdset_backend.fdset_remove(fdset, fd);
-}
+int fdset_remove(fdset_t *fdset, int fd);
 
 /*!
  * \brief Poll set for new events.
  *
  * \param fdset Target set.
+ * \param timeout Timeout (OS_EV_FOREVER, OS_EV_NOWAIT or value in miliseconds).
  *
  * \retval Number of events if successful.
  * \retval -1 on errors.
- *
- * \todo Timeout.
  */
-static inline int fdset_wait(fdset_t *fdset) {
-	return _fdset_backend.fdset_wait(fdset);
+static inline int fdset_wait(fdset_t *fdset, int timeout) {
+	return _fdset_backend.fdset_wait(fdset, timeout);
 }
 
 /*!
@@ -190,6 +203,33 @@ static inline int fdset_next(fdset_t *fdset, fdset_it_t *it) {
 static inline const char* fdset_method() {
 	return _fdset_backend.fdset_method();
 }
+
+/*!
+ * \brief Set file descriptor watchdog interval.
+ *
+ * Descriptors without activity in given interval
+ * can be disposed with fdset_sweep().
+ *
+ * \param fdset Target set.
+ * \param fd File descriptor.
+ * \param interval Allowed interval without activity (seconds).
+ *                 <0 removes watchdog interval.
+ *
+ * \retval 0 if successful.
+ * \retval -1 on errors.
+ */
+int fdset_set_watchdog(fdset_t* fdset, int fd, int interval);
+
+/*!
+ * \brief Sweep file descriptors with exceeding inactivity period.
+ *
+ * \param fdset Target set.
+ * \param cb Callback for sweeped descriptors.
+ *
+ * \retval number of sweeped descriptors.
+ * \retval -1 on errors.
+ */
+int fdset_sweep(fdset_t* fdset, void(*cb)(fdset_t* set, int fd));
 
 #endif /* _KNOTD_FDSET_H_ */
 

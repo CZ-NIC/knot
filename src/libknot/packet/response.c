@@ -952,8 +952,9 @@ void knot_response_clear(knot_packet_t *resp, int clear_question)
 /*----------------------------------------------------------------------------*/
 
 int knot_response_add_opt(knot_packet_t *resp,
-                            const knot_opt_rr_t *opt_rr,
-                            int override_max_size)
+                          const knot_opt_rr_t *opt_rr,
+                          int override_max_size,
+                          int add_nsid)
 {
 	if (resp == NULL || opt_rr == NULL) {
 		return KNOT_EBADARG;
@@ -964,6 +965,23 @@ int knot_response_add_opt(knot_packet_t *resp,
 	resp->opt_rr.ext_rcode = opt_rr->ext_rcode;
 	resp->opt_rr.payload = opt_rr->payload;
 	resp->opt_rr.size = opt_rr->size;
+	
+	for (int i = 0; i < opt_rr->option_count; i++) {
+		struct knot_opt_option option;
+		option = opt_rr->options[i];
+		
+		/* Do not add NSID unless specified. */
+		if ((option.code != EDNS_OPTION_NSID) || (add_nsid)) {
+			int ret =
+				knot_edns_add_option(&resp->opt_rr, option.code,
+				                     option.length,
+				                     option.data);
+			if (ret != KNOT_EOK) {
+				dbg_response("Could not "
+				             "copy option to EDNS!\n");
+			}
+		}
+	}
 
 	// if max size is set, it means there is some reason to be that way,
 	// so we can't just set it to higher value

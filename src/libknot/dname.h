@@ -29,6 +29,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <stdio.h>
 #include "common/ref.h"
 
 struct knot_node;
@@ -390,17 +391,13 @@ unsigned int knot_dname_get_id(const knot_dname_t *dname);
 static inline void knot_dname_retain(knot_dname_t *dname) {
 	if (dname) {
 		ref_retain(&dname->ref);
-//		char *name = knot_dname_to_str(dname);
-//		printf("retain: %s %p %d\n", name, dname, dname->ref.count);
-//		free(name);
-
 	}
 }
 
 /*#define knot_dname_retain(d) \
 	knot_dname_retain_((d));\
 	if ((d))\
-	printf("dname_retain: %s() at %s:%d, %p refcount=%zu\n",\
+	fprintf(stderr, "dname_retain: %s() at %s:%d, %p refcount=%zu\n",\
 	__func__, __FILE__, __LINE__, d, (d)->ref.count) */
 
 /*!
@@ -410,16 +407,13 @@ static inline void knot_dname_retain(knot_dname_t *dname) {
  */
 static inline void knot_dname_release(knot_dname_t *dname) {
 	if (dname) {
-//		char *name = knot_dname_to_str(dname);
-//		printf("releasing: %p %s %d\n", dname, name, dname->ref.count - 1);
-//		free(name);
 		ref_release(&dname->ref);
 	}
 }
 
 /*#define knot_dname_release(d) \
 	if ((d))\
-	printf("dname_release: %s() at %s:%d, %p refcount=%zu\n",\
+	fprintf(stderr, "dname_release: %s() at %s:%d, %p refcount=%zu\n",\
 	__func__, __FILE__, __LINE__, d, (d)->ref.count-1);\
 	knot_dname_release_((d)) */
 

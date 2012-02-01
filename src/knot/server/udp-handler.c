@@ -227,23 +227,13 @@ static inline int udp_master_recvfrom(dthread_t *thread, stat_t *thread_stat)
 	
 	int sock = dup(h->fd);
 	uint8_t qbuf[SOCKET_MTU_SZ];
-	struct msghdr msg;
-	memset(&msg, 0, sizeof(struct msghdr));
-	struct iovec iov;
-	memset(&iov, 0, sizeof(struct iovec));
-	iov.iov_base = qbuf;
-	iov.iov_len = SOCKET_MTU_SZ;
-	msg.msg_iov = &iov;
-	msg.msg_iovlen = 1;
-	msg.msg_name = addr.ptr;
-	msg.msg_namelen = addr.len;
 
 	/* Loop until all data is read. */
 	ssize_t n = 0;
 	while (n >= 0) {
 
 		/* Receive packet. */
-		n = recvmsg(sock, &msg, 0);
+		n = recvfrom(sock, qbuf, SOCKET_MTU_SZ, 0, addr.ptr, &addr.len);
 
 		/* Cancellation point. */
 		if (dt_is_cancelled(thread)) {

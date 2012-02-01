@@ -22,6 +22,7 @@
 #include <errno.h>
 #include <openssl/evp.h>
 #include <assert.h>
+#include <grp.h>
 
 #include "knot/common.h"
 #include "knot/other/error.h"
@@ -687,23 +688,60 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 	if ((ret = server_bind_sockets(server)) < 0) {
 		log_server_error("Failed to bind configured "
 		                 "interfaces.\n");
-		return KNOTD_ERROR;
+	} else {
+		/* Update handlers. */
+		if ((ret = server_bind_handlers(server)) < 0) {
+			log_server_error("Failed to create handlers for "
+			                 "configured interfaces.\n");
+		}
+	}
+	
+	/* Lock configuration. */
+	conf_read_lock();
+	int priv_failed = 0;
+	
+#ifdef HAVE_SETGROUPS
+	/* Drop supplementary groups. */
+	if (conf->gid > -1 || conf->uid > -1) {
+		ret = setgroups(0, NULL);
+		
+		/* Collect results. */
+		if (ret < 0) {
+			log_server_error("Failed to set supplementary groups "
+			                 "for uid=%d %s\n",
+			                 getuid(), strerror(errno));
+			priv_failed = 1;
+		}
+	}
+#endif
+	
+	/* Watch uid/gid. */
+	if (conf->gid > -1 && conf->gid != getgid()) {
+		log_server_info("Changing group id to %d.\n", conf->gid);
+		if (setregid(conf->gid, conf->gid) < 0) {
+			log_server_error("Failed to change gid to %d.\n",
+			                 conf->gid);
+			priv_failed = 1;
+		}
+	}
+	if (conf->uid > -1 && conf->uid != getuid()) {
+		log_server_info("Changing user id to %d.\n", conf->uid);
+		if (setreuid(conf->uid, conf->uid) < 0) {
+			log_server_error("Failed to change uid to %d.\n",
+			                 conf->uid);
+			priv_failed = 1;
+		}
 	}
 
-	/* Update handlers. */
-	if ((ret = server_bind_handlers(server)) < 0) {
-		log_server_error("Failed to create handlers for "
-		                 "configured interfaces.\n");
-		return ret;
+	if (priv_failed) {
+		ret = KNOTD_EACCES;
 	}
 
 	/* Exit if the server is not running. */
-	if (!(server->state & ServerRunning)) {
+	if (ret != KNOTD_EOK || !(server->state & ServerRunning)) {
+		conf_read_unlock();
 		return KNOTD_ENOTRUNNING;
 	}
-
-	/* Lock configuration. */
-	conf_read_lock();
 
 	/* Start new handlers. */
 	iohandler_t *h = 0;

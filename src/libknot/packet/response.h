@@ -96,7 +96,8 @@ void knot_response_clear(knot_packet_t *resp, int clear_question);
  */
 int knot_response_add_opt(knot_packet_t *resp,
                             const knot_opt_rr_t *opt_rr,
-                            int override_max_size);
+                            int override_max_size,
+                            int add_nsid);
 
 /*!
  * \brief Adds a RRSet to the Answer section of the response.

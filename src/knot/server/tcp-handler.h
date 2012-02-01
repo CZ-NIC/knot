@@ -39,6 +39,11 @@
 #include "knot/server/server.h"
 #include "knot/server/dthreads.h"
 
+/* Constants */
+#define TCP_HANDSHAKE_WD 10 /* [secs] for connection to make a request.*/
+#define TCP_ACTIVITY_WD  60 /* [secs] of allowed inactivity between requests */
+#define TCP_SWEEP_INTERVAL 2 /* [secs] granularity of connection sweeping */
+
 /*!
  * \brief Send TCP message.
  *

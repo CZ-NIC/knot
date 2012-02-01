@@ -1,0 +1,1495 @@
+From 998d005870782ed52ba0fe66a99589dc8b7eb20e Mon Sep 17 00:00:00 2001
+From: Marek Vavrusa <marek@vavrusa.com>
+Date: Mon, 30 Jan 2012 16:40:12 +0100
+Subject: [PATCH] Compatibility for compilers without TLS support.
+
+If TLS is detected on configure, it is used as before.
+If not, it is emulated using pthread_setspecific()/pthread_getspecific()
+and set of macros.
+
+For usage info, see urcu/tls-compat.h
+---
+ .gitignore                 |    1 -
+ configure.ac               |    3 +
+ m4/ax_tls.m4               |   76 ++++++++++++++++++++++++++++++++
+ tests/test_mutex.c         |    8 +++-
+ tests/test_perthreadlock.c |    8 +++-
+ tests/test_rwlock.c        |    8 +++-
+ tests/test_urcu.c          |    8 +++-
+ tests/test_urcu_assign.c   |    8 +++-
+ tests/test_urcu_bp.c       |    8 +++-
+ tests/test_urcu_defer.c    |    8 +++-
+ tests/test_urcu_gc.c       |    8 +++-
+ tests/test_urcu_lfq.c      |   14 ++++--
+ tests/test_urcu_lfs.c      |   14 ++++--
+ tests/test_urcu_qsbr.c     |    8 +++-
+ tests/test_urcu_qsbr_gc.c  |    8 +++-
+ tests/test_urcu_wfq.c      |   14 ++++--
+ tests/test_urcu_wfs.c      |   14 ++++--
+ urcu-bp.c                  |   10 +++--
+ urcu-call-rcu-impl.h       |   26 +++++++++++-
+ urcu-defer-impl.h          |   49 +++++++++++---------
+ urcu-qsbr.c                |   18 ++++---
+ urcu.c                     |   22 +++++----
+ urcu/map/urcu-bp.h         |    2 +
+ urcu/map/urcu-qsbr.h       |    2 +
+ urcu/map/urcu.h            |    4 ++
+ urcu/static/urcu-bp.h      |   18 +++++---
+ urcu/static/urcu-qsbr.h    |   22 ++++++----
+ urcu/static/urcu.h         |   21 ++++++---
+ urcu/tls-compat.h          |  104 ++++++++++++++++++++++++++++++++++++++++++++
+ 29 files changed, 408 insertions(+), 106 deletions(-)
+ create mode 100644 m4/ax_tls.m4
+ create mode 100644 urcu/tls-compat.h
+
+diff --git a/.gitignore b/.gitignore
+index 6eeb2a1..7af5609 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -71,7 +71,6 @@ tests/*.log
+ .libs/
+ Makefile.in
+ Makefile
+-*.m4
+ *.la
+ *.bz2
+ *.o
+diff --git a/configure.ac b/configure.ac
+index 5a90008..1953a8a 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -14,6 +14,9 @@ AC_CANONICAL_HOST
+ AM_INIT_AUTOMAKE([foreign dist-bzip2 no-dist-gzip])
+ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
+ 
++AC_CONFIG_MACRO_DIR([m4])
++m4_include([m4/ax_tls.m4])
++
+ AC_CONFIG_SRCDIR([urcu.h])
+ AM_PROG_MKDIR_P
+ 
+diff --git a/m4/ax_tls.m4 b/m4/ax_tls.m4
+new file mode 100644
+index 0000000..033e3b1
+--- /dev/null
++++ b/m4/ax_tls.m4
+@@ -0,0 +1,76 @@
++# ===========================================================================
++#          http://www.gnu.org/software/autoconf-archive/ax_tls.html
++# ===========================================================================
++#
++# SYNOPSIS
++#
++#   AX_TLS([action-if-found], [action-if-not-found])
++#
++# DESCRIPTION
++#
++#   Provides a test for the compiler support of thread local storage (TLS)
++#   extensions. Defines TLS if it is found. Currently knows about GCC/ICC
++#   and MSVC. I think SunPro uses the same as GCC, and Borland apparently
++#   supports either.
++#
++# LICENSE
++#
++#   Copyright (c) 2008 Alan Woodland <ajw05@aber.ac.uk>
++#   Copyright (c) 2010 Diego Elio Petteno` <flameeyes@gmail.com>
++#
++#   This program is free software: you can redistribute it and/or modify it
++#   under the terms of the GNU General Public License as published by the
++#   Free Software Foundation, either version 3 of the License, or (at your
++#   option) any later version.
++#
++#   This program is distributed in the hope that it will be useful, but
++#   WITHOUT ANY WARRANTY; without even the implied warranty of
++#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
++#   Public License for more details.
++#
++#   You should have received a copy of the GNU General Public License along
++#   with this program. If not, see <http://www.gnu.org/licenses/>.
++#
++#   As a special exception, the respective Autoconf Macro's copyright owner
++#   gives unlimited permission to copy, distribute and modify the configure
++#   scripts that are the output of Autoconf when processing the Macro. You
++#   need not follow the terms of the GNU General Public License when using
++#   or distributing such scripts, even though portions of the text of the
++#   Macro appear in them. The GNU General Public License (GPL) does govern
++#   all other use of the material that constitutes the Autoconf Macro.
++#
++#   This special exception to the GPL applies to versions of the Autoconf
++#   Macro released by the Autoconf Archive. When you make and distribute a
++#   modified version of the Autoconf Macro, you may extend this special
++#   exception to the GPL to apply to your modified version as well.
++
++#serial 10
++
++AC_DEFUN([AX_TLS], [
++  AC_MSG_CHECKING(for thread local storage (TLS) class)
++  AC_CACHE_VAL(ac_cv_tls, [
++    ax_tls_keywords="__thread __declspec(thread) none"
++    for ax_tls_keyword in $ax_tls_keywords; do
++       AS_CASE([$ax_tls_keyword],
++          [none], [ac_cv_tls=none ; break],
++          [AC_TRY_COMPILE(
++              [#include <stdlib.h>
++               static void
++               foo(void) {
++               static ] $ax_tls_keyword [ int bar;
++               exit(1);
++               }],
++               [],
++               [ac_cv_tls=$ax_tls_keyword ; break],
++               ac_cv_tls=none
++           )])
++    done
++  ])
++  AC_MSG_RESULT($ac_cv_tls)
++
++  AS_IF([test "$ac_cv_tls" != "none"],
++    AC_DEFINE_UNQUOTED([TLS], $ac_cv_tls, [If the compiler supports a TLS storage class define it to that here])
++      m4_ifnblank([$1], [$1]),
++    m4_ifnblank([$2], [$2])
++  )
++])
+diff --git a/tests/test_mutex.c b/tests/test_mutex.c
+index 3f84bbf..bb73f1c 100644
+--- a/tests/test_mutex.c
++++ b/tests/test_mutex.c
+@@ -4,6 +4,7 @@
+  * Userspace RCU library - test program
+  *
+  * Copyright February 2009 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
++ * Copyright (C) 2012 Marek Vavrusa <marek.vavrusa@nic.cz>, CZ.NIC, z.s.p.o.
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License as published by
+@@ -35,6 +36,7 @@
+ #include <errno.h>
+ 
+ #include <urcu/arch.h>
++#include <urcu/tls-compat.h>
+ 
+ #ifdef __linux__
+ #include <syscall.h>
+@@ -155,8 +157,10 @@ static int test_duration_read(void)
+ 	return !test_stop;
+ }
+ 
+-static unsigned long long __thread nr_writes;
+-static unsigned long long __thread nr_reads;
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_writes, _tls_nr_writes);
++#define nr_writes (*_nr_writes())
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_reads, _tls_nr_reads);
++#define nr_reads (*_nr_reads())
+ 
+ static
+ unsigned long long __attribute__((aligned(CAA_CACHE_LINE_SIZE))) *tot_nr_writes;
+diff --git a/tests/test_perthreadlock.c b/tests/test_perthreadlock.c
+index fa9c89a..14362cf 100644
+--- a/tests/test_perthreadlock.c
++++ b/tests/test_perthreadlock.c
+@@ -4,6 +4,7 @@
+  * Userspace RCU library - test program
+  *
+  * Copyright February 2009 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
++ * Copyright (C) 2012 Marek Vavrusa <marek.vavrusa@nic.cz>, CZ.NIC, z.s.p.o.
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License as published by
+@@ -35,6 +36,7 @@
+ #include <errno.h>
+ 
+ #include <urcu/arch.h>
++#include <urcu/tls-compat.h>
+ 
+ #ifdef __linux__
+ #include <syscall.h>
+@@ -159,8 +161,10 @@ static int test_duration_read(void)
+ 	return !test_stop;
+ }
+ 
+-static unsigned long long __thread nr_writes;
+-static unsigned long long __thread nr_reads;
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_writes, _tls_nr_writes);
++#define nr_writes (*_nr_writes())
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_reads, _tls_nr_reads);
++#define nr_reads (*_nr_reads())
+ 
+ static
+ unsigned long long __attribute__((aligned(CAA_CACHE_LINE_SIZE))) *tot_nr_writes;
+diff --git a/tests/test_rwlock.c b/tests/test_rwlock.c
+index 34d8c07..087ff58 100644
+--- a/tests/test_rwlock.c
++++ b/tests/test_rwlock.c
+@@ -4,6 +4,7 @@
+  * Userspace RCU library - test program
+  *
+  * Copyright February 2009 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
++ * Copyright (C) 2012 Marek Vavrusa <marek.vavrusa@nic.cz>, CZ.NIC, z.s.p.o.
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License as published by
+@@ -35,6 +36,7 @@
+ #include <errno.h>
+ 
+ #include <urcu/arch.h>
++#include <urcu/tls-compat.h>
+ 
+ #ifdef __linux__
+ #include <syscall.h>
+@@ -156,8 +158,10 @@ static int test_duration_read(void)
+ 	return !test_stop;
+ }
+ 
+-static unsigned long long __thread nr_writes;
+-static unsigned long long __thread nr_reads;
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_writes, _tls_nr_writes);
++#define nr_writes (*_nr_writes())
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_reads, _tls_nr_reads);
++#define nr_reads (*_nr_reads())
+ 
+ static unsigned int nr_readers;
+ static unsigned int nr_writers;
+diff --git a/tests/test_urcu.c b/tests/test_urcu.c
+index 870f133..cf8e12e 100644
+--- a/tests/test_urcu.c
++++ b/tests/test_urcu.c
+@@ -4,6 +4,7 @@
+  * Userspace RCU library - test program
+  *
+  * Copyright February 2009 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
++ * Copyright (C) 2012 Marek Vavrusa <marek.vavrusa@nic.cz>, CZ.NIC, z.s.p.o.
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License as published by
+@@ -35,6 +36,7 @@
+ #include <errno.h>
+ 
+ #include <urcu/arch.h>
++#include <urcu/tls-compat.h>
+ 
+ #ifdef __linux__
+ #include <syscall.h>
+@@ -154,8 +156,10 @@ static int test_duration_read(void)
+ 	return !test_stop;
+ }
+ 
+-static unsigned long long __thread nr_writes;
+-static unsigned long long __thread nr_reads;
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_writes, _tls_nr_writes);
++#define nr_writes (*_nr_writes())
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_reads, _tls_nr_reads);
++#define nr_reads (*_nr_reads())
+ 
+ static unsigned int nr_readers;
+ static unsigned int nr_writers;
+diff --git a/tests/test_urcu_assign.c b/tests/test_urcu_assign.c
+index 42d70c2..55eab0c 100644
+--- a/tests/test_urcu_assign.c
++++ b/tests/test_urcu_assign.c
+@@ -4,6 +4,7 @@
+  * Userspace RCU library - test program
+  *
+  * Copyright February 2009 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
++ * Copyright (C) 2012 Marek Vavrusa <marek.vavrusa@nic.cz>, CZ.NIC, z.s.p.o.
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License as published by
+@@ -35,6 +36,7 @@
+ #include <errno.h>
+ 
+ #include <urcu/arch.h>
++#include <urcu/tls-compat.h>
+ 
+ #ifdef __linux__
+ #include <syscall.h>
+@@ -154,8 +156,10 @@ static int test_duration_read(void)
+ 	return !test_stop;
+ }
+ 
+-static unsigned long long __thread nr_writes;
+-static unsigned long long __thread nr_reads;
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_writes, _tls_nr_writes);
++#define nr_writes (*_nr_writes())
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_reads, _tls_nr_reads);
++#define nr_reads (*_nr_reads())
+ 
+ static unsigned int nr_readers;
+ static unsigned int nr_writers;
+diff --git a/tests/test_urcu_bp.c b/tests/test_urcu_bp.c
+index 857913f..08170b6 100644
+--- a/tests/test_urcu_bp.c
++++ b/tests/test_urcu_bp.c
+@@ -4,6 +4,7 @@
+  * Userspace RCU library - test program
+  *
+  * Copyright February 2009 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
++ * Copyright (C) 2012 Marek Vavrusa <marek.vavrusa@nic.cz>, CZ.NIC, z.s.p.o.
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License as published by
+@@ -35,6 +36,7 @@
+ #include <errno.h>
+ 
+ #include <urcu/arch.h>
++#include <urcu/tls-compat.h>
+ 
+ #ifdef __linux__
+ #include <syscall.h>
+@@ -154,8 +156,10 @@ static int test_duration_read(void)
+ 	return !test_stop;
+ }
+ 
+-static unsigned long long __thread nr_writes;
+-static unsigned long long __thread nr_reads;
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_writes, _tls_nr_writes);
++#define nr_writes (*_nr_writes())
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_reads, _tls_nr_reads);
++#define nr_reads (*_nr_reads())
+ 
+ static unsigned int nr_readers;
+ static unsigned int nr_writers;
+diff --git a/tests/test_urcu_defer.c b/tests/test_urcu_defer.c
+index 1575e9c..c5aeeb4 100644
+--- a/tests/test_urcu_defer.c
++++ b/tests/test_urcu_defer.c
+@@ -4,6 +4,7 @@
+  * Userspace RCU library - test program (with automatic reclamation)
+  *
+  * Copyright February 2009 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
++ * Copyright (C) 2012 Marek Vavrusa <marek.vavrusa@nic.cz>, CZ.NIC, z.s.p.o.
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License as published by
+@@ -35,6 +36,7 @@
+ #include <errno.h>
+ 
+ #include <urcu/arch.h>
++#include <urcu/tls-compat.h>
+ 
+ #ifdef __linux__
+ #include <syscall.h>
+@@ -155,8 +157,10 @@ static int test_duration_read(void)
+ 	return !test_stop;
+ }
+ 
+-static unsigned long long __thread nr_writes;
+-static unsigned long long __thread nr_reads;
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_writes, _tls_nr_writes);
++#define nr_writes (*_nr_writes())
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_reads, _tls_nr_reads);
++#define nr_reads (*_nr_reads())
+ 
+ static
+ unsigned long long __attribute__((aligned(CAA_CACHE_LINE_SIZE))) *tot_nr_writes;
+diff --git a/tests/test_urcu_gc.c b/tests/test_urcu_gc.c
+index 21c5d56..31d3e65 100644
+--- a/tests/test_urcu_gc.c
++++ b/tests/test_urcu_gc.c
+@@ -4,6 +4,7 @@
+  * Userspace RCU library - test program (with baatch reclamation)
+  *
+  * Copyright February 2009 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
++ * Copyright (C) 2012 Marek Vavrusa <marek.vavrusa@nic.cz>, CZ.NIC, z.s.p.o.
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License as published by
+@@ -35,6 +36,7 @@
+ #include <errno.h>
+ 
+ #include <urcu/arch.h>
++#include <urcu/tls-compat.h>
+ 
+ #ifdef __linux__
+ #include <syscall.h>
+@@ -163,8 +165,10 @@ static int test_duration_read(void)
+ 	return !test_stop;
+ }
+ 
+-static unsigned long long __thread nr_writes;
+-static unsigned long long __thread nr_reads;
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_writes, _tls_nr_writes);
++#define nr_writes (*_nr_writes())
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_reads, _tls_nr_reads);
++#define nr_reads (*_nr_reads())
+ 
+ static
+ unsigned long long __attribute__((aligned(CAA_CACHE_LINE_SIZE))) *tot_nr_writes;
+diff --git a/tests/test_urcu_lfq.c b/tests/test_urcu_lfq.c
+index 11e7eb3..83db5d1 100644
+--- a/tests/test_urcu_lfq.c
++++ b/tests/test_urcu_lfq.c
+@@ -5,6 +5,7 @@
+  *
+  * Copyright February 2010 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+  * Copyright February 2010 - Paolo Bonzini <pbonzini@redhat.com>
++ * Copyright (C) 2012 Marek Vavrusa <marek.vavrusa@nic.cz>, CZ.NIC, z.s.p.o.
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License as published by
+@@ -38,6 +39,7 @@
+ #include <errno.h>
+ 
+ #include <urcu/arch.h>
++#include <urcu/tls-compat.h>
+ 
+ #ifdef __linux__
+ #include <syscall.h>
+@@ -148,11 +150,15 @@ static int test_duration_enqueue(void)
+ 	return !test_stop;
+ }
+ 
+-static unsigned long long __thread nr_dequeues;
+-static unsigned long long __thread nr_enqueues;
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_dequeues, _tls_nr_dequeues);
++#define nr_dequeues (*_nr_dequeues())
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_enqueues, _tls_nr_enqueues);
++#define nr_enqueues (*_nr_enqueues())
+ 
+-static unsigned long long __thread nr_successful_dequeues;
+-static unsigned long long __thread nr_successful_enqueues;
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_successful_dequeues, _tls_nr_successful_dequeues);
++#define nr_successful_dequeues (*_nr_successful_dequeues())
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_successful_enqueues, _tls_nr_successful_enqueues);
++#define nr_successful_enqueues (*_nr_successful_enqueues())
+ 
+ static unsigned int nr_enqueuers;
+ static unsigned int nr_dequeuers;
+diff --git a/tests/test_urcu_lfs.c b/tests/test_urcu_lfs.c
+index 883fd0c..79a1ceb 100644
+--- a/tests/test_urcu_lfs.c
++++ b/tests/test_urcu_lfs.c
+@@ -5,6 +5,7 @@
+  *
+  * Copyright February 2010 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+  * Copyright February 2010 - Paolo Bonzini <pbonzini@redhat.com>
++ * Copyright (C) 2012 Marek Vavrusa <marek.vavrusa@nic.cz>, CZ.NIC, z.s.p.o.
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License as published by
+@@ -38,6 +39,7 @@
+ #include <errno.h>
+ 
+ #include <urcu/arch.h>
++#include <urcu/tls-compat.h>
+ 
+ #ifdef __linux__
+ #include <syscall.h>
+@@ -148,11 +150,15 @@ static int test_duration_enqueue(void)
+ 	return !test_stop;
+ }
+ 
+-static unsigned long long __thread nr_dequeues;
+-static unsigned long long __thread nr_enqueues;
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_dequeues, _tls_nr_dequeues);
++#define nr_dequeues (*_nr_dequeues())
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_enqueues, _tls_nr_enqueues);
++#define nr_enqueues (*_nr_enqueues())
+ 
+-static unsigned long long __thread nr_successful_dequeues;
+-static unsigned long long __thread nr_successful_enqueues;
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_successful_dequeues, _tls_nr_successful_dequeues);
++#define nr_successful_dequeues (*_nr_successful_dequeues())
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_successful_enqueues, _tls_nr_successful_enqueues);
++#define nr_successful_enqueues (*_nr_successful_enqueues())
+ 
+ static unsigned int nr_enqueuers;
+ static unsigned int nr_dequeuers;
+diff --git a/tests/test_urcu_qsbr.c b/tests/test_urcu_qsbr.c
+index b986fd8..eaa4a67 100644
+--- a/tests/test_urcu_qsbr.c
++++ b/tests/test_urcu_qsbr.c
+@@ -4,6 +4,7 @@
+  * Userspace RCU library - test program
+  *
+  * Copyright February 2009 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
++ * Copyright (C) 2012 Marek Vavrusa <marek.vavrusa@nic.cz>, CZ.NIC, z.s.p.o.
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License as published by
+@@ -35,6 +36,7 @@
+ #include <errno.h>
+ 
+ #include <urcu/arch.h>
++#include <urcu/tls-compat.h>
+ 
+ #ifdef __linux__
+ #include <syscall.h>
+@@ -153,8 +155,10 @@ static int test_duration_read(void)
+ 	return !test_stop;
+ }
+ 
+-static unsigned long long __thread nr_writes;
+-static unsigned long long __thread nr_reads;
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_writes, _tls_nr_writes);
++#define nr_writes (*_nr_writes())
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_reads, _tls_nr_reads);
++#define nr_reads (*_nr_reads())
+ 
+ static unsigned int nr_readers;
+ static unsigned int nr_writers;
+diff --git a/tests/test_urcu_qsbr_gc.c b/tests/test_urcu_qsbr_gc.c
+index 9deb0aa..e65503a 100644
+--- a/tests/test_urcu_qsbr_gc.c
++++ b/tests/test_urcu_qsbr_gc.c
+@@ -4,6 +4,7 @@
+  * Userspace RCU library - test program (with baatch reclamation)
+  *
+  * Copyright February 2009 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
++ * Copyright (C) 2012 Marek Vavrusa <marek.vavrusa@nic.cz>, CZ.NIC, z.s.p.o.
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License as published by
+@@ -35,6 +36,7 @@
+ #include <errno.h>
+ 
+ #include <urcu/arch.h>
++#include <urcu/tls-compat.h>
+ 
+ #ifdef __linux__
+ #include <syscall.h>
+@@ -159,8 +161,10 @@ static int test_duration_read(void)
+ 	return !test_stop;
+ }
+ 
+-static unsigned long long __thread nr_writes;
+-static unsigned long long __thread nr_reads;
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_writes, _tls_nr_writes);
++#define nr_writes (*_nr_writes())
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_reads, _tls_nr_reads);
++#define nr_reads (*_nr_reads())
+ 
+ static unsigned int nr_readers;
+ static unsigned int nr_writers;
+diff --git a/tests/test_urcu_wfq.c b/tests/test_urcu_wfq.c
+index 83ec635..32156dc 100644
+--- a/tests/test_urcu_wfq.c
++++ b/tests/test_urcu_wfq.c
+@@ -5,6 +5,7 @@
+  *
+  * Copyright February 2010 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+  * Copyright February 2010 - Paolo Bonzini <pbonzini@redhat.com>
++ * Copyright (C) 2012 Marek Vavrusa <marek.vavrusa@nic.cz>, CZ.NIC, z.s.p.o.
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License as published by
+@@ -38,6 +39,7 @@
+ #include <errno.h>
+ 
+ #include <urcu/arch.h>
++#include <urcu/tls-compat.h>
+ 
+ #ifdef __linux__
+ #include <syscall.h>
+@@ -147,11 +149,15 @@ static int test_duration_enqueue(void)
+ 	return !test_stop;
+ }
+ 
+-static unsigned long long __thread nr_dequeues;
+-static unsigned long long __thread nr_enqueues;
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_dequeues, _tls_nr_dequeues);
++#define nr_dequeues (*_nr_dequeues())
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_enqueues, _tls_nr_enqueues);
++#define nr_enqueues (*_nr_enqueues())
+ 
+-static unsigned long long __thread nr_successful_dequeues;
+-static unsigned long long __thread nr_successful_enqueues;
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_successful_dequeues, _tls_nr_successful_dequeues);
++#define nr_successful_dequeues (*_nr_successful_dequeues())
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_successful_enqueues, _tls_nr_successful_enqueues);
++#define nr_successful_enqueues (*_nr_successful_enqueues())
+ 
+ static unsigned int nr_enqueuers;
+ static unsigned int nr_dequeuers;
+diff --git a/tests/test_urcu_wfs.c b/tests/test_urcu_wfs.c
+index 7746a1d..1e78211 100644
+--- a/tests/test_urcu_wfs.c
++++ b/tests/test_urcu_wfs.c
+@@ -5,6 +5,7 @@
+  *
+  * Copyright February 2010 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+  * Copyright February 2010 - Paolo Bonzini <pbonzini@redhat.com>
++ * Copyright (C) 2012 Marek Vavrusa <marek.vavrusa@nic.cz>, CZ.NIC, z.s.p.o.
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License as published by
+@@ -38,6 +39,7 @@
+ #include <errno.h>
+ 
+ #include <urcu/arch.h>
++#include <urcu/tls-compat.h>
+ 
+ #ifdef __linux__
+ #include <syscall.h>
+@@ -147,11 +149,15 @@ static int test_duration_enqueue(void)
+ 	return !test_stop;
+ }
+ 
+-static unsigned long long __thread nr_dequeues;
+-static unsigned long long __thread nr_enqueues;
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_dequeues, _tls_nr_dequeues);
++#define nr_dequeues (*_nr_dequeues())
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_enqueues, _tls_nr_enqueues);
++#define nr_enqueues (*_nr_enqueues())
+ 
+-static unsigned long long __thread nr_successful_dequeues;
+-static unsigned long long __thread nr_successful_enqueues;
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_successful_dequeues, _tls_nr_successful_dequeues);
++#define nr_successful_dequeues (*_nr_successful_dequeues())
++TLS_DEFINE_SIMPLE(unsigned long long, _nr_successful_enqueues, _tls_nr_successful_enqueues);
++#define nr_successful_enqueues (*_nr_successful_enqueues())
+ 
+ static unsigned int nr_enqueuers;
+ static unsigned int nr_dequeuers;
+diff --git a/urcu-bp.c b/urcu-bp.c
+index f3249b4..1b38097 100644
+--- a/urcu-bp.c
++++ b/urcu-bp.c
+@@ -5,6 +5,7 @@
+  *
+  * Copyright (c) 2009 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+  * Copyright (c) 2009 Paul E. McKenney, IBM Corporation.
++ * Copyright (C) 2012 Marek Vavrusa <marek.vavrusa@nic.cz>, CZ.NIC, z.s.p.o.
+  *
+  * This library is free software; you can redistribute it and/or
+  * modify it under the terms of the GNU Lesser General Public
+@@ -35,6 +36,7 @@
+ #include <poll.h>
+ #include <unistd.h>
+ #include <sys/mman.h>
++#include <config.h>
+ 
+ #include "urcu/wfqueue.h"
+ #include "urcu/map/urcu-bp.h"
+@@ -94,7 +96,7 @@ static pthread_mutex_t rcu_gp_lock = PTHREAD_MUTEX_INITIALIZER;
+ 
+ #ifdef DEBUG_YIELD
+ unsigned int yield_active;
+-unsigned int __thread rand_yield;
++TLS_DEFINE(unsigned int, get_rand_yield, _rand_yield);
+ #endif
+ 
+ /*
+@@ -109,7 +111,7 @@ long rcu_gp_ctr = RCU_GP_COUNT;
+  * Pointer to registry elements. Written to only by each individual reader. Read
+  * by both the reader and the writers.
+  */
+-struct rcu_reader __thread *rcu_reader;
++TLS_DEFINE(struct rcu_reader*, rcu_reader, _rcu_reader);
+ 
+ static CDS_LIST_HEAD(registry);
+ 
+@@ -322,7 +324,7 @@ static void add_thread(void)
+ 	rcu_reader_reg->tid = pthread_self();
+ 	assert(rcu_reader_reg->ctr == 0);
+ 	cds_list_add(&rcu_reader_reg->node, &registry);
+-	rcu_reader = rcu_reader_reg;
++	*rcu_reader() = rcu_reader_reg;
+ }
+ 
+ /* Called with signals off and mutex locked */
+@@ -363,7 +365,7 @@ void rcu_bp_register(void)
+ 	/*
+ 	 * Check if a signal concurrently registered our thread since
+ 	 * the check in rcu_read_lock(). */
+-	if (rcu_reader)
++	if (*rcu_reader())
+ 		goto end;
+ 
+ 	mutex_lock(&rcu_gp_lock);
+diff --git a/urcu-call-rcu-impl.h b/urcu-call-rcu-impl.h
+index 36e3cf4..27cb1ac 100644
+--- a/urcu-call-rcu-impl.h
++++ b/urcu-call-rcu-impl.h
+@@ -4,6 +4,7 @@
+  * Userspace RCU library - batch memory reclamation with kernel API
+  *
+  * Copyright (c) 2010 Paul E. McKenney <paulmck@linux.vnet.ibm.com>
++ * Copyright (C) 2012 Marek Vavrusa <marek.vavrusa@nic.cz>, CZ.NIC, z.s.p.o.
+  *
+  * This library is free software; you can redistribute it and/or
+  * modify it under the terms of the GNU Lesser General Public
+@@ -61,8 +62,31 @@ struct call_rcu_data {
+ CDS_LIST_HEAD(call_rcu_data_list);
+ 
+ /* Link a thread using call_rcu() to its call_rcu thread. */
+-
++#ifdef TLS
+ static __thread struct call_rcu_data *thread_call_rcu_data;
++#else
++static pthread_key_t tls_tcrd_key;
++static pthread_once_t tls_tcrd_once = PTHREAD_ONCE_INIT;
++static void tls_tcrd_deinit() {
++	void *p = pthread_getspecific(tls_tcrd_key);
++	free(p);
++}
++static void tls_tcrd_init() {
++	(void)pthread_key_create(&tls_tcrd_key, tls_tcrd_deinit);
++	atexit(tls_tcrd_deinit);
++}
++static struct call_rcu_data **tls_thread_call_rcu_data() {
++	(void)pthread_once(&tls_tcrd_once, tls_tcrd_init);
++	struct call_rcu_data **r = pthread_getspecific(tls_tcrd_key);
++	if (r == NULL) {
++		r = malloc(sizeof(struct call_rcu_data *));
++		*r = NULL;
++		(void)pthread_setspecific(tls_tcrd_key, r);
++	}
++	return r;
++}
++#define thread_call_rcu_data (*tls_thread_call_rcu_data())
++#endif
+ 
+ /* Guard call_rcu thread creation. */
+ 
+diff --git a/urcu-defer-impl.h b/urcu-defer-impl.h
+index 4d1ca5e..21c337d 100644
+--- a/urcu-defer-impl.h
++++ b/urcu-defer-impl.h
+@@ -11,6 +11,7 @@
+  *
+  * Copyright (c) 2009 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+  * Copyright (c) 2009 Paul E. McKenney, IBM Corporation.
++ * Copyright (C) 2012 Marek Vavrusa <marek.vavrusa@nic.cz>, CZ.NIC, z.s.p.o.
+  *
+  * This library is free software; you can redistribute it and/or
+  * modify it under the terms of the GNU Lesser General Public
+@@ -40,6 +41,7 @@
+ #include <sys/time.h>
+ #include <unistd.h>
+ #include <stdint.h>
++#include <config.h>
+ 
+ #include "urcu/futex.h"
+ 
+@@ -48,6 +50,7 @@
+ #include <urcu/uatomic.h>
+ #include <urcu/list.h>
+ #include <urcu/system.h>
++#include <urcu/tls-compat.h>
+ 
+ /*
+  * Number of entries in the per-thread defer queue. Must be power of 2.
+@@ -130,7 +133,9 @@ static int32_t defer_thread_stop;
+  * Written to only by each individual deferer. Read by both the deferer and
+  * the reclamation tread.
+  */
+-static struct defer_queue __thread defer_queue;
++TLS_DEFINE_SIMPLE(struct defer_queue, get_defer_queue, defer_queue);
++#define _defer_queue (*get_defer_queue())
++
+ static CDS_LIST_HEAD(registry_defer);
+ static pthread_t tid_defer;
+ 
+@@ -245,12 +250,12 @@ static void _rcu_defer_barrier_thread(void)
+ {
+ 	unsigned long head, num_items;
+ 
+-	head = defer_queue.head;
+-	num_items = head - defer_queue.tail;
++	head = _defer_queue.head;
++	num_items = head - _defer_queue.tail;
+ 	if (caa_unlikely(!num_items))
+ 		return;
+ 	synchronize_rcu();
+-	rcu_defer_barrier_queue(&defer_queue, head);
++	rcu_defer_barrier_queue(&_defer_queue, head);
+ }
+ 
+ void rcu_defer_barrier_thread(void)
+@@ -311,8 +316,8 @@ void _defer_rcu(void (*fct)(void *p), void *p)
+ 	 * Head is only modified by ourself. Tail can be modified by reclamation
+ 	 * thread.
+ 	 */
+-	head = defer_queue.head;
+-	tail = CMM_LOAD_SHARED(defer_queue.tail);
++	head = _defer_queue.head;
++	tail = CMM_LOAD_SHARED(_defer_queue.tail);
+ 
+ 	/*
+ 	 * If queue is full, or reached threshold. Empty queue ourself.
+@@ -321,7 +326,7 @@ void _defer_rcu(void (*fct)(void *p), void *p)
+ 	if (caa_unlikely(head - tail >= DEFER_QUEUE_SIZE - 2)) {
+ 		assert(head - tail <= DEFER_QUEUE_SIZE);
+ 		rcu_defer_barrier_thread();
+-		assert(head - CMM_LOAD_SHARED(defer_queue.tail) == 0);
++		assert(head - CMM_LOAD_SHARED(_defer_queue.tail) == 0);
+ 	}
+ 
+ 	/*
+@@ -340,25 +345,25 @@ void _defer_rcu(void (*fct)(void *p), void *p)
+ 	 * Decode: see the comments before 'struct defer_queue'
+ 	 *         or the code in rcu_defer_barrier_queue().
+ 	 */
+-	if (caa_unlikely(defer_queue.last_fct_in != fct
++	if (caa_unlikely(_defer_queue.last_fct_in != fct
+ 			|| DQ_IS_FCT_BIT(p)
+ 			|| p == DQ_FCT_MARK)) {
+-		defer_queue.last_fct_in = fct;
++		_defer_queue.last_fct_in = fct;
+ 		if (caa_unlikely(DQ_IS_FCT_BIT(fct) || fct == DQ_FCT_MARK)) {
+-			_CMM_STORE_SHARED(defer_queue.q[head++ & DEFER_QUEUE_MASK],
++			_CMM_STORE_SHARED(_defer_queue.q[head++ & DEFER_QUEUE_MASK],
+ 				      DQ_FCT_MARK);
+-			_CMM_STORE_SHARED(defer_queue.q[head++ & DEFER_QUEUE_MASK],
++			_CMM_STORE_SHARED(_defer_queue.q[head++ & DEFER_QUEUE_MASK],
+ 				      fct);
+ 		} else {
+ 			DQ_SET_FCT_BIT(fct);
+-			_CMM_STORE_SHARED(defer_queue.q[head++ & DEFER_QUEUE_MASK],
++			_CMM_STORE_SHARED(_defer_queue.q[head++ & DEFER_QUEUE_MASK],
+ 				      fct);
+ 		}
+ 	}
+-	_CMM_STORE_SHARED(defer_queue.q[head++ & DEFER_QUEUE_MASK], p);
++	_CMM_STORE_SHARED(_defer_queue.q[head++ & DEFER_QUEUE_MASK], p);
+ 	cmm_smp_wmb();	/* Publish new pointer before head */
+ 			/* Write q[] before head. */
+-	CMM_STORE_SHARED(defer_queue.head, head);
++	CMM_STORE_SHARED(_defer_queue.head, head);
+ 	cmm_smp_mb();	/* Write queue head before read futex */
+ 	/*
+ 	 * Wake-up any waiting defer thread.
+@@ -422,16 +427,16 @@ int rcu_defer_register_thread(void)
+ {
+ 	int was_empty;
+ 
+-	assert(defer_queue.last_head == 0);
+-	assert(defer_queue.q == NULL);
+-	defer_queue.q = malloc(sizeof(void *) * DEFER_QUEUE_SIZE);
+-	if (!defer_queue.q)
++	assert(_defer_queue.last_head == 0);
++	assert(_defer_queue.q == NULL);
++	_defer_queue.q = malloc(sizeof(void *) * DEFER_QUEUE_SIZE);
++	if (!_defer_queue.q)
+ 		return -ENOMEM;
+ 
+ 	mutex_lock_defer(&defer_thread_mutex);
+ 	mutex_lock_defer(&rcu_defer_mutex);
+ 	was_empty = cds_list_empty(&registry_defer);
+-	cds_list_add(&defer_queue.list, &registry_defer);
++	cds_list_add(&_defer_queue.list, &registry_defer);
+ 	mutex_unlock(&rcu_defer_mutex);
+ 
+ 	if (was_empty)
+@@ -446,10 +451,10 @@ void rcu_defer_unregister_thread(void)
+ 
+ 	mutex_lock_defer(&defer_thread_mutex);
+ 	mutex_lock_defer(&rcu_defer_mutex);
+-	cds_list_del(&defer_queue.list);
++	cds_list_del(&_defer_queue.list);
+ 	_rcu_defer_barrier_thread();
+-	free(defer_queue.q);
+-	defer_queue.q = NULL;
++	free(_defer_queue.q);
++	_defer_queue.q = NULL;
+ 	is_empty = cds_list_empty(&registry_defer);
+ 	mutex_unlock(&rcu_defer_mutex);
+ 
+diff --git a/urcu-qsbr.c b/urcu-qsbr.c
+index 5530295..6eeb90c 100644
+--- a/urcu-qsbr.c
++++ b/urcu-qsbr.c
+@@ -5,6 +5,7 @@
+  *
+  * Copyright (c) 2009 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+  * Copyright (c) 2009 Paul E. McKenney, IBM Corporation.
++ * Copyright (C) 2012 Marek Vavrusa <marek.vavrusa@nic.cz>, CZ.NIC, z.s.p.o.
+  *
+  * This library is free software; you can redistribute it and/or
+  * modify it under the terms of the GNU Lesser General Public
+@@ -34,6 +35,7 @@
+ #include <string.h>
+ #include <errno.h>
+ #include <poll.h>
++#include <config.h>
+ 
+ #include "urcu/wfqueue.h"
+ #include "urcu/map/urcu-qsbr.h"
+@@ -66,11 +68,11 @@ unsigned long rcu_gp_ctr = RCU_GP_ONLINE;
+  * Written to only by each individual reader. Read by both the reader and the
+  * writers.
+  */
+-struct rcu_reader __thread rcu_reader;
++TLS_DEFINE(struct rcu_reader, rcu_reader, _rcu_reader);
+ 
+ #ifdef DEBUG_YIELD
+ unsigned int yield_active;
+-unsigned int __thread rand_yield;
++TLS_DEFINE(unsigned int, get_rand_yield, _rand_yield);
+ #endif
+ 
+ static CDS_LIST_HEAD(registry);
+@@ -206,7 +208,7 @@ void synchronize_rcu(void)
+ {
+ 	unsigned long was_online;
+ 
+-	was_online = rcu_reader.ctr;
++	was_online = rcu_reader()->ctr;
+ 
+ 	/* All threads should read qparity before accessing data structure
+ 	 * where new ptr points to.  In the "then" case, rcu_thread_offline
+@@ -269,7 +271,7 @@ void synchronize_rcu(void)
+ {
+ 	unsigned long was_online;
+ 
+-	was_online = rcu_reader.ctr;
++	was_online = rcu_reader()->ctr;
+ 
+ 	/*
+ 	 * Mark the writer thread offline to make sure we don't wait for
+@@ -326,11 +328,11 @@ void rcu_thread_online(void)
+ 
+ void rcu_register_thread(void)
+ {
+-	rcu_reader.tid = pthread_self();
+-	assert(rcu_reader.ctr == 0);
++	rcu_reader()->tid = pthread_self();
++	assert(rcu_reader()->ctr == 0);
+ 
+ 	mutex_lock(&rcu_gp_lock);
+-	cds_list_add(&rcu_reader.node, &registry);
++	cds_list_add(&rcu_reader()->node, &registry);
+ 	mutex_unlock(&rcu_gp_lock);
+ 	_rcu_thread_online();
+ }
+@@ -343,7 +345,7 @@ void rcu_unregister_thread(void)
+ 	 */
+ 	_rcu_thread_offline();
+ 	mutex_lock(&rcu_gp_lock);
+-	cds_list_del(&rcu_reader.node);
++	cds_list_del(&rcu_reader()->node);
+ 	mutex_unlock(&rcu_gp_lock);
+ }
+ 
+diff --git a/urcu.c b/urcu.c
+index ba013d9..69a8311 100644
+--- a/urcu.c
++++ b/urcu.c
+@@ -5,6 +5,7 @@
+  *
+  * Copyright (c) 2009 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+  * Copyright (c) 2009 Paul E. McKenney, IBM Corporation.
++ * Copyright (C) 2012 Marek Vavrusa <marek.vavrusa@nic.cz>, CZ.NIC, z.s.p.o.
+  *
+  * This library is free software; you can redistribute it and/or
+  * modify it under the terms of the GNU Lesser General Public
+@@ -35,6 +36,7 @@
+ #include <string.h>
+ #include <errno.h>
+ #include <poll.h>
++#include <config.h>
+ 
+ #include "urcu/wfqueue.h"
+ #include "urcu/map/urcu.h"
+@@ -94,11 +96,11 @@ unsigned long rcu_gp_ctr = RCU_GP_COUNT;
+  * Written to only by each individual reader. Read by both the reader and the
+  * writers.
+  */
+-struct rcu_reader __thread rcu_reader;
++TLS_DEFINE(struct rcu_reader, rcu_reader, _rcu_reader);
+ 
+ #ifdef DEBUG_YIELD
+ unsigned int yield_active;
+-unsigned int __thread rand_yield;
++TLS_DEFINE(unsigned int, get_rand_yield, _rand_yield);
+ #endif
+ 
+ static CDS_LIST_HEAD(registry);
+@@ -120,9 +122,9 @@ static void mutex_lock(pthread_mutex_t *mutex)
+ 			perror("Error in pthread mutex lock");
+ 			exit(-1);
+ 		}
+-		if (CMM_LOAD_SHARED(rcu_reader.need_mb)) {
++		if (CMM_LOAD_SHARED(rcu_reader()->need_mb)) {
+ 			cmm_smp_mb();
+-			_CMM_STORE_SHARED(rcu_reader.need_mb, 0);
++			_CMM_STORE_SHARED(rcu_reader()->need_mb, 0);
+ 			cmm_smp_mb();
+ 		}
+ 		poll(NULL,0,10);
+@@ -368,20 +370,20 @@ void rcu_read_unlock(void)
+ 
+ void rcu_register_thread(void)
+ {
+-	rcu_reader.tid = pthread_self();
+-	assert(rcu_reader.need_mb == 0);
+-	assert(!(rcu_reader.ctr & RCU_GP_CTR_NEST_MASK));
++	rcu_reader()->tid = pthread_self();
++	assert(rcu_reader()->need_mb == 0);
++	assert(!(rcu_reader()->ctr & RCU_GP_CTR_NEST_MASK));
+ 
+ 	mutex_lock(&rcu_gp_lock);
+ 	rcu_init();	/* In case gcc does not support constructor attribute */
+-	cds_list_add(&rcu_reader.node, &registry);
++	cds_list_add(&rcu_reader()->node, &registry);
+ 	mutex_unlock(&rcu_gp_lock);
+ }
+ 
+ void rcu_unregister_thread(void)
+ {
+ 	mutex_lock(&rcu_gp_lock);
+-	cds_list_del(&rcu_reader.node);
++	cds_list_del(&rcu_reader()->node);
+ 	mutex_unlock(&rcu_gp_lock);
+ }
+ 
+@@ -405,7 +407,7 @@ static void sigrcu_handler(int signo, siginfo_t *siginfo, void *context)
+ 	 * executed on.
+ 	 */
+ 	cmm_smp_mb();
+-	_CMM_STORE_SHARED(rcu_reader.need_mb, 0);
++	_CMM_STORE_SHARED(rcu_reader()->need_mb, 0);
+ 	cmm_smp_mb();
+ }
+ 
+diff --git a/urcu/map/urcu-bp.h b/urcu/map/urcu-bp.h
+index 4abe8dc..f269135 100644
+--- a/urcu/map/urcu-bp.h
++++ b/urcu/map/urcu-bp.h
+@@ -9,6 +9,7 @@
+  *
+  * Copyright (c) 2009 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+  * Copyright (c) 2009 Paul E. McKenney, IBM Corporation.
++ * Copyright (C) 2012 Marek Vavrusa <marek.vavrusa@nic.cz>, CZ.NIC, z.s.p.o.
+  *
+  * LGPL-compatible code should include this header with :
+  *
+@@ -44,6 +45,7 @@
+ #define rcu_exit			rcu_exit_bp
+ #define synchronize_rcu			synchronize_rcu_bp
+ #define rcu_reader			rcu_reader_bp
++#define _rcu_reader			_rcu_reader_bp
+ #define rcu_gp_ctr			rcu_gp_ctr_bp
+ 
+ #define get_cpu_call_rcu_data		get_cpu_call_rcu_data_bp
+diff --git a/urcu/map/urcu-qsbr.h b/urcu/map/urcu-qsbr.h
+index 0d88d83..f947791 100644
+--- a/urcu/map/urcu-qsbr.h
++++ b/urcu/map/urcu-qsbr.h
+@@ -9,6 +9,7 @@
+  *
+  * Copyright (c) 2009 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+  * Copyright (c) 2009 Paul E. McKenney, IBM Corporation.
++ * Copyright (C) 2012 Marek Vavrusa <marek.vavrusa@nic.cz>, CZ.NIC, z.s.p.o.
+  *
+  * LGPL-compatible code should include this header with :
+  *
+@@ -47,6 +48,7 @@
+ #define rcu_exit			rcu_exit_qsbr
+ #define synchronize_rcu			synchronize_rcu_qsbr
+ #define rcu_reader			rcu_reader_qsbr
++#define _rcu_reader			_rcu_reader_qsbr
+ #define rcu_gp_ctr			rcu_gp_ctr_qsbr
+ 
+ #define get_cpu_call_rcu_data		get_cpu_call_rcu_data_qsbr
+diff --git a/urcu/map/urcu.h b/urcu/map/urcu.h
+index 3f436a7..a6d5c37 100644
+--- a/urcu/map/urcu.h
++++ b/urcu/map/urcu.h
+@@ -9,6 +9,7 @@
+  *
+  * Copyright (c) 2009 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+  * Copyright (c) 2009 Paul E. McKenney, IBM Corporation.
++ * Copyright (C) 2012 Marek Vavrusa <marek.vavrusa@nic.cz>, CZ.NIC, z.s.p.o.
+  *
+  * LGPL-compatible code should include this header with :
+  *
+@@ -75,6 +76,7 @@
+ #define rcu_exit			rcu_exit_memb
+ #define synchronize_rcu			synchronize_rcu_memb
+ #define rcu_reader			rcu_reader_memb
++#define _rcu_reader			_rcu_reader_memb
+ #define rcu_gp_ctr			rcu_gp_ctr_memb
+ 
+ #define get_cpu_call_rcu_data		get_cpu_call_rcu_data_memb
+@@ -107,6 +109,7 @@
+ #define rcu_exit			rcu_exit_sig
+ #define synchronize_rcu			synchronize_rcu_sig
+ #define rcu_reader			rcu_reader_sig
++#define _rcu_reader			_rcu_reader_sig
+ #define rcu_gp_ctr			rcu_gp_ctr_sig
+ 
+ #define get_cpu_call_rcu_data		get_cpu_call_rcu_data_sig
+@@ -139,6 +142,7 @@
+ #define rcu_exit			rcu_exit_mb
+ #define synchronize_rcu			synchronize_rcu_mb
+ #define rcu_reader			rcu_reader_mb
++#define _rcu_reader			_rcu_reader_mb
+ #define rcu_gp_ctr			rcu_gp_ctr_mb
+ 
+ #define get_cpu_call_rcu_data		get_cpu_call_rcu_data_mb
+diff --git a/urcu/static/urcu-bp.h b/urcu/static/urcu-bp.h
+index 8d22163..42e4b6e 100644
+--- a/urcu/static/urcu-bp.h
++++ b/urcu/static/urcu-bp.h
+@@ -11,6 +11,7 @@
+  *
+  * Copyright (c) 2009 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+  * Copyright (c) 2009 Paul E. McKenney, IBM Corporation.
++ * Copyright (C) 2012 Marek Vavrusa <marek.vavrusa@nic.cz>, CZ.NIC, z.s.p.o.
+  *
+  * This library is free software; you can redistribute it and/or
+  * modify it under the terms of the GNU Lesser General Public
+@@ -38,6 +39,7 @@
+ #include <urcu/system.h>
+ #include <urcu/uatomic.h>
+ #include <urcu/list.h>
++#include <urcu/tls-compat.h>
+ 
+ /*
+  * This code section can only be included in LGPL 2.1 compatible source code.
+@@ -74,7 +76,9 @@ extern "C" {
+ #define MAX_SLEEP 50
+ 
+ extern unsigned int yield_active;
+-extern unsigned int __thread rand_yield;
++TLS_DECLARE(unsigned int, get_rand_yield, _rand_yield);
++// Safe if rand_yield is not redefined
++#define rand_yield (*get_rand_yield())
+ 
+ static inline void debug_yield_read(void)
+ {
+@@ -144,7 +148,7 @@ struct rcu_reader {
+  * Adds a pointer dereference on the read-side, but won't require to unregister
+  * the reader thread.
+  */
+-extern struct rcu_reader __thread *rcu_reader;
++TLS_DECLARE(struct rcu_reader*, rcu_reader, _rcu_reader);
+ 
+ static inline int rcu_old_gp_ongoing(long *value)
+ {
+@@ -166,24 +170,24 @@ static inline void _rcu_read_lock(void)
+ 	long tmp;
+ 
+ 	/* Check if registered */
+-	if (caa_unlikely(!rcu_reader))
++	if (caa_unlikely(!*rcu_reader()))
+ 		rcu_bp_register();
+ 
+ 	cmm_barrier();	/* Ensure the compiler does not reorder us with mutex */
+-	tmp = rcu_reader->ctr;
++	tmp = (*rcu_reader())->ctr;
+ 	/*
+ 	 * rcu_gp_ctr is
+ 	 *   RCU_GP_COUNT | (~RCU_GP_CTR_PHASE or RCU_GP_CTR_PHASE)
+ 	 */
+ 	if (caa_likely(!(tmp & RCU_GP_CTR_NEST_MASK))) {
+-		_CMM_STORE_SHARED(rcu_reader->ctr, _CMM_LOAD_SHARED(rcu_gp_ctr));
++		_CMM_STORE_SHARED((*rcu_reader())->ctr, _CMM_LOAD_SHARED(rcu_gp_ctr));
+ 		/*
+ 		 * Set active readers count for outermost nesting level before
+ 		 * accessing the pointer.
+ 		 */
+ 		cmm_smp_mb();
+ 	} else {
+-		_CMM_STORE_SHARED(rcu_reader->ctr, tmp + RCU_GP_COUNT);
++		_CMM_STORE_SHARED((*rcu_reader())->ctr, tmp + RCU_GP_COUNT);
+ 	}
+ }
+ 
+@@ -193,7 +197,7 @@ static inline void _rcu_read_unlock(void)
+ 	 * Finish using rcu before decrementing the pointer.
+ 	 */
+ 	cmm_smp_mb();
+-	_CMM_STORE_SHARED(rcu_reader->ctr, rcu_reader->ctr - RCU_GP_COUNT);
++	_CMM_STORE_SHARED((*rcu_reader())->ctr, (*rcu_reader())->ctr - RCU_GP_COUNT);
+ 	cmm_barrier();	/* Ensure the compiler does not reorder us with mutex */
+ }
+ 
+diff --git a/urcu/static/urcu-qsbr.h b/urcu/static/urcu-qsbr.h
+index 68bfc31..fac39a1 100644
+--- a/urcu/static/urcu-qsbr.h
++++ b/urcu/static/urcu-qsbr.h
+@@ -11,6 +11,7 @@
+  *
+  * Copyright (c) 2009 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+  * Copyright (c) 2009 Paul E. McKenney, IBM Corporation.
++ * Copyright (C) 2012 Marek Vavrusa <marek.vavrusa@nic.cz>, CZ.NIC, z.s.p.o.
+  *
+  * This library is free software; you can redistribute it and/or
+  * modify it under the terms of the GNU Lesser General Public
+@@ -42,6 +43,7 @@
+ #include <urcu/uatomic.h>
+ #include <urcu/list.h>
+ #include <urcu/futex.h>
++#include <urcu/tls-compat.h>
+ 
+ #ifdef __cplusplus
+ extern "C" {
+@@ -74,7 +76,9 @@ extern "C" {
+ #define MAX_SLEEP 50
+ 
+ extern unsigned int yield_active;
+-extern unsigned int __thread rand_yield;
++TLS_DECLARE(unsigned int, get_rand_yield, _rand_yield);
++// Safe if rand_yield is not redefined
++#define rand_yield (*get_rand_yield())
+ 
+ static inline void debug_yield_read(void)
+ {
+@@ -128,7 +132,7 @@ struct rcu_reader {
+ 	pthread_t tid;
+ };
+ 
+-extern struct rcu_reader __thread rcu_reader;
++TLS_DECLARE(struct rcu_reader, rcu_reader, _rcu_reader);
+ 
+ extern int32_t gp_futex;
+ 
+@@ -137,8 +141,8 @@ extern int32_t gp_futex;
+  */
+ static inline void wake_up_gp(void)
+ {
+-	if (caa_unlikely(_CMM_LOAD_SHARED(rcu_reader.waiting))) {
+-		_CMM_STORE_SHARED(rcu_reader.waiting, 0);
++	if (caa_unlikely(_CMM_LOAD_SHARED(rcu_reader()->waiting))) {
++		_CMM_STORE_SHARED(rcu_reader()->waiting, 0);
+ 		cmm_smp_mb();
+ 		if (uatomic_read(&gp_futex) != -1)
+ 			return;
+@@ -158,7 +162,7 @@ static inline int rcu_gp_ongoing(unsigned long *ctr)
+ 
+ static inline void _rcu_read_lock(void)
+ {
+-	rcu_assert(rcu_reader.ctr);
++	rcu_assert(rcu_reader()->ctr);
+ }
+ 
+ static inline void _rcu_read_unlock(void)
+@@ -168,7 +172,7 @@ static inline void _rcu_read_unlock(void)
+ static inline void _rcu_quiescent_state(void)
+ {
+ 	cmm_smp_mb();
+-	_CMM_STORE_SHARED(rcu_reader.ctr, _CMM_LOAD_SHARED(rcu_gp_ctr));
++	_CMM_STORE_SHARED(rcu_reader()->ctr, _CMM_LOAD_SHARED(rcu_gp_ctr));
+ 	cmm_smp_mb();	/* write rcu_reader.ctr before read futex */
+ 	wake_up_gp();
+ 	cmm_smp_mb();
+@@ -177,8 +181,8 @@ static inline void _rcu_quiescent_state(void)
+ static inline void _rcu_thread_offline(void)
+ {
+ 	cmm_smp_mb();
+-	CMM_STORE_SHARED(rcu_reader.ctr, 0);
+-	cmm_smp_mb();	/* write rcu_reader.ctr before read futex */
++	CMM_STORE_SHARED(rcu_reader()->ctr, 0);
++	cmm_smp_mb();	/* write _rcu_reader.ctr before read futex */
+ 	wake_up_gp();
+ 	cmm_barrier();	/* Ensure the compiler does not reorder us with mutex */
+ }
+@@ -186,7 +190,7 @@ static inline void _rcu_thread_offline(void)
+ static inline void _rcu_thread_online(void)
+ {
+ 	cmm_barrier();	/* Ensure the compiler does not reorder us with mutex */
+-	_CMM_STORE_SHARED(rcu_reader.ctr, CMM_LOAD_SHARED(rcu_gp_ctr));
++	_CMM_STORE_SHARED(rcu_reader()->ctr, CMM_LOAD_SHARED(rcu_gp_ctr));
+ 	cmm_smp_mb();
+ }
+ 
+diff --git a/urcu/static/urcu.h b/urcu/static/urcu.h
+index 7ae0185..302404b 100644
+--- a/urcu/static/urcu.h
++++ b/urcu/static/urcu.h
+@@ -11,6 +11,7 @@
+  *
+  * Copyright (c) 2009 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+  * Copyright (c) 2009 Paul E. McKenney, IBM Corporation.
++ * Copyright (C) 2012 Marek Vavrusa <marek.vavrusa@nic.cz>, CZ.NIC, z.s.p.o.
+  *
+  * This library is free software; you can redistribute it and/or
+  * modify it under the terms of the GNU Lesser General Public
+@@ -33,6 +34,7 @@
+ #include <pthread.h>
+ #include <unistd.h>
+ #include <stdint.h>
++#include <config.h>
+ 
+ #include <urcu/compiler.h>
+ #include <urcu/arch.h>
+@@ -40,6 +42,7 @@
+ #include <urcu/uatomic.h>
+ #include <urcu/list.h>
+ #include <urcu/futex.h>
++#include <urcu/tls-compat.h>
+ 
+ #ifdef __cplusplus
+ extern "C" {
+@@ -121,7 +124,9 @@ extern "C" {
+ #endif
+ 
+ extern unsigned int yield_active;
+-extern unsigned int __thread rand_yield;
++TLS_DECLARE(unsigned int, get_rand_yield, _rand_yield);
++// Safe shortcut if rand_yield is not redefined
++#define rand_yield (*get_rand_yield())
+ 
+ static inline void debug_yield_read(void)
+ {
+@@ -222,7 +227,7 @@ struct rcu_reader {
+ 	pthread_t tid;
+ };
+ 
+-extern struct rcu_reader __thread rcu_reader;
++TLS_DECLARE(struct rcu_reader, rcu_reader, _rcu_reader);
+ 
+ extern int32_t gp_futex;
+ 
+@@ -256,20 +261,20 @@ static inline void _rcu_read_lock(void)
+ 	unsigned long tmp;
+ 
+ 	cmm_barrier();	/* Ensure the compiler does not reorder us with mutex */
+-	tmp = rcu_reader.ctr;
++	tmp = rcu_reader()->ctr;
+ 	/*
+ 	 * rcu_gp_ctr is
+ 	 *   RCU_GP_COUNT | (~RCU_GP_CTR_PHASE or RCU_GP_CTR_PHASE)
+ 	 */
+ 	if (caa_likely(!(tmp & RCU_GP_CTR_NEST_MASK))) {
+-		_CMM_STORE_SHARED(rcu_reader.ctr, _CMM_LOAD_SHARED(rcu_gp_ctr));
++		_CMM_STORE_SHARED(rcu_reader()->ctr, _CMM_LOAD_SHARED(rcu_gp_ctr));
+ 		/*
+ 		 * Set active readers count for outermost nesting level before
+ 		 * accessing the pointer. See smp_mb_master().
+ 		 */
+ 		smp_mb_slave(RCU_MB_GROUP);
+ 	} else {
+-		_CMM_STORE_SHARED(rcu_reader.ctr, tmp + RCU_GP_COUNT);
++		_CMM_STORE_SHARED(rcu_reader()->ctr, tmp + RCU_GP_COUNT);
+ 	}
+ }
+ 
+@@ -277,19 +282,19 @@ static inline void _rcu_read_unlock(void)
+ {
+ 	unsigned long tmp;
+ 
+-	tmp = rcu_reader.ctr;
++	tmp = rcu_reader()->ctr;
+ 	/*
+ 	 * Finish using rcu before decrementing the pointer.
+ 	 * See smp_mb_master().
+ 	 */
+ 	if (caa_likely((tmp & RCU_GP_CTR_NEST_MASK) == RCU_GP_COUNT)) {
+ 		smp_mb_slave(RCU_MB_GROUP);
+-		_CMM_STORE_SHARED(rcu_reader.ctr, rcu_reader.ctr - RCU_GP_COUNT);
++		_CMM_STORE_SHARED(rcu_reader()->ctr, rcu_reader()->ctr - RCU_GP_COUNT);
+ 		/* write rcu_reader.ctr before read futex */
+ 		smp_mb_slave(RCU_MB_GROUP);
+ 		wake_up_gp();
+ 	} else {
+-		_CMM_STORE_SHARED(rcu_reader.ctr, rcu_reader.ctr - RCU_GP_COUNT);
++		_CMM_STORE_SHARED(rcu_reader()->ctr, rcu_reader()->ctr - RCU_GP_COUNT);
+ 	}
+ 	cmm_barrier();	/* Ensure the compiler does not reorder us with mutex */
+ }
+diff --git a/urcu/tls-compat.h b/urcu/tls-compat.h
+new file mode 100644
+index 0000000..d47e803
+--- /dev/null
++++ b/urcu/tls-compat.h
+@@ -0,0 +1,104 @@
++/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU General Public License as published by
++    the Free Software Foundation, either version 3 of the License, or
++    (at your option) any later version.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU General Public License for more details.
++
++    You should have received a copy of the GNU General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ */
++#ifndef _TLS_COMPAT_H
++#define _TLS_COMPAT_H
++#include <config.h>
++
++/* Conditional includes. */
++#ifndef TLS
++#include <pthread.h>
++#endif
++
++/*!
++ * \brief TLS variable declaration (requires TLS_DEFINITION in .c file)
++ * \param T declared type.
++ * \param name output function name.
++ * \param vname internal variable name.
++ *
++ * Output: function "T* name()".
++ *
++ * Example:
++ * TLS_DECLARE(int, a, _a);
++ * TLS_DEFINE(int, a, _a);
++ * *(a()) = 1
++ */
++#ifdef TLS
++	#define TLS_DECLARE(T, name, vname) \
++	extern TLS T vname; \
++	static inline T *name() { \
++		return &vname;\
++	}
++#else
++	#define TLS_DECLARE(T, name, vname) \
++	T *name()
++#endif
++
++/*!
++ * \brief TLS variable definition.
++ * \param T declared type.
++ * \param name output function name.
++ * \param vname internal variable name.
++ *
++ * Output: function "T* name()" or TLS variable "vname".
++ * Requires TLS_DECLARE for exported API.
++ */
++#ifdef TLS
++#define TLS_DEFINE(T, name, vname) \
++TLS T vname
++#else
++#define TLS_DEFINE(T, name, vname) \
++static pthread_key_t tls_ ## name ## _key; \
++static pthread_once_t tls_ ## name ## _once = PTHREAD_ONCE_INIT; \
++static void tls_ ## name ## _deinit() { \
++        free((void*)pthread_getspecific(tls_ ## name ## _key)); \
++} \
++static void tls_ ## name ## _init() { \
++        (void)pthread_key_create(&tls_ ## name ## _key, tls_ ## name ## _deinit); \
++        atexit(tls_ ## name ## _deinit); \
++} \
++T *name() { \
++        (void)pthread_once(&tls_ ## name ## _once, tls_ ## name ## _init); \
++        void *p = pthread_getspecific(tls_ ## name ## _key); \
++        if (p == NULL) { \
++		p = malloc(sizeof(T)); \
++		memset(p, 0, sizeof(T)); \
++		(void)pthread_setspecific(tls_ ## name ## _key, p); \
++	} \
++        return p; \
++}
++#endif
++
++/*!
++ * \brief TLS variable declaration+definition.
++ * \param T declared type.
++ * \param name output function name.
++ * \param vname internal variable name.
++ *
++ * Output: function "T* name()" or TLS variable "vname".
++ * Requires TLS_DECLARE for exported API.
++ */
++#ifndef TLS
++#define TLS_DEFINE_SIMPLE(T, name, vname) \
++TLS_DEFINE(T, name, vname)
++#else
++#define TLS_DEFINE_SIMPLE(T, name, vname) \
++TLS_DEFINE(T, name, vname); \
++static inline T *name() { \
++       return &vname;\
++}
++#endif
++
++#endif // _TLS_COMPAT_H
+-- 
+1.7.7.1
+

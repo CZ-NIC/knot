@@ -84,6 +84,7 @@ typedef struct knot_ns_xfr {
 	sockaddr_t addr;
 	knot_packet_t *query;
 	knot_packet_t *response;
+	knot_rcode_t rcode;
 	xfr_callback_t send;
 	int session;
 	
@@ -100,6 +101,7 @@ typedef struct knot_ns_xfr {
 	size_t wire_size;
 	void *data;
 	knot_zone_t *zone;
+	char* zname;
 	void *owner;
 	
 	/*! \note [TSIG] TSIG fields */
@@ -174,6 +176,9 @@ typedef enum knot_ns_xfr_type_t {
  * \return Pointer to the name server structure.
  */
 knot_nameserver_t *knot_ns_create();
+
+void knot_ns_set_nsid(knot_nameserver_t *nameserver, const char *nsid,
+                      size_t nsid_length);
 
 /*!
  * \brief Parses the given query into the response structure and recognizes

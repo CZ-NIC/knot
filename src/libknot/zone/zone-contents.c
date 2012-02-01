@@ -1137,6 +1137,7 @@ int knot_zone_contents_add_node(knot_zone_contents_t *zone,
 
 	int ret = 0;
 	if ((ret = knot_zone_contents_check_node(zone, node)) != 0) {
+		dbg_zone("Node check failed.\n");
 		return ret;
 	}
 
@@ -1185,6 +1186,13 @@ int knot_zone_contents_add_node(knot_zone_contents_t *zone,
 
 	knot_dname_t *chopped =
 		knot_dname_left_chop(knot_node_owner(node));
+	if(chopped == NULL) {
+		/* Root domain and root domain only. */
+		assert(node->owner && node->owner->labels && 
+		       node->owner->labels[0] == 0);
+		return KNOT_EOK;
+	}
+	
 	if (knot_dname_compare(knot_node_owner(zone->apex), chopped) == 0) {
 		dbg_zone("Zone apex is the parent.\n");
 		knot_node_set_parent(node, zone->apex);
@@ -1197,15 +1205,19 @@ int knot_zone_contents_add_node(knot_zone_contents_t *zone,
 	} else {
 		knot_node_t *next_node;
 		while ((next_node
-		      = knot_zone_contents_get_node(zone, chopped)) == NULL) {
+		      = knot_zone_contents_get_node(zone, chopped)) == NULL &&
+			chopped != NULL) {
 			/* Adding new dname to zone + add to table. */
 			dbg_zone("Creating new node.\n");
+			
+			assert(chopped);
 			next_node = knot_node_new(chopped, NULL, flags);
 			if (next_node == NULL) {
 				/* Directly discard. */
 				knot_dname_free(&chopped);
 				return KNOT_ENOMEM;
 			}
+			
 			if (use_domain_table) {
 				ret =
 				 knot_zone_contents_dnames_from_node_to_table(

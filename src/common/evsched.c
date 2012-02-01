@@ -17,8 +17,14 @@
 #include <sys/time.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <config.h>
 
 #include "common/evsched.h"
+
+/*! \todo Fix properly. */
+#ifndef HAVE_PSELECT
+#define OPENBSD_SLAB_BROKEN
+#endif
 
 /*!
  * \brief Set event timer to T (now) + dt miliseconds.
@@ -60,7 +66,9 @@ evsched_t *evsched_new()
 	pthread_mutex_init(&s->mx, 0);
 	pthread_cond_init(&s->notify, 0);
 	pthread_mutex_init(&s->cache.lock, 0);
+#ifndef OPENBSD_SLAB_BROKEN
 	slab_cache_init(&s->cache.alloc, sizeof(event_t));
+#endif
 	init_list(&s->calendar);
 	return s;
 }
@@ -83,8 +91,10 @@ void evsched_delete(evsched_t **s)
 		evsched_event_free((*s), (event_t*)n);
 	}
 
+#ifndef OPENBSD_SLAB_BROKEN
 	/* Free allocator. */
 	slab_cache_destroy(&(*s)->cache.alloc);
+#endif
 	pthread_mutex_destroy(&(*s)->cache.lock);
 
 	/* Free scheduler. */
@@ -99,9 +109,16 @@ event_t *evsched_event_new(evsched_t *s, int type)
 	}
 
 	/* Allocate. */
+#ifndef OPENBSD_SLAB_BROKEN
 	pthread_mutex_lock(&s->cache.lock);
 	event_t *e = slab_cache_alloc(&s->cache.alloc);
 	pthread_mutex_unlock(&s->cache.lock);
+#else
+	event_t *e = malloc(sizeof(event_t));
+#endif
+        if (e == NULL) {
+		return NULL;
+	}
 
 	/* Initialize. */
 	memset(e, 0, sizeof(event_t));
@@ -115,9 +132,13 @@ void evsched_event_free(evsched_t *s, event_t *ev)
 		return;
 	}
 
+#ifndef OPENBSD_SLAB_BROKEN
 	pthread_mutex_lock(&s->cache.lock);
 	slab_free(ev);
 	pthread_mutex_unlock(&s->cache.lock);
+#else
+	free(ev);
+#endif
 }
 
 event_t* evsched_next(evsched_t *s)

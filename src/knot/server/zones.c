@@ -17,7 +17,7 @@
 #include <sys/stat.h>
 
 #include "common/lists.h"
-#include "common/WELL1024a.h"
+#include "common/prng.h"
 #include "libknot/dname.h"
 #include "libknot/util/wire.h"
 #include "knot/zone/zone-dump-text.h"
@@ -2309,6 +2309,9 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 {
 	knot_nameserver_t *ns = (knot_nameserver_t *)data;
 	dbg_zones_verb("zones: reconfiguring name server.\n");
+	
+	/* Set NSID. */
+	knot_ns_set_nsid(ns, conf->nsid, conf->nsid_len);
 
 	knot_zonedb_t *old_db = 0;
 

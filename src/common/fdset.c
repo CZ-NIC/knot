@@ -21,6 +21,8 @@
 #include <dlfcn.h>
 #include <string.h>
 #include <stdio.h>
+#include <time.h>
+#include <stdlib.h>
 #include "common/fdset.h"
 #include <config.h>
 
@@ -77,4 +79,115 @@ void __attribute__ ((constructor)) fdset_init()
 	/* This shouldn't happen. */
 	fprintf(stderr, "fdset: fatal error - no valid fdset backend found\n");
 	return;
+}
+
+/*!
+ * \brief Compare file descriptors.
+ *
+ * \param a File descriptor.
+ * \param b File descriptor.
+ *
+ * \retval -1 if a < b
+ * \retval  0 if a == b
+ * \retval  1 if a > b
+ */
+static int fdset_compare(void *a, void *b)
+{
+	if ((size_t)a < (size_t)b) return -1;
+	if ((size_t)a > (size_t)b) return  1;
+	return 0;
+}
+
+fdset_t *fdset_new() {
+	fdset_t* set = _fdset_backend.fdset_new();
+	fdset_base_t *base = (fdset_base_t*)set;
+	if (base != NULL) {
+		/* Create atimes list. */
+		base->atimes = skip_create_list(fdset_compare);
+		if (base->atimes == NULL) {
+			fdset_destroy(set);
+			set = NULL;
+		}
+	}
+	return set;
+}
+
+int fdset_destroy(fdset_t* fdset) {
+	fdset_base_t *base = (fdset_base_t*)fdset;
+	if (base != NULL && base->atimes != NULL) {
+		skip_destroy_list(&base->atimes, NULL, free);
+	}
+	return _fdset_backend.fdset_destroy(fdset);
+}
+
+int fdset_remove(fdset_t *fdset, int fd) {
+	fdset_base_t *base = (fdset_base_t*)fdset;
+	if (base != NULL && base->atimes != NULL) {
+		skip_remove(base->atimes, (void*)((size_t)fd), NULL, free);
+	}
+	return _fdset_backend.fdset_remove(fdset, fd);
+}
+
+int fdset_set_watchdog(fdset_t* fdset, int fd, int interval)
+{
+	fdset_base_t *base = (fdset_base_t*)fdset;
+	if (base == NULL || base->atimes == NULL) {
+		return -1;
+	}
+	
+	/* Lift watchdog if interval is negative. */
+	if (interval < 0) {
+		skip_remove(base->atimes, (void*)((size_t)fd), NULL, free);
+		return 0;
+	}
+	
+	/* Find if exists. */
+	struct timespec *ts = NULL;
+	ts = (struct timespec*)skip_find(base->atimes, (void*)((size_t)fd));
+	if (ts == NULL) {
+		ts = malloc(sizeof(struct timespec));
+		if (ts == NULL) {
+			return -1;
+		}
+		skip_insert(base->atimes, (void*)((size_t)fd), (void*)ts, NULL);
+	}
+	
+	/* Update clock. */
+	if (clock_gettime(CLOCK_MONOTONIC, ts) < 0) {
+		return -1;
+	}
+	
+	ts->tv_sec += interval; /* Only seconds precision. */
+	return 0;
+}
+
+int fdset_sweep(fdset_t* fdset, void(*cb)(fdset_t*, int))
+{
+	fdset_base_t *base = (fdset_base_t*)fdset;
+	if (base == NULL || base->atimes == NULL) {
+		return -1;
+	}
+	
+	/* Get time threshold. */
+	struct timespec now;
+	if (clock_gettime(CLOCK_MONOTONIC, &now) < 0) {
+		return -1;
+	}
+	
+	/* Inspect all nodes. */
+	int sweeped = 0;
+	const skip_node_t *n = skip_first(base->atimes);
+	while (n != NULL) {
+		const skip_node_t* pnext = skip_next(n);
+		
+		/* Evaluate */
+		struct timespec *ts = (struct timespec*)n->value;
+		if (ts->tv_sec <= now.tv_sec) {
+			cb(fdset, (int)(((ssize_t)n->key)));
+			++sweeped;
+		}
+		n = pnext;
+	}
+	
+	return sweeped;
 }

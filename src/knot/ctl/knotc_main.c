@@ -281,6 +281,10 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 			}
 		}
 
+		// Recompile zones if needed
+		rc = execute("compile", argv, argc, -1, verbose, force, wait,
+			     interactive, jobs, pidfile);
+
 		// Lock configuration
 		conf_read_lock();
 
@@ -412,6 +416,10 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 				return 1;
 			}
 		}
+
+		// Recompile zones if needed
+		rc = execute("compile", argv, argc, -1, verbose, force, wait,
+			     interactive, jobs, pidfile);
 
 		// Stop
 		if (kill(pid, SIGHUP) < 0) {
