@@ -823,8 +823,9 @@ typedef struct cname_chain {
 
 /*----------------------------------------------------------------------------*/
 
-int cname_chain_add(cname_chain_t *last, const knot_node_t *node)
+int cname_chain_add(cname_chain_t **last, const knot_node_t *node)
 {
+	assert(last != NULL);
 
 	cname_chain_t *new_cname =
 	             (cname_chain_t *)malloc(sizeof(cname_chain_t));
@@ -833,7 +834,11 @@ int cname_chain_add(cname_chain_t *last, const knot_node_t *node)
 	new_cname->node = node;
 	new_cname->next = NULL;
 
-	last->next = new_cname;
+	if (*last != NULL) {
+		(*last)->next = new_cname;
+	}
+
+	*last = new_cname;
 
 	return KNOT_EOK;
 }
@@ -893,7 +898,7 @@ static void knot_zone_contents_check_loops_in_tree(knot_zone_tree_node_t *tnode,
 	int ret = 0;
 
 	while (cname != NULL && !cname_chain_contains(chain, node)) {
-		ret = cname_chain_add(act_cname, node);
+		ret = cname_chain_add(&act_cname, node);
 		if (ret != KNOT_EOK) {
 			cname_chain_free(chain);
 			args->err = ret;
@@ -913,7 +918,25 @@ static void knot_zone_contents_check_loops_in_tree(knot_zone_tree_node_t *tnode,
 			                        args->zone, next_name,
 			                        &next_node, &ce);
 
-			if (ret != KNOT_ZONE_NAME_FOUND) {
+			char *name1 = knot_dname_to_str(next_name);
+			char *name2 = (next_node != NULL)
+			       ? knot_dname_to_str(knot_node_owner(next_node))
+			       : "none";
+			char *name3 = (ce != NULL)
+			       ? knot_dname_to_str(knot_node_owner(ce))
+			       : "none";
+			printf("Searched: %s, found: %p (%s), %p (%s); ret: %d"
+			       ".\n", name1, next_node, name2, ce, name3, ret);
+			free(name1);
+			if (next_node != NULL) {
+				free(name2);
+			}
+			if (ce != NULL) {
+				free(name3);
+			}
+
+			if (ret != KNOT_ZONE_NAME_FOUND
+			    && ce != NULL) {
 				// try to find wildcard child
 				assert(knot_dname_is_subdomain(next_name,
 				                          knot_node_owner(ce)));
@@ -921,13 +944,15 @@ static void knot_zone_contents_check_loops_in_tree(knot_zone_tree_node_t *tnode,
 			}
 
 			assert(next_node == NULL || knot_dname_compare(
-			           knot_node_owner(next_node), next_name) == 0);
+			           knot_node_owner(next_node), next_name) == 0
+			 || knot_dname_is_wildcard(knot_node_owner(next_node)));
 		}
 
 		if (next_node == NULL) {
 			// no CNAME node to follow
 			cname = NULL;
 		} else {
+			node = next_node;
 			cname = knot_node_rrset(node, KNOT_RRTYPE_CNAME);
 		}
 	}
@@ -1977,6 +2002,7 @@ dbg_zone_exec(
 		return KNOT_ERROR;
 	}
 
+	assert(zone->table != NULL);
 	const ck_hash_table_item_t *item = ck_find_item(zone->table,
 	                                                name_tmp, name_size);
 
@@ -2162,6 +2188,10 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone)
 		         knot_strerror(adjust_arg.err));
 		return adjust_arg.err;
 	}
+
+	assert(zone->apex == adjust_arg.first_node);
+	knot_node_set_previous(zone->apex, adjust_arg.previous_node);
+
 	dbg_zone("Done.\n");
 
 	/*
@@ -2171,10 +2201,6 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone)
 	knot_zone_tree_forward_apply_inorder(zone->nodes,
 	                                 knot_zone_contents_check_loops_in_tree,
 	                                 (void *)&adjust_arg);
-
-
-	assert(zone->apex == adjust_arg.first_node);
-	knot_node_set_previous(zone->apex, adjust_arg.previous_node);
 
 	adjust_arg.first_node = NULL;
 	adjust_arg.previous_node = NULL;
