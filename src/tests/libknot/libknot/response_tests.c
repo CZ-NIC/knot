@@ -295,13 +295,13 @@ static int test_response_add_opt()
 
 static int test_response_add_generic(int (*func)(knot_packet_t *,
                                                  const knot_rrset_t *,
-                                                 int, int, int))
+                                                 int, int, int, int))
 {
 	int errors = 0;
 	int lived = 0;
 
 	lives_ok({
-		if (func(NULL, NULL, 0, 0, 0) != KNOT_EBADARG) {
+		if (func(NULL, NULL, 0, 0, 0, 0) != KNOT_EBADARG) {
 			diag("Calling response add rrset with NULL "
 			     "arguments did not return KNOT_EBADARG!");
 			errors++;
@@ -311,7 +311,7 @@ static int test_response_add_generic(int (*func)(knot_packet_t *,
 			knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
 		assert(response);
 		lived = 0;
-		if (func(response, NULL, 0, 0, 0) != KNOT_EBADARG) {
+		if (func(response, NULL, 0, 0, 0, 0) != KNOT_EBADARG) {
 			diag("Calling response add rrset with NULL rrset "
 			     "did not return KNOT_EBADARG!");
 			errors++;
@@ -327,7 +327,7 @@ static int test_response_add_generic(int (*func)(knot_packet_t *,
 			                 KNOT_CLASS_IN, 3600);
 		assert(rrset);
 		lived = 0;
-		if (func(NULL, rrset, 0, 0, 0) != KNOT_EBADARG) {
+		if (func(NULL, rrset, 0, 0, 0, 0) != KNOT_EBADARG) {
 			diag("Calling response add rrset with NULL response "
 			     "did not return KNOT_EBADARG!");
 			errors++;
@@ -354,7 +354,7 @@ static int test_response_add_generic(int (*func)(knot_packet_t *,
 		knot_rrset_new(owner, KNOT_RRTYPE_NS,
 		                 KNOT_CLASS_IN, 3600);
 	assert(rrset);
-	if (func(response, rrset, 0, 0, 0) != KNOT_EOK) {
+	if (func(response, rrset, 0, 0, 0, 0) != KNOT_EOK) {
 		diag("Adding valid RRSet to response did not result to "
 		     "KNOT_EOK");
 		errors++;
