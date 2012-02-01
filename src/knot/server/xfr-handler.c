@@ -1226,6 +1226,7 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 	case XFR_TYPE_CLOSE:
 		xfr_free_task((knot_ns_xfr_t *)xfr.data);
 		ret = KNOTD_EOK;
+		break;
 	default:
 		log_server_error("Unknown XFR request type (%d).\n", xfr.type);
 		break;
