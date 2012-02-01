@@ -2539,183 +2539,183 @@ static void xfrin_mark_empty(knot_node_t *node, void *data)
 
 /*----------------------------------------------------------------------------*/
 
-typedef struct xfrin_adjust_data {
-	knot_zone_contents_t *contents;
-//	xfrin_changes_t *changes;
-	int err;
-} xfrin_adjust_data_t;
+//typedef struct xfrin_adjust_data {
+//	knot_zone_contents_t *contents;
+////	xfrin_changes_t *changes;
+//	int err;
+//} xfrin_adjust_data_t;
 
-/*----------------------------------------------------------------------------*/
+///*----------------------------------------------------------------------------*/
 
-static void xfrin_adjust_node_in_tree(knot_node_t *node, void *data)
-{
-	assert(node != NULL);
-	assert(data != NULL);
+//static void xfrin_adjust_node_in_tree(knot_node_t *node, void *data)
+//{
+//	assert(node != NULL);
+//	assert(data != NULL);
 
-	xfrin_adjust_data_t *adata = (xfrin_adjust_data_t *)data;
+//	xfrin_adjust_data_t *adata = (xfrin_adjust_data_t *)data;
 
-	assert(adata->contents != NULL);
+//	assert(adata->contents != NULL);
 
-	if (adata->err != KNOT_EOK) {
-		dbg_xfrin_detail("Error during adjusting, skipping node.\n");
-		return;
-	}
+//	if (adata->err != KNOT_EOK) {
+//		dbg_xfrin_detail("Error during adjusting, skipping node.\n");
+//		return;
+//	}
 
-	assert(knot_node_new_node(node) == NULL);
+//	assert(knot_node_new_node(node) == NULL);
 
-	/*
-	 * 2) If not empty, first, put dnames into dname table
-	 */
+//	/*
+//	 * 2) If not empty, first, put dnames into dname table
+//	 */
 
-	assert(adata->contents->dname_table != NULL);
+//	assert(adata->contents->dname_table != NULL);
 
-	int ret = knot_zone_contents_dnames_from_node_to_table(
-	                        adata->contents->dname_table, node);
-	if (ret != KNOT_EOK) {
-		dbg_xfrin("Failed to add dnames from adjusted node to "
-		          "table: %s\n", knot_strerror(ret));
-		adata->err = ret;
-		return;
-	}
+//	int ret = knot_zone_contents_dnames_from_node_to_table(
+//	                        adata->contents->dname_table, node);
+//	if (ret != KNOT_EOK) {
+//		dbg_xfrin("Failed to add dnames from adjusted node to "
+//		          "table: %s\n", knot_strerror(ret));
+//		adata->err = ret;
+//		return;
+//	}
 
-	/*
-	 * Calling this function is OK, because it works only with the current
-	 * nodes. The zone contents are marked as new, so no old data should be
-	 * altered, nor used, in a way that would somehow influence answering.
-	 *
-	 * It would be however nice to test it somehow.
-	 */
-	knot_zone_contents_adjust_node(node, adata->contents, 0);
-}
+//	/*
+//	 * Calling this function is OK, because it works only with the current
+//	 * nodes. The zone contents are marked as new, so no old data should be
+//	 * altered, nor used, in a way that would somehow influence answering.
+//	 *
+//	 * It would be however nice to test it somehow.
+//	 */
+//	knot_zone_contents_adjust_node(node, adata->contents, 0);
+//}
 
-/*----------------------------------------------------------------------------*/
+///*----------------------------------------------------------------------------*/
 
-typedef struct xfrin_cname_chain {
-	const knot_node_t *node;
-	struct xfrin_cname_chain *next;
-} xfrin_cname_chain_t;
+//typedef struct xfrin_cname_chain {
+//	const knot_node_t *node;
+//	struct xfrin_cname_chain *next;
+//} xfrin_cname_chain_t;
 
-/*----------------------------------------------------------------------------*/
+///*----------------------------------------------------------------------------*/
 
-int xfrin_cname_chain_add(xfrin_cname_chain_t *last, const knot_node_t *node)
-{
+//int xfrin_cname_chain_add(xfrin_cname_chain_t *last, const knot_node_t *node)
+//{
 
-	xfrin_cname_chain_t *new_cname =
-	             (xfrin_cname_chain_t *)malloc(sizeof(xfrin_cname_chain_t));
-	CHECK_ALLOC_LOG(new_cname, KNOT_ENOMEM);
+//	xfrin_cname_chain_t *new_cname =
+//	             (xfrin_cname_chain_t *)malloc(sizeof(xfrin_cname_chain_t));
+//	CHECK_ALLOC_LOG(new_cname, KNOT_ENOMEM);
 
-	new_cname->node = node;
-	new_cname->next = NULL;
+//	new_cname->node = node;
+//	new_cname->next = NULL;
 
-	last->next = new_cname;
+//	last->next = new_cname;
 
-	return KNOT_EOK;
-}
+//	return KNOT_EOK;
+//}
 
-/*----------------------------------------------------------------------------*/
+///*----------------------------------------------------------------------------*/
 
-int xfrin_cname_chain_contains(xfrin_cname_chain_t *chain,
-                               const knot_node_t *node)
-{
-	xfrin_cname_chain_t *act = chain;
-	while (act != NULL) {
-		if (act->node == node) {
-			return 1;
-		}
-		act = act->next;
-	}
+//int xfrin_cname_chain_contains(xfrin_cname_chain_t *chain,
+//                               const knot_node_t *node)
+//{
+//	xfrin_cname_chain_t *act = chain;
+//	while (act != NULL) {
+//		if (act->node == node) {
+//			return 1;
+//		}
+//		act = act->next;
+//	}
 
-	return 0;
-}
+//	return 0;
+//}
 
-/*----------------------------------------------------------------------------*/
+///*----------------------------------------------------------------------------*/
 
-void xfrin_cname_chain_free(xfrin_cname_chain_t *chain)
-{
-	xfrin_cname_chain_t *act = chain;
+//void xfrin_cname_chain_free(xfrin_cname_chain_t *chain)
+//{
+//	xfrin_cname_chain_t *act = chain;
 
-	while (act != NULL) {
-		chain = chain->next;
-		free(act);
-		act = chain;
-	}
-}
+//	while (act != NULL) {
+//		chain = chain->next;
+//		free(act);
+//		act = chain;
+//	}
+//}
 
-/*----------------------------------------------------------------------------*/
+///*----------------------------------------------------------------------------*/
 
-static void xfrin_check_loops_in_tree(knot_node_t *node, void *data)
-{
-	assert(node != NULL);
-	assert(data != NULL);
+//static void xfrin_check_loops_in_tree(knot_node_t *node, void *data)
+//{
+//	assert(node != NULL);
+//	assert(data != NULL);
 
-	xfrin_adjust_data_t *adata = (xfrin_adjust_data_t *)data;
+//	xfrin_adjust_data_t *adata = (xfrin_adjust_data_t *)data;
 
-//	assert(adata->changes != NULL);
-	assert(adata->contents != NULL);
+////	assert(adata->changes != NULL);
+//	assert(adata->contents != NULL);
 
-	if (adata->err != KNOT_EOK) {
-		dbg_xfrin_detail("Error during adjusting, skipping node.\n");
-		return;
-	}
+//	if (adata->err != KNOT_EOK) {
+//		dbg_xfrin_detail("Error during adjusting, skipping node.\n");
+//		return;
+//	}
 
-	// check only in new nodes
-	if (!knot_node_is_new(node)) {
-		return;
-	}
+//	// check only in new nodes
+//	if (!knot_node_is_new(node)) {
+//		return;
+//	}
 
-	// if there is CNAME in the node
-	const knot_rrset_t *cname = knot_node_rrset(node, KNOT_RRTYPE_CNAME);
-	xfrin_cname_chain_t *chain = NULL;
-	xfrin_cname_chain_t *act_cname = chain;
-	int ret = 0;
+//	// if there is CNAME in the node
+//	const knot_rrset_t *cname = knot_node_rrset(node, KNOT_RRTYPE_CNAME);
+//	xfrin_cname_chain_t *chain = NULL;
+//	xfrin_cname_chain_t *act_cname = chain;
+//	int ret = 0;
 
-	while (cname != NULL && !xfrin_cname_chain_contains(chain, node)) {
-		ret = xfrin_cname_chain_add(act_cname, node);
-		if (ret != KNOT_EOK) {
-			xfrin_cname_chain_free(chain);
-			adata->err = ret;
-			return;
-		}
+//	while (cname != NULL && !xfrin_cname_chain_contains(chain, node)) {
+//		ret = xfrin_cname_chain_add(act_cname, node);
+//		if (ret != KNOT_EOK) {
+//			xfrin_cname_chain_free(chain);
+//			adata->err = ret;
+//			return;
+//		}
 
-		// follow the CNAME chain, including wildcards and
-		// remember the nodes passed through
-		const knot_dname_t *next_name = knot_rdata_cname_name(
-		                        knot_rrset_rdata(cname));
-		assert(next_name != NULL);
-		const knot_node_t *next_node = knot_dname_node(next_name, 1);
-		if (next_node == NULL) {
-			// try to find the name in the zone
-			const knot_node_t *ce = NULL;
-			ret = knot_zone_contents_find_dname_hash(
-			                        adata->contents, next_name,
-			                        &next_node, &ce);
+//		// follow the CNAME chain, including wildcards and
+//		// remember the nodes passed through
+//		const knot_dname_t *next_name = knot_rdata_cname_name(
+//		                        knot_rrset_rdata(cname));
+//		assert(next_name != NULL);
+//		const knot_node_t *next_node = knot_dname_node(next_name, 1);
+//		if (next_node == NULL) {
+//			// try to find the name in the zone
+//			const knot_node_t *ce = NULL;
+//			ret = knot_zone_contents_find_dname_hash(
+//			                        adata->contents, next_name,
+//			                        &next_node, &ce);
 
-			if (ret != KNOT_ZONE_NAME_FOUND) {
-				// try to find wildcard child
-				assert(knot_dname_is_subdomain(next_name,
-				                          knot_node_owner(ce)));
-				next_node = knot_node_wildcard_child(ce, 1);
-			}
+//			if (ret != KNOT_ZONE_NAME_FOUND) {
+//				// try to find wildcard child
+//				assert(knot_dname_is_subdomain(next_name,
+//				                          knot_node_owner(ce)));
+//				next_node = knot_node_wildcard_child(ce, 1);
+//			}
 
-			assert(next_node == NULL || knot_dname_compare(
-			           knot_node_owner(next_node), next_name) == 0);
-		}
+//			assert(next_node == NULL || knot_dname_compare(
+//			           knot_node_owner(next_node), next_name) == 0);
+//		}
 
-		if (next_node == NULL) {
-			// no CNAME node to follow
-			cname = NULL;
-		} else {
-			cname = knot_node_rrset(node, KNOT_RRTYPE_CNAME);
-		}
-	}
+//		if (next_node == NULL) {
+//			// no CNAME node to follow
+//			cname = NULL;
+//		} else {
+//			cname = knot_node_rrset(node, KNOT_RRTYPE_CNAME);
+//		}
+//	}
 
-	if (cname != NULL) {
-		// this means the node is in the chain already
-		adata->err = KNOT_ENOIXFR;
-	}
+//	if (cname != NULL) {
+//		// this means the node is in the chain already
+//		adata->err = KNOT_ENOIXFR;
+//	}
 
-	xfrin_cname_chain_free(chain);
-}
+//	xfrin_cname_chain_free(chain);
+//}
 
 /*----------------------------------------------------------------------------*/
 
@@ -2775,65 +2775,70 @@ static int xfrin_remove_empty_nodes(knot_zone_contents_t *contents,
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_adjust_contents(knot_zone_contents_t *contents,
-                                 xfrin_changes_t *changes)
-{
-	// first, load the NSEC3PARAM record, if there is one
-	const knot_node_t *apex = knot_zone_contents_apex(contents);
-	assert(apex != NULL);
-	const knot_rrset_t *rrset = knot_node_rrset(apex,
-	                                            KNOT_RRTYPE_NSEC3PARAM);
+//static int xfrin_adjust_contents(knot_zone_contents_t *contents,
+//                                 xfrin_changes_t *changes)
+//{
+//	// first, load the NSEC3PARAM record, if there is one
+//	const knot_node_t *apex = knot_zone_contents_apex(contents);
+//	assert(apex != NULL);
+//	const knot_rrset_t *rrset = knot_node_rrset(apex,
+//	                                            KNOT_RRTYPE_NSEC3PARAM);
 
-	if (rrset != NULL) {
-		knot_nsec3_params_from_wire(&contents->nsec3_params, rrset);
-	} else {
-		memset(&contents->nsec3_params, 0, sizeof(knot_nsec3_params_t));
-	}
+//	if (rrset != NULL) {
+//		knot_nsec3_params_from_wire(&contents->nsec3_params, rrset);
+//	} else {
+//		memset(&contents->nsec3_params, 0, sizeof(knot_nsec3_params_t));
+//	}
 
-	xfrin_adjust_data_t data;
-//	data.changes = changes;
-	data.contents = contents;
-	data.err = KNOT_EOK;
+//	// ^ OK
 
-	/*
-	 * Select and delete empty nodes.
-	 */
-	int ret = xfrin_remove_empty_nodes(contents, changes);
-	if (ret != KNOT_EOK) {
-		dbg_xfrin("Failed to remove empty nodes: %s\n",
-		          knot_strerror(ret));
-		return ret;
-	}
+//	xfrin_adjust_data_t data;
+////	data.changes = changes;
+//	data.contents = contents;
+//	data.err = KNOT_EOK;
 
-	/*
-	 * Walk through the nodes in the zone and do the following:
-	 * 1) Check node flags (authoritative / non-authoritative / deleg. pt.).
-	 * 2) For each node without NSEC3 node, try to find the NSEC3 node.
-	 * 3) Insert all dnames to dname table.
-	 *
-	 * Setting previous and next nodes is not necessary as this is done
-	 * while adding the nodes.
-	 */
+//	/*
+//	 * Select and delete empty nodes.
+//	 *
+//	 * TODO: do separately
+//	 */
+//	int ret = xfrin_remove_empty_nodes(contents, changes);
+//	if (ret != KNOT_EOK) {
+//		dbg_xfrin("Failed to remove empty nodes: %s\n",
+//		          knot_strerror(ret));
+//		return ret;
+//	}
 
-	knot_zone_contents_tree_apply_inorder(contents,
-	                                      xfrin_adjust_node_in_tree,
-	                                      (void *)&data);
+//	/*
+//	 * Walk through the nodes in the zone and do the following:
+//	 * 1) Check node flags (authoritative / non-authoritative / deleg. pt.).
+//	 * 2) For each node without NSEC3 node, try to find the NSEC3 node.
+//	 * 3) Insert all dnames to dname table.
+//	 *
+//	 * We must also set previous nodes, as this cannot be done during
+//	 * node insertion - in that time we do not know, if the node is
+//	 * authoritative or no.
+//	 */
 
-	if (data.err != KNOT_EOK) {
-		dbg_xfrin("Failed to adjust nodes after IXFR: %s\n",
-		          knot_strerror(data.err));
-		return data.err;
-	}
+//	knot_zone_contents_tree_apply_inorder(contents,
+//	                                      xfrin_adjust_node_in_tree,
+//	                                      (void *)&data);
 
-	/*
-	 * In second walkthrough check CNAME loops, including wildcards.
-	 */
-	knot_zone_contents_tree_apply_inorder(contents,
-	                                      xfrin_check_loops_in_tree,
-	                                      (void *)&data);
+//	if (data.err != KNOT_EOK) {
+//		dbg_xfrin("Failed to adjust nodes after IXFR: %s\n",
+//		          knot_strerror(data.err));
+//		return data.err;
+//	}
 
-	return data.err;
-}
+//	/*
+//	 * In second walkthrough check CNAME loops, including wildcards.
+//	 */
+//	knot_zone_contents_tree_apply_inorder(contents,
+//	                                      xfrin_check_loops_in_tree,
+//	                                      (void *)&data);
+
+//	return data.err;
+//}
 
 /*----------------------------------------------------------------------------*/
 
@@ -2977,12 +2982,26 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 	 * - do adjusting of nodes and RDATA
 	 * - ???
 	 */
-	dbg_xfrin("Adjusting zone contents.\n");
-	ret = xfrin_adjust_contents(contents_copy, &changes);
+
+	/*
+	 * Select and delete empty nodes.
+	 */
+	ret = xfrin_remove_empty_nodes(contents_copy, &changes);
 	if (ret != KNOT_EOK) {
+		dbg_xfrin("Failed to remove empty nodes: %s\n",
+		          knot_strerror(ret));
 		xfrin_rollback_update2(old_contents, contents_copy, &changes);
+		return ret;
+	}
+
+
+	dbg_xfrin("Adjusting zone contents.\n");
+//	ret = xfrin_adjust_contents(contents_copy, &changes);
+	ret = knot_zone_contents_adjust(contents_copy);
+	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to finalize zone contents: %s\n",
 		          knot_strerror(ret));
+		xfrin_rollback_update2(old_contents, contents_copy, &changes);
 		return ret;
 	}
 	assert(knot_zone_contents_apex(contents_copy) != NULL);

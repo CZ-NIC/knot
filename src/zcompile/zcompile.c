@@ -609,7 +609,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 		parser->errors++;
 	}
 
-	knot_zone_contents_adjust(contents, 0);
+	knot_zone_contents_adjust(contents);
 
 	dbg_zp("rdata adjusted\n");
 

@@ -35,7 +35,7 @@ typedef struct {
 	knot_node_t *first_node;
 	knot_zone_contents_t *zone;
 	knot_node_t *previous_node;
-	int check_ver;
+	int err;
 } knot_zone_adjust_arg_t;
 
 /*----------------------------------------------------------------------------*/
@@ -52,7 +52,6 @@ static void knot_zone_tree_apply(knot_zone_tree_node_t *node,
 }
 
 /*----------------------------------------------------------------------------*/
-
 /*!
  * \brief Checks if the given node can be inserted into the given zone.
  *
@@ -132,6 +131,127 @@ static void knot_zone_contents_destroy_node_owner_from_tree(
 	knot_node_free(&tnode->node, 0, 0);
 }
 
+/*----------------------------------------------------------------------------*/
+
+static int knot_zone_contents_dnames_from_rdata_to_table(
+	knot_dname_table_t *table, knot_rdata_t *rdata,
+	knot_rrtype_descriptor_t *d)
+{
+	unsigned int count = knot_rdata_item_count(rdata);
+	int rc = 0;
+	if (d->fixed_items) {
+		assert(count <= d->length);
+	}
+	// for each RDATA item
+	for (unsigned int j = 0; j < count; ++j) {
+		if (d->wireformat[j]
+		    == KNOT_RDATA_WF_COMPRESSED_DNAME
+		    || d->wireformat[j]
+		       == KNOT_RDATA_WF_UNCOMPRESSED_DNAME
+		    || d->wireformat[j]
+		       == KNOT_RDATA_WF_LITERAL_DNAME) {
+			dbg_zone("Saving dname from "
+					  "rdata to dname table"
+					  ".\n");
+			rc = knot_dname_table_add_dname_check(table,
+			&knot_rdata_get_item(rdata, j)->dname);
+			if (rc < 0) {
+				dbg_zone("Error: %s\n",
+				  knot_strerror(rc));
+				return rc;
+			}
+		}
+	}
+
+	dbg_zone("RDATA OK.\n");
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int knot_zone_contents_dnames_from_rrset_to_table(
+	knot_dname_table_t *table, knot_rrset_t *rrset, int replace_owner,
+	knot_dname_t *owner)
+{
+	assert(table != NULL && rrset != NULL && owner != NULL);
+
+	if (replace_owner) {
+		// discard the old owner and replace it with the new
+		knot_rrset_set_owner(rrset, owner);
+	}
+	dbg_zone("RRSet owner: %p\n", rrset->owner);
+
+	knot_rrtype_descriptor_t *desc = knot_rrtype_descriptor_by_type(
+		knot_rrset_type(rrset));
+	if (desc == NULL) {
+		// not recognized RR type, ignore
+		dbg_zone("RRSet type not recognized.\n");
+		return KNOT_EOK;
+	}
+	// for each RDATA in RRSet
+	knot_rdata_t *rdata = knot_rrset_get_rdata(rrset);
+	while (rdata != NULL) {
+		int rc = knot_zone_contents_dnames_from_rdata_to_table(table,
+		                                                   rdata, desc);
+		if (rc != KNOT_EOK) {
+			return rc;
+		}
+
+		rdata = knot_rrset_rdata_get_next(rrset, rdata);
+	}
+
+	dbg_zone("RRSet OK.\n");
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int knot_zone_contents_dnames_from_node_to_table(
+	knot_dname_table_t *table, knot_node_t *node)
+{
+	/*
+	 * Assuming that all the RRSets have the same owner as the node.
+	 */
+
+	// insert owner
+	char *name = knot_dname_to_str(node->owner);
+	dbg_zone("Node owner before inserting to dname table: %p.\n",
+	                  node->owner);
+	dbg_zone("Node owner before inserting to dname table: %s.\n",
+	                  name);
+	free(name);
+	//knot_dname_t *old_owner = node->owner;
+	int rc = knot_dname_table_add_dname_check(table, &node->owner);
+	if (rc < 0) {
+		dbg_zone("Failed to add dname to dname table.\n");
+		return rc;
+	}
+	int replace_owner = (rc > 0);
+	dbg_zone("Node owner after inserting to dname table: %p.\n",
+	                  node->owner);
+	name = knot_dname_to_str(node->owner);
+	dbg_zone("Node owner after inserting to dname table: %s.\n",
+	                  name);
+	free(name);
+
+	knot_rrset_t **rrsets = knot_node_get_rrsets(node);
+	// for each RRSet
+	for (int i = 0; i < knot_node_rrset_count(node); ++i) {
+		dbg_zone("Inserting RRSets from node to table.\n");
+		rc = knot_zone_contents_dnames_from_rrset_to_table(table,
+			rrsets[i], replace_owner, node->owner);
+		if (rc != KNOT_EOK) {
+			return rc;
+		}
+	}
+
+	free(rrsets);
+
+	dbg_zone("Node OK\n");
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
 /*!
  * \brief Finds and sets wildcard child for given node's owner.
  *
@@ -341,8 +461,9 @@ static void knot_zone_contents_adjust_rrsets(knot_node_t *node,
  * \param node Zone node to adjust.
  * \param zone Zone the node belongs to.
  */
-void knot_zone_contents_adjust_node(knot_node_t *node,
-                                    knot_zone_contents_t *zone, int check_ver)
+static void knot_zone_contents_adjust_node(knot_node_t *node,
+                                           knot_zone_contents_t *zone,
+                                           int check_ver)
 {
 
 dbg_zone_exec(
@@ -424,14 +545,50 @@ static void knot_zone_contents_adjust_node_in_tree(
 
 	knot_zone_adjust_arg_t *args = (knot_zone_adjust_arg_t *)data;
 	knot_node_t *node = tnode->node;
+
+	if (args->err != KNOT_EOK) {
+		dbg_xfrin_detail("Error during adjusting, skipping node.\n");
+		return;
+	}
+
+	/*
+	 * 1) Set previous node pointer.
+	 */
 	knot_node_set_previous(node, args->previous_node);
-	args->previous_node = node;
+
 	if (args->first_node == NULL) {
 		args->first_node = node;
 	}
 	knot_zone_contents_t *zone = args->zone;
 
-	knot_zone_contents_adjust_node(node, zone, args->check_ver);
+	/*
+	 * 2) Store domain names to dname table.
+	 *
+	 * TODO: make optional!
+	 */
+	assert(zone->dname_table != NULL);
+
+	int ret = knot_zone_contents_dnames_from_node_to_table(
+	                        zone->dname_table, node);
+	if (ret != KNOT_EOK) {
+		dbg_xfrin("Failed to add dnames from adjusted node to "
+		          "table: %s\n", knot_strerror(ret));
+		args->err = ret;
+		return;
+	}
+
+	/*
+	 * 3) Do other adjusting (flags, closest enclosers, wildcard children,
+	 *    etc.).
+	 */
+	knot_zone_contents_adjust_node(node, zone, 0);
+
+	/*
+	 * 4) Store previous node depending on the type of this node.
+	 */
+	if (!knot_node_is_non_auth(node)) {
+		args->previous_node = node;
+	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -454,14 +611,13 @@ static void knot_zone_contents_adjust_nsec3_node_in_tree(
 	knot_zone_adjust_arg_t *args = (knot_zone_adjust_arg_t *)data;
 	knot_node_t *node = tnode->node;
 	knot_node_set_previous(node, args->previous_node);
+
+	// here is nothing to consider, all nodes are the same
 	args->previous_node = node;
+
 	if (args->first_node == NULL) {
 		args->first_node = node;
 	}
-
-	/* Not needed anymore. */
-//	knot_zone_contents_t *zone = args->zone;
-//	knot_zone_contents_adjust_nsec3_node(node, zone, 1);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -646,11 +802,6 @@ static void knot_zone_contents_node_to_hash(knot_zone_tree_node_t *tnode,
 	 */
 
 #ifdef USE_HASH_TABLE
-//dbg_zone_exec(
-//	char *name = knot_dname_to_str(node->owner);
-//	dbg_zone("Adding node with owner %s to hash table.\n", name);
-//	free(name);
-//);
 	//assert(zone->table != NULL);
 	// add the node also to the hash table if authoritative, or deleg. point
 	if (zone->table != NULL
@@ -663,127 +814,135 @@ static void knot_zone_contents_node_to_hash(knot_zone_tree_node_t *tnode,
 }
 
 /*----------------------------------------------------------------------------*/
+/* CNAME chain checking                                                       */
+/*----------------------------------------------------------------------------*/
 
-static int knot_zone_contents_dnames_from_rdata_to_table(
-	knot_dname_table_t *table, knot_rdata_t *rdata,
-	knot_rrtype_descriptor_t *d)
+typedef struct cname_chain {
+	const knot_node_t *node;
+	struct cname_chain *next;
+} cname_chain_t;
+
+/*----------------------------------------------------------------------------*/
+
+int cname_chain_add(cname_chain_t *last, const knot_node_t *node)
 {
-	unsigned int count = knot_rdata_item_count(rdata);
-	int rc = 0;
-	if (d->fixed_items) {
-		assert(count <= d->length);
-	}
-	// for each RDATA item
-	for (unsigned int j = 0; j < count; ++j) {
-		if (d->wireformat[j]
-		    == KNOT_RDATA_WF_COMPRESSED_DNAME
-		    || d->wireformat[j]
-		       == KNOT_RDATA_WF_UNCOMPRESSED_DNAME
-		    || d->wireformat[j]
-		       == KNOT_RDATA_WF_LITERAL_DNAME) {
-			dbg_zone("Saving dname from "
-					  "rdata to dname table"
-					  ".\n");
-			rc = knot_dname_table_add_dname_check(table,
-			&knot_rdata_get_item(rdata, j)->dname);
-			if (rc < 0) {
-				dbg_zone("Error: %s\n",
-				  knot_strerror(rc));
-				return rc;
-			}
-		}
-	}
 
-	dbg_zone("RDATA OK.\n");
+	cname_chain_t *new_cname =
+	             (cname_chain_t *)malloc(sizeof(cname_chain_t));
+	CHECK_ALLOC_LOG(new_cname, KNOT_ENOMEM);
+
+	new_cname->node = node;
+	new_cname->next = NULL;
+
+	last->next = new_cname;
+
 	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
-static int knot_zone_contents_dnames_from_rrset_to_table(
-	knot_dname_table_t *table, knot_rrset_t *rrset, int replace_owner,
-	knot_dname_t *owner)
+int cname_chain_contains(cname_chain_t *chain, const knot_node_t *node)
 {
-	assert(table != NULL && rrset != NULL && owner != NULL);
-
-	if (replace_owner) {
-		// discard the old owner and replace it with the new
-		knot_rrset_set_owner(rrset, owner);
+	cname_chain_t *act = chain;
+	while (act != NULL) {
+		if (act->node == node) {
+			return 1;
+		}
+		act = act->next;
 	}
-	dbg_zone("RRSet owner: %p\n", rrset->owner);
 
-	knot_rrtype_descriptor_t *desc = knot_rrtype_descriptor_by_type(
-		knot_rrset_type(rrset));
-	if (desc == NULL) {
-		// not recognized RR type, ignore
-		dbg_zone("RRSet type not recognized.\n");
-		return KNOT_EOK;
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void cname_chain_free(cname_chain_t *chain)
+{
+	cname_chain_t *act = chain;
+
+	while (act != NULL) {
+		chain = chain->next;
+		free(act);
+		act = chain;
 	}
-	// for each RDATA in RRSet
-	knot_rdata_t *rdata = knot_rrset_get_rdata(rrset);
-	while (rdata != NULL) {
-		int rc = knot_zone_contents_dnames_from_rdata_to_table(table,
-		                                                   rdata, desc);
-		if (rc != KNOT_EOK) {
-			return rc;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static void knot_zone_contents_check_loops_in_tree(knot_zone_tree_node_t *tnode,
+                                                   void *data)
+{
+	assert(tnode != NULL);
+	assert(tnode->node != NULL);
+	assert(data != NULL);
+
+	knot_zone_adjust_arg_t *args = (knot_zone_adjust_arg_t *)data;
+	knot_node_t *node = tnode->node;
+
+	assert(args->zone != NULL);
+
+	if (args->err != KNOT_EOK) {
+		dbg_xfrin_detail("Error during CNAME loop checking, skipping "
+		                 "node.\n");
+		return;
+	}
+
+	// if there is CNAME in the node
+	const knot_rrset_t *cname = knot_node_rrset(node, KNOT_RRTYPE_CNAME);
+	cname_chain_t *chain = NULL;
+	cname_chain_t *act_cname = chain;
+	int ret = 0;
+
+	while (cname != NULL && !cname_chain_contains(chain, node)) {
+		ret = cname_chain_add(act_cname, node);
+		if (ret != KNOT_EOK) {
+			cname_chain_free(chain);
+			args->err = ret;
+			return;
 		}
 
-		rdata = knot_rrset_rdata_get_next(rrset, rdata);
+		// follow the CNAME chain, including wildcards and
+		// remember the nodes passed through
+		const knot_dname_t *next_name = knot_rdata_cname_name(
+		                        knot_rrset_rdata(cname));
+		assert(next_name != NULL);
+		const knot_node_t *next_node = knot_dname_node(next_name, 1);
+		if (next_node == NULL) {
+			// try to find the name in the zone
+			const knot_node_t *ce = NULL;
+			ret = knot_zone_contents_find_dname_hash(
+			                        args->zone, next_name,
+			                        &next_node, &ce);
+
+			if (ret != KNOT_ZONE_NAME_FOUND) {
+				// try to find wildcard child
+				assert(knot_dname_is_subdomain(next_name,
+				                          knot_node_owner(ce)));
+				next_node = knot_node_wildcard_child(ce, 1);
+			}
+
+			assert(next_node == NULL || knot_dname_compare(
+			           knot_node_owner(next_node), next_name) == 0);
+		}
+
+		if (next_node == NULL) {
+			// no CNAME node to follow
+			cname = NULL;
+		} else {
+			cname = knot_node_rrset(node, KNOT_RRTYPE_CNAME);
+		}
 	}
 
-	dbg_zone("RRSet OK.\n");
-	return KNOT_EOK;
+	if (cname != NULL) {
+		// this means the node is in the chain already
+		args->err = KNOT_ENOIXFR;
+	}
+
+	cname_chain_free(chain);
 }
 
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
-/*----------------------------------------------------------------------------*/
-
-int knot_zone_contents_dnames_from_node_to_table(
-	knot_dname_table_t *table, knot_node_t *node)
-{
-	/*
-	 * Assuming that all the RRSets have the same owner as the node.
-	 */
-
-	// insert owner
-	char *name = knot_dname_to_str(node->owner);
-	dbg_zone("Node owner before inserting to dname table: %p.\n",
-	                  node->owner);
-	dbg_zone("Node owner before inserting to dname table: %s.\n",
-	                  name);
-	free(name);
-	//knot_dname_t *old_owner = node->owner;
-	int rc = knot_dname_table_add_dname_check(table, &node->owner);
-	if (rc < 0) {
-		dbg_zone("Failed to add dname to dname table.\n");
-		return rc;
-	}
-	int replace_owner = (rc > 0);
-	dbg_zone("Node owner after inserting to dname table: %p.\n",
-	                  node->owner);
-	name = knot_dname_to_str(node->owner);
-	dbg_zone("Node owner after inserting to dname table: %s.\n",
-	                  name);
-	free(name);
-
-	knot_rrset_t **rrsets = knot_node_get_rrsets(node);
-	// for each RRSet
-	for (int i = 0; i < knot_node_rrset_count(node); ++i) {
-		dbg_zone("Inserting RRSets from node to table.\n");
-		rc = knot_zone_contents_dnames_from_rrset_to_table(table,
-			rrsets[i], replace_owner, node->owner);
-		if (rc != KNOT_EOK) {
-			return rc;
-		}
-	}
-
-	free(rrsets);
-
-	dbg_zone("Node OK\n");
-	return KNOT_EOK;
-}
-
 /*----------------------------------------------------------------------------*/
 
 knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
@@ -1966,18 +2125,7 @@ knot_node_t *knot_zone_contents_get_apex(const knot_zone_contents_t *zone)
 
 /*----------------------------------------------------------------------------*/
 
-//knot_dname_t *knot_zone_contents_name(const knot_zone_contents_t *zone)
-//{
-//	if (zone == NULL) {
-//		return NULL;
-//	}
-
-//	return zone->name;
-//}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_zone_contents_adjust(knot_zone_contents_t *zone, int check_ver)
+int knot_zone_contents_adjust(knot_zone_contents_t *zone)
 {
 	if (zone == NULL) {
 		return KNOT_EBADARG;
@@ -1990,16 +2138,29 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone, int check_ver)
 	adjust_arg.zone = zone;
 	adjust_arg.first_node = NULL;
 	adjust_arg.previous_node = NULL;
-	adjust_arg.check_ver = check_ver;
+//	adjust_arg.check_ver = check_ver;
 
 	dbg_zone("Adjusting normal nodes.\n");
 	int ret = knot_zone_tree_forward_apply_inorder(zone->nodes,
 	                        knot_zone_contents_adjust_node_in_tree,
 	                        &adjust_arg);
-	if (ret != KNOT_EOK) {
-		return ret;
+	assert(ret == KNOT_EOK);
+
+	if (adjust_arg.err != KNOT_EOK) {
+		dbg_zone("Failed to adjust normal nodes: %s\n",
+		         knot_strerror(adjust_arg.err));
+		return adjust_arg.err;
 	}
 	dbg_zone("Done.\n");
+
+	/*
+	 * In second walkthrough check CNAME loops, including wildcards.
+	 */
+	dbg_zone("Checking CNAME and wildcard loops.\n");
+	knot_zone_tree_forward_apply_inorder(zone->nodes,
+	                                 knot_zone_contents_check_loops_in_tree,
+	                                 (void *)&adjust_arg);
+
 
 	assert(zone->apex == adjust_arg.first_node);
 	knot_node_set_previous(zone->apex, adjust_arg.previous_node);
@@ -2012,6 +2173,65 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone, int check_ver)
 	              zone->nsec3_nodes,
 	              knot_zone_contents_adjust_nsec3_node_in_tree,
 	                        &adjust_arg);
+	assert(ret == KNOT_EOK);
+
+	if (adjust_arg.err != KNOT_EOK) {
+		dbg_zone("Failed to adjust NSEC3 nodes: %s\n",
+		         knot_strerror(adjust_arg.err));
+		return adjust_arg.err;
+	}
+
+	dbg_zone("Done.\n");
+	if (adjust_arg.first_node) {
+		knot_node_set_previous(adjust_arg.first_node,
+		                         adjust_arg.previous_node);
+	}
+
+	return ret;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_zone_contents_adjust_old(knot_zone_contents_t *zone)
+{
+	if (zone == NULL) {
+		return KNOT_EBADARG;
+	}
+
+	// load NSEC3PARAM (needed on adjusting function)
+	knot_zone_contents_load_nsec3param(zone);
+
+	knot_zone_adjust_arg_t adjust_arg;
+	adjust_arg.zone = zone;
+	adjust_arg.first_node = NULL;
+	adjust_arg.previous_node = NULL;
+//	adjust_arg.check_ver = check_ver;
+	adjust_arg.err = KNOT_EOK;
+
+	dbg_zone("Adjusting normal nodes.\n");
+	int ret = knot_zone_tree_forward_apply_inorder(zone->nodes,
+	                        knot_zone_contents_adjust_node_in_tree,
+	                        &adjust_arg);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	if (adjust_arg.err != KNOT_EOK) {
+		dbg_zone("Failed node adjusting: %s\n",
+		         knot_strerror(adjust_arg.err));
+		return adjust_arg.err;
+	}
+
+	dbg_zone("Done.\n");
+
+	assert(zone->apex == adjust_arg.first_node);
+	knot_node_set_previous(zone->apex, adjust_arg.previous_node);
+
+	adjust_arg.first_node = NULL;
+	adjust_arg.previous_node = NULL;
+
+	dbg_zone("Adjusting NSEC3 nodes.\n");
+	ret = knot_zone_tree_forward_apply_inorder(zone->nsec3_nodes,
+	             knot_zone_contents_adjust_nsec3_node_in_tree, &adjust_arg);
 
 	dbg_zone("Done.\n");
 	if (adjust_arg.first_node) {
@@ -2031,7 +2251,7 @@ int knot_zone_contents_load_nsec3param(knot_zone_contents_t *zone)
 	}
 
 	const knot_rrset_t *rrset = knot_node_rrset(zone->apex,
-						      KNOT_RRTYPE_NSEC3PARAM);
+	                                            KNOT_RRTYPE_NSEC3PARAM);
 
 	if (rrset != NULL) {
 		knot_nsec3_params_from_wire(&zone->nsec3_params, rrset);
