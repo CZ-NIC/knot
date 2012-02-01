@@ -125,23 +125,6 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 				       resp_len);
 		res = KNOTD_EOK;
 		break;
-		
-//		/* Process AXFR over UDP. */
-//		res = xfr_request_init(&xfr, XFR_TYPE_AOUT, XFR_FLAG_UDP, packet);
-//		if (res != KNOTD_EOK) {
-//			knot_ns_error_response(ns, knot_packet_id(packet),
-//			                       KNOT_RCODE_SERVFAIL, qbuf,
-//			                       resp_len);
-//			res = KNOTD_EOK;
-//			break;
-//		}
-//		xfr.send = xfr_send_udp;
-//		xfr.session = dup(fd);
-//		memcpy(&xfr.addr, addr, sizeof(sockaddr_t));
-//		xfr_request(srv->xfr_h, &xfr);
-//		dbg_net("udp: enqueued AXFR query on fd=%d\n", xfr.session);
-//		*resp_len = 0;
-//		return KNOTD_EOK;
 	case KNOT_QUERY_IXFR:
 		/* According to RFC1035, respond with SOA. 
 		 * Draft proposes trying to fit response into one packet,
@@ -154,22 +137,6 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 //		res = knot_ns_answer_normal(ns, packet, qbuf,
 //		                            resp_len);
 		break;
-//		/* Process IXFR over UDP. */
-//		res = xfr_request_init(&xfr, XFR_TYPE_IOUT, XFR_FLAG_UDP, packet);
-//		if (res != KNOTD_EOK) {
-//			knot_ns_error_response(ns, knot_packet_id(packet),
-//			                       KNOT_RCODE_SERVFAIL, qbuf,
-//			                       resp_len);
-//			res = KNOTD_EOK;
-//			break;
-//		}
-//		xfr.send = xfr_send_udp;
-//		xfr.session = dup(fd);
-//		memcpy(&xfr.addr, addr, sizeof(sockaddr_t));
-//		xfr_request(srv->xfr_h, &xfr);
-//		dbg_net("udp: enqueued IXFR query on fd=%d\n", xfr.session);
-//		*resp_len = 0;
-//		return KNOTD_EOK;
 	case KNOT_QUERY_NOTIFY:
 		res = notify_process_request(ns, packet, addr,
 					     qbuf, resp_len);
