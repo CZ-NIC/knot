@@ -191,6 +191,47 @@ int main(int argc, char **argv)
 		free(cwbuf);
 		config_fn = abs_cfg;
 	}
+	
+	/* Linux capabilities. */
+#ifdef HAVE_SYS_CAPABILITY_H
+	cap_t caps = cap_get_proc();
+	if (caps != NULL) {
+		/* Read current and clear. */
+		cap_flag_value_t set_caps = CAP_CLEAR;
+		cap_get_flag(caps, CAP_SETPCAP, CAP_EFFECTIVE, &set_caps);
+		cap_clear(caps);
+
+		/* Allow binding to privileged ports.
+		 * (Not inheritable)
+		 */		
+		cap_set_pe(caps, CAP_NET_BIND_SERVICE);
+		
+		/* Allow setuid/setgid. */
+		cap_set_pe(caps, CAP_SETUID);
+		cap_set_pe(caps, CAP_SETGID);
+		cap_set_pe(caps, CAP_SETPCAP);
+		/*! \todo Config file read? DAC_OVERRIDE ? */
+		/* Allow priorities changing. */
+		cap_set_pe(caps, CAP_SYS_NICE);
+		/* Inherit nothing. */
+		/* Apply */
+		int caps_res = 0;
+		if (set_caps == CAP_SET) {
+			caps_res = cap_set_proc(caps);
+		} else {
+			log_server_info("User uid=%d is not allowed to set "
+			                "capabilities, skipping.\n", getuid());
+		}
+		if (caps_res < 0) {
+			log_server_error("Couldn't set process capabilities - "
+			                 "%s.\n", strerror(errno));
+		}
+		/* Free capabilities list. */
+		cap_free(caps);
+	} else {
+		log_server_error("Couldn't initialize Linux capabilities.\n");
+	}
+#endif
 
 	// Open configuration
 	log_server_info("Parsing configuration '%s' ...\n", config_fn);
@@ -206,26 +247,6 @@ int main(int argc, char **argv)
 				conf()->ifaces_count, conf()->zones_count);
 	}
 	log_server_info("\n");
-	
-	/* Linux capabilities. */
-#ifdef HAVE_SYS_CAPABILITY_H
-	cap_t caps = cap_init();
-	if (caps != NULL) {
-		/* Allow binding to privileged ports.
-		 * (Not inheritable)
-		 */
-		cap_set_pe(caps, CAP_NET_BIND_SERVICE);
-		/* Allow setuid/setgid. */
-		cap_set_pe(caps, CAP_SETUID);
-		cap_set_pe(caps, CAP_SETGID);
-		/*! \todo Config file read? DAC_OVERRIDE ? */
-		/* Allow priorities changing. */
-		cap_set_pe(caps, CAP_SYS_NICE);
-		/* Inherit nothing. */
-	} else {
-		log_server_error("Couldn't initialize Linux capabilities.\n");
-	}
-#endif
 
 	// Create server instance
 	char* pidfile = pid_filename();
