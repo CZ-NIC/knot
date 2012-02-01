@@ -238,14 +238,14 @@ static int test_tree_finding_less_or_equal()
 		if (knot_zone_tree_find_less_or_equal(NULL,
 	                                              NULL,
 	                                              NULL,
-	                                              NULL, 0) !=
+	                                              NULL) !=
 	            KNOT_EBADARG) {
 			errors++;
 		}
 		lived = 1;
 		lived = 0;
 		if (knot_zone_tree_find_less_or_equal(tree, NULL,
-		                                      NULL, NULL, 0) !=
+		                                      NULL, NULL) !=
 		    KNOT_EBADARG) {
 			errors++;
 		}
@@ -254,7 +254,7 @@ static int test_tree_finding_less_or_equal()
 		if (knot_zone_tree_find_less_or_equal(tree,
 		                                      node->owner,
 		                                      NULL,
-		                                      NULL, 0) !=
+		                                      NULL) !=
 		    KNOT_EBADARG) {
 			errors++;
 		}
@@ -262,7 +262,7 @@ static int test_tree_finding_less_or_equal()
 		const knot_node_t *found_node = NULL;
 		lived = 0;
 		if (knot_zone_tree_find_less_or_equal(NULL, node->owner,
-		                        &found_node, NULL, 0) !=
+		                        &found_node, NULL) !=
 		    KNOT_EBADARG) {
 			errors++;
 		}
@@ -271,7 +271,7 @@ static int test_tree_finding_less_or_equal()
 		lived = 0;
 		if (knot_zone_tree_find_less_or_equal(tree, NULL,
 		                        &found_node,
-		                        &previous_node, 0) !=
+		                        &previous_node) !=
 		    KNOT_EBADARG) {
 			errors++;
 		}
@@ -296,7 +296,7 @@ static int test_tree_finding_less_or_equal()
 	if (knot_zone_tree_find_less_or_equal(tree,
 	                                      node->owner,
 	                                      &found_node,
-	                                      &previous_node, 0) <= 0) {
+	                                      &previous_node) <= 0) {
 		diag("Calling zone tree find less with valid arguments did "
 		     "not return KNOT_EOK");
 		errors++;
@@ -309,8 +309,8 @@ static int test_tree_finding_less_or_equal()
 
 	if (knot_zone_tree_get_less_or_equal(tree, node->owner,
 	                                     (knot_node_t **)&found_node,
-	                                     (knot_node_t **)&previous_node, 0) <=
-	    0) {
+	                                     (knot_node_t **)&previous_node)
+	    <= 0) {
 		diag("Calling zone tree get less with valid arguments did "
 		     "not return KNOT_EOK");
 		errors++;
@@ -331,7 +331,7 @@ static int test_tree_finding_less_or_equal()
 	if (knot_zone_tree_find_less_or_equal(tree,
 	                                      less_dname,
 	                                      &found_node,
-	                                      &previous_node, 0) <= 0) {
+	                                      &previous_node) <= 0) {
 		diag("Calling zone tree find less or equal "
 		     "with valid arguments did "
 		     "not return > 0");
@@ -345,8 +345,8 @@ static int test_tree_finding_less_or_equal()
 
 	if (knot_zone_tree_get_less_or_equal(tree, less_dname,
 	                                     (knot_node_t **)&found_node,
-	                                     (knot_node_t **)&previous_node, 0) <=
-	    0) {
+	                                     (knot_node_t **)&previous_node)
+	    <= 0) {
 		diag("Calling zone tree less or equal with valid arguments did "
 		     "not return > 0");
 		errors++;
@@ -365,7 +365,7 @@ static int test_tree_finding_less_or_equal()
 
 	if (knot_zone_tree_find_less_or_equal(tree, alien_dname,
 	                                      &found_node,
-	                                      &previous_node, 0) !=
+	                                      &previous_node) !=
 	    0) {
 		diag("Calling zone tree find less with valid arguments did "
 		     "not return 0");
@@ -375,8 +375,8 @@ static int test_tree_finding_less_or_equal()
 	if (knot_zone_tree_get_less_or_equal(tree,
 	                                     alien_dname,
 	                                     (knot_node_t **)&found_node,
-	                                     (knot_node_t **)&previous_node, 0) !=
-	    0) {
+	                                     (knot_node_t **)&previous_node)
+	    != 0) {
 		diag("Calling zone tree get with valid arguments did "
 		     "not return 0");
 		errors++;
@@ -392,7 +392,7 @@ static int test_tree_finding_less_or_equal()
 
 	if (knot_zone_tree_find_less_or_equal(tree, node->owner,
 	                                      &found_node,
-	                                      &previous_node, 0) <=
+	                                      &previous_node) <=
 	    0) {
 		diag("Calling zone tree find with valid arguments did "
 		     "not return > 0");
@@ -407,8 +407,8 @@ static int test_tree_finding_less_or_equal()
 
 	if (knot_zone_tree_get_less_or_equal(tree, node->owner,
 	                                    (knot_node_t **)&found_node,
-	                                    (knot_node_t **)&previous_node, 0) <=
-	    0) {
+	                                    (knot_node_t **)&previous_node)
+	    <= 0) {
 		diag("Calling zone tree get with valid arguments did "
 		     "not return > 0");
 		errors++;

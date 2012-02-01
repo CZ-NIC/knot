@@ -770,7 +770,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
                                     err_handler_t *handler)
 {
 	assert(handler);
-	const knot_node_t *nsec3_node = knot_node_nsec3_node(node, 0);
+	const knot_node_t *nsec3_node = knot_node_nsec3_node(node);
 
 	if (nsec3_node == NULL) {
 		/* I know it's probably not what RFCs say, but it will have to
@@ -787,7 +787,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 			if (knot_zone_contents_find_nsec3_for_name(zone,
 						knot_node_owner(node),
 						&nsec3_node,
-						&nsec3_previous, 0) != 0) {
+						&nsec3_previous) != 0) {
 				err_handler_handle_error(handler, node,
 						 ZC_ERR_NSEC3_NOT_FOUND);
 			}

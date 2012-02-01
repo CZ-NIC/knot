@@ -99,18 +99,18 @@ static int knot_zone_tree_copy_node(knot_zone_tree_node_t *from,
 /*----------------------------------------------------------------------------*/
 
 static void knot_zone_tree_free_node(knot_zone_tree_node_t *node,
-                                       int free_data, int free_owner)
+                                       int free_data)
 {
 	if (node == NULL) {
 		return;
 	}
 
-	knot_zone_tree_free_node(node->avl.avl_left, free_data, free_owner);
+	knot_zone_tree_free_node(node->avl.avl_left, free_data);
 
-	knot_zone_tree_free_node(node->avl.avl_right, free_data, free_owner);
+	knot_zone_tree_free_node(node->avl.avl_right, free_data);
 
 	if (free_data) {
-		knot_node_free(&node->node, free_owner, 0);
+		knot_node_free(&node->node, 0);
 	}
 
 	free(node);
@@ -153,9 +153,9 @@ static int knot_zone_tree_deep_copy_node(knot_zone_tree_node_t *from,
 	                                    &(*to)->avl.avl_right);
 	if (ret != KNOT_EOK) {
 		dbg_zone_verb("Failed to do shallow copy of right subtree.\n");
-		knot_zone_tree_free_node((*to)->avl.avl_left, 1, 0);
+		knot_zone_tree_free_node((*to)->avl.avl_left, 1);
 		(*to)->avl.avl_left = NULL;
-		knot_node_free(&(*to)->node, 0, 0);
+		knot_node_free(&(*to)->node, 0);
 		free(*to);
 		*to = NULL;
 		return ret;
@@ -250,7 +250,7 @@ int knot_zone_tree_get(knot_zone_tree_t *tree, const knot_dname_t *owner,
 	knot_zone_tree_node_t *n = TREE_FIND(tree, knot_zone_tree_node, avl,
 	                                       tmp);
 
-	knot_node_free(&tmp_data, 0, 0);
+	knot_node_free(&tmp_data, 0);
 	free(tmp);
 
 	if (n != NULL) {
@@ -265,15 +265,14 @@ int knot_zone_tree_get(knot_zone_tree_t *tree, const knot_dname_t *owner,
 int knot_zone_tree_find_less_or_equal(knot_zone_tree_t *tree,
                                         const knot_dname_t *owner,
                                         const knot_node_t **found,
-                                        const knot_node_t **previous,
-                                        int check_version)
+                                        const knot_node_t **previous)
 {
 	if (tree == NULL || owner == NULL || found == NULL || previous == NULL) {
 		return KNOT_EBADARG;
 	}
 	
 	knot_node_t *f, *p;
-	int ret = knot_zone_tree_get_less_or_equal(tree, owner, &f, &p, check_version);
+	int ret = knot_zone_tree_get_less_or_equal(tree, owner, &f, &p);
 
 	*found = f;
 	*previous = p;
@@ -286,8 +285,7 @@ int knot_zone_tree_find_less_or_equal(knot_zone_tree_t *tree,
 int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
                                        const knot_dname_t *owner,
                                        knot_node_t **found,
-                                       knot_node_t **previous,
-                                       int check_version)
+                                       knot_node_t **previous)
 {
 	if (tree == NULL || owner == NULL || found == NULL
 	    || previous == NULL) {
@@ -315,7 +313,7 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
 	int exact_match = TREE_FIND_LESS_EQUAL(
 	                  tree, knot_zone_tree_node, avl, tmp, &f, &prev);
 
-	knot_node_free(&tmp_data, 0, 0);
+	knot_node_free(&tmp_data, 0);
 	free(tmp);
 
 	*found = (exact_match > 0) ? f->node : NULL;
@@ -324,7 +322,7 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
 		// previous is not really previous but should be the leftmost
 		// node in the tree; take it's previous
 		assert(prev != NULL);
-		*previous = knot_node_get_previous(prev->node, check_version);
+		*previous = knot_node_get_previous(prev->node);
 		exact_match = 0;
 	} else if (prev == NULL) {
 		if (!exact_match) {
@@ -345,7 +343,7 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
 		// node
 		assert(exact_match > 0);
 		assert(f != NULL);
-		*previous = knot_node_get_previous(f->node, check_version);
+		*previous = knot_node_get_previous(f->node);
 	} else {
 		// otherwise check if the previous node is not an empty
 		// non-terminal
@@ -353,7 +351,7 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
 		 *        to an empty non-terminal.
 		 */
 		*previous = (knot_node_rrset_count(prev->node) == 0)
-		            ? knot_node_get_previous(prev->node, check_version)
+		            ? knot_node_get_previous(prev->node)
 		            : prev->node;
 	}
 
@@ -395,7 +393,7 @@ int knot_zone_tree_remove(knot_zone_tree_t *tree,
 	/*! \todo How to know if this was successful? */
 	TREE_REMOVE(tree, knot_zone_tree_node, avl, tmp);
 
-	knot_node_free(&tmp_data, 0, 0);
+	knot_node_free(&tmp_data, 0);
 	free(tmp);
 
 //	*removed = (n) ? n->node : NULL;
@@ -522,19 +520,19 @@ void knot_zone_tree_free(knot_zone_tree_t **tree)
 	if (tree == NULL || *tree == NULL) {
 		return;
 	}
-	knot_zone_tree_free_node((*tree)->th_root, 0, 0);
+	knot_zone_tree_free_node((*tree)->th_root, 0);
 	free(*tree);
 	*tree = NULL;
 }
 
 /*----------------------------------------------------------------------------*/
 
-void knot_zone_tree_deep_free(knot_zone_tree_t **tree, int free_owners)
+void knot_zone_tree_deep_free(knot_zone_tree_t **tree)
 {
 	if (tree == NULL || *tree == NULL) {
 		return;
 	}
-	knot_zone_tree_free_node((*tree)->th_root, 1, free_owners);
+	knot_zone_tree_free_node((*tree)->th_root, 1);
 	free(*tree);
 	*tree = NULL;
 }

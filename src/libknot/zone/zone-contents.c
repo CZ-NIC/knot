@@ -128,7 +128,7 @@ static void knot_zone_contents_destroy_node_owner_from_tree(
 
 	UNUSED(data);
 	/*!< \todo change completely! */
-	knot_node_free(&tnode->node, 0, 0);
+	knot_node_free(&tnode->node, 0);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -462,8 +462,7 @@ static void knot_zone_contents_adjust_rrsets(knot_node_t *node,
  * \param zone Zone the node belongs to.
  */
 static void knot_zone_contents_adjust_node(knot_node_t *node,
-                                           knot_zone_contents_t *zone,
-                                           int check_ver)
+                                           knot_zone_contents_t *zone)
 {
 
 dbg_zone_exec(
@@ -476,15 +475,15 @@ dbg_zone_exec(
 	knot_zone_contents_adjust_rrsets(node, zone);
 
 dbg_zone_exec(
-	if (knot_node_parent(node, 1)) {
+	if (knot_node_parent(node)) {
 		char *name = knot_dname_to_str(knot_node_owner(
-				knot_node_parent(node, check_ver)));
+				knot_node_parent(node)));
 		dbg_zone("Parent: %s\n", name);
 		dbg_zone("Parent is delegation point: %s\n",
-		       knot_node_is_deleg_point(knot_node_parent(node, check_ver))
+		       knot_node_is_deleg_point(knot_node_parent(node))
 		       ? "yes" : "no");
 		dbg_zone("Parent is non-authoritative: %s\n",
-		       knot_node_is_non_auth(knot_node_parent(node, check_ver))
+		       knot_node_is_non_auth(knot_node_parent(node))
 		       ? "yes" : "no");
 		free(name);
 	} else {
@@ -492,9 +491,9 @@ dbg_zone_exec(
 	}
 );
 	// delegation point / non-authoritative node
-	if (knot_node_parent(node, check_ver)
-	    && (knot_node_is_deleg_point(knot_node_parent(node, check_ver))
-		|| knot_node_is_non_auth(knot_node_parent(node, check_ver)))) {
+	if (knot_node_parent(node)
+	    && (knot_node_is_deleg_point(knot_node_parent(node))
+		|| knot_node_is_non_auth(knot_node_parent(node)))) {
 		knot_node_set_non_auth(node);
 	} else if (knot_node_rrset(node, KNOT_RRTYPE_NS) != NULL
 		   && node != zone->apex) {
@@ -502,7 +501,7 @@ dbg_zone_exec(
 	}
 
 	// assure that owner has proper node
-	if (knot_dname_node(knot_node_owner(node), 0) == NULL) {
+	if (knot_dname_node(knot_node_owner(node)) == NULL) {
 		knot_dname_set_node(knot_node_get_owner(node), node);
 	}
 
@@ -511,8 +510,7 @@ dbg_zone_exec(
 	const knot_node_t *nsec3;
 	int match = knot_zone_contents_find_nsec3_for_name(zone,
 	                                                  knot_node_owner(node),
-	                                                  &nsec3, &prev,
-	                                                  check_ver);
+	                                                  &nsec3, &prev);
 	if (match != KNOT_ZONE_NAME_FOUND) {
 		nsec3 = NULL;
 	}
@@ -581,7 +579,7 @@ static void knot_zone_contents_adjust_node_in_tree(
 	 * 3) Do other adjusting (flags, closest enclosers, wildcard children,
 	 *    etc.).
 	 */
-	knot_zone_contents_adjust_node(node, zone, 0);
+	knot_zone_contents_adjust_node(node, zone);
 
 	/*
 	 * 4) Store previous node depending on the type of this node.
@@ -745,9 +743,9 @@ dbg_zone_exec(
  *           node. \a previous is set properly.
  */
 static int knot_zone_contents_find_in_tree(knot_zone_tree_t *tree,
-                                             const knot_dname_t *name,
-                                             knot_node_t **node,
-                                             knot_node_t **previous)
+                                           const knot_dname_t *name,
+                                           knot_node_t **node,
+                                           knot_node_t **previous)
 {
 	assert(tree != NULL);
 	assert(name != NULL);
@@ -757,8 +755,8 @@ static int knot_zone_contents_find_in_tree(knot_zone_tree_t *tree,
 	knot_node_t *found = NULL, *prev = NULL;
 //	knot_node_t *found2 = NULL, *prev2 = NULL;
 
-	int exact_match = knot_zone_tree_get_less_or_equal(
-	                         tree, name, &found, &prev, 1);
+	int exact_match = knot_zone_tree_get_less_or_equal(tree, name, &found,
+	                                                   &prev);
 
 //	assert(prev != NULL);
 	assert(exact_match >= 0);
@@ -906,7 +904,7 @@ static void knot_zone_contents_check_loops_in_tree(knot_zone_tree_node_t *tnode,
 		const knot_dname_t *next_name = knot_rdata_cname_name(
 		                        knot_rrset_rdata(cname));
 		assert(next_name != NULL);
-		const knot_node_t *next_node = knot_dname_node(next_name, 1);
+		const knot_node_t *next_node = knot_dname_node(next_name);
 		if (next_node == NULL) {
 			// try to find the name in the zone
 			const knot_node_t *ce = NULL;
@@ -918,7 +916,7 @@ static void knot_zone_contents_check_loops_in_tree(knot_zone_tree_node_t *tnode,
 				// try to find wildcard child
 				assert(knot_dname_is_subdomain(next_name,
 				                          knot_node_owner(ce)));
-				next_node = knot_node_wildcard_child(ce, 1);
+				next_node = knot_node_wildcard_child(ce);
 			}
 
 			assert(next_node == NULL || knot_dname_compare(
@@ -1302,7 +1300,7 @@ dbg_zone_exec(
 		}
 		// set the found parent (in the zone) as the parent of the last
 		// inserted node
-		assert(knot_node_parent(node, 0) == NULL);
+		assert(knot_node_parent(node) == NULL);
 		knot_node_set_parent(node, next_node);
 
 		dbg_zone("Created all parents.\n");
@@ -1856,7 +1854,7 @@ dbg_zone_exec(
 		while (matched_labels < knot_dname_label_count(
 				knot_node_owner((*closest_encloser)))) {
 			(*closest_encloser) =
-				knot_node_parent((*closest_encloser), 1);
+				knot_node_parent((*closest_encloser));
 			assert(*closest_encloser);
 		}
 	}
@@ -2044,8 +2042,7 @@ const knot_node_t *knot_zone_contents_find_nsec3_node(
 int knot_zone_contents_find_nsec3_for_name(const knot_zone_contents_t *zone,
                                     const knot_dname_t *name,
                                     const knot_node_t **nsec3_node,
-                                    const knot_node_t **nsec3_previous,
-				    int check_ver)
+                                    const knot_node_t **nsec3_previous)
 {
 	if (zone == NULL || name == NULL
 	    || nsec3_node == NULL || nsec3_previous == NULL) {
@@ -2069,7 +2066,7 @@ dbg_zone_exec(
 
 	// create dummy node to use for lookup
 	int exact_match = knot_zone_tree_find_less_or_equal(
-		zone->nsec3_nodes, nsec3_name, &found, &prev, check_ver);
+		zone->nsec3_nodes, nsec3_name, &found, &prev);
 	assert(exact_match >= 0);
 
 	knot_dname_release(nsec3_name);
@@ -2100,7 +2097,7 @@ dbg_zone_exec(
 		// set the previous node of the found node
 		assert(exact_match);
 		assert(*nsec3_node != NULL);
-		*nsec3_previous = knot_node_previous(*nsec3_node, check_ver);
+		*nsec3_previous = knot_node_previous(*nsec3_node);
 	} else {
 		*nsec3_previous = prev;
 	}
@@ -2756,9 +2753,9 @@ static void knot_zc_integrity_check_previous(const knot_node_t *node,
 		char *name_prev = knot_dname_to_str(
 		                        knot_node_owner(check_data->previous));
 
-		if (knot_node_previous(node, 0) != check_data->previous) {
+		if (knot_node_previous(node) != check_data->previous) {
 			char *name2 = knot_dname_to_str(knot_node_owner(
-						     knot_node_previous(node, 0)));
+						     knot_node_previous(node)));
 			fprintf(stderr, "Wrong previous node: node: %s, "
 				"previous: %s. Should be: %s.\n", name, name2,
 				name_prev);
@@ -2865,7 +2862,7 @@ static void knot_zc_integrity_check_parent(const knot_node_t *node,
 //		++check_data->children;
 
 		// check the parent pointer
-		const knot_node_t *parent = knot_node_parent(node, 0);
+		const knot_node_t *parent = knot_node_parent(node);
 		if (parent != check_data->parent) {
 			char *name2 = (parent != NULL)
 			                ? knot_dname_to_str(
@@ -2883,19 +2880,19 @@ static void knot_zc_integrity_check_parent(const knot_node_t *node,
 			// wildcard child of it; in such case it should be set
 			// as the wildcard child of its parent
 			if (knot_dname_is_wildcard(node_owner)
-			    && knot_node_wildcard_child(check_data->parent, 0)
+			    && knot_node_wildcard_child(check_data->parent)
 			       != node) {
 				char *wc = (knot_node_wildcard_child(
-				                 check_data->parent, 0) == NULL)
+				                 check_data->parent) == NULL)
 				   ? "none"
 				   : knot_dname_to_str(knot_node_owner(
 				           knot_node_wildcard_child(
-				                   check_data->parent, 0)));
+				                   check_data->parent)));
 				fprintf(stderr, "Wrong wildcard child: node %s,"
 				        " wildcard child: %s. Should be %s\n",
 				        pname, wc, name);
 				if (knot_node_wildcard_child(
-				       check_data->parent, 0) != NULL) {
+				       check_data->parent) != NULL) {
 					free(wc);
 				}
 
@@ -3006,7 +3003,7 @@ static void knot_zc_integrity_check_owner(const knot_node_t *node,
 {
 	// check node stored in owner
 	const knot_node_t *owner_node =
-	                knot_dname_node(knot_node_owner(node), 0);
+	                knot_dname_node(knot_node_owner(node));
 	if (owner_node != node) {
 		char *name2 = (owner_node != NULL)
 		                ? knot_dname_to_str(knot_node_owner(owner_node))
@@ -3213,7 +3210,7 @@ int knot_zc_integrity_check_child_count(check_data_t *data)
 	                                     reset_new_nodes, NULL);
 
 	// destroy the shallow copy
-	knot_zone_tree_deep_free(&nodes_copy, 1);
+	knot_zone_tree_deep_free(&nodes_copy);
 
 	return errors;
 }

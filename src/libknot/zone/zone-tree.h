@@ -125,8 +125,7 @@ int knot_zone_tree_get(knot_zone_tree_t *tree,
 int knot_zone_tree_find_less_or_equal(knot_zone_tree_t *tree,
                                         const knot_dname_t *owner,
                                         const knot_node_t **found,
-                                        const knot_node_t **previous,
-                                        int check_version);
+                                        const knot_node_t **previous);
 
 /*!
  * \brief Tries to find the given domain name in the zone tree and returns the
@@ -153,8 +152,7 @@ int knot_zone_tree_find_less_or_equal(knot_zone_tree_t *tree,
 int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
                                        const knot_dname_t *owner,
                                        knot_node_t **found,
-                                       knot_node_t **previous,
-                                       int check_version);
+                                       knot_node_t **previous);
 
 /*!
  * \brief Removes node with the given owner from the zone tree and returns it.
@@ -293,7 +291,7 @@ void knot_zone_tree_free(knot_zone_tree_t **tree);
  * \param free_owners Set to <> 0 if owners of the nodes should be destroyed
  *                    as well. Set to 0 otherwise.
  */
-void knot_zone_tree_deep_free(knot_zone_tree_t **tree, int free_owners);
+void knot_zone_tree_deep_free(knot_zone_tree_t **tree);
 
 /*----------------------------------------------------------------------------*/
 

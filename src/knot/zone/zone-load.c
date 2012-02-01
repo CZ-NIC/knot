@@ -310,7 +310,7 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 			} else if (use_ids && !in_the_zone) { /* destroy the node */
 				if (id_array[dname_id]->node != NULL) {
 					knot_node_free(&id_array[dname_id]->
-							 node, 0, 0);
+							 node, 0);
 				}
 				/* Also sets node to NULL! */
 			}
@@ -571,7 +571,7 @@ static knot_node_t *knot_load_node(FILE *f, knot_dname_t **id_array)
 
 	if (parent_id != 0) {
 		knot_node_set_parent(node, id_array[parent_id]->node);
-		assert(knot_node_parent(node, 0) != NULL);
+		assert(knot_node_parent(node) != NULL);
 	} else {
 		knot_node_set_parent(node, NULL);
 	}
@@ -580,7 +580,7 @@ static knot_node_t *knot_load_node(FILE *f, knot_dname_t **id_array)
 
 	for (int i = 0; i < rrset_count; i++) {
 		if ((tmp_rrset = knot_load_rrset(f, id_array, 1)) == NULL) {
-			knot_node_free(&node, 1, 0);
+			knot_node_free(&node, 0);
 			//TODO what else to free?
 			fprintf(stderr, "zone: Could not load rrset.\n");
 			return NULL;
@@ -1064,8 +1064,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 		}
 	}
 
-	assert(knot_node_previous(knot_zone_contents_apex(contents), 0)
-	       == NULL);
+	assert(knot_node_previous(knot_zone_contents_apex(contents)) == NULL);
 
 	knot_node_set_previous(knot_zone_contents_get_apex(contents),
 	                         last_node);
@@ -1119,7 +1118,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	}
 
 	if (nsec3_node_count) {
-		assert(knot_node_previous(nsec3_first, 0) == NULL);
+		assert(knot_node_previous(nsec3_first) == NULL);
 		knot_node_set_previous(nsec3_first, last_node);
 		/* CLEANUP */
 //		nsec3_first->prev = last_node;

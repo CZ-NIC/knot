@@ -506,7 +506,7 @@ int xfrin_process_axfr_packet(/*const uint8_t *pkt, size_t size,
 			dbg_xfrin("No zone created, but the first RR in "
 			               "Answer is not a SOA RR.\n");
 			knot_packet_free(&packet);
-			knot_node_free(&node, 0, 0);
+			knot_node_free(&node, 0);
 			knot_rrset_deep_free(&rr, 1, 1, 1);
 			/*! \todo Cleanup. */
 			return KNOT_EMALF;
@@ -528,7 +528,7 @@ dbg_xfrin_exec(
 );
 			/*! \todo Cleanup. */
 			knot_packet_free(&packet);
-			knot_node_free(&node, 0, 0);
+			knot_node_free(&node, 0);
 			knot_rrset_deep_free(&rr, 1, 1, 1);
 			return KNOT_EMALF;
 		}
@@ -549,7 +549,7 @@ dbg_xfrin_exec(
 		if (*constr == NULL) {
 			dbg_xfrin("Failed to create new constr. zone.\n");
 			knot_packet_free(&packet);
-			knot_node_free(&node, 0, 0);
+			knot_node_free(&node, 0);
 			knot_rrset_deep_free(&rr, 1, 1, 1);
 			return KNOT_ENOMEM;
 		}
@@ -561,7 +561,7 @@ dbg_xfrin_exec(
 		if ((*constr)->contents== NULL) {
 			dbg_xfrin("Failed to create new zone.\n");
 			knot_packet_free(&packet);
-			knot_node_free(&node, 0, 0);
+			knot_node_free(&node, 0);
 			knot_rrset_deep_free(&rr, 1, 1, 1);
 			/*! \todo Cleanup. */
 			return KNOT_ENOMEM;
@@ -580,7 +580,7 @@ dbg_xfrin_exec(
 			dbg_xfrin("Failed to add RRSet to zone node: %s.\n",
 			          knot_strerror(ret));
 			knot_packet_free(&packet);
-			knot_node_free(&node, 0, 0);
+			knot_node_free(&node, 0);
 			knot_rrset_deep_free(&rr, 1, 1, 1);
 			/*! \todo Cleanup. */
 			return KNOT_ERROR;
@@ -696,7 +696,7 @@ dbg_xfrin_exec(
 					dbg_xfrin("Failed to save orphan"
 						       " RRSIGs.\n");
 					knot_packet_free(&packet);
-					knot_node_free(&node, 1, 0); // ???
+					knot_node_free(&node, 0); // ???
 					knot_rrset_deep_free(&rr, 1, 1, 1);
 					return ret;
 				}
@@ -704,7 +704,7 @@ dbg_xfrin_exec(
 				dbg_xfrin("Failed to add RRSIGs (%s).\n",
 				               knot_strerror(ret));
 				knot_packet_free(&packet);
-				knot_node_free(&node, 1, 0); // ???
+				knot_node_free(&node, 0); // ???
 				knot_rrset_deep_free(&rr, 1, 1, 1);
 				return KNOT_ERROR;  /*! \todo Other error code. */
 			} else if (ret == 1) {
@@ -744,7 +744,7 @@ dbg_xfrin_exec(
 			// not allowed here
 			dbg_xfrin(" in Answer section.\n");
 			knot_packet_free(&packet);
-			knot_node_free(&node, 1, 0); // ???
+			knot_node_free(&node, 0); // ???
 			knot_rrset_deep_free(&rr, 1, 1, 1);
 			return KNOT_EMALF;
 		}
@@ -787,7 +787,7 @@ dbg_xfrin_exec(
 				dbg_xfrin("Failed to add RRSet to node (%s"
 				               ")\n", knot_strerror(ret));
 				knot_packet_free(&packet);
-				knot_node_free(&node, 1, 0); // ???
+				knot_node_free(&node, 0); // ???
 				knot_rrset_deep_free(&rr, 1, 1, 1);
 				return KNOT_ERROR;
 			} else if (ret > 0) {
@@ -803,7 +803,7 @@ dbg_xfrin_exec(
 				dbg_xfrin("Failed to add node to zone (%s)"
 				               ".\n", knot_strerror(ret));
 				knot_packet_free(&packet);
-				knot_node_free(&node, 1, 0); // ???
+				knot_node_free(&node, 0); // ???
 				knot_rrset_deep_free(&rr, 1, 1, 1);
 				return KNOT_ERROR;
 			}
@@ -839,7 +839,7 @@ dbg_xfrin_exec(
 		dbg_xfrin("Could not parse next RR: %s.\n",
 		               knot_strerror(ret));
 		knot_packet_free(&packet);
-		knot_node_free(&node, 0, 0);
+		knot_node_free(&node, 0);
 		knot_rrset_deep_free(&rr, 1, 1, 1);
 		/*! \todo Cleanup. */
 		return KNOT_EMALF;
@@ -856,7 +856,7 @@ dbg_xfrin_exec(
 			dbg_xfrin("Failed to add last node into zone (%s)"
 			               ".\n", knot_strerror(ret));
 			knot_packet_free(&packet);
-			knot_node_free(&node, 1, 0);
+			knot_node_free(&node, 0);
 			return KNOT_ERROR;	/*! \todo Other error */
 		}
 	}
@@ -1392,9 +1392,9 @@ static void xfrin_zone_contents_free(knot_zone_contents_t **contents)
 
 	// free the zone tree with nodes
 	dbg_zone("Destroying zone tree.\n");
-	knot_zone_tree_deep_free(&(*contents)->nodes, 1);
+	knot_zone_tree_deep_free(&(*contents)->nodes);
 	dbg_zone("Destroying NSEC3 zone tree.\n");
-	knot_zone_tree_deep_free(&(*contents)->nsec3_nodes, 1);
+	knot_zone_tree_deep_free(&(*contents)->nsec3_nodes);
 
 	knot_nsec3_params_free(&(*contents)->nsec3_params);
 
@@ -2184,9 +2184,9 @@ static void xfrin_zone_contents_free2(knot_zone_contents_t **contents)
 	// free the zone tree, but only the structure
 	// (nodes are already destroyed)
 	dbg_zone("Destroying zone tree.\n");
-	knot_zone_tree_deep_free(&(*contents)->nodes, 0);
+	knot_zone_tree_deep_free(&(*contents)->nodes);
 	dbg_zone("Destroying NSEC3 zone tree.\n");
-	knot_zone_tree_deep_free(&(*contents)->nsec3_nodes, 0);
+	knot_zone_tree_deep_free(&(*contents)->nsec3_nodes);
 
 	knot_nsec3_params_free(&(*contents)->nsec3_params);
 
@@ -2765,7 +2765,7 @@ static int xfrin_remove_empty_nodes(knot_zone_contents_t *contents,
 
 		free(hash_item);
 		free(zone_node);
-		knot_node_free(&changes->old_nodes[i], 1, 1);
+		knot_node_free(&changes->old_nodes[i], 1);
 	}
 
 	changes->old_nodes_count = 0;

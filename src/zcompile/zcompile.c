@@ -527,7 +527,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	//assert(origin_node->next == NULL);
 
-	assert(knot_node_parent(origin_node, 0) == NULL);
+	assert(knot_node_parent(origin_node) == NULL);
 	if (origin_node == NULL) {
 		knot_dname_release(dname);
 		return KNOTDZCOMPILE_ENOMEM;

@@ -214,8 +214,7 @@ const int knot_node_count_rrsets(const knot_node_t *node);
  * \return Parent node of the given node or NULL if no parent has been set (e.g.
  *         node in a zone apex has no parent).
  */
-const knot_node_t *knot_node_parent(const knot_node_t *node, 
-                                        int check_version);
+const knot_node_t *knot_node_parent(const knot_node_t *node);
 
 /*!
  * \brief Sets the parent of the node.
@@ -237,8 +236,7 @@ unsigned int knot_node_children(const knot_node_t *node);
  *         the first node in zone if \a node is the last node in zone.
  * \retval NULL if previous node is not set.
  */
-const knot_node_t *knot_node_previous(const knot_node_t *node, 
-                                          int check_version);
+const knot_node_t *knot_node_previous(const knot_node_t *node);
 
 /*!
  * \brief Returns the previous authoritative node or delegation point in
@@ -253,8 +251,7 @@ const knot_node_t *knot_node_previous(const knot_node_t *node,
  *         the first node in zone if \a node is the last node in zone.
  * \retval NULL if previous node is not set.
  */
-knot_node_t *knot_node_get_previous(const knot_node_t *node, 
-                                        int check_version);
+knot_node_t *knot_node_get_previous(const knot_node_t *node);
 
 const knot_node_t *knot_node_next(const knot_node_t *node);
 
@@ -276,8 +273,7 @@ void knot_node_set_previous(knot_node_t *node, knot_node_t *prev);
  *         and the name of the zone \a node belongs to).
  * \retval NULL if the NSEC3 node is not set.
  */
-knot_node_t *knot_node_get_nsec3_node(const knot_node_t *node,
-                                      int check_version);
+knot_node_t *knot_node_get_nsec3_node(const knot_node_t *node);
 
 /*!
  * \brief Returns the NSEC3 node corresponding to the given node.
@@ -289,8 +285,7 @@ knot_node_t *knot_node_get_nsec3_node(const knot_node_t *node,
  *         and the name of the zone \a node belongs to).
  * \retval NULL if the NSEC3 node is not set.
  */
-const knot_node_t *knot_node_nsec3_node(const knot_node_t *node, 
-                                        int check_version);
+const knot_node_t *knot_node_nsec3_node(const knot_node_t *node);
 
 /*!
  * \brief Sets the corresponding NSEC3 node of the given node.
@@ -331,8 +326,7 @@ void knot_node_set_owner(knot_node_t *node, knot_dname_t* owner);
  *
  * \return Wildcard child of the given node or NULL if it has none.
  */
-const knot_node_t *knot_node_wildcard_child(const knot_node_t *node, 
-                                                int check_version);
+const knot_node_t *knot_node_wildcard_child(const knot_node_t *node);
 
 /*!
  * \brief Sets the wildcard child of the node.
@@ -341,18 +335,17 @@ const knot_node_t *knot_node_wildcard_child(const knot_node_t *node,
  * \param wildcard_child Wildcard child of the node.
  */
 void knot_node_set_wildcard_child(knot_node_t *node,
-                                    knot_node_t *wildcard_child);
+                                  knot_node_t *wildcard_child);
 
-const knot_node_t *knot_node_current(const knot_node_t *node);
+//const knot_node_t *knot_node_current(const knot_node_t *node);
 
-knot_node_t *knot_node_get_current(knot_node_t *node);
+//knot_node_t *knot_node_get_current(knot_node_t *node);
 
 const knot_node_t *knot_node_new_node(const knot_node_t *node);
 
 knot_node_t *knot_node_get_new_node(const knot_node_t *node);
 
-void knot_node_set_new_node(knot_node_t *node,
-                              knot_node_t *new_node);
+void knot_node_set_new_node(knot_node_t *node, knot_node_t *new_node);
 
 void knot_node_set_zone(knot_node_t *node, struct knot_zone *zone);
 
@@ -431,7 +424,7 @@ void knot_node_free_rrsets(knot_node_t *node, int free_rdata_dnames);
  *
  * \todo Document missing parameters.
  */
-void knot_node_free(knot_node_t **node, int free_owner, int fix_refs);
+void knot_node_free(knot_node_t **node, int fix_refs);
 
 /*!
  * \brief Compares two nodes according to their owner.

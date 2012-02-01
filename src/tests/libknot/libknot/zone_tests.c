@@ -95,13 +95,13 @@ static int test_zone_create(knot_zone_contents_t **zone)
 
 	if ((*zone) == NULL) {
 		diag("zone: Failed to create zone.");
-		knot_node_free(&node, 1, 0);
+		knot_node_free(&node, 0);
 		return 0;
 	}
 
 	if ((*zone)->apex != node) {
 		diag("zone: Zone apex not set right.");
-		knot_node_free(&node, 1, 0);
+		knot_node_free(&node, 0);
 		return 0;
 	}
 
@@ -133,7 +133,7 @@ static int test_zone_add_node(knot_zone_contents_t *zone, int nsec3)
 		                   : knot_zone_contents_add_node(zone, node, 0, 0, 0))) != 0) {
 			diag("zone: Failed to insert node into zone (returned"
 			     " %d).", res);
-			knot_node_free(&node, 0, 0);
+			knot_node_free(&node, 0);
 			++errors;
 		}
 		/* TODO check values in the node as well */
@@ -157,7 +157,7 @@ static int test_zone_add_node(knot_zone_contents_t *zone, int nsec3)
 			     KNOT_EBADZONE);
 			++errors;
 		}
-		knot_node_free(&node, 0, 0);
+		knot_node_free(&node, 0);
 	}
 
 	//note("NULL zone");
@@ -179,7 +179,7 @@ static int test_zone_add_node(knot_zone_contents_t *zone, int nsec3)
 		++errors;
 	}
 
-	knot_node_free(&node, 0, 0);
+	knot_node_free(&node, 0);
 
 	//note("NULL node");
 	note("Inserting NULL node...\n");
@@ -211,7 +211,7 @@ static int test_zone_add_node(knot_zone_contents_t *zone, int nsec3)
 			++errors;
 		}
 
-		knot_node_free(&node, 0, 0);
+		knot_node_free(&node, 0);
 	}
 
 	// check if all nodes are inserted

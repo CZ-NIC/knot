@@ -693,27 +693,20 @@ uint8_t knot_dname_size_part(const knot_dname_t *dname, int labels)
 
 /*----------------------------------------------------------------------------*/
 
-const struct knot_node *knot_dname_node(const knot_dname_t *dname,
-                                            int check_version)
+const struct knot_node *knot_dname_node(const knot_dname_t *dname)
 
 {
-	if (check_version) {
-		return knot_node_current(dname->node);
-	} else {
-		return dname->node;
-	}
+	return knot_dname_get_node(dname);
 }
 
 /*----------------------------------------------------------------------------*/
 
-struct knot_node *knot_dname_get_node(knot_dname_t *dname,
-                                          int check_version)
+struct knot_node *knot_dname_get_node(knot_dname_t *dname)
 {
-	if (check_version) {
-		return knot_node_get_current(dname->node);
-	} else {
-		return dname->node;
+	if (dname == NULL) {
+		return NULL;
 	}
+	return dname->node;
 }
 
 /*----------------------------------------------------------------------------*/

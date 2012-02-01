@@ -338,8 +338,7 @@ int knot_zone_contents_find_nsec3_for_name(
                                     const knot_zone_contents_t *contents,
                                     const knot_dname_t *name,
                                     const knot_node_t **nsec3_node,
-                                    const knot_node_t **nsec3_previous,
-				    int check_ver);
+                                    const knot_node_t **nsec3_previous);
 /*!
  * \brief Returns the apex node of the zone.
  *
