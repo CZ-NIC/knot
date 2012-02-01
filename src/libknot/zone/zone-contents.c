@@ -545,7 +545,8 @@ static void knot_zone_contents_adjust_node_in_tree(
 	knot_node_t *node = tnode->node;
 
 	if (args->err != KNOT_EOK) {
-		dbg_xfrin_detail("Error during adjusting, skipping node.\n");
+		dbg_xfrin_detail("Error during adjusting: %s, skipping node.\n",
+		                 knot_strerror(args->err));
 		return;
 	}
 
@@ -2147,6 +2148,7 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone)
 	adjust_arg.zone = zone;
 	adjust_arg.first_node = NULL;
 	adjust_arg.previous_node = NULL;
+	adjust_arg.err = KNOT_EOK;
 //	adjust_arg.check_ver = check_ver;
 
 	dbg_zone("Adjusting normal nodes.\n");
