@@ -698,6 +698,17 @@ static int zones_load_zone(knot_zonedb_t *zonedb, const char *zone_name,
 			   const char *source, const char *filename)
 {
 	knot_zone_t *zone = NULL;
+	size_t zlen = strlen(zone_name);
+	char *zname = NULL;
+	if (zlen > 0) {
+		if ((zname = strdup(zone_name)) == NULL) {
+			return KNOTD_ENOMEM;
+		}
+	} else {
+		return KNOTD_EINVAL;
+	}
+	
+	zname[zlen - 1] = '\0'; /* Trim last dot */
 
 	/* Check path */
 	if (filename) {
@@ -709,24 +720,29 @@ static int zones_load_zone(knot_zonedb_t *zonedb, const char *zone_name,
 			/* OK */
 			break;
 		case KNOT_EFEWDATA:
-			log_server_error("Compiled zone db '%s' not exists.\n",
-					 filename);
+			log_server_error("Couldn't find compiled zone. "
+			                 "Please recompile '%s'.\n", zname);
+			free(zname);
 			return KNOTD_EZONEINVAL;
 		case KNOT_ECRC:
-			log_server_error("Compiled zone db CRC mismatches, "
-					 "db is corrupted or .crc file is "
-					 "deleted.\n");
+			log_server_error("Compiled zone db CRC mismatch, "
+			                 "db is corrupted or .crc file is "
+			                 "deleted. Please recompile '%s'.\n",
+			                 zname);
+			free(zname);
 			return KNOTD_EZONEINVAL;
 		case KNOT_EMALF:
-			log_server_error("Compiled db '%s' is too old, "
-			                 " please recompile.\n",
-			                 filename);
+			log_server_error("Compiled db '%s' is too old. "
+			                 "Please recompile '%s'.\n",
+			                 filename, zname);
+			free(zname);
 			return KNOTD_EZONEINVAL;
 		case KNOT_ERROR:
 		case KNOT_ENOMEM:
 		default:
-			log_server_error("Failed to read zone db file '%s'.\n",
-					 filename);
+			log_server_error("Failed to load compiled zone file "
+			                 "'%s'.\n", filename);
+			free(zname);
 			return KNOTD_EZONEINVAL;
 		}
 
@@ -735,7 +751,7 @@ static int zones_load_zone(knot_zonedb_t *zonedb, const char *zone_name,
 		if (src_changed || knot_zload_needs_update(zl)) {
 			log_server_warning("Database for zone '%s' is not "
 			                   "up-to-date. Please recompile.\n",
-			                   zone_name);
+			                   zname);
 		}
 
 		zone = knot_zload_load(zl);
@@ -743,8 +759,7 @@ static int zones_load_zone(knot_zonedb_t *zonedb, const char *zone_name,
 		/* Check loaded name. */
 		const knot_dname_t *dname = knot_zone_name(zone);
 		knot_dname_t *dname_req = 0;
-		dname_req = knot_dname_new_from_str(zone_name,
-		                                    strlen(zone_name), 0);
+		dname_req = knot_dname_new_from_str(zone_name, zlen, 0);
 		if (knot_dname_compare(dname, dname_req) != 0) {
 			log_server_warning("Origin of the zone db file is "
 			                   "different than '%s'\n",
@@ -780,16 +795,20 @@ static int zones_load_zone(knot_zonedb_t *zonedb, const char *zone_name,
 		if (!zone) {
 			log_server_error("Failed to load "
 					 "db '%s' for zone '%s'.\n",
-					 filename, zone_name);
+					 filename, zname);
+			free(zname);
 			return KNOTD_EZONEINVAL;
 		}
 	} else {
 		/* db is null. */
+		log_server_error("No file name for zone '%s'.\n", zname);
+		free(zname);
 		return KNOTD_EINVAL;
 	}
 
 	/* CLEANUP */
 //	knot_zone_dump(zone, 1);
+	free(zname);
 
 	return KNOTD_EOK;
 }
@@ -1237,15 +1256,10 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 				               z->name,
 				               z->db);
 				ret = zones_load_zone(db_new, z->name,
-							  z->file, z->db);
+				                      z->file, z->db);
 				if (ret == KNOTD_EOK) {
 					log_server_info("Loaded zone '%s'\n",
 					                z->name);
-				} else {
-					log_server_error("Failed to load zone "
-					                 "'%s' - %s\n",
-					                 z->name,
-					                 knotd_strerror(ret));
 				}
 			}
 
