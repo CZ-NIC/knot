@@ -193,9 +193,10 @@ int main(int argc, char **argv)
 		capng_clear(CAPNG_SELECT_BOTH);
 	
 	
-		/* Retain ability to set capabilities. */
+		/* Retain ability to set capabilities and FS access. */
 		capng_type_t tp = CAPNG_EFFECTIVE|CAPNG_PERMITTED;
 		capng_update(CAPNG_ADD, tp, CAP_SETPCAP);
+		capng_update(CAPNG_ADD, tp, CAP_DAC_OVERRIDE);
 		
 		/* Allow binding to privileged ports.
 		 * (Not inheritable)
