@@ -189,26 +189,27 @@ int main(int argc, char **argv)
 #ifdef HAVE_CAP_NG_H
 	
 	/* Drop all capabilities. */
-	capng_clear(CAPNG_SELECT_BOTH);
-	
-	/* Retain ability to set capabilities. */
-	capng_type_t tp = CAPNG_EFFECTIVE|CAPNG_PERMITTED;
-	capng_update(CAPNG_ADD, tp, CAP_SETPCAP);
-	
-	/* Allow binding to privileged ports.
-	 * (Not inheritable)
-	 */
-	capng_update(CAPNG_ADD, tp, CAP_NET_BIND_SERVICE);
-	
-	/* Allow setuid/setgid. */
-	capng_update(CAPNG_ADD, tp, CAP_SETUID);
-	capng_update(CAPNG_ADD, tp, CAP_SETGID);
-	
-	/* Allow priorities changing. */
-	capng_update(CAPNG_ADD, tp, CAP_SYS_NICE);
-	
-	/* Apply */
 	if (capng_have_capability(CAPNG_EFFECTIVE, CAP_SETPCAP)) {
+		capng_clear(CAPNG_SELECT_BOTH);
+	
+	
+		/* Retain ability to set capabilities. */
+		capng_type_t tp = CAPNG_EFFECTIVE|CAPNG_PERMITTED;
+		capng_update(CAPNG_ADD, tp, CAP_SETPCAP);
+		
+		/* Allow binding to privileged ports.
+		 * (Not inheritable)
+		 */
+		capng_update(CAPNG_ADD, tp, CAP_NET_BIND_SERVICE);
+		
+		/* Allow setuid/setgid. */
+		capng_update(CAPNG_ADD, tp, CAP_SETUID);
+		capng_update(CAPNG_ADD, tp, CAP_SETGID);
+		
+		/* Allow priorities changing. */
+		capng_update(CAPNG_ADD, tp, CAP_SYS_NICE);
+		
+		/* Apply */
 		if (capng_apply(CAPNG_SELECT_BOTH) < 0) {
 			log_server_error("Couldn't set process capabilities - "
 			                 "%s.\n", strerror(errno));

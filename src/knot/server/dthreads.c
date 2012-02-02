@@ -129,8 +129,10 @@ static void *thread_ep(void *data)
 	
 	// Drop capabilities
 #ifdef HAVE_CAP_NG_H
-	capng_clear(CAPNG_SELECT_BOTH);
-	capng_apply(CAPNG_SELECT_BOTH);
+	if (capng_have_capability(CAPNG_EFFECTIVE, CAP_SETPCAP)) {
+		capng_clear(CAPNG_SELECT_BOTH);
+		capng_apply(CAPNG_SELECT_BOTH);
+	}
 #endif /* HAVE_CAP_NG_H */
 
 	// Run loop
