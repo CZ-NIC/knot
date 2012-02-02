@@ -65,7 +65,12 @@ static int (*_udp_master)(dthread_t *, stat_t *) = 0;
 int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 	       sockaddr_t* addr, knot_nameserver_t *ns)
 {
-	dbg_net("udp: fd=%d received %zd bytes.\n", fd, qbuflen);
+#ifdef DEBUG_ENABLE_BRIEF
+	char strfrom[SOCKADDR_STRLEN];
+	sockaddr_tostr(addr, strfrom, sizeof(strfrom));
+	dbg_net("udp: fd=%d received %zd bytes from %s:%d.\n", fd, qbuflen,
+	        strfrom, sockaddr_portnum(addr));
+#endif
 	
 	knot_packet_type_t qtype = KNOT_QUERY_NORMAL;
 	*resp_len = SOCKET_MTU_SZ;

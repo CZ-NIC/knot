@@ -93,6 +93,7 @@ user            { lval.t = yytext; return USER; }
 interfaces      { lval.t = yytext; return INTERFACES; }
 address         { lval.t = yytext; return ADDRESS; }
 port            { lval.t = yytext; return PORT; }
+via             { lval.t = yytext; return VIA; }
 
 log             { lval.t = yytext; return LOG; }
 
