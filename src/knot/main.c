@@ -19,18 +19,16 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <getopt.h>
-#ifdef HAVE_SYS_CAPABILITY_H
-#include <sys/capability.h>
-#endif
 #include "common.h"
 
+#include "common/evqueue.h"
+#include "common/caps.h"
 #include "knot/common.h"
 #include "knot/other/error.h"
 #include "knot/server/server.h"
 #include "knot/ctl/process.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/logconf.h"
-#include "common/evqueue.h"
 #include "knot/server/zones.h"
 
 /*----------------------------------------------------------------------------*/
@@ -60,13 +58,6 @@ void interrupt_handle(int s)
 		}
 	}
 }
-
-#ifdef HAVE_SYS_CAPABILITY_H
-static int cap_set_pe(cap_t caps, cap_value_t cp) {
-	return cap_set_flag(caps, CAP_EFFECTIVE, 1, &cp, CAP_SET)
-	       + cap_set_flag(caps, CAP_PERMITTED, 1, &cp, CAP_SET);
-}
-#endif
 
 void help(int argc, char **argv)
 {
@@ -193,31 +184,33 @@ int main(int argc, char **argv)
 	}
 	
 	/* Linux capabilities. */
-#ifdef HAVE_SYS_CAPABILITY_H
+#ifdef USE_CAPABILITIES
 	cap_t caps = cap_get_proc();
 	if (caps != NULL) {
 		/* Read current and clear. */
 		cap_flag_value_t set_caps = CAP_CLEAR;
 		cap_get_flag(caps, CAP_SETPCAP, CAP_EFFECTIVE, &set_caps);
 		cap_clear(caps);
+		
+		/* Retain ability to set capabilities. */
+		cap_set_pe(caps, CAP_SETPCAP);
 
 		/* Allow binding to privileged ports.
 		 * (Not inheritable)
-		 */		
+		 */
 		cap_set_pe(caps, CAP_NET_BIND_SERVICE);
 		
 		/* Allow setuid/setgid. */
 		cap_set_pe(caps, CAP_SETUID);
 		cap_set_pe(caps, CAP_SETGID);
-		cap_set_pe(caps, CAP_SETPCAP);
-		/*! \todo Config file read? DAC_OVERRIDE ? */
+		
 		/* Allow priorities changing. */
 		cap_set_pe(caps, CAP_SYS_NICE);
-		/* Inherit nothing. */
+			
 		/* Apply */
 		int caps_res = 0;
 		if (set_caps == CAP_SET) {
-			caps_res = cap_set_proc(caps);
+			caps_res = cap_apply(caps);
 		} else {
 			log_server_info("User uid=%d is not allowed to set "
 			                "capabilities, skipping.\n", getuid());

@@ -223,6 +223,8 @@ libknots_la_SOURCES =				\
 	common/libtap/tap.c			\
 	common/libtap/tap.h			\
 	common/libtap/tap_unit.h		\
+	common/caps.c				\
+	common/caps.h				\
 	common/lists.c				\
 	common/base32.c				\
 	common/lists.h				\

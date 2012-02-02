@@ -26,6 +26,7 @@
 #include "knot/server/dthreads.h"
 #include "knot/other/log.h"
 #include "knot/other/error.h"
+#include "common/caps.h"
 
 /*! \brief Lock thread state for R/W. */
 static inline void lock_thread_rw(dthread_t *thread)
@@ -123,6 +124,9 @@ static void *thread_ep(void *data)
 	pthread_sigmask(SIG_BLOCK, &ignset, 0); /*! \todo Review under BSD. */
 
 	dbg_dt("dthreads: [%p] entered ep\n", thread);
+	
+	// Drop capabilities
+	cap_drop_all();
 
 	// Run loop
 	for (;;) {
