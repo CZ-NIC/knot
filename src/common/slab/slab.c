@@ -339,7 +339,7 @@ slab_t* slab_create(slab_cache_t* cache)
 
 	slab_t* slab = slab_depot_alloc(cache->bufsize);
 
-	if (unlikely(slab < 0)) {
+	if (unlikely(slab == 0)) {
 		dbg_mem("%s: failed to allocate aligned memory block\n",
 		          __func__);
 		return 0;
