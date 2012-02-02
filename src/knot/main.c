@@ -197,6 +197,7 @@ int main(int argc, char **argv)
 		capng_type_t tp = CAPNG_EFFECTIVE|CAPNG_PERMITTED;
 		capng_update(CAPNG_ADD, tp, CAP_SETPCAP);
 		capng_update(CAPNG_ADD, tp, CAP_DAC_OVERRIDE);
+		capng_update(CAPNG_ADD, tp, CAP_CHOWN); /* Storage ownership. */
 		
 		/* Allow binding to privileged ports.
 		 * (Not inheritable)

@@ -201,6 +201,13 @@ static int conf_process(conf_t *conf)
 	struct stat st;
 	if (stat(conf->storage, &st) != 0) {
 		rmkdir(conf->storage, S_IRWXU);
+		if (conf->uid >= 0) {
+			if (chown(conf->storage, conf->uid, conf->gid) < 0) {
+				log_server_warning("Could not change ownership"
+				                   " of '%s' to uid=%d.\n",
+				                   conf->storage, conf->uid);
+			}
+		}
 	}
 
 	// Create PID file
