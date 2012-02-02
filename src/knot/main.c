@@ -19,10 +19,12 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <getopt.h>
-#include "common.h"
+#ifdef HAVE_CAP_NG_H
+#include <cap-ng.h>
+#endif /* HAVE_CAP_NG_H */
 
+#include "common.h"
 #include "common/evqueue.h"
-#include "common/caps.h"
 #include "knot/common.h"
 #include "knot/other/error.h"
 #include "knot/server/server.h"
@@ -183,48 +185,39 @@ int main(int argc, char **argv)
 		config_fn = abs_cfg;
 	}
 	
-	/* Linux capabilities. */
-#ifdef USE_CAPABILITIES
-	cap_t caps = cap_get_proc();
-	if (caps != NULL) {
-		/* Read current and clear. */
-		cap_flag_value_t set_caps = CAP_CLEAR;
-		cap_get_flag(caps, CAP_SETPCAP, CAP_EFFECTIVE, &set_caps);
-		cap_clear(caps);
-		
-		/* Retain ability to set capabilities. */
-		cap_set_pe(caps, CAP_SETPCAP);
-
-		/* Allow binding to privileged ports.
-		 * (Not inheritable)
-		 */
-		cap_set_pe(caps, CAP_NET_BIND_SERVICE);
-		
-		/* Allow setuid/setgid. */
-		cap_set_pe(caps, CAP_SETUID);
-		cap_set_pe(caps, CAP_SETGID);
-		
-		/* Allow priorities changing. */
-		cap_set_pe(caps, CAP_SYS_NICE);
-			
-		/* Apply */
-		int caps_res = 0;
-		if (set_caps == CAP_SET) {
-			caps_res = cap_apply(caps);
-		} else {
-			log_server_info("User uid=%d is not allowed to set "
-			                "capabilities, skipping.\n", getuid());
-		}
-		if (caps_res < 0) {
+	/* POSIX 1003.1e capabilities. */
+#ifdef HAVE_CAP_NG_H
+	
+	/* Drop all capabilities. */
+	capng_clear(CAPNG_SELECT_BOTH);
+	
+	/* Retain ability to set capabilities. */
+	capng_type_t tp = CAPNG_EFFECTIVE|CAPNG_PERMITTED;
+	capng_update(CAPNG_ADD, tp, CAP_SETPCAP);
+	
+	/* Allow binding to privileged ports.
+	 * (Not inheritable)
+	 */
+	capng_update(CAPNG_ADD, tp, CAP_NET_BIND_SERVICE);
+	
+	/* Allow setuid/setgid. */
+	capng_update(CAPNG_ADD, tp, CAP_SETUID);
+	capng_update(CAPNG_ADD, tp, CAP_SETGID);
+	
+	/* Allow priorities changing. */
+	capng_update(CAPNG_ADD, tp, CAP_SYS_NICE);
+	
+	/* Apply */
+	if (capng_have_capability(CAPNG_EFFECTIVE, CAP_SETPCAP)) {
+		if (capng_apply(CAPNG_SELECT_BOTH) < 0) {
 			log_server_error("Couldn't set process capabilities - "
 			                 "%s.\n", strerror(errno));
 		}
-		/* Free capabilities list. */
-		cap_free(caps);
 	} else {
-		log_server_error("Couldn't initialize Linux capabilities.\n");
+		log_server_info("User uid=%d is not allowed to set "
+		                "capabilities, skipping.\n", getuid());
 	}
-#endif
+#endif /* HAVE_CAP_NG_H */
 
 	// Open configuration
 	log_server_info("Parsing configuration '%s' ...\n", config_fn);

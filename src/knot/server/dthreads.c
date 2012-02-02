@@ -21,12 +21,14 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <errno.h>
+#ifdef HAVE_CAP_NG_H
+#include <cap-ng.h>
+#endif /* HAVE_CAP_NG_H */
 
 #include "knot/common.h"
 #include "knot/server/dthreads.h"
 #include "knot/other/log.h"
 #include "knot/other/error.h"
-#include "common/caps.h"
 
 /*! \brief Lock thread state for R/W. */
 static inline void lock_thread_rw(dthread_t *thread)
@@ -126,7 +128,10 @@ static void *thread_ep(void *data)
 	dbg_dt("dthreads: [%p] entered ep\n", thread);
 	
 	// Drop capabilities
-	cap_drop_all();
+#ifdef HAVE_CAP_NG_H
+	capng_clear(CAPNG_SELECT_BOTH);
+	capng_apply(CAPNG_SELECT_BOTH);
+#endif /* HAVE_CAP_NG_H */
 
 	// Run loop
 	for (;;) {
