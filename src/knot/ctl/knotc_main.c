@@ -49,6 +49,7 @@ void help(int argc, char **argv)
 	       " -V, --version              Print %s server version.\n"
 	       " -w, --wait                 Wait for the server to finish start/stop operations.\n"
 	       " -i, --interactive          Interactive mode (do not daemonize).\n"
+	       " -a, --auto                 Enable automatic recompilation (start or reload)."
 	       " -h, --help                 Print help and usage.\n",
 	       PACKAGE_NAME);
 	printf("Actions:\n"
@@ -243,6 +244,7 @@ int zctask_add(knotc_zctask_t *tasks, int count, pid_t pid, conf_zone_t *zone)
  * \param force True if forced operation is required.
  * \param wait Wait for the operation to finish.
  * \param interactive Interactive mode.
+ * \param automatic Automatic compilation.
  * \param jobs Number of parallel tasks to run.
  * \param pidfile Specified PID file for action.
  *
@@ -252,7 +254,8 @@ int zctask_add(knotc_zctask_t *tasks, int count, pid_t pid, conf_zone_t *zone)
  * \todo Make enumerated flags instead of many parameters...
  */
 int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
-	    int force, int wait, int interactive, int jobs, const char *pidfile)
+            int force, int wait, int interactive, int automatic,
+            int jobs, const char *pidfile)
 {
 	int valid_cmd = 0;
 	int rc = 0;
@@ -282,8 +285,10 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 		}
 
 		// Recompile zones if needed
-		rc = execute("compile", argv, argc, -1, verbose, force, wait,
-			     interactive, jobs, pidfile);
+		if (automatic) {
+			rc = execute("compile", argv, argc, -1, verbose, force,
+			             wait, interactive, automatic, jobs, pidfile);
+		}
 
 		// Lock configuration
 		conf_read_lock();
@@ -377,7 +382,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 	if (strcmp(action, "restart") == 0) {
 		valid_cmd = 1;
 		execute("stop", argv, argc, pid, verbose, force, wait,
-			interactive, jobs, pidfile);
+			interactive, automatic, jobs, pidfile);
 
 		int i = 0;
 		while((pid = pid_read(pidfile)) > 0) {
@@ -399,7 +404,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 
 		printf("Restarting server.\n");
 		rc = execute("start", argv, argc, -1, verbose, force, wait,
-			     interactive, jobs, pidfile);
+			     interactive, automatic, jobs, pidfile);
 	}
 	if (strcmp(action, "reload") == 0) {
 
@@ -418,8 +423,10 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 		}
 
 		// Recompile zones if needed
-		rc = execute("compile", argv, argc, -1, verbose, force, wait,
-			     interactive, jobs, pidfile);
+		if (automatic) {
+			rc = execute("compile", argv, argc, -1, verbose, force, wait,
+			             interactive, automatic, jobs, pidfile);
+		}
 
 		// Stop
 		if (kill(pid, SIGHUP) < 0) {
@@ -550,6 +557,7 @@ int main(int argc, char **argv)
 	int wait = 0;
 	int interactive = 0;
 	int jobs = 1;
+	int automatic = 0;
 	const char* config_fn = 0;
 	
 	/* Long options. */
@@ -559,13 +567,14 @@ int main(int argc, char **argv)
 		{"config",      required_argument, 0, 'c'},
 		{"verbose",     no_argument,       0, 'v'},
 		{"interactive", no_argument,       0, 'i'},
+		{"auto",        no_argument,       0, 'a'},
 		{"jobs",        required_argument, 0, 'c'},
 		{"version",     no_argument,       0, 'V'},
 		{"help",        no_argument,       0, 'h'},
 		{0, 0, 0, 0}
 	};
 	
-	while ((c = getopt_long(argc, argv, "wfc:vij:Vh", opts, &li)) != -1) {
+	while ((c = getopt_long(argc, argv, "wfc:viaj:Vh", opts, &li)) != -1) {
 		switch (c)
 		{
 		case 'w':
@@ -582,6 +591,9 @@ int main(int argc, char **argv)
 			break;
 		case 'i':
 			interactive = 1;
+			break;
+		case 'a':
+			automatic = 1;
 			break;
 		case 'j':
 			jobs = atoi(optarg);
@@ -656,7 +668,8 @@ int main(int argc, char **argv)
 
 	// Execute action
 	int rc = execute(action, argv + optind + 1, argc - optind - 1,
-			 pid, verbose, force, wait, interactive, jobs, pidfile);
+	                 pid, verbose, force, wait, interactive, automatic,
+	                 jobs, pidfile);
 
 	// Finish
 	free(pidfile);
