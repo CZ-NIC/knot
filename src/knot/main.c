@@ -19,15 +19,18 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <getopt.h>
-#include "common.h"
+#ifdef HAVE_CAP_NG_H
+#include <cap-ng.h>
+#endif /* HAVE_CAP_NG_H */
 
+#include "common.h"
+#include "common/evqueue.h"
 #include "knot/common.h"
 #include "knot/other/error.h"
 #include "knot/server/server.h"
 #include "knot/ctl/process.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/logconf.h"
-#include "common/evqueue.h"
 #include "knot/server/zones.h"
 
 /*----------------------------------------------------------------------------*/
@@ -181,6 +184,43 @@ int main(int argc, char **argv)
 		free(cwbuf);
 		config_fn = abs_cfg;
 	}
+	
+	/* POSIX 1003.1e capabilities. */
+#ifdef HAVE_CAP_NG_H
+	
+	/* Drop all capabilities. */
+	if (capng_have_capability(CAPNG_EFFECTIVE, CAP_SETPCAP)) {
+		capng_clear(CAPNG_SELECT_BOTH);
+	
+	
+		/* Retain ability to set capabilities and FS access. */
+		capng_type_t tp = CAPNG_EFFECTIVE|CAPNG_PERMITTED;
+		capng_update(CAPNG_ADD, tp, CAP_SETPCAP);
+		capng_update(CAPNG_ADD, tp, CAP_DAC_OVERRIDE);
+		capng_update(CAPNG_ADD, tp, CAP_CHOWN); /* Storage ownership. */
+		
+		/* Allow binding to privileged ports.
+		 * (Not inheritable)
+		 */
+		capng_update(CAPNG_ADD, tp, CAP_NET_BIND_SERVICE);
+		
+		/* Allow setuid/setgid. */
+		capng_update(CAPNG_ADD, tp, CAP_SETUID);
+		capng_update(CAPNG_ADD, tp, CAP_SETGID);
+		
+		/* Allow priorities changing. */
+		capng_update(CAPNG_ADD, tp, CAP_SYS_NICE);
+		
+		/* Apply */
+		if (capng_apply(CAPNG_SELECT_BOTH) < 0) {
+			log_server_error("Couldn't set process capabilities - "
+			                 "%s.\n", strerror(errno));
+		}
+	} else {
+		log_server_info("User uid=%d is not allowed to set "
+		                "capabilities, skipping.\n", getuid());
+	}
+#endif /* HAVE_CAP_NG_H */
 
 	// Open configuration
 	log_server_info("Parsing configuration '%s' ...\n", config_fn);

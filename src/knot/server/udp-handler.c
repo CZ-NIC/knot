@@ -31,6 +31,9 @@
 #include <string.h>
 #include <assert.h>
 #include <errno.h>
+#ifdef HAVE_CAP_NG_H
+#include <cap-ng.h>
+#endif /* HAVE_CAP_NG_H */
 
 #include "common/sockaddr.h"
 #include "knot/common.h"
@@ -471,6 +474,15 @@ int udp_master(dthread_t *thread)
 	stat_t *thread_stat = 0;
 	STAT_INIT(thread_stat); //XXX new stat instance every time.
 	stat_set_protocol(thread_stat, stat_UDP);
+	
+	/* Drop all capabilities on workers. */
+#ifdef HAVE_CAP_NG_H
+	if (capng_have_capability(CAPNG_EFFECTIVE, CAP_SETPCAP)) {
+		capng_clear(CAPNG_SELECT_BOTH);
+		capng_apply(CAPNG_SELECT_BOTH);
+	}
+#endif /* HAVE_CAP_NG_H */
+
 
 	/* Execute proper handler. */
 	dbg_net_verb("udp: thread started (worker %p).\n", thread);

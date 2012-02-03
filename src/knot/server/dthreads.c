@@ -21,6 +21,9 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <errno.h>
+#ifdef HAVE_CAP_NG_H
+#include <cap-ng.h>
+#endif /* HAVE_CAP_NG_H */
 
 #include "knot/common.h"
 #include "knot/server/dthreads.h"
@@ -123,6 +126,16 @@ static void *thread_ep(void *data)
 	pthread_sigmask(SIG_BLOCK, &ignset, 0); /*! \todo Review under BSD. */
 
 	dbg_dt("dthreads: [%p] entered ep\n", thread);
+	
+	/* Drop capabilities except FS access. */
+#ifdef HAVE_CAP_NG_H
+	if (capng_have_capability(CAPNG_EFFECTIVE, CAP_SETPCAP)) {
+		capng_type_t tp = CAPNG_EFFECTIVE|CAPNG_PERMITTED;
+		capng_clear(CAPNG_SELECT_BOTH);
+		capng_update(CAPNG_ADD, tp, CAP_DAC_OVERRIDE);
+		capng_apply(CAPNG_SELECT_BOTH);
+	}
+#endif /* HAVE_CAP_NG_H */
 
 	// Run loop
 	for (;;) {

@@ -10,25 +10,23 @@ Ubuntu Server  (AMD64, I386) 10.04 LTS
 Ubuntu Desktop (AMD64, I386) 10.04 LTS
 ----------------------------------------------
 
-$ # make the system up-to-date
-$
+# Make the system up-to-date
 $ sudo apt-get update
 $ sudo apt-get upgrade
-$
-$ # ensure all prerequisites are installed
-$
-$ sudo apt-get install git-core autoconf libtool flex bison libssl-dev
-$
-$ # the required version of liburcu is not available in the default package 
-$ # sources.
-$
+
+# Ensure all prerequisites are installed
+$ sudo apt-get install git-core autoconf libtool flex bison libssl-dev liburcu-dev
+
+# Install optional packages (POSIX 1003.1e capabilities)
+$ sudo apt-get install libcap-ng-dev
+
+# If the liburcu-dev package is not present, install directly
 $ wget http://bd.archive.ubuntu.com/ubuntu/pool/universe/libu/liburcu/liburcu0_0.5.4-1_amd64.deb
 $ wget http://bd.archive.ubuntu.com/ubuntu/pool/universe/libu/liburcu/liburcu-dev_0.5.4-1_amd64.deb
 $ sudo dpkg -i liburcu0_0.5.4-1_amd64.deb
 $ sudo dpkg -i liburcu-dev_0.5.4-1_amd64.deb
-$
-$ # go for the real thing
-$
+
+# Go for the real thing
 $ git clone git://git.nic.cz/knot
 $ cd knot
 $ autoreconf -if
@@ -38,7 +36,6 @@ $ sudo make install
 $ sudo ldconfig
 
 Alternative packages for I386:
-
 $ # the required version of liburcu is not available in the default package 
 $ # sources.
 $
