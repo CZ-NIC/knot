@@ -796,9 +796,8 @@ static int zones_load_zone(knot_zonedb_t *zonedb, const char *zone_name,
 
 		/* CLEANUP */
 //		knot_zone_contents_dump(zone->contents, 1);
-
-		int errs = knot_zone_contents_integrity_check(zone->contents);
-		fprintf(stderr, "INTEGRITY CHECK OF ZONE. ERRORS: %d\n", errs);
+//		int errs = knot_zone_contents_integrity_check(zone->contents);
+//		fprintf(stderr, "INTEGRITY CHECK OF ZONE. ERRORS: %d\n", errs);
 
 		if (zone) {
 			/* save the timestamp from the zone db file */
