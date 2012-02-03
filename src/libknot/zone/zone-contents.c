@@ -3108,6 +3108,7 @@ static void knot_zc_integrity_check_dnames(const knot_node_t *node,
 			                                      check_data, name);
 		}
 	}
+	free(rrsets);
 }
 
 /*----------------------------------------------------------------------------*/
