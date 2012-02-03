@@ -2149,6 +2149,21 @@ static void xfrin_switch_node_in_hash_table(ck_hash_table_item_t *item,
 
 /*----------------------------------------------------------------------------*/
 
+static void xfrin_switch_node_in_dname_table(knot_dname_t *dname, void *data)
+{
+	UNUSED(data);
+
+	if (knot_dname_node(dname) == NULL) {
+		return;
+	}
+
+	assert(knot_node_new_node(knot_dname_node(dname)) != NULL);
+	knot_dname_set_node(dname, knot_node_get_new_node(
+	                            knot_dname_get_node(dname)));
+}
+
+/*----------------------------------------------------------------------------*/
+
 static int xfrin_switch_nodes(knot_zone_contents_t *contents_copy)
 {
 	assert(contents_copy != NULL);
@@ -2166,6 +2181,11 @@ static int xfrin_switch_nodes(knot_zone_contents_t *contents_copy)
 	int ret = ck_apply(knot_zone_contents_get_hash_table(contents_copy),
 	                   xfrin_switch_node_in_hash_table, NULL);
 	assert(ret == 0);
+
+	// Traverse also the dname table and change the node pointers in dnames
+	knot_zone_contents_dname_table_apply(contents_copy,
+	                                     xfrin_switch_node_in_dname_table,
+	                                     NULL);
 
 	return KNOT_EOK;
 }
@@ -2958,6 +2978,8 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 	 * Apply the changesets.
 	 */
 	dbg_xfrin("Applying changesets.\n");
+	dbg_xfrin_verb("Old contents apex: %p, new apex: %p\n",
+	               old_contents->apex, contents_copy->apex);
 	for (int i = 0; i < chsets->count; ++i) {
 		if ((ret = xfrin_apply_changeset2(contents_copy, &changes,
 		                                  &chsets->sets[i]))
@@ -2996,6 +3018,8 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 
 
 	dbg_xfrin("Adjusting zone contents.\n");
+	dbg_xfrin_verb("Old contents apex: %p, new apex: %p\n",
+	               old_contents->apex, contents_copy->apex);
 //	ret = xfrin_adjust_contents(contents_copy, &changes);
 	ret = knot_zone_contents_adjust(contents_copy);
 	if (ret != KNOT_EOK) {
@@ -3007,10 +3031,14 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 	assert(knot_zone_contents_apex(contents_copy) != NULL);
 
 	dbg_xfrin("Switching zone contents.\n");
+	dbg_xfrin_verb("Old contents apex: %p, new apex: %p\n",
+	               old_contents->apex, contents_copy->apex);
 	knot_zone_contents_t *old =
 		knot_zone_switch_contents(zone, contents_copy);
 	assert(old == old_contents);
 
+	dbg_xfrin_verb("Old contents apex: %p, new apex: %p\n",
+	               old_contents->apex, contents_copy->apex);
 	/*
 	 * Wait until all readers finish reading
 	 */
