@@ -2574,6 +2574,10 @@ static void xfrin_mark_empty(knot_node_t *node, void *data)
 		if (node->parent != NULL) {
 			assert(node->parent->children > 0);
 			--node->parent->children;
+			if (node->parent->wildcard_child == node) {
+				node->parent->wildcard_child = NULL;
+			}
+			node->parent = NULL;
 		}
 	}
 }
