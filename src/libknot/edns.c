@@ -311,8 +311,11 @@ int knot_edns_add_option(knot_opt_rr_t *opt_rr, uint16_t code,
 				sizeof(knot_opt_option_t));
 		CHECK_ALLOC_LOG(options_new, KNOT_ENOMEM);
 		memcpy(options_new, opt_rr->options, opt_rr->option_count);
+
+		knot_opt_option_t *old_options = opt_rr->options;
 		opt_rr->options = options_new;
 		opt_rr->options_max += KNOT_EDNS_OPTION_STEP;
+		free(old_options);
 	}
 
 	dbg_edns("Adding option.\n");
@@ -368,6 +371,11 @@ short knot_edns_to_wire(const knot_opt_rr_t *opt_rr, uint8_t *wire,
 	}
 
 	uint8_t *pos = wire;
+
+	dbg_edns_detail("Putting OPT RR to the wire format. Size: %zu, "
+	                "position: %zu\n",
+	                opt_rr->size, (size_t)(pos - wire));
+
 	*(pos++) = 0;
 	knot_wire_write_u16(pos, KNOT_RRTYPE_OPT);
 	pos += 2;
@@ -378,12 +386,17 @@ short knot_edns_to_wire(const knot_opt_rr_t *opt_rr, uint8_t *wire,
 	knot_wire_write_u16(pos, opt_rr->flags);
 	pos += 2;
 
+	dbg_edns_detail("Leaving space for RDLENGTH at pos %zu\n",
+	                (size_t)(pos - wire));
+
 	uint8_t *rdlen = pos;
 	uint16_t len = 0;
 	pos += 2;
 
 	// OPTIONs
 	for (int i = 0; i < opt_rr->option_count; ++i) {
+		dbg_edns_detail("Inserting option #%d at pos %zu\n",
+		                i, (size_t)(pos - wire));
 		knot_wire_write_u16(pos, opt_rr->options[i].code);
 		pos += 2;
 		knot_wire_write_u16(pos, opt_rr->options[i].length);
@@ -392,6 +405,8 @@ short knot_edns_to_wire(const knot_opt_rr_t *opt_rr, uint8_t *wire,
 		pos += opt_rr->options[i].length;
 		len += 4 + opt_rr->options[i].length;
 	}
+
+	dbg_edns_detail("Final pos %zu\n", (size_t)(pos - wire));
 
 	knot_wire_write_u16(rdlen, len);
 
