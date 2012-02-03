@@ -1070,6 +1070,8 @@ int knot_zone_contents_add_node(knot_zone_contents_t *zone,
 
 			if (next_node->owner != chopped) {
 				/* Node owner was in RDATA */
+				knot_dname_release(chopped);
+				knot_dname_retain(next_node->owner);
 				chopped = next_node->owner;
 			}
 
