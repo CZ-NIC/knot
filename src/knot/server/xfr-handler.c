@@ -688,8 +688,7 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 				/* Presume port is already preset. */
 				ret = bind(fd, data->saddr.ptr, data->saddr.len);
 			}
-		}
-		if (fd < 0) {
+		} else {
 			pthread_mutex_unlock(&zd->xfr_in.lock);
 			log_server_warning("Failed to create socket "
 					   "(type=%s, family=%s).\n",
@@ -719,7 +718,7 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 				                "another attempt in %d seconds."
 				                "\n", tmr_s / 1000);
 			}
-			return KNOTD_ERROR;
+			return KNOTD_ECONNREFUSED;
 		}
 
 		/* Store new socket descriptor. */
@@ -737,7 +736,7 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 		rcu_read_unlock();
 		log_server_warning("Failed start IXFR on zone with no "
 				   "contents\n");
-		return KNOTD_ERROR;
+		return KNOTD_EINVAL;
 	}
 
 	/* Prepare TSIG key if set. */
@@ -788,6 +787,7 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 	
 	ret = data->send(data->session, &data->addr, data->wire, bufsize);
 	if (ret != bufsize) {
+		pthread_mutex_unlock(&zd->xfr_in.lock);
 		log_server_notice("Failed to send %cXFR query.",
 		                  data->type == XFR_TYPE_AIN ? 'A' : 'I');
 		xfr_free_task(task);
