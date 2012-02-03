@@ -737,6 +737,9 @@ void knot_node_free(knot_node_t **node, int fix_refs)
 		gen_tree_destroy(&(*node)->rrset_tree, NULL, NULL);
 	}
 
+	// set owner's node pointer to NULL
+	knot_dname_set_node((*node)->owner, NULL);
+
 	/*! \todo Always release owner? */
 	//if (free_owner) {
 		dbg_node("Releasing owner.\n");
