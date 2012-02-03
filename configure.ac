@@ -111,7 +111,7 @@ AC_SEARCH_LIBS([pow], [m])
 AC_SEARCH_LIBS([pthread_create], [pthread], [], [AC_MSG_ERROR([pthreads not found])])
 AC_SEARCH_LIBS([rcu_set_pointer_sym], [urcu], [], [AC_MSG_ERROR([liburcu not found])])
 AC_SEARCH_LIBS([dlopen], [dl])
-AC_SEARCH_LIBS([clock_gettime], [rt], [], [AC_MSG_ERROR([librt not found])])
+AC_SEARCH_LIBS([clock_gettime], [rt])
 AC_SEARCH_LIBS([OpenSSL_add_all_digests], [crypto],[], [AC_MSG_ERROR([libcrypto not found])])
 #AC_SEARCH_LIBS([ldns_rr_list_pop_rrset], [ldns], [], [AC_MSG_ERROR([libldns not found])])
 
@@ -137,7 +137,7 @@ AC_DEFINE([DSFMT_MEXP], [521], [DSFMT parameters.])
 # Checks for library functions.
 AC_FUNC_FORK
 AC_FUNC_MMAP
-AC_CHECK_FUNCS([gethostbyname gettimeofday memmove memset munmap regcomp pselect select socket sqrt strcasecmp strchr strdup strerror strncasecmp strtol strtoul poll epoll_wait kqueue setgroups])
+AC_CHECK_FUNCS([gethostbyname gettimeofday clock_gettime memalign memmove memset munmap regcomp pselect select socket sqrt strcasecmp strchr strdup strerror strncasecmp strtol strtoul poll epoll_wait kqueue setgroups])
 
 AC_CONFIG_FILES([Makefile
 		 samples/Makefile

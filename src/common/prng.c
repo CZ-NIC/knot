@@ -20,7 +20,9 @@
 #include <pthread.h>
 #include <time.h>
 #include <sys/time.h>
+#ifdef HAVE_MEMALIGN
 #include <malloc.h>
+#endif
 
 #include "prng.h"
 #include "dSFMT.h"
@@ -80,7 +82,7 @@ double tls_rand()
 		}
 
 		/* Initialize PRNG state. */
-#ifdef __APPLE__
+#ifndef HAVE_MEMALIGN
 		s = malloc(sizeof(dsfmt_t));
 #else
 		s = memalign(16, sizeof(dsfmt_t));
