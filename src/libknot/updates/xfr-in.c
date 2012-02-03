@@ -2489,13 +2489,20 @@ static int xfrin_apply_replace_soa2(knot_zone_contents_t *contents,
 	changes->old_rdata_types[changes->old_rdata_count] = KNOT_RRTYPE_SOA;
 	++changes->old_rdata_count;
 
+	// store RRSIGs from the old SOA to the new SOA
+	knot_rrset_set_rrsigs(chset->soa_to, knot_rrset_get_rrsigs(rrset));
+
 	// insert the new SOA RRSet to the node
 	dbg_xfrin_verb("Adding SOA.\n");
-	ret = knot_node_add_rrset(node, chset->soa_to, 0);
-	if (ret != KNOT_EOK) {
+	//ret = knot_node_add_rrset(node, chset->soa_to, 0);
+	ret = knot_zone_contents_add_rrset(contents, chset->soa_to, &node,
+	                                   KNOT_RRSET_DUPL_SKIP, 1);
+
+	if (ret < 0) {
 		dbg_xfrin("Failed to add RRSet to node.\n");
 		return KNOT_ERROR;
 	}
+	assert(ret == 0);
 
 	changes->new_rrsets[changes->new_rrsets_count++] = chset->soa_to;
 
