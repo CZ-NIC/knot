@@ -26,6 +26,17 @@
 #include "common/fdset.h"
 #include <config.h>
 
+/* Workarounds for clock_gettime() not available on some platforms. */
+#ifdef HAVE_CLOCK_GETTIME
+#define time_now(x) clock_gettime(CLOCK_MONOTONIC, (x))
+typedef struct timespec timev_t;
+#elif HAVE_GETTIMEOFDAY
+#define time_now(x) gettimeofday((x), NULL)
+typedef struct timeval timev_t;
+#else
+#error Neither clock_gettime() nor gettimeofday() found. At least one is required.
+#endif
+
 struct fdset_backend_t _fdset_backend = {
 };
 
@@ -142,10 +153,10 @@ int fdset_set_watchdog(fdset_t* fdset, int fd, int interval)
 	}
 	
 	/* Find if exists. */
-	struct timespec *ts = NULL;
-	ts = (struct timespec*)skip_find(base->atimes, (void*)((size_t)fd));
+	timev_t *ts = NULL;
+	ts = (timev_t*)skip_find(base->atimes, (void*)((size_t)fd));
 	if (ts == NULL) {
-		ts = malloc(sizeof(struct timespec));
+		ts = malloc(sizeof(timev_t));
 		if (ts == NULL) {
 			return -1;
 		}
@@ -153,7 +164,7 @@ int fdset_set_watchdog(fdset_t* fdset, int fd, int interval)
 	}
 	
 	/* Update clock. */
-	if (clock_gettime(CLOCK_MONOTONIC, ts) < 0) {
+	if (time_now(ts) < 0) {
 		return -1;
 	}
 	
@@ -169,8 +180,8 @@ int fdset_sweep(fdset_t* fdset, void(*cb)(fdset_t*, int))
 	}
 	
 	/* Get time threshold. */
-	struct timespec now;
-	if (clock_gettime(CLOCK_MONOTONIC, &now) < 0) {
+	timev_t now;
+	if (time_now(&now) < 0) {
 		return -1;
 	}
 	
@@ -181,7 +192,7 @@ int fdset_sweep(fdset_t* fdset, void(*cb)(fdset_t*, int))
 		const skip_node_t* pnext = skip_next(n);
 		
 		/* Evaluate */
-		struct timespec *ts = (struct timespec*)n->value;
+		timev_t *ts = (timev_t*)n->value;
 		if (ts->tv_sec <= now.tv_sec) {
 			cb(fdset, (int)(((ssize_t)n->key)));
 			++sweeped;
