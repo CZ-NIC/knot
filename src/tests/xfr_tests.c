@@ -21,7 +21,6 @@
  * - signal handler now handles one more signal
  * 	SIGCONT is used to signal this
  * 		binary that an integrity check should be done
- * - once the integrity check is completed, the server signal the script
 */
 
 #include <time.h>
@@ -46,10 +45,8 @@
 static volatile short sig_req_stop = 0;
 static volatile short sig_req_reload = 0;
 static volatile short sig_stopping = 0;
+static volatile short sig_integrity_check = 0;
 
-/* Global PID of invoking script. */
-static pid_t script_pid;
-static const char *zone;
 
 // SIGINT signal handler
 void interrupt_handle(int s)
@@ -73,12 +70,8 @@ void interrupt_handle(int s)
 	
 	// Start zone integrity check
 	if (s == SIGCONT) {
-		/*!< \todo Insert actual integrity check! */
-		if (1) {
-			kill(script_pid, SIGCONT);
-		} else {
-			kill(script_pid, SIGHUP);
-		}
+		sig_integrity_check = 1;
+		return;
 	}
 }
 
@@ -88,6 +81,7 @@ void help(int argc, char **argv)
 	       PACKAGE_NAME);
 	printf("Parameters:\n"
 	       " -c, --config [file] Select configuration file.\n"
+	       " -z, --zone [origin] Inspected zone origin.\n"
 	       " -d, --daemonize     Run server as a daemon.\n"
 	       " -v, --verbose       Verbose mode - additional runtime information.\n"
 	       " -V, --version       Print version of the server.\n"
@@ -97,15 +91,17 @@ void help(int argc, char **argv)
 int main(int argc, char **argv)
 {
 	// Parse command line arguments
+	int check_iteration = 0;
 	int c = 0, li = 0;
 	int verbose = 0;
 	int daemonize = 0;
-	char* config_fn = 0;
+	char* config_fn = NULL;
+	const char *zone = NULL;
 	
 	/* Long options. */
 	struct option opts[] = {
 		{"config",    required_argument, 0, 'c'},
-		{"script_pid",required_argument, 0, 'p'},
+		{"zone",      required_argument, 0, 'z'},
 		{"daemonize", no_argument,       0, 'd'},
 		{"verbose",   no_argument,       0, 'v'},
 		{"version",   no_argument,       0, 'V'},
@@ -113,7 +109,7 @@ int main(int argc, char **argv)
 		{0, 0, 0, 0}
 	};
 	
-	while ((c = getopt_long(argc, argv, "c:p:dvVh", opts, &li)) != -1) {
+	while ((c = getopt_long(argc, argv, "c:z:dvVh", opts, &li)) != -1) {
 		switch (c)
 		{
 		case 'c':
@@ -128,9 +124,6 @@ int main(int argc, char **argv)
 		case 'V':
 			printf("%s, version %s\n", "Knot DNS", PACKAGE_VERSION);
 			return 0;
-		case 'p':
-			script_pid = atoi(optarg);
-			break;
 		case 'z':
 			zone = strdup(optarg);
 			break;
@@ -312,6 +305,17 @@ int main(int argc, char **argv)
 							 "reload failed.\n");
 					break;
 				}
+			}
+			if (zone == NULL) sig_integrity_check = 0;
+			if (sig_integrity_check) {
+				log_server_info("Starting integrity check of zone: %s\n", zone);
+				knot_dname_t* zdn = knot_dname_new_from_str(zone, strlen(zone), NULL);
+				knot_zone_t *z = knot_zonedb_find_zone(server->nameserver->zone_db, zdn);
+				int ic_ret = knot_zone_contents_integrity_check(z->contents);
+				log_server_info("Integrity check: %d errors discovered.\n", ic_ret);
+				knot_dname_free(&zdn);
+				log_server_info("Integrity check %d finished.\n", check_iteration);
+				++check_iteration;
 			}
 
 			/* Events. */

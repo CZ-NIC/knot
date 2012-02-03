@@ -36,6 +36,20 @@ enum knotc_constants_t {
 	WAITPID_TIMEOUT = 10 /*!< \brief Timeout for waiting for process. */
 };
 
+/*! \brief Controller flags. */
+enum knotc_flag_t {
+	F_NULL        = 0 << 0,
+	F_FORCE       = 1 << 0,
+	F_VERBOSE     = 1 << 1,
+	F_WAIT        = 1 << 2,
+	F_INTERACTIVE = 1 << 3,
+	F_AUTO        = 1 << 4
+};
+
+static inline unsigned has_flag(unsigned flags, enum knotc_flag_t f) {
+	return flags & f;
+}
+
 /*! \brief Print help. */
 void help(int argc, char **argv)
 {
@@ -49,6 +63,7 @@ void help(int argc, char **argv)
 	       " -V, --version              Print %s server version.\n"
 	       " -w, --wait                 Wait for the server to finish start/stop operations.\n"
 	       " -i, --interactive          Interactive mode (do not daemonize).\n"
+	       " -a, --auto                 Enable automatic recompilation (start or reload)."
 	       " -h, --help                 Print help and usage.\n",
 	       PACKAGE_NAME);
 	printf("Actions:\n"
@@ -243,6 +258,7 @@ int zctask_add(knotc_zctask_t *tasks, int count, pid_t pid, conf_zone_t *zone)
  * \param force True if forced operation is required.
  * \param wait Wait for the operation to finish.
  * \param interactive Interactive mode.
+ * \param automatic Automatic compilation.
  * \param jobs Number of parallel tasks to run.
  * \param pidfile Specified PID file for action.
  *
@@ -251,8 +267,8 @@ int zctask_add(knotc_zctask_t *tasks, int count, pid_t pid, conf_zone_t *zone)
  *
  * \todo Make enumerated flags instead of many parameters...
  */
-int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
-	    int force, int wait, int interactive, int jobs, const char *pidfile)
+int execute(const char *action, char **argv, int argc, pid_t pid,
+            unsigned flags, unsigned jobs, const char *pidfile)
 {
 	int valid_cmd = 0;
 	int rc = 0;
@@ -270,7 +286,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 			fprintf(stderr, "control: Server PID found, "
 			        "already running.\n");
 
-			if (!force) {
+			if (!has_flag(flags, F_FORCE)) {
 				return 1;
 			} else {
 				fprintf(stderr, "control: forcing "
@@ -282,8 +298,10 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 		}
 
 		// Recompile zones if needed
-		rc = execute("compile", argv, argc, -1, verbose, force, wait,
-			     interactive, jobs, pidfile);
+		if (has_flag(flags, F_AUTO)) {
+			rc = execute("compile", argv, argc, -1, flags,
+			             jobs, pidfile);
+		}
 
 		// Lock configuration
 		conf_read_lock();
@@ -292,10 +310,10 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 		const char *cfg = conf()->filename;
 		const char *args[] = {
 			PROJECT_EXEC,
-			interactive ? "" : "-d",
+			has_flag(flags, F_INTERACTIVE) ? "" : "-d",
 			cfg ? "-c" : "",
 			cfg ? cfg : "",
-			verbose ? "-v" : "",
+			has_flag(flags, F_VERBOSE) ? "-v" : "",
 			argc > 0 ? argv[0] : ""
 		};
 
@@ -303,7 +321,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 		conf_read_unlock();
 
 		// Execute command
-		if (interactive) {
+		if (has_flag(flags, F_INTERACTIVE)) {
 			printf("control: Running in interactive mode.\n");
 			fflush(stderr);
 			fflush(stdout);
@@ -316,8 +334,8 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 		fflush(stdout);
 
 		// Wait for finish
-		if (wait && !interactive) {
-			if (verbose) {
+		if (has_flag(flags, F_WAIT) && !has_flag(flags, F_INTERACTIVE)) {
+			if (has_flag(flags, F_VERBOSE)) {
 				fprintf(stdout, "control: waiting for server "
 						"to load.\n");
 			}
@@ -342,7 +360,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 			fprintf(stderr, "Server PID not found, "
 			        "probably not running.\n");
 
-			if (!force) {
+			if (!has_flag(flags, F_FORCE)) {
 				rc = 1;
 			} else {
 				fprintf(stderr, "control: forcing "
@@ -359,8 +377,8 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 		}
 
 		// Wait for finish
-		if (rc == 0 && wait) {
-			if (verbose) {
+		if (rc == 0 && has_flag(flags, F_WAIT)) {
+			if (has_flag(flags, F_VERBOSE)) {
 				fprintf(stdout, "control: waiting for server "
 						"to stop.\n");
 			}
@@ -376,8 +394,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 	}
 	if (strcmp(action, "restart") == 0) {
 		valid_cmd = 1;
-		execute("stop", argv, argc, pid, verbose, force, wait,
-			interactive, jobs, pidfile);
+		execute("stop", argv, argc, pid, flags, jobs, pidfile);
 
 		int i = 0;
 		while((pid = pid_read(pidfile)) > 0) {
@@ -398,8 +415,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 		}
 
 		printf("Restarting server.\n");
-		rc = execute("start", argv, argc, -1, verbose, force, wait,
-			     interactive, jobs, pidfile);
+		rc = execute("start", argv, argc, -1, flags, jobs, pidfile);
 	}
 	if (strcmp(action, "reload") == 0) {
 
@@ -409,7 +425,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 			fprintf(stderr, "Server PID not found, "
 			        "probably not running.\n");
 
-			if (force) {
+			if (has_flag(flags, F_FORCE)) {
 				fprintf(stderr, "control: forcing "
 				        "server stop.\n");
 			} else {
@@ -418,8 +434,10 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 		}
 
 		// Recompile zones if needed
-		rc = execute("compile", argv, argc, -1, verbose, force, wait,
-			     interactive, jobs, pidfile);
+		if (has_flag(flags, F_AUTO)) {
+			rc = execute("compile", argv, argc, -1, flags,
+			             jobs, pidfile);
+		}
 
 		// Stop
 		if (kill(pid, SIGHUP) < 0) {
@@ -478,7 +496,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 				printf("Zone '%s' is up-to-date.\n",
 				       zone->name);
 
-				if (force) {
+				if (has_flag(flags, F_FORCE)) {
 					fprintf(stderr, "control: forcing "
 						"zone recompilation.\n");
 				} else {
@@ -500,7 +518,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 			const char *args[] = {
 				ZONEPARSER_EXEC,
 				zone->enable_checks ? "-s" : "",
-				verbose ? "-v" : "",
+				has_flag(flags, F_VERBOSE) ? "-v" : "",
 				"-o",
 				zone->db,
 			        zone->name,
@@ -508,7 +526,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 			};
 
 			// Execute command
-			if (verbose) {
+			if (has_flag(flags, F_VERBOSE)) {
 				printf("Compiling '%s' as '%s'...\n",
 				       zone->name, zone->db);
 			}
@@ -535,7 +553,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 	}
 
 	// Log
-	if (verbose) {
+	if (has_flag(flags, F_VERBOSE)) {
 		printf("'%s' finished (return code %d)\n", action, rc);
 	}
 	return rc;
@@ -545,11 +563,8 @@ int main(int argc, char **argv)
 {
 	// Parse command line arguments
 	int c = 0, li = 0;
-	int force = 0;
-	int verbose = 0;
-	int wait = 0;
-	int interactive = 0;
-	int jobs = 1;
+	unsigned jobs = 1;
+	unsigned flags = F_NULL;
 	const char* config_fn = 0;
 	
 	/* Long options. */
@@ -559,29 +574,22 @@ int main(int argc, char **argv)
 		{"config",      required_argument, 0, 'c'},
 		{"verbose",     no_argument,       0, 'v'},
 		{"interactive", no_argument,       0, 'i'},
+		{"auto",        no_argument,       0, 'a'},
 		{"jobs",        required_argument, 0, 'c'},
 		{"version",     no_argument,       0, 'V'},
 		{"help",        no_argument,       0, 'h'},
 		{0, 0, 0, 0}
 	};
 	
-	while ((c = getopt_long(argc, argv, "wfc:vij:Vh", opts, &li)) != -1) {
-		switch (c)
-		{
-		case 'w':
-			wait = 1;
-			break;
-		case 'f':
-			force = 1;
-			break;
+	while ((c = getopt_long(argc, argv, "wfc:viaj:Vh", opts, &li)) != -1) {
+		switch (c) {
+		case 'w': flags |= F_WAIT; break;
+		case 'f': flags |= F_FORCE; break;
+		case 'v': flags |= F_VERBOSE; break;
+		case 'i': flags |= F_INTERACTIVE; break;
+		case 'a': flags |= F_AUTO; break;
 		case 'c':
 			config_fn = optarg;
-			break;
-		case 'v':
-			verbose = 1;
-			break;
-		case 'i':
-			interactive = 1;
 			break;
 		case 'j':
 			jobs = atoi(optarg);
@@ -635,9 +643,9 @@ int main(int argc, char **argv)
 	free(default_fn);
 
 	// Verbose mode
-	if (verbose) {
-		int mask = LOG_MASK(LOG_INFO)|LOG_MASK(LOG_DEBUG);
-		log_levels_add(LOGT_STDOUT, LOG_ANY, mask);
+	if (has_flag(flags, F_VERBOSE)) {
+		log_levels_add(LOGT_STDOUT, LOG_ANY,
+		               LOG_MASK(LOG_INFO)|LOG_MASK(LOG_DEBUG));
 	}
 
 	// Fetch PID
@@ -656,7 +664,7 @@ int main(int argc, char **argv)
 
 	// Execute action
 	int rc = execute(action, argv + optind + 1, argc - optind - 1,
-			 pid, verbose, force, wait, interactive, jobs, pidfile);
+	                 pid, flags, jobs, pidfile);
 
 	// Finish
 	free(pidfile);

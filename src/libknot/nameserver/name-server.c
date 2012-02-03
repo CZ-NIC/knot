@@ -2635,8 +2635,7 @@ knot_nameserver_t *knot_ns_create()
 
 /*----------------------------------------------------------------------------*/
 
-void knot_ns_set_nsid(knot_nameserver_t *nameserver, const char *nsid,
-                      size_t nsid_length)
+void knot_ns_set_nsid(knot_nameserver_t *nameserver, const char *nsid)
 {
 	if (nameserver == NULL) {
 		dbg_ns("NS: set_nsid: nameserver=NULL.\n");
@@ -2649,7 +2648,7 @@ void knot_ns_set_nsid(knot_nameserver_t *nameserver, const char *nsid,
 	}
 	
 	int ret = knot_edns_add_option(nameserver->opt_rr, EDNS_OPTION_NSID,
-	                               nsid_length, (const uint8_t *)nsid);
+	                               strlen(nsid), (const uint8_t *)nsid);
 	if (ret != KNOT_EOK) {
 		dbg_ns("NS: set_nsid: could not add EDNS option.\n");
 		return;
