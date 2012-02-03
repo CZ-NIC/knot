@@ -835,7 +835,7 @@ int cname_chain_add(cname_chain_t **last, const knot_node_t *node)
 	assert(last != NULL);
 
 	cname_chain_t *new_cname =
-	             (cname_chain_t *)malloc(sizeof(cname_chain_t));
+	                (cname_chain_t *)malloc(sizeof(cname_chain_t));
 	CHECK_ALLOC_LOG(new_cname, KNOT_ENOMEM);
 
 	new_cname->node = node;
@@ -843,9 +843,9 @@ int cname_chain_add(cname_chain_t **last, const knot_node_t *node)
 
 	if (*last != NULL) {
 		(*last)->next = new_cname;
+	} else {
+		*last = new_cname;
 	}
-
-	*last = new_cname;
 
 	return KNOT_EOK;
 }
@@ -901,16 +901,17 @@ static void knot_zone_contents_check_loops_in_tree(knot_zone_tree_node_t *tnode,
 	// if there is CNAME in the node
 	const knot_rrset_t *cname = knot_node_rrset(node, KNOT_RRTYPE_CNAME);
 	cname_chain_t *chain = NULL;
-	cname_chain_t *act_cname = chain;
+	cname_chain_t **act_cname = &chain;
 	int ret = 0;
 
 	while (cname != NULL && !cname_chain_contains(chain, node)) {
-		ret = cname_chain_add(&act_cname, node);
+		ret = cname_chain_add(act_cname, node);
 		if (ret != KNOT_EOK) {
 			cname_chain_free(chain);
 			args->err = ret;
 			return;
 		}
+		act_cname = &(*act_cname)->next;
 
 		// follow the CNAME chain, including wildcards and
 		// remember the nodes passed through
