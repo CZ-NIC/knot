@@ -3164,8 +3164,6 @@ void count_children(knot_zone_tree_node_t *tree_node, void *data)
 	if (tree_node->node != NULL && tree_node->node->parent != NULL) {
 		assert(tree_node->node->parent->new_node != NULL);
 		// fix parent pointer
-//		printf("Setting new parent pointer. From %p to %p.\n",
-//		       tree_node->node->parent, tree_node->node->parent->new_node);
 		tree_node->node->parent = tree_node->node->parent->new_node;
 		++tree_node->node->parent->children;
 	}
@@ -3189,9 +3187,10 @@ void check_child_count(knot_zone_tree_node_t *tree_node, void *data)
 
 	if (knot_node_children(node) != knot_node_children(found)) {
 		char *name = knot_dname_to_str(knot_node_owner(node));
-		fprintf(stderr, "Wrong children count: node %s, count %u. "
-		        "Should be %u\n", name, knot_node_children(found),
-		        knot_node_children(node));
+		fprintf(stderr, "Wrong children count: node (%p) %s, count %u. "
+		        "Should be %u (%p)\n", found, name,
+		        knot_node_children(found),
+		        knot_node_children(node), node);
 		free(name);
 
 		++check_data->errors;

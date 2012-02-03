@@ -190,7 +190,7 @@ static int compare_rrset_types(void *rr1, void *rr2)
 /*----------------------------------------------------------------------------*/
 
 knot_node_t *knot_node_new(knot_dname_t *owner, knot_node_t *parent,
-                               uint8_t flags)
+                           uint8_t flags)
 {
 	knot_node_t *ret = (knot_node_t *)calloc(1, sizeof(knot_node_t));
 	if (ret == NULL) {
@@ -377,9 +377,13 @@ knot_node_t *knot_node_get_parent(const knot_node_t *node)
 
 void knot_node_set_parent(knot_node_t *node, knot_node_t *parent)
 {
+	if (node->parent == parent) {
+		return;
+	}
+
 	// decrease number of children of previous parent
 	if (node->parent != NULL) {
-		--parent->children;
+		--node->parent->children;
 	}
 	// set the parent
 	node->parent = parent;
@@ -797,10 +801,13 @@ int knot_node_compare(knot_node_t *node1, knot_node_t *node2)
 int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to)
 {
 	// create new node
-	*to = knot_node_new(from->owner, from->parent, from->flags);
+	*to = knot_node_new(from->owner, NULL, from->flags);
 	if (*to == NULL) {
 		return KNOT_ENOMEM;
 	}
+
+	// set the parent by hand, so that the children count is not affected
+	(*to)->parent = from->parent;
 
 	/* Free old rrset_tree, as it will be replaced by shallow copy. */
 	gen_tree_destroy(&(*to)->rrset_tree, 0, 0);
