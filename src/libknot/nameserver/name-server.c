@@ -1974,7 +1974,15 @@ static int ns_error_response_to_wire(knot_packet_t *resp, uint8_t *wire,
 	/*! \todo Why is this copied?? Why we cannot use resp->wireformat?? */
 	memcpy(wire, rwire, rsize);
 
-	*wire_size = rsize;
+	if (resp->opt_rr.version != EDNS_NOT_SUPPORTED) {
+		short edns_size = knot_edns_to_wire(&resp->opt_rr, wire + rsize,
+						    *wire_size - rsize);
+		if (edns_size > 0) {
+			*wire_size = rsize + edns_size;
+		}
+	} else {
+		*wire_size = rsize;
+	}
 
 	return KNOT_EOK;
 }

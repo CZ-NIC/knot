@@ -1861,8 +1861,10 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 	if (rcode != KNOT_RCODE_NOERROR) {
 		dbg_zones_verb("Failed preparing response structure: %s.\n",
 		               knot_strerror(rcode));
-		knot_ns_error_response(nameserver, knot_packet_id(query),
-		                       rcode, resp_wire, rsize);
+		knot_ns_error_response_full(nameserver, resp, rcode, resp_wire,
+		                            rsize);
+//		knot_ns_error_response(nameserver, knot_packet_id(query),
+//		                       rcode, resp_wire, rsize);
 	} else {
 		/*
 		 * Now we have zone. Verify TSIG if it is in the packet.
