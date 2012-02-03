@@ -460,6 +460,11 @@ static void knot_zone_contents_adjust_rrsets(knot_node_t *node,
  *
  * \param node Zone node to adjust.
  * \param zone Zone the node belongs to.
+ *
+ * \todo Consider whether this function should replace RRSet owners with
+ *       node owner + store this owner to the dname table. This is now done
+ *       in the inserting function, though that may not be always used (e.g.
+ *       old changeset processing).
  */
 static void knot_zone_contents_adjust_node(knot_node_t *node,
                                            knot_zone_contents_t *zone)
@@ -3212,6 +3217,19 @@ static void reset_new_nodes(knot_zone_tree_node_t *tree_node, void *data)
 
 /*----------------------------------------------------------------------------*/
 
+static void print_child_count(knot_node_t *node, void *data)
+{
+	UNUSED(data);
+	assert(node != NULL);
+
+	char *name = knot_dname_to_str(knot_node_owner(node));
+	fprintf(stderr, "Node: %s, children count: %d\n", name,
+	        knot_node_children(node));
+	free(name);
+}
+
+/*----------------------------------------------------------------------------*/
+
 int knot_zc_integrity_check_child_count(check_data_t *data)
 {
 	int errors = 0;
@@ -3225,8 +3243,11 @@ int knot_zc_integrity_check_child_count(check_data_t *data)
 
 	knot_zone_tree_init(nodes_copy);
 
-	int ret = knot_zone_tree_deep_copy(data->contents->nodes,
-	                                   nodes_copy);
+	int ret = knot_zone_contents_tree_apply_inorder(data->contents,
+	                                                print_child_count,
+	                                                NULL);
+
+	ret = knot_zone_tree_deep_copy(data->contents->nodes, nodes_copy);
 	assert(ret == KNOT_EOK);
 
 	// set children count of all nodes to 0
