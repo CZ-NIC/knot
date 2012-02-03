@@ -1857,12 +1857,14 @@ static knot_node_t *xfrin_add_new_node(knot_zone_contents_t *contents,
 static int xfrin_apply_add_normal(xfrin_changes_t *changes,
                                   knot_rrset_t *add,
                                   knot_node_t *node,
-                                  knot_rrset_t **rrset)
+                                  knot_rrset_t **rrset,
+                                  knot_zone_contents_t *contents)
 {
 	assert(changes != NULL);
 	assert(add != NULL);
 	assert(node != NULL);
 	assert(rrset != NULL);
+	assert(contents != NULL);
 
 	int ret;
 
@@ -1898,15 +1900,17 @@ dbg_xfrin_exec_verb(
 		 *       doesn't matter whether there are some extra dnames to
 		 *       be added to the table or not.
 		 */
-		ret = knot_node_add_rrset(node, add, 0);
-//		ret = knot_zone_contents_add_rrset(node->zone->contents,
-//		                                   rrset, node,
-//		                                   KNOT_RRSET_DUPL_MERGE,
-//		                                   1);
-		if (ret != KNOT_EOK) {
+//		ret = knot_node_add_rrset(node, add, 0);
+		ret = knot_zone_contents_add_rrset(contents, add, &node,
+		                                   KNOT_RRSET_DUPL_SKIP, 1);
+
+		if (ret < 0) {
 			dbg_xfrin("Failed to add RRSet to node.\n");
 			return KNOT_ERROR;
 		}
+
+		assert(ret == 0);
+
 		return 1; // return 1 to indicate the add RRSet was used
 	}
 
@@ -1966,13 +1970,15 @@ dbg_xfrin_exec(
 static int xfrin_apply_add_rrsig(xfrin_changes_t *changes,
                                   knot_rrset_t *add,
                                   knot_node_t *node,
-                                  knot_rrset_t **rrset)
+                                  knot_rrset_t **rrset,
+                                  knot_zone_contents_t *contents)
 {
 	assert(changes != NULL);
 	assert(add != NULL);
 	assert(node != NULL);
 	assert(rrset != NULL);
 	assert(knot_rrset_type(add) == KNOT_RRTYPE_RRSIG);
+	assert(contents != NULL);
 	
 	int ret;
 	
@@ -2020,7 +2026,9 @@ static int xfrin_apply_add_rrsig(xfrin_changes_t *changes,
 			return ret;
 		}
 
-		// add the RRSet from the changeset to the node
+		// add the new RRSet to the node
+		// not needed to insert it through the zone_contents() function,
+		// as the owner is already in the dname table
 		ret = knot_node_add_rrset(node, *rrset, 0);
 		if (ret != KNOT_EOK) {
 			dbg_xfrin("Failed to add RRSet to node.\n");
@@ -2039,11 +2047,17 @@ dbg_xfrin_exec(
 );
 
 	if (knot_rrset_rrsigs(*rrset) == NULL) {
-		ret = knot_rrset_set_rrsigs(*rrset, add);
-		if (ret != KNOT_EOK) {
+
+		knot_zone_contents_add_rrsigs(contents, add, rrset, &node,
+		                              KNOT_RRSET_DUPL_SKIP, 1);
+
+//		ret = knot_rrset_set_rrsigs(*rrset, add);
+		if (ret < 0) {
 			dbg_xfrin("Failed to add RRSIGs to the RRSet.\n");
 			return KNOT_ERROR;
 		}
+
+		assert(ret == 0);
 		
 		return 1;
 	} else {
@@ -2351,10 +2365,10 @@ static int xfrin_apply_add2(knot_zone_contents_t *contents,
 
 		if (knot_rrset_type(chset->add[i]) == KNOT_RRTYPE_RRSIG) {
 			ret = xfrin_apply_add_rrsig(changes, chset->add[i],
-			                            node, &rrset);
+			                            node, &rrset, contents);
 		} else {
 			ret = xfrin_apply_add_normal(changes, chset->add[i],
-			                             node, &rrset);
+			                             node, &rrset, contents);
 		}
 
 		assert(ret != KNOT_EOK);
