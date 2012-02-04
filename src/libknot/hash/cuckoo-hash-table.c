@@ -379,6 +379,8 @@ static uint ck_check_used_twice(da_array_t *used, uint32_t hash)
 static inline uint ck_items_match(const ck_hash_table_item_t *item,
                                   const char *key, size_t length)
 {
+	assert(item != NULL);
+
 	return (length == item->key_length
 	        && (strncmp(item->key, key, length) == 0));
 }
