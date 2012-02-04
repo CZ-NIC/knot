@@ -1001,13 +1001,11 @@ static int ns_put_nsec_nxdomain(const knot_dname_t *qname,
 	if (previous == NULL) {
 		/*! \todo Check version. */
 		previous = knot_zone_contents_find_previous(zone, qname);
+		assert(previous != NULL);
 		
 		while (!knot_node_is_auth(previous)) {
 			previous = knot_node_previous(previous);
 		}
-		
-		//previous = knot_node_current(previous);
-		assert(previous != NULL);
 	}
 	
 	char *name = knot_dname_to_str(previous->owner);
@@ -1226,13 +1224,11 @@ static void ns_put_nsec_wildcard(const knot_zone_contents_t *zone,
 	// check if we have previous; if not, find one using the tree
 	if (previous == NULL) {		
 		previous = knot_zone_contents_find_previous(zone, qname);
+		assert(previous != NULL);
 		
 		while (!knot_node_is_auth(previous)) {
 			previous = knot_node_previous(previous);
 		}
-		
-//		previous = knot_node_current(previous);
-		assert(previous != NULL);
 	}
 
 	knot_rrset_t *rrset =
