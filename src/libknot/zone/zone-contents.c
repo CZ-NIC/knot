@@ -972,7 +972,7 @@ static void knot_zone_contents_check_loops_in_tree(knot_zone_tree_node_t *tnode,
 
 	if (cname != NULL) {
 		// this means the node is in the chain already
-		args->err = KNOT_ERROR;
+		args->err = KNOT_ECNAME;
 	}
 
 	cname_chain_free(chain);
