@@ -81,6 +81,9 @@ enum knot_edns_option_codes {
 	EDNS_OPTION_NSID = (uint16_t)3 /*!< NSID option code. */
 };
 
+/*! \brief Minimum size of EDNS OPT RR in wire format. */
+static const short KNOT_EDNS_MIN_SIZE = 11;
+
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Creates new empty OPT RR structure for holding EDNS parameters.
@@ -260,6 +263,8 @@ short knot_edns_to_wire(const knot_opt_rr_t *opt_rr, uint8_t *wire,
  * \return Size of the OPT RR in bytes.
  */
 short knot_edns_size(knot_opt_rr_t *opt_rr);
+
+void knot_edns_free_options(knot_opt_rr_t *opt_rr);
 
 /*!
  * \brief Properly destroys the OPT RR structure.

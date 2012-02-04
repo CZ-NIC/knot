@@ -32,9 +32,6 @@ enum knot_edns_consts {
 	KNOT_EDNS_OPTION_STEP = 1
 };
 
-/*! \brief Minimum size of EDNS OPT RR in wire format. */
-static const short KNOT_EDNS_MIN_SIZE = 11;
-
 /*----------------------------------------------------------------------------*/
 
 knot_opt_rr_t *knot_edns_new()
@@ -426,22 +423,30 @@ short knot_edns_size(knot_opt_rr_t *opt_rr)
 
 /*----------------------------------------------------------------------------*/
 
+void knot_edns_free_options(knot_opt_rr_t *opt_rr)
+{
+	if (opt_rr->option_count > 0) {
+		/* Free the option data, if any. */
+		for (int i = 0; i < opt_rr->option_count; i++) {
+			struct knot_opt_option option = opt_rr->options[i];
+			if (option.data != NULL) {
+				free(option.data);
+			}
+		}
+		free(opt_rr->options);
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
 void knot_edns_free(knot_opt_rr_t **opt_rr)
 {
 	if (opt_rr == NULL || *opt_rr == NULL) {
 		return;
 	}
 
-	if ((*opt_rr)->option_count > 0) {
-		/* Free the option data, if any. */
-		for (int i = 0; i < (*opt_rr)->option_count; i++) {
-			struct knot_opt_option option = (*opt_rr)->options[i];
-			if (option.data != NULL) {
-				free(option.data);
-			}
-		}
-		free((*opt_rr)->options);
-	}
+	knot_edns_free_options(*opt_rr);
+
 	free(*opt_rr);
 	*opt_rr = NULL;
 }
