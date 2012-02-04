@@ -972,7 +972,7 @@ static void knot_zone_contents_check_loops_in_tree(knot_zone_tree_node_t *tnode,
 
 	if (cname != NULL) {
 		// this means the node is in the chain already
-		args->err = /*KNOT_ENOIXFR*/KNOT_ERROR;
+		args->err = KNOT_ERROR;
 	}
 
 	cname_chain_free(chain);
@@ -2210,10 +2210,16 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone)
 	/*
 	 * In second walkthrough check CNAME loops, including wildcards.
 	 */
+	adjust_arg.err = KNOT_EOK;
 	dbg_zone("Checking CNAME and wildcard loops.\n");
 	knot_zone_tree_forward_apply_inorder(zone->nodes,
 	                                 knot_zone_contents_check_loops_in_tree,
 	                                 (void *)&adjust_arg);
+
+	if (adjust_arg.err != KNOT_EOK) {
+		dbg_zone("Found CNAME loop in data. Aborting transfer.\n");
+		return adjust_arg.err;
+	}
 
 	adjust_arg.first_node = NULL;
 	adjust_arg.previous_node = NULL;

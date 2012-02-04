@@ -65,7 +65,8 @@ enum knot_error {
 	KNOT_EXFRREFUSED,     /*!< Zone transfer refused by the server. */
 	KNOT_ECONN,           /*!< Connection reset. */
 	KNOT_EIXFRSPACE,      /*!< IXFR reply did not fit in. */
-	KNOT_ERROR_COUNT = 31
+	KNOT_ECNAME,          /*!< CNAME loop found in zone. */
+	KNOT_ERROR_COUNT = 32
 };
 
 /*! \brief Table linking error messages to error codes. */
