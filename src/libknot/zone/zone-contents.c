@@ -972,7 +972,7 @@ static void knot_zone_contents_check_loops_in_tree(knot_zone_tree_node_t *tnode,
 
 	if (cname != NULL) {
 		// this means the node is in the chain already
-		args->err = KNOT_ENOIXFR;
+		args->err = /*KNOT_ENOIXFR*/KNOT_ERROR;
 	}
 
 	cname_chain_free(chain);
@@ -1185,9 +1185,9 @@ int knot_zone_contents_add_node(knot_zone_contents_t *zone,
 	}
 
 #ifdef USE_HASH_TABLE
-	char *name = knot_dname_to_str(node->owner);
+//	char *name = knot_dname_to_str(node->owner);
 //	dbg_zone("Adding node with owner %s to hash table.\n", name);
-	free(name);
+//	free(name);
 	//assert(zone->table != NULL);
 	// add the node also to the hash table if authoritative, or deleg. point
 	if (zone->table != NULL
