@@ -1828,20 +1828,25 @@ static knot_node_t *xfrin_add_new_node(knot_zone_contents_t *contents,
 		return NULL;
 	}
 
-	// find previous node and connect the new one to it
-	knot_node_t *prev = NULL;
-	if (knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC3) {
-		prev = knot_zone_contents_get_previous_nsec3(contents,
-		                                       knot_rrset_owner(rrset));
-	} else {
-		prev = knot_zone_contents_get_previous(contents,
-		                                       knot_rrset_owner(rrset));
-	}
+	/*!
+	 * \note It is not needed to set the previous node, we will do this
+	 *       in adjusting after the transfer.
+	 */
 
-	// fix prev and next pointers
-	if (prev != NULL) {
-		knot_node_set_previous(node, prev);
-	}
+	// find previous node and connect the new one to it
+//	knot_node_t *prev = NULL;
+//	if (knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC3) {
+//		prev = knot_zone_contents_get_previous_nsec3(contents,
+//		                                       knot_rrset_owner(rrset));
+//	} else {
+//		prev = knot_zone_contents_get_previous(contents,
+//		                                       knot_rrset_owner(rrset));
+//	}
+
+//	// fix prev and next pointers
+//	if (prev != NULL) {
+//		knot_node_set_previous(node, prev);
+//	}
 
 //	printf("contents owned by: %s (%p)\n",
 //	       knot_dname_to_str(contents->apex->owner),
