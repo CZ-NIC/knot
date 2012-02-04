@@ -1976,7 +1976,7 @@ static int ns_error_response_to_wire(knot_packet_t *resp, uint8_t *wire,
 
 	if (resp->opt_rr.version != EDNS_NOT_SUPPORTED) {
 		short edns_size = knot_edns_to_wire(&resp->opt_rr, wire + rsize,
-						    *wire_size - rsize);
+		                                    *wire_size - rsize);
 		if (edns_size > 0) {
 			*wire_size = rsize + edns_size;
 		}

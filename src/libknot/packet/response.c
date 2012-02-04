@@ -23,6 +23,7 @@
 #include "util/error.h"
 #include "util/debug.h"
 #include "packet/packet.h"
+#include "edns.h"
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -969,45 +970,53 @@ int knot_response_add_opt(knot_packet_t *resp,
 	resp->opt_rr.version = opt_rr->version;
 	resp->opt_rr.ext_rcode = opt_rr->ext_rcode;
 	resp->opt_rr.payload = opt_rr->payload;
-	resp->opt_rr.size = opt_rr->size;
 
-//	fprintf(stderr, "OPT RR size: %zu\n", opt_rr->size);
+	/*
+	 * Add options only if NSID is requested.
+	 *
+	 * This is a bit hack and should be resolved in other way before some
+	 * other options are supported.
+	 */
 
-	resp->opt_rr.option_count = opt_rr->option_count;
-	assert(resp->opt_rr.options == NULL);
-	resp->opt_rr.options = (knot_opt_option_t *)malloc(
-	                 resp->opt_rr.option_count * sizeof(knot_opt_option_t));
-	CHECK_ALLOC_LOG(resp->opt_rr.options, KNOT_ENOMEM);
+	if (add_nsid) {
+		resp->opt_rr.option_count = opt_rr->option_count;
+		assert(resp->opt_rr.options == NULL);
+		resp->opt_rr.options = (knot_opt_option_t *)malloc(
+				 resp->opt_rr.option_count * sizeof(knot_opt_option_t));
+		CHECK_ALLOC_LOG(resp->opt_rr.options, KNOT_ENOMEM);
 
-	memcpy(resp->opt_rr.options, opt_rr->options,
-	       resp->opt_rr.option_count * sizeof(knot_opt_option_t));
+		memcpy(resp->opt_rr.options, opt_rr->options,
+		       resp->opt_rr.option_count * sizeof(knot_opt_option_t));
 
-	// copy all data
-	for (int i = 0; i < opt_rr->option_count; i++) {
-		// TODO: nsid optional!!
+		// copy all data
+		for (int i = 0; i < opt_rr->option_count; i++) {
+			resp->opt_rr.options[i].data = (uint8_t *)malloc(
+						resp->opt_rr.options[i].length);
+			CHECK_ALLOC_LOG(resp->opt_rr.options[i].data, KNOT_ENOMEM);
 
-		resp->opt_rr.options[i].data = (uint8_t *)malloc(
-		                        resp->opt_rr.options[i].length);
-		CHECK_ALLOC_LOG(resp->opt_rr.options[i].data, KNOT_ENOMEM);
+			memcpy(resp->opt_rr.options[i].data,
+			       opt_rr->options[i].data,
+			       resp->opt_rr.options[i].length);
 
-		memcpy(resp->opt_rr.options[i].data,
-		       opt_rr->options[i].data,
-		       resp->opt_rr.options[i].length);
+//			struct knot_opt_option option;
+//			option = opt_rr->options[i];
 
-//		struct knot_opt_option option;
-//		option = opt_rr->options[i];
-		
-//		/* Do not add NSID unless specified. */
-//		if ((option.code != EDNS_OPTION_NSID) || (add_nsid)) {
-//			int ret =
-//				knot_edns_add_option(&resp->opt_rr, option.code,
-//				                     option.length,
-//				                     option.data);
-//			if (ret != KNOT_EOK) {
-//				dbg_response("Could not "
-//				             "copy option to EDNS!\n");
+//			/* Do not add NSID unless specified. */
+//			if ((option.code != EDNS_OPTION_NSID) || (add_nsid)) {
+//				int ret =
+//					knot_edns_add_option(&resp->opt_rr,
+//				                             option.code,
+//					                     option.length,
+//					                     option.data);
+//				if (ret != KNOT_EOK) {
+//					dbg_response("Could not "
+//					             "copy option to EDNS!\n");
+//				}
 //			}
-//		}
+		}
+		resp->opt_rr.size = opt_rr->size;
+	} else {
+		resp->opt_rr.size = KNOT_EDNS_MIN_SIZE;
 	}
 
 	// if max size is set, it means there is some reason to be that way,
@@ -1015,7 +1024,8 @@ int knot_response_add_opt(knot_packet_t *resp,
 
 	if (override_max_size && resp->max_size > 0
 	    && resp->max_size < opt_rr->payload) {
-		return KNOT_EPAYLOAD;
+//		return KNOT_EPAYLOAD;
+		return KNOT_EOK;
 	}
 
 	// set max size (less is OK)

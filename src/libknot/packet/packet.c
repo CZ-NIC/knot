@@ -1470,6 +1470,9 @@ void knot_packet_free(knot_packet_t **packet)
 		free((*packet)->wireformat);
 	}
 
+	// free EDNS options
+	knot_edns_free_options(&(*packet)->opt_rr);
+
 	dbg_packet("Freeing packet structure\n");
 	free(*packet);
 	*packet = NULL;
