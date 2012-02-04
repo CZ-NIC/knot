@@ -3243,11 +3243,11 @@ int knot_zc_integrity_check_child_count(check_data_t *data)
 
 	knot_zone_tree_init(nodes_copy);
 
-	int ret = knot_zone_contents_tree_apply_inorder(data->contents,
-	                                                print_child_count,
-	                                                NULL);
+//	int ret = knot_zone_contents_tree_apply_inorder(data->contents,
+//	                                                print_child_count,
+//	                                                NULL);
 
-	ret = knot_zone_tree_deep_copy(data->contents->nodes, nodes_copy);
+	int ret = knot_zone_tree_deep_copy(data->contents->nodes, nodes_copy);
 	assert(ret == KNOT_EOK);
 
 	// set children count of all nodes to 0

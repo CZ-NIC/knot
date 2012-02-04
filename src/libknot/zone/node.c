@@ -731,20 +731,22 @@ void knot_node_free(knot_node_t **node, int fix_refs)
 		return;
 	}
 	
-	dbg_node("Freeing node.\n");
+	dbg_node("Freeing node: %p\n", *node);
+
 	if ((*node)->rrset_tree != NULL) {
 		dbg_node("Freeing RRSets.\n");
 		gen_tree_destroy(&(*node)->rrset_tree, NULL, NULL);
 	}
 
-	// set owner's node pointer to NULL
-	knot_dname_set_node((*node)->owner, NULL);
+	// set owner's node pointer to NULL, but only if the 'node' does
+	// not point to the owner's node
+	if (node != &(*node)->owner->node
+	    && knot_dname_node(knot_node_owner(*node)) == *node) {
+		knot_dname_set_node((*node)->owner, NULL);
+	}
 
-	/*! \todo Always release owner? */
-	//if (free_owner) {
-		dbg_node("Releasing owner.\n");
-		knot_dname_release((*node)->owner);
-	//}
+	dbg_node("Releasing owner.\n");
+	knot_dname_release((*node)->owner);
 
 	// check nodes referencing this node and fix the references
 
