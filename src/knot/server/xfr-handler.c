@@ -294,12 +294,12 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 		} else {
 			/* Update zone. */
 			ret = zones_apply_changesets(data);
-			if (ret != KNOTD_EOK) {
+			if (ret != KNOT_EOK) {
 				log_zone_error("IXFR failed to "
 				               "apply changesets to "
 				               "zone '%s/IN' - %s\n",
 				               zorigin, 
-				               knotd_strerror(ret));
+				               knot_strerror(ret));
 			}
 		}
 		/* Free changesets, but not the data. */

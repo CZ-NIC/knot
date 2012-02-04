@@ -2657,7 +2657,7 @@ int zones_xfr_load_changesets(knot_ns_xfr_t *xfr, uint32_t serial_from,
 int zones_apply_changesets(knot_ns_xfr_t *xfr) 
 {
 	if (xfr == NULL || xfr->zone == NULL || xfr->data == NULL) {
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 	
 	return xfrin_apply_changesets(xfr->zone,
