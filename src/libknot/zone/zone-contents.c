@@ -1924,9 +1924,7 @@ knot_node_t *knot_zone_contents_get_previous(
 	int exact_match = knot_zone_contents_find_in_tree(zone->nodes, name,
 	                                                    &found, &prev);
 	assert(exact_match >= 0);
-	assert(prev != NULL
-	       || ((found != NULL)
-	            && knot_dname_compare(name, knot_node_owner(found)) == 0));
+	assert(prev != NULL);
 
 	return prev;
 }
