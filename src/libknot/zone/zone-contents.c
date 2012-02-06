@@ -3258,6 +3258,18 @@ static void print_child_count(knot_node_t *node, void *data)
 
 /*----------------------------------------------------------------------------*/
 
+static void count_nsec3_nodes(knot_zone_tree_node_t *tree_node, void *data)
+{
+	assert(tree_node != NULL);
+	assert(tree_node->node != NULL);
+	assert(data != NULL);
+
+	int *count = (int *)data;
+	*count += knot_node_rrset_count(tree_node->node);
+}
+
+/*----------------------------------------------------------------------------*/
+
 int knot_zc_integrity_check_child_count(check_data_t *data)
 {
 	int errors = 0;
@@ -3285,8 +3297,16 @@ int knot_zc_integrity_check_child_count(check_data_t *data)
 	// now count children of all nodes, presuming the parent pointers are ok
 	knot_zone_tree_forward_apply_inorder(nodes_copy, count_children, NULL);
 
+	// add count of NSEC3 nodes to the apex' children count
+	int nsec3_nodes = 0;
+	knot_zone_tree_forward_apply_inorder(data->contents->nsec3_nodes,
+	                                     count_nsec3_nodes,
+	                                     (void *)&nsec3_nodes);
+
+
 	// now compare the children counts
 	// iterate over the old zone and search for nodes in the copy
+	data->children = nsec3_nodes;
 	knot_zone_tree_forward_apply_inorder(nodes_copy, check_child_count,
 	                                     (void *)data);
 
