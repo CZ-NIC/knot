@@ -165,8 +165,6 @@ int server_remove_handler(server_t *server, iohandler_t *ref);
  * \retval KNOTD_EOK on success.
  * \retval KNOTD_EINVAL on invalid parameters.
  *
- * \todo When a module for configuration is added, the filename parameter will
- *       be removed.
  */
 int server_start(server_t *server);
 

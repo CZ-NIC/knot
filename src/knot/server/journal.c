@@ -221,7 +221,7 @@ int journal_create(const char *fn, uint16_t max_nodes)
 
 journal_t* journal_open(const char *fn, size_t fslimit, uint16_t bflags)
 {
-	/*! \todo Memory mapping may be faster than stdio? */
+	/*! \todo Memory mapping may be faster than stdio? (issue #964) */
 
 	/* File lock. */
 	struct flock fl;
@@ -590,7 +590,7 @@ int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
 		return KNOTD_ERROR;
 	}
 
-	/*! \todo Delayed write-back? */
+	/*! \todo Delayed write-back? (issue #964) */
 	dbg_journal_verb("journal: write of finished, nqueue=<%u, %u>\n",
 	                 journal->qhead, journal->qtail);
 

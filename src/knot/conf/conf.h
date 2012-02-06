@@ -80,8 +80,6 @@ typedef struct conf_remote_t {
  * location on the disk.  It also allows to have multiple DNS servers
  * as a source for the zone transfer and multiple DNS servers to allow
  * zone transfers.  Same logic applies for the NOTIFY.
- *
- * \todo Missing XFR type (AXFR/IXFR/IXFR-ONLY) for each server.
  */
 typedef struct conf_zone_t {
 	node n;

@@ -166,7 +166,7 @@ static void zone_free(conf_zone_t *zone)
  *
  * This function is called automatically after config update.
  *
- * \todo Selective hooks.
+ * \todo Selective hooks (issue #1583).
  */
 static void conf_update_hooks(conf_t *conf)
 {
@@ -522,7 +522,7 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 	// Unload hooks
 	if (unload_hooks) {
 		WALK_LIST_DELSAFE(n, nxt, conf->hooks) {
-			//! \todo call hook unload.
+			/*! \todo Call hook unload (issue #1583) */
 			free((conf_hook_t*)n);
 		}
 		conf->hooks_count = 0;

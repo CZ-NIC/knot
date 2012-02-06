@@ -127,7 +127,7 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		/* RFC1034, p.28 requires reliable transfer protocol.
 		 * Bind responds with FORMERR.
  		 */
-		/*! \todo Draft exists for AXFR/UDP, but has not been standardized. */
+		/*! \note Draft exists for AXFR/UDP, but has not been standardized. */
 		knot_ns_error_response(ns, knot_packet_id(packet),
 				       KNOT_RCODE_FORMERR, qbuf,
 				       resp_len);
@@ -150,7 +150,6 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 					     qbuf, resp_len);
 		break;
 		
-	/*! \todo Implement query notify/update. */
 	case KNOT_QUERY_UPDATE:
 		dbg_net("udp: UPDATE query on fd=%d not implemented\n", fd);
 		knot_ns_error_response(ns, knot_packet_id(packet),

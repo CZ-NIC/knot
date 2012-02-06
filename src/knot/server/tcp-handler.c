@@ -221,8 +221,6 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 		
 		/* Answer. */
 		return xfr_answer(ns, &xfr);;
-		
-	/*! \todo Implement query notify/update. */
 	case KNOT_QUERY_UPDATE:
 		knot_ns_error_response(ns, knot_packet_id(packet),
 				       KNOT_RCODE_NOTIMPL, qbuf,
@@ -284,7 +282,7 @@ static int tcp_accept(int fd)
 	/* Evaluate connection. */
 	if (incoming < 0) {
 		int en = errno;
-		/*! \todo Better solution so it doesn't block current connections. */
+		/*! \todo Better solution so it doesn't block current connections (issue #1542). */
 		if (en != EINTR) {
 			log_server_error("Cannot accept connection "
 					 "(%d).\n", errno);

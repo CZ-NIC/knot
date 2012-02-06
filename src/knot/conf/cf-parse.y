@@ -338,7 +338,6 @@ keys:
      char *fqdn = $2.t;
      size_t fqdnl = strlen(fqdn);
      if (fqdn[fqdnl - 1] != '.') {
-        /*! \todo Oddly, it requires memory aligned to 4B */
         fqdnl = ((fqdnl + 2)/4+1)*4; /* '.', '\0' */
         char* tmpdn = malloc(fqdnl); 
 	if (!tmpdn) {

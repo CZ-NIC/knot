@@ -132,7 +132,7 @@ static int xfr_process_udp_query(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 	return KNOTD_EOK;
 }
 
-/*! \todo Document me. */
+/*! \todo Document me (issue #1586) */
 static void xfr_free_task(knot_ns_xfr_t *task)
 {
 	if (!task) {
@@ -167,12 +167,11 @@ static void xfr_free_task(knot_ns_xfr_t *task)
 	skip_remove(h->tasks, (void*)((size_t)task->session), 0, 0);
 	pthread_mutex_unlock(&h->tasks_mx);
 
-	/*! \todo Free data. */
 	close(task->session);
 	free(task);
 }
 
-/*! \todo Document me. */
+/*! \todo Document me (issue #1586) */
 static knot_ns_xfr_t *xfr_register_task(xfrworker_t *w, knot_ns_xfr_t *req)
 {
 	knot_ns_xfr_t *t = malloc(sizeof(knot_ns_xfr_t));
@@ -388,10 +387,6 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 				log_server_info("Unsupported digest algorithm "
 				                "requested, treating as "
 				                "bad key.\n");
-				/*! \todo [TSIG] It is unclear from RFC if I
-				 *               should treat is as a bad key
-				 *               or some other error.
-				 */
 				*rcode = KNOT_RCODE_NOTAUTH;
 				xfr->tsig_key = NULL;
 				xfr->tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
@@ -407,7 +402,7 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 		if (key && kname && knot_dname_compare(key->name, kname) == 0) {
 			dbg_xfr("xfr: found claimed TSIG key for comparison\n");
 		} else {
-			/*! \todo These ifs are redundant. */
+			/*! \todo These ifs are redundant (issue #1586) */
 			*rcode = KNOT_RCODE_NOTAUTH;
 			/* TSIG is mandatory if configured for interface. */
 			if (key && !kname) {
@@ -640,7 +635,7 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 	return result;
 }
 
-/*! \todo Document me.
+/*! \todo Document me (issue #1586)
  */
 static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 {
@@ -1146,7 +1141,7 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 				  xfr_strtype(xfr) , xfr->zname,
 				  r_addr, r_port,
 				  errstr);
-		ret = KNOTD_ERROR; /*! \todo Disconnect? */
+		ret = KNOTD_ERROR;
 	} else {
 		log_server_info("%cXFR transfer of zone '%s/OUT' "
 				"to %s:%d successful.\n",

@@ -31,7 +31,7 @@
 #include "libknot/nameserver/name-server.h"
 #include "common/evqueue.h"
 #include "common/fdset.h"
-#include "common/skip-list.h" /*!< \todo Consider another data struct. */
+#include "common/skip-list.h"
 
 struct xfrhandler_t;
 
