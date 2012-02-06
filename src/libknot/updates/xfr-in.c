@@ -1009,6 +1009,7 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 			return XFRIN_RES_SOA_ONLY;
 		} else if (knot_rrset_type(rr) != KNOT_RRTYPE_SOA) {
 			knot_rrset_deep_free(&rr, 1, 1, 1);
+			knot_packet_free(&packet);
 			dbg_xfrin("Fallback to AXFR.\n");
 			ret = XFRIN_RES_FALLBACK;
 			return ret;
@@ -1991,7 +1992,7 @@ static int xfrin_apply_add_rrsig(xfrin_changes_t *changes,
 	                                               knot_rrset_rdata(add));
 	
 dbg_xfrin_exec(
-	char *name = knot_dname_to_str(knot_node_owner(add));
+	char *name = knot_dname_to_str(knot_rrset_owner(add));
 	char *typestr = knot_rrtype_to_string(type);
 	dbg_xfrin("Adding RRSIG: Owner %s, type covered %s.\n",
 	          name, typestr);
