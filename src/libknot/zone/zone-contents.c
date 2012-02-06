@@ -1669,9 +1669,11 @@ int knot_zone_contents_remove_node(knot_zone_contents_t *contents,
 
 	const knot_dname_t *owner = knot_node_owner(node);
 
+dbg_zone_exec_verb(
 	char *name = knot_dname_to_str(owner);
-	fprintf(stderr, "Removing zone node: %s\n", name);
+	dbg_zone_verb(stderr, "Removing zone node: %s\n", name);
 	free(name);
+);
 
 	// 1) remove the node from hash table
 	*removed_hash = NULL;
