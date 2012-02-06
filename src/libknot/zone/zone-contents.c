@@ -835,7 +835,7 @@ typedef struct cname_chain {
 
 /*----------------------------------------------------------------------------*/
 
-int cname_chain_add(cname_chain_t **last, const knot_node_t *node)
+static int cname_chain_add(cname_chain_t **last, const knot_node_t *node)
 {
 	assert(last != NULL);
 
@@ -857,7 +857,7 @@ int cname_chain_add(cname_chain_t **last, const knot_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
-int cname_chain_contains(cname_chain_t *chain, const knot_node_t *node)
+static int cname_chain_contains(cname_chain_t *chain, const knot_node_t *node)
 {
 	cname_chain_t *act = chain;
 	while (act != NULL) {
@@ -872,7 +872,7 @@ int cname_chain_contains(cname_chain_t *chain, const knot_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
-void cname_chain_free(cname_chain_t *chain)
+static void cname_chain_free(cname_chain_t *chain)
 {
 	cname_chain_t *act = chain;
 
@@ -885,6 +885,13 @@ void cname_chain_free(cname_chain_t *chain)
 
 /*----------------------------------------------------------------------------*/
 
+typedef struct loop_check_data {
+	knot_zone_contents_t *zone;
+	int err;
+} loop_check_data_t;
+
+/*----------------------------------------------------------------------------*/
+
 static void knot_zone_contents_check_loops_in_tree(knot_zone_tree_node_t *tnode,
                                                    void *data)
 {
@@ -892,7 +899,7 @@ static void knot_zone_contents_check_loops_in_tree(knot_zone_tree_node_t *tnode,
 	assert(tnode->node != NULL);
 	assert(data != NULL);
 
-	knot_zone_adjust_arg_t *args = (knot_zone_adjust_arg_t *)data;
+	loop_check_data_t *args = (loop_check_data_t *)data;
 	knot_node_t *node = tnode->node;
 
 	assert(args->zone != NULL);
@@ -923,7 +930,7 @@ static void knot_zone_contents_check_loops_in_tree(knot_zone_tree_node_t *tnode,
 		const knot_dname_t *next_name = knot_rdata_cname_name(
 		                        knot_rrset_rdata(cname));
 		assert(next_name != NULL);
-		const knot_node_t *next_node = knot_dname_node(next_name);
+		const knot_node_t *next_node = knot_dname_get_node(next_name);
 		if (next_node == NULL) {
 			// try to find the name in the zone
 			const knot_node_t *ce = NULL;
@@ -953,7 +960,7 @@ static void knot_zone_contents_check_loops_in_tree(knot_zone_tree_node_t *tnode,
 				// try to find wildcard child
 				assert(knot_dname_is_subdomain(next_name,
 				                          knot_node_owner(ce)));
-				next_node = knot_node_wildcard_child(ce);
+				next_node = knot_node_get_wildcard_child(ce);
 			}
 
 			assert(next_node == NULL || knot_dname_compare(
@@ -2207,20 +2214,6 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone)
 
 	dbg_zone("Done.\n");
 
-	/*
-	 * In second walkthrough check CNAME loops, including wildcards.
-	 */
-	adjust_arg.err = KNOT_EOK;
-	dbg_zone("Checking CNAME and wildcard loops.\n");
-	knot_zone_tree_forward_apply_inorder(zone->nodes,
-	                                 knot_zone_contents_check_loops_in_tree,
-	                                 (void *)&adjust_arg);
-
-	if (adjust_arg.err != KNOT_EOK) {
-		dbg_zone("Found CNAME loop in data. Aborting transfer.\n");
-		return adjust_arg.err;
-	}
-
 	adjust_arg.first_node = NULL;
 	adjust_arg.previous_node = NULL;
 
@@ -2244,6 +2237,35 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone)
 	}
 
 	return ret;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_zone_contents_check_loops(knot_zone_contents_t *zone)
+{
+	if (zone == NULL) {
+		return KNOT_EBADARG;
+	}
+
+	dbg_zone("Checking CNAME and wildcard loops.\n");
+
+	loop_check_data_t data;
+	data.err = KNOT_EOK;
+	data.zone = zone;
+
+	assert(zone->nodes != NULL);
+	knot_zone_tree_forward_apply_inorder(zone->nodes,
+	                                 knot_zone_contents_check_loops_in_tree,
+	                                 (void *)&data);
+
+	if (data.err != KNOT_EOK) {
+		dbg_zone("Found CNAME loop in data. Aborting transfer.\n");
+		return data.err;
+	}
+
+	dbg_zone("Done\n");
+
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/

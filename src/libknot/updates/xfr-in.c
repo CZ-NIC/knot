@@ -1990,6 +1990,15 @@ static int xfrin_apply_add_rrsig(xfrin_changes_t *changes,
 	knot_rr_type_t type = knot_rdata_rrsig_type_covered(
 	                                               knot_rrset_rdata(add));
 	
+dbg_xfrin_exec(
+	char *name = knot_dname_to_str(knot_node_owner(add));
+	char *typestr = knot_rrtype_to_string(type);
+	dbg_xfrin("Adding RRSIG: Owner %s, type covered %s.\n",
+	          name, typestr);
+	free(name);
+	free(typestr);
+);
+
 	if (!*rrset
 	    || knot_dname_compare(knot_rrset_owner(*rrset),
 	                          knot_node_owner(node)) != 0
@@ -1999,6 +2008,8 @@ static int xfrin_apply_add_rrsig(xfrin_changes_t *changes,
 		ret = xfrin_copy_rrset(node, type, rrset, changes);
 		if (ret < 0) {
 			return ret;
+		} else if (ret != KNOT_EOK) {
+			*rrset = NULL;
 		}
 	} else {
 		// we should have the right RRSIG RRSet in *rrset
@@ -2010,6 +2021,7 @@ static int xfrin_apply_add_rrsig(xfrin_changes_t *changes,
 	if (*rrset == NULL) {
 		dbg_xfrin("RRSet to be added not found in zone.\n");
 		
+		dbg_xfrin("Creating new RRSet for RRSIG.\n");
 		// create a new RRSet to add the RRSIGs into
 		*rrset = knot_rrset_new(knot_node_get_owner(node), type,
 		                        knot_rrset_class(add),
@@ -2053,6 +2065,7 @@ dbg_xfrin_exec(
 
 	if (knot_rrset_rrsigs(*rrset) == NULL) {
 
+		dbg_xfrin("Adding new RRSIGs to RRSet.\n");
 		ret = knot_zone_contents_add_rrsigs(contents, add, rrset, &node,
 		                                    KNOT_RRSET_DUPL_SKIP, 1);
 
@@ -2079,9 +2092,11 @@ dbg_xfrin_exec(
 		knot_rrset_set_rrsigs(*rrset, rrsig);
 	
 		// merge the changeset RRSet to the copy
+		dbg_xfrin("Merging RRSIG to the one in the RRSet.\n");
 		ret = knot_rrset_merge((void **)&rrsig, (void **)&add);
 		if (ret != KNOT_EOK) {
-			dbg_xfrin("Failed to merge changeset RRSet to copy.\n");
+			dbg_xfrin("Failed to merge changeset RRSIG to copy: %s"
+			          ".\n", knot_strerror(ret));
 			return KNOT_ERROR;
 		}
 		
@@ -3059,6 +3074,14 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 		return ret;
 	}
 	assert(knot_zone_contents_apex(contents_copy) != NULL);
+
+	dbg_xfrin("Checking zone for CNAME loops.\n");
+	ret = knot_zone_contents_check_loops(contents_copy);
+	if (ret != KNOT_EOK) {
+		dbg_xfrin("CNAME loop check failed: %s\n", knot_strerror(ret));
+		xfrin_rollback_update2(old_contents, contents_copy, &changes);
+		return ret;
+	}
 
 	dbg_xfrin("Switching zone contents.\n");
 	dbg_xfrin_verb("Old contents apex: %p, new apex: %p\n",

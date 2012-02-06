@@ -339,6 +339,8 @@ const knot_node_t *knot_node_wildcard_child(const knot_node_t *node);
 void knot_node_set_wildcard_child(knot_node_t *node,
                                   knot_node_t *wildcard_child);
 
+knot_node_t *knot_node_get_wildcard_child(const knot_node_t *node);
+
 //const knot_node_t *knot_node_current(const knot_node_t *node);
 
 //knot_node_t *knot_node_get_current(knot_node_t *node);

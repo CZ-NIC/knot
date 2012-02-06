@@ -489,7 +489,7 @@ void knot_node_set_owner(knot_node_t *node, knot_dname_t* owner)
 
 /*----------------------------------------------------------------------------*/
 
-const knot_node_t *knot_node_wildcard_child(const knot_node_t *node)
+knot_node_t *knot_node_get_wildcard_child(const knot_node_t *node)
 {
 	if (node == NULL) {
 		return NULL;
@@ -505,6 +505,13 @@ void knot_node_set_wildcard_child(knot_node_t *node,
 {
 	node->wildcard_child = wildcard_child;
 //	assert(wildcard_child->parent == node);
+}
+
+/*----------------------------------------------------------------------------*/
+
+const knot_node_t *knot_node_wildcard_child(const knot_node_t *node)
+{
+	return knot_node_get_wildcard_child(node);
 }
 
 /*----------------------------------------------------------------------------*/

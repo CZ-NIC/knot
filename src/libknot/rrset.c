@@ -668,6 +668,7 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
 			tmp_rdata = next_rdata;
 		}
 
+//		printf("test: %p\n", tmp_rdata->next->next);
 		assert(tmp_rdata == NULL
 		       || tmp_rdata->next == (*rrset)->rdata);
 

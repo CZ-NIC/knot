@@ -363,6 +363,8 @@ knot_node_t *knot_zone_contents_get_apex(
  */
 int knot_zone_contents_adjust(knot_zone_contents_t *contents);
 
+int knot_zone_contents_check_loops(knot_zone_contents_t *zone);
+
 /*!
  * \brief Parses the NSEC3PARAM record stored in the zone.
  *

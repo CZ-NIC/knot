@@ -1402,7 +1402,7 @@ static inline int ns_referral(const knot_node_t *node,
 					/*! \todo Check return value? */
 					knot_response_add_rrset_authority(
 						resp, nsec, 1, 1, 0, 1);
-					if ((nsec = knot_rrset_rrsigs(nsec)) != NULL) {
+					if ((nsec = knot_rrset_get_rrsigs(nsec)) != NULL) {
 						knot_response_add_rrset_authority(
 						        resp, nsec, 1, 1, 0, 1);
 					}
@@ -3255,7 +3255,16 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		}
 
 		dbg_ns("ns_process_axfrin: adjusting zone.\n");
-		knot_zone_contents_adjust(zone);
+		rc = knot_zone_contents_adjust(zone);
+		if (rc != KNOT_EOK) {
+			return rc;
+		}
+
+		dbg_ns("ns_process_axfrin: checking loops.\n");
+		rc = knot_zone_contents_check_loops(zone);
+		if (rc != KNOT_EOK) {
+			return rc;
+		}
 		
 		// save the zone contents to the xfr->data
 		xfr->data = zone;
