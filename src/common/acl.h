@@ -75,7 +75,7 @@ void acl_delete(acl_t **acl);
 /*!
  * \brief Create new ACL rule.
  *
- * \todo Support address subnets.
+ * \todo Support address subnets (issue #1366).
  *
  * \param acl Pointer to ACL instance.
  * \param addr IP address.

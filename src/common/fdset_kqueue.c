@@ -119,7 +119,7 @@ int fdset_kqueue_add(fdset_t *fdset, int fd, int events)
 	}
 
 	/* Add to kqueue set. */
-	int evfilt = EVFILT_READ; /*! \todo Map events. */
+	int evfilt = EVFILT_READ;
 	EV_SET(&fdset->events[fdset->nfds], fd, evfilt,
 	       EV_ADD|EV_ENABLE, 0, 0, 0);
 
@@ -157,7 +157,7 @@ int fdset_kqueue_remove(fdset_t *fdset, int fd)
 	/* Overwrite current item. */
 	--fdset->nfds;
 
-	/*! \todo Return memory if overallocated (nfds is far lower than reserved). */
+	/*! \todo Return memory if unused (issue #1582). */
 	return 0;
 }
 

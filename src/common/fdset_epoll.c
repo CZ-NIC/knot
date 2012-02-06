@@ -97,7 +97,7 @@ int fdset_epoll_add(fdset_t *fdset, int fd, int events)
 	/* Add to epoll set. */
 	struct epoll_event ev;
 	memset(&ev, 0, sizeof(struct epoll_event));
-	ev.events = EPOLLIN; /*! \todo MAP events. */
+	ev.events = EPOLLIN;
 	ev.data.fd = fd;
 	if (epoll_ctl(fdset->epfd, EPOLL_CTL_ADD, fd, &ev) < 0) {
 		return -1;
@@ -123,7 +123,7 @@ int fdset_epoll_remove(fdset_t *fdset, int fd)
 	/* Overwrite current item. */
 	--fdset->nfds;
 
-	/*! \todo Return memory if overallocated (nfds is far lower than reserved). */
+	/*! \todo Return memory if unused (issue #1582). */
 	return 0;
 }
 
@@ -175,7 +175,7 @@ int fdset_epoll_end(fdset_t *fdset, fdset_it_t *it)
 	size_t nid = fdset->polled - 1;
 	it->fd = fdset->events[nid].data.fd;
 	it->pos = nid;
-	it->events = 0; /*! \todo Map events. */
+	it->events = 0;
 	return -1;
 }
 
@@ -193,7 +193,7 @@ int fdset_epoll_next(fdset_t *fdset, fdset_it_t *it)
 	/* Select next. */
 	size_t nid = it->pos++;
 	it->fd = fdset->events[nid].data.fd;
-	it->events = 0; /*! \todo Map events. */
+	it->events = 0;
 	return 0;
 }
 
