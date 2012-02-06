@@ -2053,8 +2053,8 @@ dbg_xfrin_exec(
 
 	if (knot_rrset_rrsigs(*rrset) == NULL) {
 
-		knot_zone_contents_add_rrsigs(contents, add, rrset, &node,
-		                              KNOT_RRSET_DUPL_SKIP, 1);
+		ret = knot_zone_contents_add_rrsigs(contents, add, rrset, &node,
+		                                    KNOT_RRSET_DUPL_SKIP, 1);
 
 //		ret = knot_rrset_set_rrsigs(*rrset, add);
 		if (ret < 0) {
