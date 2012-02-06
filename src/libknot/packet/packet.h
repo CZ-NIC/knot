@@ -48,6 +48,7 @@ struct knot_compressed_dnames {
 	size_t *offsets;          /*!< Offsets of domain names in the packet. */
 	short count;              /*!< Count of items in the previous arrays. */
 	short max;                /*!< Capacity of the structure (allocated). */
+	short default_count;
 };
 
 typedef struct knot_compressed_dnames knot_compressed_dnames_t;

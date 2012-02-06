@@ -110,6 +110,7 @@ static void knot_packet_init_pointers_response(knot_packet_t *pkt)
 	dbg_packet("Compression offsets: %p\n", pkt->compression.offsets);
 
 	pkt->compression.max = DEFAULT_DOMAINS_IN_RESPONSE;
+	pkt->compression.default_count = DEFAULT_DOMAINS_IN_RESPONSE;
 
 	pkt->tmp_rrsets = (const knot_rrset_t **)pos;
 	pos += DEFAULT_TMP_RRSETS * sizeof(const knot_rrset_t *);
@@ -633,7 +634,7 @@ static void knot_packet_free_allocated_space(knot_packet_t *pkt)
 		free(pkt->additional);
 	}
 
-	if (pkt->compression.max > DEFAULT_DOMAINS_IN_RESPONSE) {
+	if (pkt->compression.max > pkt->compression.default_count) {
 		free(pkt->compression.dnames);
 		free(pkt->compression.offsets);
 	}
