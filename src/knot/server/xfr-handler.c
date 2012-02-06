@@ -596,7 +596,7 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 			
 			/* AXFR bootstrap timeout. */
 			rcu_read_lock();
-			if (ret != KNOTD_EOK && data->type == XFR_TYPE_AIN) {
+			if (ret != KNOTD_EOK && !knot_zone_contents(zone)) {
 				/* Schedule request (60 - 90s random delay). */
 				int tmr_s = AXFR_BOOTSTRAP_RETRY;
 				tmr_s += (30.0 * 1000) * (tls_rand());
