@@ -177,7 +177,8 @@ typedef enum knot_ns_xfr_type_t {
  */
 knot_nameserver_t *knot_ns_create();
 
-void knot_ns_set_nsid(knot_nameserver_t *nameserver, const char *nsid);
+/*! \todo Document me. */
+void knot_ns_set_nsid(knot_nameserver_t *nameserver, const char *nsid, size_t len);
 
 /*!
  * \brief Parses the given query into the response structure and recognizes

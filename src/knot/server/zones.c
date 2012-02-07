@@ -2356,7 +2356,7 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 	dbg_zones_verb("zones: reconfiguring name server.\n");
 	
 	/* Set NSID. */
-	knot_ns_set_nsid(ns, conf->nsid);
+	knot_ns_set_nsid(ns, conf->nsid, conf->nsid_len);
 
 	knot_zonedb_t *old_db = 0;
 
