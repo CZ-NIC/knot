@@ -153,7 +153,8 @@ void err_handler_log_all(err_handler_t *handler)
  * \retval ZC_ERR_CNAME_CYCLE when cycle is present.
  */
 static int check_cname_cycles_in_zone(knot_zone_contents_t *zone,
-				      const knot_rrset_t *rrset)
+				      const knot_rrset_t *rrset,
+                                      char *fatal_error)
 {
 	if (rrset->type != KNOT_RRTYPE_CNAME &&
 	    rrset->type != KNOT_RRTYPE_DNAME) {
@@ -241,6 +242,7 @@ static int check_cname_cycles_in_zone(knot_zone_contents_t *zone,
 			knot_dname_free(&next_dname_copy);
 			knot_dname_free(&chopped_wc);
 			assert(cut_offs > 1);
+			*fatal_error = 1;
 			return ZC_ERR_CNAME_WILDCARD_SELF;
 		}
 		
@@ -330,6 +332,7 @@ static int check_cname_cycles_in_zone(knot_zone_contents_t *zone,
 
 	/* even if the length is 0, i will be 1 */
 	if (i >= MAX_CNAME_CYCLE_DEPTH) {
+		*fatal_error = 1;
 		return ZC_ERR_CNAME_CYCLE;
 	}
 
@@ -857,17 +860,17 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 	}
 
 	/* This is why we allocate maximum length of decoded string + 1 */
-	memmove(next_dname_decoded + 1, next_dname_decoded, real_size);
-	next_dname_decoded[0] = real_size;
-
+//	memmove(next_dname_decoded + 1, next_dname_decoded, real_size);
+//	next_dname_decoded[0] = real_size;
+	
 	/* Local allocation, will be discarded. */
 	knot_dname_t *next_dname =
-		knot_dname_new_from_wire(next_dname_decoded,
-					   real_size + 1, NULL);
+		knot_dname_new_from_str((uint8_t *)next_dname_decoded,
+					   real_size, NULL);
 	CHECK_ALLOC_LOG(next_dname, KNOT_ENOMEM);
 
 	free(next_dname_decoded);
-
+	
 	if (knot_dname_cat(next_dname,
 		     knot_node_owner(knot_zone_contents_apex(zone))) == NULL) {
 		fprintf(stderr, "Could not concatenate dnames!\n");
@@ -941,13 +944,15 @@ static int semantic_checks_plain(knot_zone_contents_t *zone,
 				 knot_node_t *node,
 				 char do_checks,
 				 err_handler_t *handler,
-				 int only_mandatory)
+				 int only_mandatory,
+				 char *fatal_error)
 {
 	assert(handler);
 	const knot_rrset_t *cname_rrset =
 			knot_node_rrset(node, KNOT_RRTYPE_CNAME);
 	if (cname_rrset != NULL) {
-		int ret = check_cname_cycles_in_zone(zone, cname_rrset);
+		int ret = check_cname_cycles_in_zone(zone, cname_rrset,
+		                                     fatal_error);
 		if (ret != KNOT_EOK) {
 			err_handler_handle_error(handler, node,
 						 ret);
@@ -956,6 +961,7 @@ static int semantic_checks_plain(knot_zone_contents_t *zone,
 		/* No DNSSEC and yet there is more than one rrset in node */
 		if (do_checks == 1 &&
 		                knot_node_rrset_count(node) != 1) {
+			*fatal_error = 1;
 			err_handler_handle_error(handler, node,
 			                         ZC_ERR_CNAME_EXTRA_RECORDS);
 		} else if (knot_node_rrset_count(node) != 1) {
@@ -963,6 +969,7 @@ static int semantic_checks_plain(knot_zone_contents_t *zone,
 			if (!(knot_node_rrset(node, KNOT_RRTYPE_RRSIG) ||
 			      knot_node_rrset(node, KNOT_RRTYPE_NSEC)) ||
 			    knot_node_rrset_count(node) > 3) {
+				*fatal_error = 1;
 				err_handler_handle_error(handler, node,
 				ZC_ERR_CNAME_EXTRA_RECORDS_DNSSEC);
 			}
@@ -970,6 +977,7 @@ static int semantic_checks_plain(knot_zone_contents_t *zone,
 
 		if (knot_rrset_rdata(cname_rrset)->next !=
 		                knot_rrset_rdata(cname_rrset)) {
+			*fatal_error = 1;
 			err_handler_handle_error(handler, node,
 			                         ZC_ERR_CNAME_MULTIPLE);
 		}
@@ -978,21 +986,26 @@ static int semantic_checks_plain(knot_zone_contents_t *zone,
 	const knot_rrset_t *dname_rrset =
 		knot_node_rrset(node, KNOT_RRTYPE_DNAME);
 	if (dname_rrset != NULL) {
-		int ret = check_cname_cycles_in_zone(zone, dname_rrset);
+		int ret = check_cname_cycles_in_zone(zone, dname_rrset,
+		                                     fatal_error);
 		if (ret == ZC_ERR_CNAME_CYCLE) {
+			*fatal_error = 1;
 			err_handler_handle_error(handler, node,
 						 ZC_ERR_DNAME_CYCLE);
 		} else if (ret == ZC_ERR_CNAME_WILDCARD_SELF) {
+			*fatal_error = 1;
 			err_handler_handle_error(handler, node,
 						 ZC_ERR_DNAME_WILDCARD_SELF);
 		}
 
 		if (knot_node_rrset(node, KNOT_RRTYPE_CNAME)) {
+			*fatal_error = 1;
 			err_handler_handle_error(handler, node,
 			                         ZC_ERR_CNAME_EXTRA_RECORDS);
 		}
 		
 		if (node->children != 0) {
+			*fatal_error = 1;
 			err_handler_handle_error(handler, node,
 			                         ZC_ERR_DNAME_CHILDREN);
 		}
@@ -1001,6 +1014,7 @@ static int semantic_checks_plain(knot_zone_contents_t *zone,
 	if (only_mandatory) {
 		return KNOT_EOK;
 	}
+	
 
 	/* check for glue records at zone cuts */
 	if (knot_node_is_deleg_point(node)) {
@@ -1237,42 +1251,26 @@ static void do_checks_in_tree(knot_node_t *node, void *data)
 
 	assert(zone);
 
-
-/*	for (int i = 0; i < count; ++i) {
-		assert(rrsets[i] != NULL);
-		knot_zone_save_enclosers_rrset(rrsets[i],
-						 zone,
-						 (skip_list_t *)args->arg2);
-	} */
-
 	knot_node_t *first_node = (knot_node_t *)args->arg4;
 	knot_node_t **last_node = (knot_node_t **)args->arg5;
 
 	err_handler_t *handler = (err_handler_t *)args->arg6;
 	
-	uint old_error_count = handler->error_count;
-
 	char do_checks = *((char *)(args->arg3));
 
 	if (do_checks) {
-		semantic_checks_plain(zone, node, do_checks, handler, 0);
-		if (handler->error_count != old_error_count) {
-			char *fatal_error = (char *)args->arg7;
-			*fatal_error = 1;
-		}
+		semantic_checks_plain(zone, node, do_checks, handler, 0,
+		                      (char *)args->arg7);
 	} else {
 		assert(handler);
 		/* All CNAME/DNAME checks are mandatory. */
 		handler->options.log_cname = 1;
 		int check_level = 1 + (zone_is_secure(zone) ? 1 : 0);
-		semantic_checks_plain(zone, node, check_level, handler, 1);
+		semantic_checks_plain(zone, node, check_level, handler, 1,
+		                      (char *)args->arg7);
 		
-		if (handler->error_count != old_error_count) {
-			char *fatal_error = (char *)args->arg7;
-			*fatal_error = 1;
-		}
-
 		free(rrsets);
+		assert(do_checks == 0);
 		return;
 	}
 
@@ -1351,8 +1349,8 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 
 		/* Local allocation, will be discarded. */
 		knot_dname_t *next_dname =
-			knot_dname_new_from_wire(next_dname_decoded,
-						   real_size + 1, NULL);
+			knot_dname_new_from_str((uint8_t *)next_dname_decoded,
+						real_size, NULL);
 		if (next_dname == NULL) {
 			fprintf(stderr, "Could not allocate dname!\n");
 			err_handler_handle_error(handler, last_nsec3_node,

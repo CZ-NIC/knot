@@ -553,6 +553,21 @@ static void dump_node_to_file(knot_node_t *node, void *data)
 	knot_node_dump_binary(node, data, NULL, NULL, (crc_t *)arg->arg7);
 }
 
+static char *knot_zdump_crc_file(const char* filename)
+{
+	char *crc_path =
+		malloc(sizeof(char) * (strlen(filename) +
+		strlen(".crc") + 1));
+	CHECK_ALLOC_LOG(crc_path, NULL);
+	memset(crc_path, 0,
+	       sizeof(char) * (strlen(filename) +
+	       strlen(".crc") + 1));
+	memcpy(crc_path, filename,
+	       sizeof(char) * strlen(filename));
+	crc_path = strcat(crc_path, ".crc");
+	return crc_path;
+}
+
 int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
 			int do_checks, const char *sfilename)
 {
@@ -563,6 +578,9 @@ int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
 	mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
 	int fd = open(new_path, O_WRONLY | O_CREAT | O_TRUNC, mode);
 	if (fd == -1) {
+		close(fd);
+		remove(new_path);
+		remove(knot_zdump_crc_file(filename));
 		return KNOT_EBADARG;
 	}
 
@@ -609,7 +627,7 @@ int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
 						 ZC_ERR_MISSING_SOA);
 		}
 	}
-
+	
 	knot_node_t *last_node = NULL;
 	int ret = zone_do_sem_checks(zone,
 	                             do_checks, handler, &last_node);
@@ -622,6 +640,11 @@ int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
 	if (ret != KNOT_EOK) {
 		fprintf(stderr, "Zone will not be dumped because of "
 		        "fatal semantic errors.\n");
+		fclose(f);
+		close(fd);
+		/* If remove fails, there is nothing we can do. */
+		remove(new_path);	
+		remove(knot_zdump_crc_file(filename));
 		return KNOT_ERROR;
 	}
 
@@ -663,6 +686,11 @@ int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
 	/* Write dname table. */
 	if (knot_dump_dname_table(zone->dname_table, f, &crc)
 	    != KNOT_EOK) {
+		fclose(f);
+		close(fd);
+		/* If remove fails, there is nothing we can do. */
+		remove(new_path);	
+		remove(knot_zdump_crc_file(filename));
 		return KNOT_ERROR;
 	}
 
@@ -685,6 +713,10 @@ int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
 		malloc(sizeof(char) * (strlen(filename) + strlen(".crc") + 1));
 	if (unlikely(!crc_path)) {
 		close(fd);
+		/* If remove fails, there is nothing we can do. */
+		remove(new_path);
+		remove(knot_zdump_crc_file(filename));
+		free(crc_path);
 		return KNOT_ENOMEM;
 	}
 	memset(crc_path, 0,
@@ -697,6 +729,9 @@ int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
 		dbg_zload("knot_zload_open: failed to open '%s'\n",
 		                   crc_path);
 		close(fd);
+		/* If remove fails, there is nothing we can do. */
+		remove(new_path);
+		remove(knot_zdump_crc_file(filename));
 		free(crc_path);
 		return ENOENT;
 	}
@@ -712,6 +747,10 @@ int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
 		fprintf(stderr, "%s\n", strerror(errno));
 		fprintf(stderr, "Could not open destination file! Use '%s' "
 		        "file instead.\n", new_path);
+		close(fd);
+		/* If remove fails, there is nothing we can do. */
+		remove(new_path);
+		remove(knot_zdump_crc_file(filename));
 		return KNOT_ERROR;
 	}
 
@@ -720,6 +759,9 @@ int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
 		fprintf(stderr, "Could not lock destination file for write! "
 		        "Use '%s' file instead.\n", new_path);
 		close(fd);
+		/* If remove fails, there is nothing we can do. */
+		remove(new_path);
+		remove(knot_zdump_crc_file(filename));
 		return KNOT_ERROR;
 	}
 
@@ -728,12 +770,19 @@ int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
 		fprintf(stderr, "Could not move to originally given file! "
 		        "Use '%s' file instead.\n", new_path);
 		close(fd);
+		/* If remove fails, there is nothing we can do. */
+		remove(new_path);
+		remove(knot_zdump_crc_file(filename));
 		return KNOT_ERROR;
 	}
 
 	/* Release the lock. */
 	if (fcntl(fd, F_SETLK, knot_file_lock(F_UNLCK, SEEK_SET)) == -1) {
 		fprintf(stderr, "Could not unlock destination file!\n");
+		close(fd);
+		/* If remove fails, there is nothing we can do. */
+		remove(new_path);
+		remove(knot_zdump_crc_file(filename));
 		return KNOT_ERROR;
 	}
 
@@ -757,21 +806,6 @@ int knot_zdump_rrset_serialize(const knot_rrset_t *rrset, uint8_t **stream,
 	knot_rrset_dump_binary(rrset, &arguments, 0, stream, size, NULL);
 
 	return KNOT_EOK;
-}
-
-static char *knot_zdump_crc_file(const char* filename)
-{
-	char *crc_path =
-		malloc(sizeof(char) * (strlen(filename) +
-		strlen(".crc") + 1));
-	CHECK_ALLOC_LOG(crc_path, NULL);
-	memset(crc_path, 0,
-	       sizeof(char) * (strlen(filename) +
-	       strlen(".crc") + 1));
-	memcpy(crc_path, filename,
-	       sizeof(char) * strlen(filename));
-	crc_path = strcat(crc_path, ".crc");
-	return crc_path;
 }
 
 int knot_zdump_dump_and_swap(knot_zone_contents_t *zone,
