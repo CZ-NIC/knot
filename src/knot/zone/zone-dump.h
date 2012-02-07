@@ -84,6 +84,17 @@ int knot_zdump_rrset_serialize(const knot_rrset_t *rrset, uint8_t **stream,
 int knot_zdump_rrset_serialize(const knot_rrset_t *rrset, uint8_t **stream,
                                size_t *size);
 
+/*!
+ * \brief Checks if zone uses DNSSEC and/or NSEC3
+ *
+ * \param zone Zone to be checked.
+ *
+ * \retval 0 if zone is not secured.
+ * \retval 2 if zone uses NSEC3
+ * \retval 1 if zone uses NSEC
+ */
+int zone_is_secure(knot_zone_contents_t *zone);
+
 int knot_zdump_dump_and_swap(knot_zone_contents_t *zone,
                              const char *temp_zonedb,
                              const char *destination_zonedb,

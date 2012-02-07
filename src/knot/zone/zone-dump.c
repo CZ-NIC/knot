@@ -472,16 +472,7 @@ static void knot_node_dump_binary(knot_node_t *node, void *data,
 	dbg_zdump("Function ends with: %ld\n\n", ftell(f));
 }
 
-/*!
- * \brief Checks if zone uses DNSSEC and/or NSEC3
- *
- * \param zone Zone to be checked.
- *
- * \retval 0 if zone is not secured.
- * \retval 2 if zone uses NSEC3
- * \retval 1 if zone uses NSEC
- */
-static int zone_is_secure(knot_zone_contents_t *zone)
+int zone_is_secure(knot_zone_contents_t *zone)
 {
 	if (knot_node_rrset(knot_zone_contents_apex(zone),
 			      KNOT_RRTYPE_DNSKEY) == NULL) {

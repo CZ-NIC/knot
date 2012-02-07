@@ -1264,12 +1264,16 @@ static void do_checks_in_tree(knot_node_t *node, void *data)
 		assert(handler);
 		/* All CNAME/DNAME checks are mandatory. */
 		handler->options.log_cname = 1;
-		semantic_checks_plain(zone, node, 1, handler, 1);
+		int check_level = 1 + (zone_is_secure(zone) ? 1 : 0);
+		semantic_checks_plain(zone, node, check_level, handler, 1);
 		
 		if (handler->error_count != old_error_count) {
 			char *fatal_error = (char *)args->arg7;
 			*fatal_error = 1;
 		}
+
+		free(rrsets);
+		return;
 	}
 
 	if (do_checks > 1) {
