@@ -287,6 +287,7 @@ system:
  | system VERSION TEXT ';' { new_config->version = $3.t; }
  | system IDENTITY TEXT ';' { new_config->identity = $3.t; }
  | system NSID HEXSTR ';' { new_config->nsid = $3.t; new_config->nsid_len = $3.l; }
+ | system NSID TEXT ';' { new_config->nsid = $3.t; new_config->nsid_len = strlen(new_config->nsid); }
  | system STORAGE TEXT ';' { new_config->storage = $3.t; }
  | system KEY TSIG_ALGO_NAME TEXT ';' {
      fprintf(stderr, "warning: Config option 'system.key' is deprecated "
