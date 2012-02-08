@@ -2168,8 +2168,6 @@ static void xfrin_cleanup_update(xfrin_changes_t *changes)
 			rdata = tmp;
 		} while (rdata != NULL && rdata != changes->old_rdata[i]);
 
-		knot_rdata_deep_free(&changes->old_rdata[i],
-		                     changes->old_rdata_types[i], 1);
 	}
 
 	// free allocated arrays of nodes and rrsets
