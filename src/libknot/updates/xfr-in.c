@@ -2288,12 +2288,13 @@ static void xfrin_zone_contents_free2(knot_zone_contents_t **contents)
 
 /*----------------------------------------------------------------------------*/
 
-static void xfrin_reset_new_nodes(knot_node_t *node, void *data)
+static void xfrin_cleanup_old_nodes(knot_node_t *node, void *data)
 {
 	UNUSED(data);
 	assert(node != NULL);
 
 	knot_node_set_new_node(node, NULL);
+	knot_dname_set_node(knot_node_get_owner(node), node);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2340,11 +2341,12 @@ static void xfrin_rollback_update2(knot_zone_contents_t *old_contents,
 	xfrin_zone_contents_free2(&new_contents);
 
 	// cleanup old zone tree - reset pointers to new node to NULL
+	// also set pointers from dnames to old nodes
 	knot_zone_contents_tree_apply_inorder(old_contents,
-	                                      xfrin_reset_new_nodes, NULL);
+	                                      xfrin_cleanup_old_nodes, NULL);
 
 	knot_zone_contents_nsec3_apply_inorder(old_contents,
-	                                       xfrin_reset_new_nodes, NULL);
+	                                       xfrin_cleanup_old_nodes, NULL);
 }
 
 /*----------------------------------------------------------------------------*/
