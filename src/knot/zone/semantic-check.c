@@ -879,6 +879,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 	}
 
 	if (knot_zone_contents_find_nsec3_node(zone, next_dname) == NULL) {
+		printf("Chain\n");
 		err_handler_handle_error(handler, node,
 					 ZC_ERR_NSEC3_RDATA_CHAIN);
 	}
@@ -911,7 +912,6 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 				      type) == NULL) {
 			err_handler_handle_error(handler, node,
 						 ZC_ERR_NSEC3_RDATA_BITMAP);
-			break;
 /*			char *name =
 				knot_dname_to_str(
 			log_zone_error("Node %s does "
@@ -1343,10 +1343,6 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 			return;
 		}
 
-		/* This is why allocate maximum length of decoded string + 1 */
-		memmove(next_dname_decoded + 1, next_dname_decoded, real_size);
-		next_dname_decoded[0] = real_size;
-
 		/* Local allocation, will be discarded. */
 		knot_dname_t *next_dname =
 			knot_dname_new_from_str((uint8_t *)next_dname_decoded,
@@ -1372,15 +1368,18 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 
 		/* Check it points somewhere first. */
 		if (knot_zone_contents_find_nsec3_node(zone, next_dname) == NULL) {
+			assert(knot_zone_contents_find_node(zone,
+			                                    next_dname) ==
+			                                    NULL);
 			err_handler_handle_error(handler, last_nsec3_node,
 						 ZC_ERR_NSEC3_RDATA_CHAIN);
-		}
-
-		/* Compare with the actual first NSEC3 node. */
-		if (knot_dname_compare(first_nsec3_node->owner,
-		                         next_dname) != 0) {
-			err_handler_handle_error(handler, last_nsec3_node,
-						 ZC_ERR_NSEC3_RDATA_CHAIN);
+		} else {
+			/* Compare with the actual first NSEC3 node. */
+			if (knot_dname_compare(first_nsec3_node->owner,
+			                         next_dname) != 0) {
+				err_handler_handle_error(handler, last_nsec3_node,
+							 ZC_ERR_NSEC3_RDATA_CHAIN);
+			}
 		}
 
 		/* Directly discard. */
