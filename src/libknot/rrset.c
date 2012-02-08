@@ -55,6 +55,8 @@ static void knot_rrset_disconnect_rdata(knot_rrset_t *rrset,
 			rrset->rdata = rdata->next;
 		}
 	}
+
+	rdata->next = NULL;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -653,6 +655,12 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
 	if (rrset == NULL || *rrset == NULL) {
 		return;
 	}
+
+//	char *name = knot_dname_to_str(knot_rrset_owner(*rrset));
+//	char *type = knot_rrtype_to_string(knot_rrset_type(*rrset));
+//	fprintf(stderr, "Deleting RRSet (%p) %s, type %s, rdata: %p\n",
+//	        *rrset, name, type, (*rrset)->rdata);
+//	free(name);
 
 	if (free_rdata) {
 		knot_rdata_t *tmp_rdata;
