@@ -219,10 +219,25 @@ int journal_create(const char *fn, uint16_t max_nodes)
 	return KNOTD_EOK;
 }
 
-journal_t* journal_open(const char *fn, size_t fslimit, uint16_t bflags)
+journal_t* journal_open(const char *fn, size_t fslimit, int mode, uint16_t bflags)
 {
 	/*! \todo Memory mapping may be faster than stdio? */
 
+	/* Check for lazy mode. */
+	if (mode & JOURNAL_LAZY) {
+		dbg_journal("journal: opening journal %s lazily\n", fn);
+		journal_t *j = malloc(sizeof(journal_t));
+		if (j != NULL) {
+			memset(j, 0, sizeof(journal_t));
+			j->fd = -1;
+			j->path = strdup(fn);
+			j->fslimit = fslimit;
+			j->bflags = bflags;
+			j->refs = 1;
+		}
+		return j;
+	}
+	
 	/* File lock. */
 	struct flock fl;
 	memset(&fl, 0, sizeof(struct flock));
@@ -277,6 +292,7 @@ journal_t* journal_open(const char *fn, size_t fslimit, uint16_t bflags)
 	/* Allocate journal structure. */
 	const size_t node_len = sizeof(journal_node_t);
 	journal_t *j = malloc(sizeof(journal_t) + max_nodes * node_len);
+	memset(j, 0, sizeof(journal_t) + max_nodes * node_len);
 	if (!j) {
 		dbg_journal_detail("journal: cannot allocate journal\n");
 		fcntl(fd, F_SETLK, &fl);
@@ -287,6 +303,7 @@ journal_t* journal_open(const char *fn, size_t fslimit, uint16_t bflags)
 	j->fd = fd;
 	j->max_nodes = max_nodes;
 	j->bflags = bflags;
+	j->refs = 1;
 
 	/* Load node queue state. */
 	if (!sfread(&j->qhead, sizeof(uint16_t), fd)) {
@@ -646,18 +663,54 @@ int journal_close(journal_t *journal)
 		return KNOTD_EINVAL;
 	}
 	
-	/* Unlock journal file. */
-	journal->fl.l_type = F_UNLCK;
-	fcntl(journal->fd, F_SETLK, &journal->fl);
-	dbg_journal("journal: unlocked journal %p\n", journal);
+	/* Check if lazy. */
+	if (journal->fd < 0) {
+		free(journal->path);
+	} else {
+		/* Unlock journal file. */
+		journal->fl.l_type = F_UNLCK;
+		fcntl(journal->fd, F_SETLK, &journal->fl);
+		dbg_journal("journal: unlocked journal %p\n", journal);
 
-	/* Close file. */
-	close(journal->fd);
-
+		/* Close file. */
+		close(journal->fd);
+	}
+	
 	dbg_journal("journal: closed journal %p\n", journal);
 
 	/* Free allocated resources. */
+	
 	free(journal);
 
 	return KNOTD_EOK;
+}
+
+journal_t *journal_retain(journal_t *journal)
+{
+	/* Return active journal if opened lazily. */
+	if (journal != NULL) {
+		if (journal->fd < 0) {
+			dbg_journal("journal: retain(), opening for rw\n");
+			journal = journal_open(journal->path, journal->fslimit, 
+			                       0, journal->bflags);
+		} else {
+			++journal->refs;
+			dbg_journal("journal: retain(), ++refcount\n");
+		}
+	}
+	
+	return journal;
+}
+
+
+void journal_release(journal_t *journal) {
+	if (journal != NULL) {
+		if (journal->refs == 1) {
+			dbg_journal("journal: release(), closing last\n");
+			journal_close(journal);
+		} else {
+			--journal->refs;
+			dbg_journal_verb("journal: release(), --refcount\n");
+		}
+	}
 }

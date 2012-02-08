@@ -122,13 +122,14 @@ int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
  * \note Current implementation rewrites the zone file.
  *
  * \param zone Evaluated zone.
+ * \param journal Journal to sync.
  *
  * \retval KNOTD_EOK if successful.
  * \retval KNOTD_ERANGE if zonefile is in sync with journal.
  * \retval KNOTD_EINVAL on invalid parameter.
  * \retval KNOTD_ERROR on unspecified error during processing.
  */
-int zones_zonefile_sync(knot_zone_t *zone);
+int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal);
 
 /*!
  * \todo Document me.
