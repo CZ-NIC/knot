@@ -416,7 +416,13 @@ static ck_hash_table_item_t **ck_find_in_stash(const ck_hash_table_t *table,
 		         "with searched item (key %.*s (size %u)).\n",
 		         (int)item->item->key_length, item->item->key,
 		         item->item->key_length, (int)length, key, length);
-		if (ck_items_match(item->item, key, length)) {
+		/*! \todo Can the item be NULL?
+		 *        Sometimes it crashed on assert in ck_items_match(),
+		 *        But I'm not sure if this may happen or if the
+		 *        semantics of the stash are that all items must be
+		 *        non-NULL.
+		 */
+		if (item->item && ck_items_match(item->item, key, length)) {
 			return &item->item;
 		}
 		item = item->next;
