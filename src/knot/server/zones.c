@@ -1858,8 +1858,6 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 		rcode = KNOT_RCODE_REFUSED;
 	}
 
-	assert(resp != NULL);
-
 	if (rcode != KNOT_RCODE_NOERROR) {
 		dbg_zones_verb("Failed preparing response structure: %s.\n",
 		               knot_strerror(rcode));
@@ -1869,6 +1867,7 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 		/*
 		 * Now we have zone. Verify TSIG if it is in the packet.
 		 */
+		assert(resp != NULL);
 		assert(rcode == KNOT_RCODE_NOERROR);
 		uint16_t tsig_rcode = 0;
 		knot_key_t *tsig_key_zone = NULL;
