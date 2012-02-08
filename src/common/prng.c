@@ -20,6 +20,7 @@
 #include <pthread.h>
 #include <time.h>
 #include <sys/time.h>
+#include <config.h>
 #ifdef HAVE_MEMALIGN
 #include <malloc.h>
 #endif
@@ -82,10 +83,10 @@ double tls_rand()
 		}
 
 		/* Initialize PRNG state. */
-#ifndef HAVE_MEMALIGN
-		s = malloc(sizeof(dsfmt_t));
-#else
+#ifdef HAVE_MEMALIGN
 		s = memalign(16, sizeof(dsfmt_t));
+#else
+		s = malloc(sizeof(dsfmt_t));
 #endif
 		if (s == NULL) {
 			fprintf(stderr, "error: PRNG: not enough memory\n");
