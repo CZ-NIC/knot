@@ -3045,21 +3045,26 @@ static int knot_zc_integrity_check_find_dname(const knot_zone_contents_t *zone,
 {
 	int ret = 0;
 
-	find_dname_data_t data_find;
-	data_find.found = NULL;
-	data_find.to_find = to_find;
+//	find_dname_data_t data_find;
+//	data_find.found = NULL;
+//	data_find.to_find = to_find;
 
-	int res = knot_zone_contents_dname_table_apply(
-	                        (knot_zone_contents_t *)zone,
-	                        find_in_dname_table, (void *)&data_find);
-	assert(res == KNOT_EOK);
+//	int res = knot_zone_contents_dname_table_apply(
+//	                        (knot_zone_contents_t *)zone,
+//	                        find_in_dname_table, (void *)&data_find);
+//	assert(res == KNOT_EOK);
+	
+	knot_dname_t *found = knot_dname_table_find_dname(zone->dname_table, 
+	                                               (knot_dname_t *)to_find);
 
 	char *to_find_name = knot_dname_to_str(to_find);
 
-	if (data_find.found != data_find.to_find) {
+	if (!found || found != to_find) {
 		fprintf(stderr, "Dname not stored in dname table: "
 		        "node %s, name %s, found some dname: %s\n", node_name,
-		       to_find_name, (data_find.found != NULL) ? "yes" : "no");
+		       to_find_name, (found != NULL) ? "yes" : "no");
+		fprintf(stderr, "Dname to find: %p, found dname: %p\n",
+		        found, to_find);
 		ret = 1;
 	}
 
