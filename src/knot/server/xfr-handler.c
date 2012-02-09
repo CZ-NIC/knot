@@ -318,6 +318,9 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 //		free(zorigin);
 //	}
 	
+	/* This has to be removed after testing is done! */
+	knot_zone_contents_integrity_check(zone->contents);
+	
 	return ret;
 }
 
