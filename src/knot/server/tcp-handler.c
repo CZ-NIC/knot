@@ -247,7 +247,7 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 		/* Answer. */
 		return xfr_answer(ns, &xfr);
 		
-	/*! \todo Implement query notify/update. */
+	/*! \todo Implement query update. */
 	case KNOT_QUERY_UPDATE:
 		knot_ns_error_response(ns, knot_packet_id(packet),
 				       KNOT_RCODE_NOTIMPL, qbuf,
@@ -255,8 +255,12 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 		res = KNOTD_EOK;
 		break;
 		
+	case KNOT_QUERY_NOTIFY:
+		res = notify_process_request(ns, packet, &addr,
+					     qbuf, &resp_len);
+		break;
+		
 	/* Unhandled opcodes. */
-	case KNOT_QUERY_NOTIFY:    /*!< Only in UDP. */
 	case KNOT_RESPONSE_NOTIFY: /*!< Only in UDP. */
 	case KNOT_RESPONSE_NORMAL: /*!< TCP handler doesn't send queries. */
 	case KNOT_RESPONSE_AXFR:   /*!< Processed in XFR handler. */
