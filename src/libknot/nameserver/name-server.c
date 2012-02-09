@@ -2476,7 +2476,9 @@ static int ns_ixfr(knot_ns_xfr_t *xfr)
 		dbg_ns("IXFR query does not contain authority record.\n");
 		knot_response_set_rcode(xfr->response, KNOT_RCODE_FORMERR);
 		/*! \todo Probably rename the function. */
-		ns_xfr_send_and_clear(xfr, 1);
+		if (ns_xfr_send_and_clear(xfr, 1) == KNOT_ECONN) {
+			return KNOT_ECONN;
+		}
 		//socket_close(xfr->session);
 		return KNOT_EMALF;
 	}
@@ -2492,7 +2494,9 @@ static int ns_ixfr(knot_ns_xfr_t *xfr)
 		dbg_ns("IXFR query is malformed.\n");
 		knot_response_set_rcode(xfr->response, KNOT_RCODE_FORMERR);
 		/*! \todo Probably rename the function. */
-		ns_xfr_send_and_clear(xfr, 1);
+		if (ns_xfr_send_and_clear(xfr, 1) == KNOT_ECONN) {
+			return KNOT_ECONN;
+		}
 		//socket_close(xfr->session);  /*! \todo Remove for UDP. */
 		return KNOT_EMALF;
 	}
@@ -3133,7 +3137,7 @@ int knot_ns_answer_axfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 				xfr->wire_size);
 		rcu_read_unlock();
 		knot_packet_free(&xfr->response);
-		return KNOT_EOK;
+		return ret;
 	}
 	
 	/*!
@@ -3155,7 +3159,7 @@ int knot_ns_answer_axfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	 *        and when it does not. E.g. if there was problem in sending
 	 *        packet, it will probably fail when sending the SERVFAIL also.
 	 */
-	if (ret < 0) {
+	if (ret < 0 && ret != KNOT_ECONN) {
 		dbg_ns("AXFR failed, sending SERVFAIL.\n");
 		// now only one type of error (SERVFAIL), later maybe more
 		/*! \todo xfr->wire is not NULL, will fail on assert! */
@@ -3173,7 +3177,7 @@ int knot_ns_answer_axfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 
 	knot_packet_free(&xfr->response);
 
-	return KNOT_EOK;
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/

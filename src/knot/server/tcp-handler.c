@@ -38,6 +38,7 @@
 #include "knot/server/zones.h"
 #include "libknot/nameserver/name-server.h"
 #include "knot/other/error.h"
+#include "libknot/util/error.h"
 #include "libknot/util/wire.h"
 
 /* Workarounds for clock_gettime() not available on some platforms. */
@@ -78,7 +79,12 @@ static inline int tcp_throttle() {
 static int xfr_send_cb(int session, sockaddr_t *addr, uint8_t *msg, size_t msglen)
 {
 	UNUSED(addr);
-	return tcp_send(session, msg, msglen);
+	int ret = tcp_send(session, msg, msglen);
+	if (ret < 0) {
+		return KNOT_ECONN;
+	}
+	
+	return ret;
 }
 
 /*! \brief Sweep TCP connection. */
@@ -220,7 +226,7 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 		memcpy(&xfr.addr, &addr, sizeof(sockaddr_t));
 		
 		/* Answer. */
-		return xfr_answer(ns, &xfr);;
+		return xfr_answer(ns, &xfr);
 		
 	/*! \todo Implement query notify/update. */
 	case KNOT_QUERY_UPDATE:
