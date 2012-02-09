@@ -527,7 +527,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	//assert(origin_node->next == NULL);
 
-	assert(knot_node_parent(origin_node, 0) == NULL);
+	assert(knot_node_parent(origin_node) == NULL);
 	if (origin_node == NULL) {
 		knot_dname_release(dname);
 		return KNOTDZCOMPILE_ENOMEM;
@@ -609,7 +609,8 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 		parser->errors++;
 	}
 
-	knot_zone_contents_adjust(contents, 0);
+	/*! \todo Check return value. */
+	knot_zone_contents_adjust(contents);
 
 	dbg_zp("rdata adjusted\n");
 

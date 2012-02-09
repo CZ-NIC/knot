@@ -309,6 +309,8 @@ ck_hash_table_item_t *ck_remove_item(ck_hash_table_t *table, const char *key,
  */
 int ck_shallow_copy(const ck_hash_table_t *from, ck_hash_table_t **to);
 
+int ck_deep_copy(ck_hash_table_t *from, ck_hash_table_t **to);
+
 int ck_apply(ck_hash_table_t *table, 
              void (*function)(ck_hash_table_item_t *item, void *data), 
              void *data);

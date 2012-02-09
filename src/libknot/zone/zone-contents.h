@@ -338,8 +338,7 @@ int knot_zone_contents_find_nsec3_for_name(
                                     const knot_zone_contents_t *contents,
                                     const knot_dname_t *name,
                                     const knot_node_t **nsec3_node,
-                                    const knot_node_t **nsec3_previous,
-				    int check_ver);
+                                    const knot_node_t **nsec3_previous);
 /*!
  * \brief Returns the apex node of the zone.
  *
@@ -362,7 +361,9 @@ knot_node_t *knot_zone_contents_get_apex(
  *
  * \param zone Zone to adjust domain names in.
  */
-int knot_zone_contents_adjust(knot_zone_contents_t *contents, int check_ver);
+int knot_zone_contents_adjust(knot_zone_contents_t *contents);
+
+int knot_zone_contents_check_loops(knot_zone_contents_t *zone);
 
 /*!
  * \brief Parses the NSEC3PARAM record stored in the zone.
@@ -544,12 +545,23 @@ int knot_zone_contents_dname_table_apply(knot_zone_contents_t *contents,
  * \retval KNOT_ENOMEM
  */
 int knot_zone_contents_shallow_copy(const knot_zone_contents_t *from,
-                                      knot_zone_contents_t **to);
+                                    knot_zone_contents_t **to);
+
+int knot_zone_contents_shallow_copy2(const knot_zone_contents_t *from,
+                                     knot_zone_contents_t **to);
+
+//int knot_zone_contents_dnames_from_node_to_table(
+//	knot_dname_table_t *table, knot_node_t *node);
+
+//void knot_zone_contents_adjust_node(knot_node_t *node,
+//                                    knot_zone_contents_t *zone, int check_ver);
 
 void knot_zone_contents_free(knot_zone_contents_t **contents);
 
 void knot_zone_contents_deep_free(knot_zone_contents_t **contents,
                                   int destroy_dname_table);
+
+int knot_zone_contents_integrity_check(const knot_zone_contents_t *contents);
 
 #endif
 

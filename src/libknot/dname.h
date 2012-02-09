@@ -215,11 +215,9 @@ uint8_t knot_dname_size_part(const knot_dname_t *dname, int labels);
  *
  * \return Zone node the domain name belongs to or NULL if none.
  */
-const struct knot_node *knot_dname_node(const knot_dname_t *dname,
-                                            int check_version);
+const struct knot_node *knot_dname_node(const knot_dname_t *dname);
 
-struct knot_node *knot_dname_get_node(knot_dname_t *dname,
-                                          int check_version);
+struct knot_node *knot_dname_get_node(const knot_dname_t *dname);
 
 void knot_dname_set_node(knot_dname_t *dname, struct knot_node *node);
 

@@ -379,6 +379,8 @@ static uint ck_check_used_twice(da_array_t *used, uint32_t hash)
 static inline uint ck_items_match(const ck_hash_table_item_t *item,
                                   const char *key, size_t length)
 {
+	assert(item != NULL);
+
 	return (length == item->key_length
 	        && (strncmp(item->key, key, length) == 0));
 }
@@ -414,7 +416,13 @@ static ck_hash_table_item_t **ck_find_in_stash(const ck_hash_table_t *table,
 		         "with searched item (key %.*s (size %u)).\n",
 		         (int)item->item->key_length, item->item->key,
 		         item->item->key_length, (int)length, key, length);
-		if (ck_items_match(item->item, key, length)) {
+		/*! \todo Can the item be NULL?
+		 *        Sometimes it crashed on assert in ck_items_match(),
+		 *        But I'm not sure if this may happen or if the
+		 *        semantics of the stash are that all items must be
+		 *        non-NULL.
+		 */
+		if (item->item && ck_items_match(item->item, key, length)) {
 			return &item->item;
 		}
 		item = item->next;
@@ -1202,7 +1210,182 @@ int ck_shallow_copy(const ck_hash_table_t *from, ck_hash_table_t **to)
 
 /*----------------------------------------------------------------------------*/
 
-int ck_apply(ck_hash_table_t *table, 
+static int ck_copy_items(const ck_hash_table_item_t **from,
+                         ck_hash_table_item_t **to, uint32_t count)
+{
+	assert(from != NULL);
+	assert(to != NULL);
+
+	for (int i = 0; i < count; ++i) {
+		if (from[i] != NULL) {
+			to[i] = (ck_hash_table_item_t *)
+				malloc(sizeof(ck_hash_table_item_t));
+
+			if (to[i] == NULL) {
+				return -2;
+			}
+
+			memcpy(to[i], from[i], sizeof(ck_hash_table_item_t));
+		} else {
+			to[i] = NULL;
+		}
+	}
+
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void ck_deep_copy_cleanup(ck_hash_table_t *table, int table_count)
+{
+	// free tables with their items
+	for (int t = 0; t < table_count; ++t) {
+		for (int i = 0; i < hashsize(table->table_size_exp); ++i) {
+			free(table->tables[t][i]);
+		}
+		free(table->tables[t]);
+	}
+
+	// free stash items with hash table items in them
+	ck_stash_item_t *si = table->stash;
+	ck_stash_item_t *to_free;
+	while (si != NULL) {
+		to_free = si;
+		si = si->next;
+		free(to_free->item);
+		free(to_free);
+	}
+
+	free(table);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int ck_deep_copy(ck_hash_table_t *from, ck_hash_table_t **to)
+{
+	if (from == NULL || to == NULL) {
+		return -1;
+	}
+
+	dbg_ck("Allocating new table...\n");
+	*to = (ck_hash_table_t *)malloc(sizeof(ck_hash_table_t));
+
+	if (*to == NULL) {
+		ERR_ALLOC_FAILED;
+		return -2;
+	}
+	memset(*to, 0, sizeof(ck_hash_table_t));
+
+	// copy table count and table size exponent
+	(*to)->table_size_exp = from->table_size_exp;
+	(*to)->table_count = from->table_count;
+	assert((*to)->table_size_exp <= 32);
+
+	dbg_ck("Creating hash table for %u items.\n", from->table_count);
+	dbg_ck("Exponent: %u, number of tables: %u\n ",
+		 (*to)->table_size_exp, (*to)->table_count);
+	dbg_ck("Table size: %u items, each %zu bytes, total %zu bytes\n",
+	         hashsize((*to)->table_size_exp),
+	         sizeof(ck_hash_table_item_t *),
+	         hashsize((*to)->table_size_exp)
+	           * sizeof(ck_hash_table_item_t *));
+
+	// create tables
+	for (uint t = 0; t < (*to)->table_count; ++t) {
+		dbg_ck("Creating table %u...\n", t);
+		(*to)->tables[t] = (ck_hash_table_item_t **)malloc(
+		                        hashsize((*to)->table_size_exp)
+		                        * sizeof(ck_hash_table_item_t *));
+		if ((*to)->tables[t] == NULL) {
+			ERR_ALLOC_FAILED;
+			for (uint i = 0; i < t; ++i) {
+				free((*to)->tables[i]);
+			}
+			free(*to);
+			return -2;
+		}
+
+		// copy the table with all hash table items
+		dbg_ck("Copying table %u...\n", t);
+		int ret = ck_copy_items(from->tables[t], (*to)->tables[t],
+		                        hashsize((*to)->table_size_exp));
+		if (ret != 0) {
+			dbg_ck("Failed!\n", t);
+			// free all tables created until now
+			ck_deep_copy_cleanup(*to, t);
+			return ret;
+		}
+	}
+
+	// copy the stash - we must explicitly copy each stash item,
+	// together with the hash table item stored in it
+	ck_stash_item_t *si = from->stash;
+	ck_stash_item_t **pos = &(*to)->stash;
+	dbg_ck_verb(stderr, "Copying hash table stash.\n");
+	while (si != NULL) {
+		ck_stash_item_t *si_new = (ck_stash_item_t *)
+		                           malloc(sizeof(ck_stash_item_t));
+		if (si_new == NULL) {
+			ERR_ALLOC_FAILED;
+			ck_deep_copy_cleanup(*to, (*to)->table_count);
+			return -2;
+		}
+
+		dbg_ck("Copying stash item: %p with item %p, ", si, si->item);
+		dbg_ck("key: %.*s\n", (int)si->item->key_length, si->item->key);
+
+		si_new->item = (ck_hash_table_item_t *)
+		                malloc(sizeof(ck_hash_table_item_t));
+
+		if (si_new->item == NULL) {
+			ERR_ALLOC_FAILED;
+			ck_deep_copy_cleanup(*to, (*to)->table_count);
+			return -2;
+		}
+
+		memcpy(si_new->item, si->item, sizeof(ck_hash_table_item_t));
+
+		*pos = si_new;
+		pos = &si_new->next;
+		si = si->next;
+
+
+		dbg_ck("Old stash item: %p with item %p, ", si,
+		       ((si == NULL) ? NULL : si->item));
+		if (si != NULL) {
+			dbg_ck("key: %.*s\n", (int)si->item->key_length, si->item->key);
+		} else {
+			dbg_ck("\n");
+		}
+		dbg_ck("New stash item: %p with item %p, ", si_new,
+		       si_new->item);
+		dbg_ck("key: %.*s\n", (int)si_new->item->key_length,
+		       si_new->item->key);
+	}
+
+	*pos = NULL;
+
+	// there should be no item being hashed right now
+	/*! \todo This operation should not be done while inserting / rehashing.
+	 */
+	assert(from->hashed == NULL);
+	(*to)->hashed = NULL;
+
+	// initialize rehash/insert mutex
+	pthread_mutex_init(&(*to)->mtx_table, NULL);
+
+	// copy the generation
+	(*to)->generation = from->generation;
+
+	// copy the hash functions
+	memcpy(&(*to)->hash_system, &from->hash_system, sizeof(us_system_t));
+
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int ck_apply(ck_hash_table_t *table,
              void (*function)(ck_hash_table_item_t *item, void *data), 
              void *data)
 {

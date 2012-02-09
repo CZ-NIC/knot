@@ -101,7 +101,7 @@ static int test_dname_create()
 	if (dname == NULL
 	    || knot_dname_name(dname) != NULL
 	    || knot_dname_size(dname) != 0
-	    || knot_dname_node(dname, 0) != NULL) {
+	    || knot_dname_node(dname) != NULL) {
 		diag("New domain name not initialized properly!");
 		return 0;
 	}
@@ -161,10 +161,10 @@ static int check_domain_name(const knot_dname_t *dname,
 	}
 
 	if (check_node) {
-		if (knot_dname_node(dname, 0) != NODE_ADDRESS) {
+		if (knot_dname_node(dname) != NODE_ADDRESS) {
 			diag("Node pointer in the created domain name is wrong:"
 			     "%p (should be %p)",
-			     knot_dname_node(dname, 0), NODE_ADDRESS);
+			     knot_dname_node(dname), NODE_ADDRESS);
 			++errors;
 		}
 	}
@@ -719,7 +719,7 @@ static int test_dname_node(knot_dname_t **dnames_fqdn,
 
 	for (int i = 0; i < TEST_DOMAINS_OK; i++) {
 		const knot_node_t *tmp_node;
-		if ((tmp_node = knot_dname_node(dnames_fqdn[i], 0)) !=
+		if ((tmp_node = knot_dname_node(dnames_fqdn[i])) !=
 		    NODE_ADDRESS) {
 			diag("Got bad node value from structure: "
 			     "%p, should be: %p",
@@ -730,7 +730,7 @@ static int test_dname_node(knot_dname_t **dnames_fqdn,
 
 	for (int i = 0; i < TEST_DOMAINS_NON_FQDN; i++) {
 		const knot_node_t *tmp_node;
-		if ((tmp_node = knot_dname_node(dnames_non_fqdn[i], 0)) !=
+		if ((tmp_node = knot_dname_node(dnames_non_fqdn[i])) !=
 		    NODE_ADDRESS) {
 			diag("Got bad node value from structure: "
 			     "%s, should be: %s",

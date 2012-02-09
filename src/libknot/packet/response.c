@@ -76,7 +76,7 @@ static const size_t KNOT_RESPONSE_MAX_PTR = 16383;
  */
 static int knot_response_realloc_compr(knot_compressed_dnames_t *table)
 {
-	int free_old = table->max != DEFAULT_DOMAINS_IN_RESPONSE;
+	int free_old = table->max != table->default_count;
 	size_t *old_offsets = table->offsets;
 	const knot_dname_t **old_dnames = table->dnames;
 
@@ -234,10 +234,10 @@ dbg_response_exec(
 		// If case-sensitive search is in place, we should not save the
 		// node's parent's positions.
 		
-		to_save = !compr_cs && (knot_dname_node(to_save, 1) != NULL
-		      && knot_node_parent(knot_dname_node(to_save, 1), 1)
+		to_save = !compr_cs && (knot_dname_node(to_save) != NULL
+		      && knot_node_parent(knot_dname_node(to_save))
 		          != NULL) ? knot_node_owner(knot_node_parent(
-		                        knot_dname_node(to_save, 1), 1))
+		                        knot_dname_node(to_save)))
 		                   : NULL;
 
 		dbg_response("i: %d\n", i);
@@ -392,31 +392,31 @@ dbg_response_exec(
 		}
 #else
 		// if case-sensitive comparation, we cannot just take the parent
-		if (compr_cs || knot_dname_node(to_find, 1) == NULL
-		    || knot_node_owner(knot_dname_node(to_find, 1)) != to_find
-		    || knot_node_parent(knot_dname_node(to_find, 1), 1)
+		if (compr_cs || knot_dname_node(to_find) == NULL
+		    || knot_node_owner(knot_dname_node(to_find)) != to_find
+		    || knot_node_parent(knot_dname_node(to_find))
 		       == NULL) {
 			dbg_response("compr_cs: %d\n", compr_cs);
 			dbg_response("knot_dname_node(to_find, 1) == %p"
-			                    "\n", knot_dname_node(to_find, 1));
+			                    "\n", knot_dname_node(to_find));
 			
-			if (knot_dname_node(to_find, 1) != NULL) {
+			if (knot_dname_node(to_find) != NULL) {
 				dbg_response("knot_node_owner(knot_dname_node("
 						    "to_find, 1)) = %p, to_find = %p\n",
-					   knot_node_owner(knot_dname_node(to_find, 1)),
+					   knot_node_owner(knot_dname_node(to_find)),
 					   to_find);
 				dbg_response("knot_node_parent(knot_dname_node("
 						    "to_find, 1), 1) = %p\n",
-				      knot_node_parent(knot_dname_node(to_find, 1), 1));
+				      knot_node_parent(knot_dname_node(to_find)));
 			}
 			break;
 		} else {
-			assert(knot_dname_node(to_find, 1) !=
-			     knot_node_parent(knot_dname_node(to_find, 1), 1));
+			assert(knot_dname_node(to_find) !=
+			     knot_node_parent(knot_dname_node(to_find)));
 			assert(to_find != knot_node_owner(
-			    knot_node_parent(knot_dname_node(to_find, 1), 1)));
+			    knot_node_parent(knot_dname_node(to_find))));
 			to_find = knot_node_owner(
-			     knot_node_parent(knot_dname_node(to_find, 1), 1));
+			     knot_node_parent(knot_dname_node(to_find)));
 			dbg_response("New to_find: %p\n", to_find);
 		}
 #endif
@@ -457,7 +457,7 @@ dbg_response_exec(
 	assert(compr->wire_pos >= 0);
 	
 	if (knot_response_store_dname_pos(compr->table, dname, not_matched,
-	                                    compr->wire_pos, offset, compr_cs) 
+	                                  compr->wire_pos, offset, compr_cs)
 	    != 0) {
 		dbg_response("Compression info could not be stored."
 		                      "\n");

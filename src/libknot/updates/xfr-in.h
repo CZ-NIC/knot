@@ -181,6 +181,9 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr/*const uint8_t *pkt, size_t siz
 int xfrin_apply_changesets_to_zone(knot_zone_t *zone, 
                                    knot_changesets_t *chsets);
 
+int xfrin_apply_changesets(knot_zone_t *zone,
+                           knot_changesets_t *chsets);
+
 #endif /* _KNOTXFR_IN_H_ */
 
 /*! @} */

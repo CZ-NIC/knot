@@ -317,7 +317,7 @@ dbg_ns_exec(
 				knot_rrset_rdata(cname_rrset));
 		dbg_ns("CNAME name from RDATA: %p\n", cname);
 		// change the node to the node of that name
-		*node = knot_dname_node(cname, 1);
+		*node = knot_dname_node(cname);
 		dbg_ns("This name's node: %p\n", *node);
 //		// it is not an old node and if yes, skip it
 //		if (knot_node_is_old(*node)) {
@@ -478,7 +478,7 @@ static void ns_put_additional_for_rrset(knot_packet_t *resp,
 		dname = knot_rdata_get_name(rdata,
 		                              knot_rrset_type(rrset));
 		assert(dname != NULL);
-		node = knot_dname_node(dname, 1);
+		node = knot_dname_node(dname);
 //		// check if the node is not old and if yes, take the new one
 //		if (knot_node_is_old(node)) {
 //			node = knot_node_new_node(node);
@@ -490,7 +490,7 @@ static void ns_put_additional_for_rrset(knot_packet_t *resp,
 			// the stored node should be the closest encloser
 			assert(knot_dname_is_subdomain(dname, node->owner));
 			// try the wildcard child, if any
-			node = knot_node_wildcard_child(node, 1);
+			node = knot_node_wildcard_child(node);
 //			// this should not be old node!!
 //			assert(!knot_node_is_old(node));
 		}
@@ -736,10 +736,10 @@ static int ns_put_covering_nsec3(const knot_zone_contents_t *zone,
 	const knot_node_t *prev, *node;
 	/*! \todo Check version. */
 	int match = knot_zone_contents_find_nsec3_for_name(zone, name,
-	                                                     &node, &prev, 1);
+	                                                     &node, &prev);
 	assert(match >= 0);
-	node = knot_node_current(node);
-	prev = knot_node_current(prev);
+//	node = knot_node_current(node);
+//	prev = knot_node_current(prev);
 
 	if (match == KNOT_ZONE_NAME_FOUND){
 		// run-time collision => SERVFAIL
@@ -816,10 +816,10 @@ dbg_ns_exec(
 	 */
 	const knot_node_t *nsec3_node = NULL;
 	const knot_dname_t *next_closer = NULL;
-	while ((nsec3_node = knot_node_nsec3_node((*closest_encloser), 1))
+	while ((nsec3_node = knot_node_nsec3_node((*closest_encloser)))
 	       == NULL) {
 		next_closer = knot_node_owner((*closest_encloser));
-		*closest_encloser = knot_node_parent(*closest_encloser, 1);
+		*closest_encloser = knot_node_parent(*closest_encloser);
 		if (*closest_encloser == NULL) {
 			// there are no NSEC3s to add
 			return KNOT_EOK;
@@ -962,7 +962,7 @@ static void ns_put_nsec_nsec3_nodata(const knot_node_t *node,
 		return;
 	}
 
-	knot_node_t *nsec3_node = knot_node_get_nsec3_node(node, 1);
+	knot_node_t *nsec3_node = knot_node_get_nsec3_node(node);
 	knot_rrset_t *rrset = NULL;
 	if ((rrset = knot_node_get_rrset(node, KNOT_RRTYPE_NSEC)) != NULL
 	    || (nsec3_node != NULL && (rrset =
@@ -1006,13 +1006,11 @@ static int ns_put_nsec_nxdomain(const knot_dname_t *qname,
 	if (previous == NULL) {
 		/*! \todo Check version. */
 		previous = knot_zone_contents_find_previous(zone, qname);
+		assert(previous != NULL);
 		
 		while (!knot_node_is_auth(previous)) {
-			previous = knot_node_previous(previous, 1);
+			previous = knot_node_previous(previous);
 		}
-		
-		previous = knot_node_current(previous);
-		assert(previous != NULL);
 	}
 	
 	char *name = knot_dname_to_str(previous->owner);
@@ -1052,7 +1050,7 @@ static int ns_put_nsec_nxdomain(const knot_dname_t *qname,
 		dbg_ns("Previous node: %s\n",
 		    knot_dname_to_str(knot_node_owner(prev_new)));
 		assert(prev_new != knot_zone_contents_apex(zone));
-		prev_new = knot_node_previous(prev_new, 1);
+		prev_new = knot_node_previous(prev_new);
 	}
 	assert(knot_dname_compare(knot_node_owner(prev_new),
 	                            wildcard) < 0);
@@ -1231,13 +1229,11 @@ static void ns_put_nsec_wildcard(const knot_zone_contents_t *zone,
 	// check if we have previous; if not, find one using the tree
 	if (previous == NULL) {		
 		previous = knot_zone_contents_find_previous(zone, qname);
+		assert(previous != NULL);
 		
 		while (!knot_node_is_auth(previous)) {
-			previous = knot_node_previous(previous, 1);
+			previous = knot_node_previous(previous);
 		}
-		
-		previous = knot_node_current(previous);
-		assert(previous != NULL);
 	}
 
 	knot_rrset_t *rrset =
@@ -1285,7 +1281,7 @@ static int ns_put_nsec_nsec3_wildcard_nodata(const knot_node_t *node,
 
 			const knot_node_t *nsec3_node;
 			if (ret == KNOT_EOK
-			    && (nsec3_node = knot_node_nsec3_node(node, 1))
+			    && (nsec3_node = knot_node_nsec3_node(node))
 			        != NULL) {
 				ns_put_nsec3_from_node(nsec3_node, resp);
 			}
@@ -1360,8 +1356,8 @@ static inline int ns_referral(const knot_node_t *node,
 	dbg_ns("Referral response.\n");
 
 	while (!knot_node_is_deleg_point(node)) {
-		assert(knot_node_parent(node, 1) != NULL);
-		node = knot_node_parent(node, 1);
+		assert(knot_node_parent(node) != NULL);
+		node = knot_node_parent(node);
 	}
 
 	knot_rrset_t *rrset = knot_node_get_rrset(node, KNOT_RRTYPE_NS);
@@ -1392,7 +1388,7 @@ static inline int ns_referral(const knot_node_t *node,
 			// if NSEC3 enabled, search for NSEC3
 			if (knot_zone_contents_nsec3_enabled(zone)) {
 				const knot_node_t *nsec3_node =
-					knot_node_nsec3_node(node, 1);
+					knot_node_nsec3_node(node);
 				dbg_ns("There is no DS, putting NSEC3s...\n");
 				if (nsec3_node != NULL) {
 					dbg_ns("Putting NSEC3s from the node.\n");
@@ -1411,7 +1407,7 @@ static inline int ns_referral(const knot_node_t *node,
 					/*! \todo Check return value? */
 					knot_response_add_rrset_authority(
 						resp, nsec, 1, 1, 0, 1);
-					if ((nsec = knot_rrset_rrsigs(nsec)) != NULL) {
+					if ((nsec = knot_rrset_get_rrsigs(nsec)) != NULL) {
 						knot_response_add_rrset_authority(
 						        resp, nsec, 1, 1, 0, 1);
 					}
@@ -1470,7 +1466,7 @@ static int ns_answer_from_node(const knot_node_t *node,
 			//assert(knot_node_rrset_count(closest_encloser) > 0);
 			dbg_ns("Adding NSEC/NSEC3 for NXDOMAIN.\n");
 			ret = ns_put_nsec_nsec3_nxdomain(zone,
-				knot_node_previous(node, 1), closest_encloser,
+				knot_node_previous(node), closest_encloser,
 				qname, resp);
 		} else {
 			dbg_ns("Adding NSEC/NSEC3 for NODATA.\n");
@@ -1746,7 +1742,7 @@ have_node:
 		}
 		// else check for a wildcard child
 		const knot_node_t *wildcard_node =
-			knot_node_wildcard_child(closest_encloser, 1);
+			knot_node_wildcard_child(closest_encloser);
 
 		if (wildcard_node == NULL) {
 			dbg_ns("No wildcard node. (cname: %d)\n",
@@ -2648,8 +2644,7 @@ knot_nameserver_t *knot_ns_create()
 
 /*----------------------------------------------------------------------------*/
 
-void knot_ns_set_nsid(knot_nameserver_t *nameserver, const char *nsid,
-                      size_t nsid_length)
+void knot_ns_set_nsid(knot_nameserver_t *nameserver, const char *nsid, size_t len)
 {
 	if (nameserver == NULL) {
 		dbg_ns("NS: set_nsid: nameserver=NULL.\n");
@@ -2662,7 +2657,7 @@ void knot_ns_set_nsid(knot_nameserver_t *nameserver, const char *nsid,
 	}
 	
 	int ret = knot_edns_add_option(nameserver->opt_rr, EDNS_OPTION_NSID,
-	                               nsid_length, (const uint8_t *)nsid);
+	                               len, (const uint8_t *)nsid);
 	if (ret != KNOT_EOK) {
 		dbg_ns("NS: set_nsid: could not add EDNS option.\n");
 		return;
@@ -3265,24 +3260,41 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		knot_zone_contents_t *zone = constr_zone->contents;
 		assert(zone != NULL);
 
-		dbg_ns("ns_process_axfrin: adjusting zone.\n");
-		knot_zone_contents_adjust(zone, 0);
-
 		/* Create and fill hash table */
 		dbg_ns("ns_process_axfrin: filling hash table.\n");
 		int rc = knot_zone_contents_create_and_fill_hash_table(zone);
 		if (rc != KNOT_EOK) {
 			return KNOT_ERROR;	// TODO: change error code
 		}
+
+		dbg_ns("ns_process_axfrin: adjusting zone.\n");
+		rc = knot_zone_contents_adjust(zone);
+		if (rc != KNOT_EOK) {
+			return rc;
+		}
+
+		dbg_ns("ns_process_axfrin: checking loops.\n");
+		rc = knot_zone_contents_check_loops(zone);
+		if (rc != KNOT_EOK) {
+			return rc;
+		}
 		
 		// save the zone contents to the xfr->data
 		xfr->data = zone;
+
+		assert(zone->nsec3_nodes != NULL);
 		
 		// free the structure used for processing XFR
 		assert(constr_zone->rrsigs == NULL);
 		free(constr_zone);
 
 		//knot_zone_contents_dump(zone, 0);
+
+		// check zone integrity
+#ifdef KNOT_XFRIN_DEBUG
+		int errs = knot_zone_contents_integrity_check(zone);
+		dbg_ns("Zone integrity check: %d errors.\n", errs);
+#endif
 	}
 	
 	/*!

@@ -81,67 +81,67 @@ static inline void knot_node_flags_set_nonauth(uint8_t *flags)
 	*flags |= KNOT_NODE_FLAGS_NONAUTH;
 }
 
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Returns the old node flag
- *
- * \param flags Flags to retrieve the flag from.
- *
- * \return A byte with only the old node flag set if it was set in \a flags.
- */
-static inline uint8_t knot_node_flags_get_old(uint8_t flags)
-{
-	return flags & KNOT_NODE_FLAGS_OLD;
-}
+///*----------------------------------------------------------------------------*/
+///*!
+// * \brief Returns the old node flag
+// *
+// * \param flags Flags to retrieve the flag from.
+// *
+// * \return A byte with only the old node flag set if it was set in \a flags.
+// */
+//static inline uint8_t knot_node_flags_get_old(uint8_t flags)
+//{
+//	return flags & KNOT_NODE_FLAGS_OLD;
+//}
 
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Sets the old node flag.
- *
- * \param flags Flags to set the flag in.
- */
-static inline void knot_node_flags_set_new(uint8_t *flags)
-{
-	*flags |= KNOT_NODE_FLAGS_NEW;
-}
+///*----------------------------------------------------------------------------*/
+///*!
+// * \brief Sets the old node flag.
+// *
+// * \param flags Flags to set the flag in.
+// */
+//static inline void knot_node_flags_set_new(uint8_t *flags)
+//{
+//	*flags |= KNOT_NODE_FLAGS_NEW;
+//}
 
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Returns the new node flag
- *
- * \param flags Flags to retrieve the flag from.
- *
- * \return A byte with only the new node flag set if it was set in \a flags.
- */
-static inline uint8_t knot_node_flags_get_new(uint8_t flags)
-{
-	return flags & KNOT_NODE_FLAGS_NEW;
-}
+///*----------------------------------------------------------------------------*/
+///*!
+// * \brief Returns the new node flag
+// *
+// * \param flags Flags to retrieve the flag from.
+// *
+// * \return A byte with only the new node flag set if it was set in \a flags.
+// */
+//static inline uint8_t knot_node_flags_get_new(uint8_t flags)
+//{
+//	return flags & KNOT_NODE_FLAGS_NEW;
+//}
 
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Sets the new node flag.
- *
- * \param flags Flags to set the flag in.
- */
-static inline void knot_node_flags_set_old(uint8_t *flags)
-{
-	*flags |= KNOT_NODE_FLAGS_OLD;
-}
+///*----------------------------------------------------------------------------*/
+///*!
+// * \brief Sets the new node flag.
+// *
+// * \param flags Flags to set the flag in.
+// */
+//static inline void knot_node_flags_set_old(uint8_t *flags)
+//{
+//	*flags |= KNOT_NODE_FLAGS_OLD;
+//}
 
-/*----------------------------------------------------------------------------*/
+///*----------------------------------------------------------------------------*/
 
-static inline void knot_node_flags_clear_new(uint8_t *flags)
-{
-	*flags &= ~KNOT_NODE_FLAGS_NEW;
-}
+//static inline void knot_node_flags_clear_new(uint8_t *flags)
+//{
+//	*flags &= ~KNOT_NODE_FLAGS_NEW;
+//}
 
-/*----------------------------------------------------------------------------*/
+///*----------------------------------------------------------------------------*/
 
-static inline void knot_node_flags_clear_old(uint8_t *flags)
-{
-	*flags &= ~KNOT_NODE_FLAGS_OLD;
-}
+//static inline void knot_node_flags_clear_old(uint8_t *flags)
+//{
+//	*flags &= ~KNOT_NODE_FLAGS_OLD;
+//}
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -167,30 +167,30 @@ static int compare_rrset_types(void *rr1, void *rr2)
 
 /*----------------------------------------------------------------------------*/
 
-static int knot_node_zone_gen_is_new(const knot_node_t *node)
-{
-	assert(node->zone != NULL);
-	knot_zone_contents_t *cont = rcu_dereference(node->zone->contents);
-	assert(cont != NULL);
-	return knot_zone_contents_gen_is_new(cont);
-}
+//static int knot_node_zone_gen_is_new(const knot_node_t *node)
+//{
+//	assert(node->zone != NULL);
+//	knot_zone_contents_t *cont = rcu_dereference(node->zone->contents);
+//	assert(cont != NULL);
+//	return knot_zone_contents_gen_is_new(cont);
+//}
 
-/*----------------------------------------------------------------------------*/
+///*----------------------------------------------------------------------------*/
 
-static int knot_node_zone_gen_is_old(const knot_node_t *node)
-{
-	assert(node->zone != NULL);
-	knot_zone_contents_t *cont = rcu_dereference(node->zone->contents);
-	assert(cont != NULL);
-	return knot_zone_contents_gen_is_old(cont);
-}
+//static int knot_node_zone_gen_is_old(const knot_node_t *node)
+//{
+//	assert(node->zone != NULL);
+//	knot_zone_contents_t *cont = rcu_dereference(node->zone->contents);
+//	assert(cont != NULL);
+//	return knot_zone_contents_gen_is_old(cont);
+//}
 
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
 knot_node_t *knot_node_new(knot_dname_t *owner, knot_node_t *parent,
-                               uint8_t flags)
+                           uint8_t flags)
 {
 	knot_node_t *ret = (knot_node_t *)calloc(1, sizeof(knot_node_t));
 	if (ret == NULL) {
@@ -289,13 +289,20 @@ short knot_node_rrset_count(const knot_node_t *node)
 struct knot_node_save_rrset_arg {
 	knot_rrset_t **array;
 	size_t count;
+	size_t max_count;
 };
 
 static void save_rrset_to_array(void *node, void *data)
 {
-	knot_rrset_t *rrset = (knot_rrset_t *)node;
 	struct knot_node_save_rrset_arg *args =
 		(struct knot_node_save_rrset_arg *)data;
+	knot_rrset_t *rrset = (knot_rrset_t *)node;
+
+	if (args->count > args->max_count) {
+		++args->count;
+		return;
+	}
+
 	args->array[args->count++] = rrset;
 }
 
@@ -311,9 +318,9 @@ knot_rrset_t **knot_node_get_rrsets(const knot_node_t *node)
 	struct knot_node_save_rrset_arg args;
 	args.array = rrsets;
 	args.count = 0;
+	args.max_count = node->rrset_count;
 
-	gen_tree_apply_inorder(node->rrset_tree, save_rrset_to_array,
-	                       &args);
+	gen_tree_apply_inorder(node->rrset_tree, save_rrset_to_array, &args);
 
 	assert(args.count == node->rrset_count);
 
@@ -329,41 +336,54 @@ const knot_rrset_t **knot_node_rrsets(const knot_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
-const knot_node_t *knot_node_parent(const knot_node_t *node, 
-                                        int check_version)
+static void count_rrsets(void *node, void *data)
 {
-//	assert(!check_version
-//	       || (node->zone != NULL && node->zone->contents != NULL));
-	
-	knot_node_t *parent = node->parent;
-	
-	if (check_version && node->zone != NULL) {
-		int new_gen = knot_node_zone_gen_is_new(node);
-//		short ver = knot_node_zone_generation(node);
-	
-		/*! \todo Remove, this will not be true during the reference
-		 *        fixing.
-		 */
-//		assert(new_gen || parent == NULL
-//		       || !knot_node_is_new(parent));
+	assert(node != NULL);
+	assert(data != NULL);
 
-		if (new_gen && parent != NULL) {
-			// we want the new node
-			assert(node->parent->new_node != NULL);
-			parent = parent->new_node;
-		}
+	int *count = (int *)data;
+	++(*count);
+}
+
+/*----------------------------------------------------------------------------*/
+
+const int knot_node_count_rrsets(const knot_node_t *node)
+{
+	int count = 0;
+	gen_tree_apply_inorder(node->rrset_tree, count_rrsets, (void *)&count);
+
+	return count;
+}
+
+/*----------------------------------------------------------------------------*/
+
+const knot_node_t *knot_node_parent(const knot_node_t *node)
+{
+	return knot_node_get_parent(node);
+}
+
+/*----------------------------------------------------------------------------*/
+
+knot_node_t *knot_node_get_parent(const knot_node_t *node)
+{
+	if (node == NULL) {
+		return NULL;
 	}
-	
-	return parent;
+
+	return node->parent;
 }
 
 /*----------------------------------------------------------------------------*/
 
 void knot_node_set_parent(knot_node_t *node, knot_node_t *parent)
 {
+	if (node->parent == parent) {
+		return;
+	}
+
 	// decrease number of children of previous parent
 	if (node->parent != NULL) {
-		--parent->children;
+		--node->parent->children;
 	}
 	// set the parent
 	node->parent = parent;
@@ -383,45 +403,27 @@ unsigned int knot_node_children(const knot_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
-const knot_node_t *knot_node_previous(const knot_node_t *node, 
-                                          int check_version)
+const knot_node_t *knot_node_previous(const knot_node_t *node)
 {
-	return knot_node_get_previous(node, check_version);
+	return knot_node_get_previous(node);
 }
 
 /*----------------------------------------------------------------------------*/
 
-knot_node_t *knot_node_get_previous(const knot_node_t *node, 
-                                        int check_version)
+knot_node_t *knot_node_get_previous(const knot_node_t *node)
 {
-	assert(!check_version
-	       || (node->zone != NULL && node->zone->contents != NULL));
-	
-	knot_node_t *prev = node->prev;
-	
-	if (check_version && prev != NULL) {
-		int new_gen = knot_node_zone_gen_is_new(node);
-		int old_gen = knot_node_zone_gen_is_old(node);
-//		short ver = knot_node_zone_generation(node);
-		
-		if (old_gen) {  // we want old node
-			while (knot_node_is_new(prev)) {
-				prev = prev->prev;
-			}
-			assert(!knot_node_is_new(prev));
-		} else if (new_gen) {  // we want new node
-			while (knot_node_is_old(prev)) {
-				if (prev->new_node) {
-					prev = prev->new_node;
-				} else {
-					prev = prev;
-				}
-			}
-			assert(knot_node_is_new(prev));
-		}
+	if (node == NULL) {
+		return NULL;
 	}
 	
-	return prev;
+	return node->prev;
+}
+
+/*----------------------------------------------------------------------------*/
+
+const knot_node_t *knot_node_next(const knot_node_t *node)
+{
+	return node->next;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -429,48 +431,24 @@ knot_node_t *knot_node_get_previous(const knot_node_t *node,
 void knot_node_set_previous(knot_node_t *node, knot_node_t *prev)
 {
 	node->prev = prev;
-	if (prev != NULL) {
-		// set the prev pointer of the next node to the given node
-		if (prev->next != NULL) {
-			assert(prev->next->prev == prev);
-			prev->next->prev = node;
-		}
-		node->next = prev->next;
-		prev->next = node;
-	}
 }
 
 /*----------------------------------------------------------------------------*/
 
-knot_node_t *knot_node_get_nsec3_node(const knot_node_t *node,
-                                      int check_version)
+knot_node_t *knot_node_get_nsec3_node(const knot_node_t *node)
 {
-	knot_node_t *nsec3_node = node->nsec3_node;
-	if (nsec3_node == NULL) {
+	if (node == NULL) {
 		return NULL;
 	}
 	
-	if (check_version) {
-		int new_gen = knot_node_zone_gen_is_new(node);
-		int old_gen = knot_node_zone_gen_is_old(node);
-//		short ver = knot_node_zone_generation(node);
-		assert(new_gen || !knot_node_is_new(nsec3_node));
-		if (old_gen && knot_node_is_new(nsec3_node)) {
-			return NULL;
-		} else if (new_gen && knot_node_is_old(nsec3_node)) {
-			nsec3_node = nsec3_node->new_node;
-		}
-	}
-	
-	return nsec3_node;
+	return node->nsec3_node;
 }
 
 /*----------------------------------------------------------------------------*/
 
-const knot_node_t *knot_node_nsec3_node(const knot_node_t *node,
-                                        int check_version)
+const knot_node_t *knot_node_nsec3_node(const knot_node_t *node)
 {
-	return knot_node_get_nsec3_node(node, check_version);
+	return knot_node_get_nsec3_node(node);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -511,31 +489,19 @@ void knot_node_set_owner(knot_node_t *node, knot_dname_t* owner)
 
 /*----------------------------------------------------------------------------*/
 
-const knot_node_t *knot_node_wildcard_child(const knot_node_t *node, 
-                                                int check_version)
+knot_node_t *knot_node_get_wildcard_child(const knot_node_t *node)
 {
-	knot_node_t *w = node->wildcard_child;
-	
-	if (check_version && w != 0) {
-		int new_gen = knot_node_zone_gen_is_new(node);
-		int old_gen = knot_node_zone_gen_is_old(node);
-//		short ver = knot_node_zone_generation(node);
-
-		if (old_gen && knot_node_is_new(w)) {
-			return NULL;
-		} else if (new_gen && knot_node_is_old(w)) {
-			assert(w->new_node != NULL);
-			w = w->new_node;
-		}
+	if (node == NULL) {
+		return NULL;
 	}
-	
-	return w;
+
+	return node->wildcard_child;
 }
 
 /*----------------------------------------------------------------------------*/
 
 void knot_node_set_wildcard_child(knot_node_t *node,
-                                    knot_node_t *wildcard_child)
+                                  knot_node_t *wildcard_child)
 {
 	node->wildcard_child = wildcard_child;
 //	assert(wildcard_child->parent == node);
@@ -543,52 +509,59 @@ void knot_node_set_wildcard_child(knot_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
-const knot_node_t *knot_node_current(const knot_node_t *node)
+const knot_node_t *knot_node_wildcard_child(const knot_node_t *node)
 {
-	if (node == NULL || node->zone == NULL
-	    || knot_zone_contents(node->zone) == NULL) {
-		return node;
-	}
-
-	int new_gen = knot_node_zone_gen_is_new(node);
-	int old_gen = knot_node_zone_gen_is_old(node);
-//	short ver = knot_node_zone_generation(node);
-
-	if (old_gen && knot_node_is_new(node)) {
-		return NULL;
-	} else if (new_gen && knot_node_is_old(node)) {
-		assert(node->new_node != NULL);
-		return node->new_node;
-	}
-	return node;
+	return knot_node_get_wildcard_child(node);
 }
 
 /*----------------------------------------------------------------------------*/
 
-knot_node_t *knot_node_get_current(knot_node_t *node)
-{
-	if (node == NULL || node->zone == NULL
-	    || knot_zone_contents(node->zone) == NULL) {
-		return node;
-	}
+//const knot_node_t *knot_node_current(const knot_node_t *node)
+//{
+//	if (node == NULL || node->zone == NULL
+//	    || knot_zone_contents(node->zone) == NULL) {
+//		return node;
+//	}
 
-	int new_gen = knot_node_zone_gen_is_new(node);
-	int old_gen = knot_node_zone_gen_is_old(node);
-//	short ver = knot_node_zone_generation(node);
+//	int new_gen = knot_node_zone_gen_is_new(node);
+//	int old_gen = knot_node_zone_gen_is_old(node);
+////	short ver = knot_node_zone_generation(node);
 
-	if (old_gen && knot_node_is_new(node)) {
-		return NULL;
-	} else if (new_gen && knot_node_is_old(node)) {
-		assert(node->new_node != NULL);
-		return node->new_node;
-	}
+//	if (old_gen && knot_node_is_new(node)) {
+//		return NULL;
+//	} else if (new_gen && knot_node_is_old(node)) {
+//		assert(node->new_node != NULL);
+//		return node->new_node;
+//	}
+//	return node;
+//}
+
+/*----------------------------------------------------------------------------*/
+
+//knot_node_t *knot_node_get_current(knot_node_t *node)
+//{
+//	if (node == NULL || node->zone == NULL
+//	    || knot_zone_contents(node->zone) == NULL) {
+//		return node;
+//	}
+
+//	int new_gen = knot_node_zone_gen_is_new(node);
+//	int old_gen = knot_node_zone_gen_is_old(node);
+////	short ver = knot_node_zone_generation(node);
+
+//	if (old_gen && knot_node_is_new(node)) {
+//		return NULL;
+//	} else if (new_gen && knot_node_is_old(node)) {
+//		assert(node->new_node != NULL);
+//		return node->new_node;
+//	}
 	
-	assert((old_gen && knot_node_is_old(node))
-	       || (new_gen && knot_node_is_new(node))
-	       || (!old_gen && !new_gen));
+//	assert((old_gen && knot_node_is_old(node))
+//	       || (new_gen && knot_node_is_new(node))
+//	       || (!old_gen && !new_gen));
 	
-	return node;
-}
+//	return node;
+//}
 
 /*----------------------------------------------------------------------------*/
 
@@ -623,7 +596,10 @@ void knot_node_set_zone(knot_node_t *node, knot_zone_t *zone)
 
 void knot_node_update_ref(knot_node_t **ref)
 {
-	if (*ref != NULL && knot_node_is_old(*ref)) {
+//	if (*ref != NULL && knot_node_is_old(*ref)) {
+//		*ref = (*ref)->new_node;
+//	}
+	if (*ref != NULL && (*ref)->new_node != NULL) {
 		*ref = (*ref)->new_node;
 	}
 }
@@ -632,52 +608,18 @@ void knot_node_update_ref(knot_node_t **ref)
 
 void knot_node_update_refs(knot_node_t *node)
 {
-	/* CLEANUP */
-	/* OMG! */
 	// reference to previous node
 	knot_node_update_ref(&node->prev);
-//	if (node->prev && knot_node_is_old(node->prev)) {
-//		assert(node->prev->new_node != NULL);
-//		node->prev = node->prev->new_node;
-//	}
-
 	// reference to next node
 	knot_node_update_ref(&node->next);
-//	if (node->next && knot_node_is_old(node->next)) {
-//		assert(node->next->new_node != NULL);
-//		node->next = node->next->new_node;
-//	}
-
 	// reference to parent
-//	if (node->parent && knot_node_is_old(node->parent)) {
-//		assert(node->parent->new_node != NULL);
-//		// do not use the API function to set parent, so that children count
-//		// is not changed
-//		//knot_node_set_parent(node, node->parent->new_node);
-//		node->parent = node->parent->new_node;
-//	}
 	knot_node_update_ref(&node->parent);
-
 	// reference to wildcard child
 	knot_node_update_ref(&node->wildcard_child);
-//	if (node->wildcard_child && knot_node_is_old(node->wildcard_child)) {
-//		assert(node->wildcard_child->new_node != NULL);
-//		node->wildcard_child = node->wildcard_child->new_node;
-//	}
-
 	// reference to NSEC3 node
 	knot_node_update_ref(&node->nsec3_node);
-//	if (node->nsec3_node && knot_node_is_old(node->nsec3_node)) {
-//		assert(node->nsec3_node->new_node != NULL);
-//		node->nsec3_node = node->nsec3_node->new_node;
-//	}
-
 	// reference to NSEC3 referrer
 	knot_node_update_ref(&node->nsec3_referer);
-//	if (node->nsec3_referer && knot_node_is_old(node->nsec3_referer)) {
-//		assert(node->nsec3_referer->new_node != NULL);
-//		node->nsec3_referer = node->nsec3_referer->new_node;
-//	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -715,47 +657,47 @@ int knot_node_is_auth(const knot_node_t *node)
 	return (node->flags == 0);
 }
 
-/*----------------------------------------------------------------------------*/
+///*----------------------------------------------------------------------------*/
 
-int knot_node_is_new(const knot_node_t *node)
-{
-	return knot_node_flags_get_new(node->flags);
-}
+//int knot_node_is_new(const knot_node_t *node)
+//{
+//	return knot_node_flags_get_new(node->flags);
+//}
 
-/*----------------------------------------------------------------------------*/
+///*----------------------------------------------------------------------------*/
 
-int knot_node_is_old(const knot_node_t *node)
-{
-	return knot_node_flags_get_old(node->flags);
-}
+//int knot_node_is_old(const knot_node_t *node)
+//{
+//	return knot_node_flags_get_old(node->flags);
+//}
 
-/*----------------------------------------------------------------------------*/
+///*----------------------------------------------------------------------------*/
 
-void knot_node_set_new(knot_node_t *node)
-{
-	knot_node_flags_set_new(&node->flags);
-}
+//void knot_node_set_new(knot_node_t *node)
+//{
+//	knot_node_flags_set_new(&node->flags);
+//}
 
-/*----------------------------------------------------------------------------*/
+///*----------------------------------------------------------------------------*/
 
-void knot_node_set_old(knot_node_t *node)
-{
-	knot_node_flags_set_old(&node->flags);
-}
+//void knot_node_set_old(knot_node_t *node)
+//{
+//	knot_node_flags_set_old(&node->flags);
+//}
 
-/*----------------------------------------------------------------------------*/
+///*----------------------------------------------------------------------------*/
 
-void knot_node_clear_new(knot_node_t *node)
-{
-	knot_node_flags_clear_new(&node->flags);
-}
+//void knot_node_clear_new(knot_node_t *node)
+//{
+//	knot_node_flags_clear_new(&node->flags);
+//}
 
-/*----------------------------------------------------------------------------*/
+///*----------------------------------------------------------------------------*/
 
-void knot_node_clear_old(knot_node_t *node)
-{
-	knot_node_flags_clear_old(&node->flags);
-}
+//void knot_node_clear_old(knot_node_t *node)
+//{
+//	knot_node_flags_clear_old(&node->flags);
+//}
 
 /*----------------------------------------------------------------------------*/
 
@@ -790,23 +732,28 @@ void knot_node_free_rrsets(knot_node_t *node, int free_rdata_dnames)
 
 /*----------------------------------------------------------------------------*/
 
-void knot_node_free(knot_node_t **node, int free_owner, int fix_refs)
+void knot_node_free(knot_node_t **node, int fix_refs)
 {
 	if (node == NULL || *node == NULL) {
 		return;
 	}
 	
-	dbg_node("Freeing node.\n");
+	dbg_node("Freeing node: %p\n", *node);
+
 	if ((*node)->rrset_tree != NULL) {
 		dbg_node("Freeing RRSets.\n");
 		gen_tree_destroy(&(*node)->rrset_tree, NULL, NULL);
 	}
 
-	/*! \todo Always release owner? */
-	//if (free_owner) {
-		dbg_node("Releasing owner.\n");
-		knot_dname_release((*node)->owner);
-	//}
+	// set owner's node pointer to NULL, but only if the 'node' does
+	// not point to the owner's node
+	if (node != &(*node)->owner->node
+	    && knot_dname_node(knot_node_owner(*node)) == *node) {
+		knot_dname_set_node((*node)->owner, NULL);
+	}
+
+	dbg_node("Releasing owner.\n");
+	knot_dname_release((*node)->owner);
 
 	// check nodes referencing this node and fix the references
 
@@ -866,10 +813,13 @@ int knot_node_compare(knot_node_t *node1, knot_node_t *node2)
 int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to)
 {
 	// create new node
-	*to = knot_node_new(from->owner, from->parent, from->flags);
+	*to = knot_node_new(from->owner, NULL, from->flags);
 	if (*to == NULL) {
 		return KNOT_ENOMEM;
 	}
+
+	// set the parent by hand, so that the children count is not affected
+	(*to)->parent = from->parent;
 
 	/* Free old rrset_tree, as it will be replaced by shallow copy. */
 	gen_tree_destroy(&(*to)->rrset_tree, 0, 0);
@@ -880,11 +830,8 @@ int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to)
 	memcpy(*to, from, sizeof(knot_node_t));
 
 	// copy RRSets
-	// copy the skip list with the old references
-	/* CLEANUP */
 	(*to)->rrset_tree = gen_tree_shallow_copy(from->rrset_tree);
-//	assert((*to)->rrset_tree != from->rrset_tree);
-//	(*to)->rrsets = skip_copy_list(from->rrsets);
+
 	if ((*to)->rrset_tree == NULL) {
 		free(*to);
 		*to = NULL;

@@ -268,9 +268,8 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 				break;
 			case 3:
 				pos2 = *pos;
-				fprintf(stderr, "reading dname from pos: %zu\n", pos2);
-				dname =
-					knot_dname_parse_from_wire(
+				//fprintf(stderr, "reading dname from pos: %zu\n", pos2);
+				dname = knot_dname_parse_from_wire(
 					         wire, &pos2, total_size, NULL);
 				if (dname == NULL) {
 					return KNOT_ERROR;
@@ -279,7 +278,7 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 				//*pos += dname->size;
 				parsed += pos2 - *pos;
 				
-				fprintf(stderr, "read %zu bytes.\n", parsed);
+				//fprintf(stderr, "read %zu bytes.\n", parsed);
 				*pos = pos2;
 				dname = 0;
 				break;
@@ -310,7 +309,7 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 			parsed += item_size;
 		} else if (item_type == KNOT_RDATA_WF_BINARY
 		           || item_type == KNOT_RDATA_WF_IPSECGATEWAY) {
-			fprintf(stderr, "item_size was 0, creating empty rdata item.\n");
+//			fprintf(stderr, "item_size was 0, creating empty rdata item.\n");
 			// in this case we are at the end of the RDATA
 			// and should create an empty RDATA item
 			items[i].raw_data = (uint16_t *)malloc(2);
@@ -322,8 +321,8 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 		} else if (item_type != KNOT_RDATA_WF_COMPRESSED_DNAME
 		           && item_type != KNOT_RDATA_WF_UNCOMPRESSED_DNAME
 		           && item_type != KNOT_RDATA_WF_LITERAL_DNAME) {
-				fprintf(stderr, "RDATA item not set (i: %d), type: %u"
-					" RDATA item type: %d\n", i, desc->type ,item_type);
+//				fprintf(stderr, "RDATA item not set (i: %d), type: %u"
+//					" RDATA item type: %d\n", i, desc->type ,item_type);
 				assert(0);
 		}
 

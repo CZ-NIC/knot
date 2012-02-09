@@ -55,6 +55,8 @@ static void knot_rrset_disconnect_rdata(knot_rrset_t *rrset,
 			rrset->rdata = rdata->next;
 		}
 	}
+
+	rdata->next = NULL;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -128,7 +130,7 @@ knot_rdata_t *knot_rrset_remove_rdata(knot_rrset_t *rrset,
 	}
 
 	while (rr != NULL) {
-		/*! \todo maybe the dnames should be compared case-insensitive*/
+		/*! \todo dnames are compared case-insensitive. is it OK?*/
 		if (knot_rdata_compare(rr, rdata, desc->wireformat) == 0) {
 			knot_rrset_disconnect_rdata(rrset, prev, rr);
 			return rr;
@@ -654,6 +656,12 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
 		return;
 	}
 
+//	char *name = knot_dname_to_str(knot_rrset_owner(*rrset));
+//	char *type = knot_rrtype_to_string(knot_rrset_type(*rrset));
+//	fprintf(stderr, "Deleting RRSet (%p) %s, type %s, rdata: %p\n",
+//	        *rrset, name, type, (*rrset)->rdata);
+//	free(name);
+
 	if (free_rdata) {
 		knot_rdata_t *tmp_rdata;
 		knot_rdata_t *next_rdata;
@@ -668,6 +676,7 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
 			tmp_rdata = next_rdata;
 		}
 
+//		printf("test: %p\n", tmp_rdata->next->next);
 		assert(tmp_rdata == NULL
 		       || tmp_rdata->next == (*rrset)->rdata);
 

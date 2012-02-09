@@ -211,13 +211,8 @@ static int xfr_xfrin_cleanup(xfrworker_t *w, knot_ns_xfr_t *data)
 	switch(data->type) {
 	case XFR_TYPE_AIN:
 		if (data->data) {
-			xfrin_constructed_zone_t *constr_zone = 
-					(xfrin_constructed_zone_t *)data->data;
 			knot_zone_contents_deep_free(
-					&(constr_zone->contents), 0);
-			xfrin_free_orphan_rrsigs(&(constr_zone->rrsigs));
-			free(data->data);
-			data->data = 0;
+				(knot_zone_contents_t **)&data->data, 0);
 		}
 		break;
 	case XFR_TYPE_IIN:
@@ -294,12 +289,12 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 		} else {
 			/* Update zone. */
 			ret = zones_apply_changesets(data);
-			if (ret != KNOTD_EOK) {
+			if (ret != KNOT_EOK) {
 				log_zone_error("IXFR failed to "
 				               "apply changesets to "
 				               "zone '%s/IN' - %s\n",
 				               zorigin, 
-				               knotd_strerror(ret));
+				               knot_strerror(ret));
 			}
 		}
 		/* Free changesets, but not the data. */
@@ -601,7 +596,7 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 			
 			/* AXFR bootstrap timeout. */
 			rcu_read_lock();
-			if (ret != KNOTD_EOK && data->type == XFR_TYPE_AIN) {
+			if (ret != KNOTD_EOK && !knot_zone_contents(zone)) {
 				/* Schedule request (60 - 90s random delay). */
 				int tmr_s = AXFR_BOOTSTRAP_RETRY;
 				tmr_s += (30.0 * 1000) * (tls_rand());

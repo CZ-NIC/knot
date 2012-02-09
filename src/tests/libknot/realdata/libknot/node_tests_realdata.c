@@ -94,7 +94,7 @@ static int test_node_create(const list *node_list)
 			errors++;
 			diag("Failed to create node structure");
 		}
-		knot_node_free(&tmp, 0, 0);
+		knot_node_free(&tmp, 0);
 	}
 
 	return (errors == 0);
@@ -168,7 +168,7 @@ static int test_node_add_rrset(list *rrset_list)
 			diag("Values in found rrset are wrong");
 		}
 
-		knot_node_free(&tmp, 1, 0);
+		knot_node_free(&tmp, 0);
 	}
 
 	return (errors == 0);

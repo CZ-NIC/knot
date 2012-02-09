@@ -406,9 +406,9 @@ static void knot_node_dump_binary(knot_node_t *node, void *data,
 	fwrite_wrapper(&owner_id, sizeof(owner_id), 1, f, stream, stream_size,
 	               crc);
 
-	if (knot_node_parent(node, 0) != NULL) {
+	if (knot_node_parent(node) != NULL) {
 		uint32_t parent_id = knot_dname_id(
-				knot_node_owner(knot_node_parent(node, 0)));
+				knot_node_owner(knot_node_parent(node)));
 		fwrite_wrapper(&parent_id, sizeof(parent_id), 1, f,
 		               stream, stream_size, crc);
 	} else {
@@ -422,13 +422,13 @@ static void knot_node_dump_binary(knot_node_t *node, void *data,
 
 	dbg_zdump("Written flags: %u\n", node->flags);
 
-	if (knot_node_nsec3_node(node, 0) != NULL) {
+	if (knot_node_nsec3_node(node) != NULL) {
 		uint32_t nsec3_id =
-			knot_node_owner(knot_node_nsec3_node(node, 0))->id;
+			knot_node_owner(knot_node_nsec3_node(node))->id;
 		fwrite_wrapper(&nsec3_id, sizeof(nsec3_id), 1, f,
 		               stream, stream_size, crc);
 		dbg_zdump("Written nsec3 node id: %u\n",
-			 knot_node_owner(knot_node_nsec3_node(node, 0))->id);
+			 knot_node_owner(knot_node_nsec3_node(node))->id);
 	} else {
 		uint32_t nsec3_id = 0;
 		fwrite_wrapper(&nsec3_id, sizeof(nsec3_id), 1, f,

@@ -795,7 +795,9 @@ static int zones_load_zone(knot_zonedb_t *zonedb, const char *zone_name,
 		knot_dname_free(&dname_req);
 
 		/* CLEANUP */
-		//knot_zone_contents_dump(zone->contents, 1);
+//		knot_zone_contents_dump(zone->contents, 1);
+//		int errs = knot_zone_contents_integrity_check(zone->contents);
+//		fprintf(stderr, "INTEGRITY CHECK OF ZONE. ERRORS: %d\n", errs);
 
 		if (zone) {
 			/* save the timestamp from the zone db file */
@@ -1156,7 +1158,7 @@ static int zones_journal_apply(knot_zone_t *zone)
 			log_server_info("Applying '%zu' changesets from journal "
 			                "to zone '%s'.\n",
 			                chsets->count, zd->conf->name);
-			int apply_ret = xfrin_apply_changesets_to_zone(zone, chsets);
+			int apply_ret = xfrin_apply_changesets(zone, chsets);
 			if (apply_ret != KNOT_EOK) {
 				log_server_error("Failed to apply changesets to "
 				                 "'%s' - %s\n",
@@ -2656,11 +2658,11 @@ int zones_xfr_load_changesets(knot_ns_xfr_t *xfr, uint32_t serial_from,
 int zones_apply_changesets(knot_ns_xfr_t *xfr) 
 {
 	if (xfr == NULL || xfr->zone == NULL || xfr->data == NULL) {
-		return KNOTD_EINVAL;
+		return KNOT_EBADARG;
 	}
 	
-	return xfrin_apply_changesets_to_zone(xfr->zone, 
-	                                      (knot_changesets_t *)xfr->data);
+	return xfrin_apply_changesets(xfr->zone,
+	                              (knot_changesets_t *)xfr->data);
 }
 
 /*----------------------------------------------------------------------------*/
