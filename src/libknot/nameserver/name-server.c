@@ -476,7 +476,7 @@ static void ns_put_additional_for_rrset(knot_packet_t *resp,
 		dbg_ns("Getting name from RDATA, type %s..\n",
 			 knot_rrtype_to_string(knot_rrset_type(rrset)));
 		dname = knot_rdata_get_name(rdata,
-		                              knot_rrset_type(rrset));
+		                            knot_rrset_type(rrset));
 		assert(dname != NULL);
 		node = knot_dname_node(dname);
 //		// check if the node is not old and if yes, take the new one
@@ -485,6 +485,8 @@ static void ns_put_additional_for_rrset(knot_packet_t *resp,
 //		}
 		
 		dbg_ns_detail("Node saved in RDATA dname: %p\n", node);
+		dbg_ns_detail("Owner of the node: %p, dname: %p\n",
+		              node->owner, dname);
 
 		if (node != NULL && node->owner != dname) {
 			// the stored node should be the closest encloser
