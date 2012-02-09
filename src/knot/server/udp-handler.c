@@ -49,8 +49,12 @@
 #include "knot/server/notify.h"
 
 /* Check for sendmmsg syscall. */
-#ifdef SYS_sendmmsg
-#define ENABLE_SENDMMSG 1
+#ifdef HAVE_SENDMMSG
+  #define ENABLE_SENDMMSG 1
+#else
+  #ifdef SYS_sendmmsg
+    #define ENABLE_SENDMMSG 1
+  #endif
 #endif
 
 /*! \brief Pointer to selected UDP master implementation. */
@@ -296,11 +300,13 @@ int udp_sendto(int sock, sockaddr_t * addrs, struct mmsghdr *msgs, size_t count)
 
 #ifdef ENABLE_SENDMMSG
 /*! \brief sendmmsg() syscall interface. */
+#ifndef HAVE_SENDMMSG
 static inline int sendmmsg(int fd, struct mmsghdr *mmsg, unsigned vlen,
                            unsigned flags)
 {
 	return syscall(SYS_sendmmsg, fd, mmsg, vlen, flags, NULL);
 }
+#endif
 
 /*!
  * \brief Send multiple packets.
