@@ -1210,7 +1210,7 @@ int ck_shallow_copy(const ck_hash_table_t *from, ck_hash_table_t **to)
 
 /*----------------------------------------------------------------------------*/
 
-static int ck_copy_items(const ck_hash_table_item_t **from,
+static int ck_copy_items(ck_hash_table_item_t **from,
                          ck_hash_table_item_t **to, uint32_t count)
 {
 	assert(from != NULL);

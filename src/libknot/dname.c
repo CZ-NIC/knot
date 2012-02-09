@@ -408,8 +408,8 @@ knot_dname_t *knot_dname_new_from_str(const char *name, uint size,
 	dbg_dname("\n");
 
 	if (dname->size <= 0) {
-		fprintf(stderr, "Could not parse domain name "
-		        "from string: '%.*s'\n", size, name);
+		dbg_dname("Could not parse domain name "
+		          "from string: '%.*s'\n", size, name);
 	}
 	assert(dname->name != NULL);
 

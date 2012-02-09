@@ -217,7 +217,6 @@ int knot_dname_table_add_dname_check(knot_dname_table_t *table,
 			return 1; /*! \todo Error code? */
 
 		} else {
-
 			/* If the dname is already in the table, there is already
 			 * a reference to it.
 			 */

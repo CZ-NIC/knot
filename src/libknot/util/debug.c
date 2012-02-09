@@ -47,8 +47,8 @@ void knot_rdata_dump(knot_rdata_t *rdata, uint32_t type, char loaded_zone)
 		    desc->wireformat[i] == KNOT_RDATA_WF_LITERAL_DNAME ) {
 			assert(rdata->items[i].dname != NULL);
 			name = knot_dname_to_str(rdata->items[i].dname);
-			fprintf(stderr, "      DNAME: %d: %s\n",
-			       i, name);
+			fprintf(stderr, "      DNAME: %d: %s (%p)\n",
+			       i, name, rdata->items[i].dname);
 			free(name);
 			if (loaded_zone) {
 				if (rdata->items[i].dname->node) {

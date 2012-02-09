@@ -1557,7 +1557,7 @@ static int zones_check_tsig_query(const knot_zone_t *zone,
 	assert(rcode != NULL);
 	assert(tsig_key_zone != NULL);
 
-	knot_rrset_t *tsig = NULL;
+	const knot_rrset_t *tsig = NULL;
 
 	if (knot_packet_additional_rrset_count(query) > 0) {
 		/*! \todo warning */
