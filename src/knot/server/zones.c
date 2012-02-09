@@ -1861,6 +1861,12 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 	if (rcode != KNOT_RCODE_NOERROR) {
 		dbg_zones_verb("Failed preparing response structure: %s.\n",
 		               knot_strerror(rcode));
+		if (resp == NULL) {
+			knot_ns_error_response(nameserver, knot_packet_id(query),
+					      rcode, resp_wire, rsize);
+			rcu_read_unlock();
+			return KNOT_EOK;
+		}
 		knot_ns_error_response_full(nameserver, resp, rcode, resp_wire,
 		                            rsize);
 //		knot_ns_error_response(nameserver, knot_packet_id(query),
