@@ -491,6 +491,10 @@ knot_dname_t *knot_dname_parse_from_wire(const uint8_t *wire,
 	int pointer_used = 0;
 
 	while (p < size && wire[p] != 0) {
+		/* Check maximum number of labels (may overflow). */
+		if (l == KNOT_MAX_DNAME_LABELS - 1) {
+			return NULL;
+		}
 		labels[l] = i;
 		dbg_dname("Next label (%d.) position: %zu\n", l, i);
 
@@ -508,7 +512,15 @@ knot_dname_t *knot_dname_parse_from_wire(const uint8_t *wire,
 		} else {
 			// label; first byte is label length
 			uint8_t length = *(wire + p);
-//			printf("Label, length: %u.\n", length);
+			/* Check label length (maximum 63 bytes allowed). */
+			if (length > 63) {
+				return NULL;
+			}
+			/* Check if there's enough space. */
+			if (i + length + 1 > KNOT_MAX_DNAME_LENGTH) {
+				return NULL;
+			}
+			//printf("Label %d (max %d), length: %u.\n", l, KNOT_MAX_DNAME_LABELS, length);
 			memcpy(name + i, wire + p, length + 1);
 			p += length + 1;
 			i += length + 1;
