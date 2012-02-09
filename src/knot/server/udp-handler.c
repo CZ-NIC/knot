@@ -93,11 +93,10 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 	int res = knot_ns_parse_packet(qbuf, qbuflen, packet, &qtype);
 	if (unlikely(res != KNOTD_EOK)) {
 		dbg_net("udp: failed to parse packet on fd=%d\n", fd);
-		/* Send error response on dnslib RCODE. */
-		if (res > 0) {
+		if (res > 0) { /* Returned RCODE */
 			uint16_t pkt_id = knot_wire_get_id(qbuf);
 			knot_ns_error_response(ns, pkt_id, res,
-					  qbuf, resp_len);
+					       qbuf, resp_len);
 		}
 
 		knot_packet_free(&packet);

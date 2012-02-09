@@ -87,6 +87,27 @@ static int xfr_send_cb(int session, sockaddr_t *addr, uint8_t *msg, size_t msgle
 	return ret;
 }
 
+/*! \brief Send reply. */
+static int tcp_reply(int fd, uint8_t *qbuf, size_t resp_len)
+{
+	dbg_net("tcp: got answer of size %zd.\n",
+		resp_len);
+
+	int res = 0;
+	if (resp_len > 0) {
+		res = tcp_send(fd, qbuf, resp_len);
+	}
+
+	/* Check result. */
+	if (res < 0 || (size_t)res != resp_len) {
+		dbg_net("tcp: %s: failed: %d - %d.\n",
+			  "socket_send()",
+			  res, errno);
+	}
+	
+	return res;
+}
+
 /*! \brief Sweep TCP connection. */
 static void tcp_sweep(fdset_t *set, int fd) {
 	char r_addr[SOCKADDR_STRLEN] = { '\0' };
@@ -172,21 +193,19 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 	if (packet == NULL) {
 		uint16_t pkt_id = knot_wire_get_id(qbuf);
 		knot_ns_error_response(ns, pkt_id, KNOT_RCODE_SERVFAIL,
-				  qbuf, &resp_len);
+				       qbuf, &resp_len);
+		tcp_reply(fd, qbuf, resp_len);
 		return KNOTD_EOK;
 	}
 
 	int res = knot_ns_parse_packet(qbuf, n, packet, &qtype);
-	if (unlikely(res != KNOTD_EOK)) {
-
-		/* Send error response on dnslib RCODE. */
-		if (res > 0) {
+	if (unlikely(res != KNOT_EOK)) {
+		if (res > 0) { /* Returned RCODE */
 			uint16_t pkt_id = knot_wire_get_id(qbuf);
 			knot_ns_error_response(ns, pkt_id, res,
-					  qbuf, &resp_len);
+					       qbuf, &resp_len);
+			tcp_reply(fd, qbuf, resp_len);
 		}
-
-//		knot_response_free(&resp);
 		knot_packet_free(&packet);
 		return KNOTD_EOK;
 	}
@@ -261,19 +280,7 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 
 	/* Send answer. */
 	if (res == KNOTD_EOK) {
-		
-		dbg_net("tcp: got answer of size %zd.\n",
-		        resp_len);
-		
-		assert(resp_len > 0);
-		res = tcp_send(fd, qbuf, resp_len);
-
-		/* Check result. */
-		if (res != (int)resp_len) {
-			dbg_net("tcp: %s: failed: %d - %d.\n",
-				  "socket_send()",
-				  res, errno);
-		}
+		tcp_reply(fd, qbuf, resp_len);
 	} else {
 		dbg_net("tcp: failed to respond to query type=%d on fd=%d - %s\n",
 		        qtype, fd, knotd_strerror(res));;
