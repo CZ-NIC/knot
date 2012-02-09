@@ -308,3 +308,19 @@ void knot_dname_table_tree_inorder_apply(const knot_dname_table_t *table,
 	                   knot_dname_table_apply, &d);
 }
 
+static void knot_dump_node_of_table(knot_dname_t *dname, void *data)
+{
+	UNUSED(data);
+	char *name = knot_dname_to_str(dname);
+	fprintf(stderr, "%s (%p)\n", name, dname);
+	free(name);
+}
+
+void knot_dname_table_dump(const knot_dname_table_t *table)
+{
+	fprintf(stderr, "-------DNAME TABLE-------\n");
+	knot_dname_table_tree_inorder_apply(table, knot_dump_node_of_table,
+	                                    NULL);
+	fprintf(stderr, "-----END DNAME TABLE-----\n");
+}
+

@@ -1132,6 +1132,11 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	free(id_array);
 
 	dbg_zload("zone loaded, returning: %p\n", zone);
+	
+	knot_zone_contents_integrity_check(zone->contents);
+	
+	knot_dname_table_dump(zone->contents->dname_table);
+	
 	return zone;
 }
 
