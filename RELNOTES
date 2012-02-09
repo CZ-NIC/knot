@@ -7,7 +7,7 @@ New features:
 Bugfixes:
 	* Fixed build on BSD.
 	* Fixes in parsing and dumping of zone
-	  - types IPSECKEY, WKS, DLV, APL, SPF, NSAP
+	  - types IPSECKEY, WKS, DLV, APL, NSAP
 
 Other changes:
 	* Replaced pseudo-random number generator by one with MIT/BSD license.
