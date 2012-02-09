@@ -98,6 +98,11 @@ static const knot_zone_t *ns_get_zone_for_qname(knot_zonedb_t *zdb,
 		zone = knot_zonedb_find_zone_for_name(zdb, name);
 		/* Directly discard. */
 		knot_dname_free(&name);
+		/* If zone does not exist, search for its parent zone,
+		   this will later result to NODATA answer. */
+		if (zone == NULL) {
+			zone = knot_zonedb_find_zone_for_name(zdb, qname);
+		}
 	} else {
 		zone = knot_zonedb_find_zone_for_name(zdb, qname);
 	}
