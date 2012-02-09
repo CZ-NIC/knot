@@ -130,6 +130,7 @@ int main(int argc, char **argv)
 	sigemptyset(&emptyset.sa_mask);
 	emptyset.sa_flags = 0;
 	sigaction(SIGALRM, &emptyset, NULL); // Interrupt
+	sigaction(SIGPIPE, &emptyset, NULL); // Mask
 
 	// Setup event queue
 	evqueue_set(evqueue_new());
@@ -281,6 +282,7 @@ int main(int argc, char **argv)
 		sigaction(SIGINT,  &sa, NULL);
 		sigaction(SIGTERM, &sa, NULL);
 		sigaction(SIGHUP,  &sa, NULL);
+		sigaction(SIGPIPE, &sa, NULL);
 		sa.sa_flags = 0;
 		pthread_sigmask(SIG_BLOCK, &sa.sa_mask, NULL);
 
