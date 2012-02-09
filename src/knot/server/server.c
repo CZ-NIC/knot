@@ -153,12 +153,15 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	new_if->type[UDP_ID] = cfg_if->family;
 
 	/* Set socket options - voluntary. */
+	char ebuf[512];
 	if (setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &snd_opt, sizeof(snd_opt)) < 0) {
-	//	log_server_warning("Failed to configure socket "
-	//	                   "write buffers.\n");
+		strerror_r(errno, ebuf, sizeof(ebuf));	
+		log_server_warning("Failed to configure socket "
+		                   "write buffers: %s.\n", ebuf);
 	}
 	if (setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(opt)) < 0) {
-	//	log_server_warning("Failed to configure socket read buffers.\n");
+		strerror_r(errno, ebuf, sizeof(ebuf));	
+		log_server_warning("Failed to configure socket read buffers: %s.\n", ebuf);
 	}
 
 	/* Create TCP socket. */
