@@ -1367,6 +1367,11 @@ static inline int ns_referral(const knot_node_t *node,
 
 	// TODO: wildcards??
 	//ns_check_wildcard(name, resp, &rrset);
+	
+	knot_rrset_t *ds_rrset = knot_node_get_rrset(node, KNOT_RRTYPE_DS);
+	if (ds_rrset) {
+		knot_response_add_rrset_answer(resp, ds_rrset, 1, 0, 0, 1);
+	}
 
 	knot_response_add_rrset_authority(resp, rrset, 1, 0, 0, 1);
 	ns_add_rrsigs(rrset, resp, node->owner,
