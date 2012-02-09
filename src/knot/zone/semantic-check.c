@@ -3,6 +3,7 @@
 #include <arpa/inet.h>
 
 #include "knot/common.h"
+#include "knot/zone/zone-dump.h"
 #include "knot/other/error.h"
 #include "libknot/libknot.h"
 #include "common/base32hex.h"
@@ -865,7 +866,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 	
 	/* Local allocation, will be discarded. */
 	knot_dname_t *next_dname =
-		knot_dname_new_from_str((uint8_t *)next_dname_decoded,
+		knot_dname_new_from_str((char *)next_dname_decoded,
 					   real_size, NULL);
 	CHECK_ALLOC_LOG(next_dname, KNOT_ENOMEM);
 
@@ -1344,7 +1345,7 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 
 		/* Local allocation, will be discarded. */
 		knot_dname_t *next_dname =
-			knot_dname_new_from_str((uint8_t *)next_dname_decoded,
+			knot_dname_new_from_str((char *)next_dname_decoded,
 						real_size, NULL);
 		if (next_dname == NULL) {
 			fprintf(stderr, "Could not allocate dname!\n");
