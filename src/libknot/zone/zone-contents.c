@@ -188,10 +188,10 @@ static int knot_zone_contents_dnames_from_rrset_to_table(
 		return KNOT_EOK;
 	}
 	// for each RDATA in RRSet
-	char *name = knot_dname_to_str(rrset->owner);
-	char *type = knot_rrtype_to_string(rrset->type);
-	printf("Storing dnames from RDATA from RRSet %s, %s\n", name, type);
-	free(name);
+//	char *name = knot_dname_to_str(rrset->owner);
+//	char *type = knot_rrtype_to_string(rrset->type);
+//	printf("Storing dnames from RDATA from RRSet %s, %s\n", name, type);
+//	free(name);
 	knot_rdata_t *rdata = knot_rrset_get_rdata(rrset);
 	while (rdata != NULL) {
 		int rc = knot_zone_contents_dnames_from_rdata_to_table(table,
