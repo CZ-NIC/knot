@@ -204,7 +204,7 @@ knot_rrset_t **knot_node_get_rrsets(const knot_node_t *node);
  */
 const knot_rrset_t **knot_node_rrsets(const knot_node_t *node);
 
-const int knot_node_count_rrsets(const knot_node_t *node);
+int knot_node_count_rrsets(const knot_node_t *node);
 
 /*!
  * \brief Returns the parent of the node.

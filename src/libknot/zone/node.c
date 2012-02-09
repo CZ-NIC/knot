@@ -347,7 +347,7 @@ static void count_rrsets(void *node, void *data)
 
 /*----------------------------------------------------------------------------*/
 
-const int knot_node_count_rrsets(const knot_node_t *node)
+int knot_node_count_rrsets(const knot_node_t *node)
 {
 	int count = 0;
 	gen_tree_apply_inorder(node->rrset_tree, count_rrsets, (void *)&count);

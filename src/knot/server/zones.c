@@ -2044,6 +2044,9 @@ int zones_process_response(knot_nameserver_t *nameserver,
 	    response_wire == NULL) {
 		return KNOTD_EINVAL;
 	}
+	
+	/* Declare no response. */
+	*rsize = 0;
 
 	/* Handle SOA query response, cancel EXPIRE timer
 	 * and start AXFR transfer if needed.
@@ -2055,9 +2058,6 @@ int zones_process_response(knot_nameserver_t *nameserver,
 			/*! \todo Handle error response. */
 			return KNOTD_ERROR;
 		}
-
-		/* No response. */
-		*rsize = 0;
 
 		/* Find matching zone and ID. */
 		const knot_dname_t *zone_name = knot_packet_qname(packet);
@@ -2142,7 +2142,6 @@ int zones_process_response(knot_nameserver_t *nameserver,
 		return xfr_request(((server_t *)knot_ns_get_data(
 		                     nameserver))->xfr_h, &xfr_req);
 	}
-
 
 	return KNOTD_EOK;
 }
