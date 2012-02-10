@@ -150,14 +150,13 @@ static int knot_zone_contents_dnames_from_rdata_to_table(
 		       == KNOT_RDATA_WF_UNCOMPRESSED_DNAME
 		    || d->wireformat[j]
 		       == KNOT_RDATA_WF_LITERAL_DNAME) {
-			dbg_zone("Saving dname from "
-					  "rdata to dname table"
-					  ".\n");
+//			printf("Saving dname from rdata to dname table: "
+//			         "%p.\n", knot_rdata_get_item(rdata, j)->dname);
 			rc = knot_dname_table_add_dname_check(table,
-			&knot_rdata_get_item(rdata, j)->dname);
+					&knot_rdata_get_item(rdata, j)->dname);
+//			printf("Returned: %d\n", rc);
 			if (rc < 0) {
-				dbg_zone("Error: %s\n",
-				  knot_strerror(rc));
+				dbg_zone("Error: %s\n", knot_strerror(rc));
 				return rc;
 			}
 		}
@@ -189,6 +188,10 @@ static int knot_zone_contents_dnames_from_rrset_to_table(
 		return KNOT_EOK;
 	}
 	// for each RDATA in RRSet
+//	char *name = knot_dname_to_str(rrset->owner);
+//	char *type = knot_rrtype_to_string(rrset->type);
+//	printf("Storing dnames from RDATA from RRSet %s, %s\n", name, type);
+//	free(name);
 	knot_rdata_t *rdata = knot_rrset_get_rdata(rrset);
 	while (rdata != NULL) {
 		int rc = knot_zone_contents_dnames_from_rdata_to_table(table,
@@ -900,7 +903,7 @@ static void knot_zone_contents_check_loops_in_tree(knot_zone_tree_node_t *tnode,
 	assert(data != NULL);
 
 	loop_check_data_t *args = (loop_check_data_t *)data;
-	knot_node_t *node = tnode->node;
+	const knot_node_t *node = tnode->node;
 
 	assert(args->zone != NULL);
 
@@ -930,7 +933,7 @@ static void knot_zone_contents_check_loops_in_tree(knot_zone_tree_node_t *tnode,
 		const knot_dname_t *next_name = knot_rdata_cname_name(
 		                        knot_rrset_rdata(cname));
 		assert(next_name != NULL);
-		const knot_node_t *next_node = knot_dname_get_node(next_name);
+		const knot_node_t *next_node = knot_dname_node(next_name);
 		if (next_node == NULL) {
 			// try to find the name in the zone
 			const knot_node_t *ce = NULL;
@@ -960,7 +963,7 @@ static void knot_zone_contents_check_loops_in_tree(knot_zone_tree_node_t *tnode,
 				// try to find wildcard child
 				assert(knot_dname_is_subdomain(next_name,
 				                          knot_node_owner(ce)));
-				next_node = knot_node_get_wildcard_child(ce);
+				next_node = knot_node_wildcard_child(ce);
 			}
 
 			assert(next_node == NULL || knot_dname_compare(
@@ -1673,7 +1676,7 @@ int knot_zone_contents_remove_node(knot_zone_contents_t *contents,
 
 dbg_zone_exec_verb(
 	char *name = knot_dname_to_str(owner);
-	dbg_zone_verb(stderr, "Removing zone node: %s\n", name);
+	dbg_zone_verb("Removing zone node: %s\n", name);
 	free(name);
 );
 

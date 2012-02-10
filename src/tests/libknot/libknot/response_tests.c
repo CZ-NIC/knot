@@ -294,7 +294,7 @@ static int test_response_add_opt()
 }
 
 static int test_response_add_generic(int (*func)(knot_packet_t *,
-                                                 const knot_rrset_t *,
+                                                 knot_rrset_t *,
                                                  int, int, int, int))
 {
 	int errors = 0;

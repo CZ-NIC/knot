@@ -633,7 +633,7 @@ void knot_rdata_deep_free(knot_rdata_t **rdata, uint type,
 /*----------------------------------------------------------------------------*/
 
 knot_rdata_t *knot_rdata_deep_copy(const knot_rdata_t *rdata, 
-                                       uint16_t type)
+                                       uint16_t type, int copy_dnames)
 {
 	knot_rdata_t *copy = knot_rdata_new();
 	CHECK_ALLOC_LOG(copy, NULL);
@@ -657,8 +657,13 @@ knot_rdata_t *knot_rdata_deep_copy(const knot_rdata_t *rdata,
 		if (d->wireformat[i] == KNOT_RDATA_WF_COMPRESSED_DNAME
 		    || d->wireformat[i] == KNOT_RDATA_WF_UNCOMPRESSED_DNAME
 		    || d->wireformat[i] == KNOT_RDATA_WF_LITERAL_DNAME) {
-			copy->items[i].dname =
-				knot_dname_deep_copy(rdata->items[i].dname);
+			if (copy_dnames) {
+				copy->items[i].dname =
+				    knot_dname_deep_copy(rdata->items[i].dname);
+			} else {
+				copy->items[i].dname = rdata->items[i].dname;
+				knot_dname_retain(rdata->items[i].dname);
+			}
 		} else {
 			copy->items[i].raw_data = (uint16_t *)malloc(
 					rdata->items[i].raw_data[0] + 2);

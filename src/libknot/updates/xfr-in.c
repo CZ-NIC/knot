@@ -2026,11 +2026,10 @@ static int xfrin_apply_add_rrsig(xfrin_changes_t *changes,
 	
 dbg_xfrin_exec(
 	char *name = knot_dname_to_str(knot_rrset_owner(add));
-	char *typestr = knot_rrtype_to_string(type);
+	const char *typestr = knot_rrtype_to_string(type);
 	dbg_xfrin("Adding RRSIG: Owner %s, type covered %s.\n",
 	          name, typestr);
 	free(name);
-	free(typestr);
 );
 
 	if (!*rrset

@@ -599,7 +599,7 @@ int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to)
 	/*! \note Order of RDATA will be reversed. */
 	while (rdata != NULL) {
 		ret = knot_rrset_add_rdata(*to, knot_rdata_deep_copy(rdata,
-		                           knot_rrset_type(from)));
+		                           knot_rrset_type(from), 1));
 		if (ret != KNOT_EOK) {
 			knot_rrset_deep_free(to, 1, 1, 1);
 			return ret;

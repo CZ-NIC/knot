@@ -153,7 +153,7 @@ static knot_rrset_t *ns_synth_from_wildcard(
 		// but there is no way to distinguish it when deleting
 		// temporary RRSets
 		knot_rdata_t *rdata_copy = knot_rdata_deep_copy(rdata,
-		                                knot_rrset_type(synth_rrset));
+		                               knot_rrset_type(synth_rrset), 0);
 		if (rdata_copy == NULL) {
 			knot_rrset_deep_free(&synth_rrset, 1, 1, 0);
 			return NULL;
@@ -475,26 +475,22 @@ static void ns_put_additional_for_rrset(knot_packet_t *resp,
 	while (rdata != NULL) {
 		dbg_ns("Getting name from RDATA, type %s..\n",
 			 knot_rrtype_to_string(knot_rrset_type(rrset)));
-		dname = knot_rdata_get_name(rdata,
-		                            knot_rrset_type(rrset));
+		dname = knot_rdata_get_name(rdata, knot_rrset_type(rrset));
 		assert(dname != NULL);
 		node = knot_dname_node(dname);
-//		// check if the node is not old and if yes, take the new one
-//		if (knot_node_is_old(node)) {
-//			node = knot_node_new_node(node);
-//		}
 		
-		dbg_ns_detail("Node saved in RDATA dname: %p\n", node);
-		dbg_ns_detail("Owner of the node: %p, dname: %p\n",
-		              node->owner, dname);
+//		dbg_ns_detail("Node saved in RDATA dname: %p\n", node);
+//		char *name = knot_dname_to_str(dname);
+//		dbg_ns_detail("Owner of the node: %p, dname: %p (%s)\n",
+//		              node->owner, dname, name);
+//		free(name);
+//		knot_node_dump((knot_node_t *)node, (void *)1);
 
 		if (node != NULL && node->owner != dname) {
 			// the stored node should be the closest encloser
 			assert(knot_dname_is_subdomain(dname, node->owner));
 			// try the wildcard child, if any
 			node = knot_node_wildcard_child(node);
-//			// this should not be old node!!
-//			assert(!knot_node_is_old(node));
 		}
 
 		knot_rrset_t *rrset_add;

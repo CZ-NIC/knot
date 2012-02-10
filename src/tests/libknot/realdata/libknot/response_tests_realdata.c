@@ -105,7 +105,7 @@ static int test_response_init_from_query(list query_list)
 extern knot_rrset_t *rrset_from_test_rrset(test_rrset_t *test_rrset);
 
 static int test_response_add_generic(int (*func)(knot_packet_t *,
-                                                 const knot_rrset_t *,
+                                                 knot_rrset_t *,
                                                  int, int, int, int),
                                      list rrset_list)
 {

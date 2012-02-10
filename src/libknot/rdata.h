@@ -229,7 +229,7 @@ int knot_rdata_item_set_raw_data(knot_rdata_t *rdata, unsigned int pos,
  * \return Copy of \a rdata.
  */
 knot_rdata_t *knot_rdata_deep_copy(const knot_rdata_t *rdata, 
-                                       uint16_t type);
+                                       uint16_t type, int copy_dnames);
 
 /*!
  * \brief Destroys the RDATA structure without deleting RDATA items.

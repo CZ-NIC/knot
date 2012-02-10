@@ -162,6 +162,14 @@ void knot_dname_table_tree_inorder_apply(const knot_dname_table_t *table,
             void *data);
 
 
+/*!
+ * \brief Dumps dname table to stderr.
+ *
+ * \param table Table to be dumped.
+ */
+void knot_dname_table_dump(const knot_dname_table_t *table);
+
+
 #endif // _KNOT_DNAME_TABLE_H_
 
 /*! @} */
