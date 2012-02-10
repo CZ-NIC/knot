@@ -3280,7 +3280,7 @@ static void count_nsec3_nodes(knot_zone_tree_node_t *tree_node, void *data)
 	knot_node_t *apex = (knot_node_t *)data;
 	assert(apex != NULL);
 	
-	apex->children += knot_node_rrset_count(tree_node->node);
+	apex->children += 1;
 }
 
 /*----------------------------------------------------------------------------*/

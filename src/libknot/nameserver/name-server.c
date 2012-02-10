@@ -1349,7 +1349,8 @@ static int ns_put_nsec_nsec3_wildcard_answer(const knot_node_t *node,
 static inline int ns_referral(const knot_node_t *node,
                               const knot_zone_contents_t *zone,
                               const knot_dname_t *qname,
-                              knot_packet_t *resp)
+                              knot_packet_t *resp,
+                              uint16_t qtype)
 {
 	dbg_ns("Referral response.\n");
 
@@ -1358,17 +1359,49 @@ static inline int ns_referral(const knot_node_t *node,
 		node = knot_node_parent(node);
 	}
 
+	// Special handling of DS queries
+	if (qtype == KNOT_RRTYPE_DS) {
+		knot_rrset_t *ds_rrset = knot_node_get_rrset(node, 
+		                                             KNOT_RRTYPE_DS);
+		int ret = KNOT_EOK;
+		
+		if (ds_rrset) {
+			knot_response_add_rrset_answer(resp, ds_rrset, 1, 0, 
+			                               0, 1);
+			if (DNSSEC_ENABLED
+			    && knot_query_dnssec_requested(
+			                        knot_packet_query(resp))) {
+				ns_add_rrsigs(ds_rrset, resp, node->owner,
+				              knot_response_add_rrset_authority,
+				              1);
+			}
+		} else {
+			// normal NODATA response
+			/*! \todo Handle in some generic way. */
+			
+			dbg_ns("Adding NSEC/NSEC3 for NODATA.\n");
+			ns_put_nsec_nsec3_nodata(node, resp);
+			
+			// wildcard delegations not supported!
+//			if (knot_dname_is_wildcard(node->owner)) {
+//				dbg_ns("Putting NSEC/NSEC3 for wildcard"
+//				       " NODATA\n");
+//				ret = ns_put_nsec_nsec3_wildcard_nodata(node,
+//				       closest_encloser, previous, zone, qname,
+//				       resp);
+//			}
+			ns_put_authority_soa(zone, resp);
+		}
+		
+		return ret;
+	}
+	
 	knot_rrset_t *rrset = knot_node_get_rrset(node, KNOT_RRTYPE_NS);
 	assert(rrset != NULL);
 
 	// TODO: wildcards??
 	//ns_check_wildcard(name, resp, &rrset);
 	
-	knot_rrset_t *ds_rrset = knot_node_get_rrset(node, KNOT_RRTYPE_DS);
-	if (ds_rrset) {
-		knot_response_add_rrset_answer(resp, ds_rrset, 1, 0, 0, 1);
-	}
-
 	knot_response_add_rrset_authority(resp, rrset, 1, 0, 0, 1);
 	ns_add_rrsigs(rrset, resp, node->owner,
 	              knot_response_add_rrset_authority, 1);
@@ -1729,7 +1762,7 @@ have_node:
 
 	if (knot_node_is_deleg_point(closest_encloser)
 	    || knot_node_is_non_auth(closest_encloser)) {
-		ret = ns_referral(closest_encloser, zone, qname, resp);
+		ret = ns_referral(closest_encloser, zone, qname, resp, qtype);
 		goto finalize;
 	}
 
@@ -1773,7 +1806,7 @@ have_node:
 
 	// now we have the node for answering
 	if (knot_node_is_deleg_point(node) || knot_node_is_non_auth(node)) {
-		ret = ns_referral(node, zone, qname, resp);
+		ret = ns_referral(node, zone, qname, resp, qtype);
 		goto finalize;
 	}
 
