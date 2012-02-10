@@ -526,7 +526,7 @@ static int zones_notify_send(event_t *e)
 	notify_ev_t *ev = (notify_ev_t *)e->data;
 	knot_zone_t *zone = ev->zone;
 	if (!zone) {
-		log_zone_error("notify: NOTIFY invalid event received\n");
+		log_zone_error("NOTIFY invalid event received\n");
 		evsched_event_free(e->parent, e);
 		free(ev);
 		return KNOTD_EINVAL;
@@ -597,9 +597,9 @@ static int zones_notify_send(event_t *e)
 			sockaddr_tostr(&ev->addr, r_addr, sizeof(r_addr));
 			int r_port = sockaddr_portnum(&ev->addr);
 			ev->msgid = knot_wire_get_id(qbuf);
-			log_server_info("Issued NOTIFY query to %s:%d, expecting "
-					"response ID=%d\n",
-					r_addr, r_port,
+			log_server_info("Issued '%s' NOTIFY query to %s:%d, "
+					"expecting  response ID=%d\n",
+					zd->conf->name, r_addr, r_port,
 					ev->msgid);
 			
 		}
@@ -2805,7 +2805,8 @@ int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
 		add_tail(&zd->notify_pending, &ev->n);
 		pthread_mutex_unlock(&zd->lock);
 
-		log_server_info("Scheduled NOTIFY query after %d s to %s:%d\n",
+		log_server_info("Scheduled '%s' NOTIFY query "
+				"after %d s to %s:%d\n", zd->conf->name,
 			    tmr_s, cfg_if->address, cfg_if->port);
 	}
 
