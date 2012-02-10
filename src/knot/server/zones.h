@@ -81,6 +81,9 @@ typedef struct zonedata_t
 
 	/*! \brief List of pending NOTIFY events. */
 	list notify_pending;
+	
+	/*! \brief List of pending SOA queries. */
+	knot_ns_xfr_t* soa_pending;
 
 	/*! \brief Zone IXFR history. */
 	journal_t *ixfr_db;

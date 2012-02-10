@@ -23,14 +23,15 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
-#include "common/fdset.h"
 #include <config.h>
+#include "common/fdset.h"
 
 /* Workarounds for clock_gettime() not available on some platforms. */
 #ifdef HAVE_CLOCK_GETTIME
 #define time_now(x) clock_gettime(CLOCK_MONOTONIC, (x))
 typedef struct timespec timev_t;
 #elif HAVE_GETTIMEOFDAY
+#include <sys/time.h>
 #define time_now(x) gettimeofday((x), NULL)
 typedef struct timeval timev_t;
 #else

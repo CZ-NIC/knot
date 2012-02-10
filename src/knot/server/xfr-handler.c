@@ -1187,6 +1187,10 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 	conf_read_lock();
 
 	/* Handle request. */
+	zonedata_t *zd = NULL;
+	if(xfr.zone != NULL) {
+		zd = (zonedata_t *)knot_zone_data(xfr.zone);
+	}
 	knot_ns_xfr_t *task = 0;
 	evsched_t *sch = 0;
 	const char *req_type = "";
@@ -1226,6 +1230,9 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		sch = ((server_t *)knot_ns_get_data(w->ns))->sched;
 		task->data = evsched_schedule_cb(sch, xfr_udp_timeout,
 						 task, SOA_QRY_TIMEOUT);
+		if (zd && xfr.type == XFR_TYPE_SOA) {
+			zd->soa_pending = task;
+		}
 		ret = KNOTD_EOK;
 		break;
 	/* Socket close event. */

@@ -77,7 +77,7 @@ int fdset_kqueue_destroy(fdset_t * fdset)
 	return 0;
 }
 
-int fdset_kqueue_realloc(void **old, size_t oldsize, size_t nsize)
+int fdset_kqueue_realloc(struct kevent **old, size_t oldsize, size_t nsize)
 {
 	void *nmem = malloc(nsize);
 	if (!nmem) {
@@ -103,10 +103,10 @@ int fdset_kqueue_add(fdset_t *fdset, int fd, int events)
 
 	/* Realloc needed. */
 	if (fdset->nfds == fdset->reserved) {
-		const size_t chunk = OS_FDS_CHUNKSIZE;
-		const size_t nsize = (fdset->reserved + chunk) *
+		size_t chunk = OS_FDS_CHUNKSIZE;
+		size_t nsize = (fdset->reserved + chunk) *
 				     sizeof(struct kevent);
-		const size_t oldsize = fdset->nfds * sizeof(struct kevent);
+		size_t oldsize = fdset->nfds * sizeof(struct kevent);
 		
 		if (fdset_kqueue_realloc(&fdset->events, oldsize, nsize) < 0) {
 			return -1;
