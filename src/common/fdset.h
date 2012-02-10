@@ -21,8 +21,7 @@
  * \brief Wrapper for native I/O multiplexing.
  *
  * Selects best implementation according to config.
- * - select()
- * - poll() \todo
+ * - poll()
  * - epoll()
  * - kqueue()
  *

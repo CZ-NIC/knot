@@ -39,7 +39,7 @@
 
 /*! \brief Socket-related constants. */
 typedef enum {
-	SOCKET_MTU_SZ = 8192,  /*!< \todo Determine UDP MTU size. */
+	SOCKET_MTU_SZ = 65535,  /*!< Maximum MTU size. */
 } socket_const_t;
 
 /*!

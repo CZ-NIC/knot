@@ -55,8 +55,6 @@ int fdset_poll_destroy(fdset_t * fdset)
 		return -1;
 	}
 
-	/*! \todo No teardown required I guess. */
-
 	/* OK if NULL. */
 	free(fdset->fds);
 	free(fdset);
@@ -89,7 +87,7 @@ int fdset_poll_add(fdset_t *fdset, int fd, int events)
 	/* Append. */
 	int nid = fdset->nfds++;
 	fdset->fds[nid].fd = fd;
-	fdset->fds[nid].events = POLLIN; /*! \todo Map events to POLL events. */
+	fdset->fds[nid].events = POLLIN;
 	return 0;
 }
 
@@ -120,8 +118,7 @@ int fdset_poll_remove(fdset_t *fdset, int fd)
 	memmove(fdset->fds + pos, fdset->fds + (pos + 1), remaining);
 	--fdset->nfds;
 
-	/*! \todo Return memory if overallocated (nfds is far lower than reserved). */
-	/*! \todo Maybe >64 free chunks is excess? */
+	/*! \todo Return memory if unused (issue #1582). */
 	return 0;
 }
 
@@ -198,7 +195,7 @@ int fdset_poll_next(fdset_t *fdset, fdset_it_t *it)
 		struct pollfd* pfd = fdset->fds + it->pos;
 		if (pfd->events & pfd->revents) {
 			it->fd = pfd->fd;
-			it->events = pfd->revents; /*! \todo MAP events. */
+			it->events = pfd->revents;
 			++it->pos; /* Next will start after current. */
 			return 0;
 		}

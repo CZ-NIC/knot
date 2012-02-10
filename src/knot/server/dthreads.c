@@ -124,7 +124,7 @@ static void *thread_ep(void *data)
 	sigaddset(&ignset, SIGTERM);
 	sigaddset(&ignset, SIGHUP);
 	sigaddset(&ignset, SIGPIPE);
-	pthread_sigmask(SIG_BLOCK, &ignset, 0); /*! \todo Review under BSD. */
+	pthread_sigmask(SIG_BLOCK, &ignset, 0); /*! \todo Review under BSD (issue #1441). */
 
 	dbg_dt("dthreads: [%p] entered ep\n", thread);
 	
@@ -190,7 +190,6 @@ static void *thread_ep(void *data)
 
 			// Wait for notification from unit
 			dbg_dt("dthreads: [%p] going idle\n", thread);
-			/*! \todo Check return value. */
 			pthread_cond_wait(&unit->_notify, &unit->_notify_mx);
 			pthread_mutex_unlock(&unit->_notify_mx);
 			dbg_dt("dthreads: [%p] resumed from idle\n", thread);
@@ -975,7 +974,7 @@ int dt_optimal_size()
 }
 
 /*!
- * \todo Use memory barriers or asynchronous read-only access, locking
+ * \note Use memory barriers or asynchronous read-only access, locking
  *       poses a thread performance decrease by 1.31%.
  */
 

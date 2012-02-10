@@ -24,8 +24,6 @@
  * the worker threads ("buckets"). Each threads processes it's own
  * set of sockets, and eliminates mutual exclusion problem by doing so.
  *
- * \todo Improve documentation of TCP pool API and use proper error codes.
- *
  * \addtogroup server
  * @{
  */

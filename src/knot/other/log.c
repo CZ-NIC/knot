@@ -96,7 +96,6 @@ int log_init()
 	log_levels_set(LOGT_STDERR, LOG_ANY, emask);
 	log_levels_set(LOGT_STDOUT, LOG_ANY, imask);
 
-	/// \todo May change to LOG_DAEMON.
 	setlogmask(LOG_UPTO(LOG_DEBUG));
 	openlog(PACKAGE_NAME, LOG_PID, LOG_DAEMON);
 	return ret;

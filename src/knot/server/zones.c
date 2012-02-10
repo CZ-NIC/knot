@@ -46,7 +46,6 @@ static const size_t XFRIN_CHANGESET_BINARY_STEP = 100;
 
 /*!
  * \brief Wrapper for TCP send.
- * \todo Implement generic fd pool properly with callbacks.
  */
 #include "knot/server/tcp-handler.h"
 static int zones_send_cb(int fd, sockaddr_t *addr, uint8_t *msg, size_t msglen)
@@ -2248,6 +2247,7 @@ static int zones_dump_xfr_zone_text(knot_zone_contents_t *zone,
 	 *        until the zone_dump_text is called. Needs to be opened in
 	 *        this function for writing.
 	 *        Use open() for exclusive open and fcntl() for locking.
+	 *        (issue #1587)
 	 */
 
 	char *new_zonefile = zones_find_free_filename(zonefile);
@@ -2267,13 +2267,13 @@ static int zones_dump_xfr_zone_text(knot_zone_contents_t *zone,
 		return KNOTD_ERROR;
 	}
 
-	/*! \todo this would also need locking as well. */
+	/*! \todo this would also need locking as well (issue #1587) */
 	remove(zonefile); /* Don't care, as the rename will trigger the error. */
 	if (rename(new_zonefile, zonefile) != 0) {
 		log_zone_warning("Failed to replace old zone file '%s'' with a new"
 		                 " zone file '%s'.\n", zonefile, new_zonefile);
 		/*! \todo with proper locking, this shouldn't happen,
-		 *        revise it later on.
+		 *        revise it later on (issue #1587)
 		 */
 		zone_dump_text(zone, zonefile);
 		free(new_zonefile);
@@ -2297,6 +2297,7 @@ static int ns_dump_xfr_zone_binary(knot_zone_contents_t *zone,
 	 *        until the zone_dump_text is called. Needs to be opened in
 	 *        this function for writing.
 	 *        Use open() for exclusive open and fcntl() for locking.
+	 *        (issue #1587)
 	 */
 	char *new_zonedb = zones_find_free_filename(zonedb);
 
@@ -2307,7 +2308,7 @@ static int ns_dump_xfr_zone_binary(knot_zone_contents_t *zone,
 		return KNOTD_ERROR;	/*! \todo New error code? */
 	}
 
-	/*! \todo this would also need locking as well. */
+	/*! \todo this would also need locking as well (issue #1587) */
 	int rc = knot_zdump_dump_and_swap(zone, new_zonedb, zonedb, zonefile);
 	free(new_zonedb);
 
@@ -2534,8 +2535,6 @@ int zones_store_changesets(knot_ns_xfr_t *xfr)
 	knot_zone_t *zone = xfr->zone;
 	knot_changesets_t *src = (knot_changesets_t *)xfr->data;
 	
-	/*! \todo Convert to binary format. */
-	
 	int ret = zones_changesets_to_binary(src);
 	if (ret != KNOTD_EOK) {
 		return ret;
@@ -2722,7 +2721,7 @@ int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
 	}
 
 	/* Schedule IXFR database syncing. */
-	/*! \todo Sync timer should not be reset after each xfr. */
+	/*! \todo Sync timer should not be reset after each xfr (issue #1348) */
 	int sync_timeout = cfzone->dbsync_timeout * 1000; /* Convert to ms. */
 	if (zd->ixfr_dbsync) {
 		evsched_cancel(sch, zd->ixfr_dbsync);
