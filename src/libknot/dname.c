@@ -760,6 +760,7 @@ knot_dname_t *knot_dname_left_chop(const knot_dname_t *dname)
 	
 	// last label, the result should be root domain
 	if (dname->label_count == 1) {
+		dbg_dname_verb("Chopping last label.\n");
 		parent->label_count = 0;
 		
 		parent->name = (uint8_t *)malloc(1);
@@ -768,6 +769,8 @@ knot_dname_t *knot_dname_left_chop(const knot_dname_t *dname)
 			knot_dname_free(&parent);
 			return NULL;
 		}
+		
+		*parent->name = 0;
 		
 		parent->size = 1;
 		
