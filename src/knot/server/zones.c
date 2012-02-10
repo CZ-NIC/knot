@@ -417,15 +417,17 @@ static int zones_refresh_ev(event_t *e)
 	} else {
 		pthread_mutex_unlock(&zd->xfr_in.lock);
 	}
-
-	/* Create query. */
-	/*! \todo API for retrieval of name. */
+	
+	/* Invalidate pending SOA query. */
+	event_t *soa_pending = zd->soa_pending;
+	zd->soa_pending = NULL;
 	
 	/*! \todo [TSIG] CHANGE!!! only for compatibility now. */
 	knot_ns_xfr_t xfr_req;
 	memset(&xfr_req, 0, sizeof(knot_ns_xfr_t));
 	xfr_req.wire = qbuf;
-	
+
+	/* Create query. */
 	int ret = xfrin_create_soa_query(zone->name, &xfr_req, &buflen);
 	if (ret == KNOT_EOK) {
 
@@ -474,7 +476,7 @@ static int zones_refresh_ev(event_t *e)
 			memcpy(&req.addr, master, sizeof(sockaddr_t));
 			memcpy(&req.saddr, &zd->xfr_in.via, sizeof(sockaddr_t));
 			sockaddr_update(&req.addr);
-			xfr_request(zd->server->xfr_h, &req);
+			ret = xfr_request(zd->server->xfr_h, &req);
 		}
 	} else {
 		ret = KNOTD_ERROR;
@@ -503,7 +505,13 @@ static int zones_refresh_ev(event_t *e)
 
 	/* Unlock RCU. */
 	rcu_read_unlock();
-
+	
+	/* Close invalidated SOA query. */
+	evsched_event_finished(e->parent);
+	if (soa_pending != NULL) {
+		/* Execute */
+		evsched_schedule(e->parent, soa_pending, 0);
+	}
 	return ret;
 }
 

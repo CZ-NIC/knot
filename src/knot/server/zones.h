@@ -83,7 +83,7 @@ typedef struct zonedata_t
 	list notify_pending;
 	
 	/*! \brief List of pending SOA queries. */
-	knot_ns_xfr_t* soa_pending;
+	struct event_t* soa_pending;
 
 	/*! \brief Zone IXFR history. */
 	journal_t *ixfr_db;

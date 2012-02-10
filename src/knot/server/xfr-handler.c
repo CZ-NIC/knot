@@ -60,6 +60,14 @@ static int xfr_udp_timeout(event_t *e)
 	if (!data) {
 		return KNOTD_EINVAL;
 	}
+	
+	/* Remove reference to this event. */
+	if (data->zone != NULL) {
+		zonedata_t *zd = (zonedata_t *)knot_zone_data(data->zone);
+		if (zd != NULL && zd->soa_pending == e) {
+			zd->soa_pending = NULL;
+		}
+	}
 
 	sockaddr_update(&data->addr);
 	char r_addr[SOCKADDR_STRLEN];
@@ -1231,7 +1239,7 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		task->data = evsched_schedule_cb(sch, xfr_udp_timeout,
 						 task, SOA_QRY_TIMEOUT);
 		if (zd && xfr.type == XFR_TYPE_SOA) {
-			zd->soa_pending = task;
+			zd->soa_pending = (event_t*)task->data;
 		}
 		ret = KNOTD_EOK;
 		break;
