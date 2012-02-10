@@ -581,7 +581,9 @@ int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to)
 	*to = (knot_rrset_t *)calloc(1, sizeof(knot_rrset_t));
 	CHECK_ALLOC_LOG(*to, KNOT_ENOMEM);
 
-	(*to)->owner = knot_dname_deep_copy(from->owner);
+	//(*to)->owner = knot_dname_deep_copy(from->owner);
+	(*to)->owner = from->owner;
+	knot_dname_retain((*to)->owner);
 	(*to)->rclass = from->rclass;
 	(*to)->ttl = from->ttl;
 	(*to)->type = from->type;
