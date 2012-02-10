@@ -753,15 +753,32 @@ knot_dname_t *knot_dname_left_chop(const knot_dname_t *dname)
 		return NULL;
 	}
 	
-	if (dname->label_count <= 1) {
-		/* Nothing to chop. */
-		return NULL;
-	}
-	
 	knot_dname_t *parent = knot_dname_new();
 	if (parent == NULL) {
 		return NULL;
 	}
+	
+	// last label, the result should be root domain
+	if (dname->label_count == 1) {
+		parent->label_count = 0;
+		
+		parent->name = (uint8_t *)malloc(1);
+		if (parent->name == NULL) {
+			ERR_ALLOC_FAILED;
+			knot_dname_free(&parent);
+			return NULL;
+		}
+		
+		parent->size = 1;
+		
+		return parent;
+	}
+	
+//	if (dname->label_count <= 1) {
+//		/* Nothing to chop. */
+//		return NULL;
+//	}
+	
 
 	parent->size = dname->size - dname->name[0] - 1;
 	parent->name = (uint8_t *)malloc(parent->size);
