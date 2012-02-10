@@ -114,6 +114,11 @@ static int xfr_process_udp_query(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 	if (n > 0) {
 		udp_handle(fd, data->wire, n, &resp_len, &data->addr, w->ns);
 	}
+	
+	if(data->type == XFR_TYPE_SOA && data->zone) {
+		zonedata_t * zd = (zonedata_t*)knot_zone_data(data->zone);
+		zd->soa_pending = NULL;
+	}
 
 	/* Disable timeout. */
 	evsched_t *sched =
