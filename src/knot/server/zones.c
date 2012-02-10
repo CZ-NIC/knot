@@ -132,6 +132,7 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 	if (!zd) {
 		return KNOTD_ENOMEM;
 	}
+	memset(zd, 0, sizeof(zonedata_t));
 
 	/* Link to config. */
 	zd->conf = cfg;
