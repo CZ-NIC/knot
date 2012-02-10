@@ -2159,13 +2159,15 @@ static void xfrin_cleanup_update(xfrin_changes_t *changes)
 		knot_rdata_dump(changes->old_rdata[i],
 		                changes->old_rdata_types[i], 0);
 		knot_rdata_t *rdata = changes->old_rdata[i];
-		assert(rdata != NULL);
-		do {
-			knot_rdata_t *tmp = rdata->next;
-			knot_rdata_deep_free(&rdata, 
-			                     changes->old_rdata_types[i], 1);
-			rdata = tmp;
-		} while (rdata != NULL && rdata != changes->old_rdata[i]);
+		if (rdata != NULL) {
+			do {
+				knot_rdata_t *tmp = rdata->next;
+				knot_rdata_deep_free(&rdata, 
+				                changes->old_rdata_types[i], 1);
+				rdata = tmp;
+			} while (rdata != NULL 
+			         && rdata != changes->old_rdata[i]);
+		}
 
 	}
 
