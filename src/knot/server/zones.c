@@ -58,6 +58,10 @@ static int zones_send_cb(int fd, sockaddr_t *addr, uint8_t *msg, size_t msglen)
 /*! \brief Zone data destructor function. */
 static int zonedata_destroy(knot_zone_t *zone)
 {
+	if (zone == NULL) {
+		return KNOTD_EINVAL;
+	}
+	
 	dbg_zones_verb("zones: zonedata_destroy(%p) called\n", zone);
 	
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
@@ -121,6 +125,9 @@ static int zonedata_destroy(knot_zone_t *zone)
 /*! \brief Zone data constructor function. */
 static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 {
+	if (cfg == NULL || zone == NULL) {
+		return KNOTD_EINVAL;
+	}
 	zonedata_t *zd = malloc(sizeof(zonedata_t));
 	if (!zd) {
 		return KNOTD_ENOMEM;
