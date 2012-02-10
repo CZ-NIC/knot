@@ -264,8 +264,6 @@ int zctask_add(knotc_zctask_t *tasks, int count, pid_t pid, conf_zone_t *zone)
  *
  * \retval 0 on success.
  * \retval error return code for main on error.
- *
- * \todo Make enumerated flags instead of many parameters...
  */
 int execute(const char *action, char **argv, int argc, pid_t pid,
             unsigned flags, unsigned jobs, const char *pidfile)

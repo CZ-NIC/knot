@@ -77,7 +77,7 @@ typedef struct journal_node_t
  * Each journal has a fixed number of nodes.
  *
  * \todo Organize nodes in an advanced structure, like
- *       btree or hash table to improve lookup time.
+ *       btree or hash table to improve lookup time (issue #964).
  */
 typedef struct journal_t
 {

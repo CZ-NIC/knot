@@ -32,7 +32,7 @@
 #include "knot/other/log.h"
 #include "common/print.h"
 
-/*! \todo Set these during configure as well. */
+/*! \todo Set these during configure as well (issue #1585). */
 //#define KNOTD_SERVER_DEBUG
 //#define KNOTD_THREADS_DEBUG
 //#define KNOTD_JOURNAL_DEBUG

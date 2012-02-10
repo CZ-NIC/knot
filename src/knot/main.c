@@ -293,10 +293,6 @@ int main(int argc, char **argv)
 			pthread_sigmask(SIG_BLOCK, &sa.sa_mask, NULL);
 
 			/* Interrupts. */
-			/*! \todo More robust way to exit evloop.
-			 *        Event loop should exit with a special
-			 *        event.
-			 */
 			if (sig_req_stop) {
 				sig_req_stop = 0;
 				server_stop(server);

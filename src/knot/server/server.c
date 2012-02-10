@@ -211,7 +211,9 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
  */
 static int server_bind_sockets(server_t *server)
 {
-	/*! \todo This requires locking to disable parallel updates. */
+	/*! \todo This requires locking to disable parallel updates (issue #278).
+	 *  However, this is only used when RCU is read-locked, so count with that.
+	 */
 
 	/* Lock configuration. */
 	conf_read_lock();
@@ -459,7 +461,9 @@ iohandler_t *server_create_handler(server_t *server, int fd, dt_unit_t *unit)
 		}
 	}
 
-	/*! \todo This requires either RCU compatible ptr swap or locking. */
+	/*! \todo This requires locking to disable parallel updates (issue #278).
+	 *  However, this is only used when RCU is read-locked, so count with that.
+	 */
 
 	/* Lock RCU. */
 	rcu_read_lock();
@@ -483,7 +487,9 @@ int server_remove_handler(server_t *server, iohandler_t *h)
 	/* Lock RCU. */
 	rcu_read_lock();
 
-	/*! \todo This requires either RCU compatible ptr swap or locking. */
+	/*! \todo This requires locking to disable parallel updates (issue #278).
+	 *  However, this is only used when RCU is read-locked, so count with that.
+	 */
 
 	// Remove node
 	rem_node((node*)h);

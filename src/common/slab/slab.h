@@ -74,7 +74,7 @@
  *
  * \todo Allocate slab headers elsewhere and use just first sizeof(void*) bytes
  *       in each slab as a pointer to slab header. This could improve the
- *       performance.
+ *       performance (issue #1583).
  *
  * \note Slab allocation is not thread safe for performance reasons.
  *
@@ -336,7 +336,6 @@ void* slab_alloc_alloc(slab_alloc_t* alloc, size_t size);
  * \retval Pointer to newly allocated memory.
  * \retval NULL on error.
  *
- * \todo Realloc could be probably implement more effectively.
  */
 void *slab_alloc_realloc(slab_alloc_t* alloc, void *ptr, size_t size);
 

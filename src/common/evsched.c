@@ -21,7 +21,7 @@
 
 #include "common/evsched.h"
 
-/*! \todo Fix properly. */
+/*! \todo Fix properly (issue #1581). */
 #ifndef HAVE_PSELECT
 #define OPENBSD_SLAB_BROKEN
 #endif
