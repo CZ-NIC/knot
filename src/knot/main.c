@@ -224,11 +224,16 @@ int main(int argc, char **argv)
 #endif /* HAVE_CAP_NG_H */
 
 	// Open configuration
-	log_server_info("Parsing configuration '%s' ...\n", config_fn);
-	if (conf_open(config_fn) != KNOTD_EOK) {
-
-		log_server_error("Failed to parse configuration file '%s'.\n",
-				 config_fn);
+	log_server_info("Reading configuration '%s' ...\n", config_fn);
+	int conf_ret = conf_open(config_fn);
+	if (conf_ret != KNOTD_EOK) {
+		if (conf_ret == KNOTD_ENOENT) {
+			log_server_error("Couldn't open configuration file "
+					 "'%s'.\n", config_fn);
+		} else {
+			log_server_error("Failed to parse configuration '%s'.\n",
+				config_fn);
+		}
 		server_destroy(&server);
 		free(config_fn);
 		return 1;

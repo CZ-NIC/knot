@@ -630,9 +630,15 @@ int main(int argc, char **argv)
 	}
 
 	// Open configuration
-	if (conf_open(config_fn) != 0) {
-		fprintf(stderr, "Failed to parse configuration '%s'.\n",
-		        config_fn);
+	int conf_ret = conf_open(config_fn);
+	if (conf_ret != KNOTD_EOK) {
+		if (conf_ret == KNOTD_ENOENT) {
+			fprintf(stderr, "Couldn't open configuration file "
+				"'%s'.\n", config_fn);
+		} else {
+			fprintf(stderr, "Failed to parse configuration '%s'.\n",
+				config_fn);
+		}
 		free(default_fn);
 		return 1;
 	}
