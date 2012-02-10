@@ -211,7 +211,9 @@ static int conf_process(conf_t *conf)
 	}
 
 	// Create PID file
-	conf->pidfile = strcdup(conf->storage, "/" PID_FILE);
+	if (conf->pidfile == NULL) {
+		conf->pidfile = strcdup(conf->storage, "/" PID_FILE);
+	}
 
 	// Postprocess zones
 	int ret = KNOTD_EOK;
