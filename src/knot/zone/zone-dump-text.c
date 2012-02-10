@@ -316,6 +316,11 @@ char *rdata_binary_dname_to_string(knot_rdata_item_t item)
 	if (item.raw_data == NULL) {
 		return NULL;
 	}
+	
+	if (item.raw_data[0] == 0) {
+		return NULL;
+	}
+	
 	/* Create new dname frow raw data - probably the easiest way. */
 	knot_dname_t *dname = knot_dname_new_from_wire((uint8_t *)(item.raw_data + 1),
 	                                               item.raw_data[0], NULL);
