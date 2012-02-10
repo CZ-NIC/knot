@@ -506,9 +506,23 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
  */
 int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf, size_t buflen)
 {
+	/* Fetch associated zone. */
+	const char *zname = "<unknown>";
+	knot_zone_t *zone = (knot_zone_t *)data->zone;
+	if (zone) {
+		zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
+		if (zd) {
+			zname = zd->conf->name;
+		}
+	}
+	
 	/* Update xfer state. */
 	data->wire = buf;
 	data->wire_size = buflen;
+	
+	char r_addr[SOCKADDR_STRLEN];
+	sockaddr_tostr(&data->addr, r_addr, sizeof(r_addr));
+	int r_port = sockaddr_portnum(&data->addr);
 
 	/* Handle SOA/NOTIFY responses. */
 	if (data->type == XFR_TYPE_NOTIFY || data->type == XFR_TYPE_SOA) {
@@ -540,7 +554,9 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 
 	/* AXFR-style IXFR. */
 	if (ret == KNOT_ENOIXFR) {
-		log_server_notice("IXFR/IN - Fallback to AXFR/IN.\n");
+		log_server_notice("IXFR of '%s/IN' with %s:%d - "
+				  "Fallback to AXFR/IN.\n",
+				  zname, r_addr, r_port);
 		assert(data->type == XFR_TYPE_IIN);
 		data->type = XFR_TYPE_AIN;
 		ret = knot_ns_process_axfrin(w->ns, data);
@@ -556,10 +572,10 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 	}
 	
 	/* IXFR refused, try again with AXFR. */
-	knot_zone_t *zone = (knot_zone_t *)data->zone;
 	if (zone && data->type == XFR_TYPE_IIN && ret == KNOT_EXFRREFUSED) {
-		log_server_notice("IXFR/IN failed, attempting to use "
-		                  "AXFR/IN instead.\n");
+		log_server_notice("IXFR of '%s/IN' with %s:%d failed, attempting "
+				  "to use AXFR/IN instead.\n",
+				  zname, r_addr, r_port);
 		size_t bufsize = buflen;
 		data->wire_size = buflen; /* Reset maximum bufsize */
 		ret = xfrin_create_axfr_query(zone->name, data,
@@ -578,13 +594,17 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 
 	/* Handle errors. */
 	if (ret == KNOT_ENOXFR) {
-		log_server_warning("%cXFR/IN request finished - %s\n",
+		log_server_warning("%cXFR request of '%s/IN' with %s:%d "
+				   "finished - %s\n",
 		                   data->type == XFR_TYPE_AIN ? 'A' : 'I',
+				   zname, r_addr, r_port,
 		                   knot_strerror(ret));
 	} else if (ret < 0) {
-		log_server_error("%cXFR/IN request failed - %s\n",
-		                 data->type == XFR_TYPE_AIN ? 'A' : 'I',
-		                 knot_strerror(ret));
+		log_server_error("%cXFR/IN request of '%s/IN' with %s:%d "
+				 "failed - %s\n",
+				 data->type == XFR_TYPE_AIN ? 'A' : 'I',
+				 zname, r_addr, r_port,
+				 knot_strerror(ret));
 	}
 
 
@@ -594,7 +614,6 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 		
 		knot_zone_t *zone = (knot_zone_t *)data->zone;
 		zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
-		const char *zorigin = zd->conf->name;
 
 		/* Only for successful xfers. */
 		if (ret > 0) {
@@ -609,7 +628,7 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 				zd->xfr_in.bootstrap_retry = tmr_s;
 				log_zone_info("Another attempt to AXFR bootstrap "
 				              "zone '%s' in %d seconds.\n",
-				              zorigin, tmr_s/1000);
+				              zname, tmr_s/1000);
 			}
 			rcu_read_unlock();
 
