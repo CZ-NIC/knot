@@ -2,15 +2,15 @@ $TTL 1h                  ; The default expiration time of a resource record with
 $ORIGIN example.com.
 @  IN  SOA  ns.example.com. username.example.com. (
               2007120713 ; serial number of this zone file
-              10         ; slave refresh (1 day)
-              30         ; slave retry time in case of a problem (1 day)
+              10         ; slave refresh (10 seconds)
+              30         ; slave retry time in case of a problem (30 seconds)
               4w         ; slave expiration time (4 weeks)
               1h         ; minimum caching time in case of failed lookups (1 hour)
               )
   NS    ns                    ; ns.example.com is the nameserver for example.com
   NS    ns.somewhere.com.     ; ns.somewhere.com is a backup nameserver for example.com
   MX    10 mail.example.com.  ; mail.example.com is the mailserver for example.com
-             MX    20 mail2.example.com. ; Similar to above line, but using "@" to say "use $ORIGIN"
+@             MX    20 mail2.example.com. ; Similar to above line, but using "@" to say "use $ORIGIN"
              MX    50 mail3              ; Similar to above line, but using a host within this domain
   A     10.0.0.1              ; ip address for "example.com"
 ns            A     10.0.0.2              ; ip address for "ns.example.com". Since there is no "." after ns, $ORIGIN is attached
