@@ -997,6 +997,7 @@ knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
                                              int use_domain_table,
                                              struct knot_zone *zone)
 {
+	dbg_zone("Creating contents for %u nodes.\n", node_count);
 	knot_zone_contents_t *contents = (knot_zone_contents_t *)
 	                              calloc(1, sizeof(knot_zone_contents_t));
 	if (contents == NULL) {
@@ -1010,6 +1011,7 @@ knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
 	contents->apex = apex;
 	contents->zone = zone;
 	knot_node_set_zone(apex, zone);
+	contents->node_count = 1;
 
 	dbg_zone("Creating tree for normal nodes.\n");
 	contents->nodes = malloc(sizeof(knot_zone_tree_t));
