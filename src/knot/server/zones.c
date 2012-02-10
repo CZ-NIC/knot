@@ -2101,6 +2101,7 @@ int zones_process_response(knot_nameserver_t *nameserver,
 		dbg_zones_verb("xfrin_transfer_needed() returned %d\n", ret);
 		if (ret < 0) {
 			/* RETRY/EXPIRE timers running, do not interfere. */
+			rcu_read_unlock();
 			return KNOTD_ERROR;
 		}
 		
