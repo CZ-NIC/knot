@@ -248,23 +248,33 @@ int xfrin_create_ixfr_query(const knot_zone_contents_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_add_orphan_rrsig(xfrin_orphan_rrsig_t *rrsigs, 
+static int xfrin_add_orphan_rrsig(xfrin_orphan_rrsig_t **rrsigs, 
                                   knot_rrset_t *rr)
 {
 	// try to find similar RRSIGs (check owner and type covered) in the list
 	assert(knot_rrset_type(rr) == KNOT_RRTYPE_RRSIG);
 	
+	if (*rrsigs == NULL) {
+		/* First item, nothing to iterate. */
+		*rrsigs = malloc(sizeof(xfrin_orphan_rrsig_t));
+		CHECK_ALLOC_LOG(*rrsigs, KNOT_ENOMEM);
+		(*rrsigs)->rrsig = rr;
+		(*rrsigs)->next = NULL;
+		return KNOT_EOK;
+	}
+	
 	int ret = 0;
-	xfrin_orphan_rrsig_t **last = &rrsigs;
-	while (*last != NULL) {
+	xfrin_orphan_rrsig_t *last = *rrsigs;
+	assert(last);
+	while (last != NULL) {
 		// check if the RRSIG is not similar to the one we want to add
-		assert((*last)->rrsig != NULL);
-		if (knot_rrset_compare((*last)->rrsig, rr, 
+		assert(last->rrsig != NULL);
+		if (knot_rrset_compare(last->rrsig, rr, 
 		                       KNOT_RRSET_COMPARE_HEADER) == 1
 		    && knot_rdata_rrsig_type_covered(knot_rrset_rdata(
-		                                      (*last)->rrsig))
+		                                     last->rrsig))
 		       == knot_rdata_rrsig_type_covered(knot_rrset_rdata(rr))) {
-			ret = knot_rrset_merge((void **)&(*last)->rrsig, 
+			ret = knot_rrset_merge((void **)&last->rrsig, 
 			                       (void **)&rr);
 			if (ret != KNOT_EOK) {
 				return ret;
@@ -272,16 +282,25 @@ static int xfrin_add_orphan_rrsig(xfrin_orphan_rrsig_t *rrsigs,
 				return 1;
 			}
 		}
-		last = &((*last)->next);
+		last = last->next;
+	}
+		
+	assert(last == NULL);
+	assert(&last != rrsigs);
+	
+	last = *rrsigs;
+	
+	/* Get to the end of the list. */
+	while (last->next != NULL) {
+		last = last->next;
 	}
 	
-	assert(*last == NULL);
-	// we did not find the right RRSIGs, add to the end
-	*last = (xfrin_orphan_rrsig_t *)malloc(sizeof(xfrin_orphan_rrsig_t));
-	CHECK_ALLOC_LOG(*last, KNOT_ENOMEM);
+	xfrin_orphan_rrsig_t *new_item = malloc(sizeof(xfrin_orphan_rrsig_t));
+	CHECK_ALLOC_LOG(new_item, KNOT_ENOMEM);	
+	new_item->rrsig = rr;
+	new_item->next = NULL;
 	
-	(*last)->rrsig = rr;
-	(*last)->next = NULL;
+	last->next = new_item;
 	
 	return KNOT_EOK;
 }
@@ -687,8 +706,9 @@ dbg_xfrin_exec(
 			if (ret == KNOT_ENONODE || ret == KNOT_ENORRSET) {
 				dbg_xfrin("No node or RRSet for RRSIGs\n");
 				dbg_xfrin("Saving for later insertion.\n");
-				ret = xfrin_add_orphan_rrsig((*constr)->rrsigs, 
+				ret = xfrin_add_orphan_rrsig(&(*constr)->rrsigs, 
 				                             rr);
+				in_zone = 1;
 				if (ret > 0) {
 					dbg_xfrin("Merged RRSIGs.\n");
 					knot_rrset_free(&rr);
