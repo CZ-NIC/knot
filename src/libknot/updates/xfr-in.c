@@ -2448,13 +2448,14 @@ static int xfrin_apply_add2(knot_zone_contents_t *contents,
 		                knot_rrset_rdata(chset->add[i]))
 		            == KNOT_RRTYPE_NSEC3))
 		{
+			dbg_xfrin_verb("This is NSEC3-related RRSet.\n");
 			is_nsec3 = 1;
 		}
 
 		// check if the old node is not the one we should use
 		if (!node || knot_rrset_owner(chset->add[i])
 			     != knot_node_owner(node)) {
-
+			dbg_xfrin_verb("Searching for node...\n");
 			if (is_nsec3) {
 				node = knot_zone_contents_get_nsec3_node(
 				               contents,
@@ -2466,8 +2467,7 @@ static int xfrin_apply_add2(knot_zone_contents_t *contents,
 			if (node == NULL) {
 				// create new node, connect it properly to the
 				// zone nodes
-				dbg_xfrin("Creating new node from: %p.\n",
-				          chset->add[i]);
+				dbg_xfrin("Node not found. Creating new.\n");
 				node = xfrin_add_new_node(contents,
 				                          chset->add[i],
 				                          is_nsec3);
