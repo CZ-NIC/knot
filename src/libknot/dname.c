@@ -492,7 +492,7 @@ knot_dname_t *knot_dname_parse_from_wire(const uint8_t *wire,
 
 	while (p < size && wire[p] != 0) {
 		/* Check maximum number of labels (may overflow). */
-		if (l == KNOT_MAX_DNAME_LABELS - 1) {
+		if (l == KNOT_MAX_DNAME_LABELS) {
 			return NULL;
 		}
 		labels[l] = i;
@@ -517,7 +517,7 @@ knot_dname_t *knot_dname_parse_from_wire(const uint8_t *wire,
 				return NULL;
 			}
 			/* Check if there's enough space. */
-			if (i + length + 1 > KNOT_MAX_DNAME_LENGTH) {
+			if (i + length + 2 > KNOT_MAX_DNAME_LENGTH) {
 				return NULL;
 			}
 			//printf("Label %d (max %d), length: %u.\n", l, KNOT_MAX_DNAME_LABELS, length);
