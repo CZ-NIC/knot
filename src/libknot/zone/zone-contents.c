@@ -624,7 +624,29 @@ static void knot_zone_contents_adjust_nsec3_node_in_tree(
 
 	knot_zone_adjust_arg_t *args = (knot_zone_adjust_arg_t *)data;
 	knot_node_t *node = tnode->node;
+
+	// set previous node
 	knot_node_set_previous(node, args->previous_node);
+
+	// assure that owner has proper node
+	if (knot_dname_node(knot_node_owner(node)) == NULL) {
+		knot_dname_set_node(knot_node_get_owner(node), node);
+	}
+
+	/*
+	 * Store domain names to dname table.
+	 */
+	knot_zone_contents_t *zone = args->zone;
+	assert(zone != NULL);
+
+	int ret = knot_zone_contents_dnames_from_node_to_table(
+	                        zone->dname_table, node);
+	if (ret != KNOT_EOK) {
+		dbg_xfrin("Failed to add dnames from adjusted node to "
+		          "table: %s\n", knot_strerror(ret));
+		args->err = ret;
+		return;
+	}
 
 	// here is nothing to consider, all nodes are the same
 	args->previous_node = node;
@@ -2240,6 +2262,7 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone)
 	}
 
 	dbg_zone("Done.\n");
+	// set the last node as previous of the first node
 	if (adjust_arg.first_node) {
 		knot_node_set_previous(adjust_arg.first_node,
 		                         adjust_arg.previous_node);
@@ -3196,6 +3219,42 @@ static void knot_zc_integrity_check_node(knot_node_t *node, void *data)
 
 /*----------------------------------------------------------------------------*/
 
+static void knot_zc_integrity_check_nsec3(knot_node_t *node, void *data)
+{
+	assert(node != NULL);
+	assert(data != NULL);
+
+	const knot_dname_t *node_owner = knot_node_owner(node);
+	char *name = knot_dname_to_str(node_owner);
+
+	check_data_t *check_data = (check_data_t *)data;
+
+	// check previous-next chain
+	knot_zc_integrity_check_previous(node, check_data, name);
+	// store the node as new previous
+	check_data->previous = node;
+
+	// check if the node is child of the zone apex
+	if (node->parent != check_data->contents->apex) {
+		fprintf(stderr, "NSEC3 node's parent is not apex. Node: %s.\n",
+		        name);
+		++check_data->errors;
+	}
+
+	// check RRSet count
+	knot_zc_integrity_check_rrset_count(node, check_data, name);
+
+	// check owner
+	knot_zc_integrity_check_owner(node, check_data, name);
+
+	// check dnames
+	knot_zc_integrity_check_dnames(node, check_data, name);
+
+	free(name);
+}
+
+/*----------------------------------------------------------------------------*/
+
 void reset_child_count(knot_zone_tree_node_t *tree_node, void *data)
 {
 	UNUSED(data);
@@ -3377,6 +3436,11 @@ int knot_zone_contents_integrity_check(const knot_zone_contents_t *contents)
 		data.contents = contents;
 		knot_zc_integrity_check_child_count(&data);
 	}
+
+	ret = knot_zone_contents_nsec3_apply_inorder(
+	                        (knot_zone_contents_t *)contents,
+	                        knot_zc_integrity_check_nsec3, (void *)&data);
+	assert(ret == KNOT_EOK);
 
 	return data.errors;
 }
