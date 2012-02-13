@@ -1467,9 +1467,10 @@ static int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 	}
 
 	// add the RRSet to the list of new RRSets
+	// create place also for RRSIGs
 	ret = xfrin_changes_check_rrsets(&changes->new_rrsets,
 	                                 &changes->new_rrsets_count,
-	                                 &changes->new_rrsets_allocated, 1);
+	                                 &changes->new_rrsets_allocated, 2);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to add new RRSet to list.\n");
 		knot_rrset_deep_free(copy, 1, 1, 1);
@@ -1480,7 +1481,7 @@ static int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 	ret = xfrin_changes_check_rdata(&changes->new_rdata,
 	                                &changes->new_rdata_types,
 	                                changes->new_rdata_count,
-	                                &changes->new_rdata_allocated, 1);
+	                                &changes->new_rdata_allocated, 2);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to add new RRSet to list.\n");
 		knot_rrset_deep_free(copy, 1, 1, 1);
@@ -1494,10 +1495,21 @@ static int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 	                knot_rrset_type(*copy);
 	++changes->new_rdata_count;
 
+	if ((*copy)->rrsigs != NULL) {
+		assert(old->rrsigs != NULL);
+		changes->new_rrsets[changes->new_rrsets_count++] =
+		                (*copy)->rrsigs;
+		changes->new_rdata[changes->new_rdata_count] =
+		                knot_rrset_get_rdata((*copy)->rrsigs);
+		changes->new_rdata_types[changes->new_rdata_count] =
+		                KNOT_RRTYPE_RRSIG;
+		++changes->new_rdata_count;
+	}
+
 	// add the old RRSet to the list of old RRSets
 	ret = xfrin_changes_check_rrsets(&changes->old_rrsets,
 	                                 &changes->old_rrsets_count,
-	                                 &changes->old_rrsets_allocated, 1);
+	                                 &changes->old_rrsets_allocated, 2);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to add old RRSet to list.\n");
 		return ret;
@@ -1507,7 +1519,7 @@ static int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 	ret = xfrin_changes_check_rdata(&changes->old_rdata,
 	                                &changes->old_rdata_types,
 	                                changes->old_rdata_count,
-	                                &changes->old_rdata_allocated, 1);
+	                                &changes->old_rdata_allocated, 2);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to add old RRSet to list.\n");
 		return ret;
@@ -1518,6 +1530,16 @@ static int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 	changes->old_rdata_types[changes->old_rdata_count] =
 	                knot_rrset_type(old);
 	++changes->old_rdata_count;
+
+	if ((*copy)->rrsigs != NULL) {
+		assert(old->rrsigs != NULL);
+		changes->old_rrsets[changes->old_rrsets_count++] = old->rrsigs;
+		changes->old_rdata[changes->old_rdata_count] =
+		                old->rrsigs->rdata;
+		changes->old_rdata_types[changes->old_rdata_count] =
+		                KNOT_RRTYPE_RRSIG;
+		++changes->old_rdata_count;
+	}
 
 	return KNOT_EOK;
 }
@@ -2040,6 +2062,8 @@ dbg_xfrin_exec(
 	free(name);
 );
 
+	int copied = 0;
+
 	if (!*rrset
 	    || knot_dname_compare(knot_rrset_owner(*rrset),
 	                          knot_node_owner(node)) != 0
@@ -2052,6 +2076,7 @@ dbg_xfrin_exec(
 		} else if (ret != KNOT_EOK) {
 			*rrset = NULL;
 		}
+		copied = 1;
 	} else {
 		// we should have the right RRSIG RRSet in *rrset
 		assert(knot_rrset_type(*rrset) == type);
@@ -2124,9 +2149,13 @@ dbg_xfrin_exec(
 		assert(old != NULL);
 		knot_rrset_t *rrsig;
 		
-		ret = xfrin_copy_old_rrset(old, &rrsig, changes);
-		if (ret != KNOT_EOK) {
-			return ret;
+		if (!copied) {
+			ret = xfrin_copy_old_rrset(old, &rrsig, changes);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+		} else {
+			rrsig = old;
 		}
 		
 		// replace the old RRSIGs with the new ones
