@@ -253,6 +253,8 @@ dbg_zonedb_exec(
 		zone = NULL;
 	}
 
+	knot_dname_free(&dummy_zone.name);
+
 	return zone;
 }
 
