@@ -3259,16 +3259,17 @@ static void reset_new_nodes(knot_zone_tree_node_t *tree_node, void *data)
 
 /*----------------------------------------------------------------------------*/
 
-static void print_child_count(knot_node_t *node, void *data)
-{
-	UNUSED(data);
-	assert(node != NULL);
+/*!< \todo remove debug code. */
+//static void print_child_count(knot_node_t *node, void *data)
+//{
+//	UNUSED(data);
+//	assert(node != NULL);
 
-	char *name = knot_dname_to_str(knot_node_owner(node));
-	fprintf(stderr, "Node: %s, children count: %d\n", name,
-	        knot_node_children(node));
-	free(name);
-}
+//	char *name = knot_dname_to_str(knot_node_owner(node));
+//	fprintf(stderr, "Node: %s, children count: %d\n", name,
+//	        knot_node_children(node));
+//	free(name);
+//}
 
 /*----------------------------------------------------------------------------*/
 

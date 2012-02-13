@@ -275,7 +275,7 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 					return KNOT_ERROR;
 				}
 			
-				items[i].raw_data = (uint8_t *)malloc(
+				items[i].raw_data = malloc(
 						knot_dname_size(dname) + 2);
 				if (items[i].raw_data == NULL) {
 					/*! \todo This will leak. */
