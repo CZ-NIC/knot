@@ -2901,7 +2901,11 @@ static int xfrin_remove_empty_nodes(knot_zone_contents_t *contents,
 		zone_node = NULL;
 		hash_item = NULL;
 
-		dbg_xfrin_detail("Old node #%d: %p\n", i, changes->old_nodes[i]);
+		char *name = knot_dname_to_str(knot_node_owner(
+		                                       changes->old_nodes[i]));
+		dbg_xfrin_detail("Old node #%d: %p, %s\n", i,
+		                 changes->old_nodes[i], name);
+		free(name);
 
 		if (knot_node_rrset(changes->old_nodes[i], KNOT_RRTYPE_NSEC3)
 		    != NULL) {
