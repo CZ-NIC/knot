@@ -288,19 +288,13 @@ static int xfrin_add_orphan_rrsig(xfrin_orphan_rrsig_t **rrsigs,
 	assert(last == NULL);
 	assert(&last != rrsigs);
 	
-	last = *rrsigs;
-	
-	/* Get to the end of the list. */
-	while (last->next != NULL) {
-		last = last->next;
-	}
-	
+	// the RRSIG is not in the list, add to the front
 	xfrin_orphan_rrsig_t *new_item = malloc(sizeof(xfrin_orphan_rrsig_t));
 	CHECK_ALLOC_LOG(new_item, KNOT_ENOMEM);	
 	new_item->rrsig = rr;
-	new_item->next = NULL;
+	new_item->next = *rrsigs;
 	
-	last->next = new_item;
+	*rrsigs = new_item;
 	
 	return KNOT_EOK;
 }
