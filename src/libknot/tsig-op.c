@@ -540,11 +540,11 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 		tsig_rdata_set_time_signed(tmp_tsig, request_time_signed);
 
 		/* Store current time into Other data. */
-		uint8_t time_signed[3];
+		uint8_t time_signed[6];
 		time_t curr_time = time(NULL);
 
-		/*! \todo bleeding eyes. */
-		knot_wire_write_u48(time_signed, (uint64_t)curr_time);
+		uint64_t time64 = curr_time;
+		knot_wire_write_u48(time_signed, time64);
 
 		tsig_rdata_set_other_data(tmp_tsig, 6, time_signed);
 	} else {

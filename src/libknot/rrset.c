@@ -459,8 +459,7 @@ static int knot_rrset_rr_to_wire(const knot_rrset_t *rrset,
 			// save whole domain name
 			memcpy(*pos, knot_dname_name(dname), 
 			       knot_dname_size(dname));
-			dbg_rrset_detail(stderr,
-			                 "Uncompressed dname size: %d\n",
+			dbg_rrset_detail("Uncompressed dname size: %d\n",
 			                 knot_dname_size(dname));
 			*pos += knot_dname_size(dname);
 			rdlength += knot_dname_size(dname);
