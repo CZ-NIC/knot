@@ -1045,16 +1045,22 @@ static int ns_put_nsec_nxdomain(const knot_dname_t *qname,
 
 	while (knot_dname_compare(knot_node_owner(prev_new),
 				    wildcard) > 0) {
-		dbg_ns("Previous node: %s\n",
-		    knot_dname_to_str(knot_node_owner(prev_new)));
+dbg_ns_exec(
+		char *name = knot_dname_to_str(knot_node_owner(prev_new));
+		dbg_ns("Previous node: %s\n", name);
+		free(name);
+);
 		assert(prev_new != knot_zone_contents_apex(zone));
 		prev_new = knot_node_previous(prev_new);
 	}
 	assert(knot_dname_compare(knot_node_owner(prev_new),
 	                            wildcard) < 0);
 
-	dbg_ns("Previous node: %s\n",
-	    knot_dname_to_str(knot_node_owner(prev_new)));
+dbg_ns_exec(
+	char *name = knot_dname_to_str(knot_node_owner(prev_new));
+	dbg_ns("Previous node: %s\n", name);
+	free(name);
+);
 
 	/* Directly discard dname. */
 	knot_dname_free(&wildcard);
