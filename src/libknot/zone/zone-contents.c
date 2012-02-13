@@ -3235,7 +3235,7 @@ static void knot_zc_integrity_check_nsec3(knot_node_t *node, void *data)
 	check_data->previous = node;
 
 	// check if the node is child of the zone apex
-	if (node->parent != check_data->contents->apex) {
+	if (node->parent != check_data->parent) {
 		fprintf(stderr, "NSEC3 node's parent is not apex. Node: %s.\n",
 		        name);
 		++check_data->errors;
@@ -3437,6 +3437,9 @@ int knot_zone_contents_integrity_check(const knot_zone_contents_t *contents)
 		knot_zc_integrity_check_child_count(&data);
 	}
 
+	data.previous = NULL;
+	data.children = 0;
+	data.parent = contents->apex;
 	ret = knot_zone_contents_nsec3_apply_inorder(
 	                        (knot_zone_contents_t *)contents,
 	                        knot_zc_integrity_check_nsec3, (void *)&data);
