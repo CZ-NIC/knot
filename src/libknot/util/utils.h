@@ -89,6 +89,8 @@ size_t knot_strlcpy(char *dst, const char *src, size_t size);
  *
  * \param pos Data to read the 2 bytes from.
  *
+ * \todo Wrong assumption of endianness (issue #1558).
+ *
  * \return The 2 bytes read, in inverse endian.
  */
 static inline uint16_t knot_wire_read_u16(const uint8_t *pos)
@@ -101,6 +103,8 @@ static inline uint16_t knot_wire_read_u16(const uint8_t *pos)
  *
  * \param pos Data to read the 4 bytes from.
  *
+ * \todo Wrong assumption of endianness (issue #1558).
+ *
  * \return The 4 bytes read, in inverse endian.
  */
 static inline uint32_t knot_wire_read_u32(const uint8_t *pos)
@@ -112,6 +116,8 @@ static inline uint32_t knot_wire_read_u32(const uint8_t *pos)
  * \brief Reads 6 bytes from the wireformat data.
  *
  * \param pos Data to read the 6 bytes from.
+ *
+ * \todo Wrong assumption of endianness (issue #1558).
  *
  * \return The 6 bytes read, in inverse endian.
  */
@@ -126,13 +132,15 @@ static inline uint64_t knot_wire_read_u48(const uint8_t *pos)
  *
  * The endian of the data is inverted.
  *
+ * \todo Wrong assumption of endianness (issue #1558).
+ *
  * \param pos Position where to put the 2 bytes.
  * \param data Data to put.
  */
 static inline void knot_wire_write_u16(uint8_t *pos, uint16_t data)
 {
-	pos[0] = (uint8_t)((data >> 8) & 0xff);
-	pos[1] = (uint8_t)(data & 0xff);
+	*(pos++) = (uint8_t)((data >> 8) & 0xff);
+	*pos = (uint8_t)(data & 0xff);
 }
 
 /*!
@@ -140,15 +148,17 @@ static inline void knot_wire_write_u16(uint8_t *pos, uint16_t data)
  *
  * The endian of the data is inverted.
  *
+ * \todo Wrong assumption of endianness (issue #1558).
+ *
  * \param pos Position where to put the 4 bytes.
  * \param data Data to put.
  */
 static inline void knot_wire_write_u32(uint8_t *pos, uint32_t data)
 {
-	pos[0] = (uint8_t)((data >> 24) & 0xff);
-	pos[1] = (uint8_t)((data >> 16) & 0xff);
-	pos[2] = (uint8_t)((data >> 8) & 0xff);
-	pos[3] = (uint8_t)(data & 0xff);
+	*(pos++) = (uint8_t)((data >> 24) & 0xff);
+	*(pos++) = (uint8_t)((data >> 16) & 0xff);
+	*(pos++) = (uint8_t)((data >> 8) & 0xff);
+	*pos = (uint8_t)(data & 0xff);
 }
 
 /*!
@@ -156,17 +166,19 @@ static inline void knot_wire_write_u32(uint8_t *pos, uint32_t data)
  *
  * The endian of the data is inverted.
  *
+ * \todo Wrong assumption of endianness (issue #1558).
+ *
  * \param pos Position where to put the 4 bytes.
  * \param data Data to put.
  */
 static inline void knot_wire_write_u48(uint8_t *pos, uint64_t data)
 {
-	pos[0] = (uint8_t)((data >> 40) & 0xff);
-	pos[1] = (uint8_t)((data >> 32) & 0xff);
-	pos[2] = (uint8_t)((data >> 24) & 0xff);
-	pos[3] = (uint8_t)((data >> 16) & 0xff);
-	pos[4] = (uint8_t)((data >> 8) & 0xff);
-	pos[5] = (uint8_t)(data & 0xff);
+	*(pos++) = (uint8_t)((data >> 40) & 0xff);
+	*(pos++) = (uint8_t)((data >> 32) & 0xff);
+	*(pos++) = (uint8_t)((data >> 24) & 0xff);
+	*(pos++) = (uint8_t)((data >> 16) & 0xff);
+	*(pos++) = (uint8_t)((data >> 8) & 0xff);
+	*pos = (uint8_t)(data & 0xff);
 }
 
 /*!
