@@ -3098,6 +3098,8 @@ static int knot_zc_integrity_check_find_dname(const knot_zone_contents_t *zone,
 
 	free(to_find_name);
 
+	knot_dname_release(found);
+
 	return ret;
 }
 
