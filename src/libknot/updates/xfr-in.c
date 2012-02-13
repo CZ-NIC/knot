@@ -2365,6 +2365,9 @@ static int xfrin_apply_remove2(knot_zone_contents_t *contents,
 	int is_nsec3 = 0;
 
 	for (int i = 0; i < chset->remove_count; ++i) {
+
+		is_nsec3 = 0;
+
 		// check if the RRSet belongs to the NSEC3 tree
 		if ((knot_rrset_type(chset->remove[i]) == KNOT_RRTYPE_NSEC3)
 		    || (knot_rrset_type(chset->remove[i]) == KNOT_RRTYPE_RRSIG
@@ -2440,6 +2443,8 @@ static int xfrin_apply_add2(knot_zone_contents_t *contents,
 	for (int i = 0; i < chset->add_count; ++i) {
 		dbg_xfrin_detail("Adding RRSet:\n");
 		knot_rrset_dump(chset->add[i], 0);
+
+		is_nsec3 = 0;
 
 		// check if the RRSet belongs to the NSEC3 tree
 		if ((knot_rrset_type(chset->add[i]) == KNOT_RRTYPE_NSEC3)
