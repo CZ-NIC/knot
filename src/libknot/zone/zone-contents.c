@@ -1218,6 +1218,16 @@ int knot_zone_contents_add_node(knot_zone_contents_t *zone,
 		return ret;
 	}
 
+	if (use_domain_table) {
+		ret = knot_zone_contents_dnames_from_node_to_table(
+		          zone->dname_table, node);
+		if (ret != KNOT_EOK) {
+			/*! \todo Remove node from the tree and hash table.*/
+			dbg_zone("Failed to add dnames into table.\n");
+			return ret;
+		}
+	}
+
 #ifdef USE_HASH_TABLE
 //	char *name = knot_dname_to_str(node->owner);
 //	dbg_zone("Adding node with owner %s to hash table.\n", name);
@@ -1234,16 +1244,6 @@ int knot_zone_contents_add_node(knot_zone_contents_t *zone,
 	}
 #endif
 	assert(knot_zone_contents_find_node(zone, node->owner));
-
-	if (use_domain_table) {
-		ret = knot_zone_contents_dnames_from_node_to_table(
-		          zone->dname_table, node);
-		if (ret != KNOT_EOK) {
-			/*! \todo Remove node from the tree and hash table.*/
-			dbg_zone("Failed to add dnames into table.\n");
-			return ret;
-		}
-	}
 
 	knot_node_set_zone(node, zone->zone);
 

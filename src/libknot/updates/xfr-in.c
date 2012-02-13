@@ -700,9 +700,14 @@ dbg_xfrin_exec(
 			if (ret == KNOT_ENONODE || ret == KNOT_ENORRSET) {
 				dbg_xfrin("No node or RRSet for RRSIGs\n");
 				dbg_xfrin("Saving for later insertion.\n");
+
+				if (ret == KNOT_ENORRSET) {
+					in_zone = 1;
+				}
+
 				ret = xfrin_add_orphan_rrsig(&(*constr)->rrsigs, 
 				                             rr);
-				in_zone = 1;
+
 				if (ret > 0) {
 					dbg_xfrin("Merged RRSIGs.\n");
 					knot_rrset_free(&rr);
