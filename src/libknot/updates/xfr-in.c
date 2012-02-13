@@ -731,7 +731,7 @@ dbg_xfrin_exec(
 dbg_xfrin_exec(
 				char *name = knot_dname_to_str(node->owner);
 				dbg_xfrin("Found node for the record in "
-					       "zone: %s.\n", name);
+					   "zone: %s. Merged.\n", name);
 				free(name);
 );
 				in_zone = 1;
@@ -1570,6 +1570,8 @@ static int xfrin_apply_remove_rrsigs(xfrin_changes_t *changes,
 	
 	int ret;
 
+	int copied = 0;
+
 	if (!*rrset
 	    || knot_dname_compare(knot_rrset_owner(*rrset),
 	                            knot_node_owner(node)) != 0
@@ -1585,6 +1587,7 @@ static int xfrin_apply_remove_rrsigs(xfrin_changes_t *changes,
 			dbg_xfrin("Failed to copy rrset from changeset.\n");
 			return ret;
 		}
+		copied = 1;
 	} else {
 		// we should have the right RRSIG RRSet in *rrset
 		assert(knot_rrset_type(*rrset) 
@@ -1602,11 +1605,14 @@ static int xfrin_apply_remove_rrsigs(xfrin_changes_t *changes,
 	}
 	
 	// copy the RRSIGs
-	/*! \todo This may be done unnecessarily more times. */
 	knot_rrset_t *rrsigs = NULL;
-	ret = xfrin_copy_old_rrset(old, &rrsigs, changes);
-	if (ret != KNOT_EOK) {
-		return ret;
+	if (!copied) {
+		ret = xfrin_copy_old_rrset(old, &rrsigs, changes);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	} else {
+		rrsigs = old;
 	}
 	
 	// set the RRSIGs to the new RRSet copy
