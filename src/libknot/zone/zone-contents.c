@@ -3257,7 +3257,13 @@ static void knot_zc_integrity_check_nsec3(knot_node_t *node, void *data)
 
 void reset_child_count(knot_zone_tree_node_t *tree_node, void *data)
 {
-	UNUSED(data);
+	assert(tree_node != NULL);
+	assert(data != NULL);
+
+	knot_node_t **apex_copy = (knot_node_t **)data;
+	if (*apex_copy == NULL) {
+		*apex_copy = tree_node->node;
+	}
 
 	if (tree_node->node != NULL) {
 		tree_node->node->children = 0;
@@ -3367,18 +3373,24 @@ int knot_zc_integrity_check_child_count(check_data_t *data)
 	int ret = knot_zone_tree_deep_copy(data->contents->nodes, nodes_copy);
 	assert(ret == KNOT_EOK);
 
+
 	// set children count of all nodes to 0
+	// in the same walkthrough find the apex
+	knot_node_t *apex_copy = NULL;
 	knot_zone_tree_forward_apply_inorder(nodes_copy, reset_child_count,
-	                                     NULL);
+	                                     (void *)&apex_copy);
+	assert(apex_copy != NULL);
 
 	// now count children of all nodes, presuming the parent pointers are ok
 	knot_zone_tree_forward_apply_inorder(nodes_copy, count_children, NULL);
 
 	// add count of NSEC3 nodes to the apex' children count
 //	int nsec3_nodes = 0;
+	fprintf(stderr, "Children count of new apex before NSEC3: %d\n",
+	        data->contents->apex->new_node->children);
 	knot_zone_tree_forward_apply_inorder(data->contents->nsec3_nodes,
 	                                     count_nsec3_nodes,
-	                               (void *)&data->contents->apex->new_node);
+	                                     (void *)apex_copy);
 
 
 	// now compare the children counts
