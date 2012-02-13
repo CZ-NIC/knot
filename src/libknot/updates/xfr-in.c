@@ -2750,6 +2750,7 @@ static int xfrin_remove_empty_nodes(knot_zone_contents_t *contents,
 	assert(ret == KNOT_EOK);
 
 	dbg_xfrin("OLD NODES COUNT: %d\n", changes->old_nodes_count);
+	dbg_xfrin("OLD NSEC3 NODES COUNT: %d\n", changes->old_nsec3_count);
 
 	// remove these nodes from both hash table and the tree
 	ck_hash_table_item_t *hash_item = NULL;
@@ -2781,8 +2782,6 @@ static int xfrin_remove_empty_nodes(knot_zone_contents_t *contents,
 	changes->old_nodes_count = 0;
 
 	// remove NSEC3 nodes
-	dbg_xfrin("OLD NSEC3 NODES COUNT: %d\n", changes->old_nsec3_count);
-
 	for (int i = 0; i < changes->old_nsec3_count; ++i) {
 		zone_node = NULL;
 
@@ -2796,7 +2795,7 @@ static int xfrin_remove_empty_nodes(knot_zone_contents_t *contents,
 			contents, changes->old_nsec3[i], &zone_node);
 
 		if (ret != KNOT_EOK) {
-			dbg_xfrin("Failed to remove node from zone!\n");
+			dbg_xfrin("Failed to remove NSEC3 node from zone!\n");
 			return KNOT_ENONODE;
 		}
 
