@@ -137,7 +137,9 @@ int main(int argc, char **argv)
 
 	// Now check if we want to daemonize
 	if (daemonize) {
-		if (daemon(1, 0) != 0) {
+		if (daemon(1, 0) != 0) { 
+			free(zone);
+			free(config_fn);
 			fprintf(stderr, "Daemonization failed, "
 					"shutting down...\n");
 			return 1;
@@ -366,6 +368,7 @@ int main(int argc, char **argv)
 	evqueue_free(&q);
 
 	// Free default config filename if exists
+	free(zone);
 	free(config_fn);
 
 	if (!daemonize) {
