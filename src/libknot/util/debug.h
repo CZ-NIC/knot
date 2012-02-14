@@ -57,8 +57,8 @@
 //#define KNOT_NSEC3_DEBUG
 //#define CUCKOO_DEBUG
 //#define CUCKOO_DEBUG_HASH
-#define KNOT_NS_DEBUG
-#define KNOT_XFRIN_DEBUG
+//#define KNOT_NS_DEBUG
+//#define KNOT_XFRIN_DEBUG
 //#define KNOT_DDNS_DEBUG
 //#define KNOT_TSIG_DEBUG
 
