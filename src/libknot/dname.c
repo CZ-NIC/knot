@@ -499,13 +499,17 @@ knot_dname_t *knot_dname_parse_from_wire(const uint8_t *wire,
 		dbg_dname("Next label (%d.) position: %zu\n", l, i);
 
 		if (knot_wire_is_pointer(wire + p)) {
-			// pointer.
-//			printf("Pointer.\n");
-			p = knot_wire_get_pointer(wire + p);
 			if (!pointer_used) {
 				*pos += 2;
 				pointer_used = 1;
+			} else {
+				/* Invalid compression - points to another pointer.
+				 * May result in infinite loop.
+				 */
+				return NULL;
 			}
+			p = knot_wire_get_pointer(wire + p);
+			//printf("Pointer: was %zu now %zu, used? %d pos: %zu\n", oldp, p, pointer_used, *pos);
 			if (p >= size) {
 				return NULL;
 			}
