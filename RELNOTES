@@ -1,3 +1,26 @@
+v1.0-rc1 - Feb 14, 2012
+-----------------------
+
+New features:
+        * NSID support (RFC5001).
+        * Root zone support.
+        * Automatic zone compiling on server start.
+        * Setting user to run Knot under in config file.
+        * Dropping privileges after binding to port 53.
+	        + Support for Linux capabilities(7).
+        * Setting source address of outgoing transfers in config file.
+        * Custom PID file.
+        * CNAME loop detection.
+        * Timeout on TCP connections.
+        * Basic defense against DoS attacks.
+        
+Bugfixes:
+        * Fixed IXFR processing.
+        * Patched URCU so that it compiles on architectures without TLS in compiler (NetBSD, OpenBSD).
+        * Fixed response to DS query at parent zone.
+        * A lot of other bugfixes.
+
+
 v0.9.1 - Jan 20, 2012
 ---------------------
 
