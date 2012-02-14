@@ -96,7 +96,7 @@ int main(int argc, char **argv)
 	int verbose = 0;
 	int daemonize = 0;
 	char* config_fn = NULL;
-	const char *zone = NULL;
+	char *zone = NULL;
 	
 	/* Long options. */
 	struct option opts[] = {

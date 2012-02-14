@@ -3327,6 +3327,7 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		
 		// save the zone contents to the xfr->data
 		xfr->data = zone;
+		xfr->flags |= XFR_FLAG_AXFR_FINISHED;
 
 		assert(zone->nsec3_nodes != NULL);
 		
