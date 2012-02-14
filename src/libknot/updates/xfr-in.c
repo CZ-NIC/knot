@@ -2842,7 +2842,7 @@ static int xfrin_remove_empty_nodes(knot_zone_contents_t *contents,
 
 		free(hash_item);
 		free(zone_node);
-		knot_node_free(&changes->old_nodes[i], 1);
+		knot_node_free(&changes->old_nodes[i], 0);
 	}
 	changes->old_nodes_count = 0;
 
@@ -2865,7 +2865,7 @@ static int xfrin_remove_empty_nodes(knot_zone_contents_t *contents,
 		}
 
 		free(zone_node);
-		knot_node_free(&changes->old_nsec3[i], 1);
+		knot_node_free(&changes->old_nsec3[i], 0);
 	}
 	changes->old_nsec3_count = 0;
 
