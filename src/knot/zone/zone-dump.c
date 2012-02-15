@@ -553,7 +553,7 @@ static void dump_node_to_file(knot_node_t *node, void *data)
 	knot_node_dump_binary(node, data, NULL, NULL, (crc_t *)arg->arg7);
 }
 
-static char *knot_zdump_crc_file(const char* filename)
+char *knot_zdump_crc_file(const char* filename)
 {
 	char *crc_path =
 		malloc(sizeof(char) * (strlen(filename) +
@@ -568,22 +568,9 @@ static char *knot_zdump_crc_file(const char* filename)
 	return crc_path;
 }
 
-int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
-			int do_checks, const char *sfilename)
+int knot_zdump_binary(knot_zone_contents_t *zone, int fd,
+                      int do_checks, const char *sfilename)
 {
-	/* Open .new file. */
-	char new_path[strlen(filename) + strlen(".new") + 1];
-	memcpy(new_path, filename, strlen(filename) + 1);
-	strcat(new_path, ".new");
-	mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
-	int fd = open(new_path, O_WRONLY | O_CREAT | O_TRUNC, mode);
-	if (fd == -1) {
-		close(fd);
-		remove(new_path);
-		remove(knot_zdump_crc_file(filename));
-		return KNOT_EBADARG;
-	}
-
 	FILE *f = fdopen(fd, "wb");
 	assert(f);
 
@@ -641,10 +628,8 @@ int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
 		fprintf(stderr, "Zone will not be dumped because of "
 		        "fatal semantic errors.\n");
 		fclose(f);
-		close(fd);
 		/* If remove fails, there is nothing we can do. */
 		remove(new_path);	
-		remove(knot_zdump_crc_file(filename));
 		return KNOT_ERROR;
 	}
 
@@ -687,10 +672,6 @@ int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
 	if (knot_dump_dname_table(zone->dname_table, f, &crc)
 	    != KNOT_EOK) {
 		fclose(f);
-		close(fd);
-		/* If remove fails, there is nothing we can do. */
-		remove(new_path);	
-		remove(knot_zdump_crc_file(filename));
 		return KNOT_ERROR;
 	}
 
@@ -707,15 +688,13 @@ int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
 	fclose(f);
 
 	crc = crc_finalize(crc);
+	
 	/* Write CRC to separate .crc file. */
 	/*!< \todo There is now function doing this. */
 	char *crc_path =
 		malloc(sizeof(char) * (strlen(filename) + strlen(".crc") + 1));
 	if (unlikely(!crc_path)) {
-		close(fd);
 		/* If remove fails, there is nothing we can do. */
-		remove(new_path);
-		remove(knot_zdump_crc_file(filename));
 		free(crc_path);
 		return KNOT_ENOMEM;
 	}
@@ -728,10 +707,7 @@ int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
 	if (unlikely(!f_crc)) {
 		dbg_zload("knot_zload_open: failed to open '%s'\n",
 		                   crc_path);
-		close(fd);
 		/* If remove fails, there is nothing we can do. */
-		remove(new_path);
-		remove(knot_zdump_crc_file(filename));
 		free(crc_path);
 		return ENOENT;
 	}
@@ -740,7 +716,6 @@ int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
 	fprintf(f_crc, "%lu\n", (unsigned long)crc);
 	fclose(f_crc);
 
-	close(fd);
 	mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
 	fd = open(filename, O_WRONLY | O_CREAT, mode);
 	if (fd == -1) {
@@ -808,62 +783,12 @@ int knot_zdump_rrset_serialize(const knot_rrset_t *rrset, uint8_t **stream,
 	return KNOT_EOK;
 }
 
-int knot_zdump_dump_and_swap(knot_zone_contents_t *zone,
-                             const char *temp_zonedb,
-                             const char *destination_zonedb,
-                             const char *sfilename)
+int knot_zdump_dump(knot_zone_contents_t *zone, int fd, const char *sfilename)
 {
-	int rc = knot_zdump_binary(zone, temp_zonedb, 0, sfilename);
-
+	int rc = knot_zdump_binary(zone, fd, 0, sfilename);
 	if (rc != KNOT_EOK) {
 		dbg_zdump("Failed to save the zone to binary zone db %s."
 		                 "\n", temp_zonedb);
-		return KNOT_ERROR;
-	}
-
-	/*! \todo this would also need locking as well. */
-	rc = remove(destination_zonedb);
-	if (rc == 0 || (rc != 0 && errno == ENOENT)) {
-
-		/* Delete old CRC file. */
-		char *destination_zonedb_crc =
-			knot_zdump_crc_file(destination_zonedb);
-		if (destination_zonedb_crc == NULL) {
-			return KNOT_ENOMEM;
-		}
-		remove(destination_zonedb_crc);
-
-		/* Move CRC file. */
-		char *temp_zonedb_crc =
-			knot_zdump_crc_file(temp_zonedb);
-		if (temp_zonedb_crc == NULL) {
-			return KNOT_ENOMEM;
-		}
-
-		if (rename(temp_zonedb_crc, destination_zonedb_crc) != 0) {
-			dbg_zdump("Failed to replace old zonedb CRC %s "
-					 "with new CRC zone file %s.\n",
-					 destination_zonedb_crc,
-					 temp_zonedb_crc);
-			return KNOT_ERROR;
-		}
-		free(temp_zonedb_crc);
-		free(destination_zonedb_crc);
-
-		/* Rename zonedb. */
-		if (rename(temp_zonedb, destination_zonedb) != 0) {
-			dbg_zdump("Failed to replace old zonedb %s "
-					 "with new zone file %s.\n",
-					 temp_zonedb,
-					 destination_zonedb);
-			/*! \todo with proper locking, this shouldn't happen,
-			 *        revise it later on.
-			 */
-			return KNOT_ERROR;
-		}
-	} else {
-		dbg_zdump("Failed to replace old zonedb '%s'', %s.\n",
-				 destination_zonedb, strerror(errno));
 		return KNOT_ERROR;
 	}
 

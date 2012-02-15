@@ -15,6 +15,7 @@
  */
 
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "common/lists.h"
 #include "common/prng.h"
@@ -41,6 +42,9 @@
 
 static const size_t XFRIN_CHANGESET_BINARY_SIZE = 100;
 static const size_t XFRIN_CHANGESET_BINARY_STEP = 100;
+
+/* Forward declarations. */
+static int zones_dump_zone_text(knot_zone_contents_t *zone,  const char *zf);
 
 /*----------------------------------------------------------------------------*/
 
@@ -1734,7 +1738,14 @@ int zones_zonefile_sync(knot_zone_t *zone)
 		dbg_zones("zones: syncing '%s' differences to '%s' "
 		          "(SOA serial %u)\n",
 		          zd->conf->name, zd->conf->file, serial_to);
-		zone_dump_text(contents, zd->conf->file);
+		ret = zones_dump_zone_text(contents, zd->conf->file);
+		if (ret != KNOTD_EOK) {
+			dbg_zones("zones: failed to sync '%s' to '%s'\n"
+			          zd->conf->name, zd->conf->file);
+			pthread_mutex_unlock(&zd->lock);
+			return ret;
+		}
+		
 		conf_read_unlock();
 
 		/* Update journal entries. */
@@ -2217,124 +2228,138 @@ static int zones_find_zone_for_xfr(const knot_zone_contents_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-static char *zones_find_free_filename(const char *old_name)
+static int zones_open_free_filename(const char *old_name, char **new_name)
 {
 	/* find zone name not present on the disk */
-	int free_name = 0;
 	size_t name_size = strlen(old_name);
-
-	char *new_name = malloc(name_size + 3);
-	if (new_name == NULL) {
-		return NULL;
+	*new_name = malloc(name_size + 7 + 1);
+	if (*new_name == NULL) {
+		return -1;
 	}
-	memcpy(new_name, old_name, name_size);
-	new_name[name_size] = '.';
-	new_name[name_size + 2] = 0;
-
-	dbg_zones_verb("zones: finding free name for the zone file.\n");
-	int c = 48;
-	FILE *file;
-	while (!free_name && c < 58) {
-		new_name[name_size + 1] = c;
-		dbg_zones_verb("zones: trying file name %s\n", new_name);
-		if ((file = fopen(new_name, "r")) != NULL) {
-			fclose(file);
-			++c;
-		} else {
-			free_name = 1;
-		}
+	strncpy(*new_name, old_name, name_size);
+	strncat(*new_name, ".XXXXXX", 7);
+	dbg_zones_verb("zones: creating temporary zone file\n");
+	int fd = mkstemp(*new_name);
+	if (fd < 0) {
+		dbg_zones_verb("zones: couldn't create temporary zone file\n");
+		free(*new_name);
+		*new_name = NULL;
 	}
-
-	if (free_name) {
-		return new_name;
-	} else {
-		free(new_name);
-		return NULL;
-	}
+	
+	return fd;
 }
 
 /*----------------------------------------------------------------------------*/
 
-static int zones_dump_xfr_zone_text(knot_zone_contents_t *zone, 
-                                    const char *zonefile)
+static int zones_dump_zone_text(knot_zone_contents_t *zone, const char *fname)
 {
-	assert(zone != NULL && zonefile != NULL);
+	assert(zone != NULL && fname != NULL);
 
-	/*! \todo new_zonefile may be created by another process,
-	 *        until the zone_dump_text is called. Needs to be opened in
-	 *        this function for writing.
-	 *        Use open() for exclusive open and fcntl() for locking.
-	 *        (issue #1587)
-	 */
-
-	char *new_zonefile = zones_find_free_filename(zonefile);
-
-	if (new_zonefile == NULL) {
+	char *new_fname = NULL;
+	int fd = zones_open_free_filename(fname, &new_fname);
+	if (fd < 0) {
 		log_zone_warning("Failed to find filename for temporary "
 		                 "storage of the transferred zone.\n");
-		return KNOTD_ERROR;	/*! \todo New error code? */
+		return KNOTD_ERROR;
 	}
 
-	int rc = zone_dump_text(zone, new_zonefile);
-
-	if (rc != KNOTD_EOK) {
+	if (zone_dump_text(zone, fd) != KNOTD_EOK) {
 		log_zone_warning("Failed to save the transferred zone to '%s'.\n",
-		                 new_zonefile);
-		free(new_zonefile);
+		                 new_fname);
+		close(fd);
+		unlink(new_fname);
+		free(new_fname);
 		return KNOTD_ERROR;
 	}
 
-	/*! \todo this would also need locking as well (issue #1587) */
-	remove(zonefile); /* Don't care, as the rename will trigger the error. */
-	if (rename(new_zonefile, zonefile) != 0) {
+	/* Swap temporary zonefile and new zonefile. */
+	close(fd);
+	int ret = rename(new_fname, fname);
+	if (ret < 0 && ret != EEXIST) {
 		log_zone_warning("Failed to replace old zone file '%s'' with a new"
-		                 " zone file '%s'.\n", zonefile, new_zonefile);
-		/*! \todo with proper locking, this shouldn't happen,
-		 *        revise it later on (issue #1587)
-		 */
-		zone_dump_text(zone, zonefile);
-		free(new_zonefile);
+		                 " zone file '%s'.\n", fname, new_fname);
+		unlink(new_fname);
+		free(new_fname);
 		return KNOTD_ERROR;
 	}
 
 
-	free(new_zonefile);
+	free(new_fname);
 	return KNOTD_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
-static int ns_dump_xfr_zone_binary(knot_zone_contents_t *zone, 
+static int zones_dump_zone_binary(knot_zone_contents_t *zone, 
                                    const char *zonedb,
                                    const char *zonefile)
 {
 	assert(zone != NULL && zonedb != NULL);
 
-	/*! \todo new_zonedb may be created by another process,
-	 *        until the zone_dump_text is called. Needs to be opened in
-	 *        this function for writing.
-	 *        Use open() for exclusive open and fcntl() for locking.
-	 *        (issue #1587)
-	 */
-	char *new_zonedb = zones_find_free_filename(zonedb);
-
-	if (new_zonedb == NULL) {
+	char *new_zonedb = NULL;
+	int fd = zones_open_free_filename(zonedb, &new_zonedb);
+	if (fd < 0) {
 		dbg_zones("zones: failed to find free filename for temporary "
 		          "storage of the zone binary file '%s'\n",
 		          zonedb);
-		return KNOTD_ERROR;	/*! \todo New error code? */
-	}
-
-	/*! \todo this would also need locking as well (issue #1587) */
-	int rc = knot_zdump_dump_and_swap(zone, new_zonedb, zonedb, zonefile);
-	free(new_zonedb);
-
-	if (rc != KNOT_EOK) {
 		return KNOTD_ERROR;
 	}
 
+	if (knot_zdump_dump(zone, fd, zonefile) == KNOT_EOK) {
+		close(fd);
+		unlink(new_zonedb);
+		free(new_zonedb);
+		return KNOTD_ERROR;
+	}
+	
+	/* Delete old CRC file. */
+	char *zonedb_crc = knot_zdump_crc_file(zonedb);
+	if (zonedb_crc == NULL) {
+		close(fd);
+		unlink(new_zonedb);
+		free(new_zonedb);
+		return KNOTD_ENOMEM;
+	}
+	remove(zonedb_crc);
+	
+	/* New CRC file. */
+	char *new_zonedb_crc = knot_zdump_crc_file(new_zonedb);
+	if (new_zonedb_crc == NULL) {
+		free(zonedb_crc);
+		close(fd);
+		unlink(new_zonedb);
+		free(new_zonedb);
+		return KNOTD_ENOMEM;
+	}
 
-	return KNOTD_EOK;
+	/* Swap CRC files. */
+	int ret = KNOTD_EOK;
+	if (rename(new_zonedb_crc, zonedb_crc) < 0) {
+		dbg_zdump("Failed to replace old zonedb CRC %s "
+		          "with new CRC zone file %s.\n",
+		          zonedb_crc,
+		          new_zonedb_crc);
+		unlink(new_zonedb);
+		unlink(new_zonedb_crc);
+		ret = KNOTD_ERROR;
+	} else {
+		/* Swap zone databases. */
+		int swap_res = rename(new_zonedb, zonedb);
+		if (swap_res < 0 && swap_res != EEXIST) {
+			dbg_zdump("Failed to replace old zonedb %s "
+			          "with new zone file %s.\n",
+			          new_zonedb,
+			          zonedb);
+			ret = KNOTD_ERROR;
+			unlink(new_zonedb);
+		}
+	}
+	
+	free(new_zonedb_crc);
+	free(zonedb_crc);
+	close(fd);
+	free(new_zonedb);
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2359,12 +2384,12 @@ int zones_save_zone(const knot_ns_xfr_t *xfr)
 	assert(zonefile != NULL && zonedb != NULL);
 	
 	/* dump the zone into text zone file */
-	ret = zones_dump_xfr_zone_text(zone, zonefile);
+	ret = zones_dump_zone_text(zone, zonefile);
 	if (ret != KNOTD_EOK) {
 		return KNOTD_ERROR;
 	}
 	/* dump the zone into binary db file */
-	ret = ns_dump_xfr_zone_binary(zone, zonedb, zonefile);
+	ret = zones_dump_zone_binary(zone, zonedb, zonefile);
 	if (ret != KNOTD_EOK) {
 		return KNOTD_ERROR;
 	}
