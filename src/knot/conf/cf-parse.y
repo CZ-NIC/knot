@@ -149,6 +149,58 @@ static int conf_key_add(void *scanner, knot_key_t **key, char *item)
     return 1;
 }
 
+static void conf_zone_start(void *scanner, char *name) {
+   this_zone = NULL;
+   this_zone = malloc(sizeof(conf_zone_t));
+   if (this_zone == NULL || name == NULL) {
+      cf_error(scanner, "out of memory while allocating zone config");
+      return;
+   }
+   memset(this_zone, 0, sizeof(conf_zone_t));
+   this_zone->enable_checks = -1; // Default policy applies
+   this_zone->notify_timeout = -1; // Default policy applies
+   this_zone->notify_retries = 0; // Default policy applies
+   this_zone->ixfr_fslimit = -1; // Default policy applies
+   this_zone->dbsync_timeout = -1; // Default policy applies
+
+   // Append mising dot to ensure FQDN
+   size_t nlen = strlen(name);
+   if (name[nlen - 1] != '.') {
+      this_zone->name = malloc(nlen + 2);
+      if (this_zone->name != NULL) {
+	memcpy(this_zone->name, name, nlen);
+	this_zone->name[nlen] = '.';
+	this_zone->name[nlen + 1] = '\0';
+     }
+     free(name);
+   } else {
+      this_zone->name = name; /* Already FQDN */
+   }
+
+   /* Check domain name. */
+   knot_dname_t *dn = NULL;
+   if (this_zone->name != NULL) {
+      dn = knot_dname_new_from_str(this_zone->name, nlen + 1, 0);
+   }
+   if (dn == NULL) {
+     free(this_zone->name);
+     free(this_zone);
+     this_zone = NULL;
+     cf_error(scanner, "invalid zone origin");
+   } else {
+     /* Directly discard dname, won't be needed. */
+     knot_dname_free(&dn);
+     add_tail(&new_config->zones, &this_zone->n);
+     ++new_config->zones_count;
+
+     /* Initialize ACL lists. */
+     init_list(&this_zone->acl.xfr_in);
+     init_list(&this_zone->acl.xfr_out);
+     init_list(&this_zone->acl.notify_in);
+     init_list(&this_zone->acl.notify_out);
+   }
+}
+
 %}
 
 %pure-parser
@@ -528,52 +580,13 @@ zone_acl:
    }
  ;
 
-zone_start: TEXT {
-   this_zone = malloc(sizeof(conf_zone_t));
-   memset(this_zone, 0, sizeof(conf_zone_t));
-   this_zone->enable_checks = -1; // Default policy applies
-   this_zone->notify_timeout = -1; // Default policy applies
-   this_zone->notify_retries = 0; // Default policy applies
-   this_zone->ixfr_fslimit = -1; // Default policy applies
-   this_zone->dbsync_timeout = -1; // Default policy applies
-
-   // Append mising dot to ensure FQDN
-   char *name = $1.t;
-   size_t nlen = strlen(name);
-   if (name[nlen - 1] != '.') {
-      this_zone->name = malloc(nlen + 2);
-      if (this_zone->name != NULL) {
-	memcpy(this_zone->name, name, nlen);
-	this_zone->name[nlen] = '.';
-	this_zone->name[nlen + 1] = '\0';
-     }
-     free(name);
-   } else {
-      this_zone->name = name; /* Already FQDN */
-   }
-
-   /* Check domain name. */
-   knot_dname_t *dn = NULL;
-   if (this_zone->name != NULL) {
-      dn = knot_dname_new_from_str(this_zone->name, nlen + 1, 0);
-   }
-   if (dn == NULL) {
-     free(this_zone->name);
-     free(this_zone);
-     cf_error(scanner, "invalid zone origin");
-   } else {
-     /* Directly discard dname, won't be needed. */
-     knot_dname_free(&dn);
-     add_tail(&new_config->zones, &this_zone->n);
-     ++new_config->zones_count;
-
-     /* Initialize ACL lists. */
-     init_list(&this_zone->acl.xfr_in);
-     init_list(&this_zone->acl.xfr_out);
-     init_list(&this_zone->acl.notify_in);
-     init_list(&this_zone->acl.notify_out);
-   }
- }
+zone_start:
+ | TEXT  { conf_zone_start(scanner, $1.t); }
+ | USER  { conf_zone_start(scanner, strdup($1.t)); }
+ | REMOTES { conf_zone_start(scanner, strdup($1.t)); }
+ | LOG_SRC { conf_zone_start(scanner, strdup($1.t)); }
+ | LOG { conf_zone_start(scanner, strdup($1.t)); }
+ | LOG_LEVEL { conf_zone_start(scanner, strdup($1.t)); }
  ;
 
 zone:
