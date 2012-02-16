@@ -569,7 +569,8 @@ char *knot_zdump_crc_file(const char* filename)
 }
 
 int knot_zdump_binary(knot_zone_contents_t *zone, int fd,
-                      int do_checks, const char *sfilename)
+                      int do_checks, const char *sfilename,
+                      crc_t *crc)
 {
 	FILE *f = fdopen(fd, "wb");
 	assert(f);
@@ -629,47 +630,46 @@ int knot_zdump_binary(knot_zone_contents_t *zone, int fd,
 		        "fatal semantic errors.\n");
 		fclose(f);
 		/* If remove fails, there is nothing we can do. */
-		remove(new_path);	
 		return KNOT_ERROR;
 	}
 
-	crc_t crc = crc_init();
+	*crc = crc_init();
 
 	/* Start writing header - magic bytes. */
 	static const uint8_t MAGIC[MAGIC_LENGTH] = MAGIC_BYTES;
 	fwrite_wrapper(&MAGIC, sizeof(uint8_t), MAGIC_LENGTH, f, NULL, NULL,
-	               &crc);
+	               crc);
 
 	/* Write source file length. */
 	uint32_t sflen = 0;
 	if (sfilename) {
 		sflen = strlen(sfilename) + 1;
 	}
-	fwrite_wrapper(&sflen, sizeof(uint32_t), 1, f, NULL, NULL, &crc);
+	fwrite_wrapper(&sflen, sizeof(uint32_t), 1, f, NULL, NULL, crc);
 
 	/* Write source file. */
-	fwrite_wrapper(sfilename, sflen, 1, f, NULL, NULL, &crc);
+	fwrite_wrapper(sfilename, sflen, 1, f, NULL, NULL, crc);
 
 	/* Notice: End of header,
 	 */
 
 	/* Start writing compiled data. */
 	fwrite_wrapper(&normal_node_count, sizeof(normal_node_count), 1, f,
-	               NULL, NULL, &crc);
+	               NULL, NULL, crc);
 	fwrite_wrapper(&nsec3_node_count, sizeof(nsec3_node_count), 1, f,
-	               NULL, NULL, &crc);
+	               NULL, NULL, crc);
 	uint32_t auth_node_count = zone->node_count;
 	fwrite_wrapper(&auth_node_count,
-	       sizeof(auth_node_count), 1, f, NULL, NULL, &crc);
+	       sizeof(auth_node_count), 1, f, NULL, NULL, crc);
 
 	/* Write total number of dnames */
 	assert(zone->dname_table);
 	uint32_t total_dnames = zone->dname_table->id_counter;
 	fwrite_wrapper(&total_dnames,
-	       sizeof(total_dnames), 1, f, NULL, NULL, &crc);
+	       sizeof(total_dnames), 1, f, NULL, NULL, crc);
 
 	/* Write dname table. */
-	if (knot_dump_dname_table(zone->dname_table, f, &crc)
+	if (knot_dump_dname_table(zone->dname_table, f, crc)
 	    != KNOT_EOK) {
 		fclose(f);
 		return KNOT_ERROR;
@@ -677,7 +677,7 @@ int knot_zdump_binary(knot_zone_contents_t *zone, int fd,
 
 	arguments.arg1 = (void *)f;
 	arguments.arg3 = zone;
-	arguments.arg7 = &crc;
+	arguments.arg7 = crc;
 
 	/* TODO is there a way how to stop the traversal upon error? */
 	knot_zone_contents_tree_apply_inorder(zone, dump_node_to_file,
@@ -687,82 +687,8 @@ int knot_zdump_binary(knot_zone_contents_t *zone, int fd,
 					(void *)&arguments);
 	fclose(f);
 
-	crc = crc_finalize(crc);
+	*crc = crc_finalize(*crc);
 	
-	/* Write CRC to separate .crc file. */
-	/*!< \todo There is now function doing this. */
-	char *crc_path =
-		malloc(sizeof(char) * (strlen(filename) + strlen(".crc") + 1));
-	if (unlikely(!crc_path)) {
-		/* If remove fails, there is nothing we can do. */
-		free(crc_path);
-		return KNOT_ENOMEM;
-	}
-	memset(crc_path, 0,
-	       sizeof(char) * (strlen(filename) + strlen(".crc") + 1));
-	memcpy(crc_path, filename, sizeof(char) * strlen(filename));
-
-	crc_path = strcat(crc_path, ".crc");
-	FILE *f_crc = fopen(crc_path, "w");
-	if (unlikely(!f_crc)) {
-		dbg_zload("knot_zload_open: failed to open '%s'\n",
-		                   crc_path);
-		/* If remove fails, there is nothing we can do. */
-		free(crc_path);
-		return ENOENT;
-	}
-	free(crc_path);
-
-	fprintf(f_crc, "%lu\n", (unsigned long)crc);
-	fclose(f_crc);
-
-	mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
-	fd = open(filename, O_WRONLY | O_CREAT, mode);
-	if (fd == -1) {
-		fprintf(stderr, "%s\n", strerror(errno));
-		fprintf(stderr, "Could not open destination file! Use '%s' "
-		        "file instead.\n", new_path);
-		close(fd);
-		/* If remove fails, there is nothing we can do. */
-		remove(new_path);
-		remove(knot_zdump_crc_file(filename));
-		return KNOT_ERROR;
-	}
-
-	/* Try to obtain exclusive lock for originally given file. */
-	if (fcntl(fd, F_SETLK, knot_file_lock(F_WRLCK, SEEK_SET)) == -1) {
-		fprintf(stderr, "Could not lock destination file for write! "
-		        "Use '%s' file instead.\n", new_path);
-		close(fd);
-		/* If remove fails, there is nothing we can do. */
-		remove(new_path);
-		remove(knot_zdump_crc_file(filename));
-		return KNOT_ERROR;
-	}
-
-	/* Move .new file to original file. */
-	if (rename(new_path, filename) != 0) {
-		fprintf(stderr, "Could not move to originally given file! "
-		        "Use '%s' file instead.\n", new_path);
-		close(fd);
-		/* If remove fails, there is nothing we can do. */
-		remove(new_path);
-		remove(knot_zdump_crc_file(filename));
-		return KNOT_ERROR;
-	}
-
-	/* Release the lock. */
-	if (fcntl(fd, F_SETLK, knot_file_lock(F_UNLCK, SEEK_SET)) == -1) {
-		fprintf(stderr, "Could not unlock destination file!\n");
-		close(fd);
-		/* If remove fails, there is nothing we can do. */
-		remove(new_path);
-		remove(knot_zdump_crc_file(filename));
-		return KNOT_ERROR;
-	}
-
-	close(fd);
-
 	return KNOT_EOK;
 }
 
@@ -783,9 +709,10 @@ int knot_zdump_rrset_serialize(const knot_rrset_t *rrset, uint8_t **stream,
 	return KNOT_EOK;
 }
 
-int knot_zdump_dump(knot_zone_contents_t *zone, int fd, const char *sfilename)
+int knot_zdump_dump(knot_zone_contents_t *zone, int fd, const char *sfilename,
+                    crc_t *crc)
 {
-	int rc = knot_zdump_binary(zone, fd, 0, sfilename);
+	int rc = knot_zdump_binary(zone, fd, 0, sfilename, crc);
 	if (rc != KNOT_EOK) {
 		dbg_zdump("Failed to save the zone to binary zone db %s."
 		                 "\n", temp_zonedb);

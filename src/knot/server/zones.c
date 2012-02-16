@@ -2305,7 +2305,8 @@ static int zones_dump_zone_binary(knot_zone_contents_t *zone,
 		return KNOTD_ERROR;
 	}
 
-	if (knot_zdump_dump(zone, fd, zonefile) == KNOT_EOK) {
+	crc_t crc_value;
+	if (knot_zdump_dump(zone, fd, zonefile, &crc_value) != KNOT_EOK) {
 		close(fd);
 		unlink(new_zonedb);
 		free(new_zonedb);
@@ -2352,6 +2353,17 @@ static int zones_dump_zone_binary(knot_zone_contents_t *zone,
 			          zonedb);
 			ret = KNOTD_ERROR;
 			unlink(new_zonedb);
+		} else {
+			/* Write CRC value to CRC file. */
+			FILE *f_crc = fopen(zonedb_crc, "w");
+			if (f_crc == NULL) {
+				unlink(new_zonedb);
+				ret = KNOTD_ERROR;
+			} else {
+				fprintf(f_crc, "%lu\n",
+				        (unsigned long)crc_value);
+				fclose(f_crc);
+			}
 		}
 	}
 	
