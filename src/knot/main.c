@@ -234,6 +234,7 @@ int main(int argc, char **argv)
 			log_server_error("Failed to parse configuration '%s'.\n",
 				config_fn);
 		}
+		server_wait(server);
 		server_destroy(&server);
 		free(config_fn);
 		return 1;
