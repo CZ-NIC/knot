@@ -51,7 +51,7 @@
  * or raw data stored like this: data_len [data]
  */
 
-static inline int fwrite_to_file_crc(const void *src,
+static inline int write_to_file_crc(const void *src,
                                      size_t size, size_t n, int fd,
                                      crc_t *crc)
 {
@@ -60,7 +60,6 @@ static inline int fwrite_to_file_crc(const void *src,
 		fprintf(stderr, "fwrite: invalid write %zu (expected %zu)\n", rc,
 			n);
 	}
-	/* \todo this seems to be wrong, if you fwrite less than n items, you probably should not continue */
 
 	if (size * n > 0) {
 		*crc =
@@ -69,12 +68,13 @@ static inline int fwrite_to_file_crc(const void *src,
 	}
 
 	/* \todo the rc return is certainly wrong as it is used in the caller function */
-//	return rc == n;
-	return (int)rc;
+	/* It was meant differtely, caller function does not care how many bytes had been written, it just cares about,
+	 * success/fail (not that it is checked anyway). */
+	return rc == n;
 
 }
 
-static inline int fwrite_to_stream(const void *src,
+static inline int write_to_stream(const void *src,
                                    size_t size, size_t n,
                                    uint8_t **stream,
                                    size_t *stream_size)
@@ -104,10 +104,10 @@ static int write_wrapper(const void *src,
 	if (fd < 0) {
 		assert(stream && stream_size);
 		assert(crc == NULL);
-		return fwrite_to_stream(src, size, n, stream, stream_size);
+		return write_to_stream(src, size, n, stream, stream_size);
 	} else {
 		assert(stream == NULL && stream_size == NULL);
-		return fwrite_to_file_crc(src, size, n, fd, crc);
+		return write_to_file_crc(src, size, n, fd, crc);
 	}
 }
 
@@ -394,7 +394,6 @@ static void knot_node_dump_binary(knot_node_t *node, void *data,
 	arg_t *args = (arg_t *)data;
 	int fd = (int)args->arg1;
 
-//	node_count++;
 	/* first write dname */
 	assert(node->owner != NULL);
 
@@ -443,28 +442,12 @@ static void knot_node_dump_binary(knot_node_t *node, void *data,
 	write_wrapper(&rrset_count, sizeof(rrset_count), 1, fd,
 	               stream, stream_size, crc);
 
-	/* CLEANUP */
-//	const skip_node_t *skip_node = skip_first(node->rrsets);
-
 	const knot_rrset_t **node_rrsets = knot_node_rrsets(node);
 	for (int i = 0; i < rrset_count; i++)
 	{
 		knot_rrset_dump_binary(node_rrsets[i], data, 1,
 		                       stream, stream_size, crc);
 	}
-
-	/* CLEANUP */
-//	if (skip_node == NULL) {
-//		/* we can return, count is set to 0 */
-//		return;
-//	}
-
-//	knot_rrset_t *tmp;
-
-//	do {
-//		tmp = (knot_rrset_t *)skip_node->value;
-//		knot_rrset_dump_binary(tmp, data, 1);
-//	} while ((skip_node = skip_next(skip_node)) != NULL);
 
 	free(node_rrsets);
 
@@ -526,9 +509,6 @@ static int knot_dump_dname_table(const knot_dname_table_t *dname_table,
 	/* Go through the tree and dump each dname along with its ID. */
 	knot_dname_table_tree_inorder_apply(dname_table,
 					    dump_dname_from_tree, &arg);
-	/* CLEANUP */
-//	TREE_FORWARD_APPLY(dname_table->tree, dname_table_node, avl,
-//			   dump_dname_from_tree, (void *)f);
 
 	return KNOT_EOK;
 }
@@ -574,8 +554,6 @@ int knot_zdump_binary(knot_zone_contents_t *zone, int fd,
 		return KNOT_EBADARG;
 	}
 
-	/* CLEANUP */
-//	skip_list_t *encloser_list = skip_create_list(compare_pointers);
 	arg_t arguments;
 	/* Memory to be derefenced in the save_node_from_tree function. */
 	uint32_t node_count = 0;
