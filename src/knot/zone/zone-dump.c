@@ -570,7 +570,6 @@ int knot_zdump_binary(knot_zone_contents_t *zone, int fd,
                       int do_checks, const char *sfilename,
                       crc_t *crc)
 {
-	printf("fd received: %d\n", fd);
 	if (fd < 0) {
 		return KNOT_EBADARG;
 	}

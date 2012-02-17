@@ -2258,7 +2258,6 @@ static int zones_dump_zone_text(knot_zone_contents_t *zone, const char *fname)
 	assert(zone != NULL && fname != NULL);
 
 	char *new_fname = NULL;
-	printf("2559: old_zone: %s\n", fname);
 	int fd = zones_open_free_filename(fname, &new_fname);
 	if (fd < 0) {
 		log_zone_warning("Failed to find filename for temporary "
@@ -2266,8 +2265,6 @@ static int zones_dump_zone_text(knot_zone_contents_t *zone, const char *fname)
 		return KNOTD_ERROR;
 	}
 	
-	printf("text dump to: %s\n", new_fname);
-
 	if (zone_dump_text(zone, fd) != KNOTD_EOK) {
 		log_zone_warning("Failed to save the transferred zone to '%s'.\n",
 		                 new_fname);
@@ -2302,7 +2299,6 @@ static int zones_dump_zone_binary(knot_zone_contents_t *zone,
 	assert(zone != NULL && zonedb != NULL);
 
 	char *new_zonedb = NULL;
-	printf("2300: old_zone: %s\n", zonedb);
 	int fd = zones_open_free_filename(zonedb, &new_zonedb);
 	if (fd < 0) {
 		dbg_zones("zones: failed to find free filename for temporary "
@@ -2312,8 +2308,6 @@ static int zones_dump_zone_binary(knot_zone_contents_t *zone,
 	}
 
 	crc_t crc_value;
-	printf("fd sent: %d\n", fd);	
-	printf("binary dump to: %s\n", new_zonedb);
 	if (knot_zdump_dump(zone, fd, zonefile, &crc_value) != KNOT_EOK) {
 		close(fd);
 		unlink(new_zonedb);
@@ -2321,7 +2315,7 @@ static int zones_dump_zone_binary(knot_zone_contents_t *zone,
 		printf("Could not dump zone\n");
 		return KNOTD_ERROR;
 	}
-	
+
 	/* Delete old CRC file. */
 	char *zonedb_crc = knot_zdump_crc_file(zonedb);
 	if (zonedb_crc == NULL) {
@@ -2331,15 +2325,30 @@ static int zones_dump_zone_binary(knot_zone_contents_t *zone,
 		return KNOTD_ENOMEM;
 	}
 	remove(zonedb_crc);
-	
+
 	/* New CRC file. */
 	char *new_zonedb_crc = knot_zdump_crc_file(new_zonedb);
 	if (new_zonedb_crc == NULL) {
+		dbg_zdump("Failed to create CRC file path from %s.\n",
+		          new_zonedb);
 		free(zonedb_crc);
 		close(fd);
 		unlink(new_zonedb);
 		free(new_zonedb);
 		return KNOTD_ENOMEM;
+	}
+
+	/* Write CRC value to CRC file. */
+	FILE *f_crc = fopen(new_zonedb_crc, "w");
+	if (f_crc == NULL) {
+		dbg_zdump("Cannot open CRC file %s!\n",
+		          zonedb_crc);
+		unlink(new_zonedb);
+		return KNOTD_ERROR;
+	} else {
+		fprintf(f_crc, "%lu\n",
+		        (unsigned long)crc_value);
+		fclose(f_crc);
 	}
 
 	/* Swap CRC files. */
@@ -2363,23 +2372,16 @@ static int zones_dump_zone_binary(knot_zone_contents_t *zone,
 			ret = KNOTD_ERROR;
 			unlink(new_zonedb);
 		} else {
-			/* Write CRC value to CRC file. */
-			FILE *f_crc = fopen(zonedb_crc, "w");
-			if (f_crc == NULL) {
-				unlink(new_zonedb);
-				ret = KNOTD_ERROR;
-			} else {
-				fprintf(f_crc, "%lu\n",
-				        (unsigned long)crc_value);
-				fclose(f_crc);
-			}
+
 		}
 	}
-	
+
 	free(new_zonedb_crc);
 	free(zonedb_crc);
 	close(fd);
 	free(new_zonedb);
+
+
 	return ret;
 }
 
