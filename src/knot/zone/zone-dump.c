@@ -468,9 +468,6 @@ static void knot_node_dump_binary(knot_node_t *node, void *data,
 
 	free(node_rrsets);
 
-	dbg_zdump("Position after all rrsets: %ld\n", ftell(f));
-	dbg_zdump("Writing here: %ld\n", ftell(f));
-	dbg_zdump("Function ends with: %ld\n\n", ftell(f));
 }
 
 int zone_is_secure(knot_zone_contents_t *zone)
@@ -716,8 +713,7 @@ int knot_zdump_dump(knot_zone_contents_t *zone, int fd, const char *sfilename,
 {
 	int rc = knot_zdump_binary(zone, fd, 0, sfilename, crc);
 	if (rc != KNOT_EOK) {
-		dbg_zdump("Failed to save the zone to binary zone db %s."
-		                 "\n", temp_zonedb);
+		dbg_zdump("Failed to save the zone to binary zone db\n.");
 		return KNOT_ERROR;
 	}
 
