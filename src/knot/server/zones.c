@@ -2246,8 +2246,6 @@ static int zones_open_free_filename(const char *old_name, char **new_name)
 		*new_name = NULL;
 	}
 	
-	printf("Zone name created: %s\n", *new_name);
-	
 	return fd;
 }
 
@@ -2312,7 +2310,6 @@ static int zones_dump_zone_binary(knot_zone_contents_t *zone,
 		close(fd);
 		unlink(new_zonedb);
 		free(new_zonedb);
-		printf("Could not dump zone\n");
 		return KNOTD_ERROR;
 	}
 
@@ -2412,11 +2409,6 @@ int zones_save_zone(const knot_ns_xfr_t *xfr)
 		return KNOTD_ERROR;
 	}
 	/* dump the zone into binary db file */
-	printf("Find zone for xfr returned zonedb: %s\n", zonedb);
-	for (int i = 0; i < strlen(zonedb); i++) {
-		printf("%d: %c ",i, zonedb[i]);
-	}
-	printf("%d\n", zonedb[strlen(zonedb)]);
 	ret = zones_dump_zone_binary(zone, zonedb, zonefile);
 	if (ret != KNOTD_EOK) {
 		return KNOTD_ERROR;
