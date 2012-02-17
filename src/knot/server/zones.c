@@ -2246,6 +2246,8 @@ static int zones_open_free_filename(const char *old_name, char **new_name)
 		*new_name = NULL;
 	}
 	
+	printf("Zone name created: %s\n", *new_name);
+	
 	return fd;
 }
 
@@ -2256,12 +2258,15 @@ static int zones_dump_zone_text(knot_zone_contents_t *zone, const char *fname)
 	assert(zone != NULL && fname != NULL);
 
 	char *new_fname = NULL;
+	printf("2559: old_zone: %s\n", fname);
 	int fd = zones_open_free_filename(fname, &new_fname);
 	if (fd < 0) {
 		log_zone_warning("Failed to find filename for temporary "
 		                 "storage of the transferred zone.\n");
 		return KNOTD_ERROR;
 	}
+	
+	printf("text dump to: %s\n", new_fname);
 
 	if (zone_dump_text(zone, fd) != KNOTD_EOK) {
 		log_zone_warning("Failed to save the transferred zone to '%s'.\n",
@@ -2297,6 +2302,7 @@ static int zones_dump_zone_binary(knot_zone_contents_t *zone,
 	assert(zone != NULL && zonedb != NULL);
 
 	char *new_zonedb = NULL;
+	printf("2300: old_zone: %s\n", zonedb);
 	int fd = zones_open_free_filename(zonedb, &new_zonedb);
 	if (fd < 0) {
 		dbg_zones("zones: failed to find free filename for temporary "
@@ -2306,10 +2312,13 @@ static int zones_dump_zone_binary(knot_zone_contents_t *zone,
 	}
 
 	crc_t crc_value;
+	printf("fd sent: %d\n", fd);	
+	printf("binary dump to: %s\n", new_zonedb);
 	if (knot_zdump_dump(zone, fd, zonefile, &crc_value) != KNOT_EOK) {
 		close(fd);
 		unlink(new_zonedb);
 		free(new_zonedb);
+		printf("Could not dump zone\n");
 		return KNOTD_ERROR;
 	}
 	
@@ -2401,6 +2410,11 @@ int zones_save_zone(const knot_ns_xfr_t *xfr)
 		return KNOTD_ERROR;
 	}
 	/* dump the zone into binary db file */
+	printf("Find zone for xfr returned zonedb: %s\n", zonedb);
+	for (int i = 0; i < strlen(zonedb); i++) {
+		printf("%d: %c ",i, zonedb[i]);
+	}
+	printf("%d\n", zonedb[strlen(zonedb)]);
 	ret = zones_dump_zone_binary(zone, zonedb, zonefile);
 	if (ret != KNOTD_EOK) {
 		return KNOTD_ERROR;
