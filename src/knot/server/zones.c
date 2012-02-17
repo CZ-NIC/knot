@@ -2236,7 +2236,7 @@ static int zones_open_free_filename(const char *old_name, char **new_name)
 	if (*new_name == NULL) {
 		return -1;
 	}
-	strncpy(*new_name, old_name, name_size);
+	memcpy(*new_name, old_name, name_size + 1);
 	strncat(*new_name, ".XXXXXX", 7);
 	dbg_zones_verb("zones: creating temporary zone file\n");
 	int fd = mkstemp(*new_name);
