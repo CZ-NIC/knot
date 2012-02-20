@@ -59,6 +59,7 @@
 //#define CUCKOO_DEBUG_HASH
 #define KNOT_NS_DEBUG
 #define KNOT_XFRIN_DEBUG
+#define KNOT_ZONEDIFF_DEBUG;
 //#define KNOT_DDNS_DEBUG
 //#define KNOT_TSIG_DEBUG
 
@@ -349,6 +350,45 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 #define dbg_zonedb_detail(msg...)
 #define dbg_zonedb_hex_detail(data, len)
 #define dbg_zonedb_exec_detail(cmds)
+#endif
+
+#ifdef KNOT_ZONEDIFF_DEBUG
+
+/* Brief messages. */
+#ifdef DEBUG_ENABLE_BRIEF
+#define dbg_zonediff(msg...) fprintf(stderr, msg)
+#define dbg_zonediff_hex(data, len)  hex_print((data), (len))
+#else
+#define dbg_zonediff(msg...)
+#define dbg_zonediff_hex(data, len)
+#endif
+
+/* Verbose messages. */
+#ifdef DEBUG_ENABLE_VERBOSE
+#define dbg_zonediff_verb(msg...) fprintf(stderr, msg)
+#define dbg_zonediff_hex_verb(data, len)  hex_print((data), (len))
+#else
+#define dbg_zonediff_verb(msg...)
+#define dbg_zonediff_hex_verb(data, len)
+#endif
+
+/* Detail messages. */
+#ifdef DEBUG_ENABLE_DETAILS
+#define dbg_zonediff_detail(msg...) fprintf(stderr, msg)
+#define dbg_zonediff_hex_detail(data, len)  hex_print((data), (len))
+#else
+#define dbg_zonediff_detail(msg...)
+#define dbg_zonediff_hex_detail(data, len)
+#endif
+
+/* No messages. */
+#else
+#define dbg_zonediff(msg...)
+#define dbg_zonediff_hex(data, len)
+#define dbg_zonediff_verb(msg...)
+#define dbg_zonediff_hex_verb(data, len)
+#define dbg_zonediff_detail(msg...)
+#define dbg_zonediff_hex_detail(data, len)
 #endif
 
 /******************************************************************************/
