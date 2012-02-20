@@ -143,7 +143,7 @@ int journal_create(const char *fn, uint16_t max_nodes)
 	fl.l_pid = getpid();
 	
 	/* Create journal file. */
-	int fd = open(fn, O_RDWR|O_CREAT|O_TRUNC, S_IRWXU|S_IRWXG);
+	int fd = open(fn, O_RDWR|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
 	if (fd < 0) {
 		dbg_journal("journal: failed to create file '%s'\n", fn);
 		return KNOTD_EINVAL;
