@@ -582,7 +582,7 @@ int main(int argc, char **argv)
 		{"verbose",     no_argument,       0, 'v'},
 		{"interactive", no_argument,       0, 'i'},
 		{"auto",        no_argument,       0, 'a'},
-		{"jobs",        required_argument, 0, 'c'},
+		{"jobs",        required_argument, 0, 'j'},
 		{"version",     no_argument,       0, 'V'},
 		{"help",        no_argument,       0, 'h'},
 		{0, 0, 0, 0}
