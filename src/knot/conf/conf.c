@@ -719,6 +719,10 @@ char* strcpath(char *path)
 	// Expand '~'
 	char* remainder = strchr(path,'~');
 	if (remainder != NULL) {
+		if (remainder[1] != '/') {
+			log_server_warning("Cannot expand non-login user home directory '%s', use full path instead", path);
+		}
+
 		// Get full path
 		char *tild_exp_unsafe = getenv("HOME");
 		if (tild_exp_unsafe == NULL) {
@@ -727,11 +731,11 @@ char* strcpath(char *path)
 		// Sanitize
 		size_t tild_len = strlen(tild_exp_unsafe);
 		char *tild_exp = malloc(tild_len + 1);
-		memcpy(tild_exp, 0, tild_len + 1);
 		if (tild_exp == NULL) {
 			return NULL;
 		}
-		strncpy(tild_exp, tild_exp_unsafe, tild_len);
+		// Duplicate tild_exp including terminating NULL
+		memcpy(tild_exp, tild_exp_unsafe, tild_len + 1);
 		if (tild_exp[tild_len - 1] == '/') {
 			tild_exp[--tild_len] = '\0';
 		}
@@ -748,8 +752,7 @@ char* strcpath(char *path)
 		
 		// Append remainder
 		++remainder;
-		size_t remainder_len = strlen(remainder);
-		strncat(npath, remainder, remainder_len);
+		strncat(npath, remainder, strlen(remainder));
 		free(path);
 		path = npath;
 		free(tild_exp);
