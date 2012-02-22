@@ -18,7 +18,7 @@
 #include "libknot/updates/changesets.h"
 
 /*! \brief zone1 -> zone2 */
-knot_changeset_t *knot_zone_contents_diff(const knot_zone_contents_t *zone1,
-                                          const knot_zone_contents_t *zone2);
+knot_changeset_t *knot_zone_contents_diff(knot_zone_contents_t *zone1,
+                                          knot_zone_contents_t *zone2);
 
 #endif // ZONEDIFF_H
