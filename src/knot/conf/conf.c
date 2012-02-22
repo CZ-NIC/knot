@@ -253,17 +253,21 @@ static int conf_process(conf_t *conf)
 			ret = KNOTD_ENOMEM; /* Error report. */
 			continue;
 		}
+		char *dpos = dest;
 		
 		/* Since we have already allocd dest to accomodate
 		 * storage/zname length strcpy is safe. */
-		strncpy(dest, conf->storage, stor_len + 1);
-		if (conf->storage[stor_len - 1] != '/') {
-			strncat(dest, "/", 1);
+		memcpy(dpos, conf->storage, stor_len + 1);
+		dpos += stor_len;
+		if (*(dpos - 1) != '/') {
+			*(dpos++) = '/';
+			*dpos = '\0';
 		}
 
-		strncat(dest, zone->name, zname_len);
-		strncat(dest, "db", 2);
+		memcpy(dpos, zone->name, zname_len + 1);
+		memcpy(dpos + zname_len, "db", 3);
 		zone->db = dest;
+		printf("DEST: '%s'\n", dest);
 
 		// Create IXFR db filename
 		stor_len = strlen(conf->storage);
