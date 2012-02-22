@@ -30,7 +30,6 @@
 #include "util/error.h"
 #include "util/debug.h"
 #include "util/utils.h"
-#include "common/base32hex.h"
 #include "hash/cuckoo-hash-table.h"
 #include "zone/zone-contents.h"
 
