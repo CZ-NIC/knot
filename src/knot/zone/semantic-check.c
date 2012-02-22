@@ -555,6 +555,9 @@ static int dnskey_to_wire(const knot_rdata_t *rdata, uint8_t **wire,
 
 	/* TODO check if we really have that many items */
 	if (rdata->count < 4) {
+		free(*wire);
+		*wire = NULL;
+		*size = 0;
 		return KNOT_ERROR;
 	}
 
