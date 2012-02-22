@@ -382,10 +382,13 @@ static int check_cname_cycles_in_zone(knot_zone_contents_t *zone,
 				knot_dname_new_from_str("*", strlen("*"),
 			                                NULL);
 			if (wc == NULL) {
+				knot_dname_free(&chopped_next);
 				return KNOT_ENOMEM;
 			}
 			
 			if (knot_dname_cat(wc, chopped_next) == NULL) {
+				knot_dname_free(&chopped_next);
+				knot_dname_free(&wc);
 				return KNOT_ERROR;
 			}
 			
