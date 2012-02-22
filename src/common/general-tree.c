@@ -201,6 +201,7 @@ general_tree_t *gen_tree_shallow_copy(general_tree_t *tree)
 
 	if (gen_tree_copy_node(tree->tree->th_root,
 	                       &new_tree->tree->th_root) != 0) {
+		free(new_tree);
 		return NULL;
 	}
 
