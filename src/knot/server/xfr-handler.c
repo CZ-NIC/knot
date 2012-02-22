@@ -189,7 +189,7 @@ static knot_ns_xfr_t *xfr_register_task(xfrworker_t *w, knot_ns_xfr_t *req)
 {
 	knot_ns_xfr_t *t = malloc(sizeof(knot_ns_xfr_t));
 	if (!t) {
-		return 0;
+		return NULL;
 	}
 
 	memcpy(t, req, sizeof(knot_ns_xfr_t));
@@ -203,12 +203,22 @@ static knot_ns_xfr_t *xfr_register_task(xfrworker_t *w, knot_ns_xfr_t *req)
 	/* Register data. */
 	xfrhandler_t * h = w->master;
 	pthread_mutex_lock(&h->tasks_mx);
-	skip_insert(h->tasks, (void*)((ssize_t)t->session), t, 0);
+	int ret = skip_insert(h->tasks, (void*)((ssize_t)t->session), t, 0);
 	pthread_mutex_unlock(&h->tasks_mx);
 
 	/* Add to set. */
-	fdset_add(w->fdset, t->session, OS_EV_READ);
-	t->owner = w;
+	if (ret == 0) {
+		ret = fdset_add(w->fdset, t->session, OS_EV_READ);
+	}
+	/* Evaluate final return code. */
+	if (ret == 0) {
+		t->owner = w;
+	} else {
+		/* Attempt to remove from list anyway. */
+		skip_remove(h->tasks, (void*)((ssize_t)t->session), NULL, NULL);
+		free(t);
+		t = NULL;
+	}
 	return t;
 }
 
@@ -1354,6 +1364,8 @@ int xfr_worker(dthread_t *thread)
 					dbg_xfr_verb("xfr: worker=%p processing event on "
 						     "fd=%d got empty data.\n",
 						     w, it.fd);
+					fdset_remove(w->fdset, it.fd);
+					close(it.fd); /* Always dup()'d or created. */
 					break;
 				}
 				dbg_xfr_verb("xfr: worker=%p processing event on "
