@@ -400,6 +400,7 @@ static int xfrin_check_tsig(knot_packet_t *packet, knot_ns_xfr_t *xfr,
 			if (ret != KNOT_EOK) {
 				/*! \note [TSIG] No need to check TSIG error 
 				 *        here, propagate and check elsewhere.*/
+				knot_rrset_deep_free(&tsig, 1, 1, 1);
 				return ret;
 			}
 			
@@ -409,6 +410,7 @@ static int xfrin_check_tsig(knot_packet_t *packet, knot_ns_xfr_t *xfr,
 
 			// Extract the digest from the TSIG RDATA and store it.
 			if (xfr->digest_max_size < tsig_rdata_mac_length(tsig)) {
+				knot_rrset_deep_free(&tsig, 1, 1, 1);
 				return KNOT_ESPACE;
 			}
 			memcpy(xfr->digest, tsig_rdata_mac(tsig), 
@@ -426,6 +428,7 @@ static int xfrin_check_tsig(knot_packet_t *packet, knot_ns_xfr_t *xfr,
 		}*/
 	} else if (tsig != NULL) {
 		// TSIG where it should not be
+		knot_rrset_deep_free(&tsig, 1, 1, 1);
 		return KNOT_EMALF;
 	}
 	
