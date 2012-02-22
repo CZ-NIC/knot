@@ -573,7 +573,6 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	if (ret != KNOT_EOK) {
 		dbg_tsig("TSIG: could not create wire or sign wire: %s\n",
 		         knot_strerror(ret));
-		free(items);
 		knot_rrset_free(&tmp_tsig);
 		knot_rdata_free(&rdata);
 		
@@ -593,7 +592,6 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	if (ret != KNOT_EOK) {
 		dbg_tsig_detail("TSIG: rrset_to_wire = %s\n", knot_strerror(ret));
 		*digest_len = 0;
-		free(items);
 		knot_rrset_free(&tmp_tsig);
 		knot_rdata_free(&rdata);
 		return ret;
