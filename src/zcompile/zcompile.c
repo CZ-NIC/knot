@@ -297,7 +297,6 @@ int process_rr(void)
 	}
 
 	if (current_rrset->type == KNOT_RRTYPE_RRSIG) {
-		/*!< \todo Still a leak somewhere. */
 		knot_rrset_t *tmp_rrsig =
 			knot_rrset_new(current_rrset->owner,
 					     KNOT_RRTYPE_RRSIG,
@@ -308,7 +307,8 @@ int process_rr(void)
 		}
 
 		if (knot_rrset_add_rdata(tmp_rrsig,
-		                           current_rrset->rdata) != 0) {
+		                           current_rrset->rdata) != KNOT_EOK) {
+			knot_rrset_free(&tmp_rrsig);
 			return KNOTDZCOMPILE_EBRDATA;
 		}
 
@@ -520,6 +520,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	knot_dname_t *origin_from_config =
 		knot_dname_new_from_str(name, strlen(name), NULL);
 	if (origin_from_config == NULL) {
+		knot_node_free(&origin_node, 0);
 		return KNOTDZCOMPILE_ENOMEM;
 	}
 
@@ -534,6 +535,8 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	void *scanner = NULL;
 	zp_lex_init(&scanner);
 	if (scanner == NULL) {
+		knot_dname_release(origin_from_config);
+		knot_node_free(&origin_node, 0);
 		return KNOTDZCOMPILE_ENOMEM;
 	}
 
