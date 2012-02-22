@@ -316,7 +316,7 @@ static void save_zone_to_array(void *node, void *data)
 const knot_zone_t **knot_zonedb_zones(const knot_zonedb_t *db)
 {
 	struct knot_zone_db_tree_arg args;
-	args.zones = malloc(sizeof(knot_zone_t) * db->zone_count);
+	args.zones = malloc(sizeof(knot_zone_t*) * db->zone_count);
 	args.count = 0;
 	CHECK_ALLOC_LOG(args.zones, NULL);
 
