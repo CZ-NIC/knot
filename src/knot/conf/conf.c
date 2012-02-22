@@ -267,7 +267,6 @@ static int conf_process(conf_t *conf)
 		memcpy(dpos, zone->name, zname_len + 1);
 		memcpy(dpos + zname_len, "db", 3);
 		zone->db = dest;
-		printf("DEST: '%s'\n", dest);
 
 		// Create IXFR db filename
 		stor_len = strlen(conf->storage);
