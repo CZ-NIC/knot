@@ -3663,6 +3663,7 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
 	 *        Maybe only this case will be EOK, other cases some error.
 	 */
 
+	knot_ddns_prereqs_free(&prereqs);
 	knot_packet_free(&response);
 	return KNOT_EOK;
 }
