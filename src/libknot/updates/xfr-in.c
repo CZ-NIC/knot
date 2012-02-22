@@ -834,6 +834,7 @@ dbg_xfrin_exec(
 			ret = knot_zone_contents_add_rrset(zone, rr, &node,
 			                            KNOT_RRSET_DUPL_MERGE, 1);
 			if (ret < 0) {
+				knot_packet_free(&packet);
 				dbg_xfrin("Failed to add RRSet to zone:"
 				               "%s.\n", knot_strerror(ret));
 				return KNOT_ERROR;
@@ -1003,6 +1004,7 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 		// parse the next one
 		ret = knot_packet_parse_next_rr_answer(packet, &rr);
 		if (ret != KNOT_EOK) {
+			knot_packet_free(&packet);
 			return ret;
 		}
 		
@@ -1035,7 +1037,8 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 		}
 	} else {
 		if ((*chs)->first_soa == NULL) {
-			dbg_xfrin("Changesets don't contain frist SOA!\n");
+			dbg_xfrin("Changesets don't contain SOA first!\n");
+			knot_rrset_deep_free(&rr, 1, 1, 1);
 			ret = KNOT_EBADARG;
 			goto cleanup;
 		}
@@ -1383,6 +1386,7 @@ static int xfrin_changes_check_rdata(knot_rdata_t ***rdatas, uint **types,
 
 	uint *types_new = malloc(new_count * sizeof(uint));
 	if (types_new == NULL) {
+		free(rdatas_new);
 		return KNOT_ENOMEM;
 	}
 
