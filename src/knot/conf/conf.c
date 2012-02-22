@@ -726,11 +726,12 @@ char* strcpath(char *path)
 		}
 		// Sanitize
 		size_t tild_len = strlen(tild_exp_unsafe);
-		char *tild_exp = malloc(tild_len);
+		char *tild_exp = malloc(tild_len + 1);
+		memcpy(tild_exp, 0, tild_len + 1);
 		if (tild_exp == NULL) {
 			return NULL;
 		}
-		strncpy(tild_exp, tild_exp_unsafe, tild_len + 1);
+		strncpy(tild_exp, tild_exp_unsafe, tild_len);
 		if (tild_exp[tild_len - 1] == '/') {
 			tild_exp[--tild_len] = '\0';
 		}
