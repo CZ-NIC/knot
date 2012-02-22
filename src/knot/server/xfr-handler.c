@@ -1350,6 +1350,12 @@ int xfr_worker(dthread_t *thread)
 				pthread_mutex_lock(&h->tasks_mx);
 				data = skip_find(h->tasks, (void*)((size_t)it.fd));
 				pthread_mutex_unlock(&h->tasks_mx);
+				if (data == NULL) {
+					dbg_xfr_verb("xfr: worker=%p processing event on "
+						     "fd=%d got empty data.\n",
+						     w, it.fd);
+					break;
+				}
 				dbg_xfr_verb("xfr: worker=%p processing event on "
 				             "fd=%d data=%p.\n",
 				             w, it.fd, data);
