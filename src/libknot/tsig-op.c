@@ -980,7 +980,7 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 
 	knot_rdata_item_t *items =
 		malloc(sizeof(knot_rdata_item_t) * desc->length);
-	if (!items) {
+	if (items == NULL) {
 		dbg_tsig_detail("TSIG: items = NULL\n");
 		ERR_ALLOC_FAILED;
 		knot_rrset_deep_free(&tmp_tsig, 1, 1, 1);
@@ -990,13 +990,13 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	memset(items, 0, sizeof(knot_rdata_item_t) * desc->length);
 
 	int ret = knot_rdata_set_items(rdata, items, desc->length);
+	free(items);
 	if (ret != KNOT_EOK) {
 		dbg_tsig_detail("TSIG: rdata_set_items returned %s\n",
 		                knot_strerror(ret));
 		knot_rrset_deep_free(&tmp_tsig, 1, 1, 1);
 		return ret;
 	}
-	free(items);
 
 	knot_dname_t *alg_name =
 			knot_dname_deep_copy(tsig_rdata_alg_name(tsig_rr));
