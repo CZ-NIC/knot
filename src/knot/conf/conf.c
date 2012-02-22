@@ -43,26 +43,6 @@ static const char *DEFAULT_CONFIG[] = {
  * Utilities.
  */
 
-/*!
- * \brief Recursively create directories.
- *
- * Similar to "mkdir -p".
- * * \retval 0 on success.
- * \retval <0 on error.
- */
-static int rmkdir(char *path, int mode)
-{
-	char *p = path;
-	while((p = strchr(p + 1, '/'))) {
-		*p = '\0';
-		mkdir(path, mode);
-		*p = '/';
-	}
-
-	// Final path
-	return mkdir(path, mode);
-}
-
 /* Prototypes for cf-parse.y */
 extern int cf_parse(void *scanner);
 extern int cf_get_lineno(void *scanner);
@@ -192,27 +172,36 @@ static void conf_update_hooks(conf_t *conf)
 static int conf_process(conf_t *conf)
 {
 	// Check
-	if (!conf->storage) {
+	if (conf->storage == NULL) {
 		conf->storage = strdup("/var/lib/"PROJECT_EXEC);
+		if (conf->storage == NULL) {
+			return KNOTD_ENOMEM;
+		}
 	}
 	
 	// Normalize paths
 	conf->storage = strcpath(conf->storage);
+
+	// Storage directory exists?
 	struct stat st;
-	if (stat(conf->storage, &st) != 0) {
-		rmkdir(conf->storage, S_IRWXU);
-		if (conf->uid >= 0) {
-			if (chown(conf->storage, conf->uid, conf->gid) < 0) {
-				log_server_warning("Could not change ownership"
-				                   " of '%s' to uid=%d.\n",
-				                   conf->storage, conf->uid);
-			}
-		}
+	if (stat(conf->storage, &st) == -1) {
+		log_server_error("Could not open storage directory '%s'", conf->storage);
+		// I assume that conf->* is freed elsewhere
+		return KNOTD_EINVAL;
+	}
+
+	// Storage directory is a directory?
+	if (S_ISDIR(st->st_mode) == 0) {
+		log_server_error("Configured storage '%s' not a directory", conf->storage);
+		return KNOTD_EINVAL;
 	}
 
 	// Create PID file
 	if (conf->pidfile == NULL) {
 		conf->pidfile = strcdup(conf->storage, "/" PID_FILE);
+		if (conf->pidfile == NULL) {
+			return KNOTD_ENOMEM;
+		}
 	}
 
 	// Postprocess zones
@@ -248,11 +237,16 @@ static int conf_process(conf_t *conf)
 
 		// Normalize zone filename
 		zone->file = strcpath(zone->file);
+		if (zone->file == NULL) {
+			zone->db = NULL;
+			ret = KNOTD_ENOMEM;
+			continue
+		}
 
 		// Create zone db filename
 		size_t zname_len = strlen(zone->name);
 		size_t stor_len = strlen(conf->storage);
-		size_t size = stor_len + zname_len + 4; // db/,\0
+		size_t size = stor_len + zname_len + 4; // /db,\0
 		char *dest = malloc(size);
 		if (dest == NULL) {
 			zone->db = NULL; /* Not enough memory. */
@@ -273,7 +267,7 @@ static int conf_process(conf_t *conf)
 
 		// Create IXFR db filename
 		stor_len = strlen(conf->storage);
-		size = stor_len + zname_len + 9; // diff.db/,\0
+		size = stor_len + zname_len + 9; // /diff.db,\0
 		dest = malloc(size);
 		if (dest == NULL) {
 			zone->ixfr_db = NULL; /* Not enough memory. */
@@ -753,9 +747,10 @@ char* strcpath(char *path)
 		// Append remainder
 		++remainder;
 		strncat(npath, remainder, strlen(remainder));
+
+		free(tild_exp);
 		free(path);
 		path = npath;
-		free(tild_exp);
 	}
 
 	return path;
