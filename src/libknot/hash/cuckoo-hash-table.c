@@ -1339,6 +1339,7 @@ int ck_deep_copy(ck_hash_table_t *from, ck_hash_table_t **to)
 
 		if (si_new->item == NULL) {
 			ERR_ALLOC_FAILED;
+			free(si_new);
 			ck_deep_copy_cleanup(*to, (*to)->table_count);
 			return -2;
 		}
