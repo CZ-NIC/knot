@@ -66,7 +66,7 @@ static float frand()
 /*!
  * \brief Returns random level between 0 and MAX_LEVEL.
  */
-static unsigned skip_random_level()
+static int skip_random_level()
 {
 	static int first = 1;
 	int lvl = 0;
@@ -92,7 +92,7 @@ static unsigned skip_random_level()
  *
  * \return Pointer to the newly created node or NULL if not successful.
  */
-static skip_node_t *skip_make_node(unsigned level, void *key, void *value)
+static skip_node_t *skip_make_node(int level, void *key, void *value)
 {
 	skip_node_t *sn = (skip_node_t *)malloc(sizeof(skip_node_t));
 	if (sn == NULL) {
@@ -178,7 +178,7 @@ void skip_destroy_list(skip_list_t **list, void (*destroy_key)(void *),
 
 	while ((*list)->head->forward[0] != NULL) {
 		x = (*list)->head->forward[0];
-		for (unsigned i = 0; i <= (*list)->level; i++) {
+		for (int i = 0; i <= (*list)->level; i++) {
 			if ((*list)->head->forward[i] != x) {
 				break;
 			}
@@ -209,8 +209,9 @@ void *skip_find(const skip_list_t *list, void *key)
 	assert(list->head != NULL);
 	assert(list->compare_keys != NULL);
 
+	int i;
 	skip_node_t *x = list->head;
-	for (unsigned i = list->level; i >= 0; i--) {
+	for (i = list->level; i >= 0; i--) {
 		while (x->forward[i] != NULL
 		       && list->compare_keys(x->forward[i]->key, key) == -1) {
 			x = x->forward[i];
@@ -233,8 +234,9 @@ void *skip_find_less_or_equal(const skip_list_t *list, void *key)
 	assert(list->head != NULL);
 	assert(list->compare_keys != NULL);
 
+	int i;
 	skip_node_t *x = list->head;
-	for (unsigned i = list->level; i >= 0; i--) {
+	for (i = list->level; i >= 0; i--) {
 		while (x->forward[i] != NULL
 		       && list->compare_keys(x->forward[i]->key, key) <= 0) {
 			x = x->forward[i];
@@ -254,7 +256,7 @@ int skip_insert(skip_list_t *list, void *key, void *value,
 	assert(list->head != NULL);
 	assert(list->compare_keys != NULL);
 
-	unsigned i = 0;
+	int i;
 	skip_node_t *x = list->head;
 	skip_node_t *update[MAX_LEVEL + 1];
 	memset(update, 0, MAX_LEVEL + 1);
@@ -270,7 +272,7 @@ int skip_insert(skip_list_t *list, void *key, void *value,
 	x = x->forward[0];
 
 	if (x == NULL || list->compare_keys(x->key, key) != 0) {
-		unsigned lvl = skip_random_level();
+		int lvl = skip_random_level();
 
 		if (lvl > list->level) {
 			for (i = list->level + 1; i <= lvl; i++) {
@@ -309,7 +311,7 @@ int skip_remove(skip_list_t *list, void *key, void (*destroy_key)(void *),
 	assert(list->head != NULL);
 	assert(list->compare_keys != NULL);
 
-	unsigned i = 0;
+	int i;
 	skip_node_t *x = list->head;
 	skip_node_t *update[MAX_LEVEL + 1];
 	memset(update, 0, MAX_LEVEL + 1);
@@ -424,7 +426,7 @@ skip_list_t *skip_copy_list(const skip_list_t *list)
 			return NULL;
 		}
 		// set forward pointers from the previous node
-		for (unsigned i = 0; i <= list->level; ++i) {
+		for (int i = 0; i <= list->level; ++i) {
 			if (prev->forward[i] == x) {
 				new_prev->forward[i] = n;
 			}

@@ -69,7 +69,7 @@ struct skip_list {
 	skip_node_t *head;
 
 	/*! \brief Actual maximum level of the list. */
-	unsigned level;
+	int level;
 
 	/*! \brief Function for comparing two skip list item's keys. */
 	int (*compare_keys)(void *, void *);
