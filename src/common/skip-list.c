@@ -215,6 +215,7 @@ void *skip_find(const skip_list_t *list, void *key)
 		       && list->compare_keys(x->forward[i]->key, key) == -1) {
 			x = x->forward[i];
 		}
+		if (i == 0) break;
 	}
 	x = x->forward[0];
 
@@ -238,6 +239,7 @@ void *skip_find_less_or_equal(const skip_list_t *list, void *key)
 		       && list->compare_keys(x->forward[i]->key, key) <= 0) {
 			x = x->forward[i];
 		}
+		if (i == 0) break;
 	}
 
 	return x->value;
@@ -263,6 +265,7 @@ int skip_insert(skip_list_t *list, void *key, void *value,
 			x = x->forward[i];
 		}
 		update[i] = x;
+		if (i == 0) break;
 	}
 	x = x->forward[0];
 
@@ -317,6 +320,7 @@ int skip_remove(skip_list_t *list, void *key, void (*destroy_key)(void *),
 			x = x->forward[i];
 		}
 		update[i] = x;
+		if (i == 0) break;
 	}
 	x = x->forward[0];
 

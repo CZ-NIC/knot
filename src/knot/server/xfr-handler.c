@@ -1366,7 +1366,13 @@ int xfr_worker(dthread_t *thread)
 						     w, it.fd);
 					fdset_remove(w->fdset, it.fd);
 					close(it.fd); /* Always dup()'d or created. */
-					break;
+					
+					/* Next fd. */
+					if (fdset_next(w->fdset, &it) < 0) {
+						break;
+					} else {
+						continue;
+					}
 				}
 				dbg_xfr_verb("xfr: worker=%p processing event on "
 				             "fd=%d data=%p.\n",
