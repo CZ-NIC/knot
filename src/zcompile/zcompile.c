@@ -544,6 +544,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 		zc_error_prev_line("Cannot open '%s'\n",
 			zonefile);
 		zparser_free();
+		zp_lex_destroy(scanner);
 		return KNOTDZCOMPILE_EZONEINVAL;
 	}
 
