@@ -278,7 +278,7 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 				items[i].raw_data = (uint16_t *)malloc(
 						knot_dname_size(dname) + 2);
 				if (items[i].raw_data == NULL) {
-					/*! \todo This will leak. */
+					knot_dname_free(&dname);
 					free(items);
 					return KNOT_ENOMEM;
 				}
