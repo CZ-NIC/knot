@@ -191,7 +191,7 @@ static int conf_process(conf_t *conf)
 	}
 
 	// Storage directory is a directory?
-	if (S_ISDIR(st->st_mode) == 0) {
+	if (S_ISDIR(st.st_mode) == 0) {
 		log_server_error("Configured storage '%s' not a directory", conf->storage);
 		return KNOTD_EINVAL;
 	}
@@ -240,7 +240,7 @@ static int conf_process(conf_t *conf)
 		if (zone->file == NULL) {
 			zone->db = NULL;
 			ret = KNOTD_ENOMEM;
-			continue
+			continue;
 		}
 
 		// Create zone db filename
