@@ -747,7 +747,6 @@ int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
 		fprintf(stderr, "%s\n", strerror(errno));
 		fprintf(stderr, "Could not open destination file! Use '%s' "
 		        "file instead.\n", new_path);
-		close(fd);
 		/* If remove fails, there is nothing we can do. */
 		remove(new_path);
 		remove(knot_zdump_crc_file(filename));
