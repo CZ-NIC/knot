@@ -185,14 +185,14 @@ static int conf_process(conf_t *conf)
 	// Storage directory exists?
 	struct stat st;
 	if (stat(conf->storage, &st) == -1) {
-		log_server_error("Could not open storage directory '%s'", conf->storage);
+		log_server_error("Could not open storage directory '%s'\n", conf->storage);
 		// I assume that conf->* is freed elsewhere
 		return KNOTD_EINVAL;
 	}
 
 	// Storage directory is a directory?
 	if (S_ISDIR(st.st_mode) == 0) {
-		log_server_error("Configured storage '%s' not a directory", conf->storage);
+		log_server_error("Configured storage '%s' not a directory\n", conf->storage);
 		return KNOTD_EINVAL;
 	}
 
@@ -477,10 +477,11 @@ int conf_parse(conf_t *conf)
 	int ret = conf_fparser(conf);
 
 	/* Postprocess config. */
-	conf_process(conf);
-
-	/* Update hooks. */
-	conf_update_hooks(conf);
+	if (ret == 0) {
+		ret = conf_process(conf);
+		/* Update hooks. */
+		conf_update_hooks(conf);
+	}
 
 	if (ret < 0) {
 		return KNOTD_EPARSEFAIL;
@@ -643,6 +644,11 @@ int conf_open(const char* path)
 
 	/* Parse config. */
 	int ret = conf_fparser(nconf);
+	if (ret == KNOTD_EOK) {
+		/* Postprocess config. */
+		ret = conf_process(nconf);
+	}
+	
 	if (ret != KNOTD_EOK) {
 		conf_free(nconf);
 		return ret;
@@ -660,9 +666,6 @@ int conf_open(const char* path)
 			              hook->update, hook->data);
 		}
 	}
-
-	/* Postprocess config. */
-	conf_process(nconf);
 
 	/* Synchronize. */
 	synchronize_rcu();
