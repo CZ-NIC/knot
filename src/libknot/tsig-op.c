@@ -19,7 +19,6 @@
 #include <openssl/hmac.h>
 #include <openssl/evp.h>
 #include <time.h>
-#include <ctype.h>
 
 #include "common.h"
 #include "tsig.h"

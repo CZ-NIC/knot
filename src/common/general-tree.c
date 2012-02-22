@@ -19,7 +19,6 @@
 #include <string.h>
 #include <assert.h>
 #include "common/general-tree.h"
-#include "common/errors.h"
 
 MOD_TREE_DEFINE(general_tree_node, avl);
 

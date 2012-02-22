@@ -37,8 +37,6 @@
 #include "common/base32hex.h"
 #include "zcompile/zcompile.h"
 #include "zcompile/parser-util.h"
-#include "knot/zone/zone-dump-text.h"
-#include "zparser.h"
 #include "zcompile/zcompile-error.h"
 #include "knot/zone/zone-dump.h"
 #include "libknot/libknot.h"
