@@ -33,7 +33,7 @@ char* pid_filename()
 
 	/* Read configuration. */
 	char* ret = 0;
-	if (conf()) {
+	if (conf() && conf()->pidfile != NULL) {
 		ret = strdup(conf()->pidfile);
 	}
 
