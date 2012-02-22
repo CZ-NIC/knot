@@ -1002,6 +1002,7 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 			knot_dname_deep_copy(tsig_rdata_alg_name(tsig_rr));
 	if (alg_name == NULL) {
 		dbg_tsig_detail("TSIG: failed to copy alg name\n");
+		knot_rrset_deep_free(&tmp_tsig, 1, 1, 1);
 		return KNOT_ERROR;
 	}
 
@@ -1009,6 +1010,7 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	tsig_rdata_set_time_signed(tmp_tsig, tsig_rdata_time_signed(tsig_rr));
 	tsig_rdata_set_fudge(tmp_tsig, tsig_rdata_fudge(tsig_rr));
 	tsig_rdata_set_mac(tmp_tsig, 0, NULL);
+	knot_dname_release(alg_name); /* Already copied in tsig_rdata_set_alg_name() */
 
 	/* Set original ID */
 	tsig_rdata_set_orig_id(tmp_tsig, knot_wire_get_id(msg));
