@@ -86,7 +86,7 @@ static int test_knot_tsig_sign()
 	int errors = 0;
 	/* Test bad arguments. */
 	int lived = 0;
-	lives_ok_silent({
+	lives_ok({
 		int ret = knot_tsig_sign(NULL, NULL, 0, NULL, 0, NULL,
 		               NULL, NULL, 0, 0);
 		if (ret != KNOT_EBADARG) {
@@ -143,7 +143,7 @@ static int test_knot_tsig_sign()
 			errors++;
 		}
 		lived = 1;
-	}, NULL);
+	}, "");
 
 	errors += !lived;
 	
@@ -301,7 +301,7 @@ static int test_knot_tsig_sign_next()
 	int errors = 0;
 	/* Test bad arguments. */
 	int lived = 0;
-	lives_ok_silent({
+	lives_ok({
 		int ret = knot_tsig_sign_next(NULL, NULL, 0, NULL, 0, NULL,
 		               NULL, NULL, NULL, 0); /*! \todo FIX */
 		if (ret != KNOT_EBADARG) {
@@ -359,7 +359,7 @@ static int test_knot_tsig_sign_next()
 			errors++;
 		}
 		lived = 1;
-	}, NULL);
+	}, "");
 
 	errors += !lived;
 	
@@ -416,7 +416,7 @@ static int test_knot_tsig_server_check()
 	int errors = 0;
 	/* Test bad arguments. */
 	int lived = 0;
-	lives_ok_silent({
+	lives_ok({
 		int ret = knot_tsig_server_check(NULL, NULL, 0, NULL);
 		if (ret != KNOT_EBADARG) {
 			diag("NULL argument did not return KNOT_EBADARG!");
@@ -433,7 +433,7 @@ static int test_knot_tsig_server_check()
 			errors++;
 		}
 		lived = 1;
-	}, NULL);
+	}, "");
 		
 	errors += !lived;
 	
@@ -524,7 +524,7 @@ static int test_knot_tsig_client_check()
 			errors++;
 		}
 		lived = 1;
-	}, NULL);
+	}, "");
 		
 	errors += !lived;
 	
@@ -632,7 +632,7 @@ static int test_knot_tsig_test_tsig_add()
 			errors++;
 		}
 		lived = 1;
-	}, NULL);
+	}, "");
 	
 	errors += !lived;
 	
