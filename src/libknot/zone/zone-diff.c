@@ -81,13 +81,6 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 	return KNOT_EOK;
 }
 
-static int knot_zone_diff_compare_rdata(const knot_rdata_t *rdata1,
-                                        const knot_rdata_t *rdata2)
-
-static int knot_zone_diff_rdata...
-
-static int knot_zone_diff_rrset...
-
 static int knot_zone_diff_changeset_remove_rrset(knot_changeset_t *changeset,
                                                  const knot_rrset_t *rrset)
 {
@@ -98,6 +91,83 @@ static int knot_zone_diff_changeset_remove_node(knot_changeset_t *changeset,
                                                 const knot_node_t *node)
 {
 	/* Remove all the RRSets of the node. */
+}
+
+static int knot_zone_diff_compare_rdata(const knot_rdata_t *rdata1,
+                                        const knot_rdata_t *rdata2,
+                                        uint16_t type)
+{
+
+}
+
+static int knot_zone_diff_rdata_sort(knot_rdata_t *rdata,
+                                     uint16_t type)
+
+static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
+                                const knot_rrset_t *rrset2,
+                                knot_changeset_t *changeset)
+{
+	/*
+	 * Take one rdata from first list and search through the second list
+	 * looking for exact match. If no match occurs, it means that this
+	 * particular RR has changed. If both lists have the same amount of
+	 * items, then it's a modification of RR. If the first list has more
+	 * items than the second list, then this exact RR has been removed or
+	 * changed. After the list has been traversed, we have a list of
+	 * changed/removed rdatas. This has awful computation time.
+	 */
+	knot_rdata_t *changes_from_first_rdata = knot_rdata_new();
+	if (changes_from_first_rdata == NULL) {
+		dbg_zonediff("zone_diff: diff_rdata: "
+		             "Could not create new rdata.\n");
+		return KNOT_ENOMEM;
+	}
+
+	/* Create fake RRSet, it will be easier to handle. */
+	knot_rrset_t *rrset_changes = knot_rrset_new()
+
+	knot_rrtype_descriptor_t *desc =
+		knot_rrtype_descriptor_by_type(knot_rrset_type(rrset1));
+	assert(desc);
+
+	const knot_rdata_t *tmp_rdata = knot_rrset_rdata(rrset1);
+	while((tmp_rdata = knot_rrset_rdata_next(rrset1, tmp_rdata)) != NULL) {
+		const knot_rdata_t *tmp_rdata_second_rrset =
+			knot_rrset_rdata(rrset2);
+		while (((tmp_rdata_second_rrset = knot_rrset_rdata_next(rrset2,
+		       tmp_rdata_second_rrset)) != NULL) &&
+		       (knot_rdata_compare(tmp_rdata,
+		                           tmp_rdata_second_rrset,
+		                           desc->wireformat) != 0)) {
+			; /*!< /todo this is intentional, but not very cool. */
+		}
+		if (tmp_rdata_second_rrset == NULL) {
+			/*
+			 * This means that the while cycle above has finished
+			 * because the list was traversed - there's no match.
+			 */
+			knot_rdata_
+		}
+	}
+
+	knot_rrset_free(&rrset_changes);
+	return KNOT_EOK;
+}
+
+static int knot_zone_diff_rrsets(const knot_rrset_t *rrset1,
+                                 const knot_rrset_t *rrset2,
+                                 knot_changeset_t *changeset)
+{
+	if (rrset1 == NULL || rrset2 == NULL || changeset == NULL) {
+		dbg_zonediff("zone_diff: diff_rrsets: NULL arguments.\n");
+		return KNOT_EBADARG;
+	}
+
+	assert(knot_rrset_owner(rrset1) == knot_rrset_owner(rrset2));
+	assert(knot_rrset_type(rrset1) == knot_rrset_type(rrset2));
+
+	/* RRs (=rdata) have to be cross-compared, unfortunalely. */
+	return knot_zone_diff_rdata(rrset1, rrset2, changeset);
 }
 
 static void knot_zone_diff_node(knot_node_t *node, void *data)
@@ -111,6 +181,13 @@ static void knot_zone_diff_node(knot_node_t *node, void *data)
 	if (param->changeset == NULL || param->contents == NULL) {
 		dbg_zonediff("zone_diff: diff_node: NULL arguments.\n");
 		param->ret = KNOT_EBADARG;
+		return;
+	}
+
+	if (param->ret != KNOT_EOK) {
+		/* Error occured before, no point in continuing. */
+		dbg_zonediff_detail("zone_diff: diff_node: error: %s\n",
+		                    knot_strerror(param->ret));
 		return;
 	}
 
@@ -144,7 +221,7 @@ static void knot_zone_diff_node(knot_node_t *node, void *data)
 	/* The nodes are in both trees, we have to diff each RRSet. */
 	const knot_rrset_t **rrsets = knot_node_rrsets(node);
 	if (rrsets == NULL) {
-		dbg_zonediff("zone_diff: Node has no RRSets\n");
+		dbg_zonediff("zone_diff: Node has no RRSets.\n");
 		param->ret = KNOT_EBADARG;
 		return;
 	}
@@ -163,10 +240,25 @@ static void knot_zone_diff_node(knot_node_t *node, void *data)
 				rrset);
 			if (ret != KNOT_EOK) {
 				dbg_zonediff("zone_diff: "
-				             "Failed to remove RRSet\n");
+				             "Failed to remove RRSet.\n");
+				param->ret = ret;
+				return;
+			}
+		} else {
+			/* Diff RRSets. */
+			ret = knot_zone_diff_rrsets(rrset,
+			                            rrset_from_second_node,
+			                            param->changeset);
+			if (ret != KNOT_EOK) {
+				dbg_zonediff("zone_diff: "
+				             "Failed to diff RRSets.\n");
+				param->ret = ret;
+				return;
 			}
 		}
 	}
+
+	assert(param->ret == KNOT_EOK);
 }
 
 static void knot_zone_diff_add_new_nodes(knot_node_t *node, void *data)
@@ -202,7 +294,7 @@ knot_changeset_t *knot_zone_diff(knot_zone_contents_t *zone1,
 	param.contents = zone2;
 	param.nsec3 = 0;
 	param.changeset = changeset;
-	parar.ret = 0;
+	parar.ret = KNOT_EOK;
 	ret = knot_zone_contents_tree_apply_inorder(zone1, knot_zone_diff_node,
 	                                            &param);
 	if (ret != KNOT_EOK) {
