@@ -1777,7 +1777,10 @@ int zones_query_check_zone(const knot_zone_t *zone, const sockaddr_t *addr,
 {
 	if (addr == NULL || tsig_key == NULL || rcode == NULL) {
 		dbg_zones_verb("Wrong arguments.\n");
-		*rcode = KNOT_RCODE_SERVFAIL;
+
+		if (rcode != NULL) {
+			*rcode = KNOT_RCODE_SERVFAIL;
+		}
 		return KNOTD_EINVAL;
 	}
 
