@@ -732,6 +732,7 @@ ck_hash_table_t *ck_create_table(uint items)
 	
 	if (table->table_size_exp == 0) {
 		dbg_ck("Failed to count exponent of the hash table.\n");
+		free(table);
 		return NULL;
 	}
 
