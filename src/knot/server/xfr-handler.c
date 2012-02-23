@@ -235,7 +235,7 @@ static int xfr_xfrin_cleanup(xfrworker_t *w, knot_ns_xfr_t *data)
 		if (data->data) {
 			if (data->flags & XFR_FLAG_AXFR_FINISHED) {
 				knot_zone_contents_deep_free(
-					(knot_zone_contents_t **)&data->data, 0);
+					&data->new_contents, 0);
 			} else {
 				xfrin_constructed_zone_t *constr_zone =
 					(xfrin_constructed_zone_t *)data->data;
@@ -252,6 +252,10 @@ static int xfr_xfrin_cleanup(xfrworker_t *w, knot_ns_xfr_t *data)
 			chs = (knot_changesets_t *)data->data;
 			knot_free_changesets(&chs);
 		}
+
+		// this function is called before new contents are created
+		assert(data->new_contents == NULL);
+
 		break;
 	}
 	
@@ -310,25 +314,46 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 		              ret == KNOTD_EOK ? "finished" : "failed");
 		break;
 	case XFR_TYPE_IIN:
-		/* Save changesets. */
-		dbg_xfr("xfr: IXFR/IN saving changesets\n");
-		ret = zones_store_changesets(data);
-		if (ret != KNOTD_EOK) {
-			log_zone_error("IXFR failed to save "
-			               "transferred changesets "
-			               "for zone '%s/IN' - %s\n",
-			               zorigin, knotd_strerror(ret));
+		/* First, try to apply the changesets to the zone. */
+		/* Update zone. */
+		ret = xfrin_apply_changesets(data->zone,
+		                        (knot_changesets_t *)data->data,
+		                        &data->new_contents);
+		if (ret != KNOT_EOK) {
+			log_zone_error("IXFR failed to "
+			               "apply changesets to "
+			               "zone '%s/IN' - %s\n",
+			               zorigin,
+			               knot_strerror(ret));
 		} else {
-			/* Update zone. */
-			ret = zones_apply_changesets(data);
-			if (ret != KNOT_EOK) {
-				log_zone_error("IXFR failed to "
-				               "apply changesets to "
-				               "zone '%s/IN' - %s\n",
-				               zorigin, 
-				               knot_strerror(ret));
+			/* Save changesets. */
+			dbg_xfr("xfr: IXFR/IN saving changesets\n");
+			ret = zones_store_changesets(data);
+			if (ret != KNOTD_EOK) {
+				log_zone_error("IXFR failed to save "
+					       "transferred changesets "
+					       "for zone '%s/IN' - %s\n",
+					       zorigin, knotd_strerror(ret));
+
+				// Cleanup old and new contents
+				xfrin_cleanup_failed_update(
+				                        data->zone->contents,
+				                        &data->new_contents);
+			} else {
+				/* Switch zone contents. */
+				ret = xfrin_switch_zone(data->zone,
+				                        data->new_contents,
+				                        data->type);
+
+				if (ret != KNOT_EOK) {
+					// Cleanup old and new contents
+					xfrin_cleanup_failed_update(
+					                   data->zone->contents,
+					                   &data->new_contents);
+				}
 			}
 		}
+
 		/* Free changesets, but not the data. */
 		chs = (knot_changesets_t *)data->data;
 		knot_free_changesets(&chs);

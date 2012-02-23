@@ -1180,13 +1180,34 @@ static int zones_journal_apply(knot_zone_t *zone)
 			log_server_info("Applying '%zu' changesets from journal "
 			                "to zone '%s'.\n",
 			                chsets->count, zd->conf->name);
-			int apply_ret = xfrin_apply_changesets(zone, chsets);
+			knot_zone_contents_t *contents = NULL;
+			int apply_ret = xfrin_apply_changesets(zone, chsets,
+			                                       &contents);
 			if (apply_ret != KNOT_EOK) {
-				log_server_error("Failed to apply changesets to "
-				                 "'%s' - %s\n",
+				log_server_error("Failed to apply changesets to"
+				                 "'%s' - Apply failed: %s\n",
 				                 zd->conf->name,
 				                 knot_strerror(apply_ret));
 				ret = KNOTD_ERROR;
+
+				// Cleanup old and new contents
+				xfrin_cleanup_failed_update(zone->contents,
+				                            &contents);
+			}
+
+			/* Switch zone immediately. */
+			apply_ret = xfrin_switch_zone(zone, contents,
+			                              XFR_TYPE_IIN);
+			if (apply_ret != KNOT_EOK) {
+				log_server_error("Failed to apply changesets to"
+				                 " '%s' - Switch failed: %s\n",
+				                 zd->conf->name,
+				                 knot_strerror(apply_ret));
+				ret = KNOTD_ERROR;
+
+				// Cleanup old and new contents
+				xfrin_cleanup_failed_update(zone->contents,
+				                            &contents);
 			}
 		}
 	} else {
@@ -2398,8 +2419,7 @@ int zones_save_zone(const knot_ns_xfr_t *xfr)
 		return KNOTD_EINVAL;
 	}
 	
-	knot_zone_contents_t *zone = 
-		(knot_zone_contents_t *)xfr->data;
+	knot_zone_contents_t *zone = xfr->new_contents;
 	
 	const char *zonefile = NULL;
 	const char *zonedb = NULL;
@@ -2725,18 +2745,6 @@ int zones_xfr_load_changesets(knot_ns_xfr_t *xfr, uint32_t serial_from,
 	
 	xfr->data = chgsets;
 	return KNOTD_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int zones_apply_changesets(knot_ns_xfr_t *xfr) 
-{
-	if (xfr == NULL || xfr->zone == NULL || xfr->data == NULL) {
-		return KNOT_EBADARG;
-	}
-	
-	return xfrin_apply_changesets(xfr->zone,
-	                              (knot_changesets_t *)xfr->data);
 }
 
 /*----------------------------------------------------------------------------*/

@@ -2345,7 +2345,7 @@ static void xfrin_cleanup_old_nodes(knot_node_t *node, void *data)
 /*----------------------------------------------------------------------------*/
 
 static void xfrin_rollback_update2(knot_zone_contents_t *old_contents,
-                                   knot_zone_contents_t *new_contents,
+                                   knot_zone_contents_t **new_contents,
                                    xfrin_changes_t *changes)
 {
 	// discard new RRSets
@@ -2383,16 +2383,7 @@ static void xfrin_rollback_update2(knot_zone_contents_t *old_contents,
 	free(changes->old_rdata);
 	free(changes->old_rdata_types);
 
-	// destroy the shallow copy of zone
-	xfrin_zone_contents_free2(&new_contents);
-
-	// cleanup old zone tree - reset pointers to new node to NULL
-	// also set pointers from dnames to old nodes
-	knot_zone_contents_tree_apply_inorder(old_contents,
-	                                      xfrin_cleanup_old_nodes, NULL);
-
-	knot_zone_contents_nsec3_apply_inorder(old_contents,
-	                                       xfrin_cleanup_old_nodes, NULL);
+	xfrin_cleanup_failed_update(old_contents, new_contents);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2995,9 +2986,11 @@ static int xfrin_check_contents_copy(knot_zone_contents_t *old_contents)
 /*----------------------------------------------------------------------------*/
 
 int xfrin_apply_changesets(knot_zone_t *zone,
-                           knot_changesets_t *chsets)
+                           knot_changesets_t *chsets,
+                           knot_zone_contents_t **new_contents)
 {
-	if (zone == NULL || chsets == NULL || chsets->count == 0) {
+	if (zone == NULL || chsets == NULL || chsets->count == 0
+	    || new_contents == NULL) {
 		return KNOT_EBADARG;
 	}
 
@@ -3050,7 +3043,7 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 	ret = xfrin_check_contents_copy(old_contents);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Contents copy check failed!\n");
-		xfrin_rollback_update2(old_contents, contents_copy, &changes);
+		xfrin_rollback_update2(old_contents, &contents_copy, &changes);
 		return ret;
 	}
 
@@ -3075,7 +3068,7 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 		                                  &chsets->sets[i]))
 		                                  != KNOT_EOK) {
 			xfrin_rollback_update2(old_contents,
-			                       contents_copy, &changes);
+			                       &contents_copy, &changes);
 			dbg_xfrin("Failed to apply changesets to zone: "
 			          "%s\n", knot_strerror(ret));
 			return ret;
@@ -3102,7 +3095,7 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to remove empty nodes: %s\n",
 		          knot_strerror(ret));
-		xfrin_rollback_update2(old_contents, contents_copy, &changes);
+		xfrin_rollback_update2(old_contents, &contents_copy, &changes);
 		return ret;
 	}
 
@@ -3115,7 +3108,7 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to finalize zone contents: %s\n",
 		          knot_strerror(ret));
-		xfrin_rollback_update2(old_contents, contents_copy, &changes);
+		xfrin_rollback_update2(old_contents, &contents_copy, &changes);
 		return ret;
 	}
 	assert(knot_zone_contents_apex(contents_copy) != NULL);
@@ -3124,35 +3117,77 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 	ret = knot_zone_contents_check_loops(contents_copy);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("CNAME loop check failed: %s\n", knot_strerror(ret));
-		xfrin_rollback_update2(old_contents, contents_copy, &changes);
+		xfrin_rollback_update2(old_contents, &contents_copy, &changes);
 		return ret;
 	}
 
-	/*!
-	 * \todo Maybe check also all mandatory semantic checks, e.g. CNAME
-	 *       and DNAME children.
-	 */
+	xfrin_cleanup_update(&changes);
+
+	*new_contents = contents_copy;
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int xfrin_switch_zone(knot_zone_t *zone,
+                      knot_zone_contents_t *new_contents,
+                      int transfer_type)
+{
+	if (zone == NULL || new_contents == NULL || zone->contents == NULL) {
+		return KNOT_EBADARG;
+	}
 
 	dbg_xfrin("Switching zone contents.\n");
 	dbg_xfrin_verb("Old contents apex: %p, new apex: %p\n",
-	               old_contents->apex, contents_copy->apex);
+	               zone->contents->apex, new_contents->apex);
+
 	knot_zone_contents_t *old =
-		knot_zone_switch_contents(zone, contents_copy);
-	assert(old == old_contents);
+		knot_zone_switch_contents(zone, new_contents);
+	assert(old != NULL);
 
 	dbg_xfrin_verb("Old contents apex: %p, new apex: %p\n",
-	               old_contents->apex, contents_copy->apex);
-	/*
-	 * Wait until all readers finish reading
-	 */
-	synchronize_rcu();
+	               old->apex, new_contents->apex);
+	dbg_xfrin_verb("Old zone: %p\n", old);
 
-	/*
-	 * Delete all old and unused data.
-	 */
-	dbg_xfrin("Cleaning up.\n");
-	xfrin_zone_contents_free(&old_contents);
-	xfrin_cleanup_update(&changes);
+	// wait for readers to finish
+	dbg_xfrin_verb("Waiting for readers to finish...\n");
+	synchronize_rcu();
+	// destroy the old zone
+	dbg_xfrin_verb("Freeing old zone: %p\n", old);
+
+	if (transfer_type == XFR_TYPE_AIN) {
+		knot_zone_contents_deep_free(&old, 0);
+	} else {
+		xfrin_zone_contents_free(&old);
+	}
 
 	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void xfrin_cleanup_failed_update(knot_zone_contents_t *old_contents,
+                                 knot_zone_contents_t **new_contents)
+{
+	if (old_contents == NULL && new_contents == NULL) {
+		return;
+	}
+
+	if (*new_contents != NULL) {
+		// destroy the shallow copy of zone
+		xfrin_zone_contents_free2(new_contents);
+	}
+
+	if (old_contents != NULL) {
+		// cleanup old zone tree - reset pointers to new node to NULL
+		// also set pointers from dnames to old nodes
+		knot_zone_contents_tree_apply_inorder(old_contents,
+						      xfrin_cleanup_old_nodes,
+		                                      NULL);
+
+		knot_zone_contents_nsec3_apply_inorder(old_contents,
+						       xfrin_cleanup_old_nodes,
+		                                       NULL);
+	}
 }

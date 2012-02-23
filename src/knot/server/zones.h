@@ -237,20 +237,6 @@ int zones_xfr_load_changesets(knot_ns_xfr_t *xfr, uint32_t serial_from,
                               uint32_t serial_to);
 
 /*!
- * \brief Apply changesets to zone.
- *
- * Applies a list of XFR-style changesets to the given zone. Also checks if the
- * changesets are applicable (i.e. zone is right and has the right serial).
- *
- * \param zone Zone to which the changesets should be applied.
- * \param chsets Changesets to be applied to the zone.
- *
- * \retval KNOTD_EOK
- * \retval KNOTD_EINVAL
- */
-int zones_apply_changesets(knot_ns_xfr_t *xfr);
-
-/*!
  * \brief Update zone timers.
  *
  * REFRESH/RETRY/EXPIRE timers are updated according to SOA.

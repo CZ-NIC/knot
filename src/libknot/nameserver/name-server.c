@@ -3335,7 +3335,7 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		}
 		
 		// save the zone contents to the xfr->data
-		xfr->data = zone;
+		xfr->new_contents = zone;
 		xfr->flags |= XFR_FLAG_AXFR_FINISHED;
 
 		assert(zone->nsec3_nodes != NULL);
@@ -3371,7 +3371,7 @@ int knot_ns_switch_zone(knot_nameserver_t *nameserver,
 		return KNOT_EBADARG;
 	}
 	
-	knot_zone_contents_t *zone = (knot_zone_contents_t *)xfr->data;
+	knot_zone_contents_t *zone = (knot_zone_contents_t *)xfr->new_contents;
 	
 	dbg_ns("Replacing zone by new one: %p\n", zone);
 
@@ -3388,28 +3388,11 @@ int knot_ns_switch_zone(knot_nameserver_t *nameserver,
 		zone->zone = z;
 	}
 
-	knot_zone_contents_t *old = rcu_xchg_pointer(&z->contents, zone);
-
-//	knot_zone_t *old = knot_zonedb_replace_zone(nameserver->zone_db,
-//	                                                zone);
-	dbg_ns("Old zone: %p\n", old);
-//	if (old == NULL) {
-//		char *name = knot_dname_to_str(
-//				knot_node_owner(knot_zone_apex(zone)));
-//		dbg_ns("Failed to replace zone %s\n", name);
-//		free(name);
-//	}
-
-	// wait for readers to finish
-	dbg_ns("Waiting for readers to finish...\n");
-	synchronize_rcu();
-	// destroy the old zone
-	dbg_ns("Freeing old zone: %p\n", old);
-	knot_zone_contents_deep_free(&old, 0);
+	int ret = xfrin_switch_zone(z, zone, xfr->type);
 
 dbg_ns_exec(
 	dbg_ns("Zone db contents: (zone count: %zu)\n",
-	              nameserver->zone_db->zone_count);
+		      nameserver->zone_db->zone_count);
 
 	const knot_zone_t **zones = knot_zonedb_zones(nameserver->zone_db);
 	for (int i = 0; i < knot_zonedb_zone_count
@@ -3422,7 +3405,7 @@ dbg_ns_exec(
 	free(zones);
 );
 
-	return KNOT_EOK;
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
