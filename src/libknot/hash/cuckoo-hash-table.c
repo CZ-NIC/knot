@@ -970,6 +970,7 @@ int ck_insert_item(ck_hash_table_t *table, const char *key,
 		dbg_ck("Table is full, resize needed.\n");
 		if (ck_resize_table(table) != 0) {
 			dbg_ck("Failed to resize hash table!\n");
+			free(new_item);
 			pthread_mutex_unlock(&table->mtx_table);
 			return -1;
 		}
@@ -995,6 +996,8 @@ int ck_insert_item(ck_hash_table_t *table, const char *key,
 			dbg_ck("Stash is full, resize needed.\n");
 			if (ck_resize_table(table) != 0) {
 				dbg_ck("Failed to resize hash table!\n");
+				/*! \todo Shouldn't 'new_item' be freed? */
+				pthread_mutex_unlock(&table->mtx_table);
 				return -1;
 			}
 		}
