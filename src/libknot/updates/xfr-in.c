@@ -1217,8 +1217,9 @@ dbg_xfrin_exec(
 				}
 			}
 			break;
-		default:
-			assert(0);
+		// dead code
+//		default:
+//			assert(0);
 		}
 		
 		// parse the next RR

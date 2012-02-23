@@ -454,7 +454,6 @@ dbg_response_exec(
 	 *        It is meaningful only if the found name is the one from QNAME
 	 *        and thus its parents are not stored yet.
 	 */
-	assert(compr->wire_pos >= 0);
 	
 	if (knot_response_store_dname_pos(compr->table, dname, not_matched,
 	                                  compr->wire_pos, offset, compr_cs)

@@ -1599,7 +1599,10 @@ int knot_zone_contents_add_nsec3_node(knot_zone_contents_t *zone,
 
 	// how to know if this is successfull??
 //	TREE_INSERT(zone->nsec3_nodes, knot_node, avl, node);
-	knot_zone_tree_insert(zone->nsec3_nodes, node);
+	ret = knot_zone_tree_insert(zone->nsec3_nodes, node);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 
 	if (use_domain_table) {
 		ret = knot_zone_contents_dnames_from_node_to_table(
@@ -2369,7 +2372,8 @@ int knot_zone_contents_load_nsec3param(knot_zone_contents_t *zone)
 	                                            KNOT_RRTYPE_NSEC3PARAM);
 
 	if (rrset != NULL) {
-		knot_nsec3_params_from_wire(&zone->nsec3_params, rrset);
+		int r = knot_nsec3_params_from_wire(&zone->nsec3_params, rrset);
+		assert(r == KNOT_EOK);
 	} else {
 		memset(&zone->nsec3_params, 0, sizeof(knot_nsec3_params_t));
 	}
