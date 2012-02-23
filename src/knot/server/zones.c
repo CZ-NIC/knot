@@ -198,6 +198,7 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 	if (contents) {
 		soa_rrs = knot_node_rrset(knot_zone_contents_apex(contents),
 					  KNOT_RRTYPE_SOA);
+		assert(soa_rrs != NULL);
 		soa_rr = knot_rrset_rdata(soa_rrs);
 		int64_t serial = knot_rdata_soa_serial(soa_rr);
 		zd->zonefile_serial = (uint32_t)serial;
@@ -236,6 +237,7 @@ static uint32_t zones_soa_timer(knot_zone_t *zone,
 
 	soa_rrs = knot_node_rrset(knot_zone_contents_apex(zc),
 	                            KNOT_RRTYPE_SOA);
+	assert(soa_rrs != NULL);
 	soa_rr = knot_rrset_rdata(soa_rrs);
 	ret = rr_func(soa_rr);
 
@@ -1157,6 +1159,7 @@ static int zones_journal_apply(knot_zone_t *zone)
 	const knot_rdata_t *soa_rr = 0;
 	soa_rrs = knot_node_rrset(knot_zone_contents_apex(contents),
 	                            KNOT_RRTYPE_SOA);
+	assert(soa_rrs != NULL);
 	soa_rr = knot_rrset_rdata(soa_rrs);
 	int64_t serial_ret = knot_rdata_soa_serial(soa_rr);
 	if (serial_ret < 0) {
@@ -1722,6 +1725,8 @@ int zones_zonefile_sync(knot_zone_t *zone)
 	const knot_rdata_t *soa_rr = 0;
 	soa_rrs = knot_node_rrset(knot_zone_contents_apex(contents),
 	                            KNOT_RRTYPE_SOA);
+	assert(soa_rrs != NULL);
+
 	soa_rr = knot_rrset_rdata(soa_rrs);
 	int64_t serial_ret = knot_rdata_soa_serial(soa_rr);
 	if (serial_ret < 0) {
