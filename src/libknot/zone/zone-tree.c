@@ -325,17 +325,26 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
 		*previous = knot_node_get_previous(prev->node);
 		exact_match = 0;
 	} else if (prev == NULL) {
+
+dbg_zone_exec_detail(
 		if (!exact_match) {
-			printf("Searched for owner %s in zone tree.\n",
-			       knot_dname_to_str(owner));
-			printf("Exact match: %d\n", exact_match);
-			printf("Found node: %p: %s.\n", f, (f)
-			    ? knot_dname_to_str(knot_node_owner(f->node))
-			    : "none");
-			printf("Previous node: %p: %s.\n", prev, (prev)
-			       ? knot_dname_to_str(knot_node_owner(prev->node))
-			       : "none");
+			char *name = knot_dname_to_str(owner);
+			char *name_f = (f != NULL)
+				? knot_dname_to_str(knot_node_owner(f->node));
+				: "none";
+
+			dbg_zone_detail("Searched for owner %s in zone tree.\n",
+			                name);
+			dbg_zone_detail("Exact match: %d\n", exact_match);
+			dbg_zone_detail("Found node: %p: %s.\n", f, name_f);
+			dbg_zone_detail("Previous node: %p.\n", prev);
+
+			free(name);
+			if (f != NULL) {
+				free(name_f);
+			}
 		}
+);
 
 		// either the returned node is the root of the tree, or
 		// it is the leftmost node in the tree; in both cases
