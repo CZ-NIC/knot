@@ -66,10 +66,10 @@ static float frand()
 /*!
  * \brief Returns random level between 0 and MAX_LEVEL.
  */
-static int skip_random_level()
+static unsigned skip_random_level()
 {
 	static int first = 1;
-	int lvl = 0;
+	unsigned lvl = 0;
 
 	if (first) {
 		first = 0;
@@ -272,7 +272,7 @@ int skip_insert(skip_list_t *list, void *key, void *value,
 	x = x->forward[0];
 
 	if (x == NULL || list->compare_keys(x->key, key) != 0) {
-		int lvl = skip_random_level();
+		unsigned lvl = skip_random_level();
 
 		if (lvl > list->level) {
 			for (i = list->level + 1; i <= lvl; i++) {
