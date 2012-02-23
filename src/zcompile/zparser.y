@@ -394,7 +394,6 @@ dname:	abs_dname
 	    } else {
 		    $$ = knot_dname_cat($1,
 					  parser->origin->owner);
-//		printf("leak: %s\n", knot_dname_to_str($$));
 	    }
     }
     ;
@@ -429,10 +428,7 @@ label:	STR
 		    zc_error("label exceeds %d character limit", MAXLABELLEN);
 		    $$ = error_dname;
 	    } else {
-//	    printf("%s\n", $1.str);
 		    $$ = knot_dname_new_from_str($1.str, $1.len, NULL);
-//	    printf("Creating new (label): %s %p\n", $1.str, $$);
-//	printf("new: %p %s\n", $$, $1.str);
 	$$->ref.count = 0;
 	    }
 
