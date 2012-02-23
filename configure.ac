@@ -64,10 +64,19 @@ AC_ARG_ENABLE([ldns],
        no)  ldns=false ;;
        *) AC_MSG_ERROR([bad value ${enableval} for --enable-ldns]) ;;
      esac],[ldns=false])
+     
+# Debug modules
+AC_ARG_ENABLE([debug],
+    AS_HELP_STRING([--with-debug=server,net,zones], [compile selected debug modules [default=none]]),
+    [
+    grep -q server <<<${enableval} && AC_DEFINE([KNOTD_SERVER_DEBUG], [1], [Server debug.])
+    grep -q net <<<${enableval} && AC_DEFINE([KNOTD_NET_DEBUG], [1], [Net debug.])
+    grep -q zones <<<${enableval} && AC_DEFINE([KNOTD_ZONES_DEBUG], [1], [Zones debug.])
+    ], [])
 
 # Debug level
-AC_ARG_ENABLE([debug],
-    AS_HELP_STRING([--enable-debug=brief|verbose|details], [enable given debug level [default=disabled]]),
+AC_ARG_ENABLE([debuglevel],
+    AS_HELP_STRING([--enable-debuglevel=brief|verbose|details], [enable given debug level [default=disabled]]),
     # Not all shells support fall-through with ;& so I have to duplicate
     [case "x${enableval}" in
       xdetails)
