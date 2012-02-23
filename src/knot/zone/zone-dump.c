@@ -584,11 +584,6 @@ int knot_zdump_binary(knot_zone_contents_t *zone, int fd,
 	/* FIXME(OS): Really descriptive call 1,1,1,1, some #defines here? */
 	err_handler_t *handler = handler_new(1, 1, 1, 1, 1);
 	if (handler == NULL) {
-		/* FIXME(OS): And what happens now? */
-		fclose(f);
-		close(fd);
-		remove(new_path);
-		remove(knot_zdump_crc_file(filename));
 		return KNOT_ENOMEM;
 	} else { /* Do check for SOA right now */
 		if (knot_node_rrset(knot_zone_contents_apex(zone),
