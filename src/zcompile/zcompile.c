@@ -606,6 +606,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	rrset_list_delete(&parser->rrsig_orphans);
 
 	if (found_orphans != parser->rrsig_orphan_count) {
+		/*! \todo This might be desired behaviour. */
 		fprintf(stderr,
 		        "There are unassigned RRSIGs in the zone!\n");
 		parser->errors++;
@@ -620,12 +621,47 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 		fprintf(stderr,
 		        "Parser finished with error, not dumping the zone!\n");
 	} else {
-		if (knot_zdump_binary(contents,
-		                      outfile, semantic_checks,
-		                      zonefile) != 0) {
-			fprintf(stderr, "Could not dump zone!\n");
+		int fd = open(outfile, O_RDWR | O_CREAT | O_TRUNC, S_IRWXU | S_IRWXG);
+		if (fd < 0) {
+			fprintf(stderr,
+			        "Could not open destination file for db: %s.\n",
+			        outfile);
 			totalerrors++;
+		} else {
+			crc_t crc;
+			int ret = knot_zdump_binary(contents, fd,
+			                            semantic_checks,
+			                            zonefile, &crc);
+			if (ret != KNOT_EOK) {
+				fprintf(stderr, "Could not dump zone, reason: "
+				                "%s.\n", knot_strerror(ret));
+				remove(outfile);
+				totalerrors++;
+			} else {
+				/* Write CRC file. */
+				char *crc_path = knot_zdump_crc_file(outfile);
+				if (crc_path == NULL) {
+					fprintf(stderr,
+					        "Could not get crc file path.\n");
+					remove(outfile);
+					totalerrors++;
+				}
+
+				FILE *f_crc = fopen(crc_path, "w");
+				if (f_crc == NULL) {
+					fprintf(stderr,
+					        "Could not open crc file \n");
+					remove(outfile);
+					totalerrors++;
+				}
+
+				fprintf(f_crc, "%lu", (unsigned long)crc);
+				fclose(f_crc);
+				free(crc_path);
+			}
 		}
+
+
 		dbg_zp("zone dumped.\n");
 	}
 

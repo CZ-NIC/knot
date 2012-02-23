@@ -1130,9 +1130,9 @@ void node_dump_text(knot_node_t *node, void *data)
 	free(rrsets);
 }
 
-int zone_dump_text(knot_zone_contents_t *zone, const char *filename)
+int zone_dump_text(knot_zone_contents_t *zone, int fd)
 {
-	FILE *f = fopen(filename, "w");
+	FILE *f = fdopen(fd, "w");
 	if (f == NULL) {
 		return KNOT_EBADARG;
 	}

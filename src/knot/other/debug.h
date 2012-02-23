@@ -40,7 +40,7 @@
 //#define KNOTD_ZONES_DEBUG
 #define KNOTD_XFR_DEBUG
 //#define KNOTD_NOTIFY_DEBUG
-//#define KNOTD_ZDUMP_DEBUG
+#define KNOTD_ZDUMP_DEBUG
 //#define KNOTD_ZLOAD_DEBUG
 
 /******************************************************************************/
