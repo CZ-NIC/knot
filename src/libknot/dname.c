@@ -823,9 +823,9 @@ knot_dname_t *knot_dname_left_chop(const knot_dname_t *dname)
 void knot_dname_left_chop_no_copy(knot_dname_t *dname)
 {
 	// copy the name
-	short first_label_length = dname->labels[1];
-
 	if (dname->label_count > 1) {
+		short first_label_length = dname->labels[1];
+
 		memmove(dname->name, &dname->name[dname->labels[1]],
 			dname->size - first_label_length);
 		// adjust labels
