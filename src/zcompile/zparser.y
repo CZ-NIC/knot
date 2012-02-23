@@ -307,11 +307,13 @@ ttl_directive:	DOLLAR_TTL sp STR trail
 
 origin_directive:	DOLLAR_ORIGIN sp abs_dname trail
     {
+    /*!< \todo this will leak. */
 	    knot_node_t *origin_node = knot_node_new($3 ,NULL, 0);
 	if (parser->origin != NULL) {
 //		knot_node_free(&parser->origin, 1);
 	}
 	    parser->origin = origin_node;
+	    parser->origin_directive = 1;
     }
     |	DOLLAR_ORIGIN sp rel_dname trail
     {
@@ -404,7 +406,12 @@ abs_dname:	'.'
     }
     |	'@'
     {
+    	if (parser->origin_directive) {
 	    $$ = parser->origin->owner;
+	} else {
+		zc_error("@ used, but no $ORIGIN specified.\n");
+		$$ = parser->origin->owner;
+	}
     }
     |	rel_dname '.'
     {
@@ -1620,6 +1627,8 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 
 	parser->current_rrset->rclass = parser->default_class;
 	parser->current_rrset->rdata = NULL;
+	
+	parser->origin_directive = 0;
 }
 
 
