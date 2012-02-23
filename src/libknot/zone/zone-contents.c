@@ -261,21 +261,21 @@ static int knot_zone_contents_dnames_from_node_to_table(
  * \param zone Current zone.
  * \param node Node to be used.
  */
-static void find_and_set_wildcard_child(knot_zone_contents_t *zone,
-				 knot_node_t *node)
-{
-	knot_dname_t *chopped = knot_dname_left_chop(node->owner);
-	assert(chopped);
-	knot_node_t *wildcard_parent;
-	wildcard_parent =
-		knot_zone_contents_get_node(zone, chopped);
+//static void find_and_set_wildcard_child(knot_zone_contents_t *zone,
+//				 knot_node_t *node)
+//{
+//	knot_dname_t *chopped = knot_dname_left_chop(node->owner);
+//	assert(chopped);
+//	knot_node_t *wildcard_parent;
+//	wildcard_parent =
+//		knot_zone_contents_get_node(zone, chopped);
 
-	knot_dname_free(&chopped);
+//	knot_dname_free(&chopped);
 
-	assert(wildcard_parent); /* it *has* to be there */
+//	assert(wildcard_parent); /* it *has* to be there */
 
-	knot_node_set_wildcard_child(wildcard_parent, node);
-}
+//	knot_node_set_wildcard_child(wildcard_parent, node);
+//}
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -294,54 +294,54 @@ static void find_and_set_wildcard_child(knot_zone_contents_t *zone,
  * \param zone Zone to which the RDATA belongs.
  * \param pos Position of the RDATA item in the RDATA.
  */
-static void knot_zone_contents_adjust_rdata_item(knot_rdata_t *rdata,
-                                          knot_zone_contents_t *zone,
-                                          knot_node_t *node,
-                                          int pos)
-{
-	return;
-	const knot_rdata_item_t *dname_item
-			= knot_rdata_item(rdata, pos);
+//static void knot_zone_contents_adjust_rdata_item(knot_rdata_t *rdata,
+//                                          knot_zone_contents_t *zone,
+//                                          knot_node_t *node,
+//                                          int pos)
+//{
+//	return;
+//	const knot_rdata_item_t *dname_item
+//			= knot_rdata_item(rdata, pos);
 
-	assert(dname_item);
+//	assert(dname_item);
 
-	if (dname_item != NULL) {
-		knot_dname_t *dname = dname_item->dname;
-		const knot_node_t *n = NULL;
-		const knot_node_t *closest_encloser = NULL;
-		const knot_node_t *prev = NULL;
+//	if (dname_item != NULL) {
+//		knot_dname_t *dname = dname_item->dname;
+//		const knot_node_t *n = NULL;
+//		const knot_node_t *closest_encloser = NULL;
+//		const knot_node_t *prev = NULL;
 
-		if (knot_dname_is_wildcard(dname)) {
-			find_and_set_wildcard_child(zone, node);
-		}
+//		if (knot_dname_is_wildcard(dname)) {
+//			find_and_set_wildcard_child(zone, node);
+//		}
 
-		int ret = knot_zone_contents_find_dname(zone, dname, &n,
-		                                      &closest_encloser, &prev);
+//		int ret = knot_zone_contents_find_dname(zone, dname, &n,
+//		                                      &closest_encloser, &prev);
 
-		//		n = knot_zone_find_node(zone, dname);
+//		//		n = knot_zone_find_node(zone, dname);
 
-		if (ret == KNOT_EBADARG || ret == KNOT_EBADZONE) {
-			// TODO: do some cleanup if needed
-			return;
-		}
+//		if (ret == KNOT_EBADARG || ret == KNOT_EBADZONE) {
+//			// TODO: do some cleanup if needed
+//			return;
+//		}
 
-		assert(ret != KNOT_ZONE_NAME_FOUND
-		       || n == closest_encloser);
+//		assert(ret != KNOT_ZONE_NAME_FOUND
+//		       || n == closest_encloser);
 
-		if (ret != KNOT_ZONE_NAME_FOUND
-		                && (closest_encloser != NULL)) {
-			dbg_zone("Saving closest encloser to RDATA.\n");
-			// save pointer to the closest encloser
-			knot_rdata_item_t *item =
-					knot_rdata_get_item(rdata, pos);
-			assert(item->dname != NULL);
-			assert(item->dname->node == NULL);
-			//skip_insert(list, (void *)item->dname,
-			//	    (void *)closest_encloser->owner, NULL);
-			item->dname->node = closest_encloser->owner->node;
-		}
-	}
-}
+//		if (ret != KNOT_ZONE_NAME_FOUND
+//		                && (closest_encloser != NULL)) {
+//			dbg_zone("Saving closest encloser to RDATA.\n");
+//			// save pointer to the closest encloser
+//			knot_rdata_item_t *item =
+//					knot_rdata_get_item(rdata, pos);
+//			assert(item->dname != NULL);
+//			assert(item->dname->node == NULL);
+//			//skip_insert(list, (void *)item->dname,
+//			//	    (void *)closest_encloser->owner, NULL);
+//			item->dname->node = closest_encloser->owner->node;
+//		}
+//	}
+//}
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -355,65 +355,65 @@ static void knot_zone_contents_adjust_rdata_item(knot_rdata_t *rdata,
  * \param rrset RRSet to adjust RDATA in.
  * \param zone Zone to which the RRSet belongs.
  */
-static void knot_zone_contents_adjust_rdata_in_rrset(knot_rrset_t *rrset,
-                                                   knot_zone_contents_t *zone,
-                                                   knot_node_t *node)
-{
-	uint16_t type = knot_rrset_type(rrset);
+//static void knot_zone_contents_adjust_rdata_in_rrset(knot_rrset_t *rrset,
+//                                                   knot_zone_contents_t *zone,
+//                                                   knot_node_t *node)
+//{
+//	uint16_t type = knot_rrset_type(rrset);
 
-	knot_rrtype_descriptor_t *desc =
-		knot_rrtype_descriptor_by_type(type);
-	assert(desc);
+//	knot_rrtype_descriptor_t *desc =
+//		knot_rrtype_descriptor_by_type(type);
+//	assert(desc);
 
-	knot_rdata_t *rdata_first = knot_rrset_get_rdata(rrset);
-	knot_rdata_t *rdata = rdata_first;
+//	knot_rdata_t *rdata_first = knot_rrset_get_rdata(rrset);
+//	knot_rdata_t *rdata = rdata_first;
 
-	if (rdata == NULL) {
-		return;
-	}
+//	if (rdata == NULL) {
+//		return;
+//	}
 
-	while (rdata->next != rdata_first) {
-		for (int i = 0; i < rdata->count; ++i) {
-			if (desc->wireformat[i]
-			    == KNOT_RDATA_WF_COMPRESSED_DNAME
-			    || desc->wireformat[i]
-			       == KNOT_RDATA_WF_UNCOMPRESSED_DNAME
-			    || desc->wireformat[i]
-			       == KNOT_RDATA_WF_LITERAL_DNAME) {
-				dbg_zone("Adjusting domain name at "
-				  "position %d of RDATA of record with owner "
-				  "%s and type %s.\n",
-				  i, rrset->owner->name,
-				  knot_rrtype_to_string(type));
+//	while (rdata->next != rdata_first) {
+//		for (int i = 0; i < rdata->count; ++i) {
+//			if (desc->wireformat[i]
+//			    == KNOT_RDATA_WF_COMPRESSED_DNAME
+//			    || desc->wireformat[i]
+//			       == KNOT_RDATA_WF_UNCOMPRESSED_DNAME
+//			    || desc->wireformat[i]
+//			       == KNOT_RDATA_WF_LITERAL_DNAME) {
+//				dbg_zone("Adjusting domain name at "
+//				  "position %d of RDATA of record with owner "
+//				  "%s and type %s.\n",
+//				  i, rrset->owner->name,
+//				  knot_rrtype_to_string(type));
 
-				knot_zone_contents_adjust_rdata_item(rdata,
-				                                       zone,
-				                                       node,
-				                                       i);
-			}
-		}
-		rdata = rdata->next;
-	}
+//				knot_zone_contents_adjust_rdata_item(rdata,
+//				                                       zone,
+//				                                       node,
+//				                                       i);
+//			}
+//		}
+//		rdata = rdata->next;
+//	}
 
-	for (int i = 0; i < rdata->count; ++i) {
-		if (desc->wireformat[i]
-		    == KNOT_RDATA_WF_COMPRESSED_DNAME
-		    || desc->wireformat[i]
-		       == KNOT_RDATA_WF_UNCOMPRESSED_DNAME
-		    || desc->wireformat[i]
-		       == KNOT_RDATA_WF_LITERAL_DNAME) {
-			dbg_zone("Adjusting domain name at "
-			  "position %d of RDATA of record with owner "
-			  "%s and type %s.\n",
-			  i, rrset->owner->name,
-			  knot_rrtype_to_string(type));
+//	for (int i = 0; i < rdata->count; ++i) {
+//		if (desc->wireformat[i]
+//		    == KNOT_RDATA_WF_COMPRESSED_DNAME
+//		    || desc->wireformat[i]
+//		       == KNOT_RDATA_WF_UNCOMPRESSED_DNAME
+//		    || desc->wireformat[i]
+//		       == KNOT_RDATA_WF_LITERAL_DNAME) {
+//			dbg_zone("Adjusting domain name at "
+//			  "position %d of RDATA of record with owner "
+//			  "%s and type %s.\n",
+//			  i, rrset->owner->name,
+//			  knot_rrtype_to_string(type));
 
-			knot_zone_contents_adjust_rdata_item(rdata, zone,
-			                                       node, i);
-		}
-	}
+//			knot_zone_contents_adjust_rdata_item(rdata, zone,
+//			                                       node, i);
+//		}
+//	}
 
-}
+//}
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -426,31 +426,31 @@ static void knot_zone_contents_adjust_rdata_in_rrset(knot_rrset_t *rrset,
  * \param node Zone node to adjust the RRSets in.
  * \param zone Zone to which the node belongs.
  */
-static void knot_zone_contents_adjust_rrsets(knot_node_t *node,
-                                               knot_zone_contents_t *zone)
-{
-	//return;
-	knot_rrset_t **rrsets = knot_node_get_rrsets(node);
-	short count = knot_node_rrset_count(node);
+//static void knot_zone_contents_adjust_rrsets(knot_node_t *node,
+//                                               knot_zone_contents_t *zone)
+//{
+//	//return;
+//	knot_rrset_t **rrsets = knot_node_get_rrsets(node);
+//	short count = knot_node_rrset_count(node);
 
-	assert(count == 0 || rrsets != NULL);
+//	assert(count == 0 || rrsets != NULL);
 
-	for (int r = 0; r < count; ++r) {
-		assert(rrsets[r] != NULL);
-		dbg_zone("Adjusting next RRSet.\n");
-		knot_zone_contents_adjust_rdata_in_rrset(rrsets[r], zone,
-		                                           node);
-		knot_rrset_t *rrsigs = rrsets[r]->rrsigs;
-		if (rrsigs != NULL) {
-			dbg_zone("Adjusting next RRSIGs.\n");
-			knot_zone_contents_adjust_rdata_in_rrset(rrsigs,
-			                                           zone,
-			                                           node);
-		}
-	}
+//	for (int r = 0; r < count; ++r) {
+//		assert(rrsets[r] != NULL);
+//		dbg_zone("Adjusting next RRSet.\n");
+//		knot_zone_contents_adjust_rdata_in_rrset(rrsets[r], zone,
+//		                                           node);
+//		knot_rrset_t *rrsigs = rrsets[r]->rrsigs;
+//		if (rrsigs != NULL) {
+//			dbg_zone("Adjusting next RRSIGs.\n");
+//			knot_zone_contents_adjust_rdata_in_rrset(rrsigs,
+//			                                           zone,
+//			                                           node);
+//		}
+//	}
 
-	free(rrsets);
-}
+//	free(rrsets);
+//}
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -480,7 +480,12 @@ dbg_zone_exec(
 );
 
 	// adjust domain names in RDATA
-	knot_zone_contents_adjust_rrsets(node, zone);
+	/*!
+	 * \note This is unnecessary, as the code in adjust_rdata_item() is not
+	 *       reachable anyway. However, it's not clear why we disabled the
+	 *       code, so this would need further investigation.
+	 */
+	//knot_zone_contents_adjust_rrsets(node, zone);
 
 dbg_zone_exec(
 	if (knot_node_parent(node)) {
