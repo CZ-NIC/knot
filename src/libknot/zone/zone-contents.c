@@ -1299,7 +1299,7 @@ int knot_zone_contents_add_node(knot_zone_contents_t *zone,
 				 knot_zone_contents_dnames_from_node_to_table(
 					zone->dname_table, next_node);
 				if (ret != KNOT_EOK) {
-					knot_node_free(next_node, 0);
+					knot_node_free(&next_node, 0);
 					knot_dname_release(chopped);
 					return ret;
 				}
