@@ -697,10 +697,11 @@ static unsigned long calculate_crc(FILE *f)
 
 int knot_zload_open(zloader_t **dst, const char *filename)
 {
-	*dst = 0;
 	if (!dst || !filename) {
 		return KNOT_EBADARG;
 	}
+
+	*dst = 0;
 
 	fread_wrapper = fread_safe_from_file;
 
@@ -893,11 +894,12 @@ static knot_dname_t **create_dname_array(FILE *f, uint max_id)
 
 	knot_dname_t **array =
 		malloc(sizeof(knot_dname_t *) * ( max_id + 1));
-	memset(array, 0, sizeof(knot_dname_t *) * (max_id + 1));
 	if (array == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
 	}
+
+	memset(array, 0, sizeof(knot_dname_t *) * (max_id + 1));	
 
 	for (uint i = 0; i < max_id - 1; i++) {
 		knot_dname_t *read_dname = read_dname_with_id(f);

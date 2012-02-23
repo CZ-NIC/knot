@@ -904,8 +904,11 @@ dbg_xfrin_exec(
 static int xfrin_parse_first_rr(knot_packet_t **packet, const uint8_t *pkt,
                                 size_t size, knot_rrset_t **rr)
 {
+	assert(packet != NULL);
+	assert(rr != NULL);
+
 	*packet = knot_packet_new(KNOT_PACKET_PREALLOC_NONE);
-	if (packet == NULL) {
+	if (*packet == NULL) {
 		dbg_xfrin("Could not create packet structure.\n");
 		return KNOT_ENOMEM;
 	}
@@ -3123,6 +3126,11 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 		xfrin_rollback_update2(old_contents, contents_copy, &changes);
 		return ret;
 	}
+
+	/*!
+	 * \todo Maybe check also all mandatory semantic checks, e.g. CNAME
+	 *       and DNAME children.
+	 */
 
 	dbg_xfrin("Switching zone contents.\n");
 	dbg_xfrin_verb("Old contents apex: %p, new apex: %p\n",
