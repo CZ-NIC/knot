@@ -272,6 +272,7 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 				dname = knot_dname_parse_from_wire(
 					         wire, &pos2, total_size, NULL);
 				if (dname == NULL) {
+					free(items);
 					return KNOT_ERROR;
 				}
 			
@@ -307,6 +308,7 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 
 			break;
 		default:
+			free(items);
 			return KNOT_EMALF;
 
 		}
