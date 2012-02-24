@@ -1018,6 +1018,22 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 	return KNOT_EOK;
 }
 
+struct sem_check_param {
+	int node_count;
+};
+
+/*!
+ * \brief Used only to count number of nodes in zone tree.
+ *
+ * \param node Node to be counted
+ * \param data Count casted to void *
+ */
+static void count_nodes_in_tree(knot_node_t *node, void *data)
+{
+	struct sem_check_param *param = (struct sem_check_param *)data;
+	param->node_count++;
+}
+
 /*!
  * \brief Run semantic checks for node without DNSSEC-related types.
  *
@@ -1095,9 +1111,33 @@ static int semantic_checks_plain(knot_zone_contents_t *zone,
 		}
 		
 		if (node->children != 0) {
-			*fatal_error = 1;
-			err_handler_handle_error(handler, node,
-			                         ZC_ERR_DNAME_CHILDREN);
+			/*
+			 * With DNSSEC and node being zone apex,
+			 * NSEC3 and its RRSIG can be present.
+			 */
+			
+			/* The NSEC3 tree can thus only have one node. */
+			struct sem_check_param param;
+			param.node_count = 0;
+			ret = knot_zone_contents_nsec3_apply_inorder(zone,
+				count_nodes_in_tree,
+				&param);
+			if (ret != KNOT_EOK || param.node_count != 1) {
+				*fatal_error = 1;
+				err_handler_handle_error(handler, node,
+				                         ZC_ERR_DNAME_CHILDREN);
+				/*
+				 * Valid case: Node is apex, it has NSEC3 node
+				 * and that node has only one RRSet.
+				 */
+			} else if (!((knot_zone_contents_apex(zone) == node) &&
+			           knot_node_nsec3_node(node) &&
+			           knot_node_rrset_count(knot_node_nsec3_node(
+			                                 node)) == 1)) {
+				*fatal_error = 1;
+				err_handler_handle_error(handler, node,
+				                         ZC_ERR_DNAME_CHILDREN);
+			}
 		}
 	}
 	
@@ -1179,10 +1219,6 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 		if (auth && !deleg &&
 		    (ret = check_rrsig_in_rrset(rrset, dnskey_rrset,
 						nsec3)) != 0) {
-		  /* CLEANUP */
-/*			log_zone_error("RRSIG %d node %s\n", ret,
-				       knot_dname_to_str(node->owner));*/
-
 			err_handler_handle_error(handler, node, ret);
 		}
 
@@ -1195,13 +1231,6 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 			if (nsec_rrset == NULL) {
 				err_handler_handle_error(handler, node,
 							 ZC_ERR_NO_NSEC);
-				/* CLEANUP */
-/*				char *name =
-					knot_dname_to_str(node->owner);
-				log_zone_error("Missing NSEC in node: "
-					       "%s\n", name);
-				free(name);
-				return; */
 			} else {
 
 				/* check NSEC/NSEC3 bitmap */
@@ -1235,18 +1264,6 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 						handler,
 						node,
 						ZC_ERR_NSEC_RDATA_BITMAP);
-					/* CLEANUP */
-	/*					char *name =
-						knot_dname_to_str(
-						knot_node_owner(node));
-
-						log_zone_error("Node %s does "
-						"not contain RRSet of type %s "
-						"but NSEC bitmap says "
-					       "it does!\n", name,
-					       knot_rrtype_to_string(type));
-
-					free(name); */
 					}
 				}
 				free(array);
