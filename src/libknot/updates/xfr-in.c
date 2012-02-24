@@ -859,9 +859,12 @@ dbg_xfrin_exec(
 		dbg_xfrin("Could not parse next RR: %s.\n",
 		               knot_strerror(ret));
 		knot_packet_free(&packet);
-		knot_node_free(&node, 0);
+
+		if (!in_zone) {
+			knot_node_free(&node, 0);
+		}
+
 		knot_rrset_deep_free(&rr, 1, 1, 1);
-		/*! \todo Cleanup. */
 		return KNOT_EMALF;
 	}
 
