@@ -120,23 +120,33 @@ static int find_rrset_for_rrsig_in_zone(knot_zone_contents_t *zone,
 
 	knot_node_t *tmp_node = NULL;
 
-	if (rrsig->type != KNOT_RRTYPE_NSEC3) {
+	if (knot_rdata_rrsig_type_covered(knot_rrset_rdata(rrsig))
+		!= KNOT_RRTYPE_NSEC3) {
 		tmp_node = knot_zone_contents_get_node(zone, rrsig->owner);
 	} else {
 		tmp_node = knot_zone_contents_get_nsec3_node(zone,
 						      rrsig->owner);
 	}
+	
+	dbg_zp("Found this node for RRSIG: %p\n",
+	       tmp_node);
 
 	if (tmp_node == NULL) {
 		return KNOTDZCOMPILE_EINVAL;
 	}
 
 	knot_rrset_t *tmp_rrset =
-		knot_node_get_rrset(tmp_node, rrsig->type);
+		knot_node_get_rrset(tmp_node,
+	                            knot_rdata_rrsig_type_covered(
+	                                    rrsig->rdata));
+	
+	dbg_zp("Found this rrset for RRSIG: %p\n",
+	       tmp_rrset);
 
 	if (tmp_rrset == NULL) {
 		return KNOTDZCOMPILE_EINVAL;
 	}
+	
 
 	if (tmp_rrset->rrsigs != NULL) {
 		knot_zone_contents_add_rrsigs(zone, rrsig, &tmp_rrset, &tmp_node,
@@ -433,6 +443,10 @@ static uint find_rrsets_orphans(knot_zone_contents_t *zone, rrset_list_t
 				 knot_rrtype_to_string(head->data->type));
 		}
 		else { /* we can throw it away now */
+			dbg_zp("RRSet not found for RRSIG: %s (%s)\n",
+			       knot_dname_to_str(head->data->owner),
+			       knot_rrtype_to_string(
+			  knot_rdata_rrsig_type_covered(head->data->rdata)));
 			knot_rrset_free(&head->data);
 		}
 		head = head->next;
