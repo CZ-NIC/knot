@@ -315,11 +315,13 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 		              ret == KNOTD_EOK ? "finished" : "failed");
 		break;
 	case XFR_TYPE_IIN:
+		chs = (knot_changesets_t *)data->data;
+
 		/* First, try to apply the changesets to the zone. */
 		/* Update zone. */
-		ret = xfrin_apply_changesets(data->zone,
-		                        (knot_changesets_t *)data->data,
-		                        &data->new_contents);
+		ret = xfrin_apply_changesets(data->zone, chs,
+		                             &data->new_contents);
+
 		if (ret != KNOT_EOK) {
 			log_zone_error("IXFR failed to "
 			               "apply changesets to "
@@ -337,9 +339,12 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 					       zorigin, knotd_strerror(ret));
 
 				// Cleanup old and new contents
-				xfrin_cleanup_failed_update(
-				                        data->zone->contents,
-				                        &data->new_contents);
+				xfrin_rollback_update(data->zone->contents,
+				                      &data->new_contents,
+				                      &chs->changes);
+//				xfrin_cleanup_failed_update(
+//				                        data->zone->contents,
+//				                        &data->new_contents);
 			} else {
 				/* Switch zone contents. */
 				ret = xfrin_switch_zone(data->zone,
@@ -348,15 +353,21 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 
 				if (ret != KNOT_EOK) {
 					// Cleanup old and new contents
-					xfrin_cleanup_failed_update(
-					                   data->zone->contents,
-					                   &data->new_contents);
+					xfrin_rollback_update(
+						data->zone->contents,
+						&data->new_contents,
+						&chs->changes);
+//					xfrin_cleanup_failed_update(
+//					                   data->zone->contents,
+//					                   &data->new_contents);
+				} else {
+					xfrin_cleanup_successful_update(
+					                         &chs->changes);
 				}
 			}
 		}
 
 		/* Free changesets, but not the data. */
-		chs = (knot_changesets_t *)data->data;
 		knot_free_changesets(&chs);
 		/* CLEANUP */
 //		free(chs->sets);

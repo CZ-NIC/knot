@@ -287,6 +287,8 @@ void knot_free_changesets(knot_changesets_t **changesets)
 	
 	knot_rrset_deep_free(&(*changesets)->first_soa, 1, 1, 1);
 	
+	assert((*changesets)->changes == NULL);
+
 	free(*changesets);
 	*changesets = NULL;
 }
