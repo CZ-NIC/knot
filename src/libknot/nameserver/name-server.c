@@ -3367,7 +3367,7 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 int knot_ns_switch_zone(knot_nameserver_t *nameserver, 
                           knot_ns_xfr_t *xfr)
 {
-	if (xfr == NULL || nameserver == NULL || xfr->data == NULL) {
+	if (xfr == NULL || nameserver == NULL || xfr->new_contents == NULL) {
 		return KNOT_EBADARG;
 	}
 	
