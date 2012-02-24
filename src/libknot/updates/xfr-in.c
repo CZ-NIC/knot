@@ -2343,8 +2343,8 @@ void xfrin_rollback_update(knot_zone_contents_t *old_contents,
 		}
 
 		for (int i = 0; i < (*changes)->new_rdata_count; ++i) {
-			dbg_xfrin("Freeing %d. RDATA chain: %p\n", i,
-			          (*changes)->new_rdata[i]);
+			fprintf(stderr, "Freeing %d. RDATA chain: %p\n", i,
+			        (*changes)->new_rdata[i]);
 			// check if the RDATA is not already freed (i.e. the
 			// same pointer is somewhere in new_rdata before the
 			// current item
@@ -2367,7 +2367,7 @@ void xfrin_rollback_update(knot_zone_contents_t *old_contents,
 			                (*changes)->new_rdata[i]) {
 				assert(rdata->next != rdata);
 				rdata_next = rdata->next;
-				dbg_xfrin("  Deleting RDATA: %p\n", rdata);
+				fprintf(stderr, "  Deleting RDATA: %p\n", rdata);
 				knot_rdata_deep_free(&rdata,
 					(*changes)->new_rdata_types[i], 1);
 				rdata = rdata_next;
@@ -2376,7 +2376,7 @@ void xfrin_rollback_update(knot_zone_contents_t *old_contents,
 			assert(rdata == NULL
 			       || rdata->next == (*changes)->new_rdata[i]);
 
-			dbg_xfrin("  Deleting RDATA: %p\n", rdata);
+			fprintf(stderr, "  Deleting RDATA: %p\n", rdata);
 			knot_rdata_deep_free(&rdata,
 			                     (*changes)->new_rdata_types[i], 1);
 
