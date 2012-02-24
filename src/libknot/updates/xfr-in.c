@@ -2350,6 +2350,7 @@ void xfrin_rollback_update(knot_zone_contents_t *old_contents,
 
 			while (rdata != NULL && rdata->next !=
 			                (*changes)->new_rdata[i]) {
+				assert(rdata->next != rdata);
 				rdata_next = rdata->next;
 				knot_rdata_deep_free(&rdata,
 					(*changes)->new_rdata_types[i], 1);
