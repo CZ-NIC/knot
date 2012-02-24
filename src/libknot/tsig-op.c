@@ -1035,6 +1035,7 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	}
 
 	knot_rrset_deep_free(&tmp_tsig, 1, 1, 1);
+	knot_dname_release(key_name);
 
 	*msg_len += tsig_wire_len;
 
