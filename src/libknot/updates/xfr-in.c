@@ -630,7 +630,7 @@ dbg_xfrin_exec(
 	while (ret == KNOT_EOK && rr != NULL) {
 		// process the parsed RR
 
-		dbg_xfrin("\nNext RR:\n\n");
+		dbg_rrset_detail("\nNext RR:\n\n");
 		knot_rrset_dump(rr, 0);
 
 		if (node != NULL
@@ -3134,21 +3134,20 @@ int xfrin_switch_zone(knot_zone_t *zone,
                       knot_zone_contents_t *new_contents,
                       int transfer_type)
 {
-	if (zone == NULL || new_contents == NULL || zone->contents == NULL) {
+	if (zone == NULL || new_contents == NULL) {
 		return KNOT_EBADARG;
 	}
 
 	dbg_xfrin("Switching zone contents.\n");
-	dbg_xfrin_verb("Old contents apex: %p, new apex: %p\n",
-	               zone->contents->apex, new_contents->apex);
+	dbg_xfrin_verb("Old contents: %p, apex: %p, new apex: %p\n",
+	               zone->contents, (zone->contents)
+	               ? zone->contents->apex : NULL, new_contents->apex);
 
 	knot_zone_contents_t *old =
 		knot_zone_switch_contents(zone, new_contents);
-	assert(old != NULL);
 
-	dbg_xfrin_verb("Old contents apex: %p, new apex: %p\n",
-	               old->apex, new_contents->apex);
-	dbg_xfrin_verb("Old zone: %p\n", old);
+	dbg_xfrin_verb("Old contents: %p, apex: %p, new apex: %p\n",
+	               old, (old) ? old->apex : NULL, new_contents->apex);
 
 	// wait for readers to finish
 	dbg_xfrin_verb("Waiting for readers to finish...\n");
@@ -3159,6 +3158,7 @@ int xfrin_switch_zone(knot_zone_t *zone,
 	if (transfer_type == XFR_TYPE_AIN) {
 		knot_zone_contents_deep_free(&old, 0);
 	} else {
+		assert(old != NULL);
 		xfrin_zone_contents_free(&old);
 	}
 
