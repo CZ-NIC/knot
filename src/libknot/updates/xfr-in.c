@@ -2345,19 +2345,18 @@ void xfrin_rollback_update(knot_zone_contents_t *old_contents,
 		for (int i = 0; i < (*changes)->new_rdata_count; ++i) {
 			fprintf(stderr, "Freeing %d. RDATA chain: %p\n", i,
 			        (*changes)->new_rdata[i]);
-			// check if the RDATA is not already freed (i.e. the
-			// same pointer is somewhere in new_rdata before the
-			// current item
-			int j = i - 1;
-			while (j >= 0 && ((*changes)->new_rdata[j]
-			                  != (*changes)->new_rdata[i])) {
-				--j;
-			}
 
-			if (j >= 0) {
-				// RDATA already freed
-				continue;
-			}
+			/*
+			 * In some case, the same RDATA may be stored in
+			 * different positions in different RDATA chains, so
+			 * some ivalid reads occur.
+			 *
+			 * More precisely, the same chain is stored multiple
+			 * times, but starting from different RDATA.
+			 *
+			 * We may check every RDATA against every one
+			 * already deleted, but that may be very time-consuming.
+			 */
 
 			// discard the whole chain of RDATA
 			knot_rdata_t *rdata = (*changes)->new_rdata[i];
