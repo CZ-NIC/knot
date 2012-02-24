@@ -366,13 +366,9 @@ int knot_rrset_compare_rdata(const knot_rrset_t *r1, const knot_rrset_t *r2)
 	while (rdata2 != NULL) {
 		 rdata1 = knot_rrset_rdata(r1);
 
-		 if (rdata1 == NULL) {
-			// RDATA from r2 not found in r1
-			return 0;
-		 }
-
-		 while (rdata2 != NULL && knot_rdata_compare(rdata1, rdata2,
-		                                            desc->wireformat)) {
+		 while (rdata2 != NULL && rdata1 != NULL
+		        && knot_rdata_compare(rdata1, rdata2,
+		                              desc->wireformat)) {
 			 rdata1 = knot_rrset_rdata_next(r1, rdata1);
 		 }
 
