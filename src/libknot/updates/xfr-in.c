@@ -2344,6 +2344,20 @@ void xfrin_rollback_update(knot_zone_contents_t *old_contents,
 		}
 
 		for (int i = 0; i < (*changes)->new_rdata_count; ++i) {
+			// check if the RDATA is not already freed (i.e. the
+			// same pointer is somewhere in new_rdata before the
+			// current item
+			int j = i - 1;
+			while (j >= 0 && ((*changes)->new_rdata[j]
+			                  != (*changes)->new_rdata[i])) {
+				--j;
+			}
+
+			if (j >= 0) {
+				// RDATA already freed
+				continue;
+			}
+
 			// discard the whole chain of RDATA
 			knot_rdata_t *rdata = (*changes)->new_rdata[i];
 			knot_rdata_t *rdata_next = NULL;
@@ -2363,7 +2377,7 @@ void xfrin_rollback_update(knot_zone_contents_t *old_contents,
 			knot_rdata_deep_free(&rdata,
 			                     (*changes)->new_rdata_types[i], 1);
 
-			(*changes)->new_rdata[i] = NULL;
+			//(*changes)->new_rdata[i] = NULL;
 		}
 
 		// free allocated arrays of nodes and rrsets
