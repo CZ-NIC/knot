@@ -232,11 +232,11 @@ static int xfr_xfrin_cleanup(xfrworker_t *w, knot_ns_xfr_t *data)
 	
 	switch(data->type) {
 	case XFR_TYPE_AIN:
-		if (data->data) {
-			if (data->flags & XFR_FLAG_AXFR_FINISHED) {
-				knot_zone_contents_deep_free(
-					&data->new_contents, 0);
-			} else {
+		if (data->flags & XFR_FLAG_AXFR_FINISHED) {
+			knot_zone_contents_deep_free(
+				&data->new_contents, 1);
+		} else {
+			if (data->data) {
 				xfrin_constructed_zone_t *constr_zone =
 					(xfrin_constructed_zone_t *)data->data;
 				knot_zone_contents_deep_free(
@@ -301,12 +301,13 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 		} else {
 			dbg_xfr("xfr: AXFR/IN new zone saved.\n");
 			ret = knot_ns_switch_zone(w->ns, data);
-			if (ret != KNOTD_EOK) {
+			if (ret != KNOT_EOK) {
 				log_zone_error("AXFR failed to "
 				               "switch in-memory zone "
 				               "'%s/IN' - %s\n",
 				               zorigin,
-				               knotd_strerror(ret));
+				               knot_strerror(ret));
+				xfr_xfrin_cleanup(w, data);
 			}
 		}
 		log_zone_info("AXFR transfer of zone '%s/IN' "

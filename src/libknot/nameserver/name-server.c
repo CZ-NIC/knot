@@ -3374,6 +3374,10 @@ int knot_ns_switch_zone(knot_nameserver_t *nameserver,
 	knot_zone_contents_t *zone = (knot_zone_contents_t *)xfr->new_contents;
 	
 	dbg_ns("Replacing zone by new one: %p\n", zone);
+	if (zone == NULL) {
+		dbg_ns("No new zone!\n");
+		return KNOT_ENOZONE;
+	}
 
 	// find the zone in the zone db
 	knot_zone_t *z = knot_zonedb_find_zone(nameserver->zone_db,
@@ -3384,6 +3388,8 @@ int knot_ns_switch_zone(knot_nameserver_t *nameserver,
 		dbg_ns("Failed to replace zone %s, old zone "
 		                   "not found\n", name);
 		free(name);
+
+		return KNOT_ENOZONE;
 	} else {
 		zone->zone = z;
 	}

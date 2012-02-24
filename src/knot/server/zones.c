@@ -2415,7 +2415,7 @@ static int zones_dump_zone_binary(knot_zone_contents_t *zone,
 
 int zones_save_zone(const knot_ns_xfr_t *xfr)
 {
-	if (xfr == NULL || xfr->data == NULL) {
+	if (xfr == NULL || xfr->new_contents == NULL) {
 		return KNOTD_EINVAL;
 	}
 	
