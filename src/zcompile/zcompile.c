@@ -333,12 +333,29 @@ int process_rr(void)
 				                       parser->last_node);
 				rrset_list_delete(&parser->node_rrsigs);
 			}
-
-			if ((parser->last_node = create_node(contents,
-						   current_rrset, node_add_func,
-						   node_get_func)) == NULL) {
-				knot_rrset_free(&tmp_rrsig);
-				return KNOTDZCOMPILE_EBADNODE;
+			
+			/* The node might however been created previously. */
+			parser->last_node =
+				knot_zone_contents_find_node(contents,
+					knot_rrset_owner(current_rrset));
+			
+			if (parser->last_node == NULL) {
+				/* Try NSEC3 tree. */
+				parser->last_node =
+					knot_zone_contents_find_nsec3_node(
+						contents,
+						knot_rrset_owner(
+							current_rrset));
+			}
+			
+			if (parser->last_node == NULL) {
+				/* Still NULL, node has to be created. */
+				if ((parser->last_node = create_node(contents,
+				                                     current_rrset, node_add_func,
+				                                     node_get_func)) == NULL) {
+					knot_rrset_free(&tmp_rrsig);
+					return KNOTDZCOMPILE_EBADNODE;
+				}
 			}
 		}
 
