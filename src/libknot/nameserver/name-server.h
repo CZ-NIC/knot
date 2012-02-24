@@ -103,6 +103,7 @@ typedef struct knot_ns_xfr {
 	knot_zone_t *zone;
 	char* zname;
 	void *owner;
+	char *msgpref;
 	
 	/*! \note [TSIG] TSIG fields */
 	/*! \brief Message(s) to sign in wireformat. 

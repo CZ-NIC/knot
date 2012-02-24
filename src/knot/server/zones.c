@@ -548,7 +548,7 @@ static int zones_notify_send(event_t *e)
 	/* Check number of retries. */
 	if (ev->retries < 0) {
 		log_server_notice("NOTIFY query maximum number of retries "
-				  "for zone %s exceeded.\n",
+				  "for zone '%s' exceeded.\n",
 				  zd->conf->name);
 		pthread_mutex_lock(&zd->lock);
 		rem_node(&ev->n);
@@ -599,14 +599,7 @@ static int zones_notify_send(event_t *e)
 
 		/* Store ID of the awaited response. */
 		if (ret == buflen) {
-			char r_addr[SOCKADDR_STRLEN];
-			sockaddr_tostr(&ev->addr, r_addr, sizeof(r_addr));
-			int r_port = sockaddr_portnum(&ev->addr);
 			ev->msgid = knot_wire_get_id(qbuf);
-			log_server_info("Issued '%s' NOTIFY query to %s:%d, "
-					"expecting  response ID=%d\n",
-					zd->conf->name, r_addr, r_port,
-					ev->msgid);
 			
 		}
 
@@ -617,6 +610,7 @@ static int zones_notify_send(event_t *e)
 		req.type = XFR_TYPE_NOTIFY;
 		req.zone = zone;
 		memcpy(&req.addr, &ev->addr, sizeof(sockaddr_t));
+		memcpy(&req.addr, &ev->saddr, sizeof(sockaddr_t));
 		xfr_request(zd->server->xfr_h, &req);
 
 		/* Unlock RCU */
@@ -2137,8 +2131,12 @@ int zones_process_response(knot_nameserver_t *nameserver,
 		evsched_t *sched =
 			((server_t *)knot_ns_get_data(nameserver))->sched;
 		if (ret == 0) {
-			log_zone_info("SOA query for zone '%s' answered, no "
-				      "transfer needed.\n", zd->conf->name);
+			char r_addr[SOCKADDR_STRLEN];
+			int r_port = sockaddr_portnum(from);
+			sockaddr_tostr(from, r_addr, sizeof(r_addr));
+			log_zone_info("SOA query of '%s' to %s:%d: answered, no "
+				      "transfer needed.\n",
+			              zd->conf->name, r_addr, r_port);
 			rcu_read_unlock();
 
 			/* Reinstall timers. */
