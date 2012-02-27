@@ -56,6 +56,7 @@ typedef struct conf_iface_t {
 	node n;
 	char *name;       /*!< Internal name for the interface. */
 	char *address;    /*!< IP (IPv4/v6) address for this interface */
+	unsigned prefix;  /*!< IP subnet prefix. */
 	int port;         /*!< Port number for this interface */
 	int family;       /*!< Address family. */
 	knot_key_t *key;  /*!< TSIG key (only valid for remotes). */
