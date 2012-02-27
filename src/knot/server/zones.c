@@ -715,7 +715,15 @@ static int zones_set_acl(acl_t **acl, list* acl_list)
 
 		/* Load rule. */
 		if (ret > 0) {
-			acl_create(*acl, &addr, ACL_ACCEPT, cfg_if);
+			/*! \todo Correct search for the longest prefix match.
+			 *        This just favorizes remotes with TSIG.
+			 *        (issue #1675)
+			 */
+			unsigned flags = 0;
+			if (cfg_if->key != NULL) {
+				flags = ACL_PREFER;
+			}
+			acl_create(*acl, &addr, ACL_ACCEPT, cfg_if, flags);
 		}
 	}
 

@@ -26,7 +26,7 @@ static inline uint32_t acl_sa_ipv4(sockaddr_t *a) {
 
 static inline uint32_t acl_fill_mask32(short c) {
 	/*! \todo Consider optimizing using LUT. */
-	assert(c > 0 && c <= 32);
+	assert(c >= 0 && c <= 32);
 	unsigned r = 0;
 	/*! This actually builds big-endian mask
 	 *  as we will match against addresses in
@@ -130,6 +130,19 @@ acl_t *acl_new(acl_rule_t default_rule, const char *name)
 		free(acl);
 		return 0;
 	}
+	
+	/* Initialize skip list for rules with TSIG. */
+	/*! \todo This needs a better structure to make
+	 *        nodes with TSIG preferred, but for now
+	 *        it will do to sort nodes into two lists.
+	 *        (issue #1675)
+	 */
+	acl->rules_pref = skip_create_list(acl_compare);
+	if (!acl->rules_pref) {
+		skip_destroy_list(&acl->rules, 0, free);
+		free(acl);
+		return 0;
+	}
 
 	/* Initialize. */
 	memcpy(&acl->name, name, name_len);
@@ -153,7 +166,8 @@ void acl_delete(acl_t **acl)
 	*acl = 0;
 }
 
-int acl_create(acl_t *acl, const sockaddr_t* addr, acl_rule_t rule, void *val)
+int acl_create(acl_t *acl, const sockaddr_t* addr, acl_rule_t rule, void *val,
+               unsigned flags)
 {
 	if (!acl || !addr) {
 		return ACL_ERROR;
@@ -170,7 +184,12 @@ int acl_create(acl_t *acl, const sockaddr_t* addr, acl_rule_t rule, void *val)
 	key->rule = rule;
 	key->val = val;
 
-	skip_insert(acl->rules, &key->addr, key, 0);
+	
+	if (flags & ACL_PREFER) {
+		skip_insert(acl->rules_pref, &key->addr, key, 0);
+	} else {
+		skip_insert(acl->rules, &key->addr, key, 0);
+	}
 
 	return ACL_ACCEPT;
 }
@@ -181,15 +200,18 @@ int acl_match(acl_t *acl, const sockaddr_t* addr, acl_key_t **key)
 		return ACL_ERROR;
 	}
 
-	acl_key_t *found = skip_find(acl->rules, (void*)addr);
+	acl_key_t *found = skip_find(acl->rules_pref, (void*)addr);
+	if (found == NULL) {
+		found = skip_find(acl->rules, (void*)addr);
+	}
 	
 	/* Set stored value if exists. */
-	if (key != 0) {
+	if (key != NULL) {
 		*key = found;
 	}
 	
 	/* Return appropriate rule. */
-	if (!found) {
+	if (found == NULL) {
 		return acl->default_rule;
 	}
 
@@ -204,6 +226,7 @@ int acl_truncate(acl_t *acl)
 
 	/* Destroy all rules. */
 	skip_destroy_list(&acl->rules, 0, free);
+	skip_destroy_list(&acl->rules_pref, 0, free);
 
 	return ACL_ACCEPT;
 }
