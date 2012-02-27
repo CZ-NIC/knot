@@ -1765,7 +1765,7 @@ int zones_zonefile_sync(knot_zone_t *zone)
 		          zd->conf->name, zd->conf->file, serial_to);
 		ret = zones_dump_zone_text(contents, zd->conf->file);
 		if (ret != KNOTD_EOK) {
-			dbg_zones("zones: failed to sync '%s' to '%s'\n"
+			dbg_zones("zones: failed to sync '%s' to '%s'\n",
 			          zd->conf->name, zd->conf->file);
 			pthread_mutex_unlock(&zd->lock);
 			return ret;
