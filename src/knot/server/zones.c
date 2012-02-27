@@ -2160,7 +2160,7 @@ int zones_process_response(knot_nameserver_t *nameserver,
 			char r_addr[SOCKADDR_STRLEN];
 			int r_port = sockaddr_portnum(from);
 			sockaddr_tostr(from, r_addr, sizeof(r_addr));
-			log_zone_info("SOA query of '%s' to %s:%d: answered, no "
+			log_zone_info("SOA query of '%s' to %s:%d: Answered, no "
 				      "transfer needed.\n",
 			              zd->conf->name, r_addr, r_port);
 			rcu_read_unlock();

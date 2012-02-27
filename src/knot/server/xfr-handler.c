@@ -112,7 +112,6 @@ static int xfr_process_udp_query(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 	ssize_t n = recvfrom(data->session, data->wire, data->wire_size, 0, data->addr.ptr, &data->addr.len);
 	size_t resp_len = data->wire_size;
 	if (n > 0) {
-		log_zone_info("%s Finished.\n", data->msgpref);
 		udp_handle(fd, data->wire, n, &resp_len, &data->addr, w->ns);
 	}
 	
@@ -307,7 +306,8 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 				xfr_xfrin_cleanup(w, data);
 			}
 		}
-		
+		log_zone_info("%s %s.\n", data->msgpref,
+		              ret == KNOTD_EOK ? "Finished" : "Failed");
 		break;
 	case XFR_TYPE_IIN:
 		chs = (knot_changesets_t *)data->data;
