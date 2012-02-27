@@ -306,8 +306,9 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 				xfr_xfrin_cleanup(w, data);
 			}
 		}
-		log_zone_info("%s %s.\n", data->msgpref,
-		              ret == KNOTD_EOK ? "Finished" : "Failed");
+		if (ret == KNOTD_EOK) {
+			log_zone_info("%s Finished.\n", data->msgpref);
+		}
 		break;
 	case XFR_TYPE_IIN:
 		chs = (knot_changesets_t *)data->data;
@@ -344,6 +345,10 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 				                        data->type);
 
 				if (ret != KNOT_EOK) {
+					log_zone_error("%s Failed to replace "
+					               "current zone - %s\n",
+					               data->msgpref,
+					               knot_strerror(ret));
 					// Cleanup old and new contents
 					xfrin_rollback_update(
 						data->zone->contents,
@@ -365,8 +370,9 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 //		free(chs->sets);
 //		free(chs);
 		data->data = 0;
-		log_zone_info("%s %s.\n", data->msgpref,
-		              ret == KNOTD_EOK ? "Finished" : "Failed");
+		if (ret == KNOTD_EOK) {
+			log_zone_info("%s Finished.\n", data->msgpref);
+		}
 		break;
 	default:
 		ret = KNOTD_EINVAL;
