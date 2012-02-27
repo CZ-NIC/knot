@@ -67,11 +67,22 @@ AC_ARG_ENABLE([ldns],
      
 # Debug modules
 AC_ARG_ENABLE([debug],
-    AS_HELP_STRING([--with-debug=server,net,zones], [compile selected debug modules [default=none]]),
+    AS_HELP_STRING([--enable-debug=server,zones,xfr,packet,dname,rr,ns,hash,compiler],
+    [compile selected debug modules [default=none]]),
     [
-    grep -q server <<<${enableval} && AC_DEFINE([KNOTD_SERVER_DEBUG], [1], [Server debug.])
-    grep -q net <<<${enableval} && AC_DEFINE([KNOTD_NET_DEBUG], [1], [Net debug.])
-    grep -q zones <<<${enableval} && AC_DEFINE([KNOTD_ZONES_DEBUG], [1], [Zones debug.])
+    echo ${enableval}|tr "," "\n"|while read val; do
+        case "${val}" in
+          server) AC_DEFINE([KNOTD_SERVER_DEBUG], [1], [Server debug.]) ;;
+          zones) AC_DEFINE([KNOT_ZONES_DEBUG], [1], [Zones debug.]) ;;
+          xfr) AC_DEFINE([KNOT_XFR_DEBUG], [1], [XFR debug.]) ;;
+          packet) AC_DEFINE([KNOT_PACKET_DEBUG], [1], [Packet debug.]) ;;
+          dname) AC_DEFINE([KNOT_DNAME_DEBUG], [1], [Domain names debug.]) ;;
+          rr) AC_DEFINE([KNOT_RR_DEBUG], [1], [RR debug.]) ;;
+          ns) AC_DEFINE([KNOT_NS_DEBUG], [1], [Nameserver debug.]) ;;
+          hash) AC_DEFINE([KNOT_HASH_DEBUG], [1], [Hashtable debug.]) ;;
+          compiler) AC_DEFINE([KNOT_COMPILER_DEBUG], [1], [Zone compiler debug.]) ;;
+        esac
+    done
     ], [])
 
 # Debug level

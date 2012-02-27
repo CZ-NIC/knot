@@ -53,9 +53,7 @@ static long int totalrrs = 0;
 
 extern FILE *zp_get_in(void *scanner);
 
-//#define ZP_DEBUG
-
-#ifdef ZP_DEBUG
+#ifdef KNOT_COMPILER_DEBUG
 #define dbg_zp(msg...) fprintf(stderr, msg)
 #else
 #define dbg_zp(msg...)
