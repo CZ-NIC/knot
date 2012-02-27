@@ -838,7 +838,7 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 	}
 	
 	/* Send XFR query. */
-	log_server_info("%s Started.\n", data->msgpref);
+	log_server_info("%s Started.\n", task->msgpref);
 	return KNOTD_EOK;
 }
 
@@ -1364,7 +1364,7 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		if (zd && xfr.type == XFR_TYPE_SOA) {
 			zd->soa_pending = (event_t*)task->data;
 		}
-		log_server_info("%s: query issued.\n", xfr.msgpref);
+		log_server_info("%s Query issued.\n", xfr.msgpref);
 		ret = KNOTD_EOK;
 		break;
 	/* Socket close event. */
