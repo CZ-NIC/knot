@@ -80,7 +80,7 @@ static int xfr_udp_timeout(event_t *e)
 	/* Close socket. */
 	knot_zone_t *z = data->zone;
 	if (z && knot_zone_get_contents(z) && knot_zone_data(z)) {
-		log_zone_info("%s timeout exceeded.\n",
+		log_zone_info("%s Failed, timeout exceeded.\n",
 		              data->msgpref);
 	}
 	
