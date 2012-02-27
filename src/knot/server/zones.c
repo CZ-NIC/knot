@@ -710,7 +710,8 @@ static int zones_set_acl(acl_t **acl, list* acl_list)
 		sockaddr_t addr;
 		conf_iface_t *cfg_if = r->remote;
 		int ret = sockaddr_set(&addr, cfg_if->family,
-				       cfg_if->address, 0);
+		                       cfg_if->address, 0);
+		sockaddr_setprefix(&addr, cfg_if->prefix);
 
 		/* Load rule. */
 		if (ret > 0) {

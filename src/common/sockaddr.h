@@ -38,6 +38,7 @@
 /*! \brief Universal socket address. */
 typedef struct sockaddr_t {
 	int family; /*!< Address family. */
+	short prefix; /*!< Address prefix. */
 	struct sockaddr* ptr; /*!< Pointer to used sockaddr. */
 	socklen_t len;              /*!< Length of used sockaddr. */
 	union {
@@ -47,6 +48,10 @@ typedef struct sockaddr_t {
 #endif
 	};
 } sockaddr_t;
+
+/* Subnet maximum prefix length. */
+#define IPV4_PREFIXLEN 32
+#define IPV6_PREFIXLEN 128
 
 /*! \brief Maximum address length in string format. */
 #ifdef DISABLE_IPV6
@@ -92,6 +97,17 @@ int sockaddr_update(sockaddr_t *addr);
  * \see inet_pton(3)
  */
 int sockaddr_set(sockaddr_t *dst, int family, const char* addr, int port);
+
+/*!
+ * \brief Set address prefix.
+ *
+ * \param dst Target address structure.
+ * \param prefix Prefix.
+ *
+ * \retval 0 if success.
+ * \retval -1 on error.
+ */
+int sockaddr_setprefix(sockaddr_t *dst, int prefix);
 
 /*!
  * \brief Return string representation of socket address.
