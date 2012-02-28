@@ -235,6 +235,9 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
                                          int use_ids)
 {
 	knot_rdata_t *rdata = knot_rdata_new();
+	if (rdata == NULL) {
+		return NULL;
+	}
 
 	knot_rrtype_descriptor_t *desc =
 		knot_rrtype_descriptor_by_type(type);
@@ -246,6 +249,7 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 	uint32_t rdata_count = 0;
 
 	if(!fread_wrapper(&rdata_count, sizeof(rdata_count), 1, f)) {
+		knot_rdata_free(&rdata);
 		return NULL;
 	}
 
