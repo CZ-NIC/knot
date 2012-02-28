@@ -545,24 +545,25 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	if (!knot_dname_is_fqdn(dname)) {
 		fprintf(stderr, "Error: given zone origin is not FQDN.\n");
+		knot_dname_release(dname);
 		return KNOTDZCOMPILE_EINVAL;
 	}
 
 	knot_node_t *origin_node = knot_node_new(dname, NULL, 0);
+
+	assert(knot_node_parent(origin_node) == NULL);
+	if (origin_node == NULL) {
+		knot_dname_release(dname);
+		return KNOTDZCOMPILE_ENOMEM;
+	}
+	/* CLEANUP */
+	//assert(origin_node->next == NULL);
 
 	/*!< \todo Another copy is probably not needed. */
 	knot_dname_t *origin_from_config =
 		knot_dname_new_from_str(name, strlen(name), NULL);
 	if (origin_from_config == NULL) {
 		knot_node_free(&origin_node, 0);
-		return KNOTDZCOMPILE_ENOMEM;
-	}
-
-	//assert(origin_node->next == NULL);
-
-	assert(knot_node_parent(origin_node) == NULL);
-	if (origin_node == NULL) {
-		knot_dname_release(dname);
 		return KNOTDZCOMPILE_ENOMEM;
 	}
 
@@ -584,6 +585,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	}
 
 	if (zp_parse(scanner) != 0) {
+		/* CLEANUP */
 //		int fd = fileno(zp_get_in(scanner));
 //		if (fcntl(fd, F_SETLK,
 //		          knot_file_lock(F_UNLCK, SEEK_SET)) == -1) {
@@ -605,6 +607,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	zp_lex_destroy(scanner);
 
 	/* Unlock zone file. */
+	/* CLEANUP */
 //	int fd = fileno(zp_get_in(scanner));
 //	if (fcntl(fd, F_SETLK, knot_file_lock(F_UNLCK, SEEK_SET)) == -1) {
 //		fprintf(stderr, "Could not lock zone file for read!\n");
