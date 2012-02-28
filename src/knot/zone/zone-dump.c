@@ -174,11 +174,10 @@ static void dump_dname_with_id(const knot_dname_t *dname, int fd,
  * \param data Arguments to be propagated.
  */
 static void knot_rdata_dump_binary(knot_rdata_t *rdata,
-				   uint32_t type, void *data, int use_ids,
+				   uint32_t type, int fd, int use_ids,
                                    uint8_t **stream, size_t *stream_size,
                                    crc_t *crc)
 {
-	int fd = (int)((arg_t *)data)->arg1;
 	knot_rrtype_descriptor_t *desc =
 		knot_rrtype_descriptor_by_type(type);
 	assert(desc != NULL);
@@ -282,7 +281,7 @@ static void knot_rdata_dump_binary(knot_rdata_t *rdata,
  * \param rrsig RRSIG to be dumped.
  * \param data Arguments to be propagated.
  */
-static void knot_rrsig_set_dump_binary(knot_rrset_t *rrsig, arg_t *data,
+static void knot_rrsig_set_dump_binary(knot_rrset_t *rrsig, int fd,
                                        int use_ids,
                                        uint8_t **stream, size_t *stream_size,
                                        crc_t *crc)
@@ -291,7 +290,6 @@ static void knot_rrsig_set_dump_binary(knot_rrset_t *rrsig, arg_t *data,
 	                   knot_dname_to_str(rrsig->owner));
 	assert(rrsig->type == KNOT_RRTYPE_RRSIG);
 	assert(rrsig->rdata);
-	int fd = (int)((arg_t *)data)->arg1;
 	/* \todo check the return value */
 	write_wrapper(&rrsig->type, sizeof(rrsig->type), 1, fd,
 	               stream, stream_size, crc);
@@ -313,11 +311,11 @@ static void knot_rrsig_set_dump_binary(knot_rrset_t *rrsig, arg_t *data,
 
 	tmp_rdata = rrsig->rdata;
 	while (tmp_rdata->next != rrsig->rdata) {
-		knot_rdata_dump_binary(tmp_rdata, KNOT_RRTYPE_RRSIG, data,
+		knot_rdata_dump_binary(tmp_rdata, KNOT_RRTYPE_RRSIG, fd,
 		                         use_ids, stream, stream_size, crc);
 		tmp_rdata = tmp_rdata->next;
 	}
-	knot_rdata_dump_binary(tmp_rdata, KNOT_RRTYPE_RRSIG, data, use_ids,
+	knot_rdata_dump_binary(tmp_rdata, KNOT_RRTYPE_RRSIG, fd, use_ids,
 	                       stream, stream_size, crc);
 }
 
@@ -328,16 +326,11 @@ static void knot_rrsig_set_dump_binary(knot_rrset_t *rrsig, arg_t *data,
  * \param data Arguments to be propagated.
  * \todo Get rid of void *data, use int directly. Why is it even there?
  */
-static void knot_rrset_dump_binary(const knot_rrset_t *rrset, void *data,
+static void knot_rrset_dump_binary(const knot_rrset_t *rrset, int fd,
                                    int use_ids,
                                    uint8_t **stream, size_t *stream_size,
                                    crc_t *crc)
 {
-	int *fd_pointer = (int *)(((arg_t *)data)->arg1);
-	if (fd_pointer == NULL) {
-		dbg_zdump("zdump: rrset_dump_binary: Bad fd.\n");
-	}
-	int fd = *fd_pointer;
 	dbg_zdump_detail("zdump: rrset_dump_binary: Dumping rrset to fd=%d\n",
 	                 fd);
 
@@ -373,11 +366,11 @@ static void knot_rrset_dump_binary(const knot_rrset_t *rrset, void *data,
 	tmp_rdata = rrset->rdata;
 
 	while (tmp_rdata->next != rrset->rdata) {
-		knot_rdata_dump_binary(tmp_rdata, rrset->type, data, use_ids,
+		knot_rdata_dump_binary(tmp_rdata, rrset->type, fd, use_ids,
 		                       stream, stream_size, crc);
 		tmp_rdata = tmp_rdata->next;
 	}
-	knot_rdata_dump_binary(tmp_rdata, rrset->type, data, use_ids,
+	knot_rdata_dump_binary(tmp_rdata, rrset->type, fd, use_ids,
 	                       stream, stream_size, crc);
 	
 	dbg_zdump_detail("zdump: rrset_dump_binary: Rdata dumped.\n");
@@ -386,7 +379,7 @@ static void knot_rrset_dump_binary(const knot_rrset_t *rrset, void *data,
 	 * would probably not work */
 
 	if (rrset->rrsigs != NULL) {
-		knot_rrsig_set_dump_binary(rrset->rrsigs, data, use_ids,
+		knot_rrsig_set_dump_binary(rrset->rrsigs, fd, use_ids,
 		                           stream, stream_size, crc);
 	}
 }
@@ -397,18 +390,14 @@ static void knot_rrset_dump_binary(const knot_rrset_t *rrset, void *data,
  * \param node Node to dumped.
  * \param data Arguments to be propagated.
  */
-static void knot_node_dump_binary(knot_node_t *node, void *data,
+static void knot_node_dump_binary(knot_node_t *node, int fd,
                                   uint8_t **stream, size_t *stream_size,
                                   crc_t *crc)
 {
-	arg_t *args = (arg_t *)data;
-	int *fd_pointer = (int *)(args->arg1);
-	if (fd_pointer == NULL) {
-		dbg_zdump("zdump: node_dump_binary: Bad fd.\n");
+	if (node == NULL) {
 		return;
 	}
-	int fd = *fd_pointer;
-
+	
 	/* first write dname */
 	assert(node->owner != NULL);
 
@@ -460,7 +449,7 @@ static void knot_node_dump_binary(knot_node_t *node, void *data,
 	const knot_rrset_t **node_rrsets = knot_node_rrsets(node);
 	for (int i = 0; i < rrset_count; i++)
 	{
-		knot_rrset_dump_binary(node_rrsets[i], data, 1,
+		knot_rrset_dump_binary(node_rrsets[i], fd, 1,
 		                       stream, stream_size, crc);
 	}
 
@@ -543,7 +532,13 @@ static void save_node_from_tree(knot_node_t *node, void *data)
 static void dump_node_to_file(knot_node_t *node, void *data)
 {
 	arg_t *arg = (arg_t *)data;
-	knot_node_dump_binary(node, data, NULL, NULL, (crc_t *)arg->arg7);
+	int *fd_pointer = (int *)arg->arg1;
+	int fd = -1;
+	if (fd_pointer != NULL) {
+		fd = *fd_pointer;
+	}
+	
+	knot_node_dump_binary(node, fd, NULL, NULL, (crc_t *)arg->arg7);
 }
 
 char *knot_zdump_crc_file(const char* filename)
@@ -693,9 +688,8 @@ int knot_zdump_rrset_serialize(const knot_rrset_t *rrset, uint8_t **stream,
 	
 	/* This fd will signal functions to use streams. */
 	int fd = -1;
-	arguments.arg1 = &fd;
 
-	knot_rrset_dump_binary(rrset, &arguments, 0, stream, size, NULL);
+	knot_rrset_dump_binary(rrset, fd, 0, stream, size, NULL);
 
 	return KNOT_EOK;
 }
