@@ -213,6 +213,8 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data);
  */
 int zones_store_changesets(knot_ns_xfr_t *xfr);
 
+int zones_changesets_to_binary(knot_changesets_t *chgsets);
+
 /*!
  * \brief Load changesets from journal.
  *
