@@ -338,6 +338,8 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 			/* Free changesets, but not the data. */
 			knot_free_changesets(&chs);
 			data->data = 0;
+
+			ret = KNOTD_ERROR;
 			break;
 		}
 		/* Save changesets. */
@@ -380,6 +382,8 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 			/* Free changesets, but not the data. */
 			knot_free_changesets(&chs);
 			data->data = 0;
+
+			ret = KNOTD_ERROR;
 			break;
 		}
 
