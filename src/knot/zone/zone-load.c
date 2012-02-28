@@ -325,8 +325,9 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 				load_rdata_purge(rdata, items, i, desc, type);
 				return NULL;
 			}
-
-			items[i].raw_data =
+			
+			/*!< \todo this is not proper fix, see #1678 */
+			items[i].raw_data = (uint16_t *)
 				malloc(sizeof(uint8_t) * (raw_data_length + 2));
 			items[i].raw_data[0] = raw_data_length;
 
