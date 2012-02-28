@@ -979,14 +979,6 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 
 	knot_node_t *tmp_node;
 
-	/* Load the dname table. */
-	/* CLEANUP */
-//	const knot_dname_table_t *dname_table =
-//		create_dname_table(f, total_dnames);
-//	if (dname_table == NULL) {
-//		return NULL;
-//	}
-
 	uint32_t node_count;
 	uint32_t nsec3_node_count;
 	uint32_t auth_node_count;
@@ -1028,6 +1020,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	if (dname_table == NULL) {
 		ERR_ALLOC_FAILED;
 		cleanup_id_array(id_array, 1, total_dnames);
+		free(dname_table);
 		return NULL;
 	}
 
@@ -1038,6 +1031,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 			loader->filename);
 		cleanup_id_array(id_array, 1,
 				 node_count + nsec3_node_count + 1);
+		free(dname_table);
 		return NULL;
 	}
 
@@ -1048,6 +1042,8 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 		cleanup_id_array(id_array, 1,
 				 node_count + nsec3_node_count + 1);
 		dbg_zload("Failed to create new zone from apex!\n");
+		knot_node_free(&apex, 0);
+		free(dname_table);
 		return NULL;
 	}
 
@@ -1057,8 +1053,6 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	/* Assign dname table to the new zone. */
 	contents->dname_table = dname_table;
 
-	/* CLEANUP */
-//	apex->prev = NULL;
 	knot_node_set_previous(apex, NULL);
 
 	knot_node_t *last_node = 0;
@@ -1080,8 +1074,6 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 			}
 
 			knot_node_set_previous(tmp_node, last_node);
-			/* CLEANUP */
-//			tmp_node->prev = last_node;
 
 			if (tmp_node->rrset_count &&
 			    (knot_node_is_deleg_point(tmp_node) ||
@@ -1114,16 +1106,12 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 			fprintf(stderr, "!! cannot add first nsec3 node, "
 				"exiting.\n");
 			knot_zone_deep_free(&zone, 0);
-			free(id_array);
-			/* TODO this will leak dnames from id_array that were
-			 * not assigned. */
+			cleanup_id_array(id_array, node_count + 1,
+					 nsec3_node_count + 1);
 			return NULL;
 		}
 
 		knot_node_set_previous(nsec3_first, NULL);
-		/* CLEANUP */
-//		nsec3_first->prev = NULL;
-
 		last_node = nsec3_first;
 	}
 
@@ -1138,8 +1126,6 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 			}
 
 			knot_node_set_previous(tmp_node, last_node);
-			/* CLEANUP */
-//			tmp_node->prev = last_node;
 
 			last_node = tmp_node;
 		} else {
@@ -1151,8 +1137,6 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	if (nsec3_node_count) {
 		assert(knot_node_previous(nsec3_first) == NULL);
 		knot_node_set_previous(nsec3_first, last_node);
-		/* CLEANUP */
-//		nsec3_first->prev = last_node;
 	}
 
 	/* ID array is now useless */
@@ -1163,12 +1147,6 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	free(id_array);
 
 	dbg_zload("zone loaded, returning: %p\n", zone);
-	
-//	knot_zone_contents_integrity_check(zone->contents);
-	
-	//knot_dname_table_dump(zone->contents->dname_table);
-	
-	//knot_zone_contents_dump(zone->contents);
 	
 	return zone;
 }
