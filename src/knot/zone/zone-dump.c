@@ -333,7 +333,13 @@ static void knot_rrset_dump_binary(const knot_rrset_t *rrset, void *data,
                                    uint8_t **stream, size_t *stream_size,
                                    crc_t *crc)
 {
-	int fd = (int)((arg_t *)data)->arg1;
+	int *fd_pointer = (int *)(((arg_t *)data)->arg1);
+	if (fd_pointer == NULL) {
+		dbg_zdump("zdump: rrset_dump_binary: Bad fd.\n");
+	}
+	int fd = *fd_pointer;
+	dbg_zdump_detail("zdump: rrset_dump_binary: Dumping rrset to fd=%d\n",
+	                 fd);
 
 	if (!use_ids) {
 		dump_dname_with_id(rrset->owner, fd, stream, stream_size, crc);
@@ -361,6 +367,8 @@ static void knot_rrset_dump_binary(const knot_rrset_t *rrset, void *data,
 	               stream, stream_size, crc);
 	write_wrapper(&has_rrsig, sizeof(has_rrsig), 1, fd,
 	               stream, stream_size, crc);
+	
+	dbg_zdump_detail("zdump: rrset_dump_binary: Static data dumped.\n");
 
 	tmp_rdata = rrset->rdata;
 
@@ -371,6 +379,8 @@ static void knot_rrset_dump_binary(const knot_rrset_t *rrset, void *data,
 	}
 	knot_rdata_dump_binary(tmp_rdata, rrset->type, data, use_ids,
 	                       stream, stream_size, crc);
+	
+	dbg_zdump_detail("zdump: rrset_dump_binary: Rdata dumped.\n");
 
 	/* This is now obsolete, although I'd rather not use recursion - that
 	 * would probably not work */
@@ -392,7 +402,8 @@ static void knot_node_dump_binary(knot_node_t *node, void *data,
                                   crc_t *crc)
 {
 	arg_t *args = (arg_t *)data;
-	int fd = (int)args->arg1;
+	int *fd_pointer = (int *)(args->arg1);
+	int fd = *fd_pointer;
 
 	/* first write dname */
 	assert(node->owner != NULL);
@@ -550,7 +561,7 @@ int knot_zdump_binary(knot_zone_contents_t *zone, int fd,
                       int do_checks, const char *sfilename,
                       crc_t *crc)
 {
-	if (fd < 0) {
+	if (fd < 0 || sfilename == NULL) {
 		return KNOT_EBADARG;
 	}
 
@@ -618,10 +629,7 @@ int knot_zdump_binary(knot_zone_contents_t *zone, int fd,
 	               crc);
 
 	/* Write source file length. */
-	uint32_t sflen = 0;
-	if (sfilename) {
-		sflen = strlen(sfilename) + 1;
-	}
+	uint32_t sflen = strlen(sfilename) + 1;
 	write_wrapper(&sflen, sizeof(uint32_t), 1, fd, NULL, NULL, crc);
 
 	/* Write source file. */
@@ -671,6 +679,7 @@ int knot_zdump_rrset_serialize(const knot_rrset_t *rrset, uint8_t **stream,
 {
 	if (stream == NULL || *stream != NULL || rrset == NULL ||
 	    size == NULL) {
+		dbg_zdump("zdump: rrset_serialize: Bad arguments.\n");
 		return KNOT_EBADARG;
 	}
 
@@ -679,7 +688,8 @@ int knot_zdump_rrset_serialize(const knot_rrset_t *rrset, uint8_t **stream,
 	memset(&arguments, 0, sizeof(arg_t));
 	
 	/* This fd will signal functions to use streams. */
-	arguments.arg1 = (void *)-1;
+	int fd = -1;
+	arguments.arg1 = &fd;
 
 	knot_rrset_dump_binary(rrset, &arguments, 0, stream, size, NULL);
 

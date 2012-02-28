@@ -2063,7 +2063,7 @@ uint16_t * zparser_conv_loc(char *str)
 				return NULL;
 			}
 
-			if (sscanf(start, "%lf", &d) != 1) {
+			if (sscanf(start, "%16lf", &d) != 1) {
 				zc_error_prev_line("error parsing seconds");
 			}
 
@@ -2161,7 +2161,7 @@ uint16_t * zparser_conv_loc(char *str)
 		++str;
 	}
 
-	if (sscanf(start, "%lf", &d) != 1) {
+	if (sscanf(start, "%16lf", &d) != 1) {
 		zc_error_prev_line("error parsing altitude");
 	}
 
