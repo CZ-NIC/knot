@@ -921,16 +921,14 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 		knot_node_rrset(knot_zone_contents_apex(zone),
 	                        KNOT_RRTYPE_SOA);
 	assert(soa_rrset);
-
-	uint32_t minimum_ttl =
-		knot_wire_read_u32((uint8_t *)
-		rdata_item_data(
-		knot_rdata_item(
-		knot_rrset_rdata(
-		knot_node_rrset(
-		knot_zone_contents_apex(zone), KNOT_RRTYPE_SOA)), 6)));
-	/* Are those getters even worth this?
-	 * Now I have no idea what this code does. */
+	
+	const knot_rdata_t *soa_rdata = knot_rrset_rdata(soa_rrset);
+	if (soa_rdata == NULL) {
+		err_handler_handle_error(handler, node, ZC_ERR_UNKNOWN);
+		return KNOT_EOK;
+	}
+	
+	uint32_t minimum_ttl = knot_rdata_soa_minimum(soa_rdata);
 
 	if (knot_rrset_ttl(nsec3_rrset) != minimum_ttl) {
 			err_handler_handle_error(handler, node,
