@@ -758,7 +758,7 @@ int knot_zload_open(zloader_t **dst, const char *filename)
 
 	memcpy(crc_path, filename, sizeof(char) * strlen(filename));
 
-	crc_path = strcat(crc_path, ".crc");
+	crc_path = strncat(crc_path, ".crc", strlen(".crc"));
 	FILE *f_crc = fopen(crc_path, "r");
 	if (unlikely(!f_crc)) {
 		dbg_zload("knot_zload_open: failed to open '%s'\n",
@@ -769,7 +769,7 @@ int knot_zload_open(zloader_t **dst, const char *filename)
 	}
 
 	unsigned long crc_from_file = 0;
-	if (fscanf(f_crc, "%lu\n", &crc_from_file) != 1) {
+	if (fscanf(f_crc, "%64lu\n", &crc_from_file) != 1) {
 		dbg_zload("knot_zload_open: could not read "
 		                   "CRC from file '%s'\n",
 		                   crc_path);

@@ -728,7 +728,8 @@ char *rdata_services_to_string(knot_rdata_item_t item)
 	if (proto) {
 		int i;
 
-		strcpy(ret, proto->p_name);
+		/*!< \todo see below, but we can trust getprotobynumber... */
+		strncpy(ret, proto->p_name, strlen(proto->p_name));
 
 		strncat(ret, " ", 2);
 
@@ -740,6 +741,7 @@ char *rdata_services_to_string(knot_rdata_item_t item)
 				if (service) {
 					/*!< \todo using strncat with strlen
 					 * does not make a whole lot of sense.
+					 * At least it will crash wil
 					 * Use max length of service name!
 					 */
 					strncat(ret, service->s_name,

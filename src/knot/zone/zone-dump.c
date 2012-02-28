@@ -557,7 +557,7 @@ char *knot_zdump_crc_file(const char* filename)
 	       strlen(".crc") + 1));
 	memcpy(crc_path, filename,
 	       sizeof(char) * strlen(filename));
-	crc_path = strcat(crc_path, ".crc");
+	crc_path = strncat(crc_path, ".crc", strlen(".crc"));
 	return crc_path;
 }
 
