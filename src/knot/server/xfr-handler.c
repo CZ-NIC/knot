@@ -313,8 +313,19 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 	case XFR_TYPE_IIN:
 		chs = (knot_changesets_t *)data->data;
 
-		/* First, try to apply the changesets to the zone. */
-		/* Update zone. */
+		/* First, serialize changesets. */
+		int ret = zones_changesets_to_binary(chs);
+		if (ret != KNOTD_EOK) {
+			log_zone_error("%s Failed to serialize changesets - %s"
+			               "\n", data->msgpref,
+			               knotd_strerror(ret));
+			/* Free changesets, but not the data. */
+			knot_free_changesets(&chs);
+			data->data = 0;
+			break;
+		}
+
+		/* Now, try to apply the changesets to the zone. */
 		ret = xfrin_apply_changesets(data->zone, chs,
 		                             &data->new_contents);
 
@@ -322,57 +333,62 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 			log_zone_error("%s Failed to apply changesets - %s\n",
 			               data->msgpref,
 			               knot_strerror(ret));
-		} else {
-			/* Save changesets. */
-			dbg_xfr("xfr: IXFR/IN saving changesets\n");
-			ret = zones_store_changesets(data);
-			if (ret != KNOTD_EOK) {
-				log_zone_error("%s Failed to save "
-				               "transferred changesets - %s\n",
-				               data->msgpref, knotd_strerror(ret));
 
-				// Cleanup old and new contents
-				xfrin_rollback_update(data->zone->contents,
-				                      &data->new_contents,
-				                      &chs->changes);
-//				xfrin_cleanup_failed_update(
-//				                        data->zone->contents,
-//				                        &data->new_contents);
-			} else {
-				/* Switch zone contents. */
-				ret = xfrin_switch_zone(data->zone,
-				                        data->new_contents,
-				                        data->type);
-
-				if (ret != KNOT_EOK) {
-					log_zone_error("%s Failed to replace "
-					               "current zone - %s\n",
-					               data->msgpref,
-					               knot_strerror(ret));
-					// Cleanup old and new contents
-					xfrin_rollback_update(
-						data->zone->contents,
-						&data->new_contents,
-						&chs->changes);
-//					xfrin_cleanup_failed_update(
-//					                   data->zone->contents,
-//					                   &data->new_contents);
-				} else {
-					xfrin_cleanup_successful_update(
-					                         &chs->changes);
-				}
-			}
+			/* Free changesets, but not the data. */
+			knot_free_changesets(&chs);
+			data->data = 0;
+			break;
 		}
+		/* Save changesets. */
+		dbg_xfr("xfr: IXFR/IN saving changesets\n");
+
+		/*! \note Here, the changesets may already be modified.
+		 *        Only the 'data' field of each changeset contains the
+		 *        proper serialized changesets. Serials should be
+		 *        OK too.
+		 */
+		ret = zones_store_changesets(data);
+		if (ret != KNOTD_EOK) {
+			log_zone_error("%s Failed to save "
+			               "transferred changesets - %s\n",
+			               data->msgpref, knotd_strerror(ret));
+
+			// Cleanup old and new contents
+			xfrin_rollback_update(data->zone->contents,
+					      &data->new_contents,
+					      &chs->changes);
+			/* Free changesets, but not the data. */
+			knot_free_changesets(&chs);
+			data->data = 0;
+			break;
+		}
+		/* Switch zone contents. */
+		ret = xfrin_switch_zone(data->zone, data->new_contents,
+		                        data->type);
+
+		if (ret != KNOT_EOK) {
+			log_zone_error("%s Failed to replace "
+				       "current zone - %s\n",
+				       data->msgpref,
+				       knot_strerror(ret));
+			// Cleanup old and new contents
+			xfrin_rollback_update(data->zone->contents,
+			                      &data->new_contents,
+			                      &chs->changes);
+
+			/* Free changesets, but not the data. */
+			knot_free_changesets(&chs);
+			data->data = 0;
+			break;
+		}
+
+		xfrin_cleanup_successful_update( &chs->changes);
 
 		/* Free changesets, but not the data. */
 		knot_free_changesets(&chs);
-		/* CLEANUP */
-//		free(chs->sets);
-//		free(chs);
 		data->data = 0;
-		if (ret == KNOTD_EOK) {
-			log_zone_info("%s Finished.\n", data->msgpref);
-		}
+		assert(ret == KNOTD_EOK);
+		log_zone_info("%s Finished.\n", data->msgpref);
 		break;
 	default:
 		ret = KNOTD_EINVAL;

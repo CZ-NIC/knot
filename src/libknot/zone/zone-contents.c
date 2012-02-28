@@ -3397,7 +3397,7 @@ int knot_zc_integrity_check_child_count(check_data_t *data)
 
 	// add count of NSEC3 nodes to the apex' children count
 //	int nsec3_nodes = 0;
-	dbg_zone(stderr, "Children count of new apex before NSEC3: %d\n",
+	dbg_zone("Children count of new apex before NSEC3: %d\n",
 	         data->contents->apex->new_node->children);
 	knot_zone_tree_forward_apply_inorder(data->contents->nsec3_nodes,
 	                                     count_nsec3_nodes,

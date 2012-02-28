@@ -2534,13 +2534,15 @@ static int zones_changeset_rrset_to_binary(uint8_t **data, size_t *size,
 	size_t actual_size = 0;
 	int ret = knot_zdump_rrset_serialize(rrset, &binary, &actual_size);
 	if (ret != KNOT_EOK || binary == NULL) {
+		dbg_zones("knot_zdump_rrset_serialize() returned %s\n",
+		          knot_strerror(ret));
 		return KNOTD_ERROR;  /*! \todo Other code? */
 	}
 
 	ret = zones_check_binary_size(data, allocated, *size + actual_size);
-	if (ret != KNOT_EOK) {
+	if (ret != KNOTD_EOK) {
 		free(binary);
-		return KNOTD_ERROR;
+		return ret;
 	}
 
 	memcpy(*data + *size, binary, actual_size);
@@ -2552,7 +2554,7 @@ static int zones_changeset_rrset_to_binary(uint8_t **data, size_t *size,
 
 /*----------------------------------------------------------------------------*/
 
-static int zones_changesets_to_binary(knot_changesets_t *chgsets)
+int zones_changesets_to_binary(knot_changesets_t *chgsets)
 {
 	assert(chgsets != NULL);
 	assert(chgsets->allocated >= chgsets->count);
@@ -2571,12 +2573,12 @@ static int zones_changesets_to_binary(knot_changesets_t *chgsets)
 		/* 1) origin SOA */
 		ret = zones_changeset_rrset_to_binary(&ch->data, &ch->size,
 		                                &ch->allocated, ch->soa_from);
-		if (ret != KNOT_EOK) {
+		if (ret != KNOTD_EOK) {
 			free(ch->data);
 			ch->data = NULL;
 			dbg_zones("zones_changeset_rrset_to_binary(): %s\n",
 			          knot_strerror(ret));
-			return KNOTD_ERROR;
+			return ret;
 		}
 
 		int j;
@@ -2588,24 +2590,24 @@ static int zones_changesets_to_binary(knot_changesets_t *chgsets)
 			                                      &ch->size,
 			                                      &ch->allocated,
 			                                      ch->remove[j]);
-			if (ret != KNOT_EOK) {
+			if (ret != KNOTD_EOK) {
 				free(ch->data);
 				ch->data = NULL;
 				dbg_zones("zones_changeset_rrset_to_binary(): %s\n",
 					  knot_strerror(ret));
-				return KNOTD_ERROR;
+				return ret;
 			}
 		}
 
 		/* 3) new SOA */
 		ret = zones_changeset_rrset_to_binary(&ch->data, &ch->size,
 		                                &ch->allocated, ch->soa_to);
-		if (ret != KNOT_EOK) {
+		if (ret != KNOTD_EOK) {
 			free(ch->data);
 			ch->data = NULL;
 			dbg_zones("zones_changeset_rrset_to_binary(): %s\n",
 				  knot_strerror(ret));
-			return KNOTD_ERROR;
+			return ret;
 		}
 
 		/* 4) add RRsets */
@@ -2615,12 +2617,12 @@ static int zones_changesets_to_binary(knot_changesets_t *chgsets)
 			                                      &ch->size,
 			                                      &ch->allocated,
 			                                      ch->add[j]);
-			if (ret != KNOT_EOK) {
+			if (ret != KNOTD_EOK) {
 				free(ch->data);
 				ch->data = NULL;
 				dbg_zones("zones_changeset_rrset_to_binary(): %s\n",
 					  knot_strerror(ret));
-				return KNOTD_ERROR;
+				return ret;
 			}
 		}
 	}
@@ -2638,11 +2640,6 @@ int zones_store_changesets(knot_ns_xfr_t *xfr)
 	
 	knot_zone_t *zone = xfr->zone;
 	knot_changesets_t *src = (knot_changesets_t *)xfr->data;
-	
-	int ret = zones_changesets_to_binary(src);
-	if (ret != KNOTD_EOK) {
-		return ret;
-	}
 
 	/* Fetch zone-specific data. */
 	zonedata_t *zd = (zonedata_t *)zone->data;
