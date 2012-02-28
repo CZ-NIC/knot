@@ -565,7 +565,6 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 		FILE *in_file = (FILE *)zp_get_in(scanner);
 		fclose(in_file);
 		zp_lex_destroy(scanner);
-		knot_dname_release(origin_from_config);
 		knot_node_free(&origin_node, 0);
 		return KNOTDZCOMPILE_ESYNT;
 	}
@@ -596,6 +595,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 		zc_error_prev_line("Zone file does not contain SOA record!\n");
 		knot_zone_deep_free(&parser->current_zone, 1);
 		zparser_free();
+		knot_node_free(&origin_node, 0);
 		return KNOTDZCOMPILE_EZONEINVAL;
 	}
 
