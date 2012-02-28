@@ -403,6 +403,10 @@ static void knot_node_dump_binary(knot_node_t *node, void *data,
 {
 	arg_t *args = (arg_t *)data;
 	int *fd_pointer = (int *)(args->arg1);
+	if (fd_pointer == NULL) {
+		dbg_zdump("zdump: node_dump_binary: Bad fd.\n");
+		return;
+	}
 	int fd = *fd_pointer;
 
 	/* first write dname */
@@ -658,8 +662,8 @@ int knot_zdump_binary(knot_zone_contents_t *zone, int fd,
 	    != KNOT_EOK) {
 		return KNOT_ERROR;
 	}
-
-	arguments.arg1 = (void *)fd;
+	
+	arguments.arg1 = &fd;
 	arguments.arg3 = zone;
 	arguments.arg7 = crc;
 
