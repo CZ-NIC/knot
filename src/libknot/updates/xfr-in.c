@@ -1369,6 +1369,34 @@ static int xfrin_changes_check_rdata(knot_rdata_t ***rdatas, uint **types,
 
 /*----------------------------------------------------------------------------*/
 
+static void xfrin_changes_add_rdata(knot_rdata_t **rdatas, uint *types,
+                                    int *count, knot_rdata_t *rdata, uint type)
+{
+	dbg_xfrin_detail("Adding RDATA to new RDATA list: %p\n", rdata);
+
+	// try to find the first RDATA in the given list
+	for (int i = 0; i < *count; ++i) {
+		knot_rdata_t *r = rdatas[i];
+		while (r->next != rdatas[i]) {
+			if (r == rdata) {
+				dbg_xfrin_detail("Found same RDATA: %p\n");
+				knot_rdata_dump(rdata, type, 0);
+			}
+			r = r->next;
+		}
+		if (r == rdata) {
+			dbg_xfrin_detail("Found same RDATA: %p\n");
+			knot_rdata_dump(rdata, type, 0);
+		}
+	}
+
+	rdatas[*count] = rdata;
+	types[*count] = type;
+	++*count;
+}
+
+/*----------------------------------------------------------------------------*/
+
 static void xfrin_zone_contents_free(knot_zone_contents_t **contents)
 {
 	/*! \todo This should be all in some API!! */
@@ -1453,21 +1481,31 @@ static int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 	}
 
 	changes->new_rrsets[changes->new_rrsets_count++] = *copy;
-	changes->new_rdata[changes->new_rdata_count] =
-	                knot_rrset_get_rdata(*copy);
-	changes->new_rdata_types[changes->new_rdata_count] =
-	                knot_rrset_type(*copy);
-	++changes->new_rdata_count;
+//	changes->new_rdata[changes->new_rdata_count] =
+//	                knot_rrset_get_rdata(*copy);
+//	changes->new_rdata_types[changes->new_rdata_count] =
+//	                knot_rrset_type(*copy);
+//	++changes->new_rdata_count;
+	xfrin_changes_add_rdata(changes->new_rdata, changes->new_rdata_types,
+	                        &changes->new_rdata_count,
+	                        knot_rrset_get_rdata(*copy),
+	                        knot_rrset_type(*copy));
 
 	if ((*copy)->rrsigs != NULL) {
 		assert(old->rrsigs != NULL);
 		changes->new_rrsets[changes->new_rrsets_count++] =
 		                (*copy)->rrsigs;
-		changes->new_rdata[changes->new_rdata_count] =
-		                knot_rrset_get_rdata((*copy)->rrsigs);
-		changes->new_rdata_types[changes->new_rdata_count] =
-		                KNOT_RRTYPE_RRSIG;
-		++changes->new_rdata_count;
+//		changes->new_rdata[changes->new_rdata_count] =
+//		                knot_rrset_get_rdata((*copy)->rrsigs);
+//		changes->new_rdata_types[changes->new_rdata_count] =
+//		                KNOT_RRTYPE_RRSIG;
+//		++changes->new_rdata_count;
+
+		xfrin_changes_add_rdata(changes->new_rdata,
+		                        changes->new_rdata_types,
+		                        &changes->new_rdata_count,
+		                        knot_rrset_get_rdata((*copy)->rrsigs),
+		                        KNOT_RRTYPE_RRSIG);
 	}
 
 	// add the old RRSet to the list of old RRSets
@@ -2565,11 +2603,17 @@ static int xfrin_apply_add2(knot_zone_contents_t *contents,
 				return res;
 			}
 
-			changes->new_rdata[changes->new_rdata_count] =
-			                knot_rrset_get_rdata(chset->add[i]);
-			changes->new_rdata_types[changes->new_rdata_count] =
-					knot_rrset_type(chset->add[i]);
-			++changes->new_rdata_count;
+//			changes->new_rdata[changes->new_rdata_count] =
+//			                knot_rrset_get_rdata(chset->add[i]);
+//			changes->new_rdata_types[changes->new_rdata_count] =
+//					knot_rrset_type(chset->add[i]);
+//			++changes->new_rdata_count;
+
+			xfrin_changes_add_rdata(changes->new_rdata,
+			                        changes->new_rdata_types,
+			                        &changes->new_rdata_count,
+			                        knot_rrset_get_rdata(chset->add[i]),
+			                        knot_rrset_type(chset->add[i]));
 
 			if (ret == 1) {
 				// the ADD RRSet was used, i.e. it should be
@@ -2690,11 +2734,17 @@ static int xfrin_apply_replace_soa2(knot_zone_contents_t *contents,
 	assert(ret == 0);
 
 	changes->new_rrsets[changes->new_rrsets_count++] = chset->soa_to;
-	changes->new_rdata[changes->new_rdata_count] =
-	                knot_rrset_get_rdata(chset->soa_to);
-	changes->new_rdata_types[changes->new_rdata_count] =
-	                knot_rrset_type(chset->soa_to);
-	++changes->new_rdata_count;
+//	changes->new_rdata[changes->new_rdata_count] =
+//	                knot_rrset_get_rdata(chset->soa_to);
+//	changes->new_rdata_types[changes->new_rdata_count] =
+//	                knot_rrset_type(chset->soa_to);
+//	++changes->new_rdata_count;
+
+	xfrin_changes_add_rdata(changes->new_rdata,
+	                        changes->new_rdata_types,
+	                        &changes->new_rdata_count,
+	                        knot_rrset_get_rdata(chset->soa_to),
+	                        knot_rrset_type(chset->soa_to));
 
 	// remove the SOA from the changeset, so it will not be deleted after
 	// successful apply
