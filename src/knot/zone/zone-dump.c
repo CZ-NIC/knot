@@ -550,7 +550,7 @@ int knot_zdump_binary(knot_zone_contents_t *zone, int fd,
                       int do_checks, const char *sfilename,
                       crc_t *crc)
 {
-	if (fd < 0) {
+	if (fd < 0 || sfilename == NULL) {
 		return KNOT_EBADARG;
 	}
 
@@ -618,10 +618,7 @@ int knot_zdump_binary(knot_zone_contents_t *zone, int fd,
 	               crc);
 
 	/* Write source file length. */
-	uint32_t sflen = 0;
-	if (sfilename) {
-		sflen = strlen(sfilename) + 1;
-	}
+	uint32_t sflen = strlen(sfilename) + 1;
 	write_wrapper(&sflen, sizeof(uint32_t), 1, fd, NULL, NULL, crc);
 
 	/* Write source file. */
