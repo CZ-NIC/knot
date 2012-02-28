@@ -2590,31 +2590,6 @@ static int xfrin_apply_add2(knot_zone_contents_t *contents,
 		          rrset);
 
 		if (ret > 0) {
-			// store the new RDATA
-			// in both cases it must be deleted if the transfer
-			// fails
-
-			// connect the RDATA to the list of old RDATA
-			int res = xfrin_changes_check_rdata(&changes->new_rdata,
-				&changes->new_rdata_types,
-				changes->new_rdata_count,
-				&changes->new_rdata_allocated, 1);
-			if (res != KNOT_EOK) {
-				return res;
-			}
-
-//			changes->new_rdata[changes->new_rdata_count] =
-//			                knot_rrset_get_rdata(chset->add[i]);
-//			changes->new_rdata_types[changes->new_rdata_count] =
-//					knot_rrset_type(chset->add[i]);
-//			++changes->new_rdata_count;
-
-			xfrin_changes_add_rdata(changes->new_rdata,
-			                        changes->new_rdata_types,
-			                        &changes->new_rdata_count,
-			                        knot_rrset_get_rdata(chset->add[i]),
-			                        knot_rrset_type(chset->add[i]));
-
 			if (ret == 1) {
 				// the ADD RRSet was used, i.e. it should be
 				// removed from the changeset and saved in the
@@ -2632,6 +2607,29 @@ static int xfrin_apply_add2(knot_zone_contents_t *contents,
 				changes->new_rrsets[changes->new_rrsets_count++]
 					 = chset->add[i];
 
+				// the same goes for the RDATA
+
+				// connect the RDATA to the list of new RDATA
+				int res = xfrin_changes_check_rdata(&changes->new_rdata,
+					&changes->new_rdata_types,
+					changes->new_rdata_count,
+					&changes->new_rdata_allocated, 1);
+				if (res != KNOT_EOK) {
+					return res;
+				}
+
+	//			changes->new_rdata[changes->new_rdata_count] =
+	//			                knot_rrset_get_rdata(chset->add[i]);
+	//			changes->new_rdata_types[changes->new_rdata_count] =
+	//					knot_rrset_type(chset->add[i]);
+	//			++changes->new_rdata_count;
+
+				xfrin_changes_add_rdata(changes->new_rdata,
+				                        changes->new_rdata_types,
+				                        &changes->new_rdata_count,
+				                        knot_rrset_get_rdata(chset->add[i]),
+				                        knot_rrset_type(chset->add[i]));
+
 				chset->add[i] = NULL;
 			} else if (ret == 2) {
 				// the copy of the RRSet was used, but it was
@@ -2639,6 +2637,11 @@ static int xfrin_apply_add2(knot_zone_contents_t *contents,
 				// just delete the add RRSet, but without RDATA
 				// as these were merged to the copied RRSet
 				knot_rrset_free(&chset->add[i]);
+
+				// In this case, the RDATA does not have to be
+				// stored in the list of new RDATA, because
+				// it is joined to the copy of RDATA, that is
+				// already stored there
 			} else {
 				assert(0);
 			}
