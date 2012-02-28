@@ -1274,9 +1274,9 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 		int reload = 0;
 
 		/* Attempt to bootstrap if db or source does not exist. */
-		struct stat s;
+		struct stat s = {};
 		int stat_ret = stat(z->file, &s);
-		if (zone != NULL) {
+		if (zone != NULL && stat_ret == 0) {
 			/* if found, check timestamp of the file against the
 			 * loaded zone
 			 */
@@ -1361,8 +1361,11 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 			dbg_zones_verb("zones: found '%s' in old database, "
 			               "copying to new.\n",
 			               z->name);
-			log_server_info("Zone '%s' is up-to-date, no need "
-			                "for reload.\n", z->name);
+			/* Only if zone file exists. */
+			if (stat_ret == 0) {
+				log_server_info("Zone '%s' is up-to-date, no need "
+				                "for reload.\n", z->name);
+			}
 			int ret = knot_zonedb_add_zone(db_new, zone);
 			if (ret != KNOT_EOK) {
 				log_server_error("Error adding known zone '%s' to"
