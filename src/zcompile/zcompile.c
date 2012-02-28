@@ -334,13 +334,13 @@ int process_rr(void)
 			
 			/* The node might however been created previously. */
 			parser->last_node =
-				knot_zone_contents_find_node(contents,
+				knot_zone_contents_get_node(contents,
 					knot_rrset_owner(current_rrset));
 			
 			if (parser->last_node == NULL) {
 				/* Try NSEC3 tree. */
 				parser->last_node =
-					knot_zone_contents_find_nsec3_node(
+					knot_zone_contents_get_nsec3_node(
 						contents,
 						knot_rrset_owner(
 							current_rrset));
@@ -469,16 +469,6 @@ static uint find_rrsets_orphans(knot_zone_contents_t *zone, rrset_list_t
 	return found_rrsets;
 }
 
-/*
- *
- * Opens a zone file.
- *
- * Returns:
- *
- *	- pointer to the parser structure
- *	- NULL on error and errno set
- *
- */
 static int zone_open(const char *filename, uint32_t ttl, uint16_t rclass,
 	  knot_node_t *origin, void *scanner, knot_dname_t *origin_from_config)
 {
@@ -497,25 +487,13 @@ static int zone_open(const char *filename, uint32_t ttl, uint16_t rclass,
 		}
 	}
 
-//	int fd = fileno(zp_get_in(scanner));
-//	if (fd == -1) {
-//		return 0;
-//	}
-
-//	if (fcntl(fd, F_SETLK, knot_file_lock(F_RDLCK, SEEK_SET)) == -1) {
-//		fprintf(stderr, "Could not lock zone file for read!\n");
-//		return 0;
-//	}
+	/*!< \todo #1676 Implement proper locking. */
 
 	zparser_init(filename, ttl, rclass, origin, origin_from_config);
 
 	return 1;
 }
 
-/*
- * Reads the specified zone into the memory
- *
- */
 int zone_read(const char *name, const char *zonefile, const char *outfile,
 	      int semantic_checks)
 {
@@ -534,9 +512,6 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	}
 	fclose(f);
 
-
-//	char ebuf[256];
-
 	knot_dname_t *dname =
 		knot_dname_new_from_str(name, strlen(name), NULL);
 	if (dname == NULL) {
@@ -551,13 +526,12 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	knot_node_t *origin_node = knot_node_new(dname, NULL, 0);
 
-	assert(knot_node_parent(origin_node) == NULL);
 	if (origin_node == NULL) {
 		knot_dname_release(dname);
 		return KNOTDZCOMPILE_ENOMEM;
 	}
-	/* CLEANUP */
-	//assert(origin_node->next == NULL);
+	
+	assert(knot_node_parent(origin_node) == NULL);
 
 	/*!< \todo Another copy is probably not needed. */
 	knot_dname_t *origin_from_config =
@@ -581,21 +555,18 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 			zonefile);
 		zparser_free();
 		zp_lex_destroy(scanner);
+		knot_dname_release(origin_from_config);
+		knot_node_free(&origin_node, 0);
 		return KNOTDZCOMPILE_EZONEINVAL;
 	}
 
 	if (zp_parse(scanner) != 0) {
-		/* CLEANUP */
-//		int fd = fileno(zp_get_in(scanner));
-//		if (fcntl(fd, F_SETLK,
-//		          knot_file_lock(F_UNLCK, SEEK_SET)) == -1) {
-//			return KNOTDZCOMPILE_EACCES;
-//		}
-
+		/*!< \todo #1676 Implement proper locking. */
 		FILE *in_file = (FILE *)zp_get_in(scanner);
 		fclose(in_file);
 		zp_lex_destroy(scanner);
-
+		knot_dname_release(origin_from_config);
+		knot_node_free(&origin_node, 0);
 		return KNOTDZCOMPILE_ESYNT;
 	}
 
@@ -605,14 +576,8 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	FILE *in_file = (FILE *)zp_get_in(scanner);
 	fclose(in_file);
 	zp_lex_destroy(scanner);
-
-	/* Unlock zone file. */
-	/* CLEANUP */
-//	int fd = fileno(zp_get_in(scanner));
-//	if (fcntl(fd, F_SETLK, knot_file_lock(F_UNLCK, SEEK_SET)) == -1) {
-//		fprintf(stderr, "Could not lock zone file for read!\n");
-//		return 0;
-//	}
+	
+	/*!< \todo #1676 Implement proper locking. */
 
 	dbg_zp("zp complete %p\n", parser->current_zone);
 
