@@ -647,18 +647,20 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 					        "Could not get crc file path.\n");
 					remove(outfile);
 					totalerrors++;
+				} else {
+					FILE *f_crc = fopen(crc_path, "w");
+					if (f_crc == NULL) {
+						fprintf(stderr,
+						"Could not open crc file \n");
+						remove(outfile);
+						totalerrors++;
+					}
+				
+	
+					fprintf(f_crc,
+					        "%lu", (unsigned long)crc);
+					fclose(f_crc);
 				}
-
-				FILE *f_crc = fopen(crc_path, "w");
-				if (f_crc == NULL) {
-					fprintf(stderr,
-					        "Could not open crc file \n");
-					remove(outfile);
-					totalerrors++;
-				}
-
-				fprintf(f_crc, "%lu", (unsigned long)crc);
-				fclose(f_crc);
 				free(crc_path);
 			}
 		}
