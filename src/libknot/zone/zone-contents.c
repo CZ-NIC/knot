@@ -2236,8 +2236,37 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone)
 	adjust_arg.err = KNOT_EOK;
 //	adjust_arg.check_ver = check_ver;
 
+	/*
+	 * Adjust the NSEC3 nodes first.
+	 * There are independent on the normal nodes, but the normal nodes are
+	 * dependent on them.
+	 */
+
+	dbg_zone("Adjusting NSEC3 nodes.\n");
+	int ret = knot_zone_tree_forward_apply_inorder(
+	              zone->nsec3_nodes,
+	              knot_zone_contents_adjust_nsec3_node_in_tree,
+	                        &adjust_arg);
+	assert(ret == KNOT_EOK);
+
+	if (adjust_arg.err != KNOT_EOK) {
+		dbg_zone("Failed to adjust NSEC3 nodes: %s\n",
+		         knot_strerror(adjust_arg.err));
+		return adjust_arg.err;
+	}
+
+	// set the last node as previous of the first node
+	if (adjust_arg.first_node) {
+		knot_node_set_previous(adjust_arg.first_node,
+		                         adjust_arg.previous_node);
+	}
+	dbg_zone("Done.\n");
+
+	adjust_arg.first_node = NULL;
+	adjust_arg.previous_node = NULL;
+
 	dbg_zone("Adjusting normal nodes.\n");
-	int ret = knot_zone_tree_forward_apply_inorder(zone->nodes,
+	ret = knot_zone_tree_forward_apply_inorder(zone->nodes,
 	                        knot_zone_contents_adjust_node_in_tree,
 	                        &adjust_arg);
 	assert(ret == KNOT_EOK);
@@ -2252,29 +2281,6 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone)
 	knot_node_set_previous(zone->apex, adjust_arg.previous_node);
 
 	dbg_zone("Done.\n");
-
-	adjust_arg.first_node = NULL;
-	adjust_arg.previous_node = NULL;
-
-	dbg_zone("Adjusting NSEC3 nodes.\n");
-	ret = knot_zone_tree_forward_apply_inorder(
-	              zone->nsec3_nodes,
-	              knot_zone_contents_adjust_nsec3_node_in_tree,
-	                        &adjust_arg);
-	assert(ret == KNOT_EOK);
-
-	if (adjust_arg.err != KNOT_EOK) {
-		dbg_zone("Failed to adjust NSEC3 nodes: %s\n",
-		         knot_strerror(adjust_arg.err));
-		return adjust_arg.err;
-	}
-
-	dbg_zone("Done.\n");
-	// set the last node as previous of the first node
-	if (adjust_arg.first_node) {
-		knot_node_set_previous(adjust_arg.first_node,
-		                         adjust_arg.previous_node);
-	}
 
 	return ret;
 }
@@ -3397,7 +3403,7 @@ int knot_zc_integrity_check_child_count(check_data_t *data)
 
 	// add count of NSEC3 nodes to the apex' children count
 //	int nsec3_nodes = 0;
-	dbg_zone(stderr, "Children count of new apex before NSEC3: %d\n",
+	dbg_zone("Children count of new apex before NSEC3: %d\n",
 	         data->contents->apex->new_node->children);
 	knot_zone_tree_forward_apply_inorder(data->contents->nsec3_nodes,
 	                                     count_nsec3_nodes,
