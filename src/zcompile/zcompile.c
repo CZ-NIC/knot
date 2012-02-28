@@ -543,6 +543,11 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 		return KNOTDZCOMPILE_ENOMEM;
 	}
 
+	if (!knot_dname_is_fqdn(dname)) {
+		fprintf(stderr, "Error: given zone origin is not FQDN.\n");
+		return KNOTDZCOMPILE_EINVAL;
+	}
+
 	knot_node_t *origin_node = knot_node_new(dname, NULL, 0);
 
 	/*!< \todo Another copy is probably not needed. */
