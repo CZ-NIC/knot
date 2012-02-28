@@ -171,6 +171,8 @@ int xfrin_transfer_needed(const knot_zone_contents_t *zone,
 	if (soa_response->parsed < soa_response->size) {
 		ret = knot_packet_parse_rest(soa_response);
 		if (ret != KNOT_EOK) {
+			dbg_xfrin_verb("knot_packet_parse_rest() returned %s\n",
+			               knot_strerror(ret));
 			return KNOT_EMALF;
 		}
 	}

@@ -2155,7 +2155,8 @@ int zones_process_response(knot_nameserver_t *nameserver,
 
 		/* Check SOA SERIAL. */
 		int ret = xfrin_transfer_needed(contents, packet);
-		dbg_zones_verb("xfrin_transfer_needed() returned %d\n", ret);
+		dbg_zones_verb("xfrin_transfer_needed() returned %s\n",
+		               knot_strerror(ret));
 		if (ret < 0) {
 			/* RETRY/EXPIRE timers running, do not interfere. */
 			rcu_read_unlock();

@@ -500,14 +500,19 @@ knot_dname_t *knot_dname_parse_from_wire(const uint8_t *wire,
 
 		if (knot_wire_is_pointer(wire + p)) {
 			// pointer.
+
 //			printf("Pointer.\n");
-			p = knot_wire_get_pointer(wire + p);
-			/* Invalid compression - points to another pointer.
-			 * May result in infinite loop.
+			size_t ptr = knot_wire_get_pointer(wire + p);
+
+			/* Check that the pointer points backwards
+			 * otherwise it could result in infinite loop
 			 */
-			if (knot_wire_is_pointer(wire + p)) {
+			if (ptr >= p) {
 				return NULL;
 			}
+
+			p = ptr;
+
 			if (!pointer_used) {
 				*pos += 2;
 				pointer_used = 1;
