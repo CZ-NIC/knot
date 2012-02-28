@@ -334,6 +334,7 @@ static void knot_rrset_dump_binary(const knot_rrset_t *rrset, void *data,
                                    crc_t *crc)
 {
 	int fd = (int)((arg_t *)data)->arg1;
+	dbg_zdump_detail("Dumping rrset to fd=%d\n", fd);
 
 	if (!use_ids) {
 		dump_dname_with_id(rrset->owner, fd, stream, stream_size, crc);
@@ -668,6 +669,7 @@ int knot_zdump_rrset_serialize(const knot_rrset_t *rrset, uint8_t **stream,
 {
 	if (stream == NULL || *stream != NULL || rrset == NULL ||
 	    size == NULL) {
+		dbg_zdump("zdump: rrset_serialize: Bad arguments.\n");
 		return KNOT_EBADARG;
 	}
 
