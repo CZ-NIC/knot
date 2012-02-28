@@ -330,7 +330,7 @@ dbg_zone_exec_detail(
 		if (!exact_match) {
 			char *name = knot_dname_to_str(owner);
 			char *name_f = (f != NULL)
-				? knot_dname_to_str(knot_node_owner(f->node));
+				? knot_dname_to_str(knot_node_owner(f->node))
 				: "none";
 
 			dbg_zone_detail("Searched for owner %s in zone tree.\n",

@@ -548,7 +548,7 @@ static int zones_notify_send(event_t *e)
 	/* Check number of retries. */
 	if (ev->retries < 0) {
 		log_server_notice("NOTIFY query maximum number of retries "
-				  "for zone %s exceeded.\n",
+				  "for zone '%s' exceeded.\n",
 				  zd->conf->name);
 		pthread_mutex_lock(&zd->lock);
 		rem_node(&ev->n);
@@ -599,14 +599,7 @@ static int zones_notify_send(event_t *e)
 
 		/* Store ID of the awaited response. */
 		if (ret == buflen) {
-			char r_addr[SOCKADDR_STRLEN];
-			sockaddr_tostr(&ev->addr, r_addr, sizeof(r_addr));
-			int r_port = sockaddr_portnum(&ev->addr);
 			ev->msgid = knot_wire_get_id(qbuf);
-			log_server_info("Issued '%s' NOTIFY query to %s:%d, "
-					"expecting  response ID=%d\n",
-					zd->conf->name, r_addr, r_port,
-					ev->msgid);
 			
 		}
 
@@ -617,6 +610,7 @@ static int zones_notify_send(event_t *e)
 		req.type = XFR_TYPE_NOTIFY;
 		req.zone = zone;
 		memcpy(&req.addr, &ev->addr, sizeof(sockaddr_t));
+		memcpy(&req.addr, &ev->saddr, sizeof(sockaddr_t));
 		xfr_request(zd->server->xfr_h, &req);
 
 		/* Unlock RCU */
@@ -716,11 +710,20 @@ static int zones_set_acl(acl_t **acl, list* acl_list)
 		sockaddr_t addr;
 		conf_iface_t *cfg_if = r->remote;
 		int ret = sockaddr_set(&addr, cfg_if->family,
-				       cfg_if->address, 0);
+		                       cfg_if->address, 0);
+		sockaddr_setprefix(&addr, cfg_if->prefix);
 
 		/* Load rule. */
 		if (ret > 0) {
-			acl_create(*acl, &addr, ACL_ACCEPT, cfg_if);
+			/*! \todo Correct search for the longest prefix match.
+			 *        This just favorizes remotes with TSIG.
+			 *        (issue #1675)
+			 */
+			unsigned flags = 0;
+			if (cfg_if->key != NULL) {
+				flags = ACL_PREFER;
+			}
+			acl_create(*acl, &addr, ACL_ACCEPT, cfg_if, flags);
 		}
 	}
 
@@ -1771,7 +1774,7 @@ int zones_zonefile_sync(knot_zone_t *zone)
 		          zd->conf->name, zd->conf->file, serial_to);
 		ret = zones_dump_zone_text(contents, zd->conf->file);
 		if (ret != KNOTD_EOK) {
-			dbg_zones("zones: failed to sync '%s' to '%s'\n"
+			dbg_zones("zones: failed to sync '%s' to '%s'\n",
 			          zd->conf->name, zd->conf->file);
 			pthread_mutex_unlock(&zd->lock);
 			return ret;
@@ -2163,8 +2166,12 @@ int zones_process_response(knot_nameserver_t *nameserver,
 		evsched_t *sched =
 			((server_t *)knot_ns_get_data(nameserver))->sched;
 		if (ret == 0) {
-			log_zone_info("SOA query for zone '%s' answered, no "
-				      "transfer needed.\n", zd->conf->name);
+			char r_addr[SOCKADDR_STRLEN];
+			int r_port = sockaddr_portnum(from);
+			sockaddr_tostr(from, r_addr, sizeof(r_addr));
+			log_zone_info("SOA query of '%s' to %s:%d: Answered, no "
+				      "transfer needed.\n",
+			              zd->conf->name, r_addr, r_port);
 			rcu_read_unlock();
 
 			/* Reinstall timers. */
@@ -2273,7 +2280,9 @@ static int zones_open_free_filename(const char *old_name, char **new_name)
 	memcpy(*new_name, old_name, name_size + 1);
 	strncat(*new_name, ".XXXXXX", 7);
 	dbg_zones_verb("zones: creating temporary zone file\n");
+	mode_t old_mode = umask(077);
 	int fd = mkstemp(*new_name);
+	(void) umask(old_mode);
 	if (fd < 0) {
 		dbg_zones_verb("zones: couldn't create temporary zone file\n");
 		free(*new_name);

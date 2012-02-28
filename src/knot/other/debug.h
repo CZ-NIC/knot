@@ -29,19 +29,28 @@
 
 #include "config.h" /* autoconf generated */
 
+#ifdef KNOTD_SERVER_DEBUG
+  #define KNOTD_THREADS_DEBUG
+  #define KNOTD_JOURNAL_DEBUG
+  #define KNOTD_NET_DEBUG
+#endif
+
+#ifdef KNOT_ZONES_DEBUG
+  #define KNOTD_ZONES_DEBUG
+#endif
+
+#ifdef KNOT_XFR_DEBUG
+  #define KNOTD_XFR_DEBUG
+  #define KNOTD_NOTIFY_DEBUG
+#endif
+
+#ifdef KNOT_COMPILER_DEBUG
+  #define KNOTD_ZDUMP_DEBUG
+  #define KNOTD_ZLOAD_DEBUG
+#endif
+
 #include "knot/other/log.h"
 #include "common/print.h"
-
-/*! \todo Set these during configure as well (issue #1585). */
-//#define KNOTD_SERVER_DEBUG
-//#define KNOTD_THREADS_DEBUG
-//#define KNOTD_JOURNAL_DEBUG
-//#define KNOTD_NET_DEBUG
-//#define KNOTD_ZONES_DEBUG
-#define KNOTD_XFR_DEBUG
-//#define KNOTD_NOTIFY_DEBUG
-#define KNOTD_ZDUMP_DEBUG
-//#define KNOTD_ZLOAD_DEBUG
 
 /******************************************************************************/
 
