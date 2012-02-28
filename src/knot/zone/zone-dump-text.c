@@ -360,30 +360,30 @@ static char *rdata_txt_data_to_string(const uint8_t *data)
 	}
 	memset(ret, 0,  current_length);
 
-	strcat(ret, "\"");
+	strncat(ret, "\"", 3);
 
 	for (i = 1; i <= length; i++) {
 		char ch = (char) data[i];
 		if (isprint((int)ch)) {
 			if (ch == '"' || ch == '\\') {
-				strcat(ret, "\"");
+				strncat(ret, "\"", 3);
 			}
 				/* for the love of god, how to this better,
 				   but w/o obscure self-made functions */
 				char tmp_str[2];
 				tmp_str[0] = ch;
 				tmp_str[1] = 0;
-				strcat(ret, tmp_str);
+				strncat(ret, tmp_str, 2);
 		} else {
-			strcat(ret, "\\");
+			strncat(ret, "\\", 3);
 			char tmp_str[2];
 			tmp_str[0] = ch - '0';
 			tmp_str[1] = 0;
 
-			strcat(ret, tmp_str);
+			strncat(ret, tmp_str, 2);
 		}
 	}
-	strcat(ret, "\"");
+	strncat(ret, "\"", 3);
 
 	return ret;
 }
@@ -411,8 +411,8 @@ char *rdata_text_to_string(knot_rdata_item_t item)
 		char del[2];
 		del[0] = ' ';
 		del[1] = '\0';
-		strcat(ret, txt);
-		strcat(ret, del);
+		strncat(ret, txt, strlen(txt));
+		strncat(ret, del, 2);
 		free(txt);
 	}
 
@@ -628,7 +628,7 @@ char *rdata_nsap_to_string(knot_rdata_item_t item)
 		return NULL;
 	}
 
-	strcat(ret, converted);
+	strncat(ret, converted, rdata_item_size(item) * 2 + 1);
 	free(converted);
 	return ret;
 }
@@ -730,7 +730,7 @@ char *rdata_services_to_string(knot_rdata_item_t item)
 
 		strcpy(ret, proto->p_name);
 
-		strcat(ret, " ");
+		strncat(ret, " ", 2);
 
 		for (i = 0; i < bitmap_size * 8; ++i) {
 			if (get_bit(bitmap, i)) {
@@ -738,13 +738,18 @@ char *rdata_services_to_string(knot_rdata_item_t item)
 					getservbyport((int)htons(i),
 						      proto->p_name);
 				if (service) {
-					strcat(ret, service->s_name);
-					strcat(ret, " ");
+					/*!< \todo using strncat with strlen
+					 * does not make a whole lot of sense.
+					 * Use max length of service name!
+					 */
+					strncat(ret, service->s_name,
+					        strlen(service->s_name));
+					strncat(ret, " ", 2);
 				} else {
 					char tmp[U32_MAX_STR_LEN];
 					snprintf(tmp, U32_MAX_STR_LEN,
 						 "%d ", i);
-					strcat(ret, tmp);
+					strncat(ret, tmp, U32_MAX_STR_LEN);
 				}
 			}
 		}
@@ -831,8 +836,9 @@ char *rdata_nxt_to_string(knot_rdata_item_t item)
 
 	for (i = 0; i < bitmap_size * 8; ++i) {
 		if (get_bit(bitmap, i)) {
-			strcat(ret, knot_rrtype_to_string(i));
-				strcat(ret, " ");
+			strncat(ret, knot_rrtype_to_string(i),
+			       MAX_RR_TYPE_LEN);
+				strncat(ret, " ", 2);
 		}
 	}
 
@@ -870,10 +876,11 @@ char *rdata_nsec_to_string(knot_rdata_item_t item)
 
 		for (int j = 0; j < bitmap_size * 8; j++) {
 			if (get_bit(bitmap, j)) {
-				strcat(ret,
+				strncat(ret,
 				       knot_rrtype_to_string(j +
-							       window * 256));
-				strcat(ret, " ");
+							       window * 256),
+				        MAX_RR_TYPE_LEN);
+				strncat(ret, " ", 2);
 			}
 		}
 
@@ -924,7 +931,7 @@ char *rdata_unknown_to_string(knot_rdata_item_t item)
 	         strlen("\\# ") + U16_MAX_STR_LEN + 1, "%lu ",
 		 (unsigned long) size);
 	char *converted = hex_to_string(rdata_item_data(item), size);
-	strcat(ret, converted);
+	strncat(ret, converted, size * 2 + 1);
 	free(converted);
 	return ret;
 }
