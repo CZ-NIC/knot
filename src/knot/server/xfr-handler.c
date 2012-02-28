@@ -202,6 +202,7 @@ static knot_ns_xfr_t *xfr_register_task(xfrworker_t *w, knot_ns_xfr_t *req)
 	t->wire = 0; /* Invalidate shared buffer. */
 	t->wire_size = 0;
 	t->data = 0; /* New zone will be built. */
+	t->msgpref = strdup(t->msgpref); /* Copy message. */
 
 	/* Register data. */
 	xfrhandler_t * h = w->master;
@@ -741,6 +742,8 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 		if (nextw == 0) {
 			nextw = w;
 		}
+		/* Free data updated in this processing. */
+		xfr_request_deinit(data);
 		evqueue_write(nextw->q, data, sizeof(knot_ns_xfr_t));
 		return KNOTD_EOK;
 	} else {
@@ -848,16 +851,16 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 	/* Unlock zone contents. */
 	rcu_read_unlock();
 	
-	/* Add to pending transfers. */
-	knot_ns_xfr_t *task = xfr_register_task(w, data);
-	
+	/* Start transfer. */
 	ret = data->send(data->session, &data->addr, data->wire, bufsize);
 	if (ret != bufsize) {
+		log_server_info("%s Failed to send query.\n", data->msgpref);
 		pthread_mutex_unlock(&zd->xfr_in.lock);
-		task->msgpref = NULL; /* Prevent doublefree. */
-		xfr_free_task(task);
 		return KNOTD_ECONNREFUSED;
 	}
+	
+	/* Add to pending transfers. */
+	knot_ns_xfr_t *task = xfr_register_task(w, data);	
 	
 	/* Send XFR query. */
 	log_server_info("%s Started.\n", task->msgpref);
@@ -1222,9 +1225,6 @@ int xfr_request(xfrhandler_t *handler, knot_ns_xfr_t *req)
 	handler->rr = get_next_rr(handler->rr, handler->unit->size);
 	pthread_mutex_unlock(&handler->rr_mx);
 	
-	/* Update XFR message prefix. */
-	xfr_update_msgpref(req, NULL);
-	
 	/* Delegate request. */
 	int ret = evqueue_write(q, req, sizeof(knot_ns_xfr_t));
 	if (ret < 0) {
@@ -1345,6 +1345,9 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 	/* Update request. */
 	xfr.wire = buf;
 	xfr.wire_size = buflen;
+	
+	/* Update XFR message prefix. */
+	xfr_update_msgpref(&xfr, NULL);
 
 	conf_read_lock();
 
@@ -1366,8 +1369,9 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		if (ret != KNOTD_EOK && ret != KNOTD_EACCES) {
 			log_server_error("%s %s\n",
 			                 xfr.msgpref, knotd_strerror(ret));
-			xfr_request_deinit(&xfr);
 		}
+		
+		xfr_request_deinit(&xfr);
 		break;
 	case XFR_TYPE_SOA:
 	case XFR_TYPE_NOTIFY:
@@ -1387,6 +1391,7 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 			zd->soa_pending = (event_t*)task->data;
 		}
 		log_server_info("%s Query issued.\n", xfr.msgpref);
+		xfr_request_deinit(&xfr);
 		ret = KNOTD_EOK;
 		break;
 	/* Socket close event. */
