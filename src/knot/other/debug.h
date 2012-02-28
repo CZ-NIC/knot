@@ -416,9 +416,11 @@
 #ifdef DEBUG_ENABLE_DETAILS
 #define dbg_zload_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
 #define dbg_zload_hex_detail(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_zload_exec_detail(cmds) do { cmds } while (0)
 #else
 #define dbg_zload_detail(msg...)
 #define dbg_zload_hex_detail(data, len)
+#define dbg_zload_exec_detail(cmds)
 #endif
 
 /* No messages. */
@@ -429,6 +431,7 @@
 #define dbg_zload_hex_verb(data, len)
 #define dbg_zload_detail(msg...)
 #define dbg_zload_hex_detail(data, len)
+#define dbg_zload_exec_detail(cmds)
 #endif
 
 /******************************************************************************/

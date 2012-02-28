@@ -445,35 +445,60 @@ static knot_rrset_t *knot_load_rrset(FILE *f, knot_dname_t **id_array,
 	}
 
 	if (!fread_wrapper(&rrset_type, sizeof(rrset_type), 1, f)) {
+		if (!use_ids) {
+			knot_dname_free(&owner);
+		}
 		return NULL;
 	}
 	dbg_zload("Zone load: rrset load: type: %u\n", rrset_type);
 	if (!fread_wrapper(&rrset_class, sizeof(rrset_class), 1, f)) {
+		if (!use_ids) {
+			knot_dname_free(&owner);
+		}
 		return NULL;
 	}
 	dbg_zload("Zone load: rrset class: type: %u\n", rrset_class);
 	if (!fread_wrapper(&rrset_ttl, sizeof(rrset_ttl), 1, f)) {
+		if (!use_ids) {
+			knot_dname_free(&owner);
+		}
 		return NULL;
 	}
 	dbg_zload("Zone load: rrset ttl: type: %u\n", rrset_ttl);
 	if (!fread_wrapper(&rdata_count, sizeof(rdata_count), 1, f)) {
+		if (!use_ids) {
+			knot_dname_free(&owner);
+		}
 		return NULL;
 	}
 	dbg_zload("Zone load: rrset load: rdata count: %u\n", rdata_count);
 	if (!fread_wrapper(&rrsig_count, sizeof(rrsig_count), 1, f)) {
+		if (!use_ids) {
+			knot_dname_free(&owner);
+		}
 		return NULL;
 	}
 	dbg_zload("Zone load: rrset load: type: %u\n", rrset_type);
 
+dbg_zload_exec_detail(
+	char *name = knot_dname_to_str(owner);
 	dbg_zload("Loading RRSet owned by: %s\n",
-	          knot_dname_to_str(owner));
+	          name);
+	free(name);
+);
 
 	rrset = knot_rrset_new(owner, rrset_type, rrset_class, rrset_ttl);
+	
+	if (rrset == NULL) {
+		dbg_zload("zload: load_rrset: Could not create rrset.");
+		knot_dname_free(&owner);
+		return NULL;
+	}
 
 	if (!use_ids) {
 		/* Directly release if allocated locally. */
 		knot_dname_release(owner);
-		owner = 0;
+		owner = NULL;
 	}
 
 	dbg_zload("RRSet type: %d\n", rrset->type);
