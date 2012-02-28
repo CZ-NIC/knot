@@ -746,8 +746,8 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 		if (nextw == 0) {
 			nextw = w;
 		}
+		
 		/* Free data updated in this processing. */
-		xfr_request_deinit(data);
 		evqueue_write(nextw->q, data, sizeof(knot_ns_xfr_t));
 		return KNOTD_EOK;
 	} else {
@@ -1375,14 +1375,12 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 			                 xfr.msgpref, knotd_strerror(ret));
 		}
 		
-		xfr_request_deinit(&xfr);
 		break;
 	case XFR_TYPE_SOA:
 	case XFR_TYPE_NOTIFY:
 		/* Register task. */
 		task = xfr_register_task(w, &xfr);
 		if (!task) {
-			xfr_request_deinit(&xfr);
 			ret = KNOTD_ENOMEM;
 			break;
 		}
@@ -1395,7 +1393,6 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 			zd->soa_pending = (event_t*)task->data;
 		}
 		log_server_info("%s Query issued.\n", xfr.msgpref);
-		xfr_request_deinit(&xfr);
 		ret = KNOTD_EOK;
 		break;
 	/* Socket close event. */
@@ -1409,6 +1406,11 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 	}
 
 	conf_read_unlock();
+	
+	/* Deinitialize (it is already registered, or discarded).
+	 * Right now, this only frees temporary msgpref.
+	 */
+	xfr_request_deinit(&xfr);
 	
 	return ret;
 }
