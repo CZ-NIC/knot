@@ -610,7 +610,7 @@ static int zones_notify_send(event_t *e)
 		req.type = XFR_TYPE_NOTIFY;
 		req.zone = zone;
 		memcpy(&req.addr, &ev->addr, sizeof(sockaddr_t));
-		memcpy(&req.addr, &ev->saddr, sizeof(sockaddr_t));
+		memcpy(&req.saddr, &ev->saddr, sizeof(sockaddr_t));
 		xfr_request(zd->server->xfr_h, &req);
 
 		/* Unlock RCU */
