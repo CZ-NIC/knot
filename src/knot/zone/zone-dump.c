@@ -214,8 +214,6 @@ static void knot_rdata_dump_binary(knot_rdata_t *rdata,
 
 			if (use_ids) {
 				/* Write ID. */
-				dbg_zload("%s \n",
-				    knot_dname_to_str(rdata->items[i].dname));
 				assert(rdata->items[i].dname->id != 0);
 
 				uint32_t id = rdata->items[i].dname->id;
@@ -286,8 +284,12 @@ static void knot_rrsig_set_dump_binary(knot_rrset_t *rrsig, int fd,
                                        uint8_t **stream, size_t *stream_size,
                                        crc_t *crc)
 {
-	dbg_zdump("Dumping rrset \\w owner: %s\n",
-	                   knot_dname_to_str(rrsig->owner));
+dbg_zdump_exec_detail(
+	char *name = knot_dname_to_str(knot_rrset_owner(rrsig));
+	dbg_zdump("Dumping RRSIG \\w owner: %s\n",
+	                   name);
+	free(name);
+);
 	assert(rrsig->type == KNOT_RRTYPE_RRSIG);
 	assert(rrsig->rdata);
 	/* \todo check the return value */
@@ -324,7 +326,6 @@ static void knot_rrsig_set_dump_binary(knot_rrset_t *rrsig, int fd,
  *
  * \param rrset RRSSet to be dumped.
  * \param data Arguments to be propagated.
- * \todo Get rid of void *data, use int directly. Why is it even there?
  */
 static void knot_rrset_dump_binary(const knot_rrset_t *rrset, int fd,
                                    int use_ids,
@@ -402,8 +403,12 @@ static void knot_node_dump_binary(knot_node_t *node, int fd,
 	assert(node->owner != NULL);
 
 	/* Write owner ID. */
+dbg_zdump_exec_detail(
+	char *name = knot_dname_to_str(knot_node_owner(node));
 	dbg_zdump("Dumping node owned by %s\n",
-	                   knot_dname_to_str(node->owner));
+	                   name);
+	free(name);
+);
 	assert(node->owner->id != 0);
 	uint32_t owner_id = node->owner->id;
 	/* \todo check the return value */

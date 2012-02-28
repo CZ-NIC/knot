@@ -372,9 +372,11 @@
 #ifdef DEBUG_ENABLE_DETAILS
 #define dbg_zdump_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
 #define dbg_zdump_hex_detail(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_zdump_exec_detail(cmds) do { cmds } while (0)
 #else
 #define dbg_zdump_detail(msg...)
 #define dbg_zdump_hex_detail(data, len)
+#define dbg_zdump_exec_detail(cmds)
 #endif
 
 /* No messages. */
@@ -385,6 +387,7 @@
 #define dbg_zdump_hex_verb(data, len)
 #define dbg_zdump_detail(msg...)
 #define dbg_zdump_hex_detail(data, len)
+#define dbg_zdump_exec_detail(cmds)
 #endif
 
 /******************************************************************************/
