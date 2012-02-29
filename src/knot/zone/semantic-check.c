@@ -156,12 +156,11 @@ int err_handler_handle_error(err_handler_t *handler,
 	assert(handler && node);
 	if ((error != 0) &&
 	    (error > ZC_ERR_GLUE_GENERAL_ERROR)) {
-		return ZC_ERR_UNKNOWN;
+		return KNOT_EBADARG;
 	}
 
 	/*!< \todo this is so wrong! This should not even return anything. */
-	if (error == ZC_ERR_ALLOC || error == KNOT_ERROR
-	    || error == KNOT_EBADARG) {
+	if (error == ZC_ERR_ALLOC || error == 0) {
 		return KNOT_EBADARG;
 	}
 
@@ -382,10 +381,13 @@ static int check_cname_cycles_in_zone(knot_zone_contents_t *zone,
 				knot_dname_new_from_str("*", strlen("*"),
 			                                NULL);
 			if (wc == NULL) {
+				knot_dname_free(&chopped_next);
 				return KNOT_ENOMEM;
 			}
 			
 			if (knot_dname_cat(wc, chopped_next) == NULL) {
+				knot_dname_free(&chopped_next);
+				knot_dname_free(&wc);
 				return KNOT_ERROR;
 			}
 			
@@ -552,6 +554,9 @@ static int dnskey_to_wire(const knot_rdata_t *rdata, uint8_t **wire,
 
 	/* TODO check if we really have that many items */
 	if (rdata->count < 4) {
+		free(*wire);
+		*wire = NULL;
+		*size = 0;
 		return KNOT_ERROR;
 	}
 
@@ -915,16 +920,14 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 		knot_node_rrset(knot_zone_contents_apex(zone),
 	                        KNOT_RRTYPE_SOA);
 	assert(soa_rrset);
-
-	uint32_t minimum_ttl =
-		knot_wire_read_u32((uint8_t *)
-		rdata_item_data(
-		knot_rdata_item(
-		knot_rrset_rdata(
-		knot_node_rrset(
-		knot_zone_contents_apex(zone), KNOT_RRTYPE_SOA)), 6)));
-	/* Are those getters even worth this?
-	 * Now I have no idea what this code does. */
+	
+	const knot_rdata_t *soa_rdata = knot_rrset_rdata(soa_rrset);
+	if (soa_rdata == NULL) {
+		err_handler_handle_error(handler, node, ZC_ERR_UNKNOWN);
+		return KNOT_EOK;
+	}
+	
+	uint32_t minimum_ttl = knot_rdata_soa_minimum(soa_rdata);
 
 	if (knot_rrset_ttl(nsec3_rrset) != minimum_ttl) {
 			err_handler_handle_error(handler, node,
@@ -1012,6 +1015,22 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 	return KNOT_EOK;
 }
 
+struct sem_check_param {
+	int node_count;
+};
+
+/*!
+ * \brief Used only to count number of nodes in zone tree.
+ *
+ * \param node Node to be counted
+ * \param data Count casted to void *
+ */
+static void count_nodes_in_tree(knot_node_t *node, void *data)
+{
+	struct sem_check_param *param = (struct sem_check_param *)data;
+	param->node_count++;
+}
+
 /*!
  * \brief Run semantic checks for node without DNSSEC-related types.
  *
@@ -1089,9 +1108,34 @@ static int semantic_checks_plain(knot_zone_contents_t *zone,
 		}
 		
 		if (node->children != 0) {
-			*fatal_error = 1;
-			err_handler_handle_error(handler, node,
-			                         ZC_ERR_DNAME_CHILDREN);
+			/*
+			 * With DNSSEC and node being zone apex,
+			 * NSEC3 and its RRSIG can be present.
+			 */
+			
+			/* The NSEC3 tree can thus only have one node. */
+			struct sem_check_param param;
+			param.node_count = 0;
+			int ret_apply =
+				knot_zone_contents_nsec3_apply_inorder(zone,
+				count_nodes_in_tree,
+				&param);
+			if (ret_apply != KNOT_EOK || param.node_count != 1) {
+				*fatal_error = 1;
+				err_handler_handle_error(handler, node,
+				                         ZC_ERR_DNAME_CHILDREN);
+				/*
+				 * Valid case: Node is apex, it has NSEC3 node
+				 * and that node has only one RRSet.
+				 */
+			} else if (!((knot_zone_contents_apex(zone) == node) &&
+			           knot_node_nsec3_node(node) &&
+			           knot_node_rrset_count(knot_node_nsec3_node(
+			                                 node)) == 1)) {
+				*fatal_error = 1;
+				err_handler_handle_error(handler, node,
+				                         ZC_ERR_DNAME_CHILDREN);
+			}
 		}
 	}
 	
@@ -1173,10 +1217,6 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 		if (auth && !deleg &&
 		    (ret = check_rrsig_in_rrset(rrset, dnskey_rrset,
 						nsec3)) != 0) {
-		  /* CLEANUP */
-/*			log_zone_error("RRSIG %d node %s\n", ret,
-				       knot_dname_to_str(node->owner));*/
-
 			err_handler_handle_error(handler, node, ret);
 		}
 
@@ -1189,13 +1229,6 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 			if (nsec_rrset == NULL) {
 				err_handler_handle_error(handler, node,
 							 ZC_ERR_NO_NSEC);
-				/* CLEANUP */
-/*				char *name =
-					knot_dname_to_str(node->owner);
-				log_zone_error("Missing NSEC in node: "
-					       "%s\n", name);
-				free(name);
-				return; */
 			} else {
 
 				/* check NSEC/NSEC3 bitmap */
@@ -1229,18 +1262,6 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 						handler,
 						node,
 						ZC_ERR_NSEC_RDATA_BITMAP);
-					/* CLEANUP */
-	/*					char *name =
-						knot_dname_to_str(
-						knot_node_owner(node));
-
-						log_zone_error("Node %s does "
-						"not contain RRSet of type %s "
-						"but NSEC bitmap says "
-					       "it does!\n", name,
-					       knot_rrtype_to_string(type));
-
-					free(name); */
 					}
 				}
 				free(array);

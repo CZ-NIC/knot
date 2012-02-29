@@ -16,8 +16,29 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "common/acl.h"
+
+static inline uint32_t acl_sa_ipv4(sockaddr_t *a) {
+	return a->addr4.sin_addr.s_addr;
+}
+
+static inline uint32_t acl_fill_mask32(short c) {
+	/*! \todo Consider optimizing using LUT. */
+	assert(c >= 0 && c <= 32);
+	unsigned r = 0;
+	/*! This actually builds big-endian mask
+	 *  as we will match against addresses in
+	 *  network byte-order (big-endian).
+	 *  Otherwise it should be built from
+	 *  HO bit -> LO bit.
+	 */
+	for (char i = 0; i < c; ++i) {
+		r |= (1 << i);
+	}
+	return r;
+}
 
 static int acl_compare(void *k1, void *k2)
 {
@@ -32,56 +53,54 @@ static int acl_compare(void *k1, void *k2)
 
 	/* Compare integers if IPv4. */
 	if (a1->len == sizeof(struct sockaddr_in)) {
-
-		/* Allow if k1 == INADDR_ANY. */
-		if (a1->addr4.sin_addr.s_addr == 0) {
-			return 0;
-		}
+		
+		/* Compute mask .*/
+		uint32_t mask = acl_fill_mask32(a1->prefix);
 
 		/* Compare address. */
-		ldiff = a1->addr4.sin_addr.s_addr - a2->addr4.sin_addr.s_addr;
-		if (ldiff != 0) {
-			return ldiff < 0 ? -1 : 1;
-		}
-
-		/* Port = 0 means any port match. */
-		if (a1->addr4.sin_port == 0) {
+		ldiff = (int)((acl_sa_ipv4(a1) & mask) - (acl_sa_ipv4(a2) & mask));
+		if (ldiff < 0) {
+			return -1;
+		} else if (ldiff > 0) {
+			return 1;
+		} else {
 			return 0;
 		}
 
-		/* Compare ports on address match. */
-		ldiff = ntohs(a1->addr4.sin_port) - ntohs(a2->addr4.sin_port);
-		if (ldiff != 0) {
-			return ldiff < 0 ? -1 : 1;
-		}
 		return 0;
 	}
 
 	/* IPv6 matching. */
 #ifndef DISABLE_IPV6
 	if (a1->len == sizeof(struct sockaddr_in6)) {
+		
+		/* Get mask .*/
+		short chunk = a1->prefix;
+		
+		/* Compare address by 32bit chunks. */
+		uint32_t* a1p = (uint32_t*)&a1->addr6.sin6_addr;
+		uint32_t* a2p = (uint32_t*)&a2->addr6.sin6_addr;
+		
+		/* Mask 0 = 0 bits to compare from LO->HO (in big-endian).
+		 * Mask 128 = 128 bits to compare.
+		 */
+		while (chunk > 0) {
+			uint32_t mask = 0xffffffff;
+			if (chunk > sizeof(mask) << 3) {
+				chunk -= sizeof(mask) << 3;
+			} else {
+				mask = acl_fill_mask32(chunk);
+				chunk = 0;
+			}
 
-		/* Compare address. */
-		ldiff = memcmp(&a1->addr6.sin6_addr,
-		               &a2->addr6.sin6_addr,
-		               sizeof(struct in6_addr));
-		if (ldiff < 0) {
-			return -1;
-		} 
-		if (ldiff > 0) {
-			return 1;
+			ldiff = (*(a1p++) & mask) ^ (*(a2p++) & mask);
+			if (ldiff < 0) {
+				return -1;
+			} else if (ldiff > 0) {
+				return 1;
+			}
 		}
 
-		/* Port = 0 means any port match. */
-		if (a1->addr6.sin6_port == 0) {
-			return 0;
-		}
-
-		/* Compare ports on address match. */
-		ldiff = ntohs(a1->addr6.sin6_port) - ntohs(a2->addr6.sin6_port);
-		if (ldiff != 0) {
-			return ldiff < 0 ? -1 : 1;
-		}
 		return 0;
 	}
 #endif
@@ -111,6 +130,19 @@ acl_t *acl_new(acl_rule_t default_rule, const char *name)
 		free(acl);
 		return 0;
 	}
+	
+	/* Initialize skip list for rules with TSIG. */
+	/*! \todo This needs a better structure to make
+	 *        nodes with TSIG preferred, but for now
+	 *        it will do to sort nodes into two lists.
+	 *        (issue #1675)
+	 */
+	acl->rules_pref = skip_create_list(acl_compare);
+	if (!acl->rules_pref) {
+		skip_destroy_list(&acl->rules, 0, free);
+		free(acl);
+		return 0;
+	}
 
 	/* Initialize. */
 	memcpy(&acl->name, name, name_len);
@@ -134,7 +166,8 @@ void acl_delete(acl_t **acl)
 	*acl = 0;
 }
 
-int acl_create(acl_t *acl, const sockaddr_t* addr, acl_rule_t rule, void *val)
+int acl_create(acl_t *acl, const sockaddr_t* addr, acl_rule_t rule, void *val,
+               unsigned flags)
 {
 	if (!acl || !addr) {
 		return ACL_ERROR;
@@ -142,12 +175,21 @@ int acl_create(acl_t *acl, const sockaddr_t* addr, acl_rule_t rule, void *val)
 
 	/* Insert into skip list. */
 	acl_key_t *key = malloc(sizeof(acl_key_t));
+	if (key == NULL) {
+		return ACL_ERROR;
+	}
+	
 	memcpy(&key->addr, addr, sizeof(sockaddr_t));
 	sockaddr_update(&key->addr);
 	key->rule = rule;
 	key->val = val;
 
-	skip_insert(acl->rules, &key->addr, key, 0);
+	
+	if (flags & ACL_PREFER) {
+		skip_insert(acl->rules_pref, &key->addr, key, 0);
+	} else {
+		skip_insert(acl->rules, &key->addr, key, 0);
+	}
 
 	return ACL_ACCEPT;
 }
@@ -158,15 +200,18 @@ int acl_match(acl_t *acl, const sockaddr_t* addr, acl_key_t **key)
 		return ACL_ERROR;
 	}
 
-    acl_key_t *found = skip_find(acl->rules, (void*)addr);
+	acl_key_t *found = skip_find(acl->rules_pref, (void*)addr);
+	if (found == NULL) {
+		found = skip_find(acl->rules, (void*)addr);
+	}
 	
 	/* Set stored value if exists. */
-	if (key != 0) {
+	if (key != NULL) {
 		*key = found;
 	}
 	
 	/* Return appropriate rule. */
-	if (!found) {
+	if (found == NULL) {
 		return acl->default_rule;
 	}
 
@@ -181,6 +226,7 @@ int acl_truncate(acl_t *acl)
 
 	/* Destroy all rules. */
 	skip_destroy_list(&acl->rules, 0, free);
+	skip_destroy_list(&acl->rules_pref, 0, free);
 
 	return ACL_ACCEPT;
 }

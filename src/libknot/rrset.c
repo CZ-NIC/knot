@@ -353,8 +353,8 @@ int knot_rrset_compare_rdata(const knot_rrset_t *r1, const knot_rrset_t *r2)
 		 }
 
 		 if (rdata2 == NULL) {
-			 // RDATA from r1 not found in r2
-			 return 0;
+			// RDATA from r1 not found in r2
+			return 0;
 		 }
 
 		 // otherwise it was found, continue with next r1 RDATA
@@ -365,14 +365,16 @@ int knot_rrset_compare_rdata(const knot_rrset_t *r1, const knot_rrset_t *r2)
 	rdata2 = knot_rrset_rdata(r2);
 	while (rdata2 != NULL) {
 		 rdata1 = knot_rrset_rdata(r1);
-		 while (rdata2 != NULL && knot_rdata_compare(rdata1, rdata2,
-		                                            desc->wireformat)) {
+
+		 while (rdata2 != NULL && rdata1 != NULL
+		        && knot_rdata_compare(rdata1, rdata2,
+		                              desc->wireformat)) {
 			 rdata1 = knot_rrset_rdata_next(r1, rdata1);
 		 }
 
 		 if (rdata1 == NULL) {
-			 // RDATA from r1 not found in r2
-			 return 0;
+			// RDATA from r2 not found in r1
+			return 0;
 		 }
 
 		 // otherwise it was found, continue with next r1 RDATA
@@ -630,7 +632,7 @@ int knot_rrset_shallow_copy(const knot_rrset_t *from, knot_rrset_t **to)
 
 void knot_rrset_rotate(knot_rrset_t *rrset)
 {
-	rrset->rdata = rrset->rdata->next;
+	//rrset->rdata = rrset->rdata->next;
 }
 
 /*----------------------------------------------------------------------------*/

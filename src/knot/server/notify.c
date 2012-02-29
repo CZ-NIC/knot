@@ -317,8 +317,6 @@ int notify_process_response(knot_nameserver_t *nameserver,
 
 	/* Found waiting NOTIFY query? */
 	if (!match) {
-		log_server_notice("No pending NOTIFY query found for ID=%u\n",
-			 pkt_id);
 		pthread_mutex_unlock(&zd->lock);
 		return KNOTD_ERROR;
 	}
@@ -328,9 +326,6 @@ int notify_process_response(knot_nameserver_t *nameserver,
 
 	/* Zone was removed/reloaded. */
 	pthread_mutex_unlock(&zd->lock);
-
-	log_server_info("Received response for pending NOTIFY query ID=%u\n",
-		 pkt_id);
 
 	return KNOTD_EOK;
 }

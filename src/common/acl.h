@@ -40,10 +40,16 @@ typedef enum acl_rule_t {
 	ACL_ACCEPT =  1
 } acl_rule_t;
 
+/*! \brief ACL flags. */
+enum acl_flag_t {
+	ACL_PREFER = 1 << 0 /* Preferred node. */
+};
+
 /*! \brief ACL structure. */
 typedef struct acl_t {
 	acl_rule_t default_rule; /*!< \brief Default rule. */
 	skip_list_t *rules;      /*!< \brief Data container. */
+	skip_list_t *rules_pref; /*!< \brief Preferred data container. */
 	const char name[];       /*!< \brief ACL semantic name. */
 } acl_t;
 
@@ -81,11 +87,13 @@ void acl_delete(acl_t **acl);
  * \param addr IP address.
  * \param rule Rule for given address.
  * \param val Value to be stored for given address (or NULL).
+ * \param flags Bitfield of ACL flags.
  *
  * \retval ACL_ACCEPT if successful.
  * \retval ACP_ERROR on error.
  */
-int acl_create(acl_t *acl, const sockaddr_t* addr, acl_rule_t rule, void *val);
+int acl_create(acl_t *acl, const sockaddr_t* addr, acl_rule_t rule, void *val,
+               unsigned flags);
 
 /*!
  * \brief Match address against ACL.

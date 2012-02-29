@@ -500,8 +500,19 @@ knot_dname_t *knot_dname_parse_from_wire(const uint8_t *wire,
 
 		if (knot_wire_is_pointer(wire + p)) {
 			// pointer.
+
 //			printf("Pointer.\n");
-			p = knot_wire_get_pointer(wire + p);
+			size_t ptr = knot_wire_get_pointer(wire + p);
+
+			/* Check that the pointer points backwards
+			 * otherwise it could result in infinite loop
+			 */
+			if (ptr >= p) {
+				return NULL;
+			}
+
+			p = ptr;
+
 			if (!pointer_used) {
 				*pos += 2;
 				pointer_used = 1;
@@ -817,9 +828,9 @@ knot_dname_t *knot_dname_left_chop(const knot_dname_t *dname)
 void knot_dname_left_chop_no_copy(knot_dname_t *dname)
 {
 	// copy the name
-	short first_label_length = dname->labels[1];
-
 	if (dname->label_count > 1) {
+		short first_label_length = dname->labels[1];
+
 		memmove(dname->name, &dname->name[dname->labels[1]],
 			dname->size - first_label_length);
 		// adjust labels

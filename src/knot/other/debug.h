@@ -29,19 +29,28 @@
 
 #include "config.h" /* autoconf generated */
 
+#ifdef KNOTD_SERVER_DEBUG
+  #define KNOTD_THREADS_DEBUG
+  #define KNOTD_JOURNAL_DEBUG
+  #define KNOTD_NET_DEBUG
+#endif
+
+#ifdef KNOT_ZONES_DEBUG
+  #define KNOTD_ZONES_DEBUG
+#endif
+
+#ifdef KNOT_XFR_DEBUG
+  #define KNOTD_XFR_DEBUG
+  #define KNOTD_NOTIFY_DEBUG
+#endif
+
+#ifdef KNOT_COMPILER_DEBUG
+  #define KNOTD_ZDUMP_DEBUG
+  #define KNOTD_ZLOAD_DEBUG
+#endif
+
 #include "knot/other/log.h"
 #include "common/print.h"
-
-/*! \todo Set these during configure as well (issue #1585). */
-//#define KNOTD_SERVER_DEBUG
-//#define KNOTD_THREADS_DEBUG
-//#define KNOTD_JOURNAL_DEBUG
-//#define KNOTD_NET_DEBUG
-//#define KNOTD_ZONES_DEBUG
-//#define KNOTD_XFR_DEBUG
-//#define KNOTD_NOTIFY_DEBUG
-//#define KNOTD_ZDUMP_DEBUG
-//#define KNOTD_ZLOAD_DEBUG
 
 /******************************************************************************/
 
@@ -363,9 +372,11 @@
 #ifdef DEBUG_ENABLE_DETAILS
 #define dbg_zdump_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
 #define dbg_zdump_hex_detail(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_zdump_exec_detail(cmds) do { cmds } while (0)
 #else
 #define dbg_zdump_detail(msg...)
 #define dbg_zdump_hex_detail(data, len)
+#define dbg_zdump_exec_detail(cmds)
 #endif
 
 /* No messages. */
@@ -376,6 +387,7 @@
 #define dbg_zdump_hex_verb(data, len)
 #define dbg_zdump_detail(msg...)
 #define dbg_zdump_hex_detail(data, len)
+#define dbg_zdump_exec_detail(cmds)
 #endif
 
 /******************************************************************************/
@@ -404,9 +416,11 @@
 #ifdef DEBUG_ENABLE_DETAILS
 #define dbg_zload_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
 #define dbg_zload_hex_detail(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_zload_exec_detail(cmds) do { cmds } while (0)
 #else
 #define dbg_zload_detail(msg...)
 #define dbg_zload_hex_detail(data, len)
+#define dbg_zload_exec_detail(cmds)
 #endif
 
 /* No messages. */
@@ -417,6 +431,7 @@
 #define dbg_zload_hex_verb(data, len)
 #define dbg_zload_detail(msg...)
 #define dbg_zload_hex_detail(data, len)
+#define dbg_zload_exec_detail(cmds)
 #endif
 
 /******************************************************************************/

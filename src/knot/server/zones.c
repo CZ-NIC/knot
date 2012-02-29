@@ -15,6 +15,7 @@
  */
 
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "common/lists.h"
 #include "common/prng.h"
@@ -41,6 +42,9 @@
 
 static const size_t XFRIN_CHANGESET_BINARY_SIZE = 100;
 static const size_t XFRIN_CHANGESET_BINARY_STEP = 100;
+
+/* Forward declarations. */
+static int zones_dump_zone_text(knot_zone_contents_t *zone,  const char *zf);
 
 /*----------------------------------------------------------------------------*/
 
@@ -194,6 +198,7 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 	if (contents) {
 		soa_rrs = knot_node_rrset(knot_zone_contents_apex(contents),
 					  KNOT_RRTYPE_SOA);
+		assert(soa_rrs != NULL);
 		soa_rr = knot_rrset_rdata(soa_rrs);
 		int64_t serial = knot_rdata_soa_serial(soa_rr);
 		zd->zonefile_serial = (uint32_t)serial;
@@ -232,6 +237,7 @@ static uint32_t zones_soa_timer(knot_zone_t *zone,
 
 	soa_rrs = knot_node_rrset(knot_zone_contents_apex(zc),
 	                            KNOT_RRTYPE_SOA);
+	assert(soa_rrs != NULL);
 	soa_rr = knot_rrset_rdata(soa_rrs);
 	ret = rr_func(soa_rr);
 
@@ -542,7 +548,7 @@ static int zones_notify_send(event_t *e)
 	/* Check number of retries. */
 	if (ev->retries < 0) {
 		log_server_notice("NOTIFY query maximum number of retries "
-				  "for zone %s exceeded.\n",
+				  "for zone '%s' exceeded.\n",
 				  zd->conf->name);
 		pthread_mutex_lock(&zd->lock);
 		rem_node(&ev->n);
@@ -593,14 +599,7 @@ static int zones_notify_send(event_t *e)
 
 		/* Store ID of the awaited response. */
 		if (ret == buflen) {
-			char r_addr[SOCKADDR_STRLEN];
-			sockaddr_tostr(&ev->addr, r_addr, sizeof(r_addr));
-			int r_port = sockaddr_portnum(&ev->addr);
 			ev->msgid = knot_wire_get_id(qbuf);
-			log_server_info("Issued '%s' NOTIFY query to %s:%d, "
-					"expecting  response ID=%d\n",
-					zd->conf->name, r_addr, r_port,
-					ev->msgid);
 			
 		}
 
@@ -611,6 +610,7 @@ static int zones_notify_send(event_t *e)
 		req.type = XFR_TYPE_NOTIFY;
 		req.zone = zone;
 		memcpy(&req.addr, &ev->addr, sizeof(sockaddr_t));
+		memcpy(&req.saddr, &ev->saddr, sizeof(sockaddr_t));
 		xfr_request(zd->server->xfr_h, &req);
 
 		/* Unlock RCU */
@@ -710,11 +710,20 @@ static int zones_set_acl(acl_t **acl, list* acl_list)
 		sockaddr_t addr;
 		conf_iface_t *cfg_if = r->remote;
 		int ret = sockaddr_set(&addr, cfg_if->family,
-				       cfg_if->address, 0);
+		                       cfg_if->address, 0);
+		sockaddr_setprefix(&addr, cfg_if->prefix);
 
 		/* Load rule. */
 		if (ret > 0) {
-			acl_create(*acl, &addr, ACL_ACCEPT, cfg_if);
+			/*! \todo Correct search for the longest prefix match.
+			 *        This just favorizes remotes with TSIG.
+			 *        (issue #1675)
+			 */
+			unsigned flags = 0;
+			if (cfg_if->key != NULL) {
+				flags = ACL_PREFER;
+			}
+			acl_create(*acl, &addr, ACL_ACCEPT, cfg_if, flags);
 		}
 	}
 
@@ -1153,6 +1162,7 @@ static int zones_journal_apply(knot_zone_t *zone)
 	const knot_rdata_t *soa_rr = 0;
 	soa_rrs = knot_node_rrset(knot_zone_contents_apex(contents),
 	                            KNOT_RRTYPE_SOA);
+	assert(soa_rrs != NULL);
 	soa_rr = knot_rrset_rdata(soa_rrs);
 	int64_t serial_ret = knot_rdata_soa_serial(soa_rr);
 	if (serial_ret < 0) {
@@ -1173,13 +1183,39 @@ static int zones_journal_apply(knot_zone_t *zone)
 			log_server_info("Applying '%zu' changesets from journal "
 			                "to zone '%s'.\n",
 			                chsets->count, zd->conf->name);
-			int apply_ret = xfrin_apply_changesets(zone, chsets);
+			knot_zone_contents_t *contents = NULL;
+			int apply_ret = xfrin_apply_changesets(zone, chsets,
+			                                       &contents);
 			if (apply_ret != KNOT_EOK) {
-				log_server_error("Failed to apply changesets to "
-				                 "'%s' - %s\n",
+				log_server_error("Failed to apply changesets to"
+				                 "'%s' - Apply failed: %s\n",
 				                 zd->conf->name,
 				                 knot_strerror(apply_ret));
 				ret = KNOTD_ERROR;
+
+				// Cleanup old and new contents
+				xfrin_rollback_update(zone->contents,
+				                      &contents,
+				                      &chsets->changes);
+			}
+
+			/* Switch zone immediately. */
+			apply_ret = xfrin_switch_zone(zone, contents,
+			                              XFR_TYPE_IIN);
+			if (apply_ret == KNOT_EOK) {
+				xfrin_cleanup_successful_update(
+				                        &chsets->changes);
+			} else {
+				log_server_error("Failed to apply changesets to"
+				                 " '%s' - Switch failed: %s\n",
+				                 zd->conf->name,
+				                 knot_strerror(apply_ret));
+				ret = KNOTD_ERROR;
+
+				// Cleanup old and new contents
+				xfrin_rollback_update(zone->contents,
+				                      &contents,
+				                      &chsets->changes);
 			}
 		}
 	} else {
@@ -1238,9 +1274,9 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 		int reload = 0;
 
 		/* Attempt to bootstrap if db or source does not exist. */
-		struct stat s;
+		struct stat s = {};
 		int stat_ret = stat(z->file, &s);
-		if (zone != NULL) {
+		if (zone != NULL && stat_ret == 0) {
 			/* if found, check timestamp of the file against the
 			 * loaded zone
 			 */
@@ -1325,8 +1361,11 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 			dbg_zones_verb("zones: found '%s' in old database, "
 			               "copying to new.\n",
 			               z->name);
-			log_server_info("Zone '%s' is up-to-date, no need "
-			                "for reload.\n", z->name);
+			/* Only if zone file exists. */
+			if (stat_ret == 0) {
+				log_server_info("Zone '%s' is up-to-date, no need "
+				                "for reload.\n", z->name);
+			}
 			int ret = knot_zonedb_add_zone(db_new, zone);
 			if (ret != KNOT_EOK) {
 				log_server_error("Error adding known zone '%s' to"
@@ -1718,6 +1757,8 @@ int zones_zonefile_sync(knot_zone_t *zone)
 	const knot_rdata_t *soa_rr = 0;
 	soa_rrs = knot_node_rrset(knot_zone_contents_apex(contents),
 	                            KNOT_RRTYPE_SOA);
+	assert(soa_rrs != NULL);
+
 	soa_rr = knot_rrset_rdata(soa_rrs);
 	int64_t serial_ret = knot_rdata_soa_serial(soa_rr);
 	if (serial_ret < 0) {
@@ -1734,7 +1775,14 @@ int zones_zonefile_sync(knot_zone_t *zone)
 		dbg_zones("zones: syncing '%s' differences to '%s' "
 		          "(SOA serial %u)\n",
 		          zd->conf->name, zd->conf->file, serial_to);
-		zone_dump_text(contents, zd->conf->file);
+		ret = zones_dump_zone_text(contents, zd->conf->file);
+		if (ret != KNOTD_EOK) {
+			dbg_zones("zones: failed to sync '%s' to '%s'\n",
+			          zd->conf->name, zd->conf->file);
+			pthread_mutex_unlock(&zd->lock);
+			return ret;
+		}
+		
 		conf_read_unlock();
 
 		/* Update journal entries. */
@@ -1766,7 +1814,10 @@ int zones_query_check_zone(const knot_zone_t *zone, const sockaddr_t *addr,
 {
 	if (addr == NULL || tsig_key == NULL || rcode == NULL) {
 		dbg_zones_verb("Wrong arguments.\n");
-		*rcode = KNOT_RCODE_SERVFAIL;
+
+		if (rcode != NULL) {
+			*rcode = KNOT_RCODE_SERVFAIL;
+		}
 		return KNOTD_EINVAL;
 	}
 
@@ -2107,7 +2158,8 @@ int zones_process_response(knot_nameserver_t *nameserver,
 
 		/* Check SOA SERIAL. */
 		int ret = xfrin_transfer_needed(contents, packet);
-		dbg_zones_verb("xfrin_transfer_needed() returned %d\n", ret);
+		dbg_zones_verb("xfrin_transfer_needed() returned %s\n",
+		               knot_strerror(ret));
 		if (ret < 0) {
 			/* RETRY/EXPIRE timers running, do not interfere. */
 			rcu_read_unlock();
@@ -2118,8 +2170,12 @@ int zones_process_response(knot_nameserver_t *nameserver,
 		evsched_t *sched =
 			((server_t *)knot_ns_get_data(nameserver))->sched;
 		if (ret == 0) {
-			log_zone_info("SOA query for zone '%s' answered, no "
-				      "transfer needed.\n", zd->conf->name);
+			char r_addr[SOCKADDR_STRLEN];
+			int r_port = sockaddr_portnum(from);
+			sockaddr_tostr(from, r_addr, sizeof(r_addr));
+			log_zone_info("SOA query of '%s' to %s:%d: Answered, no "
+				      "transfer needed.\n",
+			              zd->conf->name, r_addr, r_port);
 			rcu_read_unlock();
 
 			/* Reinstall timers. */
@@ -2217,136 +2273,171 @@ static int zones_find_zone_for_xfr(const knot_zone_contents_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-static char *zones_find_free_filename(const char *old_name)
+static int zones_open_free_filename(const char *old_name, char **new_name)
 {
 	/* find zone name not present on the disk */
-	int free_name = 0;
 	size_t name_size = strlen(old_name);
-
-	char *new_name = malloc(name_size + 3);
-	if (new_name == NULL) {
-		return NULL;
+	*new_name = malloc(name_size + 7 + 1);
+	if (*new_name == NULL) {
+		return -1;
 	}
-	memcpy(new_name, old_name, name_size);
-	new_name[name_size] = '.';
-	new_name[name_size + 2] = 0;
-
-	dbg_zones_verb("zones: finding free name for the zone file.\n");
-	int c = 48;
-	FILE *file;
-	while (!free_name && c < 58) {
-		new_name[name_size + 1] = c;
-		dbg_zones_verb("zones: trying file name %s\n", new_name);
-		if ((file = fopen(new_name, "r")) != NULL) {
-			fclose(file);
-			++c;
-		} else {
-			free_name = 1;
-		}
+	memcpy(*new_name, old_name, name_size + 1);
+	strncat(*new_name, ".XXXXXX", 7);
+	dbg_zones_verb("zones: creating temporary zone file\n");
+	mode_t old_mode = umask(077);
+	int fd = mkstemp(*new_name);
+	(void) umask(old_mode);
+	if (fd < 0) {
+		dbg_zones_verb("zones: couldn't create temporary zone file\n");
+		free(*new_name);
+		*new_name = NULL;
 	}
-
-	if (free_name) {
-		return new_name;
-	} else {
-		free(new_name);
-		return NULL;
-	}
+	
+	return fd;
 }
 
 /*----------------------------------------------------------------------------*/
 
-static int zones_dump_xfr_zone_text(knot_zone_contents_t *zone, 
-                                    const char *zonefile)
+static int zones_dump_zone_text(knot_zone_contents_t *zone, const char *fname)
 {
-	assert(zone != NULL && zonefile != NULL);
+	assert(zone != NULL && fname != NULL);
 
-	/*! \todo new_zonefile may be created by another process,
-	 *        until the zone_dump_text is called. Needs to be opened in
-	 *        this function for writing.
-	 *        Use open() for exclusive open and fcntl() for locking.
-	 *        (issue #1587)
-	 */
-
-	char *new_zonefile = zones_find_free_filename(zonefile);
-
-	if (new_zonefile == NULL) {
+	char *new_fname = NULL;
+	int fd = zones_open_free_filename(fname, &new_fname);
+	if (fd < 0) {
 		log_zone_warning("Failed to find filename for temporary "
 		                 "storage of the transferred zone.\n");
-		return KNOTD_ERROR;	/*! \todo New error code? */
+		return KNOTD_ERROR;
 	}
-
-	int rc = zone_dump_text(zone, new_zonefile);
-
-	if (rc != KNOTD_EOK) {
+	
+	if (zone_dump_text(zone, fd) != KNOTD_EOK) {
 		log_zone_warning("Failed to save the transferred zone to '%s'.\n",
-		                 new_zonefile);
-		free(new_zonefile);
+		                 new_fname);
+		close(fd);
+		unlink(new_fname);
+		free(new_fname);
 		return KNOTD_ERROR;
 	}
 
-	/*! \todo this would also need locking as well (issue #1587) */
-	remove(zonefile); /* Don't care, as the rename will trigger the error. */
-	if (rename(new_zonefile, zonefile) != 0) {
+	/* Swap temporary zonefile and new zonefile. */
+	close(fd);
+	int ret = rename(new_fname, fname);
+	if (ret < 0 && ret != EEXIST) {
 		log_zone_warning("Failed to replace old zone file '%s'' with a new"
-		                 " zone file '%s'.\n", zonefile, new_zonefile);
-		/*! \todo with proper locking, this shouldn't happen,
-		 *        revise it later on (issue #1587)
-		 */
-		zone_dump_text(zone, zonefile);
-		free(new_zonefile);
+		                 " zone file '%s'.\n", fname, new_fname);
+		unlink(new_fname);
+		free(new_fname);
 		return KNOTD_ERROR;
 	}
 
 
-	free(new_zonefile);
+	free(new_fname);
 	return KNOTD_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
-static int ns_dump_xfr_zone_binary(knot_zone_contents_t *zone, 
+static int zones_dump_zone_binary(knot_zone_contents_t *zone, 
                                    const char *zonedb,
                                    const char *zonefile)
 {
 	assert(zone != NULL && zonedb != NULL);
 
-	/*! \todo new_zonedb may be created by another process,
-	 *        until the zone_dump_text is called. Needs to be opened in
-	 *        this function for writing.
-	 *        Use open() for exclusive open and fcntl() for locking.
-	 *        (issue #1587)
-	 */
-	char *new_zonedb = zones_find_free_filename(zonedb);
-
-	if (new_zonedb == NULL) {
+	char *new_zonedb = NULL;
+	int fd = zones_open_free_filename(zonedb, &new_zonedb);
+	if (fd < 0) {
 		dbg_zones("zones: failed to find free filename for temporary "
 		          "storage of the zone binary file '%s'\n",
 		          zonedb);
-		return KNOTD_ERROR;	/*! \todo New error code? */
-	}
-
-	/*! \todo this would also need locking as well (issue #1587) */
-	int rc = knot_zdump_dump_and_swap(zone, new_zonedb, zonedb, zonefile);
-	free(new_zonedb);
-
-	if (rc != KNOT_EOK) {
 		return KNOTD_ERROR;
 	}
 
+	crc_t crc_value;
+	if (knot_zdump_dump(zone, fd, zonefile, &crc_value) != KNOT_EOK) {
+		close(fd);
+		unlink(new_zonedb);
+		free(new_zonedb);
+		return KNOTD_ERROR;
+	}
 
-	return KNOTD_EOK;
+	/* Delete old CRC file. */
+	char *zonedb_crc = knot_zdump_crc_file(zonedb);
+	if (zonedb_crc == NULL) {
+		close(fd);
+		unlink(new_zonedb);
+		free(new_zonedb);
+		return KNOTD_ENOMEM;
+	}
+	remove(zonedb_crc);
+
+	/* New CRC file. */
+	char *new_zonedb_crc = knot_zdump_crc_file(new_zonedb);
+	if (new_zonedb_crc == NULL) {
+		dbg_zdump("Failed to create CRC file path from %s.\n",
+		          new_zonedb);
+		free(zonedb_crc);
+		close(fd);
+		unlink(new_zonedb);
+		free(new_zonedb);
+		return KNOTD_ENOMEM;
+	}
+
+	/* Write CRC value to CRC file. */
+	FILE *f_crc = fopen(new_zonedb_crc, "w");
+	if (f_crc == NULL) {
+		dbg_zdump("Cannot open CRC file %s!\n",
+		          zonedb_crc);
+		unlink(new_zonedb);
+		return KNOTD_ERROR;
+	} else {
+		fprintf(f_crc, "%lu\n",
+		        (unsigned long)crc_value);
+		fclose(f_crc);
+	}
+
+	/* Swap CRC files. */
+	int ret = KNOTD_EOK;
+	if (rename(new_zonedb_crc, zonedb_crc) < 0) {
+		dbg_zdump("Failed to replace old zonedb CRC %s "
+		          "with new CRC zone file %s.\n",
+		          zonedb_crc,
+		          new_zonedb_crc);
+		unlink(new_zonedb);
+		unlink(new_zonedb_crc);
+		ret = KNOTD_ERROR;
+	} else {
+		/* Swap zone databases. */
+		int swap_res = rename(new_zonedb, zonedb);
+		if (swap_res < 0 && swap_res != EEXIST) {
+			dbg_zdump("Failed to replace old zonedb %s "
+			          "with new zone file %s.\n",
+			          new_zonedb,
+			          zonedb);
+			ret = KNOTD_ERROR;
+			unlink(new_zonedb);
+		} else {
+
+		}
+	}
+
+	free(new_zonedb_crc);
+	free(zonedb_crc);
+	close(fd);
+	free(new_zonedb);
+
+
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
 
 int zones_save_zone(const knot_ns_xfr_t *xfr)
 {
-	if (xfr == NULL || xfr->data == NULL) {
+	if (xfr == NULL || xfr->new_contents == NULL) {
 		return KNOTD_EINVAL;
 	}
 	
-	knot_zone_contents_t *zone = 
-		(knot_zone_contents_t *)xfr->data;
+	knot_zone_contents_t *zone = xfr->new_contents;
 	
 	const char *zonefile = NULL;
 	const char *zonedb = NULL;
@@ -2359,12 +2450,12 @@ int zones_save_zone(const knot_ns_xfr_t *xfr)
 	assert(zonefile != NULL && zonedb != NULL);
 	
 	/* dump the zone into text zone file */
-	ret = zones_dump_xfr_zone_text(zone, zonefile);
+	ret = zones_dump_zone_text(zone, zonefile);
 	if (ret != KNOTD_EOK) {
 		return KNOTD_ERROR;
 	}
 	/* dump the zone into binary db file */
-	ret = ns_dump_xfr_zone_binary(zone, zonedb, zonefile);
+	ret = zones_dump_zone_binary(zone, zonedb, zonefile);
 	if (ret != KNOTD_EOK) {
 		return KNOTD_ERROR;
 	}
@@ -2447,13 +2538,15 @@ static int zones_changeset_rrset_to_binary(uint8_t **data, size_t *size,
 	size_t actual_size = 0;
 	int ret = knot_zdump_rrset_serialize(rrset, &binary, &actual_size);
 	if (ret != KNOT_EOK || binary == NULL) {
+		dbg_zones("knot_zdump_rrset_serialize() returned %s\n",
+		          knot_strerror(ret));
 		return KNOTD_ERROR;  /*! \todo Other code? */
 	}
 
 	ret = zones_check_binary_size(data, allocated, *size + actual_size);
-	if (ret != KNOT_EOK) {
+	if (ret != KNOTD_EOK) {
 		free(binary);
-		return KNOTD_ERROR;
+		return ret;
 	}
 
 	memcpy(*data + *size, binary, actual_size);
@@ -2465,7 +2558,7 @@ static int zones_changeset_rrset_to_binary(uint8_t **data, size_t *size,
 
 /*----------------------------------------------------------------------------*/
 
-static int zones_changesets_to_binary(knot_changesets_t *chgsets)
+int zones_changesets_to_binary(knot_changesets_t *chgsets)
 {
 	assert(chgsets != NULL);
 	assert(chgsets->allocated >= chgsets->count);
@@ -2484,12 +2577,12 @@ static int zones_changesets_to_binary(knot_changesets_t *chgsets)
 		/* 1) origin SOA */
 		ret = zones_changeset_rrset_to_binary(&ch->data, &ch->size,
 		                                &ch->allocated, ch->soa_from);
-		if (ret != KNOT_EOK) {
+		if (ret != KNOTD_EOK) {
 			free(ch->data);
 			ch->data = NULL;
 			dbg_zones("zones_changeset_rrset_to_binary(): %s\n",
 			          knot_strerror(ret));
-			return KNOTD_ERROR;
+			return ret;
 		}
 
 		int j;
@@ -2501,24 +2594,24 @@ static int zones_changesets_to_binary(knot_changesets_t *chgsets)
 			                                      &ch->size,
 			                                      &ch->allocated,
 			                                      ch->remove[j]);
-			if (ret != KNOT_EOK) {
+			if (ret != KNOTD_EOK) {
 				free(ch->data);
 				ch->data = NULL;
 				dbg_zones("zones_changeset_rrset_to_binary(): %s\n",
 					  knot_strerror(ret));
-				return KNOTD_ERROR;
+				return ret;
 			}
 		}
 
 		/* 3) new SOA */
 		ret = zones_changeset_rrset_to_binary(&ch->data, &ch->size,
 		                                &ch->allocated, ch->soa_to);
-		if (ret != KNOT_EOK) {
+		if (ret != KNOTD_EOK) {
 			free(ch->data);
 			ch->data = NULL;
 			dbg_zones("zones_changeset_rrset_to_binary(): %s\n",
 				  knot_strerror(ret));
-			return KNOTD_ERROR;
+			return ret;
 		}
 
 		/* 4) add RRsets */
@@ -2528,12 +2621,12 @@ static int zones_changesets_to_binary(knot_changesets_t *chgsets)
 			                                      &ch->size,
 			                                      &ch->allocated,
 			                                      ch->add[j]);
-			if (ret != KNOT_EOK) {
+			if (ret != KNOTD_EOK) {
 				free(ch->data);
 				ch->data = NULL;
 				dbg_zones("zones_changeset_rrset_to_binary(): %s\n",
 					  knot_strerror(ret));
-				return KNOTD_ERROR;
+				return ret;
 			}
 		}
 	}
@@ -2551,11 +2644,6 @@ int zones_store_changesets(knot_ns_xfr_t *xfr)
 	
 	knot_zone_t *zone = xfr->zone;
 	knot_changesets_t *src = (knot_changesets_t *)xfr->data;
-	
-	int ret = zones_changesets_to_binary(src);
-	if (ret != KNOTD_EOK) {
-		return ret;
-	}
 
 	/* Fetch zone-specific data. */
 	zonedata_t *zd = (zonedata_t *)zone->data;
@@ -2672,18 +2760,6 @@ int zones_xfr_load_changesets(knot_ns_xfr_t *xfr, uint32_t serial_from,
 	
 	xfr->data = chgsets;
 	return KNOTD_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int zones_apply_changesets(knot_ns_xfr_t *xfr) 
-{
-	if (xfr == NULL || xfr->zone == NULL || xfr->data == NULL) {
-		return KNOT_EBADARG;
-	}
-	
-	return xfrin_apply_changesets(xfr->zone,
-	                              (knot_changesets_t *)xfr->data);
 }
 
 /*----------------------------------------------------------------------------*/

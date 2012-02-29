@@ -34,33 +34,49 @@
 
 #include "config.h" /* autoconf generated */
 
+/*
+ * Debug macros
+ */
+#ifdef KNOT_ZONES_DEBUG
+  #define KNOT_ZONE_DEBUG
+  #define KNOT_ZONEDB_DEBUG
+  #define KNOT_NODE_DEBUG
+#endif
+
+#ifdef KNOT_NS_DEBUG
+  #define KNOT_EDNS_DEBUG
+  #define KNOT_NSEC3_DEBUG
+#endif
+
+/* define KNOT_PACKET_DEBUG -- in configure.ac */
+#ifdef KNOT_PACKET_DEBUG
+  #define KNOT_RESPONSE_DEBUG
+#endif
+
+#ifdef KNOT_RR_DEBUG
+  #define KNOT_RRSET_DEBUG
+  #define KNOT_RDATA_DEBUG
+#endif
+
+#ifdef KNOT_HASH_DEBUG
+  #define CUCKOO_DEBUG
+  #define CUCKOO_DEBUG_HASH
+#endif
+
+#ifdef KNOT_XFR_DEBUG
+  #define KNOT_XFRIN_DEBUG
+  #define KNOT_TSIG_DEBUG
+#endif
+
+/* KNOT_DNAME_DEBUG -- in configure.ac */
+/* #define KNOT_DDNS_DEBUG -- \todo Use this or delete. */
+
 #include "rdata.h"
 #include "rrset.h"
 #include "zone/node.h"
 #include "zone/zone.h"
 #include "util/utils.h"
 #include "common/print.h"
-
-/*
- * Debug macros
- */
-/*! \todo Set these during configure. */
-//#define KNOT_ZONE_DEBUG
-//#define KNOT_RESPONSE_DEBUG
-//#define KNOT_ZONEDB_DEBUG
-//#define KNOT_DNAME_DEBUG
-//#define KNOT_NODE_DEBUG
-//#define KNOT_PACKET_DEBUG
-//#define KNOT_EDNS_DEBUG
-//#define KNOT_RRSET_DEBUG
-//#define KNOT_RDATA_DEBUG
-//#define KNOT_NSEC3_DEBUG
-//#define CUCKOO_DEBUG
-//#define CUCKOO_DEBUG_HASH
-//#define KNOT_NS_DEBUG
-//#define KNOT_XFRIN_DEBUG
-//#define KNOT_DDNS_DEBUG
-//#define KNOT_TSIG_DEBUG
 
 /*!
  * \brief Dumps RDATA of the given type.
@@ -541,37 +557,46 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 #ifdef DEBUG_ENABLE_BRIEF
 #define dbg_ck(msg...) fprintf(stderr, msg)
 #define dbg_ck_hex(data, len)  hex_print((data), (len))
+#define dbg_ck_exec(cmds) do { cmds } while (0)
 #else
 #define dbg_ck(msg...)
 #define dbg_ck_hex(data, len)
+#define dbg_ck_exec(cmds)
 #endif
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
 #define dbg_ck_verb(msg...) fprintf(stderr, msg)
 #define dbg_ck_hex_verb(data, len)  hex_print((data), (len))
+#define dbg_ck_exec_verb(cmds) do { cmds } while (0)
 #else
 #define dbg_ck_verb(msg...)
 #define dbg_ck_hex_verb(data, len)
+#define dbg_ck_exec_verb(cmds)
 #endif
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
 #define dbg_ck_detail(msg...) fprintf(stderr, msg)
 #define dbg_ck_hex_detail(data, len)  hex_print((data), (len))
+#define dbg_ck_exec_detail(cmds) do { cmds } while (0)
 #else
 #define dbg_ck_detail(msg...)
 #define dbg_ck_hex_detail(data, len)
+#define dbg_ck_exec_detail(cmds)
 #endif
 
 /* No messages. */
 #else
 #define dbg_ck(msg...)
 #define dbg_ck_hex(data, len)
+#define dbg_ck_exec(cmds)
 #define dbg_ck_verb(msg...)
 #define dbg_ck_hex_verb(data, len)
+#define dbg_ck_exec_verb(cmds)
 #define dbg_ck_detail(msg...)
 #define dbg_ck_hex_detail(data, len)
+#define dbg_ck_exec_detail(cmds)
 #endif
 
 /******************************************************************************/

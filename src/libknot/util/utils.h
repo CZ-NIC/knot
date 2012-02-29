@@ -123,8 +123,9 @@ static inline uint32_t knot_wire_read_u32(const uint8_t *pos)
  */
 static inline uint64_t knot_wire_read_u48(const uint8_t *pos)
 {
-	return ((uint64_t)(pos[0]) << 40) | ((uint64_t)(pos[1]) << 32) | (pos[2] << 24) |
-	        (pos[3] << 16) | (pos[4] << 8) | pos[5];
+	return ((uint64_t)(pos[0]) << 40) | ((uint64_t)(pos[1]) << 32)
+	        | ((uint64_t)(pos[2]) << 24) | ((uint64_t)(pos[3]) << 16)
+	        | ((uint64_t)(pos[4]) << 8) | (uint64_t)pos[5];
 }
 
 /*!

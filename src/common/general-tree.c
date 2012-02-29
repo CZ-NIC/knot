@@ -19,7 +19,6 @@
 #include <string.h>
 #include <assert.h>
 #include "common/general-tree.h"
-#include "common/errors.h"
 
 MOD_TREE_DEFINE(general_tree_node, avl);
 
@@ -202,6 +201,7 @@ general_tree_t *gen_tree_shallow_copy(general_tree_t *tree)
 
 	if (gen_tree_copy_node(tree->tree->th_root,
 	                       &new_tree->tree->th_root) != 0) {
+		free(new_tree);
 		return NULL;
 	}
 

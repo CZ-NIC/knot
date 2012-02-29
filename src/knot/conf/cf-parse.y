@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <pwd.h>
 #include <grp.h>
+#include "common/sockaddr.h"
 #include "libknot/dname.h"
 #include "knot/conf/conf.h"
 #include "libknotd_la-cf-parse.h" /* Automake generated header. */
@@ -27,9 +28,13 @@ static conf_log_t *this_log = 0;
 static conf_log_map_t *this_logmap = 0;
 //#define YYERROR_VERBOSE 1
 
-static void conf_start_iface(char* ifname)
+static void conf_start_iface(void *scanner, char* ifname)
 {
    this_iface = malloc(sizeof(conf_iface_t));
+   if (this_iface == NULL) {
+      cf_error(scanner, "not enough memory when allocating interface");
+      return;
+   }
    memset(this_iface, 0, sizeof(conf_iface_t));
    this_iface->name = ifname;
    this_iface->port = CONFIG_DEFAULT_PORT;
@@ -37,9 +42,13 @@ static void conf_start_iface(char* ifname)
    ++new_config->ifaces_count;
 }
 
-static void conf_start_remote(char *remote)
+static void conf_start_remote(void *scanner, char *remote)
 {
    this_remote = malloc(sizeof(conf_iface_t));
+   if (this_remote == NULL) {
+      cf_error(scanner, "not enough memory when allocating remote");
+      return;
+   }
    memset(this_remote, 0, sizeof(conf_iface_t));
    this_remote->name = remote;
    add_tail(&new_config->remotes, &this_remote->n);
@@ -149,6 +158,69 @@ static int conf_key_add(void *scanner, knot_key_t **key, char *item)
     return 1;
 }
 
+static void conf_zone_start(void *scanner, char *name) {
+   this_zone = malloc(sizeof(conf_zone_t));
+   if (this_zone == NULL || name == NULL) {
+      cf_error(scanner, "out of memory while allocating zone config");
+      return;
+   }
+   memset(this_zone, 0, sizeof(conf_zone_t));
+   this_zone->enable_checks = -1; // Default policy applies
+   this_zone->notify_timeout = -1; // Default policy applies
+   this_zone->notify_retries = 0; // Default policy applies
+   this_zone->ixfr_fslimit = -1; // Default policy applies
+   this_zone->dbsync_timeout = -1; // Default policy applies
+
+   // Append mising dot to ensure FQDN
+   size_t nlen = strlen(name);
+   if (name[nlen - 1] != '.') {
+      this_zone->name = malloc(nlen + 2);
+      if (this_zone->name != NULL) {
+	memcpy(this_zone->name, name, nlen);
+	this_zone->name[nlen] = '.';
+	this_zone->name[nlen + 1] = '\0';
+     }
+     free(name);
+   } else {
+      this_zone->name = name; /* Already FQDN */
+   }
+
+   /* Check domain name. */
+   knot_dname_t *dn = NULL;
+   if (this_zone->name != NULL) {
+      dn = knot_dname_new_from_str(this_zone->name, nlen + 1, 0);
+   }
+   if (dn == NULL) {
+     free(this_zone->name);
+     free(this_zone);
+     this_zone = NULL;
+     cf_error(scanner, "invalid zone origin");
+   } else {
+     /* Directly discard dname, won't be needed. */
+     knot_dname_free(&dn);
+     add_tail(&new_config->zones, &this_zone->n);
+     ++new_config->zones_count;
+
+     /* Initialize ACL lists. */
+     init_list(&this_zone->acl.xfr_in);
+     init_list(&this_zone->acl.xfr_out);
+     init_list(&this_zone->acl.notify_in);
+     init_list(&this_zone->acl.notify_out);
+   }
+}
+
+static int conf_mask(void* scanner, int nval, int prefixlen) {
+    if (nval < 0 || nval > prefixlen) {
+        char buf[512];
+        snprintf(buf, sizeof(buf), "IPv%c subnet prefix '%d' is "
+                 "out of range <0,%d>",
+                 prefixlen == IPV4_PREFIXLEN ? '4' : '6', nval, prefixlen);
+        cf_error(scanner, buf);
+        return prefixlen; /* single host */
+    }
+    return nval;
+}
+
 %}
 
 %pure-parser
@@ -212,11 +284,11 @@ conf_entries:
  ;
 
 interface_start:
- | TEXT { conf_start_iface($1.t); }
- | REMOTES  { conf_start_iface(strdup($1.t)); } /* Allow strings reserved by token. */
- | LOG_SRC  { conf_start_iface(strdup($1.t)); }
- | LOG  { conf_start_iface(strdup($1.t)); }
- | LOG_LEVEL  { conf_start_iface(strdup($1.t)); }
+ | TEXT { conf_start_iface(scanner, $1.t); }
+ | REMOTES  { conf_start_iface(scanner, strdup($1.t)); } /* Allow strings reserved by token. */
+ | LOG_SRC  { conf_start_iface(scanner, strdup($1.t)); }
+ | LOG  { conf_start_iface(scanner, strdup($1.t)); }
+ | LOG_LEVEL  { conf_start_iface(scanner, strdup($1.t)); }
  ;
 
 interface:
@@ -382,10 +454,10 @@ keys:
 }
 
 remote_start:
- | TEXT { conf_start_remote($1.t); }
- | LOG_SRC  { conf_start_remote(strdup($1.t)); }
- | LOG  { conf_start_remote(strdup($1.t)); }
- | LOG_LEVEL  { conf_start_remote(strdup($1.t)); }
+ | TEXT { conf_start_remote(scanner, $1.t); }
+ | LOG_SRC  { conf_start_remote(scanner, strdup($1.t)); }
+ | LOG  { conf_start_remote(scanner, strdup($1.t)); }
+ | LOG_LEVEL  { conf_start_remote(scanner, strdup($1.t)); }
  ;
 
 remote:
@@ -402,15 +474,26 @@ remote:
        cf_error(scanner, "only one address is allowed in remote section\n");
      } else {
        this_remote->address = $3.t;
+       this_remote->prefix = IPV4_PREFIXLEN;
        this_remote->family = AF_INET;
      }
    }
+   | remote ADDRESS IPA '/' NUM ';' {
+       if (this_remote->address != 0) {
+         cf_error(scanner, "only one address is allowed in remote section\n");
+       } else {
+         this_remote->address = $3.t;
+         this_remote->family = AF_INET;
+         this_remote->prefix = conf_mask(scanner, $5.i, IPV4_PREFIXLEN);
+       }
+     }
  | remote ADDRESS IPA '@' NUM ';' {
      if (this_remote->address != 0) {
        cf_error(scanner, "only one address is allowed in remote section\n");
      } else {
        this_remote->address = $3.t;
        this_remote->family = AF_INET;
+       this_remote->prefix = IPV4_PREFIXLEN;
        if (this_remote->port != 0) {
 	 cf_error(scanner, "only one port definition is allowed in remote section\n");
        } else {
@@ -424,14 +507,25 @@ remote:
      } else {
        this_remote->address = $3.t;
        this_remote->family = AF_INET6;
+       this_remote->prefix = IPV6_PREFIXLEN;
      }
    }
+   | remote ADDRESS IPA6 '/' NUM ';' {
+       if (this_remote->address != 0) {
+         cf_error(scanner, "only one address is allowed in remote section\n");
+       } else {
+         this_remote->address = $3.t;
+         this_remote->family = AF_INET6;
+         this_remote->prefix = conf_mask(scanner, $5.i, IPV6_PREFIXLEN);
+       }
+     }
  | remote ADDRESS IPA6 '@' NUM ';' {
      if (this_remote->address != 0) {
        cf_error(scanner, "only one address is allowed in remote section\n");
      } else {
        this_remote->address = $3.t;
        this_remote->family = AF_INET6;
+       this_remote->prefix = IPV6_PREFIXLEN;
        if (this_remote->port != 0) {
 	 cf_error(scanner, "only one port definition is allowed in remote section\n");
        } else {
@@ -528,52 +622,13 @@ zone_acl:
    }
  ;
 
-zone_start: TEXT {
-   this_zone = malloc(sizeof(conf_zone_t));
-   memset(this_zone, 0, sizeof(conf_zone_t));
-   this_zone->enable_checks = -1; // Default policy applies
-   this_zone->notify_timeout = -1; // Default policy applies
-   this_zone->notify_retries = 0; // Default policy applies
-   this_zone->ixfr_fslimit = -1; // Default policy applies
-   this_zone->dbsync_timeout = -1; // Default policy applies
-
-   // Append mising dot to ensure FQDN
-   char *name = $1.t;
-   size_t nlen = strlen(name);
-   if (name[nlen - 1] != '.') {
-      this_zone->name = malloc(nlen + 2);
-      if (this_zone->name != NULL) {
-	memcpy(this_zone->name, name, nlen);
-	this_zone->name[nlen] = '.';
-	this_zone->name[nlen + 1] = '\0';
-     }
-     free(name);
-   } else {
-      this_zone->name = name; /* Already FQDN */
-   }
-
-   /* Check domain name. */
-   knot_dname_t *dn = NULL;
-   if (this_zone->name != NULL) {
-      dn = knot_dname_new_from_str(this_zone->name, nlen + 1, 0);
-   }
-   if (dn == NULL) {
-     free(this_zone->name);
-     free(this_zone);
-     cf_error(scanner, "invalid zone origin");
-   } else {
-     /* Directly discard dname, won't be needed. */
-     knot_dname_free(&dn);
-     add_tail(&new_config->zones, &this_zone->n);
-     ++new_config->zones_count;
-
-     /* Initialize ACL lists. */
-     init_list(&this_zone->acl.xfr_in);
-     init_list(&this_zone->acl.xfr_out);
-     init_list(&this_zone->acl.notify_in);
-     init_list(&this_zone->acl.notify_out);
-   }
- }
+zone_start:
+ | TEXT  { conf_zone_start(scanner, $1.t); }
+ | USER  { conf_zone_start(scanner, strdup($1.t)); }
+ | REMOTES { conf_zone_start(scanner, strdup($1.t)); }
+ | LOG_SRC { conf_zone_start(scanner, strdup($1.t)); }
+ | LOG { conf_zone_start(scanner, strdup($1.t)); }
+ | LOG_LEVEL { conf_zone_start(scanner, strdup($1.t)); }
  ;
 
 zone:

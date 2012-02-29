@@ -73,9 +73,9 @@ typedef struct zonedata_t
 		knot_key_t    tsig_key;  /*!< Master TSIG key. */
 		struct event_t *timer;   /*!< Timer for REFRESH/RETRY. */
 		struct event_t *expire;  /*!< Timer for REFRESH. */
-		int next_id;             /*!< ID of the next awaited SOA resp.*/
 		pthread_mutex_t lock;    /*!< Pending XFR/IN lock. */
 		void           *wrkr;    /*!< Pending XFR/IN worker. */
+		int next_id;             /*!< ID of the next awaited SOA resp.*/
 		uint32_t bootstrap_retry;/*!< AXFR/IN bootstrap retry. */
 	} xfr_in;
 
@@ -213,6 +213,8 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data);
  */
 int zones_store_changesets(knot_ns_xfr_t *xfr);
 
+int zones_changesets_to_binary(knot_changesets_t *chgsets);
+
 /*!
  * \brief Load changesets from journal.
  *
@@ -235,20 +237,6 @@ int zones_store_changesets(knot_ns_xfr_t *xfr);
  */
 int zones_xfr_load_changesets(knot_ns_xfr_t *xfr, uint32_t serial_from,
                               uint32_t serial_to);
-
-/*!
- * \brief Apply changesets to zone.
- *
- * Applies a list of XFR-style changesets to the given zone. Also checks if the
- * changesets are applicable (i.e. zone is right and has the right serial).
- *
- * \param zone Zone to which the changesets should be applied.
- * \param chsets Changesets to be applied to the zone.
- *
- * \retval KNOTD_EOK
- * \retval KNOTD_EINVAL
- */
-int zones_apply_changesets(knot_ns_xfr_t *xfr);
 
 /*!
  * \brief Update zone timers.

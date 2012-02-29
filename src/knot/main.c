@@ -55,7 +55,6 @@ void interrupt_handle(int s)
 			sig_req_stop = 1;
 			sig_stopping = 1;
 		} else {
-			log_server_notice("OK! Exiting immediately.\n");
 			exit(1);
 		}
 	}
@@ -234,6 +233,7 @@ int main(int argc, char **argv)
 			log_server_error("Failed to parse configuration '%s'.\n",
 				config_fn);
 		}
+		server_wait(server);
 		server_destroy(&server);
 		free(config_fn);
 		return 1;

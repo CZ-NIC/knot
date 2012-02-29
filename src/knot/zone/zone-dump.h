@@ -44,15 +44,17 @@ enum {
  * \brief Dumps given zone to binary file.
  *
  * \param zone Zone to be saved.
- * \param filename Name of file to be created.
+ * \param fd File descriptor to be written to.
  * \param do_checks Set to 1 to enable checking the zone for semantic errors.
  * \param sfilename Source filename of the text zone file.
+ * \param crc Returns a calculated CRC.
  *
  * \retval KNOT_EOK on success.
  * \retval KNOT_EBADARG if the file cannot be opened for writing.
  */
-int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
-                      int do_checks, const char *sfilename);
+int knot_zdump_binary(knot_zone_contents_t *zone, int fd,
+                      int do_checks, const char *sfilename,
+                      crc_t *crc);
 
 /*!
  * \brief Serializes RRSet into binary stream. Expects NULL pointer, memory
@@ -95,10 +97,14 @@ int knot_zdump_rrset_serialize(const knot_rrset_t *rrset, uint8_t **stream,
  */
 int zone_is_secure(knot_zone_contents_t *zone);
 
-int knot_zdump_dump_and_swap(knot_zone_contents_t *zone,
-                             const char *temp_zonedb,
-                             const char *destination_zonedb,
-                             const char *sfilename);
+/*! \todo Document me (issue #1586). */
+int knot_zdump_dump(knot_zone_contents_t *zone, int fd, const char *sfilename,
+                    crc_t *crc);
+
+/*!
+ * \brief Return name of the CRC file associated with filename.
+ */
+char *knot_zdump_crc_file(const char* filename);
 
 #endif /* _KNOT_ZONEDUMP_H_ */
 

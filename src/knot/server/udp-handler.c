@@ -202,7 +202,13 @@ static inline int udp_master_recvfrom(dthread_t *thread, stat_t *thread_stat)
 		return KNOTD_ENOTSUP;
 	}
 	
-	int sock = dup(h->fd);
+	int sock = h->fd;
+	int sock_dup = dup(h->fd);
+	if (sock_dup < 0) {
+		log_server_warning("Couldn't duplicate UDP socket for listening.\n");
+	} else {
+		sock = sock_dup;
+	}
 	uint8_t qbuf[SOCKET_MTU_SZ];
 
 	/* Loop until all data is read. */
@@ -254,7 +260,9 @@ static inline int udp_master_recvfrom(dthread_t *thread, stat_t *thread_stat)
 	}
 
 	/* Free allocd resources. */
-	close(sock);
+	if (sock_dup >= 0) {
+		close(sock_dup);
+	}
 
 	return KNOTD_EOK;
 }

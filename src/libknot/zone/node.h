@@ -50,8 +50,6 @@ struct knot_node {
 	/*! \brief Type-ordered list of RRSets belonging to this node. */
 	general_tree_t *rrset_tree;
 
-	unsigned short rrset_count; /*!< Number of RRSets stored in the node. */
-
 	/*! \brief Wildcard node being the direct descendant of this node. */
 	struct knot_node *wildcard_child;
 
@@ -76,6 +74,23 @@ struct knot_node {
 
 	struct knot_node *nsec3_referer;
 
+	struct knot_zone *zone;
+
+	struct knot_node *new_node;
+	
+	unsigned int children;
+
+	unsigned short rrset_count; /*!< Number of RRSets stored in the node. */
+
+	/*!
+	 * \brief Generation of node to be used.
+	 *
+	 * If set to 0, the old node will be used. Otherwise new nodes will
+	 * be used. This applies when getting some referenced node.
+	 
+	 */
+//	short **generation;
+
 	/*!
 	 * \brief Various flags.
 	 *
@@ -86,21 +101,6 @@ struct knot_node {
 	 *   0x40 - node is new, should not be used while zone is old
 	 */
 	uint8_t flags;
-
-	struct knot_node *new_node;
-	
-	unsigned int children;
-	
-	/*!
-	 * \brief Generation of node to be used.
-	 *
-	 * If set to 0, the old node will be used. Otherwise new nodes will
-	 * be used. This applies when getting some referenced node.
-	 
-	 */
-//	short **generation;
-
-	struct knot_zone *zone;
 };
 
 typedef struct knot_node knot_node_t;

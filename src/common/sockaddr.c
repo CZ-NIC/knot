@@ -32,10 +32,12 @@ int sockaddr_init(sockaddr_t *addr, int af)
 	switch(af) {
 	case AF_INET:
 		addr->len = sizeof(struct sockaddr_in);
+		addr->prefix = IPV4_PREFIXLEN;
 		break;
 #ifndef DISABLE_IPV6
 	case AF_INET6:
 		addr->len = sizeof(struct sockaddr_in6);
+		addr->prefix = IPV6_PREFIXLEN;
 		break;
 #endif
 	default:
@@ -86,6 +88,7 @@ int sockaddr_set(sockaddr_t *dst, int family, const char* addr, int port)
 		dst->addr4.sin_port = htons(port);
 		paddr = &dst->addr4.sin_addr;
 		dst->addr4.sin_addr.s_addr = INADDR_ANY;
+		dst->prefix = IPV4_PREFIXLEN;
 		break;
 #ifndef DISABLE_IPV6
 	case AF_INET6:
@@ -94,6 +97,7 @@ int sockaddr_set(sockaddr_t *dst, int family, const char* addr, int port)
 		paddr = &dst->addr6.sin6_addr;
 		memcpy(&dst->addr6.sin6_addr,
 		       &in6addr_any, sizeof(in6addr_any));
+		dst->prefix = IPV6_PREFIXLEN;
 		break;
 #endif
 	default:
@@ -102,6 +106,15 @@ int sockaddr_set(sockaddr_t *dst, int family, const char* addr, int port)
 
 	/* Convert address. */
 	return inet_pton(family, addr, paddr);
+}
+
+int sockaddr_setprefix(sockaddr_t *dst, int prefix)
+{
+	if (dst == NULL || prefix < 0) {
+		return -1;
+	}
+	
+	return dst->prefix = prefix;
 }
 
 int sockaddr_tostr(sockaddr_t *addr, char *dst, size_t size)

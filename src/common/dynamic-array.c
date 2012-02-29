@@ -118,6 +118,7 @@ int da_initialize(da_array_t *array, unsigned count, size_t item_size)
 		array->allocated = 0;
 		array->count = 0;
 		ERR_ALLOC_FAILED;
+		pthread_mutex_unlock(&array->mtx);
 		return -1;
 	}
 

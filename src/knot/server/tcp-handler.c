@@ -31,7 +31,6 @@
 #include "common/sockaddr.h"
 #include "common/skip-list.h"
 #include "common/fdset.h"
-#include "common/prng.h"
 #include "knot/common.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/server/xfr-handler.h"

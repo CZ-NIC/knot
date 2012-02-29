@@ -271,6 +271,15 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 	int valid_cmd = 0;
 	int rc = 0;
 	if (strcmp(action, "start") == 0) {
+		// Check pidfile for w+
+		FILE* chkf = fopen(pidfile, "w+");
+		if (chkf == NULL) {
+			fprintf(stderr, "control: PID file '%s' is not writeable, refusing to start\n", pidfile);
+			return 1;
+		} else {
+			fclose(chkf);
+			chkf = NULL;
+		}
 
 		// Check PID
 		valid_cmd = 1;
@@ -573,7 +582,7 @@ int main(int argc, char **argv)
 		{"verbose",     no_argument,       0, 'v'},
 		{"interactive", no_argument,       0, 'i'},
 		{"auto",        no_argument,       0, 'a'},
-		{"jobs",        required_argument, 0, 'c'},
+		{"jobs",        required_argument, 0, 'j'},
 		{"version",     no_argument,       0, 'V'},
 		{"help",        no_argument,       0, 'h'},
 		{0, 0, 0, 0}

@@ -15,8 +15,6 @@
  */
 
 #include "util/error.h"
-#include "util/utils.h"
-
 #include "common/errors.h"
 
 const error_table_t knot_error_msgs[KNOT_ERROR_COUNT] = {

@@ -19,7 +19,6 @@
 #include <openssl/hmac.h>
 #include <openssl/evp.h>
 #include <time.h>
-#include <ctype.h>
 
 #include "common.h"
 #include "tsig.h"
@@ -573,7 +572,6 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	if (ret != KNOT_EOK) {
 		dbg_tsig("TSIG: could not create wire or sign wire: %s\n",
 		         knot_strerror(ret));
-		free(items);
 		knot_rrset_free(&tmp_tsig);
 		knot_rdata_free(&rdata);
 		
@@ -593,7 +591,6 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	if (ret != KNOT_EOK) {
 		dbg_tsig_detail("TSIG: rrset_to_wire = %s\n", knot_strerror(ret));
 		*digest_len = 0;
-		free(items);
 		knot_rrset_free(&tmp_tsig);
 		knot_rdata_free(&rdata);
 		return ret;
@@ -983,7 +980,7 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 
 	knot_rdata_item_t *items =
 		malloc(sizeof(knot_rdata_item_t) * desc->length);
-	if (!items) {
+	if (items == NULL) {
 		dbg_tsig_detail("TSIG: items = NULL\n");
 		ERR_ALLOC_FAILED;
 		knot_rrset_deep_free(&tmp_tsig, 1, 1, 1);
@@ -993,18 +990,19 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	memset(items, 0, sizeof(knot_rdata_item_t) * desc->length);
 
 	int ret = knot_rdata_set_items(rdata, items, desc->length);
+	free(items);
 	if (ret != KNOT_EOK) {
 		dbg_tsig_detail("TSIG: rdata_set_items returned %s\n",
 		                knot_strerror(ret));
 		knot_rrset_deep_free(&tmp_tsig, 1, 1, 1);
 		return ret;
 	}
-	free(items);
 
 	knot_dname_t *alg_name =
 			knot_dname_deep_copy(tsig_rdata_alg_name(tsig_rr));
 	if (alg_name == NULL) {
 		dbg_tsig_detail("TSIG: failed to copy alg name\n");
+		knot_rrset_deep_free(&tmp_tsig, 1, 1, 1);
 		return KNOT_ERROR;
 	}
 
@@ -1012,6 +1010,7 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	tsig_rdata_set_time_signed(tmp_tsig, tsig_rdata_time_signed(tsig_rr));
 	tsig_rdata_set_fudge(tmp_tsig, tsig_rdata_fudge(tsig_rr));
 	tsig_rdata_set_mac(tmp_tsig, 0, NULL);
+	knot_dname_release(alg_name); /* Already copied in tsig_rdata_set_alg_name() */
 
 	/* Set original ID */
 	tsig_rdata_set_orig_id(tmp_tsig, knot_wire_get_id(msg));
@@ -1036,6 +1035,7 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	}
 
 	knot_rrset_deep_free(&tmp_tsig, 1, 1, 1);
+	knot_dname_release(key_name);
 
 	*msg_len += tsig_wire_len;
 

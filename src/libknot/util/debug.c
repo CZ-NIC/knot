@@ -22,7 +22,6 @@
 
 #include "util/utils.h"
 #include "util/debug.h"
-#include "libknot.h"
 #include "common/print.h"
 
 void knot_rdata_dump(knot_rdata_t *rdata, uint32_t type, char loaded_zone)

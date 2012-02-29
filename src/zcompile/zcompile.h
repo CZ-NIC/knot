@@ -142,6 +142,7 @@ struct zparser {
 	rrset_list_t *node_rrsigs; /*!< List of RRSIGs in current node. */
 
 	int rdata_count; /*!< Count of parsed rdata. */
+	int origin_directive; /*!< Set to 1 if $ORIGIN directive is present. */
 };
 
 typedef struct zparser zparser_type;

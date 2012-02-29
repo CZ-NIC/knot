@@ -133,6 +133,10 @@ static int journal_recover(journal_t *j)
 
 int journal_create(const char *fn, uint16_t max_nodes)
 {
+	if (fn == NULL) {
+		return KNOTD_EINVAL;
+	}
+	
 	/* File lock. */
 	struct flock fl;
 	memset(&fl, 0, sizeof(struct flock));
@@ -143,7 +147,7 @@ int journal_create(const char *fn, uint16_t max_nodes)
 	fl.l_pid = getpid();
 	
 	/* Create journal file. */
-	int fd = open(fn, O_RDWR|O_CREAT|O_TRUNC, S_IRWXU|S_IRWXG);
+	int fd = open(fn, O_RDWR|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
 	if (fd < 0) {
 		dbg_journal("journal: failed to create file '%s'\n", fn);
 		return KNOTD_EINVAL;
@@ -222,6 +226,9 @@ int journal_create(const char *fn, uint16_t max_nodes)
 journal_t* journal_open(const char *fn, size_t fslimit, uint16_t bflags)
 {
 	/*! \todo Memory mapping may be faster than stdio? (issue #964) */
+	if (fn == NULL) {
+		return NULL;
+	}
 
 	/* File lock. */
 	struct flock fl;
