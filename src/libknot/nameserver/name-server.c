@@ -2699,6 +2699,47 @@ knot_nameserver_t *knot_ns_create()
 
 /*----------------------------------------------------------------------------*/
 
+static int knot_ns_replace_nsid(knot_opt_rr_t *opt_rr, const char *nsid,
+                                size_t len)
+{
+	assert(opt_rr != NULL);
+	if (nsid == NULL || len == 0) {
+		return KNOT_EOK;
+	}
+
+	int found = 0;
+	int i = 0;
+
+	while (!found) {
+		if (opt_rr->options[i].code == EDNS_OPTION_NSID) {
+			found = 1;
+		}
+		++i;
+	}
+
+	if (found) {
+		uint8_t *new_data = (uint8_t *)malloc(len);
+		if (new_data == NULL) {
+			return KNOT_ENOMEM;
+		}
+
+		memcpy(new_data, nsid, len);
+		uint8_t *old = opt_rr->options[i].data;
+
+		opt_rr->options[i].data = new_data;
+		opt_rr->options[i].length = len;
+
+		free(old);
+
+		return KNOT_EOK;
+	} else {
+		return knot_edns_add_option(opt_rr, EDNS_OPTION_NSID,
+		                            len, (const uint8_t *)nsid);
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
 void knot_ns_set_nsid(knot_nameserver_t *nameserver, const char *nsid, size_t len)
 {
 	if (nameserver == NULL) {
@@ -2711,8 +2752,10 @@ void knot_ns_set_nsid(knot_nameserver_t *nameserver, const char *nsid, size_t le
 		return;
 	}
 	
-	int ret = knot_edns_add_option(nameserver->opt_rr, EDNS_OPTION_NSID,
-	                               len, (const uint8_t *)nsid);
+	int ret = knot_ns_replace_nsid(nameserver->opt_rr, nsid, len);
+
+//	int ret = knot_edns_add_option(nameserver->opt_rr, EDNS_OPTION_NSID,
+//	                               len, (const uint8_t *)nsid);
 	if (ret != KNOT_EOK) {
 		dbg_ns("NS: set_nsid: could not add EDNS option.\n");
 		return;
