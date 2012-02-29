@@ -33,6 +33,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <sys/stat.h>
 
 #include "common/base32hex.h"
 #include "zcompile/zcompile.h"
