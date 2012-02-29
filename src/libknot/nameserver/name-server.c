@@ -3347,12 +3347,10 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		//knot_zone_contents_dump(zone, 0);
 
 		// check zone integrity
-#ifdef KNOT_XFRIN_DEBUG
-#ifdef DEBUG_ENABLE_BRIEF
+dbg_xfrin_exec(
 		int errs = knot_zone_contents_integrity_check(zone);
-		dbg_ns("Zone integrity check: %d errors.\n", errs);
-#endif
-#endif
+		dbg_xfrin("Zone integrity check: %d errors.\n", errs);
+);
 	}
 	
 	/*!
