@@ -67,9 +67,11 @@ static inline int write_to_file_crc(const void *src,
 		                   size * n);
 	}
 
-	/* \todo the rc return is certainly wrong as it is used in the caller function */
-	/* It was meant differtely, caller function does not care how many bytes had been written, it just cares about,
-	 * success/fail (not that it is checked anyway). */
+	/* 
+	 * It was meant differtely, caller function does not 
+	 * care how many bytes had been written, it just cares about
+	 * success/fail (not that it is checked anyway) (#1684).
+ 	 */
 	return rc == n;
 
 }
@@ -123,10 +125,10 @@ static void knot_labels_dump_binary(const knot_dname_t *dname, int fd,
 {
 	dbg_zdump("label count: %d\n", dname->label_count);
 	uint16_t label_count = dname->label_count;
-	/* \todo check the return value */
+	/*!< \todo #1684 check the return value */
 	write_wrapper(&label_count, sizeof(label_count), 1, fd, stream,
 	               stream_size, crc);
-	/* \todo check the return value */
+	/*!< \todo #1684 check the return value */
 	write_wrapper(dname->labels, sizeof(uint8_t), dname->label_count, fd,
 	               stream, stream_size, crc);
 }
@@ -142,23 +144,23 @@ static void knot_dname_dump_binary(const knot_dname_t *dname, int fd,
                                    crc_t *crc)
 {
 	uint32_t dname_size = dname->size;
-	/* \todo check the return value */
+	/*!< \todo #1684 check the return value */
 	write_wrapper(&dname_size, sizeof(dname_size), 1, fd, stream,
 	               stream_size, crc);
-	/* \todo check the return value */
+	/*!< \todo #1684 check the return value */
 	write_wrapper(dname->name, sizeof(uint8_t), dname->size, fd,
 	               stream, stream_size, crc);
 	dbg_zdump("dname size: %d\n", dname->size);
 	knot_labels_dump_binary(dname, fd, stream, stream_size, crc);
 }
 
-/*!< \todo some global variable indicating error! */
+/*!< \todo #1684 some global variable indicating error! */
 static void dump_dname_with_id(const knot_dname_t *dname, int fd,
                                uint8_t **stream, size_t *stream_size,
                                crc_t *crc)
 {
 	uint32_t id = dname->id;
-	/* \todo check the return value */
+	/*!< \todo #1684 check the return value */
 	write_wrapper(&id, sizeof(id), 1, fd, stream, stream_size, crc);
 	knot_dname_dump_binary(dname, fd, stream, stream_size, crc);
 /*	if (!write_wrapper_safe(&dname->id, sizeof(dname->id), 1, f)) {
@@ -189,7 +191,7 @@ static void knot_rdata_dump_binary(knot_rdata_t *rdata,
 	}
 
 	/* Write rdata count. */
-	/* \todo check the return value */
+	/*!< \todo #1684 check the return value */
 	write_wrapper(&(rdata->count),
 	               sizeof(rdata->count), 1, fd, stream, stream_size, crc);
 
@@ -217,7 +219,7 @@ static void knot_rdata_dump_binary(knot_rdata_t *rdata,
 				assert(rdata->items[i].dname->id != 0);
 
 				uint32_t id = rdata->items[i].dname->id;
-				/* \todo check the return value */
+				/*!< \todo #1684 check the return value */
 				write_wrapper(&id,
 				       sizeof(id), 1, fd, stream, stream_size,
 				               crc);
@@ -230,28 +232,28 @@ static void knot_rdata_dump_binary(knot_rdata_t *rdata,
 
 			/* Write in the zone bit */
 			if (rdata->items[i].dname->node != NULL && !wildcard) {
-				/* \todo check the return value */
+				/*!< \todo #1684 check the return value */
 				write_wrapper((uint8_t *)"\1",
 				       sizeof(uint8_t), 1, fd, stream,
 				               stream_size, crc);
 			} else {
-				/* \todo check the return value */
+				/*!< \todo #1684 check the return value */
 				write_wrapper((uint8_t *)"\0", sizeof(uint8_t),
 				       1, fd, stream, stream_size, crc);
 			}
 
 			if (use_ids && wildcard) {
-				/* \todo check the return value */
+				/*!< \todo #1684 check the return value */
 				write_wrapper((uint8_t *)"\1",
 				       sizeof(uint8_t), 1, fd, stream,
 				       stream_size, crc);
 				uint32_t wildcard_id = wildcard->id;
-				/* \todo check the return value */
+				/*!< \todo #1684 check the return value */
 				write_wrapper(&wildcard_id,
 				       sizeof(wildcard_id), 1, fd, stream,
 				               stream_size, crc);
 			} else {
-				/* \todo check the return value */
+				/*!< \todo #1684 check the return value */
 				write_wrapper((uint8_t *)"\0", sizeof(uint8_t),
 				       1, fd, stream,
 				       stream_size, crc);
@@ -261,7 +263,7 @@ static void knot_rdata_dump_binary(knot_rdata_t *rdata,
 			dbg_zdump("Writing raw data. Item nr.: %d\n",
 			                 i);
 			assert(rdata->items[i].raw_data != NULL);
-			/* \todo check the return value */
+			/*!< \todo #1684 check the return value */
 			write_wrapper(rdata->items[i].raw_data,
 			               sizeof(uint8_t),
 			       rdata->items[i].raw_data[0] + 2, fd,
@@ -292,7 +294,7 @@ dbg_zdump_exec_detail(
 );
 	assert(rrsig->type == KNOT_RRTYPE_RRSIG);
 	assert(rrsig->rdata);
-	/* \todo check the return value */
+	/*!< \todo #1684 check the return value */
 	write_wrapper(&rrsig->type, sizeof(rrsig->type), 1, fd,
 	               stream, stream_size, crc);
 	write_wrapper(&rrsig->rclass, sizeof(rrsig->rclass), 1, fd,
@@ -339,7 +341,7 @@ static void knot_rrset_dump_binary(const knot_rrset_t *rrset, int fd,
 		dump_dname_with_id(rrset->owner, fd, stream, stream_size, crc);
 	}
 
-	/* \todo check the return value */
+	/*!< \todo #1684 check the return value */
 	write_wrapper(&rrset->type, sizeof(rrset->type), 1, fd,
 	               stream, stream_size, crc);
 	write_wrapper(&rrset->rclass, sizeof(rrset->rclass), 1, fd,
@@ -411,7 +413,7 @@ dbg_zdump_exec_detail(
 );
 	assert(node->owner->id != 0);
 	uint32_t owner_id = node->owner->id;
-	/* \todo check the return value */
+	/*!< \todo #1684 check the return value */
 	write_wrapper(&owner_id, sizeof(owner_id), 1, fd, stream, stream_size,
 	               crc);
 
@@ -477,34 +479,19 @@ int zone_is_secure(knot_zone_contents_t *zone)
 	}
 }
 
-/*!
- * \brief Safe wrapper around fwrite.
- *
- * \param dst Destination pointer.
- * \param size Size of element to be written.
- * \param n Number of elements to be written.
- * \param fp File to write to.
- *
- * \retval > 0 if succesfull.
- * \retval 0 if failed.
- */
-//static inline int write_wrapper_safe(const void *src,
-//                                      size_t size, size_t n, FILE *fp)
-//{
-//	int rc = write_wrapper(src, size, n, fp);
-//	if (rc != n) {
-//		fprintf(stderr, "write_wrapper: invalid write %d (expected %zu)\n", rc,
-//			n);
-//	}
-
-//	return rc == n;
-//}
-
 static void dump_dname_from_tree(knot_dname_t *dname,
 				 void *data)
 {
 	arg_t *arg = (arg_t *)data;
-	int fd = (int)arg->arg1;
+	int *fd_pointer = (int *)arg->arg1;
+	int fd = -1;
+	if (fd_pointer != NULL) {
+		fd = *fd_pointer;
+	} else {
+		dbg_zdump("zdump: dump_dname_from_tree: Bad fd.\n");
+		return;
+	}
+	
 	crc_t *crc = (crc_t*)arg->arg2;
 	dump_dname_with_id(dname, fd, NULL, NULL, crc);
 }
@@ -513,7 +500,7 @@ static int knot_dump_dname_table(const knot_dname_table_t *dname_table,
 				   int fd, crc_t *crc)
 {
 	arg_t arg;
-	arg.arg1 = (void *)fd;
+	arg.arg1 = &fd;
 	arg.arg2 = crc;
 	/* Go through the tree and dump each dname along with its ID. */
 	knot_dname_table_tree_inorder_apply(dname_table,
@@ -667,7 +654,7 @@ int knot_zdump_binary(knot_zone_contents_t *zone, int fd,
 	arguments.arg3 = zone;
 	arguments.arg7 = crc;
 
-	/* TODO is there a way how to stop the traversal upon error? */
+	/*!< \todo #1685 Stop traversal upon error. */
 	knot_zone_contents_tree_apply_inorder(zone, dump_node_to_file,
 				       (void *)&arguments);
 

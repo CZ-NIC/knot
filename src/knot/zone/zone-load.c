@@ -271,7 +271,9 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 		desc->wireformat[i] == KNOT_RDATA_WF_UNCOMPRESSED_DNAME ||
 		desc->wireformat[i] == KNOT_RDATA_WF_LITERAL_DNAME )	{
 
-			/* TODO maybe this does not need to be stored this big*/
+			/*!< \todo #1686
+			 * Refactor these variables, some might be too big.
+			 */
 
 			uint32_t dname_id = 0;
 			uint8_t has_wildcard = 0;
@@ -611,7 +613,9 @@ static knot_node_t *knot_load_node(FILE *f, knot_dname_t **id_array)
 	for (int i = 0; i < rrset_count; i++) {
 		if ((tmp_rrset = knot_load_rrset(f, id_array, 1)) == NULL) {
 			knot_node_free(&node, 0);
-			//TODO what else to free?
+			/*!< \todo #1686 
+			 * Refactor freeing, might not be enough.
+			 */
 			fprintf(stderr, "zone: Could not load rrset.\n");
 			return NULL;
 		}

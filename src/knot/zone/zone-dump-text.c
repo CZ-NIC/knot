@@ -54,7 +54,7 @@
 #include "common/skip-list.h"
 #include "common/base32hex.h"
 
-/* TODO max length of alg */
+/*!< \todo #1683 Find all maximum lengths to be used in strcnat. */
 
 enum uint_max_length {
 	U8_MAX_STR_LEN = 4, U16_MAX_STR_LEN = 6,
@@ -728,7 +728,7 @@ char *rdata_services_to_string(knot_rdata_item_t item)
 	if (proto) {
 		int i;
 
-		/*!< \todo see below, but we can trust getprotobynumber... */
+		/*!< \todo #1863 see below, but we can trust getprotobynumber... */
 		strncpy(ret, proto->p_name, strlen(proto->p_name));
 
 		strncat(ret, " ", 2);
@@ -739,7 +739,8 @@ char *rdata_services_to_string(knot_rdata_item_t item)
 					getservbyport((int)htons(i),
 						      proto->p_name);
 				if (service) {
-					/*!< \todo using strncat with strlen
+					/*!< \todo #1863 
+					 * using strncat with strlen
 					 * does not make a whole lot of sense.
 					 * At least it will crash wil
 					 * Use max length of service name!
