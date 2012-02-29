@@ -34,7 +34,7 @@ unit_api journal_tests_api = {
 /*
  *  Unit implementation.
  */
-static const int JOURNAL_TEST_COUNT = 11;
+static const int JOURNAL_TEST_COUNT = 12;
 
 /*! \brief Generate random string with given length. */
 static int randstr(char* dst, size_t len)
@@ -83,8 +83,11 @@ static int journal_tests_run(int argc, char *argv[])
 	ok(ret == KNOTD_EOK, "journal: create journal '%s'", jfilename);
 
 	/* Test 3: Open journal. */
-	journal_t *j = journal_open(jfilename, fsize, 0);
-	ok(j != 0, "journal: open");
+	journal_t *journal = journal_open(jfilename, fsize, JOURNAL_LAZY, 0);
+	ok(journal != 0, "journal: open");
+	
+	/* Retain journal. */
+	journal_t *j = journal_retain(journal);
 
 	/* Test 4: Write entry to log. */
 	const char *sample = "deadbeef";
@@ -124,17 +127,25 @@ static int journal_tests_run(int argc, char *argv[])
 	ok(ret == 0, "journal: read data integrity check 3 '%s'", _walkbuf);
 	_wbi = 0;
 	
-	/* Close journal. */
-	journal_close(j);
+	/* Test 9: Attempt to retain and release. */
+	journal_t *tmp = journal_retain(j);
+	ok(tmp == j, "journal: tested journal retaining");
+	journal_release(tmp);
 	
-	/* Recreate journal. */
+	/* Release journal. */
+	journal_release(j);
+	
+	/* Close journal. */
+	journal_close(journal);
+	
+	/* Recreate journal = NORMAL mode. */
 	remove(jfilename);
 	fsize = 8092;
 	jsize = 512;
 	ret = journal_create(jfilename, jsize);
-	j = journal_open(jfilename, fsize, 0);
+	j = journal_open(jfilename, fsize, 0, 0);
 	
-	/* Test 9: Write random data. */
+	/* Test 10: Write random data. */
 	int chk_key = 0;
 	char chk_buf[64] = {'\0'};
 	ret = 0;
@@ -155,16 +166,16 @@ static int journal_tests_run(int argc, char *argv[])
 	}
 	ok(ret == 0, "journal: sustained looped writes");
 
-	/* Test 10: Check data integrity. */
+	/* Test 11: Check data integrity. */
 	memset(tmpbuf, 0, sizeof(tmpbuf));
 	journal_read(j, chk_key, 0, tmpbuf);
 	ret = strncmp(chk_buf, tmpbuf, sizeof(chk_buf));
 	ok(ret == 0, "journal: read data integrity check");
 
-	/* Test 11: Reopen log and re-read value. */
+	/* Test 12: Reopen log and re-read value. */
 	memset(tmpbuf, 0, sizeof(tmpbuf));
 	journal_close(j);
-	j = journal_open(jfilename, fsize, 0);
+	j = journal_open(jfilename, fsize, 0, 0);
 	journal_read(j, chk_key, 0, tmpbuf);
 	ret = strncmp(chk_buf, tmpbuf, sizeof(chk_buf));
 	ok(ret == 0, "journal: read data integrity check after close/open");

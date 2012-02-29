@@ -115,7 +115,7 @@ static int zonedata_destroy(knot_zone_t *zone)
 	acl_delete(&zd->notify_out);
 
 	/* Close IXFR db. */
-	journal_close(zd->ixfr_db);
+	journal_release(zd->ixfr_db);
 
 	free(zd);
 	
@@ -165,7 +165,7 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 
 	/* Initialize IXFR database. */
 	zd->ixfr_db = journal_open(cfg->ixfr_db, cfg->ixfr_fslimit,
-	                           JOURNAL_DIRTY);
+	                           JOURNAL_LAZY, JOURNAL_DIRTY);
 	if (!zd->ixfr_db) {
 		int ret = journal_create(cfg->ixfr_db, JOURNAL_NCOUNT);
 		if (ret != KNOTD_EOK) {
@@ -173,7 +173,7 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 			                 "'%s'\n", cfg->ixfr_db);
 		}
 		zd->ixfr_db = journal_open(cfg->ixfr_db, cfg->ixfr_fslimit,
-		                           JOURNAL_DIRTY);
+		                           JOURNAL_LAZY, JOURNAL_DIRTY);
 	}
 	
 	if (zd->ixfr_db == 0) {
@@ -656,7 +656,9 @@ static int zones_zonefile_sync_ev(event_t *e)
 	}
 
 	/* Execute zonefile sync. */
-	int ret = zones_zonefile_sync(zone);
+	journal_t *j = journal_retain(zd->ixfr_db);
+	int ret = zones_zonefile_sync(zone, j);
+	journal_release(j);
 	if (ret == KNOTD_EOK) {
 		log_zone_info("Applied differences of '%s' to zonefile.\n",
 		              zd->conf->name);
@@ -1049,18 +1051,22 @@ static int zones_load_changesets(const knot_zone_t *zone,
 		dbg_zones_detail("Bad arguments: zd->ixfr_db=%p\n", zone->data);
 		return KNOTD_EINVAL;
 	}
+	
+	/* Retain journal for changeset loading. */
+	journal_t *j = journal_retain(zd->ixfr_db);
 
 	/* Read entries from starting serial until finished. */
 	uint32_t found_to = from;
 	journal_node_t *n = 0;
-	int ret = journal_fetch(zd->ixfr_db, from, ixfrdb_key_from_cmp, &n);
+	int ret = journal_fetch(j, from, ixfrdb_key_from_cmp, &n);
 	if (ret != KNOTD_EOK) {
 		dbg_xfr("xfr: failed to fetch starting changeset: %s\n",
 		        knotd_strerror(ret));
+		journal_release(j);
 		return ret;
 	}
 	
-	while (n != 0 && n != journal_end(zd->ixfr_db)) {
+	while (n != 0 && n != journal_end(j)) {
 
 		/* Check for history end. */
 		if (to == found_to) {
@@ -1077,6 +1083,7 @@ static int zones_load_changesets(const knot_zone_t *zone,
 			--dst->count;
 			dbg_xfr("xfr: failed to check changesets size: %s\n",
 			        knot_strerror(ret));
+			journal_release(j);
 			return KNOTD_ERROR;
 		}
 
@@ -1088,15 +1095,16 @@ static int zones_load_changesets(const knot_zone_t *zone,
 		chs->serial_to = ixfrdb_key_to(n->id);
 		chs->data = malloc(n->len);
 		if (!chs->data) {
+			journal_release(j);
 			return KNOTD_ENOMEM;
 		}
 
 		/* Read journal entry. */
-		ret = journal_read(zd->ixfr_db, n->id,
-				   0, (char*)chs->data);
+		ret = journal_read(j, n->id, 0, (char*)chs->data);
 		if (ret != KNOTD_EOK) {
 			dbg_xfr("xfr: failed to read data from journal\n");
 			free(chs->data);
+			journal_release(j);
 			return KNOTD_ERROR;
 		}
 
@@ -1112,6 +1120,7 @@ static int zones_load_changesets(const knot_zone_t *zone,
 	}
 	
 	dbg_xfr_detail("xfr: Journal entries read.\n");
+	journal_release(j);
 
 	/* Unpack binary data. */
 	int unpack_ret = zones_changesets_from_binary(dst);
@@ -1730,7 +1739,7 @@ int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
 	return KNOTD_EOK;
 }
 
-int zones_zonefile_sync(knot_zone_t *zone)
+int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal)
 {
 	if (!zone) {
 		return KNOTD_EINVAL;
@@ -1789,7 +1798,7 @@ int zones_zonefile_sync(knot_zone_t *zone)
 		dbg_zones_verb("zones: unmarking all dirty nodes "
 		               "in '%s' journal\n",
 		               zd->conf->name);
-		journal_walk(zd->ixfr_db, zones_ixfrdb_sync_apply);
+		journal_walk(journal, zones_ixfrdb_sync_apply);
 
 		/* Update zone file serial. */
 		dbg_zones("zones: new '%s' zonefile serial is %u\n",
@@ -2651,6 +2660,9 @@ int zones_store_changesets(knot_ns_xfr_t *xfr)
 		return KNOTD_EINVAL;
 	}
 
+	/* Retain journal for changeset loading. */
+	journal_t *j = journal_retain(zd->ixfr_db);
+	
 	/* Begin writing to journal. */
 	for (unsigned i = 0; i < src->count; ++i) {
 
@@ -2659,8 +2671,7 @@ int zones_store_changesets(knot_ns_xfr_t *xfr)
 		uint64_t k = ixfrdb_key_make(chs->serial_from, chs->serial_to);
 
 		/* Write entry. */
-		int ret = journal_write(zd->ixfr_db, k, (const char*)chs->data,
-		                        chs->size);
+		int ret = journal_write(j, k, (const char*)chs->data, chs->size);
 
 		/* Check for errors. */
 		while (ret != KNOTD_EOK) {
@@ -2681,7 +2692,7 @@ int zones_store_changesets(knot_ns_xfr_t *xfr)
 				dbg_xfr_verb("xfr: forcing zonefile SYNC "
 				             "of '%s'\n",
 				             zd->conf->name);
-				ret = zones_zonefile_sync(zone);
+				ret = zones_zonefile_sync(zone, j);
 				if (ret != KNOTD_EOK && ret != KNOTD_ERANGE) {
 					continue;
 				}
@@ -2704,11 +2715,11 @@ int zones_store_changesets(knot_ns_xfr_t *xfr)
 				}
 
 				/* Attempt to write again. */
-				ret = journal_write(zd->ixfr_db, k,
-						    (const char*)chs->data,
+				ret = journal_write(j, k, (const char*)chs->data,
 						    chs->size);
 			} else {
 				/* Other errors. */
+				journal_release(j);
 				return KNOTD_ERROR;
 			}
 		}
@@ -2718,6 +2729,9 @@ int zones_store_changesets(knot_ns_xfr_t *xfr)
 		chs->data = 0;
 		chs->size = 0;
 	}
+	
+	/* Release journal. */
+	journal_release(j);
 
 	/* Written changesets to journal. */
 	return KNOTD_EOK;
