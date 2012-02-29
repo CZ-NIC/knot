@@ -2710,7 +2710,7 @@ static int knot_ns_replace_nsid(knot_opt_rr_t *opt_rr, const char *nsid,
 	int found = 0;
 	int i = 0;
 
-	while (!found) {
+	while (i < opt_rr->option_count && !found) {
 		if (opt_rr->options[i].code == EDNS_OPTION_NSID) {
 			found = 1;
 		}
