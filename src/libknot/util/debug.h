@@ -557,37 +557,46 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 #ifdef DEBUG_ENABLE_BRIEF
 #define dbg_ck(msg...) fprintf(stderr, msg)
 #define dbg_ck_hex(data, len)  hex_print((data), (len))
+#define dbg_ck_exec(cmds) do { cmds } while (0)
 #else
 #define dbg_ck(msg...)
 #define dbg_ck_hex(data, len)
+#define dbg_ck_exec(cmds)
 #endif
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
 #define dbg_ck_verb(msg...) fprintf(stderr, msg)
 #define dbg_ck_hex_verb(data, len)  hex_print((data), (len))
+#define dbg_ck_exec_verb(cmds) do { cmds } while (0)
 #else
 #define dbg_ck_verb(msg...)
 #define dbg_ck_hex_verb(data, len)
+#define dbg_ck_exec_verb(cmds)
 #endif
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
 #define dbg_ck_detail(msg...) fprintf(stderr, msg)
 #define dbg_ck_hex_detail(data, len)  hex_print((data), (len))
+#define dbg_ck_exec_detail(cmds) do { cmds } while (0)
 #else
 #define dbg_ck_detail(msg...)
 #define dbg_ck_hex_detail(data, len)
+#define dbg_ck_exec_detail(cmds)
 #endif
 
 /* No messages. */
 #else
 #define dbg_ck(msg...)
 #define dbg_ck_hex(data, len)
+#define dbg_ck_exec(cmds)
 #define dbg_ck_verb(msg...)
 #define dbg_ck_hex_verb(data, len)
+#define dbg_ck_exec_verb(cmds)
 #define dbg_ck_detail(msg...)
 #define dbg_ck_hex_detail(data, len)
+#define dbg_ck_exec_detail(cmds)
 #endif
 
 /******************************************************************************/

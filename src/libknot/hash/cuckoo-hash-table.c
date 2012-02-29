@@ -1337,36 +1337,48 @@ int ck_deep_copy(ck_hash_table_t *from, ck_hash_table_t **to)
 		}
 
 		dbg_ck("Copying stash item: %p with item %p, ", si, si->item);
-		dbg_ck("key: %.*s\n", (int)si->item->key_length, si->item->key);
+//		dbg_ck("key: %.*s\n", (int)si->item->key_length, si->item->key);
 
-		si_new->item = (ck_hash_table_item_t *)
-		                malloc(sizeof(ck_hash_table_item_t));
+		if (si->item == NULL) {
+			si_new->item = NULL;
+			si_new->next = NULL;
+		} else {
+			si_new->item = (ck_hash_table_item_t *)
+					malloc(sizeof(ck_hash_table_item_t));
 
-		if (si_new->item == NULL) {
-			ERR_ALLOC_FAILED;
-			free(si_new);
-			ck_deep_copy_cleanup(*to, (*to)->table_count);
-			return -2;
+			if (si_new->item == NULL) {
+				ERR_ALLOC_FAILED;
+				free(si_new);
+				ck_deep_copy_cleanup(*to, (*to)->table_count);
+				return -2;
+			}
+
+			memcpy(si_new->item, si->item,
+			       sizeof(ck_hash_table_item_t));
+			si_new->next = NULL;
 		}
-
-		memcpy(si_new->item, si->item, sizeof(ck_hash_table_item_t));
 
 		*pos = si_new;
 		pos = &si_new->next;
 		si = si->next;
 
-
+dbg_ck_exec(
 		dbg_ck("Old stash item: %p with item %p, ", si,
 		       ((si == NULL) ? NULL : si->item));
-		if (si != NULL) {
-			dbg_ck("key: %.*s\n", (int)si->item->key_length, si->item->key);
+		if (si != NULL && si->item != NULL) {
+			dbg_ck("key: %.*s\n", (int)si->item->key_length,
+			       si->item->key);
 		} else {
 			dbg_ck("\n");
 		}
 		dbg_ck("New stash item: %p with item %p, ", si_new,
-		       si_new->item);
+		       (si_new) ? si_new->item : NULL);
+
+		assert(si_new != NULL);
+		assert(si_new->item != NULL);
 		dbg_ck("key: %.*s\n", (int)si_new->item->key_length,
 		       si_new->item->key);
+);
 	}
 
 	*pos = NULL;
