@@ -80,9 +80,9 @@ enum {
 enum { TEST_DOMAINS_OK = 8 };
 
 static knot_dname_t RR_DNAMES[RR_DNAMES_COUNT] =
-	{ {{}, (uint8_t *)"\7example\3com", 13, NULL}, //0's at the end are added
-	  {{}, (uint8_t *)"\3ns1\7example\3com", 17, NULL},
-	  {{}, (uint8_t *)"\3ns2\7example\3com", 17, NULL} };
+	{ {{}, (uint8_t *)"\7example\3com", NULL, NULL, 0, 13, 0}, //0's at the end are added
+	  {{}, (uint8_t *)"\3ns1\7example\3com", NULL, NULL, 0, 17, 0},
+	  {{}, (uint8_t *)"\3ns2\7example\3com", NULL, NULL, 0, 17, 0} };
 
 /*                         192.168.1.1 */
 static uint8_t address[4] = {0xc0, 0xa8, 0x01, 0x01};

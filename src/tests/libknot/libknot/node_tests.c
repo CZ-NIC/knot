@@ -44,13 +44,13 @@ struct test_node {
 };
 
 static knot_dname_t test_dnames[TEST_NODES] = {
-	{{}, (uint8_t *)"\3www\7example\3com", 17},
-	{{}, (uint8_t *)"\3www\7example\3com", 17}
+	{{}, (uint8_t *)"\3www\7example\3com", NULL, NULL, 0, 17},
+	{{}, (uint8_t *)"\3www\7example\3com", NULL, NULL, 0, 17}
 };
 
 static struct test_node	test_nodes[TEST_NODES] = {
-	{{{}, (uint8_t *)"\3com", 4}, (knot_node_t *)NULL},
-	{{{}, (uint8_t *)"\3www\7example\3com", 17}, (knot_node_t *)NULL}
+	{{{}, (uint8_t *)"\3com", NULL, NULL, 0, 4}, (knot_node_t *)NULL},
+	{{{}, (uint8_t *)"\3www\7example\3com", NULL, NULL, 0, 17}, (knot_node_t *)NULL}
 };
 
 static knot_rrset_t rrsets[RRSETS] = {

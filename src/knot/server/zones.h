@@ -73,9 +73,9 @@ typedef struct zonedata_t
 		knot_key_t    tsig_key;  /*!< Master TSIG key. */
 		struct event_t *timer;   /*!< Timer for REFRESH/RETRY. */
 		struct event_t *expire;  /*!< Timer for REFRESH. */
-		int next_id;             /*!< ID of the next awaited SOA resp.*/
 		pthread_mutex_t lock;    /*!< Pending XFR/IN lock. */
 		void           *wrkr;    /*!< Pending XFR/IN worker. */
+		int next_id;             /*!< ID of the next awaited SOA resp.*/
 		uint32_t bootstrap_retry;/*!< AXFR/IN bootstrap retry. */
 	} xfr_in;
 

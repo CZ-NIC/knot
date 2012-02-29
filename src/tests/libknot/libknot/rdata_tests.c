@@ -80,10 +80,10 @@ static uint16_t *RDATA_ITEM_PTR = (uint16_t *)0xDEADBEEF;
 enum { RDATA_ITEMS_COUNT = 7, TEST_RDATA_COUNT = 4 , RDATA_DNAMES_COUNT = 2 };
 
 static knot_dname_t RDATA_DNAMES[RDATA_DNAMES_COUNT] = {
-	{{}, (uint8_t *)"\6abcdef\7example\3com", 20,
-         (uint8_t *)"\x0\x7\xF", 3},
-	{{}, (uint8_t *)"\6abcdef\3foo\3com", 16,
-        (uint8_t *)"\x0\x7\xB", 3}
+	{{}, (uint8_t *)"\6abcdef\7example\3com", (uint8_t *)"\x0\x7\xF",
+         NULL, 0, 20, 3},
+	{{}, (uint8_t *)"\6abcdef\3foo\3com", (uint8_t *)"\x0\x7\xB", NULL, 0,
+         16, 3}
 };
 
 static knot_rdata_item_t TEST_RDATA_ITEMS[RDATA_ITEMS_COUNT] = {
