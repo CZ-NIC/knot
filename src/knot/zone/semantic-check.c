@@ -156,12 +156,11 @@ int err_handler_handle_error(err_handler_t *handler,
 	assert(handler && node);
 	if ((error != 0) &&
 	    (error > ZC_ERR_GLUE_GENERAL_ERROR)) {
-		return ZC_ERR_UNKNOWN;
+		return KNOT_EBADARG;
 	}
 
 	/*!< \todo this is so wrong! This should not even return anything. */
-	if (error == ZC_ERR_ALLOC || error == KNOT_ERROR
-	    || error == KNOT_EBADARG) {
+	if (error == ZC_ERR_ALLOC || error == 0) {
 		return KNOT_EBADARG;
 	}
 
@@ -1117,10 +1116,11 @@ static int semantic_checks_plain(knot_zone_contents_t *zone,
 			/* The NSEC3 tree can thus only have one node. */
 			struct sem_check_param param;
 			param.node_count = 0;
-			ret = knot_zone_contents_nsec3_apply_inorder(zone,
+			int ret_apply =
+				knot_zone_contents_nsec3_apply_inorder(zone,
 				count_nodes_in_tree,
 				&param);
-			if (ret != KNOT_EOK || param.node_count != 1) {
+			if (ret_apply != KNOT_EOK || param.node_count != 1) {
 				*fatal_error = 1;
 				err_handler_handle_error(handler, node,
 				                         ZC_ERR_DNAME_CHILDREN);
