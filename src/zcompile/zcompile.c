@@ -654,12 +654,12 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 						"Could not open crc file \n");
 						remove(outfile);
 						totalerrors++;
+					} else {
+						fprintf(f_crc,
+						        "%lu",
+						        (unsigned long)crc);
+						fclose(f_crc);
 					}
-				
-	
-					fprintf(f_crc,
-					        "%lu", (unsigned long)crc);
-					fclose(f_crc);
 				}
 				free(crc_path);
 			}
