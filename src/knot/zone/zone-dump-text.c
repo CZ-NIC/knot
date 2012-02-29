@@ -422,7 +422,7 @@ char *rdata_text_to_string(knot_rdata_item_t item)
 char *rdata_byte_to_string(knot_rdata_item_t item)
 {
 	assert(item.raw_data[0] == 1);
-	uint8_t data = item.raw_data[1];
+	uint8_t data = *((uint8_t *)(item.raw_data + 1));
 	char *ret = malloc(sizeof(char) * U8_MAX_STR_LEN);
 	snprintf(ret, U8_MAX_STR_LEN, "%d", (char) data);
 	return ret;
