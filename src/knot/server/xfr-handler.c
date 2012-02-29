@@ -315,7 +315,7 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 		chs = (knot_changesets_t *)data->data;
 
 		/* First, serialize changesets. */
-		int ret = zones_changesets_to_binary(chs);
+		ret = zones_changesets_to_binary(chs);
 		if (ret != KNOTD_EOK) {
 			log_zone_error("%s Failed to serialize changesets - %s"
 			               "\n", data->msgpref,
