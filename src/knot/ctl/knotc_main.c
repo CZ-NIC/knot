@@ -560,7 +560,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 		
 		/* Wait for all running tasks. */
 		while (running > 0) {
-			zctask_wait(tasks, jobs);
+			rc |= zctask_wait(tasks, jobs);
 			--running;
 		}
 		free(tasks);
