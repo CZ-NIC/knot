@@ -769,7 +769,12 @@ static int zones_load_zone(knot_zonedb_t *zonedb, const char *zone_name,
 		case KNOT_EOK:
 			/* OK */
 			break;
-		case KNOT_EFEWDATA:
+		case KNOT_EACCES:
+			log_server_error("Not enough permissions to access "
+			                 "compiled zone file '%s'.\n", zname);
+			free(zname);
+			return KNOTD_EZONEINVAL;
+		case KNOT_ENOENT:
 			log_server_error("Couldn't find compiled zone. "
 			                 "Please recompile '%s'.\n", zname);
 			free(zname);
@@ -787,6 +792,7 @@ static int zones_load_zone(knot_zonedb_t *zonedb, const char *zone_name,
 			                 filename, zname);
 			free(zname);
 			return KNOTD_EZONEINVAL;
+		case KNOT_EFEWDATA:
 		case KNOT_ERROR:
 		case KNOT_ENOMEM:
 		default:
@@ -795,13 +801,25 @@ static int zones_load_zone(knot_zonedb_t *zonedb, const char *zone_name,
 			free(zname);
 			return KNOTD_EZONEINVAL;
 		}
-
+		
+		/* Check if the compiled file still exists. */
+		int db_err = 0;
+		struct stat st;
+		if (stat(zl->source, &st) != 0) {
+			db_err = errno;
+		}
+		
 		/* Check if the db is up-to-date */
 		int src_changed = strcmp(source, zl->source) != 0;
-		if (src_changed || knot_zload_needs_update(zl)) {
-			log_server_warning("Database for zone '%s' is not "
-			                   "up-to-date. Please recompile.\n",
-			                   zname);
+		if (db_err != 0 || src_changed || knot_zload_needs_update(zl)) {
+			const char *reason = "is not up-to-date";
+			if (db_err == EACCES) {
+				reason = " failed to open, not enough permissions";
+			} else if (db_err == ENOENT) {
+				reason = "doesn't exist";
+			}
+			log_server_warning("Database for zone '%s' %s. "
+			                   "Please recompile.\n", zname, reason);
 		}
 
 		zone = knot_zload_load(zl);

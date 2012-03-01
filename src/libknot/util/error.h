@@ -48,6 +48,8 @@ enum knot_error {
 	KNOT_EFEWDATA,        /*!< Not enough data to parse. */
 	KNOT_ESPACE,          /*!< Not enough space provided. */
 	KNOT_EMALF,           /*!< Malformed data. */
+	KNOT_ENOENT,          /*!< Resource not found. */
+	KNOT_EACCES,          /*!< Permission is denied. */ 
 	KNOT_ECRYPTO,         /*!< Error in crypto library. */
 	KNOT_ENSEC3PAR,       /*!< Missing or wrong NSEC3PARAM record. */
 	KNOT_EBADZONE,        /*!< Domain name does not belong to the zone. */
@@ -66,7 +68,7 @@ enum knot_error {
 	KNOT_ECONN,           /*!< Connection reset. */
 	KNOT_EIXFRSPACE,      /*!< IXFR reply did not fit in. */
 	KNOT_ECNAME,          /*!< CNAME loop found in zone. */
-	KNOT_ERROR_COUNT = 32
+	KNOT_ERROR_COUNT = 34
 };
 
 /*! \brief Table linking error messages to error codes. */
