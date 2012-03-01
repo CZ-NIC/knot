@@ -23,6 +23,7 @@
 
 #include "knot/other/error.h"
 #include "knot/other/debug.h"
+#include "knot/zone/zone-dump.h"
 #include "journal.h"
 
 /*! \brief Infinite file size limit. */
@@ -229,10 +230,19 @@ journal_t* journal_open(const char *fn, size_t fslimit, int mode, uint16_t bflag
 	if (fn == NULL) {
 		return NULL;
 	}
+	
+	/* Open journal file for r/w (returns error if not exists). */
+	int fd = open(fn, O_RDWR);
+	if (fd < 0) {
+		dbg_journal("journal: failed to open file '%s'\n", fn);
+		return NULL;
+	}
 
 	/* Check for lazy mode. */
 	if (mode & JOURNAL_LAZY) {
 		dbg_journal("journal: opening journal %s lazily\n", fn);
+		close(fd);
+		fd = -1;
 		journal_t *j = malloc(sizeof(journal_t));
 		if (j != NULL) {
 			memset(j, 0, sizeof(journal_t));
@@ -253,13 +263,6 @@ journal_t* journal_open(const char *fn, size_t fslimit, int mode, uint16_t bflag
 	fl.l_start = 0;
 	fl.l_len = 0;
 	fl.l_pid = getpid();
-
-	/* Open journal file for r/w (returns error if not exists). */
-	int fd = open(fn, O_RDWR);
-	if (fd < 0) {
-		dbg_journal("journal: failed to open file '%s'\n", fn);
-		return NULL;
-	}
 	
 	/* Attempt to lock. */
 	dbg_journal_verb("journal: locking journal %s\n", fn);
