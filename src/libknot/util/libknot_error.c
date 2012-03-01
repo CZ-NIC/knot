@@ -28,6 +28,8 @@ const error_table_t knot_error_msgs[KNOT_ERROR_COUNT] = {
 	{KNOT_EFEWDATA, "Not enough data to parse."},
 	{KNOT_ESPACE, "Not enough space provided."},
 	{KNOT_EMALF, "Malformed data."},
+	{KNOT_ENOENT, "Resource not found."},
+	{KNOT_EACCES,  "Permission to perform requested operation is denied."},
 	{KNOT_ECRYPTO, "Error in crypto library."},
 	{KNOT_ENSEC3PAR, "Missing or wrong NSEC3PARAM record."},
 	{KNOT_EBADZONE, "Domain name does not belong to the given zone."},

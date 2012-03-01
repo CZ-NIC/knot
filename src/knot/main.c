@@ -249,7 +249,7 @@ int main(int argc, char **argv)
 	// Run server
 	int res = 0;
 	log_server_info("Starting server...\n");
-	if ((res = server_start(server)) == KNOTD_EOK) {
+	if ((server_start(server)) == KNOTD_EOK) {
 
 		// Save PID
 		int has_pid = 1;
@@ -264,7 +264,9 @@ int main(int argc, char **argv)
 		if (daemonize) {
 			log_server_info("Server started as a daemon, "
 					"PID = %ld\n", (long)getpid());
-			res = chdir("/");
+			if (chdir("/") != 0) {
+				res = 1;
+			}
 		} else {
 			log_server_info("Server started in foreground, "
 					"PID = %ld\n", (long)getpid());
@@ -339,9 +341,10 @@ int main(int argc, char **argv)
 		}
 		pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
 
-		if ((res = server_wait(server)) != KNOTD_EOK) {
+		if ((server_wait(server)) != KNOTD_EOK) {
 			log_server_error("An error occured while "
 					 "waiting for server to finish.\n");
+			res = 1;
 		} else {
 			log_server_info("Server finished.\n");
 		}
@@ -349,6 +352,7 @@ int main(int argc, char **argv)
 	} else {
 		log_server_fatal("An error occured while "
 				 "starting the server.\n");
+		res = 1;
 	}
 
 	// Stop server and close log

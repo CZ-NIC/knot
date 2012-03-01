@@ -160,6 +160,13 @@ int journal_create(const char *fn, uint16_t max_nodes)
 
 	/* Create journal header. */
 	dbg_journal("journal: creating header\n");
+	const char magic[MAGIC_LENGTH] = MAGIC_BYTES;
+	if (!sfwrite(magic, MAGIC_LENGTH, fd)) {
+		fcntl(fd, F_SETLK, &fl);
+		close(fd);
+		remove(fn);
+		return KNOTD_ERROR;
+	}
 	if (!sfwrite(&max_nodes, sizeof(uint16_t), fd)) {
 		fcntl(fd, F_SETLK, &fl);
 		close(fd);
@@ -237,23 +244,6 @@ journal_t* journal_open(const char *fn, size_t fslimit, int mode, uint16_t bflag
 		dbg_journal("journal: failed to open file '%s'\n", fn);
 		return NULL;
 	}
-
-	/* Check for lazy mode. */
-	if (mode & JOURNAL_LAZY) {
-		dbg_journal("journal: opening journal %s lazily\n", fn);
-		close(fd);
-		fd = -1;
-		journal_t *j = malloc(sizeof(journal_t));
-		if (j != NULL) {
-			memset(j, 0, sizeof(journal_t));
-			j->fd = -1;
-			j->path = strdup(fn);
-			j->fslimit = fslimit;
-			j->bflags = bflags;
-			j->refs = 1;
-		}
-		return j;
-	}
 	
 	/* File lock. */
 	struct flock fl;
@@ -281,6 +271,41 @@ journal_t* journal_open(const char *fn, size_t fslimit, int mode, uint16_t bflag
 	}
 	fl.l_type  = F_UNLCK;
 	dbg_journal("journal: locked journal %s (returned %d)\n", fn, ret);
+	
+	/* Read magic bytes. */
+	dbg_journal("journal: reading magic bytes\n");
+	const char magic_req[MAGIC_LENGTH] = MAGIC_BYTES;
+	char magic[MAGIC_LENGTH];
+	if (!sfread(magic, MAGIC_LENGTH, fd)) {
+		dbg_journal_detail("journal: cannot read magic bytes\n");
+		fcntl(fd, F_SETLK, &fl);
+		close(fd);
+		return NULL;
+	}
+	if (memcmp(magic, magic_req, MAGIC_LENGTH) != 0) {
+		log_server_warning("Journal file '%s' version is too old, "
+		                   "it will be flushed.\n", fn);
+		fcntl(fd, F_SETLK, &fl);
+		close(fd);
+		return NULL;
+	}
+	
+	/* Check for lazy mode. */
+	if (mode & JOURNAL_LAZY) {
+		dbg_journal("journal: opening journal %s lazily\n", fn);
+		journal_t *j = malloc(sizeof(journal_t));
+		if (j != NULL) {
+			memset(j, 0, sizeof(journal_t));
+			j->fd = -1;
+			j->path = strdup(fn);
+			j->fslimit = fslimit;
+			j->bflags = bflags;
+			j->refs = 1;
+		}
+		fcntl(fd, F_SETLK, &fl);
+		close(fd);
+		return j;
+	}
 
 	/* Read maximum number of entries. */
 	uint16_t max_nodes = 512;

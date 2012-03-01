@@ -742,8 +742,16 @@ int knot_zload_open(zloader_t **dst, const char *filename)
 	/* Open file for binary read. */
 	FILE *f = fopen(filename, "rb");
 	if (unlikely(!f)) {
+		int reason = errno;
 		dbg_zload("knot_zload_open: failed to open '%s'\n",
 				   filename);
+		switch (reason) {
+		case EACCES: return KNOT_EACCES; break;
+		case ENOENT: return KNOT_ENOENT; break;
+		case ENOMEM: return KNOT_ENOMEM; break;
+		default: break;
+		}
+
 		return KNOT_EFEWDATA; // No such file or directory (POSIX.1)
 	}
 
@@ -1161,18 +1169,19 @@ int knot_zload_needs_update(zloader_t *loader)
 	if (!loader) {
 		return 1;
 	}
+	
+        /* Check if the source still exists. */
+        struct stat st_src;
+        if (stat(loader->source, &st_src) != 0) {
+                return 1;
+        }
 
-	/* Check if the source still exists. */
-	struct stat st_src;
-	if (stat(loader->source, &st_src) != 0) {
-		return 1;
-	}
-
-	/* Check if the compiled file still exists. */
-	struct stat st_bin;
-	if (stat(loader->filename, &st_bin) != 0) {
-		return 1;
-	}
+        /* Check if the compiled file still exists. */
+        struct stat st_bin;
+        if (stat(loader->filename, &st_bin) != 0) {
+                return 1;
+        }
+	
 
 	/* Compare the mtime of the source and file. */
 	/*! \todo Inspect types on Linux. */
