@@ -38,7 +38,7 @@ enum {
 };
 
 /*! \brief Magic identifier: { "knot", maj_ver, min_ver, revision } */
-#define MAGIC_BYTES {'k', 'n', 'o', 't', '1', 'r', 'c'}
+#define MAGIC_BYTES {'k', 'n', 'o', 't', '1', '0', '0'}
 
 /*!
  * \brief Dumps given zone to binary file.
