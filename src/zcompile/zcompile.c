@@ -507,8 +507,8 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	/* Check that we can write to outfile. */
 	FILE *f = fopen(outfile, "wb");
 	if (f == NULL) {
-		fprintf(stderr, "Cannot write zone db to file '%s'\n",
-		       outfile);
+		fprintf(stderr, "Cannot write zone db to file '%s' (%s).\n",
+		        outfile, strerror(errno));
 		return KNOTDZCOMPILE_EINVAL;
 	}
 	fclose(f);
@@ -552,8 +552,8 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	if (!zone_open(zonefile, 3600, KNOT_CLASS_IN, origin_node, scanner,
 	               origin_from_config)) {
-		zc_error_prev_line("Cannot open '%s'\n",
-			zonefile);
+		zc_error_prev_line("Cannot open '%s' (%s).",
+		                   zonefile, strerror(errno));
 		zparser_free();
 		zp_lex_destroy(scanner);
 		knot_dname_release(origin_from_config);
