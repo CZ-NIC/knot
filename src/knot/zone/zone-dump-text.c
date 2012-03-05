@@ -652,14 +652,6 @@ char *rdata_apl_to_string(knot_rdata_item_t item)
 		int negated = length & APL_NEGATION_MASK;
 		int af = -1;
 
-		char *ret = malloc(sizeof(char) * MAX_NSEC_BIT_STR_LEN);
-		if (ret == NULL) {
-			ERR_ALLOC_FAILED;
-			return NULL;
-		}
-
-		memset(ret, 0, MAX_NSEC_BIT_STR_LEN);
-
 		length &= APL_LENGTH_MASK;
 		switch (address_family) {
 			case 1: af = AF_INET; break;
@@ -668,7 +660,7 @@ char *rdata_apl_to_string(knot_rdata_item_t item)
 
 		if (af != -1) {
 			char text_address[1024];
-			uint8_t address[length];
+			uint8_t address[128];
 			memset(address, 0, sizeof(address));
 			memcpy(address, data + 4, length);
 			ret = ret_base + strlen(ret);
