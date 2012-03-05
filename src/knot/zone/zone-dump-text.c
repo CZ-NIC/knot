@@ -637,14 +637,14 @@ char *rdata_apl_to_string(knot_rdata_item_t item)
 {
 	uint8_t *data = rdata_item_data(item);
 	size_t read = 0;
-	char *ret = malloc(sizeof(char) * MAX_NSEC_BIT_STR_LEN);
-	if (ret == NULL) {
+	char *pos = malloc(sizeof(char) * MAX_NSEC_BIT_STR_LEN);
+	if (pos == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
 	}
-	memset(ret, 0, MAX_NSEC_BIT_STR_LEN);
+	memset(pos, 0, MAX_NSEC_BIT_STR_LEN);
 	
-	char *ret_base = ret;
+	char *ret_base = pos;
 	
 	while (read < rdata_item_size(item)) {
 		uint16_t address_family = knot_wire_read_u16(data);
@@ -667,11 +667,11 @@ char *rdata_apl_to_string(knot_rdata_item_t item)
 			memcpy(address, data + 4, length);
 			/* Only valid data should be present here. */
 			assert((data + 4) - rdata_item_data(item) <= rdata_item_size(item));
-			ret = ret_base + strlen(ret);
+			pos = ret_base + strlen(ret_base);
 			if (inet_ntop(af, address,
 				      text_address,
 				      sizeof(text_address))) {
-				snprintf(ret, sizeof(text_address) +
+				snprintf(pos, sizeof(text_address) +
 					 U32_MAX_STR_LEN * 2,
 					 "%s%d:%s/%d%s",
 					 negated ? "!" : "",
