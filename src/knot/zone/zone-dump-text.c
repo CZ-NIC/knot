@@ -667,7 +667,7 @@ char *rdata_apl_to_string(knot_rdata_item_t item)
 			memcpy(address, data + 4, length);
 			/* Only valid data should be present here. */
 			assert((data + 4) - rdata_item_data(item) <= rdata_item_size(item));
-			ret = ret_base + strlen(ret) + 1;
+			ret = ret_base + strlen(ret);
 			if (inet_ntop(af, address,
 				      text_address,
 				      sizeof(text_address))) {
