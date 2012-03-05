@@ -491,24 +491,14 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode, char **tag)
 		if (key && kname && knot_dname_compare(key->name, kname) == 0) {
 			dbg_xfr("xfr: found claimed TSIG key for comparison\n");
 		} else {
-			/*! \todo These ifs are redundant (issue #1586) */
-			*rcode = KNOT_RCODE_NOTAUTH;
+			
 			/* TSIG is mandatory if configured for interface. */
-			if (key && !kname) {
-				dbg_xfr("xfr: TSIG key is mandatory for "
-				        "this interface\n");
-				ret = KNOT_TSIG_EBADKEY;
-				xfr->tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
-			}
-			
 			/* Configured, but doesn't match. */
-			if (kname) {
-				dbg_xfr("xfr: no claimed key configured, "
-				        "treating as bad key\n");
-				ret = KNOT_TSIG_EBADKEY;
-				xfr->tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
-			}
-			
+			dbg_xfr("xfr: no claimed key configured or not received"
+			        ", treating as bad key\n");
+			*rcode = KNOT_RCODE_NOTAUTH;
+			ret = KNOT_TSIG_EBADKEY;
+			xfr->tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
 			key = 0; /* Invalidate, ret already set to BADKEY */
 		}
 
