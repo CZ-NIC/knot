@@ -673,7 +673,7 @@ char *rdata_apl_to_string(knot_rdata_item_t item)
 				      sizeof(text_address))) {
 				snprintf(ret, sizeof(text_address) +
 					 U32_MAX_STR_LEN * 2,
-					 "%s%d:%s/%d",
+					 "%s%d:%s/%d ",
 					 negated ? "!" : "",
 					 (int) address_family,
 					 text_address,
