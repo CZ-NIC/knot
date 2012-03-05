@@ -33,8 +33,6 @@
 #include "knot/zone/zone-dump.h"
 #include "libknot/libknot.h"
 
-#define ERRBUF 128
-
 /*!
  * \brief Compares two time_t values.
  *
