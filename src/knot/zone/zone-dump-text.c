@@ -642,6 +642,7 @@ char *rdata_apl_to_string(knot_rdata_item_t item)
 		ERR_ALLOC_FAILED;
 		return NULL;
 	}
+	memset(ret, 0, MAX_NSEC_BIT_STR_LEN);
 	
 	char *ret_base = ret;
 	
