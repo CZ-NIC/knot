@@ -198,6 +198,7 @@ static knot_ns_xfr_t *xfr_register_task(xfrworker_t *w, knot_ns_xfr_t *req)
 
 	memcpy(t, req, sizeof(knot_ns_xfr_t));
 	sockaddr_update(&t->addr);
+	sockaddr_update(&t->saddr);
 
 	/* Update request. */
 	t->wire = 0; /* Invalidate shared buffer. */
@@ -745,6 +746,7 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 		return KNOTD_EOK;
 	} else {
 		zd->xfr_in.wrkr = w;
+		--zd->xfr_in.scheduled;
 	}
 
 	/* Connect to remote. */
@@ -948,12 +950,6 @@ static int xfr_update_msgpref(knot_ns_xfr_t *req, const char *keytag)
 		return KNOTD_EINVAL;
 	}
 
-	/* Update address. */
-	if (req->msgpref) {
-		free(req->msgpref);
-		req->msgpref = NULL;
-	}
-	
 	char r_addr[SOCKADDR_STRLEN];
 	char *r_key = NULL;
 	int r_port = sockaddr_portnum(&req->addr);
@@ -1358,8 +1354,8 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 
 	/* Handle request. */
 	knot_ns_xfr_t *task = NULL;
-	dbg_xfr_verb("xfr: processing request type '%d'\n", xfr.type);
-	dbg_xfr_verb("xfr: query ptr: %p\n", xfr.query);
+	dbg_xfr("%s processing request type '%d'\n", xfr.msgpref, xfr.type);
+	dbg_xfr_verb("%s query ptr: %p\n", xfr.msgpref, xfr.query);
 	switch(xfr.type) {
 	case XFR_TYPE_AIN:
 	case XFR_TYPE_IIN:
@@ -1384,11 +1380,6 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		/* Add timeout. */
 		fdset_set_watchdog(w->fdset, task->session, XFR_QUERY_WD);
 		log_server_info("%s Query issued.\n", xfr.msgpref);
-		ret = KNOTD_EOK;
-		break;
-	/* Socket close event. */
-	case XFR_TYPE_CLOSE:
-		xfr_free_task((knot_ns_xfr_t *)xfr.data);
 		ret = KNOTD_EOK;
 		break;
 	default:

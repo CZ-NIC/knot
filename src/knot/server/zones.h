@@ -77,6 +77,7 @@ typedef struct zonedata_t
 		void           *wrkr;    /*!< Pending XFR/IN worker. */
 		int next_id;             /*!< ID of the next awaited SOA resp.*/
 		uint32_t bootstrap_retry;/*!< AXFR/IN bootstrap retry. */
+		unsigned       scheduled;/*!< Scheduled operations. */ 
 	} xfr_in;
 
 	/*! \brief List of pending NOTIFY events. */

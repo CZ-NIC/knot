@@ -410,8 +410,18 @@ static int zones_refresh_ev(event_t *e)
 			return KNOTD_EOK;
 		}
 
+		if (zd->xfr_in.scheduled > 0) {
+			/* Already pending bootstrap (unprocessed). */
+			pthread_mutex_unlock(&zd->xfr_in.lock);
+			dbg_zones("zones: already bootstrapping '%s' (q'd)\n",
+			          zd->conf->name);
+			rcu_read_unlock();
+			return KNOTD_EOK;
+		}
+		
 		log_zone_info("Attempting to bootstrap zone %s from master\n",
 			      zd->conf->name);
+		++zd->xfr_in.scheduled;
 		pthread_mutex_unlock(&zd->xfr_in.lock);
 		
 		/* Unlock zone contents. */
@@ -2238,6 +2248,7 @@ int zones_process_response(knot_nameserver_t *nameserver,
 		assert(ret > 0);
 		
 		/* Already transferring. */
+		int xfrtype = zones_transfer_to_use(contents);
 		if (pthread_mutex_trylock(&zd->xfr_in.lock) != 0) {
 			/* Unlock zone contents. */
 			dbg_zones("zones: SOA response received, but zone is "
@@ -2246,6 +2257,7 @@ int zones_process_response(knot_nameserver_t *nameserver,
 			rcu_read_unlock();
 			return KNOTD_EOK;
 		} else {
+			++zd->xfr_in.scheduled;
 			pthread_mutex_unlock(&zd->xfr_in.lock);
 		}
 
@@ -2258,7 +2270,7 @@ int zones_process_response(knot_nameserver_t *nameserver,
 		xfr_req.send = zones_send_cb;
 
 		/* Select transfer method. */
-		xfr_req.type = zones_transfer_to_use(contents);
+		xfr_req.type = xfrtype;
 		
 		/* Select TSIG key. */
 		if (zd->xfr_in.tsig_key.name) {
@@ -2867,7 +2879,8 @@ int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
 		}
 		zd->xfr_in.timer = evsched_schedule_cb(sch, zones_refresh_ev,
 							 zone, refresh_tmr);
-		dbg_zones("zone: REFRESH set to %u\n", refresh_tmr);
+		dbg_zones("zone: REFRESH '%s' set to %u\n",
+		          cfzone->name, refresh_tmr);
 	}
 
 	/* Schedule IXFR database syncing. */
