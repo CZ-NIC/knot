@@ -40,18 +40,6 @@
 #include "libknot/util/error.h"
 #include "libknot/util/wire.h"
 
-/* Workarounds for clock_gettime() not available on some platforms. */
-#ifdef HAVE_CLOCK_GETTIME
-#define time_now(x) clock_gettime(CLOCK_MONOTONIC, (x))
-typedef struct timespec timev_t;
-#elif HAVE_GETTIMEOFDAY
-#define time_now(x) gettimeofday((x), NULL)
-typedef struct timeval timev_t;
-#else
-#error Neither clock_gettime() nor gettimeofday() found. At least one is required.
-#endif
-
-
 /* Defines */
 #define TCP_BUFFER_SIZE 65535 /*! Do not change, as it is used for maximum DNS/TCP packet size. */
 
@@ -108,7 +96,10 @@ static int tcp_reply(int fd, uint8_t *qbuf, size_t resp_len)
 }
 
 /*! \brief Sweep TCP connection. */
-static void tcp_sweep(fdset_t *set, int fd) {
+static void tcp_sweep(fdset_t *set, int fd, void* data)
+{
+	UNUSED(data);
+	
 	char r_addr[SOCKADDR_STRLEN] = { '\0' };
 	int r_port = 0;
 	struct sockaddr_storage addr;
@@ -591,7 +582,7 @@ int tcp_loop_worker(dthread_t *thread)
 		timev_t now;
 		if (time_now(&now) == 0) {
 			if (now.tv_sec >= next_sweep.tv_sec) {
-				fdset_sweep(w->fdset, &tcp_sweep);
+				fdset_sweep(w->fdset, &tcp_sweep, NULL);
 				memcpy(&next_sweep, &now, sizeof(next_sweep));
 				next_sweep.tv_sec += TCP_SWEEP_INTERVAL;
 			}

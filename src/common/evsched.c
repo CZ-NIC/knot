@@ -325,6 +325,6 @@ int evsched_cancel(evsched_t *s, event_t *ev)
 	/* Enable running events. */
 	pthread_mutex_unlock(&s->rl);
 
-	return 0;
+	return found;
 }
 

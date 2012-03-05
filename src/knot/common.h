@@ -128,6 +128,17 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 	} while (0)
 #endif
 
+/* Workarounds for clock_gettime() not available on some platforms. */
+#ifdef HAVE_CLOCK_GETTIME
+#define time_now(x) clock_gettime(CLOCK_MONOTONIC, (x))
+typedef struct timespec timev_t;
+#elif HAVE_GETTIMEOFDAY
+#define time_now(x) gettimeofday((x), NULL)
+typedef struct timeval timev_t;
+#else
+#error Neither clock_gettime() nor gettimeofday() found. At least one is required.
+#endif
+
 #endif /* _KNOTD_COMMON_H_ */
 
 /*! @} */

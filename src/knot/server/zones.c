@@ -425,9 +425,11 @@ static int zones_refresh_ev(event_t *e)
 		pthread_mutex_unlock(&zd->xfr_in.lock);
 	}
 	
-	/* Invalidate pending SOA query. */
-	event_t *soa_pending = zd->soa_pending;
-	zd->soa_pending = NULL;
+	/*! \todo Invalidate pending SOA query. */
+//	if(zd->soa_pending >= 0) {
+//		dbg_xfr("xfr: closing previous SOA qry fd=%d\n", zd->soa_pending);
+//		close(zd->soa_pending);
+//	}
 	
 	/*! \todo [TSIG] CHANGE!!! only for compatibility now. */
 	knot_ns_xfr_t xfr_req;
@@ -470,6 +472,7 @@ static int zones_refresh_ev(event_t *e)
 		/* Check result. */
 		if (ret == KNOTD_EOK) {
 			zd->xfr_in.next_id = knot_wire_get_id(qbuf);
+			zd->soa_pending = sock;
 			dbg_zones("zones: expecting SOA response "
 			          "ID=%d for '%s'\n",
 			          zd->xfr_in.next_id, zd->conf->name);
@@ -512,13 +515,7 @@ static int zones_refresh_ev(event_t *e)
 
 	/* Unlock RCU. */
 	rcu_read_unlock();
-	
-	/* Close invalidated SOA query. */
-	evsched_event_finished(e->parent);
-	if (soa_pending != NULL) {
-		/* Execute */
-		evsched_schedule(e->parent, soa_pending, 0);
-	}
+
 	return ret;
 }
 

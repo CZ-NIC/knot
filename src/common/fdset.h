@@ -224,11 +224,12 @@ int fdset_set_watchdog(fdset_t* fdset, int fd, int interval);
  *
  * \param fdset Target set.
  * \param cb Callback for sweeped descriptors.
+ * \param data Custom data for sweep operation.
  *
  * \retval number of sweeped descriptors.
  * \retval -1 on errors.
  */
-int fdset_sweep(fdset_t* fdset, void(*cb)(fdset_t* set, int fd));
+int fdset_sweep(fdset_t* fdset, void(*cb)(fdset_t*, int, void*), void *data);
 
 #endif /* _KNOTD_FDSET_H_ */
 

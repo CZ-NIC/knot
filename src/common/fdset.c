@@ -173,7 +173,7 @@ int fdset_set_watchdog(fdset_t* fdset, int fd, int interval)
 	return 0;
 }
 
-int fdset_sweep(fdset_t* fdset, void(*cb)(fdset_t*, int))
+int fdset_sweep(fdset_t* fdset, void(*cb)(fdset_t*, int, void*), void *data)
 {
 	fdset_base_t *base = (fdset_base_t*)fdset;
 	if (base == NULL || base->atimes == NULL) {
@@ -195,7 +195,7 @@ int fdset_sweep(fdset_t* fdset, void(*cb)(fdset_t*, int))
 		/* Evaluate */
 		timev_t *ts = (timev_t*)n->value;
 		if (ts->tv_sec <= now.tv_sec) {
-			cb(fdset, (int)(((ssize_t)n->key)));
+			cb(fdset, (int)(((ssize_t)n->key)), data);
 			++sweeped;
 		}
 		n = pnext;
