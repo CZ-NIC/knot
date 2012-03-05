@@ -288,6 +288,8 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 //	}
 	
 	int ret = KNOTD_EOK;
+	int apply_ret = KNOT_EOK;
+	int switch_ret = KNOT_EOK;
 	knot_changesets_t *chs = NULL;
 	
 	switch(data->type) {
@@ -300,7 +302,7 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 			               data->msgpref, knotd_strerror(ret));
 		} else {
 			dbg_xfr("xfr: %s New zone saved.\n", data->msgpref);
-			int switch_ret = knot_ns_switch_zone(w->ns, data);
+			switch_ret = knot_ns_switch_zone(w->ns, data);
 			if (switch_ret != KNOT_EOK) {
 				log_zone_error("%s Failed to switch in-memory "
 				               "zone - %s\n",  data->msgpref,
@@ -329,7 +331,7 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 		}
 
 		/* Now, try to apply the changesets to the zone. */
-		int apply_ret = xfrin_apply_changesets(data->zone, chs,
+		apply_ret = xfrin_apply_changesets(data->zone, chs,
 		                                       &data->new_contents);
 
 		if (apply_ret != KNOT_EOK) {
