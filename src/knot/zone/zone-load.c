@@ -701,8 +701,8 @@ static unsigned long calculate_crc(FILE *f)
 	size_t file_size = ftell(f);
 	fseek(f, 0L, SEEK_SET);
 
-	const size_t chunk_size = 1024;
-	/* read chunks of 1 kB */
+	const size_t chunk_size = 4096;
+	/* read chunks of 4 kB */
 	size_t read_bytes = 0;
 	/* Prealocate chunk */
 	unsigned char *chunk = malloc(sizeof(unsigned char) * chunk_size);
