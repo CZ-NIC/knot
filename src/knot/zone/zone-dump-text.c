@@ -660,9 +660,12 @@ char *rdata_apl_to_string(knot_rdata_item_t item)
 
 		if (af != -1) {
 			char text_address[1024];
+			memset(text_address, 0, sizeof(text_address));
 			uint8_t address[128];
 			memset(address, 0, sizeof(address));
 			memcpy(address, data + 4, length);
+			/* Only valid data should be present here. */
+			assert((data + 4) - rdata_item_data(item) <= rdata_item_size(item));
 			ret = ret_base + strlen(ret);
 			if (inet_ntop(af, address,
 				      text_address,
