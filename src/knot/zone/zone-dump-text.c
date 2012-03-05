@@ -667,21 +667,24 @@ char *rdata_apl_to_string(knot_rdata_item_t item)
 			memcpy(address, data + 4, length);
 			/* Only valid data should be present here. */
 			assert((data + 4) - rdata_item_data(item) <= rdata_item_size(item));
-			ret = ret_base + strlen(ret);
+			ret = ret_base + strlen(ret) + 1;
 			if (inet_ntop(af, address,
 				      text_address,
 				      sizeof(text_address))) {
 				snprintf(ret, sizeof(text_address) +
 					 U32_MAX_STR_LEN * 2,
-					 "%s%d:%s/%d ",
+					 "%s%d:%s/%d%s",
 					 negated ? "!" : "",
 					 (int) address_family,
 					 text_address,
-					 (int) prefix);
+					 (int) prefix,
+					 /* Last item should not have trailing space. */
+					 (read + 4 + length < rdata_item_size(item))
+					 ? " " : "");
 			}
 		}
 
-		data = data + 4 + length;
+		data += 4 + length;
 		read += 4 + length;
 	}
 
