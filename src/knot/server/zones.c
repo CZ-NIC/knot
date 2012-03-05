@@ -401,20 +401,24 @@ static int zones_refresh_ev(event_t *e)
 			xfr_req.tsig_key = &zd->xfr_in.tsig_key;
 		}
 
-		/* Unlock zone contents. */
-		rcu_read_unlock();
-
 		/* Enqueue XFR request. */
 		int locked = pthread_mutex_trylock(&zd->xfr_in.lock);
 		if (locked != 0) {
 			dbg_zones("zones: already bootstrapping '%s'\n",
 			          zd->conf->name);
+			rcu_read_unlock();
 			return KNOTD_EOK;
 		}
 
 		log_zone_info("Attempting to bootstrap zone %s from master\n",
 			      zd->conf->name);
 		pthread_mutex_unlock(&zd->xfr_in.lock);
+		
+		/* Unlock zone contents. */
+		rcu_read_unlock();
+		
+		/* Mark as finished to prevent stalling. */
+		evsched_event_finished(e->parent);
 		
 		return xfr_request(zd->server->xfr_h, &xfr_req);
 	}
@@ -451,13 +455,13 @@ static int zones_refresh_ev(event_t *e)
 	xfr_req.wire = qbuf;
 
 	/* Create query. */
+	int sock = -1;
+	sockaddr_t *master = &zd->xfr_in.master;
 	int ret = xfrin_create_soa_query(zone->name, &xfr_req, &buflen);
 	if (ret == KNOT_EOK) {
 
-		sockaddr_t *master = &zd->xfr_in.master;
-
 		/* Create socket on random port. */
-		int sock = socket_create(master->family, SOCK_DGRAM);
+		sock = socket_create(master->family, SOCK_DGRAM);
 		
 		/* Check requested source. */
 		sockaddr_t *via = &zd->xfr_in.via;
@@ -490,25 +494,9 @@ static int zones_refresh_ev(event_t *e)
 			dbg_zones("zones: expecting SOA response "
 			          "ID=%d for '%s'\n",
 			          zd->xfr_in.next_id, zd->conf->name);
-			
-			/* Watch socket. */
-			knot_ns_xfr_t req;
-			memset(&req, 0, sizeof(req));
-			req.session = sock;
-			req.type = XFR_TYPE_SOA;
-			req.zone = zone;
-			memcpy(&req.addr, master, sizeof(sockaddr_t));
-			memcpy(&req.saddr, &zd->xfr_in.via, sizeof(sockaddr_t));
-			sockaddr_update(&req.addr);
-			ret = xfr_request(zd->server->xfr_h, &req);
 		}
 	} else {
 		ret = KNOTD_ERROR;
-	}
-	
-	if (ret != KNOTD_EOK) {
-		log_server_warning("Failed to issue SOA query for zone '%s'.\n",
-		                   zd->conf->name);
 	}
 
 	/* Schedule EXPIRE timer on first attempt. */
@@ -527,6 +515,28 @@ static int zones_refresh_ev(event_t *e)
 	evsched_schedule(e->parent, e, retry_tmr);
 	dbg_zones("zones: RETRY of '%s' after %u seconds\n",
 	          zd->conf->name, retry_tmr / 1000);
+	
+	/* Mark as finished to prevent stalling. */
+	evsched_event_finished(e->parent);
+	
+	/* Watch socket. */
+	knot_ns_xfr_t req;
+	memset(&req, 0, sizeof(req));
+	req.session = sock;
+	req.type = XFR_TYPE_SOA;
+	req.flags |= XFR_FLAG_UDP;
+	req.zone = zone;
+	memcpy(&req.addr, master, sizeof(sockaddr_t));
+	memcpy(&req.saddr, &zd->xfr_in.via, sizeof(sockaddr_t));
+	sockaddr_update(&req.addr);
+	sockaddr_update(&req.saddr);
+	if (ret == KNOTD_EOK) {
+		ret = xfr_request(zd->server->xfr_h, &req);
+	}
+	if (ret != KNOTD_EOK) {
+		log_server_warning("Failed to issue SOA query for zone '%s'.\n",
+		                   zd->conf->name);
+	}
 
 	/* Unlock RCU. */
 	rcu_read_unlock();
@@ -614,19 +624,23 @@ static int zones_notify_send(event_t *e)
 			ev->msgid = knot_wire_get_id(qbuf);
 			
 		}
+		
+		/* Unlock RCU */
+		rcu_read_unlock();
+		
+		/* Mark as finished to prevent stalling. */
+		evsched_event_finished(e->parent);
 
 		/* Watch socket. */
 		knot_ns_xfr_t req;
 		memset(&req, 0, sizeof(req));
 		req.session = sock;
 		req.type = XFR_TYPE_NOTIFY;
+		req.flags |= XFR_FLAG_UDP;
 		req.zone = zone;
 		memcpy(&req.addr, &ev->addr, sizeof(sockaddr_t));
 		memcpy(&req.saddr, &ev->saddr, sizeof(sockaddr_t));
 		xfr_request(zd->server->xfr_h, &req);
-
-		/* Unlock RCU */
-		rcu_read_unlock();
 	}
 
 	return ret;

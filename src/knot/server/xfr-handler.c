@@ -1095,7 +1095,7 @@ xfrhandler_t *xfr_create(size_t thrcount, knot_nameserver_t *ns)
 		return NULL;
 	}
 	memset(data, 0, sizeof(xfrhandler_t));
-	
+
 	/* Create RR mutex. */
 	pthread_mutex_init(&data->rr_mx, 0);
 
@@ -1223,11 +1223,15 @@ int xfr_request(xfrhandler_t *handler, knot_ns_xfr_t *req)
 		return KNOTD_EINVAL;
 	}
 	
-	/* Get next worker in RR fashion */
-	pthread_mutex_lock(&handler->rr_mx);
-	evqueue_t *q = handler->workers[handler->rr]->q;
-	handler->rr = get_next_rr(handler->rr, handler->unit->size);
-	pthread_mutex_unlock(&handler->rr_mx);
+	/* Assign UDP requests to handler 0. */
+	evqueue_t *q = handler->workers[0]->q;
+	if (!(req->flags & XFR_FLAG_UDP)) {
+		/* Get next worker in RR fashion */
+		pthread_mutex_lock(&handler->rr_mx);
+		q = handler->workers[handler->rr + 1]->q;
+		handler->rr = get_next_rr(handler->rr, handler->unit->size - 1);
+		pthread_mutex_unlock(&handler->rr_mx);
+	}
 	
 	/* Delegate request. */
 	int ret = evqueue_write(q, req, sizeof(knot_ns_xfr_t));
