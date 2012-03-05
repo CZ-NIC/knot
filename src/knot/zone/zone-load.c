@@ -766,7 +766,8 @@ int knot_zload_open(zloader_t **dst, const char *filename)
 	unsigned long crc_calculated = calculate_crc(f);
 
 	/* Read CRC from filename.crc file */
-	char *crc_path = malloc(sizeof(char) * (strlen(filename) + 4 /* strlen(".crc") */ + 1));
+	char *crc_path =
+		malloc(sizeof(char) * (strlen(filename) + 4 /* strlen(".crc") */ + 1));
 	if (unlikely(!crc_path)) {
 		fclose(f);
 		return KNOT_ENOMEM;
