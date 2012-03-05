@@ -300,12 +300,13 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 			               data->msgpref, knotd_strerror(ret));
 		} else {
 			dbg_xfr("xfr: %s New zone saved.\n", data->msgpref);
-			ret = knot_ns_switch_zone(w->ns, data);
-			if (ret != KNOT_EOK) {
+			int switch_ret = knot_ns_switch_zone(w->ns, data);
+			if (switch_ret != KNOT_EOK) {
 				log_zone_error("%s Failed to switch in-memory "
 				               "zone - %s\n",  data->msgpref,
-				               knot_strerror(ret));
+				               knot_strerror(switch_ret));
 				xfr_xfrin_cleanup(w, data);
+				ret = KNOTD_ERROR;
 			}
 		}
 		if (ret == KNOTD_EOK) {
@@ -328,21 +329,21 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 		}
 
 		/* Now, try to apply the changesets to the zone. */
-		ret = xfrin_apply_changesets(data->zone, chs,
-		                             &data->new_contents);
+		int apply_ret = xfrin_apply_changesets(data->zone, chs,
+		                                       &data->new_contents);
 
-		if (ret != KNOT_EOK) {
+		if (apply_ret != KNOT_EOK) {
 			log_zone_error("%s Failed to apply changesets - %s\n",
 			               data->msgpref,
-			               knot_strerror(ret));
+			               knot_strerror(apply_ret));
 
 			/* Free changesets, but not the data. */
 			knot_free_changesets(&chs);
 			data->data = 0;
-
 			ret = KNOTD_ERROR;
 			break;
 		}
+		
 		/* Save changesets. */
 		dbg_xfr("xfr: IXFR/IN saving changesets\n");
 
@@ -367,14 +368,14 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 			break;
 		}
 		/* Switch zone contents. */
-		ret = xfrin_switch_zone(data->zone, data->new_contents,
-		                        data->type);
+		int switch_ret = xfrin_switch_zone(data->zone, data->new_contents,
+		                                   data->type);
 
-		if (ret != KNOT_EOK) {
+		if (switch_ret != KNOT_EOK) {
 			log_zone_error("%s Failed to replace "
 				       "current zone - %s\n",
 				       data->msgpref,
-				       knot_strerror(ret));
+				       knot_strerror(switch_ret));
 			// Cleanup old and new contents
 			xfrin_rollback_update(data->zone->contents,
 			                      &data->new_contents,
@@ -383,7 +384,6 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 			/* Free changesets, but not the data. */
 			knot_free_changesets(&chs);
 			data->data = 0;
-
 			ret = KNOTD_ERROR;
 			break;
 		}
@@ -1265,9 +1265,9 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 
 	/* Check requested zone. */
 	if (!xfr_failed) {
-		ret = zones_xfr_check_zone(xfr, &xfr->rcode);
-		xfr_failed = (ret != KNOTD_EOK);
-		errstr = knotd_strerror(ret);
+		int zcheck_ret = zones_xfr_check_zone(xfr, &xfr->rcode);
+		xfr_failed = (zcheck_ret != KNOTD_EOK);
+		errstr = knotd_strerror(zcheck_ret);
 	}
 
 	/* Check TSIG. */
@@ -1279,21 +1279,21 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 	}
 	
 	ret = xfr_update_msgpref(xfr, keytag);
-	free(keytag);
 	if (ret != KNOTD_EOK) {
 		xfr->msgpref = strdup("XFR:");
 	}
+	free(keytag);
 	
 	/* Prepare place for TSIG data */
 	xfr->tsig_data = malloc(KNOT_NS_TSIG_DATA_MAX_SIZE);
 	if (xfr->tsig_data) {
 		dbg_xfr("xfr: TSIG data allocated: %zu.\n",
-			KNOT_NS_TSIG_DATA_MAX_SIZE);
+		        KNOT_NS_TSIG_DATA_MAX_SIZE);
 		xfr->tsig_data_size = 0;
 	} else {
 		dbg_xfr("xfr: failed to allocate TSIG data "
-			"buffer (%zu kB)\n",
-			KNOT_NS_TSIG_DATA_MAX_SIZE / 1024);
+		        "buffer (%zu kB)\n",
+		        KNOT_NS_TSIG_DATA_MAX_SIZE / 1024);
 	}
 	
 	/* Finally, answer AXFR/IXFR. */
@@ -1306,7 +1306,9 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 		case XFR_TYPE_IOUT:
 			ret = xfr_answer_ixfr(ns, xfr);
 			break;
-		default: ret = KNOTD_ENOTSUP; break;
+		default:
+			ret = KNOT_ENOTSUP;
+			break;
 		}
 		
 		xfr_failed = (ret != KNOT_EOK);
@@ -1320,10 +1322,8 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 			knot_ns_xfr_send_error(ns, xfr, xfr->rcode);
 		}
 		log_server_notice("%s %s\n", xfr->msgpref, errstr);
-		ret = KNOTD_ERROR;
 	} else {
 		log_server_info("%s Finished.\n", xfr->msgpref);
-		ret = KNOTD_EOK;
 	}
 	
 	/* Free allocated data. */
@@ -1338,7 +1338,11 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 	knot_packet_free(&xfr->response);  /* Free response. */
 	knot_free_changesets((knot_changesets_t **)(&xfr->data));
 	free(xfr->zname);
-	return ret;
+	if (xfr_failed) {
+		return KNOTD_ERROR;
+	}
+	
+	return KNOTD_EOK;
 }
 
 static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)

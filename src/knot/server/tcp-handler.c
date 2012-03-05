@@ -174,10 +174,7 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 	/* Parse query. */
 //	knot_response_t *resp = knot_response_new(qbuf_maxlen);
 	size_t resp_len = qbuf_maxlen; // 64K
-
-	/* Parse query. */
 	knot_packet_type_t qtype = KNOT_QUERY_NORMAL;
-
 	knot_packet_t *packet =
 		knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
 	if (packet == NULL) {
@@ -188,11 +185,11 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 		return KNOTD_EOK;
 	}
 
-	int res = knot_ns_parse_packet(qbuf, n, packet, &qtype);
-	if (unlikely(res != KNOT_EOK)) {
-		if (res > 0) { /* Returned RCODE */
+	int parse_res = knot_ns_parse_packet(qbuf, n, packet, &qtype);
+	if (unlikely(parse_res != KNOT_EOK)) {
+		if (parse_res > 0) { /* Returned RCODE */
 			uint16_t pkt_id = knot_wire_get_id(qbuf);
-			knot_ns_error_response(ns, pkt_id, res,
+			knot_ns_error_response(ns, pkt_id, parse_res,
 					       qbuf, &resp_len);
 			tcp_reply(fd, qbuf, resp_len);
 		}
@@ -203,13 +200,16 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 	/* Handle query. */
 	int xfrt = -1;
 	knot_ns_xfr_t xfr;
-	res = KNOTD_ERROR;
+	int res = KNOTD_ERROR;
 	switch(qtype) {
 
 	/* Query types. */
 	case KNOT_QUERY_NORMAL:
 		//res = knot_ns_answer_normal(ns, packet, qbuf, &resp_len);
-		res = zones_normal_query_answer(ns, packet, &addr, qbuf, &resp_len);
+		if (zones_normal_query_answer(ns, packet, &addr,
+		                              qbuf, &resp_len) == KNOT_EOK) {
+			res = KNOTD_EOK;
+		}
 		break;
 	case KNOT_QUERY_AXFR:
 	case KNOT_QUERY_IXFR:
@@ -279,7 +279,7 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 		        qtype, fd, knotd_strerror(res));;
 	}
 
-	return KNOTD_EOK;
+	return res;
 }
 
 static int tcp_accept(int fd)
