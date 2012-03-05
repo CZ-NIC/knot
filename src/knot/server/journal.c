@@ -327,13 +327,13 @@ journal_t* journal_open(const char *fn, size_t fslimit, int mode, uint16_t bflag
 	/* Allocate journal structure. */
 	const size_t node_len = sizeof(journal_node_t);
 	journal_t *j = malloc(sizeof(journal_t) + max_nodes * node_len);
-	memset(j, 0, sizeof(journal_t) + max_nodes * node_len);
-	if (!j) {
+	if (j == NULL) {
 		dbg_journal_detail("journal: cannot allocate journal\n");
 		fcntl(fd, F_SETLK, &fl);
 		close(fd);
 		return NULL;
 	}
+	memset(j, 0, sizeof(journal_t) + max_nodes * node_len);
 	j->qhead = j->qtail = 0;
 	j->fd = fd;
 	j->max_nodes = max_nodes;
