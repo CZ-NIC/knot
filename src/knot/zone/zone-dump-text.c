@@ -636,81 +636,60 @@ char *rdata_nsap_to_string(knot_rdata_item_t item)
 char *rdata_apl_to_string(knot_rdata_item_t item)
 {
 	uint8_t *data = rdata_item_data(item);
-	uint16_t address_family = knot_wire_read_u16(data);
-	uint8_t prefix = data[2];
-	uint8_t length = data[3];
-	int negated = length & APL_NEGATION_MASK;
-	int af = -1;
-
+	size_t read = 0;
 	char *ret = malloc(sizeof(char) * MAX_NSEC_BIT_STR_LEN);
-
-	memset(ret, 0, MAX_NSEC_BIT_STR_LEN);
-
-	length &= APL_LENGTH_MASK;
-	switch (address_family) {
-		case 1: af = AF_INET; break;
-		case 2: af = AF_INET6; break;
+	if (ret == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
 	}
-
-	if (af != -1) {
-		char text_address[1000];
-		uint8_t address[128];
-		memset(address, 0, sizeof(address));
-		memcpy(address, data + 4, length);
-		if (inet_ntop(af, address,
-			      text_address,
-			      sizeof(text_address))) {
-			snprintf(ret, sizeof(text_address) +
-				 U32_MAX_STR_LEN * 2,
-				 "%s%d:%s/%d",
-				 negated ? "!" : "",
-				 (int) address_family,
-				 text_address,
-				 (int) prefix);
-		}
-	}
-
-	return ret;
-
-		/*
-	int result = 0;
-	buffer_type packet;
-
-	buffer_create_from(
-		&packet, rdata_item_data(rdata), rdata_atom_size(rdata));
-
-	if (buffer_available(&packet, 4)) {
-		uint16_t address_family = buffer_read_u16(&packet);
-		uint8_t prefix = buffer_read_u8(&packet);
-		uint8_t length = buffer_read_u8(&packet);
+	
+	char *ret_base = ret;
+	
+	while (read < rdata_item_size(item)) {
+		uint16_t address_family = knot_wire_read_u16(data);
+		uint8_t prefix = data[2];
+		uint8_t length = data[3];
 		int negated = length & APL_NEGATION_MASK;
 		int af = -1;
 
+		char *ret = malloc(sizeof(char) * MAX_NSEC_BIT_STR_LEN);
+		if (ret == NULL) {
+			ERR_ALLOC_FAILED;
+			return NULL;
+		}
+
+		memset(ret, 0, MAX_NSEC_BIT_STR_LEN);
+
 		length &= APL_LENGTH_MASK;
 		switch (address_family) {
-		case 1: af = AF_INET; break;
-		*case 2: af = AF_INET6; break;
+			case 1: af = AF_INET; break;
+			case 2: af = AF_INET6; break;
 		}
-		if (af != -1 && buffer_available(&packet, length)) {
-			char text_address[1000];
-			uint8_t address[128];
+
+		if (af != -1) {
+			char text_address[1024];
+			uint8_t address[length];
 			memset(address, 0, sizeof(address));
-			buffer_read(&packet, address, length);
-			if (inet_ntop(af, address, text_address,
-			    sizeof(text_address))) {
-				buffer_printf(output, "%s%d:%s/%d",
-					      negated ? "!" : "",
-					      (int) address_family,
-					      text_address,
-					      (int) prefix);
-				result = 1;
+			memcpy(address, data + 4, length);
+			ret = ret_base + strlen(ret);
+			if (inet_ntop(af, address,
+				      text_address,
+				      sizeof(text_address))) {
+				snprintf(ret, sizeof(text_address) +
+					 U32_MAX_STR_LEN * 2,
+					 "%s%d:%s/%d",
+					 negated ? "!" : "",
+					 (int) address_family,
+					 text_address,
+					 (int) prefix);
 			}
 		}
+
+		data = data + 4 + length;
+		read += 4 + length;
 	}
-	return result;
-	*/
 
-
+	return ret_base;
 }
 
 char *rdata_services_to_string(knot_rdata_item_t item)
