@@ -858,7 +858,10 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 	/* Start transfer. */
 	ret = data->send(data->session, &data->addr, data->wire, bufsize);
 	if (ret != bufsize) {
-		log_server_info("%s Failed to send query.\n", data->msgpref);
+		char buf[1024];
+		strerror_r(errno, buf, sizeof(buf));
+		log_server_info("%s Failed to send query (%s).\n",
+		                data->msgpref, buf);
 		pthread_mutex_unlock(&zd->xfr_in.lock);
 		return KNOTD_ECONNREFUSED;
 	}
