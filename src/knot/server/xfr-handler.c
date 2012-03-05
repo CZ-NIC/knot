@@ -173,6 +173,7 @@ static void xfr_sweep(fdset_t *set, int fd, void *data)
 	knot_ns_xfr_t *t = xfr_handler_task((xfrworker_t *)data, fd);
 	if (!t) {
 		dbg_xfr("xfr: NULL data to sweep\n");
+		return;
 	}
 	
 	/* Skip non-sweepable types. */
