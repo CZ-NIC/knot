@@ -291,14 +291,14 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 	
 	switch(data->type) {
 	case XFR_TYPE_AIN:
-		dbg_xfr("xfr: AXFR/IN saving new zone\n");
+		dbg_xfr("xfr: %s Saving new zone file.\n", data->msgpref);
 		ret = zones_save_zone(data);
 		if (ret != KNOTD_EOK) {
 			xfr_xfrin_cleanup(w, data);
 			log_zone_error("%s Failed to save transferred zone - %s\n",
 			               data->msgpref, knotd_strerror(ret));
 		} else {
-			dbg_xfr("xfr: AXFR/IN new zone saved.\n");
+			dbg_xfr("xfr: %s New zone saved.\n", data->msgpref);
 			ret = knot_ns_switch_zone(w->ns, data);
 			if (ret != KNOT_EOK) {
 				log_zone_error("%s Failed to switch in-memory "
