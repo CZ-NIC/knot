@@ -211,6 +211,19 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 }
 
 /*!
+ * \brief Apply jitter to time interval.
+ *
+ * Amount of jitter is specified by ZONES_JITTER_PCT.
+ *
+ * \param interval base value.
+ * \return interval value minus rand(0, ZONES_JITTER_PCT) %
+ */
+static uint32_t zones_jitter(uint32_t interval)
+{
+	return (interval * (100 - (tls_rand() * ZONES_JITTER_PCT))) / 100; 
+}
+
+/*!
  * \brief Return SOA timer value.
  *
  * \param zone Pointer to zone.
@@ -414,9 +427,10 @@ static int zones_refresh_ev(event_t *e)
 		          zd->conf->name);
 		
 		/* Reschedule as RETRY timer. */
-		evsched_schedule(e->parent, e, zones_soa_retry(zone));
+		uint32_t retry_tmr = zones_jitter(zones_soa_retry(zone));
+		evsched_schedule(e->parent, e, retry_tmr);
 		dbg_zones("zones: RETRY of '%s' after %u seconds\n",
-		          zd->conf->name, zones_soa_retry(zone) / 1000);
+		          zd->conf->name, retry_tmr / 1000);
 		
 		/* Unlock RCU. */
 		rcu_read_unlock();
@@ -499,7 +513,7 @@ static int zones_refresh_ev(event_t *e)
 
 	/* Schedule EXPIRE timer on first attempt. */
 	if (!zd->xfr_in.expire) {
-		uint32_t expire_tmr = zones_soa_expire(zone);
+		uint32_t expire_tmr = zones_jitter(zones_soa_expire(zone));
 		zd->xfr_in.expire = evsched_schedule_cb(
 					      e->parent,
 					      zones_expire_ev,
@@ -509,9 +523,10 @@ static int zones_refresh_ev(event_t *e)
 	}
 
 	/* Reschedule as RETRY timer. */
-	evsched_schedule(e->parent, e, zones_soa_retry(zone));
+	uint32_t retry_tmr = zones_jitter(zones_soa_retry(zone));
+	evsched_schedule(e->parent, e, retry_tmr);
 	dbg_zones("zones: RETRY of '%s' after %u seconds\n",
-	          zd->conf->name, zones_soa_retry(zone) / 1000);
+	          zd->conf->name, retry_tmr / 1000);
 
 	/* Unlock RCU. */
 	rcu_read_unlock();
@@ -2832,7 +2847,7 @@ int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
 		/* Schedule REFRESH timer. */
 		uint32_t refresh_tmr = 0;
 		if (knot_zone_contents(zone)) {
-			refresh_tmr = zones_soa_refresh(zone);
+			refresh_tmr = zones_jitter(zones_soa_refresh(zone));
 		} else {
 			refresh_tmr = zd->xfr_in.bootstrap_retry;
 		}

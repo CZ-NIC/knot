@@ -42,6 +42,7 @@
 #include "libknot/updates/xfr-in.h"
 
 /* Constants. */
+#define ZONES_JITTER_PCT    10 /*!< +-N% jitter to timers. */
 #define IXFR_DBSYNC_TIMEOUT (60*1000) /*!< Database sync timeout = 60s. */
 #define AXFR_BOOTSTRAP_RETRY (60*1000) /*!< Interval between AXFR BS retries. */
 
