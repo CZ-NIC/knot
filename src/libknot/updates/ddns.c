@@ -39,7 +39,7 @@ static int knot_ddns_prereq_check_rrsets(knot_rrset_t ***rrsets,
 		return KNOT_ENOMEM;
 	}
 
-	memcpy(rrsets_new, *rrsets, *count);
+	memcpy(rrsets_new, *rrsets, (*count) * sizeof(knot_rrset_t *));
 	*rrsets = rrsets_new;
 	*allocated = new_count;
 
@@ -62,7 +62,7 @@ static int knot_ddns_prereq_check_dnames(knot_dname_t ***dnames,
 		return KNOT_ENOMEM;
 	}
 
-	memcpy(dnames_new, *dnames, *count);
+	memcpy(dnames_new, *dnames, (*count) * sizeof(knot_dname_t *));
 	*dnames = dnames_new;
 	*allocated = new_count;
 
