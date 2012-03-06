@@ -371,7 +371,7 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 			break;
 		}
 		/* Switch zone contents. */
-		int switch_ret = xfrin_switch_zone(data->zone, data->new_contents,
+		switch_ret = xfrin_switch_zone(data->zone, data->new_contents,
 		                                   data->type);
 
 		if (switch_ret != KNOT_EOK) {
