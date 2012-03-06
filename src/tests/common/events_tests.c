@@ -154,7 +154,7 @@ static int events_tests_run(int argc, char *argv[])
 	// 7. Insert and immediately cancel an event
 	e = evsched_schedule_cb(s, 0, (void*)0xdead, 1000);
 	ret = evsched_cancel(s, e);
-	ok(ret == 0, "evsched: inserted and cancelled an event");
+	ok(ret >= 0, "evsched: inserted and cancelled an event");
 	if (e) {
 		evsched_event_free(s, e);
 	}
