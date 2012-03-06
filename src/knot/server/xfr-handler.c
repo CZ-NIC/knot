@@ -1266,8 +1266,7 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 		errstr = knot_strerror(ret);
 	}
 	
-	ret = xfr_update_msgpref(xfr, keytag);
-	if (ret != KNOTD_EOK) {
+	if (xfr_update_msgpref(xfr, keytag) != KNOTD_EOK) {
 		xfr->msgpref = strdup("XFR:");
 	}
 	free(keytag);
