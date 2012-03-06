@@ -194,6 +194,7 @@ static inline int udp_master_recvfrom(dthread_t *thread, stat_t *thread_stat)
 	
 	knot_nameserver_t *ns = h->server->nameserver;
 
+	/* Initialize remote party address. */
 	sockaddr_t addr;
 	if (sockaddr_init(&addr, h->type) != KNOTD_EOK) {
 		log_server_error("Socket type %d is not supported, "
@@ -202,6 +203,14 @@ static inline int udp_master_recvfrom(dthread_t *thread, stat_t *thread_stat)
 		return KNOTD_ENOTSUP;
 	}
 	
+	/* Allocate buffer for answering. */
+	uint8_t *qbuf = malloc(SOCKET_MTU_SZ);
+	if (qbuf == NULL) {
+		dbg_net("udp: out of memory when allocating buffer.\n");
+		return KNOTD_ENOMEM;
+	}
+	
+	/* Duplicate socket for performance reasons on some OS's */
 	int sock = h->fd;
 	int sock_dup = dup(h->fd);
 	if (sock_dup < 0) {
@@ -209,7 +218,6 @@ static inline int udp_master_recvfrom(dthread_t *thread, stat_t *thread_stat)
 	} else {
 		sock = sock_dup;
 	}
-	uint8_t qbuf[SOCKET_MTU_SZ];
 
 	/* Loop until all data is read. */
 	ssize_t n = 0;
@@ -263,6 +271,8 @@ static inline int udp_master_recvfrom(dthread_t *thread, stat_t *thread_stat)
 	if (sock_dup >= 0) {
 		close(sock_dup);
 	}
+	
+	free(qbuf);
 
 	return KNOTD_EOK;
 }
@@ -336,12 +346,27 @@ static inline int udp_master_recvmmsg(dthread_t *thread, stat_t *thread_stat)
 	iohandler_t *h = (iohandler_t *)thread->data;
 	knot_nameserver_t *ns = h->server->nameserver;
 	int sock = dup(h->fd);
+	
+	/* Check socket. */
+	if (sock < 0) {
+		dbg_net("udp: unable to dup() socket, finishing.\n");
+		return KNOTD_EINVAL;
+	}
 
 	/* Allocate batch for N packets. */
 	char *iobuf = malloc(SOCKET_MTU_SZ * RECVMMSG_BATCHLEN);
 	sockaddr_t *addrs = malloc(sizeof(sockaddr_t) * RECVMMSG_BATCHLEN);
 	struct iovec *iov = malloc(sizeof(struct iovec) * RECVMMSG_BATCHLEN);
 	struct mmsghdr *msgs = malloc(sizeof(struct mmsghdr) * RECVMMSG_BATCHLEN);
+	
+	/* Check, free(NULL) is valid, so no need to nitpick. */
+	if (iobuf == NULL || addrs == NULL || iov == NULL || msgs == NULL) {
+		free(iobuf);
+		free(addrs);
+		free(iov);
+		free(msgs);
+		return KNOTD_ENOMEM;
+	}
 
 	/* Prepare batch. */
 	memset(msgs, 0, sizeof(struct mmsghdr) * RECVMMSG_BATCHLEN);
@@ -498,12 +523,17 @@ int udp_master(dthread_t *thread)
 
 	/* Execute proper handler. */
 	dbg_net_verb("udp: thread started (worker %p).\n", thread);
-	int ret = KNOTD_EOK;
-	
-	ret = _udp_master(thread, thread_stat);
+	int ret = _udp_master(thread, thread_stat);
+	if (ret != KNOTD_EOK) {
+		log_server_warning("UDP answering module finished "
+		                   "with an error (%s).\n",
+		                   knotd_strerror(ret));
+	}
 
 	stat_free(thread_stat);
 	dbg_net_verb("udp: worker %p finished.\n", thread);
+	
+	
 	return ret;
 }
 

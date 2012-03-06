@@ -374,10 +374,6 @@ static int zones_refresh_ev(event_t *e)
 		return KNOTD_EINVAL;
 	}
 
-	/* Prepare buffer for query. */
-	uint8_t qbuf[SOCKET_MTU_SZ];
-	size_t buflen = SOCKET_MTU_SZ;
-
 	/* Lock RCU. */
 	rcu_read_lock();
 
@@ -453,11 +449,32 @@ static int zones_refresh_ev(event_t *e)
 		pthread_mutex_unlock(&zd->xfr_in.lock);
 	}
 	
-	/*! \todo Invalidate pending SOA query. */
-//	if(zd->soa_pending >= 0) {
-//		dbg_xfr("xfr: closing previous SOA qry fd=%d\n", zd->soa_pending);
-//		close(zd->soa_pending);
-//	}
+	/* Schedule EXPIRE timer on first attempt. */
+	if (!zd->xfr_in.expire) {
+		uint32_t expire_tmr = zones_jitter(zones_soa_expire(zone));
+		zd->xfr_in.expire = evsched_schedule_cb(
+					      e->parent,
+					      zones_expire_ev,
+					      zone, expire_tmr);
+		dbg_zones("zones: EXPIRE of '%s' after %u seconds\n",
+		          zd->conf->name, expire_tmr / 1000);
+	}
+	
+	/* Reschedule as RETRY timer. */
+	uint32_t retry_tmr = zones_jitter(zones_soa_retry(zone));
+	evsched_schedule(e->parent, e, retry_tmr);
+	dbg_zones("zones: RETRY of '%s' after %u seconds\n",
+	          zd->conf->name, retry_tmr / 1000);
+	
+	/* Prepare buffer for query. */
+	uint8_t *qbuf = malloc(SOCKET_MTU_SZ);
+	if (qbuf == NULL) {
+		log_zone_error("Not enough memory to allocate SOA query.\n");
+		rcu_read_unlock();
+		return KNOTD_ENOMEM;
+	}
+	
+	size_t buflen = SOCKET_MTU_SZ;
 	
 	/*! \todo [TSIG] CHANGE!!! only for compatibility now. */
 	knot_ns_xfr_t xfr_req;
@@ -500,7 +517,6 @@ static int zones_refresh_ev(event_t *e)
 		/* Check result. */
 		if (ret == KNOTD_EOK) {
 			zd->xfr_in.next_id = knot_wire_get_id(qbuf);
-			zd->soa_pending = sock;
 			dbg_zones("zones: expecting SOA response "
 			          "ID=%d for '%s'\n",
 			          zd->xfr_in.next_id, zd->conf->name);
@@ -509,22 +525,6 @@ static int zones_refresh_ev(event_t *e)
 		ret = KNOTD_ERROR;
 	}
 
-	/* Schedule EXPIRE timer on first attempt. */
-	if (!zd->xfr_in.expire) {
-		uint32_t expire_tmr = zones_jitter(zones_soa_expire(zone));
-		zd->xfr_in.expire = evsched_schedule_cb(
-					      e->parent,
-					      zones_expire_ev,
-					      zone, expire_tmr);
-		dbg_zones("zones: EXPIRE of '%s' after %u seconds\n",
-		          zd->conf->name, expire_tmr / 1000);
-	}
-
-	/* Reschedule as RETRY timer. */
-	uint32_t retry_tmr = zones_jitter(zones_soa_retry(zone));
-	evsched_schedule(e->parent, e, retry_tmr);
-	dbg_zones("zones: RETRY of '%s' after %u seconds\n",
-	          zd->conf->name, retry_tmr / 1000);
 	
 	/* Mark as finished to prevent stalling. */
 	evsched_event_finished(e->parent);
@@ -547,6 +547,8 @@ static int zones_refresh_ev(event_t *e)
 		log_server_warning("Failed to issue SOA query for zone '%s'.\n",
 		                   zd->conf->name);
 	}
+	
+	free(qbuf);
 
 	/* Unlock RCU. */
 	rcu_read_unlock();
@@ -590,10 +592,6 @@ static int zones_notify_send(event_t *e)
 		return KNOTD_EMALF;
 	}
 
-	/* Prepare buffer for query. */
-	uint8_t qbuf[SOCKET_MTU_SZ];
-	size_t buflen = sizeof(qbuf);
-
         /* RFC suggests 60s, but it is configurable. */
         int retry_tmr = ev->timeout * 1000;
  
@@ -603,6 +601,15 @@ static int zones_notify_send(event_t *e)
         dbg_notify("notify: Query RETRY after %u secs (zone '%s')\n",
                    retry_tmr / 1000, zd->conf->name);
         conf_read_unlock();
+	
+	/* Prepare buffer for query. */
+	uint8_t *qbuf = malloc(SOCKET_MTU_SZ);
+	if (qbuf == NULL) {
+		log_zone_error("Not enough memory to allocate NOTIFY query.\n");
+		return KNOTD_ENOMEM;
+	}
+	
+	size_t buflen = SOCKET_MTU_SZ;
 
 	/* Create query. */
 	int ret = notify_create_request(contents, qbuf, &buflen);
@@ -652,6 +659,8 @@ static int zones_notify_send(event_t *e)
 		memcpy(&req.saddr, &ev->saddr, sizeof(sockaddr_t));
 		xfr_request(zd->server->xfr_h, &req);
 	}
+	
+	free(qbuf);
 
 	return ret;
 }
