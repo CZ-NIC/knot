@@ -307,7 +307,8 @@ int knot_edns_add_option(knot_opt_rr_t *opt_rr, uint16_t code,
 				(opt_rr->options_max + KNOT_EDNS_OPTION_STEP),
 				sizeof(knot_opt_option_t));
 		CHECK_ALLOC_LOG(options_new, KNOT_ENOMEM);
-		memcpy(options_new, opt_rr->options, opt_rr->option_count);
+		memcpy(options_new, opt_rr->options,
+		       opt_rr->option_count * sizeof(knot_opt_option_t));
 
 		knot_opt_option_t *old_options = opt_rr->options;
 		opt_rr->options = options_new;
