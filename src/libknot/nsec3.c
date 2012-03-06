@@ -55,6 +55,11 @@ int knot_nsec3_params_from_wire(knot_nsec3_params_t *params,
 		((uint8_t *)knot_rdata_item(rdata, 3)->raw_data)[2];
 
 	if (params->salt_length > 0) {
+		/* It is called also on reload, so we need to free if exists. */
+		if (params->salt != NULL) {
+			free(params->salt);
+			params->salt = NULL;
+		}
 		params->salt = (uint8_t *)malloc(params->salt_length);
 		CHECK_ALLOC_LOG(params->salt, -1);
 		memcpy(params->salt,
