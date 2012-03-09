@@ -1,3 +1,19 @@
+v1.0.1 - Mar 9, 2012
+--------------------
+
+New features:
+        * Implemented jitter to REFRESH/RETRY timers.
+        * Implemented magic bytes for journal.
+        * Improved error messages.
+
+Bugfixes:
+        * Problem with creating IXFR journal for bootstrapped zone.
+        * Race condition in processing NOTIFY/SOA queries.
+        * Leak when reloading zone with NSEC3.
+        * Processing of APL RR.
+        * TSIG improper assignment of algorithm type.
+
+
 v1.0.0 - Feb 29, 2012
 ---------------------
 
