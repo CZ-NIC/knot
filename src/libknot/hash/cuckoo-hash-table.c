@@ -350,7 +350,7 @@ static uint ck_check_used_twice(da_array_t *used, uint32_t hash)
 		++i;
 	}
 
-	if (i <= da_get_count(used) && found == 2) {
+	if (found == 2) {
 		dbg_ck_hash("Hashing entered infinite loop.\n");
 		return -1;
 	} else {
