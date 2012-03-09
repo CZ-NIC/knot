@@ -42,6 +42,8 @@
 #include "common/prng.h"
 
 /* Constants */
+#define XFR_QUERY_WD 10 /*!< SOA/NOTIFY query timeout [s]. */
+#define XFR_SWEEP_INTERVAL 2 /*! [seconds] between sweeps. */
 #define XFR_BUFFER_SIZE 65535 /*! Do not change this - maximum value for UDP packet length. */
 
 void xfr_interrupt(xfrhandler_t *h)
@@ -57,92 +59,6 @@ static void xfr_request_deinit(knot_ns_xfr_t *r)
 		free(r->msgpref);
 		r->msgpref = NULL;
 	}
-}
-
-/*!
- * \brief SOA query timeout handler.
- */
-static int xfr_udp_timeout(event_t *e)
-{
-	knot_ns_xfr_t *data = (knot_ns_xfr_t *)e->data;
-	if (!data) {
-		return KNOTD_EINVAL;
-	}
-	
-	/* Remove reference to this event. */
-	if (data->zone != NULL) {
-		zonedata_t *zd = (zonedata_t *)knot_zone_data(data->zone);
-		if (zd != NULL && zd->soa_pending == e) {
-			zd->soa_pending = NULL;
-		}
-	}
-
-	/* Close socket. */
-	knot_zone_t *z = data->zone;
-	if (z && knot_zone_get_contents(z) && knot_zone_data(z)) {
-		log_zone_info("%s Failed, timeout exceeded.\n",
-		              data->msgpref);
-	}
-	
-	knot_ns_xfr_t cr = {};
-	cr.type = XFR_TYPE_CLOSE;
-	cr.session = data->session;
-	cr.data = data;
-	cr.zone = data->zone;
-	xfrworker_t *w = (xfrworker_t *)data->owner;
-	if (w) {
-		evqueue_write(w->q, &cr, sizeof(knot_ns_xfr_t));
-	}
-
-	return KNOTD_EOK;
-}
-
-/*!
- * \brief Query reponse event handler function.
- *
- * Handle single query response event.
- *
- * \param loop Associated event pool.
- * \param w Associated socket watcher.
- * \param revents Returned events.
- */
-static int xfr_process_udp_query(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
-{
-	/* Receive msg. */
-	ssize_t n = recvfrom(data->session, data->wire, data->wire_size, 0, data->addr.ptr, &data->addr.len);
-	size_t resp_len = data->wire_size;
-	if (n > 0) {
-		udp_handle(fd, data->wire, n, &resp_len, &data->addr, w->ns);
-	}
-	
-	if(data->type == XFR_TYPE_SOA && data->zone) {
-		zonedata_t * zd = (zonedata_t*)knot_zone_data(data->zone);
-		zd->soa_pending = NULL;
-	}
-
-	/* Disable timeout. */
-	evsched_t *sched =
-		((server_t *)knot_ns_get_data(w->ns))->sched;
-	event_t *ev = (event_t *)data->data;
-	if (ev) {
-		dbg_xfr("xfr: cancelling UDP query timeout\n");
-		evsched_cancel(sched, ev);
-		ev = (event_t *)data->data;
-		if (ev) {
-			evsched_event_free(sched, ev);
-			data->data = 0;
-		}
-		
-		/* Close after receiving response. */
-		knot_ns_xfr_t cr = {};
-		cr.type = XFR_TYPE_CLOSE;
-		cr.session = data->session;
-		cr.data = data;
-		cr.zone = data->zone;
-		evqueue_write(w->q, &cr, sizeof(knot_ns_xfr_t));
-	}
-	
-	return KNOTD_EOK;
 }
 
 /*! \todo Document me (issue #1586) */
@@ -187,6 +103,91 @@ static void xfr_free_task(knot_ns_xfr_t *task)
 	free(task);
 }
 
+static knot_ns_xfr_t *xfr_handler_task(xfrworker_t *w, int fd)
+{
+	xfrhandler_t *h = w->master;
+	pthread_mutex_lock(&h->tasks_mx);
+	knot_ns_xfr_t *data = skip_find(h->tasks, (void*)((size_t)fd));
+	pthread_mutex_unlock(&h->tasks_mx);
+	
+	if (data == NULL) {
+		dbg_xfr_verb("xfr: worker=%p processing event on "
+			     "fd=%d got empty data.\n",
+			     w, fd);
+		fdset_remove(w->fdset, fd);
+		close(fd); /* Always dup()'d or created. */
+		return NULL;
+	}
+	
+	return data;
+}
+
+/*!
+ * \brief SOA query timeout handler.
+ */
+static int xfr_udp_timeout(knot_ns_xfr_t *data)
+{
+	/* Close socket. */
+	knot_zone_t *z = data->zone;
+	if (z && knot_zone_get_contents(z) && knot_zone_data(z)) {
+		log_zone_info("%s Failed, timeout exceeded.\n",
+		              data->msgpref);
+	}
+	
+	/* Invalidate pending query. */
+	xfr_free_task(data);
+	return KNOTD_EOK;
+}
+
+/*!
+ * \brief Query response event handler function.
+ *
+ * Handle single query response event.
+ *
+ * \param loop Associated event pool.
+ * \param w Associated socket watcher.
+ * \param revents Returned events.
+ */
+static int xfr_process_udp_resp(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
+{
+	/* Receive msg. */
+	ssize_t n = recvfrom(data->session, data->wire, data->wire_size, 0, data->addr.ptr, &data->addr.len);
+	size_t resp_len = data->wire_size;
+	if (n > 0) {
+		udp_handle(fd, data->wire, n, &resp_len, &data->addr, w->ns);
+	}
+
+	xfr_free_task(data);
+	return KNOTD_EOK;
+}
+
+/*! \brief Sweep non-replied connection. */
+static void xfr_sweep(fdset_t *set, int fd, void *data)
+{
+	dbg_xfr("xfr: sweeping fd=%d\n", fd);
+	
+	if (!set || !data) {
+		dbg_xfr("xfr: invalid sweep operation on NULL worker or set\n");
+		return;
+	}
+	knot_ns_xfr_t *t = xfr_handler_task((xfrworker_t *)data, fd);
+	if (!t) {
+		dbg_xfr("xfr: NULL data to sweep\n");
+		return;
+	}
+	
+	/* Skip non-sweepable types. */
+	switch(t->type) {
+	case XFR_TYPE_SOA:
+	case XFR_TYPE_NOTIFY:
+		xfr_udp_timeout(t);
+		break;
+	default:
+		dbg_xfr("xfr: sweep request on unsupported type\n");
+		break;
+	}
+}
+
 /*! \todo Document me (issue #1586) */
 static knot_ns_xfr_t *xfr_register_task(xfrworker_t *w, knot_ns_xfr_t *req)
 {
@@ -197,6 +198,7 @@ static knot_ns_xfr_t *xfr_register_task(xfrworker_t *w, knot_ns_xfr_t *req)
 
 	memcpy(t, req, sizeof(knot_ns_xfr_t));
 	sockaddr_update(&t->addr);
+	sockaddr_update(&t->saddr);
 
 	/* Update request. */
 	t->wire = 0; /* Invalidate shared buffer. */
@@ -287,24 +289,27 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 //	}
 	
 	int ret = KNOTD_EOK;
+	int apply_ret = KNOT_EOK;
+	int switch_ret = KNOT_EOK;
 	knot_changesets_t *chs = NULL;
 	
 	switch(data->type) {
 	case XFR_TYPE_AIN:
-		dbg_xfr("xfr: AXFR/IN saving new zone\n");
+		dbg_xfr("xfr: %s Saving new zone file.\n", data->msgpref);
 		ret = zones_save_zone(data);
 		if (ret != KNOTD_EOK) {
 			xfr_xfrin_cleanup(w, data);
 			log_zone_error("%s Failed to save transferred zone - %s\n",
 			               data->msgpref, knotd_strerror(ret));
 		} else {
-			dbg_xfr("xfr: AXFR/IN new zone saved.\n");
-			ret = knot_ns_switch_zone(w->ns, data);
-			if (ret != KNOT_EOK) {
+			dbg_xfr("xfr: %s New zone saved.\n", data->msgpref);
+			switch_ret = knot_ns_switch_zone(w->ns, data);
+			if (switch_ret != KNOT_EOK) {
 				log_zone_error("%s Failed to switch in-memory "
 				               "zone - %s\n",  data->msgpref,
-				               knot_strerror(ret));
+				               knot_strerror(switch_ret));
 				xfr_xfrin_cleanup(w, data);
+				ret = KNOTD_ERROR;
 			}
 		}
 		if (ret == KNOTD_EOK) {
@@ -327,21 +332,21 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 		}
 
 		/* Now, try to apply the changesets to the zone. */
-		ret = xfrin_apply_changesets(data->zone, chs,
-		                             &data->new_contents);
+		apply_ret = xfrin_apply_changesets(data->zone, chs,
+		                                       &data->new_contents);
 
-		if (ret != KNOT_EOK) {
+		if (apply_ret != KNOT_EOK) {
 			log_zone_error("%s Failed to apply changesets - %s\n",
 			               data->msgpref,
-			               knot_strerror(ret));
+			               knot_strerror(apply_ret));
 
 			/* Free changesets, but not the data. */
 			knot_free_changesets(&chs);
 			data->data = 0;
-
 			ret = KNOTD_ERROR;
 			break;
 		}
+		
 		/* Save changesets. */
 		dbg_xfr("xfr: IXFR/IN saving changesets\n");
 
@@ -366,14 +371,14 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 			break;
 		}
 		/* Switch zone contents. */
-		ret = xfrin_switch_zone(data->zone, data->new_contents,
-		                        data->type);
+		switch_ret = xfrin_switch_zone(data->zone, data->new_contents,
+		                                   data->type);
 
-		if (ret != KNOT_EOK) {
+		if (switch_ret != KNOT_EOK) {
 			log_zone_error("%s Failed to replace "
 				       "current zone - %s\n",
 				       data->msgpref,
-				       knot_strerror(ret));
+				       knot_strerror(switch_ret));
 			// Cleanup old and new contents
 			xfrin_rollback_update(data->zone->contents,
 			                      &data->new_contents,
@@ -382,7 +387,6 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 			/* Free changesets, but not the data. */
 			knot_free_changesets(&chs);
 			data->data = 0;
-
 			ret = KNOTD_ERROR;
 			break;
 		}
@@ -488,24 +492,14 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode, char **tag)
 		if (key && kname && knot_dname_compare(key->name, kname) == 0) {
 			dbg_xfr("xfr: found claimed TSIG key for comparison\n");
 		} else {
-			/*! \todo These ifs are redundant (issue #1586) */
-			*rcode = KNOT_RCODE_NOTAUTH;
+			
 			/* TSIG is mandatory if configured for interface. */
-			if (key && !kname) {
-				dbg_xfr("xfr: TSIG key is mandatory for "
-				        "this interface\n");
-				ret = KNOT_TSIG_EBADKEY;
-				xfr->tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
-			}
-			
 			/* Configured, but doesn't match. */
-			if (kname) {
-				dbg_xfr("xfr: no claimed key configured, "
-				        "treating as bad key\n");
-				ret = KNOT_TSIG_EBADKEY;
-				xfr->tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
-			}
-			
+			dbg_xfr("xfr: no claimed key configured or not received"
+			        ", treating as bad key\n");
+			*rcode = KNOT_RCODE_NOTAUTH;
+			ret = KNOT_TSIG_EBADKEY;
+			xfr->tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
 			key = 0; /* Invalidate, ret already set to BADKEY */
 		}
 
@@ -593,7 +587,7 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 
 	/* Handle SOA/NOTIFY responses. */
 	if (data->type == XFR_TYPE_NOTIFY || data->type == XFR_TYPE_SOA) {
-		return xfr_process_udp_query(w, fd, data);
+		return xfr_process_udp_resp(w, fd, data);
 	}
 
 	/* Read DNS/TCP packet. */
@@ -752,6 +746,7 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 		return KNOTD_EOK;
 	} else {
 		zd->xfr_in.wrkr = w;
+		--zd->xfr_in.scheduled;
 	}
 
 	/* Connect to remote. */
@@ -858,7 +853,10 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 	/* Start transfer. */
 	ret = data->send(data->session, &data->addr, data->wire, bufsize);
 	if (ret != bufsize) {
-		log_server_info("%s Failed to send query.\n", data->msgpref);
+		char buf[1024];
+		strerror_r(errno, buf, sizeof(buf));
+		log_server_info("%s Failed to send query (%s).\n",
+		                data->msgpref, buf);
 		pthread_mutex_unlock(&zd->xfr_in.lock);
 		return KNOTD_ECONNREFUSED;
 	}
@@ -952,12 +950,6 @@ static int xfr_update_msgpref(knot_ns_xfr_t *req, const char *keytag)
 		return KNOTD_EINVAL;
 	}
 
-	/* Update address. */
-	if (req->msgpref) {
-		free(req->msgpref);
-		req->msgpref = NULL;
-	}
-	
 	char r_addr[SOCKADDR_STRLEN];
 	char *r_key = NULL;
 	int r_port = sockaddr_portnum(&req->addr);
@@ -1092,7 +1084,7 @@ xfrhandler_t *xfr_create(size_t thrcount, knot_nameserver_t *ns)
 		return NULL;
 	}
 	memset(data, 0, sizeof(xfrhandler_t));
-	
+
 	/* Create RR mutex. */
 	pthread_mutex_init(&data->rr_mx, 0);
 
@@ -1220,11 +1212,15 @@ int xfr_request(xfrhandler_t *handler, knot_ns_xfr_t *req)
 		return KNOTD_EINVAL;
 	}
 	
-	/* Get next worker in RR fashion */
-	pthread_mutex_lock(&handler->rr_mx);
-	evqueue_t *q = handler->workers[handler->rr]->q;
-	handler->rr = get_next_rr(handler->rr, handler->unit->size);
-	pthread_mutex_unlock(&handler->rr_mx);
+	/* Assign UDP requests to handler 0. */
+	evqueue_t *q = handler->workers[0]->q;
+	if (!(req->flags & XFR_FLAG_UDP)) {
+		/* Get next worker in RR fashion */
+		pthread_mutex_lock(&handler->rr_mx);
+		q = handler->workers[handler->rr + 1]->q;
+		handler->rr = get_next_rr(handler->rr, handler->unit->size - 1);
+		pthread_mutex_unlock(&handler->rr_mx);
+	}
 	
 	/* Delegate request. */
 	int ret = evqueue_write(q, req, sizeof(knot_ns_xfr_t));
@@ -1257,9 +1253,9 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 
 	/* Check requested zone. */
 	if (!xfr_failed) {
-		ret = zones_xfr_check_zone(xfr, &xfr->rcode);
-		xfr_failed = (ret != KNOTD_EOK);
-		errstr = knotd_strerror(ret);
+		int zcheck_ret = zones_xfr_check_zone(xfr, &xfr->rcode);
+		xfr_failed = (zcheck_ret != KNOTD_EOK);
+		errstr = knotd_strerror(zcheck_ret);
 	}
 
 	/* Check TSIG. */
@@ -1270,22 +1266,21 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 		errstr = knot_strerror(ret);
 	}
 	
-	ret = xfr_update_msgpref(xfr, keytag);
-	free(keytag);
-	if (ret != KNOTD_EOK) {
+	if (xfr_update_msgpref(xfr, keytag) != KNOTD_EOK) {
 		xfr->msgpref = strdup("XFR:");
 	}
+	free(keytag);
 	
 	/* Prepare place for TSIG data */
 	xfr->tsig_data = malloc(KNOT_NS_TSIG_DATA_MAX_SIZE);
 	if (xfr->tsig_data) {
 		dbg_xfr("xfr: TSIG data allocated: %zu.\n",
-			KNOT_NS_TSIG_DATA_MAX_SIZE);
+		        KNOT_NS_TSIG_DATA_MAX_SIZE);
 		xfr->tsig_data_size = 0;
 	} else {
 		dbg_xfr("xfr: failed to allocate TSIG data "
-			"buffer (%zu kB)\n",
-			KNOT_NS_TSIG_DATA_MAX_SIZE / 1024);
+		        "buffer (%zu kB)\n",
+		        KNOT_NS_TSIG_DATA_MAX_SIZE / 1024);
 	}
 	
 	/* Finally, answer AXFR/IXFR. */
@@ -1298,7 +1293,9 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 		case XFR_TYPE_IOUT:
 			ret = xfr_answer_ixfr(ns, xfr);
 			break;
-		default: ret = KNOTD_ENOTSUP; break;
+		default:
+			ret = KNOT_ENOTSUP;
+			break;
 		}
 		
 		xfr_failed = (ret != KNOT_EOK);
@@ -1312,10 +1309,8 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 			knot_ns_xfr_send_error(ns, xfr, xfr->rcode);
 		}
 		log_server_notice("%s %s\n", xfr->msgpref, errstr);
-		ret = KNOTD_ERROR;
 	} else {
 		log_server_info("%s Finished.\n", xfr->msgpref);
-		ret = KNOTD_EOK;
 	}
 	
 	/* Free allocated data. */
@@ -1330,7 +1325,11 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 	knot_packet_free(&xfr->response);  /* Free response. */
 	knot_free_changesets((knot_changesets_t **)(&xfr->data));
 	free(xfr->zname);
-	return ret;
+	if (xfr_failed) {
+		return KNOTD_ERROR;
+	}
+	
+	return KNOTD_EOK;
 }
 
 static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
@@ -1353,14 +1352,9 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 	conf_read_lock();
 
 	/* Handle request. */
-	zonedata_t *zd = NULL;
-	if(xfr.zone != NULL) {
-		zd = (zonedata_t *)knot_zone_data(xfr.zone);
-	}
 	knot_ns_xfr_t *task = NULL;
-	evsched_t *sch = NULL;
-	dbg_xfr_verb("xfr: processing request type '%d'\n", xfr.type);
-	dbg_xfr_verb("xfr: query ptr: %p\n", xfr.query);
+	dbg_xfr("%s processing request type '%d'\n", xfr.msgpref, xfr.type);
+	dbg_xfr_verb("%s query ptr: %p\n", xfr.msgpref, xfr.query);
 	switch(xfr.type) {
 	case XFR_TYPE_AIN:
 	case XFR_TYPE_IIN:
@@ -1383,18 +1377,8 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		}
 		
 		/* Add timeout. */
-		sch = ((server_t *)knot_ns_get_data(w->ns))->sched;
-		task->data = evsched_schedule_cb(sch, xfr_udp_timeout,
-						 task, SOA_QRY_TIMEOUT);
-		if (zd && xfr.type == XFR_TYPE_SOA) {
-			zd->soa_pending = (event_t*)task->data;
-		}
+		fdset_set_watchdog(w->fdset, task->session, XFR_QUERY_WD);
 		log_server_info("%s Query issued.\n", xfr.msgpref);
-		ret = KNOTD_EOK;
-		break;
-	/* Socket close event. */
-	case XFR_TYPE_CLOSE:
-		xfr_free_task((knot_ns_xfr_t *)xfr.data);
 		ret = KNOTD_EOK;
 		break;
 	default:
@@ -1430,6 +1414,10 @@ int xfr_worker(dthread_t *thread)
 		return KNOTD_ENOMEM;
 	}
 	
+	/* Next sweep time. */
+	timev_t next_sweep;
+	time_now(&next_sweep);
+	next_sweep.tv_sec += XFR_SWEEP_INTERVAL;
 
 	/* Accept requests. */
 	int ret = 0;
@@ -1442,8 +1430,8 @@ int xfr_worker(dthread_t *thread)
 		}
 		
 		/* Poll fdset. */
-		int nfds = fdset_wait(w->fdset, OS_EV_FOREVER);
-		if (nfds <= 0) {
+		int nfds = fdset_wait(w->fdset, (XFR_SWEEP_INTERVAL * 1000)/2);
+		if (nfds < 0) {
 			continue;
 		}
 		
@@ -1453,12 +1441,11 @@ int xfr_worker(dthread_t *thread)
 		}
 		
 		/* Iterate fdset. */
-		xfrhandler_t *h = w->master;
 		knot_ns_xfr_t *data = 0;
 		int rfd = evqueue_pollfd(w->q);
 		fdset_it_t it;
 		fdset_begin(w->fdset, &it);
-		while(1) {
+		while(nfds > 0) {
 			
 			/* Check if it request. */
 			if (it.fd == rfd) {
@@ -1470,16 +1457,8 @@ int xfr_worker(dthread_t *thread)
 				}
 			} else {
 				/* Find data. */
-				pthread_mutex_lock(&h->tasks_mx);
-				data = skip_find(h->tasks, (void*)((size_t)it.fd));
-				pthread_mutex_unlock(&h->tasks_mx);
+				data = xfr_handler_task(w, it.fd);
 				if (data == NULL) {
-					dbg_xfr_verb("xfr: worker=%p processing event on "
-						     "fd=%d got empty data.\n",
-						     w, it.fd);
-					fdset_remove(w->fdset, it.fd);
-					close(it.fd); /* Always dup()'d or created. */
-					
 					/* Next fd. */
 					if (fdset_next(w->fdset, &it) < 0) {
 						break;
@@ -1501,8 +1480,17 @@ int xfr_worker(dthread_t *thread)
 				break;
 			}
 		}
+		
+		/* Sweep inactive. */
+		timev_t now;
+		if (time_now(&now) == 0) {
+			if (now.tv_sec >= next_sweep.tv_sec) {
+				fdset_sweep(w->fdset, &xfr_sweep, w);
+				memcpy(&next_sweep, &now, sizeof(next_sweep));
+				next_sweep.tv_sec += XFR_SWEEP_INTERVAL;
+			}
+		}
 	}
-
 
 	/* Stop whole unit. */
 	free(buf);

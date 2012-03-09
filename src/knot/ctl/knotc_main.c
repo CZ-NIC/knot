@@ -101,10 +101,11 @@ int check_zone(const char *db, const char* source)
 			emsg = "Zone file '%s' doesn't exist.\n";
 			break;
 		default:
-			emsg = "error: Unable to stat zone file '%s'.\n";
+			emsg = "Unable to stat zone file '%s'.\n";
 			break;
 		}
 		
+		fprintf(stderr, "error: ");
 		fprintf(stderr, emsg, source);
 		return KNOTD_ENOENT;
 	}
@@ -560,7 +561,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 		
 		/* Wait for all running tasks. */
 		while (running > 0) {
-			zctask_wait(tasks, jobs);
+			rc |= zctask_wait(tasks, jobs);
 			--running;
 		}
 		free(tasks);

@@ -42,7 +42,7 @@
 #include "libknot/updates/xfr-in.h"
 
 /* Constants. */
-#define SOA_QRY_TIMEOUT 10000 /*!< SOA query timeout (ms). */
+#define ZONES_JITTER_PCT    10 /*!< +-N% jitter to timers. */
 #define IXFR_DBSYNC_TIMEOUT (60*1000) /*!< Database sync timeout = 60s. */
 #define AXFR_BOOTSTRAP_RETRY (60*1000) /*!< Interval between AXFR BS retries. */
 
@@ -77,13 +77,14 @@ typedef struct zonedata_t
 		void           *wrkr;    /*!< Pending XFR/IN worker. */
 		int next_id;             /*!< ID of the next awaited SOA resp.*/
 		uint32_t bootstrap_retry;/*!< AXFR/IN bootstrap retry. */
+		unsigned       scheduled;/*!< Scheduled operations. */ 
 	} xfr_in;
 
 	/*! \brief List of pending NOTIFY events. */
 	list notify_pending;
 	
-	/*! \brief List of pending SOA queries. */
-	struct event_t* soa_pending;
+	/*! \brief List of fds with pending SOA queries. */
+	int soa_pending;
 
 	/*! \brief Zone IXFR history. */
 	journal_t *ixfr_db;

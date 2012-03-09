@@ -234,6 +234,23 @@ static int conf_process(conf_t *conf)
 		if (zone->ixfr_fslimit == 0) {
 			zone->ixfr_fslimit = conf->ixfr_fslimit;
 		}
+		
+		// Relative zone filenames should be relative to storage
+		if (zone->file[0] != '/') {
+			size_t prefix_len = strlen(conf->storage) + 1; // + '\0'
+			size_t zp_len = strlen(zone->file) + 1;
+			char *ap = malloc(prefix_len + zp_len);
+			if (ap != NULL) {
+				memcpy(ap, conf->storage, prefix_len);
+				ap[prefix_len - 1] = '/';
+				memcpy(ap + prefix_len, zone->file, zp_len);
+				free(zone->file);
+				zone->file = ap;
+			} else {
+				ret = KNOTD_ENOMEM;
+				continue;
+			}
+		}
 
 		// Normalize zone filename
 		zone->file = strcpath(zone->file);

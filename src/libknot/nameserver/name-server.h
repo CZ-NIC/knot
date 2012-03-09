@@ -160,16 +160,13 @@ enum knot_ns_xfr_flag_t {
  * \brief XFR request types.
  */
 typedef enum knot_ns_xfr_type_t {
-	/* Special events. */
-	XFR_TYPE_CLOSE = -1, /*!< Close connection event. */
-
 	/* DNS events. */
-	XFR_TYPE_AIN = 0,   /*!< AXFR-IN request (start transfer). */
-	XFR_TYPE_AOUT,  /*!< AXFR-OUT request (incoming transfer). */
-	XFR_TYPE_IIN,   /*!< IXFR-IN request (start transfer). */
-	XFR_TYPE_IOUT,  /*!< IXFR-OUT request (incoming transfer). */
-	XFR_TYPE_SOA,   /*!< Pending SOA request. */
-	XFR_TYPE_NOTIFY /*!< Pending NOTIFY query. */
+	XFR_TYPE_AIN = 1 << 0,   /*!< AXFR-IN request (start transfer). */
+	XFR_TYPE_AOUT= 1 << 1,  /*!< AXFR-OUT request (incoming transfer). */
+	XFR_TYPE_IIN = 1 << 2,   /*!< IXFR-IN request (start transfer). */
+	XFR_TYPE_IOUT = 1 << 3,  /*!< IXFR-OUT request (incoming transfer). */
+	XFR_TYPE_SOA = 1 << 4,   /*!< Pending SOA request. */
+	XFR_TYPE_NOTIFY = 1 << 5 /*!< Pending NOTIFY query. */
 } knot_ns_xfr_type_t;
 
 /*----------------------------------------------------------------------------*/

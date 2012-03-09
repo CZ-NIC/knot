@@ -20,8 +20,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "common/crc.h"
 #include "libknot/common.h"
@@ -698,8 +701,8 @@ static unsigned long calculate_crc(FILE *f)
 	size_t file_size = ftell(f);
 	fseek(f, 0L, SEEK_SET);
 
-	const size_t chunk_size = 1024;
-	/* read chunks of 1 kB */
+	const size_t chunk_size = 4096;
+	/* read chunks of 4 kB */
 	size_t read_bytes = 0;
 	/* Prealocate chunk */
 	unsigned char *chunk = malloc(sizeof(unsigned char) * chunk_size);
@@ -731,6 +734,8 @@ static unsigned long calculate_crc(FILE *f)
 
 int knot_zload_open(zloader_t **dst, const char *filename)
 {
+	char crc_buf[65];
+
 	if (!dst || !filename) {
 		return KNOT_EBADARG;
 	}
@@ -760,38 +765,56 @@ int knot_zload_open(zloader_t **dst, const char *filename)
 
 	/* Read CRC from filename.crc file */
 	char *crc_path =
-		malloc(sizeof(char) * (strlen(filename) + strlen(".crc") + 1));
+		malloc(sizeof(char) * (strlen(filename) + 4 /* strlen(".crc") */ + 1));
 	if (unlikely(!crc_path)) {
 		fclose(f);
 		return KNOT_ENOMEM;
 	}
-	memset(crc_path, 0,
-	       sizeof(char) * (strlen(filename) + strlen(".crc") + 1));
+	memcpy(crc_path, filename, strlen(filename));
+	memcpy(crc_path + strlen(filename), ".crc", 4);
+	crc_path[strlen(filename) + 4] = '\0';
 
-	memcpy(crc_path, filename, sizeof(char) * strlen(filename));
-
-	crc_path = strncat(crc_path, ".crc", strlen(".crc"));
-	FILE *f_crc = fopen(crc_path, "r");
-	if (unlikely(!f_crc)) {
+	int f_crc = open(crc_path, O_RDONLY);
+	if (f_crc == -1) {
+		/* FIXME: Print strerror_r(errno) in dbg message */
 		dbg_zload("knot_zload_open: failed to open '%s'\n",
-		                   crc_path);
-		fclose(f);
+			  crc_path);
 		free(crc_path);
+		fclose(f);
 		return KNOT_ECRC;
 	}
 
-	unsigned long crc_from_file = 0;
-	if (fscanf(f_crc, "%64lu\n", &crc_from_file) != 1) {
+	ssize_t crc_read_bytes = 0;
+	crc_read_bytes = read(f_crc, crc_buf, 64);
+	if (crc_read_bytes == -1) {
+		/* FIXME: Print strerror_r(errno) in dbg message */
 		dbg_zload("knot_zload_open: could not read "
 		                   "CRC from file '%s'\n",
 		                   crc_path);
-		fclose(f_crc);
+		free(crc_path);
+		close(f_crc);
+		fclose(f);
+		return KNOT_ECRC;
+	}
+	crc_buf[crc_read_bytes] = '\0';
+
+	unsigned long crc_from_file = 0;
+	errno = 0;
+	crc_from_file = strtoul(crc_buf, (char **) NULL, 10);
+	if (errno != 0) {
+		/* FIXME: Print strerror_r(errno) in dbg message */
+		dbg_zload("knot_zload_open: could not convert "
+		                   "CRC from file '%s'\n",
+		                   crc_path);
+		close(f_crc);
 		fclose(f);
 		free(crc_path);
 		return KNOT_ERROR;
 	}
+
+	/* Free some value and close the CRC file */
 	free(crc_path);
-	fclose(f_crc);
+	close(f_crc);
 
 	/* Compare calculated and read CRCs. */
 	if (crc_from_file != crc_calculated) {
