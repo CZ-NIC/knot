@@ -412,10 +412,6 @@ static ck_hash_table_item_t **ck_find_in_stash(const ck_hash_table_t *table,
 {
 	ck_stash_item_t *item = table->stash;
 	while (item != NULL) {
-		dbg_ck("Comparing item in stash (key: %.*s (size %zu))"
-		         "with searched item (key %.*s (size %u)).\n",
-		         (int)item->item->key_length, item->item->key,
-		         item->item->key_length, (int)length, key, length);
 		/*! \todo Can the item be NULL?
 		 *        Sometimes it crashed on assert in ck_items_match(),
 		 *        But I'm not sure if this may happen or if the
@@ -423,6 +419,11 @@ static ck_hash_table_item_t **ck_find_in_stash(const ck_hash_table_t *table,
 		 *        non-NULL.
 		 */
 		if (item->item && ck_items_match(item->item, key, length)) {
+			dbg_ck("Comparing item in stash (key: %.*s (size %zu))"
+			         "with searched item (key %.*s (size %u)).\n",
+			         (int)item->item->key_length, item->item->key,
+			         item->item->key_length, (int)length, key,
+			         length);
 			return &item->item;
 		}
 		item = item->next;
