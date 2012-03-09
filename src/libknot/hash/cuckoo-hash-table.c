@@ -344,10 +344,10 @@ static uint ck_check_used_twice(da_array_t *used, uint32_t hash)
 {
 	uint i = 0, found = 0;
 	while (i <= da_get_count(used) && found < 2) {
-		++i;
 		if (((uint *)(da_get_items(used)))[i] == hash) {
 			++found;
 		}
+		++i;
 	}
 
 	if (i <= da_get_count(used) && found == 2) {
