@@ -58,15 +58,10 @@ static int acl_compare(void *k1, void *k2)
 		uint32_t mask = acl_fill_mask32(a1->prefix);
 
 		/* Compare address. */
-		ldiff = (int)((acl_sa_ipv4(a1) & mask) - (acl_sa_ipv4(a2) & mask));
-		if (ldiff < 0) {
-			return -1;
-		} else if (ldiff > 0) {
-			return 1;
-		} else {
-			return 0;
-		}
-
+		int cmp1 = (acl_sa_ipv4(a1) & mask);
+		int cmp2 = (acl_sa_ipv4(a2) & mask);
+		if (cmp1 > cmp2) return  1;
+		if (cmp1 < cmp2) return -1;
 		return 0;
 	}
 
@@ -93,12 +88,11 @@ static int acl_compare(void *k1, void *k2)
 				chunk = 0;
 			}
 
-			ldiff = (*(a1p++) & mask) ^ (*(a2p++) & mask);
-			if (ldiff < 0) {
-				return -1;
-			} else if (ldiff > 0) {
-				return 1;
-			}
+			int cmp1 = (*(a1p++) & mask);
+			int cmp2 = (*(a2p++) & mask);
+			if (cmp1 > cmp2) return  1;
+			if (cmp1 < cmp2) return -1;
+			return 0;
 		}
 
 		return 0;

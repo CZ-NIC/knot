@@ -51,15 +51,9 @@ static inline int sfwrite(const void *src, size_t len, int fd)
 /*! \brief Equality compare function. */
 static inline int journal_cmp_eq(uint64_t k1, uint64_t k2)
 {
-	if (k1 == k2) {
-		return 0;
-	}
-	
-	if (k1 < k2) {
-		return -1;
-	}
-	
-	return 1;
+	if (k1 > k2) return 1;
+	if (k1 < k2) return -1;
+	return 0;
 }
 
 /*! \brief Recover metadata from journal. */

@@ -103,10 +103,10 @@ void __attribute__ ((constructor)) fdset_init()
  * \retval  0 if a == b
  * \retval  1 if a > b
  */
-static int fdset_compare(void *a, void *b)
+static inline int fdset_compare(void *a, void *b)
 {
-	if ((size_t)a < (size_t)b) return -1;
-	if ((size_t)a > (size_t)b) return  1;
+	if (a > b) return 1;
+	if (a < b) return -1;
 	return 0;
 }
 

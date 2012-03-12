@@ -40,26 +40,14 @@
  * \param y Second time_t value to be compared.
  *
  * \retval 0 when times are the some.
- * \retval 1 when y < x.
- * \retval -1 when x > y.
+ * \retval 1 when x > y.
+ * \retval -1 when x < y.
  */
 static int timet_cmp(time_t x, time_t y)
 {
-	/* Calculate difference in the scale of seconds. */
-	long diff = x - y;
-
-	/* X and Y are equal. */
-	if (diff == 0) {
-		return 0;
-	}
-
-	/* X is newer. */
-	if (diff > 0) {
-		return 1;
-	}
-
-	/* Y is newer. */
-	return -1;
+	if (x > y) return 1;
+	if (x < y) return -1;
+	return 0;
 }
 
 /*!
