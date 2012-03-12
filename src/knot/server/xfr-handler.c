@@ -46,6 +46,7 @@
 #define XFR_SWEEP_INTERVAL 2 /*! [seconds] between sweeps. */
 #define XFR_BUFFER_SIZE 65535 /*! Do not change this - maximum value for UDP packet length. */
 
+/*! \brief Send interrupt to all workers. */
 void xfr_interrupt(xfrhandler_t *h)
 {
 	for(unsigned i = 0; i < h->unit->size; ++i) {
@@ -53,6 +54,7 @@ void xfr_interrupt(xfrhandler_t *h)
 	}
 }
 
+/*! \brief Deinitialize allocated values from xfer descriptor. */
 static void xfr_request_deinit(knot_ns_xfr_t *r)
 {
 	if (r) {
@@ -61,7 +63,7 @@ static void xfr_request_deinit(knot_ns_xfr_t *r)
 	}
 }
 
-/*! \todo Document me (issue #1586) */
+/*! \brief Free allocated xfer descriptor (also deinitializes). */
 static void xfr_free_task(knot_ns_xfr_t *task)
 {
 	if (!task) {
@@ -103,6 +105,15 @@ static void xfr_free_task(knot_ns_xfr_t *task)
 	free(task);
 }
 
+/*!
+ * \brief Return xfer descriptor associated with given fd.
+ *
+ * \param w Current worker.
+ * \param fd Requested descriptor.
+ *
+ * \retval xfer descriptor if found.
+ * \retval NULL if no descriptor found.
+ */
 static knot_ns_xfr_t *xfr_handler_task(xfrworker_t *w, int fd)
 {
 	xfrhandler_t *h = w->master;
@@ -188,8 +199,18 @@ static void xfr_sweep(fdset_t *set, int fd, void *data)
 	}
 }
 
-/*! \todo Document me (issue #1586) */
-static knot_ns_xfr_t *xfr_register_task(xfrworker_t *w, knot_ns_xfr_t *req)
+/*!
+ * \brief Register task in given worker.
+ * 
+ * \warning Must be freed with xfr_free_task() when finished.
+ *
+ * \param w Given worker.
+ * \param req Pointer to template xfer descriptor.
+ *
+ * \retval Newly allocated xfer descriptor if success.
+ * \retval NULL on error.
+ */
+static knot_ns_xfr_t *xfr_register_task(xfrworker_t *w, const knot_ns_xfr_t *req)
 {
 	knot_ns_xfr_t *t = malloc(sizeof(knot_ns_xfr_t));
 	if (!t) {
@@ -279,15 +300,7 @@ static int xfr_xfrin_cleanup(xfrworker_t *w, knot_ns_xfr_t *data)
  */
 static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 {
-	/* CLEANUP */
-//	// get the zone name from Question
-//	dbg_xfr_verb("Query: %p, response: %p\n", data->query, data->response);
-//	const knot_dname_t *qname = knot_packet_qname(data->query);
-//	char *zorigin = "(unknown)";
-//	if (qname != NULL) {
-//		zorigin = knot_dname_to_str(qname);
-//	}
-	
+
 	int ret = KNOTD_EOK;
 	int apply_ret = KNOT_EOK;
 	int switch_ret = KNOT_EOK;
@@ -404,11 +417,6 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 		break;
 	}
 
-	/* CLEANUP */
-//	if (qname != NULL) {
-//		free(zorigin);
-//	}
-	
 	return ret;
 }
 
@@ -714,7 +722,14 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 	return result;
 }
 
-/*! \todo Document me (issue #1586)
+/*!
+ * \brief Start incoming transfer (applicable to AXFR/IN or IXFR/IN).
+ *
+ * \warning xfer descriptor will be registered if successful.
+ * \warning data->fd will be duplicated if successful.
+ * 
+ * \param w Given worker.
+ * \param data xfer descriptor.
  */
 static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 {
@@ -869,19 +884,17 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 	return KNOTD_EOK;
 }
 
+/*!
+ * \brief Compare file descriptors.
+ * 
+ * \note Return values of {-1,0,1} are required by skip-list structure.
+ */
 static int xfr_fd_compare(void *k1, void *k2)
 {
-	if (k1 < k2) {
-		return -1;
-	}
-	
-	if (k1 > k2) {
-		return 1;
-	}
-	
-	return 0;
+	return (k1 > k2) - (k1 > k2);
 }
 
+/*! \brief Return I/A character depending on xfer type. */
 static inline char xfr_strtype(knot_ns_xfr_t *xfr) {
 	if (xfr->type == XFR_TYPE_IOUT) {
 		return 'I';
@@ -890,6 +903,7 @@ static inline char xfr_strtype(knot_ns_xfr_t *xfr) {
 	}
 }
 
+/*! \brief Wrapper function for answering AXFR/OUT. */
 static int xfr_answer_axfr(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 {
 	int ret = knot_ns_answer_axfr(ns, xfr);
@@ -897,6 +911,7 @@ static int xfr_answer_axfr(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 	return ret;
 }
 
+/*! \brief Wrapper function for answering IXFR/OUT. */
 static int xfr_answer_ixfr(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 {
 	/* Check serial differeces. */
@@ -943,6 +958,7 @@ static int xfr_answer_ixfr(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 	return ret;
 }
 
+/*! \brief Build string for logging related to given xfer descriptor. */
 static int xfr_update_msgpref(knot_ns_xfr_t *req, const char *keytag)
 {
 	/* Check */
@@ -1032,10 +1048,7 @@ static int xfr_update_msgpref(knot_ns_xfr_t *req, const char *keytag)
 	return KNOTD_EOK;
 }
 
-/*
- * Public APIs.
- */
-
+/*! \brief Create XFR worker. */
 static xfrworker_t* xfr_worker_create(xfrhandler_t *h, knot_nameserver_t *ns)
 {
 	xfrworker_t *w = malloc(sizeof(xfrworker_t));
@@ -1068,6 +1081,7 @@ static xfrworker_t* xfr_worker_create(xfrhandler_t *h, knot_nameserver_t *ns)
 	return w;
 }
 
+/*! \brief Free created XFR worker. */
 static void xfr_worker_free(xfrworker_t *w) {
 	if (w) {
 		evqueue_free(&w->q);
@@ -1075,6 +1089,10 @@ static void xfr_worker_free(xfrworker_t *w) {
 		free(w);
 	}
 }
+
+/*
+ * Public APIs.
+ */
 
 xfrhandler_t *xfr_create(size_t thrcount, knot_nameserver_t *ns)
 {
@@ -1243,7 +1261,6 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 	
 	// use the QNAME as the zone name to get names also for
 	// zones that are not in the server
-	/*! \todo Update msgpref with zname from query. */
 	const knot_dname_t *qname = knot_packet_qname(xfr->query);
 	if (qname != NULL) {
 		xfr->zname = knot_dname_to_str(qname);
