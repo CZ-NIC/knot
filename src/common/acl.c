@@ -92,7 +92,6 @@ static int acl_compare(void *k1, void *k2)
 			int cmp2 = (*(a2p++) & mask);
 			if (cmp1 > cmp2) return  1;
 			if (cmp1 < cmp2) return -1;
-			return 0;
 		}
 
 		return 0;
