@@ -147,6 +147,47 @@ static const knot_dname_t *knot_rdata_srv_name(const knot_rdata_t *rdata)
 }
 
 /*----------------------------------------------------------------------------*/
+
+static void knot_rdata_free_items(knot_rdata_item_t *items, unsigned int count,
+                                  uint type, int free_all_dnames)
+{
+	if (items == NULL) {
+		return;
+	}
+
+	knot_rrtype_descriptor_t *desc = knot_rrtype_descriptor_by_type(type);
+	assert(desc != NULL);
+
+	assert(count <= desc->length);
+
+	for (int i = 0; i < count; i++) {
+		if (&(items[i]) == NULL) {
+			continue;
+		}
+		if (desc->wireformat[i] == KNOT_RDATA_WF_COMPRESSED_DNAME
+		    || desc->wireformat[i] == KNOT_RDATA_WF_UNCOMPRESSED_DNAME
+		    || desc->wireformat[i] == KNOT_RDATA_WF_LITERAL_DNAME) {
+			if ((items[i].dname != NULL)) {
+				/*! \todo This is hack to prevent memory errors,
+				 *        as the rdata_set_items() cannot determine
+				 *        items type and so cannot increment
+				 *        reference count in case of dname type.
+				 *        Free would then release dnames that
+				 *        aren't referenced by the rdata.
+				 */
+				if (free_all_dnames) {
+					knot_dname_release(items[i].dname);
+				}
+			}
+		} else {
+			free(items[i].raw_data);
+		}
+	}
+
+	free(items);
+}
+
+/*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
@@ -272,14 +313,17 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 				dname = knot_dname_parse_from_wire(
 					         wire, &pos2, total_size, NULL);
 				if (dname == NULL) {
+					knot_rdata_free_items(items, i,
+					                      desc->type, 1);
 					return KNOT_ERROR;
 				}
 			
 				items[i].raw_data = (uint16_t *)malloc(
 						knot_dname_size(dname) + 2);
 				if (items[i].raw_data == NULL) {
-					/*! \todo This will leak. */
-					free(items);
+					knot_dname_free(&dname);
+					knot_rdata_free_items(items, i,
+					                      desc->type, 1);
 					return KNOT_ENOMEM;
 				}
 				
@@ -307,21 +351,23 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 
 			break;
 		default:
+			knot_rdata_free_items(items, i,
+			                      desc->type, 1);
 			return KNOT_EMALF;
 
 		}
 
 		if (item_size != 0) {
 			if (parsed + item_size > rdlength) {
-				/*! \todo This will leak a lot. */
-				free(items);
+				knot_rdata_free_items(items, i,
+				                      desc->type, 1);
 				return KNOT_EFEWDATA;
 			}
 
 			items[i].raw_data = (uint16_t *)malloc(item_size + 2);
 			if (items[i].raw_data == NULL) {
-				free(items);
-				/*! \todo This will also leak a lot. */
+				knot_rdata_free_items(items, i,
+				                      desc->type, 1);
 				return KNOT_ENOMEM;
 			}
 			memcpy(items[i].raw_data, &item_size, 2);
@@ -335,7 +381,8 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 			// and should create an empty RDATA item
 			items[i].raw_data = (uint16_t *)malloc(2);
 			if (items[i].raw_data == NULL) {
-				free(items);
+				knot_rdata_free_items(items, i,
+				                      desc->type, 1);
 				return KNOT_ENOMEM;
 			}
 			memcpy(items[i].raw_data, &item_size, 2);
@@ -494,39 +541,9 @@ void knot_rdata_deep_free(knot_rdata_t **rdata, uint type,
 		return;
 	}
 
-	knot_rrtype_descriptor_t *desc =
-		knot_rrtype_descriptor_by_type(type);
-	assert(desc != NULL);
+	knot_rdata_free_items((*rdata)->items, (*rdata)->count, type,
+	                      free_all_dnames);
 
-	assert((*rdata)->count <= desc->length);
-
-	for (int i = 0; i < (*rdata)->count; i++) {
-		if (&((*rdata)->items[i]) == NULL) {
-			continue;
-		}
-		if (desc->wireformat[i] == KNOT_RDATA_WF_COMPRESSED_DNAME
-		    || desc->wireformat[i] == KNOT_RDATA_WF_UNCOMPRESSED_DNAME
-		    || desc->wireformat[i] == KNOT_RDATA_WF_LITERAL_DNAME ) {
-			if (((*rdata)->items[i].dname != NULL)) {
-				/*! \todo This is hack to prevent memory errors,
-				 *        as the rdata_set_items() cannot determine
-				 *        items type and so cannot increment
-				 *        reference count in case of dname type.
-				 *        Free would then release dnames that
-				 *        aren't referenced by the rdata.
-				 */
-				if (free_all_dnames) {
-					knot_dname_release((*rdata)->items[i].dname);
-				}
-			}
-		} else {
-			free((*rdata)->items[i].raw_data);
-		}
-	}
-
-	if ((*rdata)->items) {
-		free((*rdata)->items);
-	}
 	free(*rdata);
 	*rdata = NULL;
 }

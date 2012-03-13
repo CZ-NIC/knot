@@ -1,3 +1,17 @@
+v1.0.0 - Feb 29, 2012
+---------------------
+
+New features:
+        * Support for subnets in ACL.
+        * Debug messages enabling in configure.
+        * Optimized memory consuption of zone structures.
+
+Bugfixes:
+        * Memory errors and leaks.
+        * Fixed improper handling of failed IXFR/IN.
+        * Several other minor bugfixes.
+
+
 v1.0-rc1 - Feb 14, 2012
 -----------------------
 

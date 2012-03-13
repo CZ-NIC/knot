@@ -294,15 +294,21 @@ knot_zonedb_t *knot_zonedb_copy(const knot_zonedb_t *db)
 	return db_new;
 }
 
+/*----------------------------------------------------------------------------*/
+
 size_t knot_zonedb_zone_count(const knot_zonedb_t *db)
 {
 	return db->zone_count;
 }
 
+/*----------------------------------------------------------------------------*/
+
 struct knot_zone_db_tree_arg {
 	const knot_zone_t **zones;
 	size_t count;
 };
+
+/*----------------------------------------------------------------------------*/
 
 static void save_zone_to_array(void *node, void *data)
 {
@@ -313,15 +319,16 @@ static void save_zone_to_array(void *node, void *data)
 	args->zones[args->count++] = zone;
 }
 
+/*----------------------------------------------------------------------------*/
+
 const knot_zone_t **knot_zonedb_zones(const knot_zonedb_t *db)
 {
 	struct knot_zone_db_tree_arg args;
-	args.zones = malloc(sizeof(knot_zone_t) * db->zone_count);
+	args.zones = malloc(sizeof(knot_zone_t *) * db->zone_count);
 	args.count = 0;
 	CHECK_ALLOC_LOG(args.zones, NULL);
 
-	gen_tree_apply_inorder(db->zone_tree, save_zone_to_array,
-	                       &args);
+	gen_tree_apply_inorder(db->zone_tree, save_zone_to_array, &args);
 	assert(db->zone_count == args.count);
 
 	return args.zones;

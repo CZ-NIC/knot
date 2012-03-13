@@ -307,11 +307,13 @@ ttl_directive:	DOLLAR_TTL sp STR trail
 
 origin_directive:	DOLLAR_ORIGIN sp abs_dname trail
     {
+    /*!< \todo this will leak. */
 	    knot_node_t *origin_node = knot_node_new($3 ,NULL, 0);
 	if (parser->origin != NULL) {
 //		knot_node_free(&parser->origin, 1);
 	}
 	    parser->origin = origin_node;
+	    parser->origin_directive = 1;
     }
     |	DOLLAR_ORIGIN sp rel_dname trail
     {
@@ -392,7 +394,6 @@ dname:	abs_dname
 	    } else {
 		    $$ = knot_dname_cat($1,
 					  parser->origin->owner);
-//		printf("leak: %s\n", knot_dname_to_str($$));
 	    }
     }
     ;
@@ -404,7 +405,12 @@ abs_dname:	'.'
     }
     |	'@'
     {
+    	if (parser->origin_directive) {
 	    $$ = parser->origin->owner;
+	} else {
+		zc_error("@ used, but no $ORIGIN specified.\n");
+		$$ = parser->origin->owner;
+	}
     }
     |	rel_dname '.'
     {
@@ -422,10 +428,7 @@ label:	STR
 		    zc_error("label exceeds %d character limit", MAXLABELLEN);
 		    $$ = error_dname;
 	    } else {
-//	    printf("%s\n", $1.str);
 		    $$ = knot_dname_new_from_str($1.str, $1.len, NULL);
-//	    printf("Creating new (label): %s %p\n", $1.str, $$);
-//	printf("new: %p %s\n", $$, $1.str);
 	$$->ref.count = 0;
 	    }
 
@@ -1560,23 +1563,19 @@ zparser_type *zparser_create()
 
 	result->current_rrset = knot_rrset_new(NULL, 0, 0, 0);
 	if (result->current_rrset == NULL) {
-		ERR_ALLOC_FAILED;
 		free(result->temporary_items);
 		free(result);
 		return NULL;
 	}
 
 	result->root_domain = knot_dname_new_from_str(".", 1, NULL);
-//	printf("THE NEW ROOT: %p\n", result->root_domain);
 	if (result->root_domain == NULL) {
-		ERR_ALLOC_FAILED;
 		free(result->temporary_items);
 		free(result->current_rrset);
 		free(result);
 		return NULL;
 	}
 
-	knot_dname_retain(result->root_domain);
 	return result;
 }
 
@@ -1607,6 +1606,7 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 	parser->filename = filename;
 	parser->rdata_count = 0;
 	parser->origin_from_config = origin_from_config;
+	knot_dname_retain(origin_from_config);
 
 	parser->last_node = origin;
 //	parser->root_domain = NULL;
@@ -1620,14 +1620,17 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 
 	parser->current_rrset->rclass = parser->default_class;
 	parser->current_rrset->rdata = NULL;
+	
+	parser->origin_directive = 0;
 }
 
 
 void zparser_free()
 {
-//	knot_dname_release(parser->root_domain);
+	knot_dname_release(parser->root_domain);
 //	knot_dname_release(parser->prev_dname);
-	knot_dname_free(&parser->origin_from_config);
+	knot_zone_deep_free(&parser->current_zone, 1);
+	knot_dname_release(parser->origin_from_config);
 	free(parser->temporary_items);
 	if (parser->current_rrset != NULL) {
 		free(parser->current_rrset);

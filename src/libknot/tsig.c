@@ -331,16 +331,13 @@ tsig_algorithm_t tsig_rdata_alg(const knot_rrset_t *tsig)
 	}
 
 	knot_lookup_table_t *item = knot_lookup_by_name(tsig_alg_table, name);
+	free(name);
 	if (!item) {
 		dbg_tsig_detail("TSIG: rdata: unknown algorithm.\n");
 		return KNOT_TSIG_ALG_NULL;
 	}
-	free(name);
 
-	int id = item->id;
-
-
-	return id;
+	return item->id;
 }
 
 uint64_t tsig_rdata_time_signed(const knot_rrset_t *tsig)
@@ -549,6 +546,8 @@ uint16_t tsig_alg_digest_length(tsig_algorithm_t alg)
 		case KNOT_TSIG_ALG_HMAC_SHA224:
 			return KNOT_TSIG_ALG_DIG_LENGTH_SHA224;
 		case KNOT_TSIG_ALG_HMAC_SHA256:
+			return KNOT_TSIG_ALG_DIG_LENGTH_SHA256;
+		case KNOT_TSIG_ALG_HMAC_SHA384:
 			return KNOT_TSIG_ALG_DIG_LENGTH_SHA384;
 		case KNOT_TSIG_ALG_HMAC_SHA512:
 			return KNOT_TSIG_ALG_DIG_LENGTH_SHA512;

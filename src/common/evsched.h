@@ -212,7 +212,8 @@ event_t* evsched_schedule_term(evsched_t *s, uint32_t dt);
  * \param s Event scheduler.
  * \param ev Scheduled event.
  *
- * \retval 0 on success.
+ * \retval 0 if already ran.
+ * \retval 1 if found and cancelled.
  * \retval <0 on error.
  */
 int evsched_cancel(evsched_t *s, event_t *ev);

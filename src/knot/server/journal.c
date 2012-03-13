@@ -23,6 +23,7 @@
 
 #include "knot/other/error.h"
 #include "knot/other/debug.h"
+#include "knot/zone/zone-dump.h"
 #include "journal.h"
 
 /*! \brief Infinite file size limit. */
@@ -50,15 +51,9 @@ static inline int sfwrite(const void *src, size_t len, int fd)
 /*! \brief Equality compare function. */
 static inline int journal_cmp_eq(uint64_t k1, uint64_t k2)
 {
-	if (k1 == k2) {
-		return 0;
-	}
-	
-	if (k1 < k2) {
-		return -1;
-	}
-	
-	return 1;
+	if (k1 > k2) return 1;
+	if (k1 < k2) return -1;
+	return 0;
 }
 
 /*! \brief Recover metadata from journal. */
@@ -133,6 +128,10 @@ static int journal_recover(journal_t *j)
 
 int journal_create(const char *fn, uint16_t max_nodes)
 {
+	if (fn == NULL) {
+		return KNOTD_EINVAL;
+	}
+	
 	/* File lock. */
 	struct flock fl;
 	memset(&fl, 0, sizeof(struct flock));
@@ -143,7 +142,7 @@ int journal_create(const char *fn, uint16_t max_nodes)
 	fl.l_pid = getpid();
 	
 	/* Create journal file. */
-	int fd = open(fn, O_RDWR|O_CREAT|O_TRUNC, S_IRWXU|S_IRWXG);
+	int fd = open(fn, O_RDWR|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
 	if (fd < 0) {
 		dbg_journal("journal: failed to create file '%s'\n", fn);
 		return KNOTD_EINVAL;
@@ -155,6 +154,13 @@ int journal_create(const char *fn, uint16_t max_nodes)
 
 	/* Create journal header. */
 	dbg_journal("journal: creating header\n");
+	const char magic[MAGIC_LENGTH] = MAGIC_BYTES;
+	if (!sfwrite(magic, MAGIC_LENGTH, fd)) {
+		fcntl(fd, F_SETLK, &fl);
+		close(fd);
+		remove(fn);
+		return KNOTD_ERROR;
+	}
 	if (!sfwrite(&max_nodes, sizeof(uint16_t), fd)) {
 		fcntl(fd, F_SETLK, &fl);
 		close(fd);
@@ -219,10 +225,20 @@ int journal_create(const char *fn, uint16_t max_nodes)
 	return KNOTD_EOK;
 }
 
-journal_t* journal_open(const char *fn, size_t fslimit, uint16_t bflags)
+journal_t* journal_open(const char *fn, size_t fslimit, int mode, uint16_t bflags)
 {
 	/*! \todo Memory mapping may be faster than stdio? (issue #964) */
-
+	if (fn == NULL) {
+		return NULL;
+	}
+	
+	/* Open journal file for r/w (returns error if not exists). */
+	int fd = open(fn, O_RDWR);
+	if (fd < 0) {
+		dbg_journal("journal: failed to open file '%s'\n", fn);
+		return NULL;
+	}
+	
 	/* File lock. */
 	struct flock fl;
 	memset(&fl, 0, sizeof(struct flock));
@@ -231,13 +247,6 @@ journal_t* journal_open(const char *fn, size_t fslimit, uint16_t bflags)
 	fl.l_start = 0;
 	fl.l_len = 0;
 	fl.l_pid = getpid();
-
-	/* Open journal file for r/w (returns error if not exists). */
-	int fd = open(fn, O_RDWR);
-	if (fd < 0) {
-		dbg_journal("journal: failed to open file '%s'\n", fn);
-		return NULL;
-	}
 	
 	/* Attempt to lock. */
 	dbg_journal_verb("journal: locking journal %s\n", fn);
@@ -256,6 +265,41 @@ journal_t* journal_open(const char *fn, size_t fslimit, uint16_t bflags)
 	}
 	fl.l_type  = F_UNLCK;
 	dbg_journal("journal: locked journal %s (returned %d)\n", fn, ret);
+	
+	/* Read magic bytes. */
+	dbg_journal("journal: reading magic bytes\n");
+	const char magic_req[MAGIC_LENGTH] = MAGIC_BYTES;
+	char magic[MAGIC_LENGTH];
+	if (!sfread(magic, MAGIC_LENGTH, fd)) {
+		dbg_journal_detail("journal: cannot read magic bytes\n");
+		fcntl(fd, F_SETLK, &fl);
+		close(fd);
+		return NULL;
+	}
+	if (memcmp(magic, magic_req, MAGIC_LENGTH) != 0) {
+		log_server_warning("Journal file '%s' version is too old, "
+		                   "it will be flushed.\n", fn);
+		fcntl(fd, F_SETLK, &fl);
+		close(fd);
+		return NULL;
+	}
+	
+	/* Check for lazy mode. */
+	if (mode & JOURNAL_LAZY) {
+		dbg_journal("journal: opening journal %s lazily\n", fn);
+		journal_t *j = malloc(sizeof(journal_t));
+		if (j != NULL) {
+			memset(j, 0, sizeof(journal_t));
+			j->fd = -1;
+			j->path = strdup(fn);
+			j->fslimit = fslimit;
+			j->bflags = bflags;
+			j->refs = 1;
+		}
+		fcntl(fd, F_SETLK, &fl);
+		close(fd);
+		return j;
+	}
 
 	/* Read maximum number of entries. */
 	uint16_t max_nodes = 512;
@@ -277,16 +321,18 @@ journal_t* journal_open(const char *fn, size_t fslimit, uint16_t bflags)
 	/* Allocate journal structure. */
 	const size_t node_len = sizeof(journal_node_t);
 	journal_t *j = malloc(sizeof(journal_t) + max_nodes * node_len);
-	if (!j) {
+	if (j == NULL) {
 		dbg_journal_detail("journal: cannot allocate journal\n");
 		fcntl(fd, F_SETLK, &fl);
 		close(fd);
 		return NULL;
 	}
+	memset(j, 0, sizeof(journal_t) + max_nodes * node_len);
 	j->qhead = j->qtail = 0;
 	j->fd = fd;
 	j->max_nodes = max_nodes;
 	j->bflags = bflags;
+	j->refs = 1;
 
 	/* Load node queue state. */
 	if (!sfread(&j->qhead, sizeof(uint16_t), fd)) {
@@ -646,18 +692,54 @@ int journal_close(journal_t *journal)
 		return KNOTD_EINVAL;
 	}
 	
-	/* Unlock journal file. */
-	journal->fl.l_type = F_UNLCK;
-	fcntl(journal->fd, F_SETLK, &journal->fl);
-	dbg_journal("journal: unlocked journal %p\n", journal);
+	/* Check if lazy. */
+	if (journal->fd < 0) {
+		free(journal->path);
+	} else {
+		/* Unlock journal file. */
+		journal->fl.l_type = F_UNLCK;
+		fcntl(journal->fd, F_SETLK, &journal->fl);
+		dbg_journal("journal: unlocked journal %p\n", journal);
 
-	/* Close file. */
-	close(journal->fd);
-
+		/* Close file. */
+		close(journal->fd);
+	}
+	
 	dbg_journal("journal: closed journal %p\n", journal);
 
 	/* Free allocated resources. */
+	
 	free(journal);
 
 	return KNOTD_EOK;
+}
+
+journal_t *journal_retain(journal_t *journal)
+{
+	/* Return active journal if opened lazily. */
+	if (journal != NULL) {
+		if (journal->fd < 0) {
+			dbg_journal("journal: retain(), opening for rw\n");
+			journal = journal_open(journal->path, journal->fslimit, 
+			                       0, journal->bflags);
+		} else {
+			++journal->refs;
+			dbg_journal("journal: retain(), ++refcount\n");
+		}
+	}
+	
+	return journal;
+}
+
+
+void journal_release(journal_t *journal) {
+	if (journal != NULL) {
+		if (journal->refs == 1) {
+			dbg_journal("journal: release(), closing last\n");
+			journal_close(journal);
+		} else {
+			--journal->refs;
+			dbg_journal_verb("journal: release(), --refcount\n");
+		}
+	}
 }

@@ -45,15 +45,17 @@ struct knot_node;
 struct knot_dname {
 	ref_t ref;     /*!< Reference counting. */
 	uint8_t *name;	/*!< Wire format of the domain name. */
+	uint8_t *labels;
+	struct knot_node *node; /*!< Zone node the domain name belongs to. */
+	unsigned int id; /*!< ID of domain name used in zone dumping. */
+
 	/*!
 	 * \brief Size of the domain name in octets.
 	 * \todo Is this needed? Every dname should end with \0 or pointer.
 	 */
 	unsigned int size;
-	uint8_t *labels;
+
 	unsigned short label_count;
-	struct knot_node *node; /*!< Zone node the domain name belongs to. */
-	unsigned int id; /*!< ID of domain name used in zone dumping. */
 };
 
 typedef struct knot_dname knot_dname_t;

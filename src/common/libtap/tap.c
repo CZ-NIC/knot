@@ -1,39 +1,20 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+/*
+libtap - Write tests in C
+Copyright (C) 2011 Jake Gelbman <gelbman@gmail.com>
+This file is licensed under the GPL v3
+*/
 
 #include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
-
-//#include "common.h"
 #include "tap.h"
 
 static int expected_tests = NO_PLAN;
 static int failed_tests;
 static int current_test;
 static char *todo_mesg;
-
-void
-plan (int tests) {
-    expected_tests = tests;
-    if (tests != NO_PLAN)
-        printf("1..%d\n", tests);
-}
 
 static char *
 vstrdupf (const char *fmt, va_list args) {
@@ -50,42 +31,57 @@ vstrdupf (const char *fmt, va_list args) {
     return str;
 }
 
+void
+cplan (int tests, const char *fmt, ...) {
+    expected_tests = tests;
+    if (tests == SKIP_ALL) {
+        char *why;
+        va_list args;
+        va_start(args, fmt);
+        why = vstrdupf(fmt, args);
+        va_end(args);
+        printf("1..0 ");
+        note("SKIP %s\n", why);
+        exit(0);
+    }
+    if (tests != NO_PLAN) {
+        printf("1..%d\n", tests);
+    }
+}
+
 int
-vok_at_loc (const char *file, int line, int test, int verbose, const char *fmt,
+vok_at_loc (const char *file, int line, int test, const char *fmt,
             va_list args)
 {
-    if (verbose) {
-	    char *name = vstrdupf(fmt, args);
-	    printf("%sok %d", test ? "" : "not ", ++current_test);
-	    if (*name)
-	        printf(" - %s", name);
-	    if (todo_mesg) {
-	        printf(" # TODO");
-	        if (*todo_mesg)
-	            printf(" %s", todo_mesg);
-	    }
-	    printf("\n");
-	    if (!test) {
-	        if (*name)
-	            diag("  Failed%s test '%s'\n  at %s line %d.",
-	                todo_mesg ? " (TODO)" : "", name, file, line);
-	        else
-	            diag("  Failed%s test at %s line %d.",
-	                todo_mesg ? " (TODO)" : "", file, line);
-	        if (!todo_mesg)
-	            failed_tests++;
-	    
-	    free(name);
-	}
+    char *name = vstrdupf(fmt, args);
+    printf("%sok %d", test ? "" : "not ", ++current_test);
+    if (*name)
+        printf(" - %s", name);
+    if (todo_mesg) {
+        printf(" # TODO");
+        if (*todo_mesg)
+            printf(" %s", todo_mesg);
     }
+    printf("\n");
+    if (!test) {
+        if (*name)
+            diag("  Failed%s test '%s'\n  at %s line %d.",
+                todo_mesg ? " (TODO)" : "", name, file, line);
+        else
+            diag("  Failed%s test at %s line %d.",
+                todo_mesg ? " (TODO)" : "", file, line);
+        if (!todo_mesg)
+            failed_tests++;
+    }
+    free(name);
     return test;
 }
 
 int
-ok_at_loc (const char *file, int line, int verbose, int test, const char *fmt, ...) {
+ok_at_loc (const char *file, int line, int test, const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
-    vok_at_loc(file, line, test, verbose, fmt, args);
+    vok_at_loc(file, line, test, fmt, args);
     va_end(args);
     return test;
 }
@@ -105,7 +101,7 @@ is_at_loc (const char *file, int line, const char *got, const char *expected,
     int test = eq(got, expected);
     va_list args;
     va_start(args, fmt);
-    vok_at_loc(file, line, test, 1, fmt, args);
+    vok_at_loc(file, line, test, fmt, args);
     va_end(args);
     if (!test) {
         diag("         got: '%s'", got);
@@ -116,13 +112,12 @@ is_at_loc (const char *file, int line, const char *got, const char *expected,
 
 int
 isnt_at_loc (const char *file, int line, const char *got, const char *expected,
-             int verbose,
              const char *fmt, ...)
 {
     int test = ne(got, expected);
     va_list args;
     va_start(args, fmt);
-    vok_at_loc(file, line, test, verbose, fmt, args);
+    vok_at_loc(file, line, test, fmt, args);
     va_end(args);
     if (!test) {
         diag("         got: '%s'", got);
@@ -156,7 +151,7 @@ cmp_ok_at_loc (const char *file, int line, int a, const char *op, int b,
              : diag("unrecognized operator '%s'", op);
     va_list args;
     va_start(args, fmt);
-    vok_at_loc(file, line, test, 1, fmt, args);
+    vok_at_loc(file, line, test, fmt, args);
     va_end(args);
     if (!test) {
         diag("    %d", a);
@@ -179,9 +174,10 @@ vdiag_to_fh (FILE *fh, const char *fmt, va_list args) {
         if (!c || c == '\n') {
             mesg[i] = '\0';
             fprintf(fh, "# %s\n", line);
-            if (!c) break;
+            if (!c)
+                break;
             mesg[i] = c;
-            line = &mesg[i+1];
+            line = mesg + i + 1;
         }
     }
     free(mesg);
@@ -228,6 +224,18 @@ exit_status () {
     return retval;
 }
 
+int
+bail_out (int ignore, const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    printf("Bail out!  ");
+    vprintf(fmt, args);
+    printf("\n");
+    va_end(args);
+    exit(255);
+    return 0;
+}
+
 void
 skippy (int n, const char *fmt, ...) {
     char *why;
@@ -260,7 +268,7 @@ cendtodo () {
 #include <sys/mman.h>
 #include <regex.h>
 
-#ifndef MAP_ANONYMOUS 
+#ifndef MAP_ANONYMOUS
 #define MAP_ANONYMOUS MAP_ANON
 #endif
 
@@ -282,10 +290,11 @@ tap_test_died (int status) {
 
 int
 like_at_loc (int for_match, const char *file, int line, const char *got,
-             const char *expected, int verbose, const char *fmt, ...)
+             const char *expected, const char *fmt, ...)
 {
     int test;
     regex_t re;
+    va_list args;
     int err = regcomp(&re, expected, REG_EXTENDED);
     if (err) {
         char errbuf[256];
@@ -297,9 +306,8 @@ like_at_loc (int for_match, const char *file, int line, const char *got,
     err = regexec(&re, got, 0, NULL, 0);
     regfree(&re);
     test = for_match ? !err : err;
-    va_list args;
     va_start(args, fmt);
-    vok_at_loc(file, line, test, verbose, fmt, args);
+    vok_at_loc(file, line, test, fmt, args);
     va_end(args);
     if (!test) {
         if (for_match) {

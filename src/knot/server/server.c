@@ -156,12 +156,12 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	char ebuf[512];
 	if (setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &snd_opt, sizeof(snd_opt)) < 0) {
 		strerror_r(errno, ebuf, sizeof(ebuf));	
-		log_server_warning("Failed to configure socket "
-		                   "write buffers: %s.\n", ebuf);
+//		log_server_warning("Failed to configure socket "
+//		                   "write buffers: %s.\n", ebuf);
 	}
 	if (setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(opt)) < 0) {
 		strerror_r(errno, ebuf, sizeof(ebuf));	
-		log_server_warning("Failed to configure socket read buffers: %s.\n", ebuf);
+//		log_server_warning("Failed to configure socket read buffers: %s.\n", ebuf);
 	}
 
 	/* Create TCP socket. */
@@ -717,7 +717,7 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 		/* Collect results. */
 		if (ret < 0) {
 			log_server_error("Failed to set supplementary groups "
-			                 "for uid=%d %s\n",
+			                 "for uid '%d' (%s).\n",
 			                 getuid(), strerror(errno));
 			priv_failed = 1;
 		}
@@ -726,17 +726,17 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 	
 	/* Watch uid/gid. */
 	if (conf->gid > -1 && conf->gid != getgid()) {
-		log_server_info("Changing group id to %d.\n", conf->gid);
+		log_server_info("Changing group id to '%d'.\n", conf->gid);
 		if (setregid(conf->gid, conf->gid) < 0) {
-			log_server_error("Failed to change gid to %d.\n",
+			log_server_error("Failed to change gid to '%d'.\n",
 			                 conf->gid);
 			priv_failed = 1;
 		}
 	}
 	if (conf->uid > -1 && conf->uid != getuid()) {
-		log_server_info("Changing user id to %d.\n", conf->uid);
+		log_server_info("Changing user id to '%d'.\n", conf->uid);
 		if (setreuid(conf->uid, conf->uid) < 0) {
-			log_server_error("Failed to change uid to %d.\n",
+			log_server_error("Failed to change uid to '%d'.\n",
 			                 conf->uid);
 			priv_failed = 1;
 		}

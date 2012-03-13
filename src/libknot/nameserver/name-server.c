@@ -625,6 +625,8 @@ static void ns_put_authority_ns(const knot_zone_contents_t *zone,
 static int ns_put_authority_soa(const knot_zone_contents_t *zone,
                                  knot_packet_t *resp)
 {
+	int ret;
+
 	knot_rrset_t *soa_rrset = knot_node_get_rrset(
 			knot_zone_contents_apex(zone), KNOT_RRTYPE_SOA);
 	assert(soa_rrset != NULL);
@@ -634,7 +636,12 @@ static int ns_put_authority_soa(const knot_zone_contents_t *zone,
 	uint32_t min = knot_rdata_soa_minimum(knot_rrset_rdata(soa_rrset));
 	if (min < knot_rrset_ttl(soa_rrset)) {
 		knot_rrset_t *soa_copy = NULL;
-		knot_rrset_deep_copy(soa_rrset, &soa_copy);
+		ret = knot_rrset_deep_copy(soa_rrset, &soa_copy);
+
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+
 		CHECK_ALLOC_LOG(soa_copy, KNOT_ENOMEM);
 
 		knot_rrset_set_ttl(soa_copy, min);
@@ -643,12 +650,14 @@ static int ns_put_authority_soa(const knot_zone_contents_t *zone,
 
 	assert(soa_rrset != NULL);
 
-	int ret = knot_response_add_rrset_authority(resp, soa_rrset, 0, 0, 0, 1);
-	if (ret == KNOT_EOK) {
-		ret = ns_add_rrsigs(soa_rrset, resp,
-		                    knot_node_owner(knot_zone_contents_apex(zone)),
-		                    knot_response_add_rrset_authority, 1);
+	ret = knot_response_add_rrset_authority(resp, soa_rrset, 0, 0, 0, 1);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
+
+	ret = ns_add_rrsigs(soa_rrset, resp,
+			    knot_node_owner(knot_zone_contents_apex(zone)),
+			    knot_response_add_rrset_authority, 1);
 
 	return ret;
 }
@@ -2690,6 +2699,48 @@ knot_nameserver_t *knot_ns_create()
 
 /*----------------------------------------------------------------------------*/
 
+static int knot_ns_replace_nsid(knot_opt_rr_t *opt_rr, const char *nsid,
+                                size_t len)
+{
+	assert(opt_rr != NULL);
+	if (nsid == NULL || len == 0) {
+		return KNOT_EOK;
+	}
+
+	int found = 0;
+	int i = 0;
+
+	while (i < opt_rr->option_count && !found) {
+		if (opt_rr->options[i].code == EDNS_OPTION_NSID) {
+			found = 1;
+		} else {
+			++i;
+		}
+	}
+
+	if (found) {
+		uint8_t *new_data = (uint8_t *)malloc(len);
+		if (new_data == NULL) {
+			return KNOT_ENOMEM;
+		}
+
+		memcpy(new_data, nsid, len);
+		uint8_t *old = opt_rr->options[i].data;
+
+		opt_rr->options[i].data = new_data;
+		opt_rr->options[i].length = len;
+
+		free(old);
+
+		return KNOT_EOK;
+	} else {
+		return knot_edns_add_option(opt_rr, EDNS_OPTION_NSID,
+		                            len, (const uint8_t *)nsid);
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
 void knot_ns_set_nsid(knot_nameserver_t *nameserver, const char *nsid, size_t len)
 {
 	if (nameserver == NULL) {
@@ -2702,8 +2753,10 @@ void knot_ns_set_nsid(knot_nameserver_t *nameserver, const char *nsid, size_t le
 		return;
 	}
 	
-	int ret = knot_edns_add_option(nameserver->opt_rr, EDNS_OPTION_NSID,
-	                               len, (const uint8_t *)nsid);
+	int ret = knot_ns_replace_nsid(nameserver->opt_rr, nsid, len);
+
+//	int ret = knot_edns_add_option(nameserver->opt_rr, EDNS_OPTION_NSID,
+//	                               len, (const uint8_t *)nsid);
 	if (ret != KNOT_EOK) {
 		dbg_ns("NS: set_nsid: could not add EDNS option.\n");
 		return;
@@ -3326,7 +3379,7 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		}
 		
 		// save the zone contents to the xfr->data
-		xfr->data = zone;
+		xfr->new_contents = zone;
 		xfr->flags |= XFR_FLAG_AXFR_FINISHED;
 
 		assert(zone->nsec3_nodes != NULL);
@@ -3338,12 +3391,10 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		//knot_zone_contents_dump(zone, 0);
 
 		// check zone integrity
-#ifdef KNOT_XFRIN_DEBUG
-#ifdef DEBUG_ENABLE_BRIEF
+dbg_xfrin_exec(
 		int errs = knot_zone_contents_integrity_check(zone);
-		dbg_ns("Zone integrity check: %d errors.\n", errs);
-#endif
-#endif
+		dbg_xfrin("Zone integrity check: %d errors.\n", errs);
+);
 	}
 	
 	/*!
@@ -3358,13 +3409,17 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 int knot_ns_switch_zone(knot_nameserver_t *nameserver, 
                           knot_ns_xfr_t *xfr)
 {
-	if (xfr == NULL || nameserver == NULL || xfr->data == NULL) {
+	if (xfr == NULL || nameserver == NULL || xfr->new_contents == NULL) {
 		return KNOT_EBADARG;
 	}
 	
-	knot_zone_contents_t *zone = (knot_zone_contents_t *)xfr->data;
+	knot_zone_contents_t *zone = (knot_zone_contents_t *)xfr->new_contents;
 	
 	dbg_ns("Replacing zone by new one: %p\n", zone);
+	if (zone == NULL) {
+		dbg_ns("No new zone!\n");
+		return KNOT_ENOZONE;
+	}
 
 	// find the zone in the zone db
 	knot_zone_t *z = knot_zonedb_find_zone(nameserver->zone_db,
@@ -3375,32 +3430,17 @@ int knot_ns_switch_zone(knot_nameserver_t *nameserver,
 		dbg_ns("Failed to replace zone %s, old zone "
 		                   "not found\n", name);
 		free(name);
+
+		return KNOT_ENOZONE;
 	} else {
 		zone->zone = z;
 	}
 
-	knot_zone_contents_t *old = rcu_xchg_pointer(&z->contents, zone);
-
-//	knot_zone_t *old = knot_zonedb_replace_zone(nameserver->zone_db,
-//	                                                zone);
-	dbg_ns("Old zone: %p\n", old);
-//	if (old == NULL) {
-//		char *name = knot_dname_to_str(
-//				knot_node_owner(knot_zone_apex(zone)));
-//		dbg_ns("Failed to replace zone %s\n", name);
-//		free(name);
-//	}
-
-	// wait for readers to finish
-	dbg_ns("Waiting for readers to finish...\n");
-	synchronize_rcu();
-	// destroy the old zone
-	dbg_ns("Freeing old zone: %p\n", old);
-	knot_zone_contents_deep_free(&old, 0);
+	int ret = xfrin_switch_zone(z, zone, xfr->type);
 
 dbg_ns_exec(
 	dbg_ns("Zone db contents: (zone count: %zu)\n",
-	              nameserver->zone_db->zone_count);
+		      nameserver->zone_db->zone_count);
 
 	const knot_zone_t **zones = knot_zonedb_zones(nameserver->zone_db);
 	for (int i = 0; i < knot_zonedb_zone_count
@@ -3413,7 +3453,7 @@ dbg_ns_exec(
 	free(zones);
 );
 
-	return KNOT_EOK;
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -3654,6 +3694,7 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
 	 *        Maybe only this case will be EOK, other cases some error.
 	 */
 
+	knot_ddns_prereqs_free(&prereqs);
 	knot_packet_free(&response);
 	return KNOT_EOK;
 }

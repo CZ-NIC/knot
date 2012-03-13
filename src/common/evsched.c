@@ -165,10 +165,10 @@ event_t* evsched_next(evsched_t *s)
 
 			/* Immediately return. */
 			if (timercmp(&dt, &next_ev->tv, >=)) {
+				s->current = next_ev;
 				rem_node(&next_ev->n);
 				pthread_mutex_unlock(&s->mx);
 				pthread_mutex_lock(&s->rl);
-				s->current = next_ev;
 				return next_ev;
 			}
 
@@ -325,6 +325,6 @@ int evsched_cancel(evsched_t *s, event_t *ev)
 	/* Enable running events. */
 	pthread_mutex_unlock(&s->rl);
 
-	return 0;
+	return found;
 }
 

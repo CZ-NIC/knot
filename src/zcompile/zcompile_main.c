@@ -19,8 +19,6 @@
 #include <stdlib.h>
 
 #include "zcompile/zcompile.h"
-#include "zcompile/zcompile-error.h"
-#include "common/errors.h"
 #include <config.h>
 
 static void help(int argc, char **argv)
@@ -98,8 +96,9 @@ int main(int argc, char **argv)
 	}
 
 	int error = zone_read(origin, zonefile, outfile, semantic_checks);
+	zparser_free();
 
-	if (error) {
+	if (error != 0) {
 	  /* FIXME! */
 //		if (error < 0) {
 //			fprintf(stderr, "Finished with error: %s.\n",
@@ -107,10 +106,11 @@ int main(int argc, char **argv)
 //		} else {
 //			fprintf(stderr, "Finished with %u errors.\n");
 //		}
+		return 1;
 	} else {
 		printf("Compilation successful.\n");
 	}
 	//log_close();
-
-	return error;
+	
+	return 0;
 }

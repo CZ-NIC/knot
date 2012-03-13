@@ -28,6 +28,7 @@
 #define _KNOT_CHANGESETS_H_
 
 #include "rrset.h"
+#include "zone/node.h"
 
 /*! \todo Changeset must be serializable/deserializable, so
  *        all data and pointers have to be changeset-exclusive,
@@ -57,10 +58,58 @@ typedef struct {
 /*----------------------------------------------------------------------------*/
 
 typedef struct {
+	/*!
+	 * Deleted (without owners and RDATA) after successful update.
+	 */
+	knot_rrset_t **old_rrsets;
+	int old_rrsets_count;
+	int old_rrsets_allocated;
+
+	/*!
+	 * Deleted after successful update.
+	 */
+	knot_rdata_t **old_rdata;
+	unsigned *old_rdata_types;
+	int old_rdata_count;
+	int old_rdata_allocated;
+
+	/*!
+	 * \brief Copied RRSets (i.e. modified by the update).
+	 *
+	 * Deleted (without owners and RDATA) after failed update.
+	 */
+	knot_rrset_t **new_rrsets;
+	int new_rrsets_count;
+	int new_rrsets_allocated;
+
+	/*!
+	 * Deleted after failed update.
+	 */
+	knot_rdata_t **new_rdata;
+	unsigned *new_rdata_types;
+	int new_rdata_count;
+	int new_rdata_allocated;
+
+//	/*!
+//	 * Deleted (without contents) after successful update.
+//	 */
+	knot_node_t **old_nodes;
+	int old_nodes_count;
+	int old_nodes_allocated;
+
+	knot_node_t **old_nsec3;
+	int old_nsec3_count;
+	int old_nsec3_allocated;
+} knot_changes_t;
+
+/*----------------------------------------------------------------------------*/
+
+typedef struct {
 	knot_changeset_t *sets;
 	size_t count;
 	size_t allocated;
 	knot_rrset_t *first_soa;
+	knot_changes_t *changes;
 } knot_changesets_t;
 
 /*----------------------------------------------------------------------------*/

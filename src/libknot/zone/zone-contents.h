@@ -49,14 +49,16 @@ typedef struct knot_zone_contents_t {
 	knot_zone_tree_t *nodes;
 	knot_zone_tree_t *nsec3_nodes;
 
-	/*!
+	knot_dname_table_t *dname_table;
+
+	struct knot_zone *zone;
+
+	knot_nsec3_params_t nsec3_params;
+	
+  /*!
 	 * \todo Unify the use of this field - authoritative nodes vs. all.
 	 */
 	uint node_count;
-
-	knot_dname_table_t *dname_table;
-
-	knot_nsec3_params_t nsec3_params;
 
 	/*! \brief Generation of the zone during update.
 	 * 
@@ -67,8 +69,6 @@ typedef struct knot_zone_contents_t {
 	 *        used, no matter their generation.
 	 */
 	short generation;
-
-	struct knot_zone *zone;
 } knot_zone_contents_t;
 
 /*----------------------------------------------------------------------------*/

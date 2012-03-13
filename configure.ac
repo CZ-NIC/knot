@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 
 AC_PREREQ([2.65])
-AC_INIT([knot], [1.0-rc1], [knot-dns@labs.nic.cz])
+AC_INIT([knot], [1.0.0], [knot-dns@labs.nic.cz])
 AM_INIT_AUTOMAKE([gnu -Wall -Werror])
 AC_CONFIG_SRCDIR([src/knot/main.c])
 AC_CONFIG_HEADERS([src/config.h])
@@ -64,10 +64,30 @@ AC_ARG_ENABLE([ldns],
        no)  ldns=false ;;
        *) AC_MSG_ERROR([bad value ${enableval} for --enable-ldns]) ;;
      esac],[ldns=false])
+     
+# Debug modules
+AC_ARG_ENABLE([debug],
+    AS_HELP_STRING([--enable-debug=server,zones,xfr,packet,dname,rr,ns,hash,compiler],
+    [compile selected debug modules [default=none]]),
+    [
+    echo ${enableval}|tr "," "\n"|while read val; do
+        case "${val}" in
+          server) AC_DEFINE([KNOTD_SERVER_DEBUG], [1], [Server debug.]) ;;
+          zones) AC_DEFINE([KNOT_ZONES_DEBUG], [1], [Zones debug.]) ;;
+          xfr) AC_DEFINE([KNOT_XFR_DEBUG], [1], [XFR debug.]) ;;
+          packet) AC_DEFINE([KNOT_PACKET_DEBUG], [1], [Packet debug.]) ;;
+          dname) AC_DEFINE([KNOT_DNAME_DEBUG], [1], [Domain names debug.]) ;;
+          rr) AC_DEFINE([KNOT_RR_DEBUG], [1], [RR debug.]) ;;
+          ns) AC_DEFINE([KNOT_NS_DEBUG], [1], [Nameserver debug.]) ;;
+          hash) AC_DEFINE([KNOT_HASH_DEBUG], [1], [Hashtable debug.]) ;;
+          compiler) AC_DEFINE([KNOT_COMPILER_DEBUG], [1], [Zone compiler debug.]) ;;
+        esac
+    done
+    ], [])
 
 # Debug level
-AC_ARG_ENABLE([debug],
-    AS_HELP_STRING([--enable-debug=brief|verbose|details], [enable given debug level [default=disabled]]),
+AC_ARG_ENABLE([debuglevel],
+    AS_HELP_STRING([--enable-debuglevel=brief|verbose|details], [enable given debug level [default=disabled]]),
     # Not all shells support fall-through with ;& so I have to duplicate
     [case "x${enableval}" in
       xdetails)

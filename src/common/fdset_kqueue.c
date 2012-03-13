@@ -15,7 +15,6 @@
  */
 
 #include <config.h>
-
 #ifdef HAVE_KQUEUE
 
 #include <stdint.h>

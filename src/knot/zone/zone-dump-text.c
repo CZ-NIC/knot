@@ -54,7 +54,7 @@
 #include "common/skip-list.h"
 #include "common/base32hex.h"
 
-/* TODO max length of alg */
+/*!< \todo #1683 Find all maximum lengths to be used in strcnat. */
 
 enum uint_max_length {
 	U8_MAX_STR_LEN = 4, U16_MAX_STR_LEN = 6,
@@ -114,7 +114,6 @@ enum uint_max_length {
  * IF IBM IS APPRISED OF THE POSSIBILITY OF SUCH DAMAGES.
  */
 #include <sys/types.h>
-#include <sys/param.h>
 #include <sys/socket.h>
 
 #include <netinet/in.h>
@@ -361,30 +360,30 @@ static char *rdata_txt_data_to_string(const uint8_t *data)
 	}
 	memset(ret, 0,  current_length);
 
-	strcat(ret, "\"");
+	strncat(ret, "\"", 3);
 
 	for (i = 1; i <= length; i++) {
 		char ch = (char) data[i];
 		if (isprint((int)ch)) {
 			if (ch == '"' || ch == '\\') {
-				strcat(ret, "\"");
+				strncat(ret, "\"", 3);
 			}
 				/* for the love of god, how to this better,
 				   but w/o obscure self-made functions */
 				char tmp_str[2];
 				tmp_str[0] = ch;
 				tmp_str[1] = 0;
-				strcat(ret, tmp_str);
+				strncat(ret, tmp_str, 2);
 		} else {
-			strcat(ret, "\\");
+			strncat(ret, "\\", 3);
 			char tmp_str[2];
 			tmp_str[0] = ch - '0';
 			tmp_str[1] = 0;
 
-			strcat(ret, tmp_str);
+			strncat(ret, tmp_str, 2);
 		}
 	}
-	strcat(ret, "\"");
+	strncat(ret, "\"", 3);
 
 	return ret;
 }
@@ -412,8 +411,8 @@ char *rdata_text_to_string(knot_rdata_item_t item)
 		char del[2];
 		del[0] = ' ';
 		del[1] = '\0';
-		strcat(ret, txt);
-		strcat(ret, del);
+		strncat(ret, txt, strlen(txt));
+		strncat(ret, del, 2);
 		free(txt);
 	}
 
@@ -423,7 +422,7 @@ char *rdata_text_to_string(knot_rdata_item_t item)
 char *rdata_byte_to_string(knot_rdata_item_t item)
 {
 	assert(item.raw_data[0] == 1);
-	uint8_t data = item.raw_data[1];
+	uint8_t data = *((uint8_t *)(item.raw_data + 1));
 	char *ret = malloc(sizeof(char) * U8_MAX_STR_LEN);
 	snprintf(ret, U8_MAX_STR_LEN, "%d", (char) data);
 	return ret;
@@ -629,7 +628,7 @@ char *rdata_nsap_to_string(knot_rdata_item_t item)
 		return NULL;
 	}
 
-	strcat(ret, converted);
+	strncat(ret, converted, rdata_item_size(item) * 2 + 1);
 	free(converted);
 	return ret;
 }
@@ -637,81 +636,60 @@ char *rdata_nsap_to_string(knot_rdata_item_t item)
 char *rdata_apl_to_string(knot_rdata_item_t item)
 {
 	uint8_t *data = rdata_item_data(item);
-	uint16_t address_family = knot_wire_read_u16(data);
-	uint8_t prefix = data[2];
-	uint8_t length = data[3];
-	int negated = length & APL_NEGATION_MASK;
-	int af = -1;
-
-	char *ret = malloc(sizeof(char) * MAX_NSEC_BIT_STR_LEN);
-
-	memset(ret, 0, MAX_NSEC_BIT_STR_LEN);
-
-	length &= APL_LENGTH_MASK;
-	switch (address_family) {
-		case 1: af = AF_INET; break;
-		case 2: af = AF_INET6; break;
+	size_t read = 0;
+	char *pos = malloc(sizeof(char) * MAX_NSEC_BIT_STR_LEN);
+	if (pos == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
 	}
-
-	if (af != -1) {
-		char text_address[1000];
-		uint8_t address[128];
-		memset(address, 0, sizeof(address));
-		memcpy(address, data + 4, length);
-		if (inet_ntop(af, address,
-			      text_address,
-			      sizeof(text_address))) {
-			snprintf(ret, sizeof(text_address) +
-				 U32_MAX_STR_LEN * 2,
-				 "%s%d:%s/%d",
-				 negated ? "!" : "",
-				 (int) address_family,
-				 text_address,
-				 (int) prefix);
-		}
-	}
-
-	return ret;
-
-		/*
-	int result = 0;
-	buffer_type packet;
-
-	buffer_create_from(
-		&packet, rdata_item_data(rdata), rdata_atom_size(rdata));
-
-	if (buffer_available(&packet, 4)) {
-		uint16_t address_family = buffer_read_u16(&packet);
-		uint8_t prefix = buffer_read_u8(&packet);
-		uint8_t length = buffer_read_u8(&packet);
+	memset(pos, 0, MAX_NSEC_BIT_STR_LEN);
+	
+	char *ret_base = pos;
+	
+	while (read < rdata_item_size(item)) {
+		uint16_t address_family = knot_wire_read_u16(data);
+		uint8_t prefix = data[2];
+		uint8_t length = data[3];
 		int negated = length & APL_NEGATION_MASK;
 		int af = -1;
 
 		length &= APL_LENGTH_MASK;
 		switch (address_family) {
-		case 1: af = AF_INET; break;
-		*case 2: af = AF_INET6; break;
+			case 1: af = AF_INET; break;
+			case 2: af = AF_INET6; break;
 		}
-		if (af != -1 && buffer_available(&packet, length)) {
-			char text_address[1000];
+
+		if (af != -1) {
+			char text_address[1024];
+			memset(text_address, 0, sizeof(text_address));
 			uint8_t address[128];
 			memset(address, 0, sizeof(address));
-			buffer_read(&packet, address, length);
-			if (inet_ntop(af, address, text_address,
-			    sizeof(text_address))) {
-				buffer_printf(output, "%s%d:%s/%d",
-					      negated ? "!" : "",
-					      (int) address_family,
-					      text_address,
-					      (int) prefix);
-				result = 1;
+			memcpy(address, data + 4, length);
+			/* Only valid data should be present here. */
+			assert((data + 4) - rdata_item_data(item) <= rdata_item_size(item));
+			/* Move pointer at the end of already written data. */
+			pos = ret_base + strlen(ret_base);
+			if (inet_ntop(af, address,
+				      text_address,
+				      sizeof(text_address))) {
+				snprintf(pos, sizeof(text_address) +
+					 U32_MAX_STR_LEN * 2,
+					 "%s%d:%s/%d%s",
+					 negated ? "!" : "",
+					 (int) address_family,
+					 text_address,
+					 (int) prefix,
+					 /* Last item should not have trailing space. */
+					 (read + 4 + length < rdata_item_size(item))
+					 ? " " : "");
 			}
 		}
+
+		data += 4 + length;
+		read += 4 + length;
 	}
-	return result;
-	*/
 
-
+	return ret_base;
 }
 
 char *rdata_services_to_string(knot_rdata_item_t item)
@@ -729,9 +707,10 @@ char *rdata_services_to_string(knot_rdata_item_t item)
 	if (proto) {
 		int i;
 
-		strcpy(ret, proto->p_name);
+		/*!< \todo #1863 see below, but we can trust getprotobynumber... */
+		strncpy(ret, proto->p_name, strlen(proto->p_name));
 
-		strcat(ret, " ");
+		strncat(ret, " ", 2);
 
 		for (i = 0; i < bitmap_size * 8; ++i) {
 			if (get_bit(bitmap, i)) {
@@ -739,13 +718,20 @@ char *rdata_services_to_string(knot_rdata_item_t item)
 					getservbyport((int)htons(i),
 						      proto->p_name);
 				if (service) {
-					strcat(ret, service->s_name);
-					strcat(ret, " ");
+					/*!< \todo #1863 
+					 * using strncat with strlen
+					 * does not make a whole lot of sense.
+					 * At least it will crash wil
+					 * Use max length of service name!
+					 */
+					strncat(ret, service->s_name,
+					        strlen(service->s_name));
+					strncat(ret, " ", 2);
 				} else {
 					char tmp[U32_MAX_STR_LEN];
 					snprintf(tmp, U32_MAX_STR_LEN,
 						 "%d ", i);
-					strcat(ret, tmp);
+					strncat(ret, tmp, U32_MAX_STR_LEN);
 				}
 			}
 		}
@@ -832,8 +818,9 @@ char *rdata_nxt_to_string(knot_rdata_item_t item)
 
 	for (i = 0; i < bitmap_size * 8; ++i) {
 		if (get_bit(bitmap, i)) {
-			strcat(ret, knot_rrtype_to_string(i));
-				strcat(ret, " ");
+			strncat(ret, knot_rrtype_to_string(i),
+			       MAX_RR_TYPE_LEN);
+				strncat(ret, " ", 2);
 		}
 	}
 
@@ -871,10 +858,11 @@ char *rdata_nsec_to_string(knot_rdata_item_t item)
 
 		for (int j = 0; j < bitmap_size * 8; j++) {
 			if (get_bit(bitmap, j)) {
-				strcat(ret,
+				strncat(ret,
 				       knot_rrtype_to_string(j +
-							       window * 256));
-				strcat(ret, " ");
+							       window * 256),
+				        MAX_RR_TYPE_LEN);
+				strncat(ret, " ", 2);
 			}
 		}
 
@@ -925,7 +913,7 @@ char *rdata_unknown_to_string(knot_rdata_item_t item)
 	         strlen("\\# ") + U16_MAX_STR_LEN + 1, "%lu ",
 		 (unsigned long) size);
 	char *converted = hex_to_string(rdata_item_data(item), size);
-	strcat(ret, converted);
+	strncat(ret, converted, size * 2 + 1);
 	free(converted);
 	return ret;
 }
@@ -1131,9 +1119,9 @@ void node_dump_text(knot_node_t *node, void *data)
 	free(rrsets);
 }
 
-int zone_dump_text(knot_zone_contents_t *zone, const char *filename)
+int zone_dump_text(knot_zone_contents_t *zone, int fd)
 {
-	FILE *f = fopen(filename, "w");
+	FILE *f = fdopen(fd, "w");
 	if (f == NULL) {
 		return KNOT_EBADARG;
 	}

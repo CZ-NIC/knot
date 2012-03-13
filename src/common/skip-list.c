@@ -66,10 +66,10 @@ static float frand()
 /*!
  * \brief Returns random level between 0 and MAX_LEVEL.
  */
-static int skip_random_level()
+static unsigned skip_random_level()
 {
 	static int first = 1;
-	int lvl = 0;
+	unsigned lvl = 0;
 
 	if (first) {
 		first = 0;
@@ -216,6 +216,7 @@ void *skip_find(const skip_list_t *list, void *key)
 		       && list->compare_keys(x->forward[i]->key, key) == -1) {
 			x = x->forward[i];
 		}
+		if (i == 0) break;
 	}
 	x = x->forward[0];
 
@@ -240,6 +241,7 @@ void *skip_find_less_or_equal(const skip_list_t *list, void *key)
 		       && list->compare_keys(x->forward[i]->key, key) <= 0) {
 			x = x->forward[i];
 		}
+		if (i == 0) break;
 	}
 
 	return x->value;
@@ -265,11 +267,12 @@ int skip_insert(skip_list_t *list, void *key, void *value,
 			x = x->forward[i];
 		}
 		update[i] = x;
+		if (i == 0) break;
 	}
 	x = x->forward[0];
 
 	if (x == NULL || list->compare_keys(x->key, key) != 0) {
-		int lvl = skip_random_level();
+		unsigned lvl = skip_random_level();
 
 		if (lvl > list->level) {
 			for (i = list->level + 1; i <= lvl; i++) {
@@ -319,6 +322,7 @@ int skip_remove(skip_list_t *list, void *key, void (*destroy_key)(void *),
 			x = x->forward[i];
 		}
 		update[i] = x;
+		if (i == 0) break;
 	}
 	x = x->forward[0];
 

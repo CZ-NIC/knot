@@ -4,14 +4,11 @@ Features not supported
 Here is a list of the most notable features that are not supported in the 
 current version of Knot.
 
-* NSID (RFC5001)
-* Root zone support
 * Other DNS classes than IN (CH, CS, HS)
 * Dynamic updates
 
 Known bugs
 ==========
 
-* Few minor bugs
-* IXFR code might be flaky sometimes
 * IXFR may be slow when too much (10 000+) RRSets are transfered at once.
+* Slow start with too many zones.

@@ -43,6 +43,7 @@
 
 #include <stdint.h>
 #include <fcntl.h>
+#include "knot/zone/zone-dump.h"
 
 /*!
  * \brief Journal entry flags.
@@ -53,6 +54,14 @@ typedef enum journal_flag_t {
 	JOURNAL_VALID = 1 << 1, /*!< Valid journal entry. */
 	JOURNAL_DIRTY = 1 << 2  /*!< Journal entry cannot be evicted. */
 } journal_flag_t;
+
+/*!
+ * \brief Journal mode.
+ */
+typedef enum journal_mode_t {
+	JOURNAL_PERSISTENT = 0 << 0, /*!< Persistent mode (open keeps fd). */
+	JOURNAL_LAZY       = 1 << 0  /*!< Lazy mode (open doesn't keep fd). */
+} journal_mode_t;
 
 /*!
  * \brief Journal node structure.
@@ -83,6 +92,8 @@ typedef struct journal_t
 {
 	int fd;
 	struct flock fl;        /*!< File lock. */
+	char *path;             /*!< Path to journal file. */
+	int refs;               /*!< Number of references. */
 	uint16_t max_nodes;     /*!< Number of nodes. */
 	uint16_t qhead;         /*!< Node queue head. */
 	uint16_t qtail;         /*!< Node queue tail. */
@@ -114,7 +125,7 @@ typedef int (*journal_apply_t)(journal_t *j, journal_node_t *n);
  * Journal defaults and constants.
  */
 #define JOURNAL_NCOUNT 1024 /*!< Default node count. */
-#define JOURNAL_HSIZE (sizeof(uint16_t) * 3) /*!< max_entries, qhead, qtail */
+#define JOURNAL_HSIZE (MAGIC_LENGTH + sizeof(uint16_t) * 3) /*!< magic, max_entries, qhead, qtail */
 
 /*!
  * \brief Create new journal.
@@ -133,12 +144,13 @@ int journal_create(const char *fn, uint16_t max_nodes);
  *
  * \param fn Journal file name.
  * \param fslimit File size limit (0 for no limit).
+ * \param mode Open mode (0 for normal).
  * \param bflags Initial flags for each written node.
  *
  * \retval new journal instance if successful.
  * \retval NULL on error.
  */
-journal_t* journal_open(const char *fn, size_t fslimit, uint16_t bflags);
+journal_t* journal_open(const char *fn, size_t fslimit, int mode, uint16_t bflags);
 
 /*!
  * \brief Fetch entry node for given identifier.
@@ -239,5 +251,23 @@ int journal_update(journal_t *journal, journal_node_t *n);
  * \retval KNOTD_EINVAL on invalid parameter.
  */
 int journal_close(journal_t *journal);
+
+/*!
+ * \brief Retain journal for use.
+ *
+ * Allows to track usage of lazily-opened journals.
+ * 
+ * \param journal Journal.
+ *
+ * \return Retained journal.
+ */
+journal_t *journal_retain(journal_t *journal);
+
+/*!
+ * \brief Release retained journal.
+ *
+ * \param journal Retained journal.
+ */
+void journal_release(journal_t *journal);
 
 #endif /* _KNOTD_JOURNAL_H_ */

@@ -103,10 +103,10 @@ void __attribute__ ((constructor)) fdset_init()
  * \retval  0 if a == b
  * \retval  1 if a > b
  */
-static int fdset_compare(void *a, void *b)
+static inline int fdset_compare(void *a, void *b)
 {
-	if ((size_t)a < (size_t)b) return -1;
-	if ((size_t)a > (size_t)b) return  1;
+	if (a > b) return 1;
+	if (a < b) return -1;
 	return 0;
 }
 
@@ -173,7 +173,7 @@ int fdset_set_watchdog(fdset_t* fdset, int fd, int interval)
 	return 0;
 }
 
-int fdset_sweep(fdset_t* fdset, void(*cb)(fdset_t*, int))
+int fdset_sweep(fdset_t* fdset, void(*cb)(fdset_t*, int, void*), void *data)
 {
 	fdset_base_t *base = (fdset_base_t*)fdset;
 	if (base == NULL || base->atimes == NULL) {
@@ -195,7 +195,7 @@ int fdset_sweep(fdset_t* fdset, void(*cb)(fdset_t*, int))
 		/* Evaluate */
 		timev_t *ts = (timev_t*)n->value;
 		if (ts->tv_sec <= now.tv_sec) {
-			cb(fdset, (int)(((ssize_t)n->key)));
+			cb(fdset, (int)(((ssize_t)n->key)), data);
 			++sweeped;
 		}
 		n = pnext;
