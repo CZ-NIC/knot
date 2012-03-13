@@ -96,6 +96,7 @@ int main(int argc, char **argv)
 	}
 
 	int error = zone_read(origin, zonefile, outfile, semantic_checks);
+	zparser_free();
 
 	if (error != 0) {
 	  /* FIXME! */

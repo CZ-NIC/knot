@@ -1579,7 +1579,8 @@ zparser_type *zparser_create()
 		return NULL;
 	}
 
-	knot_dname_retain(result->root_domain);
+	/* Why retaining again? */
+	//knot_dname_retain(result->root_domain);
 	return result;
 }
 
@@ -1610,6 +1611,7 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 	parser->filename = filename;
 	parser->rdata_count = 0;
 	parser->origin_from_config = origin_from_config;
+	knot_dname_retain(origin_from_config);
 
 	parser->last_node = origin;
 //	parser->root_domain = NULL;
@@ -1630,9 +1632,10 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 
 void zparser_free()
 {
-//	knot_dname_release(parser->root_domain);
+	knot_dname_release(parser->root_domain);
 //	knot_dname_release(parser->prev_dname);
-	knot_dname_free(&parser->origin_from_config);
+	knot_zone_deep_free(&parser->current_zone, 1);
+	knot_dname_release(parser->origin_from_config);
 	free(parser->temporary_items);
 	if (parser->current_rrset != NULL) {
 		free(parser->current_rrset);

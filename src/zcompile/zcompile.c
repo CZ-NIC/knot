@@ -473,6 +473,10 @@ static uint find_rrsets_orphans(knot_zone_contents_t *zone, rrset_list_t
 static int zone_open(const char *filename, uint32_t ttl, uint16_t rclass,
 	  knot_node_t *origin, void *scanner, knot_dname_t *origin_from_config)
 {
+	/*!< \todo #1676 Implement proper locking. */
+	zparser_init(filename, ttl, rclass, origin, origin_from_config);
+
+	
 	/* Open the zone file... */
 	if (strcmp(filename, "-") == 0) {
 		zp_set_in(stdin, scanner);
@@ -487,11 +491,7 @@ static int zone_open(const char *filename, uint32_t ttl, uint16_t rclass,
 			return 0;
 		}
 	}
-
-	/*!< \todo #1676 Implement proper locking. */
-
-	zparser_init(filename, ttl, rclass, origin, origin_from_config);
-
+	
 	return 1;
 }
 
@@ -526,9 +526,8 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	}
 
 	knot_node_t *origin_node = knot_node_new(dname, NULL, 0);
-
+	knot_dname_release(dname); /* Stored in node or should be freed. */
 	if (origin_node == NULL) {
-		knot_dname_release(dname);
 		return KNOTDZCOMPILE_ENOMEM;
 	}
 	
@@ -554,10 +553,9 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	               origin_from_config)) {
 		zc_error_prev_line("Cannot open '%s' (%s).",
 		                   zonefile, strerror(errno));
-		zparser_free();
 		zp_lex_destroy(scanner);
 		knot_dname_release(origin_from_config);
-		knot_node_free(&origin_node, 0);
+//		knot_node_free(&origin_node, 0);
 		return KNOTDZCOMPILE_EZONEINVAL;
 	}
 
@@ -566,7 +564,8 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 		FILE *in_file = (FILE *)zp_get_in(scanner);
 		fclose(in_file);
 		zp_lex_destroy(scanner);
-		knot_node_free(&origin_node, 0);
+		knot_dname_release(origin_from_config);
+//		knot_node_free(&origin_node, 0);
 		return KNOTDZCOMPILE_ESYNT;
 	}
 
@@ -594,9 +593,9 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	      knot_node_rrset(parser->current_zone->contents->apex,
 	                        KNOT_RRTYPE_SOA))) {
 		zc_error_prev_line("Zone file does not contain SOA record!\n");
-		knot_zone_deep_free(&parser->current_zone, 1);
-		zparser_free();
-		knot_node_free(&origin_node, 0);
+//		knot_zone_deep_free(&parser->current_zone, 1);
+		knot_dname_release(origin_from_config);
+//		knot_node_free(&origin_node, 0);
 		return KNOTDZCOMPILE_EZONEINVAL;
 	}
 
@@ -672,7 +671,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	fflush(stdout);
 	totalerrors += parser->errors;
-	zparser_free();
+	knot_dname_release(origin_from_config);
 
 	return totalerrors;
 }
