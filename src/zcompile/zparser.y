@@ -1563,24 +1563,19 @@ zparser_type *zparser_create()
 
 	result->current_rrset = knot_rrset_new(NULL, 0, 0, 0);
 	if (result->current_rrset == NULL) {
-		ERR_ALLOC_FAILED;
 		free(result->temporary_items);
 		free(result);
 		return NULL;
 	}
 
 	result->root_domain = knot_dname_new_from_str(".", 1, NULL);
-//	printf("THE NEW ROOT: %p\n", result->root_domain);
 	if (result->root_domain == NULL) {
-		ERR_ALLOC_FAILED;
 		free(result->temporary_items);
 		free(result->current_rrset);
 		free(result);
 		return NULL;
 	}
 
-	/* Why retaining again? */
-	//knot_dname_retain(result->root_domain);
 	return result;
 }
 
