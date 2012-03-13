@@ -891,7 +891,9 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
  */
 static int xfr_fd_compare(void *k1, void *k2)
 {
-	return (k1 > k2) - (k1 > k2);
+	if (k1 > k2) return 1;
+	if (k1 < k2) return -1;
+	return 0;
 }
 
 /*! \brief Return I/A character depending on xfer type. */
