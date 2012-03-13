@@ -299,14 +299,32 @@ static int zones_expire_ev(event_t *e)
 	rcu_read_lock();
 	dbg_zones("zones: EXPIRE timer event\n");
 	knot_zone_t *zone = (knot_zone_t *)e->data;
-	if (!zone) {
+	if (zone == NULL || zone->data == NULL) {
 		return KNOTD_EINVAL;
 	}
-	if (!zone->data) {
-		return KNOTD_EINVAL;
-	}
-
+	
 	zonedata_t *zd = (zonedata_t *)zone->data;
+	rcu_read_lock();
+	
+	/* Do not issue SOA query if transfer is pending. */
+	int locked = pthread_mutex_trylock(&zd->xfr_in.lock);
+	if (locked != 0) {
+		dbg_zones("zones: zone '%s' is being transferred, "
+		          "deferring EXPIRE\n",
+		          zd->conf->name);
+		
+		/* Reschedule as EXPIRE timer. */
+		uint32_t exp_tmr = zones_soa_expire(zone);
+		evsched_schedule(e->parent, e, exp_tmr);
+		dbg_zones("zones: EXPIRE of '%s' after %u seconds\n",
+		          zd->conf->name, exp_tmr / 1000);
+		
+		/* Unlock RCU. */
+		rcu_read_unlock();
+		return KNOTD_EOK;
+	}
+	dbg_zones_verb("zones: zone %s locked, no xfers are running\n",
+	               zd->conf->name);
 	
 	/* Won't accept any pending SOA responses. */
 	zd->xfr_in.next_id = -1;
@@ -316,23 +334,18 @@ static int zones_expire_ev(event_t *e)
 			zd->server->nameserver->zone_db, zone->name);
 
 	if (contents == NULL) {
+		pthread_mutex_unlock(&zd->xfr_in.lock);
 		log_server_warning("Non-existent zone expired. Ignoring.\n");
 		rcu_read_unlock();
 		return 0;
 	}
 	
-	
+	/* Publish expired zone. */
 	rcu_read_unlock();
-	
-	dbg_zones_verb("zones: zone %s expired, waiting for xfers to finish\n",
-	               zd->conf->name);
-	pthread_mutex_lock(&zd->xfr_in.lock);
-	dbg_zones_verb("zones: zone %s locked, no xfers are running\n",
-	               zd->conf->name);
-	
 	synchronize_rcu();
-	pthread_mutex_unlock(&zd->xfr_in.lock);
+	rcu_read_lock();
 	
+	/* Log event. */
 	log_server_info("Zone '%s' expired.\n", zd->conf->name);
 	
 	/* Early finish this event to prevent lockup during cancellation. */
@@ -353,6 +366,8 @@ static int zones_expire_ev(event_t *e)
 	}
 	
 	knot_zone_contents_deep_free(&contents, 0);
+	pthread_mutex_unlock(&zd->xfr_in.lock);
+	rcu_read_unlock();
 	
 	return 0;
 }
@@ -364,20 +379,15 @@ static int zones_refresh_ev(event_t *e)
 {
 	dbg_zones("zones: REFRESH or RETRY timer event\n");
 	knot_zone_t *zone = (knot_zone_t *)e->data;
-	if (!zone) {
+	if (zone == NULL || zone->data == NULL) {
 		return KNOTD_EINVAL;
 	}
 
 	/* Cancel pending timers. */
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
-	if (!zd) {
-		return KNOTD_EINVAL;
-	}
-
-	/* Lock RCU. */
-	rcu_read_lock();
 
 	/* Check for contents. */
+	rcu_read_lock();
 	if (!knot_zone_contents(zone)) {
 
 		/* Bootstrap from XFR master. */
@@ -564,9 +574,13 @@ static int zones_notify_send(event_t *e)
 	dbg_notify("notify: NOTIFY timer event\n");
 	
 	notify_ev_t *ev = (notify_ev_t *)e->data;
-	knot_zone_t *zone = ev->zone;
-	if (!zone) {
+	if (ev == NULL) {
 		log_zone_error("NOTIFY invalid event received\n");
+		return KNOTD_EINVAL;
+	}
+	knot_zone_t *zone = ev->zone;
+	if (zone == NULL || zone->data == NULL) {
+		log_zone_error("NOTIFY invalid event data received\n");
 		evsched_event_free(e->parent, e);
 		free(ev);
 		return KNOTD_EINVAL;
