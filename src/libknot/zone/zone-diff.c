@@ -81,20 +81,164 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 	return KNOT_EOK;
 }
 
+static int knot_zone_diff_changeset_add_rr(knot_changeset_t *changeset,
+                                           const knot_rrset_t *rrset,
+                                           const knot_rdata_t *rr)
+{
+	if (changeset == NULL || rrset == NULL || rr == NULL) {
+		dbg_zonediff("zone_diff: add_rr: NULL arguments.\n");
+		return KNOT_EBADARG;
+	}
+	
+	/* Following code will actually insert RRs to changeset. */
+	
+	/* First, check whether RRSet is not already in the array. */
+	knot_rrset_t *found_rrset = NULL;
+	for(uint i = 0; i < changeset->remove_count; i++) {
+		if (knot_rrset_compare(rrset, changeset->remove[i],
+		                       KNOT_RRSET_COMPARE_HEADER) == 0) {
+			assert(changeset->remove[i]);
+			found_rrset = changeset->remove[i];
+		}
+	}
+	
+	if (found_rrset) {
+		int ret = knot_rrset_add_rdata(found_rrset, rr);
+		if (ret != KNOT_EOK) {
+			dbg_zonediff("zone_diff: add_rr: "
+			             "Could not add rdata. Reason: %s.\n",
+			             knot_strerror(ret));
+			return ret;
+		}
+	} else {
+		/*
+		 * Add this RRSet to the end of the
+		 * list, then add this particular RR.
+		 */
+		
+		knot_rrset_t *tmp_rrset =
+			knot_rrset_new(knot_rrset_get_owner(rrset),
+		                       knot_rrset_type(rrset),
+		                       knot_rrset_class(rrset),
+		                       knot_rrset_ttl(rrset));
+		if (tmp_rrset == NULL) {
+			dbg_zonediff("zone_diff: add_rr:
+			             "Could not create tmp rrset.\n");
+			return KNOT_ERROR;
+		}
+		
+		int ret = knot_rrset_add_rdata(tmp_rrset, rr);
+		if (ret != KNOT_EOK) {
+			dbg_zonediff("zone_diff: add_rr:
+			             "Could not add rdata to tmp rrset/\n");
+			return ret;
+		}
+		
+		ret = knot_changeset_add_new_rr(changeset, tmp_rrset,
+		                                XFRIN_CHANGESET_ADD);
+		if (ret != KNOT_EOK) {
+			dbg_zonediff("zone_diff: add_rr:
+			             "Could not add RRSet to list of RRSets to"
+			             "be removed.\n");
+			return ret;
+		}
+	}
+	
+	return KNOT_EOK;
+}
+
 static int knot_zone_diff_changeset_remove_rr(knot_changeset_t *changeset,
                                               const knot_rrset_t *rrset,
                                               const knot_rdata_t *rr)
 {
 	if (changeset == NULL || rrset == NULL || rr == NULL) {
-		dbg_zonediff("zone_diff: remove_rr: MULL arguments.\n");
+		dbg_zonediff("zone_diff: remove_rr: NULL arguments.\n");
 		return KNOT_EBADARG;
 	}
+	
+	/* Following code will actually insert RRs to changeset. */
+	
+	/* First, check whether RRSet is not already in the array. */
+	knot_rrset_t *found_rrset = NULL;
+	for(uint i = 0; i < changeset->remove_count; i++) {
+		if (knot_rrset_compare(rrset, changeset->remove[i],
+		                       KNOT_RRSET_COMPARE_HEADER) == 0) {
+			assert(changeset->remove[i]);
+			found_rrset = changeset->remove[i];
+		}
+	}
+	
+	if (found_rrset) {
+		int ret = knot_rrset_add_rdata(found_rrset, rr);
+		if (ret != KNOT_EOK) {
+			dbg_zonediff("zone_diff: remove_rr: "
+			             "Could not add rdata. Reason: %s.\n",
+			             knot_strerror(ret));
+			return ret;
+		}
+	} else {
+		/*
+		 * Add this RRSet to the end of the
+		 * list, then add this particular RR.
+		 */
+		
+		knot_rrset_t *tmp_rrset =
+			knot_rrset_new(knot_rrset_get_owner(rrset),
+		                       knot_rrset_type(rrset),
+		                       knot_rrset_class(rrset),
+		                       knot_rrset_ttl(rrset));
+		if (tmp_rrset == NULL) {
+			dbg_zonediff("zone_diff: remove_rr:
+			             "Could not create tmp rrset.\n");
+			return KNOT_ERROR;
+		}
+		
+		int ret = knot_rrset_add_rdata(tmp_rrset, rr);
+		if (ret != KNOT_EOK) {
+			dbg_zonediff("zone_diff: remove_rr:
+			             "Could not add rdata to tmp rrset/\n");
+			return ret;
+		}
+		
+		ret = knot_changeset_add_new_rr(changeset, tmp_rrset,
+		                                XFRIN_CHANGESET_REMOVE);
+		if (ret != KNOT_EOK) {
+			dbg_zonediff("zone_diff: remove_rr:
+			             "Could not add RRSet to list of RRSets to"
+			             "be removed.\n");
+			return ret;
+		}
+	}
+	
 	return KNOT_EOK;
 }
 
+/*!< \todo Only use add or remove function, not both as they are the same. */
+/*!< \todo Also, this might be all handled by function in changesets.h!!! */
 static int knot_zone_diff_changeset_add_rrset(knot_changeset_t *changeset,
                                               const knot_rrset_t *rrset)
 {
+	/* Remove all RRs of the RRSet. */
+	if (changeset == NULL || rrset == NULL) {
+		dbg_zonediff("zone_diff: add_rrset: NULL parameters.\n");
+		return KNOT_EBADARG;
+	}
+
+	const knot_rdata_t *tmp_rdata = NULL;
+	while ((tmp_rdata = knot_rrset_rdata_next(rrset, tmp_rdata)) != NULL) {
+		int ret = knot_zone_diff_changeset_add_rr(changeset,
+		                                          rrset,
+		                                          tmp_rdata);
+		if (ret != KNOT_EOK) {
+			dbg_zonediff("zone_diff: add_rrset: Cannot add "
+			             "RR\n");
+			return ret;
+		}
+	}
+	
+	dbg_zonediff_detail("zone_diff: add_rrset: "
+	                    "RRSet succesfully added.\n");
+	
 	return KNOT_EOK;
 }
 
