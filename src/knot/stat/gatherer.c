@@ -16,6 +16,8 @@
 
 #include <config.h>
 #include <pthread.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "knot/stat/stat-common.h"
 #include "common/slab/malloc.h"

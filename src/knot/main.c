@@ -71,7 +71,7 @@ void help(int argc, char **argv)
 	       " -V, --version       Print version of the server.\n"
 	       " -h, --help          Print help and usage.\n");
 }
-
+#include "common/slab/malloc.h"
 int main(int argc, char **argv)
 {
 	// Parse command line arguments

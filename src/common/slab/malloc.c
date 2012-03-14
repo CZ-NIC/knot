@@ -25,6 +25,29 @@
 
 #include "common/slab/alloc-common.h"
 
+
+int mreserve(char **p, size_t tlen, size_t min, size_t allow, size_t *reserved)
+{
+	/* Trim excessive memory if possible. */
+	size_t maxlen = min + allow;
+	if (maxlen < min) {
+		return -2; /* size_t overflow */
+	}
+	
+	/* Meet target size but trim excessive amounts. */
+	if (*reserved < min || *reserved > maxlen) {
+		void *trimmed = realloc(*p, maxlen * tlen);
+		if (trimmed != NULL) {
+			*p = trimmed;
+			*reserved = maxlen;
+		} else {
+			return -1;
+		}
+	}
+	
+	return 0;
+}
+
 #ifdef MEM_DEBUG
 /*
  * ((destructor)) attribute executes this function after main().
