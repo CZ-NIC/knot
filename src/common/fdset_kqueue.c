@@ -37,6 +37,7 @@ struct fdset_t {
 	struct kevent *revents;
 	size_t nfds;
 	size_t reserved;
+	size_t rreserved;
 	size_t polled;
 };
 
@@ -76,24 +77,6 @@ int fdset_kqueue_destroy(fdset_t * fdset)
 	return 0;
 }
 
-int fdset_kqueue_realloc(struct kevent **old, size_t oldsize, size_t nsize)
-{
-	void *nmem = malloc(nsize);
-	if (!nmem) {
-		return -1;
-	}
-
-	/* Clear and copy old fdset data. */
-	memset(nmem, 0, nsize);
-	if (oldsize > 0) {
-		memcpy(nmem, *old, oldsize);
-		free(*old);
-	}
-	
-	*old = nmem;
-	return 0;
-}
-
 int fdset_kqueue_add(fdset_t *fdset, int fd, int events)
 {
 	if (!fdset || fd < 0 || events <= 0) {
@@ -101,20 +84,13 @@ int fdset_kqueue_add(fdset_t *fdset, int fd, int events)
 	}
 
 	/* Realloc needed. */
-	if (fdset->nfds == fdset->reserved) {
-		size_t chunk = OS_FDS_CHUNKSIZE;
-		size_t nsize = (fdset->reserved + chunk) *
-				     sizeof(struct kevent);
-		size_t oldsize = fdset->nfds * sizeof(struct kevent);
-		
-		if (fdset_kqueue_realloc(&fdset->events, oldsize, nsize) < 0) {
-			return -1;
-		}
-		
-		if (fdset_kqueue_realloc(&fdset->revents, oldsize, nsize) < 0) {
-			return -1;
-		}
-
+	int ret = 0;
+	ret += mreserve(&fdset->events, sizeof(struct kevent), fdset->nfds + 1,
+	                OS_FDS_CHUNKSIZE, &fdset->reserved);
+	ret += mreserve(&fdset->revents, sizeof(struct kevent), fdset->nfds + 1,
+	                OS_FDS_CHUNKSIZE, &fdset->rreserved);
+	if (ret != 0) {
+		return ret;
 	}
 
 	/* Add to kqueue set. */
@@ -156,7 +132,12 @@ int fdset_kqueue_remove(fdset_t *fdset, int fd)
 	/* Overwrite current item. */
 	--fdset->nfds;
 
-	/*! \todo Return memory if unused (issue #1582). */
+	/* Trim excessive memory if possible (retval is not interesting). */
+	mreserve(&fdset->events, sizeof(struct epoll_event), fdset->nfds,
+	         OS_FDS_CHUNKSIZE, &fdset->reserved);
+	mreserve(&fdset->revents, sizeof(struct epoll_event), fdset->nfds,
+	         OS_FDS_CHUNKSIZE, &fdset->rreserved);
+
 	return 0;
 }
 

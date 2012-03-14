@@ -27,7 +27,6 @@
 #include "skip-list.h"
 
 #define OS_FDS_CHUNKSIZE 8   /*!< Number of pollfd structs in a chunk. */
-#define OS_FDS_KEEPCHUNKS 32 /*!< Will attempt to free memory when reached. */
 
 struct fdset_t {
 	fdset_base_t _base;
@@ -76,23 +75,8 @@ int fdset_epoll_add(fdset_t *fdset, int fd, int events)
 	}
 
 	/* Realloc needed. */
-	if (fdset->nfds == fdset->reserved) {
-		const size_t chunk = OS_FDS_CHUNKSIZE;
-		const size_t nsize = (fdset->reserved + chunk) *
-				     sizeof(struct epoll_event);
-		struct epoll_event *events_n = malloc(nsize);
-		if (!events_n) {
-			return -1;
-		}
-
-		/* Clear and copy old fdset data. */
-		memset(events_n, 0, nsize);
-		memcpy(events_n, fdset->events,
-		       fdset->nfds * sizeof(struct epoll_event));
-		free(fdset->events);
-		fdset->events = events_n;
-		fdset->reserved += chunk;
-	}
+	mreserve(&fdset->events, sizeof(struct epoll_event), fdset->nfds + 1,
+	         OS_FDS_CHUNKSIZE, &fdset->reserved);
 
 	/* Add to epoll set. */
 	struct epoll_event ev;
@@ -123,7 +107,10 @@ int fdset_epoll_remove(fdset_t *fdset, int fd)
 	/* Overwrite current item. */
 	--fdset->nfds;
 
-	/*! \todo Return memory if unused (issue #1582). */
+	/* Trim excessive memory if possible (retval is not interesting). */
+	mreserve(&fdset->events, sizeof(struct epoll_event), fdset->nfds,
+	         OS_FDS_CHUNKSIZE, &fdset->reserved);
+	
 	return 0;
 }
 

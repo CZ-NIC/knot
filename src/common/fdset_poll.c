@@ -26,7 +26,6 @@
 #include "common/fdset_poll.h"
 
 #define OS_FDS_CHUNKSIZE 8   /*!< Number of pollfd structs in a chunk. */
-#define OS_FDS_KEEPCHUNKS 32 /*!< Will attempt to free memory when reached. */
 
 struct fdset_t {
 	fdset_base_t _base;
@@ -68,20 +67,9 @@ int fdset_poll_add(fdset_t *fdset, int fd, int events)
 	}
 
 	/* Realloc needed. */
-	if (fdset->nfds == fdset->reserved) {
-		const size_t chunk = OS_FDS_CHUNKSIZE;
-		const size_t nsize = sizeof(struct pollfd) * (fdset->reserved + chunk);
-		struct pollfd *fds_n = malloc(nsize);
-		if (!fds_n) {
-			return -1;
-		}
-
-		/* Clear and copy old fdset data. */
-		memset(fds_n, 0, nsize);
-		memcpy(fds_n, fdset->fds, fdset->nfds * sizeof(struct pollfd));
-		free(fdset->fds);
-		fdset->fds = fds_n;
-		fdset->reserved += chunk;
+	if (mreserve(&fdset->fds, sizeof(struct pollfd), fdset->nfds + 1,
+	             OS_FDS_CHUNKSIZE, &fdset->reserved) < 0) {
+		return -1;
 	}
 
 	/* Append. */
@@ -118,7 +106,10 @@ int fdset_poll_remove(fdset_t *fdset, int fd)
 	memmove(fdset->fds + pos, fdset->fds + (pos + 1), remaining);
 	--fdset->nfds;
 
-	/*! \todo Return memory if unused (issue #1582). */
+	/* Trim excessive memory if possible (retval is not interesting). */
+	mreserve(&fdset->fds, sizeof(struct pollfd), fdset->nfds,
+	         OS_FDS_CHUNKSIZE, &fdset->reserved);
+	
 	return 0;
 }
 
