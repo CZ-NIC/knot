@@ -14,7 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file malloc.h
+ * \file mempattern.h
  *
  * \author Marek Vavrusa <marek.vavrusa@nic.cz>
  *

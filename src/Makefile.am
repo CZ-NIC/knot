@@ -217,12 +217,12 @@ libknot_la_SOURCES =				\
 
 libknots_la_SOURCES =				\
 	common/slab/slab.c			\
-	common/slab/malloc.c			\
 	common/slab/slab.h			\
-	common/slab/malloc.h			\
 	common/libtap/tap.c			\
 	common/libtap/tap.h			\
 	common/libtap/tap_unit.h		\
+	common/mempattern.h			\
+	common/mempattern.c			\
 	common/lists.c				\
 	common/base32.c				\
 	common/lists.h				\
