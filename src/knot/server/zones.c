@@ -42,6 +42,7 @@
 
 static const size_t XFRIN_CHANGESET_BINARY_SIZE = 100;
 static const size_t XFRIN_CHANGESET_BINARY_STEP = 100;
+static const size_t XFRIN_BOOTSTRAP_DELAY = 30; /*!< AXFR bootstrap avg. delay */
 
 /* Forward declarations. */
 static int zones_dump_zone_text(knot_zone_contents_t *zone,  const char *zf);
@@ -157,7 +158,7 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 	zd->xfr_in.next_id = -1;
 	zd->xfr_in.acl = 0;
 	zd->xfr_in.wrkr = 0;
-	zd->xfr_in.bootstrap_retry = 0;
+	zd->xfr_in.bootstrap_retry = XFRIN_BOOTSTRAP_DELAY * 1000 * tls_rand();
 	pthread_mutex_init(&zd->xfr_in.lock, 0);
 
 	/* Initialize NOTIFY. */

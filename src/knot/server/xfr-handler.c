@@ -775,13 +775,19 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 				ret = bind(fd, data->saddr.ptr, data->saddr.len);
 			}
 		} else {
+			ret = -1;
+		}
+		if (ret < 0) {
 			pthread_mutex_unlock(&zd->xfr_in.lock);
 			log_server_warning("%s Failed to create socket "
 			                   "(type=%s, family=%s).\n",
-			                   "SOCK_STREAM",
 			                   data->msgpref,
+			                   "SOCK_STREAM",
 			                   data->addr.family == AF_INET ?
 			                   "AF_INET" : "AF_INET6");
+			if (fd >= 0) {
+				close(fd);
+			}
 			return KNOTD_ERROR;
 		}
 		
@@ -801,6 +807,7 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 				                "attempt in %d seconds.\n",
 				                data->msgpref, tmr_s / 1000);
 			}
+			close(fd);
 			return KNOTD_ECONNREFUSED;
 		}
 
@@ -809,6 +816,11 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 	} else {
 		/* Duplicate existing socket descriptor. */
 		data->session = dup(data->session);
+		if (data->session < 0) {
+			log_server_warning("Not enough memory to duplicate \n"
+			                   "sockets.\n");
+			return KNOTD_ENOMEM;
+		}
 	}
 
 	/* Fetch zone contents. */
@@ -819,6 +831,7 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 		rcu_read_unlock();
 		log_server_warning("%s Refusing to start IXFR/IN on zone with no "
 				   "contents.\n", data->msgpref);
+		close(data->session);
 		return KNOTD_EINVAL;
 	}
 
@@ -859,6 +872,7 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 		pthread_mutex_unlock(&zd->xfr_in.lock);
 		fprintf(stderr, "xfr: failed to create XFR query type %d: %s\n",
 		        data->type, knot_strerror(ret));
+		close(data->session);
 		return KNOTD_ERROR;
 	}
 
@@ -873,11 +887,18 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 		log_server_info("%s Failed to send query (%s).\n",
 		                data->msgpref, buf);
 		pthread_mutex_unlock(&zd->xfr_in.lock);
+		close(data->session);
 		return KNOTD_ECONNREFUSED;
 	}
 	
 	/* Add to pending transfers. */
-	knot_ns_xfr_t *task = xfr_register_task(w, data);	
+	knot_ns_xfr_t *task = xfr_register_task(w, data);
+	if (task == NULL) {
+		close(data->session);
+		log_server_warning("%s Couldn't start connection.\n",
+		                   data->msgpref);
+		return KNOTD_ERROR;
+	}
 	
 	/* Send XFR query. */
 	log_server_info("%s Started.\n", task->msgpref);
