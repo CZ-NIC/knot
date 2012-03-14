@@ -34,6 +34,7 @@
 
 #include <stddef.h>
 #include "skip-list.h"
+#include "mempattern.h"
 
 /*! \brief Waiting for completion constants. */
 enum fdset_wait_t {
