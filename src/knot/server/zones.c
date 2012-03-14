@@ -42,7 +42,7 @@
 
 static const size_t XFRIN_CHANGESET_BINARY_SIZE = 100;
 static const size_t XFRIN_CHANGESET_BINARY_STEP = 100;
-static const size_t XFRIN_BOOTSTRAP_DELAY = 30; /*!< AXFR bootstrap avg. delay */
+static const size_t XFRIN_BOOTSTRAP_DELAY = 60; /*!< AXFR bootstrap avg. delay */
 
 /* Forward declarations. */
 static int zones_dump_zone_text(knot_zone_contents_t *zone,  const char *zf);
@@ -426,8 +426,8 @@ static int zones_refresh_ev(event_t *e)
 			return KNOTD_EOK;
 		}
 		
-		log_zone_info("Attempting to bootstrap zone %s from master\n",
-			      zd->conf->name);
+//		log_zone_info("Attempting to bootstrap zone %s from master\n",
+//			      zd->conf->name);
 		++zd->xfr_in.scheduled;
 		pthread_mutex_unlock(&zd->xfr_in.lock);
 		

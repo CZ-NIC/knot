@@ -87,6 +87,7 @@ typedef struct knot_ns_xfr {
 	knot_rcode_t rcode;
 	xfr_callback_t send;
 	int session;
+	int session_closed;
 	
 	/*!
 	 * XFR-out: Output buffer.
