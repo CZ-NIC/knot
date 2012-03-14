@@ -14,11 +14,14 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef _KNOT_ZONE_DIFF_H_
+
 #include "libknot/zone/zone-contents.h"
 #include "libknot/updates/changesets.h"
 
 /*! \brief zone1 -> zone2 */
-knot_changeset_t *knot_zone_contents_diff(knot_zone_contents_t *zone1,
-                                          knot_zone_contents_t *zone2);
+int knot_zone_contents_diff(knot_zone_contents_t *zone1,
+                            knot_zone_contents_t *zone2,
+                            knot_changeset_t **changeset);
 
-#endif // ZONEDIFF_H
+#endif // _KNOT_ZONE_DIFF_H_

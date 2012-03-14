@@ -184,6 +184,8 @@ libknot_la_SOURCES =				\
 	libknot/zone/node.c			\
 	libknot/zone/dname-table.h		\
 	libknot/zone/dname-table.c		\
+	libknot/zone/zone-diff.h		\
+	libknot/zone/zone-diff.c		\
 	libknot/hash/hash-functions.c		\
 	libknot/hash/cuckoo-hash-table.c	\
 	libknot/hash/universal-system.c		\

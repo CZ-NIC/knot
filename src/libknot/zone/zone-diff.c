@@ -44,8 +44,8 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 		return KNOT_EBADARG;
 	}
 
-	const knot_rrset_t soa_rrset1 = knot_node_rrset(apex1, KNOT_RRTYPE_SOA);
-	const knot_rrset_t soa_rrset2 = knot_node_rrset(apex2, KNOT_RRTYPE_SOA);
+	knot_rrset_t *soa_rrset1 = knot_node_get_rrset(apex1, KNOT_RRTYPE_SOA);
+	knot_rrset_t *soa_rrset2 = knot_node_get_rrset(apex2, KNOT_RRTYPE_SOA);
 	if (soa_rrset1 == NULL || soa_rrset2 == NULL) {
 		dbg_zonediff("zone_diff: "
 		             "both zones must have apex nodes.\n");
@@ -85,7 +85,17 @@ static int knot_zone_diff_changeset_remove_rr(knot_changeset_t *changeset,
                                               const knot_rrset_t *rrset,
                                               const knot_rdata_t *rr)
 {
+	if (changeset == NULL || rrset == NULL || rr == NULL) {
+		dbg_zonediff("zone_diff: remove_rr: MULL arguments.\n");
+		return KNOT_EBADARG;
+	}
+	return KNOT_EOK;
+}
 
+static int knot_zone_diff_changeset_add_rrset(knot_changeset_t *changeset,
+                                              const knot_rrset_t *rrset)
+{
+	return KNOT_EOK;
 }
 
 static int knot_zone_diff_changeset_remove_rrset(knot_changeset_t *changeset,
@@ -97,14 +107,22 @@ static int knot_zone_diff_changeset_remove_rrset(knot_changeset_t *changeset,
 		return KNOT_EBADARG;
 	}
 
-	const knot_rdata_t *tmp_rdata = NULL
+	const knot_rdata_t *tmp_rdata = NULL;
 	while ((tmp_rdata = knot_rrset_rdata_next(rrset, tmp_rdata)) != NULL) {
-		int ret = knot_zone_diff_changeset_remove_rr(changset,
+		int ret = knot_zone_diff_changeset_remove_rr(changeset,
 		                                             rrset,
 		                                             tmp_rdata);
 		if (ret != KNOT_EOK) {
+			dbg_zonediff("zone_diff: remove_rrset: Cannot remove "
+			             "RR\n");
+			return ret;
 		}
 	}
+	
+	dbg_zonediff_detail("zone_diff: remove_rrset: "
+	                    "RRSet succesfully removed.\n");
+	
+	return KNOT_EOK;
 }
 
 static int knot_zone_diff_changeset_remove_node(knot_changeset_t *changeset,
@@ -115,7 +133,7 @@ static int knot_zone_diff_changeset_remove_node(knot_changeset_t *changeset,
 		return KNOT_EBADARG;
 	}
 
-	const knot_rrset_t **rrsets = knot_node_get_rrsets(node);
+	const knot_rrset_t **rrsets = knot_node_rrsets(node);
 	if (rrsets == NULL) {
 		dbg_zonediff_verb("zone_diff: remove_node: "
 		                  "Nothing to remove.\n");
@@ -158,7 +176,7 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 	}
 
 	/* Create fake RRSet, it will be easier to handle. */
-	*changes = knot_rrset_new(knot_rrset_owner(rrset1),
+	*changes = knot_rrset_new(knot_rrset_get_owner(rrset1),
 	                          knot_rrset_type(rrset1),
 	                          knot_rrset_class(rrset1),
 	                          knot_rrset_ttl(rrset1));
@@ -196,8 +214,14 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 			 * This means that the while cycle above has finished
 			 * because the list was traversed - there's no match.
 			 */
+			/* Make a copy of tmp_rdata. */
+			knot_rdata_t *tmp_rdata_copy =
+				knot_rdata_deep_copy(tmp_rdata,
+			                             knot_rrset_type(rrset1),
+			                             1);
 			ret = knot_rrset_add_rdata(*changes,
-			                           tmp_rdata);
+			                           tmp_rdata_copy);
+			/*!< \todo dispose of the copy. */
 			if (ret != KNOT_EOK) {
 				dbg_zonediff("zone_diff: diff_rdata: "
 				             "Could not add rdata to rrset.");
@@ -239,7 +263,7 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 
 	/* Get RRs to add to zone. */
 	knot_rrset_t *to_add = NULL;
-	int ret = knot_zone_diff_rdata_return_changes(rrset2, rrset1,
+	ret = knot_zone_diff_rdata_return_changes(rrset2, rrset1,
 	                                              &to_add);
 	if (ret != KNOT_EOK) {
 		dbg_zonediff("zone_diff: diff_rdata: Could not get changes. "
@@ -283,7 +307,7 @@ static void knot_zone_diff_node(knot_node_t *node, void *data)
 		return;
 	}
 
-	struct zone_diff_param *param = (zone_diff_param *)data;
+	struct zone_diff_param *param = (struct zone_diff_param *)data;
 	if (param->changeset == NULL || param->contents == NULL) {
 		dbg_zonediff("zone_diff: diff_node: NULL arguments.\n");
 		param->ret = KNOT_EBADARG;
@@ -315,7 +339,7 @@ static void knot_zone_diff_node(knot_node_t *node, void *data)
 	}
 
 	if (node_in_second_tree == NULL) {
-		ret = knot_zone_diff_changeset_remove_node(param->changeset,
+		int ret = knot_zone_diff_changeset_remove_node(param->changeset,
 		                                           node);
 		if (ret != KNOT_EOK) {
 			dbg_zonediff("zone_diff: failed to remove node.\n");
@@ -341,7 +365,7 @@ static void knot_zone_diff_node(knot_node_t *node, void *data)
 			                knot_rrset_type(rrset));
 		if (rrset_from_second_node == NULL) {
 			/* RRSet has been removed. */
-			ret = knot_zone_diff_changeset_remove_rrset(
+			int ret = knot_zone_diff_changeset_remove_rrset(
 				param->changeset,
 				rrset);
 			if (ret != KNOT_EOK) {
@@ -352,7 +376,7 @@ static void knot_zone_diff_node(knot_node_t *node, void *data)
 			}
 		} else {
 			/* Diff RRSets. */
-			ret = knot_zone_diff_rrsets(rrset,
+			int ret = knot_zone_diff_rrsets(rrset,
 			                            rrset_from_second_node,
 			                            param->changeset);
 			if (ret != KNOT_EOK) {
@@ -372,8 +396,9 @@ static void knot_zone_diff_add_new_nodes(knot_node_t *node, void *data)
 
 }
 
-knot_changeset_t *knot_zone_diff(knot_zone_contents_t *zone1,
-                                 knot_zone_contents_t *zone2)
+int knot_zone_diff(knot_zone_contents_t *zone1,
+                   knot_zone_contents_t *zone2,
+                   knot_changeset_t **changeset)
 {
 	if (zone1 == NULL || zone2 == NULL) {
 		dbg_zonediff("zone_diff: NULL argument(s).\n");
@@ -381,14 +406,14 @@ knot_changeset_t *knot_zone_diff(knot_zone_contents_t *zone1,
 	}
 
 	/* Create changeset structure. */
-	knot_changeset_t *changeset = malloc(sizeof(knot_changeset_t));
-	if (changeset == NULL) {
+	*changeset = malloc(sizeof(knot_changeset_t));
+	if (*changeset == NULL) {
 		ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
 
 	/* Settle SOAs first. */
-	int ret = knot_zone_diff_load_soas(zone1, zone2, changeset);
+	int ret = knot_zone_diff_load_soas(zone1, zone2, *changeset);
 	if (ret != KNOT_EOK) {
 		dbg_zonediff("zone_diff: loas_SOAs failed with error: %s\n",
 		             knot_strerror(ret));
@@ -399,8 +424,8 @@ knot_changeset_t *knot_zone_diff(knot_zone_contents_t *zone1,
 	struct zone_diff_param param;
 	param.contents = zone2;
 	param.nsec3 = 0;
-	param.changeset = changeset;
-	parar.ret = KNOT_EOK;
+	param.changeset = *changeset;
+	param.ret = KNOT_EOK;
 	ret = knot_zone_contents_tree_apply_inorder(zone1, knot_zone_diff_node,
 	                                            &param);
 	if (ret != KNOT_EOK) {
