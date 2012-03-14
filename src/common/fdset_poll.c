@@ -39,18 +39,16 @@ struct fdset_t {
 fdset_t *fdset_poll_new()
 {
 	fdset_t *set = malloc(sizeof(fdset_t));
-	if (!set) {
-		return 0;
+	if (set != NULL) {
+		memset(set, 0, sizeof(fdset_t));
 	}
 
-	/* Blank memory. */
-	memset(set, 0, sizeof(fdset_t));
 	return set;
 }
 
 int fdset_poll_destroy(fdset_t * fdset)
 {
-	if(!fdset) {
+	if(fdset == NULL) {
 		return -1;
 	}
 
@@ -62,7 +60,7 @@ int fdset_poll_destroy(fdset_t * fdset)
 
 int fdset_poll_add(fdset_t *fdset, int fd, int events)
 {
-	if (!fdset || fd < 0 || events <= 0) {
+	if (fdset == NULL || fd < 0 || events <= 0) {
 		return -1;
 	}
 
@@ -73,7 +71,7 @@ int fdset_poll_add(fdset_t *fdset, int fd, int events)
 	}
 
 	/* Append. */
-	int nid = fdset->nfds++;
+	int nid = fdset->nfds++;;
 	fdset->fds[nid].fd = fd;
 	fdset->fds[nid].events = POLLIN;
 	return 0;
@@ -81,7 +79,7 @@ int fdset_poll_add(fdset_t *fdset, int fd, int events)
 
 int fdset_poll_remove(fdset_t *fdset, int fd)
 {
-	if (!fdset || fd < 0) {
+	if (fdset == NULL || fd < 0) {
 		return -1;
 	}
 
@@ -115,7 +113,7 @@ int fdset_poll_remove(fdset_t *fdset, int fd)
 
 int fdset_poll_wait(fdset_t *fdset, int timeout)
 {
-	if (!fdset || fdset->nfds < 1 || !fdset->fds) {
+	if (fdset == NULL || fdset->nfds < 1 || fdset->fds == NULL) {
 		return -1;
 	}
 
@@ -137,7 +135,7 @@ int fdset_poll_wait(fdset_t *fdset, int timeout)
 
 int fdset_poll_begin(fdset_t *fdset, fdset_it_t *it)
 {
-	if (!fdset || !it) {
+	if (fdset == NULL || it == NULL) {
 		return -1;
 	}
 
@@ -148,7 +146,7 @@ int fdset_poll_begin(fdset_t *fdset, fdset_it_t *it)
 
 int fdset_poll_end(fdset_t *fdset, fdset_it_t *it)
 {
-	if (!fdset || !it || fdset->nfds < 1) {
+	if (fdset == NULL || it == NULL || fdset->nfds < 1) {
 		return -1;
 	}
 
@@ -177,7 +175,7 @@ int fdset_poll_end(fdset_t *fdset, fdset_it_t *it)
 
 int fdset_poll_next(fdset_t *fdset, fdset_it_t *it)
 {
-	if (!fdset || !it || fdset->nfds < 1) {
+	if (fdset == NULL || it == NULL || fdset->nfds < 1) {
 		return -1;
 	}
 

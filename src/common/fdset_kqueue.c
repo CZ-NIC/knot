@@ -44,26 +44,24 @@ struct fdset_t {
 fdset_t *fdset_kqueue_new()
 {
 	fdset_t *set = malloc(sizeof(fdset_t));
-	if (!set) {
-		return 0;
+	if (set) {
+		/* Blank memory. */
+		memset(set, 0, sizeof(fdset_t));
+	
+		/* Create kqueue fd. */
+		set->kq = kqueue();
+		if (set->kq < 0) {
+			free(set);
+			set = 0;
+		}
 	}
-
-	/* Blank memory. */
-	memset(set, 0, sizeof(fdset_t));
-
-	/* Create kqueue fd. */
-	set->kq = kqueue();
-	if (set->kq < 0) {
-		free(set);
-		set = 0;
-	}
-
+	
 	return set;
 }
 
 int fdset_kqueue_destroy(fdset_t * fdset)
 {
-	if(!fdset) {
+	if(fdset == NULL) {
 		return -1;
 	}
 
@@ -79,7 +77,7 @@ int fdset_kqueue_destroy(fdset_t * fdset)
 
 int fdset_kqueue_add(fdset_t *fdset, int fd, int events)
 {
-	if (!fdset || fd < 0 || events <= 0) {
+	if (fdset == NULL || fd < 0 || events <= 0) {
 		return -1;
 	}
 
@@ -104,7 +102,7 @@ int fdset_kqueue_add(fdset_t *fdset, int fd, int events)
 
 int fdset_kqueue_remove(fdset_t *fdset, int fd)
 {
-	if (!fdset || fd < 0) {
+	if (fdset == NULL || fd < 0) {
 		return -1;
 	}
 	
@@ -143,7 +141,7 @@ int fdset_kqueue_remove(fdset_t *fdset, int fd)
 
 int fdset_kqueue_wait(fdset_t *fdset, int timeout)
 {
-	if (!fdset || fdset->nfds < 1 || !fdset->events) {
+	if (fdset == NULL || fdset->nfds < 1 || fdset->events == NULL) {
 		return -1;
 	}
 
@@ -177,7 +175,7 @@ int fdset_kqueue_wait(fdset_t *fdset, int timeout)
 
 int fdset_kqueue_begin(fdset_t *fdset, fdset_it_t *it)
 {
-	if (!fdset || !it) {
+	if (fdset == NULL || it == NULL) {
 		return -1;
 	}
 
@@ -188,7 +186,7 @@ int fdset_kqueue_begin(fdset_t *fdset, fdset_it_t *it)
 
 int fdset_kqueue_end(fdset_t *fdset, fdset_it_t *it)
 {
-	if (!fdset || !it || fdset->nfds < 1) {
+	if (fdset == NULL || it == NULL || fdset->nfds < 1) {
 		return -1;
 	}
 
@@ -209,7 +207,7 @@ int fdset_kqueue_end(fdset_t *fdset, fdset_it_t *it)
 
 int fdset_kqueue_next(fdset_t *fdset, fdset_it_t *it)
 {
-	if (!fdset || !it || fdset->nfds < 1) {
+	if (fdset == NULL || it == NULL || fdset->nfds < 1) {
 		return -1;
 	}
 
