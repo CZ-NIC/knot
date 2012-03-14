@@ -1500,16 +1500,12 @@ int xfr_worker(dthread_t *thread)
 		int rfd = evqueue_pollfd(w->q);
 		fdset_it_t it;
 		fdset_begin(w->fdset, &it);
+		int rfd_event = 0;
 		while(nfds > 0) {
 			
 			/* Check if it request. */
 			if (it.fd == rfd) {
-				dbg_xfr_verb("xfr: worker=%p processing request\n",
-				             w);
-				ret = xfr_process_request(w, buf, buflen);
-				if (ret == KNOTD_ENOTRUNNING) {
-					break;
-				}
+				rfd_event = 1; /* Delay new tasks after processing. */
 			} else {
 				/* Find data. */
 				data = xfr_handler_task(w, it.fd);
@@ -1534,6 +1530,12 @@ int xfr_worker(dthread_t *thread)
 			if (fdset_next(w->fdset, &it) < 0) {
 				break;
 			}
+		}
+		
+		/* Lazily process new tasks. */
+		if (rfd_event) {
+			dbg_xfr_verb("xfr: worker=%p processing request\n",  w);
+			ret = xfr_process_request(w, buf, buflen);
 		}
 		
 		/* Sweep inactive. */
