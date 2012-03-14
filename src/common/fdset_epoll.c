@@ -75,7 +75,7 @@ int fdset_epoll_add(fdset_t *fdset, int fd, int events)
 	}
 
 	/* Realloc needed. */
-	mreserve(&fdset->events, sizeof(struct epoll_event), fdset->nfds + 1,
+	mreserve((char **)&fdset->events, sizeof(struct epoll_event), fdset->nfds + 1,
 	         OS_FDS_CHUNKSIZE, &fdset->reserved);
 
 	/* Add to epoll set. */
@@ -108,7 +108,7 @@ int fdset_epoll_remove(fdset_t *fdset, int fd)
 	--fdset->nfds;
 
 	/* Trim excessive memory if possible (retval is not interesting). */
-	mreserve(&fdset->events, sizeof(struct epoll_event), fdset->nfds,
+	mreserve((char **)&fdset->events, sizeof(struct epoll_event), fdset->nfds,
 	         OS_FDS_CHUNKSIZE, &fdset->reserved);
 	
 	return 0;

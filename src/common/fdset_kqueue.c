@@ -85,10 +85,10 @@ int fdset_kqueue_add(fdset_t *fdset, int fd, int events)
 
 	/* Realloc needed. */
 	int ret = 0;
-	ret += mreserve(&fdset->events, sizeof(struct kevent), fdset->nfds + 1,
-	                OS_FDS_CHUNKSIZE, &fdset->reserved);
-	ret += mreserve(&fdset->revents, sizeof(struct kevent), fdset->nfds + 1,
-	                OS_FDS_CHUNKSIZE, &fdset->rreserved);
+	ret += mreserve((char **)&fdset->events, sizeof(struct kevent),
+	                fdset->nfds + 1, OS_FDS_CHUNKSIZE, &fdset->reserved);
+	ret += mreserve((char **)&fdset->revents, sizeof(struct kevent),
+	                fdset->nfds + 1, OS_FDS_CHUNKSIZE, &fdset->rreserved);
 	if (ret != 0) {
 		return ret;
 	}
@@ -133,10 +133,10 @@ int fdset_kqueue_remove(fdset_t *fdset, int fd)
 	--fdset->nfds;
 
 	/* Trim excessive memory if possible (retval is not interesting). */
-	mreserve(&fdset->events, sizeof(struct epoll_event), fdset->nfds,
-	         OS_FDS_CHUNKSIZE, &fdset->reserved);
-	mreserve(&fdset->revents, sizeof(struct epoll_event), fdset->nfds,
-	         OS_FDS_CHUNKSIZE, &fdset->rreserved);
+	mreserve((char **)&fdset->events, sizeof(struct epoll_event),
+	         fdset->nfds, OS_FDS_CHUNKSIZE, &fdset->reserved);
+	mreserve((char **)&fdset->revents, sizeof(struct epoll_event),
+	         fdset->nfds, OS_FDS_CHUNKSIZE, &fdset->rreserved);
 
 	return 0;
 }

@@ -67,8 +67,8 @@ int fdset_poll_add(fdset_t *fdset, int fd, int events)
 	}
 
 	/* Realloc needed. */
-	if (mreserve(&fdset->fds, sizeof(struct pollfd), fdset->nfds + 1,
-	             OS_FDS_CHUNKSIZE, &fdset->reserved) < 0) {
+	if (mreserve((char **)&fdset->fds, sizeof(struct pollfd),
+	             fdset->nfds + 1, OS_FDS_CHUNKSIZE, &fdset->reserved) < 0) {
 		return -1;
 	}
 
@@ -107,7 +107,7 @@ int fdset_poll_remove(fdset_t *fdset, int fd)
 	--fdset->nfds;
 
 	/* Trim excessive memory if possible (retval is not interesting). */
-	mreserve(&fdset->fds, sizeof(struct pollfd), fdset->nfds,
+	mreserve((char **)&fdset->fds, sizeof(struct pollfd), fdset->nfds,
 	         OS_FDS_CHUNKSIZE, &fdset->reserved);
 	
 	return 0;

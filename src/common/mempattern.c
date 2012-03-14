@@ -14,14 +14,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
-/*
- * Skip unit if not debugging memory.
- */
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/resource.h>
+#include <config.h>
 
 #include "common/slab/alloc-common.h"
 
