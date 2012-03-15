@@ -65,14 +65,14 @@ src/libknot/zone/zone-tree.c
 src/libknot/zone/dname-table.h
 src/libknot/zone/dname-table.c
 src/Makefile.am
-src/common/slab/malloc.c
-src/common/slab/malloc.h
 src/common/slab/slab.c
 src/common/slab/slab.h
 src/common/slab/alloc-common.h
 src/common/libtap/tap.c
 src/common/libtap/tap.h
 src/common/libtap/tap_unit.h
+src/common/mempattern.c
+src/common/mempattern.h
 src/common/lists.h
 src/common/lists.c
 src/common/base32.h

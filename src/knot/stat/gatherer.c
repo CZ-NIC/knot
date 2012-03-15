@@ -16,9 +16,11 @@
 
 #include <config.h>
 #include <pthread.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "knot/stat/stat-common.h"
-#include "common/slab/malloc.h"
+#include "common/mempattern.h"
 #include "knot/stat/gatherer.h"
 
 gatherer_t *new_gatherer()
