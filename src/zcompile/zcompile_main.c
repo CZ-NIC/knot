@@ -81,17 +81,12 @@ int main(int argc, char **argv)
 	origin = argv[optind];
 	zonefile = argv[optind + 1];
 
-	// Initialize log (no output)
-	//log_init(0);
-	//log_levels_set(LOGT_STDOUT, LOG_ANY, LOG_MASK(LOG_DEBUG));
-
 	printf("Parsing file '%s', origin '%s' ...\n",
 	       zonefile, origin);
 
 	parser = zparser_create();
 	if (!parser) {
 		fprintf(stderr, "Failed to create parser.\n");
-		//log_close();
 		return 1;
 	}
 
@@ -99,18 +94,10 @@ int main(int argc, char **argv)
 	zparser_free();
 
 	if (error != 0) {
-	  /* FIXME! */
-//		if (error < 0) {
-//			fprintf(stderr, "Finished with error: %s.\n",
-//			       error_to_str(knot_zcompile_error_msgs, error));
-//		} else {
-//			fprintf(stderr, "Finished with %u errors.\n");
-//		}
 		return 1;
 	} else {
 		printf("Compilation successful.\n");
 	}
-	//log_close();
 	
 	return 0;
 }
