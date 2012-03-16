@@ -15,6 +15,7 @@
  */
 
 #ifndef _KNOT_ZONE_DIFF_H_
+#define _KNOT_ZONE_DIFF_H_
 
 #include "libknot/zone/zone-contents.h"
 #include "libknot/updates/changesets.h"
