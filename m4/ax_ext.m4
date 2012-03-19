@@ -69,8 +69,10 @@ AC_DEFUN([AX_EXT],
   AC_CACHE_CHECK([whether sse2 is supported], [ax_cv_have_sse2_ext],
   [
     ax_cv_have_sse2_ext=no
-    if test "$((0x$edx>>26&0x01))" = 1; then
-      ax_cv_have_sse2_ext=yes
+    if test "$ax_cv_gcc_x86_cpuid_0x00000001" != "unknown"; then
+      if test "$((0x$edx>>26&0x01))" = 1; then
+        ax_cv_have_sse2_ext=yes
+      fi
     fi
   ])
 
