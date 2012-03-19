@@ -315,12 +315,19 @@ static int check_cname_cycles_in_zone(knot_zone_contents_t *zone,
 			
 			knot_dname_t *tmp_chopped =
 				knot_dname_left_chop(next_dname_copy);
-			knot_dname_free(&next_dname_copy);
-			if (!tmp_chopped) {
+			if (!tmp_chopped && 
+				!(knot_dname_is_fqdn(next_dname_copy) &&
+			          knot_dname_label_count(next_dname_copy) == 0)) {
 				knot_dname_free(&chopped_wc);
 				knot_dname_free(&next_dname_copy);
 				return KNOT_ERROR;
+			} else if ((knot_dname_is_fqdn(next_dname_copy) &&
+				knot_dname_label_count(next_dname_copy) == 0)) {
+				knot_dname_free(&next_dname_copy);
+				/* Root domain, end of search. */
+				break;
 			}
+			knot_dname_free(&next_dname_copy);
 			
 			cut_offs++;
 			
