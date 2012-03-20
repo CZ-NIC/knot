@@ -533,7 +533,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 			
 			/* Evaluate space for new task. */
 			if (running == jobs) {
-				zctask_wait(tasks, jobs);
+				rc |= zctask_wait(tasks, jobs);
 				--running;
 			}
 

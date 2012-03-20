@@ -458,8 +458,8 @@ void __attribute__ ((constructor)) udp_master_init()
 	}
 	
 	/* Check for sendmmsg() support. */
-#ifdef ENABLE_SENDMMSG
 	_send_mmsg = udp_sendto;
+#ifdef ENABLE_SENDMMSG
 	sendmmsg(0, 0, 0, 0); /* Just check if syscall exists */
 	if (errno != ENOSYS) {
 		_send_mmsg = udp_sendmmsg;

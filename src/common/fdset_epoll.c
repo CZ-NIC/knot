@@ -73,8 +73,10 @@ int fdset_epoll_add(fdset_t *fdset, int fd, int events)
 	}
 
 	/* Realloc needed. */
-	mreserve((char **)&fdset->events, sizeof(struct epoll_event), fdset->nfds + 1,
-	         OS_FDS_CHUNKSIZE, &fdset->reserved);
+	if (mreserve((char **)&fdset->events, sizeof(struct epoll_event),
+	             fdset->nfds + 1, OS_FDS_CHUNKSIZE, &fdset->reserved) < 0) {
+		return -1;
+	}
 
 	/* Add to epoll set. */
 	struct epoll_event ev;

@@ -140,7 +140,11 @@ static void log_error_from_node(err_handler_t *handler,
 		char *name =
 			knot_dname_to_str(knot_node_owner(node));
 		fprintf(stderr, "Semantic warning in node: %s: ", name);
-		fprintf(stderr, "%s", error_messages[-error]);
+		if (error_messages[-error] != NULL) {
+			fprintf(stderr, "%s", error_messages[-error]);
+		} else {
+			fprintf(stderr, "Unknown error (%d).\n", error);
+		}
 		free(name);
 	} else {
 		fprintf(stderr, "Total number of warnings is: %d for error: %s",
@@ -171,6 +175,7 @@ int err_handler_handle_error(err_handler_t *handler,
 	    (error < ZC_ERR_GENERIC_GENERAL_ERROR)) {
 		/* The two errors before SOA were handled */
 		log_error_from_node(handler, node, error);
+		return KNOT_EOK;
 
 	} else if ((error < ZC_ERR_RRSIG_GENERAL_ERROR) &&
 		   ((handler->errors[-error] == 0) ||
@@ -310,12 +315,19 @@ static int check_cname_cycles_in_zone(knot_zone_contents_t *zone,
 			
 			knot_dname_t *tmp_chopped =
 				knot_dname_left_chop(next_dname_copy);
-			knot_dname_free(&next_dname_copy);
-			if (!tmp_chopped) {
+			if (!tmp_chopped && 
+				!(knot_dname_is_fqdn(next_dname_copy) &&
+			          knot_dname_label_count(next_dname_copy) == 0)) {
 				knot_dname_free(&chopped_wc);
 				knot_dname_free(&next_dname_copy);
 				return KNOT_ERROR;
+			} else if ((knot_dname_is_fqdn(next_dname_copy) &&
+				knot_dname_label_count(next_dname_copy) == 0)) {
+				knot_dname_free(&next_dname_copy);
+				/* Root domain, end of search. */
+				break;
 			}
+			knot_dname_free(&next_dname_copy);
 			
 			cut_offs++;
 			
