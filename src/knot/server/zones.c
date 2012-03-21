@@ -1723,9 +1723,9 @@ static int zones_check_tsig_query(const knot_zone_t *zone,
 	dbg_zones_verb("Checking zone and ACL.\n");
 	int ret = zones_query_check_zone(zone, addr, tsig_key_zone, rcode);
 
-	/*! \todo What if there is TSIG, but no key is configured? */
-
-	if (ret == KNOTD_EOK) {
+	
+	/* Accept found OR unknown key results. */
+	if (ret == KNOTD_EOK || ret == KNOTD_EACCES) {
 		if (*tsig_key_zone != NULL) {
 			// everything OK, so check TSIG
 			dbg_zones_verb("Verifying TSIG.\n");
@@ -1918,8 +1918,6 @@ int zones_query_check_zone(const knot_zone_t *zone, const sockaddr_t *addr,
 	/* Check xfr-out ACL */
 	acl_key_t *match = NULL;
 	if (acl_match(zd->xfr_out, addr, &match) == ACL_DENY) {
-		log_answer_warning("Unauthorized query or request for XFR "
-		                   "'%s/OUT'.\n", zd->conf->name);
 		*rcode = KNOT_RCODE_REFUSED;
 		return KNOTD_EACCES;
 	} else {

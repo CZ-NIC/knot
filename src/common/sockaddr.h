@@ -119,7 +119,7 @@ int sockaddr_setprefix(sockaddr_t *dst, int prefix);
  * \retval 0 on success.
  * \retval -1 on invalid parameters.
  */
-int sockaddr_tostr(sockaddr_t *addr, char *dst, size_t size);
+int sockaddr_tostr(const sockaddr_t *addr, char *dst, size_t size);
 
 /*!
  * \brief Return port number from address.
@@ -129,7 +129,7 @@ int sockaddr_tostr(sockaddr_t *addr, char *dst, size_t size);
  * \retval Port number on success.
  * \retval -1 on errors.
  */
-int sockaddr_portnum(sockaddr_t *addr);
+int sockaddr_portnum(const sockaddr_t *addr);
 
 #endif /* _KNOTD_SOCKADDR_H_ */
 

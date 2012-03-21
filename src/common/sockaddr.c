@@ -117,7 +117,7 @@ int sockaddr_setprefix(sockaddr_t *dst, int prefix)
 	return dst->prefix = prefix;
 }
 
-int sockaddr_tostr(sockaddr_t *addr, char *dst, size_t size)
+int sockaddr_tostr(const sockaddr_t *addr, char *dst, size_t size)
 {
 	if (!addr || !dst || size == 0) {
 		return -1;
@@ -159,7 +159,7 @@ int sockaddr_tostr(sockaddr_t *addr, char *dst, size_t size)
 	return 0;
 }
 
-int sockaddr_portnum(sockaddr_t *addr)
+int sockaddr_portnum(const sockaddr_t *addr)
 {
 	if (!addr) {
 		return -1;
