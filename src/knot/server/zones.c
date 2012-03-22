@@ -1705,21 +1705,22 @@ static int zones_check_tsig_query(const knot_zone_t *zone,
 		                 knot_packet_additional_rrset_count(query) - 1);
 		if (knot_rrset_type(tsig) == KNOT_RRTYPE_TSIG) {
 			dbg_zones_verb("found TSIG in normal query\n");
-        } else {
-            tsig = NULL; /* Invalidate if not TSIG RRTYPE. */
-        }
+		} else {
+			tsig = NULL; /* Invalidate if not TSIG RRTYPE. */
+		}
 	}
 
 	if (tsig == NULL) {
 		// no TSIG, this is completely valid
+		/*! \note This function is (should be) called only in case of
+		          normal query, i.e. we do not have to check ACL.
+		 */
 		*tsig_rcode = 0;
 		return KNOT_EOK;
 	}
 
 	// if there is some TSIG in the query, find the TSIG associated with
 	// the zone
-	//knot_key_t *tsig_key_zone = NULL;
-
 	dbg_zones_verb("Checking zone and ACL.\n");
 	int ret = zones_query_check_zone(zone, addr, tsig_key_zone, rcode);
 
