@@ -37,7 +37,7 @@
 #include "libknot/util/descriptor.h"
 #include "libknot/tsig.h"
 #include "common/lists.h"
-#include "knot/other/log.h"
+#include "common/log.h"
 
 /* Constants. */
 #define CONFIG_DEFAULT_PORT 53

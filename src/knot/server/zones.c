@@ -28,7 +28,7 @@
 #include "knot/conf/conf.h"
 #include "knot/other/debug.h"
 #include "knot/other/error.h"
-#include "knot/other/log.h"
+#include "common/log.h"
 #include "knot/server/notify.h"
 #include "knot/server/server.h"
 #include "libknot/updates/xfr-in.h"

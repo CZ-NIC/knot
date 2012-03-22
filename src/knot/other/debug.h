@@ -49,7 +49,7 @@
   #define KNOTD_ZLOAD_DEBUG
 #endif
 
-#include "knot/other/log.h"
+#include "common/log.h"
 #include "common/print.h"
 
 /******************************************************************************/

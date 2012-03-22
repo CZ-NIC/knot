@@ -20,10 +20,10 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include "common/log.h"
+#include "common/lists.h"
 #include "knot/common.h"
 #include "knot/other/error.h"
-#include "knot/other/log.h"
-#include "common/lists.h"
 #include "knot/conf/conf.h"
 
 /*! Log source table. */
