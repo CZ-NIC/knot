@@ -164,13 +164,13 @@ static int journal_tests_run(int argc, char *argv[])
 			memcpy(chk_buf, tmpbuf, sizeof(chk_buf));
 		}
 	}
-	ok(ret == 0, "journal: sustained looped writes");
+	ok(j && ret == 0, "journal: sustained looped writes");
 
 	/* Test 11: Check data integrity. */
 	memset(tmpbuf, 0, sizeof(tmpbuf));
 	journal_read(j, chk_key, 0, tmpbuf);
 	ret = strncmp(chk_buf, tmpbuf, sizeof(chk_buf));
-	ok(ret == 0, "journal: read data integrity check");
+	ok(j && ret == 0, "journal: read data integrity check");
 
 	/* Test 12: Reopen log and re-read value. */
 	memset(tmpbuf, 0, sizeof(tmpbuf));
@@ -178,7 +178,7 @@ static int journal_tests_run(int argc, char *argv[])
 	j = journal_open(jfilename, fsize, 0, 0);
 	journal_read(j, chk_key, 0, tmpbuf);
 	ret = strncmp(chk_buf, tmpbuf, sizeof(chk_buf));
-	ok(ret == 0, "journal: read data integrity check after close/open");
+	ok(j && ret == 0, "journal: read data integrity check after close/open");
 
 	/* Close journal. */
 	journal_close(j);
