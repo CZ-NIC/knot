@@ -5,6 +5,7 @@
 #include "knot/common.h"
 #include "knot/zone/zone-dump.h"
 #include "knot/other/error.h"
+#include "knot/other/debug.h"
 #include "libknot/libknot.h"
 #include "common/base32hex.h"
 #include "common/crc.h"
@@ -90,9 +91,9 @@ static char *error_messages[(-ZC_ERR_ALLOC) + 1] = {
 	   specified otherwise */
 
 	[-ZC_ERR_GLUE_NODE] =
-	"GLUE: Node with Glue record missing!\n",
+	"GLUE: Node with glue record missing!\n",
 	[-ZC_ERR_GLUE_RECORD] =
-	"GLUE: Record with Glue address missing\n",
+	"GLUE: Record with glue address missing\n",
 };
 
 static const uint MAX_CNAME_CYCLE_DEPTH = 15;
@@ -1156,8 +1157,9 @@ static int semantic_checks_plain(knot_zone_contents_t *zone,
 	}
 	
 
-	/* check for glue records at zone cuts */
-	if (knot_node_is_deleg_point(node)) {
+	/* check for glue records at zone cuts and in apex. */
+	if (knot_node_is_deleg_point(node) || knot_zone_contents_apex(zone) ==
+	                node) {
 		const knot_rrset_t *ns_rrset =
 				knot_node_rrset(node, KNOT_RRTYPE_NS);
 		assert(ns_rrset);
@@ -1356,6 +1358,8 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
  */
 static void do_checks_in_tree(knot_node_t *node, void *data)
 {
+	dbg_semcheck_verb("semcheck: do_check_in_tree: Checking node: %s\n",
+	                  knot_dname_to_str(node->owner));
 	assert(data != NULL);
 	arg_t *args = (arg_t *)data;
 
