@@ -1156,6 +1156,7 @@ static int semantic_checks_plain(knot_zone_contents_t *zone,
 		return KNOT_EOK;
 	}
 	
+	/*!< \todo Good Lord, move this to ist own function. */
 
 	/* check for glue records at zone cuts and in apex. */
 	if (knot_node_is_deleg_point(node) || knot_zone_contents_apex(zone) ==
@@ -1165,7 +1166,7 @@ static int semantic_checks_plain(knot_zone_contents_t *zone,
 		assert(ns_rrset);
 		//FIXME this should be an error as well ! (i guess)
 
-		const knot_dname_t *ns_dname =
+		knot_dname_t *ns_dname =
 				knot_rdata_get_item(knot_rrset_rdata
 						      (ns_rrset), 0)->dname;
 
@@ -1173,12 +1174,41 @@ static int semantic_checks_plain(knot_zone_contents_t *zone,
 
 		const knot_node_t *glue_node =
 				knot_zone_contents_find_node(zone, ns_dname);
-
+		
 		if (knot_dname_is_subdomain(ns_dname,
 			      knot_node_owner(knot_zone_contents_apex(zone)))) {
 			if (glue_node == NULL) {
-				err_handler_handle_error(handler, node,
+				/* Try wildcard. */
+				knot_dname_t *wildcard =
+					knot_dname_new_from_str("*", 1, NULL);
+				if (wildcard == NULL) {
+					return KNOT_ENOMEM;
+				}
+				
+				knot_dname_left_chop_no_copy(ns_dname);
+		
+				if (knot_dname_cat(wildcard,
+				                   ns_dname) == NULL) {
+					knot_dname_free(&wildcard);
+					return KNOT_ENOMEM;
+				}
+				
+				const knot_node_t *wildcard_node = 
+					knot_zone_contents_find_node(zone,
+				                                     wildcard);
+				if (wildcard_node == NULL) {
+					err_handler_handle_error(handler, node,
 							 ZC_ERR_GLUE_NODE);
+				} else {
+					/* Look for A or AAAA. */
+					if ((knot_node_rrset(wildcard_node,
+					    KNOT_RRTYPE_A) == NULL) &&
+					    (knot_node_rrset(wildcard_node,
+					    KNOT_RRTYPE_AAAA) == NULL)) {
+						err_handler_handle_error(handler, node,
+								 ZC_ERR_GLUE_RECORD);
+					}
+				}
 			} else {
 				if ((knot_node_rrset(glue_node,
 					       KNOT_RRTYPE_A) == NULL) &&
