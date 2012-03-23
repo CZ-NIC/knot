@@ -321,11 +321,15 @@ static int knot_rdata_dump_binary(knot_rdata_t *rdata,
  * \param rrsig RRSIG to be dumped.
  * \param data Arguments to be propagated.
  */
-static void knot_rrsig_set_dump_binary(knot_rrset_t *rrsig, int fd,
-                                       int use_ids,
-                                       uint8_t **stream, size_t *stream_size,
-                                       crc_t *crc)
+static int knot_rrsig_set_dump_binary(knot_rrset_t *rrsig, int fd,
+                                      int use_ids,
+                                      uint8_t **stream, size_t *stream_size,
+                                      crc_t *crc)
 {
+	if (rrsig == NULL) {
+		return KNOT_EBADARG;
+	}
+	
 dbg_zdump_exec_detail(
 	char *name = knot_dname_to_str(knot_rrset_owner(rrsig));
 	dbg_zdump("Dumping RRSIG \\w owner: %s\n",
@@ -334,13 +338,20 @@ dbg_zdump_exec_detail(
 );
 	assert(rrsig->type == KNOT_RRTYPE_RRSIG);
 	assert(rrsig->rdata);
-	/*!< \todo #1684 check the return value */
-	write_wrapper(&rrsig->type, sizeof(rrsig->type), 1, fd,
-	               stream, stream_size, crc);
-	write_wrapper(&rrsig->rclass, sizeof(rrsig->rclass), 1, fd,
-	               stream, stream_size, crc);
-	write_wrapper(&rrsig->ttl, sizeof(rrsig->ttl), 1, fd,
-	               stream, stream_size, crc);
+	if (!write_wrapper(&rrsig->type, sizeof(rrsig->type), 1, fd,
+	                   stream, stream_size, crc)) {
+		return KNOT_ERROR;
+	}
+	
+	if (!write_wrapper(&rrsig->rclass, sizeof(rrsig->rclass), 1, fd,
+	                   stream, stream_size, crc)) {
+		return KNOT_ERROR;
+	}
+	
+	if (!write_wrapper(&rrsig->ttl, sizeof(rrsig->ttl), 1, fd,
+	                   stream, stream_size, crc)) {
+		return KNOT_ERROR;
+	}
 
 	uint32_t rdata_count = 1;
 	/* Calculate rrset rdata count. */
@@ -349,9 +360,11 @@ dbg_zdump_exec_detail(
 		tmp_rdata = tmp_rdata->next;
 		rdata_count++;
 	}
-
-	write_wrapper(&rdata_count, sizeof(rdata_count), 1, fd,
-	               stream, stream_size, crc);
+	
+	if (!write_wrapper(&rdata_count, sizeof(rdata_count), 1, fd,
+	                   stream, stream_size, crc)) {
+		return KNOT_ERROR;
+	}
 
 	tmp_rdata = rrsig->rdata;
 	while (tmp_rdata->next != rrsig->rdata) {
@@ -361,6 +374,8 @@ dbg_zdump_exec_detail(
 	}
 	knot_rdata_dump_binary(tmp_rdata, KNOT_RRTYPE_RRSIG, fd, use_ids,
 	                       stream, stream_size, crc);
+	
+	return KNOT_EOK;
 }
 
 /*!
@@ -369,11 +384,14 @@ dbg_zdump_exec_detail(
  * \param rrset RRSSet to be dumped.
  * \param data Arguments to be propagated.
  */
-static void knot_rrset_dump_binary(const knot_rrset_t *rrset, int fd,
-                                   int use_ids,
-                                   uint8_t **stream, size_t *stream_size,
-                                   crc_t *crc)
+static int knot_rrset_dump_binary(const knot_rrset_t *rrset, int fd,
+                                  int use_ids,
+                                  uint8_t **stream, size_t *stream_size,
+                                  crc_t *crc)
 {
+	if (rrset == NULL) {
+		return KNOT_EBADARG;
+	}
 	dbg_zdump_detail("zdump: rrset_dump_binary: Dumping rrset to fd=%d\n",
 	                 fd);
 
@@ -381,13 +399,18 @@ static void knot_rrset_dump_binary(const knot_rrset_t *rrset, int fd,
 		dump_dname_with_id(rrset->owner, fd, stream, stream_size, crc);
 	}
 
-	/*!< \todo #1684 check the return value */
-	write_wrapper(&rrset->type, sizeof(rrset->type), 1, fd,
-	               stream, stream_size, crc);
-	write_wrapper(&rrset->rclass, sizeof(rrset->rclass), 1, fd,
-	               stream, stream_size, crc);
-	write_wrapper(&rrset->ttl, sizeof(rrset->ttl), 1, fd,
-	               stream, stream_size, crc);
+	if (!write_wrapper(&rrset->type, sizeof(rrset->type), 1, fd,
+	                   stream, stream_size, crc)) {
+		return KNOT_ERROR;
+	}
+	if (!write_wrapper(&rrset->rclass, sizeof(rrset->rclass), 1, fd,
+	                   stream, stream_size, crc)) {
+		return KNOT_ERROR;
+	}
+	if (!write_wrapper(&rrset->ttl, sizeof(rrset->ttl), 1, fd,
+	               stream, stream_size, crc)) {
+		return KNOT_ERROR;
+	}
 
 	uint32_t rdata_count = 1;
 	uint8_t has_rrsig = rrset->rrsigs != NULL;
@@ -399,12 +422,16 @@ static void knot_rrset_dump_binary(const knot_rrset_t *rrset, int fd,
 		rdata_count++;
 	}
 
-	write_wrapper(&rdata_count, sizeof(rdata_count), 1, fd,
-	               stream, stream_size, crc);
-	write_wrapper(&has_rrsig, sizeof(has_rrsig), 1, fd,
-	               stream, stream_size, crc);
+	if (!write_wrapper(&rdata_count, sizeof(rdata_count), 1, fd,
+	                   stream, stream_size, crc)) {
+		return KNOT_ERROR;
+	}
 	
-	dbg_zdump_detail("zdump: rrset_dump_binary: Static data dumped.\n");
+	if (!write_wrapper(&has_rrsig, sizeof(has_rrsig), 1, fd,
+	                   stream, stream_size, crc)) {
+		return KNOT_ERROR;
+	}
+	dbg_zdump_verb("zdump: rrset_dump_binary: Static data dumped.\n");
 
 	tmp_rdata = rrset->rdata;
 
@@ -413,17 +440,23 @@ static void knot_rrset_dump_binary(const knot_rrset_t *rrset, int fd,
 		                       stream, stream_size, crc);
 		tmp_rdata = tmp_rdata->next;
 	}
-	knot_rdata_dump_binary(tmp_rdata, rrset->type, fd, use_ids,
-	                       stream, stream_size, crc);
 	
-	dbg_zdump_detail("zdump: rrset_dump_binary: Rdata dumped.\n");
+	int ret = knot_rdata_dump_binary(tmp_rdata, rrset->type, fd, use_ids,
+	                                 stream, stream_size, crc);
+	if (ret != KNOT_EOK) {
+		return ret
+	}
+	
+	dbg_zdump_verb("zdump: rrset_dump_binary: Rdata dumped.\n");
 
 	/* This is now obsolete, although I'd rather not use recursion - that
 	 * would probably not work */
 
 	if (rrset->rrsigs != NULL) {
-		knot_rrsig_set_dump_binary(rrset->rrsigs, fd, use_ids,
-		                           stream, stream_size, crc);
+        	return knot_rrsig_set_dump_binary(rrset->rrsigs, fd, use_ids,
+		                                  stream, stream_size, crc);
+	} else {
+		return KNOT_EOK;
 	}
 }
 
@@ -433,9 +466,9 @@ static void knot_rrset_dump_binary(const knot_rrset_t *rrset, int fd,
  * \param node Node to dumped.
  * \param data Arguments to be propagated.
  */
-static void knot_node_dump_binary(knot_node_t *node, int fd,
-                                  uint8_t **stream, size_t *stream_size,
-                                  crc_t *crc)
+static int knot_node_dump_binary(knot_node_t *node, int fd,
+                                 uint8_t **stream, size_t *stream_size,
+                                 crc_t *crc)
 {
 	if (node == NULL) {
 		return;
