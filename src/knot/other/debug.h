@@ -47,9 +47,10 @@
 #ifdef KNOT_COMPILER_DEBUG
   #define KNOTD_ZDUMP_DEBUG
   #define KNOTD_ZLOAD_DEBUG
+  #define KNOTD_SEMCHECK_DEBUG
 #endif
 
-#include "knot/other/log.h"
+#include "common/log.h"
 #include "common/print.h"
 
 /******************************************************************************/
@@ -432,6 +433,48 @@
 #define dbg_zload_detail(msg...)
 #define dbg_zload_hex_detail(data, len)
 #define dbg_zload_exec_detail(cmds)
+#endif
+
+#ifdef KNOTD_semcheck_DEBUG
+
+/* Brief messages. */
+#ifdef DEBUG_ENABLE_BRIEF
+#define dbg_semcheck(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_semcheck_hex(data, len) hex_log(LOG_SERVER, (data), (len))
+#else
+#define dbg_semcheck(msg...)
+#define dbg_semcheck_hex(data, len)
+#endif
+
+/* Verbose messages. */
+#ifdef DEBUG_ENABLE_VERBOSE
+#define dbg_semcheck_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_semcheck_hex_verb(data, len) hex_log(LOG_SERVER, (data), (len))
+#else
+#define dbg_semcheck_verb(msg...)
+#define dbg_semcheck_hex_verb(data, len)
+#endif
+
+/* Detail messages. */
+#ifdef DEBUG_ENABLE_DETAILS
+#define dbg_semcheck_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_semcheck_hex_detail(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_semcheck_exec_detail(cmds) do { cmds } while (0)
+#else
+#define dbg_semcheck_detail(msg...)
+#define dbg_semcheck_hex_detail(data, len)
+#define dbg_semcheck_exec_detail(cmds)
+#endif
+
+/* No messages. */
+#else
+#define dbg_semcheck(msg...)
+#define dbg_semcheck_hex(data, len)
+#define dbg_semcheck_verb(msg...)
+#define dbg_semcheck_hex_verb(data, len)
+#define dbg_semcheck_detail(msg...)
+#define dbg_semcheck_hex_detail(data, len)
+#define dbg_semcheck_exec_detail(cmds)
 #endif
 
 /******************************************************************************/

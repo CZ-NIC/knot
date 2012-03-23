@@ -71,7 +71,8 @@ void help(int argc, char **argv)
 	       " stop      Stop %s server (no-op if not running).\n"
 	       " restart   Stops and then starts %s server.\n"
 	       " reload    Reload %s configuration and compiled zones.\n"
-	       " running   check if server is running.\n"
+	       " running   Check if server is running.\n"
+	       " checkconf Check server configuration.\n"
 	       "\n"
 	       " compile   Compile zone file.\n",
 	       PACKAGE_NAME, PACKAGE_NAME, PACKAGE_NAME, PACKAGE_NAME);
@@ -487,6 +488,10 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 			}
 			rc = 0;
 		}
+	}
+	if (strcmp(action, "checkconf") == 0) {
+		rc = 0;
+		valid_cmd = 1;
 	}
 	if (strcmp(action, "compile") == 0) {
 		

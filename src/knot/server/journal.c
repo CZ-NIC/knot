@@ -21,6 +21,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#include "common/crc.h"
 #include "knot/other/error.h"
 #include "knot/other/debug.h"
 #include "knot/zone/zone-dump.h"
@@ -126,6 +127,25 @@ static int journal_recover(journal_t *j)
 	return KNOTD_EOK;
 }
 
+/* Recalculate CRC. */
+static int journal_crc_wb(int fd)
+{
+	char buf[4096];
+	ssize_t rb = 0;
+	crc_t crc = crc_init();
+	lseek(fd, MAGIC_LENGTH + sizeof(crc_t), SEEK_SET);
+	while((rb = read(fd, buf, sizeof(buf))) > 0) {
+		crc = crc_update(crc, (const unsigned char *)buf, rb);
+	}
+	lseek(fd, MAGIC_LENGTH, SEEK_SET);
+	if (!sfwrite(&crc, sizeof(crc_t), fd)) {
+		dbg_journal("journal: couldn't write CRC to '%s'\n", fn);
+		return KNOTD_ERROR;
+	}
+	
+	return KNOTD_EOK;
+}
+
 int journal_create(const char *fn, uint16_t max_nodes)
 {
 	if (fn == NULL) {
@@ -154,8 +174,15 @@ int journal_create(const char *fn, uint16_t max_nodes)
 
 	/* Create journal header. */
 	dbg_journal("journal: creating header\n");
-	const char magic[MAGIC_LENGTH] = MAGIC_BYTES;
+	const char magic[MAGIC_LENGTH] = JOURNAL_MAGIC;
 	if (!sfwrite(magic, MAGIC_LENGTH, fd)) {
+		fcntl(fd, F_SETLK, &fl);
+		close(fd);
+		remove(fn);
+		return KNOTD_ERROR;
+	}
+	crc_t crc = crc_init();
+	if (!sfwrite(&crc, sizeof(crc_t), fd)) {
 		fcntl(fd, F_SETLK, &fl);
 		close(fd);
 		remove(fn);
@@ -216,6 +243,14 @@ int journal_create(const char *fn, uint16_t max_nodes)
 		}
 	}
 	
+	/* Recalculate CRC. */
+	if (journal_crc_wb(fd) != KNOTD_EOK) {
+		fcntl(fd, F_SETLK, &fl);
+		close(fd);
+		remove(fn);
+		return KNOTD_ERROR;
+	}
+	
 	/* Unlock and close. */
 	fcntl(fd, F_SETLK, &fl);
 	close(fd);
@@ -268,7 +303,7 @@ journal_t* journal_open(const char *fn, size_t fslimit, int mode, uint16_t bflag
 	
 	/* Read magic bytes. */
 	dbg_journal("journal: reading magic bytes\n");
-	const char magic_req[MAGIC_LENGTH] = MAGIC_BYTES;
+	const char magic_req[MAGIC_LENGTH] = JOURNAL_MAGIC;
 	char magic[MAGIC_LENGTH];
 	if (!sfread(magic, MAGIC_LENGTH, fd)) {
 		dbg_journal_detail("journal: cannot read magic bytes\n");
@@ -278,6 +313,32 @@ journal_t* journal_open(const char *fn, size_t fslimit, int mode, uint16_t bflag
 	}
 	if (memcmp(magic, magic_req, MAGIC_LENGTH) != 0) {
 		log_server_warning("Journal file '%s' version is too old, "
+		                   "it will be flushed.\n", fn);
+		fcntl(fd, F_SETLK, &fl);
+		close(fd);
+		return NULL;
+	}
+	crc_t crc = 0;
+	if (!sfread(&crc, sizeof(crc_t), fd)) {
+		dbg_journal_detail("journal: cannot read CRC\n");
+		fcntl(fd, F_SETLK, &fl);
+		close(fd);
+		return NULL;
+	}
+	
+	/* Recalculate CRC. */
+	char buf[4096];
+	ssize_t rb = 0;
+	crc_t crc_calc = crc_init();
+	while((rb = read(fd, buf, sizeof(buf))) > 0) {
+		crc_calc = crc_update(crc_calc, (const unsigned char *)buf, rb);
+	}
+	
+	/* Compare */
+	if (crc == crc_calc) {
+		lseek(fd, MAGIC_LENGTH + sizeof(crc_t), SEEK_SET); /* Rewind. */
+	} else {
+		log_server_warning("Journal file '%s' CRC error, "
 		                   "it will be flushed.\n", fn);
 		fcntl(fd, F_SETLK, &fl);
 		close(fd);
@@ -693,9 +754,13 @@ int journal_close(journal_t *journal)
 	}
 	
 	/* Check if lazy. */
+	int ret = KNOTD_EOK;
 	if (journal->fd < 0) {
 		free(journal->path);
 	} else {
+		/* Recalculate CRC. */
+		ret = journal_crc_wb(journal->fd);
+		
 		/* Unlock journal file. */
 		journal->fl.l_type = F_UNLCK;
 		fcntl(journal->fd, F_SETLK, &journal->fl);
@@ -708,10 +773,9 @@ int journal_close(journal_t *journal)
 	dbg_journal("journal: closed journal %p\n", journal);
 
 	/* Free allocated resources. */
-	
 	free(journal);
 
-	return KNOTD_EOK;
+	return ret;
 }
 
 journal_t *journal_retain(journal_t *journal)

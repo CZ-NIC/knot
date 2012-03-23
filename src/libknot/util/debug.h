@@ -33,6 +33,7 @@
 #include <stdio.h>
 
 #include "config.h" /* autoconf generated */
+#include "common/log.h"
 
 /*
  * Debug macros
@@ -132,8 +133,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define dbg_ns(msg...) fprintf(stderr, msg)
-#define dbg_ns_hex(data, len)  hex_print((data), (len))
+#define dbg_ns(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_ns_hex(data, len)  hex_log(LOG_SERVER, (data), (len))
 #define dbg_ns_exec(cmds) do { cmds } while (0)
 #else
 #define dbg_ns(msg...)
@@ -143,8 +144,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_ns_verb(msg...) fprintf(stderr, msg)
-#define dbg_ns_hex_verb(data, len)  hex_print((data), (len))
+#define dbg_ns_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_ns_hex_verb(data, len) hex_log(LOG_SERVER, (data), (len))
 #define dbg_ns_exec_verb(cmds) do { cmds } while (0)
 #else
 #define dbg_ns_verb(msg...)
@@ -154,8 +155,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define dbg_ns_detail(msg...) fprintf(stderr, msg)
-#define dbg_ns_hex_detail(data, len)  hex_print((data), (len))
+#define dbg_ns_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_ns_hex_detail(data, len)  hex_log(LOG_SERVER, (data), (len))
 #define dbg_ns_exec_detail(cmds) do { cmds } while (0)
 #else
 #define dbg_ns_detail(msg...)
@@ -182,8 +183,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define dbg_dname(msg...) fprintf(stderr, msg)
-#define dbg_dname_hex(data, len)  hex_print((data), (len))
+#define dbg_dname(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
+#define dbg_dname_hex(data, len)  hex_log(LOG_ZONE, (data), (len))
 #define dbg_dname_exec(cmds) do { cmds } while (0)
 #else
 #define dbg_dname(msg...)
@@ -193,8 +194,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_dname_verb(msg...) fprintf(stderr, msg)
-#define dbg_dname_hex_verb(data, len)  hex_print((data), (len))
+#define dbg_dname_verb(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
+#define dbg_dname_hex_verb(data, len)  hex_log(LOG_ZONE, (data), (len))
 #define dbg_dname_exec_verb(cmds) do { cmds } while (0)
 #else
 #define dbg_dname_verb(msg...)
@@ -204,8 +205,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define dbg_dname_detail(msg...) fprintf(stderr, msg)
-#define dbg_dname_hex_detail(data, len)  hex_print((data), (len))
+#define dbg_dname_detail(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
+#define dbg_dname_hex_detail(data, len)  hex_log(LOG_ZONE, (data), (len))
 #define dbg_dname_exec_detail(cmds) do { cmds } while (0)
 #else
 #define dbg_dname_detail(msg...)
@@ -232,8 +233,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define dbg_node(msg...) fprintf(stderr, msg)
-#define dbg_node_hex(data, len)  hex_print((data), (len))
+#define dbg_node(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
+#define dbg_node_hex(data, len)  hex_log(LOG_ZONE, (data), (len))
 #else
 #define dbg_node(msg...)
 #define dbg_node_hex(data, len)
@@ -241,8 +242,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_node_verb(msg...) fprintf(stderr, msg)
-#define dbg_node_hex_verb(data, len)  hex_print((data), (len))
+#define dbg_node_verb(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
+#define dbg_node_hex_verb(data, len)  hex_log(LOG_ZONE, (data), (len))
 #else
 #define dbg_node_verb(msg...)
 #define dbg_node_hex_verb(data, len)
@@ -250,8 +251,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define dbg_node_detail(msg...) fprintf(stderr, msg)
-#define dbg_node_hex_detail(data, len)  hex_print((data), (len))
+#define dbg_node_detail(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
+#define dbg_node_hex_detail(data, len)  hex_log(LOG_ZONE, (data), (len))
 #else
 #define dbg_node_detail(msg...)
 #define dbg_node_hex_detail(data, len)
@@ -273,8 +274,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define dbg_zone(msg...) fprintf(stderr, msg)
-#define dbg_zone_hex(data, len)  hex_print((data), (len))
+#define dbg_zone(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
+#define dbg_zone_hex(data, len)  hex_log(LOG_ZONE, (data), (len))
 #define dbg_zone_exec(cmds) do { cmds } while (0)
 #else
 #define dbg_zone(msg...)
@@ -284,8 +285,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_zone_verb(msg...) fprintf(stderr, msg)
-#define dbg_zone_hex_verb(data, len)  hex_print((data), (len))
+#define dbg_zone_verb(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
+#define dbg_zone_hex_verb(data, len)  hex_log(LOG_ZONE, (data), (len))
 #define dbg_zone_exec_verb(cmds) do { cmds } while (0)
 #else
 #define dbg_zone_verb(msg...)
@@ -295,8 +296,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define dbg_zone_detail(msg...) fprintf(stderr, msg)
-#define dbg_zone_hex_detail(data, len)  hex_print((data), (len))
+#define dbg_zone_detail(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
+#define dbg_zone_hex_detail(data, len)  hex_log(LOG_ZONE, (data), (len))
 #define dbg_zone_exec_detail(cmds) do { cmds } while (0)
 #else
 #define dbg_zone_detail(msg...)
@@ -323,8 +324,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define dbg_zonedb(msg...) fprintf(stderr, msg)
-#define dbg_zonedb_hex(data, len)  hex_print((data), (len))
+#define dbg_zonedb(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
+#define dbg_zonedb_hex(data, len)  hex_log(LOG_ZONE, (data), (len))
 #define dbg_zonedb_exec(cmds) do { cmds } while (0)
 #else
 #define dbg_zonedb(msg...)
@@ -334,8 +335,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_zonedb_verb(msg...) fprintf(stderr, msg)
-#define dbg_zonedb_hex_verb(data, len)  hex_print((data), (len))
+#define dbg_zonedb_verb(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
+#define dbg_zonedb_hex_verb(data, len)  hex_log(LOG_ZONE, (data), (len))
 #define dbg_zonedb_exec_verb(cmds) do { cmds } while (0)
 #else
 #define dbg_zonedb_verb(msg...)
@@ -345,8 +346,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define dbg_zonedb_detail(msg...) fprintf(stderr, msg)
-#define dbg_zonedb_hex_detail(data, len)  hex_print((data), (len))
+#define dbg_zonedb_detail(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
+#define dbg_zonedb_hex_detail(data, len)  hex_log(LOG_ZONE, (data), (len))
 #define dbg_zonedb_exec_detail(cmds) do { cmds } while (0)
 #else
 #define dbg_zonedb_detail(msg...)
@@ -373,8 +374,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define dbg_response(msg...) fprintf(stderr, msg)
-#define dbg_response_hex(data, len)  hex_print((data), (len))
+#define dbg_response(msg...) log_msg(LOG_ANSWER, LOG_DEBUG, msg)
+#define dbg_response_hex(data, len)  hex_log(LOG_ANSWER, (data), (len))
 #define dbg_response_exec(cmds) do { cmds } while (0)
 #else
 #define dbg_response(msg...)
@@ -384,8 +385,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_response_verb(msg...) fprintf(stderr, msg)
-#define dbg_response_hex_verb(data, len)  hex_print((data), (len))
+#define dbg_response_verb(msg...) log_msg(LOG_ANSWER, LOG_DEBUG, msg)
+#define dbg_response_hex_verb(data, len)  hex_log(LOG_ANSWER, (data), (len))
 #define dbg_response_exec_verb(cmds) do { cmds } while (0)
 #else
 #define dbg_response_verb(msg...)
@@ -395,8 +396,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define dbg_response_detail(msg...) fprintf(stderr, msg)
-#define dbg_response_hex_detail(data, len)  hex_print((data), (len))
+#define dbg_response_detail(msg...) log_msg(LOG_ANSWER, LOG_DEBUG, msg)
+#define dbg_response_hex_detail(data, len)  hex_log(LOG_ANSWER, (data), (len))
 #define dbg_response_exec_detail(cmds) do { cmds } while (0)
 #else
 #define dbg_response_detail(msg...)
@@ -423,8 +424,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define dbg_packet(msg...) fprintf(stderr, msg)
-#define dbg_packet_hex(data, len)  hex_print((data), (len))
+#define dbg_packet(msg...) log_msg(LOG_ANSWER, LOG_DEBUG, msg)
+#define dbg_packet_hex(data, len)  hex_log(LOG_ANSWER, (data), (len))
 #define dbg_packet_exec(cmds) do { cmds } while (0)
 #else
 #define dbg_packet(msg...)
@@ -434,8 +435,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_packet_verb(msg...) fprintf(stderr, msg)
-#define dbg_packet_hex_verb(data, len)  hex_print((data), (len))
+#define dbg_packet_verb(msg...) log_msg(LOG_ANSWER, LOG_DEBUG, msg)
+#define dbg_packet_hex_verb(data, len)  hex_log(LOG_ANSWER, (data), (len))
 #define dbg_packet_exec_verb(cmds) do { cmds } while (0)
 #else
 #define dbg_packet_verb(msg...)
@@ -445,8 +446,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define dbg_packet_detail(msg...) fprintf(stderr, msg)
-#define dbg_packet_hex_detail(data, len)  hex_print((data), (len))
+#define dbg_packet_detail(msg...) log_msg(LOG_ANSWER, LOG_DEBUG, msg)
+#define dbg_packet_hex_detail(data, len)  hex_log(LOG_ANSWER, (data), (len))
 #define dbg_packet_exec_detail(cmds) do { cmds } while (0)
 #else
 #define dbg_packet_detail(msg...)
@@ -473,8 +474,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define dbg_edns(msg...) fprintf(stderr, msg)
-#define dbg_edns_hex(data, len)  hex_print((data), (len))
+#define dbg_edns(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
+#define dbg_edns_hex(data, len)  hex_log(LOG_ZONE, (data), (len))
 #else
 #define dbg_edns(msg...)
 #define dbg_edns_hex(data, len)
@@ -482,8 +483,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_edns_verb(msg...) fprintf(stderr, msg)
-#define dbg_edns_hex_verb(data, len)  hex_print((data), (len))
+#define dbg_edns_verb(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
+#define dbg_edns_hex_verb(data, len)  hex_log(LOG_ZONE, (data), (len))
 #else
 #define dbg_edns_verb(msg...)
 #define dbg_edns_hex_verb(data, len)
@@ -491,8 +492,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define dbg_edns_detail(msg...) fprintf(stderr, msg)
-#define dbg_edns_hex_detail(data, len)  hex_print((data), (len))
+#define dbg_edns_detail(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
+#define dbg_edns_hex_detail(data, len)  hex_log(LOG_ZONE, (data), (len))
 #else
 #define dbg_edns_detail(msg...)
 #define dbg_edns_hex_detail(data, len)
@@ -514,8 +515,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define dbg_nsec3(msg...) fprintf(stderr, msg)
-#define dbg_nsec3_hex(data, len)  hex_print((data), (len))
+#define dbg_nsec3(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
+#define dbg_nsec3_hex(data, len)  hex_log(LOG_ZONE, (data), (len))
 #else
 #define dbg_nsec3(msg...)
 #define dbg_nsec3_hex(data, len)
@@ -523,8 +524,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_nsec3_verb(msg...) fprintf(stderr, msg)
-#define dbg_nsec3_hex_verb(data, len)  hex_print((data), (len))
+#define dbg_nsec3_verb(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
+#define dbg_nsec3_hex_verb(data, len)  hex_log(LOG_ZONE, (data), (len))
 #else
 #define dbg_nsec3_verb(msg...)
 #define dbg_nsec3_hex_verb(data, len)
@@ -532,8 +533,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define dbg_nsec3_detail(msg...) fprintf(stderr, msg)
-#define dbg_nsec3_hex_detail(data, len)  hex_print((data), (len))
+#define dbg_nsec3_detail(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
+#define dbg_nsec3_hex_detail(data, len)  hex_log(LOG_ZONE, (data), (len))
 #else
 #define dbg_nsec3_detail(msg...)
 #define dbg_nsec3_hex_detail(data, len)
@@ -555,8 +556,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define dbg_ck(msg...) fprintf(stderr, msg)
-#define dbg_ck_hex(data, len)  hex_print((data), (len))
+#define dbg_ck(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_ck_hex(data, len)  hex_log(LOG_SERVER, (data), (len))
 #define dbg_ck_exec(cmds) do { cmds } while (0)
 #else
 #define dbg_ck(msg...)
@@ -566,8 +567,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_ck_verb(msg...) fprintf(stderr, msg)
-#define dbg_ck_hex_verb(data, len)  hex_print((data), (len))
+#define dbg_ck_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_ck_hex_verb(data, len)  hex_log(LOG_SERVER, (data), (len))
 #define dbg_ck_exec_verb(cmds) do { cmds } while (0)
 #else
 #define dbg_ck_verb(msg...)
@@ -577,8 +578,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define dbg_ck_detail(msg...) fprintf(stderr, msg)
-#define dbg_ck_hex_detail(data, len)  hex_print((data), (len))
+#define dbg_ck_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_ck_hex_detail(data, len)  hex_log(LOG_SERVER, (data), (len))
 #define dbg_ck_exec_detail(cmds) do { cmds } while (0)
 #else
 #define dbg_ck_detail(msg...)
@@ -605,9 +606,9 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define dbg_ck_hash(msg...) fprintf(stderr, msg)
-#define dbg_ck_rehash(msg...) fprintf(stderr, msg)
-#define dbg_ck_hash_hex(data, len)  hex_print((data), (len))
+#define dbg_ck_hash(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_ck_rehash(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_ck_hash_hex(data, len)  hex_log(LOG_SERVER, (data), (len))
 #else
 #define dbg_ck_hash(msg...)
 #define dbg_ck_rehash(msg...)
@@ -616,8 +617,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_ck_hash_verb(msg...) fprintf(stderr, msg)
-#define dbg_ck_hash_hex_verb(data, len)  hex_print((data), (len))
+#define dbg_ck_hash_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_ck_hash_hex_verb(data, len)  hex_log(LOG_SERVER, (data), (len))
 #else
 #define dbg_ck_hash_verb(msg...)
 #define dbg_ck_hash_hex_verb(data, len)
@@ -625,8 +626,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define dbg_ck_hash_detail(msg...) fprintf(stderr, msg)
-#define dbg_ck_hash_hex_detail(data, len)  hex_print((data), (len))
+#define dbg_ck_hash_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_ck_hash_hex_detail(data, len)  hex_log(LOG_SERVER, (data), (len))
 #else
 #define dbg_ck_hash_detail(msg...)
 #define dbg_ck_hash_hex_detail(data, len)
@@ -649,8 +650,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define dbg_xfrin(msg...) fprintf(stderr, msg)
-#define dbg_xfrin_hex(data, len)  hex_print((data), (len))
+#define dbg_xfrin(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
+#define dbg_xfrin_hex(data, len)  hex_log(LOG_ZONE, (data), (len))
 #define dbg_xfrin_exec(cmds) do { cmds } while (0)
 #else
 #define dbg_xfrin(msg...)
@@ -660,8 +661,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_xfrin_verb(msg...) fprintf(stderr, msg)
-#define dbg_xfrin_hex_verb(data, len)  hex_print((data), (len))
+#define dbg_xfrin_verb(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
+#define dbg_xfrin_hex_verb(data, len)  hex_log(LOG_ZONE, (data), (len))
 #define dbg_xfrin_exec_verb(cmds) do { cmds } while (0)
 #else
 #define dbg_xfrin_verb(msg...)
@@ -671,8 +672,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define dbg_xfrin_detail(msg...) fprintf(stderr, msg)
-#define dbg_xfrin_hex_detail(data, len)  hex_print((data), (len))
+#define dbg_xfrin_detail(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
+#define dbg_xfrin_hex_detail(data, len)  hex_log(LOG_ZONE, (data), (len))
 #define dbg_xfrin_exec_detail(cmds) do { cmds } while (0)
 #else
 #define dbg_xfrin_detail(msg...)
@@ -699,8 +700,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define dbg_ddns(msg...) fprintf(stderr, msg)
-#define dbg_ddns_hex(data, len)  hex_print((data), (len))
+#define dbg_ddns(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
+#define dbg_ddns_hex(data, len)  hex_log(LOG_ZONE, (data), (len))
 #else
 #define dbg_ddns(msg...)
 #define dbg_ddns_hex(data, len)
@@ -708,8 +709,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_ddns_verb(msg...) fprintf(stderr, msg)
-#define dbg_ddns_hex_verb(data, len)  hex_print((data), (len))
+#define dbg_ddns_verb(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
+#define dbg_ddns_hex_verb(data, len)  hex_log(LOG_ZONE, (data), (len))
 #else
 #define dbg_ddns_verb(msg...)
 #define dbg_ddns_hex_verb(data, len)
@@ -717,8 +718,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define dbg_ddns_detail(msg...) fprintf(stderr, msg)
-#define dbg_ddns_hex_detail(data, len)  hex_print((data), (len))
+#define dbg_ddns_detail(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
+#define dbg_ddns_hex_detail(data, len)  hex_log(LOG_ZONE, (data), (len))
 #else
 #define dbg_ddns_detail(msg...)
 #define dbg_ddns_hex_detail(data, len)
@@ -738,8 +739,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define dbg_tsig(msg...) fprintf(stderr, msg)
-#define dbg_tsig_hex(data, len)  hex_print((const char*)(data), (len))
+#define dbg_tsig(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
+#define dbg_tsig_hex(data, len)  hex_log(LOG_ZONE, (data), (len))
 #else
 #define dbg_tsig(msg...)
 #define dbg_tsig_hex(data, len)
@@ -747,8 +748,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_tsig_verb(msg...) fprintf(stderr, msg)
-#define dbg_tsig_hex_verb(data, len)  hex_print((const char*)(data), (len))
+#define dbg_tsig_verb(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
+#define dbg_tsig_hex_verb(data, len)  hex_log(LOG_ZONE, (data), (len))
 #else
 #define dbg_tsig_verb(msg...)
 #define dbg_tsig_hex_verb(data, len)
@@ -756,8 +757,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define dbg_tsig_detail(msg...) fprintf(stderr, msg)
-#define dbg_tsig_hex_detail(data, len)  hex_print((const char*)(data), (len))
+#define dbg_tsig_detail(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
+#define dbg_tsig_hex_detail(data, len)  hex_log(LOG_ZONE, (data), (len))
 #else
 #define dbg_tsig_detail(msg...)
 #define dbg_tsig_hex_detail(data, len)
@@ -777,8 +778,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
-#define dbg_rrset(msg...) fprintf(stderr, msg)
-#define dbg_rrset_hex(data, len)  hex_print((data), (len))
+#define dbg_rrset(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
+#define dbg_rrset_hex(data, len)  hex_log(LOG_ZONE, (data), (len))
 #else
 #define dbg_rrset(msg...)
 #define dbg_rrset_hex(data, len)
@@ -786,8 +787,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_rrset_verb(msg...) fprintf(stderr, msg)
-#define dbg_rrset_hex_verb(data, len)  hex_print((data), (len))
+#define dbg_rrset_verb(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
+#define dbg_rrset_hex_verb(data, len)  hex_log(LOG_ZONE, (data), (len))
 #else
 #define dbg_rrset_verb(msg...)
 #define dbg_rrset_hex_verb(data, len)
@@ -795,8 +796,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
-#define dbg_rrset_detail(msg...) fprintf(stderr, msg)
-#define dbg_rrset_hex_detail(data, len)  hex_print((data), (len))
+#define dbg_rrset_detail(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
+#define dbg_rrset_hex_detail(data, len)  hex_log(LOG_ZONE, (data), (len))
 #else
 #define dbg_rrset_detail(msg...)
 #define dbg_rrset_hex_detail(data, len)

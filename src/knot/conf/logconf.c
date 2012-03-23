@@ -23,7 +23,7 @@
 #include "knot/other/debug.h"
 #include "knot/conf/logconf.h"
 #include "knot/conf/conf.h"
-#include "knot/other/log.h"
+#include "common/log.h"
 #include "knot/other/error.h"
 #include "common/lists.h"
 #include "knot/common.h"
