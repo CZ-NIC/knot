@@ -265,7 +265,7 @@ static int ns_add_rrsigs(knot_rrset_t *rrset, knot_packet_t *resp,
  * \param tc Set to 1 if omitting the RRSIG RRSet should result in setting the
  *           TC bit in the response.
  */
-static void ns_follow_cname(const knot_node_t **node,
+static int ns_follow_cname(const knot_node_t **node,
                             const knot_dname_t **qname,
                             knot_packet_t *resp,
                             int (*add_rrset_to_resp)(knot_packet_t *,
@@ -275,6 +275,8 @@ static void ns_follow_cname(const knot_node_t **node,
 {
 	dbg_ns("Resolving CNAME chain...\n");
 	knot_rrset_t *cname_rrset;
+
+	int ret = 0;
 
 	while (*node != NULL
 	       && (cname_rrset = knot_node_get_rrset(*node, KNOT_RRTYPE_CNAME))
@@ -294,14 +296,52 @@ static void ns_follow_cname(const knot_node_t **node,
 			/* if wildcard node, we must copy the RRSet and
 			   replace its owner */
 			rrset = ns_synth_from_wildcard(cname_rrset, *qname);
-			knot_packet_add_tmp_rrset(resp, rrset);
-			add_rrset_to_resp(resp, rrset, tc, 0, 0, 1);
-			ns_add_rrsigs(cname_rrset, resp, *qname, 
-			              add_rrset_to_resp, tc);
+			if (rrset == NULL) {
+				dbg_ns("Failed to synthetize RRSet from "
+				       "wildcard RRSet followed from CNAME.\n");
+				return KNOT_ERROR; /*! \todo Better error. */
+			}
+
+			ret = knot_packet_add_tmp_rrset(resp, rrset);
+			if (ret != KNOT_EOK) {
+				dbg_ns("Failed to add synthetized RRSet (CNAME "
+				       "follow) to the tmp RRSets in response."
+				       "\n");
+				return ret;
+			}
+
+			ret = add_rrset_to_resp(resp, rrset, tc, 0, 0, 1);
+			if (ret != KNOT_EOK) {
+				dbg_ns("Failed to add synthetized RRSet (CNAME "
+				       "follow) to the response.\n");
+				return ret;
+			}
+
+			ret = ns_add_rrsigs(cname_rrset, resp, *qname,
+			                    add_rrset_to_resp, tc);
+			if (ret != KNOT_EOK) {
+				dbg_ns("Failed to add RRSIG for the synthetized"
+				       "RRSet (CNAME follow) to the response."
+				       "\n");
+				return ret;
+			}
 		} else {
-			add_rrset_to_resp(resp, rrset, tc, 0, 0, 1);
-			ns_add_rrsigs(rrset, resp, *qname, add_rrset_to_resp, 
-			              tc);
+			ret = add_rrset_to_resp(resp, rrset, tc, 0, 0, 1);
+
+			if (ret != KNOT_EOK) {
+				dbg_ns("Failed to add followed RRSet into"
+				       "the response.\n");
+				return ret;
+			}
+
+			ret = ns_add_rrsigs(rrset, resp, *qname,
+			                    add_rrset_to_resp, tc);
+
+			if (ret != KNOT_EOK) {
+				dbg_ns("Failed to add RRSIG for followed RRSet "
+				       "into the response.\n");
+				return ret;
+			}
 		}
 		
 		dbg_ns("Using RRSet: %p, owner: %p\n", rrset, rrset->owner);
@@ -326,7 +366,9 @@ dbg_ns_exec(
 
 		// save the new name which should be used for replacing wildcard
 		*qname = cname;
-	};
+	}
+
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -463,12 +505,14 @@ dbg_ns_exec(
  * \param resp Response where to add the Additional data.
  * \param rrset RRSet to get the Additional data for.
  */
-static void ns_put_additional_for_rrset(knot_packet_t *resp,
-                                        const knot_rrset_t *rrset)
+static int ns_put_additional_for_rrset(knot_packet_t *resp,
+                                       const knot_rrset_t *rrset)
 {
 	const knot_node_t *node = NULL;
 	const knot_rdata_t *rdata = NULL;
 	const knot_dname_t *dname = NULL;
+
+	int ret = 0;
 
 	// for all RRs in the RRset
 	rdata = knot_rrset_rdata(rrset);
@@ -495,6 +539,7 @@ static void ns_put_additional_for_rrset(knot_packet_t *resp,
 
 		knot_rrset_t *rrset_add;
 
+
 		if (node != NULL) {
 dbg_ns_exec(
 			char *name = knot_dname_to_str(node->owner);
@@ -507,8 +552,12 @@ dbg_ns_exec(
 				dbg_ns("Found CNAME in node, following...\n");
 				const knot_dname_t *dname
 						= knot_node_owner(node);
-				ns_follow_cname(&node, &dname, resp,
+				ret = ns_follow_cname(&node, &dname, resp,
 				    knot_response_add_rrset_additional, 0);
+				if (ret != KNOT_EOK) {
+					dbg_ns("Failed to follow CNAME.\n");
+					return ret;
+				}
 			}
 
 			// A RRSet
@@ -518,10 +567,23 @@ dbg_ns_exec(
 				dbg_ns("Found A RRsets.\n");
 				knot_rrset_t *rrset_add2 = rrset_add;
 				ns_check_wildcard(dname, resp, &rrset_add2);
-				knot_response_add_rrset_additional(
+				ret = knot_response_add_rrset_additional(
 					resp, rrset_add2, 0, 1, 0, 1);
-				ns_add_rrsigs(rrset_add, resp, dname,
+
+				if (ret != KNOT_EOK) {
+					dbg_ns("Failed to add A RRSet to "
+					       "Additional section.\n");
+					return ret;
+				}
+
+				ret = ns_add_rrsigs(rrset_add, resp, dname,
 				      knot_response_add_rrset_additional, 0);
+
+				if (ret != KNOT_EOK) {
+					dbg_ns("Failed to add RRSIGs for A RR"
+					       "Set to Additional section.\n");
+					return ret;
+				}
 			}
 
 			// AAAA RRSet
@@ -531,10 +593,24 @@ dbg_ns_exec(
 				dbg_ns("Found AAAA RRsets.\n");
 				knot_rrset_t *rrset_add2 = rrset_add;
 				ns_check_wildcard(dname, resp, &rrset_add2);
-				knot_response_add_rrset_additional(
+
+				ret = knot_response_add_rrset_additional(
 					resp, rrset_add2, 0, 1, 0, 1);
-				ns_add_rrsigs(rrset_add, resp, dname,
+
+				if (ret != KNOT_EOK) {
+					dbg_ns("Failed to add AAAA RRSet to "
+					       "Additional section.\n");
+					return ret;
+				}
+
+				ret = ns_add_rrsigs(rrset_add, resp, dname,
 				      knot_response_add_rrset_additional, 0);
+
+				if (ret != KNOT_EOK) {
+					dbg_ns("Failed to add RRSIG for AAAA RR"
+					       "Set to Additional section.\n");
+					return ret;
+				}
 			}
 		}
 
@@ -542,6 +618,8 @@ dbg_ns_exec(
 		assert(rdata != NULL);
 		rdata = knot_rrset_rdata_next(rrset, rdata);
 	}
+
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -608,10 +686,23 @@ static void ns_put_authority_ns(const knot_zone_contents_t *zone,
 			knot_zone_contents_apex(zone), KNOT_RRTYPE_NS);
 
 	if (ns_rrset != NULL) {
-		knot_response_add_rrset_authority(resp, ns_rrset, 0, 1, 0, 1);
-		ns_add_rrsigs(ns_rrset, resp, knot_node_owner(
+		int ret = knot_response_add_rrset_authority(resp, ns_rrset, 0,
+		                                            1, 0, 1);
+
+		if (ret != KNOT_EOK) {
+			dbg_ns("Failed to add Authority NSs to response.\n");
+			return ret;
+		}
+
+		ret = ns_add_rrsigs(ns_rrset, resp, knot_node_owner(
 		              knot_zone_contents_apex(zone)),
-	                      knot_response_add_rrset_authority, 1);
+		              knot_response_add_rrset_authority, 1);
+
+		if (ret != KNOT_EOK) {
+			dbg_ns("Failed to add RRSIGs for Authority NSs to "
+			       "response.\n");
+			return ret;
+		}
 	}
 }
 
@@ -713,13 +804,18 @@ static void ns_put_nsec3_from_node(const knot_node_t *node,
 	assert(DNSSEC_ENABLED
 	       && knot_query_dnssec_requested(knot_packet_query(resp)));
 
-	 knot_rrset_t *rrset = knot_node_get_rrset(node, KNOT_RRTYPE_NSEC3);
+	knot_rrset_t *rrset = knot_node_get_rrset(node, KNOT_RRTYPE_NSEC3);
 	assert(rrset != NULL);
 
 	int res = knot_response_add_rrset_authority(resp, rrset, 1, 1, 0, 1);
 	// add RRSIG for the RRSet
-	if (res == 0 && (rrset = knot_rrset_get_rrsigs(rrset)) != NULL) {
-		knot_response_add_rrset_authority(resp, rrset, 1, 0, 0, 1);
+	if (res == KNOT_EOK && (rrset = knot_rrset_get_rrsigs(rrset)) != NULL) {
+		res = knot_response_add_rrset_authority(resp, rrset, 1, 0, 0,
+		                                        1);
+	}
+
+	if (res != KNOT_EOK) {
+		// set TC bit??
 	}
 }
 
