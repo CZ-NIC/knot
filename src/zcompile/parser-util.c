@@ -2062,8 +2062,9 @@ uint16_t * zparser_conv_loc(char *str)
 				zc_error_prev_line("space expected after seconds");
 				return NULL;
 			}
-
-			if (sscanf(start, "%16lf", &d) != 1) {
+			
+			d = strtod(start, &start);
+			if (errno != 0) {
 				zc_error_prev_line("error parsing seconds");
 			}
 
@@ -2160,9 +2161,10 @@ uint16_t * zparser_conv_loc(char *str)
 	if (!isspace((int)*str) && *str != '\0') {
 		++str;
 	}
-
-	if (sscanf(start, "%16lf", &d) != 1) {
-		zc_error_prev_line("error parsing altitude");
+	
+	d = strtod(start, &start);
+	if (errno != 0) {
+		zc_error_prev_line("error parsing altitued");
 	}
 
 	alt = (uint32_t)(10000000.0 + d * 100 + 0.5);
