@@ -475,6 +475,7 @@ knot_dname_t *knot_dname_new_from_wire(const uint8_t *name, uint size,
 	dname->size = size;
 
 	if (knot_dname_find_labels(dname, 1) != 0) {
+		dbg_dname("Could not find labels in dname (new from wire).\n");
 		knot_dname_free(&dname);
 		return NULL;
 	}
@@ -611,8 +612,35 @@ int knot_dname_from_wire(const uint8_t *name, uint size,
 
 knot_dname_t *knot_dname_deep_copy(const knot_dname_t *dname)
 {
-	return knot_dname_new_from_wire(dname->name, dname->size,
-	                                  dname->node);
+	//return knot_dname_new_from_wire(dname->name, dname->size, dname->node);
+	/* dname_new_from_wire() does not accept non-FQDN dnames, so we
+	 * do the copy by hand. It's faster anyway */
+
+	knot_dname_t *copy = knot_dname_new();
+	CHECK_ALLOC(copy, NULL);
+
+	copy->labels = (uint8_t *)(malloc(dname->label_count));
+
+	if (copy->labels == NULL) {
+		knot_dname_free(&copy);
+		return NULL;
+	}
+
+	copy->name = (uint8_t *)(malloc(dname->size));
+	if (copy->name == NULL) {
+		knot_dname_free(&copy);
+		return NULL;
+	}
+
+	memcpy(copy->labels, dname->labels, dname->label_count);
+	copy->label_count = dname->label_count;
+
+	memcpy(copy->name, dname->name, dname->size);
+	copy->size = dname->size;
+
+	copy->node = dname->node;
+
+	return copy;
 }
 
 /*----------------------------------------------------------------------------*/

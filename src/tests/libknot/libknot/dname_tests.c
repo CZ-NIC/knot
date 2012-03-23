@@ -493,7 +493,7 @@ static int test_dname_is_subdomain()
 	for (int i = 0; i < TEST_DOMAINS_NON_FQDN; ++i) {
 		dnames_non_fqdn[i] = knot_dname_new_from_str(
 		                test_domains_non_fqdn[i].str,
-		                test_domains_non_fqdn[i].size, NULL);
+		                strlen(test_domains_non_fqdn[i].str), NULL);
 		assert(dnames_non_fqdn[i] != NULL);
 	}
 
@@ -603,6 +603,60 @@ static int test_dname_is_subdomain()
 	}
 
 	for (int i = 0; i < TEST_DOMAINS_NON_FQDN; ++i) {
+		knot_dname_free(&dnames_non_fqdn[i]);
+	}
+
+	return (errors == 0);
+}
+
+static int test_dname_deep_copy() {
+	int errors = 0;
+
+	knot_dname_t *dnames_fqdn[TEST_DOMAINS_OK];
+	knot_dname_t *dnames_non_fqdn[TEST_DOMAINS_NON_FQDN];
+	knot_dname_t *dnames_fqdn_copy[TEST_DOMAINS_OK];
+	knot_dname_t *dnames_non_fqdn_copy[TEST_DOMAINS_NON_FQDN];
+
+	for (int i = 0; i < TEST_DOMAINS_OK; ++i) {
+		dnames_fqdn[i] = knot_dname_new_from_wire(
+		                (const uint8_t *)test_domains_ok[i].wire,
+		                test_domains_ok[i].size, NODE_ADDRESS);
+		assert(dnames_fqdn[i] != NULL);
+	}
+
+	for (int i = 0; i < TEST_DOMAINS_NON_FQDN; ++i) {
+		dnames_non_fqdn[i] = knot_dname_new_from_str(
+		                test_domains_non_fqdn[i].str,
+		                strlen(test_domains_non_fqdn[i].str),
+		                NODE_ADDRESS);
+//		note("Created name: %.*s\n", dnames_non_fqdn[i]->size,
+//		     dnames_non_fqdn[i]->name);
+		assert(dnames_non_fqdn[i] != NULL);
+	}
+
+	/*
+	 * Create copies of the domain names.
+	 */
+	for (int i = 0; i < TEST_DOMAINS_OK; ++i) {
+//		note("Testing %d. FQDN domain.\n", i);
+		dnames_fqdn_copy[i] = knot_dname_deep_copy(dnames_fqdn[i]);
+		assert(dnames_fqdn_copy[i] != NULL);
+		errors += check_domain_name(dnames_fqdn_copy[i],
+		                            test_domains_ok, i, 1);
+		knot_dname_free(&dnames_fqdn_copy[i]);
+		knot_dname_free(&dnames_fqdn[i]);
+	}
+
+	for (int i = 0; i < TEST_DOMAINS_NON_FQDN; ++i) {
+//		note("Testing %d. non-FQDN domain: ", i);
+//		note("%.*s\n", dnames_non_fqdn[i]->size,
+//		     dnames_non_fqdn[i]->name);
+		dnames_non_fqdn_copy[i] =
+		                knot_dname_deep_copy(dnames_non_fqdn[i]);
+		assert(dnames_non_fqdn_copy[i] != NULL);
+		errors += check_domain_name(dnames_non_fqdn_copy[i],
+		                            test_domains_non_fqdn, i, 1);
+		knot_dname_free(&dnames_non_fqdn_copy[i]);
 		knot_dname_free(&dnames_non_fqdn[i]);
 	}
 
@@ -798,7 +852,7 @@ static int test_dname_getters(uint type)
 	return (errors == 0);
 }
 
-static const int KNOT_DNAME_TEST_COUNT = 15;
+static const int KNOT_DNAME_TEST_COUNT = 16;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
@@ -871,6 +925,9 @@ static int knot_dname_tests_run(int argc, char *argv[])
 	res_final *= res;
 
 	ok((res = test_dname_is_subdomain()), "dname: is subdomain");
+	res_final *= res;
+
+	ok((res = test_dname_deep_copy()), "dname: deep copy");
 	res_final *= res;
 
 	endskip;  /* create failed */
