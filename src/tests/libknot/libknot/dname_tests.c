@@ -39,7 +39,7 @@ unit_api dname_tests_api = {
 // C will not accept const int in other const definition
 enum { TEST_DOMAINS_OK = 8 };
 
-enum { TEST_DOMAINS_BAD = 4 };
+enum { TEST_DOMAINS_BAD = 5 };
 
 enum { TEST_DOMAINS_NON_FQDN = 6 };
 
@@ -92,7 +92,8 @@ static const struct test_domain
 	{ NULL, "\2ex\3com", 0, "", 0 },
 	{ "ex.com.", NULL, 0, "", 0 },
 	{ "ex.com.\5", "\3ex\3com\0\5", 10, "", 0 },
-	{ "example.com", "\3example\3com", 12, "\x0\x8", 2 }
+	{ "example.com", "\3example\3com", 12, "\x0\x8", 2 },
+	{ "example..", "\7example\0\0", 12, "\x0\x8", 2 }
 };
 
 static int test_dname_create()
@@ -194,7 +195,9 @@ static int test_dname_create_from_str_non_fqdn()
 	knot_dname_t *dname = NULL;
 
 	for (int i = 0; i < TEST_DOMAINS_NON_FQDN; ++i) {
-		//note("testing domain: %s", test_domains_non_fqdn[i].str);
+//		note("testing domain: %s, size: %zu",
+//		     test_domains_non_fqdn[i].str,
+//		     strlen(test_domains_non_fqdn[i].str));
 		dname = knot_dname_new_from_str(test_domains_non_fqdn[i].str,
 		          strlen(test_domains_non_fqdn[i].str), NULL);
 		errors += check_domain_name(dname, test_domains_non_fqdn, i, 0);
@@ -652,7 +655,7 @@ static int test_dname_name(knot_dname_t **dnames_fqdn,
 	for (int i = 0; i < TEST_DOMAINS_NON_FQDN; i++) {
 		const uint8_t *tmp_name;
 		tmp_name = knot_dname_name(dnames_non_fqdn[i]);
-		if (!check_wires(tmp_name, dnames_non_fqdn[i]->size - 1,
+		if (!check_wires(tmp_name, dnames_non_fqdn[i]->size,
 			        (uint8_t *)test_domains_non_fqdn[i].wire,
 				test_domains_non_fqdn[i].size)) {
 			diag("Got bad name value from structure: "
@@ -757,10 +760,13 @@ static int test_dname_getters(uint type)
 	}
 
 	for (int i = 0; i < TEST_DOMAINS_NON_FQDN; i++) {
-		printf("Creating dname: %s size: %d\n", test_domains_non_fqdn[i].wire, test_domains_non_fqdn[i].size);
+//		note("Creating dname: %s size: %d\n",
+//		     test_domains_non_fqdn[i].wire,
+//		     test_domains_non_fqdn[i].size);
 		dnames_non_fqdn[i] = knot_dname_new_from_str(
 		                test_domains_non_fqdn[i].str,
-		                test_domains_non_fqdn[i].size, NODE_ADDRESS);
+		                strlen(test_domains_non_fqdn[i].str),
+		                NODE_ADDRESS);
 		assert(dnames_non_fqdn[i] != NULL);
 	}
 
@@ -834,15 +840,11 @@ static int knot_dname_tests_run(int argc, char *argv[])
 	res_final *= res_wire;
 	res_final *= res_str_non_fqdn;
 
-	todo();
 	res = test_dname_getters(0);
 	ok(res, "dname: name");
-	endtodo;
 
-	todo();
 	res = test_dname_getters(1);
 	ok(res, "dname: size");
-	endtodo;
 
 	res = test_dname_getters(2);
 	ok(res, "dname: node");
