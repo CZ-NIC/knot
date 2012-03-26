@@ -271,4 +271,19 @@ journal_t *journal_retain(journal_t *journal);
  */
 void journal_release(journal_t *journal);
 
+/*!
+ * \brief Recompute journal CRC.
+ *
+ * \warning Use only if you altered the journal file somehow
+ * and need it to pass CRC checks. CRC check normally
+ * checks file integrity, so you should not touch it unless
+ * you know what you're doing.
+ *
+ * \param fd Open journal file.
+ *
+ * \retval KNOTD_EOK on success.
+ * \retval KNOTD_EINVAL if not valid fd.
+ */
+int journal_update_crc(int fd);
+
 #endif /* _KNOTD_JOURNAL_H_ */

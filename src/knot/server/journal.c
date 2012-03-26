@@ -128,8 +128,12 @@ static int journal_recover(journal_t *j)
 }
 
 /* Recalculate CRC. */
-static int journal_crc_wb(int fd)
+int journal_update_crc(int fd)
 {
+	if (fcntl(fd, F_GETFL) < 0) {
+		return KNOTD_EINVAL;
+	}
+	
 	char buf[4096];
 	ssize_t rb = 0;
 	crc_t crc = crc_init();
@@ -244,7 +248,7 @@ int journal_create(const char *fn, uint16_t max_nodes)
 	}
 	
 	/* Recalculate CRC. */
-	if (journal_crc_wb(fd) != KNOTD_EOK) {
+	if (journal_update_crc(fd) != KNOTD_EOK) {
 		fcntl(fd, F_SETLK, &fl);
 		close(fd);
 		remove(fn);
@@ -759,7 +763,7 @@ int journal_close(journal_t *journal)
 		free(journal->path);
 	} else {
 		/* Recalculate CRC. */
-		ret = journal_crc_wb(journal->fd);
+		ret = journal_update_crc(journal->fd);
 		
 		/* Unlock journal file. */
 		journal->fl.l_type = F_UNLCK;
