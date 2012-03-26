@@ -494,6 +494,8 @@ static int zones_refresh_ev(event_t *e)
 
 	/* Create query. */
 	int sock = -1;
+	char strbuf[512] = "Generic error.";
+	const char *errstr = strbuf;
 	sockaddr_t *master = &zd->xfr_in.master;
 	int ret = xfrin_create_soa_query(zone->name, &xfr_req, &buflen);
 	if (ret == KNOT_EOK) {
@@ -507,6 +509,10 @@ static int zones_refresh_ev(event_t *e)
 			if (bind(sock, via->ptr, via->len) < 0) {
 				socket_close(sock);
 				sock = -1;
+				char r_addr[SOCKADDR_STRLEN];
+				sockaddr_tostr(via, r_addr, sizeof(r_addr));
+				snprintf(strbuf, sizeof(strbuf),
+				         "Couldn't bind to \'%s\'", r_addr);
 			}
 		}
 
@@ -520,6 +526,7 @@ static int zones_refresh_ev(event_t *e)
 			if (sent == buflen) {
 				ret = KNOTD_EOK;
 			} else {
+				strerror_r(errno, strbuf, sizeof(strbuf));
 				socket_close(sock);
 				sock = -1;
 			}
@@ -534,6 +541,7 @@ static int zones_refresh_ev(event_t *e)
 		}
 	} else {
 		ret = KNOTD_ERROR;
+		errstr = "Couldn't create SOA query";
 	}
 
 	
@@ -555,8 +563,8 @@ static int zones_refresh_ev(event_t *e)
 		ret = xfr_request(zd->server->xfr_h, &req);
 	}
 	if (ret != KNOTD_EOK) {
-		log_server_warning("Failed to issue SOA query for zone '%s'.\n",
-		                   zd->conf->name);
+		log_server_warning("Failed to issue SOA query for zone '%s' (%s).\n",
+		                   zd->conf->name, errstr);
 	}
 	
 	free(qbuf);
@@ -1490,11 +1498,9 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 					     cfg_if->family,
 					     cfg_if->address,
 					     cfg_if->port);
-				if (cfg_if->via) {
-					sockaddr_set(&zd->xfr_in.via,
-					             cfg_if->via->family,
-					             cfg_if->via->address,
-					             0);
+				if (sockaddr_isvalid(&cfg_if->via)) {
+					ret = sockaddr_copy(&zd->xfr_in.via,
+					                    &cfg_if->via);
 				}
 
 				if (cfg_if->key) {
@@ -2948,10 +2954,9 @@ int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
 		int ret = sockaddr_set(&ev->addr, cfg_if->family,
 				       cfg_if->address,
 				       cfg_if->port);
-		conf_iface_t *via = cfg_if->via;
-		if (ret > 0 && via != NULL) {
-			ret = sockaddr_set(&ev->saddr, via->family,
-			                   via->address, 0);
+		sockaddr_t *via = &cfg_if->via;
+		if (ret > 0 && sockaddr_isvalid(via)) {
+			ret = sockaddr_copy(&ev->saddr, via);
 		}
 		if (ret < 1) {
 			free(ev);
