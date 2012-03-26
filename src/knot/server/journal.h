@@ -43,7 +43,6 @@
 
 #include <stdint.h>
 #include <fcntl.h>
-#include "knot/zone/zone-dump.h"
 
 /*!
  * \brief Journal entry flags.
