@@ -184,7 +184,6 @@ static int dump_dname_with_id(const knot_dname_t *dname, int fd,
                               crc_t *crc)
 {
 	uint32_t id = dname->id;
-	/*!< \todo #1684 check the return value */
 	if (!write_wrapper(&id, sizeof(id), 1, fd, stream, stream_size, crc)) {
 		return KNOT_ERROR;
 	}
@@ -214,7 +213,6 @@ static int knot_rdata_dump_binary(knot_rdata_t *rdata,
 	}
 
 	/* Write rdata count. */
-	/*!< \todo #1684 check the return value */
 	if (!write_wrapper(&(rdata->count),
 	                   sizeof(rdata->count), 1, fd, stream, stream_size,
 	                   crc)) {
@@ -444,7 +442,7 @@ static int knot_rrset_dump_binary(const knot_rrset_t *rrset, int fd,
 	int ret = knot_rdata_dump_binary(tmp_rdata, rrset->type, fd, use_ids,
 	                                 stream, stream_size, crc);
 	if (ret != KNOT_EOK) {
-		return ret
+		return ret;
 	}
 	
 	dbg_zdump_verb("zdump: rrset_dump_binary: Rdata dumped.\n");
@@ -471,7 +469,7 @@ static int knot_node_dump_binary(knot_node_t *node, int fd,
                                  crc_t *crc)
 {
 	if (node == NULL) {
-		return;
+		return KNOT_EBADARG;
 	}
 	
 	/* first write dname */
@@ -486,45 +484,59 @@ dbg_zdump_exec_detail(
 );
 	assert(node->owner->id != 0);
 	uint32_t owner_id = node->owner->id;
-	/*!< \todo #1684 check the return value */
-	write_wrapper(&owner_id, sizeof(owner_id), 1, fd, stream, stream_size,
-	               crc);
+	if (!write_wrapper(&owner_id, sizeof(owner_id), 1, fd, stream, stream_size,
+	                   crc)) {
+		return KNOT_ERROR;
+	}
 
 	if (knot_node_parent(node) != NULL) {
 		uint32_t parent_id = knot_dname_id(
 				knot_node_owner(knot_node_parent(node)));
-		write_wrapper(&parent_id, sizeof(parent_id), 1, fd,
-		               stream, stream_size, crc);
+		if (!write_wrapper(&parent_id, sizeof(parent_id), 1, fd,
+		                   stream, stream_size, crc)) {
+			return KNOT_ERROR;
+		}
 	} else {
 		uint32_t parent_id = 0;
-		write_wrapper(&parent_id, sizeof(parent_id), 1, fd,
-		               stream, stream_size, crc);
+		if (!write_wrapper(&parent_id, sizeof(parent_id), 1, fd,
+		                   stream, stream_size, crc)) {
+			return KNOT_ERROR;
+		}
 	}
 
-	write_wrapper(&(node->flags), sizeof(node->flags), 1, fd,
-	               stream, stream_size, crc);
+	if (!write_wrapper(&(node->flags), sizeof(node->flags), 1, fd,
+	                   stream, stream_size, crc)) {
+		return KNOT_ERROR;
+	}
 
 	dbg_zdump("Written flags: %u\n", node->flags);
 
 	if (knot_node_nsec3_node(node) != NULL) {
 		uint32_t nsec3_id =
 			knot_node_owner(knot_node_nsec3_node(node))->id;
-		write_wrapper(&nsec3_id, sizeof(nsec3_id), 1, fd,
-		               stream, stream_size, crc);
+		if (!write_wrapper(&nsec3_id, sizeof(nsec3_id), 1, fd,
+		                   stream, stream_size, crc)) {
+			return KNOT_ERROR;
+		}
+		
 		dbg_zdump("Written nsec3 node id: %u\n",
 			 knot_node_owner(knot_node_nsec3_node(node))->id);
 	} else {
 		uint32_t nsec3_id = 0;
-		write_wrapper(&nsec3_id, sizeof(nsec3_id), 1, fd,
-		               stream, stream_size, crc);
+		if (!write_wrapper(&nsec3_id, sizeof(nsec3_id), 1, fd,
+		                   stream, stream_size, crc)) {
+			return KNOT_ERROR;
+		}
 	}
 
 	/* Now we need (or do we?) count of rrsets to be read
 	 * but that number is yet unknown */
 
 	uint16_t rrset_count = node->rrset_count;
-	write_wrapper(&rrset_count, sizeof(rrset_count), 1, fd,
-	               stream, stream_size, crc);
+	if (!write_wrapper(&rrset_count, sizeof(rrset_count), 1, fd,
+	                   stream, stream_size, crc)) {
+		return KNOT_ERROR;
+	}
 
 	const knot_rrset_t **node_rrsets = knot_node_rrsets(node);
 	for (int i = 0; i < rrset_count; i++)
@@ -689,33 +701,48 @@ int knot_zdump_binary(knot_zone_contents_t *zone, int fd,
 
 	/* Start writing header - magic bytes. */
 	static const uint8_t MAGIC[MAGIC_LENGTH] = MAGIC_BYTES;
-	write_wrapper(&MAGIC, sizeof(uint8_t), MAGIC_LENGTH, fd, NULL, NULL,
-	               crc);
+	if (!write_wrapper(&MAGIC, sizeof(uint8_t), MAGIC_LENGTH,
+	                   fd, NULL, NULL, crc)) {
+		return KNOT_ERROR;
+	}
 
 	/* Write source file length. */
 	uint32_t sflen = strlen(sfilename) + 1;
-	write_wrapper(&sflen, sizeof(uint32_t), 1, fd, NULL, NULL, crc);
+	if (!write_wrapper(&sflen, sizeof(uint32_t), 1, fd, NULL, NULL, crc)) {
+		return KNOT_ERROR;
+	}
 
 	/* Write source file. */
-	write_wrapper(sfilename, sflen, 1, fd, NULL, NULL, crc);
+	if (!write_wrapper(sfilename, sflen, 1, fd, NULL, NULL, crc)) {
+		return KNOT_ERROR;
+	}
 
 	/* Notice: End of header,
 	 */
 
 	/* Start writing compiled data. */
-	write_wrapper(&normal_node_count, sizeof(normal_node_count), 1, fd,
-	               NULL, NULL, crc);
-	write_wrapper(&nsec3_node_count, sizeof(nsec3_node_count), 1, fd,
-	               NULL, NULL, crc);
+	if (!write_wrapper(&normal_node_count, sizeof(normal_node_count), 1, fd,
+	                   NULL, NULL, crc)) {
+		return KNOT_ERROR;
+	}
+	
+	if (!write_wrapper(&nsec3_node_count, sizeof(nsec3_node_count), 1, fd,
+	                   NULL, NULL, crc)) {
+		return KNOT_ERROR;
+	}
 	uint32_t auth_node_count = zone->node_count;
-	write_wrapper(&auth_node_count,
-	       sizeof(auth_node_count), 1, fd, NULL, NULL, crc);
+	if (!write_wrapper(&auth_node_count,
+	                   sizeof(auth_node_count), 1, fd, NULL, NULL, crc)) {
+		return KNOT_ERROR;
+	}
 
 	/* Write total number of dnames */
 	assert(zone->dname_table);
 	uint32_t total_dnames = zone->dname_table->id_counter;
-	write_wrapper(&total_dnames,
-	       sizeof(total_dnames), 1, fd, NULL, NULL, crc);
+	if (!write_wrapper(&total_dnames,
+	                   sizeof(total_dnames), 1, fd, NULL, NULL, crc)) {
+		return KNOT_ERROR;
+	}
 
 	/* Write dname table. */
 	if (knot_dump_dname_table(zone->dname_table, fd, crc)
