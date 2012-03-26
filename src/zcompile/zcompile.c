@@ -621,7 +621,8 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	if (parser->errors != 0) {
 		fprintf(stderr,
-		        "Parser finished with error, not dumping the zone!\n");
+		        "Parser finished with %d error(s), not dumping the zone!\n",
+		        parser->errors);
 	} else {
 		int fd = open(outfile, O_RDWR | O_CREAT | O_TRUNC, S_IRWXU | S_IRWXG);
 		if (fd < 0) {

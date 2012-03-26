@@ -812,6 +812,7 @@ uint32_t strtoserial(const char *nptr, const char **endptr)
 
 inline void write_uint32(void *dst, uint32_t data)
 {
+/*!< \todo Check what this means and delete if obsolete. */
 #ifdef ALLOW_UNALIGNED_ACCESSES
 	*(uint32_t *) dst = htonl(data);
 #else
@@ -926,7 +927,7 @@ time_t mktime_from_utc(const struct tm *tm)
 
 /*!< Following functions are conversions from text to wire. */
 
-//#define DEBUG_UNKNOWN_RDATA
+#define DEBUG_UNKNOWN_RDATA
 
 #ifdef DEBUG_UNKNOWN_RDATA
 #define dbg_rdata(msg...) fprintf(stderr, msg)
@@ -993,6 +994,8 @@ static inline int rdata_atom_is_domain(uint16_t type, size_t index)
 	return (index < descriptor->length
 		&& (descriptor->wireformat[index] ==
 		KNOT_RDATA_WF_COMPRESSED_DNAME  ||
+		descriptor->wireformat[index] ==
+		KNOT_RDATA_WF_LITERAL_DNAME  ||
 		descriptor->wireformat[index] ==
 		KNOT_RDATA_WF_UNCOMPRESSED_DNAME));
 }
@@ -1134,15 +1137,20 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 		}
 
 		if (is_domain) {
-			knot_dname_t *dname;
+			knot_dname_t *dname = NULL;
+			dbg_rdata("%d: guessing length from pointers: %p %p\n",
+			          i,
+			          wireformat, end);
+			length = (uint8_t *)end - (uint8_t *)wireformat;
+
 
 			if (!required && (wireformat == end)) {
 				break;
 			}
 
-			dname = knot_dname_new_from_str((char *)wireformat,
-							  length,
-							  NULL);
+			dname = knot_dname_new_from_wire(wireformat,
+							 length,
+							 NULL);
 
 			if (dname == NULL) {
 				dbg_rdata("malformed dname!\n");
@@ -1150,8 +1158,9 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 				free(temp_rdatas);
 				return KNOTDZCOMPILE_EBRDATA;
 			}
-			dbg_rdata("%d: created dname: %s\n", i,
-			          knot_dname_to_str(dname));
+			
+			dbg_rdata("%d: created dname: %s, length: %d\n", i,
+			          knot_dname_to_str(dname), length);
 
 			if (is_wirestore) {
 				/*temp_rdatas[i].raw_data =
@@ -1232,7 +1241,6 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 	if (wireformat < end) {
 		/* Trailing garbage.  */
 		dbg_rdata("w: %p e: %p %d\n", wireformat, end, end - wireformat);
-//		region_destroy(temp_region);
 		free(temp_rdatas);
 		return KNOTDZCOMPILE_EBRDATA;
 	}
@@ -1240,6 +1248,8 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 	*items = temp_rdatas;
 	/*	*rdatas = (rdata_atom_type *) region_alloc_init(
 			region, temp_rdatas, i * sizeof(rdata_atom_type)); */
+	dbg_rdata("wf_to_rdata_atoms: Succesfully converted %d items.\n",
+	          i);
 	return (ssize_t)i;
 }
 
@@ -2410,11 +2420,11 @@ void parse_unknown_rdata(uint16_t type, uint16_t *wireformat)
 //	buffer_create_from(&packet, wireformat + 1, *wireformat);
 	rdata_count = rdata_wireformat_to_rdata_atoms(wireformat + 1, type,
 						      size, &items);
-//	dbg_rdata("got %d items\n", rdata_count);
-	dbg_rdata("wf to items returned error: %s (%d)\n",
-	          error_to_str(knot_zcompile_error_msgs, rdata_count),
-	                       rdata_count);
+	dbg_rdata("got %d items\n", rdata_count);
 	if (rdata_count < 0) {
+		dbg_rdata("wf to items returned error: %s (%d)\n",
+		          error_to_str(knot_zcompile_error_msgs, rdata_count),
+		          rdata_count);
 		zc_error_prev_line("bad unknown RDATA\n");
 		/*!< \todo leaks */
 		return;
@@ -2431,6 +2441,8 @@ void parse_unknown_rdata(uint16_t type, uint16_t *wireformat)
 	free(items);
 	/* Free wireformat */
 	free(wireformat);
+	
+	dbg_rdata("parse_unknown_rdata: Successfuly parsed unknown rdata.\n");
 }
 
 void set_bitnsec(uint8_t bits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE],
