@@ -646,6 +646,8 @@ static int ns_put_authority_soa(const knot_zone_contents_t *zone,
 
 		knot_rrset_set_ttl(soa_copy, min);
 		soa_rrset = soa_copy;
+		/* Need to add it as temporary, so it get's freed. */
+		knot_packet_add_tmp_rrset(resp, soa_copy);
 	}
 
 	assert(soa_rrset != NULL);
