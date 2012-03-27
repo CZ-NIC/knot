@@ -2980,7 +2980,7 @@ int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
 		pthread_mutex_unlock(&zd->lock);
 
 		log_server_info("Scheduled '%s' NOTIFY query "
-				"after %d s to %s:%d\n", zd->conf->name,
+				"after %d s to '%s@%d'.\n", zd->conf->name,
 			    tmr_s, cfg_if->address, cfg_if->port);
 	}
 
