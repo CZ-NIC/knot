@@ -66,7 +66,7 @@ static char *error_messages[(-ZC_ERR_ALLOC) + 1] = {
 	"NSEC3: NSEC3 bitmap error!\n",
 	[-ZC_ERR_NSEC3_EXTRA_RECORD] =
 	"NSEC3: NSEC3 node contains extra record. This is valid, however Knot "
-	"will not serve this record properly.",
+	"will not serve this record properly.\n",
 
 	[-ZC_ERR_CNAME_CYCLE] =
 	"CNAME: CNAME cycle!\n",
@@ -1020,16 +1020,16 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 	}
 	
 	/* Check that the node only contains NSEC3 and RRSIG. */
-	const knot_rrset_t **rrsets = knot_node_rrsets(node);
+	const knot_rrset_t **rrsets = knot_node_rrsets(nsec3_node);
 	if (rrsets == NULL) {
 		return KNOT_ENOMEM;
 	}
 	
-	for (int i = 0; i < knot_node_rrset_count(node); i++) {
+	for (int i = 0; i < knot_node_rrset_count(nsec3_node); i++) {
 		uint16_t type = knot_rrset_type(rrsets[i]);
 		if (!(type == KNOT_RRTYPE_NSEC3 ||
 		    type == KNOT_RRTYPE_RRSIG)) {
-			err_handler_handle_error(handler, node,
+			err_handler_handle_error(handler, nsec3_node,
 			                         ZC_ERR_NSEC3_EXTRA_RECORD);
 		}
 	}
