@@ -1024,22 +1024,22 @@ static int xfr_update_msgpref(knot_ns_xfr_t *req, const char *keytag)
 	const char *pformat = NULL;
 	switch (req->type) {
 	case XFR_TYPE_AIN:
-		pformat = "AXFR transfer of '%s/IN' with %s:%d%s:";
+		pformat = "AXFR transfer of '%s/IN' with '%s@%d'%s:";
 		break;
 	case XFR_TYPE_IIN:
-		pformat = "IXFR transfer of '%s/IN' with %s:%d%s:";
+		pformat = "IXFR transfer of '%s/IN' with '%s@%d'%s:";
 		break;
 	case XFR_TYPE_AOUT:
-		pformat = "AXFR transfer of '%s/OUT' to %s:%d%s:";
+		pformat = "AXFR transfer of '%s/OUT' to '%s@%d'%s:";
 		break;
 	case XFR_TYPE_IOUT:
-		pformat = "IXFR transfer of '%s/OUT' to %s:%d%s:";
+		pformat = "IXFR transfer of '%s/OUT' to '%s@%d'%s:";
 		break;
 	case XFR_TYPE_NOTIFY:
-		pformat = "NOTIFY query of '%s' to %s:%d%s:";
+		pformat = "NOTIFY query of '%s' to '%s@%d'%s:";
 		break;
 	case XFR_TYPE_SOA:
-		pformat = "SOA query of '%s' to %s:%d%s:";
+		pformat = "SOA query of '%s' to '%s@%d'%s:";
 		break;
 	default:
 		pformat = "";
