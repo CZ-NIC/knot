@@ -1078,13 +1078,15 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 			length = sizeof(uint32_t);
 			break;
 		case KNOT_RDATA_WF_TEXT:
+			dbg_rdata("TEXT rdata.\n");
 		case KNOT_RDATA_WF_BINARYWITHLENGTH:
+			dbg_rdata("BINARYWITHLENGTH rdata.\n");
 			/* Length is stored in the first byte.  */
 			length = 1;
 			if ((uint8_t *)wireformat + length <= (uint8_t *)end) {
 			//	length += wireformat[length - 1];
 				length += *((uint8_t *)wireformat);
-				dbg_rdata("%d: set new length: %d\n", i,
+				dbg_rdata("item %d: set new length: %d\n", i,
 				          length);
 			}
 			/*if (buffer_position(packet) + length <= end) {
@@ -1099,10 +1101,12 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 			break;
 		case KNOT_RDATA_WF_BINARY:
 			/* Remaining RDATA is binary.  */
-			dbg_rdata("%d: guessing length from pointers: %p %p\n",
+			dbg_rdata("BINARY: item %d: guessing length from pointers: %p %p. ",
 			          i,
 			          wireformat, end);
 			length = (uint8_t *)end - (uint8_t *)wireformat;
+			dbg_rdata("Result: %d.\n",
+			          length);
 //			length = end - buffer_position(packet);
 			break;
 		case KNOT_RDATA_WF_APL:
@@ -1111,8 +1115,10 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 				  + sizeof(uint8_t)); /* length */
 			if ((uint8_t *)wireformat + length <= (uint8_t *)end) {
 				/* Mask out negation bit.  */
-				length += (wireformat[length - 1]
-					   & APL_LENGTH_MASK);
+				dbg_rdata("APL: length was %d. ", length);
+//				length += (wireformat[length - 1]
+//					   & APL_LENGTH_MASK);
+				dbg_rdata("APL: after masking: %d.\n", length);
 			}
 			break;
 		case KNOT_RDATA_WF_IPSECGATEWAY:
@@ -1138,7 +1144,7 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 
 		if (is_domain) {
 			knot_dname_t *dname = NULL;
-			dbg_rdata("%d: guessing length from pointers: %p %p\n",
+			dbg_rdata("item %d: guessing length from pointers: %p %p\n",
 			          i,
 			          wireformat, end);
 			length = (uint8_t *)end - (uint8_t *)wireformat;
@@ -1159,7 +1165,7 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 				return KNOTDZCOMPILE_EBRDATA;
 			}
 			
-			dbg_rdata("%d: created dname: %s, length: %d\n", i,
+			dbg_rdata("item %d: created dname: %s, length: %d\n", i,
 			          knot_dname_to_str(dname), length);
 
 			if (is_wirestore) {
@@ -1189,7 +1195,7 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 			}
 
 		} else {
-			dbg_rdata("%d :length: %d %d %p %p\n", i, length,
+			dbg_rdata("item %d :length: %d calculated: %d (%p %p)\n", i, length,
 			          end - wireformat,
 			          wireformat, end);
 			if ((uint8_t *)wireformat + length > (uint8_t *)end) {
@@ -1240,7 +1246,7 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 
 	if (wireformat < end) {
 		/* Trailing garbage.  */
-		dbg_rdata("w: %p e: %p %d\n", wireformat, end, end - wireformat);
+		dbg_rdata("Garbage: w: %p e: %p %d\n", wireformat, end, end - wireformat);
 		free(temp_rdatas);
 		return KNOTDZCOMPILE_EBRDATA;
 	}
@@ -2404,7 +2410,8 @@ void zadd_rdata_domain(knot_dname_t *dname)
 
 void parse_unknown_rdata(uint16_t type, uint16_t *wireformat)
 {
-	dbg_rdata("parsing unknown rdata for type: %d\n", type);
+	dbg_rdata("parsing unknown rdata for type: %s (%d)\n",
+	          knot_rrtype_to_string(type), type);
 //	buffer_type packet;
 	uint16_t size;
 	ssize_t rdata_count;
