@@ -1011,7 +1011,7 @@ static inline uint64_t ixfrdb_key_make(uint32_t from, uint32_t to)
 
 /*----------------------------------------------------------------------------*/
 
-static int zones_changesets_from_binary(knot_changesets_t *chgsets)
+int zones_changesets_from_binary(knot_changesets_t *chgsets)
 {
 	assert(chgsets != NULL);
 	assert(chgsets->allocated >= chgsets->count);
