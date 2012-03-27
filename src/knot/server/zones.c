@@ -1499,8 +1499,8 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 					     cfg_if->address,
 					     cfg_if->port);
 				if (sockaddr_isvalid(&cfg_if->via)) {
-					ret = sockaddr_copy(&zd->xfr_in.via,
-					                    &cfg_if->via);
+					sockaddr_copy(&zd->xfr_in.via,
+					              &cfg_if->via);
 				}
 
 				if (cfg_if->key) {
@@ -1509,7 +1509,7 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 					       sizeof(knot_key_t));
 				}
 
-				dbg_zones("zones: using %s:%d as XFR master "
+				dbg_zones("zones: using '%s@%d' as XFR master "
 				          "for '%s'\n",
 				          cfg_if->address,
 				          cfg_if->port,
@@ -2955,13 +2955,16 @@ int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
 				       cfg_if->address,
 				       cfg_if->port);
 		sockaddr_t *via = &cfg_if->via;
-		if (ret > 0 && sockaddr_isvalid(via)) {
-			ret = sockaddr_copy(&ev->saddr, via);
-		}
-		if (ret < 1) {
+		if (ret > 0) {
+			if (sockaddr_isvalid(via)) {
+				sockaddr_copy(&ev->saddr, via);
+			}
+		} else {
 			free(ev);
-			dbg_zones("notify: NOTIFY slave %s has invalid "
-				    "address\n", cfg_if->name);
+			log_server_warning("NOTIFY slave '%s' has invalid "
+			                   "address '%s@%d', couldn't create"
+			                   "query.\n", cfg_if->name,
+			                   cfg_if->address, cfg_if->port);
 			continue;
 		}
 
