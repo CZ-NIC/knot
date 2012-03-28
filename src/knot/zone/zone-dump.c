@@ -71,9 +71,9 @@ static inline int write_to_file_crc(const void *src,
 	 * It was meant differtely, caller function does not 
 	 * care how many bytes had been written, it just cares about
 	 * success/fail (not that it is checked anyway) (#1684).
- 	 */
-	return rc == n;
-
+	 */
+	
+	return rc == size * n;
 }
 
 static inline int write_to_stream(const void *src,
