@@ -16,6 +16,8 @@ static char *error_messages[(-ZC_ERR_ALLOC) + 1] = {
 	[-ZC_ERR_ALLOC] = "Memory allocation error!\n",
 
 	[-ZC_ERR_MISSING_SOA] = "SOA record missing in zone!\n",
+	[-ZC_ERR_MISSING_NS_DEL_POINT] = "NS record missing in zone apex or in "
+	                "delegation point!\n",
 
 	[-ZC_ERR_RRSIG_RDATA_TYPE_COVERED] =
 	"RRSIG: Type covered rdata field is wrong!\n",
@@ -1163,7 +1165,11 @@ static int semantic_checks_plain(knot_zone_contents_t *zone,
 	                node) {
 		const knot_rrset_t *ns_rrset =
 				knot_node_rrset(node, KNOT_RRTYPE_NS);
-		assert(ns_rrset);
+		if (ns_rrset == NULL) {
+			err_handler_handle_error(handler, node,
+			                         ZC_ERR_MISSING_NS_DEL_POINT);
+			return KNOT_EOK;
+		}
 		//FIXME this should be an error as well ! (i guess)
 
 		knot_dname_t *ns_dname =
