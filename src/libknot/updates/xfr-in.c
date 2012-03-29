@@ -1376,6 +1376,10 @@ static void xfrin_changes_add_rdata(knot_rdata_t **rdatas, uint *types,
 {
 	dbg_xfrin_detail("Adding RDATA to new RDATA list: %p\n", rdata);
 
+	if (rdata == NULL) {
+		return;
+	}
+
 dbg_xfrin_exec_detail(
 	// try to find the first RDATA in the given list
 	for (int i = 0; i < *count; ++i) {
