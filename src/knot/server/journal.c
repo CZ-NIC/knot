@@ -18,8 +18,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
 
 #include "common/crc.h"
 #include "knot/other/error.h"
@@ -212,15 +213,20 @@ int journal_write_in(journal_t *j, journal_node_t **rn, uint64_t id, size_t len)
 	n->pos = j->free.pos;
 	n->len = len;
 	n->flags = JOURNAL_FREE;
+	n->next = jnext;
 	journal_update(j, n);
 	*rn = n;
 	return KNOTD_EOK;
 }
 
-int journal_write_out(journal_t *journal, journal_node_t *n, size_t size)
+int journal_write_out(journal_t *journal, journal_node_t *n)
 {
 	/* Mark node as valid and write back. */
+	uint16_t jnext = n->next;
+	size_t size = n->len;
+	const size_t node_len = sizeof(journal_node_t);
 	n->flags = JOURNAL_VALID | journal->bflags;
+	n->next = 0;
 	journal_update(journal, n);
 
 	/* Handle free segment on node rotation. */
@@ -292,7 +298,7 @@ int journal_update_crc(int fd)
 	}
 	lseek(fd, MAGIC_LENGTH, SEEK_SET);
 	if (!sfwrite(&crc, sizeof(crc_t), fd)) {
-		dbg_journal("journal: couldn't write CRC to '%s'\n", fn);
+		dbg_journal("journal: couldn't write CRC to fd=%d\n", fd);
 		return KNOTD_ERROR;
 	}
 	
@@ -705,7 +711,7 @@ int journal_read(journal_t *journal, uint64_t id, journal_cmp_t cf, char *dst)
 
 int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
 {
-	if (journal == 0 || src == 0) {
+	if (journal == NULL || src == NULL) {
 		return KNOTD_EINVAL;
 	}
 	
@@ -723,7 +729,85 @@ int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
 	}
 	
 	/* Finalize journal write. */
-	return journal_write_out(journal, n, size);
+	return journal_write_out(journal, n);
+}
+
+int journal_map(journal_t *journal, uint64_t id, char **dst, size_t size)
+{
+	if (journal == NULL || dst == NULL) {
+		return KNOTD_EINVAL;
+	}
+	
+	/* Prepare journal write. */
+	journal_node_t *n = NULL;
+	int ret = journal_write_in(journal, &n, id, size);
+	if (ret != KNOTD_EOK) {
+		return ret;
+	}
+
+	/* Reserve data in permanent storage. */
+	/*! \todo This is only needed when inflating journal file. */
+	lseek(journal->fd, n->pos, SEEK_SET);
+	char nbuf[4096] = {0};
+	size_t wb = sizeof(nbuf);
+	while (size > 0) {
+		if (size < sizeof(nbuf)) {
+			wb = size;
+		}
+		if (!sfwrite(nbuf, wb, journal->fd)) {
+			return KNOTD_ERROR;
+		}
+		size -= wb;
+	}
+	
+	/* Align offset to page size (required). */
+	const size_t ps = sysconf(_SC_PAGESIZE);
+	off_t ps_delta = (n->pos % ps);
+	off_t off = n->pos - ps_delta;
+	
+	/* Map file region. */
+	*dst = mmap(NULL, n->len + ps_delta, PROT_READ | PROT_WRITE, MAP_SHARED,
+	            journal->fd, off);
+	if (*dst == ((void*)-1)) {
+		dbg_journal("journal: couldn't mmap() fd=%d <%u,%u> %d\n",
+		            journal->fd, n->pos, n->pos+n->len, errno);
+		return KNOTD_ERROR;
+	}
+	
+	/* Correct dst pointer to alignment. */
+	*dst += ps_delta;
+	
+	return KNOTD_EOK;
+}
+
+int journal_unmap(journal_t *journal, uint64_t id, void *ptr)
+{
+	if (journal == NULL || ptr == NULL) {
+		return KNOTD_EINVAL;
+	}
+	
+	/* Mapped node is on tail. */
+	journal_node_t *n = journal->nodes + journal->qtail;
+	if(n->id != id) {
+		dbg_journal("journal: failed to find mmap node with id=%llu\n",
+		            (unsigned long long)id);
+		return KNOTD_ENOENT;
+	}
+	
+	/* Realign memory. */
+	const size_t ps = sysconf(_SC_PAGESIZE);
+	off_t ps_delta = (n->pos % ps);
+	ptr = ((char*)ptr - ps_delta);
+	
+	/* Unmap memory. */
+	if (munmap(ptr, n->len + ps_delta) != 0) {
+		dbg_journal("journal: couldn't munmap() fd=%d <%u,%u> %d\n",
+		            journal->fd, n->pos, n->pos+n->len, errno);
+		return KNOTD_ERROR;
+	}
+	
+	/* Finalize. */
+	return journal_write_out(journal, n);
 }
 
 int journal_walk(journal_t *journal, journal_apply_t apply)

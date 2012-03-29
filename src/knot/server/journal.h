@@ -72,6 +72,7 @@ typedef struct journal_node_t
 {
 	uint64_t id;    /*!< Node ID. */
 	uint16_t flags; /*!< Node flags. */
+	uint16_t next;  /*!< Next node ptr. */
 	uint32_t pos;   /*!< Position in journal file. */
 	uint32_t len;   /*!< Entry data length. */
 } journal_node_t;
@@ -126,7 +127,7 @@ typedef int (*journal_apply_t)(journal_t *j, journal_node_t *n);
 #define JOURNAL_NCOUNT 1024 /*!< Default node count. */
 /* HEADER = magic, crc, max_entries, qhead, qtail */
 #define JOURNAL_HSIZE (MAGIC_LENGTH + sizeof(crc_t) + sizeof(uint16_t) * 3) 
-#define JOURNAL_MAGIC {'k', 'n', 'o', 't', '1', '0', '1'}
+#define JOURNAL_MAGIC {'k', 'n', 'o', 't', '1', '0', '2'}
 
 /*!
  * \brief Create new journal.
@@ -194,6 +195,35 @@ int journal_read(journal_t *journal, uint64_t id, journal_cmp_t cf, char *dst);
  * \retval KNOTD_ERROR on I/O error.
  */
 int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size);
+
+/*!
+ * \brief Map journal entry for read/write.
+ *
+ * \warning New nodes shouldn't be created until the entry is unmapped.
+ *
+ * \param journal Associated journal.
+ * \param id Entry identifier.
+ * \param dst Will contain mapped memory.
+ *
+ * \retval KNOTD_EOK if successful.
+ * \retval KNOTD_EAGAIN if no free node is available, need to remove dirty nodes.
+ * \retval KNOTD_ERROR on I/O error.
+ */
+int journal_map(journal_t *journal, uint64_t id, char **dst, size_t size);
+
+/*!
+ * \brief Finalize mapped journal entry.
+ *
+ * \param journal Associated journal.
+ * \param id Entry identifier.
+ * \param ptr Mapped memory.
+ *
+ * \retval KNOTD_EOK if successful.
+ * \retval KNOTD_ENOENT if the entry cannot be found.
+ * \retval KNOTD_EAGAIN if no free node is available, need to remove dirty nodes.
+ * \retval KNOTD_ERROR on I/O error.
+ */
+int journal_unmap(journal_t *journal, uint64_t id, void *ptr);
 
 /*!
  * \brief Return least recent node (journal head).
