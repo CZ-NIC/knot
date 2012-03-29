@@ -62,7 +62,7 @@
 #include "common/base32hex.h"
 #include "zcompile/parser-util.h"
 #include "zcompile/zcompile.h"
-#include "libknot/util/descriptor.h"
+#include "parser-descriptor.h"
 #include "libknot/util/utils.h"
 #include "zcompile/zcompile-error.h"
 
@@ -926,8 +926,7 @@ time_t mktime_from_utc(const struct tm *tm)
 }
 
 /*!< Following functions are conversions from text to wire. */
-
-#define DEBUG_UNKNOWN_RDATA
+//#define DEBUG_UNKNOWN_RDATA
 
 #ifdef DEBUG_UNKNOWN_RDATA
 #define dbg_rdata(msg...) fprintf(stderr, msg)
@@ -1016,6 +1015,8 @@ static inline uint8_t rdata_atom_wireformat_type(uint16_t type, size_t index)
 	return descriptor->wireformat[index];
 }
 
+typedef int (*printf_t)(const char *fmt, ...);
+
 /*!
  * \brief Converts rdata wireformat to rdata items.
  *
@@ -1031,10 +1032,12 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 					const uint16_t data_size,
 					knot_rdata_item_t **items)
 {
-	dbg_rdata("read length: %d\n", data_size);
-	uint16_t const *end = (uint16_t *)((uint8_t *)wireformat + (data_size));
+	/*!< \todo This is so ugly, it makes me wanna puke. */
+	uint16_t const *end =
+		(uint16_t *)((uint8_t *)wireformat + (data_size));
 	dbg_rdata("set end pointer: %p which means length: %d\n", end,
 	          (uint8_t *)end - (uint8_t *)wireformat);
+	dbg_rdata("Parsing following wf: ");
 	size_t i;
 	knot_rdata_item_t *temp_rdatas =
 		malloc(sizeof(*temp_rdatas) * MAXRDATALEN);
@@ -1053,50 +1056,53 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 	          descriptor->length, data_size);
 
 	for (i = 0; i < descriptor->length; ++i) {
+		dbg_rdata("this particular item is type %d.\n",
+		          rdata_atom_wireformat_type(rrtype, i));
 		int is_domain = 0;
 		int is_wirestore = 0;
 		size_t length = 0;
 		length = 0;
-		int required = descriptor->length;
+		bool required = descriptor->fixed_items;
 
 		switch (rdata_atom_wireformat_type(rrtype, i)) {
 		case KNOT_RDATA_WF_COMPRESSED_DNAME:
 		case KNOT_RDATA_WF_UNCOMPRESSED_DNAME:
+			dbg_rdata("Parsed item is a dname.\n");
 			is_domain = 1;
 			break;
 		case KNOT_RDATA_WF_LITERAL_DNAME:
+			dbg_rdata("Parsed item is a literal dname.\n");
 			is_domain = 1;
 			is_wirestore = 1;
 			break;
 		case KNOT_RDATA_WF_BYTE:
+			dbg_rdata("Parsed item is a byte.\n");
 			length = sizeof(uint8_t);
 			break;
 		case KNOT_RDATA_WF_SHORT:
+			dbg_rdata("Parsed item is a short.\n");
 			length = sizeof(uint16_t);
 			break;
 		case KNOT_RDATA_WF_LONG:
+			dbg_rdata("Parsed item is a long.\n");
 			length = sizeof(uint32_t);
 			break;
+		case KNOT_RDATA_WF_APL:
+			dbg_rdata("APL data.\n");
+		case KNOT_RDATA_WF_TEXT_SINGLE:
 		case KNOT_RDATA_WF_TEXT:
 			dbg_rdata("TEXT rdata.\n");
 		case KNOT_RDATA_WF_BINARYWITHLENGTH:
 			dbg_rdata("BINARYWITHLENGTH rdata.\n");
 			/* Length is stored in the first byte.  */
-			length = 1;
-			if ((uint8_t *)wireformat + length <= (uint8_t *)end) {
-			//	length += wireformat[length - 1];
-				length += *((uint8_t *)wireformat);
-				dbg_rdata("item %d: set new length: %d\n", i,
-				          length);
-			}
-			/*if (buffer_position(packet) + length <= end) {
-			length += buffer_current(packet)[length - 1];
-			}*/
+			length = data_size;
 			break;
 		case KNOT_RDATA_WF_A:
+			dbg_rdata("Parsed item is an IPv4 address.\n");
 			length = sizeof(in_addr_t);
 			break;
 		case KNOT_RDATA_WF_AAAA:
+			dbg_rdata("Parsed item is an IPv6 address.\n");
 			length = IP6ADDRLEN;
 			break;
 		case KNOT_RDATA_WF_BINARY:
@@ -1107,21 +1113,21 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 			length = (uint8_t *)end - (uint8_t *)wireformat;
 			dbg_rdata("Result: %d.\n",
 			          length);
-//			length = end - buffer_position(packet);
 			break;
-		case KNOT_RDATA_WF_APL:
-			length = (sizeof(uint16_t)    /* address family */
-				  + sizeof(uint8_t)   /* prefix */
-				  + sizeof(uint8_t)); /* length */
-			if ((uint8_t *)wireformat + length <= (uint8_t *)end) {
-				/* Mask out negation bit.  */
-				dbg_rdata("APL: length was %d. ", length);
-//				length += (wireformat[length - 1]
+//		case KNOT_RDATA_WF_APL:
+//			length = (sizeof(uint16_t)    /* address family */
+//				  + sizeof(uint8_t)   /* prefix */
+//				  + sizeof(uint8_t)); /* length */
+//			if ((uint8_t *)wireformat + length <= (uint8_t *)end) {
+//				/* Mask out negation bit.  */
+//				dbg_rdata("APL: length was %d. ", length);
+//				length += (wireformat[data_size - 1]
 //					   & APL_LENGTH_MASK);
-				dbg_rdata("APL: after masking: %d.\n", length);
-			}
-			break;
+//				dbg_rdata("APL: after masking: %d.\n", length);
+//			}
+//			break;
 		case KNOT_RDATA_WF_IPSECGATEWAY:
+			dbg_rdata("Parsed item is an IPSECGATEWAY address.\n");
 			switch (rdata_atom_data(temp_rdatas[1])[0]) {
 			/* gateway type */
 			default:
@@ -1139,6 +1145,7 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 				is_wirestore = 1;
 				break;
 			}
+			
 			break;
 		}
 
@@ -1154,7 +1161,7 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 				break;
 			}
 
-			dname = knot_dname_new_from_wire(wireformat,
+			dname = knot_dname_new_from_wire((uint8_t *)wireformat,
 							 length,
 							 NULL);
 
@@ -1195,6 +1202,7 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 			}
 
 		} else {
+			/*!< \todo This calculated length makes no sense! */
 			dbg_rdata("item %d :length: %d calculated: %d (%p %p)\n", i, length,
 			          end - wireformat,
 			          wireformat, end);
@@ -1203,7 +1211,8 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 					/* Truncated RDATA.  */
 					/*! \todo rdata purge */
 					free(temp_rdatas);
-					dbg_rdata("truncated rdata\n");
+					dbg_rdata("truncated rdata, end pointer is exceeded by %d octets.\n",
+					          (wireformat + length) - end);
 					return KNOTDZCOMPILE_EBRDATA;
 				} else {
 					break;
@@ -1239,7 +1248,6 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 		dbg_rdata("wire: %p\n", wireformat);
 		dbg_rdata("remaining now: %d\n",
 		          end - wireformat);
-
 	}
 
 	dbg_rdata("%p %p\n", wireformat, (uint8_t *)wireformat);
@@ -2360,18 +2368,12 @@ void zadd_rdata_txt_wireformat(uint16_t *data, int first)
 		return;
 	}
 	dbg_zp("Adding text!\n");
-//	hex_print(data + 1, data[0]);
 	knot_rdata_item_t *rd;
 
 	/* First STR in str_seq, allocate 65K in first unused rdata
 	 * else find last used rdata */
 	if (first) {
 		rd = &parser->temporary_items[parser->rdata_count];
-//		if ((rd->data = (uint8_t *) region_alloc(parser->rr_region,
-//			sizeof(uint8_t) + 65535 * sizeof(uint8_t))) == NULL) {
-//			zc_error_prev_line("Could not allocate memory for TXT RR");
-//			return;
-//		}
 		rd->raw_data = alloc_rdata(65535 * sizeof(uint8_t));
 		if (rd->raw_data == NULL) {
 			parser->error_occurred = KNOTDZCOMPILE_ENOMEM;
@@ -2379,7 +2381,6 @@ void zadd_rdata_txt_wireformat(uint16_t *data, int first)
 		parser->rdata_count++;
 		rd->raw_data[0] = 0;
 	} else {
-//		assert(0);
 		rd = &parser->temporary_items[parser->rdata_count-1];
 	}
 
@@ -2412,7 +2413,6 @@ void parse_unknown_rdata(uint16_t type, uint16_t *wireformat)
 {
 	dbg_rdata("parsing unknown rdata for type: %s (%d)\n",
 	          knot_rrtype_to_string(type), type);
-//	buffer_type packet;
 	uint16_t size;
 	ssize_t rdata_count;
 	ssize_t i;
@@ -2424,7 +2424,6 @@ void parse_unknown_rdata(uint16_t type, uint16_t *wireformat)
 		return;
 	}
 
-//	buffer_create_from(&packet, wireformat + 1, *wireformat);
 	rdata_count = rdata_wireformat_to_rdata_atoms(wireformat + 1, type,
 						      size, &items);
 	dbg_rdata("got %d items\n", rdata_count);
