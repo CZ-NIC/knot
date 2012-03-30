@@ -576,6 +576,7 @@ knot_dname_t *knot_dname_parse_from_wire(const uint8_t *wire,
 	memcpy(dname->name, name, i + 1);
 	dname->size = i + 1;
 
+	/*! \todo Why l + 1 ?? */
 	dname->labels = (uint8_t *)malloc((l + 1) * sizeof(uint8_t));
 	if (dname->labels == NULL) {
 		ERR_ALLOC_FAILED;

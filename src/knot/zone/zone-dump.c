@@ -548,6 +548,7 @@ dbg_zdump_exec_detail(
 
 	free(node_rrsets);
 
+	/*! \todo No return value!! */
 }
 
 int zone_is_secure(knot_zone_contents_t *zone)
