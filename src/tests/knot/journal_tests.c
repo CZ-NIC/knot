@@ -189,7 +189,7 @@ static int journal_tests_run(int argc, char *argv[])
 	
 	/* Test 14: Write to mmaped entry and unmap. */
 	memcpy(mptr, chk_buf, sizeof(chk_buf));
-	ret = journal_unmap(j, 0x12345, mptr);
+	ret = journal_unmap(j, 0x12345, mptr, 1);
 	ok(j && mptr && ret == 0, "journal: written to mapped entry and finished");
 	
 	/* Test 15: Compare mmaped entry. */
@@ -210,7 +210,7 @@ static int journal_tests_run(int argc, char *argv[])
 			break;
 		}
 		memcpy(mptr, tmpbuf, sizeof(tmpbuf));
-		if ((ret = journal_unmap(j, key, mptr)) != KNOTD_EOK) {
+		if ((ret = journal_unmap(j, key, mptr, 1)) != KNOTD_EOK) {
 			diag("journal_unmap failed: %s", knotd_strerror(ret));
 			break;
 		}

@@ -780,7 +780,7 @@ int journal_map(journal_t *journal, uint64_t id, char **dst, size_t size)
 	return KNOTD_EOK;
 }
 
-int journal_unmap(journal_t *journal, uint64_t id, void *ptr)
+int journal_unmap(journal_t *journal, uint64_t id, void *ptr, int finalize)
 {
 	if (journal == NULL || ptr == NULL) {
 		return KNOTD_EINVAL;
@@ -807,7 +807,11 @@ int journal_unmap(journal_t *journal, uint64_t id, void *ptr)
 	}
 	
 	/* Finalize. */
-	return journal_write_out(journal, n);
+	int ret = KNOTD_EOK;
+	if (finalize) {
+		ret = journal_write_out(journal, n);
+	}
+	return ret;
 }
 
 int journal_walk(journal_t *journal, journal_apply_t apply)

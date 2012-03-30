@@ -217,13 +217,14 @@ int journal_map(journal_t *journal, uint64_t id, char **dst, size_t size);
  * \param journal Associated journal.
  * \param id Entry identifier.
  * \param ptr Mapped memory.
+ * \param finalize Set to true to finalize node or False to discard it.
  *
  * \retval KNOTD_EOK if successful.
  * \retval KNOTD_ENOENT if the entry cannot be found.
  * \retval KNOTD_EAGAIN if no free node is available, need to remove dirty nodes.
  * \retval KNOTD_ERROR on I/O error.
  */
-int journal_unmap(journal_t *journal, uint64_t id, void *ptr);
+int journal_unmap(journal_t *journal, uint64_t id, void *ptr, int finalize);
 
 /*!
  * \brief Return least recent node (journal head).
