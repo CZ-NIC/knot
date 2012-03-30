@@ -821,17 +821,19 @@ void ck_destroy_table(ck_hash_table_t **table, void (*dtor_value)(void *value),
 	while (item != NULL) {
 		// disconnect the item
 		(*table)->stash = item->next;
-		/*! \todo Investigate this. */
-		assert(item->item != NULL);
 
-		if (dtor_value) {
-			dtor_value(item->item->value);
-		}
-		if (delete_key) {
-			free((void *)item->item->key);
+		/*! \todo Check item semantics. (#1688) */
+		if (item->item != NULL) {
+			if (dtor_value) {
+				dtor_value(item->item->value);
+			}
+			if (delete_key) {
+				free((void *)item->item->key);
+			}
+
+			free((void *)item->item);
 		}
 
-		free((void *)item->item);
 		free(item);
 		item = (*table)->stash;
 	}
