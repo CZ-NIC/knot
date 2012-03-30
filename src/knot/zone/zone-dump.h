@@ -62,29 +62,15 @@ int knot_zdump_binary(knot_zone_contents_t *zone, int fd,
  *
  * \param rrset RRSet to be serialized.
  * \param stream Stream containing serialized RRSet.
- * \param size Length of created stream.
+ * \param max_size Maximum size of stream.
+ * \param bytes_written Actually written data.
  *
  * \retval KNOT_EOK on success.
  * \retval KNOT_EBADARG if wrong arguments are supplied.
  * \retval KNOT_ENOMEM on memory error.
  */
-int knot_zdump_rrset_serialize(const knot_rrset_t *rrset, uint8_t **stream,
-                               size_t *size);
-
-/*!
- * \brief Serializes RRSet into binary stream. Expects NULL pointer, memory
- *        is handled inside function.
- *
- * \param rrset RRSet to be serialized.
- * \param stream Stream containing serialized RRSet.
- * \param size Length of created stream.
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EBADARG if wrong arguments are supplied.
- * \retval KNOT_ENOMEM on memory error.
- */
-int knot_zdump_rrset_serialize(const knot_rrset_t *rrset, uint8_t **stream,
-                               size_t *size);
+int knot_zdump_rrset_serialize(const knot_rrset_t *rrset, uint8_t *stream,
+                               size_t max_size, size_t *bytes_written);
 
 /*!
  * \brief Checks if zone uses DNSSEC and/or NSEC3
