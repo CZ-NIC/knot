@@ -2614,118 +2614,118 @@ static int zones_check_binary_size(uint8_t **data, size_t *allocated,
 
 /*----------------------------------------------------------------------------*/
 
-static int zones_changeset_rrset_to_binary(uint8_t **data, size_t *size,
-                                           size_t *allocated,
-                                           knot_rrset_t *rrset)
-{
-	assert(data != NULL);
-	assert(size != NULL);
-	assert(allocated != NULL);
+//static int zones_changeset_rrset_to_binary(uint8_t **data, size_t *size,
+//                                           size_t *allocated,
+//                                           knot_rrset_t *rrset)
+//{
+//	assert(data != NULL);
+//	assert(size != NULL);
+//	assert(allocated != NULL);
 
-	/*
-	 * In *data, there is the whole changeset in the binary format,
-	 * the actual RRSet will be just appended to it
-	 */
+//	/*
+//	 * In *data, there is the whole changeset in the binary format,
+//	 * the actual RRSet will be just appended to it
+//	 */
 
-	uint8_t *binary = NULL;
-	size_t actual_size = 0;
-	int ret = knot_zdump_rrset_serialize(rrset, &binary, &actual_size);
-	if (ret != KNOT_EOK || binary == NULL) {
-		dbg_zones("knot_zdump_rrset_serialize() returned %s\n",
-		          knot_strerror(ret));
-		return KNOTD_ERROR;  /*! \todo Other code? */
-	}
+//	uint8_t *binary = NULL;
+//	size_t actual_size = 0;
+//	int ret = knot_zdump_rrset_serialize(rrset, &binary, &actual_size);
+//	if (ret != KNOT_EOK || binary == NULL) {
+//		dbg_zones("knot_zdump_rrset_serialize() returned %s\n",
+//		          knot_strerror(ret));
+//		return KNOTD_ERROR;  /*! \todo Other code? */
+//	}
 
-	ret = zones_check_binary_size(data, allocated, *size + actual_size);
-	if (ret != KNOTD_EOK) {
-		free(binary);
-		return ret;
-	}
+//	ret = zones_check_binary_size(data, allocated, *size + actual_size);
+//	if (ret != KNOTD_EOK) {
+//		free(binary);
+//		return ret;
+//	}
 
-	memcpy(*data + *size, binary, actual_size);
-	*size += actual_size;
-	free(binary);
+//	memcpy(*data + *size, binary, actual_size);
+//	*size += actual_size;
+//	free(binary);
 
-	return KNOTD_EOK;
-}
+//	return KNOTD_EOK;
+//}
 
 /*----------------------------------------------------------------------------*/
 
-int zones_changesets_to_binary(knot_changesets_t *chgsets)
-{
-	assert(chgsets != NULL);
-	assert(chgsets->allocated >= chgsets->count);
+//int zones_changesets_to_binary(knot_changesets_t *chgsets)
+//{
+//	assert(chgsets != NULL);
+//	assert(chgsets->allocated >= chgsets->count);
 
-	/*
-	 * Converts changesets to the binary format stored in chgsets->data
-	 * from the changeset_t structures.
-	 */
-	int ret;
+//	/*
+//	 * Converts changesets to the binary format stored in chgsets->data
+//	 * from the changeset_t structures.
+//	 */
+//	int ret;
 
-	for (int i = 0; i < chgsets->count; ++i) {
-		knot_changeset_t *ch = &chgsets->sets[i];
-		assert(ch->data == NULL);
-		assert(ch->size == 0);
+//	for (int i = 0; i < chgsets->count; ++i) {
+//		knot_changeset_t *ch = &chgsets->sets[i];
+//		assert(ch->data == NULL);
+//		assert(ch->size == 0);
 
-		/* 1) origin SOA */
-		ret = zones_changeset_rrset_to_binary(&ch->data, &ch->size,
-		                                &ch->allocated, ch->soa_from);
-		if (ret != KNOTD_EOK) {
-			free(ch->data);
-			ch->data = NULL;
-			dbg_zones("zones_changeset_rrset_to_binary(): %s\n",
-			          knot_strerror(ret));
-			return ret;
-		}
+//		/* 1) origin SOA */
+//		ret = zones_changeset_rrset_to_binary(&ch->data, &ch->size,
+//		                                &ch->allocated, ch->soa_from);
+//		if (ret != KNOTD_EOK) {
+//			free(ch->data);
+//			ch->data = NULL;
+//			dbg_zones("zones_changeset_rrset_to_binary(): %s\n",
+//			          knot_strerror(ret));
+//			return ret;
+//		}
 
-		int j;
+//		int j;
 
-		/* 2) remove RRsets */
-		assert(ch->remove_allocated >= ch->remove_count);
-		for (j = 0; j < ch->remove_count; ++j) {
-			ret = zones_changeset_rrset_to_binary(&ch->data,
-			                                      &ch->size,
-			                                      &ch->allocated,
-			                                      ch->remove[j]);
-			if (ret != KNOTD_EOK) {
-				free(ch->data);
-				ch->data = NULL;
-				dbg_zones("zones_changeset_rrset_to_binary(): %s\n",
-					  knot_strerror(ret));
-				return ret;
-			}
-		}
+//		/* 2) remove RRsets */
+//		assert(ch->remove_allocated >= ch->remove_count);
+//		for (j = 0; j < ch->remove_count; ++j) {
+//			ret = zones_changeset_rrset_to_binary(&ch->data,
+//			                                      &ch->size,
+//			                                      &ch->allocated,
+//			                                      ch->remove[j]);
+//			if (ret != KNOTD_EOK) {
+//				free(ch->data);
+//				ch->data = NULL;
+//				dbg_zones("zones_changeset_rrset_to_binary(): %s\n",
+//					  knot_strerror(ret));
+//				return ret;
+//			}
+//		}
 
-		/* 3) new SOA */
-		ret = zones_changeset_rrset_to_binary(&ch->data, &ch->size,
-		                                &ch->allocated, ch->soa_to);
-		if (ret != KNOTD_EOK) {
-			free(ch->data);
-			ch->data = NULL;
-			dbg_zones("zones_changeset_rrset_to_binary(): %s\n",
-				  knot_strerror(ret));
-			return ret;
-		}
+//		/* 3) new SOA */
+//		ret = zones_changeset_rrset_to_binary(&ch->data, &ch->size,
+//		                                &ch->allocated, ch->soa_to);
+//		if (ret != KNOTD_EOK) {
+//			free(ch->data);
+//			ch->data = NULL;
+//			dbg_zones("zones_changeset_rrset_to_binary(): %s\n",
+//				  knot_strerror(ret));
+//			return ret;
+//		}
 
-		/* 4) add RRsets */
-		assert(ch->add_allocated >= ch->add_count);
-		for (j = 0; j < ch->add_count; ++j) {
-			ret = zones_changeset_rrset_to_binary(&ch->data,
-			                                      &ch->size,
-			                                      &ch->allocated,
-			                                      ch->add[j]);
-			if (ret != KNOTD_EOK) {
-				free(ch->data);
-				ch->data = NULL;
-				dbg_zones("zones_changeset_rrset_to_binary(): %s\n",
-					  knot_strerror(ret));
-				return ret;
-			}
-		}
-	}
+//		/* 4) add RRsets */
+//		assert(ch->add_allocated >= ch->add_count);
+//		for (j = 0; j < ch->add_count; ++j) {
+//			ret = zones_changeset_rrset_to_binary(&ch->data,
+//			                                      &ch->size,
+//			                                      &ch->allocated,
+//			                                      ch->add[j]);
+//			if (ret != KNOTD_EOK) {
+//				free(ch->data);
+//				ch->data = NULL;
+//				dbg_zones("zones_changeset_rrset_to_binary(): %s\n",
+//					  knot_strerror(ret));
+//				return ret;
+//			}
+//		}
+//	}
 
-	return KNOTD_EOK;
-}
+//	return KNOTD_EOK;
+//}
 
 /*----------------------------------------------------------------------------*/
 
@@ -2930,16 +2930,14 @@ int zones_changeset_binary_size(const knot_changeset_t *chgset, size_t *size)
 static int zones_serialize_and_store_chgset(const knot_changeset_t *chs,
                                             char *entry, size_t max_size)
 {
-	uint8_t *binary = NULL;
 	size_t actual_size = 0;
 
 	/* Serialize SOA 'from'. */
-	int ret = knot_zdump_rrset_serialize(chs->soa_from, &binary,
-	                                     &actual_size);
-	if (ret != KNOT_EOK || binary == NULL) {
+	int ret = knot_zdump_rrset_serialize(chs->soa_from, (uint8_t *)entry,
+	                                     max_size, &actual_size);
+	if (ret != KNOT_EOK) {
 		dbg_zones("knot_zdump_rrset_serialize() returned %s\n",
 		          knot_strerror(ret));
-		free(binary);
 		return KNOTD_ERROR;  /*! \todo Other code? */
 	}
 
@@ -2947,12 +2945,12 @@ static int zones_serialize_and_store_chgset(const knot_changeset_t *chs,
 
 	/* Serialize RRSets from the 'remove' section. */
 	for (int i = 0; i < chs->remove_count; ++i) {
-		ret = knot_zdump_rrset_serialize(chs->remove[i], &binary,
-		                                 &actual_size);
-		if (ret != KNOT_EOK || binary == NULL) {
+		ret = knot_zdump_rrset_serialize(chs->remove[i],
+		                                 (uint8_t *)entry,
+		                                 max_size, &actual_size);
+		if (ret != KNOT_EOK) {
 			dbg_zones("knot_zdump_rrset_serialize() returned %s\n",
 			          knot_strerror(ret));
-			free(binary);
 			return KNOTD_ERROR;  /*! \todo Other code? */
 		}
 
@@ -2960,31 +2958,27 @@ static int zones_serialize_and_store_chgset(const knot_changeset_t *chs,
 	}
 
 	/* Serialize SOA 'to'. */
-	ret = knot_zdump_rrset_serialize(chs->soa_to, &binary,
-	                                     &actual_size);
-	if (ret != KNOT_EOK || binary == NULL) {
+	ret = knot_zdump_rrset_serialize(chs->soa_to, (uint8_t *)entry,
+	                                 max_size, &actual_size);
+	if (ret != KNOT_EOK) {
 		dbg_zones("knot_zdump_rrset_serialize() returned %s\n",
 		          knot_strerror(ret));
-		free(binary);
 		return KNOTD_ERROR;  /*! \todo Other code? */
 	}
 
 	/* Serialize RRSets from the 'add' section. */
 	for (int i = 0; i < chs->add_count; ++i) {
-		ret = knot_zdump_rrset_serialize(chs->add[i], &binary,
-		                                 &actual_size);
-		if (ret != KNOT_EOK || binary == NULL) {
+		ret = knot_zdump_rrset_serialize(chs->add[i], (uint8_t *)entry,
+		                                 max_size, &actual_size);
+		if (ret != KNOT_EOK) {
 			dbg_zones("knot_zdump_rrset_serialize() returned %s\n",
 			          knot_strerror(ret));
-			free(binary);
 			return KNOTD_ERROR;  /*! \todo Other code? */
 		}
 
 		assert(actual_size <= max_size);
 	}
 
-	memcpy(entry, binary, actual_size);
-	free(binary);
 
 	return KNOTD_EOK;
 }
