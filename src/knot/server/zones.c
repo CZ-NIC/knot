@@ -2822,6 +2822,9 @@ int zones_store_changesets(knot_ns_xfr_t *xfr)
 }
 
 /*----------------------------------------------------------------------------*/
+/* Counting size of changeset in serialized form.                             */
+/*----------------------------------------------------------------------------*/
+
 /*! \todo Check!!! */
 static inline size_t zones_dname_binary_size(const knot_dname_t *dname)
 {
@@ -2919,6 +2922,202 @@ int zones_changeset_binary_size(const knot_changeset_t *chgset, size_t *size)
 	*size += soa_from_size + soa_to_size + remove_size + add_size;
 
 	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+/* Changeset serialization and storing (new)                                  */
+/*----------------------------------------------------------------------------*/
+
+static int zones_serialize_and_store_chgset(const knot_changeset_t *chs,
+                                            char *entry, size_t max_size)
+{
+	uint8_t *binary = NULL;
+	size_t actual_size = 0;
+
+	/* Serialize SOA 'from'. */
+	int ret = knot_zdump_rrset_serialize(chs->soa_from, &binary,
+	                                     &actual_size);
+	if (ret != KNOT_EOK || binary == NULL) {
+		dbg_zones("knot_zdump_rrset_serialize() returned %s\n",
+		          knot_strerror(ret));
+		free(binary);
+		return KNOTD_ERROR;  /*! \todo Other code? */
+	}
+
+	assert(actual_size <= max_size);
+
+	/* Serialize RRSets from the 'remove' section. */
+	for (int i = 0; i < chs->remove_count; ++i) {
+		ret = knot_zdump_rrset_serialize(chs->remove[i], &binary,
+		                                 &actual_size);
+		if (ret != KNOT_EOK || binary == NULL) {
+			dbg_zones("knot_zdump_rrset_serialize() returned %s\n",
+			          knot_strerror(ret));
+			free(binary);
+			return KNOTD_ERROR;  /*! \todo Other code? */
+		}
+
+		assert(actual_size <= max_size);
+	}
+
+	/* Serialize SOA 'to'. */
+	ret = knot_zdump_rrset_serialize(chs->soa_to, &binary,
+	                                     &actual_size);
+	if (ret != KNOT_EOK || binary == NULL) {
+		dbg_zones("knot_zdump_rrset_serialize() returned %s\n",
+		          knot_strerror(ret));
+		free(binary);
+		return KNOTD_ERROR;  /*! \todo Other code? */
+	}
+
+	/* Serialize RRSets from the 'add' section. */
+	for (int i = 0; i < chs->add_count; ++i) {
+		ret = knot_zdump_rrset_serialize(chs->add[i], &binary,
+		                                 &actual_size);
+		if (ret != KNOT_EOK || binary == NULL) {
+			dbg_zones("knot_zdump_rrset_serialize() returned %s\n",
+			          knot_strerror(ret));
+			free(binary);
+			return KNOTD_ERROR;  /*! \todo Other code? */
+		}
+
+		assert(actual_size <= max_size);
+	}
+
+	memcpy(entry, binary, actual_size);
+	free(binary);
+
+	return KNOTD_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int zones_store_changeset(const knot_changeset_t *chs, journal_t *j,
+                                 knot_zone_t *zone, zonedata_t *zd)
+{
+	assert(chs != NULL);
+	assert(j != NULL);
+
+	dbg_xfr("Saving changeset from %u to %u.\n",
+	        chs->serial_from, chs->serial_to);
+
+	uint64_t k = ixfrdb_key_make(chs->serial_from, chs->serial_to);
+
+	/* Count the size of the entire changeset in serialized form. */
+	size_t entry_size = 0;
+
+	int ret = zones_changeset_binary_size(chs, &entry_size);
+	assert(ret == KNOTD_EOK);
+
+	dbg_xfr_verb("Size in serialized form: %zu\n", entry_size);
+
+	/* Reserve space for the journal entry. */
+	char *journal_entry = NULL;
+	ret = journal_map(j, k, &journal_entry, entry_size);
+
+	/* Sync to zonefile may be needed. */
+	while (ret == KNOTD_EAGAIN) {
+		/* Cancel sync timer. */
+		event_t *tmr = zd->ixfr_dbsync;
+		if (tmr) {
+			dbg_xfr_verb("xfr: cancelling zonefile "
+			             "SYNC timer of '%s'\n",
+			             zd->conf->name);
+			evsched_cancel(tmr->parent, tmr);
+		}
+
+		/* Synchronize. */
+		dbg_xfr_verb("xfr: forcing zonefile SYNC "
+		             "of '%s'\n",
+		             zd->conf->name);
+		ret = zones_zonefile_sync(zone, j);
+		if (ret != KNOTD_EOK && ret != KNOTD_ERANGE) {
+			continue;
+		}
+
+		/* Reschedule sync timer. */
+		if (tmr) {
+			/* Fetch sync timeout. */
+			conf_read_lock();
+			int timeout = zd->conf->dbsync_timeout;
+			timeout *= 1000; /* Convert to ms. */
+			conf_read_unlock();
+
+			/* Reschedule. */
+			dbg_xfr_verb("xfr: resuming SYNC "
+			             "of '%s'\n",
+			             zd->conf->name);
+			evsched_schedule(tmr->parent, tmr,
+			                 timeout);
+
+		}
+
+		/* Attempt to map again. */
+		ret = journal_map(j, k, &journal_entry, entry_size);
+	}
+
+	if (ret != KNOTD_EOK) {
+		dbg_xfr("Failed to map space for journal entry: %s.\n",
+		        knotd_strerror(ret));
+		return ret;
+	}
+
+	assert(journal_entry != NULL);
+
+	/* Serialize changeset, saving it bit by bit. */
+	ret = zones_serialize_and_store_chgset(chs, journal_entry, entry_size);
+
+	if (ret != KNOTD_EOK) {
+		dbg_xfr("Failed to serialize and store changeset: %s\n",
+		        knotd_strerror(ret));
+	}
+
+	/* Unmap the journal entry.
+	   If successfuly written changeset to journal, validate the entry. */
+	journal_unmap(j, k, journal_entry);
+
+	return ret;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zones_store_changesets2(knot_ns_xfr_t *xfr)
+{
+	if (xfr == NULL || xfr->data == NULL || xfr->zone == NULL) {
+		return KNOTD_EINVAL;
+	}
+
+	knot_zone_t *zone = xfr->zone;
+	knot_changesets_t *src = (knot_changesets_t *)xfr->data;
+
+	/* Fetch zone-specific data. */
+	zonedata_t *zd = (zonedata_t *)zone->data;
+	if (!zd->ixfr_db) {
+		return KNOTD_EINVAL;
+	}
+
+	/* Retain journal for changeset writing. */
+	journal_t *j = journal_retain(zd->ixfr_db);
+
+	int ret = 0;
+
+	/* Begin writing to journal. */
+	for (unsigned i = 0; i < src->count; ++i) {
+		/* Make key from serials. */
+		knot_changeset_t* chs = src->sets + i;
+
+		ret = zones_store_changeset(chs, j, zone, zd);
+		if (ret != KNOTD_EOK) {
+			journal_release(j);
+			return ret;
+		}
+	}
+
+	/* Release journal. */
+	journal_release(j);
+
+	/* Written changesets to journal. */
+	return KNOTD_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
