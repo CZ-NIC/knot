@@ -3073,7 +3073,7 @@ static int zones_store_changeset(const knot_changeset_t *chs, journal_t *j,
 
 	/* Unmap the journal entry.
 	   If successfuly written changeset to journal, validate the entry. */
-	journal_unmap(j, k, journal_entry);
+	ret = journal_unmap(j, k, journal_entry, ret == KNOTD_EOK);
 
 	return ret;
 }
