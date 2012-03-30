@@ -2822,7 +2822,7 @@ int zones_store_changesets(knot_ns_xfr_t *xfr)
 }
 
 /*----------------------------------------------------------------------------*/
-/*! \todo Check!!! */
+
 static inline size_t zones_dname_binary_size(const knot_dname_t *dname)
 {
 	if (dname == NULL) {
@@ -2840,7 +2840,7 @@ static inline size_t zones_dname_binary_size(const knot_dname_t *dname)
 }
 
 /*----------------------------------------------------------------------------*/
-/*! \todo Check!!! */
+
 static size_t zones_rdata_binary_size(const knot_rdata_t *rdata,
                                       knot_rrtype_descriptor_t *desc)
 {
@@ -2869,7 +2869,7 @@ static size_t zones_rdata_binary_size(const knot_rdata_t *rdata,
 }
 
 /*----------------------------------------------------------------------------*/
-/*! \todo Check!!! */
+
 static size_t zones_rrset_binary_size(const knot_rrset_t *rrset)
 {
 	assert(rrset != NULL);
@@ -2893,7 +2893,7 @@ static size_t zones_rrset_binary_size(const knot_rrset_t *rrset)
 }
 
 /*----------------------------------------------------------------------------*/
-/*! \todo Check!!! */
+
 int zones_changeset_binary_size(const knot_changeset_t *chgset, size_t *size)
 {
 	if (chgset == NULL || size == NULL) {
