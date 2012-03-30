@@ -54,6 +54,7 @@
 #include <assert.h>
 
 #include "zcompile/parser-util.h"
+#include "common/log.h"
 
 #include "libknot/libknot.h"
 #include "zcompile/zcompile.h"
@@ -198,7 +199,7 @@ line:	NL
 		assert(parser->current_rrset->rdata == NULL);
 		if (knot_rrset_add_rdata(parser->current_rrset, tmp_rdata)
 		    != 0) {
-		    	fprintf(stderr, "Could not add rdata!\n");
+		    	log_zone_error("Could not add rdata!\n");
 		    }
 //		tmp_rdata->next = tmp_rdata;
 //		parser->current_rrset->rdata = tmp_rdata;
@@ -223,7 +224,7 @@ line:	NL
 		if ((ret = process_rr()) != 0) {
 			char *name =
 				knot_dname_to_str(parser->current_rrset->owner);
-			fprintf(stderr, "Error: could not process RRSet\n"
+			log_zone_error("Error: could not process RRSet\n"
 				"owner: %s reason: %s\n",
 				name,
 				error_to_str(knot_zcompile_error_msgs, ret));
@@ -258,7 +259,7 @@ line:	NL
 		 * of the converting function was not able to convert. */
 		if (parser->error_occurred == KNOTDZCOMPILE_ENOMEM) {
 			/* Ran out of memory in converting functions. */
-			fprintf(stderr, "Parser ran out "
+			log_zone_error("Parser ran out "
 			                "of memory, aborting!\n");
 			knot_rrset_deep_free(&(parser->current_rrset),
 					       0, 0, 0);
@@ -691,7 +692,7 @@ str_sp_seq:	STR
 	    char *result = malloc($1.len + $3.len + 1);
 	    if (result == NULL) {
 	    	ERR_ALLOC_FAILED;
-	    	fprintf(stderr, "Parser ran out of memory, aborting!\n");
+	    	log_zone_error("Parser ran out of memory, aborting!\n");
 	    	knot_rrset_deep_free(&(parser->current_rrset),
 		                       0, 0, 0);
 	        knot_zone_deep_free(&(parser->current_zone),
@@ -719,7 +720,7 @@ str_dot_seq:	STR
 	    char *result = malloc($1.len + $3.len + 1);
 	    if (result == NULL) {
 	    	ERR_ALLOC_FAILED;
-	    	fprintf(stderr, "Parser ran out of memory, aborting!\n");
+	    	log_zone_error("Parser ran out of memory, aborting!\n");
 	    	knot_rrset_deep_free(&(parser->current_rrset),
 		                       0, 0, 0);
 	        knot_zone_deep_free(&(parser->current_zone),
@@ -751,7 +752,7 @@ dotted_str:	STR
 	    char *result = malloc($1.len + 2);
 	    if (result == NULL) {
 	    	ERR_ALLOC_FAILED;
-	    	fprintf(stderr, "Parser ran out of memory, aborting!\n");
+	    	log_zone_error("Parser ran out of memory, aborting!\n");
 	    	knot_rrset_deep_free(&(parser->current_rrset),
 		                       0, 0, 0);
 	        knot_zone_deep_free(&(parser->current_zone),
@@ -771,7 +772,7 @@ dotted_str:	STR
 	    char *result = malloc($1.len + $3.len + 2);
 	    if (result == NULL) {
 	    	ERR_ALLOC_FAILED;
-	    	fprintf(stderr, "Parser ran out of memory, aborting!\n");
+	    	log_zone_error("Parser ran out of memory, aborting!\n");
 	    	knot_rrset_deep_free(&(parser->current_rrset),
 		                       0, 0, 0);
 	        knot_zone_deep_free(&(parser->current_zone),
@@ -1647,13 +1648,29 @@ yyerror(void *scanner, const char *message)
 static void
 error_va_list(unsigned line, const char *fmt, va_list args)
 {
+	char sbuf[4096] = {0};
+	size_t buflen = sizeof(sbuf) - 1;
+	char *buf = sbuf;
+	int wb = 0;
 	if (parser->filename) {
-		fprintf(stderr, "%s:%u: ", parser->filename, line);
+		wb = snprintf(buf, buflen, "%s:%u: ",
+		              parser->filename, line);
+		if (wb > 0) {
+			buf += wb;
+			buflen -= wb;
+		}
 	}
-	fprintf(stderr, "error: ");
-	vfprintf(stderr, fmt, args);
-	fprintf(stderr, "\n");
-
+	
+	wb = vsnprintf(buf, buflen, fmt, args);
+	if (wb > 0) {
+		buf += wb;
+		buflen -= wb;
+		*buf = '\n';
+		*(buf + 1) = '\0';
+	}
+	
+	log_zone_error("%s", sbuf);
+	
 	++parser->errors;
 	parser->error_occurred = 1;
 }
@@ -1683,12 +1700,28 @@ zc_error(const char *fmt, ...)
 static void
 warning_va_list(unsigned line, const char *fmt, va_list args)
 {
+	char sbuf[4096] = {0};
+	size_t buflen = sizeof(sbuf) - 1;
+	char *buf = sbuf;
+	int wb = 0;
 	if (parser->filename) {
-		fprintf(stderr, "%s:%u: ", parser->filename, line);
+		wb = snprintf(buf, buflen, "%s:%u: ",
+		              parser->filename, line);
+		if (wb > 0) {
+			buf += wb;
+			buflen -= wb;
+		}
 	}
-	fprintf(stderr, "warning: ");
-	vfprintf(stderr, fmt, args);
-	fprintf(stderr, "\n");
+
+	wb = vsnprintf(buf, buflen, fmt, args);
+	if (wb > 0) {
+		buf += wb;
+		buflen -= wb;
+		*buf = '\n';
+		*(buf + 1) = '\0';
+	}
+
+	log_zone_warning("%s", sbuf);
 }
 
 void
