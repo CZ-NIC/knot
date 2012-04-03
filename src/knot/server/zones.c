@@ -1136,7 +1136,7 @@ static int zones_load_changesets(const knot_zone_t *zone,
 	}
 	
 	conf_read_lock();
-	dbg_xfr("Loading changesets for zone '%s' from serial %u to %u\n",
+	dbg_xfr("xfr: loading changesets for zone '%s' from serial %u to %u\n",
 	        zd->conf->name, from, to);
 	conf_read_unlock();
 	
@@ -1207,7 +1207,7 @@ static int zones_load_changesets(const knot_zone_t *zone,
 		/*! \todo Check consistency. */
 	}
 	
-	dbg_xfr_detail("xfr: Journal entries read.\n");
+	dbg_xfr_detail("xfr: finished reading journal entries\n");
 	journal_release(j);
 
 	/* Unpack binary data. */
@@ -1220,12 +1220,12 @@ static int zones_load_changesets(const knot_zone_t *zone,
 
 	/* Check for complete history. */
 	if (to != found_to) {
-		dbg_xfr_detail("Returning ERANGE\n");
+		dbg_xfr_detail("xfr: load changesets finished, ERANGE\n");
 		return KNOTD_ERANGE;
 	}
 
 	/* History reconstructed. */
-	dbg_xfr_detail("Returning EOK\n");
+	dbg_xfr_detail("xfr: load changesets finished, EOK\n");
 	return KNOTD_EOK;
 }
 
@@ -3142,13 +3142,12 @@ int zones_xfr_load_changesets(knot_ns_xfr_t *xfr, uint32_t serial_from,
 		return KNOTD_EOK;
 	}
 	
-	dbg_zones("Loading changesets...\n");
-	
+	dbg_xfr_verb("xfr: loading changesets\n");
 	ret = zones_load_changesets(xfr->zone, chgsets,
 	                                serial_from, serial_to);
 	if (ret != KNOTD_EOK) {
-		dbg_zones_verb("Loading changesets failed: %s\n",
-		               knotd_strerror(ret));
+		dbg_xfr("xfr: failed to load changesets: %s\n",
+		        knotd_strerror(ret));
 		knot_free_changesets(&chgsets);
 		return ret;
 	}

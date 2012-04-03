@@ -940,16 +940,14 @@ static int xfr_answer_ixfr(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 	int ret = KNOT_EOK;
 	uint32_t serial_from = 0;
 	uint32_t serial_to = 0;
-	dbg_xfr_verb("Loading serials for IXFR.\n");
 	ret = ns_ixfr_load_serials(xfr, &serial_from, &serial_to);
-	dbg_xfr_detail("Loaded serials: from: %u, to: %u\n",
-	               serial_from, serial_to);
+	dbg_xfr_verb("xfr: loading changesets for IXFR %u-%u\n",
+	             serial_from, serial_to);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 	
 	/* Load changesets from journal. */
-	dbg_xfr_verb("Loading changesets from journal.\n");
 	int chsload = zones_xfr_load_changesets(xfr, serial_from, serial_to);
 	if (chsload != KNOTD_EOK) {
 		/* History cannot be reconstructed, fallback to AXFR. */
