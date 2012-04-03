@@ -1038,13 +1038,13 @@ int zones_changesets_from_binary(knot_changesets_t *chgsets)
 		 * from journal) the SOA serial should already
 		 * be set, check it.
 		 */
+		dbg_xfr_verb("xfr: reading RRSets to REMOVE, first RR is %hu\n",
+		             knot_rrset_type(rrset));
 		assert(knot_rrset_type(rrset) == KNOT_RRTYPE_SOA);
 		assert(chs->serial_from ==
 		       knot_rdata_soa_serial(knot_rrset_rdata(rrset)));
 		knot_changeset_store_soa(&chs->soa_from, &chs->serial_from,
 					 rrset);
-
-		dbg_xfr_verb("xfr: reading RRSets to REMOVE\n");
 
 		/* Read remaining RRSets */
 		int in_remove_section = 1;
@@ -1128,14 +1128,17 @@ static int zones_load_changesets(const knot_zone_t *zone,
 		return KNOTD_EINVAL;
 	}
 	
-	dbg_xfr("Loading changesets from serial %u to %u\n", from, to);
-
 	/* Fetch zone-specific data. */
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 	if (!zd->ixfr_db) {
 		dbg_zones_detail("Bad arguments: zd->ixfr_db=%p\n", zone->data);
 		return KNOTD_EINVAL;
 	}
+	
+	conf_read_lock();
+	dbg_xfr("Loading changesets for zone '%s' from serial %u to %u\n",
+	        zd->conf->name, from, to);
+	conf_read_unlock();
 	
 	/* Retain journal for changeset loading. */
 	journal_t *j = journal_retain(zd->ixfr_db);
@@ -2927,39 +2930,43 @@ int zones_changeset_binary_size(const knot_changeset_t *chgset, size_t *size)
 /* Changeset serialization and storing (new)                                  */
 /*----------------------------------------------------------------------------*/
 
+static int zones_rrset_write_to_mem(const knot_rrset_t *rr, char **entry,
+                                    size_t *remaining) {
+	size_t written = 0;
+	int ret = knot_zdump_rrset_serialize(rr, *((uint8_t **)entry),
+	                                     *remaining, &written);
+	if (ret == KNOT_EOK) {
+		assert(written <= *remaining);
+		*remaining -= written;
+		*entry += written;
+	}
+	
+	return ret;
+}
+
 static int zones_serialize_and_store_chgset(const knot_changeset_t *chs,
                                             char *entry, size_t max_size)
 {
-	size_t actual_size = 0;
-
 	/* Serialize SOA 'from'. */
-	int ret = knot_zdump_rrset_serialize(chs->soa_from, (uint8_t *)entry,
-	                                     max_size, &actual_size);
+	int ret = zones_rrset_write_to_mem(chs->soa_from, &entry, &max_size);
 	if (ret != KNOT_EOK) {
 		dbg_zones("knot_zdump_rrset_serialize() returned %s\n",
 		          knot_strerror(ret));
 		return KNOTD_ERROR;  /*! \todo Other code? */
 	}
 
-	assert(actual_size <= max_size);
-
 	/* Serialize RRSets from the 'remove' section. */
 	for (int i = 0; i < chs->remove_count; ++i) {
-		ret = knot_zdump_rrset_serialize(chs->remove[i],
-		                                 (uint8_t *)entry,
-		                                 max_size, &actual_size);
+		ret = zones_rrset_write_to_mem(chs->remove[i], &entry, &max_size);
 		if (ret != KNOT_EOK) {
 			dbg_zones("knot_zdump_rrset_serialize() returned %s\n",
 			          knot_strerror(ret));
 			return KNOTD_ERROR;  /*! \todo Other code? */
 		}
-
-		assert(actual_size <= max_size);
 	}
 
 	/* Serialize SOA 'to'. */
-	ret = knot_zdump_rrset_serialize(chs->soa_to, (uint8_t *)entry,
-	                                 max_size, &actual_size);
+	ret = zones_rrset_write_to_mem(chs->soa_to, &entry, &max_size);
 	if (ret != KNOT_EOK) {
 		dbg_zones("knot_zdump_rrset_serialize() returned %s\n",
 		          knot_strerror(ret));
@@ -2968,15 +2975,13 @@ static int zones_serialize_and_store_chgset(const knot_changeset_t *chs,
 
 	/* Serialize RRSets from the 'add' section. */
 	for (int i = 0; i < chs->add_count; ++i) {
-		ret = knot_zdump_rrset_serialize(chs->add[i], (uint8_t *)entry,
-		                                 max_size, &actual_size);
+		ret = zones_rrset_write_to_mem(chs->add[i], &entry, &max_size);
 		if (ret != KNOT_EOK) {
 			dbg_zones("knot_zdump_rrset_serialize() returned %s\n",
 			          knot_strerror(ret));
 			return KNOTD_ERROR;  /*! \todo Other code? */
 		}
 
-		assert(actual_size <= max_size);
 	}
 
 
