@@ -52,7 +52,7 @@ static int acl_compare(void *k1, void *k2)
 	}
 
 	/* Compare integers if IPv4. */
-	if (a1->len == sizeof(struct sockaddr_in)) {
+	if (a1->family == AF_INET) {
 		
 		/* Compute mask .*/
 		uint32_t mask = acl_fill_mask32(a1->prefix);
@@ -67,14 +67,14 @@ static int acl_compare(void *k1, void *k2)
 
 	/* IPv6 matching. */
 #ifndef DISABLE_IPV6
-	if (a1->len == sizeof(struct sockaddr_in6)) {
+	if (a1->family == AF_INET6) {
 		
 		/* Get mask .*/
 		short chunk = a1->prefix;
 		
 		/* Compare address by 32bit chunks. */
-		uint32_t* a1p = (uint32_t*)&a1->addr6.sin6_addr;
-		uint32_t* a2p = (uint32_t*)&a2->addr6.sin6_addr;
+		uint32_t* a1p = (uint32_t *)(&a1->addr6.sin6_addr);
+		uint32_t* a2p = (uint32_t *)(&a2->addr6.sin6_addr);
 		
 		/* Mask 0 = 0 bits to compare from LO->HO (in big-endian).
 		 * Mask 128 = 128 bits to compare.

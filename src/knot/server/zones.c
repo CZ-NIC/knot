@@ -767,17 +767,18 @@ static int zones_set_acl(acl_t **acl, list* acl_list)
 
 	/* Create new ACL. */
 	*acl = acl_new(ACL_DENY, 0);
-	if (!*acl) {
+	if (*acl == NULL) {
 		return KNOTD_ENOMEM;
 	}
 
 	/* Load ACL rules. */
+	sockaddr_t addr;
 	conf_remote_t *r = 0;
 	WALK_LIST(r, *acl_list) {
 
 		/* Initialize address. */
 		/*! Port matching disabled, port = 0. */
-		sockaddr_t addr;
+		sockaddr_init(&addr, -1);
 		conf_iface_t *cfg_if = r->remote;
 		int ret = sockaddr_set(&addr, cfg_if->family,
 		                       cfg_if->address, 0);
