@@ -220,6 +220,11 @@ int acl_truncate(acl_t *acl)
 	/* Destroy all rules. */
 	skip_destroy_list(&acl->rules, 0, free);
 	skip_destroy_list(&acl->rules_pref, 0, free);
+	acl->rules = skip_create_list(acl_compare);
+	acl->rules_pref = skip_create_list(acl_compare);
+	if (acl->rules == NULL || acl->rules_pref == NULL) {
+		return ACL_ERROR;
+	}
 
 	return ACL_ACCEPT;
 }
