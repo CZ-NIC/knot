@@ -1151,11 +1151,20 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 
 		if (is_domain) {
 			knot_dname_t *dname = NULL;
-			dbg_rdata("item %d: guessing length from pointers: %p %p\n",
-			          i,
-			          wireformat, end);
-			length = (uint8_t *)end - (uint8_t *)wireformat;
-
+			/*
+			 * Since we don't know how many dnames there are 
+			 * in the whole wireformat we have to search for next
+			 * '\0'.
+			 */
+			for (length = 0;
+			     (length < ((uint8_t *)end - (uint8_t *)wireformat))
+			     && (((uint8_t *)wireformat)[length] != '\0');
+			     length++) {
+				;
+			}
+			length++;
+			dbg_rdata("item %d: length derived from position of "
+			          "0: %d\n", i, length);
 
 			if (!required && (wireformat == end)) {
 				break;
