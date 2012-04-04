@@ -130,6 +130,7 @@ LDFLAGS="$LDFLAGS -L/usr/local/lib"
 AC_SEARCH_LIBS([pow], [m])
 AC_SEARCH_LIBS([pthread_create], [pthread], [], [AC_MSG_ERROR([pthreads not found])])
 AC_SEARCH_LIBS([rcu_set_pointer_sym], [urcu], [], [AC_MSG_ERROR([liburcu not found])])
+AC_SEARCH_LIBS([urcu_init], [urcu], [AC_MSG_ERROR([liburcu is too old (< 0.4.0), urcu_init symbol found])], [])
 AC_SEARCH_LIBS([dlopen], [dl])
 AC_SEARCH_LIBS([clock_gettime], [rt])
 AC_SEARCH_LIBS([OpenSSL_add_all_digests], [crypto],[], [AC_MSG_ERROR([libcrypto not found])])
