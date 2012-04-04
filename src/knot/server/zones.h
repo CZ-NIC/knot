@@ -215,6 +215,33 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data);
  */
 int zones_store_changesets(knot_ns_xfr_t *xfr);
 
+/*!
+ * \brief Begin changesets storing transaction.
+ *
+ * \retval pointer to journal if successful
+ * \retval NULL on failure.
+ */
+journal_t *zones_store_changesets_begin(knot_ns_xfr_t *xfr);
+
+/*!
+ * \brief Commit stored changesets.
+ *
+ * \retval KNOTD_EOK on success.
+ * \retval KNOTD_EINVAL on invalid parameters.
+ * \retval KNOTD_ENOENT when no transaction is pending.
+ */
+int zones_store_changesets_commit(journal_t *j);
+
+/*!
+ * \brief Rollback stored changesets.
+ *
+ * \retval KNOTD_EOK on success.
+ * \retval KNOTD_EINVAL on invalid parameters.
+ * \retval KNOTD_ENOENT when no transaction is pending.
+ */
+int zones_store_changesets_rollback(journal_t *j);
+
+/*! \todo Document me. */
 int zones_store_changesets2(knot_ns_xfr_t *xfr);
 
 /*! \todo Document me. */

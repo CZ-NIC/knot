@@ -3080,6 +3080,57 @@ static int zones_store_changeset(const knot_changeset_t *chs, journal_t *j,
 
 /*----------------------------------------------------------------------------*/
 
+journal_t *zones_store_changesets_begin(knot_ns_xfr_t *xfr)
+{
+	if (xfr == NULL || xfr->data == NULL || xfr->zone == NULL) {
+		return NULL;
+	}
+
+	/* Fetch zone-specific data. */
+	knot_zone_t *zone = xfr->zone;
+	zonedata_t *zd = (zonedata_t *)zone->data;
+	if (!zd->ixfr_db) {
+		return NULL;
+	}
+
+	/* Begin transaction, will be release on commit/rollback. */
+	journal_t *j = journal_retain(zd->ixfr_db);
+	if (journal_trans_begin(j) != KNOTD_EOK) {
+		journal_release(j);
+		j = NULL;
+	}
+	
+	return j;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zones_store_changesets_commit(journal_t *j)
+{
+	if (j == NULL) {
+		return KNOTD_EINVAL;
+	}
+	
+	int ret = journal_trans_commit(j);
+	journal_release(j);
+	return ret;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zones_store_changesets_rollback(journal_t *j)
+{
+	if (j == NULL) {
+		return KNOTD_EINVAL;
+	}
+	
+	int ret = journal_trans_rollback(j);
+	journal_release(j);
+	return ret;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int zones_store_changesets2(knot_ns_xfr_t *xfr)
 {
 	if (xfr == NULL || xfr->data == NULL || xfr->zone == NULL) {

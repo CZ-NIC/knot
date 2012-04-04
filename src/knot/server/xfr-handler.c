@@ -305,6 +305,7 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 	int apply_ret = KNOT_EOK;
 	int switch_ret = KNOT_EOK;
 	knot_changesets_t *chs = NULL;
+	journal_t *transaction = NULL;
 	
 	switch(data->type) {
 	case XFR_TYPE_AIN:
@@ -337,14 +338,19 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 
 		/* Serialize and store changesets. */
 		dbg_xfr("xfr: IXFR/IN serializing and saving changesets\n");
-		ret = zones_store_changesets2(data);
+		transaction = zones_store_changesets_begin(data);
+		if (transaction != NULL) {
+			ret = zones_store_changesets2(data);
+		} else {
+			ret = KNOTD_ERROR;
+		}
 		if (ret != KNOTD_EOK) {
 			log_zone_error("%s Failed to serialize and store "
 			               "changesets - %s\n", data->msgpref,
 			               knotd_strerror(ret));
 			/* Free changesets, but not the data. */
 			knot_free_changesets(&chs);
-			data->data = 0;
+			data->data = NULL;
 			break;
 		}
 
@@ -353,14 +359,27 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 		                                       &data->new_contents);
 
 		if (apply_ret != KNOT_EOK) {
+			zones_store_changesets_rollback(transaction);
 			log_zone_error("%s Failed to apply changesets - %s\n",
 			               data->msgpref,
 			               knot_strerror(apply_ret));
 
 			/* Free changesets, but not the data. */
 			knot_free_changesets(&chs);
-			data->data = 0;
+			data->data = NULL;
 			ret = KNOTD_ERROR;
+			break;
+		}
+		
+		/* Commit transaction. */
+		ret = zones_store_changesets_commit(transaction);
+		if (ret != KNOTD_EOK) {
+			log_zone_error("%s Failed to commit stored changesets "
+			               "- %s\n",
+			               data->msgpref,
+			               knot_strerror(apply_ret));
+			knot_free_changesets(&chs);
+			data->data = NULL;
 			break;
 		}
 		
@@ -403,7 +422,7 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 
 			/* Free changesets, but not the data. */
 			knot_free_changesets(&chs);
-			data->data = 0;
+			data->data = NULL;
 			ret = KNOTD_ERROR;
 			break;
 		}
@@ -412,7 +431,7 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 
 		/* Free changesets, but not the data. */
 		knot_free_changesets(&chs);
-		data->data = 0;
+		data->data = NULL;
 		assert(ret == KNOTD_EOK);
 		log_zone_info("%s Finished.\n", data->msgpref);
 		break;
