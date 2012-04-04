@@ -246,8 +246,11 @@ int journal_write_out(journal_t *journal, journal_node_t *n)
 		journal->free.pos += size;
 		journal->free.len -= size;
 	}
-	dbg_journal("journal: finished node=%u, data=<%u, %u> free=<%u, %u>\n",
-	            journal->qtail, n->pos, n->pos + n->len,
+	
+	dbg_journal("journal: finishing node=%u id=%llu flags=0x%x, "
+	            "data=<%u, %u> free=<%u, %u>\n",
+	            journal->qtail, (unsigned long long)n->id,
+	            n->flags, n->pos, n->pos + n->len,
 	            journal->free.pos,
 	            journal->free.pos + journal->free.len);
 
@@ -276,9 +279,6 @@ int journal_write_out(journal_t *journal, journal_node_t *n)
 		return KNOTD_ERROR;
 	}
 
-	/*! \todo Delayed write-back? (issue #964) */
-	dbg_journal_verb("journal: write of finished, nqueue=<%u, %u>\n",
-	                 journal->qhead, journal->qtail);
 	return KNOTD_EOK;
 }
 
@@ -666,7 +666,9 @@ int journal_fetch(journal_t *journal, uint64_t id,
 	size_t i = jnode_prev(journal, journal->qtail);
 	size_t endp = jnode_prev(journal, journal->qhead);
 	for(; i != endp; i = jnode_prev(journal, i)) {
-		if (cf(journal->nodes[i].id, id) == 0) {
+		/* Ignore nodes in uncommited transaction. */
+		journal_node_t *n = journal->nodes + i;
+		if (!(n->flags & JOURNAL_TRANS) && cf(n->id, id) == 0) {
 			*dst = journal->nodes + i;
 			return KNOTD_EOK;
 		}
@@ -842,8 +844,8 @@ int journal_update(journal_t *journal, journal_node_t *n)
 	/* Calculate node position in permanent storage. */
 	long jn_fpos = JOURNAL_HSIZE + (i + 1) * node_len;
 
-	dbg_journal("journal: syncing journal node=%zu at %ld\n",
-		      i, jn_fpos);
+	dbg_journal("journal: syncing journal node=%zu id=%llu flags=0x%x\n",
+		      i, (unsigned long long)n->id, n->flags);
 
 	/* Write back. */
 	lseek(journal->fd, jn_fpos, SEEK_SET);
@@ -852,6 +854,82 @@ int journal_update(journal_t *journal, journal_node_t *n)
 		            (unsigned long long)n->id, jn_fpos);
 		return KNOTD_ERROR;
 	}
+
+	return KNOTD_EOK;
+}
+
+int journal_trans_begin(journal_t *journal)
+{
+	if (journal == NULL) {
+		return KNOTD_EINVAL;
+	}
+	
+	/* Already pending transactions. */
+	if (journal->bflags & JOURNAL_TRANS) {
+		return KNOTD_EBUSY;
+	}
+	
+	journal->bflags |= JOURNAL_TRANS;
+	journal->tmark = journal->qtail;
+	dbg_journal("journal: starting transaction at qtail=%hu\n",
+	            journal->tmark);
+	
+	return KNOTD_EOK;
+}
+
+int journal_trans_commit(journal_t *journal)
+{
+	if (journal == NULL) {
+		return KNOTD_EINVAL;
+	}
+	if ((journal->bflags & JOURNAL_TRANS) == 0) {
+		return KNOTD_ENOENT;
+	}
+	
+	/* Mark affected nodes as commited. */
+	int ret = KNOTD_EOK;
+	size_t i = journal->tmark;
+	for(; i != journal->qtail; i = (i + 1) % journal->max_nodes) {
+		journal->nodes[i].flags &= (~JOURNAL_TRANS);
+		ret = journal_update(journal, journal->nodes + i);
+		if (ret != KNOTD_EOK) {
+			dbg_journal("journal: failed to clear TRANS flag from "
+			            "node %zu\n", i);
+			return ret;
+		}
+	}
+	
+	/* Clear in-transaction flags. */
+	journal->tmark = 0;
+	journal->bflags &= (~JOURNAL_TRANS);
+	return KNOTD_EOK;
+}
+
+int journal_trans_rollback(journal_t *journal)
+{
+	if (journal == NULL) {
+		return KNOTD_EINVAL;
+	}
+	if ((journal->bflags & JOURNAL_TRANS) == 0) {
+		return KNOTD_ENOENT;
+	}
+	
+	/* Expand free space and rewind node queue tail. */
+	/*! \note This shouldn't be relied upon and probably shouldn't
+	 *        be written back to file, as crashing anywhere between
+	 *        transaction begin and rollback would result in corrupted
+	 *        journal. Also write function should recognize TRANS nodes.
+	 */
+	//journal->free.pos = journal->nodes[journal->tmark].pos;
+	//journal->free.len = 0;
+
+	dbg_journal("journal: rollback transaction id=<%hu,%hu>\n",
+	            journal->tmark, journal->qtail);
+	//journal->qtail = journal->tmark;
+
+	/* Clear in-transaction flags. */
+	journal->tmark = 0;
+	journal->bflags &= (~JOURNAL_TRANS);
 
 	return KNOTD_EOK;
 }
