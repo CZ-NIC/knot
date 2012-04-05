@@ -124,6 +124,7 @@ static void *thread_ep(void *data)
 	sigaddset(&ignset, SIGTERM);
 	sigaddset(&ignset, SIGHUP);
 	sigaddset(&ignset, SIGPIPE);
+	sigaddset(&ignset, SIGUSR1);
 	pthread_sigmask(SIG_BLOCK, &ignset, 0); /*! \todo Review under BSD (issue #1441). */
 
 	dbg_dt("dthreads: [%p] entered ep\n", thread);
