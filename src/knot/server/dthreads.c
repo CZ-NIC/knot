@@ -237,8 +237,9 @@ static dthread_t *dt_create_thread(dt_unit_t *unit)
 	// Initialize attribute
 	pthread_attr_t *attr = &thread->_attr;
 	pthread_attr_init(attr);
-	pthread_attr_setinheritsched(attr, PTHREAD_INHERIT_SCHED);
-	pthread_attr_setschedpolicy(attr, SCHED_OTHER);
+	//pthread_attr_setinheritsched(attr, PTHREAD_INHERIT_SCHED);
+	//pthread_attr_setschedpolicy(attr, SCHED_OTHER);
+	pthread_attr_setstacksize(attr, 1024*1024);
 	return thread;
 }
 

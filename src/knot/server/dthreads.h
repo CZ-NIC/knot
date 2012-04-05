@@ -45,6 +45,9 @@
 struct dthread_t;
 struct dt_unit_t;
 
+/* Constants. */
+#define DTHREADS_STACKSIZE (1024*1024) /* 1M lightweight stack size. */
+
 /*!
  * \brief Thread state enumeration.
  */
