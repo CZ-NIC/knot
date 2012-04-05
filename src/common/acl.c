@@ -150,9 +150,8 @@ void acl_delete(acl_t **acl)
 	}
 
 	/* Truncate rules. */
-	if (acl_truncate(*acl) != ACL_ACCEPT) {
-		return;
-	}
+	skip_destroy_list(&acl->rules, 0, free);
+	skip_destroy_list(&acl->rules_pref, 0, free);
 
 	/* Free ACL. */
 	free(*acl);
