@@ -816,43 +816,43 @@ int dt_stop(dt_unit_t *unit)
 	return KNOTD_EOK;
 }
 
-int dt_setprio(dthread_t *thread, int prio)
-{
-	// Check input
-	if (thread == 0) {
-		return KNOTD_EINVAL;
-	}
+//int dt_setprio(dthread_t *thread, int prio)
+//{
+//	// Check input
+//	if (thread == 0) {
+//		return KNOTD_EINVAL;
+//	}
 
-	// Clamp priority
-	int policy = SCHED_FIFO;
-	prio = MIN(MAX(sched_get_priority_min(policy), prio),
-		   sched_get_priority_max(policy));
+//	// Clamp priority
+//	int policy = SCHED_FIFO;
+//	prio = MIN(MAX(sched_get_priority_min(policy), prio),
+//		   sched_get_priority_max(policy));
 
-	// Update scheduler policy
-	int ret = pthread_attr_setschedpolicy(&thread->_attr, policy);
+//	// Update scheduler policy
+//	int ret = pthread_attr_setschedpolicy(&thread->_attr, policy);
 
-	// Update priority
-	if (ret == 0) {
-		struct sched_param sp;
-		sp.sched_priority = prio;
-		ret = pthread_attr_setschedparam(&thread->_attr, &sp);
-	}
+//	// Update priority
+//	if (ret == 0) {
+//		struct sched_param sp;
+//		sp.sched_priority = prio;
+//		ret = pthread_attr_setschedparam(&thread->_attr, &sp);
+//	}
 
-	/* Map error codes. */
-	if (ret != 0) {
-		dbg_dt("dthreads: [%p] %s(%d): failed",
-		       thread, __func__, prio);
+//	/* Map error codes. */
+//	if (ret != 0) {
+//		dbg_dt("dthreads: [%p] %s(%d): failed",
+//		       thread, __func__, prio);
 
-		/* Map "not supported". */
-		if (errno == ENOTSUP) {
-			return KNOTD_ENOTSUP;
-		}
+//		/* Map "not supported". */
+//		if (errno == ENOTSUP) {
+//			return KNOTD_ENOTSUP;
+//		}
 
-		return KNOTD_EINVAL;
-	}
+//		return KNOTD_EINVAL;
+//	}
 
-	return KNOTD_EOK;
-}
+//	return KNOTD_EOK;
+//}
 
 int dt_repurpose(dthread_t *thread, runnable_t runnable, void *data)
 {
