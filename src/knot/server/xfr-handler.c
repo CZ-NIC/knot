@@ -333,14 +333,11 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 	case XFR_TYPE_IIN:
 		chs = (knot_changesets_t *)data->data;
 
-//		/* First, serialize changesets. */
-//		ret = zones_changesets_to_binary(chs);
-
 		/* Serialize and store changesets. */
 		dbg_xfr("xfr: IXFR/IN serializing and saving changesets\n");
 		transaction = zones_store_changesets_begin(data);
 		if (transaction != NULL) {
-			ret = zones_store_changesets2(data);
+			ret = zones_store_changesets(data);
 		} else {
 			ret = KNOTD_ERROR;
 		}
@@ -382,30 +379,7 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 			data->data = NULL;
 			break;
 		}
-		
-		/* Save changesets. */
-//		dbg_xfr("xfr: IXFR/IN saving changesets\n");
 
-		/*! \note Here, the changesets may already be modified.
-		 *        Only the 'data' field of each changeset contains the
-		 *        proper serialized changesets. Serials should be
-		 *        OK too.
-		 */
-//		ret = zones_store_changesets(data);
-//		if (ret != KNOTD_EOK) {
-//			log_zone_error("%s Failed to save "
-//			               "transferred changesets - %s\n",
-//			               data->msgpref, knotd_strerror(ret));
-
-//			// Cleanup old and new contents
-//			xfrin_rollback_update(data->zone->contents,
-//					      &data->new_contents,
-//					      &chs->changes);
-//			/* Free changesets, but not the data. */
-//			knot_free_changesets(&chs);
-//			data->data = 0;
-//			break;
-//		}
 		/* Switch zone contents. */
 		switch_ret = xfrin_switch_zone(data->zone, data->new_contents,
 		                                   data->type);

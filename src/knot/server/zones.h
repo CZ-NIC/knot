@@ -212,6 +212,7 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data);
  * \retval KNOTD_EAGAIN if journal needs to be synced with zonefile first.
  *
  * \todo Expects the xfr structure to be initialized in some way.
+ * \todo Update documentation!!!
  */
 int zones_store_changesets(knot_ns_xfr_t *xfr);
 
@@ -240,9 +241,6 @@ int zones_store_changesets_commit(journal_t *j);
  * \retval KNOTD_ENOENT when no transaction is pending.
  */
 int zones_store_changesets_rollback(journal_t *j);
-
-/*! \todo Document me. */
-int zones_store_changesets2(knot_ns_xfr_t *xfr);
 
 /*! \todo Document me. */
 int zones_changesets_from_binary(knot_changesets_t *chgsets);
