@@ -43,7 +43,6 @@
 
 #include <stdint.h>
 #include <fcntl.h>
-#include "knot/zone/zone-dump.h"
 
 /*!
  * \brief Journal entry flags.
@@ -73,6 +72,7 @@ typedef struct journal_node_t
 {
 	uint64_t id;    /*!< Node ID. */
 	uint16_t flags; /*!< Node flags. */
+	uint16_t next;  /*!< Next node ptr. */
 	uint32_t pos;   /*!< Position in journal file. */
 	uint32_t len;   /*!< Entry data length. */
 } journal_node_t;
@@ -125,7 +125,9 @@ typedef int (*journal_apply_t)(journal_t *j, journal_node_t *n);
  * Journal defaults and constants.
  */
 #define JOURNAL_NCOUNT 1024 /*!< Default node count. */
-#define JOURNAL_HSIZE (MAGIC_LENGTH + sizeof(uint16_t) * 3) /*!< magic, max_entries, qhead, qtail */
+/* HEADER = magic, crc, max_entries, qhead, qtail */
+#define JOURNAL_HSIZE (MAGIC_LENGTH + sizeof(crc_t) + sizeof(uint16_t) * 3) 
+#define JOURNAL_MAGIC {'k', 'n', 'o', 't', '1', '0', '2'}
 
 /*!
  * \brief Create new journal.
@@ -193,6 +195,36 @@ int journal_read(journal_t *journal, uint64_t id, journal_cmp_t cf, char *dst);
  * \retval KNOTD_ERROR on I/O error.
  */
 int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size);
+
+/*!
+ * \brief Map journal entry for read/write.
+ *
+ * \warning New nodes shouldn't be created until the entry is unmapped.
+ *
+ * \param journal Associated journal.
+ * \param id Entry identifier.
+ * \param dst Will contain mapped memory.
+ *
+ * \retval KNOTD_EOK if successful.
+ * \retval KNOTD_EAGAIN if no free node is available, need to remove dirty nodes.
+ * \retval KNOTD_ERROR on I/O error.
+ */
+int journal_map(journal_t *journal, uint64_t id, char **dst, size_t size);
+
+/*!
+ * \brief Finalize mapped journal entry.
+ *
+ * \param journal Associated journal.
+ * \param id Entry identifier.
+ * \param ptr Mapped memory.
+ * \param finalize Set to true to finalize node or False to discard it.
+ *
+ * \retval KNOTD_EOK if successful.
+ * \retval KNOTD_ENOENT if the entry cannot be found.
+ * \retval KNOTD_EAGAIN if no free node is available, need to remove dirty nodes.
+ * \retval KNOTD_ERROR on I/O error.
+ */
+int journal_unmap(journal_t *journal, uint64_t id, void *ptr, int finalize);
 
 /*!
  * \brief Return least recent node (journal head).
@@ -269,5 +301,20 @@ journal_t *journal_retain(journal_t *journal);
  * \param journal Retained journal.
  */
 void journal_release(journal_t *journal);
+
+/*!
+ * \brief Recompute journal CRC.
+ *
+ * \warning Use only if you altered the journal file somehow
+ * and need it to pass CRC checks. CRC check normally
+ * checks file integrity, so you should not touch it unless
+ * you know what you're doing.
+ *
+ * \param fd Open journal file.
+ *
+ * \retval KNOTD_EOK on success.
+ * \retval KNOTD_EINVAL if not valid fd.
+ */
+int journal_update_crc(int fd);
 
 #endif /* _KNOTD_JOURNAL_H_ */

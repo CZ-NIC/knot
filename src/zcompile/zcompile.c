@@ -36,6 +36,7 @@
 #include <sys/stat.h>
 
 #include "common/base32hex.h"
+#include "common/log.h"
 #include "zcompile/zcompile.h"
 #include "zcompile/parser-util.h"
 #include "zcompile/zcompile-error.h"
@@ -624,14 +625,13 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	dbg_zp("rdata adjusted\n");
 
 	if (parser->errors != 0) {
-		fprintf(stderr,
-		        "Parser finished with error, not dumping the zone!\n");
+		log_zone_error("Parser finished with %d error(s), not dumping the zone!\n",
+		               parser->errors);
 	} else {
 		int fd = open(outfile, O_RDWR | O_CREAT | O_TRUNC, S_IRWXU | S_IRWXG);
 		if (fd < 0) {
-			fprintf(stderr,
-			        "Could not open destination file for db: %s.\n",
-			        outfile);
+			log_zone_error("Could not open destination file for db: %s.\n",
+			               outfile);
 			totalerrors++;
 		} else {
 			crc_t crc;
@@ -639,22 +639,22 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 			                            semantic_checks,
 			                            zonefile, &crc);
 			if (ret != KNOT_EOK) {
-				fprintf(stderr, "Could not dump zone, reason: "
-				                "%s.\n", knot_strerror(ret));
+				log_zone_error("Could not dump zone, reason: "
+				               "%s.\n", knot_strerror(ret));
 				remove(outfile);
 				totalerrors++;
 			} else {
 				/* Write CRC file. */
 				char *crc_path = knot_zdump_crc_file(outfile);
 				if (crc_path == NULL) {
-					fprintf(stderr,
-					        "Could not get crc file path.\n");
+					log_zone_error(
+					"Could not get crc file path.\n");
 					remove(outfile);
 					totalerrors++;
 				} else {
 					FILE *f_crc = fopen(crc_path, "w");
 					if (f_crc == NULL) {
-						fprintf(stderr,
+						log_zone_error(
 						"Could not open crc file \n");
 						remove(outfile);
 						totalerrors++;

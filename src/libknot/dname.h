@@ -116,6 +116,9 @@ knot_dname_t *knot_dname_new_from_str(const char *name, unsigned int size,
  *       e.g. to knot_dname_to_str() may result in crash. Decide whether it
  *       is OK to retain this and check the data in other functions before
  *       calling this one, or if it should verify the given data.
+ *
+ * \warning Actually, right now this function does not accept non-FQDN dnames.
+ *          For some reason there is a check for this.
  */
 knot_dname_t *knot_dname_new_from_wire(const uint8_t *name,
                                            unsigned int size,

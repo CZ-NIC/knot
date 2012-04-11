@@ -27,7 +27,7 @@
 
 #include "knot/common.h"
 #include "knot/server/dthreads.h"
-#include "knot/other/log.h"
+#include "common/log.h"
 #include "knot/other/error.h"
 
 /*! \brief Lock thread state for R/W. */

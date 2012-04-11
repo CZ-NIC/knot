@@ -215,6 +215,10 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data);
  */
 int zones_store_changesets(knot_ns_xfr_t *xfr);
 
+/*! \todo Document me. */
+int zones_changesets_from_binary(knot_changesets_t *chgsets);
+
+/*! \todo Document me. */
 int zones_changesets_to_binary(knot_changesets_t *chgsets);
 
 /*!

@@ -19,6 +19,7 @@
 #include <stdlib.h>
 
 #include "zcompile/zcompile.h"
+#include "common/log.h"
 #include <config.h>
 
 static void help(int argc, char **argv)
@@ -81,12 +82,16 @@ int main(int argc, char **argv)
 	origin = argv[optind];
 	zonefile = argv[optind + 1];
 
-	printf("Parsing file '%s', origin '%s' ...\n",
-	       zonefile, origin);
+	// Initialize log (no syslog)
+	log_init();
+	log_levels_set(LOGT_SYSLOG, LOG_ANY, 0);
+	log_zone_info("Parsing file '%s', origin '%s' ...\n",
+	              zonefile, origin);
 
 	parser = zparser_create();
 	if (!parser) {
-		fprintf(stderr, "Failed to create parser.\n");
+		log_server_error("Failed to create parser.\n");
+		//log_close();
 		return 1;
 	}
 
@@ -94,9 +99,16 @@ int main(int argc, char **argv)
 	zparser_free();
 
 	if (error != 0) {
+	  /* FIXME! */
+//		if (error < 0) {
+//			fprintf(stderr, "Finished with error: %s.\n",
+//			       error_to_str(knot_zcompile_error_msgs, error));
+//		} else {
+//			fprintf(stderr, "Finished with %u errors.\n");
+//		}
 		return 1;
 	} else {
-		printf("Compilation successful.\n");
+		log_zone_info("Compilation of '%s' successful.\n", origin);
 	}
 	
 	return 0;

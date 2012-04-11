@@ -52,6 +52,7 @@ static void conf_start_remote(void *scanner, char *remote)
    memset(this_remote, 0, sizeof(conf_iface_t));
    this_remote->name = remote;
    add_tail(&new_config->remotes, &this_remote->n);
+   sockaddr_init(&this_remote->via, -1);
    ++new_config->remotes_count;
 }
 
@@ -71,7 +72,7 @@ static void conf_remote_set_via(void *scanner, char *item) {
       snprintf(buf, sizeof(buf), "remote '%s' is not defined", item);
       cf_error(scanner, buf);
    } else {
-      this_remote->via = found;
+      sockaddr_set(&this_remote->via, found->family, found->address, 0);
    }
 }
 
@@ -541,13 +542,17 @@ remote:
      }
      free($3.t);
    }
- | remote VIA TEXT ';' {
-   if (this_remote->key != 0) {
-     cf_error(scanner, "only one 'via' definition is allowed in remote section\n");
-   } else {
-     conf_remote_set_via(scanner, $3.t);
+ | remote VIA IPA ';' {
+     sockaddr_set(&this_remote->via, AF_INET, $3.t, 0);
+     free($3.t);
    }
-   free($3.t);
+ | remote VIA IPA6 ';' {
+     sockaddr_set(&this_remote->via, AF_INET6, $3.t, 0);
+     free($3.t);
+   }
+ | remote VIA TEXT ';' {
+     conf_remote_set_via(scanner, $3.t);
+     free($3.t);
    }
  ;
 

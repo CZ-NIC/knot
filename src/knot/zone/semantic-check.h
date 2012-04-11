@@ -36,6 +36,7 @@ enum zonechecks_errors {
 	ZC_ERR_UNKNOWN,
 
 	ZC_ERR_MISSING_SOA,
+	ZC_ERR_MISSING_NS_DEL_POINT,
 
 	ZC_ERR_GENERIC_GENERAL_ERROR, /* isn't there a better name? */
 
@@ -67,6 +68,7 @@ enum zonechecks_errors {
 	ZC_ERR_NSEC3_RDATA_TTL,
 	ZC_ERR_NSEC3_RDATA_CHAIN,
 	ZC_ERR_NSEC3_RDATA_BITMAP,
+	ZC_ERR_NSEC3_EXTRA_RECORD,
 
 	ZC_ERR_NSEC3_GENERAL_ERROR,
 

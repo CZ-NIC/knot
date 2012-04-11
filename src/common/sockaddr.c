@@ -49,6 +49,20 @@ int sockaddr_init(sockaddr_t *addr, int af)
 	return sockaddr_update(addr);
 }
 
+int sockaddr_isvalid(sockaddr_t *addr)
+{
+	return addr && addr->family > -1;
+}
+
+int sockaddr_copy(sockaddr_t *dst, const sockaddr_t *src)
+{
+	if (memcpy(dst, src, sizeof(sockaddr_t)) != NULL) {
+		return sockaddr_update(dst);
+	}
+	
+	return -1;
+}
+
 int sockaddr_update(sockaddr_t *addr)
 {
 	/* Update internal pointer. */
@@ -117,7 +131,7 @@ int sockaddr_setprefix(sockaddr_t *dst, int prefix)
 	return dst->prefix = prefix;
 }
 
-int sockaddr_tostr(sockaddr_t *addr, char *dst, size_t size)
+int sockaddr_tostr(const sockaddr_t *addr, char *dst, size_t size)
 {
 	if (!addr || !dst || size == 0) {
 		return -1;
@@ -159,7 +173,7 @@ int sockaddr_tostr(sockaddr_t *addr, char *dst, size_t size)
 	return 0;
 }
 
-int sockaddr_portnum(sockaddr_t *addr)
+int sockaddr_portnum(const sockaddr_t *addr)
 {
 	if (!addr) {
 		return -1;

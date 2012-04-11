@@ -28,7 +28,7 @@
 #include "knot/conf/conf.h"
 #include "knot/other/debug.h"
 #include "knot/other/error.h"
-#include "knot/other/log.h"
+#include "common/log.h"
 #include "knot/server/notify.h"
 #include "knot/server/server.h"
 #include "libknot/updates/xfr-in.h"
@@ -494,6 +494,8 @@ static int zones_refresh_ev(event_t *e)
 
 	/* Create query. */
 	int sock = -1;
+	char strbuf[512] = "Generic error.";
+	const char *errstr = strbuf;
 	sockaddr_t *master = &zd->xfr_in.master;
 	int ret = xfrin_create_soa_query(zone->name, &xfr_req, &buflen);
 	if (ret == KNOT_EOK) {
@@ -507,6 +509,10 @@ static int zones_refresh_ev(event_t *e)
 			if (bind(sock, via->ptr, via->len) < 0) {
 				socket_close(sock);
 				sock = -1;
+				char r_addr[SOCKADDR_STRLEN];
+				sockaddr_tostr(via, r_addr, sizeof(r_addr));
+				snprintf(strbuf, sizeof(strbuf),
+				         "Couldn't bind to \'%s\'", r_addr);
 			}
 		}
 
@@ -520,6 +526,7 @@ static int zones_refresh_ev(event_t *e)
 			if (sent == buflen) {
 				ret = KNOTD_EOK;
 			} else {
+				strerror_r(errno, strbuf, sizeof(strbuf));
 				socket_close(sock);
 				sock = -1;
 			}
@@ -534,6 +541,7 @@ static int zones_refresh_ev(event_t *e)
 		}
 	} else {
 		ret = KNOTD_ERROR;
+		errstr = "Couldn't create SOA query";
 	}
 
 	
@@ -555,8 +563,8 @@ static int zones_refresh_ev(event_t *e)
 		ret = xfr_request(zd->server->xfr_h, &req);
 	}
 	if (ret != KNOTD_EOK) {
-		log_server_warning("Failed to issue SOA query for zone '%s'.\n",
-		                   zd->conf->name);
+		log_server_warning("Failed to issue SOA query for zone '%s' (%s).\n",
+		                   zd->conf->name, errstr);
 	}
 	
 	free(qbuf);
@@ -1003,7 +1011,7 @@ static inline uint64_t ixfrdb_key_make(uint32_t from, uint32_t to)
 
 /*----------------------------------------------------------------------------*/
 
-static int zones_changesets_from_binary(knot_changesets_t *chgsets)
+int zones_changesets_from_binary(knot_changesets_t *chgsets)
 {
 	assert(chgsets != NULL);
 	assert(chgsets->allocated >= chgsets->count);
@@ -1490,11 +1498,9 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 					     cfg_if->family,
 					     cfg_if->address,
 					     cfg_if->port);
-				if (cfg_if->via) {
-					sockaddr_set(&zd->xfr_in.via,
-					             cfg_if->via->family,
-					             cfg_if->via->address,
-					             0);
+				if (sockaddr_isvalid(&cfg_if->via)) {
+					sockaddr_copy(&zd->xfr_in.via,
+					              &cfg_if->via);
 				}
 
 				if (cfg_if->key) {
@@ -1503,7 +1509,7 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 					       sizeof(knot_key_t));
 				}
 
-				dbg_zones("zones: using %s:%d as XFR master "
+				dbg_zones("zones: using '%s@%d' as XFR master "
 				          "for '%s'\n",
 				          cfg_if->address,
 				          cfg_if->port,
@@ -1705,27 +1711,28 @@ static int zones_check_tsig_query(const knot_zone_t *zone,
 		                 knot_packet_additional_rrset_count(query) - 1);
 		if (knot_rrset_type(tsig) == KNOT_RRTYPE_TSIG) {
 			dbg_zones_verb("found TSIG in normal query\n");
-        } else {
-            tsig = NULL; /* Invalidate if not TSIG RRTYPE. */
-        }
+		} else {
+			tsig = NULL; /* Invalidate if not TSIG RRTYPE. */
+		}
 	}
 
 	if (tsig == NULL) {
 		// no TSIG, this is completely valid
+		/*! \note This function is (should be) called only in case of
+		          normal query, i.e. we do not have to check ACL.
+		 */
 		*tsig_rcode = 0;
 		return KNOT_EOK;
 	}
 
 	// if there is some TSIG in the query, find the TSIG associated with
 	// the zone
-	//knot_key_t *tsig_key_zone = NULL;
-
 	dbg_zones_verb("Checking zone and ACL.\n");
 	int ret = zones_query_check_zone(zone, addr, tsig_key_zone, rcode);
 
-	/*! \todo What if there is TSIG, but no key is configured? */
-
-	if (ret == KNOTD_EOK) {
+	
+	/* Accept found OR unknown key results. */
+	if (ret == KNOTD_EOK || ret == KNOTD_EACCES) {
 		if (*tsig_key_zone != NULL) {
 			// everything OK, so check TSIG
 			dbg_zones_verb("Verifying TSIG.\n");
@@ -1918,8 +1925,6 @@ int zones_query_check_zone(const knot_zone_t *zone, const sockaddr_t *addr,
 	/* Check xfr-out ACL */
 	acl_key_t *match = NULL;
 	if (acl_match(zd->xfr_out, addr, &match) == ACL_DENY) {
-		log_answer_warning("Unauthorized query or request for XFR "
-		                   "'%s/OUT'.\n", zd->conf->name);
 		*rcode = KNOT_RCODE_REFUSED;
 		return KNOTD_EACCES;
 	} else {
@@ -2259,7 +2264,7 @@ int zones_process_response(knot_nameserver_t *nameserver,
 			char r_addr[SOCKADDR_STRLEN];
 			int r_port = sockaddr_portnum(from);
 			sockaddr_tostr(from, r_addr, sizeof(r_addr));
-			log_zone_info("SOA query of '%s' to %s:%d: Answered, no "
+			log_zone_info("SOA query of '%s' to '%s@%d': Answered, no "
 				      "transfer needed.\n",
 			              zd->conf->name, r_addr, r_port);
 			rcu_read_unlock();
@@ -2817,6 +2822,106 @@ int zones_store_changesets(knot_ns_xfr_t *xfr)
 }
 
 /*----------------------------------------------------------------------------*/
+/*! \todo Check!!! */
+static inline size_t zones_dname_binary_size(const knot_dname_t *dname)
+{
+	if (dname == NULL) {
+		return 0;
+	}
+
+	size_t size = 10; // 4B ID, 4B size, 2B label count
+
+	// dname size in wire format
+	size += knot_dname_size(dname);
+	// label array size
+	size += knot_dname_label_count(dname);
+
+	return size;
+}
+
+/*----------------------------------------------------------------------------*/
+/*! \todo Check!!! */
+static size_t zones_rdata_binary_size(const knot_rdata_t *rdata,
+                                      knot_rrtype_descriptor_t *desc)
+{
+	if (rdata == NULL) {
+		return 0;
+	}
+
+	assert(desc != NULL);
+
+	size_t size = sizeof(unsigned int); // RDATA item count
+
+	for (int i = 0; i < rdata->count; ++i) {
+		if (desc->wireformat[i] == KNOT_RDATA_WF_COMPRESSED_DNAME
+		    || desc->wireformat[i] == KNOT_RDATA_WF_UNCOMPRESSED_DNAME
+		    || desc->wireformat[i] == KNOT_RDATA_WF_LITERAL_DNAME) {
+			size += zones_dname_binary_size(rdata->items[i].dname);
+			size += 2; // flags
+		} else {
+			if (rdata->items[i].raw_data != NULL) {
+				size += rdata->items[i].raw_data[0] + 2;
+			}
+		}
+	}
+
+	return size;
+}
+
+/*----------------------------------------------------------------------------*/
+/*! \todo Check!!! */
+static size_t zones_rrset_binary_size(const knot_rrset_t *rrset)
+{
+	assert(rrset != NULL);
+
+	size_t size = 0;
+
+	size += 13; // 2B type, 2B class, 4B TTL, 4B RDATA count, 1B flags
+	size += zones_dname_binary_size(rrset->owner);
+
+	knot_rrtype_descriptor_t *desc = knot_rrtype_descriptor_by_type(
+	                        knot_rrset_type(rrset));
+	assert(desc != NULL);
+
+	const knot_rdata_t *rdata = knot_rrset_rdata(rrset);
+	while (rdata != NULL) {
+		size += zones_rdata_binary_size(rdata, desc);
+		rdata = knot_rrset_rdata_next(rrset, rdata);
+	}
+
+	return size;
+}
+
+/*----------------------------------------------------------------------------*/
+/*! \todo Check!!! */
+int zones_changeset_binary_size(const knot_changeset_t *chgset, size_t *size)
+{
+	if (chgset == NULL || size == NULL) {
+		return KNOTD_EINVAL;
+	}
+
+	size_t soa_from_size = zones_rrset_binary_size(chgset->soa_from);
+	size_t soa_to_size = zones_rrset_binary_size(chgset->soa_to);
+
+	size_t remove_size = 0;
+	for (int i = 0; i < chgset->remove_count; ++i)
+	{
+		remove_size += zones_rrset_binary_size(chgset->remove[i]);
+	}
+
+	size_t add_size = 0;
+	for (int i = 0; i < chgset->add_count; ++i)
+	{
+		add_size += zones_rrset_binary_size(chgset->add[i]);
+	}
+
+	/*! \todo How is the changeset serialized? Any other parts? */
+	*size += soa_from_size + soa_to_size + remove_size + add_size;
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
 
 int zones_xfr_load_changesets(knot_ns_xfr_t *xfr, uint32_t serial_from,
                               uint32_t serial_to) 
@@ -2949,15 +3054,17 @@ int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
 		int ret = sockaddr_set(&ev->addr, cfg_if->family,
 				       cfg_if->address,
 				       cfg_if->port);
-		conf_iface_t *via = cfg_if->via;
-		if (ret > 0 && via != NULL) {
-			ret = sockaddr_set(&ev->saddr, via->family,
-			                   via->address, 0);
-		}
-		if (ret < 1) {
+		sockaddr_t *via = &cfg_if->via;
+		if (ret > 0) {
+			if (sockaddr_isvalid(via)) {
+				sockaddr_copy(&ev->saddr, via);
+			}
+		} else {
 			free(ev);
-			dbg_zones("notify: NOTIFY slave %s has invalid "
-				    "address\n", cfg_if->name);
+			log_server_warning("NOTIFY slave '%s' has invalid "
+			                   "address '%s@%d', couldn't create"
+			                   "query.\n", cfg_if->name,
+			                   cfg_if->address, cfg_if->port);
 			continue;
 		}
 
@@ -2976,7 +3083,7 @@ int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
 		pthread_mutex_unlock(&zd->lock);
 
 		log_server_info("Scheduled '%s' NOTIFY query "
-				"after %d s to %s:%d\n", zd->conf->name,
+				"after %d s to '%s@%d'.\n", zd->conf->name,
 			    tmr_s, cfg_if->address, cfg_if->port);
 	}
 

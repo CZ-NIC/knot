@@ -15,7 +15,7 @@
 
 #include "common/sockaddr.h"
 #include "knot/conf/conf.h"
-#include "knot/other/log.h"
+#include "common/log.h"
 #include "libknotd_la-cf-parse.h" /* Automake generated header. */
 
 /* Imported symbols. */
@@ -65,7 +65,6 @@ BLANK [ \t\n]
 %%
 \#.*\n          /* Ignore comments */;
 {BLANK}+        /* Ignore whitespace */;
-:		/* Optional : in assignments. */;
 [\!\$\%\^\&\*\(\)\/\+\-\@\{\}\;\,] { return yytext[0]; }
 system          { lval.t = yytext;  return SYSTEM; }
 identity        { lval.t = yytext; return IDENTITY; }
@@ -255,6 +254,7 @@ hmac-sha512     { lval.alg = KNOT_TSIG_ALG_HMAC_SHA512; return TSIG_ALGO_NAME; }
   return TEXT /* Last resort, alphanumeric word. */;
 }
 
+: /* Optional : in assignments. */;
 <<EOF>> return END;
 
 %%
