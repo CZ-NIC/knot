@@ -714,6 +714,8 @@ static int ns_put_authority_ns(const knot_zone_contents_t *zone,
 			return ret;
 		}
 	}
+
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
