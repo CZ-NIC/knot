@@ -1566,7 +1566,7 @@ dbg_xfrin_exec_verb(
 	knot_rrset_t *old = knot_node_remove_rrset(node, type);
 
 	dbg_xfrin_verb("Removed RRSet: %p\n", old);
-	dbg_xfrin_detail("Other RRSet of the same type in the node: %p",
+	dbg_xfrin_detail("Other RRSet of the same type in the node: %p\n",
 	                 knot_node_rrset(node, type));
 
 	if (old == NULL) {
@@ -1622,7 +1622,7 @@ static int xfrin_apply_remove_rrsigs(knot_changes_t *changes,
 			knot_rrset_rdata(remove));
 		
 		// copy the rrset
-		dbg_xfrin_verb("Copying RRSet that carry the RRSIGs.\n");
+		dbg_xfrin_verb("Copying RRSet that carries the RRSIGs.\n");
 		ret = xfrin_copy_rrset(node, type, rrset, changes);
 		if (ret != KNOT_EOK) {
 			dbg_xfrin("Failed to copy rrset from changeset.\n");
@@ -1961,14 +1961,22 @@ static int xfrin_apply_add_normal(knot_changes_t *changes,
 	dbg_xfrin("applying rrset:\n");
 	knot_rrset_dump(add, 0);
 	
-	if (!*rrset
-	    || knot_dname_compare(knot_rrset_owner(*rrset),
-	                          knot_node_owner(node)) != 0
-	    || knot_rrset_type(*rrset)
-	       != knot_rrset_type(add)) {
-		dbg_xfrin("Removing rrset!\n");
-		*rrset = knot_node_remove_rrset(node, knot_rrset_type(add));
-	}
+	/*! \note Reusing RRSet from previous function caused it not to be
+	 *        removed from the node.
+	 *        Maybe modification of the code would allow reusing the RRSet
+	 *        as in apply_add_rrsigs() - the RRSet should not be copied
+	 *        in such case.
+	 */
+//	if (!*rrset
+//	    || knot_dname_compare(knot_rrset_owner(*rrset),
+//	                          knot_node_owner(node)) != 0
+//	    || knot_rrset_type(*rrset)
+//	       != knot_rrset_type(add)) {
+//		dbg_xfrin("Removing rrset!\n");
+//		*rrset = knot_node_remove_rrset(node, knot_rrset_type(add));
+//	}
+
+	*rrset = knot_node_remove_rrset(node, knot_rrset_type(add));
 	
 	dbg_xfrin("Removed RRSet: \n");
 	knot_rrset_dump(*rrset, 1);
@@ -2018,7 +2026,7 @@ dbg_xfrin_exec(
 		return ret;
 	}
 
-	dbg_xfrin("Copied RRSet: %p\n", rrset);
+	dbg_xfrin("Copied RRSet: %p\n", *rrset);
 
 //	dbg_xfrin("After copy: Found RRSet with owner %s, type %s\n",
 //	               knot_dname_to_str((*rrset)->owner),
@@ -2093,6 +2101,9 @@ dbg_xfrin_exec(
 
 	int copied = 0;
 
+	/*! \note Here the check is OK, because if we aready have the RRSet,
+	 *        it's a copied one, so it is OK to modify it right away.
+	 */
 	if (!*rrset
 	    || knot_dname_compare(knot_rrset_owner(*rrset),
 	                          knot_node_owner(node)) != 0
@@ -2116,7 +2127,6 @@ dbg_xfrin_exec(
 	if (*rrset == NULL) {
 		dbg_xfrin("RRSet to be added not found in zone.\n");
 		
-		dbg_xfrin("Creating new RRSet for RRSIG.\n");
 		// create a new RRSet to add the RRSIGs into
 		*rrset = knot_rrset_new(knot_node_get_owner(node), type,
 		                        knot_rrset_class(add),
@@ -2125,6 +2135,7 @@ dbg_xfrin_exec(
 			dbg_xfrin("Failed to create new RRSet for RRSIGs.\n");
 			return KNOT_ENOMEM;
 		}
+		dbg_xfrin("Created new RRSet for RRSIG: %p.\n", *rrset);
 
 		// add the RRset to the list of new RRsets
 		ret = xfrin_changes_check_rrsets(
