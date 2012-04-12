@@ -1384,6 +1384,9 @@ dbg_xfrin_exec_detail(
 	// try to find the first RDATA in the given list
 	for (int i = 0; i < *count; ++i) {
 		knot_rdata_t *r = rdatas[i];
+		if (r == NULL) {
+			continue;
+		}
 		while (r->next != rdatas[i]) {
 			if (r == rdata) {
 				dbg_xfrin_detail("Found same RDATA: %p\n", rdata);
