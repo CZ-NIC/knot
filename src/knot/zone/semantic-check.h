@@ -103,6 +103,7 @@ struct arg {
 	void *arg5; /* last node */
 	void *arg6; /* error handler */
 	void *arg7; /* CRC */
+	int error_code; /* Error code. */
 };
 
 typedef struct arg arg_t;
