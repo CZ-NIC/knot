@@ -1557,7 +1557,17 @@ static int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 static int xfrin_copy_rrset(knot_node_t *node, knot_rr_type_t type,
                             knot_rrset_t **rrset, knot_changes_t *changes)
 {
+dbg_xfrin_exec_verb(
+	char *name = knot_dname_to_str(knot_node_owner(node));
+	dbg_xfrin_verb("Removing RRSet of type %s from node %s (%p)\n",
+	               knot_rrtype_to_string(type), name, node);
+	free(name);
+);
 	knot_rrset_t *old = knot_node_remove_rrset(node, type);
+
+	dbg_xfrin_verb("Removed RRSet: %p\n", old);
+	dbg_xfrin_detail("Other RRSet of the same type in the node: %p",
+	                 knot_node_rrset(node, type));
 
 	if (old == NULL) {
 		dbg_xfrin("RRSet not found for RR to be removed.\n");
@@ -1569,7 +1579,7 @@ static int xfrin_copy_rrset(knot_node_t *node, knot_rr_type_t type,
 		return ret;
 	}
 	
-	dbg_xfrin_detail("Copied old rrset %p to new %p.\n", old, *rrset);
+	dbg_xfrin_verb("Copied old rrset %p to new %p.\n", old, *rrset);
 	
 	// replace the RRSet in the node copy by the new one
 	ret = knot_node_add_rrset(node, *rrset, 0);
@@ -1612,6 +1622,7 @@ static int xfrin_apply_remove_rrsigs(knot_changes_t *changes,
 			knot_rrset_rdata(remove));
 		
 		// copy the rrset
+		dbg_xfrin_verb("Copying RRSet that carry the RRSIGs.\n");
 		ret = xfrin_copy_rrset(node, type, rrset, changes);
 		if (ret != KNOT_EOK) {
 			dbg_xfrin("Failed to copy rrset from changeset.\n");
@@ -1626,10 +1637,12 @@ static int xfrin_apply_remove_rrsigs(knot_changes_t *changes,
 		// this RRSet should be the already copied RRSet so we may
 		// update it right away
 		/*! \todo Does this case even occur? */
+		dbg_xfrin_verb("Using RRSet from previous iteration.\n");
 	}
 	
 	// get the old rrsigs
 	knot_rrset_t *old = knot_rrset_get_rrsigs(*rrset);
+	dbg_xfrin_verb("Old RRSIGs from RRSet: %p\n", old);
 	if (old == NULL) {
 		return 1;
 	}
@@ -1641,8 +1654,10 @@ static int xfrin_apply_remove_rrsigs(knot_changes_t *changes,
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
+		dbg_xfrin_verb("Copied RRSIGs: %p\n", rrsigs);
 	} else {
 		rrsigs = old;
+		dbg_xfrin_verb("Using old RRSIGs: %p\n", rrsigs);
 	}
 	
 	// set the RRSIGs to the new RRSet copy
