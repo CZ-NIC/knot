@@ -36,6 +36,8 @@ int main(int argc, char *argv[])
 	// Open log
 	log_init();
 	log_levels_set(LOGT_SYSLOG, LOG_ANY, 0);
+	log_levels_set(LOGT_STDERR, LOG_ANY, 0);
+	log_levels_set(LOGT_STDOUT, LOG_ANY, LOG_MASK(LOG_DEBUG));
 
 	// Build test set
 	unit_api *tests[] = {

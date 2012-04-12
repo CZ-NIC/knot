@@ -305,6 +305,7 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 	int apply_ret = KNOT_EOK;
 	int switch_ret = KNOT_EOK;
 	knot_changesets_t *chs = NULL;
+	journal_t *transaction = NULL;
 	
 	switch(data->type) {
 	case XFR_TYPE_AIN:
@@ -332,15 +333,21 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 	case XFR_TYPE_IIN:
 		chs = (knot_changesets_t *)data->data;
 
-		/* First, serialize changesets. */
-		ret = zones_changesets_to_binary(chs);
+		/* Serialize and store changesets. */
+		dbg_xfr("xfr: IXFR/IN serializing and saving changesets\n");
+		transaction = zones_store_changesets_begin(data);
+		if (transaction != NULL) {
+			ret = zones_store_changesets(data);
+		} else {
+			ret = KNOTD_ERROR;
+		}
 		if (ret != KNOTD_EOK) {
-			log_zone_error("%s Failed to serialize changesets - %s"
-			               "\n", data->msgpref,
+			log_zone_error("%s Failed to serialize and store "
+			               "changesets - %s\n", data->msgpref,
 			               knotd_strerror(ret));
 			/* Free changesets, but not the data. */
 			knot_free_changesets(&chs);
-			data->data = 0;
+			data->data = NULL;
 			break;
 		}
 
@@ -349,40 +356,30 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 		                                       &data->new_contents);
 
 		if (apply_ret != KNOT_EOK) {
+			zones_store_changesets_rollback(transaction);
 			log_zone_error("%s Failed to apply changesets - %s\n",
 			               data->msgpref,
 			               knot_strerror(apply_ret));
 
 			/* Free changesets, but not the data. */
 			knot_free_changesets(&chs);
-			data->data = 0;
+			data->data = NULL;
 			ret = KNOTD_ERROR;
 			break;
 		}
 		
-		/* Save changesets. */
-		dbg_xfr("xfr: IXFR/IN saving changesets\n");
-
-		/*! \note Here, the changesets may already be modified.
-		 *        Only the 'data' field of each changeset contains the
-		 *        proper serialized changesets. Serials should be
-		 *        OK too.
-		 */
-		ret = zones_store_changesets(data);
+		/* Commit transaction. */
+		ret = zones_store_changesets_commit(transaction);
 		if (ret != KNOTD_EOK) {
-			log_zone_error("%s Failed to save "
-			               "transferred changesets - %s\n",
-			               data->msgpref, knotd_strerror(ret));
-
-			// Cleanup old and new contents
-			xfrin_rollback_update(data->zone->contents,
-					      &data->new_contents,
-					      &chs->changes);
-			/* Free changesets, but not the data. */
+			log_zone_error("%s Failed to commit stored changesets "
+			               "- %s\n",
+			               data->msgpref,
+			               knot_strerror(apply_ret));
 			knot_free_changesets(&chs);
-			data->data = 0;
+			data->data = NULL;
 			break;
 		}
+
 		/* Switch zone contents. */
 		switch_ret = xfrin_switch_zone(data->zone, data->new_contents,
 		                                   data->type);
@@ -399,7 +396,7 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 
 			/* Free changesets, but not the data. */
 			knot_free_changesets(&chs);
-			data->data = 0;
+			data->data = NULL;
 			ret = KNOTD_ERROR;
 			break;
 		}
@@ -408,7 +405,7 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 
 		/* Free changesets, but not the data. */
 		knot_free_changesets(&chs);
-		data->data = 0;
+		data->data = NULL;
 		assert(ret == KNOTD_EOK);
 		log_zone_info("%s Finished.\n", data->msgpref);
 		break;
@@ -936,16 +933,14 @@ static int xfr_answer_ixfr(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 	int ret = KNOT_EOK;
 	uint32_t serial_from = 0;
 	uint32_t serial_to = 0;
-	dbg_xfr_verb("Loading serials for IXFR.\n");
 	ret = ns_ixfr_load_serials(xfr, &serial_from, &serial_to);
-	dbg_xfr_detail("Loaded serials: from: %u, to: %u\n",
-	               serial_from, serial_to);
+	dbg_xfr_verb("xfr: loading changesets for IXFR %u-%u\n",
+	             serial_from, serial_to);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 	
 	/* Load changesets from journal. */
-	dbg_xfr_verb("Loading changesets from journal.\n");
 	int chsload = zones_xfr_load_changesets(xfr, serial_from, serial_to);
 	if (chsload != KNOTD_EOK) {
 		/* History cannot be reconstructed, fallback to AXFR. */
@@ -1024,22 +1019,22 @@ static int xfr_update_msgpref(knot_ns_xfr_t *req, const char *keytag)
 	const char *pformat = NULL;
 	switch (req->type) {
 	case XFR_TYPE_AIN:
-		pformat = "AXFR transfer of '%s/IN' with %s:%d%s:";
+		pformat = "AXFR transfer of '%s/IN' with '%s@%d'%s:";
 		break;
 	case XFR_TYPE_IIN:
-		pformat = "IXFR transfer of '%s/IN' with %s:%d%s:";
+		pformat = "IXFR transfer of '%s/IN' with '%s@%d'%s:";
 		break;
 	case XFR_TYPE_AOUT:
-		pformat = "AXFR transfer of '%s/OUT' to %s:%d%s:";
+		pformat = "AXFR transfer of '%s/OUT' to '%s@%d'%s:";
 		break;
 	case XFR_TYPE_IOUT:
-		pformat = "IXFR transfer of '%s/OUT' to %s:%d%s:";
+		pformat = "IXFR transfer of '%s/OUT' to '%s@%d'%s:";
 		break;
 	case XFR_TYPE_NOTIFY:
-		pformat = "NOTIFY query of '%s' to %s:%d%s:";
+		pformat = "NOTIFY query of '%s' to '%s@%d'%s:";
 		break;
 	case XFR_TYPE_SOA:
-		pformat = "SOA query of '%s' to %s:%d%s:";
+		pformat = "SOA query of '%s' to '%s@%d'%s:";
 		break;
 	default:
 		pformat = "";

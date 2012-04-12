@@ -34,7 +34,7 @@ unit_api acl_tests_api = {
 
 static int acl_tests_count(int argc, char *argv[])
 {
-	return 18;
+	return 20;
 }
 
 static int acl_tests_run(int argc, char *argv[])
@@ -146,6 +146,17 @@ static int acl_tests_run(int argc, char *argv[])
 	ret = acl_match(acl, &test_pf4, &rval);
 	ok(rval->val == sval, "acl: search for preferred node");
 
+	// 19. Scenario after truncating
+	ok(acl_truncate(acl) == ACL_ACCEPT, "acl: truncate");
+	sockaddr_set(&test_pf6, AF_INET6, "2001:a1b0:e11e:50d1::3:300", 0);
+	acl_create(acl, &test_pf6, ACL_ACCEPT, 0, 0);
+	sockaddr_set(&test_pf4, AF_INET, "231.17.67.223", 0);
+	acl_create(acl, &test_pf4, ACL_ACCEPT, 0, 0);
+	sockaddr_set(&test_pf4, AF_INET, "82.87.48.136", 0);
+	acl_create(acl, &test_pf4, ACL_ACCEPT, 0, 0);
+	sockaddr_set(&match_pf4, AF_INET, "82.87.48.136", 12345);
+	ret = acl_match(acl, &match_pf4, 0);
+	ok(ret == ACL_ACCEPT, "acl: scenario after truncating");
 	acl_delete(&acl);
 	
 	// Return

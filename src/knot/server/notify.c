@@ -193,7 +193,7 @@ static int notify_check_and_schedule(knot_nameserver_t *nameserver,
 			char straddr[SOCKADDR_STRLEN];
 			sockaddr_tostr(from, straddr, sizeof(straddr));
 			log_zone_notice("Unauthorized NOTIFY query "
-			                "from %s:%d to zone '%s'.\n",
+			                "from '%s@%d' to zone '%s'.\n",
 			                straddr, sockaddr_portnum(from),
 			                zd->conf->name);
 			return KNOT_ERROR;

@@ -16,6 +16,8 @@ static char *error_messages[(-ZC_ERR_ALLOC) + 1] = {
 	[-ZC_ERR_ALLOC] = "Memory allocation error!\n",
 
 	[-ZC_ERR_MISSING_SOA] = "SOA record missing in zone!\n",
+	[-ZC_ERR_MISSING_NS_DEL_POINT] = "NS record missing in zone apex or in "
+	                "delegation point!\n",
 
 	[-ZC_ERR_RRSIG_RDATA_TYPE_COVERED] =
 	"RRSIG: Type covered rdata field is wrong!\n",
@@ -64,6 +66,9 @@ static char *error_messages[(-ZC_ERR_ALLOC) + 1] = {
 	"NSEC3: NSEC3 chain is not coherent!\n",
 	[-ZC_ERR_NSEC3_RDATA_BITMAP] =
 	"NSEC3: NSEC3 bitmap error!\n",
+	[-ZC_ERR_NSEC3_EXTRA_RECORD] =
+	"NSEC3: NSEC3 node contains extra record. This is valid, however Knot "
+	"will not serve this record properly.\n",
 
 	[-ZC_ERR_CNAME_CYCLE] =
 	"CNAME: CNAME cycle!\n",
@@ -986,7 +991,8 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 
 	/* Directly discard. */
 	knot_dname_free(&next_dname);
-
+	
+	/*!< \todo These comments are not accurate anymore. */
 	/* This is probably not sufficient, but again, it is covered in
 	 * zone load time */
 
@@ -1012,14 +1018,21 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 				      type) == NULL) {
 			err_handler_handle_error(handler, node,
 						 ZC_ERR_NSEC3_RDATA_BITMAP);
-/*			char *name =
-				knot_dname_to_str(
-			log_zone_error("Node %s does "
-					"not contain RRSet of type %s "
-					"but NSEC bitmap says "
-					"it does!\n", name,
-					knot_rrtype_to_string(type));
-			free(name); */
+		}
+	}
+	
+	/* Check that the node only contains NSEC3 and RRSIG. */
+	const knot_rrset_t **rrsets = knot_node_rrsets(nsec3_node);
+	if (rrsets == NULL) {
+		return KNOT_ENOMEM;
+	}
+	
+	for (int i = 0; i < knot_node_rrset_count(nsec3_node); i++) {
+		uint16_t type = knot_rrset_type(rrsets[i]);
+		if (!(type == KNOT_RRTYPE_NSEC3 ||
+		    type == KNOT_RRTYPE_RRSIG)) {
+			err_handler_handle_error(handler, nsec3_node,
+			                         ZC_ERR_NSEC3_EXTRA_RECORD);
 		}
 	}
 
@@ -1163,7 +1176,11 @@ static int semantic_checks_plain(knot_zone_contents_t *zone,
 	                node) {
 		const knot_rrset_t *ns_rrset =
 				knot_node_rrset(node, KNOT_RRTYPE_NS);
-		assert(ns_rrset);
+		if (ns_rrset == NULL) {
+			err_handler_handle_error(handler, node,
+			                         ZC_ERR_MISSING_NS_DEL_POINT);
+			return KNOT_EOK;
+		}
 		//FIXME this should be an error as well ! (i guess)
 
 		knot_dname_t *ns_dname =
@@ -1320,15 +1337,6 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 				err_handler_handle_error(handler,
 						 node,
 						 ZC_ERR_NSEC_RDATA_MULTIPLE);
-				/* CLEANUP */
-/*				char *name =
-					knot_dname_to_str(
-					knot_node_owner(node));
-				log_zone_error("Node %s contains more "
-					       "than one NSEC "
-					       "record!\n", name);
-				knot_rrset_dump(nsec_rrset, 0);
-				free(name); */
 			}
 
 			/*
@@ -1352,9 +1360,6 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 					err_handler_handle_error(handler,
 						node,
 						ZC_ERR_NSEC_RDATA_CHAIN);
-					/* CLEANUP */
-/*					log_zone_error("NSEC chain is not "
-						       "coherent!\n"); */
 				}
 
 				if (knot_dname_compare(next_domain,

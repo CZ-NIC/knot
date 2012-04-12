@@ -119,7 +119,7 @@ static void tcp_sweep(fdset_t *set, int fd, void* data)
 #endif
 	}
 	
-	log_server_notice("Connection with %s:%d was terminated due to "
+	log_server_notice("Connection with '%s@%d' was terminated due to "
 	                  "inactivity.\n", r_addr, r_port);
 	fdset_remove(set, fd);
 	close(fd);
@@ -164,9 +164,9 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 			char r_addr[SOCKADDR_STRLEN];
 			sockaddr_tostr(&addr, r_addr, sizeof(r_addr));
 			int r_port = sockaddr_portnum(&addr);
-			log_server_warning("Couldn't receive query from %s:%d "
-			                  "within the time limit %ds.\n",
-			                  r_addr, r_port, TCP_ACTIVITY_WD);
+			log_server_warning("Couldn't receive query from '%s@%d'"
+			                  " within the time limit of %ds.\n",
+			                   r_addr, r_port, TCP_ACTIVITY_WD);
 		}
 		return KNOTD_ECONNREFUSED;
 	}

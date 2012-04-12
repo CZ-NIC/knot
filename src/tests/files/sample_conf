@@ -8,7 +8,7 @@ system {
 
   identity "I have no mouth and must scream";
   version "Infinitesimal";
-  storage "/var/run/knot/";
+  storage ".";
 }
 
 keys {

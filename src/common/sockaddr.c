@@ -49,6 +49,20 @@ int sockaddr_init(sockaddr_t *addr, int af)
 	return sockaddr_update(addr);
 }
 
+int sockaddr_isvalid(sockaddr_t *addr)
+{
+	return addr && addr->family > -1;
+}
+
+int sockaddr_copy(sockaddr_t *dst, const sockaddr_t *src)
+{
+	if (memcpy(dst, src, sizeof(sockaddr_t)) != NULL) {
+		return sockaddr_update(dst);
+	}
+	
+	return -1;
+}
+
 int sockaddr_update(sockaddr_t *addr)
 {
 	/* Update internal pointer. */
