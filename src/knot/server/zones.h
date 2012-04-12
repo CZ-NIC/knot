@@ -174,13 +174,12 @@ int zones_process_response(knot_nameserver_t *nameserver,
 
 /*!
  * \brief Decides what type of transfer should be used to update the given zone.
- *
- * \param nameserver Name server structure that uses the zone.
- * \param zone Zone to be updated by the transfer.
+ *.
+ * \param data Zone data for associated zone.
  *
  * \retval
  */
-knot_ns_xfr_type_t zones_transfer_to_use(const knot_zone_contents_t *zone);
+knot_ns_xfr_type_t zones_transfer_to_use(zonedata_t *data);
 
 int zones_save_zone(const knot_ns_xfr_t *xfr);
 

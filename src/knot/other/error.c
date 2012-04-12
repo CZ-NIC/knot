@@ -26,7 +26,7 @@ const error_table_t knotd_error_msgs[] = {
 	{KNOTD_ENOTSUP, "Parameter not supported."},
 	{KNOTD_EBUSY,   "Requested resource is busy."},
 	{KNOTD_EAGAIN,  "The system lacked the necessary resource, try again."},
-	{KNOTD_EACCES,  "Permission to perform requested operation is denied."},
+	{KNOTD_EACCES,  "Operation not permitted."},
 	{KNOTD_ECONNREFUSED, "Connection refused."},
 	{KNOTD_EISCONN, "Already connected."},
 	{KNOTD_EADDRINUSE, "Address already in use."},

@@ -170,16 +170,19 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 	if (!zd->ixfr_db) {
 		int ret = journal_create(cfg->ixfr_db, JOURNAL_NCOUNT);
 		if (ret != KNOTD_EOK) {
-			log_server_error("Failed to create journal file "
-			                 "'%s'\n", cfg->ixfr_db);
+			log_server_warning("Failed to create journal file "
+			                   "'%s' (%s)\n", cfg->ixfr_db,
+			                   knotd_strerror(ret));
 		}
 		zd->ixfr_db = journal_open(cfg->ixfr_db, cfg->ixfr_fslimit,
 		                           JOURNAL_LAZY, JOURNAL_DIRTY);
 	}
 	
-	if (zd->ixfr_db == 0) {
-		log_server_error("Failed to open journal file "
-		                 "'%s'\n", cfg->ixfr_db);
+	if (zd->ixfr_db == NULL) {
+		char ebuf[128] = {0};
+		strerror_r(errno, ebuf, sizeof(ebuf));
+		log_server_warning("Couldn't open journal file for zone '%s', "
+		                   "disabling IXFR/IN. (%s)\n", cfg->name, ebuf);
 	}
 
 	/* Initialize IXFR database syncing event. */
@@ -2281,7 +2284,7 @@ int zones_process_response(knot_nameserver_t *nameserver,
 		assert(ret > 0);
 		
 		/* Already transferring. */
-		int xfrtype = zones_transfer_to_use(contents);
+		int xfrtype = zones_transfer_to_use(zd);
 		if (pthread_mutex_trylock(&zd->xfr_in.lock) != 0) {
 			/* Unlock zone contents. */
 			dbg_zones("zones: SOA response received, but zone is "
@@ -2323,9 +2326,12 @@ int zones_process_response(knot_nameserver_t *nameserver,
 
 /*----------------------------------------------------------------------------*/
 
-knot_ns_xfr_type_t zones_transfer_to_use(const knot_zone_contents_t *zone)
+knot_ns_xfr_type_t zones_transfer_to_use(zonedata_t *data)
 {
-	/*! \todo Implement. */
+	if (data == NULL || data->ixfr_db == NULL) {
+		return XFR_TYPE_AIN;
+	}
+	
 	return XFR_TYPE_IIN;
 }
 

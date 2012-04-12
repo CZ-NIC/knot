@@ -324,7 +324,7 @@ int journal_create(const char *fn, uint16_t max_nodes)
 	int fd = open(fn, O_RDWR|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
 	if (fd < 0) {
 		dbg_journal("journal: failed to create file '%s'\n", fn);
-		return KNOTD_EINVAL;
+		return knot_map_errno(errno);
 	}
 	
 	/* Lock. */
@@ -429,7 +429,6 @@ journal_t* journal_open(const char *fn, size_t fslimit, int mode, uint16_t bflag
 	/* Open journal file for r/w (returns error if not exists). */
 	int fd = open(fn, O_RDWR);
 	if (fd < 0) {
-		dbg_journal("journal: failed to open file '%s'\n", fn);
 		return NULL;
 	}
 	
