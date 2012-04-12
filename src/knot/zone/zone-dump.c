@@ -475,7 +475,7 @@ static int knot_rrset_dump_binary(const knot_rrset_t *rrset, int fd,
 	}
 	
 	dbg_zdump_exec_detail(
-		char *name = knot_dname_to_str(knot_rrset_owner(rrsig));
+		char *name = knot_dname_to_str(knot_rrset_owner(rrset));
 		dbg_zdump_detail("zdump: dump_rrset: "
 	                         "Dumping RRSet \\w owner: %s.\n",
 		                 name);
