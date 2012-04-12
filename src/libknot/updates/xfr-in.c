@@ -2471,7 +2471,8 @@ static int xfrin_apply_remove2(knot_zone_contents_t *contents,
 dbg_xfrin_exec_verb(
 		char *name = knot_dname_to_str(
 			knot_rrset_owner(chset->remove[i]));
-		dbg_xfrin_verb("Removing RRSet: %s\n", name, knot_rrtype_to_str(
+		dbg_xfrin_verb("Removing RRSet: %s\n", name,
+                               knot_rrtype_to_string(
 		                knot_rrset_type(chset->remove[i])));
 		free(name);
 );
@@ -2557,7 +2558,7 @@ static int xfrin_apply_add2(knot_zone_contents_t *contents,
 dbg_xfrin_exec_verb(
 		char *name = knot_dname_to_str(
 			knot_rrset_owner(chset->add[i]));
-		dbg_xfrin_verb("Adding RRSet: %s\n", name, knot_rrtype_to_str(
+		dbg_xfrin_verb("Adding RRSet: %s\n", name, knot_rrtype_to_string(
 		               knot_rrset_type(chset->add[i])));
 		free(name);
 );
