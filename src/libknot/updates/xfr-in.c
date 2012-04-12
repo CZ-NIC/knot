@@ -1387,7 +1387,7 @@ dbg_xfrin_exec_detail(
 		if (r == NULL) {
 			continue;
 		}
-		while (r->next != rdatas[i]) {
+		while (r != NULL && r->next != rdatas[i]) {
 			if (r == rdata) {
 				dbg_xfrin_detail("Found same RDATA: %p\n", rdata);
 				knot_rdata_dump(rdata, type, 0);
