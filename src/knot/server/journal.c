@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <config.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -775,6 +776,10 @@ int journal_map(journal_t *journal, uint64_t id, char **dst, size_t size)
 		return KNOTD_ERROR;
 	}
 	
+	/* Advise usage of memory. */
+#ifdef HAVE_MADVISE
+	madvise(*dst, n->len + ps_delta, MADV_SEQUENTIAL);
+#endif
 	/* Correct dst pointer to alignment. */
 	*dst += ps_delta;
 	
