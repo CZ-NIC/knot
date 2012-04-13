@@ -217,12 +217,12 @@ libknot_la_SOURCES =				\
 
 libknots_la_SOURCES =				\
 	common/slab/slab.c			\
-	common/slab/malloc.c			\
 	common/slab/slab.h			\
-	common/slab/malloc.h			\
 	common/libtap/tap.c			\
 	common/libtap/tap.h			\
 	common/libtap/tap_unit.h		\
+	common/mempattern.h			\
+	common/mempattern.c			\
 	common/lists.c				\
 	common/base32.c				\
 	common/lists.h				\
@@ -265,7 +265,9 @@ libknots_la_SOURCES =				\
         common/fdset_kqueue.h			\
         common/fdset_kqueue.c			\
         common/fdset_epoll.h			\
-        common/fdset_epoll.c			
+        common/fdset_epoll.c			\
+	common/log.c				\
+	common/log.h			
 
 libknotd_la_SOURCES =				\
 	knot/stat/gatherer.c				\
@@ -273,8 +275,6 @@ libknotd_la_SOURCES =				\
 	knot/stat/gatherer.h				\
 	knot/stat/stat.h				\
 	knot/common.h				\
-	knot/other/log.c			\
-	knot/other/log.h			\
 	knot/other/debug.h			\
 	knot/other/error.h			\
 	knot/other/error.c			\

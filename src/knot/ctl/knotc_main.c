@@ -71,7 +71,8 @@ void help(int argc, char **argv)
 	       " stop      Stop %s server (no-op if not running).\n"
 	       " restart   Stops and then starts %s server.\n"
 	       " reload    Reload %s configuration and compiled zones.\n"
-	       " running   check if server is running.\n"
+	       " running   Check if server is running.\n"
+	       " checkconf Check server configuration.\n"
 	       "\n"
 	       " compile   Compile zone file.\n",
 	       PACKAGE_NAME, PACKAGE_NAME, PACKAGE_NAME, PACKAGE_NAME);
@@ -105,8 +106,7 @@ int check_zone(const char *db, const char* source)
 			break;
 		}
 		
-		fprintf(stderr, "error: ");
-		fprintf(stderr, emsg, source);
+		log_zone_error(emsg, source);
 		return KNOTD_ENOENT;
 	}
 
@@ -161,7 +161,7 @@ pid_t start_cmd(const char *argv[], int argc)
 		execvp(args[0], args);
 
 		/* Execute failed. */
-		fprintf(stderr, "Failed to run executable '%s'\n", args[0]);
+		log_server_error("Failed to run executable '%s'\n", args[0]);
 		for (int i = 0; i < argc; ++i) {
 			free(args[i]);
 		}
@@ -222,23 +222,23 @@ int zctask_wait(knotc_zctask_t *tasks, int count)
 	}
 	
 	if (z == 0) {
-		fprintf(stderr, "error: Failed to find zone for finished "
-		        "zone compilation process.\n");
+		log_server_error("Failed to find zone for finished "
+		                 "zone compilation process.\n");
 		return 1;
 	}
 	
 	/* Evaluate. */
 	if (!WIFEXITED(rc)) {
-		fprintf(stderr, "error: Compilation of '%s' "
-		        "failed, process was killed.\n",
-		        z->name);
+		log_server_error("Compilation of '%s' "
+		                 "failed, process was killed.\n",
+		                 z->name);
 		return 1;
 	} else {
 		if (rc < 0 || WEXITSTATUS(rc) != 0) {
-			fprintf(stderr, "error: Compilation of "
-			        "'%s' failed, knot-zcompile "
-			        "return code was '%d'\n",
-			        z->name, WEXITSTATUS(rc));
+			log_server_error("Compilation of "
+			                 "'%s' failed, knot-zcompile "
+			                 "return code was '%d'\n",
+			                 z->name, WEXITSTATUS(rc));
 			return 1;
 		}
 	}
@@ -289,7 +289,8 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 		// Check pidfile for w+
 		FILE* chkf = fopen(pidfile, "w+");
 		if (chkf == NULL) {
-			fprintf(stderr, "control: PID file '%s' is not writeable, refusing to start\n", pidfile);
+			log_server_error("PID file '%s' is not writeable, "
+			                 "refusing to start\n", pidfile);
 			return 1;
 		} else {
 			fclose(chkf);
@@ -305,15 +306,15 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 //		}
 		if (pid > 0 && pid_running(pid)) {
 
-			fprintf(stderr, "control: Server PID found, "
-			        "already running.\n");
+			log_server_error("Server PID found, "
+			                 "already running.\n");
 
 			if (!has_flag(flags, F_FORCE)) {
 				return 1;
 			} else {
-				fprintf(stderr, "control: forcing "
-					"server start, killing old pid=%ld.\n",
-					(long)pid);
+				log_server_info("Forcing  server start, "
+				                "killing old pid=%ld.\n",
+				                (long)pid);
 				kill(pid, SIGKILL);
 				pid_remove(pidfile);
 			}
@@ -344,7 +345,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 
 		// Execute command
 		if (has_flag(flags, F_INTERACTIVE)) {
-			printf("control: Running in interactive mode.\n");
+			log_server_info("Running in interactive mode.\n");
 			fflush(stderr);
 			fflush(stdout);
 		}
@@ -358,8 +359,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 		// Wait for finish
 		if (has_flag(flags, F_WAIT) && !has_flag(flags, F_INTERACTIVE)) {
 			if (has_flag(flags, F_VERBOSE)) {
-				fprintf(stdout, "control: waiting for server "
-						"to load.\n");
+				log_server_info("Waiting for server to load.\n");
 			}
 			/* Periodically read pidfile and wait for
 			 * valid result. */
@@ -379,14 +379,13 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 		valid_cmd = 1;
 		rc = 0;
 		if (pid <= 0 || !pid_running(pid)) {
-			fprintf(stderr, "Server PID not found, "
-			        "probably not running.\n");
+			log_server_warning("Server PID not found, "
+			                   "probably not running.\n");
 
 			if (!has_flag(flags, F_FORCE)) {
 				rc = 1;
 			} else {
-				fprintf(stderr, "control: forcing "
-				        "server stop.\n");
+				log_server_info("Forcing server stop.\n");
 			}
 		}
 
@@ -401,8 +400,8 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 		// Wait for finish
 		if (rc == 0 && has_flag(flags, F_WAIT)) {
 			if (has_flag(flags, F_VERBOSE)) {
-				fprintf(stdout, "control: waiting for server "
-						"to stop.\n");
+				log_server_info("Waiting for server "
+				                "to stop.\n");
 			}
 			/* Periodically read pidfile and wait for
 			 * valid result. */
@@ -426,8 +425,8 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 				break;
 			}
 			if (i == WAITPID_TIMEOUT) {
-				fprintf(stderr, "Timeout while "
-				        "waiting for the server to finish.\n");
+				log_server_error("Timeout while  waiting for "
+				                 "the server to finish.\n");
 				//pid_remove(pidfile);
 				break;
 			} else {
@@ -436,7 +435,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 			}
 		}
 
-		printf("Restarting server.\n");
+		log_server_info("Restarting server.\n");
 		rc = execute("start", argv, argc, -1, flags, jobs, pidfile);
 	}
 	if (strcmp(action, "reload") == 0) {
@@ -444,12 +443,11 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 		// Check PID
 		valid_cmd = 1;
 		if (pid <= 0 || !pid_running(pid)) {
-			fprintf(stderr, "Server PID not found, "
-			        "probably not running.\n");
+			log_server_warning("Server PID not found, "
+			                   "probably not running.\n");
 
 			if (has_flag(flags, F_FORCE)) {
-				fprintf(stderr, "control: forcing "
-				        "server stop.\n");
+				log_server_info("Forcing server stop.\n");
 			} else {
 				return 1;
 			}
@@ -472,29 +470,33 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 		// Check PID
 		valid_cmd = 1;
 		if (pid <= 0) {
-			printf("Server PID not found, "
-			       "probably not running.\n");
+			log_server_info("Server PID not found, "
+			                "probably not running.\n");
 			rc = 1;
 		} else {
 			if (!pid_running(pid)) {
-				printf("Server PID not found, "
-				       "probably not running.\n");
-				fprintf(stderr,
-				        "warning: PID file is stale.\n");
+				log_server_info("Server PID not found, "
+				                "probably not running.\n");
+				log_server_warning("PID file is stale.\n");
 			} else {
-				printf("Server running as PID %ld.\n",
-				       (long)pid);
+				log_server_info("Server running as PID %ld.\n",
+				                (long)pid);
 			}
 			rc = 0;
 		}
+	}
+	if (strcmp(action, "checkconf") == 0) {
+		log_server_info("OK, configuration is valid.\n");
+		rc = 0;
+		valid_cmd = 1;
 	}
 	if (strcmp(action, "compile") == 0) {
 		
 		// Print job count
 		if (jobs > 1) {
-			printf("warning: Will attempt to compile %d zones "
-			       "in parallel, this increases memory consumption "
-			       "for large zones.\n", jobs);
+			log_server_warning("Will attempt to compile %d zones "
+			                   "in parallel, this increases memory "
+			                   "consumption for large zones.\n", jobs);
 		}
 
 		// Check zone
@@ -515,12 +517,12 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 			// Check source files and mtime
 			int zone_status = check_zone(zone->db, zone->file);
 			if (zone_status == KNOTD_EOK) {
-				printf("Zone '%s' is up-to-date.\n",
-				       zone->name);
+				log_zone_info("Zone '%s' is up-to-date.\n",
+				              zone->name);
 
 				if (has_flag(flags, F_FORCE)) {
-					fprintf(stderr, "control: forcing "
-						"zone recompilation.\n");
+					log_zone_info("Forcing zone "
+					              "recompilation.\n");
 				} else {
 					continue;
 				}
@@ -533,7 +535,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 			
 			/* Evaluate space for new task. */
 			if (running == jobs) {
-				zctask_wait(tasks, jobs);
+				rc |= zctask_wait(tasks, jobs);
 				--running;
 			}
 
@@ -549,8 +551,8 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 
 			// Execute command
 			if (has_flag(flags, F_VERBOSE)) {
-				printf("Compiling '%s' as '%s'...\n",
-				       zone->name, zone->db);
+				log_zone_info("Compiling '%s' as '%s'...\n",
+				              zone->name, zone->db);
 			}
 			fflush(stdout);
 			fflush(stderr);
@@ -570,13 +572,13 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 		conf_read_unlock();
 	}
 	if (!valid_cmd) {
-		fprintf(stderr, "Invalid command: '%s'\n", action);
+		log_server_error("Invalid command: '%s'\n", action);
 		return 1;
 	}
 
 	// Log
 	if (has_flag(flags, F_VERBOSE)) {
-		printf("'%s' finished (return code %d)\n", action, rc);
+		log_server_info("'%s' finished (return code %d)\n", action, rc);
 	}
 	return rc;
 }
@@ -640,11 +642,8 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	// Initialize log (no output)
+	// Initialize log
 	log_init();
-	log_levels_set(LOGT_SYSLOG, LOG_ANY, 0);
-	log_levels_set(LOGT_STDOUT, LOG_ANY, 0);
-	closelog();
 
 	// Find implicit configuration file
 	char *default_fn = 0;
@@ -657,11 +656,11 @@ int main(int argc, char **argv)
 	int conf_ret = conf_open(config_fn);
 	if (conf_ret != KNOTD_EOK) {
 		if (conf_ret == KNOTD_ENOENT) {
-			fprintf(stderr, "Couldn't open configuration file "
-				"'%s'.\n", config_fn);
+			log_server_error("Couldn't open configuration file "
+			                 "'%s'.\n", config_fn);
 		} else {
-			fprintf(stderr, "Failed to parse configuration '%s'.\n",
-				config_fn);
+			log_server_error("Failed to parse configuration '%s'.\n",
+			                 config_fn);
 		}
 		free(default_fn);
 		return 1;
@@ -679,8 +678,8 @@ int main(int argc, char **argv)
 	// Fetch PID
 	char* pidfile = pid_filename();
 	if (!pidfile) {
-		fprintf(stderr, "No configuration found, "
-		        "please specify with '-c' parameter.\n");
+		log_server_error("No configuration found, "
+		                 "please specify with '-c' parameter.\n");
 		log_close();
 		return 1;
 	}

@@ -79,7 +79,7 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 
 #include "common/latency.h"
 #include "common/print.h"
-#include "knot/other/log.h"
+#include "common/log.h"
 #include "knot/other/debug.h"
 
 /*! \brief Eliminate compiler warning with unused parameters. */

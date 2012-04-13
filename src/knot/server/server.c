@@ -759,7 +759,7 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 			h->state = ServerRunning;
 			ret = dt_start(h->unit);
 			if (ret < 0) {
-				log_server_error("Handler for %s:%d "
+				log_server_error("Handler for '%s@%d' "
 				                 "has failed to start.\n",
 				                  h->iface->addr,
 				                  h->iface->port);

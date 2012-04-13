@@ -20,10 +20,10 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include "common/log.h"
+#include "common/lists.h"
 #include "knot/common.h"
 #include "knot/other/error.h"
-#include "knot/other/log.h"
-#include "common/lists.h"
 #include "knot/conf/conf.h"
 
 /*! Log source table. */
@@ -208,6 +208,20 @@ static int _log_msg(logsrc_t src, int level, const char *msg)
 
 	// Convert level to mask
 	level = LOG_MASK(level);
+	
+	/* Prefix date and time. */
+	char tstr[128] = {0};
+	int tlen = 0;
+	time_t t = time(NULL);
+	struct tm *lt = localtime(&t);
+	if (lt != NULL) {
+		tlen = strftime(tstr, sizeof(tstr) - 1,
+		                "%d-%m-%Y %H:%M:%S", lt);
+		if (tlen > 0) {
+			tstr[tlen] = ' ';
+			tstr[tlen + 1] = '\0';
+		}
+	}
 
 	// Log streams
 	for (int i = LOGT_STDERR; i < LOGT_FILE + LOG_FDS_OPEN; ++i) {
@@ -224,7 +238,7 @@ static int _log_msg(logsrc_t src, int level, const char *msg)
 			}
 
 			// Print
-			ret = fprintf(stream, "%s", msg);
+			ret = fprintf(stream, "%s%s", tstr, msg);
 			if (stream == stdout) {
 				fflush(stream);
 			}
@@ -248,15 +262,15 @@ int log_msg(logsrc_t src, int level, const char *msg, ...)
 	/* Prefix error level. */
 	const char *prefix = "";
 	switch (level) {
-	case LOG_DEBUG: break;
-	case LOG_INFO:  break;
-	case LOG_NOTICE:  prefix = "notice: "; break;
-	case LOG_WARNING: prefix = "warning: "; break;
-	case LOG_ERR:     prefix = "error: "; break;
-	case LOG_FATAL:   prefix = "fatal: "; break;
+	case LOG_DEBUG:   prefix = "[debug] "; break;
+	case LOG_INFO:    prefix = ""; break;
+	case LOG_NOTICE:  prefix = "[notice] "; break;
+	case LOG_WARNING: prefix = "[warning] "; break;
+	case LOG_ERR:     prefix = "[error] "; break;
+	case LOG_FATAL:   prefix = "[fatal] "; break;
 	default: break;
 	}
-
+	
 	/* Prepend prefix. */
 	int plen = strlen(prefix);
 	if (plen > buflen) {

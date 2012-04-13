@@ -37,32 +37,31 @@ struct fdset_t {
 	struct kevent *revents;
 	size_t nfds;
 	size_t reserved;
+	size_t rreserved;
 	size_t polled;
 };
 
 fdset_t *fdset_kqueue_new()
 {
 	fdset_t *set = malloc(sizeof(fdset_t));
-	if (!set) {
-		return 0;
+	if (set) {
+		/* Blank memory. */
+		memset(set, 0, sizeof(fdset_t));
+	
+		/* Create kqueue fd. */
+		set->kq = kqueue();
+		if (set->kq < 0) {
+			free(set);
+			set = 0;
+		}
 	}
-
-	/* Blank memory. */
-	memset(set, 0, sizeof(fdset_t));
-
-	/* Create kqueue fd. */
-	set->kq = kqueue();
-	if (set->kq < 0) {
-		free(set);
-		set = 0;
-	}
-
+	
 	return set;
 }
 
 int fdset_kqueue_destroy(fdset_t * fdset)
 {
-	if(!fdset) {
+	if(fdset == NULL) {
 		return -1;
 	}
 
@@ -76,45 +75,20 @@ int fdset_kqueue_destroy(fdset_t * fdset)
 	return 0;
 }
 
-int fdset_kqueue_realloc(struct kevent **old, size_t oldsize, size_t nsize)
-{
-	void *nmem = malloc(nsize);
-	if (!nmem) {
-		return -1;
-	}
-
-	/* Clear and copy old fdset data. */
-	memset(nmem, 0, nsize);
-	if (oldsize > 0) {
-		memcpy(nmem, *old, oldsize);
-		free(*old);
-	}
-	
-	*old = nmem;
-	return 0;
-}
-
 int fdset_kqueue_add(fdset_t *fdset, int fd, int events)
 {
-	if (!fdset || fd < 0 || events <= 0) {
+	if (fdset == NULL || fd < 0 || events <= 0) {
 		return -1;
 	}
 
 	/* Realloc needed. */
-	if (fdset->nfds == fdset->reserved) {
-		size_t chunk = OS_FDS_CHUNKSIZE;
-		size_t nsize = (fdset->reserved + chunk) *
-				     sizeof(struct kevent);
-		size_t oldsize = fdset->nfds * sizeof(struct kevent);
-		
-		if (fdset_kqueue_realloc(&fdset->events, oldsize, nsize) < 0) {
-			return -1;
-		}
-		
-		if (fdset_kqueue_realloc(&fdset->revents, oldsize, nsize) < 0) {
-			return -1;
-		}
-
+	int ret = 0;
+	ret += mreserve((char **)&fdset->events, sizeof(struct kevent),
+	                fdset->nfds + 1, OS_FDS_CHUNKSIZE, &fdset->reserved);
+	ret += mreserve((char **)&fdset->revents, sizeof(struct kevent),
+	                fdset->nfds + 1, OS_FDS_CHUNKSIZE, &fdset->rreserved);
+	if (ret != 0) {
+		return ret;
 	}
 
 	/* Add to kqueue set. */
@@ -128,7 +102,7 @@ int fdset_kqueue_add(fdset_t *fdset, int fd, int events)
 
 int fdset_kqueue_remove(fdset_t *fdset, int fd)
 {
-	if (!fdset || fd < 0) {
+	if (fdset == NULL || fd < 0) {
 		return -1;
 	}
 	
@@ -153,16 +127,35 @@ int fdset_kqueue_remove(fdset_t *fdset, int fd)
 	size_t remaining = ((fdset->nfds - pos) - 1) * sizeof(struct kevent);
 	memmove(fdset->events + pos, fdset->events + (pos + 1), remaining);
 	
+	/* Attempt to remove from revents set. */
+	pos = -1;
+	for (int i = 0; i < fdset->nfds; ++i) {
+		if (fdset->events[i].ident == fd) {
+			pos = i;
+			break;
+		}
+	}
+	if (pos >= 0) {
+		size_t remaining = ((fdset->nfds - pos) - 1) * sizeof(struct kevent);
+		memmove(fdset->revents + pos, fdset->revents + (pos + 1), remaining);
+	}
+
+	
 	/* Overwrite current item. */
 	--fdset->nfds;
 
-	/*! \todo Return memory if unused (issue #1582). */
+	/* Trim excessive memory if possible (retval is not interesting). */
+	mreserve((char **)&fdset->events, sizeof(struct kevent),
+	         fdset->nfds, OS_FDS_CHUNKSIZE, &fdset->reserved);
+	mreserve((char **)&fdset->revents, sizeof(struct kevent),
+	         fdset->nfds, OS_FDS_CHUNKSIZE, &fdset->rreserved);
+
 	return 0;
 }
 
 int fdset_kqueue_wait(fdset_t *fdset, int timeout)
 {
-	if (!fdset || fdset->nfds < 1 || !fdset->events) {
+	if (fdset == NULL || fdset->nfds < 1 || fdset->events == NULL) {
 		return -1;
 	}
 
@@ -196,7 +189,7 @@ int fdset_kqueue_wait(fdset_t *fdset, int timeout)
 
 int fdset_kqueue_begin(fdset_t *fdset, fdset_it_t *it)
 {
-	if (!fdset || !it) {
+	if (fdset == NULL || it == NULL) {
 		return -1;
 	}
 
@@ -207,7 +200,7 @@ int fdset_kqueue_begin(fdset_t *fdset, fdset_it_t *it)
 
 int fdset_kqueue_end(fdset_t *fdset, fdset_it_t *it)
 {
-	if (!fdset || !it || fdset->nfds < 1) {
+	if (fdset == NULL || it == NULL || fdset->nfds < 1) {
 		return -1;
 	}
 
@@ -228,7 +221,7 @@ int fdset_kqueue_end(fdset_t *fdset, fdset_it_t *it)
 
 int fdset_kqueue_next(fdset_t *fdset, fdset_it_t *it)
 {
-	if (!fdset || !it || fdset->nfds < 1) {
+	if (fdset == NULL || it == NULL || fdset->nfds < 1) {
 		return -1;
 	}
 

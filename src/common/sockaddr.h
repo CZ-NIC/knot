@@ -74,6 +74,16 @@ typedef struct sockaddr_t {
 int sockaddr_init(sockaddr_t *addr, int af);
 
 /*!
+ * \brief Return true value if sockaddr is valid.
+ *
+ * \param addr Socket address structure.
+ *
+ * \retval true on succes.
+ * \retval false otherwise.
+ */
+int sockaddr_isvalid(sockaddr_t *addr);
+
+/*!
  * \brief Update internal pointers according to length.
  *
  * \param addr Socket address structure.
@@ -82,6 +92,17 @@ int sockaddr_init(sockaddr_t *addr, int af);
  * \retval -1 on invalid size.
  */
 int sockaddr_update(sockaddr_t *addr);
+
+/*!
+ * \brief Copy socket address structure.
+ *
+ * \param dst Target address structure.
+ * \param src Source address structure.
+ *
+ * \retval 0 on success.
+ * \retval -1 on error.
+ */
+int sockaddr_copy(sockaddr_t *dst, const sockaddr_t *src);
 
 /*!
  * \brief Set address and port.
@@ -119,7 +140,7 @@ int sockaddr_setprefix(sockaddr_t *dst, int prefix);
  * \retval 0 on success.
  * \retval -1 on invalid parameters.
  */
-int sockaddr_tostr(sockaddr_t *addr, char *dst, size_t size);
+int sockaddr_tostr(const sockaddr_t *addr, char *dst, size_t size);
 
 /*!
  * \brief Return port number from address.
@@ -129,7 +150,7 @@ int sockaddr_tostr(sockaddr_t *addr, char *dst, size_t size);
  * \retval Port number on success.
  * \retval -1 on errors.
  */
-int sockaddr_portnum(sockaddr_t *addr);
+int sockaddr_portnum(const sockaddr_t *addr);
 
 #endif /* _KNOTD_SOCKADDR_H_ */
 

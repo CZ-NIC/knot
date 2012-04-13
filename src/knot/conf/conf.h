@@ -37,7 +37,8 @@
 #include "libknot/util/descriptor.h"
 #include "libknot/tsig.h"
 #include "common/lists.h"
-#include "knot/other/log.h"
+#include "common/log.h"
+#include "common/sockaddr.h"
 
 /* Constants. */
 #define CONFIG_DEFAULT_PORT 53
@@ -60,7 +61,7 @@ typedef struct conf_iface_t {
 	int port;         /*!< Port number for this interface */
 	int family;       /*!< Address family. */
 	knot_key_t *key;  /*!< TSIG key (only valid for remotes). */
-	struct conf_iface_t *via; /*!< Used for remotes to specify qry endpoint.*/
+	sockaddr_t  via;  /*!< Used for remotes to specify qry endpoint.*/
 } conf_iface_t;
 
 /*!

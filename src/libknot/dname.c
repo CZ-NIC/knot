@@ -163,8 +163,7 @@ static int knot_dname_str_to_wire(const char *name, uint size,
 		return -1;
 	}
 
-	dbg_dname("Allocated space for wire format of dname: %p\n",
-	                   wire);
+	dbg_dname("Allocated space for wire format of dname: %p\n", wire);
 
 	if (root) {
 		*wire = '\0';
@@ -399,13 +398,22 @@ knot_dname_t *knot_dname_new_from_str(const char *name, uint size,
 		return NULL;
 	}
 
-	knot_dname_str_to_wire(name, size, dname);
-	dbg_dname("Created dname with size: %d\n", dname->size);
-	dbg_dname("Label offsets: ");
-	for (int i = 0; i < dname->label_count; ++i) {
-		dbg_dname("%d, ", dname->labels[i]);
+	/*! \todo The function should return error codes. */
+	int ret = knot_dname_str_to_wire(name, size, dname);
+	if (ret != 0) {
+		dbg_dname("Failed to create domain name from string.\n");
+		knot_dname_free(&dname);
+		return NULL;
 	}
-	dbg_dname("\n");
+
+dbg_dname_exec_verb(
+	dbg_dname_verb("Created dname with size: %d\n", dname->size);
+	dbg_dname_verb("Label offsets: ");
+	for (int i = 0; i < dname->label_count; ++i) {
+		dbg_dname_verb("%d, ", dname->labels[i]);
+	}
+	dbg_dname_verb("\n");
+);
 
 	if (dname->size <= 0) {
 		dbg_dname("Could not parse domain name "
@@ -467,6 +475,7 @@ knot_dname_t *knot_dname_new_from_wire(const uint8_t *name, uint size,
 	dname->size = size;
 
 	if (knot_dname_find_labels(dname, 1) != 0) {
+		dbg_dname("Could not find labels in dname (new from wire).\n");
 		knot_dname_free(&dname);
 		return NULL;
 	}
@@ -567,6 +576,7 @@ knot_dname_t *knot_dname_parse_from_wire(const uint8_t *wire,
 	memcpy(dname->name, name, i + 1);
 	dname->size = i + 1;
 
+	/*! \todo Why l + 1 ?? */
 	dname->labels = (uint8_t *)malloc((l + 1) * sizeof(uint8_t));
 	if (dname->labels == NULL) {
 		ERR_ALLOC_FAILED;
@@ -603,8 +613,35 @@ int knot_dname_from_wire(const uint8_t *name, uint size,
 
 knot_dname_t *knot_dname_deep_copy(const knot_dname_t *dname)
 {
-	return knot_dname_new_from_wire(dname->name, dname->size,
-	                                  dname->node);
+	//return knot_dname_new_from_wire(dname->name, dname->size, dname->node);
+	/* dname_new_from_wire() does not accept non-FQDN dnames, so we
+	 * do the copy by hand. It's faster anyway */
+
+	knot_dname_t *copy = knot_dname_new();
+	CHECK_ALLOC(copy, NULL);
+
+	copy->labels = (uint8_t *)(malloc(dname->label_count));
+
+	if (copy->labels == NULL) {
+		knot_dname_free(&copy);
+		return NULL;
+	}
+
+	copy->name = (uint8_t *)(malloc(dname->size));
+	if (copy->name == NULL) {
+		knot_dname_free(&copy);
+		return NULL;
+	}
+
+	memcpy(copy->labels, dname->labels, dname->label_count);
+	copy->label_count = dname->label_count;
+
+	memcpy(copy->name, dname->name, dname->size);
+	copy->size = dname->size;
+
+	copy->node = dname->node;
+
+	return copy;
 }
 
 /*----------------------------------------------------------------------------*/

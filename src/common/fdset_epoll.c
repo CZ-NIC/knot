@@ -27,7 +27,6 @@
 #include "skip-list.h"
 
 #define OS_FDS_CHUNKSIZE 8   /*!< Number of pollfd structs in a chunk. */
-#define OS_FDS_KEEPCHUNKS 32 /*!< Will attempt to free memory when reached. */
 
 struct fdset_t {
 	fdset_base_t _base;
@@ -41,22 +40,20 @@ struct fdset_t {
 fdset_t *fdset_epoll_new()
 {
 	fdset_t *set = malloc(sizeof(fdset_t));
-	if (!set) {
-		return NULL;
+	if (set) {
+		/* Blank memory. */
+		memset(set, 0, sizeof(fdset_t));
+	
+		/* Create epoll fd. */
+		set->epfd = epoll_create(OS_FDS_CHUNKSIZE);
 	}
-
-	/* Blank memory. */
-	memset(set, 0, sizeof(fdset_t));
-
-	/* Create epoll fd. */
-	set->epfd = epoll_create(OS_FDS_CHUNKSIZE);
-
+	
 	return set;
 }
 
 int fdset_epoll_destroy(fdset_t * fdset)
 {
-	if(!fdset) {
+	if(fdset == NULL) {
 		return -1;
 	}
 
@@ -71,27 +68,14 @@ int fdset_epoll_destroy(fdset_t * fdset)
 
 int fdset_epoll_add(fdset_t *fdset, int fd, int events)
 {
-	if (!fdset || fd < 0 || events <= 0) {
+	if (fdset == NULL || fd < 0 || events <= 0) {
 		return -1;
 	}
 
 	/* Realloc needed. */
-	if (fdset->nfds == fdset->reserved) {
-		const size_t chunk = OS_FDS_CHUNKSIZE;
-		const size_t nsize = (fdset->reserved + chunk) *
-				     sizeof(struct epoll_event);
-		struct epoll_event *events_n = malloc(nsize);
-		if (!events_n) {
-			return -1;
-		}
-
-		/* Clear and copy old fdset data. */
-		memset(events_n, 0, nsize);
-		memcpy(events_n, fdset->events,
-		       fdset->nfds * sizeof(struct epoll_event));
-		free(fdset->events);
-		fdset->events = events_n;
-		fdset->reserved += chunk;
+	if (mreserve((char **)&fdset->events, sizeof(struct epoll_event),
+	             fdset->nfds + 1, OS_FDS_CHUNKSIZE, &fdset->reserved) < 0) {
+		return -1;
 	}
 
 	/* Add to epoll set. */
@@ -109,7 +93,7 @@ int fdset_epoll_add(fdset_t *fdset, int fd, int events)
 
 int fdset_epoll_remove(fdset_t *fdset, int fd)
 {
-	if (!fdset || fd < 0) {
+	if (fdset == NULL || fd < 0) {
 		return -1;
 	}
 
@@ -123,13 +107,16 @@ int fdset_epoll_remove(fdset_t *fdset, int fd)
 	/* Overwrite current item. */
 	--fdset->nfds;
 
-	/*! \todo Return memory if unused (issue #1582). */
+	/* Trim excessive memory if possible (retval is not interesting). */
+	mreserve((char **)&fdset->events, sizeof(struct epoll_event), fdset->nfds,
+	         OS_FDS_CHUNKSIZE, &fdset->reserved);
+	
 	return 0;
 }
 
 int fdset_epoll_wait(fdset_t *fdset, int timeout)
 {
-	if (!fdset || fdset->nfds < 1 || !fdset->events) {
+	if (fdset == NULL || fdset->nfds < 1 || fdset->events == NULL) {
 		return -1;
 	}
 
@@ -149,7 +136,7 @@ int fdset_epoll_wait(fdset_t *fdset, int timeout)
 
 int fdset_epoll_begin(fdset_t *fdset, fdset_it_t *it)
 {
-	if (!fdset || !it) {
+	if (fdset == NULL || it == NULL) {
 		return -1;
 	}
 
@@ -160,7 +147,7 @@ int fdset_epoll_begin(fdset_t *fdset, fdset_it_t *it)
 
 int fdset_epoll_end(fdset_t *fdset, fdset_it_t *it)
 {
-	if (!fdset || !it || fdset->nfds < 1) {
+	if (fdset == NULL || it == NULL || fdset->nfds < 1) {
 		return -1;
 	}
 
@@ -181,7 +168,7 @@ int fdset_epoll_end(fdset_t *fdset, fdset_it_t *it)
 
 int fdset_epoll_next(fdset_t *fdset, fdset_it_t *it)
 {
-	if (!fdset || !it || fdset->nfds < 1) {
+	if (fdset == NULL || it == NULL || fdset->nfds < 1) {
 		return -1;
 	}
 

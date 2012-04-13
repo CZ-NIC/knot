@@ -34,7 +34,7 @@ unit_api journal_tests_api = {
 /*
  *  Unit implementation.
  */
-static const int JOURNAL_TEST_COUNT = 12;
+static const int JOURNAL_TEST_COUNT = 20;
 
 /*! \brief Generate random string with given length. */
 static int randstr(char* dst, size_t len)
@@ -164,13 +164,13 @@ static int journal_tests_run(int argc, char *argv[])
 			memcpy(chk_buf, tmpbuf, sizeof(chk_buf));
 		}
 	}
-	ok(ret == 0, "journal: sustained looped writes");
+	ok(j && ret == 0, "journal: sustained looped writes");
 
 	/* Test 11: Check data integrity. */
 	memset(tmpbuf, 0, sizeof(tmpbuf));
 	journal_read(j, chk_key, 0, tmpbuf);
 	ret = strncmp(chk_buf, tmpbuf, sizeof(chk_buf));
-	ok(ret == 0, "journal: read data integrity check");
+	ok(j && ret == 0, "journal: read data integrity check");
 
 	/* Test 12: Reopen log and re-read value. */
 	memset(tmpbuf, 0, sizeof(tmpbuf));
@@ -178,7 +178,89 @@ static int journal_tests_run(int argc, char *argv[])
 	j = journal_open(jfilename, fsize, 0, 0);
 	journal_read(j, chk_key, 0, tmpbuf);
 	ret = strncmp(chk_buf, tmpbuf, sizeof(chk_buf));
-	ok(ret == 0, "journal: read data integrity check after close/open");
+	ok(j && ret == 0, "journal: read data integrity check after close/open");
+	
+	/* Test 13: Map journal entry. */
+	char *mptr = NULL;
+	memset(chk_buf, 0xde, sizeof(chk_buf));
+	ret = journal_map(j, 0x12345, &mptr, sizeof(chk_buf));
+	ok(j && mptr && ret == 0, "journal: mapped journal entry");
+	skip(ret != 0, 2);
+	
+	/* Test 14: Write to mmaped entry and unmap. */
+	memcpy(mptr, chk_buf, sizeof(chk_buf));
+	ret = journal_unmap(j, 0x12345, mptr, 1);
+	ok(j && mptr && ret == 0, "journal: written to mapped entry and finished");
+	
+	/* Test 15: Compare mmaped entry. */
+	memset(tmpbuf, 0, sizeof(tmpbuf));
+	journal_read(j, 0x12345, NULL, tmpbuf);
+	ret = strncmp(chk_buf, tmpbuf, sizeof(chk_buf));
+	ok(j && ret == 0, "journal: mapped entry data integrity check");
+	endskip;
+	
+	/* Test 17: Make a transaction. */
+	uint64_t tskey = 0x75750000;
+	ret = journal_trans_begin(j);
+	ok(j && ret == 0, "journal: TRANS begin");
+	for (int i = 0; i < 16; ++i) {
+		memset(tmpbuf, i, sizeof(tmpbuf));
+		journal_write(j, tskey + i, tmpbuf, sizeof(tmpbuf));
+	}
+	
+	/* Test 18: Check if uncommited node exists. */
+	ret = journal_read(j, tskey + rand() % 16, NULL, chk_buf);
+	ok(j && ret != 0, "journal: check for uncommited node");
+	
+	/* Test 19: Commit transaction. */
+	ret = journal_trans_commit(j);
+	int read_ret = journal_read(j, tskey + rand() % 16, NULL, chk_buf);
+	ok(j && ret == 0 && read_ret == 0, "journal: transaction commit");
+	
+	/* Test 20: Rollback transaction. */
+	tskey = 0x6B6B0000;
+	journal_trans_begin(j);
+	for (int i = 0; i < 16; ++i) {
+		memset(tmpbuf, i, sizeof(tmpbuf));
+		journal_write(j, tskey + i, tmpbuf, sizeof(tmpbuf));
+	}
+	ret = journal_trans_rollback(j);
+	read_ret = journal_read(j, tskey + rand() % 16, NULL, chk_buf);
+	ok(j && ret == 0 && read_ret != 0, "journal: transaction rollback");
+
+	/* Test 16: Write random data. */
+	ret = 0;
+	for (int i = 0; i < 512; ++i) {
+		int key = i;
+		randstr(tmpbuf, sizeof(tmpbuf));
+		ret = journal_map(j, key, &mptr, sizeof(tmpbuf));
+		if (ret != KNOTD_EOK) {
+			diag("journal_map failed: %s", knotd_strerror(ret));
+			break;
+		}
+		memcpy(mptr, tmpbuf, sizeof(tmpbuf));
+		if ((ret = journal_unmap(j, key, mptr, 1)) != KNOTD_EOK) {
+			diag("journal_unmap failed: %s", knotd_strerror(ret));
+			break;
+		}
+
+		/* Store some key on the end. */
+		memset(chk_buf, 0, sizeof(chk_buf));
+		ret = journal_read(j, key, 0, chk_buf);
+		if (ret != 0) {
+			diag("journal_map integrity check failed %s",
+			     knotd_strerror(ret));
+			break;
+		}
+		ret = strncmp(chk_buf, tmpbuf, sizeof(chk_buf));
+		if (ret != 0) {
+			diag("journal_map integrity check failed");
+			break;
+		}
+	}
+
+	/* Test 16: Check data integrity. */
+	ok(j && ret == 0, "journal: sustained mmap r/w");
 
 	/* Close journal. */
 	journal_close(j);

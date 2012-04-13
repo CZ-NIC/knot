@@ -53,7 +53,7 @@ typedef struct tcp_worker_t {
 /*
  * Forward decls.
  */
-#define TCP_THROTTLE_LO 10 /*!< Minimum recovery time on errors. */
+#define TCP_THROTTLE_LO 5 /*!< Minimum recovery time on errors. */
 #define TCP_THROTTLE_HI 50 /*!< Maximum recovery time on errors. */
 
 /*! \brief Calculate TCP throttle time (random). */
@@ -119,7 +119,7 @@ static void tcp_sweep(fdset_t *set, int fd, void* data)
 #endif
 	}
 	
-	log_server_notice("Connection with %s:%d was terminated due to "
+	log_server_notice("Connection with '%s@%d' was terminated due to "
 	                  "inactivity.\n", r_addr, r_port);
 	fdset_remove(set, fd);
 	close(fd);
@@ -164,9 +164,9 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 			char r_addr[SOCKADDR_STRLEN];
 			sockaddr_tostr(&addr, r_addr, sizeof(r_addr));
 			int r_port = sockaddr_portnum(&addr);
-			log_server_warning("Couldn't receive query from %s:%d "
-			                  "within the time limit %ds.\n",
-			                  r_addr, r_port, TCP_ACTIVITY_WD);
+			log_server_warning("Couldn't receive query from '%s@%d'"
+			                  " within the time limit of %ds.\n",
+			                   r_addr, r_port, TCP_ACTIVITY_WD);
 		}
 		return KNOTD_ECONNREFUSED;
 	}
@@ -290,7 +290,6 @@ static int tcp_accept(int fd)
 	/* Evaluate connection. */
 	if (incoming < 0) {
 		int en = errno;
-		/*! \todo Better solution so it doesn't block current connections (issue #1542). */
 		if (en != EINTR) {
 			log_server_error("Cannot accept connection "
 					 "(%d).\n", errno);

@@ -174,13 +174,12 @@ int zones_process_response(knot_nameserver_t *nameserver,
 
 /*!
  * \brief Decides what type of transfer should be used to update the given zone.
- *
- * \param nameserver Name server structure that uses the zone.
- * \param zone Zone to be updated by the transfer.
+ *.
+ * \param data Zone data for associated zone.
  *
  * \retval
  */
-knot_ns_xfr_type_t zones_transfer_to_use(const knot_zone_contents_t *zone);
+knot_ns_xfr_type_t zones_transfer_to_use(zonedata_t *data);
 
 int zones_save_zone(const knot_ns_xfr_t *xfr);
 
@@ -212,9 +211,40 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data);
  * \retval KNOTD_EAGAIN if journal needs to be synced with zonefile first.
  *
  * \todo Expects the xfr structure to be initialized in some way.
+ * \todo Update documentation!!!
  */
 int zones_store_changesets(knot_ns_xfr_t *xfr);
 
+/*!
+ * \brief Begin changesets storing transaction.
+ *
+ * \retval pointer to journal if successful
+ * \retval NULL on failure.
+ */
+journal_t *zones_store_changesets_begin(knot_ns_xfr_t *xfr);
+
+/*!
+ * \brief Commit stored changesets.
+ *
+ * \retval KNOTD_EOK on success.
+ * \retval KNOTD_EINVAL on invalid parameters.
+ * \retval KNOTD_ENOENT when no transaction is pending.
+ */
+int zones_store_changesets_commit(journal_t *j);
+
+/*!
+ * \brief Rollback stored changesets.
+ *
+ * \retval KNOTD_EOK on success.
+ * \retval KNOTD_EINVAL on invalid parameters.
+ * \retval KNOTD_ENOENT when no transaction is pending.
+ */
+int zones_store_changesets_rollback(journal_t *j);
+
+/*! \todo Document me. */
+int zones_changesets_from_binary(knot_changesets_t *chgsets);
+
+/*! \todo Document me. */
 int zones_changesets_to_binary(knot_changesets_t *chgsets);
 
 /*!

@@ -372,7 +372,6 @@ static int dt_tests_run(int argc, char *argv[])
 		ret += dt_join(0);                  // -1
 		ret += dt_repurpose(0, 0, 0);       // -1
 		ret += dt_resize(0, 0);             // -1
-		ret += dt_setprio(0, 0);            // -1
 		ret += dt_signalize(0, SIGALRM);    // -1
 		ret += dt_start(0);                 // -1
 		ret += dt_start_id(0);              // -1

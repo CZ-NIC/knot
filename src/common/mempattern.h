@@ -14,7 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file malloc.h
+ * \file mempattern.h
  *
  * \author Marek Vavrusa <marek.vavrusa@nic.cz>
  *
@@ -27,7 +27,32 @@
 #ifndef _KNOTD_COMMON_MALLOC_H_
 #define _KNOTD_COMMON_MALLOC_H_
 
-#include <stdlib.h>
+/*!
+ * \brief Reserve new or trim excessive memory.
+ *
+ * \param p Double-pointer to memory region.
+ * \param tlen Memory unit (f.e. sizeof(int) for int* array)
+ * \param min Minimum number of items required.
+ * \param allow Maximum extra items to keep (for trimming).
+ * \param reserved Pointer to number of already reserved items.
+ *
+ * \note Example usage:
+ * char *buf = NULL; size_t len = 0;
+ * if (mreserve(&buf, sizeof(char), 6, 0, &len) == 0) {
+ *   memcpy(buf, "hello", strlen("hello");
+ *   if (mreserve(&buf, sizeof(char), 20, 0, &len) == 0) {
+ *     strncat(buf, "!", 1);
+ *     mreserve(&buf, sizeof(char), strlen("hello!")+1, 0, &len);
+ *   }
+ * }
+ * free(buf);
+ *
+ * \retval 0 on success.
+ * \retval -1 on error.
+ *
+ * \note Memory region will be left untouched if function fails.
+ */
+int mreserve(char **p, size_t tlen, size_t min, size_t allow, size_t *reserved);
 
 /*! \brief Print usage statistics.
  *

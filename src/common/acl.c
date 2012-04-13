@@ -52,34 +52,29 @@ static int acl_compare(void *k1, void *k2)
 	}
 
 	/* Compare integers if IPv4. */
-	if (a1->len == sizeof(struct sockaddr_in)) {
+	if (a1->family == AF_INET) {
 		
 		/* Compute mask .*/
 		uint32_t mask = acl_fill_mask32(a1->prefix);
 
 		/* Compare address. */
-		ldiff = (int)((acl_sa_ipv4(a1) & mask) - (acl_sa_ipv4(a2) & mask));
-		if (ldiff < 0) {
-			return -1;
-		} else if (ldiff > 0) {
-			return 1;
-		} else {
-			return 0;
-		}
-
+		int cmp1 = (acl_sa_ipv4(a1) & mask);
+		int cmp2 = (acl_sa_ipv4(a2) & mask);
+		if (cmp1 > cmp2) return  1;
+		if (cmp1 < cmp2) return -1;
 		return 0;
 	}
 
 	/* IPv6 matching. */
 #ifndef DISABLE_IPV6
-	if (a1->len == sizeof(struct sockaddr_in6)) {
+	if (a1->family == AF_INET6) {
 		
 		/* Get mask .*/
 		short chunk = a1->prefix;
 		
 		/* Compare address by 32bit chunks. */
-		uint32_t* a1p = (uint32_t*)&a1->addr6.sin6_addr;
-		uint32_t* a2p = (uint32_t*)&a2->addr6.sin6_addr;
+		uint32_t* a1p = (uint32_t *)(&a1->addr6.sin6_addr);
+		uint32_t* a2p = (uint32_t *)(&a2->addr6.sin6_addr);
 		
 		/* Mask 0 = 0 bits to compare from LO->HO (in big-endian).
 		 * Mask 128 = 128 bits to compare.
@@ -93,12 +88,10 @@ static int acl_compare(void *k1, void *k2)
 				chunk = 0;
 			}
 
-			ldiff = (*(a1p++) & mask) ^ (*(a2p++) & mask);
-			if (ldiff < 0) {
-				return -1;
-			} else if (ldiff > 0) {
-				return 1;
-			}
+			int cmp1 = (*(a1p++) & mask);
+			int cmp2 = (*(a2p++) & mask);
+			if (cmp1 > cmp2) return  1;
+			if (cmp1 < cmp2) return -1;
 		}
 
 		return 0;
@@ -157,9 +150,8 @@ void acl_delete(acl_t **acl)
 	}
 
 	/* Truncate rules. */
-	if (acl_truncate(*acl) != ACL_ACCEPT) {
-		return;
-	}
+	skip_destroy_list(&(*acl)->rules, 0, free);
+	skip_destroy_list(&(*acl)->rules_pref, 0, free);
 
 	/* Free ACL. */
 	free(*acl);
@@ -227,6 +219,11 @@ int acl_truncate(acl_t *acl)
 	/* Destroy all rules. */
 	skip_destroy_list(&acl->rules, 0, free);
 	skip_destroy_list(&acl->rules_pref, 0, free);
+	acl->rules = skip_create_list(acl_compare);
+	acl->rules_pref = skip_create_list(acl_compare);
+	if (acl->rules == NULL || acl->rules_pref == NULL) {
+		return ACL_ERROR;
+	}
 
 	return ACL_ACCEPT;
 }

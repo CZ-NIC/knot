@@ -61,7 +61,7 @@
 /* FIXME: Generate .y and .l to zoneparser/ */
 #include "zparser.h"
 
-enum desclen { PARSER_RRTYPE_DESCRIPTORS_LENGTH = 32770 }; // used to be 101
+enum desclen { PARSER_RRTYPE_DESCRIPTORS_LENGTH = 65536 }; // used to be 101
 
 /* Taken from RFC 1035, section 3.2.4.  */
 static knot_lookup_table_t dns_rrclasses[] = {
@@ -364,12 +364,13 @@ static parser_rrtype_descriptor_t
 	/* 32769 */
 	[32769] = { PARSER_RRTYPE_DLV, T_DLV, "DLV", 4,
 	  { PARSER_RDATA_WF_SHORT, PARSER_RDATA_WF_BYTE,
-	    PARSER_RDATA_WF_BYTE, PARSER_RDATA_WF_BINARY } },
+	    PARSER_RDATA_WF_BYTE, PARSER_RDATA_WF_BINARY }}, 
+	[32770 ... 65535] = { PARSER_RRTYPE_TYPEXXX, T_UTYPE, NULL, 1, { PARSER_RDATA_WF_BINARY }}
 };
 
 parser_rrtype_descriptor_t *parser_rrtype_descriptor_by_type(uint16_t type)
 {
-	if (type <= PARSER_RRTYPE_DLV) {
+	if (type <= 65535) {
 		return &knot_rrtype_descriptors[type];
 	}
 	return &knot_rrtype_descriptors[0];

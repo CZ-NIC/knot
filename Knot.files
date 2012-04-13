@@ -65,14 +65,14 @@ src/libknot/zone/zone-tree.c
 src/libknot/zone/dname-table.h
 src/libknot/zone/dname-table.c
 src/Makefile.am
-src/common/slab/malloc.c
-src/common/slab/malloc.h
 src/common/slab/slab.c
 src/common/slab/slab.h
 src/common/slab/alloc-common.h
 src/common/libtap/tap.c
 src/common/libtap/tap.h
 src/common/libtap/tap_unit.h
+src/common/mempattern.c
+src/common/mempattern.h
 src/common/lists.h
 src/common/lists.c
 src/common/base32.h
@@ -119,6 +119,8 @@ src/common/fdset_epoll.h
 src/common/fdset_epoll.c
 src/common/fdset_kqueue.h
 src/common/fdset_kqueue.c
+src/common/log.c
+src/common/log.h
 src/zcompile/parser-descriptor.h
 src/zcompile/parser-descriptor.c
 src/zcompile/parser-util.h
@@ -135,8 +137,6 @@ src/knot/ctl/knotc_main.c
 src/knot/ctl/process.c
 src/knot/ctl/process.h
 src/knot/other/debug.h
-src/knot/other/log.c
-src/knot/other/log.h
 src/knot/other/error.c
 src/knot/other/error.h
 src/knot/stat/gatherer.c
