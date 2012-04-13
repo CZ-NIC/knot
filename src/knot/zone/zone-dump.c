@@ -53,7 +53,7 @@
 
 static const size_t BUFFER_SIZE = 4096;
 
-static inline int write_to_file_crc(void *src,
+static inline int write_to_file_crc(const void *src,
                                      size_t size, size_t n, int fd,
                                      crc_t *crc)
 {
