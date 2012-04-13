@@ -157,22 +157,51 @@ static int write_wrapper(const void *src,
 			dbg_zdump_detail("zdump: write_wrapper: "
 			                 "Flushing buffer, "
 			                 "appending %d bytes.\n", remainder);
-			int ret = !write_to_stream(src, 1,
-			                           remainder,
-			                           stream,
-			                           BUFFER_SIZE,
-			                           written_bytes);
+			int ret = write_to_stream(src, 1,
+			                          remainder,
+			                          stream,
+			                          BUFFER_SIZE,
+			                          written_bytes);
+
+			if (ret != KNOT_EOK) {
+				dbg_zdump("zdump: write_wrapper: "
+				          "Could not write to stream: %s\n",
+				          knot_strerror(ret));
+				// failure
+				return 0;
+			}
+
 			assert(*written_bytes == BUFFER_SIZE);
+
 			/* Buffer is filled, write to the actual file. */
-			ret *= write_to_file_crc(stream, 1,
-			                            *written_bytes, fd, crc);
+			ret = write_to_file_crc(stream, 1,
+			                        *written_bytes, fd, crc);
+
+			if (!ret) {
+				dbg_zdump("zdump: write_wrapper: "
+				          "Could not write to file.\n");
+				// failure
+				return 0;
+			}
+
 			/* Reset counter. */
 			*written_bytes = 0;
 			/* Write remaining data to new buffer. */
-			return ret * !write_to_stream(src + remainder,
-			                              1, (size * n) - remainder,
-			                              stream, BUFFER_SIZE,
-			                              written_bytes);
+			ret = write_to_stream(src + remainder,
+			                      1, (size * n) - remainder,
+			                      stream, BUFFER_SIZE,
+			                      written_bytes);
+
+			if (ret != KNOT_EOK) {
+				dbg_zdump("zdump: write_wrapper: "
+				          "Could not write rest of buffer to "
+				          "stream: %s.\n", knot_strerror(ret));
+				// failure
+				return 0;
+			}
+
+			// OK
+			return 1;
 		}
 	}
 }
