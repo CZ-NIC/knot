@@ -131,6 +131,11 @@ static int write_wrapper(const void *src,
 			return 1;
 		}
 	} else {
+		/* Write through when the size > buffer size. */
+		if (size * n > BUFFER_SIZE) {
+			return write_to_file_crc(src, size, n, fd, crc);
+		}
+		
 		/* Write to buffer first, if possible. */
 //		assert(stream == NULL && written_bytes == NULL);
 		if (*written_bytes + (size * n) < BUFFER_SIZE) {
