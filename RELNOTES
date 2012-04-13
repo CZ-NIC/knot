@@ -1,3 +1,21 @@
+v1.0.2 - Apr 13, 2012
+---------------------
+
+New features:
+        * Configuration checker (invoked via knotc).
+        * Specifying source interface for transfers and NOTIFY requests directly.
+
+Bugfixes:
+        * Fixed leak when querying non-existing name and zone SOA TTL > minimal.
+        * Fixed some minor bugs in tansfers.
+
+Other improvements:
+        * Improved log messages (added date and time, better specification of XFR remote).
+        * Improved saving incoming IXFR to journal (memory optimized).
+        * Now using system scheduler (better for Linux).
+        * Decreased thread stack size.
+
+
 v1.0.1 - Mar 9, 2012
 --------------------
 
