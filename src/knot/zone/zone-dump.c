@@ -131,10 +131,6 @@ static int write_wrapper(const void *src,
 			return 1;
 		}
 	} else {
-		/* Write through when the size > buffer size. */
-		if (size * n > BUFFER_SIZE) {
-			return write_to_file_crc(src, size, n, fd, crc);
-		}
 		
 		/* Write to buffer first, if possible. */
 //		assert(stream == NULL && written_bytes == NULL);
@@ -188,14 +184,21 @@ static int write_wrapper(const void *src,
 				// failure
 				return 0;
 			}
-
+			
 			/* Reset counter. */
 			*written_bytes = 0;
+			
 			/* Write remaining data to new buffer. */
-			ret = write_to_stream(src + remainder,
-			                      1, (size * n) - remainder,
-			                      stream, BUFFER_SIZE,
-			                      written_bytes);
+			if ((size * n) - remainder > BUFFER_SIZE) {
+				ret = write_to_file_crc(src + remainder, 1,
+				                        (size * n) - remainder,
+				                        fd, crc);
+			} else {
+				ret = write_to_stream(src + remainder,
+				                      1, (size * n) - remainder,
+				                      stream, BUFFER_SIZE,
+				                      written_bytes);
+			}
 
 			if (ret != KNOT_EOK) {
 				dbg_zdump("zdump: write_wrapper: "
