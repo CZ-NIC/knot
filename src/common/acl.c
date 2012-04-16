@@ -17,6 +17,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <sys/socket.h>
 
 #include "common/acl.h"
 
