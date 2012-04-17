@@ -2920,7 +2920,9 @@ int zones_store_changesets(knot_ns_xfr_t *xfr)
 
 	/* Retain journal for changeset writing. */
 	journal_t *j = journal_retain(zd->ixfr_db);
-
+	if (j == NULL) {
+		return KNOTD_EBUSY;
+	}
 	int ret = 0;
 
 	/* Begin writing to journal. */
