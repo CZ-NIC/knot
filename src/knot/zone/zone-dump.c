@@ -51,6 +51,8 @@
  * or raw data stored like this: data_len [data]
  */
 
+static const size_t BUFFER_SIZE = 4096;
+
 static inline int write_to_file_crc(const void *src,
                                      size_t size, size_t n, int fd,
                                      crc_t *crc)
@@ -129,8 +131,93 @@ static int write_wrapper(const void *src,
 			return 1;
 		}
 	} else {
-		assert(stream == NULL && written_bytes == NULL);
-		return write_to_file_crc(src, size, n, fd, crc);
+		/* Write to buffer first, if possible. */
+		if (*written_bytes + (size * n) < BUFFER_SIZE) {
+			dbg_zdump_detail("zdump: write_wrapper: Fits to "
+			                 "buffer. Remaining=%d.\n",
+			                 BUFFER_SIZE - *written_bytes);
+			int ret = write_to_stream(src, size, n,
+			                          stream,
+			                          BUFFER_SIZE, written_bytes);
+			if (ret != KNOT_EOK) {
+				dbg_zdump("zdump: write_wrapper: "
+				          "Could not write to "
+				          "stream. Reason: %s.\n",
+				          knot_strerror(ret));
+				/* Intentional! */
+				return 0;
+			} else {
+				/* Intentional! */
+				return 1;
+			}
+		} else {
+			/* Fill remainder of buffer. */
+			size_t remainder = BUFFER_SIZE - *written_bytes;
+			dbg_zdump_detail("zdump: write_wrapper: "
+			                 "Flushing buffer, "
+			                 "appending %d bytes.\n", remainder);
+			int ret = write_to_stream(src, 1,
+			                          remainder,
+			                          stream,
+			                          BUFFER_SIZE,
+			                          written_bytes);
+			if (ret != KNOT_EOK) {
+				dbg_zdump("zdump: write_wrapper: "
+				          "Could not write to stream: %s\n",
+				          knot_strerror(ret));
+				// failure
+				return 0;
+			}
+
+			assert(*written_bytes == BUFFER_SIZE);
+
+			/* Buffer is filled, write to the actual file. */
+			ret = write_to_file_crc(stream, 1,
+			                        *written_bytes, fd, crc);
+			if (!ret) {
+				dbg_zdump("zdump: write_wrapper: "
+				          "Could not write to file.\n");
+				// failure
+				return 0;
+			}
+			
+			/* Reset counter. */
+			*written_bytes = 0;
+			
+			/* Write remaining data to new buffer. */
+			if ((size * n) - remainder > BUFFER_SIZE) {
+				/* Write through. */
+				dbg_zdump("zdump: Attempting buffer write "
+				          "through. Total: %d bytes.\n",
+				          (size * n) - remainder);
+				ret = write_to_file_crc(src + remainder, 1,
+				                        (size * n) - remainder,
+				                        fd, crc);
+				if (!ret) {
+					dbg_zdump("zdump: write_wrapper: "
+					          "Could not write rest of buffer to "
+					          "file: %s.\n", knot_strerror(ret));
+					// failure
+					return 0;
+				}
+			} else {
+				/* Normal buffer filling. */
+				ret = write_to_stream(src + remainder,
+				                      1, (size * n) - remainder,
+				                      stream, BUFFER_SIZE,
+				                      written_bytes);
+				if (ret != KNOT_EOK) {
+					dbg_zdump("zdump: write_wrapper: "
+					          "Could not write rest of buffer to "
+					          "stream: %s.\n", knot_strerror(ret));
+					// failure
+					return 0;
+				}
+			}
+
+			// OK
+			return 1;
+		}
 	}
 }
 
@@ -718,16 +805,24 @@ static void dump_dname_from_tree(knot_dname_t *dname,
 		return;
 	}
 	
+	uint8_t *buffer = (uint8_t *)arg->arg5;
+	size_t *written_bytes = (size_t *)arg->arg6;
 	crc_t *crc = (crc_t*)arg->arg2;
-	arg->error_code = dump_dname_with_id(dname, fd, NULL, 0, NULL, crc);
+	
+	arg->error_code = dump_dname_with_id(dname, fd, buffer,
+	                                     BUFFER_SIZE, written_bytes, crc);
 }
 
 static int knot_dump_dname_table(const knot_dname_table_t *dname_table,
-				   int fd, crc_t *crc)
+				 int fd, crc_t *crc, uint8_t *buffer,
+                                 size_t *written_bytes)
 {
 	arg_t arg;
-	arg.arg1 = &fd;
 	arg.arg2 = crc;
+	arg.arg5 = buffer;
+	arg.arg6 = written_bytes;
+	arg.arg1 = &fd;
+	assert(arg.arg1 == &fd);
 	arg.error_code = KNOT_EOK;
 	/* Go through the tree and dump each dname along with its ID. */
 	knot_dname_table_tree_inorder_apply(dname_table,
@@ -771,9 +866,13 @@ static void dump_node_to_file(knot_node_t *node, void *data)
 		fd = *fd_pointer;
 	}
 	
+	uint8_t *buffer = (uint8_t *)arg->arg5;
+	size_t *written_bytes = (size_t *)arg->arg6;
+	
 	arg->error_code =
 		knot_node_dump_binary(node,
-	                              fd, NULL, 0, NULL, (crc_t *)arg->arg7);
+	                              fd, buffer, BUFFER_SIZE, written_bytes,
+	                              (crc_t *)arg->arg7);
 }
 
 char *knot_zdump_crc_file(const char* filename)
@@ -799,6 +898,11 @@ int knot_zdump_binary(knot_zone_contents_t *zone, int fd,
 		dbg_zdump("zdump: Bad arguments.\n");
 		return KNOT_EBADARG;
 	}
+	
+	dbg_zdump("zdump: Dumping zone %p.\n", zone);
+	
+	uint8_t buffer[BUFFER_SIZE];
+	size_t written_bytes = 0;
 
 	arg_t arguments;
 	/* Memory to be derefenced in the save_node_from_tree function. */
@@ -863,7 +967,7 @@ int knot_zdump_binary(knot_zone_contents_t *zone, int fd,
 	/* Start writing header - magic bytes. */
 	static const uint8_t MAGIC[MAGIC_LENGTH] = MAGIC_BYTES;
 	if (!write_wrapper(&MAGIC, sizeof(uint8_t), MAGIC_LENGTH,
-	                   fd, NULL, 0, NULL, crc)) {
+	                   fd, buffer, BUFFER_SIZE, &written_bytes, crc)) {
 		dbg_zdump("zdump: Cannot write magic bytes.\n");
 		return KNOT_ERROR;
 	}
@@ -871,13 +975,14 @@ int knot_zdump_binary(knot_zone_contents_t *zone, int fd,
 	/* Write source file length. */
 	uint32_t sflen = strlen(sfilename) + 1;
 	if (!write_wrapper(&sflen, sizeof(uint32_t), 1, fd,
-	                   NULL, 0, NULL, crc)) {
+	                   buffer, BUFFER_SIZE, &written_bytes, crc)) {
 		dbg_zdump("zdump: Cannot write source file length.\n");
 		return KNOT_ERROR;
 	}
 
 	/* Write source file. */
-	if (!write_wrapper(sfilename, sflen, 1, fd, NULL, 0, NULL, crc)) {
+	if (!write_wrapper(sfilename, sflen, 1, fd,  buffer,
+	                   BUFFER_SIZE, &written_bytes, crc)) {
 		dbg_zdump("zdump: Cannot write source file name.\n");
 		return KNOT_ERROR;
 	}
@@ -887,20 +992,20 @@ int knot_zdump_binary(knot_zone_contents_t *zone, int fd,
 
 	/* Start writing compiled data. */
 	if (!write_wrapper(&normal_node_count, sizeof(normal_node_count), 1, fd,
-	                   NULL, 0, NULL, crc)) {
+	                    buffer, BUFFER_SIZE, &written_bytes, crc)) {
 		dbg_zdump("zdump: Cannot write node count.\n");
 		return KNOT_ERROR;
 	}
 	
 	if (!write_wrapper(&nsec3_node_count, sizeof(nsec3_node_count), 1, fd,
-	                   NULL, 0, NULL, crc)) {
+	                   buffer, BUFFER_SIZE, &written_bytes, crc)) {
 		dbg_zdump("zdump: Cannot write NSEC3 node count.\n");
 		return KNOT_ERROR;
 	}
 	uint32_t auth_node_count = zone->node_count;
 	if (!write_wrapper(&auth_node_count,
 	                   sizeof(auth_node_count),
-	                   1, fd, NULL, 0, NULL, crc)) {
+	                   1, fd,  buffer, BUFFER_SIZE, &written_bytes, crc)) {
 		dbg_zdump("zdump: Cannot write authoritative node count.\n");
 		return KNOT_ERROR;
 	}
@@ -909,13 +1014,15 @@ int knot_zdump_binary(knot_zone_contents_t *zone, int fd,
 	assert(zone->dname_table);
 	uint32_t total_dnames = zone->dname_table->id_counter;
 	if (!write_wrapper(&total_dnames,
-	                   sizeof(total_dnames), 1, fd, NULL, 0, NULL, crc)) {
+	                   sizeof(total_dnames), 1, fd,
+	                   buffer, BUFFER_SIZE, &written_bytes, crc)) {
 		dbg_zdump("zdump: Cannot write dname count.\n");
 		return KNOT_ERROR;
 	}
 
 	/* Write dname table. */
-	if (knot_dump_dname_table(zone->dname_table, fd, crc)
+	if (knot_dump_dname_table(zone->dname_table, fd, crc, buffer,
+	                          &written_bytes)
 	    != KNOT_EOK) {
 		dbg_zdump("zdump: Cannot write dname table.\n");
 		return KNOT_ERROR;
@@ -923,6 +1030,8 @@ int knot_zdump_binary(knot_zone_contents_t *zone, int fd,
 	
 	arguments.arg1 = &fd;
 	arguments.arg3 = zone;
+	arguments.arg5 = buffer;
+	arguments.arg6 = &written_bytes;
 	arguments.arg7 = crc;
 	
 	arguments.error_code = KNOT_EOK;
@@ -947,7 +1056,15 @@ int knot_zdump_binary(knot_zone_contents_t *zone, int fd,
 		return arguments.error_code;
 	}
 	
+	/* Finish the dump. */
+	if (!write_to_file_crc(buffer, 1, written_bytes, fd, crc)) {
+		dbg_zdump("zdump: Failed to finalize dump.\n");
+		return KNOT_ERROR;
+	}
+	
+	
 	*crc = crc_finalize(*crc);
+	dbg_zdump("zdump: Zone %p dumped successfully.\n", zone);
 	
 	return KNOT_EOK;
 }

@@ -659,7 +659,7 @@ static knot_node_t *knot_load_node(FILE *f, knot_dname_t **id_array)
 	dbg_zload_detail("zload: load_node: Node owner id: %d.\n", dname_id);
 dbg_zload_exec_detail(
 	char *name = knot_dname_to_str(owner);
-	dbg_zload_detail("zload: load_node: Node owned by: %s.\n");
+	dbg_zload_detail("zload: load_node: Node owned by: %s.\n", name);
 	free(name);
 );
 	dbg_zload_detail("zload: load_node: Number of RRSets in a node: %d.\n",
@@ -1226,7 +1226,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 		if (knot_zone_contents_add_nsec3_node(contents, nsec3_first,
 		                                      0, 0, 0)
 		    != 0) {
-			dbg_zload(stderr, "zload: load: "
+			dbg_zload("zload: load: "
 			          "cannot add first nsec3 node, "
 			          "exiting.\n");
 			knot_zone_deep_free(&zone, 0);
