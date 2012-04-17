@@ -370,7 +370,7 @@ short knot_edns_to_wire(const knot_opt_rr_t *opt_rr, uint8_t *wire,
 
 	uint8_t *pos = wire;
 
-	dbg_edns_detail("Putting OPT RR to the wire format. Size: %zu, "
+	dbg_edns_detail("Putting OPT RR to the wire format. Size: %d, "
 	                "position: %zu\n",
 	                opt_rr->size, (size_t)(pos - wire));
 

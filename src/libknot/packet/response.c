@@ -521,20 +521,14 @@ static int knot_response_rr_to_wire(const knot_rrset_t *rrset,
 	// put rest of RR 'header'
 	knot_wire_write_u16(*rrset_wire, rrset->type);
 	dbg_response("  Type: %u\n", rrset->type);
-	dbg_response("  Type in wire: ");
-	dbg_response_hex((char *)*rrset_wire, 2);
 	*rrset_wire += 2;
 
 	knot_wire_write_u16(*rrset_wire, rrset->rclass);
 	dbg_response("  Class: %u\n", rrset->rclass);
-	dbg_response("  Class in wire: ");
-	dbg_response_hex((char *)*rrset_wire, 2);
 	*rrset_wire += 2;
 
 	knot_wire_write_u32(*rrset_wire, rrset->ttl);
 	dbg_response("  TTL: %u\n", rrset->ttl);
-	dbg_response("  TTL in wire: ");
-	dbg_response_hex((char *)*rrset_wire, 4);
 	*rrset_wire += 4;
 
 	// save space for RDLENGTH
@@ -592,26 +586,6 @@ static int knot_response_rr_to_wire(const knot_rrset_t *rrset,
 			compr->wire_pos += dname->size;
 			break;
 		}
-//		case KNOT_RDATA_WF_BINARYWITHLENGTH: {
-//			uint16_t *raw_data =
-//				knot_rdata_item(rdata, i)->raw_data;
-
-//			if (size + raw_data[0] + 1 > max_size) {
-//				return KNOT_ESPACE;
-//			}
-
-//			// copy also the rdata item size
-//			assert(raw_data[0] < 256);
-//			**rrset_wire = raw_data[0];
-//			*rrset_wire += 1;
-//			memcpy(*rrset_wire, raw_data + 1, raw_data[0]);
-//			dbg_response("Raw data size: %d\n",
-//			                      raw_data[0] + 1);
-//			*rrset_wire += raw_data[0];
-//			rdlength += raw_data[0] + 1;
-//			compr->wire_pos += raw_data[0] + 1;
-//			break;
-//		}
 		default: {
 			uint16_t *raw_data =
 				knot_rdata_item(rdata, i)->raw_data;
@@ -996,22 +970,6 @@ int knot_response_add_opt(knot_packet_t *resp,
 			memcpy(resp->opt_rr.options[i].data,
 			       opt_rr->options[i].data,
 			       resp->opt_rr.options[i].length);
-
-//			struct knot_opt_option option;
-//			option = opt_rr->options[i];
-
-//			/* Do not add NSID unless specified. */
-//			if ((option.code != EDNS_OPTION_NSID) || (add_nsid)) {
-//				int ret =
-//					knot_edns_add_option(&resp->opt_rr,
-//				                             option.code,
-//					                     option.length,
-//					                     option.data);
-//				if (ret != KNOT_EOK) {
-//					dbg_response("Could not "
-//					             "copy option to EDNS!\n");
-//				}
-//			}
 		}
 		resp->opt_rr.size = opt_rr->size;
 	} else {
