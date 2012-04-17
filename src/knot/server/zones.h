@@ -151,7 +151,8 @@ int zones_xfr_check_zone(knot_ns_xfr_t *xfr, knot_rcode_t *rcode);
  */
 int zones_normal_query_answer(knot_nameserver_t *nameserver,
                               knot_packet_t *query, const sockaddr_t *addr,
-                              uint8_t *response_wire, size_t *rsize);
+                              uint8_t *response_wire, size_t *rsize,
+                              knot_ns_transport_t transport);
 
 /*!
  * \brief Processes normal response packet.
