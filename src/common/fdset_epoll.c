@@ -173,7 +173,7 @@ int fdset_epoll_next(fdset_t *fdset, fdset_it_t *it)
 	}
 
 	/* Check boundaries. */
-	if (it->pos >= fdset->polled) {
+	if (it->pos >= fdset->polled || it->pos >= fdset->nfds) {
 		return -1;
 	}
 
