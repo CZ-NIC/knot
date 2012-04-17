@@ -131,9 +131,7 @@ static int write_wrapper(const void *src,
 			return 1;
 		}
 	} else {
-		
 		/* Write to buffer first, if possible. */
-//		assert(stream == NULL && written_bytes == NULL);
 		if (*written_bytes + (size * n) < BUFFER_SIZE) {
 			dbg_zdump_detail("zdump: write_wrapper: Fits to "
 			                 "buffer. Remaining=%d.\n",
@@ -163,7 +161,6 @@ static int write_wrapper(const void *src,
 			                          stream,
 			                          BUFFER_SIZE,
 			                          written_bytes);
-
 			if (ret != KNOT_EOK) {
 				dbg_zdump("zdump: write_wrapper: "
 				          "Could not write to stream: %s\n",
@@ -177,7 +174,6 @@ static int write_wrapper(const void *src,
 			/* Buffer is filled, write to the actual file. */
 			ret = write_to_file_crc(stream, 1,
 			                        *written_bytes, fd, crc);
-
 			if (!ret) {
 				dbg_zdump("zdump: write_wrapper: "
 				          "Could not write to file.\n");
@@ -190,22 +186,33 @@ static int write_wrapper(const void *src,
 			
 			/* Write remaining data to new buffer. */
 			if ((size * n) - remainder > BUFFER_SIZE) {
+				/* Write through. */
+				dbg_zdump("zdump: Attempting buffer write "
+				          "through. Total: %d bytes.\n",
+				          (size * n) - remainder);
 				ret = write_to_file_crc(src + remainder, 1,
 				                        (size * n) - remainder,
 				                        fd, crc);
+				if (!ret) {
+					dbg_zdump("zdump: write_wrapper: "
+					          "Could not write rest of buffer to "
+					          "file: %s.\n", knot_strerror(ret));
+					// failure
+					return 0;
+				}
 			} else {
+				/* Normal buffer filling. */
 				ret = write_to_stream(src + remainder,
 				                      1, (size * n) - remainder,
 				                      stream, BUFFER_SIZE,
 				                      written_bytes);
-			}
-
-			if (ret != KNOT_EOK) {
-				dbg_zdump("zdump: write_wrapper: "
-				          "Could not write rest of buffer to "
-				          "stream: %s.\n", knot_strerror(ret));
-				// failure
-				return 0;
+				if (ret != KNOT_EOK) {
+					dbg_zdump("zdump: write_wrapper: "
+					          "Could not write rest of buffer to "
+					          "stream: %s.\n", knot_strerror(ret));
+					// failure
+					return 0;
+				}
 			}
 
 			// OK
