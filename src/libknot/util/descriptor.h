@@ -142,6 +142,7 @@ enum knot_rr_type {
 	 * \brief  51 - NSEC3PARAM at zone apex nsec3 parameters
 	 */
 	KNOT_RRTYPE_NSEC3PARAM, 
+	KNOT_RRTYPE_TLSA = 52,
 
 	/* TODO consider some better way of doing this, indices too high */
 
