@@ -508,8 +508,7 @@ static uint find_rrsets_orphans(knot_zone_contents_t *zone, rrset_list_t
 			       "RRSet succesfully found: owner %s type %s\n",
 				 knot_dname_to_str(head->data->owner),
 				 knot_rrtype_to_string(head->data->type));
-		}
-		else { /* we can throw it away now */
+		} else { /* we can throw it away now */
 			dbg_zp("zp: find_orphans: "
 			       "RRSet not found for RRSIG: %s (%s)\n",
 			       knot_dname_to_str(head->data->owner),
@@ -525,9 +524,7 @@ static uint find_rrsets_orphans(knot_zone_contents_t *zone, rrset_list_t
 static int zone_open(const char *filename, uint32_t ttl, uint16_t rclass,
 	  knot_node_t *origin, void *scanner, knot_dname_t *origin_from_config)
 {
-	/*!< \todo #1676 Implement proper locking. */
 	zparser_init(filename, ttl, rclass, origin, origin_from_config);
-
 	
 	/* Open the zone file... */
 	if (strcmp(filename, "-") == 0) {
@@ -566,7 +563,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 		return KNOTDZCOMPILE_EINVAL;
 	}
 	fclose(f);
-
+		
 	knot_dname_t *dname =
 		knot_dname_new_from_str(name, strlen(name), NULL);
 	if (dname == NULL) {
@@ -609,28 +606,62 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 		                   zonefile, strerror(errno));
 		zp_lex_destroy(scanner);
 		knot_dname_release(origin_from_config);
+		/* Release file lock. */
 //		knot_node_free(&origin_node, 0);
 		return KNOTDZCOMPILE_EZONEINVAL;
 	}
-
-	if (zp_parse(scanner) != 0) {
-		/*!< \todo #1676 Implement proper locking. */
+	
+	/* Lock zone file. There should not be any modifications. */
+	struct flock lock;
+	lock.l_type = F_RDLCK;
+	lock.l_start = 0;
+	lock.l_whence = SEEK_SET;
+	lock.l_len = 0;
+	lock.l_pid = getpid();
+	if (fcntl(fileno(zp_get_in(scanner)), F_SETLK, &lock) == -1) {
+		fprintf(stderr, "Cannot obtain zone source file lock (%d).\n",
+		        errno);
 		FILE *in_file = (FILE *)zp_get_in(scanner);
 		fclose(in_file);
 		zp_lex_destroy(scanner);
 		knot_dname_release(origin_from_config);
+		return KNOTDZCOMPILE_EINVAL;
+	}
+	
+	/* Change lock type to unlock rigth away. */
+	lock.l_type = F_UNLCK;
+
+
+	if (zp_parse(scanner) != 0) {
+		fprintf(stderr, "Parse failed.\n");
+		FILE *in_file = (FILE *)zp_get_in(scanner);
+		fclose(in_file);
+		zp_lex_destroy(scanner);
+		knot_dname_release(origin_from_config);
+		/* Release file lock. */
 //		knot_node_free(&origin_node, 0);
+		/* Release file lock. */
+		if (fcntl(fileno(zp_get_in(scanner)), F_SETLK, &lock) == -1) {
+			fprintf(stderr, "Cannot release zone source file "
+			        "lock (%d).\n",
+			        errno);
+		}
 		return KNOTDZCOMPILE_ESYNT;
 	}
 
 	knot_zone_contents_t *contents =
 			knot_zone_get_contents(parser->current_zone);
+	
+	/* Release file lock. */
+	if (fcntl(fileno(zp_get_in(scanner)), F_SETLK, &lock) == -1) {
+		fprintf(stderr, "Cannot release zone source file lock (%d).\n",
+		        errno);
+	}
 
 	FILE *in_file = (FILE *)zp_get_in(scanner);
 	fclose(in_file);
 	zp_lex_destroy(scanner);
 	
-	/*!< \todo #1676 Implement proper locking. */
 
 	dbg_zp("zp: zone_read: Parse complete for %s.\n",
 	       zonefile);
@@ -679,7 +710,8 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 		               "not dumping the zone!\n",
 		               parser->errors);
 	} else {
-		int fd = open(outfile, O_RDWR | O_CREAT | O_TRUNC, S_IRWXU | S_IRWXG);
+		int fd = open(outfile, O_RDWR | O_CREAT
+		              | O_TRUNC, S_IRWXU | S_IRWXG);
 		if (fd < 0) {
 			log_zone_error("Could not open destination file for db: %s.\n",
 			               outfile);
