@@ -260,9 +260,15 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 
 	knot_rdata_item_t *items =
 		malloc(sizeof(knot_rdata_item_t) * rdata_count);
+	if (items == NULL) {
+		ERR_ALLOC_FAILED;
+		free(items);
+		return NULL;
+	}
 
-	if (desc->fixed_items) {
-		assert(desc->length == rdata_count);
+	if (rdata_count > desc->length) {
+		dbg_zload("zload: load_rdata: Read wrong count of RDATA.\n");
+		return NULL;
 	}
 
 	uint16_t raw_data_length = 0;
@@ -347,8 +353,8 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 			}
 			
 			/*!< \todo this is not proper fix, see #1678 */
-			items[i].raw_data = (uint16_t *)
-				malloc(sizeof(uint8_t) * (raw_data_length + 2));
+			items[i].raw_data =
+				malloc(raw_data_length + 2);
 			if (items[i].raw_data == NULL) {
 				ERR_ALLOC_FAILED;
 				load_rdata_purge(rdata, items, i + 1, desc,
