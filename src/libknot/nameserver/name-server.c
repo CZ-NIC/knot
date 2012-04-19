@@ -1781,7 +1781,7 @@ static int ns_dname_is_too_long(const knot_rrset_t *dname_rrset,
  * \param qname Searched name.
  * \param resp Response.
  */
-static void ns_process_dname(knot_rrset_t *dname_rrset,
+static int ns_process_dname(knot_rrset_t *dname_rrset,
                              const knot_dname_t *qname,
                              knot_packet_t *resp)
 {
@@ -1793,26 +1793,40 @@ dbg_ns_exec(
 	// TODO: check the number of RRs in the RRSet??
 
 	// put the DNAME RRSet into the answer
-	knot_response_add_rrset_answer(resp, dname_rrset, 1, 0, 0, 1);
-	ns_add_rrsigs(dname_rrset, resp, qname,
-	              knot_response_add_rrset_answer, 1);
+	int ret = knot_response_add_rrset_answer(resp, dname_rrset, 1, 0, 0, 1);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = ns_add_rrsigs(dname_rrset, resp, qname,
+	                    knot_response_add_rrset_answer, 1);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 
 	if (ns_dname_is_too_long(dname_rrset, qname)) {
 		knot_response_set_rcode(resp, KNOT_RCODE_YXDOMAIN);
-		return;
+		return KNOT_EOK;
 	}
 
 	// synthetize CNAME (no way to tell that client supports DNAME)
 	knot_rrset_t *synth_cname = ns_cname_from_dname(dname_rrset, qname);
 	// add the synthetized RRSet to the Answer
-	knot_response_add_rrset_answer(resp, synth_cname, 1, 0, 0, 1);
+	ret = knot_response_add_rrset_answer(resp, synth_cname, 1, 0, 0, 1);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 
 	// no RRSIGs for this RRSet
 
 	// add the synthetized RRSet into list of temporary RRSets of response
 	knot_packet_add_tmp_rrset(resp, synth_cname);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 
 	// do not search for the name in new zone (out-of-bailiwick)
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1930,9 +1944,11 @@ have_node:
 		knot_rrset_t *dname_rrset = knot_node_get_rrset(
 		                         closest_encloser, KNOT_RRTYPE_DNAME);
 		if (dname_rrset != NULL) {
-			ns_process_dname(dname_rrset, qname, resp);
+			ret = ns_process_dname(dname_rrset, qname, resp);
 			auth_soa = 1;
 			knot_response_set_aa(resp);
+
+			// KNOT_ESPACE case is handled there
 			goto finalize;
 		}
 		// else check for a wildcard child
@@ -1979,6 +1995,8 @@ dbg_ns_exec(
 		const knot_dname_t *act_name = qname;
 		ret = ns_follow_cname(&node, &act_name, resp,
 		                      knot_response_add_rrset_answer, 1);
+		knot_response_set_aa(resp);
+
 		if (ret != KNOT_EOK) {
 			// KNOT_ESPACE case is handled there
 			goto finalize;
@@ -2023,6 +2041,7 @@ dbg_ns_exec(
 		/*! \todo Handle RCODE return values!!! */
 		// In case ret == KNOT_ESPACE, this is later converted to EOK
 		// so it does not cause error response
+		knot_response_set_aa(resp);
 		goto finalize;
 	}
 	knot_response_set_aa(resp);
