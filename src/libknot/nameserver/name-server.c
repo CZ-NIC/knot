@@ -752,6 +752,9 @@ static void ns_put_additional(knot_packet_t *resp)
 			}
 		}
 	}
+	/*! \note No return value needed, as there is nothing to be added to the
+	 *        packet after the Additional section.
+	 */
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2140,8 +2143,10 @@ dbg_ns_exec(
 
 finalize:
 	if (ret == KNOT_EOK && auth_soa) {
-		ns_put_authority_soa(zone, resp);
-	} else if (ret == KNOT_ESPACE) {
+		ret = ns_put_authority_soa(zone, resp);
+	}
+
+	if (ret == KNOT_ESPACE) {
 		knot_response_set_rcode(resp, KNOT_RCODE_NOERROR);
 		ret = KNOT_EOK;
 	}
