@@ -2292,8 +2292,8 @@ uint16_t * zparser_conv_apl_rdata(char *str)
 		return NULL;
 	} else if (rc == -1) {
 		char ebuf[256] = {0};
-		zc_error_prev_line("inet_pton failed: %s",
-			strerror_r(errno, ebuf, sizeof(ebuf)));
+		strerror_r(errno, ebuf, sizeof(ebuf));
+		zc_error_prev_line("inet_pton failed: %s", ebuf);
 		return NULL;
 	}
 
