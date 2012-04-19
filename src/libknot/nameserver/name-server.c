@@ -182,8 +182,8 @@ static knot_rrset_t *ns_synth_from_wildcard(
  *             temporary RRSet).
  * \param rrset RRSet to check (and possibly replace).
  */
-static void ns_check_wildcard(const knot_dname_t *name, knot_packet_t *resp,
-                              knot_rrset_t **rrset)
+static int ns_check_wildcard(const knot_dname_t *name, knot_packet_t *resp,
+                             knot_rrset_t **rrset)
 {
 	assert(name != NULL);
 	assert(resp != NULL);
@@ -193,11 +193,24 @@ static void ns_check_wildcard(const knot_dname_t *name, knot_packet_t *resp,
 	if (knot_dname_is_wildcard((*rrset)->owner)) {
 		knot_rrset_t *synth_rrset =
 			ns_synth_from_wildcard(*rrset, name);
+		if (synth_rrset == NULL) {
+			dbg_ns("Failed to synthetize RRSet from wildcard.\n");
+			return KNOT_ERROR;
+		}
+
 		dbg_ns("Synthetized RRSet:\n");
 		knot_rrset_dump(synth_rrset, 1);
-		knot_packet_add_tmp_rrset(resp, synth_rrset);
+
+		int ret = knot_packet_add_tmp_rrset(resp, synth_rrset);
+		if (ret != KNOT_EOK) {
+			dbg_ns("Failed to add sythetized RRSet to tmp list.\n");
+			knot_rrset_deep_free(&synth_rrset, 1, 1, 1);
+			return ret;
+		}
 		*rrset = synth_rrset;
 	}
+
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -244,7 +257,12 @@ static int ns_add_rrsigs(knot_rrset_t *rrset, knot_packet_t *resp,
 	    && knot_query_dnssec_requested(knot_packet_query(resp))
 	    && (rrsigs = knot_rrset_get_rrsigs(rrset)) != NULL) {
 		if (name != NULL) {
-			ns_check_wildcard(name, resp, &rrsigs);
+			int ret = ns_check_wildcard(name, resp, &rrsigs);
+			if (ret != KNOT_EOK) {
+				dbg_ns("Failed to process wildcard: %s\n",
+				       knot_strerror(ret));
+				return ret;
+			}
 		}
 		return add_rrset_to_resp(resp, rrsigs, tc, 0, 0, 1);
 	}
@@ -386,14 +404,16 @@ dbg_ns_exec(
  * \return Number of RRSets added.
  */
 static int ns_put_answer(const knot_node_t *node, const knot_dname_t *name,
-                          uint16_t type, knot_packet_t *resp)
+                          uint16_t type, knot_packet_t *resp, int *added)
 {
-	int added = 0;
+	*added = 0;
 dbg_ns_exec(
 	char *name_str = knot_dname_to_str(node->owner);
 	dbg_ns("Putting answers from node %s.\n", name_str);
 	free(name_str);
 );
+
+	int ret = KNOT_EOK;
 
 	switch (type) {
 	case KNOT_RRTYPE_ANY: {
@@ -403,7 +423,6 @@ dbg_ns_exec(
 			break;
 		}
 		int i = 0;
-		int ret = 0;
 		knot_rrset_t *rrset;
 		while (i < knot_node_rrset_count(node)) {
 			assert(rrsets[i] != NULL);
@@ -412,19 +431,31 @@ dbg_ns_exec(
 			dbg_ns("  Type: %s\n",
 			     knot_rrtype_to_string(knot_rrset_type(rrset)));
 
-			ns_check_wildcard(name, resp, &rrset);
-			ret = knot_response_add_rrset_answer(resp, rrset, 1,
-			                                     0, 0, 1);
-			if (ret >= 0 && (added += 1)
-			    && (ret = ns_add_rrsigs(rrset, resp, name,
-			           knot_response_add_rrset_answer, 1))
-			            >=0 ) {
-				added += 1;
-			} else {
-				free(rrsets);
-				rrsets = NULL;
+			ret = ns_check_wildcard(name, resp, &rrset);
+			if (ret != KNOT_EOK) {
+				dbg_ns("Failed to process wildcard.\n");
 				break;
 			}
+
+			ret = knot_response_add_rrset_answer(resp, rrset, 1,
+			                                     0, 0, 1);
+			if (ret != KNOT_EOK) {
+				dbg_ns("Failed add Answer RRSet: %s\n",
+				       knot_strerror(ret));
+				break;
+			}
+
+			*added += 1;
+
+			ret = ns_add_rrsigs(rrset, resp, name,
+			                    knot_response_add_rrset_answer, 1);
+			if (ret != KNOT_EOK) {
+				dbg_ns("Failed add RRSIGs for Answer RRSet: %s"
+				       "\n", knot_strerror(ret));
+				break;
+			}
+
+			*added += 1;
 
 			++i;
 		}
@@ -451,15 +482,21 @@ dbg_ns_exec(
 				continue;
 			}
 
-			ns_check_wildcard(name, resp, &rrset);
-			ret = knot_response_add_rrset_answer(resp, rrset, 1,
-			                                     0, 0, 1);
-
-			if (ret < 0) {
+			ret = ns_check_wildcard(name, resp, &rrset);
+			if (ret != KNOT_EOK) {
+				dbg_ns("Failed to process wildcard.\n");
 				break;
 			}
 
-			added += 1;
+			ret = knot_response_add_rrset_answer(resp, rrset, 1,
+			                                     0, 0, 1);
+			if (ret != KNOT_EOK) {
+				dbg_ns("Failed add Answer RRSet: %s\n",
+				       knot_strerror(ret));
+				break;
+			}
+
+			*added += 1;
 			++i;
 		}
 		free(rrsets);
@@ -472,20 +509,38 @@ dbg_ns_exec(
 		if (rrset != NULL) {
 			dbg_ns("Found RRSet of type %s\n",
 				 knot_rrtype_to_string(type));
-			ns_check_wildcard(name, resp, &rrset2);
+
+			ret = ns_check_wildcard(name, resp, &rrset2);
+			if (ret != KNOT_EOK) {
+				dbg_ns("Failed to process wildcard.\n");
+				break;
+			}
+
 			ret = knot_response_add_rrset_answer(resp, rrset2, 1,
 			                                     0, 0, 1);
-			if (ret >= 0 && (added += 1)
-			    && (ret = ns_add_rrsigs(rrset, resp, name,
-			           knot_response_add_rrset_answer, 1)) > 0) {
-				added += 1;
+			if (ret != KNOT_EOK) {
+				dbg_ns("Failed add Answer RRSet: %s\n",
+				       knot_strerror(ret));
+				break;
 			}
+
+			*added += 1;
+
+			ret = ns_add_rrsigs(rrset, resp, name,
+			                    knot_response_add_rrset_answer, 1);
+
+			if (ret != KNOT_EOK) {
+				dbg_ns("Failed add RRSIGs for Answer RRSet: %s"
+				       "\n", knot_strerror(ret));
+				break;
+			}
+
+			*added += 1;
 		}
 	    }
 	}
 
-	knot_response_set_rcode(resp, KNOT_RCODE_NOERROR);
-	return added;
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1648,9 +1703,15 @@ static int ns_answer_from_node(const knot_node_t *node,
                                knot_packet_t *resp)
 {
 	dbg_ns("Putting answers from found node to the response...\n");
-	int answers = ns_put_answer(node, qname, qtype, resp);
+	int answers = 0;
 
-	int ret = KNOT_EOK;
+	int ret = ns_put_answer(node, qname, qtype, resp, &answers);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	assert(ret == KNOT_EOK);
+
 	if (answers == 0) {  // if NODATA response, put SOA
 		if (knot_node_rrset_count(node) == 0
 		    && !knot_zone_contents_nsec3_enabled(zone)) {
@@ -2064,6 +2125,7 @@ finalize:
 	if (ret == KNOT_EOK && auth_soa) {
 		ns_put_authority_soa(zone, resp);
 	} else if (ret == KNOT_ESPACE) {
+		knot_response_set_rcode(resp, KNOT_RCODE_NOERROR);
 		ret = KNOT_EOK;
 	}
 
