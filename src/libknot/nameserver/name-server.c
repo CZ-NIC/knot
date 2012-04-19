@@ -1841,9 +1841,12 @@ static void ns_add_dnskey(const knot_node_t *apex, knot_packet_t *resp)
 	knot_rrset_t *rrset =
 		knot_node_get_rrset(apex, KNOT_RRTYPE_DNSKEY);
 	if (rrset != NULL) {
-		knot_response_add_rrset_additional(resp, rrset, 0, 0, 0, 1);
-		ns_add_rrsigs(rrset, resp, apex->owner,
-			      knot_response_add_rrset_additional, 0);
+		int ret = knot_response_add_rrset_additional(resp, rrset, 0, 0,
+		                                             0, 1);
+		if (ret == KNOT_EOK) {
+			ns_add_rrsigs(rrset, resp, apex->owner,
+			              knot_response_add_rrset_additional, 0);
+		}
 	}
 }
 
@@ -2083,18 +2086,6 @@ finalize:
  */
 static int ns_answer(const knot_zone_t *zone, knot_packet_t *resp)
 {
-//	const knot_dname_t *qname = knot_packet_qname(resp);
-//	assert(qname != NULL);
-
-//	uint16_t qtype = knot_packet_qtype(resp);
-//dbg_ns_exec(
-//	char *name_str = knot_dname_to_str(qname);
-//	dbg_ns("Trying to find zone for QNAME %s\n", name_str);
-//	free(name_str);
-//);
-//	// find zone in which to search for the name
-//	const knot_zone_t *zone =
-//		ns_get_zone_for_qname(db, qname, qtype);
 	const knot_zone_contents_t *contents = knot_zone_contents(zone);
 
 	// if no zone found, return REFUSED
@@ -2118,8 +2109,6 @@ dbg_ns_exec(
 	// take the zone contents and use only them for answering
 
 	return ns_answer_from_zone(contents, resp);
-
-	//knot_dname_free(&qname);
 }
 
 /*----------------------------------------------------------------------------*/
