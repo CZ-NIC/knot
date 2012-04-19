@@ -622,13 +622,22 @@ dbg_ns_exec(
 			if (rrset_add != NULL) {
 				dbg_ns("Found A RRsets.\n");
 				knot_rrset_t *rrset_add2 = rrset_add;
-				ns_check_wildcard(dname, resp, &rrset_add2);
+				ret = ns_check_wildcard(dname, resp,
+				                        &rrset_add2);
+				if (ret != KNOT_EOK) {
+					dbg_ns("Failed to process wildcard for"
+					       "Additional section: %s.\n",
+					       knot_strerror(ret));
+					return ret;
+				}
+
 				ret = knot_response_add_rrset_additional(
 					resp, rrset_add2, 0, 1, 0, 1);
 
 				if (ret != KNOT_EOK) {
 					dbg_ns("Failed to add A RRSet to "
-					       "Additional section.\n");
+					       "Additional section: %s.\n",
+					       knot_strerror(ret));
 					return ret;
 				}
 
@@ -637,7 +646,8 @@ dbg_ns_exec(
 
 				if (ret != KNOT_EOK) {
 					dbg_ns("Failed to add RRSIGs for A RR"
-					       "Set to Additional section.\n");
+					       "Set to Additional section: %s."
+					       "\n", knot_strerror(ret));
 					return ret;
 				}
 			}
@@ -648,7 +658,14 @@ dbg_ns_exec(
 			if (rrset_add != NULL) {
 				dbg_ns("Found AAAA RRsets.\n");
 				knot_rrset_t *rrset_add2 = rrset_add;
-				ns_check_wildcard(dname, resp, &rrset_add2);
+				ret =  ns_check_wildcard(dname, resp,
+				                         &rrset_add2);
+				if (ret != KNOT_EOK) {
+					dbg_ns("Failed to process wildcard for"
+					       "Additional section: %s.\n",
+					       knot_strerror(ret));
+					return ret;
+				}
 
 				ret = knot_response_add_rrset_additional(
 					resp, rrset_add2, 0, 1, 0, 1);
