@@ -62,7 +62,7 @@ static inline int write_to_file_crc(const void *src,
 	}
 	ssize_t rc = write(fd, src, size * n);
 	if (rc != size * n) {
-		fprintf(stderr, "write: invalid write %zu (expected %zu)\n", rc,
+		fprintf(stderr, "write: invalid write %zd (expected %zu)\n", rc,
 			n);
 	}
 

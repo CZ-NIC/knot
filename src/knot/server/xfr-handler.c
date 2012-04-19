@@ -872,7 +872,7 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 	/* Start transfer. */
 	ret = data->send(data->session, &data->addr, data->wire, bufsize);
 	if (ret != bufsize) {
-		char buf[1024];
+		char buf[256] = {0};
 		strerror_r(errno, buf, sizeof(buf));
 		log_server_info("%s Failed to send query (%s).\n",
 		                data->msgpref, buf);

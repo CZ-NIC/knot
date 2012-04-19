@@ -179,7 +179,7 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 	}
 	
 	if (zd->ixfr_db == NULL) {
-		char ebuf[128] = {0};
+		char ebuf[256] = {0};
 		strerror_r(errno, ebuf, sizeof(ebuf));
 		log_server_warning("Couldn't open journal file for zone '%s', "
 		                   "disabling IXFR/IN. (%s)\n", cfg->name, ebuf);
@@ -497,7 +497,7 @@ static int zones_refresh_ev(event_t *e)
 
 	/* Create query. */
 	int sock = -1;
-	char strbuf[512] = "Generic error.";
+	char strbuf[256] = "Generic error.";
 	const char *errstr = strbuf;
 	sockaddr_t *master = &zd->xfr_in.master;
 	int ret = xfrin_create_soa_query(zone->name, &xfr_req, &buflen);
@@ -529,6 +529,7 @@ static int zones_refresh_ev(event_t *e)
 			if (sent == buflen) {
 				ret = KNOTD_EOK;
 			} else {
+				strbuf[0] = '\0';
 				strerror_r(errno, strbuf, sizeof(strbuf));
 				socket_close(sock);
 				sock = -1;
@@ -835,7 +836,7 @@ static int zones_load_zone(knot_zonedb_t *zonedb, const char *zone_name,
 	/* Check if the compiled file still exists. */
 	struct stat st;
 	if (stat(source, &st) != 0) {
-		char reason[1024];
+		char reason[256] = {0};
 		strerror_r(errno, reason, sizeof(reason));
 		log_server_warning("Failed to open zone file '%s' (%s).\n",
 		                   zname, reason);
