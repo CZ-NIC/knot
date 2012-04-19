@@ -1446,10 +1446,10 @@ dbg_ns_exec(
  * \param previous Previous node of \a qname in canonical order.
  * \param resp Response to put the NSEC3s into.
  */
-static void ns_put_nsec_wildcard(const knot_zone_contents_t *zone,
-                                 const knot_dname_t *qname,
-                                 const knot_node_t *previous,
-                                 knot_packet_t *resp)
+static int ns_put_nsec_wildcard(const knot_zone_contents_t *zone,
+                                const knot_dname_t *qname,
+                                const knot_node_t *previous,
+                                knot_packet_t *resp)
 {
 	assert(DNSSEC_ENABLED
 	       && knot_query_dnssec_requested(knot_packet_query(resp)));
@@ -1466,13 +1466,22 @@ static void ns_put_nsec_wildcard(const knot_zone_contents_t *zone,
 
 	knot_rrset_t *rrset =
 		knot_node_get_rrset(previous, KNOT_RRTYPE_NSEC);
+
+	int ret = KNOT_EOK;
+
 	if (rrset != NULL) {
 		// NSEC proving that there is no node with the searched name
-		knot_response_add_rrset_authority(resp, rrset, 1, 0, 0, 1);
-		rrset = knot_rrset_get_rrsigs(rrset);
-		assert(rrset != NULL);
-		knot_response_add_rrset_authority(resp, rrset, 1, 0, 0, 1);
+		ret = knot_response_add_rrset_authority(resp, rrset, 1, 0,
+		                                        0, 1);
+		if (ret == KNOT_EOK) {
+			rrset = knot_rrset_get_rrsigs(rrset);
+			assert(rrset != NULL);
+			ret = knot_response_add_rrset_authority(resp, rrset, 1,
+			                                        0, 0, 1);
+		}
 	}
+
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1514,7 +1523,7 @@ static int ns_put_nsec_nsec3_wildcard_nodata(const knot_node_t *node,
 				ret = ns_put_nsec3_from_node(nsec3_node, resp);
 			}
 		} else {
-			ns_put_nsec_wildcard(zone, qname, previous, resp);
+			ret = ns_put_nsec_wildcard(zone, qname, previous, resp);
 		}
 	}
 	return ret;
@@ -1544,18 +1553,18 @@ static int ns_put_nsec_nsec3_wildcard_answer(const knot_node_t *node,
                                           const knot_dname_t *qname,
                                           knot_packet_t *resp)
 {
-	int r = KNOT_EOK;
+	int ret = KNOT_EOK;
 	if (DNSSEC_ENABLED
 	    && knot_query_dnssec_requested(knot_packet_query(resp))
 	    && knot_dname_is_wildcard(knot_node_owner(node))) {
 		if (knot_zone_contents_nsec3_enabled(zone)) {
-			r = ns_put_nsec3_wildcard(zone, closest_encloser, qname,
-			                          resp);
+			ret = ns_put_nsec3_wildcard(zone, closest_encloser,
+			                            qname, resp);
 		} else {
-			ns_put_nsec_wildcard(zone, qname, previous, resp);
+			ret = ns_put_nsec_wildcard(zone, qname, previous, resp);
 		}
 	}
-	return r;
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
