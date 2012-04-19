@@ -2417,7 +2417,16 @@ static int zones_dump_zone_text(knot_zone_contents_t *zone, const char *fname)
 		return KNOTD_ERROR;
 	}
 	
-	if (zone_dump_text(zone, fd) != KNOTD_EOK) {
+	FILE *f = fdopen(fd, "w");
+	if (f == NULL) {
+		log_zone_warning("Failed to open file descriptor for text zone.\n");
+		close(fd);
+		unlink(new_fname);
+		free(new_fname);
+		return KNOTD_ERROR;
+	}
+	
+	if (zone_dump_text(zone, f) != KNOTD_EOK) {
 		log_zone_warning("Failed to save the transferred zone to '%s'.\n",
 		                 new_fname);
 		close(fd);
@@ -2427,7 +2436,7 @@ static int zones_dump_zone_text(knot_zone_contents_t *zone, const char *fname)
 	}
 
 	/* Swap temporary zonefile and new zonefile. */
-	close(fd);
+	fclose(f);
 	int ret = rename(new_fname, fname);
 	if (ret < 0 && ret != EEXIST) {
 		log_zone_warning("Failed to replace old zone file '%s'' with a new"
