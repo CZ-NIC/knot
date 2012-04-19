@@ -486,6 +486,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 		}
 	}
 	if (strcmp(action, "checkconf") == 0) {
+		log_server_info("OK, configuration is valid.\n");
 		rc = 0;
 		valid_cmd = 1;
 	}

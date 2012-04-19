@@ -373,6 +373,13 @@ static knot_rrtype_descriptor_t
 	  { KNOT_RDATA_ZF_BYTE, KNOT_RDATA_ZF_BYTE,
 	    KNOT_RDATA_ZF_SHORT, KNOT_RDATA_ZF_HEX_LEN }, true },
   	/* 52 */
+  	{ KNOT_RRTYPE_TLSA, "TLSA", 4,
+  	  { KNOT_RDATA_WF_BYTE,
+  	    KNOT_RDATA_WF_BYTE,
+  	    KNOT_RDATA_WF_BYTE,
+  	    KNOT_RDATA_WF_BINARY },
+	  { KNOT_RDATA_ZF_BYTE, KNOT_RDATA_ZF_BYTE,
+	    KNOT_RDATA_ZF_BYTE, KNOT_RDATA_ZF_HEX }, true },
 
 
     /* In NSD they have indices between 52 and 99 filled with

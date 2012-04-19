@@ -134,6 +134,7 @@ enum parser_rr_type {
 	 * \brief  51 - NSEC3PARAM at zone apex nsec3 parameters
 	 */
 	PARSER_RRTYPE_NSEC3PARAM, 
+	PARSER_RRTYPE_TLSA = 52,
 
 	/* TODO consider some better way of doing this, indices too high */
 

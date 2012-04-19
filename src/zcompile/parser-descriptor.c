@@ -315,7 +315,12 @@ static parser_rrtype_descriptor_t
 	    PARSER_RDATA_WF_BYTE, /* flags */
 	    PARSER_RDATA_WF_SHORT, /* iterations */
 	    PARSER_RDATA_WF_BINARYWITHLENGTH /* salt */ }, true },
-	/* 52 */
+	/* 52 TLSA */
+        { PARSER_RRTYPE_TLSA, T_TLSA, "TLSA", 3,
+          { PARSER_RDATA_WF_BYTE,
+            PARSER_RDATA_WF_BYTE,
+            PARSER_RDATA_WF_BYTE,
+            PARSER_RDATA_WF_BINARY}, true }, 
 
 
     /* In NSD they have indices between 52 and 99 filled with

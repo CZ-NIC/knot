@@ -1978,7 +1978,8 @@ int zones_xfr_check_zone(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 
 int zones_normal_query_answer(knot_nameserver_t *nameserver,
                               knot_packet_t *query, const sockaddr_t *addr,
-                              uint8_t *resp_wire, size_t *rsize)
+                              uint8_t *resp_wire, size_t *rsize,
+                              knot_ns_transport_t transport)
 {
 	rcu_read_lock();
 
@@ -1986,7 +1987,9 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 	const knot_zone_t *zone = NULL;
 
 	dbg_zones_verb("Preparing response structure.\n");
-	int ret = knot_ns_prep_normal_response(nameserver, query, &resp, &zone);
+	int ret = knot_ns_prep_normal_response(nameserver, query, &resp, &zone,
+	                                       (transport == NS_TRANSPORT_TCP)
+	                                       ? *rsize : 0);
 
 	// check for TSIG in the query
 	if (knot_packet_additional_rrset_count(query) > 0) {
@@ -2917,7 +2920,9 @@ int zones_store_changesets(knot_ns_xfr_t *xfr)
 
 	/* Retain journal for changeset writing. */
 	journal_t *j = journal_retain(zd->ixfr_db);
-
+	if (j == NULL) {
+		return KNOTD_EBUSY;
+	}
 	int ret = 0;
 
 	/* Begin writing to journal. */

@@ -1493,7 +1493,7 @@ int xfr_worker(dthread_t *thread)
 		/* Iterate fdset. */
 		knot_ns_xfr_t *data = 0;
 		int rfd = evqueue_pollfd(w->q);
-		fdset_it_t it;
+		fdset_it_t it = {0};
 		fdset_begin(w->fdset, &it);
 		int rfd_event = 0;
 		while(nfds > 0) {
