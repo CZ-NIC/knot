@@ -62,7 +62,7 @@ static inline int write_to_file_crc(const void *src,
 	}
 	ssize_t rc = write(fd, src, size * n);
 	if (rc != size * n) {
-		fprintf(stderr, "write: invalid write %zu (expected %zu)\n", rc,
+		fprintf(stderr, "write: invalid write %zd (expected %zu)\n", rc,
 			n);
 	}
 
@@ -1058,10 +1058,9 @@ int knot_zdump_binary(knot_zone_contents_t *zone, int fd,
 	
 	/* Finish the dump. */
 	if (!write_to_file_crc(buffer, 1, written_bytes, fd, crc)) {
-		dbg_zdump("zdump: Failed to finalize dump.\n");
+		fprintf(stderr, "Failed to finalize zone db!\n");
 		return KNOT_ERROR;
 	}
-	
 	
 	*crc = crc_finalize(*crc);
 	dbg_zdump("zdump: Zone %p dumped successfully.\n", zone);

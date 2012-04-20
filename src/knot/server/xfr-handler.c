@@ -763,7 +763,14 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 		}
 		
 		/* Free data updated in this processing. */
-		evqueue_write(nextw->q, data, sizeof(knot_ns_xfr_t));
+		ret = evqueue_write(nextw->q, data, sizeof(knot_ns_xfr_t));
+		if (ret != sizeof(knot_ns_xfr_t)) {
+			char ebuf[256] = {0};
+			strerror_r(errno, ebuf, sizeof(ebuf));
+			dbg_xfr("xfr: couldn't write request to evqueue: %s\n",
+			        ebuf);
+			return KNOTD_ERROR;
+		}
 		return KNOTD_EOK;
 	} else {
 		zd->xfr_in.wrkr = w;
@@ -872,10 +879,10 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 	/* Start transfer. */
 	ret = data->send(data->session, &data->addr, data->wire, bufsize);
 	if (ret != bufsize) {
-		char buf[1024];
-		strerror_r(errno, buf, sizeof(buf));
+		char ebuf[256] = {0};
+		strerror_r(errno, ebuf, sizeof(ebuf));
 		log_server_info("%s Failed to send query (%s).\n",
-		                data->msgpref, buf);
+		                data->msgpref, ebuf);
 		pthread_mutex_unlock(&zd->xfr_in.lock);
 		close(data->session);
 		data->session = -1;

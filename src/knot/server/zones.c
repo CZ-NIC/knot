@@ -179,7 +179,7 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 	}
 	
 	if (zd->ixfr_db == NULL) {
-		char ebuf[128] = {0};
+		char ebuf[256] = {0};
 		strerror_r(errno, ebuf, sizeof(ebuf));
 		log_server_warning("Couldn't open journal file for zone '%s', "
 		                   "disabling IXFR/IN. (%s)\n", cfg->name, ebuf);
@@ -497,7 +497,7 @@ static int zones_refresh_ev(event_t *e)
 
 	/* Create query. */
 	int sock = -1;
-	char strbuf[512] = "Generic error.";
+	char strbuf[256] = "Generic error.";
 	const char *errstr = strbuf;
 	sockaddr_t *master = &zd->xfr_in.master;
 	int ret = xfrin_create_soa_query(zone->name, &xfr_req, &buflen);
@@ -529,6 +529,7 @@ static int zones_refresh_ev(event_t *e)
 			if (sent == buflen) {
 				ret = KNOTD_EOK;
 			} else {
+				strbuf[0] = '\0';
 				strerror_r(errno, strbuf, sizeof(strbuf));
 				socket_close(sock);
 				sock = -1;
@@ -835,7 +836,7 @@ static int zones_load_zone(knot_zonedb_t *zonedb, const char *zone_name,
 	/* Check if the compiled file still exists. */
 	struct stat st;
 	if (stat(source, &st) != 0) {
-		char reason[1024];
+		char reason[256] = {0};
 		strerror_r(errno, reason, sizeof(reason));
 		log_server_warning("Failed to open zone file '%s' (%s).\n",
 		                   zname, reason);
@@ -1527,8 +1528,27 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 			zones_journal_apply(zone);
 
 			/* Update events scheduled for zone. */
-			zones_timers_update(zone, z, 
-			             ((server_t *)knot_ns_get_data(ns))->sched);
+			evsched_t *sch = ((server_t *)knot_ns_get_data(ns))->sched;
+			zones_timers_update(zone, z, sch);
+			
+			/* Schedule IXFR database syncing. */
+			/*! \note This has to remain separate as it must not be
+			 *        triggered by a zone update or SOA response.
+			 */
+			/* Fetch zone data. */
+			int sync_tmr = z->dbsync_timeout * 1000; /* s -> ms. */
+			if (zd->ixfr_dbsync != NULL) {
+				evsched_cancel(sch, zd->ixfr_dbsync);
+				evsched_event_free(sch, zd->ixfr_dbsync);
+				zd->ixfr_dbsync = NULL;
+			}
+			if (zd->ixfr_db != NULL) {
+				zd->ixfr_dbsync = evsched_schedule_cb(
+				                    sch, zones_zonefile_sync_ev,
+				                    zone, sync_tmr);
+				dbg_zones("zone: journal sync of '%s' "
+				          "set to %d\n", z->name, sync_tmr);
+			}
 		}
 
 		/* CLEANUP */
@@ -1896,8 +1916,8 @@ int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal)
 		          zd->conf->name, serial_to);
 		zd->zonefile_serial = serial_to;
 	} else {
-		dbg_zones_verb("zones: '%s' zonefile is in sync "
-		               "with differences\n", zd->conf->name);
+		dbg_zones("zones: '%s' zonefile is in sync "
+		          "with differences\n", zd->conf->name);
 		ret = KNOTD_ERANGE;
 	}
 
@@ -2416,7 +2436,16 @@ static int zones_dump_zone_text(knot_zone_contents_t *zone, const char *fname)
 		return KNOTD_ERROR;
 	}
 	
-	if (zone_dump_text(zone, fd) != KNOTD_EOK) {
+	FILE *f = fdopen(fd, "w");
+	if (f == NULL) {
+		log_zone_warning("Failed to open file descriptor for text zone.\n");
+		close(fd);
+		unlink(new_fname);
+		free(new_fname);
+		return KNOTD_ERROR;
+	}
+	
+	if (zone_dump_text(zone, f) != KNOTD_EOK) {
 		log_zone_warning("Failed to save the transferred zone to '%s'.\n",
 		                 new_fname);
 		close(fd);
@@ -2426,7 +2455,7 @@ static int zones_dump_zone_text(knot_zone_contents_t *zone, const char *fname)
 	}
 
 	/* Swap temporary zonefile and new zonefile. */
-	close(fd);
+	fclose(f);
 	int ret = rename(new_fname, fname);
 	if (ret < 0 && ret != EEXIST) {
 		log_zone_warning("Failed to replace old zone file '%s'' with a new"
@@ -3032,20 +3061,6 @@ int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
 							 zone, refresh_tmr);
 		dbg_zones("zone: REFRESH '%s' set to %u\n",
 		          cfzone->name, refresh_tmr);
-	}
-
-	/* Schedule IXFR database syncing. */
-	/*! \todo Sync timer should not be reset after each xfr (issue #1348) */
-	int sync_timeout = cfzone->dbsync_timeout * 1000; /* Convert to ms. */
-	if (zd->ixfr_dbsync) {
-		evsched_cancel(sch, zd->ixfr_dbsync);
-		evsched_event_free(sch, zd->ixfr_dbsync);
-		zd->ixfr_dbsync = 0;
-	}
-	if (zd->ixfr_db) {
-		zd->ixfr_dbsync = evsched_schedule_cb(sch,
-		                                      zones_zonefile_sync_ev,
-		                                      zone, sync_timeout);
 	}
 
 	/* Do not issue NOTIFY queries if stub. */
