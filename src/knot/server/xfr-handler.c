@@ -768,7 +768,7 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 			char ebuf[256] = {0};
 			strerror_r(errno, ebuf, sizeof(ebuf));
 			dbg_xfr("xfr: couldn't write request to evqueue: %s\n",
-			        ebuf)
+			        ebuf);
 			return KNOTD_ERROR;
 		}
 		return KNOTD_EOK;
