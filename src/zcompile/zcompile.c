@@ -631,14 +631,12 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	/* Change lock type to unlock rigth away. */
 	lock.l_type = F_UNLCK;
 
-
 	if (zp_parse(scanner) != 0) {
 		fprintf(stderr, "Parse failed.\n");
 		FILE *in_file = (FILE *)zp_get_in(scanner);
 		fclose(in_file);
 		zp_lex_destroy(scanner);
 		knot_dname_release(origin_from_config);
-		/* Release file lock. */
 //		knot_node_free(&origin_node, 0);
 		/* Release file lock. */
 		if (fcntl(fileno(zp_get_in(scanner)), F_SETLK, &lock) == -1) {
