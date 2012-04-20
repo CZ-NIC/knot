@@ -730,7 +730,7 @@ dbg_xfrin_exec(
 				return KNOT_ERROR;  /*! \todo Other error code. */
 			} else if (ret == 1) {
 				assert(node != NULL);
-dbg_xfrin_exec(
+dbg_xfrin_exec_verb(
 				char *name = knot_dname_to_str(node->owner);
 				dbg_xfrin("Found node for the record in "
 					   "zone: %s. Merged.\n", name);
@@ -744,7 +744,7 @@ dbg_xfrin_exec(
 //				knot_rrset_deep_free(&rr, 1, 1, 1);
 			} else {
 				assert(node != NULL);
-dbg_xfrin_exec(
+dbg_xfrin_exec_verb(
 				char *name = knot_dname_to_str(node->owner);
 				dbg_xfrin("Found node for the record in "
 					       "zone: %s.\n", name);
@@ -1113,7 +1113,7 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 	/*! \todo This may be implemented with much less IFs! */
 	
 	while (ret == KNOT_EOK && rr != NULL) {
-dbg_xfrin_exec(
+dbg_xfrin_exec_verb(
 		dbg_xfrin_verb("Next loop, state: %d\n", state);
 		char *name = knot_dname_to_str(knot_rrset_owner(rr));
 		dbg_xfrin_verb("Actual RR: %s, type %s.\n", name,
@@ -1788,7 +1788,7 @@ static int xfrin_apply_remove_normal(knot_changes_t *changes,
 		return 1;
 	}
 	
-dbg_xfrin_exec(
+dbg_xfrin_exec_verb(
 	char *name = knot_dname_to_str(knot_rrset_owner(*rrset));
 	dbg_xfrin("Updating RRSet with owner %s, type %s\n", name,
 		  knot_rrtype_to_string(knot_rrset_type(*rrset)));
@@ -2017,7 +2017,7 @@ dbg_xfrin_exec_verb(
 
 	knot_rrset_t *old = *rrset;
 
-dbg_xfrin_exec(
+dbg_xfrin_exec_verb(
 	char *name = knot_dname_to_str(knot_rrset_owner(*rrset));
 	dbg_xfrin("Found RRSet with owner %s, type %s\n", name,
 	          knot_rrtype_to_string(knot_rrset_type(*rrset)));
