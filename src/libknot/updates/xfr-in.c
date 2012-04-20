@@ -1273,7 +1273,7 @@ static int xfrin_changes_check_rrsets(knot_rrset_t ***rrsets,
 		return KNOT_EOK;
 	}
 
-	int new_count = *allocated * 2;
+	int new_count = (*allocated == 0) ? 2 : *allocated * 2;
 
 	/* Allocate new memory block. */
 	knot_rrset_t **rrsets_new = malloc(new_count * sizeof(knot_rrset_t *));
@@ -1306,7 +1306,7 @@ static int xfrin_changes_check_nodes(knot_node_t ***nodes,
 		return KNOT_EOK;
 	}
 
-	int new_count = *allocated * 2;
+	int new_count = (*allocated == 0) ? 2 : *allocated * 2;
 
 	/* Allocate new memory block. */
 	const size_t node_len = sizeof(knot_node_t *);
@@ -1336,7 +1336,7 @@ static int xfrin_changes_check_rdata(knot_rdata_t ***rdatas, uint **types,
 		return KNOT_EOK;
 	}
 
-	int new_count = *allocated * 2;
+	int new_count = (*allocated == 0) ? 2 : *allocated * 2;
 
 	/* Allocate new memory block. */
 	knot_rdata_t **rdatas_new = malloc(new_count * sizeof(knot_rdata_t *));
