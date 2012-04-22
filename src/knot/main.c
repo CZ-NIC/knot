@@ -167,10 +167,18 @@ int main(int argc, char **argv)
 		// Get absolute path to cwd
 		size_t cwbuflen = 64;
 		char *cwbuf = malloc((cwbuflen + 2) * sizeof(char));
-		while (getcwd(cwbuf, cwbuflen) == 0) {
+		char *tmp = NULL;
+
+		while ((tmp = getcwd(cwbuf, cwbuflen)) == NULL && errno == ERANGE) {
 			cwbuflen *= 2;
 			cwbuf = realloc(cwbuf, (cwbuflen + 2) * sizeof(char));
 		}
+		if (!tmp) {
+			log_server_error("Couldn't get current working directory - "
+                                         "%s.\n", strerror(errno));
+			return 1;
+		}
+
 		cwbuflen = strlen(cwbuf);
 
 		// Append ending slash
