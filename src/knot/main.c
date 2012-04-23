@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <limits.h>
 #ifdef HAVE_CAP_NG_H
 #include <cap-ng.h>
 #endif /* HAVE_CAP_NG_H */
@@ -165,32 +166,21 @@ int main(int argc, char **argv)
 	if (config_fn[0] != '/')
 	{
 		// Get absolute path to cwd
-		size_t cwbuflen = 64;
-		char *cwbuf = malloc((cwbuflen + 2) * sizeof(char));
-		char *tmp = NULL;
-
-		while ((tmp = getcwd(cwbuf, cwbuflen)) == NULL && errno == ERANGE) {
-			cwbuflen *= 2;
-			cwbuf = realloc(cwbuf, (cwbuflen + 2) * sizeof(char));
+		char *rpath = malloc(PATH_MAX);
+		if (rpath != NULL) {
+			if (realpath(config_fn, rpath) == NULL) {
+				free(rpath);
+				rpath = NULL;
+			}
 		}
-		if (!tmp) {
+		if (rpath == NULL) {
 			log_server_error("Couldn't get current working directory - "
-                                         "%s.\n", strerror(errno));
+			                 "%s.\n", strerror(errno));
 			return 1;
+		} else {
+			free(config_fn);
+			config_fn = rpath;
 		}
-
-		cwbuflen = strlen(cwbuf);
-
-		// Append ending slash
-		if (cwbuf[cwbuflen - 1] != '/') {
-			cwbuf = strncat(cwbuf, "/", 1);
-		}
-
-		// Assemble path to config file
-		char *abs_cfg = strcdup(cwbuf, config_fn);
-		free(config_fn);
-		free(cwbuf);
-		config_fn = abs_cfg;
 	}
 	
 	/* POSIX 1003.1e capabilities. */
