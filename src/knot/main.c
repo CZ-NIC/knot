@@ -39,6 +39,7 @@
 /* Signal flags. */
 static volatile short sig_req_stop = 0;
 static volatile short sig_req_reload = 0;
+static volatile short sig_req_refresh = 0;
 static volatile short sig_stopping = 0;
 
 // SIGINT signal handler
@@ -49,7 +50,13 @@ void interrupt_handle(int s)
 		sig_req_reload = 1;
 		return;
 	}
-
+	
+	// Refresh
+	if (s == SIGUSR2) {
+		sig_req_refresh = 1;
+		return;
+	}
+	
 	// Stop server
 	if (s == SIGINT || s == SIGTERM) {
 		if (sig_stopping == 0) {
@@ -288,6 +295,7 @@ int main(int argc, char **argv)
 		sigaction(SIGTERM, &sa, NULL);
 		sigaction(SIGHUP,  &sa, NULL);
 		sigaction(SIGPIPE, &sa, NULL);
+		sigaction(SIGUSR2, &sa, NULL);
 		sa.sa_flags = 0;
 		pthread_sigmask(SIG_BLOCK, &sa.sa_mask, NULL);
 
@@ -323,6 +331,17 @@ int main(int argc, char **argv)
 							 "reload failed.\n");
 					break;
 				}
+			}
+			if (sig_req_refresh) {
+				log_server_info("Refreshing slave zones...\n");
+				sig_req_reload = 0;
+				int cf_ret = server_refresh(server);
+				if (cf_ret != KNOTD_EOK) {
+					log_server_error("Couldn't refresh "
+					                 "slave zones - %s",
+					                 knotd_strerror(cf_ret));
+				}
+				
 			}
 
 			/* Events. */

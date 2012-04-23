@@ -24,17 +24,20 @@
 #include <assert.h>
 #include <grp.h>
 
+
+#include "common/prng.h"
 #include "knot/common.h"
 #include "knot/other/error.h"
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/server/xfr-handler.h"
-#include "libknot/nameserver/name-server.h"
+#include "knot/server/zones.h"
+#include "knot/conf/conf.h"
 #include "knot/stat/stat.h"
+#include "libknot/nameserver/name-server.h"
 #include "libknot/zone/zonedb.h"
 #include "libknot/dname.h"
-#include "knot/conf/conf.h"
 
 /*! \brief Event scheduler loop. */
 static int evsched_run(dthread_t *thread)
@@ -608,6 +611,42 @@ int server_wait(server_t *server)
 	rcu_read_unlock();
 
 	return ret;
+}
+
+int server_refresh(server_t *server)
+{
+	if (server == NULL || server->nameserver == NULL) {
+		return KNOTD_EINVAL;
+	}
+	
+	/* Lock RCU and fetch zones. */
+	rcu_read_lock();
+	knot_nameserver_t *ns =  server->nameserver;
+	evsched_t *sch = ((server_t *)knot_ns_get_data(ns))->sched;
+	const knot_zone_t **zones = knot_zonedb_zones(ns->zone_db);
+	if (zones == NULL) {
+		rcu_read_unlock();
+		return KNOTD_ENOMEM;
+	}
+	
+	/* REFRESH zones. */
+	for (unsigned i = 0; i < knot_zonedb_zone_count(ns->zone_db); ++i) {
+		zonedata_t *zd = (zonedata_t *)zones[i]->data;
+		if (zd == NULL) {
+			continue;
+		}
+		/* Expire REFRESH timer. */
+		if (zd->xfr_in.timer) {
+			evsched_cancel(sch, zd->xfr_in.timer);
+			evsched_schedule(sch, zd->xfr_in.timer,
+			                 tls_rand() * 1000);
+		}
+	}
+	
+	/* Unlock RCU. */
+	rcu_read_unlock();
+	free(zones);
+	return KNOTD_EOK;
 }
 
 void server_stop(server_t *server)
