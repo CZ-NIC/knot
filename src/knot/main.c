@@ -166,13 +166,7 @@ int main(int argc, char **argv)
 	if (config_fn[0] != '/')
 	{
 		// Get absolute path to cwd
-		char *rpath = malloc(PATH_MAX);
-		if (rpath != NULL) {
-			if (realpath(config_fn, rpath) == NULL) {
-				free(rpath);
-				rpath = NULL;
-			}
-		}
+		char *rpath = realpath(config_fn, NULL);
 		if (rpath == NULL) {
 			log_server_error("Couldn't get current working directory - "
 			                 "%s.\n", strerror(errno));
