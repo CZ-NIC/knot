@@ -1552,12 +1552,13 @@ static int zones_insert_zone(conf_zone_t *z, knot_nameserver_t *ns,
 /*! \brief Structure for multithreaded zone loading. */
 struct zonewalk_t {
 	knot_nameserver_t *ns;
-	const list *zone_conf;
 	const knot_zonedb_t *db_old;
         knot_zonedb_t *db_new;
-	size_t chunksize;
-	int inserted;
 	pthread_mutex_t lock;
+	int inserted;
+	unsigned qhead;
+	unsigned qtail;
+	conf_zone_t *q[];
 };
 
 /*! Thread entrypoint for loading zones. */
@@ -1571,35 +1572,29 @@ static int zonewalker(dthread_t *thread)
 	if (zw == NULL) {
 		return KNOTD_ERROR;
 	}
-	
-	/* Calculate working set. */
-	size_t thrid = 0;
-	dt_unit_t *unit = thread->unit;
-	for (size_t i = 0; i < unit->size; ++i) {
-		if (thread == unit->threads[i]) {
-			thrid = i;
+
+	unsigned i = 0;
+	int inserted = 0;
+	for(;;) {
+		/* Fetch queue head. */
+		pthread_mutex_lock(&zw->lock);
+		i = zw->qhead++;
+		pthread_mutex_unlock(&zw->lock);
+		if (i >= zw->qtail) {
 			break;
 		}
-	}
-	size_t begin = thrid * zw->chunksize;
-	size_t end = (thrid + 1) * zw->chunksize;
-	
-	/* Skip . */
-	size_t i = 0;
-	conf_zone_t *z = NULL;
-	WALK_LIST(z, *zw->zone_conf) {
-		/* Evaluate only nodes in thread working set. */
-		if (i >= begin && i < end) {
-			int ret = zones_insert_zone(z, zw->ns,
-			                            zw->db_old, zw->db_new);
-			if (ret > 0) {
-				pthread_mutex_lock(&zw->lock);
-				++zw->inserted;
-				pthread_mutex_unlock(&zw->lock);
-			}
+		
+		int ret = zones_insert_zone(zw->q[i], zw->ns,
+		                            zw->db_old, zw->db_new);
+		if (ret > 0) {
+			++inserted;
 		}
-		++i;
 	}
+	
+	/* Collect results. */
+	pthread_mutex_lock(&zw->lock);
+	zw->inserted += inserted;
+	pthread_mutex_unlock(&zw->lock);
 	
 	return KNOTD_EOK;
 }
@@ -1622,39 +1617,49 @@ static int zones_insert_zones(knot_nameserver_t *ns,
                               const knot_zonedb_t *db_old,
                               knot_zonedb_t *db_new)
 {
-	/*! \todo Change to zone contents. */
+	int inserted = 0;
+	size_t zcount = 0;
 	conf_zone_t *z = NULL;
-	struct zonewalk_t zw;
-	zw.ns = ns;
-	zw.zone_conf = zone_conf;
-	zw.db_old = db_old;
-	zw.db_new = db_new;
-	zw.inserted = 0;
-	if (pthread_mutex_init(&zw.lock, NULL) < 0) {
-		return KNOTD_ERROR;
+	WALK_LIST(z, *zone_conf) {
+		++zcount;
 	}
 	
-	/* Distribute zones to threads. */
-	size_t zonecount = 0;
-	WALK_LIST(z, *zone_conf) {
-		++zonecount;
+	/* Initialize zonewalker. */
+	size_t zwlen = sizeof(struct zonewalk_t) + zcount * sizeof(conf_zone_t*);
+	struct zonewalk_t *zw = malloc(zwlen);
+	if (zw != NULL) {
+		memset(zw, 0, zwlen);
+		zw->ns = ns;
+		zw->db_old = db_old;
+		zw->db_new = db_new;
+		zw->inserted = 0;
+		if (pthread_mutex_init(&zw->lock, NULL) < 0) {
+			free(zw);
+			zw = NULL;
+		} else {
+			unsigned i = 0;
+			WALK_LIST(z, *zone_conf) {
+				zw->q[i++] = z;
+			}
+			zw->qhead = 0;
+			zw->qtail = zcount;
+		}
 	}
-	size_t thrcount = dt_optimal_size();
-	if (thrcount > zonecount) {
-		thrcount = zonecount;
-	}
-	zw.chunksize = zonecount / thrcount;
 	
 	/* Initialize threads. */
-	dt_unit_t *unit = dt_create_coherent(thrcount, &zonewalker, &zw);
+	dt_unit_t *unit = NULL;
+	if (zw != NULL) {
+		unit = dt_create_coherent(dt_optimal_size(), &zonewalker, zw);
+	}
+	/* Single-thread fallback. */
 	if (unit == NULL) {
 		WALK_LIST(z, *zone_conf) {
 			int ret = zones_insert_zone(z, ns, db_old, db_new);
 			if (ret == KNOTD_EOK) {
-				++zw.inserted;
+				++inserted;
 			}
 		}
-		return zw.inserted;
+		return inserted;
 	}
 	
 	/* Start loading. */
@@ -1665,8 +1670,10 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 	dt_delete(&unit);
 	
 	/* Collect counts. */
-	pthread_mutex_destroy(&zw.lock);
-	return zw.inserted;
+	inserted = zw->inserted;
+	pthread_mutex_destroy(&zw->lock);
+	free(zw);
+	return inserted;
 }
 
 /*----------------------------------------------------------------------------*/
