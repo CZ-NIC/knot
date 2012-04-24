@@ -247,7 +247,6 @@ libknots_la_SOURCES =				\
 	common/sockaddr.h			\
 	common/sockaddr.c			\
 	common/crc.h				\
-	common/crc.c				\
 	common/ref.h				\
 	common/ref.c				\
 	common/errors.h				\
