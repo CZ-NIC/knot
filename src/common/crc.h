@@ -46,7 +46,7 @@ typedef uint32_t crc_t;
  *****************************************************************************/
 static inline crc_t crc_init(void)
 {
-    return crc32(0L, NULL, 0);
+	return adler32(0L, NULL, 0);
 }
 
 
@@ -60,7 +60,7 @@ static inline crc_t crc_init(void)
  *****************************************************************************/
 static inline crc_t crc_update(crc_t crc, const unsigned char *data, size_t data_len)
 {
-	return crc32(crc, data, data_len);
+	return adler32(crc, data, data_len);
 }
 
 
