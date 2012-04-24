@@ -914,16 +914,7 @@ int knot_zload_open(zloader_t **dst, const char *filename)
 	/* Free some value and close the CRC file */
 	free(crc_path);
 	close(f_crc);
-
-	/* Compare calculated and read CRCs. */
-	if (crc_from_file != crc_calculated) {
-		dbg_zload("knot_zload_open: CRC failed for "
-		                   "file '%s'\n",
-		                   filename);
-		fclose(f);
-		return KNOT_ECRC;
-	}
-
+	
 	/* Check magic sequence. */
 	static const uint8_t MAGIC[MAGIC_LENGTH] = MAGIC_BYTES;
 	if (!knot_check_magic(f, MAGIC, MAGIC_LENGTH)) {
@@ -933,6 +924,15 @@ int knot_zload_open(zloader_t **dst, const char *filename)
 			 "(%s)\n",
 			 (int)MAGIC_LENGTH, (const char*)MAGIC, filename);
 		return KNOT_EMALF; // Illegal byte sequence (POSIX.1, C99)
+	}
+
+	/* Compare calculated and read CRCs. */
+	if (crc_from_file != crc_calculated) {
+		dbg_zload("knot_zload_open: CRC failed for "
+		                   "file '%s'\n",
+		                   filename);
+		fclose(f);
+		return KNOT_ECRC;
 	}
 
 	/* Read source file length. */
