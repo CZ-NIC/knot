@@ -168,8 +168,8 @@ int main(int argc, char **argv)
 		// Get absolute path to cwd
 		char *rpath = realpath(config_fn, NULL);
 		if (rpath == NULL) {
-			log_server_error("Couldn't get current working directory - "
-			                 "%s.\n", strerror(errno));
+			log_server_error("Couldn't get absolute path for configuration file '%s' - "
+			                 "%s.\n", config_fn, strerror(errno));
 			return 1;
 		} else {
 			free(config_fn);
