@@ -478,7 +478,7 @@ dbg_zp_exec_detail(
 
 		if (knot_zone_contents_add_rrset(contents, current_rrset,
 		                          &node,
-		                   KNOT_RRSET_DUPL_MERGE, 1) < 0) {
+		                   KNOT_RRSET_DUPL_SKIP, 1) < 0) {
 			dbg_zp("zp: process_rr: Cannot "
 			       "merge RRSets.\n");
 			return KNOTDZCOMPILE_EBRDATA;

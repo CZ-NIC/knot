@@ -113,6 +113,54 @@ int knot_rrset_add_rdata(knot_rrset_t *rrset, knot_rdata_t *rdata)
 
 /*----------------------------------------------------------------------------*/
 
+/* todo write comment, this implies that only one rdata will be in list. */
+int knot_rrset_add_rdata_order(knot_rrset_t *rrset, knot_rdata_t *rdata)
+{
+	if (rrset == NULL || rdata == NULL) {
+		dbg_rrset("rrset: add_rdata_order: NULL arguments.\n");
+		return KNOT_EBADARG;
+	}
+	
+	if (rrset->rdata == NULL) {
+		/* Easy peasy, just insert the first item. */
+		rrset->rdata = rdata;
+		rrset->rdata->next = rrset->rdata;
+	} else {
+		knot_rdata_t *walk = NULL;
+		char found = 0;
+		knot_rdata_t *insert_after = rrset->rdata;
+		while (((walk = knot_rrset_rdata_get_next(rrset,
+		                                          walk)) != NULL) && 
+		       (!found)) {
+			const knot_rrtype_descriptor_t *desc =
+				knot_rrtype_descriptor_by_type(rrset->type);
+			assert(desc);
+			int cmp = knot_rdata_compare(rdata, walk,
+			                             desc->wireformat);
+			if (cmp < 1) {
+				/* We've found place for this item. */
+			} else if (cmp == 0) {
+				/* This item will not be inserted. */
+				found = 1;
+				insert_after = NULL;
+			}
+			assert(cmp > 1);
+			/* Continue the search. */
+			insert_after = walk;
+		}
+		if (insert_after != NULL) {
+			rdata->next = insert_after->next;
+			insert_after->next = rdata;
+		} else {
+			;
+			/* Consider returning something different than EOK. */
+		}
+	}
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 knot_rdata_t *knot_rrset_remove_rdata(knot_rrset_t *rrset,
                                           const knot_rdata_t *rdata)
 {
@@ -744,6 +792,111 @@ int knot_rrset_merge(void **r1, void **r2)
 	}
 
 	tmp_rdata->next = rrset1->rdata;
+
+	return KNOT_EOK;
+}
+
+int knot_rrset_merge_no_dupl(void **r1, void **r2)
+{
+	if (r1 == NULL || r2 == NULL) {
+		dbg_rrset("rrset: merge_no_dupl: NULL arguments.");
+		return KNOT_EBADARG;
+	}
+	
+	knot_rrset_t *rrset1 = (knot_rrset_t *)(*r1);
+	knot_rrset_t *rrset2 = (knot_rrset_t *)(*r2);
+	if (rrset1 == NULL || rrset2 == NULL) {
+		dbg_rrset("rrset: merge_no_dupl: NULL arguments.");
+		return KNOT_EBADARG;
+	}
+	
+	dbg_rrset_detail("rrset: merge_no_dupl: Merging %s.\n",
+	                 knot_dname_to_str(rrset1->owner));
+
+	if ((knot_dname_compare(rrset1->owner, rrset2->owner) != 0)
+	    || rrset1->rclass != rrset2->rclass
+	    || rrset1->type != rrset2->type
+	    || rrset1->ttl != rrset2->ttl) {
+		dbg_rrset("rrset: merge_no_dupl: Trying to merge "
+		          "different RRs.\n");
+		return KNOT_EBADARG;
+	}
+
+	// no RDATA in RRSet 1
+	if (rrset1->rdata == NULL) {
+		rrset1->rdata = rrset2->rdata;
+		return KNOT_EOK;
+	}
+	
+	if (rrset2->rdata == NULL) {
+		return KNOT_EOK;
+	}
+	
+	/*
+	 * Check that rrset1 does not contain any rdata from rrset2, if so
+	 * such RDATA shall not be inserted. 
+	 */
+	
+	/* Get last RDATA from first rrset, we'll need it for insertion. */
+	knot_rdata_t *insert_after = rrset1->rdata;
+	while (insert_after->next != rrset1->rdata) {
+		dbg_rrset_detail("rrset: merge_dupl: first rrset rdata: %p.\n",
+		                 insert_after);
+		insert_after = insert_after->next;
+	}
+	assert(insert_after->next == rrset1->rdata);
+	knot_rdata_t *walk2 = rrset2->rdata;
+	while (walk2 != NULL) {
+		knot_rdata_t *walk1 = rrset1->rdata;
+		char dupl = 0;
+		while ((walk1 != NULL) &&
+		       !dupl) {
+			const knot_rrtype_descriptor_t *desc =
+				knot_rrtype_descriptor_by_type(rrset1->type);
+			assert(desc);
+			/* If walk1 and walk2 are equal, do not insert. */
+			dupl = !knot_rdata_compare(walk1, walk2,
+			                           desc->wireformat);
+			walk1 = knot_rrset_rdata_get_next(rrset1, walk1);
+			dbg_rrset_detail("rrset: merge_dupl: next item: %p.\n",
+			                 walk1);
+		}
+		if (!dupl) {
+			dbg_rrset_detail("rrset: merge_dupl: Inserting "
+			                 "unique item (%p).\n",
+			                 walk2);
+			knot_rdata_t *tmp = walk2;
+			/*
+			 * We need to move this, insertion
+			 * will corrupt pointers.
+			 */
+			walk2 = knot_rrset_rdata_get_next(rrset2, walk2);
+			/* Insert this item at the end of first list. */
+			tmp->next = insert_after->next;
+			insert_after->next = tmp;
+			assert(tmp->next == rrset1->rdata);
+		} else {
+			dbg_rrset_detail("rrset: merge_dupl: Skipping and "
+			                 "freeing duplicated item "
+			                 "of type: %s (%p).\n",
+			                 knot_rrtype_to_string(rrset1->type),
+			                 walk2);
+			/* 
+			 * Not freeing this item will result in a leak. 
+			 * Since this operation destroys the second 
+			 * list, we have to free the item here.
+			 */
+			knot_rdata_t *tmp = walk2;
+			dbg_rrset_detail("rrset: merge_dupl: freeing: %p.\n",
+			                 tmp);
+			walk2 = knot_rrset_rdata_get_next(rrset2, walk2);
+			knot_rdata_deep_free(&tmp, rrset1->type, 0);
+			assert(tmp == NULL);
+			/* Maybe caller should be warned about this. */
+		}
+	}
+	
+	assert(walk2 == NULL);
 
 	return KNOT_EOK;
 }

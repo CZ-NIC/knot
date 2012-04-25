@@ -1425,8 +1425,12 @@ int knot_zone_contents_add_rrset(knot_zone_contents_t *zone,
 	int rc;
 
 	/*! \todo REMOVE RRSET */
-	rc = knot_node_add_rrset(*node, rrset,
-	                           dupl == KNOT_RRSET_DUPL_MERGE);
+	if (dupl == KNOT_RRSET_DUPL_SKIP) {
+		rc = knot_node_add_rrset_no_dupl(*node, rrset);
+	} else {
+		rc = knot_node_add_rrset(*node, rrset,
+		                         dupl == KNOT_RRSET_DUPL_MERGE);
+	}
 	if (rc < 0) {
 		dbg_zone("Failed to add RRSet to node.\n");
 		return rc;

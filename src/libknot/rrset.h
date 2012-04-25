@@ -311,6 +311,8 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
  */
 int knot_rrset_merge(void **r1, void **r2);
 
+int knot_rrset_merge_no_dupl(void **r1, void **r2);
+
 #endif /* _KNOT_RRSET_H_ */
 
 /*! @} */

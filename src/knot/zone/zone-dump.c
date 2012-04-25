@@ -446,6 +446,7 @@ static int knot_rdata_dump_binary(knot_rdata_t *rdata,
 			dbg_zdump_detail("zdump: dump_rdata: "
 			                 "Writing raw data. Item nr.: %d\n",
 			                 i);
+			printf("%p\n", rdata);
 			assert(rdata->items[i].raw_data != NULL);
 			if (!write_wrapper(rdata->items[i].raw_data,
 			                   sizeof(uint8_t),
@@ -894,6 +895,7 @@ int knot_zdump_binary(knot_zone_contents_t *zone, int fd,
                       int do_checks, const char *sfilename,
                       crc_t *crc)
 {
+
 	if (fd < 0 || sfilename == NULL) {
 		dbg_zdump("zdump: Bad arguments.\n");
 		return KNOT_EBADARG;
