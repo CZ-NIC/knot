@@ -813,6 +813,7 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 #define dbg_rrset_hex_verb(data, len)
 #define dbg_rrset_detail(msg...)
 #define dbg_rrset_hex_detail(data, len)
+#define dbg_rrset_exec_detail(cmds)
 #endif
 
 /******************************************************************************/
