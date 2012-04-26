@@ -197,7 +197,7 @@ static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
 	if (tmp_rrset->rrsigs != NULL) {
 		if (knot_zone_contents_add_rrsigs(zone, rrsig,
 		                                  &tmp_rrset, &node,
-		                           KNOT_RRSET_DUPL_MERGE, 1) < 0) {
+		                           KNOT_RRSET_DUPL_SKIP, 1) < 0) {
 			dbg_zp("zp: find_rr_for_sig: Cannot add RRSIG.\n");
 			return KNOTDZCOMPILE_EINVAL;
 		}

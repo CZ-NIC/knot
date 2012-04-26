@@ -1553,7 +1553,8 @@ dbg_zone_exec(
 		dbg_dname("Failed to add RRSIGs to RRSet.\n");
 		return rc;
 	} else if (rc > 0) {
-		assert(dupl == KNOT_RRSET_DUPL_MERGE);
+		assert(dupl == KNOT_RRSET_DUPL_MERGE ||
+		       dupl == KNOT_RRSET_DUPL_SKIP);
 		ret = 1;
 	}
 
