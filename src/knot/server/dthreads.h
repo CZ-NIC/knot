@@ -45,6 +45,9 @@
 struct dthread_t;
 struct dt_unit_t;
 
+/* Constants. */
+#define DTHREADS_STACKSIZE (1024*1024) /* 1M lightweight stack size. */
+
 /*!
  * \brief Thread state enumeration.
  */
@@ -238,10 +241,14 @@ int dt_stop(dt_unit_t *unit);
  * \param thread Target thread instance.
  * \param prio Requested priority (positive integer, default is 0).
  *
+ * \warning Thread priority setting is disabled as the compatible scheduler
+ *          has significant performance deficiencies (SCHED_OTHER).
+ *          (issue #1809)
+ *
  * \retval KNOTD_EOK on success.
  * \retval KNOTD_EINVAL on invalid parameters.
  */
-int dt_setprio(dthread_t *thread, int prio);
+//int dt_setprio(dthread_t *thread, int prio);
 
 /*!
  * \brief Set thread to execute another runnable.

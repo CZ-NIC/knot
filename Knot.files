@@ -98,7 +98,6 @@ src/common/acl.c
 src/common/acl.h
 src/common/sockaddr.h
 src/common/sockaddr.c
-src/common/crc.c
 src/common/crc.h
 src/common/ref.c
 src/common/ref.h

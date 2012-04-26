@@ -86,7 +86,7 @@ int log_init()
 	/* Setup initial state. */
 	int ret = KNOTD_EOK;
 	int emask = LOG_MASK(LOG_WARNING)|LOG_MASK(LOG_ERR)|LOG_MASK(LOG_FATAL);
-	int imask = LOG_MASK(LOG_DEBUG)|LOG_MASK(LOG_INFO)|LOG_MASK(LOG_NOTICE);
+	int imask = LOG_MASK(LOG_INFO)|LOG_MASK(LOG_NOTICE);
 
 	/* Add debug messages. */
 	emask |= LOG_MASK(LOG_DEBUG);

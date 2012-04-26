@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 
 AC_PREREQ([2.65])
-AC_INIT([knot], [1.0.0], [knot-dns@labs.nic.cz])
+AC_INIT([knot], [1.0.4rc2], [knot-dns@labs.nic.cz])
 AM_INIT_AUTOMAKE([gnu -Wall -Werror])
 AC_CONFIG_SRCDIR([src/knot/main.c])
 AC_CONFIG_HEADERS([src/config.h])
@@ -135,6 +135,7 @@ AC_SEARCH_LIBS([dlopen], [dl])
 AC_SEARCH_LIBS([clock_gettime], [rt])
 AC_SEARCH_LIBS([OpenSSL_add_all_digests], [crypto],[], [AC_MSG_ERROR([libcrypto not found])])
 AC_SEARCH_LIBS([capng_apply], [cap-ng])
+AC_SEARCH_LIBS([crc32], [z])
 #AC_SEARCH_LIBS([ldns_rr_list_pop_rrset], [ldns], [], [AC_MSG_ERROR([libldns not found])])
 
 # Checks for header files.
@@ -159,7 +160,7 @@ AC_DEFINE([DSFMT_MEXP], [521], [DSFMT parameters.])
 # Checks for library functions.
 AC_FUNC_FORK
 AC_FUNC_MMAP
-AC_CHECK_FUNCS([gethostbyname gettimeofday clock_gettime memalign memmove memset munmap regcomp pselect select socket sqrt strcasecmp strchr strdup strerror strncasecmp strtol strtoul poll epoll_wait kqueue setgroups sendmmsg])
+AC_CHECK_FUNCS([gethostbyname gettimeofday clock_gettime memalign memmove memset munmap regcomp pselect select socket sqrt strcasecmp strchr strdup strerror strncasecmp strtol strtoul poll epoll_wait kqueue setgroups sendmmsg madvise])
 
 AC_CONFIG_FILES([Makefile
 		 samples/Makefile

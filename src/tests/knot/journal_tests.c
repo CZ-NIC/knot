@@ -34,7 +34,7 @@ unit_api journal_tests_api = {
 /*
  *  Unit implementation.
  */
-static const int JOURNAL_TEST_COUNT = 16;
+static const int JOURNAL_TEST_COUNT = 20;
 
 /*! \brief Generate random string with given length. */
 static int randstr(char* dst, size_t len)
@@ -199,10 +199,39 @@ static int journal_tests_run(int argc, char *argv[])
 	ok(j && ret == 0, "journal: mapped entry data integrity check");
 	endskip;
 	
+	/* Test 17: Make a transaction. */
+	uint64_t tskey = 0x75750000;
+	ret = journal_trans_begin(j);
+	ok(j && ret == 0, "journal: TRANS begin");
+	for (int i = 0; i < 16; ++i) {
+		memset(tmpbuf, i, sizeof(tmpbuf));
+		journal_write(j, tskey + i, tmpbuf, sizeof(tmpbuf));
+	}
+	
+	/* Test 18: Check if uncommited node exists. */
+	ret = journal_read(j, tskey + rand() % 16, NULL, chk_buf);
+	ok(j && ret != 0, "journal: check for uncommited node");
+	
+	/* Test 19: Commit transaction. */
+	ret = journal_trans_commit(j);
+	int read_ret = journal_read(j, tskey + rand() % 16, NULL, chk_buf);
+	ok(j && ret == 0 && read_ret == 0, "journal: transaction commit");
+	
+	/* Test 20: Rollback transaction. */
+	tskey = 0x6B6B0000;
+	journal_trans_begin(j);
+	for (int i = 0; i < 16; ++i) {
+		memset(tmpbuf, i, sizeof(tmpbuf));
+		journal_write(j, tskey + i, tmpbuf, sizeof(tmpbuf));
+	}
+	ret = journal_trans_rollback(j);
+	read_ret = journal_read(j, tskey + rand() % 16, NULL, chk_buf);
+	ok(j && ret == 0 && read_ret != 0, "journal: transaction rollback");
+
 	/* Test 16: Write random data. */
 	ret = 0;
 	for (int i = 0; i < 512; ++i) {
-		int key = rand() % 65535;
+		int key = i;
 		randstr(tmpbuf, sizeof(tmpbuf));
 		ret = journal_map(j, key, &mptr, sizeof(tmpbuf));
 		if (ret != KNOTD_EOK) {
@@ -217,7 +246,12 @@ static int journal_tests_run(int argc, char *argv[])
 
 		/* Store some key on the end. */
 		memset(chk_buf, 0, sizeof(chk_buf));
-		journal_read(j, key, 0, chk_buf);
+		ret = journal_read(j, key, 0, chk_buf);
+		if (ret != 0) {
+			diag("journal_map integrity check failed %s",
+			     knotd_strerror(ret));
+			break;
+		}
 		ret = strncmp(chk_buf, tmpbuf, sizeof(chk_buf));
 		if (ret != 0) {
 			diag("journal_map integrity check failed");

@@ -1,54 +1,34 @@
-/*
-   Copyright (c) 2006-2011, Thomas Pircher <tehpeh@gmx.net>
-
-   Permission is hereby granted, free of charge, to any person obtaining a copy
-   of this software and associated documentation files (the "Software"), to deal
-   in the Software without restriction, including without limitation the rights
-   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-   copies of the Software, and to permit persons to whom the Software is
-   furnished to do so, subject to the following conditions:
-   
-   The above copyright notice and this permission notice shall be included in
-   all copies or substantial portions of the Software.
-   
-   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-   THE SOFTWARE.
- */
-/**
- * \file crc.h
- * Functions and types for CRC checks.
+/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
  *
- * Generated on Fri May  6 11:25:43 2011,
- * by pycrc v0.7.7, http://www.tty1.net/pycrc/
- * using the configuration:
- *    Width        = 32
- *    Poly         = 0x04c11db7
- *    XorIn        = 0xffffffff
- *    ReflectIn    = True
- *    XorOut       = 0xffffffff
- *    ReflectOut   = True
- *    Algorithm    = table-driven
- *****************************************************************************/
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+/*!
+ * \file crc.h
+ *
+ * \author UFO
+ *
+ * \brief Dummy interface to CRC function of libz library. Should be removed
+ *
+ * \addtogroup common_lib
+ * @{
+ */
+
 #ifndef __CRC_H__
 #define __CRC_H__
 
+#include <zlib.h>
 #include <stdint.h>
-#include <stdlib.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-
-/**
- * The definition of the used algorithm.
- *****************************************************************************/
-#define CRC_ALGO_TABLE_DRIVEN 1
 
 
 /**
@@ -60,23 +40,13 @@ typedef uint32_t crc_t;
 
 
 /**
- * Reflect all bits of a \a data word of \a data_len bytes.
- *
- * \param data         The data word to be reflected.
- * \param data_len     The width of \a data expressed in number of bits.
- * \return             The reflected data.
- *****************************************************************************/
-crc_t crc_reflect(crc_t data, size_t data_len);
-
-
-/**
  * Calculate the initial crc value.
  *
  * \return     The initial crc value.
  *****************************************************************************/
 static inline crc_t crc_init(void)
 {
-    return 0xffffffff;
+	return adler32(0L, NULL, 0);
 }
 
 
@@ -88,7 +58,10 @@ static inline crc_t crc_init(void)
  * \param data_len Number of bytes in the \a data buffer.
  * \return         The updated crc value.
  *****************************************************************************/
-crc_t crc_update(crc_t crc, const unsigned char *data, size_t data_len);
+static inline crc_t crc_update(crc_t crc, const unsigned char *data, size_t data_len)
+{
+	return adler32(crc, data, data_len);
+}
 
 
 /**
@@ -99,12 +72,8 @@ crc_t crc_update(crc_t crc, const unsigned char *data, size_t data_len);
  *****************************************************************************/
 static inline crc_t crc_finalize(crc_t crc)
 {
-    return crc ^ 0xffffffff;
+    return crc;
 }
 
-
-#ifdef __cplusplus
-}           /* closing brace for extern "C" */
-#endif
 
 #endif      /* __CRC_H__ */

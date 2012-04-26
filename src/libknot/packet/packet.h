@@ -206,16 +206,6 @@ enum {
 	 */
 	PREALLOC_RR_OWNER = 256,
 
-//	/*! \brief Space for Answer RRSets. */
-//	PREALLOC_ANSWER = DEFAULT_ANCOUNT * sizeof(knot_dname_t *),
-//	/*! \brief Space for Authority RRSets. */
-//	PREALLOC_AUTHORITY = DEFAULT_NSCOUNT * sizeof(knot_dname_t *),
-//	/*! \brief Space for Additional RRSets. */
-//	PREALLOC_ADDITIONAL = DEFAULT_ARCOUNT * sizeof(knot_dname_t *),
-//	/*! \brief Total size for Answer, Authority and Additional RRSets. */
-//	PREALLOC_RRSETS = PREALLOC_ANSWER
-//	                  + PREALLOC_AUTHORITY
-//	                  + PREALLOC_ADDITIONAL,
 	/*! \brief Space for one part of the compression table (domain names).*/
 	PREALLOC_DOMAINS =
 		DEFAULT_DOMAINS_IN_RESPONSE * sizeof(knot_dname_t *),
@@ -223,10 +213,6 @@ enum {
 	PREALLOC_OFFSETS =
 		DEFAULT_DOMAINS_IN_RESPONSE * sizeof(size_t),
 	PREALLOC_COMPRESSION = PREALLOC_DOMAINS + PREALLOC_OFFSETS,
-
-//	/*! \brief Space for temporary RRSets. */
-//	PREALLOC_TMP_RRSETS =
-//		DEFAULT_TMP_RRSETS * sizeof(knot_rrset_t *),
 
 	PREALLOC_QUERY = PREALLOC_PACKET
 	                 + PREALLOC_QNAME

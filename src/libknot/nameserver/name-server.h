@@ -157,6 +157,11 @@ enum knot_ns_xfr_flag_t {
 	XFR_FLAG_AXFR_FINISHED = 1 << 2
 };
 
+typedef enum knot_ns_transport {
+	NS_TRANSPORT_UDP = 1 << 0,
+	NS_TRANSPORT_TCP = 1 << 1
+} knot_ns_transport_t;
+
 /*!
  * \brief XFR request types.
  */
@@ -235,7 +240,7 @@ void knot_ns_error_response_full(knot_nameserver_t *nameserver,
 
 int knot_ns_prep_normal_response(knot_nameserver_t *nameserver,
                                  knot_packet_t *query, knot_packet_t **resp,
-                                 const knot_zone_t **zone);
+                                 const knot_zone_t **zone, size_t max_size);
 
 /*!
  * \brief Creates a response for the given normal query using the data of the

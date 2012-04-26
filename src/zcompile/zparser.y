@@ -126,7 +126,7 @@ knot_dname_t *error_domain;
 %token <type> T_GPOS T_EID T_NIMLOC T_ATMA T_NAPTR T_KX T_A6 T_DNAME T_SINK
 %token <type> T_OPT T_APL T_UINFO T_UID T_GID T_UNSPEC T_TKEY T_TSIG T_IXFR
 %token <type> T_AXFR T_MAILB T_MAILA T_DS T_DLV T_SSHFP T_RRSIG T_NSEC T_DNSKEY
-%token <type> T_SPF T_NSEC3 T_IPSECKEY T_DHCID T_NSEC3PARAM
+%token <type> T_SPF T_NSEC3 T_IPSECKEY T_DHCID T_NSEC3PARAM T_TLSA
 
 /* other tokens */
 %token	       DOLLAR_TTL DOLLAR_ORIGIN NL SP NO_MEM
@@ -566,14 +566,19 @@ str_seq:	STR
     {
 	    zadd_rdata_txt_wireformat(zparser_conv_text($1.str, $1.len), 1);
 
-	    free($1.str);
+	    if(strcmp($1.str, ".") && strcmp($1.str, "@")
+                && strcmp($1.str, "\\#")) {		// Lexer freed that
+	    	free($1.str);
+            }
     }
     |	str_seq sp STR
     {
 	    zadd_rdata_txt_wireformat(zparser_conv_text($3.str, $3.len), 0);
-//	zc_warning("multiple TXT entries are currently not supported!");
 
-	    free($3.str);
+	    if(strcmp($3.str, ".") && strcmp($3.str, "@")
+                && strcmp($3.str, "\\#")) {		// Lexer freed that
+	    	free($3.str);
+            }
     }
     ;
 
@@ -913,6 +918,8 @@ type_and_rdata:
     |	T_NSEC3 sp rdata_unknown { $$ = $1; parse_unknown_rdata($1, $3); }
     |	T_NSEC3PARAM sp rdata_nsec3_param
     |	T_NSEC3PARAM sp rdata_unknown { $$ = $1; parse_unknown_rdata($1, $3); }
+    |	T_TLSA sp rdata_tlsa
+    |	T_TLSA sp rdata_unknown { $$ = $1; parse_unknown_rdata($1, $3); }
     |	T_DNSKEY sp rdata_dnskey
     |	T_DNSKEY sp rdata_unknown { $$ = $1; parse_unknown_rdata($1, $3); }
     |	T_UTYPE sp rdata_unknown { $$ = $1; parse_unknown_rdata($1, $3); }
@@ -1422,6 +1429,20 @@ rdata_nsec3_param:   STR sp STR sp STR sp STR trail
 	    free($3.str);
 	    free($5.str);
 	    free($7.str);
+    }
+    ;
+    
+rdata_tlsa:   STR sp STR sp STR sp str_sp_seq trail
+    {
+	zadd_rdata_wireformat(zparser_conv_byte($1.str));
+	zadd_rdata_wireformat(zparser_conv_byte($3.str));
+	zadd_rdata_wireformat(zparser_conv_byte($5.str));
+	zadd_rdata_wireformat(zparser_conv_hex($7.str, $7.len));
+	
+	free($1.str);
+	free($3.str);
+	free($5.str);
+	free($7.str);
     }
     ;
 

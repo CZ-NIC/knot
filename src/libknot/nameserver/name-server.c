@@ -2877,7 +2877,7 @@ void knot_ns_error_response_full(knot_nameserver_t *nameserver,
 
 int knot_ns_prep_normal_response(knot_nameserver_t *nameserver,
                                  knot_packet_t *query, knot_packet_t **resp,
-                                 const knot_zone_t **zone)
+                                 const knot_zone_t **zone, size_t max_size)
 {
 	dbg_ns("knot_ns_prep_normal_response()\n");
 
@@ -2894,8 +2894,8 @@ int knot_ns_prep_normal_response(knot_nameserver_t *nameserver,
 
 	ret = knot_packet_parse_rest(query);
 	if (ret != KNOT_EOK) {
-		dbg_ns("Failed to parse rest of the query: "
-				   "%s.\n", knot_strerror(ret));
+		dbg_ns("Failed to parse rest of the query: %s.\n",
+		       knot_strerror(ret));
 		return ret;
 	}
 
@@ -2917,11 +2917,14 @@ int knot_ns_prep_normal_response(knot_nameserver_t *nameserver,
 
 	size_t resp_max_size = 0;
 
-	//assert(*rsize >= MAX_UDP_PAYLOAD);
-
 	knot_packet_dump(query);
-
-	if (knot_query_edns_supported(query)) {
+	
+	if (max_size > 0) {
+		// if TCP is used, buffer size is the only constraint
+		assert(max_size > 0);
+		resp_max_size = max_size;
+	} else if (knot_query_edns_supported(query)) {
+		assert(max_size == 0);
 		if (knot_edns_get_payload(&query->opt_rr) <
 		    knot_edns_get_payload(nameserver->opt_rr)) {
 			resp_max_size = knot_edns_get_payload(&query->opt_rr);

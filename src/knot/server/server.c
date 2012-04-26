@@ -124,7 +124,7 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	/* Initialize interface. */
 	int ret = 0;
 	int sock = 0;
-	char errbuf[128];
+	char errbuf[256] = {0};
 	int opt = 1024 * 1024;
 	int snd_opt = 1024 * 1024;
 	memset(new_if, 0, sizeof(iface_t));
@@ -153,7 +153,7 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	new_if->type[UDP_ID] = cfg_if->family;
 
 	/* Set socket options - voluntary. */
-	char ebuf[512];
+	char ebuf[256] = {0};
 	if (setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &snd_opt, sizeof(snd_opt)) < 0) {
 		strerror_r(errno, ebuf, sizeof(ebuf));	
 //		log_server_warning("Failed to configure socket "

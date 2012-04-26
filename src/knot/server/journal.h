@@ -51,7 +51,8 @@ typedef enum journal_flag_t {
 	JOURNAL_NULL  = 0 << 0, /*!< Invalid journal entry. */
 	JOURNAL_FREE  = 1 << 0, /*!< Free journal entry. */
 	JOURNAL_VALID = 1 << 1, /*!< Valid journal entry. */
-	JOURNAL_DIRTY = 1 << 2  /*!< Journal entry cannot be evicted. */
+	JOURNAL_DIRTY = 1 << 2, /*!< Journal entry cannot be evicted. */
+	JOURNAL_TRANS = 1 << 3  /*!< Entry is in transaction (uncommited). */
 } journal_flag_t;
 
 /*!
@@ -94,6 +95,7 @@ typedef struct journal_t
 	struct flock fl;        /*!< File lock. */
 	char *path;             /*!< Path to journal file. */
 	int refs;               /*!< Number of references. */
+	uint16_t tmark;         /*!< Transaction start mark. */
 	uint16_t max_nodes;     /*!< Number of nodes. */
 	uint16_t qhead;         /*!< Node queue head. */
 	uint16_t qtail;         /*!< Node queue tail. */
@@ -127,7 +129,7 @@ typedef int (*journal_apply_t)(journal_t *j, journal_node_t *n);
 #define JOURNAL_NCOUNT 1024 /*!< Default node count. */
 /* HEADER = magic, crc, max_entries, qhead, qtail */
 #define JOURNAL_HSIZE (MAGIC_LENGTH + sizeof(crc_t) + sizeof(uint16_t) * 3) 
-#define JOURNAL_MAGIC {'k', 'n', 'o', 't', '1', '0', '2'}
+#define JOURNAL_MAGIC {'k', 'n', 'o', 't', '1', '0', '4'}
 
 /*!
  * \brief Create new journal.
@@ -273,6 +275,45 @@ int journal_walk(journal_t *journal, journal_apply_t apply);
  * \retval KNOTD_EINVAL on invalid parameters.
  */
 int journal_update(journal_t *journal, journal_node_t *n);
+
+/*!
+ * \brief Begin transaction of multiple entries.
+ * 
+ * \note Only one transaction at a time is supported.
+ *
+ * \param journal Associated journal.
+ *
+ * \retval KNOTD_EOK on success.
+ * \retval KNOTD_EINVAL on invalid parameters.
+ * \retval KNOTD_EBUSY if transaction is already pending.
+ */
+int journal_trans_begin(journal_t *journal);
+
+/*!
+ * \brief Commit pending transaction.
+ * 
+ * \note Only one transaction at a time is supported.
+ *
+ * \param journal Associated journal.
+ *
+ * \retval KNOTD_EOK on success.
+ * \retval KNOTD_EINVAL on invalid parameters.
+ * \retval KNOTD_ENOENT if no transaction is pending.
+ */
+int journal_trans_commit(journal_t *journal);
+
+/*!
+ * \brief Rollback pending transaction.
+ * 
+ * \note Only one transaction at a time is supported.
+ *
+ * \param journal Associated journal.
+ *
+ * \retval KNOTD_EOK on success.
+ * \retval KNOTD_EINVAL on invalid parameters.
+ * \retval KNOTD_ENOENT if no transaction is pending.
+ */
+int journal_trans_rollback(journal_t *journal);
 
 /*!
  * \brief Close journal file.

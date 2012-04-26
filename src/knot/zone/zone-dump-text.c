@@ -1119,9 +1119,8 @@ void node_dump_text(knot_node_t *node, void *data)
 	free(rrsets);
 }
 
-int zone_dump_text(knot_zone_contents_t *zone, int fd)
+int zone_dump_text(knot_zone_contents_t *zone, FILE *f)
 {
-	FILE *f = fdopen(fd, "w");
 	if (f == NULL) {
 		return KNOT_EBADARG;
 	}
@@ -1134,7 +1133,6 @@ int zone_dump_text(knot_zone_contents_t *zone, int fd)
 	param.origin = knot_node_owner(knot_zone_contents_apex(zone));
 	knot_zone_contents_tree_apply_inorder(zone, node_dump_text, &param);
 	knot_zone_contents_nsec3_apply_inorder(zone, node_dump_text, &param);
-	fclose(f);
 
 	return KNOT_EOK;
 }

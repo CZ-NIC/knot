@@ -1503,7 +1503,7 @@ void knot_packet_dump(const knot_packet_t *packet)
 	dbg_packet("DNS packet:\n-----------------------------\n");
 
 	dbg_packet("\nHeader:\n");
-	dbg_packet("  ID: %u", packet->header.id);
+	dbg_packet("  ID: %u\n", packet->header.id);
 	dbg_packet("  FLAGS: %s %s %s %s %s %s %s\n",
 	       knot_wire_flags_get_qr(packet->header.flags1) ? "qr" : "",
 	       knot_wire_flags_get_aa(packet->header.flags1) ? "aa" : "",

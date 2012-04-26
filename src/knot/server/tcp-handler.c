@@ -207,7 +207,8 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 	case KNOT_QUERY_NORMAL:
 		//res = knot_ns_answer_normal(ns, packet, qbuf, &resp_len);
 		if (zones_normal_query_answer(ns, packet, &addr,
-		                              qbuf, &resp_len) == KNOT_EOK) {
+		                              qbuf, &resp_len,
+		                              NS_TRANSPORT_TCP) == KNOT_EOK) {
 			res = KNOTD_EOK;
 		}
 		break;

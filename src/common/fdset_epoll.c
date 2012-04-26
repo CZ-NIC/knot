@@ -108,8 +108,8 @@ int fdset_epoll_remove(fdset_t *fdset, int fd)
 	--fdset->nfds;
 
 	/* Trim excessive memory if possible (retval is not interesting). */
-	mreserve((char **)&fdset->events, sizeof(struct epoll_event), fdset->nfds,
-	         OS_FDS_CHUNKSIZE, &fdset->reserved);
+	mreserve((char **)&fdset->events, sizeof(struct epoll_event),
+	         fdset->nfds + 1, OS_FDS_CHUNKSIZE, &fdset->reserved);
 	
 	return 0;
 }
@@ -173,7 +173,7 @@ int fdset_epoll_next(fdset_t *fdset, fdset_it_t *it)
 	}
 
 	/* Check boundaries. */
-	if (it->pos >= fdset->polled) {
+	if (it->pos >= fdset->polled || it->pos >= fdset->nfds) {
 		return -1;
 	}
 
