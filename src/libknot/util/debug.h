@@ -42,6 +42,7 @@
   #define KNOT_ZONE_DEBUG
   #define KNOT_ZONEDB_DEBUG
   #define KNOT_NODE_DEBUG
+..#define KNOT_ZONEDIFF_DEBUG
 #endif
 
 #ifdef KNOT_NS_DEBUG

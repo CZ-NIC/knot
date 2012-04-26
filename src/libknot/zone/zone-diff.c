@@ -21,6 +21,10 @@
 #include "libknot/rdata.h"
 #include "zone-diff.h"
 
+/*! \todo XXX TODO FIXME remove once testing is done. */
+#include "zcompile/zcompile.h"
+#include "knot/zone/zone-load.h"
+
 struct zone_diff_param {
 	knot_zone_contents_t *contents;
 	char nsec3;
@@ -736,5 +740,27 @@ int knot_zone_contents_diff(knot_zone_contents_t *zone1,
 	}
 
 	return KNOT_EOK;
+}
+
+/* Mostly just for testing. We only shall diff zones in memory later. */
+int knot_zone_diff_zones(const char *zonefile1, const char *zonefile2)
+{
+	/* Compile test zones. */
+	int ret = zone_read("example.com.", "tmpzone1", "tmpzone1.db", 0);
+	assert(ret == KNOT_EOK);
+	ret = zone_read("example.com.", "tmpzone2", "tmpzone2.db", 0);
+	assert(ret == KNOT_EOK);
+	/* Load test zones. */
+	zloader_t *loader = NULL;
+	ret = knot_zload_open(&loader, "tmpzone1.db");
+	assert(ret == KNOT_EOK);
+	knot_zone_t *z1 = knot_zload_load(loader);
+	ret = knot_zload_open(&loader, "tmpzone2.db");
+	assert(ret == KNOT_EOK);
+	knot_zone_t *z2 = knot_zload_load(loader);
+	assert(z1 && z2);
+	knot_changeset_t *changeset = NULL;
+	return knot_zone_contents_diff(z1->contents, z2->contents,
+	                               &changeset);
 }
 
