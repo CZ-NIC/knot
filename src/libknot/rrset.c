@@ -113,7 +113,6 @@ int knot_rrset_add_rdata(knot_rrset_t *rrset, knot_rdata_t *rdata)
 
 /*----------------------------------------------------------------------------*/
 
-/* todo write comment, this implies that only one rdata will be in list. */
 int knot_rrset_add_rdata_order(knot_rrset_t *rrset, knot_rdata_t *rdata)
 {
 	if (rrset == NULL || rdata == NULL) {
