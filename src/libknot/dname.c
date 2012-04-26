@@ -259,7 +259,6 @@ static int knot_dname_find_labels(knot_dname_t *dname, int alloc)
 	const uint8_t *name = dname->name;
 	const uint8_t *pos = name;
 	const uint size = dname->size;
-	const char *erm = "Wrong wire format of domain name!\n";
 
 	uint8_t labels[KNOT_MAX_DNAME_LABELS];
 	short label_count = 0;
@@ -271,13 +270,13 @@ static int knot_dname_find_labels(knot_dname_t *dname, int alloc)
 
 	// TODO: how to check if the domain name has right format?
 	if (label_count == KNOT_MAX_DNAME_LABELS) {
-		dbg_dname(erm);
+		dbg_dname("Wrong wire format of domain name!\n");
 		dbg_dname("Too many labels: %s\n", name);
 		return -1;
 	}
 
 	if (pos - name > size || *pos != '\0' ) {
-		dbg_dname(erm);
+		dbg_dname("Wrong wire format of domain name!\n");
 		dbg_dname("Position: %d, character: %d, expected size: %d\n", pos - name, *pos, size);
 		return -1;
 	}

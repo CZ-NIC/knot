@@ -223,7 +223,13 @@ int knot_rrset_add_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs,
 				return 1;
 			}
 		} else if (dupl == KNOT_RRSET_DUPL_SKIP) {
-			return 2;
+			rc = knot_rrset_merge_no_dupl((void **)&rrset->rrsigs,
+			                              (void **)&rrsigs);
+			if (rc != KNOT_EOK) {
+				return rc;
+			} else {
+				return 1;
+			}
 		} else if (dupl == KNOT_RRSET_DUPL_REPLACE) {
 			rrset->rrsigs = rrsigs;
 		}
@@ -707,12 +713,6 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
 		return;
 	}
 
-//	char *name = knot_dname_to_str(knot_rrset_owner(*rrset));
-//	char *type = knot_rrtype_to_string(knot_rrset_type(*rrset));
-//	fprintf(stderr, "Deleting RRSet (%p) %s, type %s, rdata: %p\n",
-//	        *rrset, name, type, (*rrset)->rdata);
-//	free(name);
-
 	if (free_rdata) {
 		knot_rdata_t *tmp_rdata;
 		knot_rdata_t *next_rdata;
@@ -727,7 +727,6 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
 			tmp_rdata = next_rdata;
 		}
 
-//		printf("test: %p\n", tmp_rdata->next->next);
 		assert(tmp_rdata == NULL
 		       || tmp_rdata->next == (*rrset)->rdata);
 
@@ -792,6 +791,7 @@ int knot_rrset_merge(void **r1, void **r2)
 	}
 
 	tmp_rdata->next = rrset1->rdata;
+	rrset2->rdata = rrset1->rdata;
 
 	return KNOT_EOK;
 }
@@ -889,6 +889,7 @@ int knot_rrset_merge_no_dupl(void **r1, void **r2)
 			knot_rdata_t *tmp = walk2;
 			dbg_rrset_detail("rrset: merge_dupl: freeing: %p.\n",
 			                 tmp);
+			/*! \todo Break the link in second list too? */
 			walk2 = knot_rrset_rdata_get_next(rrset2, walk2);
 			knot_rdata_deep_free(&tmp, rrset1->type, 0);
 			assert(tmp == NULL);
@@ -897,6 +898,22 @@ int knot_rrset_merge_no_dupl(void **r1, void **r2)
 	}
 	
 	assert(walk2 == NULL);
+dbg_rrset_exec_detail(
+	dbg_rrset_detail("rrset: merge_dupl: RDATA after merge:\n ");
+	knot_rdata_t *walk1 = rrset1->rdata;
+	while (walk1 != NULL) {
+		dbg_rrset_detail("%p ->\n", walk1);
+		walk1 = knot_rrset_rdata_get_next(rrset1, walk1);
+	}
+	dbg_rrset_detail("rrset: merge_dupl: RDATA after merge: r1:%p r2: %p\n",
+	                 rrset1->rdata, rrset2->rdata);
+);
+	/*
+	 * Since we cannot assume which rrset will be used after merge.
+	 * both have to be identical so it does not matter which is going to be
+	 * freed, but should NOT be deep freed! This is mostly just precaution.
+	 */
+	rrset2->rdata = rrset1->rdata;
 
 	return KNOT_EOK;
 }

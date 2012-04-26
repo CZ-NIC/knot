@@ -446,7 +446,6 @@ static int knot_rdata_dump_binary(knot_rdata_t *rdata,
 			dbg_zdump_detail("zdump: dump_rdata: "
 			                 "Writing raw data. Item nr.: %d\n",
 			                 i);
-			printf("%p\n", rdata);
 			assert(rdata->items[i].raw_data != NULL);
 			if (!write_wrapper(rdata->items[i].raw_data,
 			                   sizeof(uint8_t),
