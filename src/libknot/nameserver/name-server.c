@@ -970,15 +970,8 @@ static int ns_put_nsec3_closest_encloser_proof(
 	assert(qname != NULL);
 	assert(resp != NULL);
 
-	if (knot_zone_contents_nsec3params(zone) == NULL) {
-dbg_ns_exec(
-		char *name = knot_dname_to_str(knot_node_owner(
-				knot_zone_contents_apex(zone)));
-		dbg_ns("No NSEC3PARAM found in zone %s.\n", name);
-		free(name);
-);
-		return KNOT_EOK;
-	}
+	// this function should be called only if NSEC3 is enabled in the zone
+	assert(knot_zone_contents_nsec3params(zone) != NULL);
 
 dbg_ns_exec(
 	char *name = knot_dname_to_str(knot_node_owner(*closest_encloser));
@@ -1743,7 +1736,7 @@ static int ns_answer_from_node(const knot_node_t *node,
 
 	if (answers == 0) {  // if NODATA response, put SOA
 		if (knot_node_rrset_count(node) == 0
-		    && !knot_zone_contents_nsec3_enabled(zone)) {
+		    /*&& !knot_zone_contents_nsec3_enabled(zone)*/) {
 			// node is an empty non-terminal => NSEC for NXDOMAIN
 			//assert(knot_node_rrset_count(closest_encloser) > 0);
 			dbg_ns("Adding NSEC/NSEC3 for NXDOMAIN.\n");
