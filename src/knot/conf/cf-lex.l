@@ -77,6 +77,7 @@ remotes         { lval.t = yytext; return REMOTES; }
 
 zones           { lval.t = yytext; return ZONES; }
 file            { lval.t = yytext; return FILENAME; }
+disable-any     { lval.t = yytext; return DISABLE_ANY; }
 semantic-checks { lval.t = yytext; return SEMANTIC_CHECKS; }
 notify-retries  { lval.t = yytext; return NOTIFY_RETRIES; }
 notify-timeout  { lval.t = yytext; return NOTIFY_TIMEOUT; }

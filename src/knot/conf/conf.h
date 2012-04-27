@@ -93,6 +93,7 @@ typedef struct conf_zone_t {
 	size_t ixfr_fslimit;      /*!< File size limit for IXFR journal. */
 	int dbsync_timeout;       /*!< Interval between syncing to zonefile.*/
 	int enable_checks;        /*!< Semantic checks for parser.*/
+	int disable_any;          /*!< Disable ANY type queries for AA.*/
 	int notify_retries;       /*!< NOTIFY query retries. */
 	int notify_timeout;       /*!< Timeout for NOTIFY response (s). */
 	struct {
@@ -191,6 +192,7 @@ typedef struct conf_t {
 	list zones;       /*!< List of zones. */
 	int zones_count;  /*!< Count of zones. */
 	int zone_checks;  /*!< Semantic checks for parser.*/
+	int disable_any;  /*!< Disable ANY type queries for AA.*/
 	int notify_retries; /*!< NOTIFY query retries. */
 	int notify_timeout; /*!< Timeout for NOTIFY response in seconds. */
 	int dbsync_timeout; /*!< Default interval between syncing to zonefile.*/
