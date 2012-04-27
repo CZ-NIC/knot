@@ -1736,7 +1736,7 @@ static int ns_answer_from_node(const knot_node_t *node,
 
 	if (answers == 0) {  // if NODATA response, put SOA
 		if (knot_node_rrset_count(node) == 0
-		    /*&& !knot_zone_contents_nsec3_enabled(zone)*/) {
+		    && !knot_zone_contents_nsec3_enabled(zone)) {
 			// node is an empty non-terminal => NSEC for NXDOMAIN
 			//assert(knot_node_rrset_count(closest_encloser) > 0);
 			dbg_ns("Adding NSEC/NSEC3 for NXDOMAIN.\n");
