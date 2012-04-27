@@ -40,6 +40,15 @@ typedef struct {
 
 /*----------------------------------------------------------------------------*/
 
+const uint8_t KNOT_ZONE_FLAGS_GEN_OLD  = 0;            /* xxxxxx00 */
+const uint8_t KNOT_ZONE_FLAGS_GEN_NEW  = 1 << 0;       /* xxxxxx01 */
+const uint8_t KNOT_ZONE_FLAGS_GEN_FIN  = 1 << 2;       /* xxxxxx10 */
+const uint8_t KNOT_ZONE_FLAGS_GEN_MASK = 3;            /* 00000011 */
+const uint8_t KNOT_ZONE_FLAGS_ANY_MASK = 4;            /* 00000100 */
+const uint8_t KNOT_ZONE_FLAGS_ANY      = 4;            /* 00000100 */
+
+/*----------------------------------------------------------------------------*/
+
 static void knot_zone_tree_apply(knot_zone_tree_node_t *node,
                                    void *data)
 {
@@ -1134,58 +1143,72 @@ cleanup:
 
 /*----------------------------------------------------------------------------*/
 
-//short knot_zone_contents_generation(const knot_zone_contents_t *zone)
-//{
-//	return zone->generation;
-//}
-
-/*----------------------------------------------------------------------------*/
-
 int knot_zone_contents_gen_is_old(const knot_zone_contents_t *contents)
 {
-	return (contents->generation == 0);
+	return ((contents->flags & KNOT_ZONE_FLAGS_GEN_MASK)
+	        == KNOT_ZONE_FLAGS_GEN_OLD);
 }
 
 /*----------------------------------------------------------------------------*/
 
 int knot_zone_contents_gen_is_new(const knot_zone_contents_t *contents)
 {
-	return (contents->generation == 1);
+	return ((contents->flags & KNOT_ZONE_FLAGS_GEN_MASK)
+	        == KNOT_ZONE_FLAGS_GEN_NEW);
 }
 
 /*----------------------------------------------------------------------------*/
 
 int knot_zone_contents_gen_is_finished(const knot_zone_contents_t *contents)
 {
-	return (contents->generation == -1);
+	return ((contents->flags & KNOT_ZONE_FLAGS_GEN_MASK)
+	        == KNOT_ZONE_FLAGS_GEN_FIN);
 }
-
-/*----------------------------------------------------------------------------*/
-
-//void knot_zone_contents_switch_generation(knot_zone_contents_t *zone)
-//{
-//	zone->generation = 1 - zone->generation;
-//}
 
 /*----------------------------------------------------------------------------*/
 
 void knot_zone_contents_set_gen_old(knot_zone_contents_t *contents)
 {
-	contents->generation = 0;
+	contents->flags &= ~KNOT_ZONE_FLAGS_GEN_MASK;
+	contents->flags |= KNOT_ZONE_FLAGS_GEN_OLD;
 }
 
 /*----------------------------------------------------------------------------*/
 
 void knot_zone_contents_set_gen_new(knot_zone_contents_t *contents)
 {
-	contents->generation = 1;
+	contents->flags &= ~KNOT_ZONE_FLAGS_GEN_MASK;
+	contents->flags |= KNOT_ZONE_FLAGS_GEN_NEW;
 }
 
 /*----------------------------------------------------------------------------*/
 
 void knot_zone_contents_set_gen_new_finished(knot_zone_contents_t *contents)
 {
-	contents->generation = -1;
+	contents->flags &= ~KNOT_ZONE_FLAGS_GEN_MASK;
+	contents->flags |= KNOT_ZONE_FLAGS_GEN_FIN;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_zone_contents_any_disabled(const knot_zone_contents_t *contents)
+{
+	return ((contents->flags & KNOT_ZONE_FLAGS_ANY_MASK)
+	        == KNOT_ZONE_FLAGS_ANY);
+}
+
+/*----------------------------------------------------------------------------*/
+
+void knot_zone_contents_disable_any(knot_zone_contents_t *contents)
+{
+	contents->flags |= KNOT_ZONE_FLAGS_ANY;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void knot_zone_contents_enable_any(knot_zone_contents_t *contents)
+{
+	contents->flags &= ~KNOT_ZONE_FLAGS_ANY_MASK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2619,7 +2642,7 @@ int knot_zone_contents_shallow_copy(const knot_zone_contents_t *from,
 	}
 
 	contents->node_count = from->node_count;
-	contents->generation = from->generation;
+	contents->flags = from->flags;
 
 	contents->zone = from->zone;
 
@@ -2716,7 +2739,7 @@ int knot_zone_contents_shallow_copy2(const knot_zone_contents_t *from,
 	}
 
 	contents->node_count = from->node_count;
-	contents->generation = from->generation;
+	contents->flags = from->flags;
 
 	contents->zone = from->zone;
 
