@@ -2395,8 +2395,8 @@ int knot_zone_contents_nsec3_enabled(const knot_zone_contents_t *zone)
 		return KNOT_EBADARG;
 	}
 
-	//return (zone->nsec3_params.algorithm != 0);
-	return (zone->nsec3_nodes->th_root != NULL);
+	return (zone->nsec3_params.algorithm != 0);
+//	return (zone->nsec3_nodes->th_root != NULL);
 }
 
 /*----------------------------------------------------------------------------*/
