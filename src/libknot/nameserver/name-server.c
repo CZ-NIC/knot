@@ -1131,7 +1131,8 @@ static int ns_put_nsec3_no_wildcard_child(const knot_zone_contents_t *zone,
  *             RRSets of the requested type).
  * \param resp Response where to add the NSECs or NSEC3s.
  */
-static int ns_put_nsec_nsec3_nodata(const knot_node_t *node,
+static int ns_put_nsec_nsec3_nodata(const knot_zone_contents_t *zone,
+                                    const knot_node_t *node,
                                     knot_packet_t *resp)
 {
 	if (!DNSSEC_ENABLED ||
@@ -1139,24 +1140,35 @@ static int ns_put_nsec_nsec3_nodata(const knot_node_t *node,
 		return KNOT_EOK;
 	}
 
-	int ret = KNOT_EOK;
+	/*! \todo Maybe distinguish different errors. */
+	int ret = KNOT_ERROR;
 
-	knot_node_t *nsec3_node = knot_node_get_nsec3_node(node);
 	knot_rrset_t *rrset = NULL;
-	if ((rrset = knot_node_get_rrset(node, KNOT_RRTYPE_NSEC)) != NULL
-	    || (nsec3_node != NULL && (rrset =
-	         knot_node_get_rrset(nsec3_node, KNOT_RRTYPE_NSEC3)) != NULL)) {
-		ret = knot_response_add_rrset_authority(resp, rrset, 1, 0,
-		                                        0, 1);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
 
-		// add RRSIG for the RRSet
-		if ((rrset = knot_rrset_get_rrsigs(rrset)) != NULL) {
+	if (knot_zone_contents_nsec3_enabled(zone)) {
+		knot_node_t *nsec3_node = knot_node_get_nsec3_node(node);
+
+		if (nsec3_node != NULL
+		    && (rrset = knot_node_get_rrset(nsec3_node,
+		                                  KNOT_RRTYPE_NSEC3)) != NULL) {
 			ret = knot_response_add_rrset_authority(resp, rrset, 1,
 			                                        0, 0, 1);
 		}
+	} else {
+		if ((rrset = knot_node_get_rrset(node, KNOT_RRTYPE_NSEC))
+		    != NULL) {
+			ret = knot_response_add_rrset_authority(resp, rrset, 1,
+			                                        0, 0, 1);
+		}
+	}
+
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	if (rrset != NULL && (rrset = knot_rrset_get_rrsigs(rrset)) != NULL) {
+		ret = knot_response_add_rrset_authority(resp, rrset, 1,
+		                                        0, 0, 1);
 	}
 
 	return ret;
@@ -1604,7 +1616,7 @@ static inline int ns_referral(const knot_node_t *node,
 			/*! \todo Handle in some generic way. */
 			
 			dbg_ns("Adding NSEC/NSEC3 for NODATA.\n");
-			ret = ns_put_nsec_nsec3_nodata(node, resp);
+			ret = ns_put_nsec_nsec3_nodata(zone, node, resp);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
@@ -1740,7 +1752,7 @@ static int ns_answer_from_node(const knot_node_t *node,
 				qname, resp);
 		} else {
 			dbg_ns("Adding NSEC/NSEC3 for NODATA.\n");
-			ret = ns_put_nsec_nsec3_nodata(node, resp);
+			ret = ns_put_nsec_nsec3_nodata(zone, node, resp);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
