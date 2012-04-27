@@ -1507,6 +1507,15 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 			dbg_zones("zone: journal sync of '%s' "
 			          "set to %d\n", z->name, sync_tmr);
 		}
+
+		/* Update ANY queries policy */
+		if (zd->conf->disable_any) {
+			knot_zone_contents_t *contents =
+			                knot_zone_get_contents(zone);
+			if (contents) {
+				knot_zone_contents_disable_any(contents);
+			}
+		}
 	}
 
 	/* CLEANUP */
