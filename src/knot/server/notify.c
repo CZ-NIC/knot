@@ -243,8 +243,9 @@ int notify_process_request(knot_nameserver_t *ns,
 		if (knot_packet_parse_rest(notify) != KNOT_EOK) {
 			dbg_notify("notify: failed to parse NOTIFY query\n");
 			knot_ns_error_response(ns, knot_packet_id(notify),
-					       KNOT_RCODE_FORMERR, buffer,
-					       size);
+			                       &notify->header.flags1,
+			                       KNOT_RCODE_FORMERR, buffer,
+			                       size);
 			return KNOTD_EOK;
 		}
 	}
@@ -255,8 +256,8 @@ int notify_process_request(knot_nameserver_t *ns,
 	if (ret != KNOTD_EOK) {
 		dbg_notify("notify: failed to create NOTIFY response\n");
 		knot_ns_error_response(ns, knot_packet_id(notify),
-				       KNOT_RCODE_SERVFAIL, buffer,
-				       size);
+		                       &notify->header.flags1,
+		                       KNOT_RCODE_SERVFAIL, buffer, size);
 		return KNOTD_EOK;
 	}
 
@@ -267,8 +268,8 @@ int notify_process_request(knot_nameserver_t *ns,
 	if (z == NULL) {
 		dbg_notify("notify: failed to find zone by name\n");
 		knot_ns_error_response(ns, knot_packet_id(notify),
-				       KNOT_RCODE_REFUSED, buffer,
-				       size);
+		                       &notify->header.flags1,
+		                       KNOT_RCODE_REFUSED, buffer, size);
 		return KNOTD_EOK;
 	}
 

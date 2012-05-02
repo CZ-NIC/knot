@@ -172,14 +172,15 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 	}
 
 	/* Parse query. */
-//	knot_response_t *resp = knot_response_new(qbuf_maxlen);
 	size_t resp_len = qbuf_maxlen; // 64K
 	knot_packet_type_t qtype = KNOT_QUERY_NORMAL;
 	knot_packet_t *packet =
 		knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
 	if (packet == NULL) {
+		/*! \todo The packet may have less bytes than required. */
 		uint16_t pkt_id = knot_wire_get_id(qbuf);
-		knot_ns_error_response(ns, pkt_id, KNOT_RCODE_SERVFAIL,
+		uint8_t flags1 = knot_wire_get_flags1(qbuf);
+		knot_ns_error_response(ns, pkt_id, &flags1, KNOT_RCODE_SERVFAIL,
 				       qbuf, &resp_len);
 		tcp_reply(fd, qbuf, resp_len);
 		return KNOTD_EOK;
@@ -188,8 +189,10 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 	int parse_res = knot_ns_parse_packet(qbuf, n, packet, &qtype);
 	if (unlikely(parse_res != KNOT_EOK)) {
 		if (parse_res > 0) { /* Returned RCODE */
+			/*! \todo The packet may have less bytes than required*/
 			uint16_t pkt_id = knot_wire_get_id(qbuf);
-			knot_ns_error_response(ns, pkt_id, parse_res,
+			uint8_t flags1 = knot_wire_get_flags1(qbuf);
+			knot_ns_error_response(ns, pkt_id, &flags1, parse_res,
 					       qbuf, &resp_len);
 			tcp_reply(fd, qbuf, resp_len);
 		}
@@ -224,6 +227,7 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 		res = xfr_request_init(&xfr, xfrt, XFR_FLAG_TCP, packet);
 		if (res != KNOTD_EOK) {
 			knot_ns_error_response(ns, knot_packet_id(packet),
+			                       &packet->header.flags1,
 			                       KNOT_RCODE_SERVFAIL, qbuf,
 			                       &resp_len);
 			res = KNOTD_EOK;
@@ -240,8 +244,8 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 		
 	case KNOT_QUERY_UPDATE:
 		knot_ns_error_response(ns, knot_packet_id(packet),
-				       KNOT_RCODE_NOTIMPL, qbuf,
-				       &resp_len);
+		                       &packet->header.flags1,
+		                       KNOT_RCODE_NOTIMPL, qbuf, &resp_len);
 		res = KNOTD_EOK;
 		break;
 		
@@ -256,16 +260,16 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 	case KNOT_RESPONSE_AXFR:   /*!< Processed in XFR handler. */
 	case KNOT_RESPONSE_IXFR:   /*!< Processed in XFR handler. */
 		knot_ns_error_response(ns, knot_packet_id(packet),
-				       KNOT_RCODE_REFUSED, qbuf,
-				       &resp_len);
+		                       &packet->header.flags1,
+		                       KNOT_RCODE_REFUSED, qbuf, &resp_len);
 		res = KNOTD_EOK;
 		break;
 		
 	/* Unknown opcodes. */
 	default:
 		knot_ns_error_response(ns, knot_packet_id(packet),
-				       KNOT_RCODE_FORMERR, qbuf,
-				       &resp_len);
+		                       &packet->header.flags1,
+		                       KNOT_RCODE_FORMERR, qbuf, &resp_len);
 		res = KNOTD_EOK;
 		break;
 	}

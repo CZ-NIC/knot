@@ -2841,17 +2841,25 @@ int knot_ns_parse_packet(const uint8_t *query_wire, size_t qsize,
 
 /*----------------------------------------------------------------------------*/
 
-void knot_ns_error_response(const knot_nameserver_t *nameserver, uint16_t query_id,
-                       uint8_t rcode, uint8_t *response_wire, size_t *rsize)
+void knot_ns_error_response(const knot_nameserver_t *nameserver,
+                            uint16_t query_id, uint8_t *flags1_query,
+                            uint8_t rcode, uint8_t *response_wire,
+                            size_t *rsize)
 {
-	//dbg_ns("Error response: \n");
-	//dbg_ns_hex((const char *)nameserver->err_response,
-	//             nameserver->err_resp_size);
-
 	memcpy(response_wire, nameserver->err_response,
 	       nameserver->err_resp_size);
-	// copy ID of the query
+
+	// copy only the ID of the query
 	knot_wire_set_id(response_wire, query_id);
+
+	if (flags1_query != NULL) {
+		if (knot_wire_flags_get_rd(*flags1_query) != 0) {
+			knot_wire_set_rd(response_wire);
+		}
+		knot_wire_set_opcode(response_wire,
+		                    knot_wire_flags_get_opcode(*flags1_query));
+	}
+
 	// set the RCODE
 	knot_wire_set_rcode(response_wire, rcode);
 	*rsize = nameserver->err_resp_size;
@@ -2868,6 +2876,7 @@ void knot_ns_error_response_full(knot_nameserver_t *nameserver,
 	if (ns_error_response_to_wire(response, response_wire, rsize) != 0) {
 		knot_ns_error_response(nameserver, knot_packet_id(
 		                       knot_packet_query(response)),
+		                       &response->header.flags1,
 		                       KNOT_RCODE_SERVFAIL, response_wire,
 		                       rsize);
 	}
@@ -3039,9 +3048,10 @@ int knot_ns_init_xfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		dbg_ns("Failed to parse rest of the query: %s\n", 
 		       knot_strerror(ret));
 		knot_ns_error_response(nameserver, xfr->query->header.id,
-				  (ret == KNOT_EMALF) ? KNOT_RCODE_FORMERR
-				                      : KNOT_RCODE_SERVFAIL, 
-				  xfr->wire, &xfr->wire_size);
+		                       &xfr->query->header.flags1,
+		                       (ret == KNOT_EMALF) ? KNOT_RCODE_FORMERR
+		                                          : KNOT_RCODE_SERVFAIL,
+		                       xfr->wire, &xfr->wire_size);
 		ret = xfr->send(xfr->session, &xfr->addr, xfr->wire, 
 		                xfr->wire_size);
 		return ret;
@@ -3057,8 +3067,9 @@ int knot_ns_init_xfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		dbg_ns("Failed to create packet structure.\n");
 		/*! \todo xfr->wire is not NULL, will fail on assert! */
 		knot_ns_error_response(nameserver, xfr->query->header.id,
-				  KNOT_RCODE_SERVFAIL, xfr->wire,
-				  &xfr->wire_size);
+		                       &xfr->query->header.flags1,
+		                       KNOT_RCODE_SERVFAIL, xfr->wire,
+		                       &xfr->wire_size);
 		ret = xfr->send(xfr->session, &xfr->addr, xfr->wire, 
 		                xfr->wire_size);
 		knot_packet_free(&response);
@@ -3087,8 +3098,9 @@ int knot_ns_init_xfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		dbg_ns("Failed to init response structure.\n");
 		/*! \todo xfr->wire is not NULL, will fail on assert! */
 		knot_ns_error_response(nameserver, xfr->query->header.id,
-		                         KNOT_RCODE_SERVFAIL, xfr->wire,
-		                         &xfr->wire_size);
+		                       &xfr->query->header.flags1,
+		                       KNOT_RCODE_SERVFAIL, xfr->wire,
+		                       &xfr->wire_size);
 		int res = xfr->send(xfr->session, &xfr->addr, xfr->wire, 
 		                    xfr->wire_size);
 		knot_packet_free(&response);
@@ -3205,6 +3217,7 @@ int knot_ns_xfr_send_error(const knot_nameserver_t *nameserver,
 	if ((ret = ns_xfr_send_and_clear(xfr, 1)) != KNOT_EOK) {
 		size_t size = 0;
 		knot_ns_error_response(nameserver, xfr->query->header.id,
+		                       &xfr->query->header.flags1,
 		                       KNOT_RCODE_SERVFAIL, xfr->wire, &size);
 		ret = xfr->send(xfr->session, &xfr->addr, xfr->wire, size);
 	}
@@ -3229,8 +3242,9 @@ int knot_ns_answer_axfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		dbg_ns("AXFR failed on stub zone\n");
 		/*! \todo replace with knot_ns_xfr_send_error() */
 		knot_ns_error_response(nameserver, xfr->query->header.id,
-					 KNOT_RCODE_SERVFAIL, xfr->wire,
-					 &xfr->wire_size);
+		                       &xfr->query->header.flags1,
+		                       KNOT_RCODE_SERVFAIL, xfr->wire,
+		                       &xfr->wire_size);
 		ret = xfr->send(xfr->session, &xfr->addr, xfr->wire,
 				xfr->wire_size);
 		rcu_read_unlock();
@@ -3263,8 +3277,9 @@ int knot_ns_answer_axfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		/*! \todo xfr->wire is not NULL, will fail on assert! */
 		/*! \todo replace with knot_ns_xfr_send_error() */
 		knot_ns_error_response(nameserver, xfr->query->header.id,
-		                         KNOT_RCODE_SERVFAIL, xfr->wire,
-		                         &xfr->wire_size);
+		                       &xfr->query->header.flags1,
+		                       KNOT_RCODE_SERVFAIL, xfr->wire,
+		                       &xfr->wire_size);
 		ret = xfr->send(xfr->session, &xfr->addr, xfr->wire, 
 		                xfr->wire_size);
 	} else if (ret > 0) {
@@ -3576,6 +3591,7 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
 	                                   MAX_UDP_PAYLOAD);
 	if (ret != KNOT_EOK) {
 		knot_ns_error_response(nameserver, knot_packet_id(query),
+		                       &query->header.flags1,
 		                       KNOT_RCODE_SERVFAIL, response_wire,
 		                       rsize);
 		return KNOT_EOK;
