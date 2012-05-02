@@ -2867,6 +2867,33 @@ void knot_ns_error_response(const knot_nameserver_t *nameserver,
 
 /*----------------------------------------------------------------------------*/
 
+int knot_ns_error_response_from_query(const knot_nameserver_t *nameserver,
+                                      const uint8_t *query, size_t size,
+                                      uint8_t rcode, uint8_t *response_wire,
+                                      size_t *rsize)
+{
+	if (size < 2) {
+		// ignore packet
+		return KNOT_EFEWDATA;
+	}
+
+	uint16_t pkt_id = knot_wire_get_id(query);
+
+	uint8_t *flags1_ptr = NULL;
+	uint8_t flags1;
+
+	if (size > KNOT_WIRE_OFFSET_FLAGS1) {
+		flags1 = knot_wire_get_flags1(query);
+		flags1_ptr = &flags1;
+	}
+	knot_ns_error_response(nameserver, pkt_id, flags1_ptr,
+	                       rcode, response_wire, rsize);
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 void knot_ns_error_response_full(knot_nameserver_t *nameserver,
                                  knot_packet_t *response, uint8_t rcode,
                                  uint8_t *response_wire, size_t *rsize)

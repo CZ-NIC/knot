@@ -132,6 +132,13 @@ static void tcp_sweep(fdset_t *set, int fd, void* data)
  *
  * \param w Associated I/O event.
  * \param revents Returned events.
+ *
+ * \note We do not know if the packet makes sense or if it is
+ *       a bunch of random bytes. There is no way to find out
+ *       without parsing. However, it is irrelevant if we copy
+ *       these random bytes to the response, so we may do it
+ *       and ensure that in case of good packet the response
+ *       is proper.
  */
 static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen)
 {
@@ -177,24 +184,26 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 	knot_packet_t *packet =
 		knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
 	if (packet == NULL) {
-		/*! \todo The packet may have less bytes than required. */
-		uint16_t pkt_id = knot_wire_get_id(qbuf);
-		uint8_t flags1 = knot_wire_get_flags1(qbuf);
-		knot_ns_error_response(ns, pkt_id, &flags1, KNOT_RCODE_SERVFAIL,
-				       qbuf, &resp_len);
-		tcp_reply(fd, qbuf, resp_len);
+		int ret = knot_ns_error_response_from_query(ns, qbuf, n,
+		                                            KNOT_RCODE_SERVFAIL,
+		                                            qbuf, &resp_len);
+
+		if (ret == KNOT_EOK) {
+			tcp_reply(fd, qbuf, resp_len);
+		}
+
 		return KNOTD_EOK;
 	}
 
 	int parse_res = knot_ns_parse_packet(qbuf, n, packet, &qtype);
 	if (unlikely(parse_res != KNOT_EOK)) {
 		if (parse_res > 0) { /* Returned RCODE */
-			/*! \todo The packet may have less bytes than required*/
-			uint16_t pkt_id = knot_wire_get_id(qbuf);
-			uint8_t flags1 = knot_wire_get_flags1(qbuf);
-			knot_ns_error_response(ns, pkt_id, &flags1, parse_res,
-					       qbuf, &resp_len);
-			tcp_reply(fd, qbuf, resp_len);
+			int ret = knot_ns_error_response_from_query(ns, qbuf, n,
+					parse_res, qbuf, &resp_len);
+
+			if (ret == KNOT_EOK) {
+				tcp_reply(fd, qbuf, resp_len);
+			}
 		}
 		knot_packet_free(&packet);
 		return KNOTD_EOK;

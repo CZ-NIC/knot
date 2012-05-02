@@ -47,6 +47,7 @@
 #include "libknot/packet/packet.h"
 #include "knot/server/zones.h"
 #include "knot/server/notify.h"
+#include "libknot/util/error.h"
 
 /* Check for sendmmsg syscall. */
 #ifdef HAVE_SENDMMSG
@@ -83,11 +84,15 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
 	if (packet == NULL) {
 		dbg_net("udp: failed to create packet on fd=%d\n", fd);
-		/*! \todo The packet may have less bytes than required. */
-		uint16_t pkt_id = knot_wire_get_id(qbuf);
-		uint8_t flags1 = knot_wire_get_flags1(qbuf);
-		knot_ns_error_response(ns, pkt_id, &flags1, KNOT_RCODE_SERVFAIL,
-		                       qbuf, resp_len);
+
+		int ret = knot_ns_error_response_from_query(ns, qbuf, qbuflen,
+		                                            KNOT_RCODE_SERVFAIL,
+		                                            qbuf, resp_len);
+
+		if (ret != KNOT_EOK) {
+			return KNOTD_EMALF;
+		}
+
 		return KNOTD_EOK; /* Created error response. */
 	}
 
@@ -96,11 +101,15 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 	if (unlikely(res != KNOTD_EOK)) {
 		dbg_net("udp: failed to parse packet on fd=%d\n", fd);
 		if (res > 0) { /* Returned RCODE */
-			/*! \todo The packet may have less bytes than required. */
-			uint16_t pkt_id = knot_wire_get_id(qbuf);
-			uint8_t flags1 = knot_wire_get_flags1(qbuf);
-			knot_ns_error_response(ns, pkt_id, &flags1, res,
-			                       qbuf, resp_len);
+			int ret = knot_ns_error_response_from_query(ns, qbuf,
+			                                            qbuflen,
+			                                            res, qbuf,
+			                                            resp_len);
+
+			if (ret != KNOT_EOK) {
+				knot_packet_free(&packet);
+				return KNOTD_EMALF;
+			}
 		}
 
 		knot_packet_free(&packet);
