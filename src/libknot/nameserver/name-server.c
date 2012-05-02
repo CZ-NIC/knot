@@ -1827,7 +1827,8 @@ have_node:
 		goto finalize;
 	}
 
-	if (knot_node_rrset(node, KNOT_RRTYPE_CNAME) != NULL) {
+	if (knot_node_rrset(node, KNOT_RRTYPE_CNAME) != NULL
+	    && qtype != KNOT_RRTYPE_CNAME) {
 dbg_ns_exec(
 		char *name = knot_dname_to_str(node->owner);
 		dbg_ns("Node %s has CNAME record, resolving...\n",
