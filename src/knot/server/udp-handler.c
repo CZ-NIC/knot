@@ -47,6 +47,7 @@
 #include "libknot/packet/packet.h"
 #include "knot/server/zones.h"
 #include "knot/server/notify.h"
+#include "libknot/util/error.h"
 
 /* Check for sendmmsg syscall. */
 #ifdef HAVE_SENDMMSG
@@ -83,9 +84,15 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
 	if (packet == NULL) {
 		dbg_net("udp: failed to create packet on fd=%d\n", fd);
-		uint16_t pkt_id = knot_wire_get_id(qbuf);
-		knot_ns_error_response(ns, pkt_id, KNOT_RCODE_SERVFAIL,
-				  qbuf, resp_len);
+
+		int ret = knot_ns_error_response_from_query(ns, qbuf, qbuflen,
+		                                            KNOT_RCODE_SERVFAIL,
+		                                            qbuf, resp_len);
+
+		if (ret != KNOT_EOK) {
+			return KNOTD_EMALF;
+		}
+
 		return KNOTD_EOK; /* Created error response. */
 	}
 
@@ -94,9 +101,15 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 	if (unlikely(res != KNOTD_EOK)) {
 		dbg_net("udp: failed to parse packet on fd=%d\n", fd);
 		if (res > 0) { /* Returned RCODE */
-			uint16_t pkt_id = knot_wire_get_id(qbuf);
-			knot_ns_error_response(ns, pkt_id, res,
-					       qbuf, resp_len);
+			int ret = knot_ns_error_response_from_query(ns, qbuf,
+			                                            qbuflen,
+			                                            res, qbuf,
+			                                            resp_len);
+
+			if (ret != KNOT_EOK) {
+				knot_packet_free(&packet);
+				return KNOTD_EMALF;
+			}
 		}
 
 		knot_packet_free(&packet);
@@ -111,20 +124,16 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 
 	/* Response types. */
 	case KNOT_RESPONSE_NORMAL:
-		res = zones_process_response(ns, addr, packet,
-					     qbuf, resp_len);
+		res = zones_process_response(ns, addr, packet, qbuf, resp_len);
 		break;
 	case KNOT_RESPONSE_NOTIFY:
-		res = notify_process_response(ns, packet, addr,
-					      qbuf, resp_len);
+		res = notify_process_response(ns, packet, addr, qbuf, resp_len);
 		break;
 	
 	/* Query types. */
 	case KNOT_QUERY_NORMAL:
 		res = zones_normal_query_answer(ns, packet, addr, qbuf,
 		                                resp_len, NS_TRANSPORT_UDP);
-//		res = knot_ns_answer_normal(ns, packet, qbuf,
-//					      resp_len);
 		break;
 	case KNOT_QUERY_AXFR:
 		/* RFC1034, p.28 requires reliable transfer protocol.
@@ -132,8 +141,8 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
  		 */
 		/*! \note Draft exists for AXFR/UDP, but has not been standardized. */
 		knot_ns_error_response(ns, knot_packet_id(packet),
-				       KNOT_RCODE_FORMERR, qbuf,
-				       resp_len);
+		                       &packet->header.flags1,
+		                       KNOT_RCODE_FORMERR, qbuf, resp_len);
 		res = KNOTD_EOK;
 		break;
 	case KNOT_QUERY_IXFR:
@@ -146,8 +155,6 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		res = zones_normal_query_answer(ns, packet, addr,
 		                                qbuf, resp_len, 
 		                                NS_TRANSPORT_UDP);
-//		res = knot_ns_answer_normal(ns, packet, qbuf,
-//		                            resp_len);
 		break;
 	case KNOT_QUERY_NOTIFY:
 		res = notify_process_request(ns, packet, addr,
@@ -157,8 +164,8 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 	case KNOT_QUERY_UPDATE:
 		dbg_net("udp: UPDATE query on fd=%d not implemented\n", fd);
 		knot_ns_error_response(ns, knot_packet_id(packet),
-				       KNOT_RCODE_NOTIMPL, qbuf,
-				       resp_len);
+		                       &packet->header.flags1,
+		                       KNOT_RCODE_NOTIMPL, qbuf, resp_len);
 		res = KNOTD_EOK;
 		break;
 		
@@ -166,6 +173,7 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 	case KNOT_RESPONSE_AXFR: /*!< Processed in XFR handler. */
 	case KNOT_RESPONSE_IXFR: /*!< Processed in XFR handler. */
 		knot_ns_error_response(ns, knot_packet_id(packet),
+		                       &packet->header.flags1,
 		                       KNOT_RCODE_REFUSED, qbuf,
 		                       resp_len);
 		res = KNOTD_EOK;
@@ -174,8 +182,8 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 	/* Unknown opcodes */
 	default:
 		knot_ns_error_response(ns, knot_packet_id(packet),
-				       KNOT_RCODE_FORMERR, qbuf,
-				       resp_len);
+		                       &packet->header.flags1,
+		                       KNOT_RCODE_FORMERR, qbuf, resp_len);
 		res = KNOTD_EOK;
 		break;
 	}

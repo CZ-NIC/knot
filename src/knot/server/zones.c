@@ -1507,6 +1507,15 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 			dbg_zones("zone: journal sync of '%s' "
 			          "set to %d\n", z->name, sync_tmr);
 		}
+
+		/* Update ANY queries policy */
+		if (zd->conf->disable_any) {
+			knot_zone_contents_t *contents =
+			                knot_zone_get_contents(zone);
+			if (contents) {
+				knot_zone_contents_disable_any(contents);
+			}
+		}
 	}
 
 	/* CLEANUP */
@@ -2148,15 +2157,15 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 		dbg_zones_verb("Failed preparing response structure: %s.\n",
 		               knot_strerror(rcode));
 		if (resp == NULL) {
-			knot_ns_error_response(nameserver, knot_packet_id(query),
-					      rcode, resp_wire, rsize);
+			knot_ns_error_response(nameserver,
+			                       knot_packet_id(query),
+			                       &query->header.flags1,
+			                       rcode, resp_wire, rsize);
 			rcu_read_unlock();
 			return KNOT_EOK;
 		}
 		knot_ns_error_response_full(nameserver, resp, rcode, resp_wire,
 		                            rsize);
-//		knot_ns_error_response(nameserver, knot_packet_id(query),
-//		                       rcode, resp_wire, rsize);
 	} else {
 		/*
 		 * Now we have zone. Verify TSIG if it is in the packet.

@@ -60,15 +60,21 @@ typedef struct knot_zone_contents_t {
 	 */
 	uint node_count;
 
-	/*! \brief Generation of the zone during update.
+	/*! \brief Various flags
 	 * 
+	 * Two rightmost bits denote zone contents generation.
+	 *
 	 * Possible values:
-	 * -  0 - Original version of the zone. Old nodes should be used.
-	 * -  1 - New (updated) zone. New nodes should be used.
-	 * - -1 - New (updated) zone, but exactly the stored nodes should be
+	 * - 00 - Original version of the zone. Old nodes should be used.
+	 * - 01 - New (updated) zone. New nodes should be used.
+	 * - 10 - New (updated) zone, but exactly the stored nodes should be
 	 *        used, no matter their generation.
+	 *
+	 * The third bit denotes whether ANY queries are enabled or disabled:
+	 * - 1xx - ANY queries disabled
+	 * - 0xx - ANY queries enabled
 	 */
-	short generation;
+	uint8_t flags;
 } knot_zone_contents_t;
 
 /*----------------------------------------------------------------------------*/
@@ -77,11 +83,6 @@ knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
                                                  uint node_count,
                                                  int use_domain_table,
                                                  struct knot_zone *zone);
-
-time_t knot_zone_contents_version(const knot_zone_contents_t *contents);
-
-void knot_zone_contents_set_version(knot_zone_contents_t *contents,
-                                      time_t version);
 
 //short knot_zone_contents_generation(const knot_zone_contents_t *contents);
 
@@ -94,6 +95,10 @@ int knot_zone_contents_gen_is_finished(const knot_zone_contents_t *contents);
 void knot_zone_contents_set_gen_old(knot_zone_contents_t *contents);
 void knot_zone_contents_set_gen_new(knot_zone_contents_t *contents);
 void knot_zone_contents_set_gen_new_finished(knot_zone_contents_t *contents);
+
+int knot_zone_contents_any_disabled(const knot_zone_contents_t *contents);
+void knot_zone_contents_disable_any(knot_zone_contents_t *contents);
+void knot_zone_contents_enable_any(knot_zone_contents_t *contents);
 
 uint16_t knot_zone_contents_class(const knot_zone_contents_t *contents);
 
