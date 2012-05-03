@@ -549,23 +549,19 @@ static int zone_open(const char *filename, uint32_t ttl, uint16_t rclass,
 
 int zone_read(const char *name, const char *zonefile, const char *outfile,
 	      int semantic_checks)
-{
-	if (!outfile) {
-		zc_error_prev_line("Missing output file for '%s'\n",
-			zonefile);
-		return KNOTDZCOMPILE_EINVAL;
-	}
-	
+{	
 	dbg_zp("zp: zone_read: Reading zone: %s.\n", zonefile);
 
 	/* Check that we can write to outfile. */
-	FILE *f = fopen(outfile, "wb");
-	if (f == NULL) {
-		fprintf(stderr, "Cannot write zone db to file '%s' (%s).\n",
-		        outfile, strerror(errno));
-		return KNOTDZCOMPILE_EINVAL;
+	if (outfile != NULL) {
+		FILE *f = fopen(outfile, "wb");
+		if (f == NULL) {
+			fprintf(stderr, "Cannot write zone db to file '%s' (%s).\n",
+			        outfile, strerror(errno));
+			return KNOTDZCOMPILE_EINVAL;
+		}
+		fclose(f);
 	}
-	fclose(f);
 
 	knot_dname_t *dname =
 		knot_dname_new_from_str(name, strlen(name), NULL);
@@ -675,10 +671,10 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	dbg_zp("zp: zone_read: Zone adjusted.\n");
 
 	if (parser->errors != 0) {
-		log_zone_error("Parser finished with %d error(s), "
-		               "not dumping the zone!\n",
-		               parser->errors);
-	} else {
+		log_zone_error("Parser finished with %d error(s)%s\n",
+			       parser->errors, outfile == NULL ?
+			       "." : ", not dumping the zone!");
+	} else if (outfile != NULL) {
 		int fd = open(outfile, O_RDWR | O_CREAT | O_TRUNC, S_IRWXU | S_IRWXG);
 		if (fd < 0) {
 			log_zone_error("Could not open destination file for db: %s.\n",
