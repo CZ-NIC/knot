@@ -54,7 +54,7 @@ static inline unsigned has_flag(unsigned flags, enum knotc_flag_t f) {
 void help(int argc, char **argv)
 {
 	printf("Usage: %sc [parameters] start|stop|restart|reload|running|"
-	       "compile\n", PACKAGE_NAME);
+	       "compile [additional]\n", PACKAGE_NAME);
 	printf("Parameters:\n"
 	       " -c [file], --config=[file] Select configuration file.\n"
 	       " -j [num], --jobs=[num]     Number of parallel tasks to run (only for 'compile').\n"
@@ -73,9 +73,10 @@ void help(int argc, char **argv)
 	       " reload    Reload %s configuration and compiled zones.\n"
 	       " running   Check if server is running.\n"
 	       " checkconf Check server configuration.\n"
-           " checkzone Check zones.\n"
 	       "\n"
-	       " compile   Compile zone file.\n",
+	       " checkzone Check zones (accepts specific zones, f.e. "
+	       "'knotc checkzone example1.com example2.com').\n"
+	       " compile   Compile zones (accepts specific zones, see above).\n",
 	       PACKAGE_NAME, PACKAGE_NAME, PACKAGE_NAME, PACKAGE_NAME);
 }
 
@@ -496,7 +497,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 	if (strcmp(action, "compile") == 0 || strcmp(action, "checkzone") == 0){
 		
 		// Print job count
-		if (jobs > 1) {
+		if (jobs > 1 && argc == 0) {
 			log_server_warning("Will attempt to compile %d zones "
 			                   "in parallel, this increases memory "
 			                   "consumption for large zones.\n",
@@ -508,7 +509,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 
 		// Check zone
 		valid_cmd = 1;
-
+		
 		// Lock configuration
 		conf_read_lock();
 
@@ -520,6 +521,22 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 
 			// Fetch zone
 			conf_zone_t *zone = (conf_zone_t*)n;
+			
+			// Specific zone requested
+			int zone_match = 0;
+			for (unsigned i = 0; i < argc; ++i) {
+				size_t len = strlen(zone->name);
+				if (len > 1) {
+					len -= 1;
+				} // All (except root) without final dot
+				if (strncmp(zone->name, argv[i], len) == 0) {
+					zone_match = 1;
+					break;
+				}
+			}
+			if (!zone_match && argc > 0) {
+				continue;
+			}
 
 			// Check source files and mtime
 			int zone_status = check_zone(zone->db, zone->file);
