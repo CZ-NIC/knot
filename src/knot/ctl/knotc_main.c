@@ -63,7 +63,7 @@ void help(int argc, char **argv)
 	       " -V, --version              Print %s server version.\n"
 	       " -w, --wait                 Wait for the server to finish start/stop operations.\n"
 	       " -i, --interactive          Interactive mode (do not daemonize).\n"
-	       " -a, --auto                 Enable automatic recompilation (start or reload)."
+	       " -a, --auto                 Enable automatic recompilation (start or reload).\n"
 	       " -h, --help                 Print help and usage.\n",
 	       PACKAGE_NAME);
 	printf("Actions:\n"
