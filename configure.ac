@@ -122,6 +122,10 @@ AC_ARG_ENABLE([recvmmsg],
     recvmmsg=true
     ])
 
+# Check for link time optimizations support and predictive commoning
+AX_CHECK_COMPILER_FLAGS("-flto", [CFLAGS="$CFLAGS -flto"], [])
+AX_CHECK_COMPILER_FLAGS("-fpredictive-commoning", [CFLAGS="$CFLAGS -fpredictive-commoning"], [])
+
 # Checks for libraries.
 # FIXME: Replace `main' with a function in `-lm':
 # TODO: check if paths exist before appending
