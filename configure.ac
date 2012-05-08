@@ -164,7 +164,7 @@ AC_DEFINE([DSFMT_MEXP], [521], [DSFMT parameters.])
 # Checks for library functions.
 AC_FUNC_FORK
 AC_FUNC_MMAP
-AC_CHECK_FUNCS([gethostbyname gettimeofday clock_gettime memalign memmove memset munmap regcomp pselect select socket sqrt strcasecmp strchr strdup strerror strncasecmp strtol strtoul poll epoll_wait kqueue setgroups sendmmsg madvise])
+AC_CHECK_FUNCS([gethostbyname gettimeofday clock_gettime memalign memmove memset munmap regcomp pselect select socket sqrt strcasecmp strchr strdup strerror strncasecmp strtol strtoul poll epoll_wait kqueue setgroups sendmmsg madvise pthread_setaffinity_np])
 
 AC_CONFIG_FILES([Makefile
 		 samples/Makefile

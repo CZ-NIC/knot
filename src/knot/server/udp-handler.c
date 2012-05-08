@@ -201,6 +201,19 @@ static inline int udp_master_recvfrom(dthread_t *thread, stat_t *thread_stat)
 		return KNOTD_EINVAL;
 	}
 	
+	/* Set CPU affinity to improve load distribution on multicore systems.
+	 * Partial overlapping mask to be nice to scheduler.
+	 */
+	int cpcount = dt_online_cpus();
+	if (cpcount > 0) {
+		unsigned tid = dt_get_id(thread);
+		cpu_set_t cpus;
+		CPU_ZERO(&cpus);
+		CPU_SET(tid % cpcount, &cpus);
+		CPU_SET((tid + 1) % cpcount, &cpus);
+		dt_setaffinity(thread, &cpus);
+	}
+	
 	knot_nameserver_t *ns = h->server->nameserver;
 
 	/* Initialize remote party address. */
@@ -387,6 +400,19 @@ static inline int udp_master_recvmmsg(dthread_t *thread, stat_t *thread_stat)
 		msgs[i].msg_hdr.msg_iovlen = 1;
 		msgs[i].msg_hdr.msg_name = addrs[i].ptr;
 		msgs[i].msg_hdr.msg_namelen = addrs[i].len;
+	}
+	
+	/* Set CPU affinity to improve load distribution on multicore systems.
+	 * Partial overlapping mask to be nice to scheduler.
+	 */
+	int cpcount = dt_online_cpus();
+	if (cpcount > 0) {
+		unsigned tid = dt_get_id(thread);
+		cpu_set_t cpus;
+		CPU_ZERO(&cpus);
+		CPU_SET(tid % cpcount, &cpus);
+		CPU_SET((tid + 1) % cpcount, &cpus);
+		dt_setaffinity(thread, &cpus);
 	}
 
 	/* Loop until all data is read. */

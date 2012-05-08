@@ -854,6 +854,25 @@ int dt_stop(dt_unit_t *unit)
 //	return KNOTD_EOK;
 //}
 
+int dt_setaffinity(dthread_t *thread, cpu_set_t *mask)
+{
+	if (thread == NULL || mask == NULL) {
+		return KNOTD_EINVAL;
+	}
+	
+#ifdef HAVE_PTHREAD_SETAFFINITY_NP
+	pthread_t tid = pthread_self();
+	int ret = pthread_setaffinity_np(tid, sizeof(cpu_set_t), mask);
+	if (ret < 0) {
+		return KNOTD_ERROR;
+	}
+#else
+	return KNOTD_ENOTSUP;
+#endif
+	
+	return KNOTD_EOK;
+}
+
 int dt_repurpose(dthread_t *thread, runnable_t runnable, void *data)
 {
 	// Check
@@ -963,14 +982,22 @@ int dt_compact(dt_unit_t *unit)
 	return KNOTD_EOK;
 }
 
+int dt_online_cpus()
+{
+	int ret = -1;
+#ifdef _SC_NPROCESSORS_ONLN
+	ret = (int) sysconf(_SC_NPROCESSORS_ONLN);
+#endif
+	return ret;
+}
+
 int dt_optimal_size()
 {
-#ifdef _SC_NPROCESSORS_ONLN
-	int ret = (int) sysconf(_SC_NPROCESSORS_ONLN);
-	if (ret >= 1) {
+	int ret = dt_online_cpus();
+	if (ret > 0) {
 		return ret + CPU_ESTIMATE_MAGIC;
 	}
-#endif
+	
 	dbg_dt("dthreads: failed to fetch the number of online CPUs.");
 	return DEFAULT_THR_COUNT;
 }
@@ -991,6 +1018,22 @@ int dt_is_cancelled(dthread_t *thread)
 	int ret = thread->state & ThreadCancelled;
 	unlock_thread_rw(thread);
 	return ret;
+}
+
+unsigned dt_get_id(dthread_t *thread)
+{
+	if (thread == NULL || thread->unit == NULL) {
+		return 0;
+	}
+
+	dt_unit_t *unit = thread->unit;
+	for(unsigned tid = 0; tid < unit->size; ++tid) {
+		if (thread == unit->threads[tid]) {
+			return tid;
+		}
+	}
+	
+	return 0;
 }
 
 int dt_unit_lock(dt_unit_t *unit)
