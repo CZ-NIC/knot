@@ -71,6 +71,7 @@ void help(int argc, char **argv)
 	       " stop      Stop %s server (no-op if not running).\n"
 	       " restart   Stops and then starts %s server.\n"
 	       " reload    Reload %s configuration and compiled zones.\n"
+	       " refresh   Refresh all slave zones.\n"
 	       " running   Check if server is running.\n"
 	       " checkconf Check server configuration.\n"
 	       "\n"
@@ -450,11 +451,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 			log_server_warning("Server PID not found, "
 			                   "probably not running.\n");
 
-			if (has_flag(flags, F_FORCE)) {
-				log_server_info("Forcing server stop.\n");
-			} else {
-				return 1;
-			}
+			return 1;
 		}
 
 		// Recompile zones if needed
@@ -465,8 +462,27 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 
 		// Stop
 		if (kill(pid, SIGHUP) < 0) {
-			pid_remove(pidfile);
 			rc = 1;
+		} else {
+			log_server_info("Server reload queued - OK.\n");
+		}
+	}
+	if (strcmp(action, "refresh") == 0) {
+
+		// Check PID
+		valid_cmd = 1;
+		if (pid <= 0 || !pid_running(pid)) {
+			log_server_warning("Server PID not found, "
+			                   "probably not running.\n");
+
+			return 1;
+		}
+
+		// Stop
+		if (kill(pid, SIGUSR2) < 0) {
+			rc = 1;
+		} else {
+			log_server_info("Zones refresh queued - OK.\n");
 		}
 	}
 	if (strcmp(action, "running") == 0) {
