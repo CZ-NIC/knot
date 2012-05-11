@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#define _POSIX_C_SOURCE 199506L
 #define _BSD_SOURCE
 #include <config.h>
 #include <stdarg.h>
@@ -22,11 +21,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
-#if defined(_POSIX_TIMERS) && _POSIX_TIMERS > 0
-#include <time.h>
-#else
 #include <sys/time.h>
-#endif
 
 #include "common/log.h"
 #include "common/lists.h"
@@ -221,21 +216,14 @@ static int _log_msg(logsrc_t src, int level, const char *msg)
 	char tstr[128] = {0};
 	int tlen = 0;
 	struct tm lt;
-	struct timespec ts;
-#if defined(_POSIX_TIMERS) && _POSIX_TIMERS > 0
-	clock_gettime(CLOCK_REALTIME, &ts);
-#else	
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
-	ts.tv_sec = tv.tv_sec;
-	ts.tv_nsec = tv.tv_usec * 1000;
-#endif
-	if (localtime_r(&ts.tv_sec, &lt) != NULL) {
+	if (localtime_r(&tv.tv_sec, &lt) != NULL) {
 		tlen = strftime(tstr, sizeof(tstr) - 1,
 				"%Y-%m-%dT%H:%M:%S", &lt);
 		if (tlen > 0) {
 			char pm = (lt.tm_gmtoff > 0)?'+':'-';
-			snprintf(tstr+tlen, 128-tlen-1, ".%.9lu%c%.2u:%.2u ", (unsigned long)ts.tv_nsec, pm, (unsigned int)lt.tm_gmtoff/3600, (unsigned int)(lt.tm_gmtoff/60)%60);
+			snprintf(tstr+tlen, 128-tlen-1, ".%.6lu%c%.2u:%.2u ", (unsigned long)tv.tv_usec, pm, (unsigned int)lt.tm_gmtoff/3600, (unsigned int)(lt.tm_gmtoff/60)%60);
 		}
 	}
 
