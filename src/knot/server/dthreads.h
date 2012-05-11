@@ -254,12 +254,12 @@ int dt_stop(dt_unit_t *unit);
  * \brief Set thread affinity to masked CPU's.
  *
  * \param thread Target thread instance.
- * \param mask CPU mask.
+ * \param mask CPU mask (should be pointer to cpu_set_t).
  *
  * \retval KNOTD_EOK on success.
  * \retval KNOTD_EINVAL on invalid parameters.
  */
-int dt_setaffinity(dthread_t *thread, cpu_set_t *mask);
+int dt_setaffinity(dthread_t *thread, void *mask, size_t len);
 
 /*!
  * \brief Set thread to execute another runnable.

@@ -854,15 +854,18 @@ int dt_stop(dt_unit_t *unit)
 //	return KNOTD_EOK;
 //}
 
-int dt_setaffinity(dthread_t *thread, cpu_set_t *mask)
+int dt_setaffinity(dthread_t *thread, void *mask, size_t len)
 {
 	if (thread == NULL || mask == NULL) {
 		return KNOTD_EINVAL;
 	}
 	
 #ifdef HAVE_PTHREAD_SETAFFINITY_NP
+	if (len != sizeof(cpu_set_t)) {
+		return KNOTD_EINVAL;
+	}
 	pthread_t tid = pthread_self();
-	int ret = pthread_setaffinity_np(tid, sizeof(cpu_set_t), mask);
+	int ret = pthread_setaffinity_np(tid, len, (cpu_set_t*)mask);
 	if (ret < 0) {
 		return KNOTD_ERROR;
 	}
