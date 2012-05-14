@@ -140,7 +140,7 @@ int log_open_file(const char* filename)
 	}
 
 	// Open file
-	LOG_FDS[LOG_FDS_OPEN] = fopen(filename, "w");
+	LOG_FDS[LOG_FDS_OPEN] = fopen(filename, "a");
 	if (!LOG_FDS[LOG_FDS_OPEN]) {
 		return KNOTD_EINVAL;
 	}

@@ -122,6 +122,10 @@ AC_ARG_ENABLE([recvmmsg],
     recvmmsg=true
     ])
 
+# Check for link time optimizations support and predictive commoning
+AX_CHECK_COMPILER_FLAGS("-flto", [CFLAGS="$CFLAGS -flto"], [])
+AX_CHECK_COMPILER_FLAGS("-fpredictive-commoning", [CFLAGS="$CFLAGS -fpredictive-commoning"], [])
+
 # Checks for libraries.
 # FIXME: Replace `main' with a function in `-lm':
 # TODO: check if paths exist before appending
@@ -160,7 +164,7 @@ AC_DEFINE([DSFMT_MEXP], [521], [DSFMT parameters.])
 # Checks for library functions.
 AC_FUNC_FORK
 AC_FUNC_MMAP
-AC_CHECK_FUNCS([gethostbyname gettimeofday clock_gettime memalign memmove memset munmap regcomp pselect select socket sqrt strcasecmp strchr strdup strerror strncasecmp strtol strtoul poll epoll_wait kqueue setgroups sendmmsg madvise])
+AC_CHECK_FUNCS([gethostbyname gettimeofday clock_gettime memalign memmove memset munmap regcomp pselect select socket sqrt strcasecmp strchr strdup strerror strncasecmp strtol strtoul poll epoll_wait kqueue setgroups sendmmsg madvise pthread_setaffinity_np])
 
 AC_CONFIG_FILES([Makefile
 		 samples/Makefile

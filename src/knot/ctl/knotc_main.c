@@ -54,7 +54,7 @@ static inline unsigned has_flag(unsigned flags, enum knotc_flag_t f) {
 void help(int argc, char **argv)
 {
 	printf("Usage: %sc [parameters] start|stop|restart|reload|running|"
-	       "compile\n", PACKAGE_NAME);
+	       "compile [additional]\n", PACKAGE_NAME);
 	printf("Parameters:\n"
 	       " -c [file], --config=[file] Select configuration file.\n"
 	       " -j [num], --jobs=[num]     Number of parallel tasks to run (only for 'compile').\n"
@@ -63,7 +63,7 @@ void help(int argc, char **argv)
 	       " -V, --version              Print %s server version.\n"
 	       " -w, --wait                 Wait for the server to finish start/stop operations.\n"
 	       " -i, --interactive          Interactive mode (do not daemonize).\n"
-	       " -a, --auto                 Enable automatic recompilation (start or reload)."
+	       " -a, --auto                 Enable automatic recompilation (start or reload).\n"
 	       " -h, --help                 Print help and usage.\n",
 	       PACKAGE_NAME);
 	printf("Actions:\n"
@@ -71,10 +71,13 @@ void help(int argc, char **argv)
 	       " stop      Stop %s server (no-op if not running).\n"
 	       " restart   Stops and then starts %s server.\n"
 	       " reload    Reload %s configuration and compiled zones.\n"
+	       " refresh   Refresh all slave zones.\n"
 	       " running   Check if server is running.\n"
 	       " checkconf Check server configuration.\n"
 	       "\n"
-	       " compile   Compile zone file.\n",
+	       " checkzone Check zones (accepts specific zones, f.e. "
+	       "'knotc checkzone example1.com example2.com').\n"
+	       " compile   Compile zones (accepts specific zones, see above).\n",
 	       PACKAGE_NAME, PACKAGE_NAME, PACKAGE_NAME, PACKAGE_NAME);
 }
 
@@ -205,7 +208,7 @@ knotc_zctask_t *zctask_create(int count)
 }
 
 /*! \brief Wait for single task to finish. */
-int zctask_wait(knotc_zctask_t *tasks, int count)
+int zctask_wait(knotc_zctask_t *tasks, int count, int is_checkzone)
 {
 	/* Wait for children to finish. */
 	int rc = 0;
@@ -229,16 +232,18 @@ int zctask_wait(knotc_zctask_t *tasks, int count)
 	
 	/* Evaluate. */
 	if (!WIFEXITED(rc)) {
-		log_server_error("Compilation of '%s' "
-		                 "failed, process was killed.\n",
+		log_server_error("%s of '%s' failed, process was killed.\n",
+		                 is_checkzone ? "Checking" : "Compilation",
 		                 z->name);
 		return 1;
 	} else {
 		if (rc < 0 || WEXITSTATUS(rc) != 0) {
-			log_server_error("Compilation of "
-			                 "'%s' failed, knot-zcompile "
-			                 "return code was '%d'\n",
-			                 z->name, WEXITSTATUS(rc));
+			if (!is_checkzone) {
+				log_zone_error("Compilation of "
+				               "'%s' failed, knot-zcompile "
+				               "return code was '%d'\n",
+				               z->name, WEXITSTATUS(rc));
+			}
 			return 1;
 		}
 	}
@@ -446,11 +451,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 			log_server_warning("Server PID not found, "
 			                   "probably not running.\n");
 
-			if (has_flag(flags, F_FORCE)) {
-				log_server_info("Forcing server stop.\n");
-			} else {
-				return 1;
-			}
+			return 1;
 		}
 
 		// Recompile zones if needed
@@ -461,8 +462,27 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 
 		// Stop
 		if (kill(pid, SIGHUP) < 0) {
-			pid_remove(pidfile);
 			rc = 1;
+		} else {
+			log_server_info("Server reload queued - OK.\n");
+		}
+	}
+	if (strcmp(action, "refresh") == 0) {
+
+		// Check PID
+		valid_cmd = 1;
+		if (pid <= 0 || !pid_running(pid)) {
+			log_server_warning("Server PID not found, "
+			                   "probably not running.\n");
+
+			return 1;
+		}
+
+		// Stop
+		if (kill(pid, SIGUSR2) < 0) {
+			rc = 1;
+		} else {
+			log_server_info("Zones refresh queued - OK.\n");
 		}
 	}
 	if (strcmp(action, "running") == 0) {
@@ -490,18 +510,22 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 		rc = 0;
 		valid_cmd = 1;
 	}
-	if (strcmp(action, "compile") == 0) {
+	if (strcmp(action, "compile") == 0 || strcmp(action, "checkzone") == 0){
 		
 		// Print job count
-		if (jobs > 1) {
+		if (jobs > 1 && argc == 0) {
 			log_server_warning("Will attempt to compile %d zones "
 			                   "in parallel, this increases memory "
-			                   "consumption for large zones.\n", jobs);
+			                   "consumption for large zones.\n",
+			                   jobs);
 		}
+
+		// Zone checking
+		int is_checkzone = (strcmp(action, "checkzone") == 0);
 
 		// Check zone
 		valid_cmd = 1;
-
+		
 		// Lock configuration
 		conf_read_lock();
 
@@ -513,57 +537,81 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 
 			// Fetch zone
 			conf_zone_t *zone = (conf_zone_t*)n;
+			
+			// Specific zone requested
+			int zone_match = 0;
+			for (unsigned i = 0; i < argc; ++i) {
+				size_t len = strlen(zone->name);
+				if (len > 1) {
+					len -= 1;
+				} // All (except root) without final dot
+				if (strncmp(zone->name, argv[i], len) == 0) {
+					zone_match = 1;
+					break;
+				}
+			}
+			if (!zone_match && argc > 0) {
+				continue;
+			}
 
 			// Check source files and mtime
 			int zone_status = check_zone(zone->db, zone->file);
-			if (zone_status == KNOTD_EOK) {
+			if (zone_status == KNOTD_EOK && !is_checkzone) {
 				log_zone_info("Zone '%s' is up-to-date.\n",
-				              zone->name);
-
+					      zone->name);
+				
 				if (has_flag(flags, F_FORCE)) {
 					log_zone_info("Forcing zone "
-					              "recompilation.\n");
+						      "recompilation.\n");
 				} else {
 					continue;
 				}
 			}
-
+			
 			// Check for not existing source
 			if (zone_status == KNOTD_ENOENT) {
 				continue;
 			}
 			
+			
 			/* Evaluate space for new task. */
 			if (running == jobs) {
-				rc |= zctask_wait(tasks, jobs);
+				rc |= zctask_wait(tasks, jobs, is_checkzone);
 				--running;
 			}
 
-			const char *args[] = {
-				ZONEPARSER_EXEC,
-				zone->enable_checks ? "-s" : "",
-				has_flag(flags, F_VERBOSE) ? "-v" : "",
-				"-o",
-				zone->db,
-			        zone->name,
-				zone->file
-			};
+			int ac = 0;
+			const char *args[7] = { NULL };
+			args[ac++] = ZONEPARSER_EXEC;
+			if (zone->enable_checks) {
+				args[ac++] = "-s";
+			}
+			if (has_flag(flags, F_VERBOSE)) {
+				args[ac++] = "-v";
+			}
+			
+			if (!is_checkzone) {
+				args[ac++] = "-o";
+				args[ac++] = zone->db;
+			}
+			args[ac++] = zone->name;
+			args[ac++] = zone->file;
 
 			// Execute command
-			if (has_flag(flags, F_VERBOSE)) {
+			if (has_flag(flags, F_VERBOSE) && !is_checkzone) {
 				log_zone_info("Compiling '%s' as '%s'...\n",
 				              zone->name, zone->db);
 			}
 			fflush(stdout);
 			fflush(stderr);
-			pid_t zcpid = start_cmd(args, 7);
+			pid_t zcpid = start_cmd(args, ac);
 			zctask_add(tasks, jobs, zcpid, zone);
 			++running;
 		}
 		
 		/* Wait for all running tasks. */
 		while (running > 0) {
-			rc |= zctask_wait(tasks, jobs);
+			rc |= zctask_wait(tasks, jobs, is_checkzone);
 			--running;
 		}
 		free(tasks);
