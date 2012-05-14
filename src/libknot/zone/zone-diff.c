@@ -95,138 +95,6 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 	return KNOT_EOK;
 }
 
-//static int knot_zone_diff_changeset_add_rr(knot_changeset_t *changeset,
-//                                           const knot_rrset_t *rrset,
-//                                           knot_rdata_t *rr)
-//{
-//	if (changeset == NULL || rrset == NULL || rr == NULL) {
-//		printf("zone_diff: add_rr: NULL arguments.\n");
-//		return KNOT_EBADARG;
-//	}
-	
-//	/* Following code will actually insert RRs to changeset. */
-	
-//	/* First, check whether RRSet is not already in the array. */
-//	knot_rrset_t *found_rrset = NULL;
-//	for(uint i = 0; i < changeset->remove_count; i++) {
-//		if (knot_rrset_compare(rrset, changeset->remove[i],
-//		                       KNOT_RRSET_COMPARE_HEADER) == 0) {
-//			assert(changeset->remove[i]);
-//			found_rrset = changeset->remove[i];
-//		}
-//	}
-	
-//	if (found_rrset) {
-//		int ret = knot_rrset_add_rdata(found_rrset, rr);
-//		if (ret != KNOT_EOK) {
-//			printf("zone_diff: add_rr: "
-//			             "Could not add rdata. Reason: %s.\n",
-//			             knot_strerror(ret));
-//			return ret;
-//		}
-//	} else {
-//		/*
-//		 * Add this RRSet to the end of the
-//		 * list, then add this particular RR.
-//		 */
-		
-//		knot_rrset_t *tmp_rrset =
-//			knot_rrset_new(knot_rrset_get_owner(rrset),
-//		                       knot_rrset_type(rrset),
-//		                       knot_rrset_class(rrset),
-//		                       knot_rrset_ttl(rrset));
-//		if (tmp_rrset == NULL) {
-//			printf("zone_diff: add_rr: "
-//			             "Could not create tmp rrset.\n");
-//			return KNOT_ERROR;
-//		}
-		
-//		int ret = knot_rrset_add_rdata(tmp_rrset, rr);
-//		if (ret != KNOT_EOK) {
-//			printf("zone_diff: add_rr: "
-//			             "Could not add rdata to tmp rrset/\n");
-//			return ret;
-//		}
-		
-//		ret = knot_changeset_add_new_rr(changeset, tmp_rrset,
-//		                                XFRIN_CHANGESET_ADD);
-//		if (ret != KNOT_EOK) {
-//			printf("zone_diff: add_rr: "
-//			             "Could not add RRSet to list of RRSets to"
-//			             "be removed.\n");
-//			return ret;
-//		}
-//	}
-	
-//	return KNOT_EOK;
-//}
-
-//static int knot_zone_diff_changeset_remove_rr(knot_changeset_t *changeset,
-//                                              const knot_rrset_t *rrset,
-//                                              knot_rdata_t *rr)
-//{
-//	if (changeset == NULL || rrset == NULL || rr == NULL) {
-//		printf("zone_diff: remove_rr: NULL arguments.\n");
-//		return KNOT_EBADARG;
-//	}
-	
-//	/* Following code will actually insert RRs to changeset. */
-	
-//	/* First, check whether RRSet is not already in the array. */
-//	knot_rrset_t *found_rrset = NULL;
-//	for(uint i = 0; i < changeset->remove_count; i++) {
-//		if (knot_rrset_compare(rrset, changeset->remove[i],
-//		                       KNOT_RRSET_COMPARE_HEADER) == 0) {
-//			assert(changeset->remove[i]);
-//			found_rrset = changeset->remove[i];
-//		}
-//	}
-	
-//	if (found_rrset) {
-//		int ret = knot_rrset_add_rdata(found_rrset, rr);
-//		if (ret != KNOT_EOK) {
-//			printf("zone_diff: remove_rr: "
-//			             "Could not add rdata. Reason: %s.\n",
-//			             knot_strerror(ret));
-//			return ret;
-//		}
-//	} else {
-//		/*
-//		 * Add this RRSet to the end of the
-//		 * list, then add this particular RR.
-//		 */
-		
-//		knot_rrset_t *tmp_rrset =
-//			knot_rrset_new(knot_rrset_get_owner(rrset),
-//		                       knot_rrset_type(rrset),
-//		                       knot_rrset_class(rrset),
-//		                       knot_rrset_ttl(rrset));
-//		if (tmp_rrset == NULL) {
-//			printf("zone_diff: remove_rr: "
-//			             "Could not create tmp rrset.\n");
-//			return KNOT_ERROR;
-//		}
-		
-//		int ret = knot_rrset_add_rdata(tmp_rrset, rr);
-//		if (ret != KNOT_EOK) {
-//			printf("zone_diff: remove_rr: "
-//			             "Could not add rdata to tmp rrset/\n");
-//			return ret;
-//		}
-		
-//		ret = knot_changeset_add_new_rr(changeset, tmp_rrset,
-//		                                XFRIN_CHANGESET_REMOVE);
-//		if (ret != KNOT_EOK) {
-//			printf("zone_diff: remove_rr: "
-//			             "Could not add RRSet to list of RRSets to "
-//			             "be removed.\n");
-//			return ret;
-//		}
-//	}
-	
-//	return KNOT_EOK;
-//}
-
 /*!< \todo Only use add or remove function, not both as they are the same. */
 /*!< \todo Also, this might be all handled by function in changesets.h!!! */
 static int knot_zone_diff_changeset_add_rrset(knot_changeset_t *changeset,
@@ -255,21 +123,6 @@ static int knot_zone_diff_changeset_add_rrset(knot_changeset_t *changeset,
 		return ret;
 	}
 
-//	const knot_rdata_t *tmp_rdata = NULL;
-//	while ((tmp_rdata = knot_rrset_rdata_next(rrset, tmp_rdata)) != NULL) {
-//		int ret = knot_zone_diff_changeset_add_rr(changeset,
-//		                                          rrset,
-//		                                          tmp_rdata);
-//		if (ret != KNOT_EOK) {
-//			printf("zone_diff: add_rrset: Cannot add "
-//			             "RR\n");
-//			return ret;
-//		}
-//	}
-	
-//	printf_detail("zone_diff: add_rrset: "
-//	                    "RRSet succesfully added.\n");
-	
 	return KNOT_EOK;
 }
 
@@ -299,21 +152,6 @@ static int knot_zone_diff_changeset_remove_rrset(knot_changeset_t *changeset,
 		return ret;
 	}
 
-//	const knot_rdata_t *tmp_rdata = NULL;
-//	while ((tmp_rdata = knot_rrset_rdata_next(rrset, tmp_rdata)) != NULL) {
-//		int ret = knot_zone_diff_changeset_remove_rr(changeset,
-//		                                             rrset,
-//		                                             tmp_rdata);
-//		if (ret != KNOT_EOK) {
-//			printf("zone_diff: remove_rrset: Cannot remove "
-//			             "RR\n");
-//			return ret;
-//		}
-//	}
-	
-//	printf_detail("zone_diff: remove_rrset: "
-//	                    "RRSet succesfully removed.\n");
-	
 	return KNOT_EOK;
 }
 
@@ -363,6 +201,11 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
                                                const knot_rrset_t *rrset2,
                                                knot_rrset_t **changes)
 {
+	if (rrset_1 == NULL || rrset2 == NULL) {
+		printf("zone_diff: diff_rdata: NULL arguments.\n");
+		return KNOT_EBADARG;
+	}
+	
 	/*
 	* Take one rdata from first list and search through the second list
 	* looking for an exact match. If no match occurs, it means that this
@@ -370,13 +213,6 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 	* After the list has been traversed, we have a list of
 	* changed/removed rdatas. This has awful computation time.
 	*/
-//	knot_rdata_t *changes_from_first_rdata = knot_rdata_new();
-//	if (changes_from_first_rdata == NULL) {
-//	    printf("zone_diff: diff_rdata: "
-//			 "Could not create new rdata.\n");
-//		return KNOT_ENOMEM;
-//	}
-	
 	printf_detail("zone_diff: diff_rdata: Diff of %s, type=%s. "
 	              "RR count 1=%d RR count 2=%d.\n",
 	              knot_dname_to_str(rrset1->owner),
@@ -394,15 +230,6 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 		             "Could not create RRSet with changes.\n");
 		return KNOT_ENOMEM;
 	}
-
-//	int ret = knot_rrset_add_rdata(*changes,
-//	                               changes_from_first_rdata);
-//	if (ret != KNOT_EOK) {
-//		printf("zone_diff: diff_rdata: "
-//		             "Could not add rdata to RRSet.\n");
-//		knot_rrset_free(changes);
-//		return ret;
-//	}
 
 	knot_rrtype_descriptor_t *desc =
 		knot_rrtype_descriptor_by_type(knot_rrset_type(rrset1));
@@ -457,6 +284,10 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
                                 const knot_rrset_t *rrset2,
                                 knot_changeset_t *changeset)
 {
+	if (rrset1 == NULL || rrset2 == NULL || changeset == NULL) {
+		printf("zone_diff: diff_rdata: NULL arguments.\n");
+		return KNOT_EBADARG;
+	}
 	/*
 	 * The easiest solution is to remove all the RRs that had no match and
 	 * to add all RRs that had no match, but those from second RRSet. */
@@ -520,6 +351,13 @@ static int knot_zone_diff_rrsets(const knot_rrset_t *rrset1,
 	assert(knot_dname_compare(knot_rrset_owner(rrset1),
 	                          knot_rrset_owner(rrset2)) == 0);
 	assert(knot_rrset_type(rrset1) == knot_rrset_type(rrset2));
+	
+	int ret = knot_zone_diff_rdata(knot_rrset_rrsigs(rrset1),
+	                               knot_rrset_rrsigs(rrset2), changeset);
+	if (ret != KNOT_EOK) {
+		printf("zone_diff: diff_rrsets: Failed to diff RRSIGs. (%s)\n.",
+		       knot_strerror(ret));
+	}
 
 	/* RRs (=rdata) have to be cross-compared, unfortunalely. */
 	return knot_zone_diff_rdata(rrset1, rrset2, changeset);
@@ -882,19 +720,13 @@ int knot_zone_contents_diff(knot_zone_contents_t *zone1,
 	return KNOT_EOK;
 }
 
-int knot_zone_diff_apply_diff_from_file(knot_zone_t *old_zone,
-                                        knot_zone_t *new_zone)
-{
-	;
-}
-
 /* Mostly just for testing. We only shall diff zones in memory later. */
 int knot_zone_diff_zones(const char *zonefile1, const char *zonefile2)
 {
 	/* Compile test zones. */
-	int ret = zone_read("example.com.", zonefile1, "tmpzone1.db", 0);
+	int ret = zone_read("example.com.", "/home/jan/test/testzone1", "tmpzone1.db", 0);
 	assert(ret == KNOT_EOK);
-	ret = zone_read("example.com.", zonefile2, "tmpzone2.db", 0);
+	ret = zone_read("example.com.", "/home/jan/test/testzone2", "tmpzone2.db", 0);
 	assert(ret == KNOT_EOK);
 	/* Load test zones. */
 	zloader_t *loader = NULL;

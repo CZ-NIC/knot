@@ -26,7 +26,5 @@ int knot_zone_contents_diff(knot_zone_contents_t *zone1,
                             knot_changeset_t **changeset);
 
 int knot_zone_diff_zones(const char *zonefile1, const char *zonefile2);
-int knot_zone_diff_apply_diff_from_file(knot_zone_t *old_zone,
-                                        knot_zone_t *new_zone);
 
 #endif // _KNOT_ZONE_DIFF_H_
