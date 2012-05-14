@@ -167,16 +167,6 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 	/* Initialize IXFR database. */
 	zd->ixfr_db = journal_open(cfg->ixfr_db, cfg->ixfr_fslimit,
 	                           JOURNAL_LAZY, JOURNAL_DIRTY);
-	if (!zd->ixfr_db) {
-		int ret = journal_create(cfg->ixfr_db, JOURNAL_NCOUNT);
-		if (ret != KNOTD_EOK) {
-			log_server_warning("Failed to create journal file "
-			                   "'%s' (%s)\n", cfg->ixfr_db,
-			                   knotd_strerror(ret));
-		}
-		zd->ixfr_db = journal_open(cfg->ixfr_db, cfg->ixfr_fslimit,
-		                           JOURNAL_LAZY, JOURNAL_DIRTY);
-	}
 	
 	if (zd->ixfr_db == NULL) {
 		char ebuf[256] = {0};
@@ -1145,6 +1135,9 @@ static int zones_load_changesets(const knot_zone_t *zone,
 	
 	/* Retain journal for changeset loading. */
 	journal_t *j = journal_retain(zd->ixfr_db);
+	if (j == NULL) {
+		return KNOTD_EBUSY;
+	}
 
 	/* Read entries from starting serial until finished. */
 	uint32_t found_to = from;
@@ -1964,6 +1957,9 @@ int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal)
 		return KNOTD_EINVAL;
 	}
 	if (!zone->data) {
+		return KNOTD_EINVAL;
+	}
+	if (journal == NULL) {
 		return KNOTD_EINVAL;
 	}
 

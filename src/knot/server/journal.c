@@ -62,6 +62,10 @@ static inline int journal_cmp_eq(uint64_t k1, uint64_t k2)
 /*! \brief Recover metadata from journal. */
 static int journal_recover(journal_t *j)
 {
+	if (j == NULL) {
+		return KNOTD_EINVAL;
+	}
+	
 	/* Attempt to recover queue. */
 	int qstate[2] = { -1, -1 };
 	unsigned c = 0, p = j->max_nodes - 1;
@@ -475,7 +479,8 @@ journal_t* journal_open(const char *fn, size_t fslimit, int mode, uint16_t bflag
 		                   "it will be flushed.\n", fn);
 		fcntl(fd, F_SETLK, &fl);
 		close(fd);
-		return NULL;
+		journal_create(fn, JOURNAL_NCOUNT);
+		return journal_open(fn, fslimit, mode, bflags);
 	}
 	crc_t crc = 0;
 	if (!sfread(&crc, sizeof(crc_t), fd)) {
@@ -501,7 +506,8 @@ journal_t* journal_open(const char *fn, size_t fslimit, int mode, uint16_t bflag
 		                   "it will be flushed.\n", fn);
 		fcntl(fd, F_SETLK, &fl);
 		close(fd);
-		return NULL;
+		journal_create(fn, JOURNAL_NCOUNT);
+		return journal_open(fn, fslimit, mode, bflags);
 	}
 	
 	/* Check for lazy mode. */
@@ -653,7 +659,7 @@ journal_t* journal_open(const char *fn, size_t fslimit, int mode, uint16_t bflag
 int journal_fetch(journal_t *journal, uint64_t id,
 		  journal_cmp_t cf, journal_node_t** dst)
 {
-	if (journal == 0 || dst == 0) {
+	if (journal == NULL || dst == NULL) {
 		return KNOTD_EINVAL;
 	}
 	
@@ -679,7 +685,7 @@ int journal_fetch(journal_t *journal, uint64_t id,
 
 int journal_read(journal_t *journal, uint64_t id, journal_cmp_t cf, char *dst)
 {
-	if (journal == 0 || dst == 0) {
+	if (journal == NULL || dst == NULL) {
 		return KNOTD_EINVAL;
 	}
 	
@@ -834,7 +840,7 @@ int journal_walk(journal_t *journal, journal_apply_t apply)
 
 int journal_update(journal_t *journal, journal_node_t *n)
 {
-	if (!journal || !n) {
+	if (journal == NULL || n == NULL) {
 		return KNOTD_EINVAL;
 	}
 
@@ -941,7 +947,7 @@ int journal_trans_rollback(journal_t *journal)
 int journal_close(journal_t *journal)
 {
 	/* Check journal. */
-	if (!journal) {
+	if (journal == NULL) {
 		return KNOTD_EINVAL;
 	}
 	
