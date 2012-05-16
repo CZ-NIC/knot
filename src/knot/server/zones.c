@@ -2142,7 +2142,8 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 		break;
 	}
 
-	if (zone == NULL && knot_packet_tsig(query) == NULL) {
+	if (rcode = KNOT_RCODE_NOERROR
+	    && zone == NULL && knot_packet_tsig(query) == NULL) {
 		/*! \todo If there is TSIG, this should be probably handled
 		 *        as a key error.
 		 */
@@ -2170,7 +2171,8 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 		assert(rcode == KNOT_RCODE_NOERROR);
 		uint16_t tsig_rcode = 0;
 		knot_key_t *tsig_key_zone = NULL;
-        uint64_t tsig_prev_time_signed = 0; /*! \todo Verify, as it was uninitialized! */
+		uint64_t tsig_prev_time_signed = 0;
+		/*! \todo Verify, as it was uninitialized! */
 
 		size_t answer_size = *rsize;
 		int ret = KNOT_EOK;
