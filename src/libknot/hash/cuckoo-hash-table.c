@@ -30,7 +30,6 @@
 #include "util/debug.h"
 #include "hash/cuckoo-hash-table.h"
 #include "hash/hash-functions.h"
-#include "common/dynamic-array.h"
 
 /*----------------------------------------------------------------------------*/
 /* Macros and inline functions                                                */
@@ -325,48 +324,6 @@ static inline void ck_put_item(ck_hash_table_item_t **to,
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Checks if the hash was already used twice.
- *
- * If yes, it means we entered a loop in the hashing process, so we must stop.
- * Otherwise it remembers that we used the hash.
- *
- * \note According to Kirsch, et al. a check that at most one hash was used
- *       twice should be sufficient. We will retain our version for now.
- *
- * \param used Array of used table indices (hashes).
- * \param hash Hash to check.
- *
- * \retval -1 if the hash was already used twice.
- * \retval -2 if an error occured.
- * \retval 0 if the hash was not used twice yet.
- */
-static uint ck_check_used_twice(da_array_t *used, uint32_t hash)
-{
-	uint i = 0, found = 0;
-	while (i < da_get_count(used) && found < 2) {
-		if (((uint *)(da_get_items(used)))[i] == hash) {
-			++found;
-		}
-		++i;
-	}
-
-	if (found == 2) {
-		dbg_ck_hash("Hashing entered infinite loop.\n");
-		return -1;
-	} else {
-		if (da_reserve(used, 1) < 0) {
-			ERR_ALLOC_FAILED;
-			return -2;
-		}
-		((uint *)da_get_items(used))[da_get_count(used)] = hash;
-		da_occupy(used, 1);
-		assert(da_get_count(used) < RELOCATIONS_MAX);
-		return 0;
-	}
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
  * \brief Compares the key of item with the given key.
  *
  * \param item Item to compare with.
@@ -520,6 +477,136 @@ static ck_hash_table_item_t **ck_find_item_nc(const ck_hash_table_t *table,
 }
 
 /*----------------------------------------------------------------------------*/
+/* Lightweight dynamic array for keeping track of used items.                 */
+/*----------------------------------------------------------------------------*/
+
+typedef struct ck_used {
+	uint32_t *items;
+	uint array_count;
+	size_t *counts;
+	size_t allocated;
+} ck_used_t;
+
+/*----------------------------------------------------------------------------*/
+
+static int ck_used_create(ck_used_t *used, uint table_count)
+{
+	// all tables in one array
+	used->items = malloc(table_count * RELOCATIONS_DEFAULT
+	                     * sizeof(uint32_t));
+	if (used->items == NULL) {
+		return -1;
+	}
+
+	used->counts = malloc(table_count * sizeof(size_t));
+	if (used->counts == NULL) {
+		free(used->items);
+		return -1;
+	}
+
+	used->array_count = table_count;
+	used->allocated = RELOCATIONS_DEFAULT;
+
+	for (int i = 0; i < table_count; ++i) {
+		used->counts[i] = 0;
+	}
+
+	memset(used->items, 0,
+	       used->array_count * used->allocated * sizeof(uint32_t));
+
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static void ck_used_free(ck_used_t *used)
+{
+	free(used->items);
+	free(used->counts);
+	used->allocated = 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int ck_used_add(ck_used_t *used, uint table_nr, uint32_t to_add)
+{
+	dbg_ck_hash_verb("1) Table nr: %u, count: %zu, allocated: %zu\n",
+	                 table_nr, used->counts[table_nr], used->allocated);
+
+	if (used->counts[table_nr] == used->allocated) {
+		dbg_ck_hash_verb("Reallocating...\n");
+		size_t allocated_new = used->allocated * 2;
+		uint32_t *items_new = malloc(used->array_count * allocated_new
+		                             * sizeof(uint32_t));
+		if (items_new == NULL) {
+			return -1;
+		}
+
+		memcpy(items_new, used->items,
+		       used->allocated * used->array_count);
+
+		uint32_t *old_items = used->items;
+
+		used->items = items_new;
+		used->allocated = allocated_new;
+
+		free(old_items);
+	}
+
+	dbg_ck_hash_verb("2) Table nr: %u, count: %zu, allocated: %zu\n",
+	                 table_nr, used->counts[table_nr], used->allocated);
+
+	assert(used->counts[table_nr] < used->allocated);
+	used->items[table_nr * used->allocated + used->counts[table_nr]]
+	            = to_add;
+	++used->counts[table_nr];
+
+	dbg_ck_hash_verb("3)Table nr: %u, count: %zu, allocated: %zu\n",
+	                 table_nr, used->counts[table_nr], used->allocated);
+
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Checks if the hash was already used twice.
+ *
+ * If yes, it means we entered a loop in the hashing process, so we must stop.
+ * Otherwise it remembers that we used the hash.
+ *
+ * \note According to Kirsch, et al. a check that at most one hash was used
+ *       twice should be sufficient. We will retain our version for now.
+ *
+ * \param used Array of used table indices (hashes).
+ * \param hash Hash to check.
+ *
+ * \retval -1 if the hash was already used twice.
+ * \retval -2 if an error occured.
+ * \retval 0 if the hash was not used twice yet.
+ */
+static int ck_check_used_twice(ck_used_t *used, uint table_nr,
+                               uint32_t hash)
+{
+	uint i = 0, found = 0;
+
+	while (i < used->counts[table_nr] && found < 2) {
+		if (used->items[table_nr * used->allocated + i] == hash) {
+			++found;
+		}
+		++i;
+	}
+
+	if (found == 2) {
+		dbg_ck_hash("Hashing entered infinite loop.\n");
+		return -1;
+	} else {
+		return ck_used_add(used, table_nr, hash);
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+/*----------------------------------------------------------------------------*/
 /*!
  * \brief Hashes the given item using the given generation.
  *
@@ -532,13 +619,19 @@ static ck_hash_table_item_t **ck_find_item_nc(const ck_hash_table_t *table,
  *
  * \retval 0 if successful and no loop occured.
  * \retval 1 if a loop occured and the item was inserted to the \a free place.
+ * \retval < 0 if an error occured.
  */
 static int ck_hash_item(ck_hash_table_t *table, ck_hash_table_item_t **to_hash,
                         ck_hash_table_item_t **free, uint8_t generation)
 {
-	da_array_t used[table->table_count];
-	for (uint i = 0; i < table->table_count; ++i) {
-		da_initialize(&used[i], RELOCATIONS_DEFAULT, sizeof(uint));
+//	da_array_t used[table->table_count];
+//	for (uint i = 0; i < table->table_count; ++i) {
+//		da_initialize(&used[i], RELOCATIONS_DEFAULT, sizeof(uint));
+//	}
+	ck_used_t used;
+	int ret = ck_used_create(&used, table->table_count);
+	if (ret != 0) {
+		return -1;
 	}
 
 	// hash until empty cell is encountered or until loop appears
@@ -556,8 +649,11 @@ static int ck_hash_item(ck_hash_table_t *table, ck_hash_table_item_t **to_hash,
 	dbg_ck_hash("New hash: %u.\n", hash);
 	assert(hash < hashsize(table->table_size_exp));
 
-	((uint *)da_get_items(&used[next_table]))
-	[da_get_count(&used[next_table])] = hash;
+	ret = ck_used_add(&used, next_table, hash);
+	if (ret != 0) {
+		return -2;
+	}
+
 	ck_hash_table_item_t **next = &table->tables[next_table][hash];
 	dbg_ck_hash("Item to be moved: %p, place in table: %p\n",
 	              *next, next);
@@ -604,7 +700,7 @@ static int ck_hash_item(ck_hash_table_t *table, ck_hash_table_item_t **to_hash,
 		}
 
 		// check if this cell wasn't already used in this item's hashing
-		if (ck_check_used_twice(&used[next_table], hash) != 0) {
+		if (ck_check_used_twice(&used, next_table, hash) != 0) {
 			next = free;
 			loop = -1;
 			break;
@@ -626,9 +722,7 @@ static int ck_hash_item(ck_hash_table_t *table, ck_hash_table_item_t **to_hash,
 	SET_GENERATION(&(*moving)->timestamp, generation);
 	*to_hash = NULL;
 
-	for (uint i = 0; i < table->table_count; ++i) {
-		da_destroy(&used[i]);
-	}
+	ck_used_free(&used);
 
 	return loop;
 }
