@@ -319,10 +319,6 @@ dbg_ns_exec(
 		// change the node to the node of that name
 		*node = knot_dname_node(cname);
 		dbg_ns("This name's node: %p\n", *node);
-//		// it is not an old node and if yes, skip it
-//		if (knot_node_is_old(*node)) {
-//			*node = knot_node_new_node(*node);
-//		}
 
 		// save the new name which should be used for replacing wildcard
 		*qname = cname;
@@ -1640,7 +1636,7 @@ static int ns_dname_is_too_long(const knot_rrset_t *dname_rrset,
  * \param resp Response.
  */
 static void ns_process_dname(knot_rrset_t *dname_rrset,
-                             const knot_dname_t *qname,
+                             const knot_dname_t **qname,
                              knot_packet_t *resp)
 {
 dbg_ns_exec(
@@ -1652,16 +1648,16 @@ dbg_ns_exec(
 
 	// put the DNAME RRSet into the answer
 	knot_response_add_rrset_answer(resp, dname_rrset, 1, 0, 0, 1);
-	ns_add_rrsigs(dname_rrset, resp, qname,
+	ns_add_rrsigs(dname_rrset, resp, *qname,
 	              knot_response_add_rrset_answer, 1);
 
-	if (ns_dname_is_too_long(dname_rrset, qname)) {
+	if (ns_dname_is_too_long(dname_rrset, *qname)) {
 		knot_response_set_rcode(resp, KNOT_RCODE_YXDOMAIN);
 		return;
 	}
 
 	// synthetize CNAME (no way to tell that client supports DNAME)
-	knot_rrset_t *synth_cname = ns_cname_from_dname(dname_rrset, qname);
+	knot_rrset_t *synth_cname = ns_cname_from_dname(dname_rrset, *qname);
 	// add the synthetized RRSet to the Answer
 	knot_response_add_rrset_answer(resp, synth_cname, 1, 0, 0, 1);
 
@@ -1670,7 +1666,13 @@ dbg_ns_exec(
 	// add the synthetized RRSet into list of temporary RRSets of response
 	knot_packet_add_tmp_rrset(resp, synth_cname);
 
-	// do not search for the name in new zone (out-of-bailiwick)
+	// get the next SNAME from the CNAME RDATA
+	const knot_dname_t *cname = knot_rdata_cname_name(
+			knot_rrset_rdata(synth_cname));
+	dbg_ns("CNAME name from RDATA: %p\n", cname);
+
+	// save the new name which should be used for replacing wildcard
+	*qname = cname;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1762,7 +1764,7 @@ dbg_ns_exec(
 	}
 );
 	if (find_ret == KNOT_EBADZONE) {
-		// possible only if we followed cname
+		// possible only if we followed CNAME or DNAME
 		assert(cname != 0);
 		knot_response_set_rcode(resp, KNOT_RCODE_NOERROR);
 		auth_soa = 1;
@@ -1788,10 +1790,14 @@ have_node:
 		knot_rrset_t *dname_rrset = knot_node_get_rrset(
 		                         closest_encloser, KNOT_RRTYPE_DNAME);
 		if (dname_rrset != NULL) {
-			ns_process_dname(dname_rrset, qname, resp);
-			auth_soa = 1;
-			knot_response_set_aa(resp);
-			goto finalize;
+			ns_process_dname(dname_rrset, &qname, resp);
+
+			// do not search for the name in new zone
+			// (out-of-bailiwick), just in the current zone if it
+			// belongs there
+
+			cname = 1;
+			goto search;
 		}
 		// else check for a wildcard child
 		const knot_node_t *wildcard_node =
