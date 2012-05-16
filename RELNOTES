@@ -1,4 +1,29 @@
-v1.0.3 - Apr 17, 2011
+v1.0.4 - May 16, 2012
+---------------------
+
+New features:
+        * Parallel loading of zones to the server.
+        * RFC3339-complaint format of log time.
+        * Support for TLSA (RR type 52).
+        * knotc checkzone (as a dry-run of zone compile).
+        * knotc refresh for forcing Knot to update all zones from master 
+          servers.
+        * Reopening log files upon start (used to truncate them).
+
+Bugfixes:
+        * Copying OPCODE and RD bit from query to NOTIMPL responses.
+        * Corrected response to CNAME queries if the canonical name was also 
+          an alias (was adding the whole CNAME chain to the response).
+        * Fixed crash when NS or MX points to an alias.
+        * Fixed problem with early closing of filedescriptors (lead to crash 
+          when compiling and loading or bootstrapping and restarting the server
+          with a lot of zones).
+
+Other improvements:
+        * Significantly sped up IXFR-in and reduced its memory requirements.
+
+
+v1.0.3 - Apr 17, 2012
 ---------------------
 
 Bugfixes:
