@@ -338,8 +338,10 @@ dbg_ns_exec(
  *
  * \return Number of RRSets added.
  */
-static int ns_put_answer(const knot_node_t *node, const knot_dname_t *name,
-                          uint16_t type, knot_packet_t *resp)
+static int ns_put_answer(const knot_node_t *node,
+                         const knot_zone_contents_t *zone,
+                         const knot_dname_t *name,
+                         uint16_t type, knot_packet_t *resp, int check_any)
 {
 	int added = 0;
 dbg_ns_exec(
@@ -351,6 +353,13 @@ dbg_ns_exec(
 	switch (type) {
 	case KNOT_RRTYPE_ANY: {
 		dbg_ns("Returning all RRTYPES.\n");
+
+		// if ANY not allowed, set TC bit
+		if (check_any && knot_zone_contents_any_disabled(zone)) {
+			knot_response_set_tc(resp);
+			break;
+		}
+
 		knot_rrset_t **rrsets = knot_node_get_rrsets(node);
 		if (rrsets == NULL) {
 			break;
@@ -1502,10 +1511,14 @@ static int ns_answer_from_node(const knot_node_t *node,
                                const knot_node_t *previous,
                                const knot_zone_contents_t *zone,
                                const knot_dname_t *qname, uint16_t qtype,
-                               knot_packet_t *resp)
+                               knot_packet_t *resp, int check_any)
 {
 	dbg_ns("Putting answers from found node to the response...\n");
-	int answers = ns_put_answer(node, qname, qtype, resp);
+	int answers = ns_put_answer(node, zone, qname, qtype, resp, check_any);
+
+	if (knot_packet_tc(resp) > 0) {
+		return KNOT_EOK;
+	}
 
 	int ret = KNOT_EOK;
 	if (answers == 0) {  // if NODATA response, put SOA
@@ -1710,7 +1723,7 @@ static void ns_add_dnskey(const knot_node_t *apex, knot_packet_t *resp)
  * \todo Describe the answering logic in detail.
  */
 static int ns_answer_from_zone(const knot_zone_contents_t *zone,
-                               knot_packet_t *resp)
+                               knot_packet_t *resp, int check_any)
 {
 	const knot_node_t *node = NULL, *closest_encloser = NULL,
 	                    *previous = NULL;
@@ -1873,7 +1886,7 @@ dbg_ns_exec(
 	}
 
 	ret = ns_answer_from_node(node, closest_encloser, previous, zone, qname,
-	                          qtype, resp);
+	                          qtype, resp, check_any);
 	if (ret == NS_ERR_SERVFAIL) {
 		// in this case we should drop the response and send an error
 		// for now, just send the error code with a non-complete answer
@@ -1890,7 +1903,7 @@ dbg_ns_exec(
 	// this is the only case when the servers answers from
 	// particular node, i.e. the only case when it may return SOA
 	// or NS records in Answer section
-	if (DNSSEC_ENABLED
+	if (knot_packet_tc(resp) == 0 && DNSSEC_ENABLED
 	    && knot_query_dnssec_requested(knot_packet_query(resp))
 	    && node == knot_zone_contents_apex(zone)
 	    && (qtype == KNOT_RRTYPE_SOA || qtype == KNOT_RRTYPE_NS)) {
@@ -1898,7 +1911,7 @@ dbg_ns_exec(
 	}
 
 finalize:
-	if (ret == KNOT_EOK && auth_soa) {
+	if (ret == KNOT_EOK && knot_packet_tc(resp) == 0 && auth_soa) {
 		ns_put_authority_soa(zone, resp);
 	}
 
@@ -1919,7 +1932,8 @@ finalize:
  * \retval KNOT_EOK
  * \retval NS_ERR_SERVFAIL
  */
-static int ns_answer(const knot_zone_t *zone, knot_packet_t *resp)
+static int ns_answer(const knot_zone_t *zone, knot_packet_t *resp,
+                     int check_any)
 {
 //	const knot_dname_t *qname = knot_packet_qname(resp);
 //	assert(qname != NULL);
@@ -1955,7 +1969,7 @@ dbg_ns_exec(
 
 	// take the zone contents and use only them for answering
 
-	return ns_answer_from_zone(contents, resp);
+	return ns_answer_from_zone(contents, resp, check_any);
 
 	//knot_dname_free(&qname);
 }
@@ -3035,11 +3049,11 @@ dbg_ns_exec(
 
 int knot_ns_answer_normal(knot_nameserver_t *nameserver, 
                           const knot_zone_t *zone, knot_packet_t *resp,
-                          uint8_t *response_wire, size_t *rsize)
+                          uint8_t *response_wire, size_t *rsize, int check_any)
 {
 	dbg_ns("ns_answer_normal()\n");
 
-	int ret = ns_answer(zone, resp);
+	int ret = ns_answer(zone, resp, check_any);
 
 	if (ret != 0) {
 		// now only one type of error (SERVFAIL), later maybe more
