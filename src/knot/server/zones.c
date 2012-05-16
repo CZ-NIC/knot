@@ -2202,9 +2202,20 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 				         tsig_wire_maxsize(tsig_key_zone);
 				knot_packet_set_tsig_size(resp, tsig_max_size);
 			}
-			ret = knot_ns_answer_normal(nameserver, zone, resp,
-			                            resp_wire, &answer_size,
-			                         transport == NS_TRANSPORT_UDP);
+
+			// handle IXFR queries
+			if (knot_packet_qtype(query) == KNOT_RRTYPE_IXFR) {
+				assert(transport == NS_TRANSPORT_UDP);
+				ret = knot_ns_answer_ixfr_udp(nameserver, zone,
+				                              resp, resp_wire,
+				                              &answer_size);
+			} else {
+				ret = knot_ns_answer_normal(nameserver, zone,
+				                            resp, resp_wire,
+				                            &answer_size,
+				                            transport ==
+				                            NS_TRANSPORT_UDP);
+			}
 
 			dbg_zones_detail("rsize = %zu\n", *rsize);
 			dbg_zones_detail("answer_size = %zu\n", answer_size);

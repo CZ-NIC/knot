@@ -151,7 +151,7 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		 * but I have found no tool or slave server to actually attempt
 		 * IXFR/UDP.
 		 */
-		knot_packet_set_qtype(packet, KNOT_RRTYPE_SOA);
+//		knot_packet_set_qtype(packet, KNOT_RRTYPE_SOA);
 		res = zones_normal_query_answer(ns, packet, addr,
 		                                qbuf, resp_len, 
 		                                NS_TRANSPORT_UDP);

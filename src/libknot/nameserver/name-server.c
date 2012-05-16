@@ -3081,6 +3081,55 @@ int knot_ns_answer_normal(knot_nameserver_t *nameserver,
 
 /*----------------------------------------------------------------------------*/
 
+int knot_ns_answer_ixfr_udp(knot_nameserver_t *nameserver,
+                            const knot_zone_t *zone, knot_packet_t *resp,
+                            uint8_t *response_wire, size_t *rsize)
+{
+	dbg_ns("ns_answer_ixfr_udp()\n");
+
+	const knot_zone_contents_t *contents = knot_zone_contents(zone);
+
+	// if no zone found, return REFUSED
+	if (zone == NULL) {
+		dbg_ns("No zone found.\n");
+		knot_response_set_rcode(resp, KNOT_RCODE_REFUSED);
+		return KNOT_EOK;
+	} else if (contents == NULL) {
+		dbg_ns("Zone expired or not bootstrapped. Reply SERVFAIL.\n");
+		knot_response_set_rcode(resp, KNOT_RCODE_SERVFAIL);
+		return KNOT_EOK;
+	}
+
+	const knot_node_t *apex = knot_zone_contents_apex(contents);
+	assert(apex != NULL);
+	knot_rrset_t *soa = knot_node_get_rrset(apex, KNOT_RRTYPE_SOA);
+
+	// just put the SOA to the Answer section of the response and send back
+	int ret = knot_response_add_rrset_answer(resp, soa, 1, 0, 0, 0);
+	if (ret != KNOT_EOK) {
+		knot_ns_error_response_full(nameserver, resp,
+		                            KNOT_RCODE_SERVFAIL,
+		                            response_wire, rsize);
+	}
+
+	dbg_ns("Created response packet.\n");
+	knot_packet_dump(resp);
+
+	// Transform the packet into wire format
+	if (ns_response_to_wire(resp, response_wire, rsize) != 0) {
+		// send back SERVFAIL (as this is our problem)
+		knot_ns_error_response_full(nameserver, resp,
+		                            KNOT_RCODE_SERVFAIL,
+		                            response_wire, rsize);
+	}
+
+	dbg_ns("Returning response with wire size %zu\n", *rsize);
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int knot_ns_init_xfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 {
 	dbg_ns("knot_ns_init_xfr()\n");

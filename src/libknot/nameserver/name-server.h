@@ -266,6 +266,10 @@ int knot_ns_answer_normal(knot_nameserver_t *nameserver,
                           const knot_zone_t *zone, knot_packet_t *resp,
                           uint8_t *response_wire, size_t *rsize, int check_any);
 
+int knot_ns_answer_ixfr_udp(knot_nameserver_t *nameserver,
+                            const knot_zone_t *zone, knot_packet_t *resp,
+                            uint8_t *response_wire, size_t *rsize);
+
 int knot_ns_init_xfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr);
 
 /*! 
