@@ -2142,7 +2142,7 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 		break;
 	}
 
-	if (rcode = KNOT_RCODE_NOERROR
+	if (rcode == KNOT_RCODE_NOERROR
 	    && zone == NULL && knot_packet_tsig(query) == NULL) {
 		/*! \todo If there is TSIG, this should be probably handled
 		 *        as a key error.
@@ -2203,7 +2203,8 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 				knot_packet_set_tsig_size(resp, tsig_max_size);
 			}
 			ret = knot_ns_answer_normal(nameserver, zone, resp,
-			                            resp_wire, &answer_size);
+			                            resp_wire, &answer_size,
+			                         transport == NS_TRANSPORT_UDP);
 
 			dbg_zones_detail("rsize = %zu\n", *rsize);
 			dbg_zones_detail("answer_size = %zu\n", answer_size);
