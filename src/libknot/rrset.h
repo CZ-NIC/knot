@@ -105,6 +105,21 @@ knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
  */
 int knot_rrset_add_rdata(knot_rrset_t *rrset, knot_rdata_t *rdata);
 
+/*!
+ * \brief Adds the given RDATA to the RRSet but will not insert duplicated data.
+ *
+ * \warning Should be only used to insert one RDATA. (NO lists)
+ *
+ * \param rrset RRSet to add the RDATA to.
+ * \param rdata RDATA to add to the RRSet.
+ *
+ * \retval KNOT_EOK
+ * \retval KNOT_EBADARG
+ *
+ * \todo Provide some function for comparing RDATAs.
+ */
+int knot_rrset_add_rdata_order(knot_rrset_t *rrset, knot_rdata_t *rdata);
+
 knot_rdata_t * knot_rrset_remove_rdata(knot_rrset_t *rrset,
                                            const knot_rdata_t *rdata);
 
@@ -296,9 +311,9 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
  * \brief Merges two RRSets.
  *
  * Merges \a r1 into \a r2 by concatenating the list of RDATAs in \a r2 after
- * the list of RDATAs in \a r1. \a r2 is unaffected by this, though you must not
- * destroy the RDATAs in \a r2 as they are now also in \a r1. (You may use
- * function knot_rrset_free() though, as it does not touch RDATAs).
+ * the list of RDATAs in \a r1. You must not
+ * destroy the RDATAs in \a r2 as they are now identical to RDATAs in \a r1.
+ * (You may use function knot_rrset_free() though, as it does not touch RDATAs).
  *
  * \note Member \a rrsigs is preserved from the first RRSet.
  *
@@ -310,6 +325,26 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
  *         Owner, Type, Class or TTL does not match.
  */
 int knot_rrset_merge(void **r1, void **r2);
+
+
+/*!
+ * \brief Merges two RRSets, but will discard and free any duplicates in \a r2.
+ *
+ * Merges \a r1 into \a r2 by concatenating the list of RDATAs in \a r2 after
+ * the list of RDATAs in \a r1. You must not
+ * destroy the RDATAs in \a r2 as they are now identical to RDATAs in \a r1.
+ * (You may use function knot_rrset_free() though, as it does not touch RDATAs).
+ *
+ * \note Member \a rrsigs is preserved from the first RRSet.
+ *
+ * \param r1 Pointer to RRSet to be merged into.
+ * \param r2 Poitner to RRSet to be merged.
+ *
+ * \retval KNOT_EOK
+ * \retval KNOT_EBADARG if the RRSets could not be merged, because their
+ *         Owner, Type, Class or TTL does not match.
+ */
+int knot_rrset_merge_no_dupl(void **r1, void **r2);
 
 #endif /* _KNOT_RRSET_H_ */
 

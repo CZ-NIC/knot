@@ -123,7 +123,7 @@
     else if (cmp > 0)											\
       self->field.avl_right= MOD_TREE_INSERT_##node##_##field(self->field.avl_right, elm, compare, merge, merged);	\
     else if (merge) {											\
-      merge(&(elm->data), &(self->data));								\
+      merge(&(self->data), &(elm->data));								\
       *merged = 1; }											\
     else												\
       self->field.avl_right= MOD_TREE_INSERT_##node##_##field(self->field.avl_right, elm, compare, merge, merged);	\

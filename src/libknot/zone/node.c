@@ -213,7 +213,7 @@ knot_node_t *knot_node_new(knot_dname_t *owner, knot_node_t *parent,
 /*----------------------------------------------------------------------------*/
 
 int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset,
-                          int merge)
+                        int merge)
 {
 	if (node == NULL) {
 		return KNOT_EBADARG;
@@ -223,6 +223,24 @@ int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset,
 
 	if ((ret = (gen_tree_add(node->rrset_tree, rrset,
 	                         (merge) ? knot_rrset_merge : NULL))) < 0) {
+		dbg_node("Failed to add rrset to node->rrset_tree.\n");
+		return KNOT_ERROR;
+	}
+
+	if (ret >= 0) {
+		node->rrset_count += (ret > 0 ? 0 : 1);
+		return ret;
+	} else {
+		return KNOT_ERROR;
+	}
+}
+
+int knot_node_add_rrset_no_dupl(knot_node_t *node, knot_rrset_t *rrset)
+{
+	int ret = 0;
+
+	if ((ret = (gen_tree_add(node->rrset_tree, rrset,
+	                         knot_rrset_merge_no_dupl))) < 0) {
 		dbg_node("Failed to add rrset to node->rrset_tree.\n");
 		return KNOT_ERROR;
 	}
