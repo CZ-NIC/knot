@@ -434,6 +434,12 @@ journal_t* journal_open(const char *fn, size_t fslimit, int mode, uint16_t bflag
 	/* Open journal file for r/w (returns error if not exists). */
 	int fd = open(fn, O_RDWR);
 	if (fd < 0) {
+		if (errno == ENOENT) {
+                	if(journal_create(fn, JOURNAL_NCOUNT) == KNOTD_EOK) {
+				return journal_open(fn, fslimit, mode, bflags);
+			}
+		}
+			
 		return NULL;
 	}
 	
@@ -479,8 +485,10 @@ journal_t* journal_open(const char *fn, size_t fslimit, int mode, uint16_t bflag
 		                   "it will be flushed.\n", fn);
 		fcntl(fd, F_SETLK, &fl);
 		close(fd);
-		journal_create(fn, JOURNAL_NCOUNT);
-		return journal_open(fn, fslimit, mode, bflags);
+		if (journal_create(fn, JOURNAL_NCOUNT) == KNOTD_EOK) {
+			return journal_open(fn, fslimit, mode, bflags);
+		}
+		return NULL;
 	}
 	crc_t crc = 0;
 	if (!sfread(&crc, sizeof(crc_t), fd)) {
@@ -506,8 +514,10 @@ journal_t* journal_open(const char *fn, size_t fslimit, int mode, uint16_t bflag
 		                   "it will be flushed.\n", fn);
 		fcntl(fd, F_SETLK, &fl);
 		close(fd);
-		journal_create(fn, JOURNAL_NCOUNT);
-		return journal_open(fn, fslimit, mode, bflags);
+		if (journal_create(fn, JOURNAL_NCOUNT) == KNOTD_EOK) {
+			return journal_open(fn, fslimit, mode, bflags);
+		}
+		return NULL;
 	}
 	
 	/* Check for lazy mode. */
