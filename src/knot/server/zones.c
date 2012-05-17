@@ -730,6 +730,8 @@ static int zones_zonefile_sync_ev(event_t *e)
 	journal_t *j = journal_retain(zd->ixfr_db);
 	int ret = zones_zonefile_sync(zone, j);
 	journal_release(j);
+
+	conf_read_lock();
 	if (ret == KNOTD_EOK) {
 		log_zone_info("Applied differences of '%s' to zonefile.\n",
 		              zd->conf->name);
@@ -738,6 +740,7 @@ static int zones_zonefile_sync_ev(event_t *e)
 		                 "to zonefile.\n",
 		                 zd->conf->name);
 	}
+	conf_read_unlock();
 
 	/* Reschedule. */
 	conf_read_lock();
