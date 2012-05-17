@@ -226,6 +226,8 @@ libknots_la_SOURCES =				\
 	common/lists.c				\
 	common/base32.c				\
 	common/lists.h				\
+	common/heap.h				\
+	common/heap.c				\
 	common/base32.h				\
 	common/print.c				\
 	common/print.h				\

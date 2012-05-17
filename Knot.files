@@ -75,6 +75,8 @@ src/common/mempattern.c
 src/common/mempattern.h
 src/common/lists.h
 src/common/lists.c
+src/common/heap.h
+src/common/heap.c
 src/common/base32.h
 src/common/base32.c
 src/common/print.c
