@@ -2488,6 +2488,8 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 	assert(xfr->response != NULL);
 	assert(knot_packet_authority_rrset_count(xfr->query) > 0);
 	assert(xfr->data != NULL);
+
+	rcu_read_lock();
 	
 	knot_changesets_t *chgsets = (knot_changesets_t *)xfr->data;
 	knot_zone_contents_t *contents = knot_zone_get_contents(xfr->zone);
@@ -2529,6 +2531,8 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 		//socket_close(xfr->session);  /*! \todo Remove for UDP.*/
 //		return 1;
 	}
+
+	rcu_read_unlock();
 
 	return KNOT_EOK;
 }
