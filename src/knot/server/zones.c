@@ -237,6 +237,9 @@ static uint32_t zones_soa_timer(knot_zone_t *zone,
 	/* Retrieve SOA RDATA. */
 	const knot_rrset_t *soa_rrs = 0;
 	const knot_rdata_t *soa_rr = 0;
+
+	rcu_read_lock();
+
 	knot_zone_contents_t * zc = knot_zone_get_contents((zone));
 	if (!zc) {
 		return 0;
@@ -247,6 +250,8 @@ static uint32_t zones_soa_timer(knot_zone_t *zone,
 	assert(soa_rrs != NULL);
 	soa_rr = knot_rrset_rdata(soa_rrs);
 	ret = rr_func(soa_rr);
+
+	rcu_read_unlock();
 
 	/* Convert to miliseconds. */
 	return ret * 1000;
@@ -589,6 +594,8 @@ static int zones_notify_send(event_t *e)
 		return KNOTD_EINVAL;
 	}
 
+	rcu_read_lock();
+
 	/* Check for answered/cancelled query. */
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 	knot_zone_contents_t *contents = knot_zone_get_contents(zone);
@@ -609,15 +616,15 @@ static int zones_notify_send(event_t *e)
 		return KNOTD_EMALF;
 	}
 
-        /* RFC suggests 60s, but it is configurable. */
-        int retry_tmr = ev->timeout * 1000;
+	/* RFC suggests 60s, but it is configurable. */
+	int retry_tmr = ev->timeout * 1000;
  
-        /* Reschedule. */
-        conf_read_lock();
-        evsched_schedule(e->parent, e, retry_tmr);
-        dbg_notify("notify: Query RETRY after %u secs (zone '%s')\n",
-                   retry_tmr / 1000, zd->conf->name);
-        conf_read_unlock();
+	/* Reschedule. */
+	conf_read_lock();
+	evsched_schedule(e->parent, e, retry_tmr);
+	dbg_notify("notify: Query RETRY after %u secs (zone '%s')\n",
+	           retry_tmr / 1000, zd->conf->name);
+	conf_read_unlock();
 	
 	/* Prepare buffer for query. */
 	uint8_t *qbuf = malloc(SOCKET_MTU_SZ);
@@ -678,6 +685,8 @@ static int zones_notify_send(event_t *e)
 	}
 	
 	free(qbuf);
+
+	rcu_read_unlock();
 
 	return ret;
 }
@@ -1244,6 +1253,8 @@ static int zones_journal_apply(knot_zone_t *zone)
 		return KNOTD_EINVAL;
 	}
 
+	rcu_read_lock();
+
 	knot_zone_contents_t *contents = knot_zone_get_contents(zone);
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 	if (!contents || !zd) {
@@ -1293,6 +1304,7 @@ static int zones_journal_apply(knot_zone_t *zone)
 			}
 
 			/* Switch zone immediately. */
+			rcu_read_unlock();
 			apply_ret = xfrin_switch_zone(zone, contents,
 			                              XFR_TYPE_IIN);
 			if (apply_ret == KNOT_EOK) {
@@ -1314,6 +1326,7 @@ static int zones_journal_apply(knot_zone_t *zone)
 	} else {
 		dbg_zones("zones: failed to load changesets - %s\n",
 		          knotd_strerror(ret));
+		rcu_read_unlock();
 	}
 
 	/* Free changesets and return. */
@@ -1503,11 +1516,18 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 
 		/* Update ANY queries policy */
 		if (zd->conf->disable_any) {
+			rcu_read_lock();
 			knot_zone_contents_t *contents =
 			                knot_zone_get_contents(zone);
+
+			/*! \todo This is actually updating zone contents.
+			 *        It should be done in thread-safe way.
+			 */
 			if (contents) {
 				knot_zone_contents_disable_any(contents);
 			}
+
+			rcu_read_unlock();
 		}
 	}
 
@@ -1970,6 +1990,9 @@ int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal)
 	/* Lock zone data. */
 	pthread_mutex_lock(&zd->lock);
 
+	/* Lock RCU for zone contents. */
+	rcu_read_lock();
+
 	knot_zone_contents_t *contents = knot_zone_get_contents(zone);
 	if (!contents) {
 		pthread_mutex_unlock(&zd->lock);
@@ -2027,6 +2050,9 @@ int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal)
 
 	/* Unlock zone data. */
 	pthread_mutex_unlock(&zd->lock);
+
+	/* Unlock RCU. */
+	rcu_read_unlock();
 
 	return ret;
 }
