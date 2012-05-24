@@ -104,7 +104,10 @@ static void tcp_sweep(fdset_t *set, int fd, void* data)
 	int r_port = 0;
 	struct sockaddr_storage addr;
 	socklen_t len = sizeof(addr);
-	getpeername(fd, (struct sockaddr*)&addr, &len);
+	if (getpeername(fd, (struct sockaddr*)&addr, &len) < 0) {
+		dbg_net("tcp: sweep getpeername() on invalid socket=%d\n", fd);
+		return;
+	}
 
 	/* Translate */
 	if (addr.ss_family == AF_INET) {
@@ -158,15 +161,13 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 		log_server_error("Socket type %d is not supported, "
 				 "IPv6 support is probably disabled.\n",
 				 w->ioh->type);
-		return KNOTD_ECONNREFUSED;
+		return KNOTD_EINVAL;
 	}
 
 	/* Receive data. */
 	int n = tcp_recv(fd, qbuf, qbuf_maxlen, &addr);
 	if (n <= 0) {
 		dbg_net("tcp: client on fd=%d disconnected\n", fd);
-		fdset_remove(w->fdset, fd);
-		close(fd);
 		if (n == KNOTD_EAGAIN) {
 			char r_addr[SOCKADDR_STRLEN];
 			sockaddr_tostr(&addr, r_addr, sizeof(r_addr));
@@ -581,6 +582,12 @@ int tcp_loop_worker(dthread_t *thread)
 					dbg_net("tcp: watchdog for fd=%d "
 					        "set to %ds\n",
 					        it.fd, TCP_ACTIVITY_WD);
+				}
+				/*! \todo Refactor to allow erase on iterator.*/
+				if (ret == KNOTD_ECONNREFUSED) {
+					fdset_remove(w->fdset, it.fd);
+					close(it.fd);
+					break;
 				}
 				
 			}
