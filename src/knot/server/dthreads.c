@@ -24,11 +24,19 @@
 #ifdef HAVE_CAP_NG_H
 #include <cap-ng.h>
 #endif /* HAVE_CAP_NG_H */
+#ifdef HAVE_PTHREAD_NP_H
+#include <pthread_np.h>
+#endif /* HAVE_PTHREAD_NP_H */
 
 #include "knot/common.h"
 #include "knot/server/dthreads.h"
 #include "common/log.h"
 #include "knot/other/error.h"
+
+/* BSD cpu set compatibility. */
+#if defined(HAVE_CPUSET_BSD)
+typedef cpuset_t cpu_set_t;
+#endif
 
 /*! \brief Lock thread state for R/W. */
 static inline void lock_thread_rw(dthread_t *thread)
@@ -854,22 +862,44 @@ int dt_stop(dt_unit_t *unit)
 //	return KNOTD_EOK;
 //}
 
-int dt_setaffinity(dthread_t *thread, void *mask, size_t len)
+
+
+int dt_setaffinity(dthread_t *thread, unsigned* cpu_id, size_t cpu_count)
 {
-	if (thread == NULL || mask == NULL) {
+	if (thread == NULL) {
 		return KNOTD_EINVAL;
 	}
 	
 #ifdef HAVE_PTHREAD_SETAFFINITY_NP
-	if (len != sizeof(cpu_set_t)) {
-		return KNOTD_EINVAL;
+	int ret = -1;
+	
+/* Linux, FreeBSD interface. */
+#if defined(HAVE_CPUSET_LINUX) || defined(HAVE_CPUSET_BSD)
+	cpu_set_t set;
+	CPU_ZERO(&set);
+	for (unsigned i = 0; i < cpu_count; ++i) {
+		CPU_SET(cpu_id[i], &set);
 	}
-	pthread_t tid = pthread_self();
-	int ret = pthread_setaffinity_np(tid, len, (cpu_set_t*)mask);
+	ret = pthread_setaffinity_np(thread->_thr, sizeof(cpu_set_t), &set);
+/* NetBSD interface. */
+#elif defined(HAVE_CPUSET_NETBSD)
+	cpuset_t *set = cpuset_create();
+	if (set == NULL) {
+		return KNOTD_ENOMEM;
+	}
+	cpuset_zero(set);
+	for (unsigned i = 0; i < cpu_count; ++i) {
+		cpuset_set(cpu_id[i], &set);
+	}
+	ret = pthread_setaffinity_np(thread->_thr, cpuset_size(set), set);
+	cpuset_destroy(set);
+#endif /* interface */
+
 	if (ret < 0) {
 		return KNOTD_ERROR;
 	}
-#else
+
+#else /* HAVE_PTHREAD_SETAFFINITY_NP */
 	return KNOTD_ENOTSUP;
 #endif
 	
@@ -988,8 +1018,17 @@ int dt_compact(dt_unit_t *unit)
 int dt_online_cpus()
 {
 	int ret = -1;
+/* Linux, Solaris, OS X 10.4+ */
 #ifdef _SC_NPROCESSORS_ONLN
 	ret = (int) sysconf(_SC_NPROCESSORS_ONLN);
+#else
+/* FreeBSD, NetBSD, OpenBSD, OS X < 10.4 */
+#if HAVE_SYSCTLBYNAME
+	size_t rlen = sizeof(int);
+	if (sysctlbyname("hw.ncpu", &ret, &rlen, NULL, 0) < 0) {
+		ret = -1;
+	}
+#endif
 #endif
 	return ret;
 }

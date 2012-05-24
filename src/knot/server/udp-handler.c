@@ -204,17 +204,14 @@ static inline int udp_master_recvfrom(dthread_t *thread, stat_t *thread_stat)
 	/* Set CPU affinity to improve load distribution on multicore systems.
 	 * Partial overlapping mask to be nice to scheduler.
 	 */
-#ifdef HAVE_PTHREAD_SETAFFINITY_NP
 	int cpcount = dt_online_cpus();
 	if (cpcount > 0) {
-		unsigned tid = dt_get_id(thread);
-		cpu_set_t cpus;
-		CPU_ZERO(&cpus);
-		CPU_SET(tid % cpcount, &cpus);
-		CPU_SET((tid + 1) % cpcount, &cpus);
-		dt_setaffinity(thread, &cpus, sizeof(cpu_set_t));
+		unsigned cpu[2];
+		cpu[0] = dt_get_id(thread);
+		cpu[1] = (cpu[0] + 1) % cpcount;
+		cpu[0] = cpu[0] % cpcount;
+		dt_setaffinity(thread, cpu, 2);
 	}
-#endif
 	
 	knot_nameserver_t *ns = h->server->nameserver;
 
@@ -407,17 +404,14 @@ static inline int udp_master_recvmmsg(dthread_t *thread, stat_t *thread_stat)
 	/* Set CPU affinity to improve load distribution on multicore systems.
 	 * Partial overlapping mask to be nice to scheduler.
 	 */
-#ifdef HAVE_PTHREAD_SETAFFINITY_NP
 	int cpcount = dt_online_cpus();
 	if (cpcount > 0) {
-		unsigned tid = dt_get_id(thread);
-		cpu_set_t cpus;
-		CPU_ZERO(&cpus);
-		CPU_SET(tid % cpcount, &cpus);
-		CPU_SET((tid + 1) % cpcount, &cpus);
-		dt_setaffinity(thread, &cpus, sizeof(cpu_set_t));
+		unsigned cpu[2];
+		cpu[0] = dt_get_id(thread);
+		cpu[1] = (cpu[0] + 1) % cpcount;
+		cpu[0] = cpu[0] % cpcount;
+		dt_setaffinity(thread, cpu, 2);
 	}
-#endif
 
 	/* Loop until all data is read. */
 	ssize_t n = 0;
