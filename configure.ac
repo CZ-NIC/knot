@@ -123,7 +123,16 @@ AC_ARG_ENABLE([recvmmsg],
     ])
 
 # Check for link time optimizations support and predictive commoning
-AX_CHECK_COMPILER_FLAGS("-flto", [CFLAGS="$CFLAGS -flto"], [])
+AC_ARG_ENABLE([lto],
+    AS_HELP_STRING([--enable-lto=yes|no], [enable link-time optimizations, disable if broken (f.e. clang on FreeBSD) [default=yes]]),
+    [case "${enableval}" in
+      yes) AX_CHECK_COMPILER_FLAGS("-flto", [CFLAGS="$CFLAGS -flto"], []) ;;
+      no) ;;
+      *)  AC_MSG_ERROR([bad value ${enableval} for --enable-recvmmsg]) ;;
+    esac], [
+    AX_CHECK_COMPILER_FLAGS("-flto", [CFLAGS="$CFLAGS -flto"], [])
+    ])
+
 AX_CHECK_COMPILER_FLAGS("-fpredictive-commoning", [CFLAGS="$CFLAGS -fpredictive-commoning"], [])
 
 # Checks for libraries.
@@ -167,7 +176,6 @@ AC_FUNC_MMAP
 AC_CHECK_FUNCS([gethostbyname gettimeofday clock_gettime memalign memmove memset munmap regcomp pselect select socket sqrt strcasecmp strchr strdup strerror strncasecmp strtol strtoul poll epoll_wait kqueue setgroups sendmmsg madvise pthread_setaffinity_np])
 
 # Check for cpu_set_t/cpuset_t compatibility
-#AC_LANG([C])
 AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <pthread.h>]], [[cpu_set_t set; CPU_ZERO(&set);]])],
 [AC_DEFINE(HAVE_CPUSET_LINUX, 1, [Define if Linux-like cpu_set_t exists.])])
 AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <pthread_np.h>]], [[cpuset_t set; CPU_ZERO(&set);]])],
