@@ -42,6 +42,7 @@
 #include "zcompile/parser-util.h"
 #include "zcompile/zcompile-error.h"
 #include "knot/zone/zone-dump.h"
+#include "libknot/zone/zone-diff.h"
 #include "libknot/libknot.h"
 #include "libknot/util/utils.h"
 

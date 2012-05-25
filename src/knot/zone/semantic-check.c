@@ -169,7 +169,7 @@ int err_handler_handle_error(err_handler_t *handler,
 		return KNOT_EBADARG;
 	}
 
-	/*!< \todo this is so wrong! This should not even return anything. */
+	/*!< \todo #1886 this is so wrong! Should not even return anything. */
 	if (error == ZC_ERR_ALLOC || error == 0) {
 		return KNOT_EBADARG;
 	}
@@ -367,7 +367,7 @@ static int check_cname_cycles_in_zone(knot_zone_contents_t *zone,
 			                                          next_dname);
 		}
 		
-/*!< \todo this might replace some of the code above. */
+/*!< \todo #1887 this might replace some of the code above. */
 //		/* Still NULL, try wildcards. */
 //		if (next_node == NULL && knot_dname_is_wildcard(next_dname)) {
 //			/* We can only use the wildcard so many times. */
@@ -390,7 +390,6 @@ static int check_cname_cycles_in_zone(knot_zone_contents_t *zone,
 		knot_dname_t *chopped_next =
 			knot_dname_left_chop(next_dname);
 		if (chopped_next == NULL) {
-			/*!< \todo check. */
 			return KNOT_ERROR;
 		}
 		while (next_node == NULL && chopped_next != NULL) {
@@ -477,7 +476,6 @@ uint16_t type_covered_from_rdata(const knot_rdata_t *rdata)
 static int check_dnskey_rdata(const knot_rdata_t *rdata)
 {
 	/* check that Zone key bit it set - position 7 in net order */
-	/*! \todo FIXME: endian? I swear I've fixed this already, it was 7 i guesss*/
 	uint16_t mask = 1 << 8; //0b0000000100000000;
 
 	uint16_t flags =
@@ -570,7 +568,6 @@ static int dnskey_to_wire(const knot_rdata_t *rdata, uint8_t **wire,
 
 	/* copy the wire octet by octet */
 
-	/* TODO check if we really have that many items */
 	if (rdata->count < 4) {
 		free(*wire);
 		*wire = NULL;
@@ -992,10 +989,6 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 	/* Directly discard. */
 	knot_dname_free(&next_dname);
 	
-	/*!< \todo These comments are not accurate anymore. */
-	/* This is probably not sufficient, but again, it is covered in
-	 * zone load time */
-
 	uint count;
 	uint16_t *array = NULL;
 	if (rdata_nsec_to_type_array(
@@ -1169,7 +1162,7 @@ static int semantic_checks_plain(knot_zone_contents_t *zone,
 		return KNOT_EOK;
 	}
 	
-	/*!< \todo Good Lord, move this to ist own function. */
+	/*!< \todo #1887 Good Lord, move this to ist own function. */
 
 	/* check for glue records at zone cuts and in apex. */
 	if (knot_node_is_deleg_point(node) || knot_zone_contents_apex(zone) ==
@@ -1512,7 +1505,7 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 
 		free(next_dname_decoded);
 
-		/*! \todo Free result and dname! */
+		/*! \todo #1887 Free result and dname! */
 		if (knot_dname_cat(next_dname,
 			     knot_node_owner(knot_zone_contents_apex(zone))) ==
 		                NULL) {

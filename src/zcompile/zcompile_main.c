@@ -97,6 +97,9 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
+	knot_zone_diff_zones("/home/jan/test/testzone1",
+	                     "/home/jan/test/testzone2");
+	return 0;
 	int error = zone_read(origin, zonefile, outfile, semantic_checks);
 	zparser_free();
 
