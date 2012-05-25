@@ -392,7 +392,8 @@ char *rdata_text_to_string(knot_rdata_item_t item)
 	 * and then it would be as much chars as spaces (and one final space).
 	 */
 	size_t txt_size = size * 2 + 1;
-	char *ret = malloc(txt_size);
+	/* + 1 ... space for (hypothetical) last \0. */
+	char *ret = malloc(txt_size + 1);
 	if (ret == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
@@ -423,8 +424,8 @@ char *rdata_text_to_string(knot_rdata_item_t item)
 		/* Increase length of tmp string. */
 		tmp_str_current_length += strlen(txt);
 		strncat(ret, del, txt_size - tmp_str_current_length);
-		/* Increase length of tmp string. + 1 ... space. */
-		tmp_str_current_length += strlen(txt) + 1;
+		/* Increase length of tmp string by 1 ... space. */
+		tmp_str_current_length += + 1;
 		free(txt);
 	}
 
