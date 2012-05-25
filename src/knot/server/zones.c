@@ -242,6 +242,7 @@ static uint32_t zones_soa_timer(knot_zone_t *zone,
 
 	knot_zone_contents_t * zc = knot_zone_get_contents((zone));
 	if (!zc) {
+		rcu_read_unlock();
 		return 0;
 	}
 
@@ -295,7 +296,6 @@ static uint32_t zones_soa_expire(knot_zone_t *zone)
  */
 static int zones_expire_ev(event_t *e)
 {
-	rcu_read_lock();
 	dbg_zones("zones: EXPIRE timer event\n");
 	knot_zone_t *zone = (knot_zone_t *)e->data;
 	if (zone == NULL || zone->data == NULL) {
@@ -608,6 +608,7 @@ static int zones_notify_send(event_t *e)
 		log_server_notice("NOTIFY query maximum number of retries "
 				  "for zone '%s' exceeded.\n",
 				  zd->conf->name);
+		rcu_read_unlock();
 		pthread_mutex_lock(&zd->lock);
 		rem_node(&ev->n);
 		evsched_event_free(e->parent, e);
@@ -620,16 +621,15 @@ static int zones_notify_send(event_t *e)
 	int retry_tmr = ev->timeout * 1000;
  
 	/* Reschedule. */
-	conf_read_lock();
 	evsched_schedule(e->parent, e, retry_tmr);
 	dbg_notify("notify: Query RETRY after %u secs (zone '%s')\n",
 	           retry_tmr / 1000, zd->conf->name);
-	conf_read_unlock();
 	
 	/* Prepare buffer for query. */
 	uint8_t *qbuf = malloc(SOCKET_MTU_SZ);
 	if (qbuf == NULL) {
 		log_zone_error("Not enough memory to allocate NOTIFY query.\n");
+		rcu_read_unlock();
 		return KNOTD_ENOMEM;
 	}
 	
@@ -638,9 +638,6 @@ static int zones_notify_send(event_t *e)
 	/* Create query. */
 	int ret = notify_create_request(contents, qbuf, &buflen);
 	if (ret == KNOTD_EOK && zd->server) {
-
-		/* Lock RCU. */
-		rcu_read_lock();
 
 		/* Create socket on random port. */
 		int sock = socket_create(ev->addr.family, SOCK_DGRAM);
@@ -665,9 +662,6 @@ static int zones_notify_send(event_t *e)
 			ev->msgid = knot_wire_get_id(qbuf);
 			
 		}
-		
-		/* Unlock RCU */
-		rcu_read_unlock();
 		
 		/* Mark as finished to prevent stalling. */
 		evsched_event_finished(e->parent);
@@ -1258,6 +1252,7 @@ static int zones_journal_apply(knot_zone_t *zone)
 	knot_zone_contents_t *contents = knot_zone_get_contents(zone);
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 	if (!contents || !zd) {
+		rcu_read_unlock();
 		return KNOTD_ENOENT;
 	}
 
@@ -1270,6 +1265,7 @@ static int zones_journal_apply(knot_zone_t *zone)
 	soa_rr = knot_rrset_rdata(soa_rrs);
 	int64_t serial_ret = knot_rdata_soa_serial(soa_rr);
 	if (serial_ret < 0) {
+		rcu_read_unlock();
 		return KNOTD_EINVAL;
 	}
 	uint32_t serial = (uint32_t)serial_ret;
@@ -1307,6 +1303,7 @@ static int zones_journal_apply(knot_zone_t *zone)
 			rcu_read_unlock();
 			apply_ret = xfrin_switch_zone(zone, contents,
 			                              XFR_TYPE_IIN);
+			rcu_read_lock();
 			if (apply_ret == KNOT_EOK) {
 				xfrin_cleanup_successful_update(
 				                        &chsets->changes);
@@ -1326,10 +1323,10 @@ static int zones_journal_apply(knot_zone_t *zone)
 	} else {
 		dbg_zones("zones: failed to load changesets - %s\n",
 		          knotd_strerror(ret));
-		rcu_read_unlock();
 	}
 
 	/* Free changesets and return. */
+	rcu_read_unlock();
 	knot_free_changesets(&chsets);
 	return ret;
 }
@@ -1922,12 +1919,14 @@ int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
 	if (*db_old == NULL) {
 		log_server_error("Missing zone database in nameserver structure"
 		                 ".\n");
+		rcu_read_unlock();
 		return KNOTD_ERROR;
 	}
 
 	/* Create new zone DB */
 	knot_zonedb_t *db_new = knot_zonedb_new();
 	if (db_new == NULL) {
+		rcu_read_unlock();
 		return KNOTD_ERROR;
 	}
 
@@ -1961,12 +1960,13 @@ int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
 	 * All other have been loaded again so that the old must be destroyed.
 	 */
 	int ret = zones_remove_zones(db_new, *db_old);
+	
+	/* Unlock RCU, messing with any data will not affect us now */
+	rcu_read_unlock();
+	
 	if (ret != KNOTD_EOK) {
 		return ret;
 	}
-
-	/* Unlock RCU, messing with any data will not affect us now */
-	rcu_read_unlock();
 
 	return KNOTD_EOK;
 }
@@ -1996,6 +1996,7 @@ int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal)
 	knot_zone_contents_t *contents = knot_zone_get_contents(zone);
 	if (!contents) {
 		pthread_mutex_unlock(&zd->lock);
+		rcu_read_unlock();
 		return KNOTD_EINVAL;
 	}
 
@@ -2010,6 +2011,7 @@ int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal)
 	int64_t serial_ret = knot_rdata_soa_serial(soa_rr);
 	if (serial_ret < 0) {
 		pthread_mutex_unlock(&zd->lock);
+		rcu_read_unlock();
 		return KNOTD_EINVAL;
 	}
 	uint32_t serial_to = (uint32_t)serial_ret;
@@ -2027,9 +2029,9 @@ int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal)
 			dbg_zones("zones: failed to sync '%s' to '%s'\n",
 			          zd->conf->name, zd->conf->file);
 			pthread_mutex_unlock(&zd->lock);
+			rcu_read_unlock();
 			return ret;
 		}
-		
 		conf_read_unlock();
 
 		/* Update journal entries. */
@@ -2427,10 +2429,10 @@ int zones_process_response(knot_nameserver_t *nameserver,
 			log_zone_info("SOA query of '%s' to '%s@%d': Answered, no "
 				      "transfer needed.\n",
 			              zd->conf->name, r_addr, r_port);
-			rcu_read_unlock();
-
+			
 			/* Reinstall timers. */
 			zones_timers_update(zone, zd->conf, sched);
+			rcu_read_unlock();
 			return KNOTD_EOK;
 		}
 		
@@ -3178,6 +3180,7 @@ int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
 	pthread_mutex_unlock(&zd->lock);
 
 	/* Check XFR/IN master server. */
+	conf_read_lock();
 	if (zd->xfr_in.master.ptr) {
 
 		/* Schedule REFRESH timer. */

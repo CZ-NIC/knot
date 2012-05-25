@@ -698,11 +698,11 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 				              "in %d seconds.\n",
 				              data->msgpref, tmr_s / 1000);
 			}
-			rcu_read_unlock();
 
 			/* Update timers. */
 			server_t *server = (server_t *)knot_ns_get_data(w->ns);
 			zones_timers_update(zone, zd->conf, server->sched);
+			rcu_read_unlock();
 			
 		} else {
 			/* Cleanup */

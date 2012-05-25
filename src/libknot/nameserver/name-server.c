@@ -2552,6 +2552,7 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 		/*! \todo Probably rename the function. */
 		ns_xfr_send_and_clear(xfr, 1);
 //		socket_close(xfr->session);  /*! \todo Remove for UDP.*/
+		rcu_read_unlock();
 		return res;
 	}
 
@@ -2560,6 +2561,7 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 		res = ns_ixfr_put_changeset(xfr, &chgsets->sets[i]);
 		if (res != KNOT_EOK) {
 			// answer is sent
+			rcu_read_unlock();
 			return res;
 		}
 	}
