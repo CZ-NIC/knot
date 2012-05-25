@@ -1037,6 +1037,7 @@ int ck_update_item(const ck_hash_table_t *table, const char *key, size_t length,
 	ck_hash_table_item_t **item = ck_find_item_nc(table, key, length);
 
 	if (item == NULL || (*item) == NULL) {
+		rcu_read_unlock();
 		return -1;
 	}
 
@@ -1060,6 +1061,7 @@ int ck_delete_item(const ck_hash_table_t *table, const char *key, size_t length,
 	ck_hash_table_item_t **place = ck_find_item_nc(table, key, length);
 
 	if (place == NULL) {
+		rcu_read_unlock();
 		return -1;
 	}
 
