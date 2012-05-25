@@ -10,5 +10,4 @@ current version of Knot.
 Known bugs
 ==========
 
-* IXFR may be slow when too much (10 000+) RRSets are transfered at once.
 * Slow start with too many zones.

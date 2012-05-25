@@ -250,6 +250,15 @@ int notify_process_request(knot_nameserver_t *ns,
 		}
 	}
 
+	// check if it makes sense - if the QTYPE is SOA
+	if (knot_packet_qtype(notify) != KNOT_RRTYPE_SOA) {
+		// send back FORMERR
+		knot_ns_error_response(ns, knot_packet_id(notify),
+		                       &notify->header.flags1,
+		                       KNOT_RCODE_FORMERR, buffer, size);
+		return KNOTD_EOK;
+	}
+
 	// create NOTIFY response
 	dbg_notify("notify: creating response\n");
 	ret = notify_create_response(notify, buffer, size);

@@ -167,16 +167,6 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 	/* Initialize IXFR database. */
 	zd->ixfr_db = journal_open(cfg->ixfr_db, cfg->ixfr_fslimit,
 	                           JOURNAL_LAZY, JOURNAL_DIRTY);
-	if (!zd->ixfr_db) {
-		int ret = journal_create(cfg->ixfr_db, JOURNAL_NCOUNT);
-		if (ret != KNOTD_EOK) {
-			log_server_warning("Failed to create journal file "
-			                   "'%s' (%s)\n", cfg->ixfr_db,
-			                   knotd_strerror(ret));
-		}
-		zd->ixfr_db = journal_open(cfg->ixfr_db, cfg->ixfr_fslimit,
-		                           JOURNAL_LAZY, JOURNAL_DIRTY);
-	}
 	
 	if (zd->ixfr_db == NULL) {
 		char ebuf[256] = {0};
@@ -247,6 +237,9 @@ static uint32_t zones_soa_timer(knot_zone_t *zone,
 	/* Retrieve SOA RDATA. */
 	const knot_rrset_t *soa_rrs = 0;
 	const knot_rdata_t *soa_rr = 0;
+
+	rcu_read_lock();
+
 	knot_zone_contents_t * zc = knot_zone_get_contents((zone));
 	if (!zc) {
 		return 0;
@@ -257,6 +250,8 @@ static uint32_t zones_soa_timer(knot_zone_t *zone,
 	assert(soa_rrs != NULL);
 	soa_rr = knot_rrset_rdata(soa_rrs);
 	ret = rr_func(soa_rr);
+
+	rcu_read_unlock();
 
 	/* Convert to miliseconds. */
 	return ret * 1000;
@@ -599,6 +594,8 @@ static int zones_notify_send(event_t *e)
 		return KNOTD_EINVAL;
 	}
 
+	rcu_read_lock();
+
 	/* Check for answered/cancelled query. */
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 	knot_zone_contents_t *contents = knot_zone_get_contents(zone);
@@ -619,15 +616,15 @@ static int zones_notify_send(event_t *e)
 		return KNOTD_EMALF;
 	}
 
-        /* RFC suggests 60s, but it is configurable. */
-        int retry_tmr = ev->timeout * 1000;
+	/* RFC suggests 60s, but it is configurable. */
+	int retry_tmr = ev->timeout * 1000;
  
-        /* Reschedule. */
-        conf_read_lock();
-        evsched_schedule(e->parent, e, retry_tmr);
-        dbg_notify("notify: Query RETRY after %u secs (zone '%s')\n",
-                   retry_tmr / 1000, zd->conf->name);
-        conf_read_unlock();
+	/* Reschedule. */
+	conf_read_lock();
+	evsched_schedule(e->parent, e, retry_tmr);
+	dbg_notify("notify: Query RETRY after %u secs (zone '%s')\n",
+	           retry_tmr / 1000, zd->conf->name);
+	conf_read_unlock();
 	
 	/* Prepare buffer for query. */
 	uint8_t *qbuf = malloc(SOCKET_MTU_SZ);
@@ -689,6 +686,8 @@ static int zones_notify_send(event_t *e)
 	
 	free(qbuf);
 
+	rcu_read_unlock();
+
 	return ret;
 }
 
@@ -731,6 +730,8 @@ static int zones_zonefile_sync_ev(event_t *e)
 	journal_t *j = journal_retain(zd->ixfr_db);
 	int ret = zones_zonefile_sync(zone, j);
 	journal_release(j);
+
+	conf_read_lock();
 	if (ret == KNOTD_EOK) {
 		log_zone_info("Applied differences of '%s' to zonefile.\n",
 		              zd->conf->name);
@@ -739,6 +740,7 @@ static int zones_zonefile_sync_ev(event_t *e)
 		                 "to zonefile.\n",
 		                 zd->conf->name);
 	}
+	conf_read_unlock();
 
 	/* Reschedule. */
 	conf_read_lock();
@@ -1145,6 +1147,9 @@ static int zones_load_changesets(const knot_zone_t *zone,
 	
 	/* Retain journal for changeset loading. */
 	journal_t *j = journal_retain(zd->ixfr_db);
+	if (j == NULL) {
+		return KNOTD_EBUSY;
+	}
 
 	/* Read entries from starting serial until finished. */
 	uint32_t found_to = from;
@@ -1251,6 +1256,8 @@ static int zones_journal_apply(knot_zone_t *zone)
 		return KNOTD_EINVAL;
 	}
 
+	rcu_read_lock();
+
 	knot_zone_contents_t *contents = knot_zone_get_contents(zone);
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 	if (!contents || !zd) {
@@ -1300,6 +1307,7 @@ static int zones_journal_apply(knot_zone_t *zone)
 			}
 
 			/* Switch zone immediately. */
+			rcu_read_unlock();
 			apply_ret = xfrin_switch_zone(zone, contents,
 			                              XFR_TYPE_IIN);
 			if (apply_ret == KNOT_EOK) {
@@ -1321,6 +1329,7 @@ static int zones_journal_apply(knot_zone_t *zone)
 	} else {
 		dbg_zones("zones: failed to load changesets - %s\n",
 		          knotd_strerror(ret));
+		rcu_read_unlock();
 	}
 
 	/* Free changesets and return. */
@@ -1510,11 +1519,18 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 
 		/* Update ANY queries policy */
 		if (zd->conf->disable_any) {
+			rcu_read_lock();
 			knot_zone_contents_t *contents =
 			                knot_zone_get_contents(zone);
+
+			/*! \todo This is actually updating zone contents.
+			 *        It should be done in thread-safe way.
+			 */
 			if (contents) {
 				knot_zone_contents_disable_any(contents);
 			}
+
+			rcu_read_unlock();
 		}
 	}
 
@@ -1966,6 +1982,9 @@ int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal)
 	if (!zone->data) {
 		return KNOTD_EINVAL;
 	}
+	if (journal == NULL) {
+		return KNOTD_EINVAL;
+	}
 
 	/* Fetch zone data. */
 	int ret = KNOTD_EOK;
@@ -1973,6 +1992,9 @@ int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal)
 
 	/* Lock zone data. */
 	pthread_mutex_lock(&zd->lock);
+
+	/* Lock RCU for zone contents. */
+	rcu_read_lock();
 
 	knot_zone_contents_t *contents = knot_zone_get_contents(zone);
 	if (!contents) {
@@ -2031,6 +2053,9 @@ int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal)
 
 	/* Unlock zone data. */
 	pthread_mutex_unlock(&zd->lock);
+
+	/* Unlock RCU. */
+	rcu_read_unlock();
 
 	return ret;
 }
@@ -2146,7 +2171,8 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 		break;
 	}
 
-	if (zone == NULL && knot_packet_tsig(query) == NULL) {
+	if (rcode == KNOT_RCODE_NOERROR
+	    && zone == NULL && knot_packet_tsig(query) == NULL) {
 		/*! \todo If there is TSIG, this should be probably handled
 		 *        as a key error.
 		 */
@@ -2174,7 +2200,8 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 		assert(rcode == KNOT_RCODE_NOERROR);
 		uint16_t tsig_rcode = 0;
 		knot_key_t *tsig_key_zone = NULL;
-        uint64_t tsig_prev_time_signed = 0; /*! \todo Verify, as it was uninitialized! */
+		uint64_t tsig_prev_time_signed = 0;
+		/*! \todo Verify, as it was uninitialized! */
 
 		size_t answer_size = *rsize;
 		int ret = KNOT_EOK;
@@ -2205,7 +2232,8 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 				knot_packet_set_tsig_size(resp, tsig_max_size);
 			}
 			ret = knot_ns_answer_normal(nameserver, zone, resp,
-			                            resp_wire, &answer_size);
+			                            resp_wire, &answer_size,
+			                         transport == NS_TRANSPORT_UDP);
 
 			dbg_zones_detail("rsize = %zu\n", *rsize);
 			dbg_zones_detail("answer_size = %zu\n", answer_size);

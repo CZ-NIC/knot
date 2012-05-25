@@ -1525,6 +1525,8 @@ int xfr_worker(dthread_t *thread)
 				ret = xfr_process_event(w, it.fd, data, buf, buflen);
 				if (ret != KNOTD_EOK) {
 					xfr_free_task(data);
+					/*! \todo Refactor to allow erase on iterator.*/
+					break;
 				}
 			}
 			

@@ -319,10 +319,6 @@ dbg_ns_exec(
 		// change the node to the node of that name
 		*node = knot_dname_node(cname);
 		dbg_ns("This name's node: %p\n", *node);
-//		// it is not an old node and if yes, skip it
-//		if (knot_node_is_old(*node)) {
-//			*node = knot_node_new_node(*node);
-//		}
 
 		// save the new name which should be used for replacing wildcard
 		*qname = cname;
@@ -342,8 +338,10 @@ dbg_ns_exec(
  *
  * \return Number of RRSets added.
  */
-static int ns_put_answer(const knot_node_t *node, const knot_dname_t *name,
-                          uint16_t type, knot_packet_t *resp)
+static int ns_put_answer(const knot_node_t *node,
+                         const knot_zone_contents_t *zone,
+                         const knot_dname_t *name,
+                         uint16_t type, knot_packet_t *resp, int check_any)
 {
 	int added = 0;
 dbg_ns_exec(
@@ -355,6 +353,13 @@ dbg_ns_exec(
 	switch (type) {
 	case KNOT_RRTYPE_ANY: {
 		dbg_ns("Returning all RRTYPES.\n");
+
+		// if ANY not allowed, set TC bit
+		if (check_any && knot_zone_contents_any_disabled(zone)) {
+			knot_response_set_tc(resp);
+			break;
+		}
+
 		knot_rrset_t **rrsets = knot_node_get_rrsets(node);
 		if (rrsets == NULL) {
 			break;
@@ -1506,10 +1511,14 @@ static int ns_answer_from_node(const knot_node_t *node,
                                const knot_node_t *previous,
                                const knot_zone_contents_t *zone,
                                const knot_dname_t *qname, uint16_t qtype,
-                               knot_packet_t *resp)
+                               knot_packet_t *resp, int check_any)
 {
 	dbg_ns("Putting answers from found node to the response...\n");
-	int answers = ns_put_answer(node, qname, qtype, resp);
+	int answers = ns_put_answer(node, zone, qname, qtype, resp, check_any);
+
+	if (knot_packet_tc(resp) > 0) {
+		return KNOT_EOK;
+	}
 
 	int ret = KNOT_EOK;
 	if (answers == 0) {  // if NODATA response, put SOA
@@ -1640,7 +1649,7 @@ static int ns_dname_is_too_long(const knot_rrset_t *dname_rrset,
  * \param resp Response.
  */
 static void ns_process_dname(knot_rrset_t *dname_rrset,
-                             const knot_dname_t *qname,
+                             const knot_dname_t **qname,
                              knot_packet_t *resp)
 {
 dbg_ns_exec(
@@ -1652,16 +1661,16 @@ dbg_ns_exec(
 
 	// put the DNAME RRSet into the answer
 	knot_response_add_rrset_answer(resp, dname_rrset, 1, 0, 0, 1);
-	ns_add_rrsigs(dname_rrset, resp, qname,
+	ns_add_rrsigs(dname_rrset, resp, *qname,
 	              knot_response_add_rrset_answer, 1);
 
-	if (ns_dname_is_too_long(dname_rrset, qname)) {
+	if (ns_dname_is_too_long(dname_rrset, *qname)) {
 		knot_response_set_rcode(resp, KNOT_RCODE_YXDOMAIN);
 		return;
 	}
 
 	// synthetize CNAME (no way to tell that client supports DNAME)
-	knot_rrset_t *synth_cname = ns_cname_from_dname(dname_rrset, qname);
+	knot_rrset_t *synth_cname = ns_cname_from_dname(dname_rrset, *qname);
 	// add the synthetized RRSet to the Answer
 	knot_response_add_rrset_answer(resp, synth_cname, 1, 0, 0, 1);
 
@@ -1670,7 +1679,13 @@ dbg_ns_exec(
 	// add the synthetized RRSet into list of temporary RRSets of response
 	knot_packet_add_tmp_rrset(resp, synth_cname);
 
-	// do not search for the name in new zone (out-of-bailiwick)
+	// get the next SNAME from the CNAME RDATA
+	const knot_dname_t *cname = knot_rdata_cname_name(
+			knot_rrset_rdata(synth_cname));
+	dbg_ns("CNAME name from RDATA: %p\n", cname);
+
+	// save the new name which should be used for replacing wildcard
+	*qname = cname;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1708,7 +1723,7 @@ static void ns_add_dnskey(const knot_node_t *apex, knot_packet_t *resp)
  * \todo Describe the answering logic in detail.
  */
 static int ns_answer_from_zone(const knot_zone_contents_t *zone,
-                               knot_packet_t *resp)
+                               knot_packet_t *resp, int check_any)
 {
 	const knot_node_t *node = NULL, *closest_encloser = NULL,
 	                    *previous = NULL;
@@ -1762,7 +1777,7 @@ dbg_ns_exec(
 	}
 );
 	if (find_ret == KNOT_EBADZONE) {
-		// possible only if we followed cname
+		// possible only if we followed CNAME or DNAME
 		assert(cname != 0);
 		knot_response_set_rcode(resp, KNOT_RCODE_NOERROR);
 		auth_soa = 1;
@@ -1788,10 +1803,14 @@ have_node:
 		knot_rrset_t *dname_rrset = knot_node_get_rrset(
 		                         closest_encloser, KNOT_RRTYPE_DNAME);
 		if (dname_rrset != NULL) {
-			ns_process_dname(dname_rrset, qname, resp);
-			auth_soa = 1;
-			knot_response_set_aa(resp);
-			goto finalize;
+			ns_process_dname(dname_rrset, &qname, resp);
+
+			// do not search for the name in new zone
+			// (out-of-bailiwick), just in the current zone if it
+			// belongs there
+
+			cname = 1;
+			goto search;
 		}
 		// else check for a wildcard child
 		const knot_node_t *wildcard_node =
@@ -1867,7 +1886,7 @@ dbg_ns_exec(
 	}
 
 	ret = ns_answer_from_node(node, closest_encloser, previous, zone, qname,
-	                          qtype, resp);
+	                          qtype, resp, check_any);
 	if (ret == NS_ERR_SERVFAIL) {
 		// in this case we should drop the response and send an error
 		// for now, just send the error code with a non-complete answer
@@ -1884,7 +1903,7 @@ dbg_ns_exec(
 	// this is the only case when the servers answers from
 	// particular node, i.e. the only case when it may return SOA
 	// or NS records in Answer section
-	if (DNSSEC_ENABLED
+	if (knot_packet_tc(resp) == 0 && DNSSEC_ENABLED
 	    && knot_query_dnssec_requested(knot_packet_query(resp))
 	    && node == knot_zone_contents_apex(zone)
 	    && (qtype == KNOT_RRTYPE_SOA || qtype == KNOT_RRTYPE_NS)) {
@@ -1892,7 +1911,7 @@ dbg_ns_exec(
 	}
 
 finalize:
-	if (ret == KNOT_EOK && auth_soa) {
+	if (ret == KNOT_EOK && knot_packet_tc(resp) == 0 && auth_soa) {
 		ns_put_authority_soa(zone, resp);
 	}
 
@@ -1913,7 +1932,8 @@ finalize:
  * \retval KNOT_EOK
  * \retval NS_ERR_SERVFAIL
  */
-static int ns_answer(const knot_zone_t *zone, knot_packet_t *resp)
+static int ns_answer(const knot_zone_t *zone, knot_packet_t *resp,
+                     int check_any)
 {
 //	const knot_dname_t *qname = knot_packet_qname(resp);
 //	assert(qname != NULL);
@@ -1949,7 +1969,7 @@ dbg_ns_exec(
 
 	// take the zone contents and use only them for answering
 
-	return ns_answer_from_zone(contents, resp);
+	return ns_answer_from_zone(contents, resp, check_any);
 
 	//knot_dname_free(&qname);
 }
@@ -2468,6 +2488,8 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 	assert(xfr->response != NULL);
 	assert(knot_packet_authority_rrset_count(xfr->query) > 0);
 	assert(xfr->data != NULL);
+
+	rcu_read_lock();
 	
 	knot_changesets_t *chgsets = (knot_changesets_t *)xfr->data;
 	knot_zone_contents_t *contents = knot_zone_get_contents(xfr->zone);
@@ -2509,6 +2531,8 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 		//socket_close(xfr->session);  /*! \todo Remove for UDP.*/
 //		return 1;
 	}
+
+	rcu_read_unlock();
 
 	return KNOT_EOK;
 }
@@ -3029,11 +3053,11 @@ dbg_ns_exec(
 
 int knot_ns_answer_normal(knot_nameserver_t *nameserver, 
                           const knot_zone_t *zone, knot_packet_t *resp,
-                          uint8_t *response_wire, size_t *rsize)
+                          uint8_t *response_wire, size_t *rsize, int check_any)
 {
 	dbg_ns("ns_answer_normal()\n");
 
-	int ret = ns_answer(zone, resp);
+	int ret = ns_answer(zone, resp, check_any);
 
 	if (ret != 0) {
 		// now only one type of error (SERVFAIL), later maybe more

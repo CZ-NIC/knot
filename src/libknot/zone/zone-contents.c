@@ -1450,8 +1450,12 @@ int knot_zone_contents_add_rrset(knot_zone_contents_t *zone,
 	int rc;
 
 	/*! \todo REMOVE RRSET */
-	rc = knot_node_add_rrset(*node, rrset,
-	                           dupl == KNOT_RRSET_DUPL_MERGE);
+	if (dupl == KNOT_RRSET_DUPL_SKIP) {
+		rc = knot_node_add_rrset_no_dupl(*node, rrset);
+	} else {
+		rc = knot_node_add_rrset(*node, rrset,
+		                         dupl == KNOT_RRSET_DUPL_MERGE);
+	}
 	if (rc < 0) {
 		dbg_zone("Failed to add RRSet to node.\n");
 		return rc;
@@ -1574,7 +1578,8 @@ dbg_zone_exec(
 		dbg_dname("Failed to add RRSIGs to RRSet.\n");
 		return rc;
 	} else if (rc > 0) {
-		assert(dupl == KNOT_RRSET_DUPL_MERGE);
+		assert(dupl == KNOT_RRSET_DUPL_MERGE ||
+		       dupl == KNOT_RRSET_DUPL_SKIP);
 		ret = 1;
 	}
 

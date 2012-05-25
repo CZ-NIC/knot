@@ -894,6 +894,7 @@ int knot_zdump_binary(knot_zone_contents_t *zone, int fd,
                       int do_checks, const char *sfilename,
                       crc_t *crc)
 {
+
 	if (fd < 0 || sfilename == NULL) {
 		dbg_zdump("zdump: Bad arguments.\n");
 		return KNOT_EBADARG;

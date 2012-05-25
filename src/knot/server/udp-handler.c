@@ -206,12 +206,11 @@ static inline int udp_master_recvfrom(dthread_t *thread, stat_t *thread_stat)
 	 */
 	int cpcount = dt_online_cpus();
 	if (cpcount > 0) {
-		unsigned tid = dt_get_id(thread);
-		cpu_set_t cpus;
-		CPU_ZERO(&cpus);
-		CPU_SET(tid % cpcount, &cpus);
-		CPU_SET((tid + 1) % cpcount, &cpus);
-		dt_setaffinity(thread, &cpus);
+		unsigned cpu[2];
+		cpu[0] = dt_get_id(thread);
+		cpu[1] = (cpu[0] + 1) % cpcount;
+		cpu[0] = cpu[0] % cpcount;
+		dt_setaffinity(thread, cpu, 2);
 	}
 	
 	knot_nameserver_t *ns = h->server->nameserver;
@@ -407,12 +406,11 @@ static inline int udp_master_recvmmsg(dthread_t *thread, stat_t *thread_stat)
 	 */
 	int cpcount = dt_online_cpus();
 	if (cpcount > 0) {
-		unsigned tid = dt_get_id(thread);
-		cpu_set_t cpus;
-		CPU_ZERO(&cpus);
-		CPU_SET(tid % cpcount, &cpus);
-		CPU_SET((tid + 1) % cpcount, &cpus);
-		dt_setaffinity(thread, &cpus);
+		unsigned cpu[2];
+		cpu[0] = dt_get_id(thread);
+		cpu[1] = (cpu[0] + 1) % cpcount;
+		cpu[0] = cpu[0] % cpcount;
+		dt_setaffinity(thread, cpu, 2);
 	}
 
 	/* Loop until all data is read. */
