@@ -189,7 +189,7 @@ static int knot_zone_diff_changeset_remove_node(knot_changeset_t *changeset,
 		if (ret != KNOT_EOK) {
 			printf("zone_diff: remove_node: Failed to "
 			             "remove rrset. Error: %s\n",
-			             ret);
+			             knot_strerror(ret));
 			return ret;
 		}
 	}
@@ -201,7 +201,7 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
                                                const knot_rrset_t *rrset2,
                                                knot_rrset_t **changes)
 {
-	if (rrset_1 == NULL || rrset2 == NULL) {
+	if (rrset1 == NULL || rrset2 == NULL) {
 		printf("zone_diff: diff_rdata: NULL arguments.\n");
 		return KNOT_EBADARG;
 	}
@@ -343,9 +343,30 @@ static int knot_zone_diff_rrsets(const knot_rrset_t *rrset1,
                                  const knot_rrset_t *rrset2,
                                  knot_changeset_t *changeset)
 {
-	if (rrset1 == NULL || rrset2 == NULL || changeset == NULL) {
-		printf("zone_diff: diff_rrsets: NULL arguments.\n");
-		return KNOT_EBADARG;
+	if (rrset1 == NULL || rrset2 == NULL) {
+		/* This could happen when diffing RRSIGs. */
+		if (rrset1 == NULL && rrset2 != NULL) {
+			int ret =
+				knot_zone_diff_changeset_add_rrset(changeset,
+			                                           rrset2);
+			if (ret != KNOT_EOK) {
+				printf("zone_diff: diff_rrsets: "
+				       "Cannot add RRSIG. (%s)\n",
+				       knot_strerror(ret));
+			}
+		} else if (rrset1 != NULL && rrset2 == NULL) {
+			int ret =
+				knot_zone_diff_changeset_remove_rrset(changeset,
+			                                              rrset1);
+			if (ret != KNOT_EOK) {
+				printf("zone_diff: diff_rrsets: "
+				       "Cannot remove RRSIG. (%s)\n",
+				       knot_strerror(ret));
+			}
+		}
+		printf_detail("zone_diff: diff_rrsets: "
+		              "NULL arguments (RRSIGs?).\n");
+		return KNOT_EOK;
 	}
 
 	assert(knot_dname_compare(knot_rrset_owner(rrset1),
@@ -580,6 +601,7 @@ static int knot_zone_diff_add_node(knot_node_t *node,
 /*!< \todo possibly not needed! */
 static void knot_zone_diff_add_new_nodes(knot_node_t *node, void *data)
 {
+	assert(node);
 	if (node == NULL || data == NULL) {
 		printf("zone_diff: add_new_nodes: NULL arguments.\n");
 		return;
@@ -623,6 +645,7 @@ static void knot_zone_diff_add_new_nodes(knot_node_t *node, void *data)
 	}
 	
 	if (!new_node) {
+		assert(node);
 		int ret = knot_zone_diff_add_node(node, param->changeset);
 		if (ret != KNOT_EOK) {
 			printf("zone_diff: add_new_nodes: Cannot add "
