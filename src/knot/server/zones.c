@@ -2577,7 +2577,7 @@ static int zones_dump_zone_text(knot_zone_contents_t *zone, const char *fname)
 	FILE *f = fdopen(fd, "w");
 	if (f == NULL) {
 		log_zone_warning("Failed to open file descriptor for text zone.\n");
-		close(fd);
+		fclose(f);
 		unlink(new_fname);
 		free(new_fname);
 		return KNOTD_ERROR;
@@ -2586,7 +2586,7 @@ static int zones_dump_zone_text(knot_zone_contents_t *zone, const char *fname)
 	if (zone_dump_text(zone, f) != KNOTD_EOK) {
 		log_zone_warning("Failed to save the transferred zone to '%s'.\n",
 		                 new_fname);
-		close(fd);
+		fclose(f);
 		unlink(new_fname);
 		free(new_fname);
 		return KNOTD_ERROR;
@@ -2625,18 +2625,18 @@ static int zones_dump_zone_binary(knot_zone_contents_t *zone,
 		return KNOTD_ERROR;
 	}
 
-	crc_t crc_value;
+	crc_t crc_value = 0;
 	if (knot_zdump_dump(zone, fd, zonefile, &crc_value) != KNOT_EOK) {
 		close(fd);
 		unlink(new_zonedb);
 		free(new_zonedb);
 		return KNOTD_ERROR;
 	}
+	close(fd);
 
 	/* Delete old CRC file. */
 	char *zonedb_crc = knot_zdump_crc_file(zonedb);
 	if (zonedb_crc == NULL) {
-		close(fd);
 		unlink(new_zonedb);
 		free(new_zonedb);
 		return KNOTD_ENOMEM;
@@ -2649,7 +2649,6 @@ static int zones_dump_zone_binary(knot_zone_contents_t *zone,
 		dbg_zdump("Failed to create CRC file path from %s.\n",
 		          new_zonedb);
 		free(zonedb_crc);
-		close(fd);
 		unlink(new_zonedb);
 		free(new_zonedb);
 		return KNOTD_ENOMEM;
@@ -2660,7 +2659,9 @@ static int zones_dump_zone_binary(knot_zone_contents_t *zone,
 	if (f_crc == NULL) {
 		dbg_zdump("Cannot open CRC file %s!\n",
 		          zonedb_crc);
+		free(zonedb_crc);
 		unlink(new_zonedb);
+		free(new_zonedb);
 		return KNOTD_ERROR;
 	} else {
 		fprintf(f_crc, "%lu\n",
@@ -2695,7 +2696,6 @@ static int zones_dump_zone_binary(knot_zone_contents_t *zone,
 
 	free(new_zonedb_crc);
 	free(zonedb_crc);
-	close(fd);
 	free(new_zonedb);
 
 
