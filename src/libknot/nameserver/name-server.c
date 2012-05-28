@@ -1354,6 +1354,32 @@ static int ns_put_nsec_nsec3_wildcard_answer(const knot_node_t *node,
 }
 
 /*----------------------------------------------------------------------------*/
+
+static int ns_put_nsec_nsec3_wildcard_nodes(knot_packet_t *response,
+                                            const knot_zone_contents_t *zone)
+{
+	assert(response != NULL);
+	assert(zone != NULL);
+
+	int ret = 0;
+
+	for (int i = 0; i < response->wildcard_nodes.count; ++i) {
+		ret = ns_put_nsec_nsec3_wildcard_answer(
+		                        response->wildcard_nodes.nodes[i],
+		                        knot_node_parent(
+		                            response->wildcard_nodes.nodes[i]),
+		                        NULL, zone,
+		                        response->wildcard_nodes.snames[i],
+		                        response);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
 /*!
  * \brief Creates a referral response.
  *
@@ -1478,7 +1504,7 @@ static inline int ns_referral(const knot_node_t *node,
 	}
 
 	if (ret == KNOT_EOK) {
-		ns_put_additional(resp);
+//		ns_put_additional(resp);
 		knot_response_set_rcode(resp, KNOT_RCODE_NOERROR);
 	}
 	return ret;
@@ -1569,9 +1595,9 @@ static int ns_answer_from_node(const knot_node_t *node,
 		ns_put_authority_ns(zone, resp);
 	}
 
-	if (ret == KNOT_EOK) {
-		ns_put_additional(resp);
-	}
+//	if (ret == KNOT_EOK) {
+//		ns_put_additional(resp);
+//	}
 	return ret;
 }
 
@@ -1922,6 +1948,13 @@ dbg_ns_exec(
 finalize:
 	if (ret == KNOT_EOK && auth_soa) {
 		ns_put_authority_soa(zone, resp);
+	}
+
+	// add all missing NSECs/NSEC3s for wildcard nodes
+	ret = ns_put_nsec_nsec3_wildcard_nodes(resp, zone);
+
+	if (ret == KNOT_EOK) {
+		ns_put_additional(resp);
 	}
 
 	return ret;
