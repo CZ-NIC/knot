@@ -1794,10 +1794,10 @@ dbg_ns_exec(
 	char *name;
 	if (node) {
 		name = knot_dname_to_str(node->owner);
-		dbg_ns("zone_find_dname() returned node %s ", name);
+		dbg_ns("zone_find_dname() returned node %s \n", name);
 		free(name);
 	} else {
-		dbg_ns("zone_find_dname() returned no node,");
+		dbg_ns("zone_find_dname() returned no node,\n");
 	}
 
 	if (closest_encloser != NULL) {
@@ -1855,7 +1855,7 @@ have_node:
 			dbg_ns("No wildcard node. (cname: %d)\n",
 				 cname);
 			auth_soa = 1;
-			if (cname == 0) {
+			//if (cname == 0) {
 				dbg_ns("Setting NXDOMAIN RCODE.\n");
 				// return NXDOMAIN
 				knot_response_set_rcode(resp,
@@ -1864,10 +1864,10 @@ have_node:
 					closest_encloser, qname, resp) != 0) {
 					return NS_ERR_SERVFAIL;
 				}
-			} else {
-				knot_response_set_rcode(resp,
-					KNOT_RCODE_NOERROR);
-			}
+//			} else {
+//				knot_response_set_rcode(resp,
+//					KNOT_RCODE_NOERROR);
+//			}
 			knot_response_set_aa(resp);
 			goto finalize;
 		}
