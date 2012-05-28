@@ -197,6 +197,10 @@ void knot_response_set_tc(knot_packet_t *response);
 int knot_response_add_nsid(knot_packet_t *response, const uint8_t *data,
                              uint16_t length);
 
+int knot_response_add_wildcard_node(knot_packet_t *response,
+                                    const knot_node_t *node,
+                                    const knot_dname_t *sname);
+
 #endif /* _KNOT_response_H_ */
 
 /*! @} */

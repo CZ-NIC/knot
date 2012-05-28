@@ -298,6 +298,14 @@ static void ns_follow_cname(const knot_node_t **node,
 			add_rrset_to_resp(resp, rrset, tc, 0, 0, 1);
 			ns_add_rrsigs(cname_rrset, resp, *qname, 
 			              add_rrset_to_resp, tc);
+
+			int ret = knot_response_add_wildcard_node(
+			                        resp, *node, *qname);
+
+			/*! \todo Fix when return values are handled! */
+			if (ret != KNOT_EOK) {
+				assert(0);
+			}
 		} else {
 			add_rrset_to_resp(resp, rrset, tc, 0, 0, 1);
 			ns_add_rrsigs(rrset, resp, *qname, add_rrset_to_resp, 
@@ -1351,6 +1359,32 @@ static int ns_put_nsec_nsec3_wildcard_answer(const knot_node_t *node,
 }
 
 /*----------------------------------------------------------------------------*/
+
+static int ns_put_nsec_nsec3_wildcard_nodes(knot_packet_t *response,
+                                            const knot_zone_contents_t *zone)
+{
+	assert(response != NULL);
+	assert(zone != NULL);
+
+	int ret = 0;
+
+	for (int i = 0; i < response->wildcard_nodes.count; ++i) {
+		ret = ns_put_nsec_nsec3_wildcard_answer(
+		                        response->wildcard_nodes.nodes[i],
+		                        knot_node_parent(
+		                            response->wildcard_nodes.nodes[i]),
+		                        NULL, zone,
+		                        response->wildcard_nodes.snames[i],
+		                        response);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
 /*!
  * \brief Creates a referral response.
  *
@@ -1475,7 +1509,7 @@ static inline int ns_referral(const knot_node_t *node,
 	}
 
 	if (ret == KNOT_EOK) {
-		ns_put_additional(resp);
+//		ns_put_additional(resp);
 		knot_response_set_rcode(resp, KNOT_RCODE_NOERROR);
 	}
 	return ret;
@@ -1545,14 +1579,34 @@ static int ns_answer_from_node(const knot_node_t *node,
 	} else {  // else put authority NS
 		// if wildcard answer, add NSEC / NSEC3
 		dbg_ns("Adding NSEC/NSEC3 for wildcard answer.\n");
+
+//		char *n = knot_dname_to_str(knot_node_owner(node));
+//		char *ce = (closest_encloser)
+//		              ? knot_dname_to_str(knot_node_owner(closest_encloser))
+//		              : "(nil)";
+//		char *prev = (previous)
+//		              ? knot_dname_to_str(knot_node_owner(previous))
+//		              : "(nil)";
+//		printf("Node: %s, closest encloser: %s, previous: %s\n",
+//		       n, ce, prev);
+//		free(n);
+//		if (closest_encloser) {
+//			free(ce);
+//		}
+//		if (previous) {
+//			free(prev);
+//		}
+		assert(previous == NULL);
+		assert(closest_encloser = knot_node_parent(node));
+
 		ret = ns_put_nsec_nsec3_wildcard_answer(node, closest_encloser,
 		                                  previous, zone, qname, resp);
 		ns_put_authority_ns(zone, resp);
 	}
 
-	if (ret == KNOT_EOK) {
-		ns_put_additional(resp);
-	}
+//	if (ret == KNOT_EOK) {
+//		ns_put_additional(resp);
+//	}
 	return ret;
 }
 
@@ -1755,10 +1809,10 @@ dbg_ns_exec(
 	char *name;
 	if (node) {
 		name = knot_dname_to_str(node->owner);
-		dbg_ns("zone_find_dname() returned node %s ", name);
+		dbg_ns("zone_find_dname() returned node %s \n", name);
 		free(name);
 	} else {
-		dbg_ns("zone_find_dname() returned no node,");
+		dbg_ns("zone_find_dname() returned no node,\n");
 	}
 
 	if (closest_encloser != NULL) {
@@ -1820,7 +1874,7 @@ have_node:
 			dbg_ns("No wildcard node. (cname: %d)\n",
 				 cname);
 			auth_soa = 1;
-			if (cname == 0) {
+			//if (cname == 0) {
 				dbg_ns("Setting NXDOMAIN RCODE.\n");
 				// return NXDOMAIN
 				knot_response_set_rcode(resp,
@@ -1829,10 +1883,10 @@ have_node:
 					closest_encloser, qname, resp) != 0) {
 					return NS_ERR_SERVFAIL;
 				}
-			} else {
-				knot_response_set_rcode(resp,
-					KNOT_RCODE_NOERROR);
-			}
+//			} else {
+//				knot_response_set_rcode(resp,
+//					KNOT_RCODE_NOERROR);
+//			}
 			knot_response_set_aa(resp);
 			goto finalize;
 		}
@@ -1913,6 +1967,13 @@ dbg_ns_exec(
 finalize:
 	if (ret == KNOT_EOK && knot_packet_tc(resp) == 0 && auth_soa) {
 		ns_put_authority_soa(zone, resp);
+	}
+
+	// add all missing NSECs/NSEC3s for wildcard nodes
+	ret = ns_put_nsec_nsec3_wildcard_nodes(resp, zone);
+
+	if (ret == KNOT_EOK) {
+		ns_put_additional(resp);
 	}
 
 	return ret;
