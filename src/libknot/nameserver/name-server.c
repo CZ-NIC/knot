@@ -298,6 +298,14 @@ static void ns_follow_cname(const knot_node_t **node,
 			add_rrset_to_resp(resp, rrset, tc, 0, 0, 1);
 			ns_add_rrsigs(cname_rrset, resp, *qname, 
 			              add_rrset_to_resp, tc);
+
+			int ret = knot_response_add_wildcard_node(
+			                        resp, *node, *qname);
+
+			/*! \todo Fix when return values are handled! */
+			if (ret != KNOT_EOK) {
+				assert(0);
+			}
 		} else {
 			add_rrset_to_resp(resp, rrset, tc, 0, 0, 1);
 			ns_add_rrsigs(rrset, resp, *qname, add_rrset_to_resp, 
@@ -1536,6 +1544,26 @@ static int ns_answer_from_node(const knot_node_t *node,
 	} else {  // else put authority NS
 		// if wildcard answer, add NSEC / NSEC3
 		dbg_ns("Adding NSEC/NSEC3 for wildcard answer.\n");
+
+//		char *n = knot_dname_to_str(knot_node_owner(node));
+//		char *ce = (closest_encloser)
+//		              ? knot_dname_to_str(knot_node_owner(closest_encloser))
+//		              : "(nil)";
+//		char *prev = (previous)
+//		              ? knot_dname_to_str(knot_node_owner(previous))
+//		              : "(nil)";
+//		printf("Node: %s, closest encloser: %s, previous: %s\n",
+//		       n, ce, prev);
+//		free(n);
+//		if (closest_encloser) {
+//			free(ce);
+//		}
+//		if (previous) {
+//			free(prev);
+//		}
+		assert(previous == NULL);
+		assert(closest_encloser = knot_node_parent(node));
+
 		ret = ns_put_nsec_nsec3_wildcard_answer(node, closest_encloser,
 		                                  previous, zone, qname, resp);
 		ns_put_authority_ns(zone, resp);
