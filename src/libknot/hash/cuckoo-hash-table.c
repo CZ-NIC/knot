@@ -670,6 +670,10 @@ static void ck_rollback_rehash(ck_hash_table_t *table)
  */
 int ck_add_to_stash(ck_hash_table_t *table, ck_hash_table_item_t *item)
 {
+	if (item == NULL) {
+		fprintf(stderr, "[EMPTY STASH] ADDING NULL ITEM TO STASH\n");
+	}
+
 	ck_stash_item_t *new_item
 		= (ck_stash_item_t *)malloc(sizeof(ck_stash_item_t));
 	if (new_item == NULL) {
@@ -884,7 +888,7 @@ void ck_table_free(ck_hash_table_t **table)
 int ck_resize_table(ck_hash_table_t *table)
 {
 	dbg_ck("Resizing hash table.\n");
-	
+
 	/*
 	 * Easiest is just to increment the exponent, resulting in doubling
 	 * the table sizes. This is not very memory-effective, but should do
@@ -1345,6 +1349,7 @@ int ck_deep_copy(ck_hash_table_t *from, ck_hash_table_t **to)
 //		dbg_ck("key: %.*s\n", (int)si->item->key_length, si->item->key);
 
 		if (si->item == NULL) {
+			fprintf(stderr, "[EMPTY STASH] STASH ITEM IS EMPTY!!");
 			si_new->item = NULL;
 			si_new->next = NULL;
 		} else {
@@ -1560,6 +1565,12 @@ int ck_rehash(ck_hash_table_t *table)
 						ck_stash_item_t *item =
 							free_stash_items;
 						free_stash_items = item->next;
+
+						if (free == NULL) {
+							fprintf(stderr, "[EMPTY STASH] "
+							       "STORING NULL in"
+							       " the stash\n");
+						}
 
 						item->item = free;
 						item->next = table->stash;
