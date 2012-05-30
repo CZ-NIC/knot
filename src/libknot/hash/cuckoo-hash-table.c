@@ -419,11 +419,10 @@ static ck_hash_table_item_t **ck_find_in_stash(const ck_hash_table_t *table,
 		 *        non-NULL.
 		 */
 		if (item->item && ck_items_match(item->item, key, length)) {
-			dbg_ck("Comparing item in stash (key: %.*s (size %zu))"
-			         "with searched item (key %.*s (size %u)).\n",
-			         (int)item->item->key_length, item->item->key,
-			         item->item->key_length, (int)length, key,
-			         length);
+			dbg_ck_detail("Comparing item in stash (key: %.*s (size"
+			    " %zu)) with searched item (key %.*s (size %u)).\n",
+			    (int)item->item->key_length, item->item->key,
+			    item->item->key_length, (int)length, key, length);
 			return &item->item;
 		}
 		item = item->next;
@@ -448,18 +447,18 @@ static ck_hash_table_item_t **ck_find_gen(const ck_hash_table_t *table,
                                           size_t length, uint8_t generation)
 {
 	uint32_t hash;
-	dbg_ck("Finding item in generation: %u\n", generation);
+	dbg_ck_verb("Finding item in generation: %u\n", generation);
 
 	// check hash tables
 	for (uint t = 0; t < table->table_count; ++t) {
 		hash = HASH(&table->hash_system, key, length,
 		            table->table_size_exp, generation, t);
 
-		dbg_ck("Hash: %u, key: %.*s\n", hash, (int)length, key);
-		dbg_ck("Table %d, hash: %u, item: %p\n", t + 1, hash,
-		         table->tables[t][hash]);
+		dbg_ck_detail("Hash: %u, key: %.*s\n", hash, (int)length, key);
+		dbg_ck_detail("Table %d, hash: %u, item: %p\n", t + 1, hash,
+		              table->tables[t][hash]);
 		if (table->tables[t][hash] != NULL) {
-			dbg_ck("Table %u, key: %.*s, value: %p, key "
+			dbg_ck_detail("Table %u, key: %.*s, value: %p, key "
 			         "length: %zu\n",
 			         t + 1, (int)table->tables[t][hash]->key_length,
 			         table->tables[t][hash]->key,
@@ -475,16 +474,16 @@ static ck_hash_table_item_t **ck_find_gen(const ck_hash_table_t *table,
 	}
 
 	// try to find in stash
-	dbg_ck("Searching in stash...\n");
+	dbg_ck_verb("Searching in stash...\n");
 
 	ck_hash_table_item_t **found =
 	        ck_find_in_stash(table, key, length);
 
-	dbg_ck("Found pointer: %p\n", found);
+	dbg_ck_verb("Found pointer: %p\n", found);
 	if (found != NULL) {
-		dbg_ck("Stash, key: %.*s, value: %p, key length: %zu\n",
-		         (int)(*found)->key_length, (*found)->key,
-	                 (*found)->value, (*found)->key_length);
+		dbg_ck_verb("Stash, key: %.*s, value: %p, key length: %zu\n",
+		            (int)(*found)->key_length, (*found)->key,
+		            (*found)->value, (*found)->key_length);
 	}
 
 	// ck_find_in_buffer returns NULL if not found, otherwise pointer to
@@ -543,9 +542,9 @@ static int ck_hash_item(ck_hash_table_t *table, ck_hash_table_item_t **to_hash,
 
 	// hash until empty cell is encountered or until loop appears
 
-	dbg_ck_hash("Hashing key: %.*s of size %zu.\n",
-	              (int)(*to_hash)->key_length, (*to_hash)->key,
-	              (*to_hash)->key_length);
+	dbg_ck_hash_verb("Hashing key: %.*s of size %zu.\n",
+	                 (int)(*to_hash)->key_length, (*to_hash)->key,
+	                 (*to_hash)->key_length);
 
 	uint next_table = 0;
 
@@ -553,21 +552,21 @@ static int ck_hash_item(ck_hash_table_t *table, ck_hash_table_item_t **to_hash,
 	                     (*to_hash)->key_length, table->table_size_exp,
 	                     generation, next_table);
 
-	dbg_ck_hash("New hash: %u.\n", hash);
+	dbg_ck_hash_detail("New hash: %u.\n", hash);
 	assert(hash < hashsize(table->table_size_exp));
 
 	((uint *)da_get_items(&used[next_table]))
 	[da_get_count(&used[next_table])] = hash;
 	ck_hash_table_item_t **next = &table->tables[next_table][hash];
-	dbg_ck_hash("Item to be moved: %p, place in table: %p\n",
-	              *next, next);
+	dbg_ck_hash_detail("Item to be moved: %p, place in table: %p\n",
+	                   *next, next);
 	ck_hash_table_item_t **moving = to_hash;
 
 	int loop = 0;
 
 	while (*next != NULL) {
-		dbg_ck_hash("Swapping items to hash: %p and Moving: %p\n",
-		              to_hash, moving);
+		dbg_ck_hash_detail("Swapping items: To hash: %p, Moving: %p\n",
+		                   to_hash, moving);
 		ck_swap_items(to_hash, moving); // first time it's unnecessary
 
 		// set the generation of the inserted item to the next
@@ -575,9 +574,10 @@ static int ck_hash_item(ck_hash_table_t *table, ck_hash_table_item_t **to_hash,
 
 		moving = next;
 
-		dbg_ck_hash("Moving item from table %u, key: %.*s, hash %u ",
-		              next_table + 1, (int)(*moving)->key_length,
-		              (*moving)->key, hash);
+		dbg_ck_hash_detail("Moving item from table %u, key: %.*s, hash "
+		                   "%u \n", next_table + 1,
+		                   (int)(*moving)->key_length,
+		                   (*moving)->key, hash);
 
 		// if rehashing and the 'next' item is from the old generation,
 		// start from table 1
@@ -594,13 +594,13 @@ static int ck_hash_item(ck_hash_table_t *table, ck_hash_table_item_t **to_hash,
 
 		next = &table->tables[next_table][hash];
 
-		dbg_ck_hash("to table %u, hash %u, item: %p, place: %p\n",
-		              next_table + 1, hash, *next, next);
+		dbg_ck_hash_detail("To table %u, hash %u, item: %p, place: %p"
+		                   "\n", next_table + 1, hash, *next, next);
 
 		if ((*next) != NULL) {
-			dbg_ck_hash("Table %u, hash: %u, key: %.*s\n",
-			              next_table + 1, hash,
-			              (int)(*next)->key_length, (*next)->key);
+			dbg_ck_hash_detail("Table %u, hash: %u, key: %.*s\n",
+			                next_table + 1, hash,
+			                (int)(*next)->key_length, (*next)->key);
 		}
 
 		// check if this cell wasn't already used in this item's hashing
@@ -611,14 +611,14 @@ static int ck_hash_item(ck_hash_table_t *table, ck_hash_table_item_t **to_hash,
 		}
 	}
 
-	dbg_ck_hash("Putting pointer %p (*moving) to item %p (next).\n",
-	              *moving, next);
+	dbg_ck_hash_detail("Putting pointer %p (*moving) to item %p (next).\n",
+	                   *moving, next);
 
 	ck_put_item(next, *moving);
 	// set the new generation for the inserted item
 	SET_GENERATION(&(*next)->timestamp, generation);
-	dbg_ck_hash("Putting pointer %p (*old) to item %p (moving).\n",
-	              *to_hash, moving);
+	dbg_ck_hash_detail("Putting pointer %p (*old) to item %p (moving).\n",
+	                   *to_hash, moving);
 
 	ck_put_item(moving, *to_hash);
 
@@ -685,8 +685,8 @@ int ck_add_to_stash(ck_hash_table_t *table, ck_hash_table_item_t *item)
 	new_item->next = table->stash;
 	table->stash = new_item;
 
-	dbg_ck_hash("First item in stash (now inserted): key: %.*s (size %zu)"
-	              ", value: %p\n", (int)table->stash->item->key_length,
+	dbg_ck_hash_verb("First item in stash (now inserted): key: %.*s (size"
+	              " %zu), value: %p\n", (int)table->stash->item->key_length,
 	              table->stash->item->key, table->stash->item->key_length,
 	              table->stash->item->value);
 	
@@ -743,12 +743,12 @@ ck_hash_table_t *ck_create_table(uint items)
 
 	dbg_ck("Creating hash table for %u items.\n", items);
 	dbg_ck("Exponent: %u, number of tables: %u\n ",
-		 table->table_size_exp, table->table_count);
+	       table->table_size_exp, table->table_count);
 	dbg_ck("Table size: %u items, each %zu bytes, total %zu bytes\n",
-	         hashsize(table->table_size_exp),
-	         sizeof(ck_hash_table_item_t *),
-	         hashsize(table->table_size_exp)
-	           * sizeof(ck_hash_table_item_t *));
+	       hashsize(table->table_size_exp),
+	       sizeof(ck_hash_table_item_t *),
+	       hashsize(table->table_size_exp)
+	         * sizeof(ck_hash_table_item_t *));
 
 	// create tables
 	for (uint t = 0; t < table->table_count; ++t) {
@@ -809,18 +809,6 @@ void ck_destroy_table(ck_hash_table_t **table, void (*dtor_value)(void *value),
 	}
 
 	// destroy items in stash
-//	ck_hash_table_item_t **stash =
-//	        ((ck_hash_table_item_t **)(da_get_items(&(*table)->stash)));
-//	for (uint i = 0; i < da_get_count(&(*table)->stash); ++i) {
-//		assert(stash[i] != NULL);
-//		if (dtor_value) {
-//			dtor_value(stash[i]->value);
-//		}
-//		if (delete_key != 0) {
-//			free((void *)stash[i]->key);
-//		}
-//		free((void *)stash[i]);
-//	}
 	ck_stash_item_t *item = (*table)->stash;
 	while (item != NULL) {
 		// disconnect the item
@@ -904,7 +892,7 @@ int ck_resize_table(ck_hash_table_t *table)
 	ck_hash_table_item_t **tables_old[MAX_TABLES];
 	int exp_new = table->table_size_exp + 1;
 	
-	dbg_ck("New tables exponent: %d\n", exp_new);
+	dbg_ck_verb("New tables exponent: %d\n", exp_new);
 	
 	for (int t = 0; t < table->table_count; ++t) {
 		if (ck_new_table(&tables_new[t], exp_new) != 0) {
@@ -923,14 +911,14 @@ int ck_resize_table(ck_hash_table_t *table)
 		                  * sizeof(ck_hash_table_item_t *);
 		
 		// copy the old table items
-		dbg_ck("Copying to: %p, from %p, size: %zu\n",
-		         tables_new[t], table->tables[t], old_size);
+		dbg_ck_verb("Copying to: %p, from %p, size: %zu\n",
+		            tables_new[t], table->tables[t], old_size);
 		memcpy(tables_new[t], table->tables[t], old_size);
 		// set the rest to 0
-		dbg_ck("Setting to 0 from %p, size %zu\n",
-		         tables_new[t] + hashsize(table->table_size_exp),
-		         (hashsize(exp_new) * sizeof(ck_hash_table_item_t *))
-		         - old_size);
+		dbg_ck_verb("Setting to 0 from %p, size %zu\n",
+		            tables_new[t] + hashsize(table->table_size_exp),
+		            (hashsize(exp_new) * sizeof(ck_hash_table_item_t *))
+		              - old_size);
 		memset(tables_new[t] + hashsize(table->table_size_exp), 0, 
 		       (hashsize(exp_new) * sizeof(ck_hash_table_item_t *))
 		       - old_size);
@@ -1108,6 +1096,8 @@ ck_hash_table_item_t *ck_remove_item(ck_hash_table_t *table, const char *key,
 
 int ck_shallow_copy(const ck_hash_table_t *from, ck_hash_table_t **to)
 {
+	dbg_ck("ck_shallow_copy()\n");
+
 	if (from == NULL || to == NULL) {
 		return -1;
 	}
@@ -1180,26 +1170,27 @@ int ck_shallow_copy(const ck_hash_table_t *from, ck_hash_table_t **to)
 			return -2;
 		}
 
-		dbg_ck("Copying stash item: %p with item %p, ", si, si->item);
-		dbg_ck("key: %.*s\n", (int)si->item->key_length, si->item->key);
+		dbg_ck_detail("Copying stash item: %p with item %p, key: %.*s"
+		              "\n", si, si->item, (int)si->item->key_length,
+		              si->item->key);
 
 		si_new->item = si->item;
 		*pos = si_new;
 		pos = &si_new->next;
 		si = si->next;
 
-
-		dbg_ck("Old stash item: %p with item %p, ", si,
-		       ((si == NULL) ? NULL : si->item));
+dbg_ck_exec_detail(
+		dbg_ck_detail("Old stash item: %p with item %p, \n", si,
+		              ((si == NULL) ? NULL : si->item));
 		if (si != NULL) {
-			dbg_ck("key: %.*s\n", (int)si->item->key_length, si->item->key);
-		} else {
-			dbg_ck("\n");
+			dbg_ck_detail("key: %.*s\n", (int)si->item->key_length,
+			              si->item->key);
 		}
-		dbg_ck("New stash item: %p with item %p, ", si_new,
-		       si_new->item);
-		dbg_ck("key: %.*s\n", (int)si_new->item->key_length, 
-		       si_new->item->key);
+		dbg_ck_detail("New stash item: %p with item %p, ", si_new,
+		              si_new->item);
+		dbg_ck_detail("key: %.*s\n", (int)si_new->item->key_length,
+		              si_new->item->key);
+);
 	}
 	
 	*pos = NULL;
@@ -1277,11 +1268,12 @@ void ck_deep_copy_cleanup(ck_hash_table_t *table, int table_count)
 
 int ck_deep_copy(ck_hash_table_t *from, ck_hash_table_t **to)
 {
+	dbg_ck("ck_deep_copy()\n");
+
 	if (from == NULL || to == NULL) {
 		return -1;
 	}
 
-	dbg_ck("Allocating new table...\n");
 	*to = (ck_hash_table_t *)malloc(sizeof(ck_hash_table_t));
 
 	if (*to == NULL) {
@@ -1345,8 +1337,8 @@ int ck_deep_copy(ck_hash_table_t *from, ck_hash_table_t **to)
 			return -2;
 		}
 
-		dbg_ck("Copying stash item: %p with item %p, ", si, si->item);
-//		dbg_ck("key: %.*s\n", (int)si->item->key_length, si->item->key);
+		dbg_ck_detail("Copying stash item: %p with item %p, ", si,
+		              si->item);
 
 		if (si->item == NULL) {
 			fprintf(stderr, "[EMPTY STASH] STASH ITEM IS EMPTY!!");
@@ -1372,22 +1364,20 @@ int ck_deep_copy(ck_hash_table_t *from, ck_hash_table_t **to)
 		pos = &si_new->next;
 		si = si->next;
 
-dbg_ck_exec(
-		dbg_ck("Old stash item: %p with item %p, ", si,
-		       ((si == NULL) ? NULL : si->item));
+dbg_ck_exec_detail(
+		dbg_ck_detail("Old stash item: %p with item %p, \n", si,
+		              ((si == NULL) ? NULL : si->item));
 		if (si != NULL && si->item != NULL) {
-			dbg_ck("key: %.*s\n", (int)si->item->key_length,
-			       si->item->key);
-		} else {
-			dbg_ck("\n");
+			dbg_ck_detail("key: %.*s\n", (int)si->item->key_length,
+			              si->item->key);
 		}
-		dbg_ck("New stash item: %p with item %p, ", si_new,
-		       (si_new) ? si_new->item : NULL);
+		dbg_ck_detail("New stash item: %p with item %p, ", si_new,
+		              (si_new) ? si_new->item : NULL);
 
 		assert(si_new != NULL);
 		assert(si_new->item != NULL);
-		dbg_ck("key: %.*s\n", (int)si_new->item->key_length,
-		       si_new->item->key);
+		dbg_ck_detail("key: %.*s\n", (int)si_new->item->key_length,
+		              si_new->item->key);
 );
 	}
 
@@ -1451,13 +1441,13 @@ int ck_rehash(ck_hash_table_t *table)
 
 	do {
 		// 1) Rehash items from stash
-		dbg_ck_rehash("Rehashing items from stash.\n");
+		dbg_ck_hash_verb("Rehashing items from stash.\n");
 		ck_stash_item_t *item = table->stash;
 		ck_stash_item_t **item_place = &table->stash;
 		// terminate when at the end; this way the newly added items
 		// (added to the beginning) will be properly ignored
 		while (item != NULL) {
-			dbg_ck_rehash("Rehashing item with "
+			dbg_ck_hash_detail("Rehashing item with "
 			  "key (length %zu): %.*s, generation: %hu, "
 			  "table generation: %hu.\n", item->item->key_length,
 			  (int)item->item->key_length, item->item->key,
@@ -1511,7 +1501,7 @@ int ck_rehash(ck_hash_table_t *table)
 		for (uint t = 0; t < table->table_count; ++t) {
 			uint rehashed = 0;
 
-			dbg_ck_rehash("Rehashing table %d.\n", t);
+			dbg_ck_hash_verb("Rehashing table %d.\n", t);
 
 			while (rehashed < hashsize(table->table_size_exp)) {
 
@@ -1521,13 +1511,13 @@ int ck_rehash(ck_hash_table_t *table)
 				    || !(EQUAL_GENERATIONS(
 				          table->tables[t][rehashed]->timestamp,
 				          table->generation))) {
-					dbg_ck_rehash("Skipping item.\n");
+					dbg_ck_hash_detail("Skipping item.\n");
 					++rehashed;
 					continue;
 				}
 
-				dbg_ck_rehash("Rehashing item with hash %u, "
-				  "key (length %zu): %.*s, generation: %hu, "
+				dbg_ck_hash_detail("Rehashing item with hash %u"
+				  ", key (length %zu): %.*s, generation: %hu, "
 				  "table generation: %hu.\n", rehashed,
 				  table->tables[t][rehashed]->key_length,
 				  (int)(table->tables[t][rehashed]->key_length),
@@ -1542,8 +1532,8 @@ int ck_rehash(ck_hash_table_t *table)
 				// get rehashed again
 				ck_clear_item(&table->tables[t][rehashed]);
 
-				dbg_ck_rehash("Table generation: %hu, next "
-				            "generation: %hu.\n",
+				dbg_ck_hash_detail("Table generation: %hu, next"
+				            " generation: %hu.\n",
 				            GET_GENERATION(table->generation),
 				            NEXT_GENERATION(table->generation));
 
@@ -1551,8 +1541,8 @@ int ck_rehash(ck_hash_table_t *table)
 				     NEXT_GENERATION(table->generation)) != 0) {
 					// loop occured
 					dbg_ck_hash("Hashing entered a loop."
-						      "\n");
-					dbg_ck_rehash("Item with key %.*s "
+					            "\n");
+					dbg_ck_hash_verb("Item with key %.*s "
 					  "inserted into the free slot.\n",
 					  free->key_length, free->key);
 
@@ -1590,15 +1580,15 @@ int ck_rehash(ck_hash_table_t *table)
 			}
 		}
 
-		dbg_ck_rehash("Old table generation: %u\n",
-		                GET_GENERATION(table->generation));
+		dbg_ck_hash("Old table generation: %u\n",
+		            GET_GENERATION(table->generation));
 		// rehashing completed, switch generation of the table
 		SET_NEXT_GENERATION(&table->generation);
-		dbg_ck_rehash("New table generation: %u\n",
-		                GET_GENERATION(table->generation));
+		dbg_ck_hash("New table generation: %u\n",
+		            GET_GENERATION(table->generation));
 		// generate new hash functions for the old generation
-		dbg_ck_rehash("Generating coeficients for generation: %u\n",
-		                NEXT_GENERATION(table->generation));
+		dbg_ck_hash("Generating coeficients for generation: %u\n",
+		            NEXT_GENERATION(table->generation));
 		us_next(&table->hash_system,
 		        NEXT_GENERATION(table->generation));
 
@@ -1618,248 +1608,6 @@ int ck_rehash(ck_hash_table_t *table)
 
 	return 0;
 }
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Rehashes the whole table.
- *
- * \param table Hash table to be rehashed.
- *
- * \note While rehashing no item should be inserted as it will result in a
- *       deadlock.
- *
- * \retval 0 No error.
- * \retval -1 Rehashing failed. Some items may have been already moved and the
- *            rehashing flag remains set.
- *
- * \todo What if the stash is reallocated during ck_hash_item()? We'd be using
- *       the old stash for saving items! The old stash would not get deallocated
- *       (due to RCU - maybe put some rcu_read_lock() here), but the item
- *       would not be saved into the new stash!
- *       Maybe add a function for getting a pointer to particular item from
- *       the dynamic array and protect it using rcu_read_lock().
- *       Other option: Do not use pointer to an item in stash in the call to
- *       ck_hash_item(). Use some new place & put the item to the stash
- *       afterwards, protecting it using rcu_read_lock() and rcu_assign_pointer.
- */
-//int ck_rehash(ck_hash_table_t *table)
-//{
-//	dbg_ck_rehash("Rehashing items in table.\n");
-//	SET_REHASHING_ON(&table->generation);
-
-//	// we already have functions for the next generation, begin rehashing
-//	// we wil use the last item in the buffer as free cell for hashing
-//	assert(da_try_reserve(&table->stash, 1) == 0);
-//	ck_hash_table_item_t *old = (ck_hash_table_item_t *)
-//	                          (malloc(sizeof(ck_hash_table_item_t)));
-
-//	do {
-//		dbg_ck_hash("Rehash!\n");
-
-//		if (da_get_count(&table->stash) > STASH_SIZE) {
-//			dbg_ck_hash("STASH RESIZED!!! (new stash size: %d)\n",
-//			              da_get_count(&table->stash));
-//		}
-
-//		// rehash items from stash, starting from the last old item
-//		int stash_i = da_get_count(&table->stash) - 1;
-//		while (stash_i >= 0) {
-//			// if item's generation is the new generation, skip
-//			if (STASH_ITEMS(&table->stash)[stash_i] == NULL
-//			    || !(EQUAL_GENERATIONS(STASH_ITEMS(&table->stash)
-//			                            [stash_i]->timestamp,
-//			                            table->generation))) {
-//				dbg_ck_rehash("Skipping item.\n");
-//				--stash_i;
-//				continue;
-//			}
-
-//			dbg_ck_rehash("Rehashing item from buffer position %u"
-//			                ", key (length %u): %.*s, generation: "
-//			                "%hu, table generation: %hu.\n",
-//			   stash_i,
-//			   STASH_ITEMS(&table->stash)[stash_i]->key_length,
-//			   (int)STASH_ITEMS(&table->stash)[stash_i]->key_length,
-//			   STASH_ITEMS(&table->stash)[stash_i]->key,
-//			   GET_GENERATION(
-//				STASH_ITEMS(&table->stash)[stash_i]->timestamp),
-//			   GET_GENERATION(table->generation));
-
-//			// otherwise copy the item for rehashing
-//			ck_put_item(&old, STASH_ITEMS(&table->stash)[stash_i]);
-//			// clear the place so that this item will not get
-//			// rehashed again
-//			ck_clear_item(&STASH_ITEMS(&table->stash)[stash_i]);
-//			da_release(&table->stash, 1);
-
-//			// there should be at least one place in the stash
-//			assert(da_try_reserve(&table->stash, 1) == 0);
-//			da_reserve(&table->stash, 1);
-
-//			assert(STASH_ITEMS(&table->stash)[stash_i] == NULL);
-
-//			// and start rehashing
-//			if (ck_hash_item(table, &old,
-//			             &STASH_ITEMS(&table->stash)[stash_i],
-//			             NEXT_GENERATION(table->generation)) != 0) {
-//				// loop occured
-//				dbg_ck_hash("Hashing entered a loop.\n");
-
-//				dbg_ck_rehash("Item with key %.*s inserted "
-//					"into the stash on position %d.\n",
-//					STASH_ITEMS(&table->stash)
-//						[stash_i]->key_length,
-//					STASH_ITEMS(&table->stash)
-//						[stash_i]->key,
-//					da_get_count(&table->stash));
-
-//				// hashing unsuccessful, the item was inserted
-//				// into the stash
-//				da_occupy(&table->stash, 1);
-//				assert(STASH_ITEMS(&table->stash)[stash_i]
-//				       != NULL);
-
-//				// if only one place left, resize the stash
-//				// TODO: Why???
-//				if (da_reserve(&table->stash, 2) < 0) {
-//					// stash could not be resized => !!!
-//					dbg_ck_hash("Failed to rehash items "
-//					              "from "
-//					  "table, no other rehash possible!\n");
-//					// so rollback
-//					ck_rollback_rehash(table);
-//					// clear the 'old' item
-//					ck_clear_item(&old);
-//					return -1;
-//				}
-//			}
-
-//			// clear the 'old' item
-//			ck_clear_item(&old);
-//			// decrement the index
-//			--stash_i;
-//		}
-
-//		uint i = 0;
-//		while (i < da_get_count(&table->stash)) {
-//			assert(STASH_ITEMS(&table->stash)[i] != NULL);
-//			++i;
-//		}
-//		dbg_ck_hash("OK\n");
-//		assert(da_try_reserve(&table->stash, 1) == 0);
-//		assert(STASH_ITEMS(&table->stash)[da_get_count(&table->stash)]
-//		       == NULL);
-
-//		// rehash items from hash tables
-//		for (uint t = TABLE_FIRST;
-//		     t <= TABLE_LAST(table->table_count); ++t) {
-//			dbg_ck_rehash("Rehashing items from table %d.\n",
-//			                t + 1);
-//			uint rehashed = 0;
-
-//			while (rehashed < hashsize(table->table_size_exp)) {
-
-//				// if item's generation is the new generation,
-//				// skip
-//				if (table->tables[t][rehashed] == NULL
-//				    || !(EQUAL_GENERATIONS(
-//				          table->tables[t][rehashed]->timestamp,
-//				          table->generation))) {
-//					dbg_ck_rehash("Skipping item.\n");
-//					++rehashed;
-//					continue;
-//				}
-
-//				dbg_ck_rehash("Rehashing item with hash %u, "
-//				  "key (length %u): %.*s, generation: %hu, "
-//				  "table generation: %hu.\n", rehashed,
-//				  table->tables[t][rehashed]->key_length,
-//				  (int)(table->tables[t][rehashed]->key_length),
-//				  table->tables[t][rehashed]->key,
-//				  GET_GENERATION(
-//					table->tables[t][rehashed]->timestamp),
-//				  GET_GENERATION(table->generation));
-
-//				// otherwise copy the item for rehashing
-//				ck_put_item(&old, table->tables[t][rehashed]);
-//				// clear the place so that this item will not
-//				// get rehashed again
-//				ck_clear_item(&table->tables[t][rehashed]);
-
-//				dbg_ck_rehash("Table generation: %hu, next "
-//				            "generation: %hu.\n",
-//				            GET_GENERATION(table->generation),
-//				            NEXT_GENERATION(table->generation));
-
-//				// and start rehashing
-//				assert(&old != &STASH_ITEMS(&table->stash)[
-//				               da_get_count(&table->stash)]);
-//				assert(da_try_reserve(&table->stash, 1) == 0);
-//				da_reserve(&table->stash, 1);
-
-//				if (ck_hash_item(table, &old,
-//				     &STASH_ITEMS(&table->stash)[
-//				       da_get_count(&table->stash)],
-//				     NEXT_GENERATION(table->generation)) != 0) {
-//					// loop occured
-//					dbg_ck_hash("Hashing entered a loop."
-//						      "\n");
-//					dbg_ck_rehash("Item with key %.*s "
-//					  "inserted into the stash on position "
-//					  "%d.\n", STASH_ITEMS(&table->stash)[
-//					      da_get_count(&table->stash)]
-//					         ->key_length,
-//					  STASH_ITEMS(&table->stash)[
-//					      da_get_count(&table->stash)]->key,
-//					  da_get_count(&table->stash));
-
-//					assert(STASH_ITEMS(&table->stash)[
-//					  da_get_count(&table->stash)] != NULL);
-//					// loop occured, the item is already at
-//					// its new place in the buffer, so just
-//					// increment the index
-//					da_occupy(&table->stash, 1);
-
-//					// if only one place left, resize the
-//					// stash TODO: Why?
-//					if (da_reserve(&table->stash, 2) < 0) {
-//						// stash could not be resized
-//						dbg_ck_hash("Failed to rehash"
-//						  " items from table, no other "
-//						  "rehash possible!\n");
-//						// so rollback
-//						ck_rollback_rehash(table);
-//						// clear the 'old' item
-//						ck_clear_item(&old);
-//						return -1;
-//					}
-//				}
-//				++rehashed;
-//			}
-//		}
-
-//		dbg_ck_rehash("Old table generation: %u\n",
-//		                GET_GENERATION(table->generation));
-//		// rehashing completed, switch generation of the table
-//		SET_NEXT_GENERATION(&table->generation);
-//		dbg_ck_rehash("New table generation: %u\n",
-//		                GET_GENERATION(table->generation));
-//		// generate new hash functions for the old generation
-//		dbg_ck_rehash("Generating coeficients for generation: %u\n",
-//		                NEXT_GENERATION(table->generation));
-//		us_next(NEXT_GENERATION(table->generation));
-
-//		// repeat rehashing while there are more items in the stash than
-//		// its initial size
-//		if (da_get_count(&table->stash) > STASH_SIZE) {
-//			dbg_ck_rehash("Rehashing again!\n");
-//		}
-//	} while (da_get_count(&table->stash) > STASH_SIZE);
-
-//	SET_REHASHING_OFF(&table->generation);
-
-//	return 0;
-//}
 
 /*----------------------------------------------------------------------------*/
 
@@ -1883,15 +1631,6 @@ void ck_dump_table(const ck_hash_table_t *table)
 	}
 
 	dbg_ck("Stash:\n");
-//	for (i = 0; i < da_get_count(&table->stash); ++i) {
-//		dbg_ck("Index: %u, Key: %.*s Value: %p.\n", i,
-//		         ((ck_hash_table_item_t **)
-//		             da_get_items(&table->stash))[i]->key_length,
-//		         ((ck_hash_table_item_t **)
-//		             da_get_items(&table->stash))[i]->key,
-//		         ((ck_hash_table_item_t **)
-//		             da_get_items(&table->stash))[i]->value);
-//	}
 	ck_stash_item_t *item = table->stash;
 	while (item != NULL) {
 		dbg_ck("Hash: %u, Key: %.*s, Value: %p.\n", i,
