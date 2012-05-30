@@ -1588,7 +1588,8 @@ static int ns_answer_from_node(const knot_node_t *node,
 //			free(prev);
 //		}
 		assert(previous == NULL);
-		assert(closest_encloser = knot_node_parent(node));
+		assert(closest_encloser == knot_node_parent(node)
+		       || !knot_dname_is_wildcard(knot_node_owner(node)));
 
 		ret = ns_put_nsec_nsec3_wildcard_answer(node, closest_encloser,
 		                                  previous, zone, qname, resp);
