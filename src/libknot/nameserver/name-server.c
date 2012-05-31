@@ -1885,19 +1885,20 @@ have_node:
 			dbg_ns_verb("No wildcard node. (cname: %d)\n",
 			            cname);
 			auth_soa = 1;
-			//if (cname == 0) {
+			if (cname == 0) {
 				dbg_ns_detail("Setting NXDOMAIN RCODE.\n");
 				// return NXDOMAIN
 				knot_response_set_rcode(resp,
 					KNOT_RCODE_NXDOMAIN);
-				if (ns_put_nsec_nsec3_nxdomain(zone, previous,
-					closest_encloser, qname, resp) != 0) {
-					return NS_ERR_SERVFAIL;
-				}
-//			} else {
-//				knot_response_set_rcode(resp,
-//					KNOT_RCODE_NOERROR);
-//			}
+			} else {
+				knot_response_set_rcode(resp,
+					KNOT_RCODE_NOERROR);
+			}
+
+			if (ns_put_nsec_nsec3_nxdomain(zone, previous,
+				closest_encloser, qname, resp) != 0) {
+				return NS_ERR_SERVFAIL;
+			}
 			knot_response_set_aa(resp);
 			goto finalize;
 		}
