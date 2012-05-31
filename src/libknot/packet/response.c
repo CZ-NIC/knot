@@ -814,6 +814,53 @@ static int knot_response_realloc_rrsets(const knot_rrset_t ***rrsets,
 }
 
 /*----------------------------------------------------------------------------*/
+/*!
+ * \brief Reallocate space for Wildcard nodes.
+ *
+ * \retval KNOT_EOK
+ * \retval KNOT_ENOMEM
+ */
+static int knot_response_realloc_wc_nodes(const knot_node_t ***nodes,
+                                          const knot_dname_t ***snames,
+                                          short *max_count,
+                                          short default_max_count, short step)
+{
+	dbg_packet("Max count: %d, default max count: %d\n",
+	       *max_count, default_max_count);
+	int free_old = (*max_count) != default_max_count;
+
+	const knot_node_t **old_nodes = *nodes;
+	const knot_dname_t **old_snames = *snames;
+
+	short new_max_count = *max_count + step;
+
+	const knot_node_t **new_nodes = (const knot_node_t **)malloc(
+		new_max_count * sizeof(knot_node_t *));
+	CHECK_ALLOC_LOG(new_nodes, KNOT_ENOMEM);
+
+	const knot_dname_t **new_snames = (const knot_dname_t **)malloc(
+	                        new_max_count * sizeof(knot_dname_t *));
+	if (new_snames == NULL) {
+		free(new_nodes);
+		return KNOT_ENOMEM;
+	}
+
+	memcpy(new_nodes, *nodes, (*max_count) * sizeof(knot_node_t *));
+	memcpy(new_snames, *snames, (*max_count) * sizeof(knot_dname_t *));
+
+	*nodes = new_nodes;
+	*snames = new_snames;
+	*max_count = new_max_count;
+
+	if (free_old) {
+		free(old_nodes);
+		free(old_snames);
+	}
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
@@ -915,9 +962,20 @@ void knot_response_clear(knot_packet_t *resp, int clear_question)
 	resp->an_rrsets = 0;
 	resp->ns_rrsets = 0;
 	resp->ar_rrsets = 0;
+
 	resp->compression.count = 0;
+
+	/*! \todo Temporary RRSets are not deallocated, which may potentially
+	 *        lead to memory leaks should this function be used in other
+	 *        cases than with XFR-out.
+	 */
 	knot_packet_free_tmp_rrsets(resp);
 	resp->tmp_rrsets_count = 0;
+
+	/*! \todo If this function is used in other cases than with XFR-out,
+	 *        the list of wildcard nodes should be cleared here.
+	 */
+
 	resp->header.ancount = 0;
 	resp->header.nscount = 0;
 	resp->header.arcount = 0;
@@ -1200,4 +1258,34 @@ int knot_response_add_nsid(knot_packet_t *response, const uint8_t *data,
 
 	return knot_edns_add_option(&response->opt_rr,
 	                              EDNS_OPTION_NSID, length, data);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_response_add_wildcard_node(knot_packet_t *response,
+                                    const knot_node_t *node,
+                                    const knot_dname_t *sname)
+{
+	if (response == NULL || node == NULL || sname == NULL) {
+		return KNOT_EBADARG;
+	}
+
+	if (response->wildcard_nodes.count == response->wildcard_nodes.max
+	    && knot_response_realloc_wc_nodes(&response->wildcard_nodes.nodes,
+	                                      &response->wildcard_nodes.snames,
+	                                      &response->wildcard_nodes.max,
+	                                      DEFAULT_WILDCARD_NODES,
+	                                     STEP_WILDCARD_NODES) != KNOT_EOK) {
+		return KNOT_ENOMEM;
+	}
+
+	response->wildcard_nodes.nodes[response->wildcard_nodes.count] = node;
+	response->wildcard_nodes.snames[response->wildcard_nodes.count] = sname;
+	++response->wildcard_nodes.count;
+
+	dbg_response("Current wildcard nodes count: %d, max count: %d\n",
+	             response->wildcard_nodes.count,
+	             response->wildcard_nodes.max);
+
+	return KNOT_EOK;
 }

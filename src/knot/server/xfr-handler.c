@@ -698,11 +698,11 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 				              "in %d seconds.\n",
 				              data->msgpref, tmr_s / 1000);
 			}
-			rcu_read_unlock();
 
 			/* Update timers. */
 			server_t *server = (server_t *)knot_ns_get_data(w->ns);
 			zones_timers_update(zone, zd->conf, server->sched);
+			rcu_read_unlock();
 			
 		} else {
 			/* Cleanup */
@@ -1018,6 +1018,7 @@ static int xfr_update_msgpref(knot_ns_xfr_t *req, const char *keytag)
 		zonedata_t *zd = (zonedata_t *)knot_zone_data(req->zone);
 		if (zd == NULL) {
 			free(r_key);
+			conf_read_unlock();
 			return KNOTD_EINVAL;
 		} else {
 			zname = zd->conf->name;

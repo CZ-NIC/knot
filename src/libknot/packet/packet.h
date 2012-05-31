@@ -33,6 +33,7 @@
 #include "dname.h"
 #include "rrset.h"
 #include "edns.h"
+#include "zone/node.h"
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -52,6 +53,16 @@ struct knot_compressed_dnames {
 };
 
 typedef struct knot_compressed_dnames knot_compressed_dnames_t;
+
+struct knot_wildcard_nodes {
+	const knot_node_t **nodes; /*!< Wildcard nodes from CNAME processing. */
+	const knot_dname_t **snames;  /*!< SNAMEs related to the nodes. */
+	short count;             /*!< Count of items in the previous arrays. */
+	short max;               /*!< Capacity of the structure (allocated). */
+	short default_count;
+};
+
+typedef struct knot_wildcard_nodes knot_wildcard_nodes_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -134,6 +145,9 @@ struct knot_packet {
 	/*! \brief Information needed for compressing domain names in packet. */
 	knot_compressed_dnames_t compression;
 
+	/*! \brief Wildcard nodes to be processed for NSEC/NSEC3. */
+	knot_wildcard_nodes_t wildcard_nodes;
+
 	/*! \brief RRSets to be destroyed with the packet structure. */
 	const knot_rrset_t **tmp_rrsets;
 	short tmp_rrsets_count;  /*!< Count of temporary RRSets. */
@@ -172,6 +186,9 @@ enum {
 	/*! \brief Default count of temporary RRSets stored in response. */
 	DEFAULT_TMP_RRSETS = 5,
 
+	/*! \brief Default count of wildcard nodes saved for later processing.*/
+	DEFAULT_WILDCARD_NODES = 1,
+
 	/*! \brief Default count of temporary RRSets stored in query. */
 	DEFAULT_TMP_RRSETS_QUERY = 2,
 
@@ -179,7 +196,8 @@ enum {
 	STEP_NSCOUNT = 8, /*!< Step for increasing space for Authority RRSets.*/
 	STEP_ARCOUNT = 8,/*!< Step for increasing space for Additional RRSets.*/
 	STEP_DOMAINS = 10,   /*!< Step for resizing compression table. */
-	STEP_TMP_RRSETS = 5  /*!< Step for increasing temorary RRSets count. */
+	STEP_TMP_RRSETS = 5,  /*!< Step for increasing temorary RRSets count. */
+	STEP_WILDCARD_NODES = 2
 };
 
 /*----------------------------------------------------------------------------*/
@@ -214,6 +232,12 @@ enum {
 		DEFAULT_DOMAINS_IN_RESPONSE * sizeof(size_t),
 	PREALLOC_COMPRESSION = PREALLOC_DOMAINS + PREALLOC_OFFSETS,
 
+	PREALLOC_WC_NODES =
+		DEFAULT_WILDCARD_NODES * sizeof(knot_node_t *),
+	PREALLOC_WC_SNAMES =
+		DEFAULT_WILDCARD_NODES * sizeof(knot_dname_t *),
+	PREALLOC_WC = PREALLOC_WC_NODES + PREALLOC_WC_SNAMES,
+
 	PREALLOC_QUERY = PREALLOC_PACKET
 	                 + PREALLOC_QNAME
 	                 + PREALLOC_RRSETS(DEFAULT_ANCOUNT_QUERY)
@@ -229,6 +253,7 @@ enum {
 	                 + PREALLOC_RRSETS(DEFAULT_NSCOUNT)
 	                 + PREALLOC_RRSETS(DEFAULT_ARCOUNT)
 	                 + PREALLOC_COMPRESSION
+	                 + PREALLOC_WC
 	                 + PREALLOC_RRSETS(DEFAULT_TMP_RRSETS)
 };
 

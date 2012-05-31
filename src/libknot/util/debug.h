@@ -647,7 +647,6 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF
 #define dbg_ck_hash(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define dbg_ck_rehash(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
 #define dbg_ck_hash_hex(data, len)  hex_log(LOG_SERVER, (data), (len))
 #else
 #define dbg_ck_hash(msg...)
@@ -676,7 +675,6 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 /* No messages. */
 #else
 #define dbg_ck_hash(msg...)
-#define dbg_ck_rehash(msg...)
 #define dbg_ck_hash_hex(data, len)
 #define dbg_ck_hash_verb(msg...)
 #define dbg_ck_hash_hex_verb(data, len)

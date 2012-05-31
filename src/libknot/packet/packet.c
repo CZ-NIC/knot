@@ -112,6 +112,18 @@ static void knot_packet_init_pointers_response(knot_packet_t *pkt)
 	pkt->compression.max = DEFAULT_DOMAINS_IN_RESPONSE;
 	pkt->compression.default_count = DEFAULT_DOMAINS_IN_RESPONSE;
 
+	// wildcard nodes and SNAMEs associated with them
+	pkt->wildcard_nodes.nodes = (const knot_node_t **)pos;
+	pos += DEFAULT_WILDCARD_NODES * sizeof(const knot_node_t *);
+	pkt->wildcard_nodes.snames = (const knot_dname_t **)pos;
+	pos += DEFAULT_WILDCARD_NODES * sizeof(knot_dname_t *);
+
+	dbg_packet("Wildcard nodes: %p\n", pkt->wildcard_nodes.nodes);
+	dbg_packet("Wildcard SNAMEs: %p\n", pkt->wildcard_nodes.snames);
+
+	pkt->wildcard_nodes.default_count = DEFAULT_WILDCARD_NODES;
+	pkt->wildcard_nodes.max = DEFAULT_WILDCARD_NODES;
+
 	pkt->tmp_rrsets = (const knot_rrset_t **)pos;
 	pos += DEFAULT_TMP_RRSETS * sizeof(const knot_rrset_t *);
 
@@ -637,6 +649,11 @@ static void knot_packet_free_allocated_space(knot_packet_t *pkt)
 	if (pkt->compression.max > pkt->compression.default_count) {
 		free(pkt->compression.dnames);
 		free(pkt->compression.offsets);
+	}
+
+	if (pkt->wildcard_nodes.max > pkt->wildcard_nodes.default_count) {
+		free(pkt->wildcard_nodes.nodes);
+		free(pkt->wildcard_nodes.snames);
 	}
 
 	if (pkt->tmp_rrsets_max > DEFAULT_RRSET_COUNT(TMP_RRSETS, pkt)) {
@@ -1459,6 +1476,10 @@ void knot_packet_free(knot_packet_t **packet)
 	// free temporary domain names
 	dbg_packet("Freeing tmp RRSets...\n");
 	knot_packet_free_tmp_rrsets(*packet);
+
+	/*! \note The above code will free the domain names pointed to by
+	 *        the list of wildcard nodes. It should not matter, however.
+	 */
 
 	// check if some additional space was allocated for the packet
 	dbg_packet("Freeing additional allocated space...\n");
