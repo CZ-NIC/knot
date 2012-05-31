@@ -126,7 +126,7 @@ static const knot_zone_t *ns_get_zone_for_qname(knot_zonedb_t *zdb,
 static knot_rrset_t *ns_synth_from_wildcard(
 	const knot_rrset_t *wildcard_rrset, const knot_dname_t *qname)
 {
-	dbg_ns("Synthetizing RRSet from wildcard...\n");
+	dbg_ns_verb("Synthetizing RRSet from wildcard...\n");
 
 	knot_dname_t *owner = knot_dname_deep_copy(qname);
 //	printf("Copied owner ptr: %p\n", owner);
@@ -193,8 +193,10 @@ static void ns_check_wildcard(const knot_dname_t *name, knot_packet_t *resp,
 	if (knot_dname_is_wildcard((*rrset)->owner)) {
 		knot_rrset_t *synth_rrset =
 			ns_synth_from_wildcard(*rrset, name);
-		dbg_ns("Synthetized RRSet:\n");
+dbg_ns_exec_verb(
+		dbg_ns_verb("Synthetized RRSet:\n");
 		knot_rrset_dump(synth_rrset, 1);
+);
 		knot_packet_add_tmp_rrset(resp, synth_rrset);
 		*rrset = synth_rrset;
 	}
@@ -1814,29 +1816,29 @@ search:
 		return NS_ERR_SERVFAIL;
 	}
 
-dbg_ns_exec(
+dbg_ns_exec_verb(
 	char *name;
 	if (node) {
 		name = knot_dname_to_str(node->owner);
-		dbg_ns("zone_find_dname() returned node %s \n", name);
+		dbg_ns_verb("zone_find_dname() returned node %s \n", name);
 		free(name);
 	} else {
-		dbg_ns("zone_find_dname() returned no node,\n");
+		dbg_ns_verb("zone_find_dname() returned no node,\n");
 	}
 
 	if (closest_encloser != NULL) {
 		name = knot_dname_to_str(closest_encloser->owner);
-		dbg_ns(" closest encloser %s.\n", name);
+		dbg_ns_verb(" closest encloser %s.\n", name);
 		free(name);
 	} else {
-		dbg_ns(" closest encloser (nil).\n");
+		dbg_ns_verb(" closest encloser (nil).\n");
 	}
 	if (previous != NULL) {
 		name = knot_dname_to_str(previous->owner);
-		dbg_ns(" and previous node: %s.\n", name);
+		dbg_ns_verb(" and previous node: %s.\n", name);
 		free(name);
 	} else {
-		dbg_ns(" and previous node: (nil).\n");
+		dbg_ns_verb(" and previous node: (nil).\n");
 	}
 );
 	if (find_ret == KNOT_EBADZONE) {
@@ -1849,10 +1851,10 @@ dbg_ns_exec(
 	}
 
 have_node:
-	dbg_ns("Closest encloser is deleg. point? %s\n",
+	dbg_ns_verb("Closest encloser is deleg. point? %s\n",
 		 (knot_node_is_deleg_point(closest_encloser)) ? "yes" : "no");
 
-	dbg_ns("Closest encloser is non authoritative? %s\n",
+	dbg_ns_verb("Closest encloser is non authoritative? %s\n",
 		 (knot_node_is_non_auth(closest_encloser)) ? "yes" : "no");
 
 	if (knot_node_is_deleg_point(closest_encloser)
@@ -1880,11 +1882,11 @@ have_node:
 			knot_node_wildcard_child(closest_encloser);
 
 		if (wildcard_node == NULL) {
-			dbg_ns("No wildcard node. (cname: %d)\n",
-				 cname);
+			dbg_ns_verb("No wildcard node. (cname: %d)\n",
+			            cname);
 			auth_soa = 1;
 			//if (cname == 0) {
-				dbg_ns("Setting NXDOMAIN RCODE.\n");
+				dbg_ns_detail("Setting NXDOMAIN RCODE.\n");
 				// return NXDOMAIN
 				knot_response_set_rcode(resp,
 					KNOT_RCODE_NXDOMAIN);
@@ -1913,21 +1915,20 @@ have_node:
 	    && qtype != KNOT_RRTYPE_CNAME) {
 dbg_ns_exec(
 		char *name = knot_dname_to_str(node->owner);
-		dbg_ns("Node %s has CNAME record, resolving...\n",
-		         name);
+		dbg_ns_verb("Node %s has CNAME record, resolving...\n", name);
 		free(name);
 );
 		const knot_dname_t *act_name = qname;
 		ns_follow_cname(&node, &act_name, resp,
 		                knot_response_add_rrset_answer, 1);
-dbg_ns_exec(
+dbg_ns_exec_verb(
 		char *name = (node != NULL) ? knot_dname_to_str(node->owner)
 			: "(nil)";
 		char *name2 = knot_dname_to_str(act_name);
-		dbg_ns("Canonical name: %s (%p), node found: %p\n",
-			 name2, act_name, node);
-		dbg_ns("The node's owner: %s (%p)\n", name, (node != NULL)
-		       ? node->owner : NULL);
+		dbg_ns_verb("Canonical name: %s (%p), node found: %p\n",
+		            name2, act_name, node);
+		dbg_ns_verb("The node's owner: %s (%p)\n", name, (node != NULL)
+		                  ? node->owner : NULL);
 		if (node != NULL) {
 			free(name);
 		}
@@ -2056,7 +2057,7 @@ int ns_response_to_wire(knot_packet_t *resp, uint8_t *wire,
 	if ((ret = knot_packet_to_wire(resp, &rwire, &rsize))
 	     != KNOT_EOK) {
 		dbg_ns("Error converting response packet "
-		                 "to wire format (error %d).\n", ret);
+		       "to wire format (error %d).\n", ret);
 		return NS_ERR_SERVFAIL;
 	}
 
@@ -2068,7 +2069,7 @@ int ns_response_to_wire(knot_packet_t *resp, uint8_t *wire,
 
 	if (rwire != wire) {
 		dbg_ns("Wire format reallocated, copying to place for "
-		              "wire.\n");
+		       "wire.\n");
 		memcpy(wire, rwire, rsize);
 	} else {
 		dbg_ns("Using the same space or wire format.\n");
@@ -2100,17 +2101,17 @@ static int ns_error_response_to_wire(knot_packet_t *resp, uint8_t *wire,
 	 * wire format is assembled, but COUNTs in header are not set.
 	 * This is ideal, we just truncate the packet after the question.
 	 */
-	dbg_ns("Creating error response.\n");
+	dbg_ns_verb("Creating error response.\n");
 	
 	size_t rsize = knot_packet_question_size(knot_packet_query(resp));
-	dbg_ns("Error response (~ query) size: %zu\n", rsize);
+	dbg_ns_detail("Error response (~ query) size: %zu\n", rsize);
 
 	// take 'qsize' from the current wireformat of the response
 	// it is already assembled - Header and Question section are copied
 	const uint8_t *rwire = knot_packet_wireformat(resp);
 	if (rsize > *wire_size) {
 		dbg_ns("Reponse size (%zu) larger than allowed wire size"
-		         " (%zu).\n", rsize, *wire_size);
+		       " (%zu).\n", rsize, *wire_size);
 		return NS_ERR_SERVFAIL;
 	}
 
@@ -2143,8 +2144,8 @@ typedef struct ns_axfr_params {
 
 int knot_ns_tsig_required(int packet_nr) 
 {
-	dbg_ns_detail("ns_tsig_required(%d): %d\n", packet_nr,
-	              (packet_nr % KNOT_NS_TSIG_FREQ == 0));
+	dbg_ns_verb("ns_tsig_required(%d): %d\n", packet_nr,
+	            (packet_nr % KNOT_NS_TSIG_FREQ == 0));
 	return (packet_nr % KNOT_NS_TSIG_FREQ == 0);
 }
 
@@ -2159,7 +2160,7 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 	assert(xfr->send != NULL);
 
 	// Transform the packet into wire format
-	dbg_ns("Converting response to wire format..\n");
+	dbg_ns_verb("Converting response to wire format..\n");
 	size_t real_size = xfr->wire_size;
 	if (ns_response_to_wire(xfr->response, xfr->wire, &real_size) != 0) {
 		return NS_ERR_SERVFAIL;
@@ -2186,10 +2187,10 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 		if (xfr->packet_nr == 0) {
 			/* Add key, digest and digest length. */
 			dbg_ns_detail("Calling tsig_sign(): %p, %zu, %zu, "
-				      "%p, %zu, %p, %zu, %p\n",
-				      xfr->wire, real_size, xfr->wire_size,
-				      xfr->digest, xfr->digest_size, xfr->digest,
-				      digest_real_size, xfr->tsig_key);
+			              "%p, %zu, %p, %zu, %p\n",
+			              xfr->wire, real_size, xfr->wire_size,
+			              xfr->digest, xfr->digest_size, xfr->digest,
+			              digest_real_size, xfr->tsig_key);
 			res = knot_tsig_sign(xfr->wire, &real_size,
 			               xfr->wire_size, xfr->digest, 
 			               xfr->digest_size, xfr->digest, 
@@ -2209,8 +2210,7 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 			                          xfr->tsig_data_size);
 		}
 
-		dbg_ns_detail("Sign function returned: %s\n",
-			      knot_strerror(res));
+		dbg_ns_verb("Sign function returned: %s\n", knot_strerror(res));
 		dbg_ns_detail("Real size of digest: %zu\n", digest_real_size);
 
 		if (res != KNOT_EOK) {
@@ -2225,8 +2225,8 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 		xfr->tsig_data_size = 0;
 
 	} else if (xfr->tsig_rcode != 0) {
-		dbg_ns_detail("Adding TSIG without signing, TSIG RCODE: %d.\n",
-		              xfr->tsig_rcode);
+		dbg_ns_verb("Adding TSIG without signing, TSIG RCODE: %d.\n",
+		            xfr->tsig_rcode);
 		assert(xfr->tsig_rcode != KNOT_TSIG_RCODE_BADTIME);
 		// add TSIG without signing
 		assert(xfr->query != NULL);
@@ -2252,12 +2252,11 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 		return res;
 	} else if (res != real_size) {
 		dbg_ns("AXFR did not send right amount of bytes."
-		                   " Transfer size: %zu, sent: %d\n",
-		                   real_size, res);
+		       " Transfer size: %zu, sent: %d\n", real_size, res);
 	}
 
 	// Clean the response structure
-	dbg_ns("Clearing response structure..\n");
+	dbg_ns_verb("Clearing response structure..\n");
 	knot_response_clear(xfr->response, 0);
 	
 	// increment the packet number
@@ -2270,8 +2269,10 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 		knot_packet_set_tsig_size(xfr->response, 0);
 	}
 
-	dbg_ns("Response structure after clearing:\n");
+dbg_ns_exec_verb(
+	dbg_ns_verb("Response structure after clearing:\n");
 	knot_packet_dump(xfr->response);
+);
 
 	return KNOT_EOK;
 }
@@ -2287,15 +2288,15 @@ static void ns_axfr_from_node(knot_node_t *node, void *data)
 
 	if (params->ret != KNOT_EOK) {
 		// just skip (will be called on next node with the same params
-		dbg_ns("Params contain error: %s, skipping node...\n",
+		dbg_ns_detail("Params contain error: %s, skipping node...\n",
 		              knot_strerror(params->ret));
 		return;
 	}
 
-	dbg_ns("Params OK, answering AXFR from node %p.\n", node);
-dbg_ns_exec(
+	dbg_ns_detail("Params OK, answering AXFR from node %p.\n", node);
+dbg_ns_exec_verb(
 	char *name = knot_dname_to_str(knot_node_owner(node));
-	dbg_ns("Node ownerr: %s\n", name);
+	dbg_ns_verb("Node owner: %s\n", name);
 	free(name);
 );
 
@@ -2316,8 +2317,8 @@ dbg_ns_exec(
 		assert(rrsets[i] != NULL);
 		rrset = rrsets[i];
 rrset:
-		dbg_ns("  Type: %s\n",
-		     knot_rrtype_to_string(knot_rrset_type(rrset)));
+		dbg_ns_verb("  Type: %s\n",
+		            knot_rrtype_to_string(knot_rrset_type(rrset)));
 
 		// do not add SOA
 		if (knot_rrset_type(rrset) == KNOT_RRTYPE_SOA) {
@@ -2573,7 +2574,7 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 	                                         0, 0, 0);
 	if (res != KNOT_EOK) {
 		dbg_ns("IXFR query cannot be answered: %s.\n",
-			 knot_strerror(res));
+		       knot_strerror(res));
 		knot_response_set_rcode(xfr->response,
 		                           KNOT_RCODE_SERVFAIL);
 		/*! \todo Probably rename the function. */
@@ -2861,7 +2862,7 @@ void knot_ns_set_nsid(knot_nameserver_t *nameserver, const char *nsid, size_t le
 		return;
 	}
 	
-	dbg_ns("NS: set_nsid: added successfully.\n");
+	dbg_ns_verb("NS: set_nsid: added successfully.\n");
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2874,7 +2875,7 @@ int knot_ns_parse_packet(const uint8_t *query_wire, size_t qsize,
 		return KNOT_EBADARG;
 	}
 
-	dbg_ns("ns_parse_packet() called with query size %zu.\n", qsize);
+	dbg_ns_verb("ns_parse_packet() called with query size %zu.\n", qsize);
 	//dbg_ns_hex((char *)query_wire, qsize);
 
 	if (qsize < 2) {
@@ -2882,7 +2883,7 @@ int knot_ns_parse_packet(const uint8_t *query_wire, size_t qsize,
 	}
 
 	// 1) create empty response
-	dbg_ns("Parsing packet...\n");
+	dbg_ns_verb("Parsing packet...\n");
 	//parsed = knot_response_new_empty(NULL);
 
 	int ret = 0;
@@ -2890,12 +2891,12 @@ int knot_ns_parse_packet(const uint8_t *query_wire, size_t qsize,
 	if ((ret = knot_packet_parse_from_wire(packet, query_wire,
 	                                         qsize, 1)) != 0) {
 		dbg_ns("Error while parsing packet, "
-		                "libknot error '%s'.\n", knot_strerror(ret));
+		       "libknot error '%s'.\n", knot_strerror(ret));
 //		knot_response_free(&parsed);
 		return KNOT_RCODE_FORMERR;
 	}
 
-	dbg_ns("Parsed packet header and Question:\n");
+	dbg_ns_verb("Parsed packet header and Question:\n");
 	knot_packet_dump(packet);
 
 	// 3) determine the query type
@@ -3012,7 +3013,7 @@ int knot_ns_prep_normal_response(knot_nameserver_t *nameserver,
                                  knot_packet_t *query, knot_packet_t **resp,
                                  const knot_zone_t **zone, size_t max_size)
 {
-	dbg_ns("knot_ns_prep_normal_response()\n");
+	dbg_ns_verb("knot_ns_prep_normal_response()\n");
 
 	if (nameserver == NULL || query == NULL || resp == NULL
 	    || zone == NULL) {
@@ -3021,8 +3022,8 @@ int knot_ns_prep_normal_response(knot_nameserver_t *nameserver,
 
 	// first, parse the rest of the packet
 	assert(knot_packet_is_query(query));
-	dbg_ns("Query - parsed: %zu, total wire size: %zu\n",
-	              knot_packet_parsed(query), knot_packet_size(query));
+	dbg_ns_verb("Query - parsed: %zu, total wire size: %zu\n",
+	            knot_packet_parsed(query), knot_packet_size(query));
 	int ret;
 
 	ret = knot_packet_parse_rest(query);
@@ -3077,16 +3078,16 @@ int knot_ns_prep_normal_response(knot_nameserver_t *nameserver,
 		return KNOT_ERROR;
 	}
 
-	dbg_ns("Query - parsed: %zu, total wire size: %zu\n",
-	              query->parsed, query->size);
-	dbg_ns("Opt RR: version: %d, payload: %d\n",
+	dbg_ns_verb("Query - parsed: %zu, total wire size: %zu\n",
+	            query->parsed, query->size);
+	dbg_ns_detail("Opt RR: version: %d, payload: %d\n",
 	              query->opt_rr.version, query->opt_rr.payload);
 
 	// get the answer for the query
 	knot_zonedb_t *zonedb = rcu_dereference(nameserver->zone_db);
 
-	dbg_ns("EDNS supported in query: %d\n",
-	         knot_query_edns_supported(query));
+	dbg_ns_detail("EDNS supported in query: %d\n",
+	              knot_query_edns_supported(query));
 
 	// set the OPT RR to the response
 	if (knot_query_edns_supported(query)) {
@@ -3094,7 +3095,7 @@ int knot_ns_prep_normal_response(knot_nameserver_t *nameserver,
 		                            knot_query_nsid_requested(query));
 		if (ret != KNOT_EOK) {
 			dbg_ns("Failed to set OPT RR to the response"
-			                  ": %s\n", knot_strerror(ret));
+			       ": %s\n", knot_strerror(ret));
 		} else {
 			// copy the DO bit from the query
 			if (knot_query_dnssec_requested(query)) {
@@ -3104,15 +3105,15 @@ int knot_ns_prep_normal_response(knot_nameserver_t *nameserver,
 		}
 	}
 
-	dbg_ns("Response max size: %zu\n", (*resp)->max_size);
+	dbg_ns_verb("Response max size: %zu\n", (*resp)->max_size);
 
 	const knot_dname_t *qname = knot_packet_qname(*resp);
 	assert(qname != NULL);
 
 	uint16_t qtype = knot_packet_qtype(*resp);
-dbg_ns_exec(
+dbg_ns_exec_verb(
 	char *name_str = knot_dname_to_str(qname);
-	dbg_ns("Trying to find zone for QNAME %s\n", name_str);
+	dbg_ns_verb("Trying to find zone for QNAME %s\n", name_str);
 	free(name_str);
 );
 	// find zone in which to search for the name
@@ -3127,7 +3128,7 @@ int knot_ns_answer_normal(knot_nameserver_t *nameserver,
                           const knot_zone_t *zone, knot_packet_t *resp,
                           uint8_t *response_wire, size_t *rsize, int check_any)
 {
-	dbg_ns("ns_answer_normal()\n");
+	dbg_ns_verb("ns_answer_normal()\n");
 
 	int ret = ns_answer(zone, resp, check_any);
 
@@ -3137,7 +3138,7 @@ int knot_ns_answer_normal(knot_nameserver_t *nameserver,
 		                            KNOT_RCODE_SERVFAIL,
 		                            response_wire, rsize);
 	} else {
-		dbg_ns("Created response packet.\n");
+		dbg_ns_verb("Created response packet.\n");
 		//knot_response_dump(resp);
 		knot_packet_dump(resp);
 
@@ -3150,7 +3151,7 @@ int knot_ns_answer_normal(knot_nameserver_t *nameserver,
 		}
 	}
 
-	dbg_ns("Returning response with wire size %zu\n", *rsize);
+	dbg_ns_verb("Returning response with wire size %zu\n", *rsize);
 
 	return KNOT_EOK;
 }
@@ -3181,8 +3182,10 @@ int knot_ns_init_xfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		return ret;
 	}
 	
-	dbg_packet("Parsed XFR query:\n");
+dbg_ns_exec_verb(
+	dbg_ns_verb("Parsed XFR query:\n");
 	knot_packet_dump(xfr->query);
+);
 
 	// initialize response packet structure
 	knot_packet_t *response = knot_packet_new(
@@ -3240,9 +3243,9 @@ int knot_ns_init_xfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	assert(knot_packet_qtype(xfr->response) == KNOT_RRTYPE_AXFR ||
 	       knot_packet_qtype(xfr->response) == KNOT_RRTYPE_IXFR);
 
-dbg_ns_exec(
+dbg_ns_exec_verb(
 	char *name_str = knot_dname_to_str(qname);
-	dbg_ns("Trying to find zone with name %s\n", name_str);
+	dbg_ns_verb("Trying to find zone with name %s\n", name_str);
 	free(name_str);
 );
 	// find zone in which to search for the name
@@ -3285,20 +3288,20 @@ int ns_ixfr_load_serials(const knot_ns_xfr_t *xfr, uint32_t *serial_from,
 {
 	if (xfr == NULL || xfr->zone == NULL || serial_from == NULL 
 	    || serial_to == NULL) {
-		dbg_ns_detail("Wrong parameters: xfr=%p,"
-		             " xfr->zone = %p\n", xfr, xfr->zone);
+		dbg_ns("Wrong parameters: xfr=%p,"
+		       " xfr->zone = %p\n", xfr, xfr->zone);
 		return KNOT_EBADARG;
 	}
 	
 	const knot_zone_t *zone = xfr->zone;
 	const knot_zone_contents_t *contents = knot_zone_contents(zone);
 	if (!contents) {
-		dbg_ns_detail("Missing contents\n");
+		dbg_ns("Missing contents\n");
 		return KNOT_EBADARG;
 	}
 	
 	if (knot_zone_contents_apex(contents) == NULL) {
-		dbg_ns_detail("No apex.\n");
+		dbg_ns("No apex.\n");
 		return KNOT_EBADARG;
 	}
 	
@@ -3306,17 +3309,17 @@ int ns_ixfr_load_serials(const knot_ns_xfr_t *xfr, uint32_t *serial_from,
 		knot_node_rrset(knot_zone_contents_apex(contents),
 		                  KNOT_RRTYPE_SOA);
 	if (zone_soa == NULL) {
-		dbg_ns_verb("No SOA.\n");
+		dbg_ns("No SOA.\n");
 		return KNOT_EBADARG;
 	}
 	
 	if (knot_packet_nscount(xfr->query) < 1) {
-		dbg_ns_verb("No Authority record.\n");
+		dbg_ns("No Authority record.\n");
 		return KNOT_EMALF;
 	}
 	
 	if (knot_packet_authority_rrset(xfr->query, 0) == NULL) {
-		dbg_ns_verb("Authority record missing.\n");
+		dbg_ns("Authority record missing.\n");
 		return KNOT_ERROR;
 	}
 	
@@ -3384,8 +3387,8 @@ int knot_ns_answer_axfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	
 	/*! \todo [TSIG] Get the TSIG size from some API function. */
 	if (xfr->tsig_size > 0) {
-		dbg_ns_detail("Setting TSIG size in packet: %zu\n",
-		              xfr->tsig_size);
+		dbg_ns_verb("Setting TSIG size in packet: %zu\n",
+		            xfr->tsig_size);
 		knot_packet_set_tsig_size(xfr->response, xfr->tsig_size);
 	}
 
@@ -3460,16 +3463,6 @@ int knot_ns_answer_ixfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	
 	ret = ns_ixfr(xfr);
 
-//	/*! \todo Somehow distinguish when it makes sense to send the SERVFAIL
-//	 *        and when it does not. E.g. if there was problem in sending
-//	 *        packet, it will probably fail when sending the SERVFAIL also.
-//	 */
-//	if (ret < 0) {
-//		dbg_ns("IXFR failed, sending SERVFAIL.\n");
-//		// now only one type of error (SERVFAIL), later maybe more
-//		knot_ns_xfr_send_error(nameserver, xfr, KNOT_RCODE_SERVFAIL);
-//	}
-
 	knot_packet_free(&xfr->response);
 
 	return ret;
@@ -3486,7 +3479,7 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	 */
 	
 	dbg_ns("ns_process_axfrin: incoming packet, wire size: %zu\n",
-	              xfr->wire_size);
+	       xfr->wire_size);
 
 	int ret = xfrin_process_axfr_packet(/*xfr->wire, xfr->wire_size,*/
 	                             /*(xfrin_constructed_zone_t **)(&xfr->data)*/
@@ -3504,19 +3497,19 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		assert(zone != NULL);
 
 		/* Create and fill hash table */
-		dbg_ns("ns_process_axfrin: filling hash table.\n");
+		dbg_ns_verb("ns_process_axfrin: filling hash table.\n");
 		int rc = knot_zone_contents_create_and_fill_hash_table(zone);
 		if (rc != KNOT_EOK) {
 			return KNOT_ERROR;	// TODO: change error code
 		}
 
-		dbg_ns("ns_process_axfrin: adjusting zone.\n");
+		dbg_ns_verb("ns_process_axfrin: adjusting zone.\n");
 		rc = knot_zone_contents_adjust(zone);
 		if (rc != KNOT_EOK) {
 			return rc;
 		}
 
-		dbg_ns("ns_process_axfrin: checking loops.\n");
+		dbg_ns_verb("ns_process_axfrin: checking loops.\n");
 		rc = knot_zone_contents_check_loops(zone);
 		if (rc != KNOT_EOK) {
 			return rc;
@@ -3535,9 +3528,9 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		//knot_zone_contents_dump(zone, 0);
 
 		// check zone integrity
-dbg_xfrin_exec(
+dbg_ns_exec_verb(
 		int errs = knot_zone_contents_integrity_check(zone);
-		dbg_xfrin("Zone integrity check: %d errors.\n", errs);
+		dbg_ns_verb("Zone integrity check: %d errors.\n", errs);
 );
 	}
 	
@@ -3572,7 +3565,7 @@ int knot_ns_switch_zone(knot_nameserver_t *nameserver,
 		char *name = knot_dname_to_str(knot_node_owner(
 				knot_zone_contents_apex(zone)));
 		dbg_ns("Failed to replace zone %s, old zone "
-		                   "not found\n", name);
+		       "not found\n", name);
 		free(name);
 
 		return KNOT_ENOZONE;
@@ -3582,16 +3575,16 @@ int knot_ns_switch_zone(knot_nameserver_t *nameserver,
 
 	int ret = xfrin_switch_zone(z, zone, xfr->type);
 
-dbg_ns_exec(
-	dbg_ns("Zone db contents: (zone count: %zu)\n",
-		      nameserver->zone_db->zone_count);
+dbg_ns_exec_verb(
+	dbg_ns_verb("Zone db contents: (zone count: %zu)\n",
+	            nameserver->zone_db->zone_count);
 
 	const knot_zone_t **zones = knot_zonedb_zones(nameserver->zone_db);
 	for (int i = 0; i < knot_zonedb_zone_count
 	     (nameserver->zone_db); i++) {
-		dbg_ns("%d. zone: %p", i, zones[i]);
+		dbg_ns_verb("%d. zone: %p\n", i, zones[i]);
 		char *name = knot_dname_to_str(zones[i]->name);
-		dbg_ns("    zone name: %s\n", name);
+		dbg_ns_verb("    zone name: %s\n", name);
 		free(name);
 	}
 	free(zones);
@@ -3723,14 +3716,14 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
 
 	assert(response != NULL);
 
-	dbg_ns("Query - parsed: %zu, total wire size: %zu\n",
-	              query->parsed, query->size);
+	dbg_ns_verb("Query - parsed: %zu, total wire size: %zu\n",
+	            query->parsed, query->size);
 
 	if (knot_packet_parsed(query) < knot_packet_size(query)) {
 		ret = knot_packet_parse_rest(query);
 		if (ret != KNOT_EOK) {
 			dbg_ns("Failed to parse rest of the query: "
-			              "%s.\n", knot_strerror(ret));
+			       "%s.\n", knot_strerror(ret));
 			knot_ns_error_response_full(nameserver, response,
 			                            (ret == KNOT_EMALF)
 			                               ? KNOT_RCODE_FORMERR
@@ -3741,12 +3734,12 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
 		}
 	}
 
-	dbg_ns("Query - parsed: %zu, total wire size: %zu\n",
-	              knot_packet_parsed(query), knot_packet_size(query));
+	dbg_ns_verb("Query - parsed: %zu, total wire size: %zu\n",
+	            knot_packet_parsed(query), knot_packet_size(query));
 
 	/*! \todo API for EDNS values. */
-	dbg_ns("Opt RR: version: %d, payload: %d\n",
-	              query->opt_rr.version, query->opt_rr.payload);
+	dbg_ns_verb("Opt RR: version: %d, payload: %d\n",
+	            query->opt_rr.version, query->opt_rr.payload);
 
 	// 2) Find zone for the query
 	// we do not check if there is only one entry in the Question section
@@ -3781,7 +3774,7 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
 		return KNOT_EBADZONE;
 	} else if (ret != KNOT_EOK) {
 		dbg_ns("Failed to check zone for update: "
-		              "%s.\n", knot_strerror(ret));
+		       "%s.\n", knot_strerror(ret));
 		knot_ns_error_response_full(nameserver, response, rcode,
 		                            response_wire, rsize);
 		knot_packet_free(&response);
@@ -3793,7 +3786,7 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
 	ret = knot_ddns_process_prereqs(query, &prereqs, &rcode);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to check zone for update: "
-		              "%s.\n", knot_strerror(ret));
+		       "%s.\n", knot_strerror(ret));
 		knot_ns_error_response_full(nameserver, response, rcode,
 		                            response_wire, rsize);
 		knot_packet_free(&response);
@@ -3810,7 +3803,7 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
 	                              &rcode);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to check zone for update: "
-		              "%s.\n", knot_strerror(ret));
+		       "%s.\n", knot_strerror(ret));
 		knot_ns_error_response_full(nameserver, response, rcode,
 		                            response_wire, rsize);
 		knot_ddns_prereqs_free(&prereqs);
@@ -3822,7 +3815,7 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
 	ret = knot_ddns_process_update(query, changeset, &rcode);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to check zone for update: "
-		              "%s.\n", knot_strerror(ret));
+		       "%s.\n", knot_strerror(ret));
 		knot_ns_error_response_full(nameserver, response, rcode,
 		                            response_wire, rsize);
 		knot_ddns_prereqs_free(&prereqs);
