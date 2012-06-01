@@ -164,15 +164,14 @@ static int knot_response_store_dname_pos(knot_compressed_dnames_t *table,
 {
 dbg_response_exec(
 	char *name = knot_dname_to_str(dname);
-	dbg_response("Putting dname %s into compression table."
-	                      " Labels not matched: %d, position: %zu,"
-	                      ", pointer: %p, unmatched off: %zu\n", name, 
-	                      not_matched, pos, dname, unmatched_offset);
+	dbg_response_detail("Putting dname %s into compression table."
+	                    " Labels not matched: %d, position: %zu,"
+	                    ", pointer: %p, unmatched off: %zu\n", name,
+	                    not_matched, pos, dname, unmatched_offset);
 	free(name);
 );
 	if (pos > KNOT_RESPONSE_MAX_PTR) {
-		dbg_response("Pointer larger than it can be, not"
-		                      " saving\n");
+		dbg_response("Pointer larger than it can be, not saving\n");
 		return KNOT_EDNAMEPTR;
 	}
 
@@ -210,11 +209,11 @@ dbg_response_exec(
 			parent_pos = unmatched_offset;
 		}
 
-dbg_response_exec(
+dbg_response_exec_detail(
 		char *name = knot_dname_to_str(to_save);
-		dbg_response("Putting dname %s into compression table."
-		                      " Position: %zu, pointer: %p\n",
-		                      name, parent_pos, to_save);
+		dbg_response_detail("Putting dname %s into compression table."
+		                    " Position: %zu, pointer: %p\n",
+		                    name, parent_pos, to_save);
 		free(name);
 );
 
@@ -224,7 +223,6 @@ dbg_response_exec(
 			return KNOT_ENOMEM;
 		}
 
-//		dbg_response("Saving..\n");
 		knot_response_compr_save(table, to_save, parent_pos);
 
 		/*! \todo Remove '!compr_cs'. */
@@ -242,8 +240,6 @@ dbg_response_exec(
 
 		dbg_response("i: %d\n", i);
 		parent_pos += knot_dname_label_size(dname, i) + 1;
-//		parent_pos += (i > 0)
-//			      ? knot_dname_label_size(dname, i - 1) + 1 : 0;
 		++i;
 	}
 
@@ -267,22 +263,12 @@ static size_t knot_response_find_dname_pos(
                const knot_dname_t *dname, int compr_cs)
 {
 	for (int i = 0; i < table->count; ++i) {
-//		dbg_response("Comparing dnames %p and %p\n",
-//		                      dname, table->dnames[i]);
-//dbg_response_exec(
-//		char *name = knot_dname_to_str(dname);
-//		dbg_response("(%s and ", name);
-//		name = knot_dname_to_str(table->dnames[i]);
-//		dbg_response("%s)\n", name);
-//		free(name);
-//);
-		//if (table->dnames[i] == dname) {
 		int ret = (compr_cs)
 		           ? knot_dname_compare_cs(table->dnames[i], dname)
 		           : knot_dname_compare(table->dnames[i], dname);
 		if (ret == 0) {
-			dbg_response("Found offset: %zu\n",
-			                      table->offsets[i]);
+			dbg_response_detail("Found offset: %zu\n",
+			                    table->offsets[i]);
 			return table->offsets[i];
 		}
 	}
@@ -319,7 +305,7 @@ static int knot_response_put_dname_ptr(const knot_dname_t *dname,
 	memcpy(wire, knot_dname_name(dname), size);
 	knot_wire_put_pointer(wire + size, offset);
 
-	dbg_response("Size of the dname with ptr: %d\n", size + 2);
+	dbg_response_detail("Size of the dname with ptr: %d\n", size + 2);
 	
 	return size + 2;
 }
@@ -361,11 +347,11 @@ static int knot_response_compress_dname(const knot_dname_t *dname,
 	int not_matched = 0;
 
 	while (to_find != NULL && knot_dname_label_count(to_find) != 0) {
-dbg_response_exec(
+dbg_response_exec_detail(
 		char *name = knot_dname_to_str(to_find);
-		dbg_response("Searching for name %s in the compression"
-		                      " table, not matched labels: %d\n", name,
-		                      not_matched);
+		dbg_response_detail("Searching for name %s in the compression"
+		                    " table, not matched labels: %d\n", name,
+		                    not_matched);
 		free(name);
 );
 		offset = knot_response_find_dname_pos(compr->table, to_find,
@@ -396,17 +382,17 @@ dbg_response_exec(
 		    || knot_node_owner(knot_dname_node(to_find)) != to_find
 		    || knot_node_parent(knot_dname_node(to_find))
 		       == NULL) {
-			dbg_response("compr_cs: %d\n", compr_cs);
-			dbg_response("knot_dname_node(to_find, 1) == %p"
+			dbg_response_detail("compr_cs: %d\n", compr_cs);
+			dbg_response_detail("knot_dname_node(to_find, 1) == %p"
 			                    "\n", knot_dname_node(to_find));
 			
 			if (knot_dname_node(to_find) != NULL) {
-				dbg_response("knot_node_owner(knot_dname_node("
-						    "to_find, 1)) = %p, to_find = %p\n",
-					   knot_node_owner(knot_dname_node(to_find)),
-					   to_find);
-				dbg_response("knot_node_parent(knot_dname_node("
-						    "to_find, 1), 1) = %p\n",
+				dbg_response_detail("knot_node_owner(knot_dname_node("
+				             "to_find, 1)) = %p, to_find = %p\n",
+				             knot_node_owner(knot_dname_node(to_find)),
+				             to_find);
+				dbg_response_detail("knot_node_parent(knot_dname_node("
+				                    "to_find, 1), 1) = %p\n",
 				      knot_node_parent(knot_dname_node(to_find)));
 			}
 			break;
@@ -417,7 +403,7 @@ dbg_response_exec(
 			    knot_node_parent(knot_dname_node(to_find))));
 			to_find = knot_node_owner(
 			     knot_node_parent(knot_dname_node(to_find)));
-			dbg_response("New to_find: %p\n", to_find);
+			dbg_response_detail("New to_find: %p\n", to_find);
 		}
 #endif
 	}
@@ -428,10 +414,10 @@ dbg_response_exec(
 	}
 #endif
 
-	dbg_response("Max size available for domain name: %zu\n", max);
+	dbg_response_detail("Max size available for domain name: %zu\n", max);
 	
 	if (offset > 0) {  // found such dname somewhere in the packet
-		dbg_response("Found name in the compression table.\n");
+		dbg_response_detail("Found name in the compression table.\n");
 		assert(offset >= KNOT_WIRE_HEADER_SIZE);
 		size = knot_response_put_dname_ptr(dname, not_matched, offset,
 		                                     dname_wire, max);
@@ -439,7 +425,7 @@ dbg_response_exec(
 			return KNOT_ESPACE;
 		}
 	} else {
-		dbg_response("Not found, putting whole name.\n");
+		dbg_response_detail("Not found, putting whole name.\n");
 		// now just copy the dname without compressing
 		if (dname->size > max) {
 			return KNOT_ESPACE;
@@ -458,8 +444,7 @@ dbg_response_exec(
 	if (knot_response_store_dname_pos(compr->table, dname, not_matched,
 	                                  compr->wire_pos, offset, compr_cs)
 	    != 0) {
-		dbg_response("Compression info could not be stored."
-		                      "\n");
+		dbg_response_detail("Compression info could not be stored.\n");
 	}
 
 	return size;
@@ -488,7 +473,7 @@ static int knot_response_rr_to_wire(const knot_rrset_t *rrset,
 {
 	int size = 0;
 	
-	dbg_response("Max size: %zu, owner pos: %zu, owner size: %d\n",
+	dbg_response_detail("Max size: %zu, owner pos: %zu, owner size: %d\n",
 	                    max_size, compr->owner.pos, compr->owner.size);
 
 	if (size + ((compr->owner.pos == 0
@@ -498,7 +483,7 @@ static int knot_response_rr_to_wire(const knot_rrset_t *rrset,
 		return KNOT_ESPACE;
 	}
 
-	dbg_response("Owner position: %zu\n", compr->owner.pos);
+	dbg_response_detail("Owner position: %zu\n", compr->owner.pos);
 
 	// put owner if needed (already compressed)
 	if (compr->owner.pos == 0 || compr->owner.pos > KNOT_RESPONSE_MAX_PTR) {
@@ -507,28 +492,28 @@ static int knot_response_rr_to_wire(const knot_rrset_t *rrset,
 		*rrset_wire += compr->owner.size;
 		size += compr->owner.size;
 	} else {
-		dbg_response("Putting pointer: %zu\n",
-		                      compr->owner.pos);
+		dbg_response_detail("Putting pointer: %zu\n",
+		                    compr->owner.pos);
 		knot_wire_put_pointer(*rrset_wire, compr->owner.pos);
 		*rrset_wire += 2;
 		size += 2;
 	}
 	
-	dbg_response("Max size: %zu, size: %d\n", max_size, size);
+	dbg_response_detail("Max size: %zu, size: %d\n", max_size, size);
 
-	dbg_response("Wire format:\n");
+	dbg_response_detail("Wire format:\n");
 
 	// put rest of RR 'header'
 	knot_wire_write_u16(*rrset_wire, rrset->type);
-	dbg_response("  Type: %u\n", rrset->type);
+	dbg_response_detail("  Type: %u\n", rrset->type);
 	*rrset_wire += 2;
 
 	knot_wire_write_u16(*rrset_wire, rrset->rclass);
-	dbg_response("  Class: %u\n", rrset->rclass);
+	dbg_response_detail("  Class: %u\n", rrset->rclass);
 	*rrset_wire += 2;
 
 	knot_wire_write_u32(*rrset_wire, rrset->ttl);
-	dbg_response("  TTL: %u\n", rrset->ttl);
+	dbg_response_detail("  TTL: %u\n", rrset->ttl);
 	*rrset_wire += 4;
 
 	// save space for RDLENGTH
@@ -538,7 +523,7 @@ static int knot_response_rr_to_wire(const knot_rrset_t *rrset,
 	size += 10;
 	compr->wire_pos += size;
 	
-	dbg_response("Max size: %zu, size: %d\n", max_size, size);
+	dbg_response_detail("Max size: %zu, size: %d\n", max_size, size);
 
 	knot_rrtype_descriptor_t *desc =
 		knot_rrtype_descriptor_by_type(rrset->type);
@@ -561,8 +546,7 @@ static int knot_response_rr_to_wire(const knot_rrset_t *rrset,
 				return KNOT_ESPACE;
 			}
 
-			dbg_response("Compressed dname size: %d\n",
-			                      ret);
+			dbg_response_detail("Compressed dname size: %d\n", ret);
 			*rrset_wire += ret;
 			rdlength += ret;
 			compr->wire_pos += ret;
@@ -579,8 +563,8 @@ static int knot_response_rr_to_wire(const knot_rrset_t *rrset,
 
 			// save whole domain name
 			memcpy(*rrset_wire, dname->name, dname->size);
-			dbg_response("Uncompressed dname size: %d\n",
-			                      dname->size);
+			dbg_response_detail("Uncompressed dname size: %d\n",
+			                    dname->size);
 			*rrset_wire += dname->size;
 			rdlength += dname->size;
 			compr->wire_pos += dname->size;
@@ -596,8 +580,8 @@ static int knot_response_rr_to_wire(const knot_rrset_t *rrset,
 
 			// copy just the rdata item data (without size)
 			memcpy(*rrset_wire, raw_data + 1, raw_data[0]);
-			dbg_response("Raw data size: %d\n",
-			                      raw_data[0]);
+			dbg_response_detail("Raw data size: %d\n",
+			                    raw_data[0]);
 			*rrset_wire += raw_data[0];
 			rdlength += raw_data[0];
 			compr->wire_pos += raw_data[0];
@@ -606,7 +590,7 @@ static int knot_response_rr_to_wire(const knot_rrset_t *rrset,
 		}
 	}
 	
-	dbg_response("Max size: %zu, size: %d\n", max_size, size);
+	dbg_response_detail("Max size: %zu, size: %d\n", max_size, size);
 
 	assert(size + rdlength <= max_size);
 	size += rdlength;
@@ -639,12 +623,12 @@ static int knot_response_rrset_to_wire(const knot_rrset_t *rrset,
                                          knot_compressed_dnames_t *compr,
                                          int compr_cs)
 {
-dbg_response_exec(
+dbg_response_exec_verb(
 	char *name = knot_dname_to_str(rrset->owner);
-	dbg_response("Converting RRSet with owner %s, type %s\n",
-	                      name, knot_rrtype_to_string(rrset->type));
+	dbg_response_verb("Converting RRSet with owner %s, type %s\n",
+	                  name, knot_rrtype_to_string(rrset->type));
 	free(name);
-	dbg_response("  Size before: %zu\n", *size);
+	dbg_response_verb("  Size before: %zu\n", *size);
 );
 
 	// if no RDATA in RRSet, return
@@ -674,8 +658,8 @@ dbg_response_exec(
 		knot_response_compress_dname(rrset->owner, &compr_info,
 		                               owner_tmp, max_size, compr_cs);
 
-	dbg_response("    Owner size: %d, position: %zu\n",
-	                      compr_info.owner.size, compr_info.owner.pos);
+	dbg_response_detail("    Owner size: %d, position: %zu\n",
+	                    compr_info.owner.size, compr_info.owner.pos);
 	if (compr_info.owner.size < 0) {
 		return KNOT_ESPACE;
 	}
@@ -698,7 +682,7 @@ dbg_response_exec(
 			return KNOT_ESPACE;
 		}
 
-		dbg_response("RR of size %d added.\n", ret);
+		dbg_response_verb("RR of size %d added.\n", ret);
 		rrset_size += ret;
 		++rrs;
 	} while ((rdata = knot_rrset_rdata_next(rrset, rdata)) != NULL);
@@ -711,7 +695,7 @@ dbg_response_exec(
 	assert (rrset_size <= max_size);
 	*size += rrset_size;
 
-	dbg_response("  Size after: %zu\n", *size);
+	dbg_response_verb("  Size after: %zu\n", *size);
 
 	return rrs;
 }
@@ -750,8 +734,8 @@ static int knot_response_try_add_rrset(const knot_rrset_t **rrsets,
 
 dbg_response_exec(
 	char *name = knot_dname_to_str(rrset->owner);
-	dbg_response("\nAdding RRSet with owner %s and type %s: \n",
-	                      name, knot_rrtype_to_string(rrset->type));
+	dbg_response_verb("\nAdding RRSet with owner %s and type %s: \n",
+	                  name, knot_rrtype_to_string(rrset->type));
 	free(name);
 );
 
@@ -764,11 +748,11 @@ dbg_response_exec(
 	if (rrs >= 0) {
 		rrsets[(*rrset_count)++] = rrset;
 		resp->size += size;
-		dbg_response("RRset added, size: %zu, RRs: %d, total "
-		                      "size of response: %zu\n\n", size, rrs,
-		                      resp->size);
+		dbg_response_verb("RRset added, size: %zu, RRs: %d, total "
+		                  "size of response: %zu\n\n", size, rrs,
+		                  resp->size);
 	} else if (tc) {
-		dbg_response("Setting TC bit.\n");
+		dbg_response_verb("Setting TC bit.\n");
 		knot_wire_flags_set_tc(&resp->header.flags1);
 		knot_wire_set_tc(resp->wireformat);
 	}
@@ -825,8 +809,8 @@ static int knot_response_realloc_wc_nodes(const knot_node_t ***nodes,
                                           short *max_count,
                                           short default_max_count, short step)
 {
-	dbg_packet("Max count: %d, default max count: %d\n",
-	       *max_count, default_max_count);
+	dbg_packet_detail("Max count: %d, default max count: %d\n",
+	                  *max_count, default_max_count);
 	int free_old = (*max_count) != default_max_count;
 
 	const knot_node_t **old_nodes = *nodes;
@@ -896,13 +880,10 @@ int knot_response_init_from_query(knot_packet_t *response,
 
 	// copy the header from the query
 	memcpy(&response->header, &query->header, sizeof(knot_header_t));
-//	memmove(&response->header, &query->header, sizeof(knot_header_t));
 
 	// copy the Question section (but do not copy the QNAME)
 	memcpy(&response->question, &query->question,
 	       sizeof(knot_question_t));
-//	memmove(&response->question, &query->question,
-//	        sizeof(knot_question_t));
 
 	int err = 0;
 	// put the qname into the compression table
@@ -917,12 +898,6 @@ int knot_response_init_from_query(knot_packet_t *response,
 	size_t to_copy = 12 + 4 + knot_dname_size(response->question.qname);
 
 	assert(response->max_size >= to_copy);
-//	printf("Resp init from query: Copying from: %p to: %p size: %d\n",
-//	       response->wireformat, query->wireformat,
-//	       to_copy);
-//	printf("Resp init from query: Question name size: %d Query name size: %d\n",
-//	       knot_dname_size(response->question.qname),
-//	       knot_dname_size(query->question.qname));
 	memcpy(response->wireformat, query->wireformat, to_copy);
 	response->size = to_copy;
 
@@ -1039,16 +1014,14 @@ int knot_response_add_opt(knot_packet_t *resp,
 
 	if (override_max_size && resp->max_size > 0
 	    && resp->max_size < opt_rr->payload) {
-//		return KNOT_EPAYLOAD;
 		return KNOT_EOK;
 	}
 
 	// set max size (less is OK)
 	if (override_max_size) {
 		dbg_response("Overriding max size to: %u\n",
-		                    resp->opt_rr.payload);
+		             resp->opt_rr.payload);
 		return knot_packet_set_max_size(resp, resp->opt_rr.payload);
-		//resp->max_size = resp->opt_rr.payload;
 	}
 
 	return KNOT_EOK;
@@ -1065,7 +1038,7 @@ int knot_response_add_rrset_answer(knot_packet_t *response,
 		return KNOT_EBADARG;
 	}
 
-	dbg_response("add_rrset_answer()\n");
+	dbg_response_verb("add_rrset_answer()\n");
 	assert(response->header.arcount == 0);
 	assert(response->header.nscount == 0);
 
@@ -1081,9 +1054,9 @@ int knot_response_add_rrset_answer(knot_packet_t *response,
 		return KNOT_EOK;
 	}
 
-	dbg_response("Trying to add RRSet to Answer section.\n");
-	dbg_response("RRset: %p\n", rrset);
-	dbg_response("Owner: %p\n", rrset->owner);
+	dbg_response_verb("Trying to add RRSet to Answer section.\n");
+	dbg_response_detail("RRset: %p\n", rrset);
+	dbg_response_detail("Owner: %p\n", rrset->owner);
 
 	int rrs = knot_response_try_add_rrset(response->answer,
 	                                        &response->an_rrsets, response,
@@ -1132,7 +1105,7 @@ int knot_response_add_rrset_authority(knot_packet_t *response,
 		return KNOT_EOK;
 	}
 
-	dbg_response("Trying to add RRSet to Authority section.\n");
+	dbg_response_verb("Trying to add RRSet to Authority section.\n");
 
 	int rrs = knot_response_try_add_rrset(response->authority,
 	                                        &response->ns_rrsets, response,
@@ -1188,7 +1161,7 @@ int knot_response_add_rrset_additional(knot_packet_t *response,
 		return KNOT_EOK;
 	}
 
-	dbg_response("Trying to add RRSet to Additional section.\n");
+	dbg_response_verb("Trying to add RRSet to Additional section.\n");
 
 	int rrs = knot_response_try_add_rrset(response->additional,
 	                                        &response->ar_rrsets, response,
@@ -1283,7 +1256,7 @@ int knot_response_add_wildcard_node(knot_packet_t *response,
 	response->wildcard_nodes.snames[response->wildcard_nodes.count] = sname;
 	++response->wildcard_nodes.count;
 
-	dbg_response("Current wildcard nodes count: %d, max count: %d\n",
+	dbg_response_verb("Current wildcard nodes count: %d, max count: %d\n",
 	             response->wildcard_nodes.count,
 	             response->wildcard_nodes.max);
 
