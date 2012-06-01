@@ -74,7 +74,7 @@ int knot_nsec3_params_from_wire(knot_nsec3_params_t *params,
 	dbg_nsec3("Flags: %hu\n", params->flags);
 	dbg_nsec3("Iterations: %hu\n", params->iterations);
 	dbg_nsec3("Salt length: %hu\n", params->salt_length);
-	dbg_nsec3("Salt: ");
+	dbg_nsec3("Salt: \n");
 	if (params->salt != NULL) {
 		dbg_nsec3_hex((char *)params->salt,
 		                       params->salt_length);
@@ -171,8 +171,8 @@ int knot_nsec3_sha1(const knot_nsec3_params_t *params,
 
 	EVP_MD_CTX_cleanup(&mdctx);
 
-	dbg_nsec3("NSEC3 hashing: calls: %lu, avg time per call: %f."
-	                   "\n", calls, (double)(total_time) / calls);
+	dbg_nsec3_verb("NSEC3 hashing: calls: %lu, avg time per call: %f."
+	               "\n", calls, (double)(total_time) / calls);
 
 	free(data_low);
 	return 0;
@@ -194,17 +194,17 @@ int knot_nsec3_sha1(const knot_nsec3_params_t *params,
 	uint8_t salt_length = params->salt_length;
 	uint16_t iterations = params->iterations;
 
-	dbg_nsec3("Hashing: \n");
-	dbg_nsec3("  Data: %.*s \n", size, data);
-	dbg_nsec3_hex((const char *)data, size);
-	dbg_nsec3(" (size %d)\n  Iterations: %u\n", (int)size, iterations);
-	dbg_nsec3("  Salt length: %u\n", salt_length);
-	dbg_nsec3("  Salt: ");
+	dbg_nsec3_verb("Hashing: \n");
+	dbg_nsec3_verb("  Data: %.*s \n", size, data);
+	dbg_nsec3_hex_verb((const char *)data, size);
+	dbg_nsec3_verb(" (size %d)\n  Iterations: %u\n", (int)size, iterations);
+	dbg_nsec3_verb("  Salt length: %u\n", salt_length);
+	dbg_nsec3_verb("  Salt: \n");
 	if (salt_length > 0) {
-		dbg_nsec3_hex((char *)salt, salt_length);
-		dbg_nsec3("\n");
+		dbg_nsec3_hex_verb((char *)salt, salt_length);
+		dbg_nsec3_verb("\n");
 	} else {
-		dbg_nsec3("none\n");
+		dbg_nsec3_verb("none\n");
 	}
 
 	SHA_CTX ctx;
@@ -251,9 +251,9 @@ int knot_nsec3_sha1(const knot_nsec3_params_t *params,
 
 	*digest_size = SHA_DIGEST_LENGTH;
 
-	dbg_nsec3("Hash: %.*s\n", *digest_size, *digest);
-	dbg_nsec3_hex((const char *)*digest, *digest_size);
-	dbg_nsec3("\n");
+	dbg_nsec3_verb("Hash: %.*s\n", *digest_size, *digest);
+	dbg_nsec3_hex_verb((const char *)*digest, *digest_size);
+	dbg_nsec3_verb("\n");
 
 	free(data_low);
 	return KNOT_EOK;

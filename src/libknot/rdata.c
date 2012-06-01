@@ -210,8 +210,8 @@ knot_rdata_t *knot_rdata_new()
 /*----------------------------------------------------------------------------*/
 
 int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
-                           size_t *pos, size_t total_size, size_t rdlength,
-                           const knot_rrtype_descriptor_t *desc)
+                         size_t *pos, size_t total_size, size_t rdlength,
+                         const knot_rrtype_descriptor_t *desc)
 {
 	int i = 0;
 	uint8_t item_type;
@@ -728,32 +728,18 @@ int knot_rdata_compare(const knot_rdata_t *r1, const knot_rdata_t *r2,
 	int cmp = 0;
 
 	for (int i = 0; i < count; ++i) {
-		/* CLEANUP */
-//		const uint8_t *data1, *data2;
-//		int size1, size2;
-
 		if (format[i] == KNOT_RDATA_WF_COMPRESSED_DNAME ||
 		    format[i] == KNOT_RDATA_WF_UNCOMPRESSED_DNAME ||
 		    format[i] == KNOT_RDATA_WF_LITERAL_DNAME) {
 			cmp = knot_dname_compare(r1->items[i].dname,
 			                           r2->items[i].dname);
-//			data1 = knot_dname_name(r1->items[i].dname);
-//			data2 = knot_dname_name(r2->items[i].dname);
-//			size1 = knot_dname_size(r2->items[i].dname);
-//			size2 = knot_dname_size(r2->items[i].dname);
 		} else {
 			cmp = knot_rdata_compare_binary(
 				(uint8_t *)(r1->items[i].raw_data + 1),
 				(uint8_t *)(r2->items[i].raw_data + 1),
 				r1->items[i].raw_data[0],
 				r1->items[i].raw_data[0]);
-//			data1 = (uint8_t *)(r1->items[i].raw_data + 1);
-//			data2 = (uint8_t *)(r2->items[i].raw_data + 1);
-//			size1 = r1->items[i].raw_data[0];
-//			size2 = r1->items[i].raw_data[0];
 		}
-
-//		cmp =
 
 		if (cmp != 0) {
 			return cmp;
