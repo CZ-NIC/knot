@@ -1,0 +1,6 @@
+<chapter>
+  <title>Knot DNS Installation</title>
+  <para>
+    Install userspace-rcu and run ./configure &amp;&amp; make &amp;&amp; make install
+  </para>
+</chapter>
