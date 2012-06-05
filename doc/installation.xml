@@ -84,4 +84,86 @@
       </para>
     </section>
   </section>
+  <section>
+    <title>Installation from packages</title>
+    <para>
+      In addition to providing the packages in .DEB and .RPM format,
+      the Knot DNS might already be available in your favourite
+      distribution, or in a ports tree.
+    </para>
+    <section>
+      <title>Installing Knot DNS packages on Debian</title>
+      <para>
+	Knot DNS is already available from Debian wheezy upwards.  In
+	addition to the official packages we also provide custom
+	repository, which can be used by adding:
+	<programlisting>
+	  deb     http://deb.knot-dns.cz/debian/ &lt;codename&gt; main
+	  deb-src http://deb.knot-dns.cz/debian/ &lt;codename&gt; main
+	</programlisting>
+	to your /etc/apt/sources.list or into separate file in
+	/etc/apt/sources.list.d/.
+      </para>
+      <para>
+	As an example, for Debian squeeze (current stable) the Knot
+	DNS packages can be added by executing following command as
+	the root user.
+	<programlisting>
+	  cat &gt;/etc/apt/sources.list.d/knot.list &lt;&lt;EOF
+	  deb     http://deb.knot-dns.cz/debian/ &lt;codename&gt; main
+	  deb-src http://deb.knot-dns.cz/debian/ &lt;codename&gt; main
+	  EOF
+	  apt-get update
+	  apt-get install knot
+	</programlisting>
+      </para>
+    </section>
+    <section>
+      <title>Installing Knot DNS packages on Ubuntu</title>
+      <para>
+	Prepackaged version of the Knot DNS can be found in Ubuntu
+	from version 12.10 (Quantal Quetzal).  In addition to the
+	package included in the main archive, we provide Personal
+	Package Archive (PPA) as an option to upgrade to last stable
+	version of the Knot DNS or to install it on older versions of
+	Ubuntu Linux.
+      </para>
+      <para>
+	We typically provide packages for all supported versions of
+	Ubuntu Linux including 5 year support
+	for <link xl:href="https://wiki.ubuntu.com/LTS">LTS</link>
+	versions of Ubuntu Linux.  At the time of writing this manual
+	this includes Ubuntu 10.04 LTS, 11.04, 11.10 and 12.04 LTS.
+      </para>
+      <section>
+	<title>Adding official PPA repository for Knot DNS</title>
+	<para>
+	  To start installing and using software from a Personal
+	  Package Archive, you first need to tell Ubuntu where to find
+	  the PPA.
+	  <programlisting>
+	    sudo add-apt-repository ppa:cz.nic-labs/knot-dns
+	    sudo apt-get update
+	    sudo apt-get install knot
+	  </programlisting>
+	  Running this sequence of command will ensure that you will
+	  install the Knot DNS on your system and keep it up-to-date
+	  in the future, when new version are released.
+	</para>
+      </section>
+
+    </section>
+    <section>
+      <title>Installing Knot DNS RPMs on Fedora</title>
+      <para>
+	[TODO]
+      </para>
+    </section>
+    <section>
+      <title>Installing Knot DNS from ports on FreeBSD</title>
+      <para>
+	[TODO]
+      </para>
+    </section>
+  </section>
 </chapter>
