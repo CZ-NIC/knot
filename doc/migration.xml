@@ -1,0 +1,32 @@
+<chapter>
+  <title>Migration for other DNS servers</title>
+
+  <section>
+    <title>Knot DNS for BIND users</title>
+    <para>
+      [TODO]
+    </para>
+  </section>
+
+  <section>
+    <title>Knot DNS for NSD users</title>
+    <para>
+      [TODO]
+    </para>
+  </section>
+
+  <section>
+    <title>Knot DNS for PowerDNS users</title>
+    <para>
+      [TODO]
+    </para>
+  </section>
+
+  <section>
+    <title>Knot DNS for djbdns users</title>
+    <para>
+      [TODO]
+    </para>
+  </section>
+
+</chapter>
