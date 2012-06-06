@@ -54,29 +54,35 @@
       a quite straightforward process using autotools.
     </para>
     <section>
-      <title>Running ./configure</title>
+      <title>Configuring and generating Makefiles</title>
       <para>
 	For all available options run:
-
 	<programlisting>
 	  ./configure --help
+	</programlisting>
+      </para>
+      <para>
+	In most simple case you can just run configure without any options.
+	<programlisting>
+	  ./configure
 	</programlisting>
       </para>
     </section>
     <section>
       <title>Compilation</title>
       <para>
-	After running ./configure you can compile Knot DNS by
-	running make command, which will produce binaries and
-	other related files.
+	After running <filename>./configure</filename> you can compile
+	Knot DNS by running make command, which will produce binaries
+	and other related files.
 	<programlisting>
 	  make
 	</programlisting>
       </para>
       <para>
-	Knot DNS build process is safe to paralelize using "make -j
-	N", where N is number of concurrent processes.  Using this
-	option can increase speed of the compilation.
+	Knot DNS build process is safe to paralelize
+	using <filename>make -j N</filename>, where N is number of
+	concurrent processes.  Using this option can increase speed of
+	the compilation.
 	<programlisting>
 	  make -j N
 	</programlisting>
@@ -88,10 +94,10 @@
 	When you have finished building the Knot DNS, it's time to
 	install the binaries and configuration files into the
 	operation system hierarchy.  You can do so by
-	executing "make install" command.  When installing as a
+	executing <filename>make install</filename> command.  When installing as a
 	non-root user you might have to gain elevated privileges by
-	switching to root user, e.g. "sudo make install"
-	or "su -c 'make install'".
+	switching to root user, e.g. <filename>sudo make install</filename>
+	or <filename>su -c 'make install'</filename>.
 	<programlisting>
 	  make install
 	</programlisting>

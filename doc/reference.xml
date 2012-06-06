@@ -3,7 +3,7 @@
   <para>
     This reference describe every configuration option in Knot DNS.
   </para>
-  <section xml:id="section">
+  <section xml:id="system">
     <title>system</title>
     <para>
       The <emphasis>system</emphasis> statement contains general
@@ -23,17 +23,6 @@
 	  <listitem><link xml:id="workers">workers</link> <emphasis>number</emphasis>;</listitem>
 	  <listitem><link xml:id="user">user</link> <emphasis>user</emphasis>[.<emphasis>group</emphasis>];</listitem>
 	</itemizedlist>
-      </para>
-    </section>
-    <section>
-      <title>Example:</title>
-      <para>
-	<programlisting>
-	  system {
-	    version "1.0.7";
-	    storage "/var/lib/knot";
-	  }
-	</programlisting>
       </para>
     </section>
     <section>
@@ -141,6 +130,17 @@
 	</para>
       </section>
     </section>
+    <section>
+      <title>Example:</title>
+      <para>
+	<programlisting>
+	  system {
+	    version "1.0.7";
+	    storage "/var/lib/knot";
+	  }
+	</programlisting>
+      </para>
+    </section>
   </section>
   <section xml:id="keys">
     <title>keys</title>
@@ -154,17 +154,6 @@
 	<itemizedlist>
 	  <listitem><emphasis><link xml:id="key_id">key_id</link></emphasis> <emphasis>algorithm</emphasis> "<emphasis>key-contents</emphasis>";</listitem>
 	</itemizedlist>
-      </para>
-    </section>
-    <section>
-      <title>Example</title>
-      <para>
-	<programlisting>
-	  keys {
-	    key0.server0 hmac-md5 "Wg==";
-	    foobar.example.com. hmac-sha256 "RQ==";
-	  }
-	</programlisting>
       </para>
     </section>
     <section>
@@ -192,6 +181,96 @@
 	  </programlisting>
 	</para>
       </section>	
+    </section>
+    <section>
+      <title>Example</title>
+      <para>
+	<programlisting>
+	  keys {
+	    key0.server0 hmac-md5 "Wg==";
+	    foobar.example.com. hmac-sha256 "RQ==";
+	  }
+	</programlisting>
+      </para>
+    </section>
+  </section>
+  <section xml:id="interfaces">
+    <title>interfaces</title>
+    <para>
+      The <emphasis>interfaces</emphasis> statement contains IP interfaces where Knot DNS listens for incoming queries.
+    </para>
+    <section>
+      <title>Options</title>
+      <para>
+	Contains one or more:
+	<itemizedlist>
+	  <listitem><link xml:id="interface_id"><emphasis>interface_id</emphasis></link></listitem>
+	</itemizedlist>
+      </para>
+    </section>
+    <section>
+      <title>Statement Definition and Usage</title>
+      <section xml:id="interface_id">
+	<title>interface_id</title>
+	<para>
+	  The <emphasis>interface_id</emphasis> is a textual
+	  identifier of an IP interface, which consists of IP address
+	  and port.
+	</para>
+	<para>
+	  The definition of interface can be written in long or a
+	  short port and it has always contain and IP (IPv4 or IPv6)
+	  address.
+	</para>
+	<para>
+	  Long form:
+	  <programlisting>
+	    interface {
+	      <emphasis>interface_id</emphasis> {
+	        address <emphasis>ip_address</emphasis>;
+	        [ port <emphasis>port</emphasis>; ]
+	      }
+	      [ ... ]
+	    }
+	  </programlisting>
+	  Short form:
+	  <programlisting>
+	    interface {
+	      interface_id <emphasis>ip_address</emphasis>[@<emphasis>port</emphasis>];
+	    }
+	  </programlisting>
+	</para>
+      </section>
+    </section>
+    <section>
+      <title>Example</title>
+      <para>
+	Long form:
+	<programlisting>
+	  interfaces {
+	    my_ip {
+	      address 192.0.2.1;
+	      port 53;
+	    }
+	  }
+	</programlisting>
+      </para>
+      <para>
+	Short form:
+	<programlisting>
+	  interfaces {
+	    my_second_ip 198.51.100.1@53;
+	  }
+	</programlisting>
+      </para>
+      <para>
+	Short form without port (defaults to 53):
+	<programlisting>
+	  interfaces {
+	    my_third_ip 203.0.113.1;
+	  }
+	</programlisting>
+      </para>
     </section>
   </section>
 </chapter>
