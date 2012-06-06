@@ -7,3 +7,6 @@ knot.pdf: $(XML_SOURCES)
 
 knot.html: $(XML_SOURCES)
 	xmlto --skip-validation html knot.xml
+
+clean:
+	rm -f *.proc *.pdf *.html
