@@ -11,9 +11,9 @@
     <para>
       Knot DNS requires few libraries to be compiled:
       <itemizedlist>
-	<listitem><tt>OpenSSL</tt></listitem>
-	<listitem><tt>zlib</tt></listitem>
-	<listitem><tt>Userspace RCU</tt></listitem>
+	<listitem>OpenSSL</listitem>
+	<listitem>zlib</listitem>
+	<listitem>Userspace RCU</listitem>
       </itemizedlist>
     </para>
     <para>
@@ -39,7 +39,10 @@
 	library and liburcu-dev for development files.
       </para>
       <para>
-	Minimum supported version of Userspace RCU library is [TODO].
+	Minimum supported version of Userspace RCU library is 0.4.0,
+	but we recommend using latest available version.  It is
+	especially on non-Linux systems as we got some compatibility
+	patches accepted in later releases of Userspace RCU.
       </para>
     </section>
   </section>
@@ -55,20 +58,28 @@
       <para>
 	For all available options run:
 
-	<tt>./configure --help</tt>
+	<programlisting>
+	  ./configure --help
+	</programlisting>
       </para>
     </section>
     <section>
       <title>Compilation</title>
       <para>
-	After running <tt>./configure</tt> you can compile Knot DNS by
-	running <tt>make</tt> command, which will produce binaries and
+	After running ./configure you can compile Knot DNS by
+	running make command, which will produce binaries and
 	other related files.
+	<programlisting>
+	  make
+	</programlisting>
       </para>
       <para>
-	Knot DNS build process is safe to paralelize using <tt>make -j
-	N</tt>, where N is number of concurrent processes.  Using this
+	Knot DNS build process is safe to paralelize using "make -j
+	N", where N is number of concurrent processes.  Using this
 	option can increase speed of the compilation.
+	<programlisting>
+	  make -j N
+	</programlisting>
       </para>
     </section>
     <section>
@@ -77,10 +88,13 @@
 	When you have finished building the Knot DNS, it's time to
 	install the binaries and configuration files into the
 	operation system hierarchy.  You can do so by
-	executing <tt>make install</tt> command.  When installing as a
+	executing "make install" command.  When installing as a
 	non-root user you might have to gain elevated privileges by
-	switching to root user, e.g. <tt>sudo make install</tt>
-	or <tt>su -c 'make install'</tt>.
+	switching to root user, e.g. "sudo make install"
+	or "su -c 'make install'".
+	<programlisting>
+	  make install
+	</programlisting>
       </para>
     </section>
   </section>

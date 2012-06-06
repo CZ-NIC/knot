@@ -1,6 +1,197 @@
 <chapter>
   <title>Knot DNS Configuration Reference</title>
   <para>
-    [TODO]
+    This reference describe every configuration option in Knot DNS.
   </para>
+  <section xml:id="section">
+    <title>system</title>
+    <para>
+      The <emphasis>system</emphasis> statement contains general
+      options related to the operating system and other general
+      options which don't fit anywhere else.
+    </para>
+    <section>
+      <title>Options</title>
+      <para>
+	Contains zero or more:
+	<itemizedlist>
+	  <listitem><link xml:id="identity">identity</link> "<emphasis>identity</emphasis>";</listitem>
+	  <listitem><link xml:id="version">version</link> "<emphasis>version</emphasis>";</listitem>
+	  <listitem><link xml:id="nsid">nsid</link> "<emphasis>nsid</emphasis>";</listitem>
+	  <listitem><link xml:id="storage">storage</link> "<emphasis>directory</emphasis>";</listitem>
+	  <listitem><link xml:id="pidfile">pidfile</link> "<emphasis>pidfile</emphasis>";</listitem>
+	  <listitem><link xml:id="workers">workers</link> <emphasis>number</emphasis>;</listitem>
+	  <listitem><link xml:id="user">user</link> <emphasis>user</emphasis>[.<emphasis>group</emphasis>];</listitem>
+	</itemizedlist>
+      </para>
+    </section>
+    <section>
+      <title>Example:</title>
+      <para>
+	<programlisting>
+	  system {
+	    version "1.0.7";
+	    storage "/var/lib/knot";
+	  }
+	</programlisting>
+      </para>
+    </section>
+    <section>
+      <title>Statement Definition and Usage</title>
+      <section xml:id="identity">
+	<title>identity</title>
+	<para>
+	  Identity of the server (see RFC 4892). Not used yet.
+	</para>
+	<para>
+	  <programlisting>
+	    system {
+	      identity "Knot DNS";
+	    }
+	  </programlisting>
+	</para>
+      </section>
+      <section xml:id="version">
+	<title>version</title>
+	<para>
+	  Version of the server (see RFC 4892). Not used yet.
+	</para>
+	<para>
+	  <programlisting>
+	    system {
+	      version "1.0.5";
+	    }
+	  </programlisting>
+	</para>
+      </section>
+      <section xml:id="nsid">
+	<title>nsid</title>
+	<para>
+	  DNS Name Server Identifier (RFC 5001)
+	</para>
+	<para>
+	  Use a string format "text" or a hexstring f.e. 0x01ab00
+	</para>
+	<para>
+	  <programlisting>
+	    system {
+	      nsid 0x00cafe;
+	    }
+	  </programlisting>
+	</para>
+      </section>
+      <section xml:id="storage">
+	<title>storage</title>
+	<para>
+	  The working directory of the Knot DNS, it is used to store compiled zone files and it's also a default location of the pidfile.
+	</para>
+	<para>
+	  <programlisting>
+	    system {
+	      storage "/var/lib/knot";
+	    }
+	  </programlisting>
+	</para>
+      </section>
+      <section xml:id="pidfile">
+	<title>pidfile</title>
+	<para>
+	  Custom pidfile location.
+	</para>
+	<para>
+	  Default value: knot.pid in <link xml:id="storage">storage</link> directory)
+	</para>
+	<para>
+	  <programlisting>
+	    system {
+	      pidfile "/var/run/knot.pid";
+	  </programlisting>
+	</para>
+      </section>
+      <section xml:id="workers">
+	<title>workers</title>
+	<para>
+	   Number of workers (threads) per interface.  This option is used to force number of threads used per interface.
+	</para>
+	<para>
+	  Default value: unset (auto-estimates optimal value from the number of online CPUs)
+	</para>
+	<para>
+	  <programlisting>
+	    system {
+	      workers: 16
+	    }
+	  </programlisting>
+	</para>
+      </section>
+      <section xml:id="user">
+	<title>user</title>
+	<para>
+	  System user or user.group under which the Knot DNS is run after starting and binding to interfaces.
+	</para>
+	<para>
+	  Default value: root.root
+	</para>
+	<para>
+	  <programlisting>
+	    system {
+	      user knot.knot;
+	    }
+	  </programlisting>
+	</para>
+      </section>
+    </section>
+  </section>
+  <section xml:id="keys">
+    <title>keys</title>
+    <para>
+      The <emphasis>keys</emphasis> statement sets up the TSIG keys used to authenticate zone transfers.
+    </para>
+    <section>
+      <title>Options</title>
+      <para>
+	Contains one or more:
+	<itemizedlist>
+	  <listitem><emphasis><link xml:id="key_id">key_id</link></emphasis> <emphasis>algorithm</emphasis> "<emphasis>key-contents</emphasis>";</listitem>
+	</itemizedlist>
+      </para>
+    </section>
+    <section>
+      <title>Example</title>
+      <para>
+	<programlisting>
+	  keys {
+	    key0.server0 hmac-md5 "Wg==";
+	    foobar.example.com. hmac-sha256 "RQ==";
+	  }
+	</programlisting>
+      </para>
+    </section>
+    <section>
+      <title>Statement Definition and Usage</title>
+      <section xml:id="key_id">
+	<title><emphasis>key_id</emphasis></title>
+	<para>
+	  The <emphasis>key_id</emphasis> statement defines a secret shared key for use with TSIG.  It consists of
+	</para>
+	<para>
+	  You will need to use bind or ldns utils to generate TSIG keys.  Knot DNS doesn't have it's own generation utilities yet.
+	  <programlisting>
+	    $ dnssec-keygen -a HMAC-SHA256 -b 256 -n HOST foobar.example.com
+	    Kfoobar.example.com.+163+21239
+	    $ cat Kfoobar.example.com.+163+21239.key 
+	    foobar.example.com. IN KEY 512 3 163 rqv2WRyDgIUaHcJi03Zssor9jtG1kOpb3dPywxZfTeo=
+	  </programlisting>
+	</para>
+	<para>
+	  Key generated in previous paragraph would be written as:
+	  <programlisting>
+	    keys {
+	      foobar.example.com. hmac-sha256 "rqv2WRyDgIUaHcJi03Zssor9jtG1kOpb3dPywxZfTeo=";
+	    }
+	  </programlisting>
+	</para>
+      </section>	
+    </section>
+  </section>
 </chapter>
