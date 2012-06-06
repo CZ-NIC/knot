@@ -6,23 +6,24 @@
   <section xml:id="system">
     <title>system</title>
     <para>
-      The <emphasis>system</emphasis> statement contains general
+      The <filename>system</filename> statement contains general
       options related to the operating system and other general
       options which don't fit anywhere else.
     </para>
     <section>
-      <title>Options</title>
+      <title>Syntax</title>
       <para>
-	Contains zero or more:
-	<itemizedlist>
-	  <listitem><link xml:id="identity">identity</link> "<emphasis>identity</emphasis>";</listitem>
-	  <listitem><link xml:id="version">version</link> "<emphasis>version</emphasis>";</listitem>
-	  <listitem><link xml:id="nsid">nsid</link> "<emphasis>nsid</emphasis>";</listitem>
-	  <listitem><link xml:id="storage">storage</link> "<emphasis>directory</emphasis>";</listitem>
-	  <listitem><link xml:id="pidfile">pidfile</link> "<emphasis>pidfile</emphasis>";</listitem>
-	  <listitem><link xml:id="workers">workers</link> <emphasis>number</emphasis>;</listitem>
-	  <listitem><link xml:id="user">user</link> <emphasis>user</emphasis>[.<emphasis>group</emphasis>];</listitem>
-	</itemizedlist>
+	<programlisting>
+system {
+  [ identity "<emphasis>string</emphasis>"; ]
+  [ version "<emphasis>string</emphasis>"; ]
+  [ nsid ( "<emphasis>string</emphasis>" | <filename>hex_string</filename> ); ]
+  [ storage "<emphasis>string</emphasis>"; ]
+  [ pidfile "<emphasis>string</emphasis>"; ]
+  [ workers <emphasis>integer</emphasis>; ]
+  [ user <emphasis>string</emphasis>[.<emphasis>string</emphasis>]; ]
+}
+	</programlisting>
       </para>
     </section>
     <section>
@@ -34,9 +35,9 @@
 	</para>
 	<para>
 	  <programlisting>
-	    system {
-	      identity "Knot DNS";
-	    }
+system {
+  identity "Knot DNS";
+}
 	  </programlisting>
 	</para>
       </section>
@@ -47,9 +48,9 @@
 	</para>
 	<para>
 	  <programlisting>
-	    system {
-	      version "1.0.5";
-	    }
+system {
+  version "1.0.5";
+}
 	  </programlisting>
 	</para>
       </section>
@@ -63,9 +64,9 @@
 	</para>
 	<para>
 	  <programlisting>
-	    system {
-	      nsid 0x00cafe;
-	    }
+system {
+  nsid 0x00cafe;
+}
 	  </programlisting>
 	</para>
       </section>
@@ -76,9 +77,9 @@
 	</para>
 	<para>
 	  <programlisting>
-	    system {
-	      storage "/var/lib/knot";
-	    }
+system {
+  storage "/var/lib/knot";
+}
 	  </programlisting>
 	</para>
       </section>
@@ -92,8 +93,9 @@
 	</para>
 	<para>
 	  <programlisting>
-	    system {
-	      pidfile "/var/run/knot.pid";
+system {
+  pidfile "/var/run/knot.pid";
+}
 	  </programlisting>
 	</para>
       </section>
@@ -107,9 +109,9 @@
 	</para>
 	<para>
 	  <programlisting>
-	    system {
-	      workers: 16
-	    }
+system {
+  workers: 16;
+}
 	  </programlisting>
 	</para>
       </section>
@@ -123,9 +125,9 @@
 	</para>
 	<para>
 	  <programlisting>
-	    system {
-	      user knot.knot;
-	    }
+system {
+  user knot.knot;
+}
 	  </programlisting>
 	</para>
       </section>
@@ -134,10 +136,10 @@
       <title>Example:</title>
       <para>
 	<programlisting>
-	  system {
-	    version "1.0.7";
-	    storage "/var/lib/knot";
-	  }
+system {
+  version "1.0.7";
+  storage "/var/lib/knot";
+}
 	</programlisting>
       </para>
     </section>
@@ -145,39 +147,54 @@
   <section xml:id="keys">
     <title>keys</title>
     <para>
-      The <emphasis>keys</emphasis> statement sets up the TSIG keys used to authenticate zone transfers.
+      The <filename>keys</filename> statement sets up the TSIG keys used to authenticate zone transfers.
     </para>
     <section>
-      <title>Options</title>
+      <title>Syntax</title>
       <para>
-	Contains one or more:
-	<itemizedlist>
-	  <listitem><emphasis><link xml:id="key_id">key_id</link></emphasis> <emphasis>algorithm</emphasis> "<emphasis>key-contents</emphasis>";</listitem>
-	</itemizedlist>
+	<programlisting>
+keys {
+  <emphasis>key_id</emphasis> <emphasis>algorithm</emphasis> "<emphasis>string</emphasis>"; ]
+  [ <emphasis>key_id</emphasis> <emphasis>algorithm</emphasis> "<emphasis>string</emphasis>"; ... ]
+}
+	</programlisting>
       </para>
     </section>
     <section>
       <title>Statement Definition and Usage</title>
       <section xml:id="key_id">
-	<title><emphasis>key_id</emphasis></title>
+	<title>key_id</title>
 	<para>
-	  The <emphasis>key_id</emphasis> statement defines a secret shared key for use with TSIG.  It consists of
+	  The <filename>key_id</filename> statement defines a secret
+	  shared key for use with TSIG.  It consists of its name,
+	  algorithm and key contents.
+	</para>
+	<para>
+	  Supported algoritms:
+	  <simplelist>
+	    <member>hmac-md5</member>
+	    <member>hmac-sha1</member>
+	    <member>hmac-sha224</member>
+	    <member>hmac-sha256</member>
+	    <member>hmac-sha384</member>
+	    <member>hmac-sha512</member>
+	  </simplelist>
 	</para>
 	<para>
 	  You will need to use bind or ldns utils to generate TSIG keys.  Knot DNS doesn't have it's own generation utilities yet.
 	  <programlisting>
-	    $ dnssec-keygen -a HMAC-SHA256 -b 256 -n HOST foobar.example.com
-	    Kfoobar.example.com.+163+21239
-	    $ cat Kfoobar.example.com.+163+21239.key 
-	    foobar.example.com. IN KEY 512 3 163 rqv2WRyDgIUaHcJi03Zssor9jtG1kOpb3dPywxZfTeo=
+$ dnssec-keygen -a HMAC-SHA256 -b 256 -n HOST foobar.example.com
+Kfoobar.example.com.+163+21239
+$ cat Kfoobar.example.com.+163+21239.key 
+foobar.example.com. IN KEY 512 3 163 rqv2WRyDgIUaHcJi03Zssor9jtG1kOpb3dPywxZfTeo=
 	  </programlisting>
 	</para>
 	<para>
 	  Key generated in previous paragraph would be written as:
 	  <programlisting>
-	    keys {
-	      foobar.example.com. hmac-sha256 "rqv2WRyDgIUaHcJi03Zssor9jtG1kOpb3dPywxZfTeo=";
-	    }
+keys {
+  foobar.example.com. hmac-sha256 "rqv2WRyDgIUaHcJi03Zssor9jtG1kOpb3dPywxZfTeo=";
+}
 	  </programlisting>
 	</para>
       </section>	
@@ -186,10 +203,10 @@
       <title>Example</title>
       <para>
 	<programlisting>
-	  keys {
-	    key0.server0 hmac-md5 "Wg==";
-	    foobar.example.com. hmac-sha256 "RQ==";
-	  }
+keys {
+  key0.server0 hmac-md5 "Wg==";
+  foobar.example.com. hmac-sha256 "RQ==";
+}
 	</programlisting>
       </para>
     </section>
@@ -197,15 +214,19 @@
   <section xml:id="interfaces">
     <title>interfaces</title>
     <para>
-      The <emphasis>interfaces</emphasis> statement contains IP interfaces where Knot DNS listens for incoming queries.
+      The <filename>interfaces</filename> statement contains IP interfaces where Knot DNS listens for incoming queries.
     </para>
     <section>
-      <title>Options</title>
+      <title>Syntax</title>
       <para>
-	Contains one or more:
-	<itemizedlist>
-	  <listitem><link xml:id="interface_id"><emphasis>interface_id</emphasis></link></listitem>
-	</itemizedlist>
+	<programlisting>
+interface {
+  <emphasis>interface_id</emphasis>
+    ( <emphasis>ip_address</emphasis>[@<emphasis>port_number</emphasis>] |
+      { address <emphasis>ip_address</emphasis>; [ port <emphasis>port_number</emphasis>; ] } )
+  [ <emphasis>interface_id</emphasis> ...; ...; ]
+}
+	</programlisting>
       </para>
     </section>
     <section>
@@ -213,62 +234,44 @@
       <section xml:id="interface_id">
 	<title>interface_id</title>
 	<para>
-	  The <emphasis>interface_id</emphasis> is a textual
+	  The <filename>interface_id</filename> is a textual
 	  identifier of an IP interface, which consists of IP address
 	  and port.
 	</para>
 	<para>
 	  The definition of interface can be written in long or a
-	  short port and it has always contain and IP (IPv4 or IPv6)
+	  short form and it has always contain and IP (IPv4 or IPv6)
 	  address.
-	</para>
-	<para>
-	  Long form:
-	  <programlisting>
-	    interface {
-	      <emphasis>interface_id</emphasis> {
-	        address <emphasis>ip_address</emphasis>;
-	        [ port <emphasis>port</emphasis>; ]
-	      }
-	      [ ... ]
-	    }
-	  </programlisting>
-	  Short form:
-	  <programlisting>
-	    interface {
-	      interface_id <emphasis>ip_address</emphasis>[@<emphasis>port</emphasis>];
-	    }
-	  </programlisting>
 	</para>
       </section>
     </section>
     <section>
-      <title>Example</title>
+      <title>Examples</title>
       <para>
 	Long form:
 	<programlisting>
-	  interfaces {
-	    my_ip {
-	      address 192.0.2.1;
-	      port 53;
-	    }
-	  }
+interfaces {
+  my_ip {
+    address 192.0.2.1;
+    port 53;
+  }
+}
 	</programlisting>
       </para>
       <para>
 	Short form:
 	<programlisting>
-	  interfaces {
-	    my_second_ip 198.51.100.1@53;
-	  }
+interfaces {
+  my_second_ip 198.51.100.1@53;
+}
 	</programlisting>
       </para>
       <para>
 	Short form without port (defaults to 53):
 	<programlisting>
-	  interfaces {
-	    my_third_ip 203.0.113.1;
-	  }
+interfaces {
+  my_third_ip 203.0.113.1;
+}
 	</programlisting>
       </para>
     </section>

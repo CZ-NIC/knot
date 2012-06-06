@@ -58,13 +58,13 @@
       <para>
 	For all available options run:
 	<programlisting>
-	  ./configure --help
+./configure --help
 	</programlisting>
       </para>
       <para>
 	In most simple case you can just run configure without any options.
 	<programlisting>
-	  ./configure
+./configure
 	</programlisting>
       </para>
     </section>
@@ -75,7 +75,7 @@
 	Knot DNS by running make command, which will produce binaries
 	and other related files.
 	<programlisting>
-	  make
+make
 	</programlisting>
       </para>
       <para>
@@ -83,8 +83,11 @@
 	using <filename>make -j N</filename>, where N is number of
 	concurrent processes.  Using this option can increase speed of
 	the compilation.
+      </para>
+      <para>
+	For example to use maximum 8 concurrent processes you would use:
 	<programlisting>
-	  make -j N
+make -j 8
 	</programlisting>
       </para>
     </section>
@@ -99,7 +102,7 @@
 	switching to root user, e.g. <filename>sudo make install</filename>
 	or <filename>su -c 'make install'</filename>.
 	<programlisting>
-	  make install
+make install
 	</programlisting>
       </para>
     </section>
@@ -118,8 +121,8 @@
 	addition to the official packages we also provide custom
 	repository, which can be used by adding:
 	<programlisting>
-	  deb     http://deb.knot-dns.cz/debian/ &lt;codename&gt; main
-	  deb-src http://deb.knot-dns.cz/debian/ &lt;codename&gt; main
+deb     http://deb.knot-dns.cz/debian/ &lt;codename&gt; main
+deb-src http://deb.knot-dns.cz/debian/ &lt;codename&gt; main
 	</programlisting>
 	to your /etc/apt/sources.list or into separate file in
 	/etc/apt/sources.list.d/.
@@ -129,12 +132,12 @@
 	DNS packages can be added by executing following command as
 	the root user.
 	<programlisting>
-	  cat &gt;/etc/apt/sources.list.d/knot.list &lt;&lt;EOF
-	  deb     http://deb.knot-dns.cz/debian/ &lt;codename&gt; main
-	  deb-src http://deb.knot-dns.cz/debian/ &lt;codename&gt; main
-	  EOF
-	  apt-get update
-	  apt-get install knot
+cat &gt;/etc/apt/sources.list.d/knot.list &lt;&lt;EOF
+deb     http://deb.knot-dns.cz/debian/ &lt;codename&gt; main
+deb-src http://deb.knot-dns.cz/debian/ &lt;codename&gt; main
+EOF
+apt-get update
+apt-get install knot
 	</programlisting>
       </para>
     </section>
@@ -162,9 +165,9 @@
 	  Package Archive, you first need to tell Ubuntu where to find
 	  the PPA.
 	  <programlisting>
-	    sudo add-apt-repository ppa:cz.nic-labs/knot-dns
-	    sudo apt-get update
-	    sudo apt-get install knot
+sudo add-apt-repository ppa:cz.nic-labs/knot-dns
+sudo apt-get update
+sudo apt-get install knot
 	  </programlisting>
 	  Running this sequence of command will ensure that you will
 	  install the Knot DNS on your system and keep it up-to-date
