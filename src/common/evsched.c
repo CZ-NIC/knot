@@ -77,7 +77,7 @@ evsched_t *evsched_new()
 #ifndef OPENBSD_SLAB_BROKEN
 	slab_cache_init(&s->cache.alloc, sizeof(event_t));
 #endif
-	heap_init(&s->heap, sizeof(void *), compare_event_heap_nodes, 0, NULL);
+	heap_init(&s->heap, sizeof(event_t *), compare_event_heap_nodes, 0, NULL);
 	return s;
 }
 
@@ -97,7 +97,7 @@ void evsched_delete(evsched_t **s)
 
 	while (! EMPTY_HEAP(&(*s)->heap))	/* FIXME: Would be faster to simply walk through the array */
 	{
-		evsched_event_free((*s), (HHEAD(&(*s)->heap)));
+		evsched_event_free((*s), *((event_t**)(HHEAD(&(*s)->heap))));
 		heap_delmin(&(*s)->heap);
 	}
 	
@@ -174,12 +174,12 @@ event_t* evsched_next(evsched_t *s)
 			gettimeofday(&dt, 0);
 
 			/* Get next event. */
-			event_t *next_ev = HHEAD(&s->heap);
+			event_t *next_ev = *((event_t**)HHEAD(&s->heap));
 
 			/* Immediately return. */
 			if (timercmp(&dt, &next_ev->tv, >=)) {
 				s->current = next_ev;
-				rem_node(&next_ev->n);
+				heap_delmin(&s->heap);
 				pthread_mutex_unlock(&s->mx);
 				pthread_mutex_lock(&s->rl);
 				return next_ev;
@@ -232,7 +232,7 @@ int evsched_schedule(evsched_t *s, event_t *ev, uint32_t dt)
 	/* Lock calendar. */
 	pthread_mutex_lock(&s->mx);
 
-	heap_insert(&s->heap, ev);
+	heap_insert(&s->heap, &ev);
 
 	/* Unlock calendar. */
 	pthread_cond_signal(&s->notify);
@@ -299,7 +299,7 @@ int evsched_cancel(evsched_t *s, event_t *ev)
 	/* Lock calendar. */
 	pthread_mutex_lock(&s->mx);
 
-	if ((found = heap_find(&s->heap, ev))) {
+	if ((found = heap_find(&s->heap, &ev))) {
 		heap_delete(&s->heap, found);
 	}
 

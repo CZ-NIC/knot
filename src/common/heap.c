@@ -63,6 +63,7 @@ int heap_init(struct heap *h, int elm_size, int (*cmp)(void *, void *), int init
 	h->cmp = cmp;
 	h->swap = swap ? swap : _def_swap;
 	h->data = malloc((isize + 1) * elm_size);
+	h->elm_size = elm_size;
 
 	return h->data ? 1 : 0;
 };
@@ -119,7 +120,6 @@ int heap_insert(struct heap *h, void *e)
 		_heap_bubble_up(h,h->num);
 	}
 	return h->data ? 1 :0 ;
-
 }
 
 int heap_find(struct heap *h, void *elm)	/* FIXME - very slow */
