@@ -75,9 +75,10 @@ static inline void _heap_bubble_down(struct heap *h, int e)
 	{
 		e1 = 2*e;
 		if(e1 > h->num) break;
-		if(((h->cmp(HELEMENT(h, e),HELEMENT(h,e1)) < 0) && (e1 == h->num)) || (h->cmp(HELEMENT(h, e),HELEMENT(h,e1+1)) < 0)) break;
+		if((h->cmp(HELEMENT(h, e),HELEMENT(h,e1)) < 0) && (e1 == h->num || (h->cmp(HELEMENT(h, e),HELEMENT(h,e1+1)) < 0))) break;
 		if((e1 != h->num) && (h->cmp(HELEMENT(h, e1+1), HELEMENT(h,e1)) < 0)) e1++;
 		h->swap(h,HELEMENT(h,e),HELEMENT(h,e1));
+		e = e1;
 	}
 }
 
@@ -87,7 +88,7 @@ static inline void _heap_bubble_up(struct heap *h, int e)
 	while (e > 1)
 	{
 		e1 = e/2;
-		if(h->cmp(HELEMENT(h, e),HELEMENT(h,e1)) < 0) break;
+		if(h->cmp(HELEMENT(h, e1),HELEMENT(h,e)) < 0) break;
 		h->swap(h,HELEMENT(h,e),HELEMENT(h,e1));
 		e = e1;
 	}
@@ -110,7 +111,7 @@ int heap_insert(struct heap *h, void *e)
 	if(h->num == h->max_size)
 	{
 		h->max_size = h->max_size * HEAP_INCREASE_STEP;
-		h->data = realloc(h->data, sizeof(struct heap) + (h->max_size + 1) * h->elm_size);
+		h->data = realloc(h->data, (h->max_size + 1) * h->elm_size);
 	}
 
 	if(h)
@@ -119,6 +120,7 @@ int heap_insert(struct heap *h, void *e)
 		memcpy(HELEMENT(h,h->num),e,h->elm_size);
 		_heap_bubble_up(h,h->num);
 	}
+
 	return h->data ? 1 :0 ;
 }
 
@@ -128,7 +130,7 @@ int heap_find(struct heap *h, void *elm)	/* FIXME - very slow */
 
 	while(i > 0)
 	{
-		if(! h->cmp(HELEMENT(h, i),elm) ) break;
+		if(h->cmp(HELEMENT(h, i),elm) == 0) break;
 		--i;
 	}
 	return i;
@@ -144,7 +146,7 @@ void heap_delete(struct heap *h, int e)
 	if ((h->num > INITIAL_HEAP_SIZE) && (h->num < h->max_size / HEAP_DECREASE_THRESHOLD))
 	{
 		h->max_size = h->max_size / HEAP_INCREASE_STEP;
-		h->data = realloc(h->data, h->max_size);
+		h->data = realloc(h->data, (h->max_size + 1) * h->elm_size);
 	}
 }
 

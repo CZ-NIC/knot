@@ -37,11 +37,11 @@ struct heap {
    void *data;
 };		/* Array follows */
 
-#define INITIAL_HEAP_SIZE 1000
-#define HEAP_INCREASE_STEP 10
-#define HEAP_DECREASE_THRESHOLD 50			/* h->num be divided by this number */
+#define INITIAL_HEAP_SIZE 512 /* initial heap size */
+#define HEAP_INCREASE_STEP 2  /* multiplier for each inflation, keep conservative */
+#define HEAP_DECREASE_THRESHOLD 2 /* threshold for deflation, keep conservative */
 #define HTEMPELEMENT(h) ((h)->data)			/* Pointer to tmp element (for swap) */
-#define HELEMENT(h,num) ((char*)(h)->data + num * (h)->elm_size)
+#define HELEMENT(h,num) ((char*)(h)->data + (num) * (h)->elm_size)
 #define HHEAD(h) HELEMENT((h),1)
 #define EMPTY_HEAP(h) ((h)->num == 0)			/* h->num == 0 */
 
