@@ -46,8 +46,8 @@
 
 void _def_swap(struct heap *h, void *e1, void *e2)
 {
+	if (e1 == e2) return;
 	void *tmp = HTEMPELEMENT(h);
-
 	memcpy(tmp, e1, h->elm_size);
 	memcpy(e1, e2, h->elm_size);
 	memcpy(e2, tmp, h->elm_size);
@@ -75,8 +75,8 @@ static inline void _heap_bubble_down(struct heap *h, int e)
 	{
 		e1 = 2*e;
 		if(e1 > h->num) break;
-		if((h->cmp(HELEMENT(h, e),HELEMENT(h,e1)) < 0) && (e1 == h->num) || (h->cmp(HELEMENT(h, e),HELEMENT(h,e1+1)) < 0)) break;
-		if(e1 != h->num && (h->cmp(HELEMENT(h, e1+1),HELEMENT(h,e1)) < 0)) e1++;
+		if(((h->cmp(HELEMENT(h, e),HELEMENT(h,e1)) < 0) && (e1 == h->num)) || (h->cmp(HELEMENT(h, e),HELEMENT(h,e1+1)) < 0)) break;
+		if((e1 != h->num) && (h->cmp(HELEMENT(h, e1+1), HELEMENT(h,e1)) < 0)) e1++;
 		h->swap(h,HELEMENT(h,e),HELEMENT(h,e1));
 	}
 }
