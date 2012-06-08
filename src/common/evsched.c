@@ -26,10 +26,10 @@
 #define OPENBSD_SLAB_BROKEN
 #endif
 
-static int compare_event_heap_nodes(event_t *e1, event_t *e2)
+/* According to libucw heap, x<y should return non-zero else zero value. */
+static int compare_event_heap_nodes(event_t **e1, event_t **e2)
 {
-	if (timercmp(&e1->tv, &e2->tv, <)) return -1;
-	if (timercmp(&e1->tv, &e2->tv, >)) return 1;
+	if (timercmp(&(*e1)->tv, &(*e2)->tv, <)) return 1;
 	return 0;
 }
 
@@ -143,6 +143,11 @@ void evsched_event_free(evsched_t *s, event_t *ev)
 {
 	if (!s || !ev) {
 		return;
+	}
+	
+	int found = 0;
+	if ((found = heap_find(&s->heap, &ev))) {
+		heap_delete(&s->heap, found);
 	}
 
 #ifndef OPENBSD_SLAB_BROKEN
