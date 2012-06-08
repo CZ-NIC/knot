@@ -41,9 +41,9 @@ struct heap {
 #define HEAP_INCREASE_STEP 10
 #define HEAP_DECREASE_THRESHOLD 50			/* h->num be divided by this number */
 #define HTEMPELEMENT(h) ((h)->data)			/* Pointer to tmp element (for swap) */
-#define HHEAD(h) (void *)((h)->data + (h)->elm_size)
-#define HELEMENT(h,num) ((h)->data + num * (h)->elm_size)
-#define EMPTY_HEAP(h) ((h)->num)			/* h->num > 0 */
+#define HELEMENT(h,num) ((char*)(h)->data + num * (h)->elm_size)
+#define HHEAD(h) HELEMENT((h),1)
+#define EMPTY_HEAP(h) ((h)->num == 0)			/* h->num == 0 */
 
 int heap_init(struct heap *, int, int (*cmp)(), int, void (*swap)());
 void heap_delmin(struct heap *);
