@@ -149,7 +149,7 @@ Statement Definition and Usage
 keys
 
 * keys Syntax::                 
-* Statement Definition and Usage: Statement Definition and Usage <1>.  
+* keys Statement Definition and Usage::  
 * Example::                     
 
 Statement Definition and Usage
@@ -158,9 +158,9 @@ Statement Definition and Usage
 
 interfaces
 
-* Syntax: Syntax <2>.           
-* Statement Definition and Usage: Statement Definition and Usage <2>.  
-* Examples::                    
+* interfaces Syntax::           
+* interfaces Statement Definition and Usage::  
+* interfaces Examples::         
 
 Statement Definition and Usage
 
@@ -575,7 +575,7 @@ its log messages with priority @code{debug}, @code{warning} and
 @code{notice} into the syslog.
 
 @item
-The @file{@ref{zones}} statement is the one probably most important,
+The @code{@ref{zones}} statement is the one probably most important,
 because it defines the zones Knot DNS will serve.  In its most simple
 form you define zone by it's name and defined the filename where Knot
 DNS can find the zone contents.
@@ -791,11 +791,11 @@ The @code{keys} statement sets up the TSIG keys used to authenticate zone transf
 
 @menu
 * keys Syntax::                 
-* Statement Definition and Usage: Statement Definition and Usage <1>.  
+* keys Statement Definition and Usage::  
 * Example::                     
 @end menu
 
-@node keys Syntax, Statement Definition and Usage <1>, keys, keys
+@node keys Syntax, keys Statement Definition and Usage, keys, keys
 @appendixsubsec keys Syntax
 
 
@@ -808,19 +808,18 @@ keys @{
 	
 @end example
 
-@node Statement Definition and Usage <1>, Example, keys Syntax, keys
+@node keys Statement Definition and Usage, Example, keys Syntax, keys
 @appendixsubsec Statement Definition and Usage
 
 @menu
 * key_id::                      
 @end menu
 
-@node key_id,  , Statement Definition and Usage <1>, Statement Definition and Usage <1>
-@appendixsubsubsec key_id
+@node key_id,  , keys Statement Definition and Usage, keys Statement Definition and Usage
+@appendixsubsubsec @code{key_id} Statement
 
-The @file{key_id} statement defines a secret
-shared key for use with TSIG.  It consists of its name,
-algorithm and key contents.
+The @kbd{key_id} statement defines a secret shared key for use with
+TSIG.  It consists of its name, algorithm and key contents.
 
 Supported algoritms:
 
@@ -860,7 +859,7 @@ keys @{
 	  
 @end example
 
-@node Example,  , Statement Definition and Usage <1>, keys
+@node Example,  , keys Statement Definition and Usage, keys
 @appendixsubsec Example
 
 
@@ -876,49 +875,45 @@ keys @{
 @node interfaces, zones, keys, Knot DNS Configuration Reference
 @appendixsec interfaces
 
-The @file{interfaces} statement contains IP interfaces where Knot DNS listens for incoming queries.
+The @code{interfaces} statement contains IP interfaces where Knot DNS listens for incoming queries.
 
 @menu
-* Syntax: Syntax <2>.           
-* Statement Definition and Usage: Statement Definition and Usage <2>.  
-* Examples::                    
+* interfaces Syntax::           
+* interfaces Statement Definition and Usage::  
+* interfaces Examples::         
 @end menu
 
-@node Syntax <2>, Statement Definition and Usage <2>, interfaces, interfaces
+@node interfaces Syntax, interfaces Statement Definition and Usage, interfaces, interfaces
 @appendixsubsec Syntax
 
 
 @example
-
 interface @{
   interface_id
     ( ip_address[@@port_number] |
       @{ address ip_address; [ port port_number; ] @} )
   [ interface_id ...; ...; ]
 @}
-	
 @end example
 
-@node Statement Definition and Usage <2>, Examples, Syntax <2>, interfaces
+@node interfaces Statement Definition and Usage, interfaces Examples, interfaces Syntax, interfaces
 @appendixsubsec Statement Definition and Usage
 
 @menu
 * interface_id::                
 @end menu
 
-@node interface_id,  , Statement Definition and Usage <2>, Statement Definition and Usage <2>
-@appendixsubsubsec interface_id
+@node interface_id,  , interfaces Statement Definition and Usage, interfaces Statement Definition and Usage
+@appendixsubsubsec @kbd{interface_id}
 
-The @file{interface_id} is a textual
-identifier of an IP interface, which consists of IP address
-and port.
+The @kbd{interface_id} is a textual identifier of an IP interface,
+which consists of IP address and port.
 
-The definition of interface can be written in long or a
-short form and it has always contain and IP (IPv4 or IPv6)
-address.
+The definition of interface can be written in long or a short form and
+it has always contain and IP (IPv4 or IPv6) address.
 
-@node Examples,  , Statement Definition and Usage <2>, interfaces
-@appendixsubsec Examples
+@node interfaces Examples,  , interfaces Statement Definition and Usage, interfaces
+@appendixsubsec interfaces Examples
 
 Long form:
 
