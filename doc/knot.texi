@@ -1,0 +1,871 @@
+\input texinfo
+@setfilename untitled.info
+@documentencoding utf-8
+@settitle [MISSING TEXT]
+@direntry
+* [MISSING TEXT]: .             [MISSING TEXT]
+@end direntry
+
+@node id229418, Introduction, , 
+@top [MISSING TEXT]
+
+@noindent
+Knot DNS Reference Manual
+Ondřej Sury
+ondrej.sury@@nic.cz
+CZ.NIC, z.s.p.o.
+2012 CZ.NIC, z.s.p.o.
+
+@menu
+* Introduction::
+* Knot DNS Resource Requirements::
+* Knot DNS Installation::
+* Knot DNS Configuration::
+* Migration for other DNS servers::
+* Knot DNS Configuration Reference::
+* Security Considerations::
+* Troubleshooting::
+
+@detailmenu
+— The Detailed Node Listing —
+
+Introduction
+
+* What is Knot DNS::
+* Scope of Document::
+* Conventions Used in This Document::
+
+Knot DNS Resource Requirements
+
+* Hardware Requirements::
+* CPU Requirements::
+* Memory Requirements::
+* Supported Operating System::
+
+Knot DNS Installation
+
+* Required build environment::
+* Required libraries::
+* Installation from the sources::
+* Installation from packages::
+
+Knot DNS Configuration
+
+* Sample Configurations::
+
+Migration for other DNS servers
+
+* Knot DNS for BIND users::
+* Knot DNS for NSD users::
+* Knot DNS for PowerDNS users::
+* Knot DNS for djbdns users::
+
+Knot DNS Configuration Reference
+
+* system::
+* keys::
+* interfaces::
+
+@end detailmenu
+@end menu
+
+@node Introduction, Knot DNS Resource Requirements, id229418, id229418
+@chapter Introduction
+
+The reader of this document is assumed to know the principles of
+Domain Name System.
+
+@menu
+* What is Knot DNS::
+* Scope of Document::
+* Conventions Used in This Document::
+@end menu
+
+@node What is Knot DNS, Scope of Document, , Introduction
+@section What is Knot DNS
+
+Knot DNS implements a domain name server.  It implements only
+authoritative domain name service and can be used to serve DNS
+zones in the Internet.
+
+Knot DNS supports following features:
+
+@multitable @columnfractions 1
+@item
+TCP/UDP
+@item
+AXFR
+@item
+IXFR
+@item
+TSIG
+@item
+...
+@end multitable
+
+@node Scope of Document, Conventions Used in This Document, What is Knot DNS, Introduction
+@section Scope of Document
+
+This document covers the basic information on installing,
+configuring and troubleshooting the Knot DNS server.  We have
+also dedicated a chapter for users of other DNS server
+implementations where describe how to migrate their
+configuration to Knot DNS.
+
+@node Conventions Used in This Document, , Scope of Document, Introduction
+@section Conventions Used in This Document
+
+[TODO]:
+
+@node Knot DNS Resource Requirements, Knot DNS Installation, Introduction, id229418
+@chapter Knot DNS Resource Requirements
+
+@menu
+* Hardware Requirements::
+* CPU Requirements::
+* Memory Requirements::
+* Supported Operating System::
+@end menu
+
+@node Hardware Requirements, CPU Requirements, , Knot DNS Resource Requirements
+@section Hardware Requirements
+
+Knot DNS requirements are not very demanding for typical
+installations, and a comodity server or virtualized solution
+will be sufficient in most cases.
+
+However please not that there are some scenarios that will
+require the administrator attention and a testing of exact
+requirements before deploying Knot DNS in a production.  These
+cases include deployment for a large number of zones (DNS
+hosting), a large number of records in one or more zones (TLD)
+or large number of requests.
+
+@node CPU Requirements, Memory Requirements, Hardware Requirements, Knot DNS Resource Requirements
+@section CPU Requirements
+
+Knot DNS is not very CPU requiring, but it can consume some CPU
+
+@node Memory Requirements, Supported Operating System, CPU Requirements, Knot DNS Resource Requirements
+@section Memory Requirements
+
+Knot DNS implementation focuses on the performance and thus can
+be very demanding for the memory.  The rough estimate for memory
+requirements is 5-7 times of the size of the zone in text
+format.  Again this is only a estimate and you are advised to do
+your own measurements before deploying Knot DNS into the
+production.
+
+@node Supported Operating System, , Memory Requirements, Knot DNS Resource Requirements
+@section Supported Operating System
+
+Knot DNS itself is written in a portable way, but it depends on
+userspace-rcu library, which is the main constraint when it
+comes to the operating system support.  As far as we know the
+Knot DNS and userspace-rcu library can be compiled and run on
+Linux, FreeBSD, OpenBSD, NetBSD and Mac OS X.
+
+@node Knot DNS Installation, Knot DNS Configuration, Knot DNS Resource Requirements, id229418
+@chapter Knot DNS Installation
+
+@menu
+* Required build environment::
+* Required libraries::
+* Installation from the sources::
+* Installation from packages::
+@end menu
+
+@node Required build environment, Required libraries, , Knot DNS Installation
+@section Required build environment
+
+[TODO] Describe lowest needed GCC/Clang, etc.
+
+@node Required libraries, Installation from the sources, Required build environment, Knot DNS Installation
+@section Required libraries
+
+Knot DNS requires few libraries to be compiled:
+
+@itemize 
+
+@item
+OpenSSL
+
+@item
+zlib
+
+@item
+Userspace RCU
+@end itemize
+
+You can probably find OpenSSL and zlib libraries already included
+in your system or distribution.  If not, zlib resides at
+[Cross reference to non-existant ID “”], and OpenSSL can be found at
+[Cross reference to non-existant ID “”].
+
+@menu
+* Userspace RCU::
+@end menu
+
+@node Userspace RCU, , , Required libraries
+@subsection Userspace RCU
+
+liburcu is a LGPLv2.1 userspace RCU (read-copy-update)
+library. This data synchronization library provides read-side
+access which scales linearly with the number of cores. It does
+so by allowing multiples copies of a given data structure to
+live at the same time, and by monitoring the data structure
+accesses to detect grace periods after which memory reclamation
+is possible.  ([Cross reference to non-existant ID “”])
+
+Binary packages for Debian can be found under liburcu1 for the
+library and liburcu-dev for development files.
+
+Minimum supported version of Userspace RCU library is 0.4.0,
+but we recommend using latest available version.  It is
+especially on non-Linux systems as we got some compatibility
+patches accepted in later releases of Userspace RCU.
+
+@node Installation from the sources, Installation from packages, Required libraries, Knot DNS Installation
+@section Installation from the sources
+
+After unpacking the sources, the compilation and installation is
+a quite straightforward process using autotools.
+
+@menu
+* Configuring and generating Makefiles::
+* Compilation::
+* Installation::
+@end menu
+
+@node Configuring and generating Makefiles, Compilation, , Installation from the sources
+@subsection Configuring and generating Makefiles
+
+For all available options run:
+
+@example
+
+./configure --help
+	
+@end example
+
+In most simple case you can just run configure without any options.
+
+@example
+
+./configure
+	
+@end example
+
+@node Compilation, Installation, Configuring and generating Makefiles, Installation from the sources
+@subsection Compilation
+
+After running @file{./configure} you can compile
+Knot DNS by running make command, which will produce binaries
+and other related files.
+
+@example
+
+make
+	
+@end example
+
+Knot DNS build process is safe to paralelize
+using @file{make -j N}, where N is number of
+concurrent processes.  Using this option can increase speed of
+the compilation.
+
+For example to use maximum 8 concurrent processes you would use:
+
+@example
+
+make -j 8
+	
+@end example
+
+@node Installation, , Compilation, Installation from the sources
+@subsection Installation
+
+When you have finished building the Knot DNS, it's time to
+install the binaries and configuration files into the
+operation system hierarchy.  You can do so by
+executing @file{make install} command.  When installing as a
+non-root user you might have to gain elevated privileges by
+switching to root user, e.g. @file{sudo make install}
+or @file{su -c 'make install'}.
+
+@example
+
+make install
+	
+@end example
+
+@node Installation from packages, , Installation from the sources, Knot DNS Installation
+@section Installation from packages
+
+In addition to providing the packages in .DEB and .RPM format,
+the Knot DNS might already be available in your favourite
+distribution, or in a ports tree.
+
+@menu
+* Installing Knot DNS packages on Debian::
+* Installing Knot DNS packages on Ubuntu::
+* Installing Knot DNS RPMs on Fedora::
+* Installing Knot DNS from ports on FreeBSD::
+@end menu
+
+@node Installing Knot DNS packages on Debian, Installing Knot DNS packages on Ubuntu, , Installation from packages
+@subsection Installing Knot DNS packages on Debian
+
+Knot DNS is already available from Debian wheezy upwards.  In
+addition to the official packages we also provide custom
+repository, which can be used by adding:
+
+@example
+
+deb     http://deb.knot-dns.cz/debian/ <codename> main
+deb-src http://deb.knot-dns.cz/debian/ <codename> main
+	
+@end example
+
+@noindent
+to your /etc/apt/sources.list or into separate file in
+/etc/apt/sources.list.d/.
+
+As an example, for Debian squeeze (current stable) the Knot
+DNS packages can be added by executing following command as
+the root user.
+
+@example
+
+cat >/etc/apt/sources.list.d/knot.list <<EOF
+deb     http://deb.knot-dns.cz/debian/ <codename> main
+deb-src http://deb.knot-dns.cz/debian/ <codename> main
+EOF
+apt-get update
+apt-get install knot
+	
+@end example
+
+@node Installing Knot DNS packages on Ubuntu, Installing Knot DNS RPMs on Fedora, Installing Knot DNS packages on Debian, Installation from packages
+@subsection Installing Knot DNS packages on Ubuntu
+
+Prepackaged version of the Knot DNS can be found in Ubuntu
+from version 12.10 (Quantal Quetzal).  In addition to the
+package included in the main archive, we provide Personal
+Package Archive (PPA) as an option to upgrade to last stable
+version of the Knot DNS or to install it on older versions of
+Ubuntu Linux.
+
+We typically provide packages for all supported versions of
+Ubuntu Linux including 5 year support
+for [Cross reference to non-existant ID “”]
+versions of Ubuntu Linux.  At the time of writing this manual
+this includes Ubuntu 10.04 LTS, 11.04, 11.10 and 12.04 LTS.
+
+@menu
+* Adding official PPA repository for Knot DNS::
+@end menu
+
+@node Adding official PPA repository for Knot DNS, , , Installing Knot DNS packages on Ubuntu
+@subsubsection Adding official PPA repository for Knot DNS
+
+To start installing and using software from a Personal
+Package Archive, you first need to tell Ubuntu where to find
+the PPA.
+
+@example
+
+sudo add-apt-repository ppa:cz.nic-labs/knot-dns
+sudo apt-get update
+sudo apt-get install knot
+	  
+@end example
+
+@noindent
+Running this sequence of command will ensure that you will
+install the Knot DNS on your system and keep it up-to-date
+in the future, when new version are released.
+
+@node Installing Knot DNS RPMs on Fedora, Installing Knot DNS from ports on FreeBSD, Installing Knot DNS packages on Ubuntu, Installation from packages
+@subsection Installing Knot DNS RPMs on Fedora
+
+[TODO]
+
+@node Installing Knot DNS from ports on FreeBSD, , Installing Knot DNS RPMs on Fedora, Installation from packages
+@subsection Installing Knot DNS from ports on FreeBSD
+
+[TODO]
+
+@node Knot DNS Configuration, Migration for other DNS servers, Knot DNS Installation, id229418
+@chapter Knot DNS Configuration
+
+In this chapter we provide suggested configuration and explain the meaning of individual configuration options.
+
+@menu
+* Sample Configurations::
+@end menu
+
+@node Sample Configurations, , , Knot DNS Configuration
+@section Sample Configurations
+
+@menu
+* Minimal Configuration::
+@end menu
+
+@node Minimal Configuration, , , Sample Configurations
+@subsection Minimal Configuration
+
+The following configuration presents a minimal configuration
+file which can be used as a base for your Knot DNS setup.
+
+@example
+
+# This is a sample of a minimal configuration file for Knot DNS.
+#
+# For exhaustive list of all options see samples/knot.full.conf
+# in the source directory.
+#
+
+system @{
+  storage "/var/lib/knot";
+@}
+
+interfaces @{
+  my_interface @{ address 127.0.0.1@@53; @}
+  second_int @{ address ::1; @}
+@}
+
+log @{
+  syslog @{ any notice, warning, error; @}
+@}
+
+zones @{
+  example.com @{  
+    file "/etc/knot/example.com"; 
+  @}
+@}
+	
+@end example
+
+Let's now go step by step through this minimal configuration file:
+
+@enumerate 
+
+@item
+In @file{[Cross reference to non-existant ID “”]}
+statement we have
+configured [Cross reference to non-existant ID “”] directory
+where Knot DNS will store compiled zone files, it's
+pidfile and for slave zone also their journal files.
+
+@item
+The @file{[Cross reference to non-existant ID “”]}
+statement defines interfaces where Knot DNS will listen
+for incoming connections. We have defined two interfaces:
+one IPv4 called @file{my_interface}
+explicitly listening on port 53 and second IPv6
+called @file{second_int} also listening on
+port 53, which is the default port for the DNS.
+
+@item
+The @file{[Cross reference to non-existant ID “”]}
+statement defines the destination where Knot DNS will send
+it's log messages.  In this example we told Knot DNS to
+send its log messages with
+priority @file{debug}, @file{warning}
+and @file{notice} into the syslog.
+
+@item
+The @file{[Cross reference to non-existant ID “”]}
+statement is the one probably most important, because it
+defines the zones Knot DNS will serve.  In its most simple
+form you define zone by it's name and defined the filename
+where Knot DNS can find the zone contents.
+@end enumerate
+
+@node Migration for other DNS servers, Knot DNS Configuration Reference, Knot DNS Configuration, id229418
+@chapter Migration for other DNS servers
+
+@menu
+* Knot DNS for BIND users::
+* Knot DNS for NSD users::
+* Knot DNS for PowerDNS users::
+* Knot DNS for djbdns users::
+@end menu
+
+@node Knot DNS for BIND users, Knot DNS for NSD users, , Migration for other DNS servers
+@section Knot DNS for BIND users
+
+[TODO]
+
+@node Knot DNS for NSD users, Knot DNS for PowerDNS users, Knot DNS for BIND users, Migration for other DNS servers
+@section Knot DNS for NSD users
+
+[TODO]
+
+@node Knot DNS for PowerDNS users, Knot DNS for djbdns users, Knot DNS for NSD users, Migration for other DNS servers
+@section Knot DNS for PowerDNS users
+
+[TODO]
+
+@node Knot DNS for djbdns users, , Knot DNS for PowerDNS users, Migration for other DNS servers
+@section Knot DNS for djbdns users
+
+[TODO]
+
+@node Knot DNS Configuration Reference, Security Considerations, Migration for other DNS servers, id229418
+@chapter Knot DNS Configuration Reference
+
+This reference describe every configuration option in Knot DNS.
+
+@menu
+* system::
+* keys::
+* interfaces::
+@end menu
+
+@node system, keys, , Knot DNS Configuration Reference
+@section system
+
+The @file{system} statement contains general
+options related to the operating system and other general
+options which don't fit anywhere else.
+
+@menu
+* Syntax::
+* Statement Definition and Usage::
+* Example;::
+@end menu
+
+@node Syntax, Statement Definition and Usage, , system
+@subsection Syntax
+
+
+@example
+
+system @{
+  [ identity "string"; ]
+  [ version "string"; ]
+  [ nsid ( "string" | hex_string ); ]
+  [ storage "string"; ]
+  [ pidfile "string"; ]
+  [ workers integer; ]
+  [ user string[.string]; ]
+@}
+	
+@end example
+
+@node Statement Definition and Usage, Example;, Syntax, system
+@subsection Statement Definition and Usage
+
+@menu
+* identity::
+* version::
+* nsid::
+* storage::
+* pidfile::
+* workers::
+* user::
+@end menu
+
+@node identity, version, , Statement Definition and Usage
+@subsubsection identity
+
+Identity of the server (see RFC 4892). Not used yet.
+
+
+@example
+
+system @{
+  identity "Knot DNS";
+@}
+	  
+@end example
+
+@node version, nsid, identity, Statement Definition and Usage
+@subsubsection version
+
+Version of the server (see RFC 4892). Not used yet.
+
+
+@example
+
+system @{
+  version "1.0.5";
+@}
+	  
+@end example
+
+@node nsid, storage, version, Statement Definition and Usage
+@subsubsection nsid
+
+DNS Name Server Identifier (RFC 5001)
+
+Use a string format "text" or a hexstring f.e. 0x01ab00
+
+
+@example
+
+system @{
+  nsid 0x00cafe;
+@}
+	  
+@end example
+
+@node storage, pidfile, nsid, Statement Definition and Usage
+@subsubsection storage
+
+The working directory of the Knot DNS, it is used to store compiled zone files and it's also a default location of the pidfile.
+
+
+@example
+
+system @{
+  storage "/var/lib/knot";
+@}
+	  
+@end example
+
+@node pidfile, workers, storage, Statement Definition and Usage
+@subsubsection pidfile
+
+Custom pidfile location.
+
+Default value: knot.pid in [Cross reference to non-existant ID “”] directory)
+
+
+@example
+
+system @{
+  pidfile "/var/run/knot.pid";
+@}
+	  
+@end example
+
+@node workers, user, pidfile, Statement Definition and Usage
+@subsubsection workers
+
+Number of workers (threads) per interface.  This option is used to force number of threads used per interface.
+
+Default value: unset (auto-estimates optimal value from the number of online CPUs)
+
+
+@example
+
+system @{
+  workers: 16;
+@}
+	  
+@end example
+
+@node user, , workers, Statement Definition and Usage
+@subsubsection user
+
+System user or user.group under which the Knot DNS is run after starting and binding to interfaces.
+
+Default value: root.root
+
+
+@example
+
+system @{
+  user knot.knot;
+@}
+	  
+@end example
+
+@node Example;, , Statement Definition and Usage, system
+@subsection Example:
+
+
+@example
+
+system @{
+  version "1.0.7";
+  storage "/var/lib/knot";
+@}
+	
+@end example
+
+@node keys, interfaces, system, Knot DNS Configuration Reference
+@section keys
+
+The @file{keys} statement sets up the TSIG keys used to authenticate zone transfers.
+
+@menu
+* Syntax: Syntax <1>.
+* Statement Definition and Usage: Statement Definition and Usage <1>.
+* Example::
+@end menu
+
+@node Syntax <1>, Statement Definition and Usage <1>, , keys
+@subsection Syntax
+
+
+@example
+
+keys @{
+  key_id algorithm "string"; ]
+  [ key_id algorithm "string"; ... ]
+@}
+	
+@end example
+
+@node Statement Definition and Usage <1>, Example, Syntax <1>, keys
+@subsection Statement Definition and Usage
+
+@menu
+* key_id::
+@end menu
+
+@node key_id, , , Statement Definition and Usage <1>
+@subsubsection key_id
+
+The @file{key_id} statement defines a secret
+shared key for use with TSIG.  It consists of its name,
+algorithm and key contents.
+
+Supported algoritms:
+
+@multitable @columnfractions 1
+@item
+hmac-md5
+@item
+hmac-sha1
+@item
+hmac-sha224
+@item
+hmac-sha256
+@item
+hmac-sha384
+@item
+hmac-sha512
+@end multitable
+
+You will need to use bind or ldns utils to generate TSIG keys.  Knot DNS doesn't have it's own generation utilities yet.
+
+@example
+
+$ dnssec-keygen -a HMAC-SHA256 -b 256 -n HOST foobar.example.com
+Kfoobar.example.com.+163+21239
+$ cat Kfoobar.example.com.+163+21239.key 
+foobar.example.com. IN KEY 512 3 163 rqv2WRyDgIUaHcJi03Zssor9jtG1kOpb3dPywxZfTeo=
+	  
+@end example
+
+Key generated in previous paragraph would be written as:
+
+@example
+
+keys @{
+  foobar.example.com. hmac-sha256 "rqv2WRyDgIUaHcJi03Zssor9jtG1kOpb3dPywxZfTeo=";
+@}
+	  
+@end example
+
+@node Example, , Statement Definition and Usage <1>, keys
+@subsection Example
+
+
+@example
+
+keys @{
+  key0.server0 hmac-md5 "Wg==";
+  foobar.example.com. hmac-sha256 "RQ==";
+@}
+	
+@end example
+
+@node interfaces, , keys, Knot DNS Configuration Reference
+@section interfaces
+
+The @file{interfaces} statement contains IP interfaces where Knot DNS listens for incoming queries.
+
+@menu
+* Syntax: Syntax <2>.
+* Statement Definition and Usage: Statement Definition and Usage <2>.
+* Examples::
+@end menu
+
+@node Syntax <2>, Statement Definition and Usage <2>, , interfaces
+@subsection Syntax
+
+
+@example
+
+interface @{
+  interface_id
+    ( ip_address[@@port_number] |
+      @{ address ip_address; [ port port_number; ] @} )
+  [ interface_id ...; ...; ]
+@}
+	
+@end example
+
+@node Statement Definition and Usage <2>, Examples, Syntax <2>, interfaces
+@subsection Statement Definition and Usage
+
+@menu
+* interface_id::
+@end menu
+
+@node interface_id, , , Statement Definition and Usage <2>
+@subsubsection interface_id
+
+The @file{interface_id} is a textual
+identifier of an IP interface, which consists of IP address
+and port.
+
+The definition of interface can be written in long or a
+short form and it has always contain and IP (IPv4 or IPv6)
+address.
+
+@node Examples, , Statement Definition and Usage <2>, interfaces
+@subsection Examples
+
+Long form:
+
+@example
+
+interfaces @{
+  my_ip @{
+    address 192.0.2.1;
+    port 53;
+  @}
+@}
+	
+@end example
+
+Short form:
+
+@example
+
+interfaces @{
+  my_second_ip 198.51.100.1@@53;
+@}
+	
+@end example
+
+Short form without port (defaults to 53):
+
+@example
+
+interfaces @{
+  my_third_ip 203.0.113.1;
+@}
+	
+@end example
+
+@node Security Considerations, Troubleshooting, Knot DNS Configuration Reference, id229418
+@chapter Security Considerations
+
+[TODO]
+- faces the internet
+- Linux capabilities used
+
+@node Troubleshooting, , Security Considerations, id229418
+@chapter Troubleshooting
+
+Check the LOGS!
+
+@bye

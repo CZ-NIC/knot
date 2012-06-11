@@ -45,21 +45,6 @@ rm -f conftest.l lexyy.c lex.yy.c
 AC_SUBST([LEX], [$ac_cv_path_LEX])
 AM_PROG_LEX
 
-# Check for tools needed to compile used documentation
-AC_ARG_VAR([XMLTO], [path to xmlto processor to generate a HTML documentation])
-AC_ARG_WITH([documentation],
-    [AS_HELP_STRING([--with-documentation @<:@default=no@:>@],
-	[enable building of the user documentation])],
-    [],
-    [with_documentation=no])
-
-XMLTO=
-AS_IF([test "x$with_documentation" != "xno"],
-    [AC_CHECK_PROG([XMLTO], [xmlto], [xmlto],
-        [AC_MSG_ERROR([xmlto needed for building the documentation])])
-     AM_CONDITIONAL([build_documentation], [test "x$XMLTO" != "x"])
-    ])
-
 AC_PROG_YACC
 YACC_BISON=`bison --version | awk '{print $1;exit}'`
 AS_IF([test "x$YACC_BISON" != "xbison"],	    
