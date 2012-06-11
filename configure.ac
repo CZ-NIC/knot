@@ -47,7 +47,6 @@ AM_PROG_LEX
 
 # Check for tools needed to compile used documentation
 AC_ARG_VAR([XMLTO], [path to xmlto processor to generate a HTML documentation])
-#AC_ARG_VAR([DBLATEX], [path to dblatex process to generate a PDF documentation])
 AC_ARG_WITH([documentation],
     [AS_HELP_STRING([--with-documentation @<:@default=no@:>@],
 	[enable building of the user documentation])],
@@ -58,16 +57,13 @@ XMLTO=
 AS_IF([test "x$with_documentation" != "xno"],
     [AC_CHECK_PROG([XMLTO], [xmlto], [xmlto],
         [AC_MSG_ERROR([xmlto needed for building the documentation])])
-#     AC_PATH_PROG([DBLATEX], [dblatex],
-#        [AC_MSG_ERROR([dblatex needed for building the documentation])])
      AC_SUBST([DOC], [doc])
     ])
 
 AC_PROG_YACC
 YACC_BISON=`bison --version | awk '{print $1;exit}'`
-if test "$YACC_BISON" != "bison"; then
-    AC_MSG_ERROR([GNU bison needed for reentrant parsers, set the \$YACC variable before running configure])
-fi
+AS_IF([test "x$YACC_BISON" != "xbison"],	    
+    [AC_MSG_ERROR([GNU bison needed for reentrant parsers, set the \$YACC variable before running configure])])
 AC_PROG_INSTALL
 
 # Set compiler compatibility flags
@@ -75,7 +71,7 @@ AC_PROG_CPP_WERROR
 AC_PROG_CC_C99
 
 AC_ARG_ENABLE([ldns],
-     AC_HELP_STRING([--enable-ldns=yes|no], [Enable tests with ldns [default=no]]),
+     AS_HELP_STRING([--enable-ldns=yes|no], [Enable tests with ldns [default=no]]),
      [case "${enableval}" in
        yes) AC_SEARCH_LIBS([ldns_rr_list_pop_rrset], [ldns], [AC_DEFINE([HAVE_LDNS], [1], [ldns present])],
        AC_MSG_ERROR([ldns not found])) ;;
