@@ -199,5 +199,6 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <sched.h>]], [[cpuset_t* set = cpuset
 
 AC_CONFIG_FILES([Makefile
 		 samples/Makefile
-                 src/Makefile])
+                 src/Makefile
+		 doc/Makefile])
 AC_OUTPUT
