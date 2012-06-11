@@ -9,15 +9,15 @@ AC_CONFIG_MACRO_DIR([m4])
 AC_USE_SYSTEM_EXTENSIONS([_GNU_SOURCE])
 AX_EXT
 
+# Checks for programs.
+AC_PROG_CC
+
 # Enable maintainer mode by default for development
 AM_MAINTAINER_MODE([enable])
 
 # Initialize libtool
 AC_PROG_LIBTOOL
 LT_INIT
-
-# Checks for programs.
-AC_PROG_CC
 
 AC_CACHE_CHECK([for reentrant lex], [ac_cv_path_LEX],
   [AC_PATH_PROGS_FEATURE_CHECK([LEX], [$LEX flex gflex],
@@ -44,6 +44,24 @@ rm -f conftest.l lexyy.c lex.yy.c
 [AC_MSG_ERROR([could not find lex that supports reentrant parsers])])])
 AC_SUBST([LEX], [$ac_cv_path_LEX])
 AM_PROG_LEX
+
+# Check for tools needed to compile used documentation
+AC_ARG_VAR([XMLTO], [path to xmlto processor to generate a HTML documentation])
+#AC_ARG_VAR([DBLATEX], [path to dblatex process to generate a PDF documentation])
+AC_ARG_WITH([documentation],
+    [AS_HELP_STRING([--with-documentation @<:@default=no@:>@],
+	[enable building of the user documentation])],
+    [],
+    [with_documentation=no])
+
+XMLTO=
+AS_IF([test "x$with_documentation" != "xno"],
+    [AC_CHECK_PROG([XMLTO], [xmlto], [xmlto],
+        [AC_MSG_ERROR([xmlto needed for building the documentation])])
+#     AC_PATH_PROG([DBLATEX], [dblatex],
+#        [AC_MSG_ERROR([dblatex needed for building the documentation])])
+     AC_SUBST([DOC], [doc])
+    ])
 
 AC_PROG_YACC
 YACC_BISON=`bison --version | awk '{print $1;exit}'`

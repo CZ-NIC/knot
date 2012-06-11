@@ -9,6 +9,7 @@ Knot.creator.user*
 Makefile
 Makefile.in
 aclocal.m4
+ar-lib
 autoscan.log
 config.guess
 config.sub
