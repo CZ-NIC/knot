@@ -57,7 +57,7 @@ XMLTO=
 AS_IF([test "x$with_documentation" != "xno"],
     [AC_CHECK_PROG([XMLTO], [xmlto], [xmlto],
         [AC_MSG_ERROR([xmlto needed for building the documentation])])
-     AC_SUBST([DOC], [doc])
+     AM_CONDITIONAL([build_documentation], [test "x$XMLTO" != "x"])
     ])
 
 AC_PROG_YACC
