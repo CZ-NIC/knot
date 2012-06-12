@@ -1435,7 +1435,8 @@ int ck_deep_copy(ck_hash_table_t *from, ck_hash_table_t **to)
 		              si->item);
 
 		if (si->item == NULL) {
-			fprintf(stderr, "[EMPTY STASH] STASH ITEM IS EMPTY!!");
+			fprintf(stderr, "[EMPTY STASH] STASH ITEM IS EMPTY: "
+			        "%p (%p)", si, si->item);
 			si_new->item = NULL;
 			si_new->next = NULL;
 		} else {
@@ -1570,6 +1571,8 @@ int ck_rehash(ck_hash_table_t *table)
 				assert(item->item == NULL);
 				// and the item should be hashed too
 //				assert(table->hashed == NULL);
+				fprintf(stderr, "[EMPTY STASH] Created empty "
+				        "item: %p (%p)\n", item, item->item);
 
 				// fix the pointer from the previous hash item
 				*item_place = item->next;
