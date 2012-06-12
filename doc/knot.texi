@@ -33,7 +33,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 @titlepage
 @title Knot DNS Reference Manual
 @subtitle for version @value{VERSION}, @value{UPDATED}
-@author Ondřej Surý (@email{ondrej@sury.org})
+@author Ondrej Sury (@email{ondrej@@sury.org})
 @page
 @vskip 0pt plus 1filll
 @insertcopying
@@ -42,7 +42,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 @contents
 
 @ifnottex
-@node Top, Introduction, (dir), (dir)
+@node Top
 @top Knot DNS
 
 This manual is for Knot DNS (version @value{VERSION}, @value{UPDATED}).
@@ -127,6 +127,7 @@ Knot DNS Configuration Reference
 * system::                      
 * keys::                        
 * interfaces::                  
+* remotes::                     
 * zones::                       
 * log::                         
 
@@ -134,7 +135,7 @@ Knot DNS Configuration Reference
 
 * system Syntax::               
 * system Statement Definition and Usage::  
-* Example;::                    
+* system Example::              
 
 Statement Definition and Usage
 
@@ -146,7 +147,7 @@ Statement Definition and Usage
 * workers::                     
 * user::                        
 
-keys
+@code{keys} Statement
 
 * keys Syntax::                 
 * keys Statement Definition and Usage::  
@@ -158,6 +159,7 @@ Statement Definition and Usage
 
 interfaces
 
+* interfaces ABNF Syntax::      
 * interfaces Syntax::           
 * interfaces Statement Definition and Usage::  
 * interfaces Examples::         
@@ -166,15 +168,25 @@ Statement Definition and Usage
 
 * interface_id::                
 
+@code{remotes} Statement
+
+* remotes Syntax::              
+* remotes Statement Definition and Grammar::  
+
 @code{zones} Statement
 
 * zones Syntax::                
 * zones Statement Definition and Grammar::  
 
+@code{log} Statement
+
+* log Syntax::                  
+* log Statement Definition and Grammar::  
+
 @end detailmenu
 @end menu
 
-@node Introduction, Knot DNS Resource Requirements, Top, Top
+@node Introduction
 @chapter Introduction
 
 The reader of this document is assumed to know the principles of
@@ -186,7 +198,7 @@ Domain Name System.
 * Conventions Used in This Document::  
 @end menu
 
-@node What is Knot DNS, Scope of Document, Introduction, Introduction
+@node What is Knot DNS
 @section What is Knot DNS
 
 Knot DNS implements a domain name server.  It implements only
@@ -208,7 +220,7 @@ TSIG
 ...
 @end multitable
 
-@node Scope of Document, Conventions Used in This Document, What is Knot DNS, Introduction
+@node Scope of Document
 @section Scope of Document
 
 This document covers the basic information on installing,
@@ -217,12 +229,12 @@ also dedicated a chapter for users of other DNS server
 implementations where describe how to migrate their
 configuration to Knot DNS.
 
-@node Conventions Used in This Document,  , Scope of Document, Introduction
+@node Conventions Used in This Document
 @section Conventions Used in This Document
 
 [TODO]:
 
-@node Knot DNS Resource Requirements, Knot DNS Installation, Introduction, Top
+@node Knot DNS Resource Requirements
 @chapter Knot DNS Resource Requirements
 
 @menu
@@ -232,7 +244,7 @@ configuration to Knot DNS.
 * Supported Operating System::  
 @end menu
 
-@node Hardware Requirements, CPU Requirements, Knot DNS Resource Requirements, Knot DNS Resource Requirements
+@node Hardware Requirements
 @section Hardware Requirements
 
 Knot DNS requirements are not very demanding for typical
@@ -246,12 +258,12 @@ cases include deployment for a large number of zones (DNS
 hosting), a large number of records in one or more zones (TLD)
 or large number of requests.
 
-@node CPU Requirements, Memory Requirements, Hardware Requirements, Knot DNS Resource Requirements
+@node CPU Requirements
 @section CPU Requirements
 
 Knot DNS is not very CPU requiring, but it can consume some CPU
 
-@node Memory Requirements, Supported Operating System, CPU Requirements, Knot DNS Resource Requirements
+@node Memory Requirements
 @section Memory Requirements
 
 Knot DNS implementation focuses on the performance and thus can
@@ -261,7 +273,7 @@ format.  Again this is only a estimate and you are advised to do
 your own measurements before deploying Knot DNS into the
 production.
 
-@node Supported Operating System,  , Memory Requirements, Knot DNS Resource Requirements
+@node Supported Operating System
 @section Supported Operating System
 
 Knot DNS itself is written in a portable way, but it depends on
@@ -270,7 +282,7 @@ comes to the operating system support.  As far as we know the
 Knot DNS and userspace-rcu library can be compiled and run on
 Linux, FreeBSD, OpenBSD, NetBSD and Mac OS X.
 
-@node Knot DNS Installation, Knot DNS Configuration, Knot DNS Resource Requirements, Top
+@node Knot DNS Installation
 @chapter Knot DNS Installation
 
 @menu
@@ -280,12 +292,12 @@ Linux, FreeBSD, OpenBSD, NetBSD and Mac OS X.
 * Installation from packages::  
 @end menu
 
-@node Required build environment, Required libraries, Knot DNS Installation, Knot DNS Installation
+@node Required build environment
 @section Required build environment
 
 [TODO] Describe lowest needed GCC/Clang, etc.
 
-@node Required libraries, Installation from the sources, Required build environment, Knot DNS Installation
+@node Required libraries
 @section Required libraries
 
 Knot DNS requires few libraries to be compiled:
@@ -311,7 +323,7 @@ your system or distribution.  If not, zlib resides at
 * Userspace RCU::               
 @end menu
 
-@node Userspace RCU,  , Required libraries, Required libraries
+@node Userspace RCU
 @subsection Userspace RCU
 
 liburcu is a LGPLv2.1 userspace RCU (read-copy-update)
@@ -330,7 +342,7 @@ but we recommend using latest available version.  It is
 especially on non-Linux systems as we got some compatibility
 patches accepted in later releases of Userspace RCU.
 
-@node Installation from the sources, Installation from packages, Required libraries, Knot DNS Installation
+@node Installation from the sources
 @section Installation from the sources
 
 After unpacking the sources, the compilation and installation is
@@ -342,7 +354,7 @@ a quite straightforward process using autotools.
 * Installation::                
 @end menu
 
-@node Configuring and generating Makefiles, Compilation, Installation from the sources, Installation from the sources
+@node Configuring and generating Makefiles
 @subsection Configuring and generating Makefiles
 
 For all available options run:
@@ -361,7 +373,7 @@ In most simple case you can just run configure without any options.
 	
 @end example
 
-@node Compilation, Installation, Configuring and generating Makefiles, Installation from the sources
+@node Compilation
 @subsection Compilation
 
 After running @command{./configure} you can compile
@@ -387,7 +399,7 @@ make -j 8
 	
 @end example
 
-@node Installation,  , Compilation, Installation from the sources
+@node Installation
 @subsection Installation
 
 When you have finished building the Knot DNS, it's time to
@@ -404,7 +416,7 @@ make install
 	
 @end example
 
-@node Installation from packages,  , Installation from the sources, Knot DNS Installation
+@node Installation from packages
 @section Installation from packages
 
 In addition to providing the packages in .DEB and .RPM format,
@@ -418,7 +430,7 @@ distribution, or in a ports tree.
 * Installing Knot DNS from ports on FreeBSD::  
 @end menu
 
-@node Installing Knot DNS packages on Debian, Installing Knot DNS packages on Ubuntu, Installation from packages, Installation from packages
+@node Installing Knot DNS packages on Debian
 @subsection Installing Knot DNS packages on Debian
 
 Knot DNS is already available from Debian wheezy upwards.  In
@@ -451,7 +463,7 @@ apt-get install knot
 	
 @end example
 
-@node Installing Knot DNS packages on Ubuntu, Installing Knot DNS RPMs on Fedora, Installing Knot DNS packages on Debian, Installation from packages
+@node Installing Knot DNS packages on Ubuntu
 @subsection Installing Knot DNS packages on Ubuntu
 
 Prepackaged version of the Knot DNS can be found in Ubuntu
@@ -471,7 +483,7 @@ the time of writing this manual this includes Ubuntu 10.04 LTS, 11.04,
 * Adding official PPA repository for Knot DNS::  
 @end menu
 
-@node Adding official PPA repository for Knot DNS,  , Installing Knot DNS packages on Ubuntu, Installing Knot DNS packages on Ubuntu
+@node Adding official PPA repository for Knot DNS
 @subsubsection Adding official PPA repository for Knot DNS
 
 To start installing and using software from a Personal
@@ -491,17 +503,17 @@ Running this sequence of command will ensure that you will
 install the Knot DNS on your system and keep it up-to-date
 in the future, when new version are released.
 
-@node Installing Knot DNS RPMs on Fedora, Installing Knot DNS from ports on FreeBSD, Installing Knot DNS packages on Ubuntu, Installation from packages
+@node Installing Knot DNS RPMs on Fedora
 @subsection Installing Knot DNS RPMs on Fedora
 
 [TODO]
 
-@node Installing Knot DNS from ports on FreeBSD,  , Installing Knot DNS RPMs on Fedora, Installation from packages
+@node Installing Knot DNS from ports on FreeBSD
 @subsection Installing Knot DNS from ports on FreeBSD
 
 [TODO]
 
-@node Knot DNS Configuration, Migration for other DNS servers, Knot DNS Installation, Top
+@node Knot DNS Configuration
 @chapter Knot DNS Configuration
 
 In this chapter we provide suggested configuration and explain the meaning of individual configuration options.
@@ -510,14 +522,14 @@ In this chapter we provide suggested configuration and explain the meaning of in
 * Sample Configurations::       
 @end menu
 
-@node Sample Configurations,  , Knot DNS Configuration, Knot DNS Configuration
+@node Sample Configurations
 @section Sample Configurations
 
 @menu
 * Minimal Configuration::       
 @end menu
 
-@node Minimal Configuration,  , Sample Configurations, Sample Configurations
+@node Minimal Configuration
 @subsection Minimal Configuration
 
 The following configuration presents a minimal configuration
@@ -581,7 +593,7 @@ form you define zone by it's name and defined the filename where Knot
 DNS can find the zone contents.
 @end enumerate
 
-@node Migration for other DNS servers, Security Considerations, Knot DNS Configuration, Top
+@node Migration for other DNS servers
 @chapter Migration for other DNS servers
 
 @menu
@@ -591,34 +603,34 @@ DNS can find the zone contents.
 * Knot DNS for djbdns users::   
 @end menu
 
-@node Knot DNS for BIND users, Knot DNS for NSD users, Migration for other DNS servers, Migration for other DNS servers
+@node Knot DNS for BIND users
 @section Knot DNS for BIND users
 
 [TODO]
 
-@node Knot DNS for NSD users, Knot DNS for PowerDNS users, Knot DNS for BIND users, Migration for other DNS servers
+@node Knot DNS for NSD users
 @section Knot DNS for NSD users
 
 [TODO]
 
-@node Knot DNS for PowerDNS users, Knot DNS for djbdns users, Knot DNS for NSD users, Migration for other DNS servers
+@node Knot DNS for PowerDNS users
 @section Knot DNS for PowerDNS users
 
 [TODO]
 
-@node Knot DNS for djbdns users,  , Knot DNS for PowerDNS users, Migration for other DNS servers
+@node Knot DNS for djbdns users
 @section Knot DNS for djbdns users
 
 [TODO]
 
-@node Security Considerations, Troubleshooting, Migration for other DNS servers, Top
+@node Security Considerations
 @chapter Security Considerations
 
 [TODO]
 - faces the internet
 - Linux capabilities used
 
-@node Troubleshooting, Knot DNS Configuration Reference, Security Considerations, Top
+@node Troubleshooting
 @chapter Troubleshooting
 
 @menu
@@ -626,15 +638,15 @@ DNS can find the zone contents.
 * Generating backtrace::        
 @end menu
 
-@node General troubleshooting, Generating backtrace, Troubleshooting, Troubleshooting
+@node General troubleshooting
 @section General troubleshooting
 
 Check the LOGS!  Enable the debug output.
 
-@node Generating backtrace,  , General troubleshooting, Troubleshooting
+@node Generating backtrace
 @section Generating backtrace
 
-@node Knot DNS Configuration Reference,  , Troubleshooting, Top
+@node Knot DNS Configuration Reference
 @appendix Knot DNS Configuration Reference
 
 This reference describe every configuration option in Knot DNS.
@@ -643,11 +655,12 @@ This reference describe every configuration option in Knot DNS.
 * system::                      
 * keys::                        
 * interfaces::                  
+* remotes::                     
 * zones::                       
 * log::                         
 @end menu
 
-@node system, keys, Knot DNS Configuration Reference, Knot DNS Configuration Reference
+@node system
 @appendixsec @code{system} Statement
 
 The @code{system} statement contains general options related to the
@@ -657,25 +670,25 @@ else.
 @menu
 * system Syntax::               
 * system Statement Definition and Usage::  
-* Example;::                    
+* system Example::              
 @end menu
 
-@node system Syntax, system Statement Definition and Usage, system, system
+@node system Syntax
 @appendixsubsec @code{system} Syntax
 
 @example
-system @{
-  [ identity "string"; ]
-  [ version "string"; ]
-  [ nsid ( "string" | hex_string ); ]
-  [ storage "string"; ]
-  [ pidfile "string"; ]
-  [ workers integer; ]
-  [ user string[.string]; ]
-@}
+@code{system} @code{@{}
+  [ @code{identity} @code{"}@kbd{string}@code{";} ]
+  [ @code{version} @code{"}@kbd{string}@code{";} ]
+  [ @code{nsid} ( @code{"}@kbd{string}@code{"} | @kbd{hex_string} )@code{;} ]
+  [ @code{storage} @code{"}@kbd{string}@code{";} ]
+  [ @code{pidfile} @code{"}@kbd{string}@code{";} ]
+  [ @code{workers} @kbd{integer}@code{;} ]
+  [ @code{user} @kbd{string}[@code{.}@kbd{string}]@code{;} ]
+@code{@}}
 @end example
 
-@node system Statement Definition and Usage, Example;, system Syntax, system
+@node system Statement Definition and Usage
 @appendixsubsec Statement Definition and Usage
 
 @menu
@@ -688,7 +701,7 @@ system @{
 * user::                        
 @end menu
 
-@node identity, version, system Statement Definition and Usage, system Statement Definition and Usage
+@node identity
 @appendixsubsubsec identity
 
 Identity of the server (see @url{http://tools.ietf.org/html/rfc4892,RFC 4892}). Not used yet.
@@ -699,7 +712,7 @@ system @{
 @}
 @end example
 
-@node version, nsid, identity, system Statement Definition and Usage
+@node version
 @appendixsubsubsec version
 
 Version of the server (see @url{http://tools.ietf.org/html/rfc4892,RFC 4892}). Not used yet.
@@ -710,7 +723,7 @@ system @{
 @}
 @end example
 
-@node nsid, storage, version, system Statement Definition and Usage
+@node nsid
 @appendixsubsubsec nsid
 
 DNS Name Server Identifier (see @url{http://tools.ietf.org/html/rfc5001,RFC 5001}).
@@ -723,7 +736,7 @@ system @{
 @}
 @end example
 
-@node storage, pidfile, nsid, system Statement Definition and Usage
+@node storage
 @appendixsubsubsec storage
 
 The working directory of the Knot DNS, it is used to store compiled zone files and it's also a default location of the pidfile.
@@ -734,7 +747,7 @@ system @{
 @}
 @end example
 
-@node pidfile, workers, storage, system Statement Definition and Usage
+@node pidfile
 @appendixsubsubsec pidfile
 
 Custom pidfile location.
@@ -747,10 +760,11 @@ system @{
 @}
 @end example
 
-@node workers, user, pidfile, system Statement Definition and Usage
+@node workers
 @appendixsubsubsec workers
 
-Number of workers (threads) per interface.  This option is used to force number of threads used per interface.
+Number of workers (threads) per interface.  This option is used to
+force number of threads used per interface.
 
 Default value: unset (auto-estimates optimal value from the number of online CPUs)
 
@@ -760,10 +774,11 @@ system @{
 @}
 @end example
 
-@node user,  , workers, system Statement Definition and Usage
+@node user
 @appendixsubsubsec user
 
-System user or user.group under which the Knot DNS is run after starting and binding to interfaces.
+System @kbd{user} or @kbd{user}.@kbd{group} under which the Knot DNS
+is run after starting and binding to interfaces.
 
 Default value: root.root
 
@@ -773,8 +788,8 @@ system @{
 @}
 @end example
 
-@node Example;,  , system Statement Definition and Usage, system
-@appendixsubsec Example:
+@node system Example
+@appendixsubsec Example
 
 @example
 system @{
@@ -784,10 +799,11 @@ system @{
 @}
 @end example
 
-@node keys, interfaces, system, Knot DNS Configuration Reference
-@appendixsec keys
+@node keys
+@appendixsec @code{keys} Statement
 
-The @code{keys} statement sets up the TSIG keys used to authenticate zone transfers.
+The @code{keys} statement sets up the TSIG keys used to authenticate
+zone transfers.
 
 @menu
 * keys Syntax::                 
@@ -795,27 +811,24 @@ The @code{keys} statement sets up the TSIG keys used to authenticate zone transf
 * Example::                     
 @end menu
 
-@node keys Syntax, keys Statement Definition and Usage, keys, keys
+@node keys Syntax
 @appendixsubsec keys Syntax
 
-
 @example
-
 keys @{
   key_id algorithm "string"; ]
   [ key_id algorithm "string"; ... ]
 @}
-	
 @end example
 
-@node keys Statement Definition and Usage, Example, keys Syntax, keys
+@node keys Statement Definition and Usage
 @appendixsubsec Statement Definition and Usage
 
 @menu
 * key_id::                      
 @end menu
 
-@node key_id,  , keys Statement Definition and Usage, keys Statement Definition and Usage
+@node key_id
 @appendixsubsubsec @code{key_id} Statement
 
 The @kbd{key_id} statement defines a secret shared key for use with
@@ -859,7 +872,7 @@ keys @{
 	  
 @end example
 
-@node Example,  , keys Statement Definition and Usage, keys
+@node Example
 @appendixsubsec Example
 
 
@@ -872,38 +885,38 @@ keys @{
 	
 @end example
 
-@node interfaces, zones, keys, Knot DNS Configuration Reference
+@node interfaces
 @appendixsec interfaces
 
 The @code{interfaces} statement contains IP interfaces where Knot DNS listens for incoming queries.
 
 @menu
+* interfaces ABNF Syntax::      
 * interfaces Syntax::           
 * interfaces Statement Definition and Usage::  
 * interfaces Examples::         
 @end menu
 
-@node interfaces Syntax, interfaces Statement Definition and Usage, interfaces, interfaces
+@node interfaces Syntax
 @appendixsubsec Syntax
 
-
 @example
-interface @{
-  interface_id
-    ( ip_address[@@port_number] |
-      @{ address ip_address; [ port port_number; ] @} )
-  [ interface_id ...; ...; ]
-@}
+@code{interfaces} @code{@{}
+  @kbd{interface_id}
+    ( @kbd{ip_address}[@@@kbd{port_number}] |
+      @code{@{} @code{address} @kbd{ip_address}@code{;} [ @code{port} @kbd{port_number}@code{;} ] @code{@}} )
+  [ @kbd{interface_id ...}@code{;} @kbd{...}@code{;} ]
+@code{@}}
 @end example
 
-@node interfaces Statement Definition and Usage, interfaces Examples, interfaces Syntax, interfaces
+@node interfaces Statement Definition and Usage
 @appendixsubsec Statement Definition and Usage
 
 @menu
 * interface_id::                
 @end menu
 
-@node interface_id,  , interfaces Statement Definition and Usage, interfaces Statement Definition and Usage
+@node interface_id
 @appendixsubsubsec @kbd{interface_id}
 
 The @kbd{interface_id} is a textual identifier of an IP interface,
@@ -912,7 +925,7 @@ which consists of IP address and port.
 The definition of interface can be written in long or a short form and
 it has always contain and IP (IPv4 or IPv6) address.
 
-@node interfaces Examples,  , interfaces Statement Definition and Usage, interfaces
+@node interfaces Examples
 @appendixsubsec interfaces Examples
 
 Long form:
@@ -948,7 +961,43 @@ interfaces @{
 	
 @end example
 
-@node zones, log, interfaces, Knot DNS Configuration Reference
+@node remotes
+@appendixsec @code{remotes} Statement
+
+The @code{remotes} statement sets up all remote servers for zone
+transfers.  Knot DNS doesn't distinguish between client or server in
+this section.  Role of the server is determined at the time of its
+usage in the @code{@ref{zones}} section.  One server may act as a
+client for one zone (e.g. downloading the updates) and as a master
+server for different zone.
+
+@menu
+* remotes Syntax::              
+* remotes Statement Definition and Grammar::  
+@end menu
+
+@node remotes Syntax
+@appendixsubsec Syntax
+
+@example
+@code{remotes} @code{@{}
+  @kbd{remote_id}
+    ( @kbd{ip_address}[@code{@@}@kbd{port_number}] |
+      @code{@{}   @code{address} @kbd{ip_address};
+         [ @code{port} @kbd{port_number}; ]
+         [ @code{key} @kbd{key_id}; ]
+         [ @code{via} [ @kbd{interface_id} | @kbd{ip_address} ]; ]
+      @code{@}}
+    )
+  [ @kbd{remote_id} @dots{}; @dots{}; ]
+@code{@}}
+@end example
+
+@node remotes Statement Definition and Grammar
+@appendixsubsec Statement Definition and Grammar
+
+
+@node zones
 @appendixsec @code{zones} Statement
 
 The @code{zones} statement contains definition of zones served by Knot DNS.
@@ -958,19 +1007,49 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
 * zones Statement Definition and Grammar::  
 @end menu
 
-@node zones Syntax, zones Statement Definition and Grammar, zones, zones
+@node zones Syntax
 @appendixsubsec Syntax
 
 @example
-zones @{
-@}
+@code{zones} @code{@{}
+  [ @kbd{zone_options} ]
+  @kbd{zone_id} @code{@{}
+    @code{file} @code{"}@kbd{string}@code{";}
+    [ @code{xfr-in} @kbd{remote_id} [, @kbd{remote_id}, @dots{} ]@code{;} ]
+    [ @code{xfr-out} @kbd{remote_id} [, @kbd{remote_id}, @dots{} ]@code{;} ]
+    [ @code{notify-in} @kbd{remote_id} [, @kbd{remote_id}, @dots{} ]@code{;} ]
+    [ @code{notify-out} @kbd{remote_id} [, @kbd{remote_id}, @dots{} ]@code{;} ]
+    [ @kbd{zone_options} ]
+  @code{@}}
+@code{@}}
+
+@kbd{zone_options} :=
+  [ @code{semantic-checks} @kbd{boolean}@code{;} ]
+  [ @code{disable-any} @kbd{boolean}@code{;} ]
+  [ @code{notify-timeout} @kbd{integer}@code{;} ]
+  [ @code{notify-retries} @kbd{integer}@code{;} ]
+  [ @code{zonefile-sync} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
+  [ @code{ixfr-fslimit} ( @kbd{integer} | @kbd{integer}(@code{k} | @code{M} | @code{G}) )@code{;} ]
+
 @end example
 
-@node zones Statement Definition and Grammar,  , zones Syntax, zones
+@node zones Statement Definition and Grammar
 @appendixsubsec Statement Definition and Grammar
 
-@node log,  , zones, Knot DNS Configuration Reference
+@node log
 @appendixsec @code{log} Statement
+
+@menu
+* log Syntax::                  
+* log Statement Definition and Grammar::  
+@end menu
+
+@node log Syntax
+@appendixsubsec Syntax
+
+@node log Statement Definition and Grammar
+@appendixsubsec Statement Definition and Grammar
+
 
 The @code{log} statement configures logging output of Knot DNS.  You
 can configure Knot DNS to log into file or system log.  Each log
