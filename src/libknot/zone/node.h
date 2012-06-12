@@ -83,22 +83,11 @@ struct knot_node {
 	unsigned short rrset_count; /*!< Number of RRSets stored in the node. */
 
 	/*!
-	 * \brief Generation of node to be used.
-	 *
-	 * If set to 0, the old node will be used. Otherwise new nodes will
-	 * be used. This applies when getting some referenced node.
-	 
-	 */
-//	short **generation;
-
-	/*!
 	 * \brief Various flags.
 	 *
 	 * Currently only two:
 	 *   0x01 - node is a delegation point
 	 *   0x02 - node is non-authoritative (under a delegation point)
-	 *   0x80 - node is old and will be removed (during update)
-	 *   0x40 - node is new, should not be used while zone is old
 	 */
 	uint8_t flags;
 };
