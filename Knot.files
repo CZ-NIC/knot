@@ -260,3 +260,4 @@ src/knot/zone/semantic-check.c
 src/knot/zone/semantic-check.h
 src/tests/xfr_tests.h
 src/tests/xfr_tests.c
+doc/knot.texi
