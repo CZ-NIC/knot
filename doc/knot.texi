@@ -261,6 +261,7 @@ or large number of requests.
 @section CPU Requirements
 
 Knot DNS scales with the processing power and also the nubmer of available cores/CPUs.
+
 There is no lower bound on the CPU requirements, but it should support memory barriers
 and CAS (i586 and newer).
 
@@ -385,7 +386,6 @@ For all available options run:
 	
 @end example
 
-In most simple case you can just run configure without any options.
 If you have trouble with unknown syscalls under valgrind, disable recvmmsg with
 @command{./configure --enable-recvmmsg=no}.
 Also, it has been reported that some platforms have broken LTO (Link time optimizations)
@@ -401,6 +401,7 @@ Then you can narrow the verbosity of the debugging message by specifying the
 verbosity as brief, verbose or details.
 For example:  @command{./configure --enable-debuglevel=verbose}.
 
+In most simple case you can just run configure without any options.
 @example
 
 @command{./configure}
@@ -664,7 +665,16 @@ DNS can find the zone contents.
 
 [TODO]
 - faces the internet
-- Linux capabilities used
+
+If libcap-ng is available, Knot DNS on Linux takes advantage of
+the POSIX 1003.1e capabilities. This mechanism breaks the a set of privileges
+traditionally associated with the root into groups that can be set per-thread
+and independently enabled or disabled. For more information, look up manual page
+for capabilities(7).
+
+Knot DNS uses strips exposed threads of most capabilities like file access,
+privileged socket operations and such.
+This mitigates potential remote exploits or at least the impact.
 
 @node Troubleshooting
 @chapter Troubleshooting
@@ -678,6 +688,17 @@ DNS can find the zone contents.
 @section General troubleshooting
 
 Check the LOGS!  Enable the debug output.
+
+If you want to add debug messages, there are two steps to do that.
+First you have to enable modules, that you are interested in.
+Available are: server, zones, xfr, packet, dname, rr, ns, hash, compiler.
+You can combine multiple modules as a comma-separated list.
+For example: @command{./configure --enable-debug=server,packet}
+
+Then you can narrow the verbosity of the debugging message by specifying the
+verbosity as brief, verbose or details.
+For example:  @command{./configure --enable-debuglevel=verbose}.
+
 
 @node Generating backtrace
 @section Generating backtrace
