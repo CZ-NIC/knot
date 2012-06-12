@@ -159,7 +159,6 @@ Statement Definition and Usage
 
 interfaces
 
-* interfaces ABNF Syntax::      
 * interfaces Syntax::           
 * interfaces Statement Definition and Usage::  
 * interfaces Examples::         
@@ -891,7 +890,6 @@ keys @{
 The @code{interfaces} statement contains IP interfaces where Knot DNS listens for incoming queries.
 
 @menu
-* interfaces ABNF Syntax::      
 * interfaces Syntax::           
 * interfaces Statement Definition and Usage::  
 * interfaces Examples::         
