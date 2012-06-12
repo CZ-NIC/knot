@@ -3101,8 +3101,7 @@ int knot_ns_prep_normal_response(knot_nameserver_t *nameserver,
 		resp_max_size = MAX_UDP_PAYLOAD;
 	}
 
-	ret = knot_ns_prepare_response(nameserver, query, resp,
-	                               resp_max_size);
+	ret = knot_ns_prepare_response(nameserver, query, resp, resp_max_size);
 	if (ret != KNOT_EOK) {
 		return KNOT_ERROR;
 	}
