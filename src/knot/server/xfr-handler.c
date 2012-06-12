@@ -866,6 +866,7 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 	/* Handle errors. */
 	if (ret != KNOT_EOK) {
 		pthread_mutex_unlock(&zd->xfr_in.lock);
+		rcu_read_unlock();
 		dbg_xfr("xfr: failed to create XFR query type %d: %s\n",
 		        data->type, knot_strerror(ret));
 		close(data->session);

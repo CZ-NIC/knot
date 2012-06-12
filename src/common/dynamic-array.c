@@ -81,7 +81,7 @@ static int da_resize(da_array_t *array, da_resize_type_t type)
 	dbg_da("Old items pointer: %p\n", old_items);
 
 	// wait for readers to finish
-	synchronize_rcu();
+	//synchronize_rcu();
 	// deallocate the old array
 	dbg_da("RCU synchronized, deallocating old items array at address %p."
 	         "\n", old_items);
@@ -205,7 +205,7 @@ void da_destroy(da_array_t *array)
 	rcu_set_pointer(&array->items, NULL);
 	pthread_mutex_unlock(&array->mtx);
 
-	synchronize_rcu();
+	//synchronize_rcu();
 	free(old_items);
 	pthread_mutex_destroy(&array->mtx);
 }
