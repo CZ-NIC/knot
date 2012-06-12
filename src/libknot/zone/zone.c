@@ -192,7 +192,7 @@ void knot_zone_free(knot_zone_t **zone)
 	    && !knot_zone_contents_gen_is_old((*zone)->contents)) {
 		// zone is in the middle of an update, report
 		dbg_zone("Destroying zone that is in the middle of an "
-		                  "update.\n");
+		         "update.\n");
 	}
 
 	knot_dname_release((*zone)->name);
@@ -221,7 +221,7 @@ void knot_zone_deep_free(knot_zone_t **zone, int destroy_dname_table)
 	    && !knot_zone_contents_gen_is_old((*zone)->contents)) {
 		// zone is in the middle of an update, report
 		dbg_zone("Destroying zone that is in the middle of an "
-		                  "update.\n");
+		         "update.\n");
 	}
 
 dbg_zone_exec(
