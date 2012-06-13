@@ -1591,7 +1591,8 @@ dbg_xfrin_exec_detail(
 static int xfrin_apply_remove_rrsigs(knot_changes_t *changes,
                                      const knot_rrset_t *remove,
                                      knot_node_t *node,
-                                     knot_rrset_t **rrset)
+                                     knot_rrset_t **rrset,
+                                     knot_rrset_t **rrsigs_old)
 {
 	assert(changes != NULL);
 	assert(remove != NULL);
@@ -1632,7 +1633,7 @@ static int xfrin_apply_remove_rrsigs(knot_changes_t *changes,
 		// this RRSet should be the already copied RRSet so we may
 		// update it right away
 		/*! \todo Does this case even occur? */
-		dbg_xfrin_detail("Using RRSet from previous iteration.\n");
+		dbg_xfrin_verb("Using RRSet from previous iteration.\n");
 	}
 	
 	// get the old rrsigs
@@ -1645,11 +1646,17 @@ static int xfrin_apply_remove_rrsigs(knot_changes_t *changes,
 	// copy the RRSIGs
 	knot_rrset_t *rrsigs = NULL;
 	if (!copied) {
-		ret = xfrin_copy_old_rrset(old, &rrsigs, changes);
-		if (ret != KNOT_EOK) {
-			return ret;
+		// check if the stored RRSIGs are not the right ones
+		if (*rrsigs_old && *rrsigs_old == (*rrset)->rrsigs) {
+			dbg_xfrin_verb("Using RRSIG from previous iteration\n");
+			rrsigs = *rrsigs_old;
+		} else {
+			ret = xfrin_copy_old_rrset(old, &rrsigs, changes);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+			dbg_xfrin_detail("Copied RRSIGs: %p\n", rrsigs);
 		}
-		dbg_xfrin_detail("Copied RRSIGs: %p\n", rrsigs);
 	} else {
 		rrsigs = old;
 		dbg_xfrin_detail("Using old RRSIGs: %p\n", rrsigs);
@@ -1660,6 +1667,8 @@ static int xfrin_apply_remove_rrsigs(knot_changes_t *changes,
 		dbg_xfrin("Failed to set rrsigs.\n");
 		return KNOT_ERROR;
 	}
+
+	*rrsigs_old = rrsigs;
 
 	// now in '*rrset' we have a copy of the RRSet which holds the RRSIGs 
 	// and in 'rrsigs' we have the copy of the RRSIGs
@@ -1773,7 +1782,10 @@ static int xfrin_apply_remove_normal(knot_changes_t *changes,
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-	} /*! \todo Does some other case even occur? */
+	} else {
+		/*! \todo Does some other case even occur? */
+		dbg_xfrin_verb("Using RRSet from previous loop.\n");
+	}
 	
 	if (*rrset == NULL) {
 		dbg_xfrin_verb("RRSet not found for RR to be removed.\n");
@@ -1787,8 +1799,7 @@ dbg_xfrin_exec_detail(
 	free(name);
 );
 
-	// remove the specified RRs from the RRSet (de facto difference of
-	// sets)
+	// remove the specified RRs from the RRSet (de facto difference of sets)
 	knot_rdata_t *rdata = xfrin_remove_rdata(*rrset, remove);
 	if (rdata == NULL) {
 		dbg_xfrin_verb("Failed to remove RDATA from RRSet\n");
@@ -1853,7 +1864,7 @@ dbg_xfrin_exec_detail(
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*! \todo Needs review - RRs may not be merged into RRSets. */
 static int xfrin_apply_remove_all_rrsets(knot_changes_t *changes,
                                          knot_node_t *node, uint16_t type)
 {
@@ -2486,7 +2497,7 @@ static int xfrin_apply_remove(knot_zone_contents_t *contents,
 	 */
 	int ret = 0;
 	knot_node_t *node = NULL;
-	knot_rrset_t *rrset = NULL;
+	knot_rrset_t *rrset = NULL, *rrsigs = NULL;
 
 	int is_nsec3 = 0;
 
@@ -2545,7 +2556,7 @@ dbg_xfrin_exec_detail(
 			// this should work also for UPDATE
 			ret = xfrin_apply_remove_rrsigs(changes,
 			                                chset->remove[i],
-			                                node, &rrset);
+			                                node, &rrset, &rrsigs);
 		} else {
 			// this should work also for UPDATE
 			ret = xfrin_apply_remove_normal(changes,
