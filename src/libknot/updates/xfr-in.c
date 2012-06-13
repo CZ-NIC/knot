@@ -2475,9 +2475,9 @@ void xfrin_rollback_update(knot_zone_contents_t *old_contents,
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_apply_remove2(knot_zone_contents_t *contents,
-                               knot_changeset_t *chset,
-                               knot_changes_t *changes)
+static int xfrin_apply_remove(knot_zone_contents_t *contents,
+                              knot_changeset_t *chset,
+                              knot_changes_t *changes)
 {
 	/*
 	 * Iterate over removed RRSets, and remove them from the new nodes
@@ -2567,9 +2567,9 @@ dbg_xfrin_exec_detail(
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_apply_add2(knot_zone_contents_t *contents,
-                            knot_changeset_t *chset,
-                            knot_changes_t *changes)
+static int xfrin_apply_add(knot_zone_contents_t *contents,
+                           knot_changeset_t *chset,
+                           knot_changes_t *changes)
 {
 	int ret = 0;
 	knot_node_t *node = NULL;
@@ -2707,9 +2707,9 @@ dbg_xfrin_exec_detail(
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_apply_replace_soa2(knot_zone_contents_t *contents,
-                                    knot_changes_t *changes,
-                                    knot_changeset_t *chset)
+static int xfrin_apply_replace_soa(knot_zone_contents_t *contents,
+                                   knot_changes_t *changes,
+                                   knot_changeset_t *chset)
 {
 	dbg_xfrin("Replacing SOA record.\n");
 	knot_node_t *node = knot_zone_contents_get_apex(contents);
@@ -2808,9 +2808,9 @@ static int xfrin_apply_replace_soa2(knot_zone_contents_t *contents,
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_apply_changeset2(knot_zone_contents_t *contents,
-                                  knot_changes_t *changes,
-                                  knot_changeset_t *chset)
+static int xfrin_apply_changeset(knot_zone_contents_t *contents,
+                                 knot_changes_t *changes,
+                                 knot_changeset_t *chset)
 {
 	/*
 	 * Applies one changeset to the zone. Checks if the changeset may be
@@ -2831,19 +2831,19 @@ static int xfrin_apply_changeset2(knot_zone_contents_t *contents,
 		return KNOT_ERROR;
 	}
 
-	int ret = xfrin_apply_remove2(contents, chset, changes);
+	int ret = xfrin_apply_remove(contents, chset, changes);
 	if (ret != KNOT_EOK) {
 //		xfrin_clean_changes_after_fail2(changes);
 		return ret;
 	}
 
-	ret = xfrin_apply_add2(contents, chset, changes);
+	ret = xfrin_apply_add(contents, chset, changes);
 	if (ret != KNOT_EOK) {
 //		xfrin_clean_changes_after_fail(changes);
 		return ret;
 	}
 
-	return xfrin_apply_replace_soa2(contents, changes, chset);
+	return xfrin_apply_replace_soa(contents, changes, chset);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -3122,7 +3122,7 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 	dbg_xfrin_verb("Old contents apex: %p, new apex: %p\n",
 	               old_contents->apex, contents_copy->apex);
 	for (int i = 0; i < chsets->count; ++i) {
-		if ((ret = xfrin_apply_changeset2(contents_copy, changes,
+		if ((ret = xfrin_apply_changeset(contents_copy, changes,
 		                                  &chsets->sets[i]))
 		                                  != KNOT_EOK) {
 			xfrin_rollback_update(old_contents,
