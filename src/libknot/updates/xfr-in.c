@@ -1964,28 +1964,54 @@ static int xfrin_apply_add_normal(knot_changes_t *changes,
 
 	int ret;
 
-	dbg_xfrin_verb("applying rrset:\n");
+dbg_xfrin_exec_detail(
+	dbg_xfrin_detail("applying rrset:\n");
 	knot_rrset_dump(add, 0);
+);
 	
+	int copied = 0;
 	/*! \note Reusing RRSet from previous function caused it not to be
 	 *        removed from the node.
 	 *        Maybe modification of the code would allow reusing the RRSet
 	 *        as in apply_add_rrsigs() - the RRSet should not be copied
 	 *        in such case.
 	 */
+	if (*rrset
+	    && knot_dname_compare(knot_rrset_owner(*rrset),
+	                          knot_node_owner(node)) == 0
+	    && knot_rrset_type(*rrset) == knot_rrset_type(add)) {
+		dbg_xfrin_verb("Using RRSet from previous iteration.\n");
+	} else {
+		dbg_xfrin_detail("Removing rrset!\n");
+		*rrset = knot_node_remove_rrset(node, knot_rrset_type(add));
+
+		knot_rrset_t *old = *rrset;
+
+		ret = xfrin_copy_old_rrset(old, rrset, changes);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+
+		dbg_xfrin_detail("Copied RRSet: %p\n", *rrset);
+		copied = 1;
+	}
+
 //	if (!*rrset
 //	    || knot_dname_compare(knot_rrset_owner(*rrset),
 //	                          knot_node_owner(node)) != 0
-//	    || knot_rrset_type(*rrset)
-//	       != knot_rrset_type(add)) {
-//		dbg_xfrin("Removing rrset!\n");
+//	    || knot_rrset_type(*rrset) != knot_rrset_type(add)) {
+//		dbg_xfrin_detail("Removing rrset!\n");
 //		*rrset = knot_node_remove_rrset(node, knot_rrset_type(add));
+//	} else {
+//		dbg_xfrin_verb("Using RRSet from previous iteration.\n");
 //	}
 
-	*rrset = knot_node_remove_rrset(node, knot_rrset_type(add));
+//	*rrset = knot_node_remove_rrset(node, knot_rrset_type(add));
 	
+dbg_xfrin_exec_detail(
 	dbg_xfrin_detail("Removed RRSet: \n");
 	knot_rrset_dump(*rrset, 1);
+);
 
 	if (*rrset == NULL) {
 dbg_xfrin_exec_detail(
@@ -2018,8 +2044,6 @@ dbg_xfrin_exec_detail(
 		return 1; // return 1 to indicate the add RRSet was used
 	}
 
-	knot_rrset_t *old = *rrset;
-
 dbg_xfrin_exec_detail(
 	char *name = knot_dname_to_str(knot_rrset_owner(*rrset));
 	dbg_xfrin_detail("Found RRSet with owner %s, type %s\n", name,
@@ -2027,12 +2051,12 @@ dbg_xfrin_exec_detail(
 	free(name);
 );
 //	knot_rrset_dump(*rrset, 1);
-	ret = xfrin_copy_old_rrset(old, rrset, changes);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
+//	ret = xfrin_copy_old_rrset(old, rrset, changes);
+//	if (ret != KNOT_EOK) {
+//		return ret;
+//	}
 
-	dbg_xfrin_detail("Copied RRSet: %p\n", *rrset);
+//	dbg_xfrin_detail("Copied RRSet: %p\n", *rrset);
 
 //	dbg_xfrin("After copy: Found RRSet with owner %s, type %s\n",
 //	               knot_dname_to_str((*rrset)->owner),
@@ -2058,16 +2082,19 @@ dbg_xfrin_exec_detail(
 
 	ret = knot_rrset_merge((void **)rrset, (void **)&add);
 	if (ret != KNOT_EOK) {
-		dbg_xfrin("Failed to merge changeset RRSet to copy.\n");
+		dbg_xfrin("Failed to merge changeset RRSet.\n");
 		return KNOT_ERROR;
 	}
 	dbg_xfrin_detail("Merge returned: %d\n", ret);
 	knot_rrset_dump(*rrset, 1);
-	ret = knot_node_add_rrset(node, *rrset, 0);
 
-	if (ret < 0) {
-		dbg_xfrin("Failed to add merged RRSet to the node.\n");
-		return ret;
+	if (copied) {
+		ret = knot_node_add_rrset(node, *rrset, 0);
+
+		if (ret < 0) {
+			dbg_xfrin("Failed to add merged RRSet to the node.\n");
+			return ret;
+		}
 	}
 
 	// return 2 so that the add RRSet is removed from
