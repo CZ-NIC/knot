@@ -1983,13 +1983,15 @@ dbg_xfrin_exec_detail(
 
 		knot_rrset_t *old = *rrset;
 
-		ret = xfrin_copy_old_rrset(old, rrset, changes);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
+		if (*rrset != NULL) {
+			ret = xfrin_copy_old_rrset(old, rrset, changes);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
 
-		dbg_xfrin_detail("Copied RRSet: %p\n", *rrset);
-		copied = 1;
+			dbg_xfrin_detail("Copied RRSet: %p\n", *rrset);
+			copied = 1;
+		}
 	}
 
 //	if (!*rrset
@@ -2224,7 +2226,7 @@ dbg_xfrin_exec_detail(
 				if (ret != KNOT_EOK) {
 					return ret;
 				}
-				dbg_xfrin_detail("Copied RRSIGs: %p\n", rrsigs);
+				dbg_xfrin_detail("Copied RRSIGs: %p\n", rrsig);
 			}
 
 //			ret = xfrin_copy_old_rrset(old, &rrsig, changes);
@@ -2233,7 +2235,7 @@ dbg_xfrin_exec_detail(
 //			}
 		} else {
 			rrsig = old;
-			dbg_xfrin_verb("Using old RRSIGs: %p\n", rrsigs);
+			dbg_xfrin_verb("Using old RRSIGs: %p\n", rrsig);
 		}
 		
 		// replace the old RRSIGs with the new ones
