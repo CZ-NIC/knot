@@ -1277,6 +1277,10 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 	}
 	
 	int ret = knot_ns_init_xfr(ns, xfr);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	int xfr_failed = (ret != KNOT_EOK);
 	const char * errstr = knot_strerror(ret);
 	
