@@ -3190,13 +3190,22 @@ int knot_ns_init_xfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 {
 	dbg_ns("knot_ns_init_xfr()\n");
 
+	int ret = 0;
+
 	if (nameserver == NULL || xfr == NULL) {
-		return KNOT_EBADARG;
+		dbg_ns("Wrong parameters given to function ns_init_xfr()\n");
+		knot_ns_error_response(nameserver, xfr->query->header.id,
+		                       &xfr->query->header.flags1,
+		                       KNOT_RCODE_SERVFAIL,
+		                       xfr->wire, &xfr->wire_size);
+		ret = xfr->send(xfr->session, &xfr->addr, xfr->wire,
+		                xfr->wire_size);
+		return ret;
 	}
 
 	// no need to parse rest of the packet
 	/*! \todo Parse rest of packet because of EDNS. */
-	int ret = knot_packet_parse_rest(xfr->query);
+	ret = knot_packet_parse_rest(xfr->query);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to parse rest of the query: %s\n", 
 		       knot_strerror(ret));
@@ -3227,7 +3236,6 @@ dbg_ns_exec_verb(
 		                       &xfr->wire_size);
 		ret = xfr->send(xfr->session, &xfr->addr, xfr->wire, 
 		                xfr->wire_size);
-		knot_packet_free(&response);
 		return ret;
 	}
 
@@ -3369,7 +3377,8 @@ int knot_ns_xfr_send_error(const knot_nameserver_t *nameserver,
 	
 	/*! \todo Probably rename the function. */
 	int ret = 0;
-	if ((ret = ns_xfr_send_and_clear(xfr, 1)) != KNOT_EOK) {
+	if ((ret = ns_xfr_send_and_clear(xfr, 1)) != KNOT_EOK
+	    || xfr->response == NULL) {
 		size_t size = 0;
 		knot_ns_error_response(nameserver, xfr->query->header.id,
 		                       &xfr->query->header.flags1,
