@@ -1291,7 +1291,7 @@ static int zones_journal_apply(knot_zone_t *zone)
 			                                       &contents);
 			if (apply_ret != KNOT_EOK) {
 				log_server_error("Failed to apply changesets to"
-				                 "'%s' - Apply failed: %s\n",
+				                 " '%s' - Apply failed: %s\n",
 				                 zd->conf->name,
 				                 knot_strerror(apply_ret));
 				ret = KNOTD_ERROR;
@@ -1300,27 +1300,27 @@ static int zones_journal_apply(knot_zone_t *zone)
 				xfrin_rollback_update(zone->contents,
 				                      &contents,
 				                      &chsets->changes);
-			}
-
-			/* Switch zone immediately. */
-			rcu_read_unlock();
-			apply_ret = xfrin_switch_zone(zone, contents,
-			                              XFR_TYPE_IIN);
-			rcu_read_lock();
-			if (apply_ret == KNOT_EOK) {
-				xfrin_cleanup_successful_update(
-				                        &chsets->changes);
 			} else {
-				log_server_error("Failed to apply changesets to"
-				                 " '%s' - Switch failed: %s\n",
-				                 zd->conf->name,
-				                 knot_strerror(apply_ret));
-				ret = KNOTD_ERROR;
+				/* Switch zone immediately. */
+				rcu_read_unlock();
+				apply_ret = xfrin_switch_zone(zone, contents,
+							      XFR_TYPE_IIN);
+				rcu_read_lock();
+				if (apply_ret == KNOT_EOK) {
+					xfrin_cleanup_successful_update(
+							&chsets->changes);
+				} else {
+					log_server_error("Failed to apply "
+					  "changesets to '%s' - Switch failed: "
+					  "%s\n", zd->conf->name,
+					  knot_strerror(apply_ret));
+					ret = KNOTD_ERROR;
 
-				// Cleanup old and new contents
-				xfrin_rollback_update(zone->contents,
-				                      &contents,
-				                      &chsets->changes);
+					// Cleanup old and new contents
+					xfrin_rollback_update(zone->contents,
+					                      &contents,
+					                      &chsets->changes);
+				}
 			}
 		}
 	} else {

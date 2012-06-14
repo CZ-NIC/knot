@@ -2691,8 +2691,8 @@ dbg_xfrin_exec_detail(
 
 		assert(ret != KNOT_EOK);
 
-		dbg_xfrin_detail("xfrin_apply_..() returned %d, rrset: %p\n",
-		                 ret, rrset);
+		dbg_xfrin_detail("xfrin_apply_..() returned %s, rrset: %p\n",
+		                 knot_strerror(ret), rrset);
 
 		if (ret > 0) {
 			if (ret == 1) {
