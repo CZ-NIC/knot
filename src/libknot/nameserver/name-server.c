@@ -3203,8 +3203,6 @@ int knot_ns_init_xfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		return ret;
 	}
 
-	// no need to parse rest of the packet
-	/*! \todo Parse rest of packet because of EDNS. */
 	ret = knot_packet_parse_rest(xfr->query);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to parse rest of the query: %s\n", 
@@ -3472,7 +3470,8 @@ int knot_ns_answer_ixfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	// parse rest of the packet (we need the Authority record)
 	int ret = knot_packet_parse_rest(xfr->query);
 	if (ret != KNOT_EOK) {
-		dbg_ns("Failed to parse rest of the packet. Reply FORMERR.\n");
+		dbg_ns("Failed to parse rest of the packet: %s. "
+		       "Reply FORMERR.\n", knot_strerror(ret));
 		knot_ns_xfr_send_error(nameserver, xfr, KNOT_RCODE_FORMERR);
 		knot_packet_free(&xfr->response);
 		return ret;

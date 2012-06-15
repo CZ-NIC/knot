@@ -972,7 +972,7 @@ static int xfr_answer_ixfr(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 	/* Finally, answer. */
 	if (chsload == KNOTD_EOK) {
 		ret = knot_ns_answer_ixfr(ns, xfr);
-		dbg_xfr("xfr: ns_answer_ixfr() = %d.\n", ret);
+		dbg_xfr("xfr: ns_answer_ixfr() = %s.\n", knot_strerror(ret));
 	}
 	
 	return ret;

@@ -138,6 +138,9 @@ struct knot_packet {
 
 	short free_wireformat;
 	size_t parsed;
+	uint16_t parsed_an;
+	uint16_t parsed_ns;
+	uint16_t parsed_ar;
 
 	size_t size;      /*!< Current wire size of the packet. */
 	size_t max_size;  /*!< Maximum allowed size of the packet. */

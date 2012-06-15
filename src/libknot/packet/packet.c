@@ -475,12 +475,12 @@ dbg_packet_exec_verb(
 /*----------------------------------------------------------------------------*/
 
 static int knot_packet_add_rrset(knot_rrset_t *rrset,
-                                   const knot_rrset_t ***rrsets,
-                                   short *rrset_count,
-                                   short *max_rrsets,
-                                   short default_rrsets,
-                                   const knot_packet_t *packet,
-                                   knot_packet_duplicate_handling_t dupl)
+                                 const knot_rrset_t ***rrsets,
+                                 short *rrset_count,
+                                 short *max_rrsets,
+                                 short default_rrsets,
+                                 const knot_packet_t *packet,
+                                 knot_packet_duplicate_handling_t dupl)
 {
 
 	assert(rrset != NULL);
@@ -543,11 +543,12 @@ dbg_packet_exec_detail(
 /*----------------------------------------------------------------------------*/
 
 static int knot_packet_parse_rrs(const uint8_t *wire, size_t *pos,
-                                   size_t size, uint16_t rr_count,
-                                   const knot_rrset_t ***rrsets,
-                                   short *rrset_count, short *max_rrsets,
-                                   short default_rrsets,
-                                   knot_packet_t *packet)
+                                 size_t size, uint16_t rr_count,
+                                 uint16_t *parsed_rrs,
+                                 const knot_rrset_t ***rrsets,
+                                 short *rrset_count, short *max_rrsets,
+                                 short default_rrsets,
+                                 knot_packet_t *packet)
 {
 	assert(pos != NULL);
 	assert(wire != NULL);
@@ -566,7 +567,8 @@ static int knot_packet_parse_rrs(const uint8_t *wire, size_t *pos,
 	int err = KNOT_EOK;
 	knot_rrset_t *rrset = NULL;
 
-	for (int i = 0; i < rr_count; ++i) {
+	/* Start parsing from the first RR not parsed. */
+	for (int i = *parsed_rrs; i < rr_count; ++i) {
 		rrset = knot_packet_parse_rr(wire, pos, size);
 		if (rrset == NULL) {
 			dbg_packet("Failed to parse RR!\n");
@@ -574,9 +576,11 @@ static int knot_packet_parse_rrs(const uint8_t *wire, size_t *pos,
 			break;
 		}
 
+		++(*parsed_rrs);
+
 		err = knot_packet_add_rrset(rrset, rrsets, rrset_count,
-		                             max_rrsets, default_rrsets, packet,
-		                             KNOT_PACKET_DUPL_MERGE);
+		                            max_rrsets, default_rrsets, packet,
+		                            KNOT_PACKET_DUPL_MERGE);
 		if (err < 0) {
 			break;
 		} else if (err > 0) {	// merged
@@ -653,24 +657,24 @@ static int knot_packet_parse_rr_sections(knot_packet_t *packet,
 
 	dbg_packet_verb("Parsing Answer RRs...\n");
 	if ((err = knot_packet_parse_rrs(packet->wireformat, pos,
-	   packet->size, packet->header.ancount, &packet->answer,
-	   &packet->an_rrsets, &packet->max_an_rrsets,
+	   packet->size, packet->header.ancount, &packet->parsed_an,
+	   &packet->answer, &packet->an_rrsets, &packet->max_an_rrsets,
 	   DEFAULT_RRSET_COUNT(ANCOUNT, packet), packet)) != KNOT_EOK) {
 		return err;
 	}
 
 	dbg_packet_verb("Parsing Authority RRs...\n");
 	if ((err = knot_packet_parse_rrs(packet->wireformat, pos,
-	   packet->size, packet->header.nscount, &packet->authority,
-	   &packet->ns_rrsets, &packet->max_ns_rrsets,
+	   packet->size, packet->header.nscount, &packet->parsed_ns,
+	   &packet->authority, &packet->ns_rrsets, &packet->max_ns_rrsets,
 	   DEFAULT_RRSET_COUNT(NSCOUNT, packet), packet)) != KNOT_EOK) {
 		return err;
 	}
 
 	dbg_packet_verb("Parsing Additional RRs...\n");
 	if ((err = knot_packet_parse_rrs(packet->wireformat, pos,
-	   packet->size, packet->header.arcount, &packet->additional,
-	   &packet->ar_rrsets, &packet->max_ar_rrsets,
+	   packet->size, packet->header.arcount, &packet->parsed_ar,
+	   &packet->additional, &packet->ar_rrsets, &packet->max_ar_rrsets,
 	   DEFAULT_RRSET_COUNT(ARCOUNT, packet), packet)) != KNOT_EOK) {
 		return err;
 	}
@@ -694,7 +698,8 @@ static int knot_packet_parse_rr_sections(knot_packet_t *packet,
 	packet->parsed = *pos;
 
 	if (*pos < packet->size) {
-		// some trailing garbage; ignore, but log
+		// If there is some trailing garbage, treat the packet as
+		// malformed
 		dbg_packet_verb("Packet: %zu bytes of trailing garbage "
 		                "in packet.\n", packet->size - (*pos));
 		return KNOT_EMALF;
@@ -782,8 +787,6 @@ int knot_packet_parse_from_wire(knot_packet_t *packet,
 		return KNOT_EMALF;
 	}
 
-	knot_packet_dump(packet);
-
 	if (packet->header.qdcount == 1) {
 		if ((err = knot_packet_parse_question(wireformat, &pos, size,
 		             &packet->question, packet->prealloc_type 
@@ -794,18 +797,20 @@ int knot_packet_parse_from_wire(knot_packet_t *packet,
 		packet->parsed = pos;
 	}
 
+dbg_packet_exec_detail(
 	knot_packet_dump(packet);
+);
 
 	if (question_only) {
 		return KNOT_EOK;
 	}
 
 	/*! \todo Replace by call to parse_rest()? */
-	err = knot_packet_parse_rr_sections(packet, &pos);
+	err = knot_packet_parse_rest(packet);
 
-#ifdef KNOT_PACKET_DEBUG
+dbg_packet_exec_detail(
 	knot_packet_dump(packet);
-#endif /* KNOT_RESPONSE_DEBUG */
+);
 
 	return err;
 }
@@ -818,18 +823,21 @@ int knot_packet_parse_rest(knot_packet_t *packet)
 		return KNOT_EBADARG;
 	}
 
-	// check if there should be any more records
-	if (packet->header.ancount == 0
-	    && packet->header.nscount == 0
-	    && packet->header.arcount == 0) {
+	if (packet->header.ancount == packet->parsed_an
+	    && packet->header.nscount == packet->parsed_ns
+	    && packet->header.arcount == packet->parsed_ar
+	    && packet->parsed == packet->size) {
 		return KNOT_EOK;
 	}
-//	if (packet->parsed == packet->size) {
-//		return KNOT_EOK;
-//	}
+
+	// If there is less data then required, the next function will find out.
+	// If there is more data than required, it also returns EMALF.
 	
 	size_t pos = packet->parsed;
 
+	/*! \todo If we already parsed some part of the packet, it is not ok
+	 *        to begin parsing from the Answer section.
+	 */
 	return knot_packet_parse_rr_sections(packet, &pos);
 }
 
@@ -846,7 +854,7 @@ int knot_packet_parse_next_rr_answer(knot_packet_t *packet,
 
 	if (packet->parsed >= packet->size) {
 		assert(packet->an_rrsets <= packet->header.ancount);
-		if (packet->an_rrsets != packet->header.ancount) {
+		if (packet->parsed_an != packet->header.ancount) {
 			dbg_packet("Parsed less RRs than expected.\n");
 			return KNOT_EMALF;
 		} else {
@@ -855,7 +863,7 @@ int knot_packet_parse_next_rr_answer(knot_packet_t *packet,
 		}
 	}
 
-	if (packet->an_rrsets == packet->header.ancount) {
+	if (packet->parsed_an == packet->header.ancount) {
 		assert(packet->parsed < packet->size);
 		//dbg_packet("Trailing garbage, ignoring...\n");
 		// there may be other data in the packet 
@@ -878,6 +886,7 @@ int knot_packet_parse_next_rr_answer(knot_packet_t *packet,
 	// increment the number of answer RRSets, though there are no saved
 	// in the packet; it is OK, because packet->answer is NULL
 	++packet->an_rrsets;
+	++packet->parsed_an;
 
 	return KNOT_EOK;
 }
@@ -896,7 +905,7 @@ int knot_packet_parse_next_rr_additional(knot_packet_t *packet,
 
 	if (packet->parsed >= packet->size) {
 		assert(packet->ar_rrsets <= packet->header.arcount);
-		if (packet->ar_rrsets != packet->header.arcount) {
+		if (packet->parsed_ar != packet->header.arcount) {
 			dbg_packet("Parsed less RRs than expected.\n");
 			return KNOT_EMALF;
 		} else {
@@ -905,11 +914,10 @@ int knot_packet_parse_next_rr_additional(knot_packet_t *packet,
 		}
 	}
 
-	if (packet->ar_rrsets == packet->header.arcount) {
+	if (packet->parsed_ar == packet->header.arcount) {
 		assert(packet->parsed < packet->size);
-		dbg_packet_verb("Trailing garbage, ignoring...\n");
-		/*! \todo Do not ignore. */
-		return KNOT_EOK;
+		dbg_packet_verb("Trailing garbage, treating as malformed...\n");
+		return KNOT_EMALF;
 	}
 
 	size_t pos = packet->parsed;
@@ -927,6 +935,7 @@ int knot_packet_parse_next_rr_additional(knot_packet_t *packet,
 	// increment the number of answer RRSets, though there are no saved
 	// in the packet; it is OK, because packet->answer is NULL
 	++packet->ar_rrsets;
+	++packet->parsed_ar;
 
 	return KNOT_EOK;
 }
