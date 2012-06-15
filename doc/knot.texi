@@ -197,8 +197,8 @@ Migration for other DNS servers
 @include installation.texi
 @include configuration.texi
 @include reference.texi
-@include security.texi
 @include troubleshooting.texi
+@include security.texi
 
 @c indices
 @include indices.texi
