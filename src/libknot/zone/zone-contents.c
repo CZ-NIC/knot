@@ -261,6 +261,232 @@ dbg_zone_exec_detail(
 }
 
 /*----------------------------------------------------------------------------*/
+
+static const knot_node_t *knot_zone_contents_find_wildcard_child(
+        knot_zone_contents_t *zone, const knot_node_t *closest_encloser)
+{
+	assert(zone != NULL);
+	assert(closest_encloser != NULL);
+
+	knot_dname_t *tmp = knot_dname_new_from_str("*", 1, NULL);
+	CHECK_ALLOC(tmp, NULL);
+
+	knot_dname_t *wildcard = knot_dname_cat(tmp, knot_node_owner(
+	                                                closest_encloser));
+	if (wildcard == NULL) {
+		free(tmp);
+		return NULL;
+	}
+
+	assert(wildcard == tmp);
+
+dbg_zone_exec_detail(
+	char *name = knot_dname_to_str(knot_node_owner(closest_encloser));
+	char *name2 = knot_dname_to_str(wildcard);
+	dbg_zone_detail("Searching for wildcard child of %s (%s)\n", name,
+	                name2);
+	free(name);
+	free(name2);
+);
+
+	const knot_node_t *found = NULL, *ce = NULL;
+	int ret = knot_zone_contents_find_dname_hash(zone, wildcard, &found,
+	                                             &ce);
+
+	knot_dname_free(&wildcard);
+
+	if (ret != KNOT_ZONE_NAME_FOUND) {
+		return NULL;
+	} else {
+		return found;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Adjusts one RDATA item by replacing domain name by one present in the
+ *        zone.
+ *
+ * This function tries to find the domain name in the zone. If the name is not
+ * in the zone, it does nothing. If it is there, it destroys the domain name
+ * stored in the RDATA item and replaces it by pointer to the domain name from
+ * the zone.
+ *
+ * \warning Call this function only with RDATA items which store domain names,
+ *          otherwise the behaviour is undefined.
+ *
+ * \param rdata RDATA where the item is located.
+ * \param zone Zone to which the RDATA belongs.
+ * \param pos Position of the RDATA item in the RDATA.
+ */
+static void knot_zone_contents_adjust_rdata_item(knot_rdata_t *rdata,
+                                                 knot_zone_contents_t *zone,
+                                                 knot_node_t *node, int pos)
+{
+	const knot_rdata_item_t *dname_item = knot_rdata_item(rdata, pos);
+
+	assert(dname_item);
+
+	if (dname_item != NULL) {
+		knot_dname_t *dname = dname_item->dname;
+
+		if (knot_dname_node(dname) != NULL
+		    || knot_dname_is_subdomain(dname, knot_node_owner(
+		                              knot_zone_contents_apex(zone)))) {
+			// The name's node is either already set
+			// or the name does not belong to the zone
+			return;
+		}
+
+		const knot_node_t *n = NULL;
+		const knot_node_t *closest_encloser = NULL;
+		const knot_node_t *prev = NULL;
+
+		int ret = knot_zone_contents_find_dname(zone, dname, &n,
+		                                      &closest_encloser, &prev);
+
+		if (ret == KNOT_EBADARG || ret == KNOT_EBADZONE) {
+			// TODO: do some cleanup if needed
+			return;
+		}
+
+		assert(ret != KNOT_ZONE_NAME_FOUND || n == closest_encloser);
+
+		if (ret != KNOT_ZONE_NAME_FOUND && (closest_encloser != NULL)) {
+			/*!
+			 * \note There is no need to set closer encloser to the
+			 *       name. We may find the possible wildcard child
+			 *       right away.
+			 *       Having the closest encloser saved in the dname
+			 *       would disrupt the query processing algorithms
+			 *       anyway.
+			 */
+
+			n = knot_zone_contents_find_wildcard_child(zone,
+			                                      closest_encloser);
+			if (n != NULL) {
+				dname->node = (knot_node_t *)n;
+				dbg_zone_exec_detail(
+					char *name = knot_dname_to_str(
+					                    knot_node_owner(n));
+					char *name2 = knot_dname_to_str(dname);
+					dbg_zone_detail("Set wildcard node %s "
+					                "to RDATA dname %s.\n",
+					                name, name2);
+					free(name);
+					free(name2);
+				);
+			}
+		}
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Adjusts all RDATA in the given RRSet by replacing domain names by ones
+ *        present in the zone.
+ *
+ * This function selects the RDATA items containing a domain name (according to
+ * RR type descriptor of the RRSet's type and adjusts the item using
+ * knot_zone_adjust_rdata_item().
+ *
+ * \param rrset RRSet to adjust RDATA in.
+ * \param zone Zone to which the RRSet belongs.
+ */
+static void knot_zone_contents_adjust_rdata_in_rrset(knot_rrset_t *rrset,
+                                                     knot_zone_contents_t *zone,
+                                                     knot_node_t *node)
+{
+	uint16_t type = knot_rrset_type(rrset);
+
+	knot_rrtype_descriptor_t *desc =
+		knot_rrtype_descriptor_by_type(type);
+	assert(desc);
+
+	knot_rdata_t *rdata_first = knot_rrset_get_rdata(rrset);
+	knot_rdata_t *rdata = rdata_first;
+
+	if (rdata == NULL) {
+		return;
+	}
+
+	while (rdata->next != rdata_first) {
+		for (int i = 0; i < rdata->count; ++i) {
+			if (desc->wireformat[i]
+			    == KNOT_RDATA_WF_COMPRESSED_DNAME
+			    || desc->wireformat[i]
+			       == KNOT_RDATA_WF_UNCOMPRESSED_DNAME
+			    || desc->wireformat[i]
+			       == KNOT_RDATA_WF_LITERAL_DNAME) {
+				dbg_zone("Adjusting domain name at "
+				  "position %d of RDATA of record with owner "
+				  "%s and type %s.\n",
+				  i, rrset->owner->name,
+				  knot_rrtype_to_string(type));
+
+				knot_zone_contents_adjust_rdata_item(rdata,
+				                                     zone, node,
+				                                     i);
+			}
+		}
+		rdata = rdata->next;
+	}
+
+	for (int i = 0; i < rdata->count; ++i) {
+		if (desc->wireformat[i]
+		    == KNOT_RDATA_WF_COMPRESSED_DNAME
+		    || desc->wireformat[i]
+		       == KNOT_RDATA_WF_UNCOMPRESSED_DNAME
+		    || desc->wireformat[i]
+		       == KNOT_RDATA_WF_LITERAL_DNAME) {
+			dbg_zone("Adjusting domain name at "
+			  "position %d of RDATA of record with owner "
+			  "%s and type %s.\n",
+			  i, rrset->owner->name,
+			  knot_rrtype_to_string(type));
+
+			knot_zone_contents_adjust_rdata_item(rdata, zone, node,
+			                                     i);
+		}
+	}
+
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Adjusts all RRSets in the given node by replacing domain names in
+ *        RDATA by ones present in the zone.
+ *
+ * This function just calls knot_zone_adjust_rdata_in_rrset() for all RRSets
+ * in the node (including all RRSIG RRSets).
+ *
+ * \param node Zone node to adjust the RRSets in.
+ * \param zone Zone to which the node belongs.
+ */
+static void knot_zone_contents_adjust_rrsets(knot_node_t *node,
+                                             knot_zone_contents_t *zone)
+{
+	knot_rrset_t **rrsets = knot_node_get_rrsets(node);
+	short count = knot_node_rrset_count(node);
+
+	assert(count == 0 || rrsets != NULL);
+
+	for (int r = 0; r < count; ++r) {
+		assert(rrsets[r] != NULL);
+		dbg_zone("Adjusting next RRSet.\n");
+		knot_zone_contents_adjust_rdata_in_rrset(rrsets[r], zone,
+		                                           node);
+		knot_rrset_t *rrsigs = rrsets[r]->rrsigs;
+		if (rrsigs != NULL) {
+			dbg_zone("Adjusting next RRSIGs.\n");
+			knot_zone_contents_adjust_rdata_in_rrset(rrsigs, zone,
+			                                         node);
+		}
+	}
+
+	free(rrsets);
+}
+/*----------------------------------------------------------------------------*/
 /*!
  * \brief Adjusts zone node for faster query processing.
  *
@@ -288,12 +514,8 @@ dbg_zone_exec_verb(
 );
 
 	// adjust domain names in RDATA
-	/*!
-	 * \note This is unnecessary, as the code in adjust_rdata_item() is not
-	 *       reachable anyway. However, it's not clear why we disabled the
-	 *       code, so this would need further investigation.
-	 */
-	//knot_zone_contents_adjust_rrsets(node, zone);
+	/*! \note Enabled again after a LONG time. Should test thoroughly. */
+	knot_zone_contents_adjust_rrsets(node, zone);
 
 dbg_zone_exec_detail(
 	if (knot_node_parent(node)) {

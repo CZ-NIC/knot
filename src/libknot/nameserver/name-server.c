@@ -503,10 +503,14 @@ static void ns_put_additional_for_rrset(knot_packet_t *resp,
 //		knot_node_dump((knot_node_t *)node, (void *)1);
 
 		if (node != NULL && node->owner != dname) {
-			// the stored node should be the closest encloser
-			assert(knot_dname_is_subdomain(dname, node->owner));
-			// try the wildcard child, if any
-			node = knot_node_wildcard_child(node);
+			// the stored node should be the wildcard covering the
+			// name
+			assert(knot_dname_is_wildcard(knot_node_owner(node)));
+
+//			// the stored node should be the closest encloser
+//			assert(knot_dname_is_subdomain(dname, node->owner));
+//			// try the wildcard child, if any
+//			node = knot_node_wildcard_child(node);
 		}
 
 		knot_rrset_t *rrset_add;
