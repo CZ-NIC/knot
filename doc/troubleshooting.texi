@@ -1,0 +1,26 @@
+@node Troubleshooting, Migration for other DNS servers, Security Considerations, Top
+@chapter Troubleshooting
+
+@menu
+* General troubleshooting::     
+* Generating backtrace::        
+@end menu
+
+@node General troubleshooting
+@section General troubleshooting
+
+Check the LOGS!  Enable the debug output.
+
+If you want to add debug messages, there are two steps to do that.
+First you have to enable modules, that you are interested in.
+Available are: server, zones, xfr, packet, dname, rr, ns, hash, compiler.
+You can combine multiple modules as a comma-separated list.
+For example: @command{./configure --enable-debug=server,packet}
+
+Then you can narrow the verbosity of the debugging message by specifying the
+verbosity as brief, verbose or details.
+For example:  @command{./configure --enable-debuglevel=verbose}.
+
+
+@node Generating backtrace
+@section Generating backtrace

@@ -1,0 +1,407 @@
+@node Knot DNS Configuration Reference, Security Considerations, Knot DNS Configuration, Top
+@chapter Knot DNS Configuration Reference
+
+This reference describe every configuration option in Knot DNS.
+
+@menu
+* system::                      
+* keys::                        
+* interfaces::                  
+* remotes::                     
+* zones::                       
+* log::                         
+@end menu
+
+@node system
+@section @code{system} Statement
+
+The @code{system} statement contains general options related to the
+operating system and other general options which don't fit anywhere
+else.
+
+@menu
+* system Syntax::               
+* system Statement Definition and Usage::  
+* system Example::              
+@end menu
+
+@node system Syntax
+@subsection @code{system} Syntax
+
+@example
+@code{system} @code{@{}
+  [ @code{identity} @code{"}@kbd{string}@code{";} ]
+  [ @code{version} @code{"}@kbd{string}@code{";} ]
+  [ @code{nsid} ( @code{"}@kbd{string}@code{"} | @kbd{hex_string} )@code{;} ]
+  [ @code{storage} @code{"}@kbd{string}@code{";} ]
+  [ @code{pidfile} @code{"}@kbd{string}@code{";} ]
+  [ @code{workers} @kbd{integer}@code{;} ]
+  [ @code{user} @kbd{string}[@code{.}@kbd{string}]@code{;} ]
+@code{@}}
+@end example
+
+@node system Statement Definition and Usage
+@subsection Statement Definition and Usage
+
+@menu
+* identity::                    
+* version::                     
+* nsid::                        
+* storage::                     
+* pidfile::                     
+* workers::                     
+* user::                        
+@end menu
+
+@node identity
+@subsubsection identity
+
+Identity of the server (see @url{http://tools.ietf.org/html/rfc4892,RFC 4892}). Not used yet.
+
+@example
+system @{
+  identity "Knot DNS";
+@}
+@end example
+
+@node version
+@subsubsection version
+
+Version of the server (see @url{http://tools.ietf.org/html/rfc4892,RFC 4892}). Not used yet.
+
+@example
+system @{
+  version "1.0.5";
+@}
+@end example
+
+@node nsid
+@subsubsection nsid
+
+DNS Name Server Identifier (see @url{http://tools.ietf.org/html/rfc5001,RFC 5001}).
+
+Use a string format "text" or a hexstring f.e. 0x01ab00
+
+@example
+system @{
+  nsid 0x00cafe;
+@}
+@end example
+
+@node storage
+@subsubsection storage
+
+The working directory of the Knot DNS, it is used to store compiled zone files and it's also a default location of the pidfile.
+
+@example
+system @{
+  storage "/var/lib/knot";
+@}
+@end example
+
+@node pidfile
+@subsubsection pidfile
+
+Custom pidfile location.
+
+Default value: @file{knot.pid} in @code{@ref{storage}} directory.
+
+@example
+system @{
+  pidfile "/var/run/knot.pid";
+@}
+@end example
+
+@node workers
+@subsubsection workers
+
+Number of workers (threads) per interface.  This option is used to
+force number of threads used per interface.
+
+Default value: unset (auto-estimates optimal value from the number of online CPUs)
+
+@example
+system @{
+  workers: 16;
+@}
+@end example
+
+@node user
+@subsubsection user
+
+System @kbd{user} or @kbd{user}.@kbd{group} under which the Knot DNS
+is run after starting and binding to interfaces.
+
+Default value: root.root
+
+@example
+system @{
+  user knot.knot;
+@}
+@end example
+
+@node system Example
+@subsection Example
+
+@example
+system @{
+  version "@value{VERSION}";
+  nsid    "amaterasu";
+  storage "/var/lib/knot";
+@}
+@end example
+
+@node keys
+@section @code{keys} Statement
+
+The @code{keys} statement sets up the TSIG keys used to authenticate
+zone transfers.
+
+@menu
+* keys Syntax::                 
+* keys Statement Definition and Usage::  
+* Example::                     
+@end menu
+
+@node keys Syntax
+@subsection keys Syntax
+
+@example
+keys @{
+  key_id algorithm "string"; ]
+  [ key_id algorithm "string"; ... ]
+@}
+@end example
+
+@node keys Statement Definition and Usage
+@subsection Statement Definition and Usage
+
+@menu
+* key_id::                      
+@end menu
+
+@node key_id
+@subsubsection @code{key_id} Statement
+
+The @kbd{key_id} statement defines a secret shared key for use with
+TSIG.  It consists of its name, algorithm and key contents.
+
+Supported algoritms:
+
+@multitable @columnfractions 1
+@item
+hmac-md5
+@item
+hmac-sha1
+@item
+hmac-sha224
+@item
+hmac-sha256
+@item
+hmac-sha384
+@item
+hmac-sha512
+@end multitable
+
+You will need to use bind or ldns utils to generate TSIG keys.  Knot DNS doesn't have it's own generation utilities yet.
+
+@example
+
+$ dnssec-keygen -a HMAC-SHA256 -b 256 -n HOST foobar.example.com
+Kfoobar.example.com.+163+21239
+$ cat Kfoobar.example.com.+163+21239.key 
+foobar.example.com. IN KEY 512 3 163 rqv2WRyDgIUaHcJi03Zssor9jtG1kOpb3dPywxZfTeo=
+	  
+@end example
+
+Key generated in previous paragraph would be written as:
+
+@example
+
+keys @{
+  foobar.example.com. hmac-sha256 "rqv2WRyDgIUaHcJi03Zssor9jtG1kOpb3dPywxZfTeo=";
+@}
+	  
+@end example
+
+@node Example
+@subsection Example
+
+
+@example
+
+keys @{
+  key0.server0 hmac-md5 "Wg==";
+  foobar.example.com. hmac-sha256 "RQ==";
+@}
+	
+@end example
+
+@node interfaces
+@section interfaces
+
+The @code{interfaces} statement contains IP interfaces where Knot DNS listens for incoming queries.
+
+@menu
+* interfaces Syntax::           
+* interfaces Statement Definition and Usage::  
+* interfaces Examples::         
+@end menu
+
+@node interfaces Syntax
+@subsection Syntax
+
+@example
+@code{interfaces} @code{@{}
+  @kbd{interface_id}
+    ( @kbd{ip_address}[@@@kbd{port_number}] |
+      @code{@{} @code{address} @kbd{ip_address}@code{;} [ @code{port} @kbd{port_number}@code{;} ] @code{@}} )
+  [ @kbd{interface_id ...}@code{;} @kbd{...}@code{;} ]
+@code{@}}
+@end example
+
+@node interfaces Statement Definition and Usage
+@subsection Statement Definition and Usage
+
+@menu
+* interface_id::                
+@end menu
+
+@node interface_id
+@subsubsection @kbd{interface_id}
+
+The @kbd{interface_id} is a textual identifier of an IP interface,
+which consists of IP address and port.
+
+The definition of interface can be written in long or a short form and
+it has always contain and IP (IPv4 or IPv6) address.
+
+@node interfaces Examples
+@subsection interfaces Examples
+
+Long form:
+
+@example
+
+interfaces @{
+  my_ip @{
+    address 192.0.2.1;
+    port 53;
+  @}
+@}
+	
+@end example
+
+Short form:
+
+@example
+
+interfaces @{
+  my_second_ip 198.51.100.1@@53;
+@}
+	
+@end example
+
+Short form without port (defaults to 53):
+
+@example
+
+interfaces @{
+  my_third_ip 203.0.113.1;
+@}
+	
+@end example
+
+@node remotes
+@section @code{remotes} Statement
+
+The @code{remotes} statement sets up all remote servers for zone
+transfers.  Knot DNS doesn't distinguish between client or server in
+this section.  Role of the server is determined at the time of its
+usage in the @code{@ref{zones}} section.  One server may act as a
+client for one zone (e.g. downloading the updates) and as a master
+server for different zone.
+
+@menu
+* remotes Syntax::              
+* remotes Statement Definition and Grammar::  
+@end menu
+
+@node remotes Syntax
+@subsection Syntax
+
+@example
+@code{remotes} @code{@{}
+  @kbd{remote_id}
+    ( @kbd{ip_address}[@code{@@}@kbd{port_number}] |
+      @code{@{}   @code{address} @kbd{ip_address};
+         [ @code{port} @kbd{port_number}; ]
+         [ @code{key} @kbd{key_id}; ]
+         [ @code{via} [ @kbd{interface_id} | @kbd{ip_address} ]; ]
+      @code{@}}
+    )
+  [ @kbd{remote_id} @dots{}; @dots{}; ]
+@code{@}}
+@end example
+
+@node remotes Statement Definition and Grammar
+@subsection Statement Definition and Grammar
+
+
+@node zones
+@section @code{zones} Statement
+
+The @code{zones} statement contains definition of zones served by Knot DNS.
+
+@menu
+* zones Syntax::                
+* zones Statement Definition and Grammar::  
+@end menu
+
+@node zones Syntax
+@subsection Syntax
+
+@example
+@code{zones} @code{@{}
+  [ @kbd{zone_options} ]
+  @kbd{zone_id} @code{@{}
+    @code{file} @code{"}@kbd{string}@code{";}
+    [ @code{xfr-in} @kbd{remote_id} [, @kbd{remote_id}, @dots{} ]@code{;} ]
+    [ @code{xfr-out} @kbd{remote_id} [, @kbd{remote_id}, @dots{} ]@code{;} ]
+    [ @code{notify-in} @kbd{remote_id} [, @kbd{remote_id}, @dots{} ]@code{;} ]
+    [ @code{notify-out} @kbd{remote_id} [, @kbd{remote_id}, @dots{} ]@code{;} ]
+    [ @kbd{zone_options} ]
+  @code{@}}
+@code{@}}
+
+@kbd{zone_options} :=
+  [ @code{semantic-checks} @kbd{boolean}@code{;} ]
+  [ @code{disable-any} @kbd{boolean}@code{;} ]
+  [ @code{notify-timeout} @kbd{integer}@code{;} ]
+  [ @code{notify-retries} @kbd{integer}@code{;} ]
+  [ @code{zonefile-sync} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
+  [ @code{ixfr-fslimit} ( @kbd{integer} | @kbd{integer}(@code{k} | @code{M} | @code{G}) )@code{;} ]
+
+@end example
+
+@node zones Statement Definition and Grammar
+@subsection Statement Definition and Grammar
+
+@node log
+@section @code{log} Statement
+
+@menu
+* log Syntax::                  
+* log Statement Definition and Grammar::  
+@end menu
+
+@node log Syntax
+@subsection Syntax
+
+@node log Statement Definition and Grammar
+@subsection Statement Definition and Grammar
+
+The @code{log} statement configures logging output of Knot DNS.  You
+can configure Knot DNS to log into file or system log.  Each log
+message has it's priority and you can configure priorities for each
+log destination.
