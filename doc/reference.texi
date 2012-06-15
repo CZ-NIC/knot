@@ -14,6 +14,7 @@ This reference describe every configuration option in Knot DNS.
 
 @node system
 @section @code{system} Statement
+@stindex system
 
 The @code{system} statement contains general options related to the
 operating system and other general options which don't fit anywhere
@@ -55,6 +56,7 @@ else.
 
 @node identity
 @subsubsection identity
+@vindex identity
 
 Identity of the server (see @url{http://tools.ietf.org/html/rfc4892,RFC 4892}). Not used yet.
 
@@ -66,6 +68,7 @@ system @{
 
 @node version
 @subsubsection version
+@vindex version
 
 Version of the server (see @url{http://tools.ietf.org/html/rfc4892,RFC 4892}). Not used yet.
 
@@ -77,6 +80,7 @@ system @{
 
 @node nsid
 @subsubsection nsid
+@vindex nsid
 
 DNS Name Server Identifier (see @url{http://tools.ietf.org/html/rfc5001,RFC 5001}).
 
@@ -90,6 +94,7 @@ system @{
 
 @node storage
 @subsubsection storage
+@vindex storage
 
 The working directory of the Knot DNS, it is used to store compiled zone files and it's also a default location of the pidfile.
 
@@ -101,6 +106,7 @@ system @{
 
 @node pidfile
 @subsubsection pidfile
+@vindex pidfile
 
 Custom pidfile location.
 
@@ -114,6 +120,7 @@ system @{
 
 @node workers
 @subsubsection workers
+@vindex workers
 
 Number of workers (threads) per interface.  This option is used to
 force number of threads used per interface.
@@ -128,6 +135,7 @@ system @{
 
 @node user
 @subsubsection user
+@vindex user
 
 System @kbd{user} or @kbd{user}.@kbd{group} under which the Knot DNS
 is run after starting and binding to interfaces.
@@ -153,6 +161,7 @@ system @{
 
 @node keys
 @section @code{keys} Statement
+@stindex keys
 
 The @code{keys} statement sets up the TSIG keys used to authenticate
 zone transfers.
@@ -182,6 +191,7 @@ keys @{
 
 @node key_id
 @subsubsection @code{key_id} Statement
+@vindex key_id
 
 The @kbd{key_id} statement defines a secret shared key for use with
 TSIG.  It consists of its name, algorithm and key contents.
@@ -239,6 +249,7 @@ keys @{
 
 @node interfaces
 @section interfaces
+@stindex interfaces
 
 The @code{interfaces} statement contains IP interfaces where Knot DNS listens for incoming queries.
 
@@ -269,6 +280,7 @@ The @code{interfaces} statement contains IP interfaces where Knot DNS listens fo
 
 @node interface_id
 @subsubsection @kbd{interface_id}
+@vindex interface_id
 
 The @kbd{interface_id} is a textual identifier of an IP interface,
 which consists of IP address and port.
@@ -314,6 +326,7 @@ interfaces @{
 
 @node remotes
 @section @code{remotes} Statement
+@stindex remotes
 
 The @code{remotes} statement sets up all remote servers for zone
 transfers.  Knot DNS doesn't distinguish between client or server in
@@ -346,7 +359,6 @@ server for different zone.
 
 @node remotes Statement Definition and Grammar
 @subsection Statement Definition and Grammar
-
 
 @node zones
 @section @code{zones} Statement
@@ -389,6 +401,7 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
 
 @node log
 @section @code{log} Statement
+@stindex log
 
 @menu
 * log Syntax::                  

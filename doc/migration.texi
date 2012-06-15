@@ -1,4 +1,4 @@
-@node Migration for other DNS servers, , Troubleshooting, Top
+@node Migration for other DNS servers, , Statement Index, Top
 @appendix Migration for other DNS servers
 
 @menu

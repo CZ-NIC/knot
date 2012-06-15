@@ -3,6 +3,10 @@
 @include version.texi
 @documentencoding utf-8
 @settitle Knot DNS @value{VERSION}
+
+@defindex st
+@syncodeindex vr st
+
 @copying
 This manual is for Knot DNS (version @value{VERSION}, @value{UPDATED}),
 which is a high-performance authoritative-only DNS server.
@@ -56,6 +60,7 @@ This manual is for Knot DNS (version @value{VERSION}, @value{UPDATED}).
 * Knot DNS Configuration Reference::  
 * Security Considerations::     
 * Troubleshooting::             
+* Statement Index::             
 * Migration for other DNS servers::  
 
 @detailmenu
@@ -194,6 +199,9 @@ Migration for other DNS servers
 @include reference.texi
 @include security.texi
 @include troubleshooting.texi
+
+@c indices
+@include indices.texi
 
 @c appendixes
 
