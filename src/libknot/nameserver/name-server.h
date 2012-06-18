@@ -236,8 +236,13 @@ void knot_ns_error_response(const knot_nameserver_t *nameserver,
                             uint8_t rcode, uint8_t *response_wire,
                             size_t *rsize);
 
-int knot_ns_error_response_from_query(const knot_nameserver_t *nameserver,
+int knot_ns_error_response_from_query_wire(const knot_nameserver_t *nameserver,
                                       const uint8_t *query, size_t size,
+                                      uint8_t rcode, uint8_t *response_wire,
+                                      size_t *rsize);
+
+int knot_ns_error_response_from_query(const knot_nameserver_t *nameserver,
+                                      const knot_packet_t *query,
                                       uint8_t rcode, uint8_t *response_wire,
                                       size_t *rsize);
 

@@ -2879,10 +2879,6 @@ int knot_ns_parse_packet(const uint8_t *query_wire, size_t qsize,
 	dbg_ns_verb("ns_parse_packet() called with query size %zu.\n", qsize);
 	//dbg_ns_hex((char *)query_wire, qsize);
 
-	if (qsize < 2) {
-		return KNOT_EMALF;
-	}
-
 	// 1) create empty response
 	dbg_ns_verb("Parsing packet...\n");
 	//parsed = knot_response_new_empty(NULL);
@@ -2966,10 +2962,10 @@ void knot_ns_error_response(const knot_nameserver_t *nameserver,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_ns_error_response_from_query(const knot_nameserver_t *nameserver,
-                                      const uint8_t *query, size_t size,
-                                      uint8_t rcode, uint8_t *response_wire,
-                                      size_t *rsize)
+int knot_ns_error_response_from_query_wire(const knot_nameserver_t *nameserver,
+                                          const uint8_t *query, size_t size,
+                                          uint8_t rcode,
+                                          uint8_t *response_wire, size_t *rsize)
 {
 	if (size < 2) {
 		// ignore packet
@@ -2987,6 +2983,47 @@ int knot_ns_error_response_from_query(const knot_nameserver_t *nameserver,
 	}
 	knot_ns_error_response(nameserver, pkt_id, flags1_ptr,
 	                       rcode, response_wire, rsize);
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_ns_error_response_from_query(const knot_nameserver_t *nameserver,
+                                      const knot_packet_t *query,
+                                      uint8_t rcode, uint8_t *response_wire,
+                                      size_t *rsize)
+{
+	if (query->parsed < 2) {
+		// ignore packet
+		return KNOT_EFEWDATA;
+	}
+
+	if (query->parsed < KNOT_WIRE_HEADER_SIZE) {
+		return knot_ns_error_response_from_query_wire(nameserver,
+			query->wireformat, query->size, rcode, response_wire,
+			rsize);
+	}
+
+	size_t max_size = *rsize;
+	uint8_t flags1 = knot_wire_get_flags1(knot_packet_wireformat(query));
+
+	// prepare the generic error response
+	knot_ns_error_response(nameserver, knot_packet_id(query),
+	                       &flags1, rcode, response_wire,
+	                       rsize);
+
+	if (query->parsed > KNOT_WIRE_HEADER_SIZE
+	                    + KNOT_WIRE_QUESTION_MIN_SIZE) {
+		// in this case the whole question was parsed, append it
+		size_t question_size = 4 + knot_dname_size(
+		                        knot_packet_qname(query));
+
+		if (max_size > KNOT_WIRE_HEADER_SIZE + question_size) {
+			memcpy(response_wire + *rsize,
+			       knot_packet_wireformat(query), question_size);
+		}
+	}
 
 	return KNOT_EOK;
 }
