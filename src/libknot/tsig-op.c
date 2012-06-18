@@ -31,6 +31,7 @@
 
 
 const int KNOT_TSIG_MAX_DIGEST_SIZE = 64;    // size of HMAC-SHA512 digest
+const uint16_t KNOT_TSIG_FUDGE_DEFAULT = 300;  // default Fudge value
 
 
 static int knot_tsig_check_algorithm(const knot_rrset_t *tsig_rr)
@@ -555,7 +556,7 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 		tsig_rdata_set_other_data(tmp_tsig, 0, 0);
 	}
 
-	tsig_rdata_set_fudge(tmp_tsig, 300);   /*! \todo Bleeding eyes :-) */
+	tsig_rdata_set_fudge(tmp_tsig, KNOT_TSIG_FUDGE_DEFAULT);
 
 	/* Set original ID */
 	tsig_rdata_set_orig_id(tmp_tsig, knot_wire_get_id(msg));
@@ -678,7 +679,7 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	free(items);
 
 	tsig_rdata_store_current_time(tmp_tsig);
-	tsig_rdata_set_fudge(tmp_tsig, 300);
+	tsig_rdata_set_fudge(tmp_tsig, KNOT_TSIG_FUDGE_DEFAULT);
 	
 	/* Create wire to be signed. */
 	size_t wire_len = prev_digest_len + to_sign_len
@@ -958,8 +959,7 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	}
 
 	knot_rrset_t *tmp_tsig =
-		knot_rrset_new(key_name,
-			       KNOT_RRTYPE_TSIG, KNOT_CLASS_ANY, 0);
+		knot_rrset_new(key_name, KNOT_RRTYPE_TSIG, KNOT_CLASS_ANY, 0);
 	if (!tmp_tsig) {
 		dbg_tsig("TSIG: tmp_tsig = NULL\n");
 		knot_dname_free(&key_name);
@@ -1011,7 +1011,11 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 
 	tsig_rdata_set_alg_name(tmp_tsig, alg_name);
 	tsig_rdata_set_time_signed(tmp_tsig, tsig_rdata_time_signed(tsig_rr));
-	tsig_rdata_set_fudge(tmp_tsig, tsig_rdata_fudge(tsig_rr));
+
+	/* Comparing to BIND it was found out that the Fudge should always be
+	 * set to the server's value.
+	 */
+	tsig_rdata_set_fudge(tmp_tsig, KNOT_TSIG_FUDGE_DEFAULT);
 	tsig_rdata_set_mac(tmp_tsig, 0, NULL);
 	knot_dname_release(alg_name); /* Already copied in tsig_rdata_set_alg_name() */
 

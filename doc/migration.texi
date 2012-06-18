@@ -1,0 +1,29 @@
+@node Migration for other DNS servers, , Statement Index, Top
+@appendix Migration for other DNS servers
+
+@menu
+* Knot DNS for BIND users::     
+* Knot DNS for NSD users::      
+* Knot DNS for PowerDNS users::  
+* Knot DNS for djbdns users::   
+@end menu
+
+@node Knot DNS for BIND users
+@appendixsec Knot DNS for BIND users
+
+[TODO]
+
+@node Knot DNS for NSD users
+@appendixsec Knot DNS for NSD users
+
+[TODO]
+
+@node Knot DNS for PowerDNS users
+@appendixsec Knot DNS for PowerDNS users
+
+[TODO]
+
+@node Knot DNS for djbdns users
+@appendixsec Knot DNS for djbdns users
+
+[TODO]

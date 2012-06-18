@@ -185,7 +185,7 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 	knot_packet_t *packet =
 		knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
 	if (packet == NULL) {
-		int ret = knot_ns_error_response_from_query(ns, qbuf, n,
+		int ret = knot_ns_error_response_from_query_wire(ns, qbuf, n,
 		                                            KNOT_RCODE_SERVFAIL,
 		                                            qbuf, &resp_len);
 
@@ -199,8 +199,10 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 	int parse_res = knot_ns_parse_packet(qbuf, n, packet, &qtype);
 	if (unlikely(parse_res != KNOT_EOK)) {
 		if (parse_res > 0) { /* Returned RCODE */
-			int ret = knot_ns_error_response_from_query(ns, qbuf, n,
-					parse_res, qbuf, &resp_len);
+//			int ret = knot_ns_error_response_from_query_wire(ns, qbuf, n,
+//					parse_res, qbuf, &resp_len);
+			int ret = knot_ns_error_response_from_query(ns, packet,
+			                            parse_res, qbuf, &resp_len);
 
 			if (ret == KNOT_EOK) {
 				tcp_reply(fd, qbuf, resp_len);

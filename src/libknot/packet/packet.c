@@ -766,6 +766,10 @@ int knot_packet_parse_from_wire(knot_packet_t *packet,
 	packet->size = size;
 	packet->free_wireformat = 0;
 
+	if (size < 2) {
+		return KNOT_EMALF;
+	}
+
 	//uint8_t *pos = wireformat;
 	size_t pos = 0;
 	//size_t remaining = size;
