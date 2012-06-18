@@ -2213,6 +2213,7 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 		if (zone == NULL) {
 			assert(knot_packet_tsig(query) != NULL);
 			// treat as BADKEY error
+			/*! \todo Is this OK?? */
 			rcode = KNOT_RCODE_NOTAUTH;
 			tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
 			ret = KNOT_TSIG_EBADKEY;
