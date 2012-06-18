@@ -2175,7 +2175,8 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 
 	if (rcode == KNOT_RCODE_NOERROR
 	    && ((zone == NULL && knot_packet_tsig(query) == NULL)
-	        || knot_packet_qclass(query) != KNOT_CLASS_IN)) {
+	        || (knot_packet_qclass(query) != KNOT_CLASS_IN
+	            && knot_packet_qclass(query) != KNOT_CLASS_ANY))) {
 		/*! \todo If there is TSIG, this should be probably handled
 		 *        as a key error.
 		 */
