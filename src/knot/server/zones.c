@@ -1413,9 +1413,21 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 			dbg_zones_verb("zones: loading zone '%s' from '%s'\n",
 			               z->name, z->db);
 			ret = zones_load_zone(&zone, z->name, z->file, z->db);
+			const knot_node_t *apex = NULL;
+			const knot_rrset_t *soa = NULL;
 			if (ret == KNOTD_EOK) {
-				log_server_info("Loaded zone '%s'\n",
-				                z->name);
+				apex = knot_zone_contents_apex(
+					knot_zone_contents(zone));
+				soa = knot_node_rrset(apex,
+					KNOT_RRTYPE_SOA);
+				int64_t sn = 0;
+				if (apex && soa) {
+					sn = knot_rdata_soa_serial(
+					         knot_rrset_rdata(soa));
+					if (sn < 0) sn = 0;
+				}
+				log_server_info("Loaded zone '%s' serial %u\n",
+				                z->name, (uint32_t)sn);
 			}
 		}
 
