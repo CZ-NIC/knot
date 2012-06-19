@@ -1591,7 +1591,8 @@ dbg_xfrin_exec_detail(
 static int xfrin_apply_remove_rrsigs(knot_changes_t *changes,
                                      const knot_rrset_t *remove,
                                      knot_node_t *node,
-                                     knot_rrset_t **rrset)
+                                     knot_rrset_t **rrset,
+                                     knot_rrset_t **rrsigs_old)
 {
 	assert(changes != NULL);
 	assert(remove != NULL);
@@ -1607,11 +1608,16 @@ static int xfrin_apply_remove_rrsigs(knot_changes_t *changes,
 
 	int copied = 0;
 
-	if (!*rrset
-	    || knot_dname_compare(knot_rrset_owner(*rrset),
-	                            knot_node_owner(node)) != 0
-	    || knot_rrset_type(*rrset) != knot_rdata_rrsig_type_covered(
-	                  knot_rrset_rdata(remove))) {
+	if (*rrset
+	    && knot_dname_compare(knot_rrset_owner(*rrset),
+	                          knot_node_owner(node)) == 0
+	    && knot_rrset_type(*rrset) == knot_rdata_rrsig_type_covered(
+	                        knot_rrset_rdata(remove))) {
+		// this RRSet should be the already copied RRSet so we may
+		// update it right away
+		/*! \todo Does this case even occur? */
+		dbg_xfrin_verb("Using RRSet from previous iteration.\n");
+	} else {
 		// find RRSet based on the Type Covered
 		knot_rr_type_t type = knot_rdata_rrsig_type_covered(
 			knot_rrset_rdata(remove));
@@ -1624,17 +1630,8 @@ static int xfrin_apply_remove_rrsigs(knot_changes_t *changes,
 			return ret;
 		}
 		copied = 1;
-	} else {
-		// we should have the right RRSIG RRSet in *rrset
-		assert(knot_rrset_type(*rrset) 
-		       == knot_rdata_rrsig_type_covered(
-		                 knot_rrset_rdata(remove)));
-		// this RRSet should be the already copied RRSet so we may
-		// update it right away
-		/*! \todo Does this case even occur? */
-		dbg_xfrin_detail("Using RRSet from previous iteration.\n");
 	}
-	
+
 	// get the old rrsigs
 	knot_rrset_t *old = knot_rrset_get_rrsigs(*rrset);
 	dbg_xfrin_detail("Old RRSIGs from RRSet: %p\n", old);
@@ -1645,11 +1642,17 @@ static int xfrin_apply_remove_rrsigs(knot_changes_t *changes,
 	// copy the RRSIGs
 	knot_rrset_t *rrsigs = NULL;
 	if (!copied) {
-		ret = xfrin_copy_old_rrset(old, &rrsigs, changes);
-		if (ret != KNOT_EOK) {
-			return ret;
+		// check if the stored RRSIGs are not the right ones
+		if (*rrsigs_old && *rrsigs_old == (*rrset)->rrsigs) {
+			dbg_xfrin_verb("Using RRSIG from previous iteration\n");
+			rrsigs = *rrsigs_old;
+		} else {
+			ret = xfrin_copy_old_rrset(old, &rrsigs, changes);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+			dbg_xfrin_detail("Copied RRSIGs: %p\n", rrsigs);
 		}
-		dbg_xfrin_detail("Copied RRSIGs: %p\n", rrsigs);
 	} else {
 		rrsigs = old;
 		dbg_xfrin_detail("Using old RRSIGs: %p\n", rrsigs);
@@ -1660,6 +1663,8 @@ static int xfrin_apply_remove_rrsigs(knot_changes_t *changes,
 		dbg_xfrin("Failed to set rrsigs.\n");
 		return KNOT_ERROR;
 	}
+
+	*rrsigs_old = rrsigs;
 
 	// now in '*rrset' we have a copy of the RRSet which holds the RRSIGs 
 	// and in 'rrsigs' we have the copy of the RRSIGs
@@ -1756,10 +1761,13 @@ static int xfrin_apply_remove_normal(knot_changes_t *changes,
 	
 	// now we have the copy of the node, so lets get the right RRSet
 	// check if we do not already have it
-	if (!*rrset
-	    || knot_dname_compare(knot_rrset_owner(*rrset),
-	                          knot_node_owner(node)) != 0
-	    || knot_rrset_type(*rrset) != knot_rrset_type(remove)) {
+	if (*rrset
+	    && knot_dname_compare(knot_rrset_owner(*rrset),
+	                          knot_node_owner(node)) == 0
+	    && knot_rrset_type(*rrset) == knot_rrset_type(remove)) {
+		/*! \todo Does some other case even occur? */
+		dbg_xfrin_verb("Using RRSet from previous loop.\n");
+	} else {
 		/*!
 		 * \todo This may happen also with already 
 		 *       copied RRSet. In that case it would be
@@ -1773,7 +1781,7 @@ static int xfrin_apply_remove_normal(knot_changes_t *changes,
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-	} /*! \todo Does some other case even occur? */
+	}
 	
 	if (*rrset == NULL) {
 		dbg_xfrin_verb("RRSet not found for RR to be removed.\n");
@@ -1787,8 +1795,7 @@ dbg_xfrin_exec_detail(
 	free(name);
 );
 
-	// remove the specified RRs from the RRSet (de facto difference of
-	// sets)
+	// remove the specified RRs from the RRSet (de facto difference of sets)
 	knot_rdata_t *rdata = xfrin_remove_rdata(*rrset, remove);
 	if (rdata == NULL) {
 		dbg_xfrin_verb("Failed to remove RDATA from RRSet\n");
@@ -1853,7 +1860,7 @@ dbg_xfrin_exec_detail(
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*! \todo Needs review - RRs may not be merged into RRSets. */
 static int xfrin_apply_remove_all_rrsets(knot_changes_t *changes,
                                          knot_node_t *node, uint16_t type)
 {
@@ -1953,28 +1960,56 @@ static int xfrin_apply_add_normal(knot_changes_t *changes,
 
 	int ret;
 
-	dbg_xfrin_verb("applying rrset:\n");
+dbg_xfrin_exec_detail(
+	dbg_xfrin_detail("applying rrset:\n");
 	knot_rrset_dump(add, 0);
+);
 	
+	int copied = 0;
 	/*! \note Reusing RRSet from previous function caused it not to be
 	 *        removed from the node.
 	 *        Maybe modification of the code would allow reusing the RRSet
 	 *        as in apply_add_rrsigs() - the RRSet should not be copied
 	 *        in such case.
 	 */
+	if (*rrset
+	    && knot_dname_compare(knot_rrset_owner(*rrset),
+	                          knot_node_owner(node)) == 0
+	    && knot_rrset_type(*rrset) == knot_rrset_type(add)) {
+		dbg_xfrin_verb("Using RRSet from previous iteration.\n");
+	} else {
+		dbg_xfrin_detail("Removing rrset!\n");
+		*rrset = knot_node_remove_rrset(node, knot_rrset_type(add));
+
+		knot_rrset_t *old = *rrset;
+
+		if (*rrset != NULL) {
+			ret = xfrin_copy_old_rrset(old, rrset, changes);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+
+			dbg_xfrin_detail("Copied RRSet: %p\n", *rrset);
+			copied = 1;
+		}
+	}
+
 //	if (!*rrset
 //	    || knot_dname_compare(knot_rrset_owner(*rrset),
 //	                          knot_node_owner(node)) != 0
-//	    || knot_rrset_type(*rrset)
-//	       != knot_rrset_type(add)) {
-//		dbg_xfrin("Removing rrset!\n");
+//	    || knot_rrset_type(*rrset) != knot_rrset_type(add)) {
+//		dbg_xfrin_detail("Removing rrset!\n");
 //		*rrset = knot_node_remove_rrset(node, knot_rrset_type(add));
+//	} else {
+//		dbg_xfrin_verb("Using RRSet from previous iteration.\n");
 //	}
 
-	*rrset = knot_node_remove_rrset(node, knot_rrset_type(add));
+//	*rrset = knot_node_remove_rrset(node, knot_rrset_type(add));
 	
+dbg_xfrin_exec_detail(
 	dbg_xfrin_detail("Removed RRSet: \n");
 	knot_rrset_dump(*rrset, 1);
+);
 
 	if (*rrset == NULL) {
 dbg_xfrin_exec_detail(
@@ -2007,8 +2042,6 @@ dbg_xfrin_exec_detail(
 		return 1; // return 1 to indicate the add RRSet was used
 	}
 
-	knot_rrset_t *old = *rrset;
-
 dbg_xfrin_exec_detail(
 	char *name = knot_dname_to_str(knot_rrset_owner(*rrset));
 	dbg_xfrin_detail("Found RRSet with owner %s, type %s\n", name,
@@ -2016,12 +2049,12 @@ dbg_xfrin_exec_detail(
 	free(name);
 );
 //	knot_rrset_dump(*rrset, 1);
-	ret = xfrin_copy_old_rrset(old, rrset, changes);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
+//	ret = xfrin_copy_old_rrset(old, rrset, changes);
+//	if (ret != KNOT_EOK) {
+//		return ret;
+//	}
 
-	dbg_xfrin_detail("Copied RRSet: %p\n", *rrset);
+//	dbg_xfrin_detail("Copied RRSet: %p\n", *rrset);
 
 //	dbg_xfrin("After copy: Found RRSet with owner %s, type %s\n",
 //	               knot_dname_to_str((*rrset)->owner),
@@ -2047,16 +2080,19 @@ dbg_xfrin_exec_detail(
 
 	ret = knot_rrset_merge((void **)rrset, (void **)&add);
 	if (ret != KNOT_EOK) {
-		dbg_xfrin("Failed to merge changeset RRSet to copy.\n");
+		dbg_xfrin("Failed to merge changeset RRSet.\n");
 		return KNOT_ERROR;
 	}
 	dbg_xfrin_detail("Merge returned: %d\n", ret);
 	knot_rrset_dump(*rrset, 1);
-	ret = knot_node_add_rrset(node, *rrset, 0);
 
-	if (ret < 0) {
-		dbg_xfrin("Failed to add merged RRSet to the node.\n");
-		return ret;
+	if (copied) {
+		ret = knot_node_add_rrset(node, *rrset, 0);
+
+		if (ret < 0) {
+			dbg_xfrin("Failed to add merged RRSet to the node.\n");
+			return ret;
+		}
 	}
 
 	// return 2 so that the add RRSet is removed from
@@ -2072,6 +2108,7 @@ static int xfrin_apply_add_rrsig(knot_changes_t *changes,
                                   knot_rrset_t *add,
                                   knot_node_t *node,
                                   knot_rrset_t **rrset,
+                                  knot_rrset_t **rrsigs_old,
                                   knot_zone_contents_t *contents)
 {
 	assert(changes != NULL);
@@ -2099,11 +2136,12 @@ dbg_xfrin_exec_verb(
 	/*! \note Here the check is OK, because if we aready have the RRSet,
 	 *        it's a copied one, so it is OK to modify it right away.
 	 */
-	if (!*rrset
-	    || knot_dname_compare(knot_rrset_owner(*rrset),
-	                          knot_node_owner(node)) != 0
-	    || knot_rrset_type(*rrset) != knot_rdata_rrsig_type_covered(
-	                                             knot_rrset_rdata(add))) {
+	if (*rrset
+	    && knot_dname_compare(knot_rrset_owner(*rrset),
+	                          knot_node_owner(node)) == 0
+	    && knot_rrset_type(*rrset) == type) {
+		dbg_xfrin_verb("Using RRSet from previous iteration.\n");
+	} else {
 		// copy the rrset
 		ret = xfrin_copy_rrset(node, type, rrset, changes);
 		if (ret < 0) {
@@ -2112,11 +2150,6 @@ dbg_xfrin_exec_verb(
 			*rrset = NULL;
 		}
 		copied = 1;
-	} else {
-		// we should have the right RRSIG RRSet in *rrset
-		assert(knot_rrset_type(*rrset) == type);
-		// this RRSet should be the already copied RRSet so we may
-		// update it right away
 	}
 
 	if (*rrset == NULL) {
@@ -2184,12 +2217,25 @@ dbg_xfrin_exec_detail(
 		knot_rrset_t *rrsig;
 		
 		if (!copied) {
-			ret = xfrin_copy_old_rrset(old, &rrsig, changes);
-			if (ret != KNOT_EOK) {
-				return ret;
+			// check if the stored RRSIGs are not the right ones
+			if (*rrsigs_old && *rrsigs_old == old) {
+				dbg_xfrin_verb("Using RRSIG from previous iteration\n");
+				rrsig = *rrsigs_old;
+			} else {
+				ret = xfrin_copy_old_rrset(old, &rrsig, changes);
+				if (ret != KNOT_EOK) {
+					return ret;
+				}
+				dbg_xfrin_detail("Copied RRSIGs: %p\n", rrsig);
 			}
+
+//			ret = xfrin_copy_old_rrset(old, &rrsig, changes);
+//			if (ret != KNOT_EOK) {
+//				return ret;
+//			}
 		} else {
 			rrsig = old;
+			dbg_xfrin_verb("Using old RRSIGs: %p\n", rrsig);
 		}
 		
 		// replace the old RRSIGs with the new ones
@@ -2475,9 +2521,9 @@ void xfrin_rollback_update(knot_zone_contents_t *old_contents,
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_apply_remove2(knot_zone_contents_t *contents,
-                               knot_changeset_t *chset,
-                               knot_changes_t *changes)
+static int xfrin_apply_remove(knot_zone_contents_t *contents,
+                              knot_changeset_t *chset,
+                              knot_changes_t *changes)
 {
 	/*
 	 * Iterate over removed RRSets, and remove them from the new nodes
@@ -2486,7 +2532,7 @@ static int xfrin_apply_remove2(knot_zone_contents_t *contents,
 	 */
 	int ret = 0;
 	knot_node_t *node = NULL;
-	knot_rrset_t *rrset = NULL;
+	knot_rrset_t *rrset = NULL, *rrsigs = NULL;
 
 	int is_nsec3 = 0;
 
@@ -2545,7 +2591,7 @@ dbg_xfrin_exec_detail(
 			// this should work also for UPDATE
 			ret = xfrin_apply_remove_rrsigs(changes,
 			                                chset->remove[i],
-			                                node, &rrset);
+			                                node, &rrset, &rrsigs);
 		} else {
 			// this should work also for UPDATE
 			ret = xfrin_apply_remove_normal(changes,
@@ -2567,13 +2613,14 @@ dbg_xfrin_exec_detail(
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_apply_add2(knot_zone_contents_t *contents,
-                            knot_changeset_t *chset,
-                            knot_changes_t *changes)
+static int xfrin_apply_add(knot_zone_contents_t *contents,
+                           knot_changeset_t *chset,
+                           knot_changes_t *changes)
 {
 	int ret = 0;
 	knot_node_t *node = NULL;
 	knot_rrset_t *rrset = NULL;
+	knot_rrset_t *rrsigs = NULL;
 
 	int is_nsec3 = 0;
 
@@ -2635,7 +2682,8 @@ dbg_xfrin_exec_detail(
 
 		if (knot_rrset_type(chset->add[i]) == KNOT_RRTYPE_RRSIG) {
 			ret = xfrin_apply_add_rrsig(changes, chset->add[i],
-			                            node, &rrset, contents);
+			                            node, &rrset, &rrsigs,
+			                            contents);
 		} else {
 			ret = xfrin_apply_add_normal(changes, chset->add[i],
 			                             node, &rrset, contents);
@@ -2707,9 +2755,9 @@ dbg_xfrin_exec_detail(
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_apply_replace_soa2(knot_zone_contents_t *contents,
-                                    knot_changes_t *changes,
-                                    knot_changeset_t *chset)
+static int xfrin_apply_replace_soa(knot_zone_contents_t *contents,
+                                   knot_changes_t *changes,
+                                   knot_changeset_t *chset)
 {
 	dbg_xfrin("Replacing SOA record.\n");
 	knot_node_t *node = knot_zone_contents_get_apex(contents);
@@ -2808,9 +2856,9 @@ static int xfrin_apply_replace_soa2(knot_zone_contents_t *contents,
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_apply_changeset2(knot_zone_contents_t *contents,
-                                  knot_changes_t *changes,
-                                  knot_changeset_t *chset)
+static int xfrin_apply_changeset(knot_zone_contents_t *contents,
+                                 knot_changes_t *changes,
+                                 knot_changeset_t *chset)
 {
 	/*
 	 * Applies one changeset to the zone. Checks if the changeset may be
@@ -2831,19 +2879,19 @@ static int xfrin_apply_changeset2(knot_zone_contents_t *contents,
 		return KNOT_ERROR;
 	}
 
-	int ret = xfrin_apply_remove2(contents, chset, changes);
+	int ret = xfrin_apply_remove(contents, chset, changes);
 	if (ret != KNOT_EOK) {
 //		xfrin_clean_changes_after_fail2(changes);
 		return ret;
 	}
 
-	ret = xfrin_apply_add2(contents, chset, changes);
+	ret = xfrin_apply_add(contents, chset, changes);
 	if (ret != KNOT_EOK) {
 //		xfrin_clean_changes_after_fail(changes);
 		return ret;
 	}
 
-	return xfrin_apply_replace_soa2(contents, changes, chset);
+	return xfrin_apply_replace_soa(contents, changes, chset);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -3122,7 +3170,7 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 	dbg_xfrin_verb("Old contents apex: %p, new apex: %p\n",
 	               old_contents->apex, contents_copy->apex);
 	for (int i = 0; i < chsets->count; ++i) {
-		if ((ret = xfrin_apply_changeset2(contents_copy, changes,
+		if ((ret = xfrin_apply_changeset(contents_copy, changes,
 		                                  &chsets->sets[i]))
 		                                  != KNOT_EOK) {
 			xfrin_rollback_update(old_contents,
