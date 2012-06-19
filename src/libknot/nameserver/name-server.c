@@ -2126,8 +2126,13 @@ have_node:
 		knot_rrset_t *dname_rrset = knot_node_get_rrset(
 		                         closest_encloser, KNOT_RRTYPE_DNAME);
 		if (dname_rrset != NULL) {
-/* POZOR !!!! skontrolovat return value */
-			ns_process_dname(dname_rrset, &qname, resp);
+			ret = ns_process_dname(dname_rrset, &qname, resp);
+
+			knot_response_set_aa(resp);
+
+			if (ret != KNOT_EOK) {
+				goto finalize;
+			}
 
 			// do not search for the name in new zone
 			// (out-of-bailiwick), just in the current zone if it
