@@ -1979,6 +1979,11 @@ dbg_zone_exec_detail(
 );
 	*nsec3_node = found;
 
+	if (nsec3_node == NULL) {
+		// there is no NSEC3 node even if there should be
+		return KNOT_ENSEC3CHAIN;
+	}
+
 	if (prev == NULL) {
 		// either the returned node is the root of the tree, or it is
 		// the leftmost node in the tree; in both cases node was found

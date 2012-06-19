@@ -52,6 +52,7 @@ enum knot_error {
 	KNOT_EACCES,          /*!< Permission is denied. */ 
 	KNOT_ECRYPTO,         /*!< Error in crypto library. */
 	KNOT_ENSEC3PAR,       /*!< Missing or wrong NSEC3PARAM record. */
+	KNOT_ENSEC3CHAIN,     /*!< Missing or wrong NSEC3 chain in the zone. */
 	KNOT_EBADZONE,        /*!< Domain name does not belong to the zone. */
 	KNOT_EHASH,           /*!< Error in hash table. */
 	KNOT_EZONEIN,         /*!< Error inserting zone. */
@@ -68,7 +69,7 @@ enum knot_error {
 	KNOT_ECONN,           /*!< Connection reset. */
 	KNOT_EIXFRSPACE,      /*!< IXFR reply did not fit in. */
 	KNOT_ECNAME,          /*!< CNAME loop found in zone. */
-	KNOT_ERROR_COUNT = 34
+	KNOT_ERROR_COUNT = 35
 };
 
 /*! \brief Table linking error messages to error codes. */
