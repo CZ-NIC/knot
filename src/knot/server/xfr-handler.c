@@ -621,7 +621,7 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 	/* AXFR-style IXFR. */
 	if (ret == KNOT_ENOIXFR) {
 		assert(data->type == XFR_TYPE_IIN);
-		log_server_notice("%s Fallback to AXFR/IN.\n", data->msgpref);
+		log_server_notice("%s Fallback to AXFR.\n", data->msgpref);
 		data->type = XFR_TYPE_AIN;
 		data->msgpref[0] = 'A';
 		ret = knot_ns_process_axfrin(w->ns, data);
@@ -638,7 +638,7 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 	
 	/* IXFR refused, try again with AXFR. */
 	if (zone && data->type == XFR_TYPE_IIN && ret == KNOT_EXFRREFUSED) {
-		log_server_notice("%s Transfer failed, fallback to AXFR/IN.\n",
+		log_server_notice("%s Transfer failed, fallback to AXFR.\n",
 				  data->msgpref);
 		size_t bufsize = buflen;
 		data->wire_size = buflen; /* Reset maximum bufsize */
@@ -824,7 +824,7 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 	if (!contents && data->type == XFR_TYPE_IIN) {
 		pthread_mutex_unlock(&zd->xfr_in.lock);
 		rcu_read_unlock();
-		log_server_warning("%s Refusing to start IXFR/IN on zone with no "
+		log_server_warning("%s Refusing to start IXFR on zone with no "
 				   "contents.\n", data->msgpref);
 		close(data->session);
 		data->session = -1;
@@ -1028,16 +1028,16 @@ static int xfr_update_msgpref(knot_ns_xfr_t *req, const char *keytag)
 	const char *pformat = NULL;
 	switch (req->type) {
 	case XFR_TYPE_AIN:
-		pformat = "AXFR transfer of '%s/IN' with '%s@%d'%s:";
+		pformat = "Incoming AXFR transfer of '%s' with '%s@%d'%s:";
 		break;
 	case XFR_TYPE_IIN:
-		pformat = "IXFR transfer of '%s/IN' with '%s@%d'%s:";
+		pformat = "Incoming IXFR transfer of '%s' with '%s@%d'%s:";
 		break;
 	case XFR_TYPE_AOUT:
-		pformat = "AXFR transfer of '%s/OUT' to '%s@%d'%s:";
+		pformat = "Outgoing AXFR transfer of '%s' to '%s@%d'%s:";
 		break;
 	case XFR_TYPE_IOUT:
-		pformat = "IXFR transfer of '%s/OUT' to '%s@%d'%s:";
+		pformat = "Outgoing IXFR transfer of '%s' to '%s@%d'%s:";
 		break;
 	case XFR_TYPE_NOTIFY:
 		pformat = "NOTIFY query of '%s' to '%s@%d'%s:";
