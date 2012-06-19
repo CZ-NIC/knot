@@ -1,3 +1,11 @@
+v1.0.6 - Jun 13, 2012
+---------------------
+
+Bugfixes
+        * Fixed potential problems with RCU synchronization.
+        * Adding NSEC/NSEC3 for all wildcard CNAMEs in the response.
+
+
 v1.0.5 - May 17, 2012
 ---------------------
 

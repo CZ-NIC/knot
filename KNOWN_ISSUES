@@ -11,3 +11,5 @@ Known bugs
 ==========
 
 * Slow start with too many zones.
+* IXFR is still quite slow with large transfers (more than 50 000 RRs 
+  changed), despite the previous improvements.
