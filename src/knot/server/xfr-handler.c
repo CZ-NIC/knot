@@ -1311,6 +1311,9 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 	}
 	free(keytag);
 	
+	/* Announce. */
+	log_server_info("%s Started.\n", xfr->msgpref);
+	
 	/* Prepare place for TSIG data */
 	xfr->tsig_data = malloc(KNOT_NS_TSIG_DATA_MAX_SIZE);
 	if (xfr->tsig_data) {
