@@ -350,6 +350,11 @@ static int ns_follow_cname(const knot_node_t **node,
 
 			int ret = knot_response_add_wildcard_node(
 			                        resp, *node, *qname);
+			if (ret != KNOT_EOK) {
+				dbg_ns("Failed to add wildcard node for later "
+				       "processing.\n");
+				return ret;
+			}
 		} else {
 			ret = add_rrset_to_resp(resp, rrset, tc, 0, 0, 1);
 
@@ -406,8 +411,11 @@ dbg_ns_exec_verb(
  *
  * \return Number of RRSets added.
  */
-static int ns_put_answer(const knot_node_t *node, const knot_dname_t *name,
-                          uint16_t type, knot_packet_t *resp, int *added)
+static int ns_put_answer(const knot_node_t *node,
+                         const knot_zone_contents_t *zone,
+                         const knot_dname_t *name,
+                         uint16_t type, knot_packet_t *resp, int *added,
+                         int check_any)
 {
 	*added = 0;
 dbg_ns_exec_verb(
@@ -1782,7 +1790,8 @@ static int ns_answer_from_node(const knot_node_t *node,
 	dbg_ns_verb("Putting answers from found node to the response...\n");
 	int answers = 0;
 
-	int ret = ns_put_answer(node, qname, qtype, resp, &answers);
+	int ret = ns_put_answer(node, zone, qname, qtype, resp, &answers,
+	                        check_any);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -2234,7 +2243,6 @@ dbg_ns_exec_verb(
 	}
 
 finalize:
-<<<<<<< HEAD
 	if (ret == KNOT_EOK && knot_packet_tc(resp) == 0 && auth_soa) {
 		ret = ns_put_authority_soa(zone, resp);
 	}
@@ -2246,7 +2254,7 @@ finalize:
 
 	// add all missing NSECs/NSEC3s for wildcard nodes
 	ret = ns_put_nsec_nsec3_wildcard_nodes(resp, zone);
-/* POZOR!!! ma tu byt? */
+
 	if (ret == KNOT_EOK) {
 		ns_put_additional(resp);
 	}
