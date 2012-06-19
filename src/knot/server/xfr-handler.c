@@ -698,11 +698,11 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 				              "in %d seconds.\n",
 				              data->msgpref, tmr_s / 1000);
 			}
-			rcu_read_unlock();
 
 			/* Update timers. */
 			server_t *server = (server_t *)knot_ns_get_data(w->ns);
 			zones_timers_update(zone, zd->conf, server->sched);
+			rcu_read_unlock();
 			
 		} else {
 			/* Cleanup */
@@ -763,7 +763,14 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 		}
 		
 		/* Free data updated in this processing. */
-		evqueue_write(nextw->q, data, sizeof(knot_ns_xfr_t));
+		ret = evqueue_write(nextw->q, data, sizeof(knot_ns_xfr_t));
+		if (ret != sizeof(knot_ns_xfr_t)) {
+			char ebuf[256] = {0};
+			strerror_r(errno, ebuf, sizeof(ebuf));
+			dbg_xfr("xfr: couldn't write request to evqueue: %s\n",
+			        ebuf);
+			return KNOTD_ERROR;
+		}
 		return KNOTD_EOK;
 	} else {
 		zd->xfr_in.wrkr = w;
@@ -872,10 +879,10 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 	/* Start transfer. */
 	ret = data->send(data->session, &data->addr, data->wire, bufsize);
 	if (ret != bufsize) {
-		char buf[1024];
-		strerror_r(errno, buf, sizeof(buf));
+		char ebuf[256] = {0};
+		strerror_r(errno, ebuf, sizeof(ebuf));
 		log_server_info("%s Failed to send query (%s).\n",
-		                data->msgpref, buf);
+		                data->msgpref, ebuf);
 		pthread_mutex_unlock(&zd->xfr_in.lock);
 		close(data->session);
 		data->session = -1;
@@ -965,7 +972,7 @@ static int xfr_answer_ixfr(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 	/* Finally, answer. */
 	if (chsload == KNOTD_EOK) {
 		ret = knot_ns_answer_ixfr(ns, xfr);
-		dbg_xfr("xfr: ns_answer_ixfr() = %d.\n", ret);
+		dbg_xfr("xfr: ns_answer_ixfr() = %s.\n", knot_strerror(ret));
 	}
 	
 	return ret;
@@ -1011,6 +1018,7 @@ static int xfr_update_msgpref(knot_ns_xfr_t *req, const char *keytag)
 		zonedata_t *zd = (zonedata_t *)knot_zone_data(req->zone);
 		if (zd == NULL) {
 			free(r_key);
+			conf_read_unlock();
 			return KNOTD_EINVAL;
 		} else {
 			zname = zd->conf->name;
@@ -1269,8 +1277,9 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 	}
 	
 	int ret = knot_ns_init_xfr(ns, xfr);
+
 	int xfr_failed = (ret != KNOT_EOK);
-	const char * errstr = knot_strerror(ret);
+	const char *errstr = knot_strerror(ret);
 	
 	// use the QNAME as the zone name to get names also for
 	// zones that are not in the server
@@ -1518,6 +1527,8 @@ int xfr_worker(dthread_t *thread)
 				ret = xfr_process_event(w, it.fd, data, buf, buflen);
 				if (ret != KNOTD_EOK) {
 					xfr_free_task(data);
+					/*! \todo Refactor to allow erase on iterator.*/
+					break;
 				}
 			}
 			

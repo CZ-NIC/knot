@@ -42,7 +42,6 @@
 #include <pthread.h>
 
 #include "hash/universal-system.h"
-#include "common/dynamic-array.h"
 
 /*----------------------------------------------------------------------------*/
 

@@ -319,21 +319,21 @@ tsig_algorithm_t tsig_rdata_alg(const knot_rrset_t *tsig)
 	/* Get the algorithm name. */
 	const knot_dname_t *alg_name = tsig_rdata_alg_name(tsig);
 	if (!alg_name) {
-		dbg_tsig_detail("TSIG: rdata: cannot get algorithm name.\n");
+		dbg_tsig("TSIG: rdata: cannot get algorithm name.\n");
 		return KNOT_TSIG_ALG_NULL;
 	}
 
 	/* Convert alg name to string. */
 	char *name = knot_dname_to_str(alg_name);
 	if (!name) {
-		dbg_tsig_detail("TSIG: rdata: cannot convert alg name.\n");
+		dbg_tsig("TSIG: rdata: cannot convert alg name.\n");
 		return KNOT_TSIG_ALG_NULL;
 	}
 
 	knot_lookup_table_t *item = knot_lookup_by_name(tsig_alg_table, name);
 	free(name);
 	if (!item) {
-		dbg_tsig_detail("TSIG: rdata: unknown algorithm.\n");
+		dbg_tsig("TSIG: rdata: unknown algorithm.\n");
 		return KNOT_TSIG_ALG_NULL;
 	}
 
@@ -568,13 +568,6 @@ size_t tsig_rdata_tsig_variables_length(const knot_rrset_t *tsig)
 	if (!alg_name) {
 		return 0;
 	}
-
-//	dbg_tsig_detail("key_name: %.*s (size: %u) alg_name: %.*s (size: %u)\n", knot_dname_size(key_name),
-//	                key_name->name, alg_name->size,  alg_name->name,
-//	                key_name->size, alg_name->size);
-
-//	dbg_tsig_hex_detail(key_name->name, key_name->size);
-//	dbg_tsig_hex_detail(alg_name->name, alg_name->size);
 
 	uint16_t other_data_length = tsig_rdata_other_data_length(tsig);
 

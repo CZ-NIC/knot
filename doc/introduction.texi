@@ -1,0 +1,48 @@
+@node Introduction, Knot DNS Resource Requirements, Top, Top
+@chapter Introduction
+
+The reader of this document is assumed to know the principles of
+Domain Name System.
+
+@menu
+* What is Knot DNS::            
+* Scope of Document::           
+* Conventions Used in This Document::  
+@end menu
+
+@node What is Knot DNS
+@section What is Knot DNS
+
+Knot DNS implements a domain name server.  It implements only
+authoritative domain name service and can be used to serve DNS
+zones in the Internet.
+
+Knot DNS supports following features:
+
+@multitable @columnfractions 1
+@item
+TCP/UDP
+@item
+AXFR
+@item
+IXFR
+@item
+TSIG
+@item
+...
+@end multitable
+
+@node Scope of Document
+@section Scope of Document
+
+This document covers the basic information on installing,
+configuring and troubleshooting the Knot DNS server.  We have
+also dedicated a chapter for users of other DNS server
+implementations where describe how to migrate their
+configuration to Knot DNS.
+
+@node Conventions Used in This Document
+@section Conventions Used in This Document
+
+[TODO]:
+

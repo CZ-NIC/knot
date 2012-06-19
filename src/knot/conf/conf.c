@@ -219,6 +219,11 @@ static int conf_process(conf_t *conf)
 		if (zone->enable_checks < 0) {
 			zone->enable_checks = conf->zone_checks;
 		}
+		
+		// Default policy for disabling ANY type queries for AA
+		if (zone->disable_any < 0) {
+			zone->disable_any = conf->disable_any;
+		}
 
 		// Default policy for NOTIFY retries
 		if (zone->notify_retries <= 0) {

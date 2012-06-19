@@ -85,8 +85,10 @@ int main(int argc, char **argv)
 	// Initialize log (no syslog)
 	log_init();
 	log_levels_set(LOGT_SYSLOG, LOG_ANY, 0);
-	log_zone_info("Parsing file '%s', origin '%s' ...\n",
-	              zonefile, origin);
+	if (outfile != NULL) {
+		log_zone_info("Parsing file '%s', origin '%s' ...\n",
+		              zonefile, origin);
+	}
 
 	parser = zparser_create();
 	if (!parser) {
@@ -107,8 +109,10 @@ int main(int argc, char **argv)
 //			fprintf(stderr, "Finished with %u errors.\n");
 //		}
 		return 1;
-	} else {
+	} else if (outfile != NULL) {
 		log_zone_info("Compilation of '%s' successful.\n", origin);
+	} else {
+		log_zone_info("Zone file for '%s' is OK.\n", origin);
 	}
 	//log_close();
 	

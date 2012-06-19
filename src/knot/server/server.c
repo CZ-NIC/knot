@@ -24,17 +24,20 @@
 #include <assert.h>
 #include <grp.h>
 
+
+#include "common/prng.h"
 #include "knot/common.h"
 #include "knot/other/error.h"
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/server/xfr-handler.h"
-#include "libknot/nameserver/name-server.h"
+#include "knot/server/zones.h"
+#include "knot/conf/conf.h"
 #include "knot/stat/stat.h"
+#include "libknot/nameserver/name-server.h"
 #include "libknot/zone/zonedb.h"
 #include "libknot/dname.h"
-#include "knot/conf/conf.h"
 
 /*! \brief Event scheduler loop. */
 static int evsched_run(dthread_t *thread)
@@ -124,7 +127,7 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	/* Initialize interface. */
 	int ret = 0;
 	int sock = 0;
-	char errbuf[128];
+	char errbuf[256] = {0};
 	int opt = 1024 * 1024;
 	int snd_opt = 1024 * 1024;
 	memset(new_if, 0, sizeof(iface_t));
@@ -153,7 +156,7 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	new_if->type[UDP_ID] = cfg_if->family;
 
 	/* Set socket options - voluntary. */
-	char ebuf[512];
+	char ebuf[256] = {0};
 	if (setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &snd_opt, sizeof(snd_opt)) < 0) {
 		strerror_r(errno, ebuf, sizeof(ebuf));	
 //		log_server_warning("Failed to configure socket "
@@ -608,6 +611,42 @@ int server_wait(server_t *server)
 	rcu_read_unlock();
 
 	return ret;
+}
+
+int server_refresh(server_t *server)
+{
+	if (server == NULL || server->nameserver == NULL) {
+		return KNOTD_EINVAL;
+	}
+	
+	/* Lock RCU and fetch zones. */
+	rcu_read_lock();
+	knot_nameserver_t *ns =  server->nameserver;
+	evsched_t *sch = ((server_t *)knot_ns_get_data(ns))->sched;
+	const knot_zone_t **zones = knot_zonedb_zones(ns->zone_db);
+	if (zones == NULL) {
+		rcu_read_unlock();
+		return KNOTD_ENOMEM;
+	}
+	
+	/* REFRESH zones. */
+	for (unsigned i = 0; i < knot_zonedb_zone_count(ns->zone_db); ++i) {
+		zonedata_t *zd = (zonedata_t *)zones[i]->data;
+		if (zd == NULL) {
+			continue;
+		}
+		/* Expire REFRESH timer. */
+		if (zd->xfr_in.timer) {
+			evsched_cancel(sch, zd->xfr_in.timer);
+			evsched_schedule(sch, zd->xfr_in.timer,
+			                 tls_rand() * 1000);
+		}
+	}
+	
+	/* Unlock RCU. */
+	rcu_read_unlock();
+	free(zones);
+	return KNOTD_EOK;
 }
 
 void server_stop(server_t *server)

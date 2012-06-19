@@ -342,8 +342,7 @@ char *rdata_dns_name_to_string(knot_rdata_item_t item)
 static char *rdata_txt_data_to_string(const uint8_t *data)
 {
 	uint8_t length = data[0];
-	size_t i;
-
+	size_t i = 0;
 	if (length == 0) {
 		return NULL;
 	}
@@ -360,30 +359,27 @@ static char *rdata_txt_data_to_string(const uint8_t *data)
 	}
 	memset(ret, 0,  current_length);
 
-	strncat(ret, "\"", 3);
+	strncat(ret, "\"", 2);
 
 	for (i = 1; i <= length; i++) {
 		char ch = (char) data[i];
 		if (isprint((int)ch)) {
 			if (ch == '"' || ch == '\\') {
-				strncat(ret, "\"", 3);
+				strncat(ret, "\"", 2);
 			}
-				/* for the love of god, how to this better,
-				   but w/o obscure self-made functions */
 				char tmp_str[2];
 				tmp_str[0] = ch;
-				tmp_str[1] = 0;
+				tmp_str[1] = '\0';
 				strncat(ret, tmp_str, 2);
 		} else {
-			strncat(ret, "\\", 3);
+			strncat(ret, "\\", 2);
 			char tmp_str[2];
 			tmp_str[0] = ch - '0';
-			tmp_str[1] = 0;
-
+			tmp_str[1] = '\0';
 			strncat(ret, tmp_str, 2);
 		}
 	}
-	strncat(ret, "\"", 3);
+	strncat(ret, "\"", 2);
 
 	return ret;
 }
@@ -391,7 +387,13 @@ static char *rdata_txt_data_to_string(const uint8_t *data)
 char *rdata_text_to_string(knot_rdata_item_t item)
 {
 	uint16_t size = item.raw_data[0];
-	char *ret = malloc(sizeof(char) * size * 2 + 1) ;
+	/* 
+	 * Times two because they can all be one char long
+	 * and then it would be as much chars as spaces (and one final space).
+	 */
+	size_t txt_size = size * 2 + 1;
+	/* + 1 ... space for (hypothetical) last \0. */
+	char *ret = malloc(txt_size + 1);
 	if (ret == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
@@ -399,6 +401,7 @@ char *rdata_text_to_string(knot_rdata_item_t item)
 	memset(ret, 0, sizeof(char) * size);
 	const uint8_t *data = (uint8_t *)(item.raw_data +  1);
 	size_t read_count = 0;
+	size_t tmp_str_current_length = 0; // Will be used with strncat.
 	while (read_count < size) {
 		assert(read_count <= size);
 		char *txt = rdata_txt_data_to_string(data + read_count);
@@ -406,13 +409,23 @@ char *rdata_text_to_string(knot_rdata_item_t item)
 			free(ret);
 			return NULL;
 		}
+		/*
+		 * We can trust this strlen, as 
+		 * it is created in internal function.
+		 */
 		read_count += strlen(txt) - 1;
 		/* Create delimiter. */
 		char del[2];
 		del[0] = ' ';
 		del[1] = '\0';
-		strncat(ret, txt, strlen(txt));
-		strncat(ret, del, 2);
+		
+		/* We can only write to the remainder of string. */
+		strncat(ret, txt, txt_size - tmp_str_current_length);
+		/* Increase length of tmp string. */
+		tmp_str_current_length += strlen(txt);
+		strncat(ret, del, txt_size - tmp_str_current_length);
+		/* Increase length of tmp string by 1 ... space. */
+		tmp_str_current_length += + 1;
 		free(txt);
 	}
 
@@ -707,9 +720,7 @@ char *rdata_services_to_string(knot_rdata_item_t item)
 	if (proto) {
 		int i;
 
-		/*!< \todo #1863 see below, but we can trust getprotobynumber... */
 		strncpy(ret, proto->p_name, strlen(proto->p_name));
-
 		strncat(ret, " ", 2);
 
 		for (i = 0; i < bitmap_size * 8; ++i) {
@@ -718,12 +729,6 @@ char *rdata_services_to_string(knot_rdata_item_t item)
 					getservbyport((int)htons(i),
 						      proto->p_name);
 				if (service) {
-					/*!< \todo #1863 
-					 * using strncat with strlen
-					 * does not make a whole lot of sense.
-					 * At least it will crash wil
-					 * Use max length of service name!
-					 */
 					strncat(ret, service->s_name,
 					        strlen(service->s_name));
 					strncat(ret, " ", 2);
@@ -738,37 +743,6 @@ char *rdata_services_to_string(knot_rdata_item_t item)
 	}
 
 	return ret;
-
-	/*
-	int result = 0;
-	uint8_t protocol_number = buffer_read_u8(&packet);
-	ssize_t bitmap_size = buffer_remaining(&packet);
-	uint8_t *bitmap = buffer_current(&packet);
-	struct protoent *proto = getprotobynumber(protocol_number);
-
-
-	if (proto) {
-		int i;
-
-		strcpy(ret, proto->p_name);
-
-		for (i = 0; i < bitmap_size * 8; ++i) {
-			if (get_bit(bitmap, i)) {
-				struct servent *service =
-					getservbyport((int)htons(i),
-						      proto->p_name);
-				if (service) {
-					buffer_printf(output, " %s",
-						      service->s_name);
-				} else {
-					buffer_printf(output, " %d", i);
-				}
-			}
-		}
-		result = 1;
-	}
-	return ret;
-	*/
 }
 
 char *rdata_ipsecgateway_to_string(knot_rdata_item_t item,
@@ -830,17 +804,15 @@ char *rdata_nxt_to_string(knot_rdata_item_t item)
 
 char *rdata_nsec_to_string(knot_rdata_item_t item)
 {
-	/* CLEANUP */
-//	int insert_space = 0;
-
 	char *ret = malloc(sizeof(char) * MAX_NSEC_BIT_STR_LEN);
-
+	if (ret == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
 	memset(ret, 0, MAX_NSEC_BIT_STR_LEN);
-
 	uint8_t *data = rdata_item_data(item);
 
 	int increment = 0;
-
 	for (int i = 0; i < rdata_item_size(item); i += increment) {
 		increment = 0;
 		uint8_t window = data[i];
@@ -870,33 +842,6 @@ char *rdata_nsec_to_string(knot_rdata_item_t item)
 	}
 
 	return ret;
-
-	/* CLEANUP */
-/*	while (buffer_available(&packet, 2)) {
-		uint8_t window = buffer_read_u8(&packet);
-		uint8_t bitmap_size = buffer_read_u8(&packet);
-		uint8_t *bitmap = buffer_current(&packet);
-		int i;
-
-		if (!buffer_available(&packet, bitmap_size)) {
-			buffer_set_position(output, saved_position);
-			return 0;
-		}
-
-		for (i = 0; i < bitmap_size * 8; ++i) {
-			if (get_bit(bitmap, i)) {
-				buffer_printf(output,
-					      "%s%s",
-					      insert_space ? " " : "",
-					      rrtype_to_string(
-						      window * 256 + i));
-				insert_space = 1;
-			}
-		}
-		buffer_skip(&packet, bitmap_size);
-	}
-
-	return 1; */
 }
 
 char *rdata_unknown_to_string(knot_rdata_item_t item)
@@ -958,11 +903,6 @@ char *rdata_item_to_string(knot_rdata_zoneformat_t type,
 {
 	return item_to_string_table[type](item);
 }
-
-/* CLEANUP */
-/*void knot_zone_tree_apply_inorder(knot_zone_t *zone,
-                              void (*function)(knot_node_t *node, void *data),
-                              void *data); */
 
 int rdata_dump_text(const knot_rdata_t *rdata, uint16_t type, FILE *f,
                      const knot_rrset_t *rrset)
@@ -1119,9 +1059,8 @@ void node_dump_text(knot_node_t *node, void *data)
 	free(rrsets);
 }
 
-int zone_dump_text(knot_zone_contents_t *zone, int fd)
+int zone_dump_text(knot_zone_contents_t *zone, FILE *f)
 {
-	FILE *f = fdopen(fd, "w");
 	if (f == NULL) {
 		return KNOT_EBADARG;
 	}
@@ -1134,7 +1073,6 @@ int zone_dump_text(knot_zone_contents_t *zone, int fd)
 	param.origin = knot_node_owner(knot_zone_contents_apex(zone));
 	knot_zone_contents_tree_apply_inorder(zone, node_dump_text, &param);
 	knot_zone_contents_nsec3_apply_inorder(zone, node_dump_text, &param);
-	fclose(f);
 
 	return KNOT_EOK;
 }

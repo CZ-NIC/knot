@@ -22,7 +22,6 @@
 #include "tests/common/slab_tests.h"
 #include "tests/common/skiplist_tests.h"
 #include "tests/common/events_tests.h"
-#include "tests/common/da_tests.h"
 #include "tests/common/acl_tests.h"
 #include "tests/common/fdset_tests.h"
 #include "tests/knot/dthreads_tests.h"
@@ -47,7 +46,6 @@ int main(int argc, char *argv[])
 		&skiplist_tests_api, //! Skip list unit
 		&dthreads_tests_api, //! DThreads testing unit
 		&events_tests_api,   //! Events testing unit
-		&da_tests_api,       //! Dynamic array unit
 		&acl_tests_api,      //! ACLs
 		&fdset_tests_api, //! FDSET polling wrapper
 

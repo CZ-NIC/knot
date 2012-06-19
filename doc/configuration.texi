@@ -1,0 +1,79 @@
+@node Knot DNS Configuration, Knot DNS Configuration Reference, Knot DNS Installation, Top
+@chapter Knot DNS Configuration
+
+In this chapter we provide suggested configuration and explain the meaning of individual configuration options.
+
+@menu
+* Sample Configurations::       
+@end menu
+
+@node Sample Configurations
+@section Sample Configurations
+
+@menu
+* Minimal Configuration::       
+@end menu
+
+@node Minimal Configuration
+@subsection Minimal Configuration
+
+The following configuration presents a minimal configuration
+file which can be used as a base for your Knot DNS setup.
+
+@example
+
+# This is a sample of a minimal configuration file for Knot DNS.
+#
+# For exhaustive list of all options see samples/knot.full.conf
+# in the source directory.
+#
+
+system @{
+  storage "/var/lib/knot";
+@}
+
+interfaces @{
+  my_interface @{ address 127.0.0.1@@53; @}
+  second_int @{ address ::1; @}
+@}
+
+log @{
+  syslog @{ any notice, warning, error; @}
+@}
+
+zones @{
+  example.com @{  
+    file "/etc/knot/example.com"; 
+  @}
+@}
+	
+@end example
+
+Let's now go step by step through this minimal configuration file:
+
+@enumerate 
+
+@item
+In @code{@ref{system}} statement we have configured @code{@ref{storage}}
+directory where Knot DNS will store compiled zone files, it's
+@ref{pidfile} and for slave zone also their journal files.
+
+@item
+The @code{@ref{interfaces}} statement defines interfaces where Knot
+DNS will listen for incoming connections. We have defined two
+interfaces: one IPv4 called @code{my_interface} explicitly listening
+on port 53 and second IPv6 called @code{second_int} also listening on
+port 53, which is the default port for the DNS.
+
+@item
+The @code{@ref{log}} statement defines the destination where Knot DNS
+will send it's log messages.  In this example we told Knot DNS to send
+its log messages with priority @code{debug}, @code{warning} and
+@code{notice} into the syslog.
+
+@item
+The @code{@ref{zones}} statement is the one probably most important,
+because it defines the zones Knot DNS will serve.  In its most simple
+form you define zone by it's name and defined the filename where Knot
+DNS can find the zone contents.
+@end enumerate

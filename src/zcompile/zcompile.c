@@ -612,25 +612,55 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 //		knot_node_free(&origin_node, 0);
 		return KNOTDZCOMPILE_EZONEINVAL;
 	}
+	
+	/* Lock zone file. There should not be any modifications. */
+	struct flock lock;
+	lock.l_type = F_RDLCK;
+	lock.l_start = 0;
+	lock.l_whence = SEEK_SET;
+	lock.l_len = 0;
+	lock.l_pid = getpid();
+	if (fcntl(fileno(zp_get_in(scanner)), F_SETLK, &lock) == -1) {
+		fprintf(stderr, "Cannot obtain zone source file lock (%d).\n",
+		        errno);
+		FILE *in_file = (FILE *)zp_get_in(scanner);
+		fclose(in_file);
+		zp_lex_destroy(scanner);
+		knot_dname_release(origin_from_config);
+		return KNOTDZCOMPILE_EINVAL;
+	}
+	
+	/* Change lock type to unlock rigth away. */
+	lock.l_type = F_UNLCK;
 
 	if (zp_parse(scanner) != 0) {
-		/*!< \todo #1676 Implement proper locking. */
+		fprintf(stderr, "Parse failed.\n");
 		FILE *in_file = (FILE *)zp_get_in(scanner);
 		fclose(in_file);
 		zp_lex_destroy(scanner);
 		knot_dname_release(origin_from_config);
 //		knot_node_free(&origin_node, 0);
+		/* Release file lock. */
+		if (fcntl(fileno(zp_get_in(scanner)), F_SETLK, &lock) == -1) {
+			fprintf(stderr, "Cannot release zone source file "
+			        "lock (%d).\n",
+			        errno);
+		}
 		return KNOTDZCOMPILE_ESYNT;
 	}
 
 	knot_zone_contents_t *contents =
 			knot_zone_get_contents(parser->current_zone);
+	
+	/* Release file lock. */
+	if (fcntl(fileno(zp_get_in(scanner)), F_SETLK, &lock) == -1) {
+		fprintf(stderr, "Cannot release zone source file lock (%d).\n",
+		        errno);
+	}
 
 	FILE *in_file = (FILE *)zp_get_in(scanner);
 	fclose(in_file);
 	zp_lex_destroy(scanner);
-	
-	/*!< \todo #1676 Implement proper locking. */
 
 	dbg_zp("zp: zone_read: Parse complete for %s.\n",
 	       zonefile);

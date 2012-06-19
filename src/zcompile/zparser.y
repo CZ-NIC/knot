@@ -566,14 +566,19 @@ str_seq:	STR
     {
 	    zadd_rdata_txt_wireformat(zparser_conv_text($1.str, $1.len), 1);
 
-	    free($1.str);
+	    if(strcmp($1.str, ".") && strcmp($1.str, "@")
+                && strcmp($1.str, "\\#")) {		// Lexer freed that
+	    	free($1.str);
+            }
     }
     |	str_seq sp STR
     {
 	    zadd_rdata_txt_wireformat(zparser_conv_text($3.str, $3.len), 0);
-//	zc_warning("multiple TXT entries are currently not supported!");
 
-	    free($3.str);
+	    if(strcmp($3.str, ".") && strcmp($3.str, "@")
+                && strcmp($3.str, "\\#")) {		// Lexer freed that
+	    	free($3.str);
+            }
     }
     ;
 

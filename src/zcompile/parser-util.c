@@ -2291,9 +2291,9 @@ uint16_t * zparser_conv_apl_rdata(char *str)
 		zc_error_prev_line("invalid address '%s'", colon + 1);
 		return NULL;
 	} else if (rc == -1) {
-		char ebuf[256];
-		zc_error_prev_line("inet_pton failed: %s",
-			strerror_r(errno, ebuf, sizeof(ebuf)));
+		char ebuf[256] = {0};
+		strerror_r(errno, ebuf, sizeof(ebuf));
+		zc_error_prev_line("inet_pton failed: %s", ebuf);
 		return NULL;
 	}
 

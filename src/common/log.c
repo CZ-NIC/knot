@@ -14,11 +14,14 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#define _BSD_SOURCE
 #include <config.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <sys/time.h>
 
 #include "common/log.h"
 #include "common/lists.h"
@@ -140,7 +143,7 @@ int log_open_file(const char* filename)
 	}
 
 	// Open file
-	LOG_FDS[LOG_FDS_OPEN] = fopen(filename, "w");
+	LOG_FDS[LOG_FDS_OPEN] = fopen(filename, "a");
 	if (!LOG_FDS[LOG_FDS_OPEN]) {
 		return KNOTD_EINVAL;
 	}
@@ -212,14 +215,15 @@ static int _log_msg(logsrc_t src, int level, const char *msg)
 	/* Prefix date and time. */
 	char tstr[128] = {0};
 	int tlen = 0;
-	time_t t = time(NULL);
-	struct tm *lt = localtime(&t);
-	if (lt != NULL) {
+	struct tm lt;
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	if (localtime_r(&tv.tv_sec, &lt) != NULL) {
 		tlen = strftime(tstr, sizeof(tstr) - 1,
-		                "%d-%m-%Y %H:%M:%S", lt);
+				"%Y-%m-%dT%H:%M:%S", &lt);
 		if (tlen > 0) {
-			tstr[tlen] = ' ';
-			tstr[tlen + 1] = '\0';
+			char pm = (lt.tm_gmtoff > 0)?'+':'-';
+			snprintf(tstr+tlen, 128-tlen-1, ".%.6lu%c%.2u:%.2u ", (unsigned long)tv.tv_usec, pm, (unsigned int)lt.tm_gmtoff/3600, (unsigned int)(lt.tm_gmtoff/60)%60);
 		}
 	}
 

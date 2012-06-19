@@ -129,7 +129,7 @@ typedef int (*journal_apply_t)(journal_t *j, journal_node_t *n);
 #define JOURNAL_NCOUNT 1024 /*!< Default node count. */
 /* HEADER = magic, crc, max_entries, qhead, qtail */
 #define JOURNAL_HSIZE (MAGIC_LENGTH + sizeof(crc_t) + sizeof(uint16_t) * 3) 
-#define JOURNAL_MAGIC {'k', 'n', 'o', 't', '1', '0', '2'}
+#define JOURNAL_MAGIC {'k', 'n', 'o', 't', '1', '0', '4'}
 
 /*!
  * \brief Create new journal.

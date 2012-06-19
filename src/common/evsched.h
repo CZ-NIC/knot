@@ -68,7 +68,7 @@
 
 #include <pthread.h>
 #include "common/slab/slab.h"
-#include "common/lists.h"
+#include "common/heap.h"
 #include "common/evqueue.h"
 
 /*!
@@ -92,7 +92,7 @@ typedef struct {
 	event_t *current;        /*!< Current running event. */
 	pthread_mutex_t mx;      /*!< Event queue locking. */
 	pthread_cond_t notify;   /*!< Event queue notification. */
-	list calendar;           /*!< Event calendar. */
+	struct heap heap;
 	struct {
 		slab_cache_t alloc;   /*!< Events SLAB cache. */
 		pthread_mutex_t lock; /*!< Events cache spin lock. */

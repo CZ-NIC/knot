@@ -251,6 +251,18 @@ int dt_stop(dt_unit_t *unit);
 //int dt_setprio(dthread_t *thread, int prio);
 
 /*!
+ * \brief Set thread affinity to masked CPU's.
+ *
+ * \param thread Target thread instance.
+ * \param cpu_id Array of CPU IDs to set affinity to.
+ * \param cpu_count Number of CPUs in the array, set to 0 for no CPU.
+ *
+ * \retval KNOTD_EOK on success.
+ * \retval KNOTD_EINVAL on invalid parameters.
+ */
+int dt_setaffinity(dthread_t *thread, unsigned* cpu_id, size_t cpu_count);
+
+/*!
  * \brief Set thread to execute another runnable.
  *
  * \param thread Target thread instance.
@@ -307,9 +319,17 @@ int dt_cancel(dthread_t *thread);
 int dt_compact(dt_unit_t *unit);
 
 /*!
+ * \brief Return number of online processors.
+ *
+ * \retval Number of online CPU's if success.
+ * \retval <0 on failure.
+ */
+int dt_online_cpus();
+
+/*!
  * \brief Return optimal number of threads for instance.
  *
- * It is estimated as NUM_CPUs + 1.
+ * It is estimated as NUM_CPUs + CONSTANT.
  * Fallback is DEFAULT_THR_COUNT  (\see common.h).
  *
  * \return Number of threads.
@@ -327,6 +347,18 @@ int dt_optimal_size();
  * \retval 0 if not cancelled.
  */
 int dt_is_cancelled(dthread_t *thread);
+
+
+/*!
+ * \brief Return thread index in threading unit.
+ *
+ * \note Returns 0 when thread doesn't have a unit.
+ *
+ * \param thread Target thread instance.
+ *
+ * \return Thread index.
+ */
+unsigned dt_get_id(dthread_t *thread);
 
 /*!
  * \brief Lock unit to prevent parallel operations which could alter unit
