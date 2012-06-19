@@ -289,9 +289,9 @@ dbg_zone_exec_detail(
 	free(name2);
 );
 
-	const knot_node_t *found = NULL, *ce = NULL;
-	int ret = knot_zone_contents_find_dname_hash(zone, wildcard, &found,
-	                                             &ce);
+	const knot_node_t *found = NULL, *ce = NULL, *prev = NULL;
+	int ret = knot_zone_contents_find_dname(zone, wildcard, &found, &ce,
+	                                        &prev);
 
 	knot_dname_free(&wildcard);
 
@@ -331,10 +331,13 @@ static void knot_zone_contents_adjust_rdata_item(knot_rdata_t *rdata,
 		knot_dname_t *dname = dname_item->dname;
 
 		if (knot_dname_node(dname) != NULL
-		    || knot_dname_is_subdomain(dname, knot_node_owner(
+		    || !knot_dname_is_subdomain(dname, knot_node_owner(
 		                              knot_zone_contents_apex(zone)))) {
 			// The name's node is either already set
 			// or the name does not belong to the zone
+			dbg_zone_detail("Name's node either set or the name "
+			                "does not belong to the zone (%p).\n",
+			                knot_dname_node(dname));
 			return;
 		}
 
@@ -347,6 +350,8 @@ static void knot_zone_contents_adjust_rdata_item(knot_rdata_t *rdata,
 
 		if (ret == KNOT_EBADARG || ret == KNOT_EBADZONE) {
 			// TODO: do some cleanup if needed
+			dbg_zone_detail("Failed to find the name in zone: %s\n",
+			                knot_strerror(ret));
 			return;
 		}
 
@@ -361,6 +366,8 @@ static void knot_zone_contents_adjust_rdata_item(knot_rdata_t *rdata,
 			 *       would disrupt the query processing algorithms
 			 *       anyway.
 			 */
+
+			dbg_zone_verb("Trying to find wildcard child.\n");
 
 			n = knot_zone_contents_find_wildcard_child(zone,
 			                                      closest_encloser);
@@ -1947,19 +1954,23 @@ dbg_zone_exec_detail(
 		free(name_str2);
 	}
 );
-
-	*closest_encloser = *node;
-
 	// there must be at least one node with domain name less or equal to
 	// the searched name if the name belongs to the zone (the root)
-	if (*node == NULL) {
+	if (*node == NULL && *previous == NULL) {
 		return KNOT_EBADZONE;
 	}
 
-	// TODO: this could be replaced by saving pointer to closest encloser
-	//       in node
+	/* This function was quite out of date. The find_in_tree() function
+	 * may return NULL in the 'found' field, so we cannot search for the
+	 * closest encloser from this node.
+	 */
 
-	if (!exact_match) {
+	if (exact_match) {
+		*closest_encloser = *node;
+	} else {
+		*closest_encloser = *previous;
+		assert(*closest_encloser != NULL);
+
 		int matched_labels = knot_dname_matched_labels(
 				knot_node_owner((*closest_encloser)), name);
 		while (matched_labels < knot_dname_label_count(
