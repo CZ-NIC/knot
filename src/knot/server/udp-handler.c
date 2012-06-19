@@ -85,7 +85,7 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 	if (packet == NULL) {
 		dbg_net("udp: failed to create packet on fd=%d\n", fd);
 
-		int ret = knot_ns_error_response_from_query(ns, qbuf, qbuflen,
+		int ret = knot_ns_error_response_from_query_wire(ns, qbuf, qbuflen,
 		                                            KNOT_RCODE_SERVFAIL,
 		                                            qbuf, resp_len);
 
@@ -101,10 +101,10 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 	if (unlikely(res != KNOTD_EOK)) {
 		dbg_net("udp: failed to parse packet on fd=%d\n", fd);
 		if (res > 0) { /* Returned RCODE */
-			int ret = knot_ns_error_response_from_query(ns, qbuf,
-			                                            qbuflen,
-			                                            res, qbuf,
-			                                            resp_len);
+//			int ret = knot_ns_error_response_from_query_wire(ns,
+//				qbuf, qbuflen, res, qbuf, resp_len);
+			int ret = knot_ns_error_response_from_query_wire(ns,
+				qbuf, qbuflen, res, qbuf, resp_len);
 
 			if (ret != KNOT_EOK) {
 				knot_packet_free(&packet);
@@ -204,17 +204,14 @@ static inline int udp_master_recvfrom(dthread_t *thread, stat_t *thread_stat)
 	/* Set CPU affinity to improve load distribution on multicore systems.
 	 * Partial overlapping mask to be nice to scheduler.
 	 */
-#ifdef HAVE_PTHREAD_SETAFFINITY_NP
 	int cpcount = dt_online_cpus();
 	if (cpcount > 0) {
-		unsigned tid = dt_get_id(thread);
-		cpu_set_t cpus;
-		CPU_ZERO(&cpus);
-		CPU_SET(tid % cpcount, &cpus);
-		CPU_SET((tid + 1) % cpcount, &cpus);
-		dt_setaffinity(thread, &cpus, sizeof(cpu_set_t));
+		unsigned cpu[2];
+		cpu[0] = dt_get_id(thread);
+		cpu[1] = (cpu[0] + 1) % cpcount;
+		cpu[0] = cpu[0] % cpcount;
+		dt_setaffinity(thread, cpu, 2);
 	}
-#endif
 	
 	knot_nameserver_t *ns = h->server->nameserver;
 
@@ -407,17 +404,14 @@ static inline int udp_master_recvmmsg(dthread_t *thread, stat_t *thread_stat)
 	/* Set CPU affinity to improve load distribution on multicore systems.
 	 * Partial overlapping mask to be nice to scheduler.
 	 */
-#ifdef HAVE_PTHREAD_SETAFFINITY_NP
 	int cpcount = dt_online_cpus();
 	if (cpcount > 0) {
-		unsigned tid = dt_get_id(thread);
-		cpu_set_t cpus;
-		CPU_ZERO(&cpus);
-		CPU_SET(tid % cpcount, &cpus);
-		CPU_SET((tid + 1) % cpcount, &cpus);
-		dt_setaffinity(thread, &cpus, sizeof(cpu_set_t));
+		unsigned cpu[2];
+		cpu[0] = dt_get_id(thread);
+		cpu[1] = (cpu[0] + 1) % cpcount;
+		cpu[0] = cpu[0] % cpcount;
+		dt_setaffinity(thread, cpu, 2);
 	}
-#endif
 
 	/* Loop until all data is read. */
 	ssize_t n = 0;

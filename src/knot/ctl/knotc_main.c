@@ -292,6 +292,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 	int rc = 0;
 	if (strcmp(action, "start") == 0) {
 		// Check pidfile for w+
+		log_server_info("Starting server...\n");
 		FILE* chkf = fopen(pidfile, "w+");
 		if (chkf == NULL) {
 			log_server_error("PID file '%s' is not writeable, "
@@ -381,6 +382,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 	if (strcmp(action, "stop") == 0) {
 
 		// Check PID
+		log_server_info("Stopping server...\n");
 		valid_cmd = 1;
 		rc = 0;
 		if (pid <= 0 || !pid_running(pid)) {
@@ -440,7 +442,6 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 			}
 		}
 
-		log_server_info("Restarting server.\n");
 		rc = execute("start", argv, argc, -1, flags, jobs, pidfile);
 	}
 	if (strcmp(action, "reload") == 0) {

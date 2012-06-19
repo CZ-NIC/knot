@@ -32,7 +32,7 @@
 /*----------------------------------------------------------------------------*/
 
 static void knot_rrset_disconnect_rdata(knot_rrset_t *rrset,
-                                    knot_rdata_t *prev, knot_rdata_t *rdata)
+                                        knot_rdata_t *prev, knot_rdata_t *rdata)
 {
 	if (prev == NULL) {
 		// find the previous RDATA in the series, as its pointer must
@@ -394,7 +394,7 @@ int knot_rrset_compare_rdata(const knot_rrset_t *r1, const knot_rrset_t *r2)
 	}
 
 	// compare RDATA sets (order is not significant)
-	const knot_rdata_t *rdata1= knot_rrset_rdata(r1);
+	const knot_rdata_t *rdata1 = knot_rrset_rdata(r1);
 	const knot_rdata_t *rdata2;
 
 	// find all RDATA from r1 in r2
@@ -576,11 +576,11 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
 		if (ret < 0) {
 			// some RR didn't fit in, so no RRs should be used
 			// TODO: remove last entries from compression table
-			dbg_rrset_detail("Some RR didn't fit in.\n");
+			dbg_rrset_verb("Some RR didn't fit in.\n");
 			return KNOT_ESPACE;
 		}
 
-		dbg_rrset_detail("RR of size %d added.\n", ret);
+		dbg_rrset_verb("RR of size %d added.\n", ret);
 		rrset_size += ret;
 		++rrs;
 	} while ((rdata = knot_rrset_rdata_next(rrset, rdata)) != NULL);
@@ -809,7 +809,7 @@ int knot_rrset_merge_no_dupl(void **r1, void **r2)
 		return KNOT_EBADARG;
 	}
 	
-	dbg_rrset_detail("rrset: merge_no_dupl: Merging %s.\n",
+	dbg_rrset_verb("rrset: merge_no_dupl: Merging %s.\n",
 	                 knot_dname_to_str(rrset1->owner));
 
 	if ((knot_dname_compare(rrset1->owner, rrset2->owner) != 0)

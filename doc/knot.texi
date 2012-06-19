@@ -1,0 +1,210 @@
+\input texinfo   @c -*-texinfo-*-
+@setfilename knot.info
+@include version.texi
+@documentencoding utf-8
+@settitle Knot DNS @value{VERSION}
+
+@defindex st
+@syncodeindex vr st
+
+@copying
+This manual is for Knot DNS (version @value{VERSION}, @value{UPDATED}),
+which is a high-performance authoritative-only DNS server.
+
+Copyright @copyright{} 2012 CZ.NIC, z.s.p.o.
+
+@quotation
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+@end quotation
+@end copying
+
+@dircategory Internet-application/server
+@direntry
+* Knot DNS: (Knot DNS) An authoritative-only DNS server
+@end direntry
+
+@titlepage
+@title Knot DNS Reference Manual
+@subtitle for version @value{VERSION}, @value{UPDATED}
+@author Ondrej Sury (@email{ondrej@@sury.org})
+@page
+@vskip 0pt plus 1filll
+@insertcopying
+@end titlepage
+
+@contents
+
+@ifnottex
+@node Top, Introduction, (dir), (dir)
+@top Knot DNS
+
+This manual is for Knot DNS (version @value{VERSION}, @value{UPDATED}).
+@end ifnottex
+
+@menu
+* Introduction::                
+* Knot DNS Resource Requirements::  
+* Knot DNS Installation::       
+* Knot DNS Configuration::      
+* Knot DNS Configuration Reference::  
+* Security Considerations::     
+* Troubleshooting::             
+* Statement Index::             
+* Migration for other DNS servers::  
+
+@detailmenu
+ --- The Detailed Node Listing ---
+
+Introduction
+
+* What is Knot DNS::            
+* Scope of Document::           
+* Conventions Used in This Document::  
+
+Knot DNS Resource Requirements
+
+* Hardware Requirements::       
+* CPU Requirements::            
+* Memory Requirements::         
+* Supported Operating System::  
+
+Knot DNS Installation
+
+* Required build environment::  
+* Required libraries::          
+* Installation from the sources::  
+* Installation from packages::  
+
+Required libraries
+
+* Userspace RCU::               
+
+Installation from the sources
+
+* Configuring and generating Makefiles::  
+* Compilation::                 
+* Installation::                
+
+Installation from packages
+
+* Installing Knot DNS packages on Debian::  
+* Installing Knot DNS packages on Ubuntu::  
+* Installing Knot DNS RPMs on Fedora::  
+* Installing Knot DNS from ports on FreeBSD::  
+
+Installing Knot DNS packages on Ubuntu
+
+* Adding official PPA repository for Knot DNS::  
+
+Knot DNS Configuration
+
+* Sample Configurations::       
+
+Sample Configurations
+
+* Minimal Configuration::       
+
+Knot DNS Configuration Reference
+
+* system::                      
+* keys::                        
+* interfaces::                  
+* remotes::                     
+* zones::                       
+* log::                         
+
+@code{system} Statement
+
+* system Syntax::               
+* system Statement Definition and Usage::  
+* system Example::              
+
+Statement Definition and Usage
+
+* identity::                    
+* version::                     
+* nsid::                        
+* storage::                     
+* pidfile::                     
+* workers::                     
+* user::                        
+
+@code{keys} Statement
+
+* keys Syntax::                 
+* keys Statement Definition and Usage::  
+* Example::                     
+
+Statement Definition and Usage
+
+* key_id::                      
+
+interfaces
+
+* interfaces Syntax::           
+* interfaces Statement Definition and Usage::  
+* interfaces Examples::         
+
+Statement Definition and Usage
+
+* interface_id::                
+
+@code{remotes} Statement
+
+* remotes Syntax::              
+* remotes Statement Definition and Grammar::  
+
+@code{zones} Statement
+
+* zones Syntax::                
+* zones Statement Definition and Grammar::  
+
+@code{log} Statement
+
+* log Syntax::                  
+* log Statement Definition and Grammar::  
+
+Troubleshooting
+
+* General troubleshooting::     
+* Generating backtrace::        
+
+Migration for other DNS servers
+
+* Knot DNS for BIND users::     
+* Knot DNS for NSD users::      
+* Knot DNS for PowerDNS users::  
+* Knot DNS for djbdns users::   
+
+@end detailmenu
+@end menu
+
+@c main chapters
+
+@include introduction.texi
+@include requirements.texi
+@include installation.texi
+@include configuration.texi
+@include reference.texi
+@include troubleshooting.texi
+@include security.texi
+
+@c indices
+@include indices.texi
+
+@c appendixes
+
+@include migration.texi
+
+@bye

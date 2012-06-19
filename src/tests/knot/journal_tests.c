@@ -34,7 +34,7 @@ unit_api journal_tests_api = {
 /*
  *  Unit implementation.
  */
-static const int JOURNAL_TEST_COUNT = 20;
+static const int JOURNAL_TEST_COUNT = 21;
 
 /*! \brief Generate random string with given length. */
 static int randstr(char* dst, size_t len)
@@ -76,6 +76,7 @@ static int journal_tests_run(int argc, char *argv[])
 	int tmp_fd = mkstemp(jfn_buf);
 	ok(tmp_fd >= 0, "journal: create temporary file");
 	skip(tmp_fd < 0, JOURNAL_TEST_COUNT - 1);
+	close(tmp_fd);
 
 	/* Test 2: Create journal. */
 	const char *jfilename = jfn_buf;
@@ -199,7 +200,7 @@ static int journal_tests_run(int argc, char *argv[])
 	ok(j && ret == 0, "journal: mapped entry data integrity check");
 	endskip;
 	
-	/* Test 17: Make a transaction. */
+	/* Test 16: Make a transaction. */
 	uint64_t tskey = 0x75750000;
 	ret = journal_trans_begin(j);
 	ok(j && ret == 0, "journal: TRANS begin");
@@ -208,16 +209,16 @@ static int journal_tests_run(int argc, char *argv[])
 		journal_write(j, tskey + i, tmpbuf, sizeof(tmpbuf));
 	}
 	
-	/* Test 18: Check if uncommited node exists. */
+	/* Test 17: Check if uncommited node exists. */
 	ret = journal_read(j, tskey + rand() % 16, NULL, chk_buf);
 	ok(j && ret != 0, "journal: check for uncommited node");
 	
-	/* Test 19: Commit transaction. */
+	/* Test 18: Commit transaction. */
 	ret = journal_trans_commit(j);
 	int read_ret = journal_read(j, tskey + rand() % 16, NULL, chk_buf);
 	ok(j && ret == 0 && read_ret == 0, "journal: transaction commit");
 	
-	/* Test 20: Rollback transaction. */
+	/* Test 19: Rollback transaction. */
 	tskey = 0x6B6B0000;
 	journal_trans_begin(j);
 	for (int i = 0; i < 16; ++i) {
@@ -228,7 +229,7 @@ static int journal_tests_run(int argc, char *argv[])
 	read_ret = journal_read(j, tskey + rand() % 16, NULL, chk_buf);
 	ok(j && ret == 0 && read_ret != 0, "journal: transaction rollback");
 
-	/* Test 16: Write random data. */
+	/* Test 20: Write random data. */
 	ret = 0;
 	for (int i = 0; i < 512; ++i) {
 		int key = i;
@@ -258,15 +259,16 @@ static int journal_tests_run(int argc, char *argv[])
 			break;
 		}
 	}
-
-	/* Test 16: Check data integrity. */
 	ok(j && ret == 0, "journal: sustained mmap r/w");
 
+	/* Test 21: Open + create journal. */
+	journal_close(j);
+	remove(jfilename);
+	j = journal_open(jfilename, fsize, 0, 0);
+	ok(j != NULL, "journal: open+create from scratch");
+	
 	/* Close journal. */
 	journal_close(j);
-
-	/* Close temporary file fd. */
-	close(tmp_fd);
 
 	/* Delete journal. */
 	remove(jfilename);

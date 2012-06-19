@@ -15,6 +15,7 @@
  */
 #include <time.h>
 #include <assert.h>
+#include <string.h>
 
 #include "tests/libknot/libknot/cuckoo_tests.h"
 

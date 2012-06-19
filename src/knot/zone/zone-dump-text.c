@@ -359,27 +359,27 @@ static char *rdata_txt_data_to_string(const uint8_t *data)
 	}
 	memset(ret, 0,  current_length);
 
-	strncat(ret, "\"", 3);
+	strncat(ret, "\"", 2);
 
 	for (i = 1; i <= length; i++) {
 		char ch = (char) data[i];
 		if (isprint((int)ch)) {
 			if (ch == '"' || ch == '\\') {
-				strncat(ret, "\"", 3);
+				strncat(ret, "\"", 2);
 			}
 				char tmp_str[2];
 				tmp_str[0] = ch;
 				tmp_str[1] = '\0';
 				strncat(ret, tmp_str, 2);
 		} else {
-			strncat(ret, "\\", 3);
+			strncat(ret, "\\", 2);
 			char tmp_str[2];
 			tmp_str[0] = ch - '0';
 			tmp_str[1] = '\0';
 			strncat(ret, tmp_str, 2);
 		}
 	}
-	strncat(ret, "\"", 3);
+	strncat(ret, "\"", 2);
 
 	return ret;
 }
@@ -387,8 +387,13 @@ static char *rdata_txt_data_to_string(const uint8_t *data)
 char *rdata_text_to_string(knot_rdata_item_t item)
 {
 	uint16_t size = item.raw_data[0];
+	/* 
+	 * Times two because they can all be one char long
+	 * and then it would be as much chars as spaces (and one final space).
+	 */
 	size_t txt_size = size * 2 + 1;
-	char *ret = malloc(txt_size);
+	/* + 1 ... space for (hypothetical) last \0. */
+	char *ret = malloc(txt_size + 1);
 	if (ret == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
@@ -396,7 +401,7 @@ char *rdata_text_to_string(knot_rdata_item_t item)
 	memset(ret, 0, sizeof(char) * size);
 	const uint8_t *data = (uint8_t *)(item.raw_data +  1);
 	size_t read_count = 0;
-	size_t tmp_str_current_length = 0; /* Will be used with strncat. */
+	size_t tmp_str_current_length = 0; // Will be used with strncat.
 	while (read_count < size) {
 		assert(read_count <= size);
 		char *txt = rdata_txt_data_to_string(data + read_count);
@@ -405,7 +410,8 @@ char *rdata_text_to_string(knot_rdata_item_t item)
 			return NULL;
 		}
 		/*
-		 * We can trust this strlen, as is created in internal function.
+		 * We can trust this strlen, as 
+		 * it is created in internal function.
 		 */
 		read_count += strlen(txt) - 1;
 		/* Create delimiter. */
@@ -413,13 +419,13 @@ char *rdata_text_to_string(knot_rdata_item_t item)
 		del[0] = ' ';
 		del[1] = '\0';
 		
-		/* We can only write to the remainder of */
-		strncat(ret, txt, size - tmp_str_current_length);
+		/* We can only write to the remainder of string. */
+		strncat(ret, txt, txt_size - tmp_str_current_length);
 		/* Increase length of tmp string. */
 		tmp_str_current_length += strlen(txt);
-		strncat(ret, del, size - tmp_str_current_length);
-		/* Increase length of tmp string. */
-		tmp_str_current_length += strlen(txt) + 2;
+		strncat(ret, del, txt_size - tmp_str_current_length);
+		/* Increase length of tmp string by 1 ... space. */
+		tmp_str_current_length += + 1;
 		free(txt);
 	}
 

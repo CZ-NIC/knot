@@ -58,8 +58,6 @@ knot_zcompile_SOURCES =				\
 unittests_SOURCES =				\
 	tests/common/acl_tests.c		\
 	tests/common/acl_tests.h		\
-	tests/common/da_tests.c			\
-	tests/common/da_tests.h			\
 	tests/common/events_tests.c		\
 	tests/common/events_tests.h		\
 	tests/common/skiplist_tests.c		\
@@ -226,16 +224,16 @@ libknots_la_SOURCES =				\
 	common/lists.c				\
 	common/base32.c				\
 	common/lists.h				\
+	common/heap.h				\
+	common/heap.c				\
 	common/base32.h				\
 	common/print.c				\
 	common/print.h				\
-	common/dynamic-array.c			\
 	common/skip-list.c			\
 	common/base32hex.c			\
 	common/skip-list.h			\
 	common/general-tree.h			\
 	common/general-tree.c			\
-	common/dynamic-array.h			\
 	common/tree.h				\
 	common/base32hex.h			\
 	common/evqueue.h			\

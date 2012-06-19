@@ -71,9 +71,10 @@ int fdset_poll_add(fdset_t *fdset, int fd, int events)
 	}
 
 	/* Append. */
-	int nid = fdset->nfds++;;
+	int nid = fdset->nfds++;
 	fdset->fds[nid].fd = fd;
 	fdset->fds[nid].events = POLLIN;
+	fdset->fds[nid].revents = 0;
 	return 0;
 }
 

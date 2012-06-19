@@ -14,5 +14,5 @@ zones {
 }
 
 log {
-  syslog { any warning, error; }
+  syslog { any info, notice, warning, error; }
 }

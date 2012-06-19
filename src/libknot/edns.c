@@ -71,21 +71,20 @@ int knot_edns_new_from_wire(knot_opt_rr_t *opt_rr, const uint8_t *wire,
 	// owner of EDNS OPT RR must be root (0)
 	if (*pos != 0) {
 		dbg_edns("EDNS packet malformed (expected root "
-		                  "domain as owner).\n");
+		         "domain as owner).\n");
 		return KNOT_EMALF;
 	}
 	pos += 1;
 
 	// check the type of the record (must be OPT)
 	if (knot_wire_read_u16(pos) != KNOT_RRTYPE_OPT) {
-		dbg_edns("EDNS packet malformed (expected OPT type"
-		                  ".\n");
+		dbg_edns("EDNS packet malformed (expected OPT type.\n");
 		return KNOT_EMALF;
 	}
 	pos += 2;
 
 	opt_rr->payload = knot_wire_read_u16(pos);
-	dbg_edns("Parsed payload: %u\n", opt_rr->payload);
+	dbg_edns_verb("Parsed payload: %u\n", opt_rr->payload);
 
 	pos += 2;
 	opt_rr->ext_rcode = *(pos++);
@@ -107,18 +106,18 @@ int knot_edns_new_from_wire(knot_opt_rr_t *opt_rr, const uint8_t *wire,
 	while (parsed < rdlength + KNOT_EDNS_MIN_SIZE) {
 		if (max_size - parsed < 4) {
 			dbg_edns("Not enough data to parse OPT RR"
-			                  " OPTION header.\n");
+			         " OPTION header.\n");
 			return KNOT_EFEWDATA;
 		}
 		uint16_t code = knot_wire_read_u16(pos);
 		pos += 2;
 		uint16_t length = knot_wire_read_u16(pos);
 		pos += 2;
-		dbg_edns("EDNS OPTION: Code: %u, Length: %u\n",
-		                  code, length);
+		dbg_edns_verb("EDNS OPTION: Code: %u, Length: %u\n",
+		              code, length);
 		if (max_size - parsed - 4 < length) {
 			dbg_edns("Not enough data to parse OPT RR"
-			                  " OPTION data.\n");
+			         " OPTION data.\n");
 			return KNOT_EFEWDATA;
 		}
 		int ret;
@@ -144,28 +143,28 @@ int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr,
 		return KNOT_EBADARG;
 	}
 
-	dbg_edns("Parsing payload.\n");
+	dbg_edns_verb("Parsing payload.\n");
 	opt_rr->payload = knot_rrset_class(rrset);
 
 	// the TTL has switched bytes
 	uint32_t ttl;
-	dbg_edns("TTL: %u\n", knot_rrset_ttl(rrset));
+	dbg_edns_detail("TTL: %u\n", knot_rrset_ttl(rrset));
 	knot_wire_write_u32((uint8_t *)&ttl, knot_rrset_ttl(rrset));
 	// first byte of TTL is extended RCODE
-	dbg_edns("TTL: %u\n", ttl);
+	dbg_edns_detail("TTL: %u\n", ttl);
 	memcpy(&opt_rr->ext_rcode, &ttl, 1);
-	dbg_edns("Parsed extended RCODE: %u.\n", opt_rr->ext_rcode);
+	dbg_edns_detail("Parsed extended RCODE: %u.\n", opt_rr->ext_rcode);
 	// second is the version
 	memcpy(&opt_rr->version, (const uint8_t *)(&ttl) + 1, 1);
-	dbg_edns("Parsed version: %u.\n", opt_rr->version);
+	dbg_edns_detail("Parsed version: %u.\n", opt_rr->version);
 	// third and fourth are flags
 	opt_rr->flags = knot_wire_read_u16((const uint8_t *)(&ttl) + 2);
-	dbg_edns("Parsed flags: %u.\n", opt_rr->flags);
+	dbg_edns_detail("Parsed flags: %u.\n", opt_rr->flags);
 	// size of the header, options are counted elsewhere
 	opt_rr->size = 11;
 
 	int rc = 0;
-	dbg_edns("Parsing options.\n");
+	dbg_edns_verb("Parsing options.\n");
 	const knot_rdata_t *rdata = knot_rrset_rdata(rrset);
 
 	// in OPT RR, all RDATA are in one RDATA item stored as BINARY data,
@@ -206,7 +205,7 @@ int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr,
 	}
 	
 	
-	dbg_edns("EDNS created.\n");
+	dbg_edns_verb("EDNS created.\n");
 
 	return KNOT_EOK;
 }
@@ -316,10 +315,10 @@ int knot_edns_add_option(knot_opt_rr_t *opt_rr, uint16_t code,
 		free(old_options);
 	}
 
-	dbg_edns("Adding option.\n");
-	dbg_edns("Code: %u.\n", code);
-	dbg_edns("Length: %u.\n", length);
-	dbg_edns("Data: %p.\n", data);
+	dbg_edns_verb("Adding option.\n");
+	dbg_edns_verb("Code: %u.\n", code);
+	dbg_edns_verb("Length: %u.\n", length);
+	dbg_edns_verb("Data: %p.\n", data);
 
 	opt_rr->options[opt_rr->option_count].data = (uint8_t *)malloc(length);
 	CHECK_ALLOC_LOG(opt_rr->options[opt_rr->option_count].data, KNOT_ENOMEM);
@@ -370,9 +369,9 @@ short knot_edns_to_wire(const knot_opt_rr_t *opt_rr, uint8_t *wire,
 
 	uint8_t *pos = wire;
 
-	dbg_edns_detail("Putting OPT RR to the wire format. Size: %d, "
-	                "position: %zu\n",
-	                opt_rr->size, (size_t)(pos - wire));
+	dbg_edns_verb("Putting OPT RR to the wire format. Size: %d, "
+	              "position: %zu\n",
+	              opt_rr->size, (size_t)(pos - wire));
 
 	*(pos++) = 0;
 	knot_wire_write_u16(pos, KNOT_RRTYPE_OPT);
