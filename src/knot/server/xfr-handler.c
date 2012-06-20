@@ -257,6 +257,8 @@ static int xfr_xfrin_cleanup(xfrworker_t *w, knot_ns_xfr_t *data)
 {
 	int ret = KNOTD_EOK;
 	knot_changesets_t *chs = 0;
+
+	dbg_xfr_verb("Cleaning up after XFR-in.\n");
 	
 	switch(data->type) {
 	case XFR_TYPE_AIN:
@@ -279,6 +281,7 @@ static int xfr_xfrin_cleanup(xfrworker_t *w, knot_ns_xfr_t *data)
 		if (data->data) {
 			chs = (knot_changesets_t *)data->data;
 			knot_free_changesets(&chs);
+			data->data = NULL;
 		}
 
 		// this function is called before new contents are created
@@ -286,6 +289,12 @@ static int xfr_xfrin_cleanup(xfrworker_t *w, knot_ns_xfr_t *data)
 
 		break;
 	}
+
+	/* Cleanup other data - so that the structure may be reused. */
+	data->packet_nr = 0;
+	data->tsig_data_size = 0;
+
+	dbg_xfr_detail("Done.\n");
 	
 	return ret;
 }
@@ -629,7 +638,8 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 	}
 
 	/* Check return code for errors. */
-	dbg_xfr_verb("xfr: processed incoming XFR packet (res =  %d)\n", ret);
+	dbg_xfr_verb("xfr: processed incoming XFR packet (%s)\n",
+	             knot_strerror(ret));
 	
 	/* Finished xfers. */
 	int xfer_finished = 0;
@@ -651,6 +661,7 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 			                 data->wire, bufsize);
 			/* Switch to AIN type XFR and return now. */
 			if (ret == bufsize) {
+				xfr_xfrin_cleanup(w, data);
 				data->type = XFR_TYPE_AIN;
 				data->msgpref[XFR_MSG_DLTTR] = 'A';
 				return KNOTD_EOK;

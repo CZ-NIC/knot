@@ -449,7 +449,6 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 			(xfrin_constructed_zone_t **)(&xfr->data);
 	
 	if (pkt == NULL || constr == NULL) {
-		dbg_xfrin("Wrong parameters supported.\n");
 		return KNOT_EBADARG;
 	}
 	
@@ -568,6 +567,7 @@ dbg_xfrin_exec(
 		
 		memset(*constr, 0, sizeof(xfrin_constructed_zone_t));
 		
+		dbg_xfrin_verb("Creating new zone contents.\n");
 		(*constr)->contents = knot_zone_contents_new(node, 0, 1, NULL);
 //		assert(0);
 		if ((*constr)->contents== NULL) {
