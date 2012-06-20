@@ -45,6 +45,7 @@
 #define XFR_QUERY_WD 10 /*!< SOA/NOTIFY query timeout [s]. */
 #define XFR_SWEEP_INTERVAL 2 /*! [seconds] between sweeps. */
 #define XFR_BUFFER_SIZE 65535 /*! Do not change this - maximum value for UDP packet length. */
+#define XFR_MSG_DLTTR 9 /*! Index of letter differentiating IXFR/AXFR in log msg. */
 
 /*! \brief Send interrupt to all workers. */
 void xfr_interrupt(xfrhandler_t *h)
@@ -623,7 +624,7 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 		assert(data->type == XFR_TYPE_IIN);
 		log_server_notice("%s Fallback to AXFR.\n", data->msgpref);
 		data->type = XFR_TYPE_AIN;
-		data->msgpref[0] = 'A';
+		data->msgpref[XFR_MSG_DLTTR] = 'A';
 		ret = knot_ns_process_axfrin(w->ns, data);
 	}
 
@@ -651,7 +652,7 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 			/* Switch to AIN type XFR and return now. */
 			if (ret == bufsize) {
 				data->type = XFR_TYPE_AIN;
-				data->msgpref[0] = 'A';
+				data->msgpref[XFR_MSG_DLTTR] = 'A';
 				return KNOTD_EOK;
 			}
 		}
@@ -958,7 +959,7 @@ static int xfr_answer_ixfr(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 			                "Fallback to AXFR.\n",
 			                xfr->msgpref);
 			xfr->type = XFR_TYPE_AOUT;
-			xfr->msgpref[0] = 'A';
+			xfr->msgpref[XFR_MSG_DLTTR] = 'A';
 			return xfr_answer_axfr(ns, xfr);
 		} else if (chsload == KNOTD_EMALF) {
 			xfr->rcode = KNOT_RCODE_FORMERR;
