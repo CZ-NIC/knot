@@ -215,7 +215,7 @@ int main(int argc, char **argv)
 			log_server_error("Couldn't open configuration file "
 					 "'%s'.\n", config_fn);
 		} else {
-			log_server_error("Failed to parse configuration '%s'.\n",
+			log_server_error("Failed to load configuration '%s'.\n",
 				config_fn);
 		}
 		server_destroy(&server);

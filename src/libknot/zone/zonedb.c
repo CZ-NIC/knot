@@ -51,7 +51,7 @@ static int knot_zonedb_compare_zone_names(void *p1, void *p2)
 
 	int ret = knot_dname_compare(zone1->name, zone2->name);
 
-dbg_zonedb_detail(
+dbg_zonedb_exec_detail(
 	char *name1 = knot_dname_to_str(zone1->name);
 	char *name2 = knot_dname_to_str(zone2->name);
 	dbg_zonedb_detail("Compared names %s and %s, result: %d.\n",
