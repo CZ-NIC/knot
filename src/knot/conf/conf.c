@@ -309,6 +309,10 @@ static int conf_process(conf_t *conf)
 		strncat(dest, dbext, strlen(dbext));
 		zone->ixfr_db = dest;
 	}
+	
+	/* Update UID and GID. */
+	if (conf->uid < 0) conf->uid = getuid();
+	if (conf->gid < 0) conf->gid = getgid();
 
 	return ret;
 }

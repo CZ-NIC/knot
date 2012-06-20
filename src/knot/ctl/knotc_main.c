@@ -723,6 +723,9 @@ int main(int argc, char **argv)
 		log_levels_add(LOGT_STDOUT, LOG_ANY,
 		               LOG_MASK(LOG_INFO)|LOG_MASK(LOG_DEBUG));
 	}
+	
+	/* Alter privileges. */
+	proc_update_privileges(conf()->uid, conf()->gid);
 
 	// Fetch PID
 	char* pidfile = pid_filename();

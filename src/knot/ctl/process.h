@@ -83,6 +83,15 @@ int pid_remove(const char* fn);
  */
 int pid_running(pid_t pid);
 
+/*!
+ * \brief Update process privileges to new UID/GID.
+ *
+ * \param uid New user ID.
+ * \param gid New group ID.
+ *
+ */
+void proc_update_privileges(int uid, int gid);
+
 #endif // _KNOTD_PROCESS_H_
 
 /*! @} */

@@ -20,6 +20,7 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <limits.h>
+
 #ifdef HAVE_CAP_NG_H
 #include <cap-ng.h>
 #endif /* HAVE_CAP_NG_H */
@@ -161,7 +162,6 @@ int main(int argc, char **argv)
 	conf_read_lock();
 	conf_add_hook(conf(), CONF_LOG, log_conf_hook, 0);
 	conf_add_hook(conf(), CONF_ALL, server_conf_hook, server);
-	conf_add_hook(conf(), CONF_ALL, zones_ns_conf_hook, server->nameserver);
 	conf_read_unlock();
 
 	// Find implicit configuration file
@@ -242,21 +242,28 @@ int main(int argc, char **argv)
 	}
 	log_server_info("\n");
 
-	// Create server instance
-	char* pidfile = pid_filename();
+	/* Alter privileges. */
+	proc_update_privileges(conf()->uid, conf()->gid);
+	
+	/* Load zones and add hook. */
+	zones_ns_conf_hook(conf(), server->nameserver);
+	conf_add_hook(conf(), CONF_ALL, zones_ns_conf_hook, server->nameserver);
 
 	// Run server
 	int res = 0;
+	int has_pid = 0;
+	char* pidfile = pid_filename();
 	log_server_info("Starting server...\n");
 	if ((server_start(server)) == KNOTD_EOK) {
 
 		// Save PID
-		int has_pid = 1;
+		has_pid = 1;
 		int rc = pid_write(pidfile);
 		if (rc < 0) {
 			has_pid = 0;
 			log_server_warning("Failed to create "
-					   "PID file '%s'.\n", pidfile);
+					   "PID file '%s' (%s).\n",
+					   pidfile, strerror(errno));
 		}
 
 		// Change directory if daemonized
@@ -370,7 +377,7 @@ int main(int argc, char **argv)
 	server_destroy(&server);
 
 	// Remove PID file
-	if (pid_remove(pidfile) < 0) {
+	if (has_pid && pid_remove(pidfile) < 0) {
 		log_server_warning("Failed to remove PID file.\n");
 	}
 
