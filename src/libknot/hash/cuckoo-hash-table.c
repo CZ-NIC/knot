@@ -282,6 +282,8 @@ static int ck_stash_is_full(const ck_hash_table_t *table)
  */
 static inline void ck_clear_item(ck_hash_table_item_t **item)
 {
+	dbg_stash("[EMPTY STASH] [CREATE] setting item %p (%p) to NULL.\n",
+	          item, *item);
 	*item = NULL;
 }
 
@@ -319,6 +321,10 @@ static inline void ck_swap_items(ck_hash_table_item_t **item1,
 static inline void ck_put_item(ck_hash_table_item_t **to,
                                ck_hash_table_item_t *item)
 {
+	if (item == NULL) {
+		dbg_stash("[EMPTY STASH] [CREATE] Putting NULL to item %p.\n",
+		          to);
+	}
 	*to = item;
 }
 
@@ -381,6 +387,9 @@ static ck_hash_table_item_t **ck_find_in_stash(const ck_hash_table_t *table,
 			    (int)item->item->key_length, item->item->key,
 			    item->item->key_length, (int)length, key, length);
 			return &item->item;
+		} else if (item->item == NULL) {
+			dbg_stash("[EMPTY STASH] [FIND] STASH ITEM IS EMPTY: "
+			          "%p (%p)\n", item, item->item);
 		}
 		item = item->next;
 	}
@@ -765,7 +774,7 @@ static void ck_rollback_rehash(ck_hash_table_t *table)
 int ck_add_to_stash(ck_hash_table_t *table, ck_hash_table_item_t *item)
 {
 	if (item == NULL) {
-		fprintf(stderr, "[EMPTY STASH] ADDING NULL ITEM TO STASH\n");
+		dbg_stash("[EMPTY STASH] [CREATE] ADDING NULL ITEM TO STASH\n");
 	}
 
 	ck_stash_item_t *new_item
@@ -1435,8 +1444,8 @@ int ck_deep_copy(ck_hash_table_t *from, ck_hash_table_t **to)
 		              si->item);
 
 		if (si->item == NULL) {
-			fprintf(stderr, "[EMPTY STASH] STASH ITEM IS EMPTY: "
-			        "%p (%p)", si, si->item);
+			dbg_stash("[EMPTY STASH] [FIND] STASH ITEM IS EMPTY: "
+			        "%p (%p)\n", si, si->item);
 			si_new->item = NULL;
 			si_new->next = NULL;
 		} else {
@@ -1571,8 +1580,8 @@ int ck_rehash(ck_hash_table_t *table)
 				assert(item->item == NULL);
 				// and the item should be hashed too
 //				assert(table->hashed == NULL);
-				fprintf(stderr, "[EMPTY STASH] Created empty "
-				        "item: %p (%p)\n", item, item->item);
+				dbg_stash("[EMPTY STASH] [CREATE] Created empty"
+				          " item: %p (%p)\n", item, item->item);
 
 				// fix the pointer from the previous hash item
 				*item_place = item->next;
@@ -1654,9 +1663,9 @@ int ck_rehash(ck_hash_table_t *table)
 						free_stash_items = item->next;
 
 						if (free == NULL) {
-							fprintf(stderr, "[EMPTY STASH] "
-							       "STORING NULL in"
-							       " the stash\n");
+							dbg_stash("[EMPTY STASH] "
+							 "[CREATE] STORING NULL"
+							 " in the stash\n");
 						}
 
 						item->item = free;
