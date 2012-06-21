@@ -3236,7 +3236,6 @@ int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
 
 	/* Schedule NOTIFY to slaves. */
 	conf_remote_t *r = 0;
-	conf_read_lock();
 	WALK_LIST(r, cfzone->acl.notify_out) {
 
 		/* Fetch remote. */
