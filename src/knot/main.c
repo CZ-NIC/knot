@@ -139,6 +139,7 @@ int main(int argc, char **argv)
 	emptyset.sa_flags = 0;
 	sigaction(SIGALRM, &emptyset, NULL); // Interrupt
 	sigaction(SIGPIPE, &emptyset, NULL); // Mask
+	rcu_register_thread();
 
 	// Setup event queue
 	evqueue_set(evqueue_new());
@@ -388,6 +389,8 @@ int main(int argc, char **argv)
 	// Destroy event loop
 	evqueue_t *q = evqueue();
 	evqueue_free(&q);
+	
+	rcu_unregister_thread();
 
 	// Free default config filename if exists
 	free(config_fn);
