@@ -1944,6 +1944,13 @@ int knot_zone_contents_find_nsec3_for_name(const knot_zone_contents_t *zone,
 		return ret;
 	}
 
+	// check if the NSEC3 tree is not empty
+	if (zone->nsec3_nodes->th_root == NULL) {
+		dbg_zone("NSEC3 tree is empty.\n");
+		knot_dname_release(nsec3_name);
+		return KNOT_ENSEC3CHAIN;
+	}
+
 dbg_zone_exec_verb(
 	char *n = knot_dname_to_str(nsec3_name);
 	dbg_zone_verb("NSEC3 node name: %s.\n", n);
@@ -1978,6 +1985,11 @@ dbg_zone_exec_detail(
 	}
 );
 	*nsec3_node = found;
+
+	if (nsec3_node == NULL) {
+		// there is no NSEC3 node even if there should be
+		return KNOT_ENSEC3CHAIN;
+	}
 
 	if (prev == NULL) {
 		// either the returned node is the root of the tree, or it is
@@ -2145,8 +2157,9 @@ int knot_zone_contents_nsec3_enabled(const knot_zone_contents_t *zone)
 		return KNOT_EBADARG;
 	}
 
-	//return (zone->nsec3_params.algorithm != 0);
-	return (zone->nsec3_nodes->th_root != NULL);
+	return (zone->nsec3_params.algorithm != 0
+	        && zone->nsec3_nodes->th_root != NULL);
+//	return (zone->nsec3_nodes->th_root != NULL);
 }
 
 /*----------------------------------------------------------------------------*/
