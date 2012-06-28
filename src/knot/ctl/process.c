@@ -23,6 +23,7 @@
 #include <signal.h>
 #include <grp.h>
 #include <unistd.h>
+#include <assert.h>
 
 #include "knot/common.h"
 #include "knot/ctl/process.h"

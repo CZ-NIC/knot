@@ -597,6 +597,16 @@ static int knot_packet_parse_rrs(const uint8_t *wire, size_t *pos,
 			knot_rrset_deep_free(&rrset, 1, 1, 1);
 			break;
 		}
+
+		if (knot_rrset_type(rrset) == KNOT_RRTYPE_TSIG) {
+			// if there is some TSIG already, treat as malformed
+			if (knot_packet_tsig(packet) != NULL) {
+				err = KNOT_EMALF;
+				break;
+			}
+			// store the TSIG into the packet
+			knot_packet_set_tsig(packet, rrset);
+		}
 	}
 
 	return (err < 0) ? err : KNOT_EOK;
@@ -655,12 +665,19 @@ static int knot_packet_parse_rr_sections(knot_packet_t *packet,
 
 	int err;
 
+	assert(packet->tsig_rr == NULL);
+
 	dbg_packet_verb("Parsing Answer RRs...\n");
 	if ((err = knot_packet_parse_rrs(packet->wireformat, pos,
 	   packet->size, packet->header.ancount, &packet->parsed_an,
 	   &packet->answer, &packet->an_rrsets, &packet->max_an_rrsets,
 	   DEFAULT_RRSET_COUNT(ANCOUNT, packet), packet)) != KNOT_EOK) {
 		return err;
+	}
+
+	if (packet->tsig_rr != NULL) {
+		dbg_packet("TSIG in Answer section.\n");
+		return KNOT_EMALF;
 	}
 
 	dbg_packet_verb("Parsing Authority RRs...\n");
@@ -671,6 +688,11 @@ static int knot_packet_parse_rr_sections(knot_packet_t *packet,
 		return err;
 	}
 
+	if (packet->tsig_rr != NULL) {
+		dbg_packet("TSIG in Authority section.\n");
+		return KNOT_EMALF;
+	}
+
 	dbg_packet_verb("Parsing Additional RRs...\n");
 	if ((err = knot_packet_parse_rrs(packet->wireformat, pos,
 	   packet->size, packet->header.arcount, &packet->parsed_ar,
@@ -679,12 +701,18 @@ static int knot_packet_parse_rr_sections(knot_packet_t *packet,
 		return err;
 	}
 
+	// If TSIG is not the last record
+	if (packet->tsig_rr != NULL
+	    && packet->ar_rrsets[packet->additional - 1] != packet->tsig_rr) {
+		dbg_packet("TSIG in Additonal section but not last.\n");
+		return KNOT_EMALF;
+	}
+
 	dbg_packet_verb("Trying to find OPT RR in the packet.\n");
 
 	for (int i = 0; i < packet->ar_rrsets; ++i) {
 		assert(packet->additional[i] != NULL);
-		if (knot_rrset_type(packet->additional[i])
-		    == KNOT_RRTYPE_OPT) {
+		if (knot_rrset_type(packet->additional[i]) == KNOT_RRTYPE_OPT) {
 			dbg_packet_detail("Found OPT RR, filling.\n");
 			err = knot_edns_new_from_rr(&packet->opt_rr,
 			                              packet->additional[i]);
