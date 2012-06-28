@@ -214,14 +214,6 @@ int knot_rrset_add_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs,
 	int rc;
 	if (rrset->rrsigs != NULL) {
 		if (dupl == KNOT_RRSET_DUPL_MERGE) {
-			rc = knot_rrset_merge((void **)&rrset->rrsigs,
-			                        (void **)&rrsigs);
-			if (rc != KNOT_EOK) {
-				return rc;
-			} else {
-				return 1;
-			}
-		} else if (dupl == KNOT_RRSET_DUPL_SKIP) {
 			rc = knot_rrset_merge_no_dupl((void **)&rrset->rrsigs,
 			                              (void **)&rrsigs);
 			if (rc != KNOT_EOK) {
@@ -229,6 +221,15 @@ int knot_rrset_add_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs,
 			} else {
 				return 1;
 			}
+		} else if (dupl == KNOT_RRSET_DUPL_SKIP) {
+//			rc = knot_rrset_merge_no_dupl((void **)&rrset->rrsigs,
+//			                              (void **)&rrsigs);
+//			if (rc != KNOT_EOK) {
+//				return rc;
+//			} else {
+//				return 1;
+//			}
+			return 2;
 		} else if (dupl == KNOT_RRSET_DUPL_REPLACE) {
 			rrset->rrsigs = rrsigs;
 		}

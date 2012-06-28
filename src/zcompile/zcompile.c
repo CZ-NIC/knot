@@ -461,8 +461,10 @@ dbg_zp_exec_detail(
 
 		/* I chose skip, but there should not really be
 		 * any rrset to skip */
+		/* MERGE is better - for any case it will give the desired
+		   option */
 		if (knot_zone_contents_add_rrset(contents, rrset, &node,
-		                   KNOT_RRSET_DUPL_SKIP, 1) < 0) {
+		                   KNOT_RRSET_DUPL_MERGE, 1) < 0) {
 			knot_rrset_free(&rrset);
 			dbg_zp("zp: process_rr: Cannot "
 			       "add RDATA to RRSet.\n");

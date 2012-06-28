@@ -798,7 +798,7 @@ dbg_xfrin_exec_verb(
 			dbg_xfrin_detail("Created new node for the record.\n");
 
 			// insert the RRSet to the node
-			ret = knot_node_add_rrset(node, rr, 1);
+			ret = knot_node_add_rrset_no_dupl(node, rr);
 			if (ret < 0) {
 				dbg_xfrin("Failed to add RRSet to node (%s)\n",
 				          knot_strerror(ret));

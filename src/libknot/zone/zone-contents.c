@@ -1234,12 +1234,12 @@ dbg_zone_exec_detail(
 	int rc;
 
 	/*! \todo REMOVE RRSET */
-	if (dupl == KNOT_RRSET_DUPL_SKIP) {
+	if (dupl == KNOT_RRSET_DUPL_MERGE) {
 		rc = knot_node_add_rrset_no_dupl(*node, rrset);
 	} else {
-		rc = knot_node_add_rrset(*node, rrset,
-		                         dupl == KNOT_RRSET_DUPL_MERGE);
+		rc = knot_node_add_rrset(*node, rrset, 0);
 	}
+
 	if (rc < 0) {
 		dbg_zone("Failed to add RRSet to node.\n");
 		return rc;
@@ -1473,8 +1473,12 @@ int knot_zone_contents_add_nsec3_rrset(knot_zone_contents_t *zone,
 	int rc;
 
 	/*! \todo REMOVE RRSET */
-	rc = knot_node_add_rrset(*node, rrset,
-	                           dupl == KNOT_RRSET_DUPL_MERGE);
+	if (dupl == KNOT_RRSET_DUPL_MERGE) {
+		rc = knot_node_add_rrset_no_dupl(*node, rrset);
+	} else {
+		rc = knot_node_add_rrset(*node, rrset, 0);
+	}
+
 	if (rc < 0) {
 		return rc;
 	}
