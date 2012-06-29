@@ -285,6 +285,7 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 			/*!< \todo #1686
 			 * Refactor these variables, some might be too big.
 			 */
+			
 
 			uint32_t dname_id = 0;
 			uint8_t has_wildcard = 0;
@@ -306,6 +307,11 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 			} else {
 				items[i].dname = read_dname_with_id(f);
 			}
+			
+			dbg_zload_detail("zload: load_rdata: "
+			                 "Loading dname: %s.\n",
+			              knot_dname_to_str(items[i].dname));
+
 
 			if(!fread_wrapper(&in_the_zone, sizeof(in_the_zone),
 			               1, f)) {
@@ -322,6 +328,23 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 				          "Cannot read wildcard bit.\n");
 				return NULL;
 			}
+			
+			dbg_zload_detail("zload: load_rdata: Has wildcard: "
+			                 "%d\n", has_wildcard);
+			
+			if (use_ids && !in_the_zone) {
+				dbg_zload_detail("zload: load_rdata: "
+				                 "Freeing node owned by: %s\n",
+				                 knot_dname_to_str(
+							items[i].dname));
+				/* destroy the node */
+				assert(!in_the_zone);
+				if (items[i].dname->node != NULL) {
+					knot_node_free(&items[i].dname->node,
+					               0);
+				}
+				/* Also sets node to NULL! */
+			}
 
 			if (use_ids && has_wildcard) {
 				if(!fread_wrapper(&dname_id, sizeof(dname_id),
@@ -332,16 +355,14 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 					          "Cannot read wc ID.\n");
 					return NULL;
 				}
+				dbg_zload_detail("zload: load_rdata: "
+				                 "Wildcard: %s\n",
+				                 knot_dname_to_str(
+				                         id_array[dname_id]));
 				items[i].dname->node =
 					id_array[dname_id]->node;
-			} else if (use_ids && !in_the_zone) {
-				/* destroy the node */
-				if (id_array[dname_id]->node != NULL) {
-					knot_node_free(&id_array[dname_id]->
-							 node, 0);
-				}
-				/* Also sets node to NULL! */
 			}
+			
 			assert(items[i].dname);
 		} else {
 			if (!fread_wrapper(&raw_data_length,
@@ -1190,6 +1211,9 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	for (uint i = 1; i < node_count; i++) {
 		tmp_node = knot_load_node(f, id_array);
 		if (tmp_node != NULL) {
+			dbg_zload_detail("zload: load: Adding node owned by: "
+			                 "%s\n.",
+			                 knot_dname_to_str(tmp_node->owner));
 			if (knot_zone_contents_add_node(contents, tmp_node,
 			                                  0, 0, 0) != 0) {
 				cleanup_id_array(id_array, 1,
@@ -1200,6 +1224,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 				          "to zone.\n");
 				return NULL;
 			}
+			
 			if (knot_dname_is_wildcard(tmp_node->owner)) {
 				find_and_set_wildcard_child(contents,
 				                            tmp_node, 0);
