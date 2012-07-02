@@ -2201,10 +2201,9 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 		dbg_zones_verb("Failed preparing response structure: %s.\n",
 		               knot_strerror(rcode));
 		if (resp == NULL) {
-			knot_ns_error_response(nameserver,
-			                       knot_packet_id(query),
-			                       &query->header.flags1,
-			                       rcode, resp_wire, rsize);
+			knot_ns_error_response_from_query(nameserver, query,
+			                                  rcode, resp_wire,
+			                                  rsize);
 			rcu_read_unlock();
 			return KNOT_EOK;
 		}

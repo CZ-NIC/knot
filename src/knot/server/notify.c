@@ -242,10 +242,9 @@ int notify_process_request(knot_nameserver_t *ns,
 	if (notify->parsed < notify->size) {
 		if (knot_packet_parse_rest(notify) != KNOT_EOK) {
 			dbg_notify("notify: failed to parse NOTIFY query\n");
-			knot_ns_error_response(ns, knot_packet_id(notify),
-			                       &notify->header.flags1,
-			                       KNOT_RCODE_FORMERR, buffer,
-			                       size);
+			knot_ns_error_response_from_query(ns, notify,
+			                                  KNOT_RCODE_FORMERR,
+			                                  buffer, size);
 			return KNOTD_EOK;
 		}
 	}
@@ -253,9 +252,9 @@ int notify_process_request(knot_nameserver_t *ns,
 	// check if it makes sense - if the QTYPE is SOA
 	if (knot_packet_qtype(notify) != KNOT_RRTYPE_SOA) {
 		// send back FORMERR
-		knot_ns_error_response(ns, knot_packet_id(notify),
-		                       &notify->header.flags1,
-		                       KNOT_RCODE_FORMERR, buffer, size);
+		knot_ns_error_response_from_query(ns, notify,
+		                                  KNOT_RCODE_FORMERR, buffer,
+		                                  size);
 		return KNOTD_EOK;
 	}
 
@@ -264,9 +263,9 @@ int notify_process_request(knot_nameserver_t *ns,
 	ret = notify_create_response(notify, buffer, size);
 	if (ret != KNOTD_EOK) {
 		dbg_notify("notify: failed to create NOTIFY response\n");
-		knot_ns_error_response(ns, knot_packet_id(notify),
-		                       &notify->header.flags1,
-		                       KNOT_RCODE_SERVFAIL, buffer, size);
+		knot_ns_error_response_from_query(ns, notify,
+		                                  KNOT_RCODE_SERVFAIL, buffer,
+		                                  size);
 		return KNOTD_EOK;
 	}
 
@@ -276,9 +275,9 @@ int notify_process_request(knot_nameserver_t *ns,
 			ns->zone_db, qname);
 	if (z == NULL) {
 		dbg_notify("notify: failed to find zone by name\n");
-		knot_ns_error_response(ns, knot_packet_id(notify),
-		                       &notify->header.flags1,
-		                       KNOT_RCODE_REFUSED, buffer, size);
+		knot_ns_error_response_from_query(ns, notify,
+		                                  KNOT_RCODE_FORMERR, buffer,
+		                                  size);
 		return KNOTD_EOK;
 	}
 
