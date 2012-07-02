@@ -594,14 +594,26 @@ static int ns_put_additional_for_rrset(knot_packet_t *resp,
 		dbg_ns_verb("Getting name from RDATA, type %s..\n",
 		            knot_rrtype_to_string(knot_rrset_type(rrset)));
 		dname = knot_rdata_get_name(rdata, knot_rrset_type(rrset));
+
+dbg_ns_exec_detail(
+		char *name = knot_dname_to_str(dname);
+		dbg_ns_detail("Name: %s\n", name);
+		free(name);
+);
 		assert(dname != NULL);
 		node = knot_dname_node(dname);
 		
+		dbg_ns_detail("Node saved in RDATA dname: %p\n", node);
 		if (node != NULL && node->owner != dname) {
-			// the stored node should be the closest encloser
-			assert(knot_dname_is_subdomain(dname, node->owner));
-			// try the wildcard child, if any
-			node = knot_node_wildcard_child(node);
+			// the stored node should be the wildcard covering the
+			// name
+			dbg_ns_detail("Node is wildcard.\n");
+			assert(knot_dname_is_wildcard(knot_node_owner(node)));
+
+//			// the stored node should be the closest encloser
+//			assert(knot_dname_is_subdomain(dname, node->owner));
+//			// try the wildcard child, if any
+//			node = knot_node_wildcard_child(node);
 		}
 
 		knot_rrset_t *rrset_add;
