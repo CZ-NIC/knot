@@ -825,6 +825,8 @@ int knot_rrset_merge_no_dupl(void **r1, void **r2)
 	// no RDATA in RRSet 1
 	if (rrset1->rdata == NULL) {
 		rrset1->rdata = rrset2->rdata;
+		// duplicates from RRSet2 are not removed
+		rrset2->rdata = NULL;
 		return KNOT_EOK;
 	}
 	
@@ -891,7 +893,7 @@ int knot_rrset_merge_no_dupl(void **r1, void **r2)
 			                 tmp);
 			/*! \todo Break the link in second list too? */
 			walk2 = knot_rrset_rdata_get_next(rrset2, walk2);
-			knot_rdata_deep_free(&tmp, rrset1->type, 0);
+			knot_rdata_deep_free(&tmp, rrset1->type, 1);
 			assert(tmp == NULL);
 			/* Maybe caller should be warned about this. */
 		}
@@ -913,7 +915,7 @@ dbg_rrset_exec_detail(
 	 * both have to be identical so it does not matter which is going to be
 	 * freed, but should NOT be deep freed! This is mostly just precaution.
 	 */
-	rrset2->rdata = rrset1->rdata;
+	rrset2->rdata = NULL;
 
 	return KNOT_EOK;
 }
