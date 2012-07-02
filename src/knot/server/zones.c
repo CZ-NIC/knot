@@ -1773,8 +1773,10 @@ static int zones_verify_tsig_query(const knot_packet_t *query,
 
 	/*
 	 * 2) Find the particular key used by the TSIG.
+	 *    Check not only name, but also the algorithm.
 	 */
-	if (key && kname && knot_dname_compare(key->name, kname) == 0) {
+	if (key && kname && knot_dname_compare(key->name, kname) == 0
+	    && key->algorithm == alg) {
 		dbg_zones_verb("Found claimed TSIG key for comparison\n");
 	} else {
 		*rcode = KNOT_RCODE_NOTAUTH;
