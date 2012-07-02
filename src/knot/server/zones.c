@@ -2604,7 +2604,6 @@ static int zones_dump_zone_text(knot_zone_contents_t *zone, const char *fname)
 	FILE *f = fdopen(fd, "w");
 	if (f == NULL) {
 		log_zone_warning("Failed to open file descriptor for text zone.\n");
-		fclose(f);
 		unlink(new_fname);
 		free(new_fname);
 		return KNOTD_ERROR;

@@ -2219,7 +2219,7 @@ dbg_zone_exec_detail(
 );
 	*nsec3_node = found;
 
-	if (nsec3_node == NULL) {
+	if (*nsec3_node == NULL) {
 		// there is no NSEC3 node even if there should be
 		return KNOT_ENSEC3CHAIN;
 	}
