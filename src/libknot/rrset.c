@@ -823,11 +823,23 @@ int knot_rrset_merge_no_dupl(void **r1, void **r2)
 	}
 
 	// no RDATA in RRSet 1
-	if (rrset1->rdata == NULL) {
-		rrset1->rdata = rrset2->rdata;
-		// duplicates from RRSet2 are not removed
-		rrset2->rdata = NULL;
-		return KNOT_EOK;
+	if (rrset1->rdata == NULL && rrset2->rdata != NULL) {
+		/*
+		 * This function has to assure that there are no duplicates in 
+		 * second RRSet's list. This can be done by putting a first 
+		 * item from the second list as a first item of the first list.
+		 * We cannot simply put the first item from second RR here,
+		 * as it would corrupt second list. Therefore a copy is needed.
+		 * Original first item in second RRSet will be freed later.
+		 */
+		rrset1->rdata = knot_rdata_deep_copy(rrset2->rdata,
+		                                     rrset1->type, 1);
+		if (rrset1->rdata == NULL) {
+			dbg_rrset("rrset: merge_no_dupl: Cannot create a copy"
+			          " of RRSet.\n");
+			return KNOT_ERROR;
+		}
+		rrset1->rdata->next = rrset1->rdata;
 	}
 	
 	if (rrset2->rdata == NULL) {
@@ -891,7 +903,6 @@ int knot_rrset_merge_no_dupl(void **r1, void **r2)
 			knot_rdata_t *tmp = walk2;
 			dbg_rrset_detail("rrset: merge_dupl: freeing: %p.\n",
 			                 tmp);
-			/*! \todo Break the link in second list too? */
 			walk2 = knot_rrset_rdata_get_next(rrset2, walk2);
 			knot_rdata_deep_free(&tmp, rrset1->type, 1);
 			assert(tmp == NULL);
@@ -911,9 +922,8 @@ dbg_rrset_exec_detail(
 	                 rrset1->rdata, rrset2->rdata);
 );
 	/*
-	 * Since we cannot assume which rrset will be used after merge.
-	 * both have to be identical so it does not matter which is going to be
-	 * freed, but should NOT be deep freed! This is mostly just precaution.
+	 * Since there is a possibility of corrupted list for second RRSet, it
+	 * is safer to set its list to NULL, so that it cannot be used.
 	 */
 	rrset2->rdata = NULL;
 

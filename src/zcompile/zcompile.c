@@ -162,7 +162,7 @@ static int find_rrset_for_rrsig_in_zone(knot_zone_contents_t *zone,
 	} else {
 		int ret = knot_zone_contents_add_rrsigs(zone, rrsig,
 		                                        &tmp_rrset, &tmp_node,
-		                       KNOT_RRSET_DUPL_SKIP, 1);
+		                       KNOT_RRSET_DUPL_MERGE, 1);
 		if (ret != KNOT_EOK) {
 			dbg_zp("zp: find_rr_for_sig: Cannot add RRSIG.\n");
 			return ret;
@@ -205,7 +205,7 @@ static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
 	} else {
 		if (knot_zone_contents_add_rrsigs(zone, rrsig,
 		                                  &tmp_rrset, &node,
-		                           KNOT_RRSET_DUPL_SKIP, 1) < 0) {
+		                           KNOT_RRSET_DUPL_MERGE, 1) < 0) {
 			dbg_zp("zp: find_rr_for_sig: Cannot add RRSIG.\n");
 			return KNOTDZCOMPILE_EINVAL;
 		}
@@ -458,11 +458,8 @@ dbg_zp_exec_detail(
 			       "add RDATA to RRSet.\n");
 			return KNOTDZCOMPILE_EBRDATA;
 		}
-
-		/* I chose skip, but there should not really be
-		 * any rrset to skip */
-		/* MERGE is better - for any case it will give the desired
-		   option */
+		
+		/* Selected merge option does not really matter here. */
 		if (knot_zone_contents_add_rrset(contents, rrset, &node,
 		                   KNOT_RRSET_DUPL_MERGE, 1) < 0) {
 			knot_rrset_free(&rrset);
