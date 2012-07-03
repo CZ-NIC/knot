@@ -232,11 +232,20 @@ dbg_response_exec_detail(
 		// If case-sensitive search is in place, we should not save the
 		// node's parent's positions.
 		
-		to_save = !compr_cs && (knot_dname_node(to_save) != NULL
-		      && knot_node_parent(knot_dname_node(to_save))
-		          != NULL) ? knot_node_owner(knot_node_parent(
+		// Added check to rule out wildcard-covered dnames
+		// (in such case the offset is not right)
+
+		/*! \todo The whole compression requires a serious refactoring.
+		 *        Or better - a rewrite!
+		 */
+		to_save = (!compr_cs && knot_dname_node(to_save) != NULL
+		           && knot_node_owner(knot_dname_node(to_save))
+		              !=  to_save
+		           && knot_node_parent(knot_dname_node(to_save))
+		              != NULL)
+		                ? knot_node_owner(knot_node_parent(
 		                        knot_dname_node(to_save)))
-		                   : NULL;
+		                : NULL;
 
 		dbg_response("i: %d\n", i);
 		parent_pos += knot_dname_label_size(dname, i) + 1;
