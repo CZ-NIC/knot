@@ -334,16 +334,24 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 			
 			if (use_ids && !in_the_zone) {
 				dbg_zload_detail("zload: load_rdata: "
-				                 "Freeing node owned by: %s\n",
+				                 "Freeing node owned by: %s. "
+				                 "Caused by dname: %s.\n",
 				                 knot_dname_to_str(
-							items[i].dname));
-				/* destroy the node */
+							items[i].dname->node->owner),
+				                 knot_dname_to_str(items[i].dname));
+				/* Destroy the node */
 				assert(!in_the_zone);
-				if (items[i].dname->node != NULL) {
+				if (items[i].dname->node != NULL &&
+				    /*
+				     * This check is here to prevent freeing
+				     * of previously set wildcard node.
+				     */
+				    (items[i].dname->node->owner ==
+				     items[i].dname)) {
 					knot_node_free(&items[i].dname->node,
 					               0);
+					assert(items[i].dname->node == NULL);
 				}
-				/* Also sets node to NULL! */
 			}
 
 			if (use_ids && has_wildcard) {
