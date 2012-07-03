@@ -164,17 +164,20 @@ static void load_rdata_purge(knot_rdata_t *rdata,
 	free(items);
 }
 
-static knot_dname_t *read_dname_with_id(FILE *f)
+static knot_dname_t *read_dname_with_id(FILE *f, int use_ids)
 {
 	if (f == NULL) {
 		dbg_zload("zload: read_dname_id: NULL file.\n");
 	}
 	knot_dname_t *ret = knot_dname_new();
 	CHECK_ALLOC_LOG(ret, NULL);
-
-	int (*fread_wrapper)(void *dst, size_t size, size_t n, void *source);
-	fread_wrapper = fread_safe_from_file;
 	
+	int (*fread_wrapper)(void *dst, size_t size, size_t n, void *source);
+	if (use_ids) {
+		fread_wrapper = fread_safe_from_file;
+	} else {
+		fread_wrapper = read_from_stream;
+	}
 
 	/* Read ID. */
 	uint32_t dname_id = 0;
@@ -339,7 +342,7 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 				knot_dname_retain(id_array[dname_id]);
 				items[i].dname = id_array[dname_id];
 			} else {
-				items[i].dname = read_dname_with_id(f);
+				items[i].dname = read_dname_with_id(f, use_ids);
 			}
 			
 			dbg_zload_detail("zload: load_rdata: "
@@ -578,7 +581,7 @@ static knot_rrset_t *knot_load_rrset(void *f, knot_dname_t **id_array,
 	if (!use_ids) {
 		dbg_zload_detail("zload: load_rrset: "
 		                 "Loading owner of new RRSet from wire.\n");
-		owner = read_dname_with_id(f);
+		owner = read_dname_with_id(f, use_ids);
 		if (owner == NULL) {
 			dbg_zload("zload: load_rrset: Cannot load owner.\n");
 			return NULL;
@@ -1138,7 +1141,7 @@ static knot_dname_t **create_dname_array(FILE *f, uint max_id)
 	memset(array, 0, sizeof(knot_dname_t *) * (max_id + 1));
 
 	for (uint i = 0; i < max_id - 1; i++) {
-		knot_dname_t *read_dname = read_dname_with_id(f);
+		knot_dname_t *read_dname = read_dname_with_id(f, 1);
 		if (read_dname == NULL) {
 			dbg_zload("zload: create_dname_array: "
 			          "Cannot read dname.\n" );
