@@ -919,8 +919,11 @@ int knot_response_init_from_query(knot_packet_t *response,
 
 	// set counts to 0
 	response->header.ancount = 0;
+	knot_wire_set_ancount(response->wireformat, 0);
 	response->header.nscount = 0;
+	knot_wire_set_nscount(response->wireformat, 0);
 	response->header.arcount = 0;
+	knot_wire_set_arcount(response->wireformat, 0);
 
 	response->query = query;
 

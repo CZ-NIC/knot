@@ -1240,9 +1240,9 @@ int knot_zone_contents_add_node(knot_zone_contents_t *zone,
 		return KNOT_EBADARG;
 	}
 
-dbg_zone_exec_verb(
+dbg_zone_exec_detail(
 	char *name = knot_dname_to_str(knot_node_owner(node));
-	dbg_zone_verb("Adding node to zone: %s.\n", name);
+	dbg_zone_exec_detail("Adding node to zone: %s.\n", name);
 	free(name);
 );
 
@@ -1637,6 +1637,7 @@ int knot_zone_contents_add_nsec3_node(knot_zone_contents_t *zone,
 
 	int ret = 0;
 	if ((ret = knot_zone_contents_check_node(zone, node)) != 0) {
+		dbg_zone("Failed node check: %s\n", knot_strerror(ret));
 		return ret;
 	}
 
@@ -1644,6 +1645,8 @@ int knot_zone_contents_add_nsec3_node(knot_zone_contents_t *zone,
 //	TREE_INSERT(zone->nsec3_nodes, knot_node, avl, node);
 	ret = knot_zone_tree_insert(zone->nsec3_nodes, node);
 	if (ret != KNOT_EOK) {
+		dbg_zone("Failed to insert node into NSEC3 tree: %s.\n",
+		         knot_strerror(ret));
 		return ret;
 	}
 
@@ -1652,7 +1655,8 @@ int knot_zone_contents_add_nsec3_node(knot_zone_contents_t *zone,
 		           zone->dname_table, node);
 		if (ret != KNOT_EOK) {
 			/*! \todo Remove the node from the tree. */
-			dbg_zone("Failed to add dnames into table.\n");
+			dbg_zone("Failed to add dnames into table: %s.\n",
+			         knot_strerror(ret));
 			return ret;
 		}
 	}

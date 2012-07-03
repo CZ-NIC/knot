@@ -1773,8 +1773,10 @@ static int zones_verify_tsig_query(const knot_packet_t *query,
 
 	/*
 	 * 2) Find the particular key used by the TSIG.
+	 *    Check not only name, but also the algorithm.
 	 */
-	if (key && kname && knot_dname_compare(key->name, kname) == 0) {
+	if (key && kname && knot_dname_compare(key->name, kname) == 0
+	    && key->algorithm == alg) {
 		dbg_zones_verb("Found claimed TSIG key for comparison\n");
 	} else {
 		*rcode = KNOT_RCODE_NOTAUTH;
@@ -2199,10 +2201,9 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 		dbg_zones_verb("Failed preparing response structure: %s.\n",
 		               knot_strerror(rcode));
 		if (resp == NULL) {
-			knot_ns_error_response(nameserver,
-			                       knot_packet_id(query),
-			                       &query->header.flags1,
-			                       rcode, resp_wire, rsize);
+			knot_ns_error_response_from_query(nameserver, query,
+			                                  rcode, resp_wire,
+			                                  rsize);
 			rcu_read_unlock();
 			return KNOT_EOK;
 		}

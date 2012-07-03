@@ -198,7 +198,7 @@ static knot_dname_t *read_dname_with_id(FILE *f, int use_ids)
 		return NULL;
 	}
 	ret->size = dname_size;
-	dbg_zload("loaded: dname length: %u\n", ret->size);
+	dbg_zload_detail("loaded: dname length: %u\n", ret->size);
 
 	assert(ret->size <= DNAME_MAX_WIRE_LENGTH);
 
@@ -371,16 +371,24 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 			
 			if (use_ids && !in_the_zone) {
 				dbg_zload_detail("zload: load_rdata: "
-				                 "Freeing node owned by: %s\n",
+				                 "Freeing node owned by: %s. "
+				                 "Caused by dname: %s.\n",
 				                 knot_dname_to_str(
-							items[i].dname));
-				/* destroy the node */
+							items[i].dname->node->owner),
+				                 knot_dname_to_str(items[i].dname));
+				/* Destroy the node */
 				assert(!in_the_zone);
-				if (items[i].dname->node != NULL) {
+				if (items[i].dname->node != NULL &&
+				    /*
+				     * This check is here to prevent freeing
+				     * of previously set wildcard node.
+				     */
+				    (items[i].dname->node->owner ==
+				     items[i].dname)) {
 					knot_node_free(&items[i].dname->node,
 					               0);
+					assert(items[i].dname->node == NULL);
 				}
-				/* Also sets node to NULL! */
 			}
 
 			if (use_ids && has_wildcard) {
@@ -1276,20 +1284,23 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	knot_node_t *last_node = 0;
 	last_node = apex;
 
+	int ret = 0;
+
 	for (uint i = 1; i < node_count; i++) {
 		tmp_node = knot_load_node(f, id_array);
 		if (tmp_node != NULL) {
 			dbg_zload_detail("zload: load: Adding node owned by: "
 			                 "%s\n.",
 			                 knot_dname_to_str(tmp_node->owner));
-			if (knot_zone_contents_add_node(contents, tmp_node,
-			                                  0, 0, 0) != 0) {
+			if ((ret = knot_zone_contents_add_node(contents,
+			                                       tmp_node,
+			                                       0, 0, 0)) != 0) {
 				cleanup_id_array(id_array, 1,
 				                 node_count +
 				                 nsec3_node_count + 1);
 				knot_zone_deep_free(&zone, 0);
 				dbg_zload("zload: load: Failed to add node "
-				          "to zone.\n");
+				          "to zone: %s.\n", knot_strerror(ret));
 				return NULL;
 			}
 			
@@ -1331,12 +1342,12 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 
 		assert(nsec3_first != NULL);
 
-		if (knot_zone_contents_add_nsec3_node(contents, nsec3_first,
-		                                      0, 0, 0)
-		    != 0) {
+		if ((ret = knot_zone_contents_add_nsec3_node(contents,
+		                                             nsec3_first,
+		                                             0, 0, 0)) != 0) {
 			dbg_zload("zload: load: "
 			          "cannot add first nsec3 node, "
-			          "exiting.\n");
+			          "exiting: %s.\n", knot_strerror(ret));
 			knot_zone_deep_free(&zone, 0);
 			cleanup_id_array(id_array, node_count + 1,
 					 nsec3_node_count + 1);
@@ -1351,10 +1362,11 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 		tmp_node = knot_load_node(f, id_array);
 
 		if (tmp_node != NULL) {
-			if (knot_zone_contents_add_nsec3_node(contents,
-			    tmp_node, 0, 0, 0) != 0) {
+			if ((ret = knot_zone_contents_add_nsec3_node(contents,
+			                 tmp_node, 0, 0, 0)) != 0) {
 				dbg_zload("zload: load: Cannot add "
-				          "NSEC3 node.\n");
+				          "NSEC3 node: %s.\n",
+				          knot_strerror(ret));
 				knot_zone_deep_free(&zone, 0);
 				cleanup_id_array(id_array, node_count + 1,
 						 nsec3_node_count + 1);
