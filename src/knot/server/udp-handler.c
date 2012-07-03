@@ -140,9 +140,9 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		 * Bind responds with FORMERR.
  		 */
 		/*! \note Draft exists for AXFR/UDP, but has not been standardized. */
-		knot_ns_error_response(ns, knot_packet_id(packet),
-		                       &packet->header.flags1,
-		                       KNOT_RCODE_FORMERR, qbuf, resp_len);
+		knot_ns_error_response_from_query(ns, packet,
+		                                  KNOT_RCODE_FORMERR, qbuf,
+		                                  resp_len);
 		res = KNOTD_EOK;
 		break;
 	case KNOT_QUERY_IXFR:
@@ -163,27 +163,26 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		
 	case KNOT_QUERY_UPDATE:
 		dbg_net("udp: UPDATE query on fd=%d not implemented\n", fd);
-		knot_ns_error_response(ns, knot_packet_id(packet),
-		                       &packet->header.flags1,
-		                       KNOT_RCODE_NOTIMPL, qbuf, resp_len);
+		knot_ns_error_response_from_query(ns, packet,
+		                                  KNOT_RCODE_NOTIMPL, qbuf,
+		                                  resp_len);
 		res = KNOTD_EOK;
 		break;
 		
 	/* Unhandled opcodes. */
 	case KNOT_RESPONSE_AXFR: /*!< Processed in XFR handler. */
 	case KNOT_RESPONSE_IXFR: /*!< Processed in XFR handler. */
-		knot_ns_error_response(ns, knot_packet_id(packet),
-		                       &packet->header.flags1,
-		                       KNOT_RCODE_REFUSED, qbuf,
-		                       resp_len);
+		knot_ns_error_response_from_query(ns, packet,
+		                                  KNOT_RCODE_REFUSED, qbuf,
+		                                  resp_len);
 		res = KNOTD_EOK;
 		break;
 			
 	/* Unknown opcodes */
 	default:
-		knot_ns_error_response(ns, knot_packet_id(packet),
-		                       &packet->header.flags1,
-		                       KNOT_RCODE_FORMERR, qbuf, resp_len);
+		knot_ns_error_response_from_query(ns, packet,
+		                                  KNOT_RCODE_FORMERR, qbuf,
+		                                  resp_len);
 		res = KNOTD_EOK;
 		break;
 	}
