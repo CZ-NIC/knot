@@ -822,27 +822,31 @@ int knot_rrset_merge_no_dupl(void **r1, void **r2)
 		return KNOT_EBADARG;
 	}
 
+	knot_rdata_t *walk2 = rrset2->rdata;
+
 	// no RDATA in RRSet 1
 	if (rrset1->rdata == NULL && rrset2->rdata != NULL) {
 		/*
 		 * This function has to assure that there are no duplicates in 
 		 * second RRSet's list. This can be done by putting a first 
-		 * item from the second list as a first item of the first list.
-		 * We cannot simply put the first item from second RR here,
-		 * as it would corrupt second list. Therefore a copy is needed.
-		 * Original first item in second RRSet will be freed later.
+		 * item from the second list as a first item of the first list
+		 * and then simply continuing with inserting items from second
+		 * list to the first one.
+		 *
+		 * However, we must store pointer to second item in the second
+		 * list, as the 'next' pointer of the first item will be altered
 		 */
-		rrset1->rdata = knot_rdata_deep_copy(rrset2->rdata,
-		                                     rrset1->type, 1);
-		if (rrset1->rdata == NULL) {
-			dbg_rrset("rrset: merge_no_dupl: Cannot create a copy"
-			          " of RRSet.\n");
-			return KNOT_ERROR;
-		}
+
+		// Store pointer to the second item in RRSet2 RDATA so that
+		// we later start from this item.
+		walk2 = walk2->next;
+		assert(walk2 == rrset2->rdata->next);
+
+		// Connect the first item from second list to the first list.
+		rrset1->rdata = rrset2->rdata;
+		// Close the cyclic list (by pointing to itself).
 		rrset1->rdata->next = rrset1->rdata;
-	}
-	
-	if (rrset2->rdata == NULL) {
+	} else if (rrset2->rdata == NULL) {
 		return KNOT_EOK;
 	}
 	
@@ -859,7 +863,7 @@ int knot_rrset_merge_no_dupl(void **r1, void **r2)
 		insert_after = insert_after->next;
 	}
 	assert(insert_after->next == rrset1->rdata);
-	knot_rdata_t *walk2 = rrset2->rdata;
+
 	while (walk2 != NULL) {
 		knot_rdata_t *walk1 = rrset1->rdata;
 		char dupl = 0;
