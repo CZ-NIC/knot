@@ -21,6 +21,9 @@
 #include <errno.h>
 #include <string.h>
 #include <signal.h>
+#include <grp.h>
+#include <unistd.h>
+#include <assert.h>
 
 #include "knot/common.h"
 #include "knot/ctl/process.h"
@@ -113,6 +116,7 @@ int pid_write(const char* fn)
 int pid_remove(const char* fn)
 {
 	if (unlink(fn) < 0) {
+		perror("unlink");
 		return KNOTD_EINVAL;
 	}
 
@@ -124,3 +128,45 @@ int pid_running(pid_t pid)
 	return kill(pid, 0) == 0;
 }
 
+void proc_update_privileges(int uid, int gid)
+{
+#ifdef HAVE_SETGROUPS
+	/* Drop supplementary groups. */
+	if (uid != getuid() || gid != getgid()) {
+		if (setgroups(0, NULL) < 0) {
+			log_server_warning("Failed to drop supplementary groups"
+			                   " for uid '%d' (%s).\n",
+			                   getuid(), strerror(errno));
+		}
+	}
+#endif
+	
+	/* Watch uid/gid. */
+	if (gid != getgid()) {
+		log_server_info("Changing group id to '%d'.\n", gid);
+		if (setregid(gid, gid) < 0) {
+			log_server_error("Failed to change gid to '%d'.\n",
+			                 gid);
+		}
+	}
+	if (uid != getuid()) {
+		log_server_info("Changing user id to '%d'.\n", uid);
+		if (setreuid(uid, uid) < 0) {
+			log_server_error("Failed to change uid to '%d'.\n",
+			                 uid);
+		}
+	}
+	
+	/* Check storage writeability. */
+	char *lfile = strcdup(conf()->storage, "/knot.lock");
+	assert(lfile != NULL);
+	FILE* fp = fopen(lfile, "w");
+	if (fp == NULL) {
+		log_server_warning("Storage directory '%s' is not writeable.\n",
+		                   conf()->storage);
+	} else {
+		fclose(fp);
+		unlink(lfile);
+	}
+	free(lfile);
+}

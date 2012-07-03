@@ -684,6 +684,21 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /******************************************************************************/
 
+#ifdef KNOT_STASH_DEBUG
+
+#ifdef DEBUG_ENABLE_BRIEF
+#define dbg_stash(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
+#else
+#define dbg_stash(msg...)
+#endif
+
+#else
+#define dbg_stash(msg...)
+#endif
+
+
+/******************************************************************************/
+
 #ifdef KNOT_XFRIN_DEBUG
 
 /* Brief messages. */

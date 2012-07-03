@@ -43,7 +43,8 @@ enum knotc_flag_t {
 	F_VERBOSE     = 1 << 1,
 	F_WAIT        = 1 << 2,
 	F_INTERACTIVE = 1 << 3,
-	F_AUTO        = 1 << 4
+	F_AUTO        = 1 << 4,
+	F_UNPRIVILEGED= 1 << 5
 };
 
 static inline unsigned has_flag(unsigned flags, enum knotc_flag_t f) {
@@ -142,10 +143,15 @@ pid_t wait_cmd(pid_t proc, int *rc)
 	return proc;
 }
 
-pid_t start_cmd(const char *argv[], int argc)
+pid_t start_cmd(const char *argv[], int argc, int flags)
 {
 	pid_t chproc = fork();
 	if (chproc == 0) {
+	
+		/* Alter privileges. */
+		if (flags & F_UNPRIVILEGED) {
+			proc_update_privileges(conf()->uid, conf()->gid);
+		}
 
 		/* Duplicate, it doesn't run from stack address anyway. */
 		char **args = malloc((argc + 1) * sizeof(char*));
@@ -180,7 +186,7 @@ pid_t start_cmd(const char *argv[], int argc)
 int exec_cmd(const char *argv[], int argc)
 {
 	int ret = 0;
-	pid_t proc = start_cmd(argv, argc);
+	pid_t proc = start_cmd(argv, argc, 0);
 	wait_cmd(proc, &ret);
 	return ret;
 }
@@ -293,15 +299,6 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 	if (strcmp(action, "start") == 0) {
 		// Check pidfile for w+
 		log_server_info("Starting server...\n");
-		FILE* chkf = fopen(pidfile, "w+");
-		if (chkf == NULL) {
-			log_server_error("PID file '%s' is not writeable, "
-			                 "refusing to start\n", pidfile);
-			return 1;
-		} else {
-			fclose(chkf);
-			chkf = NULL;
-		}
 
 		// Check PID
 		valid_cmd = 1;
@@ -605,7 +602,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 			}
 			fflush(stdout);
 			fflush(stderr);
-			pid_t zcpid = start_cmd(args, ac);
+			pid_t zcpid = start_cmd(args, ac, F_UNPRIVILEGED);
 			zctask_add(tasks, jobs, zcpid, zone);
 			++running;
 		}
@@ -708,7 +705,7 @@ int main(int argc, char **argv)
 			log_server_error("Couldn't open configuration file "
 			                 "'%s'.\n", config_fn);
 		} else {
-			log_server_error("Failed to parse configuration '%s'.\n",
+			log_server_error("Failed to load configuration '%s'.\n",
 			                 config_fn);
 		}
 		free(default_fn);
@@ -723,7 +720,7 @@ int main(int argc, char **argv)
 		log_levels_add(LOGT_STDOUT, LOG_ANY,
 		               LOG_MASK(LOG_INFO)|LOG_MASK(LOG_DEBUG));
 	}
-
+	
 	// Fetch PID
 	char* pidfile = pid_filename();
 	if (!pidfile) {

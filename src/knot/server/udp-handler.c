@@ -85,7 +85,7 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 	if (packet == NULL) {
 		dbg_net("udp: failed to create packet on fd=%d\n", fd);
 
-		int ret = knot_ns_error_response_from_query(ns, qbuf, qbuflen,
+		int ret = knot_ns_error_response_from_query_wire(ns, qbuf, qbuflen,
 		                                            KNOT_RCODE_SERVFAIL,
 		                                            qbuf, resp_len);
 
@@ -101,10 +101,10 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 	if (unlikely(res != KNOTD_EOK)) {
 		dbg_net("udp: failed to parse packet on fd=%d\n", fd);
 		if (res > 0) { /* Returned RCODE */
-			int ret = knot_ns_error_response_from_query(ns, qbuf,
-			                                            qbuflen,
-			                                            res, qbuf,
-			                                            resp_len);
+//			int ret = knot_ns_error_response_from_query_wire(ns,
+//				qbuf, qbuflen, res, qbuf, resp_len);
+			int ret = knot_ns_error_response_from_query_wire(ns,
+				qbuf, qbuflen, res, qbuf, resp_len);
 
 			if (ret != KNOT_EOK) {
 				knot_packet_free(&packet);
@@ -140,9 +140,9 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		 * Bind responds with FORMERR.
  		 */
 		/*! \note Draft exists for AXFR/UDP, but has not been standardized. */
-		knot_ns_error_response(ns, knot_packet_id(packet),
-		                       &packet->header.flags1,
-		                       KNOT_RCODE_FORMERR, qbuf, resp_len);
+		knot_ns_error_response_from_query(ns, packet,
+		                                  KNOT_RCODE_FORMERR, qbuf,
+		                                  resp_len);
 		res = KNOTD_EOK;
 		break;
 	case KNOT_QUERY_IXFR:
@@ -151,7 +151,7 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		 * but I have found no tool or slave server to actually attempt
 		 * IXFR/UDP.
 		 */
-		knot_packet_set_qtype(packet, KNOT_RRTYPE_SOA);
+//		knot_packet_set_qtype(packet, KNOT_RRTYPE_SOA);
 		res = zones_normal_query_answer(ns, packet, addr,
 		                                qbuf, resp_len, 
 		                                NS_TRANSPORT_UDP);
@@ -163,27 +163,26 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		
 	case KNOT_QUERY_UPDATE:
 		dbg_net("udp: UPDATE query on fd=%d not implemented\n", fd);
-		knot_ns_error_response(ns, knot_packet_id(packet),
-		                       &packet->header.flags1,
-		                       KNOT_RCODE_NOTIMPL, qbuf, resp_len);
+		knot_ns_error_response_from_query(ns, packet,
+		                                  KNOT_RCODE_NOTIMPL, qbuf,
+		                                  resp_len);
 		res = KNOTD_EOK;
 		break;
 		
 	/* Unhandled opcodes. */
 	case KNOT_RESPONSE_AXFR: /*!< Processed in XFR handler. */
 	case KNOT_RESPONSE_IXFR: /*!< Processed in XFR handler. */
-		knot_ns_error_response(ns, knot_packet_id(packet),
-		                       &packet->header.flags1,
-		                       KNOT_RCODE_REFUSED, qbuf,
-		                       resp_len);
+		knot_ns_error_response_from_query(ns, packet,
+		                                  KNOT_RCODE_REFUSED, qbuf,
+		                                  resp_len);
 		res = KNOTD_EOK;
 		break;
 			
 	/* Unknown opcodes */
 	default:
-		knot_ns_error_response(ns, knot_packet_id(packet),
-		                       &packet->header.flags1,
-		                       KNOT_RCODE_FORMERR, qbuf, resp_len);
+		knot_ns_error_response_from_query(ns, packet,
+		                                  KNOT_RCODE_FORMERR, qbuf,
+		                                  resp_len);
 		res = KNOTD_EOK;
 		break;
 	}

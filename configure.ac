@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 
 AC_PREREQ([2.65])
-AC_INIT([knot], [1.0.5], [knot-dns@labs.nic.cz])
+AC_INIT([knot], [1.0.6], [knot-dns@labs.nic.cz])
 AM_INIT_AUTOMAKE([gnu -Wall -Werror])
 AC_CONFIG_SRCDIR([src/knot/main.c])
 AC_CONFIG_HEADERS([src/config.h])
@@ -9,15 +9,15 @@ AC_CONFIG_MACRO_DIR([m4])
 AC_USE_SYSTEM_EXTENSIONS([_GNU_SOURCE])
 AX_EXT
 
+# Checks for programs.
+AC_PROG_CC
+
 # Enable maintainer mode by default for development
 AM_MAINTAINER_MODE([enable])
 
 # Initialize libtool
 AC_PROG_LIBTOOL
 LT_INIT
-
-# Checks for programs.
-AC_PROG_CC
 
 AC_CACHE_CHECK([for reentrant lex], [ac_cv_path_LEX],
   [AC_PATH_PROGS_FEATURE_CHECK([LEX], [$LEX flex gflex],
@@ -47,9 +47,8 @@ AM_PROG_LEX
 
 AC_PROG_YACC
 YACC_BISON=`bison --version | awk '{print $1;exit}'`
-if test "$YACC_BISON" != "bison"; then
-    AC_MSG_ERROR([GNU bison needed for reentrant parsers, set the \$YACC variable before running configure])
-fi
+AS_IF([test "x$YACC_BISON" != "xbison"],	    
+    [AC_MSG_ERROR([GNU bison needed for reentrant parsers, set the \$YACC variable before running configure])])
 AC_PROG_INSTALL
 
 # Set compiler compatibility flags
@@ -57,7 +56,7 @@ AC_PROG_CPP_WERROR
 AC_PROG_CC_C99
 
 AC_ARG_ENABLE([ldns],
-     AC_HELP_STRING([--enable-ldns=yes|no], [Enable tests with ldns [default=no]]),
+     AS_HELP_STRING([--enable-ldns=yes|no], [Enable tests with ldns [default=no]]),
      [case "${enableval}" in
        yes) AC_SEARCH_LIBS([ldns_rr_list_pop_rrset], [ldns], [AC_DEFINE([HAVE_LDNS], [1], [ldns present])],
        AC_MSG_ERROR([ldns not found])) ;;
@@ -67,7 +66,7 @@ AC_ARG_ENABLE([ldns],
      
 # Debug modules
 AC_ARG_ENABLE([debug],
-    AS_HELP_STRING([--enable-debug=server,zones,xfr,packet,dname,rr,ns,hash,compiler],
+    AS_HELP_STRING([--enable-debug=server,zones,xfr,packet,dname,rr,ns,hash,compiler,stash],
     [compile selected debug modules [default=none]]),
     [
     echo ${enableval}|tr "," "\n"|while read val; do
@@ -81,6 +80,7 @@ AC_ARG_ENABLE([debug],
           ns) AC_DEFINE([KNOT_NS_DEBUG], [1], [Nameserver debug.]) ;;
           hash) AC_DEFINE([KNOT_HASH_DEBUG], [1], [Hashtable debug.]) ;;
           compiler) AC_DEFINE([KNOT_COMPILER_DEBUG], [1], [Zone compiler debug.]) ;;
+          stash) AC_DEFINE([KNOT_STASH_DEBUG], [1], [Hash table stash debug.]) ;;
         esac
     done
     ], [])
@@ -185,5 +185,6 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <sched.h>]], [[cpuset_t* set = cpuset
 
 AC_CONFIG_FILES([Makefile
 		 samples/Makefile
-                 src/Makefile])
+                 src/Makefile
+		 doc/Makefile])
 AC_OUTPUT

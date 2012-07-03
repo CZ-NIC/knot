@@ -562,7 +562,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	/* Check that we can write to outfile. */
 	FILE *f = fopen(outfile, "wb");
 	if (f == NULL) {
-		fprintf(stderr, "Cannot write zone db to file '%s' (%s).\n",
+		log_zone_error("Cannot write zone db to file '%s' (%s).\n",
 		        outfile, strerror(errno));
 		return KNOTDZCOMPILE_EINVAL;
 	}
@@ -575,7 +575,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	}
 
 	if (!knot_dname_is_fqdn(dname)) {
-		fprintf(stderr, "Error: given zone origin is not FQDN.\n");
+		log_zone_error("Error: given zone origin is not FQDN.\n");
 		knot_dname_release(dname);
 		return KNOTDZCOMPILE_EINVAL;
 	}
@@ -622,7 +622,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	lock.l_len = 0;
 	lock.l_pid = getpid();
 	if (fcntl(fileno(zp_get_in(scanner)), F_SETLK, &lock) == -1) {
-		fprintf(stderr, "Cannot obtain zone source file lock (%d).\n",
+		log_zone_error("Cannot obtain zone source file lock (%d).\n",
 		        errno);
 		FILE *in_file = (FILE *)zp_get_in(scanner);
 		fclose(in_file);
@@ -635,7 +635,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	lock.l_type = F_UNLCK;
 
 	if (zp_parse(scanner) != 0) {
-		fprintf(stderr, "Parse failed.\n");
+		log_zone_error("Parse failed.\n");
 		FILE *in_file = (FILE *)zp_get_in(scanner);
 		fclose(in_file);
 		zp_lex_destroy(scanner);
@@ -643,7 +643,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 //		knot_node_free(&origin_node, 0);
 		/* Release file lock. */
 		if (fcntl(fileno(zp_get_in(scanner)), F_SETLK, &lock) == -1) {
-			fprintf(stderr, "Cannot release zone source file "
+			log_zone_error("Cannot release zone source file "
 			        "lock (%d).\n",
 			        errno);
 		}
@@ -655,7 +655,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	
 	/* Release file lock. */
 	if (fcntl(fileno(zp_get_in(scanner)), F_SETLK, &lock) == -1) {
-		fprintf(stderr, "Cannot release zone source file lock (%d).\n",
+		log_zone_error("Cannot release zone source file lock (%d).\n",
 		        errno);
 	}
 
@@ -695,8 +695,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	if (found_orphans != parser->rrsig_orphan_count) {
 		/*! \todo This might be desired behaviour. */
-		fprintf(stderr,
-		        "There are unassigned RRSIGs in the zone!\n");
+		log_zone_error("There are unassigned RRSIGs in the zone!\n");
 		parser->errors++;
 	}
 

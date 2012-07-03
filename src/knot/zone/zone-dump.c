@@ -360,6 +360,11 @@ static int knot_rdata_dump_binary(knot_rdata_t *rdata,
 				rdata->items[i].dname) {
 				wildcard = rdata->items[i].dname->node->owner;
 			}
+			
+			dbg_zdump_detail("zdump: dump_rdata: "
+			                 "Writing dname: %s.\n",
+			                 knot_dname_to_str(
+						rdata->items[i].dname));
 
 			if (use_ids) {
 				/* Write ID. */
@@ -392,6 +397,8 @@ static int knot_rdata_dump_binary(knot_rdata_t *rdata,
 			/*! \todo Does not have to be so complex.
 			 *        Create extra variable. */
 			if (rdata->items[i].dname->node != NULL && !wildcard) {
+				dbg_zdump("zdump: dump_rdata: "
+				          "This dname is in the zone.\n");
 				if (!write_wrapper((uint8_t *)"\1",
 				                   sizeof(uint8_t), 1, fd,
 				                   stream, max_size,
@@ -401,6 +408,8 @@ static int knot_rdata_dump_binary(knot_rdata_t *rdata,
 					return KNOT_ERROR;
 				}
 			} else {
+				dbg_zdump("zdump: dump_rdata: "
+				          "This dname is not in the zone.\n");
 				if (!write_wrapper((uint8_t *)"\0",
 				                   sizeof(uint8_t),
 				                   1, fd,
@@ -423,6 +432,9 @@ static int knot_rdata_dump_binary(knot_rdata_t *rdata,
 				}
 				
 				uint32_t wildcard_id = wildcard->id;
+				dbg_zdump("zdump: dump_rdata: "
+				          "This dname is covered by wc (%s).\n",
+				          knot_dname_to_str(wildcard));
 				if (!write_wrapper(&wildcard_id,
 				                   sizeof(wildcard_id), 1,
 				                   fd, stream, max_size,

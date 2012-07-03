@@ -21,6 +21,8 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <errno.h>
+#include <urcu.h>
+
 #ifdef HAVE_CAP_NG_H
 #include <cap-ng.h>
 #endif /* HAVE_CAP_NG_H */
@@ -134,6 +136,7 @@ static void *thread_ep(void *data)
 	sigaddset(&ignset, SIGPIPE);
 	sigaddset(&ignset, SIGUSR1);
 	pthread_sigmask(SIG_BLOCK, &ignset, 0); /*! \todo Review under BSD (issue #1441). */
+	rcu_register_thread();
 
 	dbg_dt("dthreads: [%p] entered ep\n", thread);
 	
@@ -215,6 +218,7 @@ static void *thread_ep(void *data)
 	lock_thread_rw(thread);
 	thread->state |= ThreadJoinable;
 	unlock_thread_rw(thread);
+	rcu_unregister_thread();
 
 	// Return
 	return 0;

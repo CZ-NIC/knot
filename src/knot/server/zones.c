@@ -172,7 +172,7 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 		char ebuf[256] = {0};
 		strerror_r(errno, ebuf, sizeof(ebuf));
 		log_server_warning("Couldn't open journal file for zone '%s', "
-		                   "disabling IXFR/IN. (%s)\n", cfg->name, ebuf);
+		                   "disabling incoming IXFR. (%s)\n", cfg->name, ebuf);
 	}
 
 	/* Initialize IXFR database syncing event. */
@@ -816,11 +816,12 @@ static int zones_set_acl(acl_t **acl, list* acl_list)
 static int zones_load_zone(knot_zone_t **dst, const char *zone_name,
 			   const char *source, const char *filename)
 {
-	if (dst == NULL) {
+	if (dst == NULL || zone_name == NULL || source == NULL) {
 		return KNOTD_EINVAL;
 	}
 	*dst = NULL;
 	
+	/* Duplicate zone name. */
 	size_t zlen = strlen(zone_name);
 	char *zname = NULL;
 	if (zlen > 0) {
@@ -830,8 +831,13 @@ static int zones_load_zone(knot_zone_t **dst, const char *zone_name,
 	} else {
 		return KNOTD_EINVAL;
 	}
-	
 	zname[zlen - 1] = '\0'; /* Trim last dot */
+	if (filename == NULL) {
+		log_server_error("No file name for zone '%s'.\n", zname);
+		free(zname);
+		return KNOTD_EINVAL;
+	}
+	
 	
 	/* Check if the compiled file still exists. */
 	struct stat st;
@@ -844,109 +850,90 @@ static int zones_load_zone(knot_zone_t **dst, const char *zone_name,
 		return KNOTD_EZONEINVAL;
 	}
 
-	/* Check path */
-	if (filename) {
-		dbg_zones("zones: parsing zone database '%s'\n", filename);
-		zloader_t *zl = 0;
-		int ret = knot_zload_open(&zl, filename);
-		switch(ret) {
-		case KNOT_EOK:
-			/* OK */
-			break;
-		case KNOT_EACCES:
-			log_server_error("Failed to open compiled zone '%s' "
-			                 "(Permission denied).\n", filename);
-			free(zname);
-			return KNOTD_EZONEINVAL;
-		case KNOT_ENOENT:
-			log_server_error("Couldn't find compiled zone. "
-			                 "Please recompile '%s'.\n", zname);
-			free(zname);
-			return KNOTD_EZONEINVAL;
-		case KNOT_ECRC:
-			log_server_error("Compiled zone db CRC mismatch, "
-			                 "db is corrupted or .crc file is "
-			                 "deleted. Please recompile '%s'.\n",
-			                 zname);
-			free(zname);
-			return KNOTD_EZONEINVAL;
-		case KNOT_EMALF:
-			log_server_error("Compiled db '%s' is too old. "
-			                 "Please recompile '%s'.\n",
-			                 filename, zname);
-			free(zname);
-			return KNOTD_EZONEINVAL;
-		case KNOT_EFEWDATA:
-		case KNOT_ERROR:
-		case KNOT_ENOMEM:
-		default:
-			log_server_error("Failed to load compiled zone file "
-			                 "'%s'.\n", filename);
-			free(zname);
-			return KNOTD_EZONEINVAL;
-		}
-		
-		/* Check the source file */
-		int src_changed = strcmp(source, zl->source) != 0;
-		if (src_changed || knot_zload_needs_update(zl)) {
-			log_server_warning("Database for zone '%s' is not "
-			                   "up-to-date. Please recompile.\n",
-			                   zname);
-		}
-
-		*dst = knot_zload_load(zl);
-		
-		/* Check loaded name. */
-		const knot_dname_t *dname = knot_zone_name(*dst);
-		knot_dname_t *dname_req = 0;
-		dname_req = knot_dname_new_from_str(zone_name, zlen, 0);
-		if (knot_dname_compare(dname, dname_req) != 0) {
-			log_server_warning("Origin of the zone db file is "
-			                   "different than '%s'\n",
-			                   zone_name);
-			knot_zone_deep_free(dst, 0);
-			
-		}
-		knot_dname_free(&dname_req);
-
-		/* CLEANUP */
-//		knot_zone_contents_dump(zone->contents, 1);
-//		int errs = knot_zone_contents_integrity_check(zone->contents);
-//		fprintf(stderr, "INTEGRITY CHECK OF ZONE. ERRORS: %d\n", errs);
-
-		if (*dst != NULL) {
-			/* save the timestamp from the zone db file */
-			struct stat s;
-			if (stat(filename, &s) < 0) {
-				dbg_zones("zones: failed to stat() zone db, "
-					  "something is seriously wrong\n");
-				knot_zone_deep_free(dst, 0);
-			} else {
-				knot_zone_set_version(*dst, s.st_mtime);
-			}
-		}
-
-		knot_zload_close(zl);
-
-		if (*dst == NULL) {
-			log_server_error("Failed to load "
-					 "db '%s' for zone '%s'.\n",
-					 filename, zname);
-			free(zname);
-			return KNOTD_EZONEINVAL;
-		}
-	} else {
-		/* db is null. */
-		log_server_error("No file name for zone '%s'.\n", zname);
+	/* Attempt to open compiled zone for loading. */
+	int ret = KNOTD_EOK;
+	zloader_t *zl = NULL;
+	dbg_zones("zones: parsing zone database '%s'\n", filename);
+	switch(knot_zload_open(&zl, filename)) {
+	case KNOT_EOK:
+		/* OK */
+		break;
+	case KNOT_EACCES:
+		log_server_error("Failed to open compiled zone '%s' "
+				 "(Permission denied).\n", filename);
 		free(zname);
-		return KNOTD_EINVAL;
+		return KNOTD_EZONEINVAL;
+	case KNOT_ENOENT:
+		log_server_error("Couldn't find compiled zone. "
+				 "Please recompile '%s'.\n", zname);
+		free(zname);
+		return KNOTD_EZONEINVAL;
+	case KNOT_ECRC:
+		log_server_error("Compiled zone db CRC mismatch, "
+				 "db is corrupted or .crc file is "
+				 "deleted. Please recompile '%s'.\n",
+				 zname);
+		free(zname);
+		return KNOTD_EZONEINVAL;
+	case KNOT_EMALF:
+		log_server_error("Compiled db '%s' is too old. "
+				 "Please recompile '%s'.\n",
+				 filename, zname);
+		free(zname);
+		return KNOTD_EZONEINVAL;
+	case KNOT_EFEWDATA:
+	case KNOT_ERROR:
+	case KNOT_ENOMEM:
+	default:
+		log_server_error("Failed to load compiled zone file "
+				 "'%s'.\n", filename);
+		free(zname);
+		return KNOTD_EZONEINVAL;
 	}
-
-	/* CLEANUP */
-//	knot_zone_dump(zone, 1);
+	
+	/* Check the source file */
+	assert(zl != NULL);
+	int src_changed = strcmp(source, zl->source) != 0;
+	if (src_changed || knot_zload_needs_update(zl)) {
+		log_server_warning("Database for zone '%s' is not "
+				   "up-to-date. Please recompile.\n",
+				   zname);
+	}
+	
+	*dst = knot_zload_load(zl);
+	if (*dst == NULL) {
+		log_server_error("Failed to load db '%s' for zone '%s'.\n",
+				 filename, zname);
+		knot_zload_close(zl);
+		free(zname);
+		return KNOTD_EZONEINVAL;
+	}
+	
+	/* Check if loaded origin matches. */
+	const knot_dname_t *dname = knot_zone_name(*dst);
+	knot_dname_t *dname_req = NULL;
+	dname_req = knot_dname_new_from_str(zone_name, zlen, 0);
+	if (knot_dname_compare(dname, dname_req) != 0) {
+		log_server_error("Origin of the zone db file is "
+				 "different than '%s'\n",
+				 zone_name);
+		knot_zone_deep_free(dst, 0);
+		ret = KNOTD_EZONEINVAL;
+	} else {
+		/* Save the timestamp from the zone db file. */
+		if (stat(filename, &st) < 0) {
+			dbg_zones("zones: failed to stat() zone db, "
+				  "something is seriously wrong\n");
+			knot_zone_deep_free(dst, 0);
+			ret = KNOTD_EZONEINVAL;
+		} else {
+			knot_zone_set_version(*dst, st.st_mtime);
+		}
+	}
+	knot_dname_free(&dname_req);
+	knot_zload_close(zl);
 	free(zname);
-
-	return KNOTD_EOK;
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1291,7 +1278,7 @@ static int zones_journal_apply(knot_zone_t *zone)
 			                                       &contents);
 			if (apply_ret != KNOT_EOK) {
 				log_server_error("Failed to apply changesets to"
-				                 "'%s' - Apply failed: %s\n",
+				                 " '%s' - Apply failed: %s\n",
 				                 zd->conf->name,
 				                 knot_strerror(apply_ret));
 				ret = KNOTD_ERROR;
@@ -1300,27 +1287,27 @@ static int zones_journal_apply(knot_zone_t *zone)
 				xfrin_rollback_update(zone->contents,
 				                      &contents,
 				                      &chsets->changes);
-			}
-
-			/* Switch zone immediately. */
-			rcu_read_unlock();
-			apply_ret = xfrin_switch_zone(zone, contents,
-			                              XFR_TYPE_IIN);
-			rcu_read_lock();
-			if (apply_ret == KNOT_EOK) {
-				xfrin_cleanup_successful_update(
-				                        &chsets->changes);
 			} else {
-				log_server_error("Failed to apply changesets to"
-				                 " '%s' - Switch failed: %s\n",
-				                 zd->conf->name,
-				                 knot_strerror(apply_ret));
-				ret = KNOTD_ERROR;
+				/* Switch zone immediately. */
+				rcu_read_unlock();
+				apply_ret = xfrin_switch_zone(zone, contents,
+							      XFR_TYPE_IIN);
+				rcu_read_lock();
+				if (apply_ret == KNOT_EOK) {
+					xfrin_cleanup_successful_update(
+							&chsets->changes);
+				} else {
+					log_server_error("Failed to apply "
+					  "changesets to '%s' - Switch failed: "
+					  "%s\n", zd->conf->name,
+					  knot_strerror(apply_ret));
+					ret = KNOTD_ERROR;
 
-				// Cleanup old and new contents
-				xfrin_rollback_update(zone->contents,
-				                      &contents,
-				                      &chsets->changes);
+					// Cleanup old and new contents
+					xfrin_rollback_update(zone->contents,
+					                      &contents,
+					                      &chsets->changes);
+				}
 			}
 		}
 	} else {
@@ -1413,9 +1400,21 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 			dbg_zones_verb("zones: loading zone '%s' from '%s'\n",
 			               z->name, z->db);
 			ret = zones_load_zone(&zone, z->name, z->file, z->db);
+			const knot_node_t *apex = NULL;
+			const knot_rrset_t *soa = NULL;
 			if (ret == KNOTD_EOK) {
-				log_server_info("Loaded zone '%s'\n",
-				                z->name);
+				apex = knot_zone_contents_apex(
+					knot_zone_contents(zone));
+				soa = knot_node_rrset(apex,
+					KNOT_RRTYPE_SOA);
+				int64_t sn = 0;
+				if (apex && soa) {
+					sn = knot_rdata_soa_serial(
+					         knot_rrset_rdata(soa));
+					if (sn < 0) sn = 0;
+				}
+				log_server_info("Loaded zone '%s' serial %u\n",
+				                z->name, (uint32_t)sn);
 			}
 		}
 
@@ -1761,8 +1760,10 @@ static int zones_verify_tsig_query(const knot_packet_t *query,
 
 	/*
 	 * 2) Find the particular key used by the TSIG.
+	 *    Check not only name, but also the algorithm.
 	 */
-	if (key && kname && knot_dname_compare(key->name, kname) == 0) {
+	if (key && kname && knot_dname_compare(key->name, kname) == 0
+	    && key->algorithm == alg) {
 		dbg_zones_verb("Found claimed TSIG key for comparison\n");
 	} else {
 		*rcode = KNOT_RCODE_NOTAUTH;
@@ -2174,7 +2175,9 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 	}
 
 	if (rcode == KNOT_RCODE_NOERROR
-	    && zone == NULL && knot_packet_tsig(query) == NULL) {
+	    && ((zone == NULL && knot_packet_tsig(query) == NULL)
+	        || (knot_packet_qclass(query) != KNOT_CLASS_IN
+	            && knot_packet_qclass(query) != KNOT_CLASS_ANY))) {
 		/*! \todo If there is TSIG, this should be probably handled
 		 *        as a key error.
 		 */
@@ -2185,10 +2188,9 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 		dbg_zones_verb("Failed preparing response structure: %s.\n",
 		               knot_strerror(rcode));
 		if (resp == NULL) {
-			knot_ns_error_response(nameserver,
-			                       knot_packet_id(query),
-			                       &query->header.flags1,
-			                       rcode, resp_wire, rsize);
+			knot_ns_error_response_from_query(nameserver, query,
+			                                  rcode, resp_wire,
+			                                  rsize);
 			rcu_read_unlock();
 			return KNOT_EOK;
 		}
@@ -2211,6 +2213,7 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 		if (zone == NULL) {
 			assert(knot_packet_tsig(query) != NULL);
 			// treat as BADKEY error
+			/*! \todo Is this OK?? */
 			rcode = KNOT_RCODE_NOTAUTH;
 			tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
 			ret = KNOT_TSIG_EBADKEY;
@@ -2233,9 +2236,20 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 				         tsig_wire_maxsize(tsig_key_zone);
 				knot_packet_set_tsig_size(resp, tsig_max_size);
 			}
-			ret = knot_ns_answer_normal(nameserver, zone, resp,
-			                            resp_wire, &answer_size,
-			                         transport == NS_TRANSPORT_UDP);
+
+			// handle IXFR queries
+			if (knot_packet_qtype(query) == KNOT_RRTYPE_IXFR) {
+				assert(transport == NS_TRANSPORT_UDP);
+				ret = knot_ns_answer_ixfr_udp(nameserver, zone,
+				                              resp, resp_wire,
+				                              &answer_size);
+			} else {
+				ret = knot_ns_answer_normal(nameserver, zone,
+				                            resp, resp_wire,
+				                            &answer_size,
+				                            transport ==
+				                            NS_TRANSPORT_UDP);
+			}
 
 			dbg_zones_detail("rsize = %zu\n", *rsize);
 			dbg_zones_detail("answer_size = %zu\n", answer_size);
@@ -3210,7 +3224,6 @@ int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
 
 	/* Schedule NOTIFY to slaves. */
 	conf_remote_t *r = 0;
-	conf_read_lock();
 	WALK_LIST(r, cfzone->acl.notify_out) {
 
 		/* Fetch remote. */

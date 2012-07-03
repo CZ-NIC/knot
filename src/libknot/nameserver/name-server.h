@@ -218,26 +218,13 @@ void knot_ns_set_nsid(knot_nameserver_t *nameserver, const char *nsid,
 int knot_ns_parse_packet(const uint8_t *query_wire, size_t qsize,
                     knot_packet_t *packet, knot_packet_type_t *type);
 
-/*!
- * \brief Prepares wire format of an error response using generic error template
- *        stored in the nameserver structure.
- *
- * The error response will not contain the Question section from the query, just
- * a header with ID copied from the query and the given RCODE.
- *
- * \param nameserver Nameserver structure containing the error template.
- * \param query_id ID of the query.
- * \param rcode RCODE to set in the response.
- * \param response_wire Place for wire format of the response.
- * \param rsize Size of the error response will be stored here.
- */
-void knot_ns_error_response(const knot_nameserver_t *nameserver,
-                            uint16_t query_id, uint8_t *flags1_query,
-                            uint8_t rcode, uint8_t *response_wire,
-                            size_t *rsize);
+int knot_ns_error_response_from_query_wire(const knot_nameserver_t *nameserver,
+                                      const uint8_t *query, size_t size,
+                                      uint8_t rcode, uint8_t *response_wire,
+                                      size_t *rsize);
 
 int knot_ns_error_response_from_query(const knot_nameserver_t *nameserver,
-                                      const uint8_t *query, size_t size,
+                                      const knot_packet_t *query,
                                       uint8_t rcode, uint8_t *response_wire,
                                       size_t *rsize);
 
@@ -265,6 +252,10 @@ int knot_ns_prep_normal_response(knot_nameserver_t *nameserver,
 int knot_ns_answer_normal(knot_nameserver_t *nameserver, 
                           const knot_zone_t *zone, knot_packet_t *resp,
                           uint8_t *response_wire, size_t *rsize, int check_any);
+
+int knot_ns_answer_ixfr_udp(knot_nameserver_t *nameserver,
+                            const knot_zone_t *zone, knot_packet_t *resp,
+                            uint8_t *response_wire, size_t *rsize);
 
 int knot_ns_init_xfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr);
 

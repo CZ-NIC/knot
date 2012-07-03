@@ -1,0 +1,17 @@
+*.info
+*.pdf
+*.html
+*.dvi
+*.aux
+*.cp
+*.fn
+*.ky
+*.log
+*.pg
+*.toc
+*.tp
+*.vr
+texinfo.tex
+version.texi
+mdate-sh
+stamp-vti

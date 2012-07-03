@@ -1,0 +1,50 @@
+@node Knot DNS Resource Requirements, Knot DNS Installation, Introduction, Top
+@chapter Knot DNS Resource Requirements
+
+@menu
+* Hardware Requirements::       
+* CPU Requirements::            
+* Memory Requirements::         
+* Supported Operating System::  
+@end menu
+
+@node Hardware Requirements
+@section Hardware Requirements
+
+Knot DNS requirements are not very demanding for typical
+installations, and a comodity server or virtualized solution
+will be sufficient in most cases.
+
+However please not that there are some scenarios that will
+require the administrator attention and a testing of exact
+requirements before deploying Knot DNS in a production.  These
+cases include deployment for a large number of zones (DNS
+hosting), a large number of records in one or more zones (TLD)
+or large number of requests.
+
+@node CPU Requirements
+@section CPU Requirements
+
+Knot DNS scales with the processing power and also the nubmer of available cores/CPUs.
+
+There is no lower bound on the CPU requirements, but it should support memory barriers
+and CAS (i586 and newer).
+
+@node Memory Requirements
+@section Memory Requirements
+
+Knot DNS implementation focuses on the performance and thus can
+be very demanding for the memory.  The rough estimate for memory
+requirements is 5-7 times of the size of the zone in text
+format.  Again this is only a estimate and you are advised to do
+your own measurements before deploying Knot DNS into the
+production.
+
+@node Supported Operating System
+@section Supported Operating System
+
+Knot DNS itself is written in a portable way, but it depends on
+userspace-rcu library, which is the main constraint when it
+comes to the operating system support.  As far as we know the
+Knot DNS and userspace-rcu library can be compiled and run on
+Linux, FreeBSD, OpenBSD, NetBSD and Mac OS X.

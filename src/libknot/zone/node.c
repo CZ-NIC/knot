@@ -81,68 +81,6 @@ static inline void knot_node_flags_set_nonauth(uint8_t *flags)
 	*flags |= KNOT_NODE_FLAGS_NONAUTH;
 }
 
-///*----------------------------------------------------------------------------*/
-///*!
-// * \brief Returns the old node flag
-// *
-// * \param flags Flags to retrieve the flag from.
-// *
-// * \return A byte with only the old node flag set if it was set in \a flags.
-// */
-//static inline uint8_t knot_node_flags_get_old(uint8_t flags)
-//{
-//	return flags & KNOT_NODE_FLAGS_OLD;
-//}
-
-///*----------------------------------------------------------------------------*/
-///*!
-// * \brief Sets the old node flag.
-// *
-// * \param flags Flags to set the flag in.
-// */
-//static inline void knot_node_flags_set_new(uint8_t *flags)
-//{
-//	*flags |= KNOT_NODE_FLAGS_NEW;
-//}
-
-///*----------------------------------------------------------------------------*/
-///*!
-// * \brief Returns the new node flag
-// *
-// * \param flags Flags to retrieve the flag from.
-// *
-// * \return A byte with only the new node flag set if it was set in \a flags.
-// */
-//static inline uint8_t knot_node_flags_get_new(uint8_t flags)
-//{
-//	return flags & KNOT_NODE_FLAGS_NEW;
-//}
-
-///*----------------------------------------------------------------------------*/
-///*!
-// * \brief Sets the new node flag.
-// *
-// * \param flags Flags to set the flag in.
-// */
-//static inline void knot_node_flags_set_old(uint8_t *flags)
-//{
-//	*flags |= KNOT_NODE_FLAGS_OLD;
-//}
-
-///*----------------------------------------------------------------------------*/
-
-//static inline void knot_node_flags_clear_new(uint8_t *flags)
-//{
-//	*flags &= ~KNOT_NODE_FLAGS_NEW;
-//}
-
-///*----------------------------------------------------------------------------*/
-
-//static inline void knot_node_flags_clear_old(uint8_t *flags)
-//{
-//	*flags &= ~KNOT_NODE_FLAGS_OLD;
-//}
-
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Compares the two keys as RR types.
@@ -164,26 +102,6 @@ static int compare_rrset_types(void *rr1, void *rr2)
 	return ((rrset1->type > rrset2->type) ? 1 :
 	        (rrset1->type == rrset2->type) ? 0 : -1);
 }
-
-/*----------------------------------------------------------------------------*/
-
-//static int knot_node_zone_gen_is_new(const knot_node_t *node)
-//{
-//	assert(node->zone != NULL);
-//	knot_zone_contents_t *cont = rcu_dereference(node->zone->contents);
-//	assert(cont != NULL);
-//	return knot_zone_contents_gen_is_new(cont);
-//}
-
-///*----------------------------------------------------------------------------*/
-
-//static int knot_node_zone_gen_is_old(const knot_node_t *node)
-//{
-//	assert(node->zone != NULL);
-//	knot_zone_contents_t *cont = rcu_dereference(node->zone->contents);
-//	assert(cont != NULL);
-//	return knot_zone_contents_gen_is_old(cont);
-//}
 
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
@@ -333,6 +251,8 @@ struct knot_node_save_rrset_arg {
 	size_t max_count;
 };
 
+/*----------------------------------------------------------------------------*/
+
 static void save_rrset_to_array(void *node, void *data)
 {
 	struct knot_node_save_rrset_arg *args =
@@ -346,6 +266,8 @@ static void save_rrset_to_array(void *node, void *data)
 
 	args->array[args->count++] = rrset;
 }
+
+/*----------------------------------------------------------------------------*/
 
 knot_rrset_t **knot_node_get_rrsets(const knot_node_t *node)
 {
@@ -772,10 +694,10 @@ void knot_node_free(knot_node_t **node, int fix_refs)
 		return;
 	}
 	
-	dbg_node("Freeing node: %p\n", *node);
+	dbg_node_detail("Freeing node: %p\n", *node);
 
 	if ((*node)->rrset_tree != NULL) {
-		dbg_node("Freeing RRSets.\n");
+		dbg_node_detail("Freeing RRSets.\n");
 		gen_tree_destroy(&(*node)->rrset_tree, NULL, NULL);
 	}
 
@@ -786,38 +708,38 @@ void knot_node_free(knot_node_t **node, int fix_refs)
 		knot_dname_set_node((*node)->owner, NULL);
 	}
 
-	dbg_node("Releasing owner.\n");
+	dbg_node_detail("Releasing owner.\n");
 	knot_dname_release((*node)->owner);
 
 	// check nodes referencing this node and fix the references
 
 	if (fix_refs) {
 		// previous node
-		dbg_node("Checking previous.\n");
+		dbg_node_detail("Checking previous.\n");
 		if ((*node)->prev && (*node)->prev->next == (*node)) {
 			(*node)->prev->next = (*node)->next;
 		}
 
-		dbg_node("Checking next.\n");
+		dbg_node_detail("Checking next.\n");
 		if ((*node)->next && (*node)->next->prev == (*node)) {
 			(*node)->next->prev = (*node)->prev;
 		}
 
 		// NSEC3 node
-		dbg_node("Checking NSEC3.\n");
+		dbg_node_detail("Checking NSEC3.\n");
 		if ((*node)->nsec3_node
 		    && (*node)->nsec3_node->nsec3_referer == (*node)) {
 			(*node)->nsec3_node->nsec3_referer = NULL;
 		}
 
-		dbg_node("Checking NSEC3 ref.\n");
+		dbg_node_detail("Checking NSEC3 ref.\n");
 		if ((*node)->nsec3_referer
 		    && (*node)->nsec3_referer->nsec3_node == (*node)) {
 			(*node)->nsec3_referer->nsec3_node = NULL;
 		}
 
 		// wildcard child node
-		dbg_node("Checking parent's wildcard child.\n");
+		dbg_node_detail("Checking parent's wildcard child.\n");
 		if ((*node)->parent
 		    && (*node)->parent->wildcard_child == (*node)) {
 			(*node)->parent->wildcard_child = NULL;
@@ -832,7 +754,7 @@ void knot_node_free(knot_node_t **node, int fix_refs)
 	free(*node);
 	*node = NULL;
 
-	dbg_node("Done.\n");
+	dbg_node_detail("Done.\n");
 }
 
 /*----------------------------------------------------------------------------*/
