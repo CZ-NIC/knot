@@ -371,10 +371,7 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 			
 			if (use_ids && !in_the_zone) {
 				dbg_zload_detail("zload: load_rdata: "
-				                 "Freeing node owned by: %s. "
-				                 "Caused by dname: %s.\n",
-				                 knot_dname_to_str(
-							items[i].dname->node->owner),
+				                 "Freeing node owned by: %s.\n",
 				                 knot_dname_to_str(items[i].dname));
 				/* Destroy the node */
 				assert(!in_the_zone);
