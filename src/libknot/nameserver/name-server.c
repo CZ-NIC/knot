@@ -2224,13 +2224,16 @@ dbg_ns_exec_verb(
 		// otherwise search for the new name
 		if (node == NULL) {
 			goto search;
-		} else if (node->owner != act_name) {
+		} else if (knot_node_owner(node) != act_name
+		           && !knot_dname_is_wildcard(knot_node_owner(node))) {
 			// the stored node is closest encloser
 			find_ret = KNOT_ZONE_NAME_NOT_FOUND;
 			closest_encloser = node;
 			node = NULL;
 			goto have_node;
 		} // else do nothing, just continue
+		// this case is either if the node corresponds to the name
+		// or if the node is a wildcard covering that name
 	}
 
 	ret = ns_answer_from_node(node, closest_encloser, previous, zone, qname,
