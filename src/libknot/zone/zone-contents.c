@@ -1221,7 +1221,7 @@ int knot_zone_contents_add_node(knot_zone_contents_t *zone,
 
 dbg_zone_exec_detail(
 	char *name = knot_dname_to_str(knot_node_owner(node));
-	dbg_zone_exec_detail("Adding node to zone: %s.\n", name);
+	dbg_zone_detail("Adding node to zone: %s.\n", name);
 	free(name);
 );
 

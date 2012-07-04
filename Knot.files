@@ -260,3 +260,13 @@ src/knot/zone/semantic-check.h
 src/tests/xfr_tests.h
 src/tests/xfr_tests.c
 doc/knot.texi
+doc/configuration.texi
+doc/indices.texi
+doc/installation.texi
+doc/introduction.texi
+doc/migration.texi
+doc/reference.texi
+doc/requirements.texi
+doc/security.texi
+doc/troubleshooting.texi
+doc/version.texi
