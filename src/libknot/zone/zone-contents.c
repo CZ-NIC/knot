@@ -2188,10 +2188,12 @@ dbg_zone_exec_detail(
 );
 	*nsec3_node = found;
 
-	if (*nsec3_node == NULL) {
-		// there is no NSEC3 node even if there should be
-		return KNOT_ENSEC3CHAIN;
-	}
+	// This check cannot be used now, the function returns proper return
+	// value if the node was not found
+//	if (*nsec3_node == NULL) {
+//		// there is no NSEC3 node even if there should be
+//		return KNOT_ENSEC3CHAIN;
+//	}
 
 	if (prev == NULL) {
 		// either the returned node is the root of the tree, or it is
