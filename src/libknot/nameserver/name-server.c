@@ -1909,12 +1909,14 @@ dbg_ns_exec(
 	int ret = knot_rdata_set_items(cname_rdata, &cname_rdata_item, 1);
 	if (ret != KNOT_EOK) {
 		knot_rrset_deep_free(&cname_rrset, 1, 1, 1);
+		knot_rdata_deep_free(&cname_rdata, KNOT_RRTYPE_CNAME, 1);
 		return NULL;
 	}
 
 	ret = knot_rrset_add_rdata(cname_rrset, cname_rdata);
 	if (ret != KNOT_EOK) {
 		knot_rrset_deep_free(&cname_rrset, 1, 1, 1);
+		knot_rdata_deep_free(&cname_rdata, KNOT_RRTYPE_CNAME, 1);
 		return NULL;
 	}
 
