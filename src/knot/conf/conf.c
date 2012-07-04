@@ -286,7 +286,12 @@ static int conf_process(conf_t *conf)
 			*dpos = '\0';
 		}
 
+		/* Copy origin and remove bad characters. */
 		memcpy(dpos, zone->name, zname_len + 1);
+		for (int i = 0; i < zname_len; ++i) {
+			if (dpos[i] == '/') dpos[i] = '_';
+		}
+		
 		memcpy(dpos + zname_len, "db", 3);
 		zone->db = dest;
 
@@ -306,6 +311,9 @@ static int conf_process(conf_t *conf)
 
 		const char *dbext = "diff.db";
 		strncat(dest, zone->name, zname_len);
+		for (int i = 0; i < zname_len; ++i) {
+			if (dest[i] == '/') dest[i] = '_';
+		}
 		strncat(dest, dbext, strlen(dbext));
 		zone->ixfr_db = dest;
 	}

@@ -630,12 +630,31 @@ zone_acl:
  ;
 
 zone_start:
- | TEXT  { conf_zone_start(scanner, $1.t); }
  | USER  { conf_zone_start(scanner, strdup($1.t)); }
  | REMOTES { conf_zone_start(scanner, strdup($1.t)); }
  | LOG_SRC { conf_zone_start(scanner, strdup($1.t)); }
  | LOG { conf_zone_start(scanner, strdup($1.t)); }
  | LOG_LEVEL { conf_zone_start(scanner, strdup($1.t)); }
+ | NUM '/' TEXT {
+    if ($1.i < 0 || $1.i > 255) {
+        char buf[256] = "";
+        snprintf(buf, sizeof(buf), "rfc2317 origin prefix '%ld' out of bounds", $1.i);
+        cf_error(scanner, buf);
+    }
+    size_t len = 3 + 1 + strlen($3.t) + 1; /* <0,255> '/' rest */
+    char *name = malloc(len * sizeof(char));
+    if (name == NULL) {
+        cf_error(scanner, "out of memory");
+    } else {
+        name[0] = '\0';
+        if (snprintf(name, len, "%ld/%s", $1.i, $3.t) < 0) {
+            cf_error(scanner,"failed to convert rfc2317 origin to string");
+        }
+    }
+    free($3.t);
+    conf_zone_start(scanner, name);
+ }
+ | TEXT  { conf_zone_start(scanner, $1.t); }
  ;
 
 zone:
