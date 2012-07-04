@@ -15,6 +15,7 @@
  */
 
 #include <assert.h>
+#include <config.h>
 
 #include "libknot/util/error.h"
 #include "libknot/util/debug.h"
@@ -34,9 +35,6 @@ struct zone_diff_param {
 	int ret;
 };
 
-#define printf_detail printf
-#define printf_verb printf
-
 static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
                                 const knot_rrset_t *rrset2,
                                 knot_changeset_t *changeset);
@@ -52,7 +50,7 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 	const knot_node_t *apex1 = knot_zone_contents_apex(zone1);
 	const knot_node_t *apex2 = knot_zone_contents_apex(zone2);
 	if (apex1 == NULL || apex2 == NULL) {
-		printf("zone_diff: "
+		dbg_zonediff("zone_diff: "
 		             "both zones must have apex nodes.\n");
 		return KNOT_EBADARG;
 	}
@@ -60,14 +58,14 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 	knot_rrset_t *soa_rrset1 = knot_node_get_rrset(apex1, KNOT_RRTYPE_SOA);
 	knot_rrset_t *soa_rrset2 = knot_node_get_rrset(apex2, KNOT_RRTYPE_SOA);
 	if (soa_rrset1 == NULL || soa_rrset2 == NULL) {
-		printf("zone_diff: "
+		dbg_zonediff("zone_diff: "
 		             "both zones must have apex nodes.\n");
 		return KNOT_EBADARG;
 	}
 
 	if (knot_rrset_rdata(soa_rrset1) == NULL ||
 	    knot_rrset_rdata(soa_rrset2) == NULL) {
-		printf("zone_diff: "
+		dbg_zonediff("zone_diff: "
 		             "both zones must have apex nodes with SOA "
 		             "RRs.\n");
 		return KNOT_EBADARG;
@@ -76,18 +74,18 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 	int64_t soa_serial1 =
 		knot_rdata_soa_serial(knot_rrset_rdata(soa_rrset1));
 	if (soa_serial1 == -1) {
-		printf("zone_diff: load_soas: Got bad SOA.\n");
+		dbg_zonediff("zone_diff: load_soas: Got bad SOA.\n");
 	}
 
 	int64_t soa_serial2 =
 		knot_rdata_soa_serial(knot_rrset_rdata(soa_rrset2));
 	
 	if (soa_serial2 == -1) {
-		printf("zone_diff: load_soas: Got bad SOA.\n");
+		dbg_zonediff("zone_diff: load_soas: Got bad SOA.\n");
 	}	
 
 	if (soa_serial1 >= soa_serial2) {
-		printf("zone_diff: "
+		dbg_zonediff("zone_diff: "
 		             "second zone must have higher serial than the "
 		             "first one.\n");
 		return KNOT_EBADARG;
@@ -98,7 +96,7 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 	                               knot_rrset_rrsigs(soa_rrset2),
 	                               changeset);
 	if (ret != KNOT_EOK) {
-		printf_verb("zone_diff: load_soas: Failed to diff SOAs' RRSIGs."
+		dbg_zonediff_verb("zone_diff: load_soas: Failed to diff SOAs' RRSIGs."
 		       " Reason: %s.\n", knot_strerror(ret));
 		/* This might not necasarilly be an error. */
 	}
@@ -111,7 +109,7 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 	changeset->serial_from = soa_serial1;
 	changeset->serial_to = soa_serial2;
 	
-	printf_verb("zone_diff: load_soas: SOAs diffed. (%lu -> %lu)\n",
+	dbg_zonediff_verb("zone_diff: load_soas: SOAs diffed. (%lu -> %lu)\n",
 	            soa_serial1, soa_serial2);
 
 	return KNOT_EOK;
@@ -124,23 +122,23 @@ static int knot_zone_diff_changeset_add_rrset(knot_changeset_t *changeset,
 {
 	/* Remove all RRs of the RRSet. */
 	if (changeset == NULL || rrset == NULL) {
-		printf("zone_diff: add_rrset: NULL parameters.\n");
+		dbg_zonediff("zone_diff: add_rrset: NULL parameters.\n");
 		return KNOT_EBADARG;
 	}
 	
 	if (knot_rrset_rdata_rr_count(rrset) == 0) {
-		printf_detail("zone_diff: Nothing to add.\n");
+		dbg_zonediff_detail("zone_diff: Nothing to add.\n");
 		return KNOT_EOK;
 	}
 	
-	printf_detail("zone_diff: add_rrset: Adding RRSet (%d RRs):\n",
+	dbg_zonediff_detail("zone_diff: add_rrset: Adding RRSet (%d RRs):\n",
 	              knot_rrset_rdata_rr_count(rrset));
 	knot_rrset_dump(rrset, 1);
 	
 	int ret = knot_changeset_add_new_rr(changeset, rrset,
 	                                    XFRIN_CHANGESET_ADD);
 	if (ret != KNOT_EOK) {
-		printf("zone_diff: add_rrset: Could not add RRSet. "
+		dbg_zonediff("zone_diff: add_rrset: Could not add RRSet. "
 		             "Reason: %s.\n", knot_strerror(ret));
 		return ret;
 	}
@@ -153,7 +151,7 @@ static int knot_zone_diff_changeset_remove_rrset(knot_changeset_t *changeset,
 {
 	/* Remove all RRs of the RRSet. */
 	if (changeset == NULL) {
-		printf("zone_diff: remove_rrset: NULL parameters.\n");
+		dbg_zonediff("zone_diff: remove_rrset: NULL parameters.\n");
 		return KNOT_EBADARG;
 	}
 	
@@ -162,18 +160,18 @@ static int knot_zone_diff_changeset_remove_rrset(knot_changeset_t *changeset,
 	}
 	
 	if (knot_rrset_rdata_rr_count(rrset) == 0) {
-		printf_detail("zone_diff: Nothing to remove.\n");
+		dbg_zonediff_detail("zone_diff: Nothing to remove.\n");
 		return KNOT_EOK;
 	}
 	
-	printf_detail("zone_diff: remove_rrset: Removing RRSet (%d RRs):\n",
+	dbg_zonediff_detail("zone_diff: remove_rrset: Removing RRSet (%d RRs):\n",
 	              knot_rrset_rdata_rr_count(rrset));
 	knot_rrset_dump(rrset, 1);
 	
 	int ret = knot_changeset_add_new_rr(changeset, rrset,
 	                                    XFRIN_CHANGESET_REMOVE);
 	if (ret != KNOT_EOK) {
-		printf("zone_diff: remove_rrset: Could not remove RRSet. "
+		dbg_zonediff("zone_diff: remove_rrset: Could not remove RRSet. "
 		             "Reason: %s.\n", knot_strerror(ret));
 		return ret;
 	}
@@ -185,21 +183,21 @@ static int knot_zone_diff_changeset_remove_node(knot_changeset_t *changeset,
                                                 const knot_node_t *node)
 {
 	if (changeset == NULL || node == NULL) {
-		printf("zone_diff: remove_node: NULL parameters.\n");
+		dbg_zonediff("zone_diff: remove_node: NULL parameters.\n");
 		return KNOT_EBADARG;
 	}
 	
-	printf("zone_diff: remove_node: Removing node:\n");
+	dbg_zonediff("zone_diff: remove_node: Removing node:\n");
 	knot_node_dump(node, 1);
 
 	const knot_rrset_t **rrsets = knot_node_rrsets(node);
 	if (rrsets == NULL) {
-		printf_verb("zone_diff: remove_node: "
+		dbg_zonediff_verb("zone_diff: remove_node: "
 		                  "Nothing to remove.\n");
 		return KNOT_EOK;
 	}
 	
-	printf_detail("zone_diff: remove_node: Will be removing %d RRSets.\n",
+	dbg_zonediff_detail("zone_diff: remove_node: Will be removing %d RRSets.\n",
 	              knot_node_rrset_count(node));
 
 	/* Remove all the RRSets of the node. */
@@ -208,7 +206,7 @@ static int knot_zone_diff_changeset_remove_node(knot_changeset_t *changeset,
 		assert(rrsets[i]);
 		int ret = knot_rrset_deep_copy(rrsets[i], &rrset);
 		if (ret != KNOT_EOK) {
-			printf("zone_diff: remove_node: Could not copy "
+			dbg_zonediff("zone_diff: remove_node: Could not copy "
 			             "RRSet. Reason: %s.\n",
 			             knot_strerror(ret));
 			return ret;
@@ -217,7 +215,7 @@ static int knot_zone_diff_changeset_remove_node(knot_changeset_t *changeset,
 		ret = knot_zone_diff_changeset_remove_rrset(changeset,
 		                                            rrset);
 		if (ret != KNOT_EOK) {
-			printf("zone_diff: remove_node: Failed to "
+			dbg_zonediff("zone_diff: remove_node: Failed to "
 			             "remove rrset. Error: %s\n",
 			             knot_strerror(ret));
 			return ret;
@@ -232,7 +230,7 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
                                                knot_rrset_t **changes)
 {
 	if (rrset1 == NULL || rrset2 == NULL) {
-		printf("zone_diff: diff_rdata: NULL arguments. (%p) (%p).\n",
+		dbg_zonediff("zone_diff: diff_rdata: NULL arguments. (%p) (%p).\n",
 		       rrset1, rrset2);
 		return KNOT_EBADARG;
 	}
@@ -244,7 +242,7 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 	* After the list has been traversed, we have a list of
 	* changed/removed rdatas. This has awful computation time.
 	*/
-	printf_detail("zone_diff: diff_rdata: Diff of %s, type=%s. "
+	dbg_zonediff_detail("zone_diff: diff_rdata: Diff of %s, type=%s. "
 	              "RR count 1=%d RR count 2=%d.\n",
 	              knot_dname_to_str(rrset1->owner),
 	              knot_rrtype_to_string(rrset1->type),
@@ -257,7 +255,7 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 	                          knot_rrset_class(rrset1),
 	                          knot_rrset_ttl(rrset1));
 	if (*changes == NULL) {
-		printf("zone_diff: diff_rdata: "
+		dbg_zonediff("zone_diff: diff_rdata: "
 		             "Could not create RRSet with changes.\n");
 		return KNOT_ENOMEM;
 	}
@@ -283,7 +281,7 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 			 * This means that the while cycle above has finished
 			 * because the list was traversed - there's no match.
 			 */
-			printf("zone_diff: diff_rdata: "
+			dbg_zonediff("zone_diff: diff_rdata: "
 			       "No match for RR (type=%s owner=%s).\n",
 			       knot_rrtype_to_string(knot_rrset_type(rrset1)),
 			       knot_dname_to_str(rrset1->owner));
@@ -296,13 +294,13 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 			                           tmp_rdata_copy);
 			/*!< \todo dispose of the copy. */
 			if (ret != KNOT_EOK) {
-				printf("zone_diff: diff_rdata: "
+				dbg_zonediff("zone_diff: diff_rdata: "
 				             "Could not add rdata to rrset.");
 				knot_rrset_deep_free(changes, 1, 1, 0);
 				return ret;
 			}
 		} else {
-			printf_detail("zone_diff: diff_rdata: "
+			dbg_zonediff_detail("zone_diff: diff_rdata: "
 			              "Found matching RR for type %s.\n",
 			              knot_rrtype_to_string(rrset1->type));
 		}
@@ -316,7 +314,7 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
                                 knot_changeset_t *changeset)
 {
 	if ((changeset == NULL) || (rrset1 == NULL && rrset2 == NULL)) {
-		printf("zone_diff: diff_rdata: NULL arguments.\n");
+		dbg_zonediff("zone_diff: diff_rdata: NULL arguments.\n");
 		return KNOT_EBADARG;
 	}
 	/*
@@ -327,11 +325,11 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 	knot_rrset_t *to_remove = NULL;
 	if (rrset1 != NULL && rrset2 == NULL) {
 		assert(rrset1->type == KNOT_RRTYPE_RRSIG);
-		printf_detail("zone_diff: diff_rdata: RRSIG will be "
+		dbg_zonediff_detail("zone_diff: diff_rdata: RRSIG will be "
 		              "removed.\n");
 		int ret = knot_rrset_deep_copy(rrset1, &to_remove);
 		if (ret != KNOT_EOK) {
-			printf("zone_diff: diff_rdata: Could not copy rrset. "
+			dbg_zonediff("zone_diff: diff_rdata: Could not copy rrset. "
 			             "Error: %s.\n", knot_strerror(ret));
 			return ret;
 		}
@@ -339,16 +337,16 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 		int ret = knot_zone_diff_rdata_return_changes(rrset1, rrset2,
 		                                              &to_remove);
 		if (ret != KNOT_EOK) {
-			printf("zone_diff: diff_rdata: Could not get changes. "
+			dbg_zonediff("zone_diff: diff_rdata: Could not get changes. "
 			             "Error: %s.\n", knot_strerror(ret));
 			return ret;
 		}
 	} else {
-		printf("zone_diff: diff_rdata: These are not the diffs you "
+		dbg_zonediff("zone_diff: diff_rdata: These are not the diffs you "
 		       "are looking for.\n");
 	}
 	
-	printf_detail("zone_diff: diff_rdata: To remove:\n");
+	dbg_zonediff_detail("zone_diff: diff_rdata: To remove:\n");
 	knot_rrset_dump(to_remove, 1);
 	
 	//TODO free to_remove
@@ -356,7 +354,7 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 	int ret = knot_zone_diff_changeset_remove_rrset(changeset,
 	                                            to_remove);
 	if (ret != KNOT_EOK) {
-		printf("zone_diff: diff_rdata: Could not remove RRs. "
+		dbg_zonediff("zone_diff: diff_rdata: Could not remove RRs. "
 		             "Error: %s.\n", knot_strerror(ret));
 		return ret;
 	}
@@ -365,11 +363,11 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 	knot_rrset_t *to_add = NULL;
 	if (rrset2 != NULL && rrset1 == NULL) {
 		assert(rrset2->type == KNOT_RRTYPE_RRSIG);
-		printf_detail("zone_diff: diff_rdata: RRSIG will be "
+		dbg_zonediff_detail("zone_diff: diff_rdata: RRSIG will be "
 		              "added.\n");
 		int ret = knot_rrset_deep_copy(rrset2, &to_add);
 		if (ret != KNOT_EOK) {
-			printf("zone_diff: diff_rdata: Could not copy rrset. "
+			dbg_zonediff("zone_diff: diff_rdata: Could not copy rrset. "
 			             "Error: %s.\n", knot_strerror(ret));
 			return ret;
 		}
@@ -377,22 +375,22 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 		ret = knot_zone_diff_rdata_return_changes(rrset2, rrset1,
 		                                          &to_add);
 		if (ret != KNOT_EOK) {
-			printf("zone_diff: diff_rdata: Could not get changes. "
+			dbg_zonediff("zone_diff: diff_rdata: Could not get changes. "
 			             "Error: %s.\n", knot_strerror(ret));
 			return ret;
 		}
 	} else {
-		printf("zone_diff: diff_rdata: These are not the diffs you "
+		dbg_zonediff("zone_diff: diff_rdata: These are not the diffs you "
 		       "are looking for.\n");
 	}
 	
-	printf_detail("zone_diff: diff_rdata: To add:\n");
+	dbg_zonediff_detail("zone_diff: diff_rdata: To add:\n");
 	knot_rrset_dump(to_add, 1);
 
 	ret = knot_zone_diff_changeset_add_rrset(changeset,
 	                                         to_add);
 	if (ret != KNOT_EOK) {
-		printf("zone_diff: diff_rdata: Could not remove RRs. "
+		dbg_zonediff("zone_diff: diff_rdata: Could not remove RRs. "
 		             "Error: %s.\n", knot_strerror(ret));
 		return ret;
 	}
@@ -407,29 +405,29 @@ static int knot_zone_diff_rrsets(const knot_rrset_t *rrset1,
 //	if (rrset1 == NULL || rrset2 == NULL) {
 //		/* This could happen when diffing RRSIGs. */
 //		if (rrset1 == NULL && rrset2 != NULL) {
-//			printf("zone_diff: diff_rrsets: RRSIG missing in first"
+//			dbg_zonediff("zone_diff: diff_rrsets: RRSIG missing in first"
 //			       " rrset1.\n");
 //			int ret =
 //				knot_zone_diff_changeset_add_rrset(changeset,
 //			                                           rrset2);
 //			if (ret != KNOT_EOK) {
-//				printf("zone_diff: diff_rrsets: "
+//				dbg_zonediff("zone_diff: diff_rrsets: "
 //				       "Cannot add RRSIG. (%s)\n",
 //				       knot_strerror(ret));
 //			}
 //		} else if (rrset1 != NULL && rrset2 == NULL) {
-//			printf("zone_diff: diff_rrsets: RRSIG missing in second"
+//			dbg_zonediff("zone_diff: diff_rrsets: RRSIG missing in second"
 //			       " rrset1.\n");
 //			int ret =
 //				knot_zone_diff_changeset_remove_rrset(changeset,
 //			                                              rrset1);
 //			if (ret != KNOT_EOK) {
-//				printf("zone_diff: diff_rrsets: "
+//				dbg_zonediff("zone_diff: diff_rrsets: "
 //				       "Cannot remove RRSIG. (%s)\n",
 //				       knot_strerror(ret));
 //			}
 //		}
-//		printf_detail("zone_diff: diff_rrsets: "
+//		dbg_zonediff_detail("zone_diff: diff_rrsets: "
 //		              "NULL arguments (RRSIGs?). (%p) (%p)\n",
 //		              rrset1, rrset2);
 //		return KNOT_EOK;
@@ -442,7 +440,7 @@ static int knot_zone_diff_rrsets(const knot_rrset_t *rrset1,
 	int ret = knot_zone_diff_rdata(knot_rrset_rrsigs(rrset1),
 	                               knot_rrset_rrsigs(rrset2), changeset);
 	if (ret != KNOT_EOK) {
-		printf("zone_diff: diff_rrsets (%s:%s): Failed to diff RRSIGs. "
+		dbg_zonediff("zone_diff: diff_rrsets (%s:%s): Failed to diff RRSIGs. "
 		       "They were: %p %p. (%s).\n",
 		       knot_dname_to_str(rrset1->owner),
 		       knot_rrtype_to_string(rrset1->type),
@@ -458,20 +456,20 @@ static int knot_zone_diff_rrsets(const knot_rrset_t *rrset1,
 static void knot_zone_diff_node(knot_node_t *node, void *data)
 {
 	if (node == NULL || data == NULL) {
-		printf("zone_diff: diff_node: NULL arguments.\n");
+		dbg_zonediff("zone_diff: diff_node: NULL arguments.\n");
 		return;
 	}
 
 	struct zone_diff_param *param = (struct zone_diff_param *)data;
 	if (param->changeset == NULL || param->contents == NULL) {
-		printf("zone_diff: diff_node: NULL arguments.\n");
+		dbg_zonediff("zone_diff: diff_node: NULL arguments.\n");
 		param->ret = KNOT_EBADARG;
 		return;
 	}
 
 	if (param->ret != KNOT_EOK) {
 		/* Error occured before, no point in continuing. */
-		printf_detail("zone_diff: diff_node: error: %s\n",
+		dbg_zonediff_detail("zone_diff: diff_node: error: %s\n",
 		                    knot_strerror(param->ret));
 		return;
 	}
@@ -488,20 +486,20 @@ static void knot_zone_diff_node(knot_node_t *node, void *data)
 			knot_zone_contents_find_node(param->contents,
 			                             node_owner);
 	} else {
-		printf_verb("zone_diff: diff_node: NSEC3 zone.\n");
+		dbg_zonediff_verb("zone_diff: diff_node: NSEC3 zone.\n");
 		node_in_second_tree =
 			knot_zone_contents_find_nsec3_node(param->contents,
 			                                   node_owner);
 	}
 
 	if (node_in_second_tree == NULL) {
-		printf_detail("zone_diff: diff_node: Node %s is not "
+		dbg_zonediff_detail("zone_diff: diff_node: Node %s is not "
 		              "in the second tree.\n",
 		              knot_dname_to_str(node_owner));
 		int ret = knot_zone_diff_changeset_remove_node(param->changeset,
 		                                               node);
 		if (ret != KNOT_EOK) {
-			printf("zone_diff: failed to remove node.\n");
+			dbg_zonediff("zone_diff: failed to remove node.\n");
 			param->ret = ret;
 			return;
 		}
@@ -512,12 +510,12 @@ static void knot_zone_diff_node(knot_node_t *node, void *data)
 	
 	assert(node_in_second_tree != node);
 
-	printf_detail("zone_diff: diff_node: Node %s is present in "
+	dbg_zonediff_detail("zone_diff: diff_node: Node %s is present in "
 	              "both trees.\n", knot_dname_to_str(node_owner));
 	/* The nodes are in both trees, we have to diff each RRSet. */
 	const knot_rrset_t **rrsets = knot_node_rrsets(node);
 	if (rrsets == NULL) {
-		printf("zone_diff: Node has no RRSets.\n");
+		dbg_zonediff("zone_diff: Node has no RRSets.\n");
 		param->ret = KNOT_EBADARG;
 		return;
 	}
@@ -536,7 +534,7 @@ static void knot_zone_diff_node(knot_node_t *node, void *data)
 			knot_node_rrset(node_in_second_tree,
 			                knot_rrset_type(rrset));
 		if (rrset_from_second_node == NULL) {
-			printf("zone_diff: diff_node: There is no counterpart "
+			dbg_zonediff("zone_diff: diff_node: There is no counterpart "
 			       "for RRSet of type %s in second tree.\n",
 			       knot_rrtype_to_string(knot_rrset_type(rrset)));
 			/* RRSet has been removed. Make a copy and remove. */
@@ -544,7 +542,7 @@ static void knot_zone_diff_node(knot_node_t *node, void *data)
 			assert(rrset);
 			int ret = knot_rrset_deep_copy(rrset, &rrset_copy);
 			if (ret != KNOT_EOK) {
-				printf("zone_diff: diff_node: Failed "
+				dbg_zonediff("zone_diff: diff_node: Failed "
 				             "to copy RRSet. Reason: %s.\n",
 				             knot_strerror(ret));
 				param->ret = ret;
@@ -554,13 +552,13 @@ static void knot_zone_diff_node(knot_node_t *node, void *data)
 				param->changeset,
 				rrset_copy);
 			if (ret != KNOT_EOK) {
-				printf("zone_diff: diff_node: "
+				dbg_zonediff("zone_diff: diff_node: "
 				             "Failed to remove RRSet.\n");
 				param->ret = ret;
 				return;
 			}
 		} else {
-			printf("zone_diff: diff_node: There is a counterpart "
+			dbg_zonediff("zone_diff: diff_node: There is a counterpart "
 			       "for RRSet of type %s in second tree.\n",
 			       knot_rrtype_to_string(knot_rrset_type(rrset)));
 			/* Diff RRSets. */
@@ -568,20 +566,20 @@ static void knot_zone_diff_node(knot_node_t *node, void *data)
 			                                rrset_from_second_node,
 			                                param->changeset);
 			if (ret != KNOT_EOK) {
-				printf("zone_diff: "
+				dbg_zonediff("zone_diff: "
 				             "Failed to diff RRSets.\n");
 				param->ret = ret;
 				return;
 			}
 			
-//			printf_verb("zone_diff: diff_node: Changes in "
+//			dbg_zonediff_verb("zone_diff: diff_node: Changes in "
 //			            "RRSIGs.\n");
 //			/*! \todo There is ad-hoc solution in the function, maybe handle here. */
 //			ret = knot_zone_diff_rrsets(rrset->rrsigs,
 //			                                rrset_from_second_node->rrsigs,
 //			                                param->changeset);
 //			if (ret != KNOT_EOK) {
-//				printf("zone_diff: "
+//				dbg_zonediff("zone_diff: "
 //				             "Failed to diff RRSIGs.\n");
 //				param->ret = ret;
 //				return;
@@ -594,7 +592,7 @@ static void knot_zone_diff_node(knot_node_t *node, void *data)
 	/*! \todo move to one function with the code above. */
 	rrsets = knot_node_rrsets(node_in_second_tree);
 	if (rrsets == NULL) {
-		printf("zone_diff: Node has no RRSets.\n");
+		dbg_zonediff("zone_diff: Node has no RRSets.\n");
 		param->ret = KNOT_EBADARG;
 		return;
 	}
@@ -613,7 +611,7 @@ static void knot_zone_diff_node(knot_node_t *node, void *data)
 			knot_node_rrset(node,
 			                knot_rrset_type(rrset));
 		if (rrset_from_first_node == NULL) {
-			printf("zone_diff: diff_node: There is no counterpart "
+			dbg_zonediff("zone_diff: diff_node: There is no counterpart "
 			       "for RRSet of type %s in first tree.\n",
 			       knot_rrtype_to_string(knot_rrset_type(rrset)));
 			/* RRSet has been added. Make a copy and add. */
@@ -621,7 +619,7 @@ static void knot_zone_diff_node(knot_node_t *node, void *data)
 			assert(rrset);
 			int ret = knot_rrset_deep_copy(rrset, &rrset_copy);
 			if (ret != KNOT_EOK) {
-				printf("zone_diff: diff_node: Failed "
+				dbg_zonediff("zone_diff: diff_node: Failed "
 				             "to copy RRSet. Reason: %s.\n",
 				             knot_strerror(ret));
 				param->ret = ret;
@@ -631,7 +629,7 @@ static void knot_zone_diff_node(knot_node_t *node, void *data)
 				param->changeset,
 				rrset_copy);
 			if (ret != KNOT_EOK) {
-				printf("zone_diff: diff_node: "
+				dbg_zonediff("zone_diff: diff_node: "
 				             "Failed to add RRSet.\n");
 				param->ret = ret;
 				return;
@@ -649,15 +647,16 @@ static int knot_zone_diff_add_node(knot_node_t *node,
                                    knot_changeset_t *changeset)
 {
 	if (node == NULL || changeset == NULL) {
-		printf("zone_diff: add_node: NULL arguments.\n");
+		dbg_zonediff("zone_diff: add_node: NULL arguments.\n");
 		return KNOT_EBADARG;
 	}
 	
 	/* Add all rrsets from node. */
 	const knot_rrset_t **rrsets = knot_node_rrsets(node);
 	if (rrsets == NULL) {
-		printf("zone_diff: Node has no RRSets.\n");
-		return KNOT_EBADARG;
+		/* Empty non-terminals - legal case. */
+		dbg_zonediff_detail("zone_diff: Node has no RRSets.\n");
+		return KNOT_EOK;
 	}
 
 	for (uint i = 0; i < knot_node_rrset_count(node); i++) {
@@ -665,7 +664,7 @@ static int knot_zone_diff_add_node(knot_node_t *node,
 		assert(rrsets[i]);
 		int ret = knot_rrset_deep_copy(rrsets[i], &rrset);
 		if (ret != KNOT_EOK) {
-			printf("zone_diff: remove_node: Could not copy "
+			dbg_zonediff("zone_diff: remove_node: Could not copy "
 			             "RRSet. Reason: %s.\n",
 			             knot_strerror(ret));
 			return ret;
@@ -675,7 +674,7 @@ static int knot_zone_diff_add_node(knot_node_t *node,
 		ret = knot_zone_diff_changeset_add_rrset(changeset,
 		                                         rrset);
 		if (ret != KNOT_EOK) {
-			printf("zone_diff: add_node: Cannot add RRSet (%s).\n",
+			dbg_zonediff("zone_diff: add_node: Cannot add RRSet (%s).\n",
 			       knot_strerror(ret));
 			return ret;
 		}
@@ -689,20 +688,20 @@ static void knot_zone_diff_add_new_nodes(knot_node_t *node, void *data)
 {
 	assert(node);
 	if (node == NULL || data == NULL) {
-		printf("zone_diff: add_new_nodes: NULL arguments.\n");
+		dbg_zonediff("zone_diff: add_new_nodes: NULL arguments.\n");
 		return;
 	}
 
 	struct zone_diff_param *param = (struct zone_diff_param *)data;
 	if (param->changeset == NULL || param->contents == NULL) {
-		printf("zone_diff: add_new_nodes: NULL arguments.\n");
+		dbg_zonediff("zone_diff: add_new_nodes: NULL arguments.\n");
 		param->ret = KNOT_EBADARG;
 		return;
 	}
 
 	if (param->ret != KNOT_EOK) {
 		/* Error occured before, no point in continuing. */
-		printf_detail("zone_diff: add_new_nodes: error: %s\n",
+		dbg_zonediff_detail("zone_diff: add_new_nodes: error: %s\n",
 		                    knot_strerror(param->ret));
 		return;
 	}
@@ -734,8 +733,9 @@ static void knot_zone_diff_add_new_nodes(knot_node_t *node, void *data)
 		assert(node);
 		int ret = knot_zone_diff_add_node(node, param->changeset);
 		if (ret != KNOT_EOK) {
-			printf("zone_diff: add_new_nodes: Cannot add "
-			             "node to changeset. Reason: %s.\n",
+			dbg_zonediff("zone_diff: add_new_nodes: Cannot add "
+			             "node: %s to changeset. Reason: %s.\n",
+			             knot_dname_to_str(node->owner),
 			             knot_strerror(ret));
 		}
 	}
@@ -748,7 +748,7 @@ int knot_zone_contents_diff(knot_zone_contents_t *zone1,
                             knot_changeset_t *changeset)
 {
 	if (zone1 == NULL || zone2 == NULL) {
-		printf("zone_diff: NULL argument(s).\n");
+		dbg_zonediff("zone_diff: NULL argument(s).\n");
 		return KNOT_EBADARG;
 	}
 
@@ -763,12 +763,12 @@ int knot_zone_contents_diff(knot_zone_contents_t *zone1,
 	/* Settle SOAs first. */
 	int ret = knot_zone_diff_load_soas(zone1, zone2, changeset);
 	if (ret != KNOT_EOK) {
-		printf("zone_diff: loas_SOAs failed with error: %s\n",
+		dbg_zonediff("zone_diff: loas_SOAs failed with error: %s\n",
 		             knot_strerror(ret));
 		return ret;
 	}
 	
-	printf("zone_diff: SOAs loaded.\n");
+	dbg_zonediff("zone_diff: SOAs loaded.\n");
 	
 	/* Traverse one tree, compare every node, each RRSet with its rdata. */
 	struct zone_diff_param param;
@@ -779,7 +779,7 @@ int knot_zone_contents_diff(knot_zone_contents_t *zone1,
 	ret = knot_zone_contents_tree_apply_inorder(zone1, knot_zone_diff_node,
 	                                            &param);
 	if (ret != KNOT_EOK) {
-		printf("zone_diff: Tree traversal failed "
+		dbg_zonediff("zone_diff: Tree traversal failed "
 		             "with error: %s. Error from inner function: %s\n",
 		             knot_strerror(ret),
 		             knot_strerror(param.ret));
@@ -791,7 +791,7 @@ int knot_zone_contents_diff(knot_zone_contents_t *zone1,
 	ret = knot_zone_contents_nsec3_apply_inorder(zone1, knot_zone_diff_node,
 	                                             &param);
 	if (ret != KNOT_EOK) {
-		printf("zone_diff: Tree traversal failed "
+		dbg_zonediff("zone_diff: Tree traversal failed "
 		             "with error: %s\n",
 		             knot_strerror(ret));
 		return ret;
@@ -808,7 +808,7 @@ int knot_zone_contents_diff(knot_zone_contents_t *zone1,
 		knot_zone_diff_add_new_nodes,
 		&param);
 	if (ret != KNOT_EOK) {
-		printf("zone_diff: Tree traversal failed "
+		dbg_zonediff("zone_diff: Tree traversal failed "
 		             "with error: %s. Error from inner function: %s\n",
 		             knot_strerror(ret),
 		             knot_strerror(param.ret));
@@ -822,7 +822,7 @@ int knot_zone_contents_diff(knot_zone_contents_t *zone1,
 		knot_zone_diff_add_new_nodes,
 		&param);
 	if (ret != KNOT_EOK) {
-		printf("zone_diff: Tree traversal failed "
+		dbg_zonediff("zone_diff: Tree traversal failed "
 		             "with error: %s\n",
 		             knot_strerror(ret));
 		return ret;
@@ -834,6 +834,9 @@ int knot_zone_contents_diff(knot_zone_contents_t *zone1,
 /* Mostly just for testing. We only shall diff zones in memory later. */
 int knot_zone_diff_zones(const char *zonefile1, const char *zonefile2)
 {
+	dbg_zonediff("TESTTEST\n");
+	dbg_node("TESTNODE\n");
+	getchar();
 	/* Compile test zones. */
 	int ret = zone_read("example.com.", "/home/jan/test/testzone1", "tmpzone1.db", 0);
 	assert(ret == KNOT_EOK);
@@ -851,7 +854,7 @@ int knot_zone_diff_zones(const char *zonefile1, const char *zonefile2)
 	knot_changeset_t changeset;
 	assert(knot_zone_contents_diff(z1->contents, z2->contents,
 	                               &changeset) == KNOT_EOK);
-	printf("Changeset created: From=%d to=%d.\n", changeset.serial_from,
+	dbg_zonediff("Changeset created: From=%d to=%d.\n", changeset.serial_from,
 	       changeset.serial_to);
 	knot_changesets_t chngsets;
 	chngsets.sets = malloc(sizeof(knot_changeset_t));
@@ -860,7 +863,7 @@ int knot_zone_diff_zones(const char *zonefile1, const char *zonefile2)
 	knot_zone_contents_t *new_zone = NULL;
 	ret = xfrin_apply_changesets(z1, &chngsets, &new_zone);
 	if (ret != KNOT_EOK) {
-		printf("Application of changesets failed. (%s)\n",
+		dbg_zonediff("Application of changesets failed. (%s)\n",
 		       knot_strerror(ret));
 	}
 	
