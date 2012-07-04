@@ -22,12 +22,6 @@
 #include "libknot/rdata.h"
 #include "zone-diff.h"
 
-/*! \todo XXX TODO FIXME remove once testing is done. */
-#include "knot/zone/zone-dump-text.h"
-#include "zcompile/zcompile.h"
-#include "knot/zone/zone-load.h"
-#include "libknot/updates/xfr-in.h"
-
 struct zone_diff_param {
 	knot_zone_contents_t *contents;
 	char nsec3;
