@@ -55,7 +55,7 @@ typedef struct knot_zone_contents_t {
 
 	knot_nsec3_params_t nsec3_params;
 	
-  /*!
+	/*!
 	 * \todo Unify the use of this field - authoritative nodes vs. all.
 	 */
 	uint node_count;
@@ -84,13 +84,10 @@ knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
                                                  int use_domain_table,
                                                  struct knot_zone *zone);
 
-//short knot_zone_contents_generation(const knot_zone_contents_t *contents);
-
 int knot_zone_contents_gen_is_old(const knot_zone_contents_t *contents);
 int knot_zone_contents_gen_is_new(const knot_zone_contents_t *contents);
 int knot_zone_contents_gen_is_finished(const knot_zone_contents_t *contents);
 
-//void knot_zone_contents_switch_generation(knot_zone_contents_t *contents);
 
 void knot_zone_contents_set_gen_old(knot_zone_contents_t *contents);
 void knot_zone_contents_set_gen_new(knot_zone_contents_t *contents);
@@ -186,9 +183,6 @@ int knot_zone_contents_add_nsec3_rrset(knot_zone_contents_t *contents,
 int knot_zone_contents_remove_node(knot_zone_contents_t *contents, 
 	const knot_node_t *node, knot_zone_tree_node_t **removed_tree, 
 	ck_hash_table_item_t **removed_hash);
-
-//knot_zone_tree_node_t *knot_zone_contents_remove_node(
-//	knot_zone_contents_t *contents, const knot_node_t *node);
 
 int knot_zone_contents_remove_nsec3_node(knot_zone_contents_t *contents, 
 	const knot_node_t *node, knot_zone_tree_node_t **removed);
@@ -356,9 +350,6 @@ const knot_node_t *knot_zone_contents_apex(
 
 knot_node_t *knot_zone_contents_get_apex(
 	const knot_zone_contents_t *contents);
-
-//knot_dname_t *knot_zone_contents_name(
-//	const knot_zone_contents_t *contents);
 
 /*!
  * \brief Optimizes zone by replacing domain names in RDATA with references to
@@ -554,12 +545,6 @@ int knot_zone_contents_shallow_copy(const knot_zone_contents_t *from,
 
 int knot_zone_contents_shallow_copy2(const knot_zone_contents_t *from,
                                      knot_zone_contents_t **to);
-
-//int knot_zone_contents_dnames_from_node_to_table(
-//	knot_dname_table_t *table, knot_node_t *node);
-
-//void knot_zone_contents_adjust_node(knot_node_t *node,
-//                                    knot_zone_contents_t *zone, int check_ver);
 
 void knot_zone_contents_free(knot_zone_contents_t **contents);
 

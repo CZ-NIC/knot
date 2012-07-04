@@ -129,7 +129,6 @@ static knot_rrset_t *ns_synth_from_wildcard(
 	dbg_ns_verb("Synthetizing RRSet from wildcard...\n");
 
 	knot_dname_t *owner = knot_dname_deep_copy(qname);
-//	printf("Copied owner ptr: %p\n", owner);
 
 	knot_rrset_t *synth_rrset = knot_rrset_new(
 			owner, knot_rrset_type(wildcard_rrset),
@@ -168,7 +167,6 @@ static knot_rrset_t *ns_synth_from_wildcard(
 		rdata = knot_rrset_rdata_next(wildcard_rrset, rdata);
 	}
 
-//	printf("Synthetized RRSet pointer: %p\n", synth_rrset);
 	return synth_rrset;
 }
 
@@ -609,11 +607,6 @@ dbg_ns_exec_detail(
 			// name
 			dbg_ns_detail("Node is wildcard.\n");
 			assert(knot_dname_is_wildcard(knot_node_owner(node)));
-
-//			// the stored node should be the closest encloser
-//			assert(knot_dname_is_subdomain(dname, node->owner));
-//			// try the wildcard child, if any
-//			node = knot_node_wildcard_child(node);
 		}
 
 		knot_rrset_t *rrset_add;
@@ -1695,9 +1688,6 @@ static inline int ns_referral(const knot_node_t *node,
 	
 	knot_rrset_t *rrset = knot_node_get_rrset(node, KNOT_RRTYPE_NS);
 	assert(rrset != NULL);
-
-	// TODO: wildcards??
-	//ns_check_wildcard(name, resp, &rrset);
 	
 	ret = knot_response_add_rrset_authority(resp, rrset, 1, 0, 0, 1);
 	if (ret == KNOT_EOK) {
@@ -1760,7 +1750,6 @@ static inline int ns_referral(const knot_node_t *node,
 		knot_response_set_rcode(resp, KNOT_RCODE_NOERROR);
 		ret = KNOT_EOK;
 	} else if (ret == KNOT_EOK) {
-//		(void)ns_put_additional(resp);
 		knot_response_set_rcode(resp, KNOT_RCODE_NOERROR);
 	}
 
@@ -1854,9 +1843,6 @@ static int ns_answer_from_node(const knot_node_t *node,
 		}
 	}
 
-//	if (ret == KNOT_EOK) {
-//		ns_put_additional(resp);
-//	}
 	return ret;
 }
 
@@ -2071,13 +2057,9 @@ static int ns_answer_from_zone(const knot_zone_contents_t *zone,
 
 search:
 #ifdef USE_HASH_TABLE
-	/*! \todo Check version. */
 	find_ret = knot_zone_contents_find_dname_hash(zone, qname, &node,
 	                                                &closest_encloser);
-//	node = knot_node_current(node);
-//	closest_encloser = knot_node_current(closest_encloser);
 #else
-	/*! \todo Check version. */
 	find_ret = knot_zone_contents_find_dname(zone, qname, &node,
 	                                          &closest_encloser, &previous);
 	node = knot_node_current(node);
@@ -2200,7 +2182,8 @@ dbg_ns_exec(
 		const knot_dname_t *act_name = qname;
 		ret = ns_follow_cname(&node, &act_name, resp,
 		                      knot_response_add_rrset_answer, 1);
-/* POZOR!! je ok?? */
+
+		/*! \todo IS OK??? */
 		knot_response_set_aa(resp);
 
 		if (ret != KNOT_EOK) {
@@ -2356,7 +2339,6 @@ int ns_response_to_wire(knot_packet_t *resp, uint8_t *wire,
 	}
 	
 	*wire_size = rsize;
-	//free(rwire);
 
 	return KNOT_EOK;
 }
@@ -2462,7 +2444,6 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 		xfr->tsig_data_size += real_size;
 	}
 
-	/*! \note [TSIG] Generate TSIG if required (during XFR/IN). */
 	if (xfr->tsig_key && add_tsig) {
 		if (xfr->packet_nr == 0) {
 			/* Add key, digest and digest length. */
@@ -2785,9 +2766,7 @@ static int ns_ixfr_put_rrset(knot_ns_xfr_t *xfr, knot_rrset_t *rrset)
 		/*! \todo Probably send back AXFR instead. */
 		knot_response_set_rcode(xfr->response,
 		                           KNOT_RCODE_SERVFAIL);
-		/*! \todo Probably rename the function. */
 		ns_xfr_send_and_clear(xfr, 1);
-		//socket_close(xfr->session);  /*! \todo Remove for UDP.*/
 		return res;
 	}
 
@@ -2857,9 +2836,7 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 		       knot_strerror(res));
 		knot_response_set_rcode(xfr->response,
 		                           KNOT_RCODE_SERVFAIL);
-		/*! \todo Probably rename the function. */
 		ns_xfr_send_and_clear(xfr, 1);
-//		socket_close(xfr->session);  /*! \todo Remove for UDP.*/
 		rcu_read_unlock();
 		return res;
 	}
@@ -2879,10 +2856,7 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 	}
 
 	if (res == KNOT_EOK) {
-		/*! \todo Probably rename the function. */
 		ns_xfr_send_and_clear(xfr, 1);
-		//socket_close(xfr->session);  /*! \todo Remove for UDP.*/
-//		return 1;
 	}
 
 	rcu_read_unlock();
@@ -2904,7 +2878,6 @@ static int ns_ixfr(knot_ns_xfr_t *xfr)
 		// malformed packet
 		dbg_ns("IXFR query does not contain authority record.\n");
 		knot_response_set_rcode(xfr->response, KNOT_RCODE_FORMERR);
-		/*! \todo Probably rename the function. */
 		if (ns_xfr_send_and_clear(xfr, 1) == KNOT_ECONN) {
 			return KNOT_ECONN;
 		}
@@ -2922,11 +2895,9 @@ static int ns_ixfr(knot_ns_xfr_t *xfr)
 		// malformed packet
 		dbg_ns("IXFR query is malformed.\n");
 		knot_response_set_rcode(xfr->response, KNOT_RCODE_FORMERR);
-		/*! \todo Probably rename the function. */
 		if (ns_xfr_send_and_clear(xfr, 1) == KNOT_ECONN) {
 			return KNOT_ECONN;
 		}
-		//socket_close(xfr->session);  /*! \todo Remove for UDP. */
 		return KNOT_EMALF;
 	}
 
@@ -2935,8 +2906,7 @@ static int ns_ixfr(knot_ns_xfr_t *xfr)
 
 /*----------------------------------------------------------------------------*/
 
-static int knot_ns_prepare_response(knot_nameserver_t *nameserver,
-                                    knot_packet_t *query, knot_packet_t **resp,
+static int knot_ns_prepare_response(knot_packet_t *query, knot_packet_t **resp,
                                     size_t max_size)
 {
 	assert(max_size >= 500);
@@ -2949,8 +2919,6 @@ static int knot_ns_prepare_response(knot_nameserver_t *nameserver,
 	}
 
 	int ret = knot_packet_set_max_size(*resp, max_size);
-	//(*resp)->wireformat = response_wire;;
-	//(*resp)->max_size = max_size;
 
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to init response structure.\n");
@@ -3135,8 +3103,6 @@ void knot_ns_set_nsid(knot_nameserver_t *nameserver, const char *nsid, size_t le
 	
 	int ret = knot_ns_replace_nsid(nameserver->opt_rr, nsid, len);
 
-//	int ret = knot_edns_add_option(nameserver->opt_rr, EDNS_OPTION_NSID,
-//	                               len, (const uint8_t *)nsid);
 	if (ret != KNOT_EOK) {
 		dbg_ns("NS: set_nsid: could not add EDNS option.\n");
 		return;
@@ -3156,11 +3122,9 @@ int knot_ns_parse_packet(const uint8_t *query_wire, size_t qsize,
 	}
 
 	dbg_ns_verb("ns_parse_packet() called with query size %zu.\n", qsize);
-	//dbg_ns_hex((char *)query_wire, qsize);
 
 	// 1) create empty response
 	dbg_ns_verb("Parsing packet...\n");
-	//parsed = knot_response_new_empty(NULL);
 
 	int ret = 0;
 
@@ -3168,7 +3132,6 @@ int knot_ns_parse_packet(const uint8_t *query_wire, size_t qsize,
 	                                         qsize, 1)) != 0) {
 		dbg_ns("Error while parsing packet, "
 		       "libknot error '%s'.\n", knot_strerror(ret));
-//		knot_response_free(&parsed);
 		return KNOT_RCODE_FORMERR;
 	}
 
@@ -3207,8 +3170,6 @@ int knot_ns_parse_packet(const uint8_t *query_wire, size_t qsize,
 	default:
 		return KNOT_RCODE_NOTIMPL;
 	}
-
-//	knot_packet_free(&packet);
 
 	return KNOT_EOK;
 }
@@ -3416,7 +3377,7 @@ int knot_ns_prep_normal_response(knot_nameserver_t *nameserver,
 		resp_max_size = MAX_UDP_PAYLOAD;
 	}
 
-	ret = knot_ns_prepare_response(nameserver, query, resp, resp_max_size);
+	ret = knot_ns_prepare_response(query, resp, resp_max_size);
 	if (ret != KNOT_EOK) {
 		return KNOT_ERROR;
 	}
@@ -3442,7 +3403,6 @@ int knot_ns_prep_normal_response(knot_nameserver_t *nameserver,
 		} else {
 			// copy the DO bit from the query
 			if (knot_query_dnssec_requested(query)) {
-				/*! \todo API for this. */
 				knot_edns_set_do(&(*resp)->opt_rr);
 			}
 		}
@@ -3596,7 +3556,6 @@ dbg_ns_exec_verb(
 		return ret;
 	}
 
-	//int ret = knot_packet_set_max_size(response, xfr->wire_size);
 	response->wireformat = xfr->wire;
 	response->max_size = xfr->wire_size;
 
@@ -3719,7 +3678,6 @@ int knot_ns_xfr_send_error(const knot_nameserver_t *nameserver,
 	/*! \todo Handle TSIG errors differently. */
 	knot_response_set_rcode(xfr->response, rcode);
 	
-	/*! \todo Probably rename the function. */
 	int ret = 0;
 	if ((ret = ns_xfr_send_and_clear(xfr, 1)) != KNOT_EOK
 	    || xfr->response == NULL) {
@@ -3756,10 +3714,10 @@ int knot_ns_answer_axfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		return ret;
 	}
 	
-	/*!
-	 * \todo [TSIG] The TSIG data should already be stored in 'xfr'.
-	 *       Now just count the expected size of the TSIG RR and save it
-	 *       to the response structure.
+	/*
+	 * The TSIG data should already be stored in 'xfr'.
+	 * Now just count the expected size of the TSIG RR and save it
+	 * to the response structure.
 	 */
 	
 	/*! \todo [TSIG] Get the TSIG size from some API function. */
@@ -3801,9 +3759,6 @@ int knot_ns_answer_ixfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	    || xfr->response == NULL) {
 		return KNOT_EBADARG;
 	}
-
-	//uint8_t *wire = NULL;
-	//size_t size = xfr->wire_size;
 	
 	// parse rest of the packet (we need the Authority record)
 	int ret = knot_packet_parse_rest(xfr->query);
@@ -3823,11 +3778,11 @@ int knot_ns_answer_ixfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		return ret;
 	}
 	
-	/*!
-	 * \todo [TSIG] The TSIG data should already be stored in 'xfr'.
-	 *       Now just count the expected size of the TSIG RR and save it
-	 *       to the response structure. This should be optional, only if
-	 *       the request contained TSIG, i.e. if there is the data in 'xfr'.
+	/*
+	 * The TSIG data should already be stored in 'xfr'.
+	 * Now just count the expected size of the TSIG RR and save it
+	 * to the response structure. This should be optional, only if
+	 * the request contained TSIG, i.e. if there is the data in 'xfr'.
 	 */
 	
 	/*! \todo [TSIG] Get the TSIG size from some API function. */
@@ -3846,18 +3801,16 @@ int knot_ns_answer_ixfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 
 int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 {
-	/*!
-	 * \todo [TSIG] Here we assume that 'xfr' contains TSIG information
-	 *       and the digest of the query sent to the master or the previous
-	 *       digest.
+	/*
+	 * Here we assume that 'xfr' contains TSIG information
+	 * and the digest of the query sent to the master or the previous
+	 * digest.
 	 */
 	
 	dbg_ns("ns_process_axfrin: incoming packet, wire size: %zu\n",
 	       xfr->wire_size);
 
-	int ret = xfrin_process_axfr_packet(/*xfr->wire, xfr->wire_size,*/
-	                             /*(xfrin_constructed_zone_t **)(&xfr->data)*/
-	                                    xfr);
+	int ret = xfrin_process_axfr_packet(xfr);
 
 	if (ret > 0) { // transfer finished
 		dbg_ns("ns_process_axfrin: AXFR finished, zone created.\n");
@@ -3908,9 +3861,7 @@ dbg_ns_exec_verb(
 );
 	}
 	
-	/*!
-	 * \todo In case of error, shouldn't the zone be destroyed here?
-	 */
+	/*! \todo In case of error, shouldn't the zone be destroyed here? */
 	
 	return ret;
 }
@@ -3976,10 +3927,10 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 {
 	dbg_ns("ns_process_ixfrin: incoming packet\n");
 	
-	/*!
-	 * \todo [TSIG] Here we assume that 'xfr' contains TSIG information
-	 *       and the digest of the query sent to the master or the previous
-	 *       digest.
+	/*
+	 * [TSIG] Here we assume that 'xfr' contains TSIG information
+	 * and the digest of the query sent to the master or the previous
+	 * digest.
 	 */
 
 	int ret = xfrin_process_ixfr_packet(xfr);
@@ -4009,7 +3960,7 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 			dbg_ns("No zone found for incoming IXFR!\n");
 			knot_free_changesets(
 				(knot_changesets_t **)(&xfr->data));
-			return KNOT_ENOZONE;  /*! \todo Other error code? */
+			return KNOT_ENOZONE;
 		}
 		
 		switch (ret) {
@@ -4060,9 +4011,7 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 		}
 	}
 	
-	/*!
-	 * \todo In case of error, shouldn't the zone be destroyed here?
-	 */
+	/*! \todo In case of error, shouldn't the zone be destroyed here? */
 	
 	return ret;
 }
@@ -4078,8 +4027,7 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
 
 	knot_packet_t *response;
 	assert(*rsize >= MAX_UDP_PAYLOAD);
-	int ret = knot_ns_prepare_response(nameserver, query, &response,
-	                                   MAX_UDP_PAYLOAD);
+	int ret = knot_ns_prepare_response(query, &response, MAX_UDP_PAYLOAD);
 	if (ret != KNOT_EOK) {
 		knot_ns_error_response_from_query(nameserver, query,
 		                                  KNOT_RCODE_SERVFAIL,
@@ -4117,7 +4065,6 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
 	// 2) Find zone for the query
 	// we do not check if there is only one entry in the Question section
 	// because the packet structure does not allow it
-	/*! \todo Check number of Question entries while parsing. */
 	if (knot_packet_qtype(query) != KNOT_RRTYPE_SOA) {
 		dbg_ns("Question is not of type SOA.\n");
 		knot_ns_error_response_full(nameserver, response,

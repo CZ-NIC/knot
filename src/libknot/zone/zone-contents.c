@@ -159,11 +159,8 @@ static int knot_zone_contents_dnames_from_rdata_to_table(
 		       == KNOT_RDATA_WF_UNCOMPRESSED_DNAME
 		    || d->wireformat[j]
 		       == KNOT_RDATA_WF_LITERAL_DNAME) {
-//			printf("Saving dname from rdata to dname table: "
-//			         "%p.\n", knot_rdata_get_item(rdata, j)->dname);
 			rc = knot_dname_table_add_dname_check(table,
 					&knot_rdata_get_item(rdata, j)->dname);
-//			printf("Returned: %d\n", rc);
 			if (rc < 0) {
 				dbg_zone("Error: %s\n", knot_strerror(rc));
 				return rc;
@@ -831,30 +828,13 @@ static int knot_zone_contents_find_in_tree(knot_zone_tree_t *tree,
 	assert(previous != NULL);
 
 	knot_node_t *found = NULL, *prev = NULL;
-//	knot_node_t *found2 = NULL, *prev2 = NULL;
 
 	int exact_match = knot_zone_tree_get_less_or_equal(tree, name, &found,
 	                                                   &prev);
 
-//	assert(prev != NULL);
 	assert(exact_match >= 0);
 	*node = found;
 	*previous = prev;
-
-//	if (prev == NULL) {
-//		// either the returned node is the root of the tree, or it is
-//		// the leftmost node in the tree; in both cases node was found
-//		// set the previous node of the found node
-//		assert(exact_match);
-//		assert(found != NULL);
-//		*previous = knot_node_get_previous(found, 1);
-//	} else {
-//		// otherwise check if the previous node is not an empty
-//		// non-terminal
-//		*previous = (knot_node_rrset_count(prev) == 0)
-//		            ? knot_node_get_previous(prev, 1)
-//		            : prev;
-//	}
 
 	return exact_match;
 }
@@ -878,7 +858,6 @@ static void knot_zone_contents_node_to_hash(knot_zone_tree_node_t *tnode,
 	 */
 
 #ifdef USE_HASH_TABLE
-	//assert(zone->table != NULL);
 	// add the node also to the hash table if authoritative, or deleg. point
 	if (zone->table != NULL
 	    && ck_insert_item(zone->table,
@@ -1348,7 +1327,6 @@ dbg_zone_exec_detail(
 			assert(knot_node_owner(next_node) == chopped);
 
 			dbg_zone_detail("Inserting new node to zone tree.\n");
-//			TREE_INSERT(zone->tree, knot_node, avl, next_node);
 
 			ret = knot_zone_tree_insert(zone->nodes,
 			                              next_node);
@@ -1763,9 +1741,6 @@ dbg_zone_exec_verb(
 	*removed_hash = ck_remove_item(contents->table, 
 	                               (const char *)knot_dname_name(owner),
 	                               knot_dname_size(owner));
-//	int ret = ck_detete_item(contents->table,
-//	               (const char *)knot_dname_name(owner),
-//	               knot_dname_size(owner), NULL, 0);
 	if (*removed_hash == NULL) {
 		return KNOT_ENONODE;
 	}
@@ -2122,31 +2097,21 @@ dbg_zone_exec_verb(
 
 	// chop leftmost labels until some node is found
 	// copy the name for chopping
-	/* Local allocation, will be discarded. */
-	//knot_dname_t *name_copy = knot_dname_deep_copy(name);
-dbg_zone_exec_detail(
-	//char *n = knot_dname_to_str(name_copy);
+
 	dbg_zone_detail("Finding closest encloser..\nStarting with: %.*s\n",
 	                (int)name_size, name_tmp);
-	//free(n);
-);
 
 	while (item == NULL) {
-		//knot_dname_left_chop_no_copy(name_copy);
 		knot_zone_contents_left_chop(name_tmp, &name_size);
 dbg_zone_exec_detail(
 		dbg_zone_detail("Chopped leftmost label: %.*s\n",
 		               (int)name_size, name_tmp);
 );
 		// not satisfied in root zone!!
-		//assert(name_copy->label_count > 0);
 		assert(name_size > 0);
 
 		item = ck_find_item(zone->table, name_tmp, name_size);
 	}
-
-	/* Directly discard. */
-	//knot_dname_free(&name_copy);
 
 	assert(item != NULL);
 	*closest_encloser = (const knot_node_t *)item->value;
@@ -2285,7 +2250,6 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone)
 	adjust_arg.first_node = NULL;
 	adjust_arg.previous_node = NULL;
 	adjust_arg.err = KNOT_EOK;
-//	adjust_arg.check_ver = check_ver;
 
 	/*
 	 * Adjust the NSEC3 nodes first.
@@ -2396,7 +2360,6 @@ int knot_zone_contents_nsec3_enabled(const knot_zone_contents_t *zone)
 
 	return (zone->nsec3_params.algorithm != 0
 	        && zone->nsec3_nodes->th_root != NULL);
-//	return (zone->nsec3_nodes->th_root != NULL);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2719,10 +2682,6 @@ int knot_zone_contents_shallow_copy2(const knot_zone_contents_t *from,
 
 	contents->zone = from->zone;
 
-//	/* Initialize NSEC3 params */
-//	memcpy(&contents->nsec3_params, &from->nsec3_params,
-//	       sizeof(knot_nsec3_params_t));
-
 	if ((ret = knot_zone_tree_deep_copy(from->nodes,
 	                                    contents->nodes)) != KNOT_EOK
 	    || (ret = knot_zone_tree_deep_copy(from->nsec3_nodes,
@@ -2879,16 +2838,6 @@ static void knot_zc_integrity_check_previous(const knot_node_t *node,
 			++check_data->errors;
 		}
 
-//		if (knot_node_next(check_data->previous) != node) {
-//			char *name2 = knot_dname_to_str(knot_node_owner(
-//			                 knot_node_next(check_data->previous)));
-//			fprintf(stderr, "Wrong next node: node %s, next %s. "
-//			        "Should be %s.\n", name_prev, name2 ,name);
-//			free(name2);
-
-//			++check_data->errors;
-//		}
-
 		free(name_prev);
 	}
 }
@@ -2971,11 +2920,6 @@ static void knot_zc_integrity_check_parent(const knot_node_t *node,
 	    && knot_dname_matched_labels(node_owner, parent_owner)
 	       == knot_dname_label_count(parent_owner)) {
 
-//		// increase the parent's children count
-//		fprintf(stderr, "Parent: %s, node: %s. Increasing children count.\n",
-//		       pname, name);
-//		++check_data->children;
-
 		// check the parent pointer
 		const knot_node_t *parent = knot_node_parent(node);
 		if (parent != check_data->parent) {
@@ -3014,22 +2958,6 @@ static void knot_zc_integrity_check_parent(const knot_node_t *node,
 				++check_data->errors;
 			}
 		}
-	} else {
-		// not a direct child, check children count
-//		if (check_data->parent
-//		    && knot_node_children(check_data->parent)
-//		       != check_data->children) {
-//			fprintf(stderr, "Wrong children count: node %s, count: "
-//			        "%u. Should be: %u\n", pname,
-//			        knot_node_children(check_data->parent),
-//			        check_data->children);
-
-//			++check_data->errors;
-//		}
-
-		// reset the children count
-		//check_data->parent = node;
-//		check_data->children = 0;
 	}
 
 	free(pname);
@@ -3086,15 +3014,6 @@ static int knot_zc_integrity_check_find_dname(const knot_zone_contents_t *zone,
                                               const char *node_name)
 {
 	int ret = 0;
-
-//	find_dname_data_t data_find;
-//	data_find.found = NULL;
-//	data_find.to_find = to_find;
-
-//	int res = knot_zone_contents_dname_table_apply(
-//	                        (knot_zone_contents_t *)zone,
-//	                        find_in_dname_table, (void *)&data_find);
-//	assert(res == KNOT_EOK);
 	
 	knot_dname_t *found = knot_dname_table_find_dname(zone->dname_table, 
 	                                               (knot_dname_t *)to_find);
@@ -3340,27 +3259,12 @@ static void reset_new_nodes(knot_zone_tree_node_t *tree_node, void *data)
 
 /*----------------------------------------------------------------------------*/
 
-/*!< \todo remove debug code. */
-//static void print_child_count(knot_node_t *node, void *data)
-//{
-//	UNUSED(data);
-//	assert(node != NULL);
-
-//	char *name = knot_dname_to_str(knot_node_owner(node));
-//	fprintf(stderr, "Node: %s, children count: %d\n", name,
-//	        knot_node_children(node));
-//	free(name);
-//}
-
-/*----------------------------------------------------------------------------*/
-
 static void count_nsec3_nodes(knot_zone_tree_node_t *tree_node, void *data)
 {
 	assert(tree_node != NULL);
 	assert(tree_node->node != NULL);
 	assert(data != NULL);
 
-//	int *count = (int *)data;
 	knot_node_t *apex = (knot_node_t *)data;
 	assert(apex != NULL);
 	
@@ -3382,10 +3286,6 @@ int knot_zc_integrity_check_child_count(check_data_t *data)
 
 	knot_zone_tree_init(nodes_copy);
 
-//	int ret = knot_zone_contents_tree_apply_inorder(data->contents,
-//	                                                print_child_count,
-//	                                                NULL);
-
 	int ret = knot_zone_tree_deep_copy(data->contents->nodes, nodes_copy);
 	assert(ret == KNOT_EOK);
 
@@ -3401,7 +3301,6 @@ int knot_zc_integrity_check_child_count(check_data_t *data)
 	knot_zone_tree_forward_apply_inorder(nodes_copy, count_children, NULL);
 
 	// add count of NSEC3 nodes to the apex' children count
-//	int nsec3_nodes = 0;
 	fprintf(stderr, "Children count of new apex before NSEC3: %d\n",
 	        data->contents->apex->new_node->children);
 	knot_zone_tree_forward_apply_inorder(data->contents->nsec3_nodes,
@@ -3411,7 +3310,6 @@ int knot_zc_integrity_check_child_count(check_data_t *data)
 
 	// now compare the children counts
 	// iterate over the old zone and search for nodes in the copy
-//	data->children = nsec3_nodes;
 	knot_zone_tree_forward_apply_inorder(nodes_copy, check_child_count,
 	                                     (void *)data);
 

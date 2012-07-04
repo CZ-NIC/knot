@@ -85,9 +85,6 @@ int knot_zonedb_add_zone(knot_zonedb_t *db, knot_zone_t *zone);
 knot_zone_t * knot_zonedb_remove_zone(knot_zonedb_t *db, 
                                       const knot_dname_t *zone_name);
 
-//knot_zone_t *knot_zonedb_replace_zone(knot_zonedb_t *db,
-//                                          knot_zone_t *zone);
-
 /*!
  * \brief Finds zone exactly matching the given zone name.
  *

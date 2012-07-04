@@ -158,8 +158,6 @@ static void knot_packet_init_pointers_query(knot_packet_t *pkt)
 	pkt->question.qname->labels = (uint8_t *)pos;
 	pos += PREALLOC_QNAME_LABELS;
 
-//	pkt->owner_tmp = (uint8_t *)((char *)pkt->question.qname->labels
-//	                              + PREALLOC_QNAME_LABELS);
 
 	// then answer, authority and additional sections
 	if (DEFAULT_ANCOUNT_QUERY == 0) {
@@ -198,10 +196,6 @@ static void knot_packet_init_pointers_query(knot_packet_t *pkt)
 
 	pkt->tmp_rrsets_max = DEFAULT_TMP_RRSETS_QUERY;
 
-//	dbg_packet("End of data: %p (%zu after start of packet)\n",
-//		pkt->tmp_rrsets + DEFAULT_TMP_RRSETS_QUERY,
-//		(void *)(pkt->tmp_rrsets + DEFAULT_TMP_RRSETS_QUERY)
-//		- (void *)pkt);
 	dbg_packet_detail("Allocated total: %u\n", PREALLOC_QUERY);
 
 	assert(pos == (char *)pkt + PREALLOC_QUERY);
@@ -238,10 +232,8 @@ static int knot_packet_parse_header(const uint8_t *wire, size_t *pos,
 	// copy some of the flags: OPCODE and RD
 	// do this by copying flags1 and setting QR to 1, AA to 0 and TC to 0
 	header->flags1 = knot_wire_get_flags1(wire);
-//	knot_wire_flags_set_qr(&header->flags1);
-//	knot_wire_flags_clear_aa(&header->flags1);
-//	knot_wire_flags_clear_tc(&header->flags1);
 	// do not copy flags2 (all set by server)
+
 	header->qdcount = knot_wire_get_qdcount(wire);
 	header->ancount = knot_wire_get_ancount(wire);
 	header->nscount = knot_wire_get_nscount(wire);
@@ -313,10 +305,7 @@ static int knot_packet_parse_question(const uint8_t *wire, size_t *pos,
 
 	*pos = i + 1;
 	question->qtype = knot_wire_read_u16(wire + i + 1);
-	//*pos += 2;
 	question->qclass = knot_wire_read_u16(wire + i + 3);
-	//*pos += 2;
-
 	*pos += 4;
 
 	return KNOT_EOK;
@@ -482,7 +471,6 @@ static int knot_packet_add_rrset(knot_rrset_t *rrset,
                                  const knot_packet_t *packet,
                                  knot_packet_duplicate_handling_t dupl)
 {
-
 	assert(rrset != NULL);
 	assert(rrsets != NULL);
 	assert(rrset_count != NULL);
@@ -770,9 +758,7 @@ int knot_packet_parse_from_wire(knot_packet_t *packet,
 		return KNOT_EMALF;
 	}
 
-	//uint8_t *pos = wireformat;
 	size_t pos = 0;
-	//size_t remaining = size;
 
 	dbg_packet_verb("Parsing wire format of packet (size %zu).\nHeader\n",
 	                size);

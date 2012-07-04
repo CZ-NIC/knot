@@ -90,9 +90,9 @@ typedef struct {
 	int new_rdata_count;
 	int new_rdata_allocated;
 
-//	/*!
-//	 * Deleted (without contents) after successful update.
-//	 */
+	/*!
+	 * Deleted (without contents) after successful update.
+	 */
 	knot_node_t **old_nodes;
 	int old_nodes_count;
 	int old_nodes_allocated;

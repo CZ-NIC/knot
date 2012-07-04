@@ -7,7 +7,6 @@ configure.ac
 KNOWN_ISSUES
 README
 tests/querytcp.c
-src/libknot/Makefile.am
 src/libknot/libknot.h
 src/libknot/common.h
 src/libknot/dname.h

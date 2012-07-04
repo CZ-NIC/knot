@@ -667,14 +667,6 @@ static void knot_node_free_rrsets_from_tree(void *item, void *data)
 
 void knot_node_free_rrsets(knot_node_t *node, int free_rdata_dnames)
 {
-	/* CLEANUP */
-//	knot_rrset_t **rrsets = knot_node_get_rrsets(node);
-//	for (int i = 0; i < node->rrset_count; i++) {
-//		knot_rrset_deep_free(&(rrsets[i]), 0, 1, free_rdata_dnames);
-//	}
-	
-//	free(rrsets);
-
 	if (node == NULL) {
 		return;
 	}

@@ -115,11 +115,6 @@ int knot_changeset_add_rr(knot_rrset_t ***rrsets, size_t *count,
 	// try to find the RRSet in the list of RRSets, but search backwards
 	// as it is probable that the last RRSet is the one to which the RR
 	// belongs
-//	int i = *count - 1;
-	
-//	while (i >= 0 && !knot_changeset_rrsets_match((*rrsets)[i], rr)) {
-//		--i;
-//	}
 
 	// Just check the last RRSet. If the RR belongs to it, merge it,
 	// otherwise just add the RR to the end of the list
@@ -136,24 +131,6 @@ int knot_changeset_add_rr(knot_rrset_t ***rrsets, size_t *count,
 	} else {
 		return knot_changeset_add_rrset(rrsets, count, allocated, rr);
 	}
-
-
-
-//	if (i >= 0) {
-//		// found RRSet to merge the new one into
-//		if (knot_rrset_merge((void **)&(*rrsets)[i],
-//		                       (void **)&rr) != KNOT_EOK) {
-//			return KNOT_ERROR;
-//		}
-
-//		// remove the RR
-//		/*! \todo does this make sense? */
-//		knot_rrset_free(&rr); // used to be deep free with all 1's
-
-//		return KNOT_EOK;
-//	} else {
-//		return knot_changeset_add_rrset(rrsets, count, allocated, rr);
-//	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -261,7 +238,6 @@ int knot_changesets_check_size(knot_changesets_t *changesets)
 
 void knot_free_changeset(knot_changeset_t **changeset)
 {
-	/* XXX XXX investigate wrong frees. */
 	assert((*changeset)->add_allocated >= (*changeset)->add_count);
 	assert((*changeset)->remove_allocated >= (*changeset)->remove_count);
 	assert((*changeset)->allocated >= (*changeset)->size);
@@ -310,7 +286,3 @@ void knot_free_changesets(knot_changesets_t **changesets)
 	free(*changesets);
 	*changesets = NULL;
 }
-
-/*---------------------------------------------------------------------------*/
-
-

@@ -342,7 +342,7 @@ tsig_algorithm_t tsig_rdata_alg(const knot_rrset_t *tsig)
 
 uint64_t tsig_rdata_time_signed(const knot_rrset_t *tsig)
 {
-	/*!< \note How about assert. Or maybe change API??? */
+	/*! \note How about assert. Or maybe change API??? */
 	if (!tsig) {
 		return 0;
 	}
@@ -366,7 +366,7 @@ uint64_t tsig_rdata_time_signed(const knot_rrset_t *tsig)
 
 uint16_t tsig_rdata_fudge(const knot_rrset_t *tsig)
 {
-	/*!< \note How about assert. Or maybe change API??? */
+	/*! \note How about assert. Or maybe change API??? */
 	if (!tsig) {
 		return 0;
 	}
@@ -390,7 +390,7 @@ uint16_t tsig_rdata_fudge(const knot_rrset_t *tsig)
 
 const uint8_t *tsig_rdata_mac(const knot_rrset_t *tsig)
 {
-	/*!< \note How about assert. Or maybe change API??? */
+	/*! \note How about assert. Or maybe change API??? */
 	if (!tsig) {
 		return 0;
 	}
@@ -424,7 +424,7 @@ size_t tsig_rdata_mac_length(const knot_rrset_t *tsig)
 
 uint16_t tsig_rdata_orig_id(const knot_rrset_t *tsig)
 {
-	/*!< \note How about assert. Or maybe change API??? */
+	/*! \note How about assert. Or maybe change API??? */
 	if (!tsig) {
 		return 0;
 	}
@@ -448,7 +448,7 @@ uint16_t tsig_rdata_orig_id(const knot_rrset_t *tsig)
 
 uint16_t tsig_rdata_error(const knot_rrset_t *tsig)
 {
-	/*!< \note How about assert. Or maybe change API??? */
+	/*! \note How about assert. Or maybe change API??? */
 	if (!tsig) {
 		return 0;
 	}
@@ -472,7 +472,7 @@ uint16_t tsig_rdata_error(const knot_rrset_t *tsig)
 
 const uint8_t *tsig_rdata_other_data(const knot_rrset_t *tsig)
 {
-	/*!< \note How about assert. Or maybe change API??? */
+	/*! \note How about assert. Or maybe change API??? */
 	if (!tsig) {
 		return 0;
 	}
@@ -491,7 +491,7 @@ const uint8_t *tsig_rdata_other_data(const knot_rrset_t *tsig)
 
 uint16_t tsig_rdata_other_data_length(const knot_rrset_t *tsig)
 {
-	/*!< \note How about assert. Or maybe change API??? */
+	/*! \note How about assert. Or maybe change API??? */
 	if (!tsig) {
 		return 0;
 	}
@@ -587,7 +587,7 @@ int tsig_rdata_store_current_time(knot_rrset_t *tsig)
 		return KNOT_EBADARG;
 	}
 	time_t curr_time = time(NULL);
-	/*!< \todo bleeding eyes. */
+	/*! \todo bleeding eyes. */
 	tsig_rdata_set_time_signed(tsig, (uint64_t)curr_time);
 	return KNOT_EOK;
 }

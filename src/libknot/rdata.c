@@ -249,7 +249,6 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 				return KNOT_ERROR;
 			}
 			items[i].dname = dname;
-			//*pos += dname->size;
 			parsed += pos2 - *pos;
 			*pos = pos2;
 			dname = 0;
@@ -309,7 +308,6 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 				break;
 			case 3:
 				pos2 = *pos;
-				//fprintf(stderr, "reading dname from pos: %zu\n", pos2);
 				dname = knot_dname_parse_from_wire(
 					         wire, &pos2, total_size, NULL);
 				if (dname == NULL) {
@@ -331,12 +329,9 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 				memcpy((uint8_t *)(items[i].raw_data + 1),
 				       knot_dname_name(dname),
 				       knot_dname_size(dname));
-				
-//				items[i].dname = dname;
-				//*pos += dname->size;
+
 				parsed += pos2 - *pos;
-				
-				//fprintf(stderr, "read %zu bytes.\n", parsed);
+
 				*pos = pos2;
 				knot_dname_free(&dname);
 				
@@ -374,9 +369,7 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 			memcpy(items[i].raw_data + 1, wire + *pos, item_size);
 			*pos += item_size;
 			parsed += item_size;
-		} else if (item_type == KNOT_RDATA_WF_BINARY/*
-		           || item_type == KNOT_RDATA_WF_IPSECGATEWAY*/) {
-//			fprintf(stderr, "item_size was 0, creating empty rdata item.\n");
+		} else if (item_type == KNOT_RDATA_WF_BINARY) {
 			// in this case we are at the end of the RDATA
 			// and should create an empty RDATA item
 			items[i].raw_data = (uint16_t *)malloc(2);
@@ -389,8 +382,6 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 		} else if (item_type != KNOT_RDATA_WF_COMPRESSED_DNAME
 		           && item_type != KNOT_RDATA_WF_UNCOMPRESSED_DNAME
 		           && item_type != KNOT_RDATA_WF_LITERAL_DNAME) {
-//				fprintf(stderr, "RDATA item not set (i: %d), type: %u"
-//					" RDATA item type: %d\n", i, desc->type ,item_type);
 				assert(0);
 		}
 
@@ -547,126 +538,6 @@ void knot_rdata_deep_free(knot_rdata_t **rdata, uint type,
 	free(*rdata);
 	*rdata = NULL;
 }
-
-/*----------------------------------------------------------------------------*/
-/* CLEANUP */
-//uint knot_rdata_wire_size(const knot_rdata_t *rdata,
-//                            const uint8_t *format)
-//{
-//	uint size = 0;
-
-//	for (int i = 0; i < rdata->count; ++i) {
-//		switch (format[i]) {
-//		case KNOT_RDATA_WF_COMPRESSED_DNAME:
-//		case KNOT_RDATA_WF_UNCOMPRESSED_DNAME:
-//		case KNOT_RDATA_WF_LITERAL_DNAME:
-//			size += knot_dname_size(rdata->items[i].dname);
-//			break;
-//		case KNOT_RDATA_WF_BYTE:
-//			size += 1;
-//			break;
-//		case KNOT_RDATA_WF_SHORT:
-//			size += 2;
-//			break;
-//		case KNOT_RDATA_WF_LONG:
-//			size += 4;
-//			break;
-//		case KNOT_RDATA_WF_A:
-//			size += 4;
-//			break;
-//		case KNOT_RDATA_WF_AAAA:
-//			size += 16;
-//			break;
-//		case KNOT_RDATA_WF_BINARY:
-//		case KNOT_RDATA_WF_APL:            // saved as binary
-//		case KNOT_RDATA_WF_IPSECGATEWAY:   // saved as binary
-//			size += rdata->items[i].raw_data[0];
-//			break;
-//		case KNOT_RDATA_WF_TEXT:
-//		case KNOT_RDATA_WF_BINARYWITHLENGTH:
-//			size += rdata->items[i].raw_data[0] + 1;
-//			break;
-//		default:
-//			assert(0);
-//		}
-//	}
-//	return size;
-//}
-
-/*----------------------------------------------------------------------------*/
-
-//int knot_rdata_to_wire(const knot_rdata_t *rdata, const uint8_t *format,
-//                         uint8_t *buffer, uint buf_size)
-//{
-//	uint copied = 0;
-//	uint8_t tmp[KNOT_MAX_RDATA_WIRE_SIZE];
-//	uint8_t *to = tmp;
-
-//	for (int i = 0; i < rdata->count; ++i) {
-//		assert(copied < KNOT_MAX_RDATA_WIRE_SIZE);
-
-//		const uint8_t *from = (uint8_t *)rdata->items[i].raw_data;
-//		uint size = 0;
-
-//		switch (format[i]) {
-//		case KNOT_RDATA_WF_COMPRESSED_DNAME:
-//		case KNOT_RDATA_WF_UNCOMPRESSED_DNAME:
-//		case KNOT_RDATA_WF_LITERAL_DNAME:
-//			size = knot_dname_size(rdata->items[i].dname);
-//			from = knot_dname_name(rdata->items[i].dname);
-
-//			break;
-//		case KNOT_RDATA_WF_BYTE:
-//			size = 1;
-//			break;
-//		case KNOT_RDATA_WF_SHORT:
-//			size = 2;
-//			break;
-//		case KNOT_RDATA_WF_LONG:
-//			size = 4;
-//			break;
-//		case KNOT_RDATA_WF_A:
-//			size = 4;
-//			break;
-//		case KNOT_RDATA_WF_AAAA:
-//			size = 16;
-//			break;
-//		case KNOT_RDATA_WF_TEXT:
-//		case KNOT_RDATA_WF_BINARYWITHLENGTH:
-//			// size stored in the first two bytes, but in little
-//			// endian and we need only the lower byte from it
-//			*to = *from; // lower byte is the first in little endian
-//			to += 1;
-//		case KNOT_RDATA_WF_BINARY:
-//		case KNOT_RDATA_WF_APL:            // saved as binary
-//		case KNOT_RDATA_WF_IPSECGATEWAY:   // saved as binary
-//			// size stored in the first two bytes, those bytes
-//			// must not be copied
-//			size = rdata->items[i].raw_data[0];
-//			from += 2; // skip the first two bytes
-//			break;
-//		default:
-//			assert(0);
-//		}
-
-//		assert(size != 0);
-//		assert(copied + size < KNOT_MAX_RDATA_WIRE_SIZE);
-
-//		memcpy(to, from, size);
-//		to += size;
-//		copied += size;
-//	}
-
-//	if (copied > buf_size) {
-//		dbg_rdata("Not enough place allocated for function "
-//		            "knot_rdata_to_wire(). Allocated %u, need %u\n",
-//		            buf_size, copied);
-//		return -1;
-//	}
-
-//	memcpy(buffer, tmp, copied);
-//	return 0;
-//}
 
 /*----------------------------------------------------------------------------*/
 

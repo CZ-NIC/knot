@@ -41,11 +41,6 @@
 #include "zone/zone-contents.h"
 
 /*----------------------------------------------------------------------------*/
-
-//typedef TREE_HEAD(avl_tree, knot_node) avl_tree_t;
-//struct event_t;
-
-/*----------------------------------------------------------------------------*/
 /*!
  * \brief Return values for search functions.
  *

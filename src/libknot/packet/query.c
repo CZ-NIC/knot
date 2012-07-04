@@ -209,7 +209,7 @@ int knot_query_add_rrset_authority(knot_packet_t *query,
 	// reserve space for OPT RR
 	/*! \todo Why here??? */
 	endp -= query->opt_rr.size;
-	/*! \note [TSIG] reserve space for TSIG RR */
+	/* Reserve space for TSIG RR */
 	endp -= query->tsig_size;
 	
 	uint8_t *pos = startp;

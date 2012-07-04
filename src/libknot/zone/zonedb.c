@@ -135,14 +135,8 @@ knot_zone_t *knot_zonedb_remove_zone(knot_zonedb_t *db,
 	// remove the zone from the skip list, but do not destroy it
 	gen_tree_remove(db->zone_tree, &dummy_zone);
 
-//	if (destroy_zone) {
-//		// properly destroy the zone and all its contents
-//		knot_zone_deep_free(&z, 0);
-//	}
-
 	db->zone_count--;
 
-	//return KNOT_EOK;
 	return z;
 }
 
@@ -168,11 +162,7 @@ const knot_zone_t *knot_zonedb_find_zone_for_name(knot_zonedb_t *db,
 	knot_zone_t dummy_zone;
 	dummy_zone.name = knot_dname_deep_copy(dname);
 	void *found = NULL;
-	
-//	int exact_match = gen_tree_find_less_or_equal(db->zone_tree,
-//	                                              &dummy_zone,
-//	                                              &found);
-//	UNUSED(exact_match);
+
 	found = gen_tree_find(db->zone_tree, &dummy_zone);
 	while (found == NULL && knot_dname_label_count(dummy_zone.name) > 0) {
 		knot_dname_left_chop_no_copy(dummy_zone.name);

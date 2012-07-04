@@ -61,12 +61,6 @@ int knot_query_nsid_requested(const knot_packet_t *query);
 
 int knot_query_edns_supported(const knot_packet_t *query);
 
-//int knot_query_set_qname(knot_packet_t *query, const knot_dname_t *qname);
-
-//int knot_query_set_qtype(knot_packet_t *query, uint16_t qtype);
-
-//int knot_query_set_qclass(knot_packet_t *query, uint16_t qclass);
-
 int knot_query_init(knot_packet_t *query);
 
 int knot_query_set_question(knot_packet_t *query,

@@ -180,11 +180,6 @@ dbg_response_exec(
 		return KNOT_ENOMEM;
 	}
 
-	// store the position of the name
-//	table->dnames[table->count] = dname;
-//	table->offsets[table->count] = pos;
-//	++table->count;
-
 	/*
 	 * Store positions of ancestors if more than 1 label was not matched.
 	 *
@@ -338,15 +333,9 @@ static int knot_response_compress_dname(const knot_dname_t *dname,
 	knot_compr_t *compr, uint8_t *dname_wire, size_t max, int compr_cs)
 {
 	int size = 0;
-	/*!
-	 * \todo Compress!!
-	 *
-	 * if pos == 0, do not store the position!
-	 */
 
 	// try to find the name or one of its ancestors in the compr. table
 #ifdef COMPRESSION_PEDANTIC
-	//knot_dname_t *to_find = knot_dname_copy(dname);
 	knot_dname_t *to_find = (knot_dname_t *)dname;
 	int copied = 0;
 #else
@@ -645,10 +634,6 @@ dbg_response_exec_verb(
 		return KNOT_EOK;
 	}
 
-	//uint8_t *rrset_wire = (uint8_t *)malloc(PREALLOC_RRSET_WIRE);
-	//short rrset_size = 0;
-
-	//uint8_t *owner_wire = (uint8_t *)malloc(rrset->owner->size);
 	/*
 	 * We may pass the current position to the compression function
 	 * because if the owner will be put somewhere, it will be on the
@@ -658,7 +643,6 @@ dbg_response_exec_verb(
 	 */
 
 	knot_compr_t compr_info;
-	//compr_info.new_entries = 0;
 	compr_info.table = compr;
 	compr_info.wire_pos = wire_pos;
 	compr_info.owner.pos = 0;
@@ -696,9 +680,6 @@ dbg_response_exec_verb(
 		++rrs;
 	} while ((rdata = knot_rrset_rdata_next(rrset, rdata)) != NULL);
 
-	//memcpy(*pos, rrset_wire, rrset_size);
-	//*size += rrset_size;
-	//*pos += rrset_size;
 
 	// the whole RRSet did fit in
 	assert (rrset_size <= max_size);

@@ -487,7 +487,6 @@ static int knot_rrset_rr_to_wire(const knot_rrset_t *rrset,
 	*pos += 2;
 
 	size += 10;
-//	compr->wire_pos += size;
 	
 	dbg_rrset_detail("Max size: %zu, size: %d\n", max_size, size);
 
@@ -518,7 +517,6 @@ static int knot_rrset_rr_to_wire(const knot_rrset_t *rrset,
 			                 knot_dname_size(dname));
 			*pos += knot_dname_size(dname);
 			rdlength += knot_dname_size(dname);
-//			compr->wire_pos += dname->size;
 			break;
 		}
 		default: {
@@ -534,7 +532,6 @@ static int knot_rrset_rr_to_wire(const knot_rrset_t *rrset,
 			dbg_rrset_detail("Raw data size: %d\n", raw_data[0]);
 			*pos += raw_data[0];
 			rdlength += raw_data[0];
-//			compr->wire_pos += raw_data[0];
 			break;
 		}
 		}
@@ -635,7 +632,6 @@ int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to)
 	*to = (knot_rrset_t *)calloc(1, sizeof(knot_rrset_t));
 	CHECK_ALLOC_LOG(*to, KNOT_ENOMEM);
 
-	//(*to)->owner = knot_dname_deep_copy(from->owner);
 	(*to)->owner = from->owner;
 	knot_dname_retain((*to)->owner);
 	(*to)->rclass = from->rclass;
@@ -685,6 +681,7 @@ int knot_rrset_shallow_copy(const knot_rrset_t *from, knot_rrset_t **to)
 
 void knot_rrset_rotate(knot_rrset_t *rrset)
 {
+	/*! \todo Maybe implement properly one day. */
 	//rrset->rdata = rrset->rdata->next;
 }
 
@@ -739,10 +736,7 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
 		                       free_rdata_dnames);
 	}
 
-	/*! \todo Release owner every time? */
-	//if (free_owner) {
-		knot_dname_release((*rrset)->owner);
-	//}
+	knot_dname_release((*rrset)->owner);
 
 	free(*rrset);
 	*rrset = NULL;

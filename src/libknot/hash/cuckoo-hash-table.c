@@ -937,8 +937,6 @@ void ck_destroy_table(ck_hash_table_t **table, void (*dtor_value)(void *value),
 	for (uint t = 0; t < (*table)->table_count; ++t) {
 		free((*table)->tables[t]);
 	}
-	// destroy stash
-//	da_destroy(&(*table)->stash);
 
 	pthread_mutex_unlock(&(*table)->mtx_table);
 	// destroy mutex, assuming that here noone will lock the mutex again
@@ -1043,7 +1041,6 @@ int ck_resize_table(ck_hash_table_t *table)
 	}
 	
 	return ck_rehash(table);
-	//return 0;
 }
 
 int ck_insert_item(ck_hash_table_t *table, const char *key,
@@ -1075,9 +1072,6 @@ int ck_insert_item(ck_hash_table_t *table, const char *key,
 		}
 	}
 
-	// there should be at least 2 free places
-	//assert(da_try_reserve(&table->stash, 2) == 0);
-	//da_reserve(&table->stash, 1);
 	ck_hash_table_item_t *free_place = NULL;
 	if (ck_hash_item(table, &new_item, &free_place,
 	                 table->generation) != 0) {
@@ -1602,7 +1596,6 @@ int ck_rehash(ck_hash_table_t *table)
 		// which will be put to the stash
 		ck_hash_table_item_t *free = NULL;
 		assert(table->hashed == NULL);
-//		ck_hash_table_item_t *old = table->hashed;
 
 		for (uint t = 0; t < table->table_count; ++t) {
 			uint rehashed = 0;

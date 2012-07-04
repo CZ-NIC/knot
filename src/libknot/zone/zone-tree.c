@@ -132,8 +132,7 @@ static int knot_zone_tree_deep_copy_node(knot_zone_tree_node_t *from,
 	}
 
 	int ret = knot_node_shallow_copy(from->node, &(*to)->node);
-//	printf("Copied node: %p to node %p. New node1: %p, new node 2: %p\n",
-//	       from->node, (*to)->node, from->node->new_node, (*to)->node->new_node);
+
 	if (ret != KNOT_EOK) {
 		dbg_zone_verb("Failed to do shallow copy of node.\n");
 		free(*to);
@@ -402,8 +401,6 @@ int knot_zone_tree_remove(knot_zone_tree_t *tree,
 	knot_node_free(&tmp_data, 0);
 	free(tmp);
 
-//	*removed = (n) ? n->node : NULL;
-//	free(n);
 	*removed = n;
 	
 	return KNOT_EOK;

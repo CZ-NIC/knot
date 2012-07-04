@@ -492,8 +492,6 @@ knot_dname_t *knot_dname_parse_from_wire(const uint8_t *wire,
 
 		if (knot_wire_is_pointer(wire + p)) {
 			// pointer.
-
-//			printf("Pointer.\n");
 			size_t ptr = knot_wire_get_pointer(wire + p);
 
 			/* Check that the pointer points backwards

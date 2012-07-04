@@ -39,8 +39,6 @@ typedef struct knot_zone_tree_node {
 	TREE_ENTRY(knot_zone_tree_node) avl;
 	/*! \brief Zone tree data. */
 	knot_node_t *node;
-	/*! \brief Owner of the node. */
-//	knot_dname_t *owner;
 } knot_zone_tree_node_t;
 
 /*----------------------------------------------------------------------------*/
