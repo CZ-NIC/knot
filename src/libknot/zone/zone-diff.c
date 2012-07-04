@@ -833,53 +833,83 @@ int knot_zone_contents_diff(knot_zone_contents_t *zone1,
 	return KNOT_EOK;
 }
 
-/* Mostly just for testing. We only shall diff zones in memory later. */
-int knot_zone_diff_zones(const char *zonefile1, const char *zonefile2)
+int knot_zone_diff_create_changesets(const knot_zone_contents_t *z1,
+                                     const knot_zone_contents_t *z2,
+                                     knot_changesets_t **changesets)
 {
+	if (z1 == NULL || z2 == NULL) {
+		dbg_zonediff("zone_diff: create_changesets: NULL arguments.\n");
+		return KNOT_EBADARG;
+	}
+	/* Create changesets. */
+	int ret = knot_changeset_allocate(changesets);
+	if (ret != KNOT_EOK) {
+		dbg_zonediff("zone_diff: create_changesets: 
+		             "Could not allocate changesets."
+		             "Reason: %s.\n", knot_strerror(ret));
+		return ret;
+	}
+	
+	ret = knot_zone_contents_diff(z1, z2, &((*changesets)->sets[0]));
+	if (ret != KNOT_EOK) {
+		dbg_zonediff("zone_diff: create_changesets: 
+		             "Could not diff zones. "
+		             "Reason: %s.\n", knot_strerror(ret));
+		return ret;
+	}
+	
+	(*changesets)->count = 1;
+	
+	return KNOT_EOK;
+}
+
+/* Mostly just for testing. We only shall diff zones in memory later. */
+//int knot_zone_diff_zones(const char *zonefile1, const char *zonefile2)
+//{
 	/* Compile test zones. */
 //	int ret = zone_read("example.com.", "/home/jan/test/testzone1", "tmpzone1.db", 0);
 //	assert(ret == KNOT_EOK);
 //	ret = zone_read("example.com.", "/home/jan/test/testzone2", "tmpzone2.db", 0);
 //	assert(ret == KNOT_EOK);
-	/* Load test zones. */
-	zloader_t *loader = NULL;
-	int ret = knot_zload_open(&loader, "tmpzone1.db");
-	assert(ret == KNOT_EOK);
-	knot_zone_t *z1 = knot_zload_load(loader);
-	ret = knot_zload_open(&loader, "tmpzone2.db");
-	assert(ret == KNOT_EOK);
-	knot_zone_t *z2 = knot_zload_load(loader);
-	assert(z1 && z2);
-	knot_changeset_t *changeset = malloc(sizeof(knot_changeset_t));
-	memset(changeset, 0, sizeof(knot_changeset_t));
-	assert(knot_zone_contents_diff(z1->contents, z2->contents,
-	                               changeset) == KNOT_EOK);
-	dbg_zonediff("Changeset created: From=%d to=%d.\n", changeset.serial_from,
-	       changeset.serial_to);
-//	knot_changesets_t chngsets;
-//	chngsets->sets = malloc(sizeof(knot_changeset_t));
-//	chngsets->sets[0] = changeset;
-//	chngsets->count = 1;
-//	chngsets->allocated = 1;
-//	knot_zone_contents_t *new_zone = NULL;
-//	ret = xfrin_apply_changesets(z1, chngsets, &new_zone);
-//	if (ret != KNOT_EOK) {
-//		dbg_zonediff("Application of changesets failed. (%s)\n",
-//		       knot_strerror(ret));
-//	}
+//	/* Load test zones. */
+//	zloader_t *loader = NULL;
+//	int ret = knot_zload_open(&loader, "tmpzone1.db");
+//	assert(ret == KNOT_EOK);
+//	knot_zone_t *z1 = knot_zload_load(loader);
+//	ret = knot_zload_open(&loader, "tmpzone2.db");
+//	assert(ret == KNOT_EOK);
+//	knot_zone_t *z2 = knot_zload_load(loader);
+//	assert(z1 && z2);
+//	knot_changeset_t *changeset = malloc(sizeof(knot_changeset_t));
+//	memset(changeset, 0, sizeof(knot_changeset_t));
+//	assert(knot_zone_contents_diff(z1->contents, z2->contents,
+//	                               changeset) == KNOT_EOK);
+//	dbg_zonediff("Changeset created: From=%d to=%d.\n", changeset.serial_from,
+//	       changeset.serial_to);
+////	knot_changesets_t chngsets;
+////	chngsets->sets = malloc(sizeof(knot_changeset_t));
+////	chngsets->sets[0] = changeset;
+////	chngsets->count = 1;
+////	chngsets->allocated = 1;
+////	knot_zone_contents_t *new_zone = NULL;
+////	ret = xfrin_apply_changesets(z1, chngsets, &new_zone);
+////	if (ret != KNOT_EOK) {
+////		dbg_zonediff("Application of changesets failed. (%s)\n",
+////		       knot_strerror(ret));
+////	}
 	
-//	assert(new_zone);
+////	assert(new_zone);
 	
-	/* Dump creted zone. */
-//	FILE *f = fopen("testovani", "w");
-//	zone_dump_text(new_zone, f);
+//	/* Dump creted zone. */
+////	FILE *f = fopen("testovani", "w");
+////	zone_dump_text(new_zone, f);
 	
-	knot_zone_deep_free(&z2, 0);
-	knot_zone_deep_free(&z1, 0);
-//	knot_zone_contents_deep_free(&new_zone, 1);
-//	knot_zone_free(&z1);
+//	knot_zone_deep_free(&z2, 0);
+//	knot_zone_deep_free(&z1, 0);
+////	knot_zone_contents_deep_free(&new_zone, 1);
+////	knot_zone_free(&z1);
 	
-	knot_free_changeset(&changeset);
-	exit(0);
-}
+//	knot_free_changeset(&changeset);
+//	exit(0);
+//}
 
