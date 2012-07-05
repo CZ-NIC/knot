@@ -314,14 +314,11 @@ static int conf_process(conf_t *conf)
 
 		const char *dbext = "diff.db";
 		memcpy(dpos, zone->name, zname_len + 1);
-		printf("zone->name = %s\n", zone->name);
 		for (int i = 0; i < zname_len; ++i) {
 			if (dpos[i] == '/') dpos[i] = '_';
 		}
 		memcpy(dpos + zname_len, dbext, strlen(dbext) + 1);
 		zone->ixfr_db = dest;
-		printf("zone->ixfr_db = %s\n", zone->ixfr_db);
-		printf("zone->file = %s\n", zone->db);
 	}
 	
 	/* Update UID and GID. */
