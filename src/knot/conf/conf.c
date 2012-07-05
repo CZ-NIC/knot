@@ -304,18 +304,24 @@ static int conf_process(conf_t *conf)
 			ret = KNOTD_ENOMEM; /* Error report. */
 			continue;
 		}
-		strncpy(dest, conf->storage, stor_len + 1);
+		dpos = dest;
+		memcpy(dpos, conf->storage, stor_len + 1);
+		dpos += stor_len;
 		if (conf->storage[stor_len - 1] != '/') {
-			strncat(dest, "/", 1);
+			*(dpos++) = '/';	
+			*dpos = '\0';
 		}
 
 		const char *dbext = "diff.db";
-		strncat(dest, zone->name, zname_len);
+		memcpy(dpos, zone->name, zname_len + 1);
+		printf("zone->name = %s\n", zone->name);
 		for (int i = 0; i < zname_len; ++i) {
-			if (dest[i] == '/') dest[i] = '_';
+			if (dpos[i] == '/') dpos[i] = '_';
 		}
-		strncat(dest, dbext, strlen(dbext));
+		memcpy(dpos + zname_len, dbext, strlen(dbext) + 1);
 		zone->ixfr_db = dest;
+		printf("zone->ixfr_db = %s\n", zone->ixfr_db);
+		printf("zone->file = %s\n", zone->db);
 	}
 	
 	/* Update UID and GID. */
