@@ -23,7 +23,7 @@
 #include "zone-diff.h"
 
 struct zone_diff_param {
-	knot_zone_contents_t *contents;
+	const knot_zone_contents_t *contents;
 	char nsec3;
 	knot_changeset_t *changeset;
 	int ret;
@@ -121,7 +121,7 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 /*!< \todo Only use add or remove function, not both as they are the same. */
 /*!< \todo Also, this might be all handled by function in changesets.h!!! */
 static int knot_zone_diff_changeset_add_rrset(knot_changeset_t *changeset,
-                                              knot_rrset_t *rrset)
+                                              const knot_rrset_t *rrset)
 {
 	/* Remove all RRs of the RRSet. */
 	if (changeset == NULL || rrset == NULL) {
@@ -157,7 +157,7 @@ static int knot_zone_diff_changeset_add_rrset(knot_changeset_t *changeset,
 }
 
 static int knot_zone_diff_changeset_remove_rrset(knot_changeset_t *changeset,
-                                                 knot_rrset_t *rrset)
+                                                 const knot_rrset_t *rrset)
 {
 	/* Remove all RRs of the RRSet. */
 	if (changeset == NULL) {
@@ -205,7 +205,9 @@ static int knot_zone_diff_changeset_remove_node(knot_changeset_t *changeset,
 	}
 	
 	dbg_zonediff("zone_diff: remove_node: Removing node:\n");
-	knot_node_dump(node, 1);
+dbg_zonediff_exec_verb(
+	knot_node_dump((knot_node_t *)node, 1);
+);
 
 	const knot_rrset_t **rrsets = knot_node_rrsets(node);
 	if (rrsets == NULL) {
@@ -707,7 +709,7 @@ static void knot_zone_diff_add_new_nodes(knot_node_t *node, void *data)
 	* and has to be added to changeset. Differencies on the RRSet level are
 	* already handled.
 	*/
-	knot_zone_contents_t *other_zone = param->contents;
+	const knot_zone_contents_t *other_zone = param->contents;
 	assert(other_zone);
 	
 	const knot_dname_t *node_owner = knot_node_owner(node);
@@ -739,8 +741,8 @@ static void knot_zone_diff_add_new_nodes(knot_node_t *node, void *data)
 	assert(param->ret == KNOT_EOK);
 }
 
-int knot_zone_contents_diff(knot_zone_contents_t *zone1,
-                            knot_zone_contents_t *zone2,
+int knot_zone_contents_diff(const knot_zone_contents_t *zone1,
+                            const knot_zone_contents_t *zone2,
                             knot_changeset_t *changeset)
 {
 	if (zone1 == NULL || zone2 == NULL) {
@@ -772,8 +774,10 @@ int knot_zone_contents_diff(knot_zone_contents_t *zone1,
 	param.nsec3 = 0;
 	param.changeset = changeset;
 	param.ret = KNOT_EOK;
-	ret = knot_zone_contents_tree_apply_inorder(zone1, knot_zone_diff_node,
-	                                            &param);
+	ret = knot_zone_contents_tree_apply_inorder(
+	                        (knot_zone_contents_t *)zone1,
+	                        knot_zone_diff_node,
+	                        &param);
 	if (ret != KNOT_EOK) {
 		dbg_zonediff("zone_diff: Tree traversal failed "
 		             "with error: %s. Error from inner function: %s\n",
@@ -784,7 +788,7 @@ int knot_zone_contents_diff(knot_zone_contents_t *zone1,
 
 	/* Do the same for NSEC3 nodes. */
 	param.nsec3 = 1;
-	ret = knot_zone_contents_nsec3_apply_inorder(zone1, knot_zone_diff_node,
+	ret = knot_zone_contents_nsec3_apply_inorder((knot_zone_contents_t *)zone1, knot_zone_diff_node,
 	                                             &param);
 	if (ret != KNOT_EOK) {
 		dbg_zonediff("zone_diff: Tree traversal failed "
@@ -800,7 +804,7 @@ int knot_zone_contents_diff(knot_zone_contents_t *zone1,
 	 */
 	param.nsec3 = 0;
 	param.contents = zone1;
-	ret = knot_zone_contents_tree_apply_inorder(zone2,
+	ret = knot_zone_contents_tree_apply_inorder((knot_zone_contents_t *)zone2,
 		knot_zone_diff_add_new_nodes,
 		&param);
 	if (ret != KNOT_EOK) {
@@ -814,7 +818,7 @@ int knot_zone_contents_diff(knot_zone_contents_t *zone1,
 	/* NSEC3 nodes. */
 	param.nsec3 = 1;
 	param.contents = zone1;
-	ret = knot_zone_contents_nsec3_apply_inorder(zone2,
+	ret = knot_zone_contents_nsec3_apply_inorder((knot_zone_contents_t *)zone2,
 		knot_zone_diff_add_new_nodes,
 		&param);
 	if (ret != KNOT_EOK) {
@@ -838,7 +842,7 @@ int knot_zone_diff_create_changesets(const knot_zone_contents_t *z1,
 	/* Create changesets. */
 	int ret = knot_changeset_allocate(changesets);
 	if (ret != KNOT_EOK) {
-		dbg_zonediff("zone_diff: create_changesets: 
+		dbg_zonediff("zone_diff: create_changesets: "
 		             "Could not allocate changesets."
 		             "Reason: %s.\n", knot_strerror(ret));
 		return ret;
@@ -846,7 +850,7 @@ int knot_zone_diff_create_changesets(const knot_zone_contents_t *z1,
 	
 	ret = knot_zone_contents_diff(z1, z2, &((*changesets)->sets[0]));
 	if (ret != KNOT_EOK) {
-		dbg_zonediff("zone_diff: create_changesets: 
+		dbg_zonediff("zone_diff: create_changesets: "
 		             "Could not diff zones. "
 		             "Reason: %s.\n", knot_strerror(ret));
 		return ret;

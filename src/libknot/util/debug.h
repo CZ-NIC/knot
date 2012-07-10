@@ -393,9 +393,11 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 #ifdef DEBUG_ENABLE_DETAILS
 #define dbg_zonediff_detail(msg...) fprintf(stderr, msg)
 #define dbg_zonediff_hex_detail(data, len)  hex_print((data), (len))
+#define dbg_zonediff_exec_verb(cmds) do { cmds } while (0)
 #else
 #define dbg_zonediff_detail(msg...)
 #define dbg_zonediff_hex_detail(data, len)
+#define dbg_zonediff_exec_verb(cmds)
 #endif
 
 /* No messages. */
@@ -406,6 +408,7 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 #define dbg_zonediff_hex_verb(data, len)
 #define dbg_zonediff_detail(msg...)
 #define dbg_zonediff_hex_detail(data, len)
+#define dbg_zonediff_exec_verb(cmds)
 #endif
 
 /******************************************************************************/
