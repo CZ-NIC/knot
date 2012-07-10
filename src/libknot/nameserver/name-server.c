@@ -3264,8 +3264,22 @@ int knot_ns_error_response_from_query(const knot_nameserver_t *nameserver,
 		                        knot_packet_qname(query));
 
 		if (max_size > KNOT_WIRE_HEADER_SIZE + question_size) {
-			memcpy(response_wire + *rsize,
-			       knot_packet_wireformat(query), question_size);
+			/*
+			 * At this point, the wireformat of query may be in the
+			 * same place where the response is assembled. This does
+			 * not matter before this point, although the query 
+			 * wireformat is rewritten. Now we just need to copy
+			 * the original Question section. So if the pointers are
+			 * the same, we may just leave it and increase the 
+			 * response wire size. Otherwise we must copy the data.
+			 */
+			if (response_wire != knot_packet_wireformat(query)) {
+				memcpy(response_wire + KNOT_WIRE_HEADER_SIZE,
+				       knot_packet_wireformat(query) 
+				       + KNOT_WIRE_HEADER_SIZE, question_size);
+			}
+			*rsize += question_size;
+			
 		}
 	}
 
