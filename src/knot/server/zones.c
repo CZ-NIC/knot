@@ -2354,6 +2354,9 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 					    tsig_rdata_mac_length(tsig),
 					    digest, &digest_size, tsig_key_zone,
 					    tsig_rcode, tsig_prev_time_signed);
+					
+					// no need to keep the digest
+					free(digest);
 
 					*rsize = answer_size;
 				} else {
