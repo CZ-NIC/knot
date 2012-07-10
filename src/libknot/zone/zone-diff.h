@@ -21,10 +21,8 @@
 #include "libknot/updates/changesets.h"
 
 /*! \brief zone1 -> zone2 */
-int knot_zone_contents_diff(const knot_zone_contents_t *zone1,
-                            const knot_zone_contents_t *zone2,
-                            knot_changeset_t *changeset);
-
-int knot_zone_diff_zones(const char *zonefile1, const char *zonefile2);
+int knot_zone_diff_create_changesets(const knot_zone_contents_t *z1,
+                                     const knot_zone_contents_t *z2,
+                                     knot_changesets_t **changesets);
 
 #endif // _KNOT_ZONE_DIFF_H_
