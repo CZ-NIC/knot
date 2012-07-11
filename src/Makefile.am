@@ -157,8 +157,6 @@ libknot_la_SOURCES =				\
 	libknot/util/debug.c			\
 	libknot/util/debug.h			\
 	libknot/util/utils.h			\
-	libknot/util/conv.h			\
-	libknot/util/conv.c			\
 	libknot/util/descriptor.c		\
 	libknot/util/tolower.h			\
 	libknot/util/tolower.c			\
@@ -223,6 +221,8 @@ libknots_la_SOURCES =				\
 	common/mempattern.c			\
 	common/lists.c				\
 	common/base32.c				\
+	common/base64.c				\
+	common/base64.h				\
 	common/lists.h				\
 	common/heap.h				\
 	common/heap.c				\

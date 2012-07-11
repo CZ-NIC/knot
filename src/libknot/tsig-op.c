@@ -21,10 +21,10 @@
 #include <time.h>
 
 #include "common.h"
+#include "common/base64.h"
 #include "tsig.h"
 #include "tsig-op.h"
 #include "util/wire.h"
-#include "libknot/util/conv.h"
 #include "util/error.h"
 #include "util/debug.h"
 #include "consts.h"
@@ -32,7 +32,9 @@
 
 const int KNOT_TSIG_MAX_DIGEST_SIZE = 64;    // size of HMAC-SHA512 digest
 const uint16_t KNOT_TSIG_FUDGE_DEFAULT = 300;  // default Fudge value
-
+enum b64_const {
+	B64BUFSIZE = 65535
+};
 
 static int knot_tsig_check_algorithm(const knot_rrset_t *tsig_rr)
 {
@@ -97,14 +99,21 @@ static int knot_tsig_compute_digest(const uint8_t *wire, size_t wire_len,
 
 	/* Decode key from Base64. */
 	char decoded_key[B64BUFSIZE];
-
-	int decoded_key_size = b64_pton(key->secret, (uint8_t *)decoded_key,
-					B64BUFSIZE);
+	
+	size_t decoded_key_size = B64BUFSIZE;
+	int ret = base64_decode(key->secret, strlen(key->secret),
+	                        decoded_key,
+	                        &decoded_key_size);
+	if (ret != 1) {
+		dbg_tsig("TSIG: New decode function failed! (%d)\n", ret);
+		return KNOT_ERROR;
+	}
+	
 	if (decoded_key_size < 0) {
 		dbg_tsig("TSIG: Could not decode Base64\n");
 		return KNOT_ERROR;
 	}
-
+	
 	dbg_tsig_detail("TSIG: decoded key size: %d\n", decoded_key_size);
 	dbg_tsig_detail("TSIG: decoded key: '%*s'\n", decoded_key_size, decoded_key);
 	dbg_tsig_detail("Wire for signing is %zu bytes long.\n", wire_len);

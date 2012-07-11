@@ -251,14 +251,14 @@ src/libknot/tsig.h
 src/libknot/tsig.c
 src/libknot/tsig-op.c
 src/libknot/tsig-op.h
-src/libknot/util/conv.c
-src/libknot/util/conv.h
 src/tests/libknot/libknot/tsig_tests.h
 src/tests/libknot/libknot/tsig_tests.c
 src/knot/zone/semantic-check.c
 src/knot/zone/semantic-check.h
 src/tests/xfr_tests.h
 src/tests/xfr_tests.c
+src/common/base64.c
+src/common/base64.h
 doc/knot.texi
 doc/configuration.texi
 doc/indices.texi
