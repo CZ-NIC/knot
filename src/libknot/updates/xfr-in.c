@@ -2258,6 +2258,11 @@ static void xfrin_switch_node_in_hash_table(ck_hash_table_item_t *item,
 static void xfrin_switch_node_in_dname_table(knot_dname_t *dname, void *data)
 {
 	UNUSED(data);
+	
+	/* dname is not checked here (for NULL value), which resulted in crash
+	 * on howl recently. However, dname should not be NULL here at all, 
+	 * it is a sign of some other error.
+	 */
 
 	if (knot_dname_node(dname) == NULL) {
 		return;

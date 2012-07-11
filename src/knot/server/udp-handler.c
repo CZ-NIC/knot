@@ -103,12 +103,22 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		if (res > 0) { /* Returned RCODE */
 //			int ret = knot_ns_error_response_from_query_wire(ns,
 //				qbuf, qbuflen, res, qbuf, resp_len);
-			int ret = knot_ns_error_response_from_query_wire(ns,
-				qbuf, qbuflen, res, qbuf, resp_len);
+			int ret = knot_ns_error_response_from_query(ns,
+				packet, res, qbuf, resp_len);
 
 			if (ret != KNOT_EOK) {
 				knot_packet_free(&packet);
 				return KNOTD_EMALF;
+			}
+		} else {
+			assert(res < 0);
+			int ret = knot_ns_error_response_from_query_wire(
+			       ns, qbuf, qbuflen, KNOT_RCODE_SERVFAIL, qbuf, 
+			       resp_len);
+			
+			if (ret != KNOT_EOK) {
+				knot_packet_free(&packet);
+				return ret;
 			}
 		}
 
