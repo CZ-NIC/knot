@@ -230,10 +230,11 @@ int evsched_schedule(evsched_t *s, event_t *ev, uint32_t dt)
 
 	/* Update event timer. */
 	evsched_settimer(ev, dt);
-
+	ev->parent = s;
+	
 	/* Lock calendar. */
 	pthread_mutex_lock(&s->mx);
-
+	
 	heap_insert(&s->heap, &ev);
 
 	/* Unlock calendar. */
