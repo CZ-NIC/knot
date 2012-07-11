@@ -1578,7 +1578,7 @@ dbg_zone_exec(
 	if (use_domain_table) {
 		dbg_zone_detail("Saving RRSIG RRSet to table.\n");
 		rc = knot_zone_contents_dnames_from_rrset_to_table(
-		       zone->dname_table, rrsigs, 0, (*rrset)->owner);
+		       zone->dname_table, (*rrset)->rrsigs, 0, (*rrset)->owner);
 		if (rc != KNOT_EOK) {
 			dbg_zone("Error saving domain names from "
 			         "RRSIGs to the domain name table.\n "
