@@ -1363,11 +1363,11 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 	int zone_changed = 0;
 	struct stat s = {};
 	int stat_ret = stat(z->file, &s);
-	if (zone != NULL && stat_ret == 0) {
+	if (zone != NULL) {
 		/* if found, check timestamp of the file against the
 		 * loaded zone
 		 */
-		if (knot_zone_version(zone) < s.st_mtime) {
+		if (stat_ret == 0 && knot_zone_version(zone) < s.st_mtime) {
 			zone_changed = 1;
 		}
 	} else {
@@ -3296,7 +3296,10 @@ int zones_cancel_notify(zonedata_t *zd, notify_ev_t *ev)
 	event_t *tmr = ev->timer;
 	ev->timer = 0;
 	pthread_mutex_unlock(&zd->lock);
-	evsched_cancel(tmr->parent, tmr);
+	if (evsched_cancel(tmr->parent, tmr) == 0) {
+		dbg_notify("notify: NOTIFY event %p designated for cancellation "
+			   "not found\n", tmr);
+	}
 
 	/* Re-lock and find again (if not deleted). */
 	pthread_mutex_lock(&zd->lock);
