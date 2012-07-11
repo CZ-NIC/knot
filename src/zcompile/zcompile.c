@@ -636,7 +636,6 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 		log_zone_error("Parse failed.\n");
 		FILE *in_file = (FILE *)zp_get_in(scanner);
 		fclose(in_file);
-		zp_lex_destroy(scanner);
 		knot_dname_release(origin_from_config);
 //		knot_node_free(&origin_node, 0);
 		/* Release file lock. */
@@ -645,6 +644,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 			        "lock (%d).\n",
 			        errno);
 		}
+		zp_lex_destroy(scanner);
 		return KNOTDZCOMPILE_ESYNT;
 	}
 
