@@ -42,7 +42,7 @@ typedef struct {
 
 const uint8_t KNOT_ZONE_FLAGS_GEN_OLD  = 0;            /* xxxxxx00 */
 const uint8_t KNOT_ZONE_FLAGS_GEN_NEW  = 1 << 0;       /* xxxxxx01 */
-const uint8_t KNOT_ZONE_FLAGS_GEN_FIN  = 1 << 2;       /* xxxxxx10 */
+const uint8_t KNOT_ZONE_FLAGS_GEN_FIN  = 1 << 1;       /* xxxxxx10 */
 const uint8_t KNOT_ZONE_FLAGS_GEN_MASK = 3;            /* 00000011 */
 const uint8_t KNOT_ZONE_FLAGS_ANY_MASK = 4;            /* 00000100 */
 const uint8_t KNOT_ZONE_FLAGS_ANY      = 4;            /* 00000100 */

@@ -495,12 +495,13 @@ static int test_edns_has_option()
 	 */
 	for (int i = 0; i < TEST_EDNS; i++) {
 		knot_opt_rr_t *edns = knot_edns_new();
-		assert(edns->option_count == 0);
 
 		if (edns == NULL) {
 			ERR_ALLOC_FAILED;
 			return 0;
 		}
+		
+		assert(edns->option_count == 0);
 
 		for (int j = 0; j < test_edns_data[i].option_count; j++) {
 			if (knot_edns_add_option(edns,
