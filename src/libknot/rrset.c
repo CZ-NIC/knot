@@ -214,14 +214,6 @@ int knot_rrset_add_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs,
 	int rc;
 	if (rrset->rrsigs != NULL) {
 		if (dupl == KNOT_RRSET_DUPL_MERGE) {
-			rc = knot_rrset_merge((void **)&rrset->rrsigs,
-			                        (void **)&rrsigs);
-			if (rc != KNOT_EOK) {
-				return rc;
-			} else {
-				return 1;
-			}
-		} else if (dupl == KNOT_RRSET_DUPL_SKIP) {
 			rc = knot_rrset_merge_no_dupl((void **)&rrset->rrsigs,
 			                              (void **)&rrsigs);
 			if (rc != KNOT_EOK) {
@@ -229,6 +221,15 @@ int knot_rrset_add_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs,
 			} else {
 				return 1;
 			}
+		} else if (dupl == KNOT_RRSET_DUPL_SKIP) {
+//			rc = knot_rrset_merge_no_dupl((void **)&rrset->rrsigs,
+//			                              (void **)&rrsigs);
+//			if (rc != KNOT_EOK) {
+//				return rc;
+//			} else {
+//				return 1;
+//			}
+			return 2;
 		} else if (dupl == KNOT_RRSET_DUPL_REPLACE) {
 			rrset->rrsigs = rrsigs;
 		}
@@ -815,13 +816,31 @@ int knot_rrset_merge_no_dupl(void **r1, void **r2)
 		return KNOT_EBADARG;
 	}
 
+	knot_rdata_t *walk2 = rrset2->rdata;
+
 	// no RDATA in RRSet 1
-	if (rrset1->rdata == NULL) {
+	if (rrset1->rdata == NULL && rrset2->rdata != NULL) {
+		/*
+		 * This function has to assure that there are no duplicates in 
+		 * second RRSet's list. This can be done by putting a first 
+		 * item from the second list as a first item of the first list
+		 * and then simply continuing with inserting items from second
+		 * list to the first one.
+		 *
+		 * However, we must store pointer to second item in the second
+		 * list, as the 'next' pointer of the first item will be altered
+		 */
+
+		// Store pointer to the second item in RRSet2 RDATA so that
+		// we later start from this item.
+		walk2 = walk2->next;
+		assert(walk2 == rrset2->rdata->next);
+
+		// Connect the first item from second list to the first list.
 		rrset1->rdata = rrset2->rdata;
-		return KNOT_EOK;
-	}
-	
-	if (rrset2->rdata == NULL) {
+		// Close the cyclic list (by pointing to itself).
+		rrset1->rdata->next = rrset1->rdata;
+	} else if (rrset2->rdata == NULL) {
 		return KNOT_EOK;
 	}
 	
@@ -838,7 +857,7 @@ int knot_rrset_merge_no_dupl(void **r1, void **r2)
 		insert_after = insert_after->next;
 	}
 	assert(insert_after->next == rrset1->rdata);
-	knot_rdata_t *walk2 = rrset2->rdata;
+
 	while (walk2 != NULL) {
 		knot_rdata_t *walk1 = rrset1->rdata;
 		char dupl = 0;
@@ -882,9 +901,8 @@ int knot_rrset_merge_no_dupl(void **r1, void **r2)
 			knot_rdata_t *tmp = walk2;
 			dbg_rrset_detail("rrset: merge_dupl: freeing: %p.\n",
 			                 tmp);
-			/*! \todo Break the link in second list too? */
 			walk2 = knot_rrset_rdata_get_next(rrset2, walk2);
-			knot_rdata_deep_free(&tmp, rrset1->type, 0);
+			knot_rdata_deep_free(&tmp, rrset1->type, 1);
 			assert(tmp == NULL);
 			/* Maybe caller should be warned about this. */
 		}
@@ -902,11 +920,10 @@ dbg_rrset_exec_detail(
 	                 rrset1->rdata, rrset2->rdata);
 );
 	/*
-	 * Since we cannot assume which rrset will be used after merge.
-	 * both have to be identical so it does not matter which is going to be
-	 * freed, but should NOT be deep freed! This is mostly just precaution.
+	 * Since there is a possibility of corrupted list for second RRSet, it
+	 * is safer to set its list to NULL, so that it cannot be used.
 	 */
-	rrset2->rdata = rrset1->rdata;
+	rrset2->rdata = NULL;
 
 	return KNOT_EOK;
 }
