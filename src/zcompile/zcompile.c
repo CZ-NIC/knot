@@ -720,7 +720,10 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 			if (ret != KNOT_EOK) {
 				log_zone_error("Could not dump zone, reason: "
 				               "%s.\n", knot_strerror(ret));
-				remove(outfile);
+				if (remove(outfile) != 0) {
+					log_zone_error("Could not remove "
+					               "db file!\n");
+				}
 				totalerrors++;
 			} else {
 				/* Write CRC file. */

@@ -330,6 +330,7 @@ static int check_cname_cycles_in_zone(knot_zone_contents_t *zone,
 			} else if ((knot_dname_is_fqdn(next_dname_copy) &&
 				knot_dname_label_count(next_dname_copy) == 0)) {
 				knot_dname_free(&next_dname_copy);
+				knot_dname_free(&tmp_chopped);
 				/* Root domain, end of search. */
 				break;
 			}

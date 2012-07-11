@@ -299,12 +299,14 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 		malloc(sizeof(knot_rdata_item_t) * rdata_count);
 	if (items == NULL) {
 		ERR_ALLOC_FAILED;
-		free(items);
+		free(rdata);
 		return NULL;
 	}
 
 	if (rdata_count > desc->length) {
 		dbg_zload("zload: load_rdata: Read wrong count of RDATA.\n");
+		free(items);
+		free(rdata);
 		return NULL;
 	}
 
@@ -446,6 +448,7 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 		fprintf(stderr, "zload: read_rdata: Could not set items "
 			"when loading rdata.\n");
 		knot_rdata_deep_free(&rdata, type, 0);
+		free(items);
 		return NULL;
 	}
 
