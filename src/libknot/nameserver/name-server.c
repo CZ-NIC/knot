@@ -3280,6 +3280,8 @@ int knot_ns_error_response_from_query(const knot_nameserver_t *nameserver,
 			}
 			*rsize += question_size;
 			
+			// adjust QDCOUNT
+			knot_wire_set_qdcount(response_wire, 1);
 		}
 	}
 
