@@ -2607,6 +2607,9 @@ static int zones_dump_zone_text(knot_zone_contents_t *zone, const char *fname)
 		free(new_fname);
 		return KNOTD_ERROR;
 	}
+	
+	/* Set zone file rights to 0640. */
+	fchmod(fd, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
 
 	/* Swap temporary zonefile and new zonefile. */
 	fclose(f);
@@ -2618,8 +2621,7 @@ static int zones_dump_zone_text(knot_zone_contents_t *zone, const char *fname)
 		free(new_fname);
 		return KNOTD_ERROR;
 	}
-
-
+	
 	free(new_fname);
 	return KNOTD_EOK;
 }
@@ -2648,6 +2650,11 @@ static int zones_dump_zone_binary(knot_zone_contents_t *zone,
 		free(new_zonedb);
 		return KNOTD_ERROR;
 	}
+	
+	/* Set compiled zone rights to 0640. */
+	fchmod(fd, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
+	
+	/* Close compiled zone. */
 	close(fd);
 
 	/* Delete old CRC file. */
@@ -2684,6 +2691,9 @@ static int zones_dump_zone_binary(knot_zone_contents_t *zone,
 		        (unsigned long)crc_value);
 		fclose(f_crc);
 	}
+	
+	/* Set CRC file rights to 0640. */
+	chmod(new_zonedb_crc, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
 
 	/* Swap CRC files. */
 	int ret = KNOTD_EOK;
