@@ -270,3 +270,6 @@ doc/requirements.texi
 doc/security.texi
 doc/troubleshooting.texi
 doc/version.texi
+src/libknot/zone/zone-diff.h
+src/libknot/zone/zone-diff.c
+

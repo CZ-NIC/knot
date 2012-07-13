@@ -42,6 +42,7 @@
 #include "zcompile/parser-util.h"
 #include "zcompile/zcompile-error.h"
 #include "knot/zone/zone-dump.h"
+#include "libknot/zone/zone-diff.h"
 #include "libknot/libknot.h"
 #include "libknot/util/utils.h"
 
@@ -697,9 +698,13 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 		parser->errors++;
 	}
 
-	/*! \todo Check return value. */
-	knot_zone_contents_adjust(contents);
-
+	int ret = knot_zone_contents_adjust(contents);
+	if (ret != KNOT_EOK) {
+		fprintf(stderr, "Zone could not be adjusted, error: %s.\n",
+		        knot_strerror(ret));
+		parser->errors++;
+	}
+	
 	dbg_zp("zp: zone_read: Zone adjusted.\n");
 
 	if (parser->errors != 0) {

@@ -20,6 +20,8 @@
 #include "util/error.h"
 #include "util/debug.h"
 #include "common/base32hex.h"
+/*! \todo XXX TODO FIXME remove once testing is done. */
+#include "zcompile/zcompile.h"
 #include "consts.h"
 
 /*----------------------------------------------------------------------------*/

@@ -114,7 +114,6 @@ int main(int argc, char **argv)
 	} else {
 		log_zone_info("Zone file for '%s' is OK.\n", origin);
 	}
-	//log_close();
 	
 	return 0;
 }
