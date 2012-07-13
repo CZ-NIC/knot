@@ -124,13 +124,12 @@ AC_ARG_ENABLE([recvmmsg],
 
 # Check for link time optimizations support and predictive commoning
 AC_ARG_ENABLE([lto],
-    AS_HELP_STRING([--enable-lto=yes|no], [enable link-time optimizations, disable if broken (f.e. clang on FreeBSD) [default=yes]]),
+    AS_HELP_STRING([--enable-lto=yes|no], [enable link-time optimizations, enable if not broken for some extra speed [default=no]]),
     [case "${enableval}" in
       yes) AX_CHECK_COMPILER_FLAGS("-flto", [CFLAGS="$CFLAGS -flto"], []) ;;
       no) ;;
-      *)  AC_MSG_ERROR([bad value ${enableval} for --enable-recvmmsg]) ;;
+      *)  AC_MSG_ERROR([bad value ${enableval} for --enable-lto]) ;;
     esac], [
-    AX_CHECK_COMPILER_FLAGS("-flto", [CFLAGS="$CFLAGS -flto"], [])
     ])
 
 AX_CHECK_COMPILER_FLAGS("-fpredictive-commoning", [CFLAGS="$CFLAGS -fpredictive-commoning"], [])
