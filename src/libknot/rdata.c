@@ -783,7 +783,7 @@ uint8_t knot_rdata_nsec3_salt_length(const knot_rdata_t *rdata)
 		return 0;
 	}
 	
-	return *((uint8_t *)(rdata->items[3].raw_data));
+	return *((uint8_t *)(rdata->items[3].raw_data + 1));
 }
 
 /*---------------------------------------------------------------------------*/
@@ -794,5 +794,5 @@ const uint8_t *knot_rdata_nsec3_salt(const knot_rdata_t *rdata)
 		return NULL;
 	}
 	
-	return (uint8_t *)(rdata->items[3].raw_data + 1);
+	return ((uint8_t *)(rdata->items[3].raw_data + 1)) + 1;
 }

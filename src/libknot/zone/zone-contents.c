@@ -1021,6 +1021,17 @@ static int knot_zc_nsec3_parameters_match(const knot_rdata_t *rdata,
 {
 	assert(rdata != NULL && params != NULL);
 	
+	dbg_zone_detail("RDATA algo: %u, iterations: %u, salt length: %u, salt:"
+	                " %.*s\n", 
+	                knot_rdata_nsec3_algorithm(rdata),
+	                knot_rdata_nsec3_iterations(rdata),
+	                knot_rdata_nsec3_salt_length(rdata),
+	                knot_rdata_nsec3_salt_length(rdata),
+	                knot_rdata_nsec3_salt(rdata));
+	dbg_zone_detail("NSEC3PARAM algo: %u, iterations: %u, salt length: %u, "
+	                "salt: %.*s\n",  params->algorithm, params->iterations,
+	                params->salt_length, params->salt_length, params->salt);
+	
 	return (knot_rdata_nsec3_algorithm(rdata) == params->algorithm
 	        && knot_rdata_nsec3_iterations(rdata) == params->iterations
 	        && knot_rdata_nsec3_salt_length(rdata) == params->salt_length
@@ -2235,6 +2246,7 @@ dbg_zone_exec_detail(
 	 */
 	const knot_rdata_t *nsec3_prev_rdata = knot_rrset_rdata(
 	        knot_node_rrset(*nsec3_previous, KNOT_RRTYPE_NSEC3));
+	const knot_node_t *original_prev = *nsec3_previous;
 	
 	while (nsec3_prev_rdata != NULL
 	       && !knot_zc_nsec3_parameters_match(nsec3_prev_rdata, 
@@ -2242,6 +2254,22 @@ dbg_zone_exec_detail(
 		*nsec3_previous = knot_node_previous(*nsec3_previous);
 		nsec3_prev_rdata = knot_rrset_rdata(
 		        knot_node_rrset(*nsec3_previous, KNOT_RRTYPE_NSEC3));
+dbg_zone_exec_detail(
+		char *name = (*nsec3_previous) 
+				? knot_dname_to_str(
+					  knot_node_owner(*nsec3_previous))
+				: "none";
+		dbg_zone_detail("Previous node: %s, checking parameters...\n",
+				name);
+		if (*nsec3_previous) {
+			free(name);
+		}
+);
+		if (*nsec3_previous == original_prev) {
+			// cycle
+			*nsec3_previous = NULL;
+			break;
+		}
 	}
 
 	return (exact_match)
