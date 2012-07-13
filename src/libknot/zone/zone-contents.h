@@ -80,9 +80,9 @@ typedef struct knot_zone_contents_t {
 /*----------------------------------------------------------------------------*/
 
 knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
-                                                 uint node_count,
-                                                 int use_domain_table,
-                                                 struct knot_zone *zone);
+                                             uint node_count,
+                                             int use_domain_table,
+                                             struct knot_zone *zone);
 
 int knot_zone_contents_gen_is_old(const knot_zone_contents_t *contents);
 int knot_zone_contents_gen_is_new(const knot_zone_contents_t *contents);

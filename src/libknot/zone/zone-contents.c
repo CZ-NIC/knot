@@ -564,6 +564,8 @@ dbg_zone_exec_detail(
 	int match = knot_zone_contents_find_nsec3_for_name(zone,
 	                                                  knot_node_owner(node),
 	                                                  &nsec3, &prev);
+	UNUSED(prev);
+	
 	if (match != KNOT_ZONE_NAME_FOUND) {
 		nsec3 = NULL;
 	}
@@ -1010,6 +1012,21 @@ static void knot_zone_contents_check_loops_in_tree(knot_zone_tree_node_t *tnode,
 	}
 
 	cname_chain_free(chain);
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int knot_zc_nsec3_parameters_match(const knot_rdata_t *rdata,
+                                          const knot_nsec3_params_t *params)
+{
+	assert(rdata != NULL && params != NULL);
+	
+	return (knot_rdata_nsec3_algorithm(rdata) == params->algorithm
+	        && knot_rdata_nsec3_iterations(rdata) == params->iterations
+	        && knot_rdata_nsec3_salt_length(rdata) == params->salt_length
+	        && strncmp((const char *)knot_rdata_nsec3_salt(rdata),
+	                   (const char *)params->salt, params->salt_length)
+	           == 0);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2211,6 +2228,21 @@ dbg_zone_exec_detail(
 	}
 
 	dbg_zone_verb("find_nsec3_for_name() returning %d\n", exact_match);
+	
+	/* The previous may be from wrong NSEC3 chain. Search for previous 
+	 * from the right chain. Check iterations, hash algorithm and salt 
+	 * values and compare them to the ones from NSEC3PARAM.
+	 */
+	const knot_rdata_t *nsec3_prev_rdata = knot_rrset_rdata(
+	        knot_node_rrset(*nsec3_previous, KNOT_RRTYPE_NSEC3));
+	
+	while (nsec3_prev_rdata != NULL
+	       && !knot_zc_nsec3_parameters_match(nsec3_prev_rdata, 
+	                                          &zone->nsec3_params)) {
+		*nsec3_previous = knot_node_previous(*nsec3_previous);
+		nsec3_prev_rdata = knot_rrset_rdata(
+		        knot_node_rrset(*nsec3_previous, KNOT_RRTYPE_NSEC3));
+	}
 
 	return (exact_match)
 	       ? KNOT_ZONE_NAME_FOUND

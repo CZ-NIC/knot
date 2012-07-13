@@ -335,6 +335,11 @@ uint32_t knot_rdata_soa_minimum(const knot_rdata_t *rdata);
 
 uint16_t knot_rdata_rrsig_type_covered(const knot_rdata_t *rdata);
 
+uint8_t knot_rdata_nsec3_algorithm(const knot_rdata_t *rdata);
+uint16_t knot_rdata_nsec3_iterations(const knot_rdata_t *rdata);
+uint8_t knot_rdata_nsec3_salt_length(const knot_rdata_t *rdata);
+const uint8_t *knot_rdata_nsec3_salt(const knot_rdata_t *rdata);
+
 #endif /* _KNOT_RDATA_H */
 
 /*! @} */

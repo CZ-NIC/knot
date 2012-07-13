@@ -751,3 +751,48 @@ uint16_t knot_rdata_rrsig_type_covered(const knot_rdata_t *rdata)
 
 	return knot_wire_read_u16((uint8_t *)(rdata->items[0].raw_data + 1));
 }
+
+/*---------------------------------------------------------------------------*/
+
+uint8_t knot_rdata_nsec3_algorithm(const knot_rdata_t *rdata)
+{
+	if (rdata->count < 1) {
+		return 0;
+	}
+	
+	return *((uint8_t *)(rdata->items[0].raw_data + 1));
+}
+
+/*---------------------------------------------------------------------------*/
+
+uint16_t knot_rdata_nsec3_iterations(const knot_rdata_t *rdata)
+{
+	if (rdata->count < 3) {
+		// this is actually valid value...what to return??
+		return 0;
+	}
+	
+	return knot_wire_read_u16((uint8_t *)(rdata->items[2].raw_data + 1));
+}
+
+/*---------------------------------------------------------------------------*/
+
+uint8_t knot_rdata_nsec3_salt_length(const knot_rdata_t *rdata)
+{
+	if (rdata->count < 4) {
+		return 0;
+	}
+	
+	return *((uint8_t *)(rdata->items[3].raw_data));
+}
+
+/*---------------------------------------------------------------------------*/
+
+const uint8_t *knot_rdata_nsec3_salt(const knot_rdata_t *rdata)
+{
+	if (rdata->count < 4) {
+		return NULL;
+	}
+	
+	return (uint8_t *)(rdata->items[3].raw_data + 1);
+}
