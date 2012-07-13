@@ -2246,16 +2246,28 @@ dbg_zone_exec_detail(
 	 * from the right chain. Check iterations, hash algorithm and salt 
 	 * values and compare them to the ones from NSEC3PARAM.
 	 */
-	const knot_rdata_t *nsec3_prev_rdata = knot_rrset_rdata(
-	        knot_node_rrset(*nsec3_previous, KNOT_RRTYPE_NSEC3));
+	const knot_rrset_t *nsec3_rrset = knot_node_rrset(*nsec3_previous, 
+	                                                  KNOT_RRTYPE_NSEC3);
+	const knot_rdata_t *nsec3_rdata = knot_rrset_rdata(nsec3_rrset);
 	const knot_node_t *original_prev = *nsec3_previous;
 	
-	while (nsec3_prev_rdata != NULL
-	       && !knot_zc_nsec3_parameters_match(nsec3_prev_rdata, 
+	while (nsec3_rdata != NULL
+	       && !knot_zc_nsec3_parameters_match(nsec3_rdata, 
 	                                          &zone->nsec3_params)) {
+		/* Try other RDATA if there are some. In case of name collision
+		 * the node would contain records from both NSEC3 chains.
+		 */
+		if ((nsec3_rdata = knot_rrset_rdata_next(
+		             nsec3_rrset, nsec3_rdata)) != NULL) {
+			continue;
+		}
+		
+		/* If there is none, try previous node. */
+		
 		*nsec3_previous = knot_node_previous(*nsec3_previous);
-		nsec3_prev_rdata = knot_rrset_rdata(
-		        knot_node_rrset(*nsec3_previous, KNOT_RRTYPE_NSEC3));
+		nsec3_rrset = knot_node_rrset(*nsec3_previous, 
+		                              KNOT_RRTYPE_NSEC3);
+		nsec3_rdata = knot_rrset_rdata(nsec3_rrset);
 dbg_zone_exec_detail(
 		char *name = (*nsec3_previous) 
 				? knot_dname_to_str(
@@ -2267,7 +2279,7 @@ dbg_zone_exec_detail(
 			free(name);
 		}
 );
-		if (*nsec3_previous == original_prev) {
+		if (*nsec3_previous == original_prev || nsec3_rdata == NULL) {
 			// cycle
 			*nsec3_previous = NULL;
 			break;
