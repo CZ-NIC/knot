@@ -263,7 +263,7 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
                                          knot_dname_t **id_array,
                                          int use_ids)
 {
-	if (f == NULL || id_array == NULL) {
+	if (f == NULL) {
 		dbg_zload("zload: load_rdata: NULL arguments.\n");
 		return NULL;
 	}
@@ -563,7 +563,7 @@ static knot_rrset_t *knot_load_rrsig(void *f, knot_dname_t **id_array,
 static knot_rrset_t *knot_load_rrset(void *f, knot_dname_t **id_array,
                                          int use_ids)
 {
-	if (f == NULL || id_array == NULL) {
+	if (f == NULL) {
 		dbg_zload("zload: load_rrset: NULL arguments.\n");
 		return NULL;
 	}
