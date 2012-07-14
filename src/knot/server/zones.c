@@ -1201,10 +1201,10 @@ static int zones_load_changesets(const knot_zone_t *zone,
 
 	/* Unpack binary data. */
 	int unpack_ret = zones_changesets_from_binary(dst);
-	if (unpack_ret != KNOT_EOK) {
+	if (unpack_ret != KNOTD_EOK) {
 		dbg_xfr("xfr: failed to unpack changesets "
-		        "from binary, %s\n", knot_strerror(unpack_ret));
-		return KNOTD_ERROR;
+		        "from binary, %s\n", knotd_strerror(unpack_ret));
+		return unpack_ret;
 	}
 
 	/* Check for complete history. */
@@ -1488,7 +1488,13 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 		}
 
 		/* Apply changesets from journal. */
-		zones_journal_apply(zone);
+		int apply_ret = zones_journal_apply(zone);
+		if (apply_ret != KNOTD_EOK) {
+			log_server_warning("Failed to apply changesets "
+			                   "for zone '%s': %s\n",
+			                   z->name, knotd_strerror(apply_ret));
+		}
+		
 
 		/* Update events scheduled for zone. */
 		evsched_t *sch = ((server_t *)knot_ns_get_data(ns))->sched;
