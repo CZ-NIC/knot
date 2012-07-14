@@ -1340,9 +1340,9 @@ static int zones_journal_apply(knot_zone_t *zone)
  * \retval KNOTD_ERROR on unspecified error.
  */
 static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
-                             knot_nameserver_t *ns, const knot_zonedb_t *db_old)
+                             knot_nameserver_t *ns)
 {
-	if (z == NULL || dst == NULL || ns == NULL || db_old == NULL) {
+	if (z == NULL || dst == NULL || ns == NULL) {
 		return KNOTD_EINVAL;
 	}
 	
@@ -1357,7 +1357,9 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 	}
 
 	/* Try to find the zone in the current zone db. */
-	knot_zone_t *zone = knot_zonedb_find_zone(db_old, dname);
+	rcu_read_lock();
+	knot_zone_t *zone = knot_zonedb_find_zone(ns->zone_db, dname);
+	rcu_read_unlock();
 
 	/* Attempt to bootstrap if db or source does not exist. */
 	int zone_changed = 0;
@@ -1489,7 +1491,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 
 		/* Apply changesets from journal. */
 		int apply_ret = zones_journal_apply(zone);
-		if (apply_ret != KNOTD_EOK) {
+		if (apply_ret != KNOTD_EOK && apply_ret != KNOTD_ERANGE) {
 			log_server_warning("Failed to apply changesets "
 			                   "for zone '%s': %s\n",
 			                   z->name, knotd_strerror(apply_ret));
@@ -1547,8 +1549,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 /*! \brief Structure for multithreaded zone loading. */
 struct zonewalk_t {
 	knot_nameserver_t *ns;
-	const knot_zonedb_t *db_old;
-        knot_zonedb_t *db_new;
+	knot_zonedb_t *db_new;
 	pthread_mutex_t lock;
 	int inserted;
 	unsigned qhead;
@@ -1589,8 +1590,7 @@ static int zonewalker(dthread_t *thread)
 			continue;
 		}
 		
-		int ret = zones_insert_zone(zw->q[i], zones + inserted, zw->ns,
-		                            zw->db_old);
+		int ret = zones_insert_zone(zw->q[i], zones + inserted, zw->ns);
 		if (ret == KNOTD_EOK) {
 			++inserted;
 		}
@@ -1621,14 +1621,12 @@ static int zonewalker(dthread_t *thread)
  *
  * \param ns Name server instance.
  * \param zone_conf Zone configuration.
- * \param db_old Old zone database.
  * \param db_new New zone database.
  *
  * \return Number of inserted zones.
  */
 static int zones_insert_zones(knot_nameserver_t *ns,
 			      const list *zone_conf,
-                              const knot_zonedb_t *db_old,
                               knot_zonedb_t *db_new)
 {
 	int inserted = 0;
@@ -1644,7 +1642,6 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 	if (zw != NULL) {
 		memset(zw, 0, zwlen);
 		zw->ns = ns;
-		zw->db_old = db_old;
 		zw->db_new = db_new;
 		zw->inserted = 0;
 		if (pthread_mutex_init(&zw->lock, NULL) < 0) {
@@ -1923,34 +1920,39 @@ int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
 
 	/* Lock RCU to ensure none will deallocate any data under our hands. */
 	rcu_read_lock();
-
+	
 	/* Grab a pointer to the old database */
-	*db_old = ns->zone_db;
-	if (*db_old == NULL) {
+	if (ns->zone_db == NULL) {
+		rcu_read_unlock();
 		log_server_error("Missing zone database in nameserver structure"
 		                 ".\n");
-		rcu_read_unlock();
 		return KNOTD_ERROR;
 	}
+	rcu_read_unlock();
 
 	/* Create new zone DB */
 	knot_zonedb_t *db_new = knot_zonedb_new();
 	if (db_new == NULL) {
-		rcu_read_unlock();
 		return KNOTD_ERROR;
 	}
 
 	log_server_info("Loading %d compiled zones...\n", conf->zones_count);
 
 	/* Insert all required zones to the new zone DB. */
-	int inserted = zones_insert_zones(ns, &conf->zones, *db_old, db_new);
-
+	/*! \warning RCU must not be locked as some contents switching will 
+	             be required. */
+	int inserted = zones_insert_zones(ns, &conf->zones, db_new);
+	
 	log_server_info("Loaded %d out of %d zones.\n", inserted,
 	                conf->zones_count);
 
 	if (inserted != conf->zones_count) {
 		log_server_warning("Not all the zones were loaded.\n");
 	}
+	
+	/* Lock RCU to ensure none will deallocate any data under our hands. */
+	rcu_read_lock();
+	*db_old = ns->zone_db;
 
 	dbg_zones_detail("zones: old db in nameserver: %p, old db stored: %p, "
 	                 "new db: %p\n", ns->zone_db, *db_old, db_new);
