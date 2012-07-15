@@ -1490,11 +1490,11 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 		}
 
 		/* Apply changesets from journal. */
-		int apply_ret = zones_journal_apply(zone);
-		if (apply_ret != KNOTD_EOK && apply_ret != KNOTD_ERANGE) {
+		int ar = zones_journal_apply(zone);
+		if (ar != KNOTD_EOK && ar != KNOTD_ERANGE && ar != KNOTD_ENOENT) {
 			log_server_warning("Failed to apply changesets "
 			                   "for zone '%s': %s\n",
-			                   z->name, knotd_strerror(apply_ret));
+			                   z->name, knotd_strerror(ar));
 		}
 		
 
