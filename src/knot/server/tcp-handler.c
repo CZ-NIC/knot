@@ -446,7 +446,9 @@ int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 	/* Get peer name. */
 	if (addr) {
 		socklen_t alen = addr->len;
-		getpeername(fd, addr->ptr, &alen);
+		if (getpeername(fd, addr->ptr, &alen) < 0) {
+			return KNOTD_EMALF;
+		}
 	}
 
 	/* Receive payload. */
