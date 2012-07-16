@@ -389,7 +389,7 @@ int tcp_send(int fd, uint8_t *msg, size_t msglen)
 	 */
 #ifdef TCP_CORK
 	int cork = 1;
-	setsockopt(fd, SOL_TCP, TCP_CORK, &cork, sizeof(cork));
+	int uncork = setsockopt(fd, SOL_TCP, TCP_CORK, &cork, sizeof(cork));
 #endif
 
 	/* Send message size. */
@@ -406,9 +406,11 @@ int tcp_send(int fd, uint8_t *msg, size_t msglen)
 	}
 
 #ifdef TCP_CORK
-	/* Uncork. */
-	cork = 0;
-	setsockopt(fd, SOL_TCP, TCP_CORK, &cork, sizeof(cork));
+	/* Uncork only if corked successfuly. */
+	if (uncork == 0) {
+		cork = 0;
+		setsockopt(fd, SOL_TCP, TCP_CORK, &cork, sizeof(cork));
+	}
 #endif
 	return sent;
 }

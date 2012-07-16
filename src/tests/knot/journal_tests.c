@@ -140,7 +140,9 @@ static int journal_tests_run(int argc, char *argv[])
 	journal_close(journal);
 	
 	/* Recreate journal = NORMAL mode. */
-	remove(jfilename);
+	if (remove(jfilename) < 0) {
+		diag("journal: couldn't remove filename");
+	}
 	fsize = 8092;
 	jsize = 512;
 	ret = journal_create(jfilename, jsize);
