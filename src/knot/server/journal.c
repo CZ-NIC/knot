@@ -515,6 +515,8 @@ journal_t* journal_open(const char *fn, size_t fslimit, int mode, uint16_t bflag
 	if (crc == crc_calc) {
 		/* Rewind. */
 		if (lseek(fd, MAGIC_LENGTH + sizeof(crc_t), SEEK_SET) < 0) {
+			fcntl(fd, F_SETLK, &fl);
+			close(fd);
 			return NULL;
 		}
 	} else {
