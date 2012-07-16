@@ -326,7 +326,11 @@ static int tcp_accept(int fd)
 		struct timeval tv;
 		tv.tv_sec = TCP_ACTIVITY_WD;
 		tv.tv_usec = 0;
-		setsockopt(incoming, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+		if (setsockopt(incoming, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+			log_server_warning("Couldn't set up TCP connection "
+			                   "watchdog timer for fd=%d.\n",
+			                   incoming);
+		}
 #endif
 	}
 
