@@ -114,12 +114,9 @@ int heap_insert(struct heap *h, void *e)
 		h->data = realloc(h->data, (h->max_size + 1) * h->elm_size);
 	}
 
-	if(h)
-	{
-		h->num++;
-		memcpy(HELEMENT(h,h->num),e,h->elm_size);
-		_heap_bubble_up(h,h->num);
-	}
+	h->num++;
+	memcpy(HELEMENT(h,h->num),e,h->elm_size);
+	_heap_bubble_up(h,h->num);
 
 	return h->data ? 1 :0 ;
 }

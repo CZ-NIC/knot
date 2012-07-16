@@ -14,7 +14,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file fdset.h
+ * \file heap.h
  *
  * \author Ondrej Filip <ondrej.filip@nic.cz>
  *
