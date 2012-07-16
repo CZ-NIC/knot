@@ -117,8 +117,8 @@ static int journal_recover(journal_t *j)
 	}
 	
 	/* Write back. */
-	lseek(j->fd, JOURNAL_HSIZE - 2 * sizeof(uint16_t), SEEK_SET);
-	if (!sfwrite(qstate, 2 * sizeof(uint16_t), j->fd)) {
+	int seek_ret = lseek(j->fd, JOURNAL_HSIZE - 2 * sizeof(uint16_t), SEEK_SET);
+	if (seek_ret < 0 || !sfwrite(qstate, 2 * sizeof(uint16_t), j->fd)) {
 		dbg_journal("journal: failed to write back queue state\n");
 		return KNOTD_ERROR;
 	}
@@ -146,6 +146,7 @@ int journal_write_in(journal_t *j, journal_node_t **rn, uint64_t id, size_t len)
 
 	/* Calculate remaining bytes to reach file size limit. */
 	size_t fs_remaining = j->fslimit - j->fsize;
+	int seek_ret = 0;
 
 	/* Increase free segment if on the end of file. */
 	journal_node_t *n = j->nodes + j->qtail;
@@ -193,8 +194,8 @@ int journal_write_in(journal_t *j, journal_node_t **rn, uint64_t id, size_t len)
 
 		/* Write back evicted node. */
 		head->flags = JOURNAL_FREE;
-		lseek(j->fd, JOURNAL_HSIZE + (j->qhead + 1) * node_len, SEEK_SET);
-		if (!sfwrite(head, node_len, j->fd)) {
+		seek_ret = lseek(j->fd, JOURNAL_HSIZE + (j->qhead + 1) * node_len, SEEK_SET);
+		if (seek_ret < 0 || !sfwrite(head, node_len, j->fd)) {
 			return KNOTD_ERROR;
 		}
 
@@ -204,8 +205,8 @@ int journal_write_in(journal_t *j, journal_node_t **rn, uint64_t id, size_t len)
 		/* Write back query state. */
 		j->qhead = (j->qhead + 1) % j->max_nodes;
 		uint16_t qstate[2] = {j->qhead, j->qtail};
-		lseek(j->fd, JOURNAL_HSIZE - 2 * sizeof(uint16_t), SEEK_SET);
-		if (!sfwrite(qstate, 2 * sizeof(uint16_t), j->fd)) {
+		seek_ret = lseek(j->fd, JOURNAL_HSIZE - 2 * sizeof(uint16_t), SEEK_SET);
+		if (seek_ret < 0 || !sfwrite(qstate, 2 * sizeof(uint16_t), j->fd)) {
 			return KNOTD_ERROR;
 		}
 
@@ -260,8 +261,8 @@ int journal_write_out(journal_t *journal, journal_node_t *n)
 	            journal->free.pos + journal->free.len);
 
 	/* Write back free segment state. */
-	lseek(journal->fd, JOURNAL_HSIZE, SEEK_SET);
-	if (!sfwrite(&journal->free, node_len, journal->fd)) {
+	int seek_ret = lseek(journal->fd, JOURNAL_HSIZE, SEEK_SET);
+	if (seek_ret < 0 || !sfwrite(&journal->free, node_len, journal->fd)) {
 		/* Node is marked valid and failed to shrink free space,
 		 * node will be overwritten on the next write. Return error.
 		 */
@@ -278,8 +279,8 @@ int journal_write_out(journal_t *journal, journal_node_t *n)
 	 * qtail - highest valid node identifier (most recently used)
 	 */
 	uint16_t qstate[2] = {journal->qhead, journal->qtail};
-	lseek(journal->fd, JOURNAL_HSIZE - 2 * sizeof(uint16_t), SEEK_SET);
-	if (!sfwrite(qstate, 2 * sizeof(uint16_t), journal->fd)) {
+	seek_ret = lseek(journal->fd, JOURNAL_HSIZE - 2 * sizeof(uint16_t), SEEK_SET);
+	if (seek_ret < 0 || !sfwrite(qstate, 2 * sizeof(uint16_t), journal->fd)) {
 		dbg_journal("journal: failed to write back queue state\n");
 		return KNOTD_ERROR;
 	}
@@ -297,11 +298,15 @@ int journal_update_crc(int fd)
 	char buf[4096];
 	ssize_t rb = 0;
 	crc_t crc = crc_init();
-	lseek(fd, MAGIC_LENGTH + sizeof(crc_t), SEEK_SET);
+	if (lseek(fd, MAGIC_LENGTH + sizeof(crc_t), SEEK_SET) < 0) {
+		return KNOTD_ERROR;
+	}
 	while((rb = read(fd, buf, sizeof(buf))) > 0) {
 		crc = crc_update(crc, (const unsigned char *)buf, rb);
 	}
-	lseek(fd, MAGIC_LENGTH, SEEK_SET);
+	if (lseek(fd, MAGIC_LENGTH, SEEK_SET) < 0) {
+		return KNOTD_ERROR;
+	}
 	if (!sfwrite(&crc, sizeof(crc_t), fd)) {
 		dbg_journal("journal: couldn't write CRC to fd=%d\n", fd);
 		return KNOTD_ERROR;
@@ -508,7 +513,10 @@ journal_t* journal_open(const char *fn, size_t fslimit, int mode, uint16_t bflag
 	
 	/* Compare */
 	if (crc == crc_calc) {
-		lseek(fd, MAGIC_LENGTH + sizeof(crc_t), SEEK_SET); /* Rewind. */
+		/* Rewind. */
+		if (lseek(fd, MAGIC_LENGTH + sizeof(crc_t), SEEK_SET) < 0) {
+			return NULL;
+		}
 	} else {
 		log_server_warning("Journal file '%s' CRC error, "
 		                   "it will be flushed.\n", fn);
@@ -717,10 +725,10 @@ int journal_read(journal_t *journal, uint64_t id, journal_cmp_t cf, char *dst)
 	            (unsigned long long)id, n->pos, n->pos + n->len, n->flags);
 
 	/* Seek journal node. */
-	lseek(journal->fd, n->pos, SEEK_SET);
+	int seek_ret = lseek(journal->fd, n->pos, SEEK_SET);
 
 	/* Read journal node content. */
-	if (!sfread(dst, n->len, journal->fd)) {
+	if (seek_ret < 0 || !sfread(dst, n->len, journal->fd)) {
 		return KNOTD_ERROR;
 	}
 
@@ -741,8 +749,8 @@ int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
 	}
 
 	/* Write data to permanent storage. */
-	lseek(journal->fd, n->pos, SEEK_SET);
-	if (!sfwrite(src, size, journal->fd)) {
+	int seek_ret = lseek(journal->fd, n->pos, SEEK_SET);
+	if (seek_ret < 0 || !sfwrite(src, size, journal->fd)) {
 		return KNOTD_ERROR;
 	}
 	
@@ -765,7 +773,9 @@ int journal_map(journal_t *journal, uint64_t id, char **dst, size_t size)
 
 	/* Reserve data in permanent storage. */
 	/*! \todo This is only needed when inflating journal file. */
-	lseek(journal->fd, n->pos, SEEK_SET);
+	if (lseek(journal->fd, n->pos, SEEK_SET) < 0) {
+		return KNOTD_ERROR;
+	}
 	char nbuf[4096] = {0};
 	size_t wb = sizeof(nbuf);
 	while (size > 0) {
@@ -868,8 +878,8 @@ int journal_update(journal_t *journal, journal_node_t *n)
 		      i, (unsigned long long)n->id, n->flags);
 
 	/* Write back. */
-	lseek(journal->fd, jn_fpos, SEEK_SET);
-	if (!sfwrite(n, node_len, journal->fd)) {
+	int seek_ret = lseek(journal->fd, jn_fpos, SEEK_SET);
+	if (seek_ret < 0 || !sfwrite(n, node_len, journal->fd)) {
 		dbg_journal("journal: failed to writeback node=%llu to %ld\n",
 		            (unsigned long long)n->id, jn_fpos);
 		return KNOTD_ERROR;
