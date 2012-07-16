@@ -395,6 +395,7 @@ static inline int udp_master_recvmmsg(dthread_t *thread, stat_t *thread_stat)
 		free(addrs);
 		free(iov);
 		free(msgs);
+		close(sock);
 		return KNOTD_ENOMEM;
 	}
 
