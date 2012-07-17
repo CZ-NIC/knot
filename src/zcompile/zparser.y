@@ -1632,8 +1632,6 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 	parser->current_zone = knot_zone_new(origin, 0, 1);
 
 	parser->node_rrsigs = NULL;
-	parser->rrsig_orphans = NULL;
-	parser->rrsig_orphan_count = 0;
 
 	parser->current_rrset->rclass = parser->default_class;
 	parser->current_rrset->rdata = NULL;
