@@ -817,9 +817,9 @@ int knot_rrset_merge_no_dupl(void **r1, void **r2)
 		return KNOT_EBADARG;
 	}
 
-dbg_rrset_exec_verb(
+dbg_rrset_exec_detail(
 	char *name = knot_dname_to_str(rrset1->owner);
-	dbg_rrset_verb("rrset: merge_no_dupl: Merging %s.\n", name);
+	dbg_rrset_detail("rrset: merge_no_dupl: Merging %s.\n", name);
 	free(name);
 );
 
