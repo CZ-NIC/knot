@@ -651,8 +651,18 @@ int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to)
 
 	/*! \note Order of RDATA will be reversed. */
 	while (rdata != NULL) {
-		ret = knot_rrset_add_rdata(*to, knot_rdata_deep_copy(rdata,
-		                           knot_rrset_type(from), 1));
+		knot_rdata_t *rdata_copy = knot_rdata_deep_copy(rdata,
+		                                      knot_rrset_type(from), 1);
+dbg_rrset_exec_detail(
+		char *name = knot_dname_to_str(knot_rrset_owner(from));
+		dbg_rrset_detail("Copying RDATA from RRSet with owner: %s, type"
+		                 ": %s. Old RDATA ptr: %p, new RDATA ptr: %p\n",
+		                 name,
+		                 knot_rrtype_to_string(knot_rrset_type(from)),
+		                 rdata, rdata_copy);
+		free(name);
+);
+		ret = knot_rrset_add_rdata(*to, rdata_copy);
 		if (ret != KNOT_EOK) {
 			knot_rrset_deep_free(to, 1, 1, 1);
 			return ret;

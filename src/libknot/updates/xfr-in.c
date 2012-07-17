@@ -2415,9 +2415,9 @@ void xfrin_rollback_update(knot_zone_contents_t *old_contents,
 			assert(rdata == NULL
 			       || rdata->next == (*changes)->new_rdata[i]);
 
-			dbg_xfrin_detail("  Deleting RDATA: %p\n", rdata);
-			knot_rdata_deep_free(&rdata,
-			                     (*changes)->new_rdata_types[i], 1);
+//			dbg_xfrin_detail("  Deleting RDATA: %p\n", rdata);
+//			knot_rdata_deep_free(&rdata,
+//			                     (*changes)->new_rdata_types[i], 1);
 
 			//(*changes)->new_rdata[i] = NULL;
 		}
