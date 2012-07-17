@@ -2003,7 +2003,7 @@ dbg_xfrin_exec_detail(
 	ret = knot_rrset_merge((void **)rrset, (void **)&add);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to merge changeset RRSet.\n");
-		return KNOT_ERROR;
+		return ret;
 	}
 	dbg_xfrin_detail("Merge returned: %d\n", ret);
 	knot_rrset_dump(*rrset, 1);
@@ -2401,9 +2401,9 @@ void xfrin_rollback_update(knot_zone_contents_t *old_contents,
 			knot_rdata_t *rdata = (*changes)->new_rdata[i];
 			knot_rdata_t *rdata_next = NULL;
 
-			while (rdata != NULL && rdata->next !=
+			while (rdata != NULL && rdata_next !=
 			                (*changes)->new_rdata[i]) {
-				assert(rdata->next != rdata);
+				//assert(rdata->next != rdata);
 				rdata_next = rdata->next;
 				dbg_xfrin_detail("  Deleting RDATA: %p\n",
 				                 rdata);
