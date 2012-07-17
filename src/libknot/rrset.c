@@ -234,6 +234,10 @@ int knot_rrset_add_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs,
 			rrset->rrsigs = rrsigs;
 		}
 	} else {
+		if (rrset->ttl != rrsigs->ttl) {
+			rrsigs->ttl = rrset->ttl;
+		}
+		
 		rrset->rrsigs = rrsigs;
 	}
 
@@ -762,8 +766,7 @@ int knot_rrset_merge(void **r1, void **r2)
 
 	if ((knot_dname_compare(rrset1->owner, rrset2->owner) != 0)
 	    || rrset1->rclass != rrset2->rclass
-	    || rrset1->type != rrset2->type
-	    || rrset1->ttl != rrset2->ttl) {
+	    || rrset1->type != rrset2->type) {
 		return KNOT_EBADARG;
 	}
 
@@ -822,8 +825,7 @@ dbg_rrset_exec_verb(
 
 	if ((knot_dname_compare(rrset1->owner, rrset2->owner) != 0)
 	    || rrset1->rclass != rrset2->rclass
-	    || rrset1->type != rrset2->type
-	    || rrset1->ttl != rrset2->ttl) {
+	    || rrset1->type != rrset2->type) {
 		dbg_rrset("rrset: merge_no_dupl: Trying to merge "
 		          "different RRs.\n");
 		return KNOT_EBADARG;

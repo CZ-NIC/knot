@@ -1591,7 +1591,6 @@ dbg_zone_exec(
 
 	assert(*rrset != NULL);
 
-	// add all domain names from the RRSet to domain name table
 	int rc;
 	int ret = KNOT_EOK;
 
@@ -1605,6 +1604,7 @@ dbg_zone_exec(
 		ret = 1;
 	}
 
+	// add all domain names from the RRSet to domain name table
 	if (use_domain_table) {
 		dbg_zone_detail("Saving RRSIG RRSet to table.\n");
 		rc = knot_zone_contents_dnames_from_rrset_to_table(
