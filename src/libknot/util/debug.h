@@ -836,18 +836,22 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 #ifdef DEBUG_ENABLE_BRIEF
 #define dbg_rrset(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
 #define dbg_rrset_hex(data, len)  hex_log(LOG_ZONE, (data), (len))
+#define dbg_rrset_exec(cmds) do { cmds } while (0)
 #else
 #define dbg_rrset(msg...)
 #define dbg_rrset_hex(data, len)
+#define dbg_rrset_exec(cmds)
 #endif
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
 #define dbg_rrset_verb(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
 #define dbg_rrset_hex_verb(data, len)  hex_log(LOG_ZONE, (data), (len))
+#define dbg_rrset_exec_verb(cmds) do { cmds } while (0)
 #else
 #define dbg_rrset_verb(msg...)
 #define dbg_rrset_hex_verb(data, len)
+#define dbg_rrset_exec_verb(cmds)
 #endif
 
 /* Detail messages. */

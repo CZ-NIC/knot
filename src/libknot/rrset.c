@@ -803,9 +803,12 @@ int knot_rrset_merge_no_dupl(void **r1, void **r2)
 		dbg_rrset("rrset: merge_no_dupl: NULL arguments.");
 		return KNOT_EBADARG;
 	}
-	
-	dbg_rrset_verb("rrset: merge_no_dupl: Merging %s.\n",
-	                 knot_dname_to_str(rrset1->owner));
+
+dbg_rrset_exec_verb(
+	char *name = knot_dname_to_str(rrset1->owner);
+	dbg_rrset_verb("rrset: merge_no_dupl: Merging %s.\n", name);
+	free(name);
+);
 
 	if ((knot_dname_compare(rrset1->owner, rrset2->owner) != 0)
 	    || rrset1->rclass != rrset2->rclass
