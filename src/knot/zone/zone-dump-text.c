@@ -907,6 +907,10 @@ char *rdata_item_to_string(knot_rdata_zoneformat_t type,
 int rdata_dump_text(const knot_rdata_t *rdata, uint16_t type, FILE *f,
                      const knot_rrset_t *rrset)
 {
+	if (rdata == NULL || rrset == NULL) {
+		return KNOT_EBADARG;
+	}
+	
 	knot_rrtype_descriptor_t *desc =
 		knot_rrtype_descriptor_by_type(type);
 	char *item_str = NULL;
@@ -980,7 +984,9 @@ int rrsig_set_dump_text(knot_rrset_t *rrsig, FILE *f)
 
 int rrset_dump_text(const knot_rrset_t *rrset, FILE *f)
 {
-	dump_rrset_header(rrset, f);
+	if (rrset->rdata != NULL) { // No sense in dumping empty RR
+		dump_rrset_header(rrset, f);
+	}
 	knot_rdata_t *tmp = rrset->rdata;
 
 	while (tmp->next != rrset->rdata) {
