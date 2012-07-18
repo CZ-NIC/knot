@@ -82,7 +82,7 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 		dbg_zonediff("zone_diff: "
 		             "second zone must have higher serial than the "
 		             "first one.\n");
-		return KNOT_EBADARG;
+		return KNOT_EAGAIN;
 	}
 	
 	/* We will not touch SOA later, now is the time to handle RRSIGs. */
