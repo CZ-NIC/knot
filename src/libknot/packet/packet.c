@@ -592,6 +592,13 @@ static int knot_packet_parse_rrs(const uint8_t *wire, size_t *pos,
 				err = KNOT_EMALF;
 				break;
 			}
+
+			// First check the format of the TSIG RR
+			if (!tsig_rdata_is_ok(rrset)) {
+				err = KNOT_EMALF;
+				break;
+			}
+
 			// store the TSIG into the packet
 			knot_packet_set_tsig(packet, rrset);
 		}
@@ -1193,7 +1200,7 @@ const knot_rrset_t *knot_packet_tsig(const knot_packet_t *packet)
 
 void knot_packet_set_tsig(knot_packet_t *packet, const knot_rrset_t *tsig_rr)
 {
-    packet->tsig_rr = (knot_rrset_t *)tsig_rr;
+	packet->tsig_rr = (knot_rrset_t *)tsig_rr;
 }
 
 /*----------------------------------------------------------------------------*/
