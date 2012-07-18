@@ -2267,7 +2267,9 @@ dbg_zone_exec_detail(
 		*nsec3_previous = knot_node_previous(*nsec3_previous);
 		nsec3_rrset = knot_node_rrset(*nsec3_previous, 
 		                              KNOT_RRTYPE_NSEC3);
-		nsec3_rdata = knot_rrset_rdata(nsec3_rrset);
+		nsec3_rdata = (nsec3_rrset != NULL)
+		                ? knot_rrset_rdata(nsec3_rrset)
+		                : NULL;
 dbg_zone_exec_detail(
 		char *name = (*nsec3_previous) 
 				? knot_dname_to_str(
