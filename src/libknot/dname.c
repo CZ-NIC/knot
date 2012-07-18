@@ -598,6 +598,10 @@ knot_dname_t *knot_dname_deep_copy(const knot_dname_t *dname)
 	/* dname_new_from_wire() does not accept non-FQDN dnames, so we
 	 * do the copy by hand. It's faster anyway */
 
+	if (dname == NULL) {
+		return NULL;
+	}
+
 	knot_dname_t *copy = knot_dname_new();
 	CHECK_ALLOC(copy, NULL);
 
