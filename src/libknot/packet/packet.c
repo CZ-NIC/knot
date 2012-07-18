@@ -22,6 +22,7 @@
 #include "common.h"
 #include "util/descriptor.h"
 #include "util/wire.h"
+#include "tsig.h"
 
 /*----------------------------------------------------------------------------*/
 
