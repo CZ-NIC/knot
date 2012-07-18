@@ -3188,20 +3188,28 @@ int zones_xfr_load_changesets(knot_ns_xfr_t *xfr, uint32_t serial_from,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zones_create_and_safe_changesets(const knot_zone_t *z1,
-                                          const knot_zone_t *z2)
+int knot_zones_create_and_safe_changesets(const knot_zone_t *old_zone,
+                                          const knot_zone_t *new_zone)
 {
+	if (old_zone == NULL || old_zone->contents == NULL
+	    || new_zone == NULL || new_zone->contents == NULL) {
+		dbg_zones("zones: create_changesets: "
+		          "NULL arguments.\n");
+		return KNOTD_EINVAL;
+	}
+	
 	knot_ns_xfr_t xfr;
 	memset(&xfr, 0, sizeof(xfr));
-	xfr.zone = (knot_zone_t *)z1;
+	xfr.zone = (knot_zone_t *)old_zone;
 	knot_changesets_t *changesets;
-	int ret = knot_zone_diff_create_changesets(z1->contents, z2->contents,
+	int ret = knot_zone_diff_create_changesets(old_zone->contents,
+	                                           new_zone->contents,
 	                                           &changesets);
 	if (ret != KNOT_EOK) {
 		dbg_zones("zones: create_changesets: "
 		          "Could not create changesets. Reason: %s\n",
 		          knot_strerror(ret));
-		return ret;
+		return KNOTD_ERROR;
 	}
 	
 	xfr.data = changesets;
@@ -3209,11 +3217,11 @@ int knot_zones_create_and_safe_changesets(const knot_zone_t *z1,
 	if (journal == NULL) {
 		dbg_zones("zones: create_changesets: "
 		          "Could not start journal operation.\n");
-		return KNOT_ERROR;
+		return KNOTD_ERROR;
 	}
 	
 	ret = zones_store_changesets_commit(journal);
-	if (ret != KNOT_EOK) {
+	if (ret != KNOTD_EOK) {
 		dbg_zones("zones: create_changesets: "
 		          "Could not commit to journal. Reason: %s.\n");
 		zones_store_changesets_rollback(journal);
@@ -3222,7 +3230,7 @@ int knot_zones_create_and_safe_changesets(const knot_zone_t *z1,
 	
 	knot_free_changesets(&changesets);
 	
-	return KNOT_EOK;
+	return KNOTD_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
