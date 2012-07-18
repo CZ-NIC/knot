@@ -90,6 +90,7 @@ notify-out      { lval.t = yytext; return NOTIFY_OUT; }
 workers         { lval.t = yytext; return WORKERS; }
 user            { lval.t = yytext; return USER; }
 pidfile         { lval.t = yytext; return PIDFILE; }
+ixfr-from-differences { lval.t = yytext; return BUILD_DIFFS; }
 
 interfaces      { lval.t = yytext; return INTERFACES; }
 address         { lval.t = yytext; return ADDRESS; }

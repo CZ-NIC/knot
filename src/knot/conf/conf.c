@@ -214,6 +214,11 @@ static int conf_process(conf_t *conf)
 		if (zone->dbsync_timeout < 0) {
 			zone->dbsync_timeout = conf->dbsync_timeout;
 		}
+		
+		// Default policy for ixfr-from-differences
+		if (zone->build_diffs < 0) {
+			zone->build_diffs = conf->build_diffs;
+		}
 
 		// Default policy for semantic checks
 		if (zone->enable_checks < 0) {
@@ -490,6 +495,7 @@ conf_t *conf_new(const char* path)
 	c->ixfr_fslimit = -1;
 	c->uid = -1;
 	c->gid = -1;
+	c->build_diffs = 0; /* Disable by default. */
 
 	return c;
 }

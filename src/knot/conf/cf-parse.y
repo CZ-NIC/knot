@@ -172,6 +172,7 @@ static void conf_zone_start(void *scanner, char *name) {
    this_zone->ixfr_fslimit = -1; // Default policy applies
    this_zone->dbsync_timeout = -1; // Default policy applies
    this_zone->disable_any = -1; // Default policy applies
+   this_zone->build_diffs = -1; // Default policy applies
 
    // Append mising dot to ensure FQDN
    size_t nlen = strlen(name);
@@ -266,6 +267,7 @@ static int conf_mask(void* scanner, int nval, int prefixlen) {
 %token <tok> XFR_OUT
 %token <tok> NOTIFY_IN
 %token <tok> NOTIFY_OUT
+%token <tok> BUILD_DIFFS
 
 %token <tok> INTERFACES ADDRESS PORT
 %token <tok> IPA
@@ -662,6 +664,7 @@ zone:
  | zone zone_acl '}'
  | zone zone_acl_list
  | zone FILENAME TEXT ';' { this_zone->file = $3.t; }
+ | zone BUILD_DIFFS BOOL ';' { this_zone->build_diffs = $3.i; }
  | zone SEMANTIC_CHECKS BOOL ';' { this_zone->enable_checks = $3.i; }
  | zone DISABLE_ANY BOOL ';' { this_zone->disable_any = $3.i; }
  | zone DBSYNC_TIMEOUT NUM ';' { this_zone->dbsync_timeout = $3.i; }
@@ -688,6 +691,7 @@ zones:
    ZONES '{'
  | zones zone '}'
  | zones DISABLE_ANY BOOL ';' { new_config->disable_any = $3.i; }
+ | zones BUILD_DIFFS BOOL ';' { new_config->build_diffs = $3.i; }
  | zones SEMANTIC_CHECKS BOOL ';' { new_config->zone_checks = $3.i; }
  | zones IXFR_FSLIMIT SIZE ';' { new_config->ixfr_fslimit = $3.l; }
  | zones IXFR_FSLIMIT NUM ';' { new_config->ixfr_fslimit = $3.i; }

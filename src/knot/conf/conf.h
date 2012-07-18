@@ -96,6 +96,7 @@ typedef struct conf_zone_t {
 	int disable_any;          /*!< Disable ANY type queries for AA.*/
 	int notify_retries;       /*!< NOTIFY query retries. */
 	int notify_timeout;       /*!< Timeout for NOTIFY response (s). */
+	int build_diffs;          /*!< Calculate differences from changes. */
 	struct {
 		list xfr_in;      /*!< Remotes accepted for for xfr-in.*/
 		list xfr_out;     /*!< Remotes accepted for xfr-out.*/
@@ -197,6 +198,7 @@ typedef struct conf_t {
 	int notify_timeout; /*!< Timeout for NOTIFY response in seconds. */
 	int dbsync_timeout; /*!< Default interval between syncing to zonefile.*/
 	size_t ixfr_fslimit; /*!< File size limit for IXFR journal. */
+	int build_diffs;     /*!< Calculate differences from changes. */
 
 	/*
 	 * Implementation specifics

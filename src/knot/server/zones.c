@@ -1537,6 +1537,28 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 
 			rcu_read_unlock();
 		}
+		
+		/* Calculate differences. */
+		rcu_read_lock();
+		knot_zone_t *z_old = knot_zonedb_find_zone(ns->zone_db,
+		                                              dname);
+		/* Ensure both new and old have zone contents. */
+		knot_zone_contents_t *zc = knot_zone_get_contents(zone);
+		knot_zone_contents_t *zc_old = knot_zone_get_contents(z_old);
+		if (z->build_diffs && zc != NULL && zc_old != NULL && zone_changed) {
+			int bd = zones_create_and_save_changesets(z_old, zone);
+			if (bd == KNOTD_ENODIFF) {
+				log_zone_warning("Zone file for '%s' changed, "
+				                 "but serial didn't - "
+				                 "won't create changesets.\n",
+				                 z->name);
+			} else if (bd != KNOTD_EOK) {
+				log_zone_warning("Failed to calculate differences"
+				                 " from the zone file update: "
+				                 "%s\n", knotd_strerror(bd));
+			}
+		}
+		rcu_read_unlock();
 	}
 
 	/* CLEANUP */

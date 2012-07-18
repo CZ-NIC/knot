@@ -206,7 +206,7 @@ int knot_changeset_add_soa(knot_changeset_t *changeset, knot_rrset_t *soa,
 int knot_changesets_check_size(knot_changesets_t *changesets)
 {
 	/* Check if allocated is sufficient. */
-	if (changesets->count <= changesets->allocated) {
+	if (changesets->count < changesets->allocated) {
 		return KNOT_EOK;
 	}
 
