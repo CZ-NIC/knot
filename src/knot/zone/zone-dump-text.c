@@ -986,19 +986,21 @@ int rrset_dump_text(const knot_rrset_t *rrset, FILE *f)
 {
 	if (rrset->rdata != NULL) { // No sense in dumping empty RR
 		dump_rrset_header(rrset, f);
-	}
-	knot_rdata_t *tmp = rrset->rdata;
 
-	while (tmp->next != rrset->rdata) {
-		int ret = rdata_dump_text(tmp, rrset->type, f, rrset);
-		if (ret != KNOTD_EOK) {
-			return ret;
+		knot_rdata_t *tmp = rrset->rdata;
+
+		while (tmp->next != rrset->rdata) {
+			int ret = rdata_dump_text(tmp, rrset->type, f, rrset);
+			if (ret != KNOTD_EOK) {
+				return ret;
+			}
+			dump_rrset_header(rrset, f);
+			tmp = tmp->next;
 		}
-		dump_rrset_header(rrset, f);
-		tmp = tmp->next;
+
+		rdata_dump_text(tmp, rrset->type, f, rrset);
 	}
 
-	rdata_dump_text(tmp, rrset->type, f, rrset);
 	knot_rrset_t *rrsig_set = rrset->rrsigs;
 	if (rrsig_set != NULL) {
 		rrsig_set_dump_text(rrsig_set, f);

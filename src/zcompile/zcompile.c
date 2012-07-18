@@ -125,6 +125,8 @@ static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
 	knot_rrset_t *tmp_rrset =
 		knot_node_get_rrset(node, rrsig_type_covered(rrsig));
 
+	int ret;
+
 	if (tmp_rrset == NULL) {
 		dbg_zp("zp: find_rr_for_sig_in_node: Node does not contain "
 		       "RRSet of type %s.\n",
@@ -136,6 +138,15 @@ static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
 		if (tmp_rrset == NULL) {
 			dbg_zp("zp: find_rr_for_sig_in_node: Cannot create "
 			       "dummy RRSet.\n");
+			return KNOT_ERROR;
+		}
+
+		ret = knot_zone_contents_add_rrset(zone, tmp_rrset, &node,
+		                                   KNOT_RRSET_DUPL_MERGE, 1);
+		assert(ret <= 0);
+		if (ret < 0) {
+			dbg_zp("zp: Failed to add new dummy RRSet to the zone."
+			       "\n");
 			return KNOT_ERROR;
 		}
 	}
@@ -152,21 +163,13 @@ static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
 		free(name);
 	}
 
-	if (tmp_rrset->rrsigs != NULL) {
-		if (knot_zone_contents_add_rrsigs(zone, rrsig,
-		                                  &tmp_rrset, &node,
-		                           KNOT_RRSET_DUPL_MERGE, 1) < 0) {
-			dbg_zp("zp: find_rr_for_sig: Cannot add RRSIG.\n");
-			return KNOTDZCOMPILE_EINVAL;
-		}
+	ret = knot_zone_contents_add_rrsigs(zone, rrsig, &tmp_rrset, &node,
+			                    KNOT_RRSET_DUPL_MERGE, 1);
+	if (ret < 0) {
+		dbg_zp("zp: find_rr_for_sig: Cannot add RRSIG.\n");
+		return KNOTDZCOMPILE_EINVAL;
+	} else if (ret > 0) {
 		knot_rrset_free(&rrsig);
-	} else {
-		if (knot_zone_contents_add_rrsigs(zone, rrsig,
-		                                  &tmp_rrset, &node,
-		                           KNOT_RRSET_DUPL_MERGE, 1) < 0) {
-			dbg_zp("zp: find_rr_for_sig: Cannot add RRSIG.\n");
-			return KNOTDZCOMPILE_EINVAL;
-		}
 	}
 
 	assert(tmp_rrset->rrsigs != NULL);
