@@ -21,6 +21,7 @@
 #include "libknot/util/debug.h"
 #include "libknot/rdata.h"
 #include "zone-diff.h"
+#include "libknot/nameserver/name-server.h"
 
 struct zone_diff_param {
 	const knot_zone_contents_t *contents;
@@ -29,6 +30,7 @@ struct zone_diff_param {
 	int ret;
 };
 
+// forward declaration
 static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
                                 const knot_rrset_t *rrset2,
                                 knot_changeset_t *changeset);
@@ -78,11 +80,18 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 		dbg_zonediff("zone_diff: load_soas: Got bad SOA.\n");
 	}	
 
-	if (soa_serial1 >= soa_serial2) {
+	if (ns_serial_compare(soa_serial1, soa_serial2) == 0) {
 		dbg_zonediff("zone_diff: "
 		             "second zone must have higher serial than the "
 		             "first one.\n");
-		return KNOT_EAGAIN;
+		return KNOT_ENODIFF;
+	}
+	
+	if (ns_serial_compare(soa_serial1, soa_serial2) == 0) {
+		dbg_zonediff("zone_diff: "
+		             "second zone must have higher serial than the "
+		             "first one.\n");
+		return KNOT_ERANGE;
 	}
 	
 	/* We will not touch SOA later, now is the time to handle RRSIGs. */

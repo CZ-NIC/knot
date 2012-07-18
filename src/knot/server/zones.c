@@ -3209,8 +3209,10 @@ int zones_create_and_save_changesets(const knot_zone_t *old_zone,
 		dbg_zones("zones: create_changesets: "
 		          "Could not create changesets. Reason: %s\n",
 		          knot_strerror(ret));
-		if (ret == KNOT_EAGAIN) {
-			return KNOTD_EOK;
+		if (ret == KNOT_ERANGE) {
+			return KNOTD_ERANGE;
+		} else if (ret == KNOT_ENODIFF) {
+			return KNOTD_ENODIFF;
 		} else {
 			return KNOTD_ERROR;
 		}

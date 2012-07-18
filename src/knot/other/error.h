@@ -63,8 +63,9 @@ enum knot_error_t {
 	KNOTD_EMALF, /*!< \brief Malformed data. */
 	KNOTD_ESPACE, /*!< \brief Not enough space provided. */
 	KNOTD_EEXPIRED, /*!< \brief Resource is expired. */
+	KNOTD_ENODIFF, /*!< \brief Cannot create zone diff. */
 
-	KNOTD_ERROR_COUNT = 21
+	KNOTD_ERROR_COUNT = 22
 };
 
 /*! \brief Table linking error messages to error codes. */
