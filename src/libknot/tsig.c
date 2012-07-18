@@ -643,7 +643,8 @@ size_t tsig_wire_actsize(const knot_rrset_t *tsig)
 
 int tsig_rdata_is_ok(const knot_rrset_t *tsig)
 {
-	return (knot_rdata_item_count(knot_rrset_rdata(tsig)) >= 7
+	return (knot_rrset_rdata(tsig) != NULL
+	        && knot_rdata_item_count(knot_rrset_rdata(tsig)) >= 7
 	        && tsig_rdata_alg_name(tsig) != NULL
 	        && tsig_rdata_time_signed(tsig) != 0);
 }
