@@ -1247,19 +1247,19 @@ int knot_packet_contains(const knot_packet_t *packet,
 		return KNOT_EBADARG;
 	}
 
-	for (int i = 0; i < packet->header.ancount; ++i) {
+	for (int i = 0; i < packet->an_rrsets; ++i) {
 		if (knot_rrset_compare(packet->answer[i], rrset, cmp)) {
 			return 1;
 		}
 	}
 
-	for (int i = 0; i < packet->header.nscount; ++i) {
+	for (int i = 0; i < packet->ns_rrsets; ++i) {
 		if (knot_rrset_compare(packet->authority[i], rrset, cmp)) {
 			return 1;
 		}
 	}
 
-	for (int i = 0; i < packet->header.arcount; ++i) {
+	for (int i = 0; i < packet->ar_rrsets; ++i) {
 		if (knot_rrset_compare(packet->additional[i], rrset, cmp)) {
 			return 1;
 		}

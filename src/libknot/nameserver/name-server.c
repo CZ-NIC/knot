@@ -3355,11 +3355,11 @@ int knot_ns_prep_normal_response(knot_nameserver_t *nameserver,
 		int ok = 0;
 		const knot_rrset_t *add1 =
 		                knot_packet_additional_rrset(query, 0);
-		if (knot_packet_arcount(query) == 1
+		if (knot_packet_additional_rrset_count(query) == 1
 		    && (knot_rrset_type(add1) == KNOT_RRTYPE_OPT
 		        || knot_rrset_type(add1) == KNOT_RRTYPE_TSIG)) {
 			ok = 1;
-		} else if (knot_packet_arcount(query) == 2) {
+		} else if (knot_packet_additional_rrset_count(query) == 2) {
 			const knot_rrset_t *add2 =
 			                knot_packet_additional_rrset(query, 1);
 			if (knot_rrset_type(add1) == KNOT_RRTYPE_OPT
