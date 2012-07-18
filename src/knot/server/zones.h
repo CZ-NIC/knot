@@ -281,6 +281,8 @@ int zones_xfr_load_changesets(knot_ns_xfr_t *xfr, uint32_t serial_from,
  *
  * \retval KNOTD_EOK on success.
  * \retval KNOTD_EINVAL on invalid arguments.
+ * \retval KNOTD_ERANGE when new serial is lower than the old one.
+ * \retval KNOTD_ENODIFF when new zone's serial are equal.
  * \retval KNOTD_ERROR when there was error creating changesets.
  */
 int zones_create_and_save_changesets(const knot_zone_t *old_zone,
