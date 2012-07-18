@@ -3188,8 +3188,8 @@ int zones_xfr_load_changesets(knot_ns_xfr_t *xfr, uint32_t serial_from,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zones_create_and_safe_changesets(const knot_zone_t *old_zone,
-                                          const knot_zone_t *new_zone)
+int zones_create_and_save_changesets(const knot_zone_t *old_zone,
+                                     const knot_zone_t *new_zone)
 {
 	if (old_zone == NULL || old_zone->contents == NULL
 	    || new_zone == NULL || new_zone->contents == NULL) {

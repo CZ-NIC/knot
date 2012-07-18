@@ -283,8 +283,8 @@ int zones_xfr_load_changesets(knot_ns_xfr_t *xfr, uint32_t serial_from,
  * \retval KNOTD_EINVAL on invalid arguments.
  * \retval KNOTD_ERROR when there was error creating changesets.
  */
-int knot_zones_create_and_safe_changesets(const knot_zone_t *old_zone,
-                                          const knot_zone_t *new_zone);
+int zones_create_and_save_changesets(const knot_zone_t *old_zone,
+                                     const knot_zone_t *new_zone);
 
 /*!
  * \brief Update zone timers.
