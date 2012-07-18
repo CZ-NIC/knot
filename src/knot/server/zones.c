@@ -3198,7 +3198,8 @@ int knot_zones_create_and_safe_changesets(const knot_zone_t *z1,
 	int ret = knot_zone_diff_create_changesets(z1->contents, z2->contents,
 	                                           &changesets);
 	if (ret != KNOT_EOK) {
-		dbg_zones("Could not create changesets. Reason: %s\n",
+		dbg_zones("zones: create_changesets: "
+		          "Could not create changesets. Reason: %s\n",
 		          knot_strerror(ret));
 		return ret;
 	}
@@ -3206,13 +3207,15 @@ int knot_zones_create_and_safe_changesets(const knot_zone_t *z1,
 	xfr.data = changesets;
 	journal_t *journal = zones_store_changesets_begin(&xfr);
 	if (journal == NULL) {
-		dbg_zones("Could not start journal operation.\n");
+		dbg_zones("zones: create_changesets: "
+		          "Could not start journal operation.\n");
 		return KNOT_ERROR;
 	}
 	
 	ret = zones_store_changesets_commit(journal);
 	if (ret != KNOT_EOK) {
-		dbg_zones("Could not commit to journal.\n");
+		dbg_zones("zones: create_changesets: "
+		          "Could not commit to journal. Reason: %s.\n");
 		zones_store_changesets_rollback(journal);
 		return ret;
 	}
