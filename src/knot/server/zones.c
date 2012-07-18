@@ -1855,18 +1855,19 @@ static int zones_check_tsig_query(const knot_zone_t *zone,
 	assert(rcode != NULL);
 	assert(tsig_key_zone != NULL);
 
-	const knot_rrset_t *tsig = NULL;
+	const knot_rrset_t *tsig = knot_packet_tsig(query);
 
-	if (knot_packet_additional_rrset_count(query) > 0) {
-		/*! \todo warning */
-		tsig = knot_packet_additional_rrset(query,
-		                 knot_packet_additional_rrset_count(query) - 1);
-		if (knot_rrset_type(tsig) == KNOT_RRTYPE_TSIG) {
-			dbg_zones_verb("found TSIG in normal query\n");
-		} else {
-			tsig = NULL; /* Invalidate if not TSIG RRTYPE. */
-		}
-	}
+	// not required, TSIG is already found
+//	if (knot_packet_additional_rrset_count(query) > 0) {
+//		/*! \todo warning */
+//		tsig = knot_packet_additional_rrset(query,
+//		                 knot_packet_additional_rrset_count(query) - 1);
+//		if (knot_rrset_type(tsig) == KNOT_RRTYPE_TSIG) {
+//			dbg_zones_verb("found TSIG in normal query\n");
+//		} else {
+//			tsig = NULL; /* Invalidate if not TSIG RRTYPE. */
+//		}
+//	}
 
 	if (tsig == NULL) {
 		// no TSIG, this is completely valid
@@ -1901,7 +1902,7 @@ static int zones_check_tsig_query(const knot_zone_t *zone,
 	}
 
 	// save TSIG RR to query structure
-	knot_packet_set_tsig(query, tsig);
+//	knot_packet_set_tsig(query, tsig);
 
 	return ret;
 }
@@ -2156,15 +2157,16 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 	                                       ? *rsize : 0);
 
 	// check for TSIG in the query
-	if (knot_packet_additional_rrset_count(query) > 0) {
-		/*! \todo warning */
-		const knot_rrset_t *tsig = knot_packet_additional_rrset(query,
-		                 knot_packet_additional_rrset_count(query) - 1);
-		if (knot_rrset_type(tsig) == KNOT_RRTYPE_TSIG) {
-			dbg_zones_verb("found TSIG in normal query\n");
-			knot_packet_set_tsig(query, tsig);
-		}
-	}
+	// not required, TSIG is already found if it is there
+//	if (knot_packet_additional_rrset_count(query) > 0) {
+//		/*! \todo warning */
+//		const knot_rrset_t *tsig = knot_packet_additional_rrset(query,
+//		                 knot_packet_additional_rrset_count(query) - 1);
+//		if (knot_rrset_type(tsig) == KNOT_RRTYPE_TSIG) {
+//			dbg_zones_verb("found TSIG in normal query\n");
+//			knot_packet_set_tsig(query, tsig);
+//		}
+//	}
 
 	knot_rcode_t rcode = 0;
 

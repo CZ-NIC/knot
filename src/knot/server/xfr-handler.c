@@ -411,7 +411,7 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 			break;
 		}
 
-		xfrin_cleanup_successful_update( &chs->changes);
+		xfrin_cleanup_successful_update(&chs->changes);
 
 		/* Free changesets, but not the data. */
 		knot_free_changesets(&chs);
