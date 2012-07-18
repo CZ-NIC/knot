@@ -39,6 +39,7 @@
 #include "libknot/updates/changesets.h"
 #include "libknot/tsig-op.h"
 #include "libknot/packet/response.h"
+#include "libknot/zone/zone-diff.h"
 
 static const size_t XFRIN_CHANGESET_BINARY_SIZE = 100;
 static const size_t XFRIN_CHANGESET_BINARY_STEP = 100;
@@ -3183,6 +3184,42 @@ int zones_xfr_load_changesets(knot_ns_xfr_t *xfr, uint32_t serial_from,
 	
 	xfr->data = chgsets;
 	return KNOTD_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_zones_create_and_safe_changesets(const knot_zone_t *z1,
+                                          const knot_zone_t *z2)
+{
+	knot_ns_xfr_t xfr;
+	memset(&xfr, 0, sizeof(xfr));
+	xfr.zone = (knot_zone_t *)z1;
+	knot_changesets_t *changesets;
+	int ret = knot_zone_diff_create_changesets(z1->contents, z2->contents,
+	                                           &changesets);
+	if (ret != KNOT_EOK) {
+		dbg_zones("Could not create changesets. Reason: %s\n",
+		          knot_strerror(ret));
+		return ret;
+	}
+	
+	xfr.data = changesets;
+	journal_t *journal = zones_store_changesets_begin(&xfr);
+	if (journal == NULL) {
+		dbg_zones("Could not start journal operation.\n");
+		return KNOT_ERROR;
+	}
+	
+	ret = zones_store_changesets_commit(journal);
+	if (ret != KNOT_EOK) {
+		dbg_zones("Could not commit to journal.\n");
+		zones_store_changesets_rollback(journal);
+		return ret;
+	}
+	
+	knot_free_changesets(&changesets);
+	
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
