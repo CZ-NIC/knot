@@ -3248,12 +3248,22 @@ int zones_create_and_save_changesets(const knot_zone_t *old_zone,
 		return KNOTD_ERROR;
 	}
 	
+	ret = zones_store_changesets(&xfr);
+	if (ret != KNOTD_EOK) {
+		zones_store_changesets_rollback(journal);
+		dbg_zones("zones: create_changesets: "
+		          "Could not store in the journal. Reason: %s.\n",
+		          knotd_strerror(ret));
+		
+		return ret;
+	}
+	
 	ret = zones_store_changesets_commit(journal);
 	if (ret != KNOTD_EOK) {
 		dbg_zones("zones: create_changesets: "
 		          "Could not commit to journal. Reason: %s.\n",
 		          knotd_strerror(ret));
-		zones_store_changesets_rollback(journal);
+		
 		return ret;
 	}
 	
