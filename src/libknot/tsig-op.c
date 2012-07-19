@@ -427,6 +427,7 @@ static int knot_tsig_create_sign_wire_next(const uint8_t *msg, size_t msg_len,
 	if (ret != KNOT_EOK) {
 		dbg_tsig("TSIG: create wire: failed to write TSIG "
 		         "timers: %s\n", knot_strerror(ret));
+		free(wire);
 		return ret;
 	}
 
@@ -437,6 +438,7 @@ static int knot_tsig_create_sign_wire_next(const uint8_t *msg, size_t msg_len,
 		dbg_tsig("TSIG: create wire: failed to compute digest: %s\n",
 		         knot_strerror(ret));
 		*digest_len = 0;
+		free(wire);
 		return ret;
 	}
 

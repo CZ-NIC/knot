@@ -3228,14 +3228,23 @@ int zones_create_and_save_changesets(const knot_zone_t *old_zone,
 	                                           new_zone->contents,
 	                                           &changesets);
 	if (ret != KNOT_EOK) {
-		dbg_zones("zones: create_changesets: "
-		          "Could not create changesets. Reason: %s\n",
-		          knot_strerror(ret));
 		if (ret == KNOT_ERANGE) {
+			dbg_zones_detail("zones: create_changesets: "
+			                 "New serial was lower than the old "
+			                 "one.\n");
+			knot_free_changesets(&changesets);
 			return KNOTD_ERANGE;
 		} else if (ret == KNOT_ENODIFF) {
+			dbg_zones_detail("zones: create_changesets: "
+			                 "New serial was the same as the old "
+			                 "one.\n");
+			knot_free_changesets(&changesets);
 			return KNOTD_ENODIFF;
 		} else {
+			dbg_zones("zones: create_changesets: "
+			          "Could not create changesets. Reason: %s\n",
+			          knot_strerror(ret));
+			knot_free_changesets(&changesets);
 			return KNOTD_ERROR;
 		}
 	}
