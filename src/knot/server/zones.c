@@ -1158,7 +1158,7 @@ static int zones_load_changesets(const knot_zone_t *zone,
 		ret = knot_changesets_check_size(dst);
 		--dst->count;
 		if (ret != KNOT_EOK) {
-			--dst->count;
+			//--dst->count;
 			dbg_xfr("xfr: failed to check changesets size: %s\n",
 			        knot_strerror(ret));
 			journal_release(j);
