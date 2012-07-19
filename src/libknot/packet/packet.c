@@ -513,6 +513,8 @@ dbg_packet_exec_detail(
 			if (knot_rrset_compare((*rrsets)[i], rrset,
 			                         KNOT_RRSET_COMPARE_HEADER)) {
 				/*! \todo Test this!!! */
+				// no duplicate checking here, the packet should
+				// look exactly as it came from wire
 				int rc = knot_rrset_merge(
 				    (void **)((*rrsets) + i), (void **)&rrset);
 				if (rc != KNOT_EOK) {

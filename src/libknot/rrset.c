@@ -611,7 +611,7 @@ int knot_rrset_compare(const knot_rrset_t *r1,
 
 	int res = ((r1->rclass == r2->rclass)
 	           && (r1->type == r2->type)
-	           && (r1->ttl == r2->ttl)
+//	           && (r1->ttl == r2->ttl)
 	           && knot_dname_compare(r1->owner, r2->owner) == 0);
 
 	if (cmp == KNOT_RRSET_COMPARE_WHOLE && res) {

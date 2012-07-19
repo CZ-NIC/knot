@@ -129,7 +129,10 @@ knot_node_t *knot_node_new(knot_dname_t *owner, knot_node_t *parent,
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*! \todo Consider replacing rrset_merge() with rrset_merge_no_dupl(). Currently
+ *        this function is never called with merge=1, so it's not a problem,
+ *        but it may be in the future.
+ */
 int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset,
                         int merge)
 {
