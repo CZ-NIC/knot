@@ -113,12 +113,19 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 		dbg_zonediff("zone_diff: load_soas: Cannot copy RRSet.\n");
 		return ret;
 	}
+	
+	/* We MUST NOT save this RRSIG. */
+	knot_rrset_deep_free(&changeset->soa_from->rrsigs, 1, 1, 1);
+	assert(changeset->soa_from->rrsigs == NULL);
 
 	ret = knot_rrset_deep_copy(soa_rrset2, &changeset->soa_to);
 	if (ret != KNOT_EOK) {
 		dbg_zonediff("zone_diff: load_soas: Cannot copy RRSet.\n");
 		return ret;
 	}
+	
+	knot_rrset_deep_free(&changeset->soa_to->rrsigs, 1, 1, 1);
+	assert(changeset->soa_to->rrsigs == NULL);
 	
 	changeset->serial_from = soa_serial1;
 	changeset->serial_to = soa_serial2;
@@ -220,7 +227,7 @@ static int knot_zone_diff_changeset_remove_node(knot_changeset_t *changeset,
 	}
 	
 	dbg_zonediff("zone_diff: remove_node: Removing node:\n");
-dbg_zonediff_exec_verb(
+dbg_zonediff_exec_detail(
 	knot_node_dump((knot_node_t *)node, 1);
 );
 
@@ -846,6 +853,35 @@ int knot_zone_contents_diff(const knot_zone_contents_t *zone1,
 	return KNOT_EOK;
 }
 
+#ifdef KNOT_ZONEDIFF_DEBUG
+#ifdef DEBUG_ENABLE_DETAILS
+static void knot_zone_diff_dump_changeset(knot_changeset_t *ch)
+{
+	dbg_zonediff_detail("Changeset FROM: %d\n", ch->serial_from);
+	rrset_dump_text(ch->soa_from, stderr);
+	dbg_zonediff_detail("\n");
+	dbg_zonediff_detail("Changeset TO: %d\n", ch->serial_to);
+	rrset_dump_text(ch->soa_to, stderr);
+	dbg_zonediff_detail("\n");
+	dbg_zonediff_detail("Adding %d RRs.\n", ch->add_count);
+	dbg_zonediff_detail("Removing %d RRs.\n", ch->remove_count);
+	
+	dbg_zonediff_detail("ADD section:\n");
+	dbg_zonediff_detail("**********************************************\n");
+	for (int i = 0; i < ch->add_count; i++) {
+		rrset_dump_text(ch->add[i], stderr);
+		dbg_zonediff_detail("\n");
+	}
+	dbg_zonediff_detail("REMOVE section:\n");
+	dbg_zonediff_detail("**********************************************\n");
+	for (int i = 0; i < ch->remove_count; i++) {
+		rrset_dump_text(ch->remove[i], stderr);
+		dbg_zonediff_detail("\n");
+	}
+}
+#endif
+#endif
+
 int knot_zone_diff_create_changesets(const knot_zone_contents_t *z1,
                                      const knot_zone_contents_t *z2,
                                      knot_changesets_t **changesets)
@@ -874,6 +910,12 @@ int knot_zone_diff_create_changesets(const knot_zone_contents_t *z1,
 	}
 	
 	(*changesets)->count = 1;
+	
+	dbg_zonediff("Changesets created successfully!\n");
+	dbg_zonediff_detail("Changeset dump:\n");
+dbg_zonediff_exec_detail(
+	knot_zone_diff_dump_changeset((*changesets)->sets);
+);
 	
 	return KNOT_EOK;
 }
