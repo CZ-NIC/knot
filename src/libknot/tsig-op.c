@@ -60,7 +60,7 @@ static int knot_tsig_check_algorithm(const knot_rrset_t *tsig_rr)
 static int knot_tsig_check_key(const knot_rrset_t *tsig_rr,
                                const knot_key_t *tsig_key)
 {
-	if (tsig_rr == NULL || tsig_key) {
+	if (tsig_rr == NULL || tsig_key == NULL) {
 		return KNOT_EBADARG;
 	}
 	
