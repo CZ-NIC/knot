@@ -2269,8 +2269,9 @@ static void xfrin_switch_node_in_dname_table(knot_dname_t *dname, void *data)
 	}
 
 	assert(knot_node_new_node(knot_dname_node(dname)) != NULL);
-	knot_dname_set_node(dname, knot_node_get_new_node(
-	                            knot_dname_get_node(dname)));
+	knot_dname_update_node(dname);
+//	knot_dname_set_node(dname, knot_node_get_new_node(
+//	                            knot_dname_get_node(dname)));
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2293,10 +2294,10 @@ static int xfrin_switch_nodes(knot_zone_contents_t *contents_copy)
 	                   xfrin_switch_node_in_hash_table, NULL);
 	assert(ret == 0);
 
-	// Traverse also the dname table and change the node pointers in dnames
-	knot_zone_contents_dname_table_apply(contents_copy,
-	                                     xfrin_switch_node_in_dname_table,
-	                                     NULL);
+//	// Traverse also the dname table and change the node pointers in dnames
+//	knot_zone_contents_dname_table_apply(contents_copy,
+//	                                     xfrin_switch_node_in_dname_table,
+//	                                     NULL);
 
 	return KNOT_EOK;
 }
@@ -3170,6 +3171,20 @@ int xfrin_switch_zone(knot_zone_t *zone,
 
 	dbg_xfrin_verb("Old contents: %p, apex: %p, new apex: %p\n",
 	               old, (old) ? old->apex : NULL, new_contents->apex);
+
+	// switch pointers in domain names, now only the new zone is used
+	if (transfer_type == XFR_TYPE_IIN) {
+		// Traverse also the dname table and change the node pointers
+		// in dnames
+		int ret = knot_zone_contents_dname_table_apply(
+		                        new_contents,
+		                        xfrin_switch_node_in_dname_table, NULL);
+		assert(ret == KNOT_EOK);
+	}
+
+	// set generation to old, so that the flags may be used in next transfer
+	// and we do not search for new nodes anymore
+	knot_zone_contents_set_gen_old(new_contents);
 
 	// wait for readers to finish
 	dbg_xfrin_verb("Waiting for readers to finish...\n");

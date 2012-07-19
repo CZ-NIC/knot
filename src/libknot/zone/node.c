@@ -560,13 +560,24 @@ void knot_node_set_new_node(knot_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
-void knot_node_set_zone(knot_node_t *node, knot_zone_t *zone)
+void knot_node_set_zone(knot_node_t *node, const knot_zone_t *zone)
 {
 	if (node == NULL) {
 		return;
 	}
 
 	node->zone = zone;
+}
+
+/*----------------------------------------------------------------------------*/
+
+const knot_zone_t *knot_node_zone(const knot_node_t *node)
+{
+	if (node == NULL) {
+		return NULL;
+	}
+
+	return node->zone;
 }
 
 /*----------------------------------------------------------------------------*/

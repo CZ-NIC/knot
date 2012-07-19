@@ -74,7 +74,7 @@ struct knot_node {
 
 	struct knot_node *nsec3_referer;
 
-	struct knot_zone *zone;
+	const struct knot_zone_contents *zone;
 
 	struct knot_node *new_node;
 	
@@ -342,7 +342,9 @@ knot_node_t *knot_node_get_new_node(const knot_node_t *node);
 
 void knot_node_set_new_node(knot_node_t *node, knot_node_t *new_node);
 
-void knot_node_set_zone(knot_node_t *node, struct knot_zone *zone);
+void knot_node_set_zone(knot_node_t *node, const struct knot_zone *zone);
+
+const struct knot_zone *knot_node_zone(const knot_node_t *node);
 
 void knot_node_update_ref(knot_node_t **ref);
 

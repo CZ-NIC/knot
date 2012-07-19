@@ -747,7 +747,17 @@ struct knot_node *knot_dname_get_node(const knot_dname_t *dname)
 	if (dname == NULL) {
 		return NULL;
 	}
-	return dname->node;
+
+	knot_node_t *node = dname->node;
+
+	// check if we should return the new or the old node
+	if (node && knot_node_zone(node)
+	    && knot_zone_contents_gen_is_new(knot_zone_contents(
+	        knot_node_zone(node)))) {
+		node = knot_node_get_new_node(node);
+	}
+
+	return node;
 }
 
 /*----------------------------------------------------------------------------*/

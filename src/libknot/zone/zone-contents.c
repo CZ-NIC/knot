@@ -1061,7 +1061,7 @@ knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
 
 	contents->apex = apex;
 	contents->zone = zone;
-	knot_node_set_zone(apex, zone);
+	knot_node_set_zone(apex, contents->zone);
 	contents->node_count = 1;
 
 	dbg_zone_verb("Creating tree for normal nodes.\n");
@@ -2759,6 +2759,8 @@ int knot_zone_contents_shallow_copy2(const knot_zone_contents_t *from,
 
 	contents->node_count = from->node_count;
 	contents->flags = from->flags;
+	// set the 'new' flag
+	knot_zone_contents_set_gen_new(contents);
 
 	contents->zone = from->zone;
 

@@ -869,8 +869,10 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 #else
 #define dbg_rrset(msg...)
 #define dbg_rrset_hex(data, len)
+#define dbg_rrset_exec(cmds)
 #define dbg_rrset_verb(msg...)
 #define dbg_rrset_hex_verb(data, len)
+#define dbg_rrset_exec_verb(cmds)
 #define dbg_rrset_detail(msg...)
 #define dbg_rrset_hex_detail(data, len)
 #define dbg_rrset_exec_detail(cmds)
