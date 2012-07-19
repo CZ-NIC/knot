@@ -83,7 +83,7 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 	if (ns_serial_compare(soa_serial1, soa_serial2) == 0) {
 		dbg_zonediff("zone_diff: "
 		             "second zone must have higher serial than the "
-		             "first one. (%d vs. %d)\n",
+		             "first one. (%lld vs. %lld)\n",
 		             soa_serial1, soa_serial2);
 		return KNOT_ENODIFF;
 	}
@@ -91,7 +91,7 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 	if (ns_serial_compare(soa_serial1, soa_serial2) > 0) {
 		dbg_zonediff("zone_diff: "
 		             "second zone must have higher serial than the "
-		             "first one. (%d vs. %d)\n",
+		             "first one. (%lld vs. %lld)\n",
 		             soa_serial1, soa_serial2);
 		return KNOT_ERANGE;
 	}
@@ -123,7 +123,7 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 	changeset->serial_from = soa_serial1;
 	changeset->serial_to = soa_serial2;
 	
-	dbg_zonediff_verb("zone_diff: load_soas: SOAs diffed. (%lu -> %lu)\n",
+	dbg_zonediff_verb("zone_diff: load_soas: SOAs diffed. (%lld -> %lld)\n",
 	            soa_serial1, soa_serial2);
 
 	return KNOT_EOK;
