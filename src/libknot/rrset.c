@@ -901,6 +901,13 @@ dbg_rrset_exec_detail(
 			/* Insert this item at the end of first list. */
 			tmp->next = insert_after->next;
 			insert_after->next = tmp;
+			/*!< \todo This message has to be removed after bugfix. */
+			dbg_rrset_detail("rrset: merge_no_dupl: Insert after=%p"
+			                 ", tmp=%p, tmp->next=%p, "
+			                 " rrset1->rdata=%p"
+			                 "\n",
+			                 insert_after, tmp, tmp->next,
+			                 rrset1->rdata);
 			assert(tmp->next == rrset1->rdata);
 		} else {
 			dbg_rrset_detail("rrset: merge_dupl: Skipping and "
