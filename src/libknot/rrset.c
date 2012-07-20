@@ -946,7 +946,10 @@ dbg_rrset_exec_detail(
 	 * Since there is a possibility of corrupted list for second RRSet, it
 	 * is safer to set its list to NULL, so that it cannot be used.
 	 */
-	rrset2->rdata = NULL;
+	
+	/*!< \todo This change is only here to locate error. !!! */
+//	rrset2->rdata = NULL;
+	rrset2->rdata = rrset1->rdata;
 
 	return KNOT_EOK;
 }
