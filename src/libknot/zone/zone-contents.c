@@ -2248,7 +2248,9 @@ dbg_zone_exec_detail(
 	 */
 	const knot_rrset_t *nsec3_rrset = knot_node_rrset(*nsec3_previous, 
 	                                                  KNOT_RRTYPE_NSEC3);
-	const knot_rdata_t *nsec3_rdata = knot_rrset_rdata(nsec3_rrset);
+	const knot_rdata_t *nsec3_rdata = (nsec3_rrset != NULL)
+				? knot_rrset_rdata(nsec3_rrset)
+				: NULL;
 	const knot_node_t *original_prev = *nsec3_previous;
 	
 	while (nsec3_rdata != NULL
