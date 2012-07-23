@@ -74,7 +74,7 @@ struct knot_node {
 
 	struct knot_node *nsec3_referer;
 
-	const struct knot_zone_contents *zone;
+	const struct knot_zone *zone;
 
 	struct knot_node *new_node;
 	
@@ -88,6 +88,7 @@ struct knot_node {
 	 * Currently only two:
 	 *   0x01 - node is a delegation point
 	 *   0x02 - node is non-authoritative (under a delegation point)
+	 *   0x10 - node is empty and will be deleted after update
 	 */
 	uint8_t flags;
 };
@@ -102,9 +103,11 @@ typedef enum {
 	/*! \brief Node is not authoritative (i.e. below a zone cut). */
 	KNOT_NODE_FLAGS_NONAUTH = (uint8_t)0x02,
 	/*! \brief Node is old and will be removed (during update). */
-	KNOT_NODE_FLAGS_OLD = (uint8_t)0x80,
+	KNOT_NODE_FLAGS_OLD = (uint8_t)0x04,
 	/*! \brief Node is new and should not be used while zoen is old. */
-	KNOT_NODE_FLAGS_NEW = (uint8_t)0x40
+	KNOT_NODE_FLAGS_NEW = (uint8_t)0x08,
+	/*! \brief Node is empty and will be deleted after update. */
+	KNOT_NODE_FLAGS_EMPTY = (uint8_t)0x10
 } knot_node_flags_t;
 
 /*----------------------------------------------------------------------------*/
@@ -397,6 +400,10 @@ void knot_node_set_old(knot_node_t *node);
 void knot_node_clear_new(knot_node_t *node);
 
 void knot_node_clear_old(knot_node_t *node);
+
+int knot_node_is_empty(const knot_node_t *node);
+
+void knot_node_set_empty(knot_node_t *node);
 
 /*!
  * \brief Destroys the RRSets within the node structure.

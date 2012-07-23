@@ -329,6 +329,10 @@ static void knot_zone_contents_adjust_rdata_item(knot_rdata_t *rdata,
 	if (dname_item != NULL) {
 		knot_dname_t *dname = dname_item->dname;
 
+		/*
+		 * The case when dname.node is already set is handled here.
+		 * No use to check it later.
+		 */
 		if (knot_dname_node(dname) != NULL
 		    || !knot_dname_is_subdomain(dname, knot_node_owner(
 		                              knot_zone_contents_apex(zone)))) {
@@ -370,8 +374,9 @@ static void knot_zone_contents_adjust_rdata_item(knot_rdata_t *rdata,
 
 			n = knot_zone_contents_find_wildcard_child(zone,
 			                                      closest_encloser);
+
 			if (n != NULL) {
-				dname->node = (knot_node_t *)n;
+				knot_dname_set_node(dname, (knot_node_t *)n);
 				dbg_zone_exec_detail(
 					char *name = knot_dname_to_str(
 					                    knot_node_owner(n));

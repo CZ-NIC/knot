@@ -83,6 +83,30 @@ static inline void knot_node_flags_set_nonauth(uint8_t *flags)
 
 /*----------------------------------------------------------------------------*/
 /*!
+ * \brief Sets the empty node flag.
+ *
+ * \param flags Flags to set the flag in.
+ */
+static inline void knot_node_flags_set_empty(uint8_t *flags)
+{
+	*flags |= KNOT_NODE_FLAGS_EMPTY;
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Returns the empty node flag
+ *
+ * \param flags Flags to retrieve the flag from.
+ *
+ * \return A byte with only the empty node flag set if it was set in \a flags.
+ */
+static inline uint8_t knot_node_flags_get_empty(uint8_t flags)
+{
+	return flags & KNOT_NODE_FLAGS_NONAUTH;
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
  * \brief Compares the two keys as RR types.
  *
  * \note This function may be used in data structures requiring generic
@@ -660,6 +684,20 @@ int knot_node_is_auth(const knot_node_t *node)
 	}
 
 	return (node->flags == 0);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_node_is_empty(const knot_node_t *node)
+{
+	return knot_node_flags_get_empty(node->flags);
+}
+
+/*----------------------------------------------------------------------------*/
+
+void knot_node_set_empty(knot_node_t *node)
+{
+	knot_node_flags_set_empty(&node->flags);
 }
 
 /*----------------------------------------------------------------------------*/

@@ -224,8 +224,6 @@ const struct knot_node *knot_dname_node(const knot_dname_t *dname);
 
 struct knot_node *knot_dname_get_node(const knot_dname_t *dname);
 
-void knot_dname_set_node(knot_dname_t *dname, struct knot_node *node);
-
 void knot_dname_update_node(knot_dname_t *dname);
 
 void knot_dname_set_node(knot_dname_t *dname, struct knot_node *node);

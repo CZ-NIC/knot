@@ -2204,6 +2204,30 @@ void xfrin_cleanup_successful_update(knot_changes_t **changes)
 
 	}
 
+	// free the empty nodes
+	for (int i = 0; i < (*changes)->old_nodes_count; ++i) {
+dbg_xfrin_exec_detail(
+		char *name = knot_dname_to_str(
+		                   knot_node_owner((*changes)->old_nodes[i]));
+		dbg_xfrin_detail("Deleting old empty node: %p, owner: %s\n",
+		                 (*changes)->old_nodes[i], name);
+		free(name);
+);
+		knot_node_free(&(*changes)->old_nodes[i], 0);
+	}
+
+	// free empty NSEC3 nodes
+	for (int i = 0; i < (*changes)->old_nsec3_count; ++i) {
+dbg_xfrin_exec_detail(
+		char *name = knot_dname_to_str(
+		                   knot_node_owner((*changes)->old_nsec3[i]));
+		dbg_xfrin_detail("Deleting old empty node: %p, owner: %s\n",
+		                 (*changes)->old_nsec3[i], name);
+		free(name);
+);
+		knot_node_free(&(*changes)->old_nsec3[i], 0);
+	}
+
 	// free allocated arrays of nodes and rrsets
 	free((*changes)->new_rrsets);
 	free((*changes)->new_rdata);
@@ -2268,10 +2292,7 @@ static void xfrin_switch_node_in_dname_table(knot_dname_t *dname, void *data)
 		return;
 	}
 
-	assert(knot_node_new_node(knot_dname_node(dname)) != NULL);
 	knot_dname_update_node(dname);
-//	knot_dname_set_node(dname, knot_node_get_new_node(
-//	                            knot_dname_get_node(dname)));
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2833,6 +2854,8 @@ static void xfrin_mark_empty(knot_node_t *node, void *data)
 		}
 
 		changes->old_nodes[changes->old_nodes_count++] = node;
+		// mark the node as empty
+		knot_node_set_empty(node);
 
 		if (node->parent != NULL) {
 			assert(node->parent->children > 0);
@@ -2865,6 +2888,8 @@ static void xfrin_mark_empty_nsec3(knot_node_t *node, void *data)
 		}
 
 		changes->old_nsec3[changes->old_nsec3_count++] = node;
+		// mark the node as empty
+		knot_node_set_empty(node);
 
 		if (node->parent != NULL) {
 			assert(node->parent->children > 0);
@@ -2929,9 +2954,9 @@ static int xfrin_remove_empty_nodes(knot_zone_contents_t *contents,
 
 		free(hash_item);
 		free(zone_node);
-		knot_node_free(&changes->old_nodes[i], 0);
+		//knot_node_free(&changes->old_nodes[i], 0);
 	}
-	changes->old_nodes_count = 0;
+	//changes->old_nodes_count = 0;
 
 	// remove NSEC3 nodes
 	for (int i = 0; i < changes->old_nsec3_count; ++i) {
@@ -2952,9 +2977,9 @@ static int xfrin_remove_empty_nodes(knot_zone_contents_t *contents,
 		}
 
 		free(zone_node);
-		knot_node_free(&changes->old_nsec3[i], 0);
+		//knot_node_free(&changes->old_nsec3[i], 0);
 	}
-	changes->old_nsec3_count = 0;
+	//changes->old_nsec3_count = 0;
 
 	return KNOT_EOK;
 }
@@ -3114,7 +3139,8 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 	 */
 
 	/*
-	 * Select and delete empty nodes.
+	 * Select and remove empty nodes from zone trees. Do not free them right
+	 * away as they may be referenced by some domain names.
 	 */
 	ret = xfrin_remove_empty_nodes(contents_copy, changes);
 	if (ret != KNOT_EOK) {

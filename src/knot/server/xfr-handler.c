@@ -392,7 +392,7 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 
 		/* Switch zone contents. */
 		switch_ret = xfrin_switch_zone(data->zone, data->new_contents,
-		                                   data->type);
+		                               data->type);
 
 		if (switch_ret != KNOT_EOK) {
 			log_zone_error("%s Failed to replace "
@@ -411,7 +411,7 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 			break;
 		}
 
-		xfrin_cleanup_successful_update( &chs->changes);
+		xfrin_cleanup_successful_update(&chs->changes);
 
 		/* Free changesets, but not the data. */
 		knot_free_changesets(&chs);

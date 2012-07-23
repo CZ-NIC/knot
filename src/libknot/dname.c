@@ -750,11 +750,21 @@ struct knot_node *knot_dname_get_node(const knot_dname_t *dname)
 
 	knot_node_t *node = dname->node;
 
-	// check if we should return the new or the old node
+	/*
+	 * If the zone contains new zone contents (during an update), we should
+	 * return new node. Check if the node has the new node set. If it does
+	 * not, it means this is already the new node. If it has, return the
+	 * new node. If the new node is empty, return NULL, as the node will be
+	 * deleted later.
+	 */
 	if (node && knot_node_zone(node)
 	    && knot_zone_contents_gen_is_new(knot_zone_contents(
-	        knot_node_zone(node)))) {
+	        knot_node_zone(node)))
+	    && knot_node_new_node(node) != NULL) {
 		node = knot_node_get_new_node(node);
+		if (knot_node_is_empty(node)) {
+			node = NULL;
+		}
 	}
 
 	return node;
@@ -772,6 +782,9 @@ void knot_dname_set_node(knot_dname_t *dname, knot_node_t *node)
 void knot_dname_update_node(knot_dname_t *dname)
 {
 	knot_node_update_ref(&dname->node);
+	if (knot_node_is_empty(dname->node)) {
+		dname->node = NULL;
+	}
 }
 
 /*----------------------------------------------------------------------------*/
