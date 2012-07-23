@@ -1422,7 +1422,7 @@ static int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 	// create place also for RRSIGs
 	ret = xfrin_changes_check_rrsets(&changes->new_rrsets,
 	                                 &changes->new_rrsets_count,
-	                                 &changes->new_rrsets_allocated, 1);
+	                                 &changes->new_rrsets_allocated, 2);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to add new RRSet to list.\n");
 		knot_rrset_deep_free(copy, 1, 1, 1);
@@ -1479,7 +1479,7 @@ dbg_xfrin_exec_detail(
 	// add the old RRSet to the list of old RRSets
 	ret = xfrin_changes_check_rrsets(&changes->old_rrsets,
 	                                 &changes->old_rrsets_count,
-	                                 &changes->old_rrsets_allocated, 1);
+	                                 &changes->old_rrsets_allocated, 2);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to add old RRSet to list.\n");
 		return ret;
@@ -2216,20 +2216,23 @@ void xfrin_cleanup_successful_update(knot_changes_t **changes)
 	// delete old RDATA
 	for (int i = 0; i < (*changes)->old_rdata_count; ++i) {
 		dbg_xfrin_detail("Deleting old RDATA: %p, type: %s\n", 
-		            (*changes)->old_rdata[i],
-		            knot_rrtype_to_string((*changes)->old_rdata_types[i]));
+		         (*changes)->old_rdata[i],
+		         knot_rrtype_to_string((*changes)->old_rdata_types[i]));
 		knot_rdata_dump((*changes)->old_rdata[i],
 		                (*changes)->old_rdata_types[i], 0);
-		knot_rdata_t *rdata = (*changes)->old_rdata[i];
-		if (rdata != NULL) {
-			do {
-				knot_rdata_t *tmp = rdata->next;
-				knot_rdata_deep_free(&rdata, 
-				                (*changes)->old_rdata_types[i], 1);
-				rdata = tmp;
-			} while (rdata != NULL 
-			         && rdata != (*changes)->old_rdata[i]);
-		}
+		// RDATA are stored separately so do not delete the whole chain
+		knot_rdata_deep_free(&(*changes)->old_rdata[i],
+		                     (*changes)->old_rdata_types[i], 1);
+//		knot_rdata_t *rdata = (*changes)->old_rdata[i];
+//		if (rdata != NULL) {
+//			do {
+//				knot_rdata_t *tmp = rdata->next;
+//				knot_rdata_deep_free(&rdata,
+//				             (*changes)->old_rdata_types[i], 1);
+//				rdata = tmp;
+//			} while (rdata != NULL
+//			         && rdata != (*changes)->old_rdata[i]);
+//		}
 
 	}
 
