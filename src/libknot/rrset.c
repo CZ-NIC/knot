@@ -848,8 +848,8 @@ dbg_rrset_exec_detail(
 
 		// Store pointer to the second item in RRSet2 RDATA so that
 		// we later start from this item.
-		walk2 = walk2->next;
-		assert(walk2 == rrset2->rdata->next);
+		walk2 = knot_rrset_rdata_get_next(rrset2, walk2);
+		assert(walk2 == rrset2->rdata->next || walk2 == NULL);
 
 		// Connect the first item from second list to the first list.
 		rrset1->rdata = rrset2->rdata;

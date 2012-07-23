@@ -2001,7 +2001,7 @@ dbg_xfrin_exec_detail(
 	                 (*rrset)->rdata, add->rdata);
 
 	/* In case the RRSet is empty (and only remained there because of the
-	 * RRSIGs, it may happen that the TTL may be different than that of
+	 * RRSIGs) it may happen that the TTL may be different than that of
 	 * the new RRs. Update the TTL according to the first RR.
 	 */
 
