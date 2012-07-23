@@ -220,6 +220,8 @@ int knot_rdata_item_set_dname(knot_rdata_t *rdata, unsigned int pos,
 int knot_rdata_item_set_raw_data(knot_rdata_t *rdata, unsigned int pos,
                                    uint16_t *raw_data);
 
+int knot_rdata_count(const knot_rdata_t *rdata);
+
 /*!
  * \brief Copies the given RDATA.
  *

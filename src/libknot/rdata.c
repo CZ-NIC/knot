@@ -510,6 +510,25 @@ int knot_rdata_item_set_raw_data(knot_rdata_t *rdata, uint pos,
 
 /*----------------------------------------------------------------------------*/
 
+int knot_rdata_count(const knot_rdata_t *rdata)
+{
+	if (rdata == NULL) {
+		return 0;
+	}
+
+	int count = 1;
+	const knot_rdata_t *r = rdata;
+
+	while (r->next != NULL && r->next != rdata) {
+		r = r->next;
+		++count;
+	}
+
+	return count;
+}
+
+/*----------------------------------------------------------------------------*/
+
 void knot_rdata_free(knot_rdata_t **rdata)
 {
 	if (rdata == NULL || *rdata == NULL) {

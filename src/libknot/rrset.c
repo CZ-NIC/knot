@@ -345,6 +345,10 @@ knot_rdata_t *knot_rrset_rdata_get_next(knot_rrset_t *rrset,
 
 int knot_rrset_rdata_rr_count(const knot_rrset_t *rrset)
 {
+	if (rrset == NULL) {
+		return 0;
+	}
+
 	int count = 0;
 	const knot_rdata_t *rdata = rrset->rdata;
 	
