@@ -2325,7 +2325,7 @@ dbg_xfrin_exec_detail(
 	 * it is a sign of some other error.
 	 */
 
-	if (knot_dname_node(dname) == NULL) {
+	if (dname->node == NULL) {
 		return;
 	}
 
