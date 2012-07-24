@@ -105,7 +105,6 @@ void knot_rrset_dump(const knot_rrset_t *rrset, char loaded_zone)
 		return;
 	}
 
-	fprintf(stderr, "  rdata count: %d\n", rrset->rdata->count);
 	knot_rdata_t *tmp = rrset->rdata;
 	
 	while (tmp->next != rrset->rdata && tmp->next != NULL) {

@@ -234,6 +234,10 @@ int knot_rrset_add_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs,
 			rrset->rrsigs = rrsigs;
 		}
 	} else {
+		if (rrset->ttl != rrsigs->ttl) {
+			rrsigs->ttl = rrset->ttl;
+		}
+		
 		rrset->rrsigs = rrsigs;
 	}
 
@@ -611,7 +615,7 @@ int knot_rrset_compare(const knot_rrset_t *r1,
 
 	int res = ((r1->rclass == r2->rclass)
 	           && (r1->type == r2->type)
-	           && (r1->ttl == r2->ttl)
+//	           && (r1->ttl == r2->ttl)
 	           && knot_dname_compare(r1->owner, r2->owner) == 0);
 
 	if (cmp == KNOT_RRSET_COMPARE_WHOLE && res) {
@@ -766,8 +770,7 @@ int knot_rrset_merge(void **r1, void **r2)
 
 	if ((knot_dname_compare(rrset1->owner, rrset2->owner) != 0)
 	    || rrset1->rclass != rrset2->rclass
-	    || rrset1->type != rrset2->type
-	    || rrset1->ttl != rrset2->ttl) {
+	    || rrset1->type != rrset2->type) {
 		return KNOT_EBADARG;
 	}
 
@@ -818,16 +821,15 @@ int knot_rrset_merge_no_dupl(void **r1, void **r2)
 		return KNOT_EBADARG;
 	}
 
-dbg_rrset_exec_verb(
+dbg_rrset_exec_detail(
 	char *name = knot_dname_to_str(rrset1->owner);
-	dbg_rrset_verb("rrset: merge_no_dupl: Merging %s.\n", name);
+	dbg_rrset_detail("rrset: merge_no_dupl: Merging %s.\n", name);
 	free(name);
 );
 
 	if ((knot_dname_compare(rrset1->owner, rrset2->owner) != 0)
 	    || rrset1->rclass != rrset2->rclass
-	    || rrset1->type != rrset2->type
-	    || rrset1->ttl != rrset2->ttl) {
+	    || rrset1->type != rrset2->type) {
 		dbg_rrset("rrset: merge_no_dupl: Trying to merge "
 		          "different RRs.\n");
 		return KNOT_EBADARG;
@@ -850,8 +852,8 @@ dbg_rrset_exec_verb(
 
 		// Store pointer to the second item in RRSet2 RDATA so that
 		// we later start from this item.
-		walk2 = walk2->next;
-		assert(walk2 == rrset2->rdata->next);
+		walk2 = knot_rrset_rdata_get_next(rrset2, walk2);
+		assert(walk2 == rrset2->rdata->next || walk2 == NULL);
 
 		// Connect the first item from second list to the first list.
 		rrset1->rdata = rrset2->rdata;
@@ -903,6 +905,14 @@ dbg_rrset_exec_verb(
 			/* Insert this item at the end of first list. */
 			tmp->next = insert_after->next;
 			insert_after->next = tmp;
+			insert_after = tmp;
+			/*!< \todo This message has to be removed after bugfix. */
+			dbg_rrset_detail("rrset: merge_no_dupl: Insert after=%p"
+			                 ", tmp=%p, tmp->next=%p, "
+			                 " rrset1->rdata=%p"
+			                 "\n",
+			                 insert_after, tmp, tmp->next,
+			                 rrset1->rdata);
 			assert(tmp->next == rrset1->rdata);
 		} else {
 			dbg_rrset_detail("rrset: merge_dupl: Skipping and "

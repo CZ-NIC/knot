@@ -558,6 +558,9 @@ uint16_t tsig_alg_digest_length(tsig_algorithm_t alg)
 
 size_t tsig_rdata_tsig_variables_length(const knot_rrset_t *tsig)
 {
+	if (tsig == NULL) {
+		return 0;
+	}
 	/* Key name, Algorithm name and Other data have variable lengths. */
 	const knot_dname_t *key_name = knot_rrset_owner(tsig);
 	if (!key_name) {
@@ -605,6 +608,10 @@ const char* tsig_alg_to_str(tsig_algorithm_t alg)
 
 size_t tsig_wire_maxsize(const knot_key_t* key)
 {
+	if (key == NULL) {
+		return 0;
+	}
+	
 	size_t alg_name_size = strlen(tsig_alg_to_str(key->algorithm)) + 1;
 
 	return knot_dname_size(key->name) +
@@ -625,6 +632,10 @@ size_t tsig_wire_maxsize(const knot_key_t* key)
 
 size_t tsig_wire_actsize(const knot_rrset_t *tsig)
 {
+	if (tsig == NULL) {
+		return 0;
+	}
+	
 	return knot_dname_size(knot_rrset_owner(tsig)) +
 	sizeof(uint16_t) + /* TYPE */
 	sizeof(uint16_t) + /* CLASS */
@@ -639,5 +650,14 @@ size_t tsig_wire_actsize(const knot_rrset_t *tsig)
 	sizeof(uint16_t) + /* Error */
 	sizeof(uint16_t) + /* Other len */
 	tsig_rdata_other_data_length(tsig);
+}
+
+int tsig_rdata_is_ok(const knot_rrset_t *tsig)
+{
+	return (tsig
+	        && knot_rrset_rdata(tsig) != NULL 
+	        && knot_rdata_item_count(knot_rrset_rdata(tsig)) >= 7
+	        && tsig_rdata_alg_name(tsig) != NULL
+	        && tsig_rdata_time_signed(tsig) != 0);
 }
 

@@ -1595,7 +1595,6 @@ dbg_zone_exec(
 
 	assert(*rrset != NULL);
 
-	// add all domain names from the RRSet to domain name table
 	int rc;
 	int ret = KNOT_EOK;
 
@@ -1609,6 +1608,7 @@ dbg_zone_exec(
 		ret = 1;
 	}
 
+	// add all domain names from the RRSet to domain name table
 	if (use_domain_table) {
 		dbg_zone_detail("Saving RRSIG RRSet to table.\n");
 		rc = knot_zone_contents_dnames_from_rrset_to_table(
@@ -2252,7 +2252,9 @@ dbg_zone_exec_detail(
 	 */
 	const knot_rrset_t *nsec3_rrset = knot_node_rrset(*nsec3_previous, 
 	                                                  KNOT_RRTYPE_NSEC3);
-	const knot_rdata_t *nsec3_rdata = knot_rrset_rdata(nsec3_rrset);
+	const knot_rdata_t *nsec3_rdata = (nsec3_rrset != NULL)
+				? knot_rrset_rdata(nsec3_rrset)
+				: NULL;
 	const knot_node_t *original_prev = *nsec3_previous;
 	
 	while (nsec3_rdata != NULL
@@ -2271,7 +2273,9 @@ dbg_zone_exec_detail(
 		*nsec3_previous = knot_node_previous(*nsec3_previous);
 		nsec3_rrset = knot_node_rrset(*nsec3_previous, 
 		                              KNOT_RRTYPE_NSEC3);
-		nsec3_rdata = knot_rrset_rdata(nsec3_rrset);
+		nsec3_rdata = (nsec3_rrset != NULL)
+		                ? knot_rrset_rdata(nsec3_rrset)
+		                : NULL;
 dbg_zone_exec_detail(
 		char *name = (*nsec3_previous) 
 				? knot_dname_to_str(

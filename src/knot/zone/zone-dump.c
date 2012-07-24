@@ -614,9 +614,13 @@ static int knot_rrset_dump_binary(const knot_rrset_t *rrset, int fd,
 
 	/* Calculate rrset rdata count. */
 	knot_rdata_t *tmp_rdata = rrset->rdata;
-	while(tmp_rdata->next != rrset->rdata) {
+	while(tmp_rdata && (tmp_rdata->next != rrset->rdata)) {
 		tmp_rdata = tmp_rdata->next;
 		rdata_count++;
+	}
+	
+	if (rrset->rdata == NULL) {
+		rdata_count = 0;
 	}
 
 	if (!write_wrapper(&rdata_count, sizeof(rdata_count), 1, fd,
@@ -631,29 +635,35 @@ static int knot_rrset_dump_binary(const knot_rrset_t *rrset, int fd,
 	}
 	
 	dbg_zdump_verb("zdump: rrset_dump_binary: Static data dumped.\n");
+	
+	if (rdata_count != 0) {
+	
+		tmp_rdata = rrset->rdata;
 
-	tmp_rdata = rrset->rdata;
-
-	while (tmp_rdata->next != rrset->rdata) {
+		while (tmp_rdata->next != rrset->rdata) {
+			int ret = knot_rdata_dump_binary(tmp_rdata, rrset->type,
+			                                 fd, use_ids,
+			                                 stream, max_size,
+			                                 written_bytes, crc);
+			if (ret != KNOT_EOK) {
+				dbg_zdump("zdump: rrset_to_binary: Could not "
+				          "dump "
+				          "rdata. Reason: %s.\n",
+				          knot_strerror(ret));
+				return ret;
+			}
+			tmp_rdata = tmp_rdata->next;
+		}
+	
 		int ret = knot_rdata_dump_binary(tmp_rdata, rrset->type,
 		                                 fd, use_ids,
-		                                 stream, max_size,
-		                                 written_bytes, crc);
+		                                 stream,
+		                                 max_size, written_bytes, crc);
 		if (ret != KNOT_EOK) {
 			dbg_zdump("zdump: rrset_to_binary: Could not dump "
 			          "rdata. Reason: %s.\n", knot_strerror(ret));
 			return ret;
 		}
-		tmp_rdata = tmp_rdata->next;
-	}
-	
-	int ret = knot_rdata_dump_binary(tmp_rdata, rrset->type, fd, use_ids,
-	                                 stream,
-	                                 max_size, written_bytes, crc);
-	if (ret != KNOT_EOK) {
-		dbg_zdump("zdump: rrset_to_binary: Could not dump "
-		          "rdata. Reason: %s.\n", knot_strerror(ret));
-		return ret;
 	}
 	
 	dbg_zdump_verb("zdump: rrset_dump_binary: Rdata dumped.\n");

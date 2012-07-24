@@ -273,8 +273,8 @@ static int xfrin_add_orphan_rrsig(xfrin_orphan_rrsig_t **rrsigs,
 		    && knot_rdata_rrsig_type_covered(knot_rrset_rdata(
 		                                     last->rrsig))
 		       == knot_rdata_rrsig_type_covered(knot_rrset_rdata(rr))) {
-			ret = knot_rrset_merge((void **)&last->rrsig, 
-			                       (void **)&rr);
+			ret = knot_rrset_merge_no_dupl((void **)&last->rrsig,
+			                               (void **)&rr);
 			if (ret != KNOT_EOK) {
 				return ret;
 			} else {
@@ -2029,7 +2029,17 @@ dbg_xfrin_exec_detail(
 	dbg_xfrin_detail("RDATA in RRSet1: %p, RDATA in RRSet2: %p\n",
 	                 (*rrset)->rdata, add->rdata);
 
-	ret = knot_rrset_merge((void **)rrset, (void **)&add);
+	/* In case the RRSet is empty (and only remained there because of the
+	 * RRSIGs) it may happen that the TTL may be different than that of
+	 * the new RRs. Update the TTL according to the first RR.
+	 */
+
+	if (knot_rrset_rdata(*rrset) == NULL
+	    && knot_rrset_ttl(*rrset) != knot_rrset_ttl(add)) {
+		knot_rrset_set_ttl(*rrset, knot_rrset_ttl(add));
+	}
+
+	ret = knot_rrset_merge_no_dupl((void **)rrset, (void **)&add);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to merge changeset RRSet.\n");
 		return ret;
@@ -2188,7 +2198,7 @@ dbg_xfrin_exec_detail(
 	
 		// merge the changeset RRSet to the copy
 		dbg_xfrin_detail("Merging RRSIG to the one in the RRSet.\n");
-		ret = knot_rrset_merge((void **)&rrsig, (void **)&add);
+		ret = knot_rrset_merge_no_dupl((void **)&rrsig, (void **)&add);
 		if (ret != KNOT_EOK) {
 			dbg_xfrin("Failed to merge changeset RRSIG to copy: %s"
 			          ".\n", knot_strerror(ret));
@@ -2455,24 +2465,6 @@ void xfrin_rollback_update(knot_zone_contents_t *old_contents,
 			 * We may check every RDATA against every one
 			 * already deleted, but that may be very time-consuming.
 			 */
-
-//			// discard the whole chain of RDATA
-//			knot_rdata_t *rdata = (*changes)->new_rdata[i];
-//			knot_rdata_t *rdata_next = NULL;
-
-//			while (rdata != NULL && rdata->next !=
-//			                (*changes)->new_rdata[i]) {
-//				//assert(rdata->next != rdata);
-//				rdata_next = rdata->next;
-//				dbg_xfrin_detail("  Deleting RDATA: %p\n",
-//				                 rdata);
-//				knot_rdata_deep_free(&rdata,
-//					(*changes)->new_rdata_types[i], 1);
-//				rdata = rdata_next;
-//			}
-
-//			assert(rdata == NULL
-//			       || rdata->next == (*changes)->new_rdata[i]);
 
 			/*
 			 * Every RDATA from a chain is stored separately.

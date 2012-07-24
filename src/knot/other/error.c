@@ -41,6 +41,7 @@ const error_table_t knotd_error_msgs[] = {
 	{KNOTD_ENOIPV6, "IPv6 support disabled."},
 	{KNOTD_EMALF, "Malformed data."},
 	{KNOTD_ESPACE, "Not enough space provided."},
-        {KNOTD_EEXPIRED, "Resource is expired."},
+	{KNOTD_EEXPIRED, "Resource is expired."},
+	{KNOTD_ENODIFF, "Cannot create zone diff."},
 	{KNOTD_ERROR, 0}
 };

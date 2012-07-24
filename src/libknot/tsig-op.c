@@ -38,6 +38,10 @@ enum b64_const {
 
 static int knot_tsig_check_algorithm(const knot_rrset_t *tsig_rr)
 {
+	if (tsig_rr == NULL) {
+		return KNOT_EBADARG;
+	}
+	
 	const knot_dname_t *alg_name = tsig_rdata_alg_name(tsig_rr);
 	if (!alg_name) {
 		return KNOT_EMALF;
@@ -56,6 +60,10 @@ static int knot_tsig_check_algorithm(const knot_rrset_t *tsig_rr)
 static int knot_tsig_check_key(const knot_rrset_t *tsig_rr,
                                const knot_key_t *tsig_key)
 {
+	if (tsig_rr == NULL || tsig_key == NULL) {
+		return KNOT_EBADARG;
+	}
+	
 	const knot_dname_t *tsig_name = knot_rrset_owner(tsig_rr);
 	if (!tsig_name) {
 		return KNOT_EMALF;
@@ -152,6 +160,7 @@ static int knot_tsig_check_time_signed(const knot_rrset_t *tsig_rr,
                                        uint64_t prev_time_signed)
 {
 	if (!tsig_rr) {
+		dbg_tsig("TSIG: check_time_signed: NULL argument.\n");
 		return KNOT_EBADARG;
 	}
 
@@ -184,21 +193,14 @@ static int knot_tsig_check_time_signed(const knot_rrset_t *tsig_rr,
 	return KNOT_EOK;
 }
 
-static int knot_tsig_write_tsig_timers(uint8_t *wire, 
-                                       const knot_rrset_t *tsig_rr)
-{
-	// put time signed
-	knot_wire_write_u48(wire, tsig_rdata_time_signed(tsig_rr));
-	
-	// put fudge
-	knot_wire_write_u16(wire + 6, tsig_rdata_fudge(tsig_rr));
-	
-	return KNOT_EOK;
-}
-
 static int knot_tsig_write_tsig_variables(uint8_t *wire,
                                          const knot_rrset_t *tsig_rr)
 {
+	if (wire == NULL || tsig_rr == NULL) {
+		dbg_tsig("TSIG: write tsig variables: NULL arguments.\n");
+		return KNOT_EBADARG;
+	}
+	
 	/* Copy TSIG variables - starting with key name. */
 	const knot_dname_t *tsig_owner = knot_rrset_owner(tsig_rr);
 	if (!tsig_owner) {
@@ -284,7 +286,14 @@ static int knot_tsig_write_tsig_variables(uint8_t *wire,
 static int knot_tsig_wire_write_timers(uint8_t *wire,
                                        const knot_rrset_t *tsig_rr)
 {
+	if (wire == NULL || tsig_rr == NULL) {
+		dbg_tsig("TSIG: write timers: NULL arguments.\n");
+		return KNOT_EBADARG;
+	}
+	
+	//write time signed
 	knot_wire_write_u48(wire, tsig_rdata_time_signed(tsig_rr));
+	//write fudge
 	knot_wire_write_u16(wire + 6, tsig_rdata_fudge(tsig_rr));
 
 	return KNOT_EOK;
@@ -413,11 +422,12 @@ static int knot_tsig_create_sign_wire_next(const uint8_t *msg, size_t msg_len,
 	/* Copy TSIG variables. */
 	
 	dbg_tsig_verb("Writing TSIG timers.\n");
-	ret = knot_tsig_write_tsig_timers(wire + prev_mac_len + msg_len + 2, 
+	ret = knot_tsig_wire_write_timers(wire + prev_mac_len + msg_len + 2, 
 	                                  tmp_tsig);
 	if (ret != KNOT_EOK) {
 		dbg_tsig("TSIG: create wire: failed to write TSIG "
 		         "timers: %s\n", knot_strerror(ret));
+		free(wire);
 		return ret;
 	}
 
@@ -428,6 +438,7 @@ static int knot_tsig_create_sign_wire_next(const uint8_t *msg, size_t msg_len,
 		dbg_tsig("TSIG: create wire: failed to compute digest: %s\n",
 		         knot_strerror(ret));
 		*digest_len = 0;
+		free(wire);
 		return ret;
 	}
 

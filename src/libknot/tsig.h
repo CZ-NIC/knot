@@ -140,6 +140,8 @@ uint16_t tsig_alg_digest_length(tsig_algorithm_t alg);
 size_t tsig_wire_maxsize(const knot_key_t *key);
 size_t tsig_wire_actsize(const knot_rrset_t *tsig);
 
+int tsig_rdata_is_ok(const knot_rrset_t *tsig);
+
 #endif /* _KNOT_TSIG_H_ */
 
 /*! @} */

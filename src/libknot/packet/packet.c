@@ -22,6 +22,7 @@
 #include "common.h"
 #include "util/descriptor.h"
 #include "util/wire.h"
+#include "tsig.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -512,6 +513,8 @@ dbg_packet_exec_detail(
 			if (knot_rrset_compare((*rrsets)[i], rrset,
 			                         KNOT_RRSET_COMPARE_HEADER)) {
 				/*! \todo Test this!!! */
+				// no duplicate checking here, the packet should
+				// look exactly as it came from wire
 				int rc = knot_rrset_merge(
 				    (void **)((*rrsets) + i), (void **)&rrset);
 				if (rc != KNOT_EOK) {
@@ -585,6 +588,23 @@ static int knot_packet_parse_rrs(const uint8_t *wire, size_t *pos,
 			knot_rrset_deep_free(&rrset, 1, 1, 1);
 			break;
 		}
+
+		if (knot_rrset_type(rrset) == KNOT_RRTYPE_TSIG) {
+			// if there is some TSIG already, treat as malformed
+			if (knot_packet_tsig(packet) != NULL) {
+				err = KNOT_EMALF;
+				break;
+			}
+
+			// First check the format of the TSIG RR
+			if (!tsig_rdata_is_ok(rrset)) {
+				err = KNOT_EMALF;
+				break;
+			}
+
+			// store the TSIG into the packet
+			knot_packet_set_tsig(packet, rrset);
+		}
 	}
 
 	return (err < 0) ? err : KNOT_EOK;
@@ -643,12 +663,19 @@ static int knot_packet_parse_rr_sections(knot_packet_t *packet,
 
 	int err;
 
+	assert(packet->tsig_rr == NULL);
+
 	dbg_packet_verb("Parsing Answer RRs...\n");
 	if ((err = knot_packet_parse_rrs(packet->wireformat, pos,
 	   packet->size, packet->header.ancount, &packet->parsed_an,
 	   &packet->answer, &packet->an_rrsets, &packet->max_an_rrsets,
 	   DEFAULT_RRSET_COUNT(ANCOUNT, packet), packet)) != KNOT_EOK) {
 		return err;
+	}
+
+	if (packet->tsig_rr != NULL) {
+		dbg_packet("TSIG in Answer section.\n");
+		return KNOT_EMALF;
 	}
 
 	dbg_packet_verb("Parsing Authority RRs...\n");
@@ -659,6 +686,11 @@ static int knot_packet_parse_rr_sections(knot_packet_t *packet,
 		return err;
 	}
 
+	if (packet->tsig_rr != NULL) {
+		dbg_packet("TSIG in Authority section.\n");
+		return KNOT_EMALF;
+	}
+
 	dbg_packet_verb("Parsing Additional RRs...\n");
 	if ((err = knot_packet_parse_rrs(packet->wireformat, pos,
 	   packet->size, packet->header.arcount, &packet->parsed_ar,
@@ -667,12 +699,18 @@ static int knot_packet_parse_rr_sections(knot_packet_t *packet,
 		return err;
 	}
 
+	// If TSIG is not the last record
+	if (packet->tsig_rr != NULL
+	    && packet->ar_rrsets[packet->additional - 1] != packet->tsig_rr) {
+		dbg_packet("TSIG in Additonal section but not last.\n");
+		return KNOT_EMALF;
+	}
+
 	dbg_packet_verb("Trying to find OPT RR in the packet.\n");
 
 	for (int i = 0; i < packet->ar_rrsets; ++i) {
 		assert(packet->additional[i] != NULL);
-		if (knot_rrset_type(packet->additional[i])
-		    == KNOT_RRTYPE_OPT) {
+		if (knot_rrset_type(packet->additional[i]) == KNOT_RRTYPE_OPT) {
 			dbg_packet_detail("Found OPT RR, filling.\n");
 			err = knot_edns_new_from_rr(&packet->opt_rr,
 			                              packet->additional[i]);
@@ -1165,7 +1203,7 @@ const knot_rrset_t *knot_packet_tsig(const knot_packet_t *packet)
 
 void knot_packet_set_tsig(knot_packet_t *packet, const knot_rrset_t *tsig_rr)
 {
-    packet->tsig_rr = (knot_rrset_t *)tsig_rr;
+	packet->tsig_rr = (knot_rrset_t *)tsig_rr;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1247,19 +1285,19 @@ int knot_packet_contains(const knot_packet_t *packet,
 		return KNOT_EBADARG;
 	}
 
-	for (int i = 0; i < packet->header.ancount; ++i) {
+	for (int i = 0; i < packet->an_rrsets; ++i) {
 		if (knot_rrset_compare(packet->answer[i], rrset, cmp)) {
 			return 1;
 		}
 	}
 
-	for (int i = 0; i < packet->header.nscount; ++i) {
+	for (int i = 0; i < packet->ns_rrsets; ++i) {
 		if (knot_rrset_compare(packet->authority[i], rrset, cmp)) {
 			return 1;
 		}
 	}
 
-	for (int i = 0; i < packet->header.arcount; ++i) {
+	for (int i = 0; i < packet->ar_rrsets; ++i) {
 		if (knot_rrset_compare(packet->additional[i], rrset, cmp)) {
 			return 1;
 		}

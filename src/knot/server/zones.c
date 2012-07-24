@@ -39,6 +39,7 @@
 #include "libknot/updates/changesets.h"
 #include "libknot/tsig-op.h"
 #include "libknot/packet/response.h"
+#include "libknot/zone/zone-diff.h"
 
 static const size_t XFRIN_CHANGESET_BINARY_SIZE = 100;
 static const size_t XFRIN_CHANGESET_BINARY_STEP = 100;
@@ -1157,7 +1158,7 @@ static int zones_load_changesets(const knot_zone_t *zone,
 		ret = knot_changesets_check_size(dst);
 		--dst->count;
 		if (ret != KNOT_EOK) {
-			--dst->count;
+			//--dst->count;
 			dbg_xfr("xfr: failed to check changesets size: %s\n",
 			        knot_strerror(ret));
 			journal_release(j);
@@ -1536,6 +1537,28 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 
 			rcu_read_unlock();
 		}
+		
+		/* Calculate differences. */
+		rcu_read_lock();
+		knot_zone_t *z_old = knot_zonedb_find_zone(ns->zone_db,
+		                                              dname);
+		/* Ensure both new and old have zone contents. */
+		knot_zone_contents_t *zc = knot_zone_get_contents(zone);
+		knot_zone_contents_t *zc_old = knot_zone_get_contents(z_old);
+		if (z->build_diffs && zc != NULL && zc_old != NULL && zone_changed) {
+			int bd = zones_create_and_save_changesets(z_old, zone);
+			if (bd == KNOTD_ENODIFF) {
+				log_zone_warning("Zone file for '%s' changed, "
+				                 "but serial didn't - "
+				                 "won't create changesets.\n",
+				                 z->name);
+			} else if (bd != KNOTD_EOK) {
+				log_zone_warning("Failed to calculate differences"
+				                 " from the zone file update: "
+				                 "%s\n", knotd_strerror(bd));
+			}
+		}
+		rcu_read_unlock();
 	}
 
 	/* CLEANUP */
@@ -1855,18 +1878,19 @@ static int zones_check_tsig_query(const knot_zone_t *zone,
 	assert(rcode != NULL);
 	assert(tsig_key_zone != NULL);
 
-	const knot_rrset_t *tsig = NULL;
+	const knot_rrset_t *tsig = knot_packet_tsig(query);
 
-	if (knot_packet_additional_rrset_count(query) > 0) {
-		/*! \todo warning */
-		tsig = knot_packet_additional_rrset(query,
-		                 knot_packet_additional_rrset_count(query) - 1);
-		if (knot_rrset_type(tsig) == KNOT_RRTYPE_TSIG) {
-			dbg_zones_verb("found TSIG in normal query\n");
-		} else {
-			tsig = NULL; /* Invalidate if not TSIG RRTYPE. */
-		}
-	}
+	// not required, TSIG is already found
+//	if (knot_packet_additional_rrset_count(query) > 0) {
+//		/*! \todo warning */
+//		tsig = knot_packet_additional_rrset(query,
+//		                 knot_packet_additional_rrset_count(query) - 1);
+//		if (knot_rrset_type(tsig) == KNOT_RRTYPE_TSIG) {
+//			dbg_zones_verb("found TSIG in normal query\n");
+//		} else {
+//			tsig = NULL; /* Invalidate if not TSIG RRTYPE. */
+//		}
+//	}
 
 	if (tsig == NULL) {
 		// no TSIG, this is completely valid
@@ -1901,7 +1925,7 @@ static int zones_check_tsig_query(const knot_zone_t *zone,
 	}
 
 	// save TSIG RR to query structure
-	knot_packet_set_tsig(query, tsig);
+//	knot_packet_set_tsig(query, tsig);
 
 	return ret;
 }
@@ -2156,15 +2180,16 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 	                                       ? *rsize : 0);
 
 	// check for TSIG in the query
-	if (knot_packet_additional_rrset_count(query) > 0) {
-		/*! \todo warning */
-		const knot_rrset_t *tsig = knot_packet_additional_rrset(query,
-		                 knot_packet_additional_rrset_count(query) - 1);
-		if (knot_rrset_type(tsig) == KNOT_RRTYPE_TSIG) {
-			dbg_zones_verb("found TSIG in normal query\n");
-			knot_packet_set_tsig(query, tsig);
-		}
-	}
+	// not required, TSIG is already found if it is there
+//	if (knot_packet_additional_rrset_count(query) > 0) {
+//		/*! \todo warning */
+//		const knot_rrset_t *tsig = knot_packet_additional_rrset(query,
+//		                 knot_packet_additional_rrset_count(query) - 1);
+//		if (knot_rrset_type(tsig) == KNOT_RRTYPE_TSIG) {
+//			dbg_zones_verb("found TSIG in normal query\n");
+//			knot_packet_set_tsig(query, tsig);
+//		}
+//	}
 
 	knot_rcode_t rcode = 0;
 
@@ -3180,6 +3205,79 @@ int zones_xfr_load_changesets(knot_ns_xfr_t *xfr, uint32_t serial_from,
 	}
 	
 	xfr->data = chgsets;
+	return KNOTD_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zones_create_and_save_changesets(const knot_zone_t *old_zone,
+                                     const knot_zone_t *new_zone)
+{
+	if (old_zone == NULL || old_zone->contents == NULL
+	    || new_zone == NULL || new_zone->contents == NULL) {
+		dbg_zones("zones: create_changesets: "
+		          "NULL arguments.\n");
+		return KNOTD_EINVAL;
+	}
+	
+	knot_ns_xfr_t xfr;
+	memset(&xfr, 0, sizeof(xfr));
+	xfr.zone = (knot_zone_t *)old_zone;
+	knot_changesets_t *changesets;
+	int ret = knot_zone_diff_create_changesets(old_zone->contents,
+	                                           new_zone->contents,
+	                                           &changesets);
+	if (ret != KNOT_EOK) {
+		if (ret == KNOT_ERANGE) {
+			dbg_zones_detail("zones: create_changesets: "
+			                 "New serial was lower than the old "
+			                 "one.\n");
+			knot_free_changesets(&changesets);
+			return KNOTD_ERANGE;
+		} else if (ret == KNOT_ENODIFF) {
+			dbg_zones_detail("zones: create_changesets: "
+			                 "New serial was the same as the old "
+			                 "one.\n");
+			knot_free_changesets(&changesets);
+			return KNOTD_ENODIFF;
+		} else {
+			dbg_zones("zones: create_changesets: "
+			          "Could not create changesets. Reason: %s\n",
+			          knot_strerror(ret));
+			knot_free_changesets(&changesets);
+			return KNOTD_ERROR;
+		}
+	}
+	
+	xfr.data = changesets;
+	journal_t *journal = zones_store_changesets_begin(&xfr);
+	if (journal == NULL) {
+		dbg_zones("zones: create_changesets: "
+		          "Could not start journal operation.\n");
+		return KNOTD_ERROR;
+	}
+	
+	ret = zones_store_changesets(&xfr);
+	if (ret != KNOTD_EOK) {
+		zones_store_changesets_rollback(journal);
+		dbg_zones("zones: create_changesets: "
+		          "Could not store in the journal. Reason: %s.\n",
+		          knotd_strerror(ret));
+		
+		return ret;
+	}
+	
+	ret = zones_store_changesets_commit(journal);
+	if (ret != KNOTD_EOK) {
+		dbg_zones("zones: create_changesets: "
+		          "Could not commit to journal. Reason: %s.\n",
+		          knotd_strerror(ret));
+		
+		return ret;
+	}
+	
+	knot_free_changesets(&changesets);
+	
 	return KNOTD_EOK;
 }
 

@@ -121,6 +121,8 @@ int knot_changeset_add_rr(knot_rrset_t ***rrsets, size_t *count,
 
 	if (*count > 0
 	    && knot_changeset_rrsets_match((*rrsets)[*count - 1], rr)) {
+		// Create changesets exactly as they came, with possibly
+		// duplicate records
 		if (knot_rrset_merge((void **)&(*rrsets)[*count - 1],
 		                     (void **)&rr) != KNOT_EOK) {
 			return KNOT_ERROR;
@@ -206,7 +208,7 @@ int knot_changeset_add_soa(knot_changeset_t *changeset, knot_rrset_t *soa,
 int knot_changesets_check_size(knot_changesets_t *changesets)
 {
 	/* Check if allocated is sufficient. */
-	if (changesets->count <= changesets->allocated) {
+	if (changesets->count < changesets->allocated) {
 		return KNOT_EOK;
 	}
 
