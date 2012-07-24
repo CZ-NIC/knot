@@ -517,13 +517,6 @@ static void knot_zone_contents_adjust_rrsets(knot_node_t *node,
 static void knot_zone_contents_adjust_node(knot_node_t *node,
                                            knot_zone_contents_t *zone)
 {
-
-dbg_zone_exec_verb(
-	char *name = knot_dname_to_str(node->owner);
-	dbg_zone_verb("----- Adjusting node %s -----\n", name);
-	free(name);
-);
-
 	// adjust domain names in RDATA
 	/*! \note Enabled again after a LONG time. Should test thoroughly. */
 	knot_zone_contents_adjust_rrsets(node, zone);
@@ -611,6 +604,12 @@ static void knot_zone_contents_adjust_node_in_tree(
 		                 knot_strerror(args->err));
 		return;
 	}
+
+	dbg_zone_exec_verb(
+		char *name = knot_dname_to_str(node->owner);
+		dbg_zone_verb("----- Adjusting node %s -----\n", name);
+		free(name);
+	);
 
 	/*
 	 * 1) Set previous node pointer.

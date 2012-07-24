@@ -1539,7 +1539,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 	}
 
 	/* CLEANUP */
-//		knot_zone_contents_dump(knot_zone_get_contents(zone), 1);
+//	knot_zone_contents_dump(knot_zone_get_contents(zone), 1);
 
 	/* Directly discard zone. */
 	knot_dname_free(&dname);

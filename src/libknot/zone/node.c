@@ -102,7 +102,7 @@ static inline void knot_node_flags_set_empty(uint8_t *flags)
  */
 static inline uint8_t knot_node_flags_get_empty(uint8_t flags)
 {
-	return flags & KNOT_NODE_FLAGS_NONAUTH;
+	return flags & KNOT_NODE_FLAGS_EMPTY;
 }
 
 /*----------------------------------------------------------------------------*/

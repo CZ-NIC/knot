@@ -2314,7 +2314,12 @@ static void xfrin_switch_node_in_hash_table(ck_hash_table_item_t *item,
 static void xfrin_switch_node_in_dname_table(knot_dname_t *dname, void *data)
 {
 	UNUSED(data);
-	
+
+dbg_xfrin_exec_detail(
+	char *name = knot_dname_to_str(dname);
+	dbg_xfrin_detail("Switching node in dname %s (%p)\n", name, dname->node);
+	free(name);
+);
 	/* dname is not checked here (for NULL value), which resulted in crash
 	 * on howl recently. However, dname should not be NULL here at all, 
 	 * it is a sign of some other error.
@@ -3189,7 +3194,6 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 		xfrin_rollback_update(old_contents, &contents_copy, &changes);
 		return ret;
 	}
-
 
 	dbg_xfrin("Adjusting zone contents.\n");
 	dbg_xfrin_verb("Old contents apex: %p, new apex: %p\n",

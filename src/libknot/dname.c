@@ -757,6 +757,20 @@ struct knot_node *knot_dname_get_node(const knot_dname_t *dname)
 	 * new node. If the new node is empty, return NULL, as the node will be
 	 * deleted later.
 	 */
+dbg_dname_exec_detail(
+	dbg_dname_detail("Getting node from dname: node: %p, zone: %p\n", node,
+	                 knot_node_zone(node));
+	if (node != NULL && knot_node_zone(node)) {
+		dbg_dname_detail("zone contents gen: %d, new node of the node: "
+		         "%p, is empty: %d\n",
+		         knot_zone_contents_gen_is_new(knot_zone_contents(
+		                                         knot_node_zone(node))),
+		         knot_node_new_node(node),
+		         knot_node_new_node(node)
+		               ? knot_node_is_empty(knot_node_new_node(node))
+		               : -1);
+	}
+);
 	if (node && knot_node_zone(node)
 	    && knot_zone_contents_gen_is_new(knot_zone_contents(
 	        knot_node_zone(node)))
@@ -781,8 +795,18 @@ void knot_dname_set_node(knot_dname_t *dname, knot_node_t *node)
 
 void knot_dname_update_node(knot_dname_t *dname)
 {
+dbg_dname_exec_detail(
+	char *name = knot_dname_to_str(dname);
+	dbg_dname_detail("Updating node pointer in dname %p: %s. Before: %p\n",
+	                 dname, name, dname->node);
+	free(name);
+);
+
 	knot_node_update_ref(&dname->node);
+	dbg_dname_detail("After: %p\n", dname->node);
+
 	if (knot_node_is_empty(dname->node)) {
+		dbg_dname_detail("Node is empty, setting to NULL.\n");
 		dname->node = NULL;
 	}
 }
