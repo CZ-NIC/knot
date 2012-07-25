@@ -763,21 +763,24 @@ struct knot_node *knot_dname_get_node(const knot_dname_t *dname)
 	 */
 dbg_dname_exec_detail(
 	dbg_dname_detail("Getting node from dname: node: %p, zone: %p\n", node,
-	                 knot_node_zone(node));
-	if (node != NULL && knot_node_zone(node)) {
+			 knot_node_zone(node));
+	if (node != NULL && knot_node_zone(node) != NULL
+	    && knot_zone_contents(knot_node_zone(node)) != NULL) {
 		dbg_dname_detail("zone contents gen: %d, new node of the node: "
-		         "%p, is empty: %d\n",
-		         knot_zone_contents_gen_is_new(knot_zone_contents(
-		                                         knot_node_zone(node))),
-		         knot_node_new_node(node),
-		         knot_node_new_node(node)
-		               ? knot_node_is_empty(knot_node_new_node(node))
-		               : -1);
+			 "%p, is empty: %d\n",
+			 knot_zone_contents_gen_is_new(knot_zone_contents(
+							 knot_node_zone(node))),
+			 knot_node_new_node(node),
+			 knot_node_new_node(node)
+			       ? knot_node_is_empty(knot_node_new_node(node))
+			       : -1);
 	}
 );
+	
 	if (node && knot_node_zone(node)
+	    && knot_zone_contents(knot_node_zone(node))
 	    && knot_zone_contents_gen_is_new(knot_zone_contents(
-	        knot_node_zone(node)))
+		knot_node_zone(node)))
 	    && knot_node_new_node(node) != NULL) {
 		node = knot_node_get_new_node(node);
 		if (knot_node_is_empty(node)) {
