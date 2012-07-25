@@ -1593,6 +1593,8 @@ static int xfrin_apply_remove_rrsigs(knot_changes_t *changes,
 			dbg_xfrin("Failed to copy rrset from changeset.\n");
 			return ret;
 		}
+		dbg_xfrin_detail("Copied RRSet:\n");
+		knot_rrset_dump(*rrset, 0);
 		copied = 1;
 	}
 
@@ -1616,6 +1618,8 @@ static int xfrin_apply_remove_rrsigs(knot_changes_t *changes,
 				return ret;
 			}
 			dbg_xfrin_detail("Copied RRSIGs: %p\n", rrsigs);
+			dbg_xfrin_detail("Copied RRSet:\n");
+			knot_rrset_dump(rrsigs, 0);
 		}
 	} else {
 		rrsigs = old;
@@ -1742,11 +1746,11 @@ static int xfrin_apply_remove_normal(knot_changes_t *changes,
 		 */
 		ret = xfrin_copy_rrset(node,
 			knot_rrset_type(remove), rrset, changes);
-		dbg_xfrin_detail("Copied RRSet:\n");
-		knot_rrset_dump(*rrset, 0);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
+		dbg_xfrin_detail("Copied RRSet:\n");
+		knot_rrset_dump(*rrset, 0);
 	}
 	
 	if (*rrset == NULL) {
@@ -1954,6 +1958,8 @@ dbg_xfrin_exec_detail(
 			}
 
 			dbg_xfrin_detail("Copied RRSet: %p\n", *rrset);
+			dbg_xfrin_detail("Copied RRSet:\n");
+			knot_rrset_dump(*rrset, 0);
 			copied = 1;
 		}
 	}
@@ -2101,6 +2107,8 @@ dbg_xfrin_exec_verb(
 			*rrset = NULL;
 		}
 		copied = 1;
+		dbg_xfrin_detail("Copied RRSet:\n");
+		knot_rrset_dump(*rrset, 0);
 	}
 
 	if (*rrset == NULL) {
@@ -2177,6 +2185,8 @@ dbg_xfrin_exec_detail(
 					return ret;
 				}
 				dbg_xfrin_detail("Copied RRSIGs: %p\n", rrsig);
+				dbg_xfrin_detail("Copied RRSet:\n");
+				knot_rrset_dump(rrsig, 0);
 			}
 		} else {
 			rrsig = old;
