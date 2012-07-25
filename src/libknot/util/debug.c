@@ -196,6 +196,8 @@ void knot_node_dump(knot_node_t *node, void *loaded_zone)
 	} else {
 		fprintf(stderr, "none\n");
 	}
+	
+	fprintf(stderr, "Zone: %p\n", node->zone);
 
 	fprintf(stderr, "RRSet count: %d\n", node->rrset_count);
 

@@ -564,7 +564,8 @@ dbg_xfrin_exec(
 		memset(*constr, 0, sizeof(xfrin_constructed_zone_t));
 		
 		dbg_xfrin_verb("Creating new zone contents.\n");
-		(*constr)->contents = knot_zone_contents_new(node, 0, 1, NULL);
+		(*constr)->contents = knot_zone_contents_new(node, 0, 1, 
+		                                             xfr->zone);
 		if ((*constr)->contents== NULL) {
 			dbg_xfrin("Failed to create new zone.\n");
 			knot_packet_free(&packet);
