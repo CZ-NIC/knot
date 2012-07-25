@@ -1451,16 +1451,6 @@ static int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 	                        &changes->new_rdata_count,
 	                        knot_rrset_get_rdata(*copy),
 	                        knot_rrset_type(*copy));
-dbg_xfrin_exec_detail(
-	dbg_xfrin_detail("RDATA chain: \n");
-	knot_rdata_t *r = changes->new_rdata[changes->new_rdata_count - 1];
-	while (r != NULL && r->next != NULL
-	       && r->next != changes->new_rdata[changes->new_rdata_count - 1]) {
-		dbg_xfrin_detail("RDATA ptr: %p, next RDATA: %p\n", r, r->next);
-		r = r->next;
-	}
-	dbg_xfrin_detail("RDATA ptr: %p, next RDATA: %p\n", r, r->next);
-);
 
 	if ((*copy)->rrsigs != NULL) {
 		assert(old->rrsigs != NULL);
