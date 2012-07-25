@@ -147,7 +147,7 @@ AC_SEARCH_LIBS([dlopen], [dl])
 AC_SEARCH_LIBS([clock_gettime], [rt])
 AC_SEARCH_LIBS([OpenSSL_add_all_digests], [crypto],[], [AC_MSG_ERROR([libcrypto not found])])
 AC_SEARCH_LIBS([capng_apply], [cap-ng])
-AC_SEARCH_LIBS([crc32], [z])
+AC_SEARCH_LIBS([adler32], [z])
 #AC_SEARCH_LIBS([ldns_rr_list_pop_rrset], [ldns], [], [AC_MSG_ERROR([libldns not found])])
 
 # Checks for header files.
