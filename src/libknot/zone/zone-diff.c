@@ -108,7 +108,7 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 
 	assert(changeset);
 
-	ret = knot_rrset_deep_copy(soa_rrset1, &changeset->soa_from);
+	ret = knot_rrset_deep_copy(soa_rrset1, &changeset->soa_from, 1);
 	if (ret != KNOT_EOK) {
 		dbg_zonediff("zone_diff: load_soas: Cannot copy RRSet.\n");
 		return ret;
@@ -118,7 +118,7 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 	knot_rrset_deep_free(&changeset->soa_from->rrsigs, 1, 1, 1);
 	assert(changeset->soa_from->rrsigs == NULL);
 
-	ret = knot_rrset_deep_copy(soa_rrset2, &changeset->soa_to);
+	ret = knot_rrset_deep_copy(soa_rrset2, &changeset->soa_to, 1);
 	if (ret != KNOT_EOK) {
 		dbg_zonediff("zone_diff: load_soas: Cannot copy RRSet.\n");
 		return ret;
@@ -157,7 +157,7 @@ static int knot_zone_diff_changeset_add_rrset(knot_changeset_t *changeset,
 	knot_rrset_dump(rrset, 1);
 	
 	knot_rrset_t *rrset_copy = NULL;
-	int ret = knot_rrset_deep_copy(rrset, &rrset_copy);
+	int ret = knot_rrset_deep_copy(rrset, &rrset_copy, 1);
 	if (ret != KNOT_EOK) {
 		dbg_zonediff("zone_diff: add_rrset: Cannot copy RRSet.\n");
 		return ret;
@@ -199,7 +199,7 @@ static int knot_zone_diff_changeset_remove_rrset(knot_changeset_t *changeset,
 	knot_rrset_dump(rrset, 1);
 	
 	knot_rrset_t *rrset_copy = NULL;
-	int ret = knot_rrset_deep_copy(rrset, &rrset_copy);
+	int ret = knot_rrset_deep_copy(rrset, &rrset_copy, 1);
 	if (ret != KNOT_EOK) {
 		dbg_zonediff("zone_diff: remove_rrset: Cannot copy RRSet.\n");
 		return ret;
@@ -361,7 +361,7 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 		assert(rrset1->type == KNOT_RRTYPE_RRSIG);
 		dbg_zonediff_detail("zone_diff: diff_rdata: RRSIG will be "
 		              "removed.\n");
-		int ret = knot_rrset_deep_copy(rrset1, &to_remove);
+		int ret = knot_rrset_deep_copy(rrset1, &to_remove, 1);
 		if (ret != KNOT_EOK) {
 			dbg_zonediff("zone_diff: diff_rdata: Could not copy rrset. "
 			             "Error: %s.\n", knot_strerror(ret));
@@ -401,7 +401,7 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 		assert(rrset2->type == KNOT_RRTYPE_RRSIG);
 		dbg_zonediff_detail("zone_diff: diff_rdata: RRSIG will be "
 		              "added.\n");
-		int ret = knot_rrset_deep_copy(rrset2, &to_add);
+		int ret = knot_rrset_deep_copy(rrset2, &to_add, 1);
 		if (ret != KNOT_EOK) {
 			dbg_zonediff("zone_diff: diff_rdata: Could not copy rrset. "
 			             "Error: %s.\n", knot_strerror(ret));

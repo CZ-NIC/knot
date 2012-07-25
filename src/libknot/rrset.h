@@ -264,7 +264,8 @@ int knot_rrset_compare(const knot_rrset_t *r1,
                          knot_rrset_compare_type_t cmp);
 
 /*! \todo Add unit test. */
-int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to);
+int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
+                         int copy_rdata_dnames);
 
 /*! \todo Add unit test. */
 int knot_rrset_shallow_copy(const knot_rrset_t *from, knot_rrset_t **to);

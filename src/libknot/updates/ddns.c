@@ -97,7 +97,7 @@ static int knot_ddns_add_prereq_rrset(const knot_rrset_t *rrset,
 	}
 
 	knot_rrset_t *new_rrset = NULL;
-	ret = knot_rrset_deep_copy(rrset, &new_rrset);
+	ret = knot_rrset_deep_copy(rrset, &new_rrset, 0);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -202,7 +202,7 @@ static int knot_ddns_add_update(knot_changeset_t *changeset,
 	 *        copy.
 	 */
 	knot_rrset_t *rrset_copy;
-	ret = knot_rrset_deep_copy(rrset, &rrset_copy);
+	ret = knot_rrset_deep_copy(rrset, &rrset_copy, 0);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

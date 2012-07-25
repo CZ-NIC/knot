@@ -831,7 +831,7 @@ static int ns_put_authority_soa(const knot_zone_contents_t *zone,
 	uint32_t min = knot_rdata_soa_minimum(knot_rrset_rdata(soa_rrset));
 	if (min < knot_rrset_ttl(soa_rrset)) {
 		knot_rrset_t *soa_copy = NULL;
-		ret = knot_rrset_deep_copy(soa_rrset, &soa_copy);
+		ret = knot_rrset_deep_copy(soa_rrset, &soa_copy, 0);
 
 		if (ret != KNOT_EOK) {
 			return ret;
