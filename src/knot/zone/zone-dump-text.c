@@ -305,12 +305,12 @@ static inline uint16_t rdata_item_size(knot_rdata_item_t item)
 	return item.raw_data[0];
 }
 
-char *rdata_dname_to_string(knot_rdata_item_t item)
+static char *rdata_dname_to_string(knot_rdata_item_t item)
 {
 	return knot_dname_to_str(item.dname);
 }
 
-char *rdata_binary_dname_to_string(knot_rdata_item_t item)
+static char *rdata_binary_dname_to_string(knot_rdata_item_t item)
 {
 	if (item.raw_data == NULL) {
 		return NULL;
@@ -334,7 +334,7 @@ char *rdata_binary_dname_to_string(knot_rdata_item_t item)
 	return str;
 }
 
-char *rdata_dns_name_to_string(knot_rdata_item_t item)
+static char *rdata_dns_name_to_string(knot_rdata_item_t item)
 {
 	return knot_dname_to_str(item.dname);
 }
@@ -384,7 +384,7 @@ static char *rdata_txt_data_to_string(const uint8_t *data)
 	return ret;
 }
 
-char *rdata_text_to_string(knot_rdata_item_t item)
+static char *rdata_text_to_string(knot_rdata_item_t item)
 {
 	uint16_t size = item.raw_data[0];
 	/* 
@@ -432,7 +432,7 @@ char *rdata_text_to_string(knot_rdata_item_t item)
 	return ret;
 }
 
-char *rdata_byte_to_string(knot_rdata_item_t item)
+static char *rdata_byte_to_string(knot_rdata_item_t item)
 {
 	assert(item.raw_data[0] == 1);
 	uint8_t data = *((uint8_t *)(item.raw_data + 1));
@@ -441,7 +441,7 @@ char *rdata_byte_to_string(knot_rdata_item_t item)
 	return ret;
 }
 
-char *rdata_short_to_string(knot_rdata_item_t item)
+static char *rdata_short_to_string(knot_rdata_item_t item)
 {
 	uint16_t data = knot_wire_read_u16(rdata_item_data(item));
 	char *ret = malloc(sizeof(char) * U16_MAX_STR_LEN);
@@ -451,7 +451,7 @@ char *rdata_short_to_string(knot_rdata_item_t item)
 	return ret;
 }
 
-char *rdata_long_to_string(knot_rdata_item_t item)
+static char *rdata_long_to_string(knot_rdata_item_t item)
 {
 	uint32_t data = knot_wire_read_u32(rdata_item_data(item));
 	char *ret = malloc(sizeof(char) * U32_MAX_STR_LEN);
@@ -460,7 +460,7 @@ char *rdata_long_to_string(knot_rdata_item_t item)
 	return ret;
 }
 
-char *rdata_a_to_string(knot_rdata_item_t item)
+static char *rdata_a_to_string(knot_rdata_item_t item)
 {
 	/* 200 seems like a little too much */
 	char *ret = malloc(sizeof(char) * 200);
@@ -471,7 +471,7 @@ char *rdata_a_to_string(knot_rdata_item_t item)
 	}
 }
 
-char *rdata_aaaa_to_string(knot_rdata_item_t item)
+static char *rdata_aaaa_to_string(knot_rdata_item_t item)
 {
 	char *ret = malloc(sizeof(char) * 200);
 	if (inet_ntop(AF_INET6, rdata_item_data(item), ret, 200)) {
@@ -481,7 +481,7 @@ char *rdata_aaaa_to_string(knot_rdata_item_t item)
 	}
 }
 
-char *rdata_rrtype_to_string(knot_rdata_item_t item)
+static char *rdata_rrtype_to_string(knot_rdata_item_t item)
 {
 	uint16_t type = knot_wire_read_u16(rdata_item_data(item));
 	const char *tmp = knot_rrtype_to_string(type);
@@ -490,7 +490,7 @@ char *rdata_rrtype_to_string(knot_rdata_item_t item)
 	return ret;
 }
 
-char *rdata_algorithm_to_string(knot_rdata_item_t item)
+static char *rdata_algorithm_to_string(knot_rdata_item_t item)
 {
 	uint8_t id = *rdata_item_data(item);
 	char *ret = malloc(sizeof(char) * MAX_RR_TYPE_LEN);
@@ -505,7 +505,7 @@ char *rdata_algorithm_to_string(knot_rdata_item_t item)
 	return ret;
 }
 
-char *rdata_certificate_type_to_string(knot_rdata_item_t item)
+static char *rdata_certificate_type_to_string(knot_rdata_item_t item)
 {
 	uint16_t id = knot_wire_read_u16(rdata_item_data(item));
 	char *ret = malloc(sizeof(char) * MAX_RR_TYPE_LEN);
@@ -520,7 +520,7 @@ char *rdata_certificate_type_to_string(knot_rdata_item_t item)
 	return ret;
 }
 
-char *rdata_period_to_string(knot_rdata_item_t item)
+static char *rdata_period_to_string(knot_rdata_item_t item)
 {
 	/* uint32 but read 16 XXX */
 	uint32_t period = knot_wire_read_u32(rdata_item_data(item));
@@ -529,7 +529,7 @@ char *rdata_period_to_string(knot_rdata_item_t item)
 	return ret;
 }
 
-char *rdata_time_to_string(knot_rdata_item_t item)
+static char *rdata_time_to_string(knot_rdata_item_t item)
 {
 	time_t time = (time_t) knot_wire_read_u32(rdata_item_data(item));
 	struct tm tm_conv;
@@ -545,7 +545,7 @@ char *rdata_time_to_string(knot_rdata_item_t item)
 	}
 }
 
-char *rdata_base32_to_string(knot_rdata_item_t item)
+static char *rdata_base32_to_string(knot_rdata_item_t item)
 {
 	int length;
 	size_t size = rdata_item_size(item);
@@ -568,7 +568,8 @@ char *rdata_base32_to_string(knot_rdata_item_t item)
 	}
 }
 
-char *rdata_base64_to_string(knot_rdata_item_t item)
+/*!< \todo Replace with function from .../common after release. */
+static char *rdata_base64_to_string(knot_rdata_item_t item)
 {
 	int length;
 	size_t size = rdata_item_size(item);
@@ -583,7 +584,7 @@ char *rdata_base64_to_string(knot_rdata_item_t item)
 	}
 }
 
-char *hex_to_string(const uint8_t *data, size_t size)
+static char *knot_hex_to_string(const uint8_t *data, size_t size)
 {
 	static const char hexdigits[] = {
 		'0', '1', '2', '3', '4', '5', '6', '7',
@@ -606,7 +607,7 @@ char *hex_to_string(const uint8_t *data, size_t size)
 
 char *rdata_hex_to_string(knot_rdata_item_t item)
 {
-	return hex_to_string(rdata_item_data(item), rdata_item_size(item));
+	return knot_hex_to_string(rdata_item_data(item), rdata_item_size(item));
 }
 
 char *rdata_hexlen_to_string(knot_rdata_item_t item)
@@ -618,8 +619,8 @@ char *rdata_hexlen_to_string(knot_rdata_item_t item)
 		ret[1] = '\0';
 		return ret;
 	} else {
-		return hex_to_string(rdata_item_data(item) + 1,
-		                     rdata_item_size(item) - 1);
+		return knot_hex_to_string(rdata_item_data(item) + 1,
+		                          rdata_item_size(item) - 1);
 	}
 }
 
@@ -635,8 +636,8 @@ char *rdata_nsap_to_string(knot_rdata_item_t item)
 
 	/* String is already terminated. */
 	memcpy(ret, "0x", strlen("0x"));
-	char *converted = hex_to_string(rdata_item_data(item),
-	                                rdata_item_size(item));
+	char *converted = knot_hex_to_string(rdata_item_data(item),
+	                                     rdata_item_size(item));
 	if (converted == NULL) {
 		return NULL;
 	}
@@ -857,7 +858,7 @@ char *rdata_unknown_to_string(knot_rdata_item_t item)
 	snprintf(ret + strlen("\\# "),
 	         strlen("\\# ") + U16_MAX_STR_LEN + 1, "%lu ",
 		 (unsigned long) size);
-	char *converted = hex_to_string(rdata_item_data(item), size);
+	char *converted = knot_hex_to_string(rdata_item_data(item), size);
 	strncat(ret, converted, size * 2 + 1);
 	free(converted);
 	return ret;
