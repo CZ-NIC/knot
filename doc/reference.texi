@@ -409,7 +409,7 @@ These checks are the following:
 
 @example
 - An extra record together with CNAME record (except for RRSIG and DS)
-- CNAME link chain legnth greater than 10 (including infinite cycle)
+- CNAME link chain length greater than 10 (including infinite cycle)
 - DNAME and CNAME records under the same owner (RFC 2672)
 - CNAME and DNAME wildcards pointing to themselves
 - SOA record missing in zone (RFC 1034)
