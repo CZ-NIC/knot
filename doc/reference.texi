@@ -367,6 +367,7 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
 
 @menu
 * zones Syntax::                
+* zones Semantic checks::     
 * zones Statement Definition and Grammar::  
 @end menu
 
@@ -396,6 +397,48 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
 
 @end example
 
+@node zones Semantic checks 
+@subsection List of zone semantic checks 
+
+The @code{semantic-checks} statement turns on extra zone file semantic
+checks on. Several checks are enabled on default and cannot be turned
+off. If an error is found using these mandatory checks, the zone file
+will not be loaded. Upon loading a zone file, occured
+error and counts of their occurence will be logged to stderr.
+These checks are the following:
+
+@example
+- An extra record together with CNAME record (except for RRSIG and DS)
+- CNAME link chain legnth greater than 10 (including infinite cycle)
+- DNAME and CNAME records under the same owner (RFC 2672)
+- CNAME and DNAME wildcards pointing to themselves
+- SOA record missing in zone (RFC 1034)
+- DNAME records having records under it (DNAME children) (RFC 2672)
+@end example
+
+Following checks have to be turned on using @code{semantic-checks} and
+a zone containing following errors will be 
+loaded even upon discovering an error:
+
+@example
+- Missing NS record in delegation point or at the zone apex
+- Missing glue A or AAAA records
+- Broken or non-cyclic NSEC(3) chain
+- Wrong NSEC(3) type bitmap
+- Multiple NSEC records at the same node
+- Missing NSEC records at authoritative nodes
+- Extra record types under same name as NSEC3 record
+(this is RFC-valid, but Knot will not serve such a zone correctly)
+- NSEC3-unsecured delegation that is not part of Opt-out span
+- Wrong original TTL value in NSEC3 records
+- Wrong type covered RDATA value in RRSIG record
+- Wrong RDATA TTL value in RRSIG record
+- Signer name not the same as in DNSKEY
+- Signed RRSIG
+- Not all RRs in node are signed
+- Wrong key flags or wrong key in RRSIG record
+@end example
+
 @node zones Statement Definition and Grammar
 @subsection Statement Definition and Grammar
 
@@ -418,3 +461,5 @@ The @code{log} statement configures logging output of Knot DNS.  You
 can configure Knot DNS to log into file or system log.  Each log
 message has it's priority and you can configure priorities for each
 log destination.
+
+

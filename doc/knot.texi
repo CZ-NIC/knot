@@ -168,7 +168,8 @@ Statement Definition and Usage
 @code{zones} Statement
 
 * zones Syntax::                
-* zones Statement Definition and Grammar::  
+* zones Semantic checks::
+* zones Statement Definition and Grammar::
 
 @code{log} Statement
 
