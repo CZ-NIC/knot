@@ -523,10 +523,10 @@ dbg_ns_exec_verb(
 		int ret = 0;
 		knot_rrset_t *rrset = knot_node_get_rrset(node, type);
 		knot_rrset_t *rrset2 = rrset;
-		if (rrset != NULL) {
+		if (rrset != NULL && knot_rrset_rdata(rrset) != NULL) {
 			dbg_ns_verb("Found RRSet of type %s\n",
 				        knot_rrtype_to_string(type));
-
+			
 			ret = ns_check_wildcard(name, resp, &rrset2);
 			if (ret != KNOT_EOK) {
 				dbg_ns("Failed to process wildcard.\n");
