@@ -10,8 +10,73 @@
 @node Running a slave server
 @section Running a slave server
 
+Running the server as a slave is very straightforward as you usually bootstrap
+zones over AXFR and thus avoid any manual zone compilation.
+There are two ways to start the server - directly or with the @code{knotc} controller tool.
+
+First, let's start it directly. If you don't pass any configuration, it will try to
+search configuration in default path that is @code{SYSCONFDIR/knot.conf}. The @code{SYSCONFDIR}
+depends on what you passed to the @code{./configure}, usually @code{/etc}.
+
+@example
+$ knotd -c slave.conf
+@end example
+
+However to start it as a daemon, @code{knotc} tool should be used.
+The @code{knotc} tool accepts parameter @code{-w} to wait until the requested operation finishes.
+When the action is "start" for example, it waits until the server starts to serve zones.
+@example
+$ knotc -w -c slave.conf start # start the daemon
+$ knotc -c slave.conf stop # stop the daemon
+@end example
+
+When the server is running, you can control the daemon, see @ref{Controlling running daemon}.
+
 @node Running a master server
 @section Running a master server
 
+Knot DNS first needs to compile the zones before it can load them, therefore you need to
+compile them with the @code{knotc compile} action or use flag @code{-a} to compile the zones automatically.
+Starting and stopping the daemon is the same as with the slave server in the previous section.
+@example
+$ knotc -c master.conf compile
+$ knotc -w -c master.conf start
+@end example
+
+Or you can compile it automatically:
+@example
+$ knotc -c master.conf checkconf # check configuration
+$ knotc -a -w -c master.conf start
+@end example
+
+If you want to just check the zone files first before starting,
+you can use @code{knotc checkzone} action.
+@example
+$ knotc -c master.conf checkzone example.com
+@end example
+
 @node Controlling running daemon
 @section Controlling running daemon
+
+Knot DNS was designed to allow server reconfiguration on-the-fly without interrupting
+it's operation. Thus it is possible to change both configuration and zone files and
+also add or remove zones without restarting the server. This can be done with the
+@code{knotc reload} action. 
+
+@example
+$ knotc -c master.conf compile # compile updated zones
+$ knotc -c master.conf reload  # reconfigure and load updated zones
+@end example
+
+But you can still tear-down the server fully and restart with the @code{knotc restart} action.
+@example
+$ knotc -c master.conf running # check if running
+$ knotc -c master.conf restart # fully restart
+@end example
+
+If you want to force refresh the slave zones, you can do this with the @code{knotc refresh} action.
+@example
+$ knotc -c slave.conf refresh
+@end example
+
+For a complete list of actions refer to @code{knotc --help} command output.
