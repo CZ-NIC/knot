@@ -1,5 +1,5 @@
-@node Knot DNS Configuration Reference, Security Considerations, Knot DNS Configuration, Top
-@chapter Knot DNS Configuration Reference
+@node Knot DNS Configuration Reference, Migration for other DNS servers, Statement Index, Top
+@appendix Knot DNS Configuration Reference
 
 This reference describe every configuration option in Knot DNS.
 

@@ -1,4 +1,4 @@
-@node Statement Index, Migration for other DNS servers, Troubleshooting, Top
+@node Statement Index, Knot DNS Configuration Reference, Troubleshooting, Top
 @unnumbered Statement Index
 
 @printindex st

@@ -273,3 +273,4 @@ doc/version.texi
 src/libknot/zone/zone-diff.h
 src/libknot/zone/zone-diff.c
 
+doc/running.texi

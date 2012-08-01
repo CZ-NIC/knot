@@ -1,4 +1,4 @@
-@node Security Considerations, Troubleshooting, Knot DNS Configuration Reference, Top
+@node Security Considerations, Troubleshooting, Running Knot DNS, Top
 @chapter Security Considerations
 
 [TODO]

@@ -13,7 +13,7 @@
 
 GCC at least 4.1 is strictly required for atomic builtins, but 4.2 or newer is recommended.
 Another requirement is _GNU_SOURCE support, otherwise it adapts to the compiler available features.
-Clang should work, but it is not tested nor supported.
+Clang should work, but it is not tested nor officially supported.
 
 Knot DNS build system relies on standard tools:
 @itemize
@@ -95,9 +95,7 @@ a quite straightforward process using autotools.
 For all available options run:
 
 @example
-
 @command{./configure --help}
-	
 @end example
 
 If you have trouble with unknown syscalls under valgrind, disable recvmmsg with
@@ -116,10 +114,9 @@ verbosity as brief, verbose or details.
 For example:  @command{./configure --enable-debuglevel=verbose}.
 
 In most simple case you can just run configure without any options.
-@example
 
+@example
 @command{./configure}
-	
 @end example
 
 @node Compilation
@@ -130,9 +127,7 @@ Knot DNS by running make command, which will produce binaries
 and other related files.
 
 @example
-
 make
-	
 @end example
 
 Knot DNS build process is safe to paralelize
@@ -143,9 +138,7 @@ the compilation.
 For example to use maximum 8 concurrent processes you would use:
 
 @example
-
 make -j 8
-	
 @end example
 
 @node Installation
@@ -160,9 +153,7 @@ switching to root user, e.g. @command{sudo make install}
 or @command{su -c 'make install'}.
 
 @example
-
 make install
-	
 @end example
 
 @node Installation from packages
@@ -187,10 +178,8 @@ addition to the official packages we also provide custom
 repository, which can be used by adding:
 
 @example
-
 deb     @url{http://deb.knot-dns.cz/debian/} <codename> main
 deb-src @url{http://deb.knot-dns.cz/debian/} <codename> main
-	
 @end example
 
 @noindent

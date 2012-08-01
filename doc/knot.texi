@@ -57,10 +57,11 @@ This manual is for Knot DNS (version @value{VERSION}, @value{UPDATED}).
 * Knot DNS Resource Requirements::  
 * Knot DNS Installation::       
 * Knot DNS Configuration::      
-* Knot DNS Configuration Reference::  
+* Running Knot DNS::      
 * Security Considerations::     
 * Troubleshooting::             
 * Statement Index::             
+* Knot DNS Configuration Reference::  
 * Migration for other DNS servers::  
 
 @detailmenu
@@ -109,11 +110,26 @@ Installing Knot DNS packages on Ubuntu
 
 Knot DNS Configuration
 
-* Sample Configurations::       
+* Minimal configuration::       
+* Slave configuration::       
+* Master configuration::       
+* Configuring multiple interfaces::        
 
 Sample Configurations
 
-* Minimal Configuration::       
+* Minimal configuration::       
+* Slave configuration::       
+* Master configuration::       
+* Configuring multiple interfaces::       
+
+Running Knot DNS
+
+* 
+
+Troubleshooting
+
+* General troubleshooting::     
+* Generating backtrace::        
 
 Knot DNS Configuration Reference
 
@@ -176,11 +192,6 @@ Statement Definition and Usage
 * log Syntax::                  
 * log Statement Definition and Grammar::  
 
-Troubleshooting
-
-* General troubleshooting::     
-* Generating backtrace::        
-
 Migration for other DNS servers
 
 * Knot DNS for BIND users::     
@@ -197,7 +208,7 @@ Migration for other DNS servers
 @include requirements.texi
 @include installation.texi
 @include configuration.texi
-@include reference.texi
+@include running.texi
 @include troubleshooting.texi
 @include security.texi
 
@@ -205,7 +216,7 @@ Migration for other DNS servers
 @include indices.texi
 
 @c appendixes
-
+@include reference.texi
 @include migration.texi
 
 @bye

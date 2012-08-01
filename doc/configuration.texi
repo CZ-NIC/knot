@@ -1,21 +1,17 @@
-@node Knot DNS Configuration, Knot DNS Configuration Reference, Knot DNS Installation, Top
+@node Knot DNS Configuration, Running Knot DNS, Knot DNS Installation, Top
 @chapter Knot DNS Configuration
 
 In this chapter we provide suggested configuration and explain the meaning of individual configuration options.
 
 @menu
-* Sample Configurations::       
+* Minimal configuration::       
+* Slave configuration::       
+* Master configuration::       
+* Configuring multiple interfaces::       
 @end menu
 
-@node Sample Configurations
-@section Sample Configurations
-
-@menu
-* Minimal Configuration::       
-@end menu
-
-@node Minimal Configuration
-@subsection Minimal Configuration
+@node Minimal configuration
+@section Minimal configuration
 
 The following configuration presents a minimal configuration
 file which can be used as a base for your Knot DNS setup.
@@ -77,3 +73,101 @@ because it defines the zones Knot DNS will serve.  In its most simple
 form you define zone by it's name and defined the filename where Knot
 DNS can find the zone contents.
 @end enumerate
+
+@node Slave configuration
+@section Slave configuration
+
+Knot DNS doesn't strictly differ master and slave zones.
+The only requirement is to have @code{xfr-in} @code{@ref{zones}} statement set for given zone,
+thus both allowing incoming XFR from that remote and also using it as the
+zone master. Also, you can specify relative paths for zone file and in that case,
+zone files will be bootstrapped over AXFR and placed in the storage directory,
+specified in @code{@ref{storage}}.
+
+@example
+remotes @{
+  master @{ address 127.0.0.1@@53; @}
+@}
+zones @{
+  example.com @{  
+    file "example.com"; # relative to 'storage'
+    xfr-in master;      # uses 'master' remote
+    notify-in master;   # also allow NOTIFY from 'master'
+  @}
+@}
+@end example
+
+You can also use TSIG for access control. For this, you need to specify the key
+and assign it to the remote. Supported algorithms for TSIG key are:
+hmac-md5, hmac-sha1, hmac-sha224, hmac-sha256, hmac-sha384, hmac-sha512.
+Secret is written in base64 encoded format. @code{@ref{keys}}
+
+@example
+keys @{
+  key0 hmac-md5 "Wg=="; # keyname algorithm secret
+@}
+remotes @{
+  master @{ address 127.0.0.1@@53; key key0; @}
+@}
+zones @{
+  example.com @{  
+    file "example.com"; # relative to 'storage'
+    xfr-in master;      # uses 'master' remote
+    notify-in master;   # also allow NOTIFY from 'master'
+  @}
+@}
+@end example
+
+As of now it is not possible to associate multiple keys with a remote.
+
+@node Master configuration
+@section Master configuration
+
+By default, zones are treated as master as long as they don't have the @code{xfr-in} set.
+You can specify which remotes to allow outgoing XFR and NOTIFY @code{@ref{zones}}.
+
+@example
+remotes @{
+  slave @{ address 127.0.0.1@@53; @}
+  any @{ address 0.0.0.0/0; @}
+  subnet1 @{ address 192.168.1.0/8; @}
+  subnet2 @{ address 192.168.2.0/8; @}
+@}
+zones @{
+  example.com @{  
+    file "/var/zones/example.com";
+    xfr-out subnet1, subnet2; # uses 'master' remote
+    notify-out slave;
+  @}
+@}
+@end example
+
+You can also secure outgoing XFRs with TSIG.
+
+@example
+keys @{
+  key0 hmac-md5 "Wg=="; # keyname algorithm secret
+@}
+remotes @{
+  any @{ address 0.0.0.0/0; key key0; @}
+@}
+zones @{
+  example.com @{  
+    file "/var/zones/example.com";
+    xfr-out any; # uses 'any' remote secured with TSIG key 'key0'
+  @}
+@}
+@end example
+
+@node Configuring multiple interfaces
+@section Configuring multiple interfaces
+
+Knot DNS support binding to multiple available interfaces in the @code{@ref{interfaces}}.
+You can also use the special addresses for "any address" like @code{0.0.0.0} or @code{[::]}.
+
+@example
+interfaces @{
+  if1 @{ address 192.168.1.2@@53; @}
+  anyv6 @{ address [::]@@53; @}
+@}
+@end example

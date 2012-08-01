@@ -40,6 +40,10 @@ format.  Again this is only a estimate and you are advised to do
 your own measurements before deploying Knot DNS into the
 production.
 
+Also note that to ensure uninterrupted serving of the zone, Knot DNS employs
+a Read-Copy-Update mechanism instead of locking and thus requires
+twice the amount of memory for the duration of the incoming transfers.
+
 @node Supported Operating System
 @section Supported Operating System
 
