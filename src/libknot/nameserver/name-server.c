@@ -299,7 +299,8 @@ static int ns_follow_cname(const knot_node_t **node,
 
 	while (*node != NULL
 	       && (cname_rrset = knot_node_get_rrset(*node, KNOT_RRTYPE_CNAME))
-	          != NULL) {
+	          != NULL
+	       && (knot_rrset_rdata(cname_rrset) != NULL)) {
 		/* put the CNAME record to answer, but replace the possible
 		   wildcard name with qname */
 
