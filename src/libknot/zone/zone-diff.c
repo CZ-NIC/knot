@@ -162,6 +162,10 @@ static int knot_zone_diff_changeset_add_rrset(knot_changeset_t *changeset,
 		dbg_zonediff("zone_diff: add_rrset: Cannot copy RRSet.\n");
 		return ret;
 	}
+	if (rrset_copy->rrsigs != NULL) {
+		knot_rrset_deep_free(&rrset_copy->rrsigs, 1, 1, 1);
+	}	
+	assert(knot_rrset_rrsigs(rrset_copy) == NULL);
 	
 	ret = knot_changeset_add_new_rr(changeset, rrset_copy,
 	                                    XFRIN_CHANGESET_ADD);
@@ -204,6 +208,10 @@ static int knot_zone_diff_changeset_remove_rrset(knot_changeset_t *changeset,
 		dbg_zonediff("zone_diff: remove_rrset: Cannot copy RRSet.\n");
 		return ret;
 	}
+	if (rrset_copy->rrsigs != NULL) {
+		knot_rrset_deep_free(&rrset_copy->rrsigs, 1, 1, 1);
+	}	
+	assert(knot_rrset_rrsigs(rrset_copy) == NULL);
 	
 	ret = knot_changeset_add_new_rr(changeset, rrset_copy,
 	                                    XFRIN_CHANGESET_REMOVE);

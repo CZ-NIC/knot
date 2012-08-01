@@ -579,7 +579,11 @@ static int knot_rrset_dump_binary(const knot_rrset_t *rrset, int fd,
 	                         "Dumping RRSet \\w owner: %s.\n",
 		                 name);
 		free(name);
-	);	
+	);
+		
+	if (!use_ids) {
+		assert(rrset->rrsigs == NULL);
+	}
 	
 	if (!use_ids) {
 		/*!< \todo IDs in changeset do no good. Change loading too. */
