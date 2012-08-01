@@ -262,9 +262,11 @@ static int check_cname_cycles_in_zone(knot_zone_contents_t *zone,
 	const knot_node_t *next_node = NULL;
 
 	uint i = 0;
-
-	assert(tmp_rdata);
-
+	
+	if (tmp_rdata == NULL) {
+		return KNOT_EOK;
+	}
+	
 	const knot_dname_t *next_dname =
 		knot_rdata_cname_name(tmp_rdata);
 	/* (cname_name == dname_target) */
@@ -422,7 +424,7 @@ static int check_cname_cycles_in_zone(knot_zone_contents_t *zone,
 		if (next_node != NULL) {
 			next_rrset = knot_node_rrset(next_node,
 						     rrset->type);
-			if (next_rrset != NULL) {
+			if (next_rrset != NULL && next_rrset->rdata != NULL) {
 				next_dname =
 				knot_rdata_cname_name(next_rrset->rdata);
 			} else {
@@ -755,9 +757,11 @@ static int check_rrsig_in_rrset(const knot_rrset_t *rrset,
 	/* Check whether all rrsets have their rrsigs */
 	const knot_rdata_t *tmp_rdata = knot_rrset_rdata(rrset);
 	const knot_rdata_t *tmp_rrsig_rdata = knot_rrset_rdata(rrsigs);
+	
+	if (tmp_rdata == NULL || tmp_rrsig_rdata == NULL) {
+		return KNOT_EOK;
+	}
 
-	assert(tmp_rdata);
-	assert(tmp_rrsig_rdata);
 	int ret = 0;
 	char all_signed = tmp_rdata && tmp_rrsig_rdata;
 	do {
@@ -1098,8 +1102,9 @@ static int semantic_checks_plain(knot_zone_contents_t *zone,
 			}
 		}
 
-		if (knot_rrset_rdata(cname_rrset)->next !=
-		                knot_rrset_rdata(cname_rrset)) {
+		if (knot_rrset_rdata(cname_rrset) &&
+		    knot_rrset_rdata(cname_rrset)->next !=
+		    knot_rrset_rdata(cname_rrset)) {
 			*fatal_error = 1;
 			err_handler_handle_error(handler, node,
 			                         ZC_ERR_CNAME_MULTIPLE);
