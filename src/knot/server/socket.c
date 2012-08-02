@@ -99,6 +99,8 @@ int socket_connect(int fd, const char *addr, unsigned short port)
 int socket_bind(int socket, int family, const char *addr, unsigned short port)
 {
 	/* Check address family. */
+	int flag = 1;
+	int ret = 0;
 	struct sockaddr* paddr = 0;
 	socklen_t addrlen = 0;
 	struct sockaddr_in saddr;
@@ -150,12 +152,23 @@ int socket_bind(int socket, int family, const char *addr, unsigned short port)
 			                 addr, buf);
 
 		}
-#endif
+
+		/* Make the socket IPv6 only to allow 'any' for IPv4 and IPv6 at the same time. */
+#ifdef IPV6_V6ONLY
+		if (family == AF_INET6) {
+			/* Do not support mapping IPv4 in IPv6 sockets. */
+			ret = setsockopt(socket, IPPROTO_IPV6, IPV6_V6ONLY,
+			                 &flag, sizeof(flag));
+			if (ret < 0) {
+				return KNOTD_EINVAL;
+			}
+		}
+#endif /* IPV6_V6ONLY */
+#endif /* DISABLE_IPV6 */
 	}
 
 	/* Reuse old address if taken. */
-	int flag = 1;
-	int ret = setsockopt(socket, SOL_SOCKET, SO_REUSEADDR,
+	ret = setsockopt(socket, SOL_SOCKET, SO_REUSEADDR,
 	                     &flag, sizeof(flag));
 	if (ret < 0) {
 		return KNOTD_EINVAL;
