@@ -916,11 +916,21 @@ static int ns_put_nsec3_from_node(const knot_node_t *node,
 	       && knot_query_dnssec_requested(knot_packet_query(resp)));
 
 	knot_rrset_t *rrset = knot_node_get_rrset(node, KNOT_RRTYPE_NSEC3);
-	assert(rrset != NULL);
+	//assert(rrset != NULL);
 
-	int res = knot_response_add_rrset_authority(resp, rrset, 1, 1, 0, 1);
+	if (rrset == NULL) {
+		// bad zone, ignore
+		return KNOT_EOK;
+	}
+	
+	int res = KNOT_EOK;
+	if (knot_rrset_rdata(rrset) != NULL) {
+		res = knot_response_add_rrset_authority(resp, rrset, 1, 1, 0, 
+		                                        1);
+	}
 	// add RRSIG for the RRSet
-	if (res == KNOT_EOK && (rrset = knot_rrset_get_rrsigs(rrset)) != NULL) {
+	if (res == KNOT_EOK && (rrset = knot_rrset_get_rrsigs(rrset)) != NULL
+	    && knot_rrset_rdata(rrset) != NULL) {
 		res = knot_response_add_rrset_authority(resp, rrset, 1, 0, 0,
 		                                        1);
 	}
@@ -952,7 +962,11 @@ static int ns_put_covering_nsec3(const knot_zone_contents_t *zone,
 	/*! \todo Check version. */
 	int match = knot_zone_contents_find_nsec3_for_name(zone, name,
 	                                                   &node, &prev);
-	assert(match >= 0);
+	//assert(match >= 0);
+	if (match < 0) {
+		// ignoring, what can we do anyway?
+		return KNOT_EOK;
+	}
 
 	if (match == KNOT_ZONE_NAME_FOUND || prev == NULL){
 		// if run-time collision => SERVFAIL
@@ -1182,16 +1196,23 @@ static int ns_put_nsec_nsec3_nodata(const knot_zone_contents_t *zone,
 
 	if (knot_zone_contents_nsec3_enabled(zone)) {
 		knot_node_t *nsec3_node = knot_node_get_nsec3_node(node);
+		dbg_ns_verb("Adding NSEC3 for NODATA, NSEC3 node: %p\n",
+		            nsec3_node);
 
 		if (nsec3_node != NULL
 		    && (rrset = knot_node_get_rrset(nsec3_node,
-		                                  KNOT_RRTYPE_NSEC3)) != NULL) {
+		                                  KNOT_RRTYPE_NSEC3)) != NULL
+		    && knot_rrset_rdata(rrset) != NULL) {
+			dbg_ns_detail("Putting the RRSet to Authority\n");
 			ret = knot_response_add_rrset_authority(resp, rrset, 1,
 			                                        0, 0, 1);
 		}
 	} else {
+		dbg_ns_verb("Adding NSEC for NODATA\n");
 		if ((rrset = knot_node_get_rrset(node, KNOT_RRTYPE_NSEC))
-		    != NULL) {
+		    != NULL 
+		    && knot_rrset_rdata(rrset) != NULL) {
+			dbg_ns_detail("Putting the RRSet to Authority\n");
 			ret = knot_response_add_rrset_authority(resp, rrset, 1,
 			                                        0, 0, 1);
 		}
@@ -1201,6 +1222,7 @@ static int ns_put_nsec_nsec3_nodata(const knot_zone_contents_t *zone,
 		return ret;
 	}
 
+	dbg_ns_detail("Putting RRSet's RRSIGs to Authority\n");
 	if (rrset != NULL && (rrset = knot_rrset_get_rrsigs(rrset)) != NULL) {
 		ret = knot_response_add_rrset_authority(resp, rrset, 1,
 		                                        0, 0, 1);
@@ -1246,9 +1268,11 @@ static int ns_put_nsec_nxdomain(const knot_dname_t *qname,
 		}
 	}
 	
+dbg_ns_exec_verb(
 	char *name = knot_dname_to_str(previous->owner);
 	dbg_ns_verb("Previous node: %s\n", name);
 	free(name);
+);
 
 	// 1) NSEC proving that there is no node with the searched name
 	rrset = knot_node_get_rrset(previous, KNOT_RRTYPE_NSEC);
@@ -1312,7 +1336,10 @@ dbg_ns_exec_verb(
 
 	if (prev_new != previous) {
 		rrset = knot_node_get_rrset(prev_new, KNOT_RRTYPE_NSEC);
-		assert(rrset != NULL);
+		if (rrset == NULL || knot_rrset_rdata(rrset) == NULL) {
+			// bad zone, ignore
+			return KNOT_EOK;
+		}
 		ret = knot_response_add_rrset_authority(resp, rrset, 1, 0, 0, 1);
 		if (ret != KNOT_EOK) {
 			dbg_ns("Failed to add second NSEC for NXDOMAIN to "
@@ -1320,7 +1347,10 @@ dbg_ns_exec_verb(
 			return ret;
 		}
 		rrset = knot_rrset_get_rrsigs(rrset);
-		assert(rrset != NULL);
+		if (rrset == NULL || knot_rrset_rdata(rrset) == NULL) {
+			// bad zone, ignore
+			return KNOT_EOK;
+		}
 		ret = knot_response_add_rrset_authority(resp, rrset, 1, 0, 0, 1);
 		if (ret != KNOT_EOK) {
 			dbg_ns("Failed to add RRSIGs for second NSEC for "
@@ -1499,7 +1529,7 @@ static int ns_put_nsec_wildcard(const knot_zone_contents_t *zone,
 
 	int ret = KNOT_EOK;
 
-	if (rrset != NULL) {
+	if (rrset != NULL && knot_rrset_rdata(rrset) != NULL) {
 		// NSEC proving that there is no node with the searched name
 		ret = knot_response_add_rrset_authority(resp, rrset, 1, 0,
 		                                        0, 1);
@@ -1801,6 +1831,7 @@ static int ns_answer_from_node(const knot_node_t *node,
 	assert(ret == KNOT_EOK);
 
 	if (answers == 0) {  // if NODATA response, put SOA
+		ret = ns_put_authority_soa(zone, resp);
 		if (knot_node_rrset_count(node) == 0
 		    && !knot_zone_contents_nsec3_enabled(zone)) {
 			// node is an empty non-terminal => NSEC for NXDOMAIN
@@ -1813,6 +1844,8 @@ static int ns_answer_from_node(const knot_node_t *node,
 			dbg_ns_verb("Adding NSEC/NSEC3 for NODATA.\n");
 			ret = ns_put_nsec_nsec3_nodata(zone, node, resp);
 			if (ret != KNOT_EOK) {
+				dbg_ns("Failed adding NSEC/NSEC3 for NODATA: %s"
+				       "\n", knot_strerror(ret));
 				return ret;
 			}
 
@@ -1827,7 +1860,6 @@ static int ns_answer_from_node(const knot_node_t *node,
 				}
 			}
 		}
-		ret = ns_put_authority_soa(zone, resp);
 	} else {  // else put authority NS
 		// if wildcard answer, add NSEC / NSEC3
 		dbg_ns_verb("Adding NSEC/NSEC3 for wildcard answer.\n");
