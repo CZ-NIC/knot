@@ -2174,7 +2174,7 @@ have_node:
 	}
 
 	if (knot_node_rrset(node, KNOT_RRTYPE_CNAME) != NULL
-	    && qtype != KNOT_RRTYPE_CNAME) {
+	    && qtype != KNOT_RRTYPE_CNAME && qtype != KNOT_RRTYPE_RRSIG) {
 dbg_ns_exec(
 		char *name = knot_dname_to_str(node->owner);
 		dbg_ns_verb("Node %s has CNAME record, resolving...\n", name);
