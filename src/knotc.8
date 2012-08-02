@@ -28,6 +28,9 @@ Wait for the server to finish start/stop operations.
 \fB\-i\fR, \fB\-\-interactive\fR
 Interactive mode (do not daemonize).
 .TP
+\fB\-a\fR, \fB\-\-auto\fR
+Enable automatic recompilation (start or reload).
+.TP
 \fB\-h\fR, \fB\-\-help\fR
 Print help and usage.
 .SS "Actions:"
@@ -45,10 +48,19 @@ reload
 Reload knot configuration and compiled zones.
 .TP
 running
-check if server is running.
+Check if server is running.
 .TP
 compile
 Compile zone file.
+.TP
+refresh
+Refresh all slave zones.
+.TP
+checkconf
+Check server configuration.
+.TP
+checkzone
+Check zones before compiling (accepts specific zones, f.e. 'knotc checkzone example1.com example2.com').
 .SH "SEE ALSO"
 The full documentation for
 .B Knot
