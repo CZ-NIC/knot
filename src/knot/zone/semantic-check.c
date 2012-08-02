@@ -1183,10 +1183,12 @@ static int semantic_checks_plain(knot_zone_contents_t *zone,
 		//FIXME this should be an error as well ! (i guess)
 
 		knot_dname_t *ns_dname =
+			knot_dname_deep_copy(
 				knot_rdata_get_item(knot_rrset_rdata
-						      (ns_rrset), 0)->dname;
-
-		assert(ns_dname);
+				                    (ns_rrset), 0)->dname);
+		if (ns_dname == NULL) {
+			return KNOT_ENOMEM;
+		}
 
 		const knot_node_t *glue_node =
 				knot_zone_contents_find_node(zone, ns_dname);
@@ -1198,6 +1200,7 @@ static int semantic_checks_plain(knot_zone_contents_t *zone,
 				knot_dname_t *wildcard =
 					knot_dname_new_from_str("*", 1, NULL);
 				if (wildcard == NULL) {
+					knot_dname_free(&ns_dname);
 					return KNOT_ENOMEM;
 				}
 				
@@ -1205,6 +1208,7 @@ static int semantic_checks_plain(knot_zone_contents_t *zone,
 		
 				if (knot_dname_cat(wildcard,
 				                   ns_dname) == NULL) {
+					knot_dname_free(&ns_dname);
 					knot_dname_free(&wildcard);
 					return KNOT_ENOMEM;
 				}
@@ -1235,6 +1239,7 @@ static int semantic_checks_plain(knot_zone_contents_t *zone,
 				}
 			}
 		}
+		knot_dname_free(&ns_dname);
 	}
 	return KNOT_EOK;
 }
