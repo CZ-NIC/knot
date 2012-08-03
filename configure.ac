@@ -11,6 +11,8 @@ AX_EXT
 
 # Checks for programs.
 AC_PROG_CC
+m4_pattern_allow([AM_PROG_AR]) # for automake 1.12
+AM_PROG_AR
 
 # Enable maintainer mode by default for development
 AM_MAINTAINER_MODE([enable])
