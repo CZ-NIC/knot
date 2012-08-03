@@ -754,30 +754,34 @@ static int check_rrsig_in_rrset(const knot_rrset_t *rrset,
 		return ZC_ERR_RRSIG_TTL;
 	}
 
-	/* Check whether all rrsets have their rrsigs */
 	const knot_rdata_t *tmp_rdata = knot_rrset_rdata(rrset);
 	const knot_rdata_t *tmp_rrsig_rdata = knot_rrset_rdata(rrsigs);
 	
-	if (tmp_rdata == NULL || tmp_rrsig_rdata == NULL) {
+	assert(tmp_rrsig_rdata != NULL);
+	if (tmp_rdata == NULL) {
+		/* Only RRSIG, valid, but we can't check anything. */
 		return KNOT_EOK;
 	}
-
+	
 	int ret = 0;
-	char all_signed = tmp_rdata && tmp_rrsig_rdata;
 	do {
 		if ((ret = check_rrsig_rdata(tmp_rrsig_rdata,
 					     rrset,
 					     dnskey_rrset)) != 0) {
+			/*!< \todo This should go to handler. */
 			return ret;
 		}
-
-		all_signed = tmp_rdata && tmp_rrsig_rdata;
-	} while (((tmp_rdata = knot_rrset_rdata_next(rrset, tmp_rdata))
-		!= NULL) &&
-		((tmp_rrsig_rdata =
-			knot_rrset_rdata_next(rrsigs, tmp_rrsig_rdata))
-		!= NULL));
-
+		tmp_rdata = knot_rrset_rdata_next(rrset, tmp_rdata);
+		tmp_rrsig_rdata = knot_rrset_rdata_next(rrsigs,
+		                                        tmp_rrsig_rdata);
+	} while (tmp_rdata != NULL && tmp_rrsig_rdata != NULL);
+	
+	/*!< \todo JK 03-08-2012 #1972
+	 * This check is not very informative, its output
+	 * does not contain any info about which RRSet is not completely signed.
+	 * A rewrite is needed.
+	 */
+	char all_signed = tmp_rdata == NULL && tmp_rrsig_rdata == NULL;
 	if (!all_signed) {
 		return ZC_ERR_RRSIG_NOT_ALL;
 	}
