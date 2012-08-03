@@ -23,6 +23,11 @@
 #include "common/slab/slab.h"
 #include "knot/common.h"
 
+/*! \brief Type-safe maximum macro. */
+#define SLAB_MAX(a, b) \
+	({ typeof (a) _a = (a); typeof (b) _b = (b); _a > _b ? _a : _b; })
+
+
 /* Explicitly ask for symbols,
  * as the constructor and destructor
  * aren't created for test modules.
@@ -119,7 +124,7 @@ static int slab_tests_run(int argc, char *argv[])
 	for(int i = 0; i < alloc_count; ++i) {
 		double roll = rand() / (double) RAND_MAX;
 		size_t bsize = roll * 2048;
-		bsize = MAX(bsize, 8);
+		bsize = SLAB_MAX(bsize, 8);
 		if ((ptrs_i == 0) || (roll < 0.6)) {
 			void* m = slab_alloc_alloc(&alloc, bsize);
 			if (m == 0) {
