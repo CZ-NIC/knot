@@ -93,6 +93,9 @@ static void xfr_free_task(knot_ns_xfr_t *task)
 		}
 	}
 	
+	/* No further access to zone. */
+	knot_zone_release(task->zone);
+	
 	/* Deinitialize */
 	xfr_request_deinit(task);
 	if (!task->session_closed) {
@@ -1289,6 +1292,7 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 		return KNOTD_EINVAL;
 	}
 	
+	rcu_read_lock();
 	int ret = knot_ns_init_xfr(ns, xfr);
 
 	int xfr_failed = (ret != KNOT_EOK);
@@ -1372,6 +1376,7 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 	free(xfr->tsig_data);
 	xfr->tsig_data = NULL;
 	xfr_request_deinit(xfr);
+	rcu_read_unlock();
 	
 	/* Cleanup. */
 	free(xfr->digest);
@@ -1423,6 +1428,7 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		
 		/* Report. */
 		if (ret != KNOTD_EOK && ret != KNOTD_EACCES) {
+			/*! \todo #1976 Do not reschedule if zone is being discarded. */
 			if (zd != NULL && !knot_zone_contents(xfr.zone)) {
 				/* Reschedule request (120 - 240s random delay). */
 				int tmr_s = AXFR_BOOTSTRAP_RETRY * 2; /* Malus x2 */
@@ -1439,6 +1445,7 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 				log_server_error("%s %s\n",
 				                 xfr.msgpref, knotd_strerror(ret));
 			}
+			knot_zone_release(xfr.zone); /* No further access to zone. */
 		}
 		
 		break;
@@ -1447,14 +1454,14 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		/* Register task. */
 		task = xfr_register_task(w, &xfr);
 		if (!task) {
+			knot_zone_release(xfr.zone); /* No further access to zone. */
 			ret = KNOTD_ENOMEM;
-			break;
+		} else {
+			/* Add timeout. */
+			fdset_set_watchdog(w->fdset, task->session, XFR_QUERY_WD);
+			log_server_info("%s Query issued.\n", xfr.msgpref);
+			ret = KNOTD_EOK;
 		}
-		
-		/* Add timeout. */
-		fdset_set_watchdog(w->fdset, task->session, XFR_QUERY_WD);
-		log_server_info("%s Query issued.\n", xfr.msgpref);
-		ret = KNOTD_EOK;
 		break;
 	default:
 		log_server_error("Unknown XFR request type (%d).\n", xfr.type);
