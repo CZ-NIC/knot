@@ -377,10 +377,8 @@ static int zones_expire_ev(event_t *e)
 static int zones_refresh_ev(event_t *e)
 {
 	dbg_zones("zones: REFRESH or RETRY timer event\n");
-	rcu_read_lock();
 	knot_zone_t *zone = (knot_zone_t *)e->data;
 	if (zone == NULL || zone->data == NULL) {
-		rcu_read_unlock();
 		return KNOTD_EINVAL;
 	}
 
@@ -388,6 +386,7 @@ static int zones_refresh_ev(event_t *e)
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 
 	/* Check for contents. */
+	rcu_read_lock();
 	if (!knot_zone_contents(zone)) {
 
 		/* Bootstrap from XFR master. */
@@ -430,20 +429,13 @@ static int zones_refresh_ev(event_t *e)
 		++zd->xfr_in.scheduled;
 		pthread_mutex_unlock(&zd->xfr_in.lock);
 		
-		/* Retain pointer to zone for processing. */
-		knot_zone_retain(xfr_req.zone);
-		
 		/* Unlock zone contents. */
 		rcu_read_unlock();
 		
 		/* Mark as finished to prevent stalling. */
 		evsched_event_finished(e->parent);
-		int ret = xfr_request(zd->server->xfr_h, &xfr_req);
-		if (ret != KNOTD_EOK) {
-			knot_zone_release(xfr_req.zone); /* Discard */
-		}
-		return ret;
 		
+		return xfr_request(zd->server->xfr_h, &xfr_req);
 	}
 	
 	/* Do not issue SOA query if transfer is pending. */
@@ -454,7 +446,6 @@ static int zones_refresh_ev(event_t *e)
 		          zd->conf->name);
 		
 		/* Reschedule as RETRY timer. */
-		/*! \todo #1976 Do not reschedule if zone is being discarded. */
 		uint32_t retry_tmr = zones_jitter(zones_soa_retry(zone));
 		evsched_schedule(e->parent, e, retry_tmr);
 		dbg_zones("zones: RETRY of '%s' after %u seconds\n",
@@ -479,7 +470,6 @@ static int zones_refresh_ev(event_t *e)
 	}
 	
 	/* Reschedule as RETRY timer. */
-	/*! \todo #1976 Do not reschedule if zone is being discarded. */
 	uint32_t retry_tmr = zones_jitter(zones_soa_retry(zone));
 	evsched_schedule(e->parent, e, retry_tmr);
 	dbg_zones("zones: RETRY of '%s' after %u seconds\n",
@@ -568,14 +558,10 @@ static int zones_refresh_ev(event_t *e)
 	memcpy(&req.saddr, &zd->xfr_in.via, sizeof(sockaddr_t));
 	sockaddr_update(&req.addr);
 	sockaddr_update(&req.saddr);
-	
-	/* Retain pointer to zone and issue. */
-	knot_zone_retain(req.zone);
 	if (ret == KNOTD_EOK) {
 		ret = xfr_request(zd->server->xfr_h, &req);
 	}
 	if (ret != KNOTD_EOK) {
-		knot_zone_release(req.zone); /* Discard */
 		log_server_warning("Failed to issue SOA query for zone '%s' (%s).\n",
 		                   zd->conf->name, errstr);
 	}
@@ -594,22 +580,21 @@ static int zones_refresh_ev(event_t *e)
 static int zones_notify_send(event_t *e)
 {
 	dbg_notify("notify: NOTIFY timer event\n");
-	rcu_read_lock();
+	
 	notify_ev_t *ev = (notify_ev_t *)e->data;
 	if (ev == NULL) {
-		rcu_read_unlock();
 		log_zone_error("NOTIFY invalid event received\n");
 		return KNOTD_EINVAL;
 	}
-	
 	knot_zone_t *zone = ev->zone;
 	if (zone == NULL || zone->data == NULL) {
-		rcu_read_unlock();
 		log_zone_error("NOTIFY invalid event data received\n");
 		evsched_event_free(e->parent, e);
 		free(ev);
 		return KNOTD_EINVAL;
 	}
+
+	rcu_read_lock();
 
 	/* Check for answered/cancelled query. */
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
@@ -636,7 +621,6 @@ static int zones_notify_send(event_t *e)
 	int retry_tmr = ev->timeout * 1000;
  
 	/* Reschedule. */
-	/*! \todo #1976 Do not reschedule if zone is being discarded. */
 	evsched_schedule(e->parent, e, retry_tmr);
 	dbg_notify("notify: Query RETRY after %u secs (zone '%s')\n",
 	           retry_tmr / 1000, zd->conf->name);
@@ -691,13 +675,7 @@ static int zones_notify_send(event_t *e)
 		req.zone = zone;
 		memcpy(&req.addr, &ev->addr, sizeof(sockaddr_t));
 		memcpy(&req.saddr, &ev->saddr, sizeof(sockaddr_t));
-		
-		/* Retain pointer to zone and issue request. */
-		knot_zone_retain(req.zone);
-		ret = xfr_request(zd->server->xfr_h, &req);
-		if (ret != KNOTD_EOK) {
-			knot_zone_release(req.zone); /* Discard */
-		}
+		xfr_request(zd->server->xfr_h, &req);
 	}
 	
 	free(qbuf);
@@ -2462,7 +2440,6 @@ int zones_process_response(knot_nameserver_t *nameserver,
 		}
 
 		/* Find matching zone and ID. */
-		rcu_read_lock();
 		const knot_dname_t *zone_name = knot_packet_qname(packet);
 		/*! \todo Change the access to the zone db. */
 		knot_zone_t *zone = knot_zonedb_find_zone(
@@ -2470,6 +2447,7 @@ int zones_process_response(knot_nameserver_t *nameserver,
 		                        zone_name);
 
 		/* Get zone contents. */
+		rcu_read_lock();
 		const knot_zone_contents_t *contents =
 				knot_zone_contents(zone);
 
@@ -2548,13 +2526,9 @@ int zones_process_response(knot_nameserver_t *nameserver,
 		/* Unlock zone contents. */
 		rcu_read_unlock();
 
-		/* Retain pointer to zone for processing. */
-		knot_zone_retain(xfr_req.zone);
-		ret = xfr_request(((server_t *)knot_ns_get_data(
-		                  nameserver))->xfr_h, &xfr_req);
-		if (ret != KNOTD_EOK) {
-			knot_zone_release(xfr_req.zone); /* Discard */
-		}
+		/* Enqueue XFR request. */
+		return xfr_request(((server_t *)knot_ns_get_data(
+		                     nameserver))->xfr_h, &xfr_req);
 	}
 
 	return KNOTD_EOK;

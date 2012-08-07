@@ -3936,9 +3936,9 @@ int knot_ns_switch_zone(knot_nameserver_t *nameserver,
 		return KNOT_ENOZONE;
 	}
 
-	/* Zone must not be looked-up from server, as it may be a different zone if
-	 * a reload occurs when transfer is pending. */
-	knot_zone_t *z = xfr->zone;
+	// find the zone in the zone db
+	knot_zone_t *z = knot_zonedb_find_zone(nameserver->zone_db,
+			knot_node_owner(knot_zone_contents_apex(zone)));
 	if (z == NULL) {
 		char *name = knot_dname_to_str(knot_node_owner(
 				knot_zone_contents_apex(zone)));
@@ -3957,8 +3957,6 @@ dbg_ns_exec_verb(
 	dbg_ns_verb("Zone db contents: (zone count: %zu)\n",
 	            nameserver->zone_db->zone_count);
 
-	/* Warning: may not show updated zone if updated zone that is already
-	 *          discarded from zone db (reload with pending transfer). */
 	const knot_zone_t **zones = knot_zonedb_zones(nameserver->zone_db);
 	for (int i = 0; i < knot_zonedb_zone_count
 	     (nameserver->zone_db); i++) {
