@@ -280,7 +280,8 @@ static void delete_zone_from_db(void *node, void *data)
 	knot_zone_t *zone = (knot_zone_t *)node;
 	assert(zone);
 	synchronize_rcu();
-	knot_zone_deep_free(&zone, 0);
+	knot_zone_release(zone);
+	zone = NULL;
 }
 
 void knot_zonedb_deep_free(knot_zonedb_t **db)
