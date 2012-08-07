@@ -122,6 +122,7 @@ static int zonedata_destroy(knot_zone_t *zone)
 	free(zd);
 	
 	/* Invalidate. */
+	zone->dtor = 0;
 	zone->data = 0;
 
 	return KNOTD_EOK;
@@ -180,7 +181,7 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 
 	/* Set and install destructor. */
 	zone->data = zd;
-	knot_zone_set_dtor(zone, zonedata_destroy);
+	zone->dtor = zonedata_destroy;
 
 	/* Set zonefile SOA serial. */
 	const knot_rrset_t *soa_rrs = 0;

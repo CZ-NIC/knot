@@ -34,7 +34,6 @@
 #include "nsec3.h"
 #include "zone/dname-table.h"
 #include "common/tree.h"
-#include "common/ref.h"
 #include "hash/cuckoo-hash-table.h"
 
 #include "zone-tree.h"
@@ -64,7 +63,6 @@ typedef enum knot_zone_retvals knot_zone_retvals_t;
  *          double-free errors when destroying the zone.
  */
 struct knot_zone {
-	ref_t ref;     /*!< Reference counting. */
 	knot_dname_t *name;
 
 	knot_zone_contents_t *contents;
@@ -148,36 +146,6 @@ void knot_zone_free(knot_zone_t **zone);
  *                          knot_rdata_deep_free().)
  */
 void knot_zone_deep_free(knot_zone_t **zone, int destroy_dname_table);
-
-/*!
- * \brief Set destructor and initialize reference counter to 1.
- *
- * \param zone Related zone.
- * \param dtor Destructor.
- */
-void knot_zone_set_dtor(knot_zone_t *zone, int (*dtor)(struct knot_zone *));
-
-/*!
- * \brief Increment reference counter for dname.
- *
- * \param zone Referenced zone.
- */
- static inline void knot_zone_retain(knot_zone_t *zone) {
-	if (zone != NULL) {
-		ref_retain(&zone->ref);
-	}
-}
-
-/*!
- * \brief Decrement reference counter for dname.
- *
- * \param zone Referenced zone.
- */
- static inline void knot_zone_release(knot_zone_t *zone) {
-	if (zone != NULL) {
-		ref_release(&zone->ref);
-	}
-}
 
 #endif
 
