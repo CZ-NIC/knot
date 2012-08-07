@@ -33,6 +33,12 @@
 #include "hash/cuckoo-hash-table.h"
 #include "zone/zone-contents.h"
 
+/*! \brief Adaptor for knot_zone_deep_free() */
+static void knot_zone_dtor(struct ref_t *p) {
+	knot_zone_t *z = (knot_zone_t *)p;
+	knot_zone_deep_free(&z, 0);
+}
+
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
@@ -55,6 +61,13 @@ knot_zone_t *knot_zone_new_empty(knot_dname_t *name)
 	// save the zone name
 	dbg_zone("Setting zone name.\n");
 	zone->name = name;
+	
+	/* Initialize reference counting. */
+	ref_init(&zone->ref, knot_zone_dtor);
+	
+	/* Set reference counter to 1, caller should release it after use. */
+	knot_zone_retain(zone);
+	
 	return zone;
 }
 
@@ -241,4 +254,11 @@ dbg_zone_exec(
 	knot_zone_contents_deep_free(&(*zone)->contents, destroy_dname_table);
 	free(*zone);
 	*zone = NULL;
+}
+
+void knot_zone_set_dtor(knot_zone_t *zone, int (*dtor)(struct knot_zone *))
+{
+	if (zone != NULL) {
+		zone->dtor = dtor;
+	}
 }
