@@ -305,6 +305,12 @@ static int zones_expire_ev(event_t *e)
 	zonedata_t *zd = (zonedata_t *)zone->data;
 	rcu_read_lock();
 	
+	/* Check if zone is not discarded. */
+	if (knot_zone_flags(zone) & KNOT_ZONE_DISCARDED) {
+		rcu_read_unlock();
+		return KNOTD_EOK;
+	}
+	
 	/* Do not issue SOA query if transfer is pending. */
 	int locked = pthread_mutex_trylock(&zd->xfr_in.lock);
 	if (locked != 0) {
@@ -340,6 +346,8 @@ static int zones_expire_ev(event_t *e)
 	}
 	
 	/* Publish expired zone. */
+	/* Need to keep a reference in case zone get's deleted in meantime. */
+	knot_zone_retain(zone);
 	rcu_read_unlock();
 	synchronize_rcu();
 	rcu_read_lock();
@@ -368,6 +376,9 @@ static int zones_expire_ev(event_t *e)
 	pthread_mutex_unlock(&zd->xfr_in.lock);
 	rcu_read_unlock();
 	
+	/* Release holding reference. */
+	knot_zone_release(zone);
+	
 	return 0;
 }
 
@@ -386,6 +397,12 @@ static int zones_refresh_ev(event_t *e)
 
 	/* Cancel pending timers. */
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
+	
+	/* Check if zone is not discarded. */
+	if (knot_zone_flags(zone) & KNOT_ZONE_DISCARDED) {
+		rcu_read_unlock();
+		return KNOTD_EOK;
+	}
 
 	/* Check for contents. */
 	if (!knot_zone_contents(zone)) {
@@ -454,7 +471,6 @@ static int zones_refresh_ev(event_t *e)
 		          zd->conf->name);
 		
 		/* Reschedule as RETRY timer. */
-		/*! \todo #1976 Do not reschedule if zone is being discarded. */
 		uint32_t retry_tmr = zones_jitter(zones_soa_retry(zone));
 		evsched_schedule(e->parent, e, retry_tmr);
 		dbg_zones("zones: RETRY of '%s' after %u seconds\n",
@@ -479,7 +495,6 @@ static int zones_refresh_ev(event_t *e)
 	}
 	
 	/* Reschedule as RETRY timer. */
-	/*! \todo #1976 Do not reschedule if zone is being discarded. */
 	uint32_t retry_tmr = zones_jitter(zones_soa_retry(zone));
 	evsched_schedule(e->parent, e, retry_tmr);
 	dbg_zones("zones: RETRY of '%s' after %u seconds\n",
@@ -610,6 +625,12 @@ static int zones_notify_send(event_t *e)
 		free(ev);
 		return KNOTD_EINVAL;
 	}
+	
+	/* Check if zone is not discarded. */
+	if (knot_zone_flags(zone) & KNOT_ZONE_DISCARDED) {
+		rcu_read_unlock(); /* Event will be freed on zonedata_destroy.*/
+		return KNOTD_EOK;
+	}
 
 	/* Check for answered/cancelled query. */
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
@@ -636,7 +657,6 @@ static int zones_notify_send(event_t *e)
 	int retry_tmr = ev->timeout * 1000;
  
 	/* Reschedule. */
-	/*! \todo #1976 Do not reschedule if zone is being discarded. */
 	evsched_schedule(e->parent, e, retry_tmr);
 	dbg_notify("notify: Query RETRY after %u secs (zone '%s')\n",
 	           retry_tmr / 1000, zd->conf->name);

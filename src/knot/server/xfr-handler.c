@@ -143,11 +143,15 @@ static knot_ns_xfr_t *xfr_handler_task(xfrworker_t *w, int fd)
 static int xfr_udp_timeout(knot_ns_xfr_t *data)
 {
 	/* Close socket. */
+	rcu_read_lock();
 	knot_zone_t *z = data->zone;
 	if (z && knot_zone_get_contents(z) && knot_zone_data(z)) {
-		log_zone_info("%s Failed, timeout exceeded.\n",
-		              data->msgpref);
+		if (!(knot_zone_flags(z) & KNOT_ZONE_DISCARDED)) {
+			log_zone_info("%s Failed, timeout exceeded.\n",
+				      data->msgpref);
+		}
 	}
+	rcu_read_unlock();
 	
 	/* Invalidate pending query. */
 	xfr_free_task(data);
@@ -165,6 +169,13 @@ static int xfr_udp_timeout(knot_ns_xfr_t *data)
  */
 static int xfr_process_udp_resp(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 {
+	/* Check if zone is valid. */
+	rcu_read_lock();
+	if (knot_zone_flags(data->zone) & KNOT_ZONE_DISCARDED) {
+		return KNOTD_ECONNREFUSED;
+	}
+	rcu_read_unlock();
+	
 	/* Receive msg. */
 	ssize_t n = recvfrom(data->session, data->wire, data->wire_size, 0, data->addr.ptr, &data->addr.len);
 	size_t resp_len = data->wire_size;
@@ -611,8 +622,14 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 	/* Read DNS/TCP packet. */
 	int ret = 0;
 	int rcvd = tcp_recv(fd, buf, buflen, 0);
+	
+	/* Raise read-lock and check if zone is still valid. */
+	rcu_read_lock();
+	int zone_discarded = (knot_zone_flags(zone) & KNOT_ZONE_DISCARDED);
+
+	/* Handle incoming packet. */
 	data->wire_size = rcvd;
-	if (rcvd <= 0) {
+	if (rcvd <= 0 || zone_discarded) {
 		data->wire_size = 0;
 		ret = KNOT_ECONN;
 	} else {
@@ -673,12 +690,14 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 	}
 
 	/* Handle errors. */
-	if (ret == KNOT_ENOXFR) {
-		log_server_warning("%s Finished, %s\n",
-		                   data->msgpref, knot_strerror(ret));
-	} else if (ret < 0) {
-		log_server_error("%s %s\n",
-		                 data->msgpref, knot_strerror(ret));
+	if (!zone_discarded) {
+		if (ret == KNOT_ENOXFR) {
+			log_server_warning("%s Finished, %s\n",
+					   data->msgpref, knot_strerror(ret));
+		} else if (ret < 0) {
+			log_server_error("%s %s\n",
+					 data->msgpref, knot_strerror(ret));
+		}
 	}
 
 	/* Check finished zone. */
@@ -698,13 +717,11 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 		knot_zone_t *zone = (knot_zone_t *)data->zone;
 		zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 
-		/* Only for successful xfers. */
-		if (ret > 0) {
+		/* Only for successful xfers on non-discarded zones. */
+		if (ret > 0 && !zone_discarded) {
 			ret = xfr_xfrin_finalize(w, data);
 			
 			/* AXFR bootstrap timeout. */
-			rcu_read_lock();
-			/*! \todo #1976 Do not reschedule if zone is being discarded. */
 			if (ret != KNOTD_EOK && !knot_zone_contents(zone)) {
 				/* Schedule request (60 - 90s random delay). */
 				int tmr_s = AXFR_BOOTSTRAP_RETRY;
@@ -718,8 +735,6 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 			/* Update timers. */
 			server_t *server = (server_t *)knot_ns_get_data(w->ns);
 			zones_timers_update(zone, zd->conf, server->sched);
-			rcu_read_unlock();
-			
 		} else {
 			/* Cleanup */
 			xfr_xfrin_cleanup(w, data);
@@ -740,6 +755,8 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 		/* Disconnect. */
 		result = KNOTD_ECONNREFUSED; /* Make it disconnect. */
 	}
+	
+	rcu_read_unlock();
 
 	return result;
 }
@@ -1418,6 +1435,14 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 	}
 	
 	conf_read_lock();
+	
+	/* Check if the zone is not discarded. */
+	if (knot_zone_flags(xfr.zone) & KNOT_ZONE_DISCARDED) {
+		xfr_request_deinit(&xfr);
+		knot_zone_release(xfr.zone);
+		conf_read_unlock();
+		return KNOTD_EOK;
+	}
 
 	/* Handle request. */
 	knot_ns_xfr_t *task = NULL;
@@ -1430,7 +1455,6 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		
 		/* Report. */
 		if (ret != KNOTD_EOK && ret != KNOTD_EACCES) {
-			/*! \todo #1976 Do not reschedule if zone is being discarded. */
 			if (zd != NULL && !knot_zone_contents(xfr.zone)) {
 				/* Reschedule request (120 - 240s random delay). */
 				int tmr_s = AXFR_BOOTSTRAP_RETRY * 2; /* Malus x2 */
