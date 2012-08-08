@@ -704,6 +704,7 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 			
 			/* AXFR bootstrap timeout. */
 			rcu_read_lock();
+			/*! \todo #1976 Do not reschedule if zone is being discarded. */
 			if (ret != KNOTD_EOK && !knot_zone_contents(zone)) {
 				/* Schedule request (60 - 90s random delay). */
 				int tmr_s = AXFR_BOOTSTRAP_RETRY;
@@ -784,6 +785,7 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 			strerror_r(errno, ebuf, sizeof(ebuf));
 			dbg_xfr("xfr: couldn't write request to evqueue: %s\n",
 			        ebuf);
+			rcu_read_unlock();
 			return KNOTD_ERROR;
 		}
 		return KNOTD_EOK;
@@ -1002,6 +1004,7 @@ static int xfr_update_msgpref(knot_ns_xfr_t *req, const char *keytag)
 		return KNOTD_EINVAL;
 	}
 
+	conf_read_lock();
 	char r_addr[SOCKADDR_STRLEN];
 	char *r_key = NULL;
 	int r_port = sockaddr_portnum(&req->addr);
@@ -1028,7 +1031,6 @@ static int xfr_update_msgpref(knot_ns_xfr_t *req, const char *keytag)
 	}
 
 	/* Prepare log message. */
-	conf_read_lock();
 	const char *zname = req->zname;
 	if (zname == NULL && req->zone != NULL) {
 		zonedata_t *zd = (zonedata_t *)knot_zone_data(req->zone);

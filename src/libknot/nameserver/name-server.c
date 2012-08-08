@@ -3974,9 +3974,7 @@ dbg_ns_exec_verb(
 }
 
 /*----------------------------------------------------------------------------*/
-/*! \todo In this function, xfr->zone is properly set. If this is so, we do not
- *        have to search for the zone after the transfer has finished.
- */
+
 int knot_ns_process_ixfrin(knot_nameserver_t *nameserver, 
                              knot_ns_xfr_t *xfr)
 {
@@ -4008,9 +4006,9 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 		}
 
 		// find zone associated with the changesets
-		knot_zone_t *zone = knot_zonedb_find_zone(
-		                 nameserver->zone_db,
-		                 knot_rrset_owner(chgsets->first_soa));
+		/* Must not search for the zone in zonedb as it may fetch a
+		 * different zone than the one the transfer started on. */
+		knot_zone_t *zone = xfr->zone;
 		if (zone == NULL) {
 			dbg_ns("No zone found for incoming IXFR!\n");
 			knot_free_changesets(
@@ -4020,7 +4018,6 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 		
 		switch (ret) {
 		case XFRIN_RES_COMPLETE:
-			xfr->zone = zone;
 			break;
 		case XFRIN_RES_SOA_ONLY: {
 			// compare the SERIAL from the changeset with the zone's
