@@ -767,7 +767,7 @@ static int zones_zonefile_sync_ev(event_t *e)
 	int ret = zones_zonefile_sync(zone, j);
 	journal_release(j);
 
-	conf_read_lock();
+	rcu_read_lock();
 	if (ret == KNOTD_EOK) {
 		log_zone_info("Applied differences of '%s' to zonefile.\n",
 		              zd->conf->name);
@@ -776,14 +776,14 @@ static int zones_zonefile_sync_ev(event_t *e)
 		                 "to zonefile.\n",
 		                 zd->conf->name);
 	}
-	conf_read_unlock();
+	rcu_read_unlock();
 
 	/* Reschedule. */
-	conf_read_lock();
+	rcu_read_lock();
 	evsched_schedule(e->parent, e, zd->conf->dbsync_timeout * 1000);
 	dbg_zones("zones: next IXFR database SYNC of '%s' in %d seconds\n",
 	          zd->conf->name, zd->conf->dbsync_timeout);
-	conf_read_unlock();
+	rcu_read_unlock();
 
 	return ret;
 }
@@ -1163,10 +1163,10 @@ static int zones_load_changesets(const knot_zone_t *zone,
 		return KNOTD_EINVAL;
 	}
 	
-	conf_read_lock();
+	rcu_read_lock();
 	dbg_xfr("xfr: loading changesets for zone '%s' from serial %u to %u\n",
 	        zd->conf->name, from, to);
-	conf_read_unlock();
+	rcu_read_unlock();
 	
 	/* Retain journal for changeset loading. */
 	journal_t *j = journal_retain(zd->ixfr_db);
@@ -2097,7 +2097,7 @@ int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal)
 	if (zd->zonefile_serial != serial_to) {
 
 		/* Save zone to zonefile. */
-		conf_read_lock();
+		rcu_read_lock();
 		dbg_zones("zones: syncing '%s' differences to '%s' "
 		          "(SOA serial %u)\n",
 		          zd->conf->name, zd->conf->file, serial_to);
@@ -2109,7 +2109,7 @@ int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal)
 			rcu_read_unlock();
 			return ret;
 		}
-		conf_read_unlock();
+		rcu_read_unlock();
 
 		/* Update journal entries. */
 		dbg_zones_verb("zones: unmarking all dirty nodes "
@@ -3080,10 +3080,10 @@ static int zones_store_changeset(const knot_changeset_t *chs, journal_t *j,
 		/* Reschedule sync timer. */
 		if (tmr) {
 			/* Fetch sync timeout. */
-			conf_read_lock();
+			rcu_read_lock();
 			int timeout = zd->conf->dbsync_timeout;
 			timeout *= 1000; /* Convert to ms. */
-			conf_read_unlock();
+			rcu_read_unlock();
 
 			/* Reschedule. */
 			dbg_xfr_verb("xfr: resuming SYNC "
@@ -3363,7 +3363,7 @@ int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
 	pthread_mutex_unlock(&zd->lock);
 
 	/* Check XFR/IN master server. */
-	conf_read_lock();
+	rcu_read_lock();
 	if (zd->xfr_in.master.ptr) {
 
 		/* Schedule REFRESH timer. */
@@ -3381,7 +3381,7 @@ int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
 
 	/* Do not issue NOTIFY queries if stub. */
 	if (!knot_zone_contents(zone)) {
-		conf_read_unlock();
+		rcu_read_unlock();
 		return KNOTD_EOK;
 	}
 
@@ -3439,7 +3439,7 @@ int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
 			    tmr_s, cfg_if->address, cfg_if->port);
 	}
 
-	conf_read_unlock();
+	rcu_read_unlock();
 
 	return KNOTD_EOK;
 }

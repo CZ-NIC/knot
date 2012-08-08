@@ -217,7 +217,7 @@ static int server_bind_sockets(server_t *server)
 	 */
 
 	/* Lock configuration. */
-	conf_read_lock();
+	rcu_read_lock();
 
 	/* Prepare helper lists. */
 	int bound = 0;
@@ -288,7 +288,7 @@ static int server_bind_sockets(server_t *server)
 	}
 
 	/* Unlock configuration. */
-	conf_read_unlock();
+	rcu_read_unlock();
 
 	/* Publish new list. */
 	list* oldlist = rcu_xchg_pointer(&server->ifaces, newlist);
@@ -329,7 +329,7 @@ static int server_bind_handlers(server_t *server)
 	}
 	
 	/* Lock config. */
-	conf_read_lock();
+	rcu_read_lock();
 
 	/* Estimate number of threads/manager. */
 	int thr_count = 0;
@@ -386,7 +386,7 @@ static int server_bind_handlers(server_t *server)
 	}
 
 	/* Unlock config. */
-	conf_read_unlock();
+	rcu_read_unlock();
 
 	return KNOTD_EOK;
 }
@@ -550,7 +550,7 @@ int server_start(server_t *server)
 	xfr_start(server->xfr_h);
 
 	/* Lock configuration. */
-	conf_read_lock();
+	rcu_read_lock();
 
 	// Start dispatchers
 	int ret = KNOTD_EOK;
@@ -571,7 +571,7 @@ int server_start(server_t *server)
 	}
 
 	/* Unlock configuration. */
-	conf_read_unlock();
+	rcu_read_unlock();
 
 	dbg_server("server: server started\n");
 

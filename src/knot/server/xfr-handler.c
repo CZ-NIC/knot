@@ -1021,7 +1021,7 @@ static int xfr_update_msgpref(knot_ns_xfr_t *req, const char *keytag)
 		return KNOTD_EINVAL;
 	}
 
-	conf_read_lock();
+	rcu_read_lock();
 	char r_addr[SOCKADDR_STRLEN];
 	char *r_key = NULL;
 	int r_port = sockaddr_portnum(&req->addr);
@@ -1053,7 +1053,7 @@ static int xfr_update_msgpref(knot_ns_xfr_t *req, const char *keytag)
 		zonedata_t *zd = (zonedata_t *)knot_zone_data(req->zone);
 		if (zd == NULL) {
 			free(r_key);
-			conf_read_unlock();
+			rcu_read_unlock();
 			return KNOTD_EINVAL;
 		} else {
 			zname = zd->conf->name;
@@ -1099,7 +1099,7 @@ static int xfr_update_msgpref(knot_ns_xfr_t *req, const char *keytag)
 		req->msgpref = msg;
 	}
 	
-	conf_read_unlock();
+	rcu_read_unlock();
 	free(r_key);
 	return KNOTD_EOK;
 }
@@ -1434,13 +1434,13 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		zd = (zonedata_t *)knot_zone_data(xfr.zone);
 	}
 	
-	conf_read_lock();
+	rcu_read_lock();
 	
 	/* Check if the zone is not discarded. */
 	if (knot_zone_flags(xfr.zone) & KNOT_ZONE_DISCARDED) {
 		xfr_request_deinit(&xfr);
 		knot_zone_release(xfr.zone);
-		conf_read_unlock();
+		rcu_read_unlock();
 		return KNOTD_EOK;
 	}
 
@@ -1494,7 +1494,7 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		break;
 	}
 
-	conf_read_unlock();
+	rcu_read_unlock();
 	
 	/* Deinitialize (it is already registered, or discarded).
 	 * Right now, this only frees temporary msgpref.

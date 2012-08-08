@@ -172,11 +172,11 @@ int main(int argc, char **argv)
 	server_t *server = server_create();
 
 	// Initialize configuration
-	conf_read_lock();
+	rcu_read_lock();
 	conf_add_hook(conf(), CONF_LOG, log_conf_hook, 0);
 	conf_add_hook(conf(), CONF_LOG, zones_ns_conf_hook, server->nameserver);
 	conf_add_hook(conf(), CONF_LOG, server_conf_hook, server);
-	conf_read_unlock();
+	rcu_read_unlock();
 
 	// Find implicit configuration file
 	if (!config_fn) {

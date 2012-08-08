@@ -330,7 +330,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 		}
 
 		// Lock configuration
-		conf_read_lock();
+		rcu_read_lock();
 
 		// Prepare command
 		const char *cfg = conf()->filename;
@@ -344,7 +344,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 		};
 
 		// Unlock configuration
-		conf_read_unlock();
+		rcu_read_unlock();
 
 		// Execute command
 		if (has_flag(flags, F_INTERACTIVE)) {
@@ -525,7 +525,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 		valid_cmd = 1;
 		
 		// Lock configuration
-		conf_read_lock();
+		rcu_read_lock();
 
 		// Generate databases for all zones
 		node *n = 0;
@@ -615,7 +615,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 		free(tasks);
 
 		// Unlock configuration
-		conf_read_unlock();
+		rcu_read_unlock();
 	}
 	if (!valid_cmd) {
 		log_server_error("Invalid command: '%s'\n", action);
