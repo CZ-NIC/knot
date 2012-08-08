@@ -325,22 +325,6 @@ static inline conf_t* conf() {
 	return s_config; // Inline for performance reasons.
 }
 
-/*!
- * \brief Lock configuration for reading.
- *
- * \return Configuration context.
- */
-static inline void conf_read_lock() {
-	rcu_read_lock();
-}
-
-/*!
- * \brief Unlock configuration for reading.
- */
-static inline void conf_read_unlock() {
-	rcu_read_unlock();
-}
-
 /*
  * Utilities.
  */

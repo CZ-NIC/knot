@@ -270,10 +270,12 @@ int notify_process_request(knot_nameserver_t *ns,
 	}
 
 	// find the zone
+	rcu_read_lock();
 	const knot_dname_t *qname = knot_packet_qname(notify);
 	const knot_zone_t *z = knot_zonedb_find_zone_for_name(
 			ns->zone_db, qname);
 	if (z == NULL) {
+		rcu_read_unlock();
 		dbg_notify("notify: failed to find zone by name\n");
 		knot_ns_error_response_from_query(ns, notify,
 		                                  KNOT_RCODE_FORMERR, buffer,
@@ -282,7 +284,7 @@ int notify_process_request(knot_nameserver_t *ns,
 	}
 
 	notify_check_and_schedule(ns, z, from);
-
+	rcu_read_unlock();
 	return KNOTD_EOK;
 }
 
@@ -302,13 +304,16 @@ int notify_process_response(knot_nameserver_t *nameserver,
 	*size = 0;
 
 	/* Find matching zone. */
+	rcu_read_lock();
 	const knot_dname_t *zone_name = knot_packet_qname(notify);
 	knot_zone_t *zone = knot_zonedb_find_zone(nameserver->zone_db,
 	                                              zone_name);
 	if (!zone) {
+		rcu_read_unlock();
 		return KNOTD_ENOENT;
 	}
 	if (!knot_zone_data(zone)) {
+		rcu_read_unlock();
 		return KNOTD_ENOENT;
 	}
 
@@ -326,6 +331,7 @@ int notify_process_response(knot_nameserver_t *nameserver,
 
 	/* Found waiting NOTIFY query? */
 	if (!match) {
+		rcu_read_unlock();
 		pthread_mutex_unlock(&zd->lock);
 		return KNOTD_ERROR;
 	}
@@ -335,6 +341,8 @@ int notify_process_response(knot_nameserver_t *nameserver,
 
 	/* Zone was removed/reloaded. */
 	pthread_mutex_unlock(&zd->lock);
+	
+	rcu_read_unlock();
 
 	return KNOTD_EOK;
 }

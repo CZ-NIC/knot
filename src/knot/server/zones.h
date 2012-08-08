@@ -59,7 +59,7 @@ typedef struct zonedata_t
 
 	/*! \brief Zone data lock for exclusive access. */
 	pthread_mutex_t lock;
-
+	
 	/*! \brief Access control lists. */
 	acl_t *xfr_out;    /*!< ACL for xfr-out.*/
 	acl_t *notify_in;  /*!< ACL for notify-in.*/

@@ -122,7 +122,6 @@ static int zonedata_destroy(knot_zone_t *zone)
 	free(zd);
 	
 	/* Invalidate. */
-	zone->dtor = 0;
 	zone->data = 0;
 
 	return KNOTD_EOK;
@@ -181,7 +180,7 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 
 	/* Set and install destructor. */
 	zone->data = zd;
-	zone->dtor = zonedata_destroy;
+	knot_zone_set_dtor(zone, zonedata_destroy);
 
 	/* Set zonefile SOA serial. */
 	const knot_rrset_t *soa_rrs = 0;
@@ -306,6 +305,12 @@ static int zones_expire_ev(event_t *e)
 	zonedata_t *zd = (zonedata_t *)zone->data;
 	rcu_read_lock();
 	
+	/* Check if zone is not discarded. */
+	if (knot_zone_flags(zone) & KNOT_ZONE_DISCARDED) {
+		rcu_read_unlock();
+		return KNOTD_EOK;
+	}
+	
 	/* Do not issue SOA query if transfer is pending. */
 	int locked = pthread_mutex_trylock(&zd->xfr_in.lock);
 	if (locked != 0) {
@@ -341,6 +346,8 @@ static int zones_expire_ev(event_t *e)
 	}
 	
 	/* Publish expired zone. */
+	/* Need to keep a reference in case zone get's deleted in meantime. */
+	knot_zone_retain(zone);
 	rcu_read_unlock();
 	synchronize_rcu();
 	rcu_read_lock();
@@ -369,6 +376,9 @@ static int zones_expire_ev(event_t *e)
 	pthread_mutex_unlock(&zd->xfr_in.lock);
 	rcu_read_unlock();
 	
+	/* Release holding reference. */
+	knot_zone_release(zone);
+	
 	return 0;
 }
 
@@ -378,16 +388,23 @@ static int zones_expire_ev(event_t *e)
 static int zones_refresh_ev(event_t *e)
 {
 	dbg_zones("zones: REFRESH or RETRY timer event\n");
+	rcu_read_lock();
 	knot_zone_t *zone = (knot_zone_t *)e->data;
 	if (zone == NULL || zone->data == NULL) {
+		rcu_read_unlock();
 		return KNOTD_EINVAL;
 	}
 
 	/* Cancel pending timers. */
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
+	
+	/* Check if zone is not discarded. */
+	if (knot_zone_flags(zone) & KNOT_ZONE_DISCARDED) {
+		rcu_read_unlock();
+		return KNOTD_EOK;
+	}
 
 	/* Check for contents. */
-	rcu_read_lock();
 	if (!knot_zone_contents(zone)) {
 
 		/* Bootstrap from XFR master. */
@@ -430,13 +447,20 @@ static int zones_refresh_ev(event_t *e)
 		++zd->xfr_in.scheduled;
 		pthread_mutex_unlock(&zd->xfr_in.lock);
 		
+		/* Retain pointer to zone for processing. */
+		knot_zone_retain(xfr_req.zone);
+		
 		/* Unlock zone contents. */
 		rcu_read_unlock();
 		
 		/* Mark as finished to prevent stalling. */
 		evsched_event_finished(e->parent);
+		int ret = xfr_request(zd->server->xfr_h, &xfr_req);
+		if (ret != KNOTD_EOK) {
+			knot_zone_release(xfr_req.zone); /* Discard */
+		}
+		return ret;
 		
-		return xfr_request(zd->server->xfr_h, &xfr_req);
 	}
 	
 	/* Do not issue SOA query if transfer is pending. */
@@ -559,10 +583,14 @@ static int zones_refresh_ev(event_t *e)
 	memcpy(&req.saddr, &zd->xfr_in.via, sizeof(sockaddr_t));
 	sockaddr_update(&req.addr);
 	sockaddr_update(&req.saddr);
+	
+	/* Retain pointer to zone and issue. */
+	knot_zone_retain(req.zone);
 	if (ret == KNOTD_EOK) {
 		ret = xfr_request(zd->server->xfr_h, &req);
 	}
 	if (ret != KNOTD_EOK) {
+		knot_zone_release(req.zone); /* Discard */
 		log_server_warning("Failed to issue SOA query for zone '%s' (%s).\n",
 		                   zd->conf->name, errstr);
 	}
@@ -581,21 +609,28 @@ static int zones_refresh_ev(event_t *e)
 static int zones_notify_send(event_t *e)
 {
 	dbg_notify("notify: NOTIFY timer event\n");
-	
+	rcu_read_lock();
 	notify_ev_t *ev = (notify_ev_t *)e->data;
 	if (ev == NULL) {
+		rcu_read_unlock();
 		log_zone_error("NOTIFY invalid event received\n");
 		return KNOTD_EINVAL;
 	}
+	
 	knot_zone_t *zone = ev->zone;
 	if (zone == NULL || zone->data == NULL) {
+		rcu_read_unlock();
 		log_zone_error("NOTIFY invalid event data received\n");
 		evsched_event_free(e->parent, e);
 		free(ev);
 		return KNOTD_EINVAL;
 	}
-
-	rcu_read_lock();
+	
+	/* Check if zone is not discarded. */
+	if (knot_zone_flags(zone) & KNOT_ZONE_DISCARDED) {
+		rcu_read_unlock(); /* Event will be freed on zonedata_destroy.*/
+		return KNOTD_EOK;
+	}
 
 	/* Check for answered/cancelled query. */
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
@@ -676,7 +711,13 @@ static int zones_notify_send(event_t *e)
 		req.zone = zone;
 		memcpy(&req.addr, &ev->addr, sizeof(sockaddr_t));
 		memcpy(&req.saddr, &ev->saddr, sizeof(sockaddr_t));
-		xfr_request(zd->server->xfr_h, &req);
+		
+		/* Retain pointer to zone and issue request. */
+		knot_zone_retain(req.zone);
+		ret = xfr_request(zd->server->xfr_h, &req);
+		if (ret != KNOTD_EOK) {
+			knot_zone_release(req.zone); /* Discard */
+		}
 	}
 	
 	free(qbuf);
@@ -726,7 +767,7 @@ static int zones_zonefile_sync_ev(event_t *e)
 	int ret = zones_zonefile_sync(zone, j);
 	journal_release(j);
 
-	conf_read_lock();
+	rcu_read_lock();
 	if (ret == KNOTD_EOK) {
 		log_zone_info("Applied differences of '%s' to zonefile.\n",
 		              zd->conf->name);
@@ -735,14 +776,14 @@ static int zones_zonefile_sync_ev(event_t *e)
 		                 "to zonefile.\n",
 		                 zd->conf->name);
 	}
-	conf_read_unlock();
+	rcu_read_unlock();
 
 	/* Reschedule. */
-	conf_read_lock();
+	rcu_read_lock();
 	evsched_schedule(e->parent, e, zd->conf->dbsync_timeout * 1000);
 	dbg_zones("zones: next IXFR database SYNC of '%s' in %d seconds\n",
 	          zd->conf->name, zd->conf->dbsync_timeout);
-	conf_read_unlock();
+	rcu_read_unlock();
 
 	return ret;
 }
@@ -1122,10 +1163,10 @@ static int zones_load_changesets(const knot_zone_t *zone,
 		return KNOTD_EINVAL;
 	}
 	
-	conf_read_lock();
+	rcu_read_lock();
 	dbg_xfr("xfr: loading changesets for zone '%s' from serial %u to %u\n",
 	        zd->conf->name, from, to);
-	conf_read_unlock();
+	rcu_read_unlock();
 	
 	/* Retain journal for changeset loading. */
 	journal_t *j = journal_retain(zd->ixfr_db);
@@ -2056,7 +2097,7 @@ int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal)
 	if (zd->zonefile_serial != serial_to) {
 
 		/* Save zone to zonefile. */
-		conf_read_lock();
+		rcu_read_lock();
 		dbg_zones("zones: syncing '%s' differences to '%s' "
 		          "(SOA serial %u)\n",
 		          zd->conf->name, zd->conf->file, serial_to);
@@ -2068,7 +2109,7 @@ int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal)
 			rcu_read_unlock();
 			return ret;
 		}
-		conf_read_unlock();
+		rcu_read_unlock();
 
 		/* Update journal entries. */
 		dbg_zones_verb("zones: unmarking all dirty nodes "
@@ -2441,6 +2482,7 @@ int zones_process_response(knot_nameserver_t *nameserver,
 		}
 
 		/* Find matching zone and ID. */
+		rcu_read_lock();
 		const knot_dname_t *zone_name = knot_packet_qname(packet);
 		/*! \todo Change the access to the zone db. */
 		knot_zone_t *zone = knot_zonedb_find_zone(
@@ -2448,7 +2490,6 @@ int zones_process_response(knot_nameserver_t *nameserver,
 		                        zone_name);
 
 		/* Get zone contents. */
-		rcu_read_lock();
 		const knot_zone_contents_t *contents =
 				knot_zone_contents(zone);
 
@@ -2527,9 +2568,13 @@ int zones_process_response(knot_nameserver_t *nameserver,
 		/* Unlock zone contents. */
 		rcu_read_unlock();
 
-		/* Enqueue XFR request. */
-		return xfr_request(((server_t *)knot_ns_get_data(
-		                     nameserver))->xfr_h, &xfr_req);
+		/* Retain pointer to zone for processing. */
+		knot_zone_retain(xfr_req.zone);
+		ret = xfr_request(((server_t *)knot_ns_get_data(
+		                  nameserver))->xfr_h, &xfr_req);
+		if (ret != KNOTD_EOK) {
+			knot_zone_release(xfr_req.zone); /* Discard */
+		}
 	}
 
 	return KNOTD_EOK;
@@ -3035,10 +3080,10 @@ static int zones_store_changeset(const knot_changeset_t *chs, journal_t *j,
 		/* Reschedule sync timer. */
 		if (tmr) {
 			/* Fetch sync timeout. */
-			conf_read_lock();
+			rcu_read_lock();
 			int timeout = zd->conf->dbsync_timeout;
 			timeout *= 1000; /* Convert to ms. */
-			conf_read_unlock();
+			rcu_read_unlock();
 
 			/* Reschedule. */
 			dbg_xfr_verb("xfr: resuming SYNC "
@@ -3318,7 +3363,7 @@ int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
 	pthread_mutex_unlock(&zd->lock);
 
 	/* Check XFR/IN master server. */
-	conf_read_lock();
+	rcu_read_lock();
 	if (zd->xfr_in.master.ptr) {
 
 		/* Schedule REFRESH timer. */
@@ -3336,7 +3381,7 @@ int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
 
 	/* Do not issue NOTIFY queries if stub. */
 	if (!knot_zone_contents(zone)) {
-		conf_read_unlock();
+		rcu_read_unlock();
 		return KNOTD_EOK;
 	}
 
@@ -3394,7 +3439,7 @@ int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
 			    tmr_s, cfg_if->address, cfg_if->port);
 	}
 
-	conf_read_unlock();
+	rcu_read_unlock();
 
 	return KNOTD_EOK;
 }
