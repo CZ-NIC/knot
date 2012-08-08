@@ -146,14 +146,18 @@ void knot_zone_set_version(knot_zone_t *zone, time_t version)
 
 short knot_zone_is_master(const knot_zone_t *zone)
 {
-	return zone->master;
+	return zone->flags & KNOT_ZONE_MASTER;
 }
 
 /*----------------------------------------------------------------------------*/
 
 void knot_zone_set_master(knot_zone_t *zone, short master)
 {
-	zone->master = master;
+	if (master) {
+		zone->flags |= KNOT_ZONE_MASTER;
+	} else {
+		zone->flags &= ~KNOT_ZONE_MASTER;
+	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -260,5 +264,16 @@ void knot_zone_set_dtor(knot_zone_t *zone, int (*dtor)(struct knot_zone *))
 {
 	if (zone != NULL) {
 		zone->dtor = dtor;
+	}
+}
+
+void knot_zone_set_flag(knot_zone_t *zone, knot_zone_flag_t flag, unsigned on)
+{
+	if (zone != NULL) {
+		if (on) {
+			zone->flags |= flag;
+		} else {
+			zone->flags &= ~flag;
+		}
 	}
 }

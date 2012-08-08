@@ -54,6 +54,15 @@ enum knot_zone_retvals {
 
 typedef enum knot_zone_retvals knot_zone_retvals_t;
 
+/*!
+ * \brief Zone flags.
+ */
+typedef enum knot_zone_flag_t {
+	KNOT_ZONE_SLAVE     = 0 << 0, /*! Slave zone */
+	KNOT_ZONE_MASTER    = 1 << 0, /*! Master zone. */
+	KNOT_ZONE_DISCARDED = 1 << 1  /*! Zone waiting to be discarded. */
+} knot_zone_flag_t;
+
 /*----------------------------------------------------------------------------*/
 
 /*!
@@ -71,8 +80,7 @@ struct knot_zone {
 
 	time_t version;
 
-	/*! \todo Set when loading zone. */
-	short master;
+	unsigned flags;
 
 	void *data; /*!< Pointer to generic zone-related data. */
 	int (*dtor)(struct knot_zone *); /*!< Data destructor. */
@@ -178,6 +186,24 @@ void knot_zone_set_dtor(knot_zone_t *zone, int (*dtor)(struct knot_zone *));
 		ref_release(&zone->ref);
 	}
 }
+
+/*!
+ * \brief Return zone flags.
+ *
+ * \param zone Zone.
+ */
+static inline unsigned knot_zone_flags(knot_zone_t *zone) {
+	return zone->flags;
+}
+
+/*!
+ * \brief Set zone flag.
+ *
+ * \param zone Zone.
+ * \param flag Respected flag.
+ * \param on 1 to set, 0 to unset flag.
+ */
+void knot_zone_set_flag(knot_zone_t *zone, knot_zone_flag_t flag, unsigned on);
 
 #endif
 
