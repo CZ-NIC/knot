@@ -969,7 +969,8 @@ int knot_zdump_binary(knot_zone_contents_t *zone, int fd,
 				      KNOT_RRTYPE_SOA) == NULL) {
 			err_handler_handle_error(handler,
 						 knot_zone_contents_apex(zone),
-						 ZC_ERR_MISSING_SOA);
+						 ZC_ERR_MISSING_SOA,
+			                         NULL);
 		}
 	}
 	
