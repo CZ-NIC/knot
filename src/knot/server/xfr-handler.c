@@ -681,6 +681,7 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 			                 data->wire, bufsize);
 			/* Switch to AIN type XFR and return now. */
 			if (ret == bufsize) {
+				rcu_read_unlock();
 				xfr_xfrin_cleanup(w, data);
 				data->type = XFR_TYPE_AIN;
 				data->msgpref[XFR_MSG_DLTTR] = 'A';
@@ -688,6 +689,8 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 			}
 		}
 	}
+	
+	rcu_read_unlock();
 
 	/* Handle errors. */
 	if (!zone_discarded) {
@@ -755,8 +758,6 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 		/* Disconnect. */
 		result = KNOTD_ECONNREFUSED; /* Make it disconnect. */
 	}
-	
-	rcu_read_unlock();
 
 	return result;
 }
