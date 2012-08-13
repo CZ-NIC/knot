@@ -2620,12 +2620,13 @@ static int zones_find_zone_for_xfr(const knot_zone_contents_t *zone,
 			return KNOTD_EOK;
 		}
 	}
-
+#ifdef KNOTD_ZONES_DEBUG
 	char *name = knot_dname_to_str(knot_node_owner(
 	                 knot_zone_contents_apex(zone)));
 	dbg_zones("zones: no zone found for the zone received by transfer "
 	          "(%s).\n", name);
 	free(name);
+#endif
 
 	return KNOTD_ENOENT;
 }
