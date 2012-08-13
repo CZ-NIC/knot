@@ -342,7 +342,7 @@ static int zones_expire_ev(event_t *e)
 		pthread_mutex_unlock(&zd->xfr_in.lock);
 		log_server_warning("Non-existent zone expired. Ignoring.\n");
 		rcu_read_unlock();
-		return 0;
+		return KNOTD_EOK;
 	}
 	
 	/* Publish expired zone. */
@@ -379,7 +379,7 @@ static int zones_expire_ev(event_t *e)
 	/* Release holding reference. */
 	knot_zone_release(zone);
 	
-	return 0;
+	return KNOTD_EOK;
 }
 
 /*!
@@ -1162,7 +1162,7 @@ static int zones_load_changesets(const knot_zone_t *zone,
 		dbg_zones_detail("Bad arguments: zd->ixfr_db=%p\n", zone->data);
 		return KNOTD_EINVAL;
 	}
-	
+
 	rcu_read_lock();
 	dbg_xfr("xfr: loading changesets for zone '%s' from serial %u to %u\n",
 	        zd->conf->name, from, to);
@@ -2097,7 +2097,6 @@ int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal)
 	if (zd->zonefile_serial != serial_to) {
 
 		/* Save zone to zonefile. */
-		rcu_read_lock();
 		dbg_zones("zones: syncing '%s' differences to '%s' "
 		          "(SOA serial %u)\n",
 		          zd->conf->name, zd->conf->file, serial_to);
@@ -2109,7 +2108,6 @@ int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal)
 			rcu_read_unlock();
 			return ret;
 		}
-		rcu_read_unlock();
 
 		/* Update journal entries. */
 		dbg_zones_verb("zones: unmarking all dirty nodes "
