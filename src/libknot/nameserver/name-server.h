@@ -308,10 +308,7 @@ int knot_ns_answer_ixfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr);
 int knot_ns_process_axfrin(knot_nameserver_t *nameserver, 
                              knot_ns_xfr_t *xfr);
 
-/*! \todo Document me.
- *  \todo #1976 Must not lookup zone from zonedb as it may be different than the
- *        the one on which the transfer was carried out.
- */
+/*! \todo Document me. */
 int knot_ns_switch_zone(knot_nameserver_t *nameserver, 
                           knot_ns_xfr_t *xfr);
 
