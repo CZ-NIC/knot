@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I ../m4
-libexec_PROGRAMS = knot-zcompile unittests unittests-zcompile unittests-libknot-realdata unittests-libknot unittests-xfr
+libexec_PROGRAMS = knot-zcompile unittests unittests-zcompile unittests-libknot-realdata unittests-libknot unittests-xfr unittests-zscanner
 sbin_PROGRAMS = knotc knotd
 MANPAGES = knotc.8 knotd.8
 man8_MANS = knotc.8 knotd.8
@@ -39,7 +39,8 @@ CLEANFILES =					\
 	zlexer.c				\
 	libknotd_la-cf-lex.c			\
 	libknotd_la-cf-parse.c			\
-	libknotd_la-cf-parse.h
+	libknotd_la-cf-parse.h			\
+	zscanner/scanner.c
 
 knotc_SOURCES =					\
 	knot/ctl/knotc_main.c
@@ -54,6 +55,20 @@ knot_zcompile_SOURCES =				\
 	zcompile/zcompile.c			\
 	zcompile/parser-util.c			\
 	zcompile/parser-descriptor.c
+
+zscanner/scanner.c: zscanner/scanner.rl zscanner/scanner_body.rl
+	$(RAGEL) -s -o zscanner/scanner.c zscanner/scanner.rl
+
+unittests_zscanner_SOURCES =			\
+	zscanner/test/zscanner_test.c		\
+	zscanner/file_loader.h			\
+	zscanner/file_loader.c			\
+	zscanner/scanner.h			\
+	zscanner/scanner.c			\
+	zscanner/scanner_functions.h		\
+	zscanner/scanner_functions.c		\
+	zscanner/test/test_functions.h		\
+	zscanner/test/test_functions.c
 
 unittests_SOURCES =				\
 	tests/common/acl_tests.c		\
@@ -266,7 +281,7 @@ libknots_la_SOURCES =				\
         common/fdset_epoll.h			\
         common/fdset_epoll.c			\
 	common/log.c				\
-	common/log.h			
+	common/log.h
 
 libknotd_la_SOURCES =				\
 	knot/stat/gatherer.c				\
@@ -318,6 +333,7 @@ libknots_la_LIBADD = @LIBOBJS@
 knotd_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 knotc_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 knot_zcompile_LDADD = libknots.la libknot.la libknotd.la @LIBOBJS@
+unittests_zscanner_LDADD = libknots.la libknot.la libknotd.la @LIBOBJS@
 unittests_LDADD = libknotd.la libknots.la @LIBOBJS@
 unittests_zcompile_LDADD = libknot.la libknots.la libknotd.la @LIBOBJS@
 unittests_libknot_LDADD = libknot.la libknots.la @LIBOBJS@

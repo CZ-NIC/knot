@@ -53,6 +53,9 @@ AS_IF([test "x$YACC_BISON" != "xbison"],
     [AC_MSG_ERROR([GNU bison needed for reentrant parsers, set the \$YACC variable before running configure])])
 AC_PROG_INSTALL
 
+# Check for Ragel
+AC_PATH_PROG(RAGEL, ragel)
+
 # Set compiler compatibility flags
 AC_PROG_CPP_WERROR
 AC_PROG_CC_C99

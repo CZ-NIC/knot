@@ -17,7 +17,7 @@
 #include "util/error.h"
 #include "common/errors.h"
 
-const error_table_t knot_error_msgs[KNOT_ERROR_COUNT] = {
+const error_table_t knot_error_msgs[] = {
 	{KNOT_EOK, "OK"},
 	{KNOT_ERROR, "General error."},
 	{KNOT_ENOMEM, "Not enough memory."},
@@ -53,5 +53,36 @@ const error_table_t knot_error_msgs[KNOT_ERROR_COUNT] = {
 	{KNOT_EIXFRSPACE, "IXFR reply did not fit in."},
 	{KNOT_ECNAME, "CNAME loop found in zone."},
 	{KNOT_ENODIFF, "Cannot create zone diff."},
+
+	{ZSCANNER_UNCOVERED_STATE, "General scanner error!"},
+	{ZSCANNER_ELEFT_PARENTHESIS, "Too many left parentheses!"},
+	{ZSCANNER_ERIGHT_PARENTHESIS, "Too many right parentheses!"},
+	{ZSCANNER_EUNSUPPORTED_TYPE, "Unsupported record type!"},
+	{ZSCANNER_EBAD_PREVIOUS_OWNER, "Previous owner is invalid!"},
+	{ZSCANNER_EBAD_DNAME_CHAR, "Bad domain name character!"},
+	{ZSCANNER_EBAD_OWNER, "Owner is invalid!"},
+	{ZSCANNER_ELABEL_OVERFLOW, "Maximal domain name label length has exceeded!"},
+	{ZSCANNER_EDNAME_OVERFLOW, "Maximal domain name length has exceeded!"},
+	{ZSCANNER_ENUMBER64_OVERFLOW, "Number is too big!"},
+	{ZSCANNER_ENUMBER32_OVERFLOW, "Number is bigger than 32 bits!"},
+	{ZSCANNER_ENUMBER16_OVERFLOW, "Number is bigger than 16 bits!"},
+	{ZSCANNER_ENUMBER8_OVERFLOW, "Number is bigger than 8 bits!"},
+	{ZSCANNER_EBAD_ORIGIN, "Invalid zone origin!"},
+	{ZSCANNER_ERDATA_OVERFLOW, "Maximal record data length has exceeded!"},
+	{ZSCANNER_EBAD_ADDRESS_CHAR, "Bad address character!"},
+	{ZSCANNER_EBAD_IPV4, "Bad IPv4 address!"},
+	{ZSCANNER_EBAD_IPV6, "Bad IPv6 address!"},
+	{ZSCANNER_EBAD_RDATA, "Bad record data!"},
+	{ZSCANNER_EBAD_HEX_CHAR, "Bad hexadecimal character!"},
+	{ZSCANNER_EBAD_BASE64_CHAR, "Bad Base64 character!"},
+	{ZSCANNER_EBAD_BASE32HEX_CHAR, "Bad Base32hex character!"},
+	{ZSCANNER_EBAD_REST, "Unexpected data!"},
+	{ZSCANNER_EBAD_TIMESTAMP_CHAR, "Bad timestamp character!"},
+	{ZSCANNER_EBAD_TIMESTAMP_LENGTH, "Bad timestamp length!"},
+	{ZSCANNER_EBAD_TIMESTAMP, "Bad timestamp!"},
+	{ZSCANNER_EBAD_DATE, "Bad date!"},
+	{ZSCANNER_EBAD_TIME, "Bad time!"},
+	{ZSCANNER_EBAD_BITMAP, "Bad bitmap!"},
+
 	{KNOT_ERROR, 0}
 };

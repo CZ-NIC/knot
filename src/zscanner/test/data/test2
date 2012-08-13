@@ -1,0 +1,142 @@
+$TTL 4
+$ORIGIN tttt.
+aaa         CNAME u.
+aaa.bb.        CNAME u.
+aaa         MX 768 u.
+aaa.bb.c         NS u.
+a\036b      NS u.
+a\036b      NS u.bec.grr.
+mm\mm\0320mm\a  A 192.168.123.123 a
+
+abcd.o.slon CNAME   	() abcd
+n CNAME auto 
+abcd.o.slon CNAME   	() abcd  
+abcd.o.slon CNAME   	() abcd
+
+a MX 
+a IM MXX 
+
+$TTL 456
+$ORIGIN clss.ttl.
+t01    IN    600    AAAA ::
+       IN    600    AAAA ::
+
+t03    600   IN     AAAA ::
+       600   IN     AAAA ::
+
+t05          600    AAAA ::
+             600    AAAA ::
+
+t07    IN           AAAA ::
+       IN           AAAA ::
+
+t09                 AAAA ::
+                    AAAA ::
+
+
+dskey.example.com. 86400 IN DNSKEY 256 3 5 ( AQOeiiR0GOMYkDshWoSKz9Xz
+                                             fwJr1AYtsmx3TGkJaNXVbfi/
+                                             2pHm822aJ5iI9BMzNXxeYCmZ
+                                             DRD99WYwYqUSdjMmmAphXdvx
+                                             egXd/M5+X7OrzKBaMbCVdFLU
+                                             Uh6DhweJBjEVv5f2wwjM9Xzc
+                                             nOf+EPbtG9DMBmADjFDc2w/r
+                                             ljwvFw==
+                                             ) ;  key id = 60485
+;20120611161143 20120604121020
+cz.	3600	IN	RRSIG	DNSKEY 8 1 3600 2012 2012 45772 cz. ( SEvs
+	C/pwQsNgpx88+Al4I9Pd6Uyq9yU8gSXPWfI/r0pymcZMbfT6j4zmYrPo0/63wx4G2QzfMYQ+4vguTEbEB2XZYOLT08yd0E9br9uEK2caDolqZ4FSalTquLDOyz58RcOFFl55VU7W3krSa55WolOwCkZVLbXZX2Ld0L3MMOALgw8pJ/CZCGRlNAxO6o7OrL3i+GyxhwHe3BJ/CeNAkBch2SXlqpoxbw1v+NcoD8LpOetJPiXVfHTEUs5grtmpNTvZLAJYZwxLYBRTa6COPNd74v8A80R/H5v/D3pBOD1m1ByJNhYylsTKFgzbCTyZ+HXLeVGKnKdh92KTuI12KA==
+	)
+dskey.example.com. 86400 IN DS 60485 5 1 (2BB183AF5F22588179A53B0A
+                                              98631FAD1A292118)
+
+
+000000.cz.      18000   IN  DS  18787 5 1 ( 3312B1A8370056964B61D3DE90EDF27DF1
+					    E6E2 ab)
+cz.         0   IN  NSEC3PARAM 1 0 10 1C41458D1FDF6C18
+cz.         0   IN  NSEC3PARAM 1 0 10 -
+cz.         0   IN  NSEC3PARAM 1 0 10 1C41458D1FDF6C1
+
+aa. 3600    IN  DNSKEY  257 3 8 Zg==
+aa. 3600    IN  DNSKEY  257 3 8 Zm8=
+aa. 3600    IN  DNSKEY  257 3 8 Zm9v
+aa. 3600    IN  DNSKEY  257 3 8 Zm9vYg==
+aa. 3600    IN  DNSKEY  257 3 8 Zm9vYmE=
+aa. 3600    IN  DNSKEY  257 3 8 Zm9vYmFy
+
+1cz.    3600    IN      DNSKEY  256 3 8 Zm9v
+7cz.    3600    IN      DNSKEY  256 3 8 (
+                                          a3VA bm9vYmFyZm9B
+
+                                          ZS4= ;ahoj
+                                          ) ;test
+
+1cz.    3600    IN      DNSKEY  256 3 8 Zm9v
+2cz.    3600    IN      DNSKEY  256 3 8 Zm9v ;djf
+3cz.    3600    IN      DNSKEY  256 3 8 Zm9vYmFy
+4cz.    3600    IN      DNSKEY  256 3 8 Zm9v YmFy
+5cz.    3600    IN      DNSKEY  256 3 8 Zm9vYmFyZm9v YmFy
+6cz.    3600    IN      DNSKEY  256 3 8 Zm9vYmFyZm9v YmFy b3Vy
+
+
+a.          DNSKEY  257 3 8 YW55IGNhcm5hbCBwbGVhcw== 
+a.          DNSKEY  257 3 8 ( YW55
+				IGNhcm5hbCBw
+				bGVhc3U= ;comment
+				)
+a.          DNSKEY  257 3 8 YW55IGNhcm5hbCBwbGVh c3Vy
+a.          DNSKEY  257 3 8 YW55IGNhcm5hbCBwbGVhcr=
+abcd.o.slon CNAME   	() abcd
+abcd MX 5 nevim
+& NS a
+ MX 5 nevim
+ MX 5 nevim
+abcd.o.slon CNAME   	() abcd
+ MX 5 nevim
+
+cz.         0   IN  NSEC3PARAM 1 0 10 1C41458D1FDF6C18
+a.          DNSKEY  257 3 8 YW55IGNhcm5hbCBwbGVhcr==
+a A 192.%68.2.1
+host.example.  SSHFP 2 1 123456789abcdef67890123456789abcdef67890
+rp.host. RP    louie.trantor.umd.edu.  LAM1.people.umd.edu.
+a NS a
+00JFM7AT277MFV1UERLNS339PVVBOE8M.cz. 900 IN RRSIG NSEC3 10 2 900 20120407094741 21050207062815 16087 cz. Ph5nbbmWatZQqpYJRwqLITaJV4XoU+VJXZ4kyGVH8sGS4I37jNAgmT91 yXJ3AxsRPotKQvKVmZXv1pvAmDVyREcORcW6TPC/v0v4vLzc0r2xDH5T EoelP5D0WLW8OX1kCmkgksxlWzMQHxNPUZ638paQz23ud+uWgI4n9gBO 32w=
+00JFM7AT277MFV1UERLNS339PVVBOE8M.cz. 900 IN RRSIG NSEC3 10 2 900 2407094741 815 16087 cz. Ph5nabcd
+  NSEC3   1 1 12 aabbccdd (
+                          2vptu5timamqttgl4luu9kg21e0aor3s A )
+  NSEC3   1 1 12 aabbccdd ( CO====== A RRSIG )
+  NSEC3   1 1 12 aabbccdd ( CPNG==== A RRSIG )
+  NSEC3   1 1 12 aabbccdd ( CPNMU=== A RRSIG )
+  NSEC3   1 1 12 aabbccdd ( CPNMUOG= A RRSIG )
+  NSEC3   1 1 12 aabbccdd ( CPNMUOJ1 A RRSIG )
+  NSEC3   1 1 12 aabbccdd ( CPNMUOJ1E8====== A RRSIG SPF)
+a MX 5 neviim
+a A 192.68.2.1
+aa 
+x  NSEC3   1 1 12 aabbccdd  CPNMUOJ1E8====== 
+_foobar._tcp    SRV 0 1 9 old-slow-box.example.com.
+               SRV 0 3 9 new-fast-box.example.com.
+               SRV 1 0 9 sysadmins-box.example.com.
+               SRV 1 0 9 server.example.com.
+*._tcp          SRV  0 0 0 .
+*._udp          SRV  0 0 0 .
+chi.example.com.      DHCID   ( AAEBOSD+XR3Os/0LozeXVqcNc7FwCfQdWL3b/NaiUDlW2No= )
+chi6.example.com.     DHCID   ( AAIBY2/AuCccgoJbsaxcQc9TUapptP69lOjxfNuVAA2kjEA= )
+client.example.com.   DHCID   ( AAABxLmlskllE0MVjd57zHcWmEH3pCQ6VytcKD//7es/deY= )
+
+38.2.0.192.in-addr.arpa. 7200 IN     IPSECKEY ( 10 1 2
+                192.0.2.38
+                AQNRU3mG7TVTO2BkR47usntb102uFJtugbo6BSGvgqt4AQ== )
+38.2.0.192.in-addr.arpa. 7200 IN     IPSECKEY ( 10 0 2
+                .
+                AQNRU3mG7TVTO2BkR47usntb102uFJtugbo6BSGvgqt4AQ== )
+38.2.0.192.in-addr.arpa. 7200 IN     IPSECKEY ( 10 1 2
+                192.0.2.3
+                AQNRU3mG7TVTO2BkR47usntb102uFJtugbo6BSGvgqt4AQ== )
+38.1.0.192.in-addr.arpa. 7200 IN     IPSECKEY ( 10 3 2
+                mygateway.example.com.
+                AQNRU3mG7TVTO2BkR47usntb102uFJtugbo6BSGvgqt4AQ== )
+0.d.4.0.3.0.e.f.f.f.3.f.0.1.2.0 7200 IN     IPSECKEY ( 10 2 2
+                2001:0DB8:0:8002::2000:1
+                AQNRU3mG7TVTO2BkR47usntb102uFJtugbo6BSGvgqt4AQ== )
+

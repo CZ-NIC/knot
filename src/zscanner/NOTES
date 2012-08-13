@@ -1,0 +1,8 @@
+- the class IN is supported only
+- time values can have maximal 1 unit (NOT 1D2H)
+- \x and \DDD notation is allowed in domain_name only
+- @ can be used on the right side
+- line number in multiline is the number of the last record part
+- hex blocks multiple of 2, base64 blocks multiple of 4, base32hex blocks multiple of 8 (DHCID problem)
+- RFC 5155 section 3.3 says "unpadded", but padding is used here
+- date version of timestamp is limited to the end of the year 2105 due to 32 bits and better check

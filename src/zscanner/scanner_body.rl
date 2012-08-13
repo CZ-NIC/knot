@@ -1,0 +1,1195 @@
+/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+%%{
+    machine zone_scanner;
+
+    # Come back function to calling state machine.
+    action _ret {
+        fhold; fret;
+    }
+
+    # BEGIN - Blank space processing
+    action _newline {
+        s->line_counter++;
+    }
+
+    action _check_multiline_begin {
+        if (s->multiline == true) {
+            SCANNER_ERROR(ZSCANNER_ELEFT_PARENTHESIS);
+            fhold; fgoto err_line;
+        }
+        s->multiline = true;
+    }
+    action _check_multiline_end {
+        if (s->multiline == false) {
+            SCANNER_ERROR(ZSCANNER_ERIGHT_PARENTHESIS);
+            fhold; fgoto err_line;
+        }
+        s->multiline = false;
+    }
+
+    action _rest_error {
+        SCANNER_WARNING(ZSCANNER_EBAD_REST);
+        fhold; fgoto err_line;
+    }
+
+    newline = '\n' $_newline;
+    comment = ';' . (^newline)*;
+
+    # White space separation. With respect to parentheses and included comments.
+    sep = ( [ \t]                                       # Blank characters.
+          | (comment? . newline) when { s->multiline }  # Comment in multiline.
+          | '(' $_check_multiline_begin                 # Start of multiline.
+          | ')' $_check_multiline_end                   # End of multiline.
+          )+;                                           # Apply more times.
+
+    rest = (sep? . comment?) $!_rest_error; # Useless text after correct record.
+
+    # Artificial machines which are used for next state transition only!
+    all_wchar = [ \t\n;()];
+    end_wchar = [\n;] when { !s->multiline }; # For noncontinuous ending tokens.
+    # END
+
+    # BEGIN - Error line processing
+    action _err_line_init {
+        s->buffer_length = 0;
+    }
+    action _err_line {
+        if (s->buffer_length < sizeof(s->buffer) - 1) {
+            s->buffer[s->buffer_length++] = fc;
+        }
+    }
+    action _err_line_exit {
+        // Ending string in buffer.
+        s->buffer[s->buffer_length++] = 0;
+
+        // Error counter incrementation.
+        s->error_counter++;
+
+        // Initialization of fcall stack.
+        top = 0;
+
+        // Process error message.
+        s->process_error(s);
+
+        // Reset.
+        s->error_code = KNOT_EOK;
+        s->multiline = false;
+
+        // In case of serious error, stop scanner.
+        if (s->stop == true) {
+            return -1;
+        }
+    }
+
+    # Fill rest of the line to buffer and skip to main loop.
+    err_line := (^newline $_err_line)* >_err_line_init
+                %_err_line_exit . newline @{ fgoto main; };
+    # END
+
+    # BEGIN - Domain name labels processing
+    action _label_init {
+        s->item_length = 0;
+        s->item_length_position = s->dname_tmp_length++;
+    }
+    action _label_char {
+        if (s->item_length < MAX_LABEL_LENGTH) {
+            (s->dname)[s->dname_tmp_length++] = fc;
+            s->item_length++;
+        }
+        else {
+            SCANNER_WARNING(ZSCANNER_ELABEL_OVERFLOW);
+            fhold; fgoto err_line;
+        }
+    }
+    action _label_upper_char {
+        if (s->item_length < MAX_LABEL_LENGTH) {
+            (s->dname)[s->dname_tmp_length++] = ascii_to_lower[(uint8_t)fc];
+            s->item_length++;
+        }
+        else {
+            SCANNER_WARNING(ZSCANNER_ELABEL_OVERFLOW);
+            fhold; fgoto err_line;
+        }
+    }
+    action _label_exit {
+        if (s->dname_tmp_length < MAX_DNAME_LENGTH) {
+            (s->dname)[s->item_length_position] = (uint8_t)(s->item_length);
+        }
+        else {
+            SCANNER_WARNING(ZSCANNER_EDNAME_OVERFLOW);
+            fhold; fgoto err_line;
+        }
+    }
+
+    action _label_dec_init {
+        (s->dname)[s->dname_tmp_length] = 0;
+    }
+    action _label_dec {
+        (s->dname)[s->dname_tmp_length] *= 10;
+        (s->dname)[s->dname_tmp_length] += digit_to_num[(uint8_t)fc];
+    }
+    action _label_dec_exit {
+        (s->dname)[s->dname_tmp_length] =
+            ascii_to_lower[(s->dname)[s->dname_tmp_length]];
+
+        if (s->item_length < MAX_LABEL_LENGTH) {
+            s->dname_tmp_length++;
+            s->item_length++;
+        }
+        else {
+            SCANNER_WARNING(ZSCANNER_ELABEL_OVERFLOW);
+            fhold; fgoto err_line;
+        }
+    }
+
+    label_char =
+        ( (digit | lower | [\-_/])  $_label_char         # One common char.
+        | (upper)                   $_label_upper_char   # One upper-case char.
+        | ('\\' . ^(digit | upper)) @_label_char         # One "\x" char.
+        | ('\\' . upper)            @_label_upper_char   # One "\X" char.
+        | ('\\'                     %_label_dec_init     # Initial "\" char.
+           . digit {3}              $_label_dec %_label_dec_exit # "DDD" rest.
+          )
+        );
+
+    label  = (label_char+ | ('*' $_label_char)) >_label_init %_label_exit;
+    labels = (label   . '.')* . label;
+    # END
+
+    # BEGIN - Domain name processing.
+    action _absolute_dname_exit {
+        (s->dname)[s->dname_tmp_length++] = 0;
+    }
+
+    action _relative_dname_exit {
+        memcpy(s->dname + s->dname_tmp_length,
+               s->zone_origin,
+               s->zone_origin_length);
+
+        s->dname_tmp_length += s->zone_origin_length;
+
+        if (s->dname_tmp_length >= MAX_DNAME_LENGTH) {
+            SCANNER_WARNING(ZSCANNER_EDNAME_OVERFLOW);
+            fhold; fgoto err_line;
+        }
+    }
+
+    action _origin_dname_exit {
+        memcpy(s->dname,
+               s->zone_origin,
+               s->zone_origin_length);
+
+        s->dname_tmp_length = s->zone_origin_length;
+    }
+
+    action _zone_origin_init {
+        s->dname = s->zone_origin;
+    }
+    action _zone_origin_exit {
+        s->zone_origin_length = s->dname_tmp_length;
+    }
+
+    action _dname_init {
+        s->item_length_position = 0;
+        s->dname_tmp_length = 0;
+    }
+
+    action _dname_error {
+            SCANNER_WARNING(ZSCANNER_EBAD_DNAME_CHAR);
+            fhold; fgoto err_line;
+    }
+
+    relative_dname = (labels       ) >_dname_init %_relative_dname_exit;
+    absolute_dname = (labels? . '.') >_dname_init %_absolute_dname_exit;
+
+    dname = ( relative_dname
+            | absolute_dname
+            | '@' %_origin_dname_exit
+            ) $!_dname_error;
+    # END
+
+    # BEGIN - Owner processing
+    action _r_owner_init {
+        s->dname = s->r_owner;
+    }
+    action _r_owner_exit {
+        s->r_owner_length = s->dname_tmp_length;
+    }
+    action _r_owner_empty_exit {
+        if (s->r_owner_length == 0) {
+            SCANNER_WARNING(ZSCANNER_EBAD_PREVIOUS_OWNER);
+            fhold; fgoto err_line;
+        }
+    }
+    action _r_owner_error {
+        s->r_owner_length = 0;
+        SCANNER_WARNING(ZSCANNER_EBAD_OWNER);
+        fhold; fgoto err_line;
+    }
+
+    r_owner = ( dname >_r_owner_init %_r_owner_exit
+              | zlen  %_r_owner_empty_exit # Empty owner - use the previous one.
+              ) $!_r_owner_error;
+    # END
+
+    # BEGIN - Number processing
+    action _number_digit {
+        // Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
+        if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
+            ((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
+             (fc <= (UINT64_MAX % 10) + ASCII_0)
+            )
+           ) {
+            s->number64 *= 10;
+            s->number64 += digit_to_num[(uint8_t)fc];
+        }
+        else {
+            SCANNER_WARNING(ZSCANNER_ENUMBER64_OVERFLOW);
+            fhold; fgoto err_line;
+        }
+    }
+
+    action _number_init {
+        s->number64 = 0;
+    }
+
+    number_digit = [0-9] $_number_digit;
+
+    number = number_digit+ >_number_init;
+
+    action _number8_write {
+        if (s->number64 <= UINT8_MAX) {
+            *(s->r_data_end) = (uint8_t)(s->number64);
+            s->r_data_length += 1;
+            s->r_data_end    += 1;
+        }
+        else {
+            SCANNER_WARNING(ZSCANNER_ENUMBER8_OVERFLOW);
+            fhold; fgoto err_line;
+        }
+    }
+
+    action _number16_write {
+        if (s->number64 <= UINT16_MAX) {
+            *((uint16_t *)(s->r_data_end)) = htons((uint16_t)(s->number64));
+            s->r_data_length += 2;
+            s->r_data_end    += 2;
+        }
+        else {
+            SCANNER_WARNING(ZSCANNER_ENUMBER16_OVERFLOW);
+            fhold; fgoto err_line;
+        }
+    }
+
+    action _number32_write {
+        if (s->number64 <= UINT32_MAX) {
+            *((uint32_t *)(s->r_data_end)) = htonl((uint32_t)(s->number64));
+            s->r_data_length += 4;
+            s->r_data_end    += 4;
+        }
+        else {
+            SCANNER_WARNING(ZSCANNER_ENUMBER32_OVERFLOW);
+            fhold; fgoto err_line;
+        }
+    }
+
+    number8  = number %_number8_write;
+    number16 = number %_number16_write;
+    number32 = number %_number32_write;
+    # END
+
+    # BEGIN - Time processing
+    time_unit =
+        ( 's'i
+        | 'm'i ${ if (s->number64 <= (UINT64_MAX / 60)) {
+                      s->number64 *= 60;
+                  }
+                  else {
+                      SCANNER_WARNING(ZSCANNER_ENUMBER64_OVERFLOW);
+                      fhold; fgoto err_line;
+                  }
+                }
+        | 'h'i ${ if (s->number64 <= (UINT64_MAX / 3600)) {
+                      s->number64 *= 3600;
+                  }
+                  else {
+                      SCANNER_WARNING(ZSCANNER_ENUMBER64_OVERFLOW);
+                      fhold; fgoto err_line;
+                  }
+                }
+        | 'd'i ${ if (s->number64 <= (UINT64_MAX / 86400)) {
+                      s->number64 *= 86400;
+                  }
+                  else {
+                      SCANNER_WARNING(ZSCANNER_ENUMBER64_OVERFLOW);
+                      fhold; fgoto err_line;
+                  }
+                }
+        | 'w'i ${ if (s->number64 <= (UINT64_MAX / 604800)) {
+                      s->number64 *= 604800;
+                  }
+                  else {
+                      SCANNER_WARNING(ZSCANNER_ENUMBER64_OVERFLOW);
+                      fhold; fgoto err_line;
+                  }
+                }
+        );
+
+    time = number . time_unit?;
+
+    time32 = time %_number32_write;
+    # END
+
+    # BEGIN - Timestamp processing
+    action _timestamp_init {
+        s->buffer_length = 0;
+    }
+    action _timestamp {
+        if (s->buffer_length < MAX_RDATA_LENGTH) {
+            s->buffer[s->buffer_length++] = fc;
+        }
+        else {
+            SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
+            fhold; fgoto err_line;
+        }
+    }
+    action _timestamp_exit {
+        s->buffer[s->buffer_length] = 0;
+
+        if (s->buffer_length == 14) { // Date; 14 = len("YYYYMMDDHHmmSS").
+            ret = date_to_timestamp(s->buffer, &timestamp);
+
+            if (ret == KNOT_EOK) {
+                *((uint32_t *)(s->r_data_end)) = htonl(timestamp);
+                s->r_data_length += 4;
+                s->r_data_end    += 4;
+            }
+            else {
+                SCANNER_WARNING(ret);
+                fhold; fgoto err_line;
+            }
+        }
+        else if (s->buffer_length <= 10) { // Timestamp format.
+            errno = 0;
+            s->number64 = strtoul((char *)(s->buffer), NULL,  10);
+
+            if (errno == 0) {
+                *((uint32_t *)(s->r_data_end)) = htonl((uint32_t)s->number64);
+                s->r_data_length += 4;
+                s->r_data_end    += 4;
+            }
+            else {
+                SCANNER_WARNING(ZSCANNER_EBAD_TIMESTAMP);
+                fhold; fgoto err_line;
+            }
+        }
+        else {
+            SCANNER_WARNING(ZSCANNER_EBAD_TIMESTAMP_LENGTH);
+            fhold; fgoto err_line;
+        }
+    }
+    action _timestamp_error {
+            SCANNER_WARNING(ZSCANNER_EBAD_TIMESTAMP_CHAR);
+            fhold; fgoto err_line;
+    }
+
+    timestamp = digit+ >_timestamp_init $_timestamp
+                %_timestamp_exit $!_timestamp_error;
+
+    # END
+
+    # BEGIN - Text processing
+    action _text_char {}
+    action _text_dec_init {}
+    action _text_dec {}
+    action _text_dec_exit {}
+
+    text_char =
+        ( (33..126 - [\\;\"]) $_text_char                # One printable char.
+        | ('\\' . ^digit)     @_text_char                # One "\x" char.
+        | ('\\'               %_text_dec_init            # Initial "\" char.
+           . digit {3}        $_text_dec %_text_dec_exit # "DDD" rest.
+          )
+        );
+    quoted_text_char = text_char | [ \t;];
+
+    text = ('\"' . quoted_text_char* . '\"') | text_char+;
+
+    text_array = text . (sep . text)*;
+    # END
+
+    # BEGIN - Directives processing
+    action _default_ttl_exit {
+        if (s->number64 <= UINT32_MAX) {
+            s->default_ttl = (uint32_t)(s->number64);
+        }
+        else {
+            SCANNER_WARNING(ZSCANNER_ENUMBER32_OVERFLOW);
+            fhold; fgoto err_line;
+        }
+    }
+
+    action _zone_origin_error {
+        SCANNER_ERROR(ZSCANNER_EBAD_ORIGIN);
+        fhold; fgoto err_line;
+    }
+
+    default_ttl = time %_default_ttl_exit;
+
+    zone_origin = absolute_dname >_zone_origin_init %_zone_origin_exit
+                    $!_zone_origin_error;
+
+    directive = '$' .
+                 ( ("TTL"i     . sep . default_ttl)
+                 | ("ORIGIN"i  . sep . zone_origin)
+#                 | ("INCLUDE"i . sep . filename . (sep . absolute_dname)?)
+                 ) . rest .
+                 newline;
+    # END
+
+    # BEGIN - RRecord class and ttl processing
+    action _default_r_class_exit {
+        s->r_class = s->default_class;
+    }
+
+    action _default_r_ttl_exit {
+        s->r_ttl = s->default_ttl;
+    }
+
+    action _r_class_in_exit {
+        s->r_class = KNOT_CLASS_IN;
+    }
+
+    action _r_ttl_exit {
+        if (s->number64 <= UINT32_MAX) {
+            s->r_ttl = (uint32_t)(s->number64);
+        }
+        else {
+            SCANNER_WARNING(ZSCANNER_ENUMBER32_OVERFLOW);
+            fhold; fgoto err_line;
+        }
+    }
+
+    r_class = "IN"i %_r_class_in_exit;
+
+    r_ttl = time %_r_ttl_exit;
+    # END
+
+    # BEGIN - IPv4 and IPv6 address processing
+    action _address_init {
+        s->buffer_length = 0;
+    }
+
+    action _address {
+        if (s->buffer_length < MAX_RDATA_LENGTH) {
+            s->buffer[s->buffer_length++] = fc;
+        }
+        else {
+            SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
+            fhold; fgoto err_line;
+        }
+    }
+
+    action _address_error {
+        SCANNER_WARNING(ZSCANNER_EBAD_ADDRESS_CHAR);
+        fhold; fgoto err_line;
+    }
+
+    action _ipv4_address_exit {
+        s->buffer[s->buffer_length] = 0;
+
+        if (inet_pton(AF_INET, (char *)s->buffer, &addr4) > 0) {
+            memcpy(s->r_data_end, &(addr4.s_addr), INET4_ADDR_LENGTH);
+            s->r_data_length += INET4_ADDR_LENGTH;
+            s->r_data_end    += INET4_ADDR_LENGTH;
+        }
+        else {
+            SCANNER_WARNING(ZSCANNER_EBAD_IPV4);
+            fhold; fgoto err_line;
+        }
+    }
+
+    action _ipv6_address_exit {
+       s->buffer[s->buffer_length] = 0;
+
+       if (inet_pton(AF_INET6, (char *)s->buffer, &addr6) > 0) {
+           memcpy(s->r_data_end, &(addr6.s6_addr), INET6_ADDR_LENGTH);
+           s->r_data_length += INET6_ADDR_LENGTH;
+           s->r_data_end    += INET6_ADDR_LENGTH;
+       }
+       else {
+           SCANNER_WARNING(ZSCANNER_EBAD_IPV6);
+           fhold; fgoto err_line;
+       }
+    }
+
+    ipv4_address = (digit  | '.')+  >_address_init $_address
+                   %_ipv4_address_exit $!_address_error;
+    ipv6_address = (xdigit | [.:])+ >_address_init $_address
+                   %_ipv6_address_exit $!_address_error;
+    # END
+
+    # BEGIN - Hexadecimal string array processing.
+    action _item_init {
+        s->item_length = 0;
+        s->item_length_location = s->r_data_end;
+        s->r_data_length++;
+        s->r_data_end++;
+    }
+    action _item_exit {
+        *(s->item_length_location) =
+            (uint8_t)(s->r_data_end - s->item_length_location - 1);
+    }
+
+    action _first_hex_char {
+        if (s->r_data_length < MAX_RDATA_LENGTH) {
+            *(s->r_data_end) = first_hex_to_num[(uint8_t)fc];
+        }
+        else {
+           SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
+           fhold; fgoto err_line;
+        }
+    }
+    action _second_hex_char {
+        *(s->r_data_end) += second_hex_to_num[(uint8_t)fc];
+        s->r_data_length += 1;
+        s->r_data_end    += 1;
+    }
+
+    action _hex_char_error {
+        SCANNER_WARNING(ZSCANNER_EBAD_HEX_CHAR);
+        fhold; fgoto err_line;
+    }
+
+    hex_char  = (xdigit $_first_hex_char . xdigit $_second_hex_char);
+
+    # Hex array with possibility of inside white spaces and multiline.
+    hex_array = (hex_char+ . sep?)+ $!_hex_char_error;
+
+    # Continuous hex array (or "-") with forward length processing.
+    salt = (hex_char+ | '-') >_item_init %_item_exit $!_hex_char_error;
+    # END
+
+    # BEGIN - Base64 processing (RFC 4648).
+    action _first_base64_char {
+        if (s->r_data_length < MAX_RDATA_LENGTH) {
+            *(s->r_data_end) = first_base64_to_num[(uint8_t)fc];
+        }
+        else {
+           SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
+           fhold; fgoto err_line;
+        }
+    }
+    action _second_base64_char {
+        *(s->r_data_end) += second_left_base64_to_num[(uint8_t)fc];
+        s->r_data_length += 1;
+        s->r_data_end    += 1;
+
+        if (s->r_data_length < MAX_RDATA_LENGTH) {
+            *(s->r_data_end) = second_right_base64_to_num[(uint8_t)fc];
+        }
+        else {
+           SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
+           fhold; fgoto err_line;
+        }
+    }
+    action _third_base64_char {
+        *(s->r_data_end) += third_left_base64_to_num[(uint8_t)fc];
+        s->r_data_length += 1;
+        s->r_data_end    += 1;
+
+        if (s->r_data_length < MAX_RDATA_LENGTH) {
+            *(s->r_data_end) = third_right_base64_to_num[(uint8_t)fc];
+        }
+        else {
+           SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
+           fhold; fgoto err_line;
+        }
+    }
+    action _fourth_base64_char {
+        *(s->r_data_end) += fourth_base64_to_num[(uint8_t)fc];
+        s->r_data_length += 1;
+        s->r_data_end    += 1;
+    }
+
+    action _base64_char_error {
+        SCANNER_WARNING(ZSCANNER_EBAD_BASE64_CHAR);
+        fhold; fgoto err_line;
+    }
+
+    base64_char = alnum | [+/];
+    base64_padd = '=';
+    base64_quarted =
+        ( base64_char          $_first_base64_char  . # A
+          base64_char          $_second_base64_char . # AB
+          ( ( base64_char      $_third_base64_char  . # ABC
+              ( base64_char    $_fourth_base64_char   # ABCD
+              | base64_padd{1}                        # ABC=
+              )
+            )
+          | base64_padd{2}                            # AB==
+          )
+        );
+
+    # Base64 array with possibility of inside white spaces and multiline.
+    base64 = (base64_quarted+ . sep?)+ $!_base64_char_error;
+    # END
+
+    # BEGIN - Base32hex processing (RFC 4648).
+    action _first_base32hex_char {
+        if (s->r_data_length < MAX_RDATA_LENGTH) {
+            *(s->r_data_end) = first_base32hex_to_num[(uint8_t)fc];
+        }
+        else {
+           SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
+           fhold; fgoto err_line;
+        }
+    }
+    action _second_base32hex_char {
+        *(s->r_data_end) += second_left_base32hex_to_num[(uint8_t)fc];
+        s->r_data_end    += 1;
+        s->r_data_length += 1;
+
+        if (s->r_data_length < MAX_RDATA_LENGTH) {
+            *(s->r_data_end) = second_right_base32hex_to_num[(uint8_t)fc];
+        }
+        else {
+           SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
+           fhold; fgoto err_line;
+        }
+    }
+    action _third_base32hex_char {
+        *(s->r_data_end) += third_base32hex_to_num[(uint8_t)fc];
+    }
+    action _fourth_base32hex_char {
+        *(s->r_data_end) += fourth_left_base32hex_to_num[(uint8_t)fc];
+        s->r_data_end    += 1;
+        s->r_data_length += 1;
+
+        if (s->r_data_length < MAX_RDATA_LENGTH) {
+            *(s->r_data_end) = fourth_right_base32hex_to_num[(uint8_t)fc];
+        }
+        else {
+           SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
+           fhold; fgoto err_line;
+        }
+    }
+    action _fifth_base32hex_char {
+        *(s->r_data_end) += fifth_left_base32hex_to_num[(uint8_t)fc];
+        s->r_data_end    += 1;
+        s->r_data_length += 1;
+
+        if (s->r_data_length < MAX_RDATA_LENGTH) {
+            *(s->r_data_end) = fifth_right_base32hex_to_num[(uint8_t)fc];
+        }
+        else {
+           SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
+           fhold; fgoto err_line;
+        }
+    }
+    action _sixth_base32hex_char {
+        *(s->r_data_end) += sixth_base32hex_to_num[(uint8_t)fc];
+    }
+    action _seventh_base32hex_char {
+        *(s->r_data_end) += seventh_left_base32hex_to_num[(uint8_t)fc];
+        s->r_data_end    += 1;
+        s->r_data_length += 1;
+
+        if (s->r_data_length < MAX_RDATA_LENGTH) {
+            *(s->r_data_end) = seventh_right_base32hex_to_num[(uint8_t)fc];
+        }
+        else {
+           SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
+           fhold; fgoto err_line;
+        }
+    }
+    action _eighth_base32hex_char {
+        *(s->r_data_end) += eighth_base32hex_to_num[(uint8_t)fc];
+        s->r_data_end    += 1;
+        s->r_data_length += 1;
+    }
+
+    action _base32hex_char_error {
+        SCANNER_WARNING(ZSCANNER_EBAD_BASE32HEX_CHAR);
+        fhold; fgoto err_line;
+    }
+
+    base32hex_char = [0-9a-vA-V];
+    base32hex_padd = '=';
+    base32hex_octet =
+        ( base32hex_char                  $_first_base32hex_char   . # A
+          base32hex_char                  $_second_base32hex_char  . # AB
+          ( ( base32hex_char              $_third_base32hex_char   . # ABC
+              base32hex_char              $_fourth_base32hex_char  . # ABCD
+              ( ( base32hex_char          $_fifth_base32hex_char   . # ABCDE
+                  ( ( base32hex_char      $_sixth_base32hex_char   . # ABCDEF
+                      base32hex_char      $_seventh_base32hex_char . # ABCDEFG
+                      ( base32hex_char    $_eighth_base32hex_char    # ABCDEFGH
+                      | base32hex_padd{1}                            # ABCDEFG=
+                      )
+                    )
+                  | base32hex_padd{3}                                # ABCDE===
+                  )
+                )
+              | base32hex_padd{4}                                    # ABCD====
+              )
+            )
+          | base32hex_padd{6}                                        # AB======
+          )
+        );
+
+    # Base32hex array with possibility of inside white spaces and multiline.
+    # base32hex = (base32hex_octet+ . sep?)+ $!_base32hex_char_error;
+
+    # Continuous base32hex (with padding!) array with forward length processing.
+    hash = base32hex_octet+ >_item_init %_item_exit $!_base32hex_char_error;
+    # END
+
+    # BEGIN - Type processing.
+    action _type_exit {
+        s->r_data_end += 2;
+    }
+    action _type_error {
+        SCANNER_WARNING(ZSCANNER_EUNSUPPORTED_TYPE);
+        fhold; fgoto err_line;
+    }
+
+    type_num =
+        ( "A"i          %{ TYPE_NUM(KNOT_RRTYPE_A); }
+        | "NS"i         %{ TYPE_NUM(KNOT_RRTYPE_NS); }
+        | "CNAME"i      %{ TYPE_NUM(KNOT_RRTYPE_CNAME); }
+        | "SOA"i        %{ TYPE_NUM(KNOT_RRTYPE_SOA); }
+        | "WKS"i        %{ TYPE_NUM(KNOT_RRTYPE_WKS); }
+        | "PTR"i        %{ TYPE_NUM(KNOT_RRTYPE_PTR); }
+        | "HINFO"i      %{ TYPE_NUM(KNOT_RRTYPE_HINFO); }
+        | "MINFO"i      %{ TYPE_NUM(KNOT_RRTYPE_MINFO); }
+        | "MX"i         %{ TYPE_NUM(KNOT_RRTYPE_MX); }
+        | "TXT"i        %{ TYPE_NUM(KNOT_RRTYPE_TXT); }
+        | "RP"i         %{ TYPE_NUM(KNOT_RRTYPE_RP); }
+        | "AFSDB"i      %{ TYPE_NUM(KNOT_RRTYPE_AFSDB); }
+        | "X25"i        %{ TYPE_NUM(KNOT_RRTYPE_X25); }
+        | "ISDN"i       %{ TYPE_NUM(KNOT_RRTYPE_ISDN); }
+        | "RT"i         %{ TYPE_NUM(KNOT_RRTYPE_RT); }
+        | "NSAP"i       %{ TYPE_NUM(KNOT_RRTYPE_NSAP); }
+        | "SIG"i        %{ TYPE_NUM(KNOT_RRTYPE_SIG); }
+        | "KEY"i        %{ TYPE_NUM(KNOT_RRTYPE_KEY); }
+        | "PX"i         %{ TYPE_NUM(KNOT_RRTYPE_PX); }
+        | "AAAA"i       %{ TYPE_NUM(KNOT_RRTYPE_AAAA); }
+        | "LOC"i        %{ TYPE_NUM(KNOT_RRTYPE_LOC); }
+        | "SRV"i        %{ TYPE_NUM(KNOT_RRTYPE_SRV); }
+        | "NAPTR"i      %{ TYPE_NUM(KNOT_RRTYPE_NAPTR); }
+        | "KX"i         %{ TYPE_NUM(KNOT_RRTYPE_KX); }
+        | "CERT"i       %{ TYPE_NUM(KNOT_RRTYPE_CERT); }
+        | "DNAME"i      %{ TYPE_NUM(KNOT_RRTYPE_DNAME); }
+        | "OPT"i        %{ TYPE_NUM(KNOT_RRTYPE_OPT); }
+        | "APL"i        %{ TYPE_NUM(KNOT_RRTYPE_APL); }
+        | "DS"i         %{ TYPE_NUM(KNOT_RRTYPE_DS); }
+        | "SSHFP"i      %{ TYPE_NUM(KNOT_RRTYPE_SSHFP); }
+        | "IPSECKEY"i   %{ TYPE_NUM(KNOT_RRTYPE_IPSECKEY); }
+        | "RRSIG"i      %{ TYPE_NUM(KNOT_RRTYPE_RRSIG); }
+        | "NSEC"i       %{ TYPE_NUM(KNOT_RRTYPE_NSEC); }
+        | "DNSKEY"i     %{ TYPE_NUM(KNOT_RRTYPE_DNSKEY); }
+        | "DHCID"i      %{ TYPE_NUM(KNOT_RRTYPE_DHCID); }
+        | "NSEC3"i      %{ TYPE_NUM(KNOT_RRTYPE_NSEC3); }
+        | "NSEC3PARAM"i %{ TYPE_NUM(KNOT_RRTYPE_NSEC3PARAM); }
+        | "TLSA"i       %{ TYPE_NUM(KNOT_RRTYPE_TLSA); }
+        | "SPF"i        %{ TYPE_NUM(KNOT_RRTYPE_SPF); }
+        ) %_type_exit $!_type_error;
+    # END
+
+    # BEGIN - Bitmap processing
+    action _bitmap_error {
+        SCANNER_WARNING(ZSCANNER_EBAD_BITMAP);
+        fhold; fgoto err_line;
+    }
+
+    type_bit =
+        # Type numbers 0-7
+        ( "A"i          %{ TYPE_BIT(KNOT_RRTYPE_A,           0); }
+        | "NS"i         %{ TYPE_BIT(KNOT_RRTYPE_NS,          0); }
+        | "CNAME"i      %{ TYPE_BIT(KNOT_RRTYPE_CNAME,       0); }
+        | "SOA"i        %{ TYPE_BIT(KNOT_RRTYPE_SOA,         0); }
+        # Type numbers 8-15
+        | "WKS"i        %{ TYPE_BIT(KNOT_RRTYPE_WKS,         1); }
+        | "PTR"i        %{ TYPE_BIT(KNOT_RRTYPE_PTR,         1); }
+        | "HINFO"i      %{ TYPE_BIT(KNOT_RRTYPE_HINFO,       1); }
+        | "MINFO"i      %{ TYPE_BIT(KNOT_RRTYPE_MINFO,       1); }
+        | "MX"i         %{ TYPE_BIT(KNOT_RRTYPE_MX,          1); }
+        # Type numbers 16-23
+        | "TXT"i        %{ TYPE_BIT(KNOT_RRTYPE_TXT,         2); }
+        | "RP"i         %{ TYPE_BIT(KNOT_RRTYPE_RP,          2); }
+        | "AFSDB"i      %{ TYPE_BIT(KNOT_RRTYPE_AFSDB,       2); }
+        | "X25"i        %{ TYPE_BIT(KNOT_RRTYPE_X25,         2); }
+        | "ISDN"i       %{ TYPE_BIT(KNOT_RRTYPE_ISDN,        2); }
+        | "RT"i         %{ TYPE_BIT(KNOT_RRTYPE_RT,          2); }
+        | "NSAP"i       %{ TYPE_BIT(KNOT_RRTYPE_NSAP,        2); }
+        # Type numbers 24-31
+        | "SIG"i        %{ TYPE_BIT(KNOT_RRTYPE_SIG,         3); }
+        | "KEY"i        %{ TYPE_BIT(KNOT_RRTYPE_KEY,         3); }
+        | "PX"i         %{ TYPE_BIT(KNOT_RRTYPE_PX,          3); }
+        | "AAAA"i       %{ TYPE_BIT(KNOT_RRTYPE_AAAA,        3); }
+        | "LOC"i        %{ TYPE_BIT(KNOT_RRTYPE_LOC,         3); }
+        # Type numbers 32-39
+        | "SRV"i        %{ TYPE_BIT(KNOT_RRTYPE_SRV,         4); }
+        | "NAPTR"i      %{ TYPE_BIT(KNOT_RRTYPE_NAPTR,       4); }
+        | "KX"i         %{ TYPE_BIT(KNOT_RRTYPE_KX,          4); }
+        | "CERT"i       %{ TYPE_BIT(KNOT_RRTYPE_CERT,        4); }
+        | "DNAME"i      %{ TYPE_BIT(KNOT_RRTYPE_DNAME,       4); }
+        # Type numbers 40-47
+        | "OPT"i        %{ TYPE_BIT(KNOT_RRTYPE_OPT,         5); }
+        | "APL"i        %{ TYPE_BIT(KNOT_RRTYPE_APL,         5); }
+        | "DS"i         %{ TYPE_BIT(KNOT_RRTYPE_DS,          5); }
+        | "SSHFP"i      %{ TYPE_BIT(KNOT_RRTYPE_SSHFP,       5); }
+        | "IPSECKEY"i   %{ TYPE_BIT(KNOT_RRTYPE_IPSECKEY,    5); }
+        | "RRSIG"i      %{ TYPE_BIT(KNOT_RRTYPE_RRSIG,       5); }
+        | "NSEC"i       %{ TYPE_BIT(KNOT_RRTYPE_NSEC,        5); }
+        # Type numbers 48-55
+        | "DNSKEY"i     %{ TYPE_BIT(KNOT_RRTYPE_DNSKEY,      6); }
+        | "DHCID"i      %{ TYPE_BIT(KNOT_RRTYPE_DHCID,       6); }
+        | "NSEC3"i      %{ TYPE_BIT(KNOT_RRTYPE_NSEC3,       6); }
+        | "NSEC3PARAM"i %{ TYPE_BIT(KNOT_RRTYPE_NSEC3PARAM,  6); }
+        | "TLSA"i       %{ TYPE_BIT(KNOT_RRTYPE_TLSA,        6); }
+        # Type numbers 96-103
+        | "SPF"i        %{ TYPE_BIT(KNOT_RRTYPE_SPF,        12); }
+        );
+
+    action _bitmap_init {
+        memset(s->bitmap, 0, sizeof(s->bitmap));
+
+        s->item_length = 0;
+    }
+
+    action _bitmap_exit {
+        if (s->item_length > 0) {
+            if (s->r_data_length < MAX_RDATA_LENGTH - 2 - s->item_length) {
+                // Window number.
+                *(s->r_data_end)  = 0;
+                s->r_data_end    += 1;
+                // Bitmap length.
+                *(s->r_data_end)  = s->item_length;
+                s->r_data_end    += 1;
+                // Copying bitmap.
+                memcpy(s->r_data_end, s->bitmap, s->item_length);
+                s->r_data_end    += s->item_length;
+                s->r_data_length += 2 + s->item_length;
+            }
+            else {
+               SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
+               fhold; fgoto err_line;
+            }
+        }
+    }
+
+    bitmap := (sep? | (sep . type_bit)* . sep?) >_bitmap_init
+              %_bitmap_exit %_ret $!_bitmap_error . end_wchar;
+
+    action _call_bitmap {
+        fhold; fcall bitmap;
+    }
+    # END
+
+    # BEGIN - Gateway
+    action _fc_write {
+        *(s->r_data_end)  = digit_to_num[(uint8_t)fc];
+        s->r_data_length += 1;
+        s->r_data_end    += 1;
+    }
+    gateway = ('0' $_fc_write . sep . number8 . sep . '.') |
+              ('1' $_fc_write . sep . number8 . sep . ipv4_address) |
+              ('2' $_fc_write . sep . number8 . sep . ipv6_address) |
+              ('3' $_fc_write . sep . number8 . sep . dname);
+    # END
+
+    # BEGIN - domain name in record data processing
+    action _r_dname_init {
+        s->dname = s->r_data_end;
+    }
+
+    action _r_dname_exit {
+        s->r_data_length += s->dname_tmp_length;
+        s->r_data_end    += s->dname_tmp_length;
+    }
+
+    r_dname = dname >_r_dname_init %_r_dname_exit;
+    # END
+
+    action _data_ {
+        SCANNER_WARNING(ZSCANNER_EUNSUPPORTED_TYPE);
+        fhold; fgoto err_line;
+    }
+
+    action _r_type_error {
+        SCANNER_WARNING(ZSCANNER_EUNSUPPORTED_TYPE);
+        fhold; fgoto err_line;
+    }
+
+    action _r_data_init {
+        s->r_data_length = 0;
+        s->r_data_end = s->r_data + 2; // First 2 bytes are r_data length.
+    }
+    action _r_data_error {
+        SCANNER_WARNING(ZSCANNER_EBAD_RDATA);
+        fhold; fgoto err_line;
+    }
+
+    action _record_exit {
+        *(s->r_data_length_position) = htons(s->r_data_length);
+        s->process_record(s);
+    }
+
+
+    # BEGIN - Auxiliary functions which call smaller state machines
+    action _data_a {
+        s->r_type = KNOT_RRTYPE_A;
+        fhold; fcall data_a;
+    }
+    action _data_ns {
+        s->r_type = KNOT_RRTYPE_NS;
+        fhold; fcall data_ns;
+    }
+    action _data_cname { // Same as NS.
+        s->r_type = KNOT_RRTYPE_CNAME;
+        fhold; fcall data_ns;
+    }
+    action _data_soa {
+        s->r_type = KNOT_RRTYPE_SOA;
+        fhold; fcall data_soa;
+    }
+    action _data_ptr { // Same as NS.
+        s->r_type = KNOT_RRTYPE_PTR;
+        fhold; fcall data_ns;
+    }
+    action _data_mx {
+        s->r_type = KNOT_RRTYPE_MX;
+        fhold; fcall data_mx;
+    }
+    action _data_txt {
+        s->r_type = KNOT_RRTYPE_TXT;
+        fhold; fcall data_txt;
+    }
+    action _data_rp {
+        s->r_type = KNOT_RRTYPE_RP;
+        fhold; fcall data_rp;
+    }
+    action _data_aaaa {
+        s->r_type = KNOT_RRTYPE_AAAA;
+        fhold; fcall data_aaaa;
+    }
+    action _data_srv {
+        s->r_type = KNOT_RRTYPE_SRV;
+        fhold; fcall data_srv;
+    }
+    action _data_dname { // Same as NS.
+        s->r_type = KNOT_RRTYPE_DNAME;
+        fhold; fcall data_ns;
+    }
+    action _data_ds {
+        s->r_type = KNOT_RRTYPE_DS;
+        fhold; fcall data_ds;
+    }
+    action _data_sshfp {
+        s->r_type = KNOT_RRTYPE_SSHFP;
+        fhold; fcall data_sshfp;
+    }
+    action _data_ipseckey {
+        s->r_type = KNOT_RRTYPE_IPSECKEY;
+        fhold; fcall data_ipseckey;
+    }
+    action _data_rrsig {
+        s->r_type = KNOT_RRTYPE_RRSIG;
+        fhold; fcall data_rrsig;
+    }
+    action _data_nsec {
+        s->r_type = KNOT_RRTYPE_NSEC;
+        fhold; fcall data_nsec;
+    }
+    action _data_dnskey {
+        s->r_type = KNOT_RRTYPE_DNSKEY;
+        fhold; fcall data_dnskey;
+    }
+    action _data_dhcid {
+        s->r_type = KNOT_RRTYPE_DHCID;
+        fhold; fcall data_dhcid;
+    }
+    action _data_nsec3 {
+        s->r_type = KNOT_RRTYPE_NSEC3;
+        fhold; fcall data_nsec3;
+    }
+    action _data_nsec3param {
+        s->r_type = KNOT_RRTYPE_NSEC3PARAM;
+        fhold; fcall data_nsec3param;
+    }
+    action _data_spf { // Same as TXT.
+        s->r_type = KNOT_RRTYPE_SPF;
+        fhold; fcall data_txt;
+    }
+    # END
+
+    # BEGIN - Smaller state machines
+    data_a :=
+        ( sep . ipv4_address )
+        $!_r_data_error
+        %_ret . all_wchar;
+
+    data_ns :=
+        ( sep . r_dname )
+        $!_r_data_error
+        %_ret . all_wchar;
+
+    data_soa :=
+        ( sep . r_dname . sep . r_dname . sep . number32 . sep . time32 .
+          sep . time32 . sep . time32 . sep . time32 )
+        $!_r_data_error
+        %_ret . all_wchar;
+
+    data_mx :=
+        ( sep . number16 . sep . r_dname )
+        $!_r_data_error
+        %_ret . all_wchar;
+
+    data_txt :=
+        ( sep . text_array )
+        $!_r_data_error
+        %_ret . end_wchar;
+
+    data_rp :=
+        ( sep . r_dname . sep . r_dname )
+        $!_r_data_error
+        %_ret . all_wchar;
+
+    data_aaaa :=
+        ( sep . ipv6_address )
+        $!_r_data_error
+        %_ret . all_wchar;
+
+    data_srv :=
+        ( sep . number16 . sep . number16 . sep . number16 . sep . r_dname )
+        $!_r_data_error
+        %_ret . all_wchar;
+
+    data_ds :=
+        ( sep . number16 . sep . number8 . sep . number8 . sep . hex_array )
+        $!_r_data_error
+        %_ret . end_wchar;
+
+    data_sshfp :=
+        ( sep . number8 . sep . number8 . sep . hex_array )
+        $!_r_data_error
+        %_ret . end_wchar;
+
+    data_ipseckey :=
+        ( sep . number8 . sep . gateway . sep . base64 )
+        $!_r_data_error
+        %_ret . end_wchar;
+
+    data_rrsig :=
+        ( sep . type_num . sep . number8 . sep . number8 . sep . number32 .
+          sep . timestamp . sep . timestamp . sep . number16 . sep . r_dname .
+          sep . base64 )
+        $!_r_data_error
+        %_ret . end_wchar;
+
+    data_nsec :=
+        ( sep . r_dname )
+        $!_r_data_error
+        %_call_bitmap . all_wchar # Bitmap is different machine!
+        %_ret . all_wchar;
+
+    data_dnskey :=
+        ( sep . number16 . sep . number8 . sep . number8 . sep . base64 )
+        $!_r_data_error
+        %_ret . end_wchar;
+
+    data_dhcid :=
+        ( sep . base64 )
+        $!_r_data_error
+        %_ret . end_wchar;
+
+    data_nsec3 :=
+        ( sep . number8 . sep . number8 . sep . number16 . sep . salt .
+          sep . hash )
+        $!_r_data_error
+        %_call_bitmap . all_wchar # Bitmap is different machine!
+        %_ret . all_wchar;
+
+    data_nsec3param :=
+        ( sep . number8 . sep . number8 . sep . number16 . sep . salt )
+        $!_r_data_error
+        %_ret . all_wchar;
+    # END
+
+    # Record type switch to appropriate smaller state machines.
+    r_type_r_data =
+        ( "A"i          %_data_a
+        | "NS"i         %_data_ns
+        | "CNAME"i      %_data_cname
+        | "SOA"i        %_data_soa
+        | "WKS"i        %_data_
+        | "PTR"i        %_data_ptr
+        | "HINFO"i      %_data_
+        | "MINFO"i      %_data_
+        | "MX"i         %_data_mx
+        | "TXT"i        %_data_txt
+        | "RP"i         %_data_rp
+        | "AFSDB"i      %_data_
+        | "X25"i        %_data_
+        | "ISDN"i       %_data_
+        | "RT"i         %_data_
+        | "NSAP"i       %_data_
+        | "SIG"i        %_data_
+        | "KEY"i        %_data_
+        | "PX"i         %_data_
+        | "AAAA"i       %_data_aaaa
+        | "LOC"i        %_data_
+        | "SRV"i        %_data_srv
+        | "NAPTR"i      %_data_
+        | "KX"i         %_data_
+        | "CERT"i       %_data_
+        | "DNAME"i      %_data_dname
+        | "OPT"i        %_data_
+        | "APL"i        %_data_
+        | "DS"i         %_data_ds
+        | "SSHFP"i      %_data_sshfp
+        | "IPSECKEY"i   %_data_ipseckey
+        | "RRSIG"i      %_data_rrsig
+        | "NSEC"i       %_data_nsec
+        | "DNSKEY"i     %_data_dnskey
+        | "DHCID"i      %_data_dhcid
+        | "NSEC3"i      %_data_nsec3
+        | "NSEC3PARAM"i %_data_nsec3param
+        | "TLSA"i       %_data_
+        | "SPF"i        %_data_spf
+        ) >_r_data_init $!_r_type_error . all_wchar;
+
+    # Resource record.
+    record =
+        r_owner . sep .
+        ( (r_class . sep . ((r_ttl   . sep) | (zlen %_default_r_ttl_exit  )))
+        | (r_ttl   . sep . ((r_class . sep) | (zlen %_default_r_class_exit)))
+        | zlen %_default_r_class_exit %_default_r_ttl_exit
+        ) $!_r_type_error .
+        r_type_r_data .
+        rest %_record_exit .
+        newline;
+
+    # Blank spaces with comments.
+    blank = rest . newline;
+
+    # Main processing loop.
+    main := (record | directive | blank)*;
+}%%
+
