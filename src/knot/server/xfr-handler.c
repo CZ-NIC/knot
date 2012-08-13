@@ -788,6 +788,7 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 	
 	/* Enqueue to worker that has zone locked for XFR/IN. */
 	int ret = pthread_mutex_trylock(&zd->xfr_in.lock);
+	rcu_read_lock();
 	if (ret != 0) {
 		dbg_xfr_verb("xfr: XFR/IN switching to another thread, "
 		             "zone '%s' is already in transfer\n",
@@ -807,6 +808,8 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 			rcu_read_unlock();
 			return KNOTD_ERROR;
 		}
+		
+		rcu_read_unlock();
 		return KNOTD_EOK;
 	} else {
 		zd->xfr_in.wrkr = w;
@@ -834,6 +837,7 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 		}
 		
 		if (ret < 0) {
+			rcu_read_unlock();
 			pthread_mutex_unlock(&zd->xfr_in.lock);
 			if (fd >= 0) {
 				close(fd);
@@ -847,6 +851,7 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 		/* Duplicate existing socket descriptor. */
 		data->session = dup(data->session);
 		if (data->session < 0) {
+			rcu_read_unlock();
 			pthread_mutex_unlock(&zd->xfr_in.lock);
 			log_server_warning("Not enough memory to duplicate \n"
 			                   "sockets.\n");
@@ -855,7 +860,6 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 	}
 
 	/* Fetch zone contents. */
-	rcu_read_lock();
 	const knot_zone_contents_t *contents = knot_zone_contents(zone);
 	if (!contents && data->type == XFR_TYPE_IIN) {
 		pthread_mutex_unlock(&zd->xfr_in.lock);
