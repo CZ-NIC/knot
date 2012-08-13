@@ -248,7 +248,7 @@ static int xfr_process_udp_resp(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 	rcu_read_lock();
 	if (knot_zone_flags(data->zone) & KNOT_ZONE_DISCARDED) {
 		rcu_read_unlock();
-		return ret;
+		return KNOTD_ECONNREFUSED;
 	}
 	rcu_read_unlock();
 	
