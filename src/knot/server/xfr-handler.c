@@ -668,7 +668,7 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 	}
 	
 	/* IXFR refused, try again with AXFR. */
-	if (zone && data->type == XFR_TYPE_IIN && ret == KNOT_EXFRREFUSED) {
+	if (data->type == XFR_TYPE_IIN && ret == KNOT_EXFRREFUSED) {
 		log_server_notice("%s Transfer failed, fallback to AXFR.\n",
 				  data->msgpref);
 		size_t bufsize = buflen;
@@ -1422,6 +1422,8 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		return KNOTD_ENOTRUNNING;
 	}
 	
+	rcu_read_lock();
+	
 	/* Update request. */
 	xfr.wire = buf;
 	xfr.wire_size = buflen;
@@ -1430,12 +1432,7 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 	xfr_update_msgpref(&xfr, NULL);
 	
 	/* Check if not already processing. */
-	zonedata_t *zd = NULL;
-	if (xfr.zone != NULL) {
-		zd = (zonedata_t *)knot_zone_data(xfr.zone);
-	}
-	
-	rcu_read_lock();
+	zonedata_t *zd = (zonedata_t *)knot_zone_data(xfr.zone);
 	
 	/* Check if the zone is not discarded. */
 	if (knot_zone_flags(xfr.zone) & KNOT_ZONE_DISCARDED) {
