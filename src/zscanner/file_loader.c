@@ -146,7 +146,6 @@ int file_loader_process(file_loader_t *fl)
 
     // Getting file information.
     if (fstat(fl->fd, &file_stat) == -1) {
-        file_loader_free(fl);
         printf("Fstat error!\n");
         return -1;
     }
@@ -197,14 +196,12 @@ int file_loader_process(file_loader_t *fl)
                     fl->fd,
                     block_start_position);
         if (data == MAP_FAILED) {
-            file_loader_free(fl);
             printf("Mmap error!\n");
             return -1;
         }
 
         // Check for sufficient block overlapping.
         if (fl->scanner->token_shift > overlapping_size) {
-            file_loader_free(fl);
             printf("Insufficient block overlapping!\n");
             return -1;
         };
