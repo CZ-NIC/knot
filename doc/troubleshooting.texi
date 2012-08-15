@@ -3,25 +3,42 @@
 
 @menu
 * General troubleshooting::     
-* Generating backtrace::        
+* Submitting a bugreport:: 
+* Generating backtrace::  
+* Debug messages::
 @end menu
 
 @node General troubleshooting
 @section General troubleshooting
 
-Check the LOGS!  Enable the debug output.
+First of all, check the logs. For logging settings see @ref{log}.
+By default, Knot DNS logs all error messages to syslog. Enabling at least
+the @code{warning} message severity may help you identify some problems. 
 
-If you want to add debug messages, there are two steps to do that.
-First you have to enable modules, that you are interested in.
-Available are: @code{server, zones, xfr, packet, dname, rr, ns, hash, compiler}.
-You can combine multiple modules as a comma-separated list.
-Then you can narrow the verbosity of the debugging message by specifying the
-verbosity as @code{brief, verbose, details}.
-For example:
-@example
-$ ./configure --enable-debug=server,packet --enable-debuglevel=brief
-$ ./configure --enable-debug=server,packet --enable-debuglevel=verbose
-@end example
+@node Submitting a bugreport
+@section Submitting a bugreport
+
+If you are unable to solve the problem by yourselves, you can submit a
+bugreport to the Knot DNS team. For security issues (e.g. crash) do not 
+use the public mailinglist. Instead, write to 
+@url{mailto:knot-dns@@labs.nic.cz, knot-dns@@labs.nic.cz}. All other bugs 
+and questions may be directed to the Knot DNS users mailinglist 
+(@url{mailto:knot-dns-users@@lists.nic.cz, knot-dns-users@@lists.nic.cz}).
+
+The bugreport should contain at least:
+@itemize
+@item Knot DNS version and type of installation (source, package, etc.),
+@item type and version of your operating system,
+@item basic hardware information,
+@item description of the bug,
+@item log output of all messages (category @code{any}) with severity Info 
+and higher (severity @code{info}),
+@item steps to reproduce the bug (if known),
+@item backtrace (if the bug caused a crash; see next section).
+@end itemize
+
+If it is possible, the actual configuration file and/or zone file(s) will
+be very useful as well.
 
 @node Generating backtrace
 @section Generating backtrace
@@ -47,3 +64,67 @@ Program received signal SIGSEGV.
 (gdb) bt
 (gdb) q
 @end example
+
+@node Debug messages
+@section Debug messages
+
+@menu
+* Enabling debug messages in server::
+@end menu
+
+In some cases the aforementioned information may not be enough to find
+and fix the bug. In these cases it may be useful to turn on debug messages.
+
+Two steps are required in order to log debug messages. First you need to 
+allow the debug messages in the server. Then the logging must be configured
+to log debug messages (see @ref{log}). It is recommended to log these 
+messages to a file. Firstly, the debug output may be rather large and 
+secondly it is easier to use the data for debugging.
+
+@node Enabling debug messages in server
+@subsection Enabling debug messages in server
+
+@menu
+* Debug messages Example::
+@end menu
+
+Allowing debug messages in the server is possible only when configuring the 
+sources. Two @command{configure} options are required to do this:
+
+@itemize
+@item
+The @code{--enable-debug} option specifies the server modules for which you
+want to enable debug messages. One or more of the following modules may be
+listed, separated by commas:
+
+@itemize
+@item @code{server} - Messages related to networking, threads and low-level 
+      journal handling.
+@item @code{zones} - All operations with zones - loading, updating, saving, 
+      timers, high-level journal management.
+@item @code{xfr} - AXFR, IXFR and NOTIFY handling.
+@item @code{packet} - Packet parsing and response creation.
+@item @code{dname} - Parsing, comparing and other operations on domain names.
+@item @code{rr} - Details of processed resource records.
+@item @code{ns} - Query processing, high-level handling of all requests 
+      (transfers, NOTIFY, normal queries).
+@item @code{hash} - Details of hash table (the main data structure) operation.
+@item @code{compiler} - Zone file compilation.
+@end itemize
+
+@item
+The @code{--enable-debuglevel} option is used to specify the verbosity of the
+debug output. Be careful with this, as the @code{details} verbosity may produce
+really large logs (in order of GBs). There are three levels of verbosity: 
+@code{brief}, @code{verbose} and @code{details}.
+
+@end itemize
+
+@node Debug messages Example
+@subsubsection Example
+
+@example
+$ ./configure --enable-debug=server,zones --enable-debuglevel=verbose
+@end example
+
+

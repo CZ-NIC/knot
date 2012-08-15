@@ -59,6 +59,9 @@ Knot DNS issue tracker:
 @url{https://git.nic.cz/redmine/projects/knot-dns,
 git.nic.cz/redmine/projects/knot-dns}
 
+Knot DNS users mailing list:
+@url{mailto:knot-dns-users@@lists.nic.cz, knot-dns-users@@lists.nic.cz}
+
 @node Scope of this document
 @section Scope of this document
 
