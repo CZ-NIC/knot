@@ -394,7 +394,7 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
   [ @code{notify-retries} @kbd{integer}@code{;} ]
   [ @code{zonefile-sync} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
   [ @code{ixfr-fslimit} ( @kbd{integer} | @kbd{integer}(@code{k} | @code{M} | @code{G}) )@code{;} ]
-
+  [ @code{ixfr-from-differences} @kbd{boolean}@code{;} ]
 @end example
 
 @node zones Semantic checks 

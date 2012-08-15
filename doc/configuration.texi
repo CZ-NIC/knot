@@ -65,7 +65,10 @@ port 53, which is the default port for the DNS.
 The @code{@ref{log}} statement defines the destination where Knot DNS
 will send it's log messages.  In this example we told Knot DNS to send
 its log messages with priority @code{debug}, @code{warning} and
-@code{notice} into the syslog.
+@code{notice} into the syslog. If you omit this sections, all levels
+will printed to either @code{stdout} or @code{stderr}, and the levels
+from the @code{warning} and more serious to syslog. You can find all
+possible combinations in the @ref{log}.
 
 @item
 The @code{@ref{zones}} statement is the one probably most important,
