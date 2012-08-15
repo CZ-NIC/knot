@@ -1,0 +1,296 @@
+.TH "knot.conf" "5" "August 2012" "CZ.NIC Labs" "Knot DNS, version 1.1"
+.SH "NAME"
+.LP
+.B knot.conf
+\- Configuration file manual for Knot DNS server. 
+.SH "SYNOPSIS"
+.LP
+.B knot.conf
+.SH "DESCRIPTION"
+.B knot.conf
+serves as an example of the configuration for knotc(8) and knotd(8).
+.SH "EXAMPLE"
+.LP
+# This is a comment.
+
+#
+# There are 4 main sections of this config file:
+#   system, zones, interfaces and log
+#
+
+# Section 'system' contains general options for the server
+system {
+
+  # Identity of the server (see RFC 4892). Not used yet.
+  identity "I have no mouth and must scream";
+
+  # Version of the server (see RFC 4892). Not used yet.
+  version "0.1";
+
+  # Server identifier 
+  # Use string format "text"
+  # Or hexstring 0x01ab00
+  nsid "myserver0";
+
+  # Working directory of the server
+  # Used to store compiled zones and PID file
+  storage "/tmp/knot-sample";
+
+  # Custom pidfile path
+  # default: pidfile is created in 'storage'.
+  pidfile "/tmp/knot.pid";
+
+  # Number of workers per interface
+  # This option is used to force number of threads used per interface
+  # Default: unset (auto-estimates optimal value from the number of online CPUs)
+  workers 1;
+
+  # User for running server
+  # May also specify user.group (f.e. knot.users)
+  user root;
+}
+
+# Section 'keys' contains list of TSIG keys
+keys {
+
+  # TSIG key
+  #
+  # format: name key-type "<key>";
+  # where key-type may be one of the following:
+  #   hmac-md5
+  #   hmac-sha1
+  #   hmac-sha224
+  #   hmac-sha256
+  #   hmac-sha384
+  #   hmac-sha512
+  # and <key> is the private key
+  key0.server0 hmac-md5 "Wg==";
+
+  # TSIG key for zone
+  key0.example.com hmac-md5 "==gW";
+}
+
+# Section 'interfaces' contains definitions of listening interfaces.
+interfaces {
+
+  # Interface entry
+  # 
+  # Format 1: <name> { address <address>; [port <port>;] }
+  ipv4 {                # <name> is an arbitrary symbolic name
+    address 127.0.0.1;  # <address> may be ither IPv4 or IPv6 address
+    port 53531;         # port is required for XFR/IN and NOTIFY/OUT 
+  }
+
+  # Format 2: <name> { address <address>@<port>; }
+  # shortipv4 {
+  #   address 127.0.0.1@53532;
+  #}
+
+  # Format 1 (IPv6 interface)
+  # ipv6 {
+  #   address ::1@53533;
+  # }
+
+  # Format 2 (IPv6 interface)
+  # ipv6b {
+  #   address [::1]@53534;
+  # }
+
+}
+
+# Section 'remotes' contains symbolic names for remote servers.
+# Syntax for 'remotes' is the same as for 'interfaces'.
+remotes {
+
+  # Remote entry
+  #
+  # Format 1: <name> { address <address>; [port <port>;] }
+  server0 {             # <name> is an arbitrary symbolic name
+    address 127.0.0.1;  # <address> may be ither IPv4 or IPv6 address
+    port 53531;         # port is optional (default: 53)
+    key key0.server0;   # (optional) specification of TSIG key associated for this remote
+    via ipv4;           # (optional) source interface for queries
+    via 82.35.64.59;    # (optional) source interface for queries, direct IPv4
+    via [::cafe];       # (optional) source interface for queries, direct IPv6
+  }
+
+  # Format 2: <name> { address <address>@<port>; }
+  server1 {
+    address 127.0.0.1@53001;
+  }
+}
+
+# Section 'zones' contains information about zones to be served.
+zones {
+
+  # Shared options for all listed zones
+  #
+
+  # Build differences from zone file changes
+  # Possible values: on|off
+  # Default value: off
+  ixfr-from-differences off;
+
+  # Enable semantic checks for all zones (if 'on')
+  # Possible values: on|off
+  # Default value: off
+  semantic-checks off;
+  
+  # Disable ANY type queries for authoritative answers (if 'on')
+  # Possible values: on|off
+  # Default value: off
+  disable-any off;
+
+  # NOTIFY response timeout
+  # Possible values: <1,...> (seconds)
+  # Default value: 60
+  notify-timeout 60;
+
+  # Number of retries for NOTIFY
+  # Possible values: <1,...>
+  # Default value: 5
+  notify-retries 5;
+
+  # Timeout for syncing changes from zone database to zonefile
+  # Possible values: <1..INT_MAX> (seconds)
+  # Default value: 1h (1 hour)
+  # It is also possible to suffix with unit size [s/m/h/d]
+  # f.e. 1s = 1 day, 1m = 1 minute, 1h = 1 hour, 1d = 1 day
+  zonefile-sync 1h;
+
+  # File size limit for IXFR journal
+  # Possible values: <1..INT_MAX>
+  # Default value: N/A (infinite)
+  # It is also possible to suffix with unit size [k/M/G]
+  # f.e. 1k, 100M, 2G
+  ixfr-fslimit 1G;
+
+  # Zone entry
+  #
+  # Format: <zone-name> { file "<path-to-zone-file>"; }
+  example.com {  # <zone-name> is the DNS name of the zone (zone root)
+    # <path-to-zone-file> may be either absolute or relative, in which case
+    #   it is considered relative to the current directory from which the server
+    #   was started.
+    file "samples/example.com.zone";
+    
+    # Build differences from zone file changes
+    # Possible values: on|off
+    # Default value: off
+    ixfr-from-differences off;
+
+    # Disable ANY type queries for authoritative answers (if 'on')
+    # Possible values: on|off
+    # Default value: off
+    disable-any off;
+
+    # Enable zone semantic checks
+    # Possible values: on|off
+    # Default value: off
+    semantic-checks on;
+
+    # NOTIFY response timeout (specific for current zone)
+    # Possible values: <1,...> (seconds)
+    # Default value: 60
+    notify-timeout 60;
+
+    # Number of retries for NOTIFY (specific for current zone)
+    # Possible values: <1,...>
+    # Default value: 5
+    notify-retries 5;
+
+    # Timeout for syncing changes from zone database to zonefile
+    # Possible values: <1..INT_MAX> (seconds)
+    # Default value: inherited from zones.zonefile-sync
+    # It is also possible to suffix with unit size [s/m/h/d]
+    # f.e. 1s = 1 day, 1m = 1 minute, 1h = 1 hour, 1d = 1 day
+    zonefile-sync 1h;
+
+    # XFR master server 
+    xfr-in server0;
+
+    # ACL list of XFR slaves
+    xfr-out server0, server1;
+
+    # ACL list of servers allowed to send NOTIFY queries 
+    notify-in server0;
+
+    # List of servers to send NOTIFY to 
+    notify-out server0, server1;
+  }
+}
+
+# Section 'log' configures logging of server messages.
+#
+# Logging recognizes 3 symbolic names of log devices: 
+#   stdout    - Standard output
+#   stderr    - Standard error output
+#   syslog    - Syslog
+# 
+# In addition, arbitrary number of log files may be specified (see below).
+#
+# Log messages are characterized by severity and category.
+# Supported severities: 
+#   debug     - Debug messages. Must be turned on at compile time.
+#   info      - Informational messages.
+#   notice    - Notices and hints.
+#   warning   - Warnings. An action from the operator may be required.
+#   error     - Recoverable error. Some action should be taken.
+#   fatal     - Non-recoverable errors resulting in server shutdown.
+#               (Not supported yet.)
+#   all       - All severities.
+#
+# Categories designate the source of the log message and roughly correspond
+#   to server modules
+# Supported categories:
+#   server    - Messages related to general operation of the server.
+#   zone      - Messages related to zones, zone parsing and loading.
+#   answering - Messages regarding query processing and response creation.
+#   any       - All categories
+#
+# More severities (separated by commas) may be listed for each category.
+# All applicable severities must be listed. 
+#   (I.e. specifying 'error' severity does mean: 'log error messages', 
+#    and NOT 'log all messages of severity error and above'.)
+#
+# Default settings (in case there are no entries in 'log' section or the section
+# is missing at all):
+#
+# stderr { any error; }
+# syslog { any error; }
+log {
+
+  # Log entry
+  #
+  # Format 1: 
+  # <log> { 
+  #   <category1> <severity1> [, <severity2> ...]; 
+  #   <category2> <severity1> [, <severity2> ...];
+  #   ...
+  # } 
+  syslog {     # <log> is a symbolic name of a log device (see above)
+    # log errors of any category 
+    any error;    # for <category> and <severity> see above
+    # log also warnings and notices from category 'zone'
+    zone warning, notice;
+    # log info from server
+    server info;
+  }
+
+  # Log fatal, warnings and errors to stderr
+  stderr {
+    any error, warning;
+  }
+
+  # Format 2:
+  # file <path> {
+  #   <category1> <severity1> [, <severity2> ...];
+  #   <category2> <severity1> [, <severity2> ...];
+  # }
+  file "/tmp/knot-sample/knotd.debug" {  # <path> is absolute or relative path to log file
+    server debug;
+  }
+}
+.SH "SEE ALSO"
+.LP
+knotd(8), knotc(8)
