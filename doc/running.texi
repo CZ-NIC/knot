@@ -13,7 +13,7 @@ effort, so each time the zone file changes you need to compile it.
 @example
 $ knotc -c knot.conf compile
 @end example
-Or alternatively, you can compile alternatively using the @code{-a} flag.
+Or alternatively, you can compile automatically using the @code{-a} flag.
 @example
 $ knotc -a -c knot.conf start
 $ knotc -a -c knot.conf reload
@@ -25,17 +25,24 @@ to do everything from zone compilation to controlling the server daemon.
 Here's a list of all possible actions:
 
 @example
-Usage: knotc [parameters] start|stop|restart|reload|running|compile [additional]
+Usage: knotc [parameters] start|stop|restart|reload|running|compile 
+             [additional]
+
 Parameters:
  -c [file], --config=[file] Select configuration file.
- -j [num], --jobs=[num]     Number of parallel tasks to run (only for 'compile').
+ -j [num], --jobs=[num]     Number of parallel tasks to run when 
+                            compiling.
  -f, --force                Force operation - override some checks.
- -v, --verbose              Verbose mode - additional runtime information.
+ -v, --verbose              Verbose mode - additional runtime 
+                            information.
  -V, --version              Print knot server version.
- -w, --wait                 Wait for the server to finish start/stop operations.
+ -w, --wait                 Wait for the server to finish start/stop 
+                            operations.
  -i, --interactive          Interactive mode (do not daemonize).
- -a, --auto                 Enable automatic recompilation (start or reload).
+ -a, --auto                 Enable automatic recompilation (start or 
+                            reload).
  -h, --help                 Print help and usage.
+
 Actions:
  start     Start knot server zone (no-op if running).
  stop      Stop knot server (no-op if not running).
@@ -45,7 +52,8 @@ Actions:
  running   Check if server is running.
  checkconf Check server configuration.
 
- checkzone Check zones (accepts specific zones, f.e. 'knotc checkzone example1.com example2.com').
+ checkzone Check zones (accepts specific zones, 
+           e.g. 'knotc checkzone example1.com example2.com').
  compile   Compile zones (accepts specific zones, see above).
 @end example
 
@@ -134,7 +142,7 @@ $ knotc -c master.conf reload  # reconfigure and load updated zones
 
 Or use the @code{-a} again.
 @example
-$ knotc -a -c master.conf reload # compiled updated zones and reconfigure
+$ knotc -a -c master.conf reload # compile zones and reconfigure
 @end example
 
 If the @code{ixfr-from-differences} from the @ref{zones} is enabled for the zone,
