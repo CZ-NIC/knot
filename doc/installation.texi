@@ -244,12 +244,26 @@ in the future, when new version are released.
 @node Installing Knot DNS RPMs on Fedora
 @subsection Installing Knot DNS RPMs on Fedora
 
-There are currently no official RPMs.
-[TODO]
+There are RPM packages for @code{knot} available for i386 and amd64 targets.
+If you want use the Fedora repository, add a file with the
+following lines into @file{/etc/yum.repos.d/}
+
+@example
+[knot]
+name=Network.CZ Repository
+baseurl=ftp://repo.network.cz/pub/redhat/
+enabled=1
+gpgcheck=0
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-network.cz
+@end example
 
 @node Installing Knot DNS from ports on FreeBSD
 @subsection Installing Knot DNS from ports on FreeBSD
 
-There is currently no official port on FreeBSD.
-[TODO]
+Knot DNS is in ports tree under @code{dns/knot}.
+
+@example
+$ cd /usr/ports/dns/knot  
+$ sudo make install
+@end example
 
