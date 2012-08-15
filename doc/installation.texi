@@ -20,6 +20,8 @@ Knot DNS build system relies on standard tools:
 @item
 make
 @item
+libtool
+@item
 autoconf >= 2.65
 @item
 flex >= 2.5.31
