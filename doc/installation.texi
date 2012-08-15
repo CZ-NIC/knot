@@ -80,6 +80,9 @@ OpenBSD,NetBSD and OS X platforms are supported from version 0.7.0.
 @node Installation from the sources
 @section Installation from the sources
 
+You can find the source files for the latest release on @url{www.knot-dns.cz}.
+Alternatively, you can fetch the sources from git repository @url{git://git.nic.cz/knot-dns.git}
+
 After unpacking the sources, the compilation and installation is
 a quite straightforward process using autotools.
 
