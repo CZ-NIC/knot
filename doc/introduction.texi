@@ -38,6 +38,7 @@ Knot DNS supports the following DNS features:
 @item Unknown RR types
 @end itemize
 
+@*
 Server features:
 
 @itemize
@@ -47,10 +48,13 @@ Server features:
 @item Semantic checks of zones
 @end itemize
 
+@*
 For more info and downloads see 
 @url{http://www.knot-dns.cz, www.knot-dns.cz}.
+
 Git repository: 
 @url{git://git.nic.cz/knot.git, git://git.nic.cz/knot.git}
+
 Knot DNS issue tracker: 
 @url{https://git.nic.cz/redmine/projects/knot-dns,
 git.nic.cz/redmine/projects/knot-dns}

@@ -4,6 +4,8 @@
 @documentencoding utf-8
 @settitle Knot DNS @value{VERSION}
 
+@paragraphindent 0
+
 @defindex st
 @syncodeindex vr st
 
