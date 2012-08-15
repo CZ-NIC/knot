@@ -1,4 +1,4 @@
-@node Knot DNS Configuration Reference, Migration for other DNS servers, Statement Index, Top
+@node Knot DNS Configuration Reference, , Statement Index, Top
 @appendix Knot DNS Configuration Reference
 
 This reference describe every configuration option in Knot DNS.

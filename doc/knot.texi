@@ -38,6 +38,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 @title Knot DNS Reference Manual
 @subtitle for version @value{VERSION}, @value{UPDATED}
 @author Ondrej Sury (@email{ondrej@@sury.org})
+@author Marek Vavrusa (@email{marek.vavrusa@@nic.cz})
+@author Lubos Slovak (@email{lubos.slovak@@nic.cz})
+@author Jan Kadlec (@email{jan.kadlec@@nic.cz})
 @page
 @vskip 0pt plus 1filll
 @insertcopying
@@ -58,11 +61,9 @@ This manual is for Knot DNS (version @value{VERSION}, @value{UPDATED}).
 * Knot DNS Installation::       
 * Knot DNS Configuration::      
 * Running Knot DNS::      
-* Security Considerations::     
 * Troubleshooting::             
 * Statement Index::             
 * Knot DNS Configuration Reference::  
-* Migration for other DNS servers::  
 
 @detailmenu
  --- The Detailed Node Listing ---
@@ -70,15 +71,14 @@ This manual is for Knot DNS (version @value{VERSION}, @value{UPDATED}).
 Introduction
 
 * What is Knot DNS::            
-* Scope of Document::           
-* Conventions Used in This Document::  
+* Scope of this document::           
 
 Knot DNS Resource Requirements
 
-* Hardware Requirements::       
-* CPU Requirements::            
-* Memory Requirements::         
-* Supported Operating System::  
+* Hardware requirements::       
+* CPU requirements::            
+* Memory requirements::         
+* Supported operating system::  
 
 Knot DNS Installation
 
@@ -192,13 +192,6 @@ Statement Definition and Usage
 * log Syntax::                  
 * log Statement Definition and Grammar::  
 
-Migration for other DNS servers
-
-* Knot DNS for BIND users::     
-* Knot DNS for NSD users::      
-* Knot DNS for PowerDNS users::  
-* Knot DNS for djbdns users::   
-
 @end detailmenu
 @end menu
 
@@ -210,13 +203,11 @@ Migration for other DNS servers
 @include configuration.texi
 @include running.texi
 @include troubleshooting.texi
-@include security.texi
 
 @c indices
 @include indices.texi
 
 @c appendixes
 @include reference.texi
-@include migration.texi
 
 @bye

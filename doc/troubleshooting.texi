@@ -1,4 +1,4 @@
-@node Troubleshooting, Statement Index, Security Considerations, Top
+@node Troubleshooting, Statement Index, Running Knot DNS, Top
 @chapter Troubleshooting
 
 @menu

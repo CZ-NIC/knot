@@ -1,4 +1,4 @@
-@node Running Knot DNS, Security Considerations, Knot DNS Configuration, Top
+@node Running Knot DNS, Troubleshooting, Knot DNS Configuration, Top
 @chapter Running Knot DNS
 
 @menu
