@@ -53,7 +53,7 @@ For more info and downloads see
 @url{http://www.knot-dns.cz, www.knot-dns.cz}.
 
 Git repository: 
-@url{git://git.nic.cz/knot.git, git://git.nic.cz/knot.git}
+@url{git://git.nic.cz/knot-dns.git, git://git.nic.cz/knot-dns.git}
 
 Knot DNS issue tracker: 
 @url{https://git.nic.cz/redmine/projects/knot-dns,
