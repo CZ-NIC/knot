@@ -35,3 +35,13 @@ www.zdrojak.root.cz.    600     IN      NSEC    root.cz.%CNAME RRSIG NSEC
 b A 192.111.22.3
  AAAA ::
 www.zdrojak.root.cz.    600     IN      NSEC    root.cz. A
+
+ TXT ""
+ TXT aa
+ TXT a a
+ TXT \;
+ TXT aa bb cc
+ TXT "aa"
+ TXT "a ; b"
+ TXT \043\ -
+

@@ -409,14 +409,38 @@
 
     timestamp = digit+ >_timestamp_init $_timestamp
                 %_timestamp_exit $!_timestamp_error;
-
     # END
 
     # BEGIN - Text processing
-    action _text_char {}
-    action _text_dec_init {}
-    action _text_dec {}
-    action _text_dec_exit {}
+    action _text_char {
+        if (s->item_length < MAX_LABEL_LENGTH) {
+            *(s->r_data_end) = fc;
+            s->item_length++;
+            s->r_data_end++;
+        }
+        else {
+            SCANNER_WARNING(ZSCANNER_ETEXT_OVERFLOW);
+            fhold; fgoto err_line;
+        }
+    }
+
+    action _text_dec_init {
+        if (s->item_length < MAX_LABEL_LENGTH) {
+            *(s->r_data_end) = 0;
+            s->item_length++;
+        }
+        else {
+            SCANNER_WARNING(ZSCANNER_ETEXT_OVERFLOW);
+            fhold; fgoto err_line;
+        }
+    }
+    action _text_dec {
+        *(s->r_data_end) *= 10;
+        *(s->r_data_end) += digit_to_num[(uint8_t)fc];
+    }
+    action _text_dec_exit {
+        s->r_data_end++;
+    }
 
     text_char =
         ( (33..126 - [\\;\"]) $_text_char                # One printable char.
@@ -425,9 +449,22 @@
            . digit {3}        $_text_dec %_text_dec_exit # "DDD" rest.
           )
         );
-    quoted_text_char = text_char | [ \t;];
+    quoted_text_char = text_char | ([ \t;] $_text_char);
 
-    text = ('\"' . quoted_text_char* . '\"') | text_char+;
+    action _text_init {
+        s->item_length = 0;
+        s->item_length_location = s->r_data_end;
+        s->r_data_length++;
+        s->r_data_end++;
+    }
+
+    action _text_exit {
+        *(s->item_length_location) = s->item_length;
+        s->r_data_length += s->item_length;
+    }
+
+    text = (('\"' . quoted_text_char* . '\"') | text_char+)
+           >_text_init %_text_exit;
 
     text_array = text . (sep . text)*;
     # END

@@ -83,6 +83,7 @@ const error_table_t knot_error_msgs[] = {
 	{ZSCANNER_EBAD_DATE, "Bad date!"},
 	{ZSCANNER_EBAD_TIME, "Bad time!"},
 	{ZSCANNER_EBAD_BITMAP, "Bad bitmap!"},
+	{ZSCANNER_ETEXT_OVERFLOW, "Text is too long!"},
 
 	{KNOT_ERROR, 0}
 };

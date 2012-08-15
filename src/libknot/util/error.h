@@ -101,6 +101,7 @@ enum knot_error {
 	ZSCANNER_EBAD_DATE,
 	ZSCANNER_EBAD_TIME,
 	ZSCANNER_EBAD_BITMAP,
+	ZSCANNER_ETEXT_OVERFLOW,
 };
 
 /*! \brief Table linking error messages to error codes. */
