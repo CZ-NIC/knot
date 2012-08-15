@@ -38,7 +38,7 @@ extern const uint8_t digit_to_num[];
 extern const uint8_t first_hex_to_num[];
 extern const uint8_t second_hex_to_num[];
 
-// Transformation array for Base64 encoding.
+// Transformation arrays for Base64 encoding.
 extern const uint8_t first_base64_to_num[];
 extern const uint8_t second_left_base64_to_num[];
 extern const uint8_t second_right_base64_to_num[];
@@ -46,7 +46,7 @@ extern const uint8_t third_left_base64_to_num[];
 extern const uint8_t third_right_base64_to_num[];
 extern const uint8_t fourth_base64_to_num[];
 
-// Transformation array for Base32hex encoding.
+// Transformation arrays for Base32hex encoding.
 extern const uint8_t first_base32hex_to_num[];
 extern const uint8_t second_left_base32hex_to_num[];
 extern const uint8_t second_right_base32hex_to_num[];

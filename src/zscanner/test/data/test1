@@ -58,3 +58,6 @@ $ORIGIN gut.
 vv      A 1.1.1.1
 
 .           AAAA ::5 ())
+
+$INCLUDE file1
+$INCLUDE file2 example.com

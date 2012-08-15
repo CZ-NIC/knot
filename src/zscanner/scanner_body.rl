@@ -452,20 +452,30 @@
 
     action _text_init {
         s->item_length = 0;
-        s->item_length_location = s->r_data_end;
-        s->r_data_length++;
-        s->r_data_end++;
     }
 
     action _text_exit {
-        *(s->item_length_location) = s->item_length;
         s->r_data_length += s->item_length;
     }
 
     text = (('\"' . quoted_text_char* . '\"') | text_char+)
            >_text_init %_text_exit;
 
-    text_array = text . (sep . text)*;
+    action _text_length_init {
+        s->item_length_location = s->r_data_end;
+        s->r_data_length++;
+        s->r_data_end++;
+    }
+
+    action _text_length_exit {
+        *(s->item_length_location) = s->item_length;
+    }
+
+    text_with_length = text >_text_length_init %_text_length_exit;
+
+    text_array = text_with_length . (sep . text_with_length)*;
+
+#    filename = text;
     # END
 
     # BEGIN - Directives processing
@@ -669,7 +679,7 @@
 
     base64_char = alnum | [+/];
     base64_padd = '=';
-    base64_quarted =
+    base64_quartet =
         ( base64_char          $_first_base64_char  . # A
           base64_char          $_second_base64_char . # AB
           ( ( base64_char      $_third_base64_char  . # ABC
@@ -682,7 +692,7 @@
         );
 
     # Base64 array with possibility of inside white spaces and multiline.
-    base64 = (base64_quarted+ . sep?)+ $!_base64_char_error;
+    base64 = (base64_quartet+ . sep?)+ $!_base64_char_error;
     # END
 
     # BEGIN - Base32hex processing (RFC 4648).
@@ -930,6 +940,7 @@
         }
     }
 
+    # Blank bitmap is allowed too.
     bitmap := (sep? | (sep . type_bit)* . sep?) >_bitmap_init
               %_bitmap_exit %_ret $!_bitmap_error . end_wchar;
 

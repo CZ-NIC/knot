@@ -25,7 +25,7 @@
 #include "zscanner/scanner.h"
 
 
-void print_wire_dname(const uint8_t *dname, uint32_t dname_length)
+static void print_wire_dname(const uint8_t *dname, uint32_t dname_length)
 {
     uint32_t label_length = 0, i = 0;
 

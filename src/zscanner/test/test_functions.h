@@ -27,11 +27,7 @@
 #ifndef _ZSCANNER__TEST_FUNCTIONS_H_
 #define _ZSCANNER__TEST_FUNCTIONS_H_
 
-#include <stdint.h>
-
 #include "zscanner/scanner.h"
-
-void print_wire_dname(const uint8_t *dname, uint32_t dname_length);
 
 void process_error(const scanner_t *scanner);
 
