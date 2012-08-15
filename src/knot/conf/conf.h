@@ -349,6 +349,18 @@ char* strcdup(const char *s1, const char *s2);
  */
 char* strcpath(char *path);
 
+/*! \brief Free zone config. */
+void conf_free_zone(conf_zone_t *zone);
+
+/*! \brief Free TSIG key config. */
+void conf_free_key(conf_key_t *k);
+
+/*! \brief Free interface config. */
+void conf_free_iface(conf_iface_t *iface);
+
+/*! \brief Free log config. */
+void conf_free_log(conf_log_t *log);
+
 #endif /* _KNOTD_CONF_H_ */
 
 /*! @} */

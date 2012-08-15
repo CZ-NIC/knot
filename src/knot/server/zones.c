@@ -118,6 +118,9 @@ static int zonedata_destroy(knot_zone_t *zone)
 
 	/* Close IXFR db. */
 	journal_release(zd->ixfr_db);
+	
+	/* Free assigned config. */
+	conf_free_zone(zd->conf);
 
 	free(zd);
 	
@@ -1490,7 +1493,10 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 		assert(zd != NULL);
 
 		/* Update refs. */
-		zd->conf = z;
+		if (zd->conf != z) {
+			conf_free_zone(zd->conf);
+			zd->conf = z;
+		}
 
 		/* Update ACLs. */
 		dbg_zones("Updating zone ACLs.\n");
@@ -1664,11 +1670,15 @@ static int zonewalker(dthread_t *thread)
 	pthread_mutex_lock(&zw->lock);
 	zw->inserted += inserted;
 	for (int i = 0; i < inserted; ++i) {
+		zonedata_t *zd = (zonedata_t *)knot_zone_data(zones[i]);
 		if (knot_zonedb_add_zone(zw->db_new, zones[i]) != KNOT_EOK) {
-			zonedata_t *zd = (zonedata_t *)knot_zone_data(zones[i]);
 			log_server_error("Failed to insert zone '%s' "
 			                 "into database.\n", zd->conf->name);
 			knot_zone_deep_free(zones + i, 0);
+		} else {
+			/* Unlink zone config from conf(),
+			 * transferring ownership to zonedata. */
+			rem_node(&zd->conf->n);
 		}
 	}
 	pthread_mutex_unlock(&zw->lock);
@@ -1782,6 +1792,18 @@ dbg_zones_exec(
                                        "from database.\n", name);
 			free(name);
 );
+			/* Invalidate ACLs - since we would need to copy each
+			 * remote data and keep ownership, I think it's no harm
+			 * to drop all ACLs for the discarded zone.
+			 * refs #1976 */
+			zonedata_t *zd = (zonedata_t*)knot_zone_data(old_zone);
+			conf_zone_t *zconf = zd->conf;
+			WALK_LIST_FREE(zconf->acl.xfr_in);
+			WALK_LIST_FREE(zconf->acl.xfr_out);
+			WALK_LIST_FREE(zconf->acl.notify_in);
+			WALK_LIST_FREE(zconf->acl.notify_out);
+			
+			/* Remove from zone db. */
 			knot_zone_t * rm = knot_zonedb_remove_zone(db_old,
 			                              knot_zone_name(old_zone));
 			assert(rm == old_zone);
