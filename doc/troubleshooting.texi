@@ -2,14 +2,10 @@
 @chapter Troubleshooting
 
 @menu
-* General troubleshooting::     
 * Submitting a bugreport:: 
 * Generating backtrace::  
 * Debug messages::
 @end menu
-
-@node General troubleshooting
-@section General troubleshooting
 
 First of all, check the logs. For logging settings see @ref{log}.
 By default, Knot DNS logs all error messages to syslog. Enabling at least

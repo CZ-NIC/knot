@@ -127,12 +127,23 @@ Sample Configurations
 
 Running Knot DNS
 
-* 
+* Running a slave server::
+* Running a master server::
+* Controlling running daemon::
 
 Troubleshooting
 
-* General troubleshooting::     
-* Generating backtrace::        
+* Submitting a bugreport::
+* Generating backtrace::  
+* Debug messages::      
+
+Debug messages
+
+* Enabling debug messages in server::
+
+Enabling debug messages in server
+
+* Example::
 
 Knot DNS Configuration Reference
 
