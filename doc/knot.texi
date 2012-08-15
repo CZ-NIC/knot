@@ -71,6 +71,7 @@ This manual is for Knot DNS (version @value{VERSION}, @value{UPDATED}).
 Introduction
 
 * What is Knot DNS::            
+* Knot DNS features::
 * Scope of this document::           
 
 Knot DNS Resource Requirements

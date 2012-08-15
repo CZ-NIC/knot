@@ -6,6 +6,7 @@ Domain Name System.
 
 @menu
 * What is Knot DNS::            
+* Knot DNS features::
 * Scope of this document::           
 @end menu
 
@@ -20,6 +21,9 @@ any other zone as well.
 Knot DNS benefits from its multi-threaded and mostly lock-free
 implementation which allow it to scale well on SMP systems and
 operate non-stop even when adding or removing zones.
+
+@node Knot DNS features
+@section Knot DNS features
 
 Knot DNS supports the following DNS features:
 
@@ -51,8 +55,8 @@ Knot DNS issue tracker:
 @url{https://git.nic.cz/redmine/projects/knot-dns,
 git.nic.cz/redmine/projects/knot-dns}
 
-@node Scope of Document
-@section Scope of Document
+@node Scope of this document
+@section Scope of this document
 
 This document covers the basic information on installing,
 configuring and troubleshooting the Knot DNS server.
