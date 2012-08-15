@@ -136,24 +136,23 @@
     }
 
     action _label_dec_init {
-        (s->dname)[s->dname_tmp_length] = 0;
-    }
-    action _label_dec {
-        (s->dname)[s->dname_tmp_length] *= 10;
-        (s->dname)[s->dname_tmp_length] += digit_to_num[(uint8_t)fc];
-    }
-    action _label_dec_exit {
-        (s->dname)[s->dname_tmp_length] =
-            ascii_to_lower[(s->dname)[s->dname_tmp_length]];
-
         if (s->item_length < MAX_LABEL_LENGTH) {
-            s->dname_tmp_length++;
+            (s->dname)[s->dname_tmp_length] = 0;
             s->item_length++;
         }
         else {
             SCANNER_WARNING(ZSCANNER_ELABEL_OVERFLOW);
             fhold; fgoto err_line;
         }
+    }
+    action _label_dec {
+        (s->dname)[s->dname_tmp_length] *= 10;
+        (s->dname)[s->dname_tmp_length] += digit_to_num[(uint8_t)fc];
+    }
+    action _label_dec_exit {
+        (s->dname)[s->dname_tmp_length] =   // If the char is in upper case.
+            ascii_to_lower[(s->dname)[s->dname_tmp_length]];
+        s->dname_tmp_length++;
     }
 
     label_char =
