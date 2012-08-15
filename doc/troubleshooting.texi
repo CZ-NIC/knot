@@ -13,14 +13,37 @@ Check the LOGS!  Enable the debug output.
 
 If you want to add debug messages, there are two steps to do that.
 First you have to enable modules, that you are interested in.
-Available are: server, zones, xfr, packet, dname, rr, ns, hash, compiler.
+Available are: @code{server, zones, xfr, packet, dname, rr, ns, hash, compiler}.
 You can combine multiple modules as a comma-separated list.
-For example: @command{./configure --enable-debug=server,packet}
-
 Then you can narrow the verbosity of the debugging message by specifying the
-verbosity as brief, verbose or details.
-For example:  @command{./configure --enable-debuglevel=verbose}.
-
+verbosity as @code{brief, verbose, details}.
+For example:
+@example
+$ ./configure --enable-debug=server,packet --enable-debuglevel=brief
+$ ./configure --enable-debug=server,packet --enable-debuglevel=verbose
+@end example
 
 @node Generating backtrace
 @section Generating backtrace
+
+There are several ways to achieve that, the most common is to run
+the binary in a @code{gdb} debugger or attach to it.
+@example
+$ gdb --args knotd -c knot.conf
+(gdb) run
+...
+Program received signal SIGSEGV.
+(gdb) bt
+(gdb) q
+@end example
+
+Or attach to the running program.
+@example
+$ knotc -c knot.conf start
+$ sudo gdb --pid <KNOT_PID>
+(gdb) continue
+...
+Program received signal SIGSEGV.
+(gdb) bt
+(gdb) q
+@end example
