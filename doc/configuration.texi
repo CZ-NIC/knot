@@ -39,7 +39,9 @@ log @{
 
 zones @{
   example.com @{  
-    file "/etc/knot/example.com"; 
+    file "/etc/knot/example.com";
+    semantic-checks off;
+    ixfr-from-differences off;
   @}
 @}
 	
@@ -74,7 +76,12 @@ possible combinations in the @ref{log}.
 The @code{@ref{zones}} statement is the one probably most important,
 because it defines the zones Knot DNS will serve.  In its most simple
 form you define zone by it's name and defined the filename where Knot
-DNS can find the zone contents.
+DNS can find the zone contents. You can turn on more detailed semantic
+checks of zone file in this statement. Refer to @code{@ref{zones Semantic checks}} to see
+which checks are enabled by default and which are optional. If Knot is
+being run as a master server, experimental feature @code{ixfr-from-differences}
+can be enabled to create IXFR changesets from changest made to master zone file.
+See @ref{Controlling running daemon} for more information.
 @end enumerate
 
 @node Slave configuration
