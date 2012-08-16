@@ -16,7 +16,7 @@
 %%{
     machine zone_scanner;
 
-    # Come back function to calling state machine.
+    # Comeback function to calling state machine.
     action _ret {
         fhold; fret;
     }
@@ -173,7 +173,6 @@
     action _absolute_dname_exit {
         (s->dname)[s->dname_tmp_length++] = 0;
     }
-
     action _relative_dname_exit {
         memcpy(s->dname + s->dname_tmp_length,
                s->zone_origin,
@@ -186,7 +185,6 @@
             fhold; fgoto err_line;
         }
     }
-
     action _origin_dname_exit {
         memcpy(s->dname,
                s->zone_origin,
@@ -195,18 +193,10 @@
         s->dname_tmp_length = s->zone_origin_length;
     }
 
-    action _zone_origin_init {
-        s->dname = s->zone_origin;
-    }
-    action _zone_origin_exit {
-        s->zone_origin_length = s->dname_tmp_length;
-    }
-
     action _dname_init {
         s->item_length_position = 0;
         s->dname_tmp_length = 0;
     }
-
     action _dname_error {
             SCANNER_WARNING(ZSCANNER_EBAD_DNAME_CHAR);
             fhold; fgoto err_line;
@@ -474,8 +464,6 @@
     text_with_length = text >_text_length_init %_text_length_exit;
 
     text_array = text_with_length . (sep . text_with_length)*;
-
-#    filename = text;
     # END
 
     # BEGIN - Directives processing
@@ -484,26 +472,78 @@
             s->default_ttl = (uint32_t)(s->number64);
         }
         else {
-            SCANNER_WARNING(ZSCANNER_ENUMBER32_OVERFLOW);
+            SCANNER_ERROR(ZSCANNER_ENUMBER32_OVERFLOW);
             fhold; fgoto err_line;
         }
     }
 
+    default_ttl = time %_default_ttl_exit;
+
+    action _zone_origin_init {
+        s->dname = s->zone_origin;
+    }
+    action _zone_origin_exit {
+        s->zone_origin_length = s->dname_tmp_length;
+    }
     action _zone_origin_error {
         SCANNER_ERROR(ZSCANNER_EBAD_ORIGIN);
         fhold; fgoto err_line;
     }
 
-    default_ttl = time %_default_ttl_exit;
-
     zone_origin = absolute_dname >_zone_origin_init %_zone_origin_exit
                     $!_zone_origin_error;
+
+    # For filename store r_data array is used here (with terminating \0).
+    action _incl_filename_init {
+        s->r_data_length = 0;
+        s->r_data_end = s->r_data;
+        (s->buffer)[0] = 0; // Clean space for origin too.
+    }
+    action _incl_filename_exit {
+        // Ending filename string.
+        *(s->r_data_end++) = 0;
+        s->r_data_length = 0;
+    }
+    action _incl_filename_error {
+        SCANNER_ERROR(ZSCANNER_EBAD_INCLUDE_FILENAME);
+        fhold; fgoto err_line;
+    }
+
+    # For origin string store buffer array is used here (with terminating \0).
+    action _incl_origin_init {
+        s->r_data_end = s->buffer;
+    }
+    action _incl_origin_exit {
+        // Ending origin string.
+        *(s->r_data_end++) = 0;
+    }
+    action _incl_origin_error {
+        SCANNER_ERROR(ZSCANNER_EBAD_INCLUDE_ORIGIN);
+        fhold; fgoto err_line;
+    }
+
+    # Include is stand-alone machine due to reduction of complexity.
+    incl := (sep . text >_incl_filename_init %_incl_filename_exit
+             $!_incl_filename_error .
+             (sep . text >_incl_origin_init %_incl_origin_exit
+             $!_incl_origin_error)?
+            ) %_ret <: all_wchar;
+
+    action _call_include {
+        fhold; fcall incl;
+    }
+
+    action _directive_error {
+        SCANNER_ERROR(ZSCANNER_EBAD_DIRECTIVE);
+        fhold; fgoto err_line;
+    }
 
     directive = '$' .
                  ( ("TTL"i     . sep . default_ttl)
                  | ("ORIGIN"i  . sep . zone_origin)
-#                 | ("INCLUDE"i . sep . filename . (sep . absolute_dname)?)
-                 ) . rest .
+                 | ("INCLUDE"i %_call_include . all_wchar)
+                 ) $!_directive_error .
+                 rest .
                  newline;
     # END
 
@@ -974,31 +1014,6 @@
     r_dname = dname >_r_dname_init %_r_dname_exit;
     # END
 
-    action _data_ {
-        SCANNER_WARNING(ZSCANNER_EUNSUPPORTED_TYPE);
-        fhold; fgoto err_line;
-    }
-
-    action _r_type_error {
-        SCANNER_WARNING(ZSCANNER_EUNSUPPORTED_TYPE);
-        fhold; fgoto err_line;
-    }
-
-    action _r_data_init {
-        s->r_data_length = 0;
-        s->r_data_end = s->r_data + 2; // First 2 bytes are r_data length.
-    }
-    action _r_data_error {
-        SCANNER_WARNING(ZSCANNER_EBAD_RDATA);
-        fhold; fgoto err_line;
-    }
-
-    action _record_exit {
-        *(s->r_data_length_position) = htons(s->r_data_length);
-        s->process_record(s);
-    }
-
-
     # BEGIN - Auxiliary functions which call smaller state machines
     action _data_a {
         s->r_type = KNOT_RRTYPE_A;
@@ -1087,6 +1102,11 @@
     # END
 
     # BEGIN - Smaller state machines
+    action _r_data_error {
+        SCANNER_WARNING(ZSCANNER_EBAD_RDATA);
+        fhold; fgoto err_line;
+    }
+
     data_a :=
         ( sep . ipv4_address )
         $!_r_data_error
@@ -1180,6 +1200,22 @@
     # END
 
     # Record type switch to appropriate smaller state machines.
+    action _r_data_init {
+        s->r_data_length = 0;
+        s->r_data_end = s->r_data + 2; // First 2 bytes are r_data length.
+    }
+
+    action _r_type_error {
+        SCANNER_WARNING(ZSCANNER_EUNSUPPORTED_TYPE);
+        fhold; fgoto err_line;
+    }
+
+    # Temporary action!!
+    action _data_ {
+        SCANNER_WARNING(ZSCANNER_EUNSUPPORTED_TYPE);
+        fhold; fgoto err_line;
+    }
+
     r_type_r_data =
         ( "A"i          %_data_a
         | "NS"i         %_data_ns
@@ -1221,6 +1257,11 @@
         | "TLSA"i       %_data_
         | "SPF"i        %_data_spf
         ) >_r_data_init $!_r_type_error . all_wchar;
+
+    action _record_exit {
+        *(s->r_data_length_position) = htons(s->r_data_length);
+        s->process_record(s);
+    }
 
     # Resource record.
     record =
