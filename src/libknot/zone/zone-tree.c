@@ -355,9 +355,17 @@ dbg_zone_exec_detail(
 		/*! \todo Here we assume that the 'prev' pointer always points
 		 *        to an empty non-terminal.
 		 */
+		/*! \todo What did I mean by the previous TODO??
+		 *        Nevertheless, it seems to me that node->prev can be
+		 *        an empty non-terminal too, cannot it?
+		 */
+		dbg_zone_detail("Previous: %p\n", prev->node);
 		*previous = (knot_node_rrset_count(prev->node) == 0)
 		            ? knot_node_get_previous(prev->node)
 		            : prev->node;
+		dbg_zone_detail("Previous: %p, is empty: %d\n", *previous,
+		                (*previous) ? knot_node_is_empty(*previous)
+		                            : -1);
 	}
 
 	assert(exact_match >= 0);

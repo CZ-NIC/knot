@@ -132,11 +132,6 @@ void knot_node_dump(knot_node_t *node, void *loaded_zone)
 	hex_print((char *)node->owner->labels, node->owner->label_count);
 	fprintf(stderr, "node: %p\n", node);
 	fprintf(stderr, "node (in node's owner): %p\n", node->owner->node);
-	if (loaded_zone && node->prev != NULL) {
-		name = knot_dname_to_str(node->prev->owner);
-		fprintf(stderr, "previous node: %s\n", name);
-		free(name);
-	}
 
 	if (knot_node_is_deleg_point(node)) {
 		fprintf(stderr, "delegation point\n");
@@ -167,6 +162,15 @@ void knot_node_dump(knot_node_t *node, void *loaded_zone)
 		free(name);
 	} else {
 		fprintf(stderr, "previous node: none\n");
+	}
+
+	if (node->next != NULL) {
+		fprintf(stderr, "next node: %p\n", node->next);
+		name = knot_dname_to_str(node->next->owner);
+		fprintf(stderr, "next node: %s\n", name);
+		free(name);
+	} else {
+		fprintf(stderr, "next node: none\n");
 	}
 
 	knot_rrset_t **rrsets = knot_node_get_rrsets(node);

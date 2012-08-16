@@ -2975,11 +2975,13 @@ static int xfrin_remove_empty_nodes(knot_zone_contents_t *contents,
 		zone_node = NULL;
 		hash_item = NULL;
 
+dbg_xfrin_exec_detail(
 		char *name = knot_dname_to_str(knot_node_owner(
 		                                       changes->old_nodes[i]));
 		dbg_xfrin_detail("Old node #%d: %p, %s\n", i,
 		                 changes->old_nodes[i], name);
 		free(name);
+);
 
 		ret = knot_zone_contents_remove_node(
 			contents, changes->old_nodes[i], &zone_node,
@@ -2992,9 +2994,7 @@ static int xfrin_remove_empty_nodes(knot_zone_contents_t *contents,
 
 		free(hash_item);
 		free(zone_node);
-		//knot_node_free(&changes->old_nodes[i], 0);
 	}
-	//changes->old_nodes_count = 0;
 
 	// remove NSEC3 nodes
 	for (int i = 0; i < changes->old_nsec3_count; ++i) {
@@ -3015,9 +3015,7 @@ static int xfrin_remove_empty_nodes(knot_zone_contents_t *contents,
 		}
 
 		free(zone_node);
-		//knot_node_free(&changes->old_nsec3[i], 0);
 	}
-	//changes->old_nsec3_count = 0;
 
 	return KNOT_EOK;
 }
