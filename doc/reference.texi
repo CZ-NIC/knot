@@ -1,4 +1,4 @@
-@node Knot DNS Configuration Reference, Migration for other DNS servers, Statement Index, Top
+@node Knot DNS Configuration Reference, , Statement Index, Top
 @appendix Knot DNS Configuration Reference
 
 This reference describe every configuration option in Knot DNS.
@@ -338,6 +338,7 @@ server for different zone.
 @menu
 * remotes Syntax::              
 * remotes Statement Definition and Grammar::  
+* remotes Examples::
 @end menu
 
 @node remotes Syntax
@@ -360,6 +361,70 @@ server for different zone.
 @node remotes Statement Definition and Grammar
 @subsection Statement Definition and Grammar
 
+@menu
+* remote_id::
+* address::
+* port::
+* key::
+* via::
+@end menu
+
+@node remote_id
+@subsubsection @kbd{remote_id}
+@vindex remote_id
+
+@kbd{remote_id} contains a symbolic name for a remote server.
+
+@node address
+@subsubsection address
+@vindex address
+
+@kbd{address} sets an IPv4 or IPv6 address for this particular @code{remote}.
+
+@node port
+@subsubsection port
+@vindex port
+
+@code{port} section contains a port number for current @code{remote}.  This section is optional with default port set to 53.
+
+@node key
+@subsubsection key
+@vindex key
+
+@code{key} section contains a key associated with this @code{remote}. This section is optional.
+
+
+@node via
+@subsubsection via
+@vindex via
+
+@code{via} section specifies which interface will be used to comunnicate with this @code{remote}. This section is optional.
+
+@node remotes Examples
+@subsection remotes Examples
+
+@example
+
+remotes @{
+
+  # Format 1:
+  server0 @{            
+    address 127.0.0.1; 
+    port 53531;       
+    key key0.server0;
+    via ipv4;       
+    via 82.35.64.59;    # IPv4
+    via [::cafe];       # IPv6
+  @}
+
+  # Format 2:
+  server1 @{
+    address 127.0.0.1@@53001;
+  @}
+@}
+
+@end example
+
 @node zones
 @section @code{zones} Statement
 
@@ -367,8 +432,9 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
 
 @menu
 * zones Syntax::                
-* zones Semantic checks::     
-* zones Statement Definition and Grammar::  
+* zones Statement Definition and Grammar::
+* zones Example::
+* zones List of zone semantic checks::     
 @end menu
 
 @node zones Syntax
@@ -389,16 +455,159 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
 
 @kbd{zone_options} :=
   [ @code{semantic-checks} @kbd{boolean}@code{;} ]
+  [ @code{ixfr-from-differences} @kbd{boolean}@code{;} ]
   [ @code{disable-any} @kbd{boolean}@code{;} ]
   [ @code{notify-timeout} @kbd{integer}@code{;} ]
   [ @code{notify-retries} @kbd{integer}@code{;} ]
   [ @code{zonefile-sync} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
   [ @code{ixfr-fslimit} ( @kbd{integer} | @kbd{integer}(@code{k} | @code{M} | @code{G}) )@code{;} ]
-
+  [ @code{ixfr-from-differences} @kbd{boolean}@code{;} ]
 @end example
 
-@node zones Semantic checks 
-@subsection List of zone semantic checks 
+@node zones Statement Definition and Grammar
+@subsection Statement Definition and Grammar
+
+@menu
+* zone_id::
+* file::
+* xfr-in::                    
+* xfr-out::                     
+* notify-in::                        
+* notify-out::                     
+* semantic-checks::                     
+* ixfr-from-differences::
+* disable-any::                     
+* notify-timeout::                     
+* notify-retries::                     
+* zonefile-sync::                    
+* ixfr-fslimit::                     
+@end menu
+
+@node zone_id
+@subsubsection @kbd{zone_id}
+@vindex zone_id
+
+@code{zone_id} is zone origin, and as such is a domain name that may or may not end with a ".".
+If no $ORIGIN directive is inside actual zone file, this domain name will be used in place of "@@".
+
+@node file
+@subsubsection file
+@vindex file
+
+After @code{file} statement comes path to zone file. You can use either full or relative path, with relative
+path's origin in @ref{storage} directory.
+
+@node xfr-in
+@subsubsection xfr-in
+@vindex xfr-in
+
+In @code{xfr-in} statement user specifies which remotes will be permited to perform a zone transfer to update the zone.
+Remotes are defined in @ref{remotes}.
+
+@node xfr-out
+@subsubsection xfr-out
+@vindex xfr-out
+
+In @code{xfr-out} statement user specifies which remotes will be permited to obtain zone's contents via zone transfer.
+Remotes are defined in @ref{remotes}.
+
+@node notify-in
+@subsubsection notify-in
+@vindex notify-in
+
+@code{notify-in} defines which remotes will be permited to send NOTIFY for this particular zone.
+
+@node notify-out
+@subsubsection notify-out
+@vindex notify-out
+
+@code{notify-out} defines to which remotes will your server send NOTIFYs about this particular zone.
+
+@node semantic-checks
+@subsubsection semantic-checks
+@vindex semantic-checks 
+
+@code{semantic-checks} statement turns on optional semantic checks for this particular zone.
+See @ref{zones List of zone semantic checks} for more information. Possible values are @code{on} and @code{off}.
+Disabled by default.
+
+@node ixfr-from-differences
+@subsubsection ixfr-from-differences
+@vindex ixfr-from-differences
+
+EXPERIMENTAL: @code{ixfr-from-differences} is only relevant if you are running Knot as a master for this zone.
+By turning this on you will tell Knot to create changesets from changes you made to a zone file upon server reload.
+See @ref{Controlling running daemon} for more information. Possible values are @code{on} and @code{off}. Disabled by default.
+
+@node disable-any
+@subsubsection disable-any
+@vindex disable-any
+
+If you enable @code{disable-any}, all ANY queries over UDP will be answered with empty response and with the TC bit set.
+Use to minimize risk of DNS replay attack. Disabled by default.
+
+@node notify-timeout
+@subsubsection notify-timeout
+@vindex notify-timeout
+
+@code{notify-timeout} in seconds specifies how long will server wait for NOTIFY response. Possible values are 1 to INT_MAX.
+Default value is 60 seconds.
+
+@node notify-retries
+@subsubsection notify-retries
+@vindex notify-retries
+
+@code{notify-retries} tells the server how many times it can retry to send a NOTIFY. Possible values 
+are 1 to INT_MAX and default value is 5.
+
+@node zonefile-sync
+@subsubsection zonefile-sync
+@vindex zonefile-sync
+
+@code{zonefile-sync} is only relevant in slave server scenario. It is a time after which current zone in memory will be synced
+to its file on a disk (as set in @ref{file}). Possible values are 1 to INT_MAX, optionally suffixed by unit size (s/m/h/d) - 1s is one socond, 1m one minute, 1h one hour and 1d one day with default value set to 1h.
+
+@node ixfr-fslimit
+@subsubsection ixfr-fslimit
+@vindex ixfr-fslimit
+
+@code{ixfr-fslimit} sets a maximum size for zone's journal. Possible values are 1 to INT_MAX, with optional suffixes k, m and G. I.e. 1k, 1m and 1G with default value not being set, meaning that journal file can grow without limitations.
+
+@node zones Example
+@subsection zones Example
+
+@example
+@group
+zones @{
+
+  # Shared options for all listed zones
+  ixfr-from-differences off;
+  semantic-checks off;
+  disable-any off;
+  notify-timeout 60;
+  notify-retries 5;
+  zonefile-sync 1h;
+  ixfr-fslimit 1G;
+  example.com @{
+    file "samples/example.com.zone";
+    ixfr-from-differences off; #experimental
+    disable-any off;
+    semantic-checks on;
+    notify-timeout 60;
+    notify-retries 5;
+    zonefile-sync 1h;
+    xfr-in server0;
+    xfr-out server0, server1;
+    notify-in server0;
+    notify-out server0, server1;
+  @}
+@}
+
+@end group
+@end example
+
+@node zones List of zone semantic checks 
+@subsection List of zone semantic checks
 
 The @code{semantic-checks} statement turns on extra zone file semantic
 checks on. Several checks are enabled on default and cannot be turned
@@ -439,27 +648,113 @@ loaded even upon discovering an error:
 - Wrong key flags or wrong key in RRSIG record
 @end example
 
-@node zones Statement Definition and Grammar
-@subsection Statement Definition and Grammar
-
 @node log
 @section @code{log} Statement
 @stindex log
 
 @menu
 * log Syntax::                  
-* log Statement Definition and Grammar::  
+* log Statement Definition and Grammar::
+* log Example::
 @end menu
 
 @node log Syntax
 @subsection Syntax
 
+@example
+@code{log} @code{@{}
+  @kbd{log_name} @code{@{}
+    [ @kbd{category} @kbd{severity} [ @kbd{severity} @dots{} ]@code{;} ]
+    [ @code{log_file} @kbd{filename} @{
+	   [ @kbd{category} @kbd{severity} [ @kbd{severity} @dots{} ]@code{;} ] 
+      @} ]
+  @code{@}}
+@code{@}}
+
+@end example
+
 @node log Statement Definition and Grammar
 @subsection Statement Definition and Grammar
 
+@menu
+* log_name::
+* category::
+* severity::
+* log_file::
+@end menu
+
 The @code{log} statement configures logging output of Knot DNS.  You
-can configure Knot DNS to log into file or system log.  Each log
-message has it's priority and you can configure priorities for each
+can configure Knot DNS to log into file or system log. There are several
+logging categories to choose from. Each log
+message has its priority and you can configure priorities for each
 log destination.
 
+@node log_name
+@subsubsection @kbd{log_name}
+@vindex @kbd{log_name}
+
+@kbd{log_name} recognizes 3 symbolic log names :
+@itemize
+@item @emph{stdout} - logging to standard output
+@item @emph{stderr} - logging to standard error output
+@item @emph{syslog} - logging to syslog
+@end itemize
+
+@node category
+@subsubsection @kbd{category}
+@vindex category
+
+Knot DNS allows user to choose from these logging categories:
+
+@itemize
+@item @emph{server} - Messages related to general operation of the server.
+@item @emph{zone} - Messages related to zones, zone parsing and loading.
+@item @emph{answering} - Messages regarding query processing and response creation.
+@item @emph{any} - All categories.
+@end itemize
+
+@node severity
+@subsubsection @kbd{severity}
+@vindex severity
+
+Knot DNS has the following logging severities:
+@itemize
+@item @emph{debug} - Debug messages, must be turned on at compile time (@pxref{Enabling debug messages in server}).
+@item @emph{info} - Informational message.
+@item @emph{notice} - Server notices and hints.
+@item @emph{warning} - Warnings that might require user action.
+@item @emph{error} - Recoverable error. Action should be taken.
+@item @emph{all} - All severities.
+@end itemize
+
+@node log_file
+@subsubsection @kbd{log_file}
+@vindex @kbd{log_file}
+
+@kbd{log_file} is either absolute or relative path to file user wants to log to.
+See following example for clarification.
+
+@node log Example
+@subsection log Example
+
+@example
+
+log @{
+
+  syslog @{
+    any error;
+    zone warning, notice;
+    server info;
+  @}
+
+  stderr @{
+    any error, warning;
+  @}
+
+  file "/tmp/knot-sample/knotd.debug" @{
+    server debug;
+  @}
+@}
+
+@end example
 
