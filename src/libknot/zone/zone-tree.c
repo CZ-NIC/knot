@@ -110,7 +110,7 @@ static void knot_zone_tree_free_node(knot_zone_tree_node_t *node,
 	knot_zone_tree_free_node(node->avl.avl_right, free_data);
 
 	if (free_data) {
-		knot_node_free(&node->node, 0);
+		knot_node_free(&node->node);
 	}
 
 	free(node);
@@ -154,7 +154,7 @@ static int knot_zone_tree_deep_copy_node(knot_zone_tree_node_t *from,
 		dbg_zone_verb("Failed to do shallow copy of right subtree.\n");
 		knot_zone_tree_free_node((*to)->avl.avl_left, 1);
 		(*to)->avl.avl_left = NULL;
-		knot_node_free(&(*to)->node, 0);
+		knot_node_free(&(*to)->node);
 		free(*to);
 		*to = NULL;
 		return ret;
@@ -249,7 +249,7 @@ int knot_zone_tree_get(knot_zone_tree_t *tree, const knot_dname_t *owner,
 	knot_zone_tree_node_t *n = TREE_FIND(tree, knot_zone_tree_node, avl,
 	                                       tmp);
 
-	knot_node_free(&tmp_data, 0);
+	knot_node_free(&tmp_data);
 	free(tmp);
 
 	if (n != NULL) {
@@ -312,7 +312,7 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
 	int exact_match = TREE_FIND_LESS_EQUAL(
 	                  tree, knot_zone_tree_node, avl, tmp, &f, &prev);
 
-	knot_node_free(&tmp_data, 0);
+	knot_node_free(&tmp_data);
 	free(tmp);
 
 	*found = (exact_match > 0) ? f->node : NULL;
@@ -406,7 +406,7 @@ int knot_zone_tree_remove(knot_zone_tree_t *tree,
 	/*! \todo How to know if this was successful? */
 	TREE_REMOVE(tree, knot_zone_tree_node, avl, tmp);
 
-	knot_node_free(&tmp_data, 0);
+	knot_node_free(&tmp_data);
 	free(tmp);
 
 	*removed = n;

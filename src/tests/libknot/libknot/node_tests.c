@@ -76,7 +76,7 @@ static int test_node_create()
 			errors++;
 			diag("Failed to create node structure");
 		}
-		knot_node_free(&tmp, 0);
+		knot_node_free(&tmp);
 	}
 	return (errors == 0);
 }
@@ -134,7 +134,7 @@ static int test_node_add_rrset()
 			diag("Values in found rrset are wrong");
 		}
 
-		knot_node_free(&tmp, 0);
+		knot_node_free(&tmp);
 	}
 
 	return (errors == 0);
@@ -166,7 +166,7 @@ static int test_node_get_rrset()
 				diag("Failed to get proper rrset from node");
 			}
 		}
-		knot_node_free(&nodes[i], 0);
+		knot_node_free(&nodes[i]);
 	}
 
 	return (errors == 0);
@@ -194,7 +194,7 @@ static int test_node_get_parent()
 			errors++;
 			diag("Failed to get proper parent from node");
 		}
-		knot_node_free(&nodes[i], 0);
+		knot_node_free(&nodes[i]);
 	}
 	return (errors == 0);
 }
@@ -230,7 +230,7 @@ static int test_node_sorting()
 //		last = *((uint16_t *)node->key);
 //	}
 
-	knot_node_free(&tmp, 0);
+	knot_node_free(&tmp);
 	return (errors == 0);
 }
 
@@ -244,7 +244,7 @@ static int test_node_delete()
 		tmp_node = knot_node_new(&test_nodes[i].owner,
 				      test_nodes[i].parent, 0);
 
-		knot_node_free(&tmp_node, 0);
+		knot_node_free(&tmp_node);
 
 		errors += (tmp_node != NULL);
 	}
@@ -269,9 +269,9 @@ static int test_node_set_parent()
 			diag("Parent node is wrongly set.");
 			errors++;
 		}
-		knot_node_free(&tmp_node, 0);
+		knot_node_free(&tmp_node);
 	}
-	knot_node_free(&tmp_parent, 0);
+	knot_node_free(&tmp_parent);
 	return (errors == 0);
 }
 
@@ -289,7 +289,7 @@ static int test_node_free_rrsets()
 
 //		errors += (tmp_node->rrsets != NULL);
 
-		knot_node_free(&tmp_node, 0);
+		knot_node_free(&tmp_node);
 	}
 	return (errors == 0);
 }

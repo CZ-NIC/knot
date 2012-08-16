@@ -164,15 +164,6 @@ void knot_node_dump(knot_node_t *node, void *loaded_zone)
 		fprintf(stderr, "previous node: none\n");
 	}
 
-	if (node->next != NULL) {
-		fprintf(stderr, "next node: %p\n", node->next);
-		name = knot_dname_to_str(node->next->owner);
-		fprintf(stderr, "next node: %s\n", name);
-		free(name);
-	} else {
-		fprintf(stderr, "next node: none\n");
-	}
-
 	knot_rrset_t **rrsets = knot_node_get_rrsets(node);
 
 	fprintf(stderr, "Wildcard child: ");

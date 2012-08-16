@@ -139,7 +139,7 @@ static void knot_zone_contents_destroy_node_owner_from_tree(
 
 	UNUSED(data);
 	/*!< \todo change completely! */
-	knot_node_free(&tnode->node, 0);
+	knot_node_free(&tnode->node);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1375,7 +1375,7 @@ dbg_zone_exec_detail(
 				 knot_zone_contents_dnames_from_node_to_table(
 					zone->dname_table, next_node);
 				if (ret != KNOT_EOK) {
-					knot_node_free(&next_node, 0);
+					knot_node_free(&next_node);
 					knot_dname_release(chopped);
 					return ret;
 				}
