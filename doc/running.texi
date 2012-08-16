@@ -1,4 +1,4 @@
-@node Running Knot DNS, Security Considerations, Knot DNS Configuration, Top
+@node Running Knot DNS, Troubleshooting, Knot DNS Configuration, Top
 @chapter Running Knot DNS
 
 @menu
@@ -160,12 +160,12 @@ Or use the @code{-a} again.
 $ knotc -a -c master.conf reload # compile zones and reconfigure
 @end example
 
-If you want IXFR-out changesets created from changes you make to a zone file, enable @code{ixfr-from-differences}
+If you want @emph{IXFR-out} changesets created from changes you make to a zone file, enable @code{ixfr-from-differences}
 in @ref{zones} statement, then compile the zone and reload your server as seen above.
-If SOA's serial is not changed no changesets will be created. Please note
-that this feature is in experimental stage and should be used with care.
+If @emph{SOA}'s @emph{serial} is not changed no changesets will be created. Please note
+that this feature is in @emph{experimental} stage and should be used with care.
 If you encounter a bug using this feature, please send it to Knot developers
-as explained in TODO REF reporting.
+as explained in @ref{Submitting a bugreport} reporting.
 
 You can also choose to tear-down the server fully and restart with the @code{knotc restart} action.
 @example

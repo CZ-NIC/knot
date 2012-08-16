@@ -338,6 +338,7 @@ server for different zone.
 @menu
 * remotes Syntax::              
 * remotes Statement Definition and Grammar::  
+* remotes Examples::
 @end menu
 
 @node remotes Syntax
@@ -384,19 +385,45 @@ server for different zone.
 @subsubsection port
 @vindex port
 
-@code{port} section contains a port number for current @code{remote}.
+@code{port} section contains a port number for current @code{remote}.  This section is optional with default port set to 53.
 
 @node key
 @subsubsection key
 @vindex key
 
-@code{key} section contains a key associated with this @code{remote}.
+@code{key} section contains a key associated with this @code{remote}. This section is optional.
+
 
 @node via
 @subsubsection via
 @vindex via
 
-@code{via} section specifies which interface will be used to comunnicate with this @code{remote}.
+@code{via} section specifies which interface will be used to comunnicate with this @code{remote}. This section is optional.
+
+@node remotes Examples
+@subsection remotes Examples
+
+@example
+
+remotes @{
+
+  # Format 1:
+  server0 @{            
+    address 127.0.0.1; 
+    port 53531;       
+    key key0.server0;
+    via ipv4;       
+    via 82.35.64.59;    # IPv4
+    via [::cafe];       # IPv6
+  @}
+
+  # Format 2:
+  server1 @{
+    address 127.0.0.1@@53001;
+  @}
+@}
+
+@end example
 
 @node zones
 @section @code{zones} Statement
@@ -405,8 +432,9 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
 
 @menu
 * zones Syntax::                
-* zones Semantic checks::     
-* zones Statement Definition and Grammar::  
+* zones Statement Definition and Grammar::
+* zones Example::
+* zones List of zone semantic checks::     
 @end menu
 
 @node zones Syntax
@@ -460,7 +488,7 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
 @vindex zone_id
 
 @code{zone_id} is zone origin, and as such is a domain name that may or may not end with a ".".
-If no $ORIGIN directive is inside actual zone file, this domain name will be used in place of "@".
+If no $ORIGIN directive is inside actual zone file, this domain name will be used in place of "@@".
 
 @node file
 @subsubsection file
@@ -500,7 +528,7 @@ Remotes are defined in @ref{remotes}.
 @vindex semantic-checks 
 
 @code{semantic-checks} statement turns on optional semantic checks for this particular zone.
-See @ref{zones Semantic checks} for more information. Possible values are @code{on} and @code{off}.
+See @ref{zones List of zone semantic checks} for more information. Possible values are @code{on} and @code{off}.
 Disabled by default.
 
 @node ixfr-from-differences
@@ -545,7 +573,40 @@ to its file on a disk (as set in @ref{file}). Possible values are 1 to INT_MAX, 
 
 @code{ixfr-fslimit} sets a maximum size for zone's journal. Possible values are 1 to INT_MAX, with optional suffixes k, m and G. I.e. 1k, 1m and 1G with default value not being set, meaning that journal file can grow without limitations.
 
-@node zones Semantic checks 
+@node zones Example
+@subsection zones Example
+
+@example
+@group
+zones @{
+
+  # Shared options for all listed zones
+  ixfr-from-differences off;
+  semantic-checks off;
+  disable-any off;
+  notify-timeout 60;
+  notify-retries 5;
+  zonefile-sync 1h;
+  ixfr-fslimit 1G;
+  example.com @{
+    file "samples/example.com.zone";
+    ixfr-from-differences off; #experimental
+    disable-any off;
+    semantic-checks on;
+    notify-timeout 60;
+    notify-retries 5;
+    zonefile-sync 1h;
+    xfr-in server0;
+    xfr-out server0, server1;
+    notify-in server0;
+    notify-out server0, server1;
+  @}
+@}
+
+@end group
+@end example
+
+@node zones List of zone semantic checks 
 @subsection List of zone semantic checks
 
 The @code{semantic-checks} statement turns on extra zone file semantic
@@ -593,7 +654,8 @@ loaded even upon discovering an error:
 
 @menu
 * log Syntax::                  
-* log Statement Definition and Grammar::  
+* log Statement Definition and Grammar::
+* log Example::
 @end menu
 
 @node log Syntax
@@ -603,7 +665,9 @@ loaded even upon discovering an error:
 @code{log} @code{@{}
   @kbd{log_name} @code{@{}
     [ @kbd{category} @kbd{severity} [ @kbd{severity} @dots{} ]@code{;} ]
-    [ @code{file} @kbd{filename} @kbd{severity} [ @kbd{severity} @dots{} ]@code{;} ]
+    [ @code{log_file} @kbd{filename} @{
+	   [ @kbd{category} @kbd{severity} [ @kbd{severity} @dots{} ]@code{;} ] 
+      @} ]
   @code{@}}
 @code{@}}
 
@@ -612,9 +676,85 @@ loaded even upon discovering an error:
 @node log Statement Definition and Grammar
 @subsection Statement Definition and Grammar
 
+@menu
+* log_name::
+* category::
+* severity::
+* log_file::
+@end menu
+
 The @code{log} statement configures logging output of Knot DNS.  You
-can configure Knot DNS to log into file or system log.  Each log
-message has it's priority and you can configure priorities for each
+can configure Knot DNS to log into file or system log. There are several
+logging categories to choose from. Each log
+message has its priority and you can configure priorities for each
 log destination.
 
+@node log_name
+@subsubsection @kbd{log_name}
+@vindex @kbd{log_name}
+
+@kbd{log_name} recognizes 3 symbolic log names :
+@itemize
+@item @emph{stdout} - logging to standard output
+@item @emph{stderr} - logging to standard error output
+@item @emph{syslog} - logging to syslog
+@end itemize
+
+@node category
+@subsubsection @kbd{category}
+@vindex category
+
+Knot DNS allows user to choose from these logging categories:
+
+@itemize
+@item @emph{server} - Messages related to general operation of the server.
+@item @emph{zone} - Messages related to zones, zone parsing and loading.
+@item @emph{answering} - Messages regarding query processing and response creation.
+@item @emph{any} - All categories.
+@end itemize
+
+@node severity
+@subsubsection @kbd{severity}
+@vindex severity
+
+Knot DNS has the following logging severities:
+@itemize
+@item @emph{debug} - Debug messages, must be turned on at compile time (@pxref{Enabling debug messages in server}).
+@item @emph{info} - Informational message.
+@item @emph{notice} - Server notices and hints.
+@item @emph{warning} - Warnings that might require user action.
+@item @emph{error} - Recoverable error. Action should be taken.
+@item @emph{all} - All severities.
+@end itemize
+
+@node log_file
+@subsubsection @kbd{log_file}
+@vindex @kbd{log_file}
+
+@kbd{log_file} is either absolute or relative path to file user wants to log to.
+See following example for clarification.
+
+@node log Example
+@subsection log Example
+
+@example
+
+log @{
+
+  syslog @{
+    any error;
+    zone warning, notice;
+    server info;
+  @}
+
+  stderr @{
+    any error, warning;
+  @}
+
+  file "/tmp/knot-sample/knotd.debug" @{
+    server debug;
+  @}
+@}
+
+@end example
 
