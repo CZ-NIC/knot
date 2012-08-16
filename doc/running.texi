@@ -1,4 +1,4 @@
-@node Running Knot DNS, Troubleshooting, Knot DNS Configuration, Top
+@node Running Knot DNS, Security Considerations, Knot DNS Configuration, Top
 @chapter Running Knot DNS
 
 @menu
@@ -138,6 +138,7 @@ $ knotc -w -c master.conf start
 
 Or you can compile it automatically:
 @example
+$ knotc -c master.conf checkconf # check configuration
 $ knotc -a -w -c master.conf start
 @end example
 
@@ -159,11 +160,14 @@ Or use the @code{-a} again.
 $ knotc -a -c master.conf reload # compile zones and reconfigure
 @end example
 
-If the @code{ixfr-from-differences} from the @ref{zones} is enabled for the zone,
-it will make a changeset from the zone file differences between reload
-and store it in the journal file. That can be later used for IXFR.
+If you want IXFR-out changesets created from changes you make to a zone file, enable @code{ixfr-from-differences}
+in @ref{zones} statement, then compile the zone and reload your server as seen above.
+If SOA's serial is not changed no changesets will be created. Please note
+that this feature is in experimental stage and should be used with care.
+If you encounter a bug using this feature, please send it to Knot developers
+as explained in TODO REF reporting.
 
-But you can still tear-down the server fully and restart with the @code{knotc restart} action.
+You can also choose to tear-down the server fully and restart with the @code{knotc restart} action.
 @example
 $ knotc -c master.conf running # check if running
 $ knotc -c master.conf restart # fully restart
