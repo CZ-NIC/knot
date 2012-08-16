@@ -26,7 +26,7 @@ static void help(int argc, char **argv)
 {
 	printf("Usage: %s [parameters] origin zonefile\n",
 	       argv[0]);
-	printf("Parameters:\n"
+	printf("\n:Parameters:\n"
 	       " -o <outfile> Override output file.\n"
 	       " -v           Verbose mode - additional runtime information.\n"
 	       " -s           Enable semantic checks.\n"

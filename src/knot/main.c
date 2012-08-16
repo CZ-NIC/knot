@@ -73,7 +73,7 @@ void help(int argc, char **argv)
 {
 	printf("Usage: %sd [parameters]\n",
 	       PACKAGE_NAME);
-	printf("Parameters:\n"
+	printf("\nParameters:\n"
 	       " -c, --config [file] Select configuration file.\n"
 	       " -d, --daemonize     Run server as a daemon.\n"
 	       " -v, --verbose       Verbose mode - additional runtime information.\n"

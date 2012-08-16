@@ -6,43 +6,65 @@ Domain Name System.
 
 @menu
 * What is Knot DNS::            
-* Scope of Document::           
-* Conventions Used in This Document::  
+* Knot DNS features::
+* Scope of this document::           
 @end menu
 
 @node What is Knot DNS
 @section What is Knot DNS
 
-Knot DNS implements a domain name server.  It implements only
-authoritative domain name service and can be used to serve DNS
-zones in the Internet.
+Knot DNS is a high-performance open source DNS server. It 
+implements only authoritative domain name service. Knot DNS 
+is best suited for use on TLD domains but can reliably serve
+any other zone as well.
 
-Knot DNS supports following features:
+Knot DNS benefits from its multi-threaded and mostly lock-free
+implementation which allow it to scale well on SMP systems and
+operate non-stop even when adding or removing zones.
 
-@multitable @columnfractions 1
-@item
-TCP/UDP
-@item
-AXFR
-@item
-IXFR
-@item
-TSIG
-@item
-...
-@end multitable
+@node Knot DNS features
+@section Knot DNS features
 
-@node Scope of Document
-@section Scope of Document
+Knot DNS supports the following DNS features:
+
+@itemize
+@item TCP/UDP protocols
+@item AXFR - master, slave
+@item IXFR - master (primary master experimental), slave
+@item TSIG
+@item ENDS0
+@item DNSSEC, including NSEC3
+@item NSID
+@item Unknown RR types
+@end itemize
+
+@*
+Server features:
+
+@itemize
+@item Adding/removing zones on-the-fly
+@item Reconfiguring server instance on-the-fly
+@item IPv4 / IPv6 support
+@item Semantic checks of zones
+@end itemize
+
+@*
+For more info and downloads see 
+@url{http://www.knot-dns.cz, www.knot-dns.cz}.
+
+Git repository: 
+@url{git://git.nic.cz/knot-dns.git, git://git.nic.cz/knot-dns.git}
+
+Knot DNS issue tracker: 
+@url{https://git.nic.cz/redmine/projects/knot-dns,
+git.nic.cz/redmine/projects/knot-dns}
+
+Knot DNS users mailing list:
+@url{mailto:knot-dns-users@@lists.nic.cz, knot-dns-users@@lists.nic.cz}
+
+@node Scope of this document
+@section Scope of this document
 
 This document covers the basic information on installing,
-configuring and troubleshooting the Knot DNS server.  We have
-also dedicated a chapter for users of other DNS server
-implementations where describe how to migrate their
-configuration to Knot DNS.
-
-@node Conventions Used in This Document
-@section Conventions Used in This Document
-
-[TODO]:
+configuring and troubleshooting the Knot DNS server.
 

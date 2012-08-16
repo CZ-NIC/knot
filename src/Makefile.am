@@ -1,8 +1,8 @@
 ACLOCAL_AMFLAGS = -I ../m4
 libexec_PROGRAMS = knot-zcompile unittests unittests-zcompile unittests-libknot-realdata unittests-libknot unittests-xfr
 sbin_PROGRAMS = knotc knotd
-MANPAGES = knotc.8 knotd.8
-man8_MANS = knotc.8 knotd.8
+MANPAGES = knotc.8 knotd.8 knot.conf.5
+man8_MANS = knotc.8 knotd.8 knot.conf.5
 EXTRA_DIST = $(man8_MANS)
 
 # $(YACC) will generate header file

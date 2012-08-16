@@ -62,8 +62,6 @@ struct knot_node {
 	 */
 	struct knot_node *prev;
 
-	struct knot_node *next;
-
 	/*!
 	 * \brief NSEC3 node corresponding to this node.
 	 *
@@ -249,8 +247,6 @@ const knot_node_t *knot_node_previous(const knot_node_t *node);
  */
 knot_node_t *knot_node_get_previous(const knot_node_t *node);
 
-const knot_node_t *knot_node_next(const knot_node_t *node);
-
 /*!
  * \brief Sets the previous node of the given node.
  *
@@ -428,7 +424,7 @@ void knot_node_free_rrsets(knot_node_t *node, int free_rdata_dnames);
  *
  * \todo Document missing parameters.
  */
-void knot_node_free(knot_node_t **node, int fix_refs);
+void knot_node_free(knot_node_t **node);
 
 /*!
  * \brief Compares two nodes according to their owner.
