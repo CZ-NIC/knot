@@ -51,7 +51,13 @@
 void xfr_interrupt(xfrhandler_t *h)
 {
 	for(unsigned i = 0; i < h->unit->size; ++i) {
-		evqueue_write(h->workers[i]->q, "", 1);
+		evqueue_t *q = h->workers[i]->q;
+		if (evqueue_write(q, "", 1) == 1) {
+			close(q->fds[EVQUEUE_WRITEFD]);
+			q->fds[EVQUEUE_WRITEFD] = -1;
+		} else {
+			dt_stop_id(h->unit->threads[i]);
+		}
 	}
 }
 
@@ -1558,7 +1564,6 @@ int xfr_worker(dthread_t *thread)
 		fdset_begin(w->fdset, &it);
 		int rfd_event = 0;
 		while(nfds > 0) {
-			
 			/* Check if it request. */
 			if (it.fd == rfd) {
 				rfd_event = 1; /* Delay new tasks after processing. */
@@ -1604,6 +1609,11 @@ int xfr_worker(dthread_t *thread)
 				memcpy(&next_sweep, &now, sizeof(next_sweep));
 				next_sweep.tv_sec += XFR_SWEEP_INTERVAL;
 			}
+		}
+		
+		/* Check for interrupt request. */
+		if (ret == KNOTD_ENOTRUNNING) {
+			break;
 		}
 	}
 
