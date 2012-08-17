@@ -74,7 +74,7 @@ typedef struct fdset_it_t {
 
 /*!
  * \brief File descriptor set implementation backend.
- * \notice Functions documentation following.
+ * \note Functions documentation following.
  * \internal
  */
 struct fdset_backend_t

@@ -200,3 +200,5 @@ int zone_do_sem_checks(knot_zone_contents_t *zone, char do_checks,
                         knot_node_t **last_node);
 
 #endif // _KNOT_SEMANTIC_CHECK_H_
+
+/*! @} */

@@ -569,3 +569,5 @@ int knot_rrtype_is_metatype(uint16_t type)
 	        || type == KNOT_RRTYPE_OPT);
 }
 
+/*! @} */
+
