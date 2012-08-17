@@ -730,7 +730,7 @@ Knot DNS has the following logging severities:
 @item @emph{all} - All severities.
 @end itemize
 
-More severites may be listed for each category, but all severities have to be listed explicitely, i.e. using @emph{error} severity does not mean that @emph{warning} severity messages will be logged as well.
+More severities may be listed for each category, but all severities have to be listed explicitely, i.e. using @emph{error} severity does not mean that @emph{warning} severity messages will be logged as well.
 
 @node log_file
 @subsubsection @kbd{log_file}
