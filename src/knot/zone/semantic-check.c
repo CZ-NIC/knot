@@ -739,6 +739,16 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
                                 const knot_rrset_t *dnskey_rrset,
                                 char nsec3)
 {
+	if (handler == NULL || node == NULL || rrset == NULL ||
+	    dnskey_rrset == NULL) {
+		return KNOT_EBADARG;
+	}
+	
+	/* Prepare additional info string. */
+	char info_str[50];
+	sprintf(info_str, "Record type: %s.",
+	        knot_rrtype_to_string(knot_rrset_type(rrset)));
+	
 	assert(dnskey_rrset && rrset);
 
 	const knot_rrset_t *rrsigs = knot_rrset_rrsigs(rrset);
@@ -746,7 +756,7 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 	if (rrsigs == NULL) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_NO_RRSIG,
-		                         NULL);
+		                         info_str);
 		return KNOT_EOK;
 	}
 
@@ -754,7 +764,7 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 	if (knot_rrset_rrsigs(rrsigs) != NULL) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_SIGNED,
-		                         NULL);
+		                         info_str);
 		// safe to continue
 	}
 
@@ -763,19 +773,19 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 				 knot_rrset_owner(rrsigs)) != 0) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_OWNER,
-		                         NULL);
+		                         info_str);
 	}
 
 	if (knot_rrset_class(rrset) != knot_rrset_class(rrsigs)) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_CLASS,
-		                         NULL);
+		                         info_str);
 	}
 
 	if (knot_rrset_ttl(rrset) != knot_rrset_ttl(rrset)) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_TTL,
-		                         NULL);
+		                         info_str);
 	}
 
 	const knot_rdata_t *tmp_rdata = knot_rrset_rdata(rrset);
@@ -801,14 +811,11 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 		                                        tmp_rrsig_rdata);
 	} while (tmp_rdata != NULL && tmp_rrsig_rdata != NULL);
 	
-	/*!< \todo JK 03-08-2012 #1972
-	 * This check is not very informative, its output
-	 * does not contain any info about which RRSet is not completely signed.
-	 * A rewrite is needed.
-	 */
 	char all_signed = tmp_rdata == NULL && tmp_rrsig_rdata == NULL;
 	if (!all_signed) {
-		return ZC_ERR_RRSIG_NOT_ALL;
+		err_handler_handle_error(handler, node,
+		                         ZC_ERR_RRSIG_NOT_ALL,
+		                         info_str);
 	}
 
 	return KNOT_EOK;
