@@ -687,8 +687,10 @@ loaded even upon discovering an error:
 The @code{log} statement configures logging output of Knot DNS.  You
 can configure Knot DNS to log into file or system log. There are several
 logging categories to choose from. Each log
-message has its priority and you can configure priorities for each
+message has its severity and user can configure severities for each
 log destination.
+
+In case of missing log section, @emph{errors} from all categories will be logged to @emph{stderr} and to @emph{syslog}. No other severities shall be logged!
 
 @node log_name
 @subsubsection @kbd{log_name}
@@ -727,6 +729,8 @@ Knot DNS has the following logging severities:
 @item @emph{error} - Recoverable error. Action should be taken.
 @item @emph{all} - All severities.
 @end itemize
+
+More severites may be listed for each category, but all severities have to be listed explicitely, i.e. using @emph{error} severity does not mean that @emph{warning} severity messages will be logged as well.
 
 @node log_file
 @subsubsection @kbd{log_file}
