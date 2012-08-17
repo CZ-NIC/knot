@@ -20,7 +20,7 @@
  *
  * \brief DNS zone semantic checks.
  *
- * \addtogroup dnslib
+ * \addtogroup zoneparser
  * @{
  */
 

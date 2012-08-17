@@ -20,7 +20,7 @@
  *
  * \brief Functions for dumping zone to text file.
  *
- * \addtogroup dnslib
+ * \addtogroup zone-load-dump
  * @{
  */
 

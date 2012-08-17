@@ -5,7 +5,7 @@
  *
  * \brief Dynamic updates processing.
  *
- * \addtogroup query_processing
+ * \addtogroup ddns
  * @{
  */
 /*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
