@@ -466,7 +466,7 @@
     text_array = text_with_length . (sep . text_with_length)*;
     # END
 
-    # BEGIN - Directives processing
+    # BEGIN - TTL directives processing
     action _default_ttl_exit {
         if (s->number64 <= UINT32_MAX) {
             s->default_ttl = (uint32_t)(s->number64);
@@ -476,9 +476,20 @@
             fhold; fgoto err_line;
         }
     }
+    action _default_ttl_error {
+        SCANNER_ERROR(ZSCANNER_EBAD_TTL);
+        fhold; fgoto err_line;
+    }
 
-    default_ttl = time %_default_ttl_exit;
+    default_ttl := (sep . time . rest) $!_default_ttl_error
+                   %_default_ttl_exit %_ret . newline;
 
+    action _call_default_ttl {
+        fhold; fcall default_ttl;
+    }
+    # END
+
+    # BEGIN - ORIGIN directives processing
     action _zone_origin_init {
         s->dname = s->zone_origin;
     }
@@ -490,9 +501,15 @@
         fhold; fgoto err_line;
     }
 
-    zone_origin = absolute_dname >_zone_origin_init %_zone_origin_exit
-                    $!_zone_origin_error;
+    zone_origin := (sep . absolute_dname >_zone_origin_init . rest)
+                   $!_zone_origin_error %_zone_origin_exit %_ret . newline;
 
+    action _call_zone_origin {
+        fhold; fcall zone_origin;
+    }
+    # END
+
+    # BEGIN - INCLUDE directives processing
     # For filename store r_data array is used here (with terminating \0).
     action _incl_filename_init {
         s->r_data_length = 0;
@@ -521,30 +538,84 @@
         SCANNER_ERROR(ZSCANNER_EBAD_INCLUDE_ORIGIN);
         fhold; fgoto err_line;
     }
+    action _include_exit {
+        char text_origin[MAX_DNAME_LENGTH];
 
-    # Include is stand-alone machine due to reduction of complexity.
+        if (s->r_data[0] != '/') { // File name is in relative form.
+            // Store relative include file name.
+            char *include_file_name = strdup((char*)(s->r_data));
+
+            // Get absolute path of the current zone file.
+            if (realpath(s->file_name, (char*)(s->r_data)) != NULL) {
+                char *full_current_zone_file_name = strdup((char*)(s->r_data));
+
+                // Creating full include file name.
+                sprintf((char*)(s->r_data), "%s/%s",
+                        dirname(full_current_zone_file_name),
+                        include_file_name);
+
+                free(full_current_zone_file_name);
+                free(include_file_name);
+            }
+            else {
+                free(include_file_name);
+                SCANNER_ERROR(ZSCANNER_EUNPROCESSED_INCLUDE);
+                fhold; fgoto err_line;
+            }
+        }
+
+        // Origin conversion from wire to text form.
+        if (s->buffer[0] == 0) { // Use current origin.
+            wire_dname_to_text(s->zone_origin,
+                               s->zone_origin_length,
+                               text_origin);
+        } else { // Use specified origin.
+            strcpy(text_origin, (char *)(s->buffer));
+        }
+
+        // Create new file loader for included zone file.
+        file_loader_t *fl = file_loader_create((char*)(s->r_data),
+                                               text_origin,
+                                               DEFAULT_CLASS,
+                                               DEFAULT_TTL,
+                                               s->process_record,
+                                               s->process_error);
+        if (fl != NULL) {
+            // Process included zone file.
+            ret = file_loader_process(fl);
+            file_loader_free(fl);
+
+            if (ret != 0) {
+                SCANNER_ERROR(ZSCANNER_EUNPROCESSED_INCLUDE);
+                fhold; fgoto err_line;
+            }
+        }
+        else {
+            SCANNER_ERROR(ZSCANNER_EUNOPENED_INCLUDE);
+            fhold; fgoto err_line;
+        }
+    }
+
     incl := (sep . text >_incl_filename_init %_incl_filename_exit
              $!_incl_filename_error .
              (sep . text >_incl_origin_init %_incl_origin_exit
-             $!_incl_origin_error)?
-            ) %_ret <: all_wchar;
+             $!_incl_origin_error)? . rest) %_include_exit %_ret newline;
 
     action _call_include {
         fhold; fcall incl;
     }
+    # END
 
+    # BEGIN - Directive switch
     action _directive_error {
         SCANNER_ERROR(ZSCANNER_EBAD_DIRECTIVE);
         fhold; fgoto err_line;
     }
 
-    directive = '$' .
-                 ( ("TTL"i     . sep . default_ttl)
-                 | ("ORIGIN"i  . sep . zone_origin)
-                 | ("INCLUDE"i %_call_include . all_wchar)
-                 ) $!_directive_error .
-                 rest .
-                 newline;
+    directive = '$' . ( ("TTL"i     %_call_default_ttl . all_wchar)
+                      | ("ORIGIN"i  %_call_zone_origin . all_wchar)
+                      | ("INCLUDE"i %_call_include     . all_wchar)
+                      ) $!_directive_error;
     # END
 
     # BEGIN - RRecord class and ttl processing

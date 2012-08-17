@@ -16,15 +16,18 @@
 
 #include "zscanner/scanner.h"
 
-#include <stdint.h>              // uint32_t
-#include <stdio.h>               // printf
-#include <stdlib.h>              // calloc
-#include <stdbool.h>             // bool
-#include <sys/socket.h>          // AF_INET (BSD)
-#include <netinet/in.h>          // in_addr (BSD)
+#include <stdint.h>                // uint32_t
+#include <stdlib.h>                // calloc
+#include <stdio.h>                 // sprintf
+#include <limits.h>                // PATH_MAX
+#include <libgen.h>                // dirname
+#include <stdbool.h>               // bool
+#include <sys/socket.h>            // AF_INET (BSD)
+#include <netinet/in.h>            // in_addr (BSD)
 
-#include "util/error.h"          // error codes
-#include "util/descriptor.h"     // KNOT_RRTYPE_A
+#include "util/error.h"            // error codes
+#include "util/descriptor.h"       // KNOT_RRTYPE_A
+#include "zscanner/file_loader.h"  // include processing
 #include "zscanner/scanner_functions.h"
 
 #define SCANNER_WARNING(code) { s->error_code = code; }

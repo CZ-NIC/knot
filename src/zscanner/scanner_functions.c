@@ -775,3 +775,23 @@ int date_to_timestamp(uint8_t *buff, uint32_t *timestamp)
     return KNOT_EOK;
 }
 
+void wire_dname_to_text(const uint8_t *dname,
+                        const uint32_t dname_length,
+                        char *text_dname)
+{
+    uint32_t label_length = 0, i = 0, j = 0;
+
+    for (i = 0; i < dname_length; i++) {
+        if (label_length == 0) {
+            label_length = dname[i];
+            if (i > 0) { // Ignore first byte with length.
+                text_dname[j++] = '.';
+            }
+            continue;
+        }
+        text_dname[j++] = (char)dname[i];
+        label_length--;
+    }
+    text_dname[j] = 0;
+}
+

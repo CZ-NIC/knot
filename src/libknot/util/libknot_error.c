@@ -67,7 +67,6 @@ const error_table_t knot_error_msgs[] = {
 	{ZSCANNER_ENUMBER32_OVERFLOW, "Number is bigger than 32 bits!"},
 	{ZSCANNER_ENUMBER16_OVERFLOW, "Number is bigger than 16 bits!"},
 	{ZSCANNER_ENUMBER8_OVERFLOW, "Number is bigger than 8 bits!"},
-	{ZSCANNER_EBAD_ORIGIN, "Invalid zone origin!"},
 	{ZSCANNER_ERDATA_OVERFLOW, "Maximal record data length has exceeded!"},
 	{ZSCANNER_EBAD_ADDRESS_CHAR, "Bad address character!"},
 	{ZSCANNER_EBAD_IPV4, "Bad IPv4 address!"},
@@ -85,8 +84,12 @@ const error_table_t knot_error_msgs[] = {
 	{ZSCANNER_EBAD_BITMAP, "Bad bitmap!"},
 	{ZSCANNER_ETEXT_OVERFLOW, "Text is too long!"},
 	{ZSCANNER_EBAD_DIRECTIVE, "Bad directive!"},
+	{ZSCANNER_EBAD_TTL, "Bad zone TTL!"},
+	{ZSCANNER_EBAD_ORIGIN, "Bad zone origin!"},
 	{ZSCANNER_EBAD_INCLUDE_FILENAME, "Bad filename in include directive!"},
 	{ZSCANNER_EBAD_INCLUDE_ORIGIN, "Bad origin in include directive!"},
+	{ZSCANNER_EUNPROCESSED_INCLUDE, "Include file processing error!"},
+	{ZSCANNER_EUNOPENED_INCLUDE, "Include file opening error!"},
 
 	{KNOT_ERROR, 0}
 };

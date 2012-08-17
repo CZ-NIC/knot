@@ -62,6 +62,10 @@ extern const uint8_t eighth_base32hex_to_num[];
 
 int date_to_timestamp(uint8_t *buff, uint32_t *timestamp);
 
+void wire_dname_to_text(const uint8_t *dname,                                   
+                        const uint32_t dname_length,                            
+                        char *text_dname);
+
 #endif // _ZSCANNER__SCANNER_FUNCTIONS_H_
 
 /*! @} */

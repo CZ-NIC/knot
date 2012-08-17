@@ -20,12 +20,8 @@
 #include <config.h>
 #include <getopt.h>
 
-#include "util/descriptor.h"
 #include "zscanner/file_loader.h"
 #include "zscanner/test/test_functions.h"
-
-#define DEFAULT_TTL         (uint32_t)3600
-#define DEFAULT_CLASS        KNOT_CLASS_IN
 
 /*! \brief Print help. */
 void help(int argc, char **argv)

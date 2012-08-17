@@ -33,6 +33,9 @@
 
 #define SETTINGS_BUFFER_LENGTH  1024
 
+#define DEFAULT_TTL         (uint32_t)3600
+#define DEFAULT_CLASS       (uint16_t)   1 // IN
+
 /*!
  * \brief Structure for zone file loader (each include file has one).
  */
