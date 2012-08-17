@@ -384,8 +384,7 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 				     */
 				    (items[i].dname->node->owner ==
 				     items[i].dname)) {
-					knot_node_free(&items[i].dname->node,
-					               0);
+					knot_node_free(&items[i].dname->node);
 					assert(items[i].dname->node == NULL);
 				}
 			}
@@ -790,7 +789,7 @@ dbg_zload_exec_detail(
 
 	for (int i = 0; i < rrset_count; i++) {
 		if ((tmp_rrset = knot_load_rrset(f, id_array, 1)) == NULL) {
-			knot_node_free(&node, 0);
+			knot_node_free(&node);
 			/*!< \todo #1686 
 			 * Refactor freeing, might not be enough.
 			 */
@@ -1269,7 +1268,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 				 node_count + nsec3_node_count + 1);
 		dbg_zload("zload: load: Failed to create new "
 		          "zone from apex!\n");
-		knot_node_free(&apex, 0);
+		knot_node_free(&apex);
 		free(dname_table);
 		return NULL;
 	}

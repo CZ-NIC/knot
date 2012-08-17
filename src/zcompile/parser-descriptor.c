@@ -539,3 +539,4 @@ uint16_t parser_rrclass_from_string(const char *name)
 	return (uint16_t) rrclass;
 }
 
+/*! @} */

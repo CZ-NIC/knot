@@ -71,6 +71,7 @@ typedef struct list {			/* In fact two overlayed nodes */
 	WALK_LIST_DELSAFE(n,nxt,list) { \
 	    free(n); \
 	} \
+	init_list(&list); \
 	} while(0)
 
 void add_tail(list *, node *);

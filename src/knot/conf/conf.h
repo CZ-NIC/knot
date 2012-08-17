@@ -325,22 +325,6 @@ static inline conf_t* conf() {
 	return s_config; // Inline for performance reasons.
 }
 
-/*!
- * \brief Lock configuration for reading.
- *
- * \return Configuration context.
- */
-static inline void conf_read_lock() {
-	rcu_read_lock();
-}
-
-/*!
- * \brief Unlock configuration for reading.
- */
-static inline void conf_read_unlock() {
-	rcu_read_unlock();
-}
-
 /*
  * Utilities.
  */
@@ -364,6 +348,18 @@ char* strcdup(const char *s1, const char *s2);
  * \retval Pointer to normalized path.
  */
 char* strcpath(char *path);
+
+/*! \brief Free zone config. */
+void conf_free_zone(conf_zone_t *zone);
+
+/*! \brief Free TSIG key config. */
+void conf_free_key(conf_key_t *k);
+
+/*! \brief Free interface config. */
+void conf_free_iface(conf_iface_t *iface);
+
+/*! \brief Free log config. */
+void conf_free_log(conf_log_t *log);
 
 #endif /* _KNOTD_CONF_H_ */
 

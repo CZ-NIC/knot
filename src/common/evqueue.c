@@ -126,8 +126,11 @@ void evqueue_free(evqueue_t **q)
 	*q = 0;
 
 	/* Deinitialize. */
-	close(eq->fds[EVQUEUE_READFD]);
-	close(eq->fds[EVQUEUE_WRITEFD]);
+	for (int i = 0; i < 2; ++i) {
+		if (eq->fds[i] > -1) {
+			close(eq->fds[i]);
+		}
+	}
 	free(eq);
 }
 

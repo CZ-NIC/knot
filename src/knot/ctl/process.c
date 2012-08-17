@@ -32,7 +32,7 @@
 
 char* pid_filename()
 {
-	conf_read_lock();
+	rcu_read_lock();
 
 	/* Read configuration. */
 	char* ret = 0;
@@ -40,7 +40,7 @@ char* pid_filename()
 		ret = strdup(conf()->pidfile);
 	}
 
-	conf_read_unlock();
+	rcu_read_unlock();
 
 	return ret;
 }

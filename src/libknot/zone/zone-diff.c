@@ -226,7 +226,40 @@ static int knot_zone_diff_changeset_remove_rrset(knot_changeset_t *changeset,
 	return KNOT_EOK;
 }
 
-static int knot_zone_diff_changeset_remove_node(knot_changeset_t *changeset,
+static int knot_zone_diff_add_node(const knot_node_t *node,
+                                   knot_changeset_t *changeset)
+{
+	if (node == NULL || changeset == NULL) {
+		dbg_zonediff("zone_diff: add_node: NULL arguments.\n");
+		return KNOT_EBADARG;
+	}
+	
+	/* Add all rrsets from node. */
+	const knot_rrset_t **rrsets = knot_node_rrsets(node);
+	if (rrsets == NULL) {
+		/* Empty non-terminals - legal case. */
+		dbg_zonediff_detail("zone_diff: Node has no RRSets.\n");
+		return KNOT_EOK;
+	}
+
+	for (uint i = 0; i < knot_node_rrset_count(node); i++) {
+		assert(rrsets[i]);
+		int ret = knot_zone_diff_changeset_add_rrset(changeset,
+		                                         rrsets[i]);
+		if (ret != KNOT_EOK) {
+			dbg_zonediff("zone_diff: add_node: Cannot add RRSet (%s).\n",
+			       knot_strerror(ret));
+			free(rrsets);
+			return ret;
+		}
+	}
+	
+	free(rrsets);
+	
+	return KNOT_EOK;
+}
+
+static int knot_zone_diff_remove_node(knot_changeset_t *changeset,
                                                 const knot_node_t *node)
 {
 	if (changeset == NULL || node == NULL) {
@@ -544,14 +577,13 @@ static void knot_zone_diff_node(knot_node_t *node, void *data)
 		dbg_zonediff_detail("zone_diff: diff_node: Node %s is not "
 		              "in the second tree.\n",
 		              knot_dname_to_str(node_owner));
-		int ret = knot_zone_diff_changeset_remove_node(param->changeset,
+		int ret = knot_zone_diff_remove_node(param->changeset,
 		                                               node);
 		if (ret != KNOT_EOK) {
 			dbg_zonediff("zone_diff: failed to remove node.\n");
 			param->ret = ret;
 			return;
 		}
-		
 		param->ret = KNOT_EOK;
 		return;
 	}
@@ -563,8 +595,19 @@ static void knot_zone_diff_node(knot_node_t *node, void *data)
 	/* The nodes are in both trees, we have to diff each RRSet. */
 	const knot_rrset_t **rrsets = knot_node_rrsets(node);
 	if (rrsets == NULL) {
-		dbg_zonediff("zone_diff: Node has no RRSets.\n");
-		param->ret = KNOT_EOK;
+		dbg_zonediff("zone_diff: Node in first tree has no RRSets.\n");
+		/*
+		 * If there are no RRs in the first tree, all of the RRs 
+		 * in the second tree will have to be inserted to ADD section.
+		 */
+		int ret = knot_zone_diff_add_node(node_in_second_tree,
+		                                  param->changeset);
+		if (ret != KNOT_EOK) {
+			dbg_zonediff("zone_diff: diff_node: "
+			             "Could not add node from second tree. "
+			             "Reason: %s.\n", knot_strerror(ret));
+		}
+		param->ret = ret;
 		return;
 	}
 
@@ -633,8 +676,22 @@ static void knot_zone_diff_node(knot_node_t *node, void *data)
 	/*! \todo move to one function with the code above. */
 	rrsets = knot_node_rrsets(node_in_second_tree);
 	if (rrsets == NULL) {
-		dbg_zonediff("zone_diff: Node has no RRSets.\n");
-		param->ret = KNOT_EBADARG;
+		dbg_zonediff("zone_diff: Node in second tree has no RRSets.\n");
+		/*
+		 * This can happen when node in second 
+		 * tree is empty non-terminal and as such has no RRs.
+		 * Whole node from the first tree has to be removed.
+		 */
+		// TODO following code creates duplicated RR in diff.
+		// IHMO such case should be handled here
+//		int ret = knot_zone_diff_remove_node(param->changeset,
+//		                                     node);
+//		if (ret != KNOT_EOK) {
+//			dbg_zonediff("zone_diff: diff_node: "
+//			             "Cannot remove node. Reason: %s.\n",
+//			             knot_strerror(ret));
+//		}
+		param->ret = KNOT_EOK;
 		return;
 	}
 
@@ -676,39 +733,6 @@ static void knot_zone_diff_node(knot_node_t *node, void *data)
 	free(rrsets);
 
 	assert(param->ret == KNOT_EOK);
-}
-
-static int knot_zone_diff_add_node(knot_node_t *node,
-                                   knot_changeset_t *changeset)
-{
-	if (node == NULL || changeset == NULL) {
-		dbg_zonediff("zone_diff: add_node: NULL arguments.\n");
-		return KNOT_EBADARG;
-	}
-	
-	/* Add all rrsets from node. */
-	const knot_rrset_t **rrsets = knot_node_rrsets(node);
-	if (rrsets == NULL) {
-		/* Empty non-terminals - legal case. */
-		dbg_zonediff_detail("zone_diff: Node has no RRSets.\n");
-		return KNOT_EOK;
-	}
-
-	for (uint i = 0; i < knot_node_rrset_count(node); i++) {
-		assert(rrsets[i]);
-		int ret = knot_zone_diff_changeset_add_rrset(changeset,
-		                                         rrsets[i]);
-		if (ret != KNOT_EOK) {
-			dbg_zonediff("zone_diff: add_node: Cannot add RRSet (%s).\n",
-			       knot_strerror(ret));
-			free(rrsets);
-			return ret;
-		}
-	}
-	
-	free(rrsets);
-	
-	return KNOT_EOK;
 }
 
 /*!< \todo possibly not needed! */

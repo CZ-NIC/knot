@@ -34,6 +34,7 @@
 #include "nsec3.h"
 #include "zone/dname-table.h"
 #include "common/tree.h"
+#include "common/ref.h"
 #include "hash/cuckoo-hash-table.h"
 
 #include "zone-tree.h"
@@ -53,6 +54,15 @@ enum knot_zone_retvals {
 
 typedef enum knot_zone_retvals knot_zone_retvals_t;
 
+/*!
+ * \brief Zone flags.
+ */
+typedef enum knot_zone_flag_t {
+	KNOT_ZONE_SLAVE     = 0 << 0, /*! Slave zone */
+	KNOT_ZONE_MASTER    = 1 << 0, /*! Master zone. */
+	KNOT_ZONE_DISCARDED = 1 << 1  /*! Zone waiting to be discarded. */
+} knot_zone_flag_t;
+
 /*----------------------------------------------------------------------------*/
 
 /*!
@@ -63,14 +73,14 @@ typedef enum knot_zone_retvals knot_zone_retvals_t;
  *          double-free errors when destroying the zone.
  */
 struct knot_zone {
+	ref_t ref;     /*!< Reference counting. */
 	knot_dname_t *name;
 
 	knot_zone_contents_t *contents;
 
 	time_t version;
 
-	/*! \todo Set when loading zone. */
-	short master;
+	unsigned flags;
 
 	void *data; /*!< Pointer to generic zone-related data. */
 	int (*dtor)(struct knot_zone *); /*!< Data destructor. */
@@ -83,7 +93,7 @@ typedef struct knot_zone knot_zone_t;
 /*!
  * \brief Creates new empty DNS zone.
  *
- * \notice Zone will be created without contents.
+ * \note Zone will be created without contents.
  *
  * \param name Zone owner.
  *
@@ -146,6 +156,54 @@ void knot_zone_free(knot_zone_t **zone);
  *                          knot_rdata_deep_free().)
  */
 void knot_zone_deep_free(knot_zone_t **zone, int destroy_dname_table);
+
+/*!
+ * \brief Set destructor and initialize reference counter to 1.
+ *
+ * \param zone Related zone.
+ * \param dtor Destructor.
+ */
+void knot_zone_set_dtor(knot_zone_t *zone, int (*dtor)(struct knot_zone *));
+
+/*!
+ * \brief Increment reference counter for dname.
+ *
+ * \param zone Referenced zone.
+ */
+ static inline void knot_zone_retain(knot_zone_t *zone) {
+	if (zone != NULL) {
+		ref_retain(&zone->ref);
+	}
+}
+
+/*!
+ * \brief Decrement reference counter for dname.
+ *
+ * \param zone Referenced zone.
+ */
+ static inline void knot_zone_release(knot_zone_t *zone) {
+	if (zone != NULL) {
+		ref_release(&zone->ref);
+	}
+}
+
+/*!
+ * \brief Return zone flags.
+ *
+ * \param zone Zone.
+ */
+static inline unsigned knot_zone_flags(knot_zone_t *zone) {
+	return zone->flags;
+}
+
+/*!
+ * \brief Set zone flag.
+ *
+ * \param zone Zone.
+ * \param flag Respected flag.
+ * \param on 1 to set, 0 to unset flag.
+ */
+void knot_zone_set_flag(knot_zone_t *zone, knot_zone_flag_t flag, unsigned on);
 
 #endif
 

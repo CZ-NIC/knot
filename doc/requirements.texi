@@ -2,14 +2,14 @@
 @chapter Knot DNS Resource Requirements
 
 @menu
-* Hardware Requirements::       
-* CPU Requirements::            
-* Memory Requirements::         
-* Supported Operating System::  
+* Hardware requirements::       
+* CPU requirements::            
+* Memory requirements::         
+* Supported operating system::  
 @end menu
 
-@node Hardware Requirements
-@section Hardware Requirements
+@node Hardware requirements
+@section Hardware requirements
 
 Knot DNS requirements are not very demanding for typical
 installations, and a comodity server or virtualized solution
@@ -22,16 +22,16 @@ cases include deployment for a large number of zones (DNS
 hosting), a large number of records in one or more zones (TLD)
 or large number of requests.
 
-@node CPU Requirements
-@section CPU Requirements
+@node CPU requirements
+@section CPU requirements
 
 Knot DNS scales with the processing power and also the nubmer of available cores/CPUs.
 
 There is no lower bound on the CPU requirements, but it should support memory barriers
 and CAS (i586 and newer).
 
-@node Memory Requirements
-@section Memory Requirements
+@node Memory requirements
+@section Memory requirements
 
 Knot DNS implementation focuses on the performance and thus can
 be very demanding for the memory.  The rough estimate for memory
@@ -44,8 +44,8 @@ Also note that to ensure uninterrupted serving of the zone, Knot DNS employs
 a Read-Copy-Update mechanism instead of locking and thus requires
 twice the amount of memory for the duration of the incoming transfers.
 
-@node Supported Operating System
-@section Supported Operating System
+@node Supported operating system
+@section Supported operating system
 
 Knot DNS itself is written in a portable way, but it depends on
 userspace-rcu library, which is the main constraint when it

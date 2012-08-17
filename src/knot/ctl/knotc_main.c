@@ -56,9 +56,9 @@ void help(int argc, char **argv)
 {
 	printf("Usage: %sc [parameters] start|stop|restart|reload|running|"
 	       "compile [additional]\n", PACKAGE_NAME);
-	printf("Parameters:\n"
+	printf("\nParameters:\n"
 	       " -c [file], --config=[file] Select configuration file.\n"
-	       " -j [num], --jobs=[num]     Number of parallel tasks to run (only for 'compile').\n"
+	       " -j [num], --jobs=[num]     Number of parallel tasks to run when compiling.\n"
 	       " -f, --force                Force operation - override some checks.\n"
 	       " -v, --verbose              Verbose mode - additional runtime information.\n"
 	       " -V, --version              Print %s server version.\n"
@@ -67,7 +67,7 @@ void help(int argc, char **argv)
 	       " -a, --auto                 Enable automatic recompilation (start or reload).\n"
 	       " -h, --help                 Print help and usage.\n",
 	       PACKAGE_NAME);
-	printf("Actions:\n"
+	printf("\nActions:\n"
 	       " start     Start %s server zone (no-op if running).\n"
 	       " stop      Stop %s server (no-op if not running).\n"
 	       " restart   Stops and then starts %s server.\n"
@@ -76,8 +76,8 @@ void help(int argc, char **argv)
 	       " running   Check if server is running.\n"
 	       " checkconf Check server configuration.\n"
 	       "\n"
-	       " checkzone Check zones (accepts specific zones, f.e. "
-	       "'knotc checkzone example1.com example2.com').\n"
+	       " checkzone Check zones (accepts specific zones, \n"
+	       "           e.g. 'knotc checkzone example1.com example2.com').\n"
 	       " compile   Compile zones (accepts specific zones, see above).\n",
 	       PACKAGE_NAME, PACKAGE_NAME, PACKAGE_NAME, PACKAGE_NAME);
 }
@@ -330,7 +330,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 		}
 
 		// Lock configuration
-		conf_read_lock();
+		rcu_read_lock();
 
 		// Prepare command
 		const char *cfg = conf()->filename;
@@ -344,7 +344,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 		};
 
 		// Unlock configuration
-		conf_read_unlock();
+		rcu_read_unlock();
 
 		// Execute command
 		if (has_flag(flags, F_INTERACTIVE)) {
@@ -525,7 +525,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 		valid_cmd = 1;
 		
 		// Lock configuration
-		conf_read_lock();
+		rcu_read_lock();
 
 		// Generate databases for all zones
 		node *n = 0;
@@ -615,7 +615,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 		free(tasks);
 
 		// Unlock configuration
-		conf_read_unlock();
+		rcu_read_unlock();
 	}
 	if (!valid_cmd) {
 		log_server_error("Invalid command: '%s'\n", action);

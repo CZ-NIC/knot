@@ -1,7 +1,7 @@
-@node Knot DNS Configuration Reference, Migration for other DNS servers, Statement Index, Top
+@node Knot DNS Configuration Reference, , Statement Index, Top
 @appendix Knot DNS Configuration Reference
 
-This reference describe every configuration option in Knot DNS.
+This reference describes every configuration option in Knot DNS server.
 
 @menu
 * system::                      
@@ -17,7 +17,7 @@ This reference describe every configuration option in Knot DNS.
 @stindex system
 
 The @code{system} statement contains general options related to the
-operating system and other general options which don't fit anywhere
+operating system and other general options which do not fit anywhere
 else.
 
 @menu
@@ -74,7 +74,7 @@ Version of the server (see @url{http://tools.ietf.org/html/rfc4892,RFC 4892}). N
 
 @example
 system @{
-  version "1.0.5";
+  version "1.1.0";
 @}
 @end example
 
@@ -84,7 +84,7 @@ system @{
 
 DNS Name Server Identifier (see @url{http://tools.ietf.org/html/rfc5001,RFC 5001}).
 
-Use a string format "text" or a hexstring f.e. 0x01ab00
+Use a string format "text" or a hexstring (e.g. 0x01ab00)
 
 @example
 system @{
@@ -96,7 +96,7 @@ system @{
 @subsubsection storage
 @vindex storage
 
-The working directory of the Knot DNS, it is used to store compiled zone files and it's also a default location of the pidfile.
+The working directory of Knot DNS, it is used to store compiled zone files and it is also a default location of the pidfile.
 
 @example
 system @{
@@ -108,7 +108,7 @@ system @{
 @subsubsection pidfile
 @vindex pidfile
 
-Custom pidfile location.
+Specifies custom pidfile location.
 
 Default value: @file{knot.pid} in @code{@ref{storage}} directory.
 
@@ -122,7 +122,7 @@ system @{
 @subsubsection workers
 @vindex workers
 
-Number of workers (threads) per interface.  This option is used to
+Number of workers (threads) per server interface.  This option is used to
 force number of threads used per interface.
 
 Default value: unset (auto-estimates optimal value from the number of online CPUs)
@@ -139,6 +139,7 @@ system @{
 
 System @kbd{user} or @kbd{user}.@kbd{group} under which the Knot DNS
 is run after starting and binding to interfaces.
+Only aplicable if your system knows how to handle Linux capabilities (@pxref{Required libraries}).
 
 Default value: root.root
 
@@ -149,7 +150,7 @@ system @{
 @end example
 
 @node system Example
-@subsection Example
+@subsection system Example
 
 @example
 system @{
@@ -194,7 +195,7 @@ keys @{
 @vindex key_id
 
 The @kbd{key_id} statement defines a secret shared key for use with
-TSIG.  It consists of its name, algorithm and key contents.
+TSIG.  It consists of its @kbd{name}, @kbd{algorithm} and @kbd{key} contents.
 
 Supported algoritms:
 
@@ -213,7 +214,7 @@ hmac-sha384
 hmac-sha512
 @end multitable
 
-You will need to use bind or ldns utils to generate TSIG keys.  Knot DNS doesn't have it's own generation utilities yet.
+You need to use bind or ldns utils to generate TSIG keys. Unfortunately, Knot DNS does not have any own generation utilities yet.
 
 @example
 
@@ -235,7 +236,7 @@ keys @{
 @end example
 
 @node Example
-@subsection Example
+@subsection keys Example
 
 
 @example
@@ -283,10 +284,10 @@ The @code{interfaces} statement contains IP interfaces where Knot DNS listens fo
 @vindex interface_id
 
 The @kbd{interface_id} is a textual identifier of an IP interface,
-which consists of IP address and port.
+which consists of an IP address and a port.
 
-The definition of interface can be written in long or a short form and
-it has always contain and IP (IPv4 or IPv6) address.
+The definition of an interface can be written in long or a short form and
+it always contains IP (IPv4 or IPv6) address.
 
 @node interfaces Examples
 @subsection interfaces Examples
@@ -329,15 +330,16 @@ interfaces @{
 @stindex remotes
 
 The @code{remotes} statement sets up all remote servers for zone
-transfers.  Knot DNS doesn't distinguish between client or server in
+transfers.  Knot DNS does not distinguish between client or server in
 this section.  Role of the server is determined at the time of its
 usage in the @code{@ref{zones}} section.  One server may act as a
 client for one zone (e.g. downloading the updates) and as a master
-server for different zone.
+server for a different zone.
 
 @menu
 * remotes Syntax::              
 * remotes Statement Definition and Grammar::  
+* remotes Examples::
 @end menu
 
 @node remotes Syntax
@@ -360,6 +362,70 @@ server for different zone.
 @node remotes Statement Definition and Grammar
 @subsection Statement Definition and Grammar
 
+@menu
+* remote_id::
+* address::
+* port::
+* key::
+* via::
+@end menu
+
+@node remote_id
+@subsubsection @kbd{remote_id}
+@vindex remote_id
+
+@kbd{remote_id} contains a symbolic name for a remote server.
+
+@node address
+@subsubsection address
+@vindex address
+
+@kbd{address} sets an IPv4 or an IPv6 address for this particular @code{remote}.
+
+@node port
+@subsubsection port
+@vindex port
+
+@code{port} section contains a port number for the current @code{remote}.  This section is optional with default port set to 53.
+
+@node key
+@subsubsection key
+@vindex key
+
+@code{key} section contains a key associated with this @code{remote}. This section is optional.
+
+
+@node via
+@subsubsection via
+@vindex via
+
+@code{via} section specifies which interface will be used to comunnicate with this @code{remote}. This section is optional.
+
+@node remotes Examples
+@subsection remotes Examples
+
+@example
+
+remotes @{
+
+  # Format 1:
+  server0 @{            
+    address 127.0.0.1; 
+    port 53531;       
+    key key0.server0;
+    via ipv4;       
+    via 82.35.64.59;    # IPv4
+    via [::cafe];       # IPv6
+  @}
+
+  # Format 2:
+  server1 @{
+    address 127.0.0.1@@53001;
+  @}
+@}
+
+@end example
+
 @node zones
 @section @code{zones} Statement
 
@@ -367,8 +433,9 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
 
 @menu
 * zones Syntax::                
-* zones Semantic checks::     
-* zones Statement Definition and Grammar::  
+* zones Statement Definition and Grammar::
+* zones Example::
+* zones List of zone semantic checks::     
 @end menu
 
 @node zones Syntax
@@ -389,30 +456,173 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
 
 @kbd{zone_options} :=
   [ @code{semantic-checks} @kbd{boolean}@code{;} ]
+  [ @code{ixfr-from-differences} @kbd{boolean}@code{;} ]
   [ @code{disable-any} @kbd{boolean}@code{;} ]
   [ @code{notify-timeout} @kbd{integer}@code{;} ]
   [ @code{notify-retries} @kbd{integer}@code{;} ]
   [ @code{zonefile-sync} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
   [ @code{ixfr-fslimit} ( @kbd{integer} | @kbd{integer}(@code{k} | @code{M} | @code{G}) )@code{;} ]
-
+  [ @code{ixfr-from-differences} @kbd{boolean}@code{;} ]
 @end example
 
-@node zones Semantic checks 
-@subsection List of zone semantic checks 
+@node zones Statement Definition and Grammar
+@subsection Statement Definition and Grammar
+
+@menu
+* zone_id::
+* file::
+* xfr-in::                    
+* xfr-out::                     
+* notify-in::                        
+* notify-out::                     
+* semantic-checks::                     
+* ixfr-from-differences::
+* disable-any::                     
+* notify-timeout::                     
+* notify-retries::                     
+* zonefile-sync::                    
+* ixfr-fslimit::                     
+@end menu
+
+@node zone_id
+@subsubsection @kbd{zone_id}
+@vindex zone_id
+
+@code{zone_id} is a zone origin, and as such is a domain name that may or may not end with a ".".
+If no $ORIGIN directive is found inside actual zone file, this domain name will be used in place of "@@".
+
+@node file
+@subsubsection file
+@vindex file
+
+After @code{file} statement comes path to zone file. You can either use full path, or use relative path, with relative
+path's origin in @code{storage} directory in configuration file.
+
+@node xfr-in
+@subsubsection xfr-in
+@vindex xfr-in
+
+In @code{xfr-in} statement user specifies which remotes will be permited to perform a zone transfer to update the zone.
+Remotes are defined in @code{remotes} section of configuration file.
+
+@node xfr-out
+@subsubsection xfr-out
+@vindex xfr-out
+
+In @code{xfr-out} statement user specifies which remotes will be permited to obtain zone's contents via zone transfer.
+Remotes are defined in @code{remotes} section of configuration file.
+
+@node notify-in
+@subsubsection notify-in
+@vindex notify-in
+
+@code{notify-in} defines which remotes will be permited to send NOTIFY for this particular zone.
+
+@node notify-out
+@subsubsection notify-out
+@vindex notify-out
+
+@code{notify-out} defines to which remotes will your server send NOTIFYs about this particular zone.
+
+@node semantic-checks
+@subsubsection semantic-checks
+@vindex semantic-checks 
+
+@code{semantic-checks} statement turns on optional semantic checks for this particular zone.
+See @ref{zones List of zone semantic checks} for more information. Possible values are @code{on} and @code{off}.
+Most checks are disabled by default.
+
+@node ixfr-from-differences
+@subsubsection ixfr-from-differences
+@vindex ixfr-from-differences
+
+EXPERIMENTAL: option @code{ixfr-from-differences} is only relevant if you are running Knot DNS as a master for this zone.
+By turning the feature on you tell Knot to create changesets from changes you made to a zone file upon server reload.
+See @ref{Controlling running daemon} for more information. Possible values are @code{on} and @code{off}. Disabled by default.
+
+@node disable-any
+@subsubsection disable-any
+@vindex disable-any
+
+If you enable @code{disable-any}, all ANY queries sent over UDP will be answered with an empty response and with the TC bit set.
+Use to minimize the risk of DNS replay attack. Disabled by default.
+
+@node notify-timeout
+@subsubsection notify-timeout
+@vindex notify-timeout
+
+@code{notify-timeout} in seconds specifies how long will server wait for NOTIFY response. Possible values are 1 to INT_MAX.
+By default, this value is set to 60 seconds.
+
+@node notify-retries
+@subsubsection notify-retries
+@vindex notify-retries
+
+@code{notify-retries} tells the server how many times it can retry to send a NOTIFY. Possible values 
+are 1 to INT_MAX and default value is 5.
+
+@node zonefile-sync
+@subsubsection zonefile-sync
+@vindex zonefile-sync
+
+@code{zonefile-sync} is only relevant in slave server scenario. It is a time after which current zone in memory will be synced
+to its file on a disk (as set in @ref{file}). Possible values are 1 to INT_MAX, optionally suffixed by unit size (s/m/h/d) - @emph{1s} is one second, @emph{1m} one minute, @emph{1h} one hour and @emph{1d} one day with default value set to @emph{1h}.
+
+@node ixfr-fslimit
+@subsubsection ixfr-fslimit
+@vindex ixfr-fslimit
+
+@code{ixfr-fslimit} sets a maximum file size for zone's journal. Possible values are 1 to INT_MAX, with optional suffixes k, m and G. I.e. @emph{1k}, @emph{1m} and @emph{1G} with default value not being set, meaning that journal file can grow without limitations.
+
+@node zones Example
+@subsection zones Example
+
+@example
+@group
+zones @{
+
+  # Shared options for all listed zones
+  ixfr-from-differences off;
+  semantic-checks off;
+  disable-any off;
+  notify-timeout 60;
+  notify-retries 5;
+  zonefile-sync 1h;
+  ixfr-fslimit 1G;
+  example.com @{
+    file "samples/example.com.zone";
+    ixfr-from-differences off; #experimental
+    disable-any off;
+    semantic-checks on;
+    notify-timeout 60;
+    notify-retries 5;
+    zonefile-sync 1h;
+    xfr-in server0;
+    xfr-out server0, server1;
+    notify-in server0;
+    notify-out server0, server1;
+  @}
+@}
+
+@end group
+@end example
+
+@node zones List of zone semantic checks 
+@subsection List of zone semantic checks
 
 The @code{semantic-checks} statement turns on extra zone file semantic
-checks on. Several checks are enabled on default and cannot be turned
+checks. Several checks are enabled by default and cannot be turned
 off. If an error is found using these mandatory checks, the zone file
 will not be loaded. Upon loading a zone file, occured
-error and counts of their occurence will be logged to stderr.
+errors and counts of their occurence will be logged to @emph{stderr}.
 These checks are the following:
 
 @example
 - An extra record together with CNAME record (except for RRSIG and DS)
-- CNAME link chain length greater than 10 (including infinite cycle)
+- CNAME link chain length greater than 10 (including infinite cycles)
 - DNAME and CNAME records under the same owner (RFC 2672)
 - CNAME and DNAME wildcards pointing to themselves
-- SOA record missing in zone (RFC 1034)
+- SOA record missing in the zone (RFC 1034)
 - DNAME records having records under it (DNAME children) (RFC 2672)
 @end example
 
@@ -433,14 +643,11 @@ loaded even upon discovering an error:
 - Wrong original TTL value in NSEC3 records
 - Wrong type covered RDATA value in RRSIG record
 - Wrong RDATA TTL value in RRSIG record
-- Signer name not the same as in DNSKEY
+- Signer name in RRSIG RR not the same as in DNSKEY
 - Signed RRSIG
 - Not all RRs in node are signed
-- Wrong key flags or wrong key in RRSIG record
+- Wrong key flags or wrong key in RRSIG record (not the same as ZSK)
 @end example
-
-@node zones Statement Definition and Grammar
-@subsection Statement Definition and Grammar
 
 @node log
 @section @code{log} Statement
@@ -448,18 +655,107 @@ loaded even upon discovering an error:
 
 @menu
 * log Syntax::                  
-* log Statement Definition and Grammar::  
+* log Statement Definition and Grammar::
+* log Example::
 @end menu
 
 @node log Syntax
 @subsection Syntax
 
+@example
+@code{log} @code{@{}
+  @kbd{log_name} @code{@{}
+    [ @kbd{category} @kbd{severity} [ @kbd{severity} @dots{} ]@code{;} ]
+    [ @code{log_file} @kbd{filename} @{
+	   [ @kbd{category} @kbd{severity} [ @kbd{severity} @dots{} ]@code{;} ] 
+      @} ]
+  @code{@}}
+@code{@}}
+
+@end example
+
 @node log Statement Definition and Grammar
 @subsection Statement Definition and Grammar
 
+@menu
+* log_name::
+* category::
+* severity::
+* log_file::
+@end menu
+
 The @code{log} statement configures logging output of Knot DNS.  You
-can configure Knot DNS to log into file or system log.  Each log
-message has it's priority and you can configure priorities for each
+can configure Knot DNS to log into file or system log. There are several
+logging categories to choose from. Each log
+message has its priority and you can configure priorities for each
 log destination.
 
+@node log_name
+@subsubsection @kbd{log_name}
+@vindex @kbd{log_name}
+
+@kbd{log_name} should be replaced with one of 3 symbolic log names :
+@itemize
+@item @emph{stdout} - logging to standard output
+@item @emph{stderr} - logging to standard error output
+@item @emph{syslog} - logging to syslog
+@end itemize
+
+@node category
+@subsubsection @kbd{category}
+@vindex category
+
+Knot DNS allows user to choose from these logging categories:
+
+@itemize
+@item @emph{server} - Messages related to general operation of the server.
+@item @emph{zone} - Messages related to zones, zone parsing and loading.
+@item @emph{answering} - Messages regarding query processing and response creation.
+@item @emph{any} - All categories.
+@end itemize
+
+@node severity
+@subsubsection @kbd{severity}
+@vindex severity
+
+Knot DNS has the following logging severities:
+@itemize
+@item @emph{debug} - Debug messages, must be turned on at compile time (@pxref{Enabling debug messages in server}).
+@item @emph{info} - Informational message.
+@item @emph{notice} - Server notices and hints.
+@item @emph{warning} - Warnings that might require user action.
+@item @emph{error} - Recoverable error. Action should be taken.
+@item @emph{all} - All severities.
+@end itemize
+
+@node log_file
+@subsubsection @kbd{log_file}
+@vindex @kbd{log_file}
+
+@kbd{log_file} is either absolute or relative path to file user wants to log to.
+See following example for clarification.
+
+@node log Example
+@subsection log Example
+
+@example
+
+log @{
+
+  syslog @{
+    any error;
+    zone warning, notice;
+    server info;
+  @}
+
+  stderr @{
+    any error, warning;
+  @}
+
+  file "/tmp/knot-sample/knotd.debug" @{
+    server debug;
+  @}
+@}
+
+@end example
 

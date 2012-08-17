@@ -73,7 +73,7 @@ void help(int argc, char **argv)
 {
 	printf("Usage: %sd [parameters]\n",
 	       PACKAGE_NAME);
-	printf("Parameters:\n"
+	printf("\nParameters:\n"
 	       " -c, --config [file] Select configuration file.\n"
 	       " -d, --daemonize     Run server as a daemon.\n"
 	       " -v, --verbose       Verbose mode - additional runtime information.\n"
@@ -160,10 +160,10 @@ int main(int argc, char **argv)
 	server_t *server = server_create();
 
 	// Initialize configuration
-	conf_read_lock();
+	rcu_read_lock();
 	conf_add_hook(conf(), CONF_LOG, log_conf_hook, 0);
 	conf_add_hook(conf(), CONF_ALL, server_conf_hook, server);
-	conf_read_unlock();
+	rcu_read_unlock();
 
 	// Find implicit configuration file
 	if (!config_fn) {
