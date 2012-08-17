@@ -1,7 +1,7 @@
 @node Knot DNS Configuration Reference, , Statement Index, Top
 @appendix Knot DNS Configuration Reference
 
-This reference describe every configuration option in Knot DNS.
+This reference describes every configuration option in Knot DNS server.
 
 @menu
 * system::                      
@@ -17,7 +17,7 @@ This reference describe every configuration option in Knot DNS.
 @stindex system
 
 The @code{system} statement contains general options related to the
-operating system and other general options which don't fit anywhere
+operating system and other general options which do not fit anywhere
 else.
 
 @menu
@@ -74,7 +74,7 @@ Version of the server (see @url{http://tools.ietf.org/html/rfc4892,RFC 4892}). N
 
 @example
 system @{
-  version "1.0.5";
+  version "1.1.0";
 @}
 @end example
 
@@ -84,7 +84,7 @@ system @{
 
 DNS Name Server Identifier (see @url{http://tools.ietf.org/html/rfc5001,RFC 5001}).
 
-Use a string format "text" or a hexstring f.e. 0x01ab00
+Use a string format "text" or a hexstring (e.g. 0x01ab00)
 
 @example
 system @{
@@ -96,7 +96,7 @@ system @{
 @subsubsection storage
 @vindex storage
 
-The working directory of the Knot DNS, it is used to store compiled zone files and it's also a default location of the pidfile.
+The working directory of Knot DNS, it is used to store compiled zone files and it is also a default location of the pidfile.
 
 @example
 system @{
@@ -108,7 +108,7 @@ system @{
 @subsubsection pidfile
 @vindex pidfile
 
-Custom pidfile location.
+Specifies custom pidfile location.
 
 Default value: @file{knot.pid} in @code{@ref{storage}} directory.
 
@@ -122,7 +122,7 @@ system @{
 @subsubsection workers
 @vindex workers
 
-Number of workers (threads) per interface.  This option is used to
+Number of workers (threads) per server interface.  This option is used to
 force number of threads used per interface.
 
 Default value: unset (auto-estimates optimal value from the number of online CPUs)
@@ -139,6 +139,7 @@ system @{
 
 System @kbd{user} or @kbd{user}.@kbd{group} under which the Knot DNS
 is run after starting and binding to interfaces.
+Only aplicable if your system knows how to handle Linux capabilities (@pxref{Required libraries}).
 
 Default value: root.root
 
@@ -149,7 +150,7 @@ system @{
 @end example
 
 @node system Example
-@subsection Example
+@subsection system Example
 
 @example
 system @{
@@ -194,7 +195,7 @@ keys @{
 @vindex key_id
 
 The @kbd{key_id} statement defines a secret shared key for use with
-TSIG.  It consists of its name, algorithm and key contents.
+TSIG.  It consists of its @kbd{name}, @kbd{algorithm} and @kbd{key} contents.
 
 Supported algoritms:
 
@@ -213,7 +214,7 @@ hmac-sha384
 hmac-sha512
 @end multitable
 
-You will need to use bind or ldns utils to generate TSIG keys.  Knot DNS doesn't have it's own generation utilities yet.
+You need to use bind or ldns utils to generate TSIG keys. Unfortunately, Knot DNS does not have any own generation utilities yet.
 
 @example
 
@@ -235,7 +236,7 @@ keys @{
 @end example
 
 @node Example
-@subsection Example
+@subsection keys Example
 
 
 @example
@@ -283,10 +284,10 @@ The @code{interfaces} statement contains IP interfaces where Knot DNS listens fo
 @vindex interface_id
 
 The @kbd{interface_id} is a textual identifier of an IP interface,
-which consists of IP address and port.
+which consists of an IP address and a port.
 
-The definition of interface can be written in long or a short form and
-it has always contain and IP (IPv4 or IPv6) address.
+The definition of an interface can be written in long or a short form and
+it always contains IP (IPv4 or IPv6) address.
 
 @node interfaces Examples
 @subsection interfaces Examples
@@ -329,11 +330,11 @@ interfaces @{
 @stindex remotes
 
 The @code{remotes} statement sets up all remote servers for zone
-transfers.  Knot DNS doesn't distinguish between client or server in
+transfers.  Knot DNS does not distinguish between client or server in
 this section.  Role of the server is determined at the time of its
 usage in the @code{@ref{zones}} section.  One server may act as a
 client for one zone (e.g. downloading the updates) and as a master
-server for different zone.
+server for a different zone.
 
 @menu
 * remotes Syntax::              
@@ -379,13 +380,13 @@ server for different zone.
 @subsubsection address
 @vindex address
 
-@kbd{address} sets an IPv4 or IPv6 address for this particular @code{remote}.
+@kbd{address} sets an IPv4 or an IPv6 address for this particular @code{remote}.
 
 @node port
 @subsubsection port
 @vindex port
 
-@code{port} section contains a port number for current @code{remote}.  This section is optional with default port set to 53.
+@code{port} section contains a port number for the current @code{remote}.  This section is optional with default port set to 53.
 
 @node key
 @subsubsection key
@@ -487,29 +488,29 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
 @subsubsection @kbd{zone_id}
 @vindex zone_id
 
-@code{zone_id} is zone origin, and as such is a domain name that may or may not end with a ".".
-If no $ORIGIN directive is inside actual zone file, this domain name will be used in place of "@@".
+@code{zone_id} is a zone origin, and as such is a domain name that may or may not end with a ".".
+If no $ORIGIN directive is found inside actual zone file, this domain name will be used in place of "@@".
 
 @node file
 @subsubsection file
 @vindex file
 
-After @code{file} statement comes path to zone file. You can use either full or relative path, with relative
-path's origin in @ref{storage} directory.
+After @code{file} statement comes path to zone file. You can either use full path, or use relative path, with relative
+path's origin in @code{storage} directory in configuration file.
 
 @node xfr-in
 @subsubsection xfr-in
 @vindex xfr-in
 
 In @code{xfr-in} statement user specifies which remotes will be permited to perform a zone transfer to update the zone.
-Remotes are defined in @ref{remotes}.
+Remotes are defined in @code{remotes} section of configuration file.
 
 @node xfr-out
 @subsubsection xfr-out
 @vindex xfr-out
 
 In @code{xfr-out} statement user specifies which remotes will be permited to obtain zone's contents via zone transfer.
-Remotes are defined in @ref{remotes}.
+Remotes are defined in @code{remotes} section of configuration file.
 
 @node notify-in
 @subsubsection notify-in
@@ -529,29 +530,29 @@ Remotes are defined in @ref{remotes}.
 
 @code{semantic-checks} statement turns on optional semantic checks for this particular zone.
 See @ref{zones List of zone semantic checks} for more information. Possible values are @code{on} and @code{off}.
-Disabled by default.
+Most checks are disabled by default.
 
 @node ixfr-from-differences
 @subsubsection ixfr-from-differences
 @vindex ixfr-from-differences
 
-EXPERIMENTAL: @code{ixfr-from-differences} is only relevant if you are running Knot as a master for this zone.
-By turning this on you will tell Knot to create changesets from changes you made to a zone file upon server reload.
+EXPERIMENTAL: option @code{ixfr-from-differences} is only relevant if you are running Knot DNS as a master for this zone.
+By turning the feature on you tell Knot to create changesets from changes you made to a zone file upon server reload.
 See @ref{Controlling running daemon} for more information. Possible values are @code{on} and @code{off}. Disabled by default.
 
 @node disable-any
 @subsubsection disable-any
 @vindex disable-any
 
-If you enable @code{disable-any}, all ANY queries over UDP will be answered with empty response and with the TC bit set.
-Use to minimize risk of DNS replay attack. Disabled by default.
+If you enable @code{disable-any}, all ANY queries sent over UDP will be answered with an empty response and with the TC bit set.
+Use to minimize the risk of DNS replay attack. Disabled by default.
 
 @node notify-timeout
 @subsubsection notify-timeout
 @vindex notify-timeout
 
 @code{notify-timeout} in seconds specifies how long will server wait for NOTIFY response. Possible values are 1 to INT_MAX.
-Default value is 60 seconds.
+By default, this value is set to 60 seconds.
 
 @node notify-retries
 @subsubsection notify-retries
@@ -565,13 +566,13 @@ are 1 to INT_MAX and default value is 5.
 @vindex zonefile-sync
 
 @code{zonefile-sync} is only relevant in slave server scenario. It is a time after which current zone in memory will be synced
-to its file on a disk (as set in @ref{file}). Possible values are 1 to INT_MAX, optionally suffixed by unit size (s/m/h/d) - 1s is one socond, 1m one minute, 1h one hour and 1d one day with default value set to 1h.
+to its file on a disk (as set in @ref{file}). Possible values are 1 to INT_MAX, optionally suffixed by unit size (s/m/h/d) - @emph{1s} is one second, @emph{1m} one minute, @emph{1h} one hour and @emph{1d} one day with default value set to @emph{1h}.
 
 @node ixfr-fslimit
 @subsubsection ixfr-fslimit
 @vindex ixfr-fslimit
 
-@code{ixfr-fslimit} sets a maximum size for zone's journal. Possible values are 1 to INT_MAX, with optional suffixes k, m and G. I.e. 1k, 1m and 1G with default value not being set, meaning that journal file can grow without limitations.
+@code{ixfr-fslimit} sets a maximum file size for zone's journal. Possible values are 1 to INT_MAX, with optional suffixes k, m and G. I.e. @emph{1k}, @emph{1m} and @emph{1G} with default value not being set, meaning that journal file can grow without limitations.
 
 @node zones Example
 @subsection zones Example
@@ -610,18 +611,18 @@ zones @{
 @subsection List of zone semantic checks
 
 The @code{semantic-checks} statement turns on extra zone file semantic
-checks on. Several checks are enabled on default and cannot be turned
+checks. Several checks are enabled by default and cannot be turned
 off. If an error is found using these mandatory checks, the zone file
 will not be loaded. Upon loading a zone file, occured
-error and counts of their occurence will be logged to stderr.
+errors and counts of their occurence will be logged to @emph{stderr}.
 These checks are the following:
 
 @example
 - An extra record together with CNAME record (except for RRSIG and DS)
-- CNAME link chain length greater than 10 (including infinite cycle)
+- CNAME link chain length greater than 10 (including infinite cycles)
 - DNAME and CNAME records under the same owner (RFC 2672)
 - CNAME and DNAME wildcards pointing to themselves
-- SOA record missing in zone (RFC 1034)
+- SOA record missing in the zone (RFC 1034)
 - DNAME records having records under it (DNAME children) (RFC 2672)
 @end example
 
@@ -642,10 +643,10 @@ loaded even upon discovering an error:
 - Wrong original TTL value in NSEC3 records
 - Wrong type covered RDATA value in RRSIG record
 - Wrong RDATA TTL value in RRSIG record
-- Signer name not the same as in DNSKEY
+- Signer name in RRSIG RR not the same as in DNSKEY
 - Signed RRSIG
 - Not all RRs in node are signed
-- Wrong key flags or wrong key in RRSIG record
+- Wrong key flags or wrong key in RRSIG record (not the same as ZSK)
 @end example
 
 @node log
@@ -693,7 +694,7 @@ log destination.
 @subsubsection @kbd{log_name}
 @vindex @kbd{log_name}
 
-@kbd{log_name} recognizes 3 symbolic log names :
+@kbd{log_name} should be replaced with one of 3 symbolic log names :
 @itemize
 @item @emph{stdout} - logging to standard output
 @item @emph{stderr} - logging to standard error output
