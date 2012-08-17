@@ -10,5 +10,6 @@ current version of Knot.
 Known bugs
 ==========
 
-* Slow start with too many zones.
-* Generating journal from reloaded zone adds redundant records to the changes when the RDATA are in binary format.
+* ACL may not always find the best match so it may behave counter-intuitively.
+* Generating journal from reloaded zone adds redundant records to the changes 
+  when the RDATA are in binary format.
