@@ -13,9 +13,9 @@
 
 GCC at least 4.1 is strictly required for atomic builtins, but 4.2 or newer is recommended.
 Another requirement is _GNU_SOURCE support, otherwise it adapts to the compiler available features.
-Clang should work, but it is not tested nor officially supported.
+Clang should work, but it is not officially supported.
 
-Knot DNS build system relies on standard tools:
+Knot DNS build system relies on these standard tools:
 @itemize
 @item
 make
@@ -65,7 +65,7 @@ your system or distribution.  If not, zlib resides at
 liburcu is a LGPLv2.1 userspace RCU (read-copy-update)
 library. This data synchronization library provides read-side
 access which scales linearly with the number of cores. It does
-so by allowing multiples copies of a given data structure to
+so by allowing multiple copies of a given data structure to
 live at the same time, and by monitoring the data structure
 accesses to detect grace periods after which memory reclamation
 is possible.  (@url{http://lttng.org/urcu,Userspace RCU})
@@ -74,8 +74,7 @@ Binary packages for Debian can be found under liburcu1 for the
 library and liburcu-dev for development files.
 
 Minimum supported version of Userspace RCU library is 0.5.4,
-but we recommend using latest available version.  It is
-especially on non-Linux systems as we got some compatibility
+but we recommend using latest available version.  It is crucial especially on non-Linux systems as we got some compatibility
 patches accepted in later releases of Userspace RCU.
 OpenBSD,NetBSD and OS X platforms are supported from version 0.7.0.
 
@@ -109,7 +108,7 @@ Also, it has been reported that some platforms have broken LTO (Link time optimi
 support, you can disable that by @command{./configure --enable-lto=no}.
 
 If you want to add debug messages, there are two steps to do that.
-First you have to enable modules, that you are interested in.
+First you have to enable modules you are interested in.
 Available are: @code{server, zones, xfr, packet, dname, rr, ns, hash, compiler}.
 You can combine multiple modules as a comma-separated list.
 Then you can narrow the verbosity of the debugging message by specifying the
@@ -119,9 +118,6 @@ For example:
 $ ./configure --enable-debug=server,packet --enable-debuglevel=brief
 $ ./configure --enable-debug=server,packet --enable-debuglevel=verbose
 @end example
-
-
-For example:  @command{}.
 
 In most simple case you can just run configure without any options.
 
@@ -133,7 +129,7 @@ In most simple case you can just run configure without any options.
 @subsection Compilation
 
 After running @command{./configure} you can compile
-Knot DNS by running make command, which will produce binaries
+Knot DNS by running @command{make} command, which will produce binaries
 and other related files.
 
 @example
