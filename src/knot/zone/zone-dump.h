@@ -20,7 +20,7 @@
  *
  * \brief Functions for dumping zone to binary file.
  *
- * \addtogroup dnslib
+ * \addtogroup zone-load-dump
  * @{
  */
 
@@ -38,7 +38,7 @@ enum {
 };
 
 /*! \brief Magic identifier: { "knot", maj_ver, min_ver, revision } */
-#define MAGIC_BYTES {'k', 'n', 'o', 't', '1', '0', '4'}
+#define MAGIC_BYTES {'k', 'n', 'o', 't', '1', '1', '0'}
 
 /*!
  * \brief Dumps given zone to binary file.

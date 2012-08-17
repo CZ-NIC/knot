@@ -118,6 +118,9 @@ static int zonedata_destroy(knot_zone_t *zone)
 
 	/* Close IXFR db. */
 	journal_release(zd->ixfr_db);
+	
+	/* Free assigned config. */
+	conf_free_zone(zd->conf);
 
 	free(zd);
 	
@@ -1490,7 +1493,10 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 		assert(zd != NULL);
 
 		/* Update refs. */
-		zd->conf = z;
+		if (zd->conf != z) {
+			conf_free_zone(zd->conf);
+			zd->conf = z;
+		}
 
 		/* Update ACLs. */
 		dbg_zones("Updating zone ACLs.\n");
@@ -1664,11 +1670,15 @@ static int zonewalker(dthread_t *thread)
 	pthread_mutex_lock(&zw->lock);
 	zw->inserted += inserted;
 	for (int i = 0; i < inserted; ++i) {
+		zonedata_t *zd = (zonedata_t *)knot_zone_data(zones[i]);
 		if (knot_zonedb_add_zone(zw->db_new, zones[i]) != KNOT_EOK) {
-			zonedata_t *zd = (zonedata_t *)knot_zone_data(zones[i]);
 			log_server_error("Failed to insert zone '%s' "
 			                 "into database.\n", zd->conf->name);
 			knot_zone_deep_free(zones + i, 0);
+		} else {
+			/* Unlink zone config from conf(),
+			 * transferring ownership to zonedata. */
+			rem_node(&zd->conf->n);
 		}
 	}
 	pthread_mutex_unlock(&zw->lock);
@@ -1782,6 +1792,18 @@ dbg_zones_exec(
                                        "from database.\n", name);
 			free(name);
 );
+			/* Invalidate ACLs - since we would need to copy each
+			 * remote data and keep ownership, I think it's no harm
+			 * to drop all ACLs for the discarded zone.
+			 * refs #1976 */
+			zonedata_t *zd = (zonedata_t*)knot_zone_data(old_zone);
+			conf_zone_t *zconf = zd->conf;
+			WALK_LIST_FREE(zconf->acl.xfr_in);
+			WALK_LIST_FREE(zconf->acl.xfr_out);
+			WALK_LIST_FREE(zconf->acl.notify_in);
+			WALK_LIST_FREE(zconf->acl.notify_out);
+			
+			/* Remove from zone db. */
 			knot_zone_t * rm = knot_zonedb_remove_zone(db_old,
 			                              knot_zone_name(old_zone));
 			assert(rm == old_zone);
@@ -2591,46 +2613,6 @@ knot_ns_xfr_type_t zones_transfer_to_use(zonedata_t *data)
 
 /*----------------------------------------------------------------------------*/
 
-static int zones_find_zone_for_xfr(const knot_zone_contents_t *zone, 
-                                   const char **zonefile, const char **zonedb)
-{
-	/* find the zone file name and zone db file name for the zone */
-	conf_t *cnf = conf();
-	node *n = NULL;
-	WALK_LIST(n, cnf->zones) {
-		conf_zone_t *zone_conf = (conf_zone_t *)n;
-		knot_dname_t *zone_name = knot_dname_new_from_str(
-			zone_conf->name, strlen(zone_conf->name), NULL);
-		if (zone_name == NULL) {
-			return KNOTD_ENOMEM;
-		}
-
-		int r = knot_dname_compare(zone_name, knot_node_owner(
-		                              knot_zone_contents_apex(zone)));
-
-		/* Directly discard dname, won't be needed. */
-		knot_dname_free(&zone_name);
-
-		if (r == 0) {
-			/* found the right zone */
-			*zonefile = zone_conf->file;
-			*zonedb = zone_conf->db;
-			return KNOTD_EOK;
-		}
-	}
-#ifdef KNOTD_ZONES_DEBUG
-	char *name = knot_dname_to_str(knot_node_owner(
-	                 knot_zone_contents_apex(zone)));
-	dbg_zones("zones: no zone found for the zone received by transfer "
-	          "(%s).\n", name);
-	free(name);
-#endif
-
-	return KNOTD_ENOENT;
-}
-
-/*----------------------------------------------------------------------------*/
-
 static int zones_open_free_filename(const char *old_name, char **new_name)
 {
 	/* find zone name not present on the disk */
@@ -2809,32 +2791,47 @@ static int zones_dump_zone_binary(knot_zone_contents_t *zone,
 
 int zones_save_zone(const knot_ns_xfr_t *xfr)
 {
-	if (xfr == NULL || xfr->new_contents == NULL) {
+	if (xfr == NULL || xfr->new_contents == NULL || xfr->zone == NULL) {
 		return KNOTD_EINVAL;
 	}
 	
-	knot_zone_contents_t *zone = xfr->new_contents;
+	rcu_read_lock();
 	
-	const char *zonefile = NULL;
-	const char *zonedb = NULL;
+	zonedata_t *zd = (zonedata_t *)knot_zone_data(xfr->zone);
+	knot_zone_contents_t *new_zone = xfr->new_contents;
 	
-	int ret = zones_find_zone_for_xfr(zone, &zonefile, &zonedb);
-	if (ret != KNOTD_EOK) {
-		return ret;
+	const char *zonefile = zd->conf->file;
+	const char *zonedb = zd->conf->db;
+	
+	/* Check if the new zone apex dname matches zone name. */
+	knot_dname_t *cur_name = knot_dname_new_from_str(zd->conf->name,
+	                                                 strlen(zd->conf->name),
+	                                                 NULL);
+	const knot_dname_t *new_name = NULL;
+	new_name = knot_node_owner(knot_zone_contents_apex(new_zone));
+	int r = knot_dname_compare(cur_name, new_name);
+	knot_dname_free(&cur_name);
+	if (r != 0) {
+		rcu_read_unlock();
+		return KNOTD_EINVAL;
 	}
 	
 	assert(zonefile != NULL && zonedb != NULL);
 	
 	/* dump the zone into text zone file */
-	ret = zones_dump_zone_text(zone, zonefile);
+	int ret = zones_dump_zone_text(new_zone, zonefile);
 	if (ret != KNOTD_EOK) {
+		rcu_read_unlock();
 		return KNOTD_ERROR;
 	}
 	/* dump the zone into binary db file */
-	ret = zones_dump_zone_binary(zone, zonedb, zonefile);
+	ret = zones_dump_zone_binary(new_zone, zonedb, zonefile);
 	if (ret != KNOTD_EOK) {
+		rcu_read_unlock();
 		return KNOTD_ERROR;
 	}
+	
+	rcu_read_unlock();
 	
 	return KNOTD_EOK;
 }

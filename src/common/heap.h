@@ -53,3 +53,5 @@ void heap_delete(struct heap *, int);
 
 
 #endif	/* _HEAP_H_ */
+
+/*! @} */

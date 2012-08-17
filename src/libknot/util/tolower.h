@@ -55,3 +55,5 @@ static inline uint8_t knot_tolower(uint8_t c) {
 }
 
 #endif /* _KNOT_TOLOWER_H_ */
+
+/*! @} */

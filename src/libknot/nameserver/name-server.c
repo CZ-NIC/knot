@@ -265,7 +265,7 @@ static int ns_add_rrsigs(knot_rrset_t *rrset, knot_packet_t *resp,
 				return ret;
 			}
 		}
-		return add_rrset_to_resp(resp, rrsigs, tc, 0, 0, 1);
+		return add_rrset_to_resp(resp, rrsigs, tc, 1, 0, 1);
 	}
 
 	return KNOT_EOK;

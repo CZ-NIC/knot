@@ -231,7 +231,7 @@ void __attribute__ ((destructor)) slab_deinit()
  * Cache helper functions.
  */
 
-/* \notice Not used right now.
+/* \note Not used right now.
 static void slab_dump(slab_t* slab) {
 
 	printf("%s: buffers (bufsize=%zuB, %u/%u free): \n",
