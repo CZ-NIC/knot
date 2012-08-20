@@ -14,25 +14,23 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file test_functions.h
+ * \file tests.h
  *
  * \author Daniel Salzman <daniel.salzman@nic.cz>
  *
  * \brief Zone scanner test functions.
  *
- * \addtogroup zone_scanner
+ * \addtogroup zone_scanner_test
  * @{
  */
 
-#ifndef _ZSCANNER__TEST_FUNCTIONS_H_
-#define _ZSCANNER__TEST_FUNCTIONS_H_
+#ifndef _ZSCANNER__TESTS_H_
+#define _ZSCANNER__TESTS_H_
 
-#include "zscanner/scanner.h"
 
-void process_error(const scanner_t *scanner);
+int test__date_to_timestamp();
 
-void process_record(const scanner_t *scanner);
 
-#endif // _ZSCANNER__TEST_FUNCTIONS_H_
+#endif // _ZSCANNER__TESTS_H_
 
 /*! @} */

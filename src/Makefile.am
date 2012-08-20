@@ -67,8 +67,10 @@ unittests_zscanner_SOURCES =			\
 	zscanner/scanner.c			\
 	zscanner/scanner_functions.h		\
 	zscanner/scanner_functions.c		\
-	zscanner/test/test_functions.h		\
-	zscanner/test/test_functions.c
+	zscanner/test/tests.h			\
+	zscanner/test/tests.c			\
+	zscanner/test/processing.h		\
+	zscanner/test/processing.c
 
 unittests_SOURCES =				\
 	tests/common/acl_tests.c		\
