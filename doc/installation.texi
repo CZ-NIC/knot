@@ -11,7 +11,7 @@
 @node Required build environment
 @section Required build environment
 
-GCC at least 4.1 is strictly required for atomic builtins, but 4.2 or newer is recommended.
+GCC at least 4.1 is strictly required for atomic built ins, but 4.2 or newer is recommended.
 Another requirement is @code{_GNU_SOURCE} support, otherwise it adapts to the compiler available features.
 Clang should work, but it is not officially supported.
 
@@ -109,7 +109,7 @@ adding a parameter @command{--enable-recvmmsg=no} to configure.
 Knot DNS has also support for link time optimizations.
 You can enable it by the configure parameter @command{./configure --enable-lto=no}.
 It is however disabled by default as it is known to be broken in some compiler
-versions and may result in an unexpected behavior.
+versions and may result in an unexpected behaviour.
 
 If you want to add debug messages, there are two steps to do that.
 First you have to enable modules you are interested in.
@@ -141,7 +141,7 @@ and other related files.
 make
 @end example
 
-Knot DNS build process is safe to paralelize
+Knot DNS build process is safe to parallelize
 using @command{make -j N}, where N is number of
 concurrent processes.  Using this option can increase speed of
 the compilation.

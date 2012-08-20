@@ -146,7 +146,7 @@ $ knotc -a -w -c master.conf start
 @section Controlling running daemon
 
 Knot DNS was designed to allow server reconfiguration on-the-fly without interrupting
-it's operation. Thus it is possible to change both configuration and zone files and
+its operation. Thus it is possible to change both configuration and zone files and
 also add or remove zones without restarting the server. This can be done with the
 @code{knotc reload} action. 
 

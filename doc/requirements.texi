@@ -12,7 +12,7 @@
 @section Hardware requirements
 
 Knot DNS requirements are not very demanding for typical
-installations, and a comodity server or a virtualized solution
+installations, and a commodity server or a virtual solution
 will be sufficient in most cases.
 
 However please note that there are some scenarios that will

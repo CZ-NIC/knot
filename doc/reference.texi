@@ -96,7 +96,7 @@ system @{
 @subsubsection storage
 @vindex storage
 
-The working directory of Knot DNS, it is used to store compiled zone files and it is also a default location of the pidfile.
+The working directory of Knot DNS, it is used to store compiled zone files and it is also a default location of the PID file.
 
 @example
 system @{
@@ -400,7 +400,7 @@ server for a different zone.
 @subsubsection via
 @vindex via
 
-@code{via} section specifies which interface will be used to comunnicate with this @code{remote}. This section is optional.
+@code{via} section specifies which interface will be used to communicate with this @code{remote}. This section is optional.
 
 @node remotes Examples
 @subsection remotes Examples
@@ -496,28 +496,29 @@ If no $ORIGIN directive is found inside actual zone file, this domain name will 
 @subsubsection file
 @vindex file
 
-After @code{file} statement comes path to zone file. You can either use full path, or use relative path, with relative
-path's origin in @code{storage} directory in configuration file.
+The @code{file} statement defines a path to the zone file.
+You can either use an absolute path or a relative path.
+In that case, the zone file path will be relative to the @code{storage} directory @ref{storage}.
 
 @node xfr-in
 @subsubsection xfr-in
 @vindex xfr-in
 
-In @code{xfr-in} statement user specifies which remotes will be permited to perform a zone transfer to update the zone.
+In @code{xfr-in} statement user specifies which remotes will be permitted to perform a zone transfer to update the zone.
 Remotes are defined in @code{remotes} section of configuration file.
 
 @node xfr-out
 @subsubsection xfr-out
 @vindex xfr-out
 
-In @code{xfr-out} statement user specifies which remotes will be permited to obtain zone's contents via zone transfer.
+In @code{xfr-out} statement user specifies which remotes will be permitted to obtain zone's contents via zone transfer.
 Remotes are defined in @code{remotes} section of configuration file.
 
 @node notify-in
 @subsubsection notify-in
 @vindex notify-in
 
-@code{notify-in} defines which remotes will be permited to send NOTIFY for this particular zone.
+@code{notify-in} defines which remotes will be permitted to send NOTIFY for this particular zone.
 
 @node notify-out
 @subsubsection notify-out
@@ -614,8 +615,8 @@ zones @{
 The @code{semantic-checks} statement turns on extra zone file semantic
 checks. Several checks are enabled by default and cannot be turned
 off. If an error is found using these mandatory checks, the zone file
-will not be loaded. Upon loading a zone file, occured
-errors and counts of their occurence will be logged to @emph{stderr}.
+will not be loaded. Upon loading a zone file, occurred
+errors and counts of their occurrence will be logged to @emph{stderr}.
 These checks are the following:
 
 @example
@@ -733,7 +734,7 @@ Knot DNS has the following logging severities:
 @item @emph{all} - All severities.
 @end itemize
 
-More severities may be listed for each category, but all severities have to be listed explicitely, i.e. using @emph{error} severity does not mean that @emph{warning} severity messages will be logged as well.
+More severities may be listed for each category, but all severities have to be listed explicitly, i.e. using @emph{error} severity does not mean that @emph{warning} severity messages will be logged as well.
 
 @node log_file
 @subsubsection @kbd{log_file}
