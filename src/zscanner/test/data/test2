@@ -102,6 +102,9 @@ rp.host. RP    louie.trantor.umd.edu.  LAM1.people.umd.edu.
 a NS a
 00JFM7AT277MFV1UERLNS339PVVBOE8M.cz. 900 IN RRSIG NSEC3 10 2 900 20120407094741 21050207062815 16087 cz. Ph5nbbmWatZQqpYJRwqLITaJV4XoU+VJXZ4kyGVH8sGS4I37jNAgmT91 yXJ3AxsRPotKQvKVmZXv1pvAmDVyREcORcW6TPC/v0v4vLzc0r2xDH5T EoelP5D0WLW8OX1kCmkgksxlWzMQHxNPUZ638paQz23ud+uWgI4n9gBO 32w=
 00JFM7AT277MFV1UERLNS339PVVBOE8M.cz. 900 IN RRSIG NSEC3 10 2 900 2407094741 815 16087 cz. Ph5nabcd
+a. 900 IN RRSIG TYPE1 1 2 3 4 5 6 cz. Ph5nabcd
+a. 900 IN RRSIG TYPE123 1 2 3 4 5 6 cz. Ph5nabcd
+a. 900 IN RRSIG TYPE62351 1 2 3 4 5 6 cz. Ph5nabcd
   NSEC3   1 1 12 aabbccdd (
                           2vptu5timamqttgl4luu9kg21e0aor3s A )
   NSEC3   1 1 12 aabbccdd ( CO====== A RRSIG )
@@ -139,4 +142,3 @@ client.example.com.   DHCID   ( AAABxLmlskllE0MVjd57zHcWmEH3pCQ6VytcKD//7es/deY=
 0.d.4.0.3.0.e.f.f.f.3.f.0.1.2.0 7200 IN     IPSECKEY ( 10 2 2
                 2001:0DB8:0:8002::2000:1
                 AQNRU3mG7TVTO2BkR47usntb102uFJtugbo6BSGvgqt4AQ== )
-

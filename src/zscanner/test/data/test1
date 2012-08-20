@@ -59,7 +59,8 @@ vv      A 1.1.1.1
 
 .           AAAA ::5 ()
 
-$INCLUDE a
-$INCLUDE file2 example.com
-$INCLUDE file1
-
+a TYPE1    \# 4 (aa 
+    bbcc dd
+    ) ; multiline
+b TYPE123  \# 0
+c TYPE6231 \# 1		05

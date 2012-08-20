@@ -90,6 +90,7 @@ const error_table_t knot_error_msgs[] = {
 	{ZSCANNER_EBAD_INCLUDE_ORIGIN, "Bad origin in include directive!"},
 	{ZSCANNER_EUNPROCESSED_INCLUDE, "Include file processing error!"},
 	{ZSCANNER_EUNOPENED_INCLUDE, "Include file opening error!"},
+	{ZSCANNER_EBAD_RDATA_LENGTH, "The rdata length statement is incorrect!"},
 
 	{KNOT_ERROR, 0}
 };

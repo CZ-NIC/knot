@@ -108,6 +108,7 @@ enum knot_error {
 	ZSCANNER_EBAD_INCLUDE_ORIGIN,
 	ZSCANNER_EUNPROCESSED_INCLUDE,
 	ZSCANNER_EUNOPENED_INCLUDE,
+	ZSCANNER_EBAD_RDATA_LENGTH,
 };
 
 /*! \brief Table linking error messages to error codes. */

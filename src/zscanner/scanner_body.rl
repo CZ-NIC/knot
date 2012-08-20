@@ -296,9 +296,31 @@
         }
     }
 
+    action _type_number_exit {
+        if (s->number64 <= UINT16_MAX) {
+            s->r_type = (uint16_t)(s->number64);
+        }
+        else {
+            SCANNER_WARNING(ZSCANNER_ENUMBER16_OVERFLOW);
+            fhold; fgoto err_line;
+        }
+    }
+
+    action _length_number_exit {
+        if (s->number64 <= UINT16_MAX) {
+            *(s->r_data_length_position) = htons((uint16_t)(s->number64));
+        }
+        else {
+            SCANNER_WARNING(ZSCANNER_ENUMBER16_OVERFLOW);
+            fhold; fgoto err_line;
+        }
+    }
     number8  = number %_number8_write;
     number16 = number %_number16_write;
     number32 = number %_number32_write;
+
+    type_number   = number %_type_number_exit;
+    length_number = number %_length_number_exit;
     # END
 
     # BEGIN - Time processing
@@ -739,6 +761,16 @@
 
     # Continuous hex array (or "-") with forward length processing.
     salt = (hex_char+ | '-') >_item_init %_item_exit $!_hex_char_error;
+
+    action _type_data_exit {
+        if (htons(*(s->r_data_length_position)) != s->r_data_length) {
+            SCANNER_WARNING(ZSCANNER_EBAD_RDATA_LENGTH);
+            fhold; fgoto err_line;
+        }
+    }
+
+    # Hex array or empty with control to forward length statement.
+    type_data = hex_array? %_type_data_exit $!_hex_char_error;
     # END
 
     # BEGIN - Base64 processing (RFC 4648).
@@ -965,6 +997,7 @@
         | "NSEC3PARAM"i %{ TYPE_NUM(KNOT_RRTYPE_NSEC3PARAM); }
         | "TLSA"i       %{ TYPE_NUM(KNOT_RRTYPE_TLSA); }
         | "SPF"i        %{ TYPE_NUM(KNOT_RRTYPE_SPF); }
+        | "TYPE"i       . number16 # TYPE12345
         ) %_type_exit $!_type_error;
     # END
 
@@ -1022,6 +1055,8 @@
         | "TLSA"i       %{ TYPE_BIT(KNOT_RRTYPE_TLSA,        6); }
         # Type numbers 96-103
         | "SPF"i        %{ TYPE_BIT(KNOT_RRTYPE_SPF,        12); }
+        # Special types TYPE1 - TYPE65535
+        | "TYPE"i # TODO
         );
 
     action _bitmap_init {
@@ -1066,10 +1101,11 @@
         s->r_data_length += 1;
         s->r_data_end    += 1;
     }
-    gateway = ('0' $_fc_write . sep . number8 . sep . '.') |
-              ('1' $_fc_write . sep . number8 . sep . ipv4_address) |
-              ('2' $_fc_write . sep . number8 . sep . ipv6_address) |
-              ('3' $_fc_write . sep . number8 . sep . dname);
+    gateway = ( ('0' $_fc_write . sep . number8 . sep . '.')
+              | ('1' $_fc_write . sep . number8 . sep . ipv4_address)
+              | ('2' $_fc_write . sep . number8 . sep . ipv6_address)
+              | ('3' $_fc_write . sep . number8 . sep . dname)
+              );
     # END
 
     # BEGIN - domain name in record data processing
@@ -1170,6 +1206,9 @@
         s->r_type = KNOT_RRTYPE_SPF;
         fhold; fcall data_txt;
     }
+    action _data_type { // TYPE12345
+        fhold; fcall data_type;
+    }
     # END
 
     # BEGIN - Smaller state machines
@@ -1268,6 +1307,14 @@
         ( sep . number8 . sep . number8 . sep . number16 . sep . salt )
         $!_r_data_error
         %_ret . all_wchar;
+
+    data_type :=
+        ( sep . "\\#" . sep .
+          ( ('0'                             %_ret . all_wchar)
+          | (length_number . sep . type_data %_ret . end_wchar)
+          )
+        )
+        $!_r_data_error;
     # END
 
     # Record type switch to appropriate smaller state machines.
@@ -1282,51 +1329,49 @@
     }
 
     # Temporary action!!
-    action _data_ {
-        SCANNER_WARNING(ZSCANNER_EUNSUPPORTED_TYPE);
-        fhold; fgoto err_line;
-    }
+    action _data_ { }
 
     r_type_r_data =
-        ( "A"i          %_data_a
-        | "NS"i         %_data_ns
-        | "CNAME"i      %_data_cname
-        | "SOA"i        %_data_soa
-        | "WKS"i        %_data_
-        | "PTR"i        %_data_ptr
-        | "HINFO"i      %_data_
-        | "MINFO"i      %_data_
-        | "MX"i         %_data_mx
-        | "TXT"i        %_data_txt
-        | "RP"i         %_data_rp
-        | "AFSDB"i      %_data_
-        | "X25"i        %_data_
-        | "ISDN"i       %_data_
-        | "RT"i         %_data_
-        | "NSAP"i       %_data_
-        | "SIG"i        %_data_
-        | "KEY"i        %_data_
-        | "PX"i         %_data_
-        | "AAAA"i       %_data_aaaa
-        | "LOC"i        %_data_
-        | "SRV"i        %_data_srv
-        | "NAPTR"i      %_data_
-        | "KX"i         %_data_
-        | "CERT"i       %_data_
-        | "DNAME"i      %_data_dname
-        | "OPT"i        %_data_
-        | "APL"i        %_data_
-        | "DS"i         %_data_ds
-        | "SSHFP"i      %_data_sshfp
-        | "IPSECKEY"i   %_data_ipseckey
-        | "RRSIG"i      %_data_rrsig
-        | "NSEC"i       %_data_nsec
-        | "DNSKEY"i     %_data_dnskey
-        | "DHCID"i      %_data_dhcid
-        | "NSEC3"i      %_data_nsec3
-        | "NSEC3PARAM"i %_data_nsec3param
-        | "TLSA"i       %_data_
-        | "SPF"i        %_data_spf
+        ( "A"i                  %_data_a
+        | "NS"i                 %_data_ns
+        | "CNAME"i              %_data_cname
+        | "SOA"i                %_data_soa
+        | "WKS"i                %_data_
+        | "PTR"i                %_data_ptr
+        | "HINFO"i              %_data_
+        | "MINFO"i              %_data_
+        | "MX"i                 %_data_mx
+        | "TXT"i                %_data_txt
+        | "RP"i                 %_data_rp
+        | "AFSDB"i              %_data_
+        | "X25"i                %_data_
+        | "ISDN"i               %_data_
+        | "RT"i                 %_data_
+        | "NSAP"i               %_data_
+        | "SIG"i                %_data_
+        | "KEY"i                %_data_
+        | "PX"i                 %_data_
+        | "AAAA"i               %_data_aaaa
+        | "LOC"i                %_data_
+        | "SRV"i                %_data_srv
+        | "NAPTR"i              %_data_
+        | "KX"i                 %_data_
+        | "CERT"i               %_data_
+        | "DNAME"i              %_data_dname
+        | "OPT"i                %_data_
+        | "APL"i                %_data_
+        | "DS"i                 %_data_ds
+        | "SSHFP"i              %_data_sshfp
+        | "IPSECKEY"i           %_data_ipseckey
+        | "RRSIG"i              %_data_rrsig
+        | "NSEC"i               %_data_nsec
+        | "DNSKEY"i             %_data_dnskey
+        | "DHCID"i              %_data_dhcid
+        | "NSEC3"i              %_data_nsec3
+        | "NSEC3PARAM"i         %_data_nsec3param
+        | "TLSA"i               %_data_
+        | "SPF"i                %_data_spf
+        | "TYPE"i . type_number %_data_type
         ) >_r_data_init $!_r_type_error . all_wchar;
 
     action _record_exit {
