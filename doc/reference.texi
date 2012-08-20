@@ -108,7 +108,7 @@ system @{
 @subsubsection pidfile
 @vindex pidfile
 
-Specifies custom pidfile location.
+Specifies a custom PID file location.
 
 Default value: @file{knot.pid} in @code{@ref{storage}} directory.
 
@@ -139,9 +139,10 @@ system @{
 
 System @kbd{user} or @kbd{user}.@kbd{group} under which the Knot DNS
 is run after starting and binding to interfaces.
-Only aplicable if your system knows how to handle Linux capabilities (@pxref{Required libraries}).
+Linux capabilities (@pxref{Required libraries}) are employed if supported
+and this configuration option is set.
 
-Default value: root.root
+Default value: @kbd{root.root}
 
 @example
 system @{
@@ -199,7 +200,7 @@ TSIG.  It consists of its @kbd{name}, @kbd{algorithm} and @kbd{key} contents.
 
 Supported algoritms:
 
-@multitable @columnfractions 1
+@itemize
 @item
 hmac-md5
 @item
@@ -212,7 +213,7 @@ hmac-sha256
 hmac-sha384
 @item
 hmac-sha512
-@end multitable
+@end itemize
 
 You need to use bind or ldns utils to generate TSIG keys. Unfortunately, Knot DNS does not have any own generation utilities yet.
 
@@ -310,7 +311,7 @@ Short form:
 @example
 
 interfaces @{
-  my_second_ip 198.51.100.1@@53;
+  my_second_ip @{ address 198.51.100.1@@53; @}
 @}
 	
 @end example
@@ -320,7 +321,7 @@ Short form without port (defaults to 53):
 @example
 
 interfaces @{
-  my_third_ip 203.0.113.1;
+  my_third_ip @{ address 203.0.113.1; @}
 @}
 	
 @end example
@@ -413,9 +414,9 @@ remotes @{
     address 127.0.0.1; 
     port 53531;       
     key key0.server0;
-    via ipv4;       
-    via 82.35.64.59;    # IPv4
-    via [::cafe];       # IPv6
+    via ipv4;             # reference to 'remotes'
+    # via 82.35.64.59;    # direct IPv4
+    # via [::cafe];       # direct IPv6
   @}
 
   # Format 2:
@@ -690,7 +691,9 @@ logging categories to choose from. Each log
 message has its severity and user can configure severities for each
 log destination.
 
-In case of missing log section, @emph{errors} from all categories will be logged to @emph{stderr} and to @emph{syslog}. No other severities shall be logged!
+In case of missing log section, severities from @kbd{warning} and more serious
+will be logged to both @kbd{stderr} and @kbd{syslog}. The @kbd{info} and @kbd{notice}
+severities will be logged to the @kbd{stdout}.
 
 @node log_name
 @subsubsection @kbd{log_name}

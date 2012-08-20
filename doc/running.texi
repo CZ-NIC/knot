@@ -20,7 +20,7 @@ $ knotc -a -c knot.conf start|reload|restart
 
 The tool @code{knotc} is designed as a front-end for user, making it easier
 to do everything from zone compilation to controlling the server daemon.
-To communicate with the binary, it reads the process PID from the @emph{pidfile} specified in the configuration and sends POSIX signals to it.
+To communicate with the binary, it reads the PID from the @emph{PID file} specified in the configuration @ref{pidfile} and sends POSIX signals to it.
 If you want to control the daemon directly, use @code{SIGINT} to quit the process or @code{SIGHUP} to reload configuration. Signal @code{SIGUSR2} is currently used to refresh slave zones.
 
 @example
@@ -58,7 +58,7 @@ Actions:
  compile   Compile zones (accepts specific zones, see above).
 @end example
 
-But if you want to run Knot DNS daemon directly, you can use @code{knotd} binary
+If you want to run Knot DNS daemon directly, you can use @code{knotd} binary
 to do that. It accepts just configuration file and option to run in background.
 @example
 Usage: knotd [parameters]
