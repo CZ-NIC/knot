@@ -70,6 +70,55 @@ static void xfr_request_deinit(knot_ns_xfr_t *r)
 	}
 }
 
+/*!
+ * \brief Clean pending transfer data.
+ */
+static int xfr_xfrin_cleanup(xfrworker_t *w, knot_ns_xfr_t *data)
+{
+	int ret = KNOTD_EOK;
+	knot_changesets_t *chs = 0;
+
+	dbg_xfr_verb("Cleaning up after XFR-in.\n");
+	
+	switch(data->type) {
+	case XFR_TYPE_AIN:
+		if (data->flags & XFR_FLAG_AXFR_FINISHED) {
+			knot_zone_contents_deep_free(
+				&data->new_contents, 1);
+		} else {
+			if (data->data) {
+				xfrin_constructed_zone_t *constr_zone =
+					(xfrin_constructed_zone_t *)data->data;
+				knot_zone_contents_deep_free(
+						&(constr_zone->contents), 0);
+				xfrin_free_orphan_rrsigs(&(constr_zone->rrsigs));
+				free(data->data);
+				data->data = 0;
+			}
+		}
+		break;
+	case XFR_TYPE_IIN:
+		if (data->data) {
+			chs = (knot_changesets_t *)data->data;
+			knot_free_changesets(&chs);
+			data->data = NULL;
+		}
+
+		// this function is called before new contents are created
+		assert(data->new_contents == NULL);
+
+		break;
+	}
+
+	/* Cleanup other data - so that the structure may be reused. */
+	data->packet_nr = 0;
+	data->tsig_data_size = 0;
+
+	dbg_xfr_detail("Done.\n");
+	
+	return ret;
+}
+
 /*! \brief Free allocated xfer descriptor (also deinitializes). */
 static void xfr_free_task(knot_ns_xfr_t *task)
 {
@@ -90,21 +139,34 @@ static void xfr_free_task(knot_ns_xfr_t *task)
 	}
 	
 	/* Unlock if XFR/IN.*/
-	if (task->type == XFR_TYPE_AIN || task->type == XFR_TYPE_IIN) {
+	int is_xfer = task->type == XFR_TYPE_AIN || task->type == XFR_TYPE_IIN;
+	if (is_xfer) {
 		knot_zone_t *zone = task->zone;
 		zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 		if (zd) {
 			zd->xfr_in.wrkr = 0;
 			pthread_mutex_unlock(&zd->xfr_in.lock);
 		}
+		
+		/* Free TSIG buffers. */
+		if (task->digest) {
+			free(task->digest);
+			task->digest = NULL;
+			task->digest_size = 0;
+		}
+		if (task->tsig_data) {
+			free(task->tsig_data);
+			task->tsig_data = NULL;
+			task->tsig_data_size = 0;
+		}
 	}
 	
-	/* No further access to zone. */
-	knot_zone_release(task->zone);
-	
-	/* Deinitialize */
-	xfr_request_deinit(task);
 	if (!task->session_closed) {
+		/* Cleanup pending request. */
+		if (is_xfer) {
+			xfr_xfrin_cleanup(w, task);
+		}
+		
 		/* Remove fd-related data. */
 		xfrhandler_t *h = w->master;
 		pthread_mutex_lock(&h->tasks_mx);
@@ -112,6 +174,12 @@ static void xfr_free_task(knot_ns_xfr_t *task)
 		pthread_mutex_unlock(&h->tasks_mx);
 		close(task->session);
 	}
+	
+	/* No further access to zone. */
+	knot_zone_release(task->zone);
+	
+	/* Deinitialize */
+	xfr_request_deinit(task);
 	free(task);
 }
 
@@ -269,55 +337,6 @@ static knot_ns_xfr_t *xfr_register_task(xfrworker_t *w, const knot_ns_xfr_t *req
 		t = NULL;
 	}
 	return t;
-}
-
-/*!
- * \brief Clean pending transfer data.
- */
-static int xfr_xfrin_cleanup(xfrworker_t *w, knot_ns_xfr_t *data)
-{
-	int ret = KNOTD_EOK;
-	knot_changesets_t *chs = 0;
-
-	dbg_xfr_verb("Cleaning up after XFR-in.\n");
-	
-	switch(data->type) {
-	case XFR_TYPE_AIN:
-		if (data->flags & XFR_FLAG_AXFR_FINISHED) {
-			knot_zone_contents_deep_free(
-				&data->new_contents, 1);
-		} else {
-			if (data->data) {
-				xfrin_constructed_zone_t *constr_zone =
-					(xfrin_constructed_zone_t *)data->data;
-				knot_zone_contents_deep_free(
-						&(constr_zone->contents), 0);
-				xfrin_free_orphan_rrsigs(&(constr_zone->rrsigs));
-				free(data->data);
-				data->data = 0;
-			}
-		}
-		break;
-	case XFR_TYPE_IIN:
-		if (data->data) {
-			chs = (knot_changesets_t *)data->data;
-			knot_free_changesets(&chs);
-			data->data = NULL;
-		}
-
-		// this function is called before new contents are created
-		assert(data->new_contents == NULL);
-
-		break;
-	}
-
-	/* Cleanup other data - so that the structure may be reused. */
-	data->packet_nr = 0;
-	data->tsig_data_size = 0;
-
-	dbg_xfr_detail("Done.\n");
-	
-	return ret;
 }
 
 /*!
@@ -748,18 +767,6 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 		} else {
 			/* Cleanup */
 			xfr_xfrin_cleanup(w, data);
-		}
-		
-		/* Free TSIG buffers. */
-		if (data->digest) {
-			free(data->digest);
-			data->digest = 0;
-			data->digest_size = 0;
-		}
-		if (data->tsig_data) {
-			free(data->tsig_data);
-			data->tsig_data = 0;
-			data->tsig_data_size = 0;
 		}
 		
 		/* Disconnect. */

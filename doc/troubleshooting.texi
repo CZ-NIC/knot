@@ -39,27 +39,32 @@ be very useful as well.
 @node Generating backtrace
 @section Generating backtrace
 
-There are several ways to achieve that, the most common is to run
-the binary in a @code{gdb} debugger or attach to it.
+There are several ways to achieve that, the most common way is to leave core
+dumps and then extract a backtrace from it.
+This doesn't affect any server operation, you just need to make sure
+the OS is configured to generate them.
+
 @example
-$ gdb --args knotd -c knot.conf
-(gdb) run
+$ ulimit -c unlimited # enable unlimited core dump size
 ...
-Program received signal SIGSEGV.
-(gdb) bt
+$ gdb $(which knotd) core.<KNOT_PID>   # start gdb on a core dump
+(gdb) thread apply all bt    # extract backtrace from all threads
 (gdb) q
 @end example
 
-Or attach to the running program.
+If the error is repeatable, you can run the binary in a @code{gdb} debugger
+or attach the debugger to the running process. The backtrace from a running
+process is generally useful when debugging problems like stuck process and similar.
 @example
 $ knotc -c knot.conf start
 $ sudo gdb --pid <KNOT_PID>
 (gdb) continue
 ...
-Program received signal SIGSEGV.
-(gdb) bt
+(gdb) thread apply all bt
 (gdb) q
 @end example
+
+
 
 @node Debug messages
 @section Debug messages

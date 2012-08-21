@@ -19,7 +19,7 @@ is best suited for use on TLD domains but can reliably serve
 any other zone as well.
 
 Knot DNS benefits from its multi-threaded and mostly lock-free
-implementation which allow it to scale well on SMP systems and
+implementation which allows it to scale well on SMP systems and
 operate non-stop even when adding or removing zones.
 
 @node Knot DNS features
