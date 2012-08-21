@@ -666,12 +666,12 @@ loaded even upon discovering an error:
 
 @example
 @code{log} @code{@{}
-  @kbd{log_name} @code{@{}
+  [ @kbd{log_name} @code{@{}
     [ @kbd{category} @kbd{severity} [ @kbd{severity} @dots{} ]@code{;} ]
-    [ @code{log_file} @kbd{filename} @{
-	   [ @kbd{category} @kbd{severity} [ @kbd{severity} @dots{} ]@code{;} ] 
-      @} ]
-  @code{@}}
+  @code{@}} ]
+  [ @code{log_file} @kbd{filename} @{
+    [ @kbd{category} @kbd{severity} [ @kbd{severity} @dots{} ]@code{;} ] 
+  @} ]
 @code{@}}
 
 @end example
