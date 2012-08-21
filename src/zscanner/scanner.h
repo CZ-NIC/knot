@@ -35,6 +35,8 @@
 #define MAX_DNAME_LENGTH      255
 #define MAX_LABEL_LENGTH       63
 
+#define BITMAP_WINDOWS        256
+
 #define INET4_ADDR_LENGTH       4
 #define INET6_ADDR_LENGTH      16
 
@@ -45,6 +47,11 @@
 // Forward declaration for function arguments inside structure.
 struct scanner;
 typedef struct scanner scanner_t;
+
+typedef struct {
+    uint8_t bitmap[32];
+    uint8_t length;
+} window;
 
 /*!
  * \brief Context structure for Ragel scanner.
@@ -86,7 +93,10 @@ struct scanner {
     /*!< Auxiliary buffer length. */
     uint32_t buffer_length;
 
-    uint8_t  bitmap[13]; /*!< 13 * 8 > 99. */
+    /*!< Bitmap window blocks. */
+    window   windows[BITMAP_WINDOWS];
+    /*!< Last window block which is used (-1 means any). */
+    int16_t  last_window;
 
     uint8_t  *r_data_end; /*!< Pointer to the actual r_data end. */
     uint16_t *r_data_length_position; /*!< Pointer to the begin of rdata. */

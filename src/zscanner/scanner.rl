@@ -33,15 +33,20 @@
 #define SCANNER_WARNING(code) { s->error_code = code; }
 #define SCANNER_ERROR(code)   { s->error_code = code; s->stop = true; }
 
-#define TYPE_NUM(type) {                                   \
-    *((uint16_t *)(s->r_data_end)) = htons(type);          \
+#define TYPE_NUM(type) {                                              \
+    *((uint16_t *)(s->r_data_end)) = htons(type);                     \
 }
 
-#define TYPE_BIT(type, position) {                         \
-    (s->bitmap)[position] |= 128 >> (type - position * 8); \
-    if (s->item_length < position + 1) {                   \
-        s->item_length = position + 1;                     \
-    }                                                      \
+#define WINDOW_ADD_BIT(type) {                                        \
+    win = type / 256; bit_pos = type % 256; byte_pos = bit_pos / 8;   \
+                                                                      \
+    ((s->windows[win]).bitmap)[byte_pos] |= 128 >> (bit_pos % 8);     \
+    if ((s->windows[win]).length < byte_pos + 1) {                    \
+        (s->windows[win]).length = byte_pos + 1;                      \
+    }                                                                 \
+    if (s->last_window < win) {                                       \
+        s->last_window = win;                                         \
+    }                                                                 \
 }
 
 // Include scanner file (in Ragel).
@@ -91,7 +96,9 @@ int scanner_process(char      *start,
     // Auxiliary variables which are used in scanner body.
     struct in_addr  addr4;
     struct in6_addr addr6;
+    uint8_t  win, byte_pos, bit_pos;
     uint32_t timestamp;
+    int16_t  window;
 
     // Restoring scanner states.
     int cs  = s->cs;

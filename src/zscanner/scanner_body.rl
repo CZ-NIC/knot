@@ -1002,88 +1002,94 @@
     # END
 
     # BEGIN - Bitmap processing
-    action _bitmap_error {
-        SCANNER_WARNING(ZSCANNER_EBAD_BITMAP);
-        fhold; fgoto err_line;
+    action _type_bitmap_exit {
+        if (s->number64 <= UINT16_MAX) {
+            WINDOW_ADD_BIT(s->number64);
+        }
+        else {
+            SCANNER_WARNING(ZSCANNER_ENUMBER16_OVERFLOW);
+            fhold; fgoto err_line;
+        }
     }
 
+    # TYPE0-65535.
+    type_bitmap = number %_type_bitmap_exit;
+
     type_bit =
-        # Type numbers 0-7
-        ( "A"i          %{ TYPE_BIT(KNOT_RRTYPE_A,           0); }
-        | "NS"i         %{ TYPE_BIT(KNOT_RRTYPE_NS,          0); }
-        | "CNAME"i      %{ TYPE_BIT(KNOT_RRTYPE_CNAME,       0); }
-        | "SOA"i        %{ TYPE_BIT(KNOT_RRTYPE_SOA,         0); }
-        # Type numbers 8-15
-        | "WKS"i        %{ TYPE_BIT(KNOT_RRTYPE_WKS,         1); }
-        | "PTR"i        %{ TYPE_BIT(KNOT_RRTYPE_PTR,         1); }
-        | "HINFO"i      %{ TYPE_BIT(KNOT_RRTYPE_HINFO,       1); }
-        | "MINFO"i      %{ TYPE_BIT(KNOT_RRTYPE_MINFO,       1); }
-        | "MX"i         %{ TYPE_BIT(KNOT_RRTYPE_MX,          1); }
-        # Type numbers 16-23
-        | "TXT"i        %{ TYPE_BIT(KNOT_RRTYPE_TXT,         2); }
-        | "RP"i         %{ TYPE_BIT(KNOT_RRTYPE_RP,          2); }
-        | "AFSDB"i      %{ TYPE_BIT(KNOT_RRTYPE_AFSDB,       2); }
-        | "X25"i        %{ TYPE_BIT(KNOT_RRTYPE_X25,         2); }
-        | "ISDN"i       %{ TYPE_BIT(KNOT_RRTYPE_ISDN,        2); }
-        | "RT"i         %{ TYPE_BIT(KNOT_RRTYPE_RT,          2); }
-        | "NSAP"i       %{ TYPE_BIT(KNOT_RRTYPE_NSAP,        2); }
-        # Type numbers 24-31
-        | "SIG"i        %{ TYPE_BIT(KNOT_RRTYPE_SIG,         3); }
-        | "KEY"i        %{ TYPE_BIT(KNOT_RRTYPE_KEY,         3); }
-        | "PX"i         %{ TYPE_BIT(KNOT_RRTYPE_PX,          3); }
-        | "AAAA"i       %{ TYPE_BIT(KNOT_RRTYPE_AAAA,        3); }
-        | "LOC"i        %{ TYPE_BIT(KNOT_RRTYPE_LOC,         3); }
-        # Type numbers 32-39
-        | "SRV"i        %{ TYPE_BIT(KNOT_RRTYPE_SRV,         4); }
-        | "NAPTR"i      %{ TYPE_BIT(KNOT_RRTYPE_NAPTR,       4); }
-        | "KX"i         %{ TYPE_BIT(KNOT_RRTYPE_KX,          4); }
-        | "CERT"i       %{ TYPE_BIT(KNOT_RRTYPE_CERT,        4); }
-        | "DNAME"i      %{ TYPE_BIT(KNOT_RRTYPE_DNAME,       4); }
-        # Type numbers 40-47
-        | "OPT"i        %{ TYPE_BIT(KNOT_RRTYPE_OPT,         5); }
-        | "APL"i        %{ TYPE_BIT(KNOT_RRTYPE_APL,         5); }
-        | "DS"i         %{ TYPE_BIT(KNOT_RRTYPE_DS,          5); }
-        | "SSHFP"i      %{ TYPE_BIT(KNOT_RRTYPE_SSHFP,       5); }
-        | "IPSECKEY"i   %{ TYPE_BIT(KNOT_RRTYPE_IPSECKEY,    5); }
-        | "RRSIG"i      %{ TYPE_BIT(KNOT_RRTYPE_RRSIG,       5); }
-        | "NSEC"i       %{ TYPE_BIT(KNOT_RRTYPE_NSEC,        5); }
-        # Type numbers 48-55
-        | "DNSKEY"i     %{ TYPE_BIT(KNOT_RRTYPE_DNSKEY,      6); }
-        | "DHCID"i      %{ TYPE_BIT(KNOT_RRTYPE_DHCID,       6); }
-        | "NSEC3"i      %{ TYPE_BIT(KNOT_RRTYPE_NSEC3,       6); }
-        | "NSEC3PARAM"i %{ TYPE_BIT(KNOT_RRTYPE_NSEC3PARAM,  6); }
-        | "TLSA"i       %{ TYPE_BIT(KNOT_RRTYPE_TLSA,        6); }
-        # Type numbers 96-103
-        | "SPF"i        %{ TYPE_BIT(KNOT_RRTYPE_SPF,        12); }
-        # Special types TYPE1 - TYPE65535
-        | "TYPE"i # TODO
+        ( "A"i          %{ WINDOW_ADD_BIT(KNOT_RRTYPE_A); }
+        | "NS"i         %{ WINDOW_ADD_BIT(KNOT_RRTYPE_NS); }
+        | "CNAME"i      %{ WINDOW_ADD_BIT(KNOT_RRTYPE_CNAME); }
+        | "SOA"i        %{ WINDOW_ADD_BIT(KNOT_RRTYPE_SOA); }
+        | "WKS"i        %{ WINDOW_ADD_BIT(KNOT_RRTYPE_WKS); }
+        | "PTR"i        %{ WINDOW_ADD_BIT(KNOT_RRTYPE_PTR); }
+        | "HINFO"i      %{ WINDOW_ADD_BIT(KNOT_RRTYPE_HINFO); }
+        | "MINFO"i      %{ WINDOW_ADD_BIT(KNOT_RRTYPE_MINFO); }
+        | "MX"i         %{ WINDOW_ADD_BIT(KNOT_RRTYPE_MX); }
+        | "TXT"i        %{ WINDOW_ADD_BIT(KNOT_RRTYPE_TXT); }
+        | "RP"i         %{ WINDOW_ADD_BIT(KNOT_RRTYPE_RP); }
+        | "AFSDB"i      %{ WINDOW_ADD_BIT(KNOT_RRTYPE_AFSDB); }
+        | "X25"i        %{ WINDOW_ADD_BIT(KNOT_RRTYPE_X25); }
+        | "ISDN"i       %{ WINDOW_ADD_BIT(KNOT_RRTYPE_ISDN); }
+        | "RT"i         %{ WINDOW_ADD_BIT(KNOT_RRTYPE_RT); }
+        | "NSAP"i       %{ WINDOW_ADD_BIT(KNOT_RRTYPE_NSAP); }
+        | "SIG"i        %{ WINDOW_ADD_BIT(KNOT_RRTYPE_SIG); }
+        | "KEY"i        %{ WINDOW_ADD_BIT(KNOT_RRTYPE_KEY); }
+        | "PX"i         %{ WINDOW_ADD_BIT(KNOT_RRTYPE_PX); }
+        | "AAAA"i       %{ WINDOW_ADD_BIT(KNOT_RRTYPE_AAAA); }
+        | "LOC"i        %{ WINDOW_ADD_BIT(KNOT_RRTYPE_LOC); }
+        | "SRV"i        %{ WINDOW_ADD_BIT(KNOT_RRTYPE_SRV); }
+        | "NAPTR"i      %{ WINDOW_ADD_BIT(KNOT_RRTYPE_NAPTR); }
+        | "KX"i         %{ WINDOW_ADD_BIT(KNOT_RRTYPE_KX); }
+        | "CERT"i       %{ WINDOW_ADD_BIT(KNOT_RRTYPE_CERT); }
+        | "DNAME"i      %{ WINDOW_ADD_BIT(KNOT_RRTYPE_DNAME); }
+        | "OPT"i        %{ WINDOW_ADD_BIT(KNOT_RRTYPE_OPT); }
+        | "APL"i        %{ WINDOW_ADD_BIT(KNOT_RRTYPE_APL); }
+        | "DS"i         %{ WINDOW_ADD_BIT(KNOT_RRTYPE_DS); }
+        | "SSHFP"i      %{ WINDOW_ADD_BIT(KNOT_RRTYPE_SSHFP); }
+        | "IPSECKEY"i   %{ WINDOW_ADD_BIT(KNOT_RRTYPE_IPSECKEY); }
+        | "RRSIG"i      %{ WINDOW_ADD_BIT(KNOT_RRTYPE_RRSIG); }
+        | "NSEC"i       %{ WINDOW_ADD_BIT(KNOT_RRTYPE_NSEC); }
+        | "DNSKEY"i     %{ WINDOW_ADD_BIT(KNOT_RRTYPE_DNSKEY); }
+        | "DHCID"i      %{ WINDOW_ADD_BIT(KNOT_RRTYPE_DHCID); }
+        | "NSEC3"i      %{ WINDOW_ADD_BIT(KNOT_RRTYPE_NSEC3); }
+        | "NSEC3PARAM"i %{ WINDOW_ADD_BIT(KNOT_RRTYPE_NSEC3PARAM); }
+        | "TLSA"i       %{ WINDOW_ADD_BIT(KNOT_RRTYPE_TLSA); }
+        | "SPF"i        %{ WINDOW_ADD_BIT(KNOT_RRTYPE_SPF); }
+        | "TYPE"i . type_bitmap # Special types TYPE0-TYPE65535
         );
 
     action _bitmap_init {
-        memset(s->bitmap, 0, sizeof(s->bitmap));
-
-        s->item_length = 0;
+        memset(s->windows, 0, sizeof(s->windows));
+        s->last_window = -1;
     }
-
     action _bitmap_exit {
-        if (s->item_length > 0) {
-            if (s->r_data_length < MAX_RDATA_LENGTH - 2 - s->item_length) {
-                // Window number.
-                *(s->r_data_end)  = 0;
-                s->r_data_end    += 1;
-                // Bitmap length.
-                *(s->r_data_end)  = s->item_length;
-                s->r_data_end    += 1;
-                // Copying bitmap.
-                memcpy(s->r_data_end, s->bitmap, s->item_length);
-                s->r_data_end    += s->item_length;
-                s->r_data_length += 2 + s->item_length;
-            }
-            else {
-               SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
-               fhold; fgoto err_line;
+        for (window = 0; window <= s->last_window; window++) {
+            if ((s->windows[window]).length > 0) {
+                if (s->r_data_length < MAX_RDATA_LENGTH -
+                                       (2 + (s->windows[window]).length)) {
+                    // Window number.
+                    *(s->r_data_end)  = (uint8_t)window;
+                    s->r_data_end    += 1;
+                    // Bitmap length.
+                    *(s->r_data_end)  = (s->windows[window]).length;
+                    s->r_data_end    += 1;
+                    // Copying bitmap.
+                    memcpy(s->r_data_end,
+                           (s->windows[window]).bitmap,
+                           (s->windows[window]).length);
+                    s->r_data_end    += (s->windows[window]).length;
+                    s->r_data_length += 2 + (s->windows[window]).length;
+                }
+                else {
+                   SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
+                   fhold; fgoto err_line;
+                }
             }
         }
+    }
+    action _bitmap_error {
+        SCANNER_WARNING(ZSCANNER_EBAD_BITMAP);
+        fhold; fgoto err_line;
     }
 
     # Blank bitmap is allowed too.

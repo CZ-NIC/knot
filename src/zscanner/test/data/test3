@@ -22,7 +22,12 @@ vqans65vboe1qaq7ggf51hj65m10hu4m NSEC3 1 0 5 9F90818BBC2D8C46 VQJKMUVK0SL27G6KHB
 vqjkmuvk0sl27g6khb1qe40c6qjdspjv NSEC3 1 0 5 9F90818BBC2D8C46 VQRE2R86TA7AD3SVCJMN483C5E86NGAE A AAAA RRSIG
 www.zdrojak.root.cz.    600     IN      NSEC    root.cz. CNAME RRSIG NSEC
 
-www.zdrojak.root.cz.    600     IN      NSEC    root.cz. A
+alfa.example.com. 86400 IN NSEC host.example.com. (
+                                A MX RRSIG NSEC TYPE1234 )
+
+www.zdrojak.root.cz.    600     IN      NSEC    root.cz. A A 
+www.zdrojak.root.cz.    600     IN      NSEC    root.cz. TYPE1 TYPE255
+www.zdrojak.root.cz.    600     IN      NSEC    root.cz. TYPE256 TYPE2550 TYPE65535 TYPE256 TYPE2550 TYPE65535 TYPE256
 www.zdrojak.root.cz.    600     IN      NSEC    s 
 www.zdrojak.root.cz.    600     IN      NSEC    root.cz. AAA
 www.zdrojak.root.cz.    600     IN      NSEC    root.cz.%CNAME RRSIG NSEC
