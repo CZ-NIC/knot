@@ -513,17 +513,21 @@ static int zones_refresh_ev(event_t *e)
 	
 	size_t buflen = SOCKET_MTU_SZ;
 	
-	/*! \todo [TSIG] CHANGE!!! only for compatibility now. */
-	knot_ns_xfr_t xfr_req;
-	memset(&xfr_req, 0, sizeof(knot_ns_xfr_t));
-	xfr_req.wire = qbuf;
+	knot_ns_xfr_t req;
+	memset(&req, 0, sizeof(knot_ns_xfr_t));
+	req.wire = qbuf;
+	
+	/* Select TSIG key. */
+	if (zd->xfr_in.tsig_key.name) {
+		xfr_prepare_tsig(&req, &zd->xfr_in.tsig_key);
+	}
 
 	/* Create query. */
 	int sock = -1;
 	char strbuf[256] = "Generic error.";
 	const char *errstr = strbuf;
 	sockaddr_t *master = &zd->xfr_in.master;
-	int ret = xfrin_create_soa_query(zone->name, &xfr_req, &buflen);
+	int ret = xfrin_create_soa_query(zone->name, &req, &buflen);
 	if (ret == KNOT_EOK) {
 
 		/* Create socket on random port. */
@@ -576,12 +580,11 @@ static int zones_refresh_ev(event_t *e)
 	evsched_event_finished(e->parent);
 	
 	/* Watch socket. */
-	knot_ns_xfr_t req;
-	memset(&req, 0, sizeof(req));
 	req.session = sock;
 	req.type = XFR_TYPE_SOA;
 	req.flags |= XFR_FLAG_UDP;
 	req.zone = zone;
+	req.wire = NULL;
 	memcpy(&req.addr, master, sizeof(sockaddr_t));
 	memcpy(&req.saddr, &zd->xfr_in.via, sizeof(sockaddr_t));
 	sockaddr_update(&req.addr);
@@ -593,13 +596,14 @@ static int zones_refresh_ev(event_t *e)
 		ret = xfr_request(zd->server->xfr_h, &req);
 	}
 	if (ret != KNOTD_EOK) {
+		free(req.digest);
 		knot_zone_release(req.zone); /* Discard */
 		log_server_warning("Failed to issue SOA query for zone '%s' (%s).\n",
 		                   zd->conf->name, errstr);
 	}
 	
 	free(qbuf);
-
+	
 	/* Unlock RCU. */
 	rcu_read_unlock();
 
@@ -1422,6 +1426,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 	}
 
 	/* Reload zone file. */
+	int is_bootstrapped = 0;
 	int ret = KNOTD_ERROR;
 	if (zone_changed) {
 		/* Zone file not exists and has master set. */
@@ -1435,9 +1440,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 			zone = knot_zone_new_empty(owner);
 			if (zone != NULL) {
 				ret = KNOTD_EOK;
-				log_server_info("Will attempt to bootstrap zone"
-				                " %s from AXFR master.\n",
-				                z->name);
+				is_bootstrapped = 1;
 			} else {
 				dbg_zones("zones: failed to create "
 				          "stub zone '%s'.\n", z->name);
@@ -1474,7 +1477,6 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 			/* Initialize zone-related data. */
 			zonedata_init(z, zone);
 			*dst = zone;
-
 		}
 	} else {
 		dbg_zones_verb("zones: found '%s' in old database, "
@@ -1491,6 +1493,14 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 	if (zone != NULL) {
 		zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 		assert(zd != NULL);
+		
+		/* Log bootstrapped zone. */
+		if (is_bootstrapped) {
+			log_server_info("Will attempt to bootstrap zone"
+			                " %s from AXFR master in %us.\n",
+			                z->name,
+			                zd->xfr_in.bootstrap_retry / 1000);
+		}
 
 		/* Update refs. */
 		if (zd->conf != z) {
@@ -2540,17 +2550,10 @@ int zones_process_response(knot_nameserver_t *nameserver,
 		evsched_t *sched =
 			((server_t *)knot_ns_get_data(nameserver))->sched;
 		if (ret == 0) {
-			char r_addr[SOCKADDR_STRLEN];
-			int r_port = sockaddr_portnum(from);
-			sockaddr_tostr(from, r_addr, sizeof(r_addr));
-			log_zone_info("SOA query of '%s' to '%s@%d': Answered, no "
-				      "transfer needed.\n",
-			              zd->conf->name, r_addr, r_port);
-			
 			/* Reinstall timers. */
 			zones_timers_update(zone, zd->conf, sched);
 			rcu_read_unlock();
-			return KNOTD_EOK;
+			return KNOTD_EUPTODATE;
 		}
 		
 		assert(ret > 0);

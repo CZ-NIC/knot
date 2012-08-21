@@ -64,8 +64,9 @@ enum knot_error_t {
 	KNOTD_ESPACE, /*!< \brief Not enough space provided. */
 	KNOTD_EEXPIRED, /*!< \brief Resource is expired. */
 	KNOTD_ENODIFF, /*!< \brief Cannot create zone diff. */
+	KNOTD_EUPTODATE, /*!< \brief Zone is up-to-date. */
 
-	KNOTD_ERROR_COUNT = 22
+	KNOTD_ERROR_COUNT = 23
 };
 
 /*! \brief Table linking error messages to error codes. */

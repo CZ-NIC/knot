@@ -170,6 +170,17 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *req);
  */
 int xfr_worker(dthread_t *thread);
 
+/*!
+ * \brief Prepare TSIG for XFR.
+ * \param xfr XFR request.
+ * \param key Used TSIG key.
+ *
+ * \retval KNOTD_EOK on success.
+ * \retval KNOTD_EINVAL on NULL parameters.
+ * \retval KNOTD_ENOMEM when out of memory.
+ */
+int xfr_prepare_tsig(knot_ns_xfr_t *xfr, knot_key_t *key);
+
 #endif // _KNOTD_XFRHANDLER_H_
 
 /*! @} */
