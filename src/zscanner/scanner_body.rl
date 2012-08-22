@@ -1212,6 +1212,10 @@
         s->r_type = KNOT_RRTYPE_NSEC3PARAM;
         fhold; fcall data_nsec3param;
     }
+    action _data_tlsa {
+        s->r_type = KNOT_RRTYPE_TLSA;
+        fhold; fcall data_tlsa;
+    }
     action _data_spf { // Same as TXT.
         s->r_type = KNOT_RRTYPE_SPF;
         fhold; fcall data_txt;
@@ -1324,6 +1328,11 @@
         $!_r_data_error
         %_ret . all_wchar;
 
+    data_tlsa :=
+        ( sep . number8 . sep . number8 . sep . number8 . sep . hex_array )
+        $!_r_data_error
+        %_ret . end_wchar;
+
     data_type :=
         ( sep . "\\#" . sep .
           ( ('0'                             %_ret . all_wchar)
@@ -1385,7 +1394,7 @@
         | "DHCID"i              %_data_dhcid
         | "NSEC3"i              %_data_nsec3
         | "NSEC3PARAM"i         %_data_nsec3param
-        | "TLSA"i               %_data_
+        | "TLSA"i               %_data_tlsa
         | "SPF"i                %_data_spf
         | "TYPE"i . type_number %_data_type
         ) >_r_data_init $!_r_type_error . all_wchar;
