@@ -1262,13 +1262,13 @@ rdata_apl:	rdata_apl_seq trail
 
 rdata_apl_seq:	dotted_str
     {
-	    zadd_rdata_wireformat(zparser_conv_apl_rdata($1.str));
+	    zadd_rdata_txt_wireformat(zparser_conv_apl_rdata($1.str), 1);
 
 	    free($1.str);
     }
     |	rdata_apl_seq sp dotted_str
     {
-	    zadd_rdata_wireformat(zparser_conv_apl_rdata($3.str));
+	    zadd_rdata_txt_wireformat(zparser_conv_apl_rdata($3.str), 0);
 
 	    free($3.str);
     }

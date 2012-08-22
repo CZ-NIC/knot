@@ -239,6 +239,7 @@ dbg_zp_exec_detail(
 		assert(current_rrset->rdata->count == descriptor->length);
 	}
 
+
 	assert(current_rrset->rdata->count > 0);
 	assert(knot_dname_is_fqdn(current_rrset->owner));
 
