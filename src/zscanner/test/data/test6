@@ -1,0 +1,4 @@
+cid.urn.arpa. IN NAPTR 100   10   ""    ""  "!^urn:cid:.+@([^\.]+\.)(.*)$!\\2!i"   .
+example.com.    IN NAPTR 100  50  "a"    "z3950+N2L+N2C"     ""   cidserver.example.com.
+    IN NAPTR 100  50  "a"    "rcds+N2C"          ""   cidserver.example.com.
+    IN NAPTR 100  50  "s"    "http+N2L+N2C+N2R"  ""   www.example.com.
