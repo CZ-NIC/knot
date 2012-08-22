@@ -7,7 +7,7 @@
 * Debug messages::
 @end menu
 
-First of all, check the logs. For logging settings see @ref{log}.
+First of all, check the logs (@pxref{log}).
 By default, Knot DNS logs all error messages to syslog. Enabling at least
 the @code{warning} message severity may help you identify some problems. 
 
@@ -78,7 +78,7 @@ and fix the bug. In these cases it may be useful to turn on debug messages.
 
 Two steps are required in order to log debug messages. First you need to 
 allow the debug messages in the server. Then the logging must be configured
-to log debug messages (see @ref{log}). It is recommended to log these 
+to log debug messages (@pxref{log}). It is recommended to log these 
 messages to a file. Firstly, the debug output may be rather large and 
 secondly it is easier to use the data for debugging.
 

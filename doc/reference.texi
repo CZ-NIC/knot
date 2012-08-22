@@ -110,7 +110,7 @@ system @{
 
 Specifies a custom PID file location.
 
-Default value: @file{knot.pid} in @code{@ref{storage}} directory.
+Default value: @file{knot.pid} in @code{storage} directory.
 
 @example
 system @{
@@ -333,7 +333,7 @@ interfaces @{
 The @code{remotes} statement sets up all remote servers for zone
 transfers.  Knot DNS does not distinguish between client or server in
 this section.  Role of the server is determined at the time of its
-usage in the @code{@ref{zones}} section.  One server may act as a
+usage in the @code{zones} section.  One server may act as a
 client for one zone (e.g. downloading the updates) and as a master
 server for a different zone.
 
@@ -498,7 +498,7 @@ If no $ORIGIN directive is found inside actual zone file, this domain name will 
 
 The @code{file} statement defines a path to the zone file.
 You can either use an absolute path or a relative path.
-In that case, the zone file path will be relative to the @code{storage} directory @ref{storage}.
+In that case, the zone file path will be relative to the @code{storage} directory (@pxref{storage}).
 
 @node xfr-in
 @subsubsection xfr-in

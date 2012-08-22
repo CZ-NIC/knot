@@ -53,28 +53,28 @@ Now let's go step by step through this minimal configuration file:
 @enumerate 
 
 @item
-In @code{@ref{system}} statement we have configured @code{@ref{storage}}
+In @code{system} statement we have configured @code{storage}
 directory where Knot DNS will store compiled zone files, 
-PID file and for slave zone also their journal files.
+PID file and for slave zone also their journal files. (See @code{@ref{system}} and @code{@ref{storage}})
 
 @item
-The @code{@ref{interfaces}} statement defines interfaces where Knot
+The @code{interfaces} statement defines interfaces where Knot
 DNS will listen for incoming connections. We have defined two
-interfaces: one IPv4 called @code{my_interface} explicitly listening
-on port 53 and second IPv6 called @code{second_int} also listening on
-port 53, which is the default port for the DNS.
+interfaces: one IPv4 called @kbd{my_interface} explicitly listening
+on port 53 and second IPv6 called @kbd{second_int} also listening on
+port 53, which is the default port for the DNS. See @code{@ref{interfaces}}.
 
 @item
-The @code{@ref{log}} statement defines the log facilities for Knot DNS.
+The @code{log} statement defines the log facilities for Knot DNS.
 In this example we told Knot DNS to send its log messages with the severities
 @code{debug}, @code{warning} and @code{notice} into the syslog.
 If you omit this sections, all severities will printed to
 either @code{stdout} or @code{stderr}, and the severities
 from the @code{warning} and more serious to syslog. You can find all
-possible combinations in the @ref{log}.
+possible combinations in the @code{@ref{log}}.
 
 @item
-The @code{@ref{zones}} statement is the one probably most important,
+The @code{zones} statement is probably the most important one,
 because it defines the zones that Knot DNS will serve.  In its most simple
 form you define zone by it's name and defined the filename where Knot
 DNS can find the zone contents. You can turn on more detailed semantic
@@ -82,7 +82,7 @@ checks of zone file in this statement. Refer to @code{@ref{zones List of zone se
 which checks are enabled by default and which are optional. If Knot is
 being run as a master server, experimental feature @code{ixfr-from-differences}
 can be enabled to create IXFR changesets from changes made to the master zone file.
-See @ref{Controlling running daemon} for more information.
+See @ref{Controlling running daemon} for more information. For more information about @code{zones} statement see @code{@ref{zones}}.
 @end enumerate
 
 @page
@@ -90,11 +90,11 @@ See @ref{Controlling running daemon} for more information.
 @section Slave configuration
 
 Knot DNS doesn't strictly differ between master and slave zones.
-The only requirement is to have @code{xfr-in} @code{@ref{zones}} statement set for given zone,
+The only requirement is to have @code{xfr-in} @code{zones} statement set for given zone,
 thus allowing both incoming XFR from that remote and using it as the
 zone master. Also, you can specify relative paths for zone file and in that case,
 zone files will be bootstrapped over AXFR and placed in the storage directory,
-specified in @code{@ref{storage}}.
+specified in @code{storage}. See @code{@ref{zones}} and @code{@ref{storage}}.
 
 @example
 remotes @{
@@ -114,7 +114,7 @@ and assign it to a remote.
 Supported algorithms for TSIG key are:@*
 @code{hmac-md5, hmac-sha1, hmac-sha224, hmac-sha256, hmac-sha384, hmac-sha512}
 @*
-Key secret is written in a base64 encoded format. @code{@ref{keys}}
+Key secret is written in a base64 encoded format. See @code{@ref{keys}}.
 
 @example
 keys @{
@@ -138,8 +138,8 @@ As of now it is not possible to associate multiple keys with a remote.
 @node Master configuration
 @section Master configuration
 
-By default, zones are treated as master as long as they don't have the @code{xfr-in} set.
-You can specify which remotes to allow for outgoing XFR and NOTIFY @code{@ref{zones}}.
+By default, zones are treated as master as long as they do not have the @code{xfr-in} set.
+You can specify which remotes to allow for outgoing XFR and NOTIFY @code{zones}.
 
 @example
 remotes @{
@@ -177,7 +177,7 @@ zones @{
 @node Configuring multiple interfaces
 @section Configuring multiple interfaces
 
-Knot DNS support binding to multiple available interfaces in the @code{@ref{interfaces}}.
+Knot DNS support binding to multiple available interfaces in the @code{interfaces} section.
 @*You can also use the special addresses for "any address" like @code{0.0.0.0} or @code{[::]}.
 
 @example

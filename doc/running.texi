@@ -20,7 +20,7 @@ $ knotc -a -c knot.conf start|reload|restart
 
 The tool @code{knotc} is designed as a front-end for user, making it easier
 to do everything from zone compilation to controlling the server daemon.
-To communicate with the binary, it reads the PID from the @emph{PID file} specified in the configuration @ref{pidfile} and sends POSIX signals to it.
+To communicate with the binary, it reads the PID from the @emph{PID file} specified in the configuration @code{pidfile} and sends POSIX signals to it (@code{@pxref{pidfile}}).
 If you want to control the daemon directly, use @code{SIGINT} to quit the process or @code{SIGHUP} to reload configuration. Signal @code{SIGUSR2} is currently used to refresh slave zones.
 
 @example
@@ -72,8 +72,8 @@ Parameters:
 @end example
 
 Also, the server needs to create several files in order to run properly.
-All files are placed in the directory described by @ref{storage}.
-PID file can be placed elsewhere using the statement @ref{pidfile}.
+All files are placed in the directory described by @code{storage} (@code{@pxref{storage}}).
+PID file can be placed elsewhere using the @code{pidfile} statement (@code{@pxref{pidfile}}).
 Slave zones with relative path specified will be placed in the @code{storage} as well.
 @itemize @bullet
 @item
@@ -84,7 +84,7 @@ placed in @file{STORAGE/example.com.db}.
 dynamic updates. Journal for zone @code{example.com} will be
 placed in @file{STORAGE/example.com.diff.db}.
 @item
-@emph{PID file} - unless specified differently by the @ref{pidfile}, it will be placed
+@emph{PID file} - unless specified differently by the @code{pidfile}, it will be placed
 in the @file{STORAGE/knot.pid}.
 @item
 @emph{Checksum files} - in order to identify compiled zone corruption, it
@@ -99,7 +99,7 @@ Running the server as a slave is very straightforward as you usually bootstrap
 zones over AXFR and thus avoid any manual zone compilation.
 There are two ways to start the server - directly or with the @code{knotc} controller tool.
 
-First, let's start it directly. If you don't pass any configuration, it will try to
+First, let us start it directly. If you do not pass any configuration, it will try to
 search configuration in default path that is @code{SYSCONFDIR/knot.conf}. The @code{SYSCONFDIR}
 depends on what you passed to the @code{./configure}, usually @code{/etc}.
 
@@ -161,11 +161,10 @@ $ knotc -a -c master.conf reload # compile zones and reconfigure
 @end example
 
 If you want @emph{IXFR-out} changesets created from changes you make to a zone file, enable @code{ixfr-from-differences}
-in @ref{zones} statement, then compile the zone and reload your server as seen above.
+in @code{zones} statement, then compile the zone and reload your server as seen above.
 If @emph{SOA}'s @emph{serial} is not changed no changesets will be created. Please note
 that this feature is in @emph{experimental} stage and should be used with care.
-If you encounter a bug using this feature, please send it to Knot developers
-as explained in @ref{Submitting a bugreport} reporting.
+If you encounter a bug using this feature, please send it to Knot developers (@pxref{Submitting a bugreport}).
 
 You can also choose to tear-down the server fully and restart with the @code{knotc restart} action.
 @example
