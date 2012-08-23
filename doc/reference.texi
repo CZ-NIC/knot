@@ -546,7 +546,7 @@ Most checks are disabled by default.
 @vindex ixfr-from-differences
 
 EXPERIMENTAL: option @code{ixfr-from-differences} is only relevant if you are running Knot DNS as a master for this zone.
-By turning the feature on you tell Knot to create changesets from changes you made to a zone file upon server reload.
+By turning the feature on you tell Knot to create differences from changes you made to a zone file upon server reload.
 See @ref{Controlling running daemon} for more information. Possible values are @code{on} and @code{off}. Disabled by default.
 
 @node disable-any
