@@ -97,17 +97,24 @@ a quite straightforward process using autotools.
 @node Configuring and generating Makefiles
 @subsection Configuring and generating Makefiles
 
-For all available options run:
+If you want to compile from Git sources, you need to bootstrap the
+@command{./configure} file first.
 
 @example
-@command{./configure --help}
+$ autoreconf -i -f
+@end example
+
+For all available configure options run:
+
+@example
+$ ./configure --help
 @end example
 
 If you have trouble with unknown syscalls under valgrind, disable recvmmsg by
 adding a parameter @command{--enable-recvmmsg=no} to configure.
 
 Knot DNS has also support for link time optimizations.
-You can enable it by the configure parameter @command{./configure --enable-lto=no}.
+You can enable it by the configure parameter @command{./configure --enable-lto=yes}.
 It is however disabled by default as it is known to be broken in some compiler
 versions and may result in an unexpected behaviour.
 
@@ -127,7 +134,7 @@ $ ./configure --enable-debug=server,packet --enable-debuglevel=verbose
 In most simple case you can just run configure without any options.
 
 @example
-@command{./configure}
+$ ./configure
 @end example
 
 @node Compilation
@@ -138,7 +145,7 @@ Knot DNS by running @command{make} command, which will produce binaries
 and other related files.
 
 @example
-make
+$ make
 @end example
 
 Knot DNS build process is safe to parallelize
@@ -149,7 +156,7 @@ the compilation.
 For example to use maximum 8 concurrent processes you would use:
 
 @example
-make -j 8
+$ make -j 8
 @end example
 
 @node Installation
@@ -164,7 +171,7 @@ switching to root user, e.g. @command{sudo make install}
 or @command{su -c 'make install'}.
 
 @example
-make install
+$ make install
 @end example
 
 @node Installation from packages
@@ -203,12 +210,12 @@ the root user.
 
 @example
 
-cat >/etc/apt/sources.list.d/knot.list <<EOF
+$ cat >/etc/apt/sources.list.d/knot.list <<EOF
 deb     http://deb.knot-dns.cz/debian/ <codename> main
 deb-src http://deb.knot-dns.cz/debian/ <codename> main
 EOF
-apt-get update
-apt-get install knot
+$ apt-get update
+$ apt-get install knot
 	
 @end example
 
@@ -241,9 +248,9 @@ the PPA.
 
 @example
 
-sudo add-apt-repository ppa:cz.nic-labs/knot-dns
-sudo apt-get update
-sudo apt-get install knot
+$ sudo add-apt-repository ppa:cz.nic-labs/knot-dns
+$ sudo apt-get update
+$ sudo apt-get install knot
 	  
 @end example
 
@@ -256,7 +263,7 @@ in the future, when new version are released.
 @node Installing Knot DNS RPMs on Fedora
 @subsection Installing Knot DNS RPMs on Fedora
 
-There are RPM packages for @code{knot} available for i386 and amd64 targets.
+There are RPM packages for @code{Knot DNS} available for i386 and amd64 targets.
 If you want use the Fedora repository, add a file with the
 following lines into @file{/etc/yum.repos.d/}
 

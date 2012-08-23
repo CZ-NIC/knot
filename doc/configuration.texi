@@ -76,8 +76,8 @@ possible combinations in the @code{@ref{log}}.
 @item
 The @code{zones} statement is probably the most important one,
 because it defines the zones that Knot DNS will serve.  In its most simple
-form you define zone by it's name and defined the filename where Knot
-DNS can find the zone contents. You can turn on more detailed semantic
+form you can define a zone by its name and zone file.
+You can turn on more detailed semantic
 checks of zone file in this statement. Refer to @code{@ref{zones List of zone semantic checks}} to see
 which checks are enabled by default and which are optional. If Knot is
 being run as a master server, experimental feature @code{ixfr-from-differences}
@@ -92,9 +92,11 @@ See @ref{Controlling running daemon} for more information. For more information 
 Knot DNS doesn't strictly differ between master and slave zones.
 The only requirement is to have @code{xfr-in} @code{zones} statement set for given zone,
 thus allowing both incoming XFR from that remote and using it as the
-zone master. Also, you can specify relative paths for zone file and in that case,
-zone files will be bootstrapped over AXFR and placed in the storage directory,
-specified in @code{storage}. See @code{@ref{zones}} and @code{@ref{storage}}.
+zone master. Note that you need to explicitly allow incoming NOTIFY, otherwise
+the daemon would reject them.
+Also, you can specify paths, relative to the storage directory.
+See @code{@ref{zones}} and @code{@ref{storage}}.
+If the zone file doesn't exist and @code{xfr-in} is set, it will be bootstrapped over AXFR.
 
 @example
 remotes @{
@@ -103,7 +105,7 @@ remotes @{
 zones @{
   example.com @{  
     file "example.com"; # relative to 'storage'
-    xfr-in master;      # uses 'master' remote
+    xfr-in master;      # define 'master' for this zone
     notify-in master;   # also allow NOTIFY from 'master'
   @}
 @}
@@ -126,7 +128,7 @@ remotes @{
 zones @{
   example.com @{  
     file "example.com"; # relative to 'storage'
-    xfr-in master;      # uses 'master' remote
+    xfr-in master;      # define 'master' for this zone
     notify-in master;   # also allow NOTIFY from 'master'
   @}
 @}
@@ -138,7 +140,6 @@ As of now it is not possible to associate multiple keys with a remote.
 @node Master configuration
 @section Master configuration
 
-By default, zones are treated as master as long as they do not have the @code{xfr-in} set.
 You can specify which remotes to allow for outgoing XFR and NOTIFY @code{zones}.
 
 @example
@@ -151,7 +152,7 @@ remotes @{
 zones @{
   example.com @{  
     file "/var/zones/example.com";
-    xfr-out subnet1, subnet2; # uses 'master' remote
+    xfr-out subnet1, subnet2; # allow outgoing transfers
     notify-out slave;
   @}
 @}

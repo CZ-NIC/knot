@@ -80,7 +80,7 @@ Slave zones with relative path specified will be placed in the @code{storage} as
 @emph{Compiled zones} - preprocessed zones, for example zone @code{example.com} will be
 placed in @file{STORAGE/example.com.db}.
 @item
-@emph{Journal files} - each zone has a journal file to store changesets for IXFR and
+@emph{Journal files} - each zone has a journal file to store differences for IXFR and
 dynamic updates. Journal for zone @code{example.com} will be
 placed in @file{STORAGE/example.com.diff.db}.
 @item
@@ -97,8 +97,15 @@ placed in @file{STORAGE/example.com.db.crc}.
 
 Running the server as a slave is very straightforward as you usually bootstrap
 zones over AXFR and thus avoid any manual zone compilation.
-There are two ways to start the server - directly or with the @code{knotc} controller tool.
+When a zone is transferred over AXFR, both the compiled zone and the zone file is
+updated, so no further compilation is needed.
+However when IXFR transfer finishes, it stores the differences in a journal file
+and doesn't update the zone file nor compiled zone immediately,
+but there is a timer that checks periodically for new differences and
+updates both zone file and the compiled zone. You can configure this timer
+with the @code{zonefile-sync} statement in @ref{zones}.
 
+There are two ways to start the server - directly or with the @code{knotc} controller tool.
 First, let us start it directly. If you do not pass any configuration, it will try to
 search configuration in default path that is @code{SYSCONFDIR/knot.conf}. The @code{SYSCONFDIR}
 depends on what you passed to the @code{./configure}, usually @code{/etc}.
