@@ -649,7 +649,6 @@ loaded even upon discovering an error:
 (this is RFC-valid, but Knot will not serve such a zone correctly)
 - NSEC3-unsecured delegation that is not part of Opt-out span
 - Wrong original TTL value in NSEC3 records
-- Wrong type covered RDATA value in RRSIG record (obsolete RRSIG)
 - Wrong RDATA TTL value in RRSIG record
 - Signer name in RRSIG RR not the same as in DNSKEY
 - Signed RRSIG
