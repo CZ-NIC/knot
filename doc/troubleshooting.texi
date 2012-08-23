@@ -28,7 +28,7 @@ The bugreport should contain at least:
 @item basic hardware information,
 @item description of the bug,
 @item log output of all messages (category @code{any}) with severity Info 
-and higher (severity @code{info}),
+and higher (severities @code{info, notice, warning, error}, or @code{any} if debug messages are not turned on (see below)),
 @item steps to reproduce the bug (if known),
 @item backtrace (if the bug caused a crash; see next section).
 @end itemize
@@ -80,7 +80,7 @@ Two steps are required in order to log debug messages. First you need to
 allow the debug messages in the server. Then the logging must be configured
 to log debug messages (@pxref{log}). It is recommended to log these 
 messages to a file. Firstly, the debug output may be rather large and 
-secondly it is easier to use the data for debugging.
+secondly, it is easier to use the data for debugging.
 
 @node Enabling debug messages in server
 @subsection Enabling debug messages in server
