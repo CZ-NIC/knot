@@ -8,6 +8,8 @@ In this chapter we provide suggested configurations and explain the meaning of i
 * Slave configuration::       
 * Master configuration::       
 * Configuring multiple interfaces::       
+* Enabling zone semantic checks::
+* Creating IXFR differences from zone file changes::
 @end menu
 
 @node Minimal configuration
@@ -40,8 +42,6 @@ log @{
 zones @{
   example.com @{  
     file "/etc/knot/example.com";
-    semantic-checks off;
-    ixfr-from-differences off;
   @}
 @}
 	
@@ -77,12 +77,6 @@ possible combinations in the @ref{log}.
 The @code{zones} statement is probably the most important one,
 because it defines the zones that Knot DNS will serve.  In its most simple
 form you can define a zone by its name and zone file.
-You can turn on more detailed semantic
-checks of zone file in this statement. Refer to @ref{zones List of zone semantic checks} to see
-which checks are enabled by default and which are optional. If Knot is
-being run as a master server, experimental feature @code{ixfr-from-differences}
-can be enabled to create IXFR changesets from changes made to the master zone file.
-See @ref{Controlling running daemon} for more information. For more information about @code{zones} statement see @ref{zones}.
 @end enumerate
 
 @page
@@ -187,3 +181,16 @@ interfaces @{
   anyv6 @{ address [::]@@53; @}
 @}
 @end example
+
+@node Enabling zone semantic checks
+@section Enabling zone semantic checks
+You can turn on more detailed semantic
+checks of zone file in this @code{zones} statement (@pxref{zones}). Refer to @ref{zones List of zone semantic checks} to see
+which checks are enabled by default and which are optional.
+
+@node Creating IXFR differences from zone file changes
+@section Creating IXFR differences from zone file changes
+If Knot is being run as a master server, experimental feature @code{ixfr-from-differences} 
+can be enabled to create IXFR differences from changes made to the master zone file.
+See @ref{Controlling running daemon} for more information. For more about @code{zones} statement see @ref{zones}.
+

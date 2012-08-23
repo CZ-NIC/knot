@@ -1,3 +1,18 @@
+v1.1.0-rc2 - Aug 23, 2012
+-------------------------
+
+New features:
+	* Signing SOA with TSIG queries when checking zone version with master.
+
+Bugfixes:
+	* Fixed ixfr-from-differences journal generation in case of IPSECKEY 
+          and APL records.
+	* Fixed possible leak on server shutdown with a pending transfer.
+
+Other improvements:
+	* Improved user manual.
+
+
 v1.1.0-rc1 - Aug 17, 2012
 -------------------------
 
