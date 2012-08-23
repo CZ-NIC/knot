@@ -16,8 +16,7 @@ static char *error_messages[(-ZC_ERR_ALLOC) + 1] = {
 	[-ZC_ERR_ALLOC] = "Memory allocation error!\n",
 
 	[-ZC_ERR_MISSING_SOA] = "SOA record missing in zone!\n",
-	[-ZC_ERR_MISSING_NS_DEL_POINT] = "NS record missing in zone apex or in "
-	                "delegation point!\n",
+	[-ZC_ERR_MISSING_NS_DEL_POINT] = "NS record missing in zone apex!\n",
 
 	[-ZC_ERR_RRSIG_RDATA_TYPE_COVERED] =
 	"RRSIG: Type covered rdata field is wrong!\n",
