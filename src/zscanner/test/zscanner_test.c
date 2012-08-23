@@ -21,15 +21,17 @@
 #include <getopt.h>
 
 #include "zscanner/file_loader.h"
-#include "zscanner/test/test_functions.h"
+#include "zscanner/test/processing.h"
+#include "zscanner/test/tests.h"
 
 /*! \brief Print help. */
 void help(int argc, char **argv)
 {
-    printf("Usage: %s [parameters] origin zonefile\n",
-           argv[0]);
+    printf("\nZone scanner testing tool.\n"
+           "Usage: %s [parameters] origin zonefile\n", argv[0]);
     printf("Parameters:\n"
-           " -V           Print version.\n"
+           " -e           Empty processing.\n"
+           " -t           Launch unit tests.\n"
            " -h           Print this help.\n");
 }
 
@@ -37,21 +39,28 @@ int main(int argc, char *argv[])
 {
     // Parsed command line arguments.
     int c = 0, li = 0;
-    int ret;
+    int ret, empty = 0, test = 0;
+    file_loader_t *fl;
+    const char *origin;
+    const char *zone_file;
 
     // Command line long options.
     struct option opts[] = {
-        {"version",     no_argument,       0, 'V'},
+        {"empty",       no_argument,       0, 'e'},
+        {"test",        no_argument,       0, 't'},
         {"help",        no_argument,       0, 'h'},
         {0, 0, 0, 0}
     };
 
     // Command line options processing.
-    while ((c = getopt_long(argc, argv, "Vh", opts, &li)) != -1) {
+    while ((c = getopt_long(argc, argv, "eth", opts, &li)) != -1) {
         switch (c) {
-        case 'V':
-            printf("Zone compiler (Knot DNS %s)\n", PACKAGE_VERSION);
-            return EXIT_SUCCESS;
+        case 'e':
+            empty = 1;
+            break;
+        case 't':
+            test = 1;
+            break;
         case 'h': // Fall through.
         default:
             help(argc, argv);
@@ -59,32 +68,51 @@ int main(int argc, char *argv[])
         }
     }
 
-    // Check if there are 2 remaining non-options.
-    if (argc - optind != 2) {
-        help(argc, argv);
-        return EXIT_FAILURE;
-    }
-
-    file_loader_t *fl;
-
-    fl = file_loader_create(argv[2],
-                            argv[1],
-                            DEFAULT_CLASS,
-                            DEFAULT_TTL,
-                            &process_record,
-                            &process_error);
-
-    if (fl != NULL) {
-        ret = file_loader_process(fl);
-        file_loader_free(fl);
-
-        if (ret != 0) {
-            return EXIT_FAILURE;
-        }
+    if (test == 1) {
+        test__date_to_timestamp();
     }
     else {
-        printf("File open error!\n");
-        return EXIT_FAILURE;
+        // Check if there are 2 remaining non-options.
+        if (argc - optind != 2) {
+            help(argc, argv);
+            return EXIT_FAILURE;
+        }
+
+        zone_file = argv[optind];
+        origin = argv[optind + 1];
+
+        if (empty == 1) {
+            void empty_process_record(const scanner_t *s) { };
+            void empty_process_error(const scanner_t *s) { };
+
+            fl = file_loader_create(origin,
+                                    zone_file,
+                                    DEFAULT_CLASS,
+                                    DEFAULT_TTL,
+                                    &empty_process_record,
+                                    &empty_process_error);
+        }
+        else {
+            fl = file_loader_create(origin,
+                                    zone_file,
+                                    DEFAULT_CLASS,
+                                    DEFAULT_TTL,
+                                    &process_record,
+                                    &process_error);
+        }
+
+        if (fl != NULL) {
+            ret = file_loader_process(fl);
+            file_loader_free(fl);
+
+            if (ret != 0) {
+                return EXIT_FAILURE;
+            }
+        }
+        else {
+            printf("File open error!\n");
+            return EXIT_FAILURE;
+        }
     }
 
     return EXIT_SUCCESS;
