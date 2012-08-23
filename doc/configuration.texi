@@ -81,7 +81,7 @@ You can turn on more detailed semantic
 checks of zone file in this statement. Refer to @ref{zones List of zone semantic checks} to see
 which checks are enabled by default and which are optional. If Knot is
 being run as a master server, experimental feature @code{ixfr-from-differences}
-can be enabled to create IXFR changesets from changes made to the master zone file.
+can be enabled to create IXFR differences from changes made to the master zone file.
 See @ref{Controlling running daemon} for more information. For more information about @code{zones} statement see @ref{zones}.
 @end enumerate
 

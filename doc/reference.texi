@@ -129,7 +129,7 @@ Default value: unset (auto-estimates optimal value from the number of online CPU
 
 @example
 system @{
-  workers: 16;
+  workers 16;
 @}
 @end example
 
@@ -155,9 +155,13 @@ system @{
 
 @example
 system @{
+  identity "Knot DNS @value{VERSION}";
   version "@value{VERSION}";
   nsid    "amaterasu";
   storage "/var/lib/knot";
+  pidfile "/var/run/knot.pid";
+  workers 16;
+  user knot.knot;
 @}
 @end example
 
@@ -222,7 +226,8 @@ You need to use bind or ldns utils to generate TSIG keys. Unfortunately, Knot DN
 $ dnssec-keygen -a HMAC-SHA256 -b 256 -n HOST foobar.example.com
 Kfoobar.example.com.+163+21239
 $ cat Kfoobar.example.com.+163+21239.key 
-foobar.example.com. IN KEY 512 3 163 rqv2WRyDgIUaHcJi03Zssor9jtG1kOpb3dPywxZfTeo=
+foobar.example.com. ( IN KEY 512 3 163
+                      rqv2WRyDgIUaHcJi03Zssor9jtG1kOpb3dPywxZfTeo= )
 	  
 @end example
 
@@ -231,7 +236,8 @@ Key generated in previous paragraph would be written as:
 @example
 
 keys @{
-  foobar.example.com. hmac-sha256 "rqv2WRyDgIUaHcJi03Zssor9jtG1kOpb3dPywxZfTeo=";
+  foobar.example.com. hmac-sha256
+  "rqv2WRyDgIUaHcJi03Zssor9jtG1kOpb3dPywxZfTeo=";
 @}
 	  
 @end example
@@ -491,6 +497,7 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
 
 @code{zone_id} is a zone origin, and as such is a domain name that may or may not end with a ".".
 If no $ORIGIN directive is found inside actual zone file, this domain name will be used in place of "@@".
+SOA record in the zone must have this name as its owner.
 
 @node file
 @subsubsection file
@@ -505,14 +512,14 @@ In that case, the zone file path will be relative to the @code{storage} director
 @vindex xfr-in
 
 In @code{xfr-in} statement user specifies which remotes will be permitted to perform a zone transfer to update the zone.
-Remotes are defined in @code{remotes} section of configuration file.
+Remotes are defined in @code{remotes} section of configuration file (@pxref{remotes}).
 
 @node xfr-out
 @subsubsection xfr-out
 @vindex xfr-out
 
 In @code{xfr-out} statement user specifies which remotes will be permitted to obtain zone's contents via zone transfer.
-Remotes are defined in @code{remotes} section of configuration file.
+Remotes are defined in @code{remotes} section of configuration file (@pxref{remotes}).
 
 @node notify-in
 @subsubsection notify-in
@@ -567,14 +574,13 @@ are 1 to INT_MAX and default value is 5.
 @subsubsection zonefile-sync
 @vindex zonefile-sync
 
-@code{zonefile-sync} is only relevant in slave server scenario. It is a time after which current zone in memory will be synced
-to its file on a disk (as set in @ref{file}). Possible values are 1 to INT_MAX, optionally suffixed by unit size (s/m/h/d) - @emph{1s} is one second, @emph{1m} one minute, @emph{1h} one hour and @emph{1d} one day with default value set to @emph{1h}.
+@code{zonefile-sync} is only relevant in a slave server scenario and only after receiving IXFR. It is a time in seconds after which current zone in memory will be synced to its file on a disk (as set in @ref{file}). Knot DNS will serve the latest zone even after restart, but zone file on a disk will only be synced after @code{zonefile-sync} time has expired. Possible values are 1 to INT_MAX, optionally suffixed by unit size (s/m/h/d) - @emph{1s} is one second, @emph{1m} one minute, @emph{1h} one hour and @emph{1d} one day with default value set to @emph{1h}.
 
 @node ixfr-fslimit
 @subsubsection ixfr-fslimit
 @vindex ixfr-fslimit
 
-@code{ixfr-fslimit} sets a maximum file size for zone's journal. Possible values are 1 to INT_MAX, with optional suffixes k, m and G. I.e. @emph{1k}, @emph{1m} and @emph{1G} with default value not being set, meaning that journal file can grow without limitations.
+@code{ixfr-fslimit} sets a maximum file size for zone's journal in bytes. Possible values are 1 to INT_MAX, with optional suffixes k, m and G. I.e. @emph{1k}, @emph{1m} and @emph{1G} with default value not being set, meaning that journal file can grow without limitations.
 
 @node zones Example
 @subsection zones Example
@@ -633,7 +639,7 @@ a zone containing following errors will be
 loaded even upon discovering an error:
 
 @example
-- Missing NS record in delegation point or at the zone apex
+- Missing NS record at the zone apex
 - Missing glue A or AAAA records
 - Broken or non-cyclic NSEC(3) chain
 - Wrong NSEC(3) type bitmap
@@ -643,7 +649,7 @@ loaded even upon discovering an error:
 (this is RFC-valid, but Knot will not serve such a zone correctly)
 - NSEC3-unsecured delegation that is not part of Opt-out span
 - Wrong original TTL value in NSEC3 records
-- Wrong type covered RDATA value in RRSIG record
+- Wrong type covered RDATA value in RRSIG record (obsolete RRSIG)
 - Wrong RDATA TTL value in RRSIG record
 - Signer name in RRSIG RR not the same as in DNSKEY
 - Signed RRSIG
@@ -734,7 +740,7 @@ Knot DNS has the following logging severities:
 @item @emph{all} - All severities.
 @end itemize
 
-More severities may be listed for each category, but all severities have to be listed explicitly, i.e. using @emph{error} severity does not mean that @emph{warning} severity messages will be logged as well.
+More severities may be listed for each category, but all severities have to be listed explicitly, i.e. using @emph{warning} severity does not mean that @emph{error} severity messages will be logged as well.
 
 @node log_file
 @subsubsection @kbd{log_file}
