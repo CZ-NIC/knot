@@ -152,9 +152,9 @@ static int xfrin_create_query(knot_dname_t *qname, uint16_t qtype,
 int xfrin_create_soa_query(knot_dname_t *owner, knot_ns_xfr_t *xfr,
                            size_t *size)
 {
-	/*! \todo [TSIG] Should TSIG apply for SOA query too? */
 	return xfrin_create_query(owner, KNOT_RRTYPE_SOA,
-				  KNOT_CLASS_IN, xfr, size, 0, 0);
+				  KNOT_CLASS_IN, xfr, size, 0,
+				  xfr->tsig_key != NULL);
 }
 
 /*----------------------------------------------------------------------------*/

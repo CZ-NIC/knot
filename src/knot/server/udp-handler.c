@@ -132,14 +132,6 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 	res = KNOTD_ERROR;
 	switch(qtype) {
 
-	/* Response types. */
-	case KNOT_RESPONSE_NORMAL:
-		res = zones_process_response(ns, addr, packet, qbuf, resp_len);
-		break;
-	case KNOT_RESPONSE_NOTIFY:
-		res = notify_process_response(ns, packet, addr, qbuf, resp_len);
-		break;
-	
 	/* Query types. */
 	case KNOT_QUERY_NORMAL:
 		res = zones_normal_query_answer(ns, packet, addr, qbuf,

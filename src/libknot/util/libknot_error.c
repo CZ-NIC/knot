@@ -46,6 +46,7 @@ const error_table_t knot_error_msgs[KNOT_ERROR_COUNT] = {
 	{KNOT_ENOXFR, "Transfer was not sent."},
 	{KNOT_ENOIXFR, "Transfer is not IXFR (is in AXFR format)."},
 	{KNOT_EXFRREFUSED, "Zone transfer refused by the server."},
+	{KNOT_EXFRDENIED, "Transfer not allowed."},
 	{KNOT_TSIG_EBADSIG, "Failed to verify TSIG MAC." },
 	{KNOT_TSIG_EBADKEY, "TSIG key not recognized or invalid." },
 	{KNOT_TSIG_EBADTIME, "TSIG signing time out of range." },

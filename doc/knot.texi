@@ -39,10 +39,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 @titlepage
 @title Knot DNS Reference Manual
 @subtitle for version @value{VERSION}, @value{UPDATED}
+@author Jan Kadlec (@email{jan.kadlec@@nic.cz})
+@author Lubos Slovak (@email{lubos.slovak@@nic.cz})
 @author Ondrej Sury (@email{ondrej@@sury.org})
 @author Marek Vavrusa (@email{marek.vavrusa@@nic.cz})
-@author Lubos Slovak (@email{lubos.slovak@@nic.cz})
-@author Jan Kadlec (@email{jan.kadlec@@nic.cz})
 @page
 @vskip 0pt plus 1filll
 @insertcopying

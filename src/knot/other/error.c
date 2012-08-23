@@ -43,5 +43,6 @@ const error_table_t knotd_error_msgs[] = {
 	{KNOTD_ESPACE, "Not enough space provided."},
 	{KNOTD_EEXPIRED, "Resource is expired."},
 	{KNOTD_ENODIFF, "Cannot create zone diff."},
+	{KNOTD_EUPTODATE, "Zone is up-to-date."},
 	{KNOTD_ERROR, 0}
 };

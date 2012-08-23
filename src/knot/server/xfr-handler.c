@@ -147,18 +147,18 @@ static void xfr_free_task(knot_ns_xfr_t *task)
 			zd->xfr_in.wrkr = 0;
 			pthread_mutex_unlock(&zd->xfr_in.lock);
 		}
-		
-		/* Free TSIG buffers. */
-		if (task->digest) {
-			free(task->digest);
-			task->digest = NULL;
-			task->digest_size = 0;
-		}
-		if (task->tsig_data) {
-			free(task->tsig_data);
-			task->tsig_data = NULL;
-			task->tsig_data_size = 0;
-		}
+	}
+	
+	/* Free TSIG buffers. */
+	if (task->digest) {
+		free(task->digest);
+		task->digest = NULL;
+		task->digest_size = 0;
+	}
+	if (task->tsig_data) {
+		free(task->tsig_data);
+		task->tsig_data = NULL;
+		task->tsig_data_size = 0;
 	}
 	
 	if (!task->session_closed) {
@@ -244,22 +244,92 @@ static int xfr_udp_timeout(knot_ns_xfr_t *data)
 static int xfr_process_udp_resp(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 {
 	/* Check if zone is valid. */
+	int ret = KNOTD_ECONNREFUSED;
 	rcu_read_lock();
 	if (knot_zone_flags(data->zone) & KNOT_ZONE_DISCARDED) {
 		rcu_read_unlock();
-		return KNOTD_ECONNREFUSED;
+		return ret;
 	}
 	rcu_read_unlock();
 	
 	/* Receive msg. */
-	ssize_t n = recvfrom(data->session, data->wire, data->wire_size, 0, data->addr.ptr, &data->addr.len);
+	ssize_t n = recvfrom(data->session, data->wire, data->wire_size,
+	                     0, data->addr.ptr, &data->addr.len);
 	size_t resp_len = data->wire_size;
-	if (n > 0) {
-		udp_handle(fd, data->wire, n, &resp_len, &data->addr, w->ns);
+	if (n <= 0) {
+		return ret;
+	}
+	
+	// parse packet
+	knot_packet_t *re = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
+	if (re == NULL) {
+		return KNOTD_ENOMEM;
+	}
+	
+	knot_packet_type_t rt = KNOT_RESPONSE_NORMAL;
+	ret = knot_ns_parse_packet(data->wire, n, re, &rt);
+	if (ret != KNOTD_EOK) {
+		knot_packet_free(&re);
+		return KNOTD_EOK; /* Ignore */
+	}
+	
+	/* Ignore other packets. */
+	if (rt != KNOT_RESPONSE_NORMAL && rt != KNOT_RESPONSE_NOTIFY) {
+		knot_packet_free(&re);
+		return KNOTD_EOK; /* Ignore */
+	}
+	ret = knot_packet_parse_rest(re);
+	if (ret != KNOT_EOK) {
+		knot_packet_free(&re);
+		return KNOTD_EOK; /* Ignore */
+	}
+	
+	// check TSIG
+	const knot_rrset_t * tsig_rr = knot_packet_tsig(re);
+	if (data->tsig_key != NULL) {
+		/*! \todo Not sure about prev_time_signed, but this is the first
+		 *        reply and we should pass query sign time as the time
+		 *        may be different. Leaving to 0.
+		 */
+		ret = knot_tsig_client_check(tsig_rr, data->wire, n,
+		                             data->digest, data->digest_size,
+		                             data->tsig_key, 0);
+		if (ret != KNOT_EOK) {
+			log_server_error("%s %s\n",
+			                 data->msgpref, knot_strerror(ret));
+			knot_packet_free(&re);
+			return KNOTD_ECONNREFUSED;
+		}
+		
+	}
+	
+	// process response
+	switch(rt) {
+	case KNOT_RESPONSE_NORMAL:
+		ret = zones_process_response(w->ns, &data->addr, re,
+		                             data->wire, &resp_len);
+		break;
+	case KNOT_RESPONSE_NOTIFY:
+		ret = notify_process_response(w->ns, re, &data->addr,
+		                              data->wire, &resp_len);
+		break;
+	default:
+		break;
 	}
 
+	knot_packet_free(&re);
+	
+	/* Check up-to-date zone. */
+	if (ret == KNOTD_EUPTODATE) {
+		log_server_info("%s %s\n", data->msgpref, knotd_strerror(ret));
+		ret = KNOTD_ECONNREFUSED;
+	}
+	
 	/* Invalidate pending query. */
-	return KNOTD_ECONNREFUSED;
+	if (ret == KNOTD_EOK) {
+		ret = KNOTD_ECONNREFUSED;
+	}
+	return ret;
 }
 
 /*! \brief Sweep non-replied connection. */
@@ -468,24 +538,6 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 }
 
 /*!
- * \brief Prepare TSIG for XFR.
- */
-static int xfr_prepare_tsig(knot_ns_xfr_t *xfr, knot_key_t *key)
-{
-	int ret = KNOT_EOK;
-	xfr->tsig_key = key;
-	xfr->tsig_size = tsig_wire_maxsize(key);
-	xfr->digest_max_size = tsig_alg_digest_length(
-				key->algorithm);
-	xfr->digest = malloc(xfr->digest_max_size);
-	memset(xfr->digest, 0 , xfr->digest_max_size);
-	dbg_xfr("xfr: found TSIG key (MAC len=%zu), adding to transfer\n",
-		xfr->digest_max_size);
-	
-	return ret;
-}
-
-/*!
  * \brief Check TSIG if exists.
  */
 static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode, char **tag)
@@ -523,15 +575,11 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode, char **tag)
 			// return REFUSED
 			xfr->tsig_key = 0;
 			*rcode = KNOT_RCODE_REFUSED;
-			return KNOT_EXFRREFUSED;
+			return KNOT_EXFRDENIED;
 		}
 		if (tsig_rr) {
 			tsig_algorithm_t alg = tsig_rdata_alg(tsig_rr);
 			if (tsig_alg_digest_length(alg) == 0) {
-				log_server_info("%s Unsupported digest algorithm "
-				                "requested, treating as "
-				                "bad key.\n",
-				                xfr->msgpref);
 				*rcode = KNOT_RCODE_NOTAUTH;
 				xfr->tsig_key = NULL;
 				xfr->tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
@@ -1367,6 +1415,20 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 	
 	/* Announce. */
 	log_server_info("%s Started.\n", xfr->msgpref);
+	switch (ret) {
+	case KNOT_EXFRDENIED:
+		log_server_info("%s TSIG required, but not found in query.\n",
+		                xfr->msgpref);
+		break;
+	case KNOT_TSIG_EBADKEY:
+		log_server_info("%s Unsupported digest "
+		                "algorithm requested, "
+		                "treating as bad key.\n",
+		                xfr->msgpref);
+		break;
+	default:
+		break;
+	}
 	
 	/* Prepare place for TSIG data */
 	xfr->tsig_data = malloc(KNOT_NS_TSIG_DATA_MAX_SIZE);
@@ -1629,4 +1691,29 @@ int xfr_worker(dthread_t *thread)
 	dbg_xfr_verb("xfr: worker=%p finished.\n", w);
 	thread->data = 0;
 	return KNOTD_EOK;
+}
+
+int xfr_prepare_tsig(knot_ns_xfr_t *xfr, knot_key_t *key)
+{
+	if (xfr == NULL || key == NULL) {
+		return KNOTD_EINVAL;
+	}
+	
+	int ret = KNOT_EOK;
+	xfr->tsig_key = key;
+	xfr->tsig_size = tsig_wire_maxsize(key);
+	xfr->digest_max_size = tsig_alg_digest_length(
+				key->algorithm);
+	xfr->digest = malloc(xfr->digest_max_size);
+	if (xfr->digest == NULL) {
+		xfr->tsig_key = NULL;
+		xfr->tsig_size = 0;
+		xfr->digest_max_size = 0;
+		return KNOTD_ENOMEM;
+	}
+	memset(xfr->digest, 0 , xfr->digest_max_size);
+	dbg_xfr("xfr: found TSIG key (MAC len=%zu), adding to transfer\n",
+		xfr->digest_max_size);
+	
+	return ret;
 }

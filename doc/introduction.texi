@@ -16,7 +16,7 @@ Domain Name System.
 Knot DNS is a high-performance open source DNS server. It 
 implements only authoritative domain name service. Knot DNS 
 is best suited for use on TLD domains but can reliably serve
-any other zone as well.
+any other zones as well.
 
 Knot DNS benefits from its multi-threaded and mostly lock-free
 implementation which allows it to scale well on SMP systems and

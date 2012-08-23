@@ -1128,25 +1128,30 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 //			break;
 		case KNOT_RDATA_WF_IPSECGATEWAY:
 			dbg_rdata("Parsed item is an IPSECGATEWAY address.\n");
-			switch (rdata_atom_data(temp_rdatas[1])[0]) {
+			dbg_rdata("Gateway type: %d\n",
+			          ((uint8_t *)rdata_atom_data(temp_rdatas[1]))[0]);
+			switch (((uint8_t *)rdata_atom_data(temp_rdatas[1]))[0]) {
 			/* gateway type */
-			default:
 			case IPSECKEY_NOGATEWAY:
+				dbg_rdata("NOGATEWAY\n");
 				length = 0;
 				break;
 			case IPSECKEY_IP4:
+				dbg_rdata("IPv4\n");
 				length = 4;
 				break;
 			case IPSECKEY_IP6:
+				dbg_rdata("IPv6\n");
 				length = IP6ADDRLEN;
 				break;
 			case IPSECKEY_DNAME:
+				dbg_rdata("DNAME\n");
 				is_domain = 1;
 				is_wirestore = 1;
 				break;
-			}
-			
-			break;
+			default:
+				return -1;
+			} // switch
 		}
 
 		if (is_domain) {
