@@ -4117,6 +4117,9 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
 	// 2) Find zone for the query
 	// we do not check if there is only one entry in the Question section
 	// because the packet structure does not allow it
+	/*! \todo This may probably change now, but the packet may be checked
+	 *        already if it goes through the usual processing. Find out!
+	 */
 	if (knot_packet_qtype(query) != KNOT_RRTYPE_SOA) {
 		dbg_ns("Question is not of type SOA.\n");
 		knot_ns_error_response_full(nameserver, response,
@@ -4126,6 +4129,7 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
 		return KNOT_EOK;
 	}
 
+	/*! \todo What about some RCU? */
 	*zone = knot_zonedb_find_zone(nameserver->zone_db,
 	                            knot_packet_qname(query));
 	if (*zone == NULL) {

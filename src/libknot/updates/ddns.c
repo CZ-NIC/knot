@@ -423,6 +423,8 @@ int knot_ddns_check_zone(const knot_zone_t *zone, knot_packet_t *query,
 		return KNOT_ENOZONE;
 	}
 
+	/*! \todo Is this really necessary? What's the policy of updating zones?
+	 */
 	// 1) check if the zone is master or slave
 	if (!knot_zone_is_master(zone)) {
 		return KNOT_EBADZONE;
