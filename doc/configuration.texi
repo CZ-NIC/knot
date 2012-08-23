@@ -190,7 +190,7 @@ which checks are enabled by default and which are optional.
 
 @node Creating IXFR differences from zone file changes
 @section Creating IXFR differences from zone file changes
-If Knot is being run as a master server, experimental feature @code{ixfr-from-differences} in 
+If Knot is being run as a master server, experimental feature @code{ixfr-from-differences} 
 can be enabled to create IXFR differences from changes made to the master zone file.
 See @ref{Controlling running daemon} for more information. For more about @code{zones} statement see @ref{zones}.
 
