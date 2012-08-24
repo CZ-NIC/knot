@@ -68,6 +68,7 @@ const error_table_t knot_error_msgs[] = {
 	{ZSCANNER_ENUMBER16_OVERFLOW, "Number is bigger than 16 bits!"},
 	{ZSCANNER_ENUMBER8_OVERFLOW, "Number is bigger than 8 bits!"},
 	{ZSCANNER_ERDATA_OVERFLOW, "Maximal record data length has exceeded!"},
+	{ZSCANNER_EITEM_OVERFLOW, "Maximal item length has exceeded!"},
 	{ZSCANNER_EBAD_ADDRESS_CHAR, "Bad address character!"},
 	{ZSCANNER_EBAD_IPV4, "Bad IPv4 address!"},
 	{ZSCANNER_EBAD_IPV6, "Bad IPv6 address!"},

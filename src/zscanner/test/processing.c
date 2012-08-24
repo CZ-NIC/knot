@@ -52,7 +52,7 @@ void process_error(const scanner_t *s)
 
 void process_record(const scanner_t *s)
 {
-    uint16_t r_data_length = ntohs(*(s->r_data_length_position));
+    uint32_t item, item_length, i;
 
     printf("LINE(%03"PRIu64") %s %u %*s ",
            s->line_counter,
@@ -63,10 +63,15 @@ void process_record(const scanner_t *s)
 
     print_wire_dname(s->r_owner, s->r_owner_length);
 
-    printf("  #%u#: ", r_data_length);
+    printf("  #%u/%u#:", s->r_data_length, s->r_data_items_count);
 
-    for (int i = 0; i < r_data_length; i++) {
-        printf("%02x", (s->r_data)[i + 2]);
+    for (item = 1; item <= s->r_data_items_count; item++) {
+        item_length = s->r_data_items[item] - s->r_data_items[item - 1];
+        printf(" (%u)", item_length);
+
+        for (i = s->r_data_items[item - 1]; i < s->r_data_items[item]; i++) {
+            printf("%02x", (s->r_data)[i]);
+        }
     }
 
     printf("\n");

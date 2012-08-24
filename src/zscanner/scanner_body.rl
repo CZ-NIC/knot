@@ -211,6 +211,27 @@
             ) $!_dname_error;
     # END
 
+    # BEGIN - Common r_data item processing
+    action _item_length_init {
+        s->item_length_location = rdata_tail++;
+    }
+    action _item_length_exit {
+        s->item_length = rdata_tail - s->item_length_location - 1;
+
+        if (s->item_length <= MAX_ITEM_LENGTH) {
+            *(s->item_length_location) = (uint8_t)(s->item_length);
+        }
+        else {
+            SCANNER_WARNING(ZSCANNER_EITEM_OVERFLOW);
+            fhold; fgoto err_line;
+        }
+    }
+
+    action _item_exit {
+        ADD_R_DATA_LABEL
+    }
+    # END
+
     # BEGIN - Owner processing
     action _r_owner_init {
         s->dname = s->r_owner;
@@ -262,9 +283,8 @@
 
     action _number8_write {
         if (s->number64 <= UINT8_MAX) {
-            *(s->r_data_end) = (uint8_t)(s->number64);
-            s->r_data_length += 1;
-            s->r_data_end    += 1;
+            *rdata_tail = (uint8_t)(s->number64);
+            rdata_tail += 1;
         }
         else {
             SCANNER_WARNING(ZSCANNER_ENUMBER8_OVERFLOW);
@@ -274,9 +294,8 @@
 
     action _number16_write {
         if (s->number64 <= UINT16_MAX) {
-            *((uint16_t *)(s->r_data_end)) = htons((uint16_t)(s->number64));
-            s->r_data_length += 2;
-            s->r_data_end    += 2;
+            *((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
+            rdata_tail += 2;
         }
         else {
             SCANNER_WARNING(ZSCANNER_ENUMBER16_OVERFLOW);
@@ -286,9 +305,8 @@
 
     action _number32_write {
         if (s->number64 <= UINT32_MAX) {
-            *((uint32_t *)(s->r_data_end)) = htonl((uint32_t)(s->number64));
-            s->r_data_length += 4;
-            s->r_data_end    += 4;
+            *((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
+            rdata_tail += 4;
         }
         else {
             SCANNER_WARNING(ZSCANNER_ENUMBER32_OVERFLOW);
@@ -308,16 +326,16 @@
 
     action _length_number_exit {
         if (s->number64 <= UINT16_MAX) {
-            *(s->r_data_length_position) = htons((uint16_t)(s->number64));
+            s->r_data_length = (uint16_t)(s->number64);
         }
         else {
             SCANNER_WARNING(ZSCANNER_ENUMBER16_OVERFLOW);
             fhold; fgoto err_line;
         }
     }
-    number8  = number %_number8_write;
-    number16 = number %_number16_write;
-    number32 = number %_number32_write;
+    number8  = number %_number8_write  %_item_exit;
+    number16 = number %_number16_write %_item_exit;
+    number32 = number %_number32_write %_item_exit;
 
     type_number   = number %_type_number_exit;
     length_number = number %_length_number_exit;
@@ -362,7 +380,7 @@
 
     time = number . time_unit?;
 
-    time32 = time %_number32_write;
+    time32 = time %_number32_write %_item_exit;
     # END
 
     # BEGIN - Timestamp processing
@@ -385,9 +403,8 @@
             ret = date_to_timestamp(s->buffer, &timestamp);
 
             if (ret == KNOT_EOK) {
-                *((uint32_t *)(s->r_data_end)) = htonl(timestamp);
-                s->r_data_length += 4;
-                s->r_data_end    += 4;
+                *((uint32_t *)rdata_tail) = htonl(timestamp);
+                rdata_tail += 4;
             }
             else {
                 SCANNER_WARNING(ret);
@@ -399,9 +416,8 @@
             s->number64 = strtoul((char *)(s->buffer), NULL,  10);
 
             if (errno == 0) {
-                *((uint32_t *)(s->r_data_end)) = htonl((uint32_t)s->number64);
-                s->r_data_length += 4;
-                s->r_data_end    += 4;
+                *((uint32_t *)rdata_tail) = htonl((uint32_t)s->number64);
+                rdata_tail += 4;
             }
             else {
                 SCANNER_WARNING(ZSCANNER_EBAD_TIMESTAMP);
@@ -419,15 +435,14 @@
     }
 
     timestamp = digit+ >_timestamp_init $_timestamp
-                %_timestamp_exit $!_timestamp_error;
+                %_timestamp_exit %_item_exit $!_timestamp_error;
     # END
 
     # BEGIN - Text processing
     action _text_char {
-        if (s->item_length < MAX_LABEL_LENGTH) {
-            *(s->r_data_end) = fc;
-            s->item_length++;
-            s->r_data_end++;
+        if (rdata_tail <= rdata_stop) {
+            *rdata_tail = fc;
+            rdata_tail++;
         }
         else {
             SCANNER_WARNING(ZSCANNER_ETEXT_OVERFLOW);
@@ -436,8 +451,8 @@
     }
 
     action _text_dec_init {
-        if (s->item_length < MAX_LABEL_LENGTH) {
-            *(s->r_data_end) = 0;
+        if (rdata_tail <= rdata_stop) {
+            *rdata_tail = 0;
             s->item_length++;
         }
         else {
@@ -446,11 +461,11 @@
         }
     }
     action _text_dec {
-        *(s->r_data_end) *= 10;
-        *(s->r_data_end) += digit_to_num[(uint8_t)fc];
+        *rdata_tail *= 10;
+        *rdata_tail += digit_to_num[(uint8_t)fc];
     }
     action _text_dec_exit {
-        s->r_data_end++;
+        rdata_tail++;
     }
 
     text_char =
@@ -461,31 +476,11 @@
           )
         );
     quoted_text_char = text_char | ([ \t;] $_text_char);
+    text = ('\"' . quoted_text_char* . '\"') | text_char+;
+    text_with_length = text >_item_length_init %_item_length_exit;
 
-    action _text_init {
-        s->item_length = 0;
-    }
-
-    action _text_exit {
-        s->r_data_length += s->item_length;
-    }
-
-    text = (('\"' . quoted_text_char* . '\"') | text_char+)
-           >_text_init %_text_exit;
-
-    action _text_length_init {
-        s->item_length_location = s->r_data_end;
-        s->r_data_length++;
-        s->r_data_end++;
-    }
-
-    action _text_length_exit {
-        *(s->item_length_location) = s->item_length;
-    }
-
-    text_with_length = text >_text_length_init %_text_length_exit;
-
-    text_array = text_with_length . (sep . text_with_length)*;
+    text_item = text_with_length %_item_exit;
+    text_array = (text_with_length . (sep . text_with_length)*) %_item_exit;
     # END
 
     # BEGIN - TTL directives processing
@@ -532,71 +527,78 @@
     # END
 
     # BEGIN - INCLUDE directives processing
-    # For filename store r_data array is used here (with terminating \0).
     action _incl_filename_init {
-        s->r_data_length = 0;
-        s->r_data_end = s->r_data;
-        (s->buffer)[0] = 0; // Clean space for origin too.
+        rdata_tail = s->r_data;
     }
     action _incl_filename_exit {
-        // Ending filename string.
-        *(s->r_data_end++) = 0;
-        s->r_data_length = 0;
+        if (rdata_tail <= rdata_stop) {
+            *rdata_tail = 0; // Ending filename string.
+            strcpy((char*)(s->include_filename), (char*)(s->r_data));
+            rdata_tail = s->r_data; // Initialization of origin if not present!
+            *rdata_tail = 0;
+        }
+        else {
+           SCANNER_WARNING(ZSCANNER_ETEXT_OVERFLOW);
+           fhold; fgoto err_line;
+        }
     }
     action _incl_filename_error {
         SCANNER_ERROR(ZSCANNER_EBAD_INCLUDE_FILENAME);
         fhold; fgoto err_line;
     }
 
-    # For origin string store buffer array is used here (with terminating \0).
     action _incl_origin_init {
-        s->r_data_end = s->buffer;
+        rdata_tail = s->r_data;
     }
     action _incl_origin_exit {
-        // Ending origin string.
-        *(s->r_data_end++) = 0;
+        if (rdata_tail <= rdata_stop) {
+            *rdata_tail = 0; // Ending origin string.
+        }
+        else {
+           SCANNER_WARNING(ZSCANNER_ETEXT_OVERFLOW);
+           fhold; fgoto err_line;
+        }
     }
     action _incl_origin_error {
         SCANNER_ERROR(ZSCANNER_EBAD_INCLUDE_ORIGIN);
         fhold; fgoto err_line;
     }
+
     action _include_exit {
         char text_origin[MAX_DNAME_LENGTH];
 
-        if (s->r_data[0] != '/') { // File name is in relative form.
-            // Store relative include file name.
-            char *include_file_name = strdup((char*)(s->r_data));
-
-            // Get absolute path of the current zone file.
-            if (realpath(s->file_name, (char*)(s->r_data)) != NULL) {
-                char *full_current_zone_file_name = strdup((char*)(s->r_data));
-
-                // Creating full include file name.
-                sprintf((char*)(s->r_data), "%s/%s",
-                        dirname(full_current_zone_file_name),
-                        include_file_name);
-
-                free(full_current_zone_file_name);
-                free(include_file_name);
-            }
-            else {
-                free(include_file_name);
-                SCANNER_ERROR(ZSCANNER_EUNPROCESSED_INCLUDE);
-                fhold; fgoto err_line;
-            }
-        }
-
         // Origin conversion from wire to text form.
-        if (s->buffer[0] == 0) { // Use current origin.
+        if (s->r_data[0] == 0) { // Use current origin.
             wire_dname_to_text(s->zone_origin,
                                s->zone_origin_length,
                                text_origin);
         } else { // Use specified origin.
-            strcpy(text_origin, (char *)(s->buffer));
+            strcpy(text_origin, (char *)(s->r_data));
+        }
+
+        if (s->include_filename[0] != '/') { // File name is in relative form.
+            // Get absolute path of the current zone file.
+            if (realpath(s->file_name, (char*)(s->buffer)) != NULL) {
+                char *full_current_zone_file_name = strdup((char*)(s->buffer));
+
+                // Creating full include file name.
+                sprintf((char*)(s->buffer), "%s/%s",
+                        dirname(full_current_zone_file_name),
+                        s->include_filename);
+
+                free(full_current_zone_file_name);
+            }
+            else {
+                SCANNER_ERROR(ZSCANNER_EUNPROCESSED_INCLUDE);
+                fhold; fgoto err_line;
+            }
+        }
+        else {
+            strcpy((char*)(s->buffer), (char*)(s->include_filename));
         }
 
         // Create new file loader for included zone file.
-        file_loader_t *fl = file_loader_create((char*)(s->r_data),
+        file_loader_t *fl = file_loader_create((char*)(s->buffer),
                                                text_origin,
                                                DEFAULT_CLASS,
                                                DEFAULT_TTL,
@@ -692,9 +694,8 @@
         s->buffer[s->buffer_length] = 0;
 
         if (inet_pton(AF_INET, (char *)s->buffer, &addr4) > 0) {
-            memcpy(s->r_data_end, &(addr4.s_addr), INET4_ADDR_LENGTH);
-            s->r_data_length += INET4_ADDR_LENGTH;
-            s->r_data_end    += INET4_ADDR_LENGTH;
+            memcpy(rdata_tail, &(addr4.s_addr), INET4_ADDR_LENGTH);
+            rdata_tail += INET4_ADDR_LENGTH;
         }
         else {
             SCANNER_WARNING(ZSCANNER_EBAD_IPV4);
@@ -706,9 +707,8 @@
        s->buffer[s->buffer_length] = 0;
 
        if (inet_pton(AF_INET6, (char *)s->buffer, &addr6) > 0) {
-           memcpy(s->r_data_end, &(addr6.s6_addr), INET6_ADDR_LENGTH);
-           s->r_data_length += INET6_ADDR_LENGTH;
-           s->r_data_end    += INET6_ADDR_LENGTH;
+           memcpy(rdata_tail, &(addr6.s6_addr), INET6_ADDR_LENGTH);
+           rdata_tail += INET6_ADDR_LENGTH;
        }
        else {
            SCANNER_WARNING(ZSCANNER_EBAD_IPV6);
@@ -717,26 +717,15 @@
     }
 
     ipv4_address = (digit  | '.')+  >_address_init $_address
-                   %_ipv4_address_exit $!_address_error;
+                   %_ipv4_address_exit %_item_exit $!_address_error;
     ipv6_address = (xdigit | [.:])+ >_address_init $_address
-                   %_ipv6_address_exit $!_address_error;
+                   %_ipv6_address_exit %_item_exit $!_address_error;
     # END
 
     # BEGIN - Hexadecimal string array processing.
-    action _item_init {
-        s->item_length = 0;
-        s->item_length_location = s->r_data_end;
-        s->r_data_length++;
-        s->r_data_end++;
-    }
-    action _item_exit {
-        *(s->item_length_location) =
-            (uint8_t)(s->r_data_end - s->item_length_location - 1);
-    }
-
     action _first_hex_char {
-        if (s->r_data_length < MAX_RDATA_LENGTH) {
-            *(s->r_data_end) = first_hex_to_num[(uint8_t)fc];
+        if (rdata_tail <= rdata_stop) {
+            *rdata_tail = first_hex_to_num[(uint8_t)fc];
         }
         else {
            SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
@@ -744,11 +733,9 @@
         }
     }
     action _second_hex_char {
-        *(s->r_data_end) += second_hex_to_num[(uint8_t)fc];
-        s->r_data_length += 1;
-        s->r_data_end    += 1;
+        *rdata_tail += second_hex_to_num[(uint8_t)fc];
+        rdata_tail++;
     }
-
     action _hex_char_error {
         SCANNER_WARNING(ZSCANNER_EBAD_HEX_CHAR);
         fhold; fgoto err_line;
@@ -757,26 +744,27 @@
     hex_char  = (xdigit $_first_hex_char . xdigit $_second_hex_char);
 
     # Hex array with possibility of inside white spaces and multiline.
-    hex_array = (hex_char+ . sep?)+ $!_hex_char_error;
+    hex_array = (hex_char+ . sep?)+ %_item_exit $!_hex_char_error;
 
     # Continuous hex array (or "-") with forward length processing.
-    salt = (hex_char+ | '-') >_item_init %_item_exit $!_hex_char_error;
+    salt = (hex_char+ | '-') >_item_length_init %_item_length_exit
+           %_item_exit $!_hex_char_error;
 
-    action _type_data_exit {
-        if (htons(*(s->r_data_length_position)) != s->r_data_length) {
-            SCANNER_WARNING(ZSCANNER_EBAD_RDATA_LENGTH);
-            fhold; fgoto err_line;
-        }
-    }
+#    action _type_data_exit {
+ #       if (htons(*(s->r_data_length_position)) != s->r_data_length) {
+  #          SCANNER_WARNING(ZSCANNER_EBAD_RDATA_LENGTH);
+   #         fhold; fgoto err_line;
+    #    }
+    #}
 
     # Hex array or empty with control to forward length statement.
-    type_data = hex_array? %_type_data_exit $!_hex_char_error;
+    type_data = hex_array? ;#%_type_data_exit $!_hex_char_error;
     # END
 
     # BEGIN - Base64 processing (RFC 4648).
     action _first_base64_char {
-        if (s->r_data_length < MAX_RDATA_LENGTH) {
-            *(s->r_data_end) = first_base64_to_num[(uint8_t)fc];
+        if (rdata_tail <= rdata_stop) {
+            *rdata_tail = first_base64_to_num[(uint8_t)fc];
         }
         else {
            SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
@@ -784,12 +772,11 @@
         }
     }
     action _second_base64_char {
-        *(s->r_data_end) += second_left_base64_to_num[(uint8_t)fc];
-        s->r_data_length += 1;
-        s->r_data_end    += 1;
+        *rdata_tail += second_left_base64_to_num[(uint8_t)fc];
+        rdata_tail++;
 
-        if (s->r_data_length < MAX_RDATA_LENGTH) {
-            *(s->r_data_end) = second_right_base64_to_num[(uint8_t)fc];
+        if (rdata_tail <= rdata_stop) {
+            *rdata_tail = second_right_base64_to_num[(uint8_t)fc];
         }
         else {
            SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
@@ -797,12 +784,11 @@
         }
     }
     action _third_base64_char {
-        *(s->r_data_end) += third_left_base64_to_num[(uint8_t)fc];
-        s->r_data_length += 1;
-        s->r_data_end    += 1;
+        *rdata_tail += third_left_base64_to_num[(uint8_t)fc];
+        rdata_tail++;
 
-        if (s->r_data_length < MAX_RDATA_LENGTH) {
-            *(s->r_data_end) = third_right_base64_to_num[(uint8_t)fc];
+        if (rdata_tail <= rdata_stop) {
+            *rdata_tail = third_right_base64_to_num[(uint8_t)fc];
         }
         else {
            SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
@@ -810,9 +796,8 @@
         }
     }
     action _fourth_base64_char {
-        *(s->r_data_end) += fourth_base64_to_num[(uint8_t)fc];
-        s->r_data_length += 1;
-        s->r_data_end    += 1;
+        *rdata_tail += fourth_base64_to_num[(uint8_t)fc];
+        rdata_tail++;
     }
 
     action _base64_char_error {
@@ -835,13 +820,13 @@
         );
 
     # Base64 array with possibility of inside white spaces and multiline.
-    base64 = (base64_quartet+ . sep?)+ $!_base64_char_error;
+    base64 = (base64_quartet+ . sep?)+ %_item_exit $!_base64_char_error;
     # END
 
     # BEGIN - Base32hex processing (RFC 4648).
     action _first_base32hex_char {
-        if (s->r_data_length < MAX_RDATA_LENGTH) {
-            *(s->r_data_end) = first_base32hex_to_num[(uint8_t)fc];
+        if (rdata_tail <= rdata_stop) {
+            *rdata_tail = first_base32hex_to_num[(uint8_t)fc];
         }
         else {
            SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
@@ -849,12 +834,11 @@
         }
     }
     action _second_base32hex_char {
-        *(s->r_data_end) += second_left_base32hex_to_num[(uint8_t)fc];
-        s->r_data_end    += 1;
-        s->r_data_length += 1;
+        *rdata_tail += second_left_base32hex_to_num[(uint8_t)fc];
+        rdata_tail++;
 
-        if (s->r_data_length < MAX_RDATA_LENGTH) {
-            *(s->r_data_end) = second_right_base32hex_to_num[(uint8_t)fc];
+        if (rdata_tail <= rdata_stop) {
+            *rdata_tail = second_right_base32hex_to_num[(uint8_t)fc];
         }
         else {
            SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
@@ -862,15 +846,14 @@
         }
     }
     action _third_base32hex_char {
-        *(s->r_data_end) += third_base32hex_to_num[(uint8_t)fc];
+        *rdata_tail += third_base32hex_to_num[(uint8_t)fc];
     }
     action _fourth_base32hex_char {
-        *(s->r_data_end) += fourth_left_base32hex_to_num[(uint8_t)fc];
-        s->r_data_end    += 1;
-        s->r_data_length += 1;
+        *rdata_tail += fourth_left_base32hex_to_num[(uint8_t)fc];
+        rdata_tail++;
 
-        if (s->r_data_length < MAX_RDATA_LENGTH) {
-            *(s->r_data_end) = fourth_right_base32hex_to_num[(uint8_t)fc];
+        if (rdata_tail <= rdata_stop) {
+            *rdata_tail = fourth_right_base32hex_to_num[(uint8_t)fc];
         }
         else {
            SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
@@ -878,12 +861,11 @@
         }
     }
     action _fifth_base32hex_char {
-        *(s->r_data_end) += fifth_left_base32hex_to_num[(uint8_t)fc];
-        s->r_data_end    += 1;
-        s->r_data_length += 1;
+        *rdata_tail += fifth_left_base32hex_to_num[(uint8_t)fc];
+        rdata_tail++;
 
-        if (s->r_data_length < MAX_RDATA_LENGTH) {
-            *(s->r_data_end) = fifth_right_base32hex_to_num[(uint8_t)fc];
+        if (rdata_tail <= rdata_stop) {
+            *rdata_tail = fifth_right_base32hex_to_num[(uint8_t)fc];
         }
         else {
            SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
@@ -891,15 +873,14 @@
         }
     }
     action _sixth_base32hex_char {
-        *(s->r_data_end) += sixth_base32hex_to_num[(uint8_t)fc];
+        *rdata_tail += sixth_base32hex_to_num[(uint8_t)fc];
     }
     action _seventh_base32hex_char {
-        *(s->r_data_end) += seventh_left_base32hex_to_num[(uint8_t)fc];
-        s->r_data_end    += 1;
-        s->r_data_length += 1;
+        *rdata_tail += seventh_left_base32hex_to_num[(uint8_t)fc];
+        rdata_tail++;
 
-        if (s->r_data_length < MAX_RDATA_LENGTH) {
-            *(s->r_data_end) = seventh_right_base32hex_to_num[(uint8_t)fc];
+        if (rdata_tail <= rdata_stop) {
+            *rdata_tail = seventh_right_base32hex_to_num[(uint8_t)fc];
         }
         else {
            SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
@@ -907,9 +888,8 @@
         }
     }
     action _eighth_base32hex_char {
-        *(s->r_data_end) += eighth_base32hex_to_num[(uint8_t)fc];
-        s->r_data_end    += 1;
-        s->r_data_length += 1;
+        *rdata_tail += eighth_base32hex_to_num[(uint8_t)fc];
+        rdata_tail++;
     }
 
     action _base32hex_char_error {
@@ -941,16 +921,14 @@
           )
         );
 
-    # Base32hex array with possibility of inside white spaces and multiline.
-    # base32hex = (base32hex_octet+ . sep?)+ $!_base32hex_char_error;
-
     # Continuous base32hex (with padding!) array with forward length processing.
-    hash = base32hex_octet+ >_item_init %_item_exit $!_base32hex_char_error;
+    hash = base32hex_octet+ >_item_length_init %_item_length_exit
+           %_item_exit $!_base32hex_char_error;
     # END
 
     # BEGIN - Type processing.
     action _type_exit {
-        s->r_data_end += 2;
+        rdata_tail += 2;
     }
     action _type_error {
         SCANNER_WARNING(ZSCANNER_EUNSUPPORTED_TYPE);
@@ -998,7 +976,7 @@
         | "TLSA"i       %{ TYPE_NUM(KNOT_RRTYPE_TLSA); }
         | "SPF"i        %{ TYPE_NUM(KNOT_RRTYPE_SPF); }
         | "TYPE"i       . number16 # TYPE12345
-        ) %_type_exit $!_type_error;
+        ) %_type_exit %_item_exit $!_type_error;
     # END
 
     # BEGIN - Bitmap processing
@@ -1065,20 +1043,19 @@
     action _bitmap_exit {
         for (window = 0; window <= s->last_window; window++) {
             if ((s->windows[window]).length > 0) {
-                if (s->r_data_length < MAX_RDATA_LENGTH -
-                                       (2 + (s->windows[window]).length)) {
+                if (rdata_tail + 2 + (s->windows[window]).length <= rdata_stop)
+                {
                     // Window number.
-                    *(s->r_data_end)  = (uint8_t)window;
-                    s->r_data_end    += 1;
+                    *rdata_tail = (uint8_t)window;
+                    rdata_tail += 1;
                     // Bitmap length.
-                    *(s->r_data_end)  = (s->windows[window]).length;
-                    s->r_data_end    += 1;
+                    *rdata_tail = (s->windows[window]).length;
+                    rdata_tail += 1;
                     // Copying bitmap.
-                    memcpy(s->r_data_end,
+                    memcpy(rdata_tail,
                            (s->windows[window]).bitmap,
                            (s->windows[window]).length);
-                    s->r_data_end    += (s->windows[window]).length;
-                    s->r_data_length += 2 + (s->windows[window]).length;
+                    rdata_tail += (s->windows[window]).length;
                 }
                 else {
                    SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
@@ -1094,37 +1071,36 @@
 
     # Blank bitmap is allowed too.
     bitmap := (sep? | (sep . type_bit)* . sep?) >_bitmap_init
-              %_bitmap_exit %_ret $!_bitmap_error . end_wchar;
+              %_bitmap_exit %_item_exit %_ret $!_bitmap_error . end_wchar;
 
     action _call_bitmap {
         fhold; fcall bitmap;
     }
     # END
 
+    # BEGIN - domain name in record data processing
+    action _r_dname_init {
+        s->dname = rdata_tail;
+    }
+    action _r_dname_exit {
+        rdata_tail += s->dname_tmp_length;
+    }
+
+    r_dname = dname >_r_dname_init %_r_dname_exit %_item_exit;
+    # END
+
     # BEGIN - Gateway
     action _fc_write {
-        *(s->r_data_end)  = digit_to_num[(uint8_t)fc];
-        s->r_data_length += 1;
-        s->r_data_end    += 1;
+        *rdata_tail = digit_to_num[(uint8_t)fc];
+        rdata_tail++;
+        ADD_R_DATA_LABEL
     }
+
     gateway = ( ('0' $_fc_write . sep . number8 . sep . '.')
               | ('1' $_fc_write . sep . number8 . sep . ipv4_address)
               | ('2' $_fc_write . sep . number8 . sep . ipv6_address)
-              | ('3' $_fc_write . sep . number8 . sep . dname)
+              | ('3' $_fc_write . sep . number8 . sep . r_dname)
               );
-    # END
-
-    # BEGIN - domain name in record data processing
-    action _r_dname_init {
-        s->dname = s->r_data_end;
-    }
-
-    action _r_dname_exit {
-        s->r_data_length += s->dname_tmp_length;
-        s->r_data_end    += s->dname_tmp_length;
-    }
-
-    r_dname = dname >_r_dname_init %_r_dname_exit;
     # END
 
     # BEGIN - Auxiliary functions which call smaller state machines
@@ -1273,8 +1249,8 @@
         %_ret . all_wchar;
 
     data_naptr :=
-        ( sep . number16 . sep . number16 . sep . text_with_length . sep .
-          text_with_length . sep . text_with_length . sep . r_dname )
+        ( sep . number16 . sep . number16 . sep . text_item . sep .
+          text_item . sep . text_item . sep . r_dname )
         $!_r_data_error
         %_ret . all_wchar;
 
@@ -1344,8 +1320,9 @@
 
     # Record type switch to appropriate smaller state machines.
     action _r_data_init {
-        s->r_data_length = 0;
-        s->r_data_end = s->r_data + 2; // First 2 bytes are r_data length.
+        s->r_data_items[0] = 0;
+        s->r_data_items_count = 0;
+        rdata_tail = s->r_data;
     }
 
     action _r_type_error {
@@ -1400,7 +1377,7 @@
         ) >_r_data_init $!_r_type_error . all_wchar;
 
     action _record_exit {
-        *(s->r_data_length_position) = htons(s->r_data_length);
+        s->r_data_length = (uint16_t)(rdata_tail - s->r_data);
         s->process_record(s);
     }
 

@@ -33,21 +33,25 @@
 #define SCANNER_WARNING(code) { s->error_code = code; }
 #define SCANNER_ERROR(code)   { s->error_code = code; s->stop = true; }
 
-#define TYPE_NUM(type) {                                              \
-    *((uint16_t *)(s->r_data_end)) = htons(type);                     \
+#define TYPE_NUM(type) {                                                  \
+    *((uint16_t *)rdata_tail) = htons(type);                              \
 }
 
-#define WINDOW_ADD_BIT(type) {                                        \
-    win = type / 256; bit_pos = type % 256; byte_pos = bit_pos / 8;   \
-                                                                      \
-    ((s->windows[win]).bitmap)[byte_pos] |= 128 >> (bit_pos % 8);     \
-    if ((s->windows[win]).length < byte_pos + 1) {                    \
-        (s->windows[win]).length = byte_pos + 1;                      \
-    }                                                                 \
-    if (s->last_window < win) {                                       \
-        s->last_window = win;                                         \
-    }                                                                 \
+#define WINDOW_ADD_BIT(type) {                                            \
+    win = type / 256; bit_pos = type % 256; byte_pos = bit_pos / 8;       \
+                                                                          \
+    ((s->windows[win]).bitmap)[byte_pos] |= 128 >> (bit_pos % 8);         \
+    if ((s->windows[win]).length < byte_pos + 1) {                        \
+        (s->windows[win]).length = byte_pos + 1;                          \
+    }                                                                     \
+    if (s->last_window < win) {                                           \
+        s->last_window = win;                                             \
+    }                                                                     \
 }
+
+#define ADD_R_DATA_LABEL                                                  \
+    s->r_data_items[++(s->r_data_items_count)] = rdata_tail - s->r_data;
+
 
 // Include scanner file (in Ragel).
 %%{
@@ -70,8 +74,6 @@ scanner_t* scanner_create(const char *file_name)
 
     // Nonzero initial scanner state.
     s->cs = zone_scanner_start;
-
-    s->r_data_length_position = (uint16_t *)(s->r_data);
 
     return s;
 }
@@ -100,6 +102,12 @@ int scanner_process(char      *start,
     uint32_t timestamp;
     int16_t  window;
 
+    // Next 2 variables are for better performance.
+    // Restoring r_data pointer to next free space.
+    uint8_t *rdata_tail = s->r_data + s->r_data_tail;
+    // Initialization of the last r_data byte.
+    uint8_t *rdata_stop = s->r_data + MAX_RDATA_LENGTH - 1;
+
     // Restoring scanner states.
     int cs  = s->cs;
     int top = s->top;
@@ -127,6 +135,7 @@ int scanner_process(char      *start,
     // Storing scanner states.
     s->cs  = cs;
     s->top = top;
+    s->r_data_tail = rdata_tail - s->r_data;
     memcpy(s->stack, stack, sizeof(stack));
 
     // Storing unprocessed token shift

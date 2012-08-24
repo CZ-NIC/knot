@@ -32,8 +32,10 @@
 #include <arpa/inet.h> // htons
 
 #define MAX_RDATA_LENGTH    65535
+#define MAX_ITEM_LENGTH       255 
 #define MAX_DNAME_LENGTH      255
 #define MAX_LABEL_LENGTH       63
+#define MAX_RDATA_ITEMS        64
 
 #define BITMAP_WINDOWS        256
 
@@ -64,6 +66,7 @@ struct scanner {
 
     /*!< Data start shift of incompletely scanned token. */
     uint32_t token_shift;
+    uint32_t r_data_tail; /*!< Position of actual r_data byte. */
 
     /*!< Zone file name. */
     char     *file_name;
@@ -93,13 +96,13 @@ struct scanner {
     /*!< Auxiliary buffer length. */
     uint32_t buffer_length;
 
+    char include_filename[MAX_RDATA_LENGTH];
+
     /*!< Bitmap window blocks. */
     window   windows[BITMAP_WINDOWS];
     /*!< Last window block which is used (-1 means any). */
     int16_t  last_window;
 
-    uint8_t  *r_data_end; /*!< Pointer to the actual r_data end. */
-    uint16_t *r_data_length_position; /*!< Pointer to the begin of rdata. */
     uint8_t  *dname;  /*!< Pointer to actual dname (origin/owner/rdata). */
     uint32_t *dname_length; /*!< Pointer to actual dname length. */
     uint32_t dname_tmp_length; /*!< Temporary dname length which is copied to dname_length after dname processing. */
@@ -117,6 +120,8 @@ struct scanner {
     uint16_t r_type;
     uint8_t  r_data[MAX_RDATA_LENGTH];
     uint32_t r_data_length;
+    uint16_t r_data_items[MAX_RDATA_ITEMS];
+    uint32_t r_data_items_count;
 };
 
 scanner_t* scanner_create(const char *file_name);
