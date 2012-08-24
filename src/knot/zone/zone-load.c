@@ -1097,8 +1097,14 @@ int knot_zload_open(zloader_t **dst, const char *filename)
 static void cleanup_id_array(knot_dname_t **id_array,
 			     const uint from, const uint to)
 {
+	if (id_array == NULL) {
+		dbg_zload("zload: cleanup_id_array: NULL arguments.\n");
+	}
+	
 	for (uint i = from; i < to; i++) {
-		knot_dname_release(id_array[i]);
+		if (id_array[i] != NULL) {
+			knot_dname_release(id_array[i]);
+		}
 	}
 
 	free(id_array);
