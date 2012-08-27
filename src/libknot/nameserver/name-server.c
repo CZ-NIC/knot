@@ -4077,8 +4077,11 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
 	// 1) Parse the rest of the packet
 	assert(knot_packet_is_query(query));
 
+	dbg_ns("Processing Dynamic Update.\n");
+
 	knot_packet_t *response;
 	assert(*rsize >= MAX_UDP_PAYLOAD);
+	dbg_ns_verb("Preparing response packet.\n");
 	int ret = knot_ns_prepare_response(query, &response, MAX_UDP_PAYLOAD);
 	if (ret != KNOT_EOK) {
 		knot_ns_error_response_from_query(nameserver, query,
@@ -4093,6 +4096,7 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
 	            query->parsed, query->size);
 
 	if (knot_packet_parsed(query) < knot_packet_size(query)) {
+		dbg_ns_verb("Parsing rest of the query.\n");
 		ret = knot_packet_parse_rest(query);
 		if (ret != KNOT_EOK) {
 			dbg_ns("Failed to parse rest of the query: "
@@ -4130,8 +4134,11 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
 	}
 
 	/*! \todo What about some RCU? */
+	rcu_read_lock();
+
+	dbg_ns_verb("Searching for zone.\n");
 	*zone = knot_zonedb_find_zone(nameserver->zone_db,
-	                            knot_packet_qname(query));
+	                              knot_packet_qname(query));
 	if (*zone == NULL) {
 		dbg_ns("Zone not found for the update.\n");
 		knot_ns_error_response_full(nameserver, response,
@@ -4143,6 +4150,7 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
 
 	uint8_t rcode = 0;
 	// 3) Check zone
+	dbg_ns_verb("Checking zone for DDNS.\n");
 	ret = knot_ddns_check_zone(*zone, query, &rcode);
 	if (ret == KNOT_EBADZONE) {
 		// zone is slave, forward the request
@@ -4158,6 +4166,7 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
 	}
 
 	// 4) Convert prerequisities
+	dbg_ns_verb("Processing prerequisities.\n");
 	knot_ddns_prereq_t *prereqs = NULL;
 	ret = knot_ddns_process_prereqs(query, &prereqs, &rcode);
 	if (ret != KNOT_EOK) {
@@ -4175,6 +4184,7 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
 	/*! \todo Somehow ensure the zone will not be changed until the update
 	 *        is finished.
 	 */
+	dbg_ns_verb("Checking prerequisities.\n");
 	ret = knot_ddns_check_prereqs(knot_zone_contents(*zone), &prereqs,
 	                              &rcode);
 	if (ret != KNOT_EOK) {
@@ -4187,7 +4197,11 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
 		return KNOT_EOK;
 	}
 
+	// Done reading zone, unlock RCU
+	rcu_read_unlock();
+
 	// 6) Convert update to changeset
+	dbg_ns_verb("Converting UPDATE packet to changeset.\n");
 	ret = knot_ddns_process_update(query, changeset, &rcode);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to check zone for update: "
