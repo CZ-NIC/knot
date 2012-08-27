@@ -19,3 +19,6 @@ _443._tcp.www.example.com. IN TLSA (
 
 
 aa. KX 456 www.nevim.cz.
+aa. AFSDB 156 www.nevim.cz.
+
+cz.     3600    IN      KEY  1234 3 28 AwEA

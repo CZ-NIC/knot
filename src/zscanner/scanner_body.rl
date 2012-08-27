@@ -940,7 +940,6 @@
         | "NS"i         %{ TYPE_NUM(KNOT_RRTYPE_NS); }
         | "CNAME"i      %{ TYPE_NUM(KNOT_RRTYPE_CNAME); }
         | "SOA"i        %{ TYPE_NUM(KNOT_RRTYPE_SOA); }
-        | "WKS"i        %{ TYPE_NUM(KNOT_RRTYPE_WKS); }
         | "PTR"i        %{ TYPE_NUM(KNOT_RRTYPE_PTR); }
         | "HINFO"i      %{ TYPE_NUM(KNOT_RRTYPE_HINFO); }
         | "MINFO"i      %{ TYPE_NUM(KNOT_RRTYPE_MINFO); }
@@ -952,7 +951,6 @@
         | "ISDN"i       %{ TYPE_NUM(KNOT_RRTYPE_ISDN); }
         | "RT"i         %{ TYPE_NUM(KNOT_RRTYPE_RT); }
         | "NSAP"i       %{ TYPE_NUM(KNOT_RRTYPE_NSAP); }
-        | "SIG"i        %{ TYPE_NUM(KNOT_RRTYPE_SIG); }
         | "KEY"i        %{ TYPE_NUM(KNOT_RRTYPE_KEY); }
         | "PX"i         %{ TYPE_NUM(KNOT_RRTYPE_PX); }
         | "AAAA"i       %{ TYPE_NUM(KNOT_RRTYPE_AAAA); }
@@ -997,7 +995,6 @@
         | "NS"i         %{ WINDOW_ADD_BIT(KNOT_RRTYPE_NS); }
         | "CNAME"i      %{ WINDOW_ADD_BIT(KNOT_RRTYPE_CNAME); }
         | "SOA"i        %{ WINDOW_ADD_BIT(KNOT_RRTYPE_SOA); }
-        | "WKS"i        %{ WINDOW_ADD_BIT(KNOT_RRTYPE_WKS); }
         | "PTR"i        %{ WINDOW_ADD_BIT(KNOT_RRTYPE_PTR); }
         | "HINFO"i      %{ WINDOW_ADD_BIT(KNOT_RRTYPE_HINFO); }
         | "MINFO"i      %{ WINDOW_ADD_BIT(KNOT_RRTYPE_MINFO); }
@@ -1009,7 +1006,6 @@
         | "ISDN"i       %{ WINDOW_ADD_BIT(KNOT_RRTYPE_ISDN); }
         | "RT"i         %{ WINDOW_ADD_BIT(KNOT_RRTYPE_RT); }
         | "NSAP"i       %{ WINDOW_ADD_BIT(KNOT_RRTYPE_NSAP); }
-        | "SIG"i        %{ WINDOW_ADD_BIT(KNOT_RRTYPE_SIG); }
         | "KEY"i        %{ WINDOW_ADD_BIT(KNOT_RRTYPE_KEY); }
         | "PX"i         %{ WINDOW_ADD_BIT(KNOT_RRTYPE_PX); }
         | "AAAA"i       %{ WINDOW_ADD_BIT(KNOT_RRTYPE_AAAA); }
@@ -1110,17 +1106,17 @@
         s->r_type = KNOT_RRTYPE_NS;
         fhold; fcall data_ns;
     }
-    action _data_cname { // Same as NS.
+    action _data_cname {
         s->r_type = KNOT_RRTYPE_CNAME;
-        fhold; fcall data_ns;
+        fhold; fcall data_ns; // Same as NS.
     }
     action _data_soa {
         s->r_type = KNOT_RRTYPE_SOA;
         fhold; fcall data_soa;
     }
-    action _data_ptr { // Same as NS.
+    action _data_ptr {
         s->r_type = KNOT_RRTYPE_PTR;
-        fhold; fcall data_ns;
+        fhold; fcall data_ns; // Same as NS.
     }
     action _data_mx {
         s->r_type = KNOT_RRTYPE_MX;
@@ -1133,6 +1129,14 @@
     action _data_rp {
         s->r_type = KNOT_RRTYPE_RP;
         fhold; fcall data_rp;
+    }
+    action _data_afsdb {
+        s->r_type = KNOT_RRTYPE_AFSDB;
+        fhold; fcall data_mx; // Same as MX.
+    }
+    action _data_key {
+        s->r_type = KNOT_RRTYPE_KEY;
+        fhold; fcall data_dnskey; // Same as DNSKEY.
     }
     action _data_aaaa {
         s->r_type = KNOT_RRTYPE_AAAA;
@@ -1148,11 +1152,11 @@
     }
     action _data_kx {
         s->r_type = KNOT_RRTYPE_KX;
-        fhold; fcall data_kx;
+        fhold; fcall data_mx; // Same as MX.
     }
-    action _data_dname { // Same as NS.
+    action _data_dname {
         s->r_type = KNOT_RRTYPE_DNAME;
-        fhold; fcall data_ns;
+        fhold; fcall data_ns; // Same as NS.
     }
     action _data_ds {
         s->r_type = KNOT_RRTYPE_DS;
@@ -1194,9 +1198,9 @@
         s->r_type = KNOT_RRTYPE_TLSA;
         fhold; fcall data_tlsa;
     }
-    action _data_spf { // Same as TXT.
+    action _data_spf {
         s->r_type = KNOT_RRTYPE_SPF;
-        fhold; fcall data_txt;
+        fhold; fcall data_txt; // Same as TXT.
     }
     action _data_type { // TYPE12345
         fhold; fcall data_type;
@@ -1253,11 +1257,6 @@
     data_naptr :=
         ( sep . number16 . sep . number16 . sep . text_item . sep .
           text_item . sep . text_item . sep . r_dname )
-        $!_r_data_error
-        %_ret . all_wchar;
-
-    data_kx :=
-        ( sep . number16 . sep . r_dname )
         $!_r_data_error
         %_ret . all_wchar;
 
@@ -1345,20 +1344,18 @@
         | "NS"i                 %_data_ns
         | "CNAME"i              %_data_cname
         | "SOA"i                %_data_soa
-        | "WKS"i                %_data_
         | "PTR"i                %_data_ptr
         | "HINFO"i              %_data_
         | "MINFO"i              %_data_
         | "MX"i                 %_data_mx
         | "TXT"i                %_data_txt
         | "RP"i                 %_data_rp
-        | "AFSDB"i              %_data_
+        | "AFSDB"i              %_data_afsdb
         | "X25"i                %_data_
         | "ISDN"i               %_data_
         | "RT"i                 %_data_
         | "NSAP"i               %_data_
-        | "SIG"i                %_data_
-        | "KEY"i                %_data_
+        | "KEY"i                %_data_key
         | "PX"i                 %_data_
         | "AAAA"i               %_data_aaaa
         | "LOC"i                %_data_
