@@ -3480,6 +3480,15 @@ dbg_ns_exec_verb(
 
 /*----------------------------------------------------------------------------*/
 
+int knot_ns_prep_update_response(knot_nameserver_t *nameserver,
+                                 knot_packet_t *query, knot_packet_t **resp,
+                                 const knot_zone_t **zone, size_t max_size)
+{
+
+}
+
+/*----------------------------------------------------------------------------*/
+
 int knot_ns_answer_normal(knot_nameserver_t *nameserver, 
                           const knot_zone_t *zone, knot_packet_t *resp,
                           uint8_t *response_wire, size_t *rsize, int check_any)

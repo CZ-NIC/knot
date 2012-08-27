@@ -2234,7 +2234,10 @@ int zones_xfr_check_zone(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*! \todo This function is here only because TSIG key is associated with the
+ *        zone via zonedata. If it was in the zone structure (which would be
+ *        IMHO ok, this whole function could be moved to nameserver.c.
+ */
 int zones_normal_query_answer(knot_nameserver_t *nameserver,
                               knot_packet_t *query, const sockaddr_t *addr,
                               uint8_t *resp_wire, size_t *rsize,
@@ -2483,6 +2486,16 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 	rcu_read_unlock();
 
 	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+/*! \todo [DDNS] Update parameters, copied from normal_query_answer() */
+int zones_process_update(knot_nameserver_t *nameserver,
+                         knot_packet_t *query, const sockaddr_t *addr,
+                         uint8_t *resp_wire, size_t *rsize,
+                         knot_ns_transport_t transport)
+{
+
 }
 
 /*----------------------------------------------------------------------------*/
