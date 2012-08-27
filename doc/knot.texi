@@ -123,7 +123,9 @@ Sample Configurations
 * Minimal configuration::       
 * Slave configuration::       
 * Master configuration::       
-* Configuring multiple interfaces::       
+* Configuring multiple interfaces::
+* Enabling zone semantic checks::
+* Creating IXFR differences from zone file changes::
 
 Running Knot DNS
 

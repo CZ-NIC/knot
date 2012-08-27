@@ -1150,6 +1150,8 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 				is_wirestore = 1;
 				break;
 			default:
+				dbg_rdata("Unknown IPSECKEY gateway!\n");
+				free(temp_rdatas);
 				return -1;
 			} // switch
 		}
