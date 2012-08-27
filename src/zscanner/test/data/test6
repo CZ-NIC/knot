@@ -20,5 +20,13 @@ _443._tcp.www.example.com. IN TLSA (
 
 aa. KX 456 www.nevim.cz.
 aa. AFSDB 156 www.nevim.cz.
+aa. RT 156 www.nevim.cz.
 
 cz.     3600    IN      KEY  1234 3 28 AwEA
+
+cz.     3600    IN      CERT  1234 3 28 AwEA
+
+aerope.zcu.cz.          86400   IN      HINFO   "DEC-AXP-2100" "OSF/1-V3.2C"
+ccpc1         IN     HINFO   Pentium133  Windows95
+
+bind          IN     MINFO   bind-request kjd.sample.edu.

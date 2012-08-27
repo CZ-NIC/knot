@@ -950,7 +950,6 @@
         | "X25"i        %{ TYPE_NUM(KNOT_RRTYPE_X25); }
         | "ISDN"i       %{ TYPE_NUM(KNOT_RRTYPE_ISDN); }
         | "RT"i         %{ TYPE_NUM(KNOT_RRTYPE_RT); }
-        | "NSAP"i       %{ TYPE_NUM(KNOT_RRTYPE_NSAP); }
         | "KEY"i        %{ TYPE_NUM(KNOT_RRTYPE_KEY); }
         | "PX"i         %{ TYPE_NUM(KNOT_RRTYPE_PX); }
         | "AAAA"i       %{ TYPE_NUM(KNOT_RRTYPE_AAAA); }
@@ -1005,7 +1004,6 @@
         | "X25"i        %{ WINDOW_ADD_BIT(KNOT_RRTYPE_X25); }
         | "ISDN"i       %{ WINDOW_ADD_BIT(KNOT_RRTYPE_ISDN); }
         | "RT"i         %{ WINDOW_ADD_BIT(KNOT_RRTYPE_RT); }
-        | "NSAP"i       %{ WINDOW_ADD_BIT(KNOT_RRTYPE_NSAP); }
         | "KEY"i        %{ WINDOW_ADD_BIT(KNOT_RRTYPE_KEY); }
         | "PX"i         %{ WINDOW_ADD_BIT(KNOT_RRTYPE_PX); }
         | "AAAA"i       %{ WINDOW_ADD_BIT(KNOT_RRTYPE_AAAA); }
@@ -1118,6 +1116,14 @@
         s->r_type = KNOT_RRTYPE_PTR;
         fhold; fcall data_ns; // Same as NS.
     }
+    action _data_hinfo {
+        s->r_type = KNOT_RRTYPE_HINFO;
+        fhold; fcall data_hinfo;
+    }
+    action _data_minfo {
+        s->r_type = KNOT_RRTYPE_MINFO;
+        fhold; fcall data_minfo;
+    }
     action _data_mx {
         s->r_type = KNOT_RRTYPE_MX;
         fhold; fcall data_mx;
@@ -1132,6 +1138,10 @@
     }
     action _data_afsdb {
         s->r_type = KNOT_RRTYPE_AFSDB;
+        fhold; fcall data_mx; // Same as MX.
+    }
+    action _data_rt {
+        s->r_type = KNOT_RRTYPE_RT;
         fhold; fcall data_mx; // Same as MX.
     }
     action _data_key {
@@ -1153,6 +1163,10 @@
     action _data_kx {
         s->r_type = KNOT_RRTYPE_KX;
         fhold; fcall data_mx; // Same as MX.
+    }
+    action _data_cert {
+        s->r_type = KNOT_RRTYPE_CERT;
+        fhold; fcall data_cert;
     }
     action _data_dname {
         s->r_type = KNOT_RRTYPE_DNAME;
@@ -1229,6 +1243,16 @@
         $!_r_data_error
         %_ret . all_wchar;
 
+    data_hinfo :=
+        ( sep . text_item . sep . text_item )
+        $!_r_data_error
+        %_ret . all_wchar;
+
+    data_minfo :=
+        ( sep . r_dname . sep . r_dname )
+        $!_r_data_error
+        %_ret . all_wchar;
+
     data_mx :=
         ( sep . number16 . sep . r_dname )
         $!_r_data_error
@@ -1259,6 +1283,11 @@
           text_item . sep . text_item . sep . r_dname )
         $!_r_data_error
         %_ret . all_wchar;
+
+    data_cert :=
+        ( sep . number16 . sep . number16 . sep . number8 . sep . base64 )
+        $!_r_data_error
+        %_ret . end_wchar;
 
     data_ds :=
         ( sep . number16 . sep . number8 . sep . number8 . sep . hex_array )
@@ -1345,24 +1374,20 @@
         | "CNAME"i              %_data_cname
         | "SOA"i                %_data_soa
         | "PTR"i                %_data_ptr
-        | "HINFO"i              %_data_
-        | "MINFO"i              %_data_
+        | "HINFO"i              %_data_hinfo
+        | "MINFO"i              %_data_minfo
         | "MX"i                 %_data_mx
         | "TXT"i                %_data_txt
         | "RP"i                 %_data_rp
         | "AFSDB"i              %_data_afsdb
-        | "X25"i                %_data_
-        | "ISDN"i               %_data_
-        | "RT"i                 %_data_
-        | "NSAP"i               %_data_
+        | "RT"i                 %_data_rt
         | "KEY"i                %_data_key
-        | "PX"i                 %_data_
         | "AAAA"i               %_data_aaaa
         | "LOC"i                %_data_
         | "SRV"i                %_data_srv
         | "NAPTR"i              %_data_naptr
         | "KX"i                 %_data_kx
-        | "CERT"i               %_data_
+        | "CERT"i               %_data_cert
         | "DNAME"i              %_data_dname
         | "APL"i                %_data_
         | "DS"i                 %_data_ds
