@@ -1146,6 +1146,10 @@
         s->r_type = KNOT_RRTYPE_NAPTR;
         fhold; fcall data_naptr;
     }
+    action _data_kx {
+        s->r_type = KNOT_RRTYPE_KX;
+        fhold; fcall data_kx;
+    }
     action _data_dname { // Same as NS.
         s->r_type = KNOT_RRTYPE_DNAME;
         fhold; fcall data_ns;
@@ -1252,6 +1256,11 @@
         $!_r_data_error
         %_ret . all_wchar;
 
+    data_kx :=
+        ( sep . number16 . sep . r_dname )
+        $!_r_data_error
+        %_ret . all_wchar;
+
     data_ds :=
         ( sep . number16 . sep . number8 . sep . number8 . sep . hex_array )
         $!_r_data_error
@@ -1355,7 +1364,7 @@
         | "LOC"i                %_data_
         | "SRV"i                %_data_srv
         | "NAPTR"i              %_data_naptr
-        | "KX"i                 %_data_
+        | "KX"i                 %_data_kx
         | "CERT"i               %_data_
         | "DNAME"i              %_data_dname
         | "APL"i                %_data_

@@ -16,3 +16,6 @@ _443._tcp.www.example.com. IN TLSA (
 
 _443._tcp.www.example.com. IN TLSA (
   3 0 0 30820307308201efa003020102020000 )
+
+
+aa. KX 456 www.nevim.cz.
