@@ -198,8 +198,8 @@
         s->dname_tmp_length = 0;
     }
     action _dname_error {
-            SCANNER_WARNING(ZSCANNER_EBAD_DNAME_CHAR);
-            fhold; fgoto err_line;
+        SCANNER_WARNING(ZSCANNER_EBAD_DNAME_CHAR);
+        fhold; fgoto err_line;
     }
 
     relative_dname = (labels       ) >_dname_init %_relative_dname_exit;
@@ -483,7 +483,7 @@
     text_array = (text_with_length . (sep . text_with_length)*) %_item_exit;
     # END
 
-    # BEGIN - TTL directives processing
+    # BEGIN - TTL directive processing
     action _default_ttl_exit {
         if (s->number64 <= UINT32_MAX) {
             s->default_ttl = (uint32_t)(s->number64);
@@ -506,7 +506,7 @@
     }
     # END
 
-    # BEGIN - ORIGIN directives processing
+    # BEGIN - ORIGIN directive processing
     action _zone_origin_init {
         s->dname = s->zone_origin;
     }
@@ -526,7 +526,7 @@
     }
     # END
 
-    # BEGIN - INCLUDE directives processing
+    # BEGIN - INCLUDE directive processing
     action _incl_filename_init {
         rdata_tail = s->r_data;
     }
@@ -962,7 +962,6 @@
         | "KX"i         %{ TYPE_NUM(KNOT_RRTYPE_KX); }
         | "CERT"i       %{ TYPE_NUM(KNOT_RRTYPE_CERT); }
         | "DNAME"i      %{ TYPE_NUM(KNOT_RRTYPE_DNAME); }
-        | "OPT"i        %{ TYPE_NUM(KNOT_RRTYPE_OPT); }
         | "APL"i        %{ TYPE_NUM(KNOT_RRTYPE_APL); }
         | "DS"i         %{ TYPE_NUM(KNOT_RRTYPE_DS); }
         | "SSHFP"i      %{ TYPE_NUM(KNOT_RRTYPE_SSHFP); }
@@ -1020,7 +1019,6 @@
         | "KX"i         %{ WINDOW_ADD_BIT(KNOT_RRTYPE_KX); }
         | "CERT"i       %{ WINDOW_ADD_BIT(KNOT_RRTYPE_CERT); }
         | "DNAME"i      %{ WINDOW_ADD_BIT(KNOT_RRTYPE_DNAME); }
-        | "OPT"i        %{ WINDOW_ADD_BIT(KNOT_RRTYPE_OPT); }
         | "APL"i        %{ WINDOW_ADD_BIT(KNOT_RRTYPE_APL); }
         | "DS"i         %{ WINDOW_ADD_BIT(KNOT_RRTYPE_DS); }
         | "SSHFP"i      %{ WINDOW_ADD_BIT(KNOT_RRTYPE_SSHFP); }
@@ -1093,14 +1091,14 @@
     action _fc_write {
         *rdata_tail = digit_to_num[(uint8_t)fc];
         rdata_tail++;
-        ADD_R_DATA_LABEL
     }
 
-    gateway = ( ('0' $_fc_write . sep . number8 . sep . '.')
-              | ('1' $_fc_write . sep . number8 . sep . ipv4_address)
-              | ('2' $_fc_write . sep . number8 . sep . ipv6_address)
-              | ('3' $_fc_write . sep . number8 . sep . r_dname)
-              );
+    gateway =
+        ( ('0' $_fc_write %_item_exit . sep . number8 . sep . '.')
+        | ('1' $_fc_write %_item_exit . sep . number8 . sep . ipv4_address)
+        | ('2' $_fc_write %_item_exit . sep . number8 . sep . ipv6_address)
+        | ('3' $_fc_write %_item_exit . sep . number8 . sep . r_dname)
+        );
     # END
 
     # BEGIN - Auxiliary functions which call smaller state machines
@@ -1360,7 +1358,6 @@
         | "KX"i                 %_data_
         | "CERT"i               %_data_
         | "DNAME"i              %_data_dname
-        | "OPT"i                %_data_
         | "APL"i                %_data_
         | "DS"i                 %_data_ds
         | "SSHFP"i              %_data_sshfp

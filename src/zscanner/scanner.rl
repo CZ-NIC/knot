@@ -16,19 +16,18 @@
 
 #include "zscanner/scanner.h"
 
-#include <stdint.h>                // uint32_t
-#include <stdlib.h>                // calloc
-#include <stdio.h>                 // sprintf
-#include <limits.h>                // PATH_MAX
-#include <libgen.h>                // dirname
-#include <stdbool.h>               // bool
-#include <sys/socket.h>            // AF_INET (BSD)
-#include <netinet/in.h>            // in_addr (BSD)
+#include <stdint.h>                        // uint32_t
+#include <stdlib.h>                        // calloc
+#include <stdio.h>                         // sprintf
+#include <libgen.h>                        // dirname
+#include <stdbool.h>                       // bool
+#include <sys/socket.h>                    // AF_INET (BSD)
+#include <netinet/in.h>                    // in_addr (BSD)
 
-#include "util/error.h"            // error codes
-#include "util/descriptor.h"       // KNOT_RRTYPE_A
-#include "zscanner/file_loader.h"  // include processing
-#include "zscanner/scanner_functions.h"
+#include "util/error.h"                    // error codes
+#include "util/descriptor.h"               // KNOT_RRTYPE_A
+#include "zscanner/file_loader.h"          // file_loader
+#include "zscanner/scanner_functions.h"    // Base64
 
 #define SCANNER_WARNING(code) { s->error_code = code; }
 #define SCANNER_ERROR(code)   { s->error_code = code; s->stop = true; }
@@ -91,7 +90,6 @@ int scanner_process(char      *start,
 {
     // Necessary scanner variables.
     int  stack[RAGEL_STACK_SIZE];
-    int  ret = 0;
     char *ts = NULL, *eof = NULL;
     char *p = start, *pe = end;
 
@@ -101,6 +99,7 @@ int scanner_process(char      *start,
     uint8_t  win, byte_pos, bit_pos;
     uint32_t timestamp;
     int16_t  window;
+    int      ret;
 
     // Next 2 variables are for better performance.
     // Restoring r_data pointer to next free space.
@@ -126,17 +125,45 @@ int scanner_process(char      *start,
     // Writing scanner body (in C).
     %% write exec;
 
-    // Scanner error state check.
+    // Check if scanner state machine is in uncovered state.
     if (cs == zone_scanner_error) {
-        printf("Unknown scanner error!\n");
+        SCANNER_ERROR(ZSCANNER_UNCOVERED_STATE);
+        s->error_counter++;
+
+        // Fill error context data.
+        for (s->buffer_length = 0;
+             ((p + s->buffer_length) < pe) &&
+             (s->buffer_length < sizeof(s->buffer) - 1);
+             s->buffer_length++)
+        {
+            // Only rest of the current line.
+            if (*(p + s->buffer_length) == '\n') {
+                break;
+            }
+            s->buffer[s->buffer_length] = *(p + s->buffer_length);
+        }
+
+        // Ending string in buffer.
+        s->buffer[s->buffer_length++] = 0;
+
+        // Processing error.
+        s->process_error(s);
+
+        return -1;
+    }
+
+    // Check if any errors occured.
+    if (s->error_counter > 0) {
         return -1;
     }
 
     // Storing scanner states.
     s->cs  = cs;
     s->top = top;
-    s->r_data_tail = rdata_tail - s->r_data;
     memcpy(s->stack, stack, sizeof(stack));
+
+    // Storing r_data pointer
+    s->r_data_tail = rdata_tail - s->r_data;
 
     // Storing unprocessed token shift
     if (ts != NULL) {
@@ -146,6 +173,6 @@ int scanner_process(char      *start,
         s->token_shift = 0;
     }
 
-    return ret;
+    return 0;
 }
 

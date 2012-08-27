@@ -1,8 +1,10 @@
+- the new-line character is appended to each zone file before processing (for simplicity)
 - the class IN is supported only
-- time values can have maximal 1 unit (NOT 1D2H)
-- \x and \DDD notation is allowed in domain_name and text only
-- @ can be used on the right side
-- line number in multiline is the number of the last record part
-- hex blocks multiple of 2, base64 blocks multiple of 4, base32hex blocks multiple of 8 (DHCID problem)
-- RFC 5155 section 3.3 says "unpadded", but padding is used here
-- date version of timestamp is limited to the end of the year 2105 due to 32 bits and better check
+- time values can have at most 1 time unit (not 1D2H3M)
+- \x and \DDD notations are allowed in domain names and text strings only
+- upper-case letters are lowered in domain names (including \x and \DDD notations)
+- @ can be used instead of domain names anywhere
+- the line numbers of multiline records are the numbers of the last lines with appropriate record parts
+- items parts lengths must be multiples of 2 for HEX, 4 for base64 and 8 for base32hex blocks (but DHCID example from RFC is more general!)
+- NSEC3 hash is with padding (but RFC 5155 section 3.3 says "unpadded")
+- date version of timestamp in RRSIG is limited to the end of the year 2105 (for better checking of 32bit integer)

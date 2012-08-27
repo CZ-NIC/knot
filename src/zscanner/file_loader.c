@@ -16,7 +16,7 @@
 
 #include "zscanner/file_loader.h"
 
-#include <stdint.h>
+#include <inttypes.h>  // PRIu64
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -42,18 +42,24 @@ static int load_settings(file_loader_t *fl)
     // Temporary scanner for zone settings.
     settings_scanner = scanner_create(settings_name);
 
+    // Use parent processing functions.
+    settings_scanner->process_record = fl->scanner->process_record;
+    settings_scanner->process_error  = fl->scanner->process_error;
+
     // Scanning zone settings.
     ret = scanner_process(fl->settings_buffer,
                           fl->settings_buffer + fl->settings_length,
-                          false,
+                          true,
                           settings_scanner);
 
-    // Copying scanned settings to actual context.
-    memcpy(fl->scanner->zone_origin,
-           settings_scanner->zone_origin,
-           settings_scanner->zone_origin_length);
-    fl->scanner->zone_origin_length = settings_scanner->zone_origin_length;
-    fl->scanner->default_ttl = settings_scanner->default_ttl;
+    // If no error occured, then copy scanned settings to actual context.
+    if (ret == 0) {
+        memcpy(fl->scanner->zone_origin,
+               settings_scanner->zone_origin,
+               settings_scanner->zone_origin_length);
+        fl->scanner->zone_origin_length = settings_scanner->zone_origin_length;
+        fl->scanner->default_ttl = settings_scanner->default_ttl;
+    }
 
     // Destroying temporary scanner.
     scanner_free(settings_scanner);
@@ -74,6 +80,7 @@ file_loader_t* file_loader_create(const char     *file_name,
 
     // Creating zeroed structure.
     file_loader_t *fl = calloc(1, sizeof(file_loader_t));
+
     if (fl == NULL) {
         return NULL;
     }
@@ -83,6 +90,7 @@ file_loader_t* file_loader_create(const char     *file_name,
 
     // Opening zone file.
     fl->fd = open(fl->file_name, O_RDONLY);
+
     if (fl->fd == -1) {
         free(fl->file_name);
         free(fl);
@@ -104,11 +112,12 @@ file_loader_t* file_loader_create(const char     *file_name,
                   "$ORIGIN %s\n"
                   "$TTL %u\n",
                   zone_origin, default_ttl);
+
     if (ret > 0) {
         fl->settings_length = ret;
     }
     else {
-        printf("Zone file setttings error!\n");
+        printf("Error in zone setttings!\n");
         file_loader_free(fl);
         return NULL;
     }
@@ -134,12 +143,12 @@ int file_loader_process(file_loader_t *fl)
     long     page_size;
     uint64_t n_blocks, block_id;
     uint64_t block_size, overlapping_size;
-    // Start means first valid character; End means first invalid character.
+    // Start means first valid character; end means first invalid character.
     uint64_t block_start_position, block_end_position;
     uint64_t scanner_start_position, scanner_end_position;
 
     // For secure termination of zone file.
-    char     *zone_termination = "\n";
+    char *zone_termination = "\n";
 
     // Getting OS page size.
     page_size = sysconf(_SC_PAGESIZE);
@@ -156,13 +165,14 @@ int file_loader_process(file_loader_t *fl)
     // Overlapping size adjustment to multiple of page size.
     overlapping_size = (BLOCK_OVERLAPPING_SIZE / page_size) * page_size;
 
-    // Number of blocks which cover the whole file.
+    // Number of blocks which cover the whole file (ceiling operation).
     n_blocks = 1 + ((file_stat.st_size - 1) / block_size);
 
-    // Process settings using scanner (like initial ORIGIN).
+    // Process settings using scanner (like initial ORIGIN and TTL).
     ret = load_settings(fl);
+
     if (ret != 0) {
-        printf("Scanner settings processing error!\n");
+        printf("Zone defaults error!\n");
         return -1;
     }
 
@@ -195,6 +205,7 @@ int file_loader_process(file_loader_t *fl)
                     MAP_SHARED,
                     fl->fd,
                     block_start_position);
+
         if (data == MAP_FAILED) {
             printf("Mmap error!\n");
             return -1;
@@ -206,7 +217,7 @@ int file_loader_process(file_loader_t *fl)
             return -1;
         };
 
-        // parser < data, scanner_start_position, scanner_end_position
+        // Scan zone file.
         ret = scanner_process(data + scanner_start_position,
                               data + scanner_end_position,
                               false,
@@ -220,9 +231,10 @@ int file_loader_process(file_loader_t *fl)
                                   fl->scanner);
         }
 
-        // Processing return check.
+        // Check for error.
         if (ret != 0) {
-            printf("Scanner zone file processing error!\n");
+            printf("Zone processing has stopped with %"PRIu64" errors!\n",
+                   fl->scanner->error_counter);
             return -1;
         }
 
