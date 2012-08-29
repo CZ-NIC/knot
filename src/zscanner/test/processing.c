@@ -78,3 +78,14 @@ void process_record(const scanner_t *s)
     fflush(stdout);
 }
 
+void dump_rdata(const scanner_t *s)
+{
+    uint32_t item, i;
+
+    for (item = 1; item <= s->r_data_items_count; item++) {                     
+        for (i = s->r_data_items[item - 1]; i < s->r_data_items[item]; i++) {   
+            printf("%c", (s->r_data)[i]);                                     
+        }
+    }
+}
+

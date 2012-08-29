@@ -224,18 +224,11 @@ int file_loader_process(file_loader_t *fl)
                               fl->scanner);
 
         // Artificial last block containing termination only.
-        if (is_last_block == true && ret == 0) {
+        if (is_last_block == true && fl->scanner->stop == 0) {
             ret = scanner_process(zone_termination,
                                   zone_termination + 1,
                                   true,
                                   fl->scanner);
-        }
-
-        // Check for error.
-        if (ret != 0) {
-            printf("Zone processing has stopped with %"PRIu64" errors!\n",
-                   fl->scanner->error_counter);
-            return -1;
         }
 
         // Zone file block unmapping.
@@ -243,6 +236,13 @@ int file_loader_process(file_loader_t *fl)
             printf("Error file munmapping!\n");
             return -1;
         }
+    }
+
+    // Check for scanner return.
+    if (ret != 0) {
+        printf("Zone processing has stopped with %"PRIu64" errors!\n",
+               fl->scanner->error_counter);
+        return -1;
     }
 
     return 0;

@@ -32,7 +32,7 @@
 #include <arpa/inet.h> // htons
 
 #define MAX_RDATA_LENGTH    65535
-#define MAX_ITEM_LENGTH       255 
+#define MAX_ITEM_LENGTH       255
 #define MAX_DNAME_LENGTH      255
 #define MAX_LABEL_LENGTH       63
 #define MAX_RDATA_ITEMS        64
@@ -53,7 +53,13 @@ typedef struct scanner scanner_t;
 typedef struct {
     uint8_t bitmap[32];
     uint8_t length;
-} window;
+} window_t;
+
+typedef struct {
+    uint8_t  excl_flag;
+    uint16_t addr_family;
+    uint8_t  prefix_length;
+} apl_t;
 
 /*!
  * \brief Context structure for Ragel scanner.
@@ -99,9 +105,11 @@ struct scanner {
     char     include_filename[MAX_RDATA_LENGTH];
 
     /*!< Bitmap window blocks. */
-    window   windows[BITMAP_WINDOWS];
+    window_t windows[BITMAP_WINDOWS];
     /*!< Last window block which is used (-1 means any). */
     int16_t  last_window;
+
+    apl_t    apl;
 
     uint8_t  *dname;  /*!< Pointer to actual dname (origin/owner/rdata). */
     uint32_t *dname_length; /*!< Pointer to actual dname length. */

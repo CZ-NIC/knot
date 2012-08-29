@@ -46,7 +46,7 @@ www.zdrojak.root.cz.    600     IN      NSEC    root.cz. A
  TXT a a
  TXT \;
  TXT aa bb cc
- TXT "aa"
+ TXT "aa" 
  TXT "a ; b"
  TXT \043\ -
 

@@ -72,6 +72,8 @@ const error_table_t knot_error_msgs[] = {
 	{ZSCANNER_EBAD_ADDRESS_CHAR, "Bad address character!"},
 	{ZSCANNER_EBAD_IPV4, "Bad IPv4 address!"},
 	{ZSCANNER_EBAD_IPV6, "Bad IPv6 address!"},
+	{ZSCANNER_EBAD_GATEWAY, "Bad gateway!"},
+	{ZSCANNER_EBAD_APL, "Bad adress prefix list!"},
 	{ZSCANNER_EBAD_RDATA, "Bad record data!"},
 	{ZSCANNER_EBAD_HEX_CHAR, "Bad hexadecimal character!"},
 	{ZSCANNER_EBAD_BASE64_CHAR, "Bad Base64 character!"},

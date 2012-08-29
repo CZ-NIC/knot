@@ -281,7 +281,7 @@
 
     number = number_digit+ >_number_init;
 
-    action _number8_write {
+    action _num8_write {
         if (s->number64 <= UINT8_MAX) {
             *rdata_tail = (uint8_t)(s->number64);
             rdata_tail += 1;
@@ -292,7 +292,7 @@
         }
     }
 
-    action _number16_write {
+    action _num16_write {
         if (s->number64 <= UINT16_MAX) {
             *((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
             rdata_tail += 2;
@@ -303,7 +303,7 @@
         }
     }
 
-    action _number32_write {
+    action _num32_write {
         if (s->number64 <= UINT32_MAX) {
             *((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
             rdata_tail += 4;
@@ -333,9 +333,9 @@
             fhold; fgoto err_line;
         }
     }
-    number8  = number %_number8_write  %_item_exit;
-    number16 = number %_number16_write %_item_exit;
-    number32 = number %_number32_write %_item_exit;
+    num8  = number %_num8_write  %_item_exit;
+    num16 = number %_num16_write %_item_exit;
+    num32 = number %_num32_write %_item_exit;
 
     type_number   = number %_type_number_exit;
     length_number = number %_length_number_exit;
@@ -380,7 +380,7 @@
 
     time = number . time_unit?;
 
-    time32 = time %_number32_write %_item_exit;
+    time32 = time %_num32_write %_item_exit;
     # END
 
     # BEGIN - Timestamp processing
@@ -441,8 +441,7 @@
     # BEGIN - Text processing
     action _text_char {
         if (rdata_tail <= rdata_stop) {
-            *rdata_tail = fc;
-            rdata_tail++;
+            *(rdata_tail++) = fc;
         }
         else {
             SCANNER_WARNING(ZSCANNER_ETEXT_OVERFLOW);
@@ -480,7 +479,8 @@
     text_with_length = text >_item_length_init %_item_length_exit;
 
     text_item = text_with_length %_item_exit;
-    text_array = (text_with_length . (sep . text_with_length)*) %_item_exit;
+    text_array = (text_with_length . (sep . text_with_length)* . sep?)
+                 %_item_exit;
     # END
 
     # BEGIN - TTL directive processing
@@ -670,12 +670,22 @@
     r_ttl = time %_r_ttl_exit;
     # END
 
-    # BEGIN - IPv4 and IPv6 address processing
-    action _address_init {
-        s->buffer_length = 0;
+    # BEGIN - domain name in record data processing
+    action _r_dname_init {
+        s->dname = rdata_tail;
+    }
+    action _r_dname_exit {
+        rdata_tail += s->dname_tmp_length;
     }
 
-    action _address {
+    r_dname = dname >_r_dname_init %_r_dname_exit %_item_exit;
+    # END
+
+    # BEGIN - IPv4 and IPv6 address processing
+    action _addr_init {
+        s->buffer_length = 0;
+    }
+    action _addr {
         if (s->buffer_length < MAX_RDATA_LENGTH) {
             s->buffer[s->buffer_length++] = fc;
         }
@@ -684,45 +694,160 @@
             fhold; fgoto err_line;
         }
     }
-
-    action _address_error {
+    action _addr_error {
         SCANNER_WARNING(ZSCANNER_EBAD_ADDRESS_CHAR);
         fhold; fgoto err_line;
     }
 
-    action _ipv4_address_exit {
+    action _ipv4_addr_exit {
         s->buffer[s->buffer_length] = 0;
 
-        if (inet_pton(AF_INET, (char *)s->buffer, &addr4) > 0) {
-            memcpy(rdata_tail, &(addr4.s_addr), INET4_ADDR_LENGTH);
-            rdata_tail += INET4_ADDR_LENGTH;
-        }
-        else {
+        if (inet_pton(AF_INET, (char *)s->buffer, &addr4) <= 0) {
             SCANNER_WARNING(ZSCANNER_EBAD_IPV4);
             fhold; fgoto err_line;
         }
     }
+    action _ipv4_addr_write {
+        memcpy(rdata_tail, &(addr4.s_addr), INET4_ADDR_LENGTH);
+        rdata_tail += INET4_ADDR_LENGTH;
+    }
 
-    action _ipv6_address_exit {
+    action _ipv6_addr_exit {
        s->buffer[s->buffer_length] = 0;
 
-       if (inet_pton(AF_INET6, (char *)s->buffer, &addr6) > 0) {
-           memcpy(rdata_tail, &(addr6.s6_addr), INET6_ADDR_LENGTH);
-           rdata_tail += INET6_ADDR_LENGTH;
-       }
-       else {
+       if (inet_pton(AF_INET6, (char *)s->buffer, &addr6) <= 0) {
            SCANNER_WARNING(ZSCANNER_EBAD_IPV6);
            fhold; fgoto err_line;
        }
     }
+    action _ipv6_addr_write {
+       memcpy(rdata_tail, &(addr6.s6_addr), INET6_ADDR_LENGTH);
+       rdata_tail += INET6_ADDR_LENGTH;
+    }
 
-    ipv4_address = (digit  | '.')+  >_address_init $_address
-                   %_ipv4_address_exit %_item_exit $!_address_error;
-    ipv6_address = (xdigit | [.:])+ >_address_init $_address
-                   %_ipv6_address_exit %_item_exit $!_address_error;
+    # Address parsers only.
+    ipv4_addr = (digit  | '.')+  >_addr_init $_addr %_ipv4_addr_exit
+                $!_addr_error;
+    ipv6_addr = (xdigit | [.:])+ >_addr_init $_addr %_ipv6_addr_exit
+                $!_addr_error;
+
+    # Write parsed address to r_data.
+    ipv4_addr_write = ipv4_addr %_ipv4_addr_write %_item_exit;
+    ipv6_addr_write = ipv6_addr %_ipv6_addr_write %_item_exit;
     # END
 
-    # BEGIN - Hexadecimal string array processing.
+    # BEGIN - Gateway
+    action _write_0 {
+        *(rdata_tail++) = 0;
+    }
+    action _write_1 {
+        *(rdata_tail++) = 1;
+    }
+    action _write_2 {
+        *(rdata_tail++) = 2;
+    }
+    action _write_3 {
+        *(rdata_tail++) = 3;
+    }
+    action _gateway_error {
+        SCANNER_WARNING(ZSCANNER_EBAD_GATEWAY);
+        fhold; fgoto err_line;
+    }
+
+    gateway =
+        ( ('0' $_write_0 %_item_exit . sep . num8 . sep . '.')
+        | ('1' $_write_1 %_item_exit . sep . num8 . sep . ipv4_addr_write)
+        | ('2' $_write_2 %_item_exit . sep . num8 . sep . ipv6_addr_write)
+        | ('3' $_write_3 %_item_exit . sep . num8 . sep . r_dname)
+        ) $!_gateway_error;
+    # END
+
+    # BEGIN - apl record processing
+    action _apl_init {
+        memset(&(s->apl), 0, sizeof(s->apl));
+    }
+    action _apl_excl_flag {
+        s->apl.excl_flag = 128; // dec 128  = bin 10000000.
+    }
+    action _apl_addr_1 {
+        s->apl.addr_family = 1;
+    }
+    action _apl_addr_2 {
+        s->apl.addr_family = 2;
+    }
+    action _apl_prefix_length {
+        if (s->number64 <= UINT8_MAX) {
+            s->apl.prefix_length = (uint8_t)(s->number64);
+        }
+        else {
+            SCANNER_WARNING(ZSCANNER_ENUMBER8_OVERFLOW);
+            fhold; fgoto err_line;
+        }
+    }
+    action _apl_exit {
+        // Write address family.
+        *((uint16_t *)rdata_tail) = htons(s->apl.addr_family);
+        rdata_tail += 2;
+        ADD_R_DATA_LABEL
+        // Write prefix length in bites.
+        *(rdata_tail) = s->apl.prefix_length;
+        rdata_tail += 1;
+        ADD_R_DATA_LABEL
+        // Computed maximal prefix length in bytes (real can be smaller).
+        s->number64 = (s->apl.prefix_length + 7) / 8;
+        if (s->number64 > 127) { // At most 7 bits.
+            SCANNER_WARNING(ZSCANNER_EBAD_APL);
+            fhold; fgoto err_line;
+        }
+        // Copy address to buffer.
+        switch (s->apl.addr_family) {
+            case 1:
+                memcpy(s->buffer, &(addr4.s_addr), INET4_ADDR_LENGTH);
+                break;
+            case 2:
+                memcpy(s->buffer, &(addr6.s6_addr), INET6_ADDR_LENGTH);
+                break;
+            default:
+                SCANNER_WARNING(ZSCANNER_EBAD_APL);
+                fhold; fgoto err_line;
+        }
+        // Find real prefix (without trailing zeroes).
+        while (s->number64 > 0 ) {
+            if ((s->buffer[s->number64 - 1] & 255) != 0) {
+                // Apply mask on last byte if not precise prefix.
+                // (Bind does't do this).
+                s->buffer[s->number64 - 1] &=
+                    ((uint8_t)255 << (8 - s->apl.prefix_length % 8));
+                break;
+            }
+            s->number64--;
+        }
+        // Write negation flag + prefix length in bytes.
+        *(rdata_tail) = (uint8_t)(s->number64) + s->apl.excl_flag;
+        rdata_tail += 1;
+        ADD_R_DATA_LABEL
+        // Write address prefix.
+        memcpy(rdata_tail, s->buffer, s->number64);
+        rdata_tail += s->number64;
+        ADD_R_DATA_LABEL
+    }
+    action _apl_error {
+        SCANNER_WARNING(ZSCANNER_EBAD_APL);
+        fhold; fgoto err_line;
+    }
+
+    apl = ('!'? $_apl_excl_flag .
+           ( ('1' $_apl_addr_1 . ':' . ipv4_addr . '/' . number
+              %_apl_prefix_length)
+           | ('2' $_apl_addr_2 . ':' . ipv6_addr . '/' . number
+              %_apl_prefix_length)
+           )
+          ) >_apl_init %_apl_exit $!_apl_error;
+
+    apl_array = apl . (sep . apl)* . sep?;
+    # END
+
+    # BEGIN - Hexadecimal string array processing
     action _first_hex_char {
         if (rdata_tail <= rdata_stop) {
             *rdata_tail = first_hex_to_num[(uint8_t)fc];
@@ -761,7 +886,7 @@
     type_data = hex_array? ;#%_type_data_exit $!_hex_char_error;
     # END
 
-    # BEGIN - Base64 processing (RFC 4648).
+    # BEGIN - Base64 processing (RFC 4648)
     action _first_base64_char {
         if (rdata_tail <= rdata_stop) {
             *rdata_tail = first_base64_to_num[(uint8_t)fc];
@@ -772,8 +897,7 @@
         }
     }
     action _second_base64_char {
-        *rdata_tail += second_left_base64_to_num[(uint8_t)fc];
-        rdata_tail++;
+        *(rdata_tail++) += second_left_base64_to_num[(uint8_t)fc];
 
         if (rdata_tail <= rdata_stop) {
             *rdata_tail = second_right_base64_to_num[(uint8_t)fc];
@@ -784,8 +908,7 @@
         }
     }
     action _third_base64_char {
-        *rdata_tail += third_left_base64_to_num[(uint8_t)fc];
-        rdata_tail++;
+        *(rdata_tail++) += third_left_base64_to_num[(uint8_t)fc];
 
         if (rdata_tail <= rdata_stop) {
             *rdata_tail = third_right_base64_to_num[(uint8_t)fc];
@@ -796,8 +919,7 @@
         }
     }
     action _fourth_base64_char {
-        *rdata_tail += fourth_base64_to_num[(uint8_t)fc];
-        rdata_tail++;
+        *(rdata_tail++) += fourth_base64_to_num[(uint8_t)fc];
     }
 
     action _base64_char_error {
@@ -823,7 +945,7 @@
     base64 = (base64_quartet+ . sep?)+ %_item_exit $!_base64_char_error;
     # END
 
-    # BEGIN - Base32hex processing (RFC 4648).
+    # BEGIN - Base32hex processing (RFC 4648)
     action _first_base32hex_char {
         if (rdata_tail <= rdata_stop) {
             *rdata_tail = first_base32hex_to_num[(uint8_t)fc];
@@ -834,8 +956,7 @@
         }
     }
     action _second_base32hex_char {
-        *rdata_tail += second_left_base32hex_to_num[(uint8_t)fc];
-        rdata_tail++;
+        *(rdata_tail++) += second_left_base32hex_to_num[(uint8_t)fc];
 
         if (rdata_tail <= rdata_stop) {
             *rdata_tail = second_right_base32hex_to_num[(uint8_t)fc];
@@ -849,8 +970,7 @@
         *rdata_tail += third_base32hex_to_num[(uint8_t)fc];
     }
     action _fourth_base32hex_char {
-        *rdata_tail += fourth_left_base32hex_to_num[(uint8_t)fc];
-        rdata_tail++;
+        *(rdata_tail++) += fourth_left_base32hex_to_num[(uint8_t)fc];
 
         if (rdata_tail <= rdata_stop) {
             *rdata_tail = fourth_right_base32hex_to_num[(uint8_t)fc];
@@ -861,8 +981,7 @@
         }
     }
     action _fifth_base32hex_char {
-        *rdata_tail += fifth_left_base32hex_to_num[(uint8_t)fc];
-        rdata_tail++;
+        *(rdata_tail++) += fifth_left_base32hex_to_num[(uint8_t)fc];
 
         if (rdata_tail <= rdata_stop) {
             *rdata_tail = fifth_right_base32hex_to_num[(uint8_t)fc];
@@ -876,8 +995,7 @@
         *rdata_tail += sixth_base32hex_to_num[(uint8_t)fc];
     }
     action _seventh_base32hex_char {
-        *rdata_tail += seventh_left_base32hex_to_num[(uint8_t)fc];
-        rdata_tail++;
+        *(rdata_tail++) += seventh_left_base32hex_to_num[(uint8_t)fc];
 
         if (rdata_tail <= rdata_stop) {
             *rdata_tail = seventh_right_base32hex_to_num[(uint8_t)fc];
@@ -888,8 +1006,7 @@
         }
     }
     action _eighth_base32hex_char {
-        *rdata_tail += eighth_base32hex_to_num[(uint8_t)fc];
-        rdata_tail++;
+        *(rdata_tail++) += eighth_base32hex_to_num[(uint8_t)fc];
     }
 
     action _base32hex_char_error {
@@ -926,7 +1043,7 @@
            %_item_exit $!_base32hex_char_error;
     # END
 
-    # BEGIN - Type processing.
+    # BEGIN - Type processing
     action _type_exit {
         rdata_tail += 2;
     }
@@ -971,7 +1088,7 @@
         | "NSEC3PARAM"i %{ TYPE_NUM(KNOT_RRTYPE_NSEC3PARAM); }
         | "TLSA"i       %{ TYPE_NUM(KNOT_RRTYPE_TLSA); }
         | "SPF"i        %{ TYPE_NUM(KNOT_RRTYPE_SPF); }
-        | "TYPE"i       . number16 # TYPE12345
+        | "TYPE"i       . num16 # TYPE12345
         ) %_type_exit %_item_exit $!_type_error;
     # END
 
@@ -1070,31 +1187,6 @@
     }
     # END
 
-    # BEGIN - domain name in record data processing
-    action _r_dname_init {
-        s->dname = rdata_tail;
-    }
-    action _r_dname_exit {
-        rdata_tail += s->dname_tmp_length;
-    }
-
-    r_dname = dname >_r_dname_init %_r_dname_exit %_item_exit;
-    # END
-
-    # BEGIN - Gateway
-    action _fc_write {
-        *rdata_tail = digit_to_num[(uint8_t)fc];
-        rdata_tail++;
-    }
-
-    gateway =
-        ( ('0' $_fc_write %_item_exit . sep . number8 . sep . '.')
-        | ('1' $_fc_write %_item_exit . sep . number8 . sep . ipv4_address)
-        | ('2' $_fc_write %_item_exit . sep . number8 . sep . ipv6_address)
-        | ('3' $_fc_write %_item_exit . sep . number8 . sep . r_dname)
-        );
-    # END
-
     # BEGIN - Auxiliary functions which call smaller state machines
     action _data_a {
         s->r_type = KNOT_RRTYPE_A;
@@ -1172,6 +1264,10 @@
         s->r_type = KNOT_RRTYPE_DNAME;
         fhold; fcall data_ns; // Same as NS.
     }
+    action _data_apl {
+        s->r_type = KNOT_RRTYPE_APL;
+        fhold; fcall data_apl;
+    }
     action _data_ds {
         s->r_type = KNOT_RRTYPE_DS;
         fhold; fcall data_ds;
@@ -1228,7 +1324,7 @@
     }
 
     data_a :=
-        ( sep . ipv4_address )
+        ( sep . ipv4_addr_write )
         $!_r_data_error
         %_ret . all_wchar;
 
@@ -1238,7 +1334,7 @@
         %_ret . all_wchar;
 
     data_soa :=
-        ( sep . r_dname . sep . r_dname . sep . number32 . sep . time32 .
+        ( sep . r_dname . sep . r_dname . sep . num32 . sep . time32 .
           sep . time32 . sep . time32 . sep . time32 )
         $!_r_data_error
         %_ret . all_wchar;
@@ -1254,7 +1350,7 @@
         %_ret . all_wchar;
 
     data_mx :=
-        ( sep . number16 . sep . r_dname )
+        ( sep . num16 . sep . r_dname )
         $!_r_data_error
         %_ret . all_wchar;
 
@@ -1269,44 +1365,49 @@
         %_ret . all_wchar;
 
     data_aaaa :=
-        ( sep . ipv6_address )
+        ( sep . ipv6_addr_write )
         $!_r_data_error
         %_ret . all_wchar;
 
     data_srv :=
-        ( sep . number16 . sep . number16 . sep . number16 . sep . r_dname )
+        ( sep . num16 . sep . num16 . sep . num16 . sep . r_dname )
         $!_r_data_error
         %_ret . all_wchar;
 
     data_naptr :=
-        ( sep . number16 . sep . number16 . sep . text_item . sep .
+        ( sep . num16 . sep . num16 . sep . text_item . sep .
           text_item . sep . text_item . sep . r_dname )
         $!_r_data_error
         %_ret . all_wchar;
 
     data_cert :=
-        ( sep . number16 . sep . number16 . sep . number8 . sep . base64 )
+        ( sep . num16 . sep . num16 . sep . num8 . sep . base64 )
+        $!_r_data_error
+        %_ret . end_wchar;
+
+    data_apl :=
+        ( sep . apl_array )
         $!_r_data_error
         %_ret . end_wchar;
 
     data_ds :=
-        ( sep . number16 . sep . number8 . sep . number8 . sep . hex_array )
+        ( sep . num16 . sep . num8 . sep . num8 . sep . hex_array )
         $!_r_data_error
         %_ret . end_wchar;
 
     data_sshfp :=
-        ( sep . number8 . sep . number8 . sep . hex_array )
+        ( sep . num8 . sep . num8 . sep . hex_array )
         $!_r_data_error
         %_ret . end_wchar;
 
     data_ipseckey :=
-        ( sep . number8 . sep . gateway . sep . base64 )
+        ( sep . num8 . sep . gateway . sep . base64 )
         $!_r_data_error
         %_ret . end_wchar;
 
     data_rrsig :=
-        ( sep . type_num . sep . number8 . sep . number8 . sep . number32 .
-          sep . timestamp . sep . timestamp . sep . number16 . sep . r_dname .
+        ( sep . type_num . sep . num8 . sep . num8 . sep . num32 .
+          sep . timestamp . sep . timestamp . sep . num16 . sep . r_dname .
           sep . base64 )
         $!_r_data_error
         %_ret . end_wchar;
@@ -1318,7 +1419,7 @@
         %_ret . all_wchar;
 
     data_dnskey :=
-        ( sep . number16 . sep . number8 . sep . number8 . sep . base64 )
+        ( sep . num16 . sep . num8 . sep . num8 . sep . base64 )
         $!_r_data_error
         %_ret . end_wchar;
 
@@ -1328,19 +1429,18 @@
         %_ret . end_wchar;
 
     data_nsec3 :=
-        ( sep . number8 . sep . number8 . sep . number16 . sep . salt .
-          sep . hash )
+        ( sep . num8 . sep . num8 . sep . num16 . sep . salt . sep . hash )
         $!_r_data_error
         %_call_bitmap . all_wchar # Bitmap is different machine!
         %_ret . all_wchar;
 
     data_nsec3param :=
-        ( sep . number8 . sep . number8 . sep . number16 . sep . salt )
+        ( sep . num8 . sep . num8 . sep . num16 . sep . salt )
         $!_r_data_error
         %_ret . all_wchar;
 
     data_tlsa :=
-        ( sep . number8 . sep . number8 . sep . number8 . sep . hex_array )
+        ( sep . num8 . sep . num8 . sep . num8 . sep . hex_array )
         $!_r_data_error
         %_ret . end_wchar;
 
@@ -1365,9 +1465,6 @@
         fhold; fgoto err_line;
     }
 
-    # Temporary action!!
-    action _data_ { }
-
     r_type_r_data =
         ( "A"i                  %_data_a
         | "NS"i                 %_data_ns
@@ -1383,13 +1480,13 @@
         | "RT"i                 %_data_rt
         | "KEY"i                %_data_key
         | "AAAA"i               %_data_aaaa
-        | "LOC"i                %_data_
+        | "LOC"i
         | "SRV"i                %_data_srv
         | "NAPTR"i              %_data_naptr
         | "KX"i                 %_data_kx
         | "CERT"i               %_data_cert
         | "DNAME"i              %_data_dname
-        | "APL"i                %_data_
+        | "APL"i                %_data_apl
         | "DS"i                 %_data_ds
         | "SSHFP"i              %_data_sshfp
         | "IPSECKEY"i           %_data_ipseckey

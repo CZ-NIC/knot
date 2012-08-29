@@ -34,6 +34,7 @@ void process_error(const scanner_t *scanner);
 
 void process_record(const scanner_t *scanner);
 
+void dump_rdata(const scanner_t *s);
 
 #endif // _ZSCANNER__TEST_FUNCTIONS_H_
 

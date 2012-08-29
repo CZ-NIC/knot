@@ -30,3 +30,9 @@ aerope.zcu.cz.          86400   IN      HINFO   "DEC-AXP-2100" "OSF/1-V3.2C"
 ccpc1         IN     HINFO   Pentium133  Windows95
 
 bind          IN     MINFO   bind-request kjd.sample.edu.
+
+foo.example.             IN APL 1:192.168.32.0/21 !1:192.168.38.0/28
+42.168.192.IN-ADDR.ARPA. IN APL ( 1:192.168.42.0/26 1:192.168.42.64/26
+                                  1:192.168.42.128/25 )
+_axfr.sbo.example.       IN APL 1:127.0.0.1/32 1:172.16.255.0/22
+multicast.example.       IN APL 1:224.0.0.0/4  2:FF00:0:0:0:0:0:0:0/8

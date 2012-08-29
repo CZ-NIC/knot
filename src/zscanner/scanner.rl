@@ -152,11 +152,6 @@ int scanner_process(char      *start,
         return -1;
     }
 
-    // Check if any errors occured.
-    if (s->error_counter > 0) {
-        return -1;
-    }
-
     // Storing scanner states.
     s->cs  = cs;
     s->top = top;
@@ -171,6 +166,11 @@ int scanner_process(char      *start,
     }
     else {
         s->token_shift = 0;
+    }
+
+    // Check if any errors occured.
+    if (s->error_counter > 0) {
+        return -1;
     }
 
     return 0;
