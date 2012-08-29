@@ -227,6 +227,10 @@ int knot_ns_prep_normal_response(knot_nameserver_t *nameserver,
                                  knot_packet_t *query, knot_packet_t **resp,
                                  const knot_zone_t **zone, size_t max_size);
 
+int knot_ns_prep_update_response(knot_nameserver_t *nameserver,
+                                 knot_packet_t *query, knot_packet_t **resp,
+                                 const knot_zone_t **zone, size_t max_size);
+
 /*!
  * \brief Creates a response for the given normal query using the data of the
  *        nameserver.

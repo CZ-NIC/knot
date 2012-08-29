@@ -422,10 +422,10 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 {
 
 	int ret = KNOTD_EOK;
-	int apply_ret = KNOT_EOK;
+//	int apply_ret = KNOT_EOK;
 	int switch_ret = KNOT_EOK;
 	knot_changesets_t *chs = NULL;
-	journal_t *transaction = NULL;
+//	journal_t *transaction = NULL;
 	
 	switch(data->type) {
 	case XFR_TYPE_AIN:
@@ -452,82 +452,10 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 		break;
 	case XFR_TYPE_IIN:
 		chs = (knot_changesets_t *)data->data;
-
-		/* Serialize and store changesets. */
-		dbg_xfr("xfr: IXFR/IN serializing and saving changesets\n");
-		transaction = zones_store_changesets_begin(data);
-		if (transaction != NULL) {
-			ret = zones_store_changesets(data);
-		} else {
-			ret = KNOTD_ERROR;
-		}
-		if (ret != KNOTD_EOK) {
-			log_zone_error("%s Failed to serialize and store "
-			               "changesets - %s\n", data->msgpref,
-			               knotd_strerror(ret));
-			/* Free changesets, but not the data. */
-			knot_free_changesets(&chs);
-			data->data = NULL;
-			break;
-		}
-
-		/* Now, try to apply the changesets to the zone. */
-		apply_ret = xfrin_apply_changesets(data->zone, chs,
-		                                       &data->new_contents);
-
-		if (apply_ret != KNOT_EOK) {
-			zones_store_changesets_rollback(transaction);
-			log_zone_error("%s Failed to apply changesets - %s\n",
-			               data->msgpref,
-			               knot_strerror(apply_ret));
-
-			/* Free changesets, but not the data. */
-			knot_free_changesets(&chs);
-			data->data = NULL;
-			ret = KNOTD_ERROR;
-			break;
-		}
-		
-		/* Commit transaction. */
-		ret = zones_store_changesets_commit(transaction);
-		if (ret != KNOTD_EOK) {
-			log_zone_error("%s Failed to commit stored changesets "
-			               "- %s\n",
-			               data->msgpref,
-			               knot_strerror(apply_ret));
-			knot_free_changesets(&chs);
-			data->data = NULL;
-			break;
-		}
-
-		/* Switch zone contents. */
-		switch_ret = xfrin_switch_zone(data->zone, data->new_contents,
-		                               data->type);
-
-		if (switch_ret != KNOT_EOK) {
-			log_zone_error("%s Failed to replace "
-				       "current zone - %s\n",
-				       data->msgpref,
-				       knot_strerror(switch_ret));
-			// Cleanup old and new contents
-			xfrin_rollback_update(data->zone->contents,
-			                      &data->new_contents,
-			                      &chs->changes);
-
-			/* Free changesets, but not the data. */
-			knot_free_changesets(&chs);
-			data->data = NULL;
-			ret = KNOTD_ERROR;
-			break;
-		}
-
-		xfrin_cleanup_successful_update(&chs->changes);
-
-		/* Free changesets, but not the data. */
-		knot_free_changesets(&chs);
+		ret = zones_store_and_apply_chgsets(chs, data->zone,
+		                                    &data->new_contents,
+		                                    data->msgpref);
 		data->data = NULL;
-		assert(ret == KNOTD_EOK);
-		log_zone_info("%s Finished.\n", data->msgpref);
 		break;
 	default:
 		ret = KNOTD_EINVAL;

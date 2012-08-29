@@ -2944,7 +2944,7 @@ static int ns_ixfr(knot_ns_xfr_t *xfr)
 /*----------------------------------------------------------------------------*/
 
 static int knot_ns_prepare_response(knot_packet_t *query, knot_packet_t **resp,
-                                    size_t max_size)
+                                    size_t max_size, int copy_question)
 {
 	assert(max_size >= 500);
 	
@@ -2963,7 +2963,7 @@ static int knot_ns_prepare_response(knot_packet_t *query, knot_packet_t **resp,
 		return ret;
 	}
 
-	ret = knot_response_init_from_query(*resp, query);
+	ret = knot_response_init_from_query(*resp, query, copy_question);
 
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to init response structure.\n");
@@ -3430,7 +3430,7 @@ int knot_ns_prep_normal_response(knot_nameserver_t *nameserver,
 		resp_max_size = MAX_UDP_PAYLOAD;
 	}
 
-	ret = knot_ns_prepare_response(query, resp, resp_max_size);
+	ret = knot_ns_prepare_response(query, resp, resp_max_size, 1);
 	if (ret != KNOT_EOK) {
 		return KNOT_ERROR;
 	}
@@ -3484,7 +3484,135 @@ int knot_ns_prep_update_response(knot_nameserver_t *nameserver,
                                  knot_packet_t *query, knot_packet_t **resp,
                                  const knot_zone_t **zone, size_t max_size)
 {
+	dbg_ns_verb("knot_ns_prep_update_response()\n");
 
+	if (nameserver == NULL || query == NULL || resp == NULL
+	    || zone == NULL) {
+		return KNOT_EBADARG;
+	}
+
+	// first, parse the rest of the packet
+	assert(knot_packet_is_query(query));
+	dbg_ns_verb("Query - parsed: %zu, total wire size: %zu\n",
+	            knot_packet_parsed(query), knot_packet_size(query));
+	int ret;
+
+	ret = knot_packet_parse_rest(query);
+	if (ret != KNOT_EOK) {
+		dbg_ns("Failed to parse rest of the query: %s.\n",
+		       knot_strerror(ret));
+		return ret;
+	}
+
+	/*
+	 * Semantic checks
+	 *
+	 * Check the QDCOUNT and in case of anything but 1 send back
+	 * FORMERR
+	 */
+	if (knot_packet_qdcount(query) != 1) {
+		dbg_ns("QDCOUNT != 1. Reply FORMERR.\n");
+		return KNOT_EMALF;
+	}
+
+	/*
+	 * Check what is in the Additional section. Only OPT and TSIG are
+	 * allowed. TSIG must be the last record if present.
+	 */
+	/*! \todo Put to separate function - used in prep_normal_response(). */
+	if (knot_packet_arcount(query) > 0) {
+		int ok = 0;
+		const knot_rrset_t *add1 =
+		                knot_packet_additional_rrset(query, 0);
+		if (knot_packet_additional_rrset_count(query) == 1
+		    && (knot_rrset_type(add1) == KNOT_RRTYPE_OPT
+		        || knot_rrset_type(add1) == KNOT_RRTYPE_TSIG)) {
+			ok = 1;
+		} else if (knot_packet_additional_rrset_count(query) == 2) {
+			const knot_rrset_t *add2 =
+			                knot_packet_additional_rrset(query, 1);
+			if (knot_rrset_type(add1) == KNOT_RRTYPE_OPT
+			    && knot_rrset_type(add2) == KNOT_RRTYPE_TSIG) {
+				ok = 1;
+			}
+		}
+
+		if (!ok) {
+			dbg_ns("Additional section malformed. Reply FORMERR\n");
+			return KNOT_EMALF;
+		}
+	}
+
+	size_t resp_max_size = 0;
+
+	knot_packet_dump(query);
+
+	/*! \todo Put to separate function - used in prep_normal_response(). */
+	if (max_size > 0) {
+		// if TCP is used, buffer size is the only constraint
+		assert(max_size > 0);
+		resp_max_size = max_size;
+	} else if (knot_query_edns_supported(query)) {
+		assert(max_size == 0);
+		if (knot_edns_get_payload(&query->opt_rr) <
+		    knot_edns_get_payload(nameserver->opt_rr)) {
+			resp_max_size = knot_edns_get_payload(&query->opt_rr);
+		} else {
+			resp_max_size = knot_edns_get_payload(
+						nameserver->opt_rr);
+		}
+	}
+
+	if (resp_max_size < MAX_UDP_PAYLOAD) {
+		resp_max_size = MAX_UDP_PAYLOAD;
+	}
+
+	ret = knot_ns_prepare_response(query, resp, resp_max_size, 0);
+	if (ret != KNOT_EOK) {
+		return KNOT_ERROR;
+	}
+
+	dbg_ns_verb("Query - parsed: %zu, total wire size: %zu\n",
+	            query->parsed, query->size);
+	dbg_ns_detail("Opt RR: version: %d, payload: %d\n",
+	              query->opt_rr.version, query->opt_rr.payload);
+
+	// get the answer for the query
+	knot_zonedb_t *zonedb = rcu_dereference(nameserver->zone_db);
+
+	dbg_ns_detail("EDNS supported in query: %d\n",
+	              knot_query_edns_supported(query));
+
+	// set the OPT RR to the response
+	if (knot_query_edns_supported(query)) {
+		ret = knot_response_add_opt(*resp, nameserver->opt_rr, 1,
+		                            knot_query_nsid_requested(query));
+		if (ret != KNOT_EOK) {
+			dbg_ns("Failed to set OPT RR to the response"
+			       ": %s\n", knot_strerror(ret));
+		} else {
+			// copy the DO bit from the query
+			if (knot_query_dnssec_requested(query)) {
+				knot_edns_set_do(&(*resp)->opt_rr);
+			}
+		}
+	}
+
+	dbg_ns_verb("Response max size: %zu\n", (*resp)->max_size);
+
+	const knot_dname_t *qname = knot_packet_qname(*resp);
+	assert(qname != NULL);
+
+//	uint16_t qtype = knot_packet_qtype(*resp);
+dbg_ns_exec_verb(
+	char *name_str = knot_dname_to_str(qname);
+	dbg_ns_verb("Trying to find zone %s\n", name_str);
+	free(name_str);
+);
+	// find zone
+	*zone = knot_zonedb_find_zone(zonedb, qname);
+
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -3621,7 +3749,7 @@ dbg_ns_exec_verb(
 	response->wireformat = xfr->wire;
 	response->max_size = xfr->wire_size;
 
-	ret = knot_response_init_from_query(response, xfr->query);
+	ret = knot_response_init_from_query(response, xfr->query, 1);
 
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to init response structure.\n");
@@ -4088,10 +4216,14 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
 
 	dbg_ns("Processing Dynamic Update.\n");
 
+	/* !!!!! TODO: rewrite !!!!!! */
+	/* TODO: query -> resp */
+
 	knot_packet_t *response;
 	assert(*rsize >= MAX_UDP_PAYLOAD);
 	dbg_ns_verb("Preparing response packet.\n");
-	int ret = knot_ns_prepare_response(query, &response, MAX_UDP_PAYLOAD);
+	int ret = knot_ns_prepare_response(query, &response, MAX_UDP_PAYLOAD,
+	                                   1);
 	if (ret != KNOT_EOK) {
 		knot_ns_error_response_from_query(nameserver, query,
 		                                  KNOT_RCODE_SERVFAIL,

@@ -214,7 +214,7 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data);
  * \todo Expects the xfr structure to be initialized in some way.
  * \todo Update documentation!!!
  */
-int zones_store_changesets(knot_ns_xfr_t *xfr);
+int zones_store_changesets(knot_zone_t *zone, knot_changesets_t *src);
 
 /*!
  * \brief Begin changesets storing transaction.
@@ -222,7 +222,7 @@ int zones_store_changesets(knot_ns_xfr_t *xfr);
  * \retval pointer to journal if successful
  * \retval NULL on failure.
  */
-journal_t *zones_store_changesets_begin(knot_ns_xfr_t *xfr);
+journal_t *zones_store_changesets_begin(knot_zone_t *zone);
 
 /*!
  * \brief Commit stored changesets.
@@ -287,6 +287,11 @@ int zones_xfr_load_changesets(knot_ns_xfr_t *xfr, uint32_t serial_from,
  */
 int zones_create_and_save_changesets(const knot_zone_t *old_zone,
                                      const knot_zone_t *new_zone);
+
+int zones_store_and_apply_chgsets(knot_changesets_t *chs,
+                                  knot_zone_t *zone,
+                                  knot_zone_contents_t **new_contents,
+                                  const char *msgpref);
 
 /*!
  * \brief Update zone timers.

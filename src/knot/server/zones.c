@@ -2496,6 +2496,227 @@ int zones_process_update(knot_nameserver_t *nameserver,
                          knot_ns_transport_t transport)
 {
 
+	/* !!!!!!!!!!!! COPY-PASTED CODE !!!!!!!!!!!!!! */
+	rcu_read_lock();
+
+	knot_packet_t *resp = NULL;
+	knot_zone_t *zone = NULL;
+
+	dbg_zones_verb("Preparing response structure.\n");
+	int ret = knot_ns_prep_update_response(nameserver, query, &resp, &zone,
+	                                       (transport == NS_TRANSPORT_TCP)
+	                                       ? *rsize : 0);
+
+	knot_rcode_t rcode = 0;
+
+	switch (ret) {
+	case KNOT_EOK:
+		rcode = KNOT_RCODE_NOERROR;
+		break;
+	case KNOT_EMALF:
+		// no TSIG signing in this case
+		rcode = KNOT_RCODE_FORMERR;
+		break;
+	default:
+		// no TSIG signing in this case
+		rcode = KNOT_RCODE_SERVFAIL;
+		break;
+	}
+
+	if (rcode == KNOT_RCODE_NOERROR
+	    && ((zone == NULL && knot_packet_tsig(query) == NULL)
+	        || (knot_packet_qclass(query) != KNOT_CLASS_IN))) {
+		/*! \todo If there is TSIG, this should be probably handled
+		 *        as a key error.
+		 */
+		rcode = KNOT_RCODE_REFUSED;
+	}
+
+	if (rcode != KNOT_RCODE_NOERROR) {
+		dbg_zones_verb("Failed preparing response structure: %s.\n",
+		               knot_strerror(rcode));
+
+		// Error response without Question section
+		knot_ns_error_response_from_query_wire(nameserver,
+		                          knot_packet_wireformat(query),
+		                          knot_packet_size(query),
+		                          rcode, resp_wire, rsize);
+	} else {
+		/*
+		 * Now we have zone. Verify TSIG if it is in the packet.
+		 */
+		assert(resp != NULL);
+		assert(rcode == KNOT_RCODE_NOERROR);
+		uint16_t tsig_rcode = 0;
+		knot_key_t *tsig_key_zone = NULL;
+		uint64_t tsig_prev_time_signed = 0;
+		/*! \todo Verify, as it was uninitialized! */
+
+		size_t answer_size = *rsize;
+		int ret = KNOT_EOK;
+
+		if (zone == NULL) {
+			assert(knot_packet_tsig(query) != NULL);
+			// treat as BADKEY error
+			/*! \todo Is this OK?? */
+			rcode = KNOT_RCODE_NOTAUTH;
+			tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
+			ret = KNOT_TSIG_EBADKEY;
+		} else {
+			dbg_zones_verb("Checking TSIG in query.\n");
+			ret = zones_check_tsig_query(zone, query, addr,
+			                             &rcode, &tsig_rcode,
+			                             &tsig_key_zone,
+			                             &tsig_prev_time_signed);
+		}
+
+		if (ret == KNOT_EOK) {
+			dbg_zones_verb("TSIG check successful. Answering "
+			               "query.\n");
+			assert(tsig_rcode == 0);
+
+			// reserve place for the TSIG
+			if (tsig_key_zone != NULL) {
+				size_t tsig_max_size =
+				         tsig_wire_maxsize(tsig_key_zone);
+				knot_packet_set_tsig_size(resp, tsig_max_size);
+			}
+
+			knot_changeset_t *ch = NULL;
+			ret = knot_ns_process_update(nameserver,
+			                             resp, resp_wire,
+			                             &answer_size, &zone, &ch);
+
+			dbg_zones_detail("rsize = %zu\n", *rsize);
+			dbg_zones_detail("answer_size = %zu\n", answer_size);
+
+			assert(ret == KNOT_EOK);
+
+			// sign the message
+			if (tsig_key_zone != NULL) {
+				dbg_zones_verb("Signing message with TSIG.\n");
+				// TODO check
+				//*rsize = answer_size;
+
+				const knot_rrset_t *tsig =
+				      knot_packet_tsig(knot_packet_query(resp));
+
+				size_t digest_max_size =
+				                tsig_alg_digest_length(
+				                      tsig_key_zone->algorithm);
+				uint8_t *digest = (uint8_t *)malloc(
+				                        digest_max_size);
+				if (digest == NULL) {
+					knot_packet_free(&resp);
+					rcu_read_unlock();
+					return KNOT_ENOMEM;
+				}
+				size_t digest_size = digest_max_size;
+
+				ret = knot_tsig_sign(resp_wire, &answer_size,
+				               *rsize, tsig_rdata_mac(tsig),
+				               tsig_rdata_mac_length(tsig),
+				               digest, &digest_size,
+				               tsig_key_zone, tsig_rcode,
+				               tsig_prev_time_signed);
+
+				free(digest);
+
+				dbg_zones_detail("answer_size = %zu\n",
+				                 answer_size);
+
+				if (ret != KNOT_EOK) {
+					dbg_zones_verb("Failed to sign message:"
+					            "%s\n", knot_strerror(ret));
+					rcode = KNOT_RCODE_SERVFAIL;
+				} else {
+					*rsize = answer_size;
+				}
+			} else {
+				*rsize = answer_size;
+			}
+		} else {
+			dbg_zones_verb("Failed TSIG check: %s, TSIG err: %u.\n",
+			               knot_strerror(ret), tsig_rcode);
+
+			if (tsig_rcode != 0) {
+				dbg_zones_verb("Sending TSIG error.\n");
+				// first, convert the response to wire format
+				answer_size = *rsize;
+				knot_response_set_rcode(resp, rcode);
+
+				ret = ns_response_to_wire(resp, resp_wire,
+				                          &answer_size);
+
+				dbg_zones_detail("Packet to wire returned %d\n",
+				                 ret);
+
+				// then add the TSIG to the wire format
+				if (ret == KNOT_EOK &&
+				    tsig_rcode != KNOT_TSIG_RCODE_BADTIME) {
+					dbg_zones_verb("Adding TSIG.\n");
+					ret = knot_tsig_add(resp_wire,
+					                    &answer_size,
+					                    *rsize, tsig_rcode,
+					                     knot_packet_tsig(
+					                            query));
+
+					*rsize = answer_size;
+
+				} else if (tsig_rcode
+				           == KNOT_TSIG_RCODE_BADTIME) {
+					dbg_zones_verb("Signing error resp.\n");
+					//*rsize = answer_size;
+
+					const knot_rrset_t *tsig =
+					      knot_packet_tsig(
+					          knot_packet_query(resp));
+
+					size_t digest_max_size =
+					           tsig_alg_digest_length(
+					              tsig_key_zone->algorithm);
+					uint8_t *digest = (uint8_t *)malloc(
+					                       digest_max_size);
+					if (digest == NULL) {
+						knot_packet_free(&resp);
+						rcu_read_unlock();
+						return KNOT_ENOMEM;
+					}
+					size_t digest_size = digest_max_size;
+
+					ret = knot_tsig_sign(resp_wire,
+					    &answer_size, *rsize,
+					    tsig_rdata_mac(tsig),
+					    tsig_rdata_mac_length(tsig),
+					    digest, &digest_size, tsig_key_zone,
+					    tsig_rcode, tsig_prev_time_signed);
+
+					// no need to keep the digest
+					free(digest);
+
+					*rsize = answer_size;
+				} else {
+					dbg_zones_verb("Failed.\n");
+					rcode = KNOT_RCODE_SERVFAIL;
+				}
+			}
+			// in other case the RCODE is set and ret != KNOT_EOK
+			// and a normal error is returned below
+		}
+
+		if (ret != KNOT_EOK) {
+			// Error response without Question section
+			knot_ns_error_response_from_query_wire(nameserver,
+			                          knot_packet_wireformat(query),
+			                          knot_packet_size(query),
+			                          rcode, resp_wire, rsize);
+		}
+	}
+
+	knot_packet_free(&resp);
+	rcu_read_unlock();
+
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -3135,14 +3356,14 @@ static int zones_store_changeset(const knot_changeset_t *chs, journal_t *j,
 
 /*----------------------------------------------------------------------------*/
 
-journal_t *zones_store_changesets_begin(knot_ns_xfr_t *xfr)
+journal_t *zones_store_changesets_begin(knot_zone_t *zone)
 {
-	if (xfr == NULL || xfr->data == NULL || xfr->zone == NULL) {
+	if (zone == NULL) {
 		return NULL;
 	}
 
 	/* Fetch zone-specific data. */
-	knot_zone_t *zone = xfr->zone;
+	//knot_zone_t *zone = xfr->zone;
 	zonedata_t *zd = (zonedata_t *)zone->data;
 	if (!zd->ixfr_db) {
 		return NULL;
@@ -3186,14 +3407,14 @@ int zones_store_changesets_rollback(journal_t *j)
 
 /*----------------------------------------------------------------------------*/
 
-int zones_store_changesets(knot_ns_xfr_t *xfr)
+int zones_store_changesets(knot_zone_t *zone, knot_changesets_t *src)
 {
-	if (xfr == NULL || xfr->data == NULL || xfr->zone == NULL) {
+	if (zone == NULL || src == NULL) {
 		return KNOTD_EINVAL;
 	}
 
-	knot_zone_t *zone = xfr->zone;
-	knot_changesets_t *src = (knot_changesets_t *)xfr->data;
+//	knot_zone_t *zone = xfr->zone;
+//	knot_changesets_t *src = (knot_changesets_t *)xfr->data;
 
 	/* Fetch zone-specific data. */
 	zonedata_t *zd = (zonedata_t *)zone->data;
@@ -3307,14 +3528,14 @@ int zones_create_and_save_changesets(const knot_zone_t *old_zone,
 	}
 	
 	xfr.data = changesets;
-	journal_t *journal = zones_store_changesets_begin(&xfr);
+	journal_t *journal = zones_store_changesets_begin(xfr.zone);
 	if (journal == NULL) {
 		dbg_zones("zones: create_changesets: "
 		          "Could not start journal operation.\n");
 		return KNOTD_ERROR;
 	}
 	
-	ret = zones_store_changesets(&xfr);
+	ret = zones_store_changesets(xfr.zone, (knot_changesets_t *)xfr.data);
 	if (ret != KNOTD_EOK) {
 		zones_store_changesets_rollback(journal);
 		dbg_zones("zones: create_changesets: "
@@ -3335,6 +3556,87 @@ int zones_create_and_save_changesets(const knot_zone_t *old_zone,
 	
 	knot_free_changesets(&changesets);
 	
+	return KNOTD_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zones_store_and_apply_chgsets(knot_changesets_t *chs,
+                                  knot_zone_t *zone,
+                                  knot_zone_contents_t **new_contents,
+                                  const char *msgpref)
+{
+	int ret = KNOT_EOK;
+	int apply_ret = KNOT_EOK;
+	int switch_ret = KNOT_EOK;
+
+	/* Serialize and store changesets. */
+	dbg_xfr("xfr: IXFR/IN serializing and saving changesets\n");
+	journal_t *transaction = zones_store_changesets_begin(zone);
+	if (transaction != NULL) {
+		ret = zones_store_changesets(zone, chs);
+	} else {
+		ret = KNOTD_ERROR;
+	}
+	if (ret != KNOTD_EOK) {
+		log_zone_error("%s Failed to serialize and store "
+		               "changesets - %s\n", msgpref,
+		               knotd_strerror(ret));
+		/* Free changesets, but not the data. */
+		knot_free_changesets(&chs);
+//		data->data = NULL;
+		return ret;
+	}
+
+	/* Now, try to apply the changesets to the zone. */
+	apply_ret = xfrin_apply_changesets(zone, chs, new_contents);
+
+	if (apply_ret != KNOT_EOK) {
+		zones_store_changesets_rollback(transaction);
+		log_zone_error("%s Failed to apply changesets - %s\n",
+		               msgpref, knot_strerror(apply_ret));
+
+		/* Free changesets, but not the data. */
+		knot_free_changesets(&chs);
+//		data->data = NULL;
+		return KNOTD_ERROR;
+	}
+
+	/* Commit transaction. */
+	ret = zones_store_changesets_commit(transaction);
+	if (ret != KNOTD_EOK) {
+		log_zone_error("%s Failed to commit stored changesets "
+		               "- %s\n", msgpref, knot_strerror(apply_ret));
+		knot_free_changesets(&chs);
+//		data->data = NULL;
+		return ret;
+	}
+
+	/* Switch zone contents. */
+	switch_ret = xfrin_switch_zone(zone, *new_contents,
+	                               /*data->type*/
+	                               /*! \todo Fix!! */ XFR_TYPE_IIN);
+
+	if (switch_ret != KNOT_EOK) {
+		log_zone_error("%s Failed to replace current zone - %s\n",
+		               msgpref, knot_strerror(switch_ret));
+		// Cleanup old and new contents
+		xfrin_rollback_update(zone->contents, new_contents,
+		                      &chs->changes);
+
+		/* Free changesets, but not the data. */
+		knot_free_changesets(&chs);
+//		data->data = NULL;
+		return KNOTD_ERROR;
+	}
+
+	xfrin_cleanup_successful_update(&chs->changes);
+
+	/* Free changesets, but not the data. */
+	knot_free_changesets(&chs);
+//	data->data = NULL;
+	assert(ret == KNOTD_EOK);
+	log_zone_info("%s Finished.\n", msgpref);
 	return KNOTD_EOK;
 }
 
