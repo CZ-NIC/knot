@@ -418,6 +418,7 @@ conf_t *conf_new(const char* path)
 	init_list(&c->hooks);
 	init_list(&c->remotes);
 	init_list(&c->keys);
+	init_list(&c->ctl.allow);
 
 	// Defaults
 	c->zone_checks = 0;

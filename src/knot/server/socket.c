@@ -203,4 +203,3 @@ int socket_close(int socket)
 
 	return KNOTD_EOK;
 }
-

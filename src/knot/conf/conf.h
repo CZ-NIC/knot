@@ -144,6 +144,14 @@ typedef struct conf_key_t {
 } conf_key_t;
 
 /*!
+ * \brief Remote control interface.
+ */
+typedef struct conf_control_t {
+	conf_iface_t *iface; /*!< Remote control interface. */
+	list allow;          /*!< List of allowed remotes. */
+} conf_control_t;
+
+/*!
  * \brief Main config structure.
  *
  * Configuration structure.
@@ -199,6 +207,11 @@ typedef struct conf_t {
 	int dbsync_timeout; /*!< Default interval between syncing to zonefile.*/
 	size_t ixfr_fslimit; /*!< File size limit for IXFR journal. */
 	int build_diffs;     /*!< Calculate differences from changes. */
+	
+	/*
+	 * Remote control interface.
+	 */
+	conf_control_t ctl;
 
 	/*
 	 * Implementation specifics

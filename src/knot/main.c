@@ -31,9 +31,11 @@
 #include "knot/other/error.h"
 #include "knot/server/server.h"
 #include "knot/ctl/process.h"
+#include "knot/ctl/remote.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/logconf.h"
 #include "knot/server/zones.h"
+#include "knot/server/tcp-handler.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -301,10 +303,13 @@ int main(int argc, char **argv)
 		sa.sa_flags = 0;
 		pthread_sigmask(SIG_BLOCK, &sa.sa_mask, NULL);
 
+		/* Bind to control interface. */
+		int remote = remote_bind(conf()->ctl.iface);
+		
 		/* Run event loop. */
 		for(;;) {
 			pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
-			int ret = evqueue_poll(evqueue(), 0, 0);
+			int ret = remote_poll(remote);
 			pthread_sigmask(SIG_BLOCK, &sa.sa_mask, NULL);
 
 			/* Interrupts. */
@@ -333,6 +338,9 @@ int main(int argc, char **argv)
 							 "reload failed.\n");
 					break;
 				}
+				
+				/*! \todo Close and bind to new remote control. */
+				/*! \todo What if remotely requests reload, it will close the conn? */
 			}
 			if (sig_req_refresh) {
 				log_server_info("Refreshing slave zones...\n");
@@ -348,17 +356,38 @@ int main(int argc, char **argv)
 
 			/* Events. */
 			if (ret > 0) {
-				event_t ev;
-				if (evqueue_get(evqueue(), &ev) == 0) {
-					dbg_server_verb("Event: "
-					                "received new event.\n");
-					if (ev.cb) {
-						ev.cb(&ev);
-					}
+				int c = tcp_accept(remote);
+				if (c < 0) {
+					continue;
 				}
+				
+				/*! \todo Temporary */
+				uint8_t buf[1024] = {0};
+				size_t buflen = sizeof(buf);
+				
+				sockaddr_t addr;
+				sockaddr_init(&addr, AF_INET);
+				int r = tcp_recv(c, buf, buflen, &addr);
+				if (r < 0) {
+					close(c);
+					continue;
+				}
+				
+				char straddr[SOCKADDR_STRLEN];
+				sockaddr_tostr(&addr, straddr, sizeof(straddr));
+				fprintf(stderr, "remote: accepted %d bytes from %s:%d\n",
+					r, straddr, sockaddr_portnum(&addr));
+				
+				close(c);
 			}
 		}
 		pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
+		
+		/* Close remote control interface */
+		if (remote > -1) {
+			close(remote);
+			remote = -1;
+		}
 
 		if ((server_wait(server)) != KNOTD_EOK) {
 			log_server_error("An error occured while "
