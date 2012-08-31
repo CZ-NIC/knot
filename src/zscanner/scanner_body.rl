@@ -115,16 +115,6 @@
             fhold; fgoto err_line;
         }
     }
-    action _label_upper_char {
-        if (s->item_length < MAX_LABEL_LENGTH) {
-            (s->dname)[s->dname_tmp_length++] = ascii_to_lower[(uint8_t)fc];
-            s->item_length++;
-        }
-        else {
-            SCANNER_WARNING(ZSCANNER_ELABEL_OVERFLOW);
-            fhold; fgoto err_line;
-        }
-    }
     action _label_exit {
         if (s->dname_tmp_length < MAX_DNAME_LENGTH) {
             (s->dname)[s->item_length_position] = (uint8_t)(s->item_length);
@@ -150,18 +140,15 @@
         (s->dname)[s->dname_tmp_length] += digit_to_num[(uint8_t)fc];
     }
     action _label_dec_exit {
-        (s->dname)[s->dname_tmp_length] =   // If the char is in upper case.
-            ascii_to_lower[(s->dname)[s->dname_tmp_length]];
+        (s->dname)[s->dname_tmp_length] = (s->dname)[s->dname_tmp_length];
         s->dname_tmp_length++;
     }
 
     label_char =
-        ( (digit | lower | [\-_/])  $_label_char         # One common char.
-        | (upper)                   $_label_upper_char   # One upper-case char.
-        | ('\\' . ^(digit | upper)) @_label_char         # One "\x" char.
-        | ('\\' . upper)            @_label_upper_char   # One "\X" char.
-        | ('\\'                     %_label_dec_init     # Initial "\" char.
-           . digit {3}              $_label_dec %_label_dec_exit # "DDD" rest.
+        ( (alnum | [\-_/]) $_label_char                 # One common char.
+        | ('\\' . ^digit)  @_label_char                 # One "\x" char.
+        | ('\\'            %_label_dec_init             # Initial "\" char.
+           . digit {3}     $_label_dec %_label_dec_exit # "DDD" rest.
           )
         );
 

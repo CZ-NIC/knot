@@ -1,8 +1,8 @@
 - the new-line character is appended to each zone file before processing (for simplicity)
 - the class IN is supported only
 - time values can have at most 1 time unit (not 1D2H3M)
+- domain names can contain alphanumeric, '-', '_' and '/' characters
 - \x and \DDD notations are allowed in domain names and text strings only
-- upper-case letters are lowered in domain names (including \x and \DDD notations)
 - @ can be used instead of domain names anywhere
 - the line numbers of multiline records are the numbers of the last lines with appropriate record parts
 - items parts lengths must be multiples of 2 for HEX, 4 for base64 and 8 for base32hex blocks (but DHCID example from RFC is more general!)
