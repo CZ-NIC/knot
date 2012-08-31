@@ -47,7 +47,9 @@ static const size_t XFRIN_BOOTSTRAP_DELAY = 60; /*!< AXFR bootstrap avg. delay *
 
 /* Forward declarations. */
 static int zones_dump_zone_text(knot_zone_contents_t *zone,  const char *zf);
-
+static int zones_dump_zone_binary(knot_zone_contents_t *zone, 
+                                   const char *zonedb,
+                                   const char *zonefile);
 /*----------------------------------------------------------------------------*/
 
 /*!
@@ -2134,11 +2136,23 @@ int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal)
 		          zd->conf->name, zd->conf->file, serial_to);
 		ret = zones_dump_zone_text(contents, zd->conf->file);
 		if (ret != KNOTD_EOK) {
-			dbg_zones("zones: failed to sync '%s' to '%s'\n",
-			          zd->conf->name, zd->conf->file);
+			log_zone_warning("Failed to apply differences "
+			                 "'%s' to '%s'\n",
+			                 zd->conf->name, zd->conf->file);
 			pthread_mutex_unlock(&zd->lock);
 			rcu_read_unlock();
 			return ret;
+		}
+		
+		/* Save zone to binary db file. */
+		ret = zones_dump_zone_binary(contents, zd->conf->db, zd->conf->file);
+		if (ret != KNOTD_EOK) {
+			log_zone_warning("Failed to apply differences "
+			                 "'%s' to '%s'\n",
+			                 zd->conf->name, zd->conf->db);
+			pthread_mutex_unlock(&zd->lock);
+			rcu_read_unlock();
+			return KNOTD_ERROR;
 		}
 
 		/* Update journal entries. */
