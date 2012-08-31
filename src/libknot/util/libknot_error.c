@@ -67,6 +67,7 @@ const error_table_t knot_error_msgs[] = {
 	{ZSCANNER_ENUMBER32_OVERFLOW, "Number is bigger than 32 bits!"},
 	{ZSCANNER_ENUMBER16_OVERFLOW, "Number is bigger than 16 bits!"},
 	{ZSCANNER_ENUMBER8_OVERFLOW, "Number is bigger than 8 bits!"},
+	{ZSCANNER_EFLOAT_OVERFLOW, "Float number overflow!"},
 	{ZSCANNER_ERDATA_OVERFLOW, "Maximal record data length has exceeded!"},
 	{ZSCANNER_EITEM_OVERFLOW, "Maximal item length has exceeded!"},
 	{ZSCANNER_EBAD_ADDRESS_CHAR, "Bad address character!"},
@@ -94,6 +95,7 @@ const error_table_t knot_error_msgs[] = {
 	{ZSCANNER_EUNPROCESSED_INCLUDE, "Include file processing error!"},
 	{ZSCANNER_EUNOPENED_INCLUDE, "Include file opening error!"},
 	{ZSCANNER_EBAD_RDATA_LENGTH, "The rdata length statement is incorrect!"},
+	{ZSCANNER_EBAD_LOC_DATA, "Bad zone location data!"},
 
 	{KNOT_ERROR, 0}
 };

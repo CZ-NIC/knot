@@ -36,3 +36,11 @@ foo.example.             IN APL 1:192.168.32.0/21 !1:192.168.38.0/28
                                   1:192.168.42.128/25 )
 _axfr.sbo.example.       IN APL 1:127.0.0.1/32 1:172.16.255.0/22
 multicast.example.       IN APL 1:224.0.0.0/4  2:FF00:0:0:0:0:0:0:0/8
+
+cambridge-net.kei.com.        LOC   42 21 54 N 71 06 18 W -24m 30m
+loiosh.kei.com.               LOC   (42 21 43.952 N 71 5 6.344 W
+                                    -24m 1m 200m)
+pipex.net.                    LOC   52 14 05 N 00 08 50 E 10m
+curtin.edu.au.                LOC   32 7 19 S 116 2 25 E 10m
+rwy04L.logan-airport.boston.  LOC   (42 21 28.764 N 71 00 51.617 W
+                                    -44m 2000m)

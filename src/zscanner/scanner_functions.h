@@ -66,6 +66,8 @@ void wire_dname_to_text(const uint8_t *dname,
                         const uint32_t dname_length,                            
                         char *text_dname);
 
+uint8_t loc64to8(uint64_t number);
+
 #endif // _ZSCANNER__SCANNER_FUNCTIONS_H_
 
 /*! @} */

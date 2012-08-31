@@ -46,6 +46,10 @@
 
 #define ASCII_0                48
 
+#define LOC_LAT_ZERO   (uint32_t)2147483648 // 2^31 - equator.
+#define LOC_LONG_ZERO  (uint32_t)2147483648 // 2^31 - meridian.
+#define LOC_ALT_ZERO   (uint32_t)  10000000 // Base altitude.
+
 // Forward declaration for function arguments inside structure.
 struct scanner;
 typedef struct scanner scanner_t;
@@ -60,6 +64,15 @@ typedef struct {
     uint16_t addr_family;
     uint8_t  prefix_length;
 } apl_t;
+
+typedef struct {
+    uint32_t d1, d2;
+    uint32_t m1, m2;
+    uint32_t s1, s2;
+    uint32_t alt;
+    uint64_t siz, hp, vp;
+    int8_t   lat_sign, long_sign, alt_sign;
+} loc_t;
 
 /*!
  * \brief Context structure for Ragel scanner.
@@ -88,8 +101,12 @@ struct scanner {
 
     /*!< Indicates if actual record is multiline. */
     bool     multiline;
-    /*!< Auxiliary number for 16bit and 32bit operations. */
+    /*!< Auxiliary number for all numeric operations. */
     uint64_t number64;
+    /*!< Auxiliary variables for float numeric operations. */
+    uint64_t number64_tmp;
+    uint32_t decimals;
+    uint32_t decimal_counter;
 
     /*!< Auxiliary variable for item length (label, base64, ...). */
     uint32_t item_length;
@@ -106,10 +123,11 @@ struct scanner {
 
     /*!< Bitmap window blocks. */
     window_t windows[BITMAP_WINDOWS];
-    /*!< Last window block which is used (-1 means any). */
+    /*!< Last window block which is used (-1 means any window). */
     int16_t  last_window;
 
     apl_t    apl;
+    loc_t    loc;
 
     uint8_t  *dname;  /*!< Pointer to actual dname (origin/owner/rdata). */
     uint32_t *dname_length; /*!< Pointer to actual dname length. */

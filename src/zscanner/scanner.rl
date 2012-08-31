@@ -21,6 +21,7 @@
 #include <stdio.h>                         // sprintf
 #include <libgen.h>                        // dirname
 #include <stdbool.h>                       // bool
+#include <math.h>                          // pow
 #include <sys/socket.h>                    // AF_INET (BSD)
 #include <netinet/in.h>                    // in_addr (BSD)
 

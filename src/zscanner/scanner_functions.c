@@ -795,3 +795,13 @@ void wire_dname_to_text(const uint8_t *dname,
     text_dname[j] = 0;
 }
 
+uint8_t loc64to8(uint64_t number) {
+    uint8_t exponent = 0;
+
+    while (number > 9) {
+        number /= 10;
+        exponent++;
+    }
+
+    return (((uint8_t)number % 9) << 4) + (exponent % 9);
+}

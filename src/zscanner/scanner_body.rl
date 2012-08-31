@@ -273,13 +273,55 @@
         }
     }
 
+    number_digit = [0-9] $_number_digit;
+
     action _number_init {
         s->number64 = 0;
     }
 
-    number_digit = [0-9] $_number_digit;
-
+    # General integer number that cover all necessary integer ranges.
     number = number_digit+ >_number_init;
+
+    action _float_init {
+        s->decimal_counter = 0;
+    }
+    action _decimal_init {
+        s->number64_tmp = s->number64;
+    }
+    action _decimal_digit {
+        s->decimal_counter++;
+    }
+
+    action _float_exit {
+        if (s->decimal_counter == 0 && s->number64 < UINT32_MAX) {
+            s->number64 *= pow(10, s->decimals);
+        }
+        else if (s->decimal_counter <= s->decimals &&
+                 s->number64_tmp < UINT32_MAX) {
+            s->number64 *= pow(10, s->decimals - s->decimal_counter);
+            s->number64 += s->number64_tmp * pow(10, s->decimals);
+        }
+        else {
+            SCANNER_WARNING(ZSCANNER_EFLOAT_OVERFLOW);
+            fhold; fgoto err_line;
+        }
+    }
+
+    # Next float can't be used directly (doesn't contain decimals init)!
+    float = (number . ('.' . number? >_decimal_init $_decimal_digit)?)
+            >_float_init %_float_exit;
+
+    action _float2_init {
+        s->decimals = 2;
+    }
+    action _float3_init {
+        s->decimals = 3;
+    }
+
+    # Float number (in hundredths)with 2 possible decimal digits.
+    float2  = float >_float2_init;
+    # Float number (in thousandths) with 3 possible decimal digits.
+    float3  = float >_float3_init;
 
     action _num8_write {
         if (s->number64 <= UINT8_MAX) {
@@ -291,7 +333,6 @@
             fhold; fgoto err_line;
         }
     }
-
     action _num16_write {
         if (s->number64 <= UINT16_MAX) {
             *((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
@@ -302,7 +343,6 @@
             fhold; fgoto err_line;
         }
     }
-
     action _num32_write {
         if (s->number64 <= UINT32_MAX) {
             *((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
@@ -1064,11 +1104,8 @@
         | "TXT"i        %{ TYPE_NUM(KNOT_RRTYPE_TXT); }
         | "RP"i         %{ TYPE_NUM(KNOT_RRTYPE_RP); }
         | "AFSDB"i      %{ TYPE_NUM(KNOT_RRTYPE_AFSDB); }
-        | "X25"i        %{ TYPE_NUM(KNOT_RRTYPE_X25); }
-        | "ISDN"i       %{ TYPE_NUM(KNOT_RRTYPE_ISDN); }
         | "RT"i         %{ TYPE_NUM(KNOT_RRTYPE_RT); }
         | "KEY"i        %{ TYPE_NUM(KNOT_RRTYPE_KEY); }
-        | "PX"i         %{ TYPE_NUM(KNOT_RRTYPE_PX); }
         | "AAAA"i       %{ TYPE_NUM(KNOT_RRTYPE_AAAA); }
         | "LOC"i        %{ TYPE_NUM(KNOT_RRTYPE_LOC); }
         | "SRV"i        %{ TYPE_NUM(KNOT_RRTYPE_SRV); }
@@ -1118,11 +1155,8 @@
         | "TXT"i        %{ WINDOW_ADD_BIT(KNOT_RRTYPE_TXT); }
         | "RP"i         %{ WINDOW_ADD_BIT(KNOT_RRTYPE_RP); }
         | "AFSDB"i      %{ WINDOW_ADD_BIT(KNOT_RRTYPE_AFSDB); }
-        | "X25"i        %{ WINDOW_ADD_BIT(KNOT_RRTYPE_X25); }
-        | "ISDN"i       %{ WINDOW_ADD_BIT(KNOT_RRTYPE_ISDN); }
         | "RT"i         %{ WINDOW_ADD_BIT(KNOT_RRTYPE_RT); }
         | "KEY"i        %{ WINDOW_ADD_BIT(KNOT_RRTYPE_KEY); }
-        | "PX"i         %{ WINDOW_ADD_BIT(KNOT_RRTYPE_PX); }
         | "AAAA"i       %{ WINDOW_ADD_BIT(KNOT_RRTYPE_AAAA); }
         | "LOC"i        %{ WINDOW_ADD_BIT(KNOT_RRTYPE_LOC); }
         | "SRV"i        %{ WINDOW_ADD_BIT(KNOT_RRTYPE_SRV); }
@@ -1187,6 +1221,176 @@
     }
     # END
 
+    # BEGIN - Location processing
+    action _d1_exit {
+        if (s->number64 <= 90) {
+            s->loc.d1 = (uint32_t)(s->number64);
+        }
+        else {
+            SCANNER_WARNING(ZSCANNER_EBAD_LOC_DATA);
+            fhold; fgoto err_line;
+        }
+    }
+    action _d2_exit {
+        if (s->number64 <= 180) {
+            s->loc.d2 = (uint32_t)(s->number64);
+        }
+        else {
+            SCANNER_WARNING(ZSCANNER_EBAD_LOC_DATA);
+            fhold; fgoto err_line;
+        }
+    }
+    action _m1_exit {
+        if (s->number64 <= 59) {
+            s->loc.m1 = (uint32_t)(s->number64);
+        }
+        else {
+            SCANNER_WARNING(ZSCANNER_EBAD_LOC_DATA);
+            fhold; fgoto err_line;
+        }
+    }
+    action _m2_exit {
+        if (s->number64 <= 59) {
+            s->loc.m2 = (uint32_t)(s->number64);
+        }
+        else {
+            SCANNER_WARNING(ZSCANNER_EBAD_LOC_DATA);
+            fhold; fgoto err_line;
+        }
+    }
+    action _s1_exit {
+        if (s->number64 <= 59999) {
+            s->loc.s1 = (uint32_t)(s->number64);
+        }
+        else {
+            SCANNER_WARNING(ZSCANNER_EBAD_LOC_DATA);
+            fhold; fgoto err_line;
+        }
+    }
+    action _s2_exit {
+        if (s->number64 <= 59999) {
+            s->loc.s2 = (uint32_t)(s->number64);
+        }
+        else {
+            SCANNER_WARNING(ZSCANNER_EBAD_LOC_DATA);
+            fhold; fgoto err_line;
+        }
+    }
+    action _alt_exit {
+        if ((s->loc.alt_sign ==  1 && s->number64 <= 4284967295) ||
+            (s->loc.alt_sign == -1 && s->number64 <=   10000000))
+        {
+            s->loc.alt = (uint32_t)(s->number64);
+        }
+        else {
+            SCANNER_WARNING(ZSCANNER_EBAD_LOC_DATA);
+            fhold; fgoto err_line;
+        }
+    }
+    action _siz_exit {
+        if (s->number64 <= 9000000000) {
+            s->loc.siz = (uint32_t)(s->number64);
+        }
+        else {
+            SCANNER_WARNING(ZSCANNER_EBAD_LOC_DATA);
+            fhold; fgoto err_line;
+        }
+    }
+    action _hp_exit {
+        if (s->number64 <= 9000000000) {
+            s->loc.hp = (uint32_t)(s->number64);
+        }
+        else {
+            SCANNER_WARNING(ZSCANNER_EBAD_LOC_DATA);
+            fhold; fgoto err_line;
+        }
+    }
+    action _vp_exit {
+        if (s->number64 <= 9000000000) {
+            s->loc.vp = (uint32_t)(s->number64);
+        }
+        else {
+            SCANNER_WARNING(ZSCANNER_EBAD_LOC_DATA);
+            fhold; fgoto err_line;
+        }
+    }
+    action _lat_sign {
+        s->loc.lat_sign = -1;
+    }
+    action _long_sign {
+        s->loc.long_sign = -1;
+    }
+    action _alt_sign {
+        s->loc.alt_sign = -1;
+    }
+
+    d1  = number %_d1_exit;
+    d2  = number %_d2_exit;
+    m1  = number %_m1_exit;
+    m2  = number %_m2_exit;
+    s1  = float3 %_s1_exit;
+    s2  = float3 %_s2_exit;
+    siz = float2 %_siz_exit;
+    hp  = float2 %_hp_exit;
+    vp  = float2 %_vp_exit;
+    alt = ('-' %_alt_sign)? . float2 %_alt_exit;
+    lat_sign  = 'N' | 'S' %_lat_sign;
+    long_sign = 'E' | 'W' %_long_sign;
+
+    action _loc_init {
+        memset(&(s->loc), 0, sizeof(s->loc));
+        // Defaults.
+        s->loc.siz = 100;
+        s->loc.vp  = 1000;
+        s->loc.hp  = 1000000;
+        s->loc.lat_sign  = 1;
+        s->loc.long_sign = 1;
+        s->loc.alt_sign  = 1;
+    }
+    action _loc_exit {
+        // Write version.
+        *(rdata_tail) = 0;
+        rdata_tail += 1;
+        ADD_R_DATA_LABEL
+        // Write size.
+        *(rdata_tail) = loc64to8(s->loc.siz);
+        rdata_tail += 1;
+        ADD_R_DATA_LABEL
+        // Write horizontal precision.
+        *(rdata_tail) = loc64to8(s->loc.hp);
+        rdata_tail += 1;
+        ADD_R_DATA_LABEL
+        // Write vertical precision.
+        *(rdata_tail) = loc64to8(s->loc.vp);
+        rdata_tail += 1;
+        ADD_R_DATA_LABEL
+        // Write latitude.
+        *((uint32_t *)rdata_tail) = htonl(LOC_LAT_ZERO + s->loc.lat_sign *
+            (3600000 * s->loc.d1 + 60000 * s->loc.m1 + s->loc.s1));
+        rdata_tail += 4;
+        ADD_R_DATA_LABEL
+        // Write longitude.
+        *((uint32_t *)rdata_tail) = htonl(LOC_LONG_ZERO + s->loc.long_sign *
+            (3600000 * s->loc.d2 + 60000 * s->loc.m2 + s->loc.s2));
+        rdata_tail += 4;
+        ADD_R_DATA_LABEL
+        // Write altitude.
+        *((uint32_t *)rdata_tail) = htonl(LOC_ALT_ZERO + s->loc.alt_sign *
+            (s->loc.alt));
+        rdata_tail += 4;
+        ADD_R_DATA_LABEL
+    }
+    action _loc_error {
+        SCANNER_WARNING(ZSCANNER_EBAD_LOC_DATA);
+        fhold; fgoto err_line;
+    }
+
+    loc = (d1 . sep . (m1 . sep . (s1 . sep)?)? . lat_sign . sep .
+           d2 . sep . (m2 . sep . (s2 . sep)?)? . long_sign . sep .
+           alt 'm'? . (sep . siz 'm'? . (sep . hp 'm'? . (sep . vp 'm'?)?)?)?
+          sep?) >_loc_init %_loc_exit $!_loc_error;
+    # END
+
     # BEGIN - Auxiliary functions which call smaller state machines
     action _data_a {
         s->r_type = KNOT_RRTYPE_A;
@@ -1243,6 +1447,10 @@
     action _data_aaaa {
         s->r_type = KNOT_RRTYPE_AAAA;
         fhold; fcall data_aaaa;
+    }
+    action _data_loc {
+        s->r_type = KNOT_RRTYPE_LOC;
+        fhold; fcall data_loc;
     }
     action _data_srv {
         s->r_type = KNOT_RRTYPE_SRV;
@@ -1369,6 +1577,11 @@
         $!_r_data_error
         %_ret . all_wchar;
 
+    data_loc :=
+        ( sep . loc )
+        $!_r_data_error
+        %_ret . end_wchar;
+
     data_srv :=
         ( sep . num16 . sep . num16 . sep . num16 . sep . r_dname )
         $!_r_data_error
@@ -1480,7 +1693,7 @@
         | "RT"i                 %_data_rt
         | "KEY"i                %_data_key
         | "AAAA"i               %_data_aaaa
-        | "LOC"i
+        | "LOC"i                %_data_loc
         | "SRV"i                %_data_srv
         | "NAPTR"i              %_data_naptr
         | "KX"i                 %_data_kx
