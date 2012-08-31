@@ -16,41 +16,49 @@
 
 #include "zscanner/test/tests.h"
 
-#include <inttypes.h>  // PRIu64
-#include <stdio.h>     // printf
-#include <time.h>
-#include <stdlib.h>
+#include <inttypes.h>               // PRIu64
+#include <stdio.h>                  // printf
+#include <time.h>                   // mktime
+#include <stdlib.h>                 // printf
 #include "../scanner_functions.h"
 
 int test__date_to_timestamp()
 {
-    time_t    timestamp_in = 0, timestamp_out = 0, max_timestamp = 0;
-    char      buffer[16];
+    time_t    ref_timestamp, max_timestamp;
+    uint32_t  test_timestamp;
+    uint8_t   buffer[16];
     struct tm tm;
 
+    // Set UTC for strftime.
     putenv("TZ=UTC");
     tzset();
 
+    // Get maximal allowed timestamp.
     strptime("21051231235959", "%Y%m%d%H%M%S", &tm);
     max_timestamp = mktime(&tm);
 
-    for (timestamp_in = 0; timestamp_in < max_timestamp; timestamp_in += 30) {
-        strftime(buffer, sizeof(buffer), "%Y%m%d%H%M%S", gmtime(&timestamp_in));
+    // Testing loop over whole input interval.
+    for (ref_timestamp = 0; ref_timestamp < max_timestamp; ref_timestamp += 30) {
+        // Get reference (correct) timestamp.
+        strftime((char*)buffer, sizeof(buffer), "%Y%m%d%H%M%S", gmtime(&ref_timestamp));
 
-        date_to_timestamp((uint8_t *)buffer, (uint32_t *)(&timestamp_out));
+        // Get testing timestamp.
+        date_to_timestamp(buffer, &test_timestamp);
 
-        if (timestamp_in % 10000000 == 0) {
-            printf("%s = %"PRIu64"\n", buffer, timestamp_in);
+        // Some continuous loging.
+        if (ref_timestamp % 10000000 == 0) {
+            printf("%s = %"PRIu64"\n", buffer, ref_timestamp);
         }
 
-        if (timestamp_in != timestamp_out) {
-            if (timestamp_in > timestamp_out) { 
+        // Comparing results.
+        if (ref_timestamp != test_timestamp) {
+            if (ref_timestamp > test_timestamp) { 
                 printf("%s = %"PRIu64", in - out = %"PRIu64"\n",
-                buffer, timestamp_in, timestamp_in - timestamp_out);
+                buffer, ref_timestamp, ref_timestamp - test_timestamp);
             }
             else {
                 printf("%s = %"PRIu64", out - in = %"PRIu64"\n",
-                buffer, timestamp_in, timestamp_out - timestamp_in);
+                buffer, ref_timestamp, test_timestamp - ref_timestamp);
             }
 
             return -1;
