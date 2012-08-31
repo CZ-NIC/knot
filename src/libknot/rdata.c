@@ -551,8 +551,10 @@ void knot_rdata_deep_free(knot_rdata_t **rdata, uint type,
 		return;
 	}
 
-	knot_rdata_free_items((*rdata)->items, (*rdata)->count, type,
-	                      free_all_dnames);
+	if ((*rdata)->items != NULL) {
+		knot_rdata_free_items((*rdata)->items, (*rdata)->count, type,
+		                      free_all_dnames);
+	}
 
 	free(*rdata);
 	*rdata = NULL;

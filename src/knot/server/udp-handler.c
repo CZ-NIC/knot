@@ -429,7 +429,9 @@ static inline int udp_master_recvmmsg(dthread_t *thread, stat_t *thread_stat)
 
 		/* Error and interrupt handling. */
 		if (unlikely(n <= 0)) {
-			if (errno != EINTR && errno != 0) {
+			if (errno != EINTR && errno != 0 && n < 0) {
+				log_server_error("I/O failure in UDP - errno %d "
+				                 "(Linux/recvmmsg)", errno);
 				dbg_net("udp: recvmmsg() failed: %d\n",
 				        errno);
 			}
@@ -489,7 +491,10 @@ void __attribute__ ((constructor)) udp_master_init()
 #ifdef MSG_WAITFORONE
 	/* Check for recvmmsg() support. */
 	if (dlsym(RTLD_DEFAULT, "recvmmsg") != 0) {
-		_udp_master = udp_master_recvmmsg;
+		int r = recvmmsg(0, NULL, 0, 0, 0);
+		if (errno != ENOSYS) {
+			_udp_master = udp_master_recvmmsg;
+		}
 	}
 	
 	/* Check for sendmmsg() support. */
