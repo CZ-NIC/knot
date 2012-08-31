@@ -28,7 +28,7 @@ static conf_log_t *this_log = 0;
 static conf_log_map_t *this_logmap = 0;
 //#define YYERROR_VERBOSE 1
 
-static void conf_start_iface(void *scanner, char* ifname)
+static void conf_init_iface(void *scanner, char* ifname)
 {
    this_iface = malloc(sizeof(conf_iface_t));
    if (this_iface == NULL) {
@@ -38,6 +38,11 @@ static void conf_start_iface(void *scanner, char* ifname)
    memset(this_iface, 0, sizeof(conf_iface_t));
    this_iface->name = ifname;
    this_iface->port = CONFIG_DEFAULT_PORT;
+}
+
+static void conf_start_iface(void *scanner, char* ifname)
+{
+   conf_init_iface(scanner, ifname);
    add_tail(&new_config->ifaces, &this_iface->n);
    ++new_config->ifaces_count;
 }
@@ -49,7 +54,8 @@ static void conf_start_remote(void *scanner, char *remote)
       cf_error(scanner, "not enough memory when allocating remote");
       return;
    }
-   memset(this_remote, 0, sizeof(conf_iface_t));
+   
+memset(this_remote, 0, sizeof(conf_iface_t));
    this_remote->name = remote;
    add_tail(&new_config->remotes, &this_remote->n);
    sockaddr_init(&this_remote->via, -1);
@@ -274,6 +280,8 @@ static int conf_mask(void* scanner, int nval, int prefixlen) {
 %token <tok> IPA6
 %token <tok> VIA
 
+%token <tok> CONTROL ALLOW LISTEN_ON
+
 %token <tok> LOG
 %token <tok> LOG_DEST
 %token <tok> LOG_SRC
@@ -294,10 +302,10 @@ interface_start:
  | LOG_SRC  { conf_start_iface(scanner, strdup($1.t)); }
  | LOG  { conf_start_iface(scanner, strdup($1.t)); }
  | LOG_LEVEL  { conf_start_iface(scanner, strdup($1.t)); }
+ | CONTROL    { conf_start_iface(scanner, strdup($1.t)); }
  ;
 
 interface:
-   interface_start '{'
  | interface PORT NUM ';' {
      if (this_iface->port != CONFIG_DEFAULT_PORT) {
        cf_error(scanner, "only one port definition is allowed in interface section\n");
@@ -351,7 +359,7 @@ interface:
 
 interfaces:
    INTERFACES '{'
- | interfaces interface '}' {
+ | interfaces interface_start '{' interface '}' {
    if (this_iface->address == 0) {
      char buf[512];
      snprintf(buf, sizeof(buf), "interface '%s' has no defined address", this_iface->name);
@@ -463,10 +471,10 @@ remote_start:
  | LOG_SRC  { conf_start_remote(scanner, strdup($1.t)); }
  | LOG  { conf_start_remote(scanner, strdup($1.t)); }
  | LOG_LEVEL  { conf_start_remote(scanner, strdup($1.t)); }
+ | CONTROL    { conf_start_remote(scanner, strdup($1.t)); }
  ;
 
 remote:
-   remote_start '{'
  | remote PORT NUM ';' {
      if (this_remote->port != 0) {
        cf_error(scanner, "only one port definition is allowed in remote section\n");
@@ -562,7 +570,7 @@ remote:
 
 remotes:
    REMOTES '{'
- | remotes remote '}' {
+ | remotes remote_start '{' remote '}' {
      if (this_remote->address == 0) {
        char buf[512];
        snprintf(buf, sizeof(buf), "remote '%s' has no defined address", this_remote->name);
@@ -591,16 +599,15 @@ zone_acl_item:
  | LOG_SRC  { conf_acl_item(scanner, strdup($1.t)); }
  | LOG  { conf_acl_item(scanner, strdup($1.t)); }
  | LOG_LEVEL  { conf_acl_item(scanner, strdup($1.t)); }
+ | CONTROL    { conf_acl_item(scanner, strdup($1.t)); }
  ;
 
 zone_acl_list:
-   zone_acl_start
  | zone_acl_list zone_acl_item ','
  | zone_acl_list zone_acl_item ';'
  ;
 
 zone_acl:
-   zone_acl_start '{'
  | zone_acl TEXT ';' {
       /* Find existing node in remotes. */
       node* r = 0; conf_iface_t* found = 0;
@@ -637,6 +644,7 @@ zone_start:
  | LOG_SRC { conf_zone_start(scanner, strdup($1.t)); }
  | LOG { conf_zone_start(scanner, strdup($1.t)); }
  | LOG_LEVEL { conf_zone_start(scanner, strdup($1.t)); }
+ | CONTROL    { conf_zone_start(scanner, strdup($1.t)); }
  | NUM '/' TEXT {
     if ($1.i < 0 || $1.i > 255) {
         char buf[256] = "";
@@ -661,8 +669,8 @@ zone_start:
 
 zone:
    zone_start '{'
- | zone zone_acl '}'
- | zone zone_acl_list
+ | zone zone_acl_start '{' zone_acl '}'
+ | zone zone_acl_start zone_acl_list
  | zone FILENAME TEXT ';' { this_zone->file = $3.t; }
  | zone BUILD_DIFFS BOOL ';' { this_zone->build_diffs = $3.i; }
  | zone SEMANTIC_CHECKS BOOL ';' { this_zone->enable_checks = $3.i; }
@@ -801,8 +809,30 @@ log_start:
 
 log: LOG '{' log_start log_end;
 
+ctl_listen_start:
+  LISTEN_ON { conf_init_iface(scanner, NULL); }
+  ;
 
-conf: ';' | system '}' | interfaces '}' | keys '}' | remotes '}' | zones '}' | log '}';
+ctl_allow_start:
+  ALLOW {
+    this_list = &new_config->ctl.allow;
+  }
+  ;
+
+control:
+   CONTROL '{'
+ | control ctl_listen_start '{' interface '}' {
+     if (this_iface->address == 0) {
+       cf_error(scanner, "control interface has no defined address");
+     } else {
+       new_config->ctl.iface = this_iface;
+     }
+ }
+ | control ctl_allow_start '{' zone_acl '}'
+ | control ctl_allow_start zone_acl_list
+ ; 
+
+conf: ';' | system '}' | interfaces '}' | keys '}' | remotes '}' | zones '}' | log '}' | control '}';
 
 %%
 

@@ -304,7 +304,13 @@ int main(int argc, char **argv)
 		pthread_sigmask(SIG_BLOCK, &sa.sa_mask, NULL);
 
 		/* Bind to control interface. */
-		int remote = remote_bind(conf()->ctl.iface);
+		conf_iface_t *ctl_if = conf()->ctl.iface;
+		if (ctl_if != NULL) {
+			log_server_info("Binding remote control interface "
+					"to %s port %d.\n",
+					ctl_if->address, ctl_if->port);
+		}
+		int remote = remote_bind(ctl_if);
 		
 		/* Run event loop. */
 		for(;;) {
@@ -356,6 +362,7 @@ int main(int argc, char **argv)
 
 			/* Events. */
 			if (ret > 0) {
+				fprintf(stderr, "remote: accepting..\n");
 				int c = tcp_accept(remote);
 				if (c < 0) {
 					continue;
@@ -367,18 +374,23 @@ int main(int argc, char **argv)
 				
 				sockaddr_t addr;
 				sockaddr_init(&addr, AF_INET);
-				int r = tcp_recv(c, buf, buflen, &addr);
+				fprintf(stderr, "remote: reading..\n");
+				int r = recv(c, buf, buflen, MSG_WAITALL);
 				if (r < 0) {
+					perror("tcp_recv");
+					fprintf(stderr, "remote: read shit..\n");
 					close(c);
 					continue;
 				}
 				
+				getpeername(c, addr.ptr, &addr.len);
 				char straddr[SOCKADDR_STRLEN];
 				sockaddr_tostr(&addr, straddr, sizeof(straddr));
 				fprintf(stderr, "remote: accepted %d bytes from %s:%d\n",
 					r, straddr, sockaddr_portnum(&addr));
 				
 				close(c);
+				fprintf(stderr, "remote: i'm so done with this\n");
 			}
 		}
 		pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);

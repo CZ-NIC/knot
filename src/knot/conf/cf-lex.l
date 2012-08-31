@@ -97,6 +97,10 @@ address         { lval.t = yytext; return ADDRESS; }
 port            { lval.t = yytext; return PORT; }
 via             { lval.t = yytext; return VIA; }
 
+control         { lval.t = yytext; return CONTROL; }
+allow           { lval.t = yytext; return ALLOW; }
+listen-on       { lval.t = yytext; return LISTEN_ON; }
+
 log             { lval.t = yytext; return LOG; }
 
 any { lval.t = yytext; lval.i = LOG_ANY; return LOG_SRC; }
