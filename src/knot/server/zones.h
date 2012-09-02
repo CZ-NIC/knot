@@ -155,6 +155,14 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
                               knot_ns_transport_t transport);
 
 /*!
+ * \todo Document me.
+ */
+int zones_process_update(knot_nameserver_t *nameserver,
+                         knot_packet_t *query, const sockaddr_t *addr,
+                         uint8_t *resp_wire, size_t *rsize,
+                         knot_ns_transport_t transport);
+
+/*!
  * \brief Processes normal response packet.
  *
  * \param nameserver Name server structure to provide the needed data.

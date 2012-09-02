@@ -1254,7 +1254,7 @@ const knot_rrset_t *knot_packet_answer_rrset(
 /*----------------------------------------------------------------------------*/
 
 const knot_rrset_t *knot_packet_authority_rrset(
-	knot_packet_t *packet, short pos)
+	const knot_packet_t *packet, short pos)
 {
 	if (packet == NULL || pos > packet->ns_rrsets) {
 		return NULL;
@@ -1266,7 +1266,7 @@ const knot_rrset_t *knot_packet_authority_rrset(
 /*----------------------------------------------------------------------------*/
 
 const knot_rrset_t *knot_packet_additional_rrset(
-    knot_packet_t *packet, short pos)
+    const knot_packet_t *packet, short pos)
 {
 	if (packet == NULL || pos > packet->ar_rrsets) {
 		return NULL;

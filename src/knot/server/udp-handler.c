@@ -164,11 +164,12 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		break;
 		
 	case KNOT_QUERY_UPDATE:
-		dbg_net("udp: UPDATE query on fd=%d not implemented\n", fd);
-		knot_ns_error_response_from_query(ns, packet,
-		                                  KNOT_RCODE_NOTIMPL, qbuf,
-		                                  resp_len);
-		res = KNOTD_EOK;
+//		dbg_net("udp: UPDATE query on fd=%d not implemented\n", fd);
+//		knot_ns_error_response_from_query(ns, packet,
+//		                                  KNOT_RCODE_NOTIMPL, qbuf,
+//		                                  resp_len);
+		res = zones_process_update(ns, packet, addr, qbuf, resp_len,
+		                           NS_TRANSPORT_UDP);
 		break;
 		
 	/* Unhandled opcodes. */

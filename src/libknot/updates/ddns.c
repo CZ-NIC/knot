@@ -411,7 +411,7 @@ static int knot_ddns_check_not_in_use(const knot_zone_contents_t *zone,
 /*----------------------------------------------------------------------------*/
 
 int knot_ddns_check_zone(const knot_zone_contents_t *zone, 
-                         knot_packet_t *query, knot_rcode_t *rcode)
+                         const knot_packet_t *query, knot_rcode_t *rcode)
 {
 	if (zone == NULL || query == NULL || rcode == NULL) {
 		return KNOT_EBADARG;
@@ -434,7 +434,7 @@ int knot_ddns_check_zone(const knot_zone_contents_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_ddns_process_prereqs(knot_packet_t *query,
+int knot_ddns_process_prereqs(const knot_packet_t *query,
                               knot_ddns_prereq_t **prereqs, knot_rcode_t *rcode)
 {
 	/*! \todo Consider not parsing the whole packet at once, but
@@ -561,7 +561,7 @@ static int knot_ddns_check_update(const knot_rrset_t *rrset,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_ddns_process_update(knot_packet_t *query,
+int knot_ddns_process_update(const knot_packet_t *query,
                              knot_changeset_t *changeset, knot_rcode_t *rcode)
 {
 	// just put all RRSets from query's Authority section

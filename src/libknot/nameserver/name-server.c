@@ -4213,7 +4213,7 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
  * This function should process the contents, prepare prerequisities, prepare
  * changeset and return to the caller.
  */
-int knot_ns_process_update(knot_packet_t *query, 
+int knot_ns_process_update(const knot_packet_t *query, 
                            const knot_zone_contents_t *zone, 
                            knot_changeset_t *changeset, knot_rcode_t *rcode)
 {
