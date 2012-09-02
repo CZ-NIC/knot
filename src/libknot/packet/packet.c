@@ -1542,7 +1542,7 @@ void knot_packet_dump(const knot_packet_t *packet)
 	       knot_wire_flags_get_cd(packet->header.flags2) ? "cd" : "");
 	dbg_packet("  RCODE: %u\n", knot_wire_flags_get_rcode(
 	                   packet->header.flags2));
-	dbg_packet("  OPCODE: %u\n", knot_wire_flags_get_opcode()
+	dbg_packet("  OPCODE: %u\n", knot_wire_flags_get_opcode(
 	                   packet->header.flags1));
 	dbg_packet("  QDCOUNT: %u\n", packet->header.qdcount);
 	dbg_packet("  ANCOUNT: %u\n", packet->header.ancount);
