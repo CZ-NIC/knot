@@ -444,6 +444,8 @@ int knot_ddns_process_prereqs(const knot_packet_t *query,
 	if (query == NULL || prereqs == NULL || rcode == NULL) {
 		return KNOT_EBADARG;
 	}
+	
+	dbg_ddns("Processing prerequisities.\n");
 
 	// allocate space for the prerequisities
 	*prereqs = (knot_ddns_prereq_t *)calloc(1, sizeof(knot_ddns_prereq_t));
@@ -476,6 +478,8 @@ int knot_ddns_check_prereqs(const knot_zone_contents_t *zone,
                             knot_ddns_prereq_t **prereqs, knot_rcode_t *rcode)
 {
 	int i, ret;
+	
+	dbg_ddns("Checking 'exist' prerequisities.\n");
 
 	for (i = 0; i < (*prereqs)->exist_count; ++i) {
 		ret = knot_ddns_check_exist(zone, (*prereqs)->exist[i], rcode);
@@ -484,6 +488,7 @@ int knot_ddns_check_prereqs(const knot_zone_contents_t *zone,
 		}
 	}
 
+	dbg_ddns("Checking 'exist full' prerequisities.\n");
 	for (i = 0; i < (*prereqs)->exist_full_count; ++i) {
 		ret = knot_ddns_check_exist_full(zone,
 		                                (*prereqs)->exist_full[i],
@@ -493,6 +498,7 @@ int knot_ddns_check_prereqs(const knot_zone_contents_t *zone,
 		}
 	}
 
+	dbg_ddns("Checking 'not exist' prerequisities.\n");
 	for (i = 0; i < (*prereqs)->not_exist_count; ++i) {
 		ret = knot_ddns_check_not_exist(zone, (*prereqs)->not_exist[i],
 		                                rcode);
@@ -501,6 +507,7 @@ int knot_ddns_check_prereqs(const knot_zone_contents_t *zone,
 		}
 	}
 
+	dbg_ddns("Checking 'in use' prerequisities.\n");
 	for (i = 0; i < (*prereqs)->in_use_count; ++i) {
 		ret = knot_ddns_check_in_use(zone, (*prereqs)->in_use[i],
 		                             rcode);
@@ -509,6 +516,7 @@ int knot_ddns_check_prereqs(const knot_zone_contents_t *zone,
 		}
 	}
 
+	dbg_ddns("Checking 'not in use' prerequisities.\n");
 	for (i = 0; i < (*prereqs)->not_in_use_count; ++i) {
 		ret = knot_ddns_check_not_in_use(zone,
 		                                 (*prereqs)->not_in_use[i],
@@ -527,6 +535,8 @@ static int knot_ddns_check_update(const knot_rrset_t *rrset,
                                   const knot_packet_t *query, 
                                   knot_rcode_t *rcode)
 {
+	dbg_ddns("Checking UPDATE packet.\n");
+	
 	if (!knot_dname_is_subdomain(knot_rrset_owner(rrset),
 	                             knot_packet_qname(query))) {
 		*rcode = KNOT_RCODE_NOTZONE;
@@ -573,6 +583,7 @@ int knot_ddns_process_update(const knot_packet_t *query,
 
 	int ret;
 
+	dbg_ddns("Processing UPDATE section.\n");
 	for (int i = 0; i < knot_packet_authority_rrset_count(query); ++i) {
 
 		const knot_rrset_t *rrset =
@@ -603,6 +614,8 @@ int knot_ddns_process_update(const knot_packet_t *query,
 
 void knot_ddns_prereqs_free(knot_ddns_prereq_t **prereq)
 {
+	dbg_ddns("Freeing prerequisities.\n");
+	
 	int i;
 
 	for (i = 0; i < (*prereq)->exist_count; ++i) {

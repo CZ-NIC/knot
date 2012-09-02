@@ -2620,11 +2620,14 @@ int zones_process_update(knot_nameserver_t *nameserver,
 			/* 1) Process the incoming packet, prepare 
 			 *    prerequisities and changeset.
 			 */
+			dbg_zones_verb("Processing UPDATE packet.\n");
 			ret = knot_ns_process_update(knot_packet_query(resp),
 			                             knot_zone_contents(zone),
 			                             &chgsets->sets[0], &rcode);
 			
 			if (ret != KNOT_EOK) {
+				dbg_zones("Processing UPDATE packet failed: %s"
+				          "\n", knot_strerror(ret));
 				knot_ns_error_response_from_query_wire(
 					nameserver, 
 					knot_packet_wireformat(query),
@@ -2639,11 +2642,16 @@ int zones_process_update(knot_nameserver_t *nameserver,
 				 */
 				knot_zone_contents_t *contents_new = NULL;
 				/*! \todo [DDNS] msgpref */
+				dbg_zones_verb("Storing and applying "
+				               "changesets.\n");
 				ret = zones_store_and_apply_chgsets(chgsets, 
 					zone, &contents_new, "", 
 					XFR_TYPE_UPDATE);
 				
 				if (ret != KNOT_EOK) {
+					dbg_zones_verb("Storing and applying "
+					              "changesets failed: %s."
+					              "\n", knot_strerror(ret));
 					knot_ns_error_response_from_query_wire(
 						nameserver, 
 						knot_packet_wireformat(query),
@@ -2654,6 +2662,7 @@ int zones_process_update(knot_nameserver_t *nameserver,
 				
 			}
 			/* 3) Prepare DDNS response. */
+			dbg_zones_verb("Preparing NOERROR UPDATE response.\n");
 			knot_response_set_rcode(resp, KNOT_RCODE_NOERROR);
 			ret = knot_packet_to_wire(resp, &resp_wire, 
 			                          &answer_size);
