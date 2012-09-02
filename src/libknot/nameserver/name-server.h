@@ -163,7 +163,8 @@ typedef enum knot_ns_xfr_type_t {
 	XFR_TYPE_IIN = 1 << 2,   /*!< IXFR-IN request (start transfer). */
 	XFR_TYPE_IOUT = 1 << 3,  /*!< IXFR-OUT request (incoming transfer). */
 	XFR_TYPE_SOA = 1 << 4,   /*!< Pending SOA request. */
-	XFR_TYPE_NOTIFY = 1 << 5 /*!< Pending NOTIFY query. */
+	XFR_TYPE_NOTIFY = 1 << 5, /*!< Pending NOTIFY query. */
+	XFR_TYPE_UPDATE = 1 << 6  /*!< UPDATE request (incoming UPDATE). */
 } knot_ns_xfr_type_t;
 
 /*----------------------------------------------------------------------------*/
@@ -229,7 +230,7 @@ int knot_ns_prep_normal_response(knot_nameserver_t *nameserver,
 
 int knot_ns_prep_update_response(knot_nameserver_t *nameserver,
                                  knot_packet_t *query, knot_packet_t **resp,
-                                 const knot_zone_t **zone, size_t max_size);
+                                 knot_zone_t **zone, size_t max_size);
 
 /*!
  * \brief Creates a response for the given normal query using the data of the
@@ -343,9 +344,9 @@ int knot_ns_switch_zone(knot_nameserver_t *nameserver,
 int knot_ns_process_ixfrin(knot_nameserver_t *nameserver, 
                              knot_ns_xfr_t *xfr);
 
-int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
-                           uint8_t *response_wire, size_t *rsize,
-                           knot_zone_t **zone, knot_changeset_t **changeset);
+int knot_ns_process_update(knot_packet_t *query, 
+                           const knot_zone_contents_t *zone, 
+                           knot_changeset_t *changeset, knot_rcode_t *rcode);
 
 int knot_ns_create_forward_query(const knot_packet_t *query,
                                  uint8_t *query_wire, size_t *size);

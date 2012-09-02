@@ -291,7 +291,7 @@ int zones_create_and_save_changesets(const knot_zone_t *old_zone,
 int zones_store_and_apply_chgsets(knot_changesets_t *chs,
                                   knot_zone_t *zone,
                                   knot_zone_contents_t **new_contents,
-                                  const char *msgpref);
+                                  const char *msgpref, int type);
 
 /*!
  * \brief Update zone timers.

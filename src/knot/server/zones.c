@@ -2509,14 +2509,14 @@ int zones_process_update(knot_nameserver_t *nameserver,
                          uint8_t *resp_wire, size_t *rsize,
                          knot_ns_transport_t transport)
 {
-
-	/* !!!!!!!!!!!! COPY-PASTED CODE !!!!!!!!!!!!!! */
 	rcu_read_lock();
 
 	knot_packet_t *resp = NULL;
 	knot_zone_t *zone = NULL;
 
 	dbg_zones_verb("Preparing response structure.\n");
+	
+	// Parse rest of the query, prepare response, find zone
 	int ret = knot_ns_prep_update_response(nameserver, query, &resp, &zone,
 	                                       (transport == NS_TRANSPORT_TCP)
 	                                       ? *rsize : 0);
@@ -2589,6 +2589,10 @@ int zones_process_update(knot_nameserver_t *nameserver,
 			               "query.\n");
 			assert(tsig_rcode == 0);
 
+			/*! \todo [DDNS] Forwarding should be handled somewhere
+			 *        here. 
+			 */
+			
 			// reserve place for the TSIG
 			if (tsig_key_zone != NULL) {
 				size_t tsig_max_size =
@@ -2596,10 +2600,71 @@ int zones_process_update(knot_nameserver_t *nameserver,
 				knot_packet_set_tsig_size(resp, tsig_max_size);
 			}
 
-			knot_changeset_t *ch = NULL;
-			ret = knot_ns_process_update(nameserver,
-			                             resp, resp_wire,
-			                             &answer_size, &zone, &ch);
+			/* We must prepare a changestets_t structure even if
+			* there is only one changeset - because of the API. */
+			knot_changesets_t *chgsets = NULL;
+			ret = knot_changeset_allocate(&chgsets);
+			if (ret != KNOT_EOK) {
+				knot_ns_error_response_from_query_wire(
+					nameserver, 
+					knot_packet_wireformat(query),
+					knot_packet_size(query),
+					KNOT_RCODE_SERVFAIL, resp_wire, rsize);
+				ret = KNOT_EOK;
+			}
+			
+			/*! \todo Is continuing after error OK??? */
+			
+			assert(chgsets->allocated >= 1);
+			
+			/* 1) Process the incoming packet, prepare 
+			 *    prerequisities and changeset.
+			 */
+			ret = knot_ns_process_update(knot_packet_query(resp),
+			                             knot_zone_contents(zone),
+			                             &chgsets->sets[0], &rcode);
+			
+			if (ret != KNOT_EOK) {
+				knot_ns_error_response_from_query_wire(
+					nameserver, 
+					knot_packet_wireformat(query),
+					knot_packet_size(query),
+					rcode, resp_wire, rsize);
+				ret = KNOT_EOK;
+			} else {	
+				/* 2) Save changeset to journal.
+				 *    Apply changeset to zone.
+				 *    Commit changeset to journal.
+				 *    Switch the zone.
+				 */
+				knot_zone_contents_t *contents_new = NULL;
+				/*! \todo [DDNS] msgpref */
+				ret = zones_store_and_apply_chgsets(chgsets, 
+					zone, &contents_new, "", 
+					XFR_TYPE_UPDATE);
+				
+				if (ret != KNOT_EOK) {
+					knot_ns_error_response_from_query_wire(
+						nameserver, 
+						knot_packet_wireformat(query),
+						knot_packet_size(query),
+						rcode, resp_wire, rsize);
+					ret = KNOT_EOK;
+				}
+				
+			}
+			/* 3) Prepare DDNS response. */
+			knot_response_set_rcode(resp, KNOT_RCODE_NOERROR);
+			ret = knot_packet_to_wire(resp, &resp_wire, 
+			                          &answer_size);
+			if (ret != KNOT_EOK) {
+				knot_ns_error_response_from_query_wire(
+					nameserver, 
+					knot_packet_wireformat(query),
+					knot_packet_size(query),
+					rcode, resp_wire, rsize);
+				ret = KNOT_EOK;
+			}
 
 			dbg_zones_detail("rsize = %zu\n", *rsize);
 			dbg_zones_detail("answer_size = %zu\n", answer_size);
@@ -3578,7 +3643,7 @@ int zones_create_and_save_changesets(const knot_zone_t *old_zone,
 int zones_store_and_apply_chgsets(knot_changesets_t *chs,
                                   knot_zone_t *zone,
                                   knot_zone_contents_t **new_contents,
-                                  const char *msgpref)
+                                  const char *msgpref, int type)
 {
 	int ret = KNOT_EOK;
 	int apply_ret = KNOT_EOK;
@@ -3627,9 +3692,7 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
 	}
 
 	/* Switch zone contents. */
-	switch_ret = xfrin_switch_zone(zone, *new_contents,
-	                               /*data->type*/
-	                               /*! \todo Fix!! */ XFR_TYPE_IIN);
+	switch_ret = xfrin_switch_zone(zone, *new_contents, type);
 
 	if (switch_ret != KNOT_EOK) {
 		log_zone_error("%s Failed to replace current zone - %s\n",

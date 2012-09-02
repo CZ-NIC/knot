@@ -454,7 +454,8 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 		chs = (knot_changesets_t *)data->data;
 		ret = zones_store_and_apply_chgsets(chs, data->zone,
 		                                    &data->new_contents,
-		                                    data->msgpref);
+		                                    data->msgpref, 
+		                                    XFR_TYPE_IIN);
 		data->data = NULL;
 		break;
 	default:
