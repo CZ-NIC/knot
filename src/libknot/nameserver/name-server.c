@@ -3600,7 +3600,7 @@ int knot_ns_prep_update_response(knot_nameserver_t *nameserver,
 
 	dbg_ns_verb("Response max size: %zu\n", (*resp)->max_size);
 
-	const knot_dname_t *qname = knot_packet_qname(*resp);
+	const knot_dname_t *qname = knot_packet_qname(knot_packet_query(*resp));
 	assert(qname != NULL);
 
 //	uint16_t qtype = knot_packet_qtype(*resp);
