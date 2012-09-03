@@ -62,8 +62,8 @@ vv      A 1.1.1.1
 a TYPE1     \# 4 (aa 
     bbcc dd
     ) ; multiline
-b TYPE123   \# 0
-c TYPE6231  \# 1		05
+b TYPE123   \# 2  0304
+c TYPE6231  \# 1		05  
 d TYPE0     \# 0
 e TYPE65535 \# 0
 e TYPE65536 \# 0

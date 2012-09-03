@@ -502,10 +502,19 @@
           )
         );
     quoted_text_char = text_char | ([ \t;] $_text_char);
-    text = ('\"' . quoted_text_char* . '\"') | text_char+;
+
+    # Text string machine instantiation (for smaller code).
+    text_ := (('\"' . quoted_text_char* . '\"') | text_char+)
+             %_ret . all_wchar;
+    text = ^all_wchar ${ fhold; fcall text_; };
+
+    # Text string with forward 1-byte length.
     text_with_length = text >_item_length_init %_item_length_exit;
 
+    # One text string as one rdata item.
     text_item = text_with_length %_item_exit;
+
+    # Text string array as one rdata item.
     text_array = (text_with_length . (sep . text_with_length)* . sep?)
                  %_item_exit;
     # END
@@ -525,12 +534,9 @@
         fhold; fgoto err_line;
     }
 
-    default_ttl := (sep . time . rest) $!_default_ttl_error
-                   %_default_ttl_exit %_ret . newline;
-
-    action _call_default_ttl {
-        fhold; fcall default_ttl;
-    }
+    default_ttl_ := (sep . time . rest) $!_default_ttl_error
+                    %_default_ttl_exit %_ret . newline;
+    default_ttl = all_wchar ${ fhold; fcall default_ttl_; };
     # END
 
     # BEGIN - ORIGIN directive processing
@@ -545,12 +551,10 @@
         fhold; fgoto err_line;
     }
 
-    zone_origin := (sep . absolute_dname >_zone_origin_init . rest)
-                   $!_zone_origin_error %_zone_origin_exit %_ret . newline;
+    zone_origin_ := (sep . absolute_dname >_zone_origin_init . rest)
+                    $!_zone_origin_error %_zone_origin_exit %_ret . newline;
 
-    action _call_zone_origin {
-        fhold; fcall zone_origin;
-    }
+    zone_origin = all_wchar ${ fhold; fcall zone_origin_; };
     # END
 
     # BEGIN - INCLUDE directive processing
@@ -647,14 +651,12 @@
         }
     }
 
-    incl := (sep . text >_incl_filename_init %_incl_filename_exit
-             $!_incl_filename_error .
-             (sep . text >_incl_origin_init %_incl_origin_exit
-             $!_incl_origin_error)? . rest) %_include_exit %_ret newline;
-
-    action _call_include {
-        fhold; fcall incl;
-    }
+    include_file_ := (sep . text >_incl_filename_init %_incl_filename_exit
+                      $!_incl_filename_error .
+                      (sep . text >_incl_origin_init %_incl_origin_exit
+                      $!_incl_origin_error)? . rest
+                     ) %_include_exit %_ret newline;
+    include_file = all_wchar ${ fhold; fcall include_file_; };
     # END
 
     # BEGIN - Directive switch
@@ -663,9 +665,9 @@
         fhold; fgoto err_line;
     }
 
-    directive = '$' . ( ("TTL"i     %_call_default_ttl . all_wchar)
-                      | ("ORIGIN"i  %_call_zone_origin . all_wchar)
-                      | ("INCLUDE"i %_call_include     . all_wchar)
+    directive = '$' . ( ("TTL"i     . default_ttl)
+                      | ("ORIGIN"i  . zone_origin)
+                      | ("INCLUDE"i . include_file)
                       ) $!_directive_error;
     # END
 
@@ -910,7 +912,7 @@
     #}
 
     # Hex array or empty with control to forward length statement.
-    type_data = hex_array? ;#%_type_data_exit $!_hex_char_error;
+    type_data = hex_array ;#%_type_data_exit $!_hex_char_error;
     # END
 
     # BEGIN - Base64 processing (RFC 4648)
@@ -1200,12 +1202,9 @@
     }
 
     # Blank bitmap is allowed too.
-    bitmap := (sep? | (sep . type_bit)* . sep?) >_bitmap_init
-              %_bitmap_exit %_item_exit %_ret $!_bitmap_error . end_wchar;
-
-    action _call_bitmap {
-        fhold; fcall bitmap;
-    }
+    bitmap_ := ((sep . type_bit)* . sep?) >_bitmap_init
+               %_bitmap_exit %_item_exit %_ret $!_bitmap_error . end_wchar;
+    bitmap = all_wchar ${ fhold; fcall bitmap_; };
     # END
 
     # BEGIN - Location processing
@@ -1372,10 +1371,18 @@
         fhold; fgoto err_line;
     }
 
-    loc = (d1 . sep . (m1 . sep . (s1 . sep)?)? . lat_sign . sep .
+    loc = (d1 . sep . (m1 . sep . (s1 . sep)?)? . lat_sign  . sep .
            d2 . sep . (m2 . sep . (s2 . sep)?)? . long_sign . sep .
-           alt 'm'? . (sep . siz 'm'? . (sep . hp 'm'? . (sep . vp 'm'?)?)?)?
-          sep?) >_loc_init %_loc_exit $!_loc_error;
+           alt 'm'? . (sep . siz 'm'? . (sep . hp 'm'? . (sep . vp 'm'?)?)?)? .
+           sep?
+          ) >_loc_init %_loc_exit $!_loc_error;
+    # END
+
+    # BEGIN - Hexadecimal rdata processing
+
+    zero_hex_r_data = "\\#" . sep . '0';
+    hex_r_data      = "\\#" . sep . length_number . sep . type_data;
+
     # END
 
     # BEGIN - Rdata processing
@@ -1620,9 +1627,8 @@
         %_ret . end_wchar;
 
     r_data_nsec :=
-        ( sep . r_dname )
+        ( sep . r_dname . bitmap )
         $!_r_data_error
-        %_call_bitmap . all_wchar # Bitmap is different machine!
         %_ret . all_wchar;
 
     r_data_dnskey :=
@@ -1636,9 +1642,9 @@
         %_ret . end_wchar;
 
     r_data_nsec3 :=
-        ( sep . num8 . sep . num8 . sep . num16 . sep . salt . sep . hash )
+        ( sep . num8 . sep . num8 . sep . num16 . sep . salt . sep .
+          hash . bitmap )
         $!_r_data_error
-        %_call_bitmap . all_wchar # Bitmap is different machine!
         %_ret . all_wchar;
 
     r_data_nsec3param :=
@@ -1652,10 +1658,9 @@
         %_ret . end_wchar;
 
     r_data_type :=
-        ( sep . "\\#" . sep .
-          ( ('0'                             %_ret . all_wchar)
-          | (length_number . sep . type_data %_ret . end_wchar)
-          )
+        ( sep . ( zero_hex_r_data %_ret . all_wchar
+                | hex_r_data      %_ret . end_wchar
+                )
         )
         $!_r_data_error;
 
