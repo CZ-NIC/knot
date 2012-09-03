@@ -177,6 +177,11 @@ static int conf_process(conf_t *conf)
 			zone->ixfr_fslimit = conf->ixfr_fslimit;
 		}
 		
+		// Default zone file
+		if (zone->file == NULL) {
+			zone->file = strcdup(conf->name, ".zone");
+		}
+		
 		// Relative zone filenames should be relative to storage
 		if (zone->file[0] != '/') {
 			size_t prefix_len = strlen(conf->storage) + 1; // + '\0'
