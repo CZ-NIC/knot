@@ -102,6 +102,7 @@ typedef struct conf_zone_t {
 		list xfr_out;     /*!< Remotes accepted for xfr-out.*/
 		list notify_in;   /*!< Remotes accepted for notify-in.*/
 		list notify_out;  /*!< Remotes accepted for notify-out.*/
+		list update_in;  /*!< Remotes accepted for DDNS.*/
 	} acl;
 } conf_zone_t;
 

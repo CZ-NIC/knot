@@ -64,6 +64,7 @@ typedef struct zonedata_t
 	acl_t *xfr_out;    /*!< ACL for xfr-out.*/
 	acl_t *notify_in;  /*!< ACL for notify-in.*/
 	acl_t *notify_out; /*!< ACL for notify-out.*/
+	acl_t *update_in; /*!< ACL for notify-out.*/
 
 	/*! \brief XFR-IN scheduler. */
 	struct {
@@ -138,8 +139,9 @@ int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal);
 /*!
  * \todo Document me.
  */
-int zones_query_check_zone(const knot_zone_t *zone, const sockaddr_t *addr,
-                           knot_key_t **tsig_key, knot_rcode_t *rcode);
+int zones_query_check_zone(const knot_zone_t *zone, uint8_t q_opcode,
+                           const sockaddr_t *addr, knot_key_t **tsig_key,
+                           knot_rcode_t *rcode);
 
 /*!
  * \todo Document me.

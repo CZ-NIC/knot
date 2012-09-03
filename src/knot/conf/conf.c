@@ -748,6 +748,7 @@ void conf_free_zone(conf_zone_t *zone)
 	WALK_LIST_FREE(zone->acl.xfr_out);
 	WALK_LIST_FREE(zone->acl.notify_in);
 	WALK_LIST_FREE(zone->acl.notify_out);
+	WALK_LIST_FREE(zone->acl.update_in);
 
 	free(zone->name);
 	free(zone->file);

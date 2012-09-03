@@ -117,6 +117,7 @@ static int zonedata_destroy(knot_zone_t *zone)
 	acl_delete(&zd->xfr_out);
 	acl_delete(&zd->notify_in);
 	acl_delete(&zd->notify_out);
+	acl_delete(&zd->update_in);
 
 	/* Close IXFR db. */
 	journal_release(zd->ixfr_db);
@@ -152,9 +153,10 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 	pthread_mutex_init(&zd->lock, 0);
 
 	/* Initialize ACLs. */
-	zd->xfr_out = 0;
-	zd->notify_in = 0;
-	zd->notify_out = 0;
+	zd->xfr_out = NULL;
+	zd->notify_in = NULL;
+	zd->notify_out = NULL;
+	zd->update_in = NULL;
 
 	/* Initialize XFR-IN. */
 	sockaddr_init(&zd->xfr_in.master, -1);
@@ -1516,6 +1518,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 		zones_set_acl(&zd->xfr_out, &z->acl.xfr_out);
 		zones_set_acl(&zd->notify_in, &z->acl.notify_in);
 		zones_set_acl(&zd->notify_out, &z->acl.notify_out);
+		zones_set_acl(&zd->update_in, &z->acl.update_in);
 
 		/* Update server pointer. */
 		zd->server = (server_t *)knot_ns_get_data(ns);
@@ -1814,6 +1817,7 @@ dbg_zones_exec(
 			WALK_LIST_FREE(zconf->acl.xfr_out);
 			WALK_LIST_FREE(zconf->acl.notify_in);
 			WALK_LIST_FREE(zconf->acl.notify_out);
+			WALK_LIST_FREE(zconf->acl.update_in);
 			
 			/* Remove from zone db. */
 			knot_zone_t * rm = knot_zonedb_remove_zone(db_old,
@@ -1979,7 +1983,8 @@ static int zones_check_tsig_query(const knot_zone_t *zone,
 	// if there is some TSIG in the query, find the TSIG associated with
 	// the zone
 	dbg_zones_verb("Checking zone and ACL.\n");
-	int ret = zones_query_check_zone(zone, addr, tsig_key_zone, rcode);
+	int ret = zones_query_check_zone(zone, knot_packet_opcode(query),
+	                                 addr, tsig_key_zone, rcode);
 
 	
 	/* Accept found OR unknown key results. */
@@ -2182,8 +2187,9 @@ int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal)
 
 /*----------------------------------------------------------------------------*/
 
-int zones_query_check_zone(const knot_zone_t *zone, const sockaddr_t *addr,
-                           knot_key_t **tsig_key, knot_rcode_t *rcode)
+int zones_query_check_zone(const knot_zone_t *zone, uint8_t q_opcode,
+                           const sockaddr_t *addr, knot_key_t **tsig_key,
+                           knot_rcode_t *rcode)
 {
 	if (addr == NULL || tsig_key == NULL || rcode == NULL) {
 		dbg_zones_verb("Wrong arguments.\n");
@@ -2202,9 +2208,13 @@ int zones_query_check_zone(const knot_zone_t *zone, const sockaddr_t *addr,
 		return KNOTD_ERROR;
 	}
 
-	/* Check xfr-out ACL */
+	/* Check ACL (xfr-out for xfers, update-in for DDNS) */
+	acl_t *acl_used = zd->xfr_out;
+	if (q_opcode == KNOT_OPCODE_UPDATE) {
+		acl_used = zd->update_in;
+	}
 	acl_key_t *match = NULL;
-	if (acl_match(zd->xfr_out, addr, &match) == ACL_DENY) {
+	if (acl_match(acl_used, addr, &match) == ACL_DENY) {
 		*rcode = KNOT_RCODE_REFUSED;
 		return KNOTD_EACCES;
 	} else {
@@ -2243,7 +2253,8 @@ int zones_xfr_check_zone(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 		return KNOTD_EEXPIRED;
 	}
 
-	return zones_query_check_zone(xfr->zone, &xfr->addr, &xfr->tsig_key,
+	return zones_query_check_zone(xfr->zone, KNOT_OPCODE_QUERY,
+	                              &xfr->addr, &xfr->tsig_key,
 	                              rcode);
 }
 
