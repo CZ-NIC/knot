@@ -220,14 +220,14 @@ static int knot_tsig_write_tsig_variables(uint8_t *wire,
 
 	/* Copy class. */
 	knot_wire_write_u16(wire + offset, knot_rrset_class(tsig_rr));
-	dbg_tsig_verb("TSIG: write variables: written CLASS: %u - ",
+	dbg_tsig_verb("TSIG: write variables: written CLASS: %u - \n",
 	               knot_rrset_class(tsig_rr));
 	dbg_tsig_hex_detail(wire + offset, sizeof(uint16_t));
 	offset += sizeof(uint16_t);
 
 	/* Copy TTL - always 0. */
 	knot_wire_write_u32(wire + offset, knot_rrset_ttl(tsig_rr));
-	dbg_tsig_verb("TSIG: write variables: written TTL: %u - ",
+	dbg_tsig_verb("TSIG: write variables: written TTL: %u - \n",
 	              knot_rrset_ttl(tsig_rr));
 	dbg_tsig_hex_detail(wire + offset, sizeof(uint32_t));
 	offset += sizeof(uint32_t);

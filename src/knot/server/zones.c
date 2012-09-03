@@ -2219,8 +2219,9 @@ int zones_query_check_zone(const knot_zone_t *zone, uint8_t q_opcode,
 		return KNOTD_EACCES;
 	} else {
 		dbg_zones("zones: authorized query or request for "
-		          "'%s %s'. match=%p\n", zd->conf->name, match,
-		          q_opcode == KNOT_OPCODE_UPDATE ? "UPDATE":"XFR/OUT");
+		          "'%s %s'. match=%p\n", zd->conf->name,
+		          q_opcode == KNOT_OPCODE_UPDATE ? "UPDATE":"XFR/OUT",
+			  match);
 		if (match) {
 			/* Save configured TSIG key for comparison. */
 			conf_iface_t *iface = (conf_iface_t*)(match->val);
