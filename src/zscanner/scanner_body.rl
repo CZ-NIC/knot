@@ -192,10 +192,11 @@
     relative_dname = (labels       ) >_dname_init %_relative_dname_exit;
     absolute_dname = (labels? . '.') >_dname_init %_absolute_dname_exit;
 
-    dname = ( relative_dname
-            | absolute_dname
-            | '@' %_origin_dname_exit
-            ) $!_dname_error;
+    dname_ := ( relative_dname
+              | absolute_dname
+              | '@' %_origin_dname_exit
+              ) $!_dname_error %_ret . all_wchar;
+    dname = (alnum | [\-_/\\] | [*.@]) ${ fhold; fcall dname_; }; 
     # END
 
     # BEGIN - Common r_data item processing
@@ -1658,9 +1659,10 @@
         %_ret . end_wchar;
 
     r_data_type :=
-        ( sep . ( zero_hex_r_data %_ret . all_wchar
-                | hex_r_data      %_ret . end_wchar
-                )
+        ( sep .
+          ( zero_hex_r_data %_ret . all_wchar
+          | hex_r_data      %_ret . end_wchar
+          )
         )
         $!_r_data_error;
 
