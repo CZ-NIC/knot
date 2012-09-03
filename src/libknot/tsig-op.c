@@ -851,10 +851,10 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
 		return KNOT_TSIG_EBADSIG;
 	}
 
-	dbg_tsig_verb("TSIG: calc digest : ");
+	dbg_tsig_verb("TSIG: calc digest :\n");
 	dbg_tsig_hex_verb(digest_tmp, digest_tmp_len);
 
-	dbg_tsig_verb("TSIG: given digest: ");
+	dbg_tsig_verb("TSIG: given digest:\n");
 	dbg_tsig_hex_verb(tsig_mac, mac_length);
 
 	if (strncasecmp((char *)(tsig_mac), (char *)digest_tmp,
