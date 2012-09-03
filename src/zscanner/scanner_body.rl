@@ -972,7 +972,9 @@
         );
 
     # Base64 array with possibility of inside white spaces and multiline.
-    base64 = (base64_quartet+ . sep?)+ %_item_exit $!_base64_char_error;
+    base64_ := (base64_quartet+ . sep?)+ %_item_exit $!_base64_char_error
+               %_ret . end_wchar;
+    base64 = base64_char ${ fhold; fcall base64_; };
     # END
 
     # BEGIN - Base32hex processing (RFC 4648)
