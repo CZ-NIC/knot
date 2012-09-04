@@ -476,6 +476,10 @@
             fhold; fgoto err_line;
         }
     }
+    action _text_error {
+        SCANNER_ERROR(ZSCANNER_EBAD_TEXT);
+        fhold; fgoto err_line;
+    }
 
     action _text_dec_init {
         if (rdata_tail <= rdata_stop) {
@@ -502,11 +506,14 @@
            . digit {3}        $_text_dec %_text_dec_exit # "DDD" rest.
           )
         );
-    quoted_text_char = text_char | ([ \t;] $_text_char);
+    quoted_text_char =
+        ( text_char
+        | ([ \t;] | [\n] when { s->multiline }) $_text_char
+        );
 
     # Text string machine instantiation (for smaller code).
     text_ := (('\"' . quoted_text_char* . '\"') | text_char+)
-             %_ret . all_wchar;
+             $!_text_error %_ret . all_wchar;
     text = ^all_wchar ${ fhold; fcall text_; };
 
     # Text string with forward 1-byte length.
@@ -1382,10 +1389,23 @@
     # END
 
     # BEGIN - Hexadecimal rdata processing
+    action _hex_r_data_error {
+        SCANNER_WARNING(ZSCANNER_EBAD_HEX_RDATA);
+        fhold; fgoto err_line;
+    }
 
-    zero_hex_r_data = "\\#" . sep . '0';
-    hex_r_data      = "\\#" . sep . length_number . sep . type_data;
+    hex_r_data_ :=
+        (sep . length_number . sep . type_data)
+        $!_hex_r_data_error %_ret . end_wchar;
+    hex_r_data = "\\#" @{ fcall hex_r_data_; };
 
+    unknown_hex_r_data_ :=
+        (sep .
+         ( ('0'                             %_ret . all_wchar)
+         | (length_number . sep . type_data %_ret . end_wchar)
+         )
+        ) $!_hex_r_data_error;
+    unknown_hex_r_data = "\\#" @{ fcall unknown_hex_r_data_; };
     # END
 
     # BEGIN - Rdata processing
@@ -1536,137 +1556,180 @@
     }
 
     r_data_a :=
-        ( sep . ipv4_addr_write )
-        $!_r_data_error
-        %_ret . all_wchar;
+        (sep .
+         ( hex_r_data
+         | ipv4_addr_write
+         )
+        ) $!_r_data_error %_ret . all_wchar;
 
     r_data_ns :=
-        ( sep . r_dname )
-        $!_r_data_error
-        %_ret . all_wchar;
+        (sep .
+         ( hex_r_data
+         | r_dname
+         )
+        ) $!_r_data_error %_ret . all_wchar;
 
     r_data_soa :=
-        ( sep . r_dname . sep . r_dname . sep . num32 . sep . time32 .
-          sep . time32 . sep . time32 . sep . time32 )
-        $!_r_data_error
-        %_ret . all_wchar;
+        (sep . 
+         ( hex_r_data
+         | r_dname . sep . r_dname . sep . num32 . sep . time32 . sep .
+           time32 . sep . time32 . sep . time32
+         )
+        ) $!_r_data_error %_ret . all_wchar;
 
     r_data_hinfo :=
-        ( sep . text_item . sep . text_item )
-        $!_r_data_error
-        %_ret . all_wchar;
+        (sep .
+         ( hex_r_data
+         | text_item . sep . text_item
+         )
+        ) $!_r_data_error %_ret . all_wchar;
 
     r_data_minfo :=
-        ( sep . r_dname . sep . r_dname )
-        $!_r_data_error
-        %_ret . all_wchar;
+        (sep .
+         ( hex_r_data
+         | r_dname . sep . r_dname
+         )
+        ) $!_r_data_error %_ret . all_wchar;
 
     r_data_mx :=
-        ( sep . num16 . sep . r_dname )
-        $!_r_data_error
-        %_ret . all_wchar;
+        (sep .
+         ( hex_r_data
+         | num16 . sep . r_dname
+         )
+        ) $!_r_data_error %_ret . all_wchar;
 
     r_data_txt :=
-        ( sep . text_array )
-        $!_r_data_error
-        %_ret . end_wchar;
+        (sep .
+         ( hex_r_data
+         | text_array
+         )
+        ) $!_r_data_error %_ret . end_wchar;
 
     r_data_rp :=
-        ( sep . r_dname . sep . r_dname )
-        $!_r_data_error
-        %_ret . all_wchar;
+        (sep .
+         ( hex_r_data
+         | r_dname . sep . r_dname
+         )
+        ) $!_r_data_error %_ret . all_wchar;
 
     r_data_aaaa :=
-        ( sep . ipv6_addr_write )
-        $!_r_data_error
-        %_ret . all_wchar;
+        (sep .
+         ( hex_r_data
+         | ipv6_addr_write
+         )
+        ) $!_r_data_error %_ret . all_wchar;
 
     r_data_loc :=
-        ( sep . loc )
-        $!_r_data_error
-        %_ret . end_wchar;
+        (sep .
+         ( hex_r_data
+         | loc
+         )
+        ) $!_r_data_error %_ret . end_wchar;
 
     r_data_srv :=
-        ( sep . num16 . sep . num16 . sep . num16 . sep . r_dname )
-        $!_r_data_error
-        %_ret . all_wchar;
+        (sep .
+         ( hex_r_data
+         | num16 . sep . num16 . sep . num16 . sep . r_dname
+         )
+        ) $!_r_data_error %_ret . all_wchar;
 
     r_data_naptr :=
-        ( sep . num16 . sep . num16 . sep . text_item . sep .
-          text_item . sep . text_item . sep . r_dname )
-        $!_r_data_error
-        %_ret . all_wchar;
+        (sep .
+         ( hex_r_data
+         | num16 . sep . num16 . sep . text_item . sep . text_item . sep .
+           text_item . sep . r_dname
+         )
+        ) $!_r_data_error %_ret . all_wchar;
 
     r_data_cert :=
-        ( sep . num16 . sep . num16 . sep . num8 . sep . base64 )
-        $!_r_data_error
-        %_ret . end_wchar;
+        (sep .
+         ( hex_r_data
+         | num16 . sep . num16 . sep . num8 . sep . base64
+         )
+        ) $!_r_data_error %_ret . end_wchar;
 
     r_data_apl :=
-        ( sep . apl_array )
-        $!_r_data_error
-        %_ret . end_wchar;
+        (sep .
+         ( hex_r_data
+         | apl_array
+         )
+        ) $!_r_data_error %_ret . end_wchar;
 
     r_data_ds :=
-        ( sep . num16 . sep . num8 . sep . num8 . sep . hex_array )
-        $!_r_data_error
-        %_ret . end_wchar;
+        (sep .
+         ( hex_r_data
+         | num16 . sep . num8 . sep . num8 . sep . hex_array
+         )
+        ) $!_r_data_error %_ret . end_wchar;
 
     r_data_sshfp :=
-        ( sep . num8 . sep . num8 . sep . hex_array )
-        $!_r_data_error
-        %_ret . end_wchar;
+        (sep .
+         ( hex_r_data
+         | num8 . sep . num8 . sep . hex_array
+         )
+        ) $!_r_data_error %_ret . end_wchar;
 
     r_data_ipseckey :=
-        ( sep . num8 . sep . gateway . sep . base64 )
-        $!_r_data_error
-        %_ret . end_wchar;
+        (sep .
+         ( hex_r_data
+         | num8 . sep . gateway . sep . base64
+         )
+        ) $!_r_data_error %_ret . end_wchar;
 
     r_data_rrsig :=
-        ( sep . type_num . sep . num8 . sep . num8 . sep . num32 .
-          sep . timestamp . sep . timestamp . sep . num16 . sep . r_dname .
-          sep . base64 )
-        $!_r_data_error
-        %_ret . end_wchar;
+        (sep .
+         ( hex_r_data
+         | type_num . sep . num8 . sep . num8 . sep . num32 . sep .
+           timestamp . sep . timestamp . sep . num16 . sep . r_dname .
+           sep . base64
+         )
+        ) $!_r_data_error %_ret . end_wchar;
 
     r_data_nsec :=
-        ( sep . r_dname . bitmap )
-        $!_r_data_error
-        %_ret . all_wchar;
+        (sep .
+         ( hex_r_data
+         | r_dname . bitmap
+         )
+        ) $!_r_data_error %_ret . all_wchar;
 
     r_data_dnskey :=
-        ( sep . num16 . sep . num8 . sep . num8 . sep . base64 )
-        $!_r_data_error
-        %_ret . end_wchar;
+        (sep .
+         ( hex_r_data
+         | num16 . sep . num8 . sep . num8 . sep . base64
+         )
+        ) $!_r_data_error %_ret . end_wchar;
 
     r_data_dhcid :=
-        ( sep . base64 )
-        $!_r_data_error
-        %_ret . end_wchar;
+        (sep .
+         ( hex_r_data
+         | base64
+         )
+        ) $!_r_data_error %_ret . end_wchar;
 
     r_data_nsec3 :=
-        ( sep . num8 . sep . num8 . sep . num16 . sep . salt . sep .
-          hash . bitmap )
-        $!_r_data_error
-        %_ret . all_wchar;
+        (sep .
+         ( hex_r_data
+         | num8 . sep . num8 . sep . num16 . sep . salt . sep . hash . bitmap
+         )
+        ) $!_r_data_error %_ret . all_wchar;
 
     r_data_nsec3param :=
-        ( sep . num8 . sep . num8 . sep . num16 . sep . salt )
-        $!_r_data_error
-        %_ret . all_wchar;
+        (sep .
+         ( hex_r_data
+         | num8 . sep . num8 . sep . num16 . sep . salt
+         )
+        ) $!_r_data_error %_ret . all_wchar;
 
     r_data_tlsa :=
-        ( sep . num8 . sep . num8 . sep . num8 . sep . hex_array )
-        $!_r_data_error
-        %_ret . end_wchar;
+        (sep .
+         ( hex_r_data
+         | num8 . sep . num8 . sep . num8 . sep . hex_array
+         )
+        ) $!_r_data_error %_ret . end_wchar;
 
     r_data_type :=
-        ( sep .
-          ( zero_hex_r_data %_ret . all_wchar
-          | hex_r_data      %_ret . end_wchar
-          )
-        )
-        $!_r_data_error;
+        (sep . unknown_hex_r_data)
+        $!_r_data_error %_ret . all_wchar;
 
     r_type_r_data =
         ( "A"i                  %_r_data_a

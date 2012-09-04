@@ -50,3 +50,8 @@ www.zdrojak.root.cz.    600     IN      NSEC    root.cz. A
  TXT "a ; b"
  TXT \043\ -
 
+ TXT (
+"one
+two
+three")
+ TXT next

@@ -42,7 +42,7 @@
 #define INET4_ADDR_LENGTH       4
 #define INET6_ADDR_LENGTH      16
 
-#define RAGEL_STACK_SIZE        8 // But 2 should suffices (2 nested fcalls).
+#define RAGEL_STACK_SIZE        16 // Each nested call needs one.
 
 #define ASCII_0                48
 
