@@ -339,97 +339,100 @@ static char *rdata_dns_name_to_string(knot_rdata_item_t item)
 	return knot_dname_to_str(item.dname);
 }
 
-static char *rdata_txt_data_to_string(const uint8_t *data)
+static char *rdata_txt_data_to_string(const uint8_t *data, uint32_t *count)
 {
-	uint8_t length = data[0];
-	size_t i = 0;
-	if (length == 0) {
-		return NULL;
-	}
+    uint8_t length = data[0];
+    uint32_t i = 0;
+    /*
+     * * 4 because: unprintable chars look like \123.
+     * + 3 because: opening '"', closing '"' and \0 at the end.
+     * + 1 because: malloc + gcc optimization requires out_length >= 4.
+     *
+     * NOTE: length can be 0.
+     */
+    uint32_t out_length = length * 4 + 3 + 1;
 
-	/*
-	 * 3 because: opening '"', closing '"', and \0 at the end.
-	 * Times 2 because string can be all "double chars".
-	 */
-	size_t current_length = sizeof(char) * (length * 2 + 4);
-	char *ret = malloc(current_length);
-	if (ret == NULL) {
-		ERR_ALLOC_FAILED;
-		return NULL;
-	}
-	memset(ret, 0,  current_length);
+    char *ret = malloc(out_length);
+    if (ret == NULL) {
+            ERR_ALLOC_FAILED;
+            return NULL;
+    }
+    memset(ret, 0, out_length);
 
-	strncat(ret, "\"", 2);
+    // Opening '"'
+    strcat(ret, "\"");
 
-	for (i = 1; i <= length; i++) {
-		char ch = (char) data[i];
-		if (isprint((int)ch)) {
-			if (ch == '"' || ch == '\\') {
-				strncat(ret, "\"", 2);
-			}
-				char tmp_str[2];
-				tmp_str[0] = ch;
-				tmp_str[1] = '\0';
-				strncat(ret, tmp_str, 2);
-		} else {
-			strncat(ret, "\\", 2);
-			char tmp_str[2];
-			tmp_str[0] = ch - '0';
-			tmp_str[1] = '\0';
-			strncat(ret, tmp_str, 2);
-		}
-	}
-	strncat(ret, "\"", 2);
+    for (i = 1; i <= length; i++) {
+            char ch = (char) data[i];
+            char tmp_str[5];
 
-	return ret;
+            if (isprint((int)ch)) {
+                    if (ch == '"' || ch == '\\') {
+                            strcat(ret, "\\");
+                    }
+                    tmp_str[0] = ch;
+                    tmp_str[1] = 0;
+                    strcat(ret, tmp_str);
+            } else {
+                    sprintf(tmp_str, "\\%03u", ch);
+                    strcat(ret, tmp_str);
+            }
+    }
+
+    // Closing '"'
+    strcat(ret, "\"");
+
+    *count = length + 1; // 1 - leading length byte.
+
+    return ret;
 }
 
-static char *rdata_text_to_string(knot_rdata_item_t item)
+static char *rdata_text_array_to_string(knot_rdata_item_t item)
 {
-	uint16_t size = item.raw_data[0];
-	/* 
-	 * Times two because they can all be one char long
-	 * and then it would be as much chars as spaces (and one final space).
-	 */
-	size_t txt_size = size * 2 + 1;
-	/* + 1 ... space for (hypothetical) last \0. */
-	char *ret = malloc(txt_size + 1);
-	if (ret == NULL) {
-		ERR_ALLOC_FAILED;
-		return NULL;
-	}
-	memset(ret, 0, sizeof(char) * size);
-	const uint8_t *data = (uint8_t *)(item.raw_data +  1);
-	size_t read_count = 0;
-	size_t tmp_str_current_length = 0; // Will be used with strncat.
-	while (read_count < size) {
-		assert(read_count <= size);
-		char *txt = rdata_txt_data_to_string(data + read_count);
-		if (txt == NULL) {
-			free(ret);
-			return NULL;
-		}
-		/*
-		 * We can trust this strlen, as 
-		 * it is created in internal function.
-		 */
-		read_count += strlen(txt) - 1;
-		/* Create delimiter. */
-		char del[2];
-		del[0] = ' ';
-		del[1] = '\0';
-		
-		/* We can only write to the remainder of string. */
-		strncat(ret, txt, txt_size - tmp_str_current_length);
-		/* Increase length of tmp string. */
-		tmp_str_current_length += strlen(txt);
-		strncat(ret, del, txt_size - tmp_str_current_length);
-		/* Increase length of tmp string by 1 ... space. */
-		tmp_str_current_length += + 1;
-		free(txt);
-	}
+    /* Create delimiter. */
+    char *del = " ";
 
-	return ret;
+    uint16_t size = item.raw_data[0];
+    /*
+     * * 6 because: item can consists of one length unprintable char strings
+     *              "\123" "\123" ...
+     * + 1 because: ending \0.
+     *
+     * NOTE: txt_size is always bigger than 4 bytes (zero string has size = 1).
+     */
+    uint32_t txt_size = size * 6 + 1;
+
+    char *ret = malloc(txt_size);
+    if (ret == NULL) {
+            ERR_ALLOC_FAILED;
+            return NULL;
+    }
+    memset(ret, 0, txt_size);
+
+    const uint8_t *data = (uint8_t *)(item.raw_data + 1);
+    uint32_t read_count = 0;
+
+    while (read_count < size) {
+            uint32_t txt_count = 0;
+
+            char *txt = rdata_txt_data_to_string(data + read_count, &txt_count);
+            if (txt == NULL) {
+                    free(ret);
+                    return NULL;
+            }
+
+            /* Append text string to output. */
+            strcat(ret, txt);
+            read_count += txt_count;
+
+            if (read_count < size) {
+                    strcat(ret, del);
+            }
+
+            free(txt);
+    }
+
+    return ret;
 }
 
 static char *rdata_byte_to_string(knot_rdata_item_t item)
@@ -874,7 +877,8 @@ typedef char * (*item_to_string_t)(knot_rdata_item_t);
 static item_to_string_t item_to_string_table[KNOT_RDATA_ZF_UNKNOWN + 1] = {
 	rdata_dname_to_string,
 	rdata_dns_name_to_string,
-	rdata_text_to_string,
+	rdata_text_array_to_string,
+	rdata_text_array_to_string,
 	rdata_byte_to_string,
 	rdata_short_to_string,
 	rdata_long_to_string,
