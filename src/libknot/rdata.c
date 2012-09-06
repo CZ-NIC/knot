@@ -699,6 +699,18 @@ int64_t knot_rdata_soa_serial(const knot_rdata_t *rdata)
 }
 
 /*---------------------------------------------------------------------------*/
+void knot_rdata_soa_serial_set(knot_rdata_t *rdata, uint32_t serial)
+{
+	if (!rdata || rdata->count < 3) {
+		return;
+	}
+
+	// the number is in network byte order, transform it
+	knot_wire_write_u32((uint8_t *)(rdata->items[2].raw_data + 1),
+	                    serial);
+}
+
+/*---------------------------------------------------------------------------*/
 
 uint32_t knot_rdata_soa_refresh(const knot_rdata_t *rdata)
 {

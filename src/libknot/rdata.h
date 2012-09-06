@@ -329,6 +329,7 @@ const knot_dname_t *knot_rdata_get_name(const knot_rdata_t *rdata,
                                             uint16_t type);
 
 int64_t knot_rdata_soa_serial(const knot_rdata_t *rdata);
+void knot_rdata_soa_serial_set(knot_rdata_t *rdata, uint32_t serial);
 
 uint32_t knot_rdata_soa_refresh(const knot_rdata_t *rdata);
 uint32_t knot_rdata_soa_retry(const knot_rdata_t *rdata);
