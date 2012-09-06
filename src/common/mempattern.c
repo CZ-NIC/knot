@@ -19,6 +19,7 @@
 #include <string.h>
 #include <sys/resource.h>
 #include <config.h>
+#include <stdarg.h>
 
 #include "common/slab/alloc-common.h"
 
@@ -43,6 +44,44 @@ int mreserve(char **p, size_t tlen, size_t min, size_t allow, size_t *reserved)
 	}
 	
 	return 0;
+}
+
+char* sprintf_alloc(const char *fmt, ...)
+{
+	int size = 100;
+	char *p = NULL, *np = NULL;
+	va_list ap;
+	
+	if ((p = malloc(size)) == NULL)
+		return NULL;
+	
+	while (1) {
+		
+		/* Try to print in the allocated space. */
+		va_start(ap, fmt);
+		int n = vsnprintf(p, size, fmt, ap);
+		va_end(ap);
+		
+		/* If that worked, return the string. */
+		if (n > -1 && n < size)
+			return p;
+		
+		/* Else try again with more space. */
+		if (n > -1) {       /* glibc 2.1 */
+			size = n+1; /* precisely what is needed */
+		} else {            /* glibc 2.0 */
+			size *= 2;  /* twice the old size */
+		}
+		if ((np = realloc (p, size)) == NULL) {
+			free(p);
+			return NULL;
+		} else {
+			p = np;
+		}
+	}
+	
+	/* Should never get here. */
+	return p;
 }
 
 #ifdef MEM_DEBUG

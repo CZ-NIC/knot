@@ -54,6 +54,16 @@
  */
 int mreserve(char **p, size_t tlen, size_t min, size_t allow, size_t *reserved);
 
+/*!
+ * \brief Format string and take care of allocating memory.
+ *
+ * \note sprintf(3) manual page reference implementation.
+ *
+ * \param fmt Message format.
+ * \return formatted message or NULL.
+ */
+char* sprintf_alloc(const char *fmt, ...);
+
 /*! \brief Print usage statistics.
  *
  *  \note This function has destructor attribute set if MEM_DEBUG is enabled.
