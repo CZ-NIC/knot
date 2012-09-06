@@ -1018,29 +1018,13 @@ static int xfr_update_msgpref(knot_ns_xfr_t *req, const char *keytag)
 	}
 
 	rcu_read_lock();
-	char r_addr[SOCKADDR_STRLEN];
 	char *r_key = NULL;
-	int r_port = sockaddr_portnum(&req->addr);
-	sockaddr_tostr(&req->addr, r_addr, sizeof(r_addr));
-	char *tag = NULL;
 	if (keytag) {
-		tag = strdup(keytag);
+		r_key = xfr_remote_str(&req->addr, keytag);
 	} else if (req->tsig_key) {
-		tag = knot_dname_to_str(req->tsig_key->name);
-	}
-	if (tag) {
-		/* Allocate: " key '$key' " (7 extra bytes + \0)  */
-		size_t dnlen = strlen(tag);
-		r_key = malloc(dnlen + 7 + 1);
-		if (r_key) {
-			char *kp = r_key;
-			memcpy(kp, " key '", 6); kp += 6;
-			/* Trim trailing '.' */
-			memcpy(kp, tag, dnlen); kp += dnlen - 1;
-			memcpy(kp, "'", 2); /* 1 + '\0' */
-		}
+		char *tag = knot_dname_to_str(req->tsig_key->name);
+		r_key = xfr_remote_str(&req->addr, tag);
 		free(tag);
-		tag = NULL;
 	}
 
 	/* Prepare log message. */
@@ -1048,7 +1032,6 @@ static int xfr_update_msgpref(knot_ns_xfr_t *req, const char *keytag)
 	if (zname == NULL && req->zone != NULL) {
 		zonedata_t *zd = (zonedata_t *)knot_zone_data(req->zone);
 		if (zd == NULL) {
-			free(r_key);
 			rcu_read_unlock();
 			return KNOTD_EINVAL;
 		} else {
@@ -1058,40 +1041,30 @@ static int xfr_update_msgpref(knot_ns_xfr_t *req, const char *keytag)
 	const char *pformat = NULL;
 	switch (req->type) {
 	case XFR_TYPE_AIN:
-		pformat = "Incoming AXFR transfer of '%s' with '%s@%d'%s:";
+		pformat = "Incoming AXFR transfer of '%s' with %s:";
 		break;
 	case XFR_TYPE_IIN:
-		pformat = "Incoming IXFR transfer of '%s' with '%s@%d'%s:";
+		pformat = "Incoming IXFR transfer of '%s' with %s:";
 		break;
 	case XFR_TYPE_AOUT:
-		pformat = "Outgoing AXFR transfer of '%s' to '%s@%d'%s:";
+		pformat = "Outgoing AXFR transfer of '%s' to %s:";
 		break;
 	case XFR_TYPE_IOUT:
-		pformat = "Outgoing IXFR transfer of '%s' to '%s@%d'%s:";
+		pformat = "Outgoing IXFR transfer of '%s' to %s:";
 		break;
 	case XFR_TYPE_NOTIFY:
-		pformat = "NOTIFY query of '%s' to '%s@%d'%s:";
+		pformat = "NOTIFY query of '%s' to %s:";
 		break;
 	case XFR_TYPE_SOA:
-		pformat = "SOA query of '%s' to '%s@%d'%s:";
+		pformat = "SOA query of '%s' to %s:";
 		break;
 	default:
-		pformat = "";
+		pformat = "UNKNOWN query '%s' from %s:";
 		break;
 	}
 
-	int len = 512;
-	char *msg = malloc(len + 1);
+	char *msg = sprintf_alloc(pformat, zname, r_key ? r_key : "'unknown'");
 	if (msg) {
-		memset(msg, 0, len + 1);
-		len = snprintf(msg, len + 1, pformat, zname, r_addr, r_port,
-		               r_key ? r_key : ""); 
-		/* Shorten as some implementations (<C99) don't allow
-		 * printing to NULL to estimate size. */
-		if (len > 0) {
-			msg = realloc(msg, len + 1);
-		}
-		
 		req->msgpref = msg;
 	}
 	
@@ -1645,4 +1618,28 @@ int xfr_prepare_tsig(knot_ns_xfr_t *xfr, knot_key_t *key)
 		xfr->digest_max_size);
 	
 	return ret;
+}
+
+char *xfr_remote_str(const sockaddr_t *addr, const char *key)
+{
+	if (!addr) {
+		return NULL;
+	}
+	
+	/* Prepare address strings. */
+	char r_addr[SOCKADDR_STRLEN];
+	int r_port = sockaddr_portnum(addr);
+	sockaddr_tostr(addr, r_addr, sizeof(r_addr));
+	
+	/* Prepare key strings. */
+	char *tag = "";
+	char *q = "'";
+	if (key) {
+		tag = " key "; /* Prefix */
+	} else {
+		key = tag; /* Both empty. */
+		q = tag;
+	}
+	
+	return sprintf_alloc("'%s@%d'%s%s%s%s", r_addr, r_port, tag, q, key, q);
 }
