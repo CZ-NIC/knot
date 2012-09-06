@@ -1846,7 +1846,10 @@ static int xfrin_apply_remove_all_rrsets(knot_changes_t *changes,
 	/* Assemble RRSets to remove. */
 	if (type == KNOT_RRTYPE_ANY) {
 		rrsets = knot_node_get_rrsets(node);
-		rrsets_count = knot_node_rrset_count(node);
+		short rr_count = knot_node_rrset_count(node);
+		if (rr_count > 0) {
+			rrsets_count = (unsigned)rr_count;
+		}
 		knot_node_remove_all_rrsets(node);
 	} else {
 		/* Remove only the RRSet with given type. */
