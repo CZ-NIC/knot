@@ -1032,6 +1032,7 @@ static int xfr_update_msgpref(knot_ns_xfr_t *req, const char *keytag)
 	if (zname == NULL && req->zone != NULL) {
 		zonedata_t *zd = (zonedata_t *)knot_zone_data(req->zone);
 		if (zd == NULL) {
+			free(r_key);
 			rcu_read_unlock();
 			return KNOTD_EINVAL;
 		} else {
