@@ -177,6 +177,11 @@ static int conf_process(conf_t *conf)
 			zone->ixfr_fslimit = conf->ixfr_fslimit;
 		}
 		
+		// Default zone file
+		if (zone->file == NULL) {
+			zone->file = strcdup(zone->name, ".zone");
+		}
+		
 		// Relative zone filenames should be relative to storage
 		if (zone->file[0] != '/') {
 			size_t prefix_len = strlen(conf->storage) + 1; // + '\0'
@@ -748,6 +753,7 @@ void conf_free_zone(conf_zone_t *zone)
 	WALK_LIST_FREE(zone->acl.xfr_out);
 	WALK_LIST_FREE(zone->acl.notify_in);
 	WALK_LIST_FREE(zone->acl.notify_out);
+	WALK_LIST_FREE(zone->acl.update_in);
 
 	free(zone->name);
 	free(zone->file);

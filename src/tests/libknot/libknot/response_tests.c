@@ -78,7 +78,7 @@ static int test_response_init_query()
 	int errors = 0;
 	int lived = 0;
 	lives_ok({
-		if (knot_response_init_from_query(NULL, NULL) !=
+		if (knot_response_init_from_query(NULL, NULL, 1) !=
 		    KNOT_EBADARG) {
 			diag("Calling response_init_query with NULL packet and "
 			     "NULL query did not return KNOT_EBADARG!");
@@ -92,7 +92,7 @@ static int test_response_init_query()
 		                           KNOT_PACKET_PREALLOC_RESPONSE);
 		knot_response_init(response);
 		lived = 0;
-		if (knot_response_init_from_query(response, NULL) !=
+		if (knot_response_init_from_query(response, NULL, 1) !=
 		    KNOT_EBADARG) {
 			diag("Calling response_init_query with NULL query "
 			     "did not return KNOT_EBADARG!");
@@ -101,7 +101,7 @@ static int test_response_init_query()
 		lived = 1;
 		knot_packet_t *query =
 			knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
-		if (knot_response_init_from_query(NULL, query) !=
+		if (knot_response_init_from_query(NULL, query, 1) !=
 		    KNOT_EBADARG) {
 			diag("Calling response_init_query with NULL response "
 			     "did not return KNOT_EBADARG!");

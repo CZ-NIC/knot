@@ -422,10 +422,10 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 {
 
 	int ret = KNOTD_EOK;
-	int apply_ret = KNOT_EOK;
+//	int apply_ret = KNOT_EOK;
 	int switch_ret = KNOT_EOK;
 	knot_changesets_t *chs = NULL;
-	journal_t *transaction = NULL;
+//	journal_t *transaction = NULL;
 	
 	switch(data->type) {
 	case XFR_TYPE_AIN:
@@ -452,82 +452,11 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 		break;
 	case XFR_TYPE_IIN:
 		chs = (knot_changesets_t *)data->data;
-
-		/* Serialize and store changesets. */
-		dbg_xfr("xfr: IXFR/IN serializing and saving changesets\n");
-		transaction = zones_store_changesets_begin(data);
-		if (transaction != NULL) {
-			ret = zones_store_changesets(data);
-		} else {
-			ret = KNOTD_ERROR;
-		}
-		if (ret != KNOTD_EOK) {
-			log_zone_error("%s Failed to serialize and store "
-			               "changesets - %s\n", data->msgpref,
-			               knotd_strerror(ret));
-			/* Free changesets, but not the data. */
-			knot_free_changesets(&chs);
-			data->data = NULL;
-			break;
-		}
-
-		/* Now, try to apply the changesets to the zone. */
-		apply_ret = xfrin_apply_changesets(data->zone, chs,
-		                                       &data->new_contents);
-
-		if (apply_ret != KNOT_EOK) {
-			zones_store_changesets_rollback(transaction);
-			log_zone_error("%s Failed to apply changesets - %s\n",
-			               data->msgpref,
-			               knot_strerror(apply_ret));
-
-			/* Free changesets, but not the data. */
-			knot_free_changesets(&chs);
-			data->data = NULL;
-			ret = KNOTD_ERROR;
-			break;
-		}
-		
-		/* Commit transaction. */
-		ret = zones_store_changesets_commit(transaction);
-		if (ret != KNOTD_EOK) {
-			log_zone_error("%s Failed to commit stored changesets "
-			               "- %s\n",
-			               data->msgpref,
-			               knot_strerror(apply_ret));
-			knot_free_changesets(&chs);
-			data->data = NULL;
-			break;
-		}
-
-		/* Switch zone contents. */
-		switch_ret = xfrin_switch_zone(data->zone, data->new_contents,
-		                               data->type);
-
-		if (switch_ret != KNOT_EOK) {
-			log_zone_error("%s Failed to replace "
-				       "current zone - %s\n",
-				       data->msgpref,
-				       knot_strerror(switch_ret));
-			// Cleanup old and new contents
-			xfrin_rollback_update(data->zone->contents,
-			                      &data->new_contents,
-			                      &chs->changes);
-
-			/* Free changesets, but not the data. */
-			knot_free_changesets(&chs);
-			data->data = NULL;
-			ret = KNOTD_ERROR;
-			break;
-		}
-
-		xfrin_cleanup_successful_update(&chs->changes);
-
-		/* Free changesets, but not the data. */
-		knot_free_changesets(&chs);
+		ret = zones_store_and_apply_chgsets(chs, data->zone,
+		                                    &data->new_contents,
+		                                    data->msgpref, 
+		                                    XFR_TYPE_IIN);
 		data->data = NULL;
-		assert(ret == KNOTD_EOK);
-		log_zone_info("%s Finished.\n", data->msgpref);
 		break;
 	default:
 		ret = KNOTD_EINVAL;
@@ -1089,29 +1018,13 @@ static int xfr_update_msgpref(knot_ns_xfr_t *req, const char *keytag)
 	}
 
 	rcu_read_lock();
-	char r_addr[SOCKADDR_STRLEN];
 	char *r_key = NULL;
-	int r_port = sockaddr_portnum(&req->addr);
-	sockaddr_tostr(&req->addr, r_addr, sizeof(r_addr));
-	char *tag = NULL;
 	if (keytag) {
-		tag = strdup(keytag);
+		r_key = xfr_remote_str(&req->addr, keytag);
 	} else if (req->tsig_key) {
-		tag = knot_dname_to_str(req->tsig_key->name);
-	}
-	if (tag) {
-		/* Allocate: " key '$key' " (7 extra bytes + \0)  */
-		size_t dnlen = strlen(tag);
-		r_key = malloc(dnlen + 7 + 1);
-		if (r_key) {
-			char *kp = r_key;
-			memcpy(kp, " key '", 6); kp += 6;
-			/* Trim trailing '.' */
-			memcpy(kp, tag, dnlen); kp += dnlen - 1;
-			memcpy(kp, "'", 2); /* 1 + '\0' */
-		}
+		char *tag = knot_dname_to_str(req->tsig_key->name);
+		r_key = xfr_remote_str(&req->addr, tag);
 		free(tag);
-		tag = NULL;
 	}
 
 	/* Prepare log message. */
@@ -1119,7 +1032,6 @@ static int xfr_update_msgpref(knot_ns_xfr_t *req, const char *keytag)
 	if (zname == NULL && req->zone != NULL) {
 		zonedata_t *zd = (zonedata_t *)knot_zone_data(req->zone);
 		if (zd == NULL) {
-			free(r_key);
 			rcu_read_unlock();
 			return KNOTD_EINVAL;
 		} else {
@@ -1129,40 +1041,30 @@ static int xfr_update_msgpref(knot_ns_xfr_t *req, const char *keytag)
 	const char *pformat = NULL;
 	switch (req->type) {
 	case XFR_TYPE_AIN:
-		pformat = "Incoming AXFR transfer of '%s' with '%s@%d'%s:";
+		pformat = "Incoming AXFR transfer of '%s' with %s:";
 		break;
 	case XFR_TYPE_IIN:
-		pformat = "Incoming IXFR transfer of '%s' with '%s@%d'%s:";
+		pformat = "Incoming IXFR transfer of '%s' with %s:";
 		break;
 	case XFR_TYPE_AOUT:
-		pformat = "Outgoing AXFR transfer of '%s' to '%s@%d'%s:";
+		pformat = "Outgoing AXFR transfer of '%s' to %s:";
 		break;
 	case XFR_TYPE_IOUT:
-		pformat = "Outgoing IXFR transfer of '%s' to '%s@%d'%s:";
+		pformat = "Outgoing IXFR transfer of '%s' to %s:";
 		break;
 	case XFR_TYPE_NOTIFY:
-		pformat = "NOTIFY query of '%s' to '%s@%d'%s:";
+		pformat = "NOTIFY query of '%s' to %s:";
 		break;
 	case XFR_TYPE_SOA:
-		pformat = "SOA query of '%s' to '%s@%d'%s:";
+		pformat = "SOA query of '%s' to %s:";
 		break;
 	default:
-		pformat = "";
+		pformat = "UNKNOWN query '%s' from %s:";
 		break;
 	}
 
-	int len = 512;
-	char *msg = malloc(len + 1);
+	char *msg = sprintf_alloc(pformat, zname, r_key ? r_key : "'unknown'");
 	if (msg) {
-		memset(msg, 0, len + 1);
-		len = snprintf(msg, len + 1, pformat, zname, r_addr, r_port,
-		               r_key ? r_key : ""); 
-		/* Shorten as some implementations (<C99) don't allow
-		 * printing to NULL to estimate size. */
-		if (len > 0) {
-			msg = realloc(msg, len + 1);
-		}
-		
 		req->msgpref = msg;
 	}
 	
@@ -1716,4 +1618,28 @@ int xfr_prepare_tsig(knot_ns_xfr_t *xfr, knot_key_t *key)
 		xfr->digest_max_size);
 	
 	return ret;
+}
+
+char *xfr_remote_str(const sockaddr_t *addr, const char *key)
+{
+	if (!addr) {
+		return NULL;
+	}
+	
+	/* Prepare address strings. */
+	char r_addr[SOCKADDR_STRLEN];
+	int r_port = sockaddr_portnum(addr);
+	sockaddr_tostr(addr, r_addr, sizeof(r_addr));
+	
+	/* Prepare key strings. */
+	char *tag = "";
+	char *q = "'";
+	if (key) {
+		tag = " key "; /* Prefix */
+	} else {
+		key = tag; /* Both empty. */
+		q = tag;
+	}
+	
+	return sprintf_alloc("'%s@%d'%s%s%s%s", r_addr, r_port, tag, q, key, q);
 }

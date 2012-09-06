@@ -141,6 +141,7 @@ void gen_tree_clear(general_tree_t *tree)
 {
 	MOD_TREE_DESTROY(tree->tree, general_tree_node, avl, NULL,
 	                 gen_rem_func, NULL);
+	tree->tree->th_root = NULL; /* Invalidate tree root. */
 }
 
 //static void add_node_to_tree(void *n, void *data)

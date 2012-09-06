@@ -252,10 +252,12 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 		return xfr_answer(ns, &xfr);
 		
 	case KNOT_QUERY_UPDATE:
-		knot_ns_error_response_from_query(ns, packet,
-		                                  KNOT_RCODE_NOTIMPL,
-		                                  qbuf, &resp_len);
-		res = KNOTD_EOK;
+//		knot_ns_error_response_from_query(ns, packet,
+//		                                  KNOT_RCODE_NOTIMPL,
+//		                                  qbuf, &resp_len);
+		res = zones_process_update(ns, packet, &addr, qbuf, &resp_len,
+		                           NS_TRANSPORT_TCP);
+//		res = KNOTD_EOK;
 		break;
 		
 	case KNOT_QUERY_NOTIFY:

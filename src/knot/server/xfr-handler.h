@@ -181,6 +181,16 @@ int xfr_worker(dthread_t *thread);
  */
 int xfr_prepare_tsig(knot_ns_xfr_t *xfr, knot_key_t *key);
 
+/*!
+ * \brief Return formatted string of the remote as 'ip@port key $key'.
+ *
+ * \param addr Remote address.
+ * \param keytag Used TSIG key name (or NULL).
+ *
+ * \return formatted string or NULL.
+ */
+char *xfr_remote_str(const sockaddr_t *addr, const char *keytag);
+
 #endif // _KNOTD_XFRHANDLER_H_
 
 /*! @} */
