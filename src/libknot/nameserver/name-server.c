@@ -4236,7 +4236,7 @@ int knot_ns_process_update(const knot_packet_t *query,
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to check zone for update: "
 		       "%s.\n", knot_strerror(ret));
-		return KNOT_EOK;
+		return ret;
 	}
 
 	// 2) Convert prerequisities
@@ -4246,7 +4246,7 @@ int knot_ns_process_update(const knot_packet_t *query,
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to check zone for update: "
 		       "%s.\n", knot_strerror(ret));
-		return KNOT_EOK;
+		return ret;
 	}
 
 	assert(prereqs != NULL);
@@ -4258,24 +4258,26 @@ int knot_ns_process_update(const knot_packet_t *query,
 	dbg_ns_verb("Checking prerequisities.\n");
 	ret = knot_ddns_check_prereqs(zone, &prereqs, rcode);
 	if (ret != KNOT_EOK) {
+		knot_ddns_prereqs_free(&prereqs);
 		dbg_ns("Failed to check zone for update: "
 		       "%s.\n", knot_strerror(ret));
-		return KNOT_EOK;
+		return ret;
 	}
 
 	// 4) Convert update to changeset
 	dbg_ns_verb("Converting UPDATE packet to changeset.\n");
-	ret = knot_ddns_process_update(query, changeset, rcode);
+	ret = knot_ddns_process_update(zone, query, changeset, rcode);
 	if (ret != KNOT_EOK) {
+		knot_ddns_prereqs_free(&prereqs);
 		dbg_ns("Failed to check zone for update: "
 		       "%s.\n", knot_strerror(ret));
-		return KNOT_EOK;
+		return ret;
 	}
 
 	assert(changeset != NULL);
 
 	knot_ddns_prereqs_free(&prereqs);
-	return KNOT_EOK;
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/

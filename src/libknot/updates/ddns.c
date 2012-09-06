@@ -198,19 +198,18 @@ static int knot_ddns_add_update(knot_changeset_t *changeset,
 	int ret;
 
 	// create a copy of the RRSet
-	/*! \todo If the packet was not parsed all at once, we could save this
+	/*! \todo ref #937 If the packet was not parsed all at once, we could save this
 	 *        copy.
 	 */
-	knot_rrset_t *rrset_copy;
+	knot_rrset_t *rrset_copy = NULL;
 	ret = knot_rrset_deep_copy(rrset, &rrset_copy, 0);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	/*! \todo What about the SOAs? */
-
 	if (knot_rrset_class(rrset) == qclass) {
 		// this RRSet should be added to the zone
+		dbg_ddns_detail(" * adding RR %p\n", rrset_copy);
 		ret = knot_changeset_add_rr(&changeset->add,
 		                            &changeset->add_count,
 		                            &changeset->add_allocated,
@@ -218,6 +217,7 @@ static int knot_ddns_add_update(knot_changeset_t *changeset,
 	} else {
 		// this RRSet marks removal of something from zone
 		// what should be removed is distinguished when applying
+		dbg_ddns_detail(" * removing RR %p\n", rrset_copy);
 		ret = knot_changeset_add_rr(&changeset->remove,
 		                            &changeset->remove_count,
 		                            &changeset->remove_allocated,
@@ -535,10 +535,12 @@ static int knot_ddns_check_update(const knot_rrset_t *rrset,
                                   const knot_packet_t *query, 
                                   knot_rcode_t *rcode)
 {
+	/* Accept both subdomain and dname match. */
 	dbg_ddns("Checking UPDATE packet.\n");
-	
-	if (!knot_dname_is_subdomain(knot_rrset_owner(rrset),
-	                             knot_packet_qname(query))) {
+	const knot_dname_t *owner = knot_rrset_owner(rrset);
+	const knot_dname_t *qname = knot_packet_qname(query);
+	int is_sub = knot_dname_is_subdomain(owner, qname);
+	if (!is_sub && knot_dname_compare(owner, qname) != 0) {
 		*rcode = KNOT_RCODE_NOTZONE;
 		return KNOT_EBADZONE;
 	}
@@ -571,7 +573,8 @@ static int knot_ddns_check_update(const knot_rrset_t *rrset,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_ddns_process_update(const knot_packet_t *query,
+int knot_ddns_process_update(const knot_zone_contents_t *zone,
+			     const knot_packet_t *query,
                              knot_changeset_t *changeset, knot_rcode_t *rcode)
 {
 	// just put all RRSets from query's Authority section
@@ -581,7 +584,20 @@ int knot_ddns_process_update(const knot_packet_t *query,
 		return KNOT_EBADARG;
 	}
 
-	int ret;
+	int ret = KNOT_EOK;
+	
+	/* Copy base SOA query. */
+	const knot_rrset_t *soa = knot_node_rrset(knot_zone_contents_apex(zone),
+						  KNOT_RRTYPE_SOA);
+	knot_rrset_t *soa_begin = NULL;
+	ret = knot_rrset_deep_copy(soa, &soa_begin, 0);
+	if (ret == KNOT_EOK) {
+		knot_changeset_store_soa(&changeset->soa_from, &changeset->serial_from,
+					 soa_begin);
+	} else {
+		*rcode = KNOT_RCODE_SERVFAIL;
+		return ret;
+	}
 
 	dbg_ddns("Processing UPDATE section.\n");
 	for (int i = 0; i < knot_packet_authority_rrset_count(query); ++i) {
@@ -591,6 +607,8 @@ int knot_ddns_process_update(const knot_packet_t *query,
 
 		ret = knot_ddns_check_update(rrset, query, rcode);
 		if (ret != KNOT_EOK) {
+			dbg_ddns("Failed to check update RRSet:%s\n",
+			                knot_strerror(ret));
 			return ret;
 		}
 
@@ -602,12 +620,26 @@ int knot_ddns_process_update(const knot_packet_t *query,
 			                knot_strerror(ret));
 			*rcode = (ret == KNOT_EMALF) ? KNOT_RCODE_FORMERR
 			                             : KNOT_RCODE_SERVFAIL;
-			knot_free_changeset(&changeset);
 			return ret;
 		}
 	}
+	
+	/* Ending SOA. */
+	knot_rrset_t *soa_end = NULL;
+	ret = knot_rrset_deep_copy(soa, &soa_end, 1);
+	
+	/* Increment and write back. */
+	knot_rdata_t *rd = knot_rrset_get_rdata(soa_end);
+	int64_t sn = knot_rdata_soa_serial(rd);
+	if (sn > -1) {
+		knot_rdata_soa_serial_set(rd, (uint32_t)sn + 1);
+	} else {
+		*rcode = KNOT_RCODE_SERVFAIL;
+	}
+	knot_changeset_store_soa(&changeset->soa_to, &changeset->serial_to,
+				 soa_end);
 
-	return KNOT_EOK;
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
