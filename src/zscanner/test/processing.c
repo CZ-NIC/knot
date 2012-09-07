@@ -25,6 +25,8 @@
 #include "zscanner/scanner.h"
 
 
+const char *separator = "------\n";
+
 static void print_wire_dname(const uint8_t *dname, uint32_t dname_length)
 {
     uint32_t label_length = 0, i = 0;
@@ -40,7 +42,11 @@ static void print_wire_dname(const uint8_t *dname, uint32_t dname_length)
     }
 }
 
-void process_error(const scanner_t *s)
+void empty_process_record(const scanner_t *s) { };
+
+void empty_process_error(const scanner_t *s) { };
+
+void debug_process_error(const scanner_t *s)
 {
     printf("LINE(%03"PRIu64") ERROR(%s) FILE(%s) NEAR(%s)\n",
            s->line_counter,
@@ -50,7 +56,7 @@ void process_error(const scanner_t *s)
     fflush(stdout);
 }
 
-void process_record(const scanner_t *s)
+void debug_process_record(const scanner_t *s)
 {
     uint32_t item, item_length, i;
 
@@ -70,11 +76,43 @@ void process_record(const scanner_t *s)
         printf(" (%u)", item_length);
 
         for (i = s->r_data_items[item - 1]; i < s->r_data_items[item]; i++) {
-            printf("%02x", (s->r_data)[i]);
+            printf("%02X", (s->r_data)[i]);
         }
     }
-
     printf("\n");
+    fflush(stdout);
+}
+
+void test_process_error(const scanner_t *s)
+{
+    printf("ERROR=%i\n%s", s->error_code, separator);
+    fflush(stdout);
+}
+
+void test_process_record(const scanner_t *s)
+{
+    uint32_t item, i;
+
+    printf("OWNER=");
+    for (i = 0; i < s->r_owner_length; i++) {
+        printf("%02x", s->r_owner[i]);
+    }
+    printf("\n");
+    printf("CLASS=%02X\n", s->r_class);
+    printf("RRTTL=%04X\n", s->r_ttl);
+    printf("RTYPE=%02X\n", s->r_type);
+    printf("ITEMS=%04X\n", s->r_data_items_count);
+    printf("RDATA=");
+    for (item = 1; item <= s->r_data_items_count; item++) {
+        if (item > 1) {
+            printf(" ");
+        }
+
+        for (i = s->r_data_items[item - 1]; i < s->r_data_items[item]; i++) {
+            printf("%02X", (s->r_data)[i]);
+        }
+    }
+    printf("\n%s", separator);
     fflush(stdout);
 }
 
@@ -82,9 +120,9 @@ void dump_rdata(const scanner_t *s)
 {
     uint32_t item, i;
 
-    for (item = 1; item <= s->r_data_items_count; item++) {                     
-        for (i = s->r_data_items[item - 1]; i < s->r_data_items[item]; i++) {   
-            printf("%c", (s->r_data)[i]);                                     
+    for (item = 1; item <= s->r_data_items_count; item++) {
+        for (i = s->r_data_items[item - 1]; i < s->r_data_items[item]; i++) {
+            printf("%c", (s->r_data)[i]);
         }
     }
 }

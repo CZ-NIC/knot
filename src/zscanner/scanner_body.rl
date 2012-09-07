@@ -919,7 +919,7 @@
     #    }
     #}
 
-    # Hex array or empty with control to forward length statement.
+    # Hex array with control to forward length statement.
     type_data = hex_array ;#%_type_data_exit $!_hex_char_error;
     # END
 
