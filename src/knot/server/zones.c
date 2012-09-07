@@ -2060,6 +2060,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	ret = knot_changeset_allocate(&chgsets);
 	if (ret != KNOT_EOK) {
 		*rcode = KNOT_RCODE_SERVFAIL;
+		log_zone_error("%s %s\n", msg, knot_strerror(ret));
 		free(msg);
 		return ret;
 	}
@@ -2076,8 +2077,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 				     &chgsets->sets[0], rcode);
 	
 	if (ret != KNOT_EOK) {
-		dbg_zones("Processing UPDATE packet failed: %s \n",
-			  knot_strerror(ret));
+		log_zone_error("%s %s\n", msg, knot_strerror(ret));
 		knot_free_changesets(&chgsets);
 		free(msg);
 		return ret;
