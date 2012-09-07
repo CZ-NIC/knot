@@ -937,6 +937,9 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 		knot_dname_free(&key_name);
 		return KNOT_ENOMEM;
 	}
+	
+	/* Already referenced in tmp_tsig, release. */
+	knot_dname_release(key_name);
 
 	/* Create rdata for TSIG RR. */
 	knot_rdata_t *rdata = knot_rdata_new();
@@ -957,7 +960,6 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 		malloc(sizeof(knot_rdata_item_t) * desc->length);
 	if (items == NULL) {
 		dbg_tsig("TSIG: items = NULL\n");
-		ERR_ALLOC_FAILED;
 		knot_rrset_deep_free(&tmp_tsig, 1, 1, 1);
 		return KNOT_ENOMEM;
 	}
