@@ -317,9 +317,18 @@ int log_vmsg(logsrc_t src, int level, const char *msg, va_list ap)
 void hex_log(int source, const char *data, int length)
 {
 	int ptr = 0;
+	char lbuf[512]={0}; int llen = 0;
 	for (; ptr < length; ptr++) {
-		log_msg(source, LOG_DEBUG, "0x%02x ",
+		if (ptr > 0 && ptr % 16 == 0) {
+			lbuf[llen] = '\0';
+			log_msg(source, LOG_DEBUG, "%s\n", lbuf);
+			llen = 0;
+		}
+		int n = sprintf(lbuf + llen, "0x%02x ",
 		        (unsigned char)*(data + ptr));
+		llen += n;
 	}
-	log_msg(source, LOG_DEBUG, "\n");
+	if (llen > 0) {
+		log_msg(source, LOG_DEBUG, "%s\n", lbuf);
+	}
 }

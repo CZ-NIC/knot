@@ -125,7 +125,7 @@ int notify_create_response(knot_packet_t *request, uint8_t *buffer,
 	/* Set maximum packet size. */
 	int rc = knot_packet_set_max_size(response, *size);
 	if (rc == KNOT_EOK) {
-		rc = knot_response_init_from_query(response, request);
+		rc = knot_response_init_from_query(response, request, 1);
 	}
 	
 	/* Aggregated result check. */

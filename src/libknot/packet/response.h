@@ -62,7 +62,8 @@ int knot_response_init(knot_packet_t *response);
  * \retval KNOT_EOK
  */
 int knot_response_init_from_query(knot_packet_t *response,
-                                    knot_packet_t *query);
+                                  knot_packet_t *query,
+                                  int copy_question);
 
 /*!
  * \brief Clears the response structure for reuse.

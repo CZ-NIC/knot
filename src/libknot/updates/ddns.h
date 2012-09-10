@@ -32,6 +32,7 @@
 #include "packet/packet.h"
 #include "rrset.h"
 #include "dname.h"
+#include "consts.h"
 
 typedef struct knot_ddns_prereq_t {
 	knot_rrset_t **exist;
@@ -55,17 +56,18 @@ typedef struct knot_ddns_prereq_t {
 	size_t not_in_use_allocd;
 } knot_ddns_prereq_t;
 
-int knot_ddns_check_zone(const knot_zone_t *zone, knot_packet_t *query,
-                         uint8_t *rcode);
+int knot_ddns_check_zone(const knot_zone_contents_t *zone, 
+                         const knot_packet_t *query, knot_rcode_t *rcode);
 
-int knot_ddns_process_prereqs(knot_packet_t *query,
-                              knot_ddns_prereq_t **prereqs, uint8_t *rcode);
+int knot_ddns_process_prereqs(const knot_packet_t *query,
+                              knot_ddns_prereq_t **prereqs, knot_rcode_t *rcode);
 
 int knot_ddns_check_prereqs(const knot_zone_contents_t *zone,
-                            knot_ddns_prereq_t **prereqs, uint8_t *rcode);
+                            knot_ddns_prereq_t **prereqs, knot_rcode_t *rcode);
 
-int knot_ddns_process_update(knot_packet_t *query,
-                             knot_changeset_t **changeset, uint8_t *rcode);
+int knot_ddns_process_update(const knot_zone_contents_t *zone,
+			     const knot_packet_t *query,
+                             knot_changeset_t *changeset, knot_rcode_t *rcode);
 
 void knot_ddns_prereqs_free(knot_ddns_prereq_t **prereq);
 

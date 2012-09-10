@@ -1254,7 +1254,7 @@ const knot_rrset_t *knot_packet_answer_rrset(
 /*----------------------------------------------------------------------------*/
 
 const knot_rrset_t *knot_packet_authority_rrset(
-	knot_packet_t *packet, short pos)
+	const knot_packet_t *packet, short pos)
 {
 	if (packet == NULL || pos > packet->ns_rrsets) {
 		return NULL;
@@ -1266,7 +1266,7 @@ const knot_rrset_t *knot_packet_authority_rrset(
 /*----------------------------------------------------------------------------*/
 
 const knot_rrset_t *knot_packet_additional_rrset(
-    knot_packet_t *packet, short pos)
+    const knot_packet_t *packet, short pos)
 {
 	if (packet == NULL || pos > packet->ar_rrsets) {
 		return NULL;
@@ -1540,6 +1540,10 @@ void knot_packet_dump(const knot_packet_t *packet)
 	       knot_wire_flags_get_ra(packet->header.flags2) ? "ra" : "",
 	       knot_wire_flags_get_ad(packet->header.flags2) ? "ad" : "",
 	       knot_wire_flags_get_cd(packet->header.flags2) ? "cd" : "");
+	dbg_packet("  RCODE: %u\n", knot_wire_flags_get_rcode(
+	                   packet->header.flags2));
+	dbg_packet("  OPCODE: %u\n", knot_wire_flags_get_opcode(
+	                   packet->header.flags1));
 	dbg_packet("  QDCOUNT: %u\n", packet->header.qdcount);
 	dbg_packet("  ANCOUNT: %u\n", packet->header.ancount);
 	dbg_packet("  NSCOUNT: %u\n", packet->header.nscount);

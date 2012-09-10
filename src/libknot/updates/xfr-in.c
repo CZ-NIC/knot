@@ -1836,41 +1836,65 @@ dbg_xfrin_exec_detail(
 static int xfrin_apply_remove_all_rrsets(knot_changes_t *changes,
                                          knot_node_t *node, uint16_t type)
 {
-	int ret;
+	int ret = KNOT_EOK;
+	knot_rrset_t **rrsets = NULL;
+	unsigned rrsets_count = 0;
 
+	/*! \todo ref #937 is it OK to modify nodes at this point?
+	 * shouldn't it be after the zones are switched? */
+	
+	/* Assemble RRSets to remove. */
 	if (type == KNOT_RRTYPE_ANY) {
-		// put all the RRSets to the changes structure
-		ret = xfrin_changes_check_rrsets(&changes->old_rrsets,
-		                                 &changes->old_rrsets_count,
-		                                 &changes->old_rrsets_allocated,
-		                                 knot_node_rrset_count(node));
-		if (ret != KNOT_EOK) {
-			dbg_xfrin("Failed to check changeset rrsets.\n");
-			return ret;
+		rrsets = knot_node_get_rrsets(node);
+		short rr_count = knot_node_rrset_count(node);
+		if (rr_count > 0) {
+			rrsets_count = (unsigned)rr_count;
 		}
-
-		knot_rrset_t **rrsets = knot_node_get_rrsets(node);
-		knot_rrset_t **place = changes->old_rrsets
-		                       + changes->old_rrsets_count;
-		/*! \todo Test this!!! */
-		memcpy(place, rrsets, knot_node_rrset_count(node)
-		       * sizeof(knot_rrset_t *));
-
-		// remove all RRSets from the node
 		knot_node_remove_all_rrsets(node);
 	} else {
-		ret = xfrin_changes_check_rrsets(&changes->old_rrsets,
-		                                 &changes->old_rrsets_count,
-		                                 &changes->old_rrsets_allocated,
-		                                 1);
+		/* Remove only the RRSet with given type. */
+		rrsets = malloc(sizeof(knot_rrset_t*));
+		if (rrsets) {
+			*rrsets = knot_node_remove_rrset(node, type);
+			rrsets_count = 1;
+		}
+	}
+	
+	ret = xfrin_changes_check_rrsets(&changes->old_rrsets,
+					 &changes->old_rrsets_count,
+					 &changes->old_rrsets_allocated,
+					 rrsets_count);
+	if (ret != KNOT_EOK) {
+		dbg_xfrin("Failed to check changeset rrsets.\n");
+		free(rrsets);
+		return ret;
+	}
+	
+	/* Mark RRsets and RDATA for removal. */
+	for (unsigned i = 0; i < rrsets_count; ++i) {
+		changes->old_rrsets[changes->old_rrsets_count++] = rrsets[i];
+	
+		/* Remove old RDATA. */
+		int rdata_count = knot_rrset_rdata_rr_count(rrsets[i]);
+		ret = xfrin_changes_check_rdata(&changes->old_rdata,
+						&changes->old_rdata_types,
+						changes->old_rdata_count,
+						&changes->old_rdata_allocated,
+						rdata_count);
 		if (ret != KNOT_EOK) {
-			dbg_xfrin("Failed to check changeset rrsets.\n");
+			dbg_xfrin("Failed to check changeset rdata.\n");
+			free(rrsets);
 			return ret;
 		}
-		// remove only RRSet with the given type
-		knot_rrset_t *rrset = knot_node_remove_rrset(node, type);
-		changes->old_rrsets[changes->old_rrsets_count++] = rrset;
+		
+		xfrin_changes_add_rdata(changes->old_rdata,
+					changes->old_rdata_types,
+					&changes->old_rdata_count,
+					knot_rrset_get_rdata(rrsets[i]),
+					knot_rrset_type(rrsets[i]));
 	}
+	
+	free(rrsets);
 
 	return KNOT_EOK;
 }
@@ -1993,7 +2017,7 @@ dbg_xfrin_exec_detail(
 
 		if (ret < 0) {
 			dbg_xfrin("Failed to add RRSet to node.\n");
-			return KNOT_ERROR;
+			return ret;
 		}
 
 		assert(ret == 0);
@@ -2533,10 +2557,14 @@ dbg_xfrin_exec_detail(
 		                knot_rrset_rdata(chset->remove[i]))
 		            == KNOT_RRTYPE_NSEC3))
 		{
+			dbg_xfrin_verb("Removed RRSet belongs to NSEC3 tree.\n");
 			is_nsec3 = 1;
 		}
 
 		// check if the old node is not the one we should use
+		dbg_xfrin_verb("Node:%p Owner: %p Node owner: %p\n",
+			       node, knot_rrset_owner(chset->remove[i]),
+			       knot_node_owner(node));
 		if (!node || knot_rrset_owner(chset->remove[i])
 		             != knot_node_owner(node)) {
 			if (is_nsec3) {
@@ -2557,6 +2585,8 @@ dbg_xfrin_exec_detail(
 		assert(node != NULL);
 
 		// first check if all RRSets should be removed
+		dbg_xfrin_verb("RRSet class to be removed=%u\n",
+			       knot_rrset_class(chset->remove[i]));
 		if (knot_rrset_class(chset->remove[i]) == KNOT_CLASS_ANY) {
 			ret = xfrin_apply_remove_all_rrsets(
 				changes, node,
@@ -2666,8 +2696,8 @@ dbg_xfrin_exec_detail(
 
 		assert(ret != KNOT_EOK);
 
-		dbg_xfrin_detail("xfrin_apply_..() returned %s, rrset: %p\n",
-		                 knot_strerror(ret), rrset);
+		dbg_xfrin_detail("xfrin_apply_..() returned %d, rrset: %p\n",
+		                 ret, rrset);
 
 		if (ret > 0) {
 			if (ret == 1) {
@@ -3078,6 +3108,7 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 
 	knot_zone_contents_t *old_contents = knot_zone_get_contents(zone);
 	if (!old_contents) {
+		dbg_xfrin("Cannot apply changesets to empty zone.\n");
 		return KNOT_EBADARG;
 	}
 

@@ -215,6 +215,7 @@ static void conf_zone_start(void *scanner, char *name) {
      init_list(&this_zone->acl.xfr_out);
      init_list(&this_zone->acl.notify_in);
      init_list(&this_zone->acl.notify_out);
+     init_list(&this_zone->acl.update_in);
    }
 }
 
@@ -271,6 +272,7 @@ static int conf_mask(void* scanner, int nval, int prefixlen) {
 %token <tok> IXFR_FSLIMIT
 %token <tok> XFR_IN
 %token <tok> XFR_OUT
+%token <tok> UPDATE_IN
 %token <tok> NOTIFY_IN
 %token <tok> NOTIFY_OUT
 %token <tok> BUILD_DIFFS
@@ -592,6 +594,9 @@ zone_acl_start:
  | NOTIFY_OUT {
       this_list = &this_zone->acl.notify_out;
    }
+ | UPDATE_IN {
+      this_list = &this_zone->acl.update_in;
+ }
  ;
 
 zone_acl_item:

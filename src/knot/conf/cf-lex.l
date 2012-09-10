@@ -85,6 +85,7 @@ zonefile-sync   { lval.t = yytext; return DBSYNC_TIMEOUT; }
 ixfr-fslimit    { lval.t = yytext; return IXFR_FSLIMIT; }
 xfr-in          { lval.t = yytext; return XFR_IN; }
 xfr-out         { lval.t = yytext; return XFR_OUT; }
+update-in       { lval.t = yytext; return UPDATE_IN; }
 notify-in       { lval.t = yytext; return NOTIFY_IN; }
 notify-out      { lval.t = yytext; return NOTIFY_OUT; }
 workers         { lval.t = yytext; return WORKERS; }
