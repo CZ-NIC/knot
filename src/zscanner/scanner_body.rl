@@ -476,8 +476,12 @@
             fhold; fgoto err_line;
         }
     }
+    action _text_char_error {
+        SCANNER_WARNING(ZSCANNER_EBAD_TEXT_CHAR);
+        fhold; fgoto err_line;
+    }
     action _text_error {
-        SCANNER_ERROR(ZSCANNER_EBAD_TEXT);
+        SCANNER_WARNING(ZSCANNER_EBAD_TEXT);
         fhold; fgoto err_line;
     }
 
@@ -492,8 +496,18 @@
         }
     }
     action _text_dec {
-        *rdata_tail *= 10;
-        *rdata_tail += digit_to_num[(uint8_t)fc];
+        if ((*rdata_tail < (UINT8_MAX / 10)) ||   // Dominant fast check.
+            ((*rdata_tail == (UINT8_MAX / 10)) && // Marginal case.
+             (fc <= (UINT8_MAX % 10) + ASCII_0)
+            )
+           ) {
+            *rdata_tail *= 10;
+            *rdata_tail += digit_to_num[(uint8_t)fc];
+        }
+        else {
+            SCANNER_WARNING(ZSCANNER_ENUMBER8_OVERFLOW);
+            fhold; fgoto err_line;
+        }
     }
     action _text_dec_exit {
         rdata_tail++;
@@ -505,11 +519,11 @@
         | ('\\'               %_text_dec_init            # Initial "\" char.
            . digit {3}        $_text_dec %_text_dec_exit # "DDD" rest.
           )
-        );
+        ) $!_text_char_error;
     quoted_text_char =
         ( text_char
         | ([ \t;] | [\n] when { s->multiline }) $_text_char
-        );
+        ) $!_text_char_error;
 
     # Text string machine instantiation (for smaller code).
     text_ := (('\"' . quoted_text_char* . '\"') | text_char+)
@@ -1557,16 +1571,13 @@
                 fhold; fcall r_data_a;
                 break;
             case KNOT_RRTYPE_NS:
-                fhold; fcall r_data_ns;
-                break;
             case KNOT_RRTYPE_CNAME:
-                fhold; fcall r_data_ns; // Same as NS.
+            case KNOT_RRTYPE_PTR:
+            case KNOT_RRTYPE_DNAME:
+                fhold; fcall r_data_ns;
                 break;
             case KNOT_RRTYPE_SOA:
                 fhold; fcall r_data_soa;
-                break;
-            case KNOT_RRTYPE_PTR:
-                fhold; fcall r_data_ns; // Same as NS.
                 break;
             case KNOT_RRTYPE_HINFO:
                 fhold; fcall r_data_hinfo;
@@ -1575,22 +1586,17 @@
                 fhold; fcall r_data_minfo;
                 break;
             case KNOT_RRTYPE_MX:
+            case KNOT_RRTYPE_AFSDB:
+            case KNOT_RRTYPE_RT:
+            case KNOT_RRTYPE_KX:
                 fhold; fcall r_data_mx;
                 break;
             case KNOT_RRTYPE_TXT:
+            case KNOT_RRTYPE_SPF:
                 fhold; fcall r_data_txt;
                 break;
             case KNOT_RRTYPE_RP:
                 fhold; fcall r_data_rp;
-                break;
-            case KNOT_RRTYPE_AFSDB:
-                fhold; fcall r_data_mx; // Same as MX.
-                break;
-            case KNOT_RRTYPE_RT:
-                fhold; fcall r_data_mx; // Same as MX.
-                break;
-            case KNOT_RRTYPE_KEY:
-                fhold; fcall r_data_dnskey; // Same as DNSKEY.
                 break;
             case KNOT_RRTYPE_AAAA:
                 fhold; fcall r_data_aaaa;
@@ -1604,14 +1610,8 @@
             case KNOT_RRTYPE_NAPTR:
                 fhold; fcall r_data_naptr;
                 break;
-            case KNOT_RRTYPE_KX:
-                fhold; fcall r_data_mx; // Same as MX.
-                break;
             case KNOT_RRTYPE_CERT:
                 fhold; fcall r_data_cert;
-                break;
-            case KNOT_RRTYPE_DNAME:
-                fhold; fcall r_data_ns; // Same as NS.
                 break;
             case KNOT_RRTYPE_APL:
                 fhold; fcall r_data_apl;
@@ -1631,6 +1631,7 @@
             case KNOT_RRTYPE_NSEC:
                 fhold; fcall r_data_nsec;
                 break;
+            case KNOT_RRTYPE_KEY:
             case KNOT_RRTYPE_DNSKEY:
                 fhold; fcall r_data_dnskey;
                 break;
@@ -1645,9 +1646,6 @@
                 break;
             case KNOT_RRTYPE_TLSA:
                 fhold; fcall r_data_tlsa;
-                break;
-            case KNOT_RRTYPE_SPF:
-                fhold; fcall r_data_txt; // Same as TXT.
                 break;
             default:
                 fhold; fcall r_data_type;

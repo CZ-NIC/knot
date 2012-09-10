@@ -1,0 +1,24 @@
+$ORIGIN .
+$TTL    1
+
+; OK
+@   TXT ""                          ; Blank string
+@   TXT a                           ; One char string
+@   TXT \                           ; One space char
+@   TXT "\ "                        ; One space char in quotes
+@   TXT \021                        ; One unprintable char
+@   TXT "\\ \""                     ; Special chars
+@   TXT "" "test1" "\255" test2     ; Array of text strings
+@   TXT "" "" ""                    ; Array of blank strings
+@   TXT " !\"#$%&'()*+,-./0123456789:;<=>?@" ; First part of all printables
+@   TXT "ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`"  ; Second part of all printables
+@   TXT "abcdefghijklmnopqrstuvwxyz{|}~"     ; Third part of all printables
+@   TXT \# 1 00                              ; Hexadecimal rdata
+@   TYPE16 \# 1 00                           ; TYPE + Hexadecimal rdata
+@   TYPE16 ""                                ; TYPE
+
+; KO
+
+@   TXT \01         ; Missing digit in decimal notation
+@   TXT \256        ; 8bit overflow in decimal notation
+
