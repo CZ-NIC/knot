@@ -196,7 +196,7 @@
               | absolute_dname
               | '@' %_origin_dname_exit
               ) $!_dname_error %_ret . all_wchar;
-    dname = (alnum | [\-_/\\] | [*.@]) ${ fhold; fcall dname_; }; 
+    dname = (alnum | [\-_/\\] | [*.@]) ${ fhold; fcall dname_; };
     # END
 
     # BEGIN - Common r_data item processing
@@ -912,15 +912,15 @@
     salt = (hex_char+ | '-') >_item_length_init %_item_length_exit
            %_item_exit $!_hex_char_error;
 
-#    action _type_data_exit {
- #       if (htons(*(s->r_data_length_position)) != s->r_data_length) {
-  #          SCANNER_WARNING(ZSCANNER_EBAD_RDATA_LENGTH);
-   #         fhold; fgoto err_line;
-    #    }
-    #}
+    action _type_data_exit {
+        if ((rdata_tail - s->r_data) != s->r_data_length) {
+            SCANNER_WARNING(ZSCANNER_EBAD_RDATA_LENGTH);
+            fhold; fgoto err_line;
+        }
+    }
 
     # Hex array with control to forward length statement.
-    type_data = hex_array ;#%_type_data_exit $!_hex_char_error;
+    type_data = hex_array %_type_data_exit $!_hex_char_error;
     # END
 
     # BEGIN - Base64 processing (RFC 4648)
@@ -1552,7 +1552,106 @@
         fhold; fcall r_data_txt; // Same as TXT.
     }
     action _r_data_type { // TYPE12345
-        fhold; fcall r_data_type;
+        switch (s->r_type) { // For known types use standard processing.
+            case KNOT_RRTYPE_A:
+                fhold; fcall r_data_a;
+                break;
+            case KNOT_RRTYPE_NS:
+                fhold; fcall r_data_ns;
+                break;
+            case KNOT_RRTYPE_CNAME:
+                fhold; fcall r_data_ns; // Same as NS.
+                break;
+            case KNOT_RRTYPE_SOA:
+                fhold; fcall r_data_soa;
+                break;
+            case KNOT_RRTYPE_PTR:
+                fhold; fcall r_data_ns; // Same as NS.
+                break;
+            case KNOT_RRTYPE_HINFO:
+                fhold; fcall r_data_hinfo;
+                break;
+            case KNOT_RRTYPE_MINFO:
+                fhold; fcall r_data_minfo;
+                break;
+            case KNOT_RRTYPE_MX:
+                fhold; fcall r_data_mx;
+                break;
+            case KNOT_RRTYPE_TXT:
+                fhold; fcall r_data_txt;
+                break;
+            case KNOT_RRTYPE_RP:
+                fhold; fcall r_data_rp;
+                break;
+            case KNOT_RRTYPE_AFSDB:
+                fhold; fcall r_data_mx; // Same as MX.
+                break;
+            case KNOT_RRTYPE_RT:
+                fhold; fcall r_data_mx; // Same as MX.
+                break;
+            case KNOT_RRTYPE_KEY:
+                fhold; fcall r_data_dnskey; // Same as DNSKEY.
+                break;
+            case KNOT_RRTYPE_AAAA:
+                fhold; fcall r_data_aaaa;
+                break;
+            case KNOT_RRTYPE_LOC:
+                fhold; fcall r_data_loc;
+                break;
+            case KNOT_RRTYPE_SRV:
+                fhold; fcall r_data_srv;
+                break;
+            case KNOT_RRTYPE_NAPTR:
+                fhold; fcall r_data_naptr;
+                break;
+            case KNOT_RRTYPE_KX:
+                fhold; fcall r_data_mx; // Same as MX.
+                break;
+            case KNOT_RRTYPE_CERT:
+                fhold; fcall r_data_cert;
+                break;
+            case KNOT_RRTYPE_DNAME:
+                fhold; fcall r_data_ns; // Same as NS.
+                break;
+            case KNOT_RRTYPE_APL:
+                fhold; fcall r_data_apl;
+                break;
+            case KNOT_RRTYPE_DS:
+                fhold; fcall r_data_ds;
+                break;
+            case KNOT_RRTYPE_SSHFP:
+                fhold; fcall r_data_sshfp;
+                break;
+            case KNOT_RRTYPE_IPSECKEY:
+                fhold; fcall r_data_ipseckey;
+                break;
+            case KNOT_RRTYPE_RRSIG:
+                fhold; fcall r_data_rrsig;
+                break;
+            case KNOT_RRTYPE_NSEC:
+                fhold; fcall r_data_nsec;
+                break;
+            case KNOT_RRTYPE_DNSKEY:
+                fhold; fcall r_data_dnskey;
+                break;
+            case KNOT_RRTYPE_DHCID:
+                fhold; fcall r_data_dhcid;
+                break;
+            case KNOT_RRTYPE_NSEC3:
+                fhold; fcall r_data_nsec3;
+                break;
+            case KNOT_RRTYPE_NSEC3PARAM:
+                fhold; fcall r_data_nsec3param;
+                break;
+            case KNOT_RRTYPE_TLSA:
+                fhold; fcall r_data_tlsa;
+                break;
+            case KNOT_RRTYPE_SPF:
+                fhold; fcall r_data_txt; // Same as TXT.
+                break;
+            default:
+                fhold; fcall r_data_type;
+        }
     }
 
     r_data_a :=
@@ -1570,7 +1669,7 @@
         ) $!_r_data_error %_ret . all_wchar;
 
     r_data_soa :=
-        (sep . 
+        (sep .
          ( hex_r_data
          | r_dname . sep . r_dname . sep . num32 . sep . time32 . sep .
            time32 . sep . time32 . sep . time32
