@@ -2016,6 +2016,7 @@ static int zones_check_tsig_query(const knot_zone_t *zone,
  * and TSIG signature is verified.
  *
  * \note Set parameter 'rcode' according to answering procedure.
+ * \note Function expects RCU to be locked.
  *
  * \retval KNOT_EOK if successful.
  * \retval error if not.
@@ -2033,7 +2034,6 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	/*! \todo [DDNS] Forwarding here. */
 	
 	/* Create log message prefix. */
-	rcu_read_lock();
 	char *keytag = NULL;
 	if (tsig_key) {
 		keytag = knot_dname_to_str(tsig_key->name);
@@ -2044,7 +2044,6 @@ static int zones_process_update_auth(knot_zone_t *zone,
 				   zone_name, r_str ? r_str : "'unknown'");
 	free(r_str);
 	free(keytag);
-	rcu_read_unlock();
 	log_zone_info("%s Started.\n", msg);
 	
 	
@@ -2089,10 +2088,13 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	 *    Switch the zone.
 	 */
 	knot_zone_contents_t *contents_new = NULL;
-	
+	knot_zone_retain(zone); /* Retain pointer for safe RCU unlock. */
+	rcu_read_unlock();      /* Unlock for switch. */
 	dbg_zones_verb("Storing and applying changesets.\n");
 	ret = zones_store_and_apply_chgsets(chgsets, zone, &contents_new, msg, 
 					    XFR_TYPE_UPDATE);
+	rcu_read_lock();        /* Relock */
+	knot_zone_release(zone);/* Release held pointer. */
 	free(msg);
 	msg = NULL;
 	
@@ -2673,6 +2675,12 @@ int zones_process_update(knot_nameserver_t *nameserver,
 			rcode = KNOT_RCODE_REFUSED;
 		}
 	}
+	
+	/* Check if zone is not discarded. */
+	if (zone && (knot_zone_flags(zone) & KNOT_ZONE_DISCARDED)) {
+		rcode = KNOT_RCODE_SERVFAIL;
+	}
+	
 	if (rcode != KNOT_RCODE_NOERROR) {
 		dbg_zones_verb("Failed preparing response structure: %s.\n",
 		               knot_strerror(rcode));
@@ -2686,6 +2694,10 @@ int zones_process_update(knot_nameserver_t *nameserver,
 		rcu_read_unlock();
 		return KNOT_EOK;
 	}
+	
+	/* Lock zone for xfers. */
+	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
+	pthread_mutex_lock(&zd->xfr_in.lock);
 
 	/* Now we have zone. Verify TSIG if it is in the packet. */
 	size_t rsize_max = *rsize;
@@ -2709,14 +2721,9 @@ int zones_process_update(knot_nameserver_t *nameserver,
 	
 	/* Process query. */
 	if (ret == KNOT_EOK) {
-		/*! \todo ref #937 This is dangerous, but zone contents needs
-		 * to be switched. We have to lock the zone to prevent any
-		 * parallel updates.
-		 */
-		rcu_read_unlock();
+		/* Expects RCU locked. */
 		ret = zones_process_update_auth(zone, resp, resp_wire, rsize,
 						&rcode, addr, tsig_key_zone);
-		rcu_read_lock();
 	} else {
 		if (tsig_rcode != KNOT_RCODE_NOERROR) {
 			dbg_zones_verb("Failed TSIG check: %s, TSIG err: %u.\n",
@@ -2740,6 +2747,7 @@ int zones_process_update(knot_nameserver_t *nameserver,
 	/* Finish processing if no TSIG signing is required. */
 	if (!tsig_key_zone) {
 		knot_packet_free(&resp);
+		pthread_mutex_unlock(&zd->xfr_in.lock);
 		rcu_read_unlock();
 		return ret;
 	}
@@ -2755,6 +2763,7 @@ int zones_process_update(knot_nameserver_t *nameserver,
 		uint8_t *digest = (uint8_t *)malloc(digest_len);
 		if (digest == NULL) {
 			knot_packet_free(&resp);
+			pthread_mutex_unlock(&zd->xfr_in.lock);
 			rcu_read_unlock();
 			return KNOT_ENOMEM;
 		}
@@ -2768,6 +2777,7 @@ int zones_process_update(knot_nameserver_t *nameserver,
 	}
 
 	knot_packet_free(&resp);
+	pthread_mutex_unlock(&zd->xfr_in.lock);
 	rcu_read_unlock();
 
 	return KNOTD_EOK;
