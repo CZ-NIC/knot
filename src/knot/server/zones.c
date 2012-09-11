@@ -2669,10 +2669,6 @@ int zones_process_update(knot_nameserver_t *nameserver,
 		break;
 	}
 	
-	/* Lock zone for xfers. */
-	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
-	pthread_mutex_lock(&zd->xfr_in.lock);
-	
 	/* Handling of errors when no TSIG is present. */
 	if (rcode == KNOT_RCODE_NOERROR && !knot_packet_tsig(query)) {
 		if (!zone || knot_packet_qclass(query) != KNOT_CLASS_IN) {
@@ -2681,7 +2677,7 @@ int zones_process_update(knot_nameserver_t *nameserver,
 	}
 	
 	/* Check if zone is not discarded. */
-	if (knot_zone_flags(zone) & KNOT_ZONE_DISCARDED) {
+	if (zone && (knot_zone_flags(zone) & KNOT_ZONE_DISCARDED)) {
 		rcode = KNOT_RCODE_SERVFAIL;
 	}
 	
@@ -2695,10 +2691,13 @@ int zones_process_update(knot_nameserver_t *nameserver,
 		                          knot_packet_size(query),
 		                          rcode, resp_wire, rsize);
 		knot_packet_free(&resp);
-		pthread_mutex_unlock(&zd->xfr_in.lock);
 		rcu_read_unlock();
 		return KNOT_EOK;
 	}
+	
+	/* Lock zone for xfers. */
+	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
+	pthread_mutex_lock(&zd->xfr_in.lock);
 
 	/* Now we have zone. Verify TSIG if it is in the packet. */
 	size_t rsize_max = *rsize;
