@@ -36,6 +36,10 @@ foo.example.             IN APL 1:192.168.32.0/21 !1:192.168.38.0/28
                                   1:192.168.42.128/25 )
 _axfr.sbo.example.       IN APL 1:127.0.0.1/32 1:172.16.255.0/22
 multicast.example.       IN APL 1:224.0.0.0/4  2:FF00:0:0:0:0:0:0:0/8
+multicast.example.       IN APL \# 0
+multicast.example.       IN APL 
+multicast.example.       IN APL
+;multicast.example.       IN A
 
 cambridge-net.kei.com.        LOC   42 21 54 N 71 06 18 W -24m 30m
 loiosh.kei.com.               LOC   (42 21 43.952 N 71 5 6.344 W

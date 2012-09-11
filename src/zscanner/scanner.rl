@@ -102,11 +102,13 @@ int scanner_process(char      *start,
     int16_t  window;
     int      ret;
 
-    // Next 2 variables are for better performance.
+    // Next 3 variables are for better performance.
     // Restoring r_data pointer to next free space.
     uint8_t *rdata_tail = s->r_data + s->r_data_tail;
     // Initialization of the last r_data byte.
     uint8_t *rdata_stop = s->r_data + MAX_RDATA_LENGTH - 1;
+    // Initialization of the r_type.
+    uint16_t r_type = s->r_type_tmp;
 
     // Restoring scanner states.
     int cs  = s->cs;
@@ -158,8 +160,9 @@ int scanner_process(char      *start,
     s->top = top;
     memcpy(s->stack, stack, sizeof(stack));
 
-    // Storing r_data pointer
+    // Storing r_data pointer and r_type
     s->r_data_tail = rdata_tail - s->r_data;
+    s->r_type_tmp = r_type;
 
     // Storing unprocessed token shift
     if (ts != NULL) {

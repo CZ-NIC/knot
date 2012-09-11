@@ -9,6 +9,9 @@ $TTL    1
 @   TYPE1 0.0.0.0           ; TYPE
 
 ; KO
+@   A
+@   A                   ; Empty rdata
+@   A \# 0              ; Hex empty rdata
 @   A 0.0.0.256         ; 8bit overflow
 @   A 0.0.0             ; Short address
 @   A 0.0.0.A           ; Bad character

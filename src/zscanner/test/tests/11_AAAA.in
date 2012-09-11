@@ -11,6 +11,9 @@ $TTL    1
 @   AAAA ::                 ; Double colon
 
 ; KO
+@   AAAA
+@   AAAA                   ; Empty rdata
+@   AAAA \# 0              ; Hex empty rdata
 @   AAAA 0::FFFFF          ; 16bit overflow
 @   AAAA 0:0:0:0:0:0:0     ; Short address
 @   AAAA 0:0:0:0:0:0:0:X   ; Bad character

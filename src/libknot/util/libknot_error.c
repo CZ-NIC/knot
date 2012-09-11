@@ -88,6 +88,7 @@ const error_table_t knot_error_msgs[] = {
 	{ZSCANNER_EBAD_TIME, "Bad time!"},
 	{ZSCANNER_EBAD_BITMAP, "Bad bitmap!"},
 	{ZSCANNER_ETEXT_OVERFLOW, "Text is too long!"},
+	{ZSCANNER_EBAD_TEXT_CHAR, "Bad text character!"},
 	{ZSCANNER_EBAD_TEXT, "Bad text string!"},
 	{ZSCANNER_EBAD_DIRECTIVE, "Bad directive!"},
 	{ZSCANNER_EBAD_TTL, "Bad zone TTL!"},
@@ -97,6 +98,8 @@ const error_table_t knot_error_msgs[] = {
 	{ZSCANNER_EUNPROCESSED_INCLUDE, "Include file processing error!"},
 	{ZSCANNER_EUNOPENED_INCLUDE, "Include file opening error!"},
 	{ZSCANNER_EBAD_RDATA_LENGTH, "The rdata length statement is incorrect!"},
+	{ZSCANNER_ECANNOT_TEXT_DATA, "Unable to process text form for this type!"},
+	{ZSCANNER_EBAD_HEX_DATA, "Bad hexadecimal rdata format!"},
 	{ZSCANNER_EBAD_LOC_DATA, "Bad zone location data!"},
 
 	{KNOT_ERROR, 0}

@@ -344,7 +344,7 @@
 
     action _type_number_exit {
         if (s->number64 <= UINT16_MAX) {
-            s->r_type = (uint16_t)(s->number64);
+            r_type = (uint16_t)(s->number64);
         }
         else {
             SCANNER_WARNING(ZSCANNER_ENUMBER16_OVERFLOW);
@@ -895,7 +895,8 @@
            )
           ) >_apl_init %_apl_exit $!_apl_error;
 
-    apl_array = apl . (sep . apl)* . sep?;
+    # Array of APL records (can be empty).
+    apl_array = apl? . (sep . apl)* . sep?;
     # END
 
     # BEGIN - Hexadecimal string array processing
@@ -933,8 +934,13 @@
         }
     }
 
+    action _type_data_error {
+        SCANNER_WARNING(ZSCANNER_EBAD_HEX_RDATA);
+        fhold; fgoto err_line;
+    }
+
     # Hex array with control to forward length statement.
-    type_data = hex_array %_type_data_exit $!_hex_char_error;
+    type_data = hex_array %_type_data_exit $!_type_data_error;
     # END
 
     # BEGIN - Base64 processing (RFC 4648)
@@ -1408,19 +1414,16 @@
         fhold; fgoto err_line;
     }
 
-    hex_r_data_ :=
+    nonempty_hex_r_data :=
         (sep . length_number . sep . type_data)
         $!_hex_r_data_error %_ret . end_wchar;
-    hex_r_data = "\\#" @{ fcall hex_r_data_; };
 
-    unknown_hex_r_data_ :=
+    hex_r_data :=
         (sep .
          ( ('0'                             %_ret . all_wchar)
          | (length_number . sep . type_data %_ret . end_wchar)
          )
         ) $!_hex_r_data_error;
-    unknown_hex_r_data = "\\#" @{ fcall unknown_hex_r_data_; };
-    # END
 
     # BEGIN - Rdata processing
     action _r_data_init {
@@ -1432,441 +1435,265 @@
         SCANNER_WARNING(ZSCANNER_EBAD_RDATA);
         fhold; fgoto err_line;
     }
+
+    r_data_a :=
+        (ipv4_addr_write)
+        $!_r_data_error %_ret . all_wchar;
+
+    r_data_ns :=
+        (r_dname)
+        $!_r_data_error %_ret . all_wchar;
+
+    r_data_soa :=
+        (r_dname . sep . r_dname . sep . num32 . sep . time32 . sep .
+         time32 . sep . time32 . sep . time32)
+        $!_r_data_error %_ret . all_wchar;
+
+    r_data_hinfo :=
+        (text_item . sep . text_item)
+        $!_r_data_error %_ret . all_wchar;
+
+    r_data_minfo :=
+        (r_dname . sep . r_dname)
+        $!_r_data_error %_ret . all_wchar;
+
+    r_data_mx :=
+        (num16 . sep . r_dname)
+        $!_r_data_error %_ret . all_wchar;
+
+    r_data_txt :=
+        (text_array)
+        $!_r_data_error %_ret . end_wchar;
+
+    r_data_rp :=
+        (r_dname . sep . r_dname)
+        $!_r_data_error %_ret . all_wchar;
+
+    r_data_aaaa :=
+        (ipv6_addr_write)
+        $!_r_data_error %_ret . all_wchar;
+
+    r_data_loc :=
+        (loc)
+        $!_r_data_error %_ret . end_wchar;
+
+    r_data_srv :=
+        (num16 . sep . num16 . sep . num16 . sep . r_dname)
+        $!_r_data_error %_ret . all_wchar;
+
+    r_data_naptr :=
+        (num16 . sep . num16 . sep . text_item . sep . text_item . sep .
+         text_item . sep . r_dname)
+        $!_r_data_error %_ret . all_wchar;
+
+    r_data_cert :=
+        (num16 . sep . num16 . sep . num8 . sep . base64)
+        $!_r_data_error %_ret . end_wchar;
+
+    r_data_apl :=
+        (apl_array)
+        $!_r_data_error %_ret . end_wchar;
+
+    r_data_ds :=
+        (num16 . sep . num8 . sep . num8 . sep . hex_array)
+        $!_r_data_error %_ret . end_wchar;
+
+    r_data_sshfp :=
+        (num8 . sep . num8 . sep . hex_array)
+        $!_r_data_error %_ret . end_wchar;
+
+    r_data_ipseckey :=
+        (num8 . sep . gateway . sep . base64)
+        $!_r_data_error %_ret . end_wchar;
+
+    r_data_rrsig :=
+        (type_num . sep . num8 . sep . num8 . sep . num32 . sep .
+         timestamp . sep . timestamp . sep . num16 . sep . r_dname .
+         sep . base64)
+        $!_r_data_error %_ret . end_wchar;
+
+    r_data_nsec :=
+        (r_dname . bitmap)
+        $!_r_data_error %_ret . all_wchar;
+
+    r_data_dnskey :=
+        (num16 . sep . num8 . sep . num8 . sep . base64)
+        $!_r_data_error %_ret . end_wchar;
+
+    r_data_dhcid :=
+        (base64)
+        $!_r_data_error %_ret . end_wchar;
+
+    r_data_nsec3 :=
+        (num8 . sep . num8 . sep . num16 . sep . salt . sep . hash . bitmap)
+        $!_r_data_error %_ret . all_wchar;
+
+    r_data_nsec3param :=
+        (num8 . sep . num8 . sep . num16 . sep . salt)
+        $!_r_data_error %_ret . all_wchar;
+
+    r_data_tlsa :=
+        (num8 . sep . num8 . sep . num8 . sep . hex_array)
+        $!_r_data_error %_ret . end_wchar;
+
+    action _text_r_data {
+        fhold;
+        switch (r_type) {
+            case KNOT_RRTYPE_A:
+                fcall r_data_a;
+            case KNOT_RRTYPE_NS:
+            case KNOT_RRTYPE_CNAME:
+            case KNOT_RRTYPE_PTR:
+            case KNOT_RRTYPE_DNAME:
+                fcall r_data_ns;
+            case KNOT_RRTYPE_SOA:
+                fcall r_data_soa;
+            case KNOT_RRTYPE_HINFO:
+                fcall r_data_hinfo;
+            case KNOT_RRTYPE_MINFO:
+                fcall r_data_minfo;
+            case KNOT_RRTYPE_MX:
+            case KNOT_RRTYPE_AFSDB:
+            case KNOT_RRTYPE_RT:
+            case KNOT_RRTYPE_KX:
+                fcall r_data_mx;
+            case KNOT_RRTYPE_TXT:
+            case KNOT_RRTYPE_SPF:
+                fcall r_data_txt;
+            case KNOT_RRTYPE_RP:
+                fcall r_data_rp;
+            case KNOT_RRTYPE_AAAA:
+                fcall r_data_aaaa;
+            case KNOT_RRTYPE_LOC:
+                fcall r_data_loc;
+            case KNOT_RRTYPE_SRV:
+                fcall r_data_srv;
+            case KNOT_RRTYPE_NAPTR:
+                fcall r_data_naptr;
+            case KNOT_RRTYPE_CERT:
+                fcall r_data_cert;
+            case KNOT_RRTYPE_APL:
+                fcall r_data_apl;
+            case KNOT_RRTYPE_DS:
+                fcall r_data_ds;
+            case KNOT_RRTYPE_SSHFP:
+                fcall r_data_sshfp;
+            case KNOT_RRTYPE_IPSECKEY:
+                fcall r_data_ipseckey;
+            case KNOT_RRTYPE_RRSIG:
+                fcall r_data_rrsig;
+            case KNOT_RRTYPE_NSEC:
+                fcall r_data_nsec;
+            case KNOT_RRTYPE_KEY:
+            case KNOT_RRTYPE_DNSKEY:
+                fcall r_data_dnskey;
+            case KNOT_RRTYPE_DHCID:
+                fcall r_data_dhcid;
+            case KNOT_RRTYPE_NSEC3:
+                fcall r_data_nsec3;
+            case KNOT_RRTYPE_NSEC3PARAM:
+                fcall r_data_nsec3param;
+            case KNOT_RRTYPE_TLSA:
+                fcall r_data_tlsa;
+            default:
+                SCANNER_WARNING(ZSCANNER_ECANNOT_TEXT_DATA);
+                fgoto err_line;
+        }
+    }
+    action _hex_r_data {
+        switch (r_type) {
+            case KNOT_RRTYPE_A:
+            case KNOT_RRTYPE_NS:
+            case KNOT_RRTYPE_CNAME:
+            case KNOT_RRTYPE_PTR:
+            case KNOT_RRTYPE_DNAME:
+            case KNOT_RRTYPE_SOA:
+            case KNOT_RRTYPE_HINFO:
+            case KNOT_RRTYPE_MINFO:
+            case KNOT_RRTYPE_MX:
+            case KNOT_RRTYPE_AFSDB:
+            case KNOT_RRTYPE_RT:
+            case KNOT_RRTYPE_KX:
+            case KNOT_RRTYPE_TXT:
+            case KNOT_RRTYPE_SPF:
+            case KNOT_RRTYPE_RP:
+            case KNOT_RRTYPE_AAAA:
+            case KNOT_RRTYPE_LOC:
+            case KNOT_RRTYPE_SRV:
+            case KNOT_RRTYPE_NAPTR:
+            case KNOT_RRTYPE_CERT:
+            case KNOT_RRTYPE_DS:
+            case KNOT_RRTYPE_SSHFP:
+            case KNOT_RRTYPE_IPSECKEY:
+            case KNOT_RRTYPE_RRSIG:
+            case KNOT_RRTYPE_NSEC:
+            case KNOT_RRTYPE_KEY:
+            case KNOT_RRTYPE_DNSKEY:
+            case KNOT_RRTYPE_DHCID:
+            case KNOT_RRTYPE_NSEC3:
+            case KNOT_RRTYPE_NSEC3PARAM:
+            case KNOT_RRTYPE_TLSA:
+                fcall nonempty_hex_r_data;
+            case KNOT_RRTYPE_APL:
+            default:
+                fcall hex_r_data;
+        }
+    }
+
+    # rdata can be in text or hex format with leading "\#" string
+    r_data = ( sep  . ^('\\' | all_wchar)     $_text_r_data  # Text format.
+             | sep  . '\\' . ^'#' ${ fhold; } $_text_r_data  # Text format.
+             | sep  . '\\' .  '#'             $_hex_r_data   # Hex format.
+             | sep? . end_wchar               $_text_r_data  # Empty rdata.
+             ) >_r_data_init $!_r_data_error;
+    # END
+
+    # BEGIN - Record type processing
     action _r_type_error {
         SCANNER_WARNING(ZSCANNER_EUNSUPPORTED_TYPE);
         fhold; fgoto err_line;
     }
 
-    action _r_data_a {
-        s->r_type = KNOT_RRTYPE_A;
-        fhold; fcall r_data_a;
-    }
-    action _r_data_ns {
-        s->r_type = KNOT_RRTYPE_NS;
-        fhold; fcall r_data_ns;
-    }
-    action _r_data_cname {
-        s->r_type = KNOT_RRTYPE_CNAME;
-        fhold; fcall r_data_ns; // Same as NS.
-    }
-    action _r_data_soa {
-        s->r_type = KNOT_RRTYPE_SOA;
-        fhold; fcall r_data_soa;
-    }
-    action _r_data_ptr {
-        s->r_type = KNOT_RRTYPE_PTR;
-        fhold; fcall r_data_ns; // Same as NS.
-    }
-    action _r_data_hinfo {
-        s->r_type = KNOT_RRTYPE_HINFO;
-        fhold; fcall r_data_hinfo;
-    }
-    action _r_data_minfo {
-        s->r_type = KNOT_RRTYPE_MINFO;
-        fhold; fcall r_data_minfo;
-    }
-    action _r_data_mx {
-        s->r_type = KNOT_RRTYPE_MX;
-        fhold; fcall r_data_mx;
-    }
-    action _r_data_txt {
-        s->r_type = KNOT_RRTYPE_TXT;
-        fhold; fcall r_data_txt;
-    }
-    action _r_data_rp {
-        s->r_type = KNOT_RRTYPE_RP;
-        fhold; fcall r_data_rp;
-    }
-    action _r_data_afsdb {
-        s->r_type = KNOT_RRTYPE_AFSDB;
-        fhold; fcall r_data_mx; // Same as MX.
-    }
-    action _r_data_rt {
-        s->r_type = KNOT_RRTYPE_RT;
-        fhold; fcall r_data_mx; // Same as MX.
-    }
-    action _r_data_key {
-        s->r_type = KNOT_RRTYPE_KEY;
-        fhold; fcall r_data_dnskey; // Same as DNSKEY.
-    }
-    action _r_data_aaaa {
-        s->r_type = KNOT_RRTYPE_AAAA;
-        fhold; fcall r_data_aaaa;
-    }
-    action _r_data_loc {
-        s->r_type = KNOT_RRTYPE_LOC;
-        fhold; fcall r_data_loc;
-    }
-    action _r_data_srv {
-        s->r_type = KNOT_RRTYPE_SRV;
-        fhold; fcall r_data_srv;
-    }
-    action _r_data_naptr {
-        s->r_type = KNOT_RRTYPE_NAPTR;
-        fhold; fcall r_data_naptr;
-    }
-    action _r_data_kx {
-        s->r_type = KNOT_RRTYPE_KX;
-        fhold; fcall r_data_mx; // Same as MX.
-    }
-    action _r_data_cert {
-        s->r_type = KNOT_RRTYPE_CERT;
-        fhold; fcall r_data_cert;
-    }
-    action _r_data_dname {
-        s->r_type = KNOT_RRTYPE_DNAME;
-        fhold; fcall r_data_ns; // Same as NS.
-    }
-    action _r_data_apl {
-        s->r_type = KNOT_RRTYPE_APL;
-        fhold; fcall r_data_apl;
-    }
-    action _r_data_ds {
-        s->r_type = KNOT_RRTYPE_DS;
-        fhold; fcall r_data_ds;
-    }
-    action _r_data_sshfp {
-        s->r_type = KNOT_RRTYPE_SSHFP;
-        fhold; fcall r_data_sshfp;
-    }
-    action _r_data_ipseckey {
-        s->r_type = KNOT_RRTYPE_IPSECKEY;
-        fhold; fcall r_data_ipseckey;
-    }
-    action _r_data_rrsig {
-        s->r_type = KNOT_RRTYPE_RRSIG;
-        fhold; fcall r_data_rrsig;
-    }
-    action _r_data_nsec {
-        s->r_type = KNOT_RRTYPE_NSEC;
-        fhold; fcall r_data_nsec;
-    }
-    action _r_data_dnskey {
-        s->r_type = KNOT_RRTYPE_DNSKEY;
-        fhold; fcall r_data_dnskey;
-    }
-    action _r_data_dhcid {
-        s->r_type = KNOT_RRTYPE_DHCID;
-        fhold; fcall r_data_dhcid;
-    }
-    action _r_data_nsec3 {
-        s->r_type = KNOT_RRTYPE_NSEC3;
-        fhold; fcall r_data_nsec3;
-    }
-    action _r_data_nsec3param {
-        s->r_type = KNOT_RRTYPE_NSEC3PARAM;
-        fhold; fcall r_data_nsec3param;
-    }
-    action _r_data_tlsa {
-        s->r_type = KNOT_RRTYPE_TLSA;
-        fhold; fcall r_data_tlsa;
-    }
-    action _r_data_spf {
-        s->r_type = KNOT_RRTYPE_SPF;
-        fhold; fcall r_data_txt; // Same as TXT.
-    }
-    action _r_data_type { // TYPE12345
-        switch (s->r_type) { // For known types use standard processing.
-            case KNOT_RRTYPE_A:
-                fhold; fcall r_data_a;
-                break;
-            case KNOT_RRTYPE_NS:
-            case KNOT_RRTYPE_CNAME:
-            case KNOT_RRTYPE_PTR:
-            case KNOT_RRTYPE_DNAME:
-                fhold; fcall r_data_ns;
-                break;
-            case KNOT_RRTYPE_SOA:
-                fhold; fcall r_data_soa;
-                break;
-            case KNOT_RRTYPE_HINFO:
-                fhold; fcall r_data_hinfo;
-                break;
-            case KNOT_RRTYPE_MINFO:
-                fhold; fcall r_data_minfo;
-                break;
-            case KNOT_RRTYPE_MX:
-            case KNOT_RRTYPE_AFSDB:
-            case KNOT_RRTYPE_RT:
-            case KNOT_RRTYPE_KX:
-                fhold; fcall r_data_mx;
-                break;
-            case KNOT_RRTYPE_TXT:
-            case KNOT_RRTYPE_SPF:
-                fhold; fcall r_data_txt;
-                break;
-            case KNOT_RRTYPE_RP:
-                fhold; fcall r_data_rp;
-                break;
-            case KNOT_RRTYPE_AAAA:
-                fhold; fcall r_data_aaaa;
-                break;
-            case KNOT_RRTYPE_LOC:
-                fhold; fcall r_data_loc;
-                break;
-            case KNOT_RRTYPE_SRV:
-                fhold; fcall r_data_srv;
-                break;
-            case KNOT_RRTYPE_NAPTR:
-                fhold; fcall r_data_naptr;
-                break;
-            case KNOT_RRTYPE_CERT:
-                fhold; fcall r_data_cert;
-                break;
-            case KNOT_RRTYPE_APL:
-                fhold; fcall r_data_apl;
-                break;
-            case KNOT_RRTYPE_DS:
-                fhold; fcall r_data_ds;
-                break;
-            case KNOT_RRTYPE_SSHFP:
-                fhold; fcall r_data_sshfp;
-                break;
-            case KNOT_RRTYPE_IPSECKEY:
-                fhold; fcall r_data_ipseckey;
-                break;
-            case KNOT_RRTYPE_RRSIG:
-                fhold; fcall r_data_rrsig;
-                break;
-            case KNOT_RRTYPE_NSEC:
-                fhold; fcall r_data_nsec;
-                break;
-            case KNOT_RRTYPE_KEY:
-            case KNOT_RRTYPE_DNSKEY:
-                fhold; fcall r_data_dnskey;
-                break;
-            case KNOT_RRTYPE_DHCID:
-                fhold; fcall r_data_dhcid;
-                break;
-            case KNOT_RRTYPE_NSEC3:
-                fhold; fcall r_data_nsec3;
-                break;
-            case KNOT_RRTYPE_NSEC3PARAM:
-                fhold; fcall r_data_nsec3param;
-                break;
-            case KNOT_RRTYPE_TLSA:
-                fhold; fcall r_data_tlsa;
-                break;
-            default:
-                fhold; fcall r_data_type;
-        }
-    }
-
-    r_data_a :=
-        (sep .
-         ( hex_r_data
-         | ipv4_addr_write
-         )
-        ) $!_r_data_error %_ret . all_wchar;
-
-    r_data_ns :=
-        (sep .
-         ( hex_r_data
-         | r_dname
-         )
-        ) $!_r_data_error %_ret . all_wchar;
-
-    r_data_soa :=
-        (sep .
-         ( hex_r_data
-         | r_dname . sep . r_dname . sep . num32 . sep . time32 . sep .
-           time32 . sep . time32 . sep . time32
-         )
-        ) $!_r_data_error %_ret . all_wchar;
-
-    r_data_hinfo :=
-        (sep .
-         ( hex_r_data
-         | text_item . sep . text_item
-         )
-        ) $!_r_data_error %_ret . all_wchar;
-
-    r_data_minfo :=
-        (sep .
-         ( hex_r_data
-         | r_dname . sep . r_dname
-         )
-        ) $!_r_data_error %_ret . all_wchar;
-
-    r_data_mx :=
-        (sep .
-         ( hex_r_data
-         | num16 . sep . r_dname
-         )
-        ) $!_r_data_error %_ret . all_wchar;
-
-    r_data_txt :=
-        (sep .
-         ( hex_r_data
-         | text_array
-         )
-        ) $!_r_data_error %_ret . end_wchar;
-
-    r_data_rp :=
-        (sep .
-         ( hex_r_data
-         | r_dname . sep . r_dname
-         )
-        ) $!_r_data_error %_ret . all_wchar;
-
-    r_data_aaaa :=
-        (sep .
-         ( hex_r_data
-         | ipv6_addr_write
-         )
-        ) $!_r_data_error %_ret . all_wchar;
-
-    r_data_loc :=
-        (sep .
-         ( hex_r_data
-         | loc
-         )
-        ) $!_r_data_error %_ret . end_wchar;
-
-    r_data_srv :=
-        (sep .
-         ( hex_r_data
-         | num16 . sep . num16 . sep . num16 . sep . r_dname
-         )
-        ) $!_r_data_error %_ret . all_wchar;
-
-    r_data_naptr :=
-        (sep .
-         ( hex_r_data
-         | num16 . sep . num16 . sep . text_item . sep . text_item . sep .
-           text_item . sep . r_dname
-         )
-        ) $!_r_data_error %_ret . all_wchar;
-
-    r_data_cert :=
-        (sep .
-         ( hex_r_data
-         | num16 . sep . num16 . sep . num8 . sep . base64
-         )
-        ) $!_r_data_error %_ret . end_wchar;
-
-    r_data_apl :=
-        (sep .
-         ( hex_r_data
-         | apl_array
-         )
-        ) $!_r_data_error %_ret . end_wchar;
-
-    r_data_ds :=
-        (sep .
-         ( hex_r_data
-         | num16 . sep . num8 . sep . num8 . sep . hex_array
-         )
-        ) $!_r_data_error %_ret . end_wchar;
-
-    r_data_sshfp :=
-        (sep .
-         ( hex_r_data
-         | num8 . sep . num8 . sep . hex_array
-         )
-        ) $!_r_data_error %_ret . end_wchar;
-
-    r_data_ipseckey :=
-        (sep .
-         ( hex_r_data
-         | num8 . sep . gateway . sep . base64
-         )
-        ) $!_r_data_error %_ret . end_wchar;
-
-    r_data_rrsig :=
-        (sep .
-         ( hex_r_data
-         | type_num . sep . num8 . sep . num8 . sep . num32 . sep .
-           timestamp . sep . timestamp . sep . num16 . sep . r_dname .
-           sep . base64
-         )
-        ) $!_r_data_error %_ret . end_wchar;
-
-    r_data_nsec :=
-        (sep .
-         ( hex_r_data
-         | r_dname . bitmap
-         )
-        ) $!_r_data_error %_ret . all_wchar;
-
-    r_data_dnskey :=
-        (sep .
-         ( hex_r_data
-         | num16 . sep . num8 . sep . num8 . sep . base64
-         )
-        ) $!_r_data_error %_ret . end_wchar;
-
-    r_data_dhcid :=
-        (sep .
-         ( hex_r_data
-         | base64
-         )
-        ) $!_r_data_error %_ret . end_wchar;
-
-    r_data_nsec3 :=
-        (sep .
-         ( hex_r_data
-         | num8 . sep . num8 . sep . num16 . sep . salt . sep . hash . bitmap
-         )
-        ) $!_r_data_error %_ret . all_wchar;
-
-    r_data_nsec3param :=
-        (sep .
-         ( hex_r_data
-         | num8 . sep . num8 . sep . num16 . sep . salt
-         )
-        ) $!_r_data_error %_ret . all_wchar;
-
-    r_data_tlsa :=
-        (sep .
-         ( hex_r_data
-         | num8 . sep . num8 . sep . num8 . sep . hex_array
-         )
-        ) $!_r_data_error %_ret . end_wchar;
-
-    r_data_type :=
-        (sep . unknown_hex_r_data)
-        $!_r_data_error %_ret . all_wchar;
-
-    r_type_r_data =
-        ( "A"i                  %_r_data_a
-        | "NS"i                 %_r_data_ns
-        | "CNAME"i              %_r_data_cname
-        | "SOA"i                %_r_data_soa
-        | "PTR"i                %_r_data_ptr
-        | "HINFO"i              %_r_data_hinfo
-        | "MINFO"i              %_r_data_minfo
-        | "MX"i                 %_r_data_mx
-        | "TXT"i                %_r_data_txt
-        | "RP"i                 %_r_data_rp
-        | "AFSDB"i              %_r_data_afsdb
-        | "RT"i                 %_r_data_rt
-        | "KEY"i                %_r_data_key
-        | "AAAA"i               %_r_data_aaaa
-        | "LOC"i                %_r_data_loc
-        | "SRV"i                %_r_data_srv
-        | "NAPTR"i              %_r_data_naptr
-        | "KX"i                 %_r_data_kx
-        | "CERT"i               %_r_data_cert
-        | "DNAME"i              %_r_data_dname
-        | "APL"i                %_r_data_apl
-        | "DS"i                 %_r_data_ds
-        | "SSHFP"i              %_r_data_sshfp
-        | "IPSECKEY"i           %_r_data_ipseckey
-        | "RRSIG"i              %_r_data_rrsig
-        | "NSEC"i               %_r_data_nsec
-        | "DNSKEY"i             %_r_data_dnskey
-        | "DHCID"i              %_r_data_dhcid
-        | "NSEC3"i              %_r_data_nsec3
-        | "NSEC3PARAM"i         %_r_data_nsec3param
-        | "TLSA"i               %_r_data_tlsa
-        | "SPF"i                %_r_data_spf
-        | "TYPE"i . type_number %_r_data_type
-        ) >_r_data_init $!_r_type_error . all_wchar;
+    r_type =
+        ( "A"i          %{ r_type = KNOT_RRTYPE_A; }
+        | "NS"i         %{ r_type = KNOT_RRTYPE_NS; }
+        | "CNAME"i      %{ r_type = KNOT_RRTYPE_CNAME; }
+        | "SOA"i        %{ r_type = KNOT_RRTYPE_SOA; }
+        | "PTR"i        %{ r_type = KNOT_RRTYPE_PTR; }
+        | "HINFO"i      %{ r_type = KNOT_RRTYPE_HINFO; }
+        | "MINFO"i      %{ r_type = KNOT_RRTYPE_MINFO; }
+        | "MX"i         %{ r_type = KNOT_RRTYPE_MX; }
+        | "TXT"i        %{ r_type = KNOT_RRTYPE_TXT; }
+        | "RP"i         %{ r_type = KNOT_RRTYPE_RP; }
+        | "AFSDB"i      %{ r_type = KNOT_RRTYPE_AFSDB; }
+        | "RT"i         %{ r_type = KNOT_RRTYPE_RT; }
+        | "KEY"i        %{ r_type = KNOT_RRTYPE_KEY; }
+        | "AAAA"i       %{ r_type = KNOT_RRTYPE_AAAA; }
+        | "LOC"i        %{ r_type = KNOT_RRTYPE_LOC; }
+        | "SRV"i        %{ r_type = KNOT_RRTYPE_SRV; }
+        | "NAPTR"i      %{ r_type = KNOT_RRTYPE_NAPTR; }
+        | "KX"i         %{ r_type = KNOT_RRTYPE_KX; }
+        | "CERT"i       %{ r_type = KNOT_RRTYPE_CERT; }
+        | "DNAME"i      %{ r_type = KNOT_RRTYPE_DNAME; }
+        | "APL"i        %{ r_type = KNOT_RRTYPE_APL; }
+        | "DS"i         %{ r_type = KNOT_RRTYPE_DS; }
+        | "SSHFP"i      %{ r_type = KNOT_RRTYPE_SSHFP; }
+        | "IPSECKEY"i   %{ r_type = KNOT_RRTYPE_IPSECKEY; }
+        | "RRSIG"i      %{ r_type = KNOT_RRTYPE_RRSIG; }
+        | "NSEC"i       %{ r_type = KNOT_RRTYPE_NSEC; }
+        | "DNSKEY"i     %{ r_type = KNOT_RRTYPE_DNSKEY; }
+        | "DHCID"i      %{ r_type = KNOT_RRTYPE_DHCID; }
+        | "NSEC3"i      %{ r_type = KNOT_RRTYPE_NSEC3; }
+        | "NSEC3PARAM"i %{ r_type = KNOT_RRTYPE_NSEC3PARAM; }
+        | "TLSA"i       %{ r_type = KNOT_RRTYPE_TLSA; }
+        | "SPF"i        %{ r_type = KNOT_RRTYPE_SPF; }
+        | "TYPE"i . type_number
+        ) $!_r_type_error;
     # END
 
     # BEGIN - Top level processing
     action _record_exit {
+        s->r_type = r_type;
         s->r_data_length = (uint16_t)(rdata_tail - s->r_data);
         s->process_record(s);
     }
@@ -1878,7 +1705,7 @@
         | (r_ttl   . sep . ((r_class . sep) | (zlen %_default_r_class_exit)))
         | zlen %_default_r_class_exit %_default_r_ttl_exit
         ) $!_r_type_error .
-        r_type_r_data .
+        r_type . r_data .
         rest %_record_exit .
         newline;
 
