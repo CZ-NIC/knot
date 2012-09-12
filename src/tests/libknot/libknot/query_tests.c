@@ -19,7 +19,6 @@
 #include <stdint.h>
 
 #include "packet_tests.h"
-#include "libknot/util/error.h"
 #include "libknot/packet/packet.h"
 #include "libknot/util/wire.h"
 #include "libknot/packet/query.h"
@@ -52,9 +51,9 @@ static int test_query_init()
 		knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
 	assert(query);
 	lives_ok({
-		if (knot_query_init(NULL) != KNOT_EBADARG) {
+		if (knot_query_init(NULL) != KNOT_EINVAL) {
 			diag("Calling query_init with NULL query did "
-			     "not return KNOT_EBADARG!");
+			     "not return KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
@@ -101,19 +100,19 @@ static int test_query_set_question()
 	question->qclass = rrset->rclass;
 
 	lives_ok({
-		if (knot_query_set_question(NULL, NULL) != KNOT_EBADARG) {
+		if (knot_query_set_question(NULL, NULL) != KNOT_EINVAL) {
 			diag("Calling query_set_question with NULL");
 			errors++;
 		}
 		lived = 1;
 		lived = 0;
-		if (knot_query_set_question(query, NULL) != KNOT_EBADARG) {
+		if (knot_query_set_question(query, NULL) != KNOT_EINVAL) {
 			diag("Calling query_set_question with NULL");
 			errors++;
 		}
 		lived = 1;
 		lived = 0;
-		if (knot_query_set_question(NULL, question) != KNOT_EBADARG) {
+		if (knot_query_set_question(NULL, question) != KNOT_EINVAL) {
 			diag("Calling query_set_question with NULL");
 			errors++;
 		}

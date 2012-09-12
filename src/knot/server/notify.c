@@ -24,10 +24,8 @@
 #include "libknot/packet/response.h"
 #include "libknot/packet/query.h"
 #include "libknot/consts.h"
-#include "knot/other/error.h"
 #include "libknot/zone/zonedb.h"
 #include "libknot/common.h"
-#include "libknot/util/error.h"
 #include "libknot/util/wire.h"
 #include "knot/server/zones.h"
 #include "common/acl.h"
@@ -43,19 +41,19 @@ static int notify_request(const knot_rrset_t *rrset,
                           uint8_t *buffer, size_t *size)
 {
 	knot_packet_t *pkt = knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
-	CHECK_ALLOC_LOG(pkt, KNOTD_ENOMEM);
+	CHECK_ALLOC_LOG(pkt, KNOT_ENOMEM);
 
 	/*! \todo Get rid of the numeric constant. */
 	int rc = knot_packet_set_max_size(pkt, 512);
 	if (rc != KNOT_EOK) {
 		knot_packet_free(&pkt);
-		return KNOTD_ERROR;
+		return KNOT_ERROR;
 	}
 
 	rc = knot_query_init(pkt);
 	if (rc != KNOT_EOK) {
 		knot_packet_free(&pkt);
-		return KNOTD_ERROR;
+		return KNOT_ERROR;
 	}
 
 	knot_question_t question;
@@ -68,7 +66,7 @@ static int notify_request(const knot_rrset_t *rrset,
 	rc = knot_query_set_question(pkt, &question);
 	if (rc != KNOT_EOK) {
 		knot_packet_free(&pkt);
-		return KNOTD_ERROR;
+		return KNOT_ERROR;
 	}
 
 	/* Set random query ID. */
@@ -95,12 +93,12 @@ static int notify_request(const knot_rrset_t *rrset,
 	rc = knot_packet_to_wire(pkt, &wire, &wire_size);
 	if (rc != KNOT_EOK) {
 		knot_packet_free(&pkt);
-		return KNOTD_ERROR;
+		return KNOT_ERROR;
 	}
 
 	if (wire_size > *size) {
 		knot_packet_free(&pkt);
-		return KNOTD_ESPACE;
+		return KNOT_ESPACE;
 	}
 
 	memcpy(buffer, wire, wire_size);
@@ -110,7 +108,7 @@ static int notify_request(const knot_rrset_t *rrset,
 
 	knot_packet_free(&pkt);
 
-	return KNOTD_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -120,7 +118,7 @@ int notify_create_response(knot_packet_t *request, uint8_t *buffer,
 {
 	knot_packet_t *response =
 		knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
-	CHECK_ALLOC_LOG(response, KNOTD_ENOMEM);
+	CHECK_ALLOC_LOG(response, KNOT_ENOMEM);
 
 	/* Set maximum packet size. */
 	int rc = knot_packet_set_max_size(response, *size);
@@ -133,7 +131,7 @@ int notify_create_response(knot_packet_t *request, uint8_t *buffer,
 		dbg_notify("%s: failed to init response packet: %s",
 			   "notify_create_response", knot_strerror(rc));
 		knot_packet_free(&response);
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	// TODO: copy the SOA in Answer section
@@ -147,7 +145,7 @@ int notify_create_response(knot_packet_t *request, uint8_t *buffer,
 
 	if (wire_size > *size) {
 		knot_packet_free(&response);
-		return KNOTD_ESPACE;
+		return KNOT_ESPACE;
 	}
 
 	memcpy(buffer, wire, wire_size);
@@ -156,7 +154,7 @@ int notify_create_response(knot_packet_t *request, uint8_t *buffer,
 	knot_packet_dump(response);
 	knot_packet_free(&response);
 
-	return KNOTD_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -169,7 +167,7 @@ int notify_create_request(const knot_zone_contents_t *zone, uint8_t *buffer,
 	const knot_rrset_t *soa_rrset = knot_node_rrset(
 		            knot_zone_contents_apex(zone), KNOT_RRTYPE_SOA);
 	if (soa_rrset == NULL) {
-		return KNOTD_ERROR;
+		return KNOT_ERROR;
 	}
 
 	return notify_request(soa_rrset, buffer, size);
@@ -182,7 +180,7 @@ static int notify_check_and_schedule(knot_nameserver_t *nameserver,
                                      sockaddr_t *from)
 {
 	if (zone == NULL || from == NULL || knot_zone_data(zone) == NULL) {
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 	
 	/* Check ACL for notify-in. */
@@ -215,7 +213,7 @@ static int notify_check_and_schedule(knot_nameserver_t *nameserver,
 		evsched_schedule(sched, refresh_ev, 0);
 	}
 	
-	return KNOTD_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -233,10 +231,10 @@ int notify_process_request(knot_nameserver_t *ns,
 	    || size == NULL || from == NULL) {
 		dbg_notify("notify: invalid parameters for %s()\n",
 		           "notify_process_request");
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 
-	int ret = KNOTD_EOK;
+	int ret = KNOT_EOK;
 
 	dbg_notify("notify: parsing rest of the packet\n");
 	if (notify->parsed < notify->size) {
@@ -245,7 +243,7 @@ int notify_process_request(knot_nameserver_t *ns,
 			knot_ns_error_response_from_query(ns, notify,
 			                                  KNOT_RCODE_FORMERR,
 			                                  buffer, size);
-			return KNOTD_EOK;
+			return KNOT_EOK;
 		}
 	}
 
@@ -255,18 +253,18 @@ int notify_process_request(knot_nameserver_t *ns,
 		knot_ns_error_response_from_query(ns, notify,
 		                                  KNOT_RCODE_FORMERR, buffer,
 		                                  size);
-		return KNOTD_EOK;
+		return KNOT_EOK;
 	}
 
 	// create NOTIFY response
 	dbg_notify("notify: creating response\n");
 	ret = notify_create_response(notify, buffer, size);
-	if (ret != KNOTD_EOK) {
+	if (ret != KNOT_EOK) {
 		dbg_notify("notify: failed to create NOTIFY response\n");
 		knot_ns_error_response_from_query(ns, notify,
 		                                  KNOT_RCODE_SERVFAIL, buffer,
 		                                  size);
-		return KNOTD_EOK;
+		return KNOT_EOK;
 	}
 
 	// find the zone
@@ -280,12 +278,12 @@ int notify_process_request(knot_nameserver_t *ns,
 		knot_ns_error_response_from_query(ns, notify,
 		                                  KNOT_RCODE_FORMERR, buffer,
 		                                  size);
-		return KNOTD_EOK;
+		return KNOT_EOK;
 	}
 
 	notify_check_and_schedule(ns, z, from);
 	rcu_read_unlock();
-	return KNOTD_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -297,7 +295,7 @@ int notify_process_response(knot_nameserver_t *nameserver,
 {
 	if (nameserver == NULL || notify == NULL || from == NULL 
 	    || buffer == NULL || size == NULL) {
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	/* Assert no response size. */
@@ -310,11 +308,11 @@ int notify_process_response(knot_nameserver_t *nameserver,
 	                                              zone_name);
 	if (!zone) {
 		rcu_read_unlock();
-		return KNOTD_ENOENT;
+		return KNOT_ENOENT;
 	}
 	if (!knot_zone_data(zone)) {
 		rcu_read_unlock();
-		return KNOTD_ENOENT;
+		return KNOT_ENOENT;
 	}
 
 	/* Match ID against awaited. */
@@ -333,7 +331,7 @@ int notify_process_response(knot_nameserver_t *nameserver,
 	if (!match) {
 		rcu_read_unlock();
 		pthread_mutex_unlock(&zd->lock);
-		return KNOTD_ERROR;
+		return KNOT_ERROR;
 	}
 
 	/* NOTIFY is now finished. */
@@ -344,6 +342,6 @@ int notify_process_response(knot_nameserver_t *nameserver,
 	
 	rcu_read_unlock();
 
-	return KNOTD_EOK;
+	return KNOT_EOK;
 }
 

@@ -14,28 +14,46 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "util/error.h"
+#include "common/errcode.h"
 #include "common/errors.h"
 
 const error_table_t knot_error_msgs[] = {
 	{KNOT_EOK, "OK"},
-	{KNOT_ERROR, "General error."},
+	
+	/* TSIG errors. */
+	{KNOT_TSIG_EBADSIG, "Failed to verify TSIG MAC." },
+	{KNOT_TSIG_EBADKEY, "TSIG key not recognized or invalid." },
+	{KNOT_TSIG_EBADTIME, "TSIG signing time out of range." },
+	
+	/* Directly mapped error codes. */
 	{KNOT_ENOMEM, "Not enough memory."},
+	{KNOT_EINVAL, "Invalid parameter."},
 	{KNOT_ENOTSUP, "Operation not supported."},
+	{KNOT_EBUSY,   "Requested resource is busy."},
 	{KNOT_EAGAIN, "OS lacked necessary resources."},
+	{KNOT_EACCES,  "Operation not permitted."},
+	{KNOT_ECONNREFUSED, "Connection refused."},
+	{KNOT_EISCONN, "Already connected."},
+	{KNOT_EADDRINUSE, "Address already in use."},
+	{KNOT_ENOENT, "Resource not found."},
 	{KNOT_ERANGE, "Value is out of range."},
-	{KNOT_EBADARG, "Wrong argument supplied."},
+	
+	/* General errors. */
+	{KNOT_ERROR, "General error."},
+	{KNOT_ENOTRUNNING, "Resource is not running."},
+	{KNOT_EPARSEFAIL, "Parser failed."},
+	{KNOT_ENOIPV6, "IPv6 support disabled."},
+	{KNOT_EEXPIRED, "Resource is expired."},
+	{KNOT_EUPTODATE, "Zone is up-to-date."},
 	{KNOT_EFEWDATA, "Not enough data to parse."},
 	{KNOT_ESPACE, "Not enough space provided."},
 	{KNOT_EMALF, "Malformed data."},
-	{KNOT_ENOENT, "Resource not found."},
-	{KNOT_EACCES,  "Permission to perform requested operation is denied."},
 	{KNOT_ECRYPTO, "Error in crypto library."},
 	{KNOT_ENSEC3PAR, "Missing or wrong NSEC3PARAM record."},
 	{KNOT_ENSEC3CHAIN, "Missing or wrong NSEC3 chain in the zone."},
 	{KNOT_EBADZONE, "Name does not belong to the zone."},
 	{KNOT_EHASH, "Error in hash table."},
-	{KNOT_EZONEIN, "Error inserting zone."},
+	{KNOT_EZONEINVAL, "Invalid zone file."},
 	{KNOT_ENOZONE, "No such zone found."},
 	{KNOT_ENONODE, "No such node in zone found."},
 	{KNOT_ENORRSET, "No such RRSet found."},
@@ -47,14 +65,12 @@ const error_table_t knot_error_msgs[] = {
 	{KNOT_ENOIXFR, "Transfer is not IXFR (is in AXFR format)."},
 	{KNOT_EXFRREFUSED, "Zone transfer refused by the server."},
 	{KNOT_EXFRDENIED, "Transfer not allowed."},
-	{KNOT_TSIG_EBADSIG, "Failed to verify TSIG MAC." },
-	{KNOT_TSIG_EBADKEY, "TSIG key not recognized or invalid." },
-	{KNOT_TSIG_EBADTIME, "TSIG signing time out of range." },
 	{KNOT_ECONN, "Connection reset."},
 	{KNOT_EIXFRSPACE, "IXFR reply did not fit in."},
 	{KNOT_ECNAME, "CNAME loop found in zone."},
 	{KNOT_ENODIFF, "Cannot create zone diff."},
 
+    /* Zone scanner errors. */
 	{ZSCANNER_UNCOVERED_STATE, "General scanner error!"},
 	{ZSCANNER_ELEFT_PARENTHESIS, "Too many left parentheses!"},
 	{ZSCANNER_ERIGHT_PARENTHESIS, "Too many right parentheses!"},
@@ -102,6 +118,4 @@ const error_table_t knot_error_msgs[] = {
 	{ZSCANNER_ECANNOT_TEXT_DATA, "Unable to process text form for this type!"},
 	{ZSCANNER_EBAD_HEX_DATA, "Bad hexadecimal rdata format!"},
 	{ZSCANNER_EBAD_LOC_DATA, "Bad zone location data!"},
-
-	{KNOT_ERROR, 0}
 };

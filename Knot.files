@@ -49,8 +49,6 @@ src/libknot/util/utils.h
 src/libknot/util/utils.c
 src/libknot/util/descriptor.h
 src/libknot/util/descriptor.c
-src/libknot/util/libknot_error.c
-src/libknot/util/error.h
 src/libknot/zone/zonedb.h
 src/libknot/zone/zonedb.c
 src/libknot/zone/node.h
@@ -91,6 +89,8 @@ src/common/evqueue.c
 src/common/evqueue.h
 src/common/evsched.c
 src/common/evsched.h
+src/common/errcode.h
+src/common/errcode.c
 src/common/errors.h
 src/common/errors.c
 src/common/acl.c
@@ -135,8 +135,6 @@ src/knot/ctl/knotc_main.c
 src/knot/ctl/process.c
 src/knot/ctl/process.h
 src/knot/other/debug.h
-src/knot/other/error.c
-src/knot/other/error.h
 src/knot/stat/gatherer.c
 src/knot/stat/gatherer.h
 src/knot/stat/stat.h

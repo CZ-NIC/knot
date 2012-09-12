@@ -25,7 +25,6 @@
 #include "rdata.h"
 #include "util/descriptor.h"
 #include "dname.h"
-#include "util/error.h"
 #include "zone/node.h"
 #include "util/utils.h"
 #include "util/debug.h"
@@ -408,7 +407,7 @@ int knot_rdata_set_item(knot_rdata_t *rdata, uint pos,
 			  knot_rdata_item_t item)
 {
 	if (pos >= rdata->count) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	/*! \todo As in set_items() we should increment refcounter for dnames,
@@ -433,7 +432,7 @@ int knot_rdata_set_items(knot_rdata_t *rdata,
 {
 	if (rdata == NULL || items == NULL || count == 0 ||
 	    rdata->items != NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	assert(rdata->count == 0);
@@ -483,7 +482,7 @@ int knot_rdata_item_set_dname(knot_rdata_t *rdata, uint pos,
 				knot_dname_t *dname)
 {
 	if (pos >= rdata->count) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	/* Retain dname. */
@@ -500,7 +499,7 @@ int knot_rdata_item_set_raw_data(knot_rdata_t *rdata, uint pos,
 				   uint16_t *raw_data)
 {
 	if (pos >= rdata->count) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	rdata->items[pos].raw_data = raw_data;

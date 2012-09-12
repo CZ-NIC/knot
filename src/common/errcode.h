@@ -1,11 +1,12 @@
 /*!
- * \file error.h
+ * \file errcode.h
  *
  * \author Lubos Slovak <lubos.slovak@nic.cz>
+ * \author Marek Vavrusa <marek.vavrusa@nic.cz>
  *
  * \brief Error codes and function for getting error message.
  *
- * \addtogroup libknot
+ * \addtogroup common_lib
  * @{
  */
 /*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
@@ -24,38 +25,49 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_ERROR_H_
-#define _KNOT_ERROR_H_
+#ifndef _KNOTD_COMMON_ERRCODE_H_
+#define _KNOTD_COMMON_ERRCODE_H_
 
 #include "common/errors.h"
 
 /*! \brief Error codes used in the library. */
 enum knot_error {
-	KNOT_EOK = 0,         /*!< OK */
+	KNOT_EOK = 0,                  /*!< OK */
 	
 	/* TSIG errors. */
-	KNOT_TSIG_EBADSIG = -16, /*!< Failed to verify TSIG MAC. */
-	KNOT_TSIG_EBADKEY = -17, /*!< TSIG key not recognized or invalid. */
-	KNOT_TSIG_EBADTIME = -18,/*!< TSIG signing time out of range. */
+	KNOT_TSIG_EBADSIG = -16,       /*!< Failed to verify TSIG MAC. */
+	KNOT_TSIG_EBADKEY = -17,       /*!< TSIG key not recognized or invalid. */
+	KNOT_TSIG_EBADTIME = -18,      /*!< TSIG signing time out of range. */
 	
+	/* Directly mapped error codes. */
+	KNOT_ENOMEM = -ENOMEM,             /*!< Out of memory. */
+	KNOT_EINVAL = -EINVAL,             /*!< Invalid parameter passed. */
+	KNOT_ENOTSUP = -ENOTSUP,           /*!< Parameter not supported. */
+	KNOT_EBUSY = -EBUSY,               /*!< Requested resource is busy. */
+	KNOT_EAGAIN = -EAGAIN,            /*!< OS lacked necessary resources. */
+	KNOT_EACCES = -EACCES,             /*!< Permission is denied. */
+	KNOT_ECONNREFUSED = -ECONNREFUSED, /*!< Connection is refused. */
+	KNOT_EISCONN = -EISCONN,           /*!< Already connected. */
+	KNOT_EADDRINUSE = -EADDRINUSE,     /*!< Address already in use. */
+	KNOT_ENOENT = -ENOENT,             /*!< Resource not found. */
+	KNOT_ERANGE = -ERANGE,             /*!< Value is out of range. */
+
 	/* General errors. */
 	KNOT_ERROR = -10000,  /*!< General error. */
-	KNOT_ENOMEM,          /*!< Not enough memory. */
-	KNOT_ENOTSUP,         /*!< Operation not supported. */
-	KNOT_EAGAIN,          /*!< OS lacked necessary resources. */
-	KNOT_ERANGE,          /*!< Value is out of range. */
-	KNOT_EBADARG,         /*!< Wrong argument supported. */
+	KNOT_ENOTRUNNING,     /*!< Resource is not running. */
+	KNOT_EPARSEFAIL,      /*!< Parser fail. */
+	KNOT_ENOIPV6,         /*!< No IPv6 support. */
+	KNOT_EEXPIRED,        /*!< Resource is expired. */
+	KNOT_EUPTODATE,       /*!< Zone is up-to-date. */
 	KNOT_EFEWDATA,        /*!< Not enough data to parse. */
 	KNOT_ESPACE,          /*!< Not enough space provided. */
 	KNOT_EMALF,           /*!< Malformed data. */
-	KNOT_ENOENT,          /*!< Resource not found. */
-	KNOT_EACCES,          /*!< Permission is denied. */ 
 	KNOT_ECRYPTO,         /*!< Error in crypto library. */
 	KNOT_ENSEC3PAR,       /*!< Missing or wrong NSEC3PARAM record. */
 	KNOT_ENSEC3CHAIN,     /*!< Missing or wrong NSEC3 chain in the zone. */
 	KNOT_EBADZONE,        /*!< Domain name does not belong to the zone. */
 	KNOT_EHASH,           /*!< Error in hash table. */
-	KNOT_EZONEIN,         /*!< Error inserting zone. */
+	KNOT_EZONEINVAL,      /*!< Invalid zone file. */
 	KNOT_ENOZONE,         /*!< No such zone found. */
 	KNOT_ENONODE,         /*!< No such node in zone found. */
 	KNOT_ENORRSET,        /*!< No such RRSet found. */
@@ -117,8 +129,8 @@ enum knot_error {
 	ZSCANNER_EUNPROCESSED_INCLUDE,
 	ZSCANNER_EUNOPENED_INCLUDE,
 	ZSCANNER_EBAD_RDATA_LENGTH,
-    ZSCANNER_ECANNOT_TEXT_DATA,
-    ZSCANNER_EBAD_HEX_DATA,
+	ZSCANNER_ECANNOT_TEXT_DATA,
+	ZSCANNER_EBAD_HEX_DATA,
 	ZSCANNER_EBAD_LOC_DATA,
 };
 
@@ -137,6 +149,18 @@ static inline const char *knot_strerror(int code)
 	return error_to_str((const error_table_t*)knot_error_msgs, code);
 }
 
-#endif /* _KNOT_ERROR_H_ */
+/*!
+ * \brief errno mapper that automatically prepends fallback value.
+ *
+ * \see map_errno()
+ *
+ * \param err POSIX errno.
+ * \param ... List of handled codes.
+ *
+ * \return Mapped error code.
+ */
+#define knot_map_errno(err...) map_errno(KNOT_ERROR, err);
+
+#endif /* _KNOTD_COMMON_ERRCODE_H_ */
 
 /*! @} */

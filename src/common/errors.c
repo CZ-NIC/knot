@@ -58,7 +58,7 @@ int _map_errno(int fallback_value, int arg0, ...)
 	va_list ap;
 	va_start(ap, arg0);
 
-	/* KNOTD_ERROR serves as a sentinel. */
+	/* KNOT_ERROR serves as a sentinel. */
 	for (int c = arg0; c != 0; c = va_arg(ap, int)) {
 
 		/* Error code matches with mapped. */

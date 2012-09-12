@@ -22,7 +22,6 @@
 #include "common.h"
 #include "util/descriptor.h"
 #include "util/debug.h"
-#include "util/error.h"
 
 /*! \brief Various EDNS constatns. */
 enum knot_edns_consts {
@@ -60,7 +59,7 @@ int knot_edns_new_from_wire(knot_opt_rr_t *opt_rr, const uint8_t *wire,
 	int parsed = 0;
 
 	if (pos == NULL || max_size == 0 || opt_rr == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	if (max_size < KNOT_EDNS_MIN_SIZE) {
@@ -140,7 +139,7 @@ int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr,
 {
 	if (opt_rr == NULL || rrset == NULL
 	    || knot_rrset_type(rrset) != KNOT_RRTYPE_OPT) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	dbg_edns_verb("Parsing payload.\n");
@@ -273,7 +272,7 @@ uint16_t knot_edns_get_flags(const knot_opt_rr_t *opt_rr)
 int knot_edns_do(const knot_opt_rr_t *opt_rr)
 {
 	if (opt_rr == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	dbg_edns("Flags: %u\n", opt_rr->flags);
@@ -297,7 +296,7 @@ int knot_edns_add_option(knot_opt_rr_t *opt_rr, uint16_t code,
                            uint16_t length, const uint8_t *data)
 {
 	if (opt_rr == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	if (opt_rr->option_count == opt_rr->options_max) {
@@ -338,7 +337,7 @@ int knot_edns_add_option(knot_opt_rr_t *opt_rr, uint16_t code,
 int knot_edns_has_option(const knot_opt_rr_t *opt_rr, uint16_t code)
 {
 	if (opt_rr == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	int i = 0;
@@ -357,7 +356,7 @@ short knot_edns_to_wire(const knot_opt_rr_t *opt_rr, uint8_t *wire,
                           size_t max_size)
 {
 	if (opt_rr == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	assert(KNOT_EDNS_MIN_SIZE <= max_size);
@@ -415,7 +414,7 @@ short knot_edns_to_wire(const knot_opt_rr_t *opt_rr, uint8_t *wire,
 short knot_edns_size(knot_opt_rr_t *opt_rr)
 {
 	if (opt_rr == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	return opt_rr->size;

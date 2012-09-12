@@ -20,7 +20,6 @@
 #include "util/wire.h"
 #include "util/descriptor.h"
 #include "common.h"
-#include "util/error.h"
 #include "util/debug.h"
 #include "packet/packet.h"
 #include "edns.h"
@@ -841,7 +840,7 @@ static int knot_response_realloc_wc_nodes(const knot_node_t ***nodes,
 int knot_response_init(knot_packet_t *response)
 {
 	if (response == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	if (response->max_size < KNOT_WIRE_HEADER_SIZE) {
@@ -866,7 +865,7 @@ int knot_response_init_from_query(knot_packet_t *response,
 {
 
 	if (response == NULL || query == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	// copy the header from the query
@@ -970,7 +969,7 @@ int knot_response_add_opt(knot_packet_t *resp,
                           int add_nsid)
 {
 	if (resp == NULL || opt_rr == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	// copy the OPT RR
@@ -1041,7 +1040,7 @@ int knot_response_add_rrset_answer(knot_packet_t *response,
                                    int rotate)
 {
 	if (response == NULL || rrset == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	dbg_response_verb("add_rrset_answer()\n");
@@ -1094,7 +1093,7 @@ int knot_response_add_rrset_authority(knot_packet_t *response,
                                       int rotate)
 {
 	if (response == NULL || rrset == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	assert(response->header.arcount == 0);
@@ -1143,7 +1142,7 @@ int knot_response_add_rrset_additional(knot_packet_t *response,
                                        int rotate)
 {
 	if (response == NULL || rrset == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	int ret;
@@ -1232,7 +1231,7 @@ int knot_response_add_nsid(knot_packet_t *response, const uint8_t *data,
                              uint16_t length)
 {
 	if (response == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	return knot_edns_add_option(&response->opt_rr,
@@ -1246,7 +1245,7 @@ int knot_response_add_wildcard_node(knot_packet_t *response,
                                     const knot_dname_t *sname)
 {
 	if (response == NULL || node == NULL || sname == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	if (response->wildcard_nodes.count == response->wildcard_nodes.max

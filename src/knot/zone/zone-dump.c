@@ -29,7 +29,6 @@
 #include "common/crc.h"
 #include "knot/other/debug.h"
 #include "common/skip-list.h"
-#include "libknot/util/error.h"
 #include "semantic-check.h"
 
 #define ZONECHECKS_VERBOSE
@@ -58,7 +57,7 @@ static inline int write_to_file_crc(const void *src,
                                      crc_t *crc)
 {
 	if (src == NULL || fd < 0) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	ssize_t rc = write(fd, src, size * n);
 	if (rc != size * n) {
@@ -82,7 +81,7 @@ static inline int write_to_stream(const void *src,
                                   size_t *written_bytes)
 {
 	if (src == NULL || stream == NULL || written_bytes == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	/* Check that the stream boundary will not be crossed. */
@@ -108,7 +107,7 @@ static int write_wrapper(const void *src,
 {
 	if (src == NULL) {
 		dbg_zdump("zdump: write_wrapper: NULL source.\n");
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	dbg_zdump_detail("zdump: write_wrapper: Writing %d bytes to fd: %d.\n",
@@ -233,7 +232,7 @@ static int knot_labels_dump_binary(const knot_dname_t *dname, int fd,
 {
 	if (dname == NULL) {
 		dbg_zdump("zdump: dump_labels: NULL dname.\n");
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	uint16_t label_count = dname->label_count;
@@ -266,7 +265,7 @@ static int knot_dname_dump_binary(const knot_dname_t *dname, int fd,
 {
 	if (dname == NULL) {
 		dbg_zdump("zdump: dump_dname: NULL dname.\n");
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	/*! \todo too big */
@@ -295,7 +294,7 @@ static int dump_dname_with_id(const knot_dname_t *dname, int fd,
 {
 	if (dname == NULL) {
 		dbg_zdump("zdump: dump_dname: NULL dname.\n");
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	uint32_t id = dname->id;
@@ -323,7 +322,7 @@ static int knot_rdata_dump_binary(knot_rdata_t *rdata,
 {
 	if (rdata == NULL) {
 		dbg_zdump("zdump: dump_rdata: NULL rdata.\n");
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	knot_rrtype_descriptor_t *desc =
 		knot_rrtype_descriptor_by_type(type);
@@ -494,7 +493,7 @@ static int knot_rrsig_set_dump_binary(knot_rrset_t *rrsig, int fd,
 {
 	if (rrsig == NULL) {
 		dbg_zdump("zdump: dump_rrsig: NULL RRSIG.\n");
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 dbg_zdump_exec_detail(
@@ -570,7 +569,7 @@ static int knot_rrset_dump_binary(const knot_rrset_t *rrset, int fd,
 {
 	if (rrset == NULL) {
 		dbg_zdump("zdump: dump_rrset: NULL RRSet.\n");
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	dbg_zdump_exec_detail(
@@ -698,7 +697,7 @@ static int knot_node_dump_binary(knot_node_t *node, int fd,
 {
 	if (node == NULL) {
 		dbg_zdump("zdump: dump_node: NULL node.\n");
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	/* first write dname */
@@ -827,7 +826,7 @@ static void dump_dname_from_tree(knot_dname_t *dname,
 		fd = *fd_pointer;
 	} else {
 		dbg_zdump("zdump: dump_dname_from_tree: Bad fd.\n");
-		arg->error_code = KNOT_EBADARG;
+		arg->error_code = KNOT_EINVAL;
 		return;
 	}
 	
@@ -923,7 +922,7 @@ int knot_zdump_binary(knot_zone_contents_t *zone, int fd,
 
 	if (fd < 0 || sfilename == NULL) {
 		dbg_zdump("zdump: Bad arguments.\n");
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	dbg_zdump("zdump: Dumping zone %p.\n", zone);
@@ -1101,7 +1100,7 @@ int knot_zdump_rrset_serialize(const knot_rrset_t *rrset, uint8_t *stream,
 	if (stream == NULL || rrset == NULL ||
 	    written_bytes == NULL) {
 		dbg_zdump("zdump: rrset_serialize: Bad arguments.\n");
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	*written_bytes = 0;

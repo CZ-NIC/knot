@@ -26,7 +26,6 @@
 #include "common/log.h"
 #include "common/lists.h"
 #include "knot/common.h"
-#include "knot/other/error.h"
 #include "knot/conf/conf.h"
 
 /*! Log source table. */
@@ -43,7 +42,7 @@ int log_setup(int logfiles)
 {
 	/* Check facilities count. */
 	if (logfiles < 0) {
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	/* Ensure minimum facilities count. */
@@ -57,7 +56,7 @@ int log_setup(int logfiles)
 	LOG_FCL_SIZE = 0;
 	LOG_FCL = malloc(new_size);
 	if (!LOG_FCL) {
-		return KNOTD_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	/* Reserve space for logfiles. */
@@ -66,14 +65,14 @@ int log_setup(int logfiles)
 		if (!LOG_FDS) {
 			free(LOG_FCL);
 			LOG_FCL = 0;
-			return KNOTD_ENOMEM;
+			return KNOT_ENOMEM;
 		}
 		memset(LOG_FDS, 0, sizeof(FILE*) * logfiles);
 	}
 
 	memset(LOG_FCL, 0, new_size);
 	LOG_FCL_SIZE = new_size; // Assign only when all is set
-	return KNOTD_EOK;
+	return KNOT_EOK;
 }
 
 
@@ -87,7 +86,7 @@ int log_init()
 	LOG_FDS_OPEN = 0;
 
 	/* Setup initial state. */
-	int ret = KNOTD_EOK;
+	int ret = KNOT_EOK;
 	int emask = LOG_MASK(LOG_WARNING)|LOG_MASK(LOG_ERR)|LOG_MASK(LOG_FATAL);
 	int imask = LOG_MASK(LOG_INFO)|LOG_MASK(LOG_NOTICE);
 
@@ -138,14 +137,14 @@ int log_isopen()
 int log_open_file(const char* filename)
 {
 	// Check facility
-	if (unlikely(!LOG_FCL_SIZE || LOGT_FILE + LOG_FDS_OPEN >= LOG_FCL_SIZE)) {
-		return KNOTD_ERROR;
+	if (knot_unlikely(!LOG_FCL_SIZE || LOGT_FILE + LOG_FDS_OPEN >= LOG_FCL_SIZE)) {
+		return KNOT_ERROR;
 	}
 
 	// Open file
 	LOG_FDS[LOG_FDS_OPEN] = fopen(filename, "a");
 	if (!LOG_FDS[LOG_FDS_OPEN]) {
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	// Disable buffering
@@ -157,7 +156,7 @@ int log_open_file(const char* filename)
 uint8_t log_levels(int facility, logsrc_t src)
 {
 	// Check facility
-	if (unlikely(!LOG_FCL_SIZE || facility >= LOG_FCL_SIZE)) {
+	if (knot_unlikely(!LOG_FCL_SIZE || facility >= LOG_FCL_SIZE)) {
 		return 0;
 	}
 
@@ -167,8 +166,8 @@ uint8_t log_levels(int facility, logsrc_t src)
 int log_levels_set(int facility, logsrc_t src, uint8_t levels)
 {
 	// Check facility
-	if (unlikely(!LOG_FCL_SIZE || facility >= LOG_FCL_SIZE)) {
-		return KNOTD_EINVAL;
+	if (knot_unlikely(!LOG_FCL_SIZE || facility >= LOG_FCL_SIZE)) {
+		return KNOT_EINVAL;
 	}
 
 	// Get facility pointer from offset
@@ -184,7 +183,7 @@ int log_levels_set(int facility, logsrc_t src, uint8_t levels)
 		}
 	}
 
-	return KNOTD_EOK;
+	return KNOT_EOK;
 }
 
 int log_levels_add(int facility, logsrc_t src, uint8_t levels)
@@ -196,7 +195,7 @@ int log_levels_add(int facility, logsrc_t src, uint8_t levels)
 static int _log_msg(logsrc_t src, int level, const char *msg)
 {
 	if(!log_isopen()) {
-		return KNOTD_ERROR;
+		return KNOT_ERROR;
 	}
 
 	int ret = 0;
@@ -250,7 +249,7 @@ static int _log_msg(logsrc_t src, int level, const char *msg)
 	}
 
 	if (ret < 0) {
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	return ret;
@@ -278,7 +277,7 @@ int log_msg(logsrc_t src, int level, const char *msg, ...)
 	/* Prepend prefix. */
 	int plen = strlen(prefix);
 	if (plen > buflen) {
-		return KNOTD_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 	if (plen > 0) {
 		strncpy(buf, prefix, plen + 1);

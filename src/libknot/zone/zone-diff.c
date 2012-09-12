@@ -17,7 +17,6 @@
 #include <assert.h>
 #include <config.h>
 
-#include "libknot/util/error.h"
 #include "libknot/util/debug.h"
 #include "libknot/rdata.h"
 #include "zone-diff.h"
@@ -40,7 +39,7 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
                                     knot_changeset_t *changeset)
 {
 	if (zone1 == NULL || zone2 == NULL || changeset == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	const knot_node_t *apex1 = knot_zone_contents_apex(zone1);
@@ -48,7 +47,7 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 	if (apex1 == NULL || apex2 == NULL) {
 		dbg_zonediff("zone_diff: "
 		             "both zones must have apex nodes.\n");
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	knot_rrset_t *soa_rrset1 = knot_node_get_rrset(apex1, KNOT_RRTYPE_SOA);
@@ -56,7 +55,7 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 	if (soa_rrset1 == NULL || soa_rrset2 == NULL) {
 		dbg_zonediff("zone_diff: "
 		             "both zones must have apex nodes.\n");
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	if (knot_rrset_rdata(soa_rrset1) == NULL ||
@@ -64,7 +63,7 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 		dbg_zonediff("zone_diff: "
 		             "both zones must have apex nodes with SOA "
 		             "RRs.\n");
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	int64_t soa_serial1 =
@@ -144,7 +143,7 @@ static int knot_zone_diff_changeset_add_rrset(knot_changeset_t *changeset,
 	/* Remove all RRs of the RRSet. */
 	if (changeset == NULL || rrset == NULL) {
 		dbg_zonediff("zone_diff: add_rrset: NULL parameters.\n");
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	if (knot_rrset_rdata_rr_count(rrset) == 0) {
@@ -186,7 +185,7 @@ static int knot_zone_diff_changeset_remove_rrset(knot_changeset_t *changeset,
 	/* Remove all RRs of the RRSet. */
 	if (changeset == NULL) {
 		dbg_zonediff("zone_diff: remove_rrset: NULL parameters.\n");
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	if (rrset == NULL) {
@@ -231,7 +230,7 @@ static int knot_zone_diff_add_node(const knot_node_t *node,
 {
 	if (node == NULL || changeset == NULL) {
 		dbg_zonediff("zone_diff: add_node: NULL arguments.\n");
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	/* Add all rrsets from node. */
@@ -264,7 +263,7 @@ static int knot_zone_diff_remove_node(knot_changeset_t *changeset,
 {
 	if (changeset == NULL || node == NULL) {
 		dbg_zonediff("zone_diff: remove_node: NULL parameters.\n");
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	dbg_zonediff("zone_diff: remove_node: Removing node:\n");
@@ -307,7 +306,7 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 	if (rrset1 == NULL || rrset2 == NULL) {
 		dbg_zonediff("zone_diff: diff_rdata: NULL arguments. (%p) (%p).\n",
 		       rrset1, rrset2);
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	/*
@@ -390,7 +389,7 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 {
 	if ((changeset == NULL) || (rrset1 == NULL && rrset2 == NULL)) {
 		dbg_zonediff("zone_diff: diff_rdata: NULL arguments.\n");
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	/*
 	 * The easiest solution is to remove all the RRs that had no match and
@@ -544,7 +543,7 @@ static void knot_zone_diff_node(knot_node_t *node, void *data)
 	struct zone_diff_param *param = (struct zone_diff_param *)data;
 	if (param->changeset == NULL || param->contents == NULL) {
 		dbg_zonediff("zone_diff: diff_node: NULL arguments.\n");
-		param->ret = KNOT_EBADARG;
+		param->ret = KNOT_EINVAL;
 		return;
 	}
 
@@ -747,7 +746,7 @@ static void knot_zone_diff_add_new_nodes(knot_node_t *node, void *data)
 	struct zone_diff_param *param = (struct zone_diff_param *)data;
 	if (param->changeset == NULL || param->contents == NULL) {
 		dbg_zonediff("zone_diff: add_new_nodes: NULL arguments.\n");
-		param->ret = KNOT_EBADARG;
+		param->ret = KNOT_EINVAL;
 		return;
 	}
 
@@ -801,7 +800,7 @@ int knot_zone_contents_diff(const knot_zone_contents_t *zone1,
 {
 	if (zone1 == NULL || zone2 == NULL) {
 		dbg_zonediff("zone_diff: NULL argument(s).\n");
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 //	/* Create changeset structure. */
@@ -920,7 +919,7 @@ int knot_zone_diff_create_changesets(const knot_zone_contents_t *z1,
 {
 	if (z1 == NULL || z2 == NULL) {
 		dbg_zonediff("zone_diff: create_changesets: NULL arguments.\n");
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	/* Create changesets. */
 	int ret = knot_changeset_allocate(changesets);

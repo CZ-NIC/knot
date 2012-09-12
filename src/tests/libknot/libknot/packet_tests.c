@@ -19,7 +19,6 @@
 #include <stdint.h>
 
 #include "packet_tests.h"
-#include "libknot/util/error.h"
 #include "libknot/packet/packet.h"
 #include "libknot/util/wire.h"
 /* *test_t structures */
@@ -75,17 +74,17 @@ static int test_packet_parse_from_wire()
 	int tmp = 0;
 	lives_ok({
 		if (knot_packet_parse_from_wire(NULL, NULL, 0, 0) !=
-		    KNOT_EBADARG) {
+		    KNOT_EINVAL) {
 			diag("Trying to parse NULL packet with NULL wire "
-			     "did not return KNOT_EBADARG!");
+			     "did not return KNOT_EINVAL!");
 			errors++;
 		}
 		tmp = 1;
 		tmp = 0;
 		if (knot_packet_parse_from_wire(packet, NULL, 0, 0) !=
-		    KNOT_EBADARG) {
+		    KNOT_EINVAL) {
 			diag("Trying to parse with NULL wire "
-			     "did not return KNOT_EBADARG!");
+			     "did not return KNOT_EINVAL!");
 			errors++;
 		}
 		tmp = 1;
@@ -117,19 +116,19 @@ static int test_packet_parse_next_rr_answer()
 	lives_ok({
 		int ret = 0;
 		if (knot_packet_parse_next_rr_answer(NULL, NULL) !=
-		    KNOT_EBADARG) {
+		    KNOT_EINVAL) {
 			diag("Trying to parse next RR answer with "
 			     "NULL packet with and NULL RRSet "
-			     "did not return KNOT_EBADARG!");
+			     "did not return KNOT_EINVAL!");
 			errors++;
 		}
 		tmp = 1;
 		tmp = 0;
 		if ((ret = knot_packet_parse_next_rr_answer(packet,
 		                                              NULL)) !=
-		    KNOT_EBADARG) {
+		    KNOT_EINVAL) {
 			diag("Trying to parse next RR with NULL RRSet pointer "
-			     "did not return KNOT_EBADARG! Got %d.",
+			     "did not return KNOT_EINVAL! Got %d.",
 			     ret);
 			errors++;
 		}
@@ -138,10 +137,10 @@ static int test_packet_parse_next_rr_answer()
 //		tmp = 0;
 //		if (knot_packet_parse_next_rr_answer(packet,
 //		                                       &rrset) !=
-//		    KNOT_EBADARG) {
+//		    KNOT_EINVAL) {
 //			diag("Trying to parse next RR answer with rrset pointer"
 //			     " not pointing to NULL did not "
-//			     "return KNOT_EBADARG!");
+//			     "return KNOT_EINVAL!");
 //			errors++;
 //		}
 //		tmp = 1;
@@ -159,8 +158,8 @@ static int test_packet_parse_rest()
 	lives_ok({res = knot_packet_parse_rest(NULL);},
 	"packet: parse rest NULL test");
 
-	if (res != KNOT_EBADARG) {
-		diag("parse rest NULL did not return KNOT_EBADARG.\n");
+	if (res != KNOT_EINVAL) {
+		diag("parse rest NULL did not return KNOT_EINVAL.\n");
 		return 1;
 	}
 
@@ -188,9 +187,9 @@ static int test_packet_set_max_size()
 
 	lives_ok({
 		lived = 0;
-		if (knot_packet_set_max_size(NULL, 1) != KNOT_EBADARG) {
+		if (knot_packet_set_max_size(NULL, 1) != KNOT_EINVAL) {
 			diag("Calling packet_set_max() with NULL packet "
-			     "did not return KNOT_EBADARG");
+			     "did not return KNOT_EINVAL");
 			errors++;
 		}
 		lived = 1;
@@ -198,9 +197,9 @@ static int test_packet_set_max_size()
 
 	errors += lived != 1;
 
-	if (knot_packet_set_max_size(packet, 0) != KNOT_EBADARG) {
+	if (knot_packet_set_max_size(packet, 0) != KNOT_EINVAL) {
 		diag("Calling packet_set_max() with size eqeal to 0 did not "
-		     "return KNOT_EBADARG");
+		     "return KNOT_EINVAL");
 		errors++;
 	}
 
@@ -229,27 +228,27 @@ static int test_packet_add_tmp_rrset()
 
 	lives_ok({
 		if (knot_packet_add_tmp_rrset(NULL, rrset) !=
-		    KNOT_EBADARG) {
+		    KNOT_EINVAL) {
 			diag("Trying to add to NULL packet did not return "
-			     "KNOT_EBADARG!");
+			     "KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
 
 		lived = 0;
 		if (knot_packet_add_tmp_rrset(packet, NULL) !=
-		    KNOT_EBADARG) {
+		    KNOT_EINVAL) {
 			diag("Trying to add NULL rrset did not return "
-			     "KNOT_EBADARG!");
+			     "KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
 
 		lived = 0;
 		if (knot_packet_add_tmp_rrset(NULL, NULL) !=
-		    KNOT_EBADARG) {
+		    KNOT_EINVAL) {
 			diag("Trying to add NULL rrset to NULL packet "
-			     "did not return KNOT_EBADARG!");
+			     "did not return KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
@@ -282,7 +281,7 @@ static int test_packet_add_tmp_rrset()
 //	lives_ok({
 //		if (knot_packet_contains(packet, NULL,
 //		                           KNOT_RRSET_COMPARE_PTR) !=
-//		    KNOT_EBADARG{
+//		    KNOT_EINVAL{
 //			diag();
 //		}
 //	}, "packet: contains NULL tests);
@@ -322,9 +321,9 @@ static int test_packet_question_to_wire()
 	assert(packet);
 
 	lives_ok({
-		if (knot_packet_question_to_wire(NULL) != KNOT_EBADARG) {
+		if (knot_packet_question_to_wire(NULL) != KNOT_EINVAL) {
 			diag("Calling packet_question_to_wire with "
-			     "NULL pointer did not result to KNOT_EBADARG!");
+			     "NULL pointer did not result to KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
@@ -369,28 +368,28 @@ static int test_packet_to_wire()
 	assert(packet);
 
 	lives_ok({
-		if (knot_packet_to_wire(NULL, NULL, NULL) != KNOT_EBADARG) {
+		if (knot_packet_to_wire(NULL, NULL, NULL) != KNOT_EINVAL) {
 			diag("Calling packet_to_wire with "
-			     "NULL pointers did not return KNOT_EBADARG!");
+			     "NULL pointers did not return KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
 		size_t size;
 		lived = 0;
 		if (knot_packet_to_wire(packet, NULL, &size) !=
-		    KNOT_EBADARG) {
+		    KNOT_EINVAL) {
 			diag("Calling packet_to_wire with "
-			     "NULL wire did not return KNOT_EBADARG!");
+			     "NULL wire did not return KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
 		uint8_t *wire = (uint8_t *)0xabcdef;
 		lived = 0;
 		if (knot_packet_to_wire(packet, &wire, &size) !=
-		    KNOT_EBADARG) {
+		    KNOT_EINVAL) {
 			diag("Calling packet_to_wire with "
 			     "wire not pointing to NULL did not return"
-			     " KNOT_EBADARG!");
+			     " KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
