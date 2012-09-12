@@ -42,11 +42,11 @@
 #endif
 
 /* Optimisation macros. */
-#ifndef likely
-#define likely(x)       __builtin_expect((x),1)
+#ifndef knot_likely
+#define knot_likely(x)       __builtin_expect((x),1)
 #endif
-#ifndef unlikely
-#define unlikely(x)     __builtin_expect((x),0)
+#ifndef knot_unlikely
+#define knot_unlikely(x)     __builtin_expect((x),0)
 #endif
 
 #ifdef MEM_DEBUG

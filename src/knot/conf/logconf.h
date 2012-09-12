@@ -34,9 +34,9 @@ struct conf_t;
  *
  * \see syslog.h
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL on invalid parameters.
- * \retval KNOTD_ENOMEM out of memory error.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOT_ENOMEM out of memory error.
  */
 int log_conf_hook(const struct conf_t *conf, void *data);
 

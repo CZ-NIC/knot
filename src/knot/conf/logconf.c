@@ -24,7 +24,6 @@
 #include "knot/conf/logconf.h"
 #include "knot/conf/conf.h"
 #include "common/log.h"
-#include "knot/other/error.h"
 #include "common/lists.h"
 #include "knot/common.h"
 
@@ -36,7 +35,7 @@ int log_conf_hook(const struct conf_t *conf, void *data)
 
 	// Check if log declaration exists, otherwise ignore
 	if (conf->logs_count < 1) {
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	// Find maximum log facility id
@@ -97,6 +96,6 @@ int log_conf_hook(const struct conf_t *conf, void *data)
 		log_levels_set(LOGT_STDERR, LOG_ANY, bmask);
 	}
 
-	return KNOTD_EOK;
+	return KNOT_EOK;
 }
 

@@ -25,7 +25,6 @@
 
 #include "common/prng.h"
 #include "knot/common.h"
-#include "knot/other/error.h"
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
@@ -43,7 +42,7 @@ static int evsched_run(dthread_t *thread)
 	iohandler_t *sched_h = (iohandler_t *)thread->data;
 	evsched_t *s = (evsched_t*)sched_h->data;
 	if (!s) {
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	/* Run event loop. */
@@ -72,7 +71,7 @@ static int evsched_run(dthread_t *thread)
 		}
 	}
 
-	return KNOTD_EOK;
+	return KNOT_EOK;
 }
 
 /*! \brief List item for generic pointers. */
@@ -201,7 +200,7 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	new_if->type[TCP_ID] = cfg_if->family;
 	new_if->port = cfg_if->port;
 	new_if->addr = strdup(cfg_if->address);
-	return KNOTD_EOK;
+	return KNOT_EOK;
 }
 
 /*!
@@ -325,7 +324,7 @@ static int server_bind_sockets(server_t *server)
 static int server_bind_handlers(server_t *server)
 {
 	if (!server || !server->ifaces) {
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 	
 	/* Lock config. */
@@ -388,7 +387,7 @@ static int server_bind_handlers(server_t *server)
 	/* Unlock config. */
 	rcu_read_unlock();
 
-	return KNOTD_EOK;
+	return KNOT_EOK;
 }
 
 server_t *server_create()
@@ -482,7 +481,7 @@ int server_remove_handler(server_t *server, iohandler_t *h)
 {
 	// Check
 	if (h == 0) {
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	/* Lock RCU. */
@@ -534,14 +533,14 @@ int server_remove_handler(server_t *server, iohandler_t *h)
 	// Destroy dispatcher and worker
 	dt_delete(&h->unit);
 	free(h);
-	return KNOTD_EOK;
+	return KNOT_EOK;
 }
 
 int server_start(server_t *server)
 {
 	// Check server
 	if (server == 0) {
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	dbg_server("server: starting server instance\n");
@@ -553,7 +552,7 @@ int server_start(server_t *server)
 	rcu_read_lock();
 
 	// Start dispatchers
-	int ret = KNOTD_EOK;
+	int ret = KNOT_EOK;
 	server->state |= ServerRunning;
 	iohandler_t *h = 0;
 	WALK_LIST(h, server->handlers) {
@@ -614,7 +613,7 @@ int server_wait(server_t *server)
 int server_refresh(server_t *server)
 {
 	if (server == NULL || server->nameserver == NULL) {
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 	
 	/* Lock RCU and fetch zones. */
@@ -624,7 +623,7 @@ int server_refresh(server_t *server)
 	const knot_zone_t **zones = knot_zonedb_zones(ns->zone_db);
 	if (zones == NULL) {
 		rcu_read_unlock();
-		return KNOTD_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 	
 	/* REFRESH zones. */
@@ -644,7 +643,7 @@ int server_refresh(server_t *server)
 	/* Unlock RCU. */
 	rcu_read_unlock();
 	free(zones);
-	return KNOTD_EOK;
+	return KNOT_EOK;
 }
 
 void server_stop(server_t *server)
@@ -723,11 +722,11 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 	server_t *server = (server_t *)data;
 
 	if (!server) {
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	/* Update bound sockets. */
-	int ret = KNOTD_EOK;
+	int ret = KNOT_EOK;
 	if ((ret = server_bind_sockets(server)) < 0) {
 		log_server_error("Failed to bind configured "
 		                 "interfaces.\n");
@@ -740,8 +739,8 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 	}
 
 	/* Exit if the server is not running. */
-	if (ret != KNOTD_EOK || !(server->state & ServerRunning)) {
-		return KNOTD_ENOTRUNNING;
+	if (ret != KNOT_EOK || !(server->state & ServerRunning)) {
+		return KNOT_ENOTRUNNING;
 	}
 
 	/* Start new handlers. */

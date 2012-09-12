@@ -37,7 +37,6 @@
 
 #include "common/sockaddr.h"
 #include "knot/common.h"
-#include "knot/other/error.h"
 #include "knot/server/udp-handler.h"
 #include "libknot/nameserver/name-server.h"
 #include "knot/stat/stat.h"
@@ -47,7 +46,6 @@
 #include "libknot/packet/packet.h"
 #include "knot/server/zones.h"
 #include "knot/server/notify.h"
-#include "libknot/util/error.h"
 
 /* Check for sendmmsg syscall. */
 #ifdef HAVE_SENDMMSG
@@ -90,15 +88,15 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		                                            qbuf, resp_len);
 
 		if (ret != KNOT_EOK) {
-			return KNOTD_EMALF;
+			return KNOT_EMALF;
 		}
 
-		return KNOTD_EOK; /* Created error response. */
+		return KNOT_EOK; /* Created error response. */
 	}
 
 	/* Parse query. */
 	int res = knot_ns_parse_packet(qbuf, qbuflen, packet, &qtype);
-	if (unlikely(res != KNOTD_EOK)) {
+	if (knot_unlikely(res != KNOT_EOK)) {
 		dbg_net("udp: failed to parse packet on fd=%d\n", fd);
 		if (res > 0) { /* Returned RCODE */
 //			int ret = knot_ns_error_response_from_query_wire(ns,
@@ -108,7 +106,7 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 
 			if (ret != KNOT_EOK) {
 				knot_packet_free(&packet);
-				return KNOTD_EMALF;
+				return KNOT_EMALF;
 			}
 		} else {
 			assert(res < 0);
@@ -123,13 +121,13 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		}
 
 		knot_packet_free(&packet);
-		return KNOTD_EOK; /* Created error response. */
+		return KNOT_EOK; /* Created error response. */
 	}
 
 	/* Handle query. */
 //	server_t *srv = (server_t *)knot_ns_get_data(ns);
 //	knot_ns_xfr_t xfr;
-	res = KNOTD_ERROR;
+	res = KNOT_ERROR;
 	switch(qtype) {
 
 	/* Query types. */
@@ -145,7 +143,7 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		knot_ns_error_response_from_query(ns, packet,
 		                                  KNOT_RCODE_FORMERR, qbuf,
 		                                  resp_len);
-		res = KNOTD_EOK;
+		res = KNOT_EOK;
 		break;
 	case KNOT_QUERY_IXFR:
 		/* According to RFC1035, respond with SOA. 
@@ -178,7 +176,7 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		knot_ns_error_response_from_query(ns, packet,
 		                                  KNOT_RCODE_REFUSED, qbuf,
 		                                  resp_len);
-		res = KNOTD_EOK;
+		res = KNOT_EOK;
 		break;
 			
 	/* Unknown opcodes */
@@ -186,7 +184,7 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		knot_ns_error_response_from_query(ns, packet,
 		                                  KNOT_RCODE_FORMERR, qbuf,
 		                                  resp_len);
-		res = KNOTD_EOK;
+		res = KNOT_EOK;
 		break;
 	}
 
@@ -200,7 +198,7 @@ static inline int udp_master_recvfrom(dthread_t *thread, stat_t *thread_stat)
 	iohandler_t *h = (iohandler_t *)thread->data;
 	if (h == NULL || h->server == NULL || h->server->nameserver == NULL) {
 		dbg_net("udp: invalid parameters for udp_master_recvfrom\n");
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 	
 	/* Set CPU affinity to improve load distribution on multicore systems.
@@ -219,18 +217,18 @@ static inline int udp_master_recvfrom(dthread_t *thread, stat_t *thread_stat)
 
 	/* Initialize remote party address. */
 	sockaddr_t addr;
-	if (sockaddr_init(&addr, h->type) != KNOTD_EOK) {
+	if (sockaddr_init(&addr, h->type) != KNOT_EOK) {
 		log_server_error("Socket type %d is not supported, "
 				 "IPv6 support is probably disabled.\n",
 				 h->type);
-		return KNOTD_ENOTSUP;
+		return KNOT_ENOTSUP;
 	}
 	
 	/* Allocate buffer for answering. */
 	uint8_t *qbuf = malloc(SOCKET_MTU_SZ);
 	if (qbuf == NULL) {
 		dbg_net("udp: out of memory when allocating buffer.\n");
-		return KNOTD_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 	
 	/* Duplicate socket for performance reasons on some OS's */
@@ -255,7 +253,7 @@ static inline int udp_master_recvfrom(dthread_t *thread, stat_t *thread_stat)
 		}
 
 		/* Error and interrupt handling. */
-		if (unlikely(n <= 0)) {
+		if (knot_unlikely(n <= 0)) {
 			if (errno != EINTR && errno != 0) {
 				dbg_net("udp: recvmsg() failed: %d\n",
 					  errno);
@@ -273,7 +271,7 @@ static inline int udp_master_recvfrom(dthread_t *thread, stat_t *thread_stat)
 		int rc = udp_handle(sock, qbuf, n, &resp_len, &addr, ns);
 
 		/* Send response. */
-		if (rc == KNOTD_EOK && resp_len > 0) {
+		if (rc == KNOT_EOK && resp_len > 0) {
 
 			dbg_net("udp: on fd=%d, sending answer size=%zd.\n",
 			        sock, resp_len);
@@ -297,7 +295,7 @@ static inline int udp_master_recvfrom(dthread_t *thread, stat_t *thread_stat)
 	
 	free(qbuf);
 
-	return KNOTD_EOK;
+	return KNOT_EOK;
 }
 
 #ifdef ENABLE_RECVMMSG
@@ -334,7 +332,7 @@ int udp_sendto(int sock, sockaddr_t * addrs, struct mmsghdr *msgs, size_t count)
 		}
 	}
 	
-	return KNOTD_EOK;
+	return KNOT_EOK;
 }
 
 #ifdef ENABLE_SENDMMSG
@@ -357,10 +355,10 @@ int udp_sendmmsg(int sock, sockaddr_t *_, struct mmsghdr *msgs, size_t count)
 	UNUSED(_);
 	dbg_net("udp: sending multiple responses\n");
 	if (sendmmsg(sock, msgs, count, 0) < 0) {
-		return KNOTD_ERROR;
+		return KNOT_ERROR;
 	}
 	
-	return KNOTD_EOK;
+	return KNOT_EOK;
 }
 #endif
 
@@ -373,7 +371,7 @@ static inline int udp_master_recvmmsg(dthread_t *thread, stat_t *thread_stat)
 	/* Check socket. */
 	if (sock < 0) {
 		dbg_net("udp: unable to dup() socket, finishing.\n");
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	/* Allocate batch for N packets. */
@@ -389,7 +387,7 @@ static inline int udp_master_recvmmsg(dthread_t *thread, stat_t *thread_stat)
 		free(iov);
 		free(msgs);
 		close(sock);
-		return KNOTD_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	/* Prepare batch. */
@@ -429,7 +427,7 @@ static inline int udp_master_recvmmsg(dthread_t *thread, stat_t *thread_stat)
 		}
 
 		/* Error and interrupt handling. */
-		if (unlikely(n <= 0)) {
+		if (knot_unlikely(n <= 0)) {
 			if (errno != EINTR && errno != 0 && n < 0) {
 				log_server_error("I/O failure in UDP - errno %d "
 				                 "(Linux/recvmmsg)", errno);
@@ -451,7 +449,7 @@ static inline int udp_master_recvmmsg(dthread_t *thread, stat_t *thread_stat)
 			size_t resp_len = msgs[i].msg_len;
 			ret = udp_handle(sock, cvec->iov_base, resp_len, &resp_len,
 			                 addrs + i, ns);
-			if (ret == KNOTD_EOK) {
+			if (ret == KNOT_EOK) {
 				msgs[i].msg_len = resp_len;
 				iov[i].iov_len = resp_len;
 			} else {
@@ -476,7 +474,7 @@ static inline int udp_master_recvmmsg(dthread_t *thread, stat_t *thread_stat)
 	free(iov);
 	free(msgs);
 	close(sock);
-	return KNOTD_EOK;
+	return KNOT_EOK;
 }
 #endif
 #endif
@@ -519,7 +517,7 @@ int udp_master(dthread_t *thread)
 	/* Check socket. */
 	if (sock < 0) {
 		dbg_net("udp: null socket recevied, finishing.\n");
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	/* Set socket options. */
@@ -565,10 +563,10 @@ int udp_master(dthread_t *thread)
 	/* Execute proper handler. */
 	dbg_net_verb("udp: thread started (worker %p).\n", thread);
 	int ret = _udp_master(thread, thread_stat);
-	if (ret != KNOTD_EOK) {
+	if (ret != KNOT_EOK) {
 		log_server_warning("UDP answering module finished "
 		                   "with an error (%s).\n",
-		                   knotd_strerror(ret));
+		                   knot_strerror(ret));
 	}
 
 	stat_free(thread_stat);

@@ -59,7 +59,7 @@ int tcp_accept(int fd);
  * \param msglen Buffer maximum size.
  *
  * \retval Number of sent data on success.
- * \retval KNOTD_ERROR on error.
+ * \retval KNOT_ERROR on error.
  */
 int tcp_send(int fd, uint8_t *msg, size_t msglen);
 
@@ -72,8 +72,8 @@ int tcp_send(int fd, uint8_t *msg, size_t msglen);
  * \param addr Source address.
  *
  * \retval Number of read bytes on success.
- * \retval KNOTD_ERROR on error.
- * \retval KNOTD_ENOMEM on potential buffer overflow.
+ * \retval KNOT_ERROR on error.
+ * \retval KNOT_ENOMEM on potential buffer overflow.
  */
 int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr);
 
@@ -82,8 +82,8 @@ int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr);
  *
  * \param thread Associated thread from DThreads unit.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL invalid parameters.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL invalid parameters.
  */
 int tcp_loop_master(dthread_t *thread);
 
@@ -92,8 +92,8 @@ int tcp_loop_master(dthread_t *thread);
  *
  * \param thread Associated thread from DThreads unit.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL invalid parameters.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL invalid parameters.
  */
 int tcp_loop_worker(dthread_t *thread);
 
@@ -105,8 +105,8 @@ int tcp_loop_worker(dthread_t *thread);
  * \param ioh Associated I/O handler.
  * \param thread Associated thread from DThreads unit.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL invalid parameters.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL invalid parameters.
  */
 int tcp_loop_unit(iohandler_t *ioh, dt_unit_t *unit);
 

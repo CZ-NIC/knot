@@ -131,7 +131,7 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
  * \param item RDATA item value to be set.
  *
  * \retval KNOT_EOK if successful.
- * \retval KNOT_EBADARG if \a pos is not a valid position.
+ * \retval KNOT_EINVAL if \a pos is not a valid position.
  *
  * \todo Use the union or a pointer to it as parameter? IMHO there is always
  *       only one pointer that is copied, so it doesn't matter.
@@ -152,7 +152,7 @@ int knot_rdata_set_item(knot_rdata_t *rdata, unsigned int pos,
  * \param count Count of RDATA items to be stored.
  *
  * \retval 0 if successful.
- * \retval KNOT_EBADARG
+ * \retval KNOT_EINVAL
  * \retval KNOT_ENOMEM
  */
 int knot_rdata_set_items(knot_rdata_t *rdata,
@@ -202,7 +202,7 @@ const knot_rdata_item_t *knot_rdata_item(const knot_rdata_t *rdata,
  * \param dname Domain name to set to the item.
  *
  * \retval KNOT_EOK if successful.
- * \retval KNOT_EBADARG
+ * \retval KNOT_EINVAL
  */
 int knot_rdata_item_set_dname(knot_rdata_t *rdata, unsigned int pos,
                                 knot_dname_t *dname);
@@ -215,7 +215,7 @@ int knot_rdata_item_set_dname(knot_rdata_t *rdata, unsigned int pos,
  * \param raw_data Raw data to set to the item.
  *
  * \retval KNOT_EOK if successful.
- * \retval KNOT_EBADARG
+ * \retval KNOT_EINVAL
  */
 int knot_rdata_item_set_raw_data(knot_rdata_t *rdata, unsigned int pos,
                                    uint16_t *raw_data);

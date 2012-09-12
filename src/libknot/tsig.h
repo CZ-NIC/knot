@@ -78,7 +78,7 @@ enum tsig_consts {
 	                          + 6			// time signed
 };
 
-/*! TSIG errors are defined in util/error.h
+/*! TSIG errors are defined in common/errcode.h
  *  and present negative value of the TSIG error to
  *  comply with other parts of the library.
  *

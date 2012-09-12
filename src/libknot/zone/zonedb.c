@@ -25,7 +25,6 @@
 #include "zone/zonedb.h"
 #include "dname.h"
 #include "zone/node.h"
-#include "util/error.h"
 #include "util/debug.h"
 #include "common/general-tree.h"
 
@@ -89,7 +88,7 @@ knot_zonedb_t *knot_zonedb_new()
 int knot_zonedb_add_zone(knot_zonedb_t *db, knot_zone_t *zone)
 {
 	if (db == NULL || zone == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 dbg_zonedb_exec(
 	char *name = knot_dname_to_str(zone->name);
@@ -112,7 +111,7 @@ dbg_zonedb_exec(
 		db->zone_count++;
 	}
 
-	return (ret != 0) ? KNOT_EZONEIN : KNOT_EOK;
+	return (ret != 0) ? KNOT_ERROR : KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/

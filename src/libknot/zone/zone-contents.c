@@ -17,7 +17,6 @@
 #include <assert.h>
 
 #include "zone/zone-contents.h"
-#include "util/error.h"
 #include "util/debug.h"
 #include "common/base32hex.h"
 /*! \todo XXX TODO FIXME remove once testing is done. */
@@ -74,14 +73,14 @@ static void knot_zone_tree_apply(knot_zone_tree_node_t *node,
  *
  * \retval KNOT_EOK if both arguments are non-NULL and the node belongs to the
  *         zone.
- * \retval KNOT_EBADARG if either of the arguments is NULL.
+ * \retval KNOT_EINVAL if either of the arguments is NULL.
  * \retval KNOT_EBADZONE if the node does not belong to the zone.
  */
 static int knot_zone_contents_check_node(
 	const knot_zone_contents_t *contents, const knot_node_t *node)
 {
 	if (contents == NULL || node == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	// assert or just check??
@@ -351,7 +350,7 @@ static void knot_zone_contents_adjust_rdata_item(knot_rdata_t *rdata,
 		int ret = knot_zone_contents_find_dname(zone, dname, &n,
 		                                      &closest_encloser, &prev);
 
-		if (ret == KNOT_EBADARG || ret == KNOT_EBADZONE) {
+		if (ret == KNOT_EINVAL || ret == KNOT_EBADZONE) {
 			// TODO: do some cleanup if needed
 			dbg_zone_detail("Failed to find the name in zone: %s\n",
 			                knot_strerror(ret));
@@ -1268,7 +1267,7 @@ uint16_t knot_zone_contents_class(const knot_zone_contents_t *contents)
 {
 	if (contents == NULL || contents->apex == NULL
 	    || knot_node_rrset(contents->apex, KNOT_RRTYPE_SOA) == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	return knot_rrset_class(knot_node_rrset(contents->apex,
@@ -1282,7 +1281,7 @@ int knot_zone_contents_add_node(knot_zone_contents_t *zone,
                                   uint8_t flags, int use_domain_table)
 {
 	if (zone == NULL || node == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 dbg_zone_exec_detail(
@@ -1477,7 +1476,7 @@ int knot_zone_contents_add_rrset(knot_zone_contents_t *zone,
 {
 	if (zone == NULL || rrset == NULL || zone->apex == NULL
 	    || zone->apex->owner == NULL || node == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 dbg_zone_exec_detail(
@@ -1570,7 +1569,7 @@ dbg_zone_exec(
 			}
 		}
 );
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	// check if the RRSet belongs to the zone
@@ -1587,7 +1586,7 @@ dbg_zone_exec(
 	    && (knot_dname_compare(knot_rrset_owner(rrsigs),
 	                             knot_rrset_owner(*rrset)) != 0)) {
 		dbg_zone("RRSIGs do not belong to the given RRSet.\n");
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	// if no RRSet given, try to find the right RRSet
@@ -1676,7 +1675,7 @@ int knot_zone_contents_add_nsec3_node(knot_zone_contents_t *zone,
 	UNUSED(flags);
 
 	if (zone == NULL || node == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	int ret = 0;
@@ -1727,7 +1726,7 @@ int knot_zone_contents_add_nsec3_rrset(knot_zone_contents_t *zone,
 {
 	if (zone == NULL || rrset == NULL || zone->apex == NULL
 	    || zone->apex->owner == NULL || node == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	// check if the RRSet belongs to the zone
@@ -1795,7 +1794,7 @@ int knot_zone_contents_remove_node(knot_zone_contents_t *contents,
 	ck_hash_table_item_t **removed_hash)
 {
 	if (contents == NULL || node == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	const knot_dname_t *owner = knot_node_owner(node);
@@ -1831,7 +1830,7 @@ int knot_zone_contents_remove_nsec3_node(knot_zone_contents_t *contents,
 	const knot_node_t *node, knot_zone_tree_node_t **removed)
 {
 	if (contents == NULL || node == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	const knot_dname_t *owner = knot_node_owner(node);
@@ -1852,7 +1851,7 @@ int knot_zone_contents_create_and_fill_hash_table(
 	knot_zone_contents_t *zone)
 {
 	if (zone == NULL || zone->apex == NULL || zone->apex->owner == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	/*
 	 * 1) Create hash table.
@@ -1955,7 +1954,7 @@ int knot_zone_contents_find_dname(const knot_zone_contents_t *zone,
 	if (zone == NULL || name == NULL || node == NULL
 	    || closest_encloser == NULL || previous == NULL
 	    || zone->apex == NULL || zone->apex->owner == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 dbg_zone_exec_verb(
@@ -2115,7 +2114,7 @@ int knot_zone_contents_find_dname_hash(const knot_zone_contents_t *zone,
 {
 	if (zone == NULL || name == NULL || node == NULL
 	    || closest_encloser == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 dbg_zone_exec_verb(
@@ -2206,7 +2205,7 @@ int knot_zone_contents_find_nsec3_for_name(const knot_zone_contents_t *zone,
 {
 	if (zone == NULL || name == NULL
 	    || nsec3_node == NULL || nsec3_previous == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	knot_dname_t *nsec3_name = NULL;
@@ -2359,7 +2358,7 @@ knot_node_t *knot_zone_contents_get_apex(const knot_zone_contents_t *zone)
 int knot_zone_contents_adjust(knot_zone_contents_t *zone)
 {
 	if (zone == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	// load NSEC3PARAM (needed on adjusting function)
@@ -2451,7 +2450,7 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone)
 int knot_zone_contents_check_loops(knot_zone_contents_t *zone)
 {
 	if (zone == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	dbg_zone("Checking CNAME and wildcard loops.\n");
@@ -2480,7 +2479,7 @@ int knot_zone_contents_check_loops(knot_zone_contents_t *zone)
 int knot_zone_contents_load_nsec3param(knot_zone_contents_t *zone)
 {
 	if (zone == NULL || zone->apex == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	const knot_rrset_t *rrset = knot_node_rrset(zone->apex,
@@ -2501,7 +2500,7 @@ int knot_zone_contents_load_nsec3param(knot_zone_contents_t *zone)
 int knot_zone_contents_nsec3_enabled(const knot_zone_contents_t *zone)
 {
 	if (zone == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	return (zone->nsec3_params.algorithm != 0
@@ -2531,7 +2530,7 @@ int knot_zone_contents_tree_apply_postorder(knot_zone_contents_t *zone,
                               void *data)
 {
 	if (zone == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	knot_zone_tree_func_t f;
@@ -2549,7 +2548,7 @@ int knot_zone_contents_tree_apply_inorder(knot_zone_contents_t *zone,
                               void *data)
 {
 	if (zone == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	knot_zone_tree_func_t f;
@@ -2567,7 +2566,7 @@ int knot_zone_contents_tree_apply_inorder_reverse(
 	void (*function)(knot_node_t *node, void *data), void *data)
 {
 	if (zone == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	knot_zone_tree_func_t f;
@@ -2585,7 +2584,7 @@ int knot_zone_contents_nsec3_apply_postorder(knot_zone_contents_t *zone,
                               void *data)
 {
 	if (zone == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	knot_zone_tree_func_t f;
@@ -2603,7 +2602,7 @@ int knot_zone_contents_nsec3_apply_inorder(knot_zone_contents_t *zone,
                               void *data)
 {
 	if (zone == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	knot_zone_tree_func_t f;
@@ -2621,7 +2620,7 @@ int knot_zone_contents_nsec3_apply_inorder_reverse(
 	void (*function)(knot_node_t *node, void *data), void *data)
 {
 	if (zone == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	knot_zone_tree_func_t f;
@@ -2664,7 +2663,7 @@ int knot_zone_contents_dname_table_apply(knot_zone_contents_t *contents,
                                            void *data)
 {
 	if (contents == NULL || function == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	knot_dname_table_tree_inorder_apply(contents->dname_table,
@@ -2679,12 +2678,12 @@ int knot_zone_contents_shallow_copy(const knot_zone_contents_t *from,
                                     knot_zone_contents_t **to)
 {
 	if (from == NULL || to == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	/* Copy to same destination as source. */
 	if (from == *to) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	int ret = KNOT_EOK;
@@ -2775,12 +2774,12 @@ int knot_zone_contents_shallow_copy2(const knot_zone_contents_t *from,
                                      knot_zone_contents_t **to)
 {
 	if (from == NULL || to == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	/* Copy to same destination as source. */
 	if (from == *to) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	int ret = KNOT_EOK;

@@ -16,9 +16,8 @@
 
 #include <stdlib.h>
 #include "packet/query.h"
-
-#include "util/error.h"
 #include "util/wire.h"
+#include "libknot/common.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -93,7 +92,7 @@ int knot_query_rr_to_wire(const knot_rrset_t *rrset, const knot_rdata_t *rdata,
 int knot_query_dnssec_requested(const knot_packet_t *query)
 {
 	if (query == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	return ((knot_edns_get_version(&query->opt_rr) != EDNS_NOT_SUPPORTED)
@@ -105,7 +104,7 @@ int knot_query_dnssec_requested(const knot_packet_t *query)
 int knot_query_nsid_requested(const knot_packet_t *query)
 {
 	if (query == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	return ((knot_edns_get_version(&query->opt_rr) != EDNS_NOT_SUPPORTED)
@@ -117,7 +116,7 @@ int knot_query_nsid_requested(const knot_packet_t *query)
 int knot_query_edns_supported(const knot_packet_t *query)
 {
 	if (query == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	return (knot_edns_get_version(&query->opt_rr) != EDNS_NOT_SUPPORTED);
@@ -128,7 +127,7 @@ int knot_query_edns_supported(const knot_packet_t *query)
 int knot_query_init(knot_packet_t *query)
 {
 	if (query == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	// set the qr bit to 0
 	knot_wire_flags_clear_qr(&query->header.flags1);
@@ -145,7 +144,7 @@ int knot_query_set_question(knot_packet_t *query,
                               const knot_question_t *question)
 {
 	if (query == NULL || question == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	query->question.qname = question->qname;
@@ -164,7 +163,7 @@ int knot_query_set_question(knot_packet_t *query,
 int knot_query_set_opcode(knot_packet_t *query, uint8_t opcode)
 {
 	if (query == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	// set the OPCODE in the structure
 	knot_wire_flags_set_opcode(&query->header.flags1, opcode);
@@ -180,7 +179,7 @@ int knot_query_add_rrset_authority(knot_packet_t *query,
 				   const knot_rrset_t *rrset)
 {
 	if (query == NULL || rrset == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	if (query->ns_rrsets == query->max_ns_rrsets) {

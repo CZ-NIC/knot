@@ -20,7 +20,6 @@
 #include "tests/libknot/realdata/libknot_tests_loader_realdata.h"
 #include "libknot/common.h"
 #include "libknot/zone/zone.h"
-#include "libknot/util/error.h"
 #include "libknot/zone/node.h"
 
 static int knot_zone_tests_count(int argc, char *argv[]);

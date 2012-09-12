@@ -27,7 +27,6 @@
 #include "util/descriptor.h"
 #include "util/utils.h"
 #include "util/tolower.h"
-#include "util/error.h"
 #include "util/debug.h"
 
 /*----------------------------------------------------------------------------*/
@@ -36,7 +35,7 @@ int knot_nsec3_params_from_wire(knot_nsec3_params_t *params,
                                   const knot_rrset_t *nsec3param)
 {
 	if (params == NULL || nsec3param == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	assert(knot_rrset_type(nsec3param) == KNOT_RRTYPE_NSEC3PARAM);
@@ -105,7 +104,7 @@ int knot_nsec3_sha1(const knot_nsec3_params_t *params,
                       size_t *digest_size)
 {
 	if (digest == NULL || digest_size == NULL || data == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	uint8_t *salt = params->salt;
@@ -187,7 +186,7 @@ int knot_nsec3_sha1(const knot_nsec3_params_t *params,
 {
 	if (params == NULL || digest == NULL || digest_size == NULL
 	    || data == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	uint8_t *salt = params->salt;
