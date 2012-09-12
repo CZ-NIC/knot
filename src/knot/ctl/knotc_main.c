@@ -26,7 +26,6 @@
 #include <getopt.h>
 
 #include "knot/common.h"
-#include "knot/other/error.h"
 #include "knot/ctl/process.h"
 #include "knot/conf/conf.h"
 #include "knot/zone/zone-load.h"
@@ -88,8 +87,8 @@ void help(int argc, char **argv)
  * \param db Path to zone db file.
  * \param source Path to zone source file.
  *
- * \retval KNOTD_EOK if up to date.
- * \retval KNOTD_ERROR if needs recompilation.
+ * \retval KNOT_EOK if up to date.
+ * \retval KNOT_ERROR if needs recompilation.
  */
 int check_zone(const char *db, const char* source)
 {
@@ -111,21 +110,21 @@ int check_zone(const char *db, const char* source)
 		}
 		
 		log_zone_error(emsg, source);
-		return KNOTD_ENOENT;
+		return KNOT_ENOENT;
 	}
 
 	/* Read zonedb header. */
 	zloader_t *zl = 0;
 	knot_zload_open(&zl, db);
 	if (!zl) {
-		return KNOTD_ERROR;
+		return KNOT_ERROR;
 	}
 
 	/* Check source files and mtime. */
-	int ret = KNOTD_ERROR;
+	int ret = KNOT_ERROR;
 	int src_changed = strcmp(source, zl->source) != 0;
 	if (!src_changed && !knot_zload_needs_update(zl)) {
-		ret = KNOTD_EOK;
+		ret = KNOT_EOK;
 	}
 
 	knot_zload_close(zl);
@@ -554,7 +553,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 
 			// Check source files and mtime
 			int zone_status = check_zone(zone->db, zone->file);
-			if (zone_status == KNOTD_EOK && !is_checkzone) {
+			if (zone_status == KNOT_EOK && !is_checkzone) {
 				log_zone_info("Zone '%s' is up-to-date.\n",
 					      zone->name);
 				
@@ -567,7 +566,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 			}
 			
 			// Check for not existing source
-			if (zone_status == KNOTD_ENOENT) {
+			if (zone_status == KNOT_ENOENT) {
 				continue;
 			}
 			
@@ -700,8 +699,8 @@ int main(int argc, char **argv)
 
 	// Open configuration
 	int conf_ret = conf_open(config_fn);
-	if (conf_ret != KNOTD_EOK) {
-		if (conf_ret == KNOTD_ENOENT) {
+	if (conf_ret != KNOT_EOK) {
+		if (conf_ret == KNOT_ENOENT) {
 			log_server_error("Couldn't open configuration file "
 			                 "'%s'.\n", config_fn);
 		} else {

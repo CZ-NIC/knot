@@ -159,9 +159,9 @@ void dt_delete(dt_unit_t **unit);
  * \param unit Unit to be resized.
  * \param size New unit size.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL on invalid parameters.
- * \retval KNOTD_ENOMEM out of memory error.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOT_ENOMEM out of memory error.
  */
 int dt_resize(dt_unit_t *unit, int size);
 
@@ -170,8 +170,8 @@ int dt_resize(dt_unit_t *unit, int size);
  *
  * \param unit Unit to be started.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL on invalid parameters (unit is null).
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters (unit is null).
  */
 int dt_start(dt_unit_t *unit);
 
@@ -180,8 +180,8 @@ int dt_start(dt_unit_t *unit);
  *
  * \param thread Target thread instance.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL on invalid parameters.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
  */
 int dt_start_id(dthread_t *thread);
 
@@ -195,9 +195,9 @@ int dt_start_id(dthread_t *thread);
  * \param thread Target thread instance.
  * \param signum Signal code.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL on invalid parameters.
- * \retval KNOTD_ERROR unspecified error.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOT_ERROR unspecified error.
  */
 int dt_signalize(dthread_t *thread, int signum);
 
@@ -206,8 +206,8 @@ int dt_signalize(dthread_t *thread, int signum);
  *
  * \param unit Unit to be joined.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL on invalid parameters.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
  */
 int dt_join(dt_unit_t *unit);
 
@@ -218,8 +218,8 @@ int dt_join(dt_unit_t *unit);
  *
  * \param thread Target thread instance.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL on invalid parameters.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
  */
 int dt_stop_id(dthread_t *thread);
 
@@ -230,8 +230,8 @@ int dt_stop_id(dthread_t *thread);
  *
  * \param unit Unit to be stopped.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL on invalid parameters.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
  */
 int dt_stop(dt_unit_t *unit);
 
@@ -245,8 +245,8 @@ int dt_stop(dt_unit_t *unit);
  *          has significant performance deficiencies (SCHED_OTHER).
  *          (issue #1809)
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL on invalid parameters.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
  */
 //int dt_setprio(dthread_t *thread, int prio);
 
@@ -257,8 +257,8 @@ int dt_stop(dt_unit_t *unit);
  * \param cpu_id Array of CPU IDs to set affinity to.
  * \param cpu_count Number of CPUs in the array, set to 0 for no CPU.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL on invalid parameters.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
  */
 int dt_setaffinity(dthread_t *thread, unsigned* cpu_id, size_t cpu_count);
 
@@ -269,9 +269,9 @@ int dt_setaffinity(dthread_t *thread, unsigned* cpu_id, size_t cpu_count);
  * \param runnable  Runnable function for target thread.
  * \param data      Data passed to target thread.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL on invalid parameters.
- * \retval KNOTD_ENOTSUP operation not supported.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOT_ENOTSUP operation not supported.
  */
 int dt_repurpose(dthread_t *thread, runnable_t runnable, void *data);
 
@@ -286,9 +286,9 @@ int dt_repurpose(dthread_t *thread, runnable_t runnable, void *data);
  *
  * \param thread Target thread instance.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL on invalid parameters.
- * \retval KNOTD_ENOTSUP operation not supported.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOT_ENOTSUP operation not supported.
  */
 int dt_activate(dthread_t *thread);
 
@@ -303,8 +303,8 @@ int dt_activate(dthread_t *thread);
  *
  * \param thread Target thread instance.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL on invalid parameters.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
  */
 int dt_cancel(dthread_t *thread);
 
@@ -313,8 +313,8 @@ int dt_cancel(dthread_t *thread);
  *
  * \param unit Target unit instance.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL on invalid parameters.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
  */
 int dt_compact(dt_unit_t *unit);
 
@@ -366,10 +366,10 @@ unsigned dt_get_id(dthread_t *thread);
  *
  * \param unit Target unit instance.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL on invalid parameters.
- * \retval KNOTD_EAGAIN lack of resources to lock unit, try again.
- * \retval KNOTD_ERROR unspecified error.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOT_EAGAIN lack of resources to lock unit, try again.
+ * \retval KNOT_ERROR unspecified error.
  */
 int dt_unit_lock(dt_unit_t *unit);
 
@@ -380,10 +380,10 @@ int dt_unit_lock(dt_unit_t *unit);
  *
  * \param unit Target unit instance.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL on invalid parameters.
- * \retval KNOTD_EAGAIN lack of resources to unlock unit, try again.
- * \retval KNOTD_ERROR unspecified error.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOT_EAGAIN lack of resources to unlock unit, try again.
+ * \retval KNOT_ERROR unspecified error.
  */
 int dt_unit_unlock(dt_unit_t *unit);
 

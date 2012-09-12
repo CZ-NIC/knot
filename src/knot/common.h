@@ -80,19 +80,20 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 #include "common/latency.h"
 #include "common/print.h"
 #include "common/log.h"
+#include "common/errcode.h"
 #include "knot/other/debug.h"
 
 /*! \brief Eliminate compiler warning with unused parameters. */
 #define UNUSED(param) (void)(param)
 
 /* Optimisation macros. */
-#ifndef likely
+#ifndef knot_likely
 /*! \brief Optimize for x to be true value. */
-#define likely(x)       __builtin_expect((x),1)
+#define knot_likely(x)       __builtin_expect((x),1)
 #endif
-#ifndef unlikely
+#ifndef knot_unlikely
 /*! \brief Optimize for x to be false value. */
-#define unlikely(x)     __builtin_expect((x),0)
+#define knot_unlikely(x)     __builtin_expect((x),0)
 #endif
 
 /*! \todo Refactor theese. We should have an allocator function handling this.*/

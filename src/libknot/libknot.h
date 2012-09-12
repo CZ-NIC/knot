@@ -41,7 +41,6 @@
 #include "util/utils.h"
 #include "zone/zone.h"
 #include "zone/zonedb.h"
-#include "util/error.h"
 
 #endif
 

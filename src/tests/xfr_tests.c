@@ -29,7 +29,6 @@
 #include <getopt.h>
 
 #include "knot/common.h"
-#include "knot/other/error.h"
 #include "knot/server/server.h"
 #include "knot/ctl/process.h"
 #include "knot/conf/conf.h"
@@ -210,8 +209,8 @@ int main(int argc, char **argv)
 	// Open configuration
 	log_server_info("Reading configuration '%s' ...\n", config_fn);
 	int conf_ret = conf_open(config_fn);
-	if (conf_ret != KNOTD_EOK) {
-		if (conf_ret == KNOTD_ENOENT) {
+	if (conf_ret != KNOT_EOK) {
+		if (conf_ret == KNOT_ENOENT) {
 			log_server_error("Couldn't open configuration file "
 					 "'%s'.\n", config_fn);
 		} else {
@@ -233,7 +232,7 @@ int main(int argc, char **argv)
 	// Run server
 	int res = 0;
 	log_server_info("Starting server...\n");
-	if ((res = server_start(server)) == KNOTD_EOK) {
+	if ((res = server_start(server)) == KNOT_EOK) {
 
 		// Save PID
 		int has_pid = 1;
@@ -296,11 +295,11 @@ int main(int argc, char **argv)
 				sig_req_reload = 0;
 				int cf_ret = conf_open(config_fn);
 				switch (cf_ret) {
-				case KNOTD_EOK:
+				case KNOT_EOK:
 					log_server_info("Configuration "
 							"reloaded.\n");
 					break;
-				case KNOTD_ENOENT:
+				case KNOT_ENOENT:
 					log_server_error("Configuration "
 							 "file '%s' "
 							 "not found.\n",
@@ -338,7 +337,7 @@ int main(int argc, char **argv)
 		}
 		pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
 
-		if ((res = server_wait(server)) != KNOTD_EOK) {
+		if ((res = server_wait(server)) != KNOT_EOK) {
 			log_server_error("An error occured while "
 					 "waiting for server to finish.\n");
 		} else {

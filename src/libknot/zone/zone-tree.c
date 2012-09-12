@@ -20,7 +20,6 @@
 
 #include "zone-tree.h"
 #include "zone/node.h"
-#include "util/error.h"
 #include "util/debug.h"
 
 /*----------------------------------------------------------------------------*/
@@ -172,7 +171,7 @@ static int knot_zone_tree_deep_copy_node(knot_zone_tree_node_t *from,
 int knot_zone_tree_init(knot_zone_tree_t *tree)
 {
 	if (tree == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	TREE_INIT(tree, knot_zone_tree_node_compare);
@@ -184,7 +183,7 @@ int knot_zone_tree_init(knot_zone_tree_t *tree)
 int knot_zone_tree_insert(knot_zone_tree_t *tree, knot_node_t *node)
 {
 	if (tree == NULL || node == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	knot_zone_tree_node_t *znode = (knot_zone_tree_node_t *)malloc(
@@ -210,7 +209,7 @@ int knot_zone_tree_find(knot_zone_tree_t *tree, const knot_dname_t *owner,
                           const knot_node_t **found)
 {
 	if (tree == NULL || owner == NULL || found == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	knot_node_t *f = NULL;
@@ -225,7 +224,7 @@ int knot_zone_tree_get(knot_zone_tree_t *tree, const knot_dname_t *owner,
                          knot_node_t **found)
 {
 	if (tree == NULL || owner == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	*found = NULL;
@@ -267,7 +266,7 @@ int knot_zone_tree_find_less_or_equal(knot_zone_tree_t *tree,
                                         const knot_node_t **previous)
 {
 	if (tree == NULL || owner == NULL || found == NULL || previous == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	knot_node_t *f, *p;
@@ -288,7 +287,7 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
 {
 	if (tree == NULL || owner == NULL || found == NULL
 	    || previous == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	knot_zone_tree_node_t *f = NULL, *prev = NULL;
@@ -380,7 +379,7 @@ int knot_zone_tree_remove(knot_zone_tree_t *tree,
                             knot_zone_tree_node_t **removed)
 {
 	if (tree == NULL || owner == NULL || removed == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	// create dummy node to use for lookup
@@ -423,7 +422,7 @@ int knot_zone_tree_forward_apply_inorder(knot_zone_tree_t *tree,
                                            void *data)
 {
 	if (tree == NULL || function == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	TREE_FORWARD_APPLY(tree, knot_zone_tree_node, avl,
@@ -441,7 +440,7 @@ int knot_zone_tree_forward_apply_postorder(knot_zone_tree_t *tree,
                                              void *data)
 {
 	if (tree == NULL || function == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	TREE_POST_ORDER_APPLY(tree, knot_zone_tree_node, avl,
@@ -459,7 +458,7 @@ int knot_zone_tree_reverse_apply_inorder(knot_zone_tree_t *tree,
                                            void *data)
 {
 	if (tree == NULL || function == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	TREE_REVERSE_APPLY(tree, knot_zone_tree_node, avl,
@@ -477,7 +476,7 @@ int knot_zone_tree_reverse_apply_postorder(knot_zone_tree_t *tree,
                                              void *data)
 {
 	if (tree == NULL || function == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	TREE_REVERSE_APPLY_POST(tree, knot_zone_tree_node, avl,
@@ -492,7 +491,7 @@ int knot_zone_tree_shallow_copy(knot_zone_tree_t *from,
                                   knot_zone_tree_t *to)
 {
 	if (to == NULL || from == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	/*
 	 * This function will copy the tree by hand, so that the nodes
@@ -511,7 +510,7 @@ int knot_zone_tree_deep_copy(knot_zone_tree_t *from,
                              knot_zone_tree_t *to)
 {
 	if (to == NULL || from == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	/*
 	 * This function will copy the tree by hand, so that the nodes

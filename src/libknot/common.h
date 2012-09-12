@@ -25,6 +25,7 @@
  */
 
 #include <config.h>
+#include "common/errcode.h"
 
 #ifdef HAVE_LIBLDNS
 #define TEST_WITH_LDNS
@@ -56,23 +57,23 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 	({ typeof (a) _a = (a); typeof (b) _b = (b); _a > _b ? _a : _b; })
 
 /* Optimisation macros. */
-#ifndef likely
+#ifndef knot_likely
 /*! \brief Optimize for x to be true value. */
-#define likely(x)       __builtin_expect((x),1)
+#define knot_likely(x)       __builtin_expect((x),1)
 #endif
-#ifndef unlikely
+#ifndef knot_unlikely
 /*! \brief Optimize for x to be false value. */
-#define unlikely(x)     __builtin_expect((x),0)
+#define knot_unlikely(x)     __builtin_expect((x),0)
 #endif
 
 /* Optimisation macros. */
-#ifndef likely
+#ifndef knot_likely
 /*! \brief Optimize for x to be true value. */
-#define likely(x)       __builtin_expect((x),1)
+#define knot_likely(x)       __builtin_expect((x),1)
 #endif
-#ifndef unlikely
+#ifndef knot_unlikely
 /*! \brief Optimize for x to be false value. */
-#define unlikely(x)     __builtin_expect((x),0)
+#define knot_unlikely(x)     __builtin_expect((x),0)
 #endif
 
 /*! \todo Refactor theese. We should have an allocator function handling this.*/

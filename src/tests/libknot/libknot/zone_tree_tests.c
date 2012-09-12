@@ -19,7 +19,7 @@
 
 #include "tests/libknot/libknot/zone_tree_tests.h"
 #include "libknot/zone/zone-tree.h"
-#include "libknot/util/error.h"
+#include "libknot/common.h"
 
 static int knot_zone_tree_tests_count(int argc, char *argv[]);
 static int knot_zone_tree_tests_run(int argc, char *argv[]);
@@ -42,9 +42,9 @@ static int test_tree_init()
 	int lived = 0;
 
 	lives_ok({
-		if (knot_zone_tree_init(NULL) != KNOT_EBADARG) {
+		if (knot_zone_tree_init(NULL) != KNOT_EINVAL) {
 			diag("Calling knot_zone_tree_init with NULL "
-			     "tree did not return KNOT_EBADARG!");
+			     "tree did not return KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
@@ -70,23 +70,23 @@ static int test_tree_insert()
 	assert(node);
 
 	lives_ok({
-		if (knot_zone_tree_insert(NULL, NULL) != KNOT_EBADARG) {
+		if (knot_zone_tree_insert(NULL, NULL) != KNOT_EINVAL) {
 			errors++;
 		}
 		lived = 1;
 		lived = 0;
-		if (knot_zone_tree_insert(tree, NULL) != KNOT_EBADARG) {
+		if (knot_zone_tree_insert(tree, NULL) != KNOT_EINVAL) {
 			errors++;
 		}
 		lived = 1;
 		lived = 0;
-		if (knot_zone_tree_insert(NULL, node) != KNOT_EBADARG) {
+		if (knot_zone_tree_insert(NULL, node) != KNOT_EINVAL) {
 			errors++;
 		}
 		lived = 1;
 	}, "zone tree: insert NULL tests");
 	if (errors) {
-		diag("Zone tree insert did not return KNOT_EBADARG "
+		diag("Zone tree insert did not return KNOT_EINVAL "
 		     "when given wrong arguments");
 	}
 	errors += lived != 1;
@@ -118,38 +118,38 @@ static int test_tree_finding()
 
 	lives_ok({
 		if (knot_zone_tree_find(NULL, NULL, NULL) !=
-	            KNOT_EBADARG) {
+	            KNOT_EINVAL) {
 			errors++;
 		}
 		lived = 1;
 		lived = 0;
 		if (knot_zone_tree_find(tree, NULL, NULL) !=
-		    KNOT_EBADARG) {
+		    KNOT_EINVAL) {
 			errors++;
 		}
 		lived = 1;
 		lived = 0;
 		if (knot_zone_tree_find(tree, node->owner,
-		                        NULL) != KNOT_EBADARG) {
+		                        NULL) != KNOT_EINVAL) {
 			errors++;
 		}
 		lived = 1;
 		const knot_node_t *found_node = NULL;
 		lived = 0;
 		if (knot_zone_tree_find(NULL, node->owner,
-		                        &found_node) != KNOT_EBADARG) {
+		                        &found_node) != KNOT_EINVAL) {
 			errors++;
 		}
 		lived = 1;
 		lived = 0;
 		if (knot_zone_tree_find(tree, NULL,
-		                        &found_node) != KNOT_EBADARG) {
+		                        &found_node) != KNOT_EINVAL) {
 			errors++;
 		}
 		lived = 1;
 	}, "zone tree: find NULL tests");
 	if (errors) {
-		diag("Zone tree find did not return KNOT_EBADARG "
+		diag("Zone tree find did not return KNOT_EINVAL "
 		     "when given wrong arguments");
 	}
 
@@ -239,14 +239,14 @@ static int test_tree_finding_less_or_equal()
 	                                              NULL,
 	                                              NULL,
 	                                              NULL) !=
-	            KNOT_EBADARG) {
+	            KNOT_EINVAL) {
 			errors++;
 		}
 		lived = 1;
 		lived = 0;
 		if (knot_zone_tree_find_less_or_equal(tree, NULL,
 		                                      NULL, NULL) !=
-		    KNOT_EBADARG) {
+		    KNOT_EINVAL) {
 			errors++;
 		}
 		lived = 1;
@@ -255,7 +255,7 @@ static int test_tree_finding_less_or_equal()
 		                                      node->owner,
 		                                      NULL,
 		                                      NULL) !=
-		    KNOT_EBADARG) {
+		    KNOT_EINVAL) {
 			errors++;
 		}
 		lived = 1;
@@ -263,7 +263,7 @@ static int test_tree_finding_less_or_equal()
 		lived = 0;
 		if (knot_zone_tree_find_less_or_equal(NULL, node->owner,
 		                        &found_node, NULL) !=
-		    KNOT_EBADARG) {
+		    KNOT_EINVAL) {
 			errors++;
 		}
 		lived = 1;
@@ -272,13 +272,13 @@ static int test_tree_finding_less_or_equal()
 		if (knot_zone_tree_find_less_or_equal(tree, NULL,
 		                        &found_node,
 		                        &previous_node) !=
-		    KNOT_EBADARG) {
+		    KNOT_EINVAL) {
 			errors++;
 		}
 		lived = 1;
 	}, "zone tree: tree find less or equal NULL tests");
 	if (errors) {
-		diag("Zone tree find did not return KNOT_EBADARG "
+		diag("Zone tree find did not return KNOT_EINVAL "
 		     "when given wrong arguments");
 	}
 
@@ -444,44 +444,44 @@ static int test_tree_remove()
 
 	lives_ok({
 		if (knot_zone_tree_remove(NULL, NULL, NULL) !=
-		    KNOT_EBADARG) {
+		    KNOT_EINVAL) {
 			 errors++;
 		}
 		lived = 1;
 		lived = 0;
 		if (knot_zone_tree_remove(tree, NULL, NULL) !=
-		     KNOT_EBADARG) {
+		     KNOT_EINVAL) {
 			  errors++;
 		}
 		lived = 1;
 		lived = 0;
 		if (knot_zone_tree_remove(tree, node->owner, NULL) !=
-		     KNOT_EBADARG) {
+		     KNOT_EINVAL) {
 			  errors++;
 		}
 		lived = 1;
 		lived = 0;
 		if (knot_zone_tree_remove(NULL, node->owner, NULL) !=
-		     KNOT_EBADARG) {
+		     KNOT_EINVAL) {
 			  errors++;
 		}
 		lived = 1;
 		knot_zone_tree_node_t *deleted_node = NULL;
 		lived = 0;
 		if (knot_zone_tree_remove(NULL, node->owner, &deleted_node) !=
-		     KNOT_EBADARG) {
+		     KNOT_EINVAL) {
 			  errors++;
 		}
 		lived = 1;
 		lived = 0;
 		if (knot_zone_tree_remove(tree, NULL, &deleted_node) !=
-		     KNOT_EBADARG) {
+		     KNOT_EINVAL) {
 			  errors++;
 		}
 		lived = 1;
 	}, "zone tree: remove NULL tests");
 	if (errors) {
-		diag("Zone tree remove did not return KNOT_EBADARG "
+		diag("Zone tree remove did not return KNOT_EINVAL "
 		     "when given wrong arguments");
 	}
 
@@ -552,24 +552,24 @@ static int test_traversal(knot_node_t **nodes,
 	knot_zone_tree_init(tree);
 
 	lives_ok({
-		if (trav_func(NULL, NULL, NULL) != KNOT_EBADARG) {
+		if (trav_func(NULL, NULL, NULL) != KNOT_EINVAL) {
 			errors++;
 		}
 		lived = 1;
 		lived = 0;
-		if (trav_func(tree, NULL, NULL) != KNOT_EBADARG) {
+		if (trav_func(tree, NULL, NULL) != KNOT_EINVAL) {
 			errors++;
 		}
 		lived = 1;
 		lived = 0;
-		if (trav_func(NULL, add_to_array, NULL) != KNOT_EBADARG) {
+		if (trav_func(NULL, add_to_array, NULL) != KNOT_EINVAL) {
 			errors++;
 		}
 		lived = 1;
 	}, "zone tree: traversal NULL tests");
 
 	if (errors) {
-		diag("Traversal function did not return KNOT_EBADARG "
+		diag("Traversal function did not return KNOT_EINVAL "
 		     "when given NULL parameters");
 	}
 
@@ -656,23 +656,23 @@ static int test_tree_shallow_copy()
 	knot_zone_tree_init(tree);
 
 	lives_ok({
-		if (knot_zone_tree_shallow_copy(NULL, NULL) != KNOT_EBADARG) {
+		if (knot_zone_tree_shallow_copy(NULL, NULL) != KNOT_EINVAL) {
 			errors++;
 		}
 		lived = 1;
 		lived = 0;
-		if (knot_zone_tree_shallow_copy(tree, NULL) != KNOT_EBADARG) {
+		if (knot_zone_tree_shallow_copy(tree, NULL) != KNOT_EINVAL) {
 			errors++;
 		}
 		lived = 1;
 		lived = 0;
-		if (knot_zone_tree_shallow_copy(NULL, tree) != KNOT_EBADARG) {
+		if (knot_zone_tree_shallow_copy(NULL, tree) != KNOT_EINVAL) {
 			errors++;
 		}
 		lived = 1;
 	}, "zone tree: shallow copy NULL tests");
 	if (errors) {
-		diag("Zone tree shallow copy did not return KNOT_EBADARG when "
+		diag("Zone tree shallow copy did not return KNOT_EINVAL when "
 		     "given NULL arguments");
 	}
 	errors += lived != 1;

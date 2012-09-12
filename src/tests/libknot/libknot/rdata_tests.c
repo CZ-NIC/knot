@@ -23,7 +23,6 @@
 #include "libknot/dname.h"
 #include "libknot/util/descriptor.h"
 #include "libknot/util/utils.h"
-#include "libknot/util/error.h"
 
 enum { TEST_DOMAINS_OK = 8 };
 
@@ -556,7 +555,7 @@ static int test_rdata_set_items()
 	int errors = 0;
 
 	// check error return values
-	if (knot_rdata_set_items(rdata, NULL, 0) != KNOT_EBADARG) {
+	if (knot_rdata_set_items(rdata, NULL, 0) != KNOT_EINVAL) {
 		diag("Return value of knot_rdata_set_items() "
 		     "when rdata == NULL is wrong");
 		return 0;
@@ -564,13 +563,13 @@ static int test_rdata_set_items()
 		rdata = knot_rdata_new();
 		assert(rdata != NULL);
 
-		if (knot_rdata_set_items(rdata, NULL, 0) != KNOT_EBADARG) {
+		if (knot_rdata_set_items(rdata, NULL, 0) != KNOT_EINVAL) {
 			diag("Return value of knot_rdata_set_items()"
 			     " when items == NULL is wrong");
 //			knot_rdata_free(&rdata);
 			return 0;
 		} else if (knot_rdata_set_items(rdata, item, 0) !=
-			   KNOT_EBADARG) {
+			   KNOT_EINVAL) {
 			diag("Return value of knot_rdata_set_items()"
 			     " when count == 0"
 			     "is wrong");

@@ -101,7 +101,7 @@ knot_opt_rr_t *knot_edns_new();
  *                 than acutal size of the OPT RR).
  *
  * \return Size of the parserd OPT RR in bytes if successful (always > 0).
- * \retval KNOT_EBADARG
+ * \retval KNOT_EINVAL
  * \retval KNOT_EFEWDATA
  * \retval KNOT_EMALF
  * \retval KNOT_ENOMEM

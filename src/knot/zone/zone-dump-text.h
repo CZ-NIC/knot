@@ -37,7 +37,7 @@
  * \param File file to write to.
  *
  * \retval KNOT_EOK on success.
- * \retval KNOT_EBADARG if the specified file is not valid for writing.
+ * \retval KNOT_EINVAL if the specified file is not valid for writing.
  */
 int zone_dump_text(knot_zone_contents_t *zone, FILE *f);
 

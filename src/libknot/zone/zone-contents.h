@@ -113,7 +113,7 @@ uint16_t knot_zone_contents_class(const knot_zone_contents_t *contents);
  * \param node Node to add into the zone.
  *
  * \retval KNOT_EOK
- * \retval KNOT_EBADARG
+ * \retval KNOT_EINVAL
  * \retval KNOT_EBADZONE
  * \retval KNOT_EHASH
  */
@@ -140,7 +140,7 @@ int knot_zone_contents_add_node(knot_zone_contents_t *contents,
  *             and set it to this parameter.
  *
  * \retval KNOT_EOK
- * \retval KNOT_EBADARG
+ * \retval KNOT_EINVAL
  * \retval KNOT_EBADZONE
  */
 int knot_zone_contents_add_rrset(knot_zone_contents_t *contents,
@@ -167,7 +167,7 @@ int knot_zone_contents_add_rrsigs(knot_zone_contents_t *contents,
  * \param node Node to add into the zone.
  *
  * \retval KNOT_EOK
- * \retval KNOT_EBADARG
+ * \retval KNOT_EINVAL
  * \retval KNOT_EBADZONE
  */
 int knot_zone_contents_add_nsec3_node(knot_zone_contents_t *contents,
@@ -246,7 +246,7 @@ const knot_node_t *knot_zone_contents_find_node(
  *
  * \retval KNOT_ZONE_NAME_FOUND if node with owner \a name was found.
  * \retval KNOT_ZONE_NAME_NOT_FOUND if it was not found.
- * \retval KNOT_EBADARG
+ * \retval KNOT_EINVAL
  * \retval KNOT_EBADZONE
  */
 int knot_zone_contents_find_dname(const knot_zone_contents_t *contents,
@@ -288,7 +288,7 @@ knot_node_t *knot_zone_contents_get_previous_nsec3(
  *
  * \retval KNOT_ZONE_NAME_FOUND if node with owner \a name was found.
  * \retval KNOT_ZONE_NAME_NOT_FOUND if it was not found.
- * \retval KNOT_EBADARG
+ * \retval KNOT_EINVAL
  * \retval KNOT_EBADZONE
  */
 int knot_zone_contents_find_dname_hash(const knot_zone_contents_t *contents,
@@ -328,7 +328,7 @@ const knot_node_t *knot_zone_contents_find_nsec3_node(
  *
  * \retval KNOT_ZONE_NAME_FOUND if the corresponding NSEC3 node was found.
  * \retval KNOT_ZONE_NAME_NOT_FOUND if it was not found.
- * \retval KNOT_EBADARG
+ * \retval KNOT_EINVAL
  * \retval KNOT_ENSEC3PAR
  * \retval KNOT_ECRYPTO
  * \retval KNOT_ERROR
@@ -537,7 +537,7 @@ int knot_zone_contents_dname_table_apply(knot_zone_contents_t *contents,
  * \param to Copy of the zone.
  *
  * \retval KNOT_EOK
- * \retval KNOT_EBADARG
+ * \retval KNOT_EINVAL
  * \retval KNOT_ENOMEM
  */
 int knot_zone_contents_shallow_copy(const knot_zone_contents_t *from,

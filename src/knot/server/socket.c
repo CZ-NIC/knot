@@ -31,7 +31,6 @@
 #include <netinet/ip.h>
 #include <arpa/inet.h>
 
-#include "knot/other/error.h"
 #include "knot/common.h"
 #include "knot/server/socket.h"
 
@@ -54,12 +53,12 @@ int socket_connect(int fd, const char *addr, unsigned short port)
 	}
 
 	/* Resolve address. */
-	int ret = KNOTD_EOK;
+	int ret = KNOT_EOK;
 	struct addrinfo hints, *res;
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 	if ((ret = getaddrinfo(addr, NULL, &hints, &res)) != 0) {
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	/* Evaluate address type. */
@@ -113,7 +112,7 @@ int socket_bind(int socket, int family, const char *addr, unsigned short port)
 		paddr = (struct sockaddr*)&saddr;
 		addrlen = sizeof(saddr);
 		if (getsockname(socket, paddr, &addrlen) < 0) {
-			return KNOTD_EINVAL;
+			return KNOT_EINVAL;
 		}
 
 		/* Set address and port. */
@@ -132,13 +131,13 @@ int socket_bind(int socket, int family, const char *addr, unsigned short port)
 
 #ifdef DISABLE_IPV6
 		log_server_error("ipv6 support disabled\n");
-		return KNOTD_ENOIPV6;
+		return KNOT_ENOIPV6;
 #else
 		/* Initialize socket address. */
 		paddr = (struct sockaddr*)&saddr6;
 		addrlen = sizeof(saddr6);
 		if (getsockname(socket, paddr, &addrlen) < 0) {
-			return KNOTD_EINVAL;
+			return KNOT_EINVAL;
 		}
 
 		/* Set address and port. */
@@ -160,7 +159,7 @@ int socket_bind(int socket, int family, const char *addr, unsigned short port)
 			ret = setsockopt(socket, IPPROTO_IPV6, IPV6_V6ONLY,
 			                 &flag, sizeof(flag));
 			if (ret < 0) {
-				return KNOTD_EINVAL;
+				return KNOT_EINVAL;
 			}
 		}
 #endif /* IPV6_V6ONLY */
@@ -171,7 +170,7 @@ int socket_bind(int socket, int family, const char *addr, unsigned short port)
 	ret = setsockopt(socket, SOL_SOCKET, SO_REUSEADDR,
 	                     &flag, sizeof(flag));
 	if (ret < 0) {
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	/* Bind to specified address. */
@@ -182,7 +181,7 @@ int socket_bind(int socket, int family, const char *addr, unsigned short port)
 		return knot_map_errno(EADDRINUSE, EINVAL, EACCES, ENOMEM);
 	}
 
-	return KNOTD_EOK;
+	return KNOT_EOK;
 }
 
 int socket_listen(int socket, int backlog_size)
@@ -192,15 +191,15 @@ int socket_listen(int socket, int backlog_size)
 		return knot_map_errno(EADDRINUSE);
 	}
 
-	return KNOTD_EOK;
+	return KNOT_EOK;
 }
 
 int socket_close(int socket)
 {
 	if (close(socket) < 0) {
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 
-	return KNOTD_EOK;
+	return KNOT_EOK;
 }
 

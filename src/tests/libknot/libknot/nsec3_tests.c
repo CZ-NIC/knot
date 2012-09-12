@@ -18,7 +18,6 @@
 #include <assert.h>
 
 #include "libknot/common.h"
-#include "libknot/util/error.h"
 #include "libknot/nsec3.h"
 #include "libknot/util/utils.h"
 #include "common/base32hex.h"
@@ -71,21 +70,21 @@ static int test_nsec3_params_from_wire()
 	lives_ok({
 		/* Create special variable for this block. */
 		if (knot_nsec3_params_from_wire(NULL, NULL) !=
-		    KNOT_EBADARG) {
+		    KNOT_EINVAL) {
 			errors++;
 		}
 		lived = 1;
 
 		lived = 0;
 		if (knot_nsec3_params_from_wire(&nsec3_test_params, NULL) !=
-		    KNOT_EBADARG) {
+		    KNOT_EINVAL) {
 			errors++;
 		}
 		lived = 1;
 
 		lived = 0;
 		if (knot_nsec3_params_from_wire(NULL, rrset) !=
-		    KNOT_EBADARG) {
+		    KNOT_EINVAL) {
 			errors++;
 		}
 		lived = 1;
@@ -140,14 +139,14 @@ static int test_nsec3_sha1()
 
 	lives_ok({
 		if (knot_nsec3_sha1(NULL, NULL, 1, NULL, NULL) !=
-	            KNOT_EBADARG) {
+	            KNOT_EINVAL) {
 			errors++;
 		}
 		lived = 1;
 		lived = 0;
 		if (knot_nsec3_sha1(&nsec3_test_params,
 	                              NULL, 1, NULL, NULL) !=
-	            KNOT_EBADARG) {
+	            KNOT_EINVAL) {
 			errors++;
 		}
 		uint8_t data[20];
@@ -155,7 +154,7 @@ static int test_nsec3_sha1()
 		lived = 0;
 		if (knot_nsec3_sha1(&nsec3_test_params,
 	                              data, 20, NULL, NULL) !=
-	            KNOT_EBADARG) {
+	            KNOT_EINVAL) {
 			errors++;
 		}
 		uint8_t *digest = NULL;
@@ -163,7 +162,7 @@ static int test_nsec3_sha1()
 		lived = 0;
 		if (knot_nsec3_sha1(&nsec3_test_params,
 	                              data, 20, &digest, NULL) !=
-	            KNOT_EBADARG) {
+	            KNOT_EINVAL) {
 			errors++;
 		}
 //		size_t size = 0;
@@ -171,13 +170,13 @@ static int test_nsec3_sha1()
 //		lived = 0;
 //		if (knot_nsec3_sha1(&nsec3_test_params,
 //	                              data, 20, &digest, &size) !=
-//	            KNOT_EBADARG) {
+//	            KNOT_EINVAL) {
 //			errors++;
 //		}
 		lived = 1;
 	}, "NSEC3: nsec3 sha1 NULL tests");
 	if (errors) {
-		diag("Does not return KNOT_EBADARG after "
+		diag("Does not return KNOT_EINVAL after "
 		     "execution with wrong arguments!");
 	}
 

@@ -49,7 +49,6 @@
 #include <netdb.h>
 
 #include "libknot/libknot.h"
-#include "knot/other/error.h"
 #include "libknot/common.h"
 #include "common/skip-list.h"
 #include "common/base32hex.h"
@@ -913,7 +912,7 @@ int rdata_dump_text(const knot_rdata_t *rdata, uint16_t type, FILE *f,
                      const knot_rrset_t *rrset)
 {
 	if (rdata == NULL || rrset == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	knot_rrtype_descriptor_t *desc =
@@ -937,7 +936,7 @@ int rdata_dump_text(const knot_rdata_t *rdata, uint16_t type, FILE *f,
 
 		if (item_str == NULL) {
 			/* Fatal error. */
-			return KNOTD_ERROR;
+			return KNOT_ERROR;
 		}
 
 		if (i != rdata->count - 1) {
@@ -950,7 +949,7 @@ int rdata_dump_text(const knot_rdata_t *rdata, uint16_t type, FILE *f,
 	}
 	fprintf(f, "\n");
 
-	return KNOTD_EOK;
+	return KNOT_EOK;
 }
 
 void dump_rrset_header(const knot_rrset_t *rrset, FILE *f)
@@ -970,8 +969,8 @@ int rrsig_set_dump_text(knot_rrset_t *rrsig, FILE *f)
 
 	while (tmp->next != rrsig->rdata) {
 		int ret = rdata_dump_text(tmp, KNOT_RRTYPE_RRSIG, f, rrsig);
-		if (ret != KNOTD_EOK) {
-			return KNOTD_ERROR;
+		if (ret != KNOT_EOK) {
+			return KNOT_ERROR;
 		}
 
 		dump_rrset_header(rrsig, f);
@@ -979,11 +978,11 @@ int rrsig_set_dump_text(knot_rrset_t *rrsig, FILE *f)
 	}
 
 	int ret = rdata_dump_text(tmp, KNOT_RRTYPE_RRSIG, f, rrsig);
-	if (ret != KNOTD_EOK) {
-		return KNOTD_ERROR;
+	if (ret != KNOT_EOK) {
+		return KNOT_ERROR;
 	}
 
-	return KNOTD_EOK;
+	return KNOT_EOK;
 }
 
 
@@ -996,7 +995,7 @@ int rrset_dump_text(const knot_rrset_t *rrset, FILE *f)
 
 		while (tmp->next != rrset->rdata) {
 			int ret = rdata_dump_text(tmp, rrset->type, f, rrset);
-			if (ret != KNOTD_EOK) {
+			if (ret != KNOT_EOK) {
 				return ret;
 			}
 			dump_rrset_header(rrset, f);
@@ -1011,7 +1010,7 @@ int rrset_dump_text(const knot_rrset_t *rrset, FILE *f)
 		rrsig_set_dump_text(rrsig_set, f);
 	}
 
-	return KNOTD_EOK;
+	return KNOT_EOK;
 }
 
 struct dump_param {
@@ -1028,7 +1027,7 @@ int apex_node_dump_text(knot_node_t *node, FILE *f)
 		                                &dummy_rrset);
 	assert(tmp_rrset);
 	int ret = rrset_dump_text(tmp_rrset, f);
-	if (ret != KNOTD_EOK) {
+	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
@@ -1038,7 +1037,7 @@ int apex_node_dump_text(knot_node_t *node, FILE *f)
 	for (int i = 0; i < node->rrset_count; i++) {
 		if (rrsets[i]->type != KNOT_RRTYPE_SOA) {
 			ret = rrset_dump_text(rrsets[i], f);
-			if (ret != KNOTD_EOK) {
+			if (ret != KNOT_EOK) {
 				return ret;
 			}
 		}
@@ -1046,7 +1045,7 @@ int apex_node_dump_text(knot_node_t *node, FILE *f)
 
 	free(rrsets);
 
-	return KNOTD_EOK;
+	return KNOT_EOK;
 }
 
 void node_dump_text(knot_node_t *node, void *data)
@@ -1075,7 +1074,7 @@ void node_dump_text(knot_node_t *node, void *data)
 int zone_dump_text(knot_zone_contents_t *zone, FILE *f)
 {
 	if (f == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	fprintf(f, ";Dumped using %s v. %s\n", PACKAGE_NAME, PACKAGE_VERSION);

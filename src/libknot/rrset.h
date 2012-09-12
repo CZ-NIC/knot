@@ -99,7 +99,7 @@ knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
  * \param rdata RDATA to add to the RRSet.
  *
  * \retval KNOT_EOK
- * \retval KNOT_EBADARG
+ * \retval KNOT_EINVAL
  *
  * \todo Provide some function for comparing RDATAs.
  */
@@ -114,7 +114,7 @@ int knot_rrset_add_rdata(knot_rrset_t *rrset, knot_rdata_t *rdata);
  * \param rdata RDATA to add to the RRSet.
  *
  * \retval KNOT_EOK
- * \retval KNOT_EBADARG
+ * \retval KNOT_EINVAL
  *
  * \todo Provide some function for comparing RDATAs.
  */
@@ -130,7 +130,7 @@ knot_rdata_t * knot_rrset_remove_rdata(knot_rrset_t *rrset,
  * \param rrsigs Set of RRSIGs covering this RRSet.
  *
  * \retval KNOT_EOK
- * \retval KNOT_EBADARG
+ * \retval KNOT_EINVAL
  */
 int knot_rrset_set_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs);
 
@@ -322,7 +322,7 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
  * \param r2 Poitner to RRSet to be merged.
  *
  * \retval KNOT_EOK
- * \retval KNOT_EBADARG if the RRSets could not be merged, because their
+ * \retval KNOT_EINVAL if the RRSets could not be merged, because their
  *         Owner, Type, Class or TTL does not match.
  */
 int knot_rrset_merge(void **r1, void **r2);
@@ -342,7 +342,7 @@ int knot_rrset_merge(void **r1, void **r2);
  * \param r2 Poitner to RRSet to be merged.
  *
  * \retval KNOT_EOK
- * \retval KNOT_EBADARG if the RRSets could not be merged, because their
+ * \retval KNOT_EINVAL if the RRSets could not be merged, because their
  *         Owner, Type, Class or TTL does not match.
  */
 int knot_rrset_merge_no_dupl(void **r1, void **r2);

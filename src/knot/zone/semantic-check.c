@@ -4,7 +4,6 @@
 
 #include "knot/common.h"
 #include "knot/zone/zone-dump.h"
-#include "knot/other/error.h"
 #include "knot/other/debug.h"
 #include "libknot/libknot.h"
 #include "common/base32hex.h"
@@ -165,12 +164,12 @@ int err_handler_handle_error(err_handler_t *handler,
 	assert(handler && node);
 	if ((error != 0) &&
 	    (error > ZC_ERR_GLUE_GENERAL_ERROR)) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	/*!< \todo #1886 this is so wrong! Should not even return anything. */
 	if (error == ZC_ERR_ALLOC || error == 0) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	/* missing SOA can only occur once, so there
@@ -252,7 +251,7 @@ static int check_cname_cycles_in_zone(knot_zone_contents_t *zone,
 {
 	if (rrset->type != KNOT_RRTYPE_CNAME &&
 	    rrset->type != KNOT_RRTYPE_DNAME) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	const knot_rrset_t *next_rrset = rrset;
@@ -1450,7 +1449,7 @@ int zone_do_sem_checks(knot_zone_contents_t *zone, char do_checks,
                         knot_node_t **last_node)
 {
 	if (!handler) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	arg_t arguments;
 	arguments.arg1 = zone;

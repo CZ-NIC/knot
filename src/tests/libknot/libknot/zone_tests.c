@@ -20,7 +20,6 @@
 #include "libknot/common.h"
 #include "libknot/zone/dname-table.h"
 #include "libknot/zone/zone.h"
-#include "libknot/util/error.h"
 #include "libknot/zone/node.h"
 
 static int knot_zone_tests_count(int argc, char *argv[]);
@@ -172,10 +171,10 @@ static int test_zone_add_node(knot_zone_contents_t *zone, int nsec3)
 	}
 
 	if ((res = ((nsec3) ? knot_zone_contents_add_nsec3_node(NULL, node, 0, 0, 0)
-		: knot_zone_contents_add_node(NULL, node, 0, 0, 0))) != KNOT_EBADARG) {
+		: knot_zone_contents_add_node(NULL, node, 0, 0, 0))) != KNOT_EINVAL) {
 		diag("zone: Inserting node to NULL zone did not result in"
 		     "proper return value (%d instead of %d)", res,
-		     KNOT_EBADARG);
+		     KNOT_EINVAL);
 		++errors;
 	}
 
@@ -185,10 +184,10 @@ static int test_zone_add_node(knot_zone_contents_t *zone, int nsec3)
 	note("Inserting NULL node...\n");
 
 	if ((res = ((nsec3) ? knot_zone_contents_add_nsec3_node(zone, NULL, 0, 0, 0)
-		: knot_zone_contents_add_node(zone, NULL, 0, 0, 0))) != KNOT_EBADARG) {
+		: knot_zone_contents_add_node(zone, NULL, 0, 0, 0))) != KNOT_EINVAL) {
 		diag("zone: Inserting NULL node to zone did not result in"
 		     "proper return value (%d instead of %d)", res,
-		     KNOT_EBADARG);
+		     KNOT_EINVAL);
 		++errors;
 	}
 
@@ -522,32 +521,32 @@ static int test_zone_shallow_copy()
 		knot_node_new(apex_dname, NULL, 0);
 	assert(apex_node);
 	lives_ok({
-		if (knot_zone_contents_shallow_copy(NULL, NULL) != KNOT_EBADARG) {
+		if (knot_zone_contents_shallow_copy(NULL, NULL) != KNOT_EINVAL) {
 			diag("Calling zone_shallow_copy with NULL "
-			     "arguments did not return KNOT_EBADARG!");
+			     "arguments did not return KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
 		lived = 0;
 		knot_zone_contents_t *zone = knot_zone_contents_new(apex_node,
 									0, 1, 0);
-		if (knot_zone_contents_shallow_copy(zone, NULL) != KNOT_EBADARG) {
+		if (knot_zone_contents_shallow_copy(zone, NULL) != KNOT_EINVAL) {
 			diag("Calling zone_shallow_copy with NULL destination "
-			     "zone argument did not return KNOT_EBADARG!");
+			     "zone argument did not return KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
 		lived = 0;
-		if (knot_zone_contents_shallow_copy(NULL, &zone) != KNOT_EBADARG) {
+		if (knot_zone_contents_shallow_copy(NULL, &zone) != KNOT_EINVAL) {
 			diag("Calling zone_shallow_copy with NULL source "
-			     "zone argument did not return KNOT_EBADARG!");
+			     "zone argument did not return KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
 		lived = 0;
-		if (knot_zone_contents_shallow_copy(zone, &zone) != KNOT_EBADARG) {
+		if (knot_zone_contents_shallow_copy(zone, &zone) != KNOT_EINVAL) {
 			diag("Calling zone_shallow_copy with identical source "
-			 "and destination zone did not return KNOT_EBADARG!");
+			 "and destination zone did not return KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;

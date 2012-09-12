@@ -23,7 +23,6 @@
 #include "common.h"
 #include "rrset.h"
 #include "util/descriptor.h"
-#include "util/error.h"
 #include "util/debug.h"
 #include "util/utils.h"
 
@@ -91,7 +90,7 @@ knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
 int knot_rrset_add_rdata(knot_rrset_t *rrset, knot_rdata_t *rdata)
 {
 	if (rrset == NULL || rdata == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	if (rrset->rdata == NULL) {
@@ -117,7 +116,7 @@ int knot_rrset_add_rdata_order(knot_rrset_t *rrset, knot_rdata_t *rdata)
 {
 	if (rrset == NULL || rdata == NULL) {
 		dbg_rrset("rrset: add_rdata_order: NULL arguments.\n");
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	if (rrset->rdata == NULL) {
@@ -194,7 +193,7 @@ knot_rdata_t *knot_rrset_remove_rdata(knot_rrset_t *rrset,
 int knot_rrset_set_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs)
 {
 	if (rrset == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	rrset->rrsigs = rrsigs;
@@ -208,7 +207,7 @@ int knot_rrset_add_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs,
 {
 	if (rrset == NULL || rrsigs == NULL
 	    || knot_dname_compare(rrset->owner, rrsigs->owner) != 0) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	int rc;
@@ -393,13 +392,13 @@ knot_rrset_t *knot_rrset_get_rrsigs(knot_rrset_t *rrset)
 int knot_rrset_compare_rdata(const knot_rrset_t *r1, const knot_rrset_t *r2)
 {
 	if (r1 == NULL || r2 == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	knot_rrtype_descriptor_t *desc =
 		knot_rrtype_descriptor_by_type(r1->type);
 	if (desc == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	// compare RDATA sets (order is not significant)
@@ -634,7 +633,7 @@ int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
                          int copy_rdata_dnames)
 {
 	if (from == NULL || to == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	int ret;
@@ -774,7 +773,7 @@ int knot_rrset_merge(void **r1, void **r2)
 	if ((knot_dname_compare(rrset1->owner, rrset2->owner) != 0)
 	    || rrset1->rclass != rrset2->rclass
 	    || rrset1->type != rrset2->type) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	// add all RDATAs from rrset2 to rrset1 (i.e. concatenate linked lists)
@@ -814,14 +813,14 @@ int knot_rrset_merge_no_dupl(void **r1, void **r2)
 {
 	if (r1 == NULL || r2 == NULL) {
 		dbg_rrset("rrset: merge_no_dupl: NULL arguments.");
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	knot_rrset_t *rrset1 = (knot_rrset_t *)(*r1);
 	knot_rrset_t *rrset2 = (knot_rrset_t *)(*r2);
 	if (rrset1 == NULL || rrset2 == NULL) {
 		dbg_rrset("rrset: merge_no_dupl: NULL arguments.");
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 dbg_rrset_exec_detail(
@@ -835,7 +834,7 @@ dbg_rrset_exec_detail(
 	    || rrset1->type != rrset2->type) {
 		dbg_rrset("rrset: merge_no_dupl: Trying to merge "
 		          "different RRs.\n");
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	knot_rdata_t *walk2 = rrset2->rdata;

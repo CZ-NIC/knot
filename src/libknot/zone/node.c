@@ -24,7 +24,6 @@
 #include "common.h"
 #include "zone/node.h"
 #include "rrset.h"
-#include "util/error.h"
 #include "common/skip-list.h"
 #include "common/tree.h"
 #include "util/debug.h"
@@ -161,7 +160,7 @@ int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset,
                         int merge)
 {
 	if (node == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	int ret = 0;
@@ -264,7 +263,7 @@ void knot_node_remove_all_rrsets(knot_node_t *node)
 short knot_node_rrset_count(const knot_node_t *node)
 {
 	if (node == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	return node->rrset_count;
@@ -343,7 +342,7 @@ static void count_rrsets(void *node, void *data)
 int knot_node_count_rrsets(const knot_node_t *node)
 {
 	if (node == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	int count = 0;
@@ -400,7 +399,7 @@ void knot_node_set_parent(knot_node_t *node, knot_node_t *parent)
 unsigned int knot_node_children(const knot_node_t *node)
 {
 	if (node == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	return node->children;
@@ -637,7 +636,7 @@ void knot_node_set_deleg_point(knot_node_t *node)
 int knot_node_is_deleg_point(const knot_node_t *node)
 {
 	if (node == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	return knot_node_flags_get_deleg(node->flags);
@@ -659,7 +658,7 @@ void knot_node_set_non_auth(knot_node_t *node)
 int knot_node_is_non_auth(const knot_node_t *node)
 {
 	if (node == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	return knot_node_flags_get_nonauth(node->flags);
@@ -670,7 +669,7 @@ int knot_node_is_non_auth(const knot_node_t *node)
 int knot_node_is_auth(const knot_node_t *node)
 {
 	if (node == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	return (node->flags == 0);
@@ -762,7 +761,7 @@ int knot_node_compare(knot_node_t *node1, knot_node_t *node2)
 int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to)
 {
 	if (from == NULL || to == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	// create new node
