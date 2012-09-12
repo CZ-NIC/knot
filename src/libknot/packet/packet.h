@@ -318,7 +318,7 @@ size_t knot_packet_parsed(const knot_packet_t *packet);
  * \param max_size Maximum size of the packet in bytes.
  *
  * \retval KNOT_EOK
- * \retval KNOT_EBADARG
+ * \retval KNOT_EINVAL
  * \retval KNOT_ENOMEM
  *
  * \todo Needs test.
@@ -530,7 +530,7 @@ int knot_packet_edns_to_wire(knot_packet_t *packet);
  * \param wire_size The size of the packet in wire format will be stored here.
  *
  * \retval KNOT_EOK
- * \retval KNOT_EBADARG
+ * \retval KNOT_EINVAL
  */
 int knot_packet_to_wire(knot_packet_t *packet, uint8_t **wire,
                           size_t *wire_size);

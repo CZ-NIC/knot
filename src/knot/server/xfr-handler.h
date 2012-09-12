@@ -81,9 +81,9 @@ xfrhandler_t *xfr_create(size_t thrcount, knot_nameserver_t *ns);
  *
  * \param handler XFR handler.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL on NULL handler.
- * \retval KNOTD_ERROR on error.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on NULL handler.
+ * \retval KNOT_ERROR on error.
  */
 int xfr_free(xfrhandler_t *handler);
 
@@ -92,8 +92,8 @@ int xfr_free(xfrhandler_t *handler);
  *
  * \param handler XFR handler.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_ERROR on error.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_ERROR on error.
  */
 static inline int xfr_start(xfrhandler_t *handler) {
 	return dt_start(handler->unit);
@@ -104,8 +104,8 @@ static inline int xfr_start(xfrhandler_t *handler) {
  *
  * \param handler XFR handler.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_ERROR on error.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_ERROR on error.
  */
 int xfr_stop(xfrhandler_t *handler);
 
@@ -114,8 +114,8 @@ int xfr_stop(xfrhandler_t *handler);
  *
  * \param handler XFR handler.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_ERROR on error.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_ERROR on error.
  */
 int xfr_join(xfrhandler_t *handler);
 
@@ -127,9 +127,9 @@ int xfr_join(xfrhandler_t *handler);
  * \param flags Request flags.
  * \param pkt Query packet or NULL.
  *
- * \retval KNOTD_EOK
- * \retval KNOTD_ENOMEM
- * \retval KNOTD_EINVAL
+ * \retval KNOT_EOK
+ * \retval KNOT_ENOMEM
+ * \retval KNOT_EINVAL
  */
 int xfr_request_init(knot_ns_xfr_t *r, int type, int flags, knot_packet_t *pkt);
 
@@ -139,9 +139,9 @@ int xfr_request_init(knot_ns_xfr_t *r, int type, int flags, knot_packet_t *pkt);
  * \param handler XFR handler instance.
  * \param req XFR request.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL on NULL handler or request.
- * \retval KNOTD_ERROR on error.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on NULL handler or request.
+ * \retval KNOT_ERROR on error.
  */
 int xfr_request(xfrhandler_t *handler, knot_ns_xfr_t *req);
 
@@ -151,9 +151,9 @@ int xfr_request(xfrhandler_t *handler, knot_ns_xfr_t *req);
  * \param ns Nameserver instance.
  * \param req XFR request.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL on NULL handler or request.
- * \retval KNOTD_ERROR on error.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on NULL handler or request.
+ * \retval KNOT_ERROR on error.
  */
 int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *req);
 
@@ -165,8 +165,8 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *req);
  *
  * \param thread Associated thread from DThreads unit.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL invalid parameters.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL invalid parameters.
  */
 int xfr_worker(dthread_t *thread);
 
@@ -175,9 +175,9 @@ int xfr_worker(dthread_t *thread);
  * \param xfr XFR request.
  * \param key Used TSIG key.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL on NULL parameters.
- * \retval KNOTD_ENOMEM when out of memory.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on NULL parameters.
+ * \retval KNOT_ENOMEM when out of memory.
  */
 int xfr_prepare_tsig(knot_ns_xfr_t *xfr, knot_key_t *key);
 

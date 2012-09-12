@@ -17,7 +17,6 @@
 #include <assert.h>
 
 #include "packet/packet.h"
-#include "util/error.h"
 #include "util/debug.h"
 #include "common.h"
 #include "util/descriptor.h"
@@ -299,7 +298,7 @@ static int knot_packet_parse_question(const uint8_t *wire, size_t *pos,
 		int res = knot_dname_from_wire(wire + *pos, i - *pos + 1,
 	                                         NULL, question->qname);
 		if (res != KNOT_EOK) {
-			assert(res != KNOT_EBADARG);
+			assert(res != KNOT_EINVAL);
 			return res;
 		}
 	}
@@ -780,7 +779,7 @@ int knot_packet_parse_from_wire(knot_packet_t *packet,
                                   int question_only)
 {
 	if (packet == NULL || wireformat == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	int err;
@@ -848,7 +847,7 @@ dbg_packet_exec_detail(
 int knot_packet_parse_rest(knot_packet_t *packet)
 {
 	if (packet == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	if (packet->header.ancount == packet->parsed_an
@@ -875,7 +874,7 @@ int knot_packet_parse_next_rr_answer(knot_packet_t *packet,
                                        knot_rrset_t **rr)
 {
 	if (packet == NULL || rr == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	*rr = NULL;
@@ -926,7 +925,7 @@ int knot_packet_parse_next_rr_additional(knot_packet_t *packet,
 {
 	/*! \todo Implement. */
 	if (packet == NULL || rr == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	*rr = NULL;
@@ -995,7 +994,7 @@ size_t knot_packet_parsed(const knot_packet_t *packet)
 int knot_packet_set_max_size(knot_packet_t *packet, int max_size)
 {
 	if (packet == NULL || max_size <= 0) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	if (packet->max_size < max_size) {
@@ -1102,7 +1101,7 @@ uint16_t knot_packet_qclass(const knot_packet_t *packet)
 int knot_packet_is_query(const knot_packet_t *packet)
 {
 	if (packet == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	return (knot_wire_flags_get_qr(packet->header.flags1) == 0);
@@ -1124,7 +1123,7 @@ const knot_packet_t *knot_packet_query(const knot_packet_t *packet)
 int knot_packet_rcode(const knot_packet_t *packet)
 {
 	if (packet == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	return knot_wire_flags_get_rcode(packet->header.flags2);
@@ -1135,7 +1134,7 @@ int knot_packet_rcode(const knot_packet_t *packet)
 int knot_packet_tc(const knot_packet_t *packet)
 {
 	if (packet == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	return knot_wire_flags_get_tc(packet->header.flags1);
@@ -1146,7 +1145,7 @@ int knot_packet_tc(const knot_packet_t *packet)
 int knot_packet_qdcount(const knot_packet_t *packet)
 {
 	if (packet == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	return packet->header.qdcount;
@@ -1157,7 +1156,7 @@ int knot_packet_qdcount(const knot_packet_t *packet)
 int knot_packet_ancount(const knot_packet_t *packet)
 {
 	if (packet == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	return packet->header.ancount;
@@ -1168,7 +1167,7 @@ int knot_packet_ancount(const knot_packet_t *packet)
 int knot_packet_nscount(const knot_packet_t *packet)
 {
 	if (packet == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	return packet->header.nscount;
@@ -1179,7 +1178,7 @@ int knot_packet_nscount(const knot_packet_t *packet)
 int knot_packet_arcount(const knot_packet_t *packet)
 {
 	if (packet == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	return packet->header.arcount;
@@ -1211,7 +1210,7 @@ void knot_packet_set_tsig(knot_packet_t *packet, const knot_rrset_t *tsig_rr)
 short knot_packet_answer_rrset_count(const knot_packet_t *packet)
 {
 	if (packet == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	return packet->an_rrsets;
@@ -1222,7 +1221,7 @@ short knot_packet_answer_rrset_count(const knot_packet_t *packet)
 short knot_packet_authority_rrset_count(const knot_packet_t *packet)
 {
 	if (packet == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	return packet->ns_rrsets;
@@ -1233,7 +1232,7 @@ short knot_packet_authority_rrset_count(const knot_packet_t *packet)
 short knot_packet_additional_rrset_count(const knot_packet_t *packet)
 {
 	if (packet == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	return packet->ar_rrsets;
@@ -1282,7 +1281,7 @@ int knot_packet_contains(const knot_packet_t *packet,
                            knot_rrset_compare_type_t cmp)
 {
 	if (packet == NULL || rrset == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	for (int i = 0; i < packet->an_rrsets; ++i) {
@@ -1312,7 +1311,7 @@ int knot_packet_add_tmp_rrset(knot_packet_t *packet,
                                 knot_rrset_t *tmp_rrset)
 {
 	if (packet == NULL || tmp_rrset == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	if (packet->tmp_rrsets_count == packet->tmp_rrsets_max
@@ -1388,7 +1387,7 @@ void knot_packet_header_to_wire(const knot_header_t *header,
 int knot_packet_question_to_wire(knot_packet_t *packet)
 {
 	if (packet == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	if (packet->size > KNOT_WIRE_HEADER_SIZE) {
@@ -1421,7 +1420,7 @@ int knot_packet_question_to_wire(knot_packet_t *packet)
 int knot_packet_edns_to_wire(knot_packet_t *packet)
 {
 	if (packet == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	packet->size += knot_edns_to_wire(&packet->opt_rr,
@@ -1440,7 +1439,7 @@ int knot_packet_to_wire(knot_packet_t *packet,
 {
 	if (packet == NULL || wire == NULL || wire_size == NULL
 	    || *wire != NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	assert(packet->size <= packet->max_size);

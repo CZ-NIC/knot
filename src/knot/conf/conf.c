@@ -26,7 +26,6 @@
 #include <urcu.h>
 #include "knot/conf/conf.h"
 #include "knot/common.h"
-#include "knot/other/error.h"
 
 /*
  * Defaults.
@@ -70,7 +69,7 @@ void cf_error(void *scanner, const char *msg)
 			 new_config->filename, msg, lineno, text);
 
 
-	_parser_res = KNOTD_EPARSEFAIL;
+	_parser_res = KNOT_EPARSEFAIL;
 }
 
 /*!
@@ -107,7 +106,7 @@ static int conf_process(conf_t *conf)
 	if (conf->storage == NULL) {
 		conf->storage = strdup("/var/lib/"PROJECT_EXEC);
 		if (conf->storage == NULL) {
-			return KNOTD_ENOMEM;
+			return KNOT_ENOMEM;
 		}
 	}
 	
@@ -119,25 +118,25 @@ static int conf_process(conf_t *conf)
 	if (stat(conf->storage, &st) == -1) {
 		log_server_error("Could not open storage directory '%s'\n", conf->storage);
 		// I assume that conf->* is freed elsewhere
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	// Storage directory is a directory?
 	if (S_ISDIR(st.st_mode) == 0) {
 		log_server_error("Configured storage '%s' not a directory\n", conf->storage);
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	// Create PID file
 	if (conf->pidfile == NULL) {
 		conf->pidfile = strcdup(conf->storage, "/" PID_FILE);
 		if (conf->pidfile == NULL) {
-			return KNOTD_ENOMEM;
+			return KNOT_ENOMEM;
 		}
 	}
 
 	// Postprocess zones
-	int ret = KNOTD_EOK;
+	int ret = KNOT_EOK;
 	node *n = 0;
 	WALK_LIST (n, conf->zones) {
 		conf_zone_t *zone = (conf_zone_t*)n;
@@ -194,7 +193,7 @@ static int conf_process(conf_t *conf)
 				free(zone->file);
 				zone->file = ap;
 			} else {
-				ret = KNOTD_ENOMEM;
+				ret = KNOT_ENOMEM;
 				continue;
 			}
 		}
@@ -203,7 +202,7 @@ static int conf_process(conf_t *conf)
 		zone->file = strcpath(zone->file);
 		if (zone->file == NULL) {
 			zone->db = NULL;
-			ret = KNOTD_ENOMEM;
+			ret = KNOT_ENOMEM;
 			continue;
 		}
 
@@ -214,7 +213,7 @@ static int conf_process(conf_t *conf)
 		char *dest = malloc(size);
 		if (dest == NULL) {
 			zone->db = NULL; /* Not enough memory. */
-			ret = KNOTD_ENOMEM; /* Error report. */
+			ret = KNOT_ENOMEM; /* Error report. */
 			continue;
 		}
 		char *dpos = dest;
@@ -243,7 +242,7 @@ static int conf_process(conf_t *conf)
 		dest = malloc(size);
 		if (dest == NULL) {
 			zone->ixfr_db = NULL; /* Not enough memory. */
-			ret = KNOTD_ENOMEM; /* Error report. */
+			ret = KNOT_ENOMEM; /* Error report. */
 			continue;
 		}
 		dpos = dest;
@@ -342,10 +341,10 @@ void __attribute__ ((destructor)) conf_deinit()
 static int conf_fparser(conf_t *conf)
 {
 	if (!conf->filename) {
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 
-	int ret = KNOTD_EOK;
+	int ret = KNOT_EOK;
 	pthread_mutex_lock(&_parser_lock);
 	// {
 	// Hook new configuration
@@ -353,11 +352,11 @@ static int conf_fparser(conf_t *conf)
 	FILE *f = fopen(conf->filename, "r");
 	if (f == 0) {
 		pthread_mutex_unlock(&_parser_lock);
-		return KNOTD_ENOENT;
+		return KNOT_ENOENT;
 	}
 
 	// Parse config
-	_parser_res = KNOTD_EOK;
+	_parser_res = KNOT_EOK;
 	new_config->filename = conf->filename;
 	void *sc = NULL;
 	cf_lex_init(&sc);
@@ -377,17 +376,17 @@ static int conf_fparser(conf_t *conf)
 static int conf_strparser(conf_t *conf, const char *src)
 {
 	if (!src) {
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 
-	int ret = KNOTD_EOK;
+	int ret = KNOT_EOK;
 	pthread_mutex_lock(&_parser_lock);
 	// {
 	// Hook new configuration
 	new_config = conf;
 
 	// Parse config
-	_parser_res = KNOTD_EOK;
+	_parser_res = KNOT_EOK;
 	char *oldfn = new_config->filename;
 	new_config->filename = "(stdin)";
 	void *sc = NULL;
@@ -442,7 +441,7 @@ int conf_add_hook(conf_t * conf, int sections,
 {
 	conf_hook_t *hook = malloc(sizeof(conf_hook_t));
 	if (!hook) {
-		return KNOTD_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	hook->sections = sections;
@@ -451,7 +450,7 @@ int conf_add_hook(conf_t * conf, int sections,
 	add_tail(&conf->hooks, &hook->n);
 	++conf->hooks_count;
 
-	return KNOTD_EOK;
+	return KNOT_EOK;
 }
 
 int conf_parse(conf_t *conf)
@@ -467,10 +466,10 @@ int conf_parse(conf_t *conf)
 	}
 
 	if (ret < 0) {
-		return KNOTD_EPARSEFAIL;
+		return KNOT_EPARSEFAIL;
 	}
 
-	return KNOTD_EOK;
+	return KNOT_EOK;
 }
 
 int conf_parse_str(conf_t *conf, const char* src)
@@ -485,10 +484,10 @@ int conf_parse_str(conf_t *conf, const char* src)
 	conf_update_hooks(conf);
 
 	if (ret < 0) {
-		return KNOTD_EPARSEFAIL;
+		return KNOT_EPARSEFAIL;
 	}
 
-	return KNOTD_EOK;
+	return KNOT_EOK;
 }
 
 void conf_truncate(conf_t *conf, int unload_hooks)
@@ -613,13 +612,13 @@ int conf_open(const char* path)
 {
 	/* Check path. */
 	if (!path) {
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	/* Check if exists. */
 	struct stat st;
 	if (stat(path, &st) != 0) {
-		return KNOTD_ENOENT;
+		return KNOT_ENOENT;
 	}
 
 	/* Create new config. */
@@ -627,12 +626,12 @@ int conf_open(const char* path)
 
 	/* Parse config. */
 	int ret = conf_fparser(nconf);
-	if (ret == KNOTD_EOK) {
+	if (ret == KNOT_EOK) {
 		/* Postprocess config. */
 		ret = conf_process(nconf);
 	}
 	
-	if (ret != KNOTD_EOK) {
+	if (ret != KNOT_EOK) {
 		conf_free(nconf);
 		return ret;
 	}
@@ -661,7 +660,7 @@ int conf_open(const char* path)
 	/* Update hooks. */
 	conf_update_hooks(nconf);
 
-	return KNOTD_EOK;
+	return KNOT_EOK;
 }
 
 char* strcdup(const char *s1, const char *s2)

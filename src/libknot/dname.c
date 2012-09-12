@@ -22,7 +22,6 @@
 #include <ctype.h>	// tolower()
 
 #include "common.h"
-#include "util/error.h"
 #include "dname.h"
 #include "consts.h"
 #include "util/tolower.h"
@@ -86,7 +85,7 @@ static knot_dname_t* knot_dname_alloc()
 
 	/* Create cache if not exists. */
 	slab_cache_t* cache = pthread_getspecific(dname_ckey);
-	if (unlikely(!cache)) {
+	if (knot_unlikely(!cache)) {
 		cache = malloc(sizeof(slab_cache_t));
 		if (!cache) {
 			return 0;
@@ -579,7 +578,7 @@ int knot_dname_from_wire(const uint8_t *name, uint size,
                            struct knot_node *node, knot_dname_t *target)
 {
 	if (name == NULL || target == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	memcpy(target->name, name, size);
@@ -682,7 +681,7 @@ char *knot_dname_to_str(const knot_dname_t *dname)
 int knot_dname_to_lower(knot_dname_t *dname)
 {
 	if (dname == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	for (int i = 0; i < dname->size; ++i) {
@@ -697,7 +696,7 @@ int knot_dname_to_lower_copy(const knot_dname_t *dname, char *name,
                              size_t size)
 {
 	if (dname == NULL || name == NULL || size < dname->size) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	for (int i = 0; i < dname->size; ++i) {

@@ -938,7 +938,7 @@ int knot_zload_open(zloader_t **dst, const char *filename)
 
 	if (!dst || !filename) {
 		dbg_zload("zload: open: Bad arguments.\n");
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	int (*fread_wrapper)(void *dst, size_t size, size_t n, void *source);
@@ -948,7 +948,7 @@ int knot_zload_open(zloader_t **dst, const char *filename)
 
 	/* Open file for binary read. */
 	FILE *f = fopen(filename, "rb");
-	if (unlikely(!f)) {
+	if (knot_unlikely(!f)) {
 		int reason = errno;
 		dbg_zload("knot_zload_open: failed to open '%s'\n",
 		          filename);
@@ -978,7 +978,7 @@ int knot_zload_open(zloader_t **dst, const char *filename)
 	char *crc_path =
 		malloc(sizeof(char) *
 	               (strlen(filename) + 4 /* strlen(".crc") */ + 1));
-	if (unlikely(!crc_path)) {
+	if (knot_unlikely(!crc_path)) {
 		fclose(f);
 		ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
@@ -1462,7 +1462,7 @@ int knot_zload_rrset_deserialize(knot_rrset_t **rrset,
 {
 	if (stream == NULL || size == 0) {
 		dbg_zload("zload: rrset_deserialize: Bad arguments.\n");
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	load_stream_t data;

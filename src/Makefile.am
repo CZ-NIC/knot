@@ -150,7 +150,6 @@ knotd_SOURCES =					\
 noinst_LTLIBRARIES = libknot.la libknotd.la libknots.la
 
 libknot_la_SOURCES =				\
-	libknot/util/libknot_error.c		\
 	libknot/util/utils.c			\
 	libknot/util/debug.c			\
 	libknot/util/debug.h			\
@@ -249,6 +248,8 @@ libknots_la_SOURCES =				\
 	common/ref.c				\
 	common/errors.h				\
 	common/errors.c				\
+	common/errcode.h			\
+	common/errcode.c			\
         common/dSFMT.h				\
         common/dSFMT-params.h			\
         common/dSFMT-params521.h		\
@@ -273,8 +274,6 @@ libknotd_la_SOURCES =				\
 	knot/stat/stat.h				\
 	knot/common.h				\
 	knot/other/debug.h			\
-	knot/other/error.h			\
-	knot/other/error.c			\
 	knot/conf/cf-parse.y			\
 	knot/conf/cf-lex.l			\
 	knot/conf/conf.c			\

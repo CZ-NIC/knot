@@ -20,9 +20,9 @@
 #include "libknot/rrset.h"
 #include "libknot/packet/response.h"
 #include "libknot/dname.h"
-#include "libknot/util/error.h"
 #include "libknot/util/wire.h"
 #include "libknot/tsig-op.h"
+#include "libknot/common.h"
 #include "common/print.h"
 
 #include "tsig_tests.h"
@@ -89,8 +89,8 @@ static int test_knot_tsig_sign()
 	lives_ok({
 		int ret = knot_tsig_sign(NULL, NULL, 0, NULL, 0, NULL,
 		               NULL, NULL, 0, 0);
-		if (ret != KNOT_EBADARG) {
-			diag("NULL argument did not return KNOT_EBADARG!");
+		if (ret != KNOT_EINVAL) {
+			diag("NULL argument did not return KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
@@ -98,8 +98,8 @@ static int test_knot_tsig_sign()
 		lived = 0;
 		ret = knot_tsig_sign((uint8_t *)0x1, NULL, 0, NULL, 0, NULL,
 		               NULL, NULL, 0, 0);
-		if (ret != KNOT_EBADARG) {
-			diag("NULL argument did not return KNOT_EBADARG!");
+		if (ret != KNOT_EINVAL) {
+			diag("NULL argument did not return KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
@@ -108,8 +108,8 @@ static int test_knot_tsig_sign()
 		ret = knot_tsig_sign((uint8_t *)0x1, (size_t *)0x1, 0, NULL,
 		                     0, NULL,
 		               NULL, NULL, 0, 0);
-		if (ret != KNOT_EBADARG) {
-			diag("NULL argument did not return KNOT_EBADARG!");
+		if (ret != KNOT_EINVAL) {
+			diag("NULL argument did not return KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
@@ -118,8 +118,8 @@ static int test_knot_tsig_sign()
 		ret = knot_tsig_sign((uint8_t *)0x1, (size_t *)0x1, 0,
 		                     (uint8_t *)0x1, 0, NULL,
 		               NULL, NULL, 0, 0);
-		if (ret != KNOT_EBADARG) {
-			diag("NULL argument did not return KNOT_EBADARG!");
+		if (ret != KNOT_EINVAL) {
+			diag("NULL argument did not return KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
@@ -128,8 +128,8 @@ static int test_knot_tsig_sign()
 		ret = knot_tsig_sign((uint8_t *)0x12345678, (size_t *)0x1,
 		                     0,(uint8_t *)0x1, 0,(uint8_t *) 0x1,
 		               NULL, NULL, 0, 0);
-		if (ret != KNOT_EBADARG) {
-			diag("NULL argument did not return KNOT_EBADARG!");
+		if (ret != KNOT_EINVAL) {
+			diag("NULL argument did not return KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
@@ -138,8 +138,8 @@ static int test_knot_tsig_sign()
 		ret = knot_tsig_sign((uint8_t *)0x12345678, (size_t *)0x1, 0,
 		                     (uint8_t *)0x1, 0,(uint8_t *) 0x1,
 		               (size_t *)0x1, NULL, 0, 0);
-		if (ret != KNOT_EBADARG) {
-			diag("NULL argument did not return KNOT_EBADARG!");
+		if (ret != KNOT_EINVAL) {
+			diag("NULL argument did not return KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
@@ -304,8 +304,8 @@ static int test_knot_tsig_sign_next()
 	lives_ok({
 		int ret = knot_tsig_sign_next(NULL, NULL, 0, NULL, 0, NULL,
 		               NULL, NULL, NULL, 0); /*! \todo FIX */
-		if (ret != KNOT_EBADARG) {
-			diag("NULL argument did not return KNOT_EBADARG!");
+		if (ret != KNOT_EINVAL) {
+			diag("NULL argument did not return KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
@@ -314,8 +314,8 @@ static int test_knot_tsig_sign_next()
 		ret = knot_tsig_sign_next((uint8_t *)0x1, NULL, 0, NULL, 0,
 		                          NULL,
 		               NULL, NULL, NULL, 0); /*! \todo FIX */
-		if (ret != KNOT_EBADARG) {
-			diag("NULL argument did not return KNOT_EBADARG!");
+		if (ret != KNOT_EINVAL) {
+			diag("NULL argument did not return KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
@@ -324,8 +324,8 @@ static int test_knot_tsig_sign_next()
 		ret = knot_tsig_sign_next((uint8_t *)0x1, (size_t *)0x1, 0,
 		                          NULL, 0, NULL,
 		               NULL, NULL, NULL, 0); /*! \todo FIX */
-		if (ret != KNOT_EBADARG) {
-			diag("NULL argument did not return KNOT_EBADARG!");
+		if (ret != KNOT_EINVAL) {
+			diag("NULL argument did not return KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
@@ -334,8 +334,8 @@ static int test_knot_tsig_sign_next()
 		ret = knot_tsig_sign_next((uint8_t *)0x1, (size_t *)0x1, 0,
 		                          (uint8_t *)0x1, 0, NULL,
 		               NULL, NULL, NULL, 0); /*! \todo FIX */
-		if (ret != KNOT_EBADARG) {
-			diag("NULL argument did not return KNOT_EBADARG!");
+		if (ret != KNOT_EINVAL) {
+			diag("NULL argument did not return KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
@@ -344,8 +344,8 @@ static int test_knot_tsig_sign_next()
 		ret = knot_tsig_sign_next((uint8_t *)0x12345678, (size_t *)0x1,
 		                          0,(uint8_t *)0x1, 0,(uint8_t *) 0x1,
 		               NULL, NULL, NULL, 0); /*! \todo FIX */
-		if (ret != KNOT_EBADARG) {
-			diag("NULL argument did not return KNOT_EBADARG!");
+		if (ret != KNOT_EINVAL) {
+			diag("NULL argument did not return KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
@@ -354,8 +354,8 @@ static int test_knot_tsig_sign_next()
 		ret = knot_tsig_sign_next((uint8_t *)0x12345678, (size_t *)0x1,
 		                          0, (uint8_t *)0x1, 0,(uint8_t *) 0x1,
 		               (size_t *)0x1, NULL, NULL, 0); /*! \todo FIX */
-		if (ret != KNOT_EBADARG) {
-			diag("NULL argument did not return KNOT_EBADARG!");
+		if (ret != KNOT_EINVAL) {
+			diag("NULL argument did not return KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
@@ -418,8 +418,8 @@ static int test_knot_tsig_server_check()
 	int lived = 0;
 	lives_ok({
 		int ret = knot_tsig_server_check(NULL, NULL, 0, NULL);
-		if (ret != KNOT_EBADARG) {
-			diag("NULL argument did not return KNOT_EBADARG!");
+		if (ret != KNOT_EINVAL) {
+			diag("NULL argument did not return KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
@@ -428,8 +428,8 @@ static int test_knot_tsig_server_check()
 		ret = knot_tsig_server_check((knot_rrset_t *)0x1,
 		                             (uint8_t *)0x1, 0,
 		                                 NULL);
-		if (ret != KNOT_EBADARG) {
-			diag("NULL argument did not return KNOT_EBADARG!");
+		if (ret != KNOT_EINVAL) {
+			diag("NULL argument did not return KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
@@ -490,8 +490,8 @@ static int test_knot_tsig_client_check()
 	lives_ok({
 		int ret = knot_tsig_client_check(NULL, NULL, 0, NULL,
 	                                         0, NULL, 0);
-		if (ret != KNOT_EBADARG) {
-			diag("NULL argument did not return KNOT_EBADARG!");
+		if (ret != KNOT_EINVAL) {
+			diag("NULL argument did not return KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
@@ -499,8 +499,8 @@ static int test_knot_tsig_client_check()
 		lived = 0;
 		ret = knot_tsig_client_check((knot_rrset_t *)0x1, NULL, 0, NULL,
 	                                         0, NULL, 0);
-		if (ret != KNOT_EBADARG) {
-			diag("NULL argument did not return KNOT_EBADARG!");
+		if (ret != KNOT_EINVAL) {
+			diag("NULL argument did not return KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
@@ -509,8 +509,8 @@ static int test_knot_tsig_client_check()
 		ret = knot_tsig_client_check((knot_rrset_t *)0x1,
 		                             (uint8_t *)0x1, 0, NULL,
 	                                         0, NULL, 0);
-		if (ret != KNOT_EBADARG) {
-			diag("NULL argument did not return KNOT_EBADARG!");
+		if (ret != KNOT_EINVAL) {
+			diag("NULL argument did not return KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
@@ -519,8 +519,8 @@ static int test_knot_tsig_client_check()
 		ret = knot_tsig_client_check((knot_rrset_t *)0x1,
 		                             (uint8_t *)0x1, 0, NULL,
 	                                         0, NULL, 0);
-		if (ret != KNOT_EBADARG) {
-			diag("NULL argument did not return KNOT_EBADARG!");
+		if (ret != KNOT_EINVAL) {
+			diag("NULL argument did not return KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
@@ -617,8 +617,8 @@ static int test_knot_tsig_test_tsig_add()
 	int lived = 0;
 	lives_ok({
 		int ret = knot_tsig_add(NULL, NULL, 0, 0, NULL);
-		if (ret != KNOT_EBADARG) {
-			diag("tsig_add did not return EBADARG "
+		if (ret != KNOT_EINVAL) {
+			diag("tsig_add did not return EINVAL "
 			     "when given NULL parameters.");
 			errors++;
 		}
@@ -626,8 +626,8 @@ static int test_knot_tsig_test_tsig_add()
 		
 		lived = 0;
 		ret = knot_tsig_add((uint8_t *)0x1, NULL, 0, 0, NULL);
-		if (ret != KNOT_EBADARG) {
-			diag("tsig_add did not return EBADARG when "
+		if (ret != KNOT_EINVAL) {
+			diag("tsig_add did not return EINVAL when "
 			     "given NULL parameters.");
 			errors++;
 		}

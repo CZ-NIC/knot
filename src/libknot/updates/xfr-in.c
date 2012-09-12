@@ -26,7 +26,6 @@
 #include "dname.h"
 #include "zone/zone.h"
 #include "packet/query.h"
-#include "util/error.h"
 #include "updates/changesets.h"
 #include "tsig.h"
 #include "tsig-op.h"
@@ -447,7 +446,7 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 			(xfrin_constructed_zone_t **)(&xfr->data);
 	
 	if (pkt == NULL || constr == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	dbg_xfrin_verb("Processing AXFR packet of size %zu.\n", size);
@@ -923,7 +922,7 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 	
 	if (pkt == NULL || chs == NULL) {
 		dbg_xfrin("Wrong parameters supported.\n");
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	// check if the response is OK
@@ -1015,7 +1014,7 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 		if ((*chs)->first_soa == NULL) {
 			dbg_xfrin("Changesets don't contain SOA first!\n");
 			knot_rrset_deep_free(&rr, 1, 1, 1);
-			ret = KNOT_EBADARG;
+			ret = KNOT_EINVAL;
 			goto cleanup;
 		}
 		dbg_xfrin_detail("Changesets present.\n");
@@ -3073,12 +3072,13 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 {
 	if (zone == NULL || chsets == NULL || chsets->count == 0
 	    || new_contents == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	knot_zone_contents_t *old_contents = knot_zone_get_contents(zone);
 	if (!old_contents) {
-		return KNOT_EBADARG;
+		dbg_xfrin("Cannot apply changesets to empty zone.\n");
+		return KNOT_EINVAL;
 	}
 
 	dbg_xfrin("Applying changesets to zone...\n");
@@ -3219,7 +3219,7 @@ int xfrin_switch_zone(knot_zone_t *zone,
                       int transfer_type)
 {
 	if (zone == NULL || new_contents == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	dbg_xfrin("Switching zone contents.\n");

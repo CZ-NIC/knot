@@ -19,9 +19,8 @@
 #include <assert.h>
 
 #include "updates/changesets.h"
-
+#include "libknot/common.h"
 #include "rrset.h"
-#include "util/error.h"
 
 static const size_t KNOT_CHANGESET_COUNT = 5;
 static const size_t KNOT_CHANGESET_STEP = 5;

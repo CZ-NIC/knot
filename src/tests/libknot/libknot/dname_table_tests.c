@@ -18,7 +18,6 @@
 #include <assert.h>
 
 #include "dname_table_tests.h"
-#include "libknot/util/error.h"
 #include "libknot/zone/dname-table.h"
 /* *test_t structures */
 #include "tests/libknot/realdata/libknot_tests_loader_realdata.h"
@@ -99,25 +98,25 @@ static int test_dname_table_adding()
 	CHECK_ALLOC(table, 0);
 
 	/* Add NULL */
-	if (knot_dname_table_add_dname(table, NULL) != KNOT_EBADARG) {
+	if (knot_dname_table_add_dname(table, NULL) != KNOT_EINVAL) {
 		diag("Adding NULL dname did not result in an error!");
 		errors++;
 	}
 
 	/* Add to NULL table*/
-	if (knot_dname_table_add_dname(NULL, NULL) != KNOT_EBADARG) {
+	if (knot_dname_table_add_dname(NULL, NULL) != KNOT_EINVAL) {
 		diag("Adding to NULL table did not result in an error!");
 		errors++;
 	}
 
 	/* Add NULL */
-	if (knot_dname_table_add_dname_check(table, NULL) != KNOT_EBADARG) {
+	if (knot_dname_table_add_dname_check(table, NULL) != KNOT_EINVAL) {
 		diag("Adding NULL dname did not result in an error!");
 		errors++;
 	}
 
 	/* Add to NULL table*/
-	if (knot_dname_table_add_dname_check(NULL, NULL) != KNOT_EBADARG) {
+	if (knot_dname_table_add_dname_check(NULL, NULL) != KNOT_EINVAL) {
 		diag("Adding to NULL table did not result in an error!");
 		errors++;
 	}

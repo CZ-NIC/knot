@@ -17,7 +17,7 @@
 
 #include "tests/knot/journal_tests.h"
 #include "knot/server/journal.h"
-#include "knot/other/error.h"
+#include "knot/common.h"
 
 static int journal_tests_count(int argc, char *argv[]);
 static int journal_tests_run(int argc, char *argv[]);
@@ -81,7 +81,7 @@ static int journal_tests_run(int argc, char *argv[])
 	/* Test 2: Create journal. */
 	const char *jfilename = jfn_buf;
 	int ret = journal_create(jfilename, jsize);
-	ok(ret == KNOTD_EOK, "journal: create journal '%s'", jfilename);
+	ok(ret == KNOT_EOK, "journal: create journal '%s'", jfilename);
 
 	/* Test 3: Open journal. */
 	journal_t *journal = journal_open(jfilename, fsize, JOURNAL_LAZY, 0);
@@ -93,12 +93,12 @@ static int journal_tests_run(int argc, char *argv[])
 	/* Test 4: Write entry to log. */
 	const char *sample = "deadbeef";
 	ret = journal_write(j, 0x0a, sample, strlen(sample));
-	ok(ret == KNOTD_EOK, "journal: write");
+	ok(ret == KNOT_EOK, "journal: write");
 
 	/* Test 5: Read entry from log. */
 	char tmpbuf[64] = {'\0'};
 	ret = journal_read(j, 0x0a, 0, tmpbuf);
-	ok(ret == KNOTD_EOK, "journal: read entry");
+	ok(ret == KNOT_EOK, "journal: read entry");
 
 	/* Test 6: Compare read data. */
 	ret = strncmp(sample, tmpbuf, strlen(sample));
@@ -156,7 +156,7 @@ static int journal_tests_run(int argc, char *argv[])
 	for (int i = 0; i < itcount; ++i) {
 		int key = rand() % 65535;
 		randstr(tmpbuf, sizeof(tmpbuf));
-		if (journal_write(j, key, tmpbuf, sizeof(tmpbuf)) != KNOTD_EOK) {
+		if (journal_write(j, key, tmpbuf, sizeof(tmpbuf)) != KNOT_EOK) {
 			ret = -1;
 			break;
 		}
@@ -237,13 +237,13 @@ static int journal_tests_run(int argc, char *argv[])
 		int key = i;
 		randstr(tmpbuf, sizeof(tmpbuf));
 		ret = journal_map(j, key, &mptr, sizeof(tmpbuf));
-		if (ret != KNOTD_EOK) {
-			diag("journal_map failed: %s", knotd_strerror(ret));
+		if (ret != KNOT_EOK) {
+			diag("journal_map failed: %s", knot_strerror(ret));
 			break;
 		}
 		memcpy(mptr, tmpbuf, sizeof(tmpbuf));
-		if ((ret = journal_unmap(j, key, mptr, 1)) != KNOTD_EOK) {
-			diag("journal_unmap failed: %s", knotd_strerror(ret));
+		if ((ret = journal_unmap(j, key, mptr, 1)) != KNOT_EOK) {
+			diag("journal_unmap failed: %s", knot_strerror(ret));
 			break;
 		}
 
@@ -252,7 +252,7 @@ static int journal_tests_run(int argc, char *argv[])
 		ret = journal_read(j, key, 0, chk_buf);
 		if (ret != 0) {
 			diag("journal_map integrity check failed %s",
-			     knotd_strerror(ret));
+			     knot_strerror(ret));
 			break;
 		}
 		ret = strncmp(chk_buf, tmpbuf, sizeof(chk_buf));

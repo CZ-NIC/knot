@@ -89,7 +89,7 @@ void knot_response_clear(knot_packet_t *resp, int clear_question);
  * \param opt_rr OPT RR to set.
  *
  * \retval KNOT_EOK
- * \retval KNOT_EBADARG
+ * \retval KNOT_EINVAL
  * \retval KNOT_ENOMEM
  *
  * \todo Needs test.

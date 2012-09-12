@@ -54,7 +54,7 @@ typedef TREE_HEAD(knot_zone_tree, knot_zone_tree_node) knot_zone_tree_t;
  * \param tree Zone tree structure to initialize.
  *
  * \retval KNOT_EOK
- * \retval KNOT_EBADARG
+ * \retval KNOT_EINVAL
  */
 int knot_zone_tree_init(knot_zone_tree_t *tree);
 
@@ -65,7 +65,7 @@ int knot_zone_tree_init(knot_zone_tree_t *tree);
  * \param node Node to insert.
  *
  * \retval KNOT_EOK
- * \retval KNOT_EBADARG
+ * \retval KNOT_EINVAL
  * \retval KNOT_ENOMEM
  */
 int knot_zone_tree_insert(knot_zone_tree_t *tree, knot_node_t *node);
@@ -77,7 +77,7 @@ int knot_zone_tree_insert(knot_zone_tree_t *tree, knot_node_t *node);
  * \param owner Owner of the node to find.
  *
  * \retval KNOT_EOK
- * \retval KNOT_EBADARG
+ * \retval KNOT_EINVAL
  * \retval KNOT_ENOMEM
  */
 int knot_zone_tree_find(knot_zone_tree_t *tree,
@@ -94,7 +94,7 @@ int knot_zone_tree_find(knot_zone_tree_t *tree,
  * \param owner Owner of the node to find.
  *
  * \retval KNOT_EOK
- * \retval KNOT_EBADARG
+ * \retval KNOT_EINVAL
  * \retval KNOT_ENOMEM
  */
 int knot_zone_tree_get(knot_zone_tree_t *tree,
@@ -117,7 +117,7 @@ int knot_zone_tree_get(knot_zone_tree_t *tree,
  *             \a previous is set properly.
  * \retval 0 if the domain name was not found. \a found may hold any (or none)
  *           node. \a previous is set properly.
- * \retval KNOT_EBADARG
+ * \retval KNOT_EINVAL
  * \retval KNOT_ENOMEM
  */
 int knot_zone_tree_find_less_or_equal(knot_zone_tree_t *tree,
@@ -144,7 +144,7 @@ int knot_zone_tree_find_less_or_equal(knot_zone_tree_t *tree,
  *             \a previous is set properly.
  * \retval 0 if the domain name was not found. \a found may hold any (or none)
  *           node. \a previous is set properly.
- * \retval KNOT_EBADARG
+ * \retval KNOT_EINVAL
  * \retval KNOT_ENOMEM
  */
 int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
@@ -180,7 +180,7 @@ int knot_zone_tree_remove(knot_zone_tree_t *tree,
  * \param data Arbitrary data to be passed to the function.
  *
  * \retval KNOT_EOK
- * \retval KNOT_EBADARG
+ * \retval KNOT_EINVAL
  */
 int knot_zone_tree_forward_apply_inorder(knot_zone_tree_t *tree,
                                            void (*function)(
@@ -202,7 +202,7 @@ int knot_zone_tree_forward_apply_inorder(knot_zone_tree_t *tree,
  * \param data Arbitrary data to be passed to the function.
  *
  * \retval KNOT_EOK
- * \retval KNOT_EBADARG
+ * \retval KNOT_EINVAL
  */
 int knot_zone_tree_forward_apply_postorder(knot_zone_tree_t *tree,
                                              void (*function)(
@@ -225,7 +225,7 @@ int knot_zone_tree_forward_apply_postorder(knot_zone_tree_t *tree,
  * \param data Arbitrary data to be passed to the function.
  *
  * \retval KNOT_EOK
- * \retval KNOT_EBADARG
+ * \retval KNOT_EINVAL
  */
 int knot_zone_tree_reverse_apply_inorder(knot_zone_tree_t *tree,
                                            void (*function)(
@@ -248,7 +248,7 @@ int knot_zone_tree_reverse_apply_inorder(knot_zone_tree_t *tree,
  * \param data Arbitrary data to be passed to the function.
  *
  * \retval KNOT_EOK
- * \retval KNOT_EBADARG
+ * \retval KNOT_EINVAL
  */
 int knot_zone_tree_reverse_apply_postorder(knot_zone_tree_t *tree,
                                              void (*function)(

@@ -27,7 +27,6 @@
 #include "dname.h"
 #include "util/descriptor.h"
 #include "nsec3.h"
-#include "util/error.h"
 #include "util/debug.h"
 #include "util/utils.h"
 #include "hash/cuckoo-hash-table.h"
@@ -125,7 +124,7 @@ const knot_zone_contents_t *knot_zone_contents(
 time_t knot_zone_version(const knot_zone_t *zone)
 {
 	if (zone == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	return zone->version;

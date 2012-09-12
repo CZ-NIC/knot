@@ -72,7 +72,7 @@ int knot_nsec3_params_from_wire(knot_nsec3_params_t *params,
  *
  * \retval KNOT_EOK if successful.
  * \retval KNOT_ENOMEM
- * \retval KNOT_EBADARG
+ * \retval KNOT_EINVAL
  * \retval KNOT_ECRYPTO
  */
 int knot_nsec3_sha1(const knot_nsec3_params_t *params, const uint8_t *data,

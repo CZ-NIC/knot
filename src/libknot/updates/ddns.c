@@ -20,7 +20,6 @@
 #include "updates/changesets.h"
 #include "util/debug.h"
 #include "packet/packet.h"
-#include "util/error.h"
 #include "consts.h"
 
 /*----------------------------------------------------------------------------*/
@@ -410,7 +409,7 @@ int knot_ddns_check_zone(const knot_zone_t *zone, knot_packet_t *query,
                          uint8_t *rcode)
 {
 	if (zone == NULL || query == NULL || rcode == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	if (knot_packet_qtype(query) != KNOT_RRTYPE_SOA) {
@@ -448,7 +447,7 @@ int knot_ddns_process_prereqs(knot_packet_t *query,
 	 */
 
 	if (query == NULL || prereqs == NULL || rcode == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	// allocate space for the prerequisities
@@ -573,7 +572,7 @@ int knot_ddns_process_update(knot_packet_t *query,
 	// it will be distinguished when applying to the zone
 
 	if (query == NULL || changeset == NULL || rcode == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	*changeset = (knot_changeset_t *)calloc(1, sizeof(knot_changeset_t));

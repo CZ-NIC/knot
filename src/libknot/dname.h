@@ -143,7 +143,7 @@ knot_dname_t *knot_dname_parse_from_wire(const uint8_t *wire,
  *
  * \retval KNOT_EOK on success.
  * \retval KNOT_ENOMEM if allocation of labels info failed.
- * \retval KNOT_EBADARG if name or target is null.
+ * \retval KNOT_EINVAL if name or target is null.
  *
  * \todo This function does not check if the given data is in correct wire
  *       format at all. It thus creates a invalid domain name, which if passed

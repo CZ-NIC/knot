@@ -23,7 +23,6 @@
 #include "nameserver/name-server.h"
 #include "updates/xfr-in.h"
 
-#include "util/error.h"
 #include "libknot.h"
 #include "util/debug.h"
 #include "packet/packet.h"
@@ -2099,7 +2098,7 @@ search:
 	closest_encloser = knot_node_current(closest_encloser);
 	previous = knot_node_current(previous);
 #endif
-	if (find_ret == KNOT_EBADARG) {
+	if (find_ret == KNOT_EINVAL) {
 		return NS_ERR_SERVFAIL;
 	}
 
@@ -3155,7 +3154,7 @@ int knot_ns_parse_packet(const uint8_t *query_wire, size_t qsize,
 {
 	if (packet == NULL || query_wire == NULL || type == NULL) {
 		dbg_ns("Missing parameter to query parsing.\n");
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	dbg_ns_verb("ns_parse_packet() called with query size %zu.\n", qsize);
@@ -3347,7 +3346,7 @@ int knot_ns_prep_normal_response(knot_nameserver_t *nameserver,
 
 	if (nameserver == NULL || query == NULL || resp == NULL
 	    || zone == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	// first, parse the rest of the packet
@@ -3682,19 +3681,19 @@ int ns_ixfr_load_serials(const knot_ns_xfr_t *xfr, uint32_t *serial_from,
 	    || serial_to == NULL) {
 		dbg_ns("Wrong parameters: xfr=%p,"
 		       " xfr->zone = %p\n", xfr, xfr->zone);
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	const knot_zone_t *zone = xfr->zone;
 	const knot_zone_contents_t *contents = knot_zone_contents(zone);
 	if (!contents) {
 		dbg_ns("Missing contents\n");
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	if (knot_zone_contents_apex(contents) == NULL) {
 		dbg_ns("No apex.\n");
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	const knot_rrset_t *zone_soa =
@@ -3702,7 +3701,7 @@ int ns_ixfr_load_serials(const knot_ns_xfr_t *xfr, uint32_t *serial_from,
 		                  KNOT_RRTYPE_SOA);
 	if (zone_soa == NULL) {
 		dbg_ns("No SOA.\n");
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	if (knot_packet_nscount(xfr->query) < 1) {
@@ -3749,7 +3748,7 @@ int knot_ns_xfr_send_error(const knot_nameserver_t *nameserver,
 int knot_ns_answer_axfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 {
 	if (xfr == NULL || nameserver == NULL || xfr->zone == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	rcu_read_lock();
@@ -3810,7 +3809,7 @@ int knot_ns_answer_ixfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 {
 	if (nameserver == NULL || xfr == NULL || xfr->zone == NULL
 	    || xfr->response == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	// parse rest of the packet (we need the Authority record)
@@ -3925,7 +3924,7 @@ int knot_ns_switch_zone(knot_nameserver_t *nameserver,
                           knot_ns_xfr_t *xfr)
 {
 	if (xfr == NULL || nameserver == NULL || xfr->new_contents == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	knot_zone_contents_t *zone = (knot_zone_contents_t *)xfr->new_contents;

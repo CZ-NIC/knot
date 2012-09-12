@@ -21,7 +21,6 @@
 #include <time.h>
 
 #include "tsig.h"
-#include "util/error.h"
 #include "util/debug.h"
 #include "common.h"
 #include "util/utils.h"
@@ -45,7 +44,7 @@ static knot_lookup_table_t tsig_alg_table[TSIG_ALG_TABLE_SIZE] = {
 int tsig_rdata_init(knot_rrset_t *tsig)
 {
 	if (!tsig) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	/* Initializes rdata. */
@@ -69,12 +68,12 @@ int tsig_rdata_init(knot_rrset_t *tsig)
 int tsig_rdata_set_alg_name(knot_rrset_t *tsig, knot_dname_t *alg_name)
 {
 	if (!tsig) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	knot_rdata_t *rdata = knot_rrset_get_rdata(tsig);
 	if (!rdata) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	assert(knot_rdata_item_count(rdata) >= 1);
 
@@ -94,12 +93,12 @@ int tsig_rdata_set_alg_name(knot_rrset_t *tsig, knot_dname_t *alg_name)
 int tsig_rdata_set_alg(knot_rrset_t *tsig, tsig_algorithm_t alg)
 {
 	if (!tsig) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	knot_rdata_t *rdata = knot_rrset_get_rdata(tsig);
 	if (!rdata) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	assert(knot_rdata_item_count(rdata) >= 1);
 
@@ -122,12 +121,12 @@ int tsig_rdata_set_alg(knot_rrset_t *tsig, tsig_algorithm_t alg)
 int tsig_rdata_set_time_signed(knot_rrset_t *tsig, uint64_t time)
 {
 	if (!tsig) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	knot_rdata_t *rdata = knot_rrset_get_rdata(tsig);
 	if (!rdata) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	assert(knot_rdata_item_count(rdata) >= 2);
 
@@ -150,12 +149,12 @@ int tsig_rdata_set_time_signed(knot_rrset_t *tsig, uint64_t time)
 int tsig_rdata_set_fudge(knot_rrset_t *tsig, uint16_t fudge)
 {
 	if (!tsig) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	knot_rdata_t *rdata = knot_rrset_get_rdata(tsig);
 	if (!rdata) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	assert(knot_rdata_item_count(rdata) >= 3);
 
@@ -178,12 +177,12 @@ int tsig_rdata_set_fudge(knot_rrset_t *tsig, uint16_t fudge)
 int tsig_rdata_set_mac(knot_rrset_t *tsig, uint16_t length, const uint8_t *mac)
 {
 	if (!tsig) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	knot_rdata_t *rdata = knot_rrset_get_rdata(tsig);
 	if (!rdata) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	assert(knot_rdata_item_count(rdata) >= 4);
 
@@ -207,12 +206,12 @@ int tsig_rdata_set_mac(knot_rrset_t *tsig, uint16_t length, const uint8_t *mac)
 int tsig_rdata_set_orig_id(knot_rrset_t *tsig, uint16_t id)
 {
 	if (!tsig) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	knot_rdata_t *rdata = knot_rrset_get_rdata(tsig);
 	if (!rdata) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	assert(knot_rdata_item_count(rdata) >= 5);
 
@@ -235,12 +234,12 @@ int tsig_rdata_set_orig_id(knot_rrset_t *tsig, uint16_t id)
 int tsig_rdata_set_tsig_error(knot_rrset_t *tsig, uint16_t tsig_error)
 {
 	if (!tsig) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	knot_rdata_t *rdata = knot_rrset_get_rdata(tsig);
 	if (!rdata) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	assert(knot_rdata_item_count(rdata) >= 6);
 
@@ -264,12 +263,12 @@ int tsig_rdata_set_other_data(knot_rrset_t *tsig, uint16_t length,
                               const uint8_t *other_data)
 {
 	if (!tsig) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	knot_rdata_t *rdata = knot_rrset_get_rdata(tsig);
 	if (!rdata) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	assert(knot_rdata_item_count(rdata) >= 6);
 
@@ -587,7 +586,7 @@ size_t tsig_rdata_tsig_timers_length()
 int tsig_rdata_store_current_time(knot_rrset_t *tsig)
 {
 	if (!tsig) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	time_t curr_time = time(NULL);
 	/*! \todo bleeding eyes. */

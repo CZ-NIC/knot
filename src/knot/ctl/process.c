@@ -28,7 +28,6 @@
 #include "knot/common.h"
 #include "knot/ctl/process.h"
 #include "knot/conf/conf.h"
-#include "knot/other/error.h"
 
 char* pid_filename()
 {
@@ -52,7 +51,7 @@ pid_t pid_read(const char* fn)
 	if (fn) {
 		FILE *fp = fopen(fn, "r");
 		if (!fp) {
-			return KNOTD_ENOENT;
+			return KNOT_ENOENT;
 		}
 
 		int readb = 0;
@@ -68,26 +67,26 @@ pid_t pid_read(const char* fn)
 
 		// Check read result
 		if (readb < 1) {
-			return KNOTD_ENOENT;
+			return KNOT_ENOENT;
 		}
 
 		// Convert pid
 		char* ep = 0;
 		unsigned long pid = strtoul(buf, &ep, 10);
 		if ((errno == ERANGE) || (*ep && !isspace(*ep))) {
-			return KNOTD_ERANGE;
+			return KNOT_ERANGE;
 		}
 
 		return (pid_t)pid;
 	}
 
-	return KNOTD_EINVAL;
+	return KNOT_EINVAL;
 }
 
 int pid_write(const char* fn)
 {
 	if (!fn) {
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	// Convert
@@ -95,7 +94,7 @@ int pid_write(const char* fn)
 	int wbytes = 0;
 	wbytes = snprintf(buf, sizeof(buf), "%lu", (unsigned long) getpid());
 	if (wbytes < 0) {
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	// Write
@@ -104,23 +103,23 @@ int pid_write(const char* fn)
 		int rc = fwrite(buf, wbytes, 1, fp);
 		fclose(fp);
 		if (rc < 0) {
-			return KNOTD_ERROR;
+			return KNOT_ERROR;
 		}
 
 		return 0;
 	}
 
-	return KNOTD_ENOENT;
+	return KNOT_ENOENT;
 }
 
 int pid_remove(const char* fn)
 {
 	if (unlink(fn) < 0) {
 		perror("unlink");
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 
-	return KNOTD_EOK;
+	return KNOT_EOK;
 }
 
 int pid_running(pid_t pid)

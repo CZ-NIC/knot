@@ -22,7 +22,6 @@
 #include "tests/libknot/libknot/response_tests.h"
 #include "common/lists.h"
 #include "libknot/common.h"
-#include "libknot/util/error.h"
 #include "libknot/packet/response.h"
 #include "libknot/rdata.h"
 #include "libknot/rrset.h"
@@ -51,9 +50,9 @@ static int test_response_init()
 	int errors = 0;
 	int lived = 0;
 	lives_ok({
-		if (knot_response_init(NULL) != KNOT_EBADARG) {
+		if (knot_response_init(NULL) != KNOT_EINVAL) {
 			diag("Calling response_init with NULL packet did "
-			     "not return KNOT_EBADARG!");
+			     "not return KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
@@ -79,9 +78,9 @@ static int test_response_init_query()
 	int lived = 0;
 	lives_ok({
 		if (knot_response_init_from_query(NULL, NULL) !=
-		    KNOT_EBADARG) {
+		    KNOT_EINVAL) {
 			diag("Calling response_init_query with NULL packet and "
-			     "NULL query did not return KNOT_EBADARG!");
+			     "NULL query did not return KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
@@ -93,18 +92,18 @@ static int test_response_init_query()
 		knot_response_init(response);
 		lived = 0;
 		if (knot_response_init_from_query(response, NULL) !=
-		    KNOT_EBADARG) {
+		    KNOT_EINVAL) {
 			diag("Calling response_init_query with NULL query "
-			     "did not return KNOT_EBADARG!");
+			     "did not return KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
 		knot_packet_t *query =
 			knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
 		if (knot_response_init_from_query(NULL, query) !=
-		    KNOT_EBADARG) {
+		    KNOT_EINVAL) {
 			diag("Calling response_init_query with NULL response "
-			     "did not return KNOT_EBADARG!");
+			     "did not return KNOT_EINVAL!");
 			errors++;
 		}
 	}, "response: init from query NULL tests");
@@ -234,9 +233,9 @@ static int test_response_add_opt()
 	opt.size = 25; // does it matter?
 
 	lives_ok({
-		if (knot_response_add_opt(NULL, NULL, 0, 0) != KNOT_EBADARG) {
+		if (knot_response_add_opt(NULL, NULL, 0, 0) != KNOT_EINVAL) {
 			diag("Calling response add opt with NULL arguments "
-			     "did not result to KNOT_EBADARG");
+			     "did not result to KNOT_EINVAL");
 			errors++;
 		}
 		lived = 1;
@@ -245,18 +244,18 @@ static int test_response_add_opt()
 		assert(response);
 		lived = 0;
 		if (knot_response_add_opt(response,
-		                             NULL, 0, 0) != KNOT_EBADARG) {
+		                             NULL, 0, 0) != KNOT_EINVAL) {
 			diag("Calling response add opt with NULL OPT RR "
-			     "did not result to KNOT_EBADARG");
+			     "did not result to KNOT_EINVAL");
 			errors++;
 		}
 		lived = 1;
 
 		lived = 0;
 		if (knot_response_add_opt(NULL,
-		                             &opt, 0, 0) != KNOT_EBADARG) {
+		                             &opt, 0, 0) != KNOT_EINVAL) {
 			diag("Calling response add opt with NULL response "
-			     "did not result to KNOT_EBADARG");
+			     "did not result to KNOT_EINVAL");
 			errors++;
 		}
 		lived = 1;
@@ -284,9 +283,9 @@ static int test_response_add_opt()
 	}
 
 	opt.payload = 0;
-	if (knot_response_add_opt(response, &opt, 1, 0) != KNOT_EBADARG) {
+	if (knot_response_add_opt(response, &opt, 1, 0) != KNOT_EINVAL) {
 		diag("Calling response_add_opt with OPT RR payload set to 0 "
-		     "did not return KNOT_EBADARG");
+		     "did not return KNOT_EINVAL");
 	}
 
 	knot_packet_free(&response);
@@ -301,9 +300,9 @@ static int test_response_add_generic(int (*func)(knot_packet_t *,
 	int lived = 0;
 
 	lives_ok({
-		if (func(NULL, NULL, 0, 0, 0, 0) != KNOT_EBADARG) {
+		if (func(NULL, NULL, 0, 0, 0, 0) != KNOT_EINVAL) {
 			diag("Calling response add rrset with NULL "
-			     "arguments did not return KNOT_EBADARG!");
+			     "arguments did not return KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
@@ -311,9 +310,9 @@ static int test_response_add_generic(int (*func)(knot_packet_t *,
 			knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
 		assert(response);
 		lived = 0;
-		if (func(response, NULL, 0, 0, 0, 0) != KNOT_EBADARG) {
+		if (func(response, NULL, 0, 0, 0, 0) != KNOT_EINVAL) {
 			diag("Calling response add rrset with NULL rrset "
-			     "did not return KNOT_EBADARG!");
+			     "did not return KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
@@ -327,9 +326,9 @@ static int test_response_add_generic(int (*func)(knot_packet_t *,
 			                 KNOT_CLASS_IN, 3600);
 		assert(rrset);
 		lived = 0;
-		if (func(NULL, rrset, 0, 0, 0, 0) != KNOT_EBADARG) {
+		if (func(NULL, rrset, 0, 0, 0, 0) != KNOT_EINVAL) {
 			diag("Calling response add rrset with NULL response "
-			     "did not return KNOT_EBADARG!");
+			     "did not return KNOT_EINVAL!");
 			errors++;
 		}
 		lived = 1;
@@ -389,26 +388,26 @@ static int test_response_add_nsid()
 	uint16_t nsid_size = strlen((char *)nsid);
 	lives_ok({
 		if (knot_response_add_nsid(NULL,
-		                              NULL, 1) != KNOT_EBADARG) {
+		                              NULL, 1) != KNOT_EINVAL) {
 			diag("Calling response add nsid with NULL arguments "
-			     "did not return KNOT_EBADARG");
+			     "did not return KNOT_EINVAL");
 			errors++;
 		}
 		lived = 1;
 
 		lived = 0;
 		if (knot_response_add_nsid(NULL, nsid,
-		                              nsid_size) != KNOT_EBADARG) {
+		                              nsid_size) != KNOT_EINVAL) {
 			diag("Calling response add nsid with NULL response "
-			     "did not return KNOT_EBADARG");
+			     "did not return KNOT_EINVAL");
 			errors++;
 		}
 		lived = 1;
 //		lived = 0;
 //		if (knot_response_add_nsid(response, nsid,
-//		                              0) != KNOT_EBADARG) {
+//		                              0) != KNOT_EINVAL) {
 //			diag("Calling response add nsid with zero size "
-//			     "did not return KNOT_EBADARG");
+//			     "did not return KNOT_EINVAL");
 //			errors++;
 //		}
 //		lived = 1;

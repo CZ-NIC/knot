@@ -48,9 +48,9 @@
  * \param addr
  * \param ns
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_ERROR
- * \retval KNOTD_ENOMEM
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_ERROR
+ * \retval KNOT_ENOMEM
  */
 int udp_handle(int sock, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 	       sockaddr_t* addr, knot_nameserver_t *ns);
@@ -64,8 +64,8 @@ int udp_handle(int sock, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
  *
  * \param thread Associated thread from DThreads unit.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL invalid parameters.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL invalid parameters.
  */
 int udp_master(dthread_t *thread);
 

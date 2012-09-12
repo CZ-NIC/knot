@@ -50,7 +50,7 @@ enum {
  * \param crc Returns a calculated CRC.
  *
  * \retval KNOT_EOK on success.
- * \retval KNOT_EBADARG if the file cannot be opened for writing.
+ * \retval KNOT_EINVAL if the file cannot be opened for writing.
  */
 int knot_zdump_binary(knot_zone_contents_t *zone, int fd,
                       int do_checks, const char *sfilename,
@@ -66,7 +66,7 @@ int knot_zdump_binary(knot_zone_contents_t *zone, int fd,
  * \param bytes_written Actually written data.
  *
  * \retval KNOT_EOK on success.
- * \retval KNOT_EBADARG if wrong arguments are supplied.
+ * \retval KNOT_EINVAL if wrong arguments are supplied.
  * \retval KNOT_ENOMEM on memory error.
  */
 int knot_zdump_rrset_serialize(const knot_rrset_t *rrset, uint8_t *stream,

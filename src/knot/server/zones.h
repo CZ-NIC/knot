@@ -110,9 +110,9 @@ typedef struct zonedata_t
  * \param[out] db_old Old database, containing only zones which should be
  *                    deleted afterwards.
  *
- * \retval KNOTD_EOK
- * \retval KNOTD_EINVAL
- * \retval KNOTD_ERROR
+ * \retval KNOT_EOK
+ * \retval KNOT_EINVAL
+ * \retval KNOT_ERROR
  */
 int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
                                knot_zonedb_t **db_old);
@@ -128,10 +128,10 @@ int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
  * \param zone Evaluated zone.
  * \param journal Journal to sync.
  *
- * \retval KNOTD_EOK if successful.
- * \retval KNOTD_ERANGE if zonefile is in sync with journal.
- * \retval KNOTD_EINVAL on invalid parameter.
- * \retval KNOTD_ERROR on unspecified error during processing.
+ * \retval KNOT_EOK if successful.
+ * \retval KNOT_ERANGE if zonefile is in sync with journal.
+ * \retval KNOT_EINVAL on invalid parameter.
+ * \retval KNOT_ERROR on unspecified error during processing.
  */
 int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal);
 
@@ -164,9 +164,9 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
  * \param rsize Input: maximum acceptable size of the response. Output: real
  *              size of the response.
  *
- * \retval KNOTD_EOK if a valid response was created.
- * \retval KNOTD_EINVAL on invalid parameters or packet.
- * \retval KNOTD_EMALF if an error occured and the response is not valid.
+ * \retval KNOT_EOK if a valid response was created.
+ * \retval KNOT_EINVAL on invalid parameters or packet.
+ * \retval KNOT_EMALF if an error occured and the response is not valid.
  */
 int zones_process_response(knot_nameserver_t *nameserver, 
                            sockaddr_t *from,
@@ -192,9 +192,9 @@ int zones_save_zone(const knot_ns_xfr_t *xfr);
  * \param conf Current configuration.
  * \param data Instance of the nameserver structure to update.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL
- * \retval KNOTD_ERROR
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL
+ * \retval KNOT_ERROR
  */
 int zones_ns_conf_hook(const struct conf_t *conf, void *data);
 
@@ -207,9 +207,9 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data);
  * \param zone Zone associated with the changeset.
  * \param src Changesets.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL on invalid parameters.
- * \retval KNOTD_EAGAIN if journal needs to be synced with zonefile first.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOT_EAGAIN if journal needs to be synced with zonefile first.
  *
  * \todo Expects the xfr structure to be initialized in some way.
  * \todo Update documentation!!!
@@ -227,18 +227,18 @@ journal_t *zones_store_changesets_begin(knot_ns_xfr_t *xfr);
 /*!
  * \brief Commit stored changesets.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL on invalid parameters.
- * \retval KNOTD_ENOENT when no transaction is pending.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOT_ENOENT when no transaction is pending.
  */
 int zones_store_changesets_commit(journal_t *j);
 
 /*!
  * \brief Rollback stored changesets.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL on invalid parameters.
- * \retval KNOTD_ENOENT when no transaction is pending.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOT_ENOENT when no transaction is pending.
  */
 int zones_store_changesets_rollback(journal_t *j);
 
@@ -254,7 +254,7 @@ int zones_changesets_to_binary(knot_changesets_t *chgsets);
  * Changesets will be stored on a permanent storage.
  * Journal may be compacted, resulting in flattening changeset history.
  *
- * In case of KNOTD_ERANGE error, whole zone content should be sent instead,
+ * In case of KNOT_ERANGE error, whole zone content should be sent instead,
  * as the changeset history cannot be recovered.
  *
  * \param zone Zone containing a changeset journal.
@@ -262,9 +262,9 @@ int zones_changesets_to_binary(knot_changesets_t *chgsets);
  * \param from Starting SOA serial (oldest).
  * \param to Ending SOA serial (newest).
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL on invalid parameters.
- * \retval KNOTD_ERANGE when changeset history cannot be reconstructed.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOT_ERANGE when changeset history cannot be reconstructed.
  *
  * \todo Expects the xfr structure to be initialized in some way.
  */
@@ -279,11 +279,11 @@ int zones_xfr_load_changesets(knot_ns_xfr_t *xfr, uint32_t serial_from,
  * \param old_zone Old zone, previously served by server.
  * \param new_zone New zone, to be served by server, after creating changesets.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL on invalid arguments.
- * \retval KNOTD_ERANGE when new serial is lower than the old one.
- * \retval KNOTD_ENODIFF when new zone's serial are equal.
- * \retval KNOTD_ERROR when there was error creating changesets.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid arguments.
+ * \retval KNOT_ERANGE when new serial is lower than the old one.
+ * \retval KNOT_ENODIFF when new zone's serial are equal.
+ * \retval KNOT_ERROR when there was error creating changesets.
  */
 int zones_create_and_save_changesets(const knot_zone_t *old_zone,
                                      const knot_zone_t *new_zone);
@@ -298,9 +298,9 @@ int zones_create_and_save_changesets(const knot_zone_t *old_zone,
  * \param cfzone Related zone contents. If NULL, configuration is
  *               reused.
  *
- * \retval KNOTD_EOK
- * \retval KNOTD_EINVAL
- * \retval KNOTD_ERROR
+ * \retval KNOT_EOK
+ * \retval KNOT_EINVAL
+ * \retval KNOT_ERROR
  */
 int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch);
 
@@ -312,9 +312,9 @@ int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch);
  * \param zd Zone data.
  * \param ev NOTIFY event.
  *
- * \retval KNOTD_EOK
- * \retval KNOTD_ERROR
- * \retval KNOTD_EINVAL
+ * \retval KNOT_EOK
+ * \retval KNOT_ERROR
+ * \retval KNOT_EINVAL
  */
 int zones_cancel_notify(zonedata_t *zd, notify_ev_t *ev);
 

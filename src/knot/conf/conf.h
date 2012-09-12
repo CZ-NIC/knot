@@ -239,8 +239,8 @@ conf_t *conf_new(const char* path);
  * \param on_update Callback.
  * \param data User specified data for hook.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_ENOMEM out of memory error.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_ENOMEM out of memory error.
  */
 int conf_add_hook(conf_t * conf, int sections,
                   int (*on_update)(const conf_t*, void*), void *data);
@@ -252,8 +252,8 @@ int conf_add_hook(conf_t * conf, int sections,
  *
  * \param conf Configuration context.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EPARSEFAIL on parser error.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EPARSEFAIL on parser error.
  */
 int conf_parse(conf_t *conf);
 
@@ -265,8 +265,8 @@ int conf_parse(conf_t *conf);
  * \param conf Configuration context.
  * \param src Source string.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EPARSEFAIL on parser error.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EPARSEFAIL on parser error.
  */
 int conf_parse_str(conf_t *conf, const char* src);
 
@@ -307,9 +307,9 @@ char* conf_find_default();
  *
  * \param path Path to configuration file.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL on null path.
- * \retval KNOTD_ENOENT if the path doesn't exist.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on null path.
+ * \retval KNOT_ENOENT if the path doesn't exist.
  */
 int conf_open(const char* path);
 

@@ -137,9 +137,9 @@ typedef int (*journal_apply_t)(journal_t *j, journal_node_t *n);
  * \param fn Journal file name, will be created if not exist.
  * \param max_nodes Maximum number of nodes in journal.
  *
- * \retval KNOTD_EOK if successful.
- * \retval KNOTD_EINVAL if the file with given name cannot be created.
- * \retval KNOTD_ERROR on I/O error.
+ * \retval KNOT_EOK if successful.
+ * \retval KNOT_EINVAL if the file with given name cannot be created.
+ * \retval KNOT_ERROR on I/O error.
  */
 int journal_create(const char *fn, uint16_t max_nodes);
 
@@ -164,8 +164,8 @@ journal_t* journal_open(const char *fn, size_t fslimit, int mode, uint16_t bflag
  * \param cf Compare function (NULL for equality).
  * \param dst Destination for journal entry.
  *
- * \retval KNOTD_EOK if successful.
- * \retval KNOTD_ENOENT if not found.
+ * \retval KNOT_EOK if successful.
+ * \retval KNOT_ENOENT if not found.
  */
 int journal_fetch(journal_t *journal, uint64_t id,
 		  journal_cmp_t cf, journal_node_t** dst);
@@ -178,10 +178,10 @@ int journal_fetch(journal_t *journal, uint64_t id,
  * \param cf Compare function (NULL for equality).
  * \param dst Pointer to destination memory.
  *
- * \retval KNOTD_EOK if successful.
- * \retval KNOTD_ENOENT if the entry cannot be found.
- * \retval KNOTD_EINVAL if the entry is invalid.
- * \retval KNOTD_ERROR on I/O error.
+ * \retval KNOT_EOK if successful.
+ * \retval KNOT_ENOENT if the entry cannot be found.
+ * \retval KNOT_EINVAL if the entry is invalid.
+ * \retval KNOT_ERROR on I/O error.
  */
 int journal_read(journal_t *journal, uint64_t id, journal_cmp_t cf, char *dst);
 
@@ -192,9 +192,9 @@ int journal_read(journal_t *journal, uint64_t id, journal_cmp_t cf, char *dst);
  * \param id Entry identifier.
  * \param src Pointer to source data.
  *
- * \retval KNOTD_EOK if successful.
- * \retval KNOTD_EAGAIN if no free node is available, need to remove dirty nodes.
- * \retval KNOTD_ERROR on I/O error.
+ * \retval KNOT_EOK if successful.
+ * \retval KNOT_EAGAIN if no free node is available, need to remove dirty nodes.
+ * \retval KNOT_ERROR on I/O error.
  */
 int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size);
 
@@ -207,9 +207,9 @@ int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
  * \param id Entry identifier.
  * \param dst Will contain mapped memory.
  *
- * \retval KNOTD_EOK if successful.
- * \retval KNOTD_EAGAIN if no free node is available, need to remove dirty nodes.
- * \retval KNOTD_ERROR on I/O error.
+ * \retval KNOT_EOK if successful.
+ * \retval KNOT_EAGAIN if no free node is available, need to remove dirty nodes.
+ * \retval KNOT_ERROR on I/O error.
  */
 int journal_map(journal_t *journal, uint64_t id, char **dst, size_t size);
 
@@ -221,10 +221,10 @@ int journal_map(journal_t *journal, uint64_t id, char **dst, size_t size);
  * \param ptr Mapped memory.
  * \param finalize Set to true to finalize node or False to discard it.
  *
- * \retval KNOTD_EOK if successful.
- * \retval KNOTD_ENOENT if the entry cannot be found.
- * \retval KNOTD_EAGAIN if no free node is available, need to remove dirty nodes.
- * \retval KNOTD_ERROR on I/O error.
+ * \retval KNOT_EOK if successful.
+ * \retval KNOT_ENOENT if the entry cannot be found.
+ * \retval KNOT_EAGAIN if no free node is available, need to remove dirty nodes.
+ * \retval KNOT_ERROR on I/O error.
  */
 int journal_unmap(journal_t *journal, uint64_t id, void *ptr, int finalize);
 
@@ -258,8 +258,8 @@ static inline journal_node_t *journal_end(journal_t *journal) {
  * \param journal Associated journal.
  * \param apply Function to apply to each node.
  *
- * \retval KNOTD_EOK if successful.
- * \retval KNOTD_EINVAL on invalid parameters.
+ * \retval KNOT_EOK if successful.
+ * \retval KNOT_EINVAL on invalid parameters.
  */
 int journal_walk(journal_t *journal, journal_apply_t apply);
 
@@ -271,8 +271,8 @@ int journal_walk(journal_t *journal, journal_apply_t apply);
  * \param journal Associated journal.
  * \param n Pointer to node (must belong to associated journal).
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL on invalid parameters.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
  */
 int journal_update(journal_t *journal, journal_node_t *n);
 
@@ -283,9 +283,9 @@ int journal_update(journal_t *journal, journal_node_t *n);
  *
  * \param journal Associated journal.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL on invalid parameters.
- * \retval KNOTD_EBUSY if transaction is already pending.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOT_EBUSY if transaction is already pending.
  */
 int journal_trans_begin(journal_t *journal);
 
@@ -296,9 +296,9 @@ int journal_trans_begin(journal_t *journal);
  *
  * \param journal Associated journal.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL on invalid parameters.
- * \retval KNOTD_ENOENT if no transaction is pending.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOT_ENOENT if no transaction is pending.
  */
 int journal_trans_commit(journal_t *journal);
 
@@ -309,9 +309,9 @@ int journal_trans_commit(journal_t *journal);
  *
  * \param journal Associated journal.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL on invalid parameters.
- * \retval KNOTD_ENOENT if no transaction is pending.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOT_ENOENT if no transaction is pending.
  */
 int journal_trans_rollback(journal_t *journal);
 
@@ -320,8 +320,8 @@ int journal_trans_rollback(journal_t *journal);
  *
  * \param journal Associated journal.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL on invalid parameter.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameter.
  */
 int journal_close(journal_t *journal);
 
@@ -353,8 +353,8 @@ void journal_release(journal_t *journal);
  *
  * \param fd Open journal file.
  *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_EINVAL if not valid fd.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL if not valid fd.
  */
 int journal_update_crc(int fd);
 

@@ -338,7 +338,7 @@ slab_t* slab_create(slab_cache_t* cache)
 
 	slab_t* slab = slab_depot_alloc(cache->bufsize);
 
-	if (unlikely(slab == 0)) {
+	if (knot_unlikely(slab == 0)) {
 		dbg_mem("%s: failed to allocate aligned memory block\n",
 		          __func__);
 		return 0;
@@ -361,7 +361,7 @@ slab_t* slab_create(slab_cache_t* cache)
 
 	/* Ensure the item size can hold at least a size of ptr. */
 	size_t item_size = slab->bufsize;
-	if (unlikely(item_size < SLAB_MIN_BUFLEN)) {
+	if (knot_unlikely(item_size < SLAB_MIN_BUFLEN)) {
 		item_size = SLAB_MIN_BUFLEN;
 	}
 
@@ -369,7 +369,7 @@ slab_t* slab_create(slab_cache_t* cache)
 	size_t data_size = size - sizeof(slab_t);
 #ifdef MEM_COLORING
 	size_t free_space = data_size % item_size;
-	if (unlikely(free_space < SLAB_MINCOLOR)) {
+	if (knot_unlikely(free_space < SLAB_MINCOLOR)) {
 		free_space = SLAB_MINCOLOR;
 	}
 
@@ -439,12 +439,12 @@ void* slab_alloc(slab_t* slab)
 #endif
 
 	// Move to full?
-	if (unlikely(slab->bufs_free == 0)) {
+	if (knot_unlikely(slab->bufs_free == 0)) {
 		slab_list_move(&slab->cache->slabs_full, slab);
 	} else {
 #ifdef MEM_SLAB_CAP
 		// Mark not empty?
-		if (unlikely(slab->bufs_free == slab->bufs_count - 1)) {
+		if (knot_unlikely(slab->bufs_free == slab->bufs_count - 1)) {
 			--slab->cache->empty;
 		}
 #endif
@@ -456,7 +456,7 @@ void* slab_alloc(slab_t* slab)
 void slab_free(void* ptr)
 {
 	// Null pointer check
-	if (unlikely(!ptr)) {
+	if (knot_unlikely(!ptr)) {
 		return;
 	}
 
@@ -478,12 +478,12 @@ void slab_free(void* ptr)
 #endif
 
 		// Return to partial
-		if(unlikely(slab->bufs_free == 1)) {
+		if(knot_unlikely(slab->bufs_free == 1)) {
 			slab_list_move(&slab->cache->slabs_free, slab);
 		} else {
 #ifdef MEM_SLAB_CAP
 		// Recycle if empty
-			if(unlikely(slab_isempty(slab))) {
+			if(knot_unlikely(slab_isempty(slab))) {
 				if(slab->cache->empty == MEM_SLAB_CAP) {
 					slab_destroy(&slab);
 				} else {
@@ -513,7 +513,7 @@ void slab_free(void* ptr)
 
 int slab_cache_init(slab_cache_t* cache, size_t bufsize)
 {
-	if (unlikely(!bufsize)) {
+	if (knot_unlikely(!bufsize)) {
 		return -1;
 	}
 
@@ -609,7 +609,7 @@ void slab_alloc_destroy(slab_alloc_t* alloc)
 void* slab_alloc_alloc(slab_alloc_t* alloc, size_t size)
 {
 	// Invalid size check
-	if (unlikely(!size)) {
+	if (knot_unlikely(!size)) {
 		return 0;
 	}
 
@@ -618,7 +618,7 @@ void* slab_alloc_alloc(slab_alloc_t* alloc, size_t size)
 	size += sizeof(int);
 #endif
 	// Directly map large block
-	if (unlikely(size > SLAB_SIZE/2)) {
+	if (knot_unlikely(size > SLAB_SIZE/2)) {
 
 		// Map block
 		size += sizeof(slab_obj_t);
@@ -649,10 +649,10 @@ void* slab_alloc_alloc(slab_alloc_t* alloc, size_t size)
 	unsigned cache_id = slab_cache_id(size);
 
 	// Check if associated cache exists
-	if (unlikely(alloc->caches[cache_id] == 0)) {
+	if (knot_unlikely(alloc->caches[cache_id] == 0)) {
 
 		// Assert minimum cache size
-		if (unlikely(size < SLAB_MIN_BUFLEN)) {
+		if (knot_unlikely(size < SLAB_MIN_BUFLEN)) {
 			size = SLAB_MIN_BUFLEN;
 		}
 
