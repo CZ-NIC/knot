@@ -154,13 +154,14 @@ static void load_rdata_purge(knot_rdata_t *rdata,
 				knot_dname_retain(items[i].dname);
 			break;
 		default:
+			/*!< \todo This would leak wire data! */
 			break;
 		}
 	}
 
 	/* Copy items to rdata and free the temporary rdata. */
 	knot_rdata_set_items(rdata, items, count);
-	knot_rdata_deep_free(&rdata, type, 1);
+	knot_rdata_deep_free(&rdata, type, 0);
 	free(items);
 }
 
@@ -199,8 +200,11 @@ static knot_dname_t *read_dname_with_id(FILE *f, int use_ids)
 	}
 	ret->size = dname_size;
 	dbg_zload_detail("loaded: dname length: %u\n", ret->size);
-
-	assert(ret->size <= DNAME_MAX_WIRE_LENGTH);
+	if (ret->size > DNAME_MAX_WIRE_LENGTH) {
+		dbg_zload("zload: read_dname_id: Name too long.\n");
+		knot_dname_release(ret);
+		return NULL;
+	}
 
 	/* Read wireformat of dname. */
 	ret->name = malloc(sizeof(uint8_t) * ret->size);
@@ -384,8 +388,7 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 				     */
 				    (items[i].dname->node->owner ==
 				     items[i].dname)) {
-					knot_node_free(&items[i].dname->node,
-					               0);
+					knot_node_free(&items[i].dname->node);
 					assert(items[i].dname->node == NULL);
 				}
 			}
@@ -444,11 +447,12 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 	}
 
 	/* Each item has refcount already incremented for saving in rdata. */
-	if (knot_rdata_set_items(rdata, items, rdata_count) != 0) {
-		fprintf(stderr, "zload: read_rdata: Could not set items "
-			"when loading rdata.\n");
-		knot_rdata_deep_free(&rdata, type, 0);
-		free(items);
+	int ret = knot_rdata_set_items(rdata, items, rdata_count);
+	if (ret != KNOT_EOK) {
+		dbg_zload("zload: read_rdata: Could not set items "
+		          "when loading rdata. Reason: %\n.",
+		          knot_strerror(ret));
+		load_rdata_purge(rdata, items, desc->length, desc, type);
 		return NULL;
 	}
 
@@ -672,6 +676,7 @@ dbg_zload_exec_detail(
 				return NULL;
 			}
 		} else {
+			dbg_zload("zload: load_rrset: Cannot load rdata.\n");
 			knot_rrset_deep_free(&rrset, 0, 1, 1);
 			return NULL;
 		}
@@ -750,6 +755,10 @@ static knot_node_t *knot_load_node(FILE *f, knot_dname_t **id_array)
 		return NULL;
 	}
 	knot_dname_t *owner = id_array[dname_id];
+	if (owner == NULL) {
+		dbg_zload("zload: load_node: Wrong dname ID, cannot load.\n");
+		return NULL;
+	}
 
 	dbg_zload_detail("zload: load_node: Node owner id: %d.\n", dname_id);
 dbg_zload_exec_detail(
@@ -790,7 +799,7 @@ dbg_zload_exec_detail(
 
 	for (int i = 0; i < rrset_count; i++) {
 		if ((tmp_rrset = knot_load_rrset(f, id_array, 1)) == NULL) {
-			knot_node_free(&node, 0);
+			knot_node_free(&node);
 			/*!< \todo #1686 
 			 * Refactor freeing, might not be enough.
 			 */
@@ -1088,8 +1097,14 @@ int knot_zload_open(zloader_t **dst, const char *filename)
 static void cleanup_id_array(knot_dname_t **id_array,
 			     const uint from, const uint to)
 {
+	if (id_array == NULL) {
+		dbg_zload("zload: cleanup_id_array: NULL arguments.\n");
+	}
+	
 	for (uint i = from; i < to; i++) {
-		knot_dname_release(id_array[i]);
+		if (id_array[i] != NULL) {
+			knot_dname_release(id_array[i]);
+		}
 	}
 
 	free(id_array);
@@ -1253,7 +1268,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	knot_node_t *apex = knot_load_node(f, id_array);
 
 	if (!apex) {
-		fprintf(stderr, "zone: Could not load apex node (in %s)\n",
+		dbg_zload("zone: Could not load apex node (in %s)\n",
 			loader->filename);
 		cleanup_id_array(id_array, 1,
 				 node_count + nsec3_node_count + 1);
@@ -1269,7 +1284,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 				 node_count + nsec3_node_count + 1);
 		dbg_zload("zload: load: Failed to create new "
 		          "zone from apex!\n");
-		knot_node_free(&apex, 0);
+		knot_node_free(&apex);
 		free(dname_table);
 		return NULL;
 	}
@@ -1379,6 +1394,10 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 		} else {
 			fprintf(stderr, "zone: Node error (in %s).\n",
 				loader->filename);
+			knot_zone_deep_free(&zone, 0);
+			cleanup_id_array(id_array, node_count + 1,
+					 nsec3_node_count + 1);
+			return NULL;
 		}
 	}
 

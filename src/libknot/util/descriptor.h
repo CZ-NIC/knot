@@ -186,7 +186,7 @@ enum knot_rdata_wireformat {
 	KNOT_RDATA_WF_SHORT = 2, /*!< 16-bit integer.  */
 	KNOT_RDATA_WF_LONG = 4, /*!< 32-bit integer.  */
 	KNOT_RDATA_WF_UINT48 = 8, /*!< 48-bit integer.  */
-	KNOT_RDATA_WF_TEXT = 53, /*!< Text string.  */
+	KNOT_RDATA_WF_TEXT = 53, /*!< Array of text strings.  */
 	KNOT_RDATA_WF_A = 58, /*!< 32-bit IPv4 address.  */
 	KNOT_RDATA_WF_AAAA = 16, /*!< 128-bit IPv6 address.  */
 	KNOT_RDATA_WF_BINARY = 54, /*!< Binary data (unknown length).  */
@@ -205,7 +205,8 @@ enum knot_rdata_zoneformat
 {
 	KNOT_RDATA_ZF_DNAME,		/* Domain name.  */
 	KNOT_RDATA_ZF_LITERAL_DNAME,	/* DNS name (not lowercased domain name).  */
-	KNOT_RDATA_ZF_TEXT,		/* Text string.  */
+	KNOT_RDATA_ZF_TEXT,		/* Array of text strings.  */
+	KNOT_RDATA_ZF_TEXT_SINGLE,	/* Text string.  */
 	KNOT_RDATA_ZF_BYTE,		/* 8-bit integer.  */
 	KNOT_RDATA_ZF_SHORT,		/* 16-bit integer.  */
 	KNOT_RDATA_ZF_LONG,		/* 32-bit integer.  */

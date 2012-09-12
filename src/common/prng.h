@@ -39,3 +39,5 @@
 double tls_rand();
 
 #endif //_KNOTD_ACL_H_
+
+/*! @} */

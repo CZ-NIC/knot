@@ -1,7 +1,7 @@
 Features not supported
 ======================
 
-Here is a list of the most notable features that are not supported in the 
+Here is a list of the most notable features that are not supported in the
 current version of Knot.
 
 * Other DNS classes than IN (CH, CS, HS)
@@ -10,6 +10,4 @@ current version of Knot.
 Known bugs
 ==========
 
-* Slow start with too many zones.
-* IXFR is still quite slow with large transfers (more than 50 000 RRs 
-  changed), despite the previous improvements.
+* ACL may not always find the best match so it may behave counter-intuitively.

@@ -20,7 +20,7 @@
  *
  * \brief Loader of previously parsed zone
  *
- * \addtogroup dnslib
+ * \addtogroup zone-load-dump
  * @{
  */
 

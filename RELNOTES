@@ -1,3 +1,66 @@
+v1.1.0 - Aug 31, 2012
+---------------------
+
+Bugfixes:
+	* Syncing journal to zone was not updating the compiled zone database.
+
+Other improvements:
+	* Better checks of corrupted zone database.
+
+
+v1.1.0-rc2 - Aug 23, 2012
+-------------------------
+
+New features:
+	* Signing SOA with TSIG queries when checking zone version with master.
+
+Bugfixes:
+	* Fixed ixfr-from-differences journal generation in case of IPSECKEY 
+          and APL records.
+	* Fixed possible leak on server shutdown with a pending transfer.
+
+Other improvements:
+	* Improved user manual.
+
+
+v1.1.0-rc1 - Aug 17, 2012
+-------------------------
+
+New features:
+        * Optionally disable ANY queries for authoritative answers.
+        * Dropping identical records in zone and incoming transfers.
+        * Support for '/' in zone names.
+        * Generating journal from reloaded zone (EXPERIMENTAL).
+        * Outgoing-only interfaces in configuration file.
+        * Following DNAME if the synthetized name is in the same zone.
+
+Bugfixes:
+        * Crash when zone contained RRSIG signing a CNAME, but did not 
+          contain the CNAME.
+        * Malformed packets parsing.
+        * Failed IXFR caused memory leaks.
+        * Failed IXFR might have resulted in inconsistent zone structures.
+        * Fixed answering to +dnssec queries when NSEC3 chain is corrupted.
+        * Fixed answering when transitioning from NSEC3 to NSEC.
+        * Fixed answering when zone contains multiple NSEC3 chains.
+        * Handling RRSets with different TTLs - TTL from the first RR is used.
+        * Synchronization of zone reload and zone transfers.
+        * Fixed build on NetBSD 5 and FreeBSD.
+        * Fixed binding to both IPv4 and IPv6 at the same time on special 
+          interfaces.
+        * Fixed access rights of created files.
+        * Semantic checks corrupted RDATA domain names which are covered by 
+          wildcard in the same zone.
+
+Other improvements:
+        * IXFR-in optimized.
+        * Many zones loading optimized.
+        * More detailed log messages (mostly transfer-related).
+        * Copying Question section to error responses.
+        * Using zone name from config file as default origin in zone file.
+        * Additional records are now added to response also from 
+          wildcard-covered names.
+
 v1.0.6 - Jun 13, 2012
 ---------------------
 

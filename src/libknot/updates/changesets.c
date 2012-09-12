@@ -87,7 +87,13 @@ int knot_changeset_allocate(knot_changesets_t **changesets)
 
 	memset(*changesets, 0, sizeof(knot_changesets_t));
 
-	return knot_changesets_check_size(*changesets);
+	if (knot_changesets_check_size(*changesets) != KNOT_EOK) {
+		free(*changesets);
+		*changesets = NULL;
+		return KNOT_ENOMEM;
+	}
+	
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/

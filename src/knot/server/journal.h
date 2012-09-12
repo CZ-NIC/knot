@@ -359,3 +359,5 @@ void journal_release(journal_t *journal);
 int journal_update_crc(int fd);
 
 #endif /* _KNOTD_JOURNAL_H_ */
+
+/*! @} */

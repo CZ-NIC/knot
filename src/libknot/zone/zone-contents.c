@@ -139,7 +139,7 @@ static void knot_zone_contents_destroy_node_owner_from_tree(
 
 	UNUSED(data);
 	/*!< \todo change completely! */
-	knot_node_free(&tnode->node, 0);
+	knot_node_free(&tnode->node);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -605,25 +605,16 @@ static void knot_zone_contents_adjust_node_in_tree(
 		return;
 	}
 
-	dbg_zone_exec_verb(
-		char *name = knot_dname_to_str(node->owner);
-		dbg_zone_verb("----- Adjusting node %s -----\n", name);
-		free(name);
-	);
+dbg_zone_exec_verb(
+	char *name = knot_dname_to_str(node->owner);
+	dbg_zone_verb("----- Adjusting node %s -----\n", name);
+	free(name);
+);
 
-	/*
-	 * 1) Set previous node pointer.
-	 */
-	knot_node_set_previous(node, args->previous_node);
-
-	if (args->first_node == NULL) {
-		args->first_node = node;
-	}
 	knot_zone_contents_t *zone = args->zone;
 
 	/*
-	 * 2) Store domain names to dname table.
-	 *
+	 * 1) Store domain names to dname table.
 	 * TODO: make optional!
 	 */
 	assert(zone->dname_table != NULL);
@@ -638,13 +629,35 @@ static void knot_zone_contents_adjust_node_in_tree(
 	}
 
 	/*
-	 * 3) Do other adjusting (flags, closest enclosers, wildcard children,
+	 * 2) Do other adjusting (flags, closest enclosers, wildcard children,
 	 *    etc.).
 	 */
 	knot_zone_contents_adjust_node(node, zone);
+}
+
+/*----------------------------------------------------------------------------*/
+
+static void knot_zone_contents_adjust_node_in_tree_ptr(
+		knot_zone_tree_node_t *tnode, void *data)
+{
+	assert(data != NULL);
+	assert(tnode != NULL);
+	assert(tnode->node != NULL);
+
+	knot_zone_adjust_arg_t *args = (knot_zone_adjust_arg_t *)data;
+	knot_node_t *node = tnode->node;
 
 	/*
-	 * 4) Store previous node depending on the type of this node.
+	 * 1) Set previous node pointer.
+	 */
+	knot_node_set_previous(node, args->previous_node);
+
+	if (args->first_node == NULL) {
+		args->first_node = node;
+	}
+
+	/*
+	 * 2) Store previous node depending on the type of this node.
 	 */
 	if (!knot_node_is_non_auth(node)
 	    && knot_node_rrset_count(node) > 0) {
@@ -672,8 +685,11 @@ static void knot_zone_contents_adjust_nsec3_node_in_tree(
 	knot_zone_adjust_arg_t *args = (knot_zone_adjust_arg_t *)data;
 	knot_node_t *node = tnode->node;
 
-	// set previous node
-	knot_node_set_previous(node, args->previous_node);
+	if (args->err != KNOT_EOK) {
+		dbg_xfrin_detail("Error during adjusting: %s, skipping node.\n",
+		                 knot_strerror(args->err));
+		return;
+	}
 
 	// assure that owner has proper node
 	if (knot_dname_node(knot_node_owner(node)) == NULL) {
@@ -694,6 +710,22 @@ static void knot_zone_contents_adjust_nsec3_node_in_tree(
 		args->err = ret;
 		return;
 	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+static void knot_zone_contents_adjust_nsec3_node_in_tree_ptr(
+		knot_zone_tree_node_t *tnode, void *data)
+{
+	assert(data != NULL);
+	assert(tnode != NULL);
+	assert(tnode->node != NULL);
+
+	knot_zone_adjust_arg_t *args = (knot_zone_adjust_arg_t *)data;
+	knot_node_t *node = tnode->node;
+
+	// set previous node
+	knot_node_set_previous(node, args->previous_node);
 
 	// here is nothing to consider, all nodes are the same
 	args->previous_node = node;
@@ -1343,7 +1375,7 @@ dbg_zone_exec_detail(
 				 knot_zone_contents_dnames_from_node_to_table(
 					zone->dname_table, next_node);
 				if (ret != KNOT_EOK) {
-					knot_node_free(&next_node, 0);
+					knot_node_free(&next_node);
 					knot_dname_release(chopped);
 					return ret;
 				}
@@ -1961,8 +1993,8 @@ dbg_zone_exec_detail(
 	char *name_str2 = (*previous != NULL)
 	                  ? knot_dname_to_str((*previous)->owner)
 	                  : "(nil)";
-	dbg_zone_detail("Search function returned %d, node %s and prev: %s\n",
-	                exact_match, name_str, name_str2);
+dbg_zone_detail("Search function returned %d, node %s (%p) and prev: %s (%p)\n",
+	                exact_match, name_str, *node, name_str2, *previous);
 
 	if (*node) {
 		free(name_str);
@@ -2340,20 +2372,16 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone)
 	adjust_arg.err = KNOT_EOK;
 
 	/*
-	 * Adjust the NSEC3 nodes first.
-	 * There are independent on the normal nodes, but the normal nodes are
-	 * dependent on them.
+	 * First of all we must set node.prev pointers, as these are used in
+	 * the search functions.
 	 */
-
-	dbg_zone("Adjusting NSEC3 nodes.\n");
-	int ret = knot_zone_tree_forward_apply_inorder(
-	              zone->nsec3_nodes,
-	              knot_zone_contents_adjust_nsec3_node_in_tree,
-	                        &adjust_arg);
+	dbg_zone("Setting 'prev' pointers to NSEC3 nodes.\n");
+	int ret = knot_zone_tree_forward_apply_inorder(zone->nsec3_nodes,
+	         knot_zone_contents_adjust_nsec3_node_in_tree_ptr, &adjust_arg);
 	assert(ret == KNOT_EOK);
 
 	if (adjust_arg.err != KNOT_EOK) {
-		dbg_zone("Failed to adjust NSEC3 nodes: %s\n",
+		dbg_zone("Failed to set 'prev' pointers to NSEC3 nodes: %s\n",
 		         knot_strerror(adjust_arg.err));
 		return adjust_arg.err;
 	}
@@ -2361,12 +2389,45 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone)
 	// set the last node as previous of the first node
 	if (adjust_arg.first_node) {
 		knot_node_set_previous(adjust_arg.first_node,
-		                         adjust_arg.previous_node);
+		                       adjust_arg.previous_node);
 	}
 	dbg_zone("Done.\n");
 
 	adjust_arg.first_node = NULL;
 	adjust_arg.previous_node = NULL;
+
+	dbg_zone("Setting 'prev' pointers to normal nodes.\n");
+	ret = knot_zone_tree_forward_apply_inorder(zone->nodes,
+	         knot_zone_contents_adjust_node_in_tree_ptr, &adjust_arg);
+	assert(ret == KNOT_EOK);
+
+	if (adjust_arg.err != KNOT_EOK) {
+		dbg_zone("Failed to set 'prev' pointers to normal nodes: %s\n",
+		         knot_strerror(adjust_arg.err));
+		return adjust_arg.err;
+	}
+
+	// set the last node as previous of the first node
+	assert(zone->apex == adjust_arg.first_node);
+	knot_node_set_previous(zone->apex, adjust_arg.previous_node);
+	dbg_zone("Done.\n");
+
+	/*
+	 * Adjust the NSEC3 nodes first.
+	 * There are independent on the normal nodes, but the normal nodes are
+	 * dependent on them.
+	 */
+
+	dbg_zone("Adjusting NSEC3 nodes.\n");
+	ret = knot_zone_tree_forward_apply_inorder(zone->nsec3_nodes,
+	             knot_zone_contents_adjust_nsec3_node_in_tree, &adjust_arg);
+	assert(ret == KNOT_EOK);
+
+	if (adjust_arg.err != KNOT_EOK) {
+		dbg_zone("Failed to adjust NSEC3 nodes: %s\n",
+		         knot_strerror(adjust_arg.err));
+		return adjust_arg.err;
+	}
 
 	dbg_zone("Adjusting normal nodes.\n");
 	ret = knot_zone_tree_forward_apply_inorder(zone->nodes,
@@ -2379,9 +2440,6 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone)
 		         knot_strerror(adjust_arg.err));
 		return adjust_arg.err;
 	}
-
-	assert(zone->apex == adjust_arg.first_node);
-	knot_node_set_previous(zone->apex, adjust_arg.previous_node);
 
 	dbg_zone("Done.\n");
 

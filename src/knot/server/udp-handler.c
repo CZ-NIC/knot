@@ -132,14 +132,6 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 	res = KNOTD_ERROR;
 	switch(qtype) {
 
-	/* Response types. */
-	case KNOT_RESPONSE_NORMAL:
-		res = zones_process_response(ns, addr, packet, qbuf, resp_len);
-		break;
-	case KNOT_RESPONSE_NOTIFY:
-		res = notify_process_response(ns, packet, addr, qbuf, resp_len);
-		break;
-	
 	/* Query types. */
 	case KNOT_QUERY_NORMAL:
 		res = zones_normal_query_answer(ns, packet, addr, qbuf,
@@ -172,11 +164,12 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		break;
 		
 	case KNOT_QUERY_UPDATE:
-		dbg_net("udp: UPDATE query on fd=%d not implemented\n", fd);
-		knot_ns_error_response_from_query(ns, packet,
-		                                  KNOT_RCODE_NOTIMPL, qbuf,
-		                                  resp_len);
-		res = KNOTD_EOK;
+//		dbg_net("udp: UPDATE query on fd=%d not implemented\n", fd);
+//		knot_ns_error_response_from_query(ns, packet,
+//		                                  KNOT_RCODE_NOTIMPL, qbuf,
+//		                                  resp_len);
+		res = zones_process_update(ns, packet, addr, qbuf, resp_len,
+		                           NS_TRANSPORT_UDP);
 		break;
 		
 	/* Unhandled opcodes. */
@@ -437,7 +430,9 @@ static inline int udp_master_recvmmsg(dthread_t *thread, stat_t *thread_stat)
 
 		/* Error and interrupt handling. */
 		if (unlikely(n <= 0)) {
-			if (errno != EINTR && errno != 0) {
+			if (errno != EINTR && errno != 0 && n < 0) {
+				log_server_error("I/O failure in UDP - errno %d "
+				                 "(Linux/recvmmsg)", errno);
 				dbg_net("udp: recvmmsg() failed: %d\n",
 				        errno);
 			}
@@ -497,7 +492,10 @@ void __attribute__ ((constructor)) udp_master_init()
 #ifdef MSG_WAITFORONE
 	/* Check for recvmmsg() support. */
 	if (dlsym(RTLD_DEFAULT, "recvmmsg") != 0) {
-		_udp_master = udp_master_recvmmsg;
+		int r = recvmmsg(0, NULL, 0, 0, 0);
+		if (errno != ENOSYS) {
+			_udp_master = udp_master_recvmmsg;
+		}
 	}
 	
 	/* Check for sendmmsg() support. */

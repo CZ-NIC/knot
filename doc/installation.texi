@@ -11,14 +11,16 @@
 @node Required build environment
 @section Required build environment
 
-GCC at least 4.1 is strictly required for atomic builtins, but 4.2 or newer is recommended.
-Another requirement is _GNU_SOURCE support, otherwise it adapts to the compiler available features.
-Clang should work, but it is not tested nor officially supported.
+GCC at least 4.1 is strictly required for atomic built-ins, but 4.2 or newer is recommended.
+Another requirement is @code{_GNU_SOURCE} support, otherwise it adapts to the compiler available features.
+Clang should work, but it is not officially supported.
 
-Knot DNS build system relies on standard tools:
+Knot DNS build system relies on these standard tools:
 @itemize
 @item
 make
+@item
+libtool
 @item
 autoconf >= 2.65
 @item
@@ -45,13 +47,13 @@ libcap-ng, at least 0.6.4 (optional library)
 @end itemize
 
 If libcap-ng library is available, Knot DNS will take advantage of 
-the POSIX 1003.1e capabilites(7) by sandboxing the communication threads.
-Most rights are stripped from the communication threads for security reasons.
+the POSIX 1003.1e capabilites(7) by sandboxing the exposed threads.
+Most rights are stripped from the exposed threads for security reasons.
 
 You can probably find OpenSSL and zlib libraries already included in
 your system or distribution.  If not, zlib resides at
-@url{http://zlib.net/}, and OpenSSL can be found at
-@url{http://www.openssl.org/}.
+@url{http://zlib.net}, and OpenSSL can be found at
+@url{http://www.openssl.org}.
 
 @menu
 * Userspace RCU::               
@@ -63,22 +65,25 @@ your system or distribution.  If not, zlib resides at
 liburcu is a LGPLv2.1 userspace RCU (read-copy-update)
 library. This data synchronization library provides read-side
 access which scales linearly with the number of cores. It does
-so by allowing multiples copies of a given data structure to
+so by allowing multiple copies of a given data structure to
 live at the same time, and by monitoring the data structure
 accesses to detect grace periods after which memory reclamation
 is possible.  (@url{http://lttng.org/urcu,Userspace RCU})
 
-Binary packages for Debian can be found under liburcu1 for the
-library and liburcu-dev for development files.
+Binary packages for Debian can be found under @code{liburcu1} for the
+library and @code{liburcu-dev} for development files.
 
 Minimum supported version of Userspace RCU library is 0.5.4,
-but we recommend using latest available version.  It is
-especially on non-Linux systems as we got some compatibility
-patches accepted in later releases of Userspace RCU.
-OpenBSD,NetBSD and OS X platforms are supported from version 0.7.0.
+but we recommend using latest available version.
+It is crucial especially on non-Linux systems, as we got some compatibility
+patches accepted to later releases of Userspace RCU.
+OpenBSD, NetBSD and OS X platforms are supported from version 0.7.0.
 
 @node Installation from the sources
 @section Installation from the sources
+
+You can find the source files for the latest release on @url{www.knot-dns.cz}.
+Alternatively, you can fetch the sources from git repository @url{git://git.nic.cz/knot-dns.git}
 
 After unpacking the sources, the compilation and installation is
 a quite straightforward process using autotools.
@@ -92,45 +97,60 @@ a quite straightforward process using autotools.
 @node Configuring and generating Makefiles
 @subsection Configuring and generating Makefiles
 
-For all available options run:
+If you want to compile from Git sources, you need to bootstrap the
+@command{./configure} file first.
 
 @example
-@command{./configure --help}
+$ autoreconf -i -f
 @end example
 
-If you have trouble with unknown syscalls under valgrind, disable recvmmsg with
-@command{./configure --enable-recvmmsg=no}.
-Also, it has been reported that some platforms have broken LTO (Link time optimizations)
-support, you can disable that by @command{./configure --enable-lto=no}.
+For all available configure options run:
+
+@example
+$ ./configure --help
+@end example
+
+If you have trouble with unknown syscalls under valgrind, disable recvmmsg by
+adding a parameter @command{--enable-recvmmsg=no} to configure.
+
+Knot DNS has also support for link time optimizations.
+You can enable it by the configure parameter @command{./configure --enable-lto=yes}.
+It is however disabled by default as it is known to be broken in some compiler
+versions and may result in an unexpected behaviour.
 
 If you want to add debug messages, there are two steps to do that.
-First you have to enable modules, that you are interested in.
-Available are: server, zones, xfr, packet, dname, rr, ns, hash, compiler.
+First you have to enable modules you are interested in.
+Available are: @code{server, zones, xfr, packet, dname, rr, ns, hash, compiler}.
 You can combine multiple modules as a comma-separated list.
-For example: @command{./configure --enable-debug=server,packet}
-
 Then you can narrow the verbosity of the debugging message by specifying the
-verbosity as brief, verbose or details.
-For example:  @command{./configure --enable-debuglevel=verbose}.
+verbosity as @code{brief, verbose, details}.
+
+For example:
+@example
+$ ./configure --enable-debug=server,packet --enable-debuglevel=brief
+$ ./configure --enable-debug=server,packet --enable-debuglevel=verbose
+@end example
+
+For more detailed information, see @ref{Debug messages}.
 
 In most simple case you can just run configure without any options.
 
 @example
-@command{./configure}
+$ ./configure
 @end example
 
 @node Compilation
 @subsection Compilation
 
 After running @command{./configure} you can compile
-Knot DNS by running make command, which will produce binaries
+Knot DNS by running @command{make} command, which will produce binaries
 and other related files.
 
 @example
-make
+$ make
 @end example
 
-Knot DNS build process is safe to paralelize
+Knot DNS build process is safe to parallelize
 using @command{make -j N}, where N is number of
 concurrent processes.  Using this option can increase speed of
 the compilation.
@@ -138,7 +158,7 @@ the compilation.
 For example to use maximum 8 concurrent processes you would use:
 
 @example
-make -j 8
+$ make -j 8
 @end example
 
 @node Installation
@@ -153,7 +173,7 @@ switching to root user, e.g. @command{sudo make install}
 or @command{su -c 'make install'}.
 
 @example
-make install
+$ make install
 @end example
 
 @node Installation from packages
@@ -192,12 +212,12 @@ the root user.
 
 @example
 
-cat >/etc/apt/sources.list.d/knot.list <<EOF
+$ cat >/etc/apt/sources.list.d/knot.list <<EOF
 deb     http://deb.knot-dns.cz/debian/ <codename> main
 deb-src http://deb.knot-dns.cz/debian/ <codename> main
 EOF
-apt-get update
-apt-get install knot
+$ apt-get update
+$ apt-get install knot
 	
 @end example
 
@@ -230,26 +250,48 @@ the PPA.
 
 @example
 
-sudo add-apt-repository ppa:cz.nic-labs/knot-dns
-sudo apt-get update
-sudo apt-get install knot
+$ sudo add-apt-repository ppa:cz.nic-labs/knot-dns
+$ sudo apt-get update
+$ sudo apt-get install knot
 	  
 @end example
 
 @noindent
-Running this sequence of command will ensure that you will
-install the Knot DNS on your system and keep it up-to-date
-in the future, when new version are released.
+Running this sequence of commands will ensure that you will
+install Knot DNS on your system and keep it up-to-date
+in the future, when new versions are released.
 
+@page
 @node Installing Knot DNS RPMs on Fedora
 @subsection Installing Knot DNS RPMs on Fedora
 
-There are currently no official RPMs.
-[TODO]
+There are RPM packages for @code{Knot DNS} available for i386 and amd64 targets.
+If you want use the Fedora repository, add a file with the
+following lines into @file{/etc/yum.repos.d/}
+
+@example
+[knot]
+name=Network.CZ Repository
+baseurl=ftp://repo.network.cz/pub/redhat/
+enabled=1
+gpgcheck=0
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-network.cz
+@end example
+
+When you have added a new repository, you can install Knot DNS as a
+regular package.
+
+@example
+$ yum install knot
+@end example
 
 @node Installing Knot DNS from ports on FreeBSD
 @subsection Installing Knot DNS from ports on FreeBSD
 
-There is currently no official port on FreeBSD.
-[TODO]
+Knot DNS is in ports tree under @code{dns/knot}.
+
+@example
+$ cd /usr/ports/dns/knot  
+$ sudo make install
+@end example
 

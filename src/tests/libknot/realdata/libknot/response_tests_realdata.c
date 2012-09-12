@@ -70,7 +70,7 @@ static int test_response_init_from_query(list query_list)
 		assert(query);
 		knot_packet_set_max_size(response, 1024 * 10);
 		if (knot_response_init_from_query(response,
-		                                     query) != KNOT_EOK) {
+		                                  query, 1) != KNOT_EOK) {
 			diag("Could not init response from query!");
 			errors++;
 		}

@@ -93,7 +93,7 @@ typedef struct knot_zone knot_zone_t;
 /*!
  * \brief Creates new empty DNS zone.
  *
- * \notice Zone will be created without contents.
+ * \note Zone will be created without contents.
  *
  * \param name Zone owner.
  *

@@ -77,3 +77,5 @@ static inline crc_t crc_finalize(crc_t crc)
 
 
 #endif      /* __CRC_H__ */
+
+/*! @} */

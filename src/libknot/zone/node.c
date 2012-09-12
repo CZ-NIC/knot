@@ -430,17 +430,6 @@ knot_node_t *knot_node_get_previous(const knot_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
-const knot_node_t *knot_node_next(const knot_node_t *node)
-{
-	if (node == NULL) {
-		return NULL;
-	}
-
-	return node->next;
-}
-
-/*----------------------------------------------------------------------------*/
-
 void knot_node_set_previous(knot_node_t *node, knot_node_t *prev)
 {
 	if (node == NULL) {
@@ -622,8 +611,6 @@ void knot_node_update_refs(knot_node_t *node)
 {
 	// reference to previous node
 	knot_node_update_ref(&node->prev);
-	// reference to next node
-	knot_node_update_ref(&node->next);
 	// reference to parent
 	knot_node_update_ref(&node->parent);
 	// reference to wildcard child
@@ -732,7 +719,7 @@ void knot_node_free_rrsets(knot_node_t *node, int free_rdata_dnames)
 
 /*----------------------------------------------------------------------------*/
 
-void knot_node_free(knot_node_t **node, int fix_refs)
+void knot_node_free(knot_node_t **node)
 {
 	if (node == NULL || *node == NULL) {
 		return;
@@ -754,46 +741,6 @@ void knot_node_free(knot_node_t **node, int fix_refs)
 
 	dbg_node_detail("Releasing owner.\n");
 	knot_dname_release((*node)->owner);
-
-	// check nodes referencing this node and fix the references
-
-	if (fix_refs) {
-		// previous node
-		dbg_node_detail("Checking previous.\n");
-		if ((*node)->prev && (*node)->prev->next == (*node)) {
-			(*node)->prev->next = (*node)->next;
-		}
-
-		dbg_node_detail("Checking next.\n");
-		if ((*node)->next && (*node)->next->prev == (*node)) {
-			(*node)->next->prev = (*node)->prev;
-		}
-
-		// NSEC3 node
-		dbg_node_detail("Checking NSEC3.\n");
-		if ((*node)->nsec3_node
-		    && (*node)->nsec3_node->nsec3_referer == (*node)) {
-			(*node)->nsec3_node->nsec3_referer = NULL;
-		}
-
-		dbg_node_detail("Checking NSEC3 ref.\n");
-		if ((*node)->nsec3_referer
-		    && (*node)->nsec3_referer->nsec3_node == (*node)) {
-			(*node)->nsec3_referer->nsec3_node = NULL;
-		}
-
-		// wildcard child node
-		dbg_node_detail("Checking parent's wildcard child.\n");
-		if ((*node)->parent
-		    && (*node)->parent->wildcard_child == (*node)) {
-			(*node)->parent->wildcard_child = NULL;
-		}
-		
-		// fix parent's children count
-		if ((*node)->parent) {
-			--(*node)->parent->children;
-		}
-	}
 
 	free(*node);
 	*node = NULL;

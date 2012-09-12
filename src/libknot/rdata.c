@@ -551,8 +551,10 @@ void knot_rdata_deep_free(knot_rdata_t **rdata, uint type,
 		return;
 	}
 
-	knot_rdata_free_items((*rdata)->items, (*rdata)->count, type,
-	                      free_all_dnames);
+	if ((*rdata)->items != NULL) {
+		knot_rdata_free_items((*rdata)->items, (*rdata)->count, type,
+		                      free_all_dnames);
+	}
 
 	free(*rdata);
 	*rdata = NULL;
@@ -694,6 +696,18 @@ int64_t knot_rdata_soa_serial(const knot_rdata_t *rdata)
 
 	// the number is in network byte order, transform it
 	return knot_wire_read_u32((uint8_t *)(rdata->items[2].raw_data + 1));
+}
+
+/*---------------------------------------------------------------------------*/
+void knot_rdata_soa_serial_set(knot_rdata_t *rdata, uint32_t serial)
+{
+	if (!rdata || rdata->count < 3) {
+		return;
+	}
+
+	// the number is in network byte order, transform it
+	knot_wire_write_u32((uint8_t *)(rdata->items[2].raw_data + 1),
+	                    serial);
 }
 
 /*---------------------------------------------------------------------------*/

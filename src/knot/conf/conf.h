@@ -102,6 +102,7 @@ typedef struct conf_zone_t {
 		list xfr_out;     /*!< Remotes accepted for xfr-out.*/
 		list notify_in;   /*!< Remotes accepted for notify-in.*/
 		list notify_out;  /*!< Remotes accepted for notify-out.*/
+		list update_in;  /*!< Remotes accepted for DDNS.*/
 	} acl;
 } conf_zone_t;
 
@@ -348,6 +349,18 @@ char* strcdup(const char *s1, const char *s2);
  * \retval Pointer to normalized path.
  */
 char* strcpath(char *path);
+
+/*! \brief Free zone config. */
+void conf_free_zone(conf_zone_t *zone);
+
+/*! \brief Free TSIG key config. */
+void conf_free_key(conf_key_t *k);
+
+/*! \brief Free interface config. */
+void conf_free_iface(conf_iface_t *iface);
+
+/*! \brief Free log config. */
+void conf_free_log(conf_log_t *log);
 
 #endif /* _KNOTD_CONF_H_ */
 

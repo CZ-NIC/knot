@@ -861,7 +861,8 @@ int knot_response_init(knot_packet_t *response)
 /*----------------------------------------------------------------------------*/
 
 int knot_response_init_from_query(knot_packet_t *response,
-                                    knot_packet_t *query)
+                                  knot_packet_t *query,
+                                  int copy_question)
 {
 
 	if (response == NULL || query == NULL) {
@@ -871,21 +872,29 @@ int knot_response_init_from_query(knot_packet_t *response,
 	// copy the header from the query
 	memcpy(&response->header, &query->header, sizeof(knot_header_t));
 
-	// copy the Question section (but do not copy the QNAME)
-	memcpy(&response->question, &query->question,
-	       sizeof(knot_question_t));
-
 	int err = 0;
-	// put the qname into the compression table
-	// TODO: get rid of the numeric constants
-	if ((err = knot_response_store_dname_pos(&response->compression,
-	              response->question.qname, 0, 12, 12, 0)) != KNOT_EOK) {
-		return err;
-	}
+	/*! \todo Constant. */
+	size_t to_copy = 12;
 
-	// copy the wireformat of Header and Question from the query
-	// TODO: get rid of the numeric constants
-	size_t to_copy = 12 + 4 + knot_dname_size(response->question.qname);
+	if (copy_question) {
+		// copy the Question section (but do not copy the QNAME)
+		memcpy(&response->question, &query->question,
+		       sizeof(knot_question_t));
+
+		// put the qname into the compression table
+		// TODO: get rid of the numeric constants
+		if ((err = knot_response_store_dname_pos(&response->compression,
+			      response->question.qname, 0, 12, 12, 0))
+		                != KNOT_EOK) {
+			return err;
+		}
+
+		/*! \todo Constant. */
+		to_copy += 4 + knot_dname_size(response->question.qname);
+	} else {
+		response->header.qdcount = 0;
+		knot_wire_set_qdcount(response->wireformat, 0);
+	}
 
 	assert(response->max_size >= to_copy);
 	memcpy(response->wireformat, query->wireformat, to_copy);

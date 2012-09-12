@@ -68,6 +68,7 @@
 #ifdef KNOT_XFR_DEBUG
   #define KNOT_XFRIN_DEBUG
   #define KNOT_TSIG_DEBUG
+  #define KNOT_DDNS_DEBUG
 #endif
 
 /* KNOT_DNAME_DEBUG -- in configure.ac */

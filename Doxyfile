@@ -31,7 +31,7 @@ PROJECT_NAME           = Knot
 # This could be handy for archiving the generated documentation or 
 # if some version control system is used.
 
-PROJECT_NUMBER         = 0.1.0
+PROJECT_NUMBER         = 1.1.0
 
 # The OUTPUT_DIRECTORY tag is used to specify the (relative or absolute) 
 # base path where the generated documentation will be put. 
@@ -591,7 +591,11 @@ WARN_LOGFILE           =
 # directories like "/usr/src/myproject". Separate the files or directories 
 # with spaces.
 
-INPUT                  = src/ \
+INPUT                  = src/common \
+                         src/libknot \
+                         src/common \
+                         src/knot \
+                         src/zcompile \
                          Doxy.page.h
 
 # This tag can be used to specify the character encoding of the source files 
@@ -622,7 +626,7 @@ RECURSIVE              = YES
 # excluded from the INPUT source files. This way you can easily exclude a 
 # subdirectory from a directory tree whose root is specified with the INPUT tag.
 
-EXCLUDE                = 
+EXCLUDE                =
 
 # The EXCLUDE_SYMLINKS tag can be used select whether or not files or 
 # directories that are symbolic links (a Unix filesystem feature) are excluded 

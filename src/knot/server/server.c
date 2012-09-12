@@ -651,16 +651,13 @@ void server_stop(server_t *server)
 {
 	dbg_server("server: stopping server\n");
 	
-	/* Wait for XFR master. */
-	xfr_stop(server->xfr_h);
+	/* Send termination event. */
+	evsched_schedule_term(server->sched, 0);
 
 	/* Interrupt XFR handler execution. */
 	if (server->xfr_h->interrupt) {
 		server->xfr_h->interrupt(server->xfr_h);
 	}
-	
-	/* Send termination event. */
-	evsched_schedule_term(server->sched, 0);
 
 	/* Lock RCU. */
 	rcu_read_lock();

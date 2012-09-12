@@ -5,7 +5,7 @@
  *
  * \brief Structure for representing IXFR/DDNS changeset and its API.
  *
- * \addtogroup libknot
+ * \addtogroup xfr
  * @{
  */
 /*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>

@@ -77,7 +77,7 @@ static int test_zone_create(list node_list)
 			errors++;
 		}
 		knot_node_free_rrsets(node, 1);
-		knot_node_free(&node, 0);
+		knot_node_free(&node);
 	}
 
 	return (errors == 0);

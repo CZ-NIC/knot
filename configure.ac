@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 
-AC_PREREQ([2.65])
-AC_INIT([knot], [1.0.6], [knot-dns@labs.nic.cz])
+AC_PREREQ([2.60])
+AC_INIT([knot], [1.1.0], [knot-dns@labs.nic.cz])
 AM_INIT_AUTOMAKE([gnu -Wall -Werror])
 AC_CONFIG_SRCDIR([src/knot/main.c])
 AC_CONFIG_HEADERS([src/config.h])
@@ -13,9 +13,6 @@ AX_EXT
 AC_PROG_CC
 m4_pattern_allow([AM_PROG_AR]) # for automake 1.12
 AM_PROG_AR
-
-# Enable maintainer mode by default for development
-AM_MAINTAINER_MODE([enable])
 
 # Initialize libtool
 AC_PROG_LIBTOOL

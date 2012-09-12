@@ -5,7 +5,7 @@
  *
  * \brief XFR client API.
  *
- * \addtogroup query_processing
+ * \addtogroup xfr
  * @{
  */
 /*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>

@@ -239,6 +239,7 @@ dbg_zp_exec_detail(
 		assert(current_rrset->rdata->count == descriptor->length);
 	}
 
+
 	assert(current_rrset->rdata->count > 0);
 	assert(knot_dname_is_fqdn(current_rrset->owner));
 
@@ -527,7 +528,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	knot_dname_t *origin_from_config =
 		knot_dname_new_from_str(name, strlen(name), NULL);
 	if (origin_from_config == NULL) {
-		knot_node_free(&origin_node, 0);
+		knot_node_free(&origin_node);
 		return KNOTDZCOMPILE_ENOMEM;
 	}
 
@@ -535,7 +536,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	zp_lex_init(&scanner);
 	if (scanner == NULL) {
 		knot_dname_release(origin_from_config);
-		knot_node_free(&origin_node, 0);
+		knot_node_free(&origin_node);
 		return KNOTDZCOMPILE_ENOMEM;
 	}
 
