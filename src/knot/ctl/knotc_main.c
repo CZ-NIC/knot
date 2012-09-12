@@ -30,6 +30,11 @@
 #include "knot/ctl/process.h"
 #include "knot/conf/conf.h"
 #include "knot/zone/zone-load.h"
+#include "knot/server/socket.h"
+#include "knot/server/tcp-handler.h"
+#include "libknot/util/wire.h"
+#include "libknot/packet/query.h"
+#include "libknot/packet/response.h"
 
 /*! \brief Controller constants. */
 enum knotc_constants_t {
@@ -296,7 +301,33 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 {
 	int valid_cmd = 0;
 	int rc = 0;
-	if (strcmp(action, "start") == 0) {
+	if (strcmp(action, "remote") == 0) {
+		int s = socket_create(AF_INET, SOCK_STREAM);
+		socket_connect(s, argv[0], atoi(argv[1]));
+		
+//		knot_dname_t *cmd_name = knot_dname_new_from_str(argv[2], strlen(argv[2]), NULL);
+//		knot_rrset_t *cmd_rr = knot_rrset_new(cmd_name,KNOT_RRTYPE_TXT, KNOT_CLASS_CH, 3600);
+//		knot_rdata_t *cmd_rd = knot_rdata_new();
+//		knot_rdata_item_t i;
+//		i.raw_data = malloc(strlen(argv[3]) + 3);
+//		*i.raw_data = strlen(argv[3]) + 1;
+//		uint8_t *raw_item = (uint8_t*)(i.raw_data + 1);
+//		*(raw_item++) = strlen(argv[3]);
+//		memcpy(raw_item, argv[3], strlen(argv[3]));
+//		knot_rdata_set_items(cmd_rd, &i, 1);
+//		knot_rrset_add_rdata(cmd_rr, cmd_rd);
+
+//		knot_packet_to_wire(qr, &buf, &buflen);
+//		tcp_send(s, buf, buflen);
+		
+//		knot_packet_free(&qr);
+
+		socket_close(s);
+		
+		valid_cmd =1;
+		rc=  0;
+	}
+	else if (strcmp(action, "start") == 0) {
 		// Check pidfile for w+
 		log_server_info("Starting server...\n");
 

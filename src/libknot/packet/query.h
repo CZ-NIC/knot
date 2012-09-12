@@ -81,6 +81,8 @@ int knot_query_set_opcode(knot_packet_t *query, uint8_t opcode);
 int knot_query_add_rrset_authority(knot_packet_t *query,
                                    const knot_rrset_t *rrset);
 
+int knot_query_rr_to_wire(const knot_rrset_t *rrset, const knot_rdata_t *rdata,
+			  uint8_t **wire, uint8_t *endp);
 
 #endif /* _KNOT_QUERY_H_ */
 

@@ -362,35 +362,7 @@ int main(int argc, char **argv)
 
 			/* Events. */
 			if (ret > 0) {
-				fprintf(stderr, "remote: accepting..\n");
-				int c = tcp_accept(remote);
-				if (c < 0) {
-					continue;
-				}
-				
-				/*! \todo Temporary */
-				uint8_t buf[1024] = {0};
-				size_t buflen = sizeof(buf);
-				
-				sockaddr_t addr;
-				sockaddr_init(&addr, AF_INET);
-				fprintf(stderr, "remote: reading..\n");
-				int r = recv(c, buf, buflen, MSG_WAITALL);
-				if (r < 0) {
-					perror("tcp_recv");
-					fprintf(stderr, "remote: read shit..\n");
-					close(c);
-					continue;
-				}
-				
-				getpeername(c, addr.ptr, &addr.len);
-				char straddr[SOCKADDR_STRLEN];
-				sockaddr_tostr(&addr, straddr, sizeof(straddr));
-				fprintf(stderr, "remote: accepted %d bytes from %s:%d\n",
-					r, straddr, sockaddr_portnum(&addr));
-				
-				close(c);
-				fprintf(stderr, "remote: i'm so done with this\n");
+				remote_recv(server->nameserver, remote);
 			}
 		}
 		pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);

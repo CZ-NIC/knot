@@ -27,15 +27,19 @@
 #ifndef _KNOTD_REMOTE_H_
 #define _KNOTD_REMOTE_H_
 
+#include "libknot/nameserver/name-server.h"
+#include "libknot/packet/packet.h"
 #include "knot/conf/conf.h"
 
 int remote_bind(conf_iface_t *desc);
 int remote_unbind(int r);
 int remote_poll(int r);
+int remote_recv(knot_nameserver_t *ns, int r);
+int remote_answer(knot_packet_t *pkt);
 
-// encrypted comm
-// remote_accept (r, key)
-// remote_send (r, key)
+int remote_query(knot_packet_t **dst, const char *query);
+int remote_query_append(knot_packet_t *qry, knot_rrset_t *data);
+int remote_query_sign(knot_packet_t *qry, knot_key_t *key);
 
 
 #endif // _KNOTD_REMOTE_H_

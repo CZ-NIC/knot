@@ -56,6 +56,7 @@ int socket_connect(int fd, const char *addr, unsigned short port)
 	/* Resolve address. */
 	int ret = KNOTD_EOK;
 	struct addrinfo hints, *res;
+	memset(&hints, 0, sizeof(struct addrinfo));
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 	if ((ret = getaddrinfo(addr, NULL, &hints, &res)) != 0) {
