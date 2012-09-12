@@ -17,11 +17,10 @@
 #include "remote.h"
 #include "common/log.h"
 #include "common/fdset.h"
+#include "knot/common.h"
 #include "knot/conf/conf.h"
-#include "knot/other/error.h"
 #include "knot/server/socket.h"
 #include "knot/server/tcp-handler.h"
-#include "libknot/util/error.h"
 #include "libknot/packet/query.h"
 
 int remote_bind(conf_iface_t *desc)
@@ -35,17 +34,17 @@ int remote_bind(conf_iface_t *desc)
 	if (s < 0) {
 		log_server_error("Couldn't create socket for remote "
 				 "control interface - %s",
-				 knotd_strerror(s));
+				 knot_strerror(s));
 		return -1;
 	}
 	
 	/* Bind to interface and start listening. */
 	int r = socket_bind(s, desc->family, desc->address, desc->port);
-	if (r == KNOTD_EOK) {
+	if (r == KNOT_EOK) {
 		r = socket_listen(s, TCP_BACKLOG_SIZE);
 	}
 	
-	if (r != KNOTD_EOK) {
+	if (r != KNOT_EOK) {
 		socket_close(s);
 		log_server_error("Could not bind to "
 				 "remote control interface %s port %d.\n",
@@ -59,7 +58,7 @@ int remote_bind(conf_iface_t *desc)
 int remote_unbind(int r)
 {
 	if (r < 0) {
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 	
 	return socket_close(r);
@@ -97,7 +96,7 @@ int remote_recv(knot_nameserver_t *ns, int r)
 	if (n <= 0) {
 		fprintf(stderr, "remote: failed to receive data\n");
 		socket_close(c);
-		return KNOTD_ECONNREFUSED;
+		return KNOT_ECONNREFUSED;
 	}
 
 	/* Parse query. */
@@ -106,19 +105,19 @@ int remote_recv(knot_nameserver_t *ns, int r)
 	if (packet == NULL) {
 		fprintf(stderr, "remote: no mem to form packet\n");
 		socket_close(c);
-		return KNOTD_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 	int res = knot_ns_parse_packet(buf, n, packet, &qtype);
 	if (res != KNOT_EOK || qtype != KNOT_QUERY_NORMAL) {
 		fprintf(stderr, "remote: failed to parse packet\n");
 		knot_packet_free(&packet);
 		socket_close(c);
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 	res = knot_packet_parse_rest(packet);
 	if (res != KNOT_EOK) {
 		fprintf(stderr, "remote: failed to parse packet data\n");
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 	
 	/* Answer query. */
@@ -189,12 +188,12 @@ int remote_answer(knot_packet_t *pkt)
 int remote_query(knot_packet_t **dst, const char *query)
 {
 	if (dst == NULL || query == NULL) {
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 	
 	*dst = knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
 	if (*dst == NULL) {
-		return KNOTD_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 	
 	knot_packet_set_max_size(*dst, 512);
@@ -206,7 +205,7 @@ int remote_query(knot_packet_t **dst, const char *query)
 	char *qname = strcdup(query, ".config.");
 	if (qname == NULL) {
 		knot_packet_free(dst);
-		return KNOTD_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 	/*! \todo what if query has more dots ? */
 	q.qname = knot_dname_new_from_str(qname, strlen(qname), 0);
@@ -216,13 +215,13 @@ int remote_query(knot_packet_t **dst, const char *query)
 	knot_dname_release(q.qname);
 	free(qname);
 	
-	return KNOTD_EOK;
+	return KNOT_EOK;
 }
 
 int remote_query_append(knot_packet_t *qry, knot_rrset_t *data)
 {
 	if (!qry || !data) {
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 	
 	uint8_t *sp = qry->wireformat + qry->size;
@@ -240,9 +239,9 @@ int remote_query_append(knot_packet_t *qry, knot_rrset_t *data)
 int remote_query_sign(knot_packet_t *qry, knot_key_t *key)
 {
 	if (!qry || !key) {
-		return KNOTD_EINVAL;
+		return KNOT_EINVAL;
 	}
 	
-	return KNOTD_ENOTSUP;
+	return KNOT_ENOTSUP;
 }
 
