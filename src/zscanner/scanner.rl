@@ -25,7 +25,7 @@
 #include <sys/socket.h>                    // AF_INET (BSD)
 #include <netinet/in.h>                    // in_addr (BSD)
 
-#include "util/error.h"                    // error codes
+#include "common/errcode.h"                // error codes
 #include "util/descriptor.h"               // KNOT_RRTYPE_A
 #include "zscanner/file_loader.h"          // file_loader
 #include "zscanner/scanner_functions.h"    // Base64

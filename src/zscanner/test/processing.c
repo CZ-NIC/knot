@@ -21,7 +21,7 @@
 #include <arpa/inet.h> // ntohs
 
 #include "util/descriptor.h" // knot_rrtype_to_string
-#include "util/error.h"      // knot_strerror
+#include "common/errcode.h"  // knot_strerror
 #include "zscanner/scanner.h"
 
 

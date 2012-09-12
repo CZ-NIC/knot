@@ -18,7 +18,7 @@
 
 #include <stdint.h>
 
-#include "util/error.h"
+#include "common/errcode.h"
 
 
 const uint8_t digit_to_num[] = {
