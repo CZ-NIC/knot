@@ -1,4 +1,5 @@
 ACLOCAL_AMFLAGS = -I ../m4
+
 libexec_PROGRAMS = knot-zcompile unittests unittests-zcompile unittests-libknot-realdata unittests-libknot unittests-xfr unittests-zscanner
 sbin_PROGRAMS = knotc knotd
 dist_man_MANS = knot.conf.5 knotc.8 knotd.8
@@ -235,6 +236,8 @@ libknots_la_SOURCES =				\
 	common/libtap/tap_unit.h		\
 	common/mempattern.h			\
 	common/mempattern.c			\
+	common/descriptor_new.h			\
+	common/descriptor_new.c			\
 	common/lists.c				\
 	common/base32.c				\
 	common/base64.c				\

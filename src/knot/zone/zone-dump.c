@@ -31,8 +31,6 @@
 #include "common/skip-list.h"
 #include "semantic-check.h"
 
-#define ZONECHECKS_VERBOSE
-
 /*! \note Contents of a dump file:
  * MAGIC(knotxx) db_filename dname_table
  * NUMBER_OF_NORMAL_NODES NUMBER_OF_NSEC3_NODES
