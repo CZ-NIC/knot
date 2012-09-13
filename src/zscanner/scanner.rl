@@ -49,9 +49,6 @@
     }                                                                     \
 }
 
-#define ADD_R_DATA_LABEL                                                  \
-    s->r_data_items[++(s->r_data_items_count)] = rdata_tail - s->r_data;
-
 
 // Include scanner file (in Ragel).
 %%{

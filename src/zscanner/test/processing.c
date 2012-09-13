@@ -110,7 +110,7 @@ void debug_process_error(const scanner_t *s)
 
 void debug_process_record(const scanner_t *s)
 {
-    uint32_t item, item_length, i;
+    uint32_t block, block_length, i;
 
     printf("LINE(%03"PRIu64") %s %u %*s ",
            s->line_counter,
@@ -121,13 +121,13 @@ void debug_process_record(const scanner_t *s)
 
     print_wire_dname(s->r_owner, s->r_owner_length);
 
-    printf("  #%u/%u#:", s->r_data_length, s->r_data_items_count);
+    printf("  #%u/%uB:", s->r_data_blocks_count, s->r_data_length);
 
-    for (item = 1; item <= s->r_data_items_count; item++) {
-        item_length = s->r_data_items[item] - s->r_data_items[item - 1];
-        printf(" (%u)", item_length);
+    for (block = 1; block <= s->r_data_blocks_count; block++) {
+        block_length = s->r_data_blocks[block] - s->r_data_blocks[block - 1];
+        printf(" (%u)", block_length);
 
-        for (i = s->r_data_items[item - 1]; i < s->r_data_items[item]; i++) {
+        for (i = s->r_data_blocks[block - 1]; i < s->r_data_blocks[block]; i++) {
             printf("%02X", (s->r_data)[i]);
         }
     }
@@ -143,7 +143,7 @@ void test_process_error(const scanner_t *s)
 
 void test_process_record(const scanner_t *s)
 {
-    uint32_t item, i;
+    uint32_t block, i;
 
     printf("OWNER=");
     for (i = 0; i < s->r_owner_length; i++) {
@@ -154,12 +154,12 @@ void test_process_record(const scanner_t *s)
     printf("RRTTL=%04X\n", s->r_ttl);
     printf("RTYPE=%02X\n", s->r_type);
     printf("RDATA=");
-    for (item = 1; item <= s->r_data_items_count; item++) {
-        if (item > 1) {
+    for (block = 1; block <= s->r_data_blocks_count; block++) {
+        if (block > 1) {
             printf(" ");
         }
 
-        for (i = s->r_data_items[item - 1]; i < s->r_data_items[item]; i++) {
+        for (i = s->r_data_blocks[block - 1]; i < s->r_data_blocks[block]; i++) {
             printf("%02X", (s->r_data)[i]);
         }
     }
@@ -169,10 +169,10 @@ void test_process_record(const scanner_t *s)
 
 void dump_rdata(const scanner_t *s)
 {
-    uint32_t item, i;
+    uint32_t block, i;
 
-    for (item = 1; item <= s->r_data_items_count; item++) {
-        for (i = s->r_data_items[item - 1]; i < s->r_data_items[item]; i++) {
+    for (block = 1; block <= s->r_data_blocks_count; block++) {
+        for (i = s->r_data_blocks[block - 1]; i < s->r_data_blocks[block]; i++) {
             printf("%c", (s->r_data)[i]);
         }
     }

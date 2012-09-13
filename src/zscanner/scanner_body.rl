@@ -215,8 +215,8 @@
         }
     }
 
-    action _item_exit {
-        ADD_R_DATA_LABEL
+    action _separate {
+        s->r_data_blocks[++(s->r_data_blocks_count)] = rdata_tail - s->r_data;
     }
     # END
 
@@ -361,9 +361,9 @@
             fhold; fgoto err_line;
         }
     }
-    num8  = number %_num8_write  %_item_exit;
-    num16 = number %_num16_write %_item_exit;
-    num32 = number %_num32_write %_item_exit;
+    num8  = number %_num8_write;
+    num16 = number %_num16_write;
+    num32 = number %_num32_write;
 
     type_number   = number %_type_number_exit;
     length_number = number %_length_number_exit;
@@ -408,7 +408,7 @@
 
     time = number . time_unit?;
 
-    time32 = time %_num32_write %_item_exit;
+    time32 = time %_num32_write;
     # END
 
     # BEGIN - Timestamp processing
@@ -463,7 +463,7 @@
     }
 
     timestamp = digit+ >_timestamp_init $_timestamp
-                %_timestamp_exit %_item_exit $!_timestamp_error;
+                %_timestamp_exit $!_timestamp_error;
     # END
 
     # BEGIN - Text processing
@@ -531,14 +531,10 @@
     text = ^all_wchar ${ fhold; fcall text_; };
 
     # Text string with forward 1-byte length.
-    text_with_length = text >_item_length_init %_item_length_exit;
-
-    # One text string as one rdata item.
-    text_item = text_with_length %_item_exit;
+    text_string = text >_item_length_init %_item_length_exit;
 
     # Text string array as one rdata item.
-    text_array = (text_with_length . (sep . text_with_length)* . sep?)
-                 %_item_exit;
+    text_array = (text_string . (sep . text_string)* . sep?);
     # END
 
     # BEGIN - TTL directive processing
@@ -729,7 +725,10 @@
         rdata_tail += s->dname_tmp_length;
     }
 
-    r_dname = dname >_r_dname_init %_r_dname_exit %_item_exit;
+    only_r_dname   = dname            >_r_dname_init %_r_dname_exit;
+    first_r_dname  = dname            >_r_dname_init %_r_dname_exit %_separate;
+    middle_r_dname = dname >_separate >_r_dname_init %_r_dname_exit %_separate;
+    last_r_dname   = dname >_separate >_r_dname_init %_r_dname_exit;
     # END
 
     # BEGIN - IPv4 and IPv6 address processing
@@ -783,8 +782,8 @@
                 $!_addr_error;
 
     # Write parsed address to r_data.
-    ipv4_addr_write = ipv4_addr %_ipv4_addr_write %_item_exit;
-    ipv6_addr_write = ipv6_addr %_ipv6_addr_write %_item_exit;
+    ipv4_addr_write = ipv4_addr %_ipv4_addr_write;
+    ipv6_addr_write = ipv6_addr %_ipv6_addr_write;
     # END
 
     # BEGIN - Gateway
@@ -806,10 +805,10 @@
     }
 
     gateway =
-        ( ('0' $_write_0 %_item_exit . sep . num8 . sep . '.')
-        | ('1' $_write_1 %_item_exit . sep . num8 . sep . ipv4_addr_write)
-        | ('2' $_write_2 %_item_exit . sep . num8 . sep . ipv6_addr_write)
-        | ('3' $_write_3 %_item_exit . sep . num8 . sep . r_dname)
+        ( ('0' $_write_0 . sep . num8 . sep . '.')
+        | ('1' $_write_1 . sep . num8 . sep . ipv4_addr_write)
+        | ('2' $_write_2 . sep . num8 . sep . ipv6_addr_write)
+        | ('3' $_write_3 . sep . num8 . sep . only_r_dname)
         ) $!_gateway_error;
     # END
 
@@ -839,11 +838,9 @@
         // Write address family.
         *((uint16_t *)rdata_tail) = htons(s->apl.addr_family);
         rdata_tail += 2;
-        ADD_R_DATA_LABEL
         // Write prefix length in bites.
         *(rdata_tail) = s->apl.prefix_length;
         rdata_tail += 1;
-        ADD_R_DATA_LABEL
         // Computed maximal prefix length in bytes (real can be smaller).
         s->number64 = (s->apl.prefix_length + 7) / 8;
         if (s->number64 > 127) { // At most 7 bits.
@@ -876,11 +873,9 @@
         // Write negation flag + prefix length in bytes.
         *(rdata_tail) = (uint8_t)(s->number64) + s->apl.excl_flag;
         rdata_tail += 1;
-        ADD_R_DATA_LABEL
         // Write address prefix.
         memcpy(rdata_tail, s->buffer, s->number64);
         rdata_tail += s->number64;
-        ADD_R_DATA_LABEL
     }
     action _apl_error {
         SCANNER_WARNING(ZSCANNER_EBAD_APL);
@@ -921,11 +916,11 @@
     hex_char  = (xdigit $_first_hex_char . xdigit $_second_hex_char);
 
     # Hex array with possibility of inside white spaces and multiline.
-    hex_array = (hex_char+ . sep?)+ %_item_exit $!_hex_char_error;
+    hex_array = (hex_char+ . sep?)+ $!_hex_char_error;
 
     # Continuous hex array (or "-") with forward length processing.
     salt = (hex_char+ | '-') >_item_length_init %_item_length_exit
-           %_item_exit $!_hex_char_error;
+           $!_hex_char_error;
 
     action _type_data_exit {
         if ((rdata_tail - s->r_data) != s->r_data_length) {
@@ -999,7 +994,7 @@
         );
 
     # Base64 array with possibility of inside white spaces and multiline.
-    base64_ := (base64_quartet+ . sep?)+ %_item_exit $!_base64_char_error
+    base64_ := (base64_quartet+ . sep?)+ $!_base64_char_error
                %_ret . end_wchar;
     base64 = base64_char ${ fhold; fcall base64_; };
     # END
@@ -1099,7 +1094,7 @@
 
     # Continuous base32hex (with padding!) array with forward length processing.
     hash = base32hex_octet+ >_item_length_init %_item_length_exit
-           %_item_exit $!_base32hex_char_error;
+           $!_base32hex_char_error;
     # END
 
     # BEGIN - Type processing
@@ -1145,7 +1140,7 @@
         | "TLSA"i       %{ TYPE_NUM(KNOT_RRTYPE_TLSA); }
         | "SPF"i        %{ TYPE_NUM(KNOT_RRTYPE_SPF); }
         | "TYPE"i       . num16 # TYPE12345
-        ) %_type_exit %_item_exit $!_type_error;
+        ) %_type_exit $!_type_error;
     # END
 
     # BEGIN - Bitmap processing
@@ -1195,7 +1190,7 @@
         | "NSEC3PARAM"i %{ WINDOW_ADD_BIT(KNOT_RRTYPE_NSEC3PARAM); }
         | "TLSA"i       %{ WINDOW_ADD_BIT(KNOT_RRTYPE_TLSA); }
         | "SPF"i        %{ WINDOW_ADD_BIT(KNOT_RRTYPE_SPF); }
-        | "TYPE"i . type_bitmap # Special types TYPE0-TYPE65535
+        | "TYPE"i       . type_bitmap # Special types TYPE0-TYPE65535
         );
 
     action _bitmap_init {
@@ -1233,7 +1228,7 @@
 
     # Blank bitmap is allowed too.
     bitmap_ := ((sep . type_bit)* . sep?) >_bitmap_init
-               %_bitmap_exit %_item_exit %_ret $!_bitmap_error . end_wchar;
+               %_bitmap_exit %_ret $!_bitmap_error . end_wchar;
     bitmap = all_wchar ${ fhold; fcall bitmap_; };
     # END
 
@@ -1367,34 +1362,27 @@
         // Write version.
         *(rdata_tail) = 0;
         rdata_tail += 1;
-        ADD_R_DATA_LABEL
         // Write size.
         *(rdata_tail) = loc64to8(s->loc.siz);
         rdata_tail += 1;
-        ADD_R_DATA_LABEL
         // Write horizontal precision.
         *(rdata_tail) = loc64to8(s->loc.hp);
         rdata_tail += 1;
-        ADD_R_DATA_LABEL
         // Write vertical precision.
         *(rdata_tail) = loc64to8(s->loc.vp);
         rdata_tail += 1;
-        ADD_R_DATA_LABEL
         // Write latitude.
         *((uint32_t *)rdata_tail) = htonl(LOC_LAT_ZERO + s->loc.lat_sign *
             (3600000 * s->loc.d1 + 60000 * s->loc.m1 + s->loc.s1));
         rdata_tail += 4;
-        ADD_R_DATA_LABEL
         // Write longitude.
         *((uint32_t *)rdata_tail) = htonl(LOC_LONG_ZERO + s->loc.long_sign *
             (3600000 * s->loc.d2 + 60000 * s->loc.m2 + s->loc.s2));
         rdata_tail += 4;
-        ADD_R_DATA_LABEL
         // Write altitude.
         *((uint32_t *)rdata_tail) = htonl(LOC_ALT_ZERO + s->loc.alt_sign *
             (s->loc.alt));
         rdata_tail += 4;
-        ADD_R_DATA_LABEL
     }
     action _loc_error {
         SCANNER_WARNING(ZSCANNER_EBAD_LOC_DATA);
@@ -1427,8 +1415,8 @@
 
     # BEGIN - Rdata processing
     action _r_data_init {
-        s->r_data_items[0] = 0;
-        s->r_data_items_count = 0;
+        s->r_data_blocks[0] = 0;
+        s->r_data_blocks_count = 0;
         rdata_tail = s->r_data;
     }
     action _r_data_error {
@@ -1441,24 +1429,24 @@
         $!_r_data_error %_ret . all_wchar;
 
     r_data_ns :=
-        (r_dname)
+        (only_r_dname)
         $!_r_data_error %_ret . all_wchar;
 
     r_data_soa :=
-        (r_dname . sep . r_dname . sep . num32 . sep . time32 . sep .
-         time32 . sep . time32 . sep . time32)
+        (first_r_dname . sep . middle_r_dname . sep . num32 . sep . time32 .
+         sep . time32 . sep . time32 . sep . time32)
         $!_r_data_error %_ret . all_wchar;
 
     r_data_hinfo :=
-        (text_item . sep . text_item)
+        (text_string . sep . text_string)
         $!_r_data_error %_ret . all_wchar;
 
     r_data_minfo :=
-        (r_dname . sep . r_dname)
+        (first_r_dname . sep . last_r_dname)
         $!_r_data_error %_ret . all_wchar;
 
     r_data_mx :=
-        (num16 . sep . r_dname)
+        (num16 . sep . last_r_dname)
         $!_r_data_error %_ret . all_wchar;
 
     r_data_txt :=
@@ -1466,7 +1454,7 @@
         $!_r_data_error %_ret . end_wchar;
 
     r_data_rp :=
-        (r_dname . sep . r_dname)
+        (first_r_dname . sep . last_r_dname)
         $!_r_data_error %_ret . all_wchar;
 
     r_data_aaaa :=
@@ -1478,12 +1466,12 @@
         $!_r_data_error %_ret . end_wchar;
 
     r_data_srv :=
-        (num16 . sep . num16 . sep . num16 . sep . r_dname)
+        (num16 . sep . num16 . sep . num16 . sep . last_r_dname)
         $!_r_data_error %_ret . all_wchar;
 
     r_data_naptr :=
-        (num16 . sep . num16 . sep . text_item . sep . text_item . sep .
-         text_item . sep . r_dname)
+        (num16 . sep . num16 . sep . text_string . sep . text_string . sep .
+         text_string . sep . last_r_dname)
         $!_r_data_error %_ret . all_wchar;
 
     r_data_cert :=
@@ -1508,12 +1496,12 @@
 
     r_data_rrsig :=
         (type_num . sep . num8 . sep . num8 . sep . num32 . sep .
-         timestamp . sep . timestamp . sep . num16 . sep . r_dname .
+         timestamp . sep . timestamp . sep . num16 . sep . middle_r_dname .
          sep . base64)
         $!_r_data_error %_ret . end_wchar;
 
     r_data_nsec :=
-        (r_dname . bitmap)
+        (first_r_dname . bitmap)
         $!_r_data_error %_ret . all_wchar;
 
     r_data_dnskey :=
@@ -1602,6 +1590,7 @@
     }
     action _hex_r_data {
         switch (r_type) {
+            // Next types cannot have empty rdata.
             case KNOT_RRTYPE_A:
             case KNOT_RRTYPE_NS:
             case KNOT_RRTYPE_CNAME:
@@ -1634,6 +1623,7 @@
             case KNOT_RRTYPE_NSEC3PARAM:
             case KNOT_RRTYPE_TLSA:
                 fcall nonempty_hex_r_data;
+            // Next types can have empty rdata.
             case KNOT_RRTYPE_APL:
             default:
                 fcall hex_r_data;
@@ -1687,14 +1677,22 @@
         | "NSEC3PARAM"i %{ r_type = KNOT_RRTYPE_NSEC3PARAM; }
         | "TLSA"i       %{ r_type = KNOT_RRTYPE_TLSA; }
         | "SPF"i        %{ r_type = KNOT_RRTYPE_SPF; }
-        | "TYPE"i . type_number
+        | "TYPE"i       . type_number
         ) $!_r_type_error;
     # END
 
     # BEGIN - Top level processing
     action _record_exit {
         s->r_type = r_type;
-        s->r_data_length = (uint16_t)(rdata_tail - s->r_data);
+
+        if (rdata_tail - s->r_data > UINT16_MAX) {
+            SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
+            fhold; fgoto err_line;
+        }
+        s->r_data_length = rdata_tail - s->r_data;
+        s->r_data_blocks[++(s->r_data_blocks_count)] =
+            (uint16_t)(s->r_data_length);
+
         s->process_record(s);
     }
 

@@ -148,8 +148,8 @@ struct scanner {
     uint16_t r_type;
     uint8_t  r_data[MAX_RDATA_LENGTH];
     uint32_t r_data_length;
-    uint16_t r_data_items[MAX_RDATA_ITEMS];
-    uint32_t r_data_items_count;
+    uint16_t r_data_blocks[MAX_RDATA_ITEMS];
+    uint32_t r_data_blocks_count;
 };
 
 scanner_t* scanner_create(const char *file_name);
