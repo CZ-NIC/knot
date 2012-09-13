@@ -178,8 +178,13 @@ static int knot_dname_str_to_wire(const char *name, uint size,
 
 	while (ch - (const uint8_t *)name < size) {
 		assert(w - wire - 1 == ch - (const uint8_t *)name);
-
+		
 		if (*ch == '.') {
+			/* Zero-length label inside a dname - invalid. */
+			if (label_length == 0) {
+				free(wire);
+				return -1;
+			}
 			dbg_dname_detail("Position %zd (%p): "
 			                 "label length: %u\n",
 			                 label_start - wire,
