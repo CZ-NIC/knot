@@ -7,11 +7,13 @@ $TTL    1
 @   A \# 4 00000000         ; Hexadecimal rdata
 @   TYPE1 \# 4 00000000     ; TYPE + Hexadecimal rdata
 @   TYPE1 0.0.0.0           ; TYPE
+@   a 0.0.0.0               ; Type in lower-case
 
 ; KO
 @   A
 @   A                   ; Empty rdata
 @   A \# 0              ; Hex empty rdata
+@   A \#                ; Missing hex length
 @   A 0.0.0.256         ; 8bit overflow
 @   A 0.0.0             ; Short address
 @   A 0.0.0.A           ; Bad character

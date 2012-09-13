@@ -153,7 +153,6 @@ void test_process_record(const scanner_t *s)
     printf("CLASS=%02X\n", s->r_class);
     printf("RRTTL=%04X\n", s->r_ttl);
     printf("RTYPE=%02X\n", s->r_type);
-    printf("ITEMS=%04X\n", s->r_data_items_count);
     printf("RDATA=");
     for (item = 1; item <= s->r_data_items_count; item++) {
         if (item > 1) {
