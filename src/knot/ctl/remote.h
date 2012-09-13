@@ -27,20 +27,27 @@
 #ifndef _KNOTD_REMOTE_H_
 #define _KNOTD_REMOTE_H_
 
-#include "libknot/nameserver/name-server.h"
-#include "libknot/packet/packet.h"
 #include "knot/conf/conf.h"
+#include "knot/server/server.h"
+#include "libknot/packet/packet.h"
+#include "libknot/rrset.h"
+#include "libknot/rdata.h"
 
 int remote_bind(conf_iface_t *desc);
 int remote_unbind(int r);
 int remote_poll(int r);
-int remote_recv(knot_nameserver_t *ns, int r);
-int remote_answer(knot_packet_t *pkt);
+int remote_recv(server_t *s, sockaddr_t *a, int r, uint8_t* buf, size_t buflen);
+int remote_answer(server_t *s, knot_packet_t *pkt);
 
-int remote_query(knot_packet_t **dst, const char *query);
+knot_packet_t* remote_query(const char *query);
 int remote_query_append(knot_packet_t *qry, knot_rrset_t *data);
 int remote_query_sign(knot_packet_t *qry, knot_key_t *key);
 
+knot_rrset_t* remote_build_rr(const char *k, uint16_t t);
+knot_rdata_t* remote_create_txt(const char *v);
+knot_rdata_t* remote_create_cname(const char *d);
+
+//knot_rrset_t* remote_build_cname(const char *k, const char *v);
 
 #endif // _KNOTD_REMOTE_H_
 

@@ -27,6 +27,7 @@
 
 #include "knot/common.h"
 #include "knot/ctl/process.h"
+#include "knot/ctl/remote.h"
 #include "knot/conf/conf.h"
 #include "knot/zone/zone-load.h"
 #include "knot/server/socket.h"
@@ -301,30 +302,40 @@ int execute(const char *action, char **argv, int argc, pid_t pid,
 	int valid_cmd = 0;
 	int rc = 0;
 	if (strcmp(action, "remote") == 0) {
-		int s = socket_create(AF_INET, SOCK_STREAM);
-		socket_connect(s, argv[0], atoi(argv[1]));
 		
-//		knot_dname_t *cmd_name = knot_dname_new_from_str(argv[2], strlen(argv[2]), NULL);
-//		knot_rrset_t *cmd_rr = knot_rrset_new(cmd_name,KNOT_RRTYPE_TXT, KNOT_CLASS_CH, 3600);
-//		knot_rdata_t *cmd_rd = knot_rdata_new();
-//		knot_rdata_item_t i;
-//		i.raw_data = malloc(strlen(argv[3]) + 3);
-//		*i.raw_data = strlen(argv[3]) + 1;
-//		uint8_t *raw_item = (uint8_t*)(i.raw_data + 1);
-//		*(raw_item++) = strlen(argv[3]);
-//		memcpy(raw_item, argv[3], strlen(argv[3]));
-//		knot_rdata_set_items(cmd_rd, &i, 1);
-//		knot_rrset_add_rdata(cmd_rr, cmd_rd);
+		/*! \todo #2035 check query,addr,port */
+		const char* addr = argv[0];
+		const char* port = argv[1];
+		const char* qname = argv[2];
+		int q_argc = argc - 3; // addr,port,cmd
+		char** q_argv = argv + 3;
 
-//		knot_packet_to_wire(qr, &buf, &buflen);
-//		tcp_send(s, buf, buflen);
+		/* Make query. */
+		uint8_t *buf = NULL;
+		size_t buflen = 0;
+		knot_packet_t *qr = remote_query(qname);
+		if (!qr) {
+			rc = 1;
+		} else {
+			/*! \todo #2035 different assembly for each query */
+			knot_rrset_t *rr = remote_build_rr("zone.", KNOT_RRTYPE_CNAME);
+			for (int i = 0; i < q_argc; ++i) {
+				knot_rrset_add_rdata(rr, remote_create_cname(q_argv[i]));
+			}
+			remote_query_append(qr, rr);
+			knot_packet_to_wire(qr, &buf, &buflen);
+			
+			/* Send. */
+			/*! \todo #2035 detect AF_* from address. */
+			int s = socket_create(AF_INET, SOCK_STREAM);
+			socket_connect(s, addr, atoi(port));
+			tcp_send(s, buf, buflen);
+			knot_packet_free(&qr);
+			socket_close(s);
+		}
 		
-//		knot_packet_free(&qr);
-
-		socket_close(s);
-		
-		valid_cmd =1;
-		rc=  0;
+		valid_cmd = 1;
+		rc = 0;
 	}
 	else if (strcmp(action, "start") == 0) {
 		// Check pidfile for w+
@@ -750,6 +761,10 @@ int main(int argc, char **argv)
 		log_levels_add(LOGT_STDOUT, LOG_ANY,
 		               LOG_MASK(LOG_INFO)|LOG_MASK(LOG_DEBUG));
 	}
+	
+	/*! \todo #2035 now it should connect to remote host and ignore
+	 *              non-existent PID file for most commands
+	 */
 	
 	// Fetch PID
 	char* pidfile = pid_filename();
