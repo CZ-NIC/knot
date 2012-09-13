@@ -652,7 +652,8 @@
                                                DEFAULT_CLASS,
                                                DEFAULT_TTL,
                                                s->process_record,
-                                               s->process_error);
+                                               s->process_error,
+                                               s->data);
         if (fl != NULL) {
             // Process included zone file.
             ret = file_loader_process(fl);

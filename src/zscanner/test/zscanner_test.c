@@ -91,7 +91,8 @@ int main(int argc, char *argv[])
                                         DEFAULT_CLASS,
                                         DEFAULT_TTL,
                                         &empty_process_record,
-                                        &empty_process_error);
+                                        &empty_process_error,
+                                        NULL);
                 break;
             case 1:
                 fl = file_loader_create(origin,
@@ -99,7 +100,8 @@ int main(int argc, char *argv[])
                                         DEFAULT_CLASS,
                                         DEFAULT_TTL,
                                         &debug_process_record,
-                                        &debug_process_error);
+                                        &debug_process_error,
+                                        NULL);
                 break;
             case 2:
                 fl = file_loader_create(origin,
@@ -107,7 +109,8 @@ int main(int argc, char *argv[])
                                         DEFAULT_CLASS,
                                         DEFAULT_TTL,
                                         &test_process_record,
-                                        &test_process_error);
+                                        &test_process_error,
+                                        NULL);
                 break;
             default:
                 printf("Bad mode number!\n");

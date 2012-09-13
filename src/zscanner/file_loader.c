@@ -74,7 +74,8 @@ file_loader_t* file_loader_create(const char     *file_name,
                                   const uint16_t default_class,
                                   const uint32_t default_ttl,
                                   void (*process_record)(const scanner_t *),
-                                  void (*process_error)(const scanner_t *))
+                                  void (*process_error)(const scanner_t *),
+                                  void *data)
 {
     int ret;
 
@@ -103,6 +104,7 @@ file_loader_t* file_loader_create(const char     *file_name,
     // Processing functions.
     fl->scanner->process_record = process_record;
     fl->scanner->process_error  = process_error;
+    fl->scanner->data = data;
 
     // Default class initialization.
     fl->scanner->default_class = default_class;

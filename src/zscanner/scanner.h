@@ -100,6 +100,7 @@ struct scanner {
 
     void (*process_record)(const scanner_t *);
     void (*process_error)(const scanner_t *);
+    void *data;
 
     /*!< Indicates if actual record is multiline. */
     bool     multiline;

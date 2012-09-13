@@ -52,7 +52,8 @@ file_loader_t* file_loader_create(const char     *file_name,
                                   const uint16_t default_class,
                                   const uint32_t default_ttl,
                                   void (*process_record)(const scanner_t *),
-                                  void (*process_error)(const scanner_t *));
+                                  void (*process_error)(const scanner_t *),
+                                  void *data);
 
 void file_loader_free(file_loader_t *file_loader);
 
