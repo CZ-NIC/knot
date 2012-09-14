@@ -223,6 +223,7 @@
     # BEGIN - Owner processing
     action _r_owner_init {
         s->dname = s->r_owner;
+        s->r_owner_length = 0;
     }
     action _r_owner_exit {
         s->r_owner_length = s->dname_tmp_length;

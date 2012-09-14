@@ -150,9 +150,9 @@ void test_process_record(const scanner_t *s)
         printf("%02x", s->r_owner[i]);
     }
     printf("\n");
-    printf("CLASS=%02X\n", s->r_class);
-    printf("RRTTL=%04X\n", s->r_ttl);
-    printf("RTYPE=%02X\n", s->r_type);
+    printf("CLASS=%04X\n", s->r_class);
+    printf("RRTTL=%08X\n", s->r_ttl);
+    printf("RTYPE=%04X\n", s->r_type);
     printf("RDATA=");
     for (block = 1; block <= s->r_data_blocks_count; block++) {
         if (block > 1) {

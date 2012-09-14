@@ -161,6 +161,18 @@ int file_loader_process(file_loader_t *fl)
         return -1;
     }
 
+    // Check for directory.
+    if (S_ISDIR(file_stat.st_mode)) {
+        printf("Given zone file is a directory!\n");
+        return -1;
+    }
+
+    // Check for empty file.
+    if (file_stat.st_size == 0) {
+        printf("Empty zone file!\n");
+        return -1;
+    }
+
     // Block size adjustment to multiple of page size.
     block_size = (BLOCK_SIZE / page_size) * page_size;
 
