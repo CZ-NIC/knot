@@ -12,14 +12,13 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+*/
 
 #include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <sys/wait.h>
 #include <time.h>
 #include <sys/select.h>
 #include <sys/stat.h>
@@ -38,53 +37,85 @@
 
 /*! \brief Controller constants. */
 enum knotc_constants_t {
-	WAITPID_TIMEOUT = 10 /*!< \brief Timeout for waiting for process. */
+	WAITPID_TIMEOUT = 120   /*!< \brief Timeout for waiting for process. */
 };
 
 /*! \brief Controller flags. */
 enum knotc_flag_t {
-	F_NULL        = 0 << 0,
-	F_FORCE       = 1 << 0,
-	F_VERBOSE     = 1 << 1,
-	F_WAIT        = 1 << 2,
+	F_NULL = 0 << 0,
+	F_FORCE = 1 << 0,
+	F_VERBOSE = 1 << 1,
+	F_WAIT = 1 << 2,
 	F_INTERACTIVE = 1 << 3,
-	F_AUTO        = 1 << 4,
-	F_UNPRIVILEGED= 1 << 5
+	F_AUTO = 1 << 4,
+	F_UNPRIVILEGED = 1 << 5,
+	F_NOCONF = 1 << 6,
+	F_DRYRUN = 1 << 7
 };
 
-static inline unsigned has_flag(unsigned flags, enum knotc_flag_t f) {
+/*! \brief Check if flag is present. */
+static inline unsigned has_flag(unsigned flags, enum knotc_flag_t f)
+{
 	return flags & f;
 }
+
+/*! \brief Callback prototype for command. */
+typedef int (*knot_cmdf_t)(int argc, char *argv[], unsigned flags, int jobs);
+
+/*! \brief Command table item. */
+typedef struct knot_cmd_t {
+	const char *name;
+	knot_cmdf_t cb;
+	const char *desc;
+} knot_cmd_t;
+
+/* Forward decls. */
+static int cmd_start(int argc, char *argv[], unsigned flags, int jobs);
+static int cmd_stop(int argc, char *argv[], unsigned flags, int jobs);
+static int cmd_restart(int argc, char *argv[], unsigned flags, int jobs);
+static int cmd_reload(int argc, char *argv[], unsigned flags, int jobs);
+static int cmd_refresh(int argc, char *argv[], unsigned flags, int jobs);
+static int cmd_flush(int argc, char *argv[], unsigned flags, int jobs);
+static int cmd_status(int argc, char *argv[], unsigned flags, int jobs);
+static int cmd_checkconf(int argc, char *argv[], unsigned flags, int jobs);
+static int cmd_checkzone(int argc, char *argv[], unsigned flags, int jobs);
+static int cmd_compile(int argc, char *argv[], unsigned flags, int jobs);
+
+/*! \brief Table of remote commands. */
+knot_cmd_t knot_cmd_tbl[] = {
+	{"start    ", &cmd_start, "Start server (no-op if running)."},
+	{"stop     ", &cmd_stop, "Stop server (no-op if running)."},
+	{"restart  ", &cmd_restart, "Restarts server (no-op if running)."},
+	{"reload   ", &cmd_reload, "Reloads configuration and changed zones."},
+	{"refresh  ", &cmd_refresh,"Refresh slave zones (all if not specified)."},
+	{"flush    ", &cmd_flush, "Flush journal and update zone files."},
+	{"status   ", &cmd_status, "Check if server is running."},
+	{"checkconf", &cmd_checkconf, "Check server configuration."},
+	{"checkzone", &cmd_checkzone, "Check specified zone files."},
+	{"compile  ", &cmd_compile, "Compile zone files (all if not specified)."},
+	{NULL, NULL, NULL}
+};
 
 /*! \brief Print help. */
 void help(int argc, char **argv)
 {
-	printf("Usage: %sc [parameters] start|stop|restart|reload|running|"
-	       "compile [additional]\n", PACKAGE_NAME);
+	printf("Usage: %sc [parameters] <action> [action_args]\n", PACKAGE_NAME);
 	printf("\nParameters:\n"
-	       " -c [file], --config=[file] Select configuration file.\n"
-	       " -j [num], --jobs=[num]     Number of parallel tasks to run when compiling.\n"
-	       " -f, --force                Force operation - override some checks.\n"
-	       " -v, --verbose              Verbose mode - additional runtime information.\n"
-	       " -V, --version              Print %s server version.\n"
-	       " -w, --wait                 Wait for the server to finish start/stop operations.\n"
-	       " -i, --interactive          Interactive mode (do not daemonize).\n"
-	       " -a, --auto                 Enable automatic recompilation (start or reload).\n"
-	       " -h, --help                 Print help and usage.\n",
+	       " -c [file], --config=[file]\tSelect configuration file.\n"
+	       " -j [num], --jobs=[num]    \tNumber of parallel tasks to run when compiling.\n"
+	       " -f, --force               \tForce operation - override some checks.\n"
+	       " -v, --verbose             \tVerbose mode - additional runtime information.\n"
+	       " -V, --version             \tPrint %s server version.\n"
+	       " -w, --wait                \tWait for the server to finish start/stop operations.\n"
+	       " -i, --interactive         \tInteractive mode (do not daemonize).\n"
+	       " -h, --help                \tPrint help and usage.\n",
 	       PACKAGE_NAME);
-	printf("\nActions:\n"
-	       " start     Start %s server zone (no-op if running).\n"
-	       " stop      Stop %s server (no-op if not running).\n"
-	       " restart   Stops and then starts %s server.\n"
-	       " reload    Reload %s configuration and compiled zones.\n"
-	       " refresh   Refresh all slave zones.\n"
-	       " running   Check if server is running.\n"
-	       " checkconf Check server configuration.\n"
-	       "\n"
-	       " checkzone Check zones (accepts specific zones, \n"
-	       "           e.g. 'knotc checkzone example1.com example2.com').\n"
-	       " compile   Compile zones (accepts specific zones, see above).\n",
-	       PACKAGE_NAME, PACKAGE_NAME, PACKAGE_NAME, PACKAGE_NAME);
+	printf("\nActions:\n");
+	knot_cmd_t *c = knot_cmd_tbl;
+	while (c->name != NULL) {
+		printf(" %s\t\t\t%s\n", c->name, c->desc);
+		++c;
+	}
 }
 
 /*!
@@ -96,16 +127,17 @@ void help(int argc, char **argv)
  * \retval KNOT_EOK if up to date.
  * \retval KNOT_ERROR if needs recompilation.
  */
-int check_zone(const char *db, const char* source)
+static int check_zone(const char *db, const char *source)
 {
 	/* Check zonefile. */
 	struct stat st;
 	if (stat(source, &st) != 0) {
 		int reason = errno;
 		const char *emsg = "";
-		switch(reason) {
+		switch (reason) {
 		case EACCES:
-			emsg = "Not enough permissions to access zone file '%s'.\n";
+			emsg =
+			        "Not enough permissions to access zone file '%s'.\n";
 			break;
 		case ENOENT:
 			emsg = "Zone file '%s' doesn't exist.\n";
@@ -114,7 +146,6 @@ int check_zone(const char *db, const char* source)
 			emsg = "Unable to stat zone file '%s'.\n";
 			break;
 		}
-		
 		log_zone_error(emsg, source);
 		return KNOT_ENOENT;
 	}
@@ -137,65 +168,6 @@ int check_zone(const char *db, const char* source)
 	return ret;
 }
 
-pid_t wait_cmd(pid_t proc, int *rc)
-{
-	/* Wait for finish. */
-	sigset_t newset;
-	sigfillset(&newset);
-	sigprocmask(SIG_BLOCK, &newset, 0);
-	proc = waitpid(proc, rc, 0);
-	sigprocmask(SIG_UNBLOCK, &newset, 0);
-	return proc;
-}
-
-pid_t start_cmd(const char *argv[], int argc, int flags)
-{
-	pid_t chproc = fork();
-	if (chproc == 0) {
-	
-		/* Alter privileges. */
-		if (flags & F_UNPRIVILEGED) {
-			proc_update_privileges(conf()->uid, conf()->gid);
-		}
-
-		/* Duplicate, it doesn't run from stack address anyway. */
-		char **args = malloc((argc + 1) * sizeof(char*));
-		memset(args, 0, (argc + 1) * sizeof(char*));
-		int ci = 0;
-		for (int i = 0; i < argc; ++i) {
-			if (strlen(argv[i]) > 0) {
-				args[ci++] = strdup(argv[i]);
-			}
-		}
-		args[ci] = 0;
-
-		/* Execute command. */
-		fflush(stdout);
-		fflush(stderr);
-		execvp(args[0], args);
-
-		/* Execute failed. */
-		log_server_error("Failed to run executable '%s'\n", args[0]);
-		for (int i = 0; i < argc; ++i) {
-			free(args[i]);
-		}
-		free(args);
-
-		exit(1);
-		return -1;
-	}
-	
-	return chproc;
-}
-
-int exec_cmd(const char *argv[], int argc)
-{
-	int ret = 0;
-	pid_t proc = start_cmd(argv, argc, 0);
-	wait_cmd(proc, &ret);
-	return ret;
-}
-
 /*! \brief Zone compiler task. */
 typedef struct {
 	conf_zone_t *zone;
@@ -203,44 +175,44 @@ typedef struct {
 } knotc_zctask_t;
 
 /*! \brief Create set of watched tasks. */
-knotc_zctask_t *zctask_create(int count)
+static knotc_zctask_t *zctask_create(int count)
 {
 	if (count <= 0) {
 		return 0;
 	}
-	
+
 	knotc_zctask_t *t = malloc(count * sizeof(knotc_zctask_t));
 	for (unsigned i = 0; i < count; ++i) {
 		t[i].proc = -1;
 		t[i].zone = 0;
 	}
-	
+
 	return t;
 }
 
 /*! \brief Wait for single task to finish. */
-int zctask_wait(knotc_zctask_t *tasks, int count, int is_checkzone)
+static int zctask_wait(knotc_zctask_t *tasks, int count, int is_checkzone)
 {
 	/* Wait for children to finish. */
 	int rc = 0;
-	pid_t pid = wait_cmd(-1, &rc);
+	pid_t pid = pid_wait(-1, &rc);
 	
 	/* Find task. */
 	conf_zone_t *z = 0;
 	for (unsigned i = 0; i < count; ++i) {
 		if (tasks[i].proc == pid) {
-			tasks[i].proc = -1; /* Invalidate. */
+			tasks[i].proc = -1;     /* Invalidate. */
 			z = tasks[i].zone;
 			break;
 		}
 	}
-	
+
 	if (z == 0) {
 		log_server_error("Failed to find zone for finished "
 		                 "zone compilation process.\n");
 		return 1;
 	}
-	
+
 	/* Evaluate. */
 	if (!WIFEXITED(rc)) {
 		log_server_error("%s of '%s' failed, process was killed.\n",
@@ -255,15 +227,17 @@ int zctask_wait(knotc_zctask_t *tasks, int count, int is_checkzone)
 				               "return code was '%d'\n",
 				               z->name, WEXITSTATUS(rc));
 			}
+
 			return 1;
 		}
 	}
-	
+
 	return 0;
 }
 
 /*! \brief Register running zone compilation process. */
-int zctask_add(knotc_zctask_t *tasks, int count, pid_t pid, conf_zone_t *zone)
+static int zctask_add(knotc_zctask_t *tasks, int count, pid_t pid,
+                      conf_zone_t *zone)
 {
 	/* Find free space. */
 	for (unsigned i = 0; i < count; ++i) {
@@ -273,437 +247,113 @@ int zctask_add(knotc_zctask_t *tasks, int count, pid_t pid, conf_zone_t *zone)
 			return 0;
 		}
 	}
-	
+
 	/* Free space not found. */
 	return -1;
 }
 
-/*!
- * \brief Execute specified action.
- *
- * \param action Action to be executed (start, stop, restart...)
- * \param argv Additional arguments vector.
- * \param argc Addition arguments count.
- * \param pid Specified PID for action.
- * \param verbose True if running in verbose mode.
- * \param force True if forced operation is required.
- * \param wait Wait for the operation to finish.
- * \param interactive Interactive mode.
- * \param automatic Automatic compilation.
- * \param jobs Number of parallel tasks to run.
- * \param pidfile Specified PID file for action.
- *
- * \retval 0 on success.
- * \retval error return code for main on error.
- */
-int execute(const char *action, char **argv, int argc, pid_t pid,
-            unsigned flags, unsigned jobs, const char *pidfile)
+static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 {
-	int valid_cmd = 0;
 	int rc = 0;
-	if (strcmp(action, "remote") == 0) {
-		
-		/*! \todo #2035 check query,addr,port */
-		const char* addr = argv[0];
-		const char* port = argv[1];
-		const char* qname = argv[2];
-		int q_argc = argc - 3; // addr,port,cmd
-		char** q_argv = argv + 3;
 
-		/* Make query. */
-		uint8_t *buf = NULL;
-		size_t buflen = 0;
-		knot_packet_t *qr = remote_query(qname);
-		if (!qr) {
-			rc = 1;
-		} else {
-			/*! \todo #2035 different assembly for each query */
-			knot_rrset_t *rr = remote_build_rr("zone.", KNOT_RRTYPE_CNAME);
-			for (int i = 0; i < q_argc; ++i) {
-				knot_rrset_add_rdata(rr, remote_create_cname(q_argv[i]));
-			}
-			remote_query_append(qr, rr);
-			knot_packet_to_wire(qr, &buf, &buflen);
-			
-			/* Send. */
-			/*! \todo #2035 detect AF_* from address. */
-			int s = socket_create(AF_INET, SOCK_STREAM);
-			socket_connect(s, addr, atoi(port));
-			tcp_send(s, buf, buflen);
-			knot_packet_free(&qr);
-			socket_close(s);
-		}
-		
-		valid_cmd = 1;
-		rc = 0;
-	}
-	else if (strcmp(action, "start") == 0) {
-		// Check pidfile for w+
-		log_server_info("Starting server...\n");
-
-		// Check PID
-		valid_cmd = 1;
-//		if (pid < 0 && pid == KNOT_ERANGE) {
-//			fprintf(stderr, "control: Another server instance "
-//					 "is already starting.\n");
-//			return 1;
-//		}
-		if (pid > 0 && pid_running(pid)) {
-
-			log_server_error("Server PID found, "
-			                 "already running.\n");
-
-			if (!has_flag(flags, F_FORCE)) {
-				return 1;
-			} else {
-				log_server_info("Forcing  server start, "
-				                "killing old pid=%ld.\n",
-				                (long)pid);
-				kill(pid, SIGKILL);
-				pid_remove(pidfile);
-			}
-		}
-
-		// Recompile zones if needed
-		if (has_flag(flags, F_AUTO)) {
-			rc = execute("compile", argv, argc, -1, flags,
-			             jobs, pidfile);
-		}
-
-		// Lock configuration
-		rcu_read_lock();
-
-		// Prepare command
-		const char *cfg = conf()->filename;
-		const char *args[] = {
-			PROJECT_EXEC,
-			has_flag(flags, F_INTERACTIVE) ? "" : "-d",
-			cfg ? "-c" : "",
-			cfg ? cfg : "",
-			has_flag(flags, F_VERBOSE) ? "-v" : "",
-			argc > 0 ? argv[0] : ""
-		};
-
-		// Unlock configuration
-		rcu_read_unlock();
-
-		// Execute command
-		if (has_flag(flags, F_INTERACTIVE)) {
-			log_server_info("Running in interactive mode.\n");
-			fflush(stderr);
-			fflush(stdout);
-		}
-		if ((rc = exec_cmd(args, 6)) < 0) {
-			pid_remove(pidfile);
-			rc = 1;
-		}
-		fflush(stderr);
-		fflush(stdout);
-
-		// Wait for finish
-		if (has_flag(flags, F_WAIT) && !has_flag(flags, F_INTERACTIVE)) {
-			if (has_flag(flags, F_VERBOSE)) {
-				log_server_info("Waiting for server to load.\n");
-			}
-			/* Periodically read pidfile and wait for
-			 * valid result. */
-			pid = 0;
-			while(pid == 0 || !pid_running(pid)) {
-				pid = pid_read(pidfile);
-				struct timeval tv;
-				tv.tv_sec = 0;
-				tv.tv_usec = 500 * 1000;
-				select(0, 0, 0, 0, &tv);
-			}
-		}
-	}
-	if (strcmp(action, "stop") == 0) {
-
-		// Check PID
-		log_server_info("Stopping server...\n");
-		valid_cmd = 1;
-		rc = 0;
-		if (pid <= 0 || !pid_running(pid)) {
-			log_server_warning("Server PID not found, "
-			                   "probably not running.\n");
-
-			if (!has_flag(flags, F_FORCE)) {
-				rc = 1;
-			} else {
-				log_server_info("Forcing server stop.\n");
-			}
-		}
-
-		// Stop
-		if (rc == 0) {
-			if (kill(pid, SIGTERM) < 0) {
-				pid_remove(pidfile);
-				rc = 1;
-			}
-		}
-
-		// Wait for finish
-		if (rc == 0 && has_flag(flags, F_WAIT)) {
-			if (has_flag(flags, F_VERBOSE)) {
-				log_server_info("Waiting for server "
-				                "to stop.\n");
-			}
-			/* Periodically read pidfile and wait for
-			 * valid result. */
-			while(pid_running(pid)) {
-				struct timeval tv;
-				tv.tv_sec = 0;
-				tv.tv_usec = 500 * 1000;
-				select(0, 0, 0, 0, &tv);
-			}
-		}
-	}
-	if (strcmp(action, "restart") == 0) {
-		valid_cmd = 1;
-		execute("stop", argv, argc, pid, flags, jobs, pidfile);
-
-		int i = 0;
-		while((pid = pid_read(pidfile)) > 0) {
-
-			if (!pid_running(pid)) {
-				pid_remove(pidfile);
-				break;
-			}
-			if (i == WAITPID_TIMEOUT) {
-				log_server_error("Timeout while  waiting for "
-				                 "the server to finish.\n");
-				//pid_remove(pidfile);
-				break;
-			} else {
-				sleep(1);
-				++i;
-			}
-		}
-
-		rc = execute("start", argv, argc, -1, flags, jobs, pidfile);
-	}
-	if (strcmp(action, "reload") == 0) {
-
-		// Check PID
-		valid_cmd = 1;
-		if (pid <= 0 || !pid_running(pid)) {
-			log_server_warning("Server PID not found, "
-			                   "probably not running.\n");
-
-			return 1;
-		}
-
-		// Recompile zones if needed
-		if (has_flag(flags, F_AUTO)) {
-			rc = execute("compile", argv, argc, -1, flags,
-			             jobs, pidfile);
-		}
-
-		// Stop
-		if (kill(pid, SIGHUP) < 0) {
-			rc = 1;
-		} else {
-			log_server_info("Server reload queued - OK.\n");
-		}
-	}
-	if (strcmp(action, "refresh") == 0) {
-
-		// Check PID
-		valid_cmd = 1;
-		if (pid <= 0 || !pid_running(pid)) {
-			log_server_warning("Server PID not found, "
-			                   "probably not running.\n");
-
-			return 1;
-		}
-
-		// Stop
-		if (kill(pid, SIGUSR2) < 0) {
-			rc = 1;
-		} else {
-			log_server_info("Zones refresh queued - OK.\n");
-		}
-	}
-	if (strcmp(action, "running") == 0) {
-
-		// Check PID
-		valid_cmd = 1;
-		if (pid <= 0) {
-			log_server_info("Server PID not found, "
-			                "probably not running.\n");
-			rc = 1;
-		} else {
-			if (!pid_running(pid)) {
-				log_server_info("Server PID not found, "
-				                "probably not running.\n");
-				log_server_warning("PID file is stale.\n");
-			} else {
-				log_server_info("Server running as PID %ld.\n",
-				                (long)pid);
-			}
-			rc = 0;
-		}
-	}
-	if (strcmp(action, "checkconf") == 0) {
-		log_server_info("OK, configuration is valid.\n");
-		rc = 0;
-		valid_cmd = 1;
-	}
-	if (strcmp(action, "compile") == 0 || strcmp(action, "checkzone") == 0){
-		
-		// Print job count
-		if (jobs > 1 && argc == 0) {
-			log_server_warning("Will attempt to compile %d zones "
-			                   "in parallel, this increases memory "
-			                   "consumption for large zones.\n",
-			                   jobs);
-		}
-
-		// Zone checking
-		int is_checkzone = (strcmp(action, "checkzone") == 0);
-
-		// Check zone
-		valid_cmd = 1;
-		
-		// Lock configuration
-		rcu_read_lock();
-
-		// Generate databases for all zones
-		node *n = 0;
-		int running = 0;
-		knotc_zctask_t *tasks = zctask_create(jobs);
-		WALK_LIST(n, conf()->zones) {
-
-			// Fetch zone
-			conf_zone_t *zone = (conf_zone_t*)n;
-			
-			// Specific zone requested
-			int zone_match = 0;
-			for (unsigned i = 0; i < argc; ++i) {
-				size_t len = strlen(zone->name);
-				if (len > 1) {
-					len -= 1;
-				} // All (except root) without final dot
-				if (strncmp(zone->name, argv[i], len) == 0) {
-					zone_match = 1;
-					break;
-				}
-			}
-			if (!zone_match && argc > 0) {
-				continue;
-			}
-
-			// Check source files and mtime
-			int zone_status = check_zone(zone->db, zone->file);
-			if (zone_status == KNOT_EOK && !is_checkzone) {
-				log_zone_info("Zone '%s' is up-to-date.\n",
-					      zone->name);
-				
-				if (has_flag(flags, F_FORCE)) {
-					log_zone_info("Forcing zone "
-						      "recompilation.\n");
-				} else {
-					continue;
-				}
-			}
-			
-			// Check for not existing source
-			if (zone_status == KNOT_ENOENT) {
-				continue;
-			}
-			
-			
-			/* Evaluate space for new task. */
-			if (running == jobs) {
-				rc |= zctask_wait(tasks, jobs, is_checkzone);
-				--running;
-			}
-
-			int ac = 0;
-			const char *args[7] = { NULL };
-			args[ac++] = ZONEPARSER_EXEC;
-			if (zone->enable_checks) {
-				args[ac++] = "-s";
-			}
-			if (has_flag(flags, F_VERBOSE)) {
-				args[ac++] = "-v";
-			}
-			
-			if (!is_checkzone) {
-				args[ac++] = "-o";
-				args[ac++] = zone->db;
-			}
-			args[ac++] = zone->name;
-			args[ac++] = zone->file;
-
-			// Execute command
-			if (has_flag(flags, F_VERBOSE) && !is_checkzone) {
-				log_zone_info("Compiling '%s' as '%s'...\n",
-				              zone->name, zone->db);
-			}
-			fflush(stdout);
-			fflush(stderr);
-			pid_t zcpid = start_cmd(args, ac, F_UNPRIVILEGED);
-			zctask_add(tasks, jobs, zcpid, zone);
-			++running;
-		}
-		
-		/* Wait for all running tasks. */
-		while (running > 0) {
-			rc |= zctask_wait(tasks, jobs, is_checkzone);
-			--running;
-		}
-		free(tasks);
-
-		// Unlock configuration
-		rcu_read_unlock();
-	}
-	if (!valid_cmd) {
-		log_server_error("Invalid command: '%s'\n", action);
+	/* Check remote address. */
+	conf_iface_t *r = conf()->ctl.iface;
+	if (!r || !r->address) {
+		log_server_error("No remote address for '%s' configured.\n",
+		                 cmd);
 		return 1;
 	}
-
-	// Log
-	if (has_flag(flags, F_VERBOSE)) {
-		log_server_info("'%s' finished (return code %d)\n", action, rc);
+	
+	/* Make query. */
+	uint8_t *buf = NULL;
+	size_t buflen = 0;
+	knot_packet_t *qr = remote_query(cmd);
+	if (!qr) {
+		log_server_warning("Could not prepare query for '%s'.\n",
+		                   cmd);
+		return 1;
 	}
+	
+	/* Build query data. */
+	knot_rdata_t *rd = NULL;
+	knot_rrset_t *rr = remote_build_rr("data.", rrt);
+	for (int i = 0; i < argc; ++i) {
+		/*! \todo #2035 better way to handle this */
+		switch(rrt) {
+		case KNOT_RRTYPE_CNAME:
+			rd = remote_create_cname(argv[i]);
+			break;
+		case KNOT_RRTYPE_TXT:
+		default:
+			rd = remote_create_txt(argv[i]);
+			break;
+		}
+		knot_rrset_add_rdata(rr, rd);
+		rd = NULL;
+	}
+	remote_query_append(qr, rr);
+	knot_packet_to_wire(qr, &buf, &buflen);
+	
+	/* Send query. */
+	int s = socket_create(r->family, SOCK_STREAM);
+	socket_connect(s, r->address, r->port);
+	if (tcp_send(s, buf, buflen) <= 0) {
+		log_server_error("Couldn't connect to remote host "
+		                 " %s@%d.\n", r->address, r->port);
+		rc = 1;
+	}
+	
+	/*! \todo #2035 receive reply. */
+	rc = 0;
+	
+	/* Close connection. */
+	socket_close(s);
+	knot_packet_free(&qr);
 	return rc;
 }
 
+
 int main(int argc, char **argv)
 {
-	// Parse command line arguments
+	/* Parse command line arguments */
 	int c = 0, li = 0;
 	unsigned jobs = 1;
 	unsigned flags = F_NULL;
-	const char* config_fn = 0;
+	char *config_fn = NULL;
 	
 	/* Long options. */
 	struct option opts[] = {
-		{"wait",        no_argument,       0, 'w'},
-		{"force",       no_argument,       0, 'f'},
-		{"config",      required_argument, 0, 'c'},
-		{"verbose",     no_argument,       0, 'v'},
-		{"interactive", no_argument,       0, 'i'},
-		{"auto",        no_argument,       0, 'a'},
-		{"jobs",        required_argument, 0, 'j'},
-		{"version",     no_argument,       0, 'V'},
-		{"help",        no_argument,       0, 'h'},
+		{"wait", no_argument, 0, 'w'},
+		{"force", no_argument, 0, 'f'},
+		{"config", required_argument, 0, 'c'},
+		{"verbose", no_argument, 0, 'v'},
+		{"interactive", no_argument, 0, 'i'},
+		{"jobs", required_argument, 0, 'j'},
+		{"version", no_argument, 0, 'V'},
+		{"help", no_argument, 0, 'h'},
 		{0, 0, 0, 0}
 	};
-	
-	while ((c = getopt_long(argc, argv, "wfc:viaj:Vh", opts, &li)) != -1) {
+
+	while ((c = getopt_long(argc, argv, "wfc:vij:Vh", opts, &li)) != -1) {
 		switch (c) {
-		case 'w': flags |= F_WAIT; break;
-		case 'f': flags |= F_FORCE; break;
-		case 'v': flags |= F_VERBOSE; break;
-		case 'i': flags |= F_INTERACTIVE; break;
-		case 'a': flags |= F_AUTO; break;
+		case 'w':
+			flags |= F_WAIT;
+			break;
+		case 'f':
+			flags |= F_FORCE;
+			break;
+		case 'v':
+			flags |= F_VERBOSE;
+			break;
+		case 'i':
+			flags |= F_INTERACTIVE;
+			break;
 		case 'c':
-			config_fn = optarg;
+			config_fn = strdup(optarg);
 			break;
 		case 'j':
 			jobs = atoi(optarg);
+
 			if (jobs < 1) {
 				fprintf(stderr, "Invalid parameter '%s' to "
 				        "'-j', expects number <1..n>\n",
@@ -711,6 +361,7 @@ int main(int argc, char **argv)
 				help(argc, argv);
 				return 1;
 			}
+
 			break;
 		case 'V':
 			printf("%s, version %s\n", "Knot DNS", PACKAGE_VERSION);
@@ -723,69 +374,369 @@ int main(int argc, char **argv)
 		}
 	}
 
-	// Check if there's at least one remaining non-option
+	/* Check if there's at least one remaining non-option. */
 	if (argc - optind < 1) {
 		help(argc, argv);
 		return 1;
 	}
 
-	// Initialize log
+	/* Initialize. */
 	log_init();
 
-	// Find implicit configuration file
-	char *default_fn = 0;
+	/* Open config, allow if not exists. */
 	if (!config_fn) {
-		default_fn = conf_find_default();
-		config_fn = default_fn;
+		config_fn = conf_find_default();
 	}
-
-	// Open configuration
-	int conf_ret = conf_open(config_fn);
-	if (conf_ret != KNOT_EOK) {
-		if (conf_ret == KNOT_ENOENT) {
-			log_server_error("Couldn't open configuration file "
-			                 "'%s'.\n", config_fn);
-		} else {
-			log_server_error("Failed to load configuration '%s'.\n",
-			                 config_fn);
-		}
-		free(default_fn);
-		return 1;
+	if (conf_open(config_fn) != KNOT_EOK) {
+		flags |= F_NOCONF;
 	}
+	free(config_fn);
+	config_fn = NULL;
 
-	// Free default config filename if exists
-	free(default_fn);
-
-	// Verbose mode
+	/* Verbose mode. */
 	if (has_flag(flags, F_VERBOSE)) {
 		log_levels_add(LOGT_STDOUT, LOG_ANY,
-		               LOG_MASK(LOG_INFO)|LOG_MASK(LOG_DEBUG));
+		               LOG_MASK(LOG_INFO) | LOG_MASK(LOG_DEBUG));
 	}
-	
-	/*! \todo #2035 now it should connect to remote host and ignore
-	 *              non-existent PID file for most commands
-	 */
-	
-	// Fetch PID
-	char* pidfile = pid_filename();
-	if (!pidfile) {
-		log_server_error("No configuration found, "
-		                 "please specify with '-c' parameter.\n");
-		log_close();
+
+	/* Execute command. */
+	int rc = 0;
+	knot_cmd_t *cmd = knot_cmd_tbl;
+	while (cmd->name) {
+		if (strcmp(cmd->name, argv[optind]) == 0) {
+			rc = cmd->cb(argc - optind - 1, argv + optind + 1,
+			             flags, jobs);
+			break;
+		}
+		++cmd;
+	}
+
+	/* Command not found. */
+	if (!cmd->name) {
+		log_server_error("Invalid command: '%s'\n", argv[optind]);
+		rc = 1;
+	}
+
+	/* Finish */
+	log_close();
+	return rc;
+}
+
+static int cmd_start(int argc, char *argv[], unsigned flags, int jobs)
+{
+	/* Check config. */
+	if (has_flag(flags, F_NOCONF)) {
+		log_server_error("Couldn't parse config file, refusing to "
+		                 "continue.\n");
 		return 1;
 	}
-
+	
+	/* Fetch PID. */
+	char *pidfile = pid_filename();
 	pid_t pid = pid_read(pidfile);
+	log_server_info("Starting server...\n");
+	
+	/* Prevent concurrent daemon launch. */
+	int rc = 0;
+	struct stat st;
+	int is_pidf = 0;
+	
+	/* Check PID. */
+	if (pid > 0 && pid_running(pid)) {
+		log_server_error("Server PID found, already running.\n");
+		is_pidf = 1;
+	} else if (stat(pidfile, &st) == 0) {
+		log_server_warning("PID file '%s' exists, another process "
+		                   "is starting or PID file is stale.\n",
+		                   pidfile);
+		is_pidf = 1;
+	}
+	if (is_pidf) {
+		if (!has_flag(flags, F_FORCE)) {
+			free(pidfile);
+			return 1;
+		} else {
+			log_server_info("Forcing server start.\n");
+			pid_remove(pidfile);
+			pid = -1;
+		}
+	} else {
+		/* Create empty PID file. */
+		FILE *f = fopen(pidfile, "w");
+		if (f == NULL) {
+			log_server_warning("PID file '%s' is not writeable.\n",
+			                   pidfile);
+			free(pidfile);
+			return 1;
+		}
+		fclose(f);
+	}
+	
+	/* Recompile zones if needed. */
+	cmd_compile(argc, argv, flags, jobs);
 
-	// Actions
-	const char* action = argv[optind];
+	/* Prepare command */
+	const char *cfg = conf()->filename;
+	size_t args_c = 6;
+	const char *args[] = {
+		PROJECT_EXEC,
+		has_flag(flags, F_INTERACTIVE) ? "" : "-d",
+		cfg ? "-c" : "",
+		cfg ? cfg : "",
+		has_flag(flags, F_VERBOSE) ? "-v" : "",
+		argc > 0 ? argv[0] : ""
+	};
+	
+	/* Execute command */
+	if (has_flag(flags, F_INTERACTIVE)) {
+		log_server_info("Running in interactive mode.\n");
+		fflush(stderr);
+		fflush(stdout);
+	}
+	if ((rc = cmd_exec(args, args_c)) < 0) {
+		pid_remove(pidfile);
+		rc = 1;
+	}
+	fflush(stderr);
+	fflush(stdout);
 
-	// Execute action
-	int rc = execute(action, argv + optind + 1, argc - optind - 1,
-	                 pid, flags, jobs, pidfile);
+	/* Wait for finish */
+	if (has_flag(flags, F_WAIT) && !has_flag(flags, F_INTERACTIVE)) {
+		if (has_flag(flags, F_VERBOSE)) {
+			log_server_info("Waiting for server to load.\n");
+		}
 
-	// Finish
+		/* Periodically read pidfile and wait for valid result. */
+		pid = 0;
+		while (pid == 0 || !pid_running(pid)) {
+			pid = pid_read(pidfile);
+			struct timeval tv;
+			tv.tv_sec = 0;
+			tv.tv_usec = 500 * 1000;
+			select(0, 0, 0, 0, &tv);
+		}
+	}
+	
 	free(pidfile);
-	log_close();
+	return rc;
+}
+
+static int cmd_stop(int argc, char *argv[], unsigned flags, int jobs)
+{
+	/* Check config. */
+	if (has_flag(flags, F_NOCONF)) {
+		log_server_error("Couldn't parse config file, refusing to "
+		                 "continue.\n");
+		return 1;
+	}
+	
+	/* Fetch PID. */
+	char *pidfile = pid_filename();
+	pid_t pid = pid_read(pidfile);
+	int rc = 0;
+	struct stat st;
+	
+	/* Check for non-existent PID file. */
+	int has_pidf = (stat(pidfile, &st) == 0);
+	if(has_pidf && pid <= 0) {
+		log_server_warning("Empty PID file '%s' exists, daemon process "
+		                   "is starting or PID file is stale.\n",
+		                   pidfile);
+		free(pidfile);
+		return 1;
+	} else if (pid <= 0 || !pid_running(pid)) {
+		log_server_warning("Server PID not found, "
+		                   "probably not running.\n");
+		if (!has_flag(flags, F_FORCE)) {
+			free(pidfile);
+			return 1;
+		} else {
+			log_server_info("Forcing server stop.\n");
+		}
+	}
+
+	/* Stop */
+	log_server_info("Stopping server...\n");
+	if (kill(pid, SIGTERM) < 0) {
+		pid_remove(pidfile);
+		rc = 1;
+	}
+	
+
+	/* Wait for finish */
+	if (rc == 0 && has_flag(flags, F_WAIT)) {
+		log_server_info("Waiting for server to finish.\n");
+		while (pid_running(pid)) {
+			struct timeval tv;
+			tv.tv_sec = 0;
+			tv.tv_usec = 500 * 1000;
+			select(0, 0, 0, 0, &tv);
+			pid = pid_read(pidfile); /* Update */
+		}
+	}
+	
+	return rc;
+}
+
+static int cmd_restart(int argc, char *argv[], unsigned flags, int jobs)
+{
+	/* Check config. */
+	if (has_flag(flags, F_NOCONF)) {
+		log_server_error("Couldn't parse config file, refusing to "
+		                 "continue.\n");
+		return 1;
+	}
+	
+	int rc = 0;
+	rc |= cmd_stop(argc, argv, flags | F_WAIT, jobs);
+	rc |= cmd_start(argc, argv, flags, jobs);
+	return rc;
+}
+
+static int cmd_reload(int argc, char *argv[], unsigned flags, int jobs)
+{
+	int rc = cmd_remote("reload", KNOT_RRTYPE_TXT, 0, NULL);
+	/*! \todo #2035 process response */
+	return rc;
+}
+
+static int cmd_refresh(int argc, char *argv[], unsigned flags, int jobs)
+{
+	int rc = cmd_remote("refresh", KNOT_RRTYPE_CNAME, argc, argv);
+	/*! \todo #2035 process response */
+	return rc;
+}
+
+static int cmd_flush(int argc, char *argv[], unsigned flags, int jobs)
+{
+	int rc = cmd_remote("flush", KNOT_RRTYPE_CNAME, argc, argv);
+	/*! \todo #2035 process response */
+	return rc;
+}
+
+static int cmd_status(int argc, char *argv[], unsigned flags, int jobs)
+{
+	int rc = cmd_remote("status", KNOT_RRTYPE_TXT, 0, NULL);
+	/*! \todo #2035 process response */
+	return rc;
+}
+
+static int cmd_checkconf(int argc, char *argv[], unsigned flags, int jobs)
+{
+	/* Check config. */
+	if (has_flag(flags, F_NOCONF)) {
+		log_server_error("Couldn't parse config file, refusing to "
+		                 "continue.\n");
+		return 1;
+	} else {
+		log_server_info("OK, configuration is valid.\n");
+	}
+	
+	return 0;
+}
+
+static int cmd_checkzone(int argc, char *argv[], unsigned flags, int jobs)
+{
+	return cmd_compile(argc, argv, flags | F_DRYRUN, jobs);
+}
+
+static int cmd_compile(int argc, char *argv[], unsigned flags, int jobs)
+{
+	/* Print job count */
+	if (jobs > 1 && argc == 0) {
+		log_server_warning("Will attempt to compile %d zones "
+		                   "in parallel, this increases memory "
+		                   "consumption for large zones.\n", jobs);
+	}
+
+	/* Zone checking */
+	int rc = 0;
+	node *n = 0;
+	int running = 0;
+	int is_checkzone = has_flag(flags, F_DRYRUN);
+	knotc_zctask_t *tasks = zctask_create(jobs);
+	
+	/* Generate databases for all zones */
+	WALK_LIST(n, conf()->zones) {
+		/* Fetch zone */
+		conf_zone_t *zone = (conf_zone_t *) n;
+		int zone_match = 0;
+		for (unsigned i = 0; i < argc; ++i) {
+			size_t len = strlen(zone->name);
+			
+			/* All (except root) without final dot */
+			if (len > 1) {
+				len -= 1;
+			}
+			if (strncmp(zone->name, argv[i], len) == 0) {
+				zone_match = 1;
+				break;
+			}
+		}
+
+		if (!zone_match && argc > 0) {
+			continue;
+		}
+
+		/* Check source files and mtime */
+		int zone_status = check_zone(zone->db, zone->file);
+		if (zone_status == KNOT_EOK && !is_checkzone) {
+			log_zone_info("Zone '%s' is up-to-date.\n", zone->name);
+			if (has_flag(flags, F_FORCE)) {
+				log_zone_info("Forcing zone "
+				              "recompilation.\n");
+			} else {
+				continue;
+			}
+		}
+
+		/* Check for not existing source */
+		if (zone_status == KNOT_ENOENT) {
+			continue;
+		}
+
+		/* Evaluate space for new task. */
+		if (running == jobs) {
+			rc |= zctask_wait(tasks, jobs, is_checkzone);
+			--running;
+		}
+
+		/* Build executable command. */
+		int ac = 0;
+		const char *args[7] = { NULL };
+		args[ac++] = ZONEPARSER_EXEC;
+		if (zone->enable_checks) {
+			args[ac++] = "-s";
+		}
+		if (has_flag(flags, F_VERBOSE)) {
+			args[ac++] = "-v";
+		}
+		if (!is_checkzone) {
+			args[ac++] = "-o";
+			args[ac++] = zone->db;
+		}
+		args[ac++] = zone->name;
+		args[ac++] = zone->file;
+
+		/* Execute command */
+		if (has_flag(flags, F_VERBOSE) && !is_checkzone) {
+			log_zone_info("Compiling '%s' as '%s'...\n",
+			              zone->name, zone->db);
+		}
+		fflush(stdout);
+		fflush(stderr);
+		pid_t zcpid = pid_start(args, ac,
+		                        has_flag(flags, F_UNPRIVILEGED));
+		zctask_add(tasks, jobs, zcpid, zone);
+		++running;
+	}
+
+	/* Wait for all running tasks. */
+	while (running > 0) {
+		rc |= zctask_wait(tasks, jobs, is_checkzone);
+		--running;
+	}
+
+	free(tasks);
 	return rc;
 }
