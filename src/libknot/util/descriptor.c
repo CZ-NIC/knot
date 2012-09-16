@@ -388,12 +388,14 @@ static knot_rrtype_descriptor_t
      /* it is indeed needed, in rrtype_from_string */
 
     /* There's a GNU extension that works like this: [first ... last] = value */
-
+        
+        [53 ... 98] = { 0, NULL, 1, { KNOT_RDATA_WF_BINARY }, { KNOT_RDATA_ZF_UNKNOWN }, true },
   	/* 99 */
 	[99] = { KNOT_RRTYPE_SPF, "SPF", 1,
   	  { KNOT_RDATA_WF_TEXT },
           { KNOT_RDATA_ZF_TEXT }, false },
         /* TSIG pseudo RR. */
+        [100 ... 249] = { 0, NULL, 1, { KNOT_RDATA_WF_BINARY }, { KNOT_RDATA_ZF_UNKNOWN }, true },
         [250] = { KNOT_RRTYPE_TSIG, "TSIG", 7,
 		 { KNOT_RDATA_WF_UNCOMPRESSED_DNAME, KNOT_RDATA_WF_UINT48,
                    KNOT_RDATA_WF_SHORT, KNOT_RDATA_WF_BINARYWITHSHORT,
