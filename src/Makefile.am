@@ -32,7 +32,7 @@ CLEANFILES =					\
 	tests/libknot/raw_data.rc		\
 	tests/libknot/realdata/raw_data.rc	\
 	tests/libknot/parsed_data_queries.rc	\
-	tests/sample_conf.rc                    \
+	tests/sample_conf.rc			\
 	zparser.h				\
 	zparser.c				\
 	zlexer.c				\
@@ -55,17 +55,8 @@ knot_zcompile_SOURCES =				\
 	zcompile/parser-util.c			\
 	zcompile/parser-descriptor.c
 
-zscanner/scanner.c: zscanner/scanner.rl zscanner/scanner_body.rl
-	$(RAGEL) -s -o zscanner/scanner.c zscanner/scanner.rl
-
 unittests_zscanner_SOURCES =			\
 	zscanner/test/zscanner_test.c		\
-	zscanner/file_loader.h			\
-	zscanner/file_loader.c			\
-	zscanner/scanner.h			\
-	zscanner/scanner.c			\
-	zscanner/scanner_functions.h		\
-	zscanner/scanner_functions.c		\
 	zscanner/test/tests.h			\
 	zscanner/test/tests.c			\
 	zscanner/test/processing.h		\
@@ -152,7 +143,7 @@ unittests_zcompile_SOURCES =			\
 	zcompile/tests/unittests_zp_main.c
 
 unittests_xfr_SOURCES = 			\
-	tests/xfr_tests.c		\
+	tests/xfr_tests.c			\
 	tests/xfr_tests.h
 
 nodist_unittests_SOURCES =			\
@@ -165,7 +156,7 @@ nodist_unittests_SOURCES =			\
 knotd_SOURCES =					\
 	knot/main.c
 
-noinst_LTLIBRARIES = libknot.la libknotd.la libknots.la
+noinst_LTLIBRARIES = libknot.la libknotd.la libknots.la libzscanner.la
 
 libknot_la_SOURCES =				\
 	libknot/util/utils.c			\
@@ -270,28 +261,28 @@ libknots_la_SOURCES =				\
 	common/errors.c				\
 	common/errcode.h			\
 	common/errcode.c			\
-        common/dSFMT.h				\
-        common/dSFMT-params.h			\
-        common/dSFMT-params521.h		\
-        common/dSFMT.c				\
-        common/prng.h				\
-        common/prng.c				\
-        common/fdset.h				\
-        common/fdset.c				\
-        common/fdset_poll.h			\
-        common/fdset_poll.c			\
-        common/fdset_kqueue.h			\
-        common/fdset_kqueue.c			\
-        common/fdset_epoll.h			\
-        common/fdset_epoll.c			\
+	common/dSFMT.h				\
+	common/dSFMT-params.h			\
+	common/dSFMT-params521.h		\
+	common/dSFMT.c				\
+	common/prng.h				\
+	common/prng.c				\
+	common/fdset.h				\
+	common/fdset.c				\
+	common/fdset_poll.h			\
+	common/fdset_poll.c			\
+	common/fdset_kqueue.h			\
+	common/fdset_kqueue.c			\
+	common/fdset_epoll.h			\
+	common/fdset_epoll.c			\
 	common/log.c				\
 	common/log.h
 
 libknotd_la_SOURCES =				\
-	knot/stat/gatherer.c				\
-	knot/stat/stat.c				\
-	knot/stat/gatherer.h				\
-	knot/stat/stat.h				\
+	knot/stat/gatherer.c			\
+	knot/stat/stat.c			\
+	knot/stat/gatherer.h			\
+	knot/stat/stat.h			\
 	knot/common.h				\
 	knot/other/debug.h			\
 	knot/conf/cf-parse.y			\
@@ -304,40 +295,51 @@ libknotd_la_SOURCES =				\
 	knot/ctl/process.h			\
 	knot/server/dthreads.c			\
 	knot/server/journal.c			\
-	knot/server/socket.c				\
-	knot/server/server.c				\
-	knot/server/udp-handler.c			\
-	knot/server/tcp-handler.c			\
-	knot/server/xfr-handler.c			\
-	knot/server/zones.c				\
-	knot/server/socket.h				\
-	knot/server/udp-handler.h			\
-	knot/server/tcp-handler.h			\
-	knot/server/xfr-handler.h			\
+	knot/server/socket.c			\
+	knot/server/server.c			\
+	knot/server/udp-handler.c		\
+	knot/server/tcp-handler.c		\
+	knot/server/xfr-handler.c		\
+	knot/server/zones.c			\
+	knot/server/socket.h			\
+	knot/server/udp-handler.h		\
+	knot/server/tcp-handler.h		\
+	knot/server/xfr-handler.h		\
 	knot/server/dthreads.h			\
 	knot/server/journal.h			\
-	knot/server/zones.h				\
-	knot/server/notify.h				\
-	knot/server/notify.c				\
-	knot/server/zones.h				\
+	knot/server/zones.h			\
+	knot/server/notify.h			\
+	knot/server/notify.c			\
+	knot/server/zones.h			\
 	knot/zone/zone-load.c			\
 	knot/zone/zone-load.h			\
 	knot/zone/semantic-check.c		\
 	knot/zone/semantic-check.h		\
 	knot/zone/zone-dump.c			\
-	knot/zone/zone-dump-text.c			\
-	knot/zone/zone-dump-text.h			\
+	knot/zone/zone-dump-text.c		\
+	knot/zone/zone-dump-text.h		\
 	knot/zone/zone-dump.h			\
 	knot/server/server.h
+
+zscanner/scanner.c: zscanner/scanner.rl zscanner/scanner_body.rl
+	$(RAGEL) -s -o zscanner/scanner.c zscanner/scanner.rl
+
+libzscanner_la_SOURCES =			\
+	zscanner/file_loader.h			\
+	zscanner/file_loader.c			\
+	zscanner/scanner.h			\
+	zscanner/scanner.c			\
+	zscanner/scanner_functions.h		\
+	zscanner/scanner_functions.c
 
 libknotd_la_LIBADD = libknot.la libknots.la @LIBOBJS@
 libknots_la_LIBADD = @LIBOBJS@
 knotd_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 knotc_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
-knot_zcompile_LDADD = libknots.la libknot.la libknotd.la @LIBOBJS@
-unittests_zscanner_LDADD = libknots.la libknot.la libknotd.la @LIBOBJS@
+knot_zcompile_LDADD = libknots.la libknot.la libknotd.la libzscanner.la @LIBOBJS@
+unittests_zscanner_LDADD = libknots.la libknot.la libknotd.la libzscanner.la @LIBOBJS@
 unittests_LDADD = libknotd.la libknots.la @LIBOBJS@
-unittests_zcompile_LDADD = libknot.la libknots.la libknotd.la @LIBOBJS@
+unittests_zcompile_LDADD = libknot.la libknots.la libknotd.la libzscanner.la @LIBOBJS@
 unittests_libknot_LDADD = libknot.la libknots.la @LIBOBJS@
 unittests_libknot_realdata_LDADD = libknot.la libknots.la @LIBOBJS@
 unittests_xfr_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
