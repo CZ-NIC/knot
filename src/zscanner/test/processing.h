@@ -29,6 +29,7 @@
 
 #include "zscanner/scanner.h"
 
+
 void empty_process_record(const scanner_t *scanner);
 
 void empty_process_error(const scanner_t *scanner);
@@ -42,6 +43,7 @@ void test_process_error(const scanner_t *scanner);
 void test_process_record(const scanner_t *scanner);
 
 void dump_rdata(const scanner_t *scanner);
+
 
 #endif // _ZSCANNER__TEST_FUNCTIONS_H_
 

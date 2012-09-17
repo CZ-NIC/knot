@@ -31,33 +31,35 @@
 
 #include "zscanner/scanner.h"
 
-#define SETTINGS_BUFFER_LENGTH  1024
+#define SETTINGS_BUFFER_LENGTH		  1024
 
-#define DEFAULT_TTL         (uint32_t)3600
-#define DEFAULT_CLASS       (uint16_t)   1 // IN
+#define DEFAULT_TTL		(uint32_t)3600
+#define DEFAULT_CLASS		(uint16_t)   1 // IN
+
 
 /*!
  * \brief Structure for zone file loader (each include file has one).
  */
 typedef struct {
-    int          fd;            /*!< File descriptor. */
-    char         *file_name;    /*!< Zone file name. */
-    scanner_t    *scanner;      /*!< Zone scanner data. */
-    char         settings_buffer[SETTINGS_BUFFER_LENGTH];
-    uint32_t     settings_length;
+	int	  fd;		/*!< File descriptor. */
+	char	  *file_name;	/*!< Zone file name. */
+	scanner_t *scanner;	/*!< Zone scanner data. */
+	char	  settings_buffer[SETTINGS_BUFFER_LENGTH];
+	uint32_t  settings_length;
 } file_loader_t;
 
-file_loader_t* file_loader_create(const char     *file_name,
-                                  const char     *zone_origin,
-                                  const uint16_t default_class,
-                                  const uint32_t default_ttl,
-                                  void (*process_record)(const scanner_t *),
-                                  void (*process_error)(const scanner_t *),
-                                  void *data);
+file_loader_t* file_loader_create(const char	 *file_name,
+				  const char	 *zone_origin,
+				  const uint16_t default_class,
+				  const uint32_t default_ttl,
+				  void (*process_record)(const scanner_t *),
+				  void (*process_error)(const scanner_t *),
+				  void *data);
 
 void file_loader_free(file_loader_t *file_loader);
 
 int file_loader_process(file_loader_t *file_loader);
+
 
 #endif // _ZSCANNER__FILE_LOADER_H_
 

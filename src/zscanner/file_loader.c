@@ -16,249 +16,252 @@
 
 #include "zscanner/file_loader.h"
 
-#include <inttypes.h>  // PRIu64
-#include <unistd.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <string.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
+#include <inttypes.h>		// PRIu64
+#include <unistd.h>		// sysconf
+#include <stdio.h>		// sprintf
+#include <stdlib.h>		// free
+#include <stdbool.h>		// bool
+#include <string.h>		// strlen
+#include <fcntl.h>		// open
+#include <sys/stat.h>		// fstat
+#include <sys/mman.h>		// mmap
 
-#define BLOCK_SIZE                30000000  // In bytes.
-#define BLOCK_OVERLAPPING_SIZE      100000  // In bytes.
+#define BLOCK_SIZE		      30000000  // In bytes.
+#define BLOCK_OVERLAPPING_SIZE		100000  // In bytes.
+
 
 static int load_settings(file_loader_t *fl)
 {
-    int        ret;
-    scanner_t  *settings_scanner;
-    char       *settings_name;
+	int	  ret;
+	scanner_t *settings_scanner;
+	char	  *settings_name;
 
-    // Creating name for zone defaults.
-    settings_name = malloc(strlen(fl->file_name) + 100);
-    sprintf(settings_name, "ZONE DEFAULTS (%s)", fl->file_name);
+	// Creating name for zone defaults.
+	settings_name = malloc(strlen(fl->file_name) + 100);
+	sprintf(settings_name, "ZONE DEFAULTS (%s)", fl->file_name);
 
-    // Temporary scanner for zone settings.
-    settings_scanner = scanner_create(settings_name);
+	// Temporary scanner for zone settings.
+	settings_scanner = scanner_create(settings_name);
 
-    // Use parent processing functions.
-    settings_scanner->process_record = fl->scanner->process_record;
-    settings_scanner->process_error  = fl->scanner->process_error;
+	// Use parent processing functions.
+	settings_scanner->process_record = fl->scanner->process_record;
+	settings_scanner->process_error  = fl->scanner->process_error;
 
-    // Scanning zone settings.
-    ret = scanner_process(fl->settings_buffer,
-                          fl->settings_buffer + fl->settings_length,
-                          true,
-                          settings_scanner);
+	// Scanning zone settings.
+	ret = scanner_process(fl->settings_buffer,
+			      fl->settings_buffer + fl->settings_length,
+			      true,
+			      settings_scanner);
 
-    // If no error occured, then copy scanned settings to actual context.
-    if (ret == 0) {
-        memcpy(fl->scanner->zone_origin,
-               settings_scanner->zone_origin,
-               settings_scanner->zone_origin_length);
-        fl->scanner->zone_origin_length = settings_scanner->zone_origin_length;
-        fl->scanner->default_ttl = settings_scanner->default_ttl;
-    }
+	// If no error occured, then copy scanned settings to actual context.
+	if (ret == 0) {
+		memcpy(fl->scanner->zone_origin,
+		       settings_scanner->zone_origin,
+		       settings_scanner->zone_origin_length);
+		fl->scanner->zone_origin_length =
+			settings_scanner->zone_origin_length;
+		fl->scanner->default_ttl = settings_scanner->default_ttl;
+	}
 
-    // Destroying temporary scanner.
-    scanner_free(settings_scanner);
+	// Destroying temporary scanner.
+	scanner_free(settings_scanner);
 
-    free(settings_name);
+	free(settings_name);
 
-    return ret;
+	return ret;
 }
 
-file_loader_t* file_loader_create(const char     *file_name,
-                                  const char     *zone_origin,
-                                  const uint16_t default_class,
-                                  const uint32_t default_ttl,
-                                  void (*process_record)(const scanner_t *),
-                                  void (*process_error)(const scanner_t *),
-                                  void *data)
+file_loader_t* file_loader_create(const char	 *file_name,
+				  const char	 *zone_origin,
+				  const uint16_t default_class,
+				  const uint32_t default_ttl,
+				  void (*process_record)(const scanner_t *),
+				  void (*process_error)(const scanner_t *),
+				  void *data)
 {
-    int ret;
+	int ret;
 
-    // Creating zeroed structure.
-    file_loader_t *fl = calloc(1, sizeof(file_loader_t));
+	// Creating zeroed structure.
+	file_loader_t *fl = calloc(1, sizeof(file_loader_t));
 
-    if (fl == NULL) {
-        return NULL;
-    }
+	if (fl == NULL) {
+		return NULL;
+	}
 
-    // Copying file name.
-    fl->file_name = strdup(file_name);
+	// Copying file name.
+	fl->file_name = strdup(file_name);
 
-    // Opening zone file.
-    fl->fd = open(fl->file_name, O_RDONLY);
+	// Opening zone file.
+	fl->fd = open(fl->file_name, O_RDONLY);
 
-    if (fl->fd == -1) {
-        free(fl->file_name);
-        free(fl);
-        return NULL;
-    }
+	if (fl->fd == -1) {
+		free(fl->file_name);
+		free(fl);
+		return NULL;
+	}
 
-    // Creating zone scanner.
-    fl->scanner = scanner_create(file_name);
+	// Creating zone scanner.
+	fl->scanner = scanner_create(file_name);
 
-    // Processing functions.
-    fl->scanner->process_record = process_record;
-    fl->scanner->process_error  = process_error;
-    fl->scanner->data = data;
+	// Processing functions.
+	fl->scanner->process_record = process_record;
+	fl->scanner->process_error  = process_error;
+	fl->scanner->data = data;
 
-    // Default class initialization.
-    fl->scanner->default_class = default_class;
+	// Default class initialization.
+	fl->scanner->default_class = default_class;
 
-    // Filling zone settings buffer.
-    ret = sprintf(fl->settings_buffer,
-                  "$ORIGIN %s\n"
-                  "$TTL %u\n",
-                  zone_origin, default_ttl);
+	// Filling zone settings buffer.
+	ret = sprintf(fl->settings_buffer,
+		      "$ORIGIN %s\n"
+		      "$TTL %u\n",
+		      zone_origin, default_ttl);
 
-    if (ret > 0) {
-        fl->settings_length = ret;
-    }
-    else {
-        printf("Error in zone setttings!\n");
-        file_loader_free(fl);
-        return NULL;
-    }
+	if (ret > 0) {
+		fl->settings_length = ret;
+	} else {
+		printf("Error in zone setttings!\n");
+		file_loader_free(fl);
+		return NULL;
+	}
 
-    return fl;
+	return fl;
 }
 
 void file_loader_free(file_loader_t *fl)
 {
-    close(fl->fd);
-    free(fl->file_name);
-    scanner_free(fl->scanner);
-    free(fl);
+	close(fl->fd);
+	free(fl->file_name);
+	scanner_free(fl->scanner);
+	free(fl);
 }
 
 int file_loader_process(file_loader_t *fl)
 {
-    struct stat file_stat;
+	struct stat file_stat;
 
-    int      ret;
-    char     *data;
-    bool     is_last_block;
-    long     page_size;
-    uint64_t n_blocks, block_id;
-    uint64_t block_size, overlapping_size;
-    // Start means first valid character; end means first invalid character.
-    uint64_t block_start_position, block_end_position;
-    uint64_t scanner_start_position, scanner_end_position;
+	int	 ret;
+	char	 *data;
+	bool	 is_last_block;
+	long	 page_size;
+	uint64_t n_blocks, block_id;
+	uint64_t block_size, overlapping_size;
+	// Start means first valid character; end means first invalid character.
+	uint64_t block_start_position, block_end_position;
+	uint64_t scanner_start_position, scanner_end_position;
 
-    // For secure termination of zone file.
-    char *zone_termination = "\n";
+	// For secure termination of zone file.
+	char *zone_termination = "\n";
 
-    // Getting OS page size.
-    page_size = sysconf(_SC_PAGESIZE);
+	// Getting OS page size.
+	page_size = sysconf(_SC_PAGESIZE);
 
-    // Getting file information.
-    if (fstat(fl->fd, &file_stat) == -1) {
-        printf("Fstat error!\n");
-        return -1;
-    }
+	// Getting file information.
+	if (fstat(fl->fd, &file_stat) == -1) {
+		printf("Fstat error!\n");
+		return -1;
+	}
 
-    // Check for directory.
-    if (S_ISDIR(file_stat.st_mode)) {
-        printf("Given zone file is a directory!\n");
-        return -1;
-    }
+	// Check for directory.
+	if (S_ISDIR(file_stat.st_mode)) {
+		printf("Given zone file is a directory!\n");
+		return -1;
+	}
 
-    // Check for empty file.
-    if (file_stat.st_size == 0) {
-        printf("Empty zone file!\n");
-        return -1;
-    }
+	// Check for empty file.
+	if (file_stat.st_size == 0) {
+		printf("Empty zone file!\n");
+		return -1;
+	}
 
-    // Block size adjustment to multiple of page size.
-    block_size = (BLOCK_SIZE / page_size) * page_size;
+	// Block size adjustment to multiple of page size.
+	block_size = (BLOCK_SIZE / page_size) * page_size;
 
-    // Overlapping size adjustment to multiple of page size.
-    overlapping_size = (BLOCK_OVERLAPPING_SIZE / page_size) * page_size;
+	// Overlapping size adjustment to multiple of page size.
+	overlapping_size = (BLOCK_OVERLAPPING_SIZE / page_size) * page_size;
 
-    // Number of blocks which cover the whole file (ceiling operation).
-    n_blocks = 1 + ((file_stat.st_size - 1) / block_size);
+	// Number of blocks which cover the whole file (ceiling operation).
+	n_blocks = 1 + ((file_stat.st_size - 1) / block_size);
 
-    // Process settings using scanner (like initial ORIGIN and TTL).
-    ret = load_settings(fl);
+	// Process settings using scanner (like initial ORIGIN and TTL).
+	ret = load_settings(fl);
 
-    if (ret != 0) {
-        printf("Zone defaults error!\n");
-        return -1;
-    }
+	if (ret != 0) {
+		printf("Zone defaults error!\n");
+		return -1;
+	}
 
-    // Loop over zone file blocks.
-    for (block_id = 0; block_id < n_blocks; block_id++) {
-        block_start_position   =  block_id      * block_size;
-        block_end_position     = (block_id + 1) * block_size;
-        scanner_start_position = 0;
-        scanner_end_position   = block_size;
-        is_last_block          = false;
+	// Loop over zone file blocks.
+	for (block_id = 0; block_id < n_blocks; block_id++) {
+		block_start_position   =  block_id      * block_size;
+		block_end_position     = (block_id + 1) * block_size;
+		scanner_start_position = 0;
+		scanner_end_position   = block_size;
+		is_last_block	       = false;
 
-        // Non-first block overlaps previous block due to scanner backtracking.
-        if (block_id > 0) {
-            block_start_position  -= overlapping_size;
-            scanner_start_position = overlapping_size;
-            scanner_end_position  += overlapping_size;
-        }
+		// Non-first block overlaps previous block - can be useful.
+		if (block_id > 0) {
+			block_start_position  -= overlapping_size;
+			scanner_start_position = overlapping_size;
+			scanner_end_position  += overlapping_size;
+		}
 
-        // The last block is probably shorter.
-        if (block_id == (n_blocks - 1)) {
-            block_end_position   = file_stat.st_size;
-            scanner_end_position = block_end_position - block_start_position;
-            is_last_block        = true;
-        }
+		// The last block is probably shorter.
+		if (block_id == (n_blocks - 1)) {
+			block_end_position   = file_stat.st_size;
+			scanner_end_position =
+				block_end_position - block_start_position;
+			is_last_block	     = true;
+		}
 
-        // Zone file block mapping.
-        data = mmap(0,
-                    block_end_position - block_start_position,
-                    PROT_READ,
-                    MAP_SHARED,
-                    fl->fd,
-                    block_start_position);
+		// Zone file block mapping.
+		data = mmap(0,
+			    block_end_position - block_start_position,
+			    PROT_READ,
+			    MAP_SHARED,
+			    fl->fd,
+			    block_start_position);
 
-        if (data == MAP_FAILED) {
-            printf("Mmap error!\n");
-            return -1;
-        }
+		if (data == MAP_FAILED) {
+			printf("Mmap error!\n");
+			return -1;
+		}
 
-        // Check for sufficient block overlapping.
-        if (fl->scanner->token_shift > overlapping_size) {
-            printf("Insufficient block overlapping!\n");
-            return -1;
-        };
+		// Check for sufficient block overlapping.
+		if (fl->scanner->token_shift > overlapping_size) {
+			printf("Insufficient block overlapping!\n");
+			return -1;
+		};
 
-        // Scan zone file.
-        ret = scanner_process(data + scanner_start_position,
-                              data + scanner_end_position,
-                              false,
-                              fl->scanner);
+		// Scan zone file.
+		ret = scanner_process(data + scanner_start_position,
+				      data + scanner_end_position,
+				      false,
+				      fl->scanner);
 
-        // Artificial last block containing termination only.
-        if (is_last_block == true && fl->scanner->stop == 0) {
-            ret = scanner_process(zone_termination,
-                                  zone_termination + 1,
-                                  true,
-                                  fl->scanner);
-        }
+		// Artificial last block containing termination only.
+		if (is_last_block == true && fl->scanner->stop == 0) {
+			ret = scanner_process(zone_termination,
+		  			      zone_termination + 1,
+					      true,
+					      fl->scanner);
+		}
 
-        // Zone file block unmapping.
-        if (munmap(data, block_end_position - block_start_position) == -1) {
-            printf("Error file munmapping!\n");
-            return -1;
-        }
-    }
+		// Zone file block unmapping.
+		if (munmap(data,
+			   block_end_position - block_start_position) == -1) {
+			printf("Error file munmapping!\n");
+			return -1;
+		}
+	}
 
-    // Check for scanner return.
-    if (ret != 0) {
-        printf("Zone processing has stopped with %"PRIu64" errors!\n",
-               fl->scanner->error_counter);
-        return -1;
-    }
+	// Check for scanner return.
+	if (ret != 0) {
+		printf("Zone processing has stopped with %"PRIu64" errors!\n",
+			   fl->scanner->error_counter);
+		return -1;
+	}
 
-    return 0;
+	return 0;
 }
 

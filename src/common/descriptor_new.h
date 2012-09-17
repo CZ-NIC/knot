@@ -30,76 +30,83 @@
  * \brief Resource record class codes.
  */
 enum knot_rr_class {
-    KNOT_CLASS_IN   =   1,
-    KNOT_CLASS_NONE = 254,
-    KNOT_CLASS_ANY  = 255,
+	KNOT_CLASS_IN   =   1,
+	KNOT_CLASS_NONE = 254,
+	KNOT_CLASS_ANY  = 255,
 };
 
 /*!
  * \brief Resource record type constants.
  */
 enum knot_rr_type {
-    KNOT_RRTYPE_A          =   1, /*!< an IPv4 host address */
-    KNOT_RRTYPE_NS         =   2, /*!< an authoritative name server */
+	KNOT_RRTYPE_A          =   1, /*!< An IPv4 host address. */
+	KNOT_RRTYPE_NS         =   2, /*!< An authoritative name server. */
 
-    KNOT_RRTYPE_CNAME      =   5, /*!< the canonical name for an alias */
-    KNOT_RRTYPE_SOA        =   6, /*!< the start of a zone of authority */
+	KNOT_RRTYPE_CNAME      =   5, /*!< The canonical name for an alias. */
+	KNOT_RRTYPE_SOA        =   6, /*!< The start of a zone of authority. */
 
-    KNOT_RRTYPE_PTR        =  12, /*!< a domain name pointer */
-    KNOT_RRTYPE_HINFO      =  13, /*!< a host information */
-    KNOT_RRTYPE_MINFO      =  14, /*!< a mailbox or mail list information */
-    KNOT_RRTYPE_MX         =  15, /*!< mail exchange */
-    KNOT_RRTYPE_TXT        =  16, /*!< text strings */
-    KNOT_RRTYPE_RP         =  17, /*!< for responsible person */
-    KNOT_RRTYPE_AFSDB      =  18, /*!< for AFS Data Base location */
+	KNOT_RRTYPE_PTR        =  12, /*!< A domain name pointer. */
+	KNOT_RRTYPE_HINFO      =  13, /*!< A host information. */
+	KNOT_RRTYPE_MINFO      =  14, /*!< A mailbox information. */
+	KNOT_RRTYPE_MX         =  15, /*!< Mail exchange. */
+	KNOT_RRTYPE_TXT        =  16, /*!< Text strings. */
+	KNOT_RRTYPE_RP         =  17, /*!< For responsible person. */
+	KNOT_RRTYPE_AFSDB      =  18, /*!< For AFS Data Base location. */
 
-    KNOT_RRTYPE_RT         =  21, /*!< for route through */
+	KNOT_RRTYPE_RT         =  21, /*!< For route through. */
 
-    KNOT_RRTYPE_KEY        =  25, /*!< for security key */
+	KNOT_RRTYPE_KEY        =  25, /*!< For security key. */
 
-    KNOT_RRTYPE_AAAA       =  28, /*!< IPv6 address */
-    KNOT_RRTYPE_LOC        =  29, /*!< location information */
+	KNOT_RRTYPE_AAAA       =  28, /*!< IPv6 address. */
+	KNOT_RRTYPE_LOC        =  29, /*!< Location information. */
 
-    KNOT_RRTYPE_SRV        =  33, /*!< server selection2 */
+	KNOT_RRTYPE_SRV        =  33, /*!< Server selection. */
 
-    KNOT_RRTYPE_NAPTR      =  35, /*!< naming authority pointer  */
-    KNOT_RRTYPE_KX         =  36, /*!< key exchanger */
-    KNOT_RRTYPE_CERT       =  37, /*!< certificate record */
+	KNOT_RRTYPE_NAPTR      =  35, /*!< Naming authority pointer . */
+	KNOT_RRTYPE_KX         =  36, /*!< Key exchanger. */
+	KNOT_RRTYPE_CERT       =  37, /*!< Certificate record. */
 
-    KNOT_RRTYPE_DNAME      =  39, /*!< delegation name */
+	KNOT_RRTYPE_DNAME      =  39, /*!< Delegation name. */
 
-    KNOT_RRTYPE_OPT        =  41, /*!< option for EDNS*/
-    KNOT_RRTYPE_APL        =  42, /*!< address prefix list */
-    KNOT_RRTYPE_DS         =  43, /*!< delegation signer */
-    KNOT_RRTYPE_SSHFP      =  44, /*!< SSH public key fingerprint */
-    KNOT_RRTYPE_IPSECKEY   =  45, /*!< IPSEC key */
-    KNOT_RRTYPE_RRSIG      =  46, /*!< DNSSEC signature */
-    KNOT_RRTYPE_NSEC       =  47, /*!< next-secure record */
-    KNOT_RRTYPE_DNSKEY     =  48, /*!< DNS key */
-    KNOT_RRTYPE_DHCID      =  49, /*!< DHCP identifier */
-    KNOT_RRTYPE_NSEC3      =  50, /*!< NSEC version 3 */
-    KNOT_RRTYPE_NSEC3PARAM =  51, /*!< NSEC3 parameters */
-    KNOT_RRTYPE_TLSA       =  52, /*!< DANE */
+	KNOT_RRTYPE_OPT        =  41, /*!< Option for EDNS*/
+	KNOT_RRTYPE_APL        =  42, /*!< Address prefix list. */
+	KNOT_RRTYPE_DS         =  43, /*!< Delegation signer. */
+	KNOT_RRTYPE_SSHFP      =  44, /*!< SSH public key fingerprint. */
+	KNOT_RRTYPE_IPSECKEY   =  45, /*!< IPSEC key. */
+	KNOT_RRTYPE_RRSIG      =  46, /*!< DNSSEC signature. */
+	KNOT_RRTYPE_NSEC       =  47, /*!< Next-secure record. */
+	KNOT_RRTYPE_DNSKEY     =  48, /*!< DNS key. */
+	KNOT_RRTYPE_DHCID      =  49, /*!< DHCP identifier. */
+	KNOT_RRTYPE_NSEC3      =  50, /*!< NSEC version 3. */
+	KNOT_RRTYPE_NSEC3PARAM =  51, /*!< NSEC3 parameters. */
+	KNOT_RRTYPE_TLSA       =  52, /*!< DANE. */
 
-    KNOT_RRTYPE_SPF        =  99, /*!< sender policy framework */
+	KNOT_RRTYPE_SPF        =  99, /*!< Sender policy framework. */
 
-    KNOT_RRTYPE_TKEY       = 249, /*!< secret key for TSIG */
-    KNOT_RRTYPE_TSIG       = 250, /*!< transaction signature */
-    KNOT_RRTYPE_IXFR       = 251, /*!< incremental zone transfer */
-    KNOT_RRTYPE_AXFR       = 252, /*!< authoritative zone transfer */
+	KNOT_RRTYPE_TKEY       = 249, /*!< Secret key for TSIG. */
+	KNOT_RRTYPE_TSIG       = 250, /*!< Transaction signature. */
+	KNOT_RRTYPE_IXFR       = 251, /*!< Incremental zone transfer. */
+	KNOT_RRTYPE_AXFR       = 252, /*!< Authoritative zone transfer. */
 
-    KNOT_RRTYPE_ANY        = 255, /*!< any record */
+	KNOT_RRTYPE_ANY        = 255, /*!< Any record. */
 };
 
 /*!
  * \brief Constants characterising the wire format of RDATA items.
  */
 enum knot_rdata_wireformat {
-    KNOT_RDATA_WF_COMPRESSED_DNAME   = -102, /*!< Possibly compressed dname. */
-    KNOT_RDATA_WF_UNCOMPRESSED_DNAME = -101, /*!< Uncompressed dname. */
-    KNOT_RDATA_WF_LITERAL_DNAME      = -100, /*!< Dname with preserved case. */
-    KNOT_RDATA_WF_NAPTR_HEADER,
-    KNOT_RDATA_WF_REMAINDER,
+	/*!< Possibly compressed dname. */
+	KNOT_RDATA_WF_COMPRESSED_DNAME   = -12,
+	/*!< Uncompressed dname. */
+	KNOT_RDATA_WF_UNCOMPRESSED_DNAME = -11,
+	/*!< Dname with preserved letter cases. */
+	KNOT_RDATA_WF_LITERAL_DNAME      = -10,
+	/*!< Initial part of NAPTR record before dname. */
+	KNOT_RDATA_WF_NAPTR_HEADER,
+	/*!< Uninteresting final part of a record. */
+	KNOT_RDATA_WF_REMAINDER,
+	/*!< The last descriptor in array. */
+	KNOT_RDATA_WF_END                =   0,
 };
 
 /*!

@@ -16,19 +16,19 @@
 
 #include "zscanner/scanner.h"
 
-#include <stdint.h>                        // uint32_t
-#include <stdlib.h>                        // calloc
-#include <stdio.h>                         // sprintf
-#include <libgen.h>                        // dirname
-#include <stdbool.h>                       // bool
-#include <math.h>                          // pow
-#include <sys/socket.h>                    // AF_INET (BSD)
-#include <netinet/in.h>                    // in_addr (BSD)
+#include <stdint.h>			// uint32_t
+#include <stdlib.h>			// calloc
+#include <stdio.h>			// sprintf
+#include <libgen.h>			// dirname
+#include <stdbool.h>			// bool
+#include <math.h>			// pow
+#include <sys/socket.h>			// AF_INET (BSD)
+#include <netinet/in.h>			// in_addr (BSD)
 
-#include "common/errcode.h"                // error codes
-#include "util/descriptor.h"               // KNOT_RRTYPE_A
-#include "zscanner/file_loader.h"          // file_loader
-#include "zscanner/scanner_functions.h"    // Base64
+#include "common/errcode.h"		// error codes
+#include "util/descriptor.h"		// KNOT_RRTYPE_A
+#include "zscanner/file_loader.h"	// file_loader
+#include "zscanner/scanner_functions.h"	// Base64
 
 #define SCANNER_WARNING(code) { s->error_code = code; }
 #define SCANNER_ERROR(code)   { s->error_code = code; s->stop = true; }
@@ -36,146 +36,147 @@
 
 inline void type_num(const uint16_t type, uint8_t *rdata_tail)
 {
-    *((uint16_t *)rdata_tail) = htons(type);
+	*((uint16_t *)rdata_tail) = htons(type);
 }
 
 inline void window_add_bit(const uint16_t type, scanner_t *s) {
-    uint8_t win      = type / 256;
-    uint8_t bit_pos  = type % 256;
-    uint8_t byte_pos = bit_pos / 8;
+	uint8_t win      = type / 256;
+	uint8_t bit_pos  = type % 256;
+	uint8_t byte_pos = bit_pos / 8;
 
-    ((s->windows[win]).bitmap)[byte_pos] |= 128 >> (bit_pos % 8);
-    if ((s->windows[win]).length < byte_pos + 1) {
-        (s->windows[win]).length = byte_pos + 1;
-    }
-    if (s->last_window < win) {
-        s->last_window = win;
-    }
+	((s->windows[win]).bitmap)[byte_pos] |= 128 >> (bit_pos % 8);
+
+	if ((s->windows[win]).length < byte_pos + 1) {
+		(s->windows[win]).length = byte_pos + 1;
+	}
+
+	if (s->last_window < win) {
+		s->last_window = win;
+	}
 }
 
 // Include scanner file (in Ragel).
 %%{
-    machine zone_scanner;
+	machine zone_scanner;
 
-    include "scanner_body.rl";
+	include "scanner_body.rl";
 
-    write data;
+	write data;
 }%%
 
 scanner_t* scanner_create(const char *file_name)
 {
-    scanner_t *s = calloc(1, sizeof(scanner_t));
-    if (s == NULL) {
-        return NULL;
-    }
+	scanner_t *s = calloc(1, sizeof(scanner_t));
+	if (s == NULL) {
+		return NULL;
+	}
 
-    s->file_name = strdup(file_name);
-    s->line_counter = 1;
+	s->file_name = strdup(file_name);
+	s->line_counter = 1;
 
-    // Nonzero initial scanner state.
-    s->cs = zone_scanner_start;
+	// Nonzero initial scanner state.
+	s->cs = zone_scanner_start;
 
-    return s;
+	return s;
 }
 
 void scanner_free(scanner_t *s)
 {
-    free(s->file_name);
-    free(s);
+	free(s->file_name);
+	free(s);
 }
 
 int scanner_process(char      *start,
-                    char      *end,
-                    bool      is_last_block,
-                    scanner_t *s)
+		    char      *end,
+		    bool      is_last_block,
+		    scanner_t *s)
 {
-    // Necessary scanner variables.
-    int  stack[RAGEL_STACK_SIZE];
-    char *ts = NULL, *eof = NULL;
-    char *p = start, *pe = end;
+	// Necessary scanner variables.
+	int  stack[RAGEL_STACK_SIZE];
+	char *ts = NULL, *eof = NULL;
+	char *p = start, *pe = end;
 
-    // Auxiliary variables which are used in scanner body.
-    struct in_addr  addr4;
-    struct in6_addr addr6;
-    uint32_t timestamp;
-    int16_t  window;
-    int      ret;
+	// Auxiliary variables which are used in scanner body.
+	struct in_addr  addr4;
+	struct in6_addr addr6;
+	uint32_t timestamp;
+	int16_t  window;
+	int	 ret;
 
-    // Next 3 variables are for better performance.
-    // Restoring r_data pointer to next free space.
-    uint8_t *rdata_tail = s->r_data + s->r_data_tail;
-    // Initialization of the last r_data byte.
-    uint8_t *rdata_stop = s->r_data + MAX_RDATA_LENGTH - 1;
-    // Initialization of the r_type.
-    uint16_t r_type = s->r_type_tmp;
+	// Next 3 variables are for better performance.
+	// Restoring r_data pointer to next free space.
+	uint8_t *rdata_tail = s->r_data + s->r_data_tail;
+	// Initialization of the last r_data byte.
+	uint8_t *rdata_stop = s->r_data + MAX_RDATA_LENGTH - 1;
+	// Initialization of the r_type.
+	uint16_t r_type = s->r_type_tmp;
 
-    // Restoring scanner states.
-    int cs  = s->cs;
-    int top = s->top;
-    memcpy(stack, s->stack, sizeof(stack));
+	// Restoring scanner states.
+	int cs  = s->cs;
+	int top = s->top;
+	memcpy(stack, s->stack, sizeof(stack));
 
-    // Applying unprocessed token shift.
-    if (s->token_shift > 0) {
-        ts = start - s->token_shift;
-    }
+	// Applying unprocessed token shift.
+	if (s->token_shift > 0) {
+		ts = start - s->token_shift;
+	}
 
-    // End of file check.
-    if (is_last_block == true) {
-        eof = pe;
-    }
+	// End of file check.
+	if (is_last_block == true) {
+		eof = pe;
+	}
 
-    // Writing scanner body (in C).
-    %% write exec;
+	// Writing scanner body (in C).
+	%% write exec;
 
-    // Check if scanner state machine is in uncovered state.
-    if (cs == zone_scanner_error) {
-        SCANNER_ERROR(ZSCANNER_UNCOVERED_STATE);
-        s->error_counter++;
+	// Check if scanner state machine is in uncovered state.
+	if (cs == zone_scanner_error) {
+		SCANNER_ERROR(ZSCANNER_UNCOVERED_STATE);
+		s->error_counter++;
 
-        // Fill error context data.
-        for (s->buffer_length = 0;
-             ((p + s->buffer_length) < pe) &&
-             (s->buffer_length < sizeof(s->buffer) - 1);
-             s->buffer_length++)
-        {
-            // Only rest of the current line.
-            if (*(p + s->buffer_length) == '\n') {
-                break;
-            }
-            s->buffer[s->buffer_length] = *(p + s->buffer_length);
-        }
+		// Fill error context data.
+		for (s->buffer_length = 0;
+		     ((p + s->buffer_length) < pe) &&
+		     (s->buffer_length < sizeof(s->buffer) - 1);
+		     s->buffer_length++)
+		{
+			// Only rest of the current line.
+			if (*(p + s->buffer_length) == '\n') {
+				break;
+			}
+			s->buffer[s->buffer_length] = *(p + s->buffer_length);
+		}
 
-        // Ending string in buffer.
-        s->buffer[s->buffer_length++] = 0;
+		// Ending string in buffer.
+		s->buffer[s->buffer_length++] = 0;
 
-        // Processing error.
-        s->process_error(s);
+		// Processing error.
+		s->process_error(s);
 
-        return -1;
-    }
+		return -1;
+	}
 
-    // Storing scanner states.
-    s->cs  = cs;
-    s->top = top;
-    memcpy(s->stack, stack, sizeof(stack));
+	// Storing scanner states.
+	s->cs  = cs;
+	s->top = top;
+	memcpy(s->stack, stack, sizeof(stack));
 
-    // Storing r_data pointer and r_type
-    s->r_data_tail = rdata_tail - s->r_data;
-    s->r_type_tmp = r_type;
+	// Storing r_data pointer and r_type
+	s->r_data_tail = rdata_tail - s->r_data;
+	s->r_type_tmp = r_type;
 
-    // Storing unprocessed token shift
-    if (ts != NULL) {
-        s->token_shift = pe - ts;
-    }
-    else {
-        s->token_shift = 0;
-    }
+	// Storing unprocessed token shift
+	if (ts != NULL) {
+		s->token_shift = pe - ts;
+	} else {
+		s->token_shift = 0;
+	}
 
-    // Check if any errors occured.
-    if (s->error_counter > 0) {
-        return -1;
-    }
+	// Check if any errors has occured.
+	if (s->error_counter > 0) {
+		return -1;
+	}
 
-    return 0;
+	return 0;
 }
 

@@ -715,75 +715,73 @@ const uint16_t days_across_years[] = {
 
 int date_to_timestamp(uint8_t *buff, uint32_t *timestamp)
 {
-    uint32_t year, month, day, hour, minute, second;
-    uint32_t leap_day = 0;
+	uint32_t year, month, day, hour, minute, second;
+	uint32_t leap_day = 0;
 
-    year   = 1000 * (buff[ 0] - '0') + 100 * (buff[ 1] - '0') +
-               10 * (buff[ 2] - '0') +       (buff[ 3] - '0');
-    month  =   10 * (buff[ 4] - '0') +       (buff[ 5] - '0');
-    day    =   10 * (buff[ 6] - '0') +       (buff[ 7] - '0');
-    hour   =   10 * (buff[ 8] - '0') +       (buff[ 9] - '0');
-    minute =   10 * (buff[10] - '0') +       (buff[11] - '0');
-    second =   10 * (buff[12] - '0') +       (buff[13] - '0');
+	year   = 1000 * (buff[ 0] - '0') + 100 * (buff[ 1] - '0') +
+	           10 * (buff[ 2] - '0') +       (buff[ 3] - '0');
+	month  =   10 * (buff[ 4] - '0') +       (buff[ 5] - '0');
+	day    =   10 * (buff[ 6] - '0') +       (buff[ 7] - '0');
+	hour   =   10 * (buff[ 8] - '0') +       (buff[ 9] - '0');
+	minute =   10 * (buff[10] - '0') +       (buff[11] - '0');
+	second =   10 * (buff[12] - '0') +       (buff[13] - '0');
 
-    if (year < 1970 || year > 2105 || month < 1 || month > 12 || day < 1) {
-        return ZSCANNER_EBAD_DATE;
-    } else {
-        year -= 1970;
-    }
+	if (year < 1970 || year > 2105 || month < 1 || month > 12 || day < 1) {
+		return ZSCANNER_EBAD_DATE;
+	} else {
+		year -= 1970;
+	}
 
-    if (is_leap_year[year]) {
-        if (month > 2) {
-            leap_day = 1; // Add one day in case of leap year.
-        }
-        else if (month == 2 && day > (days_in_months[month] + 1)) {
-            return ZSCANNER_EBAD_DATE;
-        }
-    }
-    else if (day > days_in_months[month]){
-        return ZSCANNER_EBAD_DATE;
-    }
+	if (is_leap_year[year]) {
+		if (month > 2) {
+			leap_day = 1; // Add one day in case of leap year.
+		} else if (month == 2 && day > (days_in_months[month] + 1)) {
+			return ZSCANNER_EBAD_DATE;
+		}
+	} else if (day > days_in_months[month]){
+		return ZSCANNER_EBAD_DATE;
+	}
 
-    if (hour > 23 || minute > 59 || second > 59) {
-        return ZSCANNER_EBAD_TIME;
-    }
+	if (hour > 23 || minute > 59 || second > 59) {
+		return ZSCANNER_EBAD_TIME;
+	}
 
-    *timestamp = hour * 3600 + minute * 60 + second +
-                 (days_across_years[year] +
-                  days_across_months[month] +
-                  day - 1 + leap_day) * 86400;
+	*timestamp = hour * 3600 + minute * 60 + second +
+		     (days_across_years[year] +
+		     days_across_months[month] +
+		     day - 1 + leap_day) * 86400;
 
-    return KNOT_EOK;
+	return KNOT_EOK;
 }
 
 void wire_dname_to_text(const uint8_t *dname,
-                        const uint32_t dname_length,
-                        char *text_dname)
+			const uint32_t dname_length,
+			char *text_dname)
 {
-    uint32_t label_length = 0, i = 0, j = 0;
+	uint32_t label_length = 0, i = 0, j = 0;
 
-    for (i = 0; i < dname_length; i++) {
-        if (label_length == 0) {
-            label_length = dname[i];
-            if (i > 0) { // Ignore first byte with length.
-                text_dname[j++] = '.';
-            }
-            continue;
-        }
-        text_dname[j++] = (char)dname[i];
-        label_length--;
-    }
-    text_dname[j] = 0;
+	for (i = 0; i < dname_length; i++) {
+		if (label_length == 0) {
+			label_length = dname[i];
+			if (i > 0) { // Ignore first byte with length.
+				text_dname[j++] = '.';
+			}
+			continue;
+		}
+		text_dname[j++] = (char)dname[i];
+		label_length--;
+	}
+	text_dname[j] = 0;
 }
 
 uint8_t loc64to8(uint64_t number) {
-    uint8_t exponent = 0;
+	uint8_t exponent = 0;
 
-    while (number > 9) {
-        number /= 10;
-        exponent++;
-    }
+	while (number > 9) {
+		number /= 10;
+		exponent++;
+	}
 
-    return (((uint8_t)number % 9) << 4) + (exponent % 9);
+	return (((uint8_t)number % 9) << 4) + (exponent % 9);
 }
 
