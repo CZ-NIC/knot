@@ -25,6 +25,7 @@
 #include "knot/server/zones.h"
 #include "libknot/util/wire.h"
 #include "libknot/packet/query.h"
+#include "libknot/packet/response.h"
 #include "libknot/nameserver/name-server.h"
 
 #define KNOT_CTL_REALM "knot."
@@ -362,8 +363,6 @@ int remote_answer(server_t *s, knot_packet_t *pkt, uint8_t* rwire, size_t *rlen)
 		return KNOT_EINVAL;
 	}
 	
-	knot_nameserver_t *ns = s->nameserver;
-	
 	/* Prerequisites:
 	 * QCLASS: CH
 	 * QNAME: <CMD>.KNOT_CTL_REALM.
@@ -376,7 +375,7 @@ int remote_answer(server_t *s, knot_packet_t *pkt, uint8_t* rwire, size_t *rlen)
 	}
 	
 	knot_dname_t *realm = knot_dname_new_from_str(KNOT_CTL_REALM,
-						      KNOT_CTL_REALM_LEN, NULL);
+	                                              KNOT_CTL_REALM_LEN, NULL);
 	if (!knot_dname_is_subdomain(qname, realm) != 0) {
 		dbg_server("remote: qname != *%s\n", KNOT_CTL_REALM_EXT);
 		knot_dname_free(&realm);
@@ -409,23 +408,34 @@ int remote_answer(server_t *s, knot_packet_t *pkt, uint8_t* rwire, size_t *rlen)
 		++c;
 	}
 	
+	/* Prepare response. */
+	size_t remaining = *rlen;
+	knot_packet_t *resp = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
+	if (!resp) {
+		free(cmd);
+		return ret;
+	}
+	uint8_t *wire = NULL;
+	size_t len = 0;
+	knot_packet_set_max_size(resp, SOCKET_MTU_SZ);
+	knot_response_init_from_query(resp, pkt, 1);
+	knot_packet_to_wire(resp, &wire, &len);
+	if (len > 0) {
+		memcpy(rwire, wire, len);
+		*rlen = len;
+	}
+	knot_packet_free(&resp);
+	
 	/* Evaluate output. */
-	/*! \brief #2035 temporary, just for dbging. */
+	int rr_count = 0;
 	knot_rrset_t *rr = remote_build_rr("result.", KNOT_RRTYPE_TXT);
 	knot_rdata_t *rd = remote_create_txt(knot_strerror(ret));
 	knot_rrset_add_rdata(rr, rd);
-	size_t remaining = *rlen;
-	ret = knot_ns_error_response_from_query(ns, pkt, KNOT_RCODE_NOERROR,
-	                                        rwire, rlen);
-	if (ret == KNOT_EOK) {
-		remaining -= *rlen;
-		int rr_count = 0;
-		knot_rrset_to_wire(rr, rwire + *rlen, &remaining, &rr_count);
-		knot_wire_set_arcount(rwire, 1);
-		*rlen += remaining;
-	} else {
-		*rlen = 0;
-	}
+		
+	remaining -= *rlen;
+	knot_rrset_to_wire(rr, rwire + *rlen, &remaining, &rr_count);
+	knot_wire_set_arcount(rwire, 1);
+	*rlen += remaining;
 	
 	free(cmd);
 	return ret;
