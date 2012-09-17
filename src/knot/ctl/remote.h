@@ -36,8 +36,10 @@
 int remote_bind(conf_iface_t *desc);
 int remote_unbind(int r);
 int remote_poll(int r);
-int remote_recv(server_t *s, sockaddr_t *a, int r, uint8_t* buf, size_t buflen);
-int remote_answer(server_t *s, knot_packet_t *pkt);
+int remote_recv(int r, sockaddr_t *a, uint8_t* buf, size_t *buflen);
+int remote_parse(knot_packet_t* pkt, uint8_t* buf, size_t buflen);
+int remote_answer(server_t *s, knot_packet_t *pkt, uint8_t* rwire, size_t *rlen);
+int remote_process(server_t *s, int r, uint8_t* buf, size_t buflen);
 
 knot_packet_t* remote_query(const char *query);
 int remote_query_append(knot_packet_t *qry, knot_rrset_t *data);
@@ -46,8 +48,7 @@ int remote_query_sign(knot_packet_t *qry, knot_key_t *key);
 knot_rrset_t* remote_build_rr(const char *k, uint16_t t);
 knot_rdata_t* remote_create_txt(const char *v);
 knot_rdata_t* remote_create_cname(const char *d);
-
-//knot_rrset_t* remote_build_cname(const char *k, const char *v);
+char* remote_parse_txt(const knot_rdata_t *rd);
 
 #endif // _KNOTD_REMOTE_H_
 

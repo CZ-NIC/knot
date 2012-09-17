@@ -305,13 +305,11 @@ int main(int argc, char **argv)
 		/* Bind to control interface. */
 		uint8_t buf[65535]; /*! \todo #2035 should be on heap */
 		size_t buflen = sizeof(buf);
-		sockaddr_t ctl_addr;
 		conf_iface_t *ctl_if = conf()->ctl.iface;
 		if (ctl_if != NULL) {
 			log_server_info("Binding remote control interface "
 					"to %s port %d.\n",
 					ctl_if->address, ctl_if->port);
-			sockaddr_init(&ctl_addr, ctl_if->family);
 		}
 		int remote = remote_bind(ctl_if);
 		
@@ -365,7 +363,8 @@ int main(int argc, char **argv)
 
 			/* Events. */
 			if (ret > 0) {
-				remote_recv(server, &ctl_addr, remote, buf, buflen);
+				remote_process(server, remote, buf, buflen);
+
 			}
 		}
 		pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);

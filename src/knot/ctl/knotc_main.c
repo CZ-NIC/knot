@@ -83,16 +83,16 @@ static int cmd_compile(int argc, char *argv[], unsigned flags, int jobs);
 
 /*! \brief Table of remote commands. */
 knot_cmd_t knot_cmd_tbl[] = {
-	{"start    ", &cmd_start, "Start server (no-op if running)."},
-	{"stop     ", &cmd_stop, "Stop server (no-op if running)."},
-	{"restart  ", &cmd_restart, "Restarts server (no-op if running)."},
-	{"reload   ", &cmd_reload, "Reloads configuration and changed zones."},
-	{"refresh  ", &cmd_refresh,"Refresh slave zones (all if not specified)."},
-	{"flush    ", &cmd_flush, "Flush journal and update zone files."},
-	{"status   ", &cmd_status, "Check if server is running."},
+	{"start",     &cmd_start, "\tStart server (no-op if running)."},
+	{"stop",      &cmd_stop, "\tStop server (no-op if running)."},
+	{"restart",   &cmd_restart, "Restarts server (no-op if running)."},
+	{"reload",    &cmd_reload, "\tReloads configuration and changed zones."},
+	{"refresh",   &cmd_refresh,"Refresh slave zones (all if not specified)."},
+	{"flush",     &cmd_flush, "\tFlush journal and update zone files."},
+	{"status",    &cmd_status, "\tCheck if server is running."},
 	{"checkconf", &cmd_checkconf, "Check server configuration."},
 	{"checkzone", &cmd_checkzone, "Check specified zone files."},
-	{"compile  ", &cmd_compile, "Compile zone files (all if not specified)."},
+	{"compile",   &cmd_compile, "Compile zone files (all if not specified)."},
 	{NULL, NULL, NULL}
 };
 
@@ -252,6 +252,70 @@ static int zctask_add(knotc_zctask_t *tasks, int count, pid_t pid,
 	return -1;
 }
 
+static int cmd_remote_print_reply(const knot_rrset_t *rr)
+{
+	/* Process first RRSet in data section. */
+	if (knot_rrset_type(rr) != KNOT_RRTYPE_TXT) {
+		return KNOT_EMALF;
+	}
+	
+	const knot_rdata_t *rd = knot_rrset_rdata(rr);
+	while (rd != NULL) {
+		/* Skip empty nodes. */
+		if (knot_rdata_item_count(rd) < 1) {
+			rd = knot_rrset_rdata_next(rr, rd);
+			continue;
+		}
+
+		/* Parse TXT. */
+		char* txt = remote_parse_txt(rd);
+		if (txt) {
+			log_server_info("Server reply: %s\n", txt);
+		}
+
+		rd = knot_rrset_rdata_next(rr, rd);
+	}
+	
+	return KNOT_EOK;
+}
+
+static int cmd_remote_reply(int c)
+{
+	uint8_t *rwire = malloc(SOCKET_MTU_SZ);
+	knot_packet_t *reply = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
+	if (!rwire || !reply) {
+		free(rwire);
+		knot_packet_free(&reply);
+		return KNOT_ENOMEM;
+	}
+	
+	/* Read response packet. */
+	int n = tcp_recv(c, rwire, SOCKET_MTU_SZ, NULL);
+	if (n < 0) {
+		dbg_server("remote: couldn't receive response = %d\n", ret);
+		knot_packet_free(&reply);
+		free(rwire);
+		return n;
+	}
+	
+	/* Parse packet and check response. */
+	int ret = remote_parse(reply, rwire, n);
+	if (ret == KNOT_EOK) {
+		/* Check RCODE */
+		ret = knot_packet_rcode(reply);
+		
+		/* Check extra data. */
+		if (knot_packet_additional_rrset_count(reply) > 0) {
+			ret = cmd_remote_print_reply(reply->additional[0]);
+		}
+	}
+	
+	/* Response cleanup. */
+	knot_packet_free(&reply);
+	free(rwire);
+	return ret;
+}
+
 static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 {
 	int rc = 0;
@@ -303,8 +367,15 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 		rc = 1;
 	}
 	
-	/*! \todo #2035 receive reply. */
-	rc = 0;
+	/* Wait for reply. */
+	if (rc == 0) {
+		int ret = cmd_remote_reply(s);
+		if (ret != KNOT_EOK) {
+			log_server_warning("Remote command reply: %s\n",
+			                   knot_strerror(ret));
+			rc = 1;
+		}
+	}
 	
 	/* Close connection. */
 	socket_close(s);
@@ -595,30 +666,22 @@ static int cmd_restart(int argc, char *argv[], unsigned flags, int jobs)
 
 static int cmd_reload(int argc, char *argv[], unsigned flags, int jobs)
 {
-	int rc = cmd_remote("reload", KNOT_RRTYPE_TXT, 0, NULL);
-	/*! \todo #2035 process response */
-	return rc;
+	return cmd_remote("reload", KNOT_RRTYPE_TXT, 0, NULL);
 }
 
 static int cmd_refresh(int argc, char *argv[], unsigned flags, int jobs)
 {
-	int rc = cmd_remote("refresh", KNOT_RRTYPE_CNAME, argc, argv);
-	/*! \todo #2035 process response */
-	return rc;
+	return cmd_remote("refresh", KNOT_RRTYPE_CNAME, argc, argv);
 }
 
 static int cmd_flush(int argc, char *argv[], unsigned flags, int jobs)
 {
-	int rc = cmd_remote("flush", KNOT_RRTYPE_CNAME, argc, argv);
-	/*! \todo #2035 process response */
-	return rc;
+	return cmd_remote("flush", KNOT_RRTYPE_CNAME, argc, argv);
 }
 
 static int cmd_status(int argc, char *argv[], unsigned flags, int jobs)
 {
-	int rc = cmd_remote("status", KNOT_RRTYPE_TXT, 0, NULL);
-	/*! \todo #2035 process response */
-	return rc;
+	return cmd_remote("status", KNOT_RRTYPE_TXT, 0, NULL);
 }
 
 static int cmd_checkconf(int argc, char *argv[], unsigned flags, int jobs)

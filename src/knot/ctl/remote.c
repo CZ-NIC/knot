@@ -84,13 +84,13 @@ static knot_dname_t* remote_dname_fqdn(const char *k)
 }
 
 /*! \brief Apply callback to all zones specified by RDATA of CNAME RRs. */
-static int remote_zone_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *cb)
+static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *cb)
 {
 	if (!s || !a || !cb) {
 		return KNOT_EINVAL;
 	}
 	
-	knot_nameserver_t *ns =  s->nameserver;
+	knot_nameserver_t *ns = s->nameserver;
 	knot_zone_t *zone = NULL;
 	int ret = KNOT_EOK;
 	
@@ -240,7 +240,7 @@ static int remote_c_refresh(server_t *s, remote_cmdargs_t* a)
 	}
 	
 	/* Refresh specific zones. */
-	return remote_zone_apply(s, a, &remote_zone_refresh);
+	return remote_rdata_apply(s, a, &remote_zone_refresh);
 }
 
 /*!
@@ -260,7 +260,7 @@ static int remote_c_flush(server_t *s, remote_cmdargs_t* a)
 	}
 	
 	/* Flush specific zones. */
-	return remote_zone_apply(s, a, &remote_zone_flush);
+	return remote_rdata_apply(s, a, &remote_zone_flush);
 }
 
 /* Public APIs. */
@@ -318,74 +318,52 @@ int remote_poll(int r)
 	return fdset_pselect(r + 1, &rfds, NULL, NULL, NULL, NULL);
 }
 
-int remote_recv(server_t *s, sockaddr_t *a, int r, uint8_t* buf, size_t buflen)
+int remote_recv(int r, sockaddr_t *a, uint8_t* buf, size_t *buflen)
 {
 	int c = tcp_accept(r);
 	if (c < 0) {
 		dbg_server("remote: couldn't accept incoming connection\n");
 		return c;
 	}
-	
-
-	knot_nameserver_t *ns = s->nameserver;
 
 	/* Receive data. */
-	int n = tcp_recv(c, buf, buflen, a);
+	int n = tcp_recv(c, buf, *buflen, a);
+	*buflen = n;
 	if (n <= 0) {
 		dbg_server("remote: failed to receive data\n");
 		socket_close(c);
 		return KNOT_ECONNREFUSED;
 	}
+	
+	return c;
+}
 
-	/* Parse query. */
+int remote_parse(knot_packet_t* pkt, uint8_t* buf, size_t buflen)
+{
 	knot_packet_type_t qtype = KNOT_QUERY_NORMAL;
-	knot_packet_t *packet = knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
-	if (!packet) {
-		dbg_server("remote: no mem to form packet\n");
-		socket_close(c);
-		return KNOT_ENOMEM;
-	}
-	int ret = knot_ns_parse_packet(buf, n, packet, &qtype);
-	if (ret != KNOT_EOK || qtype != KNOT_QUERY_NORMAL) {
+	int ret = knot_ns_parse_packet(buf, buflen, pkt, &qtype);
+	if (ret != KNOT_EOK) {
 		dbg_server("remote: failed to parse packet\n");
-		knot_packet_free(&packet);
-		socket_close(c);
 		return KNOT_EINVAL;
 	}
-	ret = knot_packet_parse_rest(packet);
+	ret = knot_packet_parse_rest(pkt);
 	if (ret != KNOT_EOK) {
 		dbg_server("remote: failed to parse packet data\n");
 		return KNOT_EINVAL;
 	}
 	
-	/* Answer query. */
-	/*! \todo #2035 should pass the wire and build response somehow. */
-	ret = remote_answer(s, packet);
-	dbg_server("remote: answering result=%d\n", ret);
-
-	/*! \brief #2035 temporary, just for dbging. */
-	knot_rrset_t *rr = remote_build_rr("result.", KNOT_RRTYPE_TXT);
-	knot_rdata_t *rd = remote_create_txt(knot_strerror(ret));
-	knot_rrset_add_rdata(rr, rd);
-	size_t remaining = buflen;
-	ret = knot_ns_error_response_from_query(ns, packet, KNOT_RCODE_NOERROR, buf, &buflen);
-	if (ret == KNOT_EOK) {
-		remaining -= buflen;
-		int rr_count = 0;
-		knot_rrset_to_wire(rr, buf + buflen, &remaining, &rr_count);
-		knot_wire_set_arcount(buf, 1);
-		buflen += remaining;
-		tcp_send(c, buf, buflen);
-	}
-	
-	
-	knot_packet_free(&packet);	
-	socket_close(c);
 	return ret;
 }
 
-int remote_answer(server_t *s, knot_packet_t *pkt)
+int remote_answer(server_t *s, knot_packet_t *pkt, uint8_t* rwire, size_t *rlen)
 {
+	if (!s || !pkt || !rwire) {
+		*rlen = 0;
+		return KNOT_EINVAL;
+	}
+	
+	knot_nameserver_t *ns = s->nameserver;
+	
 	/* Prerequisites:
 	 * QCLASS: CH
 	 * QNAME: <CMD>.KNOT_CTL_REALM.
@@ -393,6 +371,7 @@ int remote_answer(server_t *s, knot_packet_t *pkt)
 	const knot_dname_t *qname = knot_packet_qname(pkt);
 	if (knot_packet_qclass(pkt) != KNOT_CLASS_CH) {
 		dbg_server("remote: qclass != CH\n");
+		*rlen = 0;
 		return KNOT_EMALF;
 	}
 	
@@ -401,6 +380,7 @@ int remote_answer(server_t *s, knot_packet_t *pkt)
 	if (!knot_dname_is_subdomain(qname, realm) != 0) {
 		dbg_server("remote: qname != *%s\n", KNOT_CTL_REALM_EXT);
 		knot_dname_free(&realm);
+		*rlen = 0;
 		return KNOT_EMALF;
 	}
 	knot_dname_free(&realm);
@@ -430,8 +410,65 @@ int remote_answer(server_t *s, knot_packet_t *pkt)
 	}
 	
 	/* Evaluate output. */
-	/*! \todo #2035 build answer packet here? */
+	/*! \brief #2035 temporary, just for dbging. */
+	knot_rrset_t *rr = remote_build_rr("result.", KNOT_RRTYPE_TXT);
+	knot_rdata_t *rd = remote_create_txt(knot_strerror(ret));
+	knot_rrset_add_rdata(rr, rd);
+	size_t remaining = *rlen;
+	ret = knot_ns_error_response_from_query(ns, pkt, KNOT_RCODE_NOERROR,
+	                                        rwire, rlen);
+	if (ret == KNOT_EOK) {
+		remaining -= *rlen;
+		int rr_count = 0;
+		knot_rrset_to_wire(rr, rwire + *rlen, &remaining, &rr_count);
+		knot_wire_set_arcount(rwire, 1);
+		*rlen += remaining;
+	} else {
+		*rlen = 0;
+	}
+	
 	free(cmd);
+	return ret;
+}
+
+int remote_process(server_t *s, int r, uint8_t* buf, size_t buflen)
+{
+	knot_packet_t *pkt =  knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
+	if (!pkt) {
+		dbg_server("remote: not enough space to allocate query\n");
+		return KNOT_ENOMEM;
+	}
+	
+	/* Initialize remote party address. */
+	rcu_read_lock();
+	sockaddr_t a;
+	conf_iface_t *ctl_if = conf()->ctl.iface;
+	if (ctl_if) {
+		sockaddr_init(&a, ctl_if->family);
+	}
+	rcu_read_unlock();
+	
+	/* Accept incoming connection and read packet. */
+	size_t wire_len = buflen;
+	int c = remote_recv(r, &a, buf, &wire_len);
+	if (c < 0) {
+		dbg_server("remote: couldn't receive query = %d\n", ret);
+		knot_packet_free(&pkt);
+		return c;
+	}
+	
+	/* Parse packet and answer if OK. */
+	int ret = remote_parse(pkt, buf, wire_len);
+	if (ret == KNOT_EOK) {
+		wire_len = buflen;
+		remote_answer(s, pkt, buf, &wire_len);
+		if (wire_len > 0) {
+			tcp_send(c, buf, wire_len);
+		}
+	}
+	
+	knot_packet_free(&pkt);
+	socket_close(c);
 	return ret;
 }
 
@@ -566,5 +603,21 @@ knot_rdata_t* remote_create_cname(const char *d)
 	}
 	
 	return rd;
+}
+
+char* remote_parse_txt(const knot_rdata_t *rd)
+{
+	if (!rd || knot_rdata_count(rd) < 1) {
+		return NULL;
+	}
+	
+	const knot_rdata_item_t *ri = knot_rdata_item(rd, 0);
+	if (!ri) {
+		return NULL;
+	}
+	
+	/*! \todo #2035 how to check if TXT item length is OK? */
+	uint8_t item_len = ri->raw_data[1] & 0x00ff;
+	return strndup(((const char*)ri->raw_data) + 3, item_len);
 }
 
