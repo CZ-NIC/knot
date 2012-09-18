@@ -56,7 +56,7 @@
 	      | ')' $_check_multiline_end                   # End of multiline.
 	      )+;                                           # Apply more times.
 
-	rest = (sep? . comment?) $!_rest_error; # Useless text after correct record.
+	rest = (sep? :> comment?) $!_rest_error; # Useless text after record.
 
 	# Artificial machines which are used for next state transition only!
 	all_wchar = [ \t\n;()];
