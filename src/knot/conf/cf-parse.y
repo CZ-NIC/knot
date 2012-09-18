@@ -15,6 +15,7 @@
 #include "common/sockaddr.h"
 #include "libknot/dname.h"
 #include "knot/conf/conf.h"
+#include "knot/ctl/remote.h"
 #include "libknotd_la-cf-parse.h" /* Automake generated header. */
 
 extern int cf_lex (YYSTYPE *lvalp, void *scanner);
@@ -28,7 +29,7 @@ static conf_log_t *this_log = 0;
 static conf_log_map_t *this_logmap = 0;
 //#define YYERROR_VERBOSE 1
 
-static void conf_init_iface(void *scanner, char* ifname)
+static void conf_init_iface(void *scanner, char* ifname, int port)
 {
    this_iface = malloc(sizeof(conf_iface_t));
    if (this_iface == NULL) {
@@ -37,12 +38,12 @@ static void conf_init_iface(void *scanner, char* ifname)
    }
    memset(this_iface, 0, sizeof(conf_iface_t));
    this_iface->name = ifname;
-   this_iface->port = CONFIG_DEFAULT_PORT;
+   this_iface->port = port;
 }
 
 static void conf_start_iface(void *scanner, char* ifname)
 {
-   conf_init_iface(scanner, ifname);
+   conf_init_iface(scanner, ifname, CONFIG_DEFAULT_PORT);
    add_tail(&new_config->ifaces, &this_iface->n);
    ++new_config->ifaces_count;
 }
@@ -55,7 +56,7 @@ static void conf_start_remote(void *scanner, char *remote)
       return;
    }
    
-memset(this_remote, 0, sizeof(conf_iface_t));
+   memset(this_remote, 0, sizeof(conf_iface_t));
    this_remote->name = remote;
    add_tail(&new_config->remotes, &this_remote->n);
    sockaddr_init(&this_remote->via, -1);
@@ -815,7 +816,7 @@ log_start:
 log: LOG '{' log_start log_end;
 
 ctl_listen_start:
-  LISTEN_ON { conf_init_iface(scanner, NULL); }
+  LISTEN_ON { conf_init_iface(scanner, NULL, REMOTE_DPORT); }
   ;
 
 ctl_allow_start:

@@ -27,6 +27,7 @@
 #include "libknot/packet/query.h"
 #include "libknot/packet/response.h"
 #include "libknot/nameserver/name-server.h"
+#include "libknot/tsig-op.h"
 
 #define KNOT_CTL_REALM "knot."
 #define KNOT_CTL_REALM_EXT ("." KNOT_CTL_REALM)
@@ -67,22 +68,6 @@ struct remote_cmd_t remote_cmd_tbl[] = {
 };
 
 /* Private APIs. */
-
-/*! \brief Create dname from str and make sure the name is FQDN. */
-static knot_dname_t* remote_dname_fqdn(const char *k)
-{
-	/*! \todo #2035 knot_dname_new_from_str() should ensure final '.' */
-	knot_dname_t *key = NULL;
-	size_t key_len = strlen(k);
-	if (k[key_len - 1] != '.') {
-		char *fqdn = strcdup(k, ".");
-		key = knot_dname_new_from_str(fqdn, key_len + 1, NULL);
-		free(fqdn);
-	} else {
-		key = knot_dname_new_from_str(k, key_len, NULL);
-	}
-	return key;
-}
 
 /*! \brief Apply callback to all zones specified by RDATA of CNAME RRs. */
 static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *cb)
@@ -397,8 +382,8 @@ int remote_answer(server_t *s, knot_packet_t *pkt, uint8_t* rwire, size_t *rlen)
 	int ret = KNOT_EOK;
 	remote_cmd_t *c = remote_cmd_tbl;
 	remote_cmdargs_t args;
-	args.arg = pkt->additional;
-	args.argc = knot_packet_additional_rrset_count(pkt);
+	args.arg = pkt->authority;
+	args.argc = knot_packet_authority_rrset_count(pkt);
 	args.rc = KNOT_RCODE_NOERROR;
 	while(c->name != NULL) {
 		if (strcmp(cmd, c->name) == 0) {
@@ -434,8 +419,9 @@ int remote_answer(server_t *s, knot_packet_t *pkt, uint8_t* rwire, size_t *rlen)
 		
 	remaining -= *rlen;
 	knot_rrset_to_wire(rr, rwire + *rlen, &remaining, &rr_count);
-	knot_wire_set_arcount(rwire, 1);
+	knot_wire_set_nscount(rwire, 1);
 	*rlen += remaining;
+	knot_rrset_deep_free(&rr, 1, 1, 1);
 	
 	free(cmd);
 	return ret;
@@ -470,6 +456,22 @@ int remote_process(server_t *s, int r, uint8_t* buf, size_t buflen)
 	/* Parse packet and answer if OK. */
 	int ret = remote_parse(pkt, buf, wire_len);
 	if (ret == KNOT_EOK) {
+		
+		/* Check ACL list. */
+		rcu_read_lock();
+		acl_key_t *m = NULL;
+		if (acl_match(conf()->ctl.acl, &a, &m) == ACL_DENY) {
+			knot_packet_free(&pkt);
+			socket_close(c);
+			rcu_read_unlock();
+			return KNOT_EACCES;
+		}
+		rcu_read_unlock();
+		
+		/* Check TSIG. */
+		/*! \todo #2035 */
+		
+		/* Answer packet. */
 		wire_len = buflen;
 		remote_answer(s, pkt, buf, &wire_len);
 		if (wire_len > 0) {
@@ -482,7 +484,7 @@ int remote_process(server_t *s, int r, uint8_t* buf, size_t buflen)
 	return ret;
 }
 
-knot_packet_t* remote_query(const char *query)
+knot_packet_t* remote_query(const char *query, const knot_key_t *key)
 {
 	if (!query) {
 		return NULL;
@@ -496,6 +498,11 @@ knot_packet_t* remote_query(const char *query)
 	knot_packet_set_max_size(qr, 512);
 	knot_query_init(qr);
 	knot_packet_set_random_id(qr);
+	
+	/* Reserve space for TSIG. */
+	if (key) {
+		knot_packet_set_tsig_size(qr, tsig_wire_maxsize(key));
+	}
 	
 	/* Question section. */
 	knot_question_t q;
@@ -528,7 +535,7 @@ int remote_query_append(knot_packet_t *qry, knot_rrset_t *data)
 	while (rd != NULL) {
 		int ret = knot_query_rr_to_wire(data, rd, &p, np);
 		if (ret == KNOT_EOK) {
-			qry->header.arcount += 1;
+			qry->header.nscount += 1;
 		}
 		rd = knot_rrset_rdata_next(data, rd);
 	}
@@ -539,15 +546,25 @@ int remote_query_append(knot_packet_t *qry, knot_rrset_t *data)
 }
 
 
-int remote_query_sign(knot_packet_t *qry, knot_key_t *key)
+int remote_query_sign(uint8_t *wire, size_t *size, size_t maxlen,
+                      const knot_key_t *key)
 {
-	if (!qry || !key) {
+	if (!wire || !size || !key) {
 		return KNOT_EINVAL;
 	}
 	
-	return KNOT_ENOTSUP;
+	size_t dlen = tsig_alg_digest_length(key->algorithm);
+	uint8_t *digest = malloc(dlen);
+	if (!digest) {
+		return KNOT_ENOMEM;
+	}
+	
+	int ret = knot_tsig_sign(wire, size, maxlen, NULL, 0, digest, &dlen,
+	                         key, 0, 0);
+	free(digest);
+	
+	return ret;
 }
-
 
 knot_rrset_t* remote_build_rr(const char *k, uint16_t t)
 {
@@ -629,5 +646,20 @@ char* remote_parse_txt(const knot_rdata_t *rd)
 	/*! \todo #2035 how to check if TXT item length is OK? */
 	uint8_t item_len = ri->raw_data[1] & 0x00ff;
 	return strndup(((const char*)ri->raw_data) + 3, item_len);
+}
+
+knot_dname_t* remote_dname_fqdn(const char *k)
+{
+	/*! \todo #2035 knot_dname_new_from_str() should ensure final '.' */
+	knot_dname_t *key = NULL;
+	size_t key_len = strlen(k);
+	if (k[key_len - 1] != '.') {
+		char *fqdn = strcdup(k, ".");
+		key = knot_dname_new_from_str(fqdn, key_len + 1, NULL);
+		free(fqdn);
+	} else {
+		key = knot_dname_new_from_str(k, key_len, NULL);
+	}
+	return key;
 }
 
