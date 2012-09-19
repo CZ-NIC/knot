@@ -26,6 +26,8 @@
 
 #include <stdint.h>
 
+#define KNOT_MAX_RDATA_BLOCKS	8
+
 /*!
  * \brief Resource record class codes.
  */
@@ -110,19 +112,21 @@ enum knot_rdata_wireformat {
 };
 
 /*!
- * \brief Array which describes record structure.
+ * \brief Structure describing rdata.
  */
-typedef int knot_descriptor_t[8];
+typedef struct {
+	int block_types[KNOT_MAX_RDATA_BLOCKS];
+} rdata_descriptor_t;
 
 /*!
- * \brief Gets RR descriptor for given RR name.
+ * \brief Gets rdata descriptor for given RR name.
  *
  * \param name Mnemonic of RR type whose descriptor should be returned.
  *
  * \return RR descriptor for given name, NULL descriptor if
  *         unknown type.
  */
-const knot_descriptor_t *knot_descriptor_by_type(const uint16_t type);
+const rdata_descriptor_t *get_rdata_descriptor(const uint16_t type);
 
 #endif // _KNOT_DESCRIPTOR_NEW_H_
 

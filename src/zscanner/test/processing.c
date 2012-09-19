@@ -16,13 +16,13 @@
 
 #include "zscanner/scanner_functions.h"
 
-#include <inttypes.h>		// PRIu64
-#include <stdio.h>		// printf
-#include <arpa/inet.h>		// ntohs
+#include <inttypes.h>			// PRIu64
+#include <stdio.h>			// printf
+#include <arpa/inet.h>			// ntohs
 
-#include "util/descriptor.h"	// knot_rrtype_to_string
-#include "common/errcode.h"	// knot_strerror
-#include "zscanner/scanner.h"	// scanner_t
+#include "common/errcode.h"		// knot_strerror
+#include "util/descriptor.h"		// knot_rrtype_to_string
+#include "zscanner/scanner.h"		// scanner_t
 
 
 #define ERROR_CODE_TO_STRING(code) [code - ZSCANNER_UNCOVERED_STATE] = #code

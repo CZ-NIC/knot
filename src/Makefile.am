@@ -334,6 +334,7 @@ libzscanner_la_SOURCES =			\
 
 libknotd_la_LIBADD = libknot.la libknots.la @LIBOBJS@
 libknots_la_LIBADD = @LIBOBJS@
+libzscanner_la_LIBADD = libknots.la
 knotd_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 knotc_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 knot_zcompile_LDADD = libknots.la libknot.la libknotd.la libzscanner.la @LIBOBJS@

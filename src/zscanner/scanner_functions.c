@@ -19,7 +19,8 @@
 #include <stdint.h>
 
 #include "common/errcode.h"
-
+#include "common/descriptor_new.h"
+#include "zscanner/scanner.h"
 
 const uint8_t digit_to_num[] = {
     ['0'] = 0, ['1'] = 1, ['2'] = 2, ['3'] = 3, ['4'] = 4,
@@ -774,7 +775,8 @@ void wire_dname_to_text(const uint8_t *dname,
 	text_dname[j] = 0;
 }
 
-uint8_t loc64to8(uint64_t number) {
+uint8_t loc64to8(uint64_t number)
+{
 	uint8_t exponent = 0;
 
 	while (number > 9) {
@@ -783,5 +785,18 @@ uint8_t loc64to8(uint64_t number) {
 	}
 
 	return (((uint8_t)number % 9) << 4) + (exponent % 9);
+}
+
+void find_rdata_blocks(scanner_t *s)
+{
+	uint32_t i;
+
+	const rdata_descriptor_t *descriptor = get_rdata_descriptor(s->r_type);
+
+	for (i = 0; i < KNOT_MAX_RDATA_BLOCKS; i++) {
+		if (descriptor->block_types[i] == KNOT_RDATA_WF_END) {
+			break;
+		}
+	}
 }
 

@@ -214,6 +214,9 @@
 	action _separate {
 		s->r_data_blocks[++(s->r_data_blocks_count)] = rdata_tail - s->r_data;
 	}
+
+	# Rdata blocks dividing.
+	blk_sep = zlen >_separate;
 	# END
 
 	# BEGIN - Owner processing
@@ -335,7 +338,7 @@
 
 	action _type_number_exit {
 		if (s->number64 <= UINT16_MAX) {
-			r_type = (uint16_t)(s->number64);
+			s->r_type = (uint16_t)(s->number64);
 		} else {
 			SCANNER_WARNING(ZSCANNER_ENUMBER16_OVERFLOW);
 			fhold; fgoto err_line;
@@ -696,10 +699,7 @@
 		rdata_tail += s->dname_tmp_length;
 	}
 
-	only_r_dname   = dname            >_r_dname_init %_r_dname_exit;
-	first_r_dname  = dname            >_r_dname_init %_r_dname_exit %_separate;
-	middle_r_dname = dname >_separate >_r_dname_init %_r_dname_exit %_separate;
-	last_r_dname   = dname >_separate >_r_dname_init %_r_dname_exit;
+	r_dname = dname >_r_dname_init %_r_dname_exit;
 	# END
 
 	# BEGIN - IPv4 and IPv6 address processing
@@ -779,7 +779,7 @@
 		( ('0' $_write_0 . sep . num8 . sep . '.')
 		| ('1' $_write_1 . sep . num8 . sep . ipv4_addr_write)
 		| ('2' $_write_2 . sep . num8 . sep . ipv6_addr_write)
-		| ('3' $_write_3 . sep . num8 . sep . only_r_dname)
+		| ('3' $_write_3 . sep . num8 . sep . r_dname)
 		) $!_gateway_error;
 	# END
 
@@ -896,6 +896,7 @@
 			SCANNER_WARNING(ZSCANNER_EBAD_RDATA_LENGTH);
 			fhold; fgoto err_line;
 		}
+		find_rdata_blocks(s);
 	}
 
 	action _type_data_error {
@@ -1378,12 +1379,12 @@
 		$!_r_data_error %_ret . all_wchar;
 
 	r_data_ns :=
-		(only_r_dname)
+		(r_dname)
 		$!_r_data_error %_ret . all_wchar;
 
 	r_data_soa :=
-		(first_r_dname . sep . middle_r_dname . sep . num32 . sep . time32 .
-		 sep . time32 . sep . time32 . sep . time32)
+		(r_dname . blk_sep .  sep . r_dname . blk_sep .  sep . num32 .
+		 sep . time32 . sep . time32 . sep . time32 . sep . time32)
 		$!_r_data_error %_ret . all_wchar;
 
 	r_data_hinfo :=
@@ -1391,20 +1392,16 @@
 		$!_r_data_error %_ret . all_wchar;
 
 	r_data_minfo :=
-		(first_r_dname . sep . last_r_dname)
+		(r_dname . blk_sep .  sep . r_dname)
 		$!_r_data_error %_ret . all_wchar;
 
 	r_data_mx :=
-		(num16 . sep . last_r_dname)
+		(num16 . blk_sep .  sep . r_dname)
 		$!_r_data_error %_ret . all_wchar;
 
 	r_data_txt :=
 		(text_array)
 		$!_r_data_error %_ret . end_wchar;
-
-	r_data_rp :=
-		(first_r_dname . sep . last_r_dname)
-		$!_r_data_error %_ret . all_wchar;
 
 	r_data_aaaa :=
 		(ipv6_addr_write)
@@ -1415,12 +1412,12 @@
 		$!_r_data_error %_ret . end_wchar;
 
 	r_data_srv :=
-		(num16 . sep . num16 . sep . num16 . sep . last_r_dname)
+		(num16 . sep . num16 . sep . num16 . blk_sep .  sep . r_dname)
 		$!_r_data_error %_ret . all_wchar;
 
 	r_data_naptr :=
-		(num16 . sep . num16 . sep . text_string . sep . text_string . sep .
-		 text_string . sep . last_r_dname)
+		(num16 . sep . num16 . sep . text_string . sep . text_string .
+		 sep . text_string . blk_sep .  sep . r_dname)
 		$!_r_data_error %_ret . all_wchar;
 
 	r_data_cert :=
@@ -1445,12 +1442,12 @@
 
 	r_data_rrsig :=
 		(type_num . sep . num8 . sep . num8 . sep . num32 . sep .
-		 timestamp . sep . timestamp . sep . num16 . sep . middle_r_dname .
-		 sep . base64)
+		 timestamp . sep . timestamp . sep . num16 . blk_sep .  sep .
+		 r_dname . blk_sep . sep . base64)
 		$!_r_data_error %_ret . end_wchar;
 
 	r_data_nsec :=
-		(first_r_dname . bitmap)
+		(r_dname . blk_sep . bitmap)
 		$!_r_data_error %_ret . all_wchar;
 
 	r_data_dnskey :=
@@ -1462,7 +1459,8 @@
 		$!_r_data_error %_ret . end_wchar;
 
 	r_data_nsec3 :=
-		(num8 . sep . num8 . sep . num16 . sep . salt . sep . hash . bitmap)
+		(num8 . sep . num8 . sep . num16 . sep . salt . sep .
+		 hash . bitmap)
 		$!_r_data_error %_ret . all_wchar;
 
 	r_data_nsec3param :=
@@ -1475,7 +1473,7 @@
 
 	action _text_r_data {
 		fhold;
-		switch (r_type) {
+		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
 			fcall r_data_a;
 		case KNOT_RRTYPE_NS:
@@ -1493,12 +1491,11 @@
 		case KNOT_RRTYPE_AFSDB:
 		case KNOT_RRTYPE_RT:
 		case KNOT_RRTYPE_KX:
+		case KNOT_RRTYPE_RP:
 			fcall r_data_mx;
 		case KNOT_RRTYPE_TXT:
 		case KNOT_RRTYPE_SPF:
 			fcall r_data_txt;
-		case KNOT_RRTYPE_RP:
-			fcall r_data_rp;
 		case KNOT_RRTYPE_AAAA:
 			fcall r_data_aaaa;
 		case KNOT_RRTYPE_LOC:
@@ -1538,7 +1535,7 @@
 		}
 	}
 	action _hex_r_data {
-		switch (r_type) {
+		switch (s->r_type) {
 		// Next types cannot have empty rdata.
 		case KNOT_RRTYPE_A:
 		case KNOT_RRTYPE_NS:
@@ -1594,46 +1591,44 @@
 	}
 
 	r_type =
-	    ( "A"i          %{ r_type = KNOT_RRTYPE_A; }
-	    | "NS"i         %{ r_type = KNOT_RRTYPE_NS; }
-	    | "CNAME"i      %{ r_type = KNOT_RRTYPE_CNAME; }
-	    | "SOA"i        %{ r_type = KNOT_RRTYPE_SOA; }
-	    | "PTR"i        %{ r_type = KNOT_RRTYPE_PTR; }
-	    | "HINFO"i      %{ r_type = KNOT_RRTYPE_HINFO; }
-	    | "MINFO"i      %{ r_type = KNOT_RRTYPE_MINFO; }
-	    | "MX"i         %{ r_type = KNOT_RRTYPE_MX; }
-	    | "TXT"i        %{ r_type = KNOT_RRTYPE_TXT; }
-	    | "RP"i         %{ r_type = KNOT_RRTYPE_RP; }
-	    | "AFSDB"i      %{ r_type = KNOT_RRTYPE_AFSDB; }
-	    | "RT"i         %{ r_type = KNOT_RRTYPE_RT; }
-	    | "KEY"i        %{ r_type = KNOT_RRTYPE_KEY; }
-	    | "AAAA"i       %{ r_type = KNOT_RRTYPE_AAAA; }
-	    | "LOC"i        %{ r_type = KNOT_RRTYPE_LOC; }
-	    | "SRV"i        %{ r_type = KNOT_RRTYPE_SRV; }
-	    | "NAPTR"i      %{ r_type = KNOT_RRTYPE_NAPTR; }
-	    | "KX"i         %{ r_type = KNOT_RRTYPE_KX; }
-	    | "CERT"i       %{ r_type = KNOT_RRTYPE_CERT; }
-	    | "DNAME"i      %{ r_type = KNOT_RRTYPE_DNAME; }
-	    | "APL"i        %{ r_type = KNOT_RRTYPE_APL; }
-	    | "DS"i         %{ r_type = KNOT_RRTYPE_DS; }
-	    | "SSHFP"i      %{ r_type = KNOT_RRTYPE_SSHFP; }
-	    | "IPSECKEY"i   %{ r_type = KNOT_RRTYPE_IPSECKEY; }
-	    | "RRSIG"i      %{ r_type = KNOT_RRTYPE_RRSIG; }
-	    | "NSEC"i       %{ r_type = KNOT_RRTYPE_NSEC; }
-	    | "DNSKEY"i     %{ r_type = KNOT_RRTYPE_DNSKEY; }
-	    | "DHCID"i      %{ r_type = KNOT_RRTYPE_DHCID; }
-	    | "NSEC3"i      %{ r_type = KNOT_RRTYPE_NSEC3; }
-	    | "NSEC3PARAM"i %{ r_type = KNOT_RRTYPE_NSEC3PARAM; }
-	    | "TLSA"i       %{ r_type = KNOT_RRTYPE_TLSA; }
-	    | "SPF"i        %{ r_type = KNOT_RRTYPE_SPF; }
+	    ( "A"i          %{ s->r_type = KNOT_RRTYPE_A; }
+	    | "NS"i         %{ s->r_type = KNOT_RRTYPE_NS; }
+	    | "CNAME"i      %{ s->r_type = KNOT_RRTYPE_CNAME; }
+	    | "SOA"i        %{ s->r_type = KNOT_RRTYPE_SOA; }
+	    | "PTR"i        %{ s->r_type = KNOT_RRTYPE_PTR; }
+	    | "HINFO"i      %{ s->r_type = KNOT_RRTYPE_HINFO; }
+	    | "MINFO"i      %{ s->r_type = KNOT_RRTYPE_MINFO; }
+	    | "MX"i         %{ s->r_type = KNOT_RRTYPE_MX; }
+	    | "TXT"i        %{ s->r_type = KNOT_RRTYPE_TXT; }
+	    | "RP"i         %{ s->r_type = KNOT_RRTYPE_RP; }
+	    | "AFSDB"i      %{ s->r_type = KNOT_RRTYPE_AFSDB; }
+	    | "RT"i         %{ s->r_type = KNOT_RRTYPE_RT; }
+	    | "KEY"i        %{ s->r_type = KNOT_RRTYPE_KEY; }
+	    | "AAAA"i       %{ s->r_type = KNOT_RRTYPE_AAAA; }
+	    | "LOC"i        %{ s->r_type = KNOT_RRTYPE_LOC; }
+	    | "SRV"i        %{ s->r_type = KNOT_RRTYPE_SRV; }
+	    | "NAPTR"i      %{ s->r_type = KNOT_RRTYPE_NAPTR; }
+	    | "KX"i         %{ s->r_type = KNOT_RRTYPE_KX; }
+	    | "CERT"i       %{ s->r_type = KNOT_RRTYPE_CERT; }
+	    | "DNAME"i      %{ s->r_type = KNOT_RRTYPE_DNAME; }
+	    | "APL"i        %{ s->r_type = KNOT_RRTYPE_APL; }
+	    | "DS"i         %{ s->r_type = KNOT_RRTYPE_DS; }
+	    | "SSHFP"i      %{ s->r_type = KNOT_RRTYPE_SSHFP; }
+	    | "IPSECKEY"i   %{ s->r_type = KNOT_RRTYPE_IPSECKEY; }
+	    | "RRSIG"i      %{ s->r_type = KNOT_RRTYPE_RRSIG; }
+	    | "NSEC"i       %{ s->r_type = KNOT_RRTYPE_NSEC; }
+	    | "DNSKEY"i     %{ s->r_type = KNOT_RRTYPE_DNSKEY; }
+	    | "DHCID"i      %{ s->r_type = KNOT_RRTYPE_DHCID; }
+	    | "NSEC3"i      %{ s->r_type = KNOT_RRTYPE_NSEC3; }
+	    | "NSEC3PARAM"i %{ s->r_type = KNOT_RRTYPE_NSEC3PARAM; }
+	    | "TLSA"i       %{ s->r_type = KNOT_RRTYPE_TLSA; }
+	    | "SPF"i        %{ s->r_type = KNOT_RRTYPE_SPF; }
 	    | "TYPE"i      . type_number
-		) $!_r_type_error;
+	    ) $!_r_type_error;
 	# END
 
 	# BEGIN - Top level processing
 	action _record_exit {
-		s->r_type = r_type;
-
 		if (rdata_tail - s->r_data > UINT16_MAX) {
 			SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
 			fhold; fgoto err_line;

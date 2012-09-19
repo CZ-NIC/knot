@@ -29,12 +29,13 @@
 
 #include <stdint.h>
 
-#include "zscanner/scanner.h"
+#include "common/descriptor_new.h"	// KNOT_CLASS_IN
+#include "zscanner/scanner.h"		// uint32_t
 
-#define SETTINGS_BUFFER_LENGTH		  1024
+#define SETTINGS_BUFFER_LENGTH		 1024
 
-#define DEFAULT_TTL		(uint32_t)3600
-#define DEFAULT_CLASS		(uint16_t)   1 // IN
+#define DEFAULT_TTL			 3600
+#define DEFAULT_CLASS		KNOT_CLASS_IN
 
 
 /*!

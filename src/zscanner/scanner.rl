@@ -22,11 +22,12 @@
 #include <libgen.h>			// dirname
 #include <stdbool.h>			// bool
 #include <math.h>			// pow
+#include <string.h>			// strdup
 #include <sys/socket.h>			// AF_INET (BSD)
 #include <netinet/in.h>			// in_addr (BSD)
 
 #include "common/errcode.h"		// error codes
-#include "util/descriptor.h"		// KNOT_RRTYPE_A
+#include "common/descriptor_new.h"	// KNOT_RRTYPE_A
 #include "zscanner/file_loader.h"	// file_loader
 #include "zscanner/scanner_functions.h"	// Base64
 
@@ -108,8 +109,6 @@ int scanner_process(char      *start,
 	uint8_t *rdata_tail = s->r_data + s->r_data_tail;
 	// Initialization of the last r_data byte.
 	uint8_t *rdata_stop = s->r_data + MAX_RDATA_LENGTH - 1;
-	// Initialization of the r_type.
-	uint16_t r_type = s->r_type_tmp;
 
 	// Restoring scanner states.
 	int cs  = s->cs;
@@ -161,9 +160,8 @@ int scanner_process(char      *start,
 	s->top = top;
 	memcpy(s->stack, stack, sizeof(stack));
 
-	// Storing r_data pointer and r_type
+	// Storing r_data pointer
 	s->r_data_tail = rdata_tail - s->r_data;
-	s->r_type_tmp = r_type;
 
 	// Storing unprocessed token shift
 	if (ts != NULL) {

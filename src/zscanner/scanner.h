@@ -88,8 +88,6 @@ struct scanner {
 	uint32_t token_shift;
 	uint32_t r_data_tail; /*!< Position of actual r_data byte. */
 
-	uint16_t r_type_tmp; /*!< Used between scanner calls. */
-
 	/*!< Zone file name. */
 	char     *file_name;
 	/*!< Zone file line counter. */
