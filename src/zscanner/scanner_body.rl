@@ -362,6 +362,11 @@
 	# END
 
 	# BEGIN - Time processing
+	action _time_unit_error {
+		SCANNER_WARNING(ZSCANNER_EBAD_TIME_UNIT);
+		fhold; fgoto err_line;
+	}
+
 	time_unit =
 	    ( 's'i
 	    | 'm'i ${ if (s->number64 <= (UINT64_MAX / 60)) {
@@ -392,7 +397,7 @@
 	                  fhold; fgoto err_line;
 	              }
 	            }
-	    );
+	    ) $!_time_unit_error;
 
 	time = number . time_unit?;
 
