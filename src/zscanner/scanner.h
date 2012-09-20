@@ -105,7 +105,7 @@ struct scanner {
 	bool     multiline;
 	/*!< Auxiliary number for all numeric operations. */
 	uint64_t number64;
-	/*!< Auxiliary variables for float numeric operations. */
+	/*!< Auxiliary variables for time and float numeric operations. */
 	uint64_t number64_tmp;
 	uint32_t decimals;
 	uint32_t decimal_counter;

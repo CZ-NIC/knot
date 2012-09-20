@@ -373,37 +373,53 @@
 
 	time_unit =
 	    ( 's'i
-	    | 'm'i ${ if (s->number64 <= (UINT64_MAX / 60)) {
+	    | 'm'i ${ if (s->number64 <= (UINT32_MAX / 60)) {
 	                  s->number64 *= 60;
 	              } else {
-	                  SCANNER_WARNING(ZSCANNER_ENUMBER64_OVERFLOW);
+	                  SCANNER_WARNING(ZSCANNER_ENUMBER32_OVERFLOW);
 	                  fhold; fgoto err_line;
 	              }
 	            }
-	    | 'h'i ${ if (s->number64 <= (UINT64_MAX / 3600)) {
+	    | 'h'i ${ if (s->number64 <= (UINT32_MAX / 3600)) {
 	                  s->number64 *= 3600;
 	              } else {
-	                  SCANNER_WARNING(ZSCANNER_ENUMBER64_OVERFLOW);
+	                  SCANNER_WARNING(ZSCANNER_ENUMBER32_OVERFLOW);
 	                  fhold; fgoto err_line;
 	              }
 	            }
-	    | 'd'i ${ if (s->number64 <= (UINT64_MAX / 86400)) {
+	    | 'd'i ${ if (s->number64 <= (UINT32_MAX / 86400)) {
 	                  s->number64 *= 86400;
 	              } else {
-	                  SCANNER_WARNING(ZSCANNER_ENUMBER64_OVERFLOW);
+	                  SCANNER_WARNING(ZSCANNER_ENUMBER32_OVERFLOW);
 	                  fhold; fgoto err_line;
 	              }
 	            }
-	    | 'w'i ${ if (s->number64 <= (UINT64_MAX / 604800)) {
+	    | 'w'i ${ if (s->number64 <= (UINT32_MAX / 604800)) {
 	                  s->number64 *= 604800;
 	              } else {
-	                  SCANNER_WARNING(ZSCANNER_ENUMBER64_OVERFLOW);
+	                  SCANNER_WARNING(ZSCANNER_ENUMBER32_OVERFLOW);
 	                  fhold; fgoto err_line;
 	              }
 	            }
 	    ) $!_time_unit_error;
 
-	time = (number . time_unit?) $!_number_error;
+
+	action _time_block_init {
+		s->number64_tmp = s->number64;
+	}
+	action _time_block_exit {
+		if (s->number64 + s->number64_tmp < UINT32_MAX) {
+			s->number64 += s->number64_tmp;
+		} else {
+			SCANNER_WARNING(ZSCANNER_ENUMBER32_OVERFLOW);
+			fhold; fgoto err_line;
+		}
+	}
+
+	time_block = (number . time_unit) >_time_block_init %_time_block_exit;
+
+	# Time is either a number or a sequence of time blocks (1w1h1m)
+	time = (number . (time_unit . (time_block)*)?) $!_number_error;
 
 	time32 = time %_num32_write;
 	# END
@@ -541,7 +557,7 @@
 	}
 
 	default_ttl_ := (sep . time . rest) $!_default_ttl_error
-					%_default_ttl_exit %_ret . newline;
+	                %_default_ttl_exit %_ret . newline;
 	default_ttl = all_wchar ${ fhold; fcall default_ttl_; };
 	# END
 
@@ -558,7 +574,7 @@
 	}
 
 	zone_origin_ := (sep . absolute_dname >_zone_origin_init . rest)
-					$!_zone_origin_error %_zone_origin_exit %_ret . newline;
+	                $!_zone_origin_error %_zone_origin_exit %_ret . newline;
 
 	zone_origin = all_wchar ${ fhold; fcall zone_origin_; };
 	# END
