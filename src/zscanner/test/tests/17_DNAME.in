@@ -1,0 +1,14 @@
+$ORIGIN	.
+$TTL	1
+
+; The DNAME is the same as the NS, so there are the differences and basics only.
+
+; OK
+@	DNAME	test.example.com		; Relative dname
+@	DNAME	\# 1 00				; Hexadecimal rdata
+@	TYPE39	\# 1 00				; TYPE + Hexadecimal rdata
+@	TYPE39	@				; TYPE
+@	dname	@				; Type in lower-case
+
+; KO
+@	DNAME

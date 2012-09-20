@@ -80,6 +80,7 @@ const error_table_t knot_error_msgs[] = {
 	{ZSCANNER_EBAD_OWNER, "Owner is invalid!"},
 	{ZSCANNER_ELABEL_OVERFLOW, "Maximal domain name label length has exceeded!"},
 	{ZSCANNER_EDNAME_OVERFLOW, "Maximal domain name length has exceeded!"},
+	{ZSCANNER_EBAD_NUMBER, "Bad number!"},
 	{ZSCANNER_ENUMBER64_OVERFLOW, "Number is too big!"},
 	{ZSCANNER_ENUMBER32_OVERFLOW, "Number is bigger than 32 bits!"},
 	{ZSCANNER_ENUMBER16_OVERFLOW, "Number is bigger than 16 bits!"},

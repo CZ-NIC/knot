@@ -1,0 +1,14 @@
+$ORIGIN	.
+$TTL	1
+
+; The PTR is the same as the NS, so there are the differences and basics only.
+
+; OK
+@	PTR	test.example.com		; Relative dname
+@	PTR	\# 1 00				; Hexadecimal rdata
+@	TYPE12	\# 1 00				; TYPE + Hexadecimal rdata
+@	TYPE12	@				; TYPE
+@	ptr	@				; Type in lower-case
+
+; KO
+@	PTR

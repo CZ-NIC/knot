@@ -265,6 +265,10 @@
 	action _number_init {
 		s->number64 = 0;
 	}
+	action _number_error {
+		SCANNER_WARNING(ZSCANNER_EBAD_NUMBER);
+		fhold; fgoto err_line;
+	}
 
 	# General integer number that cover all necessary integer ranges.
 	number = number_digit+ >_number_init;
@@ -353,12 +357,12 @@
 			fhold; fgoto err_line;
 		}
 	}
-	num8  = number %_num8_write;
-	num16 = number %_num16_write;
-	num32 = number %_num32_write;
+	num8  = number %_num8_write  $!_number_error;
+	num16 = number %_num16_write $!_number_error;
+	num32 = number %_num32_write $!_number_error;
 
-	type_number   = number %_type_number_exit;
-	length_number = number %_length_number_exit;
+	type_number   = number %_type_number_exit $!_number_error;
+	length_number = number %_length_number_exit $!_number_error;
 	# END
 
 	# BEGIN - Time processing
@@ -399,7 +403,7 @@
 	            }
 	    ) $!_time_unit_error;
 
-	time = number . time_unit?;
+	time = (number . time_unit?) $!_number_error;
 
 	time32 = time %_num32_write;
 	# END
@@ -1493,10 +1497,10 @@
 		case KNOT_RRTYPE_MINFO:
 			fcall r_data_minfo;
 		case KNOT_RRTYPE_MX:
+		case KNOT_RRTYPE_RP:
 		case KNOT_RRTYPE_AFSDB:
 		case KNOT_RRTYPE_RT:
 		case KNOT_RRTYPE_KX:
-		case KNOT_RRTYPE_RP:
 			fcall r_data_mx;
 		case KNOT_RRTYPE_TXT:
 		case KNOT_RRTYPE_SPF:
