@@ -43,19 +43,16 @@
  * program. Distinct Resource Records are thus represented only as distinct
  * RDATA sections of corresponding RRs.
  */
+
 struct knot_rrset {
 	/*! \brief Domain name being the owner of the RRSet. */
 	knot_dname_t *owner;
 	uint16_t type; /*!< TYPE of the RRset. */
 	uint16_t rclass; /*!< CLASS of the RRSet. */
 	uint32_t ttl; /*!< TTL of the RRSet. */
-	/*!
-	 * \brief First item in an ordered cyclic list of RDATA items.
-	 *
-	 * \note The fact that the list is cyclic will easily allow for
-	 *       possible round-robin rotation of RRSets.
-	 */
-	knot_rdata_t *rdata;
+	uint8_t *rdata;
+	uint32_t *rdata_indices;
+	uint16_t rdata_count;
 	struct knot_rrset *rrsigs; /*!< Set of RRSIGs covering this RRSet. */
 };
 
@@ -103,7 +100,8 @@ knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
  *
  * \todo Provide some function for comparing RDATAs.
  */
-int knot_rrset_add_rdata(knot_rrset_t *rrset, knot_rdata_t *rdata);
+int knot_rrset_add_rdata(knot_rrset_t *rrset, uint8_t *rdata,
+                         uint32_t size);
 
 /*!
  * \brief Adds the given RDATA to the RRSet but will not insert duplicated data.
@@ -222,7 +220,7 @@ const knot_rdata_t *knot_rrset_rdata_next(const knot_rrset_t *rrset,
  * \return First RDATA in the given RRSet or NULL if there is none or if no
  *         rrset was provided (\a rrset is NULL).
  */
-knot_rdata_t *knot_rrset_get_rdata(knot_rrset_t *rrset);
+uint8_t *knot_rrset_get_rdata(knot_rrset_t *rrset, size_t rdata_pos);
 
 knot_rdata_t *knot_rrset_rdata_get_next(knot_rrset_t *rrset,
                                             knot_rdata_t *rdata);

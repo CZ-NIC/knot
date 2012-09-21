@@ -32,7 +32,7 @@
 #include <string.h>
 
 #include "dname.h"
-#include "util/descriptor.h"
+#include "common/descriptor_new.h"
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -121,7 +121,7 @@ knot_rdata_t *knot_rdata_new();
  */
 int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
                            size_t *pos, size_t total_size, size_t rdlength,
-                           const knot_rrtype_descriptor_t *desc);
+                           const rdata_descriptor_t *desc);
 
 /*!
  * \brief Sets the RDATA item on position \a pos.

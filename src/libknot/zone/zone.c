@@ -25,8 +25,6 @@
 #include "zone/zone.h"
 #include "zone/node.h"
 #include "dname.h"
-#include "util/descriptor.h"
-#include "nsec3.h"
 #include "util/debug.h"
 #include "util/utils.h"
 #include "hash/cuckoo-hash-table.h"

@@ -126,7 +126,9 @@ typedef struct {
  * \return RR descriptor for given name, NULL descriptor if
  *         unknown type.
  */
-const rdata_descriptor_t *get_rdata_descriptor(const uint16_t type);
+const int *get_rdata_descriptor(const uint16_t type);
+
+int descriptor_item_is_dname(int item);
 
 #endif // _KNOT_DESCRIPTOR_NEW_H_
 

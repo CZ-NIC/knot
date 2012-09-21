@@ -22,7 +22,7 @@
 
 #include "common.h"
 #include "rrset.h"
-#include "util/descriptor.h"
+#include "common/descriptor_new.h"
 #include "util/debug.h"
 #include "util/utils.h"
 
@@ -30,40 +30,12 @@
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
 
-static void knot_rrset_disconnect_rdata(knot_rrset_t *rrset,
-                                        knot_rdata_t *prev, knot_rdata_t *rdata)
-{
-	if (prev == NULL) {
-		// find the previous RDATA in the series, as its pointer must
-		// be changed
-		prev = rdata->next;
-		while (prev->next != rdata) {
-			prev = prev->next;
-		}
-	}
-
-	assert(prev);
-	assert(prev->next == rdata);
-
-	prev->next = rdata->next;
-
-	if (rrset->rdata == rdata) {
-		if (rdata->next == rdata) {
-			rrset->rdata = NULL;
-		} else {
-			rrset->rdata = rdata->next;
-		}
-	}
-
-	rdata->next = NULL;
-}
-
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
 knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
-                                 uint16_t rclass, uint32_t ttl)
+                             uint16_t rclass, uint32_t ttl)
 {
 	knot_rrset_t *ret = malloc(sizeof(knot_rrset_t));
 	if (ret == NULL) {
@@ -87,106 +59,111 @@ knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_rrset_add_rdata(knot_rrset_t *rrset, knot_rdata_t *rdata)
+int knot_rrset_add_rdata(knot_rrset_t *rrset,
+                         uint8_t *rdata, uint32_t size)
 {
 	if (rrset == NULL || rdata == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	if (rrset->rdata == NULL) {
-		rrset->rdata = rdata;
-		rrset->rdata->next = rrset->rdata;
-	} else {
-		knot_rdata_t *tmp;
-
-		tmp = rrset->rdata;
-
-		while (tmp->next != rrset->rdata) {
-			tmp = tmp->next;
-		}
-		rdata->next = tmp->next;
-		tmp->next = rdata;
-	}
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_rrset_add_rdata_order(knot_rrset_t *rrset, knot_rdata_t *rdata)
-{
-	if (rrset == NULL || rdata == NULL) {
-		dbg_rrset("rrset: add_rdata_order: NULL arguments.\n");
 		return KNOT_EINVAL;
 	}
 	
-	if (rrset->rdata == NULL) {
-		/* Easy peasy, just insert the first item. */
-		rrset->rdata = rdata;
-		rrset->rdata->next = rrset->rdata;
+	/* Realloc indices. We will allocate exact size to save space. */
+	void *tmp = realloc(rrset->rdata_indices, rrset->rdata_count + 1);
+	if (tmp == NULL) {
+		ERR_ALLOC_FAILED;
+		return KNOT_ENOMEM;
 	} else {
-		knot_rdata_t *walk = NULL;
-		char found = 0;
-		knot_rdata_t *insert_after = rrset->rdata;
-		while (((walk = knot_rrset_rdata_get_next(rrset,
-		                                          walk)) != NULL) && 
-		       (!found)) {
-			const knot_rrtype_descriptor_t *desc =
-				knot_rrtype_descriptor_by_type(rrset->type);
-			assert(desc);
-			int cmp = knot_rdata_compare(rdata, walk,
-			                             desc->wireformat);
-			if (cmp < 1) {
-				/* We've found place for this item. */
-			} else if (cmp == 0) {
-				/* This item will not be inserted. */
-				found = 1;
-				insert_after = NULL;
-			}
-			assert(cmp > 1);
-			/* Continue the search. */
-			insert_after = walk;
-		}
-		if (insert_after != NULL) {
-			rdata->next = insert_after->next;
-			insert_after->next = rdata;
-		} else {
-			;
-			/* Consider returning something different than EOK. */
-		}
+		rrset->rdata_indices = tmp;
 	}
+	
+	if (rrset->rdata_count == 0) {
+		rrset->rdata_indices[0] = size;
+	} else {
+		rrset->rdata_indices[rrset->rdata_count] =
+			rrset->rdata_indices[rrset->rdata_count - 1] + size;
+	}
+	
+	rrset->rdata_count++;
+
 	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
-knot_rdata_t *knot_rrset_remove_rdata(knot_rrset_t *rrset,
-                                          const knot_rdata_t *rdata)
-{
-	if (rrset == NULL || rdata == NULL) {
-		return NULL;
-	}
+//int knot_rrset_add_rdata_order(knot_rrset_t *rrset, knot_rdata_t *rdata)
+//{
+//	if (rrset == NULL || rdata == NULL) {
+//		dbg_rrset("rrset: add_rdata_order: NULL arguments.\n");
+//		return KNOT_EINVAL;
+//	}
+	
+//	if (rrset->rdata == NULL) {
+//		/* Easy peasy, just insert the first item. */
+//		rrset->rdata = rdata;
+//		rrset->rdata->next = rrset->rdata;
+//	} else {
+//		knot_rdata_t *walk = NULL;
+//		char found = 0;
+//		knot_rdata_t *insert_after = rrset->rdata;
+//		while (((walk = knot_rrset_rdata_get_next(rrset,
+//		                                          walk)) != NULL) && 
+//		       (!found)) {
+//			const knot_rrtype_descriptor_t *desc =
+//				knot_rrtype_descriptor_by_type(rrset->type);
+//			assert(desc);
+//			int cmp = knot_rdata_compare(rdata, walk,
+//			                             desc->wireformat);
+//			if (cmp < 1) {
+//				/* We've found place for this item. */
+//			} else if (cmp == 0) {
+//				/* This item will not be inserted. */
+//				found = 1;
+//				insert_after = NULL;
+//			}
+//			assert(cmp > 1);
+//			/* Continue the search. */
+//			insert_after = walk;
+//		}
+//		if (insert_after != NULL) {
+//			rdata->next = insert_after->next;
+//			insert_after->next = rdata;
+//		} else {
+//			;
+//			/* Consider returning something different than EOK. */
+//		}
+//	}
+//	return KNOT_EOK;
+//}
 
-	knot_rdata_t *prev = NULL;
-	knot_rdata_t *rr = rrset->rdata;
-	knot_rrtype_descriptor_t *desc =
-		knot_rrtype_descriptor_by_type(rrset->type);
+/*----------------------------------------------------------------------------*/
 
-	if (desc == NULL) {
-		return NULL;
-	}
+//knot_rdata_t *knot_rrset_remove_rdata(knot_rrset_t *rrset,
+//                                          const knot_rdata_t *rdata)
+//{
+//	if (rrset == NULL || rdata == NULL) {
+//		return NULL;
+//	}
 
-	while (rr != NULL) {
-		/*! \todo dnames are compared case-insensitive. is it OK?*/
-		if (knot_rdata_compare(rr, rdata, desc->wireformat) == 0) {
-			knot_rrset_disconnect_rdata(rrset, prev, rr);
-			return rr;
-		}
-		prev = rr;
-		rr = knot_rrset_rdata_get_next(rrset, rr);
-	}
+//	knot_rdata_t *prev = NULL;
+//	knot_rdata_t *rr = rrset->rdata;
+//	knot_rrtype_descriptor_t *desc =
+//		knot_rrtype_descriptor_by_type(rrset->type);
 
-	return NULL;
-}
+//	if (desc == NULL) {
+//		return NULL;
+//	}
+
+//	while (rr != NULL) {
+//		/*! \todo dnames are compared case-insensitive. is it OK?*/
+//		if (knot_rdata_compare(rr, rdata, desc->wireformat) == 0) {
+//			knot_rrset_disconnect_rdata(rrset, prev, rr);
+//			return rr;
+//		}
+//		prev = rr;
+//		rr = knot_rrset_rdata_get_next(rrset, rr);
+//	}
+
+//	return NULL;
+//}
 
 /*----------------------------------------------------------------------------*/
 
@@ -301,30 +278,9 @@ uint32_t knot_rrset_ttl(const knot_rrset_t *rrset)
 
 /*----------------------------------------------------------------------------*/
 
-const knot_rdata_t *knot_rrset_rdata(const knot_rrset_t *rrset)
+uint8_t *knot_rrset_get_rdata(knot_rrset_t *rrset, size_t rdata_pos)
 {
-	return rrset->rdata;
-}
-
-/*----------------------------------------------------------------------------*/
-
-const knot_rdata_t *knot_rrset_rdata_next(const knot_rrset_t *rrset,
-                                              const knot_rdata_t *rdata)
-{
-	if (rdata == NULL) {
-		return rrset->rdata;
-	}
-	if (rdata->next == rrset->rdata) {
-		return NULL;
-	} else {
-		return rdata->next;
-	}
-}
-
-/*----------------------------------------------------------------------------*/
-
-knot_rdata_t *knot_rrset_get_rdata(knot_rrset_t *rrset)
-{
+	//V rdata-items
 	if (rrset == NULL) {
 		return NULL;
 	} else {
@@ -334,33 +290,13 @@ knot_rdata_t *knot_rrset_get_rdata(knot_rrset_t *rrset)
 
 /*----------------------------------------------------------------------------*/
 
-knot_rdata_t *knot_rrset_rdata_get_next(knot_rrset_t *rrset,
-                                            knot_rdata_t *rdata)
+int16_t knot_rrset_rdata_rr_count(const knot_rrset_t *rrset)
 {
-	if (rdata->next == rrset->rdata) {
-		return NULL;
+	if (rrset != NULL) {
+		return rrset->rdata_count;
 	} else {
-		return rdata->next;
-	}
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_rrset_rdata_rr_count(const knot_rrset_t *rrset)
-{
-	if (rrset == NULL) {
 		return 0;
 	}
-
-	int count = 0;
-	const knot_rdata_t *rdata = rrset->rdata;
-	
-	while (rdata != NULL) {
-		++count;
-		rdata = knot_rrset_rdata_next(rrset, rdata);
-	}
-	
-	return count;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -368,7 +304,6 @@ int knot_rrset_rdata_rr_count(const knot_rrset_t *rrset)
 const knot_rrset_t *knot_rrset_rrsigs(const knot_rrset_t *rrset)
 {
 	if (rrset == NULL) {
-		assert(0);
 		return NULL;
 	} else {
 		return rrset->rrsigs;
@@ -448,159 +383,159 @@ int knot_rrset_compare_rdata(const knot_rrset_t *r1, const knot_rrset_t *r2)
 
 /*----------------------------------------------------------------------------*/
 
-static int knot_rrset_rr_to_wire(const knot_rrset_t *rrset, 
-                                 const knot_rdata_t *rdata, uint8_t **pos,
-                                 size_t max_size)
-{
-	int size = 0;
+//static int knot_rrset_rr_to_wire(const knot_rrset_t *rrset, 
+//                                 const knot_rdata_t *rdata, uint8_t **pos,
+//                                 size_t max_size)
+//{
+//	int size = 0;
 	
-	assert(rrset != NULL);
-	assert(rrset->owner != NULL);
-	assert(rdata != NULL);
-	assert(pos != NULL);
-	assert(*pos != NULL);
+//	assert(rrset != NULL);
+//	assert(rrset->owner != NULL);
+//	assert(rdata != NULL);
+//	assert(pos != NULL);
+//	assert(*pos != NULL);
 	
-	dbg_rrset_detail("Max size: %zu, owner: %p, owner size: %d\n",
-	        max_size, rrset->owner, rrset->owner->size);
+//	dbg_rrset_detail("Max size: %zu, owner: %p, owner size: %d\n",
+//	        max_size, rrset->owner, rrset->owner->size);
 
-	// check if owner fits
-	if (size + knot_dname_size(rrset->owner) + 10 > max_size) {
-		return KNOT_ESPACE;
-	}
+//	// check if owner fits
+//	if (size + knot_dname_size(rrset->owner) + 10 > max_size) {
+//		return KNOT_ESPACE;
+//	}
 	
-	memcpy(*pos, knot_dname_name(rrset->owner), 
-	       knot_dname_size(rrset->owner));
-	*pos += knot_dname_size(rrset->owner);
-	size += knot_dname_size(rrset->owner);
+//	memcpy(*pos, knot_dname_name(rrset->owner), 
+//	       knot_dname_size(rrset->owner));
+//	*pos += knot_dname_size(rrset->owner);
+//	size += knot_dname_size(rrset->owner);
 	
-	dbg_rrset_detail("Max size: %zu, size: %d\n", max_size, size);
+//	dbg_rrset_detail("Max size: %zu, size: %d\n", max_size, size);
 
-	dbg_rrset_detail("Wire format:\n");
+//	dbg_rrset_detail("Wire format:\n");
 
-	// put rest of RR 'header'
-	knot_wire_write_u16(*pos, rrset->type);
-	dbg_rrset_detail("  Type: %u\n", rrset->type);
-	*pos += 2;
+//	// put rest of RR 'header'
+//	knot_wire_write_u16(*pos, rrset->type);
+//	dbg_rrset_detail("  Type: %u\n", rrset->type);
+//	*pos += 2;
 
-	knot_wire_write_u16(*pos, rrset->rclass);
-	dbg_rrset_detail("  Class: %u\n", rrset->rclass);
-	*pos += 2;
+//	knot_wire_write_u16(*pos, rrset->rclass);
+//	dbg_rrset_detail("  Class: %u\n", rrset->rclass);
+//	*pos += 2;
 
-	knot_wire_write_u32(*pos, rrset->ttl);
-	dbg_rrset_detail("  TTL: %u\n", rrset->ttl);
-	*pos += 4;
+//	knot_wire_write_u32(*pos, rrset->ttl);
+//	dbg_rrset_detail("  TTL: %u\n", rrset->ttl);
+//	*pos += 4;
 
-	// save space for RDLENGTH
-	uint8_t *rdlength_pos = *pos;
-	*pos += 2;
+//	// save space for RDLENGTH
+//	uint8_t *rdlength_pos = *pos;
+//	*pos += 2;
 
-	size += 10;
+//	size += 10;
 	
-	dbg_rrset_detail("Max size: %zu, size: %d\n", max_size, size);
+//	dbg_rrset_detail("Max size: %zu, size: %d\n", max_size, size);
 
-	knot_rrtype_descriptor_t *desc =
-		knot_rrtype_descriptor_by_type(rrset->type);
+//	knot_rrtype_descriptor_t *desc =
+//		knot_rrtype_descriptor_by_type(rrset->type);
 
-	uint16_t rdlength = 0;
+//	uint16_t rdlength = 0;
 
-	for (int i = 0; i < rdata->count; ++i) {
-		if (max_size < size + rdlength) {
-			return KNOT_ESPACE;
-		}
+//	for (int i = 0; i < rdata->count; ++i) {
+//		if (max_size < size + rdlength) {
+//			return KNOT_ESPACE;
+//		}
 		
-		switch (desc->wireformat[i]) {
-		case KNOT_RDATA_WF_COMPRESSED_DNAME:
-		case KNOT_RDATA_WF_UNCOMPRESSED_DNAME:
-		case KNOT_RDATA_WF_LITERAL_DNAME: {
-			knot_dname_t *dname =
-				knot_rdata_item(rdata, i)->dname;
-			if (size + rdlength + dname->size > max_size) {
-				return KNOT_ESPACE;
-			}
+//		switch (desc->wireformat[i]) {
+//		case KNOT_RDATA_WF_COMPRESSED_DNAME:
+//		case KNOT_RDATA_WF_UNCOMPRESSED_DNAME:
+//		case KNOT_RDATA_WF_LITERAL_DNAME: {
+//			knot_dname_t *dname =
+//				knot_rdata_item(rdata, i)->dname;
+//			if (size + rdlength + dname->size > max_size) {
+//				return KNOT_ESPACE;
+//			}
 
-			// save whole domain name
-			memcpy(*pos, knot_dname_name(dname), 
-			       knot_dname_size(dname));
-			dbg_rrset_detail("Uncompressed dname size: %d\n",
-			                 knot_dname_size(dname));
-			*pos += knot_dname_size(dname);
-			rdlength += knot_dname_size(dname);
-			break;
-		}
-		default: {
-			uint16_t *raw_data =
-				knot_rdata_item(rdata, i)->raw_data;
+//			// save whole domain name
+//			memcpy(*pos, knot_dname_name(dname), 
+//			       knot_dname_size(dname));
+//			dbg_rrset_detail("Uncompressed dname size: %d\n",
+//			                 knot_dname_size(dname));
+//			*pos += knot_dname_size(dname);
+//			rdlength += knot_dname_size(dname);
+//			break;
+//		}
+//		default: {
+//			uint16_t *raw_data =
+//				knot_rdata_item(rdata, i)->raw_data;
 
-			if (size + rdlength + raw_data[0] > max_size) {
-				return KNOT_ESPACE;
-			}
+//			if (size + rdlength + raw_data[0] > max_size) {
+//				return KNOT_ESPACE;
+//			}
 
-			// copy just the rdata item data (without size)
-			memcpy(*pos, raw_data + 1, raw_data[0]);
-			dbg_rrset_detail("Raw data size: %d\n", raw_data[0]);
-			*pos += raw_data[0];
-			rdlength += raw_data[0];
-			break;
-		}
-		}
-	}
+//			// copy just the rdata item data (without size)
+//			memcpy(*pos, raw_data + 1, raw_data[0]);
+//			dbg_rrset_detail("Raw data size: %d\n", raw_data[0]);
+//			*pos += raw_data[0];
+//			rdlength += raw_data[0];
+//			break;
+//		}
+//		}
+//	}
 	
-	dbg_rrset_detail("Max size: %zu, size: %d\n", max_size, size);
+//	dbg_rrset_detail("Max size: %zu, size: %d\n", max_size, size);
 
-	assert(size + rdlength <= max_size);
-	size += rdlength;
-	knot_wire_write_u16(rdlength_pos, rdlength);
+//	assert(size + rdlength <= max_size);
+//	size += rdlength;
+//	knot_wire_write_u16(rdlength_pos, rdlength);
 
-	return size;
-}
+//	return size;
+//}
 
 /*----------------------------------------------------------------------------*/
 
-int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
-                       int *rr_count)
-{
-	// if no RDATA in RRSet, return
-	if (rrset->rdata == NULL) {
-		*size = 0;
-		*rr_count = 0;
-		return KNOT_EOK;
-	}
+//int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
+//                       int *rr_count)
+//{
+//	// if no RDATA in RRSet, return
+//	if (rrset->rdata == NULL) {
+//		*size = 0;
+//		*rr_count = 0;
+//		return KNOT_EOK;
+//	}
 	
 
-	uint8_t *pos = wire;
-	int rrs = 0;
-	short rrset_size = 0;
+//	uint8_t *pos = wire;
+//	int rrs = 0;
+//	short rrset_size = 0;
 
-	const knot_rdata_t *rdata = rrset->rdata;
-	do {
-		int ret = knot_rrset_rr_to_wire(rrset, rdata, &pos, 
-		                                *size - rrset_size);
+//	const knot_rdata_t *rdata = rrset->rdata;
+//	do {
+//		int ret = knot_rrset_rr_to_wire(rrset, rdata, &pos, 
+//		                                *size - rrset_size);
 
-		assert(ret != 0);
+//		assert(ret != 0);
 
-		if (ret < 0) {
-			// some RR didn't fit in, so no RRs should be used
-			// TODO: remove last entries from compression table
-			dbg_rrset_verb("Some RR didn't fit in.\n");
-			return KNOT_ESPACE;
-		}
+//		if (ret < 0) {
+//			// some RR didn't fit in, so no RRs should be used
+//			// TODO: remove last entries from compression table
+//			dbg_rrset_verb("Some RR didn't fit in.\n");
+//			return KNOT_ESPACE;
+//		}
 
-		dbg_rrset_verb("RR of size %d added.\n", ret);
-		rrset_size += ret;
-		++rrs;
-	} while ((rdata = knot_rrset_rdata_next(rrset, rdata)) != NULL);
+//		dbg_rrset_verb("RR of size %d added.\n", ret);
+//		rrset_size += ret;
+//		++rrs;
+//	} while ((rdata = knot_rrset_rdata_next(rrset, rdata)) != NULL);
 
-	// the whole RRSet did fit in
-	assert(rrset_size <= *size);
-	assert(pos - wire == rrset_size);
-	*size = rrset_size;
+//	// the whole RRSet did fit in
+//	assert(rrset_size <= *size);
+//	assert(pos - wire == rrset_size);
+//	*size = rrset_size;
 
-	dbg_rrset_detail("Size after: %zu\n", *size);
+//	dbg_rrset_detail("Size after: %zu\n", *size);
 
-	*rr_count = rrs;
+//	*rr_count = rrs;
 
-	return KNOT_EOK;
-}
+//	return KNOT_EOK;
+//}
 
 /*----------------------------------------------------------------------------*/
 
@@ -629,74 +564,74 @@ int knot_rrset_compare(const knot_rrset_t *r1,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
-                         int copy_rdata_dnames)
-{
-	if (from == NULL || to == NULL) {
-		return KNOT_EINVAL;
-	}
+//int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
+//                         int copy_rdata_dnames)
+//{
+//	if (from == NULL || to == NULL) {
+//		return KNOT_EINVAL;
+//	}
 
-	int ret;
+//	int ret;
 
-	*to = (knot_rrset_t *)calloc(1, sizeof(knot_rrset_t));
-	CHECK_ALLOC_LOG(*to, KNOT_ENOMEM);
+//	*to = (knot_rrset_t *)calloc(1, sizeof(knot_rrset_t));
+//	CHECK_ALLOC_LOG(*to, KNOT_ENOMEM);
 
-	(*to)->owner = from->owner;
-	knot_dname_retain((*to)->owner);
-	(*to)->rclass = from->rclass;
-	(*to)->ttl = from->ttl;
-	(*to)->type = from->type;
-	if (from->rrsigs != NULL) {
-		ret = knot_rrset_deep_copy(from->rrsigs, &(*to)->rrsigs,
-		                           copy_rdata_dnames);
-		if (ret != KNOT_EOK) {
-			knot_rrset_deep_free(to, 1, 0, 0);
-			return ret;
-		}
-	}
-	assert((*to)->rrsigs == NULL || from->rrsigs != NULL);
+//	(*to)->owner = from->owner;
+//	knot_dname_retain((*to)->owner);
+//	(*to)->rclass = from->rclass;
+//	(*to)->ttl = from->ttl;
+//	(*to)->type = from->type;
+//	if (from->rrsigs != NULL) {
+//		ret = knot_rrset_deep_copy(from->rrsigs, &(*to)->rrsigs,
+//		                           copy_rdata_dnames);
+//		if (ret != KNOT_EOK) {
+//			knot_rrset_deep_free(to, 1, 0, 0);
+//			return ret;
+//		}
+//	}
+//	assert((*to)->rrsigs == NULL || from->rrsigs != NULL);
 
-	const knot_rdata_t *rdata = knot_rrset_rdata(from);
+//	const knot_rdata_t *rdata = knot_rrset_rdata(from);
 
-	/*! \note Order of RDATA will be reversed. */
-	while (rdata != NULL) {
-		knot_rdata_t *rdata_copy = knot_rdata_deep_copy(rdata,
-		                                      knot_rrset_type(from), 
-		                                      copy_rdata_dnames);
-dbg_rrset_exec_detail(
-		char *name = knot_dname_to_str(knot_rrset_owner(from));
-		dbg_rrset_detail("Copying RDATA from RRSet with owner: %s, type"
-		                 ": %s. Old RDATA ptr: %p, new RDATA ptr: %p\n",
-		                 name,
-		                 knot_rrtype_to_string(knot_rrset_type(from)),
-		                 rdata, rdata_copy);
-		free(name);
-);
-		ret = knot_rrset_add_rdata(*to, rdata_copy);
-		if (ret != KNOT_EOK) {
-			knot_rrset_deep_free(to, 1, 1, 1);
-			return ret;
-		}
-		rdata = knot_rrset_rdata_next(from, rdata);
-	}
+//	/*! \note Order of RDATA will be reversed. */
+//	while (rdata != NULL) {
+//		knot_rdata_t *rdata_copy = knot_rdata_deep_copy(rdata,
+//		                                      knot_rrset_type(from), 
+//		                                      copy_rdata_dnames);
+//dbg_rrset_exec_detail(
+//		char *name = knot_dname_to_str(knot_rrset_owner(from));
+//		dbg_rrset_detail("Copying RDATA from RRSet with owner: %s, type"
+//		                 ": %s. Old RDATA ptr: %p, new RDATA ptr: %p\n",
+//		                 name,
+//		                 knot_rrtype_to_string(knot_rrset_type(from)),
+//		                 rdata, rdata_copy);
+//		free(name);
+//);
+//		ret = knot_rrset_add_rdata(*to, rdata_copy);
+//		if (ret != KNOT_EOK) {
+//			knot_rrset_deep_free(to, 1, 1, 1);
+//			return ret;
+//		}
+//		rdata = knot_rrset_rdata_next(from, rdata);
+//	}
 
-	return KNOT_EOK;
-}
+//	return KNOT_EOK;
+//}
 
 /*----------------------------------------------------------------------------*/
 
-int knot_rrset_shallow_copy(const knot_rrset_t *from, knot_rrset_t **to)
-{
-	*to = (knot_rrset_t *)malloc(sizeof(knot_rrset_t));
-	CHECK_ALLOC_LOG(*to, KNOT_ENOMEM);
+//int knot_rrset_shallow_copy(const knot_rrset_t *from, knot_rrset_t **to)
+//{
+//	*to = (knot_rrset_t *)malloc(sizeof(knot_rrset_t));
+//	CHECK_ALLOC_LOG(*to, KNOT_ENOMEM);
 	
-	memcpy(*to, from, sizeof(knot_rrset_t));
+//	memcpy(*to, from, sizeof(knot_rrset_t));
 
-	/* Retain owner. */
-	knot_dname_retain((*to)->owner);
+//	/* Retain owner. */
+//	knot_dname_retain((*to)->owner);
 	
-	return KNOT_EOK;
-}
+//	return KNOT_EOK;
+//}
 
 /*----------------------------------------------------------------------------*/
 
@@ -708,60 +643,60 @@ void knot_rrset_rotate(knot_rrset_t *rrset)
 
 /*----------------------------------------------------------------------------*/
 
-void knot_rrset_free(knot_rrset_t **rrset)
-{
-	if (rrset == NULL || *rrset == NULL) {
-		return;
-	}
+//void knot_rrset_free(knot_rrset_t **rrset)
+//{
+//	if (rrset == NULL || *rrset == NULL) {
+//		return;
+//	}
 
-	/*! \todo Shouldn't we always release owner reference? */
-	knot_dname_release((*rrset)->owner);
+//	/*! \todo Shouldn't we always release owner reference? */
+//	knot_dname_release((*rrset)->owner);
 
-	free(*rrset);
-	*rrset = NULL;
-}
+//	free(*rrset);
+//	*rrset = NULL;
+//}
 
 /*----------------------------------------------------------------------------*/
 
-void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
-                            int free_rdata, int free_rdata_dnames)
-{
-	if (rrset == NULL || *rrset == NULL) {
-		return;
-	}
+//void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
+//                            int free_rdata, int free_rdata_dnames)
+//{
+//	if (rrset == NULL || *rrset == NULL) {
+//		return;
+//	}
 
-	if (free_rdata) {
-		knot_rdata_t *tmp_rdata;
-		knot_rdata_t *next_rdata;
-		tmp_rdata = (*rrset)->rdata;
+//	if (free_rdata) {
+//		knot_rdata_t *tmp_rdata;
+//		knot_rdata_t *next_rdata;
+//		tmp_rdata = (*rrset)->rdata;
 
-		while ((tmp_rdata != NULL)
-		       && (tmp_rdata->next != (*rrset)->rdata)
-		       && (tmp_rdata->next != NULL)) {
-			next_rdata = tmp_rdata->next;
-			knot_rdata_deep_free(&tmp_rdata, (*rrset)->type,
-					       free_rdata_dnames);
-			tmp_rdata = next_rdata;
-		}
+//		while ((tmp_rdata != NULL)
+//		       && (tmp_rdata->next != (*rrset)->rdata)
+//		       && (tmp_rdata->next != NULL)) {
+//			next_rdata = tmp_rdata->next;
+//			knot_rdata_deep_free(&tmp_rdata, (*rrset)->type,
+//					       free_rdata_dnames);
+//			tmp_rdata = next_rdata;
+//		}
 
-		assert(tmp_rdata == NULL
-		       || tmp_rdata->next == (*rrset)->rdata);
+//		assert(tmp_rdata == NULL
+//		       || tmp_rdata->next == (*rrset)->rdata);
 
-		knot_rdata_deep_free(&tmp_rdata, (*rrset)->type,
-		                       free_rdata_dnames);
-	}
+//		knot_rdata_deep_free(&tmp_rdata, (*rrset)->type,
+//		                       free_rdata_dnames);
+//	}
 
-	// RRSIGs should have the same owner as this RRSet, so do not delete it
-	if ((*rrset)->rrsigs != NULL) {
-		knot_rrset_deep_free(&(*rrset)->rrsigs, 0, 1,
-		                       free_rdata_dnames);
-	}
+//	// RRSIGs should have the same owner as this RRSet, so do not delete it
+//	if ((*rrset)->rrsigs != NULL) {
+//		knot_rrset_deep_free(&(*rrset)->rrsigs, 0, 1,
+//		                       free_rdata_dnames);
+//	}
 
-	knot_dname_release((*rrset)->owner);
+//	knot_dname_release((*rrset)->owner);
 
-	free(*rrset);
-	*rrset = NULL;
-}
+//	free(*rrset);
+//	*rrset = NULL;
+//}
 
 /*----------------------------------------------------------------------------*/
 

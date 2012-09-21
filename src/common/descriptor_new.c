@@ -98,12 +98,21 @@ static const rdata_descriptor_t rdata_descriptors[] = {
 				       KNOT_RDATA_WF_END } },
 };
 
-const rdata_descriptor_t *get_rdata_descriptor(const uint16_t type)
+const int *get_rdata_descriptor(const uint16_t type)
 {
 	if (type <= KNOT_RRTYPE_TSIG) {
-		return &rdata_descriptors[type];
+		return (int *)rdata_descriptors[type];
 	} else {
-		return &rdata_descriptors[0];
+		return (int *)rdata_descriptors[0];
 	}
 }
+
+int descriptor_item_is_dname(int item)
+{
+	return item == KNOT_RDATA_WF_LITERAL_DNAME ||
+	       item == KNOT_RDATA_WF_COMPRESSED_DNAME ||
+	       item == KNOT_RDATA_WF_UNCOMPRESSED_DNAME;
+}
+
+
 
