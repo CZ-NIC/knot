@@ -150,6 +150,11 @@ struct scanner {
 	uint32_t r_data_length;
 	uint16_t r_data_blocks[MAX_RDATA_ITEMS];
 	uint32_t r_data_blocks_count;
+	/* Eexample: MX 1 .
+	 *           rdata = 000100
+	 *           r_data_blocks_count = 2
+	 *           r_data_blocks = [0, 2, 3]
+	 */
 };
 
 scanner_t* scanner_create(const char *file_name);

@@ -98,11 +98,11 @@ enum knot_rr_type {
  */
 enum knot_rdata_wireformat {
 	/*!< Possibly compressed dname. */
-	KNOT_RDATA_WF_COMPRESSED_DNAME   = -12,
+	KNOT_RDATA_WF_COMPRESSED_DNAME   = -10,
 	/*!< Uncompressed dname. */
-	KNOT_RDATA_WF_UNCOMPRESSED_DNAME = -11,
+	KNOT_RDATA_WF_UNCOMPRESSED_DNAME,
 	/*!< Dname with preserved letter cases. */
-	KNOT_RDATA_WF_LITERAL_DNAME      = -10,
+	KNOT_RDATA_WF_LITERAL_DNAME,
 	/*!< Initial part of NAPTR record before dname. */
 	KNOT_RDATA_WF_NAPTR_HEADER,
 	/*!< Uninteresting final part of a record. */

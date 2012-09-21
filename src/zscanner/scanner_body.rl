@@ -159,8 +159,8 @@
 	}
 	action _relative_dname_exit {
 		memcpy(s->dname + s->dname_tmp_length,
-			   s->zone_origin,
-			   s->zone_origin_length);
+		       s->zone_origin,
+		       s->zone_origin_length);
 
 		s->dname_tmp_length += s->zone_origin_length;
 
@@ -171,8 +171,8 @@
 	}
 	action _origin_dname_exit {
 		memcpy(s->dname,
-			   s->zone_origin,
-			   s->zone_origin_length);
+		       s->zone_origin,
+		       s->zone_origin_length);
 
 		s->dname_tmp_length = s->zone_origin_length;
 	}
@@ -921,7 +921,12 @@
 			SCANNER_WARNING(ZSCANNER_EBAD_RDATA_LENGTH);
 			fhold; fgoto err_line;
 		}
-		find_rdata_blocks(s);
+
+		ret = find_rdata_blocks(s);
+		if (ret != KNOT_EOK) {
+			SCANNER_WARNING(ret);
+			fhold; fgoto err_line;
+		}
 	}
 
 	action _type_data_error {
@@ -1511,9 +1516,9 @@
 		case KNOT_RRTYPE_HINFO:
 			fcall r_data_hinfo;
 		case KNOT_RRTYPE_MINFO:
+		case KNOT_RRTYPE_RP:
 			fcall r_data_minfo;
 		case KNOT_RRTYPE_MX:
-		case KNOT_RRTYPE_RP:
 		case KNOT_RRTYPE_AFSDB:
 		case KNOT_RRTYPE_RT:
 		case KNOT_RRTYPE_KX:
@@ -1601,9 +1606,14 @@
 		}
 	}
 
+	action _text_r_data_exit {
+		s->r_data_blocks[++(s->r_data_blocks_count)] =
+			(uint16_t)(rdata_tail - s->r_data);
+	}
+
 	# rdata can be in text or hex format with leading "\#" string
-	r_data = ( sep  . ^('\\' | all_wchar)     $_text_r_data  # Text format.
-	         | sep  . '\\' . ^'#' ${ fhold; } $_text_r_data  # Text format.
+	r_data = ( sep  . ^('\\' | all_wchar)     $_text_r_data %_text_r_data_exit
+	         | sep  . '\\' . ^'#' ${ fhold; } $_text_r_data %_text_r_data_exit
 	         | sep  . '\\' .  '#'             $_hex_r_data   # Hex format.
 	         | sep? . end_wchar               $_text_r_data  # Empty rdata.
 	         ) >_r_data_init $!_r_data_error;
@@ -1659,8 +1669,6 @@
 			fhold; fgoto err_line;
 		}
 		s->r_data_length = rdata_tail - s->r_data;
-		s->r_data_blocks[++(s->r_data_blocks_count)] =
-			(uint16_t)(s->r_data_length);
 
 		s->process_record(s);
 	}

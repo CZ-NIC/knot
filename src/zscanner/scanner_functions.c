@@ -787,16 +787,122 @@ uint8_t loc64to8(uint64_t number)
 	return (((uint8_t)number % 9) << 4) + (exponent % 9);
 }
 
-void find_rdata_blocks(scanner_t *s)
+static uint32_t get_dname_length(const uint8_t  *data,
+				 const uint32_t data_len)
 {
-	uint32_t i;
+	uint8_t  label_len = data[0];
+	uint32_t dname_len = 0;
 
-	const rdata_descriptor_t *descriptor = get_rdata_descriptor(s->r_type);
-
-	for (i = 0; i < KNOT_MAX_RDATA_BLOCKS; i++) {
-		if (descriptor->block_types[i] == KNOT_RDATA_WF_END) {
-			break;
+	while (label_len > 0) {
+		// Label overflow check.
+		if (label_len > MAX_LABEL_LENGTH) {
+			return 0;
 		}
+
+		dname_len += 1 + label_len;
+
+		// Data overflow check.
+		if (dname_len > data_len) {
+			return 0;
+		}
+		
+		label_len = data[dname_len] & 63;
+        }
+
+	dname_len++; // Last label length byte.
+
+	// Dname overflow check.
+	if (dname_len <= MAX_DNAME_LENGTH) {
+		return dname_len;
+	} else {
+		return 0;
+	}
+}
+
+static uint32_t get_naptr_header_length(const uint8_t  *data,
+					const uint32_t data_len)
+{
+	uint32_t naptr_len = 0;
+
+	// 2B order + 2B preference.
+	naptr_len += 2 + 2;
+
+	// Flags - text string with forward 1B length.
+	naptr_len += data[naptr_len] + 1;
+
+	// Services - text string with forward 1B length.
+	naptr_len += data[naptr_len] + 1;
+
+	// Regexp - text string with forward 1B length.
+	naptr_len += data[naptr_len] + 1;
+
+	// Data overflow check.
+	if (naptr_len <= data_len) {
+		return naptr_len;
+	} else {
+		return 0;
+	}
+}
+
+static uint32_t get_block_length(const uint8_t  *data,
+				 const uint32_t data_length,
+				 const uint32_t ofset,
+				 const int      type)
+{
+	switch (type) {
+	case KNOT_RDATA_WF_COMPRESSED_DNAME:
+	case KNOT_RDATA_WF_UNCOMPRESSED_DNAME:
+	case KNOT_RDATA_WF_LITERAL_DNAME:
+		return get_dname_length(data + ofset,
+					data_length - ofset);
+	case KNOT_RDATA_WF_NAPTR_HEADER:
+		return get_naptr_header_length(data + ofset,
+					       data_length - ofset);
+	case KNOT_RDATA_WF_REMAINDER:
+		return data_length;
+	default:
+		return 0;
+	}
+}
+
+int find_rdata_blocks(scanner_t *s)
+{
+	uint32_t ret;
+	uint32_t position = 0;
+
+	// Initialization of block items.
+	s->r_data_blocks_count = 0;
+	s->r_data_blocks[0] = 0;
+
+	// Getting appropriate descriptor array.
+	const rdata_descriptor_t *descriptor = get_rdata_descriptor(s->r_type);
+	const int *type = descriptor->block_types;
+
+	// Loop over descriptor array.
+	while (*type != KNOT_RDATA_WF_END) {
+		if (*type > KNOT_RDATA_WF_END) {
+			position += *type;
+		} else {
+			ret = get_block_length(s->r_data,
+					       s->r_data_length,
+					       position,
+					       *type);
+			if (ret == 0) {
+				return ZSCANNER_EBAD_HEX_RDATA;
+			}
+
+			position += ret;
+		}
+		s->r_data_blocks[++(s->r_data_blocks_count)] = position;
+		type++;
+	}
+
+	// Checking processed rdata length.
+	if (s->r_data_blocks[s->r_data_blocks_count] != s->r_data_length) {
+		return ZSCANNER_EBAD_HEX_RDATA;
+	}
+	else {
+		return KNOT_EOK;
 	}
 }
 
