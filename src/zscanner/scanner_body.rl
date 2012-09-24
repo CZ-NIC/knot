@@ -140,12 +140,17 @@
 		(s->dname)[s->dname_tmp_length] = (s->dname)[s->dname_tmp_length];
 		s->dname_tmp_length++;
 	}
+	action _label_dec_error {
+		SCANNER_WARNING(ZSCANNER_EBAD_NUMBER);
+		fhold; fgoto err_line;
+	}
 
 	label_char =
 	    ( (alnum | [\-_/]) $_label_char                 # One common char.
 	    | ('\\' . ^digit)  @_label_char                 # One "\x" char.
 	    | ('\\'            %_label_dec_init             # Initial "\" char.
 	       . digit {3}     $_label_dec %_label_dec_exit # "DDD" rest.
+	                       $!_label_dec_error
 	      )
 	    );
 
@@ -517,14 +522,20 @@
 	action _text_dec_exit {
 		rdata_tail++;
 	}
+	action _text_dec_error {
+		SCANNER_WARNING(ZSCANNER_EBAD_NUMBER);
+		fhold; fgoto err_line;
+	}
 
 	text_char =
-		( (33..126 - [\\;\"]) $_text_char                # One printable char.
-		| ('\\' . ^digit)     @_text_char                # One "\x" char.
-		| ('\\'               %_text_dec_init            # Initial "\" char.
+		( (33..126 - [\\;\"]) $_text_char          # One printable char.
+		| ('\\' . ^digit)     @_text_char          # One "\x" char.
+		| ('\\'               %_text_dec_init      # Initial "\" char.
 		   . digit {3}        $_text_dec %_text_dec_exit # "DDD" rest.
+		                      $!_text_dec_error
 		  )
 		) $!_text_char_error;
+
 	quoted_text_char =
 		( text_char
 		| ([ \t;] | [\n] when { s->multiline }) $_text_char
@@ -532,7 +543,7 @@
 
 	# Text string machine instantiation (for smaller code).
 	text_ := (('\"' . quoted_text_char* . '\"') | text_char+)
-			 $!_text_error %_ret . all_wchar;
+		 $!_text_error %_ret . all_wchar;
 	text = ^all_wchar ${ fhold; fcall text_; };
 
 	# Text string with forward 1-byte length.

@@ -20,7 +20,8 @@
  * \brief RR type descriptors.
  */
 static const rdata_descriptor_t rdata_descriptors[] = {
-	[0]			 = { { KNOT_RDATA_WF_END } },
+	[0]			 = { { KNOT_RDATA_WF_REMAINDER,
+				       KNOT_RDATA_WF_END } },
 	[KNOT_RRTYPE_A]          = { { 4, KNOT_RDATA_WF_END } },
 	[KNOT_RRTYPE_NS]         = { { KNOT_RDATA_WF_COMPRESSED_DNAME,
 				       KNOT_RDATA_WF_END } },
