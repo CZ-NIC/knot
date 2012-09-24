@@ -689,6 +689,15 @@
 	# END
 
 	# BEGIN - Directive switch
+	# Each error in directive should stop processing.
+	# Some internal errors case warning only. This causes stop processing.
+	action _directive_init {
+		s->stop = true;
+	}
+	# Remove stop processing flag.
+	action _directive_exit {
+		s->stop = false;
+	}
 	action _directive_error {
 		SCANNER_ERROR(ZSCANNER_EBAD_DIRECTIVE);
 		fhold; fgoto err_line;
@@ -697,7 +706,7 @@
 	directive = '$' . ( ("TTL"i     . default_ttl)
 	                  | ("ORIGIN"i  . zone_origin)
 	                  | ("INCLUDE"i . include_file)
-	                  ) $!_directive_error;
+	                  ) >_directive_init %_directive_exit $!_directive_error;
 	# END
 
 	# BEGIN - RRecord class and ttl processing
