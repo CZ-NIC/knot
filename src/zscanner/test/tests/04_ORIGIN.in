@@ -1,8 +1,0 @@
-$ORIGIN	.
-$TTL	1
-
-; OK
-$ORIGIN \256
-
-a NS a
-

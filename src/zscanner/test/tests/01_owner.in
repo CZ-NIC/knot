@@ -24,6 +24,7 @@ b.a.9.8.7.6.5.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa.	NS	@	;
 &	NS	@	; Bad (unslashed) character
 a*a	NS	@	; * char can substitute whole label only
 	NS	@	; Bad previous
+.a	NS	@	; Leading dot
 @@	NS	@	; Double @@
 ..	NS	@	; Missing label between dots
 \1	NS	@	; Slash notation requires 3 digits

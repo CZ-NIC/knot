@@ -1,0 +1,4 @@
+$TTL	1
+
+; KO
+$ORIGIN %		; Bad (unslashed) character
