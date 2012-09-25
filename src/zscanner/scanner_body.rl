@@ -169,7 +169,7 @@
 
 		s->dname_tmp_length += s->zone_origin_length;
 
-		if (s->dname_tmp_length >= MAX_DNAME_LENGTH) {
+		if (s->dname_tmp_length > MAX_DNAME_LENGTH) {
 			SCANNER_WARNING(ZSCANNER_EDNAME_OVERFLOW);
 			fhold; fgoto err_line;
 		}
