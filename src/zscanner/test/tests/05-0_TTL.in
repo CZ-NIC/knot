@@ -1,0 +1,36 @@
+$ORIGIN	.
+
+; OK
+$TTL	0		; Minimal ttl
+@	NS	@	; Use ttl
+$TTL	3600		; Inner value
+@	NS	@	; Use ttl
+$TTL	4294967295	; Maximal ttl
+@	NS	@	; Use ttl
+$TTL	1S		; 1 second (upper-case)
+@	NS	@	; Use ttl
+$TTL	1s		; 1 second (lower-case)
+@	NS	@	; Use ttl
+$TTL	1M		; 1 minute (upper-case)
+@	NS	@	; Use ttl
+$TTL	1m		; 1 minute (lower-case)
+@	NS	@	; Use ttl
+$TTL	1H		; 1 hour (upper-case)
+@	NS	@	; Use ttl
+$TTL	1h		; 1 hour (lower-case)
+@	NS	@	; Use ttl
+$TTL	1D		; 1 day (upper-case)
+@	NS	@	; Use ttl
+$TTL	1d		; 1 day (lower-case)
+@	NS	@	; Use ttl
+$TTL	1W		; 1 week (upper-case)
+@	NS	@	; Use ttl
+$TTL	1w		; 1 week (lower-case)
+@	NS	@	; Use ttl
+$TTL	1w1d1h1m1s	; More time units
+@	NS	@	; Use ttl
+$TTL	1s1m1m		; Same time units, non decreasing order
+@	NS	@	; Use ttl
+
+; KO
+$TTL	-1		; Negative ttl
