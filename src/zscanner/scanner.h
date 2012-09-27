@@ -121,7 +121,7 @@ struct scanner {
 	/*!< Auxiliary buffer length. */
 	uint32_t buffer_length;
 
-	char     include_filename[MAX_RDATA_LENGTH];
+	char     include_filename[MAX_RDATA_LENGTH + 1];
 
 	/*!< Bitmap window blocks. */
 	window_t windows[BITMAP_WINDOWS];

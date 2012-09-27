@@ -38,7 +38,7 @@ static int load_settings(file_loader_t *fl)
 
 	// Creating name for zone defaults.
 	settings_name = malloc(strlen(fl->file_name) + 100);
-	sprintf(settings_name, "ZONE DEFAULTS (%s)", fl->file_name);
+	sprintf(settings_name, "ZONE DEFAULTS <%s>", fl->file_name);
 
 	// Temporary scanner for zone settings.
 	settings_scanner = scanner_create(settings_name);
@@ -120,7 +120,7 @@ file_loader_t* file_loader_create(const char	 *file_name,
 	if (ret > 0) {
 		fl->settings_length = ret;
 	} else {
-		printf("Error in zone setttings!\n");
+		printf("FL:Error in zone setttings!\n");
 		file_loader_free(fl);
 		return NULL;
 	}
@@ -158,19 +158,19 @@ int file_loader_process(file_loader_t *fl)
 
 	// Getting file information.
 	if (fstat(fl->fd, &file_stat) == -1) {
-		printf("Fstat error!\n");
+		printf("FL:Fstat error!\n");
 		return -1;
 	}
 
 	// Check for directory.
 	if (S_ISDIR(file_stat.st_mode)) {
-		printf("Given zone file is a directory!\n");
+		printf("FL:Given zone file is a directory!\n");
 		return -1;
 	}
 
 	// Check for empty file.
 	if (file_stat.st_size == 0) {
-		printf("Empty zone file!\n");
+		printf("FL:Empty zone file!\n");
 		return -1;
 	}
 
@@ -187,7 +187,7 @@ int file_loader_process(file_loader_t *fl)
 	ret = load_settings(fl);
 
 	if (ret != 0) {
-		printf("Zone defaults error!\n");
+		printf("FL:Zone defaults error!\n");
 		return -1;
 	}
 
@@ -223,13 +223,13 @@ int file_loader_process(file_loader_t *fl)
 			    block_start_position);
 
 		if (data == MAP_FAILED) {
-			printf("Mmap error!\n");
+			printf("FL:Mmap error!\n");
 			return -1;
 		}
 
 		// Check for sufficient block overlapping.
 		if (fl->scanner->token_shift > overlapping_size) {
-			printf("Insufficient block overlapping!\n");
+			printf("FL:Insufficient block overlapping!\n");
 			return -1;
 		};
 
@@ -250,14 +250,14 @@ int file_loader_process(file_loader_t *fl)
 		// Zone file block unmapping.
 		if (munmap(data,
 			   block_end_position - block_start_position) == -1) {
-			printf("Error file munmapping!\n");
+			printf("FL:Error file munmapping!\n");
 			return -1;
 		}
 	}
 
 	// Check for scanner return.
 	if (ret != 0) {
-		printf("Zone processing has stopped with %"PRIu64" errors!\n",
+		printf("FL:Zone processing has stopped with %"PRIu64" errors!\n",
 			   fl->scanner->error_counter);
 		return -1;
 	}

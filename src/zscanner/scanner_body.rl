@@ -249,6 +249,17 @@
 	          ) $!_r_owner_error;
 	# END
 
+	# BEGIN - domain name in record data processing
+	action _r_dname_init {
+		s->dname = rdata_tail;
+	}
+	action _r_dname_exit {
+		rdata_tail += s->dname_tmp_length;
+	}
+
+	r_dname = dname >_r_dname_init %_r_dname_exit;
+	# END
+
 	# BEGIN - Number processing
 	action _number_digit {
 		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
@@ -586,7 +597,6 @@
 
 	zone_origin_ := (sep . absolute_dname >_zone_origin_init . rest)
 	                $!_zone_origin_error %_zone_origin_exit %_ret . newline;
-
 	zone_origin = all_wchar ${ fhold; fcall zone_origin_; };
 	# END
 
@@ -595,15 +605,17 @@
 		rdata_tail = s->r_data;
 	}
 	action _incl_filename_exit {
-		if (rdata_tail <= rdata_stop) {
-			*rdata_tail = 0; // Ending filename string.
-			strcpy((char*)(s->include_filename), (char*)(s->r_data));
-			rdata_tail = s->r_data; // Initialization of origin if not present!
-			*rdata_tail = 0;
-		} else {
-			SCANNER_WARNING(ZSCANNER_ETEXT_OVERFLOW);
+		*rdata_tail = 0; // Ending filename string.
+		strcpy((char*)(s->include_filename), (char*)(s->r_data));
+
+		// Check for correct string copy.
+		if (strlen(s->include_filename) != rdata_tail - s->r_data) {
+			SCANNER_ERROR(ZSCANNER_EBAD_INCLUDE_FILENAME);
 			fhold; fgoto err_line;
 		}
+
+		// For detection whether origin is not present.
+		s->dname = NULL;
 	}
 	action _incl_filename_error {
 		SCANNER_ERROR(ZSCANNER_EBAD_INCLUDE_FILENAME);
@@ -611,15 +623,10 @@
 	}
 
 	action _incl_origin_init {
-		rdata_tail = s->r_data;
+		s->dname = s->r_data;
 	}
 	action _incl_origin_exit {
-		if (rdata_tail <= rdata_stop) {
-			*rdata_tail = 0; // Ending origin string.
-		} else {
-			SCANNER_WARNING(ZSCANNER_ETEXT_OVERFLOW);
-			fhold; fgoto err_line;
-		}
+		s->r_data_length = s->dname_tmp_length;
 	}
 	action _incl_origin_error {
 		SCANNER_ERROR(ZSCANNER_EBAD_INCLUDE_ORIGIN);
@@ -630,18 +637,21 @@
 		char text_origin[MAX_DNAME_LENGTH];
 
 		// Origin conversion from wire to text form.
-		if (s->r_data[0] == 0) { // Use current origin.
-			wire_dname_to_text(s->zone_origin,
-							   s->zone_origin_length,
-							   text_origin);
+		if (s->dname == NULL) { // Use current origin.
+			wire_dname_to_str(s->zone_origin,
+			                  s->zone_origin_length,
+					  text_origin);
 		} else { // Use specified origin.
-			strcpy(text_origin, (char *)(s->r_data));
+			wire_dname_to_str(s->r_data,
+			                  s->r_data_length,
+					  text_origin);
 		}
 
-		if (s->include_filename[0] != '/') { // File name is in relative form.
+		if (s->include_filename[0] != '/') { // Relative file path..
 			// Get absolute path of the current zone file.
 			if (realpath(s->file_name, (char*)(s->buffer)) != NULL) {
-				char *full_current_zone_file_name = strdup((char*)(s->buffer));
+				char *full_current_zone_file_name =
+					strdup((char*)(s->buffer));
 
 				// Creating full include file name.
 				sprintf((char*)(s->buffer), "%s/%s",
@@ -680,11 +690,13 @@
 		}
 	}
 
-	include_file_ := (sep . text >_incl_filename_init %_incl_filename_exit
-	                  $!_incl_filename_error .
-	                  (sep . text >_incl_origin_init %_incl_origin_exit
-	                  $!_incl_origin_error)? . rest
-	                 ) %_include_exit %_ret newline;
+	include_file_ :=
+		(sep . text >_incl_filename_init %_incl_filename_exit
+		 $!_incl_filename_error .
+	         (sep . absolute_dname >_incl_origin_init %_incl_origin_exit
+	          $!_incl_origin_error
+		 )? . rest
+	        ) %_include_exit %_ret newline;
 	include_file = all_wchar ${ fhold; fcall include_file_; };
 	# END
 
@@ -734,17 +746,6 @@
 	r_class = "IN"i %_r_class_in_exit;
 
 	r_ttl = time %_r_ttl_exit;
-	# END
-
-	# BEGIN - domain name in record data processing
-	action _r_dname_init {
-		s->dname = rdata_tail;
-	}
-	action _r_dname_exit {
-		rdata_tail += s->dname_tmp_length;
-	}
-
-	r_dname = dname >_r_dname_init %_r_dname_exit;
 	# END
 
 	# BEGIN - IPv4 and IPv6 address processing

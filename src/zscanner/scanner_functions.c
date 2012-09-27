@@ -17,6 +17,7 @@
 #include "zscanner/scanner_functions.h"
 
 #include <stdint.h>
+#include <stdlib.h>
 
 #include "common/errcode.h"
 #include "common/descriptor_new.h"
@@ -755,24 +756,45 @@ int date_to_timestamp(uint8_t *buff, uint32_t *timestamp)
 	return KNOT_EOK;
 }
 
-void wire_dname_to_text(const uint8_t *dname,
-			const uint32_t dname_length,
-			char *text_dname)
+int wire_dname_to_str(const uint8_t  *data,
+		      const uint32_t data_len,
+		      char *text)
 {
-	uint32_t label_length = 0, i = 0, j = 0;
+	uint32_t i = 0, text_len = 0;
 
-	for (i = 0; i < dname_length; i++) {
-		if (label_length == 0) {
-			label_length = dname[i];
-			if (i > 0) { // Ignore first byte with length.
-				text_dname[j++] = '.';
-			}
+	if (data == NULL || data_len == 0 || text == NULL) {
+		return -1;
+	}
+
+	uint8_t label_len = data[0];
+
+	// Loop over data characters.
+	for (i = 1; i < data_len; i++) {
+		// Replace label length with dot.
+		if (label_len == 0) {
+			label_len = data[i];
+			text[text_len++] = '.';
 			continue;
 		}
-		text_dname[j++] = (char)dname[i];
-		label_length--;
+
+		// Just in case use \123 notation.
+		text[text_len++] = '\\';
+		text[text_len++] = (data[i] / 100)      + ASCII_0;
+		text[text_len++] = (data[i] /  10) % 10 + ASCII_0;
+		text[text_len++] = (data[i]      ) % 10 + ASCII_0;
+
+		label_len--;
 	}
-	text_dname[j] = 0;
+
+	// Add trailing dot for root domain.
+	if (data_len == 1 && label_len == 0) {
+		text[text_len++] = '.';
+	}
+
+	// Ending text string.
+	text[text_len] = 0;
+
+	return KNOT_EOK;
 }
 
 uint8_t loc64to8(uint64_t number)
@@ -805,8 +827,8 @@ static uint32_t get_dname_length(const uint8_t  *data,
 		if (dname_len > data_len) {
 			return 0;
 		}
-		
-		label_len = data[dname_len] & 63;
+
+		label_len = data[dname_len];
         }
 
 	dname_len++; // Last label length byte.

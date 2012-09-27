@@ -1,16 +1,21 @@
-#!/bin/bash
+#!/bin/sh
 
-mkdir /tmp/tests
+TESTS_DIR="./tests"
+OUTS_DIR="/tmp/zscanner_tests"
+TEST_BIN="../../unittests-zscanner -m 2"
+
+mkdir -p ${OUTS_DIR}/${TESTS_DIR}
+cp -r ${TESTS_DIR}/includes ${OUTS_DIR}
 
 separation="========================================================="
 
 echo $separation
 
-for file in `/usr/bin/find ./tests/ -name "*.in" | /usr/bin/sort`; do
-	fileout=`echo "$file" | /bin/sed 's/.in/.out/'`
-	../../unittests-zscanner -m 2 . $file > /tmp/$fileout
-	/bin/sed --in-place 's/Zone processing has stopped.*//' /tmp/$fileout
+for file in `find $TESTS_DIR -name "*.in" | sort`; do
+	fileout=`echo "$file" | sed 's/.in/.out/'`
+	$TEST_BIN . $file > ${OUTS_DIR}/$fileout
+	sed --in-place '/FL:/d' ${OUTS_DIR}/$fileout
 	echo $fileout
-	diff /tmp/$fileout $fileout
+	diff ${OUTS_DIR}/$fileout $fileout
 	echo $separation
 done
