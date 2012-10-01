@@ -701,8 +701,8 @@
 	# END
 
 	# BEGIN - Directive switch
-	# Each error in directive should stop processing.
-	# Some internal errors case warning only. This causes stop processing.
+	# Each error/warning in directive should stop processing.
+	# Some internal errors cause warning only. This causes stop processing.
 	action _directive_init {
 		s->stop = true;
 	}
@@ -1008,8 +1008,8 @@
 	          )
 	        )
 	      | base64_padd{2}                            # AB==
-		  )
-		);
+	      )
+	    );
 
 	# Base64 array with possibility of inside white spaces and multiline.
 	base64_ := (base64_quartet+ . sep?)+ $!_base64_char_error
@@ -1093,8 +1093,8 @@
 	                  base32hex_char      $_seventh_base32hex_char . # ABCDEFG
 	                  ( base32hex_char    $_eighth_base32hex_char    # ABCDEFGH
 	                  | base32hex_padd{1}                            # ABCDEFG=
-					  )
-					)
+			  )
+			)
 	              | base32hex_padd{3}                                # ABCDE===
 	              )
 	            )
@@ -1102,8 +1102,8 @@
 	          )
 	        )
 	      | base32hex_padd{6}                                        # AB======
-		  )
-		);
+	      )
+	    );
 
 	# Continuous base32hex (with padding!) array with forward length processing.
 	hash = base32hex_octet+ >_item_length_init %_item_length_exit
@@ -1153,7 +1153,7 @@
 	    | "TLSA"i       %{ type_num(KNOT_RRTYPE_TLSA, rdata_tail); }
 	    | "SPF"i        %{ type_num(KNOT_RRTYPE_SPF, rdata_tail); }
 	    | "TYPE"i      . num16 # TYPE12345
-		) %_type_exit $!_type_error;
+	    ) %_type_exit $!_type_error;
 	# END
 
 	# BEGIN - Bitmap processing
@@ -1203,7 +1203,7 @@
 	    | "TLSA"i       %{ window_add_bit(KNOT_RRTYPE_TLSA, s); }
 	    | "SPF"i        %{ window_add_bit(KNOT_RRTYPE_SPF, s); }
 	    | "TYPE"i      . type_bitmap # Special types TYPE0-TYPE65535
-		);
+	    );
 
 	action _bitmap_init {
 		memset(s->windows, 0, sizeof(s->windows));
@@ -1222,8 +1222,8 @@
 					rdata_tail += 1;
 					// Copying bitmap.
 					memcpy(rdata_tail,
-						   (s->windows[window]).bitmap,
-						   (s->windows[window]).length);
+					       (s->windows[window]).bitmap,
+					       (s->windows[window]).length);
 					rdata_tail += (s->windows[window]).length;
 				} else {
 					SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);

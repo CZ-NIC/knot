@@ -70,7 +70,17 @@ const error_table_t knot_error_msgs[] = {
 	{KNOT_ECNAME, "CNAME loop found in zone."},
 	{KNOT_ENODIFF, "Cannot create zone diff."},
 
-    /* Zone scanner errors. */
+	/* Zone file loader errors. */
+	{FLOADER_EFSTAT, "Fstat error!"},
+	{FLOADER_EDIRECTORY, "Zone file is a directory!"},
+	{FLOADER_EEMPTY, "Empty zone file!"},
+	{FLOADER_EDEFAULTS, "Zone defaults processing error!"},
+	{FLOADER_EMMAP, "Mmap error!"},
+	{FLOADER_EOVERLAPPING, "Insufficient block overlapping!"},
+	{FLOADER_EMUNMAP, "Munmap error!"},
+	{FLOADER_ESCANNER, "Zone processing error!"},
+
+	/* Zone scanner errors. */
 	{ZSCANNER_UNCOVERED_STATE, "General scanner error!"},
 	{ZSCANNER_ELEFT_PARENTHESIS, "Too many left parentheses!"},
 	{ZSCANNER_ERIGHT_PARENTHESIS, "Too many right parentheses!"},

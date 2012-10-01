@@ -84,6 +84,16 @@ enum knot_error {
 	KNOT_ECNAME,          /*!< CNAME loop found in zone. */
 	KNOT_ENODIFF,         /*!< No zone diff can be created. */
 
+	/* Zone file loader errors. */
+	FLOADER_EFSTAT,
+	FLOADER_EDIRECTORY,
+	FLOADER_EEMPTY,
+	FLOADER_EDEFAULTS,
+	FLOADER_EMMAP,
+	FLOADER_EOVERLAPPING,
+	FLOADER_EMUNMAP,
+	FLOADER_ESCANNER,
+
 	/* Zone scanner errors. */
 	ZSCANNER_UNCOVERED_STATE,
 	ZSCANNER_ELEFT_PARENTHESIS,

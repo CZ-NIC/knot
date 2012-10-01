@@ -26,6 +26,8 @@
 #include <sys/stat.h>		// fstat
 #include <sys/mman.h>		// mmap
 
+#include "common/errcode.h"	// error codes
+
 #define BLOCK_SIZE		      30000000  // In bytes.
 #define BLOCK_OVERLAPPING_SIZE		100000  // In bytes.
 
@@ -103,7 +105,7 @@ file_loader_t* file_loader_create(const char	 *file_name,
 	// Creating zone scanner.
 	fl->scanner = scanner_create(file_name);
 
-	// Processing functions.
+	// Setting processing functions.
 	fl->scanner->process_record = process_record;
 	fl->scanner->process_error  = process_error;
 	fl->scanner->data = data;
@@ -112,15 +114,15 @@ file_loader_t* file_loader_create(const char	 *file_name,
 	fl->scanner->default_class = default_class;
 
 	// Filling zone settings buffer.
-	ret = sprintf(fl->settings_buffer,
-		      "$ORIGIN %s\n"
-		      "$TTL %u\n",
-		      zone_origin, default_ttl);
+	ret = snprintf(fl->settings_buffer,
+		       sizeof(fl->settings_buffer),
+		       "$ORIGIN %s\n"
+		       "$TTL %u\n",
+		       zone_origin, default_ttl);
 
 	if (ret > 0) {
 		fl->settings_length = ret;
 	} else {
-		printf("FL:Error in zone setttings!\n");
 		file_loader_free(fl);
 		return NULL;
 	}
@@ -150,7 +152,7 @@ int file_loader_process(file_loader_t *fl)
 	uint64_t block_start_position, block_end_position;
 	uint64_t scanner_start_position, scanner_end_position;
 
-	// For secure termination of zone file.
+	// Last block - secure termination of zone file.
 	char *zone_termination = "\n";
 
 	// Getting OS page size.
@@ -158,20 +160,17 @@ int file_loader_process(file_loader_t *fl)
 
 	// Getting file information.
 	if (fstat(fl->fd, &file_stat) == -1) {
-		printf("FL:Fstat error!\n");
-		return -1;
+		return FLOADER_EFSTAT;
 	}
 
 	// Check for directory.
 	if (S_ISDIR(file_stat.st_mode)) {
-		printf("FL:Given zone file is a directory!\n");
-		return -1;
+		return FLOADER_EDIRECTORY;
 	}
 
 	// Check for empty file.
 	if (file_stat.st_size == 0) {
-		printf("FL:Empty zone file!\n");
-		return -1;
+		return FLOADER_EEMPTY;
 	}
 
 	// Block size adjustment to multiple of page size.
@@ -187,8 +186,7 @@ int file_loader_process(file_loader_t *fl)
 	ret = load_settings(fl);
 
 	if (ret != 0) {
-		printf("FL:Zone defaults error!\n");
-		return -1;
+		return FLOADER_EDEFAULTS;
 	}
 
 	// Loop over zone file blocks.
@@ -223,14 +221,12 @@ int file_loader_process(file_loader_t *fl)
 			    block_start_position);
 
 		if (data == MAP_FAILED) {
-			printf("FL:Mmap error!\n");
-			return -1;
+			return FLOADER_EMMAP;
 		}
 
 		// Check for sufficient block overlapping.
 		if (fl->scanner->token_shift > overlapping_size) {
-			printf("FL:Insufficient block overlapping!\n");
-			return -1;
+			return FLOADER_EOVERLAPPING;
 		};
 
 		// Scan zone file.
@@ -248,20 +244,16 @@ int file_loader_process(file_loader_t *fl)
 		}
 
 		// Zone file block unmapping.
-		if (munmap(data,
-			   block_end_position - block_start_position) == -1) {
-			printf("FL:Error file munmapping!\n");
-			return -1;
+		if (munmap(data, block_end_position - block_start_position) == -1) {
+			return FLOADER_EMUNMAP;
 		}
 	}
 
 	// Check for scanner return.
 	if (ret != 0) {
-		printf("FL:Zone processing has stopped with %"PRIu64" errors!\n",
-			   fl->scanner->error_counter);
-		return -1;
+		return FLOADER_ESCANNER;
 	}
 
-	return 0;
+	return KNOT_EOK;
 }
 
