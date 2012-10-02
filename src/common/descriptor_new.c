@@ -92,8 +92,6 @@ static const rdata_descriptor_t rdata_descriptors[] = {
 				       KNOT_RDATA_WF_END } },
 	[KNOT_RRTYPE_SPF]        = { { KNOT_RDATA_WF_REMAINDER,
 				       KNOT_RDATA_WF_END } },
-	[KNOT_RRTYPE_TKEY]       = { { KNOT_RDATA_WF_REMAINDER,
-				       KNOT_RDATA_WF_END } },
 	[KNOT_RRTYPE_TSIG]       = { { KNOT_RDATA_WF_UNCOMPRESSED_DNAME,
 				       KNOT_RDATA_WF_REMAINDER,
 				       KNOT_RDATA_WF_END } },

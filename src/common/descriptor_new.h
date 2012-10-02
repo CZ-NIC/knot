@@ -85,7 +85,6 @@ enum knot_rr_type {
 
 	KNOT_RRTYPE_SPF        =  99, /*!< Sender policy framework. */
 
-	KNOT_RRTYPE_TKEY       = 249, /*!< Secret key for TSIG. */
 	KNOT_RRTYPE_TSIG       = 250, /*!< Transaction signature. */
 	KNOT_RRTYPE_IXFR       = 251, /*!< Incremental zone transfer. */
 	KNOT_RRTYPE_AXFR       = 252, /*!< Authoritative zone transfer. */

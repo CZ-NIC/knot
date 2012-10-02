@@ -1647,40 +1647,40 @@
 	}
 
 	r_type =
-	    ( "A"i          %{ s->r_type = KNOT_RRTYPE_A; }
-	    | "NS"i         %{ s->r_type = KNOT_RRTYPE_NS; }
-	    | "CNAME"i      %{ s->r_type = KNOT_RRTYPE_CNAME; }
-	    | "SOA"i        %{ s->r_type = KNOT_RRTYPE_SOA; }
-	    | "PTR"i        %{ s->r_type = KNOT_RRTYPE_PTR; }
-	    | "HINFO"i      %{ s->r_type = KNOT_RRTYPE_HINFO; }
-	    | "MINFO"i      %{ s->r_type = KNOT_RRTYPE_MINFO; }
-	    | "MX"i         %{ s->r_type = KNOT_RRTYPE_MX; }
-	    | "TXT"i        %{ s->r_type = KNOT_RRTYPE_TXT; }
-	    | "RP"i         %{ s->r_type = KNOT_RRTYPE_RP; }
-	    | "AFSDB"i      %{ s->r_type = KNOT_RRTYPE_AFSDB; }
-	    | "RT"i         %{ s->r_type = KNOT_RRTYPE_RT; }
-	    | "KEY"i        %{ s->r_type = KNOT_RRTYPE_KEY; }
-	    | "AAAA"i       %{ s->r_type = KNOT_RRTYPE_AAAA; }
-	    | "LOC"i        %{ s->r_type = KNOT_RRTYPE_LOC; }
-	    | "SRV"i        %{ s->r_type = KNOT_RRTYPE_SRV; }
-	    | "NAPTR"i      %{ s->r_type = KNOT_RRTYPE_NAPTR; }
-	    | "KX"i         %{ s->r_type = KNOT_RRTYPE_KX; }
-	    | "CERT"i       %{ s->r_type = KNOT_RRTYPE_CERT; }
-	    | "DNAME"i      %{ s->r_type = KNOT_RRTYPE_DNAME; }
-	    | "APL"i        %{ s->r_type = KNOT_RRTYPE_APL; }
-	    | "DS"i         %{ s->r_type = KNOT_RRTYPE_DS; }
-	    | "SSHFP"i      %{ s->r_type = KNOT_RRTYPE_SSHFP; }
-	    | "IPSECKEY"i   %{ s->r_type = KNOT_RRTYPE_IPSECKEY; }
-	    | "RRSIG"i      %{ s->r_type = KNOT_RRTYPE_RRSIG; }
-	    | "NSEC"i       %{ s->r_type = KNOT_RRTYPE_NSEC; }
-	    | "DNSKEY"i     %{ s->r_type = KNOT_RRTYPE_DNSKEY; }
-	    | "DHCID"i      %{ s->r_type = KNOT_RRTYPE_DHCID; }
-	    | "NSEC3"i      %{ s->r_type = KNOT_RRTYPE_NSEC3; }
-	    | "NSEC3PARAM"i %{ s->r_type = KNOT_RRTYPE_NSEC3PARAM; }
-	    | "TLSA"i       %{ s->r_type = KNOT_RRTYPE_TLSA; }
-	    | "SPF"i        %{ s->r_type = KNOT_RRTYPE_SPF; }
-	    | "TYPE"i      . type_number
-	    ) $!_r_type_error;
+		( "A"i          %{ s->r_type = KNOT_RRTYPE_A; }
+		| "NS"i         %{ s->r_type = KNOT_RRTYPE_NS; }
+		| "CNAME"i      %{ s->r_type = KNOT_RRTYPE_CNAME; }
+		| "SOA"i        %{ s->r_type = KNOT_RRTYPE_SOA; }
+		| "PTR"i        %{ s->r_type = KNOT_RRTYPE_PTR; }
+		| "HINFO"i      %{ s->r_type = KNOT_RRTYPE_HINFO; }
+		| "MINFO"i      %{ s->r_type = KNOT_RRTYPE_MINFO; }
+		| "MX"i         %{ s->r_type = KNOT_RRTYPE_MX; }
+		| "TXT"i        %{ s->r_type = KNOT_RRTYPE_TXT; }
+		| "RP"i         %{ s->r_type = KNOT_RRTYPE_RP; }
+		| "AFSDB"i      %{ s->r_type = KNOT_RRTYPE_AFSDB; }
+		| "RT"i         %{ s->r_type = KNOT_RRTYPE_RT; }
+		| "KEY"i        %{ s->r_type = KNOT_RRTYPE_KEY; }
+		| "AAAA"i       %{ s->r_type = KNOT_RRTYPE_AAAA; }
+		| "LOC"i        %{ s->r_type = KNOT_RRTYPE_LOC; }
+		| "SRV"i        %{ s->r_type = KNOT_RRTYPE_SRV; }
+		| "NAPTR"i      %{ s->r_type = KNOT_RRTYPE_NAPTR; }
+		| "KX"i         %{ s->r_type = KNOT_RRTYPE_KX; }
+		| "CERT"i       %{ s->r_type = KNOT_RRTYPE_CERT; }
+		| "DNAME"i      %{ s->r_type = KNOT_RRTYPE_DNAME; }
+		| "APL"i        %{ s->r_type = KNOT_RRTYPE_APL; }
+		| "DS"i         %{ s->r_type = KNOT_RRTYPE_DS; }
+		| "SSHFP"i      %{ s->r_type = KNOT_RRTYPE_SSHFP; }
+		| "IPSECKEY"i   %{ s->r_type = KNOT_RRTYPE_IPSECKEY; }
+		| "RRSIG"i      %{ s->r_type = KNOT_RRTYPE_RRSIG; }
+		| "NSEC"i       %{ s->r_type = KNOT_RRTYPE_NSEC; }
+		| "DNSKEY"i     %{ s->r_type = KNOT_RRTYPE_DNSKEY; }
+		| "DHCID"i      %{ s->r_type = KNOT_RRTYPE_DHCID; }
+		| "NSEC3"i      %{ s->r_type = KNOT_RRTYPE_NSEC3; }
+		| "NSEC3PARAM"i %{ s->r_type = KNOT_RRTYPE_NSEC3PARAM; }
+		| "TLSA"i       %{ s->r_type = KNOT_RRTYPE_TLSA; }
+		| "SPF"i        %{ s->r_type = KNOT_RRTYPE_SPF; }
+		| "TYPE"i      . type_number
+		) $!_r_type_error;
 	# END
 
 	# BEGIN - Top level processing
