@@ -1,0 +1,27 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	TYPE0		\# 0			; Minimal type number
+@	TYPE65535	\# 0			; Maximal type number
+@	TYPE55555	\# 0			; Without hex rdata
+@	TYPE55555	\# 1 00			; Without hex rdata
+@	TYPE1		\# 4 00000000		; Known type
+@	TYPE1		0.0.0.0			; Known type in text format
+@	TYPE55555	(			; Multiline begin
+	\#
+	5
+	0102 03
+	04 05
+	)					; Multiline end
+@	type55555	\# 0			; Type in lower-case
+
+; KO
+@	TYPE55555
+@	TYPE55555				; Without text rdata
+@	TYPE65536				; Type number overflow
+@	TYPE65535x				; Bad type
+@	TYPE55555	\#			; Missing hex length
+@	TYPE55555	\# 1 0000		; Too long rdata
+@	TYPE55555	\# 2 00			; Bad rdata length
+@	TYPE55555	\# 1 00 x		; Unexpected data
