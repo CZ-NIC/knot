@@ -21,26 +21,22 @@
 #include "util/debug.h"
 #include "packet/packet.h"
 #include "consts.h"
+#include "common/mempattern.h"
 
 /*----------------------------------------------------------------------------*/
 // Copied from XFR - maybe extract somewhere else
 static int knot_ddns_prereq_check_rrsets(knot_rrset_t ***rrsets,
                                          size_t *count, size_t *allocated)
 {
-	int new_count = 0;
-	if (*count == *allocated) {
-		new_count = *allocated * 2;
-	}
-
-	knot_rrset_t **rrsets_new =
-		(knot_rrset_t **)calloc(new_count, sizeof(knot_rrset_t *));
-	if (rrsets_new == NULL) {
+	/* This is really confusing, it's ptr -> array of "knot_rrset_t*" */
+	char *arr = (char*)*rrsets;
+	int ret = 0;
+	ret = mreserve(&arr, sizeof(knot_rrset_t*), *count + 1, 0, allocated);
+	if (ret < 0) {
 		return KNOT_ENOMEM;
 	}
-
-	memcpy(rrsets_new, *rrsets, (*count) * sizeof(knot_rrset_t *));
-	*rrsets = rrsets_new;
-	*allocated = new_count;
+	
+	*rrsets = (knot_rrset_t**)arr;
 
 	return KNOT_EOK;
 }
@@ -50,20 +46,15 @@ static int knot_ddns_prereq_check_rrsets(knot_rrset_t ***rrsets,
 static int knot_ddns_prereq_check_dnames(knot_dname_t ***dnames,
                                          size_t *count, size_t *allocated)
 {
-	int new_count = 0;
-	if (*count == *allocated) {
-		new_count = *allocated * 2;
-	}
-
-	knot_dname_t **dnames_new =
-		(knot_dname_t **)calloc(new_count, sizeof(knot_dname_t *));
-	if (dnames_new == NULL) {
+	/* This is really confusing, it's ptr -> array of "knot_dname_t*" */
+	char *arr = (char*)*dnames;
+	int ret = 0;
+	ret = mreserve(&arr, sizeof(knot_dname_t*), *count + 1, 0, allocated);
+	if (ret < 0) {
 		return KNOT_ENOMEM;
 	}
-
-	memcpy(dnames_new, *dnames, (*count) * sizeof(knot_dname_t *));
-	*dnames = dnames_new;
-	*allocated = new_count;
+	
+	*dnames = (knot_dname_t**)arr;
 
 	return KNOT_EOK;
 }
@@ -652,22 +643,27 @@ void knot_ddns_prereqs_free(knot_ddns_prereq_t **prereq)
 	for (i = 0; i < (*prereq)->exist_count; ++i) {
 		knot_rrset_deep_free(&(*prereq)->exist[i], 1, 1, 1);
 	}
+	free((*prereq)->exist);
 
 	for (i = 0; i < (*prereq)->exist_full_count; ++i) {
 		knot_rrset_deep_free(&(*prereq)->exist_full[i], 1, 1, 1);
 	}
+	free((*prereq)->exist_full);
 
 	for (i = 0; i < (*prereq)->not_exist_count; ++i) {
 		knot_rrset_deep_free(&(*prereq)->not_exist[i], 1, 1, 1);
 	}
+	free((*prereq)->not_exist);
 
 	for (i = 0; i < (*prereq)->in_use_count; ++i) {
 		knot_dname_free(&(*prereq)->in_use[i]);
 	}
+	free((*prereq)->in_use);
 
 	for (i = 0; i < (*prereq)->not_in_use_count; ++i) {
 		knot_dname_free(&(*prereq)->not_in_use[i]);
 	}
+	free((*prereq)->not_in_use);
 
 	free(*prereq);
 	*prereq = NULL;
