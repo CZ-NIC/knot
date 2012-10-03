@@ -323,15 +323,9 @@ static int knot_ddns_check_not_exist(const knot_zone_contents_t *zone,
 	} else if ((found = knot_node_rrset(node, knot_rrset_type(rrset)))
 	            == NULL) {
 		return KNOT_EOK;
-	} else {
-		// do not have to compare the header, it is already done
-		assert(knot_rrset_type(found) == knot_rrset_type(rrset));
-		assert(knot_dname_compare(knot_rrset_owner(found),
-		                          knot_rrset_owner(rrset)) == 0);
-		if (knot_rrset_compare_rdata(found, rrset) <= 0) {
-			return KNOT_EOK;
-		}
 	}
+	
+	/* RDATA is always empty for simple RRset checks. */
 
 	*rcode = KNOT_RCODE_YXRRSET;
 	return KNOT_EPREREQ;
