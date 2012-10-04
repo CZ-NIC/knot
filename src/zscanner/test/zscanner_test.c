@@ -14,15 +14,17 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <unistd.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <config.h>
-#include <getopt.h>
+#include <inttypes.h>			// PRIu64
+#include <stdio.h>			// printf
+#include <stdlib.h>			// atoi
+#include <getopt.h>			// getopt
 
-#include "zscanner/file_loader.h"
-#include "zscanner/test/processing.h"
-#include "zscanner/test/tests.h"
+#include "common/errcode.h"		// knot_strerror
+#include "zscanner/file_loader.h"	// file_loader
+#include "zscanner/test/processing.h"	// processing functions
+#include "zscanner/test/tests.h"	// test functions
+
+#define DEFAULT_MODE	1
 
 
 /*! \brief Print help. */
@@ -43,7 +45,7 @@ int main(int argc, char *argv[])
 {
 	// Parsed command line arguments.
 	int c = 0, li = 0;
-	int ret, mode = 1, test = 0;
+	int ret, mode = DEFAULT_MODE, test = 0;
 	file_loader_t *fl;
 	const char *origin;
 	const char *zone_file;
@@ -84,6 +86,7 @@ int main(int argc, char *argv[])
 		zone_file = argv[optind];
 		origin = argv[optind + 1];
 
+		// Create appropriate file loader.
 		switch (mode) {
 		case 0:
 			fl = file_loader_create(origin,
@@ -118,11 +121,33 @@ int main(int argc, char *argv[])
 			return EXIT_FAILURE;
 		}
 
+		// Check file loader.
 		if (fl != NULL) {
 			ret = file_loader_process(fl);
-			file_loader_free(fl);
 
-			if (ret != 0) {
+			switch (ret) {
+			case KNOT_EOK:
+				if (mode == DEFAULT_MODE) {
+					printf("Zone file has been processed "
+					       "successfully\n");
+				}
+				file_loader_free(fl);
+				break;
+
+			case FLOADER_ESCANNER:
+				if (mode == DEFAULT_MODE) {
+					printf("Zone processing has stopped with "
+					       "%"PRIu64" warnings/errors!\n",
+					       fl->scanner->error_counter);
+				}
+				file_loader_free(fl);
+				return EXIT_FAILURE;
+
+			default:
+				if (mode == DEFAULT_MODE) {
+					printf("%s\n", knot_strerror(ret));
+				}
+				file_loader_free(fl);
 				return EXIT_FAILURE;
 			}
 		} else {

@@ -104,7 +104,7 @@ int scanner_process(char      *start,
 	int16_t  window;
 	int	 ret;
 
-	// Next 3 variables are for better performance.
+	// Next 2 variables are for better performance.
 	// Restoring r_data pointer to next free space.
 	uint8_t *rdata_tail = s->r_data + s->r_data_tail;
 	// Initialization of the last r_data byte.
@@ -160,10 +160,10 @@ int scanner_process(char      *start,
 	s->top = top;
 	memcpy(s->stack, stack, sizeof(stack));
 
-	// Storing r_data pointer
+	// Storing r_data pointer.
 	s->r_data_tail = rdata_tail - s->r_data;
 
-	// Storing unprocessed token shift
+	// Storing unprocessed token shift.
 	if (ts != NULL) {
 		s->token_shift = pe - ts;
 	} else {

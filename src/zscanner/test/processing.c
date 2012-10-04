@@ -102,11 +102,19 @@ void empty_process_error(const scanner_t *s) { };
 
 void debug_process_error(const scanner_t *s)
 {
-	printf("LINE(%03"PRIu64") ERROR(%s) FILE(%s) NEAR(%s)\n",
-	       s->line_counter,
-	       knot_strerror(s->error_code),
-	       s->file_name,
-	       s->buffer);
+	if (s->stop == true) {
+		printf("LINE(%03"PRIu64") ERROR(%s) FILE(%s) NEAR(%s)\n",
+		       s->line_counter,
+		       knot_strerror(s->error_code),
+		       s->file_name,
+		       s->buffer);
+	} else {
+		printf("LINE(%03"PRIu64") WARNING(%s) FILE(%s) NEAR(%s)\n",
+		       s->line_counter,
+		       knot_strerror(s->error_code),
+		       s->file_name,
+		       s->buffer);
+	}
 	fflush(stdout);
 }
 
@@ -142,7 +150,11 @@ void debug_process_record(const scanner_t *s)
 
 void test_process_error(const scanner_t *s)
 {
-	printf("ERROR=%s\n%s", ERROR_CODE_NAME(s->error_code), separator);
+	if (s->stop == true) {
+		printf("ERROR=%s\n%s", ERROR_CODE_NAME(s->error_code), separator);
+	} else {
+		printf("WARNG=%s\n%s", ERROR_CODE_NAME(s->error_code), separator);
+	}
 	fflush(stdout);
 }
 

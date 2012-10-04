@@ -1,0 +1,36 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	SOA	@	@	0	0 0 0 0		; The simplest variant
+@	SOA	tld.	tld	0	0 0 0 0 	; Absolute and relative dnames.
+@	SOA	@	@	4294967295 0 0 0 0	; Maximal serial
+@	SOA	@	@	0 4294967295 4294967295 4294967295 4294967295	; Maximal times
+@	SOA	@	@	0	1d 1h 1m 1s	; Time units
+@	TYPE6	\# 22 00 00 0000000000000000000000000000000000000000	; TYPE + Hexadecimal rdata
+@	TYPE6	@	@       0       0 0 0 0		; TYPE
+@	SOA	ns.tld. first\.second.tld. (		; Multiline record
+	2007120710
+	1w2d3h4m5s
+	2h
+	3m
+	4s
+)
+@	soa	@	@       0       0 0 0 0		; Type in lower-case
+
+; KO
+@	SOA
+@	SOA						; Empty rdata
+@	SOA	\# 0					; Hex empty rdata
+@	SOA	\#					; Missing hex length
+@	SOA	@	@	1h	0 0 0 0		; Bad number
+@	SOA	@	@	4294967296 0 0 0 0	; Serial overflow
+@	SOA	@	@	0 4294967296 0 0 0	; Refresh overflow
+@	SOA	@	@	0 0 4294967296 0 0	; Retry overflow
+@	SOA	@	@	0 0 0 4294967296 0	; Expire overflow
+@	SOA	@	@	0 0 0 0 4294967296	; Minimum overflow
+@	SOA	@	@	0 0 0 0 0 x		; Unexpected item
+@	SOA	\# 23 0001 00 0000000000000000000000000000000000000000	; Too long rdata (mname)
+@	SOA	\# 23 00 0001 0000000000000000000000000000000000000000	; Too long rdata (rname)
+@	SOA	\# 23 00 00 000000000000000000000000000000000000000000	; Too long rdata
+@	SOA	\# 23 00 00   0000000000000000000000000000000000000000	; Bad rdata length

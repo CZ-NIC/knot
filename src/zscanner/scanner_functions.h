@@ -36,6 +36,7 @@ extern const uint8_t ascii_to_lower[];
 
 extern const uint8_t digit_to_num[];
 
+// Transformation arrays for Hex encoding.
 extern const uint8_t first_hex_to_num[];
 extern const uint8_t second_hex_to_num[];
 
@@ -63,9 +64,9 @@ extern const uint8_t eighth_base32hex_to_num[];
 
 int date_to_timestamp(uint8_t *buff, uint32_t *timestamp);
 
-void wire_dname_to_text(const uint8_t *dname,
-			const uint32_t dname_length,
-			char *text_dname);
+int wire_dname_to_str(const uint8_t  *data,
+		      const uint32_t data_len,
+		      char *text);
 
 uint8_t loc64to8(uint64_t number);
 

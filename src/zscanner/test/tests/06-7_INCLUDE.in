@@ -1,0 +1,5 @@
+$ORIGIN .
+$TTL	1
+
+; KO
+$INCLUDE ./includes/include5		; Include file contains error

@@ -27,10 +27,10 @@
 #ifndef _ZSCANNER__FILE_LOADER_H_
 #define _ZSCANNER__FILE_LOADER_H_
 
-#include <stdint.h>
+#include <stdint.h>			// uint32_t
 
 #include "common/descriptor_new.h"	// KNOT_CLASS_IN
-#include "zscanner/scanner.h"		// uint32_t
+#include "zscanner/scanner.h"		// scanner_t
 
 #define SETTINGS_BUFFER_LENGTH		 1024
 

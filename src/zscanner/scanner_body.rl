@@ -140,12 +140,17 @@
 		(s->dname)[s->dname_tmp_length] = (s->dname)[s->dname_tmp_length];
 		s->dname_tmp_length++;
 	}
+	action _label_dec_error {
+		SCANNER_WARNING(ZSCANNER_EBAD_NUMBER);
+		fhold; fgoto err_line;
+	}
 
 	label_char =
 	    ( (alnum | [\-_/]) $_label_char                 # One common char.
 	    | ('\\' . ^digit)  @_label_char                 # One "\x" char.
 	    | ('\\'            %_label_dec_init             # Initial "\" char.
 	       . digit {3}     $_label_dec %_label_dec_exit # "DDD" rest.
+	                       $!_label_dec_error
 	      )
 	    );
 
@@ -164,7 +169,7 @@
 
 		s->dname_tmp_length += s->zone_origin_length;
 
-		if (s->dname_tmp_length >= MAX_DNAME_LENGTH) {
+		if (s->dname_tmp_length > MAX_DNAME_LENGTH) {
 			SCANNER_WARNING(ZSCANNER_EDNAME_OVERFLOW);
 			fhold; fgoto err_line;
 		}
@@ -242,6 +247,17 @@
 	r_owner = ( dname >_r_owner_init %_r_owner_exit
 	          | zlen  %_r_owner_empty_exit # Empty owner - use the previous one.
 	          ) $!_r_owner_error;
+	# END
+
+	# BEGIN - domain name in record data processing
+	action _r_dname_init {
+		s->dname = rdata_tail;
+	}
+	action _r_dname_exit {
+		rdata_tail += s->dname_tmp_length;
+	}
+
+	r_dname = dname >_r_dname_init %_r_dname_exit;
 	# END
 
 	# BEGIN - Number processing
@@ -517,14 +533,20 @@
 	action _text_dec_exit {
 		rdata_tail++;
 	}
+	action _text_dec_error {
+		SCANNER_WARNING(ZSCANNER_EBAD_NUMBER);
+		fhold; fgoto err_line;
+	}
 
 	text_char =
-		( (33..126 - [\\;\"]) $_text_char                # One printable char.
-		| ('\\' . ^digit)     @_text_char                # One "\x" char.
-		| ('\\'               %_text_dec_init            # Initial "\" char.
+		( (33..126 - [\\;\"]) $_text_char          # One printable char.
+		| ('\\' . ^digit)     @_text_char          # One "\x" char.
+		| ('\\'               %_text_dec_init      # Initial "\" char.
 		   . digit {3}        $_text_dec %_text_dec_exit # "DDD" rest.
+		                      $!_text_dec_error
 		  )
 		) $!_text_char_error;
+
 	quoted_text_char =
 		( text_char
 		| ([ \t;] | [\n] when { s->multiline }) $_text_char
@@ -532,7 +554,7 @@
 
 	# Text string machine instantiation (for smaller code).
 	text_ := (('\"' . quoted_text_char* . '\"') | text_char+)
-			 $!_text_error %_ret . all_wchar;
+		 $!_text_error %_ret . all_wchar;
 	text = ^all_wchar ${ fhold; fcall text_; };
 
 	# Text string with forward 1-byte length.
@@ -575,7 +597,6 @@
 
 	zone_origin_ := (sep . absolute_dname >_zone_origin_init . rest)
 	                $!_zone_origin_error %_zone_origin_exit %_ret . newline;
-
 	zone_origin = all_wchar ${ fhold; fcall zone_origin_; };
 	# END
 
@@ -584,15 +605,17 @@
 		rdata_tail = s->r_data;
 	}
 	action _incl_filename_exit {
-		if (rdata_tail <= rdata_stop) {
-			*rdata_tail = 0; // Ending filename string.
-			strcpy((char*)(s->include_filename), (char*)(s->r_data));
-			rdata_tail = s->r_data; // Initialization of origin if not present!
-			*rdata_tail = 0;
-		} else {
-			SCANNER_WARNING(ZSCANNER_ETEXT_OVERFLOW);
+		*rdata_tail = 0; // Ending filename string.
+		strcpy((char*)(s->include_filename), (char*)(s->r_data));
+
+		// Check for correct string copy.
+		if (strlen(s->include_filename) != rdata_tail - s->r_data) {
+			SCANNER_ERROR(ZSCANNER_EBAD_INCLUDE_FILENAME);
 			fhold; fgoto err_line;
 		}
+
+		// For detection whether origin is not present.
+		s->dname = NULL;
 	}
 	action _incl_filename_error {
 		SCANNER_ERROR(ZSCANNER_EBAD_INCLUDE_FILENAME);
@@ -600,15 +623,10 @@
 	}
 
 	action _incl_origin_init {
-		rdata_tail = s->r_data;
+		s->dname = s->r_data;
 	}
 	action _incl_origin_exit {
-		if (rdata_tail <= rdata_stop) {
-			*rdata_tail = 0; // Ending origin string.
-		} else {
-			SCANNER_WARNING(ZSCANNER_ETEXT_OVERFLOW);
-			fhold; fgoto err_line;
-		}
+		s->r_data_length = s->dname_tmp_length;
 	}
 	action _incl_origin_error {
 		SCANNER_ERROR(ZSCANNER_EBAD_INCLUDE_ORIGIN);
@@ -619,18 +637,21 @@
 		char text_origin[MAX_DNAME_LENGTH];
 
 		// Origin conversion from wire to text form.
-		if (s->r_data[0] == 0) { // Use current origin.
-			wire_dname_to_text(s->zone_origin,
-							   s->zone_origin_length,
-							   text_origin);
+		if (s->dname == NULL) { // Use current origin.
+			wire_dname_to_str(s->zone_origin,
+			                  s->zone_origin_length,
+					  text_origin);
 		} else { // Use specified origin.
-			strcpy(text_origin, (char *)(s->r_data));
+			wire_dname_to_str(s->r_data,
+			                  s->r_data_length,
+					  text_origin);
 		}
 
-		if (s->include_filename[0] != '/') { // File name is in relative form.
+		if (s->include_filename[0] != '/') { // Relative file path..
 			// Get absolute path of the current zone file.
 			if (realpath(s->file_name, (char*)(s->buffer)) != NULL) {
-				char *full_current_zone_file_name = strdup((char*)(s->buffer));
+				char *full_current_zone_file_name =
+					strdup((char*)(s->buffer));
 
 				// Creating full include file name.
 				sprintf((char*)(s->buffer), "%s/%s",
@@ -669,15 +690,26 @@
 		}
 	}
 
-	include_file_ := (sep . text >_incl_filename_init %_incl_filename_exit
-	                  $!_incl_filename_error .
-	                  (sep . text >_incl_origin_init %_incl_origin_exit
-	                  $!_incl_origin_error)? . rest
-	                 ) %_include_exit %_ret newline;
+	include_file_ :=
+		(sep . text >_incl_filename_init %_incl_filename_exit
+		 $!_incl_filename_error .
+	         (sep . absolute_dname >_incl_origin_init %_incl_origin_exit
+	          $!_incl_origin_error
+		 )? . rest
+	        ) %_include_exit %_ret newline;
 	include_file = all_wchar ${ fhold; fcall include_file_; };
 	# END
 
 	# BEGIN - Directive switch
+	# Each error/warning in directive should stop processing.
+	# Some internal errors cause warning only. This causes stop processing.
+	action _directive_init {
+		s->stop = true;
+	}
+	# Remove stop processing flag.
+	action _directive_exit {
+		s->stop = false;
+	}
 	action _directive_error {
 		SCANNER_ERROR(ZSCANNER_EBAD_DIRECTIVE);
 		fhold; fgoto err_line;
@@ -686,7 +718,7 @@
 	directive = '$' . ( ("TTL"i     . default_ttl)
 	                  | ("ORIGIN"i  . zone_origin)
 	                  | ("INCLUDE"i . include_file)
-	                  ) $!_directive_error;
+	                  ) >_directive_init %_directive_exit $!_directive_error;
 	# END
 
 	# BEGIN - RRecord class and ttl processing
@@ -714,17 +746,6 @@
 	r_class = "IN"i %_r_class_in_exit;
 
 	r_ttl = time %_r_ttl_exit;
-	# END
-
-	# BEGIN - domain name in record data processing
-	action _r_dname_init {
-		s->dname = rdata_tail;
-	}
-	action _r_dname_exit {
-		rdata_tail += s->dname_tmp_length;
-	}
-
-	r_dname = dname >_r_dname_init %_r_dname_exit;
 	# END
 
 	# BEGIN - IPv4 and IPv6 address processing
@@ -987,8 +1008,8 @@
 	          )
 	        )
 	      | base64_padd{2}                            # AB==
-		  )
-		);
+	      )
+	    );
 
 	# Base64 array with possibility of inside white spaces and multiline.
 	base64_ := (base64_quartet+ . sep?)+ $!_base64_char_error
@@ -1072,8 +1093,8 @@
 	                  base32hex_char      $_seventh_base32hex_char . # ABCDEFG
 	                  ( base32hex_char    $_eighth_base32hex_char    # ABCDEFGH
 	                  | base32hex_padd{1}                            # ABCDEFG=
-					  )
-					)
+			  )
+			)
 	              | base32hex_padd{3}                                # ABCDE===
 	              )
 	            )
@@ -1081,8 +1102,8 @@
 	          )
 	        )
 	      | base32hex_padd{6}                                        # AB======
-		  )
-		);
+	      )
+	    );
 
 	# Continuous base32hex (with padding!) array with forward length processing.
 	hash = base32hex_octet+ >_item_length_init %_item_length_exit
@@ -1132,7 +1153,7 @@
 	    | "TLSA"i       %{ type_num(KNOT_RRTYPE_TLSA, rdata_tail); }
 	    | "SPF"i        %{ type_num(KNOT_RRTYPE_SPF, rdata_tail); }
 	    | "TYPE"i      . num16 # TYPE12345
-		) %_type_exit $!_type_error;
+	    ) %_type_exit $!_type_error;
 	# END
 
 	# BEGIN - Bitmap processing
@@ -1182,7 +1203,7 @@
 	    | "TLSA"i       %{ window_add_bit(KNOT_RRTYPE_TLSA, s); }
 	    | "SPF"i        %{ window_add_bit(KNOT_RRTYPE_SPF, s); }
 	    | "TYPE"i      . type_bitmap # Special types TYPE0-TYPE65535
-		);
+	    );
 
 	action _bitmap_init {
 		memset(s->windows, 0, sizeof(s->windows));
@@ -1201,8 +1222,8 @@
 					rdata_tail += 1;
 					// Copying bitmap.
 					memcpy(rdata_tail,
-						   (s->windows[window]).bitmap,
-						   (s->windows[window]).length);
+					       (s->windows[window]).bitmap,
+					       (s->windows[window]).length);
 					rdata_tail += (s->windows[window]).length;
 				} else {
 					SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
@@ -1626,40 +1647,40 @@
 	}
 
 	r_type =
-	    ( "A"i          %{ s->r_type = KNOT_RRTYPE_A; }
-	    | "NS"i         %{ s->r_type = KNOT_RRTYPE_NS; }
-	    | "CNAME"i      %{ s->r_type = KNOT_RRTYPE_CNAME; }
-	    | "SOA"i        %{ s->r_type = KNOT_RRTYPE_SOA; }
-	    | "PTR"i        %{ s->r_type = KNOT_RRTYPE_PTR; }
-	    | "HINFO"i      %{ s->r_type = KNOT_RRTYPE_HINFO; }
-	    | "MINFO"i      %{ s->r_type = KNOT_RRTYPE_MINFO; }
-	    | "MX"i         %{ s->r_type = KNOT_RRTYPE_MX; }
-	    | "TXT"i        %{ s->r_type = KNOT_RRTYPE_TXT; }
-	    | "RP"i         %{ s->r_type = KNOT_RRTYPE_RP; }
-	    | "AFSDB"i      %{ s->r_type = KNOT_RRTYPE_AFSDB; }
-	    | "RT"i         %{ s->r_type = KNOT_RRTYPE_RT; }
-	    | "KEY"i        %{ s->r_type = KNOT_RRTYPE_KEY; }
-	    | "AAAA"i       %{ s->r_type = KNOT_RRTYPE_AAAA; }
-	    | "LOC"i        %{ s->r_type = KNOT_RRTYPE_LOC; }
-	    | "SRV"i        %{ s->r_type = KNOT_RRTYPE_SRV; }
-	    | "NAPTR"i      %{ s->r_type = KNOT_RRTYPE_NAPTR; }
-	    | "KX"i         %{ s->r_type = KNOT_RRTYPE_KX; }
-	    | "CERT"i       %{ s->r_type = KNOT_RRTYPE_CERT; }
-	    | "DNAME"i      %{ s->r_type = KNOT_RRTYPE_DNAME; }
-	    | "APL"i        %{ s->r_type = KNOT_RRTYPE_APL; }
-	    | "DS"i         %{ s->r_type = KNOT_RRTYPE_DS; }
-	    | "SSHFP"i      %{ s->r_type = KNOT_RRTYPE_SSHFP; }
-	    | "IPSECKEY"i   %{ s->r_type = KNOT_RRTYPE_IPSECKEY; }
-	    | "RRSIG"i      %{ s->r_type = KNOT_RRTYPE_RRSIG; }
-	    | "NSEC"i       %{ s->r_type = KNOT_RRTYPE_NSEC; }
-	    | "DNSKEY"i     %{ s->r_type = KNOT_RRTYPE_DNSKEY; }
-	    | "DHCID"i      %{ s->r_type = KNOT_RRTYPE_DHCID; }
-	    | "NSEC3"i      %{ s->r_type = KNOT_RRTYPE_NSEC3; }
-	    | "NSEC3PARAM"i %{ s->r_type = KNOT_RRTYPE_NSEC3PARAM; }
-	    | "TLSA"i       %{ s->r_type = KNOT_RRTYPE_TLSA; }
-	    | "SPF"i        %{ s->r_type = KNOT_RRTYPE_SPF; }
-	    | "TYPE"i      . type_number
-	    ) $!_r_type_error;
+		( "A"i          %{ s->r_type = KNOT_RRTYPE_A; }
+		| "NS"i         %{ s->r_type = KNOT_RRTYPE_NS; }
+		| "CNAME"i      %{ s->r_type = KNOT_RRTYPE_CNAME; }
+		| "SOA"i        %{ s->r_type = KNOT_RRTYPE_SOA; }
+		| "PTR"i        %{ s->r_type = KNOT_RRTYPE_PTR; }
+		| "HINFO"i      %{ s->r_type = KNOT_RRTYPE_HINFO; }
+		| "MINFO"i      %{ s->r_type = KNOT_RRTYPE_MINFO; }
+		| "MX"i         %{ s->r_type = KNOT_RRTYPE_MX; }
+		| "TXT"i        %{ s->r_type = KNOT_RRTYPE_TXT; }
+		| "RP"i         %{ s->r_type = KNOT_RRTYPE_RP; }
+		| "AFSDB"i      %{ s->r_type = KNOT_RRTYPE_AFSDB; }
+		| "RT"i         %{ s->r_type = KNOT_RRTYPE_RT; }
+		| "KEY"i        %{ s->r_type = KNOT_RRTYPE_KEY; }
+		| "AAAA"i       %{ s->r_type = KNOT_RRTYPE_AAAA; }
+		| "LOC"i        %{ s->r_type = KNOT_RRTYPE_LOC; }
+		| "SRV"i        %{ s->r_type = KNOT_RRTYPE_SRV; }
+		| "NAPTR"i      %{ s->r_type = KNOT_RRTYPE_NAPTR; }
+		| "KX"i         %{ s->r_type = KNOT_RRTYPE_KX; }
+		| "CERT"i       %{ s->r_type = KNOT_RRTYPE_CERT; }
+		| "DNAME"i      %{ s->r_type = KNOT_RRTYPE_DNAME; }
+		| "APL"i        %{ s->r_type = KNOT_RRTYPE_APL; }
+		| "DS"i         %{ s->r_type = KNOT_RRTYPE_DS; }
+		| "SSHFP"i      %{ s->r_type = KNOT_RRTYPE_SSHFP; }
+		| "IPSECKEY"i   %{ s->r_type = KNOT_RRTYPE_IPSECKEY; }
+		| "RRSIG"i      %{ s->r_type = KNOT_RRTYPE_RRSIG; }
+		| "NSEC"i       %{ s->r_type = KNOT_RRTYPE_NSEC; }
+		| "DNSKEY"i     %{ s->r_type = KNOT_RRTYPE_DNSKEY; }
+		| "DHCID"i      %{ s->r_type = KNOT_RRTYPE_DHCID; }
+		| "NSEC3"i      %{ s->r_type = KNOT_RRTYPE_NSEC3; }
+		| "NSEC3PARAM"i %{ s->r_type = KNOT_RRTYPE_NSEC3PARAM; }
+		| "TLSA"i       %{ s->r_type = KNOT_RRTYPE_TLSA; }
+		| "SPF"i        %{ s->r_type = KNOT_RRTYPE_SPF; }
+		| "TYPE"i      . type_number
+		) $!_r_type_error;
 	# END
 
 	# BEGIN - Top level processing

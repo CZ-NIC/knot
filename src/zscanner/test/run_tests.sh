@@ -1,14 +1,20 @@
-#!/bin/bash
+#!/bin/sh
 
-separation="========================================================="
+TESTS_DIR="./tests"
+OUTS_DIR="/tmp/zscanner_tests"
+TEST_BIN="../../unittests-zscanner -m 2"
 
-echo $separation
+SEPARATION="========================================================="
 
-for file in `/usr/bin/find ./tests/ -name "*.in" | /usr/bin/sort`; do
-	fileout=`echo "$file" | /bin/sed 's/.in/.out/'`
-	../../unittests-zscanner -m 2 . $file > /tmp/_zscanner_test
-#	../../unittests-zscanner -m 2 . $file > /tmp/$fileout
-	echo $fileout
-	diff /tmp/_zscanner_test $fileout
-	echo $separation
+mkdir -p ${OUTS_DIR}/${TESTS_DIR}
+cp -r ${TESTS_DIR}/includes ${OUTS_DIR}
+
+echo ${SEPARATION}
+
+for file in `find ${TESTS_DIR} -name "*.in" | sort`; do
+	fileout=`echo "${file}" | sed 's/.in/.out/'`
+	${TEST_BIN} . ${file} > ${OUTS_DIR}/${fileout}
+	echo ${fileout}
+	diff ${OUTS_DIR}/${fileout} ${fileout}
+	echo ${SEPARATION}
 done

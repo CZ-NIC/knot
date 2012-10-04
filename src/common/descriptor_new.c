@@ -20,7 +20,8 @@
  * \brief RR type descriptors.
  */
 static const rdata_descriptor_t rdata_descriptors[] = {
-	[0]			 = { { KNOT_RDATA_WF_END } },
+	[0]			 = { { KNOT_RDATA_WF_REMAINDER,
+				       KNOT_RDATA_WF_END } },
 	[KNOT_RRTYPE_A]          = { { 4, KNOT_RDATA_WF_END } },
 	[KNOT_RRTYPE_NS]         = { { KNOT_RDATA_WF_COMPRESSED_DNAME,
 				       KNOT_RDATA_WF_END } },
@@ -50,7 +51,7 @@ static const rdata_descriptor_t rdata_descriptors[] = {
 	[KNOT_RRTYPE_KEY]        = { { 4, KNOT_RDATA_WF_REMAINDER,
 				       KNOT_RDATA_WF_END } },
 	[KNOT_RRTYPE_AAAA]       = { { 16, KNOT_RDATA_WF_END } },
-	[KNOT_RRTYPE_LOC]        = { { KNOT_RDATA_WF_REMAINDER,
+	[KNOT_RRTYPE_LOC]        = { { 16,
 				       KNOT_RDATA_WF_END } },
 	[KNOT_RRTYPE_SRV]        = { { 6, KNOT_RDATA_WF_UNCOMPRESSED_DNAME,
 				       KNOT_RDATA_WF_END } },
@@ -90,8 +91,6 @@ static const rdata_descriptor_t rdata_descriptors[] = {
 	[KNOT_RRTYPE_TLSA]       = { { 3, KNOT_RDATA_WF_REMAINDER,
 				       KNOT_RDATA_WF_END } },
 	[KNOT_RRTYPE_SPF]        = { { KNOT_RDATA_WF_REMAINDER,
-				       KNOT_RDATA_WF_END } },
-	[KNOT_RRTYPE_TKEY]       = { { KNOT_RDATA_WF_REMAINDER,
 				       KNOT_RDATA_WF_END } },
 	[KNOT_RRTYPE_TSIG]       = { { KNOT_RDATA_WF_UNCOMPRESSED_DNAME,
 				       KNOT_RDATA_WF_REMAINDER,

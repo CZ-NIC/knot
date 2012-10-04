@@ -21,4 +21,4 @@ t05			NS	@	; Missing CLASS and TTL
 )					; Multiline 6/6
 
 ; KO
-@			NS ((@))	; Nested parentheses - ERROR = STOPS PROCESSING!
+@			NS ((@))	; Nested parentheses - ERROR = STOP PROCESSING!

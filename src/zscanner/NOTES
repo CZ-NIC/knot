@@ -2,8 +2,12 @@
 - the class IN is supported only (CLASS12345 notation is not supported too)
 - domain names can contain alphanumeric, '-', '_' and '/' characters
 - \x and \DDD notations are allowed in domain names and text strings only
-- @ can be used instead of domain names anywhere
+- @ can be used instead of domain names anywhere (excluding directives)
+- directive $INCLUDE is allowed in included zone files (BEWARE of recursion)
+- relative file path is relative to parent zone file
+- blank zone file causes error (same rule is for included zone file)
 - the line numbers of multiline records are the numbers of the last lines with appropriate record parts
 - items parts lengths must be multiples of 2 for HEX, 4 for base64 and 8 for base32hex blocks (but DHCID example from RFC is more general!)
 - NSEC3 hash is with padding (but RFC 5155 section 3.3 says "unpadded")
 - date version of timestamp in RRSIG is limited to the end of the year 2105 (for better checking of 32bit integer)
+- algorithm and certificate mnemonics aren't supported

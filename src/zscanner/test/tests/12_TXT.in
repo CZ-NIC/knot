@@ -11,6 +11,7 @@ $TTL	1
 @	TXT	"" "test1" "\255" test2		; Array of text strings
 @	TXT	"" "" ""			; Array of blank strings
 @	TXT	first \# "\#"			; Array with special string
+@	TXT	\0320\ \\\"\.\@\*.tld.		; Special domain as a string
 @	TXT	" !\"#$%&'()*+,-./0123456789:;<=>?@"	; First part of all printables
 @	TXT	"ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`"	; Second part of all printables
 @	TXT	"abcdefghijklmnopqrstuvwxyz{|}~"	; Third part of all printables
@@ -22,6 +23,7 @@ $TTL	1
 second"
 third						; Second string
 )
+@	TXT	"abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMN1234\053"	; Text string of maximal length (255 chars)
 @	txt	""				; Type in lower-case
 
 ; KO
@@ -34,3 +36,4 @@ third						; Second string
 @	TXT	\256		; 8bit overflow in decimal notation
 @	TXT	\# 2 ""		; Bad length
 @	TXT	"""		; '"' char without forward slash
+@	TXT	"abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMN1234\0536"	; Maximal length overflow
