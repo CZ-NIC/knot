@@ -881,7 +881,7 @@ static uint32_t get_block_length(const uint8_t  *data,
 		return get_naptr_header_length(data + ofset,
 					       data_length - ofset);
 	case KNOT_RDATA_WF_REMAINDER:
-		return data_length;
+		return data_length - ofset;
 	default:
 		return 0;
 	}

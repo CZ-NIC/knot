@@ -10,4 +10,4 @@
 - items parts lengths must be multiples of 2 for HEX, 4 for base64 and 8 for base32hex blocks (but DHCID example from RFC is more general!)
 - NSEC3 hash is with padding (but RFC 5155 section 3.3 says "unpadded")
 - date version of timestamp in RRSIG is limited to the end of the year 2105 (for better checking of 32bit integer)
-- algorithm and certificate mnemonics aren't supported
+- algorithm, certificate and flags (in KEY) mnemonics aren't supported
