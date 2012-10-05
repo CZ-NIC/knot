@@ -163,7 +163,8 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 	zd->xfr_in.next_id = -1;
 	zd->xfr_in.acl = 0;
 	zd->xfr_in.wrkr = 0;
-	zd->xfr_in.bootstrap_retry = XFRIN_BOOTSTRAP_DELAY * 1000 * tls_rand();
+	zd->xfr_in.bootstrap_retry = (XFRIN_BOOTSTRAP_DELAY * tls_rand() + 5)
+	                             * 1000;
 	pthread_mutex_init(&zd->xfr_in.lock, 0);
 
 	/* Initialize NOTIFY. */
@@ -1428,6 +1429,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 	}
 
 	/* Reload zone file. */
+	int is_new = 0;
 	int is_bootstrapped = 0;
 	int ret = KNOT_ERROR;
 	if (zone_changed) {
@@ -1467,6 +1469,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 				}
 				log_server_info("Loaded zone '%s' serial %u\n",
 				                z->name, (uint32_t)sn);
+				is_new = 1;
 			}
 		}
 
@@ -1562,6 +1565,12 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 		/* Update events scheduled for zone. */
 		evsched_t *sch = ((server_t *)knot_ns_get_data(ns))->sched;
 		zones_timers_update(zone, z, sch);
+		
+		/* Refresh new slave zones (almost) immediately. */
+		if(is_new && zd->xfr_in.timer) {
+			evsched_schedule(sch, zd->xfr_in.timer,
+			                 zd->xfr_in.bootstrap_retry / 2);
+		}
 		
 		/* Schedule IXFR database syncing. */
 		/*! \note This has to remain separate as it must not be
