@@ -195,7 +195,7 @@ static int knot_tsig_check_time_signed(const knot_rrset_t *tsig_rr,
 }
 
 static int knot_tsig_write_tsig_variables(uint8_t *wire,
-                                         const knot_rrset_t *tsig_rr)
+                                          const knot_rrset_t *tsig_rr)
 {
 	if (wire == NULL || tsig_rr == NULL) {
 		dbg_tsig("TSIG: write tsig variables: NULL arguments.\n");
@@ -240,16 +240,25 @@ static int knot_tsig_write_tsig_variables(uint8_t *wire,
 		return KNOT_EINVAL;
 	}
 
-	memcpy(wire + offset, knot_dname_name(alg_name),
-	       sizeof(uint8_t) * knot_dname_size(alg_name));
-	offset += knot_dname_size(alg_name);
+	/* The algorithm name must be in canonical form, i.e. in lowercase. */
+	if (knot_dname_to_lower_copy(alg_name, (char *)(wire + offset),
+	        knot_dname_size(alg_name)) != KNOT_EOK)
+	{
+		dbg_tsig("TSIG: write variables: cannot convert algorithm "
+		         "to lowercase.\n");
+		return KNOT_EINVAL;
+	}
 
 #if defined(KNOT_TSIG_DEBUG) && defined(DEBUG_ENABLE_VERBOSE)
-	char *_algstr = knot_dname_to_str(alg_name);
+//	char *_algstr = knot_dname_to_str(alg_name);
 	dbg_tsig_verb("TSIG: write variables: written alg name: %s\n",
-	              _algstr);
-	free(_algstr);
+	              wire + offset);
+//	free(_algstr);
 #endif
+
+//	memcpy(wire + offset, knot_dname_name(alg_name),
+//	       sizeof(uint8_t) * knot_dname_size(alg_name));
+	offset += knot_dname_size(alg_name);
 
 	/* Following data are written in network order. */
 	/* Time signed. */
