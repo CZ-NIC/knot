@@ -40,7 +40,6 @@
 #include "common/prng.h"
 
 /* Constants */
-#define XFR_QUERY_WD 10 /*!< SOA/NOTIFY query timeout [s]. */
 #define XFR_SWEEP_INTERVAL 2 /*! [seconds] between sweeps. */
 #define XFR_BUFFER_SIZE 65535 /*! Do not change this - maximum value for UDP packet length. */
 #define XFR_MSG_DLTTR 9 /*! Index of letter differentiating IXFR/AXFR in log msg. */
@@ -1463,7 +1462,10 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 			ret = KNOT_ENOMEM;
 		} else {
 			/* Add timeout. */
-			fdset_set_watchdog(w->fdset, task->session, XFR_QUERY_WD);
+			rcu_read_lock();
+			fdset_set_watchdog(w->fdset, task->session,
+			                   conf()->max_conn_reply);
+			rcu_read_unlock();
 			log_server_info("%s Query issued.\n", xfr.msgpref);
 			ret = KNOT_EOK;
 		}

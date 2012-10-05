@@ -270,6 +270,9 @@ static int conf_mask(void* scanner, int nval, int prefixlen) {
 %token <tok> NOTIFY_IN
 %token <tok> NOTIFY_OUT
 %token <tok> BUILD_DIFFS
+%token <tok> MAX_CONN_IDLE
+%token <tok> MAX_CONN_HS
+%token <tok> MAX_CONN_REPLY
 
 %token <tok> INTERFACES ADDRESS PORT
 %token <tok> IPA
@@ -406,6 +409,9 @@ system:
      
      free($3.t);
  }
+ | system MAX_CONN_IDLE INTERVAL ';' { new_config->max_conn_idle = $3.i; }
+ | system MAX_CONN_HS INTERVAL ';' { new_config->max_conn_hs = $3.i; }
+ | system MAX_CONN_REPLY INTERVAL ';' { new_config->max_conn_reply = $3.i; }
  ;
 
 keys:

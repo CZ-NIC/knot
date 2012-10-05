@@ -27,6 +27,8 @@
 #include "knot/conf/conf.h"
 #include "knot/common.h"
 
+
+
 /*
  * Defaults.
  */
@@ -133,6 +135,17 @@ static int conf_process(conf_t *conf)
 		if (conf->pidfile == NULL) {
 			return KNOT_ENOMEM;
 		}
+	}
+	
+	/* Default TCP/UDP limits. */
+	if (conf->max_conn_idle < 1) {
+		conf->max_conn_idle = CONFIG_IDLE_WD;
+	}
+	if (conf->max_conn_hs < 1) {
+		conf->max_conn_hs = CONFIG_HANDSHAKE_WD;
+	}
+	if (conf->max_conn_reply < 1) {
+		conf->max_conn_reply = CONFIG_REPLY_WD;
 	}
 
 	// Postprocess zones

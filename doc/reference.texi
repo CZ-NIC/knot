@@ -38,6 +38,9 @@ else.
   [ @code{pidfile} @code{"}@kbd{string}@code{";} ]
   [ @code{workers} @kbd{integer}@code{;} ]
   [ @code{user} @kbd{string}[@code{.}@kbd{string}]@code{;} ]
+  [ @code{max-conn-idle} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
+  [ @code{max-conn-hs} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
+  [ @code{max-conn-reply} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
 @code{@}}
 @end example
 
@@ -52,6 +55,9 @@ else.
 * pidfile::                     
 * workers::                     
 * user::                        
+* max-conn-idle::
+* max-conn-hs::
+* max-conn-reply::
 @end menu
 
 @node identity
@@ -149,6 +155,27 @@ system @{
   user knot.knot;
 @}
 @end example
+
+@node max-conn-idle
+@subsubsection max-conn-idle
+@vindex max-conn-idle
+
+Maximum idle time between requests on a TCP connection.
+This also limits receiving of a single query, each query must be received in this time limit.
+
+@node max-conn-hs
+@subsubsection max-conn-hs
+@vindex max-conn-hs
+
+Maximum time between newly accepted TCP connection and first query.
+This is useful to disconnect inactive connections faster, than connection
+that already made at least 1 meaningful query.
+
+@node max-conn-reply
+@subsubsection max-conn-reply
+@vindex max-conn-reply
+
+Maximum time to wait for a reply to an issued SOA query.
 
 @node system Example
 @subsection system Example
