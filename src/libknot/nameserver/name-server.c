@@ -3372,7 +3372,8 @@ int knot_ns_prep_normal_response(knot_nameserver_t *nameserver,
 	 * FORMERR
 	 */
 	if (knot_packet_ancount(query) > 0
-	    || knot_packet_nscount(query) > 0
+	    || (knot_packet_nscount(query) > 0
+	        && (knot_packet_qtype(query) != KNOT_RRTYPE_IXFR))
 	    || knot_packet_qdcount(query) != 1) {
 		dbg_ns("ANCOUNT or NSCOUNT not 0 in query, "
 		       "or QDCOUNT != 1. Reply FORMERR.\n");
