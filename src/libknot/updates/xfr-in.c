@@ -1238,7 +1238,7 @@ static int xfrin_changes_check_rrsets(knot_rrset_t ***rrsets,
 	}
 
 	int new_count = (*allocated == 0) ? 2 : *allocated * 2;
-	while (new_count < count + to_add) {
+	while (new_count < *count + to_add) {
 		new_count *= 2;
 	}
 
