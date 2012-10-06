@@ -1238,6 +1238,9 @@ static int xfrin_changes_check_rrsets(knot_rrset_t ***rrsets,
 	}
 
 	int new_count = (*allocated == 0) ? 2 : *allocated * 2;
+	while (new_count < count + to_add) {
+		new_count *= 2;
+	}
 
 	/* Allocate new memory block. */
 	knot_rrset_t **rrsets_new = malloc(new_count * sizeof(knot_rrset_t *));
