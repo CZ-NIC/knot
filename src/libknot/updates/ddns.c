@@ -179,6 +179,53 @@ static int knot_ddns_add_prereq(knot_ddns_prereq_t *prereqs,
 
 /*----------------------------------------------------------------------------*/
 
+static int knot_ddns_check_remove_rr(knot_changeset_t *changeset,
+                                     const knot_rrset_t *rr)
+{
+	for (int i = 1; i < changeset->add_count; ++i) {
+		// Removing RR(s) from this owner
+		if (knot_dname_compare(knot_rrset_owner(rr),
+		                       knot_rrset_owner(changeset->add[i])) == 0) {
+			// Removing one or all RRSets
+			if (knot_rrset_class(rr) == KNOT_CLASS_ANY) {
+				if (knot_rrset_type(rr)
+				    == knot_rrset_type(changeset->add[i])
+				    || knot_rrset_type(rr) == KNOT_RRTYPE_ANY) {
+
+					// TODO: we should not let the place
+					// to be NULL!!
+					knot_rrset_deep_free(&changeset->add[i],
+					                     1, 1, 1);
+				}
+			} else if (knot_rrset_type(rr)
+			           == knot_rrset_type(changeset->add[i])){
+				// TODO: test other classes!!
+				assert(knot_rrset_class(rr) == KNOT_CLASS_NONE);
+
+
+				// Removing specific RR from a RRSet
+				knot_rdata_t *rdata = knot_rrset_remove_rdata(
+				                        changeset->add[i],
+				                        knot_rrset_rdata(rr));
+				knot_rdata_deep_free(&rdata,
+				         knot_rrset_type(changeset->add[i]), 1);
+				// if the RRSet is empty, remove from changeset
+				if (knot_rrset_rdata_rr_count(changeset->add[i])
+				    == 0) {
+
+					// TODO: we should not let the place
+					// to be NULL!!
+					knot_rrset_free(&changeset->add[i]);
+				}
+			}
+		}
+	}
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 static int knot_ddns_add_update(knot_changeset_t *changeset,
                          const knot_rrset_t *rrset, uint16_t qclass)
 {
@@ -206,7 +253,22 @@ static int knot_ddns_add_update(knot_changeset_t *changeset,
 		                            rrset_copy);
 	} else {
 		// this RRSet marks removal of something from zone
-		// what should be removed is distinguished when applying
+
+		/* To imitate in-order processing of UPDATE RRs, we must check
+		 * If this REMOVE RR does not affect any of the previous
+		 * ADD RRs in this update. If yes, they must be removed from
+		 * the changeset.
+		 *
+		 * See https://git.nic.cz/redmine/issues/937#note-14 and below.
+		 */
+
+		// TODO: finish, disabled for now
+//		ret = knot_ddns_check_remove_rr(changeset, rrset_copy);
+//		if (ret != KNOT_EOK) {
+//			knot_rrset_deep_free(&rrset_copy, 1, 1, 1);
+//			return ret;
+//		}
+
 		dbg_ddns_detail(" * removing RR %p\n", rrset_copy);
 		ret = knot_changeset_add_rr(&changeset->remove,
 		                            &changeset->remove_count,
