@@ -89,7 +89,7 @@ int knot_rrset_add_rdata(knot_rrset_t *rrset,
 
 /*----------------------------------------------------------------------------*/
 
-//int knot_rrset_add_rdata_order(knot_rrset_t *rrset, knot_rdata_t *rdata)
+//int knot_rrset_add_rdata_order(knot_rrset_t *rrset, knot_rrset_t *rrset)
 //{
 //	if (rrset == NULL || rdata == NULL) {
 //		dbg_rrset("rrset: add_rdata_order: NULL arguments.\n");
@@ -137,7 +137,7 @@ int knot_rrset_add_rdata(knot_rrset_t *rrset,
 /*----------------------------------------------------------------------------*/
 
 //knot_rdata_t *knot_rrset_remove_rdata(knot_rrset_t *rrset,
-//                                          const knot_rdata_t *rdata)
+//                                          const knot_rrset_t *rrset)
 //{
 //	if (rrset == NULL || rdata == NULL) {
 //		return NULL;
@@ -338,8 +338,8 @@ int knot_rrset_compare_rdata(const knot_rrset_t *r1, const knot_rrset_t *r2)
 //	}
 
 //	// compare RDATA sets (order is not significant)
-//	const knot_rdata_t *rdata1 = knot_rrset_rdata(r1);
-//	const knot_rdata_t *rdata2;
+//	const knot_rrset_t *rrset1 = knot_rrset_rdata(r1);
+//	const knot_rrset_t *rrset2;
 
 //	// find all RDATA from r1 in r2
 //	while (rdata1 != NULL) {
@@ -385,7 +385,7 @@ int knot_rrset_compare_rdata(const knot_rrset_t *r1, const knot_rrset_t *r2)
 /*----------------------------------------------------------------------------*/
 
 //static int knot_rrset_rr_to_wire(const knot_rrset_t *rrset, 
-//                                 const knot_rdata_t *rdata, uint8_t **pos,
+//                                 const knot_rrset_t *rrset, uint8_t **pos,
 //                                 size_t max_size)
 //{
 //	int size = 0;
@@ -507,7 +507,7 @@ int knot_rrset_compare_rdata(const knot_rrset_t *r1, const knot_rrset_t *r2)
 //	int rrs = 0;
 //	short rrset_size = 0;
 
-//	const knot_rdata_t *rdata = rrset->rdata;
+//	const knot_rrset_t *rrset = rrset->rdata;
 //	do {
 //		int ret = knot_rrset_rr_to_wire(rrset, rdata, &pos, 
 //		                                *size - rrset_size);
@@ -592,11 +592,11 @@ int knot_rrset_compare(const knot_rrset_t *r1,
 //	}
 //	assert((*to)->rrsigs == NULL || from->rrsigs != NULL);
 
-//	const knot_rdata_t *rdata = knot_rrset_rdata(from);
+//	const knot_rrset_t *rrset = knot_rrset_rdata(from);
 
 //	/*! \note Order of RDATA will be reversed. */
 //	while (rdata != NULL) {
-//		knot_rdata_t *rdata_copy = knot_rdata_deep_copy(rdata,
+//		knot_rrset_t *rrset_copy = knot_rdata_deep_copy(rdata,
 //		                                      knot_rrset_type(from), 
 //		                                      copy_rdata_dnames);
 //dbg_rrset_exec_detail(
@@ -900,5 +900,192 @@ uint32_t knot_rrset_rdata_length(const knot_rrset_t *rrset, size_t rdata_pos)
 uint32_t knot_rrset_rdata_length_total(const knot_rrset_t *rrset)
 {
 	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+const knot_dname_t *knot_rrset_rdata_cname_name(const knot_rrset_t *rrset)
+{
+	if (rdata->count < 1) {
+		return NULL;
+	}
+	return rdata->items[0].dname;
+}
+
+/*----------------------------------------------------------------------------*/
+
+const knot_dname_t *knot_rrset_rdata_dname_target(const knot_rrset_t *rrset)
+{
+	if (rdata->count < 1) {
+		return NULL;
+	}
+	return rdata->items[0].dname;
+}
+
+/*---------------------------------------------------------------------------*/
+
+const knot_dname_t *knot_rrset_rdata_get_name(const knot_rrset_t *rrset,
+                                            uint16_t type)
+{
+	// iterate over the rdata items or act as if we knew where the name is?
+
+	switch (type) {
+	case KNOT_RRTYPE_NS:
+		return knot_rdata_ns_name(rdata);
+	case KNOT_RRTYPE_MX:
+		return knot_rdata_mx_name(rdata);
+	case KNOT_RRTYPE_SRV:
+		return knot_rdata_srv_name(rdata);
+	case KNOT_RRTYPE_CNAME:
+		return knot_rdata_cname_name(rdata);
+	}
+
+	return NULL;
+}
+
+/*---------------------------------------------------------------------------*/
+int64_t knot_rrset_rdata_soa_serial(const knot_rrset_t *rrset)
+{
+	if (!rdata) {
+		return -1;
+	}
+
+	if (rdata->count < 3) {
+		return -1;
+	}
+
+	// the number is in network byte order, transform it
+	return knot_wire_read_u32((uint8_t *)(rdata->items[2].raw_data + 1));
+}
+
+/*---------------------------------------------------------------------------*/
+void knot_rrset_rdata_soa_serial_set(knot_rrset_t *rrset, uint32_t serial)
+{
+	if (!rdata || rdata->count < 3) {
+		return;
+	}
+
+	// the number is in network byte order, transform it
+	knot_wire_write_u32((uint8_t *)(rdata->items[2].raw_data + 1),
+	                    serial);
+}
+
+/*---------------------------------------------------------------------------*/
+
+uint32_t knot_rrset_rdata_soa_refresh(const knot_rrset_t *rrset,
+                                      size_t pos)
+{
+	if (!rdata) {
+		return 0;
+	}
+
+	if (rdata->count < 4) {
+		return 0;	/*! \todo Some other error value. */
+	}
+
+	// the number is in network byte order, transform it
+	return knot_wire_read_u32((uint8_t *)(rdata->items[3].raw_data + 1));
+}
+
+/*---------------------------------------------------------------------------*/
+
+uint32_t knot_rrset_rdata_soa_retry(const knot_rrset_t *rrset,
+                                    size_t post)
+{
+	if (!rdata) {
+		return 0;
+	}
+
+	if (rdata->count < 5) {
+		return 0;	/*! \todo Some other error value. */
+	}
+
+	// the number is in network byte order, transform it
+	return knot_wire_read_u32((uint8_t *)(rdata->items[4].raw_data + 1));
+}
+
+/*---------------------------------------------------------------------------*/
+
+uint32_t knot_rrset_rdata_soa_expire(const knot_rrset_t *rrset,
+                                     size_t pos)
+{
+	if (pos >= rrset->rdata_count) {
+		return NULL;
+	}
+	
+	return knot_wire_read_u32((uint8_t *)(rdata->items[5].raw_data + 1));
+}
+
+/*---------------------------------------------------------------------------*/
+
+uint32_t knot_rrset_rdata_soa_minimum(const knot_rrset_t *rrset,
+                                      size_t pos)
+{
+	if (pos >= rrset->rdata_count) {
+		return NULL;
+	}
+	
+	return knot_wire_read_u32(rrset->rdata[rrset->rdata_indices[pos]] + 
+	                          sizeof(knot_dname_t *) * 2 + 16);
+}
+
+/*---------------------------------------------------------------------------*/
+
+uint16_t knot_rrset_rdata_rrsig_type_covered(const knot_rrset_t *rrset,
+                                             size_t pos)
+{
+	if (pos >= rrset->rdata_count) {
+		return NULL;
+	}
+	
+	return knot_wire_read_u16(rrset->rdata[rrset->rdata_indices[pos]]);
+}
+
+/*---------------------------------------------------------------------------*/
+
+uint8_t knot_rrset_rdata_nsec3_algorithm(const knot_rrset_t *rrset,
+                                         size_t pos)
+{
+	if (pos >= rrset->rdata_count) {
+		return NULL;
+	}
+	
+	return *(rrset->rdata[rrset->rdata_indices[pos]]);
+}
+
+/*---------------------------------------------------------------------------*/
+
+uint16_t knot_rrset_rdata_nsec3_iterations(const knot_rrset_t *rrset,
+                                           size_t pos)
+{
+	if (pos >= rrset->rdata_count) {
+		return NULL;
+	}
+	
+	return *(rrset->rdata[rrset->rdata_indices[pos] + 2]);
+}
+
+/*---------------------------------------------------------------------------*/
+
+uint8_t knot_rrset_rdata_nsec3_salt_length(const knot_rrset_t *rrset,
+                                           size_t pos)
+{
+	if (pos >= rrset->rdata_count) {
+		return NULL;
+	}
+	
+	return *(rrset->rdata[rrset->rdata_indices[pos] + 4]);
+}
+
+/*---------------------------------------------------------------------------*/
+
+const uint8_t *knot_rrset_rdata_nsec3_salt(const knot_rrset_t *rrset,
+                                           size_t pos)
+{
+	if (pos >= rrset->rdata_count) {
+		return NULL;
+	}
+	
+	return rrset->rdata[rrset->rdata_indices[pos] + 4];
 }
 
