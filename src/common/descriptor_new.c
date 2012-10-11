@@ -97,12 +97,12 @@ static const rdata_descriptor_t rdata_descriptors[] = {
 				       KNOT_RDATA_WF_END } },
 };
 
-const int *get_rdata_descriptor(const uint16_t type)
+const rdata_descriptor_t *get_rdata_descriptor(const uint16_t type)
 {
 	if (type <= KNOT_RRTYPE_TSIG) {
-		return (int *)rdata_descriptors[type];
+		return &rdata_descriptors[type];
 	} else {
-		return (int *)rdata_descriptors[0];
+		return &rdata_descriptors[0];
 	}
 }
 

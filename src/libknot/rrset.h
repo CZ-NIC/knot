@@ -225,7 +225,7 @@ uint8_t *knot_rrset_get_rdata(knot_rrset_t *rrset, size_t rdata_pos);
 knot_rdata_t *knot_rrset_rdata_get_next(knot_rrset_t *rrset,
                                             knot_rdata_t *rdata);
 
-int knot_rrset_rdata_rr_count(const knot_rrset_t *rrset);
+int16_t knot_rrset_rdata_rr_count(const knot_rrset_t *rrset);
 
 /*!
  * \brief Returns the set of RRSIGs covering the given RRSet.
@@ -344,6 +344,9 @@ int knot_rrset_merge(void **r1, void **r2);
  *         Owner, Type, Class or TTL does not match.
  */
 int knot_rrset_merge_no_dupl(void **r1, void **r2);
+
+uint32_t knot_rrset_rdata_length(const knot_rrset_t *rrset, size_t rdata_pos);
+uint32_t knot_rrset_rdata_length_total(const knot_rrset_t *rrset);
 
 #endif /* _KNOT_RRSET_H_ */
 

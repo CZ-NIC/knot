@@ -1691,7 +1691,7 @@ int ck_rehash(ck_hash_table_t *table)
 		us_next(&table->hash_system,
 		        NEXT_GENERATION(table->generation));
 
-	} while (false /*! \todo Add proper condition!! */);
+	} while (0 /*! \todo Add proper condition!! */);
 
 	SET_REHASHING_OFF(&table->generation);
 

@@ -1,7 +1,7 @@
 ACLOCAL_AMFLAGS = -I ../m4
 
-libexec_PROGRAMS = knot-zcompile unittests unittests-zcompile unittests-libknot-realdata unittests-libknot unittests-xfr unittests-zscanner
-sbin_PROGRAMS = knotc knotd
+libexec_PROGRAMS = knot-zcompile
+sbin_PROGRAMS = 
 dist_man_MANS = knot.conf.5 knotc.8 knotd.8
 
 # $(YACC) will generate header file
@@ -10,32 +10,29 @@ AM_YFLAGS = -d
 libknotd_la_YFLAGS = -pcf_ -d
 libknotd_la_LFLAGS = # TODO: reentrant parser, prefix
 
+zscanner/scanner.c: zscanner/scanner.rl zscanner/scanner_body.rl
+	$(RAGEL) -s -o zscanner/scanner.c zscanner/scanner.rl
+
 knot_zcompile_SOURCES =				\
+	libknot/rrset.c				\
+	libknot/rrset.h				\
 	zcompile/zcompile_main.c		\
 	zcompile/zcompile-error.c		\
-	zcompile/parser-util.h			\
 	zcompile/parser-descriptor.h		\
-	zcompile/zparser.y			\
-	zcompile/zlexer.l			\
 	zcompile/zcompile.c			\
-	zcompile/parser-util.c			\
-	zcompile/parser-descriptor.c
-
-unittests_zscanner_SOURCES =			\
-	zscanner/test/zscanner_test.c		\
-	zscanner/test/tests.h			\
-	zscanner/test/tests.c			\
+	zcompile/parser-descriptor.c		\
 	zscanner/test/processing.h		\
-	zscanner/test/processing.c
-
-
-noinst_LTLIBRARIES = libknot.la libknots.la libzscanner.la
-
-libknot_la_SOURCES =				\
+	zscanner/test/processing.c		\
 	libknot/util/utils.c			\
 	libknot/util/debug.c			\
 	libknot/util/debug.h			\
 	libknot/util/utils.h			\
+	libknot/hash/cuckoo-hash-table.c	\
+	libknot/hash/cuckoo-hash-table.h	\
+	libknot/hash/hash-functions.h		\
+	libknot/hash/hash-functions.c		\
+	libknot/hash/universal-system.c		\
+	libknot/hash/universal-system.h		\
 	libknot/util/tolower.h			\
 	libknot/util/tolower.c			\
 	libknot/zone/zone.c			\
@@ -48,12 +45,10 @@ libknot_la_SOURCES =				\
 	libknot/zone/node.c			\
 	libknot/zone/dname-table.h		\
 	libknot/zone/dname-table.c		\
-	libknot/rrset.c				\
 	libknot/dname.c				\
 	libknot/dname.h				\
-	libknot/rrset.h				
-
-libknots_la_SOURCES =				\
+	libknot/nsec3.h				\
+	libknot/nsec3.c				\
 	common/slab/slab.c			\
 	common/slab/slab.h			\
 	common/libtap/tap.c			\
@@ -110,12 +105,7 @@ libknots_la_SOURCES =				\
 	common/fdset_epoll.h			\
 	common/fdset_epoll.c			\
 	common/log.c				\
-	common/log.h
-
-zscanner/scanner.c: zscanner/scanner.rl zscanner/scanner_body.rl
-	$(RAGEL) -s -o zscanner/scanner.c zscanner/scanner.rl
-
-libzscanner_la_SOURCES =			\
+	common/log.h				\
 	zscanner/file_loader.h			\
 	zscanner/file_loader.c			\
 	zscanner/scanner.h			\
@@ -123,9 +113,7 @@ libzscanner_la_SOURCES =			\
 	zscanner/scanner_functions.h		\
 	zscanner/scanner_functions.c
 
-libknots_la_LIBADD = @LIBOBJS@
-knot_zcompile_LDADD = libknots.la libknot.la libknotd.la libzscanner.la @LIBOBJS@
-unittests_zscanner_LDADD = libknots.la libknot.la libknotd.la libzscanner.la @LIBOBJS@
+knot_zcompile_LDADD = @LIBOBJS@
 
 # automake complains on % rules:
 #   `%'-style pattern rules are a GNU make extension

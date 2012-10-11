@@ -364,7 +364,7 @@ uint16_t knot_packet_qtype(const knot_packet_t *packet);
  * \param packet Packet containing question.
  * \param qtype New QTYPE for question.
  */
-void knot_packet_set_qtype(knot_packet_t *packet, knot_rr_type_t qtype);
+void knot_packet_set_qtype(knot_packet_t *packet, int qtype);
 
 
 /*!

@@ -89,16 +89,8 @@ int main(int argc, char **argv)
 		log_zone_info("Parsing file '%s', origin '%s' ...\n",
 		              zonefile, origin);
 	}
-
-	parser = zparser_create();
-	if (!parser) {
-		log_server_error("Failed to create parser.\n");
-		//log_close();
-		return 1;
-	}
-
-	int error = zone_read(origin, zonefile, outfile, semantic_checks);
-	zparser_free();
+	
+	int error = 0;
 
 	if (error != 0) {
 	  /* FIXME! */

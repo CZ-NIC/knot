@@ -277,7 +277,7 @@ void knot_rdata_deep_free(knot_rdata_t **rdata, unsigned int type,
  * \retval > 0 if \a r1 goes after \a r2 in canonical order.
  */
 int knot_rdata_compare(const knot_rdata_t *r1, const knot_rdata_t *r2,
-                         const uint8_t *format);
+                         const int *format);
 
 /*!
  * \brief Retrieves the domain name from CNAME RDATA.

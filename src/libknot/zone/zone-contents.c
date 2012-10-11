@@ -152,10 +152,11 @@ static int knot_zone_contents_solve_rrset_dnames(knot_zone_contents_t *zone,
 	// for each RDATA in RRSet
 	uint16_t rr_count = knot_rrset_rdata_rr_count(rrset);
 	for (int i = 0; i < rr_count; i++) {
-		const int *desc =
+		const rdata_descriptor_t *desc =
 			get_rdata_descriptor(knot_rrset_type(rrset));
-		for (int j = 0; desc[j] != KNOT_RDATA_WF_END; j++) {
-			if (descriptor_item_is_dname(desc[j])) {
+		assert(desc);
+		for (int j = 0; desc->block_types[j] != KNOT_RDATA_WF_END; j++) {
+			if (descriptor_item_is_dname(desc->block_types[j])) {
 				/* Query whole zone for these dnames. */
 				// TODO
 			}
@@ -337,12 +338,13 @@ static void knot_zone_contents_adjust_rdata_in_rrset(knot_rrset_t *rrset,
 {
 	uint16_t type = knot_rrset_type(rrset);
 
-	int *desc =
-		rdata_descriptor_by_type(type);
+	const rdata_descriptor_t *desc =
+		get_rdata_descriptor(type);
+	assert(desc);
 	
 	for (int i = 0; i < knot_rrset_rdata_rr_count(rrset); i++) {
-		for (int j = 0; desc[j] != KNOT_RDATA_WF_END; j++) {
-			if (descriptor_item_is_dname(desc[j])) {
+		for (int j = 0; desc->block_types[j] != KNOT_RDATA_WF_END; j++) {
+			if (descriptor_item_is_dname(desc->block_types[j])) {
 				dbg_zone("Adjusting domain name at "
 				  "position %d of RDATA of record with owner "
 				  "%s and type %s.\n",
@@ -510,18 +512,18 @@ dbg_zone_exec_verb(
 
 	/*
 	 * 1) Store domain names to dname table.
-	 * TODO: make optional!
+	 * TODO: make optional! WFT? This was not even needed (maybe transfers)
 	 */
-	assert(zone->dname_table != NULL);
+//	assert(zone->dname_table != NULL);
 
-	int ret = knot_zone_contents_dnames_from_node_to_table(
-	                        zone->dname_table, node);
-	if (ret != KNOT_EOK) {
-		dbg_xfrin("Failed to add dnames from adjusted node to "
-		          "table: %s\n", knot_strerror(ret));
-		args->err = ret;
-		return;
-	}
+//	int ret = knot_zone_contents_dnames_from_node_to_table(
+//	                        zone->dname_table, node);
+//	if (ret != KNOT_EOK) {
+//		dbg_xfrin("Failed to add dnames from adjusted node to "
+//		          "table: %s\n", knot_strerror(ret));
+//		args->err = ret;
+//		return;
+//	}
 
 	/*
 	 * 2) Do other adjusting (flags, closest enclosers, wildcard children,
@@ -596,15 +598,15 @@ static void knot_zone_contents_adjust_nsec3_node_in_tree(
 	 */
 	knot_zone_contents_t *zone = args->zone;
 	assert(zone != NULL);
-
-	int ret = knot_zone_contents_dnames_from_node_to_table(
-	                        zone->dname_table, node);
-	if (ret != KNOT_EOK) {
-		dbg_xfrin("Failed to add dnames from adjusted node to "
-		          "table: %s\n", knot_strerror(ret));
-		args->err = ret;
-		return;
-	}
+// TODO only for transfers, sort out later
+//	int ret = knot_zone_contents_dnames_from_node_to_table(
+//	                        zone->dname_table, node);
+//	if (ret != KNOT_EOK) {
+//		dbg_xfrin("Failed to add dnames from adjusted node to "
+//		          "table: %s\n", knot_strerror(ret));
+//		args->err = ret;
+//		return;
+//	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1066,15 +1068,15 @@ knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
 #endif
 
 	// insert names from the apex to the domain table
-	if (use_domain_table) {
-		dbg_zone_verb("Inserting names from apex to table.\n");
-		int rc = knot_zone_contents_dnames_from_node_to_table(
-		             contents->dname_table, apex);
-		if (rc != KNOT_EOK) {
-			ck_destroy_table(&contents->table, NULL, 0);
-			goto cleanup;
-		}
-	}
+//	if (use_domain_table) {
+//		dbg_zone_verb("Inserting names from apex to table.\n");
+//		int rc = knot_zone_contents_dnames_from_node_to_table(
+//		             contents->dname_table, apex);
+//		if (rc != KNOT_EOK) {
+//			ck_destroy_table(&contents->table, NULL, 0);
+//			goto cleanup;
+//		}
+//	}
 
 	return contents;
 
@@ -1198,15 +1200,16 @@ dbg_zone_exec_detail(
 		return ret;
 	}
 
-	if (use_domain_table) {
-		ret = knot_zone_contents_dnames_from_node_to_table(
-		          zone->dname_table, node);
-		if (ret != KNOT_EOK) {
-			/*! \todo Remove node from the tree and hash table.*/
-			dbg_zone("Failed to add dnames into table.\n");
-			return ret;
-		}
-	}
+	// Try to find dnames TODO
+//	if (use_domain_table) {
+//		ret = knot_zone_contents_dnames_from_node_to_table(
+//		          zone->dname_table, node);
+//		if (ret != KNOT_EOK) {
+//			/*! \todo Remove node from the tree and hash table.*/
+//			dbg_zone("Failed to add dnames into table.\n");
+//			return ret;
+//		}
+//	}
 
 #ifdef USE_HASH_TABLE
 	// add the node also to the hash table if authoritative, or deleg. point
@@ -1265,16 +1268,17 @@ dbg_zone_exec_detail(
 				return KNOT_ENOMEM;
 			}
 			
-			if (use_domain_table) {
-				ret =
-				 knot_zone_contents_dnames_from_node_to_table(
-					zone->dname_table, next_node);
-				if (ret != KNOT_EOK) {
-					knot_node_free(&next_node);
-					knot_dname_release(chopped);
-					return ret;
-				}
-			}
+			// ADD names to table TODO
+//			if (use_domain_table) {
+//				ret =
+//				 knot_zone_contents_dnames_from_node_to_table(
+//					zone->dname_table, next_node);
+//				if (ret != KNOT_EOK) {
+//					knot_node_free(&next_node);
+//					knot_dname_release(chopped);
+//					return ret;
+//				}
+//			}
 
 			if (next_node->owner != chopped) {
 				/* Node owner was in RDATA */
@@ -1415,20 +1419,21 @@ dbg_zone_exec_detail(
 
 	int ret = rc;
 
-	if (use_domain_table) {
-		dbg_zone_detail("Saving RRSet to table.\n");
-		rc = knot_zone_contents_dnames_from_rrset_to_table(
-		         zone->dname_table, rrset, 0, (*node)->owner);
-		if (rc != KNOT_EOK) {
-			dbg_zone("Error saving domain names from "
-			         "RRSIGs to the domain name table.\n "
-			         "The zone may be in an inconsistent state.\n");
-			// WARNING: the zone is not in consistent state now -
-			// there may be domain names in it that are not inserted
-			// into the domain table
-			return rc;
-		}
-	}
+	//TODO rrset
+//	if (use_domain_table) {
+//		dbg_zone_detail("Saving RRSet to table.\n");
+//		rc = knot_zone_contents_dnames_from_rrset_to_table(
+//		         zone->dname_table, rrset, 0, (*node)->owner);
+//		if (rc != KNOT_EOK) {
+//			dbg_zone("Error saving domain names from "
+//			         "RRSIGs to the domain name table.\n "
+//			         "The zone may be in an inconsistent state.\n");
+//			// WARNING: the zone is not in consistent state now -
+//			// there may be domain names in it that are not inserted
+//			// into the domain table
+//			return rc;
+//		}
+//	}
 
 	// replace RRSet's owner with the node's owner (that is already in the
 	// table)
@@ -1536,20 +1541,21 @@ dbg_zone_exec(
 	}
 
 	// add all domain names from the RRSet to domain name table
-	if (use_domain_table) {
-		dbg_zone_detail("Saving RRSIG RRSet to table.\n");
-		rc = knot_zone_contents_dnames_from_rrset_to_table(
-		       zone->dname_table, (*rrset)->rrsigs, 0, (*rrset)->owner);
-		if (rc != KNOT_EOK) {
-			dbg_zone("Error saving domain names from "
-			         "RRSIGs to the domain name table.\n "
-			         "The zone may be in an inconsistent state.\n");
-			// WARNING: the zone is not in consistent state now -
-			// there may be domain names in it that are not inserted
-			// into the domain table
-			return rc;
-		}
-	}
+	// 
+//	if (use_domain_table) {
+//		dbg_zone_detail("Saving RRSIG RRSet to table.\n");
+//		rc = knot_zone_contents_dnames_from_rrset_to_table(
+//		       zone->dname_table, (*rrset)->rrsigs, 0, (*rrset)->owner);
+//		if (rc != KNOT_EOK) {
+//			dbg_zone("Error saving domain names from "
+//			         "RRSIGs to the domain name table.\n "
+//			         "The zone may be in an inconsistent state.\n");
+//			// WARNING: the zone is not in consistent state now -
+//			// there may be domain names in it that are not inserted
+//			// into the domain table
+//			return rc;
+//		}
+//	}
 
 	// replace RRSet's owner with the node's owner (that is already in the
 	// table)
@@ -1589,16 +1595,17 @@ int knot_zone_contents_add_nsec3_node(knot_zone_contents_t *zone,
 		return ret;
 	}
 
-	if (use_domain_table) {
-		ret = knot_zone_contents_dnames_from_node_to_table(
-		           zone->dname_table, node);
-		if (ret != KNOT_EOK) {
-			/*! \todo Remove the node from the tree. */
-			dbg_zone("Failed to add dnames into table: %s.\n",
-			         knot_strerror(ret));
-			return ret;
-		}
-	}
+	//TODO find names
+//	if (use_domain_table) {
+//		ret = knot_zone_contents_dnames_from_node_to_table(
+//		           zone->dname_table, node);
+//		if (ret != KNOT_EOK) {
+//			/*! \todo Remove the node from the tree. */
+//			dbg_zone("Failed to add dnames into table: %s.\n",
+//			         knot_strerror(ret));
+//			return ret;
+//		}
+//	}
 
 	// no parents to be created, the only parent is the zone apex
 	// set the apex as the parent of the node
@@ -1657,20 +1664,21 @@ int knot_zone_contents_add_nsec3_rrset(knot_zone_contents_t *zone,
 
 	int ret = rc;
 
-	if (use_domain_table) {
-		dbg_zone_detail("Saving NSEC3 RRSet to table.\n");
-		rc = knot_zone_contents_dnames_from_rrset_to_table(
-		         zone->dname_table, rrset, 0, (*node)->owner);
-		if (rc != KNOT_EOK) {
-			dbg_zone("Error saving domain names from "
-			         "RRSIGs to the domain name table.\n "
-			         "The zone may be in an inconsistent state.\n");
-			// WARNING: the zone is not in consistent state now -
-			// there may be domain names in it that are not inserted
-			// into the domain table
-			return rc;
-		}
-	}
+	//TODO find names
+//	if (use_domain_table) {
+//		dbg_zone_detail("Saving NSEC3 RRSet to table.\n");
+//		rc = knot_zone_contents_dnames_from_rrset_to_table(
+//		         zone->dname_table, rrset, 0, (*node)->owner);
+//		if (rc != KNOT_EOK) {
+//			dbg_zone("Error saving domain names from "
+//			         "RRSIGs to the domain name table.\n "
+//			         "The zone may be in an inconsistent state.\n");
+//			// WARNING: the zone is not in consistent state now -
+//			// there may be domain names in it that are not inserted
+//			// into the domain table
+//			return rc;
+//		}
+//	}
 
 	// replace RRSet's owner with the node's owner (that is already in the
 	// table)

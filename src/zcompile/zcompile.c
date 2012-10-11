@@ -43,7 +43,7 @@
 #include "zcompile/zcompile-error.h"
 #include "knot/zone/zone-dump.h"
 #include "libknot/zone/zone-diff.h"
-#include "libknot/libknot.h"
+#include "libknot/rrset.h"
 #include "libknot/util/utils.h"
 
 /* Some global flags... */
@@ -56,6 +56,29 @@ static long int totalerrors = 0;
 static long int totalrrs = 0;
 
 extern FILE *zp_get_in(void *scanner);
+
+
+
+
+
+
+struct parser {
+	rrset_list_t *node_rrsigs;
+	knot_zone_contents_t *current_zone;
+	knot_rrset_t *current_rrset;
+	knot_dname_t *origin_from_config;
+	knot_node_t *last_node;
+};
+
+typedef struct parser parser_t;
+
+
+
+
+
+
+
+
 
 /*!
  * \brief Adds RRSet to list.
@@ -116,8 +139,6 @@ static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
                                  knot_node_t *node,
                                  knot_rrset_t *rrsig)
 {
-	assert(rrsig != NULL);
-	assert(rrsig->rdata->items[0].raw_data);
 	assert(node);
 
 	assert(knot_dname_compare(rrsig->owner, node->owner) == 0);
@@ -197,8 +218,9 @@ static knot_node_t *create_node(knot_zone_contents_t *zone,
 	return node;
 }
 
-static void process_rrsigs_in_node(knot_zone_contents_t *zone,
-                            knot_node_t *node)
+static void process_rrsigs_in_node(parser_t *parser,
+                                   knot_zone_contents_t *zone,
+                                   knot_node_t *node)
 {
 	dbg_zp_verb("zp: process_rrsigs: Processing RRSIGS in node: %p.\n",
 	            node);
@@ -213,16 +235,14 @@ static void process_rrsigs_in_node(knot_zone_contents_t *zone,
 	}
 }
 
-int process_rr(void)
+int process_rr(void *data)
 {
-	knot_zone_t *zone = parser->current_zone;
-	assert(zone != NULL);
-	knot_zone_contents_t *contents = knot_zone_get_contents(zone);
-	assert(contents != NULL);
+	parser_t *parser = data;
+	knot_zone_contents_t *contents = parser->current_zone;
 	knot_rrset_t *current_rrset = parser->current_rrset;
 	knot_rrset_t *rrset;
-	knot_rrtype_descriptor_t *descriptor =
-		knot_rrtype_descriptor_by_type(current_rrset->type);
+	rdata_descriptor_t *desc =
+		get_rdata_descriptor(current_rrset->type);
 
 dbg_zp_exec_detail(
 	char *name = knot_dname_to_str(parser->current_rrset->owner);
@@ -235,12 +255,12 @@ dbg_zp_exec_detail(
 	dbg_zp_verb("zp: process_rr: RDATA count: %d.\n",\
 	            parser->current_rrset->rdata->count);
 
-	if (descriptor->fixed_items) {
-		assert(current_rrset->rdata->count == descriptor->length);
-	}
+//	if (descriptor->fixed_items) {
+//		assert(current_rrset->rdata->count == descriptor->length);
+//	}
 
 
-	assert(current_rrset->rdata->count > 0);
+	assert(current_rrset->rdata_count);
 	assert(knot_dname_is_fqdn(current_rrset->owner));
 
 	int (*node_add_func)(knot_zone_contents_t *, knot_node_t *, int,
@@ -266,7 +286,7 @@ dbg_zp_exec_detail(
 		node_get_func = &knot_zone_contents_get_nsec3_node;
 	}
 
-	if ((current_rrset->type == KNOT_RRTYPE_SOA) && (zone != NULL)) {
+	if (current_rrset->type == KNOT_RRTYPE_SOA) {
 		if (knot_node_rrset(knot_zone_contents_apex(contents),
 		                      KNOT_RRTYPE_SOA) != NULL) {
 			/* Receiving another SOA. */
@@ -298,23 +318,30 @@ dbg_zp_exec_detail(
 
 	if (current_rrset->type == KNOT_RRTYPE_RRSIG) {
 		/*!< \todo Use deep copy function here! */
-		knot_rrset_t *tmp_rrsig =
-			knot_rrset_new(current_rrset->owner,
-					     KNOT_RRTYPE_RRSIG,
-					     current_rrset->rclass,
-					     current_rrset->ttl);
-		if (tmp_rrsig == NULL) {
-			dbg_zp("zp: process_rr: Cannot create tmp RRSIG.\n");
-			return KNOTDZCOMPILE_ENOMEM;
+		knot_rrset_t *tmp_rrsig = NULL;
+		int ret = knot_rrset_deep_copy(current_rrset, &tmp_rrsig, 1);
+		if (ret != KNOT_EOK) {
+			dbg_zp("zp: Cannot copy RRSet.\n");
+			return ret;
 		}
+//		knot_rrset_t *tmp_rrsig =
+//			knot_rrset_new(current_rrset->owner,
+//					     KNOT_RRTYPE_RRSIG,
+//					     current_rrset->rclass,
+//					     current_rrset->ttl);
+//		if (tmp_rrsig == NULL) {
+//			dbg_zp("zp: process_rr: Cannot create tmp RRSIG.\n");
+//			return KNOTDZCOMPILE_ENOMEM;
+//		}
 
-		if (knot_rrset_add_rdata(tmp_rrsig,
-		                           current_rrset->rdata) != KNOT_EOK) {
-			knot_rrset_free(&tmp_rrsig);
-			dbg_zp("zp: process_rr: Cannot add data to tmp"
-			       " RRSIG.\n");
-			return KNOTDZCOMPILE_EBRDATA;
-		}
+//		if (knot_rrset_add_rdata(tmp_rrsig,
+//		                         current_rrset->rdata,
+//		                         knot_rrset_rdata_length()) != KNOT_EOK) {
+//			knot_rrset_free(&tmp_rrsig);
+//			dbg_zp("zp: process_rr: Cannot add data to tmp"
+//			       " RRSIG.\n");
+//			return KNOTDZCOMPILE_EBRDATA;
+//		}
 
 		if (parser->last_node &&
 		    knot_dname_compare(parser->last_node->owner,
@@ -323,7 +350,8 @@ dbg_zp_exec_detail(
 			 * before we return
 			 */
 			if (parser->node_rrsigs != NULL) {
-				process_rrsigs_in_node(contents,
+				process_rrsigs_in_node(parser,
+				                       contents,
 				                       parser->last_node);
 				rrset_list_delete(&parser->node_rrsigs);
 			}
@@ -377,7 +405,8 @@ dbg_zp_exec_detail(
 		node = parser->last_node;
 	} else {
 		if (parser->last_node && parser->node_rrsigs) {
-			process_rrsigs_in_node(contents,
+			process_rrsigs_in_node(parser,
+			                       contents,
 			                       parser->last_node);
 		}
 
@@ -389,7 +418,8 @@ dbg_zp_exec_detail(
 
 	if (node == NULL) {
 		if (parser->last_node && parser->node_rrsigs) {
-			process_rrsigs_in_node(contents,
+			process_rrsigs_in_node(parser,
+			                       contents,
 			                       parser->last_node);
 		}
 
@@ -404,22 +434,27 @@ dbg_zp_exec_detail(
 
 	rrset = knot_node_get_rrset(node, current_rrset->type);
 	if (!rrset) {
-		rrset = knot_rrset_new(current_rrset->owner,
-					 current_rrset->type,
-					 current_rrset->rclass,
-					 current_rrset->ttl);
-		if (rrset == NULL) {
-			dbg_zp("zp: process_rr: Cannot "
-			       "create new RRSet.\n");
-			return KNOTDZCOMPILE_ENOMEM;
+		int ret = knot_rrset_deep_copy(current_rrset, &rrset, 1);
+		if (ret != KNOT_EOK) {
+			dbg_zp("zp: Cannot copy RRSet.\n");
+			return ret;
 		}
+//		rrset = knot_rrset_new(current_rrset->owner,
+//					 current_rrset->type,
+//					 current_rrset->rclass,
+//					 current_rrset->ttl);
+//		if (rrset == NULL) {
+//			dbg_zp("zp: process_rr: Cannot "
+//			       "create new RRSet.\n");
+//			return KNOTDZCOMPILE_ENOMEM;
+//		}
 
-		if (knot_rrset_add_rdata(rrset, current_rrset->rdata) != 0) {
-			knot_rrset_free(&rrset);
-			dbg_zp("zp: process_rr: Cannot "
-			       "add RDATA to RRSet.\n");
-			return KNOTDZCOMPILE_EBRDATA;
-		}
+//		if (knot_rrset_add_rdata(rrset, current_rrset->rdata) != 0) {
+//			knot_rrset_free(&rrset);
+//			dbg_zp("zp: process_rr: Cannot "
+//			       "add RDATA to RRSet.\n");
+//			return KNOTDZCOMPILE_EBRDATA;
+//		}
 		
 		/* Selected merge option does not really matter here. */
 		if (knot_zone_contents_add_rrset(contents, rrset, &node,
@@ -604,7 +639,8 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	if (parser->last_node && parser->node_rrsigs != NULL) {
 		/* assign rrsigs to last node in the zone*/
-		process_rrsigs_in_node(contents,
+		process_rrsigs_in_node(parser,
+		                       contents,
 		                       parser->last_node);
 		rrset_list_delete(&parser->node_rrsigs);
 	}

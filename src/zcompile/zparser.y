@@ -197,10 +197,10 @@ line:	NL
 		}
 
 		assert(parser->current_rrset->rdata == NULL);
-		if (knot_rrset_add_rdata(parser->current_rrset, tmp_rdata)
-		    != 0) {
-		    	log_zone_error("Could not add rdata!\n");
-		    }
+//		if (knot_rrset_add_rdata(parser->current_rrset, tmp_rdata)
+//		    != 0) {
+//		    	log_zone_error("Could not add rdata!\n");
+//		    }
 //		tmp_rdata->next = tmp_rdata;
 //		parser->current_rrset->rdata = tmp_rdata;
 
