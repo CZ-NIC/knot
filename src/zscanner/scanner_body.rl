@@ -843,10 +843,11 @@
 		s->apl.addr_family = 2;
 	}
 	action _apl_prefix_length {
-		if (s->number64 <= UINT8_MAX) {
+		if ((s->apl.addr_family == 1 && s->number64 <= 32) ||
+		    (s->apl.addr_family == 2 && s->number64 <= 128)) {
 			s->apl.prefix_length = (uint8_t)(s->number64);
 		} else {
-			SCANNER_WARNING(ZSCANNER_ENUMBER8_OVERFLOW);
+			SCANNER_WARNING(ZSCANNER_EBAD_APL);
 			fhold; fgoto err_line;
 		}
 	}
@@ -881,7 +882,8 @@
 				// Apply mask on last byte if not precise prefix.
 				// (Bind does't do this).
 				s->buffer[s->number64 - 1] &=
-					((uint8_t)255 << (8 - s->apl.prefix_length % 8));
+					((uint8_t)255 << (s->number64 * 8 -
+					                  s->apl.prefix_length));
 				break;
 			}
 			s->number64--;
