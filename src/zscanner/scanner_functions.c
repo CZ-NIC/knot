@@ -866,10 +866,10 @@ static uint32_t get_naptr_header_length(const uint8_t  *data,
 	}
 }
 
-static uint32_t get_block_length(const uint8_t  *data,
-				 const uint32_t data_length,
-				 const uint32_t ofset,
-				 const int      type)
+static int32_t get_block_length(const uint8_t  *data,
+				const uint32_t data_length,
+				const uint32_t ofset,
+				const int      type)
 {
 	switch (type) {
 	case KNOT_RDATA_WF_COMPRESSED_DNAME:
@@ -909,8 +909,8 @@ int find_rdata_blocks(scanner_t *s)
 					       s->r_data_length,
 					       position,
 					       *type);
-			if (ret == 0) {
-				return ZSCANNER_EBAD_HEX_RDATA;
+			if (ret < 0) {
+				return ZSCANNER_EUNKNOWN_BLOCK;
 			}
 
 			position += ret;

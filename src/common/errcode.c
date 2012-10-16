@@ -131,4 +131,5 @@ const error_table_t knot_error_msgs[] = {
 	{ZSCANNER_ECANNOT_TEXT_DATA, "Unable to process text form for this type!"},
 	{ZSCANNER_EBAD_HEX_DATA, "Bad hexadecimal rdata format!"},
 	{ZSCANNER_EBAD_LOC_DATA, "Bad zone location data!"},
+	{ZSCANNER_EUNKNOWN_BLOCK, "Unknown rdata block!"},
 };
