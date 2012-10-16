@@ -47,6 +47,7 @@
 struct knot_compressed_dnames {
 	const knot_dname_t **dnames;  /*!< Domain names present in packet. */
 	size_t *offsets;          /*!< Offsets of domain names in the packet. */
+	int *to_free;             /*< Indices of dnames to free. */
 	short count;              /*!< Count of items in the previous arrays. */
 	short max;                /*!< Capacity of the structure (allocated). */
 	short default_count;
@@ -233,7 +234,12 @@ enum {
 	/*! \brief Space for other part of the compression table (offsets). */
 	PREALLOC_OFFSETS =
 		DEFAULT_DOMAINS_IN_RESPONSE * sizeof(size_t),
-	PREALLOC_COMPRESSION = PREALLOC_DOMAINS + PREALLOC_OFFSETS,
+
+	PREALLOC_TO_FREE =
+		DEFAULT_DOMAINS_IN_RESPONSE * sizeof(int),
+
+	PREALLOC_COMPRESSION = PREALLOC_DOMAINS + PREALLOC_OFFSETS
+	                       + PREALLOC_TO_FREE,
 
 	PREALLOC_WC_NODES =
 		DEFAULT_WILDCARD_NODES * sizeof(knot_node_t *),
