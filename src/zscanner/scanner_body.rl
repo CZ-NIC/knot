@@ -469,11 +469,16 @@
 			errno = 0;
 			s->number64 = strtoul((char *)(s->buffer), NULL,  10);
 
-			if (errno == 0) {
+			if (errno != 0) {
+				SCANNER_WARNING(ZSCANNER_EBAD_TIMESTAMP);
+				fhold; fgoto err_line;
+			}
+
+			if (s->number64 <= UINT32_MAX) {
 				*((uint32_t *)rdata_tail) = htonl((uint32_t)s->number64);
 				rdata_tail += 4;
 			} else {
-				SCANNER_WARNING(ZSCANNER_EBAD_TIMESTAMP);
+				SCANNER_WARNING(ZSCANNER_ENUMBER32_OVERFLOW);
 				fhold; fgoto err_line;
 			}
 		} else {
@@ -1113,49 +1118,46 @@
 	# END
 
 	# BEGIN - Type processing
-	action _type_exit {
-		rdata_tail += 2;
-	}
 	action _type_error {
 		SCANNER_WARNING(ZSCANNER_EUNSUPPORTED_TYPE);
 		fhold; fgoto err_line;
 	}
 
 	type_num =
-	    ( "A"i          %{ type_num(KNOT_RRTYPE_A, rdata_tail); }
-	    | "NS"i         %{ type_num(KNOT_RRTYPE_NS, rdata_tail); }
-	    | "CNAME"i      %{ type_num(KNOT_RRTYPE_CNAME, rdata_tail); }
-	    | "SOA"i        %{ type_num(KNOT_RRTYPE_SOA, rdata_tail); }
-	    | "PTR"i        %{ type_num(KNOT_RRTYPE_PTR, rdata_tail); }
-	    | "HINFO"i      %{ type_num(KNOT_RRTYPE_HINFO, rdata_tail); }
-	    | "MINFO"i      %{ type_num(KNOT_RRTYPE_MINFO, rdata_tail); }
-	    | "MX"i         %{ type_num(KNOT_RRTYPE_MX, rdata_tail); }
-	    | "TXT"i        %{ type_num(KNOT_RRTYPE_TXT, rdata_tail); }
-	    | "RP"i         %{ type_num(KNOT_RRTYPE_RP, rdata_tail); }
-	    | "AFSDB"i      %{ type_num(KNOT_RRTYPE_AFSDB, rdata_tail); }
-	    | "RT"i         %{ type_num(KNOT_RRTYPE_RT, rdata_tail); }
-	    | "KEY"i        %{ type_num(KNOT_RRTYPE_KEY, rdata_tail); }
-	    | "AAAA"i       %{ type_num(KNOT_RRTYPE_AAAA, rdata_tail); }
-	    | "LOC"i        %{ type_num(KNOT_RRTYPE_LOC, rdata_tail); }
-	    | "SRV"i        %{ type_num(KNOT_RRTYPE_SRV, rdata_tail); }
-	    | "NAPTR"i      %{ type_num(KNOT_RRTYPE_NAPTR, rdata_tail); }
-	    | "KX"i         %{ type_num(KNOT_RRTYPE_KX, rdata_tail); }
-	    | "CERT"i       %{ type_num(KNOT_RRTYPE_CERT, rdata_tail); }
-	    | "DNAME"i      %{ type_num(KNOT_RRTYPE_DNAME, rdata_tail); }
-	    | "APL"i        %{ type_num(KNOT_RRTYPE_APL, rdata_tail); }
-	    | "DS"i         %{ type_num(KNOT_RRTYPE_DS, rdata_tail); }
-	    | "SSHFP"i      %{ type_num(KNOT_RRTYPE_SSHFP, rdata_tail); }
-	    | "IPSECKEY"i   %{ type_num(KNOT_RRTYPE_IPSECKEY, rdata_tail); }
-	    | "RRSIG"i      %{ type_num(KNOT_RRTYPE_RRSIG, rdata_tail); }
-	    | "NSEC"i       %{ type_num(KNOT_RRTYPE_NSEC, rdata_tail); }
-	    | "DNSKEY"i     %{ type_num(KNOT_RRTYPE_DNSKEY, rdata_tail); }
-	    | "DHCID"i      %{ type_num(KNOT_RRTYPE_DHCID, rdata_tail); }
-	    | "NSEC3"i      %{ type_num(KNOT_RRTYPE_NSEC3, rdata_tail); }
-	    | "NSEC3PARAM"i %{ type_num(KNOT_RRTYPE_NSEC3PARAM, rdata_tail); }
-	    | "TLSA"i       %{ type_num(KNOT_RRTYPE_TLSA, rdata_tail); }
-	    | "SPF"i        %{ type_num(KNOT_RRTYPE_SPF, rdata_tail); }
-	    | "TYPE"i      . num16 # TYPE12345
-	    ) %_type_exit $!_type_error;
+	    ( "A"i          %{ type_num(KNOT_RRTYPE_A, &rdata_tail); }
+	    | "NS"i         %{ type_num(KNOT_RRTYPE_NS, &rdata_tail); }
+	    | "CNAME"i      %{ type_num(KNOT_RRTYPE_CNAME, &rdata_tail); }
+	    | "SOA"i        %{ type_num(KNOT_RRTYPE_SOA, &rdata_tail); }
+	    | "PTR"i        %{ type_num(KNOT_RRTYPE_PTR, &rdata_tail); }
+	    | "HINFO"i      %{ type_num(KNOT_RRTYPE_HINFO, &rdata_tail); }
+	    | "MINFO"i      %{ type_num(KNOT_RRTYPE_MINFO, &rdata_tail); }
+	    | "MX"i         %{ type_num(KNOT_RRTYPE_MX, &rdata_tail); }
+	    | "TXT"i        %{ type_num(KNOT_RRTYPE_TXT, &rdata_tail); }
+	    | "RP"i         %{ type_num(KNOT_RRTYPE_RP, &rdata_tail); }
+	    | "AFSDB"i      %{ type_num(KNOT_RRTYPE_AFSDB, &rdata_tail); }
+	    | "RT"i         %{ type_num(KNOT_RRTYPE_RT, &rdata_tail); }
+	    | "KEY"i        %{ type_num(KNOT_RRTYPE_KEY, &rdata_tail); }
+	    | "AAAA"i       %{ type_num(KNOT_RRTYPE_AAAA, &rdata_tail); }
+	    | "LOC"i        %{ type_num(KNOT_RRTYPE_LOC, &rdata_tail); }
+	    | "SRV"i        %{ type_num(KNOT_RRTYPE_SRV, &rdata_tail); }
+	    | "NAPTR"i      %{ type_num(KNOT_RRTYPE_NAPTR, &rdata_tail); }
+	    | "KX"i         %{ type_num(KNOT_RRTYPE_KX, &rdata_tail); }
+	    | "CERT"i       %{ type_num(KNOT_RRTYPE_CERT, &rdata_tail); }
+	    | "DNAME"i      %{ type_num(KNOT_RRTYPE_DNAME, &rdata_tail); }
+	    | "APL"i        %{ type_num(KNOT_RRTYPE_APL, &rdata_tail); }
+	    | "DS"i         %{ type_num(KNOT_RRTYPE_DS, &rdata_tail); }
+	    | "SSHFP"i      %{ type_num(KNOT_RRTYPE_SSHFP, &rdata_tail); }
+	    | "IPSECKEY"i   %{ type_num(KNOT_RRTYPE_IPSECKEY, &rdata_tail); }
+	    | "RRSIG"i      %{ type_num(KNOT_RRTYPE_RRSIG, &rdata_tail); }
+	    | "NSEC"i       %{ type_num(KNOT_RRTYPE_NSEC, &rdata_tail); }
+	    | "DNSKEY"i     %{ type_num(KNOT_RRTYPE_DNSKEY, &rdata_tail); }
+	    | "DHCID"i      %{ type_num(KNOT_RRTYPE_DHCID, &rdata_tail); }
+	    | "NSEC3"i      %{ type_num(KNOT_RRTYPE_NSEC3, &rdata_tail); }
+	    | "NSEC3PARAM"i %{ type_num(KNOT_RRTYPE_NSEC3PARAM, &rdata_tail); }
+	    | "TLSA"i       %{ type_num(KNOT_RRTYPE_TLSA, &rdata_tail); }
+	    | "SPF"i        %{ type_num(KNOT_RRTYPE_SPF, &rdata_tail); }
+	    | "TYPE"i      . num16 # TYPE0-TYPE65535.
+	    ) $!_type_error;
 	# END
 
 	# BEGIN - Bitmap processing
@@ -1168,7 +1170,7 @@
 		}
 	}
 
-	# TYPE0-65535.
+	# TYPE0-TYPE65535.
 	type_bitmap = number %_type_bitmap_exit;
 
 	type_bit =
@@ -1204,7 +1206,7 @@
 	    | "NSEC3PARAM"i %{ window_add_bit(KNOT_RRTYPE_NSEC3PARAM, s); }
 	    | "TLSA"i       %{ window_add_bit(KNOT_RRTYPE_TLSA, s); }
 	    | "SPF"i        %{ window_add_bit(KNOT_RRTYPE_SPF, s); }
-	    | "TYPE"i      . type_bitmap # Special types TYPE0-TYPE65535
+	    | "TYPE"i      . type_bitmap # TYPE0-TYPE65535.
 	    );
 
 	action _bitmap_init {

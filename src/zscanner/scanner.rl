@@ -35,9 +35,10 @@
 #define SCANNER_ERROR(code)   { s->error_code = code; s->stop = true; }
 
 
-inline void type_num(const uint16_t type, uint8_t *rdata_tail)
+inline void type_num(const uint16_t type, uint8_t **rdata_tail)
 {
-	*((uint16_t *)rdata_tail) = htons(type);
+	*((uint16_t *)*rdata_tail) = htons(type);
+	*rdata_tail += 2;
 }
 
 inline void window_add_bit(const uint16_t type, scanner_t *s) {

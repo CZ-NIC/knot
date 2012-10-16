@@ -73,7 +73,7 @@ static const rdata_descriptor_t rdata_descriptors[] = {
 				       KNOT_RDATA_WF_END } },
 	[KNOT_RRTYPE_IPSECKEY]   = { { KNOT_RDATA_WF_REMAINDER,
 				       KNOT_RDATA_WF_END } },
-	[KNOT_RRTYPE_RRSIG]      = { { 20, KNOT_RDATA_WF_LITERAL_DNAME,
+	[KNOT_RRTYPE_RRSIG]      = { { 18, KNOT_RDATA_WF_LITERAL_DNAME,
 				       KNOT_RDATA_WF_REMAINDER,
 				       KNOT_RDATA_WF_END } },
 	[KNOT_RRTYPE_NSEC]       = { { KNOT_RDATA_WF_LITERAL_DNAME,
