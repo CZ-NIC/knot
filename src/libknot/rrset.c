@@ -89,53 +89,6 @@ int knot_rrset_add_rdata(knot_rrset_t *rrset,
 
 /*----------------------------------------------------------------------------*/
 
-//int knot_rrset_add_rdata_order(knot_rrset_t *rrset, knot_rrset_t *rrset)
-//{
-//	if (rrset == NULL || rdata == NULL) {
-//		dbg_rrset("rrset: add_rdata_order: NULL arguments.\n");
-//		return KNOT_EINVAL;
-//	}
-	
-//	if (rrset->rdata == NULL) {
-//		/* Easy peasy, just insert the first item. */
-//		rrset->rdata = rdata;
-//		rrset->rdata->next = rrset->rdata;
-//	} else {
-//		knot_rdata_t *walk = NULL;
-//		char found = 0;
-//		knot_rdata_t *insert_after = rrset->rdata;
-//		while (((walk = knot_rrset_rdata_get_next(rrset,
-//		                                          walk)) != NULL) && 
-//		       (!found)) {
-//			const knot_rrtype_descriptor_t *desc =
-//				knot_rrtype_descriptor_by_type(rrset->type);
-//			assert(desc);
-//			int cmp = knot_rdata_compare(rdata, walk,
-//			                             desc->wireformat);
-//			if (cmp < 1) {
-//				/* We've found place for this item. */
-//			} else if (cmp == 0) {
-//				/* This item will not be inserted. */
-//				found = 1;
-//				insert_after = NULL;
-//			}
-//			assert(cmp > 1);
-//			/* Continue the search. */
-//			insert_after = walk;
-//		}
-//		if (insert_after != NULL) {
-//			rdata->next = insert_after->next;
-//			insert_after->next = rdata;
-//		} else {
-//			;
-//			/* Consider returning something different than EOK. */
-//		}
-//	}
-//	return KNOT_EOK;
-//}
-
-/*----------------------------------------------------------------------------*/
-
 //knot_rdata_t *knot_rrset_remove_rdata(knot_rrset_t *rrset,
 //                                          const knot_rrset_t *rrset)
 //{
@@ -198,13 +151,6 @@ int knot_rrset_add_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs,
 				return 1;
 			}
 		} else if (dupl == KNOT_RRSET_DUPL_SKIP) {
-//			rc = knot_rrset_merge_no_dupl((void **)&rrset->rrsigs,
-//			                              (void **)&rrsigs);
-//			if (rc != KNOT_EOK) {
-//				return rc;
-//			} else {
-//				return 1;
-//			}
 			return 2;
 		} else if (dupl == KNOT_RRSET_DUPL_REPLACE) {
 			rrset->rrsigs = rrsigs;
@@ -322,26 +268,109 @@ knot_rrset_t *knot_rrset_get_rrsigs(knot_rrset_t *rrset)
 	}
 }
 
+static size_t rrset_rdata_item_offset(const knot_rrset_t *rrset)
+{
+	
+}
+
+static size_t rrset_rdata_remainder_size(const knot_rrset_t *rrset,
+                                         size_t offset,
+                                         size_t pos)
+{
+	if (pos == 0) {
+		return rrset->rdata_indices[1] - offset;
+	} else {
+		return (rrset->rdata_indices[pos + 1] -
+		        rrset->rdata_indices[pos]) - offset;
+	}
+}
+
 /*----------------------------------------------------------------------------*/
 
+static int rrset_rdata_compare_one(const uint8_t *r1, const uint8_t *r2,
+                                   uint16_t type, size_t pos1, size_t pos2)
+{
+	rdata_descriptor_t *desc = get_rdata_descriptor(type);
+	int cmp = 0;
+	size_t offset = 0;
+
+	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
+		if (descriptor_item_is_dname(desc->block_types[i])) {
+			cmp = knot_dname_compare((knot_dname_t *)(r1 + offset),
+			                         (knot_dname_t *)(r2 + offset));
+			offset += sizeof(knot_dname_t *);
+		} else if (descriptor_item_is_fixed(desc->block_types[i])) {
+			cmp = memcmp(r1 + offset, r2 + offset,
+			             desc->block_types[i]);
+			offset += desc->block_types[i];
+		} else if (descriptor_item_is_remainder(desc->block_types[i])) {
+			size_t size1 = rrset_rdata_remainder_size(r1, offset,
+			                                          pos1);
+			size_t size2 = rrset_rdata_remainder_size(r2, offset,
+			                                          pos2);
+			cmp = memcmp(r1 + offset, r2 + offset,
+			             (size1 <= size2) ? : size1; size2);
+			/* No need to move offset, this should be end anyway. */
+			assert(desc->block_types[i + 1] == KNOT_RDATA_WF_END);
+		} else {
+			/* NAPTR - TODO */
+		}
+
+		if (cmp != 0) {
+			return cmp;
+		}
+	}
+
+	assert(cmp == 0);
+	return 0;
+}
+
+
+//TODO this is only supposed to return 1 if equal and 0 if not NO SENSE
 int knot_rrset_compare_rdata(const knot_rrset_t *r1, const knot_rrset_t *r2)
 {
-	// not needed for now
-//	if (r1 == NULL || r2 == NULL) {
-//		return KNOT_EINVAL;
-//	}
+	if (r1 == NULL || r2 == NULL) {
+		return KNOT_EINVAL;
+	}
 
-//	const rdata_descriptor_t *desc =
-//		get_rdata_descriptor(r1->type);
-//	if (desc == NULL) {
-//		return KNOT_EINVAL;
-//	}
+	const rdata_descriptor_t *desc =
+		get_rdata_descriptor(r1->type);
+	if (desc == NULL) {
+		return KNOT_EINVAL;
+	}
 
-//	// compare RDATA sets (order is not significant)
-//	const knot_rrset_t *rrset1 = knot_rrset_rdata(r1);
-//	const knot_rrset_t *rrset2;
+	// compare RDATA sets (order is not significant)
+	const knot_rrset_t *rrset1 = knot_rrset_rdata(r1);
+	const knot_rrset_t *rrset2 = NULL;
 
-//	// find all RDATA from r1 in r2
+	// find all RDATA from r1 in r2
+	uint16_t k = 0;
+	for (uint16_t i = 0; i < r1->rdata_count; i++) {
+		int found = 0;
+		for (uint16_t j = 0; j < r2->rdata_count; j++) {
+			found =
+				!rrset_rdata_compare_one(rrset_rdata_pointer(r1,
+			                                                    i),
+			                                 rrset_rdata_pointer(r2,
+			                                                    j),
+			                                 r1->type, i, j);
+			if (found) {
+				// found index
+				k = j;
+			} else {
+				// RDATA from r1 not found in r2
+				return 0;
+			}
+		}
+	}
+	
+	int ret = knot_rrset_compare_rdata(r2, r1);
+	if (ret == 0) {
+		return ret;
+	} else {
+		return 1;
+	}
+	
 //	while (rdata1 != NULL) {
 //		 rdata2 = knot_rrset_rdata(r2);
 //		 while (rdata2 != NULL && knot_rdata_compare(rdata1, rdata2,
@@ -703,6 +732,7 @@ void knot_rrset_free(knot_rrset_t **rrset)
 
 int knot_rrset_merge(void **r1, void **r2)
 {
+	/* Just connect two arrays. */
 //	knot_rrset_t *rrset1 = (knot_rrset_t *)(*r1);
 //	knot_rrset_t *rrset2 = (knot_rrset_t *)(*r2);
 
@@ -904,128 +934,145 @@ uint32_t knot_rrset_rdata_length_total(const knot_rrset_t *rrset)
 
 /*----------------------------------------------------------------------------*/
 
-const knot_dname_t *knot_rrset_rdata_cname_name(const knot_rrset_t *rrset)
+const knot_dname_t *knot_rrset_rdata_cname_name(const knot_rrset_t *rrset,
+                                                size_t pos)
 {
-	if (rdata->count < 1) {
+	if (rrset == NULL || rrset->rdata_count >= pos) {
 		return NULL;
 	}
-	return rdata->items[0].dname;
+	
+	return (const knot_dname_t *)(rrset->rdata + rrset->rdata_indices[pos]);
 }
 
 /*----------------------------------------------------------------------------*/
 
-const knot_dname_t *knot_rrset_rdata_dname_target(const knot_rrset_t *rrset)
+const knot_dname_t *knot_rrset_rdata_dname_target(const knot_rrset_t *rrset,
+                                                  size_t pos)
 {
-	if (rdata->count < 1) {
+	if (rrset == NULL || rrset->rdata_count >= pos) {
 		return NULL;
 	}
-	return rdata->items[0].dname;
+	return (const knot_dname_t *)(rrset->rdata + rrset->rdata_indices[pos]);
 }
 
 /*---------------------------------------------------------------------------*/
 
-const knot_dname_t *knot_rrset_rdata_get_name(const knot_rrset_t *rrset,
-                                            uint16_t type)
+//const knot_dname_t *knot_rrset_rdata_get_name(const knot_rrset_t *rrset,
+//                                              size_t pos,
+//                                              uint16_t type)
+//{
+//	// iterate over the rdata items or act as if we knew where the name is?
+
+//	switch (type) {
+//	case KNOT_RRTYPE_NS:
+//		return knot_rrset_rdata_ns_name(rrset, pos);
+//	case KNOT_RRTYPE_MX:
+//		return knot_rrset_rdata_mx_name(rrset, pos);
+//	case KNOT_RRTYPE_SRV:
+//		return knot_rrset_rdata_srv_name(rrset, pos);
+//	case KNOT_RRTYPE_CNAME:
+//		return knot_rrset_rdata_cname_name(rrset, pos);
+//	}
+
+//	return NULL;
+//}
+
+size_t rrset_rdata_offset(const knot_rrset_t *rrset,
+                          size_t pos)
 {
-	// iterate over the rdata items or act as if we knew where the name is?
-
-	switch (type) {
-	case KNOT_RRTYPE_NS:
-		return knot_rdata_ns_name(rdata);
-	case KNOT_RRTYPE_MX:
-		return knot_rdata_mx_name(rdata);
-	case KNOT_RRTYPE_SRV:
-		return knot_rdata_srv_name(rdata);
-	case KNOT_RRTYPE_CNAME:
-		return knot_rdata_cname_name(rdata);
+	if (rrset == NULL || rrset->rdata_indices == NULL) {
+		return 0;
 	}
+	
+	if (pos == 0) {
+		return 0;
+	} else {
+		return rrset->rdata_indices[pos - 1];
+	}
+}
 
-	return NULL;
+uint8_t *rrset_rdata_pointer(const knot_rrset_t *rrset,
+                             size_t pos)
+{
+	if (rrset == NULL || rrset->rdata == NULL
+	    || rrset->rdata_count >= pos) {
+		return NULL;
+	}
+	
+	return rrset->rdata + rrset_rdata_offset(rrset, pos);
 }
 
 /*---------------------------------------------------------------------------*/
 int64_t knot_rrset_rdata_soa_serial(const knot_rrset_t *rrset)
 {
-	if (!rdata) {
-		return -1;
+	if (rrset == NULL) {
+		return 0;
 	}
+	
+	//read u64??? TODO
+	return knot_wire_read_u32(rrset->rdata + 
+	                          sizeof(knot_dname_t *) * 2);
 
-	if (rdata->count < 3) {
-		return -1;
-	}
-
-	// the number is in network byte order, transform it
-	return knot_wire_read_u32((uint8_t *)(rdata->items[2].raw_data + 1));
 }
 
 /*---------------------------------------------------------------------------*/
 void knot_rrset_rdata_soa_serial_set(knot_rrset_t *rrset, uint32_t serial)
 {
-	if (!rdata || rdata->count < 3) {
+	if (rrset == NULL) {
 		return;
 	}
 
 	// the number is in network byte order, transform it
-	knot_wire_write_u32((uint8_t *)(rdata->items[2].raw_data + 1),
+	knot_wire_write_u32(rrset->rdata + sizeof(knot_dname_t *) * 2,
 	                    serial);
 }
 
 /*---------------------------------------------------------------------------*/
 
-uint32_t knot_rrset_rdata_soa_refresh(const knot_rrset_t *rrset,
-                                      size_t pos)
+uint32_t knot_rrset_rdata_soa_refresh(const knot_rrset_t *rrset)
 {
-	if (!rdata) {
+	if (rrset == NULL) {
 		return 0;
 	}
-
-	if (rdata->count < 4) {
-		return 0;	/*! \todo Some other error value. */
-	}
-
-	// the number is in network byte order, transform it
-	return knot_wire_read_u32((uint8_t *)(rdata->items[3].raw_data + 1));
+	
+	return knot_wire_read_u32(rrset->rdata + 
+	                          sizeof(knot_dname_t *) * 2 + 4);
 }
 
 /*---------------------------------------------------------------------------*/
 
-uint32_t knot_rrset_rdata_soa_retry(const knot_rrset_t *rrset,
-                                    size_t post)
+
+uint32_t knot_rrset_rdata_soa_retry(const knot_rrset_t *rrset)
 {
-	if (!rdata) {
+	if (rrset == NULL) {
 		return 0;
 	}
-
-	if (rdata->count < 5) {
-		return 0;	/*! \todo Some other error value. */
-	}
-
-	// the number is in network byte order, transform it
-	return knot_wire_read_u32((uint8_t *)(rdata->items[4].raw_data + 1));
+	
+	return knot_wire_read_u32(rrset->rdata + 
+	                          sizeof(knot_dname_t *) * 2 + 8);
 }
 
 /*---------------------------------------------------------------------------*/
 
-uint32_t knot_rrset_rdata_soa_expire(const knot_rrset_t *rrset,
-                                     size_t pos)
+uint32_t knot_rrset_rdata_soa_expire(const knot_rrset_t *rrset)
 {
-	if (pos >= rrset->rdata_count) {
-		return NULL;
+	if (rrset == NULL) {
+		return 0;
 	}
 	
-	return knot_wire_read_u32((uint8_t *)(rdata->items[5].raw_data + 1));
+	return knot_wire_read_u32(rrset->rdata + 
+	                          sizeof(knot_dname_t *) * 2 + 12);
 }
 
 /*---------------------------------------------------------------------------*/
 
-uint32_t knot_rrset_rdata_soa_minimum(const knot_rrset_t *rrset,
-                                      size_t pos)
+uint32_t knot_rrset_rdata_soa_minimum(const knot_rrset_t *rrset)
 {
-	if (pos >= rrset->rdata_count) {
-		return NULL;
+	if (rrset == NULL) {
+		return 0;
 	}
 	
-	return knot_wire_read_u32(rrset->rdata[rrset->rdata_indices[pos]] + 
+	return knot_wire_read_u32(rrset->rdata + 
 	                          sizeof(knot_dname_t *) * 2 + 16);
 }
 
@@ -1034,11 +1081,11 @@ uint32_t knot_rrset_rdata_soa_minimum(const knot_rrset_t *rrset,
 uint16_t knot_rrset_rdata_rrsig_type_covered(const knot_rrset_t *rrset,
                                              size_t pos)
 {
-	if (pos >= rrset->rdata_count) {
-		return NULL;
+	if (rrset == NULL || pos >= rrset->rdata_count) {
+		return 0;
 	}
 	
-	return knot_wire_read_u16(rrset->rdata[rrset->rdata_indices[pos]]);
+	return knot_wire_read_u16(rrset_rdata_pointer(rrset, pos));
 }
 
 /*---------------------------------------------------------------------------*/
@@ -1046,11 +1093,11 @@ uint16_t knot_rrset_rdata_rrsig_type_covered(const knot_rrset_t *rrset,
 uint8_t knot_rrset_rdata_nsec3_algorithm(const knot_rrset_t *rrset,
                                          size_t pos)
 {
-	if (pos >= rrset->rdata_count) {
-		return NULL;
+	if (rrset == NULL || pos >= rrset->rdata_count) {
+		return 0;
 	}
 	
-	return *(rrset->rdata[rrset->rdata_indices[pos]]);
+	return *(rrset_rdata_pointer(rrset, pos));
 }
 
 /*---------------------------------------------------------------------------*/
@@ -1058,11 +1105,11 @@ uint8_t knot_rrset_rdata_nsec3_algorithm(const knot_rrset_t *rrset,
 uint16_t knot_rrset_rdata_nsec3_iterations(const knot_rrset_t *rrset,
                                            size_t pos)
 {
-	if (pos >= rrset->rdata_count) {
-		return NULL;
+	if (rrset == NULL || pos >= rrset->rdata_count) {
+		return 0;
 	}
 	
-	return *(rrset->rdata[rrset->rdata_indices[pos] + 2]);
+	return knot_wire_read_u16(rrset_rdata_pointer(rrset, pos) + 2);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -1070,11 +1117,11 @@ uint16_t knot_rrset_rdata_nsec3_iterations(const knot_rrset_t *rrset,
 uint8_t knot_rrset_rdata_nsec3_salt_length(const knot_rrset_t *rrset,
                                            size_t pos)
 {
-	if (pos >= rrset->rdata_count) {
-		return NULL;
+	if (rrset == NULL || pos >= rrset->rdata_count) {
+		return 0;
 	}
 	
-	return *(rrset->rdata[rrset->rdata_indices[pos] + 4]);
+	return *(rrset_rdata_pointer(rrset, pos) + 4);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -1082,10 +1129,10 @@ uint8_t knot_rrset_rdata_nsec3_salt_length(const knot_rrset_t *rrset,
 const uint8_t *knot_rrset_rdata_nsec3_salt(const knot_rrset_t *rrset,
                                            size_t pos)
 {
-	if (pos >= rrset->rdata_count) {
+	if (rrset == NULL || pos >= rrset->rdata_count) {
 		return NULL;
 	}
 	
-	return rrset->rdata[rrset->rdata_indices[pos] + 4];
+	return rrset_rdata_pointer(rrset, pos) + 4;
 }
 

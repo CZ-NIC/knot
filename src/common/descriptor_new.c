@@ -113,5 +113,22 @@ int descriptor_item_is_dname(int item)
 	       item == KNOT_RDATA_WF_UNCOMPRESSED_DNAME;
 }
 
+int descriptor_item_is_fixed(int item)
+{
+	if (item > 0) {
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
+int descriptor_item_is_remainder(int item)
+{
+	if (item == KNOT_RDATA_WF_REMAINDER) {
+		return 1;
+	} else {
+		return 0;
+	}
+}
 
 

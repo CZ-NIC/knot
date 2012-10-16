@@ -128,6 +128,8 @@ typedef struct {
 const rdata_descriptor_t *get_rdata_descriptor(const uint16_t type);
 
 int descriptor_item_is_dname(int item);
+int descriptor_item_is_fixed(int item);
+int descriptor_item_is_remainder(int item);
 
 #endif // _KNOT_DESCRIPTOR_NEW_H_
 
