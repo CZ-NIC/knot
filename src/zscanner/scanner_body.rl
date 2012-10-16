@@ -808,32 +808,6 @@
 	ipv6_addr_write = ipv6_addr %_ipv6_addr_write;
 	# END
 
-	# BEGIN - Gateway
-	action _write_0 {
-		*(rdata_tail++) = 0;
-	}
-	action _write_1 {
-		*(rdata_tail++) = 1;
-	}
-	action _write_2 {
-		*(rdata_tail++) = 2;
-	}
-	action _write_3 {
-		*(rdata_tail++) = 3;
-	}
-	action _gateway_error {
-		SCANNER_WARNING(ZSCANNER_EBAD_GATEWAY);
-		fhold; fgoto err_line;
-	}
-
-	gateway =
-		( ('0' $_write_0 . sep . num8 . sep . '.')
-		| ('1' $_write_1 . sep . num8 . sep . ipv4_addr_write)
-		| ('2' $_write_2 . sep . num8 . sep . ipv6_addr_write)
-		| ('3' $_write_3 . sep . num8 . sep . r_dname)
-		) $!_gateway_error;
-	# END
-
 	# BEGIN - apl record processing
 	action _apl_init {
 		memset(&(s->apl), 0, sizeof(s->apl));
@@ -1020,7 +994,7 @@
 
 	# Base64 array with possibility of inside white spaces and multiline.
 	base64_ := (base64_quartet+ . sep?)+ $!_base64_char_error
-			   %_ret . end_wchar;
+	           %_ret . end_wchar;
 	base64 = base64_char ${ fhold; fcall base64_; };
 	# END
 
@@ -1114,7 +1088,41 @@
 
 	# Continuous base32hex (with padding!) array with forward length processing.
 	hash = base32hex_octet+ >_item_length_init %_item_length_exit
-		   $!_base32hex_char_error;
+	       $!_base32hex_char_error;
+	# END
+
+	# BEGIN - Gateway
+	action _write_0 {
+		*(rdata_tail++) = 0;
+	}
+	action _write_1 {
+		*(rdata_tail++) = 1;
+	}
+	action _write_2 {
+		*(rdata_tail++) = 2;
+	}
+	action _write_3 {
+		*(rdata_tail++) = 3;
+	}
+	action _gateway_error {
+		SCANNER_WARNING(ZSCANNER_EBAD_GATEWAY);
+		fhold; fgoto err_line;
+	}
+	action _gateway_key_error {
+		SCANNER_WARNING(ZSCANNER_EBAD_GATEWAY_KEY);
+		fhold; fgoto err_line;
+	}
+
+	gateway = (( ('0' $_write_0 . sep . num8 . sep . '.')
+	           | ('1' $_write_1 . sep . num8 . sep . ipv4_addr_write)
+	           | ('2' $_write_2 . sep . num8 . sep . ipv6_addr_write)
+	           | ('3' $_write_3 . sep . num8 . sep . r_dname)
+	           ) $!_gateway_error .
+	           # If algorithm is 0 then key isn't present and vice versa.
+	           ( ((sep . base64) when { s->number64 != 0 })
+	           | ((sep?)         when { s->number64 == 0 }) # remove blank space
+	           ) $!_gateway_key_error
+	          );
 	# END
 
 	# BEGIN - Type processing
@@ -1492,7 +1500,7 @@
 		$!_r_data_error %_ret . end_wchar;
 
 	r_data_ipseckey :=
-		(num8 . sep . gateway . sep . base64)
+		(num8 . sep . gateway)
 		$!_r_data_error %_ret . end_wchar;
 
 	r_data_rrsig :=

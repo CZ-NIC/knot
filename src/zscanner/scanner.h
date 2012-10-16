@@ -101,7 +101,7 @@ struct scanner {
 	void (*process_error)(const scanner_t *);
 	void *data;
 
-	/*!< Indicates if actual record is multiline. */
+	/*!< Indicates if current record is multiline. */
 	bool     multiline;
 	/*!< Auxiliary number for all numeric operations. */
 	uint64_t number64;
@@ -125,7 +125,7 @@ struct scanner {
 
 	/*!< Bitmap window blocks. */
 	window_t windows[BITMAP_WINDOWS];
-	/*!< Last window block which is used (-1 means any window). */
+	/*!< Last window block which is used (-1 means no window). */
 	int16_t  last_window;
 
 	apl_t    apl;
@@ -150,10 +150,10 @@ struct scanner {
 	uint32_t r_data_length;
 	uint16_t r_data_blocks[MAX_RDATA_ITEMS];
 	uint32_t r_data_blocks_count;
-	/* Eexample: MX 1 .
-	 *           rdata = 000100
-	 *           r_data_blocks_count = 2
-	 *           r_data_blocks = [0, 2, 3]
+	/* Example: MX 1 .
+	 *          rdata = 000100 (0001 00)
+	 *          r_data_blocks_count = 2
+	 *          r_data_blocks = [0, 2, 3]
 	 */
 };
 
