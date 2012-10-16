@@ -105,9 +105,12 @@ static void knot_packet_init_pointers_response(knot_packet_t *pkt)
 	pos += DEFAULT_DOMAINS_IN_RESPONSE * sizeof(const knot_dname_t *);
 	pkt->compression.offsets = (size_t *)pos;
 	pos += DEFAULT_DOMAINS_IN_RESPONSE * sizeof(size_t);
+	pkt->compression.to_free = (int *)pos;
+	pos += DEFAULT_DOMAINS_IN_RESPONSE * sizeof(int);
 
 	dbg_packet_detail("Compression dnames: %p\n", pkt->compression.dnames);
 	dbg_packet_detail("Compression offsets: %p\n", pkt->compression.offsets);
+	dbg_packet_detail("Compression to_free: %p\n", pkt->compression.to_free);
 
 	pkt->compression.max = DEFAULT_DOMAINS_IN_RESPONSE;
 	pkt->compression.default_count = DEFAULT_DOMAINS_IN_RESPONSE;
@@ -1484,6 +1487,14 @@ void knot_packet_free(knot_packet_t **packet)
 	// free temporary domain names
 	dbg_packet("Freeing tmp RRSets...\n");
 	knot_packet_free_tmp_rrsets(*packet);
+
+	dbg_packet("Freeing copied dnames for compression...\n");
+	for (int i = 0; i < (*packet)->compression.count; ++i) {
+		if ((*packet)->compression.to_free[i]) {
+			knot_dname_release(
+			      (knot_dname_t *)(*packet)->compression.dnames[i]);
+		}
+	}
 
 	/*! \note The above code will free the domain names pointed to by
 	 *        the list of wildcard nodes. It should not matter, however.

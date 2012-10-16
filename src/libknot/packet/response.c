@@ -24,6 +24,8 @@
 #include "packet/packet.h"
 #include "edns.h"
 
+#define COMPRESSION_PEDANTIC
+
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Holds information about compressed domain name.
@@ -77,6 +79,7 @@ static int knot_response_realloc_compr(knot_compressed_dnames_t *table)
 {
 	int free_old = table->max != table->default_count;
 	size_t *old_offsets = table->offsets;
+	int *old_to_free = table->to_free;
 	const knot_dname_t **old_dnames = table->dnames;
 
 	short new_max_count = table->max + STEP_DOMAINS;
@@ -84,24 +87,35 @@ static int knot_response_realloc_compr(knot_compressed_dnames_t *table)
 	size_t *new_offsets = (size_t *)malloc(new_max_count * sizeof(size_t));
 	CHECK_ALLOC_LOG(new_offsets, -1);
 
-	const knot_dname_t **new_dnames = (const knot_dname_t **)malloc(
-		new_max_count * sizeof(knot_dname_t *));
-	if (new_dnames == NULL) {
+	int *new_to_free = (int *)malloc(new_max_count * sizeof(int));
+	if (new_to_free == NULL) {
 		ERR_ALLOC_FAILED;
 		free(new_offsets);
 		return KNOT_ENOMEM;
 	}
 
+	const knot_dname_t **new_dnames = (const knot_dname_t **)malloc(
+		new_max_count * sizeof(knot_dname_t *));
+	if (new_dnames == NULL) {
+		ERR_ALLOC_FAILED;
+		free(new_offsets);
+		free(new_to_free);
+		return KNOT_ENOMEM;
+	}
+
 	memcpy(new_offsets, table->offsets, table->max * sizeof(size_t));
+	memcpy(new_to_free, table->to_free, table->max * sizeof(int));
 	memcpy(new_dnames, table->dnames,
 	       table->max * sizeof(knot_dname_t *));
 
 	table->offsets = new_offsets;
+	table->to_free = new_to_free;
 	table->dnames = new_dnames;
 	table->max = new_max_count;
 
 	if (free_old) {
 		free(old_offsets);
+		free(old_to_free);
 		free(old_dnames);
 	}
 
@@ -120,7 +134,8 @@ static int knot_response_realloc_compr(knot_compressed_dnames_t *table)
  * \param pos Position of the domain name in the packet's wire format.
  */
 static void knot_response_compr_save(knot_compressed_dnames_t *table,
-                                       const knot_dname_t *dname, size_t pos)
+                                     const knot_dname_t *dname, size_t pos,
+                                     int copied_dname)
 {
 	assert(table->count < table->max);
 
@@ -133,6 +148,7 @@ static void knot_response_compr_save(knot_compressed_dnames_t *table,
 
 	table->dnames[table->count] = dname;
 	table->offsets[table->count] = pos;
+	table->to_free[table->count] = copied_dname;
 	++table->count;
 }
 
@@ -196,7 +212,7 @@ dbg_response_exec(
 	 */
 	const knot_dname_t *to_save = dname;
 	size_t parent_pos = pos;
-	int i = 0;
+	int i = 0, copied = 0;
 
 	while (to_save != NULL && i < knot_dname_label_count(dname)) {
 		if (i == not_matched) {
@@ -217,7 +233,7 @@ dbg_response_exec_detail(
 			return KNOT_ENOMEM;
 		}
 
-		knot_response_compr_save(table, to_save, parent_pos);
+		knot_response_compr_save(table, to_save, parent_pos, copied);
 
 		/*! \todo Remove '!compr_cs'. */
 		// This is a temporary hack to avoid the wrong behaviour
@@ -232,7 +248,8 @@ dbg_response_exec_detail(
 		/*! \todo The whole compression requires a serious refactoring.
 		 *        Or better - a rewrite!
 		 */
-		to_save = (!compr_cs && knot_dname_node(to_save) != NULL
+		const knot_dname_t *to_save_new =
+		          (!compr_cs && knot_dname_node(to_save) != NULL
 		           && knot_node_owner(knot_dname_node(to_save))
 		              !=  to_save
 		           && knot_node_parent(knot_dname_node(to_save))
@@ -240,6 +257,18 @@ dbg_response_exec_detail(
 		                ? knot_node_owner(knot_node_parent(
 		                        knot_dname_node(to_save)))
 		                : NULL;
+
+#ifdef COMPRESSION_PEDANTIC
+		if (to_save_new == NULL) {
+			// copied name - must be freed later
+			to_save_new = knot_dname_left_chop(to_save);
+			copied = 1;
+		} else {
+			copied = 0;
+		}
+#endif
+
+		to_save = to_save_new;
 
 		dbg_response("i: %d\n", i);
 		parent_pos += knot_dname_label_size(dname, i) + 1;
@@ -943,6 +972,13 @@ void knot_response_clear(knot_packet_t *resp, int clear_question)
 	resp->ns_rrsets = 0;
 	resp->ar_rrsets = 0;
 
+	// free copied names for compression
+	for (int i = 0; i < resp->compression.count; ++i) {
+		if (resp->compression.to_free[i]) {
+			knot_dname_release(
+			           (knot_dname_t *)resp->compression.dnames[i]);
+		}
+	}
 	resp->compression.count = 0;
 
 	/*! \todo Temporary RRSets are not deallocated, which may potentially
