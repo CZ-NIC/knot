@@ -1612,6 +1612,9 @@ static int ns_put_nsec_nsec3_wildcard_answer(const knot_node_t *node,
                                           const knot_dname_t *qname,
                                           knot_packet_t *resp)
 {
+	// if wildcard answer, add NSEC / NSEC3
+	dbg_ns_verb("Adding NSEC/NSEC3 for wildcard answer.\n");
+
 	int ret = KNOT_EOK;
 	if (DNSSEC_ENABLED
 	    && knot_query_dnssec_requested(knot_packet_query(resp))
@@ -1860,9 +1863,6 @@ static int ns_answer_from_node(const knot_node_t *node,
 			}
 		}
 	} else {  // else put authority NS
-		// if wildcard answer, add NSEC / NSEC3
-		dbg_ns_verb("Adding NSEC/NSEC3 for wildcard answer.\n");
-
 		assert(previous == NULL);
 		assert(closest_encloser == knot_node_parent(node)
 		       || !knot_dname_is_wildcard(knot_node_owner(node)));
