@@ -1,0 +1,49 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	NSEC3	0	0	0	-	00======		; The simplest variant - without bitmap
+@	NSEC3	255	255	65535	-	00======		; Maximal numbers
+@	NSEC3	0	0	0	00FF	00======		; Hex string
+@	NSEC3	0	0	0	-	00======		; Eight char padding
+@	NSEC3	0	0	0	-	CPNG====		; Four char padding
+@	NSEC3	0	0	0	-	CPNMU===		; Three char padding
+@	NSEC3	0	0	0	-	CPNMUOG=		; One char padding
+@	NSEC3	0	0	0	-	CPNMUOJ1		; Without padding
+@	NSEC3	0	0	0	-	CPNMUOJ1E8======	; Two base32hex blocks
+@	NSEC3	0	0	0	-	00======	TYPE0		; Minimal type number
+@	NSEC3	0	0	0	-	00======	TYPE65535	; Maximal type number
+@	NSEC3	0	0	0	-	00======	TYPE0 A NS	; First bitmap window
+@	NSEC3	0	0	0	-	00======	TYPE0 TYPE256 TYPE512 TYPE32768	; First, second, third and 128. bitmap window
+@	TYPE50	\# 7 00000000000100					; TYPE + Hexadecimal rdata
+@	TYPE50	0	0	0	-       00======		; TYPE
+@	nsec3	0	0	0	-       00======		; Type in lower-case
+
+; KO
+@	NSEC3
+@	NSEC3								; Empty rdata
+@	NSEC3	\# 0							; Hex empty rdata
+@	NSEC3	\#							; Missing hex length
+@	NSEC3	256	0	0	-	00======		; Algorithm overflow
+@	NSEC3	0	256	0	-	00======		; Flags overflow
+@	NSEC3	0	0	65536	-	00======		; Iterations overflow
+@	NSEC3	0	0	0	0	00======		; Hex block must be multiple of 2
+@	NSEC3	0	0	0	0X	00======		; Bad hex char
+@	NSEC3	0	0	0	00 FF	00======		; Hex string with blank space inside
+@	NSEC3	0	0	0	-	1			; Continuous block length must be multiple of 8
+@	NSEC3	0	0	0	-	12			; Continuous block length must be multiple of 8
+@	NSEC3	0	0	0	-	123			; Continuous block length must be multiple of 8
+@	NSEC3	0	0	0	-	1234			; Continuous block length must be multiple of 8
+@	NSEC3	0	0	0	-	12345			; Continuous block length must be multiple of 8
+@	NSEC3	0	0	0	-	123456			; Continuous block length must be multiple of 8
+@	NSEC3	0	0	0	-	1234567			; Continuous block length must be multiple of 8
+@	NSEC3	0	0	0	-	123456 78		; Continuous block length must be multiple of 8
+@	NSEC3	0	0	0	-	========		; Bad padding
+@	NSEC3	0	0	0	-	1=======		; Bad padding
+@	NSEC3	0	0	0	-	123=====		; Bad padding
+@	NSEC3	0	0	0	-	123456==		; Bad padding
+@	NSEC3	0	0	0	-	CPNMUOJ1  E8======	; Two base32hex blocks with blank space between them
+@	NSEC3	0	0	0	-	00======	TYPE65536	; Type number overflow
+@	NSEC3	0	0	0	-	00======	X		; Unknown type
+@	NSEC3	\# 7 0000000000010000					; Too long rdata
+@	NSEC3	\# 8 00000000000100					; Bad rdata length
