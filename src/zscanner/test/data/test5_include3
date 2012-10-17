@@ -1,5 +1,0 @@
-$TTL 400
-@ NS @
-
-$ORIGIN include.
-@ NS @
