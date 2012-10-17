@@ -275,6 +275,12 @@ dbg_response_exec_detail(
 		++i;
 	}
 
+	if (copied == 1 && to_save != NULL) {
+		// The last name was not used, free it
+		dbg_response("Freeing last chopped dname.\n");
+		knot_dname_release((knot_dname_t *)to_save);
+	}
+
 	return KNOT_EOK;
 }
 

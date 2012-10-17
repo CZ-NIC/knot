@@ -640,6 +640,7 @@ static void knot_packet_free_allocated_space(knot_packet_t *pkt)
 	if (pkt->compression.max > pkt->compression.default_count) {
 		free(pkt->compression.dnames);
 		free(pkt->compression.offsets);
+		free(pkt->compression.to_free);
 	}
 
 	if (pkt->wildcard_nodes.max > pkt->wildcard_nodes.default_count) {
