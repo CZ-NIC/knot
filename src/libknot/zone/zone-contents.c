@@ -560,6 +560,8 @@ dbg_zone_exec_detail(
 	} else if (knot_node_rrset(node, KNOT_RRTYPE_NS) != NULL
 		   && node != zone->apex) {
 		knot_node_set_deleg_point(node);
+	} else {
+		knot_node_set_auth(node);
 	}
 
 	// assure that owner has proper node
