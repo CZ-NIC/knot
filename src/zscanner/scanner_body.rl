@@ -1260,7 +1260,7 @@
 		if (s->number64 <= 90) {
 			s->loc.d1 = (uint32_t)(s->number64);
 		} else {
-			SCANNER_WARNING(ZSCANNER_EBAD_LOC_DATA);
+			SCANNER_WARNING(ZSCANNER_EBAD_NUMBER);
 			fhold; fgoto err_line;
 		}
 	}
@@ -1268,7 +1268,7 @@
 		if (s->number64 <= 180) {
 			s->loc.d2 = (uint32_t)(s->number64);
 		} else {
-			SCANNER_WARNING(ZSCANNER_EBAD_LOC_DATA);
+			SCANNER_WARNING(ZSCANNER_EBAD_NUMBER);
 			fhold; fgoto err_line;
 		}
 	}
@@ -1276,7 +1276,7 @@
 		if (s->number64 <= 59) {
 			s->loc.m1 = (uint32_t)(s->number64);
 		} else {
-			SCANNER_WARNING(ZSCANNER_EBAD_LOC_DATA);
+			SCANNER_WARNING(ZSCANNER_EBAD_NUMBER);
 			fhold; fgoto err_line;
 		}
 	}
@@ -1284,7 +1284,7 @@
 		if (s->number64 <= 59) {
 			s->loc.m2 = (uint32_t)(s->number64);
 		} else {
-			SCANNER_WARNING(ZSCANNER_EBAD_LOC_DATA);
+			SCANNER_WARNING(ZSCANNER_EBAD_NUMBER);
 			fhold; fgoto err_line;
 		}
 	}
@@ -1292,7 +1292,7 @@
 		if (s->number64 <= 59999) {
 			s->loc.s1 = (uint32_t)(s->number64);
 		} else {
-			SCANNER_WARNING(ZSCANNER_EBAD_LOC_DATA);
+			SCANNER_WARNING(ZSCANNER_EBAD_NUMBER);
 			fhold; fgoto err_line;
 		}
 	}
@@ -1300,41 +1300,41 @@
 		if (s->number64 <= 59999) {
 			s->loc.s2 = (uint32_t)(s->number64);
 		} else {
-			SCANNER_WARNING(ZSCANNER_EBAD_LOC_DATA);
+			SCANNER_WARNING(ZSCANNER_EBAD_NUMBER);
 			fhold; fgoto err_line;
 		}
 	}
 	action _alt_exit {
 		if ((s->loc.alt_sign ==  1 && s->number64 <= 4284967295) ||
-			(s->loc.alt_sign == -1 && s->number64 <=   10000000))
+		    (s->loc.alt_sign == -1 && s->number64 <=   10000000))
 		{
 			s->loc.alt = (uint32_t)(s->number64);
 		} else {
-			SCANNER_WARNING(ZSCANNER_EBAD_LOC_DATA);
+			SCANNER_WARNING(ZSCANNER_EBAD_NUMBER);
 			fhold; fgoto err_line;
 		}
 	}
 	action _siz_exit {
-		if (s->number64 <= 9000000000) {
-			s->loc.siz = (uint32_t)(s->number64);
+		if (s->number64 <= 9000000000ULL) {
+			s->loc.siz = s->number64;
 		} else {
-			SCANNER_WARNING(ZSCANNER_EBAD_LOC_DATA);
+			SCANNER_WARNING(ZSCANNER_EBAD_NUMBER);
 			fhold; fgoto err_line;
 		}
 	}
 	action _hp_exit {
-		if (s->number64 <= 9000000000) {
-			s->loc.hp = (uint32_t)(s->number64);
+		if (s->number64 <= 9000000000ULL) {
+			s->loc.hp = s->number64;
 		} else {
-			SCANNER_WARNING(ZSCANNER_EBAD_LOC_DATA);
+			SCANNER_WARNING(ZSCANNER_EBAD_NUMBER);
 			fhold; fgoto err_line;
 		}
 	}
 	action _vp_exit {
-		if (s->number64 <= 9000000000) {
-			s->loc.vp = (uint32_t)(s->number64);
+		if (s->number64 <= 9000000000ULL) {
+			s->loc.vp = s->number64;
 		} else {
-			SCANNER_WARNING(ZSCANNER_EBAD_LOC_DATA);
+			SCANNER_WARNING(ZSCANNER_EBAD_NUMBER);
 			fhold; fgoto err_line;
 		}
 	}

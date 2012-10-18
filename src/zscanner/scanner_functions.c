@@ -805,8 +805,8 @@ uint8_t loc64to8(uint64_t number)
 		number /= 10;
 		exponent++;
 	}
-
-	return (((uint8_t)number % 9) << 4) + (exponent % 9);
+	// First 4 bits are mantisa, second 4 bits are exponent.
+	return ((uint8_t)number << 4) + (exponent & 15);
 }
 
 static uint32_t get_dname_length(const uint8_t  *data,
