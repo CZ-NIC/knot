@@ -181,6 +181,15 @@ static int knot_zone_contents_dnames_from_rrset_to_table(
 {
 	assert(table != NULL && rrset != NULL && owner != NULL);
 
+dbg_zone_exec_detail(
+	char *name = knot_dname_to_str(knot_rrset_owner(rrset));
+	dbg_zone_detail("Putting dnames from RRSet to table: owner: (%p) %s,"
+			" type: %s\n", knot_rrset_owner(rrset),
+			name, knot_rrtype_to_string(
+				  knot_rrset_type(rrset)));
+	free(name);
+);
+
 	if (replace_owner) {
 		// discard the old owner and replace it with the new
 		knot_rrset_set_owner(rrset, owner);
@@ -247,6 +256,13 @@ dbg_zone_exec_detail(
 		dbg_zone_detail("Inserting RRSets from node to table.\n");
 		rc = knot_zone_contents_dnames_from_rrset_to_table(table,
 			rrsets[i], replace_owner, node->owner);
+
+		if (rc == KNOT_EOK && knot_rrset_rrsigs(rrsets[i]) != NULL) {
+			rc = knot_zone_contents_dnames_from_rrset_to_table(
+				table, knot_rrset_get_rrsigs(rrsets[i]),
+			                        replace_owner, node->owner);
+		}
+
 		if (rc != KNOT_EOK) {
 			return rc;
 		}
@@ -337,9 +353,9 @@ static void knot_zone_contents_adjust_rdata_item(knot_rdata_t *rdata,
 		                              knot_zone_contents_apex(zone)))) {
 			// The name's node is either already set
 			// or the name does not belong to the zone
-			dbg_zone_detail("Name's node either set or the name "
+			dbg_zone_detail("Name's (%p) node either set or the name"
 			                "does not belong to the zone (%p).\n",
-			                knot_dname_node(dname));
+			                dname, knot_dname_node(dname));
 			return;
 		}
 
