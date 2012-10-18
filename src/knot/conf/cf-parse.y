@@ -57,7 +57,7 @@ static void conf_start_remote(void *scanner, char *remote)
 }
 
 static void conf_remote_set_via(void *scanner, char *item) {
-   /* Find existing node in remotes. */
+   /* Find existing node in interfaces. */
    node* r = 0; conf_iface_t* found = 0;
    WALK_LIST (r, new_config->ifaces) {
       if (strcmp(((conf_iface_t*)r)->name, item) == 0) {
@@ -69,7 +69,7 @@ static void conf_remote_set_via(void *scanner, char *item) {
    /* Check */
    if (!found) {
       char buf[512];
-      snprintf(buf, sizeof(buf), "remote '%s' is not defined", item);
+      snprintf(buf, sizeof(buf), "interface '%s' is not defined", item);
       cf_error(scanner, buf);
    } else {
       sockaddr_set(&this_remote->via, found->family, found->address, 0);
