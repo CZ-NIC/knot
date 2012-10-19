@@ -84,9 +84,8 @@ struct scanner {
 	int	 top;
 	int	 stack[RAGEL_STACK_SIZE];
 
-	/*!< Data start shift of incompletely scanned token. */
-	uint32_t token_shift;
-	uint32_t r_data_tail; /*!< Position of actual r_data byte. */
+	/*!< Position of actual r_data byte. */
+	uint32_t r_data_tail;
 
 	/*!< Zone file name. */
 	char     *file_name;

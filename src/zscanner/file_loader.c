@@ -16,28 +16,38 @@
 
 #include "zscanner/file_loader.h"
 
-#include <inttypes.h>				// PRIu64
-#include <unistd.h>				// sysconf
-#include <stdio.h>				// sprintf
-#include <stdlib.h>				// free
-#include <stdbool.h>				// bool
-#include <string.h>				// strlen
-#include <fcntl.h>				// open
-#include <sys/stat.h>				// fstat
-#include <sys/mman.h>				// mmap
+#include <inttypes.h>			// PRIu64
+#include <unistd.h>			// sysconf
+#include <stdio.h>			// sprintf
+#include <stdlib.h>			// free
+#include <stdbool.h>			// bool
+#include <string.h>			// strlen
+#include <fcntl.h>			// open
+#include <sys/stat.h>			// fstat
+#include <sys/mman.h>			// mmap
 
-#include "common/errcode.h"			// error codes
+#include "common/errcode.h"		// error codes
 
 /*! \brief Mmap block size in bytes. */
-#define BLOCK_SIZE		      30000000
-#define BLOCK_OVERLAPPING_SIZE		100000  // In bytes.
+#define BLOCK_SIZE      30000000
 
-
+/*!
+ * \brief Processes zone settings block.
+ *
+ * Before zone file processing via scanner it's necessary to process first
+ * settings block using this function. Settings block contains ORIGIN and
+ * TTL directive.
+ *
+ * \param fl		file loader structure.
+ *
+ * \retval  0		if success.
+ * \retval -1		if error.
+ */
 static int load_settings(file_loader_t *fl)
 {
-	int	  ret;
-	scanner_t *settings_scanner;
-	char	  *settings_name;
+	int		ret;
+	char		*settings_name;
+	scanner_t	*settings_scanner;
 
 	// Creating name for zone defaults.
 	settings_name = malloc(strlen(fl->file_name) + 100);
@@ -106,7 +116,7 @@ file_loader_t* file_loader_create(const char	 *file_name,
 	// Creating zone scanner.
 	fl->scanner = scanner_create(file_name);
 
-	// Setting processing functions.
+	// Setting processing functions and data pointer.
 	fl->scanner->process_record = process_record;
 	fl->scanner->process_error  = process_error;
 	fl->scanner->data = data;
@@ -141,17 +151,16 @@ void file_loader_free(file_loader_t *fl)
 
 int file_loader_process(file_loader_t *fl)
 {
-	struct stat file_stat;
-
-	int	 ret;
-	char	 *data;
-	bool	 is_last_block;
-	long	 page_size;
-	uint64_t n_blocks, block_id;
-	uint64_t block_size, overlapping_size;
-	// Start means first valid character; end means first invalid character.
-	uint64_t block_start_position, block_end_position;
-	uint64_t scanner_start_position, scanner_end_position;
+	int		ret;
+	char		*data;		// Mmaped data.
+	bool		is_last_block;
+	long		page_size;
+	uint64_t	n_blocks;
+	uint64_t	block_id;
+	uint64_t	default_block_size;
+	uint64_t	scanner_start;	// Current block start to scan.
+	uint64_t	block_size;	// Current block size to scan.
+	struct stat	file_stat;
 
 	// Last block - secure termination of zone file.
 	char *zone_termination = "\n";
@@ -175,13 +184,10 @@ int file_loader_process(file_loader_t *fl)
 	}
 
 	// Block size adjustment to multiple of page size.
-	block_size = (BLOCK_SIZE / page_size) * page_size;
-
-	// Overlapping size adjustment to multiple of page size.
-	overlapping_size = (BLOCK_OVERLAPPING_SIZE / page_size) * page_size;
+	default_block_size = (BLOCK_SIZE / page_size) * page_size;
 
 	// Number of blocks which cover the whole file (ceiling operation).
-	n_blocks = 1 + ((file_stat.st_size - 1) / block_size);
+	n_blocks = 1 + ((file_stat.st_size - 1) / default_block_size);
 
 	// Process settings using scanner (like initial ORIGIN and TTL).
 	ret = load_settings(fl);
@@ -192,51 +198,35 @@ int file_loader_process(file_loader_t *fl)
 
 	// Loop over zone file blocks.
 	for (block_id = 0; block_id < n_blocks; block_id++) {
-		block_start_position   =  block_id      * block_size;
-		block_end_position     = (block_id + 1) * block_size;
-		scanner_start_position = 0;
-		scanner_end_position   = block_size;
-		is_last_block	       = false;
-
-		// Non-first block overlaps previous block - can be useful.
-		if (block_id > 0) {
-			block_start_position  -= overlapping_size;
-			scanner_start_position = overlapping_size;
-			scanner_end_position  += overlapping_size;
-		}
+		scanner_start = block_id * default_block_size;
+		is_last_block = false;
+		block_size = default_block_size;
 
 		// The last block is probably shorter.
 		if (block_id == (n_blocks - 1)) {
-			block_end_position   = file_stat.st_size;
-			scanner_end_position =
-				block_end_position - block_start_position;
-			is_last_block	     = true;
+			block_size = file_stat.st_size - scanner_start;
+			is_last_block = true;
 		}
 
 		// Zone file block mapping.
 		data = mmap(0,
-			    block_end_position - block_start_position,
+			    block_size,
 			    PROT_READ,
 			    MAP_SHARED,
 			    fl->fd,
-			    block_start_position);
+			    scanner_start);
 
 		if (data == MAP_FAILED) {
 			return FLOADER_EMMAP;
 		}
 
-		// Check for sufficient block overlapping.
-		if (fl->scanner->token_shift > overlapping_size) {
-			return FLOADER_EOVERLAPPING;
-		};
-
 		// Scan zone file.
-		ret = scanner_process(data + scanner_start_position,
-				      data + scanner_end_position,
+		ret = scanner_process(data,
+				      data + block_size,
 				      false,
 				      fl->scanner);
 
-		// Artificial last block containing termination only.
+		// Artificial last block containing newline char only.
 		if (is_last_block == true && fl->scanner->stop == 0) {
 			ret = scanner_process(zone_termination,
 		  			      zone_termination + 1,
@@ -245,7 +235,7 @@ int file_loader_process(file_loader_t *fl)
 		}
 
 		// Zone file block unmapping.
-		if (munmap(data, block_end_position - block_start_position) == -1) {
+		if (munmap(data, block_size) == -1) {
 			return FLOADER_EMUNMAP;
 		}
 	}

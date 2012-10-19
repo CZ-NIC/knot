@@ -76,7 +76,6 @@ const error_table_t knot_error_msgs[] = {
 	{FLOADER_EEMPTY, "Empty zone file!"},
 	{FLOADER_EDEFAULTS, "Zone defaults processing error!"},
 	{FLOADER_EMMAP, "Mmap error!"},
-	{FLOADER_EOVERLAPPING, "Insufficient block overlapping!"},
 	{FLOADER_EMUNMAP, "Munmap error!"},
 	{FLOADER_ESCANNER, "Zone processing error!"},
 

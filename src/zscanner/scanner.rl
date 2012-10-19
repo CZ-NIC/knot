@@ -95,8 +95,7 @@ int scanner_process(char      *start,
 {
 	// Necessary scanner variables.
 	int  stack[RAGEL_STACK_SIZE];
-	char *ts = NULL, *eof = NULL;
-	char *p = start, *pe = end;
+	char *p = start, *pe = end, *eof = NULL;
 
 	// Auxiliary variables which are used in scanner body.
 	struct in_addr  addr4;
@@ -115,11 +114,6 @@ int scanner_process(char      *start,
 	int cs  = s->cs;
 	int top = s->top;
 	memcpy(stack, s->stack, sizeof(stack));
-
-	// Applying unprocessed token shift.
-	if (s->token_shift > 0) {
-		ts = start - s->token_shift;
-	}
 
 	// End of file check.
 	if (is_last_block == true) {
@@ -163,13 +157,6 @@ int scanner_process(char      *start,
 
 	// Storing r_data pointer.
 	s->r_data_tail = rdata_tail - s->r_data;
-
-	// Storing unprocessed token shift.
-	if (ts != NULL) {
-		s->token_shift = pe - ts;
-	} else {
-		s->token_shift = 0;
-	}
 
 	// Check if any errors has occured.
 	if (s->error_counter > 0) {
