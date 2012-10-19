@@ -144,19 +144,19 @@ int knot_changeset_add_rr(knot_rrset_t ***rrsets, size_t *count,
 
 int knot_changeset_add_new_rr(knot_changeset_t *changeset,
                                knot_rrset_t *rrset,
-                               xfrin_changeset_part_t part)
+                               knot_changeset_part_t part)
 {
 	knot_rrset_t ***rrsets = NULL;
 	size_t *count = NULL;
 	size_t *allocated = NULL;
 
 	switch (part) {
-	case XFRIN_CHANGESET_ADD:
+	case KNOT_CHANGESET_ADD:
 		rrsets = &changeset->add;
 		count = &changeset->add_count;
 		allocated = &changeset->add_allocated;
 		break;
-	case XFRIN_CHANGESET_REMOVE:
+	case KNOT_CHANGESET_REMOVE:
 		rrsets = &changeset->remove;
 		count = &changeset->remove_count;
 		allocated = &changeset->remove_allocated;
@@ -189,14 +189,14 @@ void knot_changeset_store_soa(knot_rrset_t **chg_soa,
 /*----------------------------------------------------------------------------*/
 
 int knot_changeset_add_soa(knot_changeset_t *changeset, knot_rrset_t *soa,
-                            xfrin_changeset_part_t part)
+                            knot_changeset_part_t part)
 {
 	switch (part) {
-	case XFRIN_CHANGESET_ADD:
+	case KNOT_CHANGESET_ADD:
 		knot_changeset_store_soa(&changeset->soa_to,
 		                          &changeset->serial_to, soa);
 		break;
-	case XFRIN_CHANGESET_REMOVE:
+	case KNOT_CHANGESET_REMOVE:
 		knot_changeset_store_soa(&changeset->soa_from,
 		                          &changeset->serial_from, soa);
 		break;
@@ -239,6 +239,21 @@ int knot_changesets_check_size(knot_changesets_t *changesets)
 	changesets->allocated = new_count;
 
 	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void knot_changeset_set_type(knot_changeset_t *changeset,
+                             knot_changeset_type_t type)
+{
+	changeset->type = type;
+}
+
+/*----------------------------------------------------------------------------*/
+
+knot_changeset_type_t knot_changeset_type(knot_changeset_t *changeset)
+{
+	return changeset->type;
 }
 
 /*----------------------------------------------------------------------------*/

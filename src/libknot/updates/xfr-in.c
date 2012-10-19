@@ -1069,9 +1069,9 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 		assert((*chs)->sets[(*chs)->count - 1].soa_from != NULL);
 		
 		if ((*chs)->sets[(*chs)->count - 1].soa_to == NULL) {
-			state = XFRIN_CHANGESET_REMOVE;
+			state = KNOT_CHANGESET_REMOVE;
 		} else {
-			state = XFRIN_CHANGESET_ADD;
+			state = KNOT_CHANGESET_ADD;
 		}
 	}
 	
@@ -1134,17 +1134,17 @@ dbg_xfrin_exec_verb(
 						
 				ret = knot_changeset_add_soa(
 					&(*chs)->sets[(*chs)->count - 1], rr, 
-					XFRIN_CHANGESET_REMOVE);
+					KNOT_CHANGESET_REMOVE);
 				if (ret != KNOT_EOK) {
 					knot_rrset_deep_free(&rr, 1, 1, 1);
 					goto cleanup;
 				}
 				
 				// change state to REMOVE
-				state = XFRIN_CHANGESET_REMOVE;
+				state = KNOT_CHANGESET_REMOVE;
 			}
 			break;
-		case XFRIN_CHANGESET_REMOVE:
+		case KNOT_CHANGESET_REMOVE:
 			// if the next RR is SOA, store it and change state to
 			// ADD
 			if (knot_rrset_type(rr) == KNOT_RRTYPE_SOA) {
@@ -1154,25 +1154,25 @@ dbg_xfrin_exec_verb(
 				
 				ret = knot_changeset_add_soa(
 					&(*chs)->sets[(*chs)->count - 1], rr, 
-					XFRIN_CHANGESET_ADD);
+					KNOT_CHANGESET_ADD);
 				if (ret != KNOT_EOK) {
 					knot_rrset_deep_free(&rr, 1, 1, 1);
 					goto cleanup;
 				}
 				
-				state = XFRIN_CHANGESET_ADD;
+				state = KNOT_CHANGESET_ADD;
 			} else {
 				// just add the RR to the REMOVE part and
 				// continue
 				if ((ret = knot_changeset_add_new_rr(
 				         &(*chs)->sets[(*chs)->count - 1], rr,
-				         XFRIN_CHANGESET_REMOVE)) != KNOT_EOK) {
+				         KNOT_CHANGESET_REMOVE)) != KNOT_EOK) {
 					knot_rrset_deep_free(&rr, 1, 1, 1);
 					goto cleanup;
 				}
 			}
 			break;
-		case XFRIN_CHANGESET_ADD:
+		case KNOT_CHANGESET_ADD:
 			// if the next RR is SOA change to state -1 and do not
 			// parse next RR
 			if (knot_rrset_type(rr) == KNOT_RRTYPE_SOA) {
@@ -1183,7 +1183,7 @@ dbg_xfrin_exec_verb(
 				// just add the RR to the ADD part and continue
 				if ((ret = knot_changeset_add_new_rr(
 				            &(*chs)->sets[(*chs)->count - 1], rr,
-				            XFRIN_CHANGESET_ADD)) != KNOT_EOK) {
+				            KNOT_CHANGESET_ADD)) != KNOT_EOK) {
 					knot_rrset_deep_free(&rr, 1, 1, 1);
 					goto cleanup;
 				}
