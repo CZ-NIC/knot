@@ -1720,7 +1720,8 @@ static int xfrin_apply_remove_rrsigs(knot_changes_t *changes,
 static int xfrin_apply_remove_normal(knot_changes_t *changes,
                                      const knot_rrset_t *remove,
                                      knot_node_t *node,
-                                     knot_rrset_t **rrset)
+                                     knot_rrset_t **rrset,
+                                     knot_changeset_type_t chtype)
 {
 	assert(changes != NULL);
 	assert(remove != NULL);
@@ -1731,7 +1732,17 @@ static int xfrin_apply_remove_normal(knot_changes_t *changes,
 	
 	dbg_xfrin_detail("Removing RRSet: \n");
 	knot_rrset_dump(remove, 0);
-	
+
+	/*
+	 * First handle the special case of DDNS - do not remove SOA from apex.
+	 */
+	if (chtype == KNOT_CHANGESET_TYPE_DDNS
+	    && knot_node_rrset(node, KNOT_RRTYPE_SOA) != NULL
+	    && knot_rrset_type(remove) == KNOT_RRTYPE_SOA) {
+		dbg_xfrin_verb("Ignoring SOA removal in UPDATE.\n");
+		return KNOT_EOK;
+	}
+
 	// now we have the copy of the node, so lets get the right RRSet
 	// check if we do not already have it
 	if (*rrset
@@ -1841,20 +1852,53 @@ static int xfrin_apply_remove_all_rrsets(knot_changes_t *changes,
 	int ret = KNOT_EOK;
 	knot_rrset_t **rrsets = NULL;
 	unsigned rrsets_count = 0;
+	int is_apex = knot_node_rrset(node, KNOT_RRTYPE_SOA) != NULL;
 
 	/*! \todo ref #937 is it OK to modify nodes at this point?
 	 * shouldn't it be after the zones are switched? */
 	
 	/* Assemble RRSets to remove. */
 	if (type == KNOT_RRTYPE_ANY) {
+		/* Remove all RRSets from the node. */
+		/* If removing from zone apex, NS and SOA records should be
+		 * left unchanged.
+		 * We might either remove all RRSets and then return SOA and
+		 * NS RRSets to the node. Or find all existing types in the node
+		 * and remove all except NS and SOA. The first approach is
+		 * IMHO faster.
+		 */
+
 		rrsets = knot_node_get_rrsets(node);
 		short rr_count = knot_node_rrset_count(node);
 		if (rr_count > 0) {
 			rrsets_count = (unsigned)rr_count;
 		}
 		knot_node_remove_all_rrsets(node);
+
+		/*
+		 * If apex, return SOA and NS RRSets to the node and remove
+		 * them from the list (so they are not deleted later).
+		 */
+		if (is_apex) {
+			for (unsigned i = 0; i < rrsets_count; ++i) {
+				if (knot_rrset_type(rrsets[i])
+				       == KNOT_RRTYPE_SOA
+				    || knot_rrset_type(rrsets[i])
+				       == KNOT_RRTYPE_NS) {
+					knot_node_add_rrset(node, rrsets[i], 0);
+					rrsets[i] = NULL;
+				}
+			}
+		}
 	} else {
 		/* Remove only the RRSet with given type. */
+		/* First we must check if we're not removing NS or SOA from
+		   apex. This change should be ignored. */
+		if (is_apex
+		    && (type == KNOT_RRTYPE_SOA || type == KNOT_RRTYPE_NS)) {
+			return KNOT_EOK;
+		}
+
 		rrsets = malloc(sizeof(knot_rrset_t*));
 		if (rrsets) {
 			*rrsets = knot_node_remove_rrset(node, type);
@@ -1874,6 +1918,10 @@ static int xfrin_apply_remove_all_rrsets(knot_changes_t *changes,
 	
 	/* Mark RRsets and RDATA for removal. */
 	for (unsigned i = 0; i < rrsets_count; ++i) {
+		if (rrsets[i] == NULL) {
+			continue;
+		}
+
 		changes->old_rrsets[changes->old_rrsets_count++] = rrsets[i];
 	
 		/* Remove old RDATA. */
@@ -2603,7 +2651,8 @@ dbg_xfrin_exec_detail(
 			// this should work also for UPDATE
 			ret = xfrin_apply_remove_normal(changes,
 			                                chset->remove[i],
-			                                node, &rrset);
+			                                node, &rrset,
+			                                chset->type);
 		}
 
 		dbg_xfrin_detail("xfrin_apply_remove() ret = %d\n", ret);
