@@ -246,7 +246,7 @@ static int xfr_process_udp_resp(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 	rcu_read_lock();
 	if (knot_zone_flags(data->zone) & KNOT_ZONE_DISCARDED) {
 		rcu_read_unlock();
-		return KNOTD_ECONNREFUSED;
+		return KNOT_ECONNREFUSED;
 	}
 	rcu_read_unlock();
 	
@@ -420,7 +420,7 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 {
 
 	int ret = KNOT_EOK;
-//	int apply_ret = KNOT_EOK;
+	int apply_ret = KNOT_EOK;
 	int switch_ret = KNOT_EOK;
 	knot_changesets_t *chs = NULL;
 	journal_t *transaction = NULL;
@@ -457,12 +457,12 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 		if (transaction != NULL) {
 			ret = zones_store_changesets(data);
 		} else {
-			ret = KNOTD_ERROR;
+			ret = KNOT_ERROR;
 		}
-		if (ret != KNOTD_EOK) {
+		if (ret != KNOT_EOK) {
 			log_zone_error("%s Failed to serialize and store "
 			               "changesets - %s\n", data->msgpref,
-			               knotd_strerror(ret));
+			               knot_strerror(ret));
 			/* Free changesets, but not the data. */
 			knot_free_changesets(&chs);
 			data->data = NULL;
@@ -482,13 +482,13 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 			/* Free changesets, but not the data. */
 			knot_free_changesets(&chs);
 			data->data = NULL;
-			ret = KNOTD_ERROR;
+			ret = KNOT_ERROR;
 			break;
 		}
 		
 		/* Commit transaction. */
 		ret = zones_store_changesets_commit(transaction);
-		if (ret != KNOTD_EOK) {
+		if (ret != KNOT_EOK) {
 			log_zone_error("%s Failed to commit stored changesets "
 			               "- %s\n",
 			               data->msgpref,
@@ -515,7 +515,7 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 			/* Free changesets, but not the data. */
 			knot_free_changesets(&chs);
 			data->data = NULL;
-			ret = KNOTD_ERROR;
+			ret = KNOT_ERROR;
 			break;
 		}
 
@@ -524,7 +524,7 @@ static int xfr_xfrin_finalize(xfrworker_t *w, knot_ns_xfr_t *data)
 		/* Free changesets, but not the data. */
 		knot_free_changesets(&chs);
 		data->data = NULL;
-		assert(ret == KNOTD_EOK);
+		assert(ret == KNOT_EOK);
 		log_zone_info("%s Finished.\n", data->msgpref);
 		break;
 	default:

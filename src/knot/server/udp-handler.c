@@ -166,7 +166,7 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		knot_ns_error_response_from_query(ns, packet,
 		                                  KNOT_RCODE_NOTIMPL, qbuf,
 		                                  resp_len);
-		res = KNOTD_EOK;
+		res = KNOT_EOK;
 		break;
 		
 	/* Unhandled opcodes. */
