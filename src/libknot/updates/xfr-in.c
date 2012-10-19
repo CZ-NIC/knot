@@ -2885,7 +2885,7 @@ static int xfrin_apply_add(knot_zone_contents_t *contents,
                            knot_changeset_t *chset,
                            knot_changes_t *changes)
 {
-	int ret = 0;
+	int ret = KNOT_EOK;
 	knot_node_t *node = NULL;
 	knot_rrset_t *rrset = NULL;
 	knot_rrset_t *rrsigs = NULL;
@@ -2952,13 +2952,17 @@ dbg_xfrin_exec_detail(
 			ret = xfrin_apply_add_rrsig(changes, chset->add[i],
 			                            node, &rrset, &rrsigs,
 			                            contents);
+			assert(ret != KNOT_EOK);
 		} else {
 			ret = xfrin_apply_add_normal(changes, chset->add[i],
 			                             node, &rrset, contents,
 			                             chset->type);
+			assert(ret <= 3);
 		}
 
-		assert(ret != KNOT_EOK);
+		// Not correct anymore, add_normal() returns KNOT_EOK if the
+		// changeset RR should be removed
+		//assert(ret != KNOT_EOK);
 
 		dbg_xfrin_detail("xfrin_apply_..() returned %d, rrset: %p\n",
 		                 ret, rrset);
