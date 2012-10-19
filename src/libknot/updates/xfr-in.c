@@ -1386,7 +1386,8 @@ static void xfrin_zone_contents_free(knot_zone_contents_t **contents)
 /*----------------------------------------------------------------------------*/
 
 static knot_rdata_t *xfrin_remove_rdata(knot_rrset_t *from,
-                                        const knot_rrset_t *what)
+                                        const knot_rrset_t *what,
+                                        int ddns_check)
 {
 	knot_rdata_t *old = NULL;
 	knot_rdata_t *old_actual = NULL;
@@ -1396,6 +1397,17 @@ static knot_rdata_t *xfrin_remove_rdata(knot_rrset_t *from,
 	while (rdata != NULL) {
 		// rdata - the RDATA to be removed
 		// old_actual - removed RDATA
+
+		/*
+		 * DDNS special handling - last apex NS should remain in the
+		 * zone.
+		 */
+		if (ddns_check
+		    && knot_rrset_rdata_next(what, rdata) == NULL) {
+			assert(knot_rrset_type(from) == KNOT_RRTYPE_NS);
+			return old;
+		}
+
 		old_actual = knot_rrset_remove_rdata(from, rdata);
 		if (old_actual != NULL) {
 			old_actual->next = old;
@@ -1640,7 +1652,7 @@ static int xfrin_apply_remove_rrsigs(knot_changes_t *changes,
 	// now in '*rrset' we have a copy of the RRSet which holds the RRSIGs 
 	// and in 'rrsigs' we have the copy of the RRSIGs
 	
-	knot_rdata_t *rdata = xfrin_remove_rdata(rrsigs, remove);
+	knot_rdata_t *rdata = xfrin_remove_rdata(rrsigs, remove, 0);
 	if (rdata == NULL) {
 		dbg_xfrin("Failed to remove RDATA from RRSet: %s.\n",
 		          knot_strerror(ret));
@@ -1733,11 +1745,12 @@ static int xfrin_apply_remove_normal(knot_changes_t *changes,
 	dbg_xfrin_detail("Removing RRSet: \n");
 	knot_rrset_dump(remove, 0);
 
+	int is_apex = knot_node_rrset(node, KNOT_RRTYPE_SOA) != NULL;
+
 	/*
 	 * First handle the special case of DDNS - do not remove SOA from apex.
 	 */
-	if (chtype == KNOT_CHANGESET_TYPE_DDNS
-	    && knot_node_rrset(node, KNOT_RRTYPE_SOA) != NULL
+	if (chtype == KNOT_CHANGESET_TYPE_DDNS && is_apex
 	    && knot_rrset_type(remove) == KNOT_RRTYPE_SOA) {
 		dbg_xfrin_verb("Ignoring SOA removal in UPDATE.\n");
 		return KNOT_EOK;
@@ -1780,8 +1793,12 @@ dbg_xfrin_exec_detail(
 );
 
 	// remove the specified RRs from the RRSet (de facto difference of sets)
-	knot_rdata_t *rdata = xfrin_remove_rdata(*rrset, remove);
-	if (rdata == NULL) {
+	int ddns_remove_ns_from_apex =
+	                (chtype == KNOT_CHANGESET_TYPE_DDNS && is_apex
+	                 && knot_rrset_type(*rrset) == KNOT_RRTYPE_NS);
+	knot_rdata_t *rdata = xfrin_remove_rdata(*rrset, remove,
+	                                         ddns_remove_ns_from_apex);
+	if (rdata == NULL && !ddns_remove_ns_from_apex) {
 		dbg_xfrin_verb("Failed to remove RDATA from RRSet\n");
 		// In this case, the RDATA was not found in the RRSet
 		return 1;
@@ -1799,25 +1816,32 @@ dbg_xfrin_exec_detail(
 	}
 );
 
-	int count = knot_rdata_count(rdata);
-	// connect the RDATA to the list of old RDATA
-	ret = xfrin_changes_check_rdata(&changes->old_rdata,
-	                                &changes->old_rdata_types,
-	                                changes->old_rdata_count,
-	                                &changes->old_rdata_allocated, count);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
+	if (rdata != NULL) {
+		int count = knot_rdata_count(rdata);
+		// connect the RDATA to the list of old RDATA
+		ret = xfrin_changes_check_rdata(&changes->old_rdata,
+		                                &changes->old_rdata_types,
+		                                changes->old_rdata_count,
+		                                &changes->old_rdata_allocated,
+		                                count);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
 
-	xfrin_changes_add_rdata(changes->old_rdata, changes->old_rdata_types,
-	                        &changes->old_rdata_count, rdata,
-	                        knot_rrset_type(remove));
+		xfrin_changes_add_rdata(changes->old_rdata,
+		                        changes->old_rdata_types,
+		                        &changes->old_rdata_count, rdata,
+		                        knot_rrset_type(remove));
+	}
 	
 	// if the RRSet is empty, remove from node and add to old RRSets
 	// check if there is no RRSIGs; if there are, leave the RRSet
 	// there; it may be eventually removed when the RRSIGs are removed
 	if (knot_rrset_rdata(*rrset) == NULL
 	    && knot_rrset_rrsigs(*rrset) == NULL) {
+		// The RRSet should not be empty if we were removing NSs from
+		// apex in case of DDNS
+		assert(!ddns_remove_ns_from_apex);
 		
 		knot_rrset_t *tmp = knot_node_remove_rrset(node,
 		                                     knot_rrset_type(*rrset));
