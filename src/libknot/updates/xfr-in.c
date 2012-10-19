@@ -1874,17 +1874,18 @@ static int xfrin_apply_remove_all_rrsets(knot_changes_t *changes,
                                          knot_node_t *node, uint16_t type,
                                          knot_changeset_type_t chtype)
 {
-dbg_xfrin_exec_verb(
-	char *name = knot_dname_to_str(knot_node_owner(node));
-	dbg_xfrin_verb("Removing all RRSets from node %s of type %s\n",
-	               name, knot_rrtype_to_string(type));
-	free(name);
-);
-
 	int ret = KNOT_EOK;
 	knot_rrset_t **rrsets = NULL;
 	unsigned rrsets_count = 0;
 	int is_apex = knot_node_rrset(node, KNOT_RRTYPE_SOA) != NULL;
+
+dbg_xfrin_exec_verb(
+	char *name = knot_dname_to_str(knot_node_owner(node));
+	dbg_xfrin_verb("Removing all RRSets from node %s of type %s. "
+		       "Is apex: %d\n",
+		       name, knot_rrtype_to_string(type), is_apex);
+	free(name);
+);
 
 	/*! \todo ref #937 is it OK to modify nodes at this point?
 	 * shouldn't it be after the zones are switched? */
