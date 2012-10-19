@@ -232,14 +232,14 @@ int knot_changesets_check_size(knot_changesets_t *changesets)
 		return KNOT_ENOMEM;
 	}
 
-	/* Set type to all changesets. */
-	for (int i = 0; i < new_count; ++i) {
-		sets[i].type = changesets->type;
-	}
-
-	/* Clear old memory block and copy old data. */
+	/* Clear new memory block and copy old data. */
 	memset(sets, 0, new_count * item_len);
 	memcpy(sets, changesets->sets, changesets->allocated * item_len);
+
+	/* Set type to all newly allocated changesets. */
+	for (int i = changesets->allocated; i < new_count; ++i) {
+		sets[i].type = changesets->type;
+	}
 
 	/* Replace old changesets. */
 	free(changesets->sets);
