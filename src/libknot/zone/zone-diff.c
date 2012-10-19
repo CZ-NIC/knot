@@ -922,7 +922,10 @@ int knot_zone_diff_create_changesets(const knot_zone_contents_t *z1,
 		return KNOT_EINVAL;
 	}
 	/* Create changesets. */
-	int ret = knot_changeset_allocate(changesets);
+	/* Setting type to IXFR - that's the default, DDNS triggers special
+	 * processing when applied. See #2110 and #2111.
+	 */
+	int ret = knot_changeset_allocate(changesets, KNOT_CHANGESET_TYPE_IXFR);
 	if (ret != KNOT_EOK) {
 		dbg_zonediff("zone_diff: create_changesets: "
 		             "Could not allocate changesets."

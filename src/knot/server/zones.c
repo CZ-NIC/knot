@@ -2063,7 +2063,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	/* We must prepare a changesets_t structure even if
 	 * there is only one changeset - because of the API. */
 	knot_changesets_t *chgsets = NULL;
-	ret = knot_changeset_allocate(&chgsets);
+	ret = knot_changeset_allocate(&chgsets, KNOT_CHANGESET_TYPE_DDNS);
 	if (ret != KNOT_EOK) {
 		*rcode = KNOT_RCODE_SERVFAIL;
 		log_zone_error("%s %s\n", msg, knot_strerror(ret));

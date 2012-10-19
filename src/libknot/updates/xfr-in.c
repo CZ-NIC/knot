@@ -955,13 +955,13 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 	if (*chs == NULL) {
 		dbg_xfrin_verb("Changesets empty, creating new.\n");
 		
-		ret = knot_changeset_allocate(chs);
+		ret = knot_changeset_allocate(chs, KNOT_CHANGESET_TYPE_IXFR);
 		if (ret != KNOT_EOK) {
 			knot_rrset_deep_free(&rr, 1, 1, 1);
 			knot_packet_free(&packet);
 			return ret;
 		}
-		
+
 		// the first RR must be a SOA
 		if (knot_rrset_type(rr) != KNOT_RRTYPE_SOA) {
 			dbg_xfrin("First RR is not a SOA RR!\n");

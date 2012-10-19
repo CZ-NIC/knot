@@ -76,7 +76,8 @@ static int knot_changeset_rrsets_match(const knot_rrset_t *rrset1,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_changeset_allocate(knot_changesets_t **changesets)
+int knot_changeset_allocate(knot_changesets_t **changesets,
+                            knot_changeset_type_t type)
 {
 	// create new changesets
 	*changesets = (knot_changesets_t *)(malloc(sizeof(knot_changesets_t)));
@@ -85,6 +86,7 @@ int knot_changeset_allocate(knot_changesets_t **changesets)
 	}
 
 	memset(*changesets, 0, sizeof(knot_changesets_t));
+	(*changesets)->type = type;
 
 	if (knot_changesets_check_size(*changesets) != KNOT_EOK) {
 		free(*changesets);
@@ -218,7 +220,8 @@ int knot_changesets_check_size(knot_changesets_t *changesets)
 	}
 
 	/* How many steps is needed to content count? */
-	size_t extra = (changesets->count - changesets->allocated) % KNOT_CHANGESET_STEP;
+	size_t extra = (changesets->count - changesets->allocated)
+	                % KNOT_CHANGESET_STEP;
 	extra = (extra + 1) * KNOT_CHANGESET_STEP;
 
 	/* Allocate new memory block. */
@@ -227,6 +230,11 @@ int knot_changesets_check_size(knot_changesets_t *changesets)
 	knot_changeset_t *sets = malloc(new_count * item_len);
 	if (sets == NULL) {
 		return KNOT_ENOMEM;
+	}
+
+	/* Set type to all changesets. */
+	for (int i = 0; i < new_count; ++i) {
+		sets[i].type = changesets->type;
 	}
 
 	/* Clear old memory block and copy old data. */

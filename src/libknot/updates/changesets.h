@@ -62,6 +62,10 @@ typedef struct {
 	uint32_t serial_to;
 
 	knot_changeset_type_t type;  /*!< DDNS / IXFR */
+	/*! \todo Maybe the type in changesets_t is enough, but in the journal
+	 *        it still must be in each entry, so this makes it easier to
+	 *        convert.
+	 */
 } knot_changeset_t;
 
 /*----------------------------------------------------------------------------*/
@@ -118,6 +122,7 @@ typedef struct {
 	size_t count;
 	size_t allocated;
 	knot_rrset_t *first_soa;
+	knot_changeset_type_t type;
 	knot_changes_t *changes;
 } knot_changesets_t;
 
@@ -130,7 +135,8 @@ typedef enum {
 
 /*----------------------------------------------------------------------------*/
 
-int knot_changeset_allocate(knot_changesets_t **changesets);
+int knot_changeset_allocate(knot_changesets_t **changesets,
+                            knot_changeset_type_t type);
 
 int knot_changeset_add_rrset(knot_rrset_t ***rrsets,
                              size_t *count, size_t *allocated,
