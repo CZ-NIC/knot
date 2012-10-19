@@ -30,6 +30,32 @@
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
 
+size_t rrset_rdata_offset(const knot_rrset_t *rrset,
+                          size_t pos)
+{
+	if (rrset == NULL || rrset->rdata_indices == NULL) {
+		return 0;
+	}
+	
+	if (pos == 0) {
+		return 0;
+	} else {
+		return rrset->rdata_indices[pos - 1];
+	}
+}
+
+static uint8_t *rrset_rdata_pointer(const knot_rrset_t *rrset,
+                                    size_t pos)
+{
+	if (rrset == NULL || rrset->rdata == NULL
+	    || rrset->rdata_count >= pos) {
+		return NULL;
+	}
+	
+	return rrset->rdata + rrset_rdata_offset(rrset, pos);
+}
+
+
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
@@ -270,7 +296,7 @@ knot_rrset_t *knot_rrset_get_rrsigs(knot_rrset_t *rrset)
 
 static size_t rrset_rdata_item_offset(const knot_rrset_t *rrset)
 {
-	
+	return 0;
 }
 
 static size_t rrset_rdata_remainder_size(const knot_rrset_t *rrset,
@@ -287,10 +313,13 @@ static size_t rrset_rdata_remainder_size(const knot_rrset_t *rrset,
 
 /*----------------------------------------------------------------------------*/
 
-static int rrset_rdata_compare_one(const uint8_t *r1, const uint8_t *r2,
-                                   uint16_t type, size_t pos1, size_t pos2)
+static int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
+                                   const knot_rrset_t *rrset2,
+                                   size_t pos1, size_t pos2, uint16_t type)
 {
-	rdata_descriptor_t *desc = get_rdata_descriptor(type);
+	uint8_t *r1 = rrset_rdata_pointer(rrset1, pos1);
+	uint8_t *r2 = rrset_rdata_pointer(rrset2, pos2);
+	const rdata_descriptor_t *desc = get_rdata_descriptor(type);
 	int cmp = 0;
 	size_t offset = 0;
 
@@ -304,12 +333,12 @@ static int rrset_rdata_compare_one(const uint8_t *r1, const uint8_t *r2,
 			             desc->block_types[i]);
 			offset += desc->block_types[i];
 		} else if (descriptor_item_is_remainder(desc->block_types[i])) {
-			size_t size1 = rrset_rdata_remainder_size(r1, offset,
+			size_t size1 = rrset_rdata_remainder_size(rrset1, offset,
 			                                          pos1);
-			size_t size2 = rrset_rdata_remainder_size(r2, offset,
+			size_t size2 = rrset_rdata_remainder_size(rrset2, offset,
 			                                          pos2);
 			cmp = memcmp(r1 + offset, r2 + offset,
-			             (size1 <= size2) ? : size1; size2);
+			             size1 <= size2 ? size1 : size2);
 			/* No need to move offset, this should be end anyway. */
 			assert(desc->block_types[i + 1] == KNOT_RDATA_WF_END);
 		} else {
@@ -340,75 +369,35 @@ int knot_rrset_compare_rdata(const knot_rrset_t *r1, const knot_rrset_t *r2)
 	}
 
 	// compare RDATA sets (order is not significant)
-	const knot_rrset_t *rrset1 = knot_rrset_rdata(r1);
-	const knot_rrset_t *rrset2 = NULL;
 
 	// find all RDATA from r1 in r2
-	uint16_t k = 0;
 	for (uint16_t i = 0; i < r1->rdata_count; i++) {
 		int found = 0;
 		for (uint16_t j = 0; j < r2->rdata_count; j++) {
 			found =
-				!rrset_rdata_compare_one(rrset_rdata_pointer(r1,
-			                                                    i),
-			                                 rrset_rdata_pointer(r2,
-			                                                    j),
-			                                 r1->type, i, j);
-			if (found) {
-				// found index
-				k = j;
-			} else {
+				!rrset_rdata_compare_one(r1, r2, i, j,
+			                                 r1->type);
+			if (!found) {
 				// RDATA from r1 not found in r2
 				return 0;
 			}
 		}
 	}
 	
-	int ret = knot_rrset_compare_rdata(r2, r1);
-	if (ret == 0) {
-		return ret;
-	} else {
-		return 1;
+	for (uint16_t i = 0; i < r2->rdata_count; i++) {
+		int found = 0;
+		for (uint16_t j = 0; j < r1->rdata_count; j++) {
+			found =
+				!rrset_rdata_compare_one(r1, r2, i, j,
+			                                 r1->type);
+			if (!found) {
+				// RDATA from r1 not found in r2
+				return 0;
+			}
+		}
 	}
 	
-//	while (rdata1 != NULL) {
-//		 rdata2 = knot_rrset_rdata(r2);
-//		 while (rdata2 != NULL && knot_rdata_compare(rdata1, rdata2,
-//		                                            desc->block_types)) {
-//			 rdata2 = knot_rrset_rdata_next(r2, rdata2);
-//		 }
-
-//		 if (rdata2 == NULL) {
-//			// RDATA from r1 not found in r2
-//			return 0;
-//		 }
-
-//		 // otherwise it was found, continue with next r1 RDATA
-//		 rdata1 = knot_rrset_rdata_next(r1, rdata1);
-//	}
-
-//	// find all RDATA from r2 in r1 (this can be done in a better way)
-//	rdata2 = knot_rrset_rdata(r2);
-//	while (rdata2 != NULL) {
-//		 rdata1 = knot_rrset_rdata(r1);
-
-//		 while (rdata2 != NULL && rdata1 != NULL
-//		        && knot_rdata_compare(rdata1, rdata2,
-//		                              desc->block_types)) {
-//			 rdata1 = knot_rrset_rdata_next(r1, rdata1);
-//		 }
-
-//		 if (rdata1 == NULL) {
-//			// RDATA from r2 not found in r1
-//			return 0;
-//		 }
-
-//		 // otherwise it was found, continue with next r1 RDATA
-//		 rdata2 = knot_rrset_rdata_next(r2, rdata2);
-//	}
-
-//	// all RDATA found
-//	return 1;
+	return 1;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -688,45 +677,74 @@ void knot_rrset_free(knot_rrset_t **rrset)
 
 /*----------------------------------------------------------------------------*/
 
-//void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
-//                            int free_rdata, int free_rdata_dnames)
-//{
-//	if (rrset == NULL || *rrset == NULL) {
-//		return;
-//	}
+void knot_rrset_rdata_deep_free_one(knot_rrset_t *rrset, size_t pos,
+                                    int free_dnames)
+{
+	if (rrset == NULL || rrset->rdata == NULL ||
+	    rrset->rdata_indices == NULL) {
+		return;
+	}
+	
+	size_t offset = 0;
+	uint8_t *rdata = rrset_rdata_pointer(rrset, pos);
+	if (rdata == NULL) {
+		return;
+	}
+	
+	if (free_dnames) {
+		/* Go through the data and free dnames. Pointers can stay. */
+		const rdata_descriptor_t *desc =
+			get_rdata_descriptor(rrset->type);
+		for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END;i++) {
+			if (descriptor_item_is_dname(desc->block_types[i])) {
+				knot_dname_t *dname =
+					(knot_dname_t *)rdata + offset;
+				knot_dname_retain(dname);
+				offset += sizeof(knot_dname_t *);
+			} else if (descriptor_item_is_fixed(
+			           desc->block_types[i])) {
+				offset += desc->block_types[i];
+			} else if (descriptor_item_is_remainder(
+			           desc->block_types[i])) {
+				//OK
+			} else {
+				//NAPTR TODO
+			}
+		}
+	}
+	
+	free(rrset->rdata);
+	free(rrset->rdata_indices);
+	rrset->rdata_count = 0;
+	
+	return;
+}
 
-//	if (free_rdata) {
-//		knot_rdata_t *tmp_rdata;
-//		knot_rdata_t *next_rdata;
-//		tmp_rdata = (*rrset)->rdata;
+void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
+                          int free_rdata_dnames)
+{
+	if (rrset == NULL || *rrset == NULL) {
+		return;
+	}
+	
+	// rdata have to be freed no matter what
+	for (uint16_t i = 0; i < (*rrset)->rdata_count; i++) {
+		knot_rrset_rdata_deep_free_one(*rrset, i,
+		                               free_rdata_dnames);
+	}
 
-//		while ((tmp_rdata != NULL)
-//		       && (tmp_rdata->next != (*rrset)->rdata)
-//		       && (tmp_rdata->next != NULL)) {
-//			next_rdata = tmp_rdata->next;
-//			knot_rdata_deep_free(&tmp_rdata, (*rrset)->type,
-//					       free_rdata_dnames);
-//			tmp_rdata = next_rdata;
-//		}
+	// RRSIGs should have the same owner as this RRSet, so do not delete it
+	if ((*rrset)->rrsigs != NULL) {
+		knot_rrset_deep_free(&(*rrset)->rrsigs, 0, free_rdata_dnames);
+	}
 
-//		assert(tmp_rdata == NULL
-//		       || tmp_rdata->next == (*rrset)->rdata);
+	if (free_owner) {
+		knot_dname_release((*rrset)->owner);
+	}
 
-//		knot_rdata_deep_free(&tmp_rdata, (*rrset)->type,
-//		                       free_rdata_dnames);
-//	}
-
-//	// RRSIGs should have the same owner as this RRSet, so do not delete it
-//	if ((*rrset)->rrsigs != NULL) {
-//		knot_rrset_deep_free(&(*rrset)->rrsigs, 0, 1,
-//		                       free_rdata_dnames);
-//	}
-
-//	knot_dname_release((*rrset)->owner);
-
-//	free(*rrset);
-//	*rrset = NULL;
-//}
+	free(*rrset);
+	*rrset = NULL;
+}
 
 /*----------------------------------------------------------------------------*/
 
@@ -934,25 +952,23 @@ uint32_t knot_rrset_rdata_length_total(const knot_rrset_t *rrset)
 
 /*----------------------------------------------------------------------------*/
 
-const knot_dname_t *knot_rrset_rdata_cname_name(const knot_rrset_t *rrset,
-                                                size_t pos)
+const knot_dname_t *knot_rrset_rdata_cname_name(const knot_rrset_t *rrset)
 {
-	if (rrset == NULL || rrset->rdata_count >= pos) {
+	if (rrset == NULL) {
 		return NULL;
 	}
 	
-	return (const knot_dname_t *)(rrset->rdata + rrset->rdata_indices[pos]);
+	return (const knot_dname_t *)(rrset->rdata);
 }
 
 /*----------------------------------------------------------------------------*/
 
-const knot_dname_t *knot_rrset_rdata_dname_target(const knot_rrset_t *rrset,
-                                                  size_t pos)
+const knot_dname_t *knot_rrset_rdata_dname_target(const knot_rrset_t *rrset)
 {
-	if (rrset == NULL || rrset->rdata_count >= pos) {
+	if (rrset == NULL) {
 		return NULL;
 	}
-	return (const knot_dname_t *)(rrset->rdata + rrset->rdata_indices[pos]);
+	return (const knot_dname_t *)(rrset->rdata);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -977,30 +993,6 @@ const knot_dname_t *knot_rrset_rdata_dname_target(const knot_rrset_t *rrset,
 //	return NULL;
 //}
 
-size_t rrset_rdata_offset(const knot_rrset_t *rrset,
-                          size_t pos)
-{
-	if (rrset == NULL || rrset->rdata_indices == NULL) {
-		return 0;
-	}
-	
-	if (pos == 0) {
-		return 0;
-	} else {
-		return rrset->rdata_indices[pos - 1];
-	}
-}
-
-uint8_t *rrset_rdata_pointer(const knot_rrset_t *rrset,
-                             size_t pos)
-{
-	if (rrset == NULL || rrset->rdata == NULL
-	    || rrset->rdata_count >= pos) {
-		return NULL;
-	}
-	
-	return rrset->rdata + rrset_rdata_offset(rrset, pos);
-}
 
 /*---------------------------------------------------------------------------*/
 int64_t knot_rrset_rdata_soa_serial(const knot_rrset_t *rrset)
@@ -1078,14 +1070,13 @@ uint32_t knot_rrset_rdata_soa_minimum(const knot_rrset_t *rrset)
 
 /*---------------------------------------------------------------------------*/
 
-uint16_t knot_rrset_rdata_rrsig_type_covered(const knot_rrset_t *rrset,
-                                             size_t pos)
+uint16_t knot_rrset_rdata_rrsig_type_covered(const knot_rrset_t *rrset)
 {
-	if (rrset == NULL || pos >= rrset->rdata_count) {
+	if (rrset == NULL) {
 		return 0;
 	}
 	
-	return knot_wire_read_u16(rrset_rdata_pointer(rrset, pos));
+	return knot_wire_read_u16(rrset->rdata);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -1134,5 +1125,91 @@ const uint8_t *knot_rrset_rdata_nsec3_salt(const knot_rrset_t *rrset,
 	}
 	
 	return rrset_rdata_pointer(rrset, pos) + 4;
+}
+
+knot_dname_t *knot_rrset_get_next_dname(const knot_rrset_t *rrset,
+                                        const knot_dname_t *prev_dname)
+{
+	if (rrset == NULL) {
+		return NULL;
+	}
+	
+	for (uint16_t i = 0; i < rrset->rdata_count; i++) {
+		knot_dname_t **ret =
+			knot_rrset_rdata_get_next_dname_pointer(rrset,
+		                                                &prev_dname, i);
+		if (ret != NULL) {
+			return (knot_dname_t *)ret;
+		}
+	}
+	
+	return NULL;
+}
+
+const knot_dname_t *knot_rrset_next_dname(const knot_rrset_t *rrset,
+                                          const knot_dname_t *prev_dname)
+{
+	return (const knot_dname_t *)knot_rrset_get_next_dname(rrset,
+	                                                       prev_dname);
+}
+
+const knot_dname_t *knot_rrset_rdata_next_dname(const knot_rrset_t *rrset,
+                                                const knot_dname_t *prev_dname,
+                                                size_t pos)
+{
+	knot_dname_t **ret =
+		knot_rrset_rdata_get_next_dname_pointer(rrset,
+		                                        &prev_dname,
+		                                        pos);
+	if (ret == NULL) {
+		return NULL;
+	} else {
+		return (const knot_dname_t *)*ret;
+	}
+}
+
+knot_dname_t **knot_rrset_rdata_get_next_dname_pointer(
+	const knot_rrset_t *rrset,
+	const knot_dname_t **prev_dname, size_t pos)
+{
+	if (rrset == NULL) {
+		return NULL;
+	}
+	
+	// Get descriptor
+	const rdata_descriptor_t *desc =
+		get_rdata_descriptor(rrset->type);
+	int next = 0;
+	size_t offset = 0;
+	uint8_t *rdata = rrset_rdata_pointer(rrset, pos);
+	if (prev_dname == NULL) {
+		next = 1;
+	}
+	// Cycle through blocks and find dnames
+	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
+		if (descriptor_item_is_dname(desc->block_types[i])) {
+			knot_dname_t *dname =
+				(knot_dname_t *)(rdata +
+			                         offset);
+			if (next) {
+				toto je imho spatne, ale who knows
+				return (knot_dname_t **)(rdata + offset);
+			}
+			
+			assert(prev_dname);
+			
+			if (dname == *prev_dname) {
+				//we need to return next dname
+				next = 1;
+			}
+			offset += sizeof(knot_dname_t *);
+		} else if (descriptor_item_is_fixed(desc->block_types[i])) {
+			offset += desc->block_types[i];
+		} else if (!descriptor_item_is_remainder(desc->block_types[i])) {
+			//NAPTR todo
+		}
+	}
+	
+	return NULL;
 }
 

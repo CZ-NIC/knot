@@ -341,8 +341,10 @@ static void knot_zone_contents_adjust_rdata_in_rrset(knot_rrset_t *rrset,
 	const rdata_descriptor_t *desc =
 		get_rdata_descriptor(type);
 	assert(desc);
+	size_t offset = 0;
 	
 	for (int i = 0; i < knot_rrset_rdata_rr_count(rrset); i++) {
+		uint8_t *rdata = rrset_rdata_pointer(rrset, i);
 		for (int j = 0; desc->block_types[j] != KNOT_RDATA_WF_END; j++) {
 			if (descriptor_item_is_dname(desc->block_types[j])) {
 				dbg_zone("Adjusting domain name at "
@@ -352,9 +354,13 @@ static void knot_zone_contents_adjust_rdata_in_rrset(knot_rrset_t *rrset,
 				  knot_rrtype_to_string(type));
 				// Get dname from rdata string
 				//TODO
-//				knot_zone_contents_adjust_rdata_dname(rdata,
-//				                                      zone, node,
-//				                                      i);
+				knot_zone_contents_adjust_rdata_dname(rdata,
+				                                      zone,
+				                                      node,
+				                                      i);
+				
+			} else if (descriptor_item_is_fixed(desc->block_types[j])) {
+				
 			}
 			}
 		}
@@ -1517,7 +1523,7 @@ dbg_zone_exec(
 		                      knot_rdata_rrsig_type_covered(
 		                      knot_rrset_rdata(rrsigs))));
 		*rrset = knot_node_get_rrset(
-		             *node, knot_rdata_rrsig_type_covered(
+		             *node, knot_rrset_rdata_rrsig_type_covered(rrsigs
 		                      knot_rrset_rdata(rrsigs)));
 		if (*rrset == NULL) {
 			dbg_zone("Failed to find RRSet for RRSIGs.\n");

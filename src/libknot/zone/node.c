@@ -698,7 +698,7 @@ static void knot_node_free_rrsets_from_tree(void *item, void *data)
 	}
 	
 	knot_rrset_t *rrset = (knot_rrset_t *)(item);
-	knot_rrset_deep_free(&rrset, 0, 1, *((int *)data));
+	knot_rrset_deep_free(&rrset, 0, *((int *)data));
 }
 
 /*----------------------------------------------------------------------------*/

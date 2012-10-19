@@ -304,7 +304,7 @@ void knot_rrset_free(knot_rrset_t **rrset);
  *                          knot_rdata_deep_free().)
  */
 void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
-                            int free_rdata, int free_rdata_dnames);
+                          int free_rdata_dnames);
 
 /*!
  * \brief Merges two RRSets.
@@ -345,8 +345,37 @@ int knot_rrset_merge(void **r1, void **r2);
  */
 int knot_rrset_merge_no_dupl(void **r1, void **r2);
 
+
+const knot_dname_t *knot_rrset_rdata_cname_name(const knot_rrset_t *rrset);
+const knot_dname_t *knot_rrset_rdata_dname_target(const knot_rrset_t *rrset);
+
 uint32_t knot_rrset_rdata_length(const knot_rrset_t *rrset, size_t rdata_pos);
 uint32_t knot_rrset_rdata_length_total(const knot_rrset_t *rrset);
+
+const knot_dname_t *knot_rrset_rdata_cname_name(const knot_rrset_t *rrset);
+const knot_dname_t *knot_rrset_rdata_dname_target(const knot_rrset_t *rrset);
+int64_t knot_rrset_rdata_soa_serial(const knot_rrset_t *rrset);
+void knot_rrset_rdata_soa_serial_set(knot_rrset_t *rrset, uint32_t serial);
+uint32_t knot_rrset_rdata_soa_refresh(const knot_rrset_t *rrset);
+uint32_t knot_rrset_rdata_soa_retry(const knot_rrset_t *rrset);
+uint32_t knot_rrset_rdata_soa_expire(const knot_rrset_t *rrset);
+uint32_t knot_rrset_rdata_soa_minimum(const knot_rrset_t *rrset);
+uint16_t knot_rrset_rdata_rrsig_type_covered(const knot_rrset_t *rrset);
+uint8_t knot_rrset_rdata_nsec3_algorithm(const knot_rrset_t *rrset,
+                                         size_t pos);
+uint16_t knot_rrset_rdata_nsec3_iterations(const knot_rrset_t *rrset,
+                                           size_t pos);
+uint8_t knot_rrset_rdata_nsec3_salt_length(const knot_rrset_t *rrset,
+                                           size_t pos);
+const uint8_t *knot_rrset_rdata_nsec3_salt(const knot_rrset_t *rrset,
+                                           size_t pos);
+
+const knot_dname_t *knot_rrset_rdata_next_dname(const knot_rrset_t *rrset,
+                                                const knot_dname_t *prev_dname,
+                                                size_t pos);
+knot_dname_t **knot_rrset_rdata_get_next_dname_pointer(
+	const knot_rrset_t *rrset,
+	const knot_dname_t **prev_dname, size_t pos);
 
 #endif /* _KNOT_RRSET_H_ */
 
