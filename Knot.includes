@@ -1,0 +1,13 @@
+obj
+src/alloc
+src/ctl
+src/dnslib
+src/hash
+src/lib
+src/other
+src/server
+src/stat
+src/tests/libtap
+src/tests
+src/zoneparser
+src
