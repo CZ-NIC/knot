@@ -1874,6 +1874,13 @@ static int xfrin_apply_remove_all_rrsets(knot_changes_t *changes,
                                          knot_node_t *node, uint16_t type,
                                          knot_changeset_type_t chtype)
 {
+dbg_xfrin_exec_verb(
+	char *name = knot_dname_to_str(knot_node_owner(node));
+	dbg_xfrin_verb("Removing all RRSets from node %s of type %s\n",
+	               name, knot_rrtype_to_string(type));
+	free(name);
+);
+
 	int ret = KNOT_EOK;
 	knot_rrset_t **rrsets = NULL;
 	unsigned rrsets_count = 0;
@@ -1908,11 +1915,14 @@ static int xfrin_apply_remove_all_rrsets(knot_changes_t *changes,
 		 * never knows, so we'll rather check it
 		 */
 		if (is_apex && chtype == KNOT_CHANGESET_TYPE_DDNS) {
+			dbg_xfrin_detail("DDNS: returning SOA and NS to the "
+			                 "node.\n");
 			for (unsigned i = 0; i < rrsets_count; ++i) {
 				if (knot_rrset_type(rrsets[i])
 				       == KNOT_RRTYPE_SOA
 				    || knot_rrset_type(rrsets[i])
 				       == KNOT_RRTYPE_NS) {
+					dbg_xfrin_detail("Returning...\n");
 					knot_node_add_rrset(node, rrsets[i], 0);
 					rrsets[i] = NULL;
 				}
@@ -1928,6 +1938,7 @@ static int xfrin_apply_remove_all_rrsets(knot_changes_t *changes,
 		 */
 		if (is_apex && chtype == KNOT_CHANGESET_TYPE_DDNS
 		    && (type == KNOT_RRTYPE_SOA || type == KNOT_RRTYPE_NS)) {
+			dbg_xfrin_detail("DDNS: ignoring SOA or NS removal.\n");
 			return KNOT_EOK;
 		}
 
