@@ -20,7 +20,7 @@
  *
  * \brief Zone scanner test functions.
  *
- * \addtogroup zone_scanner
+ * \addtogroup zone_scanner_test
  * @{
  */
 

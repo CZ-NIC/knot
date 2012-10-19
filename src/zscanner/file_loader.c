@@ -16,19 +16,20 @@
 
 #include "zscanner/file_loader.h"
 
-#include <inttypes.h>		// PRIu64
-#include <unistd.h>		// sysconf
-#include <stdio.h>		// sprintf
-#include <stdlib.h>		// free
-#include <stdbool.h>		// bool
-#include <string.h>		// strlen
-#include <fcntl.h>		// open
-#include <sys/stat.h>		// fstat
-#include <sys/mman.h>		// mmap
+#include <inttypes.h>				// PRIu64
+#include <unistd.h>				// sysconf
+#include <stdio.h>				// sprintf
+#include <stdlib.h>				// free
+#include <stdbool.h>				// bool
+#include <string.h>				// strlen
+#include <fcntl.h>				// open
+#include <sys/stat.h>				// fstat
+#include <sys/mman.h>				// mmap
 
-#include "common/errcode.h"	// error codes
+#include "common/errcode.h"			// error codes
 
-#define BLOCK_SIZE		      30000000  // In bytes.
+/*! \brief Mmap block size in bytes. */
+#define BLOCK_SIZE		      30000000
 #define BLOCK_OVERLAPPING_SIZE		100000  // In bytes.
 
 

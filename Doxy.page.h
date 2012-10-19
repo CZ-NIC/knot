@@ -1,23 +1,25 @@
 /*!
 
-\defgroup server            Server control module.
-\defgroup threading         Threading API.
-\defgroup network           Socket API.
-\defgroup config            Server configuration.
-\defgroup query_processing  DNS query processing.
-\defgroup utils             Utilities, constants and macros.
-\defgroup debugging         Server debugging API.
-\defgroup logging           Server logging API.
-\defgroup statistics        Statistics module (optional).
+\defgroup server            Server control module
+\defgroup threading         Threading API
+\defgroup network           Socket API
+\defgroup config            Server configuration
+\defgroup query_processing  DNS query processing
+\defgroup utils             Utilities, constants and macros
+\defgroup debugging         Server debugging API
+\defgroup logging           Server logging API
+\defgroup statistics        Statistics module (optional)
 \defgroup libknot           libknot - library of DNS-related functions
-\defgroup hashing           Hash table and functions.
-\defgroup common_lib        Common library.
-\defgroup alloc             Memory allocation.
-\defgroup tests             Unit tests.
+\defgroup hashing           Hash table and functions
+\defgroup common_lib        Common library
+\defgroup alloc             Memory allocation
+\defgroup tests             Unit tests
 \defgroup zoneparser        Zone compiler utility
 \defgroup ctl               Control utility
 \defgroup zone-load-dump    Zone loading and dumping
 \defgroup xfr               Zone transfers
+\defgroup zone_scanner      Zone scanner (core)
+\defgroup zone_scanner_test Zone scanner testing environment
 
 \mainpage Knot API documentation.
 
@@ -76,6 +78,8 @@ $ make pdf
 <h2>Zone processing</h2>
 - \ref zoneparser
 - \ref zone-load-dump
+- \ref zone_scanner
+- \ref zone_scanner_test
 
 <h2>Common library</h2>
 - \ref common_lib
