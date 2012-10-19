@@ -1847,7 +1847,8 @@ dbg_xfrin_exec_detail(
 /*----------------------------------------------------------------------------*/
 /*! \todo Needs review - RRs may not be merged into RRSets. */
 static int xfrin_apply_remove_all_rrsets(knot_changes_t *changes,
-                                         knot_node_t *node, uint16_t type)
+                                         knot_node_t *node, uint16_t type,
+                                         knot_changeset_type_t chtype)
 {
 	int ret = KNOT_EOK;
 	knot_rrset_t **rrsets = NULL;
@@ -1860,8 +1861,8 @@ static int xfrin_apply_remove_all_rrsets(knot_changes_t *changes,
 	/* Assemble RRSets to remove. */
 	if (type == KNOT_RRTYPE_ANY) {
 		/* Remove all RRSets from the node. */
-		/* If removing from zone apex, NS and SOA records should be
-		 * left unchanged.
+		/* If removing from zone apex in an UPDATE, NS and SOA records
+		 * should be left unchanged.
 		 * We might either remove all RRSets and then return SOA and
 		 * NS RRSets to the node. Or find all existing types in the node
 		 * and remove all except NS and SOA. The first approach is
@@ -1878,8 +1879,11 @@ static int xfrin_apply_remove_all_rrsets(knot_changes_t *changes,
 		/*
 		 * If apex, return SOA and NS RRSets to the node and remove
 		 * them from the list (so they are not deleted later).
+		 *
+		 * This function is called only when processing DDNS, but one
+		 * never knows, so we'll rather check it
 		 */
-		if (is_apex) {
+		if (is_apex && chtype == KNOT_CHANGESET_TYPE_DDNS) {
 			for (unsigned i = 0; i < rrsets_count; ++i) {
 				if (knot_rrset_type(rrsets[i])
 				       == KNOT_RRTYPE_SOA
@@ -1893,8 +1897,12 @@ static int xfrin_apply_remove_all_rrsets(knot_changes_t *changes,
 	} else {
 		/* Remove only the RRSet with given type. */
 		/* First we must check if we're not removing NS or SOA from
-		   apex. This change should be ignored. */
-		if (is_apex
+		 * apex. This change should be ignored.
+		 *
+		 * This function is called only when processing DDNS, but one
+		 * never knows, so we'll rather check it
+		 */
+		if (is_apex && chtype == KNOT_CHANGESET_TYPE_DDNS
 		    && (type == KNOT_RRTYPE_SOA || type == KNOT_RRTYPE_NS)) {
 			return KNOT_EOK;
 		}
@@ -2753,7 +2761,7 @@ dbg_xfrin_exec_detail(
 		if (knot_rrset_class(chset->remove[i]) == KNOT_CLASS_ANY) {
 			ret = xfrin_apply_remove_all_rrsets(
 				changes, node,
-				knot_rrset_type(chset->remove[i]));
+				knot_rrset_type(chset->remove[i]), chset->type);
 		} else if (knot_rrset_type(chset->remove[i])
 		           == KNOT_RRTYPE_RRSIG) {
 			// this should work also for UPDATE
