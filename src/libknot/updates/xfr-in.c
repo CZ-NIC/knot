@@ -1882,8 +1882,8 @@ static int xfrin_apply_remove_all_rrsets(knot_changes_t *changes,
 dbg_xfrin_exec_verb(
 	char *name = knot_dname_to_str(knot_node_owner(node));
 	dbg_xfrin_verb("Removing all RRSets from node %s of type %s. "
-		       "Is apex: %d\n",
-		       name, knot_rrtype_to_string(type), is_apex);
+		       "Is apex: %d, changeset type: %d\n",
+		       name, knot_rrtype_to_string(type), is_apex, chtype);
 	free(name);
 );
 
