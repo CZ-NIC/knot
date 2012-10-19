@@ -2021,15 +2021,17 @@ static knot_node_t *xfrin_add_new_node(knot_zone_contents_t *contents,
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_replace_soa_in_node(knot_node_t *node,
-                                     knot_rrset_t *soa_new,
-                                     knot_changes_t *changes,
-                                     knot_zone_contents_t *contents)
+static int xfrin_replace_rrset_in_node(knot_node_t *node,
+                                       knot_rrset_t *rrset_new,
+                                       knot_changes_t *changes,
+                                       knot_zone_contents_t *contents)
 {
-	// remove the SOA RRSet from the node
-	dbg_xfrin_verb("Removing SOA.\n");
-	knot_rrset_t *soa_old = knot_node_remove_rrset(node, KNOT_RRTYPE_SOA);
-	assert(soa_old != NULL);
+	knot_rr_type_t type = knot_rrset_type(rrset_new);
+	// remove RRSet of the proper type from the node
+	dbg_xfrin_verb("Removing RRSet of type: %s.\n",
+	               knot_rrtype_to_string(type));
+	knot_rrset_t *rrset_old = knot_node_remove_rrset(node, type);
+	assert(rrset_old != NULL);
 
 	// add the old RRSet to the list of old RRSets
 	int ret = xfrin_changes_check_rrsets(&changes->old_rrsets,
@@ -2040,9 +2042,9 @@ static int xfrin_replace_soa_in_node(knot_node_t *node,
 		return ret;
 	}
 
-	// save also the SOA RDATA, because RDATA are not deleted with the RRSet
+	// save also the RDATA, because RDATA are not deleted with the RRSet
 	// The count should be 1, but just to be sure....
-	int count = knot_rrset_rdata_rr_count(soa_old);
+	int count = knot_rrset_rdata_rr_count(rrset_old);
 	ret = xfrin_changes_check_rdata(&changes->old_rdata,
 	                                &changes->old_rdata_types,
 	                                changes->old_rdata_count,
@@ -2052,7 +2054,7 @@ static int xfrin_replace_soa_in_node(knot_node_t *node,
 		return ret;
 	}
 
-	// save the SOA to the new RRSet, so that it is deleted if the
+	// save the new RRSet to the new RRSet, so that it is deleted if the
 	// apply fails
 	ret = xfrin_changes_check_rrsets(&changes->new_rrsets,
 	                                 &changes->new_rrsets_count,
@@ -2063,8 +2065,8 @@ static int xfrin_replace_soa_in_node(knot_node_t *node,
 	}
 
 	// The count should be 1, but just to be sure....
-	count = knot_rrset_rdata_rr_count(soa_new);
-	// save the new SOA RDATA
+	count = knot_rrset_rdata_rr_count(rrset_new);
+	// save the new RDATA
 	ret = xfrin_changes_check_rdata(&changes->new_rdata,
 	                                &changes->new_rdata_types,
 	                                changes->new_rdata_count,
@@ -2074,21 +2076,20 @@ static int xfrin_replace_soa_in_node(knot_node_t *node,
 		return ret;
 	}
 
-	changes->old_rrsets[changes->old_rrsets_count++] = soa_old;
+	changes->old_rrsets[changes->old_rrsets_count++] = rrset_old;
 
-	/*! \todo Maybe check if the SOA does not have more RDATA? */
-	dbg_xfrin_verb("Adding RDATA from old SOA to the list of old RDATA.\n");
+	dbg_xfrin_verb("Adding RDATA from old RRSet to the list of old RDATA."
+	               "\n");
 	xfrin_changes_add_rdata(changes->old_rdata, changes->old_rdata_types,
-	                        &changes->old_rdata_count, soa_old->rdata,
-	                        KNOT_RRTYPE_SOA);
+	                        &changes->old_rdata_count,
+	                        knot_rrset_get_rdata(rrset_old), type);
 
-	// store RRSIGs from the old SOA to the new SOA
-	knot_rrset_set_rrsigs(soa_new, knot_rrset_get_rrsigs(soa_old));
+	// store RRSIGs from the old RRSet to the new
+	knot_rrset_set_rrsigs(rrset_new, knot_rrset_get_rrsigs(rrset_old));
 
-	// insert the new SOA RRSet to the node
-	dbg_xfrin_verb("Adding SOA.\n");
-	//ret = knot_node_add_rrset(node, soa_new, 0);
-	ret = knot_zone_contents_add_rrset(contents, soa_new, &node,
+	// insert the new RRSet to the node
+	dbg_xfrin_verb("Adding new RRSet.\n");
+	ret = knot_zone_contents_add_rrset(contents, rrset_new, &node,
 	                                   KNOT_RRSET_DUPL_SKIP, 1);
 
 	if (ret < 0) {
@@ -2097,16 +2098,82 @@ static int xfrin_replace_soa_in_node(knot_node_t *node,
 	}
 	assert(ret == 0);
 
-	changes->new_rrsets[changes->new_rrsets_count++] = soa_new;
+	changes->new_rrsets[changes->new_rrsets_count++] = rrset_new;
 
-	dbg_xfrin_verb("Adding RDATA from new SOA to the list of new RDATA.\n");
-	xfrin_changes_add_rdata(changes->new_rdata,
-	                        changes->new_rdata_types,
+	dbg_xfrin_verb("Adding RDATA from new RRSet to the list of new RDATA."
+	               "\n");
+	xfrin_changes_add_rdata(changes->new_rdata, changes->new_rdata_types,
 	                        &changes->new_rdata_count,
-	                        knot_rrset_get_rdata(soa_new),
-	                        knot_rrset_type(soa_new));
+	                        knot_rrset_get_rdata(rrset_new), type);
 
 	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int xfrin_apply_add_normal_ddns(knot_changes_t *changes,
+                                       knot_rrset_t *add, knot_node_t *node,
+                                       knot_zone_contents_t *contents)
+{
+	int ret;
+
+	/* 1) Adding SOA. */
+	if (knot_rrset_type(add) == KNOT_RRTYPE_SOA) {
+		/* a) If trying to add SOA to non-apex node, or the
+		 *    serial is less than the current serial, ignore.
+		 */
+		if (knot_node_rrset(node, KNOT_RRTYPE_SOA) == NULL
+		    || ns_serial_compare(knot_rdata_soa_serial(
+		           knot_rrset_rdata(
+		               knot_node_rrset(node, KNOT_RRTYPE_SOA))),
+		           knot_rdata_soa_serial(knot_rrset_rdata(add)
+		       )) > 0
+		    ) {
+			return KNOT_EOK;
+		} else {
+			/* b) Otherwise, replace the current SOA. */
+			ret = xfrin_replace_rrset_in_node(node, add,
+			                                      changes,
+			                                      contents);
+			/* In this case we must however remove the ADD RRSet
+			 * from the changeset, so that it is not deleted
+			 * afterwards.
+			 */
+			if (ret == KNOT_EOK) {
+				return 3;
+			} else {
+				return ret;
+			}
+		}
+	} else if (knot_rrset_type(add) == KNOT_RRTYPE_CNAME) {
+		/* 2) Adding CNAME... */
+		if (knot_node_rrset(node, KNOT_RRTYPE_CNAME) != NULL) {
+			/* a) ... to a CNAME node => replace. */
+			ret = xfrin_replace_rrset_in_node(node, add, changes,
+			                                  contents);
+			/* In this case we must however remove the ADD RRSet
+			 * from the changeset, so that it is not deleted
+			 * afterwards.
+			 */
+			if (ret == KNOT_EOK) {
+				return 3;
+			} else {
+				return ret;
+			}
+		} else if (knot_node_rrset_count(node) > 0) {
+			/* b) ... to a non-empty node => ignore. */
+			return KNOT_EOK;
+		}
+		/* c) ... to an empty node => process normally. */
+	} else if (knot_node_rrset(node, KNOT_RRTYPE_CNAME) != NULL) {
+		/* 3) Adding other RRSets to CNAME node => ignore. */
+
+		// handled in previous case
+		assert(knot_rrset_type(add) != KNOT_RRTYPE_CNAME);
+		return KNOT_EOK;
+	}
+
+	return 1;  // Continue normal processing
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2131,24 +2198,12 @@ dbg_xfrin_exec_detail(
 	knot_rrset_dump(add, 0);
 );
 
-	/*
-	 * DDNS special case: Adding SOA.
-	 * 1) If trying to add SOA to non-apex node, or the
-	 *    serial is less than the current serial, ignore.
-	 * 2) Otherwise, replace the current SOA.
-	 */
-	if (chtype == KNOT_CHANGESET_TYPE_DDNS
-	    && knot_rrset_type(add) == KNOT_RRTYPE_SOA) {
-		if (knot_node_rrset(node, KNOT_RRTYPE_SOA) == NULL
-		    || ns_serial_compare(knot_rdata_soa_serial(knot_rrset_rdata(
-		                       knot_node_rrset(node, KNOT_RRTYPE_SOA))),
-		                     knot_rdata_soa_serial(knot_rrset_rdata(add)
-		                     )) > 0
-		    ) {
-			return KNOT_EOK;
-		} else {
-			return xfrin_replace_soa_in_node(node, add, changes,
-			                                 contents);
+	/* DDNS special cases. */
+	if (chtype == KNOT_CHANGESET_TYPE_DDNS) {
+		ret = xfrin_apply_add_normal_ddns(changes, add, node, contents);
+		/* Continue only if return value is 1. */
+		if (ret != 1) {
+			return ret;
 		}
 	}
 	
@@ -2946,6 +3001,11 @@ dbg_xfrin_exec_detail(
 				// stored in the list of new RDATA, because
 				// it is joined to the copy of RDATA, that is
 				// already stored there
+			} else if (ret == 3) {
+				// the RRSet was used and both RRSet and RDATA
+				// were properly stored. Just clear the place
+				// in the changeset
+				chset->add[i] = NULL;
 			} else {
 				assert(0);
 			}
@@ -2971,8 +3031,8 @@ static int xfrin_apply_replace_soa(knot_zone_contents_t *contents,
 	assert(node != NULL);
 
 
-	int ret = xfrin_replace_soa_in_node(node, chset->soa_to, changes,
-	                                    contents);
+	int ret = xfrin_replace_rrset_in_node(node, chset->soa_to, changes,
+	                                      contents);
 	if (ret == KNOT_EOK) {
 		// remove the SOA from the changeset, so it will not be deleted
 		// after successful apply
