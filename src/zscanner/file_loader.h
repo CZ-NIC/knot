@@ -39,7 +39,6 @@
 /*! \brief Default class value. */
 #define DEFAULT_CLASS		KNOT_CLASS_IN
 
-
 /*! \brief Structure for zone file loader (each included file has one). */
 typedef struct {
 	/*!< File descriptor. */
@@ -79,7 +78,7 @@ file_loader_t* file_loader_create(const char	 *file_name,
 /*!
  * \brief Destroys file loader structure.
  *
- * \param fl		File loader structure.
+ * \param file_loader	File loader structure.
  */
 void file_loader_free(file_loader_t *file_loader);
 
@@ -93,10 +92,10 @@ void file_loader_free(file_loader_t *file_loader);
  * \note Zone scanner error code and other information are stored in
  * fl.scanner context.
  *
- * \param fl		File loader structure.
+ * \param file_loader	File loader structure.
  *
- * \retval KNOT_EOK	for success.
- * \retval error_code   for error.
+ * \retval KNOT_EOK	if success.
+ * \retval error_code   if error.
  */
 int file_loader_process(file_loader_t *file_loader);
 

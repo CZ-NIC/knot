@@ -27,9 +27,7 @@
 #ifndef _ZSCANNER__TESTS_H_
 #define _ZSCANNER__TESTS_H_
 
-
 int test__date_to_timestamp();
-
 
 #endif // _ZSCANNER__TESTS_H_
 

@@ -25,16 +25,16 @@
 
 const uint8_t digit_to_num[] = {
     ['0'] = 0, ['1'] = 1, ['2'] = 2, ['3'] = 3, ['4'] = 4,
-    ['5'] = 5, ['6'] = 6, ['7'] = 7, ['8'] = 8, ['9'] = 9
+    ['5'] = 5, ['6'] = 6, ['7'] = 7, ['8'] = 8, ['9'] = 9,
 };
 
-/*   Hex transformation:
-
-         1        2
-     12345678 12345678
-in:    AAAA     BBBB
-out: AAAABBBB
-*/
+/*
+ * Hex transformation:
+ *          1        2
+ *      12345678 12345678
+ * in:    AAAA     BBBB
+ * out: AAAABBBB
+ */
 
 const uint8_t first_hex_to_num[] = {
     ['0'] = ( 0 * 16), ['6'] = ( 6 * 16), ['C'] = (12 * 16), ['b'] = (11 * 16),
@@ -42,23 +42,23 @@ const uint8_t first_hex_to_num[] = {
     ['2'] = ( 2 * 16), ['8'] = ( 8 * 16), ['E'] = (14 * 16), ['d'] = (13 * 16),
     ['3'] = ( 3 * 16), ['9'] = ( 9 * 16), ['F'] = (15 * 16), ['e'] = (14 * 16),
     ['4'] = ( 4 * 16), ['A'] = (10 * 16), ['a'] = (10 * 16), ['f'] = (15 * 16),
-    ['5'] = ( 5 * 16), ['B'] = (11 * 16)
+    ['5'] = ( 5 * 16), ['B'] = (11 * 16),
 };
 
 const uint8_t second_hex_to_num[] = {
     ['0'] =  0, ['4'] =  4, ['8'] =  8, ['C'] = 12, ['a'] = 10, ['d'] = 13,
     ['1'] =  1, ['5'] =  5, ['9'] =  9, ['D'] = 13, ['b'] = 11, ['e'] = 14,
     ['2'] =  2, ['6'] =  6, ['A'] = 10, ['E'] = 14, ['c'] = 12, ['f'] = 15,
-    ['3'] =  3, ['7'] =  7, ['B'] = 11, ['F'] = 15
+    ['3'] =  3, ['7'] =  7, ['B'] = 11, ['F'] = 15,
 };
 
-/*   Base64 transformation:
-
-         1        2        3        4
-     12345678 12345678 12345678 12345678
-in:  00AAAAAA 00BBBBBB 00CCCCCC 00DDDDDD
-out: AAAAAABB BBBBCCCC CCDDDDDD
-*/
+/*
+ * Base64 transformation:
+ *          1        2        3        4
+ *      12345678 12345678 12345678 12345678
+ * in:  00AAAAAA 00BBBBBB 00CCCCCC 00DDDDDD
+ * out: AAAAAABB BBBBCCCC CCDDDDDD
+ */
 
 // 0x3F = 00111111
 const uint8_t first_base64_to_num[] = {
@@ -93,8 +93,9 @@ const uint8_t first_base64_to_num[] = {
     ['c'] = ((28 & 0x3F) << 2), ['8'] = ((60 & 0x3F) << 2),
     ['d'] = ((29 & 0x3F) << 2), ['9'] = ((61 & 0x3F) << 2),
     ['e'] = ((30 & 0x3F) << 2), ['+'] = ((62 & 0x3F) << 2),
-    ['f'] = ((31 & 0x3F) << 2), ['/'] = ((63 & 0x3F) << 2)
+    ['f'] = ((31 & 0x3F) << 2), ['/'] = ((63 & 0x3F) << 2),
 };
+
 // 0x30 = 00110000
 const uint8_t second_left_base64_to_num[] = {
     ['A'] = (( 0 & 0x30) >> 4), ['g'] = ((32 & 0x30) >> 4),
@@ -128,8 +129,9 @@ const uint8_t second_left_base64_to_num[] = {
     ['c'] = ((28 & 0x30) >> 4), ['8'] = ((60 & 0x30) >> 4),
     ['d'] = ((29 & 0x30) >> 4), ['9'] = ((61 & 0x30) >> 4),
     ['e'] = ((30 & 0x30) >> 4), ['+'] = ((62 & 0x30) >> 4),
-    ['f'] = ((31 & 0x30) >> 4), ['/'] = ((63 & 0x30) >> 4)
+    ['f'] = ((31 & 0x30) >> 4), ['/'] = ((63 & 0x30) >> 4),
 };
+
 // 0x0F = 00001111
 const uint8_t second_right_base64_to_num[] = {
     ['A'] = (( 0 & 0x0F) << 4), ['g'] = ((32 & 0x0F) << 4),
@@ -163,8 +165,9 @@ const uint8_t second_right_base64_to_num[] = {
     ['c'] = ((28 & 0x0F) << 4), ['8'] = ((60 & 0x0F) << 4),
     ['d'] = ((29 & 0x0F) << 4), ['9'] = ((61 & 0x0F) << 4),
     ['e'] = ((30 & 0x0F) << 4), ['+'] = ((62 & 0x0F) << 4),
-    ['f'] = ((31 & 0x0F) << 4), ['/'] = ((63 & 0x0F) << 4)
+    ['f'] = ((31 & 0x0F) << 4), ['/'] = ((63 & 0x0F) << 4),
 };
+
 // 0x3C = 00111100
 const uint8_t third_left_base64_to_num[] = {
     ['A'] = (( 0 & 0x3C) >> 2), ['g'] = ((32 & 0x3C) >> 2),
@@ -198,8 +201,9 @@ const uint8_t third_left_base64_to_num[] = {
     ['c'] = ((28 & 0x3C) >> 2), ['8'] = ((60 & 0x3C) >> 2),
     ['d'] = ((29 & 0x3C) >> 2), ['9'] = ((61 & 0x3C) >> 2),
     ['e'] = ((30 & 0x3C) >> 2), ['+'] = ((62 & 0x3C) >> 2),
-    ['f'] = ((31 & 0x3C) >> 2), ['/'] = ((63 & 0x3C) >> 2)
+    ['f'] = ((31 & 0x3C) >> 2), ['/'] = ((63 & 0x3C) >> 2),
 };
+
 // 0x03 = 00000011
 const uint8_t third_right_base64_to_num[] = {
     ['A'] = (( 0 & 0x03) << 6), ['g'] = ((32 & 0x03) << 6),
@@ -233,8 +237,9 @@ const uint8_t third_right_base64_to_num[] = {
     ['c'] = ((28 & 0x03) << 6), ['8'] = ((60 & 0x03) << 6),
     ['d'] = ((29 & 0x03) << 6), ['9'] = ((61 & 0x03) << 6),
     ['e'] = ((30 & 0x03) << 6), ['+'] = ((62 & 0x03) << 6),
-    ['f'] = ((31 & 0x03) << 6), ['/'] = ((63 & 0x03) << 6)
+    ['f'] = ((31 & 0x03) << 6), ['/'] = ((63 & 0x03) << 6),
 };
+
 // 0x3F = 00111111
 const uint8_t fourth_base64_to_num[] = {
     ['A'] = (( 0 & 0x3F) << 0), ['g'] = ((32 & 0x3F) << 0),
@@ -268,16 +273,16 @@ const uint8_t fourth_base64_to_num[] = {
     ['c'] = ((28 & 0x3F) << 0), ['8'] = ((60 & 0x3F) << 0),
     ['d'] = ((29 & 0x3F) << 0), ['9'] = ((61 & 0x3F) << 0),
     ['e'] = ((30 & 0x3F) << 0), ['+'] = ((62 & 0x3F) << 0),
-    ['f'] = ((31 & 0x3F) << 0), ['/'] = ((63 & 0x3F) << 0)
+    ['f'] = ((31 & 0x3F) << 0), ['/'] = ((63 & 0x3F) << 0),
 };
 
-/*   Base32hex transformation (with lower-case):
-
-         1        2        3        4        5        6        7        8
-     12345678 12345678 12345678 12345678 12345678 12345678 12345678 12345678
-in:  000AAAAA 000BBBBB 000CCCCC 000DDDDD 000EEEEE 000FFFFF 000GGGGG 000HHHHH
-out  AAAAABBB BBCCCCCD DDDDEEEE EFFFFFGG GGGHHHHH
-*/
+/*
+ * Base32hex transformation (with lower-case):
+ *          1        2        3        4        5        6        7        8
+ *      12345678 12345678 12345678 12345678 12345678 12345678 12345678 12345678
+ * in:  000AAAAA 000BBBBB 000CCCCC 000DDDDD 000EEEEE 000FFFFF 000GGGGG 000HHHHH
+ * out  AAAAABBB BBCCCCCD DDDDEEEE EFFFFFGG GGGHHHHH
+ */
 
 // 0x1F = 00011111
 const uint8_t first_base32hex_to_num[] = {
@@ -307,8 +312,9 @@ const uint8_t first_base32hex_to_num[] = {
     ['N'] = ((23 & 0x1F) << 3), ['s'] = ((28 & 0x1F) << 3),
     ['O'] = ((24 & 0x1F) << 3), ['t'] = ((29 & 0x1F) << 3),
     ['P'] = ((25 & 0x1F) << 3), ['u'] = ((30 & 0x1F) << 3),
-    ['Q'] = ((26 & 0x1F) << 3), ['v'] = ((31 & 0x1F) << 3)
+    ['Q'] = ((26 & 0x1F) << 3), ['v'] = ((31 & 0x1F) << 3),
 };
+
 // 0x1C = 00011100
 const uint8_t second_left_base32hex_to_num[] = {
     ['0'] = (( 0 & 0x1C) >> 2), ['R'] = ((27 & 0x1C) >> 2),
@@ -337,8 +343,9 @@ const uint8_t second_left_base32hex_to_num[] = {
     ['N'] = ((23 & 0x1C) >> 2), ['s'] = ((28 & 0x1C) >> 2),
     ['O'] = ((24 & 0x1C) >> 2), ['t'] = ((29 & 0x1C) >> 2),
     ['P'] = ((25 & 0x1C) >> 2), ['u'] = ((30 & 0x1C) >> 2),
-    ['Q'] = ((26 & 0x1C) >> 2), ['v'] = ((31 & 0x1C) >> 2)
+    ['Q'] = ((26 & 0x1C) >> 2), ['v'] = ((31 & 0x1C) >> 2),
 };
+
 // 0x03 = 00000011
 const uint8_t second_right_base32hex_to_num[] = {
     ['0'] = (( 0 & 0x03) << 6), ['R'] = ((27 & 0x03) << 6),
@@ -367,8 +374,9 @@ const uint8_t second_right_base32hex_to_num[] = {
     ['N'] = ((23 & 0x03) << 6), ['s'] = ((28 & 0x03) << 6),
     ['O'] = ((24 & 0x03) << 6), ['t'] = ((29 & 0x03) << 6),
     ['P'] = ((25 & 0x03) << 6), ['u'] = ((30 & 0x03) << 6),
-    ['Q'] = ((26 & 0x03) << 6), ['v'] = ((31 & 0x03) << 6)
+    ['Q'] = ((26 & 0x03) << 6), ['v'] = ((31 & 0x03) << 6),
 };
+
 // 0x1F = 00011111
 const uint8_t third_base32hex_to_num[] = {
     ['0'] = (( 0 & 0x1F) << 1), ['R'] = ((27 & 0x1F) << 1),
@@ -397,8 +405,9 @@ const uint8_t third_base32hex_to_num[] = {
     ['N'] = ((23 & 0x1F) << 1), ['s'] = ((28 & 0x1F) << 1),
     ['O'] = ((24 & 0x1F) << 1), ['t'] = ((29 & 0x1F) << 1),
     ['P'] = ((25 & 0x1F) << 1), ['u'] = ((30 & 0x1F) << 1),
-    ['Q'] = ((26 & 0x1F) << 1), ['v'] = ((31 & 0x1F) << 1)
+    ['Q'] = ((26 & 0x1F) << 1), ['v'] = ((31 & 0x1F) << 1),
 };
+
 // 0x10 = 00010000
 const uint8_t fourth_left_base32hex_to_num[] = {
     ['0'] = (( 0 & 0x10) >> 4), ['R'] = ((27 & 0x10) >> 4),
@@ -427,8 +436,9 @@ const uint8_t fourth_left_base32hex_to_num[] = {
     ['N'] = ((23 & 0x10) >> 4), ['s'] = ((28 & 0x10) >> 4),
     ['O'] = ((24 & 0x10) >> 4), ['t'] = ((29 & 0x10) >> 4),
     ['P'] = ((25 & 0x10) >> 4), ['u'] = ((30 & 0x10) >> 4),
-    ['Q'] = ((26 & 0x10) >> 4), ['v'] = ((31 & 0x10) >> 4)
+    ['Q'] = ((26 & 0x10) >> 4), ['v'] = ((31 & 0x10) >> 4),
 };
+
 // 0x0F = 00001111
 const uint8_t fourth_right_base32hex_to_num[] = {
     ['0'] = (( 0 & 0x0F) << 4), ['R'] = ((27 & 0x0F) << 4),
@@ -457,8 +467,9 @@ const uint8_t fourth_right_base32hex_to_num[] = {
     ['N'] = ((23 & 0x0F) << 4), ['s'] = ((28 & 0x0F) << 4),
     ['O'] = ((24 & 0x0F) << 4), ['t'] = ((29 & 0x0F) << 4),
     ['P'] = ((25 & 0x0F) << 4), ['u'] = ((30 & 0x0F) << 4),
-    ['Q'] = ((26 & 0x0F) << 4), ['v'] = ((31 & 0x0F) << 4)
+    ['Q'] = ((26 & 0x0F) << 4), ['v'] = ((31 & 0x0F) << 4),
 };
+
 // 0x1E = 00011110
 const uint8_t fifth_left_base32hex_to_num[] = {
     ['0'] = (( 0 & 0x1E) >> 1), ['R'] = ((27 & 0x1E) >> 1),
@@ -487,8 +498,9 @@ const uint8_t fifth_left_base32hex_to_num[] = {
     ['N'] = ((23 & 0x1E) >> 1), ['s'] = ((28 & 0x1E) >> 1),
     ['O'] = ((24 & 0x1E) >> 1), ['t'] = ((29 & 0x1E) >> 1),
     ['P'] = ((25 & 0x1E) >> 1), ['u'] = ((30 & 0x1E) >> 1),
-    ['Q'] = ((26 & 0x1E) >> 1), ['v'] = ((31 & 0x1E) >> 1)
+    ['Q'] = ((26 & 0x1E) >> 1), ['v'] = ((31 & 0x1E) >> 1),
 };
+
 // 0x01 = 00000001
 const uint8_t fifth_right_base32hex_to_num[] = {
     ['0'] = (( 0 & 0x01) << 7), ['R'] = ((27 & 0x01) << 7),
@@ -517,8 +529,9 @@ const uint8_t fifth_right_base32hex_to_num[] = {
     ['N'] = ((23 & 0x01) << 7), ['s'] = ((28 & 0x01) << 7),
     ['O'] = ((24 & 0x01) << 7), ['t'] = ((29 & 0x01) << 7),
     ['P'] = ((25 & 0x01) << 7), ['u'] = ((30 & 0x01) << 7),
-    ['Q'] = ((26 & 0x01) << 7), ['v'] = ((31 & 0x01) << 7)
+    ['Q'] = ((26 & 0x01) << 7), ['v'] = ((31 & 0x01) << 7),
 };
+
 // 0x1F = 00011111
 const uint8_t sixth_base32hex_to_num[] = {
     ['0'] = (( 0 & 0x1F) << 2), ['R'] = ((27 & 0x1F) << 2),
@@ -547,8 +560,9 @@ const uint8_t sixth_base32hex_to_num[] = {
     ['N'] = ((23 & 0x1F) << 2), ['s'] = ((28 & 0x1F) << 2),
     ['O'] = ((24 & 0x1F) << 2), ['t'] = ((29 & 0x1F) << 2),
     ['P'] = ((25 & 0x1F) << 2), ['u'] = ((30 & 0x1F) << 2),
-    ['Q'] = ((26 & 0x1F) << 2), ['v'] = ((31 & 0x1F) << 2)
+    ['Q'] = ((26 & 0x1F) << 2), ['v'] = ((31 & 0x1F) << 2),
 };
+
 // 0x18 = 00011000
 const uint8_t seventh_left_base32hex_to_num[] = {
     ['0'] = (( 0 & 0x18) >> 3), ['R'] = ((27 & 0x18) >> 3),
@@ -577,8 +591,9 @@ const uint8_t seventh_left_base32hex_to_num[] = {
     ['N'] = ((23 & 0x18) >> 3), ['s'] = ((28 & 0x18) >> 3),
     ['O'] = ((24 & 0x18) >> 3), ['t'] = ((29 & 0x18) >> 3),
     ['P'] = ((25 & 0x18) >> 3), ['u'] = ((30 & 0x18) >> 3),
-    ['Q'] = ((26 & 0x18) >> 3), ['v'] = ((31 & 0x18) >> 3)
+    ['Q'] = ((26 & 0x18) >> 3), ['v'] = ((31 & 0x18) >> 3),
 };
+
 // 0x07 = 00000111
 const uint8_t seventh_right_base32hex_to_num[] = {
     ['0'] = (( 0 & 0x07) << 5), ['R'] = ((27 & 0x07) << 5),
@@ -607,8 +622,9 @@ const uint8_t seventh_right_base32hex_to_num[] = {
     ['N'] = ((23 & 0x07) << 5), ['s'] = ((28 & 0x07) << 5),
     ['O'] = ((24 & 0x07) << 5), ['t'] = ((29 & 0x07) << 5),
     ['P'] = ((25 & 0x07) << 5), ['u'] = ((30 & 0x07) << 5),
-    ['Q'] = ((26 & 0x07) << 5), ['v'] = ((31 & 0x07) << 5)
+    ['Q'] = ((26 & 0x07) << 5), ['v'] = ((31 & 0x07) << 5),
 };
+
 // 0x1F = 00011111
 const uint8_t eighth_base32hex_to_num[] = {
     ['0'] = (( 0 & 0x1F) << 0), ['R'] = ((27 & 0x1F) << 0),
@@ -637,20 +653,19 @@ const uint8_t eighth_base32hex_to_num[] = {
     ['N'] = ((23 & 0x1F) << 0), ['s'] = ((28 & 0x1F) << 0),
     ['O'] = ((24 & 0x1F) << 0), ['t'] = ((29 & 0x1F) << 0),
     ['P'] = ((25 & 0x1F) << 0), ['u'] = ((30 & 0x1F) << 0),
-    ['Q'] = ((26 & 0x1F) << 0), ['v'] = ((31 & 0x1F) << 0)
+    ['Q'] = ((26 & 0x1F) << 0), ['v'] = ((31 & 0x1F) << 0),
 };
 
-////////
 // Without leap day 29. 2.
 static const uint8_t days_in_months[] = {
     [ 1] = 31, [ 2] = 28, [ 3] = 31, [ 4] = 30, [ 5] = 31, [ 6] = 30,
-    [ 7] = 31, [ 8] = 31, [ 9] = 30, [10] = 31, [11] = 30, [12] = 31
+    [ 7] = 31, [ 8] = 31, [ 9] = 30, [10] = 31, [11] = 30, [12] = 31,
 };
 
 // Without leap day 29. 2.
 static const uint16_t days_across_months[] = {
     [ 1] =   0, [ 2] =  31, [ 3] =  59, [ 4] =  90, [ 5] = 120, [ 6] = 151,
-    [ 7] = 181, [ 8] = 212, [ 9] = 243, [10] = 273, [11] = 304, [12] = 334
+    [ 7] = 181, [ 8] = 212, [ 9] = 243, [10] = 273, [11] = 304, [12] = 334,
 };
 
 // 0 ~ 1970 ... 135 ~ 2105
@@ -681,11 +696,11 @@ static const uint8_t is_leap_year[] = {
     [116] = 0, [117] = 0, [118] = 1, [119] = 0, [120] = 0,
     [121] = 0, [122] = 1, [123] = 0, [124] = 0, [125] = 0,
     [126] = 1, [127] = 0, [128] = 0, [129] = 0, [130] = 0,
-    [131] = 0, [132] = 0, [133] = 0, [134] = 1, [135] = 0
+    [131] = 0, [132] = 0, [133] = 0, [134] = 1, [135] = 0,
 };
 
 // 0 ~ 1970 ... 135 ~ 2105
-const uint16_t days_across_years[] = {
+static const uint16_t days_across_years[] = {
     [  1] =   365, [  2] =   730, [  3] =  1096, [  4] =  1461, [  5] =  1826,
     [  6] =  2191, [  7] =  2557, [  8] =  2922, [  9] =  3287, [ 10] =  3652,
     [ 11] =  4018, [ 12] =  4383, [ 13] =  4748, [ 14] =  5113, [ 15] =  5479,
@@ -712,7 +727,7 @@ const uint16_t days_across_years[] = {
     [116] = 42369, [117] = 42734, [118] = 43099, [119] = 43465, [120] = 43830,
     [121] = 44195, [122] = 44560, [123] = 44926, [124] = 45291, [125] = 45656,
     [126] = 46021, [127] = 46387, [128] = 46752, [129] = 47117, [130] = 47482,
-    [131] = 47847, [132] = 48212, [133] = 48577, [134] = 48942, [135] = 49308
+    [131] = 47847, [132] = 48212, [133] = 48577, [134] = 48942, [135] = 49308,
 };
 
 int date_to_timestamp(uint8_t *buff, uint32_t *timestamp)
@@ -756,14 +771,14 @@ int date_to_timestamp(uint8_t *buff, uint32_t *timestamp)
 	return KNOT_EOK;
 }
 
-int wire_dname_to_str(const uint8_t  *data,
-		      const uint32_t data_len,
-		      char *text)
+void wire_dname_to_str(const uint8_t  *data,
+		       const uint32_t data_len,
+		       char *text)
 {
 	uint32_t i = 0, text_len = 0;
 
 	if (data == NULL || data_len == 0 || text == NULL) {
-		return -1;
+		return;
 	}
 
 	uint8_t label_len = data[0];
@@ -793,8 +808,6 @@ int wire_dname_to_str(const uint8_t  *data,
 
 	// Ending text string.
 	text[text_len] = 0;
-
-	return KNOT_EOK;
 }
 
 uint8_t loc64to8(uint64_t number)
@@ -809,6 +822,15 @@ uint8_t loc64to8(uint64_t number)
 	return ((uint8_t)number << 4) + (exponent & 15);
 }
 
+/*!
+ * \brief Returns domain name length in wire-format.
+ *
+ * \param data		Data array.
+ * \param data_len	Length of data array.
+ *
+ * \retval >0		if success.
+ * \retval 0		if error.
+ */
 static uint32_t get_dname_length(const uint8_t  *data,
 				 const uint32_t data_len)
 {
@@ -841,6 +863,15 @@ static uint32_t get_dname_length(const uint8_t  *data,
 	}
 }
 
+/*!
+ * \brief Returns length of the leading NAPTR block in wire-format.
+ *
+ * \param data		Data array.
+ * \param data_len	Length of data array.
+ *
+ * \retval >0		if success.
+ * \retval 0		if error.
+ */
 static uint32_t get_naptr_header_length(const uint8_t  *data,
 					const uint32_t data_len)
 {
@@ -866,22 +897,45 @@ static uint32_t get_naptr_header_length(const uint8_t  *data,
 	}
 }
 
+/*!
+ * \brief Returns block length in wire-format.
+ *
+ * \param data		Data array.
+ * \param data_len	Length of data array.
+ * \param offset	Start of the block in data array.
+ * \param type		Record type.
+ *
+ * \retval >=0		if success.
+ * \retval <0		if error.
+ */
 static int32_t get_block_length(const uint8_t  *data,
-				const uint32_t data_length,
-				const uint32_t ofset,
+				const uint32_t data_len,
+				const uint32_t offset,
 				const int      type)
 {
+	uint32_t ret;
+
 	switch (type) {
 	case KNOT_RDATA_WF_COMPRESSED_DNAME:
 	case KNOT_RDATA_WF_UNCOMPRESSED_DNAME:
 	case KNOT_RDATA_WF_LITERAL_DNAME:
-		return get_dname_length(data + ofset,
-					data_length - ofset);
+		ret = get_dname_length(data + offset, data_len - offset);
+
+		if (ret > 0) {
+			return ret;
+		} else {
+			return -1;
+		}
 	case KNOT_RDATA_WF_NAPTR_HEADER:
-		return get_naptr_header_length(data + ofset,
-					       data_length - ofset);
+		ret = get_naptr_header_length(data + offset, data_len - offset);
+
+                if (ret > 0) {
+                        return ret;
+                } else {
+                        return -1;
+                }
 	case KNOT_RDATA_WF_REMAINDER:
-		return data_length - ofset;
+		return data_len - offset;
 	default:
 		return 0;
 	}

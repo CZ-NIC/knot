@@ -26,8 +26,7 @@
 
 #define DEFAULT_MODE	1
 
-
-/*! \brief Print help. */
+/*! \brief Prints help. */
 void help(int argc, char **argv)
 {
 	printf("\nZone scanner testing tool.\n"

@@ -22,7 +22,6 @@
 #include <stdlib.h>			// printf
 #include "../scanner_functions.h"	// date_to_timestamp
 
-
 int test__date_to_timestamp()
 {
 	time_t    ref_timestamp, max_timestamp;

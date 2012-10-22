@@ -38,7 +38,7 @@
  * settings block using this function. Settings block contains ORIGIN and
  * TTL directive.
  *
- * \param fl		file loader structure.
+ * \param fl		File loader structure.
  *
  * \retval  0		if success.
  * \retval -1		if error.

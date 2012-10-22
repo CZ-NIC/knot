@@ -31,17 +31,30 @@
 #include "zscanner/file_loader.h"	// file_loader
 #include "zscanner/scanner_functions.h"	// Base64
 
+/*! \brief Shorthand for setting warning data. */
 #define SCANNER_WARNING(code) { s->error_code = code; }
+/*! \brief Shorthand for setting error data. */
 #define SCANNER_ERROR(code)   { s->error_code = code; s->stop = true; }
 
-
-inline void type_num(const uint16_t type, uint8_t **rdata_tail)
+/*!
+ * \brief Writes record type number to r_data.
+ *
+ * \param type		Type number.
+ * \param rdata_tail	Position where to write type number to.
+ */
+static inline void type_num(const uint16_t type, uint8_t **rdata_tail)
 {
 	*((uint16_t *)*rdata_tail) = htons(type);
 	*rdata_tail += 2;
 }
 
-inline void window_add_bit(const uint16_t type, scanner_t *s) {
+/*!
+ * \brief Sets bit to bitmap window.
+ *
+ * \param type		Type number.
+ * \param s		Scanner context.
+ */
+static inline void window_add_bit(const uint16_t type, scanner_t *s) {
 	uint8_t win      = type / 256;
 	uint8_t bit_pos  = type % 256;
 	uint8_t byte_pos = bit_pos / 8;

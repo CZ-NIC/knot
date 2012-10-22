@@ -116,7 +116,8 @@
 	}
 	action _label_exit {
 		if (s->dname_tmp_length < MAX_DNAME_LENGTH) {
-			(s->dname)[s->item_length_position] = (uint8_t)(s->item_length);
+			(s->dname)[s->item_length_position] =
+				(uint8_t)(s->item_length);
 		} else {
 			SCANNER_WARNING(ZSCANNER_EDNAME_OVERFLOW);
 			fhold; fgoto err_line;
@@ -137,7 +138,8 @@
 		(s->dname)[s->dname_tmp_length] += digit_to_num[(uint8_t)fc];
 	}
 	action _label_dec_exit {
-		(s->dname)[s->dname_tmp_length] = (s->dname)[s->dname_tmp_length];
+		(s->dname)[s->dname_tmp_length] =
+			(s->dname)[s->dname_tmp_length];
 		s->dname_tmp_length++;
 	}
 	action _label_dec_error {
@@ -217,7 +219,8 @@
 	}
 
 	action _separate {
-		s->r_data_blocks[++(s->r_data_blocks_count)] = rdata_tail - s->r_data;
+		s->r_data_blocks[++(s->r_data_blocks_count)] =
+			rdata_tail - s->r_data;
 	}
 
 	# Rdata blocks dividing.
@@ -1599,7 +1602,7 @@
 	}
 	action _hex_r_data {
 		switch (s->r_type) {
-		// Next types cannot have empty rdata.
+		// Next types must not have empty rdata.
 		case KNOT_RRTYPE_A:
 		case KNOT_RRTYPE_NS:
 		case KNOT_RRTYPE_CNAME:
@@ -1645,11 +1648,12 @@
 	}
 
 	# rdata can be in text or hex format with leading "\#" string
-	r_data = ( sep  . ^('\\' | all_wchar)     $_text_r_data %_text_r_data_exit
-	         | sep  . '\\' . ^'#' ${ fhold; } $_text_r_data %_text_r_data_exit
-	         | sep  . '\\' .  '#'             $_hex_r_data   # Hex format.
-	         | sep? . end_wchar               $_text_r_data  # Empty rdata.
-	         ) >_r_data_init $!_r_data_error;
+	r_data =
+		( sep  . ^('\\' | all_wchar)     $_text_r_data %_text_r_data_exit
+		| sep  . '\\' . ^'#' ${ fhold; } $_text_r_data %_text_r_data_exit
+		| sep  . '\\' .  '#'             $_hex_r_data   # Hex format.
+		| sep? . end_wchar               $_text_r_data  # Empty rdata.
+		) >_r_data_init $!_r_data_error;
 	# END
 
 	# BEGIN - Record type processing
@@ -1695,7 +1699,7 @@
 		) $!_r_type_error;
 	# END
 
-	# BEGIN - Top level processing
+	# BEGIN - The highest level processing
 	action _record_exit {
 		if (rdata_tail - s->r_data > UINT16_MAX) {
 			SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
