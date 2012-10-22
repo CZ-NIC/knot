@@ -251,9 +251,15 @@ static int xfr_process_udp_resp(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 	rcu_read_unlock();
 	
 	/* Receive msg. */
-	ssize_t n = recvfrom(data->session, data->wire, data->wire_size,
-	                     0, data->addr.ptr, &data->addr.len);
+	ssize_t n = -1;
 	size_t resp_len = data->wire_size;
+	if (data->flags & XFR_FLAG_TCP) {
+		n = tcp_recv(data->session, data->wire, resp_len, &data->addr);
+	} else {
+		n = recvfrom(data->session, data->wire, resp_len,
+		             0, data->addr.ptr, &data->addr.len);
+	}
+	
 	if (n <= 0) {
 		return ret;
 	}
