@@ -256,7 +256,7 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 //		                                  KNOT_RCODE_NOTIMPL,
 //		                                  qbuf, &resp_len);
 		res = zones_process_update(ns, packet, &addr, qbuf, &resp_len,
-		                           NS_TRANSPORT_TCP);
+		                           fd, NS_TRANSPORT_TCP);
 //		res = KNOT_EOK;
 		break;
 		

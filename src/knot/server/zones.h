@@ -79,13 +79,11 @@ typedef struct zonedata_t
 		int next_id;             /*!< ID of the next awaited SOA resp.*/
 		uint32_t bootstrap_retry;/*!< AXFR/IN bootstrap retry. */
 		unsigned       scheduled;/*!< Scheduled operations. */ 
+		int has_master;          /*!< True if it has master set. */
 	} xfr_in;
 
 	/*! \brief List of pending NOTIFY events. */
 	list notify_pending;
-	
-	/*! \brief List of fds with pending SOA queries. */
-	int soa_pending;
 
 	/*! \brief Zone IXFR history. */
 	journal_t *ixfr_db;
@@ -162,7 +160,7 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 int zones_process_update(knot_nameserver_t *nameserver,
                          knot_packet_t *query, const sockaddr_t *addr,
                          uint8_t *resp_wire, size_t *rsize,
-                         knot_ns_transport_t transport);
+                         int fd, knot_ns_transport_t transport);
 
 /*!
  * \brief Processes normal response packet.
@@ -333,6 +331,15 @@ int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch);
  */
 int zones_cancel_notify(zonedata_t *zd, notify_ev_t *ev);
 
+
+/*!
+ * \brief Processes forwarded UPDATE response packet.
+ * \todo #1291 move to appropriate section (DDNS).
+ */
+int zones_process_update_response(knot_nameserver_t *ns,
+                                  knot_ns_xfr_t *data,
+                                  knot_packet_t *packet, uint8_t *rwire,
+                                  size_t *rsize, size_t maxlen);
 #endif // _KNOTD_ZONES_H_
 
 /*! @} */

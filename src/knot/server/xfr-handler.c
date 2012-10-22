@@ -34,6 +34,7 @@
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
 #include "libknot/updates/xfr-in.h"
+#include "libknot/util/wire.h"
 #include "knot/server/zones.h"
 #include "libknot/tsig-op.h"
 #include "common/evsched.h"
@@ -256,7 +257,7 @@ static int xfr_process_udp_resp(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 	if (n <= 0) {
 		return ret;
 	}
-	
+
 	// parse packet
 	knot_packet_t *re = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
 	if (re == NULL) {
@@ -269,12 +270,18 @@ static int xfr_process_udp_resp(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 		knot_packet_free(&re);
 		return KNOT_EOK; /* Ignore */
 	}
-	
+
 	/* Ignore other packets. */
-	if (rt != KNOT_RESPONSE_NORMAL && rt != KNOT_RESPONSE_NOTIFY) {
+	switch(rt) {
+	case KNOT_RESPONSE_NORMAL:
+	case KNOT_RESPONSE_NOTIFY:
+	case KNOT_RESPONSE_UPDATE:
+		break;
+	default:
 		knot_packet_free(&re);
 		return KNOT_EOK; /* Ignore */
 	}
+
 	ret = knot_packet_parse_rest(re);
 	if (ret != KNOT_EOK) {
 		knot_packet_free(&re);
@@ -301,6 +308,7 @@ static int xfr_process_udp_resp(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 	}
 	
 	// process response
+	size_t qlen = n;
 	switch(rt) {
 	case KNOT_RESPONSE_NORMAL:
 		ret = zones_process_response(w->ns, &data->addr, re,
@@ -310,10 +318,18 @@ static int xfr_process_udp_resp(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 		ret = notify_process_response(w->ns, re, &data->addr,
 		                              data->wire, &resp_len);
 		break;
+	case KNOT_RESPONSE_UPDATE:
+		ret = zones_process_update_response(w->ns, data, re, data->wire,
+		                                    &qlen, resp_len);
+		if (ret == KNOT_EOK) {
+			log_server_info("%s Forwarded response.\n",
+			                data->msgpref);
+		}
+		break;
 	default:
 		break;
 	}
-
+	
 	knot_packet_free(&re);
 	
 	/* Check up-to-date zone. */
@@ -348,6 +364,7 @@ static void xfr_sweep(fdset_t *set, int fd, void *data)
 	switch(t->type) {
 	case XFR_TYPE_SOA:
 	case XFR_TYPE_NOTIFY:
+	case XFR_TYPE_FORWARD:
 		xfr_udp_timeout(t);
 		break;
 	default:
@@ -615,8 +632,13 @@ int xfr_process_event(xfrworker_t *w, int fd, knot_ns_xfr_t *data, uint8_t *buf,
 	data->wire_size = buflen;
 
 	/* Handle SOA/NOTIFY responses. */
-	if (data->type == XFR_TYPE_NOTIFY || data->type == XFR_TYPE_SOA) {
+	switch(data->type) {
+	case XFR_TYPE_NOTIFY:
+	case XFR_TYPE_SOA:
+	case XFR_TYPE_FORWARD:
 		return xfr_process_udp_resp(w, fd, data);
+	default:
+		break;
 	}
 
 	/* Read DNS/TCP packet. */
@@ -1056,6 +1078,9 @@ static int xfr_update_msgpref(knot_ns_xfr_t *req, const char *keytag)
 	case XFR_TYPE_SOA:
 		pformat = "SOA query of '%s' to %s:";
 		break;
+	case XFR_TYPE_FORWARD:
+		pformat = "UPDATE forwarded query of '%s' to %s:";
+		break;
 	default:
 		pformat = "UNKNOWN query '%s' from %s:";
 		break;
@@ -1455,6 +1480,7 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		break;
 	case XFR_TYPE_SOA:
 	case XFR_TYPE_NOTIFY:
+	case XFR_TYPE_FORWARD:
 		/* Register task. */
 		task = xfr_register_task(w, &xfr);
 		if (!task) {
@@ -1466,7 +1492,13 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 			fdset_set_watchdog(w->fdset, task->session,
 			                   conf()->max_conn_reply);
 			rcu_read_unlock();
-			log_server_info("%s Query issued.\n", xfr.msgpref);
+			if (xfr.type == XFR_TYPE_FORWARD) {
+				log_server_info("%s Forwarded query.\n",
+				                xfr.msgpref);
+			} else {
+				log_server_info("%s Query issued.\n",
+				                xfr.msgpref);
+			}
 			ret = KNOT_EOK;
 		}
 		break;
