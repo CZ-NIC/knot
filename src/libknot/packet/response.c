@@ -214,7 +214,8 @@ dbg_response_exec(
 	size_t parent_pos = pos;
 	int i = 0, copied = 0;
 
-	while (to_save != NULL && i < knot_dname_label_count(dname)) {
+	while (to_save != NULL && i < knot_dname_label_count(dname)
+	       && parent_pos <= KNOT_RESPONSE_MAX_PTR) {
 		if (i == not_matched) {
 			parent_pos = unmatched_offset;
 		}
@@ -404,10 +405,14 @@ dbg_response_exec_detail(
 				knot_dname_left_chop_no_copy(to_find);
 			}
 		} else {
-			assert(to_find->node != to_find->node->parent);
-			assert(to_find != to_find->node->parent->owner);
-			to_find = to_find->node->parent->owner;
+			assert(knot_dname_node(to_find) !=
+			       knot_node_parent(knot_dname_node(to_find)));
+			assert(to_find != knot_node_owner(
+			    knot_node_parent(knot_dname_node(to_find))));
+			to_find = knot_node_get_owner(
+			            knot_node_parent(knot_dname_node(to_find)));
 		}
+		dbg_response_detail("New to_find: %p\n", to_find);
 #else
 		// if case-sensitive comparation, we cannot just take the parent
 		if (compr_cs || knot_dname_node(to_find) == NULL
@@ -448,7 +453,10 @@ dbg_response_exec_detail(
 
 	dbg_response_detail("Max size available for domain name: %zu\n", max);
 	
-	if (offset > 0) {  // found such dname somewhere in the packet
+	if (offset > 0) {
+		// found such dname somewhere in the packet
+		// the pointer should be legal as no illegal pointers are stored
+		assert(offset <= KNOT_RESPONSE_MAX_PTR);
 		dbg_response_detail("Found name in the compression table.\n");
 		assert(offset >= KNOT_WIRE_HEADER_SIZE);
 		size = knot_response_put_dname_ptr(dname, not_matched, offset,
@@ -472,9 +480,9 @@ dbg_response_exec_detail(
 	 *        It is meaningful only if the found name is the one from QNAME
 	 *        and thus its parents are not stored yet.
 	 */
-	
+	// only put legal pointers (#2131)
 	if (knot_response_store_dname_pos(compr->table, dname, not_matched,
-	                                  compr->wire_pos, offset, compr_cs)
+	                                     compr->wire_pos, offset, compr_cs)
 	    != 0) {
 		dbg_response_detail("Compression info could not be stored.\n");
 	}
