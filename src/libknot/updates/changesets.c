@@ -77,7 +77,7 @@ static int knot_changeset_rrsets_match(const knot_rrset_t *rrset1,
 /*----------------------------------------------------------------------------*/
 
 int knot_changeset_allocate(knot_changesets_t **changesets,
-                            knot_changeset_type_t type)
+                            uint32_t flags)
 {
 	// create new changesets
 	*changesets = (knot_changesets_t *)(malloc(sizeof(knot_changesets_t)));
@@ -86,7 +86,7 @@ int knot_changeset_allocate(knot_changesets_t **changesets,
 	}
 
 	memset(*changesets, 0, sizeof(knot_changesets_t));
-	(*changesets)->type = type;
+	(*changesets)->flags = flags;
 
 	if (knot_changesets_check_size(*changesets) != KNOT_EOK) {
 		free(*changesets);
@@ -238,7 +238,7 @@ int knot_changesets_check_size(knot_changesets_t *changesets)
 
 	/* Set type to all newly allocated changesets. */
 	for (int i = changesets->allocated; i < new_count; ++i) {
-		sets[i].type = changesets->type;
+		sets[i].flags = changesets->flags;
 	}
 
 	/* Replace old changesets. */
@@ -251,17 +251,17 @@ int knot_changesets_check_size(knot_changesets_t *changesets)
 
 /*----------------------------------------------------------------------------*/
 
-void knot_changeset_set_type(knot_changeset_t *changeset,
-                             knot_changeset_type_t type)
+void knot_changeset_set_flags(knot_changeset_t *changeset,
+                             uint32_t flags)
 {
-	changeset->type = type;
+	changeset->flags = flags;
 }
 
 /*----------------------------------------------------------------------------*/
 
-knot_changeset_type_t knot_changeset_type(knot_changeset_t *changeset)
+uint32_t knot_changeset_flags(knot_changeset_t *changeset)
 {
-	return changeset->type;
+	return changeset->flags;
 }
 
 /*----------------------------------------------------------------------------*/

@@ -32,10 +32,11 @@
 
 /*----------------------------------------------------------------------------*/
 
+/*! \brief Changeset flags, stored as first 4 bytes in serialized changeset. */
 typedef enum {
-	KNOT_CHANGESET_TYPE_IXFR,
-	KNOT_CHANGESET_TYPE_DDNS
-} knot_changeset_type_t;
+	KNOT_CHANGESET_TYPE_IXFR = 1 << 0,
+	KNOT_CHANGESET_TYPE_DDNS = 1 << 1
+} knot_changeset_flag_t;
 
 /*! \todo Changeset must be serializable/deserializable, so
  *        all data and pointers have to be changeset-exclusive,
@@ -61,11 +62,7 @@ typedef struct {
 	uint32_t serial_from;
 	uint32_t serial_to;
 
-	knot_changeset_type_t type;  /*!< DDNS / IXFR */
-	/*! \todo Maybe the type in changesets_t is enough, but in the journal
-	 *        it still must be in each entry, so this makes it easier to
-	 *        convert.
-	 */
+	uint32_t flags;  /*!< DDNS / IXFR */
 } knot_changeset_t;
 
 /*----------------------------------------------------------------------------*/
@@ -122,7 +119,7 @@ typedef struct {
 	size_t count;
 	size_t allocated;
 	knot_rrset_t *first_soa;
-	knot_changeset_type_t type;
+	uint32_t flags;
 	knot_changes_t *changes;
 } knot_changesets_t;
 
@@ -136,7 +133,7 @@ typedef enum {
 /*----------------------------------------------------------------------------*/
 
 int knot_changeset_allocate(knot_changesets_t **changesets,
-                            knot_changeset_type_t type);
+                            uint32_t flags);
 
 int knot_changeset_add_rrset(knot_rrset_t ***rrsets,
                              size_t *count, size_t *allocated,
@@ -157,10 +154,10 @@ int knot_changeset_add_soa(knot_changeset_t *changeset, knot_rrset_t *soa,
 
 int knot_changesets_check_size(knot_changesets_t *changesets);
 
-void knot_changeset_set_type(knot_changeset_t *changeset,
-                             knot_changeset_type_t type);
+void knot_changeset_set_flags(knot_changeset_t *changeset,
+                             uint32_t flags);
 
-knot_changeset_type_t knot_changeset_type(knot_changeset_t *changeset);
+uint32_t knot_changeset_flags(knot_changeset_t *changeset);
 
 void knot_free_changeset(knot_changeset_t **changeset);
 

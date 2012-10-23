@@ -1057,6 +1057,8 @@ static inline uint64_t ixfrdb_key_make(uint32_t from, uint32_t to)
 
 int zones_changesets_from_binary(knot_changesets_t *chgsets)
 {
+	/*! \todo #1291 Why doesn't this just increment stream ptr? */
+	
 	assert(chgsets != NULL);
 	assert(chgsets->allocated >= chgsets->count);
 	/*
@@ -1067,11 +1069,16 @@ int zones_changesets_from_binary(knot_changesets_t *chgsets)
 	int ret = 0;
 
 	for (int i = 0; i < chgsets->count; ++i) {
-
-		/* Read initial changeset RRSet - SOA. */
+		
+		/* Read changeset flags. */
 		knot_changeset_t* chs = chgsets->sets + i;
 		size_t remaining = chs->size;
-		ret = knot_zload_rrset_deserialize(&rrset, chs->data, &remaining);
+		memcpy(&chs->flags, chs->data, sizeof(uint32_t));
+		remaining -= sizeof(uint32_t);
+		
+		/* Read initial changeset RRSet - SOA. */
+		uint8_t *stream = chs->data + (chs->size - remaining);
+		ret = knot_zload_rrset_deserialize(&rrset, stream, &remaining);
 		if (ret != KNOT_EOK) {
 			dbg_xfr("xfr: SOA: failed to deserialize data "
 			        "from changeset, %s\n", knot_strerror(ret));
@@ -1096,7 +1103,7 @@ int zones_changesets_from_binary(knot_changesets_t *chgsets)
 
 			/* Parse next RRSet. */
 			rrset = 0;
-			uint8_t *stream = chs->data + (chs->size - remaining);
+			stream = chs->data + (chs->size - remaining);
 			ret = knot_zload_rrset_deserialize(&rrset, stream, &remaining);
 			if (ret != KNOT_EOK) {
 				dbg_xfr("xfr: failed to deserialize data "
@@ -3414,6 +3421,8 @@ int zones_changeset_binary_size(const knot_changeset_t *chgset, size_t *size)
 
 	/*! \todo How is the changeset serialized? Any other parts? */
 	*size += soa_from_size + soa_to_size + remove_size + add_size;
+	/* + Changeset flags. */
+	*size += sizeof(uint32_t);
 
 	return KNOT_EOK;
 }
@@ -3439,6 +3448,11 @@ static int zones_rrset_write_to_mem(const knot_rrset_t *rr, char **entry,
 static int zones_serialize_and_store_chgset(const knot_changeset_t *chs,
                                             char *entry, size_t max_size)
 {
+	/* Write changeset flags. */
+	memcpy(entry, (char*)&chs->flags, sizeof(uint32_t));
+	entry += sizeof(uint32_t);
+	max_size -= sizeof(uint32_t);
+	
 	/* Serialize SOA 'from'. */
 	int ret = zones_rrset_write_to_mem(chs->soa_from, &entry, &max_size);
 	if (ret != KNOT_EOK) {
