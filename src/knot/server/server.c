@@ -635,7 +635,8 @@ int server_refresh(server_t *server)
 		if (zd->xfr_in.timer) {
 			evsched_cancel(sch, zd->xfr_in.timer);
 			evsched_schedule(sch, zd->xfr_in.timer,
-			                 tls_rand() * 1000);
+			                 tls_rand() * 500 + i*200);
+			/* Cumulative delay. */
 		}
 	}
 	

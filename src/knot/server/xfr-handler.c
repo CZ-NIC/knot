@@ -846,9 +846,15 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 				                   data->msgpref);
 			} else {
 				ret = connect(fd, data->addr.ptr, data->addr.len);
+				if (ret < 0) {
+					dbg_xfr("%s: couldn't connect to "
+					        "remote host\n", data->msgpref);
+				}
 			}
 		} else {
 			ret = -1;
+			dbg_xfr("%s: couldn't create socket err=%d\n",
+			        data->msgpref, errno);
 		}
 		
 		if (ret < 0) {
@@ -1041,7 +1047,7 @@ static int xfr_update_msgpref(knot_ns_xfr_t *req, const char *keytag)
 	if (req == NULL) {
 		return KNOT_EINVAL;
 	}
-
+	
 	rcu_read_lock();
 	char *r_key = NULL;
 	if (keytag) {
@@ -1050,6 +1056,8 @@ static int xfr_update_msgpref(knot_ns_xfr_t *req, const char *keytag)
 		char *tag = knot_dname_to_str(req->tsig_key->name);
 		r_key = xfr_remote_str(&req->addr, tag);
 		free(tag);
+	} else {
+		r_key = xfr_remote_str(&req->addr, NULL);
 	}
 
 	/* Prepare log message. */
@@ -1465,9 +1473,9 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 		/* Report. */
 		if (ret != KNOT_EOK && ret != KNOT_EACCES) {
 			if (zd != NULL && !knot_zone_contents(xfr.zone)) {
-				/* Reschedule request (120 - 240s random delay). */
-				int tmr_s = AXFR_BOOTSTRAP_RETRY * 2; /* Malus x2 */
-				tmr_s += (int)((120.0 * 1000) * tls_rand());
+				/* Reschedule request delay. */
+				int tmr_s = AXFR_BOOTSTRAP_RETRY;
+				tmr_s += (int)((tmr_s) * tls_rand());
 				event_t *ev = zd->xfr_in.timer;
 				if (ev) {
 					evsched_cancel(ev->parent, ev);
