@@ -6,7 +6,7 @@
 .libs/
 .deps/
 Knot.creator.user*
-Makefile
+./Makefile
 Makefile.in
 aclocal.m4
 ar-lib
