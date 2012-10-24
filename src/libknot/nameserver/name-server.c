@@ -3567,6 +3567,14 @@ int knot_ns_prep_update_response(knot_nameserver_t *nameserver,
 		resp_max_size = MAX_UDP_PAYLOAD;
 	}
 
+	/*
+	 * DDNS Zone Section check (RFC2136, Section 3.1), part 1:
+	 *   Check if QTYPE==SOA.
+	 */
+	if (knot_packet_qtype(query) != KNOT_RRTYPE_SOA) {
+		return KNOT_EMALF;
+	}
+
 	ret = knot_ns_prepare_response(query, resp, resp_max_size, 0);
 	if (ret != KNOT_EOK) {
 		return KNOT_ERROR;

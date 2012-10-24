@@ -2823,11 +2823,12 @@ int zones_process_update(knot_nameserver_t *nameserver,
 		break;
 	}
 	
-	/* Handling of errors when no TSIG is present. */
-	if (rcode == KNOT_RCODE_NOERROR && !knot_packet_tsig(query)) {
-		if (!zone || knot_packet_qclass(query) != KNOT_CLASS_IN) {
-			rcode = KNOT_RCODE_REFUSED;
-		}
+	/*
+	 * Sigh...normally we would return REFUSED when the zone is not found,
+	 * but RFC2136 requires NOTAUTH.
+	 */
+	if (!zone || knot_packet_qclass(query) != KNOT_CLASS_IN) {
+		rcode = KNOT_RCODE_NOTAUTH;
 	}
 	
 	/* Check if zone is not discarded. */
