@@ -146,6 +146,9 @@ int knot_changeset_add_new_rr(knot_changeset_t *changeset,
                               knot_rrset_t *rrset,
                               knot_changeset_part_t part);
 
+knot_rrset_t *knot_changeset_remove_rr(knot_rrset_t **rrsets, size_t *count,
+                                       int pos);
+
 void knot_changeset_store_soa(knot_rrset_t **chg_soa,
                               uint32_t *chg_serial, knot_rrset_t *soa);
 

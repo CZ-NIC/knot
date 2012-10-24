@@ -181,6 +181,29 @@ int knot_changeset_add_new_rr(knot_changeset_t *changeset,
 
 /*----------------------------------------------------------------------------*/
 
+knot_rrset_t *knot_changeset_remove_rr(knot_rrset_t **rrsets, size_t *count,
+                                       int pos)
+{
+	if (pos >= *count || *count == 0) {
+		return NULL;
+	}
+
+	knot_rrset_t *removed = rrsets[pos];
+
+	// shift all RRSets from pos+1 one cell to the left
+	for (int i = pos; i < *count - 1; ++i) {
+		rrsets[i] = rrsets[i + 1];
+	}
+
+	// just to be sure, set the last previously occupied position to NULL
+	rrsets[*count - 1] = NULL;
+	*count -= 1;
+
+	return removed;
+}
+
+/*----------------------------------------------------------------------------*/
+
 void knot_changeset_store_soa(knot_rrset_t **chg_soa,
                                uint32_t *chg_serial, knot_rrset_t *soa)
 {

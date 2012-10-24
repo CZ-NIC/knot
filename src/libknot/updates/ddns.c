@@ -191,17 +191,18 @@ static int knot_ddns_check_remove_rr(knot_changeset_t *changeset,
 				if (knot_rrset_type(rr)
 				    == knot_rrset_type(changeset->add[i])
 				    || knot_rrset_type(rr) == KNOT_RRTYPE_ANY) {
-
-					// TODO: we should not let the place
-					// to be NULL!!
-					knot_rrset_deep_free(&changeset->add[i],
-					                     1, 1, 1);
+					knot_rrset_t *remove =
+						knot_changeset_remove_rr(
+						    changeset->add,
+						    &changeset->add_count, i);
+					knot_rrset_deep_free(&remove, 1, 1, 1);
 				}
 			} else if (knot_rrset_type(rr)
 			           == knot_rrset_type(changeset->add[i])){
-				// TODO: test other classes!!
+				/* All other classes are checked in
+				 * knot_ddns_check_update().
+				 */
 				assert(knot_rrset_class(rr) == KNOT_CLASS_NONE);
-
 
 				// Removing specific RR from a RRSet
 				knot_rdata_t *rdata = knot_rrset_remove_rdata(
@@ -212,10 +213,11 @@ static int knot_ddns_check_remove_rr(knot_changeset_t *changeset,
 				// if the RRSet is empty, remove from changeset
 				if (knot_rrset_rdata_rr_count(changeset->add[i])
 				    == 0) {
-
-					// TODO: we should not let the place
-					// to be NULL!!
-					knot_rrset_free(&changeset->add[i]);
+					knot_rrset_t *remove =
+						knot_changeset_remove_rr(
+						    changeset->add,
+						    &changeset->add_count, i);
+					knot_rrset_deep_free(&remove, 1, 1, 1);
 				}
 			}
 		}
@@ -263,17 +265,19 @@ static int knot_ddns_add_update(knot_changeset_t *changeset,
 		 */
 
 		// TODO: finish, disabled for now
-//		ret = knot_ddns_check_remove_rr(changeset, rrset_copy);
-//		if (ret != KNOT_EOK) {
-//			knot_rrset_deep_free(&rrset_copy, 1, 1, 1);
-//			return ret;
-//		}
 
 		dbg_ddns_detail(" * removing RR %p\n", rrset_copy);
-		ret = knot_changeset_add_rr(&changeset->remove,
-		                            &changeset->remove_count,
-		                            &changeset->remove_allocated,
-		                            rrset_copy);
+
+		ret = knot_ddns_check_remove_rr(changeset, rrset_copy);
+		if (ret != KNOT_EOK) {
+			knot_rrset_deep_free(&rrset_copy, 1, 1, 1);
+			return ret;
+		}
+
+//		ret = knot_changeset_add_rr(&changeset->remove,
+//		                            &changeset->remove_count,
+//		                            &changeset->remove_allocated,
+//		                            rrset_copy);
 	}
 
 	return ret;
@@ -628,7 +632,6 @@ int knot_ddns_process_update(const knot_zone_contents_t *zone,
 
 	if (query == NULL || changeset == NULL || rcode == NULL) {
 		return KNOT_EINVAL;
-<<<<<<< HEAD
 	}
 
 	int ret = KNOT_EOK;
