@@ -464,6 +464,7 @@ int knot_ddns_check_zone(const knot_zone_contents_t *zone,
                          const knot_packet_t *query, knot_rcode_t *rcode)
 {
 	if (zone == NULL || query == NULL || rcode == NULL) {
+		*rcode = KNOT_RCODE_SERVFAIL;
 		return KNOT_EINVAL;
 	}
 

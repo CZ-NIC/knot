@@ -4221,13 +4221,6 @@ int knot_ns_process_update(const knot_packet_t *query,
 
 	dbg_ns("Processing Dynamic Update.\n");
 
-	/* QTYPE should be SOA */
-	if (knot_packet_qtype(query) != KNOT_RRTYPE_SOA) {
-		dbg_ns("Question is not of type SOA.\n");
-		*rcode = KNOT_RCODE_FORMERR;
-		return KNOT_EMALF;
-	}
-
 	*rcode = KNOT_RCODE_NOERROR;
 	
 	// 1) Check zone
@@ -4241,35 +4234,36 @@ int knot_ns_process_update(const knot_packet_t *query,
 //	}
 
 	// 2) Convert prerequisities
-	dbg_ns_verb("Processing prerequisities.\n");
-	knot_ddns_prereq_t *prereqs = NULL;
-	int ret = knot_ddns_process_prereqs(query, &prereqs, rcode);
-	if (ret != KNOT_EOK) {
-		dbg_ns("Failed to check zone for update: "
-		       "%s.\n", knot_strerror(ret));
-		return ret;
-	}
+	// Already done
+//	dbg_ns_verb("Processing prerequisities.\n");
+//	knot_ddns_prereq_t *prereqs = NULL;
+//	int ret = knot_ddns_process_prereqs(query, &prereqs, rcode);
+//	if (ret != KNOT_EOK) {
+//		dbg_ns("Failed to check zone for update: "
+//		       "%s.\n", knot_strerror(ret));
+//		return ret;
+//	}
 
-	assert(prereqs != NULL);
+//	assert(prereqs != NULL);
 
 	// 3) Check prerequisities
 	/*! \todo Somehow ensure the zone will not be changed until the update
 	 *        is finished.
 	 */
-	dbg_ns_verb("Checking prerequisities.\n");
-	ret = knot_ddns_check_prereqs(zone, &prereqs, rcode);
-	if (ret != KNOT_EOK) {
-		knot_ddns_prereqs_free(&prereqs);
-		dbg_ns("Failed to check zone for update: "
-		       "%s.\n", knot_strerror(ret));
-		return ret;
-	}
+	// Already done
+//	dbg_ns_verb("Checking prerequisities.\n");
+//	ret = knot_ddns_check_prereqs(zone, &prereqs, rcode);
+//	if (ret != KNOT_EOK) {
+//		knot_ddns_prereqs_free(&prereqs);
+//		dbg_ns("Failed to check zone for update: "
+//		       "%s.\n", knot_strerror(ret));
+//		return ret;
+//	}
 
 	// 4) Convert update to changeset
 	dbg_ns_verb("Converting UPDATE packet to changeset.\n");
-	ret = knot_ddns_process_update(zone, query, changeset, rcode);
+	int ret = knot_ddns_process_update(zone, query, changeset, rcode);
 	if (ret != KNOT_EOK) {
-		knot_ddns_prereqs_free(&prereqs);
 		dbg_ns("Failed to check zone for update: "
 		       "%s.\n", knot_strerror(ret));
 		return ret;
@@ -4277,7 +4271,8 @@ int knot_ns_process_update(const knot_packet_t *query,
 
 	assert(changeset != NULL);
 
-	knot_ddns_prereqs_free(&prereqs);
+	// Done in zones.c
+//	knot_ddns_prereqs_free(&prereqs);
 	return ret;
 }
 
