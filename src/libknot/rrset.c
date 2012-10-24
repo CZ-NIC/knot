@@ -748,19 +748,51 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
 
 /*----------------------------------------------------------------------------*/
 
+size_t rrset_rdata_item_size(const knot_rrset_t *rrset,
+                             size_t pos)
+{
+	if (rrset == NULL || rrset->rdata_indices || rrset->rdata_count == 0) {
+		return 0;
+	}
+	
+	if (pos != rrset->rdata_count - 1) {
+		//All but last item
+		return rrset_rdata_offset(rrset, pos);
+	}
+	
+	/* Get pointer to last rdata item. Has to be traversed. */
+}
+
+uint32_t rrset_rdata_size_total(const knot_rrset_t *rrset)
+{
+	if (rrset == NULL || rrset->rdata_indices || rrset->rdata_count == 0) {
+		return 0;
+	}
+	
+	/* Get pointer to last rdata item. Has to be traversed. */
+	uint8_t *rdata = rrset_rdata_pointer(rrset, rrset->rdata_count - 1);
+	
+}
+
 int knot_rrset_merge(void **r1, void **r2)
 {
-	/* Just connect two arrays. */
-//	knot_rrset_t *rrset1 = (knot_rrset_t *)(*r1);
-//	knot_rrset_t *rrset2 = (knot_rrset_t *)(*r2);
+	knot_rrset_t *rrset1 = (knot_rrset_t *)(*r1);
+	knot_rrset_t *rrset2 = (knot_rrset_t *)(*r2);
+	if (rrset1 == NULL || rrset2 == NULL) {
+		return KNOT_EINVAL;
+	}
 
-//	if ((knot_dname_compare(rrset1->owner, rrset2->owner) != 0)
-//	    || rrset1->rclass != rrset2->rclass
-//	    || rrset1->type != rrset2->type) {
-//		return KNOT_EINVAL;
-//	}
+	if ((knot_dname_compare(rrset1->owner, rrset2->owner) != 0)
+	    || rrset1->rclass != rrset2->rclass
+	    || rrset1->type != rrset2->type) {
+		return KNOT_EINVAL;
+	}
 
-//	// add all RDATAs from rrset2 to rrset1 (i.e. concatenate linked lists)
+	// add all RDATAs from rrset2 to rrset1 (i.e. concatenate two arrays)
+	
+	/* Reallocate actual RDATA array. */
+	void *tmp = realloc(rrset1->rdata, rrset_rdata_size_total(r1) +
+	                    rrset_rdata_size_total(r2));
 
 //	// no RDATA in RRSet 1
 //	assert(rrset1 && rrset2);
@@ -807,6 +839,7 @@ int knot_rrset_merge_no_dupl(void **r1, void **r2)
 //		return KNOT_EINVAL;
 //	}
 
+	
 //dbg_rrset_exec_detail(
 //	char *name = knot_dname_to_str(rrset1->owner);
 //	dbg_rrset_detail("rrset: merge_no_dupl: Merging %s.\n", name);
