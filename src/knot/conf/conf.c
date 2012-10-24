@@ -27,8 +27,6 @@
 #include "knot/conf/conf.h"
 #include "knot/common.h"
 
-
-
 /*
  * Defaults.
  */

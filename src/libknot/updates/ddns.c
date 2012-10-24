@@ -628,6 +628,7 @@ int knot_ddns_process_update(const knot_zone_contents_t *zone,
 
 	if (query == NULL || changeset == NULL || rcode == NULL) {
 		return KNOT_EINVAL;
+<<<<<<< HEAD
 	}
 
 	int ret = KNOT_EOK;
