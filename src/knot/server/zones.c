@@ -2822,15 +2822,13 @@ int zones_process_update(knot_nameserver_t *nameserver,
 		rcode = KNOT_RCODE_SERVFAIL;
 		break;
 	}
-	
+
 	/*
-	 * Sigh...normally we would return REFUSED when the zone is not found,
-	 * but RFC2136 requires NOTAUTH.
+	 * DDNS Zone Section check (RFC2136, Section 3.1).
+	 * Do not have to check the return value, the RCODE is sufficient.
 	 */
-	if (!zone || knot_packet_qclass(query) != KNOT_CLASS_IN) {
-		rcode = KNOT_RCODE_NOTAUTH;
-	}
-	
+	(void)knot_ddns_check_zone(zone, query, &rcode);
+
 	/* Check if zone is not discarded. */
 	if (zone && (knot_zone_flags(zone) & KNOT_ZONE_DISCARDED)) {
 		rcode = KNOT_RCODE_SERVFAIL;
@@ -2841,6 +2839,10 @@ int zones_process_update(knot_nameserver_t *nameserver,
 		               knot_strerror(rcode));
 
 		// Error response without Question section
+		/*! \todo Change to error_response_from_query() to retain the
+		 *        Question section if possible - see
+		 *        normal_query_answer().
+		 */
 		knot_ns_error_response_from_query_wire(nameserver,
 		                          knot_packet_wireformat(query),
 		                          knot_packet_size(query),
@@ -2849,7 +2851,9 @@ int zones_process_update(knot_nameserver_t *nameserver,
 		rcu_read_unlock();
 		return KNOT_EOK;
 	}
-	
+
+
+
 	/* Lock zone for xfers. */
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 	pthread_mutex_lock(&zd->xfr_in.lock);

@@ -3567,14 +3567,6 @@ int knot_ns_prep_update_response(knot_nameserver_t *nameserver,
 		resp_max_size = MAX_UDP_PAYLOAD;
 	}
 
-	/*
-	 * DDNS Zone Section check (RFC2136, Section 3.1), part 1:
-	 *   Check if QTYPE==SOA.
-	 */
-	if (knot_packet_qtype(query) != KNOT_RRTYPE_SOA) {
-		return KNOT_EMALF;
-	}
-
 	ret = knot_ns_prepare_response(query, resp, resp_max_size, 0);
 	if (ret != KNOT_EOK) {
 		return KNOT_ERROR;
@@ -4239,18 +4231,19 @@ int knot_ns_process_update(const knot_packet_t *query,
 	*rcode = KNOT_RCODE_NOERROR;
 	
 	// 1) Check zone
-	dbg_ns_verb("Checking zone for DDNS.\n");
-	int ret = knot_ddns_check_zone(zone, query, rcode);
-	if (ret != KNOT_EOK) {
-		dbg_ns("Failed to check zone for update: "
-		       "%s.\n", knot_strerror(ret));
-		return ret;
-	}
+	// Already done
+//	dbg_ns_verb("Checking zone for DDNS.\n");
+//	int ret = knot_ddns_check_zone(zone, query, rcode);
+//	if (ret != KNOT_EOK) {
+//		dbg_ns("Failed to check zone for update: "
+//		       "%s.\n", knot_strerror(ret));
+//		return ret;
+//	}
 
 	// 2) Convert prerequisities
 	dbg_ns_verb("Processing prerequisities.\n");
 	knot_ddns_prereq_t *prereqs = NULL;
-	ret = knot_ddns_process_prereqs(query, &prereqs, rcode);
+	int ret = knot_ddns_process_prereqs(query, &prereqs, rcode);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to check zone for update: "
 		       "%s.\n", knot_strerror(ret));
