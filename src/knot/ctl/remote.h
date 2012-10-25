@@ -27,14 +27,16 @@
 #ifndef _KNOTD_REMOTE_H_
 #define _KNOTD_REMOTE_H_
 
+#include <config.h>
 #include "knot/conf/conf.h"
 #include "libknot/packet/packet.h"
 #include "libknot/rrset.h"
 #include "libknot/rdata.h"
+#include "knot/server/server.h"
 
 #define REMOTE_DPORT 5553
 
-typedef struct server_t server_t;
+struct server_t;
 
 int remote_bind(conf_iface_t *desc);
 int remote_unbind(int r);

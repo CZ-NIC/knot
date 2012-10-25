@@ -33,6 +33,9 @@
 #define _KNOTD_FDSET_H_
 
 #include <stddef.h>
+#ifdef HAVE_SYS_SELECT_H
+#include <sys/select.h>
+#endif
 #include "skip-list.h"
 #include "mempattern.h"
 

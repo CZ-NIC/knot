@@ -20,9 +20,16 @@
 #include <unistd.h>
 #include <string.h>
 #include <time.h>
-#include <sys/select.h>
-#include <sys/stat.h>
 #include <getopt.h>
+#ifdef HAVE_SYS_STAT_H
+#include <sys/stat.h>
+#endif
+#ifdef HAVE_SYS_SELECT_H
+#include <sys/select.h>
+#endif
+#ifdef HAVE_SYS_WAIT_H
+#include <sys/wait.h>
+#endif
 
 #include "knot/common.h"
 #include "knot/ctl/process.h"

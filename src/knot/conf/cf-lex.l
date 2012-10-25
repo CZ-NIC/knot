@@ -68,7 +68,7 @@ BLANK [ \t\n]
 [\!\$\%\^\&\*\(\)\/\+\-\@\{\}\;\,] { return yytext[0]; }
 system          { lval.t = yytext;  return SYSTEM; }
 identity        { lval.t = yytext; return IDENTITY; }
-version         { lval.t = yytext; return VERSION; }
+version         { lval.t = yytext; return SVERSION; }
 nsid            { lval.t = yytext; return NSID; }
 storage         { lval.t = yytext; return STORAGE; }
 key             { lval.t = yytext; return KEY; }

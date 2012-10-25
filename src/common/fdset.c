@@ -244,9 +244,6 @@ int fdset_sweep(fdset_t* fdset, void(*cb)(fdset_t*, int, void*), void *data)
  */
 #include <sys/time.h>
 #include <sys/types.h>
-#ifdef HAVE_SYS_SELECT_H
-#include <sys/select.h>
-#endif
 #include <unistd.h>
 #include <signal.h>
 

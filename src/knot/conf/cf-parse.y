@@ -256,7 +256,7 @@ static int conf_mask(void* scanner, int nval, int prefixlen) {
 %token <tok> SIZE
 %token <tok> BOOL
 
-%token <tok> SYSTEM IDENTITY VERSION NSID STORAGE KEY KEYS
+%token <tok> SYSTEM IDENTITY SVERSION NSID STORAGE KEY KEYS
 %token <tok> TSIG_ALGO_NAME
 %token <tok> WORKERS
 %token <tok> USER
@@ -376,7 +376,7 @@ interfaces:
 
 system:
    SYSTEM '{'
- | system VERSION TEXT ';' { new_config->version = $3.t; }
+ | system SVERSION TEXT ';' { new_config->version = $3.t; }
  | system IDENTITY TEXT ';' { new_config->identity = $3.t; }
  | system NSID HEXSTR ';' { new_config->nsid = $3.t; new_config->nsid_len = $3.l; }
  | system NSID TEXT ';' { new_config->nsid = $3.t; new_config->nsid_len = strlen(new_config->nsid); }
