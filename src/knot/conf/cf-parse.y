@@ -15,7 +15,6 @@
 #include "common/sockaddr.h"
 #include "libknot/dname.h"
 #include "knot/conf/conf.h"
-#include "knot/ctl/remote.h"
 #include "libknotd_la-cf-parse.h" /* Automake generated header. */
 
 extern int cf_lex (YYSTYPE *lvalp, void *scanner);
@@ -43,7 +42,7 @@ static void conf_init_iface(void *scanner, char* ifname, int port)
 
 static void conf_start_iface(void *scanner, char* ifname)
 {
-   conf_init_iface(scanner, ifname, CONFIG_DEFAULT_PORT);
+   conf_init_iface(scanner, ifname, -1);
    add_tail(&new_config->ifaces, &this_iface->n);
    ++new_config->ifaces_count;
 }
@@ -313,7 +312,7 @@ interface_start:
 
 interface:
  | interface PORT NUM ';' {
-     if (this_iface->port != CONFIG_DEFAULT_PORT) {
+     if (this_iface->port > 0) {
        cf_error(scanner, "only one port definition is allowed in interface section\n");
      } else {
        this_iface->port = $3.i;
@@ -333,7 +332,7 @@ interface:
      } else {
        this_iface->address = $3.t;
        this_iface->family = AF_INET;
-       if (this_iface->port != CONFIG_DEFAULT_PORT) {
+       if (this_iface->port > 0) {
 	 cf_error(scanner, "only one port definition is allowed in interface section\n");
        } else {
 	 this_iface->port = $5.i;
@@ -354,7 +353,7 @@ interface:
      } else {
        this_iface->address = $3.t;
        this_iface->family = AF_INET6;
-       if (this_iface->port != CONFIG_DEFAULT_PORT) {
+       if (this_iface->port > 0) {
           cf_error(scanner, "only one port definition is allowed in interface section\n");
        } else {
           this_iface->port = $5.i;
@@ -822,7 +821,7 @@ log_start:
 log: LOG '{' log_start log_end;
 
 ctl_listen_start:
-  LISTEN_ON { conf_init_iface(scanner, NULL, REMOTE_DPORT); }
+  LISTEN_ON { conf_init_iface(scanner, NULL, -1); }
   ;
 
 ctl_allow_start:

@@ -340,6 +340,22 @@ int zones_process_update_response(knot_nameserver_t *ns,
                                   knot_ns_xfr_t *data,
                                   knot_packet_t *packet, uint8_t *rwire,
                                   size_t *rsize, size_t maxlen);
+
+/*!
+ * \brief Verify TSIG in query.
+ *
+ * \param query Query packet.
+ * \param key TSIG key used for this query.
+ * \param rcode Dst for resulting RCODE.
+ * \param tsig_rcode Dst for resulting TSIG RCODE.
+ * \param tsig_prev_time_signed Dst for previout time signed.
+ *
+ * \return KNOT_EOK if verified or error if not.
+ */
+int zones_verify_tsig_query(const knot_packet_t *query,
+                            const knot_key_t *key,
+                            knot_rcode_t *rcode, uint16_t *tsig_rcode,
+                            uint64_t *tsig_prev_time_signed);
 #endif // _KNOTD_ZONES_H_
 
 /*! @} */

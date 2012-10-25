@@ -26,6 +26,7 @@
 #include <urcu.h>
 #include "knot/conf/conf.h"
 #include "knot/common.h"
+#include "knot/ctl/remote.h"
 
 /*
  * Defaults.
@@ -144,6 +145,17 @@ static int conf_process(conf_t *conf)
 	}
 	if (conf->max_conn_reply < 1) {
 		conf->max_conn_reply = CONFIG_REPLY_WD;
+	}
+	
+	// Postprocess interfaces
+	conf_iface_t *cfg_if = NULL;
+	WALK_LIST(cfg_if, conf->ifaces) {
+		if (cfg_if->port <= 0) {
+			cfg_if->port = CONFIG_DEFAULT_PORT;
+		}
+	}
+	if (conf->ctl.iface && conf->ctl.iface->port <= 0) {
+		conf->ctl.iface->port = REMOTE_DPORT;
 	}
 
 	// Postprocess zones

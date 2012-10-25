@@ -459,17 +459,41 @@ int remote_process(server_t *s, int r, uint8_t* buf, size_t buflen)
 		
 		/* Check ACL list. */
 		rcu_read_lock();
+		knot_key_t *k = NULL;
 		acl_key_t *m = NULL;
+		knot_rcode_t ts_rc = 0;
+		uint16_t ts_trc = 0;
+		uint64_t ts_tmsigned = 0;
+		const knot_rrset_t *tsig_rr = knot_packet_tsig(pkt);
 		if (acl_match(conf()->ctl.acl, &a, &m) == ACL_DENY) {
 			knot_packet_free(&pkt);
 			socket_close(c);
 			rcu_read_unlock();
 			return KNOT_EACCES;
 		}
+		if (m && m->val) {
+			k = ((conf_iface_t *)m->val)->key;
+		}
 		rcu_read_unlock();
 		
 		/* Check TSIG. */
-		/*! \todo #2035 */
+		if (k) {
+			if (!tsig_rr) {
+				knot_packet_free(&pkt);
+				socket_close(c);
+				return KNOT_EACCES;
+			}
+			ret = zones_verify_tsig_query(pkt, k, &ts_rc,
+			                              &ts_trc, &ts_tmsigned);
+			if (ret != KNOT_EOK) {
+				dbg_server("remote: failed to verify TSIG, "
+				           "RC: %u TSIG_RC: %u\n",
+				           ts_rc, ts_trc);
+				knot_packet_free(&pkt);
+				socket_close(c);
+				return KNOT_EACCES;
+			}
+		}
 		
 		/* Answer packet. */
 		wire_len = buflen;

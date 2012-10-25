@@ -1855,117 +1855,6 @@ dbg_zones_exec(
 
 /*----------------------------------------------------------------------------*/
 
-static int zones_verify_tsig_query(const knot_packet_t *query,
-                                   const knot_rrset_t *tsig_rr,
-                                   const knot_key_t *key,
-                                   knot_rcode_t *rcode, uint16_t *tsig_rcode,
-                                   uint64_t *tsig_prev_time_signed)
-{
-	assert(tsig_rr != NULL);
-	assert(key != NULL);
-	assert(rcode != NULL);
-	assert(tsig_rcode != NULL);
-
-	/*
-	 * 1) Check if we support the requested algorithm.
-	 */
-	tsig_algorithm_t alg = tsig_rdata_alg(tsig_rr);
-	if (tsig_alg_digest_length(alg) == 0) {
-		log_answer_info("Unsupported digest algorithm "
-		                "requested, treating as bad key\n");
-		/*! \todo [TSIG] It is unclear from RFC if I
-		 *               should treat is as a bad key
-		 *               or some other error.
-		 */
-		*rcode = KNOT_RCODE_NOTAUTH;
-		*tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
-		return KNOT_TSIG_EBADKEY;
-	}
-
-	const knot_dname_t *kname = knot_rrset_owner(tsig_rr);
-	assert(kname != NULL);
-
-	/*
-	 * 2) Find the particular key used by the TSIG.
-	 *    Check not only name, but also the algorithm.
-	 */
-	if (key && kname && knot_dname_compare(key->name, kname) == 0
-	    && key->algorithm == alg) {
-		dbg_zones_verb("Found claimed TSIG key for comparison\n");
-	} else {
-		*rcode = KNOT_RCODE_NOTAUTH;
-		*tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
-		return KNOT_TSIG_EBADKEY;
-	}
-
-	/*
-	 * 3) Validate the query with TSIG.
-	 */
-	/* Prepare variables for TSIG */
-	/*! \todo These need to be saved to the response somehow. */
-	//size_t tsig_size = tsig_wire_maxsize(key);
-	size_t digest_max_size = tsig_alg_digest_length(key->algorithm);
-	//size_t digest_size = 0;
-	//uint64_t tsig_prev_time_signed = 0;
-	//uint8_t *digest = (uint8_t *)malloc(digest_max_size);
-	//memset(digest, 0 , digest_max_size);
-
-	/* Copy MAC from query. */
-	dbg_zones_verb("Validating TSIG from query\n");
-
-	//const uint8_t* mac = tsig_rdata_mac(tsig_rr);
-	size_t mac_len = tsig_rdata_mac_length(tsig_rr);
-
-	int ret = KNOT_EOK;
-
-	if (mac_len > digest_max_size) {
-		*rcode = KNOT_RCODE_FORMERR;
-		dbg_zones("MAC length %zu exceeds digest "
-		       "maximum size %zu\n", mac_len, digest_max_size);
-		return KNOT_EMALF;
-	} else {
-		//memcpy(digest, mac, mac_len);
-		//digest_size = mac_len;
-
-		/* Check query TSIG. */
-		ret = knot_tsig_server_check(tsig_rr,
-		                             knot_packet_wireformat(query),
-		                             knot_packet_size(query), key);
-		dbg_zones_verb("knot_tsig_server_check() returned %s\n",
-		               knot_strerror(ret));
-
-		/* Evaluate TSIG check results. */
-		switch(ret) {
-		case KNOT_EOK:
-			*rcode = KNOT_RCODE_NOERROR;
-			break;
-		case KNOT_TSIG_EBADKEY:
-			*tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
-			*rcode = KNOT_RCODE_NOTAUTH;
-			break;
-		case KNOT_TSIG_EBADSIG:
-			*tsig_rcode = KNOT_TSIG_RCODE_BADSIG;
-			*rcode = KNOT_RCODE_NOTAUTH;
-			break;
-		case KNOT_TSIG_EBADTIME:
-			*tsig_rcode = KNOT_TSIG_RCODE_BADTIME;
-			// store the time signed from the query
-			*tsig_prev_time_signed = tsig_rdata_time_signed(tsig_rr);
-			*rcode = KNOT_RCODE_NOTAUTH;
-			break;
-		case KNOT_EMALF:
-			*rcode = KNOT_RCODE_FORMERR;
-			break;
-		default:
-			*rcode = KNOT_RCODE_SERVFAIL;
-		}
-	}
-
-	return ret;
-}
-
-/*----------------------------------------------------------------------------*/
-
 static int zones_check_tsig_query(const knot_zone_t *zone,
                                   knot_packet_t *query,
                                   const sockaddr_t *addr,
@@ -2014,7 +1903,7 @@ static int zones_check_tsig_query(const knot_zone_t *zone,
 		if (*tsig_key_zone != NULL) {
 			// everything OK, so check TSIG
 			dbg_zones_verb("Verifying TSIG.\n");
-			ret = zones_verify_tsig_query(query, tsig, *tsig_key_zone,
+			ret = zones_verify_tsig_query(query, *tsig_key_zone,
 			                              rcode, tsig_rcode,
 			                              tsig_prev_time_signed);
 		} else {
@@ -4126,5 +4015,116 @@ int zones_process_update_response(knot_nameserver_t *ns,
 	
 	/* As it is a response, do not reply back. */
 	*rsize = 0;
+	return ret;
+}
+
+
+int zones_verify_tsig_query(const knot_packet_t *query,
+                            const knot_key_t *key,
+                            knot_rcode_t *rcode, uint16_t *tsig_rcode,
+                            uint64_t *tsig_prev_time_signed)
+{
+	assert(key != NULL);
+	assert(rcode != NULL);
+	assert(tsig_rcode != NULL);
+	
+	const knot_rrset_t *tsig_rr = knot_packet_tsig(query);
+	assert(tsig_rr != NULL);
+
+	/*
+	 * 1) Check if we support the requested algorithm.
+	 */
+	tsig_algorithm_t alg = tsig_rdata_alg(tsig_rr);
+	if (tsig_alg_digest_length(alg) == 0) {
+		log_answer_info("Unsupported digest algorithm "
+		                "requested, treating as bad key\n");
+		/*! \todo [TSIG] It is unclear from RFC if I
+		 *               should treat is as a bad key
+		 *               or some other error.
+		 */
+		*rcode = KNOT_RCODE_NOTAUTH;
+		*tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
+		return KNOT_TSIG_EBADKEY;
+	}
+
+	const knot_dname_t *kname = knot_rrset_owner(tsig_rr);
+	assert(kname != NULL);
+
+	/*
+	 * 2) Find the particular key used by the TSIG.
+	 *    Check not only name, but also the algorithm.
+	 */
+	if (key && kname && knot_dname_compare(key->name, kname) == 0
+	    && key->algorithm == alg) {
+		dbg_zones_verb("Found claimed TSIG key for comparison\n");
+	} else {
+		*rcode = KNOT_RCODE_NOTAUTH;
+		*tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
+		return KNOT_TSIG_EBADKEY;
+	}
+
+	/*
+	 * 3) Validate the query with TSIG.
+	 */
+	/* Prepare variables for TSIG */
+	/*! \todo These need to be saved to the response somehow. */
+	//size_t tsig_size = tsig_wire_maxsize(key);
+	size_t digest_max_size = tsig_alg_digest_length(key->algorithm);
+	//size_t digest_size = 0;
+	//uint64_t tsig_prev_time_signed = 0;
+	//uint8_t *digest = (uint8_t *)malloc(digest_max_size);
+	//memset(digest, 0 , digest_max_size);
+
+	/* Copy MAC from query. */
+	dbg_zones_verb("Validating TSIG from query\n");
+
+	//const uint8_t* mac = tsig_rdata_mac(tsig_rr);
+	size_t mac_len = tsig_rdata_mac_length(tsig_rr);
+
+	int ret = KNOT_EOK;
+
+	if (mac_len > digest_max_size) {
+		*rcode = KNOT_RCODE_FORMERR;
+		dbg_zones("MAC length %zu exceeds digest "
+		       "maximum size %zu\n", mac_len, digest_max_size);
+		return KNOT_EMALF;
+	} else {
+		//memcpy(digest, mac, mac_len);
+		//digest_size = mac_len;
+
+		/* Check query TSIG. */
+		ret = knot_tsig_server_check(tsig_rr,
+		                             knot_packet_wireformat(query),
+		                             knot_packet_size(query), key);
+		dbg_zones_verb("knot_tsig_server_check() returned %s\n",
+		               knot_strerror(ret));
+
+		/* Evaluate TSIG check results. */
+		switch(ret) {
+		case KNOT_EOK:
+			*rcode = KNOT_RCODE_NOERROR;
+			break;
+		case KNOT_TSIG_EBADKEY:
+			*tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
+			*rcode = KNOT_RCODE_NOTAUTH;
+			break;
+		case KNOT_TSIG_EBADSIG:
+			*tsig_rcode = KNOT_TSIG_RCODE_BADSIG;
+			*rcode = KNOT_RCODE_NOTAUTH;
+			break;
+		case KNOT_TSIG_EBADTIME:
+			*tsig_rcode = KNOT_TSIG_RCODE_BADTIME;
+			// store the time signed from the query
+			*tsig_prev_time_signed = tsig_rdata_time_signed(tsig_rr);
+			*rcode = KNOT_RCODE_NOTAUTH;
+			break;
+		case KNOT_EMALF:
+			*rcode = KNOT_RCODE_FORMERR;
+			break;
+		default:
+			*rcode = KNOT_RCODE_SERVFAIL;
+		}
+	}
+
 	return ret;
 }

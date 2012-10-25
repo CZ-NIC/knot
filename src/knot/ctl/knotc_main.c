@@ -620,9 +620,11 @@ int main(int argc, char **argv)
 		if (strchr(r_addr, ':')) { /* Dumb way to check for v6 addr. */
 			ctl_if->family = AF_INET6;
 		}
-		ctl_if->key = malloc(sizeof(knot_key_t));
-		if (ctl_if->key) {
-			memcpy(ctl_if->key, &r_key, sizeof(knot_key_t));
+		if (r_key.name) {
+			ctl_if->key = malloc(sizeof(knot_key_t));
+			if (ctl_if->key) {
+				memcpy(ctl_if->key, &r_key, sizeof(knot_key_t));
+			}
 		}
 	}
 	conf()->ctl.iface = ctl_if;
