@@ -64,7 +64,7 @@ static void conf_start_remote(void *scanner, char *remote)
 }
 
 static void conf_remote_set_via(void *scanner, char *item) {
-   /* Find existing node in remotes. */
+   /* Find existing node in interfaces. */
    node* r = 0; conf_iface_t* found = 0;
    WALK_LIST (r, new_config->ifaces) {
       if (strcmp(((conf_iface_t*)r)->name, item) == 0) {
@@ -76,7 +76,7 @@ static void conf_remote_set_via(void *scanner, char *item) {
    /* Check */
    if (!found) {
       char buf[512];
-      snprintf(buf, sizeof(buf), "remote '%s' is not defined", item);
+      snprintf(buf, sizeof(buf), "interface '%s' is not defined", item);
       cf_error(scanner, buf);
    } else {
       sockaddr_set(&this_remote->via, found->family, found->address, 0);
@@ -277,6 +277,9 @@ static int conf_mask(void* scanner, int nval, int prefixlen) {
 %token <tok> NOTIFY_IN
 %token <tok> NOTIFY_OUT
 %token <tok> BUILD_DIFFS
+%token <tok> MAX_CONN_IDLE
+%token <tok> MAX_CONN_HS
+%token <tok> MAX_CONN_REPLY
 
 %token <tok> INTERFACES ADDRESS PORT
 %token <tok> IPA
@@ -415,6 +418,9 @@ system:
      
      free($3.t);
  }
+ | system MAX_CONN_IDLE INTERVAL ';' { new_config->max_conn_idle = $3.i; }
+ | system MAX_CONN_HS INTERVAL ';' { new_config->max_conn_hs = $3.i; }
+ | system MAX_CONN_REPLY INTERVAL ';' { new_config->max_conn_reply = $3.i; }
  ;
 
 keys:

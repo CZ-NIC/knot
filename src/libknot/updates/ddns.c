@@ -21,26 +21,22 @@
 #include "util/debug.h"
 #include "packet/packet.h"
 #include "consts.h"
+#include "common/mempattern.h"
 
 /*----------------------------------------------------------------------------*/
 // Copied from XFR - maybe extract somewhere else
 static int knot_ddns_prereq_check_rrsets(knot_rrset_t ***rrsets,
                                          size_t *count, size_t *allocated)
 {
-	int new_count = 0;
-	if (*count == *allocated) {
-		new_count = *allocated * 2;
-	}
-
-	knot_rrset_t **rrsets_new =
-		(knot_rrset_t **)calloc(new_count, sizeof(knot_rrset_t *));
-	if (rrsets_new == NULL) {
+	/* This is really confusing, it's ptr -> array of "knot_rrset_t*" */
+	char *arr = (char*)*rrsets;
+	int ret = 0;
+	ret = mreserve(&arr, sizeof(knot_rrset_t*), *count + 1, 0, allocated);
+	if (ret < 0) {
 		return KNOT_ENOMEM;
 	}
-
-	memcpy(rrsets_new, *rrsets, (*count) * sizeof(knot_rrset_t *));
-	*rrsets = rrsets_new;
-	*allocated = new_count;
+	
+	*rrsets = (knot_rrset_t**)arr;
 
 	return KNOT_EOK;
 }
@@ -50,20 +46,15 @@ static int knot_ddns_prereq_check_rrsets(knot_rrset_t ***rrsets,
 static int knot_ddns_prereq_check_dnames(knot_dname_t ***dnames,
                                          size_t *count, size_t *allocated)
 {
-	int new_count = 0;
-	if (*count == *allocated) {
-		new_count = *allocated * 2;
-	}
-
-	knot_dname_t **dnames_new =
-		(knot_dname_t **)calloc(new_count, sizeof(knot_dname_t *));
-	if (dnames_new == NULL) {
+	/* This is really confusing, it's ptr -> array of "knot_dname_t*" */
+	char *arr = (char*)*dnames;
+	int ret = 0;
+	ret = mreserve(&arr, sizeof(knot_dname_t*), *count + 1, 0, allocated);
+	if (ret < 0) {
 		return KNOT_ENOMEM;
 	}
-
-	memcpy(dnames_new, *dnames, (*count) * sizeof(knot_dname_t *));
-	*dnames = dnames_new;
-	*allocated = new_count;
+	
+	*dnames = (knot_dname_t**)arr;
 
 	return KNOT_EOK;
 }
@@ -188,6 +179,55 @@ static int knot_ddns_add_prereq(knot_ddns_prereq_t *prereqs,
 
 /*----------------------------------------------------------------------------*/
 
+static int knot_ddns_check_remove_rr(knot_changeset_t *changeset,
+                                     const knot_rrset_t *rr)
+{
+	for (int i = 1; i < changeset->add_count; ++i) {
+		// Removing RR(s) from this owner
+		if (knot_dname_compare(knot_rrset_owner(rr),
+		                       knot_rrset_owner(changeset->add[i])) == 0) {
+			// Removing one or all RRSets
+			if (knot_rrset_class(rr) == KNOT_CLASS_ANY) {
+				if (knot_rrset_type(rr)
+				    == knot_rrset_type(changeset->add[i])
+				    || knot_rrset_type(rr) == KNOT_RRTYPE_ANY) {
+					knot_rrset_t *remove =
+						knot_changeset_remove_rr(
+						    changeset->add,
+						    &changeset->add_count, i);
+					knot_rrset_deep_free(&remove, 1, 1, 1);
+				}
+			} else if (knot_rrset_type(rr)
+			           == knot_rrset_type(changeset->add[i])){
+				/* All other classes are checked in
+				 * knot_ddns_check_update().
+				 */
+				assert(knot_rrset_class(rr) == KNOT_CLASS_NONE);
+
+				// Removing specific RR from a RRSet
+				knot_rdata_t *rdata = knot_rrset_remove_rdata(
+				                        changeset->add[i],
+				                        knot_rrset_rdata(rr));
+				knot_rdata_deep_free(&rdata,
+				         knot_rrset_type(changeset->add[i]), 1);
+				// if the RRSet is empty, remove from changeset
+				if (knot_rrset_rdata_rr_count(changeset->add[i])
+				    == 0) {
+					knot_rrset_t *remove =
+						knot_changeset_remove_rr(
+						    changeset->add,
+						    &changeset->add_count, i);
+					knot_rrset_deep_free(&remove, 1, 1, 1);
+				}
+			}
+		}
+	}
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 static int knot_ddns_add_update(knot_changeset_t *changeset,
                          const knot_rrset_t *rrset, uint16_t qclass)
 {
@@ -215,12 +255,29 @@ static int knot_ddns_add_update(knot_changeset_t *changeset,
 		                            rrset_copy);
 	} else {
 		// this RRSet marks removal of something from zone
-		// what should be removed is distinguished when applying
+
+		/* To imitate in-order processing of UPDATE RRs, we must check
+		 * If this REMOVE RR does not affect any of the previous
+		 * ADD RRs in this update. If yes, they must be removed from
+		 * the changeset.
+		 *
+		 * See https://git.nic.cz/redmine/issues/937#note-14 and below.
+		 */
+
+		// TODO: finish, disabled for now
+
 		dbg_ddns_detail(" * removing RR %p\n", rrset_copy);
-		ret = knot_changeset_add_rr(&changeset->remove,
-		                            &changeset->remove_count,
-		                            &changeset->remove_allocated,
-		                            rrset_copy);
+
+		ret = knot_ddns_check_remove_rr(changeset, rrset_copy);
+		if (ret != KNOT_EOK) {
+			knot_rrset_deep_free(&rrset_copy, 1, 1, 1);
+			return ret;
+		}
+
+//		ret = knot_changeset_add_rr(&changeset->remove,
+//		                            &changeset->remove_count,
+//		                            &changeset->remove_allocated,
+//		                            rrset_copy);
 	}
 
 	return ret;
@@ -332,15 +389,9 @@ static int knot_ddns_check_not_exist(const knot_zone_contents_t *zone,
 	} else if ((found = knot_node_rrset(node, knot_rrset_type(rrset)))
 	            == NULL) {
 		return KNOT_EOK;
-	} else {
-		// do not have to compare the header, it is already done
-		assert(knot_rrset_type(found) == knot_rrset_type(rrset));
-		assert(knot_dname_compare(knot_rrset_owner(found),
-		                          knot_rrset_owner(rrset)) == 0);
-		if (knot_rrset_compare_rdata(found, rrset) <= 0) {
-			return KNOT_EOK;
-		}
 	}
+	
+	/* RDATA is always empty for simple RRset checks. */
 
 	*rcode = KNOT_RCODE_YXRRSET;
 	return KNOT_EPREREQ;
@@ -413,6 +464,7 @@ int knot_ddns_check_zone(const knot_zone_contents_t *zone,
                          const knot_packet_t *query, knot_rcode_t *rcode)
 {
 	if (zone == NULL || query == NULL || rcode == NULL) {
+		*rcode = KNOT_RCODE_SERVFAIL;
 		return KNOT_EINVAL;
 	}
 
@@ -652,22 +704,27 @@ void knot_ddns_prereqs_free(knot_ddns_prereq_t **prereq)
 	for (i = 0; i < (*prereq)->exist_count; ++i) {
 		knot_rrset_deep_free(&(*prereq)->exist[i], 1, 1, 1);
 	}
+	free((*prereq)->exist);
 
 	for (i = 0; i < (*prereq)->exist_full_count; ++i) {
 		knot_rrset_deep_free(&(*prereq)->exist_full[i], 1, 1, 1);
 	}
+	free((*prereq)->exist_full);
 
 	for (i = 0; i < (*prereq)->not_exist_count; ++i) {
 		knot_rrset_deep_free(&(*prereq)->not_exist[i], 1, 1, 1);
 	}
+	free((*prereq)->not_exist);
 
 	for (i = 0; i < (*prereq)->in_use_count; ++i) {
 		knot_dname_free(&(*prereq)->in_use[i]);
 	}
+	free((*prereq)->in_use);
 
 	for (i = 0; i < (*prereq)->not_in_use_count; ++i) {
 		knot_dname_free(&(*prereq)->not_in_use[i]);
 	}
+	free((*prereq)->not_in_use);
 
 	free(*prereq);
 	*prereq = NULL;

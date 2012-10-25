@@ -170,9 +170,11 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 			char r_addr[SOCKADDR_STRLEN];
 			sockaddr_tostr(&addr, r_addr, sizeof(r_addr));
 			int r_port = sockaddr_portnum(&addr);
+			rcu_read_lock();
 			log_server_warning("Couldn't receive query from '%s@%d'"
 			                  " within the time limit of %ds.\n",
-			                   r_addr, r_port, TCP_ACTIVITY_WD);
+			                   r_addr, r_port, conf()->max_conn_idle);
+			rcu_read_unlock();
 		}
 		return KNOT_ECONNREFUSED;
 	}
@@ -254,7 +256,7 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 //		                                  KNOT_RCODE_NOTIMPL,
 //		                                  qbuf, &resp_len);
 		res = zones_process_update(ns, packet, &addr, qbuf, &resp_len,
-		                           NS_TRANSPORT_TCP);
+		                           fd, NS_TRANSPORT_TCP);
 //		res = KNOT_EOK;
 		break;
 		
@@ -324,7 +326,9 @@ int tcp_accept(int fd)
 		/* Set recv() timeout. */
 #ifdef SO_RCVTIMEO
 		struct timeval tv;
-		tv.tv_sec = TCP_ACTIVITY_WD;
+		rcu_read_lock();
+		tv.tv_sec = conf()->max_conn_idle;
+		rcu_read_unlock();
 		tv.tv_usec = 0;
 		if (setsockopt(incoming, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
 			log_server_warning("Couldn't set up TCP connection "
@@ -556,6 +560,12 @@ int tcp_loop_worker(dthread_t *thread)
 		if (nfds < 0) {
 			continue;
 		}
+		
+		/* Establish timeouts. */
+		rcu_read_lock();
+		int max_idle = conf()->max_conn_idle;
+		int max_hs = conf()->max_conn_hs;
+		rcu_read_unlock();
 
 		/* Process incoming events. */
 		dbg_net_verb("tcp: worker %p registered %d events\n",
@@ -576,19 +586,19 @@ int tcp_loop_worker(dthread_t *thread)
 				             w, client);
 				fdset_add(w->fdset, client, OS_EV_READ);
 				fdset_set_watchdog(w->fdset, client,
-				                   TCP_HANDSHAKE_WD);
+				                   max_hs);
 				dbg_net("tcp: watchdog for fd=%d set to %ds\n",
-				        client, TCP_HANDSHAKE_WD);
+				        client, max_hs);
 			} else {
 				/* Handle other events. */
 				int ret = tcp_handle(w, it.fd, qbuf,
 				                     TCP_BUFFER_SIZE);
 				if (ret == KNOT_EOK) {
 					fdset_set_watchdog(w->fdset, it.fd,
-					                   TCP_ACTIVITY_WD);
+					                   max_idle);
 					dbg_net("tcp: watchdog for fd=%d "
 					        "set to %ds\n",
-					        it.fd, TCP_ACTIVITY_WD);
+					        it.fd, max_idle);
 				}
 				/*! \todo Refactor to allow erase on iterator.*/
 				if (ret == KNOT_ECONNREFUSED) {

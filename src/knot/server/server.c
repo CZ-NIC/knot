@@ -267,6 +267,8 @@ static int server_bind_sockets(server_t *server)
 		if (found_match) {
 			rem_node(m);
 		} else {
+			log_server_info("Binding to interface %s port %d.\n",
+			                cfg_if->address, cfg_if->port);
 
 			/* Create new interface. */
 			m = malloc(sizeof(iface_t));
@@ -274,9 +276,6 @@ static int server_bind_sockets(server_t *server)
 				free(m);
 				m = 0;
 			}
-
-			log_server_info("Binding to interface %s port %d.\n",
-			                cfg_if->address, cfg_if->port);
 		}
 
 		/* Move to new list. */
@@ -636,7 +635,8 @@ int server_refresh(server_t *server)
 		if (zd->xfr_in.timer) {
 			evsched_cancel(sch, zd->xfr_in.timer);
 			evsched_schedule(sch, zd->xfr_in.timer,
-			                 tls_rand() * 1000);
+			                 tls_rand() * 500 + i*200);
+			/* Cumulative delay. */
 		}
 	}
 	

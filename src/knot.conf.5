@@ -1,4 +1,4 @@
-.TH "knot.conf" "5" "August 2012" "CZ.NIC Labs" "Knot DNS, version 1.1"
+.TH "knot.conf" "5" "August 2012" "CZ.NIC Labs" "Knot DNS, version 1.1.1-rc1"
 .SH "NAME"
 .LP
 .B knot.conf
@@ -48,6 +48,25 @@ system {
   # User for running server
   # May also specify user.group (f.e. knot.users)
   user root;
+
+  # Maximum idle time between requests on a TCP connection
+  # It is also possible to suffix with unit size [s/m/h/d]
+  # f.e. 1s = 1 second, 1m = 1 minute, 1h = 1 hour, 1d = 1 day
+  # Default: 60s
+  max-conn-idle 60s;
+
+  # Maximum time between newly accepted TCP connection and first query
+  # This is useful to disconnect inactive connections faster
+  # It is also possible to suffix with unit size [s/m/h/d]
+  # f.e. 1s = 1 second, 1m = 1 minute, 1h = 1 hour, 1d = 1 day
+  # Default: 10s
+  max-conn-handshake 10s;
+
+  # Maximum time to wait for a reply to SOA query
+  # It is also possible to suffix with unit size [s/m/h/d]
+  # f.e. 1s = 1 second, 1m = 1 minute, 1h = 1 hour, 1d = 1 day
+  # Default: 10s
+  max-conn-reply 10s;
 }
 
 # Section 'keys' contains list of TSIG keys
