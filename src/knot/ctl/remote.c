@@ -263,7 +263,7 @@ int remote_bind(conf_iface_t *desc)
 		log_server_error("Couldn't create socket for remote "
 				 "control interface - %s",
 				 knot_strerror(s));
-		return -1;
+		return KNOT_ERROR;
 	}
 	
 	/* Bind to interface and start listening. */
@@ -276,7 +276,7 @@ int remote_bind(conf_iface_t *desc)
 		log_server_error("Could not bind to "
 				 "remote control interface %s port %d.\n",
 				 desc->address, desc->port);
-		return -1;
+		return r;
 	}
 	
 	return s;
@@ -324,7 +324,7 @@ int remote_recv(int r, sockaddr_t *a, uint8_t* buf, size_t *buflen)
 	return c;
 }
 
-int remote_parse(knot_packet_t* pkt, uint8_t* buf, size_t buflen)
+int remote_parse(knot_packet_t* pkt, const uint8_t* buf, size_t buflen)
 {
 	knot_packet_type_t qtype = KNOT_QUERY_NORMAL;
 	int ret = knot_ns_parse_packet(buf, buflen, pkt, &qtype);
@@ -643,7 +643,7 @@ char* remote_parse_txt(const knot_rdata_t *rd)
 		return NULL;
 	}
 	
-	/*! \todo #2035 how to check if TXT item length is OK? */
+	/* Packet parser should have already checked the packet validity. */
 	uint8_t item_len = ri->raw_data[1] & 0x00ff;
 	return strndup(((const char*)ri->raw_data) + 3, item_len);
 }
