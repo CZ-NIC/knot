@@ -189,6 +189,15 @@ int server_wait(server_t *server);
 int server_refresh(server_t *server);
 
 /*!
+ * \brief Reload server configuration.
+ *
+ * \param server Server instance.
+ * \param cf Config file path.
+ * \return 
+ */
+int server_reload(server_t *server, const char *cf);
+
+/*!
  * \brief Requests server to stop.
  *
  * \param server Server structure to be used for operation.

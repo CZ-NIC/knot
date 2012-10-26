@@ -646,6 +646,35 @@ int server_refresh(server_t *server)
 	return KNOT_EOK;
 }
 
+int server_reload(server_t *server, const char *cf)
+{
+	if (!server || !cf) {
+		return KNOT_EINVAL;
+	}
+	
+	log_server_info("Reloading configuration...\n");
+	int cf_ret = conf_open(cf);
+	switch (cf_ret) {
+	case KNOT_EOK:
+		log_server_info("Configuration "
+				"reloaded.\n");
+		break;
+	case KNOT_ENOENT:
+		log_server_error("Configuration "
+				 "file '%s' "
+				 "not found.\n",
+				 conf()->filename);
+		break;
+	default:
+		log_server_error("Configuration "
+				 "reload failed.\n");
+		break;
+	}
+	
+	/*! \todo Close and bind to new remote control. */
+	return cf_ret;
+}
+
 void server_stop(server_t *server)
 {
 	dbg_server("server: stopping server\n");

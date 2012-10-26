@@ -186,14 +186,7 @@ knot_rdata_t* remote_build_rdata(knot_rdata_item_t *i)
  */
 static int remote_c_reload(server_t *s, remote_cmdargs_t* a)
 {
-	dbg_server("remote: %s\n", __func__);
-	const char *cf = conf()->filename;
-	if (cf) {
-		/*! \todo #2035 common API, needs to update remote socket as well. */
-		return conf_open(cf);
-	}
-	
-	return KNOT_EOK;
+	return server_reload(s, conf()->filename);
 }
 
 /*!

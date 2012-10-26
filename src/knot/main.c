@@ -326,28 +326,8 @@ int main(int argc, char **argv)
 				break;
 			}
 			if (sig_req_reload) {
-				log_server_info("Reloading configuration...\n");
 				sig_req_reload = 0;
-				int cf_ret = conf_open(config_fn);
-				switch (cf_ret) {
-				case KNOT_EOK:
-					log_server_info("Configuration "
-							"reloaded.\n");
-					break;
-				case KNOT_ENOENT:
-					log_server_error("Configuration "
-							 "file '%s' "
-							 "not found.\n",
-							 conf()->filename);
-					break;
-				default:
-					log_server_error("Configuration "
-							 "reload failed.\n");
-					break;
-				}
-				
-				/*! \todo Close and bind to new remote control. */
-				/*! \todo What if remotely requests reload, it will close the conn? */
+				server_reload(server, config_fn);
 			}
 			if (sig_req_refresh) {
 				log_server_info("Refreshing slave zones...\n");
