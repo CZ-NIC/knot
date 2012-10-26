@@ -755,13 +755,57 @@ size_t rrset_rdata_item_size(const knot_rrset_t *rrset,
 		return 0;
 	}
 	
-	if (pos != rrset->rdata_count - 1) {
-		//All but last item
-		return rrset_rdata_offset(rrset, pos);
+	return rrset_rdata_offset(rrset, pos) -
+	                          rrset_rdata_offset(rrset, pos - 1);
+}
+
+size_t rrset_rdata_naptr_chunk_size(const knot_rrset_t *rrset,
+                                    size_t pos)
+{
+	if (rrset == NULL || rrset->rdata_count >= pos) {
+		return 0;
 	}
 	
-	/* Get pointer to last rdata item. Has to be traversed. */
+	size_t size = 0;
+	uint8_t rdata =*rrset_rdata_pointer(rrset, pos);
+	assert(rdata);
+	
+	/* Two shorts at the beginning. */
+	size += 4;
+	/* 3 binary TXTs with length in the first byte. */
+	for (int i = 0; i < 3; i++) {
+		size += *(rdata + size);
+	}
+	
+	/* 
+	 * Dname remaning, but we usually want to get to the DNAME, so
+	 * there's no need to include it in the returned size.
+	 */
+	
+	return size;
 }
+
+// This might not be needed, we have to store the last index anyway
+//	/*
+//	 * The last one has to be traversed.
+//	 */
+//	rdata_descriptor_t *desc = get_rdata_descriptor(rrset->type);
+//	assert(desc);
+//	size_t size = 0;
+//	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
+//		int type = desc->block_types[i];
+//		if (descriptor_item_is_dname(type)) {
+//			size += sizeof(knot_dname_t *);
+//		} else if (descriptor_item_is_fixed(type)) {
+//			size += type;
+//		} else if (descriptor_item_is_remainder(type)) {
+//			// size has to be computed from index
+//			size += 
+//		} else {
+//			//TODO naptr
+//		}
+//	}
+//}
 
 uint32_t rrset_rdata_size_total(const knot_rrset_t *rrset)
 {
@@ -769,9 +813,8 @@ uint32_t rrset_rdata_size_total(const knot_rrset_t *rrset)
 		return 0;
 	}
 	
-	/* Get pointer to last rdata item. Has to be traversed. */
-	uint8_t *rdata = rrset_rdata_pointer(rrset, rrset->rdata_count - 1);
-	
+	/* Last index denotes end of all RRs. */
+	return (rrset->rdata_indices[rrset->rdata_count]);
 }
 
 int knot_rrset_merge(void **r1, void **r2)
@@ -793,6 +836,10 @@ int knot_rrset_merge(void **r1, void **r2)
 	/* Reallocate actual RDATA array. */
 	void *tmp = realloc(rrset1->rdata, rrset_rdata_size_total(r1) +
 	                    rrset_rdata_size_total(r2));
+	if (tmp == NULL) {
+		ERR_ALLOC_FAILED;
+		return KNOT_ENOMEM;
+	}
 
 //	// no RDATA in RRSet 1
 //	assert(rrset1 && rrset2);
@@ -823,6 +870,10 @@ int knot_rrset_merge(void **r1, void **r2)
 //	rrset2->rdata = rrset1->rdata;
 
 //	return KNOT_EOK;
+}
+
+int knot_rrset_add_rdata()
+{
 }
 
 int knot_rrset_merge_no_dupl(void **r1, void **r2)
@@ -1225,7 +1276,7 @@ knot_dname_t **knot_rrset_rdata_get_next_dname_pointer(
 				(knot_dname_t *)(rdata +
 			                         offset);
 			if (next) {
-				toto je imho spatne, ale who knows
+//				toto je imho spatne, ale who knows TODO
 				return (knot_dname_t **)(rdata + offset);
 			}
 			
@@ -1239,7 +1290,21 @@ knot_dname_t **knot_rrset_rdata_get_next_dname_pointer(
 		} else if (descriptor_item_is_fixed(desc->block_types[i])) {
 			offset += desc->block_types[i];
 		} else if (!descriptor_item_is_remainder(desc->block_types[i])) {
-			//NAPTR todo
+			assert(rrset->type == KNOT_RRTYPE_NAPTR);
+			offset += rrset_rdata_naptr_chunk_size(rrset, pos);
+			if (next) {
+				return (knot_dname_t **)(rdata + offset);
+			}
+			
+			if (dname == *prev_dname) {
+				//we need to return next dname
+				next = 1;
+			}
+			
+			/* 
+			 * Offset does not contain dname from NAPTR yet.
+			 */
+			offset += sizeof(knot_dname_t *); // now it does
 		}
 	}
 	
