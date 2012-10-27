@@ -342,7 +342,24 @@ static int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
 			/* No need to move offset, this should be end anyway. */
 			assert(desc->block_types[i + 1] == KNOT_RDATA_WF_END);
 		} else {
-			/* NAPTR - TODO */
+			assert(rrset->type == KNOT_RRTYPE_NAPTR);
+			size_t naptr_chunk_size1 =
+				rrset_rdata_naptr_bin_chunk_size(rrset1, pos1);
+			size_t naptr_chunk_size2 =
+				rrset_rdata_naptr_bin_chunk_size(rrset2, pos2);
+			cmp = memcmp(r1, r2,
+			             naptr_chunk_size1 <= naptr_chunk_size2 ?
+			             naptr_chunk_size1 : naptr_chunk_size2);
+			if (ret != 0) {
+				return ret;
+			}
+		
+			/* Binary part was equal, we have to compare DNAMEs. */
+			assert(naptr_chunk_size1 == naptr_chunk_size2);
+			offset += naptr_chunk_size1;
+			cmp = knot_dname_compare((knot_dname_t *)(r1 + offset),
+			                         (knot_dname_t *)(r2 + offset));
+			offset += sizeof(knot_dname_t *);
 		}
 
 		if (cmp != 0) {
@@ -699,16 +716,20 @@ void knot_rrset_rdata_deep_free_one(knot_rrset_t *rrset, size_t pos,
 			if (descriptor_item_is_dname(desc->block_types[i])) {
 				knot_dname_t *dname =
 					(knot_dname_t *)rdata + offset;
-				knot_dname_retain(dname);
+				knot_dname_release(dname);
 				offset += sizeof(knot_dname_t *);
 			} else if (descriptor_item_is_fixed(
 			           desc->block_types[i])) {
 				offset += desc->block_types[i];
-			} else if (descriptor_item_is_remainder(
+			} else if (!descriptor_item_is_remainder(
 			           desc->block_types[i])) {
-				//OK
-			} else {
-				//NAPTR TODO
+				assert(rrset_type == KNOT_RRTYPE_NAPTR);
+				/* Skip the binary beginning. */
+				offset += rrset_rdata_naptr_bin_chunk_size(rrset,
+				                                       pos);
+				knot_dname_t *dname =
+					(knot_dname_t *)rdata + offset;
+				knot_dname_release(dname);
 			}
 		}
 	}
@@ -759,8 +780,8 @@ size_t rrset_rdata_item_size(const knot_rrset_t *rrset,
 	                          rrset_rdata_offset(rrset, pos - 1);
 }
 
-size_t rrset_rdata_naptr_chunk_size(const knot_rrset_t *rrset,
-                                    size_t pos)
+size_t rrset_rdata_naptr_bin_chunk_size(const knot_rrset_t *rrset,
+                                        size_t pos)
 {
 	if (rrset == NULL || rrset->rdata_count >= pos) {
 		return 0;
@@ -872,7 +893,9 @@ int knot_rrset_merge(void **r1, void **r2)
 //	return KNOT_EOK;
 }
 
-int knot_rrset_add_rdata()
+int knot_rrset_add_rdata(knot_rrset_t *rrset,
+                         uint8_t *rdata,
+                         size_t rdata_size)
 {
 }
 
@@ -1291,7 +1314,7 @@ knot_dname_t **knot_rrset_rdata_get_next_dname_pointer(
 			offset += desc->block_types[i];
 		} else if (!descriptor_item_is_remainder(desc->block_types[i])) {
 			assert(rrset->type == KNOT_RRTYPE_NAPTR);
-			offset += rrset_rdata_naptr_chunk_size(rrset, pos);
+			offset += rrset_rdata_naptr_bin_chunk_size(rrset, pos);
 			if (next) {
 				return (knot_dname_t **)(rdata + offset);
 			}
@@ -1303,6 +1326,8 @@ knot_dname_t **knot_rrset_rdata_get_next_dname_pointer(
 			
 			/* 
 			 * Offset does not contain dname from NAPTR yet.
+			 * It should not matter, since this block type
+			 * is the only one in the RR anyway, but to be sure...
 			 */
 			offset += sizeof(knot_dname_t *); // now it does
 		}
