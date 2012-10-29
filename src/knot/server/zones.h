@@ -336,10 +336,7 @@ int zones_cancel_notify(zonedata_t *zd, notify_ev_t *ev);
  * \brief Processes forwarded UPDATE response packet.
  * \todo #1291 move to appropriate section (DDNS).
  */
-int zones_process_update_response(knot_nameserver_t *ns,
-                                  knot_ns_xfr_t *data,
-                                  knot_packet_t *packet, uint8_t *rwire,
-                                  size_t *rsize, size_t maxlen);
+int zones_process_update_response(knot_ns_xfr_t *data, uint8_t *rwire, size_t *rsize);
 #endif // _KNOTD_ZONES_H_
 
 /*! @} */

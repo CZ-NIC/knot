@@ -2048,7 +2048,6 @@ static int zones_update_forward(int fd, knot_ns_transport_t ttype,
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 	
 	/* Create socket on random port. */
-	knot_key_t *dst_key = &zd->xfr_in.tsig_key;
 	sockaddr_t *master = &zd->xfr_in.master;
 	int stype = SOCK_DGRAM;
 	if (ttype == NS_TRANSPORT_TCP) {
@@ -2071,7 +2070,6 @@ static int zones_update_forward(int fd, knot_ns_transport_t ttype,
 	}
 	
 	/* Store query as pending. */
-	const knot_rrset_t *tsig = knot_packet_tsig(query);
 	knot_ns_xfr_t req;
 	memset(&req, 0, sizeof(knot_ns_xfr_t));
 	req.session = nfd;
@@ -2087,10 +2085,7 @@ static int zones_update_forward(int fd, knot_ns_transport_t ttype,
 	req.zone = zone;
 	
 	/* Create FORWARD query and send to primary. */
-	uint8_t *digest = NULL;
-	size_t digest_len = 0;
-	ret = knot_ns_create_forward_query(query, rwire, &rsize, dst_key,
-	                                   &digest, &digest_len);
+	ret = knot_ns_create_forward_query(query, rwire, &rsize);
 	if (nfd > -1) {
 		/* Connect on TCP. */
 		if (ttype == NS_TRANSPORT_TCP) {
@@ -2114,21 +2109,7 @@ static int zones_update_forward(int fd, knot_ns_transport_t ttype,
 		return KNOT_ENOMEM;
 	}
 	
-	/* Store forwarded query digest for response validation. */
-	req.tsig_key = dst_key;
-	req.digest = digest;
-	req.digest_size = digest_len;
-	
-	/* Store original query TSIG for response resigning. */
-	req.fwd_src_tsig = tsig_key;
-	req.tsig_data_size = tsig_rdata_mac_length(tsig);
-	req.tsig_data = malloc(req.tsig_data_size);
-	if (!req.tsig_data) {
-		req.tsig_data_size = 0;
-	} else {
-		memcpy(req.tsig_data, tsig_rdata_mac(tsig), req.tsig_data_size);
-	}
-	
+
 	req.packet_nr = orig_id;
 	memcpy(&req.addr, master, sizeof(sockaddr_t));
 	memcpy(&req.saddr, from, sizeof(sockaddr_t));
@@ -2918,9 +2899,6 @@ int zones_process_update(knot_nameserver_t *nameserver,
 		                                resp, resp_wire, rsize,
 		                                &rcode, addr, tsig_key_zone);
 	} else {
-		/*! \todo #1130 RFC2845 TSIG name doesn't match,
-		 *        should still forward to primary.
-		 *        But it should be forwarded intact. */
 		if (tsig_rcode != KNOT_RCODE_NOERROR) {
 			dbg_zones_verb("Failed TSIG check: %s, TSIG err: %u.\n",
 				       knot_strerror(ret), tsig_rcode);
@@ -4067,55 +4045,14 @@ int zones_cancel_notify(zonedata_t *zd, notify_ev_t *ev)
 	return KNOT_EOK;
 }
 
-int zones_process_update_response(knot_nameserver_t *ns,
-                                  knot_ns_xfr_t *data,
-                                  knot_packet_t *packet, uint8_t *rwire,
-                                  size_t *rsize, size_t maxlen)
+int zones_process_update_response(knot_ns_xfr_t *data, uint8_t *rwire, size_t *rsize)
 {
 	/* Processing of a forwarded response:
 	 * change packet id
-	 * if tsig was used:
-	 *    resign with originator TSIG
-	 * else
-	 *    clear AD flag
 	 */
 	int ret = KNOT_EOK;
 	knot_wire_set_id(rwire, (uint16_t)data->packet_nr);
 
-	/* Remove previous signature if exists. */
-	uint16_t arc = knot_wire_get_arcount(rwire);
-	if (arc > 0) {
-		knot_wire_set_arcount(rwire, --arc);
-		knot_wire_clear_ad(rwire); /* Clear AD in this case. */
-	}
-	const knot_rrset_t *tsig_rr = knot_packet_tsig(packet);
-	if (tsig_rr) {
-		size_t tsig_len = tsig_wire_actsize(tsig_rr);
-		*rsize -= tsig_len;
-	}
-	
-	/* Resign with originator TSIG key. */
-	knot_key_t *tsig_key = data->fwd_src_tsig;
-	if (tsig_key) {
-		size_t digest_len = tsig_alg_digest_length(tsig_key->algorithm);
-		uint8_t* digest = (uint8_t *)malloc(digest_len);
-		if (digest == NULL) {
-			*rsize = 0;
-			return KNOT_ENOMEM;
-		}
-		ret = knot_tsig_sign(rwire, rsize, maxlen,
-		                     data->tsig_data, data->tsig_data_size,
-		                     digest, &digest_len,
-		                     tsig_key, 0, 0);
-		free(digest);
-	}
-	
-	if (ret != KNOT_EOK) {
-		knot_ns_error_response_full(ns, packet, KNOT_RCODE_SERVFAIL,
-		                            rwire, rsize);
-		knot_wire_set_id(rwire, (uint16_t)data->packet_nr);
-	}
-	
 	/* Forward the response. */
 	ret = data->send(data->fwd_src_fd, &data->saddr, rwire, *rsize);
 	if (ret != *rsize) {

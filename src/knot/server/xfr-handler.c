@@ -325,8 +325,7 @@ static int xfr_process_udp_resp(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 		                              data->wire, &resp_len);
 		break;
 	case KNOT_RESPONSE_UPDATE:
-		ret = zones_process_update_response(w->ns, data, re, data->wire,
-		                                    &qlen, resp_len);
+		ret = zones_process_update_response(data, data->wire, &qlen);
 		if (ret == KNOT_EOK) {
 			log_server_info("%s Forwarded response.\n",
 			                data->msgpref);

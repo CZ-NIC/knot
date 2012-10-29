@@ -4279,18 +4279,12 @@ int knot_ns_process_update(const knot_packet_t *query,
 /*----------------------------------------------------------------------------*/
 
 int knot_ns_create_forward_query(const knot_packet_t *query,
-                                 uint8_t *query_wire, size_t *size,
-                                 knot_key_t *tsig_key,
-                                 uint8_t **digest, size_t *digest_len)
+                                 uint8_t *query_wire, size_t *size)
 {
 	/* Forward UPDATE query:
 	 * assign a new packet id
-	 * if has tsig:
-	 *    clear tsig and keep digest
-	 * resign if tsig is present on the next hop
 	 */
 	int ret = KNOT_EOK;
-	size_t maxlen = *size;
 	if (knot_packet_size(query) > *size) {
 		return KNOT_ESPACE;
 	}
@@ -4299,30 +4293,6 @@ int knot_ns_create_forward_query(const knot_packet_t *query,
 	       knot_packet_size(query));
 	*size = knot_packet_size(query);
 	knot_wire_set_id(query_wire, knot_random_id());
-	
-	/* Remove previous signature if exists. */
-	const knot_rrset_t *tsig_rr = knot_packet_tsig(query);
-	uint16_t arc = knot_wire_get_arcount(query_wire);
-	if (arc > 0) {
-		knot_wire_set_arcount(query_wire, --arc);
-	}
-	if (tsig_rr) {
-		size_t tsig_len = tsig_wire_actsize(tsig_rr);
-		*size -= tsig_len;
-	}
-	
-	/* Resign if TSIG for the next hop is set. */
-	if (tsig_key && tsig_key->name) {
-		/* Store digest of forwarded query for validation. */
-		*digest_len = tsig_alg_digest_length(tsig_key->algorithm);
-		*digest = (uint8_t *)malloc(*digest_len);
-		if (*digest == NULL) {
-			*size = 0;
-			return KNOT_ENOMEM;
-		}
-		ret = knot_tsig_sign(query_wire, size, maxlen, NULL, 0,
-		                     *digest, digest_len, tsig_key, 0, 0);
-	}
 
 	return ret;
 }

@@ -124,7 +124,6 @@ typedef struct knot_ns_xfr {
 	
 	/*! \note [DDNS] Update forwarding fields. */
 	int fwd_src_fd;           /*!< Query originator fd. */
-	knot_key_t *fwd_src_tsig; /*!< Key used by originator. */
 
 	uint16_t tsig_rcode;
 	uint64_t tsig_prev_time_signed;
@@ -354,9 +353,7 @@ int knot_ns_process_update(const knot_packet_t *query,
                            knot_changeset_t *changeset, knot_rcode_t *rcode);
 
 int knot_ns_create_forward_query(const knot_packet_t *query,
-                                 uint8_t *query_wire, size_t *size,
-                                 knot_key_t *tsig_key,
-                                 uint8_t **digest, size_t *digest_len);
+                                 uint8_t *query_wire, size_t *size);
 
 int knot_ns_process_forward_response(const knot_packet_t *response,
                                      uint16_t original_id,
