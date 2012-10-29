@@ -549,7 +549,7 @@ static char *rdata_time_to_string(knot_rdata_item_t item)
 
 static char *rdata_base32_to_string(knot_rdata_item_t item)
 {
-	int length;
+	int64_t length;
 	size_t size = rdata_item_size(item);
 	if (size == 0) {
 		char *ret = malloc(sizeof(char) * 2);
@@ -560,8 +560,8 @@ static char *rdata_base32_to_string(knot_rdata_item_t item)
 
 	size -= 1; // remove length byte from count
 	char *ret = NULL;
-	length = base32hex_encode_alloc((char *)rdata_item_data(item) + 1,
-	                                size, &ret);
+	length = base32hex_encode_alloc(rdata_item_data(item) + 1,
+	                                size, (uint8_t **)(&ret));
 	if (length > 0) {
 		return ret;
 	} else {

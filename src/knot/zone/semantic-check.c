@@ -958,16 +958,19 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 
 	/* check that next dname is in the zone */
 	uint8_t *next_dname_decoded = NULL;
-	size_t real_size = 0;
+	size_t  real_size = 0;
+	int64_t b32_ret;
 
-	if (((real_size = base32hex_encode_alloc(((char *)
-		rdata_item_data(&(nsec3_rrset->rdata->items[4]))) + 1,
+	if (((b32_ret = base32hex_encode_alloc((uint8_t *)
+		(rdata_item_data(&(nsec3_rrset->rdata->items[4]))) + 1,
 		rdata_item_size(&nsec3_rrset->rdata->items[4]) - 1,
-		(char **)&next_dname_decoded)) <= 0) ||
+		&next_dname_decoded)) <= 0) ||
 		(next_dname_decoded == NULL)) {
 		fprintf(stderr, "Could not encode base32 string!\n");
 		return KNOT_ERROR;
 	}
+
+	real_size = (size_t)b32_ret;
 
 	/* This is why we allocate maximum length of decoded string + 1 */
 //	memmove(next_dname_decoded + 1, next_dname_decoded, real_size);
@@ -1494,10 +1497,10 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 		uint8_t *next_dname_decoded = NULL;
 		size_t real_size = 0;
 
-		if (((real_size = base32hex_encode_alloc(((char *)
+		if (((real_size = base32hex_encode_alloc(((uint8_t *)
 			rdata_item_data(&(nsec3_rrset->rdata->items[4]))) + 1,
 			rdata_item_size(&nsec3_rrset->rdata->items[4]) - 1,
-			(char **)&next_dname_decoded)) <= 0) ||
+			&next_dname_decoded)) <= 0) ||
 			(next_dname_decoded == NULL)) {
 			fprintf(stderr, "Could not encode base32 string!\n");
 			err_handler_handle_error(handler, last_nsec3_node,

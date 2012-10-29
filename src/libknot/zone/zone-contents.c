@@ -816,10 +816,10 @@ dbg_zone_exec_verb(
 	dbg_zone("\n");
 
 	char *name_b32 = NULL;
-	size_t size = base32hex_encode_alloc((char *)hashed_name, hash_size,
-	                                     &name_b32);
+	int64_t b32_ret = base32hex_encode_alloc(hashed_name, hash_size,
+	                                            (uint8_t **)(&name_b32));
 
-	if (size == 0) {
+	if (b32_ret <= 0) {
 		char *n = knot_dname_to_str(name);
 		dbg_zone("Error while encoding hashed name %s to base32.\n", n);
 		free(n);
@@ -828,6 +828,8 @@ dbg_zone_exec_verb(
 		}
 		return KNOT_ECRYPTO;
 	}
+
+	size_t size = (size_t)b32_ret;
 
 	assert(name_b32 != NULL);
 	free(hashed_name);

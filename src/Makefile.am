@@ -219,13 +219,11 @@ libknots_la_SOURCES =				\
 	common/mempattern.h			\
 	common/mempattern.c			\
 	common/lists.c				\
-	common/base32.c				\
 	common/base64.c				\
 	common/base64.h				\
 	common/lists.h				\
 	common/heap.h				\
 	common/heap.c				\
-	common/base32.h				\
 	common/print.c				\
 	common/print.h				\
 	common/skip-list.c			\
