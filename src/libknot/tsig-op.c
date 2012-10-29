@@ -108,20 +108,16 @@ static int knot_tsig_compute_digest(const uint8_t *wire, size_t wire_len,
 	char decoded_key[B64BUFSIZE];
 	memset(decoded_key, 0, sizeof(decoded_key));
 	
-	size_t decoded_key_size = B64BUFSIZE;
-	int ret = base64_decode(key->secret, strlen(key->secret),
-	                        decoded_key,
-	                        &decoded_key_size);
-	if (ret != 1) {
-		dbg_tsig("TSIG: New decode function failed! (%d)\n", ret);
-		return KNOT_ERROR;
-	}
-	
-	if (decoded_key_size < 0) {
+	int64_t ret = base64_decode((uint8_t *)key->secret, strlen(key->secret),
+	                            (uint8_t *)decoded_key, B64BUFSIZE);
+
+	if (ret < 0) {
 		dbg_tsig("TSIG: Could not decode Base64\n");
 		return KNOT_ERROR;
 	}
 	
+	size_t decoded_key_size = (size_t)ret;
+
 	dbg_tsig_detail("TSIG: decoded key size: %d\n", decoded_key_size);
 	dbg_tsig_detail("TSIG: decoded key:\n");
 	dbg_tsig_hex_detail(decoded_key, decoded_key_size);
