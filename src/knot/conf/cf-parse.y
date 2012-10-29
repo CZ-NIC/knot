@@ -187,7 +187,7 @@ static void conf_zone_start(void *scanner, char *name) {
       if (this_zone->name != NULL) {
 	memcpy(this_zone->name, name, nlen);
 	this_zone->name[nlen] = '.';
-	this_zone->name[nlen + 1] = '\0';
+	this_zone->name[++nlen] = '\0';
      }
      free(name);
    } else {
@@ -197,7 +197,7 @@ static void conf_zone_start(void *scanner, char *name) {
    /* Check domain name. */
    knot_dname_t *dn = NULL;
    if (this_zone->name != NULL) {
-      dn = knot_dname_new_from_str(this_zone->name, nlen + 1, 0);
+      dn = knot_dname_new_from_str(this_zone->name, nlen, 0);
    }
    if (dn == NULL) {
      free(this_zone->name);
