@@ -41,6 +41,15 @@
 #define TCP_SWEEP_INTERVAL 2 /* [secs] granularity of connection sweeping */
 
 /*!
+ * \brief Accept a TCP connection.
+ * \param fd Associated socket.
+ *
+ * \retval Created connection fd if success.
+ * \retval <0 on error.
+ */
+int tcp_accept(int fd);
+
+/*!
  * \brief Send TCP message.
  *
  * \param fd Associated socket.

@@ -134,6 +134,8 @@ src/knot/main.c
 src/knot/ctl/knotc_main.c
 src/knot/ctl/process.c
 src/knot/ctl/process.h
+src/knot/ctl/remote.c
+src/knot/ctl/remote.h
 src/knot/other/debug.h
 src/knot/stat/gatherer.c
 src/knot/stat/gatherer.h

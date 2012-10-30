@@ -38,6 +38,7 @@
 #include "libknot/tsig.h"
 #include "common/lists.h"
 #include "common/log.h"
+#include "common/acl.h"
 #include "common/sockaddr.h"
 
 /* Constants. */
@@ -148,6 +149,15 @@ typedef struct conf_key_t {
 } conf_key_t;
 
 /*!
+ * \brief Remote control interface.
+ */
+typedef struct conf_control_t {
+	conf_iface_t *iface; /*!< Remote control interface. */
+	list allow;          /*!< List of allowed remotes. */
+	acl_t* acl;          /*!< ACL. */
+} conf_control_t;
+
+/*!
  * \brief Main config structure.
  *
  * Configuration structure.
@@ -206,6 +216,11 @@ typedef struct conf_t {
 	int dbsync_timeout; /*!< Default interval between syncing to zonefile.*/
 	size_t ixfr_fslimit; /*!< File size limit for IXFR journal. */
 	int build_diffs;     /*!< Calculate differences from changes. */
+	
+	/*
+	 * Remote control interface.
+	 */
+	conf_control_t ctl;
 
 	/*
 	 * Implementation specifics
@@ -364,6 +379,9 @@ void conf_free_key(conf_key_t *k);
 
 /*! \brief Free interface config. */
 void conf_free_iface(conf_iface_t *iface);
+
+/*! \brief Free remotes config. */
+void conf_free_remote(conf_remote_t *r);
 
 /*! \brief Free log config. */
 void conf_free_log(conf_log_t *log);

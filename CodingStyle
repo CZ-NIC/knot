@@ -5,7 +5,7 @@ Coding style
 * Max line width: 80 chars
 * Pointer asterisk attached to the name of the variable
 * Own structures/types: _t suffix (f.e. nameserver_t)
-* Header guard format: _KNOTD__HEADER_H_
+* Header guard format: _KNOTD_HEADER_H_
 * Spaces around binary operators
 * Space between keyword and bracket (f.e. "if (predicate)")
 * No space between variable and typecast (f.e. "return (int)val;")

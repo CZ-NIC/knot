@@ -1390,7 +1390,7 @@ void knot_packet_header_to_wire(const knot_header_t *header,
 
 int knot_packet_question_to_wire(knot_packet_t *packet)
 {
-	if (packet == NULL) {
+	if (packet == NULL || packet->question.qname == NULL) {
 		return KNOT_EINVAL;
 	}
 

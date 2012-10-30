@@ -298,7 +298,7 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 	return res;
 }
 
-static int tcp_accept(int fd)
+int tcp_accept(int fd)
 {
 	/* Accept incoming connection. */
 	int incoming = accept(fd, 0, 0);

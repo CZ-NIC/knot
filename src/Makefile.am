@@ -280,6 +280,8 @@ libknotd_la_SOURCES =				\
 	knot/conf/conf.h			\
 	knot/ctl/process.c			\
 	knot/ctl/process.h			\
+	knot/ctl/remote.c			\
+	knot/ctl/remote.h			\
 	knot/server/dthreads.c			\
 	knot/server/journal.c			\
 	knot/server/socket.c				\
