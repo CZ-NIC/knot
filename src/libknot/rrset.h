@@ -370,6 +370,12 @@ uint8_t knot_rrset_rdata_nsec3_salt_length(const knot_rrset_t *rrset,
 const uint8_t *knot_rrset_rdata_nsec3_salt(const knot_rrset_t *rrset,
                                            size_t pos);
 
+const knot_dname_t *knot_rrset_next_dname(const knot_rrset_t *rrset,
+                                          const knot_dname_t *prev_dname);
+
+knot_dname_t *knot_rrset_get_next_dname(const knot_rrset_t *rrset,
+                                        const knot_dname_t *prev_dname);
+
 const knot_dname_t *knot_rrset_rdata_next_dname(const knot_rrset_t *rrset,
                                                 const knot_dname_t *prev_dname,
                                                 size_t pos);
