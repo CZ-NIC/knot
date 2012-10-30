@@ -2035,8 +2035,7 @@ static int zones_check_tsig_query(const knot_zone_t *zone,
 static int zones_update_forward(int fd, knot_ns_transport_t ttype,
                                 knot_zone_t *zone, const sockaddr_t *from,
                                 knot_packet_t *query,
-                                uint8_t *rwire, size_t rsize,
-                                knot_key_t *tsig_key)
+                                uint8_t *rwire, size_t rsize)
 {
 	/*! \todo #1291 #1999 This is really the same as for NOTIFY+SOA, should
 	 *        use common API. */
@@ -2142,9 +2141,7 @@ static int zones_update_forward(int fd, knot_ns_transport_t ttype,
  * \retval KNOT_EOK if successful.
  * \retval error if not.
  */
-static int zones_process_update_auth(int fd, knot_ns_transport_t ttype,
-                                     knot_zone_t *zone,
-                                     knot_packet_t *query,
+static int zones_process_update_auth(knot_zone_t *zone,
                                      knot_packet_t *resp,
                                      uint8_t *resp_wire, size_t *rsize,
                                      knot_rcode_t *rcode,
@@ -2153,20 +2150,6 @@ static int zones_process_update_auth(int fd, knot_ns_transport_t ttype,
 {
 	int ret = KNOT_EOK;
 	dbg_zones_verb("TSIG check successful. Answering query.\n");
-	
-	/* Message is authenticated and has primary master,
-	 * proceed to forward the query to the next hop.
-	 */
-	rcu_read_lock();
-	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
-	if (zd->xfr_in.has_master) {
-		ret = zones_update_forward(fd, ttype, zone, addr, query,
-		                           resp_wire, *rsize, tsig_key);
-		*rsize = 0; /* Do not send reply immediately. */
-		rcu_read_unlock();
-		return ret;
-	}
-	rcu_read_unlock();
 	
 	/* Create log message prefix. */
 	char *keytag = NULL;
@@ -2892,11 +2875,25 @@ int zones_process_update(knot_nameserver_t *nameserver,
 					     &tsig_prev_time_signed);
 	}
 	
+	/* Allow pass-through of an unknown TSIG in DDNS forwarding. */
+	rcu_read_lock();
+	if (ret == KNOT_EOK || (ret == KNOT_TSIG_EBADKEY && !tsig_key_zone)) {
+		/* Message is authenticated and has primary master,
+		 * proceed to forward the query to the next hop.
+		 */
+		if (zd->xfr_in.has_master) {
+			ret = zones_update_forward(fd, transport, zone, addr,
+			                           query, resp_wire, *rsize);
+			*rsize = 0; /* Do not send reply immediately. */
+			rcu_read_unlock();
+			return ret;
+		}
+	}
+	rcu_read_unlock();
+	
 	/* Process query. */
 	if (ret == KNOT_EOK) {
-		/* Expects RCU locked. */
-		ret = zones_process_update_auth(fd, transport, zone, query,
-		                                resp, resp_wire, rsize,
+		ret = zones_process_update_auth(zone, resp, resp_wire, rsize,
 		                                &rcode, addr, tsig_key_zone);
 	} else {
 		if (tsig_rcode != KNOT_RCODE_NOERROR) {
