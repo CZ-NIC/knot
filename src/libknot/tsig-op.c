@@ -812,6 +812,9 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
 
 	memset(wire_to_sign, 0, sizeof(uint8_t) * size);
 	memcpy(wire_to_sign, wire, size);
+	
+	/* Restore message id. */
+	knot_wire_set_id(wire_to_sign, tsig_rdata_orig_id(tsig_rr));
 
 	/* Decrease arcount. */
 	knot_wire_set_arcount(wire_to_sign,
