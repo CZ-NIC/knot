@@ -816,7 +816,7 @@ dbg_zone_exec_verb(
 	dbg_zone("\n");
 
 	char *name_b32 = NULL;
-	int64_t b32_ret = base32hex_encode_alloc(hashed_name, hash_size,
+	int32_t b32_ret = base32hex_encode_alloc(hashed_name, hash_size,
 	                                            (uint8_t **)(&name_b32));
 
 	if (b32_ret <= 0) {
@@ -829,7 +829,7 @@ dbg_zone_exec_verb(
 		return KNOT_ECRYPTO;
 	}
 
-	size_t size = (size_t)b32_ret;
+	size_t size = b32_ret;
 
 	assert(name_b32 != NULL);
 	free(hashed_name);

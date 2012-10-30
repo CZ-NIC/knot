@@ -959,7 +959,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 	/* check that next dname is in the zone */
 	uint8_t *next_dname_decoded = NULL;
 	size_t  real_size = 0;
-	int64_t b32_ret;
+	int32_t b32_ret;
 
 	if (((b32_ret = base32hex_encode_alloc((uint8_t *)
 		(rdata_item_data(&(nsec3_rrset->rdata->items[4]))) + 1,
@@ -970,7 +970,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 		return KNOT_ERROR;
 	}
 
-	real_size = (size_t)b32_ret;
+	real_size = b32_ret;
 
 	/* This is why we allocate maximum length of decoded string + 1 */
 //	memmove(next_dname_decoded + 1, next_dname_decoded, real_size);
@@ -1495,9 +1495,10 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 
 		/* check that next dname is in the zone */
 		uint8_t *next_dname_decoded = NULL;
-		size_t real_size = 0;
+		size_t  real_size = 0;
+		int32_t b32_ret;
 
-		if (((real_size = base32hex_encode_alloc(((uint8_t *)
+		if (((b32_ret = base32hex_encode_alloc(((uint8_t *)
 			rdata_item_data(&(nsec3_rrset->rdata->items[4]))) + 1,
 			rdata_item_size(&nsec3_rrset->rdata->items[4]) - 1,
 			&next_dname_decoded)) <= 0) ||
@@ -1507,6 +1508,8 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 						 ZC_ERR_NSEC3_RDATA_CHAIN);
 			return;
 		}
+
+		real_size = b32_ret;
 
 		/* Local allocation, will be discarded. */
 		knot_dname_t *next_dname =

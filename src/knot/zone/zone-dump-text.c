@@ -549,7 +549,7 @@ static char *rdata_time_to_string(knot_rdata_item_t item)
 
 static char *rdata_base32_to_string(knot_rdata_item_t item)
 {
-	int64_t length;
+	int32_t length;
 	size_t size = rdata_item_size(item);
 	if (size == 0) {
 		char *ret = malloc(sizeof(char) * 2);

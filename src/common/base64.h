@@ -43,7 +43,7 @@
  * \retval >=0		length of output string.
  * \retval -1		if error.
  */
-int64_t base64_encode(const uint8_t  *in,
+int32_t base64_encode(const uint8_t  *in,
 		      const uint32_t in_len,
 		      uint8_t        *out,
 		      const uint32_t out_len);
@@ -63,7 +63,7 @@ int64_t base64_encode(const uint8_t  *in,
  * \retval >=0		length of output string.
  * \retval -1		if error.
  */
-int64_t base64_encode_alloc(const uint8_t  *in,
+int32_t base64_encode_alloc(const uint8_t  *in,
 			    const uint32_t in_len,
 			    uint8_t        **out);
 
@@ -83,7 +83,7 @@ int64_t base64_encode_alloc(const uint8_t  *in,
  * \retval -1		if error.
  * \retval -2		if bad input data.
  */
-int64_t base64_decode(const uint8_t  *in,
+int32_t base64_decode(const uint8_t  *in,
 		      const uint32_t in_len,
 		      uint8_t        *out,
 		      const uint32_t out_len);
@@ -105,7 +105,7 @@ int64_t base64_decode(const uint8_t  *in,
  * \retval -1		if error.
  * \retval -2		if bad input data.
  */
-int64_t base64_decode_alloc(const uint8_t  *in,
+int32_t base64_decode_alloc(const uint8_t  *in,
 			    const uint32_t in_len,
 			    uint8_t        **out);
 

@@ -19,6 +19,9 @@
 #include <stdlib.h>			// malloc
 #include <stdint.h>			// uint8_t
 
+/*! \brief Maximal length of binary input to Base32hex encoding. */
+#define MAX_BIN_DATA_LEN	((INT32_MAX / 8) * 5)
+
 /*! \brief Base32hex padding character. */
 const uint8_t base32hex_pad = '=';
 /*! \brief Base32hex alphabet. */
@@ -76,7 +79,7 @@ const uint8_t base32hex_dec[256] = {
 	[ 42] = KO, ['U'] = 30, [128] = KO, [171] = KO, [214] = KO,
 };
 
-int64_t base32hex_encode(const uint8_t  *in,
+int32_t base32hex_encode(const uint8_t  *in,
 			 const uint32_t in_len,
 			 uint8_t        *out,
 			 const uint32_t out_len)
@@ -88,7 +91,8 @@ int64_t base32hex_encode(const uint8_t  *in,
 	uint8_t		num;
 
 	// Checking inputs.
-	if (in == NULL || out == NULL || out_len < ((in_len + 4) / 5) * 8) {
+	if (in == NULL || out == NULL || in_len > MAX_BIN_DATA_LEN ||
+	    out_len < ((in_len + 4) / 5) * 8) {
 		return -1;
 	}
 
@@ -250,11 +254,16 @@ int64_t base32hex_encode(const uint8_t  *in,
 	return (text - out);
 }
 
-int64_t base32hex_encode_alloc(const uint8_t  *in,
+int32_t base32hex_encode_alloc(const uint8_t  *in,
 			       const uint32_t in_len,
 			       uint8_t        **out)
 {
-	uint64_t out_len = ((in_len + 4) / 5) * 8;
+	uint32_t out_len = ((in_len + 4) / 5) * 8;
+
+	// Checking inputs.
+	if (in_len > MAX_BIN_DATA_LEN) {
+		return -1;
+	}
 
 	// Allocating output buffer.
 	*out = malloc(out_len);
@@ -267,7 +276,7 @@ int64_t base32hex_encode_alloc(const uint8_t  *in,
 	return base32hex_encode(in, in_len, *out, out_len);
 }
 
-int64_t base32hex_decode(const uint8_t  *in,
+int32_t base32hex_decode(const uint8_t  *in,
 			 const uint32_t in_len,
 			 uint8_t        *out,
 			 const uint32_t out_len)
@@ -280,7 +289,7 @@ int64_t base32hex_decode(const uint8_t  *in,
 
 	// Checking inputs.
 	if (in == NULL || out == NULL || (in_len % 8) != 0 ||
-	    out_len < ((in_len + 7) / 8) * 5) {
+	    in_len > INT32_MAX || out_len < ((in_len + 7) / 8) * 5) {
 		return -1;
 	}
 
@@ -393,11 +402,11 @@ int64_t base32hex_decode(const uint8_t  *in,
 	return (bin - out);
 }
 
-int64_t base32hex_decode_alloc(const uint8_t  *in,
+int32_t base32hex_decode_alloc(const uint8_t  *in,
 			       const uint32_t in_len,
 			       uint8_t        **out)
 {
-	uint64_t out_len = ((in_len + 7) / 8) * 5;
+	uint32_t out_len = ((in_len + 7) / 8) * 5;
 
 	// Allocating output buffer.
 	*out = malloc(out_len);

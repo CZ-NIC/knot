@@ -1802,10 +1802,10 @@ uint16_t * zparser_conv_b32(const char *b32)
 	/*!< \todo BLEEDING EYES! */
 	b32_copy[strlen(b32)] = '\0';
 
-	int64_t b32_ret = base32hex_decode((uint8_t *)b32_copy, strlen(b32_copy),
+	int32_t b32_ret = base32hex_decode((uint8_t *)b32_copy, strlen(b32_copy),
 	                                   buffer + 1, i);
 
-	i = (int)b32_ret;
+	i = b32_ret;
 
 	if (b32_ret <= 0) {
 		zc_error_prev_line("invalid base32 data");
