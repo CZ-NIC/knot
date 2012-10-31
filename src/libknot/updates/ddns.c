@@ -182,12 +182,15 @@ static int knot_ddns_add_prereq(knot_ddns_prereq_t *prereqs,
 static int knot_ddns_check_remove_rr(knot_changeset_t *changeset,
                                      const knot_rrset_t *rr)
 {
+	dbg_ddns_verb("Removing possible redundant RRs from changeset.\n");
 	for (int i = 1; i < changeset->add_count; ++i) {
 		// Removing RR(s) from this owner
 		if (knot_dname_compare(knot_rrset_owner(rr),
 		                       knot_rrset_owner(changeset->add[i])) == 0) {
 			// Removing one or all RRSets
 			if (knot_rrset_class(rr) == KNOT_CLASS_ANY) {
+				dbg_ddns_detail("Removing one or all "
+				                "RRSets\n");
 				if (knot_rrset_type(rr)
 				    == knot_rrset_type(changeset->add[i])
 				    || knot_rrset_type(rr) == KNOT_RRTYPE_ANY) {
@@ -195,6 +198,9 @@ static int knot_ddns_check_remove_rr(knot_changeset_t *changeset,
 						knot_changeset_remove_rr(
 						    changeset->add,
 						    &changeset->add_count, i);
+					dbg_ddns_detail("Removed RRSet from "
+					                "chgset:\n");
+					knot_rrset_dump(remove, 0);
 					knot_rrset_deep_free(&remove, 1, 1, 1);
 				}
 			} else if (knot_rrset_type(rr)
@@ -208,6 +214,10 @@ static int knot_ddns_check_remove_rr(knot_changeset_t *changeset,
 				knot_rdata_t *rdata = knot_rrset_remove_rdata(
 				                        changeset->add[i],
 				                        knot_rrset_rdata(rr));
+
+				dbg_ddns_detail("Removed RR from chgset: \n");
+				knot_rdata_dump(rdata, knot_rrset_type(rr), 0);
+
 				knot_rdata_deep_free(&rdata,
 				         knot_rrset_type(changeset->add[i]), 1);
 				// if the RRSet is empty, remove from changeset
@@ -217,6 +227,8 @@ static int knot_ddns_check_remove_rr(knot_changeset_t *changeset,
 						knot_changeset_remove_rr(
 						    changeset->add,
 						    &changeset->add_count, i);
+					dbg_ddns_detail("RRSet empty, removing."
+					                "\n");
 					knot_rrset_deep_free(&remove, 1, 1, 1);
 				}
 			}
