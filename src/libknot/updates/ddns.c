@@ -274,10 +274,10 @@ static int knot_ddns_add_update(knot_changeset_t *changeset,
 			return ret;
 		}
 
-//		ret = knot_changeset_add_rr(&changeset->remove,
-//		                            &changeset->remove_count,
-//		                            &changeset->remove_allocated,
-//		                            rrset_copy);
+		ret = knot_changeset_add_rr(&changeset->remove,
+		                            &changeset->remove_count,
+		                            &changeset->remove_allocated,
+		                            rrset_copy);
 	}
 
 	return ret;
