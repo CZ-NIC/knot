@@ -2109,12 +2109,11 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	if (ret != KNOT_EOK) {
 		dbg_zones_verb("Storing and applying changesets failed: %s.\n",
 			       knot_strerror(ret));
-		*rcode = KNOT_RCODE_SERVFAIL;
+		*rcode = (ret == KNOT_EMALF) ? KNOT_RCODE_FORMERR
+		                             : KNOT_RCODE_SERVFAIL;
 		return ret;
 	}
-		
-	
-	
+
 	/* 3) Prepare DDNS response. */
 	dbg_zones_verb("Preparing NOERROR UPDATE response RCODE=%u "
 		       "pkt=%p resp_wire=%p\n", *rcode, resp, resp_wire);
@@ -3730,7 +3729,7 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
 
 		/* Free changesets, but not the data. */
 		knot_free_changesets(&chs);
-		return KNOT_ERROR;
+		return apply_ret;  // propagate the error above
 	}
 
 	/* Commit transaction. */
