@@ -56,6 +56,10 @@ knot_zcompile_SOURCES =				\
 unittests_SOURCES =				\
 	tests/common/acl_tests.c		\
 	tests/common/acl_tests.h		\
+	tests/common/base32hex_tests.c		\
+	tests/common/base32hex_tests.h		\
+	tests/common/base64_tests.c		\
+	tests/common/base64_tests.h		\
 	tests/common/events_tests.c		\
 	tests/common/events_tests.h		\
 	tests/common/skiplist_tests.c		\
