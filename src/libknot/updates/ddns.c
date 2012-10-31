@@ -183,7 +183,7 @@ static int knot_ddns_check_remove_rr(knot_changeset_t *changeset,
                                      const knot_rrset_t *rr)
 {
 	dbg_ddns_verb("Removing possible redundant RRs from changeset.\n");
-	for (int i = 1; i < changeset->add_count; ++i) {
+	for (int i = 0; i < changeset->add_count; ++i) {
 		// Removing RR(s) from this owner
 		if (knot_dname_compare(knot_rrset_owner(rr),
 		                       knot_rrset_owner(changeset->add[i])) == 0) {
