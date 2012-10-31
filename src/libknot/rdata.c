@@ -848,7 +848,7 @@ uint16_t knot_rdata_ds_digest_len(const knot_rdata_t *rdata)
 		return 0;
 	}
 
-	return *(rdata->items[4].raw_data);
+	return *(rdata->items[3].raw_data);
 }
 
 /*----------------------------------------------------------------------------*/
