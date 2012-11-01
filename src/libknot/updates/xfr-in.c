@@ -2144,7 +2144,13 @@ static int xfrin_apply_add_normal_ddns(knot_changes_t *changes,
 			dbg_ddns_verb("DDNS: Ignoring SOA.\n");
 			return KNOT_EOK;
 		} else {
-			dbg_ddns_verb("DDNS: replacing SOA.\n");
+			dbg_ddns_verb("DDNS: replacing SOA (old serial: %u,"
+			              " new serial: %u.\n",
+			              knot_rdata_soa_serial(knot_rrset_rdata(
+			                  knot_node_rrset(node,
+			                                  KNOT_RRTYPE_SOA))),
+			              knot_rdata_soa_serial(knot_rrset_rdata(
+			                                            add)));
 			/* b) Otherwise, replace the current SOA. */
 			ret = xfrin_replace_rrset_in_node(node, add,
 			                                      changes,
