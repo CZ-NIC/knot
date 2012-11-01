@@ -22,6 +22,7 @@
 #include "packet/packet.h"
 #include "consts.h"
 #include "common/mempattern.h"
+#include "nameserver/name-server.h"  // ns_serial_compare() - TODO: extract
 
 /*----------------------------------------------------------------------------*/
 // Copied from XFR - maybe extract somewhere else
@@ -653,10 +654,25 @@ int knot_ddns_process_update(const knot_zone_contents_t *zone,
 	const knot_rrset_t *soa = knot_node_rrset(knot_zone_contents_apex(zone),
 						  KNOT_RRTYPE_SOA);
 	knot_rrset_t *soa_begin = NULL;
+	knot_rrset_t *soa_end = NULL;
 	ret = knot_rrset_deep_copy(soa, &soa_begin, 0);
 	if (ret == KNOT_EOK) {
-		knot_changeset_store_soa(&changeset->soa_from, &changeset->serial_from,
-					 soa_begin);
+		knot_changeset_store_soa(&changeset->soa_from,
+		                         &changeset->serial_from, soa_begin);
+	} else {
+		*rcode = KNOT_RCODE_SERVFAIL;
+		return ret;
+	}
+
+	/* Current SERIAL */
+	int64_t sn = knot_rdata_soa_serial(knot_rrset_rdata(soa_begin));
+	int64_t sn_new;
+	/* Incremented SERIAL
+	 * We must set it now to be able to compare SERIAL from SOAs in the
+	 * UPDATE to it. Although we do not have the new SOA yet.
+	 */
+	if (sn > -1) {
+		sn_new = (uint32_t)sn + 1;
 	} else {
 		*rcode = KNOT_RCODE_SERVFAIL;
 		return ret;
@@ -685,22 +701,40 @@ int knot_ddns_process_update(const knot_zone_contents_t *zone,
 			                             : KNOT_RCODE_SERVFAIL;
 			return ret;
 		}
+
+		/* Check if the added record is SOA. If yes, check the SERIAL.
+		 * If this record should cause the SOA to be replaced in the
+		 * zone, use it as the ending SOA.
+		 *
+		 * Also handle cases where there are multiple SOAs to be added
+		 * in the same UPDATE. The one with the largest SERIAL should
+		 * be used.
+		 *
+		 * TODO: If there are more SOAs in the UPDATE one after another,
+		 *       the ddns_add_update() function will merge them into a
+		 *       RRSet. This should be handled somehow.
+		 */
+		if (knot_rrset_type(rrset) == KNOT_RRTYPE_SOA
+		    && ns_serial_compare(knot_rdata_soa_serial(
+		                                 knot_rrset_rdata(rrset)),
+		                         sn_new) > 0) {
+			sn_new = knot_rdata_soa_serial(knot_rrset_rdata(rrset));
+			soa_end = (knot_rrset_t *)rrset;
+		}
 	}
 	
-	/* Ending SOA. */
-	knot_rrset_t *soa_end = NULL;
-	ret = knot_rrset_deep_copy(soa, &soa_end, 1);
-	
-	/* Increment and write back. */
-	knot_rdata_t *rd = knot_rrset_get_rdata(soa_end);
-	int64_t sn = knot_rdata_soa_serial(rd);
-	if (sn > -1) {
-		knot_rdata_soa_serial_set(rd, (uint32_t)sn + 1);
-	} else {
-		*rcode = KNOT_RCODE_SERVFAIL;
+	/* Ending SOA */
+	if (soa_end == NULL) {
+		/* If not set */
+		assert(sn_new == (uint32_t)sn + 1);
+		ret = knot_rrset_deep_copy(soa, &soa_end, 1);
+		knot_rdata_t *rd = knot_rrset_get_rdata(soa_end);
+		knot_rdata_soa_serial_set(rd, sn_new);
 	}
-	knot_changeset_store_soa(&changeset->soa_to, &changeset->serial_to,
-				 soa_end);
+
+	knot_changeset_store_soa(&changeset->soa_to,
+	                         &changeset->serial_to,
+	                         soa_end);
 
 	return ret;
 }
