@@ -242,10 +242,12 @@ static int knot_ddns_check_remove_rr(knot_changeset_t *changeset,
 /*----------------------------------------------------------------------------*/
 
 static int knot_ddns_add_update(knot_changeset_t *changeset,
-                         const knot_rrset_t *rrset, uint16_t qclass)
+                                const knot_rrset_t *rrset, uint16_t qclass,
+                                knot_rrset_t **rrset_copy)
 {
 	assert(changeset != NULL);
 	assert(rrset != NULL);
+	assert(rrset_copy != NULL);
 
 	int ret;
 
@@ -253,19 +255,19 @@ static int knot_ddns_add_update(knot_changeset_t *changeset,
 	/*! \todo ref #937 If the packet was not parsed all at once, we could save this
 	 *        copy.
 	 */
-	knot_rrset_t *rrset_copy = NULL;
-	ret = knot_rrset_deep_copy(rrset, &rrset_copy, 0);
+	*rrset_copy = NULL;
+	ret = knot_rrset_deep_copy(rrset, rrset_copy, 0);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
 	if (knot_rrset_class(rrset) == qclass) {
 		// this RRSet should be added to the zone
-		dbg_ddns_detail(" * adding RR %p\n", rrset_copy);
+		dbg_ddns_detail(" * adding RR %p\n", *rrset_copy);
 		ret = knot_changeset_add_rr(&changeset->add,
 		                            &changeset->add_count,
 		                            &changeset->add_allocated,
-		                            rrset_copy);
+		                            *rrset_copy);
 	} else {
 		// this RRSet marks removal of something from zone
 
@@ -279,18 +281,18 @@ static int knot_ddns_add_update(knot_changeset_t *changeset,
 
 		// TODO: finish, disabled for now
 
-		dbg_ddns_detail(" * removing RR %p\n", rrset_copy);
+		dbg_ddns_detail(" * removing RR %p\n", *rrset_copy);
 
-		ret = knot_ddns_check_remove_rr(changeset, rrset_copy);
+		ret = knot_ddns_check_remove_rr(changeset, *rrset_copy);
 		if (ret != KNOT_EOK) {
-			knot_rrset_deep_free(&rrset_copy, 1, 1, 1);
+			knot_rrset_deep_free(rrset_copy, 1, 1, 1);
 			return ret;
 		}
 
 		ret = knot_changeset_add_rr(&changeset->remove,
 		                            &changeset->remove_count,
 		                            &changeset->remove_allocated,
-		                            rrset_copy);
+		                            *rrset_copy);
 	}
 
 	return ret;
@@ -678,11 +680,13 @@ int knot_ddns_process_update(const knot_zone_contents_t *zone,
 		return ret;
 	}
 
+	const knot_rrset_t *rrset = NULL;
+	knot_rrset_t *rrset_copy = NULL;
+
 	dbg_ddns("Processing UPDATE section.\n");
 	for (int i = 0; i < knot_packet_authority_rrset_count(query); ++i) {
 
-		const knot_rrset_t *rrset =
-				knot_packet_authority_rrset(query, i);
+		rrset = knot_packet_authority_rrset(query, i);
 
 		ret = knot_ddns_check_update(rrset, query, rcode);
 		if (ret != KNOT_EOK) {
@@ -692,7 +696,8 @@ int knot_ddns_process_update(const knot_zone_contents_t *zone,
 		}
 
 		ret = knot_ddns_add_update(changeset, rrset,
-		                          knot_packet_qclass(query));
+		                          knot_packet_qclass(query),
+		                          &rrset_copy);
 
 		if (ret != KNOT_EOK) {
 			dbg_ddns("Failed to add update RRSet:%s\n",
@@ -719,7 +724,7 @@ int knot_ddns_process_update(const knot_zone_contents_t *zone,
 		                                 knot_rrset_rdata(rrset)),
 		                         sn_new) > 0) {
 			sn_new = knot_rdata_soa_serial(knot_rrset_rdata(rrset));
-			soa_end = (knot_rrset_t *)rrset;
+			soa_end = (knot_rrset_t *)rrset_copy;
 		}
 	}
 	
