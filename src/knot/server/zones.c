@@ -2778,6 +2778,8 @@ int zones_process_update(knot_nameserver_t *nameserver,
 			ret = zones_update_forward(fd, transport, zone, addr,
 			                           query, *rsize);
 			*rsize = 0; /* Do not send reply immediately. */
+			knot_packet_free(&resp);
+			pthread_mutex_unlock(&zd->xfr_in.lock);
 			rcu_read_unlock();
 			return ret;
 		}
