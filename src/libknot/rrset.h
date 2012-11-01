@@ -50,9 +50,12 @@ struct knot_rrset {
 	uint16_t type; /*!< TYPE of the RRset. */
 	uint16_t rclass; /*!< CLASS of the RRSet. */
 	uint32_t ttl; /*!< TTL of the RRSet. */
-	uint8_t *rdata;
+	uint8_t *rdata; /*!< RDATA array (All RRs). */
+	/*! \brief Beginnings of RRs - first one does not contain 0, last
+	 *         last one holds total length of all RRs together
+	 */
 	uint32_t *rdata_indices;
-	uint16_t rdata_count;
+	uint16_t rdata_count; /*!< Count of RRs in this RRSet. */
 	struct knot_rrset *rrsigs; /*!< Set of RRSIGs covering this RRSet. */
 };
 
