@@ -2141,8 +2141,10 @@ static int xfrin_apply_add_normal_ddns(knot_changes_t *changes,
 		           knot_rdata_soa_serial(knot_rrset_rdata(add)
 		       )) > 0
 		    ) {
+			dbg_ddns_verb("DDNS: Ignoring SOA.\n");
 			return KNOT_EOK;
 		} else {
+			dbg_ddns_verb("DDNS: replacing SOA.\n");
 			/* b) Otherwise, replace the current SOA. */
 			ret = xfrin_replace_rrset_in_node(node, add,
 			                                      changes,
@@ -2160,6 +2162,7 @@ static int xfrin_apply_add_normal_ddns(knot_changes_t *changes,
 	} else if (knot_rrset_type(add) == KNOT_RRTYPE_CNAME) {
 		/* 2) Adding CNAME... */
 		if (knot_node_rrset(node, KNOT_RRTYPE_CNAME) != NULL) {
+			dbg_ddns_verb("DDNS: replacing CNAME.\n");
 			/* a) ... to a CNAME node => replace. */
 			ret = xfrin_replace_rrset_in_node(node, add, changes,
 			                                  contents);
@@ -2173,13 +2176,14 @@ static int xfrin_apply_add_normal_ddns(knot_changes_t *changes,
 				return ret;
 			}
 		} else if (knot_node_rrset_count(node) > 0) {
+			dbg_ddns_verb("DDNS: ignoring CNAME (non-empty node)\n");
 			/* b) ... to a non-empty node => ignore. */
 			return KNOT_EOK;
 		}
 		/* c) ... to an empty node => process normally. */
 	} else if (knot_node_rrset(node, KNOT_RRTYPE_CNAME) != NULL) {
 		/* 3) Adding other RRSets to CNAME node => ignore. */
-
+		dbg_ddns_verb("DDNS: ignoring RRSet (CNAME node)\n");
 		// handled in previous case
 		assert(knot_rrset_type(add) != KNOT_RRTYPE_CNAME);
 		return KNOT_EOK;
