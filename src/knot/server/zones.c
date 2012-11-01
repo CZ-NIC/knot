@@ -1923,8 +1923,7 @@ static int zones_check_tsig_query(const knot_zone_t *zone,
 
 static int zones_update_forward(int fd, knot_ns_transport_t ttype,
                                 knot_zone_t *zone, const sockaddr_t *from,
-                                knot_packet_t *query,
-                                uint8_t *rwire, size_t rsize)
+                                knot_packet_t *query, size_t qsize)
 {
 	/*! \todo #1291 #1999 This is really the same as for NOTIFY+SOA, should
 	 *        use common API. */
@@ -1973,16 +1972,21 @@ static int zones_update_forward(int fd, knot_ns_transport_t ttype,
 	req.zone = zone;
 	
 	/* Create FORWARD query and send to primary. */
-	ret = knot_ns_create_forward_query(query, rwire, &rsize);
+	uint8_t *rwire = malloc(qsize);
+	if (rwire) {
+		ret = knot_ns_create_forward_query(query, rwire, &qsize);
+	} else {
+		ret = KNOT_ENOMEM;
+	}
 	if (nfd > -1) {
 		/* Connect on TCP. */
 		if (ttype == NS_TRANSPORT_TCP) {
 			connect(nfd, master->ptr, master->len);
 		}
-		int sent = req.send(nfd, master, rwire, rsize);
+		int sent = req.send(nfd, master, rwire, qsize);
 	
 		/* Store ID of the awaited response. */
-		if (sent == rsize) {
+		if (sent == qsize) {
 			ret = KNOT_EOK;
 		} else {
 			strbuf[0] = '\0';
@@ -1994,9 +1998,10 @@ static int zones_update_forward(int fd, knot_ns_transport_t ttype,
 		dbg_zones("update: failed to create FORWARD qry '%s'\n",
 		          knot_strerror(ret));
 		rcu_read_unlock();
+		free(rwire);
 		return KNOT_ENOMEM;
 	}
-	
+	free(rwire);
 
 	req.packet_nr = orig_id;
 	memcpy(&req.addr, master, sizeof(sockaddr_t));
@@ -2771,7 +2776,7 @@ int zones_process_update(knot_nameserver_t *nameserver,
 		 */
 		if (zd->xfr_in.has_master) {
 			ret = zones_update_forward(fd, transport, zone, addr,
-			                           query, resp_wire, *rsize);
+			                           query, *rsize);
 			*rsize = 0; /* Do not send reply immediately. */
 			rcu_read_unlock();
 			return ret;
