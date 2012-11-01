@@ -2769,7 +2769,6 @@ int zones_process_update(knot_nameserver_t *nameserver,
 	}
 	
 	/* Allow pass-through of an unknown TSIG in DDNS forwarding. */
-	rcu_read_lock();
 	if (ret == KNOT_EOK || (ret == KNOT_TSIG_EBADKEY && !tsig_key_zone)) {
 		/* Message is authenticated and has primary master,
 		 * proceed to forward the query to the next hop.
@@ -2784,10 +2783,10 @@ int zones_process_update(knot_nameserver_t *nameserver,
 			return ret;
 		}
 	}
-	rcu_read_unlock();
 	
 	/* Process query. */
 	if (ret == KNOT_EOK) {
+		/* This function expects RCU locked. */
 		ret = zones_process_update_auth(zone, resp, resp_wire, rsize,
 		                                &rcode, addr, tsig_key_zone);
 	} else {
