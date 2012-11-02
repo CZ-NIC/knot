@@ -686,6 +686,7 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
 }
 
 static int knot_rrset_rdata_store_binary(uint8_t *rdata,
+                                         size_t offset,
                                          const uint8_t *wire,
                                          size_t *pos,
                                          size_t rdlength,
@@ -695,12 +696,16 @@ static int knot_rrset_rdata_store_binary(uint8_t *rdata,
 	assert(wire);
 	
 	/* Check that size is OK. */
+	if (*pos + size > rdlength) {
+		dbg_rrset("rrset: rdata_store_binary: Exceeded RDLENGTH.\n");
+		return KNOT_ESPACE;
+	}
 	
 	/* Store actual data. */
-	
-	implement!;
+	memcpy(rdata + offset, wire + *pos, size);
 	
 	/* Adjust pos acordlingly. */
+	*pos += size;
 	return KNOT_EOK;
 }
 
@@ -743,6 +748,7 @@ int knot_rrset_rdata_from_wire_one(uint8_t **rdata, uint16_t type,
 			*pos = pos2;
 		} else if (descriptor_item_is_fixed(desc->block_types[i])) {
 			int ret = knot_rrset_rdata_store_binary(rdata_buffer,
+			                                        offset,
 			                                        wire,
 			                                        pos,
 			                                        rdlength,
@@ -757,6 +763,7 @@ int knot_rrset_rdata_from_wire_one(uint8_t **rdata, uint16_t type,
 			/* Item size has to be calculated. */
 			size_t remainder_size = rdlength - parsed;
 			int ret = knot_rrset_rdata_store_binary(rdata_buffer,
+			                                        offset,
 			                                        wire,
 			                                        pos,
 			                                        rdlength,
@@ -772,6 +779,7 @@ int knot_rrset_rdata_from_wire_one(uint8_t **rdata, uint16_t type,
 			/* Read fixed part - 2 shorts. */
 			const size_t naptr_fixed_part_size = 4;
 			int ret = knot_rrset_rdata_store_binary(rdata_buffer,
+			                                        offset,
 			                                        wire,
 			                                        pos,
 			                                        rdlength,
@@ -791,6 +799,7 @@ int knot_rrset_rdata_from_wire_one(uint8_t **rdata, uint16_t type,
 				uint8_t txt_size = *(wire + (*pos + 1));
 				offset += 1;
 				int ret = knot_rrset_rdata_store_binary(rdata_buffer,
+				                                        offset,
 				                                        wire,
 				                                        pos,
 				                                        rdlength,
@@ -815,8 +824,6 @@ int knot_rrset_rdata_from_wire_one(uint8_t **rdata, uint16_t type,
 			offset += sizeof(knot_dname_t *);
 		}
 	}
-	
-	
 	
 	return KNOT_EOK;
 }
