@@ -121,8 +121,8 @@ int knot_rrset_add_rdata(knot_rrset_t *rrset, uint8_t *rdata,
  */
 int knot_rrset_add_rdata_order(knot_rrset_t *rrset, knot_rdata_t *rdata);
 
-knot_rdata_t * knot_rrset_remove_rdata(knot_rrset_t *rrset,
-                                           const knot_rdata_t *rdata);
+int knot_rrset_remove_rdata(knot_rrset_t *rrset,
+                            size_t pos);
 
 /*!
  * \brief Adds RRSIG signatures to this RRSet.
@@ -301,7 +301,6 @@ void knot_rrset_free(knot_rrset_t **rrset);
  * \param rrset RRset to be destroyed.
  * \param free_owner Set to 0 if you do not want the owner domain name to be
  *                   destroyed also. Set to <> 0 otherwise.
- * \param free_rdata ***\todo DOCUMENT ME***
  * \param free_rdata_dnames Set to <> 0 if you want to delete ALL domain names
  *                          present in RDATA. Set to 0 otherwise. (See
  *                          knot_rdata_deep_free().)
@@ -373,18 +372,22 @@ uint8_t knot_rrset_rdata_nsec3_salt_length(const knot_rrset_t *rrset,
 const uint8_t *knot_rrset_rdata_nsec3_salt(const knot_rrset_t *rrset,
                                            size_t pos);
 
-const knot_dname_t *knot_rrset_next_dname(const knot_rrset_t *rrset,
-                                          const knot_dname_t *prev_dname);
+knot_dname_t *knot_rrset_next_dname(const knot_rrset_t *rrset,
+                                          knot_dname_t *prev_dname);
 
 knot_dname_t *knot_rrset_get_next_dname(const knot_rrset_t *rrset,
-                                        const knot_dname_t *prev_dname);
+                                        knot_dname_t *prev_dname);
 
 const knot_dname_t *knot_rrset_rdata_next_dname(const knot_rrset_t *rrset,
                                                 const knot_dname_t *prev_dname,
                                                 size_t pos);
 knot_dname_t **knot_rrset_rdata_get_next_dname_pointer(
 	const knot_rrset_t *rrset,
-	const knot_dname_t **prev_dname, size_t pos);
+	knot_dname_t **prev_dname, size_t pos);
+
+
+knot_dname_t **knot_rrset_get_next_dname_pointer(const knot_rrset_t *rrset,
+                                                knot_dname_t **prev_dname);
 
 #endif /* _KNOT_RRSET_H_ */
 
