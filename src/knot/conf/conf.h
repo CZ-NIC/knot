@@ -38,6 +38,7 @@
 #include "libknot/tsig.h"
 #include "common/lists.h"
 #include "common/log.h"
+#include "common/acl.h"
 #include "common/sockaddr.h"
 
 /* Constants. */
@@ -45,6 +46,9 @@
 #define CONFIG_NOTIFY_RETRIES 5  /*!< 5 retries (suggested in RFC1996) */
 #define CONFIG_NOTIFY_TIMEOUT 60 /*!< 60s (suggested in RFC1996) */
 #define CONFIG_DBSYNC_TIMEOUT (60*60) /*!< 1 hour. */
+#define CONFIG_REPLY_WD 10 /*!< SOA/NOTIFY query timeout [s]. */
+#define CONFIG_HANDSHAKE_WD 10 /*!< [secs] for connection to make a request.*/
+#define CONFIG_IDLE_WD  60 /*!< [secs] of allowed inactivity between requests */
 
 /*!
  * \brief Configuration for the interface
@@ -145,6 +149,15 @@ typedef struct conf_key_t {
 } conf_key_t;
 
 /*!
+ * \brief Remote control interface.
+ */
+typedef struct conf_control_t {
+	conf_iface_t *iface; /*!< Remote control interface. */
+	list allow;          /*!< List of allowed remotes. */
+	acl_t* acl;          /*!< ACL. */
+} conf_control_t;
+
+/*!
  * \brief Main config structure.
  *
  * Configuration structure.
@@ -163,6 +176,9 @@ typedef struct conf_t {
 	int   workers;  /*!< Number of workers per interface. */
 	int   uid;      /*!< Specified user id. */
 	int   gid;      /*!< Specified group id. */
+	int   max_conn_idle; /*!< TCP idle timeout. */
+	int   max_conn_hs;   /*!< TCP of inactivity before first query. */
+	int   max_conn_reply; /*!< TCP/UDP query timeout. */
 
 	/*
 	 * Log
@@ -200,6 +216,11 @@ typedef struct conf_t {
 	int dbsync_timeout; /*!< Default interval between syncing to zonefile.*/
 	size_t ixfr_fslimit; /*!< File size limit for IXFR journal. */
 	int build_diffs;     /*!< Calculate differences from changes. */
+	
+	/*
+	 * Remote control interface.
+	 */
+	conf_control_t ctl;
 
 	/*
 	 * Implementation specifics
@@ -358,6 +379,9 @@ void conf_free_key(conf_key_t *k);
 
 /*! \brief Free interface config. */
 void conf_free_iface(conf_iface_t *iface);
+
+/*! \brief Free remotes config. */
+void conf_free_remote(conf_remote_t *r);
 
 /*! \brief Free log config. */
 void conf_free_log(conf_log_t *log);

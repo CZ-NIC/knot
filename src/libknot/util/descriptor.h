@@ -237,6 +237,41 @@ typedef enum knot_rdata_zoneformat knot_rdata_zoneformat_t;
 /*! \brief Enum containing wireformat codes. */
 typedef enum knot_rdatawireformat knot_rdata_wireformat_t;
 
+/*! \brief Constants for DNSSEC algorithm types.
+ *
+ * Source: http://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xml
+ */
+enum knot_dnssec_algorithm
+{
+	KNOT_DNSSEC_ALG_RSAMD5 = 1,
+	KNOT_DNSSEC_ALG_DH = 2,
+	KNOT_DNSSEC_ALG_DSA = 3,
+	KNOT_DNSSEC_ALG_RSASHA1 = 5,
+	KNOT_DNSSEC_ALG_DSA_NSEC3_SHA1 = 6,
+	KNOT_DNSSEC_ALG_RSASHA1_NSEC3_SHA1 = 7,
+	KNOT_DNSSEC_ALG_RSASHA256 = 8,
+	KNOT_DNSSEC_ALG_RSASHA512 = 10,
+	KNOT_DNSSEC_ALG_ECC_GOST = 12,
+	KNOT_DNSSEC_ALG_ECDSAP256SHA256 = 13,
+	KNOT_DNSSEC_ALG_ECDSAP384SHA384 = 14
+};
+
+typedef enum knot_dnssec_algorithm knot_dnssec_algorithm_t;
+
+/*! \brief Constants for DNSSEC algorithm types.
+ *
+ * Source: http://www.iana.org/assignments/ds-rr-types/ds-rr-types.xml
+ */
+enum knot_ds_algorithm
+{
+	KNOT_DS_ALG_SHA1 = 1,	/* 20B - RFC 3658 */
+	KNOT_DS_ALG_SHA256 = 2,	/* 32B - RFC 4509 */
+	KNOT_DS_ALG_GOST = 3,	/* 32B - RFC 5933 */
+	KNOT_DS_ALG_SHA384 = 4	/* 48B - RFC 6605 */
+};
+
+typedef enum knot_ds_algorithm knot_ds_algorithm_t;
+
 /*! \brief Structure holding RR descriptor. */
 struct knot_rrtype_descriptor {
 	uint16_t type;          /*!< RR type */
@@ -327,6 +362,8 @@ uint16_t knot_rrclass_from_string(const char *name);
 size_t knot_wireformat_size(unsigned int wire_type);
 
 int knot_rrtype_is_metatype(uint16_t type);
+
+size_t knot_ds_digest_length(uint8_t algorithm);
 
 #endif /* _KNOT_DESCRIPTOR_H_ */
 

@@ -549,25 +549,33 @@ static char *rdata_time_to_string(knot_rdata_item_t item)
 
 static char *rdata_base32_to_string(knot_rdata_item_t item)
 {
-	int length;
+	char *ret = NULL;
 	size_t size = rdata_item_size(item);
+
 	if (size == 0) {
-		char *ret = malloc(sizeof(char) * 2);
+		ret = malloc(2);
+
 		ret[0] = '-';
 		ret[1] = '\0';
-		return ret;
+	} else {
+		int32_t  b32_out;
+		uint32_t out_len = ((size + 4) / 5) * 8;
+
+		ret = malloc(out_len + 1);
+
+		b32_out = base32hex_encode(rdata_item_data(item) + 1,
+					   size - 1,
+					   (uint8_t *)ret,
+					   out_len);
+		if (b32_out <= 0) {
+			free(ret);
+			ret = NULL;
+		}
+
+		ret[b32_out] = '\0';
 	}
 
-	size -= 1; // remove length byte from count
-	char *ret = NULL;
-	length = base32hex_encode_alloc((char *)rdata_item_data(item) + 1,
-	                                size, &ret);
-	if (length > 0) {
-		return ret;
-	} else {
-		free(ret);
-		return NULL;
-	}
+	return ret;
 }
 
 /*!< \todo Replace with function from .../common after release. */

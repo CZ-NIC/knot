@@ -828,3 +828,43 @@ const uint8_t *knot_rdata_nsec3_salt(const knot_rdata_t *rdata)
 	
 	return ((uint8_t *)(rdata->items[3].raw_data + 1)) + 1;
 }
+
+/*----------------------------------------------------------------------------*/
+
+uint8_t knot_rdata_ds_digest_type(const knot_rdata_t *rdata)
+{
+	if (rdata->count < 3) {
+		return 0;
+	}
+
+	return *((uint8_t *)(rdata->items[2].raw_data + 1));
+}
+
+/*----------------------------------------------------------------------------*/
+
+uint16_t knot_rdata_ds_digest_len(const knot_rdata_t *rdata)
+{
+	if (rdata->count < 4) {
+		return 0;
+	}
+
+	return *(rdata->items[3].raw_data);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_rdata_ds_check(const knot_rdata_t *rdata)
+{
+	// Check if the legth of the digest corresponds to the proper size of
+	// the digest according to the given algorithm
+	uint16_t len = knot_rdata_ds_digest_len(rdata);
+	uint8_t type = knot_rdata_ds_digest_type(rdata);
+
+	if (type == 0 || type == 0) {
+		return KNOT_EINVAL;
+	} else if (len != knot_ds_digest_length(type)) {
+		return KNOT_EDSDIGESTLEN;
+	} else {
+		return KNOT_EOK;
+	}
+}

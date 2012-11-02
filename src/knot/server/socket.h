@@ -114,7 +114,6 @@ int socket_listen(int fd, int backlog_size);
  */
 int socket_close(int fd);
 
-
 #endif // _KNOTD_SOCKET_H_
 
 /*! @} */

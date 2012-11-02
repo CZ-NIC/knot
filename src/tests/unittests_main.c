@@ -24,6 +24,8 @@
 #include "tests/common/events_tests.h"
 #include "tests/common/acl_tests.h"
 #include "tests/common/fdset_tests.h"
+#include "tests/common/base64_tests.h"
+#include "tests/common/base32hex_tests.h"
 #include "tests/knot/dthreads_tests.h"
 #include "tests/knot/journal_tests.h"
 #include "tests/knot/server_tests.h"
@@ -41,17 +43,19 @@ int main(int argc, char *argv[])
 	// Build test set
 	unit_api *tests[] = {
 		/* Core data structures. */
-		&journal_tests_api,  //! Journal unit
-		&slab_tests_api,     //! SLAB allocator unit
-		&skiplist_tests_api, //! Skip list unit
-		&dthreads_tests_api, //! DThreads testing unit
-		&events_tests_api,   //! Events testing unit
-		&acl_tests_api,      //! ACLs
-		&fdset_tests_api, //! FDSET polling wrapper
+		&journal_tests_api,	//! Journal unit
+		&slab_tests_api,	//! SLAB allocator unit
+		&skiplist_tests_api,	//! Skip list unit
+		&dthreads_tests_api,	//! DThreads testing unit
+		&events_tests_api,	//! Events testing unit
+		&acl_tests_api,		//! ACLs
+		&fdset_tests_api,	//! FDSET polling wrapper
+		&base64_tests_api,	//! Base64 encoding
+		&base32hex_tests_api,	//! Base32hex encoding
 
 		/* Server parts. */
-		&conf_tests_api,     //! Configuration parser tests
-		&server_tests_api,   //! Server unit
+		&conf_tests_api,	//! Configuration parser tests
+		&server_tests_api,	//! Server unit
 		NULL
 	};
 

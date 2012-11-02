@@ -1,60 +1,114 @@
-/* base64.h -- Encode binary data using printable characters.
-   Copyright (C) 2004-2006, 2009-2012 Free Software Foundation, Inc.
-   Written by Simon Josefsson.
+/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
-   This program is free software; you can redistribute it and/or modify
-   it under the terms of the GNU Lesser General Public License as published by
-   the Free Software Foundation; either version 2.1, or (at your option)
-   any later version.
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
 
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU Lesser General Public License for more details.
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-   You should have received a copy of the GNU Lesser General Public License
-   along with this program; if not, see <http://www.gnu.org/licenses/>.  */
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+/*!
+ * \file base64.h
+ *
+ * \author Daniel Salzman <daniel.salzman@nic.cz>
+ *
+ * \brief Base64 implementation (RFC 4648).
+ *
+ * \addtogroup common_lib
+ * @{
+ */
 
-#ifndef BASE64_H
-# define BASE64_H
+#ifndef _KNOTD_COMMON__BASE64_H_
+#define _KNOTD_COMMON__BASE64_H_
 
-/* Get size_t. */
-# include <stddef.h>
+#include <stdint.h>			// uint8_t
 
-/* Get bool. */
-# include <stdbool.h>
+/*!
+ * \brief Encodes binary data using Base64.
+ *
+ * \note Output data buffer contains Base64 text string which isn't
+ *       terminated with '\0'!
+ *
+ * \param in		Input binary data.
+ * \param in_len	Length of input data.
+ * \param out		Output data buffer.
+ * \param out_len	Size of output buffer.
+ *
+ * \retval >=0		length of output string.
+ * \retval -1		if error.
+ */
+int32_t base64_encode(const uint8_t  *in,
+		      const uint32_t in_len,
+		      uint8_t        *out,
+		      const uint32_t out_len);
 
-/* This uses that the expression (n+(k-1))/k means the smallest
-   integer >= n/k, i.e., the ceiling of n/k.  */
-# define BASE64_LENGTH(inlen) ((((inlen) + 2) / 3) * 4)
+/*!
+ * \brief Encodes binary data using Base64 and output stores to own buffer.
+ *
+ * \note Output data buffer contains Base64 text string which isn't
+ *       terminated with '\0'!
+ *
+ * \note Output buffer should be deallocated after use.
+ *
+ * \param in		Input binary data.
+ * \param in_len	Length of input data.
+ * \param out		Output data buffer.
+ *
+ * \retval >=0		length of output string.
+ * \retval -1		if error.
+ */
+int32_t base64_encode_alloc(const uint8_t  *in,
+			    const uint32_t in_len,
+			    uint8_t        **out);
 
-struct base64_decode_context
-{
-  unsigned int i;
-  char buf[4];
-};
+/*!
+ * \brief Decodes text data using Base64.
+ *
+ * \note Input data needn't be terminated with '\0'.
+ *
+ * \note Input data must be continuous Base64 string!
+ *
+ * \param in		Input text data.
+ * \param in_len	Length of input string.
+ * \param out		Output data buffer.
+ * \param out_len	Size of output buffer.
+ *
+ * \retval >=0		length of output data.
+ * \retval -1		if error.
+ * \retval -2		if bad input data.
+ */
+int32_t base64_decode(const uint8_t  *in,
+		      const uint32_t in_len,
+		      uint8_t        *out,
+		      const uint32_t out_len);
 
-extern bool isbase64 (char ch);
+/*!
+ * \brief Decodes text data using Base64 and output stores to own buffer.
+ *
+ * \note Input data needn't be terminated with '\0'.
+ *
+ * \note Input data must be continuous Base64 string!
+ *
+ * \note Output buffer should be deallocated after use.
+ *
+ * \param in		Input text data.
+ * \param in_len	Length of input string.
+ * \param out		Output data buffer.
+ *
+ * \retval >=0		length of output data.
+ * \retval -1		if error.
+ * \retval -2		if bad input data.
+ */
+int32_t base64_decode_alloc(const uint8_t  *in,
+			    const uint32_t in_len,
+			    uint8_t        **out);
 
-extern void base64_encode (const char *restrict in, size_t inlen,
-                           char *restrict out, size_t outlen);
+#endif // _KNOTD_COMMON__BASE64_H_
 
-extern size_t base64_encode_alloc (const char *in, size_t inlen, char **out);
-
-extern void base64_decode_ctx_init (struct base64_decode_context *ctx);
-
-extern bool base64_decode_ctx (struct base64_decode_context *ctx,
-                               const char *restrict in, size_t inlen,
-                               char *restrict out, size_t *outlen);
-
-extern bool base64_decode_alloc_ctx (struct base64_decode_context *ctx,
-                                     const char *in, size_t inlen,
-                                     char **out, size_t *outlen);
-
-#define base64_decode(in, inlen, out, outlen) \
-        base64_decode_ctx (NULL, in, inlen, out, outlen)
-
-#define base64_decode_alloc(in, inlen, out, outlen) \
-        base64_decode_alloc_ctx (NULL, in, inlen, out, outlen)
-
-#endif /* BASE64_H */
+/*! @} */

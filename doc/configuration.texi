@@ -8,6 +8,7 @@ In this chapter we provide suggested configurations and explain the meaning of i
 * Slave configuration::       
 * Master configuration::       
 * Configuring multiple interfaces::       
+* Remote control interface::       
 * Enabling zone semantic checks::
 * Creating IXFR differences from zone file changes::
 @end menu
@@ -181,6 +182,33 @@ interfaces @{
   anyv6 @{ address [::]@@53; @}
 @}
 @end example
+
+@node Remote control interface
+@section Remote control interface
+
+It is possible to control Knot DNS remotely. In order to enable remote control,
+you have to define control interface and an appropriate key. Use of key for
+authentication is strongly recommended. The control protocol is not encrypted,
+and susceptible to replay attack in a short timeframe until message digest expires,
+for that reason, it is recommended to enable remote control only on private networks
+or loopback.
+
+@example
+keys @{
+	knotc-key hmac-md5 "Wg==";
+@}
+remotes @{
+	ctl @{ address 127.0.0.1; key knotc-key; @}
+@}
+control @{
+	listen-on @{ address 127.0.0.1; @}
+	allow ctl;
+@} 
+@end example
+
+The @code{allow} keyword accepts an ACL list, similar to @code{xfr-in} or @code{xfr-out},
+see that for syntax reference. The @code{listen-on} has syntax equal to an interface specification,
+but the default port for remote control protocol is @code{5553}.
 
 @node Enabling zone semantic checks
 @section Enabling zone semantic checks

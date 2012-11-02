@@ -108,20 +108,16 @@ static int knot_tsig_compute_digest(const uint8_t *wire, size_t wire_len,
 	char decoded_key[B64BUFSIZE];
 	memset(decoded_key, 0, sizeof(decoded_key));
 	
-	size_t decoded_key_size = B64BUFSIZE;
-	int ret = base64_decode(key->secret, strlen(key->secret),
-	                        decoded_key,
-	                        &decoded_key_size);
-	if (ret != 1) {
-		dbg_tsig("TSIG: New decode function failed! (%d)\n", ret);
-		return KNOT_ERROR;
-	}
-	
-	if (decoded_key_size < 0) {
+	int32_t ret = base64_decode((uint8_t *)key->secret, strlen(key->secret),
+	                            (uint8_t *)decoded_key, B64BUFSIZE);
+
+	if (ret < 0) {
 		dbg_tsig("TSIG: Could not decode Base64\n");
 		return KNOT_ERROR;
 	}
 	
+	size_t decoded_key_size = ret;
+
 	dbg_tsig_detail("TSIG: decoded key size: %d\n", decoded_key_size);
 	dbg_tsig_detail("TSIG: decoded key:\n");
 	dbg_tsig_hex_detail(decoded_key, decoded_key_size);
@@ -195,7 +191,7 @@ static int knot_tsig_check_time_signed(const knot_rrset_t *tsig_rr,
 }
 
 static int knot_tsig_write_tsig_variables(uint8_t *wire,
-                                         const knot_rrset_t *tsig_rr)
+                                          const knot_rrset_t *tsig_rr)
 {
 	if (wire == NULL || tsig_rr == NULL) {
 		dbg_tsig("TSIG: write tsig variables: NULL arguments.\n");
@@ -240,16 +236,25 @@ static int knot_tsig_write_tsig_variables(uint8_t *wire,
 		return KNOT_EINVAL;
 	}
 
-	memcpy(wire + offset, knot_dname_name(alg_name),
-	       sizeof(uint8_t) * knot_dname_size(alg_name));
-	offset += knot_dname_size(alg_name);
+	/* The algorithm name must be in canonical form, i.e. in lowercase. */
+	if (knot_dname_to_lower_copy(alg_name, (char *)(wire + offset),
+	        knot_dname_size(alg_name)) != KNOT_EOK)
+	{
+		dbg_tsig("TSIG: write variables: cannot convert algorithm "
+		         "to lowercase.\n");
+		return KNOT_EINVAL;
+	}
 
 #if defined(KNOT_TSIG_DEBUG) && defined(DEBUG_ENABLE_VERBOSE)
-	char *_algstr = knot_dname_to_str(alg_name);
+//	char *_algstr = knot_dname_to_str(alg_name);
 	dbg_tsig_verb("TSIG: write variables: written alg name: %s\n",
-	              _algstr);
-	free(_algstr);
+	              wire + offset);
+//	free(_algstr);
 #endif
+
+//	memcpy(wire + offset, knot_dname_name(alg_name),
+//	       sizeof(uint8_t) * knot_dname_size(alg_name));
+	offset += knot_dname_size(alg_name);
 
 	/* Following data are written in network order. */
 	/* Time signed. */
@@ -807,6 +812,9 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
 
 	memset(wire_to_sign, 0, sizeof(uint8_t) * size);
 	memcpy(wire_to_sign, wire, size);
+	
+	/* Restore message id. */
+	knot_wire_set_id(wire_to_sign, tsig_rdata_orig_id(tsig_rr));
 
 	/* Decrease arcount. */
 	knot_wire_set_arcount(wire_to_sign,

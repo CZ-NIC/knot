@@ -1,0 +1,12 @@
+--style=1tbs
+--indent=tab=8
+--indent-preprocessor
+--pad-oper
+--pad-header
+--unpad-paren
+--add-brackets
+--convert-tabs
+--align-pointer=name
+--mode=c
+--lineend=linux
+

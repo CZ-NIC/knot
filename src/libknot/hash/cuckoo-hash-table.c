@@ -1434,7 +1434,7 @@ int ck_deep_copy(ck_hash_table_t *from, ck_hash_table_t **to)
 			return -2;
 		}
 
-		dbg_ck_detail("Copying stash item: %p with item %p, ", si,
+		dbg_ck_detail("Copying stash item: %p with item %p.\n", si,
 		              si->item);
 
 		if (si->item == NULL) {
@@ -1473,9 +1473,10 @@ dbg_ck_exec_detail(
 		              (si_new) ? si_new->item : NULL);
 
 		assert(si_new != NULL);
-		assert(si_new->item != NULL);
-		dbg_ck_detail("key: %.*s\n", (int)si_new->item->key_length,
-		              si_new->item->key);
+		if (si_new->item != NULL) {
+			dbg_ck_detail("key: %.*s\n", (int)si_new->item->key_length,
+			              si_new->item->key);
+		}
 );
 	}
 

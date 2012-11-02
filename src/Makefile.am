@@ -65,6 +65,10 @@ unittests_zscanner_SOURCES =			\
 unittests_SOURCES =				\
 	tests/common/acl_tests.c		\
 	tests/common/acl_tests.h		\
+	tests/common/base32hex_tests.c		\
+	tests/common/base32hex_tests.h		\
+	tests/common/base64_tests.c		\
+	tests/common/base64_tests.h		\
 	tests/common/events_tests.c		\
 	tests/common/events_tests.h		\
 	tests/common/skiplist_tests.c		\
@@ -230,13 +234,11 @@ libknots_la_SOURCES =				\
 	common/descriptor_new.h			\
 	common/descriptor_new.c			\
 	common/lists.c				\
-	common/base32.c				\
 	common/base64.c				\
 	common/base64.h				\
 	common/lists.h				\
 	common/heap.h				\
 	common/heap.c				\
-	common/base32.h				\
 	common/print.c				\
 	common/print.h				\
 	common/skip-list.c			\
@@ -293,6 +295,8 @@ libknotd_la_SOURCES =				\
 	knot/conf/conf.h			\
 	knot/ctl/process.c			\
 	knot/ctl/process.h			\
+	knot/ctl/remote.c			\
+	knot/ctl/remote.h			\
 	knot/server/dthreads.c			\
 	knot/server/journal.c			\
 	knot/server/socket.c			\

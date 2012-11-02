@@ -30,6 +30,14 @@
 #include "rrset.h"
 #include "zone/node.h"
 
+/*----------------------------------------------------------------------------*/
+
+/*! \brief Changeset flags, stored as first 4 bytes in serialized changeset. */
+typedef enum {
+	KNOT_CHANGESET_TYPE_IXFR = 1 << 0,
+	KNOT_CHANGESET_TYPE_DDNS = 1 << 1
+} knot_changeset_flag_t;
+
 /*! \todo Changeset must be serializable/deserializable, so
  *        all data and pointers have to be changeset-exclusive,
  *        or more advanced structure serialization scheme has to be
@@ -53,6 +61,8 @@ typedef struct {
 	size_t allocated;
 	uint32_t serial_from;
 	uint32_t serial_to;
+
+	uint32_t flags;  /*!< DDNS / IXFR */
 } knot_changeset_t;
 
 /*----------------------------------------------------------------------------*/
@@ -109,19 +119,21 @@ typedef struct {
 	size_t count;
 	size_t allocated;
 	knot_rrset_t *first_soa;
+	uint32_t flags;
 	knot_changes_t *changes;
 } knot_changesets_t;
 
 /*----------------------------------------------------------------------------*/
 
 typedef enum {
-	XFRIN_CHANGESET_ADD,
-	XFRIN_CHANGESET_REMOVE
-} xfrin_changeset_part_t;
+	KNOT_CHANGESET_ADD,
+	KNOT_CHANGESET_REMOVE
+} knot_changeset_part_t;
 
 /*----------------------------------------------------------------------------*/
 
-int knot_changeset_allocate(knot_changesets_t **changesets);
+int knot_changeset_allocate(knot_changesets_t **changesets,
+                            uint32_t flags);
 
 int knot_changeset_add_rrset(knot_rrset_t ***rrsets,
                              size_t *count, size_t *allocated,
@@ -132,15 +144,23 @@ int knot_changeset_add_rr(knot_rrset_t ***rrsets, size_t *count,
 
 int knot_changeset_add_new_rr(knot_changeset_t *changeset,
                               knot_rrset_t *rrset,
-                              xfrin_changeset_part_t part);
+                              knot_changeset_part_t part);
+
+knot_rrset_t *knot_changeset_remove_rr(knot_rrset_t **rrsets, size_t *count,
+                                       int pos);
 
 void knot_changeset_store_soa(knot_rrset_t **chg_soa,
                               uint32_t *chg_serial, knot_rrset_t *soa);
 
 int knot_changeset_add_soa(knot_changeset_t *changeset, knot_rrset_t *soa,
-                           xfrin_changeset_part_t part);
+                           knot_changeset_part_t part);
 
 int knot_changesets_check_size(knot_changesets_t *changesets);
+
+void knot_changeset_set_flags(knot_changeset_t *changeset,
+                             uint32_t flags);
+
+uint32_t knot_changeset_flags(knot_changeset_t *changeset);
 
 void knot_free_changeset(knot_changeset_t **changeset);
 

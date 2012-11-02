@@ -76,8 +76,6 @@ src/common/lists.h
 src/common/lists.c
 src/common/heap.h
 src/common/heap.c
-src/common/base32.h
-src/common/base32.c
 src/common/print.c
 src/common/print.h
 src/common/latency.c
@@ -134,6 +132,8 @@ src/knot/main.c
 src/knot/ctl/knotc_main.c
 src/knot/ctl/process.c
 src/knot/ctl/process.h
+src/knot/ctl/remote.c
+src/knot/ctl/remote.h
 src/knot/other/debug.h
 src/knot/other/error.c
 src/knot/other/error.h
@@ -188,6 +188,10 @@ src/tests/common/slab_tests.c
 src/tests/common/slab_tests.h
 src/tests/common/fdset_tests.c
 src/tests/common/fdset_tests.h
+src/tests/common/base64_tests.c
+src/tests/common/base64_tests.h
+src/tests/common/base32hex_tests.c
+src/tests/common/base32hex_tests.h
 src/tests/knot/dthreads_tests.c
 src/tests/knot/dthreads_tests.h
 src/tests/knot/conf_tests.c

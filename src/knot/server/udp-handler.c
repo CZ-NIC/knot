@@ -167,7 +167,7 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 //		                                  KNOT_RCODE_NOTIMPL, qbuf,
 //		                                  resp_len);
 		res = zones_process_update(ns, packet, addr, qbuf, resp_len,
-		                           NS_TRANSPORT_UDP);
+		                           fd, NS_TRANSPORT_UDP);
 		break;
 		
 	/* Unhandled opcodes. */

@@ -167,7 +167,7 @@ static int knot_zone_diff_changeset_add_rrset(knot_changeset_t *changeset,
 	assert(knot_rrset_rrsigs(rrset_copy) == NULL);
 	
 	ret = knot_changeset_add_new_rr(changeset, rrset_copy,
-	                                    XFRIN_CHANGESET_ADD);
+	                                    KNOT_CHANGESET_ADD);
 	if (ret != KNOT_EOK) {
 		/* We have to free the copy now! */
 		knot_rrset_deep_free(&rrset_copy, 1, 1, 1);
@@ -213,7 +213,7 @@ static int knot_zone_diff_changeset_remove_rrset(knot_changeset_t *changeset,
 	assert(knot_rrset_rrsigs(rrset_copy) == NULL);
 	
 	ret = knot_changeset_add_new_rr(changeset, rrset_copy,
-	                                    XFRIN_CHANGESET_REMOVE);
+	                                    KNOT_CHANGESET_REMOVE);
 	if (ret != KNOT_EOK) {
 		/* We have to free the copy now. */
 		knot_rrset_deep_free(&rrset_copy, 1, 1, 1);
@@ -922,7 +922,10 @@ int knot_zone_diff_create_changesets(const knot_zone_contents_t *z1,
 		return KNOT_EINVAL;
 	}
 	/* Create changesets. */
-	int ret = knot_changeset_allocate(changesets);
+	/* Setting type to IXFR - that's the default, DDNS triggers special
+	 * processing when applied. See #2110 and #2111.
+	 */
+	int ret = knot_changeset_allocate(changesets, KNOT_CHANGESET_TYPE_IXFR);
 	if (ret != KNOT_EOK) {
 		dbg_zonediff("zone_diff: create_changesets: "
 		             "Could not allocate changesets."

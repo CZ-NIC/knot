@@ -181,6 +181,15 @@ static int knot_zone_contents_dnames_from_rrset_to_table(
 {
 	assert(table != NULL && rrset != NULL && owner != NULL);
 
+dbg_zone_exec_detail(
+	char *name = knot_dname_to_str(knot_rrset_owner(rrset));
+	dbg_zone_detail("Putting dnames from RRSet to table: owner: (%p) %s,"
+			" type: %s\n", knot_rrset_owner(rrset),
+			name, knot_rrtype_to_string(
+				  knot_rrset_type(rrset)));
+	free(name);
+);
+
 	if (replace_owner) {
 		// discard the old owner and replace it with the new
 		knot_rrset_set_owner(rrset, owner);
@@ -247,6 +256,13 @@ dbg_zone_exec_detail(
 		dbg_zone_detail("Inserting RRSets from node to table.\n");
 		rc = knot_zone_contents_dnames_from_rrset_to_table(table,
 			rrsets[i], replace_owner, node->owner);
+
+		if (rc == KNOT_EOK && knot_rrset_rrsigs(rrsets[i]) != NULL) {
+			rc = knot_zone_contents_dnames_from_rrset_to_table(
+				table, knot_rrset_get_rrsigs(rrsets[i]),
+			                        replace_owner, node->owner);
+		}
+
 		if (rc != KNOT_EOK) {
 			return rc;
 		}
@@ -337,9 +353,9 @@ static void knot_zone_contents_adjust_rdata_item(knot_rdata_t *rdata,
 		                              knot_zone_contents_apex(zone)))) {
 			// The name's node is either already set
 			// or the name does not belong to the zone
-			dbg_zone_detail("Name's node either set or the name "
+			dbg_zone_detail("Name's (%p) node either set or the name"
 			                "does not belong to the zone (%p).\n",
-			                knot_dname_node(dname));
+			                dname, knot_dname_node(dname));
 			return;
 		}
 
@@ -392,6 +408,40 @@ static void knot_zone_contents_adjust_rdata_item(knot_rdata_t *rdata,
 }
 
 /*----------------------------------------------------------------------------*/
+
+static int knot_zone_contents_adjust_rdata(knot_rdata_t *rdata,
+                                           knot_rrtype_descriptor_t *desc,
+                                           knot_zone_contents_t *zone,
+                                           knot_node_t *node)
+{
+	for (int i = 0; i < rdata->count; ++i) {
+		if (desc->wireformat[i]
+		    == KNOT_RDATA_WF_COMPRESSED_DNAME
+		    || desc->wireformat[i]
+		       == KNOT_RDATA_WF_UNCOMPRESSED_DNAME
+		    || desc->wireformat[i]
+		       == KNOT_RDATA_WF_LITERAL_DNAME) {
+			dbg_zone_detail("Adjusting domain name at position %d"
+			                " of the RDATA\n", i);
+			knot_zone_contents_adjust_rdata_item(rdata, zone, node,
+			                                     i);
+		}
+	}
+
+	/*
+	 * DS digest length check (#2050).
+	 */
+	int ret;
+	if (desc->type == KNOT_RRTYPE_DS
+	    && (ret = knot_rdata_ds_check(rdata)) != KNOT_EOK) {
+		dbg_zone("DS RDATA check failed: %s\n", knot_strerror(ret));
+		return KNOT_EMALF;
+	}
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
 /*!
  * \brief Adjusts all RDATA in the given RRSet by replacing domain names by ones
  *        present in the zone.
@@ -403,9 +453,9 @@ static void knot_zone_contents_adjust_rdata_item(knot_rdata_t *rdata,
  * \param rrset RRSet to adjust RDATA in.
  * \param zone Zone to which the RRSet belongs.
  */
-static void knot_zone_contents_adjust_rdata_in_rrset(knot_rrset_t *rrset,
-                                                     knot_zone_contents_t *zone,
-                                                     knot_node_t *node)
+static int knot_zone_contents_adjust_rdata_in_rrset(knot_rrset_t *rrset,
+                                                    knot_zone_contents_t *zone,
+                                                    knot_node_t *node)
 {
 	uint16_t type = knot_rrset_type(rrset);
 
@@ -417,49 +467,37 @@ static void knot_zone_contents_adjust_rdata_in_rrset(knot_rrset_t *rrset,
 	knot_rdata_t *rdata = rdata_first;
 
 	if (rdata == NULL) {
-		return;
+		return KNOT_EOK;
 	}
 
+	int i = 1;
+	int ret;
 	while (rdata->next != rdata_first) {
-		for (int i = 0; i < rdata->count; ++i) {
-			if (desc->wireformat[i]
-			    == KNOT_RDATA_WF_COMPRESSED_DNAME
-			    || desc->wireformat[i]
-			       == KNOT_RDATA_WF_UNCOMPRESSED_DNAME
-			    || desc->wireformat[i]
-			       == KNOT_RDATA_WF_LITERAL_DNAME) {
-				dbg_zone("Adjusting domain name at "
-				  "position %d of RDATA of record with owner "
-				  "%s and type %s.\n",
-				  i, rrset->owner->name,
-				  knot_rrtype_to_string(type));
-
-				knot_zone_contents_adjust_rdata_item(rdata,
-				                                     zone, node,
-				                                     i);
-			}
+dbg_zone_exec_detail(
+		char *name = knot_dname_to_str(knot_rrset_owner(rrset));
+		dbg_zone_detail("Adjusting domain name at %d. RDATA of RRSet "
+		                "with owner %s and type %s.\n", i, name,
+		                knot_rrtype_to_string(type));
+		free(name);
+);
+		ret = knot_zone_contents_adjust_rdata(rdata, desc,
+		                                      zone, node);
+		if (ret != KNOT_EOK) {
+			return ret;
 		}
+
 		rdata = rdata->next;
+		++i;
 	}
 
-	for (int i = 0; i < rdata->count; ++i) {
-		if (desc->wireformat[i]
-		    == KNOT_RDATA_WF_COMPRESSED_DNAME
-		    || desc->wireformat[i]
-		       == KNOT_RDATA_WF_UNCOMPRESSED_DNAME
-		    || desc->wireformat[i]
-		       == KNOT_RDATA_WF_LITERAL_DNAME) {
-			dbg_zone("Adjusting domain name at "
-			  "position %d of RDATA of record with owner "
-			  "%s and type %s.\n",
-			  i, rrset->owner->name,
-			  knot_rrtype_to_string(type));
-
-			knot_zone_contents_adjust_rdata_item(rdata, zone, node,
-			                                     i);
-		}
-	}
-
+dbg_zone_exec_detail(
+	char *name = knot_dname_to_str(knot_rrset_owner(rrset));
+	dbg_zone_detail("Adjusting domain name at %d. RDATA of RRSet "
+			"with owner %s and type %s.\n", i, name,
+			 knot_rrtype_to_string(type));
+	free(name);
+);
+	return knot_zone_contents_adjust_rdata(rdata, desc, zone, node);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -473,28 +511,37 @@ static void knot_zone_contents_adjust_rdata_in_rrset(knot_rrset_t *rrset,
  * \param node Zone node to adjust the RRSets in.
  * \param zone Zone to which the node belongs.
  */
-static void knot_zone_contents_adjust_rrsets(knot_node_t *node,
-                                             knot_zone_contents_t *zone)
+static int knot_zone_contents_adjust_rrsets(knot_node_t *node,
+                                            knot_zone_contents_t *zone)
 {
 	knot_rrset_t **rrsets = knot_node_get_rrsets(node);
 	short count = knot_node_rrset_count(node);
 
 	assert(count == 0 || rrsets != NULL);
+	int ret = KNOT_EOK;
 
 	for (int r = 0; r < count; ++r) {
 		assert(rrsets[r] != NULL);
 		dbg_zone("Adjusting next RRSet.\n");
-		knot_zone_contents_adjust_rdata_in_rrset(rrsets[r], zone,
-		                                           node);
+		ret = knot_zone_contents_adjust_rdata_in_rrset(rrsets[r], zone,
+		                                               node);
+
 		knot_rrset_t *rrsigs = rrsets[r]->rrsigs;
-		if (rrsigs != NULL) {
+		if (ret == KNOT_EOK && rrsigs != NULL) {
 			dbg_zone("Adjusting next RRSIGs.\n");
-			knot_zone_contents_adjust_rdata_in_rrset(rrsigs, zone,
-			                                         node);
+			ret = knot_zone_contents_adjust_rdata_in_rrset(rrsigs,
+			                                               zone,
+			                                               node);
+		}
+
+		if (ret != KNOT_EOK) {
+			break;
 		}
 	}
 
 	free(rrsets);
+
+	return ret;
 }
 /*----------------------------------------------------------------------------*/
 /*!
@@ -513,37 +560,14 @@ static void knot_zone_contents_adjust_rrsets(knot_node_t *node,
  *       in the inserting function, though that may not be always used (e.g.
  *       old changeset processing).
  */
-static void knot_zone_contents_adjust_node(knot_node_t *node,
-                                           knot_zone_contents_t *zone)
+static int knot_zone_contents_adjust_node(knot_node_t *node,
+                                          knot_zone_contents_t *zone)
 {
 	// adjust domain names in RDATA
 	/*! \note Enabled again after a LONG time. Should test thoroughly. */
-	knot_zone_contents_adjust_rrsets(node, zone);
-
-dbg_zone_exec_detail(
-	if (knot_node_parent(node)) {
-		char *name = knot_dname_to_str(knot_node_owner(
-				knot_node_parent(node)));
-		dbg_zone_detail("Parent: %s\n", name);
-		dbg_zone_detail("Parent is delegation point: %s\n",
-		       knot_node_is_deleg_point(knot_node_parent(node))
-		       ? "yes" : "no");
-		dbg_zone_detail("Parent is non-authoritative: %s\n",
-		       knot_node_is_non_auth(knot_node_parent(node))
-		       ? "yes" : "no");
-		free(name);
-	} else {
-		dbg_zone_detail("No parent!\n");
-	}
-);
-	// delegation point / non-authoritative node
-	if (knot_node_parent(node)
-	    && (knot_node_is_deleg_point(knot_node_parent(node))
-		|| knot_node_is_non_auth(knot_node_parent(node)))) {
-		knot_node_set_non_auth(node);
-	} else if (knot_node_rrset(node, KNOT_RRTYPE_NS) != NULL
-		   && node != zone->apex) {
-		knot_node_set_deleg_point(node);
+	int ret = knot_zone_contents_adjust_rrsets(node, zone);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 
 	// assure that owner has proper node
@@ -576,6 +600,8 @@ dbg_zone_exec_detail(
 	                knot_node_is_deleg_point(node) ? "yes" : "no");
 	dbg_zone_detail("Non-authoritative: %s\n",
 	                knot_node_is_non_auth(node) ? "yes" : "no");
+
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -631,7 +657,12 @@ dbg_zone_exec_verb(
 	 * 2) Do other adjusting (flags, closest enclosers, wildcard children,
 	 *    etc.).
 	 */
-	knot_zone_contents_adjust_node(node, zone);
+	ret = knot_zone_contents_adjust_node(node, zone);
+	if (ret != KNOT_EOK) {
+		dbg_xfrin("Failed to adjust node: %s\n", knot_strerror(ret));
+		args->err = ret;
+		return;
+	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -646,8 +677,38 @@ static void knot_zone_contents_adjust_node_in_tree_ptr(
 	knot_zone_adjust_arg_t *args = (knot_zone_adjust_arg_t *)data;
 	knot_node_t *node = tnode->node;
 
+	dbg_zone_exec_detail(
+	if (knot_node_parent(node)) {
+		char *name = knot_dname_to_str(knot_node_owner(
+				knot_node_parent(node)));
+		dbg_zone_detail("Parent: %s\n", name);
+		dbg_zone_detail("Parent is delegation point: %s\n",
+		       knot_node_is_deleg_point(knot_node_parent(node))
+		       ? "yes" : "no");
+		dbg_zone_detail("Parent is non-authoritative: %s\n",
+		       knot_node_is_non_auth(knot_node_parent(node))
+		       ? "yes" : "no");
+		free(name);
+	} else {
+		dbg_zone_detail("No parent!\n");
+	}
+);
 	/*
-	 * 1) Set previous node pointer.
+	 * 1) delegation point / non-authoritative node
+	 */
+	if (knot_node_parent(node)
+	    && (knot_node_is_deleg_point(knot_node_parent(node))
+		|| knot_node_is_non_auth(knot_node_parent(node)))) {
+		knot_node_set_non_auth(node);
+	} else if (knot_node_rrset(node, KNOT_RRTYPE_NS) != NULL
+		   && node != args->zone->apex) {
+		knot_node_set_deleg_point(node);
+	} else {
+		knot_node_set_auth(node);
+	}
+
+	/*
+	 * 2) Set previous node pointer.
 	 */
 	knot_node_set_previous(node, args->previous_node);
 
@@ -656,7 +717,7 @@ static void knot_zone_contents_adjust_node_in_tree_ptr(
 	}
 
 	/*
-	 * 2) Store previous node depending on the type of this node.
+	 * 3) Store previous node depending on the type of this node.
 	 */
 	if (!knot_node_is_non_auth(node)
 	    && knot_node_rrset_count(node) > 0) {
@@ -796,10 +857,10 @@ dbg_zone_exec_verb(
 	dbg_zone("\n");
 
 	char *name_b32 = NULL;
-	size_t size = base32hex_encode_alloc((char *)hashed_name, hash_size,
-	                                     &name_b32);
+	int32_t b32_ret = base32hex_encode_alloc(hashed_name, hash_size,
+	                                            (uint8_t **)(&name_b32));
 
-	if (size == 0) {
+	if (b32_ret <= 0) {
 		char *n = knot_dname_to_str(name);
 		dbg_zone("Error while encoding hashed name %s to base32.\n", n);
 		free(n);
@@ -808,6 +869,8 @@ dbg_zone_exec_verb(
 		}
 		return KNOT_ECRYPTO;
 	}
+
+	size_t size = b32_ret;
 
 	assert(name_b32 != NULL);
 	free(hashed_name);
@@ -2373,6 +2436,9 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone)
 	/*
 	 * First of all we must set node.prev pointers, as these are used in
 	 * the search functions.
+	 *
+	 * We must also set flags, as these are required to set the prev
+	 * pointers well.
 	 */
 	dbg_zone("Setting 'prev' pointers to NSEC3 nodes.\n");
 	int ret = knot_zone_tree_forward_apply_inorder(zone->nsec3_nodes,
