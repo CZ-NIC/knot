@@ -173,14 +173,12 @@ int knot_rrset_remove_rdata(knot_rrset_t *rrset,
 	/* Reorganize the array. */
 	uint8_t *rdata_to_remove = rrset_rdata_pointer(rrset, pos);
 	assert(rdata_to_remove);
-	if (pos == rrset->rdata_count - 1) {
-		/* Last item in array - no need to move data. */
-		// TODO is any operation needed?
-	} else {
-		/* Copy the next RR data to where this item is. */
+	if (pos != rrset->rdata_count - 1) {
+		/* Not the last item in array - we need to move the data. */
 		uint8_t *next_rdata = rrset_rdata_pointer(rrset, pos + 1);
 		assert(next_rdata);
 		size_t next_rdata_size = rrset_rdata_item_size(rrset, pos + 1);
+		/* Copy the next RR data to where this item is. */
 		/* No need to worry about exceeding allocated space now. */
 		memcpy(rdata_to_remove, next_rdata, next_rdata_size);
 	}
@@ -426,8 +424,6 @@ static int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
 	return 0;
 }
 
-
-//TODO this is only supposed to return 1 if equal and 0 if not NO SENSE
 int knot_rrset_compare_rdata(const knot_rrset_t *r1, const knot_rrset_t *r2)
 {
 	if (r1 == NULL || r2 == NULL) {
@@ -476,6 +472,7 @@ int knot_rrset_compare_rdata(const knot_rrset_t *r1, const knot_rrset_t *r2)
 
 static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
                                         size_t rdata_pos,
+                                        size_t header_size,
                                         uint8_t **pos,
                                         uint16_t *rdlength,
                                         size_t max_size)
@@ -492,8 +489,7 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 	const rdata_descriptor_t *desc = get_rdata_descriptor(rrset->type);
 	assert(desc);
 
-	// HEADER SIZE TODO GET FROM CALLER	
-	size_t size = 0;
+	size_t size = header_size;
 	
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
 		if (descriptor_item_is_dname(desc->block_types[i])) {
@@ -624,7 +620,8 @@ static int knot_rrset_to_wire_aux(const knot_rrset_t *rrset,
 	uint16_t rdlength = 0;
 
 	for (uint16_t i = 0; i < rrset->rdata_count; i++) {
-		int ret = knot_rrset_rdata_to_wire_one(rrset, i, pos, &rdlength,
+		int ret = knot_rrset_rdata_to_wire_one(rrset, i, size,
+		                                       pos, &rdlength,
 		                                       max_size);
 		if (ret != KNOT_EOK) {
 			dbg_rrset("rrset: to_wire: Cannot convert RR. "
