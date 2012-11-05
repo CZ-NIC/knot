@@ -369,7 +369,12 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 		rd = NULL;
 	}
 	remote_query_append(qr, rr);
-	knot_packet_to_wire(qr, &buf, &buflen);
+	if (knot_packet_to_wire(qr, &buf, &buflen) != KNOT_EOK) {
+		knot_rrset_deep_free(&rr, 1, 1, 1);
+		knot_packet_free(&qr);
+		return 1;
+	}
+
 	if (r->key) {
 		remote_query_sign(buf, &buflen, qr->max_size, r->key);
 	}
@@ -472,6 +477,11 @@ static int tsig_parse_line(knot_key_t *k, char *l)
 			fw = 0; /* Start word. */
 		}
 		l++;
+	}
+
+	/* No name parsed - assume wrong format. */
+	if (!n) {
+		return KNOT_EMALF;
 	}
 	
 	/* Assume hmac-md5 if no algo specified. */
