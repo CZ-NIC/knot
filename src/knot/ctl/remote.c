@@ -407,7 +407,12 @@ int remote_answer(server_t *s, knot_packet_t *pkt, uint8_t* rwire, size_t *rlen)
 		knot_packet_free(&resp);
 		return ret;
 	}
-	knot_packet_to_wire(resp, &wire, &len);
+	ret = knot_packet_to_wire(resp, &wire, &len);
+	if (ret != KNOT_EOK)  {
+                free(cmd);
+                knot_packet_free(&resp);
+                return ret;
+        }
 	if (len > 0) {
 		memcpy(rwire, wire, len);
 		*rlen = len;
