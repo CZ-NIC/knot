@@ -395,8 +395,18 @@ int remote_answer(server_t *s, knot_packet_t *pkt, uint8_t* rwire, size_t *rlen)
 	}
 	uint8_t *wire = NULL;
 	size_t len = 0;
-	knot_packet_set_max_size(resp, SOCKET_MTU_SZ);
-	knot_response_init_from_query(resp, pkt, 1);
+	ret = knot_packet_set_max_size(resp, SOCKET_MTU_SZ);
+	if (ret != KNOT_EOK)  {
+		free(cmd);
+		knot_packet_free(&resp);
+		return ret;
+	}
+	ret = knot_response_init_from_query(resp, pkt, 1);
+	if (ret != KNOT_EOK)  {
+		free(cmd);
+		knot_packet_free(&resp);
+		return ret;
+	}
 	knot_packet_to_wire(resp, &wire, &len);
 	if (len > 0) {
 		memcpy(rwire, wire, len);
@@ -532,7 +542,14 @@ knot_packet_t* remote_query(const char *query, const knot_key_t *key)
 	}
 	q.qtype = KNOT_RRTYPE_ANY;
 	q.qclass = KNOT_CLASS_CH;
-	knot_query_set_question(qr, &q); /* Cannot return != KNOT_EOK */
+
+	/* Cannot return != KNOT_EOK, but still. */
+	if (knot_query_set_question(qr, &q) != KNOT_EOK) {
+		knot_packet_free(&qr);
+        	free(qname);
+        	return NULL;
+	}
+
 	knot_dname_release(q.qname);
 	free(qname);
 	

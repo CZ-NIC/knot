@@ -1981,9 +1981,15 @@ static int zones_update_forward(int fd, knot_ns_transport_t ttype,
 	if (nfd > -1) {
 		/* Connect on TCP. */
 		if (ttype == NS_TRANSPORT_TCP) {
-			connect(nfd, master->ptr, master->len);
+			if (connect(nfd, master->ptr, master->len) < 0) {
+				ret = KNOT_ECONNREFUSED;
+			}
 		}
-		int sent = req.send(nfd, master, rwire, qsize);
+
+		int sent = 0;
+		if (ret == KNOT_EOK) {
+			sent = req.send(nfd, master, rwire, qsize);
+		}
 	
 		/* Store ID of the awaited response. */
 		if (sent == qsize) {
@@ -1994,7 +2000,9 @@ static int zones_update_forward(int fd, knot_ns_transport_t ttype,
 		}
 	}
 	if (ret != KNOT_EOK) {
-		socket_close(nfd);
+		if (nfd > -1) {
+			socket_close(nfd);
+		}
 		dbg_zones("update: failed to create FORWARD qry '%s'\n",
 		          knot_strerror(ret));
 		rcu_read_unlock();
@@ -2744,10 +2752,6 @@ int zones_process_update(knot_nameserver_t *nameserver,
 
 
 
-	/* Lock zone for xfers. */
-	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
-	pthread_mutex_lock(&zd->xfr_in.lock);
-
 	/* Now we have zone. Verify TSIG if it is in the packet. */
 	size_t rsize_max = *rsize;
 	knot_key_t *tsig_key_zone = NULL;
@@ -2767,28 +2771,34 @@ int zones_process_update(knot_nameserver_t *nameserver,
 					     &tsig_key_zone,
 					     &tsig_prev_time_signed);
 	}
-	
-	/* Allow pass-through of an unknown TSIG in DDNS forwarding. */
-	if (ret == KNOT_EOK || (ret == KNOT_TSIG_EBADKEY && !tsig_key_zone)) {
+
+	/* Allow pass-through of an unknown TSIG in DDNS forwarding (must have zone). */
+	if (zone && (ret == KNOT_EOK || (ret == KNOT_TSIG_EBADKEY && !tsig_key_zone))) {
 		/* Message is authenticated and has primary master,
 		 * proceed to forward the query to the next hop.
 		 */
+		zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 		if (zd->xfr_in.has_master) {
 			ret = zones_update_forward(fd, transport, zone, addr,
 			                           query, *rsize);
 			*rsize = 0; /* Do not send reply immediately. */
 			knot_packet_free(&resp);
-			pthread_mutex_unlock(&zd->xfr_in.lock);
 			rcu_read_unlock();
 			return ret;
 		}
 	}
-	
+
 	/* Process query. */
 	if (ret == KNOT_EOK) {
+		/* Lock zone for xfers. */
+		zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
+		pthread_mutex_lock(&zd->xfr_in.lock);
+
 		/* This function expects RCU locked. */
 		ret = zones_process_update_auth(zone, resp, resp_wire, rsize,
 		                                &rcode, addr, tsig_key_zone);
+
+		pthread_mutex_unlock(&zd->xfr_in.lock);
 	} else {
 		if (tsig_rcode != KNOT_RCODE_NOERROR) {
 			dbg_zones_verb("Failed TSIG check: %s, TSIG err: %u.\n",
@@ -2814,7 +2824,6 @@ int zones_process_update(knot_nameserver_t *nameserver,
 	/* Finish processing if no TSIG signing is required (or no response). */
 	if (*rsize == 0 || !tsig_key_zone) {
 		knot_packet_free(&resp);
-		pthread_mutex_unlock(&zd->xfr_in.lock);
 		rcu_read_unlock();
 		return ret;
 	}
@@ -2830,7 +2839,6 @@ int zones_process_update(knot_nameserver_t *nameserver,
 		uint8_t *digest = (uint8_t *)malloc(digest_len);
 		if (digest == NULL) {
 			knot_packet_free(&resp);
-			pthread_mutex_unlock(&zd->xfr_in.lock);
 			rcu_read_unlock();
 			return KNOT_ENOMEM;
 		}
@@ -2844,7 +2852,6 @@ int zones_process_update(knot_nameserver_t *nameserver,
 	}
 
 	knot_packet_free(&resp);
-	pthread_mutex_unlock(&zd->xfr_in.lock);
 	rcu_read_unlock();
 
 	return KNOT_EOK;
