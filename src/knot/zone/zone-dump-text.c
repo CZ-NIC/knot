@@ -569,7 +569,7 @@ static char *rdata_base32_to_string(knot_rdata_item_t item)
 					   out_len);
 		if (b32_out <= 0) {
 			free(ret);
-			ret = NULL;
+			return NULL;
 		}
 
 		ret[b32_out] = '\0';
