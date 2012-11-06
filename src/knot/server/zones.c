@@ -1228,6 +1228,12 @@ static int zones_load_changesets(const knot_zone_t *zone,
 			journal_release(j);
 			return KNOT_ERROR;
 		}
+		
+		/* Skip wrong changesets. */
+		if (!(n->flags & JOURNAL_VALID) || n->flags & JOURNAL_TRANS) {
+			++n;
+			continue;
+		}
 
 		/* Initialize changeset. */
 		dbg_xfr_detail("xfr: reading entry #%zu id=%llu\n",
@@ -1242,7 +1248,7 @@ static int zones_load_changesets(const knot_zone_t *zone,
 		}
 
 		/* Read journal entry. */
-		ret = journal_read(j, n->id, 0, (char*)chs->data);
+		ret = journal_read_node(j, n, (char*)chs->data);
 		if (ret != KNOT_EOK) {
 			dbg_xfr("xfr: failed to read data from journal\n");
 			free(chs->data);
@@ -3336,7 +3342,7 @@ int zones_changeset_binary_size(const knot_changeset_t *chgset, size_t *size)
 	}
 
 	/*! \todo How is the changeset serialized? Any other parts? */
-	*size += soa_from_size + soa_to_size + remove_size + add_size;
+	*size = soa_from_size + soa_to_size + remove_size + add_size;
 	/* + Changeset flags. */
 	*size += sizeof(uint32_t);
 

@@ -186,6 +186,21 @@ int journal_fetch(journal_t *journal, uint64_t id,
 int journal_read(journal_t *journal, uint64_t id, journal_cmp_t cf, char *dst);
 
 /*!
+ * \brief Read journal entry data.
+ *
+ * \param journal Associated journal.
+ * \param n Entry.
+ * \param dst Pointer to destination memory.
+ *
+ * \retval KNOT_EOK if successful.
+ * \retval KNOT_ENOENT if the entry cannot be found.
+ * \retval KNOT_EINVAL if the entry is invalid.
+ * \retval KNOT_ERROR on I/O error.
+ */
+int journal_read_node(journal_t *journal, journal_node_t *n, char *dst);
+
+
+/*!
  * \brief Write journal entry data.
  *
  * \param journal Associated journal.
