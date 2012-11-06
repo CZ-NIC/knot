@@ -306,7 +306,7 @@ static int cmd_remote_reply(int c)
 	/* Read response packet. */
 	int n = tcp_recv(c, rwire, SOCKET_MTU_SZ, NULL);
 	if (n < 0) {
-		dbg_server("remote: couldn't receive response = %d\n", ret);
+		dbg_server("remote: couldn't receive response = %d\n", n);
 		knot_packet_free(&reply);
 		free(rwire);
 		return KNOT_ECONN;

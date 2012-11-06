@@ -456,7 +456,7 @@ int remote_process(server_t *s, int r, uint8_t* buf, size_t buflen)
 	size_t wire_len = buflen;
 	int c = remote_recv(r, &a, buf, &wire_len);
 	if (c < 0) {
-		dbg_server("remote: couldn't receive query = %d\n", ret);
+		dbg_server("remote: couldn't receive query = %d\n", c);
 		knot_packet_free(&pkt);
 		return c;
 	}
