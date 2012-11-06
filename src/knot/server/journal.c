@@ -715,16 +715,21 @@ int journal_read(journal_t *journal, uint64_t id, journal_cmp_t cf, char *dst)
 		return KNOT_ENOENT;
 	}
 
+	return journal_read_node(journal, n, dst);
+}
+
+int journal_read_node(journal_t *journal, journal_node_t *n, char *dst)
+{
+	dbg_journal("journal: reading node with id=%llu, data=<%u, %u>, flags=0x%hx\n",
+	            n->id, n->pos, n->pos + n->len, n->flags);
+
 	/* Check valid flag. */
 	if (!(n->flags & JOURNAL_VALID)) {
 		dbg_journal("journal: node with id=%llu is invalid "
 		            "(flags=0x%hx)\n", (unsigned long long)id, n->flags);
 		return KNOT_EINVAL;
 	}
-
-	dbg_journal("journal: reading node with id=%llu, data=<%u, %u>, flags=0x%hx\n",
-	            (unsigned long long)id, n->pos, n->pos + n->len, n->flags);
-
+	
 	/* Seek journal node. */
 	int seek_ret = lseek(journal->fd, n->pos, SEEK_SET);
 
@@ -732,7 +737,7 @@ int journal_read(journal_t *journal, uint64_t id, journal_cmp_t cf, char *dst)
 	if (seek_ret < 0 || !sfread(dst, n->len, journal->fd)) {
 		return KNOT_ERROR;
 	}
-
+	
 	return KNOT_EOK;
 }
 
