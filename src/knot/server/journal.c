@@ -718,7 +718,7 @@ int journal_read(journal_t *journal, uint64_t id, journal_cmp_t cf, char *dst)
 	/* Check valid flag. */
 	if (!(n->flags & JOURNAL_VALID)) {
 		dbg_journal("journal: node with id=%llu is invalid "
-		            "(flags=0x%hx)\n", (unsigned long long)id, n->flags);
+		            "(flags=0x%hx)\n", (unsigned long long)n->id, n->flags);
 		return KNOT_EINVAL;
 	}
 
