@@ -748,12 +748,103 @@ int knot_ddns_process_update(const knot_zone_contents_t *zone,
 /* New DDNS processing                                                      - */
 /*----------------------------------------------------------------------------*/
 
+static int knot_ddns_rr_is_nsec3(const knot_rrset_t *rr)
+{
+	if ((knot_rrset_type(rr) == KNOT_RRTYPE_NSEC3)
+	    || (knot_rrset_type(rr) == KNOT_RRTYPE_RRSIG
+	        && knot_rdata_rrsig_type_covered(knot_rrset_rdata(rr))
+	            == KNOT_RRTYPE_NSEC3))
+	{
+		dbg_ddns_detail("This is NSEC3-related RRSet.\n");
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+/*! \note Copied from xfrin_add_new_node(). */
+static knot_node_t *knot_ddns_add_new_node(knot_zone_contents_t *zone,
+                                           knot_dname_t *owner, int is_nsec3)
+{
+	knot_node_t *node = knot_node_new(owner, NULL, 0);
+	if (node == NULL) {
+		dbg_xfrin("Failed to create a new node.\n");
+		return NULL;
+	}
+
+	int ret = 0;
+
+	// insert the node into zone structures and create parents if
+	// necessary
+	if (is_nsec3) {
+		ret = knot_zone_contents_add_nsec3_node(contents, node, 1, 0,
+		                                        1);
+	} else {
+		ret = knot_zone_contents_add_node(contents, node, 1, 0, 1);
+	}
+	if (ret != KNOT_EOK) {
+		dbg_xfrin("Failed to add new node to zone contents.\n");
+		return NULL;
+	}
+
+	/*!
+	 * \note It is not needed to set the previous node, we will do this
+	 *       in adjusting after the transfer.
+	 */
+	assert(zone->zone != NULL);
+	knot_node_set_zone(node, zone->zone);
+
+	return node;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static knot_node_t *knot_ddns_get_node(knot_zone_contents_t *zone,
+                                       knot_dname_t *owner, int is_nsec3)
+{
+	knot_node_t *node = NULL;
+
+	dbg_ddns_detail("Searching for node...\n");
+	if (is_nsec3) {
+		node = knot_zone_contents_get_nsec3_node(zone, owner);
+	} else {
+		node = knot_zone_contents_get_node(zone, owner);
+	}
+	if (node == NULL) {
+		// create new node, connect it properly to the
+		// zone nodes
+		dbg_ddns_detail("Node not found. Creating new.\n");
+		node = knot_ddns_add_new_node(zone, owner, is_nsec3);
+		if (node == NULL) {
+			dbg_xfrin("Failed to create new node in zone.\n");
+		}
+	}
+
+	return node;
+}
+
+/*----------------------------------------------------------------------------*/
+
 static int knot_ddns_process_add(const knot_rrset_t *rr,
                                  knot_zone_contents_t *zone,
                                  knot_changeset_t *changeset,
                                  knot_changes_t *changes, uint16_t qclass,
                                  knot_rrset_t **rr_copy)
 {
+	/* 1) check if the RRSet belongs to the NSEC3 tree. */
+	int is_nsec3 = knot_ddns_rr_is_nsec3(rr);
+
+	/* 2) Find appropriate node in the zone or create a new one. */
+	knot_node_t *node = knot_ddns_get_node(zone, knot_rrset_get_owner(rr),
+	                                       is_nsec3);
+	if (node == NULL) {
+		// only if creation of new node failed
+		return KNOT_ENOMEM;
+	}
+
+	// Here we could probably use the code from xfrin_apply_add()
+
 	return KNOT_EOK;
 }
 
@@ -776,6 +867,13 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rr,
                                        knot_changes_t *changes, uint16_t qclass,
                                        knot_rrset_t **rr_copy)
 {
+	if (knot_rrset_type(rr) == KNOT_RRTYPE_NS) {
+		// Ignore this RR
+		return KNOT_EOK;
+	}
+
+
+
 	return KNOT_EOK;
 }
 
@@ -821,7 +919,18 @@ static int knot_ddns_process_rr(const knot_rrset_t *rr,
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*
+ * NOTES:
+ * - 'zone' must be a copy of the current zone.
+ * - changeset must be allocated
+ * - changes must be allocated
+ *
+ * All this is done in the first parts of xfrin_apply_changesets() - extract
+ * to separate function, if possible.
+ *
+ * If anything fails, rollback must be done. The xfrin_rollback_update() may
+ * be good for this.
+ */
 int knot_ddns_process_update2(knot_zone_contents_t *zone,
                               const knot_packet_t *query,
                               knot_changeset_t *changeset,
@@ -900,8 +1009,11 @@ int knot_ddns_process_update2(knot_zone_contents_t *zone,
 		 * added to the zone (replacing the old one).
 		 */
 		if (knot_rrset_type(rr) == KNOT_RRTYPE_SOA
-		    && ns_serial_compare(knot_rdata_soa_serial(
-		                         knot_rrset_rdata(rr)), sn_new) <= 0) {
+		    && (knot_rrset_class(rr) == KNOT_CLASS_NONE
+		        || knot_rrset_class(rr) == KNOT_CLASS_ANY
+		        || ns_serial_compare(knot_rdata_soa_serial(
+		                        knot_rrset_rdata(rr)), sn_new) <= 0)) {
+			// This ignores also SOA removals
 			continue;
 		}
 
