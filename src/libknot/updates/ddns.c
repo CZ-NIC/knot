@@ -778,10 +778,9 @@ static knot_node_t *knot_ddns_add_new_node(knot_zone_contents_t *zone,
 	// insert the node into zone structures and create parents if
 	// necessary
 	if (is_nsec3) {
-		ret = knot_zone_contents_add_nsec3_node(contents, node, 1, 0,
-		                                        1);
+		ret = knot_zone_contents_add_nsec3_node(zone, node, 1, 0, 1);
 	} else {
-		ret = knot_zone_contents_add_node(contents, node, 1, 0, 1);
+		ret = knot_zone_contents_add_node(zone, node, 1, 0, 1);
 	}
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to add new node to zone contents.\n");
