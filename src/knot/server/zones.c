@@ -3754,6 +3754,7 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
 	/* Commit transaction. */
 	ret = zones_store_changesets_commit(transaction);
 	if (ret != KNOT_EOK) {
+		/*! \todo THIS WILL LEAK!! xfrin_rollback_update() needed. */
 		log_zone_error("%s Failed to commit stored changesets "
 		               "- %s\n", msgpref, knot_strerror(apply_ret));
 		knot_free_changesets(&chs);

@@ -745,6 +745,205 @@ int knot_ddns_process_update(const knot_zone_contents_t *zone,
 }
 
 /*----------------------------------------------------------------------------*/
+/* New DDNS processing                                                      - */
+/*----------------------------------------------------------------------------*/
+
+static int knot_ddns_process_add(const knot_rrset_t *rr,
+                                 knot_zone_contents_t *zone,
+                                 knot_changeset_t *changeset,
+                                 knot_changes_t *changes, uint16_t qclass,
+                                 knot_rrset_t **rr_copy)
+{
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
+                                    knot_zone_contents_t *zone,
+                                    knot_changeset_t *changeset,
+                                    knot_changes_t *changes, uint16_t qclass,
+                                    knot_rrset_t **rr_copy)
+{
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int knot_ddns_process_rem_rrset(const knot_rrset_t *rr,
+                                       knot_zone_contents_t *zone,
+                                       knot_changeset_t *changeset,
+                                       knot_changes_t *changes, uint16_t qclass,
+                                       knot_rrset_t **rr_copy)
+{
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int knot_ddns_process_rem_all(const knot_rrset_t *rr,
+                                     knot_zone_contents_t *zone,
+                                     knot_changeset_t *changeset,
+                                     knot_changes_t *changes, uint16_t qclass,
+                                     knot_rrset_t **rr_copy)
+{
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int knot_ddns_process_rr(const knot_rrset_t *rr,
+                                knot_zone_contents_t *zone,
+                                knot_changeset_t *changeset,
+                                knot_changes_t *changes, uint16_t qclass,
+                                knot_rrset_t **rr_copy)
+{
+	if (knot_rrset_class(rr) == knot_zone_contents_class(zone)) {
+		return knot_ddns_process_add(rr, zone, changeset,
+		                             changes, qclass, rr_copy);
+	} else if (knot_rrset_class(rr) == KNOT_CLASS_NONE) {
+		return knot_ddns_process_rem_rr(rr, zone, changeset, changes,
+		                                qclass, rr_copy);
+	} else if (knot_rrset_class(rr) == KNOT_CLASS_ANY) {
+		if (knot_rrset_type(rr) == KNOT_RRTYPE_ANY) {
+			return knot_ddns_process_rem_all(rr, zone, changeset,
+			                                 changes, qclass,
+			                                 rr_copy);
+		} else {
+			return knot_ddns_process_rem_rrset(rr, zone, changeset,
+			                                   changes, qclass,
+			                                   rr_copy);
+		}
+	} else {
+		assert(0);
+		return KNOT_ERROR;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_ddns_process_update2(knot_zone_contents_t *zone,
+                              const knot_packet_t *query,
+                              knot_changeset_t *changeset,
+                              knot_changes_t *changes,
+                              knot_rcode_t *rcode)
+{
+	if (zone == NULL || query == NULL || changeset == NULL || rcode == NULL
+	    || changes == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	int ret = KNOT_EOK;
+
+	/* Copy base SOA RR. */
+	const knot_rrset_t *soa = knot_node_rrset(knot_zone_contents_apex(zone),
+						  KNOT_RRTYPE_SOA);
+	knot_rrset_t *soa_begin = NULL;
+	knot_rrset_t *soa_end = NULL;
+	ret = knot_rrset_deep_copy(soa, &soa_begin, 0);
+	if (ret == KNOT_EOK) {
+		knot_changeset_store_soa(&changeset->soa_from,
+		                         &changeset->serial_from, soa_begin);
+	} else {
+		*rcode = KNOT_RCODE_SERVFAIL;
+		return ret;
+	}
+
+	/* Current SERIAL */
+	int64_t sn = knot_rdata_soa_serial(knot_rrset_rdata(soa_begin));
+	int64_t sn_new;
+
+	/* Incremented SERIAL
+	 * We must set it now to be able to compare SERIAL from SOAs in the
+	 * UPDATE to it. Although we do not have the new SOA yet.
+	 */
+	if (sn > -1) {
+		sn_new = (uint32_t)sn + 1;
+	} else {
+		*rcode = KNOT_RCODE_SERVFAIL;
+		return ret;
+	}
+
+	/* Process all RRs the Authority (Update) section. */
+
+	const knot_rrset_t *rr = NULL;
+	knot_rrset_t *rr_copy = NULL;
+
+	dbg_ddns("Processing UPDATE section.\n");
+	for (int i = 0; i < knot_packet_authority_rrset_count(query); ++i) {
+
+		rr = knot_packet_authority_rrset(query, i);
+
+		/* Check if the entry is correct. */
+		ret = knot_ddns_check_update(rr, query, rcode);
+		if (ret != KNOT_EOK) {
+			dbg_ddns("Failed to check update RRSet:%s\n",
+			                knot_strerror(ret));
+			return ret;
+		}
+
+		/* Check if the record is SOA. If yes, check the SERIAL.
+		 * If this record should cause the SOA to be replaced in the
+		 * zone, use it as the ending SOA.
+		 *
+		 * Also handle cases where there are multiple SOAs to be added
+		 * in the same UPDATE. The one with the largest SERIAL should
+		 * be used.
+		 *
+		 * TODO: If there are more SOAs in the UPDATE one after another,
+		 *       the ddns_add_update() function will merge them into a
+		 *       RRSet. This should be handled somehow.
+		 *
+		 * If the serial is not larger than the current zone serial,
+		 * ignore the record and continue. This will ensure that the
+		 * RR processing function receives only SOA RRs that should be
+		 * added to the zone (replacing the old one).
+		 */
+		if (knot_rrset_type(rr) == KNOT_RRTYPE_SOA
+		    && ns_serial_compare(knot_rdata_soa_serial(
+		                         knot_rrset_rdata(rr)), sn_new) <= 0) {
+			continue;
+		}
+
+		ret = knot_ddns_process_rr(rr, zone, changeset, changes,
+		                           knot_packet_qclass(query),
+		                           &rr_copy);
+
+		if (ret != KNOT_EOK) {
+			dbg_ddns("Failed to process update RR:%s\n",
+			         knot_strerror(ret));
+			*rcode = (ret == KNOT_EMALF) ? KNOT_RCODE_FORMERR
+			                             : KNOT_RCODE_SERVFAIL;
+			return ret;
+		}
+
+		// we need the RR copy, that's why this code is here
+		if (knot_rrset_type(rr) == KNOT_RRTYPE_SOA) {
+			int64_t sn_rr = knot_rdata_soa_serial(
+			                        knot_rrset_rdata(rr));
+			assert(ns_serial_compare(sn_rr, sn_new) <= 0);
+			sn_new = sn_rr;
+			soa_end = (knot_rrset_t *)rr_copy;
+		}
+	}
+
+	/* Ending SOA */
+	if (soa_end == NULL) {
+		/* If not set */
+		assert(sn_new == (uint32_t)sn + 1);
+		ret = knot_rrset_deep_copy(soa, &soa_end, 1);
+		knot_rdata_t *rd = knot_rrset_get_rdata(soa_end);
+		knot_rdata_soa_serial_set(rd, sn_new);
+	}
+
+	knot_changeset_store_soa(&changeset->soa_to,
+	                         &changeset->serial_to,
+	                         soa_end);
+
+	return ret;
+}
+
+/*----------------------------------------------------------------------------*/
 
 void knot_ddns_prereqs_free(knot_ddns_prereq_t **prereq)
 {
