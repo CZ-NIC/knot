@@ -472,3 +472,55 @@ void knot_changes_add_rdata(knot_rdata_t **rdatas, uint16_t *types,
 		r = r->next;
 	} while (r != NULL && r != rdata);
 }
+
+/*----------------------------------------------------------------------------*/
+
+int knot_changes_add_rrsets_with_rdata(knot_rrset_t **rrsets, int count,
+                                       knot_changes_t *changes)
+{
+	if (rrsets != NULL || changes != NULL) {
+		return KNOT_EINVAL;
+	}
+
+	if (count == 0) {
+		return KNOT_EOK;
+	}
+
+	int ret = knot_changes_rrsets_reserve(&changes->old_rrsets,
+	                                      &changes->old_rrsets_count,
+	                                      &changes->old_rrsets_allocated,
+	                                      count);
+	if (ret != KNOT_EOK) {
+//		dbg_xfrin("Failed to reserve changes rrsets.\n");
+		return ret;
+	}
+
+	/* Mark RRsets and RDATA for removal. */
+	for (unsigned i = 0; i < count; ++i) {
+		if (rrsets[i] == NULL) {
+			continue;
+		}
+
+		changes->old_rrsets[changes->old_rrsets_count++] = rrsets[i];
+
+		/* Remove old RDATA. */
+		int rdata_count = knot_rrset_rdata_rr_count(rrsets[i]);
+		ret = knot_changes_rdata_reserve(&changes->old_rdata,
+		                                 &changes->old_rdata_types,
+		                                 changes->old_rdata_count,
+		                                 &changes->old_rdata_allocated,
+		                                 rdata_count);
+		if (ret != KNOT_EOK) {
+//			dbg_xfrin("Failed to reserve changes rdata.\n");
+			return ret;
+		}
+
+		knot_changes_add_rdata(changes->old_rdata,
+		                       changes->old_rdata_types,
+		                       &changes->old_rdata_count,
+		                       knot_rrset_get_rdata(rrsets[i]),
+		                       knot_rrset_type(rrsets[i]));
+	}
+
+	return KNOT_EOK;
+}

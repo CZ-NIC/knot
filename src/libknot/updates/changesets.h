@@ -178,6 +178,9 @@ int knot_changes_rdata_reserve(knot_rdata_t ***rdatas, uint16_t **types,
 void knot_changes_add_rdata(knot_rdata_t **rdatas, uint16_t *types,
                             int *count, knot_rdata_t *rdata, uint16_t type);
 
+int knot_changes_add_rrsets_with_rdata(knot_rrset_t **rrsets, int count,
+                                       knot_changes_t *changes);
+
 #endif /* _KNOT_CHANGESETS_H_ */
 
 /*! @} */
