@@ -339,3 +339,136 @@ void knot_free_changesets(knot_changesets_t **changesets)
 	free(*changesets);
 	*changesets = NULL;
 }
+
+/*----------------------------------------------------------------------------*/
+/* knot_changes_t manipulation                                                */
+/*----------------------------------------------------------------------------*/
+
+int knot_changes_rrsets_reserve(knot_rrset_t ***rrsets,
+                              int *count, int *allocated, int to_add)
+{
+	if (*count + to_add <= *allocated) {
+		return KNOT_EOK;
+	}
+
+	int new_count = (*allocated == 0) ? 2 : *allocated * 2;
+	while (new_count < *count + to_add) {
+		new_count *= 2;
+	}
+
+	/* Allocate new memory block. */
+	knot_rrset_t **rrsets_new = malloc(new_count * sizeof(knot_rrset_t *));
+	if (rrsets_new == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	/* Initialize new memory and copy old data. */
+	memset(rrsets_new, 0, new_count * sizeof(knot_rrset_t *));
+	memcpy(rrsets_new, *rrsets, (*allocated) * sizeof(knot_rrset_t *));
+
+	/* Free old nodes and switch pointers. */
+	free(*rrsets);
+	*rrsets = rrsets_new;
+	*allocated = new_count;
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_changes_nodes_reserve(knot_node_t ***nodes,
+                             int *count, int *allocated)
+{
+	assert(nodes != NULL);
+	assert(count != NULL);
+	assert(allocated != 0);
+
+	if (*count + 2 <= *allocated) {
+		return KNOT_EOK;
+	}
+
+	int new_count = (*allocated == 0) ? 2 : *allocated * 2;
+
+	/* Allocate new memory block. */
+	const size_t node_len = sizeof(knot_node_t *);
+	knot_node_t **nodes_new = malloc(new_count * node_len);
+	if (nodes_new == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	/* Clear memory block and copy old data. */
+	memset(nodes_new, 0, new_count * node_len);
+	memcpy(nodes_new, *nodes, (*allocated) * node_len);
+
+	/* Free old nodes and switch pointers. */
+	free(*nodes);
+	*nodes = nodes_new;
+	*allocated = new_count;
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_changes_rdata_reserve(knot_rdata_t ***rdatas, uint16_t **types,
+                             int count, int *allocated, int to_add)
+{
+	if (count + to_add <= *allocated) {
+		return KNOT_EOK;
+	}
+
+	int new_count = (*allocated == 0) ? 2 : *allocated * 2;
+	while (new_count < count + to_add) {
+		new_count *= 2;
+	}
+
+	/* Allocate new memory block. */
+	knot_rdata_t **rdatas_new = malloc(new_count * sizeof(knot_rdata_t *));
+	if (rdatas_new == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	uint16_t *types_new = malloc(new_count * sizeof(uint));
+	if (types_new == NULL) {
+		free(rdatas_new);
+		return KNOT_ENOMEM;
+	}
+
+	/* Initialize new memory and copy old data. */
+	memset(rdatas_new, 0, new_count * sizeof(knot_rdata_t *));
+	memcpy(rdatas_new, *rdatas, (*allocated) * sizeof(knot_rdata_t *));
+
+	memset(types_new, 0, new_count * sizeof(uint));
+	memcpy(types_new, *types, (*allocated) * sizeof(uint));
+
+	/* Free old rdatas and switch pointers. */
+	free(*rdatas);
+	free(*types);
+	*rdatas = rdatas_new;
+	*types = types_new;
+	*allocated = new_count;
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void knot_changes_add_rdata(knot_rdata_t **rdatas, uint16_t *types,
+                            int *count, knot_rdata_t *rdata, uint16_t type)
+{
+	if (rdata == NULL) {
+		return;
+	}
+
+	// Add all RDATAs from the chain!!
+
+	knot_rdata_t *r = rdata;
+	do {
+//		dbg_xfrin_detail("Adding RDATA to RDATA list: %p\n", r);
+		rdatas[*count] = r;
+		types[*count] = type;
+		++*count;
+
+		r = r->next;
+	} while (r != NULL && r != rdata);
+}

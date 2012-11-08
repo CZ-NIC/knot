@@ -1230,137 +1230,6 @@ cleanup:
 /* Applying changesets to zone                                                */
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_changes_check_rrsets(knot_rrset_t ***rrsets,
-                                      int *count, int *allocated, int to_add)
-{
-	if (*count + to_add <= *allocated) {
-		return KNOT_EOK;
-	}
-
-	int new_count = (*allocated == 0) ? 2 : *allocated * 2;
-	while (new_count < *count + to_add) {
-		new_count *= 2;
-	}
-
-	/* Allocate new memory block. */
-	knot_rrset_t **rrsets_new = malloc(new_count * sizeof(knot_rrset_t *));
-	if (rrsets_new == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	/* Initialize new memory and copy old data. */
-	memset(rrsets_new, 0, new_count * sizeof(knot_rrset_t *));
-	memcpy(rrsets_new, *rrsets, (*allocated) * sizeof(knot_rrset_t *));
-
-	/* Free old nodes and switch pointers. */
-	free(*rrsets);
-	*rrsets = rrsets_new;
-	*allocated = new_count;
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-static int xfrin_changes_check_nodes(knot_node_t ***nodes,
-                                     int *count, int *allocated)
-{
-	assert(nodes != NULL);
-	assert(count != NULL);
-	assert(allocated != 0);
-
-	if (*count + 2 <= *allocated) {
-		return KNOT_EOK;
-	}
-
-	int new_count = (*allocated == 0) ? 2 : *allocated * 2;
-
-	/* Allocate new memory block. */
-	const size_t node_len = sizeof(knot_node_t *);
-	knot_node_t **nodes_new = malloc(new_count * node_len);
-	if (nodes_new == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	/* Clear memory block and copy old data. */
-	memset(nodes_new, 0, new_count * node_len);
-	memcpy(nodes_new, *nodes, (*allocated) * node_len);
-
-	/* Free old nodes and switch pointers. */
-	free(*nodes);
-	*nodes = nodes_new;
-	*allocated = new_count;
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-static int xfrin_changes_check_rdata(knot_rdata_t ***rdatas, uint **types,
-                                     int count, int *allocated, int to_add)
-{
-	if (count + to_add <= *allocated) {
-		return KNOT_EOK;
-	}
-
-	int new_count = (*allocated == 0) ? 2 : *allocated * 2;
-	while (new_count < count + to_add) {
-		new_count *= 2;
-	}
-
-	/* Allocate new memory block. */
-	knot_rdata_t **rdatas_new = malloc(new_count * sizeof(knot_rdata_t *));
-	if (rdatas_new == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	uint *types_new = malloc(new_count * sizeof(uint));
-	if (types_new == NULL) {
-		free(rdatas_new);
-		return KNOT_ENOMEM;
-	}
-
-	/* Initialize new memory and copy old data. */
-	memset(rdatas_new, 0, new_count * sizeof(knot_rdata_t *));
-	memcpy(rdatas_new, *rdatas, (*allocated) * sizeof(knot_rdata_t *));
-
-	memset(types_new, 0, new_count * sizeof(uint));
-	memcpy(types_new, *types, (*allocated) * sizeof(uint));
-
-	/* Free old rdatas and switch pointers. */
-	free(*rdatas);
-	free(*types);
-	*rdatas = rdatas_new;
-	*types = types_new;
-	*allocated = new_count;
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-static void xfrin_changes_add_rdata(knot_rdata_t **rdatas, uint *types,
-                                    int *count, knot_rdata_t *rdata, uint type)
-{
-	if (rdata == NULL) {
-		return;
-	}
-
-	// Add all RDATAs from the chain!!
-
-	knot_rdata_t *r = rdata;
-	do {
-		dbg_xfrin_detail("Adding RDATA to RDATA list: %p\n", r);
-		rdatas[*count] = r;
-		types[*count] = type;
-		++*count;
-
-		r = r->next;
-	} while (r != NULL && r != rdata);
-}
-
-/*----------------------------------------------------------------------------*/
-
 static void xfrin_zone_contents_free(knot_zone_contents_t **contents)
 {
 	/*! \todo This should be all in some API!! */
@@ -1435,7 +1304,7 @@ static int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 
 	// add the RRSet to the list of new RRSets
 	// create place also for RRSIGs
-	ret = xfrin_changes_check_rrsets(&changes->new_rrsets,
+	ret = knot_changes_rrsets_reserve(&changes->new_rrsets,
 	                                 &changes->new_rrsets_count,
 	                                 &changes->new_rrsets_allocated, 2);
 	if (ret != KNOT_EOK) {
@@ -1448,7 +1317,7 @@ static int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 	count += knot_rrset_rdata_rr_count((*copy)->rrsigs);
 
 	// add the copied RDATA to the list of new RDATA
-	ret = xfrin_changes_check_rdata(&changes->new_rdata,
+	ret = knot_changes_rdata_reserve(&changes->new_rdata,
 	                                &changes->new_rdata_types,
 	                                changes->new_rdata_count,
 	                                &changes->new_rdata_allocated, count);
@@ -1462,7 +1331,7 @@ static int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 
 	dbg_xfrin_detail("Adding RDATA from the RRSet copy to new RDATA list."
 	                 "\n");
-	xfrin_changes_add_rdata(changes->new_rdata, changes->new_rdata_types,
+	knot_changes_add_rdata(changes->new_rdata, changes->new_rdata_types,
 	                        &changes->new_rdata_count,
 	                        knot_rrset_get_rdata(*copy),
 	                        knot_rrset_type(*copy));
@@ -1474,7 +1343,7 @@ static int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 
 		dbg_xfrin_detail("Adding RDATA from RRSIG of the RRSet copy to "
 		                 "new RDATA list.\n");
-		xfrin_changes_add_rdata(changes->new_rdata,
+		knot_changes_add_rdata(changes->new_rdata,
 		                        changes->new_rdata_types,
 		                        &changes->new_rdata_count,
 		                        knot_rrset_get_rdata((*copy)->rrsigs),
@@ -1482,7 +1351,7 @@ static int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 	}
 
 	// add the old RRSet to the list of old RRSets
-	ret = xfrin_changes_check_rrsets(&changes->old_rrsets,
+	ret = knot_changes_rrsets_reserve(&changes->old_rrsets,
 	                                 &changes->old_rrsets_count,
 	                                 &changes->old_rrsets_allocated, 2);
 	if (ret != KNOT_EOK) {
@@ -1494,7 +1363,7 @@ static int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 	count += knot_rrset_rdata_rr_count(old->rrsigs);
 
 	// and old RDATA to the list of old RDATA
-	ret = xfrin_changes_check_rdata(&changes->old_rdata,
+	ret = knot_changes_rdata_reserve(&changes->old_rdata,
 	                                &changes->old_rdata_types,
 	                                changes->old_rdata_count,
 	                                &changes->old_rdata_allocated, count);
@@ -1506,7 +1375,7 @@ static int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 	changes->old_rrsets[changes->old_rrsets_count++] = old;
 
 	dbg_xfrin_detail("Adding RDATA from old RRSet to old RDATA list.\n");
-	xfrin_changes_add_rdata(changes->old_rdata, changes->old_rdata_types,
+	knot_changes_add_rdata(changes->old_rdata, changes->old_rdata_types,
 	                        &changes->old_rdata_count, old->rdata,
 	                        knot_rrset_type(old));
 
@@ -1516,7 +1385,7 @@ static int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 
 		dbg_xfrin_detail("Adding RDATA from RRSIG of the old RRSet to "
 		                 "old RDATA list.\n");
-		xfrin_changes_add_rdata(changes->old_rdata,
+		knot_changes_add_rdata(changes->old_rdata,
 		                        changes->old_rdata_types,
 		                        &changes->old_rdata_count,
 		                        old->rrsigs->rdata,
@@ -1662,7 +1531,7 @@ static int xfrin_apply_remove_rrsigs(knot_changes_t *changes,
 
 	int count = knot_rdata_count(rdata);
 	// connect the RDATA to the list of old RDATA
-	ret = xfrin_changes_check_rdata(&changes->old_rdata,
+	ret = knot_changes_rdata_reserve(&changes->old_rdata,
 	                                &changes->old_rdata_types,
 	                                changes->old_rdata_count,
 	                                &changes->old_rdata_allocated, count);
@@ -1670,7 +1539,7 @@ static int xfrin_apply_remove_rrsigs(knot_changes_t *changes,
 		return ret;
 	}
 
-	xfrin_changes_add_rdata(changes->old_rdata, changes->old_rdata_types,
+	knot_changes_add_rdata(changes->old_rdata, changes->old_rdata_types,
 	                        &changes->old_rdata_count, rdata,
 	                        knot_rrset_type(remove));
 	
@@ -1682,7 +1551,7 @@ static int xfrin_apply_remove_rrsigs(knot_changes_t *changes,
 		knot_rrset_set_rrsigs(*rrset, NULL);
 		
 		// add RRSet to the list of old RRSets
-		ret = xfrin_changes_check_rrsets(&changes->old_rrsets,
+		ret = knot_changes_rrsets_reserve(&changes->old_rrsets,
 		                                 &changes->old_rrsets_count,
 		                                 &changes->old_rrsets_allocated,
 		                                 1);
@@ -1707,7 +1576,7 @@ static int xfrin_apply_remove_rrsigs(knot_changes_t *changes,
 			                             knot_rrset_type(*rrset));
 			assert(tmp == *rrset);
 			
-			ret = xfrin_changes_check_rrsets(&changes->old_rrsets,
+			ret = knot_changes_rrsets_reserve(&changes->old_rrsets,
 			                        &changes->old_rrsets_count,
 			                        &changes->old_rrsets_allocated,
 			                        1);
@@ -1819,7 +1688,7 @@ dbg_xfrin_exec_detail(
 	if (rdata != NULL) {
 		int count = knot_rdata_count(rdata);
 		// connect the RDATA to the list of old RDATA
-		ret = xfrin_changes_check_rdata(&changes->old_rdata,
+		ret = knot_changes_rdata_reserve(&changes->old_rdata,
 		                                &changes->old_rdata_types,
 		                                changes->old_rdata_count,
 		                                &changes->old_rdata_allocated,
@@ -1828,7 +1697,7 @@ dbg_xfrin_exec_detail(
 			return ret;
 		}
 
-		xfrin_changes_add_rdata(changes->old_rdata,
+		knot_changes_add_rdata(changes->old_rdata,
 		                        changes->old_rdata_types,
 		                        &changes->old_rdata_count, rdata,
 		                        knot_rrset_type(remove));
@@ -1850,7 +1719,7 @@ dbg_xfrin_exec_detail(
 		// add the removed RRSet to list of old RRSets
 		
 		assert(tmp == *rrset);
-		ret = xfrin_changes_check_rrsets(&changes->old_rrsets,
+		ret = knot_changes_rrsets_reserve(&changes->old_rrsets,
 		                                 &changes->old_rrsets_count,
 		                                 &changes->old_rrsets_allocated,
 		                                 1);
@@ -1950,7 +1819,7 @@ dbg_xfrin_exec_verb(
 		}
 	}
 	
-	ret = xfrin_changes_check_rrsets(&changes->old_rrsets,
+	ret = knot_changes_rrsets_reserve(&changes->old_rrsets,
 					 &changes->old_rrsets_count,
 					 &changes->old_rrsets_allocated,
 					 rrsets_count);
@@ -1970,7 +1839,7 @@ dbg_xfrin_exec_verb(
 	
 		/* Remove old RDATA. */
 		int rdata_count = knot_rrset_rdata_rr_count(rrsets[i]);
-		ret = xfrin_changes_check_rdata(&changes->old_rdata,
+		ret = knot_changes_rdata_reserve(&changes->old_rdata,
 						&changes->old_rdata_types,
 						changes->old_rdata_count,
 						&changes->old_rdata_allocated,
@@ -1981,7 +1850,7 @@ dbg_xfrin_exec_verb(
 			return ret;
 		}
 		
-		xfrin_changes_add_rdata(changes->old_rdata,
+		knot_changes_add_rdata(changes->old_rdata,
 					changes->old_rdata_types,
 					&changes->old_rdata_count,
 					knot_rrset_get_rdata(rrsets[i]),
@@ -2046,7 +1915,7 @@ static int xfrin_replace_rrset_in_node(knot_node_t *node,
 	assert(rrset_old != NULL);
 
 	// add the old RRSet to the list of old RRSets
-	int ret = xfrin_changes_check_rrsets(&changes->old_rrsets,
+	int ret = knot_changes_rrsets_reserve(&changes->old_rrsets,
 	                                     &changes->old_rrsets_count,
 	                                     &changes->old_rrsets_allocated, 1);
 	if (ret != KNOT_EOK) {
@@ -2057,7 +1926,7 @@ static int xfrin_replace_rrset_in_node(knot_node_t *node,
 	// save also the RDATA, because RDATA are not deleted with the RRSet
 	// The count should be 1, but just to be sure....
 	int count = knot_rrset_rdata_rr_count(rrset_old);
-	ret = xfrin_changes_check_rdata(&changes->old_rdata,
+	ret = knot_changes_rdata_reserve(&changes->old_rdata,
 	                                &changes->old_rdata_types,
 	                                changes->old_rdata_count,
 	                                &changes->old_rdata_allocated, count);
@@ -2068,7 +1937,7 @@ static int xfrin_replace_rrset_in_node(knot_node_t *node,
 
 	// save the new RRSet to the new RRSet, so that it is deleted if the
 	// apply fails
-	ret = xfrin_changes_check_rrsets(&changes->new_rrsets,
+	ret = knot_changes_rrsets_reserve(&changes->new_rrsets,
 	                                 &changes->new_rrsets_count,
 	                                 &changes->new_rrsets_allocated, 1);
 	if (ret != KNOT_EOK) {
@@ -2079,7 +1948,7 @@ static int xfrin_replace_rrset_in_node(knot_node_t *node,
 	// The count should be 1, but just to be sure....
 	count = knot_rrset_rdata_rr_count(rrset_new);
 	// save the new RDATA
-	ret = xfrin_changes_check_rdata(&changes->new_rdata,
+	ret = knot_changes_rdata_reserve(&changes->new_rdata,
 	                                &changes->new_rdata_types,
 	                                changes->new_rdata_count,
 	                                &changes->new_rdata_allocated, count);
@@ -2092,7 +1961,7 @@ static int xfrin_replace_rrset_in_node(knot_node_t *node,
 
 	dbg_xfrin_verb("Adding RDATA from old RRSet to the list of old RDATA."
 	               "\n");
-	xfrin_changes_add_rdata(changes->old_rdata, changes->old_rdata_types,
+	knot_changes_add_rdata(changes->old_rdata, changes->old_rdata_types,
 	                        &changes->old_rdata_count,
 	                        knot_rrset_get_rdata(rrset_old), type);
 
@@ -2114,7 +1983,7 @@ static int xfrin_replace_rrset_in_node(knot_node_t *node,
 
 	dbg_xfrin_verb("Adding RDATA from new RRSet to the list of new RDATA."
 	               "\n");
-	xfrin_changes_add_rdata(changes->new_rdata, changes->new_rdata_types,
+	knot_changes_add_rdata(changes->new_rdata, changes->new_rdata_types,
 	                        &changes->new_rdata_count,
 	                        knot_rrset_get_rdata(rrset_new), type);
 
@@ -2422,7 +2291,7 @@ dbg_xfrin_exec_verb(
 		dbg_xfrin_detail("Created new RRSet for RRSIG: %p.\n", *rrset);
 
 		// add the RRset to the list of new RRsets
-		ret = xfrin_changes_check_rrsets(
+		ret = knot_changes_rrsets_reserve(
 			&changes->new_rrsets,
 			&changes->new_rrsets_count,
 			&changes->new_rrsets_allocated, 1);
@@ -2982,7 +2851,7 @@ dbg_xfrin_exec_detail(
 				// the ADD RRSet was used, i.e. it should be
 				// removed from the changeset and saved in the
 				// list of new RRSets
-				ret = xfrin_changes_check_rrsets(
+				ret = knot_changes_rrsets_reserve(
 					&changes->new_rrsets,
 					&changes->new_rrsets_count,
 					&changes->new_rrsets_allocated, 1);
@@ -3000,7 +2869,7 @@ dbg_xfrin_exec_detail(
 				                        chset->add[i]);
 
 				// connect the RDATA to the list of new RDATA
-				int res = xfrin_changes_check_rdata(
+				int res = knot_changes_rdata_reserve(
 					&changes->new_rdata,
 					&changes->new_rdata_types,
 					changes->new_rdata_count,
@@ -3009,7 +2878,7 @@ dbg_xfrin_exec_detail(
 					return res;
 				}
 
-				xfrin_changes_add_rdata(changes->new_rdata,
+				knot_changes_add_rdata(changes->new_rdata,
 				            changes->new_rdata_types,
 				            &changes->new_rdata_count,
 				            knot_rrset_get_rdata(chset->add[i]),
@@ -3117,7 +2986,7 @@ static void xfrin_mark_empty(knot_node_t *node, void *data)
 
 	if (knot_node_rrset_count(node) == 0
 	    && knot_node_children(node) == 0) {
-		int ret = xfrin_changes_check_nodes(&changes->old_nodes,
+		int ret = knot_changes_nodes_reserve(&changes->old_nodes,
 		                                 &changes->old_nodes_count,
 		                                 &changes->old_nodes_allocated);
 		if (ret != KNOT_EOK) {
@@ -3151,7 +3020,7 @@ static void xfrin_mark_empty_nsec3(knot_node_t *node, void *data)
 
 	if (knot_node_rrset_count(node) == 0
 	    && knot_node_children(node) == 0) {
-		int ret = xfrin_changes_check_nodes(&changes->old_nsec3,
+		int ret = knot_changes_nodes_reserve(&changes->old_nsec3,
 		                                 &changes->old_nsec3_count,
 		                                 &changes->old_nsec3_allocated);
 		if (ret != KNOT_EOK) {

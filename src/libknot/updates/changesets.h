@@ -79,7 +79,7 @@ typedef struct {
 	 * Deleted after successful update.
 	 */
 	knot_rdata_t **old_rdata;
-	unsigned *old_rdata_types;
+	uint16_t *old_rdata_types;
 	int old_rdata_count;
 	int old_rdata_allocated;
 
@@ -96,7 +96,7 @@ typedef struct {
 	 * Deleted after failed update.
 	 */
 	knot_rdata_t **new_rdata;
-	unsigned *new_rdata_types;
+	uint16_t *new_rdata_types;
 	int new_rdata_count;
 	int new_rdata_allocated;
 
@@ -165,6 +165,18 @@ uint32_t knot_changeset_flags(knot_changeset_t *changeset);
 void knot_free_changeset(knot_changeset_t **changeset);
 
 void knot_free_changesets(knot_changesets_t **changesets);
+
+int knot_changes_rrsets_reserve(knot_rrset_t ***rrsets,
+                                int *count, int *allocated, int to_add);
+
+int knot_changes_nodes_reserve(knot_node_t ***nodes,
+                               int *count, int *allocated);
+
+int knot_changes_rdata_reserve(knot_rdata_t ***rdatas, uint16_t **types,
+                               int count, int *allocated, int to_add);
+
+void knot_changes_add_rdata(knot_rdata_t **rdatas, uint16_t *types,
+                            int *count, knot_rdata_t *rdata, uint16_t type);
 
 #endif /* _KNOT_CHANGESETS_H_ */
 
