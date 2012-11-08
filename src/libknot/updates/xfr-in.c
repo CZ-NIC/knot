@@ -1824,7 +1824,7 @@ dbg_xfrin_exec_verb(
 					 &changes->old_rrsets_allocated,
 					 rrsets_count);
 	if (ret != KNOT_EOK) {
-		dbg_xfrin("Failed to check changeset rrsets.\n");
+		dbg_xfrin("Failed to reserve changes rrsets.\n");
 		free(rrsets);
 		return ret;
 	}
@@ -1845,7 +1845,7 @@ dbg_xfrin_exec_verb(
 						&changes->old_rdata_allocated,
 						rdata_count);
 		if (ret != KNOT_EOK) {
-			dbg_xfrin("Failed to check changeset rdata.\n");
+			dbg_xfrin("Failed to reserve changes rdata.\n");
 			free(rrsets);
 			return ret;
 		}
