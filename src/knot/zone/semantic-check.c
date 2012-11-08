@@ -896,8 +896,8 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 		} else {
 			/* Unsecured delegation, check whether it is part of
 			 * opt-out span */
-			const knot_node_t *nsec3_previous;
-			const knot_node_t *nsec3_node;
+			const knot_node_t *nsec3_previous = NULL;
+			const knot_node_t *nsec3_node = NULL;
 
 			if (knot_zone_contents_find_nsec3_for_name(zone,
 						knot_node_owner(node),
@@ -1485,6 +1485,12 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 {
 	if (do_checks == 3) {
 		/* Each NSEC3 node should only contain one RRSET. */
+		if (last_nsec3_node == NULL || first_nsec3_node == NULL) {
+			/* No NSEC3, but NSEC3PARAM present. */
+			err_handler_handle_error(handler, last_nsec3_node,
+						 ZC_ERR_NSEC3_RDATA_CHAIN);
+			return;
+		}
 		assert(last_nsec3_node && first_nsec3_node);
 		const knot_rrset_t *nsec3_rrset =
 			knot_node_rrset(last_nsec3_node,
