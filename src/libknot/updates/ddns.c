@@ -786,12 +786,12 @@ void knot_ddns_prereqs_free(knot_ddns_prereq_t **prereq)
 /*----------------------------------------------------------------------------*/
 
 static int knot_ddns_check_remove_rr2(knot_changeset_t *changeset,
-                                      const knot_rrset_t *rr,
+                                      const knot_dname_t *owner,
+                                      uint16_t type, const knot_rdata_t *rdata,
                                       knot_rrset_t ***removed,
                                       int *removed_count)
 {
 	assert(changeset != NULL);
-	assert(rr != NULL);
 	assert(removed != NULL);
 	assert(removed_count != NULL);
 
@@ -813,32 +813,25 @@ static int knot_ddns_check_remove_rr2(knot_changeset_t *changeset,
 	dbg_ddns_verb("Removing possible redundant RRs from changeset.\n");
 	for (int i = 0; i < changeset->add_count; ++i) {
 		// Removing RR(s) from this owner
-		if (knot_dname_compare(knot_rrset_owner(rr),
-		                    knot_rrset_owner(changeset->add[i])) == 0) {
+		if (knot_dname_compare(knot_rrset_owner(changeset->add[i]),
+		                       owner) == 0) {
 			// Removing one or all RRSets
-			if (knot_rrset_class(rr) == KNOT_CLASS_ANY
-			    && (knot_rrset_type(rr)
-			          == knot_rrset_type(changeset->add[i])
-			        || knot_rrset_type(rr) == KNOT_RRTYPE_ANY)) {
+			if (rdata == NULL
+			    && (type == knot_rrset_type(changeset->add[i])
+			        || type == KNOT_RRTYPE_ANY)) {
 				dbg_ddns_detail("Removing one or all RRSets\n");
 					remove = knot_changeset_remove_rr(
 					              changeset->add,
 					              &changeset->add_count, i);
-			} else if (knot_rrset_type(rr)
-			           == knot_rrset_type(changeset->add[i])){
+			} else if (type == knot_rrset_type(changeset->add[i])) {
 				// Removing specific RR
-
-				/* All other classes are checked in
-				 * knot_ddns_check_update().
-				 */
-				assert(knot_rrset_class(rr) == KNOT_CLASS_NONE);
+				assert(rdata != NULL);
 
 				knot_rrtype_descriptor_t *desc =
-					knot_rrtype_descriptor_by_type(
-						knot_rrset_type(rr));
+					knot_rrtype_descriptor_by_type(type);
 
 				// We must check if the RDATA match
-				if (knot_rdata_compare(knot_rrset_rdata(rr),
+				if (knot_rdata_compare(rdata,
 				         knot_rrset_rdata(changeset->add[i]),
 				         desc->wireformat)) {
 					remove = knot_changeset_remove_rr(
@@ -970,44 +963,38 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
                                     knot_node_t *node,
                                     knot_zone_contents_t *zone,
                                     knot_changeset_t *changeset,
-                                    knot_changes_t *changes, uint16_t qclass,
-                                    knot_rrset_t **rr_copy)
+                                    knot_changes_t *changes, uint16_t qclass)
 {
 	assert(rr != NULL);
 	assert(zone != NULL);
 	assert(changeset != NULL);
 	assert(changes != NULL);
-	assert(rr_copy != NULL);
 
 	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
-static int knot_ddns_process_rem_rrset(const knot_rrset_t *rr,
+static int knot_ddns_process_rem_rrset(uint16_t type,
+                                       const knot_rdata_t *rdata,
                                        knot_node_t *node,
-                                       knot_zone_contents_t *zone,
                                        knot_changeset_t *changeset,
-                                       knot_changes_t *changes, uint16_t qclass,
-                                       knot_rrset_t **rr_copy)
+                                       knot_changes_t *changes)
 {
-	assert(rr != NULL);
-	assert(zone != NULL);
+	assert(node != NULL);
 	assert(changeset != NULL);
 	assert(changes != NULL);
-	assert(rr_copy != NULL);
 
-	if (knot_rrset_type(rr) == KNOT_RRTYPE_NS) {
+	if (type == KNOT_RRTYPE_NS) {
 		// Ignore this RR
 		return KNOT_EOK;
 	}
 
 	// this should be ruled out before
-	assert(knot_rrset_type(rr) != KNOT_RRTYPE_SOA);
+	assert(type != KNOT_RRTYPE_SOA);
 
 	/* 1) Remove the RRSet from the node. */
-	knot_rrset_t *removed = knot_node_remove_rrset(node,
-	                                               knot_rrset_type(rr));
+	knot_rrset_t *removed = knot_node_remove_rrset(node, type);
 
 	// no such RR
 	if (removed == NULL) {
@@ -1041,7 +1028,8 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rr,
 	int from_chgset_count = 0;
 
 	/* 4 a) Remove redundant RRs from the ADD section of the changeset. */
-	ret = knot_ddns_check_remove_rr2(changeset, rr, &from_chgset,
+	ret = knot_ddns_check_remove_rr2(changeset, knot_node_owner(node), type,
+	                                 rdata, &from_chgset,
 	                                 &from_chgset_count);
 	if (ret != KNOT_EOK) {
 		dbg_ddns("Failed to remove possible redundant RRs from ADD "
@@ -1080,18 +1068,38 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rr,
 
 /*----------------------------------------------------------------------------*/
 
-static int knot_ddns_process_rem_all(const knot_rrset_t *rr,
-                                     knot_node_t *node,
-                                     knot_zone_contents_t *zone,
+static int knot_ddns_process_rem_all(knot_node_t *node,
                                      knot_changeset_t *changeset,
-                                     knot_changes_t *changes, uint16_t qclass,
-                                     knot_rrset_t **rr_copy)
+                                     knot_changes_t *changes)
 {
-	assert(rr != NULL);
-	assert(zone != NULL);
 	assert(changeset != NULL);
 	assert(changes != NULL);
-	assert(rr_copy != NULL);
+
+	/*
+	 * This basically means to call knot_ddns_process_rem_rrset() for every
+	 * type present in the node.
+	 */
+	int ret = 0;
+	const knot_rrset_t **rrsets = knot_node_rrsets(node);
+	int is_apex = knot_node_rrset(node, KNOT_RRTYPE_SOA) != NULL;
+
+	dbg_ddns_verb("Removing all RRSets.\n");
+	for (int i = 0; i < knot_node_rrset_count(node); ++i) {
+		// If the node is apex, skip NS and SOA
+		if (is_apex &&
+		    (knot_rrset_type(rrsets[i]) == KNOT_RRTYPE_SOA
+		     || knot_rrset_type(rrsets[i]) == KNOT_RRTYPE_NS)) {
+			continue;
+		}
+
+		ret = knot_ddns_process_rem_rrset(knot_rrset_type(rrsets[i]),
+		                                NULL, node, changeset, changes);
+		if (ret != KNOT_EOK) {
+			dbg_ddns("Failed to remove RRSet: %s\n",
+			         knot_strerror(ret));
+			return ret;
+		}
+	}
 
 	return KNOT_EOK;
 }
@@ -1120,16 +1128,15 @@ static int knot_ddns_process_rr(const knot_rrset_t *rr,
 		                             changes, qclass, rr_copy);
 	} else if (knot_rrset_class(rr) == KNOT_CLASS_NONE) {
 		return knot_ddns_process_rem_rr(rr, node, zone, changeset,
-		                                changes, qclass, rr_copy);
+		                                changes, qclass);
 	} else if (knot_rrset_class(rr) == KNOT_CLASS_ANY) {
 		if (knot_rrset_type(rr) == KNOT_RRTYPE_ANY) {
-			return knot_ddns_process_rem_all(rr, node, zone,
-			                                 changeset, changes,
-			                                 qclass, rr_copy);
+			return knot_ddns_process_rem_all(node, changeset,
+			                                 changes);
 		} else {
-			return knot_ddns_process_rem_rrset(rr, node, zone,
-			                                   changeset, changes,
-			                                   qclass, rr_copy);
+			return knot_ddns_process_rem_rrset(knot_rrset_type(rr),
+			                                   NULL, node,
+			                                   changeset, changes);
 		}
 	} else {
 		assert(0);
