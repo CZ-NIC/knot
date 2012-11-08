@@ -1270,6 +1270,9 @@ static knot_rdata_t *xfrin_remove_rdata(knot_rrset_t *from,
 		/*
 		 * DDNS special handling - last apex NS should remain in the
 		 * zone.
+		 *
+		 * TODO: this is not correct, the last NS from the 'what' RRSet
+		 * may not even be in the zone.
 		 */
 		if (ddns_check
 		    && knot_rrset_rdata_next(what, rdata) == NULL) {
@@ -1397,8 +1400,8 @@ static int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_copy_rrset(knot_node_t *node, knot_rr_type_t type,
-                            knot_rrset_t **rrset, knot_changes_t *changes)
+int xfrin_copy_rrset(knot_node_t *node, knot_rr_type_t type,
+                     knot_rrset_t **rrset, knot_changes_t *changes)
 {
 dbg_xfrin_exec_detail(
 	char *name = knot_dname_to_str(knot_node_owner(node));

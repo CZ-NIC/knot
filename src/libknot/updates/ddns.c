@@ -23,6 +23,7 @@
 #include "consts.h"
 #include "common/mempattern.h"
 #include "nameserver/name-server.h"  // ns_serial_compare() - TODO: extract
+#include "updates/xfr-in.h"
 
 /*----------------------------------------------------------------------------*/
 // Copied from XFR - maybe extract somewhere else
@@ -970,6 +971,165 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 	assert(changeset != NULL);
 	assert(changes != NULL);
 
+	uint16_t type = knot_rrset_type(rr);
+	dbg_ddns_verb("Removing one RR.\n");
+
+	/*
+	 * When doing changes to RRSets, we must:
+	 * 1) Copy the RRSet (same as in IXFR changeset applying, maybe the
+	 *    function xfrin_copy_rrset() may be used for this).
+	 * 2) Remove the RDATA (in this case only one). Check if it is not the
+	 *    last NS RR in the zone.
+	 * 3) Store the removed RDATA in 'changes'.
+	 * 4) If the RRSet is empty, remove it and store in 'changes'.
+	 * 5) Check redundant RRs in changeset.
+	 * 6) Store the RRSet containing the one RDATA in the changeset. We may
+	 *    use the RRSet from the packet for this - copy it, set CLASS
+	 *    and TTL.
+	 *
+	 * Special handling of RRSIGs is required in that the RRSet containing
+	 * them must be copied as well. However, copying of RRSet copies also
+	 * the RRSIGs, so copying the base RRSet is enough for both cases!
+	 */
+
+	/*
+	 * 1) Copy the RRSet.
+	 */
+	knot_rrset_t *rrset_copy;
+	int ret = xfrin_copy_rrset(node, type, &rrset_copy, changes);
+	if (ret < 0) {
+		dbg_ddns("Failed to copy RRSet for removal: %s\n",
+		         knot_strerror(ret));
+		return ret;
+	}
+
+	if (rrset_copy == NULL) {
+		dbg_ddns_verb("RRSet not found.\n");
+		return KNOT_EOK;
+	}
+
+	assert(type != KNOT_RRTYPE_SOA);
+	int is_apex = knot_node_rrset(node, KNOT_RRTYPE_SOA) != NULL;
+
+	/*
+	 * 1.5) Prepare place for the removed RDATA.
+	 *      We don't know if there are some, but if this fails, at least we
+	 *      haven't removed them yet.
+	 */
+	ret = knot_changes_rdata_reserve(&changes->old_rdata,
+	                                 &changes->old_rdata_types,
+	                                 changes->old_rdata_count,
+	                                 &changes->old_rdata_allocated, 1);
+	if (ret != KNOT_EOK) {
+		dbg_ddns("Failed to reserve place for RDATA.\n");
+		return ret;
+	}
+
+	/*
+	 * 2) Remove the proper RDATA from the RRSet copy.
+	 */
+	knot_rdata_t *removed = knot_rrset_remove_rdata(
+	                            rrset_copy, knot_rrset_rdata(rr));
+
+	/* No such RR in the RRSet. */
+	if (removed == NULL) {
+		dbg_ddns_detail("No such RR found to be removed.\n");
+		return KNOT_EOK;
+	}
+
+	/* If it was the last NS in apex, return it there and finish. */
+	if (is_apex && type == KNOT_RRTYPE_NS
+	    && knot_rrset_rdata(rrset_copy) == NULL) {
+		dbg_ddns_detail("Last NS from apex removed, returning..\n");
+		knot_rrset_add_rdata(rrset_copy, removed);
+		return KNOT_EOK;
+	}
+
+	/*
+	 * 3) Store the removed RDATA in 'changes'.
+	 */
+	knot_changes_add_rdata(changes->old_rdata, changes->old_rdata_types,
+	                       &changes->old_rdata_count, removed, type);
+
+	/*
+	 * 4) If the RRSet is empty, remove it and store in 'changes'.
+	 */
+	/*! \note Copied from xfr-in.c - maybe extract to some function. */
+	if (knot_rrset_rdata(rrset_copy) == NULL
+	    && knot_rrset_rrsigs(rrset_copy) == NULL) {
+		// The RRSet should not be empty if we were removing NSs from
+		// apex in case of DDNS
+		assert(!is_apex);
+
+		ret = knot_changes_rrsets_reserve(&changes->old_rrsets,
+		                                 &changes->old_rrsets_count,
+		                                 &changes->old_rrsets_allocated,
+		                                 1);
+		if (ret == KNOT_EOK) {
+			knot_rrset_t *tmp = knot_node_remove_rrset(node, type);
+			dbg_xfrin_detail("Removed whole RRSet (%p).\n", tmp);
+
+			assert(tmp == rrset_copy);
+
+			// add the removed RRSet to list of old RRSets
+			changes->old_rrsets[changes->old_rrsets_count++]
+			                = rrset_copy;
+		} else {
+			dbg_ddns("Failed to add empty RRSet to the "
+			         "list of old RRSets.");
+		}
+	}
+
+	/*
+	 * 5) Check if the RR is not in the ADD section. If yes, remove it
+	 *    from there and do not add it to the REMOVE section.
+	 */
+	knot_rrset_t **from_chgset = NULL;
+	int from_chgset_count = 0;
+	ret = knot_ddns_check_remove_rr2(changeset, knot_node_owner(node),
+	                                 type, knot_rrset_rdata(rr),
+	                                 &from_chgset, &from_chgset_count);
+	if (ret != KNOT_EOK) {
+		dbg_ddns("Failed to remove possible redundant RRs from ADD "
+		         "section: %s.\n", knot_strerror(ret))
+		return ret;
+	}
+
+	assert(from_chgset_count <= 1);
+
+	if (from_chgset_count == 1) {
+		/* Just delete the RRSet. */
+		knot_rrset_deep_free(&(from_chgset[0]), 1, 1, 1);
+
+		/* Finish processing, no adding to changeset. */
+		return KNOT_EOK;
+	}
+
+	/*
+	 * 6) Store the RRSet containing the one RDATA in the changeset. We may
+	 *    use the RRSet from the packet for this - copy it, set CLASS
+	 *    and TTL.
+	 */
+	knot_rrset_t *to_chgset = NULL;
+	ret = knot_rrset_deep_copy(rr, &to_chgset, 1);
+	if (ret != KNOT_EOK) {
+		dbg_ddns("Failed to copy RRSet from packet to changeset.\n");
+		return ret;
+	}
+	knot_rrset_set_class(to_chgset, qclass);
+	knot_rrset_set_ttl(to_chgset, knot_rrset_ttl(rrset_copy));
+
+	ret = knot_changeset_add_rrset(&changeset->remove,
+	                               &changeset->remove_count,
+	                               &changeset->remove_allocated,
+	                               to_chgset);
+	if (ret != KNOT_EOK) {
+		dbg_ddns("Failed to store the RRSet copy to changeset: %s.\n",
+		         knot_strerror(ret))
+		knot_rrset_deep_free(&to_chgset, 1, 1, 1);
+		return ret;
+	}
+
 	return KNOT_EOK;
 }
 
@@ -1011,8 +1171,8 @@ static int knot_ddns_process_rem_rrset(uint16_t type,
 	}
 
 	/* 3) Copy the RRSet, so that it can be stored to the changeset. */
-	knot_rrset_t *removed_copy = NULL;
-	ret = knot_rrset_deep_copy(removed, &removed_copy, 1);
+	knot_rrset_t *to_chgset = NULL;
+	ret = knot_rrset_deep_copy(removed, &to_chgset, 1);
 	if (ret != KNOT_EOK) {
 		dbg_ddns("Failed to copy the removed RRSet: %s.\n",
 		         knot_strerror(ret))
@@ -1034,17 +1194,19 @@ static int knot_ddns_process_rem_rrset(uint16_t type,
 	if (ret != KNOT_EOK) {
 		dbg_ddns("Failed to remove possible redundant RRs from ADD "
 		         "section: %s.\n", knot_strerror(ret))
-		knot_rrset_deep_free(&removed_copy, 1, 1, 1);
+		knot_rrset_deep_free(&to_chgset, 1, 1, 1);
 		return ret;
 	}
 
 	/* 4 b) Remove these RRs from the copy of the RRSet removed from zone.*/
 	knot_rdata_t *rem = NULL;
 	for (int i = 0; i < from_chgset_count; ++i) {
-		rem = knot_rrset_remove_rdata(removed_copy, knot_rrset_rdata(
+		rem = knot_rrset_remove_rdata(to_chgset, knot_rrset_rdata(
 		                                               from_chgset[i]));
 		// And delete it right away, no use for that
 		knot_rdata_deep_free(&rem, knot_rrset_type(from_chgset[i]), 1);
+		// Also delete the redundant RR from the ADD section
+		knot_rrset_deep_free(&from_chgset[i], 1, 1, 1);
 
 	}
 
@@ -1055,11 +1217,11 @@ static int knot_ddns_process_rem_rrset(uint16_t type,
 	ret = knot_changeset_add_rrset(&changeset->remove,
 	                               &changeset->remove_count,
 	                               &changeset->remove_allocated,
-	                               removed_copy);
+	                               to_chgset);
 	if (ret != KNOT_EOK) {
 		dbg_ddns("Failed to store the RRSet copy to changeset: %s.\n",
 		         knot_strerror(ret))
-		knot_rrset_deep_free(&removed_copy, 1, 1, 1);
+		knot_rrset_deep_free(&to_chgset, 1, 1, 1);
 		return ret;
 	}
 
