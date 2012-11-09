@@ -992,6 +992,19 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 	 * the RRSIGs, so copying the base RRSet is enough for both cases!
 	 */
 
+	assert(type != KNOT_RRTYPE_SOA);
+	int is_apex = knot_node_rrset(node, KNOT_RRTYPE_SOA) != NULL;
+	
+	/* If removing NS from an apex and there is only one NS left, ignore
+	 * this removal right away. We do not have to check if the RRs match:
+	 * - if they don't match, the removal will be ignored
+	 * - if they match, the last NS cannot be removed anyway.
+	 */
+	if (is_apex && type == KNOT_RRTYPE_NS
+	    && knot_rrset_rdata_rr_count(knot_node_rrset(node, type)) == 1) {
+		return KNOT_EOK;
+	}
+	
 	/*
 	 * 1) Copy the RRSet.
 	 */
@@ -1007,9 +1020,6 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 		dbg_ddns_verb("RRSet not found.\n");
 		return KNOT_EOK;
 	}
-
-	assert(type != KNOT_RRTYPE_SOA);
-	int is_apex = knot_node_rrset(node, KNOT_RRTYPE_SOA) != NULL;
 
 	/*
 	 * 1.5) Prepare place for the removed RDATA.
@@ -1037,13 +1047,9 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 		return KNOT_EOK;
 	}
 
-	/* If it was the last NS in apex, return it there and finish. */
-	if (is_apex && type == KNOT_RRTYPE_NS
-	    && knot_rrset_rdata(rrset_copy) == NULL) {
-		dbg_ddns_detail("Last NS from apex removed, returning..\n");
-		knot_rrset_add_rdata(rrset_copy, removed);
-		return KNOT_EOK;
-	}
+	/* If we removed NS from apex, there should be at least one more. */
+	assert(!is_apex || type != KNOT_RRTYPE_NS 
+	       || knot_rrset_rdata(rrset_copy) != NULL);
 
 	/*
 	 * 3) Store the removed RDATA in 'changes'.
