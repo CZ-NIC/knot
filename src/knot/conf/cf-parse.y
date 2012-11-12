@@ -189,6 +189,7 @@ static void conf_zone_start(void *scanner, char *name) {
    }
 
    /* Check domain name. */
+   char buf[512];
    knot_dname_t *dn = NULL;
    if (this_zone->name != NULL) {
       dn = knot_dname_new_from_str(this_zone->name, nlen + 1, 0);
@@ -199,6 +200,26 @@ static void conf_zone_start(void *scanner, char *name) {
      this_zone = NULL;
      cf_error(scanner, "invalid zone origin");
    } else {
+     /* Check for duplicates. */
+     conf_zone_t* pz = 0;
+     WALK_LIST (pz, new_config->zones) {
+	knot_dname_t *tn = knot_dname_new_from_str(pz->name, strlen(pz->name), 0);
+        if (knot_dname_compare(tn, dn) == 0) {
+           snprintf(buf, sizeof(buf), "zone '%s' is already present, refusing to duplicate", pz->name);
+           knot_dname_free(&dn);
+	   knot_dname_free(&tn);
+           free(this_zone->name);
+           this_zone->name = NULL;
+           /* Must not free, some versions of flex might continue after error and segfault.
+            * free(this_zone); 
+            * this_zone = NULL;
+            */
+           cf_error(scanner, buf);
+           return;
+        }
+	knot_dname_free(&tn);
+     }
+
      /* Directly discard dname, won't be needed. */
      knot_dname_free(&dn);
      add_tail(&new_config->zones, &this_zone->n);
