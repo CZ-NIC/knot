@@ -210,7 +210,8 @@ static int knot_zone_diff_changeset_remove_rrset(knot_changeset_t *changeset,
 	}
 	if (rrset_copy->rrsigs != NULL) {
 		knot_rrset_deep_free(&rrset_copy->rrsigs, 1, 1, 1);
-	}	
+	}
+	
 	assert(knot_rrset_rrsigs(rrset_copy) == NULL);
 	
 	ret = knot_changeset_add_new_rr(changeset, rrset_copy,
@@ -307,7 +308,7 @@ dbg_zonediff_exec_detail(
 			return ret;
 		}
 		if (knot_rrset_rrsigs(rrsets[i])) {
-			/* Add RRSIGs of the new node. */
+			/* Remove RRSIGs of the old node. */
 			ret = knot_zone_diff_changeset_remove_rrset(changeset,
 						knot_rrset_rrsigs(rrsets[i]));
 			if (ret != KNOT_EOK) {
@@ -733,6 +734,20 @@ static void knot_zone_diff_node(knot_node_t *node, void *data)
 				free(rrsets);
 				return;
 			}
+			
+			/* Remove RRSet's RRSIGs as well. */
+			if (knot_rrset_rrsigs(rrset)) {
+				ret = knot_zone_diff_changeset_remove_rrset(
+				            param->changeset,
+				            knot_rrset_rrsigs(rrset));
+				if (ret != KNOT_EOK) {
+				    dbg_zonediff("zone_diff: diff_node+: "
+				                 "Failed to remove RRSIGs.\n");
+				    param->ret = ret;
+				    free(rrsets);
+				    return;
+				}
+			}
 		} else {
 			dbg_zonediff("zone_diff: diff_node: There is a counterpart "
 			       "for RRSet of type %s in second tree.\n",
@@ -816,6 +831,18 @@ static void knot_zone_diff_node(knot_node_t *node, void *data)
 				param->ret = ret;
 				free(rrsets);
 				return;
+			}
+			if (knot_rrset_rrsigs(rrset)) {
+				int ret = knot_zone_diff_changeset_add_rrset(
+			        param->changeset,
+			         knot_rrset_rrsigs(rrset));
+			   if (ret != KNOT_EOK) {
+			     dbg_zonediff("zone_diff: diff_node: "
+			            "Failed to add RRSIGs.\n");
+			    param->ret = ret;
+					free(rrsets);
+				return;	
+			 }
 			}
 		} else {
 			/* Already handled. */
