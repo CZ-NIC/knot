@@ -1565,6 +1565,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 		
 		/* Refresh new slave zones (almost) immediately. */
 		if(is_new && zd->xfr_in.timer) {
+			evsched_cancel(sch, zd->xfr_in.timer);
 			evsched_schedule(sch, zd->xfr_in.timer,
 			                 zd->xfr_in.bootstrap_retry / 2);
 		}
