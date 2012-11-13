@@ -31,13 +31,11 @@ static inline int timercmp_ge(struct timeval *a, struct timeval *b) {
 	return timercmp(a, b, >) || timercmp(a, b, ==);
 }
 
-static int compare_event_heap_nodes(event_t **e1, event_t **e2)
+static int compare_event_heap_nodes(event_t *e1, event_t *e2)
 {
-	if (timercmp(&(*e1)->tv, &(*e2)->tv, <)) return -1;
-	if (timercmp(&(*e1)->tv, &(*e2)->tv, >)) return 1;
-	if (*e1 == *e2) return 0; /* Only on identity. */
-	return 1; /* Event time is equal, so it doesn't matter which is first,
-	           * but this makes insertion to halt faster. */
+	if (timercmp(&e1->tv, &e2->tv, <)) return -1;
+	if (timercmp(&e1->tv, &e2->tv, >)) return 1;
+	return 0;
 }
 
 /*!
@@ -83,7 +81,7 @@ evsched_t *evsched_new()
 #ifndef OPENBSD_SLAB_BROKEN
 	slab_cache_init(&s->cache.alloc, sizeof(event_t));
 #endif
-	heap_init(&s->heap, sizeof(event_t *), compare_event_heap_nodes, 0, NULL);
+	heap_init(&s->heap, compare_event_heap_nodes, 0);
 	return s;
 }
 
@@ -240,7 +238,7 @@ int evsched_schedule(evsched_t *s, event_t *ev, uint32_t dt)
 	/* Lock calendar. */
 	pthread_mutex_lock(&s->mx);
 	
-	heap_insert(&s->heap, &ev);
+	heap_insert(&s->heap, ev);
 
 	/* Unlock calendar. */
 	pthread_cond_broadcast(&s->notify);
@@ -307,7 +305,7 @@ int evsched_cancel(evsched_t *s, event_t *ev)
 	/* Lock calendar. */
 	pthread_mutex_lock(&s->mx);
 
-	if ((found = heap_find(&s->heap, &ev))) {
+	if ((found = heap_find(&s->heap, ev))) {
 		heap_delete(&s->heap, found);
 	}
 

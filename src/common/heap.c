@@ -22,11 +22,8 @@
  *
  * Most macros use these parameters:
  *
- * - @type - the type of elements
  * - @num - a variable (signed or unsigned integer) with the number of elements
  * - @heap - a C array of type @type; the heap is stored in `heap[1] .. heap[num]`; `heap[0]` is unused
- * - @less - a callback to compare two element values; `less(x, y)` shall return a non-zero value iff @x is lower than @y
- * - @swap - a callback to swap two array elements; `swap(heap, i, j, t)` must swap `heap[i]` with `heap[j]` with possible help of temporary variable @t (type @type).
  *
  * A valid heap must follow these rules:
  *
@@ -44,26 +41,23 @@
 #include <string.h>
 #include <stdlib.h>
 
-void _def_swap(struct heap *h, void *e1, void *e2)
+static inline void heap_swap(heap_val_t *e1, heap_val_t *e2)
 {
-	if (e1 == e2) return;
-	void *tmp = HTEMPELEMENT(h);
-	memcpy(tmp, e1, h->elm_size);
-	memcpy(e1, e2, h->elm_size);
-	memcpy(e2, tmp, h->elm_size);
+	if (e1 == e2) return; /* Stack tmp should be faster than tmpelem. */
+	heap_val_t tmp = *e1; /* Even faster than 2-XOR nowadays. */
+	*e1 = *e2;
+	*e2 = tmp;
 }
 
 
-int heap_init(struct heap *h, int elm_size, int (*cmp)(void *, void *), int init_size, void (*swap)(struct heap *, void *, void *))
+int heap_init(struct heap *h, int (*cmp)(void *, void *), int init_size)
 {
 	int isize = init_size ? init_size : INITIAL_HEAP_SIZE;
 
 	h->num = 0;
 	h->max_size = isize;
 	h->cmp = cmp;
-	h->swap = swap ? swap : _def_swap;
-	h->data = malloc((isize + 1) * elm_size);
-	h->elm_size = elm_size;
+	h->data = malloc((isize + 1) * sizeof(heap_val_t)); /* Temp element unused. */
 
 	return h->data ? 1 : 0;
 };
@@ -75,9 +69,9 @@ static inline void _heap_bubble_down(struct heap *h, int e)
 	{
 		e1 = 2*e;
 		if(e1 > h->num) break;
-		if((h->cmp(HELEMENT(h, e),HELEMENT(h,e1)) < 0) && (e1 == h->num || (h->cmp(HELEMENT(h, e),HELEMENT(h,e1+1)) < 0))) break;
-		if((e1 != h->num) && (h->cmp(HELEMENT(h, e1+1), HELEMENT(h,e1)) < 0)) e1++;
-		h->swap(h,HELEMENT(h,e),HELEMENT(h,e1));
+		if((h->cmp(*HELEMENT(h, e),*HELEMENT(h,e1)) < 0) && (e1 == h->num || (h->cmp(*HELEMENT(h, e),*HELEMENT(h,e1+1)) < 0))) break;
+		if((e1 != h->num) && (h->cmp(*HELEMENT(h, e1+1), *HELEMENT(h,e1)) < 0)) e1++;
+		heap_swap(HELEMENT(h,e),HELEMENT(h,e1));
 		e = e1;
 	}
 }
@@ -88,8 +82,8 @@ static inline void _heap_bubble_up(struct heap *h, int e)
 	while (e > 1)
 	{
 		e1 = e/2;
-		if(h->cmp(HELEMENT(h, e1),HELEMENT(h,e)) < 0) break;
-		h->swap(h,HELEMENT(h,e),HELEMENT(h,e1));
+		if(h->cmp(*HELEMENT(h, e1),*HELEMENT(h,e)) < 0) break;
+		heap_swap(HELEMENT(h,e),HELEMENT(h,e1));
 		e = e1;
 	}
 		
@@ -100,7 +94,7 @@ void heap_delmin(struct heap *h)
 	if(h->num == 0) return;
 	if(h->num > 1)
 	{
-		h->swap(h,HHEAD(h),HELEMENT(h,h->num));
+		heap_swap(HHEAD(h),HELEMENT(h,h->num));
 	}
 	--h->num;
 	_heap_bubble_down(h, 1);
@@ -111,39 +105,39 @@ int heap_insert(struct heap *h, void *e)
 	if(h->num == h->max_size)
 	{
 		h->max_size = h->max_size * HEAP_INCREASE_STEP;
-		h->data = realloc(h->data, (h->max_size + 1) * h->elm_size);
+		h->data = realloc(h->data, (h->max_size + 1) * sizeof(heap_val_t));
 	}
 
 	h->num++;
-	memcpy(HELEMENT(h,h->num),e,h->elm_size);
+	*HELEMENT(h,h->num) = e;
 	_heap_bubble_up(h,h->num);
 
-	return h->data ? 1 :0 ;
+	return h->data ? 1 : 0;
 }
 
 int heap_find(struct heap *h, void *elm)	/* FIXME - very slow */
 {
-	int i = h->num;
-
-	while(i > 0)
+	int i = 1; /* Skip tmp element. */
+	int np = h->num + 1; /* Start from min-heap top. */
+	while(i != np)
 	{
-		if(h->cmp(HELEMENT(h, i),elm) == 0) break;
-		--i;
+		if(*HELEMENT(h, i) == elm) return i;
+		++i;
 	}
-	return i;
+	return 0;
 }
 
 void heap_delete(struct heap *h, int e)
 {
-	h->swap(h, HELEMENT(h, e), HELEMENT(h, h->num));
+	heap_swap(HELEMENT(h, e), HELEMENT(h, h->num));
 	h->num--;
-	if(h->cmp(HELEMENT(h, e), HELEMENT(h, h->num + 1)) < 0) _heap_bubble_up(h, e);
+	if(h->cmp(*HELEMENT(h, e), *HELEMENT(h, h->num + 1)) < 0) _heap_bubble_up(h, e);
 	else _heap_bubble_down(h, e);
 
 	if ((h->num > INITIAL_HEAP_SIZE) && (h->num < h->max_size / HEAP_DECREASE_THRESHOLD))
 	{
 		h->max_size = h->max_size / HEAP_INCREASE_STEP;
-		h->data = realloc(h->data, (h->max_size + 1) * h->elm_size);
+		h->data = realloc(h->data, (h->max_size + 1) * sizeof(heap_val_t));
 	}
 }
 

@@ -28,24 +28,23 @@
 #ifndef _HEAP_H_
 #define _HEAP_H_
 
+typedef void* heap_val_t;
+
 struct heap {
    int num;		/* Number of elements */
-   int elm_size;	/* Size of a single element */
    int max_size;	/* Size of allocated memory */
    int (*cmp)(void *, void *);
-   void (*swap)(struct heap *, void *, void *);
-   void *data;
+   heap_val_t *data;
 };		/* Array follows */
 
 #define INITIAL_HEAP_SIZE 512 /* initial heap size */
 #define HEAP_INCREASE_STEP 2  /* multiplier for each inflation, keep conservative */
 #define HEAP_DECREASE_THRESHOLD 2 /* threshold for deflation, keep conservative */
-#define HTEMPELEMENT(h) ((h)->data)			/* Pointer to tmp element (for swap) */
-#define HELEMENT(h,num) ((char*)(h)->data + (num) * (h)->elm_size)
+#define HELEMENT(h,num) ((h)->data + (num)) 
 #define HHEAD(h) HELEMENT((h),1)
 #define EMPTY_HEAP(h) ((h)->num == 0)			/* h->num == 0 */
 
-int heap_init(struct heap *, int, int (*cmp)(), int, void (*swap)());
+int heap_init(struct heap *, int (*cmp)(), int);
 void heap_delmin(struct heap *);
 int heap_insert(struct heap *, void *);
 int heap_find(struct heap *, void *);
