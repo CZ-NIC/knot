@@ -26,14 +26,19 @@
 #define OPENBSD_SLAB_BROKEN
 #endif
 
-/* Heap only cares about x<y. */
+/*! \brief Some implementations of timercmp >= are broken, this is for compat.*/
+static inline int timercmp_ge(struct timeval *a, struct timeval *b) {
+	return timercmp(a, b, >) || timercmp(a, b, ==);
+}
+
 static int compare_event_heap_nodes(event_t **e1, event_t **e2)
 {
 	if (timercmp(&(*e1)->tv, &(*e2)->tv, <)) return -1;
 	if (timercmp(&(*e1)->tv, &(*e2)->tv, >)) return 1;
-	return 0;
+	if (*e1 == *e2) return 0; /* Only on identity. */
+	return 1; /* Event time is equal, so it doesn't matter which is first,
+	           * but this makes insertion to halt faster. */
 }
-
 
 /*!
  * \brief Set event timer to T (now) + dt miliseconds.
@@ -179,7 +184,7 @@ event_t* evsched_next(evsched_t *s)
 			event_t *next_ev = *((event_t**)HHEAD(&s->heap));
 
 			/* Immediately return. */
-			if (timercmp(&dt, &next_ev->tv, >=)) {
+			if (timercmp_ge(&dt, &next_ev->tv)) {
 				s->current = next_ev;
 				heap_delmin(&s->heap);
 				pthread_mutex_unlock(&s->mx);
@@ -238,7 +243,7 @@ int evsched_schedule(evsched_t *s, event_t *ev, uint32_t dt)
 	heap_insert(&s->heap, &ev);
 
 	/* Unlock calendar. */
-	pthread_cond_signal(&s->notify);
+	pthread_cond_broadcast(&s->notify);
 	pthread_mutex_unlock(&s->mx);
 
 	return 0;
@@ -307,7 +312,7 @@ int evsched_cancel(evsched_t *s, event_t *ev)
 	}
 
 	/* Unlock calendar. */
-	pthread_cond_signal(&s->notify);
+	pthread_cond_broadcast(&s->notify);
 	pthread_mutex_unlock(&s->mx);
 
 	/* Enable running events. */
