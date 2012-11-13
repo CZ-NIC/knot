@@ -428,7 +428,8 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 	 * to_remove RRSet might be empty, meaning that
 	 * there are no differences in RDATA, but TTLs can differ.
 	 */
-	if ((knot_rrset_ttl(rrset1) != knot_rrset_ttl(rrset2)) &&
+	if (rrset1 && rrset2 && 
+	    (knot_rrset_ttl(rrset1) != knot_rrset_ttl(rrset2)) &&
 	    knot_rrset_rdata_rr_count(to_remove) == 0) {
 		/* We have to remove old TTL. */
 		assert(knot_rrset_ttl(to_remove) == knot_rrset_ttl(rrset1));
@@ -500,7 +501,8 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 	 * to_remove RRSet might be empty, meaning that
 	 * there are no differences in RDATA, but TTLs can differ.
 	 */
-	if (knot_rrset_ttl(rrset1) != knot_rrset_ttl(rrset2)) {
+	if (rrset1 && rrset2 &&
+	    knot_rrset_ttl(rrset1) != knot_rrset_ttl(rrset2)) {
 		/* We have to add newer TTL. */
 		knot_rrset_set_ttl(to_add, knot_rrset_ttl(rrset2));
 		if (knot_rrset_rdata_rr_count(to_add) == 0) {
