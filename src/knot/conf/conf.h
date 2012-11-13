@@ -39,6 +39,7 @@
 #include "common/lists.h"
 #include "common/log.h"
 #include "common/sockaddr.h"
+#include "common/general-tree.h"
 
 /* Constants. */
 #define CONFIG_DEFAULT_PORT 53
@@ -199,7 +200,8 @@ typedef struct conf_t {
 	int dbsync_timeout; /*!< Default interval between syncing to zonefile.*/
 	size_t ixfr_fslimit; /*!< File size limit for IXFR journal. */
 	int build_diffs;     /*!< Calculate differences from changes. */
-
+	general_tree_t *zone_tree; /*!< Zone tree for duplicate checking. */
+	
 	/*
 	 * Implementation specifics
 	 */

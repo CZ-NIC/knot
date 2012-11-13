@@ -72,6 +72,30 @@ void cf_error(void *scanner, const char *msg)
 	_parser_res = KNOT_EPARSEFAIL;
 }
 
+static int conf_ztree_compare(void *p1, void *p2)
+{
+	return knot_dname_compare((knot_dname_t*)p1, (knot_dname_t*)p2);
+}
+
+static void conf_ztree_free(void *node, void *data)
+{
+	UNUSED(data);
+	knot_dname_t *zname = (knot_dname_t*)node;
+	knot_dname_free(&zname);
+}
+
+static void conf_parse_begin(conf_t *conf)
+{
+	conf->zone_tree = gen_tree_new(conf_ztree_compare);
+}
+
+static void conf_parse_end(conf_t *conf) 
+{
+	if (conf->zone_tree) {
+		gen_tree_destroy(&conf->zone_tree, conf_ztree_free, NULL);
+	}
+}
+
 /*!
  * \brief Call config hooks that need updating.
  *
@@ -346,6 +370,7 @@ static int conf_fparser(conf_t *conf)
 
 	int ret = KNOT_EOK;
 	pthread_mutex_lock(&_parser_lock);
+	
 	// {
 	// Hook new configuration
 	new_config = conf;
@@ -367,6 +392,7 @@ static int conf_fparser(conf_t *conf)
 	fclose(f);
 	// }
 	pthread_mutex_unlock(&_parser_lock);
+	
 	return ret;
 }
 
@@ -456,8 +482,10 @@ int conf_add_hook(conf_t * conf, int sections,
 int conf_parse(conf_t *conf)
 {
 	/* Parse file. */
+	conf_parse_begin(conf);
 	int ret = conf_fparser(conf);
-
+	conf_parse_end(conf);
+	
 	/* Postprocess config. */
 	if (ret == 0) {
 		ret = conf_process(conf);
@@ -475,7 +503,9 @@ int conf_parse(conf_t *conf)
 int conf_parse_str(conf_t *conf, const char* src)
 {
 	/* Parse config from string. */
+	conf_parse_begin(conf);
 	int ret = conf_strparser(conf, src);
+	conf_parse_end(conf);
 
 	/* Postprocess config. */
 	conf_process(conf);
@@ -625,7 +655,9 @@ int conf_open(const char* path)
 	conf_t *nconf = conf_new(path);
 
 	/* Parse config. */
+	conf_parse_begin(nconf);
 	int ret = conf_fparser(nconf);
+	conf_parse_end(nconf);
 	if (ret == KNOT_EOK) {
 		/* Postprocess config. */
 		ret = conf_process(nconf);
