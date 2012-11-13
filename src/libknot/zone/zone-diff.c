@@ -252,6 +252,19 @@ static int knot_zone_diff_add_node(const knot_node_t *node,
 			free(rrsets);
 			return ret;
 		}
+		
+		if (knot_rrset_rrsigs(rrsets[i])) {
+			/* Add RRSIGs of the new node. */
+			ret = knot_zone_diff_changeset_add_rrset(changeset,
+						knot_rrset_rrsigs(rrsets[i]));
+			if (ret != KNOT_EOK) {
+				dbg_zonediff("zone_diff: add_node: Cannot "
+				             "add RRSIG (%s).\n",
+				       knot_strerror(ret));
+				free(rrsets);
+				return ret;
+			}
+		}
 	}
 	
 	free(rrsets);
@@ -292,6 +305,18 @@ dbg_zonediff_exec_detail(
 			             knot_strerror(ret));
 			free(rrsets);
 			return ret;
+		}
+		if (knot_rrset_rrsigs(rrsets[i])) {
+			/* Add RRSIGs of the new node. */
+			ret = knot_zone_diff_changeset_remove_rrset(changeset,
+						knot_rrset_rrsigs(rrsets[i]));
+			if (ret != KNOT_EOK) {
+				dbg_zonediff("zone_diff: remove_node: Cannot "
+				             "remove RRSIG (%s).\n",
+				       knot_strerror(ret));
+				free(rrsets);
+				return ret;
+			}
 		}
 	}
 	
