@@ -963,7 +963,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 	
 	/* Make sure RRSet has enough data. */
 	if (!knot_rrset_rdata(nsec3_rrset) ||
-	    knot_rdata_item_count(nsec3_rrset) <= 5) {
+	    knot_rdata_item_count(knot_rrset_rdata(nsec3_rrset)) <= 5) {
 		/* Not enough data to do complete check -> incomplete chain. */
 		err_handler_handle_error(handler, node, ZC_ERR_NSEC3_NOT_FOUND);
 		return KNOT_EOK;
