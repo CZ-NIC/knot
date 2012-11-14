@@ -1535,7 +1535,7 @@ int xfr_worker(dthread_t *thread)
 	xfrworker_t *w = (xfrworker_t *)thread->data;	
 
 	/* Check data. */
-	if (w < 0) {
+	if (w == NULL) {
 		dbg_xfr("xfr: NULL worker data, worker cancelled\n");
 		return KNOT_EINVAL;
 	}
