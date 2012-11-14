@@ -1,3 +1,11 @@
+v1.1.2-rc1 - Nov 14, 2012
+-------------------------
+
+Bugfixes:
+	* Fixed crash on reload when config contained duplicate zones.
+	* Fixed scheduling of transfers.
+
+
 v1.1.1 - Oct 31, 2012
 ---------------------
 
