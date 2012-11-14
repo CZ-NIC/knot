@@ -452,9 +452,9 @@ knot_rrtype_descriptor_t *knot_rrtype_descriptor_by_name(const char *name)
 	return NULL;
 }
 
-uint32_t knot_rrtype_to_string(const uint16_t rrtype,
-			       char           *out,
-			       const uint32_t out_len)
+int32_t knot_rrtype_to_string(const uint16_t rrtype,
+			      char           *out,
+			      const uint32_t out_len)
 {
 	int ret;
 
@@ -509,9 +509,9 @@ uint16_t knot_rrtype_from_string(const char *name)
 	return (uint16_t) rrtype;
 }
 
-uint32_t knot_rrclass_to_string(const uint16_t rrclass,
-				char           *out,
-				const uint32_t out_len)
+int32_t knot_rrclass_to_string(const uint16_t rrclass,
+			       char           *out,
+			       const uint32_t out_len)
 {
 	int ret;
 

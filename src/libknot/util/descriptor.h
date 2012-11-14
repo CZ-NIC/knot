@@ -324,9 +324,9 @@ knot_rrtype_descriptor_t *knot_rrtype_descriptor_by_name(const char *name);
  * \return Length of output string.
  * \return -1 if error.
  */
-uint32_t knot_rrtype_to_string(const uint16_t rrtype,
-			       char           *out,
-			       const uint32_t out_len);
+int32_t knot_rrtype_to_string(const uint16_t rrtype,
+			      char           *out,
+			      const uint32_t out_len);
 
 /*!
  * \brief Converts mnemonic string representation of a type to numeric one.
@@ -347,9 +347,9 @@ uint16_t knot_rrtype_from_string(const char *name);
  * \return Length of output string.
  * \return -1 if error.
  */
-uint32_t knot_rrclass_to_string(const uint16_t rrclass,
-				char           *out,
-				const uint32_t out_len);
+int32_t knot_rrclass_to_string(const uint16_t rrclass,
+			       char           *out,
+			       const uint32_t out_len);
 
 /*!
  * \brief Converts string representation of a class to numeric one.
