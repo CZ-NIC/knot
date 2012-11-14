@@ -810,6 +810,7 @@ char *rdata_nxt_to_string(knot_rdata_item_t item)
 	for (i = 0; i < bitmap_size * 8; ++i) {
 		if (get_bit(bitmap, i)) {
 			if (knot_rrtype_to_string(i, buff, sizeof(buff)) < 0) {
+				free(ret);
 				return NULL;
 			}
 
@@ -855,6 +856,7 @@ char *rdata_nsec_to_string(knot_rdata_item_t item)
 				if (knot_rrtype_to_string(j + window * 256,
 				                          buff, sizeof(buff))
 				    < 0) {
+					free(ret);
 					return NULL;
 				}
 				strncat(ret, buff, MAX_RR_TYPE_LEN);
