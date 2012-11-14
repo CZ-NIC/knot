@@ -481,8 +481,8 @@ static int knot_packet_add_rrset(knot_rrset_t *rrset,
 
 dbg_packet_exec_verb(
 	char *name = knot_dname_to_str(rrset->owner);
-	dbg_packet_verb("packet_add_rrset(), owner: %s, type: %s\n",
-	                name, knot_rrtype_to_string(rrset->type));
+	dbg_packet_verb("packet_add_rrset(), owner: %s, type: %u\n",
+	                name, rrset->type);
 	free(name);
 );
 
@@ -507,8 +507,7 @@ dbg_packet_exec_detail(
 			char *name = knot_dname_to_str((*rrsets)[i]->owner);
 			dbg_packet_detail("Comparing to RRSet: owner: %s, "
 			                  "type: %s\n", name,
-			                  knot_rrtype_to_string(
-			                       (*rrsets)[i]->type));
+			                  (*rrsets)[i]->type);
 			free(name);
 );
 
@@ -1350,11 +1349,10 @@ dbg_packet_exec(
 		char *name = knot_dname_to_str(
 			(((knot_rrset_t **)(pkt->tmp_rrsets))[i])->owner);
 		dbg_packet_verb("Freeing tmp RRSet on ptr: %p (ptr to ptr:"
-		       " %p, type: %s, owner: %s)\n",
+		       " %p, type: %u, owner: %s)\n",
 		       (((knot_rrset_t **)(pkt->tmp_rrsets))[i]),
 		       &(((knot_rrset_t **)(pkt->tmp_rrsets))[i]),
-		       knot_rrtype_to_string(
-		            (((knot_rrset_t **)(pkt->tmp_rrsets))[i])->type),
+		       (((knot_rrset_t **)(pkt->tmp_rrsets))[i])->type,
 		       name);
 		free(name);
 );
@@ -1565,10 +1563,10 @@ void knot_packet_dump(const knot_packet_t *packet)
 		char *qname = knot_dname_to_str(packet->question.qname);
 		dbg_packet("  QNAME: %s\n", qname);
 		free(qname);
-		dbg_packet("  QTYPE: %u (%s)\n", packet->question.qtype,
-		       knot_rrtype_to_string(packet->question.qtype));
-		dbg_packet("  QCLASS: %u (%s)\n", packet->question.qclass,
-		       knot_rrclass_to_string(packet->question.qclass));
+		dbg_packet("  QTYPE: %u (%u)\n", packet->question.qtype,
+		           packet->question.qtype);
+		dbg_packet("  QCLASS: %u (%u)\n", packet->question.qclass,
+		           packet->question.qclass);
 	}
 
 	dbg_packet("\nAnswer RRSets:\n");

@@ -2431,8 +2431,7 @@ void zadd_rdata_domain(knot_dname_t *dname)
 
 void parse_unknown_rdata(uint16_t type, uint16_t *wireformat)
 {
-	dbg_rdata("parsing unknown rdata for type: %s (%d)\n",
-	          knot_rrtype_to_string(type), type);
+	dbg_rdata("parsing unknown rdata for type: %u\n", type);
 	uint16_t size;
 	ssize_t rdata_count;
 	ssize_t i;

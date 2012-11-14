@@ -485,10 +485,15 @@ static char *rdata_aaaa_to_string(knot_rdata_item_t item)
 
 static char *rdata_rrtype_to_string(knot_rdata_item_t item)
 {
+	char buff[32];
+
 	uint16_t type = knot_wire_read_u16(rdata_item_data(item));
-	const char *tmp = knot_rrtype_to_string(type);
+
+	if (knot_rrtype_to_string(type, buff, sizeof(buff)) < 0)
+		return NULL;
+
 	char *ret = malloc(sizeof(char) * MAX_RR_TYPE_LEN);
-	strncpy(ret, tmp, MAX_RR_TYPE_LEN);
+	strncpy(ret, buff, MAX_RR_TYPE_LEN);
 	return ret;
 }
 
@@ -793,6 +798,7 @@ char *rdata_ipsecgateway_to_string(knot_rdata_item_t item,
 
 char *rdata_nxt_to_string(knot_rdata_item_t item)
 {
+	char buff[32];
 	size_t i;
 	uint8_t *bitmap = rdata_item_data(item);
 	size_t bitmap_size = rdata_item_size(item);
@@ -803,9 +809,12 @@ char *rdata_nxt_to_string(knot_rdata_item_t item)
 
 	for (i = 0; i < bitmap_size * 8; ++i) {
 		if (get_bit(bitmap, i)) {
-			strncat(ret, knot_rrtype_to_string(i),
-			       MAX_RR_TYPE_LEN);
-				strncat(ret, " ", 2);
+			if (knot_rrtype_to_string(i, buff, sizeof(buff)) < 0) {
+				return NULL;
+			}
+
+			strncat(ret, buff, MAX_RR_TYPE_LEN);
+			strncat(ret, " ", 2);
 		}
 	}
 
@@ -815,6 +824,8 @@ char *rdata_nxt_to_string(knot_rdata_item_t item)
 
 char *rdata_nsec_to_string(knot_rdata_item_t item)
 {
+	char buff[32];
+
 	char *ret = malloc(sizeof(char) * MAX_NSEC_BIT_STR_LEN);
 	if (ret == NULL) {
 		ERR_ALLOC_FAILED;
@@ -841,10 +852,12 @@ char *rdata_nsec_to_string(knot_rdata_item_t item)
 
 		for (int j = 0; j < bitmap_size * 8; j++) {
 			if (get_bit(bitmap, j)) {
-				strncat(ret,
-				       knot_rrtype_to_string(j +
-							       window * 256),
-				        MAX_RR_TYPE_LEN);
+				if (knot_rrtype_to_string(j + window * 256,
+				                          buff, sizeof(buff))
+				    < 0) {
+					return NULL;
+				}
+				strncat(ret, buff, MAX_RR_TYPE_LEN);
 				strncat(ret, " ", 2);
 			}
 		}
@@ -962,12 +975,23 @@ int rdata_dump_text(const knot_rdata_t *rdata, uint16_t type, FILE *f,
 
 void dump_rrset_header(const knot_rrset_t *rrset, FILE *f)
 {
+	char buff[32];
+
 	char *name = knot_dname_to_str(rrset->owner);
 	fprintf(f, "%-20s ",  name);
 	free(name);
+
 	fprintf(f, "%-5u ", rrset->ttl);
-	fprintf(f, "%-2s ", knot_rrclass_to_string(rrset->rclass));
-	fprintf(f, "%-5s ",  knot_rrtype_to_string(rrset->type));
+
+	if (knot_rrclass_to_string(rrset->rclass, buff, sizeof(buff)) < 0) {
+		return;
+	}
+	fprintf(f, "%-2s ", buff);
+
+	if (knot_rrtype_to_string(rrset->type, buff, sizeof(buff)) < 0) {
+		return;
+	}
+	fprintf(f, "%-5s ",  buff);
 }
 
 int rrsig_set_dump_text(knot_rrset_t *rrsig, FILE *f)

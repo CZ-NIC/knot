@@ -127,10 +127,9 @@ static int test_response_add_generic(int (*func)(knot_packet_t *,
 		if ((ret = func(response, rrset, 0, 1, 0, 0)) != KNOT_EOK) {
 			diag("Could not add RRSet to response! Returned: %d",
 			     ret);
-			diag("(owner: %s type %s)",
+			diag("(owner: %s type %u)",
 			     ((test_rrset_t *)n)->owner->str,
-			     knot_rrtype_to_string((
-			     (test_rrset_t *)n)->type));
+			     ((test_rrset_t *)n)->type);
 			errors++;
 		}
 		knot_packet_free(&response);

@@ -6,7 +6,7 @@
  *         Copyright (c) 2001-2011, NLnet Labs. All rights reserved.
  *
  * \note Most of the constants and functions were taken from NSD's dns.h.
- * 
+ *
  * \addtogroup libknot
  * @{
  */
@@ -141,7 +141,7 @@ enum knot_rr_type {
 	/*!
 	 * \brief  51 - NSEC3PARAM at zone apex nsec3 parameters
 	 */
-	KNOT_RRTYPE_NSEC3PARAM, 
+	KNOT_RRTYPE_NSEC3PARAM,
 	KNOT_RRTYPE_TLSA = 52,
 
 	/* TODO consider some better way of doing this, indices too high */
@@ -178,7 +178,7 @@ typedef enum knot_rr_type knot_rr_type_t;
 enum knot_rdata_wireformat {
 	/*!
 	 * \brief Possibly compressed domain name.
-	 */	
+	 */
 	KNOT_RDATA_WF_COMPRESSED_DNAME = 50,
 	KNOT_RDATA_WF_UNCOMPRESSED_DNAME = 51, /*!< Uncompressed domain name.  */
 	KNOT_RDATA_WF_LITERAL_DNAME = 52, /*!< Literal (not downcased) dname.  */
@@ -191,7 +191,7 @@ enum knot_rdata_wireformat {
 	KNOT_RDATA_WF_AAAA = 16, /*!< 128-bit IPv6 address.  */
 	KNOT_RDATA_WF_BINARY = 54, /*!< Binary data (unknown length).  */
 	/*!
-	 * \brief Binary data preceded by 1 byte length 
+	 * \brief Binary data preceded by 1 byte length
 	 */
 	KNOT_RDATA_WF_BINARYWITHLENGTH = 55,
 	KNOT_RDATA_WF_APL = 56, /*!< APL data.  */
@@ -317,11 +317,16 @@ knot_rrtype_descriptor_t *knot_rrtype_descriptor_by_name(const char *name);
 /*!
  * \brief Converts numeric type representation to mnemonic string.
  *
- * \param rrtype Type RR type code to be converted.
+ * \param rrtype  Type RR type code to be converted.
+ * \param out     Output buffer.
+ * \param out_len Length of the output buffer.
  *
- * \return Mnemonic string if found, str(TYPE[rrtype]) otherwise.
+ * \return Length of output string.
+ * \return -1 if error.
  */
-const char *knot_rrtype_to_string(uint16_t rrtype);
+uint32_t knot_rrtype_to_string(const uint16_t rrtype,
+			       char           *out,
+			       const uint32_t out_len);
 
 /*!
  * \brief Converts mnemonic string representation of a type to numeric one.
@@ -333,14 +338,18 @@ const char *knot_rrtype_to_string(uint16_t rrtype);
 uint16_t knot_rrtype_from_string(const char *name);
 
 /*!
- * \brief Converts numeric class representation to string one.
+ * \brief Converts numeric class representation to the string one.
  *
  * \param rrclass Class code to be converted.
+ * \param out     Output buffer.
+ * \param out_len Length of the output buffer.
  *
- * \return String represenation of class if found,
- *         str(CLASS[rrclass]) otherwise.
+ * \return Length of output string.
+ * \return -1 if error.
  */
-const char *knot_rrclass_to_string(uint16_t rrclass);
+uint32_t knot_rrclass_to_string(const uint16_t rrclass,
+				char           *out,
+				const uint32_t out_len);
 
 /*!
  * \brief Converts string representation of a class to numeric one.

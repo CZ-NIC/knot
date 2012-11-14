@@ -1083,8 +1083,8 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 dbg_xfrin_exec_verb(
 		dbg_xfrin_detail("Next loop, state: %d\n", state);
 		char *name = knot_dname_to_str(knot_rrset_owner(rr));
-		dbg_xfrin_detail("Actual RR: %s, type %s.\n", name,
-		               knot_rrtype_to_string(knot_rrset_type(rr)));
+		dbg_xfrin_detail("Actual RR: %s, type %u.\n", name,
+		                 knot_rrset_type(rr));
 		free(name);
 );
 		switch (state) {
@@ -1095,8 +1095,8 @@ dbg_xfrin_exec_verb(
 			// is quite weird in fact
 			if (knot_rrset_type(rr) != KNOT_RRTYPE_SOA) {
 				dbg_xfrin("First RR is not a SOA RR!\n");
-				dbg_xfrin_verb("RR type: %s\n",
-				    knot_rrtype_to_string(knot_rrset_type(rr)));
+				dbg_xfrin_verb("RR type: %u\n",
+				               knot_rrset_type(rr));
 				ret = KNOT_EMALF;
 				knot_rrset_deep_free(&rr, 1, 1, 1);
 				goto cleanup;
@@ -1533,8 +1533,8 @@ static int xfrin_copy_rrset(knot_node_t *node, knot_rr_type_t type,
 {
 dbg_xfrin_exec_detail(
 	char *name = knot_dname_to_str(knot_node_owner(node));
-	dbg_xfrin_detail("Removing RRSet of type %s from node %s (%p)\n",
-	               knot_rrtype_to_string(type), name, node);
+	dbg_xfrin_detail("Removing RRSet of type %u from node %s (%p)\n",
+	                 type, name, node);
 	free(name);
 );
 	knot_rrset_t *old = knot_node_remove_rrset(node, type);
@@ -1787,8 +1787,8 @@ static int xfrin_apply_remove_normal(knot_changes_t *changes,
 	
 dbg_xfrin_exec_detail(
 	char *name = knot_dname_to_str(knot_rrset_owner(*rrset));
-	dbg_xfrin_detail("Updating RRSet with owner %s, type %s\n", name,
-	                 knot_rrtype_to_string(knot_rrset_type(*rrset)));
+	dbg_xfrin_detail("Updating RRSet with owner %s, type %u\n", name,
+	                 knot_rrset_type(*rrset));
 	free(name);
 );
 
@@ -1881,9 +1881,9 @@ static int xfrin_apply_remove_all_rrsets(knot_changes_t *changes,
 
 dbg_xfrin_exec_verb(
 	char *name = knot_dname_to_str(knot_node_owner(node));
-	dbg_xfrin_verb("Removing all RRSets from node %s of type %s. "
+	dbg_xfrin_verb("Removing all RRSets from node %s of type %u. "
 		       "Is apex: %d, changeset flags: %u\n",
-		       name, knot_rrtype_to_string(type), is_apex, chflags);
+		       name, type, is_apex, chflags);
 	free(name);
 );
 
@@ -2040,8 +2040,7 @@ static int xfrin_replace_rrset_in_node(knot_node_t *node,
 {
 	knot_rr_type_t type = knot_rrset_type(rrset_new);
 	// remove RRSet of the proper type from the node
-	dbg_xfrin_verb("Removing RRSet of type: %s.\n",
-	               knot_rrtype_to_string(type));
+	dbg_xfrin_verb("Removing RRSet of type: %u.\n", type);
 	knot_rrset_t *rrset_old = knot_node_remove_rrset(node, type);
 	assert(rrset_old != NULL);
 
@@ -2259,8 +2258,7 @@ dbg_xfrin_exec_detail(
 dbg_xfrin_exec_detail(
 		char *name = knot_dname_to_str(add->owner);
 		dbg_xfrin_detail("RRSet to be added not found in zone.\n");
-		dbg_xfrin_detail("owner: %s type: %s\n", name,
-		                 knot_rrtype_to_string(add->type));
+		dbg_xfrin_detail("owner: %s type: %u\n", name, add->type);
 		free(name);
 );
 		// add the RRSet from the changeset to the node
@@ -2288,8 +2286,8 @@ dbg_xfrin_exec_detail(
 
 dbg_xfrin_exec_detail(
 	char *name = knot_dname_to_str(knot_rrset_owner(*rrset));
-	dbg_xfrin_detail("Found RRSet with owner %s, type %s\n", name,
-	                 knot_rrtype_to_string(knot_rrset_type(*rrset)));
+	dbg_xfrin_detail("Found RRSet with owner %s, type %u\n", name,
+	                 knot_rrset_type(*rrset));
 	free(name);
 );
 
@@ -2305,10 +2303,10 @@ dbg_xfrin_exec_detail(
 	 * TODO: add the 'add' rrset to list of old RRSets?
 	 */
 
-	dbg_xfrin_detail("Merging RRSets with owners: %s, %s types: %s, %s\n",
+	dbg_xfrin_detail("Merging RRSets with owners: %s, %s types: %u, %u\n",
 	                 (*rrset)->owner->name, add->owner->name,
-	                 knot_rrtype_to_string((*rrset)->type),
-	                 knot_rrtype_to_string(add->type));
+	                 (*rrset)->type,
+	                 add->type);
 	dbg_xfrin_detail("RDATA in RRSet1: %p, RDATA in RRSet2: %p\n",
 	                 (*rrset)->rdata, add->rdata);
 
@@ -2369,9 +2367,8 @@ static int xfrin_apply_add_rrsig(knot_changes_t *changes,
 	
 dbg_xfrin_exec_verb(
 	char *name = knot_dname_to_str(knot_rrset_owner(add));
-	const char *typestr = knot_rrtype_to_string(type);
-	dbg_xfrin_verb("Adding RRSIG: Owner %s, type covered %s.\n",
-	               name, typestr);
+	dbg_xfrin_verb("Adding RRSIG: Owner %s, type covered %u.\n",
+	               name, type);
 	free(name);
 );
 
@@ -2437,8 +2434,8 @@ dbg_xfrin_exec_verb(
 
 dbg_xfrin_exec_detail(
 		char *name = knot_dname_to_str(knot_rrset_owner(*rrset));
-		dbg_xfrin_detail("Found RRSet with owner %s, type %s\n", name,
-		                knot_rrtype_to_string(knot_rrset_type(*rrset)));
+		dbg_xfrin_detail("Found RRSet with owner %s, type %u\n", name,
+		                 knot_rrset_type(*rrset));
 		free(name);
 );
 
@@ -2514,7 +2511,7 @@ void xfrin_cleanup_successful_update(knot_changes_t **changes)
 	for (int i = 0; i < (*changes)->old_rdata_count; ++i) {
 		dbg_xfrin_detail("Deleting old RDATA: %p, type: %s\n", 
 		         (*changes)->old_rdata[i],
-		         knot_rrtype_to_string((*changes)->old_rdata_types[i]));
+		         (*changes)->old_rdata_types[i]);
 		knot_rdata_dump((*changes)->old_rdata[i],
 		                (*changes)->old_rdata_types[i], 0);
 		// RDATA are stored separately so do not delete the whole chain
@@ -2802,8 +2799,7 @@ dbg_xfrin_exec_verb(
 		char *name = knot_dname_to_str(
 			knot_rrset_owner(chset->remove[i]));
 		dbg_xfrin_verb("Removing RRSet: %s, type %s\n", name,
-		               knot_rrtype_to_string(
-		                  knot_rrset_type(chset->remove[i])));
+		               knot_rrset_type(chset->remove[i]));
 		free(name);
 );
 dbg_xfrin_exec_detail(
@@ -2897,8 +2893,7 @@ dbg_xfrin_exec_verb(
 		char *name = knot_dname_to_str(
 			knot_rrset_owner(chset->add[i]));
 		dbg_xfrin_verb("Adding RRSet: %s, type: %s\n", name,
-		               knot_rrtype_to_string(
-		               knot_rrset_type(chset->add[i])));
+		               knot_rrset_type(chset->add[i]));
 		free(name);
 );
 dbg_xfrin_exec_detail(

@@ -317,8 +317,7 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 	uint16_t raw_data_length = 0;
 
 	dbg_zload_detail("zload: load_rdata: Reading %d items\n", rdata_count);
-	dbg_zload_detail("zload: load_rdata: Current type: %s\n",
-	                  knot_rrtype_to_string(type));
+	dbg_zload_detail("zload: load_rdata: Current type: %u\n", type);
 
 	for (int i = 0; i < rdata_count; i++) {
 		if (desc->wireformat[i] == KNOT_RDATA_WF_COMPRESSED_DNAME ||

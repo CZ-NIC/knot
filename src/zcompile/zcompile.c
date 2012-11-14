@@ -129,8 +129,7 @@ static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
 
 	if (tmp_rrset == NULL) {
 		dbg_zp("zp: find_rr_for_sig_in_node: Node does not contain "
-		       "RRSet of type %s.\n",
-		       knot_rrtype_to_string(rrsig_type_covered(rrsig)));
+		       "RRSet of type %u.\n", rrsig_type_covered(rrsig));
 		tmp_rrset = knot_rrset_new(rrsig->owner,
 		                           rrsig_type_covered(rrsig),
 		                           rrsig->rclass,
@@ -230,8 +229,8 @@ dbg_zp_exec_detail(
 	              name);
 	free(name);
 );
-	dbg_zp_verb("zp: process_rr: Processing type: %s.\n",
-	            knot_rrtype_to_string(parser->current_rrset->type));
+	dbg_zp_verb("zp: process_rr: Processing type: %u.\n",
+	            parser->current_rrset->type);
 	dbg_zp_verb("zp: process_rr: RDATA count: %d.\n",\
 	            parser->current_rrset->rdata->count);
 

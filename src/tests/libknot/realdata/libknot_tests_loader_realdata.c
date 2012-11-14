@@ -321,8 +321,7 @@ static test_rdata_t *load_response_rdata(uint16_t type,
 {
 
 #ifdef RESP_TEST_DEBUG
-	fprintf(stderr, "reading rdata for type: %s\n",
-	        knot_rrtype_to_string(type));
+	fprintf(stderr, "reading rdata for type: %u\n", type);
 #endif
 	/*
 	 * Binary format of rdata is as following:
@@ -401,8 +400,8 @@ static test_rdata_t *load_response_rdata(uint16_t type,
 				return NULL;
 			}
 
-//			diag("Created DNAME %p item: %d %s %s\n",
-//			     items[i].dname, i, knot_rrtype_to_string(type),
+//			diag("Created DNAME %p item: %d %u %s\n",
+//			     items[i].dname, i, type,
 //			     items[i].dname->str);
 
 			rdata->count++;
@@ -484,10 +483,10 @@ static test_rdata_t *load_response_rdata(uint16_t type,
 
 //						fprintf(stderr,
 //						        "Guessed size: %d"
-//						     " for type: %s"
+//						     " for type: %u"
 //						     " and index: %d\n",
 //						     size_fr_desc,
-//					    knot_rrtype_to_string(type),
+//						     type,
 //						    i);
 						}
 				}
@@ -495,8 +494,8 @@ static test_rdata_t *load_response_rdata(uint16_t type,
 				items[i].raw_data =
 				malloc(sizeof(uint8_t) * size_fr_desc + 2);
 
-//				diag("creating raw_data for item %d type %s %p\n",
-//				     i, knot_rrtype_to_string(type),
+//				diag("creating raw_data for item %d type %u %p\n",
+//				     i, type,
 //				     items[i].raw_data);
 
 				if (items[i].raw_data == NULL) {

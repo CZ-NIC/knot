@@ -184,9 +184,8 @@ static int knot_zone_contents_dnames_from_rrset_to_table(
 dbg_zone_exec_detail(
 	char *name = knot_dname_to_str(knot_rrset_owner(rrset));
 	dbg_zone_detail("Putting dnames from RRSet to table: owner: (%p) %s,"
-			" type: %s\n", knot_rrset_owner(rrset),
-			name, knot_rrtype_to_string(
-				  knot_rrset_type(rrset)));
+			" type: %u\n", knot_rrset_owner(rrset),
+			name, knot_rrset_type(rrset));
 	free(name);
 );
 
@@ -476,8 +475,8 @@ static int knot_zone_contents_adjust_rdata_in_rrset(knot_rrset_t *rrset,
 dbg_zone_exec_detail(
 		char *name = knot_dname_to_str(knot_rrset_owner(rrset));
 		dbg_zone_detail("Adjusting domain name at %d. RDATA of RRSet "
-		                "with owner %s and type %s.\n", i, name,
-		                knot_rrtype_to_string(type));
+		                "with owner %s and type %u.\n", i, name,
+		                type);
 		free(name);
 );
 		ret = knot_zone_contents_adjust_rdata(rdata, desc,
@@ -493,8 +492,8 @@ dbg_zone_exec_detail(
 dbg_zone_exec_detail(
 	char *name = knot_dname_to_str(knot_rrset_owner(rrset));
 	dbg_zone_detail("Adjusting domain name at %d. RDATA of RRSet "
-			"with owner %s and type %s.\n", i, name,
-			 knot_rrtype_to_string(type));
+			"with owner %s and type %u.\n", i, name,
+			 type);
 	free(name);
 );
 	return knot_zone_contents_adjust_rdata(rdata, desc, zone, node);
@@ -1544,8 +1543,8 @@ int knot_zone_contents_add_rrset(knot_zone_contents_t *zone,
 
 dbg_zone_exec_detail(
 	char *name = knot_dname_to_str(knot_rrset_owner(rrset));
-	dbg_zone_detail("Adding RRSet to zone contents: %s, type %s\n",
-	                name, knot_rrtype_to_string(knot_rrset_type(rrset)));
+	dbg_zone_detail("Adding RRSet to zone contents: %s, type %u\n",
+	                name, knot_rrset_type(rrset));
 	free(name);
 );
 
@@ -1674,10 +1673,9 @@ dbg_zone_exec(
 
 		// find the RRSet in the node
 		// take only the first RDATA from the RRSIGs
-		dbg_zone_detail("Finding RRSet for type %s\n",
-		                knot_rrtype_to_string(
-		                      knot_rdata_rrsig_type_covered(
-		                      knot_rrset_rdata(rrsigs))));
+		dbg_zone_detail("Finding RRSet for type %u\n",
+		                knot_rdata_rrsig_type_covered(
+		                      knot_rrset_rdata(rrsigs)));
 		*rrset = knot_node_get_rrset(
 		             *node, knot_rdata_rrsig_type_covered(
 		                      knot_rrset_rdata(rrsigs)));

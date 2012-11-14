@@ -452,16 +452,25 @@ knot_rrtype_descriptor_t *knot_rrtype_descriptor_by_name(const char *name)
 	return NULL;
 }
 
-const char *knot_rrtype_to_string(uint16_t rrtype)
+uint32_t knot_rrtype_to_string(const uint16_t rrtype,
+			       char           *out,
+			       const uint32_t out_len)
 {
-	static char buf[20];
-	knot_rrtype_descriptor_t *descriptor =
+	int ret;
+
+	knot_rrtype_descriptor_t *entry =
 	        knot_rrtype_descriptor_by_type(rrtype);
-	if (descriptor->name) {
-		return descriptor->name;
+
+	if (entry != NULL) {
+		ret = snprintf(out, out_len, "%s", entry->name);
 	} else {
-		snprintf(buf, sizeof(buf), "TYPE%d", (int) rrtype);
-		return buf;
+		ret = snprintf(out, out_len, "TYPE%u", rrtype);
+	}
+
+	if (ret <= 0 || ret >= out_len) {
+		return -1;
+	} else {
+		return ret;
 	}
 }
 
@@ -500,18 +509,26 @@ uint16_t knot_rrtype_from_string(const char *name)
 	return (uint16_t) rrtype;
 }
 
-const char *knot_rrclass_to_string(uint16_t rrclass)
+uint32_t knot_rrclass_to_string(const uint16_t rrclass,
+				char           *out,
+				const uint32_t out_len)
 {
-	static char buf[20];
+	int ret;
+
 	knot_lookup_table_t *entry = knot_lookup_by_id(dns_rrclasses,
-							   rrclass);
-	if (entry) {
-		assert(strlen(entry->name) < sizeof(buf));
-		knot_strlcpy(buf, entry->name, sizeof(buf));
+						       rrclass);
+
+	if (entry != NULL) {
+		ret = snprintf(out, out_len, "%s", entry->name);
 	} else {
-		snprintf(buf, sizeof(buf), "CLASS%d", (int) rrclass);
+		ret = snprintf(out, out_len, "CLASS%u", rrclass);
 	}
-	return buf;
+
+	if (ret <= 0 || ret >= out_len) {
+		return -1;
+	} else {
+		return ret;
+	}
 }
 
 uint16_t knot_rrclass_from_string(const char *name)

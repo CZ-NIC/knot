@@ -665,8 +665,8 @@ static int knot_response_rrset_to_wire(const knot_rrset_t *rrset,
 {
 dbg_response_exec_verb(
 	char *name = knot_dname_to_str(rrset->owner);
-	dbg_response_verb("Converting RRSet with owner %s, type %s\n",
-	                  name, knot_rrtype_to_string(rrset->type));
+	dbg_response_verb("Converting RRSet with owner %s, type %u\n",
+	                  name, rrset->type);
 	free(name);
 	dbg_response_verb("  Size before: %zu\n", *size);
 );
@@ -766,8 +766,8 @@ static int knot_response_try_add_rrset(const knot_rrset_t **rrsets,
 
 dbg_response_exec(
 	char *name = knot_dname_to_str(rrset->owner);
-	dbg_response_verb("\nAdding RRSet with owner %s and type %s: \n",
-	                  name, knot_rrtype_to_string(rrset->type));
+	dbg_response_verb("\nAdding RRSet with owner %s and type %u: \n",
+	                  name, rrset->type);
 	free(name);
 );
 

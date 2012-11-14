@@ -667,8 +667,7 @@ dbg_rrset_exec_detail(
 		char *name = knot_dname_to_str(knot_rrset_owner(from));
 		dbg_rrset_detail("Copying RDATA from RRSet with owner: %s, type"
 		                 ": %s. Old RDATA ptr: %p, new RDATA ptr: %p\n",
-		                 name,
-		                 knot_rrtype_to_string(knot_rrset_type(from)),
+		                 name, knot_rrset_type(from),
 		                 rdata, rdata_copy);
 		free(name);
 );
@@ -920,8 +919,7 @@ dbg_rrset_exec_detail(
 			dbg_rrset_detail("rrset: merge_dupl: Skipping and "
 			                 "freeing duplicated item "
 			                 "of type: %s (%p).\n",
-			                 knot_rrtype_to_string(rrset1->type),
-			                 walk2);
+			                 rrset1->type, walk2);
 			/* 
 			 * Not freeing this item will result in a leak. 
 			 * Since this operation destroys the second 
