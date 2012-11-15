@@ -341,11 +341,6 @@ static int knot_rdata_dump_binary(knot_rdata_t *rdata,
 	}
 
 	for (int i = 0; i < rdata->count; i++) {
-		if (&(rdata->items[i]) == NULL) {
-			dbg_zdump("zdump: dump_rdata: "
-			          "Item n. %d is not set!\n", i);
-			continue;
-		}
 		dbg_zdump_detail("zdump: dump_rdata: Dumping item nr: %d\n", i);
 		if (desc->wireformat[i] == KNOT_RDATA_WF_COMPRESSED_DNAME ||
 		desc->wireformat[i] == KNOT_RDATA_WF_UNCOMPRESSED_DNAME ||
