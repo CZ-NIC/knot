@@ -1098,6 +1098,7 @@ static void cleanup_id_array(knot_dname_t **id_array,
 {
 	if (id_array == NULL) {
 		dbg_zload("zload: cleanup_id_array: NULL arguments.\n");
+		return;
 	}
 	
 	for (uint i = from; i < to; i++) {
