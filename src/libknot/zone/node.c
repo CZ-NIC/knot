@@ -191,13 +191,9 @@ int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset,
 	                         (merge) ? knot_rrset_merge : NULL))) < 0) {
 		dbg_node("Failed to add rrset to node->rrset_tree.\n");
 		return KNOT_ERROR;
-	}
-
-	if (ret >= 0) {
+	} else {
 		node->rrset_count += (ret > 0 ? 0 : 1);
 		return ret;
-	} else {
-		return KNOT_ERROR;
 	}
 }
 
@@ -209,13 +205,9 @@ int knot_node_add_rrset_no_dupl(knot_node_t *node, knot_rrset_t *rrset)
 	                         knot_rrset_merge_no_dupl))) < 0) {
 		dbg_node("Failed to add rrset to node->rrset_tree.\n");
 		return KNOT_ERROR;
-	}
-
-	if (ret >= 0) {
+	} else {
 		node->rrset_count += (ret > 0 ? 0 : 1);
 		return ret;
-	} else {
-		return KNOT_ERROR;
 	}
 }
 
