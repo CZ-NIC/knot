@@ -961,11 +961,12 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 	size_t  real_size = 0;
 	int32_t b32_ret;
 
-	if (((b32_ret = base32hex_encode_alloc((uint8_t *)
+	b32_ret = base32hex_encode_alloc((uint8_t *)
 		(rdata_item_data(&(nsec3_rrset->rdata->items[4]))) + 1,
 		rdata_item_size(&nsec3_rrset->rdata->items[4]) - 1,
-		&next_dname_decoded)) <= 0) ||
-		(next_dname_decoded == NULL)) {
+		&next_dname_decoded);
+
+	if (b32_ret < 0) {
 		fprintf(stderr, "Could not encode base32 string!\n");
 		return KNOT_ERROR;
 	}
@@ -987,6 +988,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 	if (knot_dname_cat(next_dname,
 		     knot_node_owner(knot_zone_contents_apex(zone))) == NULL) {
 		fprintf(stderr, "Could not concatenate dnames!\n");
+		knot_dname_free(&next_dname);
 		return KNOT_ERROR;
 
 	}
@@ -1519,6 +1521,7 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 			fprintf(stderr, "Could not allocate dname!\n");
 			err_handler_handle_error(handler, last_nsec3_node,
 						 ZC_ERR_ALLOC);
+			free(next_dname_decoded);
 			return;
 		}
 
