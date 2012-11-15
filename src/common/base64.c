@@ -256,16 +256,25 @@ int32_t base64_decode_alloc(const uint8_t  *in,
 			    const uint32_t in_len,
 			    uint8_t        **out)
 {
+	int32_t  ret;
 	uint32_t out_len = ((in_len + 3) / 4) * 3;
 
 	*out = malloc(out_len);
 
-	// Allocating output buffer.
+	// Allocate output buffer.
 	if (*out == NULL) {
 		return -1;
 	}
 
-	// Decoding data.
-	return base64_decode(in, in_len, *out, out_len);
+	// Decode data.
+	ret = base64_decode(in, in_len, *out, out_len);
+
+	// Check return.
+	if (ret < 0) {
+		free(out);
+		return -1;
+	} else {
+		return ret;
+	}
 }
 

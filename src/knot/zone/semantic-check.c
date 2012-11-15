@@ -1501,8 +1501,8 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 		if (((b32_ret = base32hex_encode_alloc(((uint8_t *)
 			rdata_item_data(&(nsec3_rrset->rdata->items[4]))) + 1,
 			rdata_item_size(&nsec3_rrset->rdata->items[4]) - 1,
-			&next_dname_decoded)) <= 0) ||
-			(next_dname_decoded == NULL)) {
+			&next_dname_decoded)) < 0))
+		{
 			fprintf(stderr, "Could not encode base32 string!\n");
 			err_handler_handle_error(handler, last_nsec3_node,
 						 ZC_ERR_NSEC3_RDATA_CHAIN);
