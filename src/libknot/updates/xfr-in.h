@@ -198,6 +198,9 @@ void xfrin_rollback_update(knot_zone_contents_t *old_contents,
 int xfrin_copy_rrset(knot_node_t *node, knot_rr_type_t type,
                      knot_rrset_t **rrset, knot_changes_t *changes);
 
+int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
+                         knot_changes_t *changes);
+
 #endif /* _KNOTXFR_IN_H_ */
 
 /*! @} */
