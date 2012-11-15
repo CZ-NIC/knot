@@ -393,13 +393,11 @@ static int knot_ddns_check_not_exist(const knot_zone_contents_t *zone,
 	}
 
 	const knot_node_t *node;
-	const knot_rrset_t *found;
 
 	node = knot_zone_contents_find_node(zone, knot_rrset_owner(rrset));
 	if (node == NULL) {
 		return KNOT_EOK;
-	} else if ((found = knot_node_rrset(node, knot_rrset_type(rrset)))
-	            == NULL) {
+	} else if (knot_node_rrset(node, knot_rrset_type(rrset)) == NULL) {
 		return KNOT_EOK;
 	}
 	
