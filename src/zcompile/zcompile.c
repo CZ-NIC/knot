@@ -676,6 +676,8 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 				}
 				free(crc_path);
 			}
+
+			close(fd);
 		}
 
 
