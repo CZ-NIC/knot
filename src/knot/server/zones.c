@@ -1987,7 +1987,8 @@ static int zones_check_tsig_query(const knot_zone_t *zone,
 	// if there is some TSIG in the query, find the TSIG associated with
 	// the zone
 	dbg_zones_verb("Checking zone and ACL.\n");
-	int ret = zones_query_check_zone(zone, addr, tsig_key_zone, rcode);
+	int ret = zones_query_check_zone(zone, addr, tsig_key_zone, rcode,
+	                                 knot_packet_opcode(query));
 
 	
 	/* Accept found OR unknown key results. */
@@ -2191,7 +2192,8 @@ int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal)
 /*----------------------------------------------------------------------------*/
 
 int zones_query_check_zone(const knot_zone_t *zone, const sockaddr_t *addr,
-                           knot_key_t **tsig_key, knot_rcode_t *rcode)
+                           knot_key_t **tsig_key, knot_rcode_t *rcode,
+                           uint8_t q_opcode)
 {
 	if (addr == NULL || tsig_key == NULL || rcode == NULL) {
 		dbg_zones_verb("Wrong arguments.\n");
@@ -2253,7 +2255,7 @@ int zones_xfr_check_zone(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 	}
 
 	return zones_query_check_zone(xfr->zone, &xfr->addr, &xfr->tsig_key,
-	                              rcode);
+	                              rcode, knot_packet_opcode(xfr->query));
 }
 
 /*----------------------------------------------------------------------------*/
