@@ -450,7 +450,7 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 	int ret = knot_rdata_set_items(rdata, items, rdata_count);
 	if (ret != KNOT_EOK) {
 		dbg_zload("zload: read_rdata: Could not set items "
-		          "when loading rdata. Reason: %\n.",
+		          "when loading rdata. Reason: %s\n.",
 		          knot_strerror(ret));
 		load_rdata_purge(rdata, items, desc->length, desc, type);
 		return NULL;
