@@ -412,7 +412,7 @@ static int test_edns_wire()
 		}
 
 		knot_opt_rr_t *edns_from_wire = knot_edns_new();
-		if (edns == NULL) {
+		if (edns_from_wire == NULL) {
 			return 0;
 		}
 
