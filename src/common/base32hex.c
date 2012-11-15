@@ -278,7 +278,7 @@ int32_t base32hex_encode_alloc(const uint8_t  *in,
 
 	// Check return.
 	if (ret < 0) {
-		free(out);
+		free(*out);
 		return -1;
 	} else {
 		return ret;
