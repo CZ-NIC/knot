@@ -160,9 +160,6 @@ static void knot_rdata_free_items(knot_rdata_item_t *items, unsigned int count,
 	assert(count <= desc->length);
 
 	for (int i = 0; i < count; i++) {
-		if (&(items[i]) == NULL) {
-			continue;
-		}
 		if (desc->wireformat[i] == KNOT_RDATA_WF_COMPRESSED_DNAME
 		    || desc->wireformat[i] == KNOT_RDATA_WF_UNCOMPRESSED_DNAME
 		    || desc->wireformat[i] == KNOT_RDATA_WF_LITERAL_DNAME) {
