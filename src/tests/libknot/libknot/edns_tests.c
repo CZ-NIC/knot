@@ -408,11 +408,13 @@ static int test_edns_wire()
 
 		if (wire_size == -1) {
 			diag("Could not create EDNS wire");
+			free(wire);
 			return 0;
 		}
 
 		knot_opt_rr_t *edns_from_wire = knot_edns_new();
 		if (edns_from_wire == NULL) {
+			free(wire);
 			return 0;
 		}
 
@@ -422,6 +424,7 @@ static int test_edns_wire()
 					      wire,
 					      100) <= 0) {
 			diag("Could not create from wire");
+			free(wire);
 			return 0;
 		}
 
@@ -511,12 +514,14 @@ static int test_edns_has_option()
 					   test_edns_data[i].options[j].
 					   data) != 0) {
 				diag("Could not add option");
+				knot_edns_free(&edns);
 				return 0;
 			}
 
 			if (knot_edns_has_option(edns,
 				   test_edns_data[i].options[j].code) != 1) {
 				diag("Option not found!");
+				knot_edns_free(&edns);
 				return 0;
 			}
 		}
