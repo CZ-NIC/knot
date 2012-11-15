@@ -856,6 +856,7 @@ char *rdata_nsec_to_string(knot_rdata_item_t item)
 				if (knot_rrtype_to_string(j + window * 256,
 				                          buff, sizeof(buff))
 				    < 0) {
+					free(bitmap);
 					free(ret);
 					return NULL;
 				}
