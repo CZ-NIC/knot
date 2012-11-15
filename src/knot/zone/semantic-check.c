@@ -1524,13 +1524,14 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 
 		free(next_dname_decoded);
 
-		/*! \todo #1887 Free result and dname! */
+		/*! \todo #1887 Free result! */
 		if (knot_dname_cat(next_dname,
 			     knot_node_owner(knot_zone_contents_apex(zone))) ==
 		                NULL) {
 			fprintf(stderr, "Could not concatenate dnames!\n");
 			err_handler_handle_error(handler, last_nsec3_node,
 						 ZC_ERR_NSEC3_RDATA_CHAIN);
+			knot_dname_free(&next_dname);
 			return;
 		}
 
