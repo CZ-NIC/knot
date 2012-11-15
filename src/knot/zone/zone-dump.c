@@ -110,7 +110,7 @@ static int write_wrapper(const void *src,
 		return KNOT_EINVAL;
 	}
 	
-	dbg_zdump_detail("zdump: write_wrapper: Writing %d bytes to fd: %d.\n",
+	dbg_zdump_detail("zdump: write_wrapper: Writing %zu bytes to fd: %d.\n",
 	                 size * n, fd);
 	
 	if (fd < 0) {
@@ -133,7 +133,7 @@ static int write_wrapper(const void *src,
 		/* Write to buffer first, if possible. */
 		if (*written_bytes + (size * n) < BUFFER_SIZE) {
 			dbg_zdump_detail("zdump: write_wrapper: Fits to "
-			                 "buffer. Remaining=%d.\n",
+			                 "buffer. Remaining=%lu.\n",
 			                 BUFFER_SIZE - *written_bytes);
 			int ret = write_to_stream(src, size, n,
 			                          stream,
@@ -154,7 +154,7 @@ static int write_wrapper(const void *src,
 			size_t remainder = BUFFER_SIZE - *written_bytes;
 			dbg_zdump_detail("zdump: write_wrapper: "
 			                 "Flushing buffer, "
-			                 "appending %d bytes.\n", remainder);
+			                 "appending %zu bytes.\n", remainder);
 			int ret = write_to_stream(src, 1,
 			                          remainder,
 			                          stream,
@@ -187,7 +187,7 @@ static int write_wrapper(const void *src,
 			if ((size * n) - remainder > BUFFER_SIZE) {
 				/* Write through. */
 				dbg_zdump("zdump: Attempting buffer write "
-				          "through. Total: %d bytes.\n",
+				          "through. Total: %zu bytes.\n",
 				          (size * n) - remainder);
 				ret = write_to_file_crc(src + remainder, 1,
 				                        (size * n) - remainder,
