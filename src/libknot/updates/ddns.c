@@ -1790,6 +1790,8 @@ static int knot_ddns_process_rem_rrset(uint16_t type,
 		// Ignore this RR
 		return KNOT_EOK;
 	}
+	
+	/*! \todo Remove RRSet, but retain its RRSIGs! */
 
 	// this should be ruled out before
 	assert(type != KNOT_RRTYPE_SOA);
@@ -1916,6 +1918,17 @@ static int knot_ddns_process_rem_all(knot_node_t *node,
 	/*
 	 * This basically means to call knot_ddns_process_rem_rrset() for every
 	 * type present in the node.
+	 *
+	 * In case of SOA and NS in apex, the RRSets should not be removed, but
+	 * what about their RRSIGs??
+	 *
+	 * If the zone has to remain properly signed, the UPDATE will have to 
+	 * contain at least new SOA and RRSIGs for it (as the auto-incremented
+	 * SOA would not be signed). So it should not matter if we leave the 
+	 * RRSIGs there or not. But in case of the NSs it's not that clear.
+	 *
+	 * For now, we will leave the RRSIGs there. It's easier to implement.
+	 * Should document this!!
 	 */
 	int ret = 0;
 	knot_rrset_t **rrsets = knot_node_get_rrsets(node);
@@ -1927,32 +1940,8 @@ static int knot_ddns_process_rem_all(knot_node_t *node,
 		if (is_apex &&
 		    (knot_rrset_type(rrsets[i]) == KNOT_RRTYPE_SOA
 		     || knot_rrset_type(rrsets[i]) == KNOT_RRTYPE_NS)) {
-			/* Do not remove these RRSets but remove their RRSIGs.*/
-			
-			/* First, remove the RRSet from the node. */
-			knot_rrset_t *rrset = knot_node_remove_rrset(node,
-			                            knot_rrset_type(rrsets[i]));
-			assert(rrset != NULL);
-			
-			/* The removed RRSet is saved to 'changes' in the 
-			 * knot_ddns_process_rem_rrsig() function.
-			 */
-			knot_rrset_t *rrsig = NULL;
-			ret = knot_ddns_process_rem_rrsig(node, rrset, changes,
-			                                  &rrsig);
-			if (ret != KNOT_EOK) {
-				dbg_ddns("Failed to remove RRSIG.\n");
-				return ret;
-			}
-			
-			/* Store the removed RRSIG RRSet. */
-			ret = knot_changes_add_old_rrsets_with_rdata(&rrsig, 1,
-			                                             changes);
-			if (ret != KNOT_EOK) {
-				dbg_ddns("Failed to add removed RRSet to "
-				         "'changes': %s\n", knot_strerror(ret));
-				return ret;
-			}
+			/* Do not remove these RRSets, nor their RRSIGs. */
+			continue;
 		}
 
 		ret = knot_ddns_process_rem_rrset(knot_rrset_type(rrsets[i]),
