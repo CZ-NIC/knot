@@ -980,9 +980,14 @@ static int knot_ddns_process_add_cname(knot_node_t *node,
 			return 1;
 		}
 		
-		/*! Handle RRSIGs in the RRSet!!! */
+		/*! \note
+		 * Together with the removed CNAME we remove also its RRSIGs as
+		 * they would not be valid for the new CNAME anyway.
+		 *
+		 * \todo Document!!
+		 */
 		
-		/* b) Store it to 'changes'. */
+		/* b) Store it to 'changes', together with its RRSIGs. */
 		ret = knot_changes_add_old_rrsets_with_rdata(
 		                        &removed, 1, changes);
 		if (ret != KNOT_EOK) {
@@ -1066,6 +1071,16 @@ static int knot_ddns_process_add_soa(knot_node_t *node,
 	
 	int ret = 0;
 	
+	/*
+	 * Just remove the SOA from the node, together with its RRSIGs. The new
+	 * SOA will be put to the node after all changes, if it is considered
+	 * having the largest SERIAL.
+	 *
+	 * However, as for the RRSIGs - if they are added by the UPDATE a new
+	 * empty SOA will be created. This must be handled when adding the SOA
+	 * after the UPDATE.
+	 */
+	
 	/* Get the current SOA RR from the node. */
 	knot_rrset_t *removed = knot_node_get_rrset(node, KNOT_RRTYPE_SOA);
 	
@@ -1076,7 +1091,7 @@ static int knot_ddns_process_add_soa(knot_node_t *node,
 			return 1;
 		}
 		
-		/* 1) Store it to 'changes'. */
+		/* 1) Store it to 'changes', together with its RRSIGs. */
 		ret = knot_changes_add_old_rrsets_with_rdata(
 		                        &removed, 1, changes);
 		if (ret != KNOT_EOK) {
@@ -1450,7 +1465,7 @@ static int knot_ddns_process_add(const knot_rrset_t *rr,
 	
 	/* Common processing for all RRs to be added to the node. */
 	
-	/* Add the RRSet to the node. */
+	/* Add the RRSet to the node (RRSIGs handled in the function). */
 	ret = knot_ddns_add_rr(node, rr, changes);
 	if (ret != KNOT_EOK) {
 		dbg_ddns("Failed to add RR to the node.\n");
@@ -1506,7 +1521,6 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
                                     knot_changeset_t *changeset,
                                     knot_changes_t *changes, uint16_t qclass)
 {
-	/*! \todo Special handling of RRSIGs!!! */
 	assert(rr != NULL);
 	assert(node != NULL);
 	assert(zone != NULL);
@@ -1546,12 +1560,14 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 	    && knot_rrset_rdata_rr_count(knot_node_rrset(node, type)) == 1) {
 		return KNOT_EOK;
 	}
-	
+
 	/*
 	 * 1) Copy the RRSet.
 	 */
+	uint16_t type_to_copy = (type != KNOT_RRTYPE_RRSIG) ? type
+	                : knot_rdata_rrsig_type_covered(knot_rrset_rdata(rr));
 	knot_rrset_t *rrset_copy;
-	int ret = xfrin_copy_rrset(node, type, &rrset_copy, changes);
+	int ret = xfrin_copy_rrset(node, type_to_copy, &rrset_copy, changes);
 	if (ret < 0) {
 		dbg_ddns("Failed to copy RRSet for removal: %s\n",
 		         knot_strerror(ret));
@@ -1562,7 +1578,22 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 		dbg_ddns_verb("RRSet not found.\n");
 		return KNOT_EOK;
 	}
-
+	
+	/*
+	 * Set some variables needed, according to the modified RR type.
+	 */
+	
+	int rdata_count;
+	knot_rrset_t *to_modify;
+	if (type == KNOT_RRTYPE_RRSIG) {
+		rdata_count = knot_rrset_rdata_rr_count(rrset_copy);
+		to_modify = knot_rrset_get_rrsigs(rrset_copy);
+	} else {
+		rdata_count = knot_rrset_rdata_rr_count(
+		                        knot_rrset_rrsigs(rrset_copy));
+		to_modify = rrset_copy;
+	}
+	
 	/*
 	 * 1.5) Prepare place for the removed RDATA.
 	 *      We don't know if there are some, but if this fails, at least we
@@ -1571,17 +1602,18 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 	ret = knot_changes_rdata_reserve(&changes->old_rdata,
 	                                 &changes->old_rdata_types,
 	                                 changes->old_rdata_count,
-	                                 &changes->old_rdata_allocated, 1);
+	                                 &changes->old_rdata_allocated, 
+	                                 rdata_count);
 	if (ret != KNOT_EOK) {
 		dbg_ddns("Failed to reserve place for RDATA.\n");
 		return ret;
 	}
 
 	/*
-	 * 2) Remove the proper RDATA from the RRSet copy.
+	 * 2) Remove the proper RDATA from the RRSet copy, or its RRSIGs.
 	 */
-	knot_rdata_t *removed = knot_rrset_remove_rdata(
-	                            rrset_copy, knot_rrset_rdata(rr));
+	knot_rdata_t *removed = knot_rrset_remove_rdata(to_modify, 
+	                                                knot_rrset_rdata(rr));
 
 	/* No such RR in the RRSet. */
 	if (removed == NULL) {
@@ -1601,7 +1633,33 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 
 	/*
 	 * 4) If the RRSet is empty, remove it and store in 'changes'.
+	 *    Do this also if the RRSIGs are empty. 
+	 *    And if both are empty, remove both.
 	 */
+	if (type == KNOT_RRTYPE_RRSIG 
+	    && knot_rrset_rdata(to_modify) == NULL) {
+		/* Empty RRSIGs, remove the RRSIG RRSet */
+		ret = knot_changes_rrsets_reserve(&changes->old_rrsets,
+		                                 &changes->old_rrsets_count,
+		                                 &changes->old_rrsets_allocated,
+		                                 1);
+		if (ret == KNOT_EOK) {
+			knot_rrset_t *rrsig = knot_rrset_get_rrsigs(rrset_copy);
+			dbg_xfrin_detail("Removed RRSIG RRSet (%p).\n", rrsig);
+			
+			assert(rrsig == to_modify);
+
+			// add the removed RRSet to list of old RRSets
+			changes->old_rrsets[changes->old_rrsets_count++]
+			                = rrsig;
+			
+			// remove it from the RRSet
+			knot_rrset_set_rrsigs(rrset_copy, NULL);
+		} else {
+			dbg_ddns("Failed to reserve space for empty RRSet.\n");
+		}
+	}
+	
 	/*! \note Copied from xfr-in.c - maybe extract to some function. */
 	if (knot_rrset_rdata(rrset_copy) == NULL
 	    && knot_rrset_rrsigs(rrset_copy) == NULL) {
@@ -1623,8 +1681,7 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 			changes->old_rrsets[changes->old_rrsets_count++]
 			                = rrset_copy;
 		} else {
-			dbg_ddns("Failed to add empty RRSet to the "
-			         "list of old RRSets.");
+			dbg_ddns("Failed to reserve space for empty RRSet.\n");
 		}
 	}
 
@@ -1665,7 +1722,7 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 		return ret;
 	}
 	knot_rrset_set_class(to_chgset, qclass);
-	knot_rrset_set_ttl(to_chgset, knot_rrset_ttl(rrset_copy));
+	knot_rrset_set_ttl(to_chgset, knot_rrset_ttl(to_modify));
 
 	ret = knot_changeset_add_rrset(&changeset->remove,
 	                               &changeset->remove_count,
@@ -1791,7 +1848,22 @@ static int knot_ddns_process_rem_rrset(uint16_t type,
 		return KNOT_EOK;
 	}
 	
-	/*! \todo Remove RRSet, but retain its RRSIGs! */
+	/*! \note
+	 * We decided to automatically remove RRSIGs together with the removed
+	 * RRSet as they are no longer valid or required anyway. 
+	 *
+	 * Also refer to RFC3007, section 4.3:
+	 *   'When the contents of an RRset are updated, the server MAY delete 
+	 *    all associated SIG records, since they will no longer be valid.'
+	 *
+	 * (Although we are compliant with this RFC only selectively. The next
+	 * section says: 'If any changes are made, the server MUST, if 
+	 * necessary, generate a new SOA record and new NXT records, and sign 
+	 * these with the appropriate zone keys.' and we are definitely not 
+	 * doing this...
+	 *
+	 * \todo Document!!
+	 */
 
 	// this should be ruled out before
 	assert(type != KNOT_RRTYPE_SOA);
@@ -1822,7 +1894,9 @@ static int knot_ddns_process_rem_rrset(uint16_t type,
 		return KNOT_EOK;
 	}
 
-	/* 2) Store them to 'changes' for later deallocation. */
+	/* 2) Store them to 'changes' for later deallocation, together with
+	 *    their RRSIGs. 
+	 */
 	ret = knot_changes_add_old_rrsets_with_rdata(removed, removed_count, 
 	                                             changes);
 	if (ret != KNOT_EOK) {
@@ -1915,7 +1989,7 @@ static int knot_ddns_process_rem_all(knot_node_t *node,
 	assert(changeset != NULL);
 	assert(changes != NULL);
 
-	/*
+	/*! \note
 	 * This basically means to call knot_ddns_process_rem_rrset() for every
 	 * type present in the node.
 	 *
@@ -1928,7 +2002,8 @@ static int knot_ddns_process_rem_all(knot_node_t *node,
 	 * RRSIGs there or not. But in case of the NSs it's not that clear.
 	 *
 	 * For now, we will leave the RRSIGs there. It's easier to implement.
-	 * Should document this!!
+	 * 
+	 * \todo Should document this!!
 	 */
 	int ret = 0;
 	knot_rrset_t **rrsets = knot_node_get_rrsets(node);

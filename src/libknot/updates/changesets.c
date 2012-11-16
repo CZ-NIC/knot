@@ -486,10 +486,13 @@ int knot_changes_add_old_rrsets_with_rdata(knot_rrset_t **rrsets, int count,
 		return KNOT_EOK;
 	}
 
+	/* Reserve twice the space, to have enough space for RRSIGs if
+	 * there are some.
+	 */
 	int ret = knot_changes_rrsets_reserve(&changes->old_rrsets,
 	                                      &changes->old_rrsets_count,
 	                                      &changes->old_rrsets_allocated,
-	                                      count);
+	                                      2 * count);
 	if (ret != KNOT_EOK) {
 //		dbg_xfrin("Failed to reserve changes rrsets.\n");
 		return ret;
@@ -500,9 +503,18 @@ int knot_changes_add_old_rrsets_with_rdata(knot_rrset_t **rrsets, int count,
 		if (rrsets[i] == NULL) {
 			continue;
 		}
+		
+		/* RDATA count in the RRSet. */
+		int rdata_count = knot_rrset_rdata_rr_count(rrsets[i]);
+		
+		knot_rrset_t *rrsigs = knot_rrset_get_rrsigs(rrsets[i]);
+		if (rrsigs != NULL) {
+			/* Increment the RDATA count by the count of RRSIGs. */
+			rdata_count += knot_rrset_rdata_rr_count(rrsigs);
+		}
 
 		/* Remove old RDATA. */
-		int rdata_count = knot_rrset_rdata_rr_count(rrsets[i]);
+		
 		ret = knot_changes_rdata_reserve(&changes->old_rdata,
 		                                 &changes->old_rdata_types,
 		                                 changes->old_rdata_count,
@@ -514,12 +526,19 @@ int knot_changes_add_old_rrsets_with_rdata(knot_rrset_t **rrsets, int count,
 		}
 		
 		changes->old_rrsets[changes->old_rrsets_count++] = rrsets[i];
+		changes->old_rrsets[changes->old_rrsets_count++] = rrsigs;
 
 		knot_changes_add_rdata(changes->old_rdata,
 		                       changes->old_rdata_types,
 		                       &changes->old_rdata_count,
 		                       knot_rrset_get_rdata(rrsets[i]),
 		                       knot_rrset_type(rrsets[i]));
+		
+		knot_changes_add_rdata(changes->old_rdata,
+		                       changes->old_rdata_types,
+		                       &changes->old_rdata_count,
+		                       knot_rrset_get_rdata(rrsigs),
+		                       KNOT_RRTYPE_RRSIG);
 	}
 
 	return KNOT_EOK;
