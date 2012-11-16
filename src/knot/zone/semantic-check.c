@@ -1511,7 +1511,16 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 		uint8_t *next_dname_decoded = NULL;
 		size_t  real_size = 0;
 		int32_t b32_ret;
-
+		
+		/* Make sure RRSet has enough data. */
+		if (!knot_rrset_rdata(nsec3_rrset) ||
+		    knot_rdata_item_count(knot_rrset_rdata(nsec3_rrset)) <= 5) {
+			/* Not enough data to do complete check -> incomplete chain. */
+			err_handler_handle_error(handler, last_nsec3_node,
+			                         ZC_ERR_NSEC3_NOT_FOUND);
+			return;
+		}
+		
 		if (((b32_ret = base32hex_encode_alloc(((uint8_t *)
 			rdata_item_data(&(nsec3_rrset->rdata->items[4]))) + 1,
 			rdata_item_size(&nsec3_rrset->rdata->items[4]) - 1,
