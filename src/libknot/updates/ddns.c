@@ -1072,13 +1072,11 @@ static int knot_ddns_process_add_soa(knot_node_t *node,
 	int ret = 0;
 	
 	/*
-	 * Just remove the SOA from the node, together with its RRSIGs. The new
-	 * SOA will be put to the node after all changes, if it is considered
-	 * having the largest SERIAL.
-	 *
-	 * However, as for the RRSIGs - if they are added by the UPDATE a new
-	 * empty SOA will be created. This must be handled when adding the SOA
-	 * after the UPDATE.
+	 * Just remove the SOA from the node, together with its RRSIGs. 
+	 * Adding the RR is done in the caller function. Note that only SOA
+	 * with larger SERIAL than the current one will get to these functions,
+	 * so we don't have to check the SERIALS again. But an assert won't
+	 * hurt.
 	 */
 	
 	/* Get the current SOA RR from the node. */
@@ -1090,6 +1088,12 @@ static int knot_ddns_process_add_soa(knot_node_t *node,
 		    == 0) {
 			return 1;
 		}
+		
+		/* Check that the serial is indeed larger than the current one*/
+		assert(ns_serial_compare(knot_rdata_soa_serial(
+		                                 knot_rrset_rdata(removed)),
+		                         knot_rdata_soa_serial(
+		                                 knot_rrset_rdata(rr))) < 0);
 		
 		/* 1) Store it to 'changes', together with its RRSIGs. */
 		ret = knot_changes_add_old_rrsets_with_rdata(
@@ -1394,6 +1398,42 @@ static int knot_ddns_add_rr(knot_node_t *node, const knot_rrset_t *rr,
 
 /*----------------------------------------------------------------------------*/
 
+static int knot_ddns_add_rr_to_chgset(const knot_rrset_t *rr,
+                                      knot_changeset_t *changeset)
+{
+	assert(rr != NULL);
+	assert(changeset != NULL);
+	
+	int ret = 0;
+	knot_rrset_t *chgset_rr = NULL;
+	knot_ddns_check_add_rr(changeset, rr, &chgset_rr);
+	if (chgset_rr == NULL) {
+		ret = knot_rrset_deep_copy(rr, &chgset_rr, 1);
+		if (ret != KNOT_EOK) {
+			dbg_ddns("Failed to copy RR to the changeset: "
+				 "%s\n", knot_strerror(ret));
+			return ret;
+		}
+		/* No such RR in the changeset, add it. */
+		ret = knot_changeset_add_rrset(&changeset->add,
+		                               &changeset->add_count,
+		                               &changeset->add_allocated,
+		                               chgset_rr);
+		if (ret != KNOT_EOK) {
+			knot_rrset_deep_free(&chgset_rr, 1, 1, 1);
+			dbg_ddns("Failed to add RR to changeset: %s.\n",
+				 knot_strerror(ret));
+			return ret;
+		}
+	} else {
+		knot_rrset_deep_free(&chgset_rr, 1, 1, 1);
+	}
+	
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 static int knot_ddns_process_add(const knot_rrset_t *rr,
                                  knot_node_t *node,
                                  knot_zone_contents_t *zone,
@@ -1419,36 +1459,20 @@ static int knot_ddns_process_add(const knot_rrset_t *rr,
 			dbg_xfrin("Failed to create new node in zone.\n");
 		}
 	}
-
-	// Here we could probably use the code from xfrin_apply_add()
 	
 	uint16_t type = knot_rrset_type(rr);
 	*rr_copy = NULL;
 	int ret = 0;
 	
 	/*
-	 * First, rule out special cases: CNAME and SOA.
-	 * 1) CNAME
+	 * First, rule out special cases: CNAME, SOA and adding to CNAME node.
 	 */
 	if (type == KNOT_RRTYPE_CNAME) {
+		/* 1) CNAME */
 		ret = knot_ddns_process_add_cname(node, rr, changeset, changes);
-		if (ret == 1) {
-			// Ignore
-			return KNOT_EOK;
-		} else if (ret != KNOT_EOK) {
-			return ret;
-		}
 	} else if (type == KNOT_RRTYPE_SOA) {
-		/*
-		 * 2) SOA
-		 */
+		/* 2) SOA */
 		ret = knot_ddns_process_add_soa(node, rr, changes);
-		if (ret == 1) {
-			// Ignore
-			return KNOT_EOK;
-		} else if (ret != KNOT_EOK) {
-			return ret;
-		}
 	} else if (knot_node_rrset(node, KNOT_RRTYPE_CNAME) != NULL) {
 		/*
 		 * Adding RR to CNAME node. Ignore the UPDATE RR.
@@ -1459,11 +1483,16 @@ static int knot_ddns_process_add(const knot_rrset_t *rr,
 		return KNOT_EOK;
 	}
 	
+	if (ret == 1) {
+		// Ignore
+		return KNOT_EOK;
+	} else if (ret != KNOT_EOK) {
+		return ret;
+	}
+	
 	/*
 	 * In all other cases, the RR should just be added to the node.
 	 */
-	
-	/* Common processing for all RRs to be added to the node. */
 	
 	/* Add the RRSet to the node (RRSIGs handled in the function). */
 	ret = knot_ddns_add_rr(node, rr, changes);
@@ -1485,29 +1514,10 @@ static int knot_ddns_process_add(const knot_rrset_t *rr,
 	/* If the RR was previously removed, do not add it to the 
 	 * changeset, and remove the entry from the REMOVE section.
 	 */
-	/*! \todo To separate function. */
-	knot_rrset_t *chgset_rr = NULL;
-	knot_ddns_check_add_rr(changeset, rr, &chgset_rr);
-	if (chgset_rr == NULL) {
-		ret = knot_rrset_deep_copy(rr, &chgset_rr, 1);
-		if (ret != KNOT_EOK) {
-			dbg_ddns("Failed to copy RR to the changeset: "
-				 "%s\n", knot_strerror(ret));
-			return ret;
-		}
-		/* No such RR in the changeset, add it. */
-		ret = knot_changeset_add_rrset(&changeset->add,
-		                               &changeset->add_count,
-		                               &changeset->add_allocated,
-		                               chgset_rr);
-		if (ret != KNOT_EOK) {
-			knot_rrset_deep_free(&chgset_rr, 1, 1, 1);
-			dbg_ddns("Failed to add RR to changeset: %s.\n",
-				 knot_strerror(ret));
-			return ret;
-		}
-	} else {
-		knot_rrset_deep_free(&chgset_rr, 1, 1, 1);
+	ret = knot_ddns_add_rr_to_chgset(rr, changeset);
+	if (ret != KNOT_EOK) {
+		dbg_ddns("Faild to add the UPDATE RR to the changeset.\n");
+		return ret;
 	}
 
 	return KNOT_EOK;
