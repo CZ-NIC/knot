@@ -2103,7 +2103,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	char *r_str = xfr_remote_str(addr, keytag);
 	const char *zone_name = ((zonedata_t*)knot_zone_data(zone))->conf->name;
 	char *msg  = sprintf_alloc("UPDATE of '%s' from %s:",
-				   zone_name, r_str ? r_str : "'unknown'");
+	                           zone_name, r_str ? r_str : "'unknown'");
 	free(r_str);
 	free(keytag);
 	log_zone_info("%s Started.\n", msg);
@@ -2138,9 +2138,9 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	
 //	knot_zone_contents_t *new_contents = NULL;
 //	ret = knot_ns_process_update2(knot_packet_query(resp),
-//	                              knot_zone_contents(zone),
+//	                              knot_zone_get_contents(zone),
 //	                              &new_contents,
-//	                              &chgsets->sets[0], rcode);
+//	                              chgsets, rcode);
 //	if (ret != KNOT_EOK) {
 //		log_zone_error("%s %s\n", msg, knot_strerror(ret));
 //		knot_free_changesets(&chgsets);
@@ -2148,40 +2148,44 @@ static int zones_process_update_auth(knot_zone_t *zone,
 //		return ret;
 //	}
 	
-//	/* Store changesets, (TODO: but do not commit???). */
+//	/* 2) Store changesets, (TODO: but do not commit???). */
 //	ret = zones_store_changesets_to_disk(zone, chgsets);
 //	if (ret != KNOT_EOK) {
 //		log_zone_error("%s %s\n", msg, knot_strerror(ret));
+//		xfrin_rollback_update(zone->contents, &new_contents,
+//		                      &chgsets->changes);
 //		knot_free_changesets(&chgsets);
 //		free(msg);
 //		return ret;
 //	}
 	
-//	/* Switch zone contents. */
+//	/* 3) Switch zone contents. */
 //	knot_zone_retain(zone); /* Retain pointer for safe RCU unlock. */
 //	rcu_read_unlock();      /* Unlock for switch. */
-//	ret = xfrin_switch_zone(zone, new_contents, type);
+//	ret = xfrin_switch_zone(zone, new_contents, XFR_TYPE_UPDATE);
 //	rcu_read_lock();        /* Relock */
 //	knot_zone_release(zone);/* Release held pointer. */
 
 //	if (ret != KNOT_EOK) {
-//		log_zone_error("%s Failed to replace current zone - %s\n",
-//		               msgpref, knot_strerror(ret));
+//		log_zone_error("%s: Failed to replace current zone - %s\n",
+//		               msg, knot_strerror(ret));
 //		// Cleanup old and new contents
 //		xfrin_rollback_update(zone->contents, &new_contents,
-//		                      &chs->changes);
+//		                      &chgsets->changes);
 
 //		/* Free changesets, but not the data. */
-//		knot_free_changesets(&chs);
+//		knot_free_changesets(&chgsets);
 //		return KNOT_ERROR;
 //	}
 
-//	xfrin_cleanup_successful_update(&chs->changes);
+//	/* 4) Cleanup. */
+	
+//	xfrin_cleanup_successful_update(&chgsets->changes);
 	
 //	/* Free changesets, but not the data. */
-//	knot_free_changesets(&chs);
+//	knot_free_changesets(&chgsets);
 //	assert(ret == KNOT_EOK);
-//	log_zone_info("%s Finished.\n", msgpref);
+//	log_zone_info("%s: Finished.\n", msg);
 	
 //	free(msg);
 //	msg = NULL;

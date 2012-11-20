@@ -3173,22 +3173,15 @@ static int xfrin_check_contents_copy(knot_zone_contents_t *old_contents)
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_apply_changesets(knot_zone_t *zone,
-                           knot_changesets_t *chsets,
-                           knot_zone_contents_t **new_contents)
+int xfrin_prepare_zone_copy(knot_zone_contents_t *old_contents,
+                            knot_zone_contents_t **new_contents,
+                            knot_changes_t **changes)
 {
-	if (zone == NULL || chsets == NULL || chsets->count == 0
-	    || new_contents == NULL) {
+	if (old_contents == NULL || new_contents == NULL || changes == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	knot_zone_contents_t *old_contents = knot_zone_get_contents(zone);
-	if (!old_contents) {
-		dbg_xfrin("Cannot apply changesets to empty zone.\n");
-		return KNOT_EINVAL;
-	}
-
-	dbg_xfrin("Applying changesets to zone...\n");
+	dbg_xfrin("Preparing zone copy...\n");
 
 	/*
 	 * Ensure that the zone generation is set to 0.
@@ -3220,15 +3213,15 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 		return ret;
 	}
 
-	knot_changes_t *changes = (knot_changes_t *)malloc(
+	knot_changes_t *chgs = (knot_changes_t *)malloc(
 	                        sizeof(knot_changes_t));
-	if (changes == NULL) {
+	if (chgs == NULL) {
 		dbg_xfrin("Failed to allocate structure for changes!\n");
-		xfrin_rollback_update(old_contents, &contents_copy, &changes);
+		xfrin_rollback_update(old_contents, &contents_copy, &chgs);
 		return KNOT_ENOMEM;
 	}
 
-	memset(changes, 0, sizeof(knot_changes_t));
+	memset(chgs, 0, sizeof(knot_changes_t));
 
 	/*!
 	 * \todo Check if all nodes have their copy.
@@ -3236,7 +3229,7 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 	ret = xfrin_check_contents_copy(old_contents);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Contents copy check failed!\n");
-		xfrin_rollback_update(old_contents, &contents_copy, &changes);
+		xfrin_rollback_update(old_contents, &contents_copy, &chgs);
 		return ret;
 	}
 
@@ -3249,6 +3242,95 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 	dbg_xfrin("Switching ptrs pointing to old nodes to the new nodes.\n");
 	ret = xfrin_switch_nodes(contents_copy);
 	assert(knot_zone_contents_apex(contents_copy) != NULL);
+	
+	*new_contents = contents_copy;
+	*changes = chgs;
+	
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
+                                knot_changes_t *changes,
+                                knot_zone_contents_t *old_contents)
+{
+	if (contents_copy == NULL || changes == NULL || old_contents == NULL) {
+		return KNOT_EINVAL;
+	}
+	
+	/*
+	 * Finalize the new zone contents:
+	 * - delete empty nodes
+	 * - parse NSEC3PARAM
+	 * - do adjusting of nodes and RDATA
+	 * - ???
+	 */
+
+	/*
+	 * Select and remove empty nodes from zone trees. Do not free them right
+	 * away as they may be referenced by some domain names.
+	 */
+	int ret = xfrin_remove_empty_nodes(contents_copy, changes);
+	if (ret != KNOT_EOK) {
+		dbg_xfrin("Failed to remove empty nodes: %s\n",
+		          knot_strerror(ret));
+		xfrin_rollback_update(old_contents, &contents_copy, &changes);
+		return ret;
+	}
+
+	dbg_xfrin("Adjusting zone contents.\n");
+	dbg_xfrin_verb("Old contents apex: %p, new apex: %p\n",
+	               old_contents->apex, contents_copy->apex);
+	ret = knot_zone_contents_adjust(contents_copy);
+	if (ret != KNOT_EOK) {
+		dbg_xfrin("Failed to finalize zone contents: %s\n",
+		          knot_strerror(ret));
+		xfrin_rollback_update(old_contents, &contents_copy, &changes);
+		return ret;
+	}
+	assert(knot_zone_contents_apex(contents_copy) != NULL);
+
+	dbg_xfrin("Checking zone for CNAME loops.\n");
+	ret = knot_zone_contents_check_loops(contents_copy);
+	if (ret != KNOT_EOK) {
+		dbg_xfrin("CNAME loop check failed: %s\n", knot_strerror(ret));
+		xfrin_rollback_update(old_contents, &contents_copy, &changes);
+		return ret;
+	}
+	
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int xfrin_apply_changesets(knot_zone_t *zone,
+                           knot_changesets_t *chsets,
+                           knot_zone_contents_t **new_contents)
+{
+	if (zone == NULL || chsets == NULL || chsets->count == 0
+	    || new_contents == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	knot_zone_contents_t *old_contents = knot_zone_get_contents(zone);
+	if (!old_contents) {
+		dbg_xfrin("Cannot apply changesets to empty zone.\n");
+		return KNOT_EINVAL;
+	}
+
+	dbg_xfrin("Applying changesets to zone...\n");
+
+	dbg_xfrin_verb("Creating shallow copy of the zone...\n");
+	knot_zone_contents_t *contents_copy = NULL;
+	knot_changes_t *changes = NULL;
+	int ret = xfrin_prepare_zone_copy(old_contents, &contents_copy,
+	                                  &changes);
+	if (ret != KNOT_EOK) {
+		dbg_xfrin("Failed to prepare zone copy: %s\n",
+		          knot_strerror(ret));
+		return ret;
+	}
 
 	/*
 	 * Apply the changesets.
@@ -3273,42 +3355,11 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 	 * \todo Test failure of IXFR.
 	 */
 
-	/*
-	 * Finalize the new zone contents:
-	 * - delete empty nodes
-	 * - parse NSEC3PARAM
-	 * - do adjusting of nodes and RDATA
-	 * - ???
-	 */
-
-	/*
-	 * Select and remove empty nodes from zone trees. Do not free them right
-	 * away as they may be referenced by some domain names.
-	 */
-	ret = xfrin_remove_empty_nodes(contents_copy, changes);
+	dbg_xfrin_verb("Finalizing updated zone...\n");
+	ret = xfrin_finalize_updated_zone(contents_copy, changes, old_contents);
 	if (ret != KNOT_EOK) {
-		dbg_xfrin("Failed to remove empty nodes: %s\n",
+		dbg_xfrin("Failed to finalize updated zone: %s\n",
 		          knot_strerror(ret));
-		xfrin_rollback_update(old_contents, &contents_copy, &changes);
-		return ret;
-	}
-
-	dbg_xfrin("Adjusting zone contents.\n");
-	dbg_xfrin_verb("Old contents apex: %p, new apex: %p\n",
-	               old_contents->apex, contents_copy->apex);
-	ret = knot_zone_contents_adjust(contents_copy);
-	if (ret != KNOT_EOK) {
-		dbg_xfrin("Failed to finalize zone contents: %s\n",
-		          knot_strerror(ret));
-		xfrin_rollback_update(old_contents, &contents_copy, &changes);
-		return ret;
-	}
-	assert(knot_zone_contents_apex(contents_copy) != NULL);
-
-	dbg_xfrin("Checking zone for CNAME loops.\n");
-	ret = knot_zone_contents_check_loops(contents_copy);
-	if (ret != KNOT_EOK) {
-		dbg_xfrin("CNAME loop check failed: %s\n", knot_strerror(ret));
 		xfrin_rollback_update(old_contents, &contents_copy, &changes);
 		return ret;
 	}

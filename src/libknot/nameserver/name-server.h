@@ -352,6 +352,11 @@ int knot_ns_process_update(const knot_packet_t *query,
                            const knot_zone_contents_t *zone, 
                            knot_changeset_t *changeset, knot_rcode_t *rcode);
 
+int knot_ns_process_update2(const knot_packet_t *query, 
+                            knot_zone_contents_t *old_contents, 
+                            knot_zone_contents_t **new_contents, 
+                            knot_changesets_t *chgs, knot_rcode_t *rcode);
+
 int knot_ns_create_forward_query(const knot_packet_t *query,
                                  uint8_t *query_wire, size_t *size);
 
