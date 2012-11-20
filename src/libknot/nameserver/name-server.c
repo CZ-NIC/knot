@@ -4279,6 +4279,24 @@ int knot_ns_process_update(const knot_packet_t *query,
 }
 
 /*----------------------------------------------------------------------------*/
+/*
+ * This function should:
+ * 1) Create zone shallow copy.
+ * 2) Create 'changes' structure and store it to 'changeset'.
+ * 3) Call knot_ddns_process_update2().
+ * 4 a) If something went bad, call xfrin_rollback_update() and return an error.
+ *   b) If everything went OK, return.
+ */
+int knot_ns_process_update2(const knot_packet_t *query, 
+                            const knot_zone_contents_t *zone, 
+                            knot_zone_contents_t *new_zone, 
+                            knot_changeset_t *changeset, knot_rcode_t *rcode)
+{
+	/*! \todo Implement. */
+	return KNOT_ERROR;
+}
+
+/*----------------------------------------------------------------------------*/
 
 int knot_ns_create_forward_query(const knot_packet_t *query,
                                  uint8_t *query_wire, size_t *size)
