@@ -2133,77 +2133,14 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	 */
 	/* 1) Process the UPDATE packet, apply to zone, create changesets. */
 	
-//	dbg_zones_verb("Processing UPDATE packet.\n");
-//	chgsets->count = 1; /* DU is represented by a single chset. */
-	
-//	knot_zone_contents_t *new_contents = NULL;
-//	ret = knot_ns_process_update2(knot_packet_query(resp),
-//	                              knot_zone_get_contents(zone),
-//	                              &new_contents,
-//	                              chgsets, rcode);
-//	if (ret != KNOT_EOK) {
-//		log_zone_error("%s %s\n", msg, knot_strerror(ret));
-//		knot_free_changesets(&chgsets);
-//		free(msg);
-//		return ret;
-//	}
-	
-//	/* 2) Store changesets, (TODO: but do not commit???). */
-//	ret = zones_store_changesets_to_disk(zone, chgsets);
-//	if (ret != KNOT_EOK) {
-//		log_zone_error("%s %s\n", msg, knot_strerror(ret));
-//		xfrin_rollback_update(zone->contents, &new_contents,
-//		                      &chgsets->changes);
-//		knot_free_changesets(&chgsets);
-//		free(msg);
-//		return ret;
-//	}
-	
-//	/* 3) Switch zone contents. */
-//	knot_zone_retain(zone); /* Retain pointer for safe RCU unlock. */
-//	rcu_read_unlock();      /* Unlock for switch. */
-//	ret = xfrin_switch_zone(zone, new_contents, XFR_TYPE_UPDATE);
-//	rcu_read_lock();        /* Relock */
-//	knot_zone_release(zone);/* Release held pointer. */
-
-//	if (ret != KNOT_EOK) {
-//		log_zone_error("%s: Failed to replace current zone - %s\n",
-//		               msg, knot_strerror(ret));
-//		// Cleanup old and new contents
-//		xfrin_rollback_update(zone->contents, &new_contents,
-//		                      &chgsets->changes);
-
-//		/* Free changesets, but not the data. */
-//		knot_free_changesets(&chgsets);
-//		return KNOT_ERROR;
-//	}
-
-//	/* 4) Cleanup. */
-	
-//	xfrin_cleanup_successful_update(&chgsets->changes);
-	
-//	/* Free changesets, but not the data. */
-//	knot_free_changesets(&chgsets);
-//	assert(ret == KNOT_EOK);
-//	log_zone_info("%s: Finished.\n", msg);
-	
-//	free(msg);
-//	msg = NULL;
-	
-	/*
-	 * \NEW DDNS PROCESSING ------------------------------------------------
-	 */
-	
-	
-	/* 1) Process the incoming packet, prepare 
-	 *    prerequisities and changeset.
-	 */
 	dbg_zones_verb("Processing UPDATE packet.\n");
 	chgsets->count = 1; /* DU is represented by a single chset. */
-	ret = knot_ns_process_update(knot_packet_query(resp),
-				     knot_zone_contents(zone),
-				     &chgsets->sets[0], rcode);
 	
+	knot_zone_contents_t *new_contents = NULL;
+	ret = knot_ns_process_update2(knot_packet_query(resp),
+	                              knot_zone_get_contents(zone),
+	                              &new_contents,
+	                              chgsets, rcode);
 	if (ret != KNOT_EOK) {
 		log_zone_error("%s %s\n", msg, knot_strerror(ret));
 		knot_free_changesets(&chgsets);
@@ -2211,30 +2148,93 @@ static int zones_process_update_auth(knot_zone_t *zone,
 		return ret;
 	}
 	
-	/* 2) Save changeset to journal.
-	 *    Apply changeset to zone.
-	 *    Commit changeset to journal.
-	 *    Switch the zone.
-	 */
-	knot_zone_contents_t *contents_new = NULL;
+	/* 2) Store changesets, (TODO: but do not commit???). */
+	ret = zones_store_changesets_to_disk(zone, chgsets);
+	if (ret != KNOT_EOK) {
+		log_zone_error("%s %s\n", msg, knot_strerror(ret));
+		xfrin_rollback_update(zone->contents, &new_contents,
+		                      &chgsets->changes);
+		knot_free_changesets(&chgsets);
+		free(msg);
+		return ret;
+	}
+	
+	/* 3) Switch zone contents. */
 	knot_zone_retain(zone); /* Retain pointer for safe RCU unlock. */
 	rcu_read_unlock();      /* Unlock for switch. */
-	dbg_zones_verb("Storing and applying changesets.\n");
-	ret = zones_store_and_apply_chgsets(chgsets, zone, &contents_new, msg, 
-					    XFR_TYPE_UPDATE);
+	ret = xfrin_switch_zone(zone, new_contents, XFR_TYPE_UPDATE);
 	rcu_read_lock();        /* Relock */
 	knot_zone_release(zone);/* Release held pointer. */
+
+	if (ret != KNOT_EOK) {
+		log_zone_error("%s: Failed to replace current zone - %s\n",
+		               msg, knot_strerror(ret));
+		// Cleanup old and new contents
+		xfrin_rollback_update(zone->contents, &new_contents,
+		                      &chgsets->changes);
+
+		/* Free changesets, but not the data. */
+		knot_free_changesets(&chgsets);
+		return KNOT_ERROR;
+	}
+
+	/* 4) Cleanup. */
+	
+	xfrin_cleanup_successful_update(&chgsets->changes);
+	
+	/* Free changesets, but not the data. */
+	knot_free_changesets(&chgsets);
+	assert(ret == KNOT_EOK);
+	log_zone_info("%s: Finished.\n", msg);
+	
 	free(msg);
 	msg = NULL;
 	
-	/* Changesets should be freed by now. */
-	if (ret != KNOT_EOK) {
-		dbg_zones_verb("Storing and applying changesets failed: %s.\n",
-			       knot_strerror(ret));
-		*rcode = (ret == KNOT_EMALF) ? KNOT_RCODE_FORMERR
-		                             : KNOT_RCODE_SERVFAIL;
-		return ret;
-	}
+	/*
+	 * \NEW DDNS PROCESSING ------------------------------------------------
+	 */
+	
+	
+//	/* 1) Process the incoming packet, prepare 
+//	 *    prerequisities and changeset.
+//	 */
+//	dbg_zones_verb("Processing UPDATE packet.\n");
+//	chgsets->count = 1; /* DU is represented by a single chset. */
+//	ret = knot_ns_process_update(knot_packet_query(resp),
+//				     knot_zone_contents(zone),
+//				     &chgsets->sets[0], rcode);
+	
+//	if (ret != KNOT_EOK) {
+//		log_zone_error("%s %s\n", msg, knot_strerror(ret));
+//		knot_free_changesets(&chgsets);
+//		free(msg);
+//		return ret;
+//	}
+	
+//	/* 2) Save changeset to journal.
+//	 *    Apply changeset to zone.
+//	 *    Commit changeset to journal.
+//	 *    Switch the zone.
+//	 */
+//	knot_zone_contents_t *contents_new = NULL;
+//	knot_zone_retain(zone); /* Retain pointer for safe RCU unlock. */
+//	rcu_read_unlock();      /* Unlock for switch. */
+//	dbg_zones_verb("Storing and applying changesets.\n");
+//	ret = zones_store_and_apply_chgsets(chgsets, zone, &contents_new, msg, 
+//					    XFR_TYPE_UPDATE);
+//	rcu_read_lock();        /* Relock */
+//	knot_zone_release(zone);/* Release held pointer. */
+//	free(msg);
+//	msg = NULL;
+	
+//	/* Changesets should be freed by now. */
+//	if (ret != KNOT_EOK) {
+//		dbg_zones_verb("Storing and applying changesets failed: %s.\n",
+//			       knot_strerror(ret));
+//		*rcode = (ret == KNOT_EMALF) ? KNOT_RCODE_FORMERR
+//		                             : KNOT_RCODE_SERVFAIL;
+//		return ret;
+//	}
 
 	/* 3) Prepare DDNS response. */
 	dbg_zones_verb("Preparing NOERROR UPDATE response RCODE=%u "
