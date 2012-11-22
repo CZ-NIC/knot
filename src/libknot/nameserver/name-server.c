@@ -2424,6 +2424,8 @@ static int ns_error_response_to_wire(knot_packet_t *resp, uint8_t *wire,
 		short edns_size = knot_edns_to_wire(&resp->opt_rr, wire + rsize,
 		                                    *wire_size - rsize);
 		if (edns_size > 0) {
+			uint16_t ar_count = knot_wire_get_arcount(wire);
+			knot_wire_set_arcount(wire, ar_count + 1);
 			*wire_size = rsize + edns_size;
 		}
 	} else {
