@@ -306,12 +306,16 @@ int main(int argc, char **argv)
 		uint8_t buf[65535]; /*! \todo #2035 should be on heap */
 		size_t buflen = sizeof(buf);
 		conf_iface_t *ctl_if = conf()->ctl.iface;
+		int remote = -1;
 		if (ctl_if != NULL) {
 			log_server_info("Binding remote control interface "
 					"to %s port %d.\n",
 					ctl_if->address, ctl_if->port);
+			remote = remote_bind(ctl_if);
+		} else {
+			remote = evqueue()->fds[EVQUEUE_READFD];
 		}
-		int remote = remote_bind(ctl_if);
+		
 		
 		/* Run event loop. */
 		for(;;) {
