@@ -1333,15 +1333,16 @@ static int knot_ddns_add_rr_merge_rrsig(knot_rrset_t *node_rrset_copy,
 /*----------------------------------------------------------------------------*/
 
 static int knot_ddns_add_rr(knot_node_t *node, const knot_rrset_t *rr,
-                            knot_changes_t *changes)
+                            knot_changes_t *changes, knot_rrset_t **rr_copy)
 {
 	assert(node != NULL);
 	assert(rr != NULL);
 	assert(changes != NULL);
+	assert(rr_copy != NULL);
 	
 	/* Copy the RRSet from the packet. */
-	knot_rrset_t *rr_copy;
-	int ret = knot_rrset_deep_copy(rr, &rr_copy, 1);
+	//knot_rrset_t *rr_copy;
+	int ret = knot_rrset_deep_copy(rr, rr_copy, 1);
 	if (ret != KNOT_EOK) {
 		dbg_ddns("Failed to copy RR: %s\n", knot_strerror(ret));
 		return ret;
@@ -1365,10 +1366,10 @@ static int knot_ddns_add_rr(knot_node_t *node, const knot_rrset_t *rr,
 		
 		if (type_covered != type) {
 			/* Adding RRSIG. */
-			ret = knot_ddns_add_rr_new_rrsig(node, rr_copy, 
+			ret = knot_ddns_add_rr_new_rrsig(node, *rr_copy, 
 			                                 changes, type_covered);
 		} else {
-			ret = knot_ddns_add_rr_new_normal(node, rr_copy, 
+			ret = knot_ddns_add_rr_new_normal(node, *rr_copy, 
 			                                  changes);
 		}
 		if (ret != KNOT_EOK) {
@@ -1381,10 +1382,10 @@ static int knot_ddns_add_rr(knot_node_t *node, const knot_rrset_t *rr,
 		if (type_covered != type) {
 			/* Adding RRSIG. */
 			ret = knot_ddns_add_rr_merge_rrsig(node_rrset_copy,
-			                                   rr_copy, changes);
+			                                   *rr_copy, changes);
 		} else {
 			ret = knot_ddns_add_rr_merge_normal(node_rrset_copy,
-			                                    rr_copy);
+			                                    *rr_copy);
 		}
 
 		if (ret != KNOT_EOK) {
@@ -1495,7 +1496,7 @@ static int knot_ddns_process_add(const knot_rrset_t *rr,
 	 */
 	
 	/* Add the RRSet to the node (RRSIGs handled in the function). */
-	ret = knot_ddns_add_rr(node, rr, changes);
+	ret = knot_ddns_add_rr(node, rr, changes, rr_copy);
 	if (ret != KNOT_EOK) {
 		dbg_ddns("Failed to add RR to the node.\n");
 		return ret;
@@ -2177,6 +2178,7 @@ int knot_ddns_process_update2(knot_zone_contents_t *zone,
 		        || ns_serial_compare(knot_rdata_soa_serial(
 		                        knot_rrset_rdata(rr)), sn_new) <= 0)) {
 			// This ignores also SOA removals
+			
 			continue;
 		}
 
@@ -2197,6 +2199,7 @@ int knot_ddns_process_update2(knot_zone_contents_t *zone,
 			int64_t sn_rr = knot_rdata_soa_serial(
 			                        knot_rrset_rdata(rr));
 			assert(ns_serial_compare(sn_rr, sn_new) <= 0);
+			assert(rr_copy != NULL);
 			sn_new = sn_rr;
 			soa_end = (knot_rrset_t *)rr_copy;
 		}
