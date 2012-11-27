@@ -4338,7 +4338,7 @@ int knot_ns_process_update2(const knot_packet_t *query,
 	chgs->changes = changes;
 	*new_contents = contents_copy;
 	
-	return KNOT_ERROR;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
