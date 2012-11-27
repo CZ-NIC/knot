@@ -478,7 +478,6 @@ static int zone_open(const char *filename, uint32_t ttl, uint16_t rclass,
 		if (zp_get_in(scanner) == 0) {
 			return 0;
 		}
-		fclose(f);
 	}
 	
 	return 1;
