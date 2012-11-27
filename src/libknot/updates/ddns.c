@@ -1086,7 +1086,7 @@ static int knot_ddns_process_add_soa(knot_node_t *node,
 		dbg_ddns_detail("Found SOA in the node.\n");
 		/* If they are identical, ignore. */
 		if (knot_rrset_compare(removed, rr, KNOT_RRSET_COMPARE_WHOLE)
-		    == 0) {
+		    == 1) {
 			dbg_ddns_detail("Old and new SOA identical.\n");
 			return 1;
 		}
