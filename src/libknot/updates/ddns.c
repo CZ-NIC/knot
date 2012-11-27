@@ -2200,7 +2200,7 @@ int knot_ddns_process_update2(knot_zone_contents_t *zone,
 			                        knot_rrset_rdata(rr));
 			dbg_ddns_verb("Replacing SOA. Old serial: %d, new "
 			              "serial: %d\n", sn_new, sn_rr);
-			assert(ns_serial_compare(sn_rr, sn_new) <= 0);
+			assert(ns_serial_compare(sn_rr, sn_new) > 0);
 			assert(rr_copy != NULL);
 			sn_new = sn_rr;
 			soa_end = (knot_rrset_t *)rr_copy;
