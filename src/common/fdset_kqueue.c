@@ -95,6 +95,7 @@ int fdset_kqueue_add(fdset_t *fdset, int fd, int events)
 	int evfilt = EVFILT_READ;
 	EV_SET(&fdset->events[fdset->nfds], fd, evfilt,
 	       EV_ADD|EV_ENABLE, 0, 0, 0);
+	memset(fdset->revents + fdset->nfds, 0, sizeof(struct kevent));
 
 	++fdset->nfds;
 	return 0;
@@ -195,6 +196,7 @@ int fdset_kqueue_begin(fdset_t *fdset, fdset_it_t *it)
 
 	/* Find first. */
 	it->pos = 0;
+	it->fd = -1;
 	return fdset_next(fdset, it);
 }
 
@@ -221,7 +223,7 @@ int fdset_kqueue_end(fdset_t *fdset, fdset_it_t *it)
 
 int fdset_kqueue_next(fdset_t *fdset, fdset_it_t *it)
 {
-	if (fdset == NULL || it == NULL || fdset->nfds < 1) {
+	if (fdset == NULL || it == NULL || fdset->polled < 1) {
 		return -1;
 	}
 
