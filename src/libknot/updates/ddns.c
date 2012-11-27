@@ -1012,7 +1012,7 @@ static int knot_ddns_process_add_cname(knot_node_t *node,
 		if (ret != KNOT_EOK) {
 			dbg_ddns("Failed to remove possible redundant "
 			         "RRs from ADD section: %s.\n", 
-			         knot_strerror(ret))
+			         knot_strerror(ret));
 			return ret;
 		}
 	
@@ -1706,7 +1706,7 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 	                                 &from_chgset, &from_chgset_count);
 	if (ret != KNOT_EOK) {
 		dbg_ddns("Failed to remove possible redundant RRs from ADD "
-		         "section: %s.\n", knot_strerror(ret))
+		         "section: %s.\n", knot_strerror(ret));
 		return ret;
 	}
 
@@ -1740,7 +1740,7 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 	                               to_chgset);
 	if (ret != KNOT_EOK) {
 		dbg_ddns("Failed to store the RRSet copy to changeset: %s.\n",
-		         knot_strerror(ret))
+		         knot_strerror(ret));
 		knot_rrset_deep_free(&to_chgset, 1, 1, 1);
 		return ret;
 	}
