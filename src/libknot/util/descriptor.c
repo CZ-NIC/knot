@@ -461,7 +461,7 @@ int32_t knot_rrtype_to_string(const uint16_t rrtype,
 	knot_rrtype_descriptor_t *entry =
 	        knot_rrtype_descriptor_by_type(rrtype);
 
-	if (entry != NULL) {
+	if (entry->name) {
 		ret = snprintf(out, out_len, "%s", entry->name);
 	} else {
 		ret = snprintf(out, out_len, "TYPE%u", rrtype);
