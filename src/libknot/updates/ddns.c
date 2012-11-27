@@ -2178,7 +2178,7 @@ int knot_ddns_process_update2(knot_zone_contents_t *zone,
 		        || ns_serial_compare(knot_rdata_soa_serial(
 		                        knot_rrset_rdata(rr)), sn_new) <= 0)) {
 			// This ignores also SOA removals
-			
+			dbg_ddns_verb("Ignoring SOA...\n");
 			continue;
 		}
 
@@ -2198,6 +2198,8 @@ int knot_ddns_process_update2(knot_zone_contents_t *zone,
 		if (knot_rrset_type(rr) == KNOT_RRTYPE_SOA) {
 			int64_t sn_rr = knot_rdata_soa_serial(
 			                        knot_rrset_rdata(rr));
+			dbg_ddns_verb("Replacing SOA. Old serial: %d, new "
+			              "serial: %d\n", sn_new, sn_rr);
 			assert(ns_serial_compare(sn_rr, sn_new) <= 0);
 			assert(rr_copy != NULL);
 			sn_new = sn_rr;
