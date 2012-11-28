@@ -1403,6 +1403,29 @@ static int knot_ddns_add_rr(knot_node_t *node, const knot_rrset_t *rr,
 
 /*----------------------------------------------------------------------------*/
 
+static int knot_ddns_final_soa_to_chgset(const knot_rrset_t *soa,
+                                         knot_changeset_t *changeset)
+{
+	assert(soa != NULL);
+	assert(changeset != NULL);
+	
+	knot_rrset_t *soa_copy = NULL;
+	int ret = knot_rrset_deep_copy(soa, &soa_copy, 1);
+	if (ret != KNOT_EOK) {
+		dbg_ddns("Failed to copy SOA RR to the changeset: "
+			 "%s\n", knot_strerror(ret));
+		return ret;
+	}
+	
+	knot_changeset_store_soa(&changeset->soa_to,
+	                         &changeset->serial_to,
+	                         soa_copy);
+	
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 static int knot_ddns_add_rr_to_chgset(const knot_rrset_t *rr,
                                       knot_changeset_t *changeset)
 {
@@ -2184,7 +2207,7 @@ int knot_ddns_process_update2(knot_zone_contents_t *zone,
 		    && (knot_rrset_class(rr) == KNOT_CLASS_NONE
 		        || knot_rrset_class(rr) == KNOT_CLASS_ANY
 		        || ns_serial_compare(knot_rdata_soa_serial(
-		                        knot_rrset_rdata(rr)), sn_new) <= 0)) {
+		                        knot_rrset_rdata(rr)), sn_new) < 0)) {
 			// This ignores also SOA removals
 			dbg_ddns_verb("Ignoring SOA...\n");
 			continue;
@@ -2208,7 +2231,7 @@ int knot_ddns_process_update2(knot_zone_contents_t *zone,
 			                        knot_rrset_rdata(rr));
 			dbg_ddns_verb("Replacing SOA. Old serial: %d, new "
 			              "serial: %d\n", sn_new, sn_rr);
-			assert(ns_serial_compare(sn_rr, sn_new) > 0);
+			assert(ns_serial_compare(sn_rr, sn_new) >= 0);
 			assert(rr_copy != NULL);
 			sn_new = sn_rr;
 			soa_end = (knot_rrset_t *)rr_copy;
@@ -2217,16 +2240,29 @@ int knot_ddns_process_update2(knot_zone_contents_t *zone,
 
 	/* Ending SOA */
 	if (soa_end == NULL) {
-		/* If not set */
+		/* If not set, create new SOA. */
 		assert(sn_new == (uint32_t)sn + 1);
 		ret = knot_rrset_deep_copy(soa, &soa_end, 1);
+		if (ret != KNOT_EOK) {
+			dbg_ddns("Failed to copy ending SOA: %s\n",
+			         knot_strerror(ret));
+			return ret;
+		}
 		knot_rdata_t *rd = knot_rrset_get_rdata(soa_end);
 		knot_rdata_soa_serial_set(rd, sn_new);
+		
+		/* And replace it in the zone. */
+		ret = xfrin_replace_rrset_in_node(
+		                        knot_zone_contents_get_apex(zone),
+		                        soa_end, changes, zone);
+		if (ret != KNOT_EOK) {
+			dbg_ddns("Failed to copy replace SOA in zone: %s\n",
+			         knot_strerror(ret));
+			return ret;
+		}
 	}
 
-	knot_changeset_store_soa(&changeset->soa_to,
-	                         &changeset->serial_to,
-	                         soa_end);
+	ret = knot_ddns_final_soa_to_chgset(soa_end, changeset);
 
 	return ret;
 }

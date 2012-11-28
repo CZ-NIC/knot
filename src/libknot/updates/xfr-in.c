@@ -1905,7 +1905,7 @@ static knot_node_t *xfrin_add_new_node(knot_zone_contents_t *contents,
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_replace_rrset_in_node(knot_node_t *node,
+int xfrin_replace_rrset_in_node(knot_node_t *node,
                                        knot_rrset_t *rrset_new,
                                        knot_changes_t *changes,
                                        knot_zone_contents_t *contents)
