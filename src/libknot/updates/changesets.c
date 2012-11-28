@@ -464,7 +464,7 @@ int knot_changes_rdata_reserve(knot_rdata_t ***rdatas, uint16_t **types,
 void knot_changes_add_rdata(knot_rdata_t **rdatas, uint16_t *types,
                             int *count, knot_rdata_t *rdata, uint16_t type)
 {
-	if (rdatas == NULL || types == NULL || count = NULL || rdata == NULL) {
+	if (rdatas == NULL || types == NULL || count == NULL || rdata == NULL) {
 		return;
 	}
 
