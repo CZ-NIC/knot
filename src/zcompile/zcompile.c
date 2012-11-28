@@ -45,21 +45,7 @@
 #include "libknot/zone/zone-diff.h"
 #include "libknot/rrset.h"
 #include "libknot/util/utils.h"
-
-/* Some global flags... */
-static int vflag = 0;
-/* if -v then print progress each 'progress' RRs */
-static int progress = 10000;
-
-/* Total errors counter */
-static long int totalerrors = 0;
-static long int totalrrs = 0;
-
-extern FILE *zp_get_in(void *scanner);
-
-
-
-
+#include "zscanner/file_loader.h"
 
 
 struct parser {
@@ -71,14 +57,6 @@ struct parser {
 };
 
 typedef struct parser parser_t;
-
-
-
-
-
-
-
-
 
 /*!
  * \brief Adds RRSet to list.
@@ -236,14 +214,101 @@ static void process_rrsigs_in_node(parser_t *parser,
 	}
 }
 
-int process_rr(void *data)
+void process_error(const scanner_t *scanner)
 {
-	parser_t *parser = data;
+	fprintf(stderr, "GODS! There's been an error!\n");
+}
+
+int add_rdata_to_rr(knot_rrset_t *rrset, const scanner_t *scanner)
+{
+	if (rrset == NULL) {
+		dbg_zp("zp: add_rdata_to_rr: No RRSet.\n");
+		return KNOT_EINVAL;
+	}
+	
+	const rdata_descriptor_t *desc =
+		get_rdata_descriptor(knot_rrset_type(rrset));
+	assert(desc);
+	
+	/* TODO it needs to return size as well!. */
+	/* A good idea might be, once we know, what the size of say, RRSIGs will be, its not gonna change, so we can store it somewhere to further speedup processing. */
+	uint8_t *rdata = knot_rrset_rdata_prealloc(rrset);
+	size_t offset = 0;
+	
+	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
+		int item = desc->block_types[i];
+		if (descriptor_item_is_dname(item)) {
+			/* TODO another function perhaps? */
+			knot_dname_t *dname =
+				knot_dname_new_from_wire(scanner->r_data +
+			                                 scanner->r_data_blocks[i],
+			                                 scanner->r_data_blocks[i + 1] - scanner->r_data_blocks[i],
+			                                 NULL);
+			if (dname == NULL) {
+				printf("Dname failed\n.");
+				//TODO handle
+				return KNOT_ERROR;
+			}
+			
+			memcpy(rdata + offset, &dname, sizeof(knot_dname_t *));
+			offset += sizeof(knot_dname_t *);
+			//parse dname from binary
+		} else if (descriptor_item_is_fixed(item)) {
+			//copy the whole thing
+			// TODO check the size
+			memcpy(rdata + offset,
+			       scanner->r_data + scanner->r_data_blocks[i],
+			       scanner->r_data_blocks[i + 1] -
+			       scanner->r_data_blocks[i]);
+			offset += scanner->r_data_blocks[i + 1] -
+			          scanner->r_data_blocks[i];
+		} else if (descriptor_item_is_remainder(item)) {
+			//copy the rest
+			memcpy(rdata + offset,
+			       scanner->r_data + scanner->r_data_blocks[i],
+			       scanner->r_data_blocks[i + 1] -
+			       scanner->r_data_blocks[i]);
+			offset += scanner->r_data_blocks[i + 1] -
+			          scanner->r_data_blocks[i];
+		} else {
+			//NAPTR
+			assert(knot_rrset_type(rrset) == KNOT_RRTYPE_NAPTR);
+			assert(0);
+		}
+	}
+	
+	int ret = knot_rrset_add_rdata(rrset, rdata, offset);
+	if (ret != KNOT_EOK) {
+		dbg_zp("zp: add_rdat_to_rr: Could not add RR. Reason: %s.\n",
+		       knot_strerror(ret));
+		return ret;
+	}
+	
+	printf("Data ok\n");
+	
+	return KNOT_EOK;
+}
+
+void process_rr(const scanner_t *scanner)
+{
+	
+	parser_t *parser = scanner->data;
 	knot_zone_contents_t *contents = parser->current_zone;
-	knot_rrset_t *current_rrset = parser->current_rrset;
+	/* Create rrset. TODO will not be always needed. */
+	knot_dname_t *current_owner =
+	                knot_dname_new_from_wire(scanner->r_owner,
+	                                         scanner->r_owner_length,
+	                                         NULL);
+	assert(current_owner);
+	knot_rrset_t *current_rrset = knot_rrset_new(current_owner, scanner->r_type,
+	                                       scanner->r_class,
+	                                       scanner->r_ttl);
+	assert(current_rrset);
+	parser->current_rrset = current_rrset;
 	knot_rrset_t *rrset;
-	rdata_descriptor_t *desc =
-		get_rdata_descriptor(current_rrset->type);
+	
+	int ret = add_rdata_to_rr(current_rrset, scanner);
+	assert(ret == 0);
 
 dbg_zp_exec_detail(
 	char *name = knot_dname_to_str(parser->current_rrset->owner);
@@ -308,7 +373,7 @@ dbg_zp_exec_detail(
 
 	if (current_rrset->type == KNOT_RRTYPE_SOA) {
 		if (knot_dname_compare(current_rrset->owner,
-					 parser->origin_from_config) != 0) {
+					parser->origin_from_config) != 0) {
 			fprintf(stderr, "SOA record has a different "
 				"owner than the one specified "
 				"in config! \n");
@@ -472,7 +537,7 @@ dbg_zp_exec_detail(
 				current_rrset->ttl) {
 			fprintf(stderr, 
 				"TTL does not match the TTL of the RRSet. "
-				"Changing to %lu.\n", rrset->ttl);
+				"Changing to %d.\n", rrset->ttl);
 		}
 
 		if (knot_zone_contents_add_rrset(contents, current_rrset,
@@ -484,47 +549,39 @@ dbg_zp_exec_detail(
 		}
 	}
 
-	if (vflag > 1 && totalrrs > 0 && (totalrrs % progress == 0)) {
-		fprintf(stderr, "Total errors: %ld\n", totalrrs);
-	}
-
 	parser->last_node = node;
-	++totalrrs;
 	
 	dbg_zp_verb("zp: process_rr: RRSet %p processed successfully.\n",
 	            parser->current_rrset);
 	return KNOTDZCOMPILE_EOK;
 }
 
-static int zone_open(const char *filename, uint32_t ttl, uint16_t rclass,
-	  knot_node_t *origin, void *scanner, knot_dname_t *origin_from_config)
-{
-	/*!< \todo #1676 Implement proper locking. */
-	zparser_init(filename, ttl, rclass, origin, origin_from_config);
-
-	
-	/* Open the zone file... */
-	if (strcmp(filename, "-") == 0) {
-		zp_set_in(stdin, scanner);
-		filename = "<stdin>";
-	} else {
-		FILE *f = fopen(filename, "r");
-		if (f == NULL) {
-			return 0;
-		}
-		zp_set_in(f, scanner);
-		if (zp_get_in(scanner) == 0) {
-			return 0;
-		}
-	}
-	
-	return 1;
-}
-
 int zone_read(const char *name, const char *zonefile, const char *outfile,
 	      int semantic_checks)
 {
-
+	knot_zone_t *zone;
+	parser_t my_parser;
+	my_parser.origin_from_config = knot_dname_new_from_str(name,
+	                                                       strlen(name),
+	                                                       NULL);
+	assert(my_parser.origin_from_config);
+	my_parser.last_node = knot_node_new(my_parser.origin_from_config,
+	                                    NULL, 0);
+	my_parser.current_zone = knot_zone_contents_new(my_parser.last_node,
+	                                                0, 0, zone);
+	file_loader_t* file_loader_create(const char	 *file_name,
+					  const char	 *zone_origin,
+					  const uint16_t default_class,
+					  const uint32_t default_ttl,
+					  void (*process_record)(const scanner_t *),
+					  void (*process_error)(const scanner_t *),
+					  void *data);
+	file_loader_t *loader = file_loader_create(zonefile, name,
+	                                           KNOT_CLASS_IN, 3600,
+	                                           process_rr,
+	                                           process_error, &my_parser);
+	file_loader_process(loader);
+	printf("Done?\n");
 }
 
 /*! @} */

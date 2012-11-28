@@ -1559,3 +1559,21 @@ knot_dname_t **knot_rrset_rdata_get_next_dname_pointer(
 	return NULL;
 }
 
+uint8_t *knot_rrset_rdata_prealloc(const knot_rrset_t *rrset)
+{
+	/*
+	 * Length of data can be sometimes guessed
+	 * easily. Well, for some types anyway.
+	 */
+	size_t rdata_size = 1000;
+	
+	uint8_t *ret = malloc(rdata_size);
+	if (ret == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
+	/* TODO do properly. */
+	
+	return ret;
+}
+

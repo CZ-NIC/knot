@@ -152,7 +152,6 @@ void zc_warning_prev_line(const char *fmt, ...);
 /*!
  * \brief Does all the processing of RR - saves to zone, assigns RRSIGs etc.
  */
-int process_rr();
 
 /*!
  * \brief Parses and creates zone from given file.

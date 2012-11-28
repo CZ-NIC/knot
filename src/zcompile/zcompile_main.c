@@ -90,7 +90,7 @@ int main(int argc, char **argv)
 		              zonefile, origin);
 	}
 	
-	int error = 0;
+	int error = zone_read(origin, zonefile, outfile, semantic_checks);
 
 	if (error != 0) {
 	  /* FIXME! */
