@@ -907,7 +907,7 @@ int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
 		knot_dname_t **dname_to = NULL;
 		knot_dname_t *dname_copy = NULL;
 		while ((dname_from =
-		        knot_rrset_next_dname(from, dname_from)) != NULL) {
+		        knot_rrset_get_next_dname(from, dname_from)) != NULL) {
 			dname_to =
 				knot_rrset_get_next_dname_pointer(*to,
 					dname_to);

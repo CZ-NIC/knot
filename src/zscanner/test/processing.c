@@ -120,32 +120,32 @@ void debug_process_error(const scanner_t *s)
 
 void debug_process_record(const scanner_t *s)
 {
-	uint32_t block, block_length, i;
+//	uint32_t block, block_length, i;
 
-	printf("LINE(%03"PRIu64") %s %u %*s ",
-	       s->line_counter,
-	       knot_rrclass_to_string(s->r_class),
-	       s->r_ttl,
-	       5,
-	       knot_rrtype_to_string(s->r_type));
+//	printf("LINE(%03"PRIu64") %s %u %*s ",
+//	       s->line_counter,
+//	       knot_rrclass_to_string(s->r_class),
+//	       s->r_ttl,
+//	       5,
+//	       knot_rrtype_to_string(s->r_type));
 
-	print_wire_dname(s->r_owner, s->r_owner_length);
+//	print_wire_dname(s->r_owner, s->r_owner_length);
 
-	printf("  #%u/%uB:", s->r_data_blocks_count, s->r_data_length);
+//	printf("  #%u/%uB:", s->r_data_blocks_count, s->r_data_length);
 
-	for (block = 1; block <= s->r_data_blocks_count; block++) {
-		block_length =
-			s->r_data_blocks[block] - s->r_data_blocks[block - 1];
-		printf(" (%u)", block_length);
+//	for (block = 1; block <= s->r_data_blocks_count; block++) {
+//		block_length =
+//			s->r_data_blocks[block] - s->r_data_blocks[block - 1];
+//		printf(" (%u)", block_length);
 
-		for (i = s->r_data_blocks[block - 1];
-		     i < s->r_data_blocks[block];
-		     i++) {
-			printf("%02X", (s->r_data)[i]);
-		}
-	}
-	printf("\n");
-	fflush(stdout);
+//		for (i = s->r_data_blocks[block - 1];
+//		     i < s->r_data_blocks[block];
+//		     i++) {
+//			printf("%02X", (s->r_data)[i]);
+//		}
+//	}
+//	printf("\n");
+//	fflush(stdout);
 }
 
 void test_process_error(const scanner_t *s)

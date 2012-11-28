@@ -144,7 +144,8 @@ static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
 	assert(knot_dname_compare(rrsig->owner, node->owner) == 0);
 
 	knot_rrset_t *tmp_rrset =
-		knot_node_get_rrset(node, rrsig_type_covered(rrsig));
+		knot_node_get_rrset(node,
+	                            knot_rrset_rdata_rrsig_type_covered(rrsig));
 
 	int ret;
 
@@ -153,7 +154,7 @@ static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
 		       "RRSet of type %s.\n",
 		       knot_rrtype_to_string(rrsig_type_covered(rrsig)));
 		tmp_rrset = knot_rrset_new(rrsig->owner,
-		                           rrsig_type_covered(rrsig),
+		                           knot_rrset_rdata_rrsig_type_covered(rrsig),
 		                           rrsig->rclass,
 		                           rrsig->ttl);
 		if (tmp_rrset == NULL) {
@@ -228,7 +229,7 @@ static void process_rrsigs_in_node(parser_t *parser,
 	while (tmp != NULL) {
 		if (find_rrset_for_rrsig_in_node(zone, node,
 						 tmp->data) != KNOT_EOK) {
-			zc_error_prev_line("Could not add RRSIG to zone!\n");
+			fprintf(stderr, "Could not add RRSIG to zone!\n");
 			return;
 		}
 		tmp = tmp->next;
@@ -274,7 +275,8 @@ dbg_zp_exec_detail(
 
 	uint16_t type_covered = 0;
 	if (current_rrset->type == KNOT_RRTYPE_RRSIG) {
-		type_covered = rrsig_type_covered(current_rrset);
+		type_covered =
+			knot_rrset_rdata_rrsig_type_covered(current_rrset);
 	}
 
 	if (current_rrset->type != KNOT_RRTYPE_NSEC3 &&
@@ -295,7 +297,7 @@ dbg_zp_exec_detail(
 			    KNOT_RRTYPE_SOA), KNOT_RRSET_COMPARE_WHOLE)) {
 				return KNOTDZCOMPILE_ESOA;
 			} else {
-				zc_warning_prev_line("encountered identical "
+				fprintf(stderr, "encountered identical "
 				                     "extra SOA record");
 				return KNOTDZCOMPILE_EOK;
 			}
@@ -307,7 +309,7 @@ dbg_zp_exec_detail(
 	if (current_rrset->type == KNOT_RRTYPE_SOA) {
 		if (knot_dname_compare(current_rrset->owner,
 					 parser->origin_from_config) != 0) {
-			zc_error_prev_line("SOA record has a different "
+			fprintf(stderr, "SOA record has a different "
 				"owner than the one specified "
 				"in config! \n");
 			/* Such SOA cannot even be added, because
@@ -468,7 +470,7 @@ dbg_zp_exec_detail(
 		if (current_rrset->type !=
 				KNOT_RRTYPE_RRSIG && rrset->ttl !=
 				current_rrset->ttl) {
-			zc_warning_prev_line(
+			fprintf(stderr, 
 				"TTL does not match the TTL of the RRSet. "
 				"Changing to %lu.\n", rrset->ttl);
 		}
@@ -483,7 +485,7 @@ dbg_zp_exec_detail(
 	}
 
 	if (vflag > 1 && totalrrs > 0 && (totalrrs % progress == 0)) {
-		zc_error_prev_line("Total errors: %ld\n", totalrrs);
+		fprintf(stderr, "Total errors: %ld\n", totalrrs);
 	}
 
 	parser->last_node = node;
@@ -522,209 +524,7 @@ static int zone_open(const char *filename, uint32_t ttl, uint16_t rclass,
 int zone_read(const char *name, const char *zonefile, const char *outfile,
 	      int semantic_checks)
 {
-	if (!outfile) {
-		zc_error_prev_line("Missing output file for '%s'\n",
-			zonefile);
-		return KNOTDZCOMPILE_EINVAL;
-	}
-	
-	dbg_zp("zp: zone_read: Reading zone: %s.\n", zonefile);
 
-	/* Check that we can write to outfile. */
-	FILE *f = fopen(outfile, "wb");
-	if (f == NULL) {
-		log_zone_error("Cannot write zone db to file '%s' (%s).\n",
-		        outfile, strerror(errno));
-		return KNOTDZCOMPILE_EINVAL;
-	}
-	fclose(f);
-
-	knot_dname_t *dname =
-		knot_dname_new_from_str(name, strlen(name), NULL);
-	if (dname == NULL) {
-		return KNOTDZCOMPILE_ENOMEM;
-	}
-
-	if (!knot_dname_is_fqdn(dname)) {
-		log_zone_error("Error: given zone origin is not FQDN.\n");
-		knot_dname_release(dname);
-		return KNOTDZCOMPILE_EINVAL;
-	}
-
-	knot_node_t *origin_node = knot_node_new(dname, NULL, 0);
-	knot_dname_release(dname); /* Stored in node or should be freed. */
-	if (origin_node == NULL) {
-		return KNOTDZCOMPILE_ENOMEM;
-	}
-	
-	assert(knot_node_parent(origin_node) == NULL);
-
-	/*!< \todo Another copy is probably not needed. */
-	knot_dname_t *origin_from_config =
-		knot_dname_new_from_str(name, strlen(name), NULL);
-	if (origin_from_config == NULL) {
-		knot_node_free(&origin_node);
-		return KNOTDZCOMPILE_ENOMEM;
-	}
-
-	void *scanner = NULL;
-	zp_lex_init(&scanner);
-	if (scanner == NULL) {
-		knot_dname_release(origin_from_config);
-		knot_node_free(&origin_node);
-		return KNOTDZCOMPILE_ENOMEM;
-	}
-
-	if (!zone_open(zonefile, 3600, KNOT_CLASS_IN, origin_node, scanner,
-	               origin_from_config)) {
-		zc_error_prev_line("Cannot open '%s' (%s).",
-		                   zonefile, strerror(errno));
-		zp_lex_destroy(scanner);
-		knot_dname_release(origin_from_config);
-//		knot_node_free(&origin_node, 0);
-		return KNOTDZCOMPILE_EZONEINVAL;
-	}
-	
-	/* Lock zone file. There should not be any modifications. */
-	struct flock lock;
-	lock.l_type = F_RDLCK;
-	lock.l_start = 0;
-	lock.l_whence = SEEK_SET;
-	lock.l_len = 0;
-	lock.l_pid = getpid();
-	if (fcntl(fileno(zp_get_in(scanner)), F_SETLK, &lock) == -1) {
-		log_zone_error("Cannot obtain zone source file lock (%d).\n",
-		        errno);
-		FILE *in_file = (FILE *)zp_get_in(scanner);
-		fclose(in_file);
-		zp_lex_destroy(scanner);
-		knot_dname_release(origin_from_config);
-		return KNOTDZCOMPILE_EINVAL;
-	}
-	
-	/* Change lock type to unlock rigth away. */
-	lock.l_type = F_UNLCK;
-
-	if (zp_parse(scanner) != 0) {
-		log_zone_error("Parse failed.\n");
-		FILE *in_file = (FILE *)zp_get_in(scanner);
-		fclose(in_file);
-		knot_dname_release(origin_from_config);
-//		knot_node_free(&origin_node, 0);
-		/* Release file lock. */
-		if (fcntl(fileno(zp_get_in(scanner)), F_SETLK, &lock) == -1) {
-			log_zone_error("Cannot release zone source file "
-			        "lock (%d).\n",
-			        errno);
-		}
-		zp_lex_destroy(scanner);
-		return KNOTDZCOMPILE_ESYNT;
-	}
-
-	knot_zone_contents_t *contents =
-			knot_zone_get_contents(parser->current_zone);
-	
-	/* Release file lock. */
-	if (fcntl(fileno(zp_get_in(scanner)), F_SETLK, &lock) == -1) {
-		log_zone_error("Cannot release zone source file lock (%d).\n",
-		        errno);
-	}
-
-	FILE *in_file = (FILE *)zp_get_in(scanner);
-	fclose(in_file);
-	zp_lex_destroy(scanner);
-
-	dbg_zp("zp: zone_read: Parse complete for %s.\n",
-	       zonefile);
-
-	if (parser->last_node && parser->node_rrsigs != NULL) {
-		/* assign rrsigs to last node in the zone*/
-		process_rrsigs_in_node(parser,
-		                       contents,
-		                       parser->last_node);
-		rrset_list_delete(&parser->node_rrsigs);
-	}
-
-	dbg_zp("zp: zone_read: RRSIGs processed.\n");
-
-	if (!(parser->current_zone &&
-	      knot_node_rrset(parser->current_zone->contents->apex,
-	                        KNOT_RRTYPE_SOA))) {
-		zc_error_prev_line("Zone file does not contain SOA record!\n");
-//		knot_zone_deep_free(&parser->current_zone, 1);
-		knot_dname_release(origin_from_config);
-//		knot_node_free(&origin_node, 0);
-		return KNOTDZCOMPILE_EZONEINVAL;
-	}
-
-	int ret = knot_zone_contents_adjust(contents);
-	if (ret != KNOT_EOK) {
-		fprintf(stderr, "Zone could not be adjusted, error: %s.\n",
-		        knot_strerror(ret));
-		parser->errors++;
-	}
-	
-	dbg_zp("zp: zone_read: Zone adjusted.\n");
-
-	if (parser->errors != 0) {
-		log_zone_error("Parser finished with %d error(s), "
-		               "not dumping the zone!\n",
-		               parser->errors);
-	} else {
-		int fd = open(outfile, O_RDWR | O_CREAT | O_TRUNC, S_IRWXU | S_IRWXG);
-		if (fd < 0) {
-			log_zone_error("Could not open destination file for db: %s.\n",
-			               outfile);
-			totalerrors++;
-		} else {
-			crc_t crc;
-			int ret = knot_zdump_binary(contents, fd,
-			                            semantic_checks,
-			                            zonefile, &crc);
-			if (ret != KNOT_EOK) {
-				log_zone_error("Could not dump zone, reason: "
-				               "%s.\n", knot_strerror(ret));
-				if (remove(outfile) != 0) {
-					log_zone_error("Could not remove "
-					               "db file!\n");
-				}
-				totalerrors++;
-			} else {
-				/* Write CRC file. */
-				char *crc_path = knot_zdump_crc_file(outfile);
-				if (crc_path == NULL) {
-					log_zone_error(
-					"Could not get crc file path.\n");
-					remove(outfile);
-					totalerrors++;
-				} else {
-					FILE *f_crc = fopen(crc_path, "w");
-					if (f_crc == NULL) {
-						log_zone_error(
-						"Could not open crc file \n");
-						remove(outfile);
-						totalerrors++;
-					} else {
-						fprintf(f_crc,
-						        "%lu",
-						        (unsigned long)crc);
-						fclose(f_crc);
-					}
-				}
-				free(crc_path);
-			}
-		}
-
-
-		dbg_zp("zp: zone_read: Zone %s dumped successfully.\n",
-		       zonefile);
-	}
-
-	fflush(stdout);
-	totalerrors += parser->errors;
-	knot_dname_release(origin_from_config);
-
-	return totalerrors;
 }
 
 /*! @} */

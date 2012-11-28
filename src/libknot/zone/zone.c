@@ -252,7 +252,7 @@ dbg_zone_exec(
 		(*zone)->dtor(*zone);
 	}
 
-	knot_zone_contents_deep_free(&(*zone)->contents, destroy_dname_table);
+	knot_zone_contents_deep_free(&(*zone)->contents);
 	free(*zone);
 	*zone = NULL;
 }

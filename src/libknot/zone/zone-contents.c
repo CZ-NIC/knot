@@ -343,28 +343,15 @@ static void knot_zone_contents_adjust_rdata_in_rrset(knot_rrset_t *rrset,
 	assert(desc);
 	size_t offset = 0;
 	
-	for (int i = 0; i < knot_rrset_rdata_rr_count(rrset); i++) {
-		uint8_t *rdata = rrset_rdata_pointer(rrset, i);
-		for (int j = 0; desc->block_types[j] != KNOT_RDATA_WF_END; j++) {
-			if (descriptor_item_is_dname(desc->block_types[j])) {
-				dbg_zone("Adjusting domain name at "
-				  "position %d of RDATA of record with owner "
-				  "%s and type %s.\n",
-				  i, rrset->owner->name,
-				  knot_rrtype_to_string(type));
-				// Get dname from rdata string
-				//TODO
-				knot_zone_contents_adjust_rdata_dname(rdata,
-				                                      zone,
-				                                      node,
-				                                      i);
-				
-			} else if (descriptor_item_is_fixed(desc->block_types[j])) {
-				
-			}
-			}
-		}
+	knot_dname_t *dname = NULL;
+	while ((dname = knot_rrset_get_next_dname(rrset, NULL)) != NULL) {
+		knot_zone_contents_adjust_rdata_dname(zone,
+		                                      node,
+		                                      dname);
 	}
+	
+	assert(dname == NULL);
+}
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -914,8 +901,7 @@ static void knot_zone_contents_check_loops_in_tree(knot_zone_tree_node_t *tnode,
 
 		// follow the CNAME chain, including wildcards and
 		// remember the nodes passed through
-		const knot_dname_t *next_name = knot_rdata_cname_name(
-		                        knot_rrset_rdata(cname));
+		const knot_dname_t *next_name = knot_rrset_rdata_cname_name(cname);
 		assert(next_name != NULL);
 		const knot_node_t *next_node = knot_dname_node(next_name);
 		if (next_node == NULL) {
@@ -957,10 +943,11 @@ static void knot_zone_contents_check_loops_in_tree(knot_zone_tree_node_t *tnode,
 
 /*----------------------------------------------------------------------------*/
 
-static int knot_zc_nsec3_parameters_match(const knot_rdata_t *rdata,
-                                          const knot_nsec3_params_t *params)
+static int knot_zc_nsec3_parameters_match(const knot_rrset_t *rrset,
+                                          const knot_nsec3_params_t *params,
+                                          size_t rdata_pos)
 {
-	assert(rdata != NULL && params != NULL);
+	assert(rrset != NULL && params != NULL);
 	
 	dbg_zone_detail("RDATA algo: %u, iterations: %u, salt length: %u, salt:"
 	                " %.*s\n", 
@@ -972,11 +959,12 @@ static int knot_zc_nsec3_parameters_match(const knot_rdata_t *rdata,
 	dbg_zone_detail("NSEC3PARAM algo: %u, iterations: %u, salt length: %u, "
 	                "salt: %.*s\n",  params->algorithm, params->iterations,
 	                params->salt_length, params->salt_length, params->salt);
-	
-	return (knot_rdata_nsec3_algorithm(rdata) == params->algorithm
-	        && knot_rdata_nsec3_iterations(rdata) == params->iterations
-	        && knot_rdata_nsec3_salt_length(rdata) == params->salt_length
-	        && strncmp((const char *)knot_rdata_nsec3_salt(rdata),
+
+	// TODO not sure about the index at all. Index is probably not needed.
+	return (knot_rrset_rdata_nsec3_algorithm(rrset, rdata_pos) == params->algorithm
+	        && knot_rrset_rdata_nsec3_iterations(rrset, rdata_pos) == params->iterations
+	        && knot_rrset_rdata_nsec3_salt_length(rrset, rdata_pos) == params->salt_length
+	        && strncmp((const char *)knot_rrset_rdata_nsec3_salt(rrset, rdata_pos),
 	                   (const char *)params->salt, params->salt_length)
 	           == 0);
 }
@@ -1502,8 +1490,7 @@ dbg_zone_exec(
 		// find proper node
 		knot_node_t *(*get_node)(const knot_zone_contents_t *,
 		                           const knot_dname_t *)
-		    = (knot_rdata_rrsig_type_covered(
-		            knot_rrset_rdata(rrsigs)) == KNOT_RRTYPE_NSEC3)
+		    = (knot_rrset_rdata_rrsig_type_covered(rrsigs) == KNOT_RRTYPE_NSEC3)
 		       ? knot_zone_contents_get_nsec3_node
 		       : knot_zone_contents_get_node;
 
@@ -1523,8 +1510,7 @@ dbg_zone_exec(
 		                      knot_rdata_rrsig_type_covered(
 		                      knot_rrset_rdata(rrsigs))));
 		*rrset = knot_node_get_rrset(
-		             *node, knot_rrset_rdata_rrsig_type_covered(rrsigs
-		                      knot_rrset_rdata(rrsigs)));
+		             *node, knot_rrset_rdata_rrsig_type_covered(rrsigs));
 		if (*rrset == NULL) {
 			dbg_zone("Failed to find RRSet for RRSIGs.\n");
 			return KNOT_ENORRSET;
@@ -2193,47 +2179,55 @@ dbg_zone_exec_detail(
 	 */
 	const knot_rrset_t *nsec3_rrset = knot_node_rrset(*nsec3_previous, 
 	                                                  KNOT_RRTYPE_NSEC3);
-	const knot_rdata_t *nsec3_rdata = (nsec3_rrset != NULL)
-				? knot_rrset_rdata(nsec3_rrset)
-				: NULL;
+	assert(nsec3_rrset);
 	const knot_node_t *original_prev = *nsec3_previous;
 	
-	while (nsec3_rdata != NULL
-	       && !knot_zc_nsec3_parameters_match(nsec3_rdata, 
-	                                          &zone->nsec3_params)) {
-		/* Try other RDATA if there are some. In case of name collision
-		 * the node would contain records from both NSEC3 chains.
-		 */
-		if ((nsec3_rdata = knot_rrset_rdata_next(
-		             nsec3_rrset, nsec3_rdata)) != NULL) {
-			continue;
+	for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(nsec3_rrset); i++) {
+		if (!knot_zc_nsec3_parameters_match(nsec3_rrset,
+		                                    &zone->nsec3_params,
+		                                    i)) {
+			//TODO something
 		}
 		
-		/* If there is none, try previous node. */
-		
-		*nsec3_previous = knot_node_previous(*nsec3_previous);
-		nsec3_rrset = knot_node_rrset(*nsec3_previous, 
-		                              KNOT_RRTYPE_NSEC3);
-		nsec3_rdata = (nsec3_rrset != NULL)
-		                ? knot_rrset_rdata(nsec3_rrset)
-		                : NULL;
-dbg_zone_exec_detail(
-		char *name = (*nsec3_previous) 
-				? knot_dname_to_str(
-					  knot_node_owner(*nsec3_previous))
-				: "none";
-		dbg_zone_detail("Previous node: %s, checking parameters...\n",
-				name);
-		if (*nsec3_previous) {
-			free(name);
-		}
-);
-		if (*nsec3_previous == original_prev || nsec3_rdata == NULL) {
-			// cycle
-			*nsec3_previous = NULL;
-			break;
-		}
+		//TODO not complete, see commented code below
 	}
+	
+//	while ( != NULL
+//	       && !knot_zc_nsec3_parameters_match(nsec3_rdata, 
+//	                                          &zone->nsec3_params)) {
+//		/* Try other RDATA if there are some. In case of name collision
+//		 * the node would contain records from both NSEC3 chains.
+//		 */
+//		if ((nsec3_rdata = knot_rrset_rdata_next(
+//		             nsec3_rrset, nsec3_rdata)) != NULL) {
+//			continue;
+//		}
+		
+//		/* If there is none, try previous node. */
+		
+//		*nsec3_previous = knot_node_previous(*nsec3_previous);
+//		nsec3_rrset = knot_node_rrset(*nsec3_previous, 
+//		                              KNOT_RRTYPE_NSEC3);
+//		nsec3_rdata = (nsec3_rrset != NULL)
+//		                ? knot_rrset_rdata(nsec3_rrset)
+//		                : NULL;
+//dbg_zone_exec_detail(
+//		char *name = (*nsec3_previous) 
+//				? knot_dname_to_str(
+//					  knot_node_owner(*nsec3_previous))
+//				: "none";
+//		dbg_zone_detail("Previous node: %s, checking parameters...\n",
+//				name);
+//		if (*nsec3_previous) {
+//			free(name);
+//		}
+//);
+//		if (*nsec3_previous == original_prev || nsec3_rdata == NULL) {
+//			// cycle
+//			*nsec3_previous = NULL;
+//			break;
+//		}
+//	}
 
 	return (exact_match)
 	       ? KNOT_ZONE_NAME_FOUND
@@ -2799,8 +2793,7 @@ void knot_zone_contents_free(knot_zone_contents_t **contents)
 
 /*----------------------------------------------------------------------------*/
 
-void knot_zone_contents_deep_free(knot_zone_contents_t **contents,
-                                  int destroy_dname_table)
+void knot_zone_contents_deep_free(knot_zone_contents_t **contents)
 {
 	if (contents == NULL || *contents == NULL) {
 		return;
@@ -2844,16 +2837,6 @@ void knot_zone_contents_deep_free(knot_zone_contents_t **contents,
 		knot_zone_tree_free(&(*contents)->nsec3_nodes);
 
 		knot_nsec3_params_free(&(*contents)->nsec3_params);
-
-		if (destroy_dname_table) {
-			/*
-			 * Hack, used in zcompile - destroys the table using
-			 * dname_free() instead of dname_retain().
-			 */
-			knot_dname_table_destroy(&(*contents)->dname_table);
-		} else {
-			knot_dname_table_deep_free(&(*contents)->dname_table);
-		}
 	}
 
 	free((*contents));
