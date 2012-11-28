@@ -347,6 +347,10 @@ void knot_free_changesets(knot_changesets_t **changesets)
 int knot_changes_rrsets_reserve(knot_rrset_t ***rrsets,
                               int *count, int *allocated, int to_add)
 {
+	if (rrsets == NULL || count == NULL || allocated == NULL) {
+		return KNOT_EINVAL;
+	}
+	
 	if (*count + to_add <= *allocated) {
 		return KNOT_EOK;
 	}
@@ -379,10 +383,10 @@ int knot_changes_rrsets_reserve(knot_rrset_t ***rrsets,
 int knot_changes_nodes_reserve(knot_node_t ***nodes,
                              int *count, int *allocated)
 {
-	assert(nodes != NULL);
-	assert(count != NULL);
-	assert(allocated != 0);
-
+	if (nodes == NULL || count == NULL || allocated == NULL) {
+		return KNOT_EINVAL;
+	}
+	
 	if (*count + 2 <= *allocated) {
 		return KNOT_EOK;
 	}
@@ -413,6 +417,10 @@ int knot_changes_nodes_reserve(knot_node_t ***nodes,
 int knot_changes_rdata_reserve(knot_rdata_t ***rdatas, uint16_t **types,
                              int count, int *allocated, int to_add)
 {
+	if (rdatas == NULL || types == NULL || allocated == NULL) {
+		return KNOT_EINVAL;
+	}
+	
 	if (count + to_add <= *allocated) {
 		return KNOT_EOK;
 	}
@@ -456,7 +464,7 @@ int knot_changes_rdata_reserve(knot_rdata_t ***rdatas, uint16_t **types,
 void knot_changes_add_rdata(knot_rdata_t **rdatas, uint16_t *types,
                             int *count, knot_rdata_t *rdata, uint16_t type)
 {
-	if (rdata == NULL) {
+	if (rdatas == NULL || types == NULL || count = NULL || rdata == NULL) {
 		return;
 	}
 
@@ -478,7 +486,7 @@ void knot_changes_add_rdata(knot_rdata_t **rdatas, uint16_t *types,
 int knot_changes_add_old_rrsets_with_rdata(knot_rrset_t **rrsets, int count,
                                            knot_changes_t *changes)
 {
-	if (rrsets != NULL || changes != NULL) {
+	if (rrsets == NULL || changes == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -549,7 +557,7 @@ int knot_changes_add_old_rrsets_with_rdata(knot_rrset_t **rrsets, int count,
 int knot_changes_add_new_rrsets_with_rdata(knot_rrset_t **rrsets, int count,
                                            knot_changes_t *changes)
 {
-	if (rrsets != NULL || changes != NULL) {
+	if (rrsets == NULL || changes == NULL) {
 		return KNOT_EINVAL;
 	}
 
