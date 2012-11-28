@@ -1239,7 +1239,7 @@ static int knot_ddns_add_rr_merge_normal(knot_rrset_t *node_rrset_copy,
 		                   knot_rrset_ttl(rr_copy));
 	}
 
-	int ret = knot_rrset_merge_no_dupl((void **)node_rrset_copy, 
+	int ret = knot_rrset_merge_no_dupl((void **)&node_rrset_copy, 
 	                               (void **)&rr_copy);
 	if (ret != KNOT_EOK) {
 		dbg_ddns("Failed to merge UPDATE RR to node RRSet: %s."
