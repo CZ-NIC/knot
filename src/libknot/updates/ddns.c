@@ -1224,10 +1224,11 @@ static int knot_ddns_add_rr_new_rrsig(knot_node_t *node, knot_rrset_t *rr_copy,
 /*----------------------------------------------------------------------------*/
 
 static int knot_ddns_add_rr_merge_normal(knot_rrset_t *node_rrset_copy,
-                                         knot_rrset_t *rr_copy)
+                                         knot_rrset_t **rr_copy)
 {
 	assert(node_rrset_copy != NULL);
 	assert(rr_copy != NULL);
+	assert(*rr_copy != NULL);
 	
 	dbg_ddns_verb("Merging normal RR to existing RRSet.\n");
 	
@@ -1238,20 +1239,22 @@ static int knot_ddns_add_rr_merge_normal(knot_rrset_t *node_rrset_copy,
 	 */	
 	if (knot_rrset_rdata(node_rrset_copy) == NULL
 	    && knot_rrset_ttl(node_rrset_copy) 
-	       != knot_rrset_ttl(rr_copy)) {
+	       != knot_rrset_ttl(*rr_copy)) {
 		knot_rrset_set_ttl(node_rrset_copy, 
-		                   knot_rrset_ttl(rr_copy));
+		                   knot_rrset_ttl(*rr_copy));
 	}
 
 	int ret = knot_rrset_merge_no_dupl((void **)&node_rrset_copy, 
-	                               (void **)&rr_copy);
+	                               (void **)rr_copy);
 	if (ret != KNOT_EOK) {
 		dbg_ddns("Failed to merge UPDATE RR to node RRSet: %s."
 		         "\n", knot_strerror(ret));
-		knot_rrset_deep_free(&rr_copy, 1, 1, 1);
+		knot_rrset_deep_free(rr_copy, 1, 1, 1);
 		return ret;
 	}
 	dbg_ddns_detail("Merge returned: %d\n", ret);
+	
+	knot_rrset_free(rr_copy);
 	
 	return KNOT_EOK;
 }
@@ -1259,11 +1262,12 @@ static int knot_ddns_add_rr_merge_normal(knot_rrset_t *node_rrset_copy,
 /*----------------------------------------------------------------------------*/
 
 static int knot_ddns_add_rr_merge_rrsig(knot_rrset_t *node_rrset_copy,
-                                        knot_rrset_t *rr_copy,
+                                        knot_rrset_t **rr_copy,
                                         knot_changes_t *changes)
 {
 	assert(node_rrset_copy != NULL);
 	assert(rr_copy != NULL);
+	assert(*rr_copy != NULL);
 	assert(changes != NULL);
 	
 	dbg_ddns_verb("Adding RRSIG RR to existing RRSet.\n");
@@ -1281,7 +1285,7 @@ static int knot_ddns_add_rr_merge_rrsig(knot_rrset_t *node_rrset_copy,
 		if (ret != KNOT_EOK) {
 			dbg_ddns("Failed to copy RRSIG RRSet: "
 			         "%s\n", knot_strerror(ret));
-			knot_rrset_deep_free(&rr_copy, 1, 1, 1);
+			knot_rrset_deep_free(rr_copy, 1, 1, 1);
 			return ret;
 		}
 		
@@ -1292,7 +1296,7 @@ static int knot_ddns_add_rr_merge_rrsig(knot_rrset_t *node_rrset_copy,
 			dbg_ddns("Failed to replace RRSIGs in "
 			         "the RRSet: %s\n", 
 			         knot_strerror(ret));
-			knot_rrset_deep_free(&rr_copy, 1, 1, 1);
+			knot_rrset_deep_free(rr_copy, 1, 1, 1);
 			return ret;
 		}
 		
@@ -1302,21 +1306,23 @@ static int knot_ddns_add_rr_merge_rrsig(knot_rrset_t *node_rrset_copy,
 		dbg_ddns_detail("Merging RRSIG to the one in "
 		                "the RRSet.\n");
 		ret = knot_rrset_merge_no_dupl(
-		    (void **)&rrsigs_copy, (void **)&rr_copy);
+		    (void **)&rrsigs_copy, (void **)rr_copy);
 		if (ret != KNOT_EOK) {
 			dbg_xfrin("Failed to merge UPDATE RRSIG "
 			          "to copy: %s.\n",
 			          knot_strerror(ret));
 			return KNOT_ERROR;
 		}
+		
+		knot_rrset_free(rr_copy);
 	} else {
 		/* If there is no RRSIG RRSet yet, just add the
 		 * UPDATE RR to the copied covered RRSet.
 		 */
 		/* Add the RRSet to 'changes'. */
-		ret = knot_changes_add_new_rrsets(&rr_copy, 1, changes, 1);
+		ret = knot_changes_add_new_rrsets(rr_copy, 1, changes, 1);
 		if (ret != KNOT_EOK) {
-			knot_rrset_deep_free(&rr_copy, 1, 1, 1);
+			knot_rrset_deep_free(rr_copy, 1, 1, 1);
 			dbg_ddns("Failed to store copy of the "
 			         "added RR: %s\n", 
 			         knot_strerror(ret));
@@ -1325,7 +1331,7 @@ static int knot_ddns_add_rr_merge_rrsig(knot_rrset_t *node_rrset_copy,
 		
 		/* Add the RRSet to the covered RRSet. */
 		ret = knot_rrset_add_rrsigs(
-			node_rrset_copy, rr_copy,
+			node_rrset_copy, *rr_copy,
 			KNOT_RRSET_DUPL_SKIP);
 		if (ret != KNOT_EOK) {
 			dbg_ddns("Failed to add RRSIG RR to the"
@@ -1390,10 +1396,10 @@ static int knot_ddns_add_rr(knot_node_t *node, const knot_rrset_t *rr,
 		if (type_covered != type) {
 			/* Adding RRSIG. */
 			ret = knot_ddns_add_rr_merge_rrsig(node_rrset_copy,
-			                                   *rr_copy, changes);
+			                                   rr_copy, changes);
 		} else {
 			ret = knot_ddns_add_rr_merge_normal(node_rrset_copy,
-			                                    *rr_copy);
+			                                    rr_copy);
 		}
 
 		if (ret != KNOT_EOK) {
@@ -1401,11 +1407,11 @@ static int knot_ddns_add_rr(knot_node_t *node, const knot_rrset_t *rr,
 			return ret;
 		}
 		
-		ret = knot_changes_add_new_rrsets(rr_copy, 1, changes, 0);
-		if (ret != KNOT_EOK) {
-			dbg_ddns("Failed to add merged RRSet to changes.\n");
-			return ret;
-		}
+//		ret = knot_changes_add_new_rrsets(rr_copy, 1, changes, 0);
+//		if (ret != KNOT_EOK) {
+//			dbg_ddns("Failed to add merged RRSet to changes.\n");
+//			return ret;
+//		}
 	}
 	
 	return KNOT_EOK;
