@@ -24,6 +24,7 @@
 #include <grp.h>
 #include <unistd.h>
 #include <assert.h>
+#include <sys/wait.h>
 
 #include "knot/common.h"
 #include "knot/ctl/process.h"
@@ -168,4 +169,64 @@ void proc_update_privileges(int uid, int gid)
 		unlink(lfile);
 	}
 	free(lfile);
+}
+
+pid_t pid_wait(pid_t proc, int *rc)
+{
+	/* Wait for finish. */
+	sigset_t newset;
+	sigfillset(&newset);
+	sigprocmask(SIG_BLOCK, &newset, 0);
+	proc = waitpid(proc, rc, 0);
+	sigprocmask(SIG_UNBLOCK, &newset, 0);
+	return proc;
+}
+
+
+pid_t pid_start(const char *argv[], int argc, int drop_privs)
+{
+	pid_t chproc = fork();
+	if (chproc == 0) {
+	
+		/* Alter privileges. */
+		if (drop_privs) {
+			proc_update_privileges(conf()->uid, conf()->gid);
+		}
+
+		/* Duplicate, it doesn't run from stack address anyway. */
+		char **args = malloc((argc + 1) * sizeof(char*));
+		memset(args, 0, (argc + 1) * sizeof(char*));
+		int ci = 0;
+		for (int i = 0; i < argc; ++i) {
+			if (strlen(argv[i]) > 0) {
+				args[ci++] = strdup(argv[i]);
+			}
+		}
+		args[ci] = 0;
+
+		/* Execute command. */
+		fflush(stdout);
+		fflush(stderr);
+		execvp(args[0], args);
+
+		/* Execute failed. */
+		log_server_error("Failed to run executable '%s'\n", args[0]);
+		for (int i = 0; i < argc; ++i) {
+			free(args[i]);
+		}
+		free(args);
+
+		exit(1);
+		return -1;
+	}
+	
+	return chproc;
+}
+
+int cmd_exec(const char *argv[], int argc)
+{
+	int ret = 0;
+	pid_t proc = pid_start(argv, argc, 0);
+	pid_wait(proc, &ret);
+	return ret;
 }

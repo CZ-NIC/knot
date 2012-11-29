@@ -57,7 +57,8 @@ typedef enum knot_packet_type {
 	KNOT_RESPONSE_NORMAL, /*!< Normal response. */
 	KNOT_RESPONSE_AXFR,   /*!< AXFR transfer response. */
 	KNOT_RESPONSE_IXFR,   /*!< IXFR transfer response. */
-	KNOT_RESPONSE_NOTIFY  /*!< NOTIFY response. */
+	KNOT_RESPONSE_NOTIFY, /*!< NOTIFY response. */
+	KNOT_RESPONSE_UPDATE  /*!< Dynamic update response. */
 } knot_packet_type_t;
 
 /*

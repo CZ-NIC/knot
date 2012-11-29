@@ -43,7 +43,7 @@ void knot_rrset_dump(const knot_rrset_t *rrset)
         char *name = knot_dname_to_str(rrset->owner);
         fprintf(stderr, "  owner: %s\n", name);
         free(name);
-	fprintf(stderr, "  type: %s\n", knot_rrtype_to_string(rrset->type));
+	fprintf(stderr, "  type: %u\n", rrset->type);
 	fprintf(stderr, "  class: %d\n", rrset->rclass);
 	fprintf(stderr, "  ttl: %d\n", rrset->ttl);
 

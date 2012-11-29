@@ -33,6 +33,7 @@
 #include "rrset.h"
 #include "dname.h"
 #include "consts.h"
+#include "common/lists.h"
 
 typedef struct knot_ddns_prereq_t {
 	knot_rrset_t **exist;

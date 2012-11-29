@@ -435,6 +435,7 @@ void dt_delete(dt_unit_t **unit)
 	// Deinit mutexes
 	pthread_mutex_destroy(&d_unit->_notify_mx);
 	pthread_mutex_destroy(&d_unit->_report_mx);
+	pthread_mutex_destroy(&d_unit->_mx);
 
 	// Deinit conditions
 	pthread_cond_destroy(&d_unit->_notify);

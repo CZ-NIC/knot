@@ -383,6 +383,8 @@ void knot_node_set_non_auth(knot_node_t *node);
  */
 int knot_node_is_non_auth(const knot_node_t *node);
 
+void knot_node_set_auth(knot_node_t *node);
+
 int knot_node_is_auth(const knot_node_t *node);
 
 int knot_node_is_new(const knot_node_t *node);

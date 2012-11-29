@@ -343,6 +343,10 @@ uint16_t knot_rdata_nsec3_iterations(const knot_rdata_t *rdata);
 uint8_t knot_rdata_nsec3_salt_length(const knot_rdata_t *rdata);
 const uint8_t *knot_rdata_nsec3_salt(const knot_rdata_t *rdata);
 
+uint8_t knot_rdata_ds_digest_type(const knot_rdata_t *rdata);
+uint16_t knot_rdata_ds_digest_len(const knot_rdata_t *rdata);
+int knot_rdata_ds_check(const knot_rdata_t *rdata);
+
 #endif /* _KNOT_RDATA_H */
 
 /*! @} */

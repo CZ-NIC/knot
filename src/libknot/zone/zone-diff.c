@@ -167,7 +167,7 @@ static int knot_zone_diff_changeset_add_rrset(knot_changeset_t *changeset,
 	assert(knot_rrset_rrsigs(rrset_copy) == NULL);
 	
 	ret = knot_changeset_add_new_rr(changeset, rrset_copy,
-	                                    XFRIN_CHANGESET_ADD);
+	                                    KNOT_CHANGESET_ADD);
 	if (ret != KNOT_EOK) {
 		/* We have to free the copy now! */
 		knot_rrset_deep_free(&rrset_copy, 1, 1, 1);
@@ -213,7 +213,7 @@ static int knot_zone_diff_changeset_remove_rrset(knot_changeset_t *changeset,
 	assert(knot_rrset_rrsigs(rrset_copy) == NULL);
 	
 	ret = knot_changeset_add_new_rr(changeset, rrset_copy,
-	                                    XFRIN_CHANGESET_REMOVE);
+	                                    KNOT_CHANGESET_REMOVE);
 	if (ret != KNOT_EOK) {
 		/* We have to free the copy now. */
 		knot_rrset_deep_free(&rrset_copy, 1, 1, 1);
@@ -316,10 +316,10 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 	* After the list has been traversed, we have a list of
 	* changed/removed rdatas. This has awful computation time.
 	*/
-	dbg_zonediff_detail("zone_diff: diff_rdata: Diff of %s, type=%s. "
+	dbg_zonediff_detail("zone_diff: diff_rdata: Diff of %s, type=%u. "
 	              "RR count 1=%d RR count 2=%d.\n",
 	              knot_dname_to_str(rrset1->owner),
-	              knot_rrtype_to_string(rrset1->type),
+	              rrset1->type,
 	              knot_rrset_rdata_rr_count(rrset1),
 	              knot_rrset_rdata_rr_count(rrset2));
 
@@ -356,8 +356,8 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 			 * because the list was traversed - there's no match.
 			 */
 			dbg_zonediff("zone_diff: diff_rdata: "
-			       "No match for RR (type=%s owner=%s).\n",
-			       knot_rrtype_to_string(knot_rrset_type(rrset1)),
+			       "No match for RR (type=%u owner=%s).\n",
+			       knot_rrset_type(rrset1),
 			       knot_dname_to_str(rrset1->owner));
 			/* Make a copy of tmp_rdata. */
 			knot_rdata_t *tmp_rdata_copy =
@@ -375,8 +375,8 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 			}
 		} else {
 			dbg_zonediff_detail("zone_diff: diff_rdata: "
-			              "Found matching RR for type %s.\n",
-			              knot_rrtype_to_string(rrset1->type));
+			              "Found matching RR for type %u.\n",
+			              rrset1->type);
 		}
 		tmp_rdata = knot_rrset_rdata_next(rrset1, tmp_rdata);
 	}
@@ -520,10 +520,10 @@ static int knot_zone_diff_rrsets(const knot_rrset_t *rrset1,
 	int ret = knot_zone_diff_rdata(knot_rrset_rrsigs(rrset1),
 	                               knot_rrset_rrsigs(rrset2), changeset);
 	if (ret != KNOT_EOK) {
-		dbg_zonediff("zone_diff: diff_rrsets (%s:%s): Failed to diff RRSIGs. "
+		dbg_zonediff("zone_diff: diff_rrsets (%s:%u): Failed to diff RRSIGs. "
 		       "They were: %p %p. (%s).\n",
 		       knot_dname_to_str(rrset1->owner),
-		       knot_rrtype_to_string(rrset1->type),
+		       rrset1->type,
 		       rrset1->rrsigs,
 		       rrset2->rrsigs, knot_strerror(ret));
 	}
@@ -625,8 +625,8 @@ static void knot_zone_diff_node(knot_node_t *node, void *data)
 			                knot_rrset_type(rrset));
 		if (rrset_from_second_node == NULL) {
 			dbg_zonediff("zone_diff: diff_node: There is no counterpart "
-			       "for RRSet of type %s in second tree.\n",
-			       knot_rrtype_to_string(knot_rrset_type(rrset)));
+			       "for RRSet of type %u in second tree.\n",
+			       knot_rrset_type(rrset));
 			/* RRSet has been removed. Make a copy and remove. */
 			assert(rrset);
 			int ret = knot_zone_diff_changeset_remove_rrset(
@@ -641,8 +641,8 @@ static void knot_zone_diff_node(knot_node_t *node, void *data)
 			}
 		} else {
 			dbg_zonediff("zone_diff: diff_node: There is a counterpart "
-			       "for RRSet of type %s in second tree.\n",
-			       knot_rrtype_to_string(knot_rrset_type(rrset)));
+			       "for RRSet of type %u in second tree.\n",
+			       knot_rrset_type(rrset));
 			/* Diff RRSets. */
 			int ret = knot_zone_diff_rrsets(rrset,
 			                                rrset_from_second_node,
@@ -709,8 +709,8 @@ static void knot_zone_diff_node(knot_node_t *node, void *data)
 			                knot_rrset_type(rrset));
 		if (rrset_from_first_node == NULL) {
 			dbg_zonediff("zone_diff: diff_node: There is no counterpart "
-			       "for RRSet of type %s in first tree.\n",
-			       knot_rrtype_to_string(knot_rrset_type(rrset)));
+			       "for RRSet of type %u in first tree.\n",
+			       knot_rrset_type(rrset));
 			/* RRSet has been added. Make a copy and add. */
 			assert(rrset);
 			int ret = knot_zone_diff_changeset_add_rrset(
@@ -922,7 +922,10 @@ int knot_zone_diff_create_changesets(const knot_zone_contents_t *z1,
 		return KNOT_EINVAL;
 	}
 	/* Create changesets. */
-	int ret = knot_changeset_allocate(changesets);
+	/* Setting type to IXFR - that's the default, DDNS triggers special
+	 * processing when applied. See #2110 and #2111.
+	 */
+	int ret = knot_changeset_allocate(changesets, KNOT_CHANGESET_TYPE_IXFR);
 	if (ret != KNOT_EOK) {
 		dbg_zonediff("zone_diff: create_changesets: "
 		             "Could not allocate changesets."

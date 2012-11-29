@@ -30,9 +30,11 @@
 #include "knot/common.h"
 #include "knot/server/server.h"
 #include "knot/ctl/process.h"
+#include "knot/ctl/remote.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/logconf.h"
 #include "knot/server/zones.h"
+#include "knot/server/tcp-handler.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -300,10 +302,25 @@ int main(int argc, char **argv)
 		sa.sa_flags = 0;
 		pthread_sigmask(SIG_BLOCK, &sa.sa_mask, NULL);
 
+		/* Bind to control interface. */
+		uint8_t buf[65535]; /*! \todo #2035 should be on heap */
+		size_t buflen = sizeof(buf);
+		conf_iface_t *ctl_if = conf()->ctl.iface;
+		int remote = -1;
+		if (ctl_if != NULL) {
+			log_server_info("Binding remote control interface "
+					"to %s port %d.\n",
+					ctl_if->address, ctl_if->port);
+			remote = remote_bind(ctl_if);
+		} else {
+			remote = evqueue()->fds[EVQUEUE_READFD];
+		}
+		
+		
 		/* Run event loop. */
 		for(;;) {
 			pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
-			int ret = evqueue_poll(evqueue(), 0, 0);
+			int ret = remote_poll(remote);
 			pthread_sigmask(SIG_BLOCK, &sa.sa_mask, NULL);
 
 			/* Interrupts. */
@@ -313,25 +330,8 @@ int main(int argc, char **argv)
 				break;
 			}
 			if (sig_req_reload) {
-				log_server_info("Reloading configuration...\n");
 				sig_req_reload = 0;
-				int cf_ret = conf_open(config_fn);
-				switch (cf_ret) {
-				case KNOT_EOK:
-					log_server_info("Configuration "
-							"reloaded.\n");
-					break;
-				case KNOT_ENOENT:
-					log_server_error("Configuration "
-							 "file '%s' "
-							 "not found.\n",
-							 conf()->filename);
-					break;
-				default:
-					log_server_error("Configuration "
-							 "reload failed.\n");
-					break;
-				}
+				server_reload(server, config_fn);
 			}
 			if (sig_req_refresh) {
 				log_server_info("Refreshing slave zones...\n");
@@ -347,17 +347,17 @@ int main(int argc, char **argv)
 
 			/* Events. */
 			if (ret > 0) {
-				event_t ev;
-				if (evqueue_get(evqueue(), &ev) == 0) {
-					dbg_server_verb("Event: "
-					                "received new event.\n");
-					if (ev.cb) {
-						ev.cb(&ev);
-					}
-				}
+				remote_process(server, remote, buf, buflen);
+
 			}
 		}
 		pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
+		
+		/* Close remote control interface */
+		if (remote > -1) {
+			close(remote);
+			remote = -1;
+		}
 
 		if ((server_wait(server)) != KNOT_EOK) {
 			log_server_error("An error occured while "

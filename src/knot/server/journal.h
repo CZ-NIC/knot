@@ -129,7 +129,7 @@ typedef int (*journal_apply_t)(journal_t *j, journal_node_t *n);
 #define JOURNAL_NCOUNT 1024 /*!< Default node count. */
 /* HEADER = magic, crc, max_entries, qhead, qtail */
 #define JOURNAL_HSIZE (MAGIC_LENGTH + sizeof(crc_t) + sizeof(uint16_t) * 3) 
-#define JOURNAL_MAGIC {'k', 'n', 'o', 't', '1', '0', '4'}
+#define JOURNAL_MAGIC {'k', 'n', 'o', 't', '1', '0', '5'}
 
 /*!
  * \brief Create new journal.
@@ -184,6 +184,21 @@ int journal_fetch(journal_t *journal, uint64_t id,
  * \retval KNOT_ERROR on I/O error.
  */
 int journal_read(journal_t *journal, uint64_t id, journal_cmp_t cf, char *dst);
+
+/*!
+ * \brief Read journal entry data.
+ *
+ * \param journal Associated journal.
+ * \param n Entry.
+ * \param dst Pointer to destination memory.
+ *
+ * \retval KNOT_EOK if successful.
+ * \retval KNOT_ENOENT if the entry cannot be found.
+ * \retval KNOT_EINVAL if the entry is invalid.
+ * \retval KNOT_ERROR on I/O error.
+ */
+int journal_read_node(journal_t *journal, journal_node_t *n, char *dst);
+
 
 /*!
  * \brief Write journal entry data.

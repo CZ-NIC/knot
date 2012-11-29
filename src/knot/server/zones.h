@@ -79,13 +79,11 @@ typedef struct zonedata_t
 		int next_id;             /*!< ID of the next awaited SOA resp.*/
 		uint32_t bootstrap_retry;/*!< AXFR/IN bootstrap retry. */
 		unsigned       scheduled;/*!< Scheduled operations. */ 
+		int has_master;          /*!< True if it has master set. */
 	} xfr_in;
 
 	/*! \brief List of pending NOTIFY events. */
 	list notify_pending;
-	
-	/*! \brief List of fds with pending SOA queries. */
-	int soa_pending;
 
 	/*! \brief Zone IXFR history. */
 	journal_t *ixfr_db;
@@ -162,7 +160,7 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 int zones_process_update(knot_nameserver_t *nameserver,
                          knot_packet_t *query, const sockaddr_t *addr,
                          uint8_t *resp_wire, size_t *rsize,
-                         knot_ns_transport_t transport);
+                         int fd, knot_ns_transport_t transport);
 
 /*!
  * \brief Processes normal response packet.
@@ -333,6 +331,28 @@ int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch);
  */
 int zones_cancel_notify(zonedata_t *zd, notify_ev_t *ev);
 
+
+/*!
+ * \brief Processes forwarded UPDATE response packet.
+ * \todo #1291 move to appropriate section (DDNS).
+ */
+int zones_process_update_response(knot_ns_xfr_t *data, uint8_t *rwire, size_t *rsize);
+
+/*!
+ * \brief Verify TSIG in query.
+ *
+ * \param query Query packet.
+ * \param key TSIG key used for this query.
+ * \param rcode Dst for resulting RCODE.
+ * \param tsig_rcode Dst for resulting TSIG RCODE.
+ * \param tsig_prev_time_signed Dst for previout time signed.
+ *
+ * \return KNOT_EOK if verified or error if not.
+ */
+int zones_verify_tsig_query(const knot_packet_t *query,
+                            const knot_key_t *key,
+                            knot_rcode_t *rcode, uint16_t *tsig_rcode,
+                            uint64_t *tsig_prev_time_signed);
 #endif // _KNOTD_ZONES_H_
 
 /*! @} */

@@ -53,7 +53,7 @@ struct knot_dname {
 	 * \brief Size of the domain name in octets.
 	 * \todo Is this needed? Every dname should end with \0 or pointer.
 	 */
-	unsigned int size;
+	unsigned short size;
 
 	unsigned short label_count;
 };

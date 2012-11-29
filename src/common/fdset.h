@@ -33,6 +33,9 @@
 #define _KNOTD_FDSET_H_
 
 #include <stddef.h>
+#ifdef HAVE_SYS_SELECT_H
+#include <sys/select.h>
+#endif
 #include "skip-list.h"
 #include "mempattern.h"
 
@@ -231,6 +234,20 @@ int fdset_set_watchdog(fdset_t* fdset, int fd, int interval);
  * \retval -1 on errors.
  */
 int fdset_sweep(fdset_t* fdset, void(*cb)(fdset_t*, int, void*), void *data);
+
+/*!
+ * \brief pselect(2) compatibility wrapper.
+ * \param n Number of file descriptors.
+ * \param readfds Array of fds to read.
+ * \param writefds Array of fds to write.
+ * \param exceptfds Array of fds for exceptions.
+ * \param timeout Upper bound of time elapsed.
+ * \param sigmask If != NULL, replaces current signal mask.
+ * \return Number of events or -1 if fails.
+ */
+int fdset_pselect(int n, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
+                  const struct timespec *timeout, const sigset_t *sigmask);
+
 
 #endif /* _KNOTD_FDSET_H_ */
 

@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 
 AC_PREREQ([2.60])
-AC_INIT([knot], [1.1.0], [knot-dns@labs.nic.cz])
+AC_INIT([knot], [1.1.1], [knot-dns@labs.nic.cz])
 AM_INIT_AUTOMAKE([gnu -Wall -Werror])
 AC_CONFIG_SRCDIR([src/knot/main.c])
 AC_CONFIG_HEADERS([src/config.h])
@@ -154,7 +154,7 @@ AC_SEARCH_LIBS([adler32], [z])
 
 # Checks for header files.
 AC_HEADER_RESOLV
-AC_CHECK_HEADERS([arpa/inet.h fcntl.h inttypes.h limits.h malloc.h netdb.h netinet/in_systm.h netinet/in.h stdint.h stdlib.h string.h strings.h sys/socket.h sys/time.h cap-ng.h syslog.h unistd.h urcu.h ev.h pthread_np.h])
+AC_CHECK_HEADERS([arpa/inet.h fcntl.h inttypes.h limits.h malloc.h netdb.h netinet/in_systm.h netinet/in.h stdint.h stdlib.h string.h strings.h sys/socket.h sys/time.h sys/select.h sys/wait.h sys/stat.h cap-ng.h syslog.h unistd.h urcu.h ev.h pthread_np.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL

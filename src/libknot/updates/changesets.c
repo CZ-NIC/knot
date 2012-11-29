@@ -76,7 +76,8 @@ static int knot_changeset_rrsets_match(const knot_rrset_t *rrset1,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_changeset_allocate(knot_changesets_t **changesets)
+int knot_changeset_allocate(knot_changesets_t **changesets,
+                            uint32_t flags)
 {
 	// create new changesets
 	*changesets = (knot_changesets_t *)(malloc(sizeof(knot_changesets_t)));
@@ -85,6 +86,7 @@ int knot_changeset_allocate(knot_changesets_t **changesets)
 	}
 
 	memset(*changesets, 0, sizeof(knot_changesets_t));
+	(*changesets)->flags = flags;
 
 	if (knot_changesets_check_size(*changesets) != KNOT_EOK) {
 		free(*changesets);
@@ -144,19 +146,19 @@ int knot_changeset_add_rr(knot_rrset_t ***rrsets, size_t *count,
 
 int knot_changeset_add_new_rr(knot_changeset_t *changeset,
                                knot_rrset_t *rrset,
-                               xfrin_changeset_part_t part)
+                               knot_changeset_part_t part)
 {
 	knot_rrset_t ***rrsets = NULL;
 	size_t *count = NULL;
 	size_t *allocated = NULL;
 
 	switch (part) {
-	case XFRIN_CHANGESET_ADD:
+	case KNOT_CHANGESET_ADD:
 		rrsets = &changeset->add;
 		count = &changeset->add_count;
 		allocated = &changeset->add_allocated;
 		break;
-	case XFRIN_CHANGESET_REMOVE:
+	case KNOT_CHANGESET_REMOVE:
 		rrsets = &changeset->remove;
 		count = &changeset->remove_count;
 		allocated = &changeset->remove_allocated;
@@ -179,6 +181,29 @@ int knot_changeset_add_new_rr(knot_changeset_t *changeset,
 
 /*----------------------------------------------------------------------------*/
 
+knot_rrset_t *knot_changeset_remove_rr(knot_rrset_t **rrsets, size_t *count,
+                                       int pos)
+{
+	if (pos >= *count || *count == 0) {
+		return NULL;
+	}
+
+	knot_rrset_t *removed = rrsets[pos];
+
+	// shift all RRSets from pos+1 one cell to the left
+	for (int i = pos; i < *count - 1; ++i) {
+		rrsets[i] = rrsets[i + 1];
+	}
+
+	// just to be sure, set the last previously occupied position to NULL
+	rrsets[*count - 1] = NULL;
+	*count -= 1;
+
+	return removed;
+}
+
+/*----------------------------------------------------------------------------*/
+
 void knot_changeset_store_soa(knot_rrset_t **chg_soa,
                                uint32_t *chg_serial, knot_rrset_t *soa)
 {
@@ -189,14 +214,14 @@ void knot_changeset_store_soa(knot_rrset_t **chg_soa,
 /*----------------------------------------------------------------------------*/
 
 int knot_changeset_add_soa(knot_changeset_t *changeset, knot_rrset_t *soa,
-                            xfrin_changeset_part_t part)
+                            knot_changeset_part_t part)
 {
 	switch (part) {
-	case XFRIN_CHANGESET_ADD:
+	case KNOT_CHANGESET_ADD:
 		knot_changeset_store_soa(&changeset->soa_to,
 		                          &changeset->serial_to, soa);
 		break;
-	case XFRIN_CHANGESET_REMOVE:
+	case KNOT_CHANGESET_REMOVE:
 		knot_changeset_store_soa(&changeset->soa_from,
 		                          &changeset->serial_from, soa);
 		break;
@@ -218,7 +243,8 @@ int knot_changesets_check_size(knot_changesets_t *changesets)
 	}
 
 	/* How many steps is needed to content count? */
-	size_t extra = (changesets->count - changesets->allocated) % KNOT_CHANGESET_STEP;
+	size_t extra = (changesets->count - changesets->allocated)
+	                % KNOT_CHANGESET_STEP;
 	extra = (extra + 1) * KNOT_CHANGESET_STEP;
 
 	/* Allocate new memory block. */
@@ -229,9 +255,14 @@ int knot_changesets_check_size(knot_changesets_t *changesets)
 		return KNOT_ENOMEM;
 	}
 
-	/* Clear old memory block and copy old data. */
+	/* Clear new memory block and copy old data. */
 	memset(sets, 0, new_count * item_len);
 	memcpy(sets, changesets->sets, changesets->allocated * item_len);
+
+	/* Set type to all newly allocated changesets. */
+	for (int i = changesets->allocated; i < new_count; ++i) {
+		sets[i].flags = changesets->flags;
+	}
 
 	/* Replace old changesets. */
 	free(changesets->sets);
@@ -239,6 +270,21 @@ int knot_changesets_check_size(knot_changesets_t *changesets)
 	changesets->allocated = new_count;
 
 	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void knot_changeset_set_flags(knot_changeset_t *changeset,
+                             uint32_t flags)
+{
+	changeset->flags = flags;
+}
+
+/*----------------------------------------------------------------------------*/
+
+uint32_t knot_changeset_flags(knot_changeset_t *changeset)
+{
+	return changeset->flags;
 }
 
 /*----------------------------------------------------------------------------*/

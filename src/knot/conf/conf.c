@@ -26,6 +26,7 @@
 #include <urcu.h>
 #include "knot/conf/conf.h"
 #include "knot/common.h"
+#include "knot/ctl/remote.h"
 
 /*
  * Defaults.
@@ -70,6 +71,30 @@ void cf_error(void *scanner, const char *msg)
 
 
 	_parser_res = KNOT_EPARSEFAIL;
+}
+
+static int conf_ztree_compare(void *p1, void *p2)
+{
+	return knot_dname_compare((knot_dname_t*)p1, (knot_dname_t*)p2);
+}
+
+static void conf_ztree_free(void *node, void *data)
+{
+	UNUSED(data);
+	knot_dname_t *zname = (knot_dname_t*)node;
+	knot_dname_free(&zname);
+}
+
+static void conf_parse_begin(conf_t *conf)
+{
+	conf->zone_tree = gen_tree_new(conf_ztree_compare);
+}
+
+static void conf_parse_end(conf_t *conf) 
+{
+	if (conf->zone_tree) {
+		gen_tree_destroy(&conf->zone_tree, conf_ztree_free, NULL);
+	}
 }
 
 /*!
@@ -133,6 +158,28 @@ static int conf_process(conf_t *conf)
 		if (conf->pidfile == NULL) {
 			return KNOT_ENOMEM;
 		}
+	}
+	
+	/* Default TCP/UDP limits. */
+	if (conf->max_conn_idle < 1) {
+		conf->max_conn_idle = CONFIG_IDLE_WD;
+	}
+	if (conf->max_conn_hs < 1) {
+		conf->max_conn_hs = CONFIG_HANDSHAKE_WD;
+	}
+	if (conf->max_conn_reply < 1) {
+		conf->max_conn_reply = CONFIG_REPLY_WD;
+	}
+	
+	// Postprocess interfaces
+	conf_iface_t *cfg_if = NULL;
+	WALK_LIST(cfg_if, conf->ifaces) {
+		if (cfg_if->port <= 0) {
+			cfg_if->port = CONFIG_DEFAULT_PORT;
+		}
+	}
+	if (conf->ctl.iface && conf->ctl.iface->port <= 0) {
+		conf->ctl.iface->port = REMOTE_DPORT;
 	}
 
 	// Postprocess zones
@@ -265,6 +312,17 @@ static int conf_process(conf_t *conf)
 	/* Update UID and GID. */
 	if (conf->uid < 0) conf->uid = getuid();
 	if (conf->gid < 0) conf->gid = getgid();
+	
+	/* Build remote control ACL. */
+	sockaddr_t addr;
+	conf_remote_t *r = NULL;
+	WALK_LIST(r, conf->ctl.allow) {
+		conf_iface_t *i = r->remote;
+		sockaddr_init(&addr, -1);
+		sockaddr_set(&addr, i->family, i->address, 0);
+		sockaddr_setprefix(&addr, i->prefix);
+		acl_create(conf->ctl.acl, &addr, ACL_ACCEPT, i, 0);
+	}
 
 	return ret;
 }
@@ -280,6 +338,9 @@ void __attribute__ ((constructor)) conf_init()
 {
 	// Create new config
 	s_config = conf_new(0);
+	if (!s_config) {
+		return;
+	}
 
 	/* Create default interface. */
 	conf_iface_t * iface = malloc(sizeof(conf_iface_t));
@@ -346,6 +407,7 @@ static int conf_fparser(conf_t *conf)
 
 	int ret = KNOT_EOK;
 	pthread_mutex_lock(&_parser_lock);
+	
 	// {
 	// Hook new configuration
 	new_config = conf;
@@ -367,6 +429,7 @@ static int conf_fparser(conf_t *conf)
 	fclose(f);
 	// }
 	pthread_mutex_unlock(&_parser_lock);
+	
 	return ret;
 }
 
@@ -410,20 +473,21 @@ conf_t *conf_new(const char* path)
 	conf_t *c = malloc(sizeof(conf_t));
 	memset(c, 0, sizeof(conf_t));
 
-	// Add path
+	/* Add path. */
 	if (path) {
 		c->filename = strdup(path);
 	}
 
-	// Initialize lists
+	/* Initialize lists. */
 	init_list(&c->logs);
 	init_list(&c->ifaces);
 	init_list(&c->zones);
 	init_list(&c->hooks);
 	init_list(&c->remotes);
 	init_list(&c->keys);
+	init_list(&c->ctl.allow);
 
-	// Defaults
+	/* Defaults. */
 	c->zone_checks = 0;
 	c->notify_retries = CONFIG_NOTIFY_RETRIES;
 	c->notify_timeout = CONFIG_NOTIFY_TIMEOUT;
@@ -432,6 +496,14 @@ conf_t *conf_new(const char* path)
 	c->uid = -1;
 	c->gid = -1;
 	c->build_diffs = 0; /* Disable by default. */
+	
+	/* ACLs. */
+	c->ctl.acl = acl_new(ACL_DENY, "remote_ctl");
+	if (!c->ctl.acl) {
+		free(c->filename);
+		free(c);
+		c = NULL;
+	}
 
 	return c;
 }
@@ -456,8 +528,10 @@ int conf_add_hook(conf_t * conf, int sections,
 int conf_parse(conf_t *conf)
 {
 	/* Parse file. */
+	conf_parse_begin(conf);
 	int ret = conf_fparser(conf);
-
+	conf_parse_end(conf);
+	
 	/* Postprocess config. */
 	if (ret == 0) {
 		ret = conf_process(conf);
@@ -475,7 +549,9 @@ int conf_parse(conf_t *conf)
 int conf_parse_str(conf_t *conf, const char* src)
 {
 	/* Parse config from string. */
+	conf_parse_begin(conf);
 	int ret = conf_strparser(conf, src);
+	conf_parse_end(conf);
 
 	/* Postprocess config. */
 	conf_process(conf);
@@ -527,7 +603,7 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 	conf->logs_count = 0;
 	init_list(&conf->logs);
 
-	// Free remotes
+	// Free remote interfaces
 	WALK_LIST_DELSAFE(n, nxt, conf->remotes) {
 		conf_free_iface((conf_iface_t*)n);
 	}
@@ -565,6 +641,19 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 		free(conf->nsid);
 		conf->nsid = 0;
 	}
+	
+	/* Free remote control list. */
+	WALK_LIST_DELSAFE(n, nxt, conf->ctl.allow) {
+		conf_free_remote((conf_remote_t*)n);
+	}
+	conf->remotes_count = 0;
+	init_list(&conf->remotes);
+	
+	/* Free remote control ACL. */
+	acl_truncate(conf->ctl.acl);
+	
+	/* Free remote control iface. */
+	conf_free_iface(conf->ctl.iface);
 }
 
 void conf_free(conf_t *conf)
@@ -573,10 +662,13 @@ void conf_free(conf_t *conf)
 		return;
 	}
 
-	// Truncate config
+	/* Truncate config. */
 	conf_truncate(conf, 1);
+	
+	/* Free remote control ACL. */
+	acl_delete(&conf->ctl.acl);
 
-	// Free config
+	/* Free config. */
 	free(conf);
 }
 
@@ -623,9 +715,14 @@ int conf_open(const char* path)
 
 	/* Create new config. */
 	conf_t *nconf = conf_new(path);
+	if (!nconf) {
+		return KNOT_ENOMEM;
+	}
 
 	/* Parse config. */
+	conf_parse_begin(nconf);
 	int ret = conf_fparser(nconf);
+	conf_parse_end(nconf);
 	if (ret == KNOT_EOK) {
 		/* Postprocess config. */
 		ret = conf_process(nconf);
@@ -781,6 +878,11 @@ void conf_free_iface(conf_iface_t *iface)
 	free(iface->name);
 	free(iface->address);
 	free(iface);
+}
+
+void conf_free_remote(conf_remote_t *r)
+{
+	free(r);
 }
 
 void conf_free_log(conf_log_t *log)

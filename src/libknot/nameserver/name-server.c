@@ -243,8 +243,7 @@ static int ns_add_rrsigs(knot_rrset_t *rrset, knot_packet_t *resp,
 {
 	knot_rrset_t *rrsigs;
 
-	dbg_ns_verb("Adding RRSIGs for RRSet, type: %s.\n",
-	            knot_rrtype_to_string(knot_rrset_type(rrset)));
+	dbg_ns_verb("Adding RRSIGs for RRSet, type: %u.\n", knot_rrset_type(rrset));
 
 	assert(resp != NULL);
 	assert(add_rrset_to_resp != NULL);
@@ -444,8 +443,7 @@ dbg_ns_exec_verb(
 			assert(rrsets[i] != NULL);
 			rrset = rrsets[i];
 
-			dbg_ns_detail("  Type: %s\n",
-			     knot_rrtype_to_string(knot_rrset_type(rrset)));
+			dbg_ns_detail("  Type: %u\n", knot_rrset_type(rrset));
 
 			ret = ns_check_wildcard(name, resp, &rrset);
 			if (ret != KNOT_EOK) {
@@ -523,8 +521,7 @@ dbg_ns_exec_verb(
 		knot_rrset_t *rrset = knot_node_get_rrset(node, type);
 		knot_rrset_t *rrset2 = rrset;
 		if (rrset != NULL && knot_rrset_rdata(rrset) != NULL) {
-			dbg_ns_verb("Found RRSet of type %s\n",
-				        knot_rrtype_to_string(type));
+			dbg_ns_verb("Found RRSet of type %u\n", type);
 			
 			ret = ns_check_wildcard(name, resp, &rrset2);
 			if (ret != KNOT_EOK) {
@@ -589,8 +586,8 @@ static int ns_put_additional_for_rrset(knot_packet_t *resp,
 	// for all RRs in the RRset
 	rdata = knot_rrset_rdata(rrset);
 	while (rdata != NULL) {
-		dbg_ns_verb("Getting name from RDATA, type %s..\n",
-		            knot_rrtype_to_string(knot_rrset_type(rrset)));
+		dbg_ns_verb("Getting name from RDATA, type %u..\n",
+		            knot_rrset_type(rrset));
 		dname = knot_rdata_get_name(rdata, knot_rrset_type(rrset));
 
 dbg_ns_exec_detail(
@@ -1612,10 +1609,14 @@ static int ns_put_nsec_nsec3_wildcard_answer(const knot_node_t *node,
                                           const knot_dname_t *qname,
                                           knot_packet_t *resp)
 {
+	// if wildcard answer, add NSEC / NSEC3
+
 	int ret = KNOT_EOK;
 	if (DNSSEC_ENABLED
 	    && knot_query_dnssec_requested(knot_packet_query(resp))
-	    && knot_dname_is_wildcard(knot_node_owner(node))) {
+	    && knot_dname_is_wildcard(knot_node_owner(node))
+	    && knot_dname_compare(qname, knot_node_owner(node)) != 0) {
+		dbg_ns_verb("Adding NSEC/NSEC3 for wildcard answer.\n");
 		if (knot_zone_contents_nsec3_enabled(zone)) {
 			ret = ns_put_nsec3_wildcard(zone, closest_encloser,
 			                            qname, resp);
@@ -1860,12 +1861,10 @@ static int ns_answer_from_node(const knot_node_t *node,
 			}
 		}
 	} else {  // else put authority NS
-		// if wildcard answer, add NSEC / NSEC3
-		dbg_ns_verb("Adding NSEC/NSEC3 for wildcard answer.\n");
-
 		assert(previous == NULL);
 		assert(closest_encloser == knot_node_parent(node)
-		       || !knot_dname_is_wildcard(knot_node_owner(node)));
+		      || !knot_dname_is_wildcard(knot_node_owner(node))
+		      || knot_dname_compare(qname, knot_node_owner(node)) == 0);
 
 		ret = ns_put_nsec_nsec3_wildcard_answer(node, closest_encloser,
 		                                  previous, zone, qname, resp);
@@ -2614,8 +2613,7 @@ dbg_ns_exec_verb(
 		assert(rrsets[i] != NULL);
 		rrset = rrsets[i];
 rrset:
-		dbg_ns_verb("  Type: %s\n",
-		            knot_rrtype_to_string(knot_rrset_type(rrset)));
+		dbg_ns_verb("  Type: %s\n", knot_rrset_type(rrset));
 
 		// do not add SOA
 		if (knot_rrset_type(rrset) == KNOT_RRTYPE_SOA) {
@@ -3200,7 +3198,7 @@ int knot_ns_parse_packet(const uint8_t *query_wire, size_t qsize,
 		if(knot_packet_is_query(packet)) {
 			*type = KNOT_QUERY_UPDATE;
 		} else {
-			return KNOT_RCODE_FORMERR;
+			*type = KNOT_RESPONSE_UPDATE;
 		}
 		break;
 	default:
@@ -3372,7 +3370,8 @@ int knot_ns_prep_normal_response(knot_nameserver_t *nameserver,
 	 * FORMERR
 	 */
 	if (knot_packet_ancount(query) > 0
-	    || knot_packet_nscount(query) > 0
+	    || (knot_packet_nscount(query) > 0
+	        && (knot_packet_qtype(query) != KNOT_RRTYPE_IXFR))
 	    || knot_packet_qdcount(query) != 1) {
 		dbg_ns("ANCOUNT or NSCOUNT not 0 in query, "
 		       "or QDCOUNT != 1. Reply FORMERR.\n");
@@ -3868,8 +3867,8 @@ int knot_ns_xfr_send_error(const knot_nameserver_t *nameserver,
 	knot_response_set_rcode(xfr->response, rcode);
 	
 	int ret = 0;
-	if ((ret = ns_xfr_send_and_clear(xfr, 1)) != KNOT_EOK
-	    || xfr->response == NULL) {
+	if (xfr->response == NULL ||
+	    (ret = ns_xfr_send_and_clear(xfr, 1)) != KNOT_EOK) {
 		size_t size = 0;
 		knot_ns_error_response_from_query(nameserver, xfr->query,
 		                                  KNOT_RCODE_SERVFAIL,
@@ -3925,10 +3924,8 @@ int knot_ns_answer_axfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	if (ret < 0 && ret != KNOT_ECONN) {
 		dbg_ns("AXFR failed, sending SERVFAIL.\n");
 		// now only one type of error (SERVFAIL), later maybe more
-		/*! \todo xfr->wire is not NULL, will fail on assert! */
+		/*! \todo #2176 This should send error response every time. */
 		knot_ns_xfr_send_error(nameserver, xfr, KNOT_RCODE_SERVFAIL);
-		ret = xfr->send(xfr->session, &xfr->addr, xfr->wire, 
-		                xfr->wire_size);
 	} else if (ret > 0) {
 		ret = KNOT_ERROR;
 	}
@@ -4220,54 +4217,49 @@ int knot_ns_process_update(const knot_packet_t *query,
 
 	dbg_ns("Processing Dynamic Update.\n");
 
-	/* QTYPE should be SOA */
-	if (knot_packet_qtype(query) != KNOT_RRTYPE_SOA) {
-		dbg_ns("Question is not of type SOA.\n");
-		*rcode = KNOT_RCODE_FORMERR;
-		return KNOT_EMALF;
-	}
-
 	*rcode = KNOT_RCODE_NOERROR;
 	
 	// 1) Check zone
-	dbg_ns_verb("Checking zone for DDNS.\n");
-	int ret = knot_ddns_check_zone(zone, query, rcode);
-	if (ret != KNOT_EOK) {
-		dbg_ns("Failed to check zone for update: "
-		       "%s.\n", knot_strerror(ret));
-		return ret;
-	}
+	// Already done
+//	dbg_ns_verb("Checking zone for DDNS.\n");
+//	int ret = knot_ddns_check_zone(zone, query, rcode);
+//	if (ret != KNOT_EOK) {
+//		dbg_ns("Failed to check zone for update: "
+//		       "%s.\n", knot_strerror(ret));
+//		return ret;
+//	}
 
 	// 2) Convert prerequisities
-	dbg_ns_verb("Processing prerequisities.\n");
-	knot_ddns_prereq_t *prereqs = NULL;
-	ret = knot_ddns_process_prereqs(query, &prereqs, rcode);
-	if (ret != KNOT_EOK) {
-		dbg_ns("Failed to check zone for update: "
-		       "%s.\n", knot_strerror(ret));
-		return ret;
-	}
+	// Already done
+//	dbg_ns_verb("Processing prerequisities.\n");
+//	knot_ddns_prereq_t *prereqs = NULL;
+//	int ret = knot_ddns_process_prereqs(query, &prereqs, rcode);
+//	if (ret != KNOT_EOK) {
+//		dbg_ns("Failed to check zone for update: "
+//		       "%s.\n", knot_strerror(ret));
+//		return ret;
+//	}
 
-	assert(prereqs != NULL);
+//	assert(prereqs != NULL);
 
 	// 3) Check prerequisities
 	/*! \todo Somehow ensure the zone will not be changed until the update
 	 *        is finished.
 	 */
-	dbg_ns_verb("Checking prerequisities.\n");
-	ret = knot_ddns_check_prereqs(zone, &prereqs, rcode);
-	if (ret != KNOT_EOK) {
-		knot_ddns_prereqs_free(&prereqs);
-		dbg_ns("Failed to check zone for update: "
-		       "%s.\n", knot_strerror(ret));
-		return ret;
-	}
+	// Already done
+//	dbg_ns_verb("Checking prerequisities.\n");
+//	ret = knot_ddns_check_prereqs(zone, &prereqs, rcode);
+//	if (ret != KNOT_EOK) {
+//		knot_ddns_prereqs_free(&prereqs);
+//		dbg_ns("Failed to check zone for update: "
+//		       "%s.\n", knot_strerror(ret));
+//		return ret;
+//	}
 
 	// 4) Convert update to changeset
 	dbg_ns_verb("Converting UPDATE packet to changeset.\n");
-	ret = knot_ddns_process_update(zone, query, changeset, rcode);
+	int ret = knot_ddns_process_update(zone, query, changeset, rcode);
 	if (ret != KNOT_EOK) {
-		knot_ddns_prereqs_free(&prereqs);
 		dbg_ns("Failed to check zone for update: "
 		       "%s.\n", knot_strerror(ret));
 		return ret;
@@ -4275,7 +4267,8 @@ int knot_ns_process_update(const knot_packet_t *query,
 
 	assert(changeset != NULL);
 
-	knot_ddns_prereqs_free(&prereqs);
+	// Done in zones.c
+//	knot_ddns_prereqs_free(&prereqs);
 	return ret;
 }
 
@@ -4284,7 +4277,10 @@ int knot_ns_process_update(const knot_packet_t *query,
 int knot_ns_create_forward_query(const knot_packet_t *query,
                                  uint8_t *query_wire, size_t *size)
 {
-	// just copy the wireformat of the query and set a new random ID to it
+	/* Forward UPDATE query:
+	 * assign a new packet id
+	 */
+	int ret = KNOT_EOK;
 	if (knot_packet_size(query) > *size) {
 		return KNOT_ESPACE;
 	}
@@ -4292,10 +4288,9 @@ int knot_ns_create_forward_query(const knot_packet_t *query,
 	memcpy(query_wire, knot_packet_wireformat(query),
 	       knot_packet_size(query));
 	*size = knot_packet_size(query);
-
 	knot_wire_set_id(query_wire, knot_random_id());
 
-	return KNOT_EOK;
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/

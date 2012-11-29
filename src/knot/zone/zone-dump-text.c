@@ -485,10 +485,15 @@ static char *rdata_aaaa_to_string(knot_rdata_item_t item)
 
 static char *rdata_rrtype_to_string(knot_rdata_item_t item)
 {
+	char buff[32];
+
 	uint16_t type = knot_wire_read_u16(rdata_item_data(item));
-	const char *tmp = knot_rrtype_to_string(type);
+
+	if (knot_rrtype_to_string(type, buff, sizeof(buff)) < 0)
+		return NULL;
+
 	char *ret = malloc(sizeof(char) * MAX_RR_TYPE_LEN);
-	strncpy(ret, tmp, MAX_RR_TYPE_LEN);
+	strncpy(ret, buff, MAX_RR_TYPE_LEN);
 	return ret;
 }
 
@@ -549,25 +554,33 @@ static char *rdata_time_to_string(knot_rdata_item_t item)
 
 static char *rdata_base32_to_string(knot_rdata_item_t item)
 {
-	int length;
+	char *ret = NULL;
 	size_t size = rdata_item_size(item);
+
 	if (size == 0) {
-		char *ret = malloc(sizeof(char) * 2);
+		ret = malloc(2);
+
 		ret[0] = '-';
 		ret[1] = '\0';
-		return ret;
+	} else {
+		int32_t  b32_out;
+		uint32_t out_len = ((size + 4) / 5) * 8;
+
+		ret = malloc(out_len + 1);
+
+		b32_out = base32hex_encode(rdata_item_data(item) + 1,
+					   size - 1,
+					   (uint8_t *)ret,
+					   out_len);
+		if (b32_out <= 0) {
+			free(ret);
+			return NULL;
+		}
+
+		ret[b32_out] = '\0';
 	}
 
-	size -= 1; // remove length byte from count
-	char *ret = NULL;
-	length = base32hex_encode_alloc((char *)rdata_item_data(item) + 1,
-	                                size, &ret);
-	if (length > 0) {
-		return ret;
-	} else {
-		free(ret);
-		return NULL;
-	}
+	return ret;
 }
 
 /*!< \todo Replace with function from .../common after release. */
@@ -785,6 +798,7 @@ char *rdata_ipsecgateway_to_string(knot_rdata_item_t item,
 
 char *rdata_nxt_to_string(knot_rdata_item_t item)
 {
+	char buff[32];
 	size_t i;
 	uint8_t *bitmap = rdata_item_data(item);
 	size_t bitmap_size = rdata_item_size(item);
@@ -795,9 +809,13 @@ char *rdata_nxt_to_string(knot_rdata_item_t item)
 
 	for (i = 0; i < bitmap_size * 8; ++i) {
 		if (get_bit(bitmap, i)) {
-			strncat(ret, knot_rrtype_to_string(i),
-			       MAX_RR_TYPE_LEN);
-				strncat(ret, " ", 2);
+			if (knot_rrtype_to_string(i, buff, sizeof(buff)) < 0) {
+				free(ret);
+				return NULL;
+			}
+
+			strncat(ret, buff, MAX_RR_TYPE_LEN);
+			strncat(ret, " ", 2);
 		}
 	}
 
@@ -807,6 +825,8 @@ char *rdata_nxt_to_string(knot_rdata_item_t item)
 
 char *rdata_nsec_to_string(knot_rdata_item_t item)
 {
+	char buff[32];
+
 	char *ret = malloc(sizeof(char) * MAX_NSEC_BIT_STR_LEN);
 	if (ret == NULL) {
 		ERR_ALLOC_FAILED;
@@ -833,10 +853,14 @@ char *rdata_nsec_to_string(knot_rdata_item_t item)
 
 		for (int j = 0; j < bitmap_size * 8; j++) {
 			if (get_bit(bitmap, j)) {
-				strncat(ret,
-				       knot_rrtype_to_string(j +
-							       window * 256),
-				        MAX_RR_TYPE_LEN);
+				if (knot_rrtype_to_string(j + window * 256,
+				                          buff, sizeof(buff))
+				    < 0) {
+					free(bitmap);
+					free(ret);
+					return NULL;
+				}
+				strncat(ret, buff, MAX_RR_TYPE_LEN);
 				strncat(ret, " ", 2);
 			}
 		}
@@ -954,12 +978,23 @@ int rdata_dump_text(const knot_rdata_t *rdata, uint16_t type, FILE *f,
 
 void dump_rrset_header(const knot_rrset_t *rrset, FILE *f)
 {
+	char buff[32];
+
 	char *name = knot_dname_to_str(rrset->owner);
 	fprintf(f, "%-20s ",  name);
 	free(name);
+
 	fprintf(f, "%-5u ", rrset->ttl);
-	fprintf(f, "%-2s ", knot_rrclass_to_string(rrset->rclass));
-	fprintf(f, "%-5s ",  knot_rrtype_to_string(rrset->type));
+
+	if (knot_rrclass_to_string(rrset->rclass, buff, sizeof(buff)) < 0) {
+		return;
+	}
+	fprintf(f, "%-2s ", buff);
+
+	if (knot_rrtype_to_string(rrset->type, buff, sizeof(buff)) < 0) {
+		return;
+	}
+	fprintf(f, "%-5s ",  buff);
 }
 
 int rrsig_set_dump_text(knot_rrset_t *rrsig, FILE *f)

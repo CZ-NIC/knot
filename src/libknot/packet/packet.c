@@ -105,9 +105,12 @@ static void knot_packet_init_pointers_response(knot_packet_t *pkt)
 	pos += DEFAULT_DOMAINS_IN_RESPONSE * sizeof(const knot_dname_t *);
 	pkt->compression.offsets = (size_t *)pos;
 	pos += DEFAULT_DOMAINS_IN_RESPONSE * sizeof(size_t);
+	pkt->compression.to_free = (int *)pos;
+	pos += DEFAULT_DOMAINS_IN_RESPONSE * sizeof(int);
 
 	dbg_packet_detail("Compression dnames: %p\n", pkt->compression.dnames);
 	dbg_packet_detail("Compression offsets: %p\n", pkt->compression.offsets);
+	dbg_packet_detail("Compression to_free: %p\n", pkt->compression.to_free);
 
 	pkt->compression.max = DEFAULT_DOMAINS_IN_RESPONSE;
 	pkt->compression.default_count = DEFAULT_DOMAINS_IN_RESPONSE;
@@ -478,8 +481,8 @@ static int knot_packet_add_rrset(knot_rrset_t *rrset,
 
 dbg_packet_exec_verb(
 	char *name = knot_dname_to_str(rrset->owner);
-	dbg_packet_verb("packet_add_rrset(), owner: %s, type: %s\n",
-	                name, knot_rrtype_to_string(rrset->type));
+	dbg_packet_verb("packet_add_rrset(), owner: %s, type: %u\n",
+	                name, rrset->type);
 	free(name);
 );
 
@@ -504,8 +507,7 @@ dbg_packet_exec_detail(
 			char *name = knot_dname_to_str((*rrsets)[i]->owner);
 			dbg_packet_detail("Comparing to RRSet: owner: %s, "
 			                  "type: %s\n", name,
-			                  knot_rrtype_to_string(
-			                       (*rrsets)[i]->type));
+			                  (*rrsets)[i]->type);
 			free(name);
 );
 
@@ -637,6 +639,7 @@ static void knot_packet_free_allocated_space(knot_packet_t *pkt)
 	if (pkt->compression.max > pkt->compression.default_count) {
 		free(pkt->compression.dnames);
 		free(pkt->compression.offsets);
+		free(pkt->compression.to_free);
 	}
 
 	if (pkt->wildcard_nodes.max > pkt->wildcard_nodes.default_count) {
@@ -1346,11 +1349,10 @@ dbg_packet_exec(
 		char *name = knot_dname_to_str(
 			(((knot_rrset_t **)(pkt->tmp_rrsets))[i])->owner);
 		dbg_packet_verb("Freeing tmp RRSet on ptr: %p (ptr to ptr:"
-		       " %p, type: %s, owner: %s)\n",
+		       " %p, type: %u, owner: %s)\n",
 		       (((knot_rrset_t **)(pkt->tmp_rrsets))[i]),
 		       &(((knot_rrset_t **)(pkt->tmp_rrsets))[i]),
-		       knot_rrtype_to_string(
-		            (((knot_rrset_t **)(pkt->tmp_rrsets))[i])->type),
+		       (((knot_rrset_t **)(pkt->tmp_rrsets))[i])->type,
 		       name);
 		free(name);
 );
@@ -1386,7 +1388,7 @@ void knot_packet_header_to_wire(const knot_header_t *header,
 
 int knot_packet_question_to_wire(knot_packet_t *packet)
 {
-	if (packet == NULL) {
+	if (packet == NULL || packet->question.qname == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -1485,6 +1487,14 @@ void knot_packet_free(knot_packet_t **packet)
 	dbg_packet("Freeing tmp RRSets...\n");
 	knot_packet_free_tmp_rrsets(*packet);
 
+	dbg_packet("Freeing copied dnames for compression...\n");
+	for (int i = 0; i < (*packet)->compression.count; ++i) {
+		if ((*packet)->compression.to_free[i]) {
+			knot_dname_release(
+			      (knot_dname_t *)(*packet)->compression.dnames[i]);
+		}
+	}
+
 	/*! \note The above code will free the domain names pointed to by
 	 *        the list of wildcard nodes. It should not matter, however.
 	 */
@@ -1553,10 +1563,10 @@ void knot_packet_dump(const knot_packet_t *packet)
 		char *qname = knot_dname_to_str(packet->question.qname);
 		dbg_packet("  QNAME: %s\n", qname);
 		free(qname);
-		dbg_packet("  QTYPE: %u (%s)\n", packet->question.qtype,
-		       knot_rrtype_to_string(packet->question.qtype));
-		dbg_packet("  QCLASS: %u (%s)\n", packet->question.qclass,
-		       knot_rrclass_to_string(packet->question.qclass));
+		dbg_packet("  QTYPE: %u (%u)\n", packet->question.qtype,
+		           packet->question.qtype);
+		dbg_packet("  QCLASS: %u (%u)\n", packet->question.qclass,
+		           packet->question.qclass);
 	}
 
 	dbg_packet("\nAnswer RRSets:\n");

@@ -93,7 +93,7 @@ knot_rrset_t *rrset_from_test_rrset(const test_rrset_t *test_rrset)
 		if (rdata->items == NULL) {
 			return NULL;
 		}
-//		diag("Rdata type: %s\n", knot_rrtype_to_string(test_rrset->type));
+//		diag("Rdata type: %u\n", test_rrset->type);
 		for (int i = 0; i < desc->length; i++) {
 			if (desc->wireformat[i] == KNOT_RDATA_WF_COMPRESSED_DNAME ||
 			    desc->wireformat[i] == KNOT_RDATA_WF_LITERAL_DNAME ||

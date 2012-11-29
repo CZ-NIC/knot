@@ -233,6 +233,7 @@ static int test_rdata_get_item(list rdata_list)
 
 		if (check_rdata(new_rdata, test_rdata) != 0) {
 			diag("Wrong rdata created using rdata_get_item");
+			knot_rdata_free(&new_rdata);
 			return 0;
 		}
 

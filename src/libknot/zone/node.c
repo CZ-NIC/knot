@@ -57,6 +57,17 @@ static inline void knot_node_flags_set_deleg(uint8_t *flags)
 
 /*----------------------------------------------------------------------------*/
 /*!
+ * \brief Clears the delegation point flag.
+ *
+ * \param flags Flags to clear the flag in.
+ */
+static inline void knot_node_flags_clear_deleg(uint8_t *flags)
+{
+	*flags &= ~KNOT_NODE_FLAGS_DELEG;
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
  * \brief Returns the non-authoritative node flag
  *
  * \param flags Flags to retrieve the flag from.
@@ -78,6 +89,17 @@ static inline uint8_t knot_node_flags_get_nonauth(uint8_t flags)
 static inline void knot_node_flags_set_nonauth(uint8_t *flags)
 {
 	*flags |= KNOT_NODE_FLAGS_NONAUTH;
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Clears the non-authoritative node flag.
+ *
+ * \param flags Flags to clear the flag in.
+ */
+static inline void knot_node_flags_clear_nonauth(uint8_t *flags)
+{
+	*flags &= ~KNOT_NODE_FLAGS_NONAUTH;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -169,13 +191,9 @@ int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset,
 	                         (merge) ? knot_rrset_merge : NULL))) < 0) {
 		dbg_node("Failed to add rrset to node->rrset_tree.\n");
 		return KNOT_ERROR;
-	}
-
-	if (ret >= 0) {
+	} else {
 		node->rrset_count += (ret > 0 ? 0 : 1);
 		return ret;
-	} else {
-		return KNOT_ERROR;
 	}
 }
 
@@ -187,13 +205,9 @@ int knot_node_add_rrset_no_dupl(knot_node_t *node, knot_rrset_t *rrset)
 	                         knot_rrset_merge_no_dupl))) < 0) {
 		dbg_node("Failed to add rrset to node->rrset_tree.\n");
 		return KNOT_ERROR;
-	}
-
-	if (ret >= 0) {
+	} else {
 		node->rrset_count += (ret > 0 ? 0 : 1);
 		return ret;
-	} else {
-		return KNOT_ERROR;
 	}
 }
 
@@ -662,6 +676,18 @@ int knot_node_is_non_auth(const knot_node_t *node)
 	}
 
 	return knot_node_flags_get_nonauth(node->flags);
+}
+
+/*----------------------------------------------------------------------------*/
+
+void knot_node_set_auth(knot_node_t *node)
+{
+	if (node == NULL) {
+		return;
+	}
+
+	knot_node_flags_clear_nonauth(&node->flags);
+	knot_node_flags_clear_deleg(&node->flags);
 }
 
 /*----------------------------------------------------------------------------*/

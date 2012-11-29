@@ -8,6 +8,7 @@ This reference describes every configuration option in Knot DNS server.
 * keys::                        
 * interfaces::                  
 * remotes::                     
+* control::
 * zones::                       
 * log::                         
 @end menu
@@ -38,6 +39,9 @@ else.
   [ @code{pidfile} @code{"}@kbd{string}@code{";} ]
   [ @code{workers} @kbd{integer}@code{;} ]
   [ @code{user} @kbd{string}[@code{.}@kbd{string}]@code{;} ]
+  [ @code{max-conn-idle} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
+  [ @code{max-conn-hs} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
+  [ @code{max-conn-reply} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
 @code{@}}
 @end example
 
@@ -52,6 +56,9 @@ else.
 * pidfile::                     
 * workers::                     
 * user::                        
+* max-conn-idle::
+* max-conn-hs::
+* max-conn-reply::
 @end menu
 
 @node identity
@@ -149,6 +156,27 @@ system @{
   user knot.knot;
 @}
 @end example
+
+@node max-conn-idle
+@subsubsection max-conn-idle
+@vindex max-conn-idle
+
+Maximum idle time between requests on a TCP connection.
+This also limits receiving of a single query, each query must be received in this time limit.
+
+@node max-conn-hs
+@subsubsection max-conn-hs
+@vindex max-conn-hs
+
+Maximum time between newly accepted TCP connection and first query.
+This is useful to disconnect inactive connections faster, than connection
+that already made at least 1 meaningful query.
+
+@node max-conn-reply
+@subsubsection max-conn-reply
+@vindex max-conn-reply
+
+Maximum time to wait for a reply to an issued SOA query.
 
 @node system Example
 @subsection system Example
@@ -432,6 +460,57 @@ remotes @{
 @}
 
 @end example
+
+@node control 
+@section @code{control} Statement
+
+The @code{control} statement specifies on which interface to listen for remote control commands.
+Caution: The control protocol is not encrypted,
+and susceptible to replay attack in a short timeframe until message digest expires,
+for that reason, it is recommended to enable remote control only on private networks
+or loopback.
+
+@menu
+* control Syntax::              
+* control Statement Definition and Grammar::  
+* control Examples::
+@end menu
+
+@node control Syntax
+@subsection Syntax
+
+@example
+@code{control} @code{@{}
+  [ @kbd{listen-on} @code{@{}
+    ( @code{address} @kbd{ip_address}[@@@kbd{port_number}] |
+      @code{@{} @code{address} @kbd{ip_address}@code{;} [ @code{port} @kbd{port_number}@code{;} ] @code{@}} )
+  @code{@}} ]
+  [ @code{allow} @kbd{remote_id} [, @kbd{remote_id}, @dots{} ]@code{;} ]
+@code{@}}
+@end example
+
+@node control Statement Definition and Grammar
+@subsection Statement Definition and Grammar
+
+Control interface @code{listen-on} definition is equal to @code{interface} definition in @ref{interfaces}.
+Default port for control interface is @code{5553}.
+
+@node control Examples
+@subsection Examples
+
+@example
+keys @{
+        knotc-key hmac-md5 "Wg==";
+@}
+remotes @{
+        ctl @{ address 127.0.0.1; key knotc-key; @}
+@}
+control @{
+        listen-on @{ address 127.0.0.1; @}
+        allow ctl;
+@}
+@end example
+
 
 @node zones
 @section @code{zones} Statement
