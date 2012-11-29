@@ -1,0 +1,24 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	SSHFP	0	0	00		; The simplest variant
+@	SSHFP	255	255	00		; Maximal numbers
+@	SSHFP	0	0	01 02 0304	; Hex block with blank spaces between them
+@	TYPE44	\# 3 000000			; TYPE + Hexadecimal rdata
+@	TYPE44	0	0	00		; TYPE
+@	sshfp	0	0	00		; Type in lower-case
+
+; KO
+@	SSHFP
+@	SSHFP					; Empty rdata
+@	SSHFP	\# 0				; Hex empty rdata
+@	SSHFP	\#				; Missing hex length
+@	SSHFP	256	0	00		; Algorithm overflow
+@	SSHFP	0	256	00		; Fp type overflow
+@	SSHFP	0	0	0		; Continuous block length must be multiple of 2
+@	SSHFP	0	0	00 0		; Continuous block length must be multiple of 2
+@	SSHFP	0	0	XX		; Bad hex character
+@	SSHFP	0	0			; Missing item
+@	SSHFP	\# 3 00000000			; Too long rdata
+@	SSHFP	\# 4 000000			; Bad rdata length

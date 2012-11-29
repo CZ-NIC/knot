@@ -20,7 +20,7 @@
  *
  * \brief Zone scanner test functions.
  *
- * \addtogroup zone_scanner
+ * \addtogroup zone_scanner_test
  * @{
  */
 
@@ -28,7 +28,6 @@
 #define _ZSCANNER__TEST_FUNCTIONS_H_
 
 #include "zscanner/scanner.h"
-
 
 void empty_process_record(const scanner_t *scanner);
 
@@ -43,7 +42,6 @@ void test_process_error(const scanner_t *scanner);
 void test_process_record(const scanner_t *scanner);
 
 void dump_rdata(const scanner_t *scanner);
-
 
 #endif // _ZSCANNER__TEST_FUNCTIONS_H_
 

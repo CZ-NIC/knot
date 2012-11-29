@@ -116,7 +116,8 @@
 	}
 	action _label_exit {
 		if (s->dname_tmp_length < MAX_DNAME_LENGTH) {
-			(s->dname)[s->item_length_position] = (uint8_t)(s->item_length);
+			(s->dname)[s->item_length_position] =
+				(uint8_t)(s->item_length);
 		} else {
 			SCANNER_WARNING(ZSCANNER_EDNAME_OVERFLOW);
 			fhold; fgoto err_line;
@@ -137,7 +138,8 @@
 		(s->dname)[s->dname_tmp_length] += digit_to_num[(uint8_t)fc];
 	}
 	action _label_dec_exit {
-		(s->dname)[s->dname_tmp_length] = (s->dname)[s->dname_tmp_length];
+		(s->dname)[s->dname_tmp_length] =
+			(s->dname)[s->dname_tmp_length];
 		s->dname_tmp_length++;
 	}
 	action _label_dec_error {
@@ -217,7 +219,8 @@
 	}
 
 	action _separate {
-		s->r_data_blocks[++(s->r_data_blocks_count)] = rdata_tail - s->r_data;
+		s->r_data_blocks[++(s->r_data_blocks_count)] =
+			rdata_tail - s->r_data;
 	}
 
 	# Rdata blocks dividing.
@@ -469,11 +472,16 @@
 			errno = 0;
 			s->number64 = strtoul((char *)(s->buffer), NULL,  10);
 
-			if (errno == 0) {
+			if (errno != 0) {
+				SCANNER_WARNING(ZSCANNER_EBAD_TIMESTAMP);
+				fhold; fgoto err_line;
+			}
+
+			if (s->number64 <= UINT32_MAX) {
 				*((uint32_t *)rdata_tail) = htonl((uint32_t)s->number64);
 				rdata_tail += 4;
 			} else {
-				SCANNER_WARNING(ZSCANNER_EBAD_TIMESTAMP);
+				SCANNER_WARNING(ZSCANNER_ENUMBER32_OVERFLOW);
 				fhold; fgoto err_line;
 			}
 		} else {
@@ -803,32 +811,6 @@
 	ipv6_addr_write = ipv6_addr %_ipv6_addr_write;
 	# END
 
-	# BEGIN - Gateway
-	action _write_0 {
-		*(rdata_tail++) = 0;
-	}
-	action _write_1 {
-		*(rdata_tail++) = 1;
-	}
-	action _write_2 {
-		*(rdata_tail++) = 2;
-	}
-	action _write_3 {
-		*(rdata_tail++) = 3;
-	}
-	action _gateway_error {
-		SCANNER_WARNING(ZSCANNER_EBAD_GATEWAY);
-		fhold; fgoto err_line;
-	}
-
-	gateway =
-		( ('0' $_write_0 . sep . num8 . sep . '.')
-		| ('1' $_write_1 . sep . num8 . sep . ipv4_addr_write)
-		| ('2' $_write_2 . sep . num8 . sep . ipv6_addr_write)
-		| ('3' $_write_3 . sep . num8 . sep . r_dname)
-		) $!_gateway_error;
-	# END
-
 	# BEGIN - apl record processing
 	action _apl_init {
 		memset(&(s->apl), 0, sizeof(s->apl));
@@ -843,10 +825,11 @@
 		s->apl.addr_family = 2;
 	}
 	action _apl_prefix_length {
-		if (s->number64 <= UINT8_MAX) {
+		if ((s->apl.addr_family == 1 && s->number64 <= 32) ||
+		    (s->apl.addr_family == 2 && s->number64 <= 128)) {
 			s->apl.prefix_length = (uint8_t)(s->number64);
 		} else {
-			SCANNER_WARNING(ZSCANNER_ENUMBER8_OVERFLOW);
+			SCANNER_WARNING(ZSCANNER_EBAD_APL);
 			fhold; fgoto err_line;
 		}
 	}
@@ -881,7 +864,8 @@
 				// Apply mask on last byte if not precise prefix.
 				// (Bind does't do this).
 				s->buffer[s->number64 - 1] &=
-					((uint8_t)255 << (8 - s->apl.prefix_length % 8));
+					((uint8_t)255 << (s->number64 * 8 -
+					                  s->apl.prefix_length));
 				break;
 			}
 			s->number64--;
@@ -1013,7 +997,7 @@
 
 	# Base64 array with possibility of inside white spaces and multiline.
 	base64_ := (base64_quartet+ . sep?)+ $!_base64_char_error
-			   %_ret . end_wchar;
+	           %_ret . end_wchar;
 	base64 = base64_char ${ fhold; fcall base64_; };
 	# END
 
@@ -1107,53 +1091,84 @@
 
 	# Continuous base32hex (with padding!) array with forward length processing.
 	hash = base32hex_octet+ >_item_length_init %_item_length_exit
-		   $!_base32hex_char_error;
+	       $!_base32hex_char_error;
+	# END
+
+	# BEGIN - Gateway
+	action _write_0 {
+		*(rdata_tail++) = 0;
+	}
+	action _write_1 {
+		*(rdata_tail++) = 1;
+	}
+	action _write_2 {
+		*(rdata_tail++) = 2;
+	}
+	action _write_3 {
+		*(rdata_tail++) = 3;
+	}
+	action _gateway_error {
+		SCANNER_WARNING(ZSCANNER_EBAD_GATEWAY);
+		fhold; fgoto err_line;
+	}
+	action _gateway_key_error {
+		SCANNER_WARNING(ZSCANNER_EBAD_GATEWAY_KEY);
+		fhold; fgoto err_line;
+	}
+
+	gateway = (( ('0' $_write_0 . sep . num8 . sep . '.')
+	           | ('1' $_write_1 . sep . num8 . sep . ipv4_addr_write)
+	           | ('2' $_write_2 . sep . num8 . sep . ipv6_addr_write)
+	           | ('3' $_write_3 . sep . num8 . sep . r_dname)
+	           ) $!_gateway_error .
+	           # If algorithm is 0 then key isn't present and vice versa.
+	           ( ((sep . base64) when { s->number64 != 0 })
+	           | ((sep?)         when { s->number64 == 0 }) # remove blank space
+	           ) $!_gateway_key_error
+	          );
 	# END
 
 	# BEGIN - Type processing
-	action _type_exit {
-		rdata_tail += 2;
-	}
 	action _type_error {
 		SCANNER_WARNING(ZSCANNER_EUNSUPPORTED_TYPE);
 		fhold; fgoto err_line;
 	}
 
 	type_num =
-	    ( "A"i          %{ type_num(KNOT_RRTYPE_A, rdata_tail); }
-	    | "NS"i         %{ type_num(KNOT_RRTYPE_NS, rdata_tail); }
-	    | "CNAME"i      %{ type_num(KNOT_RRTYPE_CNAME, rdata_tail); }
-	    | "SOA"i        %{ type_num(KNOT_RRTYPE_SOA, rdata_tail); }
-	    | "PTR"i        %{ type_num(KNOT_RRTYPE_PTR, rdata_tail); }
-	    | "HINFO"i      %{ type_num(KNOT_RRTYPE_HINFO, rdata_tail); }
-	    | "MINFO"i      %{ type_num(KNOT_RRTYPE_MINFO, rdata_tail); }
-	    | "MX"i         %{ type_num(KNOT_RRTYPE_MX, rdata_tail); }
-	    | "TXT"i        %{ type_num(KNOT_RRTYPE_TXT, rdata_tail); }
-	    | "RP"i         %{ type_num(KNOT_RRTYPE_RP, rdata_tail); }
-	    | "AFSDB"i      %{ type_num(KNOT_RRTYPE_AFSDB, rdata_tail); }
-	    | "RT"i         %{ type_num(KNOT_RRTYPE_RT, rdata_tail); }
-	    | "KEY"i        %{ type_num(KNOT_RRTYPE_KEY, rdata_tail); }
-	    | "AAAA"i       %{ type_num(KNOT_RRTYPE_AAAA, rdata_tail); }
-	    | "LOC"i        %{ type_num(KNOT_RRTYPE_LOC, rdata_tail); }
-	    | "SRV"i        %{ type_num(KNOT_RRTYPE_SRV, rdata_tail); }
-	    | "NAPTR"i      %{ type_num(KNOT_RRTYPE_NAPTR, rdata_tail); }
-	    | "KX"i         %{ type_num(KNOT_RRTYPE_KX, rdata_tail); }
-	    | "CERT"i       %{ type_num(KNOT_RRTYPE_CERT, rdata_tail); }
-	    | "DNAME"i      %{ type_num(KNOT_RRTYPE_DNAME, rdata_tail); }
-	    | "APL"i        %{ type_num(KNOT_RRTYPE_APL, rdata_tail); }
-	    | "DS"i         %{ type_num(KNOT_RRTYPE_DS, rdata_tail); }
-	    | "SSHFP"i      %{ type_num(KNOT_RRTYPE_SSHFP, rdata_tail); }
-	    | "IPSECKEY"i   %{ type_num(KNOT_RRTYPE_IPSECKEY, rdata_tail); }
-	    | "RRSIG"i      %{ type_num(KNOT_RRTYPE_RRSIG, rdata_tail); }
-	    | "NSEC"i       %{ type_num(KNOT_RRTYPE_NSEC, rdata_tail); }
-	    | "DNSKEY"i     %{ type_num(KNOT_RRTYPE_DNSKEY, rdata_tail); }
-	    | "DHCID"i      %{ type_num(KNOT_RRTYPE_DHCID, rdata_tail); }
-	    | "NSEC3"i      %{ type_num(KNOT_RRTYPE_NSEC3, rdata_tail); }
-	    | "NSEC3PARAM"i %{ type_num(KNOT_RRTYPE_NSEC3PARAM, rdata_tail); }
-	    | "TLSA"i       %{ type_num(KNOT_RRTYPE_TLSA, rdata_tail); }
-	    | "SPF"i        %{ type_num(KNOT_RRTYPE_SPF, rdata_tail); }
-	    | "TYPE"i      . num16 # TYPE12345
-	    ) %_type_exit $!_type_error;
+	    ( "A"i          %{ type_num(KNOT_RRTYPE_A, &rdata_tail); }
+	    | "NS"i         %{ type_num(KNOT_RRTYPE_NS, &rdata_tail); }
+	    | "CNAME"i      %{ type_num(KNOT_RRTYPE_CNAME, &rdata_tail); }
+	    | "SOA"i        %{ type_num(KNOT_RRTYPE_SOA, &rdata_tail); }
+	    | "PTR"i        %{ type_num(KNOT_RRTYPE_PTR, &rdata_tail); }
+	    | "HINFO"i      %{ type_num(KNOT_RRTYPE_HINFO, &rdata_tail); }
+	    | "MINFO"i      %{ type_num(KNOT_RRTYPE_MINFO, &rdata_tail); }
+	    | "MX"i         %{ type_num(KNOT_RRTYPE_MX, &rdata_tail); }
+	    | "TXT"i        %{ type_num(KNOT_RRTYPE_TXT, &rdata_tail); }
+	    | "RP"i         %{ type_num(KNOT_RRTYPE_RP, &rdata_tail); }
+	    | "AFSDB"i      %{ type_num(KNOT_RRTYPE_AFSDB, &rdata_tail); }
+	    | "RT"i         %{ type_num(KNOT_RRTYPE_RT, &rdata_tail); }
+	    | "KEY"i        %{ type_num(KNOT_RRTYPE_KEY, &rdata_tail); }
+	    | "AAAA"i       %{ type_num(KNOT_RRTYPE_AAAA, &rdata_tail); }
+	    | "LOC"i        %{ type_num(KNOT_RRTYPE_LOC, &rdata_tail); }
+	    | "SRV"i        %{ type_num(KNOT_RRTYPE_SRV, &rdata_tail); }
+	    | "NAPTR"i      %{ type_num(KNOT_RRTYPE_NAPTR, &rdata_tail); }
+	    | "KX"i         %{ type_num(KNOT_RRTYPE_KX, &rdata_tail); }
+	    | "CERT"i       %{ type_num(KNOT_RRTYPE_CERT, &rdata_tail); }
+	    | "DNAME"i      %{ type_num(KNOT_RRTYPE_DNAME, &rdata_tail); }
+	    | "APL"i        %{ type_num(KNOT_RRTYPE_APL, &rdata_tail); }
+	    | "DS"i         %{ type_num(KNOT_RRTYPE_DS, &rdata_tail); }
+	    | "SSHFP"i      %{ type_num(KNOT_RRTYPE_SSHFP, &rdata_tail); }
+	    | "IPSECKEY"i   %{ type_num(KNOT_RRTYPE_IPSECKEY, &rdata_tail); }
+	    | "RRSIG"i      %{ type_num(KNOT_RRTYPE_RRSIG, &rdata_tail); }
+	    | "NSEC"i       %{ type_num(KNOT_RRTYPE_NSEC, &rdata_tail); }
+	    | "DNSKEY"i     %{ type_num(KNOT_RRTYPE_DNSKEY, &rdata_tail); }
+	    | "DHCID"i      %{ type_num(KNOT_RRTYPE_DHCID, &rdata_tail); }
+	    | "NSEC3"i      %{ type_num(KNOT_RRTYPE_NSEC3, &rdata_tail); }
+	    | "NSEC3PARAM"i %{ type_num(KNOT_RRTYPE_NSEC3PARAM, &rdata_tail); }
+	    | "TLSA"i       %{ type_num(KNOT_RRTYPE_TLSA, &rdata_tail); }
+	    | "SPF"i        %{ type_num(KNOT_RRTYPE_SPF, &rdata_tail); }
+	    | "TYPE"i      . num16 # TYPE0-TYPE65535.
+	    ) $!_type_error;
 	# END
 
 	# BEGIN - Bitmap processing
@@ -1166,7 +1181,7 @@
 		}
 	}
 
-	# TYPE0-65535.
+	# TYPE0-TYPE65535.
 	type_bitmap = number %_type_bitmap_exit;
 
 	type_bit =
@@ -1202,7 +1217,7 @@
 	    | "NSEC3PARAM"i %{ window_add_bit(KNOT_RRTYPE_NSEC3PARAM, s); }
 	    | "TLSA"i       %{ window_add_bit(KNOT_RRTYPE_TLSA, s); }
 	    | "SPF"i        %{ window_add_bit(KNOT_RRTYPE_SPF, s); }
-	    | "TYPE"i      . type_bitmap # Special types TYPE0-TYPE65535
+	    | "TYPE"i      . type_bitmap # TYPE0-TYPE65535.
 	    );
 
 	action _bitmap_init {
@@ -1248,7 +1263,7 @@
 		if (s->number64 <= 90) {
 			s->loc.d1 = (uint32_t)(s->number64);
 		} else {
-			SCANNER_WARNING(ZSCANNER_EBAD_LOC_DATA);
+			SCANNER_WARNING(ZSCANNER_EBAD_NUMBER);
 			fhold; fgoto err_line;
 		}
 	}
@@ -1256,7 +1271,7 @@
 		if (s->number64 <= 180) {
 			s->loc.d2 = (uint32_t)(s->number64);
 		} else {
-			SCANNER_WARNING(ZSCANNER_EBAD_LOC_DATA);
+			SCANNER_WARNING(ZSCANNER_EBAD_NUMBER);
 			fhold; fgoto err_line;
 		}
 	}
@@ -1264,7 +1279,7 @@
 		if (s->number64 <= 59) {
 			s->loc.m1 = (uint32_t)(s->number64);
 		} else {
-			SCANNER_WARNING(ZSCANNER_EBAD_LOC_DATA);
+			SCANNER_WARNING(ZSCANNER_EBAD_NUMBER);
 			fhold; fgoto err_line;
 		}
 	}
@@ -1272,7 +1287,7 @@
 		if (s->number64 <= 59) {
 			s->loc.m2 = (uint32_t)(s->number64);
 		} else {
-			SCANNER_WARNING(ZSCANNER_EBAD_LOC_DATA);
+			SCANNER_WARNING(ZSCANNER_EBAD_NUMBER);
 			fhold; fgoto err_line;
 		}
 	}
@@ -1280,7 +1295,7 @@
 		if (s->number64 <= 59999) {
 			s->loc.s1 = (uint32_t)(s->number64);
 		} else {
-			SCANNER_WARNING(ZSCANNER_EBAD_LOC_DATA);
+			SCANNER_WARNING(ZSCANNER_EBAD_NUMBER);
 			fhold; fgoto err_line;
 		}
 	}
@@ -1288,41 +1303,41 @@
 		if (s->number64 <= 59999) {
 			s->loc.s2 = (uint32_t)(s->number64);
 		} else {
-			SCANNER_WARNING(ZSCANNER_EBAD_LOC_DATA);
+			SCANNER_WARNING(ZSCANNER_EBAD_NUMBER);
 			fhold; fgoto err_line;
 		}
 	}
 	action _alt_exit {
 		if ((s->loc.alt_sign ==  1 && s->number64 <= 4284967295) ||
-			(s->loc.alt_sign == -1 && s->number64 <=   10000000))
+		    (s->loc.alt_sign == -1 && s->number64 <=   10000000))
 		{
 			s->loc.alt = (uint32_t)(s->number64);
 		} else {
-			SCANNER_WARNING(ZSCANNER_EBAD_LOC_DATA);
+			SCANNER_WARNING(ZSCANNER_EBAD_NUMBER);
 			fhold; fgoto err_line;
 		}
 	}
 	action _siz_exit {
-		if (s->number64 <= 9000000000) {
-			s->loc.siz = (uint32_t)(s->number64);
+		if (s->number64 <= 9000000000ULL) {
+			s->loc.siz = s->number64;
 		} else {
-			SCANNER_WARNING(ZSCANNER_EBAD_LOC_DATA);
+			SCANNER_WARNING(ZSCANNER_EBAD_NUMBER);
 			fhold; fgoto err_line;
 		}
 	}
 	action _hp_exit {
-		if (s->number64 <= 9000000000) {
-			s->loc.hp = (uint32_t)(s->number64);
+		if (s->number64 <= 9000000000ULL) {
+			s->loc.hp = s->number64;
 		} else {
-			SCANNER_WARNING(ZSCANNER_EBAD_LOC_DATA);
+			SCANNER_WARNING(ZSCANNER_EBAD_NUMBER);
 			fhold; fgoto err_line;
 		}
 	}
 	action _vp_exit {
-		if (s->number64 <= 9000000000) {
-			s->loc.vp = (uint32_t)(s->number64);
+		if (s->number64 <= 9000000000ULL) {
+			s->loc.vp = s->number64;
 		} else {
-			SCANNER_WARNING(ZSCANNER_EBAD_LOC_DATA);
+			SCANNER_WARNING(ZSCANNER_EBAD_NUMBER);
 			fhold; fgoto err_line;
 		}
 	}
@@ -1488,7 +1503,7 @@
 		$!_r_data_error %_ret . end_wchar;
 
 	r_data_ipseckey :=
-		(num8 . sep . gateway . sep . base64)
+		(num8 . sep . gateway)
 		$!_r_data_error %_ret . end_wchar;
 
 	r_data_rrsig :=
@@ -1587,7 +1602,7 @@
 	}
 	action _hex_r_data {
 		switch (s->r_type) {
-		// Next types cannot have empty rdata.
+		// Next types must not have empty rdata.
 		case KNOT_RRTYPE_A:
 		case KNOT_RRTYPE_NS:
 		case KNOT_RRTYPE_CNAME:
@@ -1633,11 +1648,12 @@
 	}
 
 	# rdata can be in text or hex format with leading "\#" string
-	r_data = ( sep  . ^('\\' | all_wchar)     $_text_r_data %_text_r_data_exit
-	         | sep  . '\\' . ^'#' ${ fhold; } $_text_r_data %_text_r_data_exit
-	         | sep  . '\\' .  '#'             $_hex_r_data   # Hex format.
-	         | sep? . end_wchar               $_text_r_data  # Empty rdata.
-	         ) >_r_data_init $!_r_data_error;
+	r_data =
+		( sep  . ^('\\' | all_wchar)     $_text_r_data %_text_r_data_exit
+		| sep  . '\\' . ^'#' ${ fhold; } $_text_r_data %_text_r_data_exit
+		| sep  . '\\' .  '#'             $_hex_r_data   # Hex format.
+		| sep? . end_wchar               $_text_r_data  # Empty rdata.
+		) >_r_data_init $!_r_data_error;
 	# END
 
 	# BEGIN - Record type processing
@@ -1683,7 +1699,7 @@
 		) $!_r_type_error;
 	# END
 
-	# BEGIN - Top level processing
+	# BEGIN - The highest level processing
 	action _record_exit {
 		if (rdata_tail - s->r_data > UINT16_MAX) {
 			SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);

@@ -31,16 +31,30 @@
 #include "zscanner/file_loader.h"	// file_loader
 #include "zscanner/scanner_functions.h"	// Base64
 
+/*! \brief Shorthand for setting warning data. */
 #define SCANNER_WARNING(code) { s->error_code = code; }
+/*! \brief Shorthand for setting error data. */
 #define SCANNER_ERROR(code)   { s->error_code = code; s->stop = true; }
 
-
-inline void type_num(const uint16_t type, uint8_t *rdata_tail)
+/*!
+ * \brief Writes record type number to r_data.
+ *
+ * \param type		Type number.
+ * \param rdata_tail	Position where to write type number to.
+ */
+static inline void type_num(const uint16_t type, uint8_t **rdata_tail)
 {
-	*((uint16_t *)rdata_tail) = htons(type);
+	*((uint16_t *)*rdata_tail) = htons(type);
+	*rdata_tail += 2;
 }
 
-inline void window_add_bit(const uint16_t type, scanner_t *s) {
+/*!
+ * \brief Sets bit to bitmap window.
+ *
+ * \param type		Type number.
+ * \param s		Scanner context.
+ */
+static inline void window_add_bit(const uint16_t type, scanner_t *s) {
 	uint8_t win      = type / 256;
 	uint8_t bit_pos  = type % 256;
 	uint8_t byte_pos = bit_pos / 8;
@@ -94,8 +108,7 @@ int scanner_process(char      *start,
 {
 	// Necessary scanner variables.
 	int  stack[RAGEL_STACK_SIZE];
-	char *ts = NULL, *eof = NULL;
-	char *p = start, *pe = end;
+	char *p = start, *pe = end, *eof = NULL;
 
 	// Auxiliary variables which are used in scanner body.
 	struct in_addr  addr4;
@@ -114,11 +127,6 @@ int scanner_process(char      *start,
 	int cs  = s->cs;
 	int top = s->top;
 	memcpy(stack, s->stack, sizeof(stack));
-
-	// Applying unprocessed token shift.
-	if (s->token_shift > 0) {
-		ts = start - s->token_shift;
-	}
 
 	// End of file check.
 	if (is_last_block == true) {
@@ -162,13 +170,6 @@ int scanner_process(char      *start,
 
 	// Storing r_data pointer.
 	s->r_data_tail = rdata_tail - s->r_data;
-
-	// Storing unprocessed token shift.
-	if (ts != NULL) {
-		s->token_shift = pe - ts;
-	} else {
-		s->token_shift = 0;
-	}
 
 	// Check if any errors has occured.
 	if (s->error_counter > 0) {

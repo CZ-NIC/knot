@@ -1595,7 +1595,34 @@ uint8_t *knot_rrset_rdata_prealloc(const knot_rrset_t *rrset)
 	 * Length of data can be sometimes guessed
 	 * easily. Well, for some types anyway.
 	 */
-	size_t rdata_size = 1000;
+	rdata_descriptor_t *desc = get_rdata_descriptor(rrset->type);
+	assert(desc);
+	size_t rdata_size = 0;
+	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
+		int item = desc->block_types[i];
+		if (descriptor_item_is_fixed(item)) {
+			rdata_size += item;
+		} else if (descriptor_item_is_dname(item)) {
+			rdata_size += sizeof(knot_dname_t *);
+		} else if (descriptor_item_is_remainder(item)) {
+			//TODO
+			switch(rrset->type) {
+				KNOT_RRTYPE_DS:
+					rdata_size += 64;
+				break;
+				KNOT_RRTYPE_RRSIG:
+					rdata_size += 256;
+				break;
+				KNOT_RRTYPE_DNSKEY:
+					rdata_size += 1024;
+				break;
+				default:
+					rdata_size += 512;
+			} //switch
+		} else {
+			assert(0);
+		}
+	}
 	
 	uint8_t *ret = malloc(rdata_size);
 	if (ret == NULL) {

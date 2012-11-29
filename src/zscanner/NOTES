@@ -1,4 +1,4 @@
-- the new-line character is appended to each zone file before processing (for simplicity)
+- the newline character is appended to each zone file during processing (for simplicity)
 - the class IN is supported only (CLASS12345 notation is not supported too)
 - domain names can contain alphanumeric, '-', '_' and '/' characters
 - \x and \DDD notations are allowed in domain names and text strings only
@@ -10,4 +10,4 @@
 - items parts lengths must be multiples of 2 for HEX, 4 for base64 and 8 for base32hex blocks (but DHCID example from RFC is more general!)
 - NSEC3 hash is with padding (but RFC 5155 section 3.3 says "unpadded")
 - date version of timestamp in RRSIG is limited to the end of the year 2105 (for better checking of 32bit integer)
-- algorithm and certificate mnemonics aren't supported
+- algorithm, certificate and flags (in KEY) mnemonics aren't supported

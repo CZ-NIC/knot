@@ -47,10 +47,10 @@
 #include "libknot/util/utils.h"
 #include "zscanner/file_loader.h"
 
-#define dbg_zp_detail printf
-#define dbg_zp printf
+//#define dbg_zp_detail printf
+//#define dbg_zp printf
 
-#define dbg_zp_exec_detail(cmds) do { cmds } while (0)
+//#define dbg_zp_exec_detail(cmds) do { cmds } while (0)
 
 
 struct parser {
@@ -221,7 +221,7 @@ static void process_rrsigs_in_node(parser_t *parser,
 
 void process_error(const scanner_t *scanner)
 {
-	fprintf(stderr, "GODS! There's been an error!\n");
+	fprintf(stderr, "There's been an error!\n");
 }
 
 int add_rdata_to_rr(knot_rrset_t *rrset, const scanner_t *scanner)

@@ -27,45 +27,56 @@
 #ifndef _ZSCANNER__SCANNER_H_
 #define _ZSCANNER__SCANNER_H_
 
-#include <stdint.h>		// uint32_t
-#include <stdbool.h>		// bool
-#include <arpa/inet.h>		// htons
+#include <stdint.h>			// uint32_t
+#include <stdbool.h>			// bool
+#include <arpa/inet.h>			// htons
 
+/*! \brief Maximal length of rdata. */
 #define MAX_RDATA_LENGTH	       65535
+/*! \brief Maximal length of rdata item. */
 #define MAX_ITEM_LENGTH			 255
+/*! \brief Maximal length of domain name. */
 #define MAX_DNAME_LENGTH		 255
+/*! \brief Maximal length of domain name label. */
 #define MAX_LABEL_LENGTH		  63
+/*! \brief Maximal number or rdata items. */
 #define MAX_RDATA_ITEMS			  64
 
+/*! \brief Number of bitmap windows. */
 #define BITMAP_WINDOWS			 256
 
+/*! \brief Length of ipv4 address in wire format. */
 #define INET4_ADDR_LENGTH		   4
+/*! \brief Length of ipv6 address in wire format. */
 #define INET6_ADDR_LENGTH		  16
 
-#define RAGEL_STACK_SIZE		  16 // Each nested call needs one.
+/*! \brief Ragel call stack size (see Ragel internals). */
+#define RAGEL_STACK_SIZE		  16
 
+/*! \brief ASCII value of '0' character. */
 #define ASCII_0				  48
 
-#define LOC_LAT_ZERO	(uint32_t)2147483648 // 2^31 - equator.
-#define LOC_LONG_ZERO	(uint32_t)2147483648 // 2^31 - meridian.
-#define LOC_ALT_ZERO	(uint32_t)  10000000 // Base altitude.
+/*! \brief Latitude value for equator (2^31). */
+#define LOC_LAT_ZERO	(uint32_t)2147483648
+/*! \brief Longitude value for meridian (2^31). */
+#define LOC_LONG_ZERO	(uint32_t)2147483648
+/*! \brief Zero level altitude value. */
+#define LOC_ALT_ZERO	  (uint32_t)10000000
 
-
-// Forward declaration for function arguments inside structure.
-struct scanner;
-typedef struct scanner scanner_t;
-
+/*! \brief Auxiliary structure for storing bitmap window items (see RFC4034). */
 typedef struct {
 	uint8_t bitmap[32];
 	uint8_t length;
 } window_t;
 
+/*! \brief Auxiliary structure for storing one APL record (see RFC3123). */
 typedef struct {
 	uint8_t  excl_flag;
 	uint16_t addr_family;
 	uint8_t  prefix_length;
 } apl_t;
 
+/*! \brief Auxiliary structure for storing LOC information (see RFC1876). */
 typedef struct {
 	uint32_t d1, d2;
 	uint32_t m1, m2;
@@ -77,90 +88,173 @@ typedef struct {
 
 /*!
  * \brief Context structure for Ragel scanner.
+ *
+ * This structure contains folowing items:
+ *  - Copies of Ragel internal variables. The scanner is called many times
+ *    for each block of zone file. So it is necessary to preserve internal
+ *    values between subsequent scanner callings.
+ *  - Auxiliary variables which are used during processing zone data.
+ *  - Zone file and error information.
+ *  - Pointers to callback functions and pointer to any arbitrary data which
+ *    can be used in callback functions.
+ *  - Output variables containing all parts of zone record. These data are
+ *    usefull during processing via callback function.
  */
+typedef struct scanner scanner_t; // Forward declaration due to arguments.
 struct scanner {
-	/*!< Scanner internals (See Ragel manual). */
+	/*! Current state (Ragel internals). */
 	int	 cs;
+	/*! Stack top (Ragel internals). */
 	int	 top;
+	/*! Call stack (Ragel internals). */
 	int	 stack[RAGEL_STACK_SIZE];
 
-	/*!< Data start shift of incompletely scanned token. */
-	uint32_t token_shift;
-	uint32_t r_data_tail; /*!< Position of actual r_data byte. */
-
-	/*!< Zone file name. */
+	/*! Zone file name. */
 	char     *file_name;
-	/*!< Zone file line counter. */
+	/*! Zone file line counter. */
 	uint64_t line_counter;
 
+	/*! Last occured error/warning code. */
 	int      error_code;
+	/*! Errors/warnings counter. */
 	uint64_t error_counter;
+	/*!
+	 * Indicates serious warning which is considered as an error and
+	 * forces zone processing to stop.
+	 */
 	bool     stop;
 
+	/*! Callback function for correct zone record. */
 	void (*process_record)(const scanner_t *);
+	/*! Callback function for wrong situations. */
 	void (*process_error)(const scanner_t *);
+	/*! Arbitrary data useful inside callback functions. */
 	void *data;
 
-	/*!< Indicates if actual record is multiline. */
+	/*! Indicates whether current record is multiline. */
 	bool     multiline;
-	/*!< Auxiliary number for all numeric operations. */
+	/*! Auxiliary number for all numeric operations. */
 	uint64_t number64;
-	/*!< Auxiliary variables for time and float numeric operations. */
+	/*! Auxiliary variable for time and other numeric operations. */
 	uint64_t number64_tmp;
+	/*! Auxiliary variable for float numeric operations. */
 	uint32_t decimals;
+	/*! Auxiliary variable for float numeric operations. */
 	uint32_t decimal_counter;
 
-	/*!< Auxiliary variable for item length (label, base64, ...). */
+	/*! Auxiliary variable for item length (label, base64, ...). */
 	uint32_t item_length;
-	/*!< Auxiliary index for item length position in array. */
+	/*! Auxiliary index for item length position in array. */
 	uint32_t item_length_position;
-	/*!< Auxiliary pointer to item length. */
+	/*! Auxiliary pointer to item length. */
 	uint8_t *item_length_location;
-	/*!< Auxiliary buffer for data storing. */
+	/*! Auxiliary buffer for data storing. */
 	uint8_t  buffer[MAX_RDATA_LENGTH];
-	/*!< Auxiliary buffer length. */
+	/*! Auxiliary buffer length. */
 	uint32_t buffer_length;
-
+	/*! Auxiliary buffer for current included file name. */
 	char     include_filename[MAX_RDATA_LENGTH + 1];
 
-	/*!< Bitmap window blocks. */
+	/*! Auxiliary array of bitmap window blocks. */
 	window_t windows[BITMAP_WINDOWS];
-	/*!< Last window block which is used (-1 means any window). */
+	/*! Last window block which is used (-1 means no window). */
 	int16_t  last_window;
-
+	/*! Auxiliary apl structure. */
 	apl_t    apl;
+	/*! Auxiliary loc structure. */
 	loc_t    loc;
 
-	uint8_t  *dname;  /*!< Pointer to actual dname (origin/owner/rdata). */
-	uint32_t *dname_length; /*!< Pointer to actual dname length. */
-	uint32_t dname_tmp_length; /*!< Temporary dname length which is copied to dname_length after dname processing. */
+	/*! Pointer to the actual dname storage (origin/owner/rdata). */
+	uint8_t  *dname;
+	/*! Pointer to the actual dname length storage. */
+	uint32_t *dname_length;
+	/*!
+	 * Temporary dname length which is copied to dname_length after
+	 * dname processing.
+	 */
+	uint32_t dname_tmp_length;
+	/*! Position of the last free r_data byte. */
+	uint32_t r_data_tail;
 
-	uint8_t  zone_origin[MAX_DNAME_LENGTH]; /*!< Wire format of the origin. */
+	/*! Wire format of the current origin (ORIGIN directive sets this). */
+	uint8_t  zone_origin[MAX_DNAME_LENGTH];
+	/*! Length of the current origin. */
 	uint32_t zone_origin_length;
+	/*! Value of the default class. */
 	uint16_t default_class;
+	/*! Value of the current default ttl (TTL directive sets this). */
 	uint32_t default_ttl;
 
-	// Dname overflow check is after (relative + origin) check.
+	/*!
+	 * Owner of the current record.
+	 *
+	 * \note The double length of the r_owner is due to dname length
+	 *       check is after concatenation of relative and origin dnames.
+	 */
 	uint8_t  r_owner[2 * MAX_DNAME_LENGTH];
+	/*! Length of the current record owner. */
 	uint32_t r_owner_length;
+	/*! Class of the current record. */
 	uint16_t r_class;
+	/*! TTL of the current record. */
 	uint32_t r_ttl;
+	/*! Type of the current record data. */
 	uint16_t r_type;
+	/*! Current rdata. */
 	uint8_t  r_data[MAX_RDATA_LENGTH];
+	/*! Length of the current rdata. */
 	uint32_t r_data_length;
+	/*! Indexes of the current rdata blocks. */
 	uint16_t r_data_blocks[MAX_RDATA_ITEMS];
+	/*! Number or the current rdata blocks. */
 	uint32_t r_data_blocks_count;
-	/* Eexample: MX 1 .
-	 *           rdata = 000100
-	 *           r_data_blocks_count = 2
-	 *           r_data_blocks = [0, 2, 3]
+
+	/*
+	 * Example: a. IN 60 MX 1 b.
+	 *
+	 *          r_owner = 016100
+	 *          r_owner_length = 3
+	 *          r_class = 1
+	 *          r_ttl = 60
+	 *          r_type = 15
+	 *          r_data = 0001016200
+	 *          r_data_length = 5
+	 *          r_data_blocks_count = 2
+	 *          r_data_blocks = [0, 2, 5]
 	 */
 };
 
+/*!
+ * \brief Creates zone scanner structure.
+ *
+ * \param file_name	Zone file name.
+ *
+ * \retval scanner	if success.
+ * \retval 0		if error.
+ */
 scanner_t* scanner_create(const char *file_name);
 
+/*!
+ * \brief Destroys zone scanner structure.
+ *
+ * \param scanner	Zone scanner structure.
+ */
 void scanner_free(scanner_t *scanner);
 
+/*!
+ * \brief Executes zone scanner on data block.
+ *
+ * \note Zone scanner error code and other information are stored in
+ *       the scanner structure.
+ *
+ * \param start		First byte of the zone data to scan.
+ * \param end		Last byte of the zone data to scan.
+ * \param is_last_block	Indicates if current block is last.
+ * \param scanner	Zone scanner structure.
+ *
+ * \retval  0		if success.
+ * \retval -1		if error.
+ */
 int scanner_process(char      *start,
 		    char      *end,
 		    bool      is_last_block,

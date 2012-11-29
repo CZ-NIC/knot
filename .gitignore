@@ -51,3 +51,6 @@ m4/ltversion.m4
 m4/lt~obsolete.m4
 src/unittests-xfr
 INSTALL
+/doc/html
+/doc/*.st
+/doc/*.sts

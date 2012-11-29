@@ -69,7 +69,7 @@ const error_table_t knot_error_msgs[] = {
 	{KNOT_EIXFRSPACE, "IXFR reply did not fit in."},
 	{KNOT_ECNAME, "CNAME loop found in zone."},
 	{KNOT_ENODIFF, "Cannot create zone diff."},
-	{KNOT_EDSDIGESTLEN, "DS digest length does not match digest type." },
+	{KNOT_EDSDIGESTLEN, "DS digest length does not match digest type."},
 
 	/* Zone file loader errors. */
 	{FLOADER_EFSTAT, "Fstat error!"},
@@ -77,7 +77,6 @@ const error_table_t knot_error_msgs[] = {
 	{FLOADER_EEMPTY, "Empty zone file!"},
 	{FLOADER_EDEFAULTS, "Zone defaults processing error!"},
 	{FLOADER_EMMAP, "Mmap error!"},
-	{FLOADER_EOVERLAPPING, "Insufficient block overlapping!"},
 	{FLOADER_EMUNMAP, "Munmap error!"},
 	{FLOADER_ESCANNER, "Zone processing error!"},
 
@@ -103,6 +102,7 @@ const error_table_t knot_error_msgs[] = {
 	{ZSCANNER_EBAD_IPV4, "Bad IPv4 address!"},
 	{ZSCANNER_EBAD_IPV6, "Bad IPv6 address!"},
 	{ZSCANNER_EBAD_GATEWAY, "Bad gateway!"},
+	{ZSCANNER_EBAD_GATEWAY_KEY, "Bad gateway key!"},
 	{ZSCANNER_EBAD_APL, "Bad adress prefix list!"},
 	{ZSCANNER_EBAD_RDATA, "Bad record data!"},
 	{ZSCANNER_EBAD_HEX_RDATA, "Bad record data in hex format!"},
@@ -131,4 +131,5 @@ const error_table_t knot_error_msgs[] = {
 	{ZSCANNER_ECANNOT_TEXT_DATA, "Unable to process text form for this type!"},
 	{ZSCANNER_EBAD_HEX_DATA, "Bad hexadecimal rdata format!"},
 	{ZSCANNER_EBAD_LOC_DATA, "Bad zone location data!"},
+	{ZSCANNER_EUNKNOWN_BLOCK, "Unknown rdata block!"},
 };
