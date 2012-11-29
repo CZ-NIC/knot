@@ -3275,7 +3275,7 @@ int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to remove empty nodes: %s\n",
 		          knot_strerror(ret));
-		xfrin_rollback_update(old_contents, &contents_copy, &changes);
+//		xfrin_rollback_update(old_contents, &contents_copy, &changes);
 		return ret;
 	}
 
@@ -3286,7 +3286,7 @@ int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to finalize zone contents: %s\n",
 		          knot_strerror(ret));
-		xfrin_rollback_update(old_contents, &contents_copy, &changes);
+//		xfrin_rollback_update(old_contents, &contents_copy, &changes);
 		return ret;
 	}
 	assert(knot_zone_contents_apex(contents_copy) != NULL);
@@ -3295,7 +3295,7 @@ int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
 	ret = knot_zone_contents_check_loops(contents_copy);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("CNAME loop check failed: %s\n", knot_strerror(ret));
-		xfrin_rollback_update(old_contents, &contents_copy, &changes);
+//		xfrin_rollback_update(old_contents, &contents_copy, &changes);
 		return ret;
 	}
 	
