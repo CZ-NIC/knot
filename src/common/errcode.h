@@ -83,7 +83,7 @@ enum knot_error {
 	KNOT_EIXFRSPACE,      /*!< IXFR reply did not fit in. */
 	KNOT_ECNAME,          /*!< CNAME loop found in zone. */
 	KNOT_ENODIFF,         /*!< No zone diff can be created. */
-	KNOT_EDSDIGESTLEN     /*!< DS digest length does not match digest type. */
+	KNOT_EDSDIGESTLEN,    /*!< DS digest length does not match digest type. */
 
 	/* Zone file loader errors. */
 	FLOADER_EFSTAT,

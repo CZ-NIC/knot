@@ -93,6 +93,8 @@ src/common/evsched.c
 src/common/evsched.h
 src/common/errors.h
 src/common/errors.c
+src/common/errcode.h
+src/common/errcode.c
 src/common/acl.c
 src/common/acl.h
 src/common/sockaddr.h
