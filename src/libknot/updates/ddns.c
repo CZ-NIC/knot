@@ -71,7 +71,7 @@ static int knot_ddns_add_prereq_rrset(const knot_rrset_t *rrset,
 	int ret;
 	for (int i = 0; i < *count; ++i) {
 		if (knot_rrset_compare(rrset, (*rrsets)[i],
-		                       KNOT_RRSET_COMPARE_HEADER) == 0) {
+		                       KNOT_RRSET_COMPARE_HEADER) == 1) {
 			ret = knot_rrset_merge((void **)&((*rrsets)[i]),
 			                       (void **)&rrset);
 			if (ret != KNOT_EOK) {
@@ -866,7 +866,7 @@ static void knot_ddns_check_add_rr(knot_changeset_t *changeset,
 		 * whole RRs that have been removed.
 		 */
 		if (knot_rrset_compare(rr, changeset->remove[i], 
-		                       KNOT_RRSET_COMPARE_WHOLE) == 0) {
+		                       KNOT_RRSET_COMPARE_WHOLE) == 1) {
 			*removed = knot_changeset_remove_rr(
 			                        changeset->remove,
 			                        &changeset->remove_count, i);
@@ -976,7 +976,7 @@ static int knot_ddns_process_add_cname(knot_node_t *node,
 	if (removed != NULL) {
 		/* If they are identical, ignore. */
 		if (knot_rrset_compare(removed, rr, KNOT_RRSET_COMPARE_WHOLE)
-		    == 0) {
+		    == 1) {
 			return 1;
 		}
 		
