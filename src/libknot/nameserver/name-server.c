@@ -1701,7 +1701,7 @@ static inline int ns_referral(const knot_node_t *node,
 			    && knot_query_dnssec_requested(
 			                        knot_packet_query(resp))) {
 				ret = ns_add_rrsigs(ds_rrset, resp, node->owner,
-				              knot_response_add_rrset_authority,
+				              knot_response_add_rrset_answer,
 				              1);
 			}
 		} else {
