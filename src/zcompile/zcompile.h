@@ -88,12 +88,6 @@ struct lex_data {
 
 #define DEFAULT_TTL 3600
 
-int yylex_destroy(void *scanner);
-int zp_parse(void *scanner);
-void zp_set_in(FILE *f, void *scanner);
-int zp_lex_init(void **scanner);
-int zp_lex_destroy(void *scanner);
-
 /*! \todo Implement ZoneDB. */
 typedef void namedb_type;
 
@@ -108,52 +102,6 @@ struct rrset_list {
 typedef struct rrset_list rrset_list_t;
 
 /*!
- * \brief Main zoneparser structure.
- */
-struct zparser {
-	const char *filename; /*!< File with zone. */
-	uint32_t default_ttl; /*!< Default TTL. */
-	uint16_t default_class; /*!< Default class. */
-	knot_zone_t *current_zone; /*!< Current zone. */
-	knot_node_t *origin; /*!< Origin node. */
-	knot_dname_t *prev_dname; /*!< Previous dname. */
-	knot_dname_t *origin_from_config; /*!< Zone origin from config. */
-	knot_node_t *default_apex; /*!< Zone default apex. */
-
-	knot_node_t *last_node; /*!< Last processed node. */
-
-	char *dname_str; /*!< Temporary dname. */
-
-	int error_occurred; /*!< Error occured flag */
-	unsigned int errors; /*!< Number of errors. */
-	unsigned int line; /*!< Current line */
-
-	knot_rrset_t *current_rrset; /*!< Current RRSet. */
-	knot_rdata_item_t *temporary_items; /*!< Temporary rdata items. */
-
-	knot_dname_t *root_domain; /*!< Root domain name. */
-	slab_cache_t *parser_slab; /*!< Slab for parser. */
-	rrset_list_t *node_rrsigs; /*!< List of RRSIGs in current node. */
-
-	int rdata_count; /*!< Count of parsed rdata. */
-};
-
-typedef struct zparser zparser_type;
-
-extern zparser_type *parser;
-
-extern void zc_error_prev_line(const char *fmt, ...);
-
-/* used in zonec.lex */
-
-void zc_error_prev_line(const char *fmt, ...);
-void zc_warning_prev_line(const char *fmt, ...);
-
-/*!
- * \brief Does all the processing of RR - saves to zone, assigns RRSIGs etc.
- */
-
-/*!
  * \brief Parses and creates zone from given file.
  *
  * \param name Origin domain name string.
@@ -166,34 +114,6 @@ void zc_warning_prev_line(const char *fmt, ...);
  */
 int zone_read(const char *name, const char *zonefile, const char *outfile,
               int semantic_checks);
-
-/*!
- * \brief Creates zparser instance.
- *
- *
- * \return Created zparser instance.
- */
-zparser_type *zparser_create();
-
-/*!
- * \brief Inits zoneparser structure.
- *
- * \param filename Name of file with zone.
- * \param ttl Default TTL.
- * \param rclass Default class.
- * \param origin Zone origin.
- */
-void zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
-		  knot_node_t *origin, knot_dname_t *owner_from_config);
-
-/*!
- * \brief Frees zoneparser structure.
- *
- */
-void zparser_free();
-
-int save_dnames_in_table(knot_dname_table_t *table,
-                         knot_rrset_t *rrset);
 
 #endif /* _KNOTD_ZONEPARSER_H_ */
 

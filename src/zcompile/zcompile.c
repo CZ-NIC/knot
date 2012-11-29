@@ -52,6 +52,8 @@
 
 //#define dbg_zp_exec_detail(cmds) do { cmds } while (0)
 
+static long rr_count = 0;
+static long err_count = 0;
 
 struct parser {
 	rrset_list_t *node_rrsigs;
@@ -219,12 +221,18 @@ static void process_rrsigs_in_node(parser_t *parser,
 	}
 }
 
-void process_error(const scanner_t *scanner)
+static void process_error(const scanner_t *s)
 {
-	fprintf(stderr, "There's been an error!\n");
+	err_count++;
+	if (s->stop == true) {
+		printf("ERROR=%s\n", knot_strerror(s->error_code));
+	} else {
+		printf("WARNG=%s\n", knot_strerror(s->error_code));
+	}
+	fflush(stdout);
 }
 
-int add_rdata_to_rr(knot_rrset_t *rrset, const scanner_t *scanner)
+static int add_rdata_to_rr(knot_rrset_t *rrset, const scanner_t *scanner)
 {
 	if (rrset == NULL) {
 		dbg_zp("zp: add_rdata_to_rr: No RRSet.\n");
@@ -297,9 +305,9 @@ dbg_zp_exec_detail(
 	return KNOT_EOK;
 }
 
-void process_rr(const scanner_t *scanner)
+static void process_rr(const scanner_t *scanner)
 {
-	
+	rr_count++;
 	parser_t *parser = scanner->data;
 	knot_zone_contents_t *contents = parser->current_zone;
 	/* Create rrset. TODO will not be always needed. */
@@ -579,9 +587,14 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	file_loader_t *loader = file_loader_create(zonefile, name,
 	                                           KNOT_CLASS_IN, 3600,
 	                                           process_rr,
-	                                           process_error, &my_parser);
+	                                           process_error,
+	                                           &my_parser);
 	file_loader_process(loader);
+//	knot_zone_contents_deep_free(&(my_parser.current_zone));
+//	knot_zone_contents_adjust(my_parser.current_zone);
 	file_loader_free(loader);
+	printf("RRs ok=%d\n", rr_count);
+	printf("RRs err=%d\n", err_count);
 }
 
 /*! @} */

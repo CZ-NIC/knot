@@ -11,7 +11,7 @@ libknotd_la_YFLAGS = -pcf_ -d
 libknotd_la_LFLAGS = # TODO: reentrant parser, prefix
 
 zscanner/scanner.c: zscanner/scanner.rl zscanner/scanner_body.rl
-	$(RAGEL) -G2 -s -o zscanner/scanner.c zscanner/scanner.rl
+	$(RAGEL) -s -o zscanner/scanner.c zscanner/scanner.rl
 
 knot_zcompile_SOURCES =				\
 	libknot/rrset.c				\
