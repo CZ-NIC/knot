@@ -1577,3 +1577,40 @@ uint8_t *knot_rrset_rdata_prealloc(const knot_rrset_t *rrset)
 	return ret;
 }
 
+void knot_rrset_rdata_dump(const knot_rrset_t *rrset, size_t rdata_pos)
+{
+	fprintf(stderr, "      ------- RDATA -------\n");
+	if (rrset->rdata_count == 0) {
+		fprintf(stderr, "      There are no rdata in this RRset!\n");
+		fprintf(stderr, "      ------- RDATA -------\n");
+		return;
+	}
+	
+	rdata_descriptor_t *desc = get_rdata_descriptor(knot_rrset_type(rrset));
+	assert(desc != NULL);
+
+	size_t offset = 0;
+	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
+		int item = desc->block_types[i];
+		uint8_t *rdata = rrset_rdata_offset(rrset, rdata_pos);
+		if (descriptor_item_is_dname(item)) {
+			knot_dname_t *dname =
+				(knot_dname_t *)(rdata + offset);
+			char *name = knot_dname_to_str(dname);
+			if (dname == NULL) {
+				fprintf(stderr, "DNAME error.\n");
+				return;
+			}
+			fprintf(stderr, "block=%d DNAME=%s.\n",
+			        i, name);
+			free(name);
+		} else if (descriptor_item_is_fixed(item)) {
+			;
+		} else if (descriptor_item_is_remainder(item)) {
+			;
+		} else {
+			assert(rrset->type == KNOT_RRTYPE_NAPTR);
+		}
+	}
+}
+

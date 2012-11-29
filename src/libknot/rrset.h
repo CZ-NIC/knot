@@ -392,6 +392,8 @@ knot_dname_t **knot_rrset_get_next_dname_pointer(const knot_rrset_t *rrset,
 
 uint8_t *knot_rrset_rdata_prealloc(const knot_rrset_t *rrset);
 
+void knot_rrset_rdata_dump(const knot_rrset_t *rrset, size_t rdata_pos);
+
 #endif /* _KNOT_RRSET_H_ */
 
 /*! @} */

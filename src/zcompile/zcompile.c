@@ -569,13 +569,6 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	                                    NULL, 0);
 	my_parser.current_zone = knot_zone_contents_new(my_parser.last_node,
 	                                                0, 0, zone);
-	file_loader_t* file_loader_create(const char	 *file_name,
-					  const char	 *zone_origin,
-					  const uint16_t default_class,
-					  const uint32_t default_ttl,
-					  void (*process_record)(const scanner_t *),
-					  void (*process_error)(const scanner_t *),
-					  void *data);
 	file_loader_t *loader = file_loader_create(zonefile, name,
 	                                           KNOT_CLASS_IN, 3600,
 	                                           process_rr,

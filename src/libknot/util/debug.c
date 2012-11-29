@@ -22,62 +22,17 @@
 
 #include "util/utils.h"
 #include "util/debug.h"
+#include "libknot/rrset.h"
+#include "common/descriptor_new.h"
 #include "common/print.h"
 
-void knot_rdata_dump(knot_rdata_t *rdata, uint32_t type, char loaded_zone)
+void knot_rdata_dump(const knot_rrset_t *rrset, size_t rdata_pos)
 {
 #if defined(KNOT_ZONE_DEBUG) || defined(KNOT_RDATA_DEBUG)
-	fprintf(stderr, "      ------- RDATA -------\n");
-	if (rdata == NULL) {
-		fprintf(stderr, "      There are no rdata in this RRset!\n");
-		fprintf(stderr, "      ------- RDATA -------\n");
-		return;
-	}
-	knot_rrtype_descriptor_t *desc = knot_rrtype_descriptor_by_type(type);
-	assert(desc != NULL);
-	char *name;
-
-	for (int i = 0; i < rdata->count; i++) {
-		if (rdata->items[i].raw_data == NULL) {
-			continue;
-		}
-		if (desc->wireformat[i] == KNOT_RDATA_WF_COMPRESSED_DNAME ||
-		    desc->wireformat[i] == KNOT_RDATA_WF_UNCOMPRESSED_DNAME ||
-		    desc->wireformat[i] == KNOT_RDATA_WF_LITERAL_DNAME ) {
-			assert(rdata->items[i].dname != NULL);
-			name = knot_dname_to_str(rdata->items[i].dname);
-			fprintf(stderr, "      DNAME: %d: %s (%p)\n",
-			       i, name, rdata->items[i].dname);
-			free(name);
-			if (loaded_zone) {
-				if (rdata->items[i].dname->node) {
-					name =
-					knot_dname_to_str(rdata->items[i].dname->node->owner);
-					fprintf(stderr, "      Has node owner: %s\n", name);
-					free(name);
-				} else {
-					fprintf(stderr, "      No node set\n");
-				}
-			}
-			fprintf(stderr, "      labels: ");
-			hex_print((char *)rdata->items[i].dname->labels,
-			                 rdata->items[i].dname->label_count);
-
-		} else {
-			assert(rdata->items[i].raw_data != NULL);
-			fprintf(stderr, "      %d: raw_data: length: %d\n", i,
-			       *(rdata->items[i].raw_data));
-			fprintf(stderr, "      ");
-			hex_print(((char *)(
-				rdata->items[i].raw_data + 1)),
-				rdata->items[i].raw_data[0]);
-		}
-	}
-	fprintf(stderr, "      ------- RDATA -------\n");
 #endif
 }
 
-void knot_rrset_dump(const knot_rrset_t *rrset, char loaded_zone)
+void knot_rrset_dump(const knot_rrset_t *rrset)
 {
 #if defined(KNOT_ZONE_DEBUG) || defined(KNOT_RRSET_DEBUG)
 	fprintf(stderr, "  ------- RRSET -------\n");
@@ -94,7 +49,7 @@ void knot_rrset_dump(const knot_rrset_t *rrset, char loaded_zone)
 
         fprintf(stderr, "  RRSIGs:\n");
         if (rrset->rrsigs != NULL) {
-                knot_rrset_dump(rrset->rrsigs, loaded_zone);
+                knot_rrset_dump(rrset->rrsigs);
         } else {
                 fprintf(stderr, "  none\n");
         }
@@ -104,21 +59,14 @@ void knot_rrset_dump(const knot_rrset_t *rrset, char loaded_zone)
 		fprintf(stderr, "  ------- RRSET -------\n");
 		return;
 	}
-
-	knot_rdata_t *tmp = rrset->rdata;
 	
-	while (tmp->next != rrset->rdata && tmp->next != NULL) {
-		knot_rdata_dump(tmp, rrset->type, loaded_zone);
-		tmp = tmp->next;
-	}
-
-	knot_rdata_dump(tmp, rrset->type, loaded_zone);
+	// TODO dump rdata
 
 	fprintf(stderr, "  ------- RRSET -------\n");
 #endif
 }
 
-void knot_node_dump(knot_node_t *node, void *loaded_zone)
+void knot_node_dump(knot_node_t *node)
 {
 #if defined(KNOT_ZONE_DEBUG) || defined(KNOT_NODE_DEBUG)
 	//char loaded_zone = *((char*) data);
@@ -197,7 +145,7 @@ void knot_node_dump(knot_node_t *node, void *loaded_zone)
 	fprintf(stderr, "RRSet count: %d\n", node->rrset_count);
 
 	for (int i = 0; i < node->rrset_count; i++) {
-		knot_rrset_dump(rrsets[i], (int) loaded_zone);
+		knot_rrset_dump(rrsets[i]);
 	}
 	free(rrsets);
 	//assert(node->owner->node == node);
@@ -205,7 +153,7 @@ void knot_node_dump(knot_node_t *node, void *loaded_zone)
 #endif
 }
 
-void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone)
+void knot_zone_contents_dump(knot_zone_contents_t *zone)
 {
 #if defined(KNOT_ZONE_DEBUG)
 	if (!zone) {
@@ -215,13 +163,13 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone)
 
 	fprintf(stderr, "------- ZONE --------\n");
 
-	knot_zone_contents_tree_apply_inorder(zone, knot_node_dump, (void *)&loaded_zone);
+	knot_zone_contents_tree_apply_inorder(zone, knot_node_dump, NULL);
 
 	fprintf(stderr, "------- ZONE --------\n");
 	
 	fprintf(stderr, "------- NSEC 3 tree -\n");
 
-	knot_zone_contents_nsec3_apply_inorder(zone, knot_node_dump, (void *)&loaded_zone);
+	knot_zone_contents_nsec3_apply_inorder(zone, knot_node_dump, NULL);
 
 	fprintf(stderr, "------- NSEC 3 tree -\n");
 #endif

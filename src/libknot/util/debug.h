@@ -92,7 +92,7 @@
  * \param loaded_zone Set to <> 0 if the RDATA is part of a zone loaded into
  *                    the server. Set to 0 otherwise.
  */
-void knot_rdata_dump(knot_rdata_t *rdata, uint32_t type, char loaded_zone);
+void knot_rdata_dump(const knot_rrset_t *rrset, size_t rdata_pos);
 
 /*!
  * \brief Dumps RRSet.
@@ -104,7 +104,7 @@ void knot_rdata_dump(knot_rdata_t *rdata, uint32_t type, char loaded_zone);
  * \param loaded_zone Set to <> 0 if the RRSet is part of a zone loaded into
  *                    the server. Set to 0 otherwise.
  */
-void knot_rrset_dump(const knot_rrset_t *rrset, char loaded_zone);
+void knot_rrset_dump(const knot_rrset_t *rrset);
 
 /*!
  * \brief Dumps zone node.
@@ -116,7 +116,7 @@ void knot_rrset_dump(const knot_rrset_t *rrset, char loaded_zone);
  * \param loaded_zone Set to <> 0 if the node is part of a zone loaded into
  *                    the server. Set to 0 otherwise.
  */
-void knot_node_dump(knot_node_t *node, void *loaded_zone);
+void knot_node_dump(knot_node_t *node);
 
 /*!
  * \brief Dumps the whole zone.
@@ -127,7 +127,7 @@ void knot_node_dump(knot_node_t *node, void *loaded_zone);
  * \param loaded_zone Set to <> 0 if the node is part of a zone loaded into
  *                    the server. Set to 0 otherwise.
  */
-void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
+void knot_zone_contents_dump(knot_zone_contents_t *zone);
 
 /******************************************************************************/
 
