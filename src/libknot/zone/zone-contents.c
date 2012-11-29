@@ -951,11 +951,11 @@ static int knot_zc_nsec3_parameters_match(const knot_rrset_t *rrset,
 	
 	dbg_zone_detail("RDATA algo: %u, iterations: %u, salt length: %u, salt:"
 	                " %.*s\n", 
-	                knot_rdata_nsec3_algorithm(rdata),
-	                knot_rdata_nsec3_iterations(rdata),
-	                knot_rdata_nsec3_salt_length(rdata),
-	                knot_rdata_nsec3_salt_length(rdata),
-	                knot_rdata_nsec3_salt(rdata));
+	                knot_rrset_rdata_nsec3_algorithm(rrset, rdata_pos),
+	                knot_rrset_rdata_nsec3_iterations(rrset, rdata_pos),
+	                knot_rrset_rdata_nsec3_salt_length(rrset, rdata_pos),
+	                knot_rrset_rdata_nsec3_salt_length(rrset, rdata_pos),
+	                knot_rrset_rdata_nsec3_salt(rrset, rdata_pos));
 	dbg_zone_detail("NSEC3PARAM algo: %u, iterations: %u, salt length: %u, "
 	                "salt: %.*s\n",  params->algorithm, params->iterations,
 	                params->salt_length, params->salt_length, params->salt);
@@ -1374,10 +1374,11 @@ int knot_zone_contents_add_rrset(knot_zone_contents_t *zone,
 	}
 
 dbg_zone_exec_detail(
-	char *name = knot_dname_to_str(knot_rrset_owner(rrset));
-	dbg_zone_detail("Adding RRSet to zone contents: %s, type %s\n",
-	                name, knot_rrtype_to_string(knot_rrset_type(rrset)));
-	free(name);
+//	char *name = knot_dname_to_str(knot_rrset_owner(rrset));
+	//TODO debug
+//	dbg_zone_detail("Adding RRSet to zone contents: %s, type %s\n",
+//	                name, knot_rrtype_to_string(knot_rrset_type(rrset)));
+//	free(name);
 );
 
 	// check if the RRSet belongs to the zone
@@ -1505,10 +1506,11 @@ dbg_zone_exec(
 
 		// find the RRSet in the node
 		// take only the first RDATA from the RRSIGs
-		dbg_zone_detail("Finding RRSet for type %s\n",
-		                knot_rrtype_to_string(
-		                      knot_rdata_rrsig_type_covered(
-		                      knot_rrset_rdata(rrsigs))));
+		//TODO debug
+//		dbg_zone_detail("Finding RRSet for type %s\n",
+//		                knot_rrtype_to_string(
+//		                      knot_rdata_rrsig_type_covered(
+//		                      knot_rrset_rdata(rrsigs))));
 		*rrset = knot_node_get_rrset(
 		             *node, knot_rrset_rdata_rrsig_type_covered(rrsigs));
 		if (*rrset == NULL) {

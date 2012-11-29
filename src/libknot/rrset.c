@@ -59,7 +59,7 @@ static uint8_t *rrset_rdata_pointer(const knot_rrset_t *rrset,
                                     size_t pos)
 {
 	if (rrset == NULL || rrset->rdata == NULL
-	    || rrset->rdata_count >= pos) {
+	    || pos >= rrset->rdata_count) {
 		return NULL;
 	}
 	
@@ -95,12 +95,13 @@ size_t rrset_rdata_naptr_bin_chunk_size(const knot_rrset_t *rrset,
 
 static uint32_t rrset_rdata_size_total(const knot_rrset_t *rrset)
 {
-	if (rrset == NULL || rrset->rdata_indices || rrset->rdata_count == 0) {
+	if (rrset == NULL || rrset->rdata_indices == NULL ||
+	    rrset->rdata_count == 0) {
 		return 0;
 	}
 	
 	/* Last index denotes end of all RRs. */
-	return (rrset->rdata_indices[rrset->rdata_count]);
+	return (rrset->rdata_indices[rrset->rdata_count - 1]);
 }
 
 
@@ -118,6 +119,8 @@ knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
 	}
 
 	ret->rdata = NULL;
+	ret->rdata_count = 0;
+	ret->rdata_indices = NULL;
 
 	/* Retain reference to owner. */
 	knot_dname_retain(owner);
@@ -133,6 +136,17 @@ knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
 
 /*----------------------------------------------------------------------------*/
 
+int knot_rrset_add_rdata_single(knot_rrset_t *rrset, uint8_t *rdata,
+                                uint32_t size)
+{
+	rrset->rdata_indices = malloc(sizeof(uint32_t));
+	assert(rrset->rdata_indices);
+	rrset->rdata_indices[0] = size;
+	rrset->rdata = rdata;
+	rrset->rdata_count = 1;
+	return KNOT_EOK;
+}
+
 int knot_rrset_add_rdata(knot_rrset_t *rrset,
                          uint8_t *rdata, uint32_t size)
 {
@@ -141,12 +155,20 @@ int knot_rrset_add_rdata(knot_rrset_t *rrset,
 	}
 	
 	/* Realloc indices. We will allocate exact size to save space. */
-	void *tmp = realloc(rrset->rdata_indices, rrset->rdata_count + 1);
+	/* TODO this sucks big time - allocation of length 1. */
+	/* But another variable holding allocated count is not a question. What now?*/
+	void *tmp = realloc(rrset->rdata_indices, (rrset->rdata_count + 1) * 100);
 	if (tmp == NULL) {
 		ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	} else {
+//		printf("Adding actual data. Type %d size %d\n",
+//		       rrset->type, size);
+		hex_print(rdata, size);
 		rrset->rdata_indices = tmp;
+		// TODO has to be better, realloc and all
+		rrset->rdata = malloc(size);
+		memcpy(rrset->rdata, rdata, size);
 	}
 	
 	if (rrset->rdata_count == 0) {
@@ -157,6 +179,10 @@ int knot_rrset_add_rdata(knot_rrset_t *rrset,
 	}
 	
 	rrset->rdata_count++;
+	
+//	printf("RDATA position %d is %d\n",
+//	       rrset->rdata_count,
+//	       rrset_rdata_offset(rrset, rrset->rdata_count - 1));
 
 	return KNOT_EOK;
 }
@@ -902,34 +928,34 @@ int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
 	       rrset_rdata_size_total(from) + 1);
 	
 	/* Here comes the hard part. */
-	if (copy_rdata_dnames) {
-		knot_dname_t *dname_from = NULL;
-		knot_dname_t **dname_to = NULL;
-		knot_dname_t *dname_copy = NULL;
-		while ((dname_from =
-		        knot_rrset_get_next_dname(from, dname_from)) != NULL) {
-			dname_to =
-				knot_rrset_get_next_dname_pointer(*to,
-					dname_to);
-			/* These pointers have to be the same. */
-			assert(dname_from == *dname_to);
-			dname_copy = knot_dname_deep_copy(dname_from);
-			if (dname_copy == NULL) {
-				dbg_rrset("rrset: deep_copy: Cannot copy RDATA"
-				          " dname.\n");
-				/*! \todo This will leak. Is it worth fixing? */
-				knot_rrset_deep_free(&(*to)->rrsigs, 1,
-				                     copy_rdata_dnames);
-				free((*to)->rdata);
-				free((*to)->rdata_indices);
-				free(*to);
-				return KNOT_ENOMEM;
-			}
+//	if (copy_rdata_dnames) {
+//		knot_dname_t *dname_from = NULL;
+//		knot_dname_t **dname_to = NULL;
+//		knot_dname_t *dname_copy = NULL;
+//		while ((dname_from =
+//		        knot_rrset_get_next_dname(from, dname_from)) != NULL) {
+//			dname_to =
+//				knot_rrset_get_next_dname_pointer(*to,
+//					dname_to);
+//			/* These pointers have to be the same. */
+//			assert(dname_from == *dname_to);
+//			dname_copy = knot_dname_deep_copy(dname_from);
+//			if (dname_copy == NULL) {
+//				dbg_rrset("rrset: deep_copy: Cannot copy RDATA"
+//				          " dname.\n");
+//				/*! \todo This will leak. Is it worth fixing? */
+//				knot_rrset_deep_free(&(*to)->rrsigs, 1,
+//				                     copy_rdata_dnames);
+//				free((*to)->rdata);
+//				free((*to)->rdata_indices);
+//				free(*to);
+//				return KNOT_ENOMEM;
+//			}
 			
-			/* This cannot work, test. TODO */
-			*dname_to = dname_copy;
-		}
-	}
+//			/* This cannot work, test. TODO */
+//			*dname_to = dname_copy;
+//		}
+//	}
 	
 	return KNOT_EOK;
 }
@@ -1097,7 +1123,14 @@ int knot_rrset_merge(void **r1, void **r2)
 	void *tmp = realloc(rrset1->rdata, rrset_rdata_size_total(rrset1) +
 	                    rrset_rdata_size_total(rrset2));
 	if (tmp == NULL) {
+		printf("%d %d\n", knot_rrset_rdata_rr_count(rrset1),
+		       knot_rrset_rdata_rr_count(rrset2));
+		printf("%d %d\n", rrset_rdata_size_total(rrset1),
+		       rrset_rdata_size_total(rrset2));
+		printf("%d %p %p\n", rrset1->type, rrset1->rdata, rrset2->rdata);
 		ERR_ALLOC_FAILED;
+		knot_rrset_dump(rrset1);
+		knot_rrset_dump(rrset2);
 		return KNOT_ENOMEM;
 	} else {
 		rrset1->rdata = tmp;
@@ -1109,15 +1142,17 @@ int knot_rrset_merge(void **r1, void **r2)
 	
 	/* Indices have to be readjusted. But space has to be made first. */
 	tmp = realloc(rrset1->rdata_indices,
-	              rrset1->rdata_count + rrset2->rdata_count + 1);
+	              (rrset1->rdata_count + rrset2->rdata_count) *
+	              sizeof(uint32_t));
 	if (tmp == NULL) {
 		ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	} else {
-		rrset1->rdata = tmp;
+		rrset1->rdata_indices = tmp;
 	}
 	
 	uint32_t rrset1_total_size = rrset_rdata_size_total(rrset1);
+	uint32_t rrset2_total_size = rrset_rdata_size_total(rrset2);
 	
 	/*
 	 * Move the indices. Discard the last item in the first array, as it 
@@ -1127,12 +1162,17 @@ int knot_rrset_merge(void **r1, void **r2)
 	       rrset2->rdata_indices, rrset2->rdata_count);
 	
 	/* Go through the second part of index array and adjust offsets. */
-	for (uint16_t i = 0; i < rrset2->rdata_count; i++) {
+	for (uint16_t i = 0; i < rrset2->rdata_count - 1; i++) {
 		rrset1->rdata_indices[rrset1->rdata_count + i] +=
 			rrset1_total_size;
 	}
 	
+	rrset1->rdata_indices[rrset1->rdata_count + rrset2->rdata_count - 1] = 
+		rrset1_total_size + rrset2_total_size;
+	
 	rrset1->rdata_count += rrset2->rdata_count;
+	
+//	knot_rrset_dump(rrset1);
 	
 	return KNOT_EOK;
 }
@@ -1287,16 +1327,6 @@ int knot_rrset_merge_no_dupl(void **r1, void **r2)
 
 //	return KNOT_EOK;
 //}
-
-uint32_t knot_rrset_rdata_length(const knot_rrset_t *rrset, size_t rdata_pos)
-{
-	return 0;
-}
-
-uint32_t knot_rrset_rdata_length_total(const knot_rrset_t *rrset)
-{
-	return 0;
-}
 
 /*----------------------------------------------------------------------------*/
 
@@ -1577,39 +1607,88 @@ uint8_t *knot_rrset_rdata_prealloc(const knot_rrset_t *rrset)
 	return ret;
 }
 
+
+void knot_rrset_dump(const knot_rrset_t *rrset)
+{
+	if (rrset == NULL) {
+		return;
+	}
+	
+	fprintf(stderr, "      ------- RRSET -------\n");
+	
+	char *name = knot_dname_to_str(rrset->owner);
+	fprintf(stderr, "  owner: %s\n", name);
+	free(name);
+	fprintf(stderr, "  type: %u\n", rrset->type);
+	fprintf(stderr, "  class: %d\n",  rrset->rclass);
+	fprintf(stderr, "  ttl: %d\n", rrset->ttl);
+	fprintf(stderr, "  RDATA count: %d\n", rrset->rdata_count);
+	
+	fprintf(stderr, "  RRSIGs:\n");
+	if (rrset->rrsigs != NULL) {
+	        knot_rrset_dump(rrset->rrsigs);
+	} else {
+	        fprintf(stderr, "  none\n");
+	}
+	
+	fprintf(stderr, "RDATA indices (total=%d):\n",
+	        rrset_rdata_size_total(rrset));
+	for (uint16_t i = 0; i < rrset->rdata_count; i++) {
+		fprintf(stderr, "%d=%d ", i, rrset_rdata_offset(rrset, i));
+	}
+	fprintf(stderr, "\n");
+	
+	if (knot_rrset_rdata_rr_count(rrset) == 0) {
+		fprintf(stderr, "NO RDATA\n");
+	}
+	
+	for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(rrset);i ++) {
+		knot_rrset_rdata_dump(rrset, i);
+	}
+}
+
 void knot_rrset_rdata_dump(const knot_rrset_t *rrset, size_t rdata_pos)
 {
-	fprintf(stderr, "      ------- RDATA -------\n");
+	fprintf(stderr, "      ------- RDATA pos=%d -------\n", rdata_pos);
 	if (rrset->rdata_count == 0) {
 		fprintf(stderr, "      There are no rdata in this RRset!\n");
 		fprintf(stderr, "      ------- RDATA -------\n");
 		return;
 	}
-	
 	rdata_descriptor_t *desc = get_rdata_descriptor(knot_rrset_type(rrset));
 	assert(desc != NULL);
+	
+//	fprintf(stderr, "Packed form (%p size=%d):\n", rrset->rdata,
+//	        knot_rrset_rdata_length_total(rrset));
+//	hex_print(rrset->rdata, knot_rrset_rdata_length(rrset, rdata_pos));
 
 	size_t offset = 0;
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
 		int item = desc->block_types[i];
-		uint8_t *rdata = rrset_rdata_offset(rrset, rdata_pos);
+		uint8_t *rdata = rrset_rdata_pointer(rrset, rdata_pos);
 		if (descriptor_item_is_dname(item)) {
-			knot_dname_t *dname =
-				(knot_dname_t *)(rdata + offset);
+			knot_dname_t *dname;
+			memcpy(&dname, rdata + offset, sizeof(knot_dname_t *));
 			char *name = knot_dname_to_str(dname);
 			if (dname == NULL) {
 				fprintf(stderr, "DNAME error.\n");
 				return;
 			}
-			fprintf(stderr, "block=%d DNAME=%s.\n",
+			fprintf(stderr, "block=%d: DNAME=%s.\n",
 			        i, name);
 			free(name);
+			offset += sizeof(knot_dname_t *);
 		} else if (descriptor_item_is_fixed(item)) {
-			;
+			fprintf(stderr, "block=%d Raw data:\n",
+			        i);
+			hex_print(rdata + offset, item);
+			offset += item;
 		} else if (descriptor_item_is_remainder(item)) {
+			printf("remainder TODO\n");
 			;
 		} else {
 			assert(rrset->type == KNOT_RRTYPE_NAPTR);
+			assert(0);
 		}
 	}
 }

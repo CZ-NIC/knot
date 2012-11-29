@@ -47,6 +47,11 @@
 #include "libknot/util/utils.h"
 #include "zscanner/file_loader.h"
 
+#define dbg_zp_detail printf
+#define dbg_zp printf
+
+#define dbg_zp_exec_detail(cmds) do { cmds } while (0)
+
 
 struct parser {
 	rrset_list_t *node_rrsigs;
@@ -129,8 +134,8 @@ static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
 
 	if (tmp_rrset == NULL) {
 		dbg_zp("zp: find_rr_for_sig_in_node: Node does not contain "
-		       "RRSet of type %s.\n",
-		       knot_rrtype_to_string(rrsig_type_covered(rrsig)));
+		       "RRSet of type %d.\n",
+		       knot_rrset_rdata_rrsig_type_covered(rrsig));
 		tmp_rrset = knot_rrset_new(rrsig->owner,
 		                           knot_rrset_rdata_rrsig_type_covered(rrsig),
 		                           rrsig->rclass,
@@ -245,23 +250,28 @@ int add_rdata_to_rr(knot_rrset_t *rrset, const scanner_t *scanner)
 			                                 scanner->r_data_blocks[i + 1] - scanner->r_data_blocks[i],
 			                                 NULL);
 			if (dname == NULL) {
-				printf("Dname failed\n.");
 				//TODO handle
 				return KNOT_ERROR;
 			}
-			
+dbg_zp_exec_detail(
+			char *name = knot_dname_to_str(dname);
+			dbg_zp_detail("zp: arr_rdata_to_rr: "
+			              "Offset=%d:Adding dname=%s (%p)\n",
+			              offset, name, dname);
+			free(name);
+);
 			memcpy(rdata + offset, &dname, sizeof(knot_dname_t *));
 			offset += sizeof(knot_dname_t *);
 			//parse dname from binary
 		} else if (descriptor_item_is_fixed(item)) {
 			//copy the whole thing
 			// TODO check the size
+			assert(item == scanner->r_data_blocks[i + 1] -
+			       scanner->r_data_blocks[i]);
 			memcpy(rdata + offset,
 			       scanner->r_data + scanner->r_data_blocks[i],
-			       scanner->r_data_blocks[i + 1] -
-			       scanner->r_data_blocks[i]);
-			offset += scanner->r_data_blocks[i + 1] -
-			          scanner->r_data_blocks[i];
+			       item);
+			offset += item;
 		} else if (descriptor_item_is_remainder(item)) {
 			//copy the rest
 			memcpy(rdata + offset,
@@ -277,14 +287,12 @@ int add_rdata_to_rr(knot_rrset_t *rrset, const scanner_t *scanner)
 		}
 	}
 	
-	int ret = knot_rrset_add_rdata(rrset, rdata, offset);
+	int ret = knot_rrset_add_rdata_single(rrset, rdata, offset);
 	if (ret != KNOT_EOK) {
 		dbg_zp("zp: add_rdat_to_rr: Could not add RR. Reason: %s.\n",
 		       knot_strerror(ret));
 		return ret;
 	}
-	
-	printf("Data ok\n");
 	
 	return KNOT_EOK;
 }
@@ -310,12 +318,7 @@ void process_rr(const scanner_t *scanner)
 	int ret = add_rdata_to_rr(current_rrset, scanner);
 	assert(ret == 0);
 
-dbg_zp_exec_detail(
-	char *name = knot_dname_to_str(parser->current_rrset->owner);
-	dbg_zp_detail("zp: process_rr: Processing RR owned by: %s .\n",
-	              name);
-	free(name);
-);
+	
 	dbg_zp_verb("zp: process_rr: Processing type: %s.\n",
 	            knot_rrtype_to_string(parser->current_rrset->type));
 	dbg_zp_verb("zp: process_rr: RDATA count: %d.\n",\
@@ -385,12 +388,12 @@ dbg_zp_exec_detail(
 
 	if (current_rrset->type == KNOT_RRTYPE_RRSIG) {
 		/*!< \todo Use deep copy function here! */
-		knot_rrset_t *tmp_rrsig = NULL;
-		int ret = knot_rrset_deep_copy(current_rrset, &tmp_rrsig, 1);
-		if (ret != KNOT_EOK) {
-			dbg_zp("zp: Cannot copy RRSet.\n");
-			return ret;
-		}
+		knot_rrset_t *tmp_rrsig = current_rrset;
+//		int ret = knot_rrset_deep_copy(current_rrset, &tmp_rrsig, 1);
+//		if (ret != KNOT_EOK) {
+//			dbg_zp("zp: Cannot copy RRSet.\n");
+//			return ret;
+//		}
 //		knot_rrset_t *tmp_rrsig =
 //			knot_rrset_new(current_rrset->owner,
 //					     KNOT_RRTYPE_RRSIG,
@@ -501,11 +504,14 @@ dbg_zp_exec_detail(
 
 	rrset = knot_node_get_rrset(node, current_rrset->type);
 	if (!rrset) {
-		int ret = knot_rrset_deep_copy(current_rrset, &rrset, 1);
-		if (ret != KNOT_EOK) {
-			dbg_zp("zp: Cannot copy RRSet.\n");
-			return ret;
-		}
+		rrset = current_rrset;
+	}
+///	if (!rrset) {
+//		int ret = knot_rrset_deep_copy(current_rrset, &rrset, 1);
+//		if (ret != KNOT_EOK) {
+//			dbg_zp("zp: Cannot copy RRSet.\n");
+//			return ret;
+//		}
 //		rrset = knot_rrset_new(current_rrset->owner,
 //					 current_rrset->type,
 //					 current_rrset->rclass,
@@ -524,30 +530,30 @@ dbg_zp_exec_detail(
 //		}
 		
 		/* Selected merge option does not really matter here. */
-		if (knot_zone_contents_add_rrset(contents, rrset, &node,
-		                   KNOT_RRSET_DUPL_MERGE, 1) < 0) {
-			knot_rrset_free(&rrset);
-			dbg_zp("zp: process_rr: Cannot "
-			       "add RDATA to RRSet.\n");
-			return KNOTDZCOMPILE_EBRDATA;
-		}
-	} else {
-		if (current_rrset->type !=
-				KNOT_RRTYPE_RRSIG && rrset->ttl !=
-				current_rrset->ttl) {
-			fprintf(stderr, 
-				"TTL does not match the TTL of the RRSet. "
-				"Changing to %d.\n", rrset->ttl);
-		}
-
-		if (knot_zone_contents_add_rrset(contents, current_rrset,
-		                          &node,
-		                   KNOT_RRSET_DUPL_MERGE, 1) < 0) {
-			dbg_zp("zp: process_rr: Cannot "
-			       "merge RRSets.\n");
-			return KNOTDZCOMPILE_EBRDATA;
-		}
+//		if (knot_zone_contents_add_rrset(contents, current_rrset, &node,
+//		                   KNOT_RRSET_DUPL_MERGE, 1) < 0) {
+//			knot_rrset_free(&rrset);
+//			dbg_zp("zp: process_rr: Cannot "
+//			       "add RDATA to RRSet.\n");
+//			return KNOTDZCOMPILE_EBRDATA;
+//		}
+//	} else {
+	if (current_rrset->type !=
+			KNOT_RRTYPE_RRSIG && rrset->ttl !=
+			current_rrset->ttl) {
+		fprintf(stderr, 
+			"TTL does not match the TTL of the RRSet. "
+			"Changing to %d.\n", rrset->ttl);
 	}
+
+	if (knot_zone_contents_add_rrset(contents, current_rrset,
+	                          &node,
+	                   KNOT_RRSET_DUPL_MERGE, 1) < 0) {
+		dbg_zp("zp: process_rr: Cannot "
+		       "add RRSets.\n");
+		return KNOTDZCOMPILE_EBRDATA;
+	}
+//	}
 
 	parser->last_node = node;
 	
@@ -569,12 +575,13 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	                                    NULL, 0);
 	my_parser.current_zone = knot_zone_contents_new(my_parser.last_node,
 	                                                0, 0, zone);
+	my_parser.node_rrsigs = NULL;
 	file_loader_t *loader = file_loader_create(zonefile, name,
 	                                           KNOT_CLASS_IN, 3600,
 	                                           process_rr,
 	                                           process_error, &my_parser);
 	file_loader_process(loader);
-	printf("Done?\n");
+	file_loader_free(loader);
 }
 
 /*! @} */

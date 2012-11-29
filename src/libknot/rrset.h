@@ -351,9 +351,6 @@ int knot_rrset_merge_no_dupl(void **r1, void **r2);
 const knot_dname_t *knot_rrset_rdata_cname_name(const knot_rrset_t *rrset);
 const knot_dname_t *knot_rrset_rdata_dname_target(const knot_rrset_t *rrset);
 
-uint32_t knot_rrset_rdata_length(const knot_rrset_t *rrset, size_t rdata_pos);
-uint32_t knot_rrset_rdata_length_total(const knot_rrset_t *rrset);
-
 const knot_dname_t *knot_rrset_rdata_cname_name(const knot_rrset_t *rrset);
 const knot_dname_t *knot_rrset_rdata_dname_target(const knot_rrset_t *rrset);
 int64_t knot_rrset_rdata_soa_serial(const knot_rrset_t *rrset);
@@ -392,6 +389,7 @@ knot_dname_t **knot_rrset_get_next_dname_pointer(const knot_rrset_t *rrset,
 
 uint8_t *knot_rrset_rdata_prealloc(const knot_rrset_t *rrset);
 
+void knot_rrset_dump(const knot_rrset_t *rrset);
 void knot_rrset_rdata_dump(const knot_rrset_t *rrset, size_t rdata_pos);
 
 #endif /* _KNOT_RRSET_H_ */

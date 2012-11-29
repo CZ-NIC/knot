@@ -44,12 +44,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-//#ifndef _KNOT_DESCRIPTOR_H_
-//#define _KNOT_DESCRIPTOR_H_
+#ifndef _KNOT_DESCRIPTOR_H_
+#define _KNOT_DESCRIPTOR_H_
 
-//#include <stdint.h>
-//#include <stdbool.h>
-//#include <string.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <string.h>
+#include <common/descriptor_new.h>
 
 //enum knot_mxrdtln {
 //	/*! \brief Maximum items in RDATA wireformat. */
@@ -314,67 +315,67 @@
 // */
 //knot_rrtype_descriptor_t *knot_rrtype_descriptor_by_name(const char *name);
 
-///*!
-// * \brief Converts numeric type representation to mnemonic string.
-// *
-// * \param rrtype  Type RR type code to be converted.
-// * \param out     Output buffer.
-// * \param out_len Length of the output buffer.
-// *
-// * \return Length of output string.
-// * \return -1 if error.
-// */
-//int32_t knot_rrtype_to_string(const uint16_t rrtype,
-//			      char           *out,
-//			      const uint32_t out_len);
+/*!
+ * \brief Converts numeric type representation to mnemonic string.
+ *
+ * \param rrtype  Type RR type code to be converted.
+ * \param out     Output buffer.
+ * \param out_len Length of the output buffer.
+ *
+ * \return Length of output string.
+ * \return -1 if error.
+ */
+int32_t knot_rrtype_to_string(const uint16_t rrtype,
+			      char           *out,
+			      const uint32_t out_len);
 
-///*!
-// * \brief Converts mnemonic string representation of a type to numeric one.
-// *
-// * \param name Mnemonic string to be converted.
-// *
-// * \return Correct code if found, 0 otherwise.
-// */
-//uint16_t knot_rrtype_from_string(const char *name);
+/*!
+ * \brief Converts mnemonic string representation of a type to numeric one.
+ *
+ * \param name Mnemonic string to be converted.
+ *
+ * \return Correct code if found, 0 otherwise.
+ */
+uint16_t knot_rrtype_from_string(const char *name);
 
-///*!
-// * \brief Converts numeric class representation to the string one.
-// *
-// * \param rrclass Class code to be converted.
-// * \param out     Output buffer.
-// * \param out_len Length of the output buffer.
-// *
-// * \return Length of output string.
-// * \return -1 if error.
-// */
-//int32_t knot_rrclass_to_string(const uint16_t rrclass,
-//			       char           *out,
-//			       const uint32_t out_len);
+/*!
+ * \brief Converts numeric class representation to the string one.
+ *
+ * \param rrclass Class code to be converted.
+ * \param out     Output buffer.
+ * \param out_len Length of the output buffer.
+ *
+ * \return Length of output string.
+ * \return -1 if error.
+ */
+int32_t knot_rrclass_to_string(const uint16_t rrclass,
+			       char           *out,
+			       const uint32_t out_len);
 
-///*!
-// * \brief Converts string representation of a class to numeric one.
-// *
-// * \param name Class string to be converted.
-// *
-// * \return Correct code if found, 0 otherwise.
-// */
-//uint16_t knot_rrclass_from_string(const char *name);
+/*!
+ * \brief Converts string representation of a class to numeric one.
+ *
+ * \param name Class string to be converted.
+ *
+ * \return Correct code if found, 0 otherwise.
+ */
+uint16_t knot_rrclass_from_string(const char *name);
 
-///*!
-// * \brief Returns size of wireformat type in bytes.
-// *
-// * \param wire_type Wireformat type.
-// *
-// * \retval Size of given type on success.
-// * \retval 0 on unknown type or type that has no length.
-// */
-//size_t knot_wireformat_size(unsigned int wire_type);
+/*!
+ * \brief Returns size of wireformat type in bytes.
+ *
+ * \param wire_type Wireformat type.
+ *
+ * \retval Size of given type on success.
+ * \retval 0 on unknown type or type that has no length.
+ */
+size_t knot_wireformat_size(unsigned int wire_type);
 
-//int knot_rrtype_is_metatype(uint16_t type);
+int knot_rrtype_is_metatype(uint16_t type);
 
-//size_t knot_ds_digest_length(uint8_t algorithm);
+size_t knot_ds_digest_length(uint8_t algorithm);
 
-//#endif /* _KNOT_DESCRIPTOR_H_ */
+#endif /* _KNOT_DESCRIPTOR_H_ */
 
-///*! @} */
+/*! @} */
 

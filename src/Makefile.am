@@ -18,9 +18,7 @@ knot_zcompile_SOURCES =				\
 	libknot/rrset.h				\
 	zcompile/zcompile_main.c		\
 	zcompile/zcompile-error.c		\
-	zcompile/parser-descriptor.h		\
 	zcompile/zcompile.c			\
-	zcompile/parser-descriptor.c		\
 	zscanner/test/processing.h		\
 	zscanner/test/processing.c		\
 	libknot/util/utils.c			\

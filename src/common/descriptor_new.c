@@ -131,4 +131,3 @@ int descriptor_item_is_remainder(int item)
 	}
 }
 
-

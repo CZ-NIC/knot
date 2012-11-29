@@ -32,39 +32,39 @@ void knot_rdata_dump(const knot_rrset_t *rrset, size_t rdata_pos)
 #endif
 }
 
-void knot_rrset_dump(const knot_rrset_t *rrset)
-{
-#if defined(KNOT_ZONE_DEBUG) || defined(KNOT_RRSET_DEBUG)
-	fprintf(stderr, "  ------- RRSET -------\n");
-	fprintf(stderr, "  %p\n", rrset);
-	if (!rrset) {
-		return;
-	}
-        char *name = knot_dname_to_str(rrset->owner);
-        fprintf(stderr, "  owner: %s\n", name);
-        free(name);
-	fprintf(stderr, "  type: %u\n", rrset->type);
-	fprintf(stderr, "  class: %d\n", rrset->rclass);
-	fprintf(stderr, "  ttl: %d\n", rrset->ttl);
+//void knot_rrset_dump(const knot_rrset_t *rrset)
+//{
+//#if defined(KNOT_ZONE_DEBUG) || defined(KNOT_RRSET_DEBUG)
+//	fprintf(stderr, "  ------- RRSET -------\n");
+//	fprintf(stderr, "  %p\n", rrset);
+//	if (!rrset) {
+//		return;
+//	}
+//        char *name = knot_dname_to_str(rrset->owner);
+//        fprintf(stderr, "  owner: %s\n", name);
+//        free(name);
+//	fprintf(stderr, "  type: %u\n", rrset->type);
+//	fprintf(stderr, "  class: %d\n", rrset->rclass);
+//	fprintf(stderr, "  ttl: %d\n", rrset->ttl);
 
-        fprintf(stderr, "  RRSIGs:\n");
-        if (rrset->rrsigs != NULL) {
-                knot_rrset_dump(rrset->rrsigs);
-        } else {
-                fprintf(stderr, "  none\n");
-        }
+//        fprintf(stderr, "  RRSIGs:\n");
+//        if (rrset->rrsigs != NULL) {
+//                knot_rrset_dump(rrset->rrsigs);
+//        } else {
+//                fprintf(stderr, "  none\n");
+//        }
 
-	if (rrset->rdata == NULL) {
-		fprintf(stderr, "  NO RDATA!\n");
-		fprintf(stderr, "  ------- RRSET -------\n");
-		return;
-	}
+//	if (rrset->rdata == NULL) {
+//		fprintf(stderr, "  NO RDATA!\n");
+//		fprintf(stderr, "  ------- RRSET -------\n");
+//		return;
+//	}
 	
-	// TODO dump rdata
+//	// TODO dump rdata
 
-	fprintf(stderr, "  ------- RRSET -------\n");
-#endif
-}
+//	fprintf(stderr, "  ------- RRSET -------\n");
+//#endif
+//}
 
 void knot_node_dump(knot_node_t *node)
 {
