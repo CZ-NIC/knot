@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+	/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -157,25 +157,45 @@ int knot_rrset_add_rdata(knot_rrset_t *rrset,
 	/* Realloc indices. We will allocate exact size to save space. */
 	/* TODO this sucks big time - allocation of length 1. */
 	/* But another variable holding allocated count is not a question. What now?*/
-	void *tmp = realloc(rrset->rdata_indices, (rrset->rdata_count + 1) * 100);
+	void *tmp = realloc(rrset->rdata_indices,
+	                    (rrset->rdata_count + 1) * sizeof(uint32_t));
 	if (tmp == NULL) {
 		ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	} else {
+		//TODO not all this has to be in the block
 //		printf("Adding actual data. Type %d size %d\n",
 //		       rrset->type, size);
-		hex_print(rdata, size);
+//		hex_print(rdata, size);
 		rrset->rdata_indices = tmp;
 		// TODO has to be better, realloc and all
-		rrset->rdata = malloc(size);
-		memcpy(rrset->rdata, rdata, size);
+		/* Realloc actual data. */
+		tmp = realloc(rrset->rdata,
+		              rrset_rdata_size_total(rrset) + size);
+		if (tmp == NULL) {
+			printf(rrset_rdata_size_total(rrset) + size);
+			ERR_ALLOC_FAILED;
+			return KNOT_ENOMEM;
+		} else {
+			rrset->rdata = tmp;
+		}
+		
+		// copy data
+		memcpy(rrset->rdata + rrset_rdata_size_total(rrset),
+		       rdata, size);
 	}
 	
+	// deal with indices
 	if (rrset->rdata_count == 0) {
 		rrset->rdata_indices[0] = size;
+	} else if (rrset->rdata_count == 1) {
+		uint32_t total_size = rrset_rdata_size_total(rrset);
+		rrset->rdata_indices[0] = total_size;
+		rrset->rdata_indices[1] = size + total_size;
 	} else {
-		rrset->rdata_indices[rrset->rdata_count] =
-			rrset->rdata_indices[rrset->rdata_count - 1] + size;
+		uint32_t total_size = rrset_rdata_size_total(rrset);
+		rrset->rdata_indices[rrset->rdata_count - 1] = total_size;
+		rrset->rdata_indices[rrset->rdata_count] = total_size + size;
 	}
 	
 	rrset->rdata_count++;
@@ -1685,10 +1705,6 @@ void knot_rrset_rdata_dump(const knot_rrset_t *rrset, size_t rdata_pos)
 	rdata_descriptor_t *desc = get_rdata_descriptor(knot_rrset_type(rrset));
 	assert(desc != NULL);
 	
-//	fprintf(stderr, "Packed form (%p size=%d):\n", rrset->rdata,
-//	        knot_rrset_rdata_length_total(rrset));
-//	hex_print(rrset->rdata, knot_rrset_rdata_length(rrset, rdata_pos));
-
 	size_t offset = 0;
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
 		int item = desc->block_types[i];

@@ -147,8 +147,9 @@ static int knot_zone_contents_solve_rrset_dnames(knot_zone_contents_t *zone,
 {
 	assert(rrset != NULL && zone != NULL);
 	
-	/* Try to find the owner. */
-
+	/* Try to find the owner. Owner is likely to be in the tree itself. */
+	knot_dname_t *dname = NULL;
+//	knot_zone_contents_find_dname(zone, rrset->owner, const knot_node_t **node, const knot_node_t **closest_encloser, const knot_node_t **previous)
 	// for each RDATA in RRSet
 	uint16_t rr_count = knot_rrset_rdata_rr_count(rrset);
 	for (int i = 0; i < rr_count; i++) {
@@ -184,6 +185,7 @@ static int knot_zone_contents_solve_node_dnames(knot_zone_contents_t *zone,
 		dbg_zone_detail("Inserting RRSets from node to table.\n");
 		int rc = knot_zone_contents_solve_rrset_dnames(zone, rrsets[i]);
 		if (rc != KNOT_EOK) {
+			dbg_zone("zone: solve_dnames:");
 			return rc;
 		}
 	}
@@ -1434,6 +1436,9 @@ dbg_zone_exec_detail(
 	// table)
 	/*! \todo Do even if domain table is not used?? */
 	if (ret == KNOT_EOK && rrset->owner != (*node)->owner) {
+		if (rrset->owner != (*node)->owner) {
+			knot_dname_free(&rrset->owner);
+		}
 		knot_rrset_set_owner(rrset, (*node)->owner);
 	}
 

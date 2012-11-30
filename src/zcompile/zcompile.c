@@ -53,6 +53,8 @@
 //#define dbg_zp_exec_detail(cmds) do { cmds } while (0)
 
 static long rr_count = 0;
+static long new_rr_count = 0;
+static long new_dname_count = 0;
 static long err_count = 0;
 
 struct parser {
@@ -232,6 +234,33 @@ static void process_error(const scanner_t *s)
 	fflush(stdout);
 }
 
+// TODO this could be a part of the cycle below, but we'd need a buffer.
+static size_t calculate_item_size(const knot_rrset_t *rrset,
+                               const scanner_t *scanner)
+{
+	rdata_descriptor_t *desc = get_rdata_descriptor(rrset->type);
+	assert(desc);
+	size_t size = 0;
+	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
+		int item = desc->block_types[i];
+		if (descriptor_item_is_dname(item)) {
+			size += sizeof(knot_dname_t *);
+		} else if (descriptor_item_is_fixed(item)) {
+			assert(item == scanner->r_data_blocks[i + 1] -
+			       scanner->r_data_blocks[i]);
+			size += item;
+		} else if (descriptor_item_is_remainder(item)) {
+			size += scanner->r_data_blocks[i + 1] -
+			        scanner->r_data_blocks[i];
+		} else {
+			//naptr
+			assert(0);
+		}
+	}
+	
+	return size;
+}
+
 static int add_rdata_to_rr(knot_rrset_t *rrset, const scanner_t *scanner)
 {
 	if (rrset == NULL) {
@@ -243,9 +272,11 @@ static int add_rdata_to_rr(knot_rrset_t *rrset, const scanner_t *scanner)
 		get_rdata_descriptor(knot_rrset_type(rrset));
 	assert(desc);
 	
-	/* TODO it needs to return size as well!. */
-	/* A good idea might be, once we know, what the size of say, RRSIGs will be, its not gonna change, so we can store it somewhere to further speedup processing. */
-	uint8_t *rdata = knot_rrset_rdata_prealloc(rrset);
+	dbg_zp_detail("zp: add_rdata_to_rr: Adding type %d, RRSet has %d RRs.\n",
+	              rrset->type, rrset->rdata_count);
+	
+	uint8_t *rdata = malloc(calculate_item_size(rrset, scanner));
+	assert(rdata);
 	size_t offset = 0;
 	
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
@@ -295,7 +326,7 @@ dbg_zp_exec_detail(
 		}
 	}
 	
-	int ret = knot_rrset_add_rdata_single(rrset, rdata, offset);
+	int ret = knot_rrset_add_rdata(rrset, rdata, offset);
 	if (ret != KNOT_EOK) {
 		dbg_zp("zp: add_rdat_to_rr: Could not add RR. Reason: %s.\n",
 		       knot_strerror(ret));
@@ -307,21 +338,51 @@ dbg_zp_exec_detail(
 
 static void process_rr(const scanner_t *scanner)
 {
+	dbg_zp_detail("Owner from parser=%s\n",
+	              scanner->r_owner);
 	rr_count++;
+	char add = 0;
 	parser_t *parser = scanner->data;
 	knot_zone_contents_t *contents = parser->current_zone;
 	/* Create rrset. TODO will not be always needed. */
-	knot_dname_t *current_owner =
+	knot_dname_t *current_owner = NULL;
+	knot_rrset_t *current_rrset = NULL;
+	if (parser->last_node &&
+	    (scanner->r_owner_length == parser->last_node->owner->size) &&
+	    (strncmp(parser->last_node->owner->name,
+	            scanner->r_owner, scanner->r_owner_length) == 0)) {
+		// no need to create new dname;
+		current_owner = parser->last_node->owner;
+		// what about RRSet, do we need a new one?
+		current_rrset = knot_node_get_rrset(parser->last_node,
+		                                    scanner->r_type);
+		if (current_rrset == NULL) {
+			add = 1;
+			new_rr_count++;
+			current_rrset =
+				knot_rrset_new(current_owner,
+				               scanner->r_type,
+				               scanner->r_class,
+				               scanner->r_ttl);
+		}
+	} else {
+		add = 1;
+		new_dname_count++;
+		new_rr_count++;
+		current_owner = 
 	                knot_dname_new_from_wire(scanner->r_owner,
 	                                         scanner->r_owner_length,
 	                                         NULL);
+		current_rrset =
+			knot_rrset_new(current_owner,
+			               scanner->r_type,
+			               scanner->r_class,
+			               scanner->r_ttl);
+	}
+	
 	assert(current_owner);
-	knot_rrset_t *current_rrset = knot_rrset_new(current_owner, scanner->r_type,
-	                                       scanner->r_class,
-	                                       scanner->r_ttl);
-	assert(current_rrset);
 	parser->current_rrset = current_rrset;
-	knot_rrset_t *rrset;
+	assert(current_rrset);
 	
 	int ret = add_rdata_to_rr(current_rrset, scanner);
 	assert(ret == 0);
@@ -441,11 +502,14 @@ static void process_rr(const scanner_t *scanner)
 			
 			if (parser->last_node == NULL) {
 				/* Try NSEC3 tree. */
-				parser->last_node =
-					knot_zone_contents_get_nsec3_node(
-						contents,
-						knot_rrset_owner(
-							current_rrset));
+				if (current_rrset->type == KNOT_RRTYPE_NSEC3 ||
+				    current_rrset->type == KNOT_RRTYPE_RRSIG) {
+					parser->last_node =
+						knot_zone_contents_get_nsec3_node(
+							contents,
+							knot_rrset_owner(
+								current_rrset));
+				}
 			}
 			
 			if (parser->last_node == NULL) {
@@ -509,11 +573,13 @@ static void process_rr(const scanner_t *scanner)
 			return KNOTDZCOMPILE_EBADNODE;
 		}
 	}
-
-	rrset = knot_node_get_rrset(node, current_rrset->type);
-	if (!rrset) {
-		rrset = current_rrset;
-	}
+	
+//	rrset = knot_node_get_rrset(node, current_rrset->type);
+//	if (!rrset) {
+//		rrset = current_rrset;
+//	} else {
+//		merged = 1;
+//	}
 ///	if (!rrset) {
 //		int ret = knot_rrset_deep_copy(current_rrset, &rrset, 1);
 //		if (ret != KNOT_EOK) {
@@ -546,20 +612,23 @@ static void process_rr(const scanner_t *scanner)
 //			return KNOTDZCOMPILE_EBRDATA;
 //		}
 //	} else {
-	if (current_rrset->type !=
-			KNOT_RRTYPE_RRSIG && rrset->ttl !=
-			current_rrset->ttl) {
-		fprintf(stderr, 
-			"TTL does not match the TTL of the RRSet. "
-			"Changing to %d.\n", rrset->ttl);
-	}
+//	TODO needs solving
+//	if (current_rrset->type !=
+//			KNOT_RRTYPE_RRSIG && rrset->ttl !=
+//			current_rrset->ttl) {
+//		fprintf(stderr, 
+//			"TTL does not match the TTL of the RRSet. "
+//			"Changing to %d.\n", rrset->ttl);
+//	}
 
-	if (knot_zone_contents_add_rrset(contents, current_rrset,
-	                          &node,
-	                   KNOT_RRSET_DUPL_MERGE, 1) < 0) {
-		dbg_zp("zp: process_rr: Cannot "
-		       "add RRSets.\n");
-		return KNOTDZCOMPILE_EBRDATA;
+	if (add) {
+		if (knot_zone_contents_add_rrset(contents, current_rrset,
+		                          &node,
+		                   KNOT_RRSET_DUPL_MERGE, 1) < 0) {
+			dbg_zp("zp: process_rr: Cannot "
+			       "add RRSets.\n");
+			return KNOTDZCOMPILE_EBRDATA;
+		}
 	}
 //	}
 
@@ -595,6 +664,8 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	file_loader_free(loader);
 	printf("RRs ok=%d\n", rr_count);
 	printf("RRs err=%d\n", err_count);
+	printf("RRs new=%d\n", new_rr_count);
+	printf("DNAMEs new=%d\n", new_dname_count);
 }
 
 /*! @} */
