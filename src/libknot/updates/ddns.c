@@ -1905,11 +1905,6 @@ static int knot_ddns_process_rem_rrset(uint16_t type,
 	assert(changeset != NULL);
 	assert(changes != NULL);
 
-	if (type == KNOT_RRTYPE_NS) {
-		// Ignore this RR
-		return KNOT_EOK;
-	}
-	
 	/*! \note
 	 * We decided to automatically remove RRSIGs together with the removed
 	 * RRSet as they are no longer valid or required anyway. 
@@ -1945,10 +1940,15 @@ static int knot_ddns_process_rem_rrset(uint16_t type,
 			ERR_ALLOC_FAILED;
 			return KNOT_ENOMEM;
 		}
+
+		dbg_ddns_detail("Removing RRSet of type: %d\n", type);
 		
 		*removed = knot_node_remove_rrset(node, type);
 		removed_count = 1;
 	}
+
+	dbg_ddns_detail("Removed: %p, removed count: %d\n",
+	                *removed, removed_count);
 
 	// no such RR
 	if (removed_count == 0 || removed == NULL) {
