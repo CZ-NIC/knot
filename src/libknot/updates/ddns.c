@@ -2280,6 +2280,7 @@ int knot_ddns_process_update2(knot_zone_contents_t *zone,
 		if (ret != KNOT_EOK) {
 			dbg_ddns("Failed to copy ending SOA: %s\n",
 			         knot_strerror(ret));
+			*rcode = KNOT_RCODE_SERVFAIL;
 			return ret;
 		}
 		knot_rdata_t *rd = knot_rrset_get_rdata(soa_end);
@@ -2292,6 +2293,7 @@ int knot_ddns_process_update2(knot_zone_contents_t *zone,
 		if (ret != KNOT_EOK) {
 			dbg_ddns("Failed to copy replace SOA in zone: %s\n",
 			         knot_strerror(ret));
+			*rcode = KNOT_RCODE_SERVFAIL;
 			return ret;
 		}
 	}
