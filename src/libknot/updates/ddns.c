@@ -903,7 +903,7 @@ static knot_node_t *knot_ddns_add_new_node(knot_zone_contents_t *zone,
 	assert(zone != NULL);
 	assert(owner != NULL);
 
-	knot_node_t *node = knot_node_new(owner, NULL, KNOT_NODE_FLAGS_EMPTY);
+	knot_node_t *node = knot_node_new(owner, NULL, 0);
 	if (node == NULL) {
 		dbg_xfrin("Failed to create a new node.\n");
 		return NULL;
@@ -1054,7 +1054,7 @@ static int knot_ddns_process_add_cname(knot_node_t *node,
 			}
 		}
 		free(from_chgset);
-	} else if (!knot_node_is_empty(node)) {
+	} else if (knot_node_rrset_count(node) != 0) {
 		/* 2) Other occupied node => ignore. */
 		return 1;
 	}
