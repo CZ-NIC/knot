@@ -977,7 +977,7 @@ static int knot_ddns_process_add_cname(knot_node_t *node,
 		/* If they are identical, ignore. */
 		if (knot_rrset_compare(removed, rr, KNOT_RRSET_COMPARE_WHOLE)
 		    == 1) {
-			dbg_ddns_verb("CNAME identical to one in the node.\n")
+			dbg_ddns_verb("CNAME identical to one in the node.\n");
 			return 1;
 		}
 		
