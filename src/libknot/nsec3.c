@@ -34,56 +34,48 @@
 int knot_nsec3_params_from_wire(knot_nsec3_params_t *params,
                                   const knot_rrset_t *nsec3param)
 {
-	//TODO
-//	if (params == NULL || nsec3param == NULL) {
-//		return KNOT_EINVAL;
-//	}
+	if (params == NULL || nsec3param == NULL) {
+		return KNOT_EINVAL;
+	}
 
-//	assert(knot_rrset_type(nsec3param) == KNOT_RRTYPE_NSEC3PARAM);
-//	const knot_rdata_t *rdata = knot_rrset_rdata(nsec3param);
+	assert(knot_rrset_type(nsec3param) == KNOT_RRTYPE_NSEC3PARAM);
+	
+	params->algorithm = knot_rrset_rdata_nsec3param_algorithm(nsec3param);
+	params->iterations = knot_rrset_rdata_nsec3param_iterations(nsec3param);
+	params->flags = knot_rrset_rdata_nsec3param_flags(nsec3param);
+	params->salt_length =
+		knot_rrset_rdata_nsec3param_salt_length(nsec3param);
+	
+	if (params->salt_length > 0) {
+		/* It is called also on reload, so we need to free if exists. */
+		if (params->salt != NULL) {
+			free(params->salt);
+			params->salt = NULL;
+		}
+		params->salt = (uint8_t *)malloc(params->salt_length);
+		CHECK_ALLOC_LOG(params->salt, KNOT_ENOMEM);
+		memcpy(params->salt,
+		       knot_rrset_rdata_nsec3param_salt,
+		       params->salt_length);
+	} else {
+		params->salt = NULL;
+	}
 
-//	assert(rdata->count == 4);
+	dbg_nsec3("Parsed NSEC3PARAM:\n");
+	dbg_nsec3("Algorithm: %hu\n", params->algorithm);
+	dbg_nsec3("Flags: %hu\n", params->flags);
+	dbg_nsec3("Iterations: %hu\n", params->iterations);
+	dbg_nsec3("Salt length: %hu\n", params->salt_length);
+	dbg_nsec3("Salt: \n");
+	if (params->salt != NULL) {
+		dbg_nsec3_hex((char *)params->salt,
+		                       params->salt_length);
+		dbg_nsec3("\n");
+	} else {
+		dbg_nsec3("none\n");
+	}
 
-//	params->algorithm = *(uint8_t *)
-//	                     (&knot_rdata_item(rdata, 0)->raw_data[1]);
-//	params->flags = *(uint8_t *)
-//			(&knot_rdata_item(rdata, 1)->raw_data[1]);
-//	params->iterations = knot_wire_read_u16(
-//			(uint8_t *)(knot_rdata_item(rdata, 2)->raw_data + 1));
-
-//	params->salt_length =
-//		((uint8_t *)knot_rdata_item(rdata, 3)->raw_data)[2];
-
-//	if (params->salt_length > 0) {
-//		/* It is called also on reload, so we need to free if exists. */
-//		if (params->salt != NULL) {
-//			free(params->salt);
-//			params->salt = NULL;
-//		}
-//		params->salt = (uint8_t *)malloc(params->salt_length);
-//		CHECK_ALLOC_LOG(params->salt, -1);
-//		memcpy(params->salt,
-//		       (uint8_t *)knot_rdata_item(rdata, 3)->raw_data + 3,
-//		       params->salt_length);
-//	} else {
-//		params->salt = NULL;
-//	}
-
-//	dbg_nsec3("Parsed NSEC3PARAM:\n");
-//	dbg_nsec3("Algorithm: %hu\n", params->algorithm);
-//	dbg_nsec3("Flags: %hu\n", params->flags);
-//	dbg_nsec3("Iterations: %hu\n", params->iterations);
-//	dbg_nsec3("Salt length: %hu\n", params->salt_length);
-//	dbg_nsec3("Salt: \n");
-//	if (params->salt != NULL) {
-//		dbg_nsec3_hex((char *)params->salt,
-//		                       params->salt_length);
-//		dbg_nsec3("\n");
-//	} else {
-//		dbg_nsec3("none\n");
-//	}
-
-//	return KNOT_EOK;
+	return KNOT_EOK;
 }
 
 static uint8_t *knot_nsec3_to_lowercase(const uint8_t *data, size_t size)

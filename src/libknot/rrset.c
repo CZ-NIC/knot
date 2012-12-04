@@ -173,7 +173,6 @@ int knot_rrset_add_rdata(knot_rrset_t *rrset,
 		tmp = realloc(rrset->rdata,
 		              rrset_rdata_size_total(rrset) + size);
 		if (tmp == NULL) {
-			printf(rrset_rdata_size_total(rrset) + size);
 			ERR_ALLOC_FAILED;
 			return KNOT_ENOMEM;
 		} else {
@@ -1480,6 +1479,62 @@ uint16_t knot_rrset_rdata_nsec3_iterations(const knot_rrset_t *rrset,
 }
 
 /*---------------------------------------------------------------------------*/
+
+uint8_t knot_rrset_rdata_nsec3param_flags(const knot_rrset_t *rrset)
+{
+	if (rrset == NULL) {
+		return 0;
+	}
+	
+	return *(rrset_rdata_pointer(rrset, 0) + 1);
+}
+
+/*---------------------------------------------------------------------------*/
+
+uint8_t knot_rrset_rdata_nsec3param_algorithm(const knot_rrset_t *rrset)
+{
+	if (rrset == NULL) {
+		return 0;
+	}
+	
+	return *(rrset_rdata_pointer(rrset, 0));
+}
+
+/*---------------------------------------------------------------------------*/
+
+uint16_t knot_rrset_rdata_nsec3param_iterations(const knot_rrset_t *rrset)
+{
+	if (rrset == NULL) {
+		return 0;
+	}
+	
+	return knot_wire_read_u16(rrset_rdata_pointer(rrset, 0) + 2);
+}
+
+/*---------------------------------------------------------------------------*/
+
+uint8_t knot_rrset_rdata_nsec3param_salt_length(const knot_rrset_t *rrset)
+{
+	if (rrset == NULL) {
+		return 0;
+	}
+	
+	return *(rrset_rdata_pointer(rrset, 0) + 4);
+}
+
+/*---------------------------------------------------------------------------*/
+
+const uint8_t *knot_rrset_rdata_nsec3param_salt(const knot_rrset_t *rrset)
+{
+	if (rrset == NULL) {
+		return NULL;
+	}
+	
+	return rrset_rdata_pointer(rrset, 0) + 4;
+}
+
+/*---------------------------------------------------------------------------*/
+
 
 uint8_t knot_rrset_rdata_nsec3_salt_length(const knot_rrset_t *rrset,
                                            size_t pos)

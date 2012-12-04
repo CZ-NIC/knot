@@ -368,6 +368,11 @@ uint8_t knot_rrset_rdata_nsec3_salt_length(const knot_rrset_t *rrset,
                                            size_t pos);
 const uint8_t *knot_rrset_rdata_nsec3_salt(const knot_rrset_t *rrset,
                                            size_t pos);
+uint8_t knot_rrset_rdata_nsec3param_algorithm(const knot_rrset_t *rrset);
+uint8_t knot_rrset_rdata_nsec3param_flags(const knot_rrset_t *rrset);
+uint16_t knot_rrset_rdata_nsec3param_iterations(const knot_rrset_t *rrset);
+uint8_t knot_rrset_rdata_nsec3param_salt_length(const knot_rrset_t *rrset);
+const uint8_t *knot_rrset_rdata_nsec3param_salt(const knot_rrset_t *rrset);
 
 knot_dname_t *knot_rrset_next_dname(const knot_rrset_t *rrset,
                                           knot_dname_t *prev_dname);
