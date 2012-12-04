@@ -659,8 +659,8 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	                                           process_error,
 	                                           &my_parser);
 	file_loader_process(loader);
-//	knot_zone_contents_deep_free(&(my_parser.current_zone));
 	knot_zone_contents_adjust(my_parser.current_zone);
+	knot_zone_contents_deep_free(&(my_parser.current_zone));
 	file_loader_free(loader);
 	printf("RRs ok=%d\n", rr_count);
 	printf("RRs err=%d\n", err_count);

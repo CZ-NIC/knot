@@ -1038,16 +1038,15 @@ void knot_rrset_rdata_deep_free_one(knot_rrset_t *rrset, size_t pos,
 		const rdata_descriptor_t *desc =
 			get_rdata_descriptor(rrset->type);
 		for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END;i++) {
-			if (descriptor_item_is_dname(desc->block_types[i])) {
+			int item = desc->block_types[i];
+			if (descriptor_item_is_dname(item)) {
 				knot_dname_t *dname =
 					(knot_dname_t *)rdata + offset;
 				knot_dname_release(dname);
 				offset += sizeof(knot_dname_t *);
-			} else if (descriptor_item_is_fixed(
-			           desc->block_types[i])) {
+			} else if (descriptor_item_is_fixed(item)) {
 				offset += desc->block_types[i];
-			} else if (!descriptor_item_is_remainder(
-			           desc->block_types[i])) {
+			} else if (!descriptor_item_is_remainder(item)) {
 				assert(rrset->type == KNOT_RRTYPE_NAPTR);
 				/* Skip the binary beginning. */
 				offset += rrset_rdata_naptr_bin_chunk_size(rrset,
@@ -1142,11 +1141,6 @@ int knot_rrset_merge(void **r1, void **r2)
 	void *tmp = realloc(rrset1->rdata, rrset_rdata_size_total(rrset1) +
 	                    rrset_rdata_size_total(rrset2));
 	if (tmp == NULL) {
-		printf("%d %d\n", knot_rrset_rdata_rr_count(rrset1),
-		       knot_rrset_rdata_rr_count(rrset2));
-		printf("%d %d\n", rrset_rdata_size_total(rrset1),
-		       rrset_rdata_size_total(rrset2));
-		printf("%d %p %p\n", rrset1->type, rrset1->rdata, rrset2->rdata);
 		ERR_ALLOC_FAILED;
 		knot_rrset_dump(rrset1);
 		knot_rrset_dump(rrset2);
