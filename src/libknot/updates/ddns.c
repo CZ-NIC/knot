@@ -2080,10 +2080,11 @@ static int knot_ddns_process_rem_all(knot_node_t *node,
 	 */
 	int ret = 0;
 	knot_rrset_t **rrsets = knot_node_get_rrsets(node);
+	int count = knot_node_rrset_count(node);
 	int is_apex = knot_node_rrset(node, KNOT_RRTYPE_SOA) != NULL;
 
-	dbg_ddns_verb("Removing all RRSets.\n");
-	for (int i = 0; i < knot_node_rrset_count(node); ++i) {
+	dbg_ddns_verb("Removing all RRSets (count: %d).\n", count);
+	for (int i = 0; i < count; ++i) {
 		// If the node is apex, skip NS and SOA
 		if (is_apex &&
 		    (knot_rrset_type(rrsets[i]) == KNOT_RRTYPE_SOA
