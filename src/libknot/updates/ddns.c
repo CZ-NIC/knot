@@ -903,7 +903,7 @@ static knot_node_t *knot_ddns_add_new_node(knot_zone_contents_t *zone,
 	assert(zone != NULL);
 	assert(owner != NULL);
 
-	knot_node_t *node = knot_node_new(owner, NULL, 0);
+	knot_node_t *node = knot_node_new(owner, NULL, KNOT_NODE_FLAGS_EMPTY);
 	if (node == NULL) {
 		dbg_xfrin("Failed to create a new node.\n");
 		return NULL;
@@ -977,6 +977,7 @@ static int knot_ddns_process_add_cname(knot_node_t *node,
 		/* If they are identical, ignore. */
 		if (knot_rrset_compare(removed, rr, KNOT_RRSET_COMPARE_WHOLE)
 		    == 1) {
+			dbg_ddns_verb("CNAME identical to one in the node.\n")
 			return 1;
 		}
 		
