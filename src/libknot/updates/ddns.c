@@ -1924,6 +1924,12 @@ static int knot_ddns_process_rem_rrset(uint16_t type,
 
 	// this should be ruled out before
 	assert(type != KNOT_RRTYPE_SOA);
+
+	if (knot_node_rrset(node, KNOT_RRTYPE_SOA) != NULL
+	    && type == KNOT_RRTYPE_NS) {
+		// if removing NS from apex, ignore
+		return KNOT_EOK;
+	}
 	
 	knot_rrset_t **removed = NULL;
 	int removed_count = 0;
