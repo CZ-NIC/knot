@@ -2141,14 +2141,18 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	                              knot_zone_get_contents(zone),
 	                              &new_contents,
 	                              chgsets, rcode);
-	if (ret < 0) {
-		log_zone_error("%s %s\n", msg, knot_strerror(ret));
+
+	if (ret != KNOT_EOK) {
+		if (ret < 0) {
+			log_zone_error("%s %s\n", msg, knot_strerror(ret));
+		} else {
+			log_zone_notice("%s: No change to zone made.\n", msg);
+		}
+
 		knot_free_changesets(&chgsets);
 		free(msg);
-		return ret;
+		return (ret < 0) ? ret : KNOT_EOK;
 	}
-
-	/*! \todo Handle ret > 0. */
 	
 	/* 2) Store changesets, (TODO: but do not commit???). */
 	ret = zones_store_changesets_to_disk(zone, chgsets);

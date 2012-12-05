@@ -295,7 +295,7 @@ int knot_changeset_is_empty(const knot_changeset_t *changeset)
 		return 0;
 	}
 
-	return 0;
+	return (changeset->add_count == 0 && changeset->remove_count == 0);
 }
 
 /*----------------------------------------------------------------------------*/
