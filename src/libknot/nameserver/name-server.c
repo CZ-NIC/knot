@@ -1716,6 +1716,9 @@ static inline int ns_referral(const knot_node_t *node,
 			
 			ret = ns_put_authority_soa(zone, resp);
 		}
+
+		// This is an authoritative answer, set AA bit
+		knot_response_set_aa(resp);
 		
 		return ret;
 	}
