@@ -3735,6 +3735,7 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
 		               "changesets - %s\n", msgpref,
 		               knot_strerror(ret));
 		/* Free changesets, but not the data. */
+		zones_store_changesets_rollback(transaction);
 		knot_free_changesets(&chs);
 		return ret;
 	}
@@ -3743,11 +3744,11 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
 	apply_ret = xfrin_apply_changesets(zone, chs, new_contents);
 
 	if (apply_ret != KNOT_EOK) {
-		zones_store_changesets_rollback(transaction);
 		log_zone_error("%s Failed to apply changesets - %s\n",
 		               msgpref, knot_strerror(apply_ret));
 
 		/* Free changesets, but not the data. */
+		zones_store_changesets_rollback(transaction);
 		knot_free_changesets(&chs);
 		return apply_ret;  // propagate the error above
 	}
