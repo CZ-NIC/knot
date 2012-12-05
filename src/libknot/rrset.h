@@ -346,6 +346,8 @@ int knot_rrset_merge(void **r1, void **r2);
  * \retval KNOT_EOK
  * \retval KNOT_EINVAL if the RRSets could not be merged, because their
  *         Owner, Type, Class or TTL does not match.
+ * \retval >0 if some RDATA have been removed because they were duplicate. The
+ *         return value indicates number of such RDATA.
  */
 int knot_rrset_merge_no_dupl(void **r1, void **r2);
 

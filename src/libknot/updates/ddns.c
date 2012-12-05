@@ -1022,8 +1022,7 @@ static int knot_ddns_process_add_cname(knot_node_t *node,
 	
 		if (from_chgset_count == 1) {
 			/* Just delete the RRSet. */
-			knot_rrset_deep_free(&(from_chgset[0]), 1, 1, 
-			                     1);
+			knot_rrset_deep_free(&(from_chgset[0]), 1, 1, 1);
 		} else {
 			/* Otherwise copy the removed CNAME and add it 
 			 * to the REMOVE section.
@@ -1245,17 +1244,27 @@ static int knot_ddns_add_rr_merge_normal(knot_rrset_t *node_rrset_copy,
 		                   knot_rrset_ttl(*rr_copy));
 	}
 
+	int rdata_in_copy = knot_rrset_rdata_rr_count(*rr_copy);
 	int ret = knot_rrset_merge_no_dupl((void **)&node_rrset_copy, 
-	                               (void **)rr_copy);
-	if (ret != KNOT_EOK) {
+	                                   (void **)rr_copy);
+	dbg_ddns_detail("Merge returned: %d\n", ret);
+
+	if (ret < 0) {
 		dbg_ddns("Failed to merge UPDATE RR to node RRSet: %s."
 		         "\n", knot_strerror(ret));
 		knot_rrset_deep_free(rr_copy, 1, 1, 1);
 		return ret;
 	}
-	dbg_ddns_detail("Merge returned: %d\n", ret);
-	
+
 	knot_rrset_free(rr_copy);
+
+	if (rdata_in_copy == ret) {
+		/* All RDATA have been removed, because they were duplicates
+		 * or there were none (0). In general this means, that no
+		 * change was made.
+		 */
+		return 1;
+	}
 	
 	return KNOT_EOK;
 }
@@ -1306,9 +1315,11 @@ static int knot_ddns_add_rr_merge_rrsig(knot_rrset_t *node_rrset_copy,
 		 */
 		dbg_ddns_detail("Merging RRSIG to the one in "
 		                "the RRSet.\n");
+
+		int rdata_in_copy = knot_rrset_rdata_rr_count(*rr_copy);
 		ret = knot_rrset_merge_no_dupl(
 		    (void **)&rrsigs_copy, (void **)rr_copy);
-		if (ret != KNOT_EOK) {
+		if (ret < 0) {
 			dbg_xfrin("Failed to merge UPDATE RRSIG "
 			          "to copy: %s.\n",
 			          knot_strerror(ret));
@@ -1316,6 +1327,14 @@ static int knot_ddns_add_rr_merge_rrsig(knot_rrset_t *node_rrset_copy,
 		}
 		
 		knot_rrset_free(rr_copy);
+
+		if (rdata_in_copy == ret) {
+			/* All RDATA have been removed, because they were
+			 * duplicates or there were none (0). In general this
+			 * means, that no change was made.
+			 */
+			return 1;
+		}
 	} else {
 		/* If there is no RRSIG RRSet yet, just add the
 		 * UPDATE RR to the copied covered RRSet.
@@ -1407,15 +1426,10 @@ static int knot_ddns_add_rr(knot_node_t *node, const knot_rrset_t *rr,
 			dbg_ddns("Failed to merge UPDATE RR to node RRSet.\n");
 			return ret;
 		}
-		
-//		ret = knot_changes_add_new_rrsets(rr_copy, 1, changes, 0);
-//		if (ret != KNOT_EOK) {
-//			dbg_ddns("Failed to add merged RRSet to changes.\n");
-//			return ret;
-//		}
 	}
 	
-	return KNOT_EOK;
+	assert(ret >= 0);
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1483,7 +1497,7 @@ static int knot_ddns_process_add(const knot_rrset_t *rr,
                                  knot_node_t *node,
                                  knot_zone_contents_t *zone,
                                  knot_changeset_t *changeset,
-                                 knot_changes_t *changes, uint16_t qclass,
+                                 knot_changes_t *changes,
                                  knot_rrset_t **rr_copy)
 {
 	assert(rr != NULL);
@@ -1544,7 +1558,7 @@ static int knot_ddns_process_add(const knot_rrset_t *rr,
 	/* Add the RRSet to the node (RRSIGs handled in the function). */
 	dbg_ddns_detail("Adding RR to the node.\n");
 	ret = knot_ddns_add_rr(node, rr, changes, rr_copy);
-	if (ret != KNOT_EOK) {
+	if (ret < 0) {
 		dbg_ddns("Failed to add RR to the node.\n");
 		return ret;
 	}
@@ -1561,12 +1575,18 @@ static int knot_ddns_process_add(const knot_rrset_t *rr,
 	/* Add the RR to ADD section of the changeset. */
 	/* If the RR was previously removed, do not add it to the 
 	 * changeset, and remove the entry from the REMOVE section.
+	 *
+	 * If there was no change (i.e. all RDATA were duplicates), do not add
+	 * the RR to the changeset.
 	 */
-	dbg_ddns_detail("Adding RR to the changeset.\n");
-	ret = knot_ddns_add_rr_to_chgset(rr, changeset);
-	if (ret != KNOT_EOK) {
-		dbg_ddns("Faild to add the UPDATE RR to the changeset.\n");
-		return ret;
+	if (ret == KNOT_EOK) {
+		dbg_ddns_detail("Adding RR to the changeset.\n");
+		ret = knot_ddns_add_rr_to_chgset(rr, changeset);
+		if (ret != KNOT_EOK) {
+			dbg_ddns("Failed to add the UPDATE RR to the changeset."
+			         "\n");
+			return ret;
+		}
 	}
 
 	return KNOT_EOK;
@@ -2136,7 +2156,7 @@ static int knot_ddns_process_rr(const knot_rrset_t *rr,
 
 	if (knot_rrset_class(rr) == knot_zone_contents_class(zone)) {
 		return knot_ddns_process_add(rr, node, zone, changeset,
-		                             changes, qclass, rr_copy);
+		                             changes, rr_copy);
 	} else if (knot_rrset_class(rr) == KNOT_CLASS_NONE) {
 		return knot_ddns_process_rem_rr(rr, node, zone, changeset,
 		                                changes, qclass);
