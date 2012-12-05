@@ -289,6 +289,17 @@ uint32_t knot_changeset_flags(knot_changeset_t *changeset)
 
 /*----------------------------------------------------------------------------*/
 
+int knot_changeset_is_empty(const knot_changeset_t *changeset)
+{
+	if (changeset == NULL) {
+		return 0;
+	}
+
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
 void knot_free_changeset(knot_changeset_t **changeset)
 {
 	assert((*changeset)->add_allocated >= (*changeset)->add_count);

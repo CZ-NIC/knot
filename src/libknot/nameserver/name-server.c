@@ -4321,8 +4321,9 @@ int knot_ns_process_update2(const knot_packet_t *query,
 	ret = knot_ddns_process_update2(contents_copy, query, &chgs->sets[0], 
 	                                changes, rcode);
 	if (ret != KNOT_EOK) {
-		dbg_ns("Failed to apply UPDATE to the zone copy: %s\n",
-		       knot_strerror(ret));
+		dbg_ns("Failed to apply UPDATE to the zone copy or no update"
+		       " made: %s\n", (ret < 0) ? knot_strerror(ret)
+		                                : "No change made.");
 		xfrin_rollback_update(old_contents, &contents_copy, &changes);
 		return ret;
 	}
