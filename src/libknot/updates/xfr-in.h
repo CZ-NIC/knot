@@ -204,10 +204,11 @@ void xfrin_rollback_update(knot_zone_contents_t *old_contents,
                            knot_changes_t **changes);
 
 int xfrin_copy_rrset(knot_node_t *node, knot_rr_type_t type,
-                     knot_rrset_t **rrset, knot_changes_t *changes);
+                     knot_rrset_t **rrset, knot_changes_t *changes, 
+                     int save_new);
 
 int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
-                         knot_changes_t *changes);
+                         knot_changes_t *changes, int save_new);
 
 int xfrin_replace_rrset_in_node(knot_node_t *node,
                                 knot_rrset_t *rrset_new,

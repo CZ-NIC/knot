@@ -1291,7 +1291,7 @@ static int knot_ddns_add_rr_merge_rrsig(knot_rrset_t *node_rrset_copy,
 		knot_rrset_t *rrsigs_copy = NULL;
 		ret = xfrin_copy_old_rrset(rrsigs_old,
 		                           &rrsigs_copy, 
-		                           changes);
+		                           changes, 1);
 		if (ret != KNOT_EOK) {
 			dbg_ddns("Failed to copy RRSIG RRSet: "
 			         "%s\n", knot_strerror(ret));
@@ -1364,6 +1364,12 @@ static int knot_ddns_add_rr_merge_rrsig(knot_rrset_t *node_rrset_copy,
 }
 
 /*----------------------------------------------------------------------------*/
+/*!
+ * \todo We should check, how it's possible that IXFR is not leaking due to the
+ * same issue with merge. Or maybe it is, we should try it!!
+ */
+
+/*----------------------------------------------------------------------------*/
 
 static int knot_ddns_add_rr(knot_node_t *node, const knot_rrset_t *rr,
                             knot_changes_t *changes, knot_rrset_t **rr_copy)
@@ -1392,7 +1398,8 @@ static int knot_ddns_add_rr(knot_node_t *node, const knot_rrset_t *rr,
 	 * This code is more or less copied from xfr-in.c.
 	 */
 	knot_rrset_t *node_rrset_copy = NULL;
-	ret = xfrin_copy_rrset(node, type_covered, &node_rrset_copy, changes);
+	ret = xfrin_copy_rrset(node, type_covered, &node_rrset_copy, changes, 
+	                       0);
 	
 	if (node_rrset_copy == NULL) {
 		/* No such RRSet in the node. Add the whole UPDATE RRSet. */
@@ -1434,6 +1441,15 @@ dbg_ddns_exec_detail(
 
 		if (ret != KNOT_EOK) {
 			dbg_ddns("Failed to merge UPDATE RR to node RRSet.\n");
+			return ret;
+		}
+		
+		// save the new RRSet together with the new RDATA to 'changes'
+		ret = knot_changes_add_new_rrsets(&node_rrset_copy, 1, changes, 
+		                                  1);
+		if (ret != KNOT_EOK) {
+			dbg_ddns("Failed to store RRSet copy to 'changes'\n");
+			knot_rrset_deep_free(&node_rrset_copy, 1, 1, 1);
 			return ret;
 		}
 	}
@@ -1656,7 +1672,7 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 	uint16_t type_to_copy = (type != KNOT_RRTYPE_RRSIG) ? type
 	                : knot_rdata_rrsig_type_covered(knot_rrset_rdata(rr));
 	knot_rrset_t *rrset_copy;
-	int ret = xfrin_copy_rrset(node, type_to_copy, &rrset_copy, changes);
+	int ret = xfrin_copy_rrset(node, type_to_copy, &rrset_copy, changes, 1);
 	if (ret < 0) {
 		dbg_ddns("Failed to copy RRSet for removal: %s\n",
 		         knot_strerror(ret));
@@ -1845,7 +1861,7 @@ static int knot_ddns_process_rem_rrsig(knot_node_t *node,
 	knot_rrset_t *rrset_copy = NULL;
 	
 	/* Copy RRSet. */
-	int ret = xfrin_copy_old_rrset(rrset, &rrset_copy, changes);
+	int ret = xfrin_copy_old_rrset(rrset, &rrset_copy, changes, 1);
 	if (ret != KNOT_EOK) {
 		dbg_ddns("Failed to copy RRSet from node: %s.\n",
 		         knot_strerror(ret));
