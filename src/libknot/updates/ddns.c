@@ -397,13 +397,11 @@ static int knot_ddns_check_not_exist(const knot_zone_contents_t *zone,
 	}
 
 	const knot_node_t *node;
-	const knot_rrset_t *found;
 
 	node = knot_zone_contents_find_node(zone, knot_rrset_owner(rrset));
 	if (node == NULL) {
 		return KNOT_EOK;
-	} else if ((found = knot_node_rrset(node, knot_rrset_type(rrset)))
-	            == NULL) {
+	} else if (knot_node_rrset(node, knot_rrset_type(rrset)) == NULL) {
 		return KNOT_EOK;
 	}
 	
@@ -480,7 +478,9 @@ int knot_ddns_check_zone(const knot_zone_contents_t *zone,
                          const knot_packet_t *query, knot_rcode_t *rcode)
 {
 	if (zone == NULL || query == NULL || rcode == NULL) {
-		*rcode = KNOT_RCODE_SERVFAIL;
+		if (rcode != NULL) {
+			*rcode = KNOT_RCODE_SERVFAIL;
+		}
 		return KNOT_EINVAL;
 	}
 
@@ -2023,7 +2023,12 @@ static int knot_ddns_process_rem_rrset(uint16_t type,
 	/* 3) Copy the RRSets, so that they can be stored to the changeset. */
 	knot_rrset_t **to_chgset = malloc(removed_count 
 	                                  * sizeof(knot_rrset_t *));
-	CHECK_ALLOC_LOG(to_chgset, KNOT_ENOMEM);
+	if (to_chgset == NULL) {
+		dbg_ddns("Failed to allocate space for RRSets going to "
+		         "changeset.\n");
+		free(removed);
+		return KNOT_ENOMEM;
+	}
 	
 	for (int i = 0; i < removed_count; ++i) {
 		ret = knot_rrset_deep_copy(removed[i], &to_chgset[i], 1);
