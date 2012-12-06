@@ -18,6 +18,7 @@
 
 #include "zone/zone-contents.h"
 #include "util/debug.h"
+#include "libknot/rrset.h"
 #include "common/base32hex.h"
 #include "common/descriptor_new.h"
 #include "consts.h"
@@ -962,7 +963,6 @@ static int knot_zc_nsec3_parameters_match(const knot_rrset_t *rrset,
 	                "salt: %.*s\n",  params->algorithm, params->iterations,
 	                params->salt_length, params->salt_length, params->salt);
 
-	// TODO not sure about the index at all. Index is probably not needed.
 	return (knot_rrset_rdata_nsec3_algorithm(rrset, rdata_pos) == params->algorithm
 	        && knot_rrset_rdata_nsec3_iterations(rrset, rdata_pos) == params->iterations
 	        && knot_rrset_rdata_nsec3_salt_length(rrset, rdata_pos) == params->salt_length
@@ -2854,187 +2854,187 @@ void knot_zone_contents_deep_free(knot_zone_contents_t **contents)
 /* Integrity check                                                            */
 /*----------------------------------------------------------------------------*/
 
-//typedef struct check_data {
-//	const knot_zone_contents_t *contents;
-//	const knot_node_t *previous;
-//	const knot_node_t *deleg_point;
-//	const knot_node_t *parent;
-//	int children;
-//	int errors;
-//} check_data_t;
+typedef struct check_data {
+	const knot_zone_contents_t *contents;
+	const knot_node_t *previous;
+	const knot_node_t *deleg_point;
+	const knot_node_t *parent;
+	int children;
+	int errors;
+} check_data_t;
 
 ///*----------------------------------------------------------------------------*/
 
-//static void knot_zc_integrity_check_previous(const knot_node_t *node,
-//                                             check_data_t *check_data,
-//                                             const char *name)
-//{
-//	// first, check if the previous and next pointers are set properly
-//	if (check_data->previous != NULL) {
-//		char *name_prev = knot_dname_to_str(
-//		                        knot_node_owner(check_data->previous));
+static void knot_zc_integrity_check_previous(const knot_node_t *node,
+                                             check_data_t *check_data,
+                                             const char *name)
+{
+	// first, check if the previous and next pointers are set properly
+	if (check_data->previous != NULL) {
+		char *name_prev = knot_dname_to_str(
+		                        knot_node_owner(check_data->previous));
 
-//		if (knot_node_previous(node) != check_data->previous) {
-//			char *name2 = knot_dname_to_str(knot_node_owner(
-//						     knot_node_previous(node)));
-//			fprintf(stderr, "Wrong previous node: node: %s, "
-//				"previous: %s. Should be: %s.\n", name, name2,
-//				name_prev);
-//			free(name2);
+		if (knot_node_previous(node) != check_data->previous) {
+			char *name2 = knot_dname_to_str(knot_node_owner(
+						     knot_node_previous(node)));
+			fprintf(stderr, "Wrong previous node: node: %s, "
+				"previous: %s. Should be: %s.\n", name, name2,
+				name_prev);
+			free(name2);
 
-//			++check_data->errors;
-//		}
+			++check_data->errors;
+		}
 
-//		free(name_prev);
-//	}
-//}
-
-///*----------------------------------------------------------------------------*/
-
-//static void knot_zc_integrity_check_flags(const knot_node_t *node,
-//                                          check_data_t *check_data,
-//                                          char *name)
-//{
-//	if (node == knot_zone_contents_apex(check_data->contents)) {
-//		if (!knot_node_is_auth(node)) {
-//			fprintf(stderr, "Wrong flags: node %s, flags: %u. "
-//			        "Should be non-authoritative.\n", name,
-//			        node->flags);
-//			++check_data->errors;
-//		}
-//		return;
-//	}
-
-//	// check the flags
-//	if (check_data->deleg_point != NULL
-//	    && knot_dname_is_subdomain(knot_node_owner(node),
-//	                            knot_node_owner(check_data->deleg_point))) {
-//		// this is a non-authoritative node
-//		if (!knot_node_is_non_auth(node)) {
-//			fprintf(stderr, "Wrong flags: node %s, flags: %u. "
-//			        "Should be non-authoritative.\n", name,
-//			        node->flags);
-//			++check_data->errors;
-//		}
-//	} else {
-//		if (knot_node_rrset(node, KNOT_RRTYPE_NS) != NULL) {
-//			// this is a delegation point
-//			if (!knot_node_is_deleg_point(node)) {
-//				fprintf(stderr, "Wrong flags: node %s, flags: "
-//				        "%u. Should be deleg. point.\n", name,
-//				        node->flags);
-//				++check_data->errors;
-//			}
-//			check_data->deleg_point = node;
-//		} else {
-//			// this is an authoritative node
-//			if (!knot_node_is_auth(node)) {
-//				fprintf(stderr, "Wrong flags: node %s, flags: "
-//				        "%u. Should be authoritative.\n", name,
-//				        node->flags);
-//				++check_data->errors;
-//			}
-//			check_data->deleg_point = NULL;
-//		}
-
-//		// in this case (authoritative or deleg-point), the node should
-//		// be a previous of some next node only if it has some data
-//		if (knot_node_rrset_count(node) > 0) {
-//			check_data->previous = node;
-//		}
-//	}
-//}
+		free(name_prev);
+	}
+}
 
 ///*----------------------------------------------------------------------------*/
 
-//static void knot_zc_integrity_check_parent(const knot_node_t *node,
-//                                           check_data_t *check_data,
-//                                           char *name)
-//{
-//	if (check_data->parent == NULL) {
-//		// this is only possible for apex
-//		assert(node == knot_zone_contents_apex(check_data->contents));
-//		check_data->parent = node;
-//		return;
-//	}
+static void knot_zc_integrity_check_flags(const knot_node_t *node,
+                                          check_data_t *check_data,
+                                          char *name)
+{
+	if (node == knot_zone_contents_apex(check_data->contents)) {
+		if (!knot_node_is_auth(node)) {
+			fprintf(stderr, "Wrong flags: node %s, flags: %u. "
+			        "Should be non-authoritative.\n", name,
+			        node->flags);
+			++check_data->errors;
+		}
+		return;
+	}
 
-//	const knot_dname_t *node_owner = knot_node_owner(node);
-//	const knot_dname_t *parent_owner = knot_node_owner(check_data->parent);
-//	char *pname = knot_dname_to_str(parent_owner);
+	// check the flags
+	if (check_data->deleg_point != NULL
+	    && knot_dname_is_subdomain(knot_node_owner(node),
+	                            knot_node_owner(check_data->deleg_point))) {
+		// this is a non-authoritative node
+		if (!knot_node_is_non_auth(node)) {
+			fprintf(stderr, "Wrong flags: node %s, flags: %u. "
+			        "Should be non-authoritative.\n", name,
+			        node->flags);
+			++check_data->errors;
+		}
+	} else {
+		if (knot_node_rrset(node, KNOT_RRTYPE_NS) != NULL) {
+			// this is a delegation point
+			if (!knot_node_is_deleg_point(node)) {
+				fprintf(stderr, "Wrong flags: node %s, flags: "
+				        "%u. Should be deleg. point.\n", name,
+				        node->flags);
+				++check_data->errors;
+			}
+			check_data->deleg_point = node;
+		} else {
+			// this is an authoritative node
+			if (!knot_node_is_auth(node)) {
+				fprintf(stderr, "Wrong flags: node %s, flags: "
+				        "%u. Should be authoritative.\n", name,
+				        node->flags);
+				++check_data->errors;
+			}
+			check_data->deleg_point = NULL;
+		}
 
-//	// if direct child
-//	if (knot_dname_is_subdomain(node_owner, parent_owner)
-//	    && knot_dname_matched_labels(node_owner, parent_owner)
-//	       == knot_dname_label_count(parent_owner)) {
-
-//		// check the parent pointer
-//		const knot_node_t *parent = knot_node_parent(node);
-//		if (parent != check_data->parent) {
-//			char *name2 = (parent != NULL)
-//			                ? knot_dname_to_str(
-//			                        knot_node_owner(parent))
-//			                : "none";
-//			fprintf(stderr, "Wrong parent: node %s, parent %s. "
-//			        " Should be %s\n", name, name2, pname);
-//			if (parent != NULL) {
-//				free(name2);
-//			}
-
-//			++check_data->errors;
-//		} else {
-//			// if parent is OK, check if the node is not a
-//			// wildcard child of it; in such case it should be set
-//			// as the wildcard child of its parent
-//			if (knot_dname_is_wildcard(node_owner)
-//			    && knot_node_wildcard_child(check_data->parent)
-//			       != node) {
-//				char *wc = (knot_node_wildcard_child(
-//				                 check_data->parent) == NULL)
-//				   ? "none"
-//				   : knot_dname_to_str(knot_node_owner(
-//				           knot_node_wildcard_child(
-//				                   check_data->parent)));
-//				fprintf(stderr, "Wrong wildcard child: node %s,"
-//				        " wildcard child: %s. Should be %s\n",
-//				        pname, wc, name);
-//				if (knot_node_wildcard_child(
-//				       check_data->parent) != NULL) {
-//					free(wc);
-//				}
-
-//				++check_data->errors;
-//			}
-//		}
-//	}
-
-//	free(pname);
-//	check_data->parent = node;
-//}
+		// in this case (authoritative or deleg-point), the node should
+		// be a previous of some next node only if it has some data
+		if (knot_node_rrset_count(node) > 0) {
+			check_data->previous = node;
+		}
+	}
+}
 
 ///*----------------------------------------------------------------------------*/
 
-//static void knot_zc_integrity_check_rrset_count(const knot_node_t *node,
-//                                                check_data_t *check_data,
-//                                                const char *name)
-//{
-//	// count RRSets
-//	int real_count = knot_node_count_rrsets(node);
-//	int count = knot_node_rrset_count(node);
+static void knot_zc_integrity_check_parent(const knot_node_t *node,
+                                           check_data_t *check_data,
+                                           char *name)
+{
+	if (check_data->parent == NULL) {
+		// this is only possible for apex
+		assert(node == knot_zone_contents_apex(check_data->contents));
+		check_data->parent = node;
+		return;
+	}
 
-//	if (count != real_count) {
-//		fprintf(stderr, "Wrong RRSet count: node %s, count %d. "
-//		        "Should be %d\n", name, count, real_count);
+	const knot_dname_t *node_owner = knot_node_owner(node);
+	const knot_dname_t *parent_owner = knot_node_owner(check_data->parent);
+	char *pname = knot_dname_to_str(parent_owner);
 
-//		++check_data->errors;
-//	}
-//}
+	// if direct child
+	if (knot_dname_is_subdomain(node_owner, parent_owner)
+	    && knot_dname_matched_labels(node_owner, parent_owner)
+	       == knot_dname_label_count(parent_owner)) {
+
+		// check the parent pointer
+		const knot_node_t *parent = knot_node_parent(node);
+		if (parent != check_data->parent) {
+			char *name2 = (parent != NULL)
+			                ? knot_dname_to_str(
+			                        knot_node_owner(parent))
+			                : "none";
+			fprintf(stderr, "Wrong parent: node %s, parent %s. "
+			        " Should be %s\n", name, name2, pname);
+			if (parent != NULL) {
+				free(name2);
+			}
+
+			++check_data->errors;
+		} else {
+			// if parent is OK, check if the node is not a
+			// wildcard child of it; in such case it should be set
+			// as the wildcard child of its parent
+			if (knot_dname_is_wildcard(node_owner)
+			    && knot_node_wildcard_child(check_data->parent)
+			       != node) {
+				char *wc = (knot_node_wildcard_child(
+				                 check_data->parent) == NULL)
+				   ? "none"
+				   : knot_dname_to_str(knot_node_owner(
+				           knot_node_wildcard_child(
+				                   check_data->parent)));
+				fprintf(stderr, "Wrong wildcard child: node %s,"
+				        " wildcard child: %s. Should be %s\n",
+				        pname, wc, name);
+				if (knot_node_wildcard_child(
+				       check_data->parent) != NULL) {
+					free(wc);
+				}
+
+				++check_data->errors;
+			}
+		}
+	}
+
+	free(pname);
+	check_data->parent = node;
+}
 
 ///*----------------------------------------------------------------------------*/
 
-//typedef struct find_dname_data {
-//	const knot_dname_t *to_find;
-//	const knot_dname_t *found;
-//} find_dname_data_t;
+static void knot_zc_integrity_check_rrset_count(const knot_node_t *node,
+                                                check_data_t *check_data,
+                                                const char *name)
+{
+	// count RRSets
+	int real_count = knot_node_count_rrsets(node);
+	int count = knot_node_rrset_count(node);
+
+	if (count != real_count) {
+		fprintf(stderr, "Wrong RRSet count: node %s, count %d. "
+		        "Should be %d\n", name, count, real_count);
+
+		++check_data->errors;
+	}
+}
+
+///*----------------------------------------------------------------------------*/
+
+typedef struct find_dname_data {
+	const knot_dname_t *to_find;
+	const knot_dname_t *found;
+} find_dname_data_t;
 
 ///*----------------------------------------------------------------------------*/
 
@@ -3056,10 +3056,11 @@ void knot_zone_contents_deep_free(knot_zone_contents_t **contents)
 
 /*----------------------------------------------------------------------------*/
 
-//static int knot_zc_integrity_check_find_dname(const knot_zone_contents_t *zone,
-//                                              const knot_dname_t *to_find,
-//                                              const char *node_name)
-//{
+static int knot_zc_integrity_check_find_dname(const knot_zone_contents_t *zone,
+                                              const knot_dname_t *to_find,
+                                              const char *node_name)
+{
+	/* TODO */
 //	int ret = 0;
 	
 //	knot_dname_t *found = knot_dname_table_find_dname(zone->dname_table, 
@@ -3081,343 +3082,325 @@ void knot_zone_contents_deep_free(knot_zone_contents_t **contents)
 //	knot_dname_release(found);
 
 //	return ret;
-//}
+}
 
 ///*----------------------------------------------------------------------------*/
 
-//static void knot_zc_integrity_check_owner(const knot_node_t *node,
-//                                          check_data_t *check_data,
-//                                          const char *name)
-//{
-//	// check node stored in owner
-//	const knot_node_t *owner_node =
-//	                knot_dname_node(knot_node_owner(node));
-//	if (owner_node != node) {
-//		char *name2 = (owner_node != NULL)
-//		                ? knot_dname_to_str(knot_node_owner(owner_node))
-//		                : "none";
-//		fprintf(stderr, "Wrong owner's node: node %s, owner's node %s"
-//		        "\n", name, name2);
-//		if (owner_node != NULL) {
-//			free(name2);
-//		}
+static void knot_zc_integrity_check_owner(const knot_node_t *node,
+                                          check_data_t *check_data,
+                                          const char *name)
+{
+	// check node stored in owner
+	const knot_node_t *owner_node =
+	                knot_dname_node(knot_node_owner(node));
+	if (owner_node != node) {
+		char *name2 = (owner_node != NULL)
+		                ? knot_dname_to_str(knot_node_owner(owner_node))
+		                : "none";
+		fprintf(stderr, "Wrong owner's node: node %s, owner's node %s"
+		        "\n", name, name2);
+		if (owner_node != NULL) {
+			free(name2);
+		}
 
-//		++check_data->errors;
-//	}
+		++check_data->errors;
+	}
 
-//	// check if the owner is stored in dname table
-//	check_data->errors += knot_zc_integrity_check_find_dname(
-//	                     check_data->contents, knot_node_owner(node), name);
-//}
-
-///*----------------------------------------------------------------------------*/
-
-//static void knot_zc_integrity_check_dnames_in_rrset(const knot_rrset_t *rrset,
-//                                                    check_data_t *check_data,
-//                                                    const char *name)
-//{
-//	// check owner of the RRSet
-//	check_data->errors += knot_zc_integrity_check_find_dname(
-//	                        check_data->contents,
-//	                        knot_rrset_owner(rrset), name);
-
-//	knot_rrtype_descriptor_t *desc = knot_rrtype_descriptor_by_type(
-//	                        knot_rrset_type(rrset));
-
-//	assert(desc != NULL);
-
-//	const knot_rdata_t *rdata = knot_rrset_rdata(rrset);
-//	while (rdata != NULL) {
-//		for (int i = 0; i < knot_rdata_item_count(rdata); ++i) {
-//			if (desc->wireformat[i]
-//			     == KNOT_RDATA_WF_COMPRESSED_DNAME
-//			    || desc->wireformat[i]
-//			       == KNOT_RDATA_WF_UNCOMPRESSED_DNAME
-//			    || desc->wireformat[i]
-//			       == KNOT_RDATA_WF_LITERAL_DNAME) {
-//				knot_rdata_item_t *item = knot_rdata_get_item(
-//				                        rdata, i);
-//				check_data->errors +=
-//				    knot_zc_integrity_check_find_dname(
-//				       check_data->contents, item->dname, name);
-//			}
-//		}
-//		rdata = knot_rrset_rdata_next(rrset, rdata);
-//	}
-//}
+	// check if the owner is stored in dname table
+	check_data->errors += knot_zc_integrity_check_find_dname(
+	                     check_data->contents, knot_node_owner(node), name);
+}
 
 ///*----------------------------------------------------------------------------*/
 
-//static void knot_zc_integrity_check_dnames(const knot_node_t *node,
-//                                           check_data_t *check_data,
-//                                           const char *name)
-//{
-//	// check all dnames in all RRSets - both owners and in RDATA
-//	const knot_rrset_t **rrsets = knot_node_rrsets(node);
-//	if (rrsets != NULL) {
-//		for (int i = 0; i < knot_node_rrset_count(node); ++i) {
-//			knot_zc_integrity_check_dnames_in_rrset(rrsets[i],
-//			                                      check_data, name);
-//		}
-//	}
-//	free(rrsets);
-//}
+static void knot_zc_integrity_check_dnames_in_rrset(const knot_rrset_t *rrset,
+                                                    check_data_t *check_data,
+                                                    const char *name)
+{
+	// check owner of the RRSet
+	check_data->errors += knot_zc_integrity_check_find_dname(
+	                        check_data->contents,
+	                        knot_rrset_owner(rrset), name);
+	
+	const knot_dname_t *dname = NULL;
+	while ((dname = knot_rrset_next_dname(rrset, dname)) != NULL) {
+		check_data->errors += knot_zc_integrity_check_find_dname(
+		                        check_data->contents, dname, name);
+	}
+}
 
 ///*----------------------------------------------------------------------------*/
 
-//static void knot_zc_integrity_check_node(knot_node_t *node, void *data)
-//{
-//	assert(node != NULL);
-//	assert(data != NULL);
-
-//	const knot_dname_t *node_owner = knot_node_owner(node);
-//	char *name = knot_dname_to_str(node_owner);
-
-//	check_data_t *check_data = (check_data_t *)data;
-
-//	// check previous-next chain
-//	knot_zc_integrity_check_previous(node, check_data, name);
-
-//	// check node flags
-//	knot_zc_integrity_check_flags(node, check_data, name);
-
-//	// check if the node is child of the saved parent & children count
-//	// & wildcard child
-//	knot_zc_integrity_check_parent(node, check_data, name);
-
-//	// check RRSet count
-//	knot_zc_integrity_check_rrset_count(node, check_data, name);
-
-//	// check owner
-//	knot_zc_integrity_check_owner(node, check_data, name);
-
-//	// check dnames
-//	knot_zc_integrity_check_dnames(node, check_data, name);
-
-//	/*! \todo Check NSEC3 node. */
-
-//	free(name);
-//}
+static void knot_zc_integrity_check_dnames(const knot_node_t *node,
+                                           check_data_t *check_data,
+                                           const char *name)
+{
+	// check all dnames in all RRSets - both owners and in RDATA
+	const knot_rrset_t **rrsets = knot_node_rrsets(node);
+	if (rrsets != NULL) {
+		for (int i = 0; i < knot_node_rrset_count(node); ++i) {
+			knot_zc_integrity_check_dnames_in_rrset(rrsets[i],
+			                                      check_data, name);
+		}
+	}
+	free(rrsets);
+}
 
 ///*----------------------------------------------------------------------------*/
 
-//static void knot_zc_integrity_check_nsec3(knot_node_t *node, void *data)
-//{
-//	assert(node != NULL);
-//	assert(data != NULL);
+static void knot_zc_integrity_check_node(knot_node_t *node, void *data)
+{
+	assert(node != NULL);
+	assert(data != NULL);
 
-//	const knot_dname_t *node_owner = knot_node_owner(node);
-//	char *name = knot_dname_to_str(node_owner);
+	const knot_dname_t *node_owner = knot_node_owner(node);
+	char *name = knot_dname_to_str(node_owner);
 
-//	check_data_t *check_data = (check_data_t *)data;
+	check_data_t *check_data = (check_data_t *)data;
 
-//	// check previous-next chain
-//	knot_zc_integrity_check_previous(node, check_data, name);
-//	// store the node as new previous
-//	check_data->previous = node;
+	// check previous-next chain
+	knot_zc_integrity_check_previous(node, check_data, name);
 
-//	// check if the node is child of the zone apex
-//	if (node->parent != check_data->parent) {
-//		fprintf(stderr, "NSEC3 node's parent is not apex. Node: %s.\n",
-//		        name);
-//		++check_data->errors;
-//	}
+	// check node flags
+	knot_zc_integrity_check_flags(node, check_data, name);
 
-//	// check RRSet count
-//	knot_zc_integrity_check_rrset_count(node, check_data, name);
+	// check if the node is child of the saved parent & children count
+	// & wildcard child
+	knot_zc_integrity_check_parent(node, check_data, name);
 
-//	// check owner
-//	knot_zc_integrity_check_owner(node, check_data, name);
+	// check RRSet count
+	knot_zc_integrity_check_rrset_count(node, check_data, name);
 
-//	// check dnames
-//	knot_zc_integrity_check_dnames(node, check_data, name);
+	// check owner
+	knot_zc_integrity_check_owner(node, check_data, name);
 
-//	free(name);
-//}
+	// check dnames
+	knot_zc_integrity_check_dnames(node, check_data, name);
 
-///*----------------------------------------------------------------------------*/
+	/*! \todo Check NSEC3 node. */
 
-//void reset_child_count(knot_zone_tree_node_t *tree_node, void *data)
-//{
-//	assert(tree_node != NULL);
-//	assert(data != NULL);
-
-//	knot_node_t **apex_copy = (knot_node_t **)data;
-//	if (*apex_copy == NULL) {
-//		*apex_copy = tree_node->node;
-//	}
-
-//	if (tree_node->node != NULL) {
-//		tree_node->node->children = 0;
-//	}
-//}
+	free(name);
+}
 
 ///*----------------------------------------------------------------------------*/
 
-//void count_children(knot_zone_tree_node_t *tree_node, void *data)
-//{
-//	UNUSED(data);
-//	if (tree_node->node != NULL && tree_node->node->parent != NULL) {
-//		assert(tree_node->node->parent->new_node != NULL);
-//		// fix parent pointer
-//		tree_node->node->parent = tree_node->node->parent->new_node;
-//		++tree_node->node->parent->children;
-//	}
-//}
+static void knot_zc_integrity_check_nsec3(knot_node_t *node, void *data)
+{
+	assert(node != NULL);
+	assert(data != NULL);
+
+	const knot_dname_t *node_owner = knot_node_owner(node);
+	char *name = knot_dname_to_str(node_owner);
+
+	check_data_t *check_data = (check_data_t *)data;
+
+	// check previous-next chain
+	knot_zc_integrity_check_previous(node, check_data, name);
+	// store the node as new previous
+	check_data->previous = node;
+
+	// check if the node is child of the zone apex
+	if (node->parent != check_data->parent) {
+		fprintf(stderr, "NSEC3 node's parent is not apex. Node: %s.\n",
+		        name);
+		++check_data->errors;
+	}
+
+	// check RRSet count
+	knot_zc_integrity_check_rrset_count(node, check_data, name);
+
+	// check owner
+	knot_zc_integrity_check_owner(node, check_data, name);
+
+	// check dnames
+	knot_zc_integrity_check_dnames(node, check_data, name);
+
+	free(name);
+}
 
 ///*----------------------------------------------------------------------------*/
 
-//void check_child_count(knot_zone_tree_node_t *tree_node, void *data)
-//{
-//	assert(tree_node != NULL);
-//	assert(data != NULL);
+void reset_child_count(knot_zone_tree_node_t *tree_node, void *data)
+{
+	assert(tree_node != NULL);
+	assert(data != NULL);
 
-//	check_data_t *check_data = (check_data_t *)data;
-//	knot_node_t *node = tree_node->node;
+	knot_node_t **apex_copy = (knot_node_t **)data;
+	if (*apex_copy == NULL) {
+		*apex_copy = tree_node->node;
+	}
 
-//	// find corresponding node in the given contents
-//	const knot_node_t *found = NULL;
-//	found = knot_zone_contents_find_node(check_data->contents,
-//	                                     knot_node_owner(node));
-//	assert(found != NULL);
+	if (tree_node->node != NULL) {
+		tree_node->node->children = 0;
+	}
+}
 
-//	if (knot_node_children(node) != knot_node_children(found)) {
-//		char *name = knot_dname_to_str(knot_node_owner(node));
-//		fprintf(stderr, "Wrong children count: node (%p) %s, count %u. "
-//		        "Should be %u (%p)\n", found, name,
-//		        knot_node_children(found),
-//		        knot_node_children(node), node);
-//		free(name);
+///*----------------------------------------------------------------------------*/
 
-//		++check_data->errors;
-//	}
-//}
+void count_children(knot_zone_tree_node_t *tree_node, void *data)
+{
+	UNUSED(data);
+	if (tree_node->node != NULL && tree_node->node->parent != NULL) {
+		assert(tree_node->node->parent->new_node != NULL);
+		// fix parent pointer
+		tree_node->node->parent = tree_node->node->parent->new_node;
+		++tree_node->node->parent->children;
+	}
+}
+
+///*----------------------------------------------------------------------------*/
+
+void check_child_count(knot_zone_tree_node_t *tree_node, void *data)
+{
+	assert(tree_node != NULL);
+	assert(data != NULL);
+
+	check_data_t *check_data = (check_data_t *)data;
+	knot_node_t *node = tree_node->node;
+
+	// find corresponding node in the given contents
+	const knot_node_t *found = NULL;
+	found = knot_zone_contents_find_node(check_data->contents,
+	                                     knot_node_owner(node));
+	assert(found != NULL);
+
+	if (knot_node_children(node) != knot_node_children(found)) {
+		char *name = knot_dname_to_str(knot_node_owner(node));
+		fprintf(stderr, "Wrong children count: node (%p) %s, count %u. "
+		        "Should be %u (%p)\n", found, name,
+		        knot_node_children(found),
+		        knot_node_children(node), node);
+		free(name);
+
+		++check_data->errors;
+	}
+}
 
 /*----------------------------------------------------------------------------*/
 
-//static void reset_new_nodes(knot_zone_tree_node_t *tree_node, void *data)
-//{
-//	assert(tree_node != NULL);
-//	UNUSED(data);
+static void reset_new_nodes(knot_zone_tree_node_t *tree_node, void *data)
+{
+	assert(tree_node != NULL);
+	UNUSED(data);
 
-//	knot_node_t *node = tree_node->node;
-//	knot_node_set_new_node(node, NULL);
-//}
+	knot_node_t *node = tree_node->node;
+	knot_node_set_new_node(node, NULL);
+}
 
 ///*----------------------------------------------------------------------------*/
 
-//static void count_nsec3_nodes(knot_zone_tree_node_t *tree_node, void *data)
-//{
-//	assert(tree_node != NULL);
-//	assert(tree_node->node != NULL);
-//	assert(data != NULL);
+static void count_nsec3_nodes(knot_zone_tree_node_t *tree_node, void *data)
+{
+	assert(tree_node != NULL);
+	assert(tree_node->node != NULL);
+	assert(data != NULL);
 
-//	knot_node_t *apex = (knot_node_t *)data;
-//	assert(apex != NULL);
+	knot_node_t *apex = (knot_node_t *)data;
+	assert(apex != NULL);
 	
-//	apex->children += 1;
-//}
+	apex->children += 1;
+}
 
 ///*----------------------------------------------------------------------------*/
 
-//int knot_zc_integrity_check_child_count(check_data_t *data)
-//{
-//	int errors = 0;
+int knot_zc_integrity_check_child_count(check_data_t *data)
+{
+	int errors = 0;
 
-//	// do shallow copy of the node tree
-//	knot_zone_tree_t *nodes_copy = (knot_zone_tree_t *)
-//	                malloc(sizeof(knot_zone_tree_t));
-//	if (nodes_copy == NULL) {
-//		return 1;
-//	}
+	// do shallow copy of the node tree
+	knot_zone_tree_t *nodes_copy = (knot_zone_tree_t *)
+	                malloc(sizeof(knot_zone_tree_t));
+	if (nodes_copy == NULL) {
+		return 1;
+	}
 
-//	knot_zone_tree_init(nodes_copy);
+	knot_zone_tree_init(nodes_copy);
 
-//	int ret = knot_zone_tree_deep_copy(data->contents->nodes, nodes_copy);
-//	assert(ret == KNOT_EOK);
-
-
-//	// set children count of all nodes to 0
-//	// in the same walkthrough find the apex
-//	knot_node_t *apex_copy = NULL;
-//	knot_zone_tree_forward_apply_inorder(nodes_copy, reset_child_count,
-//	                                     (void *)&apex_copy);
-//	assert(apex_copy != NULL);
-
-//	// now count children of all nodes, presuming the parent pointers are ok
-//	knot_zone_tree_forward_apply_inorder(nodes_copy, count_children, NULL);
-
-//	// add count of NSEC3 nodes to the apex' children count
-//	fprintf(stderr, "Children count of new apex before NSEC3: %d\n",
-//	        data->contents->apex->new_node->children);
-//	knot_zone_tree_forward_apply_inorder(data->contents->nsec3_nodes,
-//	                                     count_nsec3_nodes,
-//	                                     (void *)apex_copy);
+	int ret = knot_zone_tree_deep_copy(data->contents->nodes, nodes_copy);
+	assert(ret == KNOT_EOK);
 
 
-//	// now compare the children counts
-//	// iterate over the old zone and search for nodes in the copy
-//	knot_zone_tree_forward_apply_inorder(nodes_copy, check_child_count,
-//	                                     (void *)data);
+	// set children count of all nodes to 0
+	// in the same walkthrough find the apex
+	knot_node_t *apex_copy = NULL;
+	knot_zone_tree_forward_apply_inorder(nodes_copy, reset_child_count,
+	                                     (void *)&apex_copy);
+	assert(apex_copy != NULL);
 
-//	// cleanup old zone tree - reset pointers to new node to NULL
-//	knot_zone_tree_forward_apply_inorder(data->contents->nodes,
-//	                                     reset_new_nodes, NULL);
+	// now count children of all nodes, presuming the parent pointers are ok
+	knot_zone_tree_forward_apply_inorder(nodes_copy, count_children, NULL);
 
-//	// destroy the shallow copy
-//	knot_zone_tree_deep_free(&nodes_copy);
+	// add count of NSEC3 nodes to the apex' children count
+	fprintf(stderr, "Children count of new apex before NSEC3: %d\n",
+	        data->contents->apex->new_node->children);
+	knot_zone_tree_forward_apply_inorder(data->contents->nsec3_nodes,
+	                                     count_nsec3_nodes,
+	                                     (void *)apex_copy);
 
-//	return errors;
-//}
+
+	// now compare the children counts
+	// iterate over the old zone and search for nodes in the copy
+	knot_zone_tree_forward_apply_inorder(nodes_copy, check_child_count,
+	                                     (void *)data);
+
+	// cleanup old zone tree - reset pointers to new node to NULL
+	knot_zone_tree_forward_apply_inorder(data->contents->nodes,
+	                                     reset_new_nodes, NULL);
+
+	// destroy the shallow copy
+	knot_zone_tree_deep_free(&nodes_copy);
+
+	return errors;
+}
 
 ///*----------------------------------------------------------------------------*/
 
-//int knot_zone_contents_integrity_check(const knot_zone_contents_t *contents)
-//{
-//	/*
-//	 * 1) Check flags of nodes.
-//	 *    - Those containing NS RRSets should have the 'delegation point'
-//	 *      flag set.
-//	 *    - Their descendants should be marked as non-authoritative.
-//	 *    - Other nodes should be marked as authoritative.
-//	 *
-//	 * In the same walkthrough check:
-//	 * - if nodes are properly connected by 'previous' and 'next' pointers.
-//	 *   Only authoritative nodes and delegation points should be.
-//	 * - parents - each node (except for the apex) should have a parent set
-//	 *   and it should be a node with owner one label shorter.
-//	 * - RRSet counts.
-//	 * - etc...
-//	 */
+int knot_zone_contents_integrity_check(const knot_zone_contents_t *contents)
+{
+	/*
+	 * 1) Check flags of nodes.
+	 *    - Those containing NS RRSets should have the 'delegation point'
+	 *      flag set.
+	 *    - Their descendants should be marked as non-authoritative.
+	 *    - Other nodes should be marked as authoritative.
+	 *
+	 * In the same walkthrough check:
+	 * - if nodes are properly connected by 'previous' and 'next' pointers.
+	 *   Only authoritative nodes and delegation points should be.
+	 * - parents - each node (except for the apex) should have a parent set
+	 *   and it should be a node with owner one label shorter.
+	 * - RRSet counts.
+	 * - etc...
+	 */
 
-//	check_data_t data;
-//	data.errors = 0;
-//	data.previous = NULL;
-//	data.deleg_point = NULL;
-//	data.parent = NULL;
-//	data.children = 0;
-//	data.contents = contents;
+	check_data_t data;
+	data.errors = 0;
+	data.previous = NULL;
+	data.deleg_point = NULL;
+	data.parent = NULL;
+	data.children = 0;
+	data.contents = contents;
 
-//	int ret = knot_zone_contents_tree_apply_inorder(
-//	                        (knot_zone_contents_t *)contents,
-//	                        knot_zc_integrity_check_node, (void *)&data);
-//	assert(ret == KNOT_EOK);
+	int ret = knot_zone_contents_tree_apply_inorder(
+	                        (knot_zone_contents_t *)contents,
+	                        knot_zc_integrity_check_node, (void *)&data);
+	assert(ret == KNOT_EOK);
 
-//	// if OK, we can continue with checking children count
-//	// (we need the parent pointers to be set well)
-//	if (data.errors == 0) {
-//		data.contents = contents;
-//		knot_zc_integrity_check_child_count(&data);
-//	}
+	// if OK, we can continue with checking children count
+	// (we need the parent pointers to be set well)
+	if (data.errors == 0) {
+		data.contents = contents;
+		knot_zc_integrity_check_child_count(&data);
+	}
 
-//	data.previous = NULL;
-//	data.children = 0;
-//	data.parent = contents->apex;
-//	ret = knot_zone_contents_nsec3_apply_inorder(
-//	                        (knot_zone_contents_t *)contents,
-//	                        knot_zc_integrity_check_nsec3, (void *)&data);
-//	assert(ret == KNOT_EOK);
+	data.previous = NULL;
+	data.children = 0;
+	data.parent = contents->apex;
+	ret = knot_zone_contents_nsec3_apply_inorder(
+	                        (knot_zone_contents_t *)contents,
+	                        knot_zc_integrity_check_nsec3, (void *)&data);
+	assert(ret == KNOT_EOK);
 
-//	return data.errors;
-//}
+	return data.errors;
+}
 
