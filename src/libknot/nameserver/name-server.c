@@ -4317,6 +4317,7 @@ int knot_ns_process_update2(const knot_packet_t *query,
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to prepare zone copy: %s\n",
 		          knot_strerror(ret));
+		*rcode = KNOT_RCODE_SERVFAIL;
 		return ret;
 	}
 	
@@ -4325,8 +4326,9 @@ int knot_ns_process_update2(const knot_packet_t *query,
 	ret = knot_ddns_process_update2(contents_copy, query, &chgs->sets[0], 
 	                                changes, rcode);
 	if (ret != KNOT_EOK) {
-		dbg_ns("Failed to apply UPDATE to the zone copy: %\n",
-		       knot_strerror(ret));
+		dbg_ns("Failed to apply UPDATE to the zone copy or no update"
+		       " made: %s\n", (ret < 0) ? knot_strerror(ret)
+		                                : "No change made.");
 		xfrin_rollback_update(old_contents, &contents_copy, &changes);
 		return ret;
 	}
@@ -4337,13 +4339,15 @@ int knot_ns_process_update2(const knot_packet_t *query,
 		dbg_ns("Failed to finalize updated zone: %s\n",
 		       knot_strerror(ret));
 		xfrin_rollback_update(old_contents, &contents_copy, &changes);
+		*rcode = (ret == KNOT_EMALF) ? KNOT_RCODE_FORMERR
+		                             : KNOT_RCODE_SERVFAIL;
 		return ret;
 	}
 
 	chgs->changes = changes;
 	*new_contents = contents_copy;
 	
-	return KNOT_ERROR;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/

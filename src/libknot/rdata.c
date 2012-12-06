@@ -860,7 +860,7 @@ int knot_rdata_ds_check(const knot_rdata_t *rdata)
 	uint16_t len = knot_rdata_ds_digest_len(rdata);
 	uint8_t type = knot_rdata_ds_digest_type(rdata);
 
-	if (type == 0 || type == 0) {
+	if (type == 0 || len == 0) {
 		return KNOT_EINVAL;
 	} else if (len != knot_ds_digest_length(type)) {
 		return KNOT_EDSDIGESTLEN;
