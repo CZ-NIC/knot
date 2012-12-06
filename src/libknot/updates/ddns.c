@@ -1411,8 +1411,13 @@ static int knot_ddns_add_rr(knot_node_t *node, const knot_rrset_t *rr,
 		}
 	} else {
 		/* We have copied the RRSet from the node. */
+dbg_ddns_exec_detail(
 		dbg_ddns_detail("Merging RR to an existing RRSet.\n");
 		knot_rrset_dump(node_rrset_copy, 1);
+		dbg_ddns_detail("New RR:\n");
+		knot_rrset_dump(*rr_copy, 0);
+);
+		
 		if (type_covered != type) {
 			/* Adding RRSIG. */
 			ret = knot_ddns_add_rr_merge_rrsig(node_rrset_copy,
@@ -1421,6 +1426,11 @@ static int knot_ddns_add_rr(knot_node_t *node, const knot_rrset_t *rr,
 			ret = knot_ddns_add_rr_merge_normal(node_rrset_copy,
 			                                    rr_copy);
 		}
+
+dbg_ddns_exec_detail(
+		dbg_ddns_detail("After merge:\n");
+		knot_rrset_dump(node_rrset_copy, 1);
+);
 
 		if (ret != KNOT_EOK) {
 			dbg_ddns("Failed to merge UPDATE RR to node RRSet.\n");
