@@ -2300,16 +2300,16 @@ int knot_ddns_process_update2(knot_zone_contents_t *zone,
 		}
 	}
 
-	/* If the changeset is empty, do not process anything further and
-	 * indicate this to the caller, so that the changeset is not saved and
-	 * zone is not switched.
-	 */
-	if (knot_changeset_is_empty(changeset)) {
-		return 1;
-	}
-
-	/* Ending SOA */
+	/* Ending SOA (not in the UPDATE) */
 	if (soa_end == NULL) {
+		/* If the changeset is empty, do not process anything further 
+		 * and indicate this to the caller, so that the changeset is not
+		 * saved and zone is not switched.
+		 */
+		if (knot_changeset_is_empty(changeset)) {
+			return 1;
+		}
+		
 		/* If not set, create new SOA. */
 		assert(sn_new == (uint32_t)sn + 1);
 		ret = knot_rrset_deep_copy(soa, &soa_end, 1);
