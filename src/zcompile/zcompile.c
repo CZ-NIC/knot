@@ -625,12 +625,15 @@ static void process_rr(const scanner_t *scanner)
 //	}
 
 	if (add) {
-		if (knot_zone_contents_add_rrset(contents, current_rrset,
+		ret = knot_zone_contents_add_rrset(contents, current_rrset,
 		                          &node,
-		                   KNOT_RRSET_DUPL_MERGE, 1) < 0) {
+		                   KNOT_RRSET_DUPL_MERGE, 1);
+		if (ret < 0) {
 			dbg_zp("zp: process_rr: Cannot "
 			       "add RRSets.\n");
 			return KNOTDZCOMPILE_EBRDATA;
+		} else if (ret > 0) {
+			knot_rrset_deep_free(&current_rrset, 0, 0);
 		}
 	}
 //	}
