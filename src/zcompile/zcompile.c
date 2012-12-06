@@ -333,6 +333,9 @@ dbg_zp_exec_detail(
 		return ret;
 	}
 	
+	/* RDATA are safely added to RRSet now. */
+	free(rdata);
+	
 	return KNOT_EOK;
 }
 
@@ -666,6 +669,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	printf("RRs err=%d\n", err_count);
 	printf("RRs new=%d\n", new_rr_count);
 	printf("DNAMEs new=%d\n", new_dname_count);
+	knot_dname_free(&(my_parser.origin_from_config));
 }
 
 /*! @} */

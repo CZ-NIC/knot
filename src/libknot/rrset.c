@@ -30,27 +30,46 @@
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
 
-size_t rrset_rdata_offset(const knot_rrset_t *rrset,
-                          size_t pos)
+static uint32_t rrset_rdata_size_total(const knot_rrset_t *rrset)
 {
-	if (rrset == NULL || rrset->rdata_indices == NULL) {
+	if (rrset == NULL || rrset->rdata_indices == NULL ||
+	    rrset->rdata_count == 0) {
+		return 0;
+	}
+	
+	/* Last index denotes end of all RRs. */
+	return (rrset->rdata_indices[rrset->rdata_count - 1]);
+}
+
+static size_t rrset_rdata_offset(const knot_rrset_t *rrset,
+                                 size_t pos)
+{
+	if (rrset == NULL || rrset->rdata_indices == NULL ||
+	    pos >= rrset->rdata_count) {
 		return 0;
 	}
 	
 	if (pos == 0) {
 		return 0;
 	} else {
+		assert(rrset->rdata_count >= 2);
 		return rrset->rdata_indices[pos - 1];
 	}
 }
 
-size_t rrset_rdata_item_size(const knot_rrset_t *rrset,
-                             size_t pos)
+static uint32_t rrset_rdata_item_size(const knot_rrset_t *rrset,
+                                      size_t pos)
 {
-	if (rrset == NULL || rrset->rdata_indices || rrset->rdata_count == 0) {
+	if (rrset == NULL || rrset->rdata_indices == NULL ||
+	    rrset->rdata_count == 0) {
 		return 0;
 	}
 	
+	if (rrset->rdata_count == 1) {
+		return rrset_rdata_size_total(rrset);
+	}
+	
+	assert(rrset->rdata_count >= 2);
 	return rrset_rdata_offset(rrset, pos) -
 	                          rrset_rdata_offset(rrset, pos - 1);
 }
@@ -91,19 +110,6 @@ size_t rrset_rdata_naptr_bin_chunk_size(const knot_rrset_t *rrset,
 	
 	return size;
 }
-
-
-static uint32_t rrset_rdata_size_total(const knot_rrset_t *rrset)
-{
-	if (rrset == NULL || rrset->rdata_indices == NULL ||
-	    rrset->rdata_count == 0) {
-		return 0;
-	}
-	
-	/* Last index denotes end of all RRs. */
-	return (rrset->rdata_indices[rrset->rdata_count - 1]);
-}
-
 
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
@@ -1037,30 +1043,31 @@ void knot_rrset_rdata_deep_free_one(knot_rrset_t *rrset, size_t pos,
 		/* Go through the data and free dnames. Pointers can stay. */
 		const rdata_descriptor_t *desc =
 			get_rdata_descriptor(rrset->type);
+		assert(desc);
 		for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END;i++) {
 			int item = desc->block_types[i];
 			if (descriptor_item_is_dname(item)) {
-				knot_dname_t *dname =
-					(knot_dname_t *)rdata + offset;
+				knot_dname_t *dname;
+				memcpy(&dname, rdata + offset,
+				       sizeof(knot_dname_t *));
+//				printf("%Freeing dname: %s\n",
+//				       knot_dname_to_str(dname));
 				knot_dname_release(dname);
 				offset += sizeof(knot_dname_t *);
 			} else if (descriptor_item_is_fixed(item)) {
-				offset += desc->block_types[i];
+				offset += item;
 			} else if (!descriptor_item_is_remainder(item)) {
 				assert(rrset->type == KNOT_RRTYPE_NAPTR);
 				/* Skip the binary beginning. */
-				offset += rrset_rdata_naptr_bin_chunk_size(rrset,
-				                                       pos);
+				offset +=
+					rrset_rdata_naptr_bin_chunk_size(rrset,
+				                                         pos);
 				knot_dname_t *dname =
 					(knot_dname_t *)rdata + offset;
 				knot_dname_release(dname);
 			}
 		}
 	}
-	
-	free(rrset->rdata);
-	free(rrset->rdata_indices);
-	rrset->rdata_count = 0;
 	
 	return;
 }
@@ -1082,6 +1089,9 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
 	if ((*rrset)->rrsigs != NULL) {
 		knot_rrset_deep_free(&(*rrset)->rrsigs, 0, free_rdata_dnames);
 	}
+	
+	free((*rrset)->rdata);
+	free((*rrset)->rdata_indices);
 
 	if (free_owner) {
 		knot_dname_release((*rrset)->owner);
@@ -1142,8 +1152,6 @@ int knot_rrset_merge(void **r1, void **r2)
 	                    rrset_rdata_size_total(rrset2));
 	if (tmp == NULL) {
 		ERR_ALLOC_FAILED;
-		knot_rrset_dump(rrset1);
-		knot_rrset_dump(rrset2);
 		return KNOT_ENOMEM;
 	} else {
 		rrset1->rdata = tmp;
@@ -1184,8 +1192,6 @@ int knot_rrset_merge(void **r1, void **r2)
 		rrset1_total_size + rrset2_total_size;
 	
 	rrset1->rdata_count += rrset2->rdata_count;
-	
-//	knot_rrset_dump(rrset1);
 	
 	return KNOT_EOK;
 }
@@ -1766,19 +1772,25 @@ void knot_rrset_rdata_dump(const knot_rrset_t *rrset, size_t rdata_pos)
 				fprintf(stderr, "DNAME error.\n");
 				return;
 			}
-			fprintf(stderr, "block=%d: DNAME=%s.\n",
-			        i, name);
+			fprintf(stderr, "block=%d: (%p) DNAME=%s.\n",
+			        i, dname, name);
 			free(name);
 			offset += sizeof(knot_dname_t *);
 		} else if (descriptor_item_is_fixed(item)) {
-			fprintf(stderr, "block=%d Raw data:\n",
-			        i);
+			fprintf(stderr, "block=%d Raw data (size=%d):\n",
+			        i, item);
 			hex_print(rdata + offset, item);
 			offset += item;
 		} else if (descriptor_item_is_remainder(item)) {
-			printf("remainder TODO\n");
-			;
+			printf("offset %d\n", offset);
+			fprintf(stderr, "block=%d Remainder (size=%d):\n",
+			        i, rrset_rdata_item_size(rrset,
+			                                 rdata_pos) - offset);
+			hex_print(rdata + offset,
+			          rrset_rdata_item_size(rrset,
+			                                rdata_pos) - offset);
 		} else {
+			fprintf(stderr, "NAPTR, failing miserably\n");
 			assert(rrset->type == KNOT_RRTYPE_NAPTR);
 			assert(0);
 		}
