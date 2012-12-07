@@ -146,6 +146,7 @@ static void knot_zone_contents_destroy_node_owner_from_tree(
 static int knot_zone_contents_solve_rrset_dnames(knot_zone_contents_t *zone,
                                                  knot_rrset_t *rrset)
 {
+	assert(0);
 	assert(rrset != NULL && zone != NULL);
 	
 	/* Try to find the owner. Owner is likely to be in the tree itself. */
@@ -159,23 +160,23 @@ static int knot_zone_contents_solve_rrset_dnames(knot_zone_contents_t *zone,
 //		}
 //	}
 	
-	/*
-	 * There is always a slight chance, that the owner of RRSet is 
-	 * somewhere in RDATA, but I don't think that's worth the bother.
-	 */
+//	/*
+//	 * There is always a slight chance, that the owner of RRSet is 
+//	 * somewhere in RDATA, but I don't think that's worth the bother.
+//	 */
 	
-	knot_dname_t **dname = NULL;
-	while ((dname = knot_rrset_get_next_dname_pointer(rrset,
-	                                                  dname)) != NULL) {
-		knot_dname_t *found_dname =
-			knot_zone_contents_find_dname_in_rdata(zone, *dname);
-		if (found_dname != *dname) {
-			knot_dname_free(dname);
-			*dname = found_dname;
-		}
-	}
+//	knot_dname_t **dname = NULL;
+//	while ((dname = knot_rrset_get_next_dname_pointer(rrset,
+//	                                                  dname)) != NULL) {
+//		const knot_dname_t *found_dname =
+//			knot_zone_contents_find_dname_in_rdata(zone, *dname);
+//		if (found_dname != *dname) {
+//			knot_dname_free(dname);
+//			*dname = found_dname;
+//		}
+//	}
 	
-	dbg_zone("RRSet OK.\n");
+//	dbg_zone("RRSet OK.\n");
 	return KNOT_EOK;
 }
 
@@ -698,8 +699,8 @@ dbg_zone_exec_verb(
 	dbg_zone_hex((char *)hashed_name, hash_size);
 	dbg_zone("\n");
 
-	char *name_b32 = NULL;
-	size_t size = base32hex_encode_alloc((char *)hashed_name, hash_size,
+	uint8_t *name_b32 = NULL;
+	size_t size = base32hex_encode_alloc(hashed_name, hash_size,
 	                                     &name_b32);
 
 	if (size == 0) {

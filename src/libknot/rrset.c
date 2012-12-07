@@ -1677,7 +1677,7 @@ uint8_t *knot_rrset_rdata_prealloc(const knot_rrset_t *rrset)
 	 * Length of data can be sometimes guessed
 	 * easily. Well, for some types anyway.
 	 */
-	rdata_descriptor_t *desc = get_rdata_descriptor(rrset->type);
+	const rdata_descriptor_t *desc = get_rdata_descriptor(rrset->type);
 	assert(desc);
 	size_t rdata_size = 0;
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
@@ -1764,7 +1764,8 @@ void knot_rrset_rdata_dump(const knot_rrset_t *rrset, size_t rdata_pos)
 		fprintf(stderr, "      ------- RDATA -------\n");
 		return;
 	}
-	rdata_descriptor_t *desc = get_rdata_descriptor(knot_rrset_type(rrset));
+	const rdata_descriptor_t *desc =
+		get_rdata_descriptor(knot_rrset_type(rrset));
 	assert(desc != NULL);
 	
 	size_t offset = 0;
@@ -1786,14 +1787,14 @@ void knot_rrset_rdata_dump(const knot_rrset_t *rrset, size_t rdata_pos)
 		} else if (descriptor_item_is_fixed(item)) {
 			fprintf(stderr, "block=%d Raw data (size=%d):\n",
 			        i, item);
-			hex_print(rdata + offset, item);
+			hex_print((char *)(rdata + offset), item);
 			offset += item;
 		} else if (descriptor_item_is_remainder(item)) {
 			printf("offset %d\n", offset);
 			fprintf(stderr, "block=%d Remainder (size=%d):\n",
 			        i, rrset_rdata_item_size(rrset,
 			                                 rdata_pos) - offset);
-			hex_print(rdata + offset,
+			hex_print((char *)(rdata + offset),
 			          rrset_rdata_item_size(rrset,
 			                                rdata_pos) - offset);
 		} else {

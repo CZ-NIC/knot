@@ -238,7 +238,7 @@ static void process_error(const scanner_t *s)
 static size_t calculate_item_size(const knot_rrset_t *rrset,
                                const scanner_t *scanner)
 {
-	rdata_descriptor_t *desc = get_rdata_descriptor(rrset->type);
+	const rdata_descriptor_t *desc = get_rdata_descriptor(rrset->type);
 	assert(desc);
 	size_t size = 0;
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
@@ -352,8 +352,8 @@ static void process_rr(const scanner_t *scanner)
 	knot_rrset_t *current_rrset = NULL;
 	if (parser->last_node &&
 	    (scanner->r_owner_length == parser->last_node->owner->size) &&
-	    (strncmp(parser->last_node->owner->name,
-	            scanner->r_owner, scanner->r_owner_length) == 0)) {
+	    (strncmp((char *)parser->last_node->owner->name,
+	            (char *)scanner->r_owner, scanner->r_owner_length) == 0)) {
 		// no need to create new dname;
 		current_owner = parser->last_node->owner;
 		// what about RRSet, do we need a new one?
@@ -650,7 +650,8 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 {
 	parser_t my_parser;
 	my_parser.origin_from_config = knot_dname_new_from_str(name,
-	                                                       strlen(name),
+	                                                       strnlen((char *)name,
+	                                                               255),
 	                                                       NULL);
 	assert(my_parser.origin_from_config);
 	my_parser.last_node = knot_node_new(my_parser.origin_from_config,
@@ -671,7 +672,6 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	printf("RRs err=%d\n", err_count);
 	printf("RRs new=%d\n", new_rr_count);
 	printf("DNAMEs new=%d\n", new_dname_count);
-	knot_dname_free(&(my_parser.origin_from_config));
 }
 
 /*! @} */
