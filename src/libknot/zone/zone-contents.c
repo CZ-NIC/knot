@@ -21,6 +21,7 @@
 #include "libknot/rrset.h"
 #include "common/base32hex.h"
 #include "common/descriptor_new.h"
+#include "common/hattrie/hat-trie.h"
 #include "consts.h"
 
 /*----------------------------------------------------------------------------*/
@@ -36,6 +37,7 @@ typedef struct {
 	knot_node_t *first_node;
 	knot_zone_contents_t *zone;
 	knot_node_t *previous_node;
+	knot_zone_tree_t *lookup_tree;
 	int err;
 } knot_zone_adjust_arg_t;
 
@@ -274,10 +276,33 @@ dbg_zone_exec_detail(
  * \param pos Position of the RDATA item in the RDATA.
  */
 static void knot_zone_contents_adjust_rdata_dname(knot_zone_contents_t *zone,
+                                                  knot_zone_tree_t *lookup_tree,
                                                   knot_node_t *node,
-                                                  knot_dname_t *dname)
+                                                  knot_dname_t **in_dname)
 {
-
+//	assert(in_dname && *in_dname);
+//	printf("In_Dname: %s\n", knot_dname_to_str(*in_dname));
+//	/* First thing - make sure dname is not duplicated. */
+//	knot_dname_t *found_dname = NULL;
+//	knot_zone_tree_get_dname(lookup_tree, *in_dname, &found_dname);
+//	if (found_dname != NULL &&
+//	    found_dname != *in_dname) {
+//		/* Duplicate. */
+//		knot_dname_release(*in_dname);
+////		assert((*in_dname)->ref.count == 0);
+//		*in_dname = found_dname;
+//	} else {
+//		//TODO this assert is failing, why?
+////		assert(found_dname == NULL);
+//		/* Into the tree it goes. */
+//		knot_zone_tree_insert_dname(lookup_tree, *in_dname);
+//	}
+	
+	knot_dname_t *dname = *in_dname;
+	
+	//TODO remove once hat-trie is functional
+	return;
+	
 	/*
 	 * The case when dname.node is already set is handled here.
 	 * No use to check it later.
@@ -353,12 +378,14 @@ static void knot_zone_contents_adjust_rdata_dname(knot_zone_contents_t *zone,
  * \param zone Zone to which the RRSet belongs.
  */
 static void knot_zone_contents_adjust_rdata_in_rrset(knot_rrset_t *rrset,
+                                                     knot_zone_tree_t *lookup_tree,
                                                      knot_zone_contents_t *zone,
                                                      knot_node_t *node)
 {
-	knot_dname_t *dname = NULL;
-	while ((dname = knot_rrset_get_next_dname(rrset, NULL)) != NULL) {
+	knot_dname_t **dname = NULL;
+	while ((dname = knot_rrset_get_next_dname_pointer(rrset, dname)) != NULL) {
 		knot_zone_contents_adjust_rdata_dname(zone,
+		                                      lookup_tree,
 		                                      node,
 		                                      dname);
 	}
@@ -378,6 +405,7 @@ static void knot_zone_contents_adjust_rdata_in_rrset(knot_rrset_t *rrset,
  * \param zone Zone to which the node belongs.
  */
 static void knot_zone_contents_adjust_rrsets(knot_node_t *node,
+                                             knot_zone_tree_t *lookup_tree,
                                              knot_zone_contents_t *zone)
 {
 	knot_rrset_t **rrsets = knot_node_get_rrsets(node);
@@ -387,13 +415,21 @@ static void knot_zone_contents_adjust_rrsets(knot_node_t *node,
 
 	for (int r = 0; r < count; ++r) {
 		assert(rrsets[r] != NULL);
+		
+		/* Make sure that RRSet owner is the same as node's. */
+		if (node->owner != rrsets[r]->owner) {
+			knot_rrset_set_owner(rrsets[r], node->owner);
+		}
+
 		dbg_zone("Adjusting next RRSet.\n");
-		knot_zone_contents_adjust_rdata_in_rrset(rrsets[r], zone,
-		                                           node);
+		knot_zone_contents_adjust_rdata_in_rrset(rrsets[r],
+		                                         lookup_tree, zone,
+		                                         node);
 		knot_rrset_t *rrsigs = rrsets[r]->rrsigs;
 		if (rrsigs != NULL) {
 			dbg_zone("Adjusting next RRSIGs.\n");
-			knot_zone_contents_adjust_rdata_in_rrset(rrsigs, zone,
+			knot_zone_contents_adjust_rdata_in_rrset(rrsigs,
+		                                         lookup_tree, zone,
 			                                         node);
 		}
 	}
@@ -418,11 +454,13 @@ static void knot_zone_contents_adjust_rrsets(knot_node_t *node,
  *       old changeset processing).
  */
 static void knot_zone_contents_adjust_node(knot_node_t *node,
+                                           knot_zone_tree_t *lookup_tree,
                                            knot_zone_contents_t *zone)
 {
 	// adjust domain names in RDATA
 	/*! \note Enabled again after a LONG time. Should test thoroughly. */
-	knot_zone_contents_adjust_rrsets(node, zone);
+	knot_zone_contents_adjust_rrsets(node, lookup_tree,
+	                                 zone);
 
 dbg_zone_exec_detail(
 	if (knot_node_parent(node)) {
@@ -535,7 +573,7 @@ dbg_zone_exec_verb(
 	 * 2) Do other adjusting (flags, closest enclosers, wildcard children,
 	 *    etc.).
 	 */
-	knot_zone_contents_adjust_node(node, zone);
+	knot_zone_contents_adjust_node(node, args->lookup_tree, zone);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1912,16 +1950,17 @@ dbg_zone_detail("Search function returned %d, node %s (%p) and prev: %s (%p)\n",
 		*closest_encloser = *node;
 	} else {
 		*closest_encloser = *previous;
-		assert(*closest_encloser != NULL);
+		//TODO remove one hattrie is finished
+//		assert(*closest_encloser != NULL);
 
-		int matched_labels = knot_dname_matched_labels(
-				knot_node_owner((*closest_encloser)), name);
-		while (matched_labels < knot_dname_label_count(
-				knot_node_owner((*closest_encloser)))) {
-			(*closest_encloser) =
-				knot_node_parent((*closest_encloser));
-			assert(*closest_encloser);
-		}
+//		int matched_labels = knot_dname_matched_labels(
+//				knot_node_owner((*closest_encloser)), name);
+//		while (matched_labels < knot_dname_label_count(
+//				knot_node_owner((*closest_encloser)))) {
+//			(*closest_encloser) =
+//				knot_node_parent((*closest_encloser));
+//			assert(*closest_encloser);
+//		}
 	}
 dbg_zone_exec(
 	char *n = knot_dname_to_str(knot_node_owner((*closest_encloser)));
@@ -2266,11 +2305,18 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone)
 
 	// load NSEC3PARAM (needed on adjusting function)
 	knot_zone_contents_load_nsec3param(zone);
-
+	
+	knot_zone_tree_t *lookup_tree = hattrie_create();
+	if (lookup_tree == NULL) {
+		dbg_zone("Failed to create out of zone lookup structure.\n");
+		return KNOT_ERROR;
+	}
+	
 	knot_zone_adjust_arg_t adjust_arg;
 	adjust_arg.zone = zone;
 	adjust_arg.first_node = NULL;
 	adjust_arg.previous_node = NULL;
+	adjust_arg.lookup_tree = lookup_tree;
 	adjust_arg.err = KNOT_EOK;
 
 	/*
@@ -2310,7 +2356,8 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone)
 	}
 
 	// set the last node as previous of the first node
-	assert(zone->apex == adjust_arg.first_node);
+	//TODO remove one hattrie is finished
+//	assert(zone->apex == adjust_arg.first_node);
 	knot_node_set_previous(zone->apex, adjust_arg.previous_node);
 	dbg_zone("Done.\n");
 
@@ -2344,6 +2391,8 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone)
 	}
 
 	dbg_zone("Done.\n");
+	
+	hattrie_free(lookup_tree);
 
 	return ret;
 }
@@ -3293,7 +3342,7 @@ static void count_nsec3_nodes(knot_zone_tree_node_t *tree_node, void *data)
 	apex->children += 1;
 }
 
-///*----------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 
 int knot_zc_integrity_check_child_count(check_data_t *data)
 {

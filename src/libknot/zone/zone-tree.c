@@ -203,6 +203,13 @@ int knot_zone_tree_insert(knot_zone_tree_t *tree, knot_node_t *node)
 	return KNOT_EOK;
 }
 
+int knot_zone_tree_insert_dname(knot_zone_tree_t *tree, knot_dname_t *dname)
+{
+	assert(tree && dname);
+	*hattrie_get(tree, dname->name, dname->size) = dname;
+	return KNOT_EOK;
+}
+
 /*----------------------------------------------------------------------------*/
 
 int knot_zone_tree_find(knot_zone_tree_t *tree, const knot_dname_t *owner,
@@ -259,6 +266,24 @@ int knot_zone_tree_get(knot_zone_tree_t *tree, const knot_dname_t *owner,
 }
 
 /*----------------------------------------------------------------------------*/
+
+int knot_zone_tree_get_dname(knot_zone_tree_t *tree, const knot_dname_t *owner,
+                             knot_dname_t **found)
+{
+	if (tree == NULL || owner == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	value_t *val = hattrie_tryget(tree, owner->name, owner->size);
+	if (val == NULL) {
+		*found = NULL;
+//		return KNOT_ENOENT;
+	} else {
+		*found = *val;
+	}
+
+	return KNOT_EOK;
+}
 
 int knot_zone_tree_find_less_or_equal(knot_zone_tree_t *tree,
                                         const knot_dname_t *owner,
@@ -421,6 +446,7 @@ int knot_zone_tree_forward_apply_inorder(knot_zone_tree_t *tree,
                                                void *data),
                                            void *data)
 {
+	return knot_zone_tree_reverse_apply_postorder(tree, function, data);
 	if (tree == NULL || function == NULL) {
 		return KNOT_EINVAL;
 	}

@@ -119,6 +119,8 @@ src/common/fdset_kqueue.h
 src/common/fdset_kqueue.c
 src/common/log.c
 src/common/log.h
+src/common/hattrie/hat-trie.c
+src/common/hattrie/hat-trie.h
 src/zcompile/parser-descriptor.h
 src/zcompile/parser-descriptor.c
 src/zcompile/parser-util.h

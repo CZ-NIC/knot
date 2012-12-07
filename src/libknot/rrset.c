@@ -1577,7 +1577,7 @@ knot_dname_t *knot_rrset_get_next_dname(const knot_rrset_t *rrset,
 			knot_rrset_rdata_get_next_dname_pointer(rrset,
 		                                                &prev_dname, i);
 		if (ret != NULL) {
-			return (knot_dname_t *)ret;
+			return *ret;
 		}
 	}
 	
@@ -1585,21 +1585,72 @@ knot_dname_t *knot_rrset_get_next_dname(const knot_rrset_t *rrset,
 }
 
 knot_dname_t **knot_rrset_get_next_dname_pointer(const knot_rrset_t *rrset,
-                                                knot_dname_t **prev_dname)
+                                                 knot_dname_t **prev_dname)
 {
 	if (rrset == NULL) {
 		return NULL;
 	}
 	
-	for (uint16_t i = 0; i < rrset->rdata_count; i++) {
-		knot_dname_t **ret =
-			knot_rrset_rdata_get_next_dname_pointer(rrset,
-		                                                prev_dname, i);
-		if (ret != NULL) {
-			return ret;
-		}
+	// Get descriptor
+	const rdata_descriptor_t *desc =
+		get_rdata_descriptor(rrset->type);
+	int next = 0;
+	if (prev_dname == NULL) {
+		next = 1;
 	}
-	
+
+	for (uint16_t pos = 0; pos < rrset->rdata_count; pos++) {
+	size_t offset = 0;
+	uint8_t *rdata = rrset_rdata_pointer(rrset, pos);
+	// Cycle through blocks and find dnames
+	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
+		if (descriptor_item_is_dname(desc->block_types[i])) {
+			if (next) {
+				assert(rdata + offset);
+				return (knot_dname_t **)(rdata + offset);
+			}
+			
+			knot_dname_t **dname =
+				(knot_dname_t **)(rdata +
+			                         offset);
+
+			assert(prev_dname);
+			
+			if (dname == prev_dname) {
+				//we need to return next dname
+				next = 1;
+			}
+			offset += sizeof(knot_dname_t *);
+		} else if (descriptor_item_is_fixed(desc->block_types[i])) {
+			offset += desc->block_types[i];
+		} else if (!descriptor_item_is_remainder(desc->block_types[i])) {
+			assert(rrset->type == KNOT_RRTYPE_NAPTR);
+			offset += rrset_rdata_naptr_bin_chunk_size(rrset, pos);
+			if (next) {
+				return (knot_dname_t **)(rdata + offset);
+			}
+			
+			knot_dname_t *dname =
+				(knot_dname_t *)(rdata +
+			                         offset);
+			
+			assert(prev_dname);
+			
+			if (dname == *prev_dname) {
+				//we need to return next dname
+				next = 1;
+			}
+			
+			/* 
+			 * Offset does not contain dname from NAPTR yet.
+			 * It should not matter, since this block type
+			 * is the only one in the RR anyway, but to be sure...
+			 */
+			offset += sizeof(knot_dname_t *); // now it does
+		}
+		//TODO remainder matters too!
+	}
+	}
 	return NULL;
 }
 
@@ -1610,6 +1661,9 @@ knot_dname_t **knot_rrset_rdata_get_next_dname_pointer(
 	if (rrset == NULL) {
 		return NULL;
 	}
+	
+	printf("previous: %s %d %p\n", (prev_dname != NULL) ? knot_dname_to_str(*prev_dname) : "null",
+	       pos, prev_dname);
 	
 	// Get descriptor
 	const rdata_descriptor_t *desc =
@@ -1625,16 +1679,17 @@ knot_dname_t **knot_rrset_rdata_get_next_dname_pointer(
 		if (descriptor_item_is_dname(desc->block_types[i])) {
 			if (next) {
 //				toto je imho spatne, ale who knows TODO
+				assert(rdata + offset);
 				return (knot_dname_t **)(rdata + offset);
 			}
 			
-			knot_dname_t *dname =
-				(knot_dname_t *)(rdata +
+			knot_dname_t **dname =
+				(knot_dname_t **)(rdata +
 			                         offset);
 
 			assert(prev_dname);
 			
-			if (dname == *prev_dname) {
+			if (dname == prev_dname) {
 				//we need to return next dname
 				next = 1;
 			}

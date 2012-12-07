@@ -390,7 +390,7 @@ knot_dname_t **knot_rrset_rdata_get_next_dname_pointer(
 
 
 knot_dname_t **knot_rrset_get_next_dname_pointer(const knot_rrset_t *rrset,
-                                                knot_dname_t **prev_dname);
+                                                 knot_dname_t **prev_dname);
 
 uint8_t *knot_rrset_rdata_prealloc(const knot_rrset_t *rrset);
 
