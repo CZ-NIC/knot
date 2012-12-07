@@ -149,21 +149,32 @@ static int knot_zone_contents_solve_rrset_dnames(knot_zone_contents_t *zone,
 	assert(rrset != NULL && zone != NULL);
 	
 	/* Try to find the owner. Owner is likely to be in the tree itself. */
-//	knot_zone_contents_find_dname(zone, rrset->owner,)
-	// for each RDATA in RRSet
-	uint16_t rr_count = knot_rrset_rdata_rr_count(rrset);
-	for (int i = 0; i < rr_count; i++) {
-		const rdata_descriptor_t *desc =
-			get_rdata_descriptor(knot_rrset_type(rrset));
-		assert(desc);
-		for (int j = 0; desc->block_types[j] != KNOT_RDATA_WF_END; j++) {
-			if (descriptor_item_is_dname(desc->block_types[j])) {
-				/* Query whole zone for these dnames. */
-				// TODO
-			}
+	//IHMO not needed
+//	const knot_node_t *node =
+//		knot_zone_contents_find_node(contents, rrset->owner);
+//	if (node != NULL) {
+//		if (node->owner != rrset->owner) {
+//			//TODO do i need an extra retain? refcounting is a mess
+//			knot_rrset_set_owner(rrset, node->owner);
+//		}
+//	}
+	
+	/*
+	 * There is always a slight chance, that the owner of RRSet is 
+	 * somewhere in RDATA, but I don't think that's worth the bother.
+	 */
+	
+	knot_dname_t **dname = NULL;
+	while ((dname = knot_rrset_get_next_dname_pointer(rrset,
+	                                                  dname)) != NULL) {
+		knot_dname_t *found_dname =
+			knot_zone_contents_find_dname_in_rdata(zone, *dname);
+		if (found_dname != *dname) {
+			knot_dname_free(dname);
+			*dname = found_dname;
 		}
 	}
-
+	
 	dbg_zone("RRSet OK.\n");
 	return KNOT_EOK;
 }
@@ -176,6 +187,12 @@ static int knot_zone_contents_solve_node_dnames(knot_zone_contents_t *zone,
 	/*
 	 * Assuming that all the RRSets have the same owner as the node.
 	 */
+//	if (node != NULL) {
+//		if (node->owner != rrset->owner) {
+//			//TODO do i need an extra retain? refcounting is a mess
+//			knot_rrset_set_owner(rrset, node->owner);
+//		}
+//	}
 	
 	/* Find node owner, if not the same, replace rrset owner as well. */
 	// zone_contents_find_dname ... porovnat, uvolnit, nahradit.
@@ -338,13 +355,6 @@ static void knot_zone_contents_adjust_rdata_in_rrset(knot_rrset_t *rrset,
                                                      knot_zone_contents_t *zone,
                                                      knot_node_t *node)
 {
-	uint16_t type = knot_rrset_type(rrset);
-
-	const rdata_descriptor_t *desc =
-		get_rdata_descriptor(type);
-	assert(desc);
-	size_t offset = 0;
-	
 	knot_dname_t *dname = NULL;
 	while ((dname = knot_rrset_get_next_dname(rrset, NULL)) != NULL) {
 		knot_zone_contents_adjust_rdata_dname(zone,
@@ -1196,14 +1206,10 @@ dbg_zone_exec_detail(
 	}
 
 	// Try to find dnames TODO
-//	if (use_domain_table) {
-//		ret = knot_zone_contents_dnames_from_node_to_table(
-//		          zone->dname_table, node);
-//		if (ret != KNOT_EOK) {
-//			/*! \todo Remove node from the tree and hash table.*/
-//			dbg_zone("Failed to add dnames into table.\n");
-//			return ret;
-//		}
+//	ret = knot_zone_contents_solve_node_dnames(zone, node);
+//	if (ret != KNOT_EOK) {
+//		dbg_zone("Failed to add dnames into table.\n");
+//		return ret;
 //	}
 
 #ifdef USE_HASH_TABLE
@@ -1262,17 +1268,12 @@ dbg_zone_exec_detail(
 				knot_dname_free(&chopped);
 				return KNOT_ENOMEM;
 			}
-			
-			// ADD names to table TODO
-//			if (use_domain_table) {
-//				ret =
-//				 knot_zone_contents_dnames_from_node_to_table(
-//					zone->dname_table, next_node);
-//				if (ret != KNOT_EOK) {
-//					knot_node_free(&next_node);
-//					knot_dname_release(chopped);
-//					return ret;
-//				}
+			//TODO
+//			ret = knot_zone_contents_solve_node_dnames(zone,
+//			                                           next_node);
+//			if (ret != KNOT_EOK) {
+//				knot_node_free(&next_node);
+//				knot_dname_release(chopped);
 //			}
 
 			if (next_node->owner != chopped) {
@@ -1415,20 +1416,12 @@ dbg_zone_exec_detail(
 
 	int ret = rc;
 
-	//TODO rrset
-//	if (use_domain_table) {
-//		dbg_zone_detail("Saving RRSet to table.\n");
-//		rc = knot_zone_contents_dnames_from_rrset_to_table(
-//		         zone->dname_table, rrset, 0, (*node)->owner);
-//		if (rc != KNOT_EOK) {
-//			dbg_zone("Error saving domain names from "
-//			         "RRSIGs to the domain name table.\n "
-//			         "The zone may be in an inconsistent state.\n");
-//			// WARNING: the zone is not in consistent state now -
-//			// there may be domain names in it that are not inserted
-//			// into the domain table
-//			return rc;
-//		}
+	//TODO
+//	rc = knot_zone_contents_solve_rrset_dnames(zone, rrset);
+//	dbg_zone_detail("Saving RRSet to table.\n");
+//	if (rc != KNOT_EOK) {
+//		dbg_zone("Couldn't solve RRSet dnames.\n");
+//		return rc;
 //	}
 
 	// replace RRSet's owner with the node's owner (that is already in the
@@ -1436,9 +1429,8 @@ dbg_zone_exec_detail(
 	/*! \todo Do even if domain table is not used?? */
 	if (ret == KNOT_EOK && rrset->owner != (*node)->owner) {
 		if (rrset->owner != (*node)->owner) {
-			knot_dname_free(&rrset->owner);
+			knot_rrset_set_owner(rrset, (*node)->owner);
 		}
-		knot_rrset_set_owner(rrset, (*node)->owner);
 	}
 
 	dbg_zone_detail("RRSet OK.\n");
@@ -3401,5 +3393,65 @@ int knot_zone_contents_integrity_check(const knot_zone_contents_t *contents)
 	assert(ret == KNOT_EOK);
 
 	return data.errors;
+}
+
+struct my_data {
+	const knot_dname_t *dname;
+	knot_dname_t *found_dname;
+	int stopped;
+};
+
+static void find_dname_in_rdata(knot_zone_tree_node_t *node, void *data)
+{
+	struct my_data *in_data = (struct my_data *)data;
+	if (in_data->stopped) {
+		return;
+	}
+	
+	/* For all RRSets in node. */
+	const knot_rrset_t **rrsets = knot_node_rrsets(node->node);
+	if (rrsets == NULL) {
+		return;
+	}
+
+	
+	for (unsigned short i = 0; i < node->node->rrset_count; i++) {
+		const knot_dname_t *dname = NULL;
+		/* For all DNAMEs in RRSet. */
+		while ((dname = knot_rrset_next_dname(rrsets[i], NULL))!=NULL) {
+			if (dname == in_data->dname) {
+				in_data->found_dname = dname;
+				in_data->stopped = 1;
+				return;
+			} else if (knot_dname_compare(dname,
+			                              in_data->dname) == 0) {
+				in_data->found_dname = dname;
+				in_data->stopped = 1;
+				return;
+			}
+		}
+	}
+	
+	free(rrsets);
+	assert(in_data->stopped == 0);
+}
+
+const knot_dname_t *knot_zone_contents_find_dname_in_rdata(
+	const knot_zone_contents_t *zone,
+	const knot_dname_t *dname)
+{
+	struct my_data data;
+	data.stopped = 0;
+	data.dname = dname;
+	data.found_dname = NULL;
+	knot_zone_tree_forward_apply_inorder(zone->nodes,
+	                                     find_dname_in_rdata, &data);
+	if (data.stopped) {
+		/* Dname found. */
+		return data.found_dname;
+	} else {
+		assert(data.found_dname == NULL);
+		return NULL;
+	}
 }
 
