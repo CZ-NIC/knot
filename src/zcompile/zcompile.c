@@ -648,7 +648,6 @@ static void process_rr(const scanner_t *scanner)
 int zone_read(const char *name, const char *zonefile, const char *outfile,
 	      int semantic_checks)
 {
-	knot_zone_t *zone;
 	parser_t my_parser;
 	my_parser.origin_from_config = knot_dname_new_from_str(name,
 	                                                       strlen(name),
@@ -656,8 +655,8 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	assert(my_parser.origin_from_config);
 	my_parser.last_node = knot_node_new(my_parser.origin_from_config,
 	                                    NULL, 0);
-	my_parser.current_zone = knot_zone_contents_new(my_parser.last_node,
-	                                                0, 0, zone);
+	knot_zone_t *zone = knot_zone_new(my_parser.last_node, 0, 0);
+	my_parser.current_zone = knot_zone_get_contents(zone);
 	my_parser.node_rrsigs = NULL;
 	file_loader_t *loader = file_loader_create(zonefile, name,
 	                                           KNOT_CLASS_IN, 3600,
