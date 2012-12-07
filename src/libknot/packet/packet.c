@@ -512,7 +512,7 @@ dbg_packet_exec_detail(
 			free(name);
 );
 
-			if (knot_rrset_compare((*rrsets)[i], rrset,
+			if (knot_rrset_match((*rrsets)[i], rrset,
 			                         KNOT_RRSET_COMPARE_HEADER)) {
 				/*! \todo Test this!!! */
 				// no duplicate checking here, the packet should
@@ -1289,19 +1289,19 @@ int knot_packet_contains(const knot_packet_t *packet,
 	}
 
 	for (int i = 0; i < packet->an_rrsets; ++i) {
-		if (knot_rrset_compare(packet->answer[i], rrset, cmp)) {
+		if (knot_rrset_match(packet->answer[i], rrset, cmp)) {
 			return 1;
 		}
 	}
 
 	for (int i = 0; i < packet->ns_rrsets; ++i) {
-		if (knot_rrset_compare(packet->authority[i], rrset, cmp)) {
+		if (knot_rrset_match(packet->authority[i], rrset, cmp)) {
 			return 1;
 		}
 	}
 
 	for (int i = 0; i < packet->ar_rrsets; ++i) {
-		if (knot_rrset_compare(packet->additional[i], rrset, cmp)) {
+		if (knot_rrset_match(packet->additional[i], rrset, cmp)) {
 			return 1;
 		}
 	}

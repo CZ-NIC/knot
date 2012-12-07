@@ -66,7 +66,7 @@ static int knot_changeset_check_count(knot_rrset_t ***rrsets, size_t count,
 static int knot_changeset_rrsets_match(const knot_rrset_t *rrset1,
                                          const knot_rrset_t *rrset2)
 {
-	return knot_rrset_compare(rrset1, rrset2, KNOT_RRSET_COMPARE_HEADER)
+	return knot_rrset_match(rrset1, rrset2, KNOT_RRSET_COMPARE_HEADER)
 	       && (knot_rrset_type(rrset1) != KNOT_RRTYPE_RRSIG
 	           || knot_rdata_rrsig_type_covered(
 	                    knot_rrset_rdata(rrset1))

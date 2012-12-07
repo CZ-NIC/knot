@@ -267,7 +267,7 @@ static int xfrin_add_orphan_rrsig(xfrin_orphan_rrsig_t **rrsigs,
 	while (last != NULL) {
 		// check if the RRSIG is not similar to the one we want to add
 		assert(last->rrsig != NULL);
-		if (knot_rrset_compare(last->rrsig, rr, 
+		if (knot_rrset_match(last->rrsig, rr, 
 		                       KNOT_RRSET_COMPARE_HEADER) == 1
 		    && knot_rdata_rrsig_type_covered(knot_rrset_rdata(
 		                                     last->rrsig))

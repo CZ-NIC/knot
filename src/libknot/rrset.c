@@ -613,7 +613,7 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_rrset_compare(const knot_rrset_t *r1,
+int knot_rrset_match(const knot_rrset_t *r1,
                        const knot_rrset_t *r2,
                        knot_rrset_compare_type_t cmp)
 {

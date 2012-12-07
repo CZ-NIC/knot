@@ -2244,6 +2244,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 //	}
 
 	/* 3) Prepare DDNS response. */
+	assert(*rcode == KNOT_RCODE_NOERROR);
 	dbg_zones_verb("Preparing NOERROR UPDATE response RCODE=%u "
 		       "pkt=%p resp_wire=%p\n", *rcode, resp, resp_wire);
 	knot_response_set_rcode(resp, KNOT_RCODE_NOERROR);
