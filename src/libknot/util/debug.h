@@ -793,9 +793,12 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 #define dbg_ddns(msg...)
 #define dbg_ddns_hex(data, len)
 #define dbg_ddns_verb(msg...)
+#define dbg_ddns_exec(cmds)
 #define dbg_ddns_hex_verb(data, len)
+#define dbg_ddns_exec_verb(cmds)
 #define dbg_ddns_detail(msg...)
 #define dbg_ddns_hex_detail(data, len)
+#define dbg_ddns_exec_detail(cmds)
 #endif
 
 #ifdef KNOT_TSIG_DEBUG
