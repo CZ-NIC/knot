@@ -500,18 +500,18 @@ dbg_zone_exec_detail(
 	}
 
 	// NSEC3 node (only if NSEC3 tree is not empty)
-	const knot_node_t *prev;
-	const knot_node_t *nsec3;
-	int match = knot_zone_contents_find_nsec3_for_name(zone,
-	                                                  knot_node_owner(node),
-	                                                  &nsec3, &prev);
-	UNUSED(prev);
-	
-	if (match != KNOT_ZONE_NAME_FOUND) {
-		nsec3 = NULL;
+	/*! \todo We need only exact matches, what if node has no nsec3 node? */
+	/* This is faster, as it doesn't need ordered access. */
+	knot_node_t *nsec3 = NULL;
+	knot_dname_t *nsec3_name = NULL;
+	int ret = knot_zone_contents_nsec3_name(zone, knot_node_owner(node),
+	                                        &nsec3_name);
+	if (ret == KNOT_EOK) {
+		assert(nsec3_name);
+		knot_zone_tree_get(zone->nsec3_nodes, nsec3_name, &nsec3);
+		knot_node_set_nsec3_node(node, nsec3);
 	}
-
-	knot_node_set_nsec3_node(node, (knot_node_t *)nsec3);
+	knot_dname_free(&nsec3_name);
 
 	dbg_zone_detail("Set flags to the node: \n");
 	dbg_zone_detail("Delegation point: %s\n",
@@ -677,23 +677,8 @@ static void knot_zone_contents_adjust_nsec3_node_in_tree_ptr(
 }
 
 /*----------------------------------------------------------------------------*/
-/*!
- * \brief Creates a NSEC3 hashed name for the given domain name.
- *
- * \note The zone's NSEC3PARAM record must be parsed prior to calling this
- *       function (see knot_zone_load_nsec3param()).
- *
- * \param zone Zone from which to take the NSEC3 parameters.
- * \param name Domain name to hash.
- * \param nsec3_name Hashed name.
- *
- * \retval KNOT_EOK
- * \retval KNOT_ENSEC3PAR
- * \retval KNOT_ECRYPTO
- * \retval KNOT_ERROR if an error occured while creating a new domain name
- *                      from the hash or concatenating it with the zone name.
- */
-static int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
+
+int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
                                            const knot_dname_t *name,
                                            knot_dname_t **nsec3_name)
 {

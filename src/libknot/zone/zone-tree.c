@@ -21,6 +21,7 @@
 #include "zone-tree.h"
 #include "zone/node.h"
 #include "util/debug.h"
+#include "common/hattrie/hat-trie.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */

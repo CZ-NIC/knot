@@ -16,6 +16,7 @@ zscanner/scanner.c: zscanner/scanner.rl zscanner/scanner_body.rl
 knot_zcompile_SOURCES =				\
 	libknot/rrset.c				\
 	libknot/rrset.h				\
+	common/slab/slab.c			\
 	zcompile/zcompile_main.c		\
 	zcompile/zcompile-error.c		\
 	zcompile/zcompile.c			\
@@ -25,12 +26,6 @@ knot_zcompile_SOURCES =				\
 	libknot/util/debug.c			\
 	libknot/util/debug.h			\
 	libknot/util/utils.h			\
-	libknot/hash/cuckoo-hash-table.c	\
-	libknot/hash/cuckoo-hash-table.h	\
-	libknot/hash/hash-functions.h		\
-	libknot/hash/hash-functions.c		\
-	libknot/hash/universal-system.c		\
-	libknot/hash/universal-system.h		\
 	libknot/util/tolower.h			\
 	libknot/util/tolower.c			\
 	libknot/zone/zone.c			\
@@ -47,11 +42,16 @@ knot_zcompile_SOURCES =				\
 	libknot/dname.h				\
 	libknot/nsec3.h				\
 	libknot/nsec3.c				\
-	common/slab/slab.c			\
 	common/slab/slab.h			\
 	common/libtap/tap.c			\
 	common/libtap/tap.h			\
 	common/libtap/tap_unit.h		\
+	common/hattrie/ahtable.c		\
+	common/hattrie/ahtable.h		\
+	common/hattrie/hat-trie.c		\
+	common/hattrie/hat-trie.h		\
+	common/hattrie/murmurhash3.c		\
+	common/hattrie/murmurhash3.h		\
 	common/mempattern.h			\
 	common/mempattern.c			\
 	common/descriptor_new.h			\
