@@ -897,6 +897,7 @@ typedef struct loop_check_data {
 static void knot_zone_contents_check_loops_in_tree(knot_zone_tree_node_t *tnode,
                                                    void *data)
 {
+	//TODO no hash
 	assert(tnode != NULL);
 	assert(tnode->node != NULL);
 	assert(data != NULL);
@@ -935,9 +936,9 @@ static void knot_zone_contents_check_loops_in_tree(knot_zone_tree_node_t *tnode,
 		if (next_node == NULL) {
 			// try to find the name in the zone
 			const knot_node_t *ce = NULL;
-			ret = knot_zone_contents_find_dname_hash(
-			                        args->zone, next_name,
-			                        &next_node, &ce);
+//			ret = knot_zone_contents_find_dname_hash(
+//			                        args->zone, next_name,
+//			                        &next_node, &ce);
 
 			if (ret != KNOT_ZONE_NAME_FOUND
 			    && ce != NULL) {
@@ -2619,11 +2620,6 @@ void knot_zone_contents_free(knot_zone_contents_t **contents)
 	knot_zone_tree_free(&(*contents)->nodes);
 	knot_zone_tree_free(&(*contents)->nsec3_nodes);
 
-#ifdef USE_HASH_TABLE
-	if ((*contents)->table != NULL) {
-		ck_destroy_table(&(*contents)->table, NULL, 0);
-	}
-#endif
 	knot_nsec3_params_free(&(*contents)->nsec3_params);
 	
 	knot_dname_table_free(&(*contents)->dname_table);
@@ -2641,12 +2637,6 @@ void knot_zone_contents_deep_free(knot_zone_contents_t **contents)
 	}
 
 	if ((*contents) != NULL) {
-
-#ifdef USE_HASH_TABLE
-		if ((*contents)->table != NULL) {
-			ck_destroy_table(&(*contents)->table, NULL, 0);
-		}
-#endif
 		/* has to go through zone twice, rdata may contain references to
 		   node owners earlier in the zone which may be already freed */
 		/* NSEC3 tree is deleted first as it may contain references to
