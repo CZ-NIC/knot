@@ -45,16 +45,12 @@ static size_t rrset_rdata_offset(const knot_rrset_t *rrset,
                                  size_t pos)
 {
 	if (rrset == NULL || rrset->rdata_indices == NULL ||
-	    pos >= rrset->rdata_count) {
+	    pos >= rrset->rdata_count || pos == 0) {
 		return 0;
 	}
 	
-	if (pos == 0) {
-		return 0;
-	} else {
-		assert(rrset->rdata_count >= 2);
-		return rrset->rdata_indices[pos - 1];
-	}
+	assert(rrset->rdata_count >= 2);
+	return rrset->rdata_indices[pos - 1];
 }
 
 static uint32_t rrset_rdata_item_size(const knot_rrset_t *rrset,
@@ -1726,7 +1722,8 @@ knot_dname_t **knot_rrset_rdata_get_next_dname_pointer(
 	return NULL;
 }
 
-uint8_t *knot_rrset_rdata_prealloc(const knot_rrset_t *rrset)
+uint8_t *knot_rrset_rdata_prealloc(const knot_rrset_t *rrset,
+                                   size_t *rdata_size)
 {
 	/*
 	 * Length of data can be sometimes guessed

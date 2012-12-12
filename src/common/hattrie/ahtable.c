@@ -8,7 +8,6 @@
 #include <assert.h>
 #include <string.h>
 #include "ahtable.h"
-#include "misc.h"
 #include "murmurhash3.h"
 
 enum {

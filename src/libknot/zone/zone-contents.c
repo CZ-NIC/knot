@@ -810,6 +810,7 @@ static int knot_zone_contents_find_in_tree(knot_zone_tree_t *tree,
 static void knot_zone_contents_node_to_hash(knot_zone_tree_node_t *tnode,
                                               void *data)
 {
+	assert(0);
 	assert(tnode != NULL && tnode->node != NULL
 	       && tnode->node->owner != NULL && data != NULL);
 
@@ -823,15 +824,6 @@ static void knot_zone_contents_node_to_hash(knot_zone_tree_node_t *tnode,
 	 * so we will do no distinction here neither.
 	 */
 
-#ifdef USE_HASH_TABLE
-	// add the node also to the hash table if authoritative, or deleg. point
-	if (zone->table != NULL
-	    && ck_insert_item(zone->table,
-	                      (const char *)node->owner->name,
-	                      node->owner->size, (void *)node) != 0) {
-		dbg_zone("Error inserting node into hash table!\n");
-	}
-#endif
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1073,29 +1065,6 @@ knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
 		goto cleanup;
 	}
 
-#ifdef USE_HASH_TABLE
-	if (node_count > 0) {
-		dbg_zone_verb("Creating hash table.\n");
-		contents->table = ck_create_table(node_count);
-		if (contents->table == NULL) {
-			goto cleanup;
-		}
-
-		// insert the apex into the hash table
-		dbg_zone_verb("Inserting apex into the hash table.\n");
-		if (ck_insert_item(contents->table,
-		                   (const char *)knot_dname_name(
-		                                       knot_node_owner(apex)),
-		                   knot_dname_size(knot_node_owner(apex)),
-		                   (void *)apex) != 0) {
-			ck_destroy_table(&contents->table, NULL, 0);
-			goto cleanup;
-		}
-	} else {
-		contents->table = NULL;
-	}
-#endif
-
 	// insert names from the apex to the domain table
 //	if (use_domain_table) {
 //		dbg_zone_verb("Inserting names from apex to table.\n");
@@ -1236,17 +1205,6 @@ dbg_zone_exec_detail(
 //		return ret;
 //	}
 
-#ifdef USE_HASH_TABLE
-	// add the node also to the hash table if authoritative, or deleg. point
-	if (zone->table != NULL
-	    && ck_insert_item(zone->table,
-	                      (const char *)node->owner->name,
-	                      node->owner->size, (void *)node) != 0) {
-		dbg_zone("Error inserting node into hash table!\n");
-		/*! \todo Remove the node from the tree. */
-		return KNOT_EHASH;
-	}
-#endif
 	assert(knot_zone_contents_find_node(zone, node->owner));
 
 	knot_node_set_zone(node, zone->zone);
@@ -1324,29 +1282,6 @@ dbg_zone_exec_detail(
 				return ret;
 			}
 
-#ifdef USE_HASH_TABLE
-dbg_zone_exec_detail(
-			char *name = knot_dname_to_str(
-					knot_node_owner(next_node));
-			dbg_zone_detail("Adding new node with owner %s to "
-			                "hash table.\n", name);
-			free(name);
-);
-
-			if (zone->table != NULL
-			    && ck_insert_item(zone->table,
-			      (const char *)knot_dname_name(
-			                    knot_node_owner(next_node)),
-			      knot_dname_size(knot_node_owner(next_node)),
-			      (void *)next_node) != 0) {
-				dbg_zone("Error inserting node into "
-				         "hash table!\n");
-				/*! \todo Delete the node?? */
-				/* Directly discard. */
-				knot_dname_release(chopped);
-				return KNOT_EHASH;
-			}
-#endif
 			// set parent
 			knot_node_set_parent(node, next_node);
 
@@ -1723,15 +1658,6 @@ dbg_zone_exec_verb(
 	free(name);
 );
 
-	// 1) remove the node from hash table
-	*removed_hash = NULL;
-	*removed_hash = ck_remove_item(contents->table, 
-	                               (const char *)knot_dname_name(owner),
-	                               knot_dname_size(owner));
-	if (*removed_hash == NULL) {
-		return KNOT_ENONODE;
-	}
-
 	// 2) remove the node from the zone tree
 	*removed_tree = NULL;
 	int ret = knot_zone_tree_remove(contents->nodes, owner, removed_tree);
@@ -1768,48 +1694,13 @@ int knot_zone_contents_remove_nsec3_node(knot_zone_contents_t *contents,
 int knot_zone_contents_create_and_fill_hash_table(
 	knot_zone_contents_t *zone)
 {
+	assert(0);
 	if (zone == NULL || zone->apex == NULL || zone->apex->owner == NULL) {
 		return KNOT_EINVAL;
 	}
 	/*
 	 * 1) Create hash table.
 	 */
-#ifdef USE_HASH_TABLE
-	if (zone->node_count > 0) {
-		zone->table = ck_create_table(zone->node_count);
-		if (zone->table == NULL) {
-			return KNOT_ENOMEM;
-		}
-
-		// insert the apex into the hash table
-		if (ck_insert_item(zone->table,
-		                (const char *)zone->apex->owner->name,
-		                zone->apex->owner->size,
-		                (void *)zone->apex) != 0) {
-			return KNOT_EHASH;
-		}
-	} else {
-		zone->table = NULL;
-		return KNOT_EOK;	// OK?
-	}
-
-	/*
-	 * 2) Fill in the hash table.
-	 *
-	 * In this point, the nodes in the zone must be adjusted, so that only
-	 * relevant nodes (authoritative and delegation points are inserted.
-	 *
-	 * TODO: how to know if this was successful??
-	 */
-	/*! \todo Replace by zone tree. */
-	int ret = knot_zone_tree_forward_apply_inorder(zone->nodes,
-	                               knot_zone_contents_node_to_hash, zone);
-	if (ret != KNOT_EOK) {
-		dbg_zone("Failed to insert nodes to hash table.\n");
-		return ret;
-	}
-
-#endif
 	return KNOT_EOK;
 }
 
@@ -2024,89 +1915,6 @@ static void knot_zone_contents_left_chop(char *name, size_t *size)
 	*size = *size - label_size - 1;
 }
 
-/*----------------------------------------------------------------------------*/
-#ifdef USE_HASH_TABLE
-int knot_zone_contents_find_dname_hash(const knot_zone_contents_t *zone,
-                                const knot_dname_t *name,
-                                const knot_node_t **node,
-                                const knot_node_t **closest_encloser)
-{
-	if (zone == NULL || name == NULL || node == NULL
-	    || closest_encloser == NULL) {
-		return KNOT_EINVAL;
-	}
-
-dbg_zone_exec_verb(
-	char *name_str = knot_dname_to_str(name);
-	char *zone_str = knot_dname_to_str(zone->apex->owner);
-	dbg_zone_verb("Searching for name %s in zone %s...\n",
-	              name_str, zone_str);
-	free(name_str);
-	free(zone_str);
-);
-
-	if (knot_dname_compare(name, zone->apex->owner) == 0) {
-		*node = zone->apex;
-		*closest_encloser = *node;
-		return KNOT_ZONE_NAME_FOUND;
-	}
-
-	if (!knot_dname_is_subdomain(name, zone->apex->owner)) {
-		*node = NULL;
-		*closest_encloser = NULL;
-		return KNOT_EBADZONE;
-	}
-	
-	// temporary name used for hashing
-	char name_tmp[KNOT_MAX_DNAME_LENGTH];
-	size_t name_size = name->size;
-	if (knot_dname_to_lower_copy(name, name_tmp, KNOT_MAX_DNAME_LENGTH)
-	    != KNOT_EOK) {
-		return KNOT_ERROR;
-	}
-
-	assert(zone->table != NULL);
-	const ck_hash_table_item_t *item = ck_find_item(zone->table,
-	                                                name_tmp, name_size);
-
-	if (item != NULL) {
-		*node = (const knot_node_t *)item->value;
-		*closest_encloser = *node;
-
-		dbg_zone_detail("Found node in hash table: %p (owner %p, "
-		                "labels: %d)\n", *node, (*node)->owner,
-		                knot_dname_label_count((*node)->owner));
-		assert(*node != NULL);
-		assert(*closest_encloser != NULL);
-		return KNOT_ZONE_NAME_FOUND;
-	}
-
-	*node = NULL;
-
-	// chop leftmost labels until some node is found
-	// copy the name for chopping
-
-	dbg_zone_detail("Finding closest encloser..\nStarting with: %.*s\n",
-	                (int)name_size, name_tmp);
-
-	while (item == NULL) {
-		knot_zone_contents_left_chop(name_tmp, &name_size);
-dbg_zone_exec_detail(
-		dbg_zone_detail("Chopped leftmost label: %.*s\n",
-		               (int)name_size, name_tmp);
-);
-		// not satisfied in root zone!!
-		assert(name_size > 0);
-
-		item = ck_find_item(zone->table, name_tmp, name_size);
-	}
-
-	assert(item != NULL);
-	*closest_encloser = (const knot_node_t *)item->value;
-
-	return KNOT_ZONE_NAME_NOT_FOUND;
-}
-#endif
 /*----------------------------------------------------------------------------*/
 
 const knot_node_t *knot_zone_contents_find_nsec3_node(

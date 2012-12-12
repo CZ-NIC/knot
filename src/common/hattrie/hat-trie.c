@@ -10,7 +10,6 @@
 #include <string.h>
 #include "hat-trie.h"
 #include "ahtable.h"
-#include "misc.h"
 #include "common/slab/slab.h"
 
 /* number of child nodes for used alphabet */

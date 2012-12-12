@@ -90,6 +90,19 @@ int tsig_rdata_set_alg_name(knot_rrset_t *tsig, knot_dname_t *alg_name)
 	return KNOT_EOK;
 }
 
+void rrset_rdata_tsig_set_alg_name(knot_rrset_t *rrset,
+                                   const knot_dname_t *alg_name)
+{
+	if (tsig == NULL) {
+		return;
+	}
+	
+	uint8_t *rdata = rrset_rdata_pointer(rrset, 0); //tady by byla pozice v RR u normalni RRSetu - treba u NS
+	//alg name je prvni v "poli" a ma velikost sizeof(knot_dname_t *)
+	size_t offset = 0;
+	memcpy(rdata + offset, &alg_name, sizeof(knot_dname_t *));
+}
+
 int tsig_rdata_set_alg(knot_rrset_t *tsig, tsig_algorithm_t alg)
 {
 	if (!tsig) {
