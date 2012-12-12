@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I ../m4
-libexec_PROGRAMS = knot-zcompile unittests unittests-zcompile unittests-libknot-realdata unittests-libknot unittests-xfr
+libexec_PROGRAMS = knot-zcompile unittests unittests-zcompile unittests-xfr
 sbin_PROGRAMS = knotc knotd
 dist_man_MANS = knot.conf.5 knotc.8 knotd.8
 
@@ -10,12 +10,6 @@ libknotd_la_YFLAGS = -pcf_ -d
 libknotd_la_LFLAGS = # TODO: reentrant parser, prefix
 
 BUILT_SOURCES =					\
-	tests/libknot/parsed_data.rc		\
-	tests/libknot/realdata/parsed_data.rc	\
-	tests/libknot/raw_data_queries.rc	\
-	tests/libknot/raw_data.rc		\
-	tests/libknot/realdata/raw_data.rc	\
-	tests/libknot/parsed_data_queries.rc	\
 	tests/sample_conf.rc			\
 	zparser.h				\
 	zparser.c				\
@@ -25,12 +19,6 @@ BUILT_SOURCES =					\
 	libknotd_la-cf-parse.h
 
 CLEANFILES =					\
-	tests/libknot/parsed_data.rc		\
-	tests/libknot/realdata/parsed_data.rc	\
-	tests/libknot/raw_data_queries.rc	\
-	tests/libknot/raw_data.rc		\
-	tests/libknot/realdata/raw_data.rc	\
-	tests/libknot/parsed_data_queries.rc	\
 	tests/sample_conf.rc                    \
 	zparser.h				\
 	zparser.c				\
@@ -77,54 +65,6 @@ unittests_SOURCES =				\
 	tests/knot/server_tests.c		\
 	tests/knot/server_tests.h		\
 	tests/unittests_main.c
-
-unittests_libknot_realdata_SOURCES =			\
-	tests/libknot/realdata/libknot/dname_tests_realdata.c	\
-	tests/libknot/realdata/libknot/response_tests_realdata.c	\
-	tests/libknot/realdata/libknot/edns_tests_realdata.c	\
-	tests/libknot/realdata/libknot/node_tests_realdata.c	\
-	tests/libknot/realdata/libknot/rdata_tests_realdata.c	\
-	tests/libknot/realdata/libknot/rrset_tests_realdata.c	\
-	tests/libknot/realdata/libknot/zone_tests_realdata.c	\
-	tests/libknot/realdata/libknot/zonedb_tests_realdata.c	\
-	tests/libknot/realdata/libknot/packet_tests_realdata.h	\
-	tests/libknot/realdata/libknot/packet_tests_realdata.c	\
-	tests/libknot/realdata/libknot_tests_loader_realdata.h	\
-	tests/libknot/realdata/libknot_tests_loader_realdata.c	\
-	tests/libknot/realdata/unittests_libknot_realdata.c
-
-unittests_libknot_SOURCES =			\
-	tests/libknot/libknot/cuckoo_tests.c	\
-	tests/libknot/libknot/cuckoo_tests.h	\
-	tests/libknot/libknot/response_tests.h	\
-	tests/libknot/libknot/response_tests.c	\
-	tests/libknot/libknot/dname_tests.c	\
-	tests/libknot/libknot/dname_tests.h	\
-	tests/libknot/libknot/dname_table_tests.h	\
-	tests/libknot/libknot/dname_table_tests.c	\
-	tests/libknot/libknot/nsec3_tests.h	\
-	tests/libknot/libknot/nsec3_tests.c	\
-	tests/libknot/libknot/packet_tests.h	\
-	tests/libknot/libknot/packet_tests.c	\
-	tests/libknot/libknot/query_tests.h	\
-	tests/libknot/libknot/query_tests.c	\
-	tests/libknot/libknot/edns_tests.c	\
-	tests/libknot/libknot/edns_tests.h	\
-	tests/libknot/libknot/node_tests.c	\
-	tests/libknot/libknot/node_tests.h	\
-	tests/libknot/libknot/rdata_tests.c	\
-	tests/libknot/libknot/rdata_tests.h	\
-	tests/libknot/libknot/rrset_tests.c	\
-	tests/libknot/libknot/rrset_tests.h	\
-	tests/libknot/libknot/tsig_tests.c	\
-	tests/libknot/libknot/tsig_tests.h	\
-	tests/libknot/libknot/zone_tests.c	\
-	tests/libknot/libknot/zone_tests.h	\
-	tests/libknot/libknot/zone_tree_tests.h	\
-	tests/libknot/libknot/zone_tree_tests.c	\
-	tests/libknot/libknot/zonedb_tests.c	\
-	tests/libknot/libknot/zonedb_tests.h	\
-	tests/libknot/unittests_libknot.c
 
 unittests_zcompile_SOURCES =			\
 	zcompile/parser-util.h			\
@@ -321,8 +261,6 @@ knotc_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 knot_zcompile_LDADD = libknots.la libknot.la libknotd.la @LIBOBJS@
 unittests_LDADD = libknotd.la libknots.la @LIBOBJS@
 unittests_zcompile_LDADD = libknot.la libknots.la libknotd.la @LIBOBJS@
-unittests_libknot_LDADD = libknot.la libknots.la @LIBOBJS@
-unittests_libknot_realdata_LDADD = libknot.la libknots.la @LIBOBJS@
 unittests_xfr_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 
 # automake complains on % rules:
