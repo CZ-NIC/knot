@@ -516,7 +516,8 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 			if (tmp_rdata_copy == NULL) {
 				dbg_zonediff("zone diff: diff_rdata: Cannot copy "
 				             "RDATA (Different TTLs).\n");
-				/* TODO cleanup. */
+				knot_rrset_deep_free(&to_add, 1, 1, 1);
+				knot_rrset_deep_free(&to_remove, 1, 1, 1);
 				return KNOT_ENOMEM;
 			}
 			int ret = knot_rrset_add_rdata(to_add, tmp_rdata_copy);
@@ -524,7 +525,8 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 				dbg_zonediff("zone diff: diff_rdata: Cannot add "
 				             "RDATA to RRSet. Reason: %s\n",
 				             knot_strerror(ret));
-				/* TODO cleanup. */
+				knot_rrset_deep_free(&to_add, 1, 1, 1);
+				knot_rrset_deep_free(&to_remove, 1, 1, 1);
 				return ret;
 			}
 		}
@@ -870,12 +872,6 @@ int knot_zone_contents_diff(const knot_zone_contents_t *zone1,
 		return KNOT_EINVAL;
 	}
 
-//	/* Create changeset structure. */
-//	*changeset = malloc(sizeof(knot_changeset_t));
-//	if (*changeset == NULL) {
-//		ERR_ALLOC_FAILED;
-//		return KNOT_ENOMEM;
-//	}
 	memset(changeset, 0, sizeof(knot_changeset_t));
 
 	/* Settle SOAs first. */
