@@ -105,21 +105,6 @@ knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
  */
 int knot_rrset_add_rdata(knot_rrset_t *rrset, knot_rdata_t *rdata);
 
-/*!
- * \brief Adds the given RDATA to the RRSet but will not insert duplicated data.
- *
- * \warning Should be only used to insert one RDATA. (NO lists)
- *
- * \param rrset RRSet to add the RDATA to.
- * \param rdata RDATA to add to the RRSet.
- *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL
- *
- * \todo Provide some function for comparing RDATAs.
- */
-int knot_rrset_add_rdata_order(knot_rrset_t *rrset, knot_rdata_t *rdata);
-
 knot_rdata_t * knot_rrset_remove_rdata(knot_rrset_t *rrset,
                                            const knot_rdata_t *rdata);
 

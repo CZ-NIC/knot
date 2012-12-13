@@ -112,53 +112,6 @@ int knot_rrset_add_rdata(knot_rrset_t *rrset, knot_rdata_t *rdata)
 
 /*----------------------------------------------------------------------------*/
 
-int knot_rrset_add_rdata_order(knot_rrset_t *rrset, knot_rdata_t *rdata)
-{
-	if (rrset == NULL || rdata == NULL) {
-		dbg_rrset("rrset: add_rdata_order: NULL arguments.\n");
-		return KNOT_EINVAL;
-	}
-	
-	if (rrset->rdata == NULL) {
-		/* Easy peasy, just insert the first item. */
-		rrset->rdata = rdata;
-		rrset->rdata->next = rrset->rdata;
-	} else {
-		knot_rdata_t *walk = NULL;
-		char found = 0;
-		knot_rdata_t *insert_after = rrset->rdata;
-		while (((walk = knot_rrset_rdata_get_next(rrset,
-		                                          walk)) != NULL) && 
-		       (!found)) {
-			const knot_rrtype_descriptor_t *desc =
-				knot_rrtype_descriptor_by_type(rrset->type);
-			assert(desc);
-			int cmp = knot_rdata_compare(rdata, walk,
-			                             desc->wireformat);
-			if (cmp < 1) {
-				/* We've found place for this item. */
-			} else if (cmp == 0) {
-				/* This item will not be inserted. */
-				found = 1;
-				insert_after = NULL;
-			}
-			assert(cmp > 1);
-			/* Continue the search. */
-			insert_after = walk;
-		}
-		if (insert_after != NULL) {
-			rdata->next = insert_after->next;
-			insert_after->next = rdata;
-		} else {
-			;
-			/* Consider returning something different than EOK. */
-		}
-	}
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
 knot_rdata_t *knot_rrset_remove_rdata(knot_rrset_t *rrset,
                                           const knot_rdata_t *rdata)
 {
