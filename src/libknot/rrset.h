@@ -106,6 +106,9 @@ knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
 int knot_rrset_add_rdata(knot_rrset_t *rrset, uint8_t *rdata,
                          uint32_t size);
 
+/*! \brief Create rdata memory. */
+uint8_t* knot_rrset_create_rdata(knot_rrset_t *rrset, uint32_t size);
+
 /*!
  * \brief Adds the given RDATA to the RRSet but will not insert duplicated data.
  *
@@ -123,6 +126,9 @@ int knot_rrset_add_rdata_order(knot_rrset_t *rrset, knot_rdata_t *rdata);
 
 int knot_rrset_remove_rdata(knot_rrset_t *rrset,
                             size_t pos);
+
+uint32_t rrset_rdata_item_size(const knot_rrset_t *rrset,
+                               size_t pos);
 
 /*!
  * \brief Adds RRSIG signatures to this RRSet.
@@ -223,7 +229,7 @@ const knot_rdata_t *knot_rrset_rdata_next(const knot_rrset_t *rrset,
  * \return First RDATA in the given RRSet or NULL if there is none or if no
  *         rrset was provided (\a rrset is NULL).
  */
-uint8_t *knot_rrset_get_rdata(knot_rrset_t *rrset, size_t rdata_pos);
+uint8_t *knot_rrset_get_rdata(const knot_rrset_t *rrset, size_t rdata_pos);
 
 knot_rdata_t *knot_rrset_rdata_get_next(knot_rrset_t *rrset,
                                             knot_rdata_t *rdata);

@@ -26,6 +26,7 @@
 
 #include <config.h>
 #include "common/errcode.h"
+#include "common/mempattern.h"
 
 #ifdef HAVE_LIBLDNS
 #define TEST_WITH_LDNS

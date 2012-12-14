@@ -53,23 +53,6 @@ static size_t rrset_rdata_offset(const knot_rrset_t *rrset,
 	return rrset->rdata_indices[pos - 1];
 }
 
-static uint32_t rrset_rdata_item_size(const knot_rrset_t *rrset,
-                                      size_t pos)
-{
-	if (rrset == NULL || rrset->rdata_indices == NULL ||
-	    rrset->rdata_count == 0) {
-		return 0;
-	}
-	
-	if (rrset->rdata_count == 1) {
-		return rrset_rdata_size_total(rrset);
-	}
-	
-	assert(rrset->rdata_count >= 2);
-	return rrset_rdata_offset(rrset, pos) -
-	                          rrset_rdata_offset(rrset, pos - 1);
-}
-
 static uint8_t *rrset_rdata_pointer(const knot_rrset_t *rrset,
                                     size_t pos)
 {
@@ -152,60 +135,73 @@ int knot_rrset_add_rdata_single(knot_rrset_t *rrset, uint8_t *rdata,
 int knot_rrset_add_rdata(knot_rrset_t *rrset,
                          uint8_t *rdata, uint32_t size)
 {
-	if (rrset == NULL || rdata == NULL) {
+	if (rrset == NULL || rdata == NULL || size == 0) {
 		return KNOT_EINVAL;
 	}
+	
+	uint8_t *p = knot_rrset_create_rdata(rrset, size);
+	memcpy(p, rdata, size);
+	
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+uint8_t* knot_rrset_create_rdata(knot_rrset_t *rrset, uint32_t size)
+{
+	if (rrset == NULL || size == 0) {
+		return NULL;
+	}
+	
+	uint32_t total_size = rrset_rdata_size_total(rrset);
 	
 	/* Realloc indices. We will allocate exact size to save space. */
 	/* TODO this sucks big time - allocation of length 1. */
 	/* But another variable holding allocated count is not a question. What now?*/
-	void *tmp = realloc(rrset->rdata_indices,
-	                    (rrset->rdata_count + 1) * sizeof(uint32_t));
-	if (tmp == NULL) {
-		ERR_ALLOC_FAILED;
-		return KNOT_ENOMEM;
-	} else {
-		//TODO not all this has to be in the block
-//		printf("Adding actual data. Type %d size %d\n",
-//		       rrset->type, size);
-//		hex_print(rdata, size);
-		rrset->rdata_indices = tmp;
-		// TODO has to be better, realloc and all
-		/* Realloc actual data. */
-		tmp = realloc(rrset->rdata,
-		              rrset_rdata_size_total(rrset) + size);
-		if (tmp == NULL) {
-			ERR_ALLOC_FAILED;
-			return KNOT_ENOMEM;
-		} else {
-			rrset->rdata = tmp;
-		}
-		
-		// copy data
-		memcpy(rrset->rdata + rrset_rdata_size_total(rrset),
-		       rdata, size);
-	}
+	rrset->rdata_indices = xrealloc(rrset->rdata_indices,
+	                                (rrset->rdata_count + 1) * sizeof(uint32_t));
+
+	/* Realloc actual data. */
+	rrset->rdata = xrealloc(rrset->rdata, total_size + size);
 	
-	// deal with indices
+	/* Pointer to new memory. */
+	uint8_t *dst = rrset->rdata + total_size;
+	
+	/* Update indices. */
 	if (rrset->rdata_count == 0) {
 		rrset->rdata_indices[0] = size;
-	} else if (rrset->rdata_count == 1) {
-		uint32_t total_size = rrset_rdata_size_total(rrset);
-		rrset->rdata_indices[0] = total_size;
-		rrset->rdata_indices[1] = size + total_size;
 	} else {
-		uint32_t total_size = rrset_rdata_size_total(rrset);
 		rrset->rdata_indices[rrset->rdata_count - 1] = total_size;
 		rrset->rdata_indices[rrset->rdata_count] = total_size + size;
 	}
 	
-	rrset->rdata_count++;
+	++rrset->rdata_count;
 	
 //	printf("RDATA position %d is %d\n",
 //	       rrset->rdata_count,
 //	       rrset_rdata_offset(rrset, rrset->rdata_count - 1));
 
-	return KNOT_EOK;
+	return dst;
+}
+
+/*----------------------------------------------------------------------------*/
+
+
+uint32_t rrset_rdata_item_size(const knot_rrset_t *rrset,
+                               size_t pos)
+{
+	if (rrset == NULL || rrset->rdata_indices == NULL ||
+	    rrset->rdata_count == 0) {
+		return 0;
+	}
+	
+	if (rrset->rdata_count == 1) {
+		return rrset_rdata_size_total(rrset);
+	}
+	
+	assert(rrset->rdata_count >= 2);
+	return rrset_rdata_offset(rrset, pos) -
+	                          rrset_rdata_offset(rrset, pos - 1);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -354,7 +350,7 @@ uint32_t knot_rrset_ttl(const knot_rrset_t *rrset)
 
 /*----------------------------------------------------------------------------*/
 
-uint8_t *knot_rrset_get_rdata(knot_rrset_t *rrset, size_t rdata_pos)
+uint8_t *knot_rrset_get_rdata(const knot_rrset_t *rrset, size_t rdata_pos)
 {
 	//V rdata-items
 	if (rrset == NULL) {
