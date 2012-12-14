@@ -27,6 +27,12 @@
 #ifndef _KNOTD_COMMON_MALLOC_H_
 #define _KNOTD_COMMON_MALLOC_H_
 
+/*! \brief Allocate memory or die. */
+void* xmalloc(size_t l);
+
+/*! \brief Reallocate memory or die. */
+void *xrealloc(void *p, size_t l);
+
 /*!
  * \brief Reserve new or trim excessive memory.
  *
