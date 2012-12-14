@@ -145,77 +145,6 @@ static void knot_zone_contents_destroy_node_owner_from_tree(
 
 /*----------------------------------------------------------------------------*/
 
-static int knot_zone_contents_solve_rrset_dnames(knot_zone_contents_t *zone,
-                                                 knot_rrset_t *rrset)
-{
-	assert(0);
-	assert(rrset != NULL && zone != NULL);
-	
-	/* Try to find the owner. Owner is likely to be in the tree itself. */
-	//IHMO not needed
-//	const knot_node_t *node =
-//		knot_zone_contents_find_node(contents, rrset->owner);
-//	if (node != NULL) {
-//		if (node->owner != rrset->owner) {
-//			//TODO do i need an extra retain? refcounting is a mess
-//			knot_rrset_set_owner(rrset, node->owner);
-//		}
-//	}
-	
-//	/*
-//	 * There is always a slight chance, that the owner of RRSet is 
-//	 * somewhere in RDATA, but I don't think that's worth the bother.
-//	 */
-	
-//	knot_dname_t **dname = NULL;
-//	while ((dname = knot_rrset_get_next_dname_pointer(rrset,
-//	                                                  dname)) != NULL) {
-//		const knot_dname_t *found_dname =
-//			knot_zone_contents_find_dname_in_rdata(zone, *dname);
-//		if (found_dname != *dname) {
-//			knot_dname_free(dname);
-//			*dname = found_dname;
-//		}
-//	}
-	
-//	dbg_zone("RRSet OK.\n");
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-static int knot_zone_contents_solve_node_dnames(knot_zone_contents_t *zone,
-                                                knot_node_t *node)
-{
-	/*
-	 * Assuming that all the RRSets have the same owner as the node.
-	 */
-//	if (node != NULL) {
-//		if (node->owner != rrset->owner) {
-//			//TODO do i need an extra retain? refcounting is a mess
-//			knot_rrset_set_owner(rrset, node->owner);
-//		}
-//	}
-	
-	/* Find node owner, if not the same, replace rrset owner as well. */
-	// zone_contents_find_dname ... porovnat, uvolnit, nahradit.
-	knot_rrset_t **rrsets = knot_node_get_rrsets(node);
-	// for each RRSet
-	for (int i = 0; i < knot_node_rrset_count(node); ++i) {
-		dbg_zone_detail("Inserting RRSets from node to table.\n");
-		int rc = knot_zone_contents_solve_rrset_dnames(zone, rrsets[i]);
-		if (rc != KNOT_EOK) {
-			dbg_zone("zone: solve_dnames:");
-			return rc;
-		}
-	}
-
-	free(rrsets);
-
-	dbg_zone("Node OK\n");
-	return KNOT_EOK;
-}
-
 /*----------------------------------------------------------------------------*/
 
 static const knot_node_t *knot_zone_contents_find_wildcard_child(
@@ -280,28 +209,23 @@ static void knot_zone_contents_adjust_rdata_dname(knot_zone_contents_t *zone,
                                                   knot_node_t *node,
                                                   knot_dname_t **in_dname)
 {
-//	assert(in_dname && *in_dname);
-//	printf("In_Dname: %s\n", knot_dname_to_str(*in_dname));
-//	/* First thing - make sure dname is not duplicated. */
-//	knot_dname_t *found_dname = NULL;
-//	knot_zone_tree_get_dname(lookup_tree, *in_dname, &found_dname);
-//	if (found_dname != NULL &&
-//	    found_dname != *in_dname) {
-//		/* Duplicate. */
+	assert(in_dname && *in_dname);
+	/* First thing - make sure dname is not duplicated. */
+	knot_dname_t *found_dname = NULL;
+	knot_zone_tree_get_dname(lookup_tree, *in_dname, &found_dname);
+	if (found_dname != NULL &&
+	    found_dname != *in_dname) {
+		/* Duplicate. */
 //		knot_dname_release(*in_dname);
-////		assert((*in_dname)->ref.count == 0);
-//		*in_dname = found_dname;
-//	} else {
-//		//TODO this assert is failing, why?
-////		assert(found_dname == NULL);
-//		/* Into the tree it goes. */
-//		knot_zone_tree_insert_dname(lookup_tree, *in_dname);
-//	}
+//		knot_dname_free(in_dname);
+		*in_dname = found_dname;
+	} else {
+		assert(found_dname == NULL);
+		/* Into the tree it goes. */
+		knot_zone_tree_insert_dname(lookup_tree, *in_dname);
+	}
 	
 	knot_dname_t *dname = *in_dname;
-	
-	//TODO remove once hat-trie is functional
-	return;
 	
 	/*
 	 * The case when dname.node is already set is handled here.
@@ -553,21 +477,9 @@ dbg_zone_exec_verb(
 );
 
 	knot_zone_contents_t *zone = args->zone;
-
-	/*
-	 * 1) Store domain names to dname table.
-	 * TODO: make optional! WFT? This was not even needed (maybe transfers)
-	 */
-//	assert(zone->dname_table != NULL);
-
-//	int ret = knot_zone_contents_dnames_from_node_to_table(
-//	                        zone->dname_table, node);
-//	if (ret != KNOT_EOK) {
-//		dbg_xfrin("Failed to add dnames from adjusted node to "
-//		          "table: %s\n", knot_strerror(ret));
-//		args->err = ret;
-//		return;
-//	}
+	
+	knot_dname_t *found_dname = NULL;
+	knot_zone_tree_get_dname(args->lookup_tree, node->owner, &found_dname);
 
 	/*
 	 * 2) Do other adjusting (flags, closest enclosers, wildcard children,
@@ -1199,15 +1111,6 @@ dbg_zone_exec_detail(
 		return ret;
 	}
 
-	// Try to find dnames TODO
-//	ret = knot_zone_contents_solve_node_dnames(zone, node);
-//	if (ret != KNOT_EOK) {
-//		dbg_zone("Failed to add dnames into table.\n");
-//		return ret;
-//	}
-
-	assert(knot_zone_contents_find_node(zone, node->owner));
-
 	knot_node_set_zone(node, zone->zone);
 
 	++zone->node_count;
@@ -1251,7 +1154,7 @@ dbg_zone_exec_detail(
 				knot_dname_free(&chopped);
 				return KNOT_ENOMEM;
 			}
-			//TODO
+			//TODO possible leak
 //			ret = knot_zone_contents_solve_node_dnames(zone,
 //			                                           next_node);
 //			if (ret != KNOT_EOK) {
@@ -1827,17 +1730,16 @@ dbg_zone_detail("Search function returned %d, node %s (%p) and prev: %s (%p)\n",
 		*closest_encloser = *node;
 	} else {
 		*closest_encloser = *previous;
-		//TODO remove one hattrie is finished
-//		assert(*closest_encloser != NULL);
+		assert(*closest_encloser != NULL);
 
-//		int matched_labels = knot_dname_matched_labels(
-//				knot_node_owner((*closest_encloser)), name);
-//		while (matched_labels < knot_dname_label_count(
-//				knot_node_owner((*closest_encloser)))) {
-//			(*closest_encloser) =
-//				knot_node_parent((*closest_encloser));
-//			assert(*closest_encloser);
-//		}
+		int matched_labels = knot_dname_matched_labels(
+				knot_node_owner((*closest_encloser)), name);
+		while (matched_labels < knot_dname_label_count(
+				knot_node_owner((*closest_encloser)))) {
+			(*closest_encloser) =
+				knot_node_parent((*closest_encloser));
+			assert(*closest_encloser);
+		}
 	}
 dbg_zone_exec(
 	char *n = knot_dname_to_str(knot_node_owner((*closest_encloser)));
