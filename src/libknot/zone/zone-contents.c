@@ -1239,11 +1239,10 @@ int knot_zone_contents_add_rrset(knot_zone_contents_t *zone,
 	}
 
 dbg_zone_exec_detail(
-//	char *name = knot_dname_to_str(knot_rrset_owner(rrset));
-	//TODO debug
-//	dbg_zone_detail("Adding RRSet to zone contents: %s, type %s\n",
-//	                name, knot_rrtype_to_string(knot_rrset_type(rrset)));
-//	free(name);
+	char *name = knot_dname_to_str(knot_rrset_owner(rrset));
+	dbg_zone_detail("Adding RRSet to zone contents: %s, type %d\n",
+	                name, knot_rrset_type(rrset));
+	free(name);
 );
 
 	// check if the RRSet belongs to the zone
@@ -1279,17 +1278,8 @@ dbg_zone_exec_detail(
 
 	int ret = rc;
 
-	//TODO
-//	rc = knot_zone_contents_solve_rrset_dnames(zone, rrset);
-//	dbg_zone_detail("Saving RRSet to table.\n");
-//	if (rc != KNOT_EOK) {
-//		dbg_zone("Couldn't solve RRSet dnames.\n");
-//		return rc;
-//	}
-
 	// replace RRSet's owner with the node's owner (that is already in the
 	// table)
-	/*! \todo Do even if domain table is not used?? */
 	if (ret == KNOT_EOK && rrset->owner != (*node)->owner) {
 		if (rrset->owner != (*node)->owner) {
 			knot_rrset_set_owner(rrset, (*node)->owner);
@@ -1365,11 +1355,9 @@ dbg_zone_exec(
 
 		// find the RRSet in the node
 		// take only the first RDATA from the RRSIGs
-		//TODO debug
-//		dbg_zone_detail("Finding RRSet for type %s\n",
-//		                knot_rrtype_to_string(
-//		                      knot_rdata_rrsig_type_covered(
-//		                      knot_rrset_rdata(rrsigs))));
+		dbg_zone_detail("Finding RRSet for type %d\n",
+		                      knot_rdata_rrsig_type_covered(
+		                      knot_rrset_rdata(rrsigs)));
 		*rrset = knot_node_get_rrset(
 		             *node, knot_rrset_rdata_rrsig_type_covered(rrsigs));
 		if (*rrset == NULL) {
@@ -1392,23 +1380,6 @@ dbg_zone_exec(
 		       dupl == KNOT_RRSET_DUPL_SKIP);
 		ret = 1;
 	}
-
-	// add all domain names from the RRSet to domain name table
-	// 
-//	if (use_domain_table) {
-//		dbg_zone_detail("Saving RRSIG RRSet to table.\n");
-//		rc = knot_zone_contents_dnames_from_rrset_to_table(
-//		       zone->dname_table, (*rrset)->rrsigs, 0, (*rrset)->owner);
-//		if (rc != KNOT_EOK) {
-//			dbg_zone("Error saving domain names from "
-//			         "RRSIGs to the domain name table.\n "
-//			         "The zone may be in an inconsistent state.\n");
-//			// WARNING: the zone is not in consistent state now -
-//			// there may be domain names in it that are not inserted
-//			// into the domain table
-//			return rc;
-//		}
-//	}
 
 	// replace RRSet's owner with the node's owner (that is already in the
 	// table)
@@ -1440,25 +1411,12 @@ int knot_zone_contents_add_nsec3_node(knot_zone_contents_t *zone,
 	}
 
 	// how to know if this is successfull??
-//	TREE_INSERT(zone->nsec3_nodes, knot_node, avl, node);
 	ret = knot_zone_tree_insert(zone->nsec3_nodes, node);
 	if (ret != KNOT_EOK) {
 		dbg_zone("Failed to insert node into NSEC3 tree: %s.\n",
 		         knot_strerror(ret));
 		return ret;
 	}
-
-	//TODO find names
-//	if (use_domain_table) {
-//		ret = knot_zone_contents_dnames_from_node_to_table(
-//		           zone->dname_table, node);
-//		if (ret != KNOT_EOK) {
-//			/*! \todo Remove the node from the tree. */
-//			dbg_zone("Failed to add dnames into table: %s.\n",
-//			         knot_strerror(ret));
-//			return ret;
-//		}
-//	}
 
 	// no parents to be created, the only parent is the zone apex
 	// set the apex as the parent of the node
@@ -1517,25 +1475,8 @@ int knot_zone_contents_add_nsec3_rrset(knot_zone_contents_t *zone,
 
 	int ret = rc;
 
-	//TODO find names
-//	if (use_domain_table) {
-//		dbg_zone_detail("Saving NSEC3 RRSet to table.\n");
-//		rc = knot_zone_contents_dnames_from_rrset_to_table(
-//		         zone->dname_table, rrset, 0, (*node)->owner);
-//		if (rc != KNOT_EOK) {
-//			dbg_zone("Error saving domain names from "
-//			         "RRSIGs to the domain name table.\n "
-//			         "The zone may be in an inconsistent state.\n");
-//			// WARNING: the zone is not in consistent state now -
-//			// there may be domain names in it that are not inserted
-//			// into the domain table
-//			return rc;
-//		}
-//	}
-
 	// replace RRSet's owner with the node's owner (that is already in the
 	// table)
-	/*! \todo Do even if domain table is not used? */
 	if (rrset->owner != (*node)->owner) {
 		knot_rrset_set_owner(rrset, (*node)->owner);
 	}
@@ -1590,21 +1531,6 @@ int knot_zone_contents_remove_nsec3_node(knot_zone_contents_t *contents,
 		return KNOT_ENONODE;
 	}
 
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_zone_contents_create_and_fill_hash_table(
-	knot_zone_contents_t *zone)
-{
-	assert(0);
-	if (zone == NULL || zone->apex == NULL || zone->apex->owner == NULL) {
-		return KNOT_EINVAL;
-	}
-	/*
-	 * 1) Create hash table.
-	 */
 	return KNOT_EOK;
 }
 
@@ -2052,8 +1978,7 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone)
 	}
 
 	// set the last node as previous of the first node
-	//TODO remove one hattrie is finished
-//	assert(zone->apex == adjust_arg.first_node);
+	assert(zone->apex == adjust_arg.first_node);
 	knot_node_set_previous(zone->apex, adjust_arg.previous_node);
 	dbg_zone("Done.\n");
 
@@ -2305,210 +2230,121 @@ ck_hash_table_t *knot_zone_contents_get_hash_table(
 
 /*----------------------------------------------------------------------------*/
 
-//int knot_zone_contents_dname_table_apply(knot_zone_contents_t *contents,
-//                                           void (*function)(knot_dname_t *,
-//                                                            void *),
-//                                           void *data)
-//{
-//	if (contents == NULL || function == NULL) {
-//		return KNOT_EINVAL;
-//	}
+/*----------------------------------------------------------------------------*/
 
-//	knot_dname_table_tree_inorder_apply(contents->dname_table,
-//	                                    function, data);
+int knot_zone_contents_shallow_copy(const knot_zone_contents_t *from,
+                                    knot_zone_contents_t **to)
+{
+	if (from == NULL || to == NULL) {
+		return KNOT_EINVAL;
+	}
 
-//	return KNOT_EOK;
-//}
+	/* Copy to same destination as source. */
+	if (from == *to) {
+		return KNOT_EINVAL;
+	}
 
-///*----------------------------------------------------------------------------*/
+	int ret = KNOT_EOK;
 
-//int knot_zone_contents_shallow_copy(const knot_zone_contents_t *from,
-//                                    knot_zone_contents_t **to)
-//{
-//	if (from == NULL || to == NULL) {
-//		return KNOT_EINVAL;
-//	}
+	knot_zone_contents_t *contents = (knot_zone_contents_t *)calloc(
+	                                     1, sizeof(knot_zone_contents_t));
+	if (contents == NULL) {
+		ERR_ALLOC_FAILED;
+		return KNOT_ENOMEM;
+	}
 
-//	/* Copy to same destination as source. */
-//	if (from == *to) {
-//		return KNOT_EINVAL;
-//	}
+	contents->apex = from->apex;
 
-//	int ret = KNOT_EOK;
+	contents->nodes = xmalloc(sizeof(knot_zone_tree_t));
 
-//	knot_zone_contents_t *contents = (knot_zone_contents_t *)calloc(
-//	                                     1, sizeof(knot_zone_contents_t));
-//	if (contents == NULL) {
-//		ERR_ALLOC_FAILED;
-//		return KNOT_ENOMEM;
-//	}
+	contents->nsec3_nodes = xmalloc(sizeof(knot_zone_tree_t));
 
-//	contents->apex = from->apex;
+	contents->node_count = from->node_count;
+	contents->flags = from->flags;
 
-//	contents->nodes = malloc(sizeof(knot_zone_tree_t));
-//	if (contents->nodes == NULL) {
-//		ERR_ALLOC_FAILED;
-//		ret = KNOT_ENOMEM;
-//		goto cleanup;
-//	}
+	contents->zone = from->zone;
 
-//	contents->nsec3_nodes = malloc(sizeof(knot_zone_tree_t));
-//	if (contents->nsec3_nodes == NULL) {
-//		ERR_ALLOC_FAILED;
-//		ret = KNOT_ENOMEM;
-//		goto cleanup;
-//	}
+	/* Initialize NSEC3 params */
+	memcpy(&contents->nsec3_params, &from->nsec3_params,
+	       sizeof(knot_nsec3_params_t));
 
-//	if (from->dname_table != NULL) {
-//		contents->dname_table = knot_dname_table_new();
-//		if (contents->dname_table == NULL) {
-//			ERR_ALLOC_FAILED;
-//			ret = KNOT_ENOMEM;
-//			goto cleanup;
-//		}
-//		if ((ret = knot_dname_table_shallow_copy(from->dname_table,
-//		                        contents->dname_table)) != KNOT_EOK) {
-//			goto cleanup;
-//		}
-//	} else {
-//		contents->dname_table = NULL;
-//	}
+	if ((ret = knot_zone_tree_shallow_copy(from->nodes,
+	                                 contents->nodes)) != KNOT_EOK
+	    || (ret = knot_zone_tree_shallow_copy(from->nsec3_nodes,
+	                                contents->nsec3_nodes)) != KNOT_EOK) {
+		goto cleanup;
+	}
 
-//	contents->node_count = from->node_count;
-//	contents->flags = from->flags;
+	dbg_zone("knot_zone_contents_shallow_copy: finished OK\n");
 
-//	contents->zone = from->zone;
+	*to = contents;
+	return KNOT_EOK;
 
-//	/* Initialize NSEC3 params */
-//	memcpy(&contents->nsec3_params, &from->nsec3_params,
-//	       sizeof(knot_nsec3_params_t));
+cleanup:
+	knot_zone_tree_free(&contents->nodes);
+	knot_zone_tree_free(&contents->nsec3_nodes);
+	free(contents->dname_table);
+	free(contents);
+	return ret;
+}
 
-//	if ((ret = knot_zone_tree_shallow_copy(from->nodes,
-//	                                 contents->nodes)) != KNOT_EOK
-//	    || (ret = knot_zone_tree_shallow_copy(from->nsec3_nodes,
-//	                                contents->nsec3_nodes)) != KNOT_EOK) {
-//		goto cleanup;
-//	}
+/*----------------------------------------------------------------------------*/
 
-//#ifdef USE_HASH_TABLE
-//	if (from->table != NULL) {
-////		ret = ck_copy_table(from->table, &contents->table);
-//		ret = ck_shallow_copy(from->table, &contents->table);
-//		if (ret != 0) {
-//			dbg_zone_verb("knot_zone_contents_shallow_copy: "
-//			              "hash table copied\n");
-//			ret = KNOT_ERROR;
-//			goto cleanup;
-//		}
-//	}
-//#endif
+int knot_zone_contents_shallow_copy2(const knot_zone_contents_t *from,
+                                     knot_zone_contents_t **to)
+{
+	if (from == NULL || to == NULL) {
+		return KNOT_EINVAL;
+	}
 
-//	dbg_zone("knot_zone_contents_shallow_copy: finished OK\n");
+	/* Copy to same destination as source. */
+	if (from == *to) {
+		return KNOT_EINVAL;
+	}
 
-//	*to = contents;
-//	return KNOT_EOK;
+	int ret = KNOT_EOK;
 
-//cleanup:
-//	knot_zone_tree_free(&contents->nodes);
-//	knot_zone_tree_free(&contents->nsec3_nodes);
-//	free(contents->dname_table);
-//	free(contents);
-//	return ret;
-//}
+	knot_zone_contents_t *contents = (knot_zone_contents_t *)calloc(
+	                                     1, sizeof(knot_zone_contents_t));
+	if (contents == NULL) {
+		ERR_ALLOC_FAILED;
+		return KNOT_ENOMEM;
+	}
 
-///*----------------------------------------------------------------------------*/
+	//contents->apex = from->apex;
 
-//int knot_zone_contents_shallow_copy2(const knot_zone_contents_t *from,
-//                                     knot_zone_contents_t **to)
-//{
-//	if (from == NULL || to == NULL) {
-//		return KNOT_EINVAL;
-//	}
+	contents->nodes = xmalloc(sizeof(knot_zone_tree_t));
 
-//	/* Copy to same destination as source. */
-//	if (from == *to) {
-//		return KNOT_EINVAL;
-//	}
+	contents->nsec3_nodes = xmalloc(sizeof(knot_zone_tree_t));
 
-//	int ret = KNOT_EOK;
+	contents->node_count = from->node_count;
+	contents->flags = from->flags;
+	// set the 'new' flag
+	knot_zone_contents_set_gen_new(contents);
 
-//	knot_zone_contents_t *contents = (knot_zone_contents_t *)calloc(
-//	                                     1, sizeof(knot_zone_contents_t));
-//	if (contents == NULL) {
-//		ERR_ALLOC_FAILED;
-//		return KNOT_ENOMEM;
-//	}
+	contents->zone = from->zone;
 
-//	//contents->apex = from->apex;
+	if ((ret = knot_zone_tree_deep_copy(from->nodes,
+	                                    contents->nodes)) != KNOT_EOK
+	    || (ret = knot_zone_tree_deep_copy(from->nsec3_nodes,
+	                                  contents->nsec3_nodes)) != KNOT_EOK) {
+		goto cleanup;
+	}
 
-//	contents->nodes = malloc(sizeof(knot_zone_tree_t));
-//	if (contents->nodes == NULL) {
-//		ERR_ALLOC_FAILED;
-//		ret = KNOT_ENOMEM;
-//		goto cleanup;
-//	}
+	contents->apex = knot_node_get_new_node(from->apex);
 
-//	contents->nsec3_nodes = malloc(sizeof(knot_zone_tree_t));
-//	if (contents->nsec3_nodes == NULL) {
-//		ERR_ALLOC_FAILED;
-//		ret = KNOT_ENOMEM;
-//		goto cleanup;
-//	}
+	dbg_zone("knot_zone_contents_shallow_copy: finished OK\n");
 
-//	if (from->dname_table != NULL) {
-//		contents->dname_table = knot_dname_table_new();
-//		if (contents->dname_table == NULL) {
-//			ERR_ALLOC_FAILED;
-//			ret = KNOT_ENOMEM;
-//			goto cleanup;
-//		}
-//		if ((ret = knot_dname_table_shallow_copy(from->dname_table,
-//		                        contents->dname_table)) != KNOT_EOK) {
-//			goto cleanup;
-//		}
-//	} else {
-//		contents->dname_table = NULL;
-//	}
+	*to = contents;
+	return KNOT_EOK;
 
-//	contents->node_count = from->node_count;
-//	contents->flags = from->flags;
-//	// set the 'new' flag
-//	knot_zone_contents_set_gen_new(contents);
-
-//	contents->zone = from->zone;
-
-//	if ((ret = knot_zone_tree_deep_copy(from->nodes,
-//	                                    contents->nodes)) != KNOT_EOK
-//	    || (ret = knot_zone_tree_deep_copy(from->nsec3_nodes,
-//	                                  contents->nsec3_nodes)) != KNOT_EOK) {
-//		goto cleanup;
-//	}
-
-//#ifdef USE_HASH_TABLE
-//	if (from->table != NULL) {
-//		ret = ck_deep_copy(from->table, &contents->table);
-//		if (ret != 0) {
-//			dbg_zone_verb("knot_zone_contents_shallow_copy: "
-//			              "hash table copied\n");
-//			ret = KNOT_ERROR;
-//			goto cleanup;
-//		}
-//	}
-//#endif
-//	contents->apex = knot_node_get_new_node(from->apex);
-
-//	dbg_zone("knot_zone_contents_shallow_copy: finished OK\n");
-
-//	*to = contents;
-//	return KNOT_EOK;
-
-//cleanup:
-//	knot_zone_tree_free(&contents->nodes);
-//	knot_zone_tree_free(&contents->nsec3_nodes);
-//	free(contents->dname_table);
-//	free(contents);
-//	return ret;
-//}
+cleanup:
+	knot_zone_tree_free(&contents->nodes);
+	knot_zone_tree_free(&contents->nsec3_nodes);
+	free(contents->dname_table);
+	free(contents);
+	return ret;
+}
 
 /*----------------------------------------------------------------------------*/
 
