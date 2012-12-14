@@ -90,6 +90,7 @@ enum tsig_consts {
 /*!
  * \note Uses the given domain name, do not deallocate it!
  */
+int tsig_create_rdata(knot_rrset_t *rr, tsig_algorithm_t alg);
 int tsig_rdata_set_alg_name(knot_rrset_t *tsig, knot_dname_t *alg_name);
 int tsig_rdata_set_alg(knot_rrset_t *tsig, tsig_algorithm_t alg);
 int tsig_rdata_set_time_signed(knot_rrset_t *tsig, uint64_t time);
