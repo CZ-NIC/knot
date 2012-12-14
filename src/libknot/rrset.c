@@ -352,12 +352,7 @@ uint32_t knot_rrset_ttl(const knot_rrset_t *rrset)
 
 uint8_t *knot_rrset_get_rdata(const knot_rrset_t *rrset, size_t rdata_pos)
 {
-	//V rdata-items
-	if (rrset == NULL) {
-		return NULL;
-	} else {
-		return rrset->rdata;
-	}
+	return rrset_rdata_pointer(rrset, rdata_pos);
 }
 
 /*----------------------------------------------------------------------------*/
