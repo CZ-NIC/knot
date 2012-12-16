@@ -1203,8 +1203,8 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 					       sizeof(uint8_t) * dname->size);
 				if (temp_rdatas[i].raw_data == NULL) {
 					ERR_ALLOC_FAILED;
-					/*! \todo rdata purge */
 					free(temp_rdatas);
+					knot_dname_free(&dname);
 					return KNOTDZCOMPILE_ENOMEM;
 				}
 
@@ -1225,7 +1225,6 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 			if ((uint8_t *)wireformat + length > (uint8_t *)end) {
 				if (required) {
 					/* Truncated RDATA.  */
-					/*! \todo rdata purge */
 					free(temp_rdatas);
 					dbg_rdata("truncated rdata, end pointer is exceeded by %d octets.\n",
 					          (wireformat + length) - end);
@@ -1242,25 +1241,14 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 			                                           length);
 			if (temp_rdatas[i].raw_data == NULL) {
 				ERR_ALLOC_FAILED;
-				/*! \todo rdata purge */
 				free(temp_rdatas);
 				return -1;
 			}
 
-//			temp_rdatas[i].raw_data[0] = length;
-//			memcpy(temp_rdatas[i].raw_data + 1, wireformat, length);
-
-/*			temp_rdatas[i].data = (uint16_t *) region_alloc(
-				region, sizeof(uint16_t) + length);
-				temp_rdatas[i].data[0] = length;
-				buffer_read(packet,
-					    temp_rdatas[i].data + 1, length); */
 		}
 		dbg_rdata("%d: adding length: %d (remaining: %d)\n", i, length,
 		          (uint8_t *)end - ((uint8_t *)wireformat + length));
-//		hex_print(temp_rdatas[i].raw_data + 1, length);
 		wireformat = (uint16_t *)((uint8_t *)wireformat + length);
-//		wireformat = wireformat + length;
 		dbg_rdata("wire: %p\n", wireformat);
 		dbg_rdata("remaining now: %d\n",
 		          end - wireformat);
