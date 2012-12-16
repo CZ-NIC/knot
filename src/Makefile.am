@@ -114,24 +114,6 @@ knot_zcompile_LDADD = @LIBOBJS@
 # automake complains on % rules:
 #   `%'-style pattern rules are a GNU make extension
 
-tests/libknot/parsed_data.rc: tests/libknot/files/parsed_data
-	../resource.sh tests/libknot/files/parsed_data >$@
-
-tests/libknot/realdata/parsed_data.rc: tests/libknot/realdata/files/parsed_data
-	../resource.sh tests/libknot/realdata/files/parsed_data >$@
-
-tests/libknot/parsed_data_queries.rc: tests/libknot/files/parsed_data_queries
-	../resource.sh tests/libknot/files/parsed_data_queries >$@
-
-tests/libknot/raw_data_queries.rc: tests/libknot/files/raw_data_queries
-	../resource.sh tests/libknot/files/raw_data_queries >$@
-
-tests/libknot/raw_data.rc: tests/libknot/files/raw_data
-	../resource.sh tests/libknot/files/raw_data >$@
-
-tests/libknot/realdata/raw_data.rc: tests/libknot/realdata/files/raw_data
-	../resource.sh tests/libknot/realdata/files/raw_data >$@
-
 tests/sample_conf.rc: tests/files/sample_conf
 	../resource.sh tests/files/sample_conf >$@
 
