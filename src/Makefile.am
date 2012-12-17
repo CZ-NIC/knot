@@ -28,6 +28,9 @@ knot_zcompile_SOURCES =				\
 	libknot/util/utils.h			\
 	libknot/util/tolower.h			\
 	libknot/util/tolower.c			\
+	libknot/util/wire.h			\
+	libknot/packet/packet.h			\
+	libknot/packet/packet.c			\
 	libknot/zone/zone.c			\
 	libknot/zone/zone-contents.c		\
 	libknot/zone/zone-tree.c		\
@@ -38,12 +41,18 @@ knot_zcompile_SOURCES =				\
 	libknot/zone/node.c			\
 	libknot/zone/dname-table.h		\
 	libknot/zone/dname-table.c		\
+	libknot/zone/zonedb.h			\
+	libknot/zone/zonedb.c			\
 	libknot/dname.c				\
 	libknot/dname.h				\
 	libknot/nsec3.h				\
 	libknot/nsec3.c				\
 	libknot/edns.h				\
 	libknot/edns.c				\
+	libknot/tsig.h				\
+	libknot/tsig.c				\
+	libknot/tsig-op.h			\
+	libknot/tsig-op.c			\
 	common/slab/slab.h			\
 	common/libtap/tap.c			\
 	common/libtap/tap.h			\
