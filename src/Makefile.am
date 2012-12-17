@@ -42,6 +42,8 @@ knot_zcompile_SOURCES =				\
 	libknot/dname.h				\
 	libknot/nsec3.h				\
 	libknot/nsec3.c				\
+	libknot/edns.h				\
+	libknot/edns.c				\
 	common/slab/slab.h			\
 	common/libtap/tap.c			\
 	common/libtap/tap.h			\

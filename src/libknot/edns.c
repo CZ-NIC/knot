@@ -164,15 +164,12 @@ int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr,
 
 	int rc = 0;
 	dbg_edns_verb("Parsing options.\n");
-	const knot_rdata_t *rdata = knot_rrset_rdata(rrset);
+	uint8_t *raw = knot_rrset_get_rdata(rrset, 0);
 
 	// in OPT RR, all RDATA are in one RDATA item stored as BINARY data,
 	// i.e. preceded by their length
-	if (rdata != NULL) {
-		assert(knot_rdata_item_count(rdata) == 1);
-		uint16_t size = knot_rdata_item(rdata, 0)->raw_data[0];
-		const uint8_t *raw = (const uint8_t *)
-		                      knot_rdata_item(rdata, 0)->raw_data;
+	if (raw != NULL) {
+		uint16_t size = *((uint16_t*)raw);
 		int pos = 2;
 		assert(size > 0);
 		while (pos - 2 < size) {
