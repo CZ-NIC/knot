@@ -275,9 +275,14 @@ static int add_rdata_to_rr(knot_rrset_t *rrset, const scanner_t *scanner)
 	dbg_zp_detail("zp: add_rdata_to_rr: Adding type %d, RRSet has %d RRs.\n",
 	              rrset->type, rrset->rdata_count);
 	
-	uint8_t *rdata = malloc(calculate_item_size(rrset, scanner));
-	assert(rdata);
+	size_t rdlen = calculate_item_size(rrset, scanner);
 	size_t offset = 0;
+	uint8_t *rdata = knot_rrset_create_rdata(rrset, rdlen);
+	if (rdata == NULL) {
+		dbg_zp("zp: create_rdata: Could not create RR. Reason: %s.\n",
+		       knot_strerror(ret));
+		return KNOT_ENOMEM;
+	}
 	
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
 		int item = desc->block_types[i];
@@ -325,16 +330,6 @@ dbg_zp_exec_detail(
 			assert(0);
 		}
 	}
-	
-	int ret = knot_rrset_add_rdata(rrset, rdata, offset);
-	if (ret != KNOT_EOK) {
-		dbg_zp("zp: add_rdat_to_rr: Could not add RR. Reason: %s.\n",
-		       knot_strerror(ret));
-		return ret;
-	}
-	
-	/* RDATA are safely added to RRSet now. */
-	free(rdata);
 	
 	return KNOT_EOK;
 }
