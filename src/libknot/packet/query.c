@@ -21,74 +21,6 @@
 
 /*----------------------------------------------------------------------------*/
 
-int knot_query_rr_to_wire(const knot_rrset_t *rrset, const knot_rdata_t *rdata,
-			  uint8_t **wire, uint8_t *endp)
-{
-	/* Store owner. */
-	knot_dname_t *owner = rrset->owner;
-	if (*wire + owner->size > endp) {
-		return KNOT_ENOMEM;
-	}
-	memcpy(*wire, owner->name, owner->size);
-	*wire += owner->size;
-
-	if (*wire + 10 > endp) {
-		return KNOT_ENOMEM;
-	}
-
-	/* Write RR header. */
-	knot_wire_write_u16(*wire, rrset->type); *wire += 2;
-	knot_wire_write_u16(*wire, rrset->rclass); *wire += 2;
-	knot_wire_write_u32(*wire, rrset->ttl); *wire += 4;
-	knot_wire_write_u16(*wire, 0); *wire += 2; /* RDLENGTH reserve. */
-	uint8_t *rdlength_p = *wire - 2;
-	uint16_t rdlength = 0;
-
-	/* Write data. */
-	knot_dname_t *dname = 0;
-	uint16_t *raw_data = 0;
-	knot_rrtype_descriptor_t *desc =
-		knot_rrtype_descriptor_by_type(rrset->type);
-
-	for (int i = 0; i < rdata->count; ++i) {
-		switch (desc->wireformat[i]) {
-		case KNOT_RDATA_WF_COMPRESSED_DNAME:
-		case KNOT_RDATA_WF_UNCOMPRESSED_DNAME:
-		case KNOT_RDATA_WF_LITERAL_DNAME:
-
-			/* Check space for dname. */
-			dname = knot_rdata_item(rdata, i)->dname;
-			if (*wire + dname->size > endp) {
-				return KNOT_ESPACE;
-			}
-
-			/* Save domain name. */
-			memcpy(*wire, dname->name, dname->size);
-			*wire += dname->size;
-			rdlength += dname->size;
-			break;
-		default:
-			raw_data = knot_rdata_item(rdata, i)->raw_data;
-			if (*wire + raw_data[0] > endp) {
-				return KNOT_ESPACE;
-			}
-
-			/* Copy data. */
-			memcpy(*wire, raw_data + 1, raw_data[0]);
-			*wire += raw_data[0];
-			rdlength += raw_data[0];
-			break;
-
-		}
-	}
-
-	/* Store rdlength. */
-	knot_wire_write_u16(rdlength_p, rdlength);
-
-	return KNOT_EOK;
-}
-/*----------------------------------------------------------------------------*/
-
 int knot_query_dnssec_requested(const knot_packet_t *query)
 {
 	if (query == NULL) {
@@ -211,14 +143,9 @@ int knot_query_add_rrset_authority(knot_packet_t *query,
 	/* Reserve space for TSIG RR */
 	endp -= query->tsig_size;
 	
-	uint8_t *pos = startp;
-
-	const knot_rdata_t *rdata = 0;
-	while ((rdata = knot_rrset_rdata_next(rrset, rdata))) {
-		knot_query_rr_to_wire(rrset, rdata, &pos, endp);
-	}
-
-	size_t written = (pos - startp);
+	size_t written = 0;
+	int rr_count = 0;
+	knot_rrset_to_wire(rrset, startp, &written, &rr_count);
 	query->size += written;
 	++query->ns_rrsets;
 	++query->header.nscount;

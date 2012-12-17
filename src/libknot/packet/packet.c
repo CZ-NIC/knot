@@ -404,7 +404,6 @@ static int knot_packet_parse_rdata(knot_rrset_t *rr, const uint8_t *wire,
 			memcpy(rd, wire + *pos, rchunk);
 			rd += rchunk;
 			*pos += rchunk;
-			break;
 		} else {
 			//NAPTR
 			assert(knot_rrset_type(rr) == KNOT_RRTYPE_NAPTR);

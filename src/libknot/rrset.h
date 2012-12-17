@@ -250,6 +250,7 @@ knot_rrset_t *knot_rrset_get_rrsigs(knot_rrset_t *rrset);
 
 int knot_rrset_compare_rdata(const knot_rrset_t *r1, const knot_rrset_t *r2);
 
+/*! \todo Should support (optional) dname compression. */
 int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
                        int *rr_count);
 

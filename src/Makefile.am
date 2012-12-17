@@ -31,6 +31,8 @@ knot_zcompile_SOURCES =				\
 	libknot/util/wire.h			\
 	libknot/packet/packet.h			\
 	libknot/packet/packet.c			\
+	libknot/packet/query.h			\
+	libknot/packet/query.c			\
 	libknot/zone/zone.c			\
 	libknot/zone/zone-contents.c		\
 	libknot/zone/zone-tree.c		\
