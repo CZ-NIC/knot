@@ -646,8 +646,14 @@ dbg_zone_exec_verb(
 
 	assert(name_b32 != NULL);
 	free(hashed_name);
-
-	dbg_zone_verb("Base32-encoded hash: %s\n", name_b32);
+	
+dbg_zone_exec_verb(
+	/* name_b32 is not 0-terminated. */
+	char b32_string[hash_size + 1];
+	memset(b32_string, 0, hash_size + 1);
+	memcpy(b32_string, name_b32, hash_size);
+	dbg_zone_verb("Base32-encoded hash: %s\n", b32_string);
+);
 
 	/* Will be returned to caller, make sure it is released after use. */
 	*nsec3_name = knot_dname_new_from_str((char *)name_b32, size, NULL);
@@ -1352,8 +1358,7 @@ dbg_zone_exec(
 		// find the RRSet in the node
 		// take only the first RDATA from the RRSIGs
 		dbg_zone_detail("Finding RRSet for type %d\n",
-		                      knot_rdata_rrsig_type_covered(
-		                      knot_rrset_rdata(rrsigs)));
+		                knot_rrset_rdata_rrsig_type_covered(rrsigs));
 		*rrset = knot_node_get_rrset(
 		             *node, knot_rrset_rdata_rrsig_type_covered(rrsigs));
 		if (*rrset == NULL) {

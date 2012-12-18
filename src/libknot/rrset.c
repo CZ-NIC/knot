@@ -177,10 +177,6 @@ uint8_t* knot_rrset_create_rdata(knot_rrset_t *rrset, uint32_t size)
 	
 	++rrset->rdata_count;
 	
-//	printf("RDATA position %d is %d\n",
-//	       rrset->rdata_count,
-//	       rrset_rdata_offset(rrset, rrset->rdata_count - 1));
-
 	return dst;
 }
 
@@ -1834,7 +1830,6 @@ void knot_rrset_rdata_dump(const knot_rrset_t *rrset, size_t rdata_pos)
 			hex_print((char *)(rdata + offset), item);
 			offset += item;
 		} else if (descriptor_item_is_remainder(item)) {
-			printf("offset %d\n", offset);
 			fprintf(stderr, "block=%d Remainder (size=%d):\n",
 			        i, rrset_rdata_item_size(rrset,
 			                                 rdata_pos) - offset);
