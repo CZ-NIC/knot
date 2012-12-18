@@ -1381,7 +1381,6 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 	}
 	
 	/* Finally, answer AXFR/IXFR. */
-	int io_error = 0;
 	if (!xfr_failed) {
 		switch(xfr->type) {
 		case XFR_TYPE_AOUT:
@@ -1397,14 +1396,10 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 		
 		xfr_failed = (ret != KNOT_EOK);
 		errstr = knot_strerror(ret);
-		io_error = (ret == KNOT_ECONN);
 	}
 	
 	/* Check results. */
 	if (xfr_failed) {
-		if (!io_error) {
-			knot_ns_xfr_send_error(ns, xfr, xfr->rcode);
-		}
 		log_server_notice("%s %s\n", xfr->msgpref, errstr);
 	} else {
 		log_server_info("%s Finished.\n", xfr->msgpref);

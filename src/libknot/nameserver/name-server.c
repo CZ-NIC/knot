@@ -3933,8 +3933,9 @@ int knot_ns_answer_axfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	if (ret < 0 && ret != KNOT_ECONN) {
 		dbg_ns("AXFR failed, sending SERVFAIL.\n");
 		// now only one type of error (SERVFAIL), later maybe more
-		/*! \todo xfr->wire is not NULL, will fail on assert! */
-		knot_ns_xfr_send_error(nameserver, xfr, KNOT_RCODE_SERVFAIL);
+		knot_ns_error_response_from_query(nameserver, xfr->query,
+		                                  KNOT_RCODE_SERVFAIL,
+		                                  xfr->wire, &xfr->wire_size);
 		ret = xfr->send(xfr->session, &xfr->addr, xfr->wire, 
 		                xfr->wire_size);
 	} else if (ret > 0) {
