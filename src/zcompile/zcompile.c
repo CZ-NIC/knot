@@ -47,10 +47,10 @@
 #include "libknot/util/utils.h"
 #include "zscanner/file_loader.h"
 
-#define dbg_zp_detail printf
-#define dbg_zp printf
+//#define dbg_zp_detail printf
+//#define dbg_zp printf
 
-#define dbg_zp_exec_detail(cmds) do { cmds } while (0)
+//#define dbg_zp_exec_detail(cmds) do { cmds } while (0)
 
 static long rr_count = 0;
 static long new_rr_count = 0;
@@ -178,8 +178,10 @@ static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
 		dbg_zp("zp: find_rr_for_sig: Cannot add RRSIG.\n");
 		return KNOTDZCOMPILE_EINVAL;
 	} else if (ret > 0) {
-		knot_rrset_free(&rrsig);
+		knot_rrset_deep_free(&rrsig, 0, 0);
 	}
+	
+	knot_dname_release(tmp_rrset->owner);
 
 	assert(tmp_rrset->rrsigs != NULL);
 
@@ -355,7 +357,7 @@ static void process_rr(const scanner_t *scanner)
 		                                    scanner->r_type);
 		if (current_rrset == NULL) {
 			add = 1;
-			new_rr_count++;
+			new_rr_count++	;
 			current_rrset =
 				knot_rrset_new(current_owner,
 				               scanner->r_type,
@@ -364,17 +366,22 @@ static void process_rr(const scanner_t *scanner)
 		}
 	} else {
 		add = 1;
-		if (strncmp((char *)parser->last_node->owner->name,
-	                (char *)scanner->r_owner, scanner->r_owner_length)) {
-			new_dname_count++;
-			current_owner = 
-		                knot_dname_new_from_wire(scanner->r_owner,
-	                                         scanner->r_owner_length,
-	                                         NULL);
-		} else {
-			current_owner = parser->last_node->owner;
-		}
+//		if (strncmp((char *)parser->last_node->owner->name,
+//	                (char *)scanner->r_owner, scanner->r_owner_length)) {
+//			new_dname_count++;
+//			current_owner = 
+//		                knot_dname_new_from_wire(scanner->r_owner,
+//	                                         scanner->r_owner_length,
+//	                                         NULL);
+//		} else {
+//			current_owner = parser->last_node->owner;
+//		}
+		current_owner = 
+			knot_dname_new_from_wire(scanner->r_owner,
+			                         scanner->r_owner_length,
+			                         NULL);
 		new_rr_count++;
+		new_dname_count++;
 		current_rrset =
 			knot_rrset_new(current_owner,
 			               scanner->r_type,
@@ -640,12 +647,17 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	                                           process_error,
 	                                           &my_parser);
 	file_loader_process(loader);
+	if (my_parser.last_node && my_parser.node_rrsigs) {
+		process_rrsigs_in_node(&my_parser,
+		                       my_parser.current_zone,
+		                       my_parser.last_node);
+	}
 	printf("Zone loaded:\n");
 	knot_zone_contents_adjust(my_parser.current_zone);
 	knot_zone_contents_dump(my_parser.current_zone);
-	getchar();
 	knot_zone_deep_free(&zone, 1);
 	knot_dname_free(&my_parser.origin_from_config);
+	rrset_list_delete(&my_parser.node_rrsigs);
 	file_loader_free(loader);
 	printf("RRs ok=%d\n", rr_count);
 	printf("RRs err=%d\n", err_count);

@@ -1385,7 +1385,7 @@ dbg_zone_exec(
 
 	// replace RRSet's owner with the node's owner (that is already in the
 	// table)
-	if ((*rrset)->owner != (*rrset)->rrsigs->owner) {
+	if (ret >= 0 && (*rrset)->owner != (*rrset)->rrsigs->owner) {
 		knot_rrset_set_owner((*rrset)->rrsigs, (*rrset)->owner);
 	}
 
