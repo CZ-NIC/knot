@@ -422,7 +422,6 @@ int knot_zone_tree_forward_apply_inorder(knot_zone_tree_t *tree,
                                                void *data),
                                            void *data)
 {
-	return knot_zone_tree_reverse_apply_postorder(tree, function, data);
 	if (tree == NULL || function == NULL) {
 		return KNOT_EINVAL;
 	}
