@@ -2148,6 +2148,16 @@ static int zones_process_update_auth(knot_zone_t *zone,
 			log_zone_error("%s %s\n", msg, knot_strerror(ret));
 		} else {
 			log_zone_notice("%s: No change to zone made.\n", msg);
+			knot_response_set_rcode(resp, KNOT_RCODE_NOERROR);
+			uint8_t *tmp_wire = NULL;
+			ret = knot_packet_to_wire(resp, &tmp_wire, rsize);
+			if (ret != KNOT_EOK) {
+				*rcode = KNOT_RCODE_SERVFAIL;
+				return ret;
+			} else {
+				memcpy(resp_wire, tmp_wire, *rsize);
+				*rcode = KNOT_RCODE_NOERROR;
+			}
 		}
 
 		knot_free_changesets(&chgsets);
