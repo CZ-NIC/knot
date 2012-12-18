@@ -291,10 +291,6 @@ void knot_zone_tree_free(knot_zone_tree_t **tree);
  */
 void knot_zone_tree_deep_free(knot_zone_tree_t **tree);
 
-int knot_zone_tree_insert_dname(knot_zone_tree_t *tree, knot_dname_t *dname);
-int knot_zone_tree_get_dname(knot_zone_tree_t *tree, const knot_dname_t *owner,
-                             knot_dname_t **found);
-
 /*----------------------------------------------------------------------------*/
 
 #endif // _KNOT_ZONE_TREE_H_
