@@ -47,10 +47,10 @@
 #include "libknot/util/utils.h"
 #include "zscanner/file_loader.h"
 
-//#define dbg_zp_detail printf
-//#define dbg_zp printf
+#define dbg_zp_detail printf
+#define dbg_zp printf
 
-//#define dbg_zp_exec_detail(cmds) do { cmds } while (0)
+#define dbg_zp_exec_detail(cmds) do { cmds } while (0)
 
 static long rr_count = 0;
 static long new_rr_count = 0;
@@ -200,8 +200,8 @@ static knot_node_t *create_node(knot_zone_contents_t *zone,
 	if (node_add_func(zone, node, 1, 0, 1) != 0) {
 		return NULL;
 	}
-
-	current_rrset->owner = node->owner;
+	
+	assert(current_rrset->owner == node->owner);
 
 	return node;
 }
@@ -279,8 +279,7 @@ static int add_rdata_to_rr(knot_rrset_t *rrset, const scanner_t *scanner)
 	size_t offset = 0;
 	uint8_t *rdata = knot_rrset_create_rdata(rrset, rdlen);
 	if (rdata == NULL) {
-		dbg_zp("zp: create_rdata: Could not create RR. Reason: %s.\n",
-		       knot_strerror(ret));
+		dbg_zp("zp: create_rdata: Could not create RR.\n");
 		return KNOT_ENOMEM;
 	}
 	
@@ -365,17 +364,23 @@ static void process_rr(const scanner_t *scanner)
 		}
 	} else {
 		add = 1;
-		new_dname_count++;
-		new_rr_count++;
-		current_owner = 
-	                knot_dname_new_from_wire(scanner->r_owner,
+		if (strncmp((char *)parser->last_node->owner->name,
+	                (char *)scanner->r_owner, scanner->r_owner_length)) {
+			new_dname_count++;
+			current_owner = 
+		                knot_dname_new_from_wire(scanner->r_owner,
 	                                         scanner->r_owner_length,
 	                                         NULL);
+		} else {
+			current_owner = parser->last_node->owner;
+		}
+		new_rr_count++;
 		current_rrset =
 			knot_rrset_new(current_owner,
 			               scanner->r_type,
 			               scanner->r_class,
 			               scanner->r_ttl);
+		knot_dname_release(current_owner);
 	}
 	
 	assert(current_owner);
@@ -397,7 +402,6 @@ static void process_rr(const scanner_t *scanner)
 
 
 	assert(current_rrset->rdata_count);
-	assert(knot_dname_is_fqdn(current_rrset->owner));
 
 	int (*node_add_func)(knot_zone_contents_t *, knot_node_t *, int,
 	                     uint8_t, int);
@@ -454,31 +458,7 @@ static void process_rr(const scanner_t *scanner)
 	}
 
 	if (current_rrset->type == KNOT_RRTYPE_RRSIG) {
-		/*!< \todo Use deep copy function here! */
 		knot_rrset_t *tmp_rrsig = current_rrset;
-//		int ret = knot_rrset_deep_copy(current_rrset, &tmp_rrsig, 1);
-//		if (ret != KNOT_EOK) {
-//			dbg_zp("zp: Cannot copy RRSet.\n");
-//			return ret;
-//		}
-//		knot_rrset_t *tmp_rrsig =
-//			knot_rrset_new(current_rrset->owner,
-//					     KNOT_RRTYPE_RRSIG,
-//					     current_rrset->rclass,
-//					     current_rrset->ttl);
-//		if (tmp_rrsig == NULL) {
-//			dbg_zp("zp: process_rr: Cannot create tmp RRSIG.\n");
-//			return KNOTDZCOMPILE_ENOMEM;
-//		}
-
-//		if (knot_rrset_add_rdata(tmp_rrsig,
-//		                         current_rrset->rdata,
-//		                         knot_rrset_rdata_length()) != KNOT_EOK) {
-//			knot_rrset_free(&tmp_rrsig);
-//			dbg_zp("zp: process_rr: Cannot add data to tmp"
-//			       " RRSIG.\n");
-//			return KNOTDZCOMPILE_EBRDATA;
-//		}
 
 		if (parser->last_node &&
 		    knot_dname_compare(parser->last_node->owner,
@@ -621,8 +601,8 @@ static void process_rr(const scanner_t *scanner)
 
 	if (add) {
 		ret = knot_zone_contents_add_rrset(contents, current_rrset,
-		                          &node,
-		                   KNOT_RRSET_DUPL_MERGE, 1);
+		                                   &node,
+		                                   KNOT_RRSET_DUPL_MERGE, 1);
 		if (ret < 0) {
 			dbg_zp("zp: process_rr: Cannot "
 			       "add RRSets.\n");
@@ -660,8 +640,12 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	                                           process_error,
 	                                           &my_parser);
 	file_loader_process(loader);
+	printf("Zone loaded:\n");
 	knot_zone_contents_adjust(my_parser.current_zone);
-	knot_zone_contents_deep_free(&(my_parser.current_zone));
+	knot_zone_contents_dump(my_parser.current_zone);
+	getchar();
+	knot_zone_deep_free(&zone, 1);
+	knot_dname_free(&my_parser.origin_from_config);
 	file_loader_free(loader);
 	printf("RRs ok=%d\n", rr_count);
 	printf("RRs err=%d\n", err_count);

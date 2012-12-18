@@ -1077,6 +1077,8 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
 	free((*rrset)->rdata_indices);
 
 	if (free_owner) {
+		dbg_rrset("Freeing rrset owner=%s refcount=%d\n",
+		          (*rrset)->owner, (*rrset)->owner->ref.count);
 		knot_dname_release((*rrset)->owner);
 	}
 

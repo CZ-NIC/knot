@@ -724,7 +724,7 @@ static void knot_node_free_rrsets_from_tree(void *item, void *data)
 	}
 	
 	knot_rrset_t *rrset = (knot_rrset_t *)(item);
-	knot_rrset_deep_free(&rrset, 0, *((int *)data));
+	knot_rrset_deep_free(&rrset, 1, *((int *)data));
 }
 
 /*----------------------------------------------------------------------------*/
@@ -764,7 +764,8 @@ void knot_node_free(knot_node_t **node)
 		knot_dname_set_node((*node)->owner, NULL);
 	}
 
-	dbg_node_detail("Releasing owner.\n");
+	dbg_node_detail("Releasing owner %s refcount=%d.\n",
+	                (*node)->owner, (*node)->owner->ref.count);
 	knot_dname_release((*node)->owner);
 
 	free(*node);

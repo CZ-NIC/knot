@@ -121,6 +121,7 @@ static void knot_zone_contents_destroy_node_rrsets_from_tree(
 
 	int free_rdata_dnames = (int)((intptr_t)data);
 	knot_node_free_rrsets(tnode->node, free_rdata_dnames);
+	knot_node_free(&tnode->node);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1282,13 +1283,13 @@ dbg_zone_exec_detail(
 
 	// replace RRSet's owner with the node's owner (that is already in the
 	// table)
-	if (ret == KNOT_EOK && rrset->owner != (*node)->owner) {
-		if (rrset->owner != (*node)->owner) {
-			knot_rrset_set_owner(rrset, (*node)->owner);
-		}
+	if (ret >= 0 && rrset->owner != (*node)->owner) {
+		knot_rrset_set_owner(rrset, (*node)->owner);
 	}
+	
+	assert(!(ret >= 0) || rrset->owner == (*node)->owner);
 
-	dbg_zone_detail("RRSet OK.\n");
+	dbg_zone_detail("RRSet OK (%d).\n", ret);
 	return ret;
 }
 
@@ -2373,17 +2374,9 @@ void knot_zone_contents_deep_free(knot_zone_contents_t **contents)
 			(void*)1);
 
 		knot_zone_tree_reverse_apply_postorder(
-			(*contents)->nsec3_nodes,
-			knot_zone_contents_destroy_node_owner_from_tree, 0);
-
-		knot_zone_tree_reverse_apply_postorder(
 			(*contents)->nodes,
 			knot_zone_contents_destroy_node_rrsets_from_tree,
 			(void*)1);
-
-		knot_zone_tree_reverse_apply_postorder(
-			(*contents)->nodes,
-			knot_zone_contents_destroy_node_owner_from_tree, 0);
 
 		// free the zone tree, but only the structure
 		// (nodes are already destroyed)
