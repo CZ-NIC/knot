@@ -1396,6 +1396,11 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 		
 		xfr_failed = (ret != KNOT_EOK);
 		errstr = knot_strerror(ret);
+	} else {
+		knot_ns_error_response_from_query(ns, xfr->query,  xfr->rcode,
+		                                  xfr->wire, &xfr->wire_size);
+		/*! \todo Sign with TSIG for some errors. */
+		ret = xfr->send(xfr->session, &xfr->addr, xfr->wire, xfr->wire_size);
 	}
 	
 	/* Check results. */
