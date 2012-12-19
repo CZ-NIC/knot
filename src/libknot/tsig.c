@@ -25,7 +25,6 @@
 #include "common.h"
 #include "util/utils.h"
 #include "rrset.h"
-#include "rdata.h"
 #include "dname.h"
 
 /*! \brief TSIG algorithms table. */

@@ -30,7 +30,6 @@
 #include <stdint.h>
 
 #include "dname.h"
-#include "rdata.h"
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -54,7 +53,7 @@ struct knot_rrset {
 	/*! \brief Beginnings of RRs - first one does not contain 0, last
 	 *         last one holds total length of all RRs together
 	 */
-	uint32_t *rdata_indices;
+	uint32_t *rdata_indices; /*!< Indices to begginings of RRs (0 not included) */
 	uint16_t rdata_count; /*!< Count of RRs in this RRSet. */
 	struct knot_rrset *rrsigs; /*!< Set of RRSIGs covering this RRSet. */
 };
@@ -122,8 +121,6 @@ uint8_t* knot_rrset_create_rdata(knot_rrset_t *rrset, uint32_t size);
  *
  * \todo Provide some function for comparing RDATAs.
  */
-int knot_rrset_add_rdata_order(knot_rrset_t *rrset, knot_rdata_t *rdata);
-
 int knot_rrset_remove_rdata(knot_rrset_t *rrset,
                             size_t pos);
 
@@ -198,24 +195,6 @@ uint16_t knot_rrset_class(const knot_rrset_t *rrset);
 uint32_t knot_rrset_ttl(const knot_rrset_t *rrset);
 
 /*!
- * \brief Returns the first RDATA in the RRSet.
- *
- * RDATAs in a RRSet are stored in a ordered cyclic list.
- *
- * \note If later a round-robin rotation of RRSets is employed, the RDATA
- *       returned by this function may not be the first RDATA in canonical
- *       order.
- *
- * \param rrset RRSet to get the RDATA from.
- *
- * \return First RDATA in the given RRSet.
- */
-const knot_rdata_t *knot_rrset_rdata(const knot_rrset_t *rrset);
-
-const knot_rdata_t *knot_rrset_rdata_next(const knot_rrset_t *rrset,
-                                              const knot_rdata_t *rdata);
-
-/*!
  * \brief Returns the first RDATA in the RRSet (non-const version).
  *
  * RDATAs in a RRSet are stored in a ordered cyclic list.
@@ -230,9 +209,6 @@ const knot_rdata_t *knot_rrset_rdata_next(const knot_rrset_t *rrset,
  *         rrset was provided (\a rrset is NULL).
  */
 uint8_t *knot_rrset_get_rdata(const knot_rrset_t *rrset, size_t rdata_pos);
-
-knot_rdata_t *knot_rrset_rdata_get_next(knot_rrset_t *rrset,
-                                            knot_rdata_t *rdata);
 
 int16_t knot_rrset_rdata_rr_count(const knot_rrset_t *rrset);
 
@@ -403,7 +379,6 @@ uint8_t *knot_rrset_rdata_prealloc(const knot_rrset_t *rrset,
                                    size_t *size);
 
 void knot_rrset_dump(const knot_rrset_t *rrset);
-void knot_rrset_rdata_dump(const knot_rrset_t *rrset, size_t rdata_pos);
 
 #endif /* _KNOT_RRSET_H_ */
 

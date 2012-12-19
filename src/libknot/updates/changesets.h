@@ -78,7 +78,7 @@ typedef struct {
 	/*!
 	 * Deleted after successful update.
 	 */
-	knot_rdata_t **old_rdata;
+	knot_rrset_t **old_rdata;
 	unsigned *old_rdata_types;
 	int old_rdata_count;
 	int old_rdata_allocated;
@@ -95,7 +95,7 @@ typedef struct {
 	/*!
 	 * Deleted after failed update.
 	 */
-	knot_rdata_t **new_rdata;
+	knot_rrset_t **new_rdata;
 	unsigned *new_rdata_types;
 	int new_rdata_count;
 	int new_rdata_allocated;

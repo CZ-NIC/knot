@@ -13,8 +13,6 @@ src/libknot/dname.h
 src/libknot/dname.c
 src/libknot/rrset.h
 src/libknot/rrset.c
-src/libknot/rdata.h
-src/libknot/rdata.c
 src/libknot/edns.h
 src/libknot/edns.c
 src/libknot/nsec3.h

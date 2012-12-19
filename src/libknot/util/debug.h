@@ -74,7 +74,6 @@
 /* KNOT_DNAME_DEBUG -- in configure.ac */
 /* #define KNOT_DDNS_DEBUG -- \todo Use this or delete. */
 
-#include "rdata.h"
 #include "rrset.h"
 #include "zone/node.h"
 #include "zone/zone.h"
