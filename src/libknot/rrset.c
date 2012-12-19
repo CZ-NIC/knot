@@ -64,8 +64,56 @@ static uint8_t *rrset_rdata_pointer(const knot_rrset_t *rrset,
 	return rrset->rdata + rrset_rdata_offset(rrset, pos);
 }
 
-size_t rrset_rdata_naptr_bin_chunk_size(const knot_rrset_t *rrset,
-                                        size_t pos)
+void knot_rrset_rdata_dump(const knot_rrset_t *rrset, size_t rdata_pos)
+{
+	fprintf(stderr, "      ------- RDATA pos=%d -------\n", rdata_pos);
+	if (rrset->rdata_count == 0) {
+		fprintf(stderr, "      There are no rdata in this RRset!\n");
+		fprintf(stderr, "      ------- RDATA -------\n");
+		return;
+	}
+	const rdata_descriptor_t *desc =
+		get_rdata_descriptor(knot_rrset_type(rrset));
+	assert(desc != NULL);
+	
+	size_t offset = 0;
+	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
+		int item = desc->block_types[i];
+		uint8_t *rdata = rrset_rdata_pointer(rrset, rdata_pos);
+		if (descriptor_item_is_dname(item)) {
+			knot_dname_t *dname;
+			memcpy(&dname, rdata + offset, sizeof(knot_dname_t *));
+			char *name = knot_dname_to_str(dname);
+			if (dname == NULL) {
+				fprintf(stderr, "DNAME error.\n");
+				return;
+			}
+			fprintf(stderr, "block=%d: (%p) DNAME=%s.\n",
+			        i, dname, name);
+			free(name);
+			offset += sizeof(knot_dname_t *);
+		} else if (descriptor_item_is_fixed(item)) {
+			fprintf(stderr, "block=%d Raw data (size=%d):\n",
+			        i, item);
+			hex_print((char *)(rdata + offset), item);
+			offset += item;
+		} else if (descriptor_item_is_remainder(item)) {
+			fprintf(stderr, "block=%d Remainder (size=%d):\n",
+			        i, rrset_rdata_item_size(rrset,
+			                                 rdata_pos) - offset);
+			hex_print((char *)(rdata + offset),
+			          rrset_rdata_item_size(rrset,
+			                                rdata_pos) - offset);
+		} else {
+			fprintf(stderr, "NAPTR, failing miserably\n");
+			assert(rrset->type == KNOT_RRTYPE_NAPTR);
+			assert(0);
+		}
+	}
+}
+
+static size_t rrset_rdata_naptr_bin_chunk_size(const knot_rrset_t *rrset,
+                                               size_t pos)
 {
 	if (rrset == NULL || rrset->rdata_count >= pos) {
 		return 0;
@@ -97,11 +145,7 @@ size_t rrset_rdata_naptr_bin_chunk_size(const knot_rrset_t *rrset,
 knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
                              uint16_t rclass, uint32_t ttl)
 {
-	knot_rrset_t *ret = malloc(sizeof(knot_rrset_t));
-	if (ret == NULL) {
-		ERR_ALLOC_FAILED;
-		return NULL;
-	}
+	knot_rrset_t *ret = xmalloc(sizeof(knot_rrset_t));
 
 	ret->rdata = NULL;
 	ret->rdata_count = 0;
@@ -124,8 +168,7 @@ knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
 int knot_rrset_add_rdata_single(knot_rrset_t *rrset, uint8_t *rdata,
                                 uint32_t size)
 {
-	rrset->rdata_indices = malloc(sizeof(uint32_t));
-	assert(rrset->rdata_indices);
+	rrset->rdata_indices = xmalloc(sizeof(uint32_t));
 	rrset->rdata_indices[0] = size;
 	rrset->rdata = rdata;
 	rrset->rdata_count = 1;
@@ -936,34 +979,34 @@ int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
 	       rrset_rdata_size_total(from) + 1);
 	
 	/* Here comes the hard part. */
-//	if (copy_rdata_dnames) {
-//		knot_dname_t *dname_from = NULL;
-//		knot_dname_t **dname_to = NULL;
-//		knot_dname_t *dname_copy = NULL;
-//		while ((dname_from =
-//		        knot_rrset_get_next_dname(from, dname_from)) != NULL) {
-//			dname_to =
-//				knot_rrset_get_next_dname_pointer(*to,
-//					dname_to);
-//			/* These pointers have to be the same. */
-//			assert(dname_from == *dname_to);
-//			dname_copy = knot_dname_deep_copy(dname_from);
-//			if (dname_copy == NULL) {
-//				dbg_rrset("rrset: deep_copy: Cannot copy RDATA"
-//				          " dname.\n");
-//				/*! \todo This will leak. Is it worth fixing? */
-//				knot_rrset_deep_free(&(*to)->rrsigs, 1,
-//				                     copy_rdata_dnames);
-//				free((*to)->rdata);
-//				free((*to)->rdata_indices);
-//				free(*to);
-//				return KNOT_ENOMEM;
-//			}
+	if (copy_rdata_dnames) {
+		knot_dname_t *dname_from = NULL;
+		knot_dname_t **dname_to = NULL;
+		knot_dname_t *dname_copy = NULL;
+		while ((dname_from =
+		        knot_rrset_get_next_dname(from, dname_from)) != NULL) {
+			dname_to =
+				knot_rrset_get_next_dname_pointer(*to,
+					dname_to);
+			/* These pointers have to be the same. */
+			assert(dname_from == *dname_to);
+			dname_copy = knot_dname_deep_copy(dname_from);
+			if (dname_copy == NULL) {
+				dbg_rrset("rrset: deep_copy: Cannot copy RDATA"
+				          " dname.\n");
+				/*! \todo This will leak. Is it worth fixing? */
+				knot_rrset_deep_free(&(*to)->rrsigs, 1,
+				                     copy_rdata_dnames);
+				free((*to)->rdata);
+				free((*to)->rdata_indices);
+				free(*to);
+				return KNOT_ENOMEM;
+			}
 			
-//			/* This cannot work, test. TODO */
-//			*dname_to = dname_copy;
-//		}
-//	}
+			/* This cannot work, test. TODO */
+			*dname_to = dname_copy;
+		}
+	}
 	
 	return KNOT_EOK;
 }
@@ -1730,13 +1773,13 @@ uint8_t *knot_rrset_rdata_prealloc(const knot_rrset_t *rrset,
 		} else if (descriptor_item_is_remainder(item)) {
 			//TODO
 			switch(rrset->type) {
-				KNOT_RRTYPE_DS:
+				case KNOT_RRTYPE_DS:
 					*rdata_size += 64;
 				break;
-				KNOT_RRTYPE_RRSIG:
+				case KNOT_RRTYPE_RRSIG:
 					*rdata_size += 256;
 				break;
-				KNOT_RRTYPE_DNSKEY:
+				case KNOT_RRTYPE_DNSKEY:
 					*rdata_size += 1024;
 				break;
 				default:
@@ -1798,51 +1841,269 @@ void knot_rrset_dump(const knot_rrset_t *rrset)
 	}
 }
 
-void knot_rrset_rdata_dump(const knot_rrset_t *rrset, size_t rdata_pos)
+static size_t rrset_binary_length_one(const knot_rrset_t *rrset,
+                                      size_t rdata_pos)
 {
-	fprintf(stderr, "      ------- RDATA pos=%d -------\n", rdata_pos);
-	if (rrset->rdata_count == 0) {
-		fprintf(stderr, "      There are no rdata in this RRset!\n");
-		fprintf(stderr, "      ------- RDATA -------\n");
-		return;
-	}
 	const rdata_descriptor_t *desc =
 		get_rdata_descriptor(knot_rrset_type(rrset));
 	assert(desc != NULL);
 	
 	size_t offset = 0;
+	size_t size = 0;
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
 		int item = desc->block_types[i];
 		uint8_t *rdata = rrset_rdata_pointer(rrset, rdata_pos);
 		if (descriptor_item_is_dname(item)) {
 			knot_dname_t *dname;
 			memcpy(&dname, rdata + offset, sizeof(knot_dname_t *));
-			char *name = knot_dname_to_str(dname);
-			if (dname == NULL) {
-				fprintf(stderr, "DNAME error.\n");
-				return;
-			}
-			fprintf(stderr, "block=%d: (%p) DNAME=%s.\n",
-			        i, dname, name);
-			free(name);
+			assert(dname);
 			offset += sizeof(knot_dname_t *);
+			size += knot_dname_size(dname) + 1; // extra 1 - we need a size
 		} else if (descriptor_item_is_fixed(item)) {
-			fprintf(stderr, "block=%d Raw data (size=%d):\n",
-			        i, item);
-			hex_print((char *)(rdata + offset), item);
 			offset += item;
+			size += item;
 		} else if (descriptor_item_is_remainder(item)) {
-			fprintf(stderr, "block=%d Remainder (size=%d):\n",
-			        i, rrset_rdata_item_size(rrset,
-			                                 rdata_pos) - offset);
-			hex_print((char *)(rdata + offset),
-			          rrset_rdata_item_size(rrset,
-			                                rdata_pos) - offset);
+			size += rrset_rdata_item_size(rrset, rdata_pos) -
+			        offset;
 		} else {
 			fprintf(stderr, "NAPTR, failing miserably\n");
 			assert(rrset->type == KNOT_RRTYPE_NAPTR);
 			assert(0);
 		}
 	}
+	
+	return size;
+}
+
+uint64_t rrset_binary_length(const knot_rrset_t *rrset)
+{
+	if (rrset == NULL || rrset->rdata_count == 0) {
+		return 0;
+	}
+	uint64_t size = sizeof(uint64_t) + // size at the beginning
+	              1 + // owner size
+	              knot_dname_size(knot_rrset_owner(rrset)) + // owner data
+	              sizeof(uint16_t) + // type
+	              sizeof(uint16_t) + // class
+	              sizeof(uint32_t) + // ttl
+	              sizeof(uint16_t) +  //RR count
+	              2 * sizeof(uint32_t) * rrset->rdata_count; //RR indices + binary lengths
+	for (uint16_t i = 0; i < rrset->rdata_count; i++) {
+		size += rrset_binary_length_one(rrset, i);
+	}
+	
+	return size;
+}
+
+static void rrset_serialize_rr(const knot_rrset_t *rrset, size_t rdata_pos,
+                               uint8_t *stream, size_t *size)
+{
+	const rdata_descriptor_t *desc =
+		get_rdata_descriptor(knot_rrset_type(rrset));
+	assert(desc != NULL);
+	
+	size_t offset = 0;
+	*size = 0;
+	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
+		int item = desc->block_types[i];
+		uint8_t *rdata = rrset_rdata_pointer(rrset, rdata_pos);
+		if (descriptor_item_is_dname(item)) {
+			knot_dname_t *dname;
+			memcpy(&dname, rdata + offset, sizeof(knot_dname_t *));
+			assert(dname);
+			memcpy(stream + *size, &dname->size, 1);
+			*size += 1;
+			memcpy(stream + *size, dname->name, dname->size);
+			offset += sizeof(knot_dname_t *);
+			*size += dname->size;
+		} else if (descriptor_item_is_fixed(item)) {
+			memcpy(stream + *size, rdata + offset, item);
+			offset += item;
+			*size += item;
+		} else if (descriptor_item_is_remainder(item)) {
+			uint32_t remainder_size =
+				rrset_rdata_item_size(rrset,
+			                              rdata_pos) - offset;
+			memcpy(stream + *size, rdata + offset, remainder_size);
+			size += remainder_size;
+		} else {
+			fprintf(stderr, "NAPTR, failing miserably\n");
+			assert(rrset->type == KNOT_RRTYPE_NAPTR);
+			assert(0);
+		}
+	}
+}
+
+int rrset_serialize(const knot_rrset_t *rrset, uint8_t *stream, size_t *size)
+{
+	if (rrset == NULL || rrset->rdata_count == 0) {
+		return KNOT_EINVAL;
+	}
+	
+	uint64_t rrset_length = rrset_binary_length(rrset);
+	memcpy(stream, &rrset_length, sizeof(uint64_t));
+	
+	size_t offset = sizeof(uint64_t);
+	/* Save RR indices. Size first. */
+	memcpy(stream + offset, &rrset->rdata_count, sizeof(uint16_t));
+	offset += sizeof(uint16_t);
+	memcpy(stream + offset, rrset->rdata_indices,
+	       rrset->rdata_count * sizeof(uint32_t));
+	/* Save owner. Size first. */
+	memcpy(stream + offset, &rrset->owner->size, 1);
+	++offset;
+	memcpy(stream, knot_dname_name(rrset->owner),
+	       knot_dname_size(rrset->owner));
+	offset += knot_dname_size(rrset->owner);
+	
+	/* Save static data. */
+	memcpy(stream + offset, &rrset->type, sizeof(uint16_t));
+	offset += sizeof(uint16_t);
+	memcpy(stream + offset, &rrset->rclass, sizeof(uint16_t));
+	offset += sizeof(uint16_t);
+	memcpy(stream + offset, &rrset->ttl, sizeof(uint32_t));
+	offset += sizeof(uint32_t);
+	
+	/* Copy RDATA. */
+	size_t actual_size = 0;
+	for (uint16_t i = 0; i < rrset->rdata_count; i++) {
+		size_t size_one = 0;
+		/* This cannot fail, if it does, RDATA are malformed. TODO */
+		/* TODO this can be written later. */
+		uint32_t rr_size = rrset_binary_length_one(rrset, i);
+		memcpy(stream + offset, &rr_size, sizeof(uint32_t));
+		offset += sizeof(uint32_t);
+		rrset_serialize_rr(rrset, i, stream + offset + actual_size,
+		                   &size_one);
+		assert(size_one == rr_size);
+		actual_size += size_one;
+	}
+	
+	assert(actual_size == *size);
+	return KNOT_EOK;
+
+}
+
+int rrset_serialize_alloc(const knot_rrset_t *rrset, uint8_t **stream,
+                          size_t *size)
+{
+	/* Get the binary size. */
+	*size = rrset_binary_length(rrset);
+	if (*size == 0) {
+		/* Nothing to serialize. */
+		dbg_rrset("rrset: serialize alloc: No data to serialize.\n");
+		return KNOT_EINVAL;
+	}
+	
+	/* Prepare memory. */
+	*stream = xmalloc(*size);
+	
+	return rrset_serialize(rrset, *stream, size);
+}
+
+
+static int rrset_deserialize_rr(knot_rrset_t *rrset, size_t rdata_pos,
+                                uint8_t *stream, uint32_t rdata_size,
+                                size_t *read)
+{
+	const rdata_descriptor_t *desc =
+		get_rdata_descriptor(knot_rrset_type(rrset));
+	assert(desc != NULL);
+	
+	size_t stream_offset = 0;
+	size_t rdata_offset = 0;
+	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
+		int item = desc->block_types[i];
+		uint8_t *rdata = rrset_rdata_pointer(rrset, rdata_pos);
+		if (descriptor_item_is_dname(item)) {
+			/* Read dname size. */
+			uint8_t dname_size = 0;
+			memcpy(&dname_size, stream + stream_offset, 1);
+			stream_offset += 1;
+			knot_dname_t *dname =
+				knot_dname_new_from_str((char *)(stream + stream_offset),
+			                                dname_size, NULL);
+			memcpy(rdata + rdata_offset, &dname,
+			       sizeof(knot_dname_t *));
+			stream_offset += dname_size;
+			rdata_offset += sizeof(knot_dname_t *);
+		} else if (descriptor_item_is_fixed(item)) {
+			memcpy(rdata + rdata_offset, stream + stream_offset, item);
+			rdata_offset += item;
+			stream_offset += item;
+		} else if (descriptor_item_is_remainder(item)) {
+			size_t remainder_size = rdata_size - stream_offset;
+			memcpy(rdata + rdata_offset, stream + stream_offset,
+			       remainder_size);
+			stream_offset += remainder_size;
+		} else {
+			assert(rrset->type == KNOT_RRTYPE_NAPTR);
+			assert(0);
+		}
+	}
+	*read = stream_offset;
+	return KNOT_EOK;
+}
+
+int rrset_deserialize(uint8_t *stream, size_t stream_size,
+                      knot_rrset_t **rrset)
+{
+	if (sizeof(uint64_t) > stream_size) {
+		return KNOT_ESPACE;
+	}
+	uint64_t rrset_length = 0;
+	memcpy(&rrset_length, stream, sizeof(uint64_t));
+	if (rrset_length > stream_size) {
+		return KNOT_ESPACE;
+	}
+	
+	size_t offset = sizeof(uint64_t);
+	uint16_t rdata_count = 0;
+	memcpy(&rdata_count, stream + offset, sizeof(uint16_t));
+	offset += sizeof(uint16_t);
+	uint32_t *rdata_indices = xmalloc(rdata_count * sizeof(uint32_t));
+	memcpy(rdata_indices, stream + offset,
+	       rdata_count * sizeof(uint32_t));
+	offset += rdata_count * sizeof(uint32_t);
+	/* Read owner from the stream. */
+	uint8_t owner_size = *(stream + offset);
+	offset += 1;
+	knot_dname_t *owner = knot_dname_new_from_wire(stream + offset,
+	                                               owner_size, NULL);
+	assert(owner);
+	offset += owner_size;
+	/* Read type. */
+	uint16_t type = 0;
+	memcpy(&type, stream + offset, sizeof(uint16_t));
+	offset += sizeof(uint16_t);
+	/* Read class. */
+	uint16_t rclass = 0;
+	memcpy(&rclass, stream + offset, sizeof(uint16_t));
+	offset += sizeof(uint16_t);
+	/* Read TTL. */
+	uint32_t ttl = 0;
+	memcpy(&ttl, stream + offset, sizeof(uint32_t));
+	offset += sizeof(uint32_t);
+	
+	/* Create new RRSet. */
+	*rrset = knot_rrset_new(owner, type, rclass, ttl);
+	(*rrset)->rdata_indices = rdata_indices;
+	(*rrset)->rdata_count = rdata_count;
+	(*rrset)->rdata = xmalloc(rdata_indices[rdata_count - 1]);
+	memset((*rrset)->rdata, 0, rdata_indices[rdata_count - 1]);
+	/* Read RRs. */
+	for (uint16_t i = 0; i < (*rrset)->rdata_count; i++) {
+		/* There's always size of rdata in the beginning. Needed because of remainders. */
+		uint32_t rdata_size = 0;
+		memcpy(&rdata_size, stream + offset, sizeof(uint32_t));
+		size_t read = 0;
+		rrset_deserialize_rr((*rrset), i,
+		                     stream + offset, rdata_size, &read);
+		/* TODO handle malformations. */
+		assert(read == rdata_size);
+		offset += read;
+	}
+	
+	return KNOT_EOK;
 }
 
