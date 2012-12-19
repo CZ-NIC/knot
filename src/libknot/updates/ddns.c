@@ -1670,7 +1670,7 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 	 */
 	uint16_t type_to_copy = (type != KNOT_RRTYPE_RRSIG) ? type
 	                : knot_rdata_rrsig_type_covered(knot_rrset_rdata(rr));
-	knot_rrset_t *rrset_copy;
+	knot_rrset_t *rrset_copy = NULL;
 	int ret = xfrin_copy_rrset(node, type_to_copy, &rrset_copy, changes, 1);
 	if (ret < 0) {
 		dbg_ddns("Failed to copy RRSet for removal: %s\n",
@@ -1765,29 +1765,30 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 	}
 	
 	/*! \note Copied from xfr-in.c - maybe extract to some function. */
-	if (knot_rrset_rdata(rrset_copy) == NULL
-	    && knot_rrset_rrsigs(rrset_copy) == NULL) {
-		// The RRSet should not be empty if we were removing NSs from
-		// apex in case of DDNS
-		assert(!is_apex);
+	/*! \note This is not needed as rrset is already on the old_rrsets */
+//	if (knot_rrset_rdata(rrset_copy) == NULL
+//	    && knot_rrset_rrsigs(rrset_copy) == NULL) {
+//		// The RRSet should not be empty if we were removing NSs from
+//		// apex in case of DDNS
+//		assert(!is_apex);
 
-		ret = knot_changes_rrsets_reserve(&changes->old_rrsets,
-		                                 &changes->old_rrsets_count,
-		                                 &changes->old_rrsets_allocated,
-		                                 1);
-		if (ret == KNOT_EOK) {
-			knot_rrset_t *tmp = knot_node_remove_rrset(node, type);
-			dbg_xfrin_detail("Removed whole RRSet (%p).\n", tmp);
+//		ret = knot_changes_rrsets_reserve(&changes->old_rrsets,
+//		                                 &changes->old_rrsets_count,
+//		                                 &changes->old_rrsets_allocated,
+//		                                 1);
+//		if (ret == KNOT_EOK) {
+//			knot_rrset_t *tmp = knot_node_remove_rrset(node, type);
+//			dbg_xfrin_detail("Removed whole RRSet (%p).\n", tmp);
 
-			assert(tmp == rrset_copy);
+//			assert(tmp == rrset_copy);
 
-			// add the removed RRSet to list of old RRSets
-			changes->old_rrsets[changes->old_rrsets_count++]
-			                = rrset_copy;
-		} else {
-			dbg_ddns("Failed to reserve space for empty RRSet.\n");
-		}
-	}
+//			// add the removed RRSet to list of old RRSets
+//			changes->old_rrsets[changes->old_rrsets_count++]
+//			                = rrset_copy;
+//		} else {
+//			dbg_ddns("Failed to reserve space for empty RRSet.\n");
+//		}
+//	}
 
 	/*
 	 * 5) Check if the RR is not in the ADD section. If yes, remove it
@@ -1935,6 +1936,8 @@ static int knot_ddns_process_rem_rrsigs(knot_node_t *node,
 		/* Store the RRSIGs to the array of removed RRSets. */
 		(*removed)[(*removed_count)++] = rrsig;
 	}
+	
+	free(rrsets);
 	
 	
 	return KNOT_EOK;

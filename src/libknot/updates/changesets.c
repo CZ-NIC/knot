@@ -562,6 +562,8 @@ int knot_changes_add_old_rrsets(knot_rrset_t **rrsets, int count,
 			                       KNOT_RRTYPE_RRSIG);
 		}
 		
+		/* Disconnect RRsigs from rrset. */
+		knot_rrset_set_rrsigs(rrsets[i], NULL);
 		changes->old_rrsets[changes->old_rrsets_count++] = rrsets[i];
 		changes->old_rrsets[changes->old_rrsets_count++] = rrsigs;
 	}
