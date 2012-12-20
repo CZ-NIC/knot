@@ -887,6 +887,7 @@ static int knot_ddns_rr_is_nsec3(const knot_rrset_t *rr)
 
 	if ((knot_rrset_type(rr) == KNOT_RRTYPE_NSEC3)
 	    || (knot_rrset_type(rr) == KNOT_RRTYPE_RRSIG
+	        && knot_rrset_rdata(rr) 
 	        && knot_rdata_rrsig_type_covered(knot_rrset_rdata(rr))
 	            == KNOT_RRTYPE_NSEC3))
 	{
