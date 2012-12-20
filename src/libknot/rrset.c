@@ -176,7 +176,7 @@ int knot_rrset_add_rdata_single(knot_rrset_t *rrset, uint8_t *rdata,
 }
 
 int knot_rrset_add_rdata(knot_rrset_t *rrset,
-                         uint8_t *rdata, uint32_t size)
+                         uint8_t *rdata, uint16_t size)
 {
 	if (rrset == NULL || rdata == NULL || size == 0) {
 		return KNOT_EINVAL;
@@ -190,7 +190,7 @@ int knot_rrset_add_rdata(knot_rrset_t *rrset,
 
 /*----------------------------------------------------------------------------*/
 
-uint8_t* knot_rrset_create_rdata(knot_rrset_t *rrset, uint32_t size)
+uint8_t* knot_rrset_create_rdata(knot_rrset_t *rrset, uint16_t size)
 {
 	if (rrset == NULL || size == 0) {
 		return NULL;
@@ -226,7 +226,7 @@ uint8_t* knot_rrset_create_rdata(knot_rrset_t *rrset, uint32_t size)
 /*----------------------------------------------------------------------------*/
 
 
-uint32_t rrset_rdata_item_size(const knot_rrset_t *rrset,
+uint16_t rrset_rdata_item_size(const knot_rrset_t *rrset,
                                size_t pos)
 {
 	if (rrset == NULL || rrset->rdata_indices == NULL ||
@@ -298,7 +298,7 @@ int knot_rrset_set_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs)
 /*----------------------------------------------------------------------------*/
 
 int knot_rrset_add_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs,
-                            knot_rrset_dupl_handling_t dupl)
+                          knot_rrset_dupl_handling_t dupl)
 {
 	if (rrset == NULL || rrsigs == NULL
 	    || knot_dname_compare(rrset->owner, rrsigs->owner) != 0) {
@@ -324,7 +324,6 @@ int knot_rrset_add_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs,
 		if (rrset->ttl != rrsigs->ttl) {
 			rrsigs->ttl = rrset->ttl;
 		}
-		
 		rrset->rrsigs = rrsigs;
 	}
 
@@ -396,7 +395,7 @@ uint8_t *knot_rrset_get_rdata(const knot_rrset_t *rrset, size_t rdata_pos)
 
 /*----------------------------------------------------------------------------*/
 
-int16_t knot_rrset_rdata_rr_count(const knot_rrset_t *rrset)
+uint16_t knot_rrset_rdata_rr_count(const knot_rrset_t *rrset)
 {
 	if (rrset != NULL) {
 		return rrset->rdata_count;

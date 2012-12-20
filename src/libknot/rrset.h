@@ -2,6 +2,7 @@
  * \file rrset.h
  *
  * \author Lubos Slovak <lubos.slovak@nic.cz>
+ * \author Jan Kadlec <jan.kadlec@nic.cz>
  *
  * \brief RRSet structure and API for manipulating it.
  *
@@ -96,35 +97,37 @@ knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
  *
  * \param rrset RRSet to add the RDATA to.
  * \param rdata RDATA to add to the RRSet.
+ * \param size Size of RDATA.
  *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL
- *
- * \todo Provide some function for comparing RDATAs.
+ * \retval KNOT_EINVAL on wrong arguments.
+ * \retval KNOT_EOK on success.
  */
 int knot_rrset_add_rdata(knot_rrset_t *rrset, uint8_t *rdata,
-                         uint32_t size);
-
-/*! \brief Create rdata memory. */
-uint8_t* knot_rrset_create_rdata(knot_rrset_t *rrset, uint32_t size);
+                         uint16_t size);
 
 /*!
- * \brief Adds the given RDATA to the RRSet but will not insert duplicated data.
- *
- * \warning Should be only used to insert one RDATA. (NO lists)
+ * \brief Creates RDATA memory and returns a pointer to it.
+ *        If the RRSet is not empty, function will return a memory 
+ *        pointing to a beginning of a new RR. (Indices will be handled as well)
  *
  * \param rrset RRSet to add the RDATA to.
- * \param rdata RDATA to add to the RRSet.
+ * \param size Size of RR RDATA (Size in internal representation)
  *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL
- *
- * \todo Provide some function for comparing RDATAs.
+ * \return Pointer to memory to be written to.
+ * \retval NULL if arguments are invalid
  */
-int knot_rrset_remove_rdata(knot_rrset_t *rrset,
-                            size_t pos);
+uint8_t* knot_rrset_create_rdata(knot_rrset_t *rrset, uint16_t size);
 
-uint32_t rrset_rdata_item_size(const knot_rrset_t *rrset,
+/*!
+ * \brief Returns size of an RR RDATA on a given position.
+ *
+ * \param rrset RRSet holding RR RDATA.
+ * \param pos RR position.
+ *
+ * \retval 0 on error.
+ * \return Item size on success.
+ */
+uint16_t rrset_rdata_item_size(const knot_rrset_t *rrset,
                                size_t pos);
 
 /*!
@@ -138,8 +141,20 @@ uint32_t rrset_rdata_item_size(const knot_rrset_t *rrset,
  */
 int knot_rrset_set_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs);
 
+/*!
+ * \brief Adds RRSIG signatures to this RRSet.
+ *
+ * \param rrset RRSet to add the signatures into.
+ * \param rrsigs Set of RRSIGs covering this RRSet.
+ * \param dupl Merging strategy.
+ *
+ * \retval KNOT_EOK if no merge was needed.
+ * \retval 1 if merge was needed.
+ * \retval 2 if rrsig was not first, but is was skipped.
+ * \retval KNOT_EINVAL on faulty arguments or rrsig does not belong to this rrset.
+ */
 int knot_rrset_add_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs,
-                            knot_rrset_dupl_handling_t dupl);
+                          knot_rrset_dupl_handling_t dupl);
 
 /*!
  * \brief Returns the Owner of the RRSet.
@@ -151,7 +166,11 @@ int knot_rrset_add_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs,
 const knot_dname_t *knot_rrset_owner(const knot_rrset_t *rrset);
 
 /*!
- * \todo Document me.
+ * \brief Returns the Owner of the RRSet.
+ *
+ * \param rrset RRSet to get the Owner of.
+ *
+ * \return Owner of the given RRSet.
  */
 knot_dname_t *knot_rrset_get_owner(const knot_rrset_t *rrset);
 
@@ -165,6 +184,12 @@ knot_dname_t *knot_rrset_get_owner(const knot_rrset_t *rrset);
  */
 void knot_rrset_set_owner(knot_rrset_t *rrset, knot_dname_t* owner);
 
+/*!
+ * \brief Sets rrset TTL to given TTL.
+ *
+ * \param rrset Specified RRSet.
+ * \param ttl New TTL.
+ */
 void knot_rrset_set_ttl(knot_rrset_t *rrset, uint32_t ttl);
 
 /*!
@@ -195,22 +220,24 @@ uint16_t knot_rrset_class(const knot_rrset_t *rrset);
 uint32_t knot_rrset_ttl(const knot_rrset_t *rrset);
 
 /*!
- * \brief Returns the first RDATA in the RRSet (non-const version).
- *
- * RDATAs in a RRSet are stored in a ordered cyclic list.
- *
- * \note If later a round-robin rotation of RRSets is employed, the RDATA
- *       returned by this function may not be the first RDATA in canonical
- *       order.
+ * \brief Returns RDATA of RR on given position.
  *
  * \param rrset RRSet to get the RDATA from.
+ * \param rdata_pos Position of RR to get.
  *
- * \return First RDATA in the given RRSet or NULL if there is none or if no
- *         rrset was provided (\a rrset is NULL).
+ * \retval NULL if no RDATA on rdata_pos exist.
+ * \return Pointer to RDATA on given position if successfull.
  */
 uint8_t *knot_rrset_get_rdata(const knot_rrset_t *rrset, size_t rdata_pos);
 
-int16_t knot_rrset_rdata_rr_count(const knot_rrset_t *rrset);
+/*!
+ * \brief Returns the TTL of the RRSet.
+ *
+ * \param rrset RRSet to get the TTL of.
+ *
+ * \return TTL of the given RRSet.
+ */
+uint16_t knot_rrset_rdata_rr_count(const knot_rrset_t *rrset);
 
 /*!
  * \brief Returns the set of RRSIGs covering the given RRSet.
