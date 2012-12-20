@@ -8,6 +8,7 @@ In this chapter we provide suggested configurations and explain the meaning of i
 * Slave configuration::       
 * Master configuration::       
 * Configuring multiple interfaces::       
+* Using DNS UPDATE::
 * Remote control interface::       
 * Enabling zone semantic checks::
 * Creating IXFR differences from zone file changes::
@@ -87,7 +88,9 @@ form you can define a zone by its name and zone file.
 Knot DNS doesn't strictly differ between master and slave zones.
 The only requirement is to have @code{xfr-in} @code{zones} statement set for given zone,
 thus allowing both incoming XFR from that remote and using it as the
-zone master. Note that you need to explicitly allow incoming NOTIFY, otherwise
+zone master. If @code{update-in} is set and zone has a master,
+any accepted DNS UPDATE will be forwarded to master.
+Also note that you need to explicitly allow incoming NOTIFY, otherwise
 the daemon would reject them.
 Also, you can specify paths, relative to the storage directory.
 See @ref{zones} and @ref{storage}.
@@ -96,12 +99,14 @@ If the zone file doesn't exist and @code{xfr-in} is set, it will be bootstrapped
 @example
 remotes @{
   master @{ address 127.0.0.1@@53; @}
+  subnet1 @{ address 192.168.1.0/24; @}
 @}
 zones @{
   example.com @{  
     file "example.com"; # relative to 'storage'
     xfr-in master;      # define 'master' for this zone
     notify-in master;   # also allow NOTIFY from 'master'
+    update-in subnet1;  # accept UPDATE msgs from subnet1 and forward to master
   @}
 @}
 @end example
@@ -149,6 +154,7 @@ zones @{
     file "/var/zones/example.com";
     xfr-out subnet1, subnet2; # allow outgoing transfers
     notify-out slave;
+    update-in subnet1; # only allow DNS UPDATE from subnet1
   @}
 @}
 @end example
@@ -182,6 +188,34 @@ interfaces @{
   anyv6 @{ address [::]@@53; @}
 @}
 @end example
+
+@node Using DNS UPDATE
+@section Using DNS UPDATE
+
+As noted in examples for master and slave, it is possible to accept DNS UPDATE messages.
+When the zone is configured as a slave and DNS UPDATE messages is accepted, server forwards the
+message to its primary master specified by @code{xfr-in} directive. When it receives 
+the response from primary master, it forwards it back to the originator. This finishes the transaction.
+
+However, if the zone is configured as master (i.e. not having any @code{xfr-in} directive), it accepts
+such an UPDATE and processes it. As of 1.2, there are a few limitations with DNSSEC signed zones:
+
+@itemize @bullet
+@item
+Knot DNS doesn't automatically sign incoming RR if the zone is signed.
+As a workaround, it accepts DNSSEC-related records. However, it may prove challenging
+to create such an UPDATE that it correctly adds/replaces signed RRs, so this
+feature should be treated as experimental until correct signing is implemented.
+
+@item
+As for the reason in a previous point, removing RRSIG with no specified rdata makes it impossible
+to determine whether the user meant a RRSIG for an NSEC3 record or other one.
+Since they are stored separately, it is advisable to always specify RRSIG along with at least the types it covers.
+
+@item
+Deleting a last RR also removes its RRSIG.
+
+@end itemize
 
 @node Remote control interface
 @section Remote control interface
