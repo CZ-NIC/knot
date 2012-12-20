@@ -1,3 +1,35 @@
+v1.1.3 - Dec 19, 2012
+---------------------
+
+Bugfixes
+        * Updated manpage.
+
+v1.1.3-rc1 - Dec 6, 2012
+------------------------
+
+Bugfixes
+	* Fixed answering DS queries (RRSIGs not together with DS, AA bit 
+          missing).
+	* Fixed setting ARCOUNT in some error responses with EDNS enabled.
+	* Fixed crash when compiling zone zone with NSEC3PARAM but no NSEC3
+	  and semantic checks enabled.
+
+
+v1.1.2 - Nov 21, 2012
+---------------------
+
+Bugfixes
+	* Fixed debug message.
+
+
+v1.1.2-rc1 - Nov 14, 2012
+-------------------------
+
+Bugfixes:
+	* Fixed crash on reload when config contained duplicate zones.
+	* Fixed scheduling of transfers.
+
+
 v1.1.1 - Oct 31, 2012
 ---------------------
 
