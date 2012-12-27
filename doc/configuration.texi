@@ -198,7 +198,7 @@ message to its primary master specified by @code{xfr-in} directive. When it rece
 the response from primary master, it forwards it back to the originator. This finishes the transaction.
 
 However, if the zone is configured as master (i.e. not having any @code{xfr-in} directive), it accepts
-such an UPDATE and processes it. As of 1.2, there are a few limitations with DNSSEC signed zones:
+such an UPDATE and processes it. As of 1.2, there are a few limitations with DNSSEC signed zones described below. Other than that, UPDATE of unsigned zones works as expected without any limitations.
 
 @itemize @bullet
 @item
