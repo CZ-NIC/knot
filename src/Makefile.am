@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I ../m4
-libexec_PROGRAMS = knot-zcompile unittests unittests-zcompile unittests-xfr
+libexec_PROGRAMS = knot-zcompile unittests unittests-zcompile unittests-xfr khost
 sbin_PROGRAMS = knotc knotd
 dist_man_MANS = knot.conf.5 knotc.8 knotd.8
 
@@ -19,7 +19,7 @@ BUILT_SOURCES =					\
 	libknotd_la-cf-parse.h
 
 CLEANFILES =					\
-	tests/sample_conf.rc                    \
+	tests/sample_conf.rc			\
 	zparser.h				\
 	zparser.c				\
 	zlexer.c				\
@@ -29,6 +29,18 @@ CLEANFILES =					\
 
 knotc_SOURCES =					\
 	knot/ctl/knotc_main.c
+
+khost_SOURCES =					\
+	utils/common/msg.h			\
+	utils/common/params.c			\
+	utils/common/params.h			\
+	utils/common/resolv.c			\
+	utils/common/resolv.h			\
+	utils/host/host_main.c			\
+	utils/host/host_params.c		\
+	utils/host/host_params.h		\
+	utils/host/host_exec.c			\
+	utils/host/host_exec.h
 
 knot_zcompile_SOURCES =				\
 	zcompile/zcompile_main.c		\
@@ -78,7 +90,7 @@ unittests_zcompile_SOURCES =			\
 	zcompile/tests/unittests_zp_main.c
 
 unittests_xfr_SOURCES = 			\
-	tests/xfr_tests.c		\
+	tests/xfr_tests.c			\
 	tests/xfr_tests.h
 
 nodist_unittests_SOURCES =			\
@@ -210,10 +222,10 @@ libknots_la_SOURCES =				\
 	common/log.h			
 
 libknotd_la_SOURCES =				\
-	knot/stat/gatherer.c				\
-	knot/stat/stat.c				\
-	knot/stat/gatherer.h				\
-	knot/stat/stat.h				\
+	knot/stat/gatherer.c			\
+	knot/stat/stat.c			\
+	knot/stat/gatherer.h			\
+	knot/stat/stat.h			\
 	knot/common.h				\
 	knot/other/debug.h			\
 	knot/conf/cf-parse.y			\
@@ -228,29 +240,29 @@ libknotd_la_SOURCES =				\
 	knot/ctl/remote.h			\
 	knot/server/dthreads.c			\
 	knot/server/journal.c			\
-	knot/server/socket.c				\
-	knot/server/server.c				\
-	knot/server/udp-handler.c			\
-	knot/server/tcp-handler.c			\
-	knot/server/xfr-handler.c			\
-	knot/server/zones.c				\
-	knot/server/socket.h				\
-	knot/server/udp-handler.h			\
-	knot/server/tcp-handler.h			\
-	knot/server/xfr-handler.h			\
+	knot/server/socket.c			\
+	knot/server/server.c			\
+	knot/server/udp-handler.c		\
+	knot/server/tcp-handler.c		\
+	knot/server/xfr-handler.c		\
+	knot/server/zones.c			\
+	knot/server/socket.h			\
+	knot/server/udp-handler.h		\
+	knot/server/tcp-handler.h		\
+	knot/server/xfr-handler.h		\
 	knot/server/dthreads.h			\
 	knot/server/journal.h			\
-	knot/server/zones.h				\
-	knot/server/notify.h				\
-	knot/server/notify.c				\
-	knot/server/zones.h				\
+	knot/server/zones.h			\
+	knot/server/notify.h			\
+	knot/server/notify.c			\
+	knot/server/zones.h			\
 	knot/zone/zone-load.c			\
 	knot/zone/zone-load.h			\
 	knot/zone/semantic-check.c		\
 	knot/zone/semantic-check.h		\
 	knot/zone/zone-dump.c			\
-	knot/zone/zone-dump-text.c			\
-	knot/zone/zone-dump-text.h			\
+	knot/zone/zone-dump-text.c		\
+	knot/zone/zone-dump-text.h		\
 	knot/zone/zone-dump.h			\
 	knot/server/server.h
 
@@ -258,6 +270,7 @@ libknotd_la_LIBADD = libknot.la libknots.la @LIBOBJS@
 libknots_la_LIBADD = @LIBOBJS@
 knotd_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 knotc_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
+khost_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 knot_zcompile_LDADD = libknots.la libknot.la libknotd.la @LIBOBJS@
 unittests_LDADD = libknotd.la libknots.la @LIBOBJS@
 unittests_zcompile_LDADD = libknot.la libknots.la libknotd.la @LIBOBJS@
