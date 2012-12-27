@@ -412,6 +412,12 @@ static knot_rrtype_descriptor_t
                    KNOT_RDATA_WF_BINARYWITHSHORT },
                   /* Zoneformat not needed. */
                   {0, 0, 0, 0, 0}, true },
+	[251] = { KNOT_RRTYPE_IXFR, "IXFR", 1,
+	          { KNOT_RDATA_WF_TEXT },
+	          { KNOT_RDATA_ZF_TEXT }, false },
+	[252] = { KNOT_RRTYPE_AXFR, "AXFR", 1,
+	          { KNOT_RDATA_WF_TEXT },
+	          { KNOT_RDATA_ZF_TEXT }, false },
   	/* 32769 */
   	[32769] = { KNOT_RRTYPE_DLV, "DLV", 4,
   	  { KNOT_RDATA_WF_SHORT, KNOT_RDATA_WF_BYTE,
@@ -461,7 +467,7 @@ int32_t knot_rrtype_to_string(const uint16_t rrtype,
 	knot_rrtype_descriptor_t *entry =
 	        knot_rrtype_descriptor_by_type(rrtype);
 
-	if (entry->name) {
+	if (entry->name != NULL) {
 		ret = snprintf(out, out_len, "%s", entry->name);
 	} else {
 		ret = snprintf(out, out_len, "TYPE%u", rrtype);

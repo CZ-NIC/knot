@@ -167,9 +167,10 @@ enum knot_rr_type {
 	KNOT_RRTYPE_DLV = 32769, /*!< RFC 4431 */
 
 	/*! \brief Last normal RR type. */
-	KNOT_RRTYPE_LAST = KNOT_RRTYPE_TSIG
+	KNOT_RRTYPE_LAST = KNOT_RRTYPE_AXFR
 	/*! \todo [TSIG] Is it allright to include all <= RR TSIG?
-	 * Because TSIG is normal RR type. */
+	 * Because TSIG is normal RR type.
+	 * DS: TSIG changed to AXFR */
 };
 
 typedef enum knot_rr_type knot_rr_type_t;
