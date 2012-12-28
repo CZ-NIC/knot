@@ -65,7 +65,9 @@ static bool use_recursion(const host_params_t *params, const uint16_t type)
 }
 
 static knot_packet_t* create_query_packet(const host_params_t *params,
-                                          const query_t       *query)
+                                          const query_t       *query,
+                                          uint8_t             **data,
+                                          size_t              *data_len)
 {
 	knot_question_t q;
 
@@ -116,12 +118,61 @@ static knot_packet_t* create_query_packet(const host_params_t *params,
 		return NULL;
 	}
 
-	// For IXFR add authority section.
+	// For IXFR query add authority section.
 	if (query->type == KNOT_RRTYPE_IXFR) {
-//		knot_node_t  *node = knot_node_new(q.qname, NULL, 0);
-//		const knot_rrset_t *soa = knot_node_rrset(node, KNOT_RRTYPE_SOA);
-		const knot_rrset_t *soa = knot_rrset_new(q.qname, KNOT_RRTYPE_SOA, params->class_num, 0);
-		knot_query_add_rrset_authority(packet, soa);
+		int ret;
+		size_t pos = 0;
+		// SOA rdata in wireformat.
+		uint8_t wire[22] = { 0x0 };
+		// Set SOA serial.
+		uint32_t serial = htonl(params->ixfr_serial);
+		memcpy(wire + 2, &serial, sizeof(serial));
+
+		// Create SOA rdata.
+		knot_rdata_t *soa_data = knot_rdata_new();
+		ret = knot_rdata_from_wire(soa_data,
+		                           wire,
+		                           &pos,
+		                           sizeof(wire),
+		                           sizeof(wire),
+		                           knot_rrtype_descriptor_by_type(
+		                                             KNOT_RRTYPE_SOA));
+
+		if (ret != KNOT_EOK) {
+			knot_dname_release(q.qname);
+			knot_packet_free(&packet);
+			return NULL;
+		}
+
+		// Create rrset with SOA record.
+		knot_rrset_t *soa = knot_rrset_new(q.qname,
+		                                   KNOT_RRTYPE_SOA,
+		                                   params->class_num,
+		                                   0);
+		ret = knot_rrset_add_rdata(soa, soa_data);
+
+		if (ret != KNOT_EOK) {
+			knot_dname_release(q.qname);
+			knot_packet_free(&packet);
+			return NULL;
+		}
+
+		// Add authority section.
+		ret = knot_query_add_rrset_authority(packet, soa);
+
+		if (ret != KNOT_EOK) {
+			knot_dname_release(q.qname);
+			knot_packet_free(&packet);
+			return NULL;
+		}
+	}
+
+	// Create wire query.
+	if (knot_packet_to_wire(packet, data, data_len) != KNOT_EOK) {
+		ERR("can't create wire query packet\n");
+		knot_dname_release(q.qname);
+		knot_packet_free(&packet);
+		return NULL;
 	}
 
 	knot_dname_release(q.qname);
@@ -129,92 +180,126 @@ static knot_packet_t* create_query_packet(const host_params_t *params,
 	return packet;
 }
 
-static int process_query(const host_params_t *params, const query_t *query)
+static int send_query(const host_params_t *params,
+                      const query_t       *query,
+                      const server_t      *server,
+                      const uint8_t       *data,
+                      const size_t        data_len)
 {
-	uint8_t *buf = NULL;
-	size_t buflen = 0;
-	node *server = NULL;
+	struct addrinfo hints, *res;
+	int sockfd;
 
-	knot_packet_t *packet = create_query_packet(params, (query_t *)query);
+	memset(&hints, 0, sizeof hints);
 
-	if (packet == NULL) {
-		printf("NULL");
+	// Set IP type.
+	if (params->ip == IP_4) {
+		hints.ai_family = AF_INET;
+	} else if (params->ip == IP_6) {
+		hints.ai_family = AF_INET6;
+	} else {
+		hints.ai_family = AF_UNSPEC;
 	}
 
-	knot_packet_to_wire(packet, &buf, &buflen);
+	// Set TCP or UDP.
+	if (use_tcp(params, query->type) == true) {
+		hints.ai_socktype = SOCK_STREAM;
+	} else {
+		hints.ai_socktype = SOCK_DGRAM;
+	}
 
+	// Get connection parameters.
+	if (getaddrinfo(server->name, server->service, &hints, &res) != 0) {
+		WARN("can't use nameserver %s port %s\n",
+		     server->name, server->service);
+		return -1;
+	}
+
+	// Create socket.
+	sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+
+	if (sockfd == -1) {
+		WARN("can't create socket for nameserver %s port %s\n",
+		     server->name, server->service);
+		return -1;
+	}
+
+	// Set non-blocking socket.
+	if (fcntl(sockfd, F_SETFL, O_NONBLOCK) == -1) {
+		WARN("can't create non-blocking socket\n");
+	}
+
+	// Connect using socket.
+	if (connect(sockfd, res->ai_addr, res->ai_addrlen) == -1 &&
+	    errno != EINPROGRESS) {
+		WARN("can't connect to nameserver %s port %s\n",
+		     server->name, server->service);
+		shutdown(sockfd, 2);
+		return -1;
+	}
+
+	fd_set wfds;
+	struct timeval tv;
+
+	FD_ZERO(&wfds);
+	FD_SET(sockfd, &wfds);
+
+	tv.tv_sec = params->wait;
+	tv.tv_usec = 0;
+
+	// Check for connection timeout.
+	if (select(sockfd + 1, NULL, &wfds, NULL, &tv) == -1 ||
+	    !FD_ISSET(sockfd, &wfds)) {
+		WARN("can't connect to nameserver %s port %s\n",
+		     server->name, server->service);
+		shutdown(sockfd, 2);
+		return -1;
+	}
+
+	if (use_tcp(params, query->type) == true) {
+		uint16_t pktsize = htons(data_len);
+
+		if (send(sockfd, &pktsize, sizeof(pktsize), 0) !=
+		    sizeof(pktsize)) {
+			WARN("TCP packet leading lenght\n");
+		}
+	}
+
+	if (send(sockfd, data, data_len, 0) != data_len) {
+		WARN("can't send query\n");
+	}
+
+	return sockfd;
+}
+
+static int process_query(const host_params_t *params, const query_t *query)
+{
+	uint8_t *data = NULL;
+	size_t data_len = 0;
+	node *server = NULL;
+
+	// Create query packet.
+	knot_packet_t *packet = create_query_packet(params, query,
+	                                            &data, &data_len);
+
+	if (packet == NULL) {
+		return KNOT_ERROR;
+	}
+
+	// Loop over nameserver list.
 	WALK_LIST(server, params->servers) {
 		server_t *srv = (server_t *)server;
-
-		struct addrinfo hints, *res;
 		int sockfd;
 
-		memset(&hints, 0, sizeof hints);
-
-		if (params->ip == IP_4) {
-			hints.ai_family = AF_INET;
-		} else if (params->ip == IP_6) {
-			hints.ai_family = AF_INET6;
-		} else {
-			hints.ai_family = AF_UNSPEC;
-		}
-
-		if (use_tcp(params, query->type) == true) {
-			hints.ai_socktype = SOCK_STREAM;
-		} else {
-			hints.ai_socktype = SOCK_DGRAM;
-		}
-
-		if (getaddrinfo(srv->name, srv->service, &hints, &res) != 0) {
-			WARN("can't use nameserver %s(%s)\n",
-			     srv->name, srv->service);
-			continue;
-		}
-
-		sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+		sockfd = send_query(params, query, srv, data, data_len);
 
 		if (sockfd == -1) {
-			WARN("can't create socket for nameserver %s(%s)\n",
-			     srv->name, srv->service);
 			continue;
-		}
-
-		fcntl(sockfd, F_SETFL, O_NONBLOCK);
-
-		if (connect(sockfd, res->ai_addr, res->ai_addrlen) == -1 &&
-			errno != EINPROGRESS) {
-			WARN("can't connect to nameserver %s(%s) - %s\n",
-			     srv->name, srv->service, strerror(errno));
-			continue;
-		}
-
-		fd_set wfds;
-           	struct timeval tv;
-
-		FD_ZERO(&wfds);
-		FD_SET(sockfd, &wfds);
-
-		tv.tv_sec = DEFAULT_WAIT_INTERVAL;
-		tv.tv_usec = 0;
-
-		int retval = select(sockfd + 1, NULL, &wfds, NULL, &tv);
-
-		if (retval == -1 || !FD_ISSET(sockfd, &wfds)) {
-			WARN("can't connect to %s\n", srv->name);
-			fflush(stdout);
-			shutdown(sockfd, 2);
-			continue;
-		}
-
-		int n = send(sockfd, buf, buflen, 0);
-
-		if (n != buflen) {
-			WARN("can't send query\n");
 		}
 
 		shutdown(sockfd, 2);
 	}
 
+	// Drop query packet.
 	knot_packet_free(&packet);
 
 	return KNOT_EOK;

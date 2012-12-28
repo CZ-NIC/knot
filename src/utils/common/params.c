@@ -73,7 +73,7 @@ int parse_type(const char *type, int32_t *type_num, int64_t *ixfr_serial)
 
 		// IXFR requires serial parameter.
 		if (*type_num == KNOT_RRTYPE_IXFR) {
-			ERR("required SOA serial for IXFR type\n");
+			ERR("required SOA serial for IXFR query\n");
 			return KNOT_ERROR;
 		}
 	} else {
@@ -94,7 +94,7 @@ int parse_type(const char *type, int32_t *type_num, int64_t *ixfr_serial)
 			// Check for bad serial string.
 			if (end == param_str || *end != '\0' ||
 			    serial > UINT32_MAX) {
-				ERR("bad SOA serial\n");
+				ERR("bad SOA serial in IXFR query\n");
 				return KNOT_ERROR;
 			}
 

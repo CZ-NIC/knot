@@ -22,8 +22,8 @@
 #define ERROR_		"Error: "
 #define WARNING_	"Warning: "
 
-#define ERR(m...)	printf(ERROR_ m)
-#define WARN(m...)	printf(WARNING_ m)
+#define ERR(m...)	{ printf(ERROR_ m); fflush(stdout); }
+#define WARN(m...)	{ printf(WARNING_ m); fflush(stdout); }
 
 #endif // _UTILS__MSG_H_
 
