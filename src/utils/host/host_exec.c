@@ -20,6 +20,8 @@
 #include <fcntl.h>			// fcntl
 #include <netdb.h>			// addrinfo
 #include <sys/socket.h>			// AF_INET (BSD)                        
+#include <netinet/in.h>			// ntohl (BSD)
+#include <sys/select.h>			// fd_set (BSD)
 
 #include "common/lists.h"		// list
 #include "common/errcode.h"		// KNOT_EOK
