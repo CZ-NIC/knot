@@ -68,8 +68,8 @@ typedef struct {
 	uint32_t	udp_size;
 	/*!< Number of UDP retries. */
 	uint32_t	retries;
-	/*!< Wait for reply in seconds (0 means forever). */
-	uint32_t	wait;
+	/*!< Wait for reply in seconds (-1 means forever). */
+	int32_t		wait;
 	/*!< Stop quering if servfail. */
 	bool		servfail_stop;
 	/*!< Verbose mode. */

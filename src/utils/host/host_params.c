@@ -126,7 +126,7 @@ static void host_params_flag_verbose(host_params_t *params)
 
 static void host_params_flag_nowait(host_params_t *params)
 {
-	params->wait = 0;
+	params->wait = -1;
 }
 
 static int host_params_parse_retries(const char *value, uint32_t *retries)
@@ -147,17 +147,24 @@ static int host_params_parse_retries(const char *value, uint32_t *retries)
 	return KNOT_EOK;
 }
 
-static int host_params_parse_wait(const char *value, uint32_t *wait)
+static int host_params_parse_wait(const char *value, int32_t *wait)
 {
 	char *end;
 
 	// Convert string to number.
-	unsigned long num = strtoul(value, &end, 10);
+	long num = strtol(value, &end, 10);
 
-	// Check for bad string.
-	if (end == value || *end != '\0' || num > UINT32_MAX) {
+	// Check for bad string (empty or incorrect).
+	if (end == value || *end != '\0') {
 		ERR("bad wait value\n");
 		return KNOT_ERROR;
+	} else if (num < 1) {
+		num = 1;
+		WARN("wait interval is too short, using %ld seconds\n", num);
+	// Reduce maximal value. Poll takes signed int in milliseconds.
+	} else if (num > INT32_MAX) {
+		num = INT32_MAX / 1000;
+		WARN("wait interval is too long, using %ld seconds\n", num);
 	}
 
 	*wait = num;
