@@ -100,7 +100,7 @@ int send_query(const params_t *params,
 	    errno != EINPROGRESS) {
 		WARN("can't connect to nameserver %s port %s\n",
 		     server->name, server->service);
-		shutdown(sockfd, 2);
+		shutdown(sockfd, SHUT_RDWR);
 		return -1;
 	}
 
@@ -108,7 +108,7 @@ int send_query(const params_t *params,
 	if (poll(&pfd, 1, 1000 * params->wait) != 1) {
 		WARN("can't wait for connection to nameserver %s port %s\n",
 		     server->name, server->service);
-		shutdown(sockfd, 2);
+		shutdown(sockfd, SHUT_RDWR);
 		return -1;
 	}
 

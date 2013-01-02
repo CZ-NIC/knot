@@ -45,9 +45,9 @@ static bool use_recursion(const params_t *params, const uint16_t type)
 }
 
 static knot_packet_t* create_query_packet(const params_t *params,
-                                          const query_t       *query,
-                                          uint8_t             **data,
-                                          size_t              *data_len)
+                                          const query_t  *query,
+                                          uint8_t        **data,
+                                          size_t         *data_len)
 {
 	knot_question_t q;
 
@@ -168,7 +168,7 @@ static knot_packet_t* create_query_packet(const params_t *params,
 static int process_query(const params_t *params, const query_t *query)
 {
 	const size_t out_len = MAX_PACKET_SIZE;
-	uint8_t      out[out_len];
+	uint8_t      out[MAX_PACKET_SIZE];
 	size_t       in_len = 0;
 	uint8_t      *in = NULL;
 	node         *server = NULL;
@@ -194,7 +194,7 @@ static int process_query(const params_t *params, const query_t *query)
 		// TODO
 		receive_msg(params, query, sockfd, out, out_len);
 
-		shutdown(sockfd, 2);
+		shutdown(sockfd, SHUT_RDWR);
 
 		// If successfully processed, stop quering nameservers.
 		break;

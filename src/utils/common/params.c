@@ -25,7 +25,6 @@
 
 #define IPV4_REVERSE_DOMAIN	"in-addr.arpa."
 #define IPV6_REVERSE_DOMAIN	"ip6.arpa."
-#define ASCII_0			48
 
 query_t* create_query(const char *name, const uint16_t type)
 {
@@ -54,20 +53,20 @@ void query_free(query_t *query)
 	free(query);
 }
 
-int parse_class(const char *class, uint16_t *class_num)
+int parse_class(const char *rclass, uint16_t *class_num)
 {
-	*class_num = knot_rrclass_from_string(class);
+	*class_num = knot_rrclass_from_string(rclass);
 
 	return KNOT_EOK;
 }
 
-int parse_type(const char *type, int32_t *type_num, int64_t *ixfr_serial)
+int parse_type(const char *rtype, int32_t *type_num, int64_t *ixfr_serial)
 {
-	size_t param_pos = strcspn(type, "=");
+	size_t param_pos = strcspn(rtype, "=");
 
 	// There is no additional parameter.
-	if (param_pos == strlen(type)) {
-		*type_num = knot_rrtype_from_string(type);
+	if (param_pos == strlen(rtype)) {
+		*type_num = knot_rrtype_from_string(rtype);
 
 		// IXFR requires serial parameter.
 		if (*type_num == KNOT_RRTYPE_IXFR) {
@@ -75,7 +74,7 @@ int parse_type(const char *type, int32_t *type_num, int64_t *ixfr_serial)
 			return KNOT_ERROR;
 		}
 	} else {
-		char *type_char = strndup(type, param_pos);
+		char *type_char = strndup(rtype, param_pos);
 
 		*type_num = knot_rrtype_from_string(type_char);
 
@@ -83,7 +82,7 @@ int parse_type(const char *type, int32_t *type_num, int64_t *ixfr_serial)
 
 		// Additional parameter is acceptet for IXFR only.
 		if (*type_num == KNOT_RRTYPE_IXFR) {
-			const char *param_str = type + 1 + param_pos;
+			const char *param_str = rtype + 1 + param_pos;
 			char *end;
 
 			// Convert string to serial.

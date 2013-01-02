@@ -67,7 +67,7 @@ typedef enum {
 	HOST_MODE_LIST_SERIALS,
 } host_mode_t;
 
-/*! \brief Structure containing parameters for host. */
+/*! \brief Structure containing parameters. */
 typedef struct {
 	/*!< List of nameservers to query to. */
 	list		servers;
@@ -104,9 +104,9 @@ query_t* create_query(const char *name, const uint16_t type);
 
 void query_free(query_t *query);
 
-int parse_class(const char *class, uint16_t *class_num);
+int parse_class(const char *rclass, uint16_t *class_num);
 
-int parse_type(const char *type, int32_t *type_num, int64_t *ixfr_serial);
+int parse_type(const char *rtype, int32_t *type_num, int64_t *ixfr_serial);
 
 char* get_reverse_name(const char *name);
 
