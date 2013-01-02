@@ -89,7 +89,7 @@ typedef enum evsched_ev_t {
  */
 typedef struct {
 	pthread_mutex_t rl;      /*!< Event running lock. */
-	event_t *current;        /*!< Current running event. */
+	volatile event_t *cur;   /*!< Current running event. */
 	pthread_mutex_t mx;      /*!< Event queue locking. */
 	pthread_cond_t notify;   /*!< Event queue notification. */
 	struct heap heap;

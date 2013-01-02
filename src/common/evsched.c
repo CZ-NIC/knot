@@ -183,10 +183,20 @@ event_t* evsched_next(evsched_t *s)
 
 			/* Immediately return. */
 			if (timercmp_ge(&dt, &next_ev->tv)) {
-				s->current = next_ev;
-				heap_delmin(&s->heap);
+				s->cur = next_ev;
 				pthread_mutex_unlock(&s->mx);
 				pthread_mutex_lock(&s->rl);
+
+				/* Check back for late cancellation. */
+				if (s->cur == NULL) {
+					pthread_mutex_unlock(&s->rl);
+					pthread_mutex_lock(&s->mx);
+					continue;
+				} else {
+					/* Valid, remove from waitlist. */
+					heap_delmin(&s->heap);
+				}
+				
 				return next_ev;
 			}
 
@@ -215,8 +225,8 @@ int evsched_event_finished(evsched_t *s)
 	}
 
 	/* Mark as finished. */
-	if (s->current) {
-		s->current = 0;
+	if (s->cur) {
+		s->cur = NULL;
 		pthread_mutex_unlock(&s->rl);
 		return 0;
 	}
@@ -307,6 +317,17 @@ int evsched_cancel(evsched_t *s, event_t *ev)
 
 	if ((found = heap_find(&s->heap, ev))) {
 		heap_delete(&s->heap, found);
+	}
+	
+	/* Check if not being processed, invalidate if yes.
+	 * Could happen if next 'cur' was set, but
+	 * the evsched_next() waits until we release rl.
+	 */
+	if (s->cur == ev) {
+		s->cur = NULL; /* Invalidate */
+		pthread_mutex_unlock(&s->mx);
+		pthread_mutex_unlock(&s->rl);
+		return found;
 	}
 
 	/* Unlock calendar. */
