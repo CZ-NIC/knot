@@ -17,12 +17,12 @@
 #include <stdlib.h>			// EXIT_FAILURE
 
 #include "common/errcode.h"		// KNOT_EOK
-#include "utils/host/host_params.h"	// host_params_t
+#include "utils/host/host_params.h"	// params_t
 #include "utils/host/host_exec.h"	// host_exec
 
 int main(int argc, char *argv[])
 {
-	host_params_t params;
+	params_t params;
 
 	if (host_params_parse(&params, argc, argv) != KNOT_EOK) {
 		return EXIT_FAILURE;

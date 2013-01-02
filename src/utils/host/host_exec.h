@@ -32,7 +32,7 @@
 
 #include "utils/host/host_params.h"
 
-int host_exec(const host_params_t *params);
+int host_exec(const params_t *params);
 
 #endif // _HOST__HOST_EXEC_H_
 

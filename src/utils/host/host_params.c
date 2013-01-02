@@ -27,8 +27,9 @@
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/params.h"	// parse_class
 #include "utils/common/resolv.h"	// get_nameservers
+#include "utils/common/netio.h"
 
-static void host_params_init(host_params_t *params)
+static void host_params_init(params_t *params)
 {
 	memset(params, 0, sizeof(*params));
 
@@ -55,7 +56,7 @@ static void host_params_init(host_params_t *params)
 	params->verbose = false;
 }
 
-void host_params_clean(host_params_t *params)
+void host_params_clean(params_t *params)
 {
 	node *n = NULL, *nxt = NULL;
 
@@ -77,54 +78,54 @@ void host_params_clean(host_params_t *params)
 	memset(params, 0, sizeof(*params));
 }
 
-static void host_params_flag_all(host_params_t *params)
+static void host_params_flag_all(params_t *params)
 {
 	params->type_num = KNOT_RRTYPE_ANY;
 	params->verbose = true;
 }
 
-static void host_params_flag_soa(host_params_t *params)
+static void host_params_flag_soa(params_t *params)
 {
 	params->type_num = KNOT_RRTYPE_SOA;
 	params->mode = HOST_MODE_LIST_SERIALS;
 }
 
-static void host_params_flag_axfr(host_params_t *params)
+static void host_params_flag_axfr(params_t *params)
 {
 	params->type_num = KNOT_RRTYPE_AXFR;
 }
 
-static void host_params_flag_nonrecursive(host_params_t *params)
+static void host_params_flag_nonrecursive(params_t *params)
 {
 	params->recursion = false;
 }
 
-static void host_params_flag_tcp(host_params_t *params)
+static void host_params_flag_tcp(params_t *params)
 {
 	params->protocol = PROTO_TCP;
 }
 
-static void host_params_flag_ipv4(host_params_t *params)
+static void host_params_flag_ipv4(params_t *params)
 {
 	params->ip = IP_4;
 }
 
-static void host_params_flag_ipv6(host_params_t *params)
+static void host_params_flag_ipv6(params_t *params)
 {
 	params->ip = IP_6;
 }
 
-static void host_params_flag_servfail(host_params_t *params)
+static void host_params_flag_servfail(params_t *params)
 {
 	params->servfail_stop = true;
 }
 
-static void host_params_flag_verbose(host_params_t *params)
+static void host_params_flag_verbose(params_t *params)
 {
 	params->verbose = true;
 }
 
-static void host_params_flag_nowait(host_params_t *params)
+static void host_params_flag_nowait(params_t *params)
 {
 	params->wait = -1;
 }
@@ -172,7 +173,7 @@ static int host_params_parse_wait(const char *value, int32_t *wait)
 	return KNOT_EOK;
 }
 
-static int host_params_parse_name(host_params_t *params, const char *name)
+static int host_params_parse_name(params_t *params, const char *name)
 {
 	char	*reverse = get_reverse_name(name);
 	query_t	*query;
@@ -242,7 +243,7 @@ static int host_params_parse_name(host_params_t *params, const char *name)
 	return KNOT_EOK;
 }
 
-static int host_params_parse_server(host_params_t *params, const char *name)
+static int host_params_parse_server(params_t *params, const char *name)
 {
 	node *n = NULL, *nxt = NULL;
 
@@ -270,7 +271,7 @@ static void host_params_help(int argc, char *argv[])
 	printf("Usage: %s [-aCdvlrT] [-4] [-6] [-c class] [-t type] {name} [server]\n", argv[0]);
 }
 
-int host_params_parse(host_params_t *params, int argc, char *argv[])
+int host_params_parse(params_t *params, int argc, char *argv[])
 {
 	int opt = 0;
 

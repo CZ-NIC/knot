@@ -14,31 +14,32 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file host_params.h
+ * \file netio.h
  *
  * \author Daniel Salzman <daniel.salzman@nic.cz>
  *
- * \brief Host command line parameters.
+ * \brief Networking abstraction for utilities.
  *
- * \addtogroup knot_utils
+ * \addtogroup utils
  * @{
  */
 
-#ifndef _HOST__HOST_PARAMS_H_
-#define _HOST__HOST_PARAMS_H_
+#ifndef _UTILS__NETIO_H_
+#define _UTILS__NETIO_H_
 
-#include <stdbool.h>
-#include <stdint.h>
+#include <arpa/inet.h>			// inet_pton
+#include <sys/socket.h>			// AF_INET (BSD)
+#include <netinet/in.h>			// in_addr (BSD)
 
-#include "common/lists.h"		// list
-#include "utils/common/params.h"	// protocol_t
+#include "utils/common/params.h"
+#include "utils/common/resolv.h"
 
+int get_socktype(const params_t *params, const uint16_t qtype);
 
+int send_query(const params_t *params, const query_t *query,
+               const server_t *server, const uint8_t *data, size_t data_len);
 
-int host_params_parse(params_t *params, int argc, char *argv[]);
+int receive_msg(const params_t *params, const query_t *query,
+                int sockfd, uint8_t *out, size_t out_len);
 
-void host_params_clean(params_t *params);
-
-#endif // _HOST__HOST_PARAMS_H_
-
-/*! @} */
+#endif // _UTILS__NETIO_H_

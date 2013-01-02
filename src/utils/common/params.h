@@ -57,6 +57,49 @@ typedef enum {
 	PROTO_UDP
 } protocol_t;
 
+#define DEFAULT_WAIT_INTERVAL 1
+
+/*! \brief Types of host operation mode. */
+typedef enum {
+	/*!< Classic query for name-class-type. */
+	HOST_MODE_DEFAULT,
+	/*!< Query for NS and all authoritative SOA records. */
+	HOST_MODE_LIST_SERIALS,
+} host_mode_t;
+
+/*! \brief Structure containing parameters for host. */
+typedef struct {
+	/*!< List of nameservers to query to. */
+	list		servers;
+	/*!< List of DNS queries to process. */
+	list		queries;
+
+	/*!< Operation mode. */
+	host_mode_t	mode;
+	/*!< Version of ip protocol to use. */
+	ip_version_t	ip;
+	/*!< Type (TCP, UDP) protocol to use. */
+	protocol_t	protocol;
+	/*!< Default class number. */
+	uint16_t	class_num;
+	/*!< Default type number (16unsigned + -1 uninitialized). */
+	int32_t		type_num;
+	/*!< SOA serial for IXFR query (32unsigned + -1 uninitialized). */
+	int64_t		ixfr_serial;
+	/*!< Use recursion. */
+	bool		recursion;
+	/*!< UDP buffer size. */
+	uint32_t	udp_size;
+	/*!< Number of UDP retries. */
+	uint32_t	retries;
+	/*!< Wait for reply in seconds (-1 means forever). */
+	int32_t		wait;
+	/*!< Stop quering if servfail. */
+	bool		servfail_stop;
+	/*!< Verbose mode. */
+	bool		verbose;
+} params_t;
+
 query_t* create_query(const char *name, const uint16_t type);
 
 void query_free(query_t *query);
