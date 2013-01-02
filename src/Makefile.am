@@ -36,6 +36,8 @@ khost_SOURCES =					\
 	utils/common/params.h			\
 	utils/common/resolv.c			\
 	utils/common/resolv.h			\
+	utils/common/rr-serialize.h		\
+	utils/common/rr-serialize.c		\
 	utils/host/host_main.c			\
 	utils/host/host_params.c		\
 	utils/host/host_params.h		\

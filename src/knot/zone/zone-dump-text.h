@@ -41,6 +41,11 @@
  */
 int zone_dump_text(knot_zone_contents_t *zone, FILE *f);
 
+/*! \note Exported for utils */
+char *rdata_item_to_string(knot_rdata_zoneformat_t type,
+                           knot_rdata_item_t item);
+char *rdata_ipsecgateway_to_string(knot_rdata_item_t item,
+                                   const knot_rrset_t *rrset);
 #endif // _KNOT_ZONE_DUMP_TEXT_H_
 
 /*! @} */

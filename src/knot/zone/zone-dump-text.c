@@ -1123,3 +1123,4 @@ int zone_dump_text(knot_zone_contents_t *zone, FILE *f)
 
 	return KNOT_EOK;
 }
+
