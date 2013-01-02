@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I ../m4
-libexec_PROGRAMS = knot-zcompile unittests unittests-zcompile unittests-xfr khost
+libexec_PROGRAMS = knot-zcompile unittests unittests-zcompile unittests-xfr khost knsupdate
 sbin_PROGRAMS = knotc knotd
 dist_man_MANS = knot.conf.5 knotc.8 knotd.8
 
@@ -36,6 +36,8 @@ khost_SOURCES =					\
 	utils/common/params.h			\
 	utils/common/resolv.c			\
 	utils/common/resolv.h			\
+	utils/common/netio.c			\
+	utils/common/netio.h			\
 	utils/common/rr-serialize.h		\
 	utils/common/rr-serialize.c		\
 	utils/host/host_main.c			\
@@ -43,6 +45,22 @@ khost_SOURCES =					\
 	utils/host/host_params.h		\
 	utils/host/host_exec.c			\
 	utils/host/host_exec.h
+
+knsupdate_SOURCES =				\
+	utils/common/msg.h			\
+	utils/common/params.c			\
+	utils/common/params.h			\
+	utils/common/resolv.c			\
+	utils/common/resolv.h			\
+	utils/common/netio.c			\
+	utils/common/netio.h			\
+	utils/common/rr-serialize.h		\
+	utils/common/rr-serialize.c		\
+	utils/nsupdate/nsupdate_main.c		\
+	utils/nsupdate/nsupdate_params.c	\
+	utils/nsupdate/nsupdate_params.h	\
+	utils/nsupdate/nsupdate_exec.c		\
+	utils/nsupdate/nsupdate_exec.h
 
 knot_zcompile_SOURCES =				\
 	zcompile/zcompile_main.c		\
@@ -273,6 +291,7 @@ libknots_la_LIBADD = @LIBOBJS@
 knotd_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 knotc_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 khost_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
+knsupdate_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 knot_zcompile_LDADD = libknots.la libknot.la libknotd.la @LIBOBJS@
 unittests_LDADD = libknotd.la libknots.la @LIBOBJS@
 unittests_zcompile_LDADD = libknot.la libknots.la libknotd.la @LIBOBJS@
