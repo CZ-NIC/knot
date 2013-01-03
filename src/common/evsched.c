@@ -72,6 +72,7 @@ evsched_t *evsched_new()
 	if (!s) {
 		return 0;
 	}
+	memset(s, 0, sizeof(evsched_t));
 
 	/* Initialize event calendar. */
 	pthread_mutex_init(&s->rl, 0);
