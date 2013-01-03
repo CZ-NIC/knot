@@ -100,11 +100,6 @@ static void host_params_flag_nonrecursive(params_t *params)
 	params->recursion = false;
 }
 
-static void host_params_flag_tcp(params_t *params)
-{
-	params->protocol = PROTO_TCP;
-}
-
 static void host_params_flag_ipv4(params_t *params)
 {
 	params->ip = IP_4;
@@ -120,57 +115,9 @@ static void host_params_flag_servfail(params_t *params)
 	params->servfail_stop = true;
 }
 
-static void host_params_flag_verbose(params_t *params)
-{
-	params->verbose = true;
-}
-
 static void host_params_flag_nowait(params_t *params)
 {
 	params->wait = -1;
-}
-
-static int host_params_parse_retries(const char *value, uint32_t *retries)
-{
-	char *end;
-
-	// Convert string to number.
-	unsigned long num = strtoul(value, &end, 10);
-
-	// Check for bad string.
-	if (end == value || *end != '\0' || num > UINT32_MAX) {
-		ERR("bad retries value\n");
-		return KNOT_ERROR;
-	}
-
-	*retries = num;
-
-	return KNOT_EOK;
-}
-
-static int host_params_parse_wait(const char *value, int32_t *wait)
-{
-	char *end;
-
-	// Convert string to number.
-	long num = strtol(value, &end, 10);
-
-	// Check for bad string (empty or incorrect).
-	if (end == value || *end != '\0') {
-		ERR("bad wait value\n");
-		return KNOT_ERROR;
-	} else if (num < 1) {
-		num = 1;
-		WARN("wait interval is too short, using %ld seconds\n", num);
-	// Reduce maximal value. Poll takes signed int in milliseconds.
-	} else if (num > INT32_MAX) {
-		num = INT32_MAX / 1000;
-		WARN("wait interval is too long, using %ld seconds\n", num);
-	}
-
-	*wait = num;
-
-	return KNOT_EOK;
 }
 
 static int host_params_parse_name(params_t *params, const char *name)
@@ -297,7 +244,7 @@ int host_params_parse(params_t *params, int argc, char *argv[])
 			host_params_flag_nonrecursive(params);
 			break;
 		case 'T':
-			host_params_flag_tcp(params);
+			params_flag_tcp(params);
 			break;
 		case '4':
 			host_params_flag_ipv4(params);
@@ -312,14 +259,13 @@ int host_params_parse(params_t *params, int argc, char *argv[])
 			host_params_flag_nowait(params);
 			break;
 		case 'R':
-			if (host_params_parse_retries(optarg,
-			                              &(params->retries))
+			if (params_parse_num(optarg, &(params->retries))
 			    != KNOT_EOK) {
 				return KNOT_EINVAL;
 			}
 			break;
 		case 'W':
-			if (host_params_parse_wait(optarg, &(params->wait))
+			if (params_parse_interval(optarg, &(params->wait))
 			    != KNOT_EOK) {
 				return KNOT_EINVAL;
 			}
@@ -339,7 +285,7 @@ int host_params_parse(params_t *params, int argc, char *argv[])
 			break;
 		case 'd':
 		case 'v': // Fall through.
-			host_params_flag_verbose(params);
+			params_flag_verbose(params);
 			break;
 		default:
 			host_params_help(argc, argv);

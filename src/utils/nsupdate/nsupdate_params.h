@@ -27,6 +27,15 @@
 #ifndef _NSUPDATE_PARAMS_H_
 #define _NSUPDATE_PARAMS_H_
 
+#include <stdbool.h>
+#include <stdint.h>
+
+#include "common/lists.h"		// list
+#include "utils/common/params.h"	// protocol_t
+
+int nsupdate_params_parse(params_t *params, int argc, char *argv[]);
+void nsupdate_params_clean(params_t *params);
+
 #endif // _NSUPDATE_PARAMS_H_
 
 /*! @} */

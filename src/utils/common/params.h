@@ -32,8 +32,9 @@
 
 #include "common/lists.h"		// node
 
-#define DEFAULT_UDP_SIZE     	512
-#define MAX_PACKET_SIZE     	65535
+#define DEFAULT_PORT            53
+#define DEFAULT_UDP_SIZE        512
+#define MAX_PACKET_SIZE         65535
 
 /*! \brief Structure containing basic parameters for DNS query. */
 typedef struct {
@@ -73,6 +74,8 @@ typedef struct {
 	list		servers;
 	/*!< List of DNS queries to process. */
 	list		queries;
+	/*!< List of files with query data. */
+	list		qfiles;
 
 	/*!< Operation mode. */
 	host_mode_t	mode;
@@ -92,12 +95,19 @@ typedef struct {
 	uint32_t	udp_size;
 	/*!< Number of UDP retries. */
 	uint32_t	retries;
+	/*!< Number of TCP retries. */
+	
 	/*!< Wait for reply in seconds (-1 means forever). */
 	int32_t		wait;
 	/*!< Stop quering if servfail. */
 	bool		servfail_stop;
 	/*!< Verbose mode. */
 	bool		verbose;
+	/*!< Default port. */
+	unsigned	port;
+	/*!< Default address. */
+	const char*	addr;
+	
 } params_t;
 
 query_t* create_query(const char *name, const uint16_t type);
@@ -109,6 +119,14 @@ int parse_class(const char *rclass, uint16_t *class_num);
 int parse_type(const char *rtype, int32_t *type_num, int64_t *ixfr_serial);
 
 char* get_reverse_name(const char *name);
+
+void params_flag_tcp(params_t *params);
+
+void params_flag_verbose(params_t *params);
+
+int params_parse_interval(const char *value, int32_t *dst);
+
+int params_parse_num(const char *value, uint32_t *dst);
 
 #endif // _UTILS__PARAMS_H_
 

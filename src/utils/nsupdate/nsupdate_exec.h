@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+*/
 /*!
  * \file nsupdate_exec.h
  *
@@ -24,9 +24,17 @@
  * @{
  */
 
-#ifndef _HOST__NSUPDATE_EXEC_H_
-#define _HOST__NSUPDATE_EXEC_H_
+#ifndef _NSUPDATE__NSUPDATE_EXEC_H_
+#define _NSUPDATE__NSUPDATE_EXEC_H_
 
-#endif // _HOST__NSUPDATE_EXEC_H_
+#include <stdbool.h>			// bool
+#include <stdint.h>			// uint16_t
+
+#include "utils/nsupdate/nsupdate_params.h"
+
+int nsupdate_exec(const params_t *params);
+
+#endif // _NSUPDATE__NSUPDATE_EXEC_H_
 
 /*! @} */
+

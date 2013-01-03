@@ -17,9 +17,24 @@
 #include <stdlib.h>			// EXIT_FAILURE
 
 #include "common/errcode.h"		// KNOT_EOK
+#include "utils/nsupdate/nsupdate_params.h"	// params_t
+#include "utils/nsupdate/nsupdate_exec.h"	// host_exec
 
 int main(int argc, char *argv[])
 {
-	return EXIT_SUCCESS;
+	int ret = EXIT_SUCCESS;
+	
+	params_t params;
+	if (nsupdate_params_parse(&params, argc, argv) == KNOT_EOK) {
+		if (nsupdate_exec(&params) != KNOT_EOK) {
+			ret = EXIT_FAILURE;
+		}
+		
+	} else {
+		ret = EXIT_FAILURE;
+	}
+
+	nsupdate_params_clean(&params);
+	return ret;
 }
 
