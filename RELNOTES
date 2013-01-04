@@ -1,13 +1,22 @@
+v1.2 - Jan 4, 2013
+------------------
+
+Features:
+        * Dynamic updates, including forwarding (limited on signed zones)
+        * Updated remote control utility
+        * Configurable TCP timeouts
+        * LOC RR support
+
 v1.1.3 - Dec 19, 2012
 ---------------------
 
-Bugfixes
+Bugfixes:
         * Updated manpage.
 
 v1.1.3-rc1 - Dec 6, 2012
 ------------------------
 
-Bugfixes
+Bugfixes:
 	* Fixed answering DS queries (RRSIGs not together with DS, AA bit 
           missing).
 	* Fixed setting ARCOUNT in some error responses with EDNS enabled.
@@ -18,7 +27,7 @@ Bugfixes
 v1.1.2 - Nov 21, 2012
 ---------------------
 
-Bugfixes
+Bugfixes:
 	* Fixed debug message.
 
 

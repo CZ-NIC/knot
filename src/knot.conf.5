@@ -11,21 +11,27 @@
 serves as an example of the configuration for knotc(8) and knotd(8).
 .SH "EXAMPLE"
 .LP
-# This is a comment.
+ #
+ # knot.sample.conf
+ #
+ # This is a sample configuration file for Knot DNS server.
+ #
 
-#
-# There are 4 main sections of this config file:
-#   system, zones, interfaces and log
-#
+ # This is a comment.
 
-# Section 'system' contains general options for the server
-system {
+ #
+ # There are 5 main sections of this config file:
+ #   system, zones, interfaces, control and log
+ #
+
+ # Section 'system' contains general options for the server
+ system {
 
   # Identity of the server (see RFC 4892). Not used yet.
   identity "I have no mouth and must scream";
 
   # Version of the server (see RFC 4892). Not used yet.
-  version "0.1";
+  version "1.2;
 
   # Server identifier 
   # Use string format "text"
@@ -43,10 +49,10 @@ system {
   # Number of workers per interface
   # This option is used to force number of threads used per interface
   # Default: unset (auto-estimates optimal value from the number of online CPUs)
-  # workers 1;
+  # workers 3;
 
   # User for running server
-  # May also specify user.group (f.e. knot.users)
+  # May also specify user.group (e.g. knot.users)
   # user knot.users;
 
   # Maximum idle time between requests on a TCP connection
@@ -67,10 +73,10 @@ system {
   # f.e. 1s = 1 second, 1m = 1 minute, 1h = 1 hour, 1d = 1 day
   # Default: 10s
   max-conn-reply 10s;
-}
+ }
 
-# Section 'keys' contains list of TSIG keys
-keys {
+ # Section 'keys' contains list of TSIG keys
+ keys {
 
   # TSIG key
   #
@@ -87,10 +93,10 @@ keys {
 
   # TSIG key for zone
   key0.example.com hmac-md5 "==gW";
-}
+ }
 
-# Section 'interfaces' contains definitions of listening interfaces.
-interfaces {
+ # Section 'interfaces' contains definitions of listening interfaces.
+ interfaces {
 
   # Interface entry
   # 
@@ -115,11 +121,11 @@ interfaces {
   #   address [::1]@53534;
   # }
 
-}
+ }
 
-# Section 'remotes' contains symbolic names for remote servers.
-# Syntax for 'remotes' is the same as for 'interfaces'.
-remotes {
+ # Section 'remotes' contains symbolic names for remote servers.
+ # Syntax for 'remotes' is the same as for 'interfaces'.
+ remotes {
 
   # Remote entry
   #
@@ -137,15 +143,30 @@ remotes {
   server1 {
     address 127.0.0.1@53001;
   }
-}
+ }
 
-# Section 'zones' contains information about zones to be served.
-zones {
+ # Section 'control' specifies on which interface to listen for RC commands
+ control {
+
+  # Specifies interface, syntax is exactly the same as in 'interfaces' section
+  # Note: as of now, it is possible replay commands in a short time frame
+  #       with MitM type attacks, so you should keep the interface on localnet.
+  # Default port is: 5553
+  listen-on { address 127.0.0.1@5553; }
+  
+  # Specifies ACL list for remote control
+  # Same syntax as for ACLs in zones
+  # List of remotes delimited by comma
+  allow server0;
+ }
+
+ # Section 'zones' contains information about zones to be served.
+ zones {
 
   # Shared options for all listed zones
   #
 
-  # Build differences from zone file changes
+  # Build differences from zone file changes. EXPERIMENTAL feature.
   # Possible values: on|off
   # Default value: off
   ixfr-from-differences off;
@@ -222,7 +243,7 @@ zones {
     # Possible values: <1..INT_MAX> (seconds)
     # Default value: inherited from zones.zonefile-sync
     # It is also possible to suffix with unit size [s/m/h/d]
-    # f.e. 1s = 1 day, 1m = 1 minute, 1h = 1 hour, 1d = 1 day
+    # f.e. 1s = 1 second, 1m = 1 minute, 1h = 1 hour, 1d = 1 day
     zonefile-sync 1h;
 
     # XFR master server 
@@ -236,48 +257,51 @@ zones {
 
     # List of servers to send NOTIFY to 
     notify-out server0, server1;
-  }
-}
 
-# Section 'log' configures logging of server messages.
-#
-# Logging recognizes 3 symbolic names of log devices: 
-#   stdout    - Standard output
-#   stderr    - Standard error output
-#   syslog    - Syslog
-# 
-# In addition, arbitrary number of log files may be specified (see below).
-#
-# Log messages are characterized by severity and category.
-# Supported severities: 
-#   debug     - Debug messages. Must be turned on at compile time.
-#   info      - Informational messages.
-#   notice    - Notices and hints.
-#   warning   - Warnings. An action from the operator may be required.
-#   error     - Recoverable error. Some action should be taken.
-#   fatal     - Non-recoverable errors resulting in server shutdown.
-#               (Not supported yet.)
-#   all       - All severities.
-#
-# Categories designate the source of the log message and roughly correspond
-#   to server modules
-# Supported categories:
-#   server    - Messages related to general operation of the server.
-#   zone      - Messages related to zones, zone parsing and loading.
-#   answering - Messages regarding query processing and response creation.
-#   any       - All categories
-#
-# More severities (separated by commas) may be listed for each category.
-# All applicable severities must be listed. 
-#   (I.e. specifying 'error' severity does mean: 'log error messages', 
-#    and NOT 'log all messages of severity error and above'.)
-#
-# Default settings (in case there are no entries in 'log' section or the section
-# is missing at all):
-#
-# stderr { any error; }
-# syslog { any error; }
-log {
+    # List of servers to allow UPDATE queries
+    update-in server0;
+  }
+ }
+
+ # Section 'log' configures logging of server messages.
+ #
+ # Logging recognizes 3 symbolic names of log devices: 
+ #   stdout    - Standard output
+ #   stderr    - Standard error output
+ #   syslog    - Syslog
+ # 
+ # In addition, arbitrary number of log files may be specified (see below).
+ #
+ # Log messages are characterized by severity and category.
+ # Supported severities: 
+ #   debug     - Debug messages. Must be turned on at compile time.
+ #   info      - Informational messages.
+ #   notice    - Notices and hints.
+ #   warning   - Warnings. An action from the operator may be required.
+ #   error     - Recoverable error. Some action should be taken.
+ #   fatal     - Non-recoverable errors resulting in server shutdown.
+ #               (Not supported yet.)
+ #   all       - All severities.
+ #
+ # Categories designate the source of the log message and roughly correspond
+ #   to server modules
+ # Supported categories:
+ #   server    - Messages related to general operation of the server.
+ #   zone      - Messages related to zones, zone parsing and loading.
+ #   answering - Messages regarding query processing and response creation.
+ #   any       - All categories
+ #
+ # More severities (separated by commas) may be listed for each category.
+ # All applicable severities must be listed. 
+ #   (I.e. specifying 'error' severity does mean: 'log error messages', 
+ #    and NOT 'log all messages of severity error and above'.)
+ #
+ # Default settings (in case there are no entries in 'log' section or the section
+ # is missing at all):
+ #
+ # stderr { any error; }
+ # syslog { any error; }
+ log {
 
   # Log entry
   #
@@ -309,7 +333,8 @@ log {
   file "/tmp/knot-sample/knotd.debug" {  # <path> is absolute or relative path to log file
     server debug;
   }
-}
+ }
+
 .SH "SEE ALSO"
 .LP
 knotd(8), knotc(8)
