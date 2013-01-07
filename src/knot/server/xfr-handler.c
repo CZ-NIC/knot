@@ -288,7 +288,7 @@ static int xfr_process_udp_resp(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 		return KNOT_EOK; /* Ignore */
 	}
 
-	ret = knot_packet_parse_rest(re);
+	ret = knot_packet_parse_rest(re, 0);
 	if (ret != KNOT_EOK) {
 		knot_packet_free(&re);
 		return KNOT_EOK; /* Ignore */
@@ -495,7 +495,7 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode, char **tag)
 	knot_packet_t *qry = xfr->query;
 	knot_key_t *key = 0;
 	const knot_rrset_t *tsig_rr = 0;
-	ret = knot_packet_parse_rest(qry);
+	ret = knot_packet_parse_rest(qry, 0);
 	if (ret == KNOT_EOK) {
 		
 		/* Find TSIG key name from query. */

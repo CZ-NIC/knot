@@ -193,10 +193,10 @@ static int process_query(const params_t *params, const query_t *query)
 
                 int x = receive_msg(params, query, sockfd, out, out_len);
 
-                knot_packet_t *pkt_in =
+/*                knot_packet_t *pkt_in =
                         knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
 
-                int ret = knot_packet_parse_from_wire(pkt_in, out, x, 0);
+                int ret = knot_packet_parse_from_wire(pkt_in, out, x, 0, KNOT_PACKET_DUPL_NO_MERGE);
                 if (ret != KNOT_EOK) {
                         printf("ggr");
                 }
@@ -210,7 +210,7 @@ static int process_query(const params_t *params, const query_t *query)
 	                rrset_write_mem(y, 70000, (pkt_in->answer)[i]);
                 	printf("%s", y);
 		}
-
+*/
 		shutdown(sockfd, SHUT_RDWR);
 
 		// If successfully processed, stop quering nameservers.

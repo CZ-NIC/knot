@@ -168,7 +168,7 @@ int xfrin_transfer_needed(const knot_zone_contents_t *zone,
 	int ret;
 
 	if (soa_response->parsed < soa_response->size) {
-		ret = knot_packet_parse_rest(soa_response);
+		ret = knot_packet_parse_rest(soa_response, 0);
 		if (ret != KNOT_EOK) {
 			dbg_xfrin_verb("knot_packet_parse_rest() returned %s\n",
 			               knot_strerror(ret));
@@ -465,7 +465,7 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 		return KNOT_ENOMEM;
 	}
 
-	int ret = knot_packet_parse_from_wire(packet, pkt, size, 1);
+	int ret = knot_packet_parse_from_wire(packet, pkt, size, 1, 0);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Could not parse packet: %s.\n", knot_strerror(ret));
 		knot_packet_free(&packet);
@@ -886,7 +886,7 @@ static int xfrin_parse_first_rr(knot_packet_t **packet, const uint8_t *pkt,
 		return KNOT_ENOMEM;
 	}
 
-	int ret = knot_packet_parse_from_wire(*packet, pkt, size, 1);
+	int ret = knot_packet_parse_from_wire(*packet, pkt, size, 1, 0);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Could not parse packet: %s.\n", knot_strerror(ret));
 		knot_packet_free(packet);

@@ -35,13 +35,6 @@
 			? DEFAULT_##type##_QUERY  \
 			: DEFAULT_##type)
 
-
-
-typedef enum {
-	KNOT_PACKET_DUPL_IGNORE,
-	KNOT_PACKET_DUPL_SKIP,
-	KNOT_PACKET_DUPL_MERGE
-} knot_packet_duplicate_handling_t;
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
@@ -472,7 +465,7 @@ static int knot_packet_add_rrset(knot_rrset_t *rrset,
                                  short *max_rrsets,
                                  short default_rrsets,
                                  const knot_packet_t *packet,
-                                 knot_packet_duplicate_handling_t dupl)
+                                 knot_packet_flag_t flags)
 {
 	assert(rrset != NULL);
 	assert(rrsets != NULL);
@@ -492,14 +485,15 @@ dbg_packet_exec_verb(
 		return KNOT_ENOMEM;
 	}
 
-	if (dupl == KNOT_PACKET_DUPL_SKIP &&
+	if ((flags & KNOT_PACKET_DUPL_SKIP) &&
 	    knot_packet_contains(packet, rrset, KNOT_RRSET_COMPARE_PTR)) {
 		/*! \todo This should also return > 0, as it means that the
 		          RRSet was not used actually. */
 		return KNOT_EOK;
 	}
 
-	if (dupl == KNOT_PACKET_DUPL_MERGE) {
+	// Try to merge rdata to rrset if flag NO_MERGE isn't set.
+    if ((flags & KNOT_PACKET_DUPL_NO_MERGE) == 0) {
 		// try to find the RRSet in this array of RRSets
 		for (int i = 0; i < *rrset_count; ++i) {
 
@@ -540,7 +534,8 @@ static int knot_packet_parse_rrs(const uint8_t *wire, size_t *pos,
                                  const knot_rrset_t ***rrsets,
                                  short *rrset_count, short *max_rrsets,
                                  short default_rrsets,
-                                 knot_packet_t *packet)
+                                 knot_packet_t *packet,
+                                 knot_packet_flag_t flags)
 {
 	assert(pos != NULL);
 	assert(wire != NULL);
@@ -571,8 +566,7 @@ static int knot_packet_parse_rrs(const uint8_t *wire, size_t *pos,
 		++(*parsed_rrs);
 
 		err = knot_packet_add_rrset(rrset, rrsets, rrset_count,
-		                            max_rrsets, default_rrsets, packet,
-		                            KNOT_PACKET_DUPL_MERGE);
+		                            max_rrsets, default_rrsets, packet, flags);
 		if (err < 0) {
 			break;
 		} else if (err > 0) {	// merged
@@ -655,7 +649,7 @@ static void knot_packet_free_allocated_space(knot_packet_t *pkt)
 /*----------------------------------------------------------------------------*/
 
 static int knot_packet_parse_rr_sections(knot_packet_t *packet,
-                                           size_t *pos)
+                                         size_t *pos, knot_packet_flag_t flags)
 {
 	assert(packet != NULL);
 	assert(packet->wireformat != NULL);
@@ -671,7 +665,7 @@ static int knot_packet_parse_rr_sections(knot_packet_t *packet,
 	if ((err = knot_packet_parse_rrs(packet->wireformat, pos,
 	   packet->size, packet->header.ancount, &packet->parsed_an,
 	   &packet->answer, &packet->an_rrsets, &packet->max_an_rrsets,
-	   DEFAULT_RRSET_COUNT(ANCOUNT, packet), packet)) != KNOT_EOK) {
+	   DEFAULT_RRSET_COUNT(ANCOUNT, packet), packet, flags)) != KNOT_EOK) {
 		return err;
 	}
 
@@ -684,7 +678,7 @@ static int knot_packet_parse_rr_sections(knot_packet_t *packet,
 	if ((err = knot_packet_parse_rrs(packet->wireformat, pos,
 	   packet->size, packet->header.nscount, &packet->parsed_ns,
 	   &packet->authority, &packet->ns_rrsets, &packet->max_ns_rrsets,
-	   DEFAULT_RRSET_COUNT(NSCOUNT, packet), packet)) != KNOT_EOK) {
+	   DEFAULT_RRSET_COUNT(NSCOUNT, packet), packet, flags)) != KNOT_EOK) {
 		return err;
 	}
 
@@ -697,7 +691,7 @@ static int knot_packet_parse_rr_sections(knot_packet_t *packet,
 	if ((err = knot_packet_parse_rrs(packet->wireformat, pos,
 	   packet->size, packet->header.arcount, &packet->parsed_ar,
 	   &packet->additional, &packet->ar_rrsets, &packet->max_ar_rrsets,
-	   DEFAULT_RRSET_COUNT(ARCOUNT, packet), packet)) != KNOT_EOK) {
+	   DEFAULT_RRSET_COUNT(ARCOUNT, packet), packet, flags)) != KNOT_EOK) {
 		return err;
 	}
 
@@ -779,7 +773,7 @@ knot_packet_t *knot_packet_new(knot_packet_prealloc_type_t prealloc)
 
 int knot_packet_parse_from_wire(knot_packet_t *packet,
                                   const uint8_t *wireformat, size_t size,
-                                  int question_only)
+                                  int question_only, knot_packet_flag_t flags)
 {
 	if (packet == NULL || wireformat == NULL) {
 		return KNOT_EINVAL;
@@ -836,7 +830,7 @@ dbg_packet_exec_detail(
 	}
 
 	/*! \todo Replace by call to parse_rest()? */
-	err = knot_packet_parse_rest(packet);
+	err = knot_packet_parse_rest(packet, flags);
 
 dbg_packet_exec_detail(
 	knot_packet_dump(packet);
@@ -847,7 +841,7 @@ dbg_packet_exec_detail(
 
 /*----------------------------------------------------------------------------*/
 
-int knot_packet_parse_rest(knot_packet_t *packet)
+int knot_packet_parse_rest(knot_packet_t *packet, knot_packet_flag_t flags)
 {
 	if (packet == NULL) {
 		return KNOT_EINVAL;
@@ -868,7 +862,7 @@ int knot_packet_parse_rest(knot_packet_t *packet)
 	/*! \todo If we already parsed some part of the packet, it is not ok
 	 *        to begin parsing from the Answer section.
 	 */
-	return knot_packet_parse_rr_sections(packet, &pos);
+	return knot_packet_parse_rr_sections(packet, &pos, flags);
 }
 
 /*----------------------------------------------------------------------------*/

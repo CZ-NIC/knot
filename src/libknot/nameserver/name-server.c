@@ -3168,7 +3168,7 @@ int knot_ns_parse_packet(const uint8_t *query_wire, size_t qsize,
 	int ret = 0;
 
 	if ((ret = knot_packet_parse_from_wire(packet, query_wire,
-	                                         qsize, 1)) != 0) {
+	                                         qsize, 1, 0)) != 0) {
 		dbg_ns("Error while parsing packet, "
 		       "libknot error '%s'.\n", knot_strerror(ret));
 		return KNOT_RCODE_FORMERR;
@@ -3358,7 +3358,7 @@ int knot_ns_prep_normal_response(knot_nameserver_t *nameserver,
 	            knot_packet_parsed(query), knot_packet_size(query));
 	int ret;
 
-	ret = knot_packet_parse_rest(query);
+	ret = knot_packet_parse_rest(query, 0);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to parse rest of the query: %s.\n",
 		       knot_strerror(ret));
@@ -3500,7 +3500,7 @@ int knot_ns_prep_update_response(knot_nameserver_t *nameserver,
 	            knot_packet_parsed(query), knot_packet_size(query));
 	int ret;
 
-	ret = knot_packet_parse_rest(query);
+	ret = knot_packet_parse_rest(query, 0);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to parse rest of the query: %s.\n",
 		       knot_strerror(ret));
@@ -3717,7 +3717,7 @@ int knot_ns_init_xfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		return ret;
 	}
 
-	ret = knot_packet_parse_rest(xfr->query);
+	ret = knot_packet_parse_rest(xfr->query, 0);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to parse rest of the query: %s\n", 
 		       knot_strerror(ret));
@@ -3952,7 +3952,7 @@ int knot_ns_answer_ixfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	}
 	
 	// parse rest of the packet (we need the Authority record)
-	int ret = knot_packet_parse_rest(xfr->query);
+	int ret = knot_packet_parse_rest(xfr->query, 0);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to parse rest of the packet: %s. "
 		       "Reply FORMERR.\n", knot_strerror(ret));

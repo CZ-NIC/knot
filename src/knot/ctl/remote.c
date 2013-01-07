@@ -325,7 +325,7 @@ int remote_parse(knot_packet_t* pkt, const uint8_t* buf, size_t buflen)
 		dbg_server("remote: failed to parse packet\n");
 		return KNOT_EINVAL;
 	}
-	ret = knot_packet_parse_rest(pkt);
+	ret = knot_packet_parse_rest(pkt, 0);
 	if (ret != KNOT_EOK) {
 		dbg_server("remote: failed to parse packet data\n");
 		return KNOT_EINVAL;

@@ -238,7 +238,7 @@ int notify_process_request(knot_nameserver_t *ns,
 
 	dbg_notify("notify: parsing rest of the packet\n");
 	if (notify->parsed < notify->size) {
-		if (knot_packet_parse_rest(notify) != KNOT_EOK) {
+		if (knot_packet_parse_rest(notify, 0) != KNOT_EOK) {
 			dbg_notify("notify: failed to parse NOTIFY query\n");
 			knot_ns_error_response_from_query(ns, notify,
 			                                  KNOT_RCODE_FORMERR,
