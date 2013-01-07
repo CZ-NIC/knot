@@ -157,32 +157,40 @@ static int test_rrset_new()
 	return (check_errors == 0);
 }
 
-static int test_rrset_create_rdata()
+#define DATA1_LENGTH 16
+#define RDATA_INIT_1
+#define DATA2_LENGTH 33
+#define RDATA_INIT_2
+#define DATA3_LENGTH 48
+#define RDATA_INIT_3
+
+static int test_rrset_create_rdata(knot_rrset_t **in_rrset)
 {
 	/* Two cases need to be tested - empty RRSet and non-empty RRSet. */
 	
+	
 	knot_rrset_t *rrset = knot_rrset_new(NULL, 0, 0, 0);
 	assert(rrset);
+	*in_rrset = rrset;
 	
 	/*
 	* Again, actual data are not crutial, we need to see if indices 
 	* are changed accordingly and so on, but the data are not important. 
 	*/
-	uint16_t data1_length = 16;
-	uint8_t data1[data1_length];
-	memset(data1, 1, data1_length);
+	uint8_t data1[DATA1_LENGTH];
+	memset(data1, 1, DATA1_LENGTH);
 	
-	uint8_t *write_pointer = knot_rrset_create_rdata(rrset, data1_length);
+	uint8_t *write_pointer = knot_rrset_create_rdata(rrset, DATA1_LENGTH);
 	if (write_pointer == NULL) {
-		diag("Could not create data of size %d\n", data1_length);
+		diag("Could not create data of size %d\n", DATA1_LENGTH);
 		return 0;
 	}
 	
 	/* Write dummy data. */
-	memcpy(write_pointer, data1, data1_length);
+	memcpy(write_pointer, data1, DATA1_LENGTH);
 	
 	/* Check that indices are set right. */
-	if (rrset->rdata_indices[0] != data1_length) {
+	if (rrset->rdata_indices[0] != DATA1_LENGTH) {
 		diag("Wrong RDATA index after inserting RDATA to RRSet.\n");
 		return 0;
 	}
@@ -194,34 +202,33 @@ static int test_rrset_create_rdata()
 	}
 	
 	/* Make sure that the data in the RRSet are the same. */
-	int ret = memcmp(rrset->rdata, data1, data1_length);
+	int ret = memcmp(rrset->rdata, data1, DATA1_LENGTH);
 	if (ret) {
 		diag("Wrong data inserted into RRSet.\n");
 		return 0;
 	}
 	
 	/* Insert second item - all other inserts will do the same thing. */
-	uint16_t data2_length = 33;
-	uint8_t data2[data2_length];
-	memset(data2, 1, data1_length);
+	uint8_t data2[DATA2_LENGTH];
+	memset(data2, 1, DATA2_LENGTH);
 	
-	write_pointer = knot_rrset_create_rdata(rrset, data2_length);
+	write_pointer = knot_rrset_create_rdata(rrset, DATA2_LENGTH);
 	if (write_pointer == NULL) {
-		diag("Could not create data of size %d\n", data2_length);
+		diag("Could not create data of size %d\n", DATA2_LENGTH);
 		return 0;
 	}
 	
 	/* Write dummy data. */
-	memcpy(write_pointer, data1, data1_length);
+	memcpy(write_pointer, data1, DATA1_LENGTH);
 	
 	/* Check that indices are set right. */
-	if (rrset->rdata_indices[0] != data1_length) {
+	if (rrset->rdata_indices[0] != DATA1_LENGTH) {
 		diag("Wrong RDATA first index after "
 		     "inserting RDATA to RRSet.\n");
 		return 0;
 	}
 	
-	if (rrset->rdata_indices[1] != data1_length + data2_length) {
+	if (rrset->rdata_indices[1] != DATA1_LENGTH + DATA2_LENGTH) {
 		diag("Wrong RDATA last index after "
 		     "inserting RDATA to RRSet.\n");
 		return 0;
@@ -235,7 +242,7 @@ static int test_rrset_create_rdata()
 	}
 	
 	/* Make sure that the data in the RRSet are the same. */
-	int ret = memcmp(rrset->rdata + data1_length, data2, data2_length);
+	int ret = memcmp(rrset->rdata + DATA1_LENGTH, data2, DATA2_LENGTH);
 	if (ret) {
 		diag("Wrong data inserted into RRSet.\n");
 		return 0;
@@ -251,15 +258,75 @@ static int test_rrset_create_rdata()
 	return 1;
 }
 
-static int test_rrset_add_rdata()
+static int test_rrset_rdata_item_size(const knot_rrset_t *rrset)
 {
-	/*
-	 * This function is basically a wrapper around knot_rrset_create_rdata()
-	 */
+	if (rrset_rdata_item_size(rrset, 0) != DATA1_LENGTH) {
+		diag("Wrong item length read from RRSet (first item).\n");
+		return 0;
+	}
+	
+	if (rrset_rdata_item_size(rrset, 1) != DATA2_LENGTH) {
+		diag("Wrong item length read from RRSet (last item).\n");
+		return 0;
+	}
+	
+	return 1;
+}
+
+static int test_rrset_get_rdata(const knot_rrset_t *rrset)
+{
+	uint8_t *pointer = knot_rrset_get_rdata(rrset, 0);
+	if (pointer == NULL) {
+		diag("Could not ger RDATA from RRSet.\n");
+		return 0;
+	}
+	
+	int ret = memcmp(pointer, RDATA_INIT_1, DATA1_LENGTH);
+	if (ret) {
+		diag("Got bad RDATA from RRSet.\n");
+		return 0;
+	}
+	
+	pointer = knot_rrset_get_rdata(rrset, 1);
+	if (pointer == NULL) {
+		diag("Could not ger RDATA from RRSet.\n");
+		return 0;
+	}
+	
+	ret = memcmp(pointer, RDATA_INIT_2, DATA2_LENGTH);
+	if (ret) {
+		diag("Got bad RDATA from RRSet.\n");
+		return 0;
+	}
+	
+	return 1;
+}
+
+static int test_rrset_shallow_copy(const knot_rrset_t *rrset)
+{
+	knot_rrset_t *rrset_copy = NULL;
+	
+	int ret = knot_rrset_shallow_copy(rrset, &rrset_copy);
+	if (ret != KNOT_EOK) {
+		diag("Could not copy RRSet.\n");
+	}
+	
+	/* Check that created RRSet is the same as the old one. */
+	int errors = check_rrset_values(rrset_copy, rrset->owner, rrset->type,
+	                                rrset->rclass, rrset->ttl);
+	
+	free(rrset_copy);
+	return (errors == 0);
+}
+
+static int test_rrset_deep_copy(const knot_rrset_t *rrset)
+{
+	
 }
 
 static int test_rrset_merge()
 {
+	
 }
 
 static int test_rrset_get_rdata(knot_rrset_t **rrsets)

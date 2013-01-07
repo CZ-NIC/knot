@@ -89,7 +89,6 @@ typedef enum  {
  * \return New RRSet structure with the given OWNER, TYPE, CLASS and TTL or NULL
  *         if an error occured.
  */
-//TODO test
 knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
                                  uint16_t rclass, uint32_t ttl);
 
@@ -103,7 +102,6 @@ knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
  * \retval KNOT_EINVAL on wrong arguments.
  * \retval KNOT_EOK on success.
  */
-//TODO test
 int knot_rrset_add_rdata(knot_rrset_t *rrset, uint8_t *rdata,
                          uint16_t size);
 
@@ -118,7 +116,6 @@ int knot_rrset_add_rdata(knot_rrset_t *rrset, uint8_t *rdata,
  * \return Pointer to memory to be written to.
  * \retval NULL if arguments are invalid
  */
-//TODO test
 uint8_t* knot_rrset_create_rdata(knot_rrset_t *rrset, uint16_t size);
 
 /*!
