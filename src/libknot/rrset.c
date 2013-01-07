@@ -200,7 +200,7 @@ uint8_t* knot_rrset_create_rdata(knot_rrset_t *rrset, uint16_t size)
 	
 	/* Realloc indices. We will allocate exact size to save space. */
 	/* TODO this sucks big time - allocation of length 1. */
-	/* But another variable holding allocated count is not a question. What now?*/
+	/* But another variable holding allocated count is out of question. What now?*/
 	rrset->rdata_indices = xrealloc(rrset->rdata_indices,
 	                                (rrset->rdata_count + 1) * sizeof(uint32_t));
 

@@ -17,14 +17,8 @@
 #include <assert.h>
 
 #include "tests/libknot/libknot/rrset_tests.h"
-#include "libknot/common.h"
-#include "libknot/util/descriptor.h"
+#include "common/descriptor_new.h"
 #include "libknot/rrset.h"
-#include "libknot/dname.h"
-#include "libknot/rdata.h"
-#include "libknot/util/utils.h"
-#include "libknot/zone/node.h"
-#include "libknot/util/debug.h"
 
 static int knot_rrset_tests_count(int argc, char *argv[]);
 static int knot_rrset_tests_run(int argc, char *argv[]);
@@ -87,19 +81,6 @@ static knot_dname_t RR_DNAMES[RR_DNAMES_COUNT] =
 /*                         192.168.1.1 */
 static uint8_t address[4] = {0xc0, 0xa8, 0x01, 0x01};
 
-static knot_rdata_item_t RR_ITEMS[RR_ITEMS_COUNT] =
-	{ {.dname = &RR_DNAMES[1]},
-	  {.dname = &RR_DNAMES[2]},
-          {.raw_data = (uint16_t *)address} };
-
-/*! \warning Do not change the order. */
-/* TODO this does not work as expected */
-static knot_rdata_t RR_RDATA[RR_RDATA_COUNT] =
-	{ {&RR_ITEMS[0], 1, &RR_RDATA[0]}, /* first ns */
-	  {&RR_ITEMS[1], 1, &RR_RDATA[1]}, /* second ns */
-	  {&RR_ITEMS[0], 1, &RR_RDATA[3]}, /* both in cyclic list */
-	  {&RR_ITEMS[1], 1, &RR_RDATA[2]} };
-
 /*! \warning Do not change the order in those, if you want to test some other
  *           feature with new dname, add it at the end of these arrays.
  */
@@ -123,694 +104,167 @@ static const struct test_domain
 	  "\x0\x4", 2}
 };
 
-static struct test_rrset test_rrsets[TEST_RRSETS] = {
-	{ "example.com.",  KNOT_RRTYPE_NS, KNOT_CLASS_IN,
-	  3600, NULL, NULL },
-	{ "example2.com.", KNOT_RRTYPE_NS, KNOT_CLASS_IN,
-	  3600, NULL, NULL },
-	{ "example3.com.", KNOT_RRTYPE_NS, KNOT_CLASS_IN,
-	  3600, NULL, NULL },
-	{ "example.com.", KNOT_RRTYPE_NS, KNOT_CLASS_IN,
-	  3600, NULL, NULL },
-	{ "example.com.", KNOT_RRTYPE_NS, KNOT_CLASS_IN,
-	  3600, NULL, NULL },
-	{ "example.com.", KNOT_RRTYPE_NS, KNOT_CLASS_IN,
-	  3600, NULL, NULL }
-};
 
-static const struct test_rrset test_rrsigs[TEST_RRSIGS] = {
-	{ "example.com.", 46, 1, 3600, NULL },
-	{ "example2.com.", 46, 1, 3600, NULL },
-	{ "example3.com.", 46, 1, 3600, NULL },
-	{ "example4.com.", 46, 1, 3600,	NULL },
-	{ "example5.com.", 46, 1, 3600,	NULL },
-	{ "example6.com.", 46, 1, 3600, NULL }
-};
 
-static void generate_rdata(uint8_t *data, int size)
+static int check_rrset_values(const knot_rrset_t *rrset,
+                              knot_dname_t *dname, uint16_t type,
+                              uint16_t rclass, uint16_t ttl)
 {
-	for (int i = 0; i < size; ++i) {
-		data[i] = rand() % 256;
-	}
-}
-
-static int fill_rdata_r(uint8_t *data, int max_size, uint16_t rrtype,
-		      knot_rdata_t *rdata)
-{
-	assert(rdata != NULL);
-	assert(data != NULL);
-	assert(max_size > 0);
-
-	uint8_t *pos = data;
-	int used = 0;
-	int wire_size = 0;
-
-//	note("Filling RRType %u", rrtype);
-
-	knot_rrtype_descriptor_t *desc =
-	knot_rrtype_descriptor_by_type(rrtype);
-
-	uint item_count = desc->length;
-	knot_rdata_item_t *items =
-	(knot_rdata_item_t *)malloc(item_count
-				      * sizeof(knot_rdata_item_t));
-
-	for (int i = 0; i < item_count; ++i) {
-		uint size = 0;
-		int domain = 0;
-		knot_dname_t *dname = NULL;
-		int binary = 0;
-		int stored_size = 0;
-
-		switch (desc->wireformat[i]) {
-		case KNOT_RDATA_WF_COMPRESSED_DNAME:
-		case KNOT_RDATA_WF_UNCOMPRESSED_DNAME:
-		case KNOT_RDATA_WF_LITERAL_DNAME:
-			dname = knot_dname_new_from_wire(
-					(uint8_t *)test_domains_ok[0].wire,
-					test_domains_ok[0].size, NULL);
-			assert(dname != NULL);
-//			note("Created domain name: %s",
-//				knot_dname_name(dname));
-//			note("Domain name ptr: %p", dname);
-			domain = 1;
-			size = knot_dname_size(dname);
-//			note("Size of created domain name: %u", size);
-			assert(size < KNOT_MAX_RDATA_ITEM_SIZE);
-			// store size of the domain name
-			*(pos++) = size;
-			// copy the domain name
-			memcpy(pos, knot_dname_name(dname), size);
-			pos += size;
-			break;
-		default:
-			binary = 1;
-			size = rand() % KNOT_MAX_RDATA_ITEM_SIZE;
-		}
-
-		if (binary) {
-			// Rewrite the actual 2 bytes in the data array
-			// with length.
-			// (this is a bit ugly, but does the work ;-)
-			knot_wire_write_u16(pos, size);
-			//*pos = size;
-		}
-
-		//note("Filling %u bytes", size);
-		used += size;
-		assert(used < max_size);
-
-		if (domain) {
-			items[i].dname = dname;
-			wire_size += knot_dname_size(dname);
-/*			note("Saved domain name ptr on index %d: %p",
-			      i, items[i].dname); */
-		} else {
-			free(dname);
-//			note("Saved raw data ptr on index %d: %p",i, pos);
-			items[i].raw_data = (uint16_t *)pos;
-			pos += size;
-			wire_size += size;
-			if (binary && !stored_size) {
-				wire_size -= 2;
-			}
-		}
-	}
-
-	int res = knot_rdata_set_items(rdata, items, item_count);
-	if (res != 0) {
-		diag("knot_rdata_set_items() returned %d.", res);
-		free(items);
-		return -1;
-	} else {
-		free(items);
-		return wire_size;
-	}
-}
-
-/* fills test_rrsets with random rdata when empty */
-static void create_rdata()
-{
-	knot_rdata_t *r;
-
-	uint8_t *data =
-		malloc(sizeof(uint8_t) * KNOT_MAX_RDATA_WIRE_SIZE);
-
-	assert(data);
-
-	for (int i = 0; i < TEST_RRSETS; i++) {
-		if (test_rrsets[i].rdata == NULL) {
-			r = knot_rdata_new();
-
-			/* from rdata tests */
-			generate_rdata(data, KNOT_MAX_RDATA_WIRE_SIZE);
-			if (fill_rdata_r(data, KNOT_MAX_RDATA_WIRE_SIZE,
-				       test_rrsets[i].type, r) <= 0) {
-				diag("Error creating rdata!");
-
-			}
-
-			test_rrsets[i].rdata = r;
-		}
-	}
-
-	free(data);
-}
-
-static int check_rrset(const knot_rrset_t *rrset, int i,
-                       int check_rdata, int check_items,
-		       int check_rrsigs)
-{
-	/* following implementation should be self-explanatory */
 	int errors = 0;
-
-	if (rrset == NULL) {
-		diag("RRSet not created!");
-		return 1;
-	}
-
-	char *owner = knot_dname_to_str(rrset->owner);
-	if (strcmp(owner, test_rrsets[i].owner) != 0) {
-		diag("OWNER domain name wrong: '%s' (should be '%s')",
-		     owner, test_rrsets[i].owner);
+	
+	if (rrset->dname != dname) {
+		diag("Wrong DNAME in the created RRSet.\n");
 		++errors;
 	}
-	free(owner);
-
-	if (rrset->type != test_rrsets[i].type) {
-		diag("TYPE wrong: %u (should be: %u)", rrset->type,
-		     test_rrsets[i].type);
+	
+	if (rrset->type != type) {
+		diag("Wrong type in the created RRSet.\n");
 		++errors;
 	}
-
-	if (rrset->rclass != test_rrsets[i].rclass) {
-		diag("CLASS wrong: %u (should be: %u)", rrset->rclass,
-		     test_rrsets[i].rclass);
+	
+	if (rrset->rclass != rclass) {
+		diag("Wrong class in the created RRSet.\n");
 		++errors;
 	}
-
-	if (rrset->ttl != test_rrsets[i].ttl) {
-		diag("TTL wrong: %u (should be: %u)", rrset->ttl,
-		     test_rrsets[i].ttl);
+	
+	if (rrset->ttl != ttl) {
+		diag("Wrong TTL in the created RRSet.\n");
 		++errors;
 	}
-
-	if (check_rdata) {
-		/* TODO use rdata_compare */
-		knot_rdata_t *rdata = rrset->rdata;
-
-		if (rdata == NULL) {
-			diag("There are no RDATAs in the RRSet");
-			++errors;
-		}
-
-		if (rdata != NULL) {
-			while (rdata->next != NULL &&
-			       rdata->next != rrset->rdata) {
-				rdata = rdata->next;
-			}
-			if (rdata->next == NULL) {
-				diag("The list of RDATAs is not cyclic!");
-				++errors;
-			} else {
-				assert(rdata->next == rrset->rdata);
-			}
-		}
-	}
-
-	if (check_items) {
-		knot_rrtype_descriptor_t *desc =
-			knot_rrtype_descriptor_by_type(rrset->type);
-		if (knot_rdata_compare(rrset->rdata,
-			                 test_rrsets[i].rdata,
-					 desc->wireformat) != 0) {
-			diag("Rdata items do not match.");
-			errors++;
-		}
-	}
-
-	/* TODO this deserves a major improvement!!! */
-
-	/*
-	 * Will work only with null terminated strings,
-	 * consider changing to more versatile implementation
-	 */
-
-	/* How about, once it's tested, using rdata_compare */
-
-	if (check_rrsigs) {
-
-		const knot_rrset_t *rrsigs;
-
-		rrsigs = knot_rrset_rrsigs(rrset);
-		if (strcmp((const char *)rrsigs->rdata->items[0].raw_data,
-		                signature_strings[i])) {
-			diag("Signatures are not equal"
-			     "to those set when creating."
-			     "Comparing %s with %s",
-			     rrsigs->rdata->items[0].raw_data,
-			     signature_strings[i]);
-			errors++;
-		}
-	}
+	
 	return errors;
 }
 
-static int test_rrset_create()
+static int test_rrset_new()
 {
-	int errors = 0;
+	/* Actual values don't matter in this case. */
+	knot_dname_t *dname = (knot_dname_t *)0x1;
+	uint16_t type = 1;
+	uint16_t rclass = 1;
+	uint32_t ttl = 1;
 
-	for (int i = 0; i < TEST_RRSETS; ++i) {
-		knot_dname_t *owner = knot_dname_new_from_str(
-		                            test_rrsets[i].owner,
-		                            strlen(test_rrsets[i].owner),
-		                            NODE_ADDRESS);
-		if (owner == NULL) {
-			diag("Error creating owner domain name!");
-			return 0;
-		}
-		knot_rrset_t *rrset = knot_rrset_new(owner,
-		                                         test_rrsets[i].type,
-		                                         test_rrsets[i].rclass,
-		                                         test_rrsets[i].ttl);
-
-		errors += check_rrset(rrset, i, 0, 0, 0);
-
-		knot_rrset_free(&rrset);
-		knot_dname_free(&owner);
+	knot_rrset_t *rrset = knot_rrset_new(dname, type, rclass, ttl);
+	if (rrset == NULL) {
+		diag("Failed to create new RRSet.\n");
+		return 0;
 	}
+	
+	int check_errors = check_rrset_values(rrset, dname, type, rclass, ttl);
+	free(rrset);
 
-	//diag("Total errors: %d", errors);
+	diag("Total errors: %d", check_errors);
 
-	return (errors == 0);
+	return (check_errors == 0);
 }
 
-/* Not implemented - no way how to test unfreed memory from here (yet) */
-static int test_rrset_delete()
+static int test_rrset_create_rdata()
 {
-	return 0;
+	/* Two cases need to be tested - empty RRSet and non-empty RRSet. */
+	
+	knot_rrset_t *rrset = knot_rrset_new(NULL, 0, 0, 0);
+	assert(rrset);
+	
+	/*
+	* Again, actual data are not crutial, we need to see if indices 
+	* are changed accordingly and so on, but the data are not important. 
+	*/
+	uint16_t data1_length = 16;
+	uint8_t data1[data1_length];
+	memset(data1, 1, data1_length);
+	
+	uint8_t *write_pointer = knot_rrset_create_rdata(rrset, data1_length);
+	if (write_pointer == NULL) {
+		diag("Could not create data of size %d\n", data1_length);
+		return 0;
+	}
+	
+	/* Write dummy data. */
+	memcpy(write_pointer, data1, data1_length);
+	
+	/* Check that indices are set right. */
+	if (rrset->rdata_indices[0] != data1_length) {
+		diag("Wrong RDATA index after inserting RDATA to RRSet.\n");
+		return 0;
+	}
+	
+	/* Rdata count must be equal to one. */
+	if (rrset->rdata_count != 1) {
+		diag("Wrong RDATA count after inserting RDATA to RRSet.\n");
+		return 0;
+	}
+	
+	/* Make sure that the data in the RRSet are the same. */
+	int ret = memcmp(rrset->rdata, data1, data1_length);
+	if (ret) {
+		diag("Wrong data inserted into RRSet.\n");
+		return 0;
+	}
+	
+	/* Insert second item - all other inserts will do the same thing. */
+	uint16_t data2_length = 33;
+	uint8_t data2[data2_length];
+	memset(data2, 1, data1_length);
+	
+	write_pointer = knot_rrset_create_rdata(rrset, data2_length);
+	if (write_pointer == NULL) {
+		diag("Could not create data of size %d\n", data2_length);
+		return 0;
+	}
+	
+	/* Write dummy data. */
+	memcpy(write_pointer, data1, data1_length);
+	
+	/* Check that indices are set right. */
+	if (rrset->rdata_indices[0] != data1_length) {
+		diag("Wrong RDATA first index after "
+		     "inserting RDATA to RRSet.\n");
+		return 0;
+	}
+	
+	if (rrset->rdata_indices[1] != data1_length + data2_length) {
+		diag("Wrong RDATA last index after "
+		     "inserting RDATA to RRSet.\n");
+		return 0;
+	}
+	
+	/* Rdata count must be equal to two. */
+	if (rrset->rdata_count != 2) {
+		diag("Wrong RDATA count after inserting second "
+		     "RDATA to RRSet.\n");
+		return 0;
+	}
+	
+	/* Make sure that the data in the RRSet are the same. */
+	int ret = memcmp(rrset->rdata + data1_length, data2, data2_length);
+	if (ret) {
+		diag("Wrong data inserted into RRSet.\n");
+		return 0;
+	}
+	
+	/* Test that data of length 0 are not inserted. */
+	void *ret = knot_rrset_create_rdata(rrset, 0);
+	if (ret != NULL) {
+		diag("Empty RDATA inserted.\n");
+		return 0;
+	}
+	
+	return 1;
 }
 
 static int test_rrset_add_rdata()
 {
-	/* rdata add */
-	int errors = 0;
-	for (int i = 0; i < TEST_RRSETS; i++) {
-		knot_dname_t *owner = knot_dname_new_from_str(
-		                            test_rrsets[i].owner,
-		                            strlen(test_rrsets[i].owner),
-		                            NODE_ADDRESS);
-		if (owner == NULL) {
-			diag("Error creating owner domain name!");
-			return 0;
-		}
-
-		knot_rrset_t *rrset = knot_rrset_new(owner,
-		                                         test_rrsets[i].type,
-		                                         test_rrsets[i].rclass,
-		                                         test_rrsets[i].ttl);
-
-		knot_rrset_add_rdata(rrset, test_rrsets[i].rdata);
-
-		errors += check_rrset(rrset, i, 1, 0, 0);
-
-		knot_rrset_free(&rrset);
-		knot_dname_free(&owner);
-	}
-
-	/* test whether adding works properly = keeps order of added elements */
-
 	/*
-	 * Beware, this is dependent on the internal structure of rrset and
-	 * may change.
+	 * This function is basically a wrapper around knot_rrset_create_rdata()
 	 */
-
-	knot_rrset_t *rrset = knot_rrset_new(NULL, 0, 0, 0);
-
-	knot_rdata_t *r;
-
-	knot_rdata_item_t *item;
-
-	static const char *test_strings[10] =
-	    { "-2", "9", "2", "10", "1", "5", "8", "4", "6", "7" };
-
-	/* add items */
-
-	for (int i = 0; i < 10; i++) {
-		r = knot_rdata_new();
-		item = malloc(sizeof(knot_rdata_item_t));
-		item->raw_data = (uint16_t *)test_strings[i];
-		//following statement creates a copy
-		knot_rdata_set_items(r, item, 1);
-		knot_rrset_add_rdata(rrset, r);
-		free(item);
-	}
-
-	knot_rdata_t *tmp = rrset->rdata;
-
-	/* check if order has been kept */
-
-	int i = 0;
-	while (tmp->next != rrset->rdata && !errors) {
-		if (strcmp(test_strings[i], (char *)tmp->items[0].raw_data)) {
-			diag("Adding RDATA error!, is %s should be %s",
-			tmp->items[0].raw_data, test_strings[i]);
-			errors++;
-		}
-		i++;
-		tmp = tmp->next;
-
-	}
-
-	tmp = rrset->rdata;
-
-	knot_rdata_t *next;
-
-	while (tmp->next != rrset->rdata) {
-		next = tmp->next;
-		knot_rdata_free(&tmp);
-		tmp = next;
-	}
-
-	knot_rdata_free(&tmp);
-
-	knot_rrset_free(&rrset);
-
-	return (errors == 0);
-}
-
-static int test_rrset_rrsigs()
-{
-	int errors = 0;
-
-	knot_rdata_item_t *item;
-
-	knot_rdata_t *tmp;
-
-	knot_dname_t *owner;
-
-	knot_rrset_t *rrset;
-
-	/* Gets rrsigs and checks, if signatures are the same */
-
-	for (int i = 0; i < TEST_RRSETS; i++) {
-		owner = knot_dname_new_from_str(test_rrsets[i].owner,
-		strlen(test_rrsets[i].owner), NODE_ADDRESS);
-		if (owner == NULL) {
-			diag("Error creating owner domain name!");
-			return 0;
-		}
-
-		rrset = knot_rrset_new(owner, test_rrsets[i].type,
-		test_rrsets[i].rclass, test_rrsets[i].ttl);
-
-		knot_rrset_add_rdata(rrset, test_rrsets[i].rdata);
-
-		//owners are the same
-
-		assert(TEST_RRSETS == TEST_RRSIGS);
-
-		knot_rrset_t *rrsig = knot_rrset_new(owner,
-		                                         test_rrsigs[i].type,
-		                                         test_rrsigs[i].rclass,
-		                                         test_rrsigs[i].ttl);
-
-		tmp = knot_rdata_new();
-		item = malloc(sizeof(knot_rdata_item_t));
-		/* signature is just a string,
-		 * should be sufficient for testing */
-		item->raw_data = (uint16_t *)signature_strings[i];
-		knot_rdata_set_items(tmp, item, 1);
-		knot_rrset_add_rdata(rrsig, tmp);
-
-		if (knot_rrset_set_rrsigs(rrset, rrsig)
-		      != 0) {
-			diag("Could not set rrsig");
-			errors++;
-		}
-		errors += check_rrset(rrset, i, 0, 0, 1);
-		knot_rrset_free(&rrset);
-		free(item);
-		knot_rdata_free(&tmp);
-		knot_rrset_free(&rrsig);
-	}
-	return (errors == 0);
 }
 
 static int test_rrset_merge()
 {
-	knot_rrset_t *merger1;
-	knot_rrset_t *merger2;
-	knot_dname_t *owner1;
-	knot_dname_t *owner2;
-
-	int r;
-
-	owner1 = knot_dname_new_from_str(test_rrsets[3].owner,
-					   strlen(test_rrsets[3].owner), NULL);
-	merger1 = knot_rrset_new(owner1, test_rrsets[3].type,
-	                           test_rrsets[3].rclass,
-				   test_rrsets[3].ttl);
-
-	knot_rrset_add_rdata(merger1, test_rrsets[3].rdata);
-
-	owner2 = knot_dname_new_from_str(test_rrsets[4].owner,
-					   strlen(test_rrsets[4].owner), NULL);
-	merger2 = knot_rrset_new(owner2, test_rrsets[4].type,
-	                           test_rrsets[4].rclass,
-				   test_rrsets[4].ttl);
-
-	knot_rrset_add_rdata(merger2, test_rrsets[4].rdata);
-
-//	knot_rrset_dump(merger1, 1);
-
-	int ret = 0;
-	if ((ret = knot_rrset_merge((void **)&merger1,
-	                              (void **)&merger2)) != 0) {
-		diag("Could not merge rrsets. (reason %d)", ret);
-		return 0;
-	}
-
-//	knot_rrset_dump(merger1, 1);
-
-	r = check_rrset(merger1, 5, 1, 1, 0);
-
-	knot_rrset_free(&merger1);
-	knot_rrset_free(&merger2);
-
-	if (r) {
-		diag("Merged rdata are wrongly set.");
-		return 0;
-	}
-
-	return 1;
-}
-
-static int test_rrset_owner(knot_rrset_t **rrsets)
-{
-	int errors = 0;
-	for (int i = 0; i < TEST_RRSETS; i++) {
-		char *dname_str =
-			knot_dname_to_str(knot_rrset_owner(rrsets[i]));
-		if (strcmp(dname_str, test_rrsets[i].owner)) {
-			diag("Got wrong value for owner from rrset.");
-			errors++;
-		}
-		free(dname_str);
-	}
-	return errors;
-}
-
-static int test_rrset_type(knot_rrset_t **rrsets)
-{
-	int errors = 0;
-	for (int i = 0; i < TEST_RRSETS; i++) {
-		if (knot_rrset_type(rrsets[i]) != test_rrsets[i].type) {
-			errors++;
-			diag("Got wrong value for type from rrset.");
-		}
-	}
-	return errors;
-}
-
-static int test_rrset_class(knot_rrset_t **rrsets)
-{
-	int errors = 0;
-	for (int i = 0; i < TEST_RRSETS; i++) {
-		if (knot_rrset_class(rrsets[i]) != test_rrsets[i].rclass) {
-			errors++;
-			diag("Got wrong value for class from rrset.");
-		}
-	}
-
-	return errors;
-}
-
-static int test_rrset_ttl(knot_rrset_t **rrsets)
-{
-	int errors = 0;
-	for (int i = 0; i < TEST_RRSETS; i++) {
-		if (knot_rrset_ttl(rrsets[i]) != test_rrsets[i].ttl) {
-			errors++;
-			diag("Got wrong value for ttl from rrset.");
-		}
-	}
-	return errors;
-}
-
-static int test_rrset_ret_rdata(knot_rrset_t **rrsets)
-{
-	int errors = 0;
-
-	knot_rrtype_descriptor_t *desc;
-
-	for (int i = 0; i < TEST_RRSETS; i++) {
-
-		desc = knot_rrtype_descriptor_by_type(rrsets[i]->type);
-		assert(desc);
-
-//		knot_rdata_dump(test_rrsets[i].rdata, 1);
-	//	knot_rdata_dump(rrsets[i]->rdata, 1);
-
-		if (knot_rdata_compare(knot_rrset_rdata(rrsets[i]),
-			                 test_rrsets[i].rdata,
-					 desc->wireformat)) {
-			errors++;
-			diag("Got wrong value for rdata from rrset.");
-		}
-	}
-	return errors;
 }
 
 static int test_rrset_get_rdata(knot_rrset_t **rrsets)
 {
-	int errors = 0;
-
-	knot_rrtype_descriptor_t *desc;
-
-	for (int i = 0; i < TEST_RRSETS; i++) {
-		desc = knot_rrtype_descriptor_by_type(rrsets[i]->type);
-		assert(desc);
-		if (knot_rdata_compare(knot_rrset_get_rdata(rrsets[i]),
-			                 test_rrsets[i].rdata,
-					 desc->wireformat)) {
-			errors++;
-			diag("Got wrong value for rdata from rrset. (Get)");
-		}
-	}
-	return errors;
 }
-
-static int test_rrset_ret_rrsigs(knot_rrset_t **rrsets)
-{
-	int errors = 0;
-
-	for (int i = 0; i < TEST_RRSETS; i++) {
-		/* TODO should I test the insides of structure as well? */
-		if (knot_rrset_rrsigs(rrsets[i]) != test_rrsets[i].rrsigs) {
-			errors++;
-			diag("Got wrong value for rrsigs from rrset.");
-		}
-	}
-	return errors;
-}
-
-static int test_rrset_getters(uint type)
-{
-	int errors = 0;
-
-	knot_rrset_t *rrsets[TEST_RRSETS];
-
-	for (int i = 0; i < TEST_RRSETS; i++) {
-		knot_dname_t *owner = knot_dname_new_from_str(
-		                            test_rrsets[i].owner,
-		                            strlen(test_rrsets[i].owner),
-		                            NODE_ADDRESS);
-		if (owner == NULL) {
-			diag("Error creating owner domain name!");
-			return 0;
-		}
-		rrsets[i] = knot_rrset_new(owner,
-		                             test_rrsets[i].type,
-		                             test_rrsets[i].rclass,
-		                             test_rrsets[i].ttl);
-
-		knot_rrset_add_rdata(rrsets[i], test_rrsets[i].rdata);
-	}
-
-	switch (type) {
-		case 0: {
-			errors += test_rrset_owner(rrsets);
-			break;
-		}
-		case 1: {
-			errors += test_rrset_type(rrsets);
-			break;
-		}
-		case 2: {
-			errors += test_rrset_class(rrsets);
-			break;
-		}
-		case 3: {
-			errors += test_rrset_ttl(rrsets);
-			break;
-		}
-		case 4: {
-			errors += test_rrset_ret_rdata(rrsets);
-			break;
-		}
-		case 5: {
-			errors += test_rrset_get_rdata(rrsets);
-			break;
-		}
-		case 6: {
-			errors += test_rrset_ret_rrsigs(rrsets);
-			break;
-		}
-	} /* switch */
-
-	for (int i = 0; i < TEST_RRSETS; i++) {
-		knot_dname_free(&rrsets[i]->owner);
-		knot_rrset_free(&rrsets[i]);
-	}
-
-
-	return (errors == 0);
-}
-
-static int test_rrset_deep_free()
-{
-	/*!< \warning Cannot be run when some rdata are on stack! */
-	int errors = 0;
-
-	knot_rrset_t  *tmp_rrset;
-	knot_dname_t *owner;
-	for (int i = 0; i < TEST_RRSETS; i++) {
-		owner = knot_dname_new_from_str(
-		                            test_rrsets[i].owner,
-		                            strlen(test_rrsets[i].owner),
-		                            NODE_ADDRESS);
-		if (owner == NULL) {
-			diag("Error creating owner domain name!");
-			return 0;
-		}
-
-		tmp_rrset = knot_rrset_new(owner,
-		                             test_rrsets[i].type,
-		                             test_rrsets[i].rclass,
-		                             test_rrsets[i].ttl);
-
-		knot_rrset_add_rdata(tmp_rrset, test_rrsets[i].rdata);
-
-		knot_rrset_deep_free(&tmp_rrset, 1, 1, 0);
-
-		errors += (tmp_rrset != NULL);
-	}
-
-	return (errors == 0);
-}
-
-/*----------------------------------------------------------------------------*/
 
 static const int KNOT_RRSET_TEST_COUNT = 13;
 
