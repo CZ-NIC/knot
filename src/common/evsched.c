@@ -185,6 +185,7 @@ event_t* evsched_next(evsched_t *s)
 			/* Immediately return. */
 			if (timercmp_ge(&dt, &next_ev->tv)) {
 				s->cur = next_ev;
+                heap_delmin(&s->heap);
 				pthread_mutex_unlock(&s->mx);
 				pthread_mutex_lock(&s->rl);
 
@@ -193,10 +194,7 @@ event_t* evsched_next(evsched_t *s)
 					pthread_mutex_unlock(&s->rl);
 					pthread_mutex_lock(&s->mx);
 					continue;
-				} else {
-					/* Valid, remove from waitlist. */
-					heap_delmin(&s->heap);
-				}
+                }
 				
 				return next_ev;
 			}
@@ -326,9 +324,7 @@ int evsched_cancel(evsched_t *s, event_t *ev)
 	 */
 	if (s->cur == ev) {
 		s->cur = NULL; /* Invalidate */
-		pthread_mutex_unlock(&s->mx);
-		pthread_mutex_unlock(&s->rl);
-		return found;
+        found = 1; /* Mark as found (although not in heap). */
 	}
 
 	/* Unlock calendar. */
