@@ -36,8 +36,8 @@
 
 int get_socktype(const params_t *params, const uint16_t qtype);
 
-int send_query(const params_t *params, const query_t *query,
-               const server_t *server, const uint8_t *data, size_t data_len);
+int send_msg(const params_t *params, const query_t *query,
+             const server_t *server, const uint8_t *data, size_t data_len);
 
 int receive_msg(const params_t *params, const query_t *query,
                 int sockfd, uint8_t *out, size_t out_len);
