@@ -35,6 +35,7 @@
 #define DEFAULT_PORT            53
 #define DEFAULT_UDP_SIZE        512
 #define MAX_PACKET_SIZE         65535
+#define DEFAULT_WAIT_INTERVAL	1
 
 /*! \brief Structure containing basic parameters for DNS query. */
 typedef struct {
@@ -58,15 +59,25 @@ typedef enum {
 	PROTO_UDP
 } protocol_t;
 
-#define DEFAULT_WAIT_INTERVAL 1
-
-/*! \brief Types of host operation mode. */
 typedef enum {
-	/*!< Classic query for name-class-type. */
-	HOST_MODE_DEFAULT,
+	/*!< Classic queries in list. */
+	OPERATION_QUERY,
 	/*!< Query for NS and all authoritative SOA records. */
-	HOST_MODE_LIST_SERIALS,
-} host_mode_t;
+	OPERATION_LIST_SOA,
+	/*!< Default mode for nsupdate. */
+	OPERATION_UPDATE,
+} operation_t;
+
+typedef enum {
+	/*!< Short dig output. */
+	FORMAT_DIG,
+	/*!< Brief host output. */
+	FORMAT_HOST,
+	/*!< Brief nsupdate output. */
+	FORMAT_NSUPDATE,
+	/*!< Verbose output (same for host and dig). */
+	FORMAT_VERBOSE,
+} format_t;
 
 /*! \brief Structure containing parameters. */
 typedef struct {
@@ -78,7 +89,7 @@ typedef struct {
 	list		qfiles;
 
 	/*!< Operation mode. */
-	host_mode_t	mode;
+	operation_t	mode;
 	/*!< Version of ip protocol to use. */
 	ip_version_t	ip;
 	/*!< Type (TCP, UDP) protocol to use. */
@@ -95,19 +106,16 @@ typedef struct {
 	uint32_t	udp_size;
 	/*!< Number of UDP retries. */
 	uint32_t	retries;
-	/*!< Number of TCP retries. */
-	
-	/*!< Wait for reply in seconds (-1 means forever). */
+	/*!< Wait for network response in seconds (-1 means forever). */
 	int32_t		wait;
 	/*!< Stop quering if servfail. */
 	bool		servfail_stop;
 	/*!< Verbose mode. */
-	bool		verbose;
+	format_t	format;
 	/*!< Default port. */
 	unsigned	port;
 	/*!< Default address. */
 	const char*	addr;
-	
 } params_t;
 
 query_t* create_query(const char *name, const uint16_t type);

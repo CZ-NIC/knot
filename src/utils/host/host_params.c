@@ -42,7 +42,7 @@ static void host_params_init(params_t *params)
 	init_list(&params->queries);
 
 	// Default values.
-	params->mode = HOST_MODE_DEFAULT;
+	params->mode = OPERATION_QUERY;
 	params->ip = IP_ALL;
 	params->protocol = PROTO_ALL;
 	params->udp_size = DEFAULT_UDP_SIZE;
@@ -53,7 +53,7 @@ static void host_params_init(params_t *params)
 	params->retries = 1;
 	params->wait = DEFAULT_WAIT_INTERVAL;
 	params->servfail_stop = false;
-	params->verbose = false;
+	params->format = FORMAT_HOST;
 }
 
 void host_params_clean(params_t *params)
@@ -81,13 +81,13 @@ void host_params_clean(params_t *params)
 static void host_params_flag_all(params_t *params)
 {
 	params->type_num = KNOT_RRTYPE_ANY;
-	params->verbose = true;
+	params->format = FORMAT_VERBOSE;
 }
 
 static void host_params_flag_soa(params_t *params)
 {
 	params->type_num = KNOT_RRTYPE_SOA;
-	params->mode = HOST_MODE_LIST_SERIALS;
+	params->mode = OPERATION_LIST_SOA;
 }
 
 static void host_params_flag_axfr(params_t *params)

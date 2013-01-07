@@ -33,8 +33,6 @@
 #include "common/lists.h"		// list
 #include "utils/common/params.h"	// protocol_t
 
-
-
 int host_params_parse(params_t *params, int argc, char *argv[]);
 
 void host_params_clean(params_t *params);

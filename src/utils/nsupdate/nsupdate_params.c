@@ -34,12 +34,13 @@ static void nsupdate_params_init(params_t *params)
 	init_list(&params->qfiles);
 
 	// Default values.
+	params->mode = OPERATION_UPDATE;
 	params->port = DEFAULT_PORT;
 	params->protocol = PROTO_ALL;
 	params->udp_size = DEFAULT_UDP_SIZE;
 	params->retries = DEFAULT_RETRIES;
 	params->wait = DEFAULT_WAIT_INTERVAL;
-	params->verbose = false;
+	params->format = FORMAT_NSUPDATE;
 }
 
 void nsupdate_params_clean(params_t *params)

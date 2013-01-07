@@ -185,14 +185,31 @@ static int process_query(const params_t *params, const query_t *query)
 		server_t *srv = (server_t *)server;
 		int sockfd;
 
-		sockfd = send_query(params, query, srv, in, in_len);
+		sockfd = send_msg(params, query, srv, in, in_len);
 
 		if (sockfd == -1) {
 			continue;
 		}
 
-		// TODO
-		receive_msg(params, query, sockfd, out, out_len);
+                int x = receive_msg(params, query, sockfd, out, out_len);
+
+                knot_packet_t *pkt_in =
+                        knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
+
+                int ret = knot_packet_parse_from_wire(pkt_in, out, x, 0);
+                if (ret != KNOT_EOK) {
+                        printf("ggr");
+                }
+
+//                knot_rrset_t *rr = NULL;
+//                knot_packet_parse_next_rr_answer(pkt_in, &rr);
+
+                char y[70000];
+
+		for (int i = 0; i < pkt_in->an_rrsets; i++) {
+	                rrset_write_mem(y, 70000, (pkt_in->answer)[i]);
+                	printf("%s", y);
+		}
 
 		shutdown(sockfd, SHUT_RDWR);
 
@@ -215,13 +232,15 @@ int host_exec(const params_t *params)
 	}
 
 	switch (params->mode) {
-	case HOST_MODE_DEFAULT:
+	case OPERATION_QUERY:
 		WALK_LIST(query, params->queries) {
 			process_query(params, (query_t *)query);
 		}
 
 		break;
-	case HOST_MODE_LIST_SERIALS:
+	case OPERATION_LIST_SOA:
+		break;
+	default:
 		break;
 	}
 
