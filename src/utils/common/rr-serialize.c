@@ -53,51 +53,50 @@ static int rdata_write_mem(char* dst, size_t maxlen, const knot_rdata_t *rdata,
 		}
 		
 		if (i != rdata->count - 1) {
-			ret = snprintf(dst, maxlen, "%s ", item_str);
+			ret = snprintf(dst+wb, maxlen-wb, "%s ", item_str);
 		} else {
-			ret = snprintf(dst, maxlen, "%s", item_str);
+			ret = snprintf(dst+wb, maxlen-wb, "%s", item_str);
 		}
 		free(item_str);
 		if (ret < 0) return KNOT_ESPACE;
 		wb += ret;
 	}
-	ret = snprintf(dst+wb, maxlen-wb, "\n");
-	if (ret < 0) return KNOT_ESPACE;
 
-	return wb + ret;
+	return wb;
 }
 
-static int rrset_header_write_mem(char *dst, size_t maxlen, const knot_rrset_t *rrset)
+static int rrset_header_write_mem(char *dst, size_t maxlen,
+                                  const knot_rrset_t *rrset)
 {
 	if (dst == NULL || rrset == NULL) {
 		return KNOT_EINVAL;
 	}
 	
 	char buf[32];
-	
-	int ret = 0;
-	int wb = 0;
+	int  ret = 0;
+	int  wb = 0;
+
 	char *name = knot_dname_to_str(rrset->owner);
-	ret = snprintf(dst, maxlen-wb, "%-20s ",  name);
+	ret = snprintf(dst+wb, maxlen-wb, "%-20s\t", name);
 	free(name);
 	if (ret < 0) return KNOT_ESPACE;
 	wb += ret;
 	
-	ret = snprintf(dst, maxlen-wb, "%-5u ", rrset->ttl);
+	ret = snprintf(dst+wb, maxlen-wb, "%-5u\t", rrset->ttl);
 	if (ret < 0) return KNOT_ESPACE;
 	wb += ret;
 	
 	if (knot_rrclass_to_string(rrset->rclass, buf, sizeof(buf)) < 0) {
 		return KNOT_ERROR;
 	}
-	ret = snprintf(dst, maxlen-wb, "%-2s ", buf);
+	ret = snprintf(dst+wb, maxlen-wb, "%-2s\t", buf);
 	if (ret < 0) return KNOT_ESPACE;
 	wb += ret;
 	
 	if (knot_rrtype_to_string(rrset->type, buf, sizeof(buf)) < 0) {
 		return KNOT_ERROR;
 	}
-	ret = snprintf(dst, maxlen-wb, "%-5s ",  buf);
+	ret = snprintf(dst+wb, maxlen-wb, "%-5s\t",  buf);
 	if (ret < 0) return KNOT_ESPACE;
 	wb += ret;
 	
@@ -146,36 +145,32 @@ int rrset_write_mem(char *dst, size_t maxlen, const knot_rrset_t *rrset)
 	
 	int ret = 0;
 	int wb = 0;
-	if (rrset->rdata != NULL) { // No sense in dumping empty RR
-		ret = rrset_header_write_mem(dst, maxlen, rrset);
+
+	knot_rdata_t *tmp = rrset->rdata;
+
+	do {
+		ret = rrset_header_write_mem(dst+wb, maxlen-wb, rrset);
 		if (ret < 0) return ret;
 		wb += ret;
-		
-		knot_rdata_t *tmp = rrset->rdata;
-		
-		while (tmp->next != rrset->rdata) {
-			ret = rdata_write_mem(dst+wb, maxlen-wb, tmp,
-			                      rrset->type, rrset);
-			if (ret < 0) return ret;
-			wb += ret;
-			ret = rrset_header_write_mem(dst+wb, maxlen-wb, rrset);
-			if (ret < 0) return ret;
-			wb += ret;
-			tmp = tmp->next;
-		}
-		
+
 		ret = rdata_write_mem(dst+wb, maxlen-wb, tmp,
 		                      rrset->type, rrset);
 		if (ret < 0) return ret;
 		wb += ret;
-	}
-	
+
+		ret = snprintf(dst+wb, maxlen-wb, "\n");
+		if (ret < 0) return ret;
+		wb += ret;
+
+		tmp = tmp->next;
+	} while (tmp != rrset->rdata);
+
 	knot_rrset_t *rrsig_set = rrset->rrsigs;
 	if (rrsig_set != NULL) {
 		ret = rrsig_write_mem(dst+wb, maxlen-wb, rrsig_set);
 		if (ret < 0) return ret;
 		wb += ret;
 	}
-	
+
 	return wb;
 }
