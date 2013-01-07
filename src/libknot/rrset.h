@@ -89,6 +89,7 @@ typedef enum  {
  * \return New RRSet structure with the given OWNER, TYPE, CLASS and TTL or NULL
  *         if an error occured.
  */
+//TODO test
 knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
                                  uint16_t rclass, uint32_t ttl);
 
@@ -102,6 +103,7 @@ knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
  * \retval KNOT_EINVAL on wrong arguments.
  * \retval KNOT_EOK on success.
  */
+//TODO test
 int knot_rrset_add_rdata(knot_rrset_t *rrset, uint8_t *rdata,
                          uint16_t size);
 
@@ -116,6 +118,7 @@ int knot_rrset_add_rdata(knot_rrset_t *rrset, uint8_t *rdata,
  * \return Pointer to memory to be written to.
  * \retval NULL if arguments are invalid
  */
+//TODO test
 uint8_t* knot_rrset_create_rdata(knot_rrset_t *rrset, uint16_t size);
 
 /*!
@@ -127,6 +130,7 @@ uint8_t* knot_rrset_create_rdata(knot_rrset_t *rrset, uint16_t size);
  * \retval 0 on error.
  * \return Item size on success.
  */
+//TODO test
 uint16_t rrset_rdata_item_size(const knot_rrset_t *rrset,
                                size_t pos);
 
@@ -153,6 +157,7 @@ int knot_rrset_set_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs);
  * \retval 2 if rrsig was not first, but is was skipped.
  * \retval KNOT_EINVAL on faulty arguments or rrsig does not belong to this rrset.
  */
+//TODO test
 int knot_rrset_add_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs,
                           knot_rrset_dupl_handling_t dupl);
 
@@ -228,6 +233,7 @@ uint32_t knot_rrset_ttl(const knot_rrset_t *rrset);
  * \retval NULL if no RDATA on rdata_pos exist.
  * \return Pointer to RDATA on given position if successfull.
  */
+//TODO test
 uint8_t *knot_rrset_get_rdata(const knot_rrset_t *rrset, size_t rdata_pos);
 
 /*!
@@ -251,9 +257,11 @@ const knot_rrset_t *knot_rrset_rrsigs(const knot_rrset_t *rrset);
 
 knot_rrset_t *knot_rrset_get_rrsigs(knot_rrset_t *rrset);
 
+//TODO test
 int knot_rrset_compare_rdata(const knot_rrset_t *r1, const knot_rrset_t *r2);
 
 /*! \todo Should support (optional) dname compression. */
+//TODO test
 int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
                        int *rr_count);
 
@@ -270,15 +278,18 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
  * \retval <> 0 If RRSets are equal.
  * \retval 0 if RRSets are not equal.
  */
+//TODO test
 int knot_rrset_compare(const knot_rrset_t *r1,
                          const knot_rrset_t *r2,
                          knot_rrset_compare_type_t cmp);
 
 /*! \todo Add unit test. */
+//TODO test
 int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
                          int copy_rdata_dnames);
 
 /*! \todo Add unit test. */
+//TODO test
 int knot_rrset_shallow_copy(const knot_rrset_t *from, knot_rrset_t **to);
 
 /*! \brief Does round-robin rotation of the RRSet.
@@ -335,6 +346,7 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
  * \retval KNOT_EINVAL if the RRSets could not be merged, because their
  *         Owner, Type, Class or TTL does not match.
  */
+//TODO test
 int knot_rrset_merge(void **r1, void **r2);
 
 
@@ -355,50 +367,76 @@ int knot_rrset_merge(void **r1, void **r2);
  * \retval KNOT_EINVAL if the RRSets could not be merged, because their
  *         Owner, Type, Class or TTL does not match.
  */
+//TODO test
 int knot_rrset_merge_no_dupl(void **r1, void **r2);
 
 
+//TODO test
 const knot_dname_t *knot_rrset_rdata_cname_name(const knot_rrset_t *rrset);
+//TODO test
 const knot_dname_t *knot_rrset_rdata_dname_target(const knot_rrset_t *rrset);
 
+//TODO test
 const knot_dname_t *knot_rrset_rdata_cname_name(const knot_rrset_t *rrset);
+//TODO test
 const knot_dname_t *knot_rrset_rdata_dname_target(const knot_rrset_t *rrset);
+//TODO test
 int64_t knot_rrset_rdata_soa_serial(const knot_rrset_t *rrset);
+//TODO test
 void knot_rrset_rdata_soa_serial_set(knot_rrset_t *rrset, uint32_t serial);
+//TODO test
 uint32_t knot_rrset_rdata_soa_refresh(const knot_rrset_t *rrset);
+//TODO test
 uint32_t knot_rrset_rdata_soa_retry(const knot_rrset_t *rrset);
+//TODO test
 uint32_t knot_rrset_rdata_soa_expire(const knot_rrset_t *rrset);
+//TODO test
 uint32_t knot_rrset_rdata_soa_minimum(const knot_rrset_t *rrset);
+//TODO test
 uint16_t knot_rrset_rdata_rrsig_type_covered(const knot_rrset_t *rrset);
+//TODO test
 uint8_t knot_rrset_rdata_nsec3_algorithm(const knot_rrset_t *rrset,
                                          size_t pos);
+//TODO test
 uint16_t knot_rrset_rdata_nsec3_iterations(const knot_rrset_t *rrset,
                                            size_t pos);
+//TODO test
 uint8_t knot_rrset_rdata_nsec3_salt_length(const knot_rrset_t *rrset,
                                            size_t pos);
+//TODO test
 const uint8_t *knot_rrset_rdata_nsec3_salt(const knot_rrset_t *rrset,
                                            size_t pos);
+//TODO test
 uint8_t knot_rrset_rdata_nsec3param_algorithm(const knot_rrset_t *rrset);
+//TODO test
 uint8_t knot_rrset_rdata_nsec3param_flags(const knot_rrset_t *rrset);
+//TODO test
 uint16_t knot_rrset_rdata_nsec3param_iterations(const knot_rrset_t *rrset);
+//TODO test
 uint8_t knot_rrset_rdata_nsec3param_salt_length(const knot_rrset_t *rrset);
+//TODO test
 const uint8_t *knot_rrset_rdata_nsec3param_salt(const knot_rrset_t *rrset);
 
+//TODO test
 const knot_dname_t *knot_rrset_next_dname(const knot_rrset_t *rrset,
                                           const knot_dname_t *prev_dname);
 
+//TODO test
 knot_dname_t *knot_rrset_get_next_dname(const knot_rrset_t *rrset,
                                         knot_dname_t *prev_dname);
 
+//TODO test
 const knot_dname_t *knot_rrset_rdata_next_dname(const knot_rrset_t *rrset,
                                                 const knot_dname_t *prev_dname,
                                                 size_t pos);
 
+//TODO test
 knot_dname_t **knot_rrset_rdata_get_next_dname_pointer(
 	const knot_rrset_t *rrset,
 	knot_dname_t **prev_dname, size_t pos);
 
 
+//TODO test
 knot_dname_t **knot_rrset_get_next_dname_pointer(const knot_rrset_t *rrset,
                                                  knot_dname_t **prev_dname);
 
