@@ -48,8 +48,8 @@ int get_socktype(const params_t *params, const uint16_t qtype)
 int send_msg(const params_t *params,
              const query_t  *query,
              const server_t *server,
-             const uint8_t  *data,
-             const size_t   data_len)
+             const uint8_t  *buf,
+             const size_t   buf_len)
 {
 	struct addrinfo hints, *res;
 	struct pollfd pfd;
@@ -114,7 +114,7 @@ int send_msg(const params_t *params,
 
 	// For TCP add leading length bytes.
 	if (hints.ai_socktype == SOCK_STREAM) {
-		uint16_t pktsize = htons(data_len);
+		uint16_t pktsize = htons(buf_len);
 
 		if (send(sockfd, &pktsize, sizeof(pktsize), 0) !=
 		    sizeof(pktsize)) {
@@ -123,9 +123,12 @@ int send_msg(const params_t *params,
 	}
 
 	// Send data.
-	if (send(sockfd, data, data_len, 0) != data_len) {
+	if (send(sockfd, buf, buf_len, 0) != buf_len) {
 		WARN("can't send query\n");
 	}
+
+	// Free getaddrr data.
+	freeaddrinfo(res);
 
 	return sockfd;
 }
@@ -133,9 +136,10 @@ int send_msg(const params_t *params,
 int receive_msg(const params_t *params,
                 const query_t  *query,
                 int            sockfd,
-                uint8_t        *out,
-                size_t         out_len)
+                uint8_t        *buf,
+                const size_t   buf_len)
 {
+	ssize_t       ret;
 	struct pollfd pfd;
 
 	// Initialize poll descriptor structure.
@@ -147,11 +151,13 @@ int receive_msg(const params_t *params,
 		uint16_t msg_len;
 		uint32_t total = 0;
 
+		// Wait for data.
 		if (poll(&pfd, 1, 1000 * params->wait) != 1) {
 			WARN("can't wait for TCP message length\n");
 			return KNOT_ERROR;
 		}
 
+		// Receive TCP message header.
 		if (recv(sockfd, &msg_len, sizeof(msg_len), 0) !=
 		    sizeof(msg_len)) {
 			WARN("can't receive TCP message length\n");
@@ -161,18 +167,25 @@ int receive_msg(const params_t *params,
 		// Convert number to host format.
 		msg_len = ntohs(msg_len);
 
-		// Receive whole answer message.
+		// Receive whole answer message by parts.
 		while (total < msg_len) {
 			if (poll(&pfd, 1, 1000 * params->wait) != 1) {
 				WARN("can't wait for TCP answer\n");
 				return KNOT_ERROR;
 			}
 
-			total += recv(sockfd, out + total, out_len - total, 0);
-		}
+			// Receive piece of message.
+			ret = recv(sockfd, buf + total, msg_len - total, 0);
 
+			if (ret <= 0) {
+				WARN("can't receive TCP answer\n");
+				return KNOT_ERROR;
+			}
+
+			total += ret;
+		}
 		
-		return msg_len;
+		return total;
 	} else {
 		// Wait for datagram data.
 		if (poll(&pfd, 1, 1000 * params->wait) != 1) {
@@ -180,15 +193,15 @@ int receive_msg(const params_t *params,
 			return KNOT_ERROR;
 		}
 
-		// Receive UDP datagram.
-		ssize_t len = recv(sockfd, out, out_len, 0);
+		// Receive whole UDP datagram.
+		ret = recv(sockfd, buf, buf_len, 0);
 
-		if (len <= 0) {
+		if (ret <= 0) {
 			WARN("can't receive UDP answer\n");
 			return KNOT_ERROR;
 		}
 
-		return len;
+		return ret;
 	}
 
 	return KNOT_EOK;
