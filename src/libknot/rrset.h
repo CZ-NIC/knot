@@ -127,7 +127,6 @@ uint8_t* knot_rrset_create_rdata(knot_rrset_t *rrset, uint16_t size);
  * \retval 0 on error.
  * \return Item size on success.
  */
-//TODO test
 uint16_t rrset_rdata_item_size(const knot_rrset_t *rrset,
                                size_t pos);
 
@@ -230,7 +229,6 @@ uint32_t knot_rrset_ttl(const knot_rrset_t *rrset);
  * \retval NULL if no RDATA on rdata_pos exist.
  * \return Pointer to RDATA on given position if successfull.
  */
-//TODO test
 uint8_t *knot_rrset_get_rdata(const knot_rrset_t *rrset, size_t rdata_pos);
 
 /*!
@@ -260,7 +258,7 @@ int knot_rrset_compare_rdata(const knot_rrset_t *r1, const knot_rrset_t *r2);
 /*! \todo Should support (optional) dname compression. */
 //TODO test
 int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
-                       int *rr_count);
+                       uint16_t *rr_count);
 
 /*!
  * \brief Compares two RRSets.
@@ -281,12 +279,10 @@ int knot_rrset_compare(const knot_rrset_t *r1,
                          knot_rrset_compare_type_t cmp);
 
 /*! \todo Add unit test. */
-//TODO test
 int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
                          int copy_rdata_dnames);
 
 /*! \todo Add unit test. */
-//TODO test
 int knot_rrset_shallow_copy(const knot_rrset_t *from, knot_rrset_t **to);
 
 /*! \brief Does round-robin rotation of the RRSet.
@@ -348,14 +344,7 @@ int knot_rrset_merge(void **r1, void **r2);
 
 
 /*!
- * \brief Merges two RRSets, but will discard and free any duplicates in \a r2.
- *
- * Merges \a r1 into \a r2 by concatenating the list of RDATAs in \a r2 after
- * the list of RDATAs in \a r1. You must not
- * destroy the RDATAs in \a r2 as they are now identical to RDATAs in \a r1.
- * (You may use function knot_rrset_free() though, as it does not touch RDATAs).
- *
- * \note Member \a rrsigs is preserved from the first RRSet.
+ * \brief Merges two RRSets, but will only merge unique items. 
  *
  * \param r1 Pointer to RRSet to be merged into.
  * \param r2 Poitner to RRSet to be merged.

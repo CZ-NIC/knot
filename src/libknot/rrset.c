@@ -719,7 +719,7 @@ static int knot_rrset_to_wire_aux(const knot_rrset_t *rrset,
 /*----------------------------------------------------------------------------*/
 
 int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
-                       int *rr_count)
+                       uint16_t *rr_count)
 {
 	// if no RDATA in RRSet, return
 	if (rrset->rdata == NULL) {
@@ -1002,7 +1002,6 @@ int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
 				return KNOT_ENOMEM;
 			}
 			
-			/* This cannot work, test. TODO */
 			*dname_to = dname_copy;
 		}
 	}
