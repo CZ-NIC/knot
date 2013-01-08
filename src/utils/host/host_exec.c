@@ -105,7 +105,7 @@ static knot_packet_t* create_query_packet(const params_t *params,
 		// SOA rdata in wireformat.
 		uint8_t wire[22] = { 0x0 };
 		// Set SOA serial.
-		uint32_t serial = htonl(params->ixfr_serial);
+		uint32_t serial = htonl(query->ixfr_serial);
 		memcpy(wire + 2, &serial, sizeof(serial));
 
 		// Create SOA rdata.
@@ -191,26 +191,29 @@ static int process_query(const params_t *params, const query_t *query)
 			continue;
 		}
 
-                int x = receive_msg(params, query, sockfd, out, out_len);
+                int x;
 
-/*                knot_packet_t *pkt_in =
+		while (x = receive_msg(params, query, sockfd, out, out_len), x) {
+
+                knot_packet_t *pkt_in =
                         knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
+
+                char y[70000];
 
                 int ret = knot_packet_parse_from_wire(pkt_in, out, x, 0, KNOT_PACKET_DUPL_NO_MERGE);
                 if (ret != KNOT_EOK) {
-                        printf("ggr");
+                        printf("ggr\n");
                 }
-
-//                knot_rrset_t *rr = NULL;
-//                knot_packet_parse_next_rr_answer(pkt_in, &rr);
-
-                char y[70000];
 
 		for (int i = 0; i < pkt_in->an_rrsets; i++) {
 	                rrset_write_mem(y, 70000, (pkt_in->answer)[i]);
                 	printf("%s", y);
 		}
-*/
+
+		knot_packet_free(&pkt_in);
+
+		}
+
 		shutdown(sockfd, SHUT_RDWR);
 
 		// If successfully processed, stop quering nameservers.
@@ -231,7 +234,7 @@ int host_exec(const params_t *params)
 		return KNOT_EINVAL;
 	}
 
-	switch (params->mode) {
+	switch (params->operation) {
 	case OPERATION_QUERY:
 		WALK_LIST(query, params->queries) {
 			process_query(params, (query_t *)query);

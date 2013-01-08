@@ -26,7 +26,7 @@
 #define IPV4_REVERSE_DOMAIN	"in-addr.arpa."
 #define IPV6_REVERSE_DOMAIN	"ip6.arpa."
 
-query_t* create_query(const char *name, const uint16_t type)
+query_t* query_create(const char *name, const uint16_t type)
 {
 	// Create output structure.
 	query_t *query = calloc(1, sizeof(query_t));
@@ -39,8 +39,14 @@ query_t* create_query(const char *name, const uint16_t type)
 	// Fill output.
 	query->name = strdup(name);
 	query->type = type;
+	query->ixfr_serial = -1;
 
 	return query;
+}
+
+void query_set_serial(query_t *query, const uint32_t serial)
+{
+	query->ixfr_serial = serial;
 }
 
 void query_free(query_t *query)

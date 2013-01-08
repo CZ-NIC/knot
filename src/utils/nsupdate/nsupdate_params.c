@@ -34,7 +34,7 @@ static void nsupdate_params_init(params_t *params)
 	init_list(&params->qfiles);
 
 	// Default values.
-	params->mode = OPERATION_UPDATE;
+	params->operation = OPERATION_UPDATE;
 	params->port = DEFAULT_PORT;
 	params->protocol = PROTO_ALL;
 	params->udp_size = DEFAULT_UDP_SIZE;

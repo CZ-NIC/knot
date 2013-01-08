@@ -45,6 +45,8 @@ typedef struct {
 	char		*name;
 	/*!< Type number to query on. */
 	uint16_t	type;
+	/*!< SOA serial for IXFR. */
+	int64_t         ixfr_serial;
 } query_t;
 
 typedef enum {
@@ -89,7 +91,7 @@ typedef struct {
 	list		qfiles;
 
 	/*!< Operation mode. */
-	operation_t	mode;
+	operation_t	operation;
 	/*!< Version of ip protocol to use. */
 	ip_version_t	ip;
 	/*!< Type (TCP, UDP) protocol to use. */
@@ -98,7 +100,7 @@ typedef struct {
 	uint16_t	class_num;
 	/*!< Default type number (16unsigned + -1 uninitialized). */
 	int32_t		type_num;
-	/*!< SOA serial for IXFR query (32unsigned + -1 uninitialized). */
+	/*!< Default SOA serial for IXFR (32unsigned + -1 uninitialized). */
 	int64_t		ixfr_serial;
 	/*!< Use recursion. */
 	bool		recursion;
@@ -118,9 +120,12 @@ typedef struct {
 	const char*	addr;
 } params_t;
 
-query_t* create_query(const char *name, const uint16_t type);
+query_t* query_create(const char *name, const uint16_t type);
 
 void query_free(query_t *query);
+
+void query_set_serial(query_t *query, const uint32_t serial);
+
 
 int parse_class(const char *rclass, uint16_t *class_num);
 

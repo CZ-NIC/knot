@@ -42,7 +42,7 @@ static void host_params_init(params_t *params)
 	init_list(&params->queries);
 
 	// Default values.
-	params->mode = OPERATION_QUERY;
+	params->operation = OPERATION_QUERY;
 	params->ip = IP_ALL;
 	params->protocol = PROTO_ALL;
 	params->udp_size = DEFAULT_UDP_SIZE;
@@ -87,7 +87,7 @@ static void host_params_flag_all(params_t *params)
 static void host_params_flag_soa(params_t *params)
 {
 	params->type_num = KNOT_RRTYPE_SOA;
-	params->mode = OPERATION_LIST_SOA;
+	params->operation = OPERATION_LIST_SOA;
 }
 
 static void host_params_flag_axfr(params_t *params)
@@ -135,7 +135,7 @@ static int host_params_parse_name(params_t *params, const char *name)
 			}
 
 			// Add reverse query for address.
-			query = create_query(reverse, params->type_num);
+			query = query_create(reverse, params->type_num);
 			if (query == NULL) {
 				free(reverse);
 				return KNOT_ENOMEM;
@@ -143,10 +143,14 @@ static int host_params_parse_name(params_t *params, const char *name)
 			add_tail(&params->queries, (node *)query);
 		} else {
 			// Add query for name and specified type.
-			query = create_query(name, params->type_num);
+			query = query_create(name, params->type_num);
 			if (query == NULL) {
 				free(reverse);
 				return KNOT_ENOMEM;
+			}
+			// Set SOA serial for IXFR query.
+			if (params->type_num == KNOT_RRTYPE_IXFR) {
+				query_set_serial(query, params->ixfr_serial);
 			}
 			add_tail(&params->queries, (node *)query);
 		}
@@ -154,28 +158,28 @@ static int host_params_parse_name(params_t *params, const char *name)
 	} else {
 		if (reverse == NULL) {
 			// Add query for name and type A.
-			query = create_query(name, KNOT_RRTYPE_A);
+			query = query_create(name, KNOT_RRTYPE_A);
 			if (query == NULL) {
 				return KNOT_ENOMEM;
 			}
 			add_tail(&params->queries, (node *)query);
 
 			// Add query for name and type AAAA.
-			query = create_query(name, KNOT_RRTYPE_AAAA);
+			query = query_create(name, KNOT_RRTYPE_AAAA);
 			if (query == NULL) {
 				return KNOT_ENOMEM;
 			}
 			add_tail(&params->queries, (node *)query);
 
 			// Add query for name and type MX.
-			query = create_query(name, KNOT_RRTYPE_MX);
+			query = query_create(name, KNOT_RRTYPE_MX);
 			if (query == NULL) {
 				return KNOT_ENOMEM;
 			}
 			add_tail(&params->queries, (node *)query);
 		} else {
 			// Add reverse query for address.
-			query = create_query(reverse, KNOT_RRTYPE_PTR);
+			query = query_create(reverse, KNOT_RRTYPE_PTR);
 			if (query == NULL) {
 				free(reverse);
 				return KNOT_ENOMEM;
