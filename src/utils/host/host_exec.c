@@ -165,63 +165,72 @@ static knot_packet_t* create_query_packet(const params_t *params,
 	return packet;
 }
 
-static int process_query(const params_t *params, const query_t *query)
+static void print_data(const params_t *params, knot_packet_t *packet)
 {
-	const size_t out_len = MAX_PACKET_SIZE;
-	uint8_t      out[MAX_PACKET_SIZE];
-	size_t       in_len = 0;
-	uint8_t      *in = NULL;
-	node         *server = NULL;
+	char buf[100000];
+
+	for (int i = 0; i < packet->an_rrsets; i++) {
+		rrset_write_mem(buf, sizeof(buf), (packet->answer)[i]);
+		printf("%s", buf);
+	}
+}
+
+static int process_query(const params_t *params, const query_t *query, const server_t *server)
+{
+	knot_packet_t *out_packet, *in_packet;
+	int	in_len;
+	uint8_t	in[MAX_PACKET_SIZE];
+	size_t	out_len = 0;
+	uint8_t	*out = NULL;
+	int	sockfd;
 
 	// Create query packet.
-	knot_packet_t *packet = create_query_packet(params, query, &in, &in_len);
+	out_packet = create_query_packet(params, query, &out, &out_len);
 
-	if (packet == NULL) {
+	if (out_packet == NULL) {
 		return KNOT_ERROR;
 	}
 
-	// Loop over nameserver list.
-	WALK_LIST(server, params->servers) {
-		server_t *srv = (server_t *)server;
-		int sockfd;
+	// Send query packet.
+	sockfd = send_msg(params, query, server, out, out_len);
 
-		sockfd = send_msg(params, query, srv, in, in_len);
-
-		if (sockfd == -1) {
-			continue;
-		}
-
-                int x;
-
-		while (x = receive_msg(params, query, sockfd, out, out_len), x) {
-
-                knot_packet_t *pkt_in =
-                        knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
-
-                char y[70000];
-
-                int ret = knot_packet_parse_from_wire(pkt_in, out, x, 0, KNOT_PACKET_DUPL_NO_MERGE);
-                if (ret != KNOT_EOK) {
-                        printf("ggr\n");
-                }
-
-		for (int i = 0; i < pkt_in->an_rrsets; i++) {
-	                rrset_write_mem(y, 70000, (pkt_in->answer)[i]);
-                	printf("%s", y);
-		}
-
-		knot_packet_free(&pkt_in);
-
-		}
-
-		shutdown(sockfd, SHUT_RDWR);
-
-		// If successfully processed, stop quering nameservers.
-		break;
+	if (sockfd == -1) {
+		return KNOT_ERROR;
 	}
 
+	do {
+		in_len = receive_msg(params, query, sockfd, in, sizeof(in));
+
+		if (in_len <= 0) {
+			knot_packet_free(&in_packet);
+			break;
+		}
+
+		in_packet = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
+
+		int ret = knot_packet_parse_from_wire(in_packet, in, in_len, 0,
+		                                      KNOT_PACKET_DUPL_NO_MERGE);
+		if (ret != KNOT_EOK) {
+			WARN("can't parse reply\n");
+			knot_packet_free(&in_packet);
+			break;
+		}
+
+		print_data(params, in_packet);
+
+		knot_packet_free(&in_packet);
+
+		if (query->type != KNOT_RRTYPE_AXFR &&
+		    query->type != KNOT_RRTYPE_IXFR) {
+			break;
+		}
+	} while (1);
+
+	// Close socket.
+	shutdown(sockfd, SHUT_RDWR);
+
 	// Drop query packet.
-	knot_packet_free(&packet);
+	knot_packet_free(&out_packet);
 
 	return KNOT_EOK;
 }
@@ -229,6 +238,7 @@ static int process_query(const params_t *params, const query_t *query)
 int host_exec(const params_t *params)
 {
 	node *query = NULL;
+	node *server = NULL;
 
 	if (params == NULL) {
 		return KNOT_EINVAL;
@@ -236,14 +246,25 @@ int host_exec(const params_t *params)
 
 	switch (params->operation) {
 	case OPERATION_QUERY:
+		// Loop over query list.
 		WALK_LIST(query, params->queries) {
-			process_query(params, (query_t *)query);
+			// Loop over nameserver list.
+			WALK_LIST(server, params->servers) {
+				int ret = process_query(params,
+				                        (query_t *)query,
+				                        (server_t *)server);
+
+				if (ret == KNOT_EOK) {
+					break;
+				}
+			}
 		}
 
 		break;
 	case OPERATION_LIST_SOA:
 		break;
 	default:
+		ERR("unsupported operation\n");
 		break;
 	}
 
