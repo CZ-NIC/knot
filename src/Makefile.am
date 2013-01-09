@@ -1,6 +1,6 @@
 ACLOCAL_AMFLAGS = -I ../m4
 
-libexec_PROGRAMS = knot-zcompile
+libexec_PROGRAMS = knot-zcompile unittests-libknot
 sbin_PROGRAMS = 
 dist_man_MANS = knot.conf.5 knotc.8 knotd.8
 
@@ -121,8 +121,16 @@ knot_zcompile_SOURCES =				\
 	zscanner/scanner.c			\
 	zscanner/scanner_functions.h		\
 	zscanner/scanner_functions.c
+	
+unittests_libknot_SOURCES =			\
+	tests/libknot/libknot/rrset_tests.c	\
+	tests/libknot/libknot/rrset_tests.h	\
+	tests/libknot/unittests_libknot.c
+
 
 knot_zcompile_LDADD = @LIBOBJS@
+
+unittests_libknot_LDADD = knot-zcompile.la @LIBOBJS@
 
 # automake complains on % rules:
 #   `%'-style pattern rules are a GNU make extension

@@ -48,20 +48,22 @@ enum rrset_test_const {
 	TEST_RDATA_NS_3 = 4,
 	TEST_RDATA_MX_1 = 5,
 	TEST_RDATA_MX_2 = 6,
-	TEST_RDATA_MX_3 = 7
+	TEST_RDATA_MX_3 = 7,
+	CHECK_LAST_INDEX = 100,
+	OMMIT_LAST_INDEX = 101
 };
 
-static uint8_t test_dname_strings[TEST_DNAME_COUNT] = {
-	"test.dname.com.",
-	"test2.dname.com.",
-	"test3.dname.com."
+static uint8_t *test_dname_strings[TEST_DNAME_COUNT] = {
+	(uint8_t *)"test.dname.com.",
+	(uint8_t *)"test2.dname.com.",
+	(uint8_t *)"test3.dname.com."
 };
 
 static knot_dname_t *test_dnames[TEST_DNAME_COUNT];
 
 struct test_rdata {
-	uint8_t rdata[65535]; // Rdata in knot internal format
-	uint8_t wire[65535]; // Rdata in wireformat
+	uint8_t *rdata; // Rdata in knot internal format
+	uint8_t *wire; // Rdata in wireformat
 	uint16_t size;
 	uint16_t wire_size;
 };
@@ -115,9 +117,13 @@ static int create_test_dnames()
 static int create_test_rdata()
 {
 	/* Only MX types need init. */
-	memcpy(test_rdata_array[TEST_RDATA_MX_1] + 2, &test_dnames[0]);
-	memcpy(test_rdata_array[TEST_RDATA_MX_2] + 2, &test_dnames[1]);
-	memcpy(test_rdata_array[TEST_RDATA_MX_3] + 2, &test_dnames[2]);
+	memcpy(test_rdata_array[TEST_RDATA_MX_1].rdata + 2, &test_dnames[0],
+	       sizeof(knot_dname_t *));
+	memcpy(test_rdata_array[TEST_RDATA_MX_2].rdata + 2, &test_dnames[1],
+	       sizeof(knot_dname_t *));
+	memcpy(test_rdata_array[TEST_RDATA_MX_3].rdata + 2, &test_dnames[2],
+	       sizeof(knot_dname_t *));
+	return 0;
 }
 
 static int create_test_rrsets()
@@ -454,6 +460,44 @@ static int test_rrset_to_wire()
 }
 
 static int test_rrset_merge()
+{
+	knot_rrset_t *merge_to =
+		knot_rrset_deep_copy(test_rrset_array[0].rrset);
+	knot_rrset_t *merge_from = test_rrset_array[1].rrset;
+	
+	int ret = knot_rrset_merge(&merge_to, &merge_from);
+	if (ret) {
+		diag("Could not merge RRSets.\n");
+		return 0;
+	}
+	
+	if (merge_to->rdata_count != test_rrset_array[0].rrset->rdata_count +
+	    merge_from->rdata_count) {
+		diag("Not all RDATA were merged.\n");
+		return 0;
+	}
+	
+	/* Check that the first RRSet now contains RDATA from the second. */
+	/* Indices first. */
+	ret = memcmp(merge_to->rdata_indices, test_rrset_array[TODOmergnuty],
+	             merge_to->rdata_count);
+	if (ret) {
+		diag("Merge operation corrupted the first RRSet's indices.\n");
+		return 0;
+	}
+	
+	/* Check actual RDATA. */
+	ret = knot_rrset_compare_rdata(merge_to->rdata,
+	                               test_rrset_array[TODOmergnuty]);
+	if (ret) {
+		diag("Merged RDATA are wrong.\n");
+		return 0;
+	}
+	
+	return 1;
+}
+
+static int test_rrset_merge_no_dupl()
 {
 	
 }

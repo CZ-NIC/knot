@@ -30,17 +30,6 @@
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
 
-static uint32_t rrset_rdata_size_total(const knot_rrset_t *rrset)
-{
-	if (rrset == NULL || rrset->rdata_indices == NULL ||
-	    rrset->rdata_count == 0) {
-		return 0;
-	}
-	
-	/* Last index denotes end of all RRs. */
-	return (rrset->rdata_indices[rrset->rdata_count - 1]);
-}
-
 static size_t rrset_rdata_offset(const knot_rrset_t *rrset,
                                  size_t pos)
 {
@@ -141,6 +130,17 @@ static size_t rrset_rdata_naptr_bin_chunk_size(const knot_rrset_t *rrset,
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
+
+uint32_t rrset_rdata_size_total(const knot_rrset_t *rrset)
+{
+	if (rrset == NULL || rrset->rdata_indices == NULL ||
+	    rrset->rdata_count == 0) {
+		return 0;
+	}
+	
+	/* Last index denotes end of all RRs. */
+	return (rrset->rdata_indices[rrset->rdata_count - 1]);
+}
 
 knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
                              uint16_t rclass, uint32_t ttl)

@@ -76,6 +76,9 @@ typedef enum  {
 } knot_rrset_dupl_handling_t;
 
 /*----------------------------------------------------------------------------*/
+
+uint32_t rrset_rdata_size_total(const knot_rrset_t *rrset);
+
 /*!
  * \brief Creates a new RRSet with the given properties.
  *
@@ -256,7 +259,6 @@ knot_rrset_t *knot_rrset_get_rrsigs(knot_rrset_t *rrset);
 int knot_rrset_compare_rdata(const knot_rrset_t *r1, const knot_rrset_t *r2);
 
 /*! \todo Should support (optional) dname compression. */
-//TODO test
 int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
                        uint16_t *rr_count);
 
