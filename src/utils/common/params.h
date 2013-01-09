@@ -79,6 +79,8 @@ typedef enum {
 	FORMAT_NSUPDATE,
 	/*!< Verbose output (same for host and dig). */
 	FORMAT_VERBOSE,
+	/*!< Verbose multiline output. */
+	FORMAT_MULTILINE,
 } format_t;
 
 /*! \brief Structure containing parameters. */

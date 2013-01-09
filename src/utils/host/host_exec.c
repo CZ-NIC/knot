@@ -31,19 +31,6 @@
 #include "utils/host/host_params.h"	// params_t
 #include "utils/common/netio.h"
 
-static bool use_recursion(const params_t *params, const uint16_t type)
-{
-	if (type == KNOT_RRTYPE_AXFR || type == KNOT_RRTYPE_IXFR) {
-		return false;
-	} else {
-		if (params->recursion == true) {
-			return true;
-		} else {
-			return false;
-		}
-	}
-}
-
 static knot_packet_t* create_query_packet(const params_t *params,
                                           const query_t  *query,
                                           uint8_t        **data,
@@ -74,7 +61,7 @@ static knot_packet_t* create_query_packet(const params_t *params,
 	knot_query_init(packet);
 
 	// Set recursion bit to wireformat.
-	if (use_recursion(params, query->type) == true) {
+	if (params->recursion == true) {
 		knot_wire_set_rd(packet->wireformat);
 	} else {
 		knot_wire_flags_clear_rd(packet->wireformat);
@@ -218,10 +205,15 @@ static int process_query(const params_t *params, const query_t *query, const ser
 
 		print_data(params, in_packet);
 
+		uint32_t type = ((in_packet->answer)[in_packet->an_rrsets - 1])->type;
+
 		knot_packet_free(&in_packet);
 
 		if (query->type != KNOT_RRTYPE_AXFR &&
 		    query->type != KNOT_RRTYPE_IXFR) {
+			break;
+		}
+		if (type == KNOT_RRTYPE_SOA) {
 			break;
 		}
 	} while (1);
