@@ -28,6 +28,10 @@
 
 int get_socktype(const params_t *params, const uint16_t qtype)
 {
+	if (params == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	switch (params->protocol) {
 	case PROTO_TCP:
 		return SOCK_STREAM;
@@ -54,6 +58,10 @@ int send_msg(const params_t *params,
 	struct addrinfo hints, *res;
 	struct pollfd pfd;
 	int sockfd;
+
+	if (params == NULL || query == NULL || server == NULL || buf == NULL) {
+		return KNOT_EINVAL;
+	}
 
 	memset(&hints, 0, sizeof hints);
 
@@ -141,6 +149,10 @@ int receive_msg(const params_t *params,
 {
 	ssize_t       ret;
 	struct pollfd pfd;
+
+	if (params == NULL || query == NULL || buf == NULL) {
+		return KNOT_EINVAL;
+	}
 
 	// Initialize poll descriptor structure.
 	pfd.fd = sockfd;
