@@ -1,0 +1,21 @@
+$ORIGIN	.
+$TTL	1
+
+; For more tests on dname see NS test (same processing)
+
+; OK
+@	MINFO	.	.		; The simplest dnames
+@	MINFO	@	@		; Use origin
+@	MINFO	mail	mail.tld.	; Relative and absolute dnames
+@	MINFO	\# 2 00 00		; Hexadecimal rdata
+@	TYPE14	\# 2 00 00		; TYPE + Hexadecimal rdata
+@	TYPE14	@	@		; TYPE
+@	minfo	@	@		; Type in lower-case
+
+; KO
+@	MINFO
+@	MINFO				; Empty rdata
+@	MINFO	\# 0			; Hex empty rdata
+@	MINFO	\#			; Missing hex length
+@	MINFO	\# 3 00 0001		; Too long rdata
+@	MINFO	\# 3 00 00		; Bad rdata length

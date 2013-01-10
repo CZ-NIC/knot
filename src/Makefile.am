@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I ../m4
-libexec_PROGRAMS = knot-zcompile unittests unittests-zcompile unittests-xfr khost knsupdate
+libexec_PROGRAMS = knot-zcompile unittests unittests-zcompile unittests-xfr unittests-zscanner khost knsupdate
 sbin_PROGRAMS = knotc knotd
 dist_man_MANS = knot.conf.5 knotc.8 knotd.8
 
@@ -123,7 +123,7 @@ nodist_unittests_SOURCES =			\
 knotd_SOURCES =					\
 	knot/main.c
 
-noinst_LTLIBRARIES = libknot.la libknotd.la libknots.la
+noinst_LTLIBRARIES = libknot.la libknotd.la libknots.la libzscanner.la
 
 libknot_la_SOURCES =				\
 	libknot/util/utils.c			\
@@ -194,6 +194,8 @@ libknots_la_SOURCES =				\
 	common/libtap/tap_unit.h		\
 	common/mempattern.h			\
 	common/mempattern.c			\
+	common/descriptor_new.h			\
+	common/descriptor_new.c			\
 	common/lists.c				\
 	common/base64.c				\
 	common/base64.h				\
@@ -224,22 +226,22 @@ libknots_la_SOURCES =				\
 	common/errors.c				\
 	common/errcode.h			\
 	common/errcode.c			\
-        common/dSFMT.h				\
-        common/dSFMT-params.h			\
-        common/dSFMT-params521.h		\
-        common/dSFMT.c				\
-        common/prng.h				\
-        common/prng.c				\
-        common/fdset.h				\
-        common/fdset.c				\
-        common/fdset_poll.h			\
-        common/fdset_poll.c			\
-        common/fdset_kqueue.h			\
-        common/fdset_kqueue.c			\
-        common/fdset_epoll.h			\
-        common/fdset_epoll.c			\
+	common/dSFMT.h				\
+	common/dSFMT-params.h			\
+	common/dSFMT-params521.h		\
+	common/dSFMT.c				\
+	common/prng.h				\
+	common/prng.c				\
+	common/fdset.h				\
+	common/fdset.c				\
+	common/fdset_poll.h			\
+	common/fdset_poll.c			\
+	common/fdset_kqueue.h			\
+	common/fdset_kqueue.c			\
+	common/fdset_epoll.h			\
+	common/fdset_epoll.c			\
 	common/log.c				\
-	common/log.h			
+	common/log.h
 
 libknotd_la_SOURCES =				\
 	knot/stat/gatherer.c			\
@@ -286,8 +288,27 @@ libknotd_la_SOURCES =				\
 	knot/zone/zone-dump.h			\
 	knot/server/server.h
 
+zscanner/scanner.c: zscanner/scanner.rl zscanner/scanner_body.rl
+	$(RAGEL) -s -o zscanner/scanner.c zscanner/scanner.rl
+
+unittests_zscanner_SOURCES =			\
+	zscanner/test/zscanner_test.c		\
+	zscanner/test/tests.h			\
+	zscanner/test/tests.c			\
+	zscanner/test/processing.h		\
+	zscanner/test/processing.c
+
+libzscanner_la_SOURCES =			\
+	zscanner/file_loader.h			\
+	zscanner/file_loader.c			\
+	zscanner/scanner.h			\
+	zscanner/scanner.c			\
+	zscanner/scanner_functions.h		\
+	zscanner/scanner_functions.c
+
 libknotd_la_LIBADD = libknot.la libknots.la @LIBOBJS@
 libknots_la_LIBADD = @LIBOBJS@
+libzscanner_la_LIBADD = libknots.la
 knotd_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 knotc_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 khost_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
@@ -296,6 +317,7 @@ knot_zcompile_LDADD = libknots.la libknot.la libknotd.la @LIBOBJS@
 unittests_LDADD = libknotd.la libknots.la @LIBOBJS@
 unittests_zcompile_LDADD = libknot.la libknots.la libknotd.la @LIBOBJS@
 unittests_xfr_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
+unittests_zscanner_LDADD = libknots.la libknot.la libknotd.la libzscanner.la @LIBOBJS@
 
 # automake complains on % rules:
 #   `%'-style pattern rules are a GNU make extension

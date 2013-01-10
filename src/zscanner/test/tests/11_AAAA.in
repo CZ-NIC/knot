@@ -1,0 +1,24 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	AAAA	0:0:0:0:0:0:0:0					; Minimal ipv6 address
+@	AAAA	FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF		; Maximal ipv6 address
+@	AAAA	\# 16 00000000 00000000 00000000 00000000	; Hexadecimal rdata
+@	TYPE28	\# 16 00000000 00000000 00000000 00000000	; TYPE + Hexadecimal rdata
+@	TYPE28	0:0:0:0:0:0:0:0		; TYPE
+@	AAAA	0::1.2.3.4		; ipv6 address based on ipv4 address
+@	AAAA	::			; Double colon
+@	aaAA	::			; Type in lower-case
+
+; KO
+@	AAAA
+@	AAAA				; Empty rdata
+@	AAAA	\# 0			; Hex empty rdata
+@	AAAA	\#			; Missing hex length
+@	AAAA	0::FFFFF		; 16bit overflow
+@	AAAA	0:0:0:0:0:0:0		; Short address
+@	AAAA	0:0:0:0:0:0:0:X		; Bad character
+@	AAAA	:: ::			; Unexpected item
+@	AAAA	\# 17 00000000 00000000 00000000 00000000 00	; Too long rdata
+@	AAAA	\# 17 00000000 00000000 00000000 00000000	; Bad rdata length

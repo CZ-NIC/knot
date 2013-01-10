@@ -1,0 +1,4 @@
+$TTL	1
+
+; KO
+$ORIGIN ..		; Missing label between dots

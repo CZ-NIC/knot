@@ -1,0 +1,14 @@
+$ORIGIN	.
+$TTL	1
+
+; The RP is the same as the MINFO, so there are the differences and basics only.
+
+; OK
+@	RP	mail	mail.tld.	; Relative and absolute dnames
+@	RP	\# 2 00 00		; Hexadecimal rdata
+@	TYPE17	\# 2 00 00		; TYPE + Hexadecimal rdata
+@	TYPE17	@	@		; TYPE
+@	rp	@	@		; Type in lower-case
+
+; KO
+@	RP

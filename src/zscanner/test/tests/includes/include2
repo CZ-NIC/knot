@@ -1,0 +1,6 @@
+$TTL	1H
+
+b	NS	@
+
+$ORIGIN	tld1a.
+b	NS	@

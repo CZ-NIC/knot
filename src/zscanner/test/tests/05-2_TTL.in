@@ -1,0 +1,4 @@
+$ORIGIN	.
+
+; KO
+$TTL	100000000W	; 32bit overflow

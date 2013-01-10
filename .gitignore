@@ -39,6 +39,7 @@ src/unittests
 src/unittests-libknot
 src/unittests-libknot-realdata
 src/unittests-zcompile
+src/unittests-zscanner
 src/knotc
 src/knotd
 src/knot-zcompile

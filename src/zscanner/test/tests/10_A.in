@@ -1,0 +1,22 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	A	0.0.0.0		; Minimal ipv4 address
+@	A	255.255.255.255	; Maximal ipv4 address
+@	A	\# 4 00000000	; Hexadecimal rdata
+@	TYPE1	\# 4 00000000	; TYPE + Hexadecimal rdata
+@	TYPE1	0.0.0.0		; TYPE
+@	a	0.0.0.0		; Type in lower-case
+
+; KO
+@	A
+@	A			; Empty rdata
+@	A	\# 0		; Hex empty rdata
+@	A	\#		; Missing hex length
+@	A	0.0.0.256	; 8bit overflow
+@	A	0.0.0		; Short address
+@	A	0.0.0.A		; Bad character
+@	A	0.0.0.0 1.1.1.1	; Unexpected item
+@	A	\# 5 0000000000	; Too long rdata
+@	A	\# 5 00000000	; Bad rdata length

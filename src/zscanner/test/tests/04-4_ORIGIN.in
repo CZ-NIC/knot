@@ -1,0 +1,4 @@
+$TTL	1
+
+; KO
+$ORIGIN \1		; Slash notation requires 3 digits

@@ -1,0 +1,29 @@
+$TTL	1
+
+; OK
+$ORIGIN .		; Root domain
+@	NS	@	; Use origin
+a.	NS	@	; Absolute dname
+a	NS	@	; Relative dname
+$ORIGIN tld.		; 1. level domain
+@	NS	@	; Use origin
+a.	NS	@	; Absolute dname
+a	NS	@	; Relative dname
+$ORIGIN second.tld.	; 2. level domain
+@	NS	@	; Use origin
+a.	NS	@	; Absolute dname
+a	NS	@	; Relative dname
+$ORIGIN \0320\ \\\"\.\@\*.tld.	; Label with special chars
+@	NS	@	; Use origin
+$ORIGIN b.a.9.8.7.6.5.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa.	; IPv6 reverse
+@	NS	@	; Use origin
+$ORIGIN 12345678901234567890123456789012345678901234567890123456789012\051.tld.		; Label of maximal length
+@	NS	@	; Use origin
+$ORIGIN 123456789012345678901234567890123456789012345678901234567890123.123456789012345678901234567890123456789012345678901234567890123.123456789012345678901234567890123456789012345678901234567890123.1234567890123456789012345678901234567890123456789012345678901.	; Domain name of maximal length
+@	NS	@	; Use origin
+$origin .		; Lower-case
+@	NS	@	; Use origin
+
+; KO
+$ORIGIN 		; Empty input
+.	NS	.	; Is OK, but shouldn't be processed due to previous error stop!

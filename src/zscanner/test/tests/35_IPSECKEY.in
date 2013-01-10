@@ -1,0 +1,32 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	IPSECKEY	0	0	0	.			; The simplest variant - no gw, no key
+@	IPSECKEY	255	3	255	.	AA==		; Maximal numbers
+@	IPSECKEY	0	1	0	0.0.0.0			; IPv4 address
+@	IPSECKEY	0	2	0	::			; IPv6 address
+@	IPSECKEY	0	3	0	\0320\ \\\"\.\@\*.tld.	; Special chars in domain name
+@	IPSECKEY	0	0	1	.	Zm8=            ; One char padding
+@	IPSECKEY	0	0	1	.	Zm9v            ; Without padding
+@	IPSECKEY	0	0	1	.	Zm9vYg==        ; Two base64 blocks
+@	IPSECKEY	0	0	1	.	Zm9v YmE=       ; Two base64 blocks with blank space between them
+@	TYPE45	\# 3 000000						; TYPE + Hexadecimal rdata
+@	TYPE45		0	0	1	.	AA==		; TYPE
+@	ipseckey	0	0	1	.	AA==		; Type in lower-case
+
+; KO
+@	IPSECKEY
+@	IPSECKEY							; Empty rdata
+@	IPSECKEY	\# 0						; Hex empty rdata
+@	IPSECKEY	\#						; Missing hex length
+@	IPSECKEY	256	0	0	.			; Precedence overflow
+@	IPSECKEY	0	4	0	.			; Unknown gateway
+@	IPSECKEY	0	0	256	.	AA==		; Algorithm overflow
+@	IPSECKEY	0	0	0	.	AA==		; If alg is 0 then key shouldn't be given
+@	IPSECKEY	0	0	0	a%			; Bad domain name char
+@	IPSECKEY	0	0	1	.	A		; Continuous block length must be multiple of 4
+@	IPSECKEY	0	0	1	.	=		; Bad padding
+@	IPSECKEY	0	0					; Missing item
+@	IPSECKEY	\# 3 00000000					; Too long rdata
+@	IPSECKEY	\# 4 000000					; Bad rdata length

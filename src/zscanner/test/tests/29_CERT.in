@@ -1,0 +1,34 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	CERT	0	0	0	AA==		; The simplest variant
+@	CERT	65535	65535	255	AA==		; Maximal numbers
+@	CERT	0	0	0	Zm8=		; One char padding
+@	CERT	0	0	0	Zm9v		; Without padding
+@	CERT	0	0	0	Zm9vYg==	; Two base64 blocks 
+@	CERT	0	0	0	Zm9v YmE=	; Two base64 blocks with blank space between them
+@	TYPE37	\# 6 000000000000			; TYPE + Hexadecimal rdata
+@	TYPE37	0	0	0	AA==		; TYPE
+@	cert	0	0	0	AA==		; Type in lower-case
+
+; KO
+@	CERT
+@	CERT						; Empty rdata
+@	CERT	\# 0					; Hex empty rdata
+@	CERT	\#					; Missing hex length
+@	CERT	65536	0	0	AA==		; Type overflow
+@	CERT	0	65536	0	AA==		; Key tag overflow
+@	CERT	0	0	256	AA==		; Algorithm overflow
+@	CERT	0	0	0	A		; Continuous block length must be multiple of 4
+@	CERT	0	0	0	AB		; Continuous block length must be multiple of 4
+@	CERT	0	0	0	ABC		; Continuous block length must be multiple of 4
+@	CERT	0	0	0	AA ==		; Continuous block length must be multiple of 4
+@	CERT	0	0	0	A===		; Bad padding
+@	CERT	0	0	0	=		; Bad padding
+@	CERT	0	0	0	==		; Bad padding
+@	CERT	0	0	0	===		; Bad padding
+@	CERT	0	0	0	====		; Bad padding
+@	CERT	0	0	0			; Missing item
+@	CERT	\# 6 00000000000000			; Too long rdata
+@	CERT	\# 7 000000000000			; Bad rdata length
