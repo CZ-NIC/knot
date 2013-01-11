@@ -148,6 +148,8 @@ void knot_rrset_set_owner(knot_rrset_t *rrset, knot_dname_t* owner);
 
 void knot_rrset_set_ttl(knot_rrset_t *rrset, uint32_t ttl);
 
+void knot_rrset_set_class(knot_rrset_t *rrset, uint16_t rclass);
+
 /*!
  * \brief Returns the TYPE of the RRSet.
  *
@@ -244,7 +246,7 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
  * \retval <> 0 If RRSets are equal.
  * \retval 0 if RRSets are not equal.
  */
-int knot_rrset_compare(const knot_rrset_t *r1,
+int knot_rrset_match(const knot_rrset_t *r1,
                          const knot_rrset_t *r2,
                          knot_rrset_compare_type_t cmp);
 
@@ -329,6 +331,8 @@ int knot_rrset_merge(void **r1, void **r2);
  * \retval KNOT_EOK
  * \retval KNOT_EINVAL if the RRSets could not be merged, because their
  *         Owner, Type, Class or TTL does not match.
+ * \retval >0 if some RDATA have been removed because they were duplicate. The
+ *         return value indicates number of such RDATA.
  */
 int knot_rrset_merge_no_dupl(void **r1, void **r2);
 

@@ -1358,20 +1358,19 @@ dbg_zone_exec_detail(
 		return ret;
 	}
 
-	ret = knot_zone_tree_insert(zone->nodes, node);
-	if (ret != KNOT_EOK) {
-		dbg_zone("Failed to insert node into zone tree.\n");
-		return ret;
-	}
-
 	if (use_domain_table) {
 		ret = knot_zone_contents_dnames_from_node_to_table(
 		          zone->dname_table, node);
 		if (ret != KNOT_EOK) {
-			/*! \todo Remove node from the tree and hash table.*/
 			dbg_zone("Failed to add dnames into table.\n");
 			return ret;
 		}
+	}
+
+	ret = knot_zone_tree_insert(zone->nodes, node);
+	if (ret != KNOT_EOK) {
+		dbg_zone("Failed to insert node into zone tree.\n");
+		return ret;
 	}
 
 #ifdef USE_HASH_TABLE
@@ -1381,7 +1380,10 @@ dbg_zone_exec_detail(
 	                      (const char *)node->owner->name,
 	                      node->owner->size, (void *)node) != 0) {
 		dbg_zone("Error inserting node into hash table!\n");
-		/*! \todo Remove the node from the tree. */
+		knot_zone_tree_node_t *removed;
+		(void)knot_zone_tree_remove(zone->nodes, knot_node_owner(node),
+		                            &removed);
+		assert(removed->node == node);
 		return KNOT_EHASH;
 	}
 #endif

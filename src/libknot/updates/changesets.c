@@ -66,7 +66,7 @@ static int knot_changeset_check_count(knot_rrset_t ***rrsets, size_t count,
 static int knot_changeset_rrsets_match(const knot_rrset_t *rrset1,
                                          const knot_rrset_t *rrset2)
 {
-	return knot_rrset_compare(rrset1, rrset2, KNOT_RRSET_COMPARE_HEADER)
+	return knot_rrset_match(rrset1, rrset2, KNOT_RRSET_COMPARE_HEADER)
 	       && (knot_rrset_type(rrset1) != KNOT_RRTYPE_RRSIG
 	           || knot_rdata_rrsig_type_covered(
 	                    knot_rrset_rdata(rrset1))
@@ -289,6 +289,17 @@ uint32_t knot_changeset_flags(knot_changeset_t *changeset)
 
 /*----------------------------------------------------------------------------*/
 
+int knot_changeset_is_empty(const knot_changeset_t *changeset)
+{
+	if (changeset == NULL) {
+		return 0;
+	}
+
+	return (changeset->add_count == 0 && changeset->remove_count == 0);
+}
+
+/*----------------------------------------------------------------------------*/
+
 void knot_free_changeset(knot_changeset_t **changeset)
 {
 	assert((*changeset)->add_allocated >= (*changeset)->add_count);
@@ -338,4 +349,275 @@ void knot_free_changesets(knot_changesets_t **changesets)
 
 	free(*changesets);
 	*changesets = NULL;
+}
+
+/*----------------------------------------------------------------------------*/
+/* knot_changes_t manipulation                                                */
+/*----------------------------------------------------------------------------*/
+
+int knot_changes_rrsets_reserve(knot_rrset_t ***rrsets,
+                              int *count, int *allocated, int to_add)
+{
+	if (rrsets == NULL || count == NULL || allocated == NULL) {
+		return KNOT_EINVAL;
+	}
+	
+	if (*count + to_add <= *allocated) {
+		return KNOT_EOK;
+	}
+
+	int new_count = (*allocated == 0) ? 2 : *allocated * 2;
+	while (new_count < *count + to_add) {
+		new_count *= 2;
+	}
+
+	/* Allocate new memory block. */
+	knot_rrset_t **rrsets_new = malloc(new_count * sizeof(knot_rrset_t *));
+	if (rrsets_new == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	/* Initialize new memory and copy old data. */
+	memset(rrsets_new, 0, new_count * sizeof(knot_rrset_t *));
+	memcpy(rrsets_new, *rrsets, (*allocated) * sizeof(knot_rrset_t *));
+
+	/* Free old nodes and switch pointers. */
+	free(*rrsets);
+	*rrsets = rrsets_new;
+	*allocated = new_count;
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_changes_nodes_reserve(knot_node_t ***nodes,
+                             int *count, int *allocated)
+{
+	if (nodes == NULL || count == NULL || allocated == NULL) {
+		return KNOT_EINVAL;
+	}
+	
+	if (*count + 2 <= *allocated) {
+		return KNOT_EOK;
+	}
+
+	int new_count = (*allocated == 0) ? 2 : *allocated * 2;
+
+	/* Allocate new memory block. */
+	const size_t node_len = sizeof(knot_node_t *);
+	knot_node_t **nodes_new = malloc(new_count * node_len);
+	if (nodes_new == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	/* Clear memory block and copy old data. */
+	memset(nodes_new, 0, new_count * node_len);
+	memcpy(nodes_new, *nodes, (*allocated) * node_len);
+
+	/* Free old nodes and switch pointers. */
+	free(*nodes);
+	*nodes = nodes_new;
+	*allocated = new_count;
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_changes_rdata_reserve(knot_rdata_t ***rdatas, uint16_t **types,
+                             int count, int *allocated, int to_add)
+{
+	if (rdatas == NULL || types == NULL || allocated == NULL) {
+		return KNOT_EINVAL;
+	}
+	
+	if (count + to_add <= *allocated) {
+		return KNOT_EOK;
+	}
+
+	int new_count = (*allocated == 0) ? 2 : *allocated * 2;
+	while (new_count < count + to_add) {
+		new_count *= 2;
+	}
+
+	/* Allocate new memory block. */
+	knot_rdata_t **rdatas_new = malloc(new_count * sizeof(knot_rdata_t *));
+	if (rdatas_new == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	uint16_t *types_new = malloc(new_count * sizeof(uint));
+	if (types_new == NULL) {
+		free(rdatas_new);
+		return KNOT_ENOMEM;
+	}
+
+	/* Initialize new memory and copy old data. */
+	memset(rdatas_new, 0, new_count * sizeof(knot_rdata_t *));
+	memcpy(rdatas_new, *rdatas, (*allocated) * sizeof(knot_rdata_t *));
+
+	memset(types_new, 0, new_count * sizeof(uint));
+	memcpy(types_new, *types, (*allocated) * sizeof(uint));
+
+	/* Free old rdatas and switch pointers. */
+	free(*rdatas);
+	free(*types);
+	*rdatas = rdatas_new;
+	*types = types_new;
+	*allocated = new_count;
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void knot_changes_add_rdata(knot_rdata_t **rdatas, uint16_t *types,
+                            int *count, knot_rdata_t *rdata, uint16_t type)
+{
+	if (rdatas == NULL || types == NULL || count == NULL || rdata == NULL) {
+		return;
+	}
+
+	// Add all RDATAs from the chain!!
+
+	knot_rdata_t *r = rdata;
+	do {
+//		dbg_xfrin_detail("Adding RDATA to RDATA list: %p\n", r);
+		rdatas[*count] = r;
+		types[*count] = type;
+		++*count;
+
+		r = r->next;
+	} while (r != NULL && r != rdata);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_changes_add_old_rrsets(knot_rrset_t **rrsets, int count,
+                                knot_changes_t *changes, int add_rdata)
+{
+	if (rrsets == NULL || changes == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	if (count == 0) {
+		return KNOT_EOK;
+	}
+
+	/* Reserve twice the space, to have enough space for RRSIGs if
+	 * there are some.
+	 */
+	int ret = knot_changes_rrsets_reserve(&changes->old_rrsets,
+	                                      &changes->old_rrsets_count,
+	                                      &changes->old_rrsets_allocated,
+	                                      2 * count);
+	if (ret != KNOT_EOK) {
+//		dbg_xfrin("Failed to reserve changes rrsets.\n");
+		return ret;
+	}
+
+	/* Mark RRsets and RDATA for removal. */
+	for (unsigned i = 0; i < count; ++i) {
+		if (rrsets[i] == NULL) {
+			continue;
+		}
+		
+		knot_rrset_t *rrsigs = knot_rrset_get_rrsigs(rrsets[i]);
+		
+		if (add_rdata) {
+			
+			/* RDATA count in the RRSet. */
+			int rdata_count = knot_rrset_rdata_rr_count(rrsets[i]);
+			
+			if (rrsigs != NULL) {
+				/* Increment the RDATA count by the count of 
+				 * RRSIGs. */
+				rdata_count += knot_rrset_rdata_rr_count(
+				                        rrsigs);
+			}
+	
+			/* Remove old RDATA. */
+			
+			ret = knot_changes_rdata_reserve(&changes->old_rdata,
+			                          &changes->old_rdata_types,
+			                          changes->old_rdata_count,
+			                          &changes->old_rdata_allocated,
+			                          rdata_count);
+			if (ret != KNOT_EOK) {
+//				dbg_xfrin("Failed to reserve changes rdata.\n");
+				return ret;
+			}
+
+			knot_changes_add_rdata(changes->old_rdata,
+			                       changes->old_rdata_types,
+			                       &changes->old_rdata_count,
+			                       knot_rrset_get_rdata(rrsets[i]),
+			                       knot_rrset_type(rrsets[i]));
+			
+			knot_changes_add_rdata(changes->old_rdata,
+			                       changes->old_rdata_types,
+			                       &changes->old_rdata_count,
+			                       knot_rrset_get_rdata(rrsigs),
+			                       KNOT_RRTYPE_RRSIG);
+		}
+		
+		/* Disconnect RRsigs from rrset. */
+		knot_rrset_set_rrsigs(rrsets[i], NULL);
+		changes->old_rrsets[changes->old_rrsets_count++] = rrsets[i];
+		changes->old_rrsets[changes->old_rrsets_count++] = rrsigs;
+	}
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_changes_add_new_rrsets(knot_rrset_t **rrsets, int count,
+                                knot_changes_t *changes, int add_rdata)
+{
+	if (rrsets == NULL || changes == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	if (count == 0) {
+		return KNOT_EOK;
+	}
+
+	int ret = knot_changes_rrsets_reserve(&changes->new_rrsets,
+	                                      &changes->new_rrsets_count,
+	                                      &changes->new_rrsets_allocated,
+	                                      count);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	/* Mark RRsets and RDATA for removal. */
+	for (unsigned i = 0; i < count; ++i) {
+		if (rrsets[i] == NULL) {
+			continue;
+		}
+		
+		if (add_rdata) {
+			int rdata_count = knot_rrset_rdata_rr_count(rrsets[i]);
+			ret = knot_changes_rdata_reserve(&changes->new_rdata,
+			                          &changes->new_rdata_types,
+			                          changes->new_rdata_count,
+			                          &changes->new_rdata_allocated,
+			                          rdata_count);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+			
+			knot_changes_add_rdata(changes->new_rdata,
+			                       changes->new_rdata_types,
+			                       &changes->new_rdata_count,
+			                       knot_rrset_get_rdata(rrsets[i]),
+			                       knot_rrset_type(rrsets[i]));
+		}	
+		
+		changes->new_rrsets[changes->new_rrsets_count++] = rrsets[i];
+	}
+
+	return KNOT_EOK;
 }

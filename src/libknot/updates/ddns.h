@@ -70,6 +70,12 @@ int knot_ddns_process_update(const knot_zone_contents_t *zone,
 			     const knot_packet_t *query,
                              knot_changeset_t *changeset, knot_rcode_t *rcode);
 
+int knot_ddns_process_update2(knot_zone_contents_t *zone,
+                              const knot_packet_t *query,
+                              knot_changeset_t *changeset,
+                              knot_changes_t *changes,
+                              knot_rcode_t *rcode);
+
 void knot_ddns_prereqs_free(knot_ddns_prereq_t **prereq);
 
 #endif /* _KNOT_DDNS_H_ */
