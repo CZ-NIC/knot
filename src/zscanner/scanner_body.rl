@@ -138,8 +138,6 @@
 		(s->dname)[s->dname_tmp_length] += digit_to_num[(uint8_t)fc];
 	}
 	action _label_dec_exit {
-		(s->dname)[s->dname_tmp_length] =
-			(s->dname)[s->dname_tmp_length];
 		s->dname_tmp_length++;
 	}
 	action _label_dec_error {
