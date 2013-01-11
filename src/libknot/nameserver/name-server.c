@@ -3171,7 +3171,7 @@ int knot_ns_parse_packet(const uint8_t *query_wire, size_t qsize,
 	int ret = 0;
 
 	if ((ret = knot_packet_parse_from_wire(packet, query_wire,
-	                                         qsize, 1)) != 0) {
+	                                         qsize, 1, 0)) != 0) {
 		dbg_ns("Error while parsing packet, "
 		       "libknot error '%s'.\n", knot_strerror(ret));
 		return KNOT_RCODE_FORMERR;
