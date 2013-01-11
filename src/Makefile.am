@@ -32,6 +32,8 @@ knotc_SOURCES =					\
 
 khost_SOURCES =					\
 	utils/common/msg.h			\
+	utils/common/exec.c			\
+	utils/common/exec.h			\
 	utils/common/params.c			\
 	utils/common/params.h			\
 	utils/common/resolv.c			\

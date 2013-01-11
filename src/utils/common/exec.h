@@ -14,7 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file host_exec.h
+ * \file exec.h
  *
  * \author Daniel Salzman <daniel.salzman@nic.cz>
  *
@@ -24,16 +24,17 @@
  * @{
  */
 
-#ifndef _HOST__HOST_EXEC_H_
-#define _HOST__HOST_EXEC_H_
+#ifndef _HOST__EXEC_H_
+#define _HOST__EXEC_H_
 
 #include <stdbool.h>			// bool
 #include <stdint.h>			// uint16_t
 
 #include "utils/common/params.h"	// params_t
+#include "utils/common/resolv.h"	// server_t
 
-int host_exec(const params_t *params);
+int process_query(const params_t *params, const query_t *query, const server_t *server);
 
-#endif // _HOST__HOST_EXEC_H_
+#endif // _HOST__EXEC_H_
 
 /*! @} */

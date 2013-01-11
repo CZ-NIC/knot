@@ -1,0 +1,324 @@
+/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+#include "utils/common/exec.h"
+
+#include <stdlib.h>			// free
+
+#include "common/lists.h"		// list
+#include "common/errcode.h"		// KNOT_EOK
+#include "libknot/consts.h"		// KNOT_RCODE_NOERROR
+#include "libknot/util/wire.h"		// knot_wire_set_rd
+#include "libknot/packet/packet.h"	// packet_t
+#include "libknot/packet/query.h"	// knot_query_init
+
+#include "utils/common/msg.h"		// WARN
+#include "utils/common/resolv.h"	// server_t
+#include "utils/common/params.h"	// params_t
+#include "utils/common/netio.h"		// send_msg
+
+static knot_packet_t* create_query_packet(const params_t *params,
+                                          const query_t  *query,
+                                          uint8_t        **data,
+                                          size_t         *data_len)
+{
+	knot_question_t q;
+
+	// Create packet skeleton.
+	knot_packet_t *packet = knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
+
+	if (packet == NULL) {
+		return NULL;
+	}
+
+	// Set packet buffer size.
+	if (get_socktype(params, query->type) == SOCK_STREAM) {
+		// For TCP maximal dns packet size.
+		knot_packet_set_max_size(packet, MAX_PACKET_SIZE);
+	} else {
+		// For UDP default or specified EDNS size.
+		knot_packet_set_max_size(packet, params->udp_size);
+	}
+
+	// Set random sequence id.
+	knot_packet_set_random_id(packet);
+
+	// Initialize query packet.
+	knot_query_init(packet);
+
+	// Set recursion bit to wireformat.
+	if (params->recursion == true) {
+		knot_wire_set_rd(packet->wireformat);
+	} else {
+		knot_wire_flags_clear_rd(packet->wireformat);
+	}
+
+	// Fill auxiliary question structure.
+	q.qclass = params->class_num;
+	q.qtype = query->type;
+	q.qname = knot_dname_new_from_str(query->name, strlen(query->name), 0);
+
+	if (q.qname == NULL) {
+		knot_dname_release(q.qname);
+		knot_packet_free(&packet);
+		return NULL;
+	}
+
+	// Set packet question.
+	if (knot_query_set_question(packet, &q) != KNOT_EOK) {
+		knot_dname_release(q.qname);
+		knot_packet_free(&packet);
+		return NULL;
+	}
+
+	// For IXFR query add authority section.
+	if (query->type == KNOT_RRTYPE_IXFR) {
+		int ret;
+		size_t pos = 0;
+		// SOA rdata in wireformat.
+		uint8_t wire[22] = { 0x0 };
+		// Set SOA serial.
+		uint32_t serial = htonl(query->ixfr_serial);
+		memcpy(wire + 2, &serial, sizeof(serial));
+
+		// Create SOA rdata.
+		knot_rdata_t *soa_data = knot_rdata_new();
+		ret = knot_rdata_from_wire(soa_data,
+		                           wire,
+		                           &pos,
+		                           sizeof(wire),
+		                           sizeof(wire),
+		                           knot_rrtype_descriptor_by_type(
+		                                             KNOT_RRTYPE_SOA));
+
+		if (ret != KNOT_EOK) {
+			free(soa_data);
+			knot_dname_release(q.qname);
+			knot_packet_free(&packet);
+			return NULL;
+		}
+
+		// Create rrset with SOA record.
+		knot_rrset_t *soa = knot_rrset_new(q.qname,
+		                                   KNOT_RRTYPE_SOA,
+		                                   params->class_num,
+		                                   0);
+		ret = knot_rrset_add_rdata(soa, soa_data);
+
+		if (ret != KNOT_EOK) {
+			free(soa_data);
+			free(soa);
+			knot_dname_release(q.qname);
+			knot_packet_free(&packet);
+			return NULL;
+		}
+
+		// Add authority section.
+		ret = knot_query_add_rrset_authority(packet, soa);
+
+		if (ret != KNOT_EOK) {
+			free(soa_data);
+			free(soa);
+			knot_dname_release(q.qname);
+			knot_packet_free(&packet);
+			return NULL;
+		}
+	}
+
+	// Create wire query.
+	if (knot_packet_to_wire(packet, data, data_len) != KNOT_EOK) {
+		ERR("can't create wire query packet\n");
+		knot_dname_release(q.qname);
+		knot_packet_free(&packet);
+		return NULL;
+	}
+
+	knot_dname_release(q.qname);
+
+	return packet;
+}
+
+static void print_data(const params_t *params, knot_packet_t *packet)
+{
+	char buf[100000];
+
+	for (int i = 0; i < packet->an_rrsets; i++) {
+		rrset_write_mem(buf, sizeof(buf), (packet->answer)[i]);
+		printf("%s", buf);
+	}
+}
+
+static void print_header(const params_t *params)
+{
+	printf("Header:\n");
+}
+
+static void print_footer(const params_t *params)
+{
+	printf("Footer:\n");
+}
+
+static void print_xfr_header(const params_t *params)
+{
+	printf("XFR Header:\n");
+}
+
+static void print_xfr_footer(const params_t *params)
+{
+	printf("XFR Footer:\n");
+}
+
+int process_query(const params_t *params, const query_t *query, const server_t *server)
+{
+	knot_packet_t *out_packet, *in_packet;
+	int	in_len;
+	uint8_t	in[MAX_PACKET_SIZE];
+	size_t	out_len = 0;
+	uint8_t	*out = NULL;
+	int	sockfd;
+
+	// Create query packet.
+	out_packet = create_query_packet(params, query, &out, &out_len);
+
+	if (out_packet == NULL) {
+		return KNOT_ERROR;
+	}
+
+	// Send query message.
+	sockfd = send_msg(params, query, server, out, out_len);
+
+	if (sockfd < 0) {
+		knot_packet_free(&out_packet);
+		return KNOT_ERROR;
+	}
+
+	// Receive reply message.
+	in_len = receive_msg(params, query, sockfd, in, sizeof(in));
+
+	if (in_len <= 0) {
+		knot_packet_free(&out_packet);
+		return KNOT_ERROR;
+	}
+
+	// Create reply packet structure to fill up.
+	in_packet = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
+
+	// Parse reply to packet structure.
+	if (knot_packet_parse_from_wire(in_packet, in, in_len, 0,
+	                                KNOT_PACKET_DUPL_NO_MERGE)
+	    != KNOT_EOK) {
+		WARN("can't parse reply\n");
+		knot_packet_free(&in_packet);
+		knot_packet_free(&out_packet);
+		return KNOT_ERROR;
+	}
+
+	uint8_t rcode = knot_wire_get_rcode(in);
+
+	if (rcode == KNOT_RCODE_SERVFAIL && params->servfail_stop == true) {
+		ERR("server failure\n");
+		return KNOT_EOK;
+	}
+
+	if (query->type == KNOT_RRTYPE_AXFR ||
+	    query->type == KNOT_RRTYPE_IXFR) {
+		knot_rrset_t *first, *last;
+
+		print_xfr_header(params);
+
+		if (in_packet->an_rrsets <= 0) {
+			ERR("no answer record\n");
+			return KNOT_ERROR;
+		}
+
+		first = *(in_packet->answer);
+		last  = *(in_packet->answer + in_packet->an_rrsets - 1);
+
+		if (first->type != KNOT_RRTYPE_SOA) {
+			ERR("first record isn't SOA\n");
+			return KNOT_ERROR;
+		}
+
+		uint32_t serial = knot_rdata_soa_serial(first->rdata);
+
+		print_data(params, in_packet);
+
+
+		while (last->type != KNOT_RRTYPE_SOA &&
+		    knot_rdata_soa_serial(last->rdata) != serial) {
+
+			knot_packet_free(&in_packet);
+
+			in_len = receive_msg(params, query, sockfd, in, sizeof(in));
+
+			if (in_len <= 0) {
+				knot_packet_free(&out_packet);
+				return KNOT_ERROR;
+			}
+
+			// Create reply packet structure to fill up.
+			in_packet = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
+
+			// Parse reply to packet structure.
+			if (knot_packet_parse_from_wire(in_packet, in, in_len, 0,
+							KNOT_PACKET_DUPL_NO_MERGE)
+			    != KNOT_EOK) {
+				WARN("can't parse reply\n");
+				knot_packet_free(&in_packet);
+				knot_packet_free(&out_packet);
+				return KNOT_ERROR;
+			}
+
+			rcode = knot_wire_get_rcode(in);
+
+			if (rcode == KNOT_RCODE_SERVFAIL && params->servfail_stop == true) {
+				ERR("server failure\n");
+				return KNOT_EOK;
+			}
+
+			if (in_packet->an_rrsets <= 0) {
+				ERR("no answer record\n");
+				return KNOT_ERROR;
+			}
+
+			last = *(in_packet->answer + in_packet->an_rrsets - 1);
+
+			print_data(params, in_packet);
+		}
+
+		knot_packet_free(&in_packet);
+
+		print_xfr_footer(params);
+
+	} else {
+		print_header(params);
+		
+		print_data(params, in_packet);
+
+		print_footer(params);
+
+		knot_packet_free(&in_packet);
+	}
+
+	// Close socket.
+	shutdown(sockfd, SHUT_RDWR);
+
+	// Drop query packet.
+	knot_packet_free(&out_packet);
+
+	return KNOT_EOK;
+}
+
