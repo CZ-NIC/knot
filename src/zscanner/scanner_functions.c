@@ -943,7 +943,7 @@ static int32_t get_block_length(const uint8_t  *data,
 
 int find_rdata_blocks(scanner_t *s)
 {
-	uint32_t ret;
+	int32_t  ret;
 	uint32_t position = 0;
 
 	// Initialization of block items.
