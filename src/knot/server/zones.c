@@ -2153,7 +2153,6 @@ static int zones_process_update_auth(knot_zone_t *zone,
 			ret = knot_packet_to_wire(resp, &tmp_wire, rsize);
 			if (ret != KNOT_EOK) {
 				*rcode = KNOT_RCODE_SERVFAIL;
-				return ret;
 			} else {
 				memcpy(resp_wire, tmp_wire, *rsize);
 				*rcode = KNOT_RCODE_NOERROR;
