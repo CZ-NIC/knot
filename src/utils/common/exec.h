@@ -33,7 +33,7 @@
 #include "utils/common/params.h"	// params_t
 #include "utils/common/resolv.h"	// server_t
 
-int process_query(const params_t *params, const query_t *query, const server_t *server);
+void process_query(const params_t *params, query_t *query);
 
 #endif // _HOST__EXEC_H_
 

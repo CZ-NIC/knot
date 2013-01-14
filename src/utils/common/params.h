@@ -45,8 +45,8 @@ typedef struct {
 	char		*name;
 	/*!< Type number to query on. */
 	uint16_t	type;
-	/*!< SOA serial for IXFR. */
-	int64_t         ixfr_serial;
+	/*!< SOA serial for XFR. */
+	int64_t         xfr_serial;
 } query_t;
 
 typedef enum {
@@ -102,8 +102,8 @@ typedef struct {
 	uint16_t	class_num;
 	/*!< Default type number (16unsigned + -1 uninitialized). */
 	int32_t		type_num;
-	/*!< Default SOA serial for IXFR (32unsigned + -1 uninitialized). */
-	int64_t		ixfr_serial;
+	/*!< Default SOA serial for XFR (32unsigned + -1 uninitialized). */
+	int64_t		xfr_serial;
 	/*!< Use recursion. */
 	bool		recursion;
 	/*!< UDP buffer size. */

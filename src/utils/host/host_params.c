@@ -48,7 +48,7 @@ static void host_params_init(params_t *params)
 	params->udp_size = DEFAULT_UDP_SIZE;
 	params->class_num = KNOT_CLASS_IN;
 	params->type_num = -1;
-	params->ixfr_serial = -1;
+	params->xfr_serial = -1;
 	params->recursion = true;
 	params->retries = 1;
 	params->wait = DEFAULT_WAIT_INTERVAL;
@@ -150,7 +150,7 @@ static int host_params_parse_name(params_t *params, const char *name)
 			}
 			// Set SOA serial for IXFR query.
 			if (params->type_num == KNOT_RRTYPE_IXFR) {
-				query_set_serial(query, params->ixfr_serial);
+				query_set_serial(query, params->xfr_serial);
 			}
 			add_tail(&params->queries, (node *)query);
 		}
@@ -282,7 +282,7 @@ int host_params_parse(params_t *params, int argc, char *argv[])
 			break;
 		case 't':
 			if (parse_type(optarg, &(params->type_num),
-			               &(params->ixfr_serial))
+			               &(params->xfr_serial))
 			    != KNOT_EOK) {
 				return KNOT_EINVAL;
 			}

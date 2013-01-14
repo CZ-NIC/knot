@@ -38,7 +38,7 @@ static knot_packet_t* create_query_packet(const params_t *params,
 	knot_question_t q;
 
 	// Create packet skeleton.
-	knot_packet_t *packet = knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
+	knot_packet_t *packet = knot_packet_new(KNOT_PACKET_PREALLOC_NONE);
 
 	if (packet == NULL) {
 		return NULL;
@@ -91,7 +91,7 @@ static knot_packet_t* create_query_packet(const params_t *params,
 		// SOA rdata in wireformat.
 		uint8_t wire[22] = { 0x0 };
 		// Set SOA serial.
-		uint32_t serial = htonl(query->ixfr_serial);
+		uint32_t serial = htonl(query->xfr_serial);
 		memcpy(wire + 2, &serial, sizeof(serial));
 
 		// Create SOA rdata.
@@ -151,7 +151,7 @@ static knot_packet_t* create_query_packet(const params_t *params,
 	return packet;
 }
 
-static void print_data(const params_t *params, knot_packet_t *packet)
+static void print_answer(const params_t *params, const knot_packet_t *packet)
 {
 	char buf[100000];
 
@@ -181,144 +181,273 @@ static void print_xfr_footer(const params_t *params)
 	printf("XFR Footer:\n");
 }
 
-int process_query(const params_t *params, const query_t *query, const server_t *server)
+void print_packet(const params_t *params, const knot_packet_t *packet)
 {
-	knot_packet_t *out_packet, *in_packet;
-	int	in_len;
-	uint8_t	in[MAX_PACKET_SIZE];
-	size_t	out_len = 0;
-	uint8_t	*out = NULL;
-	int	sockfd;
+	print_header(params);
+	
+	print_answer(params, packet);
+
+	print_footer(params);
+}
+
+static bool check_id(const knot_packet_t *query, const knot_packet_t *reply)
+{
+	uint16_t query_id = knot_wire_get_id(query->wireformat);
+	uint16_t reply_id = knot_wire_get_id(reply->wireformat);
+
+	if (reply_id != query_id) {
+		WARN("reply ID (%u) is different from query ID (%u)\n",
+		     reply_id, query_id);
+		return false;
+	}
+
+	return true;
+}
+
+static int check_rcode(const params_t *params, const knot_packet_t *reply)
+{
+	uint8_t rcode = knot_wire_get_rcode(reply->wireformat);
+
+	if (rcode == KNOT_RCODE_SERVFAIL && params->servfail_stop == true) {
+		return -1;
+	}
+
+	return rcode;
+}
+
+static bool check_question(const knot_packet_t *query,
+                           const knot_packet_t *reply)
+{
+	int name_diff = knot_dname_compare_cs(reply->question.qname,
+	                                      query->question.qname);
+
+	if (reply->question.qclass != query->question.qclass ||
+	    reply->question.qtype  != query->question.qtype ||
+	    name_diff != 0) {
+		WARN("different question sections\n");
+		return false;
+	}
+
+	return true;
+}
+
+
+static int64_t first_serial_check(const knot_packet_t *reply)
+{
+	if (reply->an_rrsets <= 0) {
+		return -1;
+	}
+
+	const knot_rrset_t *first = *(reply->answer);
+
+	if (first->type != KNOT_RRTYPE_SOA) {
+		return -1;
+	} else {
+		return knot_rdata_soa_serial(first->rdata);
+	}
+}
+
+static bool last_serial_check(const uint32_t serial, const knot_packet_t *reply)
+{
+	if (reply->an_rrsets <= 0) {
+		return false;
+	}
+
+	const knot_rrset_t *last = *(reply->answer + reply->an_rrsets - 1);
+
+	if (last->type != KNOT_RRTYPE_SOA) {
+		return false;
+	} else {
+		int64_t last_serial = knot_rdata_soa_serial(last->rdata);
+
+		if (last_serial == serial) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+}
+
+void process_query(const params_t *params, query_t *query)
+{
+	bool 		id_ok, stop;
+	node		*server = NULL;
+	knot_packet_t	*out_packet;
+	size_t		out_len = 0;
+	uint8_t		*out = NULL;
+	knot_packet_t	*in_packet;
+	int		in_len;
+	uint8_t		in[MAX_PACKET_SIZE];
 
 	// Create query packet.
 	out_packet = create_query_packet(params, query, &out, &out_len);
 
 	if (out_packet == NULL) {
-		return KNOT_ERROR;
+		return;
 	}
 
-	// Send query message.
-	sockfd = send_msg(params, query, server, out, out_len);
+	WALK_LIST(server, params->servers) {
+		int  sockfd;
+		int  rcode;
 
-	if (sockfd < 0) {
-		knot_packet_free(&out_packet);
-		return KNOT_ERROR;
-	}
+		// Send query message.
+		sockfd = send_msg(params, query, (server_t *)server,
+		                  out, out_len);
 
-	// Receive reply message.
-	in_len = receive_msg(params, query, sockfd, in, sizeof(in));
-
-	if (in_len <= 0) {
-		knot_packet_free(&out_packet);
-		return KNOT_ERROR;
-	}
-
-	// Create reply packet structure to fill up.
-	in_packet = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
-
-	// Parse reply to packet structure.
-	if (knot_packet_parse_from_wire(in_packet, in, in_len, 0,
-	                                KNOT_PACKET_DUPL_NO_MERGE)
-	    != KNOT_EOK) {
-		WARN("can't parse reply\n");
-		knot_packet_free(&in_packet);
-		knot_packet_free(&out_packet);
-		return KNOT_ERROR;
-	}
-
-	uint8_t rcode = knot_wire_get_rcode(in);
-
-	if (rcode == KNOT_RCODE_SERVFAIL && params->servfail_stop == true) {
-		ERR("server failure\n");
-		return KNOT_EOK;
-	}
-
-	if (query->type == KNOT_RRTYPE_AXFR ||
-	    query->type == KNOT_RRTYPE_IXFR) {
-		knot_rrset_t *first, *last;
-
-		print_xfr_header(params);
-
-		if (in_packet->an_rrsets <= 0) {
-			ERR("no answer record\n");
-			return KNOT_ERROR;
+		if (sockfd < 0) {
+			continue;
 		}
 
-		first = *(in_packet->answer);
-		last  = *(in_packet->answer + in_packet->an_rrsets - 1);
-
-		if (first->type != KNOT_RRTYPE_SOA) {
-			ERR("first record isn't SOA\n");
-			return KNOT_ERROR;
-		}
-
-		uint32_t serial = knot_rdata_soa_serial(first->rdata);
-
-		print_data(params, in_packet);
-
-
-		while (last->type != KNOT_RRTYPE_SOA &&
-		    knot_rdata_soa_serial(last->rdata) != serial) {
-
-			knot_packet_free(&in_packet);
-
-			in_len = receive_msg(params, query, sockfd, in, sizeof(in));
+		id_ok = false;
+		stop = false;
+		// Loop over incomming messages, unless reply id is correct.
+		while (id_ok == false) {
+			// Receive reply message.
+			in_len = receive_msg(params, query, sockfd,
+			                     in, sizeof(in));
 
 			if (in_len <= 0) {
-				knot_packet_free(&out_packet);
-				return KNOT_ERROR;
+				stop = true;
+				break;
 			}
 
 			// Create reply packet structure to fill up.
-			in_packet = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
+			in_packet = knot_packet_new(KNOT_PACKET_PREALLOC_NONE);
+
+			if (in_packet == NULL) {
+				stop = true;
+				break;
+			}
 
 			// Parse reply to packet structure.
-			if (knot_packet_parse_from_wire(in_packet, in, in_len, 0,
-							KNOT_PACKET_DUPL_NO_MERGE)
+			if (knot_packet_parse_from_wire(in_packet, in,
+			                                in_len, 0,
+			                              KNOT_PACKET_DUPL_NO_MERGE)
 			    != KNOT_EOK) {
-				WARN("can't parse reply\n");
 				knot_packet_free(&in_packet);
-				knot_packet_free(&out_packet);
-				return KNOT_ERROR;
+				stop = true;
+				break;
 			}
 
-			rcode = knot_wire_get_rcode(in);
-
-			if (rcode == KNOT_RCODE_SERVFAIL && params->servfail_stop == true) {
-				ERR("server failure\n");
-				return KNOT_EOK;
-			}
-
-			if (in_packet->an_rrsets <= 0) {
-				ERR("no answer record\n");
-				return KNOT_ERROR;
-			}
-
-			last = *(in_packet->answer + in_packet->an_rrsets - 1);
-
-			print_data(params, in_packet);
+			// Compare reply header id.
+			id_ok = check_id(out_packet, in_packet);
 		}
 
-		knot_packet_free(&in_packet);
+		// Timeout/data error -> try next nameserver.
+		if (stop == true) {
+			shutdown(sockfd, SHUT_RDWR);
+			continue;
+		}
 
-		print_xfr_footer(params);
+		// Check rcode.
+		rcode = check_rcode(params, in_packet);
 
-	} else {
-		print_header(params);
-		
-		print_data(params, in_packet);
+		// Servfail + stop if servfail -> stop processing.
+		if (rcode == -1) {
+			shutdown(sockfd, SHUT_RDWR);
+			break;
+		// Servfail -> try next nameserver.
+		} else if (rcode == KNOT_RCODE_SERVFAIL) {
+			shutdown(sockfd, SHUT_RDWR);
+			continue;
+		}
 
-		print_footer(params);
+		// Check for question sections equality.
+		if (check_question(out_packet, in_packet) == false) {
+			shutdown(sockfd, SHUT_RDWR);
+			continue;
+		}
 
-		knot_packet_free(&in_packet);
+		// Dump one standard reply message and finish.
+		if (query->type != KNOT_RRTYPE_AXFR &&
+		    query->type != KNOT_RRTYPE_IXFR) {
+			print_packet(params, in_packet);
+
+			knot_packet_free(&in_packet);
+
+			shutdown(sockfd, SHUT_RDWR);
+
+			// Stop quering nameservers.
+			break;
+		}
+
+		// Start XFR dump.
+		print_xfr_header(params);
+
+		print_answer(params, in_packet);
+
+		// Read first SOA serial.
+		int64_t serial = first_serial_check(in_packet);
+
+		if (serial < 0) {
+			ERR("first answer resource record must be SOA\n");
+			shutdown(sockfd, SHUT_RDWR);
+			continue;
+		}
+
+		stop = false;
+		// Loop over incoming XFR messages unless last
+		// SOA serial != first SOA serial.
+		while (last_serial_check(serial, in_packet) == false) {
+			knot_packet_free(&in_packet);
+
+			// Receive reply message.
+			in_len = receive_msg(params, query, sockfd,
+					     in, sizeof(in));
+
+			if (in_len <= 0) {
+				stop = true;
+				break;
+			}
+
+			// Create reply packet structure to fill up.
+			in_packet = knot_packet_new(KNOT_PACKET_PREALLOC_NONE);
+
+			if (in_packet == NULL) {
+				stop = true;
+				break;
+			}
+
+			// Parse reply to packet structure.
+			if (knot_packet_parse_from_wire(in_packet, in,
+							in_len, 0,
+						      KNOT_PACKET_DUPL_NO_MERGE)
+			    != KNOT_EOK) {
+				stop = true;
+				knot_packet_free(&in_packet);
+				break;
+			}
+
+			// Compare reply header id.
+			id_ok = check_id(out_packet, in_packet);
+
+			// Check rcode.
+			rcode = check_rcode(params, in_packet);
+
+			if (rcode != KNOT_RCODE_NOERROR) {
+				stop = true;
+				knot_packet_free(&in_packet);
+				break;
+			}
+
+			// Dump message data.
+			print_answer(params, in_packet);
+		}
+
+		// For successful XFR print final information.
+		if (stop == false) {
+			print_xfr_footer(params);
+
+			knot_packet_free(&in_packet);
+		}
+
+		shutdown(sockfd, SHUT_RDWR);
+
+		// Stop quering nameservers.
+		break;
 	}
-
-	// Close socket.
-	shutdown(sockfd, SHUT_RDWR);
 
 	// Drop query packet.
 	knot_packet_free(&out_packet);
-
-	return KNOT_EOK;
 }
 

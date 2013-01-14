@@ -39,14 +39,14 @@ query_t* query_create(const char *name, const uint16_t type)
 	// Fill output.
 	query->name = strdup(name);
 	query->type = type;
-	query->ixfr_serial = -1;
+	query->xfr_serial = -1;
 
 	return query;
 }
 
 void query_set_serial(query_t *query, const uint32_t serial)
 {
-	query->ixfr_serial = serial;
+	query->xfr_serial = serial;
 }
 
 void query_free(query_t *query)
@@ -66,7 +66,7 @@ int parse_class(const char *rclass, uint16_t *class_num)
 	return KNOT_EOK;
 }
 
-int parse_type(const char *rtype, int32_t *type_num, int64_t *ixfr_serial)
+int parse_type(const char *rtype, int32_t *type_num, int64_t *xfr_serial)
 {
 	size_t param_pos = strcspn(rtype, "=");
 
@@ -101,7 +101,7 @@ int parse_type(const char *rtype, int32_t *type_num, int64_t *ixfr_serial)
 				return KNOT_ERROR;
 			}
 
-			*ixfr_serial = serial;
+			*xfr_serial = serial;
 		} else {
 			char buf[64] = "";
 			knot_rrtype_to_string(*type_num, buf, sizeof(buf));

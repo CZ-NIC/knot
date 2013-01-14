@@ -26,7 +26,6 @@
 int host_exec(const params_t *params)
 {
 	node *query = NULL;
-	node *server = NULL;
 
 	if (params == NULL) {
 		return KNOT_EINVAL;
@@ -36,16 +35,7 @@ int host_exec(const params_t *params)
 	case OPERATION_QUERY:
 		// Loop over query list.
 		WALK_LIST(query, params->queries) {
-			// Loop over nameserver list.
-			WALK_LIST(server, params->servers) {
-				int ret = process_query(params,
-				                        (query_t *)query,
-				                        (server_t *)server);
-
-				if (ret == KNOT_EOK) {
-					break;
-				}
-			}
+			process_query(params, (query_t *)query);
 		}
 
 		break;
