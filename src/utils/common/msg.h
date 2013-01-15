@@ -21,9 +21,16 @@
 
 #define ERROR_		"Error: "
 #define WARNING_	"Warning: "
+#define DEBUG_		"Debug: "
 
 #define ERR(m...)	{ printf(ERROR_ m); fflush(stdout); }
 #define WARN(m...)	{ printf(WARNING_ m); fflush(stdout); }
+
+#ifndef NDEBUG
+ #define DBG(m...)	{ printf(DEBUG_ m); fflush(stdout); }
+#else
+ #define DBG(m...)
+#endif
 
 #endif // _UTILS__MSG_H_
 
