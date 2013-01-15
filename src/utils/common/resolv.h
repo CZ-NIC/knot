@@ -31,6 +31,7 @@
 
 #define DEFAULT_IPV4_NAME       "127.0.0.1"                                     
 #define DEFAULT_IPV6_NAME       "::1"
+#define SEP_CHARS               "\n\t "
 
 /*! \brief Structure containing nameserver information. */
 typedef struct {

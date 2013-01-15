@@ -24,7 +24,6 @@
 
 #define DEFAULT_DNS_PORT        "53"
 #define RESOLV_FILE             "/etc/resolv.conf"
-#define SEP_CHARS               "\n\t "
 
 server_t* create_server(const char *name, const char *service)
 {
