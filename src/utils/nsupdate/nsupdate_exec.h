@@ -32,7 +32,7 @@
 
 #include "utils/nsupdate/nsupdate_params.h"
 
-int nsupdate_exec(const params_t *params);
+int nsupdate_exec(params_t *params);
 
 #endif // _NSUPDATE__NSUPDATE_EXEC_H_
 

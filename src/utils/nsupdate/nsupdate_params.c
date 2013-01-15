@@ -30,17 +30,30 @@ static void nsupdate_params_init(params_t *params)
 {
 	memset(params, 0, sizeof(*params));
 	
-	// Lists
-	init_list(&params->qfiles);
-
-	// Default values.
+	/* Specific data ptr. */
+	params->d = malloc(sizeof(nsupdate_params_t));
+	memset(params->d, 0, sizeof(nsupdate_params_t));
+	nsupdate_params_t *npar = NSUP_PARAM(params);
+	
+	/* Lists */
+	init_list(&npar->qfiles);
+	
+	/* Default values. */
+	npar->port = DEFAULT_PORT;
 	params->operation = OPERATION_UPDATE;
-	params->port = DEFAULT_PORT;
 	params->protocol = PROTO_ALL;
 	params->udp_size = DEFAULT_UDP_SIZE;
 	params->retries = DEFAULT_RETRIES;
 	params->wait = DEFAULT_WAIT_INTERVAL;
 	params->format = FORMAT_NSUPDATE;
+	
+	/* Initialize RR parser. */
+	npar->rrp = scanner_create("-");
+	const char *settings = "$ORIGIN example.com.\n";
+	npar->rrp->default_class = KNOT_CLASS_IN;
+	npar->rrp->default_ttl = 3600;
+	scanner_process(settings, settings + strlen(settings), 0, npar->rrp);
+
 }
 
 void nsupdate_params_clean(params_t *params)
@@ -48,8 +61,25 @@ void nsupdate_params_clean(params_t *params)
 	if (params == NULL) {
 		return;
 	}
+	
+	/* Free specific structure. */
+	nsupdate_params_t* npar = NSUP_PARAM(params);
+	if (npar) {
+		free(npar->addr);
+		free(npar->zone);
+		scanner_free(npar->rrp);
+	
+		/* Free qfiles. */
+		strnode_t *n = NULL, *nxt = NULL;
+		WALK_LIST_DELSAFE(n, nxt, npar->qfiles) {
+			free(n);
+		}
+		
+		free(npar);
+		params->d = NULL;
+	}
 
-	// Clean up the structure.
+	/* Clean up the structure. */
 	memset(params, 0, sizeof(*params));
 }
 
@@ -95,15 +125,16 @@ int nsupdate_params_parse(params_t *params, int argc, char *argv[])
 			return KNOT_ENOTSUP;
 		}
 	}
-
+	
 	/* Process non-option parameters. */
+	nsupdate_params_t* npar = NSUP_PARAM(params);
 	for (; optind < argc; ++optind) {
 		strnode_t *n = malloc(sizeof(strnode_t));
 		if (!n) { /* Params will be cleaned on exit. */
 			return KNOT_ENOMEM;
 		}
 		n->str = argv[optind];
-		add_tail(&params->qfiles, &n->n);
+		add_tail(&npar->qfiles, &n->n);
 	}
 
 	return KNOT_EOK;

@@ -89,8 +89,6 @@ typedef struct {
 	list		servers;
 	/*!< List of DNS queries to process. */
 	list		queries;
-	/*!< List of files with query data. */
-	list		qfiles;
 
 	/*!< Operation mode. */
 	operation_t	operation;
@@ -116,10 +114,8 @@ typedef struct {
 	bool		servfail_stop;
 	/*!< Verbose mode. */
 	format_t	format;
-	/*!< Default port. */
-	unsigned	port;
-	/*!< Default address. */
-	const char*	addr;
+	/*!< Implementation specific ptr. */
+	void*		d;
 } params_t;
 
 query_t* query_create(const char *name, const uint16_t type);

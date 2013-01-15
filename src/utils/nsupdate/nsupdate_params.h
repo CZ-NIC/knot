@@ -32,6 +32,25 @@
 
 #include "common/lists.h"		// list
 #include "utils/common/params.h"	// protocol_t
+#include "libknot/packet/query.h"
+#include "zscanner/scanner.h"
+
+/* nsupdate-specific params data */
+typedef struct nsupdate_params_t {
+	/*!< List of files with query data. */
+	list		qfiles;
+	/*!< Default port. */
+	unsigned	port;
+	/*!< Default address. */
+	char		*addr;
+	/*!< Current zone. */
+	char		*zone;
+	/*!< RR parser. */
+	scanner_t	*rrp;
+	/*!< Current packet. */
+	knot_packet_t	*pkt;
+} nsupdate_params_t;
+#define NSUP_PARAM(p) ((nsupdate_params_t*)p->d)
 
 int nsupdate_params_parse(params_t *params, int argc, char *argv[]);
 void nsupdate_params_clean(params_t *params);
