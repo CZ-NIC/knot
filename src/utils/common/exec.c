@@ -17,6 +17,8 @@
 #include "utils/common/exec.h"
 
 #include <stdlib.h>			// free
+#include <time.h>			// localtime_r
+#include <sys/time.h>			// gettimeofday
 
 #include "common/lists.h"		// list
 #include "common/errcode.h"		// KNOT_EOK
@@ -151,6 +153,31 @@ static knot_packet_t* create_query_packet(const params_t *params,
 	return packet;
 }
 
+static knot_lookup_table_t opcodes[] = {
+	{ KNOT_OPCODE_QUERY,  "QUERY" },
+	{ KNOT_OPCODE_IQUERY, "IQUERY" },
+	{ KNOT_OPCODE_STATUS, "STATUS" },
+	{ KNOT_OPCODE_NOTIFY, "NOTIFY" },
+	{ KNOT_OPCODE_UPDATE, "UPDATE" },
+	{ KNOT_OPCODE_OFFSET, "OFFSET" },
+	{ 0, NULL }
+};
+
+static knot_lookup_table_t rcodes[] = {
+	{ KNOT_RCODE_NOERROR,  "NOERROR" },
+	{ KNOT_RCODE_FORMERR,  "FORMERR" },
+	{ KNOT_RCODE_SERVFAIL, "SERVFAIL" },
+	{ KNOT_RCODE_NXDOMAIN, "NXDOMAIN" },
+	{ KNOT_RCODE_NOTIMPL,  "NOTIMPL" },
+	{ KNOT_RCODE_REFUSED,  "REFUSED" },
+	{ KNOT_RCODE_YXDOMAIN, "YXDOMAIN" },
+	{ KNOT_RCODE_YXRRSET,  "YXRRSET" },
+	{ KNOT_RCODE_NXRRSET,  "NXRRSET" },
+	{ KNOT_RCODE_NOTAUTH,  "NOTAUTH" },
+	{ KNOT_RCODE_NOTZONE,  "NOTZONE" },
+	{ 0, NULL }
+};
+
 static void print_answer(const params_t *params, const knot_packet_t *packet)
 {
 	char buf[100000];
@@ -161,14 +188,69 @@ static void print_answer(const params_t *params, const knot_packet_t *packet)
 	}
 }
 
-static void print_header(const params_t *params)
+static void print_header(const params_t *params, const knot_packet_t *packet)
 {
-	printf("Header:\n");
+	char flags[64] = "\0";
+
+	uint8_t rcode_id = knot_wire_get_rcode(packet->wireformat);
+	uint8_t opcode_id = knot_wire_get_opcode(packet->wireformat);
+
+	knot_lookup_table_t *rcode = knot_lookup_by_id(rcodes, rcode_id);
+	knot_lookup_table_t *opcode = knot_lookup_by_id(opcodes, opcode_id);
+
+	if (knot_wire_get_qr(packet->wireformat) != 0) {
+		strcat(flags, " qr");
+	}
+	if (knot_wire_get_aa(packet->wireformat) != 0) {
+		strcat(flags, " aa");
+	}
+	if (knot_wire_get_tc(packet->wireformat) != 0) {
+		strcat(flags, " tc");
+	}
+	if (knot_wire_get_rd(packet->wireformat) != 0) {
+		strcat(flags, " rd");
+	}
+	if (knot_wire_get_ra(packet->wireformat) != 0) {
+		strcat(flags, " ra");
+	}
+	if (knot_wire_get_z(packet->wireformat) != 0) {
+		strcat(flags, " z");
+	}
+	if (knot_wire_get_ad(packet->wireformat) != 0) {
+		strcat(flags, " ad");
+	}
+	if (knot_wire_get_cd(packet->wireformat) != 0) {
+		strcat(flags, " cd");
+	};
+
+	printf(";; ->>HEADER<<- opcode: %s, status: %s, id: %u\n"
+	       ";; Flags:%1s, "
+	       "QUERY: %u, ANSWER: %u, AUTHORITY: %u, ADDITIONAL: %u\n",
+	       opcode->name, rcode->name, knot_packet_id(packet),
+	       flags, packet->header.qdcount, packet->an_rrsets,
+	       packet->ns_rrsets, packet->ar_rrsets);
 }
 
-static void print_footer(const params_t *params)
+static void print_footer(const params_t *params,
+                         const size_t   wire_len,
+                         const server_t *server,
+                         const float    elapsed)
 {
-	printf("Footer:\n");
+	char      date[64];
+	struct tm tm;
+
+	// Get current timestamp.
+	time_t now = time(NULL);
+	localtime_r(&now, &tm);
+
+	// Create formated date-time string.
+	strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S %Z", &tm);
+
+	printf(";; Elapsed time: %.1f ms\n"
+	       ";; Nameserver: %s, port: %s\n"
+	       ";; When: %s\n"
+	       ";; Message size: %zu B\n",
+	       elapsed, server->name, server->service, date, wire_len);
 }
 
 static void print_xfr_header(const params_t *params)
@@ -181,13 +263,17 @@ static void print_xfr_footer(const params_t *params)
 	printf("XFR Footer:\n");
 }
 
-void print_packet(const params_t *params, const knot_packet_t *packet)
+void print_packet(const params_t      *params,
+                  const knot_packet_t *packet,
+                  const size_t        wire_len,
+                  const server_t      *server,
+                  const float         elapsed)
 {
-	print_header(params);
+	print_header(params, packet);
 	
 	print_answer(params, packet);
 
-	print_footer(params);
+	print_footer(params, wire_len, server, elapsed);
 }
 
 static bool check_id(const knot_packet_t *query, const knot_packet_t *reply)
@@ -231,7 +317,6 @@ static bool check_question(const knot_packet_t *query,
 	return true;
 }
 
-
 static int64_t first_serial_check(const knot_packet_t *reply)
 {
 	if (reply->an_rrsets <= 0) {
@@ -270,6 +355,7 @@ static bool last_serial_check(const uint32_t serial, const knot_packet_t *reply)
 
 void process_query(const params_t *params, query_t *query)
 {
+	float		elapsed;
 	bool 		id_ok, stop;
 	node		*server = NULL;
 	knot_packet_t	*out_packet;
@@ -278,6 +364,7 @@ void process_query(const params_t *params, query_t *query)
 	knot_packet_t	*in_packet;
 	int		in_len;
 	uint8_t		in[MAX_PACKET_SIZE];
+	struct timeval	t_start, t_end;
 
 	// Create query packet.
 	out_packet = create_query_packet(params, query, &out, &out_len);
@@ -289,6 +376,9 @@ void process_query(const params_t *params, query_t *query)
 	WALK_LIST(server, params->servers) {
 		int  sockfd;
 		int  rcode;
+
+		// Start meassuring of query/xfr time.
+		gettimeofday(&t_start, NULL);
 
 		// Send query message.
 		sockfd = send_msg(params, query, (server_t *)server,
@@ -361,7 +451,14 @@ void process_query(const params_t *params, query_t *query)
 		// Dump one standard reply message and finish.
 		if (query->type != KNOT_RRTYPE_AXFR &&
 		    query->type != KNOT_RRTYPE_IXFR) {
-			print_packet(params, in_packet);
+			// Stop meassuring of query time.
+			gettimeofday(&t_end, NULL);
+
+			elapsed = (t_end.tv_sec - t_start.tv_sec) * 1000 +
+			          ((t_end.tv_usec - t_start.tv_usec) / 1000.0);
+
+			print_packet(params, in_packet, in_len,
+			             (server_t *)server, elapsed);
 
 			knot_packet_free(&in_packet);
 

@@ -292,3 +292,5 @@ src/utils/nsupdate/nsupdate_exec.c
 src/utils/nsupdate/nsupdate_exec.h
 src/utils/nsupdate/nsupdate_params.c
 src/utils/nsupdate/nsupdate_params.h
+src/utils/common/exec.h
+src/utils/common/exec.c
