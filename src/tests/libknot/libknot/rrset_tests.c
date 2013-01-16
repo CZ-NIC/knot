@@ -783,11 +783,39 @@ static int test_rrset_compare()
 	}
 }
 
-static int test_rrset_get_rdata()
+static int test_rrset_rdata_get_next_dname()
 {
-	knot_rrset_t *rrset = test_rrset_array[15];
+	/* There are few suitable RR types for this test - we'll use MINFO. */
+	knot_rrset_t *rrset = test_rrset_array[MINFO_INDEX];
+	knot_dname_t *dname1 = NULL;
+	knot_dname_t *dname2 = NULL;
 	
+	knot_dname_t *dname = NULL;
+	dname = knot_rrset_rdata_get_next_dname(rrset, dname, 0);
+	if (dname != dname1) {
+		diag("Failed to extract correct first DNAME from RRSet.\n");
+		return 0;
+	}
+	dname = knot_rrset_rdata_get_next_dname(rrset, dname, 0);
+	if (dname != dname2) {
+		diag("Failed to extract correct second DNAME from RRSet.\n");
+		return 0;
+	}
 	
+	dname = knot_rrset_rdata_get_next_dname(rrset, dname, 0);
+	if (dname != NULL) {
+		diag("Failed to return NULL after all DNAMEs "
+		     "have been extracted.\n");
+		return 0;
+	}
+	
+	return 1;
+}
+
+static int test_rrset_next_dname()
+{
+	/* Same test as in above, but we'll use multiple RRs within on SET. */
+	knot_rrset_t *rrset = test_rrset_array[MINFO_MULTIPLE_INDEX];
 }
 
 static const int KNOT_RRSET_TEST_COUNT = 13;
