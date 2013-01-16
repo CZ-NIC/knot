@@ -255,7 +255,6 @@ const knot_rrset_t *knot_rrset_rrsigs(const knot_rrset_t *rrset);
 
 knot_rrset_t *knot_rrset_get_rrsigs(knot_rrset_t *rrset);
 
-//TODO test
 int knot_rrset_compare_rdata(const knot_rrset_t *r1, const knot_rrset_t *r2);
 
 /*! \todo Should support (optional) dname compression. */
@@ -275,16 +274,13 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
  * \retval <> 0 If RRSets are equal.
  * \retval 0 if RRSets are not equal.
  */
-//TODO test
 int knot_rrset_compare(const knot_rrset_t *r1,
                          const knot_rrset_t *r2,
                          knot_rrset_compare_type_t cmp);
 
-/*! \todo Add unit test. */
 int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
                          int copy_rdata_dnames);
 
-/*! \todo Add unit test. */
 int knot_rrset_shallow_copy(const knot_rrset_t *from, knot_rrset_t **to);
 
 /*! \brief Does round-robin rotation of the RRSet.
@@ -341,7 +337,6 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
  * \retval KNOT_EINVAL if the RRSets could not be merged, because their
  *         Owner, Type, Class or TTL does not match.
  */
-//TODO test
 int knot_rrset_merge(void **r1, void **r2);
 
 
@@ -355,7 +350,6 @@ int knot_rrset_merge(void **r1, void **r2);
  * \retval KNOT_EINVAL if the RRSets could not be merged, because their
  *         Owner, Type, Class or TTL does not match.
  */
-//TODO test
 int knot_rrset_merge_no_dupl(void **r1, void **r2);
 
 

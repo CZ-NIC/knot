@@ -463,17 +463,31 @@ static int test_rrset_merge()
 {
 	knot_rrset_t *merge_to =
 		knot_rrset_deep_copy(test_rrset_array[0].rrset);
-	knot_rrset_t *merge_from = test_rrset_array[1].rrset;
-	
+	knot_rrset_t *merge_from =
+		knot_rrset_deep_copy(test_rrset_array[1].rrset);
+	assert(merge_to);
+	assert(merge_from);
 	int ret = knot_rrset_merge(&merge_to, &merge_from);
 	if (ret) {
 		diag("Could not merge RRSets.\n");
+		knot_rrset_deep_free(&merge_to, 1, 1);
+		knot_rrset_deep_free(&merge_from, 1, 1);
+		return 0;
+	}
+	
+	//TODO check that merge operation does not cahgne second rr
+	//TODO check that two RRSet that are not mergable will not merge
+	if (knot_rrset_compare(test_rrset_array[2], merge_from,
+	                       KNOT_RRSET_COMPARE_WHOLE)) {
+		diag("Merge corrupted second RRSet.\n");
 		return 0;
 	}
 	
 	if (merge_to->rdata_count != test_rrset_array[0].rrset->rdata_count +
 	    merge_from->rdata_count) {
 		diag("Not all RDATA were merged.\n");
+		knot_rrset_deep_free(&merge_to, 1, 1);
+		knot_rrset_deep_free(&merge_from, 1, 1);
 		return 0;
 	}
 	
@@ -483,6 +497,8 @@ static int test_rrset_merge()
 	             merge_to->rdata_count);
 	if (ret) {
 		diag("Merge operation corrupted the first RRSet's indices.\n");
+		knot_rrset_deep_free(&merge_to, 1, 1);
+		knot_rrset_deep_free(&merge_from, 1, 1);
 		return 0;
 	}
 	
@@ -491,19 +507,287 @@ static int test_rrset_merge()
 	                               test_rrset_array[TODOmergnuty]);
 	if (ret) {
 		diag("Merged RDATA are wrong.\n");
+		knot_rrset_deep_free(&merge_to, 1, 1);
+		knot_rrset_deep_free(&merge_from, 1, 1);
 		return 0;
 	}
+	
+	knot_rrset_deep_free(&merge_to, 1, 1);
+	knot_rrset_deep_free(&merge_from, 1, 1);
 	
 	return 1;
 }
 
 static int test_rrset_merge_no_dupl()
 {
+	/* Test that merge of two identical RRSets results in no-op. */
+	knot_rrset_t *merge_to =
+		knot_rrset_deep_copy(test_rrset_array[0].rrset);
+	knot_rrset_t *merge_from =
+		knot_rrset_deep_copy(test_rrset_array[0].rrset);
+	int ret = knot_rrset_merge_no_dupl(&merge_to, &merge_from);
+	if (ret != KNOT_EOK) {
+		diag("Merge of identical RRSets failed.\n");
+		return 0;
+	}
 	
+	if (knot_rrset_compare(test_rrset_array[0], merge_to,
+	                       KNOT_RRSET_COMPARE_WHOLE)) {
+		diag("Merge corrupted first RRSet.\n");
+		return 0;
+	}
+	
+	if (knot_rrset_compare(test_rrset_array[0], merge_from,
+	                       KNOT_RRSET_COMPARE_WHOLE)) {
+		diag("Merge corrupted second RRSet.\n");
+		return 0;
+	}
+	
+	knot_rrset_deep_free(&merge_to, 1, 1);
+	knot_rrset_deep_free(&merge_from, 1, 1);
+	
+	/* Merge normal, non-duplicated RRSets. */
+	merge_to = knot_rrset_deep_copy(test_rrset_array[0].rrset);
+	merge_from = knot_rrset_deep_copy(test_rrset_array[1].rrset);
+	assert(merge_to);
+	assert(merge_from);
+	
+	ret = knot_rrset_merge_no_dupl(&merge_to, &merge_from);
+	if (ret != KNOT_EOK) {
+		diag("Merge of identical RRSets failed.\n");
+		return 0;
+	}
+	
+	if (knot_rrset_compare(test_rrset_array[2], merge_from,
+	                       KNOT_RRSET_COMPARE_WHOLE)) {
+		diag("Merge corrupted second RRSet.\n");
+		return 0;
+	}
+	
+	if (knot_rrset_compare(test_rrset_array[2], merge_to,
+	                       KNOT_RRSET_COMPARE_WHOLE)) {
+		diag("Merge did not create correct RDATA.\n");
+		return 0;
+	}
+	
+	knot_rrset_deep_free(&merge_to, 1, 1);
+	knot_rrset_deep_free(&merge_from, 1, 1);
+	
+	/* Merge RRSets with both duplicated and unique RDATAs. */
+	merge_to = knot_rrset_deep_copy(test_rrset_array[3].rrset);
+	merge_from = knot_rrset_deep_copy(test_rrset_array[4].rrset);
+	assert(merge_to);
+	assert(merge_from);
+	
+	ret = knot_rrset_merge_no_dupl(&merge_to, &merge_from);
+	if (ret != KNOT_EOK) {
+		diag("Merge of identical RRSets failed.\n");
+		return 0;
+	}
+	
+	if (knot_rrset_compare(test_rrset_array[2], merge_from,
+	                       KNOT_RRSET_COMPARE_WHOLE)) {
+		diag("Merge corrupted second RRSet.\n");
+		return 0;
+	}
+	
+	if (knot_rrset_compare(test_rrset_array[2], merge_to,
+	                       KNOT_RRSET_COMPARE_WHOLE)) {
+		diag("Merge did not create correct RDATA.\n");
+		return 0;
+	}
+	
+	knot_rrset_deep_free(&merge_to, 1, 1);
+	knot_rrset_deep_free(&merge_from, 1, 1);
 }
 
-static int test_rrset_get_rdata(knot_rrset_t **rrsets)
+static int test_rrset_compare_rdata()
 {
+	/* Comparing different RDATA types should result in EINVAL. */
+	knot_rrset_t *rrset1 = test_rrset_array[4234];
+	knot_rrset_t *rrset2 = test_rrset_array[4223];
+	
+	if (knot_rrset_compare_rdata(rrset1, rrset2) != KNOT_EINVAL) {
+		diag("rrset_compare_rdata() did comparison when it "
+		     "shouldn't have.\n");
+		knot_rrset_deep_free(rrset2, 1, 1);
+		return 0;
+	}
+	
+	/* Equal - raw data only. */
+	rrset1 = test_rrset_array[2];
+	rrset2 = knot_rrset_deep_copy(test_rrset_array[2]);
+	
+	if (knot_rrset_compare_rdata(rrset1, rrset2) != 0) {
+		diag("rrset_compare_rdata() returned wrong"
+		     "value, should be 0. (raw data)\n");
+		knot_rrset_deep_free(rrset2, 1, 1);
+		return 0;
+	}
+	
+	knot_rrset_deep_free(rrset1, 1, 1);
+	knot_rrset_deep_free(rrset2, 1, 1);
+	
+	/* Equal - DNAME only. */
+	rrset1 = test_rrset_array[3];
+	rrset2 = knot_rrset_deep_copy(test_rrset_array[3]);
+	
+	if (knot_rrset_compare_rdata(rrset1, rrset2) != 0) {
+		diag("rrset_compare_rdata() returned wrong"
+		     "value, should be 0. (DNAME only)\n");
+		knot_rrset_deep_free(rrset2, 1, 1);
+		return 0;
+	}
+	
+	knot_rrset_deep_free(rrset1, 1, 1);
+	knot_rrset_deep_free(rrset2, 1, 1);
+	
+	/* Equal - combination. */
+	rrset1 = test_rrset_array[4];
+	rrset2 = knot_rrset_deep_copy(test_rrset_array[4]);
+	
+	if (knot_rrset_compare_rdata(rrset1, rrset2) != 0) {
+		diag("rrset_compare_rdata() returned wrong"
+		     "value, should be 0. (combination)\n");
+		knot_rrset_deep_free(rrset2, 1, 1);
+		return 0;
+	}
+	
+	knot_rrset_deep_free(rrset1, 1, 1);
+	knot_rrset_deep_free(rrset2, 1, 1);
+	
+	/* Smaller - raw data only. */
+	rrset1 = test_rrset_array[42342];
+	rrset2 = test_rrset_array[23442];
+	
+	if (knot_rrset_compare_rdata(rrset1, rrset2) >= 0) {
+		diag("rrset_compare_rdata() returned wrong"
+		     "value, should be -1. (raw data only)\n");
+		knot_rrset_deep_free(rrset2, 1, 1);
+		return 0;
+	}
+	
+	knot_rrset_deep_free(rrset1, 1, 1);
+	knot_rrset_deep_free(rrset2, 1, 1);
+	
+	/* Smaller - DNAME only. */
+	rrset1 = test_rrset_array[42342];
+	rrset2 = test_rrset_array[23442];
+	
+	if (knot_rrset_compare_rdata(rrset1, rrset2) >= 0) {
+		diag("rrset_compare_rdata() returned wrong"
+		     "value, should be -1. (DNAME only)\n");
+		knot_rrset_deep_free(rrset2, 1, 1);
+		return 0;
+	}
+	
+	knot_rrset_deep_free(rrset1, 1, 1);
+	knot_rrset_deep_free(rrset2, 1, 1);
+	
+	/* Smaller - combination. */
+	rrset1 = test_rrset_array[42342];
+	rrset2 = test_rrset_array[23442];
+	
+	if (knot_rrset_compare_rdata(rrset1, rrset2) >= 0) {
+		diag("rrset_compare_rdata() returned wrong"
+		     "value, should be -1. (combination)\n");
+		knot_rrset_deep_free(rrset2, 1, 1);
+		return 0;
+	}
+	
+	knot_rrset_deep_free(rrset1, 1, 1);
+	knot_rrset_deep_free(rrset2, 1, 1);
+	
+	/* Greater - raw data only. */
+	rrset1 = test_rrset_array[42342];
+	rrset2 = test_rrset_array[23442];
+	
+	if (knot_rrset_compare_rdata(rrset1, rrset2) <= 0) {
+		diag("rrset_compare_rdata() returned wrong"
+		     "value, should be -1. (raw data only)\n");
+		knot_rrset_deep_free(rrset2, 1, 1);
+		return 0;
+	}
+	
+	knot_rrset_deep_free(rrset1, 1, 1);
+	knot_rrset_deep_free(rrset2, 1, 1);
+	
+	/* Greater - DNAME only. */
+	rrset1 = test_rrset_array[42342];
+	rrset2 = test_rrset_array[23442];
+	
+	if (knot_rrset_compare_rdata(rrset1, rrset2) <= 0) {
+		diag("rrset_compare_rdata() returned wrong"
+		     "value, should be -1. (DNAME only)\n");
+		knot_rrset_deep_free(rrset2, 1, 1);
+		return 0;
+	}
+	
+	knot_rrset_deep_free(rrset1, 1, 1);
+	knot_rrset_deep_free(rrset2, 1, 1);
+	
+	/* Greater - combination. */
+	rrset1 = test_rrset_array[42342];
+	rrset2 = test_rrset_array[23442];
+	
+	if (knot_rrset_compare_rdata(rrset1, rrset2) <= 0) {
+		diag("rrset_compare_rdata() returned wrong"
+		     "value, should be -1. (combination)\n");
+		knot_rrset_deep_free(rrset2, 1, 1);
+		return 0;
+	}
+	
+	knot_rrset_deep_free(rrset1, 1, 1);
+	knot_rrset_deep_free(rrset2, 1, 1);
+	
+	return 1;
+}
+
+static int test_rrset_compare()
+{
+	/* 
+	 * In this test, we only care about non-RDATA comparisons, since RDATA 
+	 * comparisons have been already tested in test_rrset_rdata_compare().
+	 */
+	
+	/* Equal. */
+	knot_rrset_t *rrset1 = test_rrset_array[0];
+	knot_rrset_t *rrset2 = knot_rrset_deep_copy(test_rrset_array[0]);
+	
+	if (knot_rrset_compare(rrset1, rrset2, KNOT_RRSET_COMPARE_HEADER) != 0) {
+		diag("Wrong RRSet comparison, should be 0.\n");
+		knot_rrset_deep_free(&rrset2, 1, 1);
+		return 0;
+	}
+	
+	knot_rrset_deep_free(&rrset2, 1, 1);
+	
+	/* Less. */
+	rrset1 = test_rrset_array[1];
+	rrset2 = test_rrset_array[0];
+	
+	if (knot_rrset_compare(rrset1, rrset2, KNOT_RRSET_COMPARE_HEADER) >= 0) {
+		diag("Wrong RRSet comparison, should be 0.\n");
+		knot_rrset_deep_free(&rrset2, 1, 1);
+		return 0;
+	}
+	
+	/* Greater. */
+	rrset1 = test_rrset_array[0];
+	rrset2 = test_rrset_array[1];
+	
+	if (knot_rrset_compare(rrset1, rrset2, KNOT_RRSET_COMPARE_HEADER) <= 0) {
+		diag("Wrong RRSet comparison, should be 0.\n");
+		knot_rrset_deep_free(&rrset2, 1, 1);
+		return 0;
+	}
+}
+
+static int test_rrset_get_rdata()
+{
+	knot_rrset_t *rrset = test_rrset_array[15];
+	
+	
 }
 
 static const int KNOT_RRSET_TEST_COUNT = 13;

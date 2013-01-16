@@ -1102,6 +1102,12 @@ int knot_dname_compare_cs(const knot_dname_t *d1, const knot_dname_t *d2)
 	return knot_dname_cmp(d1, d2, 1);
 }
 
+int knot_dname_compare_non_canon(const knot_dname_t *d1, const knot_dname_t *d2)
+{
+	return memcmp(d1->name, d2->name,
+	              d1->size > d2->size ? d2->size : d1->size);
+}
+
 /*----------------------------------------------------------------------------*/
 
 knot_dname_t *knot_dname_cat(knot_dname_t *d1, const knot_dname_t *d2)

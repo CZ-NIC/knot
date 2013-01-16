@@ -364,6 +364,8 @@ int knot_dname_compare(const knot_dname_t *d1, const knot_dname_t *d2);
  * \retval 0 if the domain names are identical.
  */
 int knot_dname_compare_cs(const knot_dname_t *d1, const knot_dname_t *d2);
+int knot_dname_compare_non_canon(const knot_dname_t *d1,
+                                 const knot_dname_t *d2);
 
 /*!
  * \brief Concatenates two domain names.
