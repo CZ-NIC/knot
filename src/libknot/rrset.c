@@ -301,7 +301,7 @@ int knot_rrset_add_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs,
                           knot_rrset_dupl_handling_t dupl)
 {
 	if (rrset == NULL || rrsigs == NULL
-	    || knot_dname_compare(rrset->owner, rrsigs->owner) != 0) {
+	    || knot_dname_compare_non_canon(rrset->owner, rrsigs->owner) != 0) {
 		return KNOT_EINVAL;
 	}
 
@@ -355,6 +355,7 @@ void knot_rrset_set_owner(knot_rrset_t *rrset, knot_dname_t* owner)
 		rrset->owner = owner;
 	}
 }
+int knot_dname_compare_non_canon(const knot_dname_t *d1, const knot_dname_t *d2)
 
 /*----------------------------------------------------------------------------*/
 
@@ -455,6 +456,7 @@ static int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
 		if (descriptor_item_is_dname(desc->block_types[i])) {
 			cmp = knot_dname_compare((knot_dname_t *)(r1 + offset),
+			                         n_canon
 			                         (knot_dname_t *)(r2 + offset));
 			offset += sizeof(knot_dname_t *);
 		} else if (descriptor_item_is_fixed(desc->block_types[i])) {
@@ -502,7 +504,7 @@ static int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
 
 int knot_rrset_compare_rdata(const knot_rrset_t *r1, const knot_rrset_t *r2)
 {
-	if (r1 == NULL || r2 == NULL) {
+	if (r1 == NULL || r2 == NULL || r1->type != r2->type) {
 		return KNOT_EINVAL;
 	}
 
@@ -908,19 +910,34 @@ int knot_rrset_compare(const knot_rrset_t *r1,
                        knot_rrset_compare_type_t cmp)
 {
 	if (cmp == KNOT_RRSET_COMPARE_PTR) {
-		return (r1 == r2);
-	}
-
-	int res = ((r1->rclass == r2->rclass)
-	           && (r1->type == r2->type)
-//	           && (r1->ttl == r2->ttl)
-	           && knot_dname_compare(r1->owner, r2->owner) == 0);
-
-	if (cmp == KNOT_RRSET_COMPARE_WHOLE && res) {
-		res = knot_rrset_compare_rdata(r1, r2);
-		if (res < 0) {
+		if ((size_t)r1 > (size_t)r2) {
+			return 1;
+		} else if ((size_t)r1 < (size_t)r2) {
+			return -1;
+		} else {
 			return 0;
 		}
+	}
+
+	int res = knot_dname_compare(r1->owner, r2->owner);
+	if (res) {
+		return res;
+	}
+	
+	if (r1->rclass > r2->rclass) {
+		return 1;
+	} else if (r1->rclass < r2->rclass) {
+		return -1;
+	}
+	
+	if (r1->type > r2->type) {
+		return 1;
+	} else if (r1->type < r2->type) {
+		return -1;
+	}
+	
+	if (cmp == KNOT_RRSET_COMPARE_WHOLE) {
+		res = knot_rrset_compare_rdata(r1, r2);
 	}
 
 	return res;
@@ -1161,7 +1178,7 @@ int knot_rrset_merge(void **r1, void **r2)
 	}
 	
 	/* Check, that we really merge RRSets? */
-	if ((knot_dname_compare(rrset1->owner, rrset2->owner) != 0)
+	if ((knot_dname_compare_non_canon(rrset1->owner, rrset2->owner) != 0)
 	    || rrset1->rclass != rrset2->rclass
 	    || rrset1->type != rrset2->type) {
 		return KNOT_EINVAL;
@@ -1242,7 +1259,7 @@ dbg_rrset_exec_detail(
 	free(name);
 );
 
-	if ((knot_dname_compare(rrset1->owner, rrset2->owner) != 0)
+	if ((knot_dname_compare_non_canon(rrset1->owner, rrset2->owner) != 0)
 	    || rrset1->rclass != rrset2->rclass
 	    || rrset1->type != rrset2->type) {
 		dbg_rrset("rrset: merge_no_dupl: Trying to merge "
