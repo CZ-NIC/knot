@@ -148,8 +148,6 @@ static knot_packet_t* create_query_packet(const params_t *params,
 		return NULL;
 	}
 
-	knot_dname_release(q.qname);
-
 	return packet;
 }
 
