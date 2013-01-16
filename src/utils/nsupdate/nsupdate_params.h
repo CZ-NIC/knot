@@ -35,6 +35,9 @@
 #include "libknot/packet/query.h"
 #include "zscanner/scanner.h"
 
+/*! Parser init string. */
+#define PARSER_INIT_STR "$ORIGIN %s\n$TTL %u\n"
+
 /* nsupdate-specific params data */
 typedef struct nsupdate_params_t {
 	/*!< List of files with query data. */
@@ -53,6 +56,8 @@ typedef struct nsupdate_params_t {
 #define NSUP_PARAM(p) ((nsupdate_params_t*)p->d)
 
 int nsupdate_params_parse(params_t *params, int argc, char *argv[]);
+int nsupdate_params_set_ttl(params_t *params, uint32_t ttl);
+int nsupdate_params_set_origin(params_t *params, const char *origin);
 void nsupdate_params_clean(params_t *params);
 
 #endif // _NSUPDATE_PARAMS_H_

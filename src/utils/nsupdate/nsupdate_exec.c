@@ -130,6 +130,18 @@ static int dname_isvalid(const char *lp, size_t len) {
 	return 1;
 }
 
+static int parse_remainder(scanner_t *s, const char* lp)
+{
+	if (scanner_process(lp, lp + strlen(lp), 0, s) < 0) {
+		return KNOT_EPARSEFAIL;
+	}
+	char nl = '\n';
+	if (scanner_process(&nl, &nl+sizeof(char), 1, s) < 0) { /* Terminate */
+		return KNOT_EPARSEFAIL;
+	}
+	return KNOT_EOK;
+}
+
 /*!
  * \brief Scan for matching token described by a match table.
  *
@@ -294,9 +306,7 @@ int cmd_add(const char* lp, params_t *params)
 	DBG("%s: lp='%s'\n", __func__, lp);
 	
 	scanner_t *rrp = NSUP_PARAM(params)->rrp;
-
-	/*! \todo Does scanner require writable mem? */
-	if (scanner_process(lp, lp + strlen(lp), false, rrp) < 0) {
+	if (parse_remainder(rrp, lp) != KNOT_EOK) {
 		return KNOT_EPARSEFAIL;
 	}
 	
@@ -348,7 +358,7 @@ int cmd_prereq_rrset(const char *lp, params_t *params, unsigned type)
 	DBG("%s: lp='%s'\n", __func__, lp);
 	
 	scanner_t *rrp = NSUP_PARAM(params)->rrp;
-	if (scanner_process(lp, lp + strlen(lp), false, rrp) < 0) {
+	if (parse_remainder(rrp, lp) != KNOT_EOK) {
 		return KNOT_EPARSEFAIL;
 	}
 	

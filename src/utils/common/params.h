@@ -100,6 +100,8 @@ typedef struct {
 	uint16_t	class_num;
 	/*!< Default type number (16unsigned + -1 uninitialized). */
 	int32_t		type_num;
+	/*!< Default TTL. */
+	uint32_t	ttl;
 	/*!< Default SOA serial for XFR (32unsigned + -1 uninitialized). */
 	int64_t		xfr_serial;
 	/*!< Use recursion. */
