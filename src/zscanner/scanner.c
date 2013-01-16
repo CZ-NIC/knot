@@ -4371,14 +4371,16 @@ void scanner_free(scanner_t *s)
 	free(s);
 }
 
-int scanner_process(char      *start,
-		    char      *end,
-		    bool      is_last_block,
-		    scanner_t *s)
+int scanner_process(const char *start,
+		    const char *end,
+		    const bool is_last_block,
+		    scanner_t  *s)
 {
 	// Necessary scanner variables.
-	int  stack[RAGEL_STACK_SIZE];
-	char *p = start, *pe = end, *eof = NULL;
+	const char *p = start;
+	const char *pe = end;
+	char       *eof = NULL;
+	int        stack[RAGEL_STACK_SIZE];
 
 	// Auxiliary variables which are used in scanner body.
 	struct in_addr  addr4;
@@ -4400,12 +4402,12 @@ int scanner_process(char      *start,
 
 	// End of file check.
 	if (is_last_block == true) {
-		eof = pe;
+		eof = (char *)pe;
 	}
 
 	// Writing scanner body (in C).
 	
-#line 4409 "zscanner/scanner.c"
+#line 4411 "zscanner/scanner.c"
 	{
 	int _klen;
 	unsigned int _trans;
@@ -6581,7 +6583,7 @@ _match:
 		s->process_record(s);
 	}
 	break;
-#line 6585 "zscanner/scanner.c"
+#line 6587 "zscanner/scanner.c"
 		}
 	}
 
@@ -6807,7 +6809,7 @@ _again:
 		p--; {cs = 230; goto _again;}
 	}
 	break;
-#line 6811 "zscanner/scanner.c"
+#line 6813 "zscanner/scanner.c"
 		}
 	}
 	}
@@ -6815,7 +6817,7 @@ _again:
 	_out: {}
 	}
 
-#line 138 "zscanner/scanner.rl"
+#line 140 "zscanner/scanner.rl"
 
 	// Check if scanner state machine is in uncovered state.
 	if (cs == zone_scanner_error) {

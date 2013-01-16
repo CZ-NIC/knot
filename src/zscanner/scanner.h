@@ -255,10 +255,10 @@ void scanner_free(scanner_t *scanner);
  * \retval  0		if success.
  * \retval -1		if error.
  */
-int scanner_process(char      *start,
-		    char      *end,
-		    bool      is_last_block,
-		    scanner_t *scanner);
+int scanner_process(const char *start,
+		    const char *end,
+		    const bool is_last_block,
+		    scanner_t  *scanner);
 
 
 #endif // _ZSCANNER__SCANNER_H_
