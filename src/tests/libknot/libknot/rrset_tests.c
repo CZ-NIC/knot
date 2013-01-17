@@ -116,14 +116,14 @@ typedef struct test_rrset test_rrset_t;
 
 /* Artificial RDATA definitions: */
 static test_rdata_t test_rdata_array[TEST_RDATA_COUNT] = {
-	[TEST_RDATA_A_LESS] = {(uint8_t *)"\x1\x1\x1\0", (uint8_t *)"\x1\x1\x1\1", 4, 4},
-	[TEST_RDATA_A_GT] = {(uint8_t *)"\x1\x1\x1\1", (uint8_t *)"\x1\x1\x1\0", 4, 4},
+	[TEST_RDATA_A_LESS] = {(uint8_t *)"\x1\x1\x1\0", (uint8_t *)"\x1\x1\x1\0", 4, 4},
+	[TEST_RDATA_A_GT] = {(uint8_t *)"\x1\x1\x1\1", (uint8_t *)"\x1\x1\x1\1", 4, 4},
 	[TEST_RDATA_NS_LESS] = {NULL, NULL, sizeof(knot_dname_t *), 0},
 	[TEST_RDATA_NS_GT] = {NULL, NULL, sizeof(knot_dname_t *), 0},
-	[TEST_RDATA_MX_DNAME_LESS] = {(uint8_t *)"\x0\x1", NULL, sizeof(knot_dname_t *) + 2, 0},
-	[TEST_RDATA_MX_DNAME_GT] = {(uint8_t *)"\x0\x1", NULL, sizeof(knot_dname_t *) + 2, 0},
-	[TEST_RDATA_MX_BIN_LESS] = {(uint8_t *)"\x0\x1", NULL, sizeof(knot_dname_t *) + 2, 0},
-	[TEST_RDATA_MX_BIN_GT] = {(uint8_t *)"\x0\x2", NULL, sizeof(knot_dname_t *) + 2, 0},
+	[TEST_RDATA_MX_DNAME_LESS] = {NULL, NULL, sizeof(knot_dname_t *) + 2, 0},
+	[TEST_RDATA_MX_DNAME_GT] = {NULL, NULL, sizeof(knot_dname_t *) + 2, 0},
+	[TEST_RDATA_MX_BIN_LESS] = {NULL, NULL, sizeof(knot_dname_t *) + 2, 0},
+	[TEST_RDATA_MX_BIN_GT] = {NULL, NULL, sizeof(knot_dname_t *) + 2, 0},
 	[TEST_RDATA_MINFO1] = {NULL, NULL, sizeof(knot_dname_t *) * 2, 0},
 	[TEST_RDATA_MINFO2] = {NULL, NULL, sizeof(knot_dname_t *) * 2, 0}
 };
@@ -171,26 +171,121 @@ static void create_test_dnames()
 static void create_test_rdata()
 {
 	/* NS, MX and MINFO types need init. */
-	memcpy(test_rdata_array[TEST_RDATA_NS_LESS].rdata + 2, &test_dnames[0],
+	/* TODO use tmp variables, this is too big. This needs a rewrite, but i'm too tired now. */
+	test_rdata_array[TEST_RDATA_NS_LESS].rdata =
+		xmalloc(sizeof(knot_dname_t *));
+	memcpy(test_rdata_array[TEST_RDATA_NS_LESS].rdata, &test_dnames[0],
 	       sizeof(knot_dname_t *));
-	memcpy(test_rdata_array[TEST_RDATA_NS_GT].rdata + 2, &test_dnames[0],
+	test_rdata_array[TEST_RDATA_NS_LESS].wire =
+		xmalloc(test_dnames[0]->size);
+	memcpy(test_rdata_array[TEST_RDATA_NS_LESS].wire, test_dnames[0]->name,
+	       test_dnames[0]->size);
+	test_rdata_array[TEST_RDATA_NS_LESS].wire_size = test_dnames[0]->size;
+	test_rdata_array[TEST_RDATA_NS_LESS].size = sizeof(knot_dname_t *);
+	
+	
+	test_rdata_array[TEST_RDATA_NS_GT].rdata =
+		xmalloc(sizeof(knot_dname_t *));
+	memcpy(test_rdata_array[TEST_RDATA_NS_GT].rdata, &test_dnames[0],
 	       sizeof(knot_dname_t *));
+	test_rdata_array[TEST_RDATA_NS_GT].wire =
+		xmalloc(test_dnames[0]->size);
+	memcpy(test_rdata_array[TEST_RDATA_NS_GT].wire, test_dnames[0]->name,
+	       test_dnames[0]->size);
+	test_rdata_array[TEST_RDATA_NS_GT].wire_size = test_dnames[0]->size;
+	test_rdata_array[TEST_RDATA_NS_GT].size = sizeof(knot_dname_t *);
+	
+	
+	test_rdata_array[TEST_RDATA_MX_DNAME_LESS].rdata =
+		xmalloc(2 + sizeof(knot_dname_t *));
+	uint16_t id = 10;
+	knot_wire_write_u16(test_rdata_array[TEST_RDATA_MX_DNAME_LESS].rdata, id);
 	memcpy(test_rdata_array[TEST_RDATA_MX_DNAME_LESS].rdata + 2, &test_dnames[0],
 	       sizeof(knot_dname_t *));
+	test_rdata_array[TEST_RDATA_MX_DNAME_LESS].wire =
+		xmalloc(test_dnames[0]->size + 2);
+	knot_wire_write_u16(test_rdata_array[TEST_RDATA_MX_DNAME_LESS].wire, id);
+	memcpy(test_rdata_array[TEST_RDATA_MX_DNAME_LESS].wire + 2,
+	       test_dnames[0]->name, test_dnames[0]->size);
+	test_rdata_array[TEST_RDATA_MX_DNAME_LESS].wire_size = test_dnames[0]->size + 2;
+	test_rdata_array[TEST_RDATA_MX_DNAME_LESS].size = sizeof(knot_dname_t *) + 2;
+	
+	
+	test_rdata_array[TEST_RDATA_MX_DNAME_GT].rdata =
+		xmalloc(2 + sizeof(knot_dname_t *));
+	id = 10;
+	knot_wire_write_u16(test_rdata_array[TEST_RDATA_MX_DNAME_GT].rdata, id);
 	memcpy(test_rdata_array[TEST_RDATA_MX_DNAME_GT].rdata + 2, &test_dnames[1],
 	       sizeof(knot_dname_t *));
+	test_rdata_array[TEST_RDATA_MX_DNAME_GT].wire =
+		xmalloc(test_dnames[1]->size + 2);
+	knot_wire_write_u16(test_rdata_array[TEST_RDATA_MX_DNAME_GT].wire, id);
+	memcpy(test_rdata_array[TEST_RDATA_MX_DNAME_GT].wire + 2,
+	       test_dnames[0]->name, test_dnames[1]->size);
+	test_rdata_array[TEST_RDATA_MX_DNAME_GT].wire_size = test_dnames[1]->size + 2;
+	test_rdata_array[TEST_RDATA_MX_DNAME_GT].size = sizeof(knot_dname_t *) + 2;
+	
+	
+	test_rdata_array[TEST_RDATA_MX_BIN_LESS].rdata =
+		xmalloc(2 + sizeof(knot_dname_t *));
+	id = 10;
+	knot_wire_write_u16(test_rdata_array[TEST_RDATA_MX_BIN_LESS].rdata, id);
 	memcpy(test_rdata_array[TEST_RDATA_MX_BIN_LESS].rdata + 2, &test_dnames[2],
 	       sizeof(knot_dname_t *));
+	test_rdata_array[TEST_RDATA_MX_BIN_LESS].wire =
+		xmalloc(test_dnames[0]->size + 2);
+	knot_wire_write_u16(test_rdata_array[TEST_RDATA_MX_BIN_LESS].wire, id);
+	memcpy(test_rdata_array[TEST_RDATA_MX_BIN_LESS].wire + 2,
+	       test_dnames[0]->name, test_dnames[0]->size);
+	test_rdata_array[TEST_RDATA_MX_BIN_LESS].wire_size = test_dnames[0]->size + 2;
+	test_rdata_array[TEST_RDATA_MX_BIN_LESS].size = sizeof(knot_dname_t *) + 2;
+	
+	
+	test_rdata_array[TEST_RDATA_MX_BIN_GT].rdata =
+		xmalloc(2 + sizeof(knot_dname_t *));
+	id = 20;
+	knot_wire_write_u16(test_rdata_array[TEST_RDATA_MX_BIN_GT].rdata, id);
 	memcpy(test_rdata_array[TEST_RDATA_MX_BIN_GT].rdata + 2, &test_dnames[2],
 	       sizeof(knot_dname_t *));
+	test_rdata_array[TEST_RDATA_MX_BIN_GT].wire =
+		xmalloc(test_dnames[0]->size + 2);
+	knot_wire_write_u16(test_rdata_array[TEST_RDATA_MX_BIN_GT].wire, id);
+	memcpy(test_rdata_array[TEST_RDATA_MX_BIN_GT].wire + 2,
+	       test_dnames[0]->name, test_dnames[0]->size);
+	test_rdata_array[TEST_RDATA_MX_BIN_GT].wire_size = test_dnames[0]->size + 2;
+	test_rdata_array[TEST_RDATA_MX_BIN_GT].size = sizeof(knot_dname_t *) + 2;
+	
+	test_rdata_array[TEST_RDATA_MINFO1].rdata =
+		xmalloc(sizeof(knot_dname_t *) * 2);
 	memcpy(test_rdata_array[TEST_RDATA_MINFO1].rdata, &test_dnames[0],
 	       sizeof(knot_dname_t *));
 	memcpy(test_rdata_array[TEST_RDATA_MINFO1].rdata + sizeof(knot_dname_t *),
 	       &test_dnames[1], sizeof(knot_dname_t *));
+	test_rdata_array[TEST_RDATA_MINFO1].wire =
+		xmalloc(test_dnames[0]->size + test_dnames[1]->size);
+	memcpy(test_rdata_array[TEST_RDATA_MINFO1].wire, test_dnames[0]->name,
+	       test_dnames[0]->size);
+	memcpy(test_rdata_array[TEST_RDATA_MINFO1].wire + test_dnames[0]->size,
+	       test_dnames[1]->name, test_dnames[1]->size);
+	test_rdata_array[TEST_RDATA_MINFO1].wire_size =
+		test_dnames[0]->size + test_dnames[1]->size;
+	test_rdata_array[TEST_RDATA_MINFO1].size = sizeof(knot_dname_t *) * 2;
+	
+	test_rdata_array[TEST_RDATA_MINFO2].rdata =
+		xmalloc(sizeof(knot_dname_t *) * 2);
 	memcpy(test_rdata_array[TEST_RDATA_MINFO2].rdata, &test_dnames[2],
 	       sizeof(knot_dname_t *));
 	memcpy(test_rdata_array[TEST_RDATA_MINFO2].rdata + sizeof(knot_dname_t *),
 	       &test_dnames[3], sizeof(knot_dname_t *));
+	test_rdata_array[TEST_RDATA_MINFO2].wire =
+		xmalloc(test_dnames[2]->size + test_dnames[3]->size);
+	memcpy(test_rdata_array[TEST_RDATA_MINFO2].wire, test_dnames[0]->name,
+	       test_dnames[0]->size);
+	memcpy(test_rdata_array[TEST_RDATA_MINFO2].wire + test_dnames[2]->size,
+	       test_dnames[3]->name, test_dnames[3]->size);
+	test_rdata_array[TEST_RDATA_MINFO2].wire_size =
+		test_dnames[2]->size + test_dnames[3]->size;
+	test_rdata_array[TEST_RDATA_MINFO2].size = sizeof(knot_dname_t *) * 2;
 }
 
 static void create_test_rrsets()
@@ -221,15 +316,19 @@ static void create_test_rrsets()
 		uint16_t rdlength = 0;
 		test_rrset.test_rdata =
 			xmalloc(sizeof(void *) * test_rrset.rr_count);
+		size_t actual_length = 0;
 		for (int j = 0; j < test_rrset.rr_count; j++) {
 			test_rrset.test_rdata[j] = &test_rdata_array[j];
 			rdlength += test_rrset.test_rdata[j]->wire_size;
+			actual_length += test_rrset.test_rdata[j]->size;
 		}
 		/* Copy RDLENGTH to wire. */
 		knot_wire_write_u16(test_rrset.header_wire + offset,
 		                    rdlength);
 		/* Assign RDATA (including indices). */
 		offset = 0;
+		test_rrset.rrset.rdata = xmalloc(actual_length);
+		test_rrset.rdata_wire = xmalloc(rdlength);
 		test_rrset.rrset.rdata_indices =
 			xmalloc(sizeof(uint32_t) * test_rrset.rr_count);
 		for (int j = 0; j < test_rrset.rr_count; j++) {
@@ -250,9 +349,9 @@ static void create_test_rrsets()
 		offset = 0;
 		for (int j = 0; j < test_rrset.rr_count; j++) {
 			memcpy(test_rrset.rdata_wire + offset,
-			       test_rrset.test_rdata[i]->wire,
-			       test_rrset.test_rdata[i]->wire_size);
-			offset += test_rrset.test_rdata[i]->wire_size;
+			       test_rrset.test_rdata[j]->wire,
+			       test_rrset.test_rdata[j]->wire_size);
+			offset += test_rrset.test_rdata[j]->wire_size;
 		}
 		test_rrset.rdata_wire_size = offset;
 	}
@@ -295,7 +394,7 @@ static int check_rrset_values(const knot_rrset_t *rrset,
 static int test_rrset_new()
 {
 	/* Actual values don't matter in this case. */
-	knot_dname_t *dname = (knot_dname_t *)0x1;
+	knot_dname_t *dname = test_dnames[0];
 	uint16_t type = 1;
 	uint16_t rclass = 1;
 	uint32_t ttl = 1;
