@@ -30,6 +30,7 @@
 #include "utils/common/resolv.h"	// server_t
 #include "utils/common/params.h"	// params_t
 #include "utils/common/netio.h"		// send_msg
+#include "utils/common/rr-serialize.h"
 
 static knot_packet_t* create_query_packet(const params_t *params,
                                           const query_t  *query,
@@ -46,7 +47,8 @@ static knot_packet_t* create_query_packet(const params_t *params,
 	}
 
 	// Create packet skeleton.
-	knot_packet_t *packet = create_empty_packet(max_size);
+	knot_packet_t *packet = create_empty_packet(KNOT_PACKET_PREALLOC_NONE,
+	                                            max_size);
 
 	if (packet == NULL) {
 		return NULL;
@@ -443,10 +445,10 @@ static bool last_serial_check(const uint32_t serial, const knot_packet_t *reply)
 	}
 }
 
-knot_packet_t* create_empty_packet(int max_size)
+knot_packet_t* create_empty_packet(knot_packet_prealloc_type_t t, int max_size)
 {
 	// Create packet skeleton.
-	knot_packet_t *packet = knot_packet_new(KNOT_PACKET_PREALLOC_NONE);
+	knot_packet_t *packet = knot_packet_new(t);
 	if (packet == NULL) {
 		return NULL;
 	}
