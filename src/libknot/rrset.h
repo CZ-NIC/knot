@@ -402,18 +402,15 @@ const uint8_t *knot_rrset_rdata_nsec3param_salt(const knot_rrset_t *rrset);
 knot_dname_t *knot_rrset_get_next_dname(const knot_rrset_t *rrset,
                                         knot_dname_t *prev_dname);
 
-//TODO test
 const knot_dname_t *knot_rrset_rdata_next_dname(const knot_rrset_t *rrset,
                                                 const knot_dname_t *prev_dname,
                                                 size_t pos);
 
-//TODO test
 knot_dname_t **knot_rrset_rdata_get_next_dname_pointer(
 	const knot_rrset_t *rrset,
 	knot_dname_t **prev_dname, size_t pos);
 
 
-//TODO test
 knot_dname_t **knot_rrset_get_next_dname_pointer(const knot_rrset_t *rrset,
                                                  knot_dname_t **prev_dname);
 

@@ -754,7 +754,8 @@ static int test_rrset_compare()
 	knot_rrset_t *rrset1 = test_rrset_array[0];
 	knot_rrset_t *rrset2 = knot_rrset_deep_copy(test_rrset_array[0]);
 	
-	if (knot_rrset_compare(rrset1, rrset2, KNOT_RRSET_COMPARE_HEADER) != 0) {
+	if (knot_rrset_compare(rrset1, rrset2,
+	                       KNOT_RRSET_COMPARE_HEADER) != 0) {
 		diag("Wrong RRSet comparison, should be 0.\n");
 		knot_rrset_deep_free(&rrset2, 1, 1);
 		return 0;
@@ -766,7 +767,8 @@ static int test_rrset_compare()
 	rrset1 = test_rrset_array[1];
 	rrset2 = test_rrset_array[0];
 	
-	if (knot_rrset_compare(rrset1, rrset2, KNOT_RRSET_COMPARE_HEADER) >= 0) {
+	if (knot_rrset_compare(rrset1, rrset2,
+	                       KNOT_RRSET_COMPARE_HEADER) >= 0) {
 		diag("Wrong RRSet comparison, should be 0.\n");
 		knot_rrset_deep_free(&rrset2, 1, 1);
 		return 0;
@@ -776,7 +778,8 @@ static int test_rrset_compare()
 	rrset1 = test_rrset_array[0];
 	rrset2 = test_rrset_array[1];
 	
-	if (knot_rrset_compare(rrset1, rrset2, KNOT_RRSET_COMPARE_HEADER) <= 0) {
+	if (knot_rrset_compare(rrset1, rrset2,
+	                       KNOT_RRSET_COMPARE_HEADER) <= 0) {
 		diag("Wrong RRSet comparison, should be 0.\n");
 		knot_rrset_deep_free(&rrset2, 1, 1);
 		return 0;
@@ -809,13 +812,62 @@ static int test_rrset_rdata_get_next_dname()
 		return 0;
 	}
 	
+	/* Test that RRSet with no DNAMEs in it returns NULL. */
+	dname = NULL;
+	dname = knot_rrset_rdata_get_next_dname(rrset, dname, 0);
+	if (dname != NULL) {
+		diag("rrset_rdata_get_next_dname() found DNAME in RRSet with "
+		     "no DNAMEs.\n");
+		return 0;
+	}
+	
 	return 1;
 }
 
 static int test_rrset_next_dname()
 {
-	/* Same test as in above, but we'll use multiple RRs within on SET. */
+	/* Same test as in above, but we'll use multiple RRs within one SET. */
 	knot_rrset_t *rrset = test_rrset_array[MINFO_MULTIPLE_INDEX];
+	knot_dname_t *extracted_dnames[4];
+	extracted_dnames[0] = test_dnames[0];
+	extracted_dnames[1] = test_dnames[1];
+	extracted_dnames[2] = test_dnames[2];
+	extracted_dnames[3] = test_dnames[3];
+	knot_dname_t **dname = NULL;
+	int i = 0;
+	while ((dname = knot_rrset_get_next_dname_pointer(rrset, dname))) {
+		if (extracted_dnames[i] != *dname) {
+			diag("Got wrong DNAME from RDATA.");
+			return 0;
+		}
+		i++;
+	}
+	
+	/* Try writes into DNAMEs you've gotten. */
+	rrset = knot_rrset_deep_copy(test_rrset_array[MINFO_MULTIPLE_INDEX]);
+	dname = NULL;
+	i = 4;
+	while ((dname = knot_rrset_get_next_dname_pointer(rrset, dname))) {
+		knot_dname_free(dname);
+		*dname == extracted_dnames[i];
+		i++;
+	}
+	
+	knot_dname_t *dname_read = NULL;
+	i = 4;
+	while ((dname_read = knot_rrset_get_next_dname_pointer(rrset,
+	                                                       dname_read))) {
+		if (dname_read != extracted_dnames[i]) {
+			diag("Rewriting of DNAMEs in RDATA was "
+			     "not successful.\n");
+			knot_rrset_deep_free(&rrset, 1, 1);
+			return 0;
+		}
+		i++;
+	}
+	
+	knot_rrset_deep_free(&rrset, 1, 1);
+	return 1;
 }
 
 static const int KNOT_RRSET_TEST_COUNT = 13;
