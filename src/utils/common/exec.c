@@ -429,7 +429,7 @@ static bool last_serial_check(const uint32_t serial, const knot_packet_t *reply)
 	}
 }
 
-void process_query(const params_t *params, query_t *query)
+void process_query(const params_t *params, const query_t *query)
 {
 	float		elapsed;
 	bool 		id_ok, stop;

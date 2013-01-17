@@ -24,10 +24,9 @@
  * @{
  */
 
-#ifndef _NSUPDATE_PARAMS_H_
-#define _NSUPDATE_PARAMS_H_
+#ifndef _NSUPDATE__NSUPDATE_PARAMS_H_
+#define _NSUPDATE__NSUPDATE_PARAMS_H_
 
-#include <stdbool.h>
 #include <stdint.h>
 
 #include "common/lists.h"		// list
@@ -60,6 +59,6 @@ int nsupdate_params_set_ttl(params_t *params, uint32_t ttl);
 int nsupdate_params_set_origin(params_t *params, const char *origin);
 void nsupdate_params_clean(params_t *params);
 
-#endif // _NSUPDATE_PARAMS_H_
+#endif // _NSUPDATE__NSUPDATE_PARAMS_H_
 
 /*! @} */

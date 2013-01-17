@@ -18,17 +18,14 @@
  *
  * \author Daniel Salzman <daniel.salzman@nic.cz>
  *
- * \brief
+ * \brief host executives.
  *
- * \addtogroup knot_utils
+ * \addtogroup utils
  * @{
  */
 
 #ifndef _HOST__HOST_EXEC_H_
 #define _HOST__HOST_EXEC_H_
-
-#include <stdbool.h>			// bool
-#include <stdint.h>			// uint16_t
 
 #include "utils/common/params.h"	// params_t
 

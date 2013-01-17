@@ -27,14 +27,9 @@
 #ifndef _HOST__HOST_PARAMS_H_
 #define _HOST__HOST_PARAMS_H_
 
-#include <stdbool.h>
-#include <stdint.h>
-
-#include "common/lists.h"		// list
-#include "utils/common/params.h"	// protocol_t
+#include "utils/common/params.h"	// params_t
 
 int host_params_parse(params_t *params, int argc, char *argv[]);
-
 void host_params_clean(params_t *params);
 
 #endif // _HOST__HOST_PARAMS_H_

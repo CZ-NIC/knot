@@ -18,23 +18,20 @@
  *
  * \author Daniel Salzman <daniel.salzman@nic.cz>
  *
- * \brief
+ * \brief dig/host executives
  *
- * \addtogroup knot_utils
+ * \addtogroup utils
  * @{
  */
 
-#ifndef _HOST__EXEC_H_
-#define _HOST__EXEC_H_
-
-#include <stdbool.h>			// bool
-#include <stdint.h>			// uint16_t
+#ifndef _UTILS__EXEC_H_
+#define _UTILS__EXEC_H_
 
 #include "utils/common/params.h"	// params_t
 #include "utils/common/resolv.h"	// server_t
 
-void process_query(const params_t *params, query_t *query);
+void process_query(const params_t *params, const query_t *query);
 
-#endif // _HOST__EXEC_H_
+#endif // _UTILS__EXEC_H_
 
 /*! @} */

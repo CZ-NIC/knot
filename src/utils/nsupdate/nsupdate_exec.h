@@ -18,7 +18,7 @@
  *
  * \author Marek Vavrusa <marek.vavrusa@nic.cz>
  *
- * \brief
+ * \brief 
  *
  * \addtogroup knot_utils
  * @{
@@ -26,9 +26,6 @@
 
 #ifndef _NSUPDATE__NSUPDATE_EXEC_H_
 #define _NSUPDATE__NSUPDATE_EXEC_H_
-
-#include <stdbool.h>			// bool
-#include <stdint.h>			// uint16_t
 
 #include "utils/nsupdate/nsupdate_params.h"
 

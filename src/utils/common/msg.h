@@ -13,6 +13,16 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+/*!
+ * \file msg.h
+ *
+ * \author Daniel Salzman <daniel.salzman@nic.cz>
+ *
+ * \brief Simple output formatting framework.
+ *
+ * \addtogroup utils
+ * @{
+ */
 
 #ifndef _UTILS__MSG_H_
 #define _UTILS__MSG_H_

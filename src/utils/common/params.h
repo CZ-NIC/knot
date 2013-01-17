@@ -18,7 +18,7 @@
  *
  * \author Daniel Salzman <daniel.salzman@nic.cz>
  *
- * \brief Host command line parameters.
+ * \brief Common utils parameters processing.
  *
  * \addtogroup utils
  * @{
