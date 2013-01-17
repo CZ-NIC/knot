@@ -176,6 +176,24 @@ static knot_lookup_table_t rcodes[] = {
 	{ 0, NULL }
 };
 
+static knot_lookup_table_t rtypes[] = {
+	{ KNOT_RRTYPE_A,      "has IPv4 address" },
+	{ KNOT_RRTYPE_NS,     "nameserver is" },
+	{ KNOT_RRTYPE_CNAME,  "is an alias for" },
+	{ KNOT_RRTYPE_SOA,    "start of authority is" },
+	{ KNOT_RRTYPE_PTR,    "points to" },
+	{ KNOT_RRTYPE_MX,     "mail is handled by" },
+	{ KNOT_RRTYPE_TXT,    "description is" },
+	{ KNOT_RRTYPE_AAAA,   "has IPv6 address" },
+	{ KNOT_RRTYPE_LOC,    "location is" },
+	{ KNOT_RRTYPE_DS,     "delegation signature is" },
+	{ KNOT_RRTYPE_SSHFP,  "SSH fingerprint is" },
+	{ KNOT_RRTYPE_RRSIG,  "RR set signature is" },
+	{ KNOT_RRTYPE_DNSKEY, "DNSSEC key is" },
+	{ KNOT_RRTYPE_TLSA,   "has TLS certificate" },
+	{ 0, NULL }
+};
+
 static void print_answer(const params_t *params, const knot_packet_t *packet)
 {
 	char buf[100000];
@@ -186,16 +204,20 @@ static void print_answer(const params_t *params, const knot_packet_t *packet)
 	}
 }
 
-static void print_header(const params_t *params, const knot_packet_t *packet)
+static void print_header(const knot_packet_t *packet)
 {
-	char flags[64] = "\0";
+	char    flags[64] = "\0";
+	uint8_t rcode_id, opcode_id;
+	knot_lookup_table_t *rcode, *opcode;
 
-	uint8_t rcode_id = knot_wire_get_rcode(packet->wireformat);
-	uint8_t opcode_id = knot_wire_get_opcode(packet->wireformat);
+	// Get codes.
+	rcode_id = knot_wire_get_rcode(packet->wireformat);
+	opcode_id = knot_wire_get_opcode(packet->wireformat);
 
-	knot_lookup_table_t *rcode = knot_lookup_by_id(rcodes, rcode_id);
-	knot_lookup_table_t *opcode = knot_lookup_by_id(opcodes, opcode_id);
+	rcode = knot_lookup_by_id(rcodes, rcode_id);
+	opcode = knot_lookup_by_id(opcodes, opcode_id);
 
+	// Get flags.
 	if (knot_wire_get_qr(packet->wireformat) != 0) {
 		strcat(flags, " qr");
 	}
@@ -219,8 +241,9 @@ static void print_header(const params_t *params, const knot_packet_t *packet)
 	}
 	if (knot_wire_get_cd(packet->wireformat) != 0) {
 		strcat(flags, " cd");
-	};
+	}
 
+	// Print formated info.
 	printf(";; ->>HEADER<<- opcode: %s, status: %s, id: %u\n"
 	       ";; Flags:%1s, "
 	       "QUERY: %u, ANSWER: %u, AUTHORITY: %u, ADDITIONAL: %u\n",
@@ -229,13 +252,23 @@ static void print_header(const params_t *params, const knot_packet_t *packet)
 	       packet->ns_rrsets, packet->ar_rrsets);
 }
 
-static void print_footer(const params_t *params,
-                         const size_t   wire_len,
-                         const server_t *server,
-                         const float    elapsed)
+static void print_footer(const size_t wire_len,
+                         const int    sockfd,
+                         const float  elapsed)
 {
-	char      date[64];
 	struct tm tm;
+	char      date[64];
+
+	struct sockaddr_storage addr;
+	socklen_t addr_len;
+	socklen_t socktype_len;
+	int       socktype;
+	char      proto[8] = "NULL";
+	char      ip[INET6_ADDRSTRLEN] = "NULL";
+	int       port = -1;
+
+	addr_len = sizeof(addr);
+	socktype_len = sizeof(socktype);
 
 	// Get current timestamp.
 	time_t now = time(NULL);
@@ -244,19 +277,45 @@ static void print_footer(const params_t *params,
 	// Create formated date-time string.
 	strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S %Z", &tm);
 
-	printf(";; Elapsed time: %.1f ms\n"
-	       ";; Nameserver: %s, port: %s\n"
-	       ";; When: %s\n"
-	       ";; Message size: %zu B\n",
-	       elapsed, server->name, server->service, date, wire_len);
+	// Get connected address.
+	if (getpeername(sockfd, (struct sockaddr*)&addr, &addr_len) == 0) {
+		if (addr.ss_family == AF_INET) {
+			struct sockaddr_in *s = (struct sockaddr_in *)&addr;
+			port = ntohs(s->sin_port);
+			inet_ntop(AF_INET, &s->sin_addr, ip, sizeof(ip));
+		} else { // AF_INET6
+			struct sockaddr_in6 *s = (struct sockaddr_in6 *)&addr;
+			port = ntohs(s->sin6_port);
+			inet_ntop(AF_INET6, &s->sin6_addr, ip, sizeof(ip));
+		}
+	}
+
+	// Get connected socket type.
+	if (getsockopt(sockfd, SOL_SOCKET, SO_TYPE, (char*)&socktype,
+	    &socktype_len) == 0) {
+		switch (socktype) {
+		case SOCK_STREAM:
+			strcpy(proto, "TCP");
+			break;
+		case SOCK_DGRAM:
+			strcpy(proto, "UDP");
+			break;
+		}
+	}
+
+	// Print formated info.
+	printf(";; Received %zu B (1 message)\n"
+	       ";; From %s#%i over %s in %.1f ms\n"
+	       ";; On %s\n",
+	       wire_len, ip, port, proto, elapsed, date);
 }
 
-static void print_xfr_header(const params_t *params)
+static void print_xfr_header()
 {
 	printf("XFR Header:\n");
 }
 
-static void print_xfr_footer(const params_t *params)
+static void print_xfr_footer()
 {
 	printf("XFR Footer:\n");
 }
@@ -264,14 +323,33 @@ static void print_xfr_footer(const params_t *params)
 void print_packet(const params_t      *params,
                   const knot_packet_t *packet,
                   const size_t        wire_len,
-                  const server_t      *server,
+                  const int           sockfd,
                   const float         elapsed)
 {
-	print_header(params, packet);
+	switch (params->format) {
+	case FORMAT_DIG:
+		break;
+	case FORMAT_HOST:
+		break;
+	case FORMAT_VERBOSE:
+	case FORMAT_MULTILINE:
+		print_header(packet);
 	
-	print_answer(params, packet);
+		printf("\n;; QUESTION SECTION:\n");
 
-	print_footer(params, wire_len, server, elapsed);
+		printf("\n;; ANSWER SECTION:\n");
+		print_answer(params, packet);
+
+		printf("\n;; AUTHORITY SECTION:\n");
+
+		printf("\n;; ADDITIONAL SECTION:\n");
+
+		print_footer(wire_len, sockfd, elapsed);
+
+		break;
+	default:
+		break;
+	}
 }
 
 static bool check_id(const knot_packet_t *query, const knot_packet_t *reply)
@@ -455,8 +533,7 @@ void process_query(const params_t *params, query_t *query)
 			elapsed = (t_end.tv_sec - t_start.tv_sec) * 1000 +
 			          ((t_end.tv_usec - t_start.tv_usec) / 1000.0);
 
-			print_packet(params, in_packet, in_len,
-			             (server_t *)server, elapsed);
+			print_packet(params, in_packet, in_len, sockfd, elapsed);
 
 			knot_packet_free(&in_packet);
 
