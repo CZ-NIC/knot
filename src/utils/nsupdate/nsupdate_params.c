@@ -78,6 +78,7 @@ static int nsupdate_params_init(params_t *params)
 	params->retries = DEFAULT_RETRIES;
 	params->wait = DEFAULT_WAIT_INTERVAL;
 	params->format = FORMAT_NSUPDATE;
+	params->type_num = KNOT_RRTYPE_SOA;
 	
 	/* Initialize RR parser. */
 	npar->rrp = scanner_create("-");
@@ -200,7 +201,7 @@ int nsupdate_params_set_origin(params_t *params, const char *origin)
 		if (npar->zone) free(npar->zone);
 		npar->zone = strdup(origin);
 	} else {
-		ERR("failed to set default TTL, %s\n", knot_strerror(ret));
+		ERR("failed to set default origin, %s\n", knot_strerror(ret));
 	}
 	return ret;
 }

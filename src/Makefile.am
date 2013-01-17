@@ -58,6 +58,8 @@ knsupdate_SOURCES =				\
 	utils/common/netio.h			\
 	utils/common/rr-serialize.h		\
 	utils/common/rr-serialize.c		\
+	utils/common/exec.c			\
+	utils/common/exec.h			\
 	utils/nsupdate/nsupdate_main.c		\
 	utils/nsupdate/nsupdate_params.c	\
 	utils/nsupdate/nsupdate_params.h	\
