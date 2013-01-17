@@ -24,7 +24,6 @@
 #include "common/errcode.h"		// KNOT_EOK
 #include "libknot/consts.h"		// KNOT_RCODE_NOERROR
 #include "libknot/util/wire.h"		// knot_wire_set_rd
-#include "libknot/packet/packet.h"	// packet_t
 #include "libknot/packet/query.h"	// knot_query_init
 
 #include "utils/common/msg.h"		// WARN
@@ -38,28 +37,20 @@ static knot_packet_t* create_query_packet(const params_t *params,
                                           size_t         *data_len)
 {
 	knot_question_t q;
+	
+	// Set packet buffer size.
+	int max_size = MAX_PACKET_SIZE;
+	if (get_socktype(params, query->type) != SOCK_STREAM) {
+		// For UDP default or specified EDNS size.
+		max_size = params->udp_size;
+	}
 
 	// Create packet skeleton.
-	knot_packet_t *packet = knot_packet_new(KNOT_PACKET_PREALLOC_NONE);
+	knot_packet_t *packet = create_empty_packet(max_size);
 
 	if (packet == NULL) {
 		return NULL;
 	}
-
-	// Set packet buffer size.
-	if (get_socktype(params, query->type) == SOCK_STREAM) {
-		// For TCP maximal dns packet size.
-		knot_packet_set_max_size(packet, MAX_PACKET_SIZE);
-	} else {
-		// For UDP default or specified EDNS size.
-		knot_packet_set_max_size(packet, params->udp_size);
-	}
-
-	// Set random sequence id.
-	knot_packet_set_random_id(packet);
-
-	// Initialize query packet.
-	knot_query_init(packet);
 
 	// Set recursion bit to wireformat.
 	if (params->recursion == true) {
@@ -450,6 +441,26 @@ static bool last_serial_check(const uint32_t serial, const knot_packet_t *reply)
 			return false;
 		}
 	}
+}
+
+knot_packet_t* create_empty_packet(int max_size)
+{
+	// Create packet skeleton.
+	knot_packet_t *packet = knot_packet_new(KNOT_PACKET_PREALLOC_NONE);
+	if (packet == NULL) {
+		return NULL;
+	}
+
+	// Set packet buffer size.
+	knot_packet_set_max_size(packet, max_size);
+
+	// Set random sequence id.
+	knot_packet_set_random_id(packet);
+
+	// Initialize query packet.
+	knot_query_init(packet);
+
+	return packet;
 }
 
 void process_query(const params_t *params, const query_t *query)
