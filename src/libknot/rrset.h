@@ -336,7 +336,7 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
  * \retval KNOT_EOK
  * \retval KNOT_EINVAL if the RRSets could not be merged, because their
  *         Owner, Type, Class or TTL does not match.
- */
+ *	/
 int knot_rrset_merge(void **r1, void **r2);
 
 
@@ -418,6 +418,17 @@ uint8_t *knot_rrset_rdata_prealloc(const knot_rrset_t *rrset,
                                    size_t *size);
 
 void knot_rrset_dump(const knot_rrset_t *rrset);
+
+//TODO test
+int rrset_serialize(const knot_rrset_t *rrset, uint8_t *stream, size_t *size);
+
+//TODO test
+int rrset_serialize_alloc(const knot_rrset_t *rrset, uint8_t **stream,
+                          size_t *size);
+
+//TODO test
+int rrset_deserialize(uint8_t *stream, size_t stream_size,
+                      knot_rrset_t **rrset);
 
 #endif /* _KNOT_RRSET_H_ */
 

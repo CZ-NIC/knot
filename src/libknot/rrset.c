@@ -2007,7 +2007,10 @@ int rrset_deserialize(uint8_t *stream, size_t stream_size,
 	memset((*rrset)->rdata, 0, rdata_indices[rdata_count - 1]);
 	/* Read RRs. */
 	for (uint16_t i = 0; i < (*rrset)->rdata_count; i++) {
-		/* There's always size of rdata in the beginning. Needed because of remainders. */
+		/*
+		 * There's always size of rdata in the beginning.
+		 * Needed because of remainders.
+		 */
 		uint32_t rdata_size = 0;
 		memcpy(&rdata_size, stream + offset, sizeof(uint32_t));
 		size_t read = 0;
