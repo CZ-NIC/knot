@@ -58,7 +58,7 @@ static int rdata_write_mem(char* dst, size_t maxlen, const knot_rdata_t *rdata,
 			ret = snprintf(dst+wb, maxlen-wb, "%s", item_str);
 		}
 		free(item_str);
-		if (ret < 0) return KNOT_ESPACE;
+		if (ret < 0 || ret >= maxlen-wb) return KNOT_ESPACE;
 		wb += ret;
 	}
 
@@ -79,25 +79,25 @@ static int rrset_header_write_mem(char *dst, size_t maxlen,
 	char *name = knot_dname_to_str(rrset->owner);
 	ret = snprintf(dst+wb, maxlen-wb, "%-20s\t", name);
 	free(name);
-	if (ret < 0) return KNOT_ESPACE;
+	if (ret < 0 || ret >= maxlen-wb) return KNOT_ESPACE;
 	wb += ret;
 	
 	ret = snprintf(dst+wb, maxlen-wb, "%-5u\t", rrset->ttl);
-	if (ret < 0) return KNOT_ESPACE;
+	if (ret < 0 || ret >= maxlen-wb) return KNOT_ESPACE;
 	wb += ret;
 	
 	if (knot_rrclass_to_string(rrset->rclass, buf, sizeof(buf)) < 0) {
 		return KNOT_ERROR;
 	}
 	ret = snprintf(dst+wb, maxlen-wb, "%-2s\t", buf);
-	if (ret < 0) return KNOT_ESPACE;
+	if (ret < 0 || ret >= maxlen-wb) return KNOT_ESPACE;
 	wb += ret;
 	
 	if (knot_rrtype_to_string(rrset->type, buf, sizeof(buf)) < 0) {
 		return KNOT_ERROR;
 	}
 	ret = snprintf(dst+wb, maxlen-wb, "%-5s\t",  buf);
-	if (ret < 0) return KNOT_ESPACE;
+	if (ret < 0 || ret >= maxlen-wb) return KNOT_ESPACE;
 	wb += ret;
 	
 	return wb;
@@ -159,7 +159,7 @@ int rrset_write_mem(char *dst, size_t maxlen, const knot_rrset_t *rrset)
 		wb += ret;
 
 		ret = snprintf(dst+wb, maxlen-wb, "\n");
-		if (ret < 0) return ret;
+		if (ret < 0 || ret >= maxlen-wb) return ret;
 		wb += ret;
 
 		tmp = tmp->next;
