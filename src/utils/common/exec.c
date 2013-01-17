@@ -194,16 +194,6 @@ static knot_lookup_table_t rtypes[] = {
 	{ 0, NULL }
 };
 
-static void print_answer(const params_t *params, const knot_packet_t *packet)
-{
-	char buf[100000];
-
-	for (int i = 0; i < packet->an_rrsets; i++) {
-		rrset_write_mem(buf, sizeof(buf), (packet->answer)[i]);
-		printf("%s", buf);
-	}
-}
-
 static void print_header(const knot_packet_t *packet)
 {
 	char    flags[64] = "\0";
@@ -304,10 +294,27 @@ static void print_footer(const size_t wire_len,
 	}
 
 	// Print formated info.
-	printf(";; Received %zu B (1 message)\n"
+	printf("\n;; Received %zu B (1 message)\n"
 	       ";; From %s#%i over %s in %.1f ms\n"
 	       ";; On %s\n",
 	       wire_len, ip, port, proto, elapsed, date);
+}
+
+static void print_section_verbose(const knot_rrset_t **rrset,
+                                  const uint16_t     count)
+{
+	size_t buflen = 8192;
+	char   *buf = malloc(buflen);
+
+	for (uint16_t i = 0; i < count; i++) {
+		while (rrset_write_mem(buf, buflen, rrset[i]) < 0) {
+			buflen += 4096;
+			buf = realloc(buf, buflen);
+		}
+		printf("%s", buf);
+	}
+
+	free(buf);
 }
 
 static void print_xfr_header()
@@ -318,6 +325,11 @@ static void print_xfr_header()
 static void print_xfr_footer()
 {
 	printf("XFR Footer:\n");
+}
+
+static void print_xfr_data(const knot_packet_t *packet)
+{
+	print_section_verbose(packet->answer, packet->an_rrsets);
 }
 
 void print_packet(const params_t      *params,
@@ -334,15 +346,26 @@ void print_packet(const params_t      *params,
 	case FORMAT_VERBOSE:
 	case FORMAT_MULTILINE:
 		print_header(packet);
-	
-		printf("\n;; QUESTION SECTION:\n");
 
-		printf("\n;; ANSWER SECTION:\n");
-		print_answer(params, packet);
+		if (packet->header.qdcount > 0) {
+			printf("\n;; QUESTION SECTION:\n");
+			printf(";; ");//, packet->question.qname, packet->question.qclass, packet->question.qtype);
+		}
 
-		printf("\n;; AUTHORITY SECTION:\n");
+		if (packet->an_rrsets > 0) {
+			printf("\n;; ANSWER SECTION:\n");
+			print_section_verbose(packet->answer, packet->an_rrsets);
+		}
 
-		printf("\n;; ADDITIONAL SECTION:\n");
+		if (packet->ns_rrsets > 0) {
+			printf("\n;; AUTHORITY SECTION:\n");
+			print_section_verbose(packet->authority, packet->ns_rrsets);
+		}
+
+		if (packet->ar_rrsets > 0) {
+			printf("\n;; ADDITIONAL SECTION:\n");
+			print_section_verbose(packet->additional, packet->ar_rrsets);
+		}
 
 		print_footer(wire_len, sockfd, elapsed);
 
@@ -546,7 +569,7 @@ void process_query(const params_t *params, const query_t *query)
 		// Start XFR dump.
 		print_xfr_header(params);
 
-		print_answer(params, in_packet);
+		print_xfr_data(in_packet);
 
 		// Read first SOA serial.
 		int64_t serial = first_serial_check(in_packet);
@@ -603,7 +626,7 @@ void process_query(const params_t *params, const query_t *query)
 			}
 
 			// Dump message data.
-			print_answer(params, in_packet);
+			print_xfr_data(in_packet);
 		}
 
 		// For successful XFR print final information.
