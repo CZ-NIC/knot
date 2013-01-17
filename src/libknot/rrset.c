@@ -21,6 +21,7 @@
 #include <stdio.h>
 
 #include "common.h"
+#include "common/mempattern.h"
 #include "rrset.h"
 #include "common/descriptor_new.h"
 #include "util/debug.h"
@@ -990,7 +991,7 @@ int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
 		return KNOT_ENOMEM;
 	}
 	memcpy((*to)->rdata_indices, from->rdata_indices,
-	       rrset_rdata_size_total(from) + 1);
+	       (*to)->rdata_count);
 	
 	/* Here comes the hard part. */
 	if (copy_rdata_dnames) {
@@ -1189,29 +1190,17 @@ int knot_rrset_merge(void **r1, void **r2)
 	 */
 	
 	/* Reallocate actual RDATA array. */
-	void *tmp = realloc(rrset1->rdata, rrset_rdata_size_total(rrset1) +
-	                    rrset_rdata_size_total(rrset2));
-	if (tmp == NULL) {
-		ERR_ALLOC_FAILED;
-		return KNOT_ENOMEM;
-	} else {
-		rrset1->rdata = tmp;
-	}
+	xrealloc(rrset1->rdata, rrset_rdata_size_total(rrset1) +
+	         rrset_rdata_size_total(rrset2));
 	
 	/* The space is ready, copy the actual data. */
 	memcpy(rrset1->rdata + rrset_rdata_size_total(rrset1),
 	       rrset2->rdata, rrset_rdata_size_total(rrset2));
 	
 	/* Indices have to be readjusted. But space has to be made first. */
-	tmp = realloc(rrset1->rdata_indices,
+	xrealloc(rrset1->rdata_indices,
 	              (rrset1->rdata_count + rrset2->rdata_count) *
 	              sizeof(uint32_t));
-	if (tmp == NULL) {
-		ERR_ALLOC_FAILED;
-		return KNOT_ENOMEM;
-	} else {
-		rrset1->rdata_indices = tmp;
-	}
 	
 	uint32_t rrset1_total_size = rrset_rdata_size_total(rrset1);
 	uint32_t rrset2_total_size = rrset_rdata_size_total(rrset2);
