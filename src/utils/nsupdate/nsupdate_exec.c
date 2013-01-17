@@ -117,6 +117,11 @@ enum {
 	PQ_YXRRSET
 };
 
+/* RR parser flags */
+enum {
+	PARSE_NODEFAULT = 1 << 0, /* Do not fill defaults. */
+};
+
 static inline const char* skipspace(const char *lp) {
 	while (isspace(*lp)) ++lp; return lp;
 }
@@ -130,16 +135,94 @@ static int dname_isvalid(const char *lp, size_t len) {
 	return 1;
 }
 
-static int parse_remainder(scanner_t *s, const char* lp)
+/* This is probably redundant, but should be a bit faster so let's keep it. */
+static int parse_full_rr(scanner_t *s, const char* lp)
 {
 	if (scanner_process(lp, lp + strlen(lp), 0, s) < 0) {
 		return KNOT_EPARSEFAIL;
 	}
-	char nl = '\n';
+	char nl = '\n'; /* Ensure newline after complete RR */
 	if (scanner_process(&nl, &nl+sizeof(char), 1, s) < 0) { /* Terminate */
 		return KNOT_EPARSEFAIL;
 	}
 	return KNOT_EOK;
+}
+
+static int parse_partial_rr(scanner_t *s, const char *lp, unsigned flags) {
+	int ret = KNOT_EOK;
+	char b1[32], b2[32]; /* Should suffice for both class/type */
+	
+	/* Extract owner. */
+	size_t len = strcspn(lp, SEP_CHARS);
+	knot_dname_t *owner = knot_dname_new_from_str(lp, len, NULL);
+	if (owner == NULL) {
+		return KNOT_EPARSEFAIL;
+	}
+	s->r_owner_length = knot_dname_size(owner);
+	memcpy(s->r_owner, knot_dname_name(owner), s->r_owner_length);
+	lp = skipspace(lp + len);
+	
+	/* Initialize */
+	s->r_type = 0;
+	s->r_class = s->default_class;
+	if (flags & PARSE_NODEFAULT) {
+		s->r_ttl = 0;
+	} else {
+		s->r_ttl = s->default_ttl;
+	}
+
+	/* Now there could be [ttl] [class] [type [data...]]. */
+	/*! \todo support for fancy time format in ttl */
+	char *np = NULL;
+	long ttl = strtol(lp, &np, 10);
+	if (ttl >= 0 && np && (*np == '\0' || isspace(*np))) {
+		s->r_ttl = ttl;
+		DBG("%s: parsed ttl=%lu\n", __func__, ttl);
+		lp = skipspace(np);
+	}
+	
+	len = strcspn(lp, SEP_CHARS); /* Try to find class */
+	memset(b2, 0, sizeof(b1));
+	strncpy(b1, lp, len < sizeof(b1) ? len : sizeof(b1));
+	uint16_t v = knot_rrclass_from_string(b1);
+	if (v > 0) {
+		s->r_class = v;
+		DBG("%s: parsed class=%u\n", __func__, s->r_class);
+		lp = skipspace(lp + len);
+	}
+	
+	len = strcspn(lp, SEP_CHARS); /* Type */
+	memset(b2, 0, sizeof(b2));
+	strncpy(b2, lp, len < sizeof(b2) ? len : sizeof(b2));
+	v = knot_rrtype_from_string(b2);
+	if (v > 0) {
+		s->r_type = v;
+		DBG("%s: parsed type=%u '%s'\n", __func__, s->r_type, b2);
+		lp = skipspace(lp + len);
+	}
+	
+	/* Remainder */
+	if (*lp == '\0') { 
+		knot_dname_free(&owner);
+		return ret; /* No RDATA */
+	}
+	
+	/* Synthetize full RR line to prevent consistency errors. */
+	char *owner_s = knot_dname_to_str(owner);
+	knot_rrclass_to_string(s->r_class, b1, sizeof(b1));
+	knot_rrtype_to_string(s->r_type,   b2, sizeof(b2));
+	
+	/* Need to parse rdata, synthetize input. */
+	char *rr = sprintf_alloc("%s %u %s %s %s\n",
+	                         owner_s, s->r_ttl, b1, b2, lp);
+	if (scanner_process(rr, rr + strlen(rr), 1, s) < 0) {
+		ret = KNOT_EPARSEFAIL;
+	}
+	
+	free(owner_s);
+	free(rr);
+	knot_dname_free(&owner);
+	return ret;
 }
 
 /*!
@@ -306,7 +389,7 @@ int cmd_add(const char* lp, params_t *params)
 	DBG("%s: lp='%s'\n", __func__, lp);
 	
 	scanner_t *rrp = NSUP_PARAM(params)->rrp;
-	if (parse_remainder(rrp, lp) != KNOT_EOK) {
+	if (parse_full_rr(rrp, lp) != KNOT_EOK) {
 		return KNOT_EPARSEFAIL;
 	}
 	
@@ -319,6 +402,28 @@ int cmd_add(const char* lp, params_t *params)
 	return KNOT_EOK;
 }
 
+int cmd_del(const char* lp, params_t *params)
+{
+	DBG("%s: lp='%s'\n", __func__, lp);
+	
+	scanner_t *rrp = NSUP_PARAM(params)->rrp;
+	if (parse_partial_rr(rrp, lp, PARSE_NODEFAULT) != KNOT_EOK) {
+		return KNOT_EPARSEFAIL;
+	}
+	
+	/* Check owner name. */
+	if (rrp->r_owner_length == 0) {
+		ERR("failed to parse prereq owner name '%s'\n", lp);
+		return KNOT_EPARSEFAIL;
+	}
+	
+	/* Parsed RR */
+	DBG("%s: parsed rr cls=%u, ttl=%u, type=%u (rdata len=%u)\n",
+	    __func__, rrp->r_class, rrp->r_ttl,rrp->r_type, rrp->r_data_length);
+	
+	return KNOT_EOK;
+}
+
 int cmd_class(const char* lp, params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
@@ -327,6 +432,17 @@ int cmd_class(const char* lp, params_t *params)
 		ERR("failed to parse class '%s'\n", lp);
 		return KNOT_EPARSEFAIL;
 	}
+	
+	return KNOT_EOK;
+}
+
+int cmd_ttl(const char* lp, params_t *params)
+{
+	DBG("%s: lp='%s'\n", __func__, lp);
+	
+	uint32_t ttl = 0;
+	params_parse_num(lp, &ttl);
+	nsupdate_params_set_ttl(params, ttl);
 	
 	return KNOT_EOK;
 }
@@ -358,7 +474,7 @@ int cmd_prereq_rrset(const char *lp, params_t *params, unsigned type)
 	DBG("%s: lp='%s'\n", __func__, lp);
 	
 	scanner_t *rrp = NSUP_PARAM(params)->rrp;
-	if (parse_remainder(rrp, lp) != KNOT_EOK) {
+	if (parse_partial_rr(rrp, lp, 0) != KNOT_EOK) {
 		return KNOT_EPARSEFAIL;
 	}
 	
@@ -372,7 +488,7 @@ int cmd_prereq_rrset(const char *lp, params_t *params, unsigned type)
 	DBG("%s: parsed rr cls=%u, ttl=%u, type=%u (rdata len=%u)\n",
 	    __func__, rrp->r_class, rrp->r_ttl,rrp->r_type, rrp->r_data_length);
 	
-	return KNOT_ENOTSUP;
+	return KNOT_EOK;
 }
 
 int cmd_prereq(const char* lp, params_t *params)
@@ -501,19 +617,7 @@ int cmd_show(const char* lp, params_t *params)
 	return KNOT_ENOTSUP;
 }
 
-int cmd_del(const char* lp, params_t *params)
-{
-	DBG("%s: lp='%s'\n", __func__, lp);
-	return KNOT_ENOTSUP;
-}
-
 int cmd_answer(const char* lp, params_t *params)
-{
-	DBG("%s: lp='%s'\n", __func__, lp);
-	return KNOT_ENOTSUP;
-}
-
-int cmd_ttl(const char* lp, params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 	return KNOT_ENOTSUP;

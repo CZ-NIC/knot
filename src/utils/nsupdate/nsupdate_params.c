@@ -27,6 +27,14 @@
 
 #define DEFAULT_RETRIES 3
 
+static void parse_rr(const scanner_t *s) {
+	return; /* Dummy */
+}
+
+static void parse_err(const scanner_t *s) {
+	ERR("failed to parse RR, %s\n", knot_strerror(s->error_code));
+}
+
 static int parser_set_default(scanner_t *s, const char *fmt, ...)
 {
 	/* Format string. */
@@ -74,6 +82,8 @@ static int nsupdate_params_init(params_t *params)
 	/* Initialize RR parser. */
 	npar->rrp = scanner_create("-");
 	if (!npar->rrp) return KNOT_ENOMEM;
+	npar->rrp->process_record = parse_rr;
+	npar->rrp->process_error = parse_err;
 	npar->rrp->default_class = params->class_num;
 	nsupdate_params_set_ttl(params, 0);
 	nsupdate_params_set_origin(params, ".");
