@@ -46,6 +46,13 @@
  */
 int rrset_write_mem(char *dst, size_t maxlen, const knot_rrset_t *rrset);
 
+int rrset_header_write_mem(char *dst, size_t maxlen,
+                           const knot_rrset_t *rrset,
+                           const bool p_class, const bool p_ttl);
+
+int rdata_write_mem(char* dst, size_t maxlen, const knot_rdata_t *rdata,
+                    uint16_t type, const knot_rrset_t *rrset);
+
 #endif // _UTILS__RR_SERIALIZE_H_
 
 /*! @} */

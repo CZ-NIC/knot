@@ -15,12 +15,13 @@
 */
 
 #include <config.h>
+#include <stdbool.h>
 
 #include "utils/common/rr-serialize.h"
 #include "knot/zone/zone-dump-text.h"
 #include "libknot/libknot.h"
 
-static int rdata_write_mem(char* dst, size_t maxlen, const knot_rdata_t *rdata,
+int rdata_write_mem(char* dst, size_t maxlen, const knot_rdata_t *rdata,
                     uint16_t type, const knot_rrset_t *rrset)
 {
 	if (dst == NULL || rdata == NULL || rrset == NULL) {
@@ -65,8 +66,9 @@ static int rdata_write_mem(char* dst, size_t maxlen, const knot_rdata_t *rdata,
 	return wb;
 }
 
-static int rrset_header_write_mem(char *dst, size_t maxlen,
-                                  const knot_rrset_t *rrset)
+int rrset_header_write_mem(char *dst, size_t maxlen,
+                           const knot_rrset_t *rrset,
+                           const bool p_class, const bool p_ttl)
 {
 	if (dst == NULL || rrset == NULL) {
 		return KNOT_EINVAL;
@@ -81,15 +83,23 @@ static int rrset_header_write_mem(char *dst, size_t maxlen,
 	free(name);
 	if (ret < 0 || ret >= maxlen-wb) return KNOT_ESPACE;
 	wb += ret;
-	
-	ret = snprintf(dst+wb, maxlen-wb, "%-5u\t", rrset->ttl);
+
+	if (p_ttl) {	
+		ret = snprintf(dst+wb, maxlen-wb, "%-5u\t", rrset->ttl);
+	} else {
+		ret = snprintf(dst+wb, maxlen-wb, "     \t");
+	}
 	if (ret < 0 || ret >= maxlen-wb) return KNOT_ESPACE;
 	wb += ret;
 	
-	if (knot_rrclass_to_string(rrset->rclass, buf, sizeof(buf)) < 0) {
-		return KNOT_ERROR;
+	if (p_class) {
+		if (knot_rrclass_to_string(rrset->rclass, buf, sizeof(buf)) < 0) {
+			return KNOT_ERROR;
+		}
+		ret = snprintf(dst+wb, maxlen-wb, "%-2s\t", buf);
+	} else {
+		ret = snprintf(dst+wb, maxlen-wb, "  \t");
 	}
-	ret = snprintf(dst+wb, maxlen-wb, "%-2s\t", buf);
 	if (ret < 0 || ret >= maxlen-wb) return KNOT_ESPACE;
 	wb += ret;
 	
@@ -110,7 +120,7 @@ static int rrsig_write_mem(char *dst, size_t maxlen, knot_rrset_t *rrsig)
 	}
 	
 	int wb = 0;
-	int ret = rrset_header_write_mem(dst, maxlen, rrsig);
+	int ret = rrset_header_write_mem(dst, maxlen, rrsig, true, true);
 	if (ret < 0) return KNOT_ESPACE;
 	wb += ret;
 	
@@ -122,7 +132,7 @@ static int rrsig_write_mem(char *dst, size_t maxlen, knot_rrset_t *rrsig)
 		if (ret < 0) return ret;
 		wb += ret;
 		
-		ret = rrset_header_write_mem(dst+wb, maxlen-wb, rrsig);
+		ret = rrset_header_write_mem(dst+wb, maxlen-wb, rrsig, true, true);
 		tmp = tmp->next;
 		if (ret < 0) return ret;
 		wb += ret;
@@ -149,7 +159,7 @@ int rrset_write_mem(char *dst, size_t maxlen, const knot_rrset_t *rrset)
 	knot_rdata_t *tmp = rrset->rdata;
 
 	do {
-		ret = rrset_header_write_mem(dst+wb, maxlen-wb, rrset);
+		ret = rrset_header_write_mem(dst+wb, maxlen-wb, rrset, true, true);
 		if (ret < 0) return ret;
 		wb += ret;
 

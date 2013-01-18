@@ -293,6 +293,25 @@ static void print_footer(const size_t wire_len,
 	       wire_len, ip, port, proto, elapsed, date);
 }
 
+static void print_question_section(const knot_dname_t *owner,
+                                   const uint16_t     qclass,
+                                   const uint16_t     qtype)
+{
+	size_t buflen = 8192;
+	char   *buf = malloc(buflen);
+
+	knot_rrset_t *question = knot_rrset_new((knot_dname_t *)owner, qtype,
+	                                        qclass, 0);
+
+	if (rrset_header_write_mem(buf, buflen, question, true, false) < 0) {
+		WARN("can't dump whole question section\n");
+	}
+
+	printf("%s\n", buf);
+
+	knot_rrset_free(&question);
+}
+
 static void print_section_verbose(const knot_rrset_t **rrset,
                                   const uint16_t     count)
 {
@@ -303,6 +322,12 @@ static void print_section_verbose(const knot_rrset_t **rrset,
 		while (rrset_write_mem(buf, buflen, rrset[i]) < 0) {
 			buflen += 4096;
 			buf = realloc(buf, buflen);
+
+			// Oversize protection.
+			if (buflen > 1000000) {
+				WARN("can't print whole section\n");
+				break;
+			}
 		}
 		printf("%s", buf);
 	}
@@ -341,8 +366,10 @@ void print_packet(const params_t      *params,
 		print_header(packet);
 
 		if (packet->header.qdcount > 0) {
-			printf("\n;; QUESTION SECTION:\n");
-			printf(";; ");//, packet->question.qname, packet->question.qclass, packet->question.qtype);
+			printf("\n;; QUESTION SECTION:\n;; ");
+			print_question_section(packet->question.qname,
+			                       packet->question.qclass,
+			                       packet->question.qtype);
 		}
 
 		if (packet->an_rrsets > 0) {
