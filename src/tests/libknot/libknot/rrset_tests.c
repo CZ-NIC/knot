@@ -878,9 +878,12 @@ static int test_rrset_compare_rdata()
 	knot_rrset_deep_copy(&test_rrset_array[TEST_RRSET_A_LESS].rrset,
 	                     &rrset2, 1);
 	
+	assert(rrset1->type == rrset2->type);
+	
 	if (knot_rrset_compare_rdata(rrset1, rrset2) != 0) {
-		diag("rrset_compare_rdata() returned wrong"
-		     "value, should be 0. (raw data)\n");
+		diag("rrset_compare_rdata() returned wrong "
+		     "value, should be 0. (raw data) %d %d\n",
+		     rrset1->type, rrset2->type);
 		return 0;
 	}
 	
@@ -892,7 +895,7 @@ static int test_rrset_compare_rdata()
 	                     &rrset2, 1);
 	
 	if (knot_rrset_compare_rdata(rrset1, rrset2) != 0) {
-		diag("rrset_compare_rdata() returned wrong"
+		diag("rrset_compare_rdata() returned wrong "
 		     "value, should be 0. (DNAME only)\n");
 		knot_rrset_deep_free(&rrset2, 1, 1);
 		return 0;
@@ -906,7 +909,7 @@ static int test_rrset_compare_rdata()
 	                     &rrset2, 1);
 	
 	if (knot_rrset_compare_rdata(rrset1, rrset2) != 0) {
-		diag("rrset_compare_rdata() returned wrong"
+		diag("rrset_compare_rdata() returned wrong "
 		     "value, should be 0. (combination)\n");
 		knot_rrset_deep_free(&rrset2, 1, 1);
 		return 0;
@@ -919,14 +922,14 @@ static int test_rrset_compare_rdata()
 	rrset2 = &test_rrset_array[TEST_RRSET_A_GT].rrset;
 	
 	if (knot_rrset_compare_rdata(rrset1, rrset2) >= 0) {
-		diag("rrset_compare_rdata() returned wrong"
+		diag("rrset_compare_rdata() returned wrong "
 		     "value, should be -1. (raw data only)\n");
 		return 0;
 	}
 	
 	/* Greater - raw data only. */
 	if (knot_rrset_compare_rdata(rrset2, rrset1) <= 0) {
-		diag("rrset_compare_rdata() returned wrong"
+		diag("rrset_compare_rdata() returned wrong "
 		     "value, should be 1. (raw data only)\n");
 		return 0;
 	}
@@ -936,14 +939,14 @@ static int test_rrset_compare_rdata()
 	rrset2 = &test_rrset_array[TEST_RRSET_NS_GT].rrset;
 	
 	if (knot_rrset_compare_rdata(rrset1, rrset2) >= 0) {
-		diag("rrset_compare_rdata() returned wrong"
+		diag("rrset_compare_rdata() returned wrong "
 		     "value, should be -1. (DNAME only)\n");
 		return 0;
 	}
 	
 	/* Greater - DNAME only. */
 	if (knot_rrset_compare_rdata(rrset2, rrset1) <= 0) {
-		diag("rrset_compare_rdata() returned wrong"
+		diag("rrset_compare_rdata() returned wrong "
 		     "value, should be 1. (DNAME only)\n");
 		return 0;
 	}
@@ -953,14 +956,14 @@ static int test_rrset_compare_rdata()
 	rrset2 = &test_rrset_array[TEST_RRSET_MX_BIN_GT].rrset;
 	
 	if (knot_rrset_compare_rdata(rrset1, rrset2) >= 0) {
-		diag("rrset_compare_rdata() returned wrong"
+		diag("rrset_compare_rdata() returned wrong "
 		     "value, should be -1. (combination)\n");
 		return 0;
 	}
 	
 	/* Greater - combination, difference in binary part. */
 	if (knot_rrset_compare_rdata(rrset2, rrset1) <= 0) {
-		diag("rrset_compare_rdata() returned wrong"
+		diag("rrset_compare_rdata() returned wrong "
 		     "value, should be 1. (combination)\n");
 		return 0;
 	}
@@ -970,14 +973,14 @@ static int test_rrset_compare_rdata()
 	rrset2 = &test_rrset_array[TEST_RRSET_MX_DNAME_GT].rrset;
 	
 	if (knot_rrset_compare_rdata(rrset1, rrset2) >= 0) {
-		diag("rrset_compare_rdata() returned wrong"
+		diag("rrset_compare_rdata() returned wrong "
 		     "value, should be -1. (combination)\n");
 		return 0;
 	}
 	
 	/* Greater - combination, difference in DNAME part. */
 	if (knot_rrset_compare_rdata(rrset2, rrset1) <= 0) {
-		diag("rrset_compare_rdata() returned wrong"
+		diag("rrset_compare_rdata() returned wrong "
 		     "value, should be 1. (combination)\n");
 		return 0;
 	}
@@ -1149,9 +1152,13 @@ static int knot_rrset_tests_run(int argc, char *argv[])
 	res_final *= res;
 	
 	res = test_rrset_compare();
-	ok(res, "rrset: rdata_item_size");
+	ok(res, "rrset: rrset compare");
 	res_final *= res;
-
+	
+	res = test_rrset_compare_rdata();
+	ok(res, "rrset: rrset compare rdata");
+	res_final *= res;
+	
 	res = test_rrset_shallow_copy();
 	ok(res, "rrset: shallow copy");
 	res_final *= res;
@@ -1174,10 +1181,6 @@ static int knot_rrset_tests_run(int argc, char *argv[])
 	
 	res = test_rrset_merge_no_dupl();
 	ok(res, "rrset: merge no dupl");
-	res_final *= res;
-	
-	res = test_rrset_compare_rdata();
-	ok(res, "rrset: rdata_item_size");
 	res_final *= res;
 	
 	res = test_rrset_get_next_dname();

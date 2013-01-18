@@ -503,7 +503,7 @@ static int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
 
 int knot_rrset_compare_rdata(const knot_rrset_t *r1, const knot_rrset_t *r2)
 {
-	if (r1 == NULL || r2 == NULL || r1->type != r2->type) {
+	if (r1 == NULL || r2 == NULL ||( r1->type != r2->type)) {
 		return KNOT_EINVAL;
 	}
 
