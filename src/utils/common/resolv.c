@@ -22,7 +22,6 @@
 #include "common/errcode.h"		// KNOT_ENOENT
 #include "common/lists.h"		// list
 
-#define DEFAULT_DNS_PORT        "53"
 #define RESOLV_FILE             "/etc/resolv.conf"
 
 server_t* create_server(const char *name, const char *service)

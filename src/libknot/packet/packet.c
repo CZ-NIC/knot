@@ -1583,3 +1583,19 @@ void knot_packet_dump(const knot_packet_t *packet)
 #endif
 }
 
+static int knot_packet_free_section(const knot_rrset_t **s, short count) {
+	/*! \todo The API is really incompatible here. */
+	for (short i = 0; i < count; ++i)
+		knot_rrset_deep_free((knot_rrset_t **)s + i, 1, 1, 1);
+	return count;
+}
+
+int knot_packet_free_rrsets(knot_packet_t *packet)
+{
+	int ret = 0;
+	ret += knot_packet_free_section(packet->answer, packet->an_rrsets);
+	ret += knot_packet_free_section(packet->authority, packet->ns_rrsets);
+	ret += knot_packet_free_section(packet->additional, packet->ar_rrsets);
+	return ret;
+}
+

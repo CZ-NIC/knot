@@ -153,6 +153,15 @@ static int parse_full_rr(scanner_t *s, const char* lp)
 	if (scanner_process(&nl, &nl+sizeof(char), 1, s) < 0) { /* Terminate */
 		return KNOT_EPARSEFAIL;
 	}
+	
+	/* Class must not differ from specified. */
+	if (s->r_class != s->default_class) {
+		char cls_s[16] = {0};
+		knot_rrclass_to_string(s->default_class, cls_s, sizeof(cls_s));
+		ERR("class mismatch: '%s'\n", cls_s);
+		return KNOT_EPARSEFAIL;
+	}
+	
 	return KNOT_EOK;
 }
 
@@ -167,7 +176,7 @@ static int parse_partial_rr(scanner_t *s, const char *lp, unsigned flags) {
 		return KNOT_EPARSEFAIL;
 	}
 	
-	/*! \todo Need to make FQDN. */
+	/* ISC nsupdate doesn't do this, but it seems right to me. */
 	if (!knot_dname_is_fqdn(owner)) {
 		knot_dname_t* suf = knot_dname_new_from_wire(s->zone_origin,
 		                                             s->zone_origin_length,
@@ -216,6 +225,14 @@ static int parse_partial_rr(scanner_t *s, const char *lp, unsigned flags) {
 		lp = skipspace(lp + len);
 	}
 	
+	/* Class must not differ from specified. */
+	if (s->r_class != s->default_class) {
+		char cls_s[16] = {0};
+		knot_rrclass_to_string(s->default_class, cls_s, sizeof(cls_s));
+		ERR("class mismatch: '%s'\n", cls_s);
+		return KNOT_EPARSEFAIL;
+	}
+	
 	len = strcspn(lp, SEP_CHARS); /* Type */
 	memset(b2, 0, sizeof(b2));
 	strncpy(b2, lp, len < sizeof(b2) ? len : sizeof(b2));
@@ -261,20 +278,22 @@ static int pkt_append(params_t *p, int sect)
 		knot_question_t q;
 		q.qclass = p->class_num;
 		q.qtype = p->type_num;
-		q.qname = knot_dname_new_from_wire(s->r_owner, s->r_owner_length, NULL);
+		q.qname = knot_dname_new_from_wire(s->zone_origin,
+		                                   s->zone_origin_length,
+		                                   NULL);
 		knot_query_set_question(npar->pkt, &q);
-		knot_dname_release(q.qname);
 		knot_query_set_opcode(npar->pkt, KNOT_OPCODE_UPDATE);
+		knot_dname_release(q.qname); /* Already on wire. */
 	} else {
 		/*! \todo check remaining size */
 	}
 	
-	/* Create rdata. */
+	/* Create RDATA (not for NXRRSET prereq). */
 	int ret = KNOT_EOK;
 	knot_rdata_t *rd = knot_rdata_new();
 	const knot_rrtype_descriptor_t *rdesc = NULL;
 	rdesc = knot_rrtype_descriptor_by_type(s->r_type);
-	if (s->r_data_length > 0) {
+	if (s->r_data_length > 0 && sect != PQ_NXRRSET) {
 		size_t pos = 0;
 		ret = knot_rdata_from_wire(rd, s->r_data, &pos,
 		                           s->r_data_length, s->r_data_length,
@@ -534,6 +553,15 @@ int cmd_del(const char* lp, params_t *params)
 		return KNOT_EPARSEFAIL;
 	}
 	
+	rrp->r_ttl = 0; /* Set TTL = 0 when deleting. */
+	
+	/* When deleting whole RRSet, use ANY class */
+	if (rrp->r_data_length == 0) {
+		rrp->r_class = KNOT_CLASS_ANY;
+	} else {
+		rrp->r_class = KNOT_CLASS_NONE;
+	}
+	
 	/* Parsed RR */
 	DBG("%s: parsed rr cls=%u, ttl=%u, type=%u (rdata len=%u)\n",
 	    __func__, rrp->r_class, rrp->r_ttl,rrp->r_type, rrp->r_data_length);
@@ -544,10 +572,14 @@ int cmd_del(const char* lp, params_t *params)
 int cmd_class(const char* lp, params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
+	
 	params->class_num = knot_rrclass_from_string(lp);
 	if (params->class_num == 0) {
 		ERR("failed to parse class '%s'\n", lp);
 		return KNOT_EPARSEFAIL;
+	} else {
+		scanner_t *s = NSUP_PARAM(params)->rrp;
+		s->default_class = params->class_num;
 	}
 	
 	return KNOT_EOK;
@@ -579,14 +611,8 @@ int cmd_prereq_domain(const char *lp, params_t *params, unsigned type)
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-	
-	/* NXDOMAIN - cls NONE
-	 * YXDOMAIN - cls ANY */
-	if (type == PQ_NXDOMAIN) {
-		s->r_class = KNOT_CLASS_NONE;
-	} else {
-		s->r_class = KNOT_CLASS_ANY;
-	}
+
+	return ret;
 }
 
 int cmd_prereq_rrset(const char *lp, params_t *params, unsigned type)
@@ -603,7 +629,7 @@ int cmd_prereq_rrset(const char *lp, params_t *params, unsigned type)
 		ERR("failed to parse prereq owner name '%s'\n", lp);
 		return KNOT_EPARSEFAIL;
 	}
-	
+
 	/* Parsed RR */
 	DBG("%s: parsed rr cls=%u, ttl=%u, type=%u (rdata len=%u)\n",
 	    __func__, rrp->r_class, rrp->r_ttl,rrp->r_type, rrp->r_data_length);
@@ -638,6 +664,15 @@ int cmd_prereq(const char* lp, params_t *params)
 	
 	/* Append to packet. */
 	if (ret == KNOT_EOK) {
+		scanner_t *s = NSUP_PARAM(params)->rrp;
+		s->r_ttl = 0; /* Set TTL = 0 for prereq. */
+		/* YX{RRSET,DOMAIN} - cls ANY */
+		if (bp == PQ_YXRRSET || bp == PQ_YXDOMAIN) {
+			s->r_class = KNOT_CLASS_ANY;
+		} else { /* NX{RRSET,DOMAIN} - cls NONE */
+			s->r_class = KNOT_CLASS_NONE;
+		}
+		
 		ret = pkt_append(params, bp);
 	}
 	
@@ -650,52 +685,51 @@ int cmd_send(const char* lp, params_t *params)
 	DBG("sending packet\n");
 	
 	/* Create wireformat. */
+	int ret = KNOT_EOK;
 	uint8_t *wire = NULL;
 	size_t len = 0;
 	nsupdate_params_t *npar = NSUP_PARAM(params);
-	knot_packet_to_wire(npar->pkt, &wire, &len);
+	if ((ret = knot_packet_to_wire(npar->pkt, &wire, &len))!= KNOT_EOK) {
+		ERR("couldn't serialize packet, %s\n", knot_strerror(ret));
+		return ret;
+	}
 	
-	/*! \todo This is ugly. */
-	
-	/* Create receiver descriptor. */
-	char pbuf[16] = {0};
-	snprintf(pbuf, sizeof(pbuf), "%u", npar->port);
-	server_t srv;
-	memset(&srv, 0, sizeof(server_t));
-	srv.name = npar->addr;
-	srv.service = pbuf;
+	if (EMPTY_LIST(params->servers)) return KNOT_EINVAL;
+	server_t *srv = TAIL(params->servers);
 	
 	/* Create query helper. */
 	query_t q;
 	memset(&q, 0, sizeof(query_t));
 	q.type = KNOT_RRTYPE_SOA;
-	int sock = send_msg(params, &q, &srv, wire, len);
+	int sock = send_msg(params, &q, srv, wire, len);
 	DBG("%s: send_msg = %d\n", __func__, sock);
+	if (sock < 0) {
+		ERR("failed to send query\n");
+		return KNOT_ERROR;
+	}
+	
+	/*! \todo TCP fallback, timeout settings. */
 	
 	/* Wait for reception. */
 	uint8_t	rwire[MAX_PACKET_SIZE]; 
 	int rb = receive_msg(params, &q, sock, rwire, sizeof(rwire));
 	DBG("%s: receive_msg = %d\n", __func__, rb);
+	shutdown(sock, SHUT_RDWR);
+	if (rb < 0) {
+		ERR("failed to receive reply\n");
+		return rb;
+	}
 	
 	knot_packet_t *resp = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
+	if (!resp) return KNOT_ENOMEM;
 	knot_packet_parse_from_wire(resp, rwire, rb, 0, 0);
 	
 	/*! \todo Print response if verbose. */
 	
 	/* Free created rrsets. */
-	/*! \todo The API is really incompatible here. */
-	for (short i= 0; i < npar->pkt->an_rrsets; ++i)
-		knot_rrset_deep_free(npar->pkt->answer + i, 1, 1, 1);
-	for (short i= 0; i < npar->pkt->ns_rrsets; ++i)
-		knot_rrset_deep_free(npar->pkt->authority + i, 1, 1, 1);
-	for (short i= 0; i < npar->pkt->ar_rrsets; ++i)
-		knot_rrset_deep_free(npar->pkt->additional + i, 1, 1, 1);
-	
+	knot_packet_free_rrsets(npar->pkt);
 	knot_packet_free(&npar->pkt);
 	knot_packet_free(&resp);
-	
-	shutdown(sock, SHUT_RDWR);
-	
 	return KNOT_EOK;
 }
 
@@ -721,15 +755,11 @@ int cmd_server(const char* lp, params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 	
-	/* Fetch specific params. */
-	nsupdate_params_t *npar = NSUP_PARAM(params);
-	
 	/* Extract server address. */
 	size_t len = strcspn(lp, SEP_CHARS);
-	if (npar->addr) free(npar->addr);
-	npar->addr = strndup(lp, len);
-	if (!npar->addr) return KNOT_ENOMEM;
-	DBG("%s: parsed addr: %s\n", __func__, npar->addr);
+	char *addr = strndup(lp, len);
+	if (!addr) return KNOT_ENOMEM;
+	DBG("%s: parsed addr: %s\n", __func__, addr);
 	
 	/* Attempt to parse port (optional) */
 	lp = skipspace(lp + len);
@@ -745,8 +775,23 @@ int cmd_server(const char* lp, params_t *params)
 		    port);
 		return KNOT_ERANGE;
 	}
-	npar->port = port;
-	DBG("%s: parsed port: %u\n", __func__, npar->port);
+	
+	char *port_s = strndup(lp, np-lp);
+	if (!port_s) {
+		free(addr);
+		return KNOT_ENOMEM;
+	}
+	DBG("%s: parsed port: %s\n", __func__, port_s);
+	
+	/* Create server struct. */
+	server_t *srv = create_server(addr, port_s);
+	free(addr);
+	free(port_s);
+	
+	/* Enqueue. */
+	if (!srv) return KNOT_ENOMEM;
+	
+	add_tail(&params->servers, (node *)srv);
 	return KNOT_EOK;
 }
 

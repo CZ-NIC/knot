@@ -568,6 +568,11 @@ void knot_packet_free(knot_packet_t **packet);
  */
 void knot_packet_dump(const knot_packet_t *packet);
 
+/*!
+ * \brief Free all rrsets associated with packet.
+ */
+int knot_packet_free_rrsets(knot_packet_t *packet);
+
 #endif /* _KNOT_PACKET_H_ */
 
 /*! @} */

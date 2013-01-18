@@ -41,10 +41,6 @@
 typedef struct nsupdate_params_t {
 	/*!< List of files with query data. */
 	list		qfiles;
-	/*!< Default port. */
-	unsigned	port;
-	/*!< Default address. */
-	char		*addr;
 	/*!< Current zone. */
 	char		*zone;
 	/*!< RR parser. */

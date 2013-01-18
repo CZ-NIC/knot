@@ -22,6 +22,7 @@
 
 #include "utils/nsupdate/nsupdate_params.h"
 #include "utils/common/msg.h"
+#include "utils/common/resolv.h"
 #include "libknot/util/descriptor.h"
 #include "common/errcode.h"
 
@@ -67,10 +68,10 @@ static int nsupdate_params_init(params_t *params)
 	nsupdate_params_t *npar = NSUP_PARAM(params);
 	
 	/* Lists */
+	init_list(&params->servers);
 	init_list(&npar->qfiles);
 	
 	/* Default values. */
-	npar->port = DEFAULT_PORT;
 	params->class_num = KNOT_CLASS_IN;
 	params->operation = OPERATION_UPDATE;
 	params->protocol = PROTO_ALL;
@@ -79,6 +80,10 @@ static int nsupdate_params_init(params_t *params)
 	params->wait = DEFAULT_WAIT_INTERVAL;
 	params->format = FORMAT_NSUPDATE;
 	params->type_num = KNOT_RRTYPE_SOA;
+	
+	/* Create default server. */
+	server_t *srv = create_server(DEFAULT_IPV4_NAME, DEFAULT_DNS_PORT);
+	add_tail(&params->servers, srv);
 	
 	/* Initialize RR parser. */
 	npar->rrp = scanner_create("-");
@@ -100,7 +105,6 @@ void nsupdate_params_clean(params_t *params)
 	/* Free specific structure. */
 	nsupdate_params_t* npar = NSUP_PARAM(params);
 	if (npar) {
-		free(npar->addr);
 		free(npar->zone);
 		if (npar->rrp) {
 			scanner_free(npar->rrp);
@@ -114,6 +118,12 @@ void nsupdate_params_clean(params_t *params)
 		
 		free(npar);
 		params->d = NULL;
+	}
+	
+	/* Free server list. */
+	server_t *n = NULL, *nxt = NULL;
+	WALK_LIST_DELSAFE(n, nxt, params->servers) {
+		server_free(n);
 	}
 
 	/* Clean up the structure. */
