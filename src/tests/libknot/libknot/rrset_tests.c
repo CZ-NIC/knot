@@ -1094,7 +1094,6 @@ static int test_rrset_next_dname_pointer()
 	dname = NULL;
 	i = 4;
 	while ((dname = knot_rrset_get_next_dname_pointer(rrset, dname))) {
-		knot_dname_free(dname);
 		memcpy(dname, &test_dnames[i], sizeof(knot_dname_t *));
 		i++;
 	}
@@ -1148,6 +1147,10 @@ static int knot_rrset_tests_run(int argc, char *argv[])
 	res = test_rrset_get_rdata();
 	ok(res, "rrset: get rdata");
 	res_final *= res;
+	
+	res = test_rrset_compare();
+	ok(res, "rrset: rdata_item_size");
+	res_final *= res;
 
 	res = test_rrset_shallow_copy();
 	ok(res, "rrset: shallow copy");
@@ -1174,10 +1177,6 @@ static int knot_rrset_tests_run(int argc, char *argv[])
 	res_final *= res;
 	
 	res = test_rrset_compare_rdata();
-	ok(res, "rrset: rdata_item_size");
-	res_final *= res;
-	
-	res = test_rrset_compare();
 	ok(res, "rrset: rdata_item_size");
 	res_final *= res;
 	

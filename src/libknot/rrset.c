@@ -1175,17 +1175,18 @@ int knot_rrset_merge(void **r1, void **r2)
 	 */
 	
 	/* Reallocate actual RDATA array. */
-	xrealloc(rrset1->rdata, rrset_rdata_size_total(rrset1) +
-	         rrset_rdata_size_total(rrset2));
+	rrset1->rdata = xrealloc(rrset1->rdata, rrset_rdata_size_total(rrset1) +
+	                         rrset_rdata_size_total(rrset2));
 	
 	/* The space is ready, copy the actual data. */
 	memcpy(rrset1->rdata + rrset_rdata_size_total(rrset1),
 	       rrset2->rdata, rrset_rdata_size_total(rrset2));
 	
 	/* Indices have to be readjusted. But space has to be made first. */
-	xrealloc(rrset1->rdata_indices,
-	              (rrset1->rdata_count + rrset2->rdata_count) *
-	              sizeof(uint32_t));
+	rrset1->rdata_indices = 
+		xrealloc(rrset1->rdata_indices,
+	        (rrset1->rdata_count + rrset2->rdata_count) *
+	         sizeof(uint32_t));
 	
 	uint32_t rrset1_total_size = rrset_rdata_size_total(rrset1);
 	uint32_t rrset2_total_size = rrset_rdata_size_total(rrset2);
