@@ -108,7 +108,7 @@ struct test_rrset {
 	uint8_t *rdata_wire;
 	size_t rdata_wire_size;
 	size_t rr_count;
-	int test_rdata_indices[16];
+	int test_rdata_ids[16];
 	test_rdata_t **test_rdata;
 };
 
@@ -317,8 +317,9 @@ static void create_test_rrsets()
 		test_rrset->test_rdata =
 			xmalloc(sizeof(void *) * test_rrset->rr_count);
 		size_t actual_length = 0;
+		test_rrset->rrset.rdata_count = test_rrset->rr_count;
 		for (int j = 0; j < test_rrset->rr_count; j++) {
-			test_rrset->test_rdata[j] = &test_rdata_array[j];
+			test_rrset->test_rdata[j] = &test_rdata_array[test_rrset->test_rdata_ids[j]];
 			rdlength += test_rrset->test_rdata[j]->wire_size;
 			actual_length += test_rrset->test_rdata[j]->size;
 		}
@@ -1156,17 +1157,17 @@ static int knot_rrset_tests_run(int argc, char *argv[])
 	ok(res, "rrset: deep copy");
 	res_final *= res;
 	
-//	res = test_rrset_to_wire();
-//	ok(res, "rrset: to wire");
-//	res_final *= res;
+	res = test_rrset_to_wire();
+	ok(res, "rrset: to wire");
+	res_final *= res;
 	
 	res = test_rrset_rdata_item_size();
 	ok(res, "rrset: rdata_item_size");
 	res_final *= res;
 	
-//	res = test_rrset_merge();
-//	ok(res, "rrset: merge");
-//	res_final *= res;
+	res = test_rrset_merge();
+	ok(res, "rrset: merge");
+	res_final *= res;
 	
 	res = test_rrset_merge_no_dupl();
 	ok(res, "rrset: merge no dupl");

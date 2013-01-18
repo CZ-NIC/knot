@@ -733,7 +733,6 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
 	
 
 	uint8_t *pos = wire;
-	short rrset_size = 0;
 
 	int ret = knot_rrset_to_wire_aux(rrset, &pos,
 	                                       *size);
@@ -748,8 +747,8 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
 	}
 
 	// the whole RRSet did fit in
-	assert(rrset_size <= *size);
-	assert(pos - wire == rrset_size);
+	assert(ret <= *size);
+	assert(pos - wire == ret);
 	*size = ret;
 	
 	dbg_rrset_detail("Size after: %zu\n", *size);
@@ -950,48 +949,33 @@ int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
 	if (from == NULL || to == NULL) {
 		return KNOT_EINVAL;
 	}
-
-	int ret;
-
-	*to = (knot_rrset_t *)calloc(1, sizeof(knot_rrset_t));
-	CHECK_ALLOC_LOG(*to, KNOT_ENOMEM);
+	
+	*to = xmalloc(sizeof(knot_rrset_t));
 
 	(*to)->owner = from->owner;
 	knot_dname_retain((*to)->owner);
 	(*to)->rclass = from->rclass;
 	(*to)->ttl = from->ttl;
 	(*to)->type = from->type;
+	(*to)->rdata_count = from->rdata_count;
 	if (from->rrsigs != NULL) {
-		ret = knot_rrset_deep_copy(from->rrsigs, &(*to)->rrsigs,
+		int ret = knot_rrset_deep_copy(from->rrsigs, &(*to)->rrsigs,
 		                           copy_rdata_dnames);
 		if (ret != KNOT_EOK) {
 			knot_rrset_deep_free(to, 1, 0);
 			return ret;
 		}
+	} else {
+		(*to)->rrsigs = NULL;
 	}
-	assert((*to)->rrsigs == NULL || from->rrsigs != NULL);
 	
 	/* Just copy arrays - actual data + indices. */
-	(*to)->rdata = malloc(rrset_rdata_size_total(from));
-	if ((*to)->rdata == NULL) {
-		ERR_ALLOC_FAILED;
-		knot_rrset_deep_free(&(*to)->rrsigs, 1, copy_rdata_dnames);
-		free(*to);
-		return KNOT_ENOMEM;
-	}
+	(*to)->rdata = xmalloc(rrset_rdata_size_total(from));
 	memcpy((*to)->rdata, from->rdata, rrset_rdata_size_total(from));
 	
-	/* + 1 because last index holds length of all RDATA. */
-	(*to)->rdata_indices = malloc(sizeof(uint32_t) * from->rdata_count + 1);
-	if ((*to)->rdata == NULL) {
-		ERR_ALLOC_FAILED;
-		knot_rrset_deep_free(&(*to)->rrsigs, 1, copy_rdata_dnames);
-		free((*to)->rdata);
-		free(*to);
-		return KNOT_ENOMEM;
-	}
+	(*to)->rdata_indices = xmalloc(sizeof(uint32_t) * from->rdata_count);
 	memcpy((*to)->rdata_indices, from->rdata_indices,
-	       (*to)->rdata_count);
+	       sizeof(uint32_t) * from->rdata_count);
 	
 	/* Here comes the hard part. */
 	if (copy_rdata_dnames) {
@@ -1153,7 +1137,7 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
 //	assert(desc);
 //	size_t size = 0;
 //	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
-//		int type = desc->block_types[i];
+//		int tyt_rrset->rrset.rdata_count = test_rrset->rr_count;e = desc->block_types[i];
 //		if (descriptor_item_is_dname(type)) {
 //			size += sizeof(knot_dname_t *);
 //		} else if (descriptor_item_is_fixed(type)) {
@@ -1177,12 +1161,13 @@ int knot_rrset_merge(void **r1, void **r2)
 	}
 	
 	/* Check, that we really merge RRSets? */
-	if ((knot_dname_compare_non_canon(rrset1->owner, rrset2->owner) != 0)
-	    || rrset1->rclass != rrset2->rclass
-	    || rrset1->type != rrset2->type) {
+	if (rrset1->type != rrset2->type ||
+	    rrset1->rclass != rrset2->rclass ||
+	    (knot_dname_compare_non_canon(rrset1->owner, rrset2->owner) != 0) ||
+	    (rrset1->rdata_count == 0 && rrset2->rdata_count)) {
 		return KNOT_EINVAL;
 	}
-
+	
 	/* Add all RDATAs from rrset2 to rrset1 (i.e. concatenate two arrays) */
 	
 	/*! \note The following code should work for
@@ -1495,9 +1480,6 @@ static knot_dname_t **knot_rrset_rdata_get_next_dname_pointer(
 		return NULL;
 	}
 	
-	printf("previous: %s %d %p\n", (prev_dname != NULL) ? knot_dname_to_str(*prev_dname) : "null",
-	       pos, prev_dname);
-	
 	// Get descriptor
 	const rdata_descriptor_t *desc =
 		get_rdata_descriptor(rrset->type);
@@ -1511,7 +1493,6 @@ static knot_dname_t **knot_rrset_rdata_get_next_dname_pointer(
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
 		if (descriptor_item_is_dname(desc->block_types[i])) {
 			if (next) {
-//				toto je imho spatne, ale who knows TODO
 				assert(rdata + offset);
 				return (knot_dname_t **)(rdata + offset);
 			}
@@ -1728,6 +1709,7 @@ void knot_rrset_dump(const knot_rrset_t *rrset)
 	
 	fprintf(stderr, "RDATA indices (total=%d):\n",
 	        rrset_rdata_size_total(rrset));
+	
 	for (uint16_t i = 0; i < rrset->rdata_count; i++) {
 		fprintf(stderr, "%d=%d ", i, rrset_rdata_offset(rrset, i));
 	}
