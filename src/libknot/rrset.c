@@ -444,12 +444,12 @@ static size_t rrset_rdata_remainder_size(const knot_rrset_t *rrset,
 
 static int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
                                    const knot_rrset_t *rrset2,
-                                   size_t pos1, size_t pos2, uint16_t type)
+                                   size_t pos1, size_t pos2)
 {
 	uint8_t *r1 = rrset_rdata_pointer(rrset1, pos1);
 	uint8_t *r2 = rrset_rdata_pointer(rrset2, pos2);
 	assert(rrset1->type == rrset2->type);
-	const rdata_descriptor_t *desc = get_rdata_descriptor(type);
+	const rdata_descriptor_t *desc = get_rdata_descriptor(rrset1->type);
 	int cmp = 0;
 	size_t offset = 0;
 
@@ -512,6 +512,27 @@ int knot_rrset_compare_rdata(const knot_rrset_t *r1, const knot_rrset_t *r2)
 	if (desc == NULL) {
 		return KNOT_EINVAL;
 	}
+	
+	/*
+	 * This actually does not make a lot of sense, but easiest solution
+	 * is to order the arrays before we compare them all. It is okay since
+	 * this full compare operation is needed scarcely.
+	 */
+	
+	return 0;
+}
+
+int knot_rrset_rdata_equal(const knot_rrset_t *r1, const knot_rrset_t *r2)
+{
+	if (r1 == NULL || r2 == NULL ||( r1->type != r2->type)) {
+		return KNOT_EINVAL;
+	}
+
+	const rdata_descriptor_t *desc =
+		get_rdata_descriptor(r1->type);
+	if (desc == NULL) {
+		return KNOT_EINVAL;
+	}
 
 	// compare RDATA sets (order is not significant)
 
@@ -520,8 +541,7 @@ int knot_rrset_compare_rdata(const knot_rrset_t *r1, const knot_rrset_t *r2)
 		int found = 0;
 		for (uint16_t j = 0; j < r2->rdata_count; j++) {
 			found =
-				!rrset_rdata_compare_one(r1, r2, i, j,
-			                                 r1->type);
+				!rrset_rdata_compare_one(r1, r2, i, j);
 			if (!found) {
 				// RDATA from r1 not found in r2
 				return 0;
@@ -529,12 +549,12 @@ int knot_rrset_compare_rdata(const knot_rrset_t *r1, const knot_rrset_t *r2)
 		}
 	}
 	
+	// other way around
 	for (uint16_t i = 0; i < r2->rdata_count; i++) {
 		int found = 0;
 		for (uint16_t j = 0; j < r1->rdata_count; j++) {
 			found =
-				!rrset_rdata_compare_one(r1, r2, i, j,
-			                                 r1->type);
+				!rrset_rdata_compare_one(r1, r2, i, j);
 			if (!found) {
 				// RDATA from r1 not found in r2
 				return 0;
@@ -1247,8 +1267,7 @@ dbg_rrset_exec_detail(
 		for (uint16_t j = 0; j < rrset1->rdata_count && !duplicated;
 		     j++) {
 			duplicated = !rrset_rdata_compare_one(rrset2, rrset1,
-			                                      i, j,
-			                                      rrset1->type);
+			                                      i, j);
 		}
 		
 		if (!duplicated) {
