@@ -418,6 +418,9 @@ static knot_rrtype_descriptor_t
 	[252] = { KNOT_RRTYPE_AXFR, "AXFR", 1,
 	          { KNOT_RDATA_WF_TEXT },
 	          { KNOT_RDATA_ZF_TEXT }, false },
+	[255] = { KNOT_RRTYPE_ANY, "ANY", 1,
+	          { KNOT_RDATA_WF_BINARY },
+	          { KNOT_RDATA_ZF_UNKNOWN }, false },
   	/* 32769 */
   	[32769] = { KNOT_RRTYPE_DLV, "DLV", 4,
   	  { KNOT_RDATA_WF_SHORT, KNOT_RDATA_WF_BYTE,
@@ -430,6 +433,8 @@ knot_rrtype_descriptor_t *knot_rrtype_descriptor_by_type(uint16_t type)
 {
 	if (type < KNOT_RRTYPE_LAST + 1) {
 		return &knot_rrtype_descriptors[type];
+	} else if (type == KNOT_RRTYPE_ANY) {
+		return &knot_rrtype_descriptors[KNOT_RRTYPE_ANY];
 	} else if (type == KNOT_RRTYPE_DLV) {
 		return &knot_rrtype_descriptors[KNOT_RRTYPE_DLV];
 	}
