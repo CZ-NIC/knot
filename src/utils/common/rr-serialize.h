@@ -51,7 +51,7 @@ int rrset_header_write_mem(char *dst, size_t maxlen,
                            const bool p_class, const bool p_ttl);
 
 int rdata_write_mem(char* dst, size_t maxlen, const knot_rdata_t *rdata,
-                    uint16_t type, const knot_rrset_t *rrset);
+                    uint16_t type);
 
 #endif // _UTILS__RR_SERIALIZE_H_
 

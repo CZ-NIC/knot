@@ -22,9 +22,9 @@
 #include "libknot/libknot.h"
 
 int rdata_write_mem(char* dst, size_t maxlen, const knot_rdata_t *rdata,
-                    uint16_t type, const knot_rrset_t *rrset)
+                    uint16_t type)
 {
-	if (dst == NULL || rdata == NULL || rrset == NULL) {
+	if (dst == NULL || rdata == NULL) {
 		return KNOT_EINVAL;
 	}
 	
@@ -35,15 +35,18 @@ int rdata_write_mem(char* dst, size_t maxlen, const knot_rdata_t *rdata,
 	desc = knot_rrtype_descriptor_by_type(type);
 	char *item_str = NULL;
 	assert(rdata->count <= desc->length);
+
+	/* Workaround for IPSec gateway. */
+	if (type == KNOT_RRTYPE_IPSECKEY) {
+		ret = snprintf(dst+wb, maxlen-wb, "NOT YET IMPLEMENTED");
+		if (ret < 0 || ret >= maxlen-wb) return KNOT_ESPACE;
+		wb += ret;
+		return wb;
+	}
+
 	for (int i = 0; i < rdata->count; i++) {
-		/* Workaround for IPSec gateway. */
-		if (desc->zoneformat[i] == KNOT_RDATA_ZF_IPSECGATEWAY) {
-			item_str = rdata_ipsecgateway_to_string(rdata->items[i],
-			                                        rrset);
-		} else {
-			item_str = rdata_item_to_string(desc->zoneformat[i],
-			                                rdata->items[i]);
-		}
+		item_str = rdata_item_to_string(desc->zoneformat[i],
+		                                rdata->items[i]);
 		if (item_str == NULL) {
 			item_str = rdata_item_to_string(KNOT_RDATA_ZF_UNKNOWN,
 			                                rdata->items[i]);
@@ -128,7 +131,7 @@ static int rrsig_write_mem(char *dst, size_t maxlen, knot_rrset_t *rrsig)
 	
 	while (tmp->next != rrsig->rdata) {
 		int ret = rdata_write_mem(dst+wb, maxlen-wb, tmp,
-		                          KNOT_RRTYPE_RRSIG, rrsig);
+		                          KNOT_RRTYPE_RRSIG);
 		if (ret < 0) return ret;
 		wb += ret;
 		
@@ -138,8 +141,7 @@ static int rrsig_write_mem(char *dst, size_t maxlen, knot_rrset_t *rrsig)
 		wb += ret;
 	}
 	
-	ret = rdata_write_mem(dst+wb, maxlen-wb, tmp, KNOT_RRTYPE_RRSIG,
-	                      rrsig);
+	ret = rdata_write_mem(dst+wb, maxlen-wb, tmp, KNOT_RRTYPE_RRSIG);
 	if (ret < 0) return ret;
 	wb += ret;
 	
@@ -163,8 +165,7 @@ int rrset_write_mem(char *dst, size_t maxlen, const knot_rrset_t *rrset)
 		if (ret < 0) return ret;
 		wb += ret;
 
-		ret = rdata_write_mem(dst+wb, maxlen-wb, tmp,
-		                      rrset->type, rrset);
+		ret = rdata_write_mem(dst+wb, maxlen-wb, tmp, rrset->type);
 		if (ret < 0) return ret;
 		wb += ret;
 

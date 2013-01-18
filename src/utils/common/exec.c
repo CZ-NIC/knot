@@ -312,14 +312,14 @@ static void print_question_section(const knot_dname_t *owner,
 	knot_rrset_free(&question);
 }
 
-static void print_section_verbose(const knot_rrset_t **rrset,
+static void print_section_verbose(const knot_rrset_t **rrsets,
                                   const uint16_t     count)
 {
 	size_t buflen = 8192;
 	char   *buf = malloc(buflen);
 
 	for (uint16_t i = 0; i < count; i++) {
-		while (rrset_write_mem(buf, buflen, rrset[i]) < 0) {
+		while (rrset_write_mem(buf, buflen, rrsets[i]) < 0) {
 			buflen += 4096;
 			buf = realloc(buf, buflen);
 
@@ -330,6 +330,85 @@ static void print_section_verbose(const knot_rrset_t **rrset,
 			}
 		}
 		printf("%s", buf);
+	}
+
+	free(buf);
+}
+
+static void print_section_dig(const knot_rrset_t **rrsets,
+                              const uint16_t     count)
+{
+	size_t buflen = 8192;
+	char   *buf = malloc(buflen);
+
+	for (uint16_t i = 0; i < count; i++) {
+		const knot_rrset_t *rrset = rrsets[i];
+		knot_rdata_t *tmp = rrset->rdata;
+
+		do {
+			while (rdata_write_mem(buf, buflen, tmp, rrset->type)
+			       < 0) {
+				buflen += 4096;
+				buf = realloc(buf, buflen);
+
+				// Oversize protection.
+				if (buflen > 1000000) {
+					WARN("can't print whole section\n");
+					break;
+				}
+			}
+			printf("%s\n", buf);
+
+			tmp = tmp->next;
+		} while (tmp != rrset->rdata);
+	}
+
+	free(buf);
+}
+
+static void print_section_host(const knot_rrset_t **rrsets,
+                              const uint16_t     count)
+{
+	size_t buflen = 8192;
+	char   *buf = malloc(buflen);
+
+	for (uint16_t i = 0; i < count; i++) {
+		const knot_rrset_t  *rrset = rrsets[i];
+		knot_rdata_t        *tmp = rrset->rdata;
+		knot_lookup_table_t *descr;
+		char                type[32] = "NULL";
+		char                *owner;
+
+		owner = knot_dname_to_str(rrset->owner);
+		descr = knot_lookup_by_id(rtypes, rrset->type);
+
+		do {
+			while (rdata_write_mem(buf, buflen, tmp, rrset->type)
+			       < 0) {
+				buflen += 4096;
+				buf = realloc(buf, buflen);
+
+				// Oversize protection.
+				if (buflen > 1000000) {
+					WARN("can't print whole section\n");
+					free(owner);
+					break;
+				}
+			}
+
+			if (descr != NULL) {
+				printf("%s %s %s\n", owner, descr->name, buf);
+			} else {
+				knot_rrtype_to_string(rrset->type, type,
+				                      sizeof(type));
+				printf("%s has %s record %s\n",
+				       owner, type, buf);
+			}
+
+			tmp = tmp->next;
+		} while (tmp != rrset->rdata);
+
+		free(owner);
 	}
 
 	free(buf);
@@ -358,8 +437,10 @@ void print_packet(const params_t      *params,
 {
 	switch (params->format) {
 	case FORMAT_DIG:
+		print_section_dig(packet->answer, packet->an_rrsets);
 		break;
 	case FORMAT_HOST:
+		print_section_host(packet->answer, packet->an_rrsets);
 		break;
 	case FORMAT_VERBOSE:
 	case FORMAT_MULTILINE:
@@ -388,7 +469,6 @@ void print_packet(const params_t      *params,
 		}
 
 		print_footer(wire_len, sockfd, elapsed);
-
 		break;
 	default:
 		break;
