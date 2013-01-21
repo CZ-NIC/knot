@@ -83,7 +83,7 @@ static int nsupdate_params_init(params_t *params)
 	
 	/* Create default server. */
 	server_t *srv = create_server(DEFAULT_IPV4_NAME, DEFAULT_DNS_PORT);
-	add_tail(&params->servers, srv);
+	add_tail(&params->servers, (node *)srv);
 	
 	/* Initialize RR parser. */
 	npar->rrp = scanner_create("-");
