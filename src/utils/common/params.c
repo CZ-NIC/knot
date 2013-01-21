@@ -150,6 +150,27 @@ char* get_reverse_name(const char *name)
 	}
 }
 
+char* get_fqd_name(const char *name)
+{
+	char *fqd_name = NULL;
+
+	if (name == NULL) {
+		return NULL;
+	}
+
+	// If name is FQD, make copy.
+	if (name[strlen(name) - 1] == '.') {
+		fqd_name = strdup(name);
+	// Else append trailing dot.
+	} else {
+		fqd_name = malloc(strlen(name) + 2);
+		strcpy(fqd_name, name);
+		strcat(fqd_name, ".");
+	}
+
+	return fqd_name;
+}
+
 void params_flag_tcp(params_t *params)
 {
 	params->protocol = PROTO_TCP;
@@ -174,7 +195,7 @@ int params_parse_interval(const char *value, int32_t *dst)
 	} else if (num < 1) {
 		num = 1;
 		WARN("interval is too short, using %ld seconds\n", num);
-	/* Reduce maximal value. Poll takes signed int in milliseconds.. */
+	/* Reduce maximal value. Poll takes signed int in milliseconds. */
 	} else if (num > INT32_MAX) {
 		num = INT32_MAX / 1000;
 		WARN("interval is too long, using %ld seconds\n", num);

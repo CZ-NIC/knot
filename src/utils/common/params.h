@@ -133,6 +133,8 @@ int parse_type(const char *rtype, int32_t *type_num, int64_t *ixfr_serial);
 
 char* get_reverse_name(const char *name);
 
+char* get_fqd_name(const char *name);
+
 void params_flag_tcp(params_t *params);
 
 void params_flag_verbose(params_t *params);

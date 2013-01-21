@@ -123,14 +123,19 @@ static void host_params_flag_nowait(params_t *params)
 static int host_params_parse_name(params_t *params, const char *name)
 {
 	char	*reverse = get_reverse_name(name);
+	char	*fqd_name = NULL;
 	query_t	*query;
+
+	// If name is not FQDN, append trailing dot.
+	fqd_name = get_fqd_name(name);
 
 	// RR type is known.
 	if (params->type_num >= 0) {
 		if (params->type_num == KNOT_RRTYPE_PTR) {
 			// Check for correct address.
 			if (reverse == NULL) {
-				ERR("invalid IPv4 or IPv6 address");
+				ERR("invalid IPv4 or IPv6 address\n");
+				free(fqd_name);
 				return KNOT_EINVAL;
 			}
 
@@ -138,14 +143,16 @@ static int host_params_parse_name(params_t *params, const char *name)
 			query = query_create(reverse, params->type_num);
 			if (query == NULL) {
 				free(reverse);
+				free(fqd_name);
 				return KNOT_ENOMEM;
 			}
 			add_tail(&params->queries, (node *)query);
 		} else {
 			// Add query for name and specified type.
-			query = query_create(name, params->type_num);
+			query = query_create(fqd_name, params->type_num);
 			if (query == NULL) {
 				free(reverse);
+				free(fqd_name);
 				return KNOT_ENOMEM;
 			}
 			// Set SOA serial for IXFR query.
@@ -158,22 +165,28 @@ static int host_params_parse_name(params_t *params, const char *name)
 	} else {
 		if (reverse == NULL) {
 			// Add query for name and type A.
-			query = query_create(name, KNOT_RRTYPE_A);
+			query = query_create(fqd_name, KNOT_RRTYPE_A);
 			if (query == NULL) {
+				free(fqd_name);
+				free(fqd_name);
 				return KNOT_ENOMEM;
 			}
 			add_tail(&params->queries, (node *)query);
 
 			// Add query for name and type AAAA.
-			query = query_create(name, KNOT_RRTYPE_AAAA);
+			query = query_create(fqd_name, KNOT_RRTYPE_AAAA);
 			if (query == NULL) {
+				free(fqd_name);
+				free(fqd_name);
 				return KNOT_ENOMEM;
 			}
 			add_tail(&params->queries, (node *)query);
 
 			// Add query for name and type MX.
-			query = query_create(name, KNOT_RRTYPE_MX);
+			query = query_create(fqd_name, KNOT_RRTYPE_MX);
 			if (query == NULL) {
+				free(fqd_name);
+				free(fqd_name);
 				return KNOT_ENOMEM;
 			}
 			add_tail(&params->queries, (node *)query);
@@ -182,14 +195,15 @@ static int host_params_parse_name(params_t *params, const char *name)
 			query = query_create(reverse, KNOT_RRTYPE_PTR);
 			if (query == NULL) {
 				free(reverse);
+				free(fqd_name);
 				return KNOT_ENOMEM;
 			}
 			add_tail(&params->queries, (node *)query);
 		}
 	}
 
-	// Dealloc possible reverse name.
 	free(reverse);
+	free(fqd_name);
 
 	return KNOT_EOK;
 }
