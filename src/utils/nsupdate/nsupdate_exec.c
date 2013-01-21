@@ -790,7 +790,7 @@ int cmd_server(const char* lp, params_t *params)
 	DBG("%s: parsed port: %s\n", __func__, port_s);
 	
 	/* Create server struct. */
-	server_t *srv = create_server(addr, port_s);
+	server_t *srv = server_create(addr, port_s);
 	free(addr);
 	free(port_s);
 	

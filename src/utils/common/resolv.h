@@ -44,7 +44,7 @@ typedef struct {
 	char	*service;
 } server_t;
 
-server_t* create_server(const char *name, const char *service);
+server_t* server_create(const char *name, const char *service);
 
 void server_free(server_t *server);
 

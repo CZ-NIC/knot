@@ -24,7 +24,7 @@
 
 #define RESOLV_FILE             "/etc/resolv.conf"
 
-server_t* create_server(const char *name, const char *service)
+server_t* server_create(const char *name, const char *service)
 {
 	// Create output structure.
 	server_t *server = calloc(1, sizeof(server_t));
@@ -81,7 +81,7 @@ server_t* parse_nameserver(const char *nameserver)
 		}
 	}
 
-	return create_server(addr, port);
+	return server_create(addr, port);
 }
 
 static int get_resolv_nameservers(list *servers)
@@ -169,14 +169,14 @@ int get_nameservers(list *servers)
 		server_t *server;
 
 		// Add default ipv6 nameservers.
-		server = create_server(DEFAULT_IPV6_NAME, DEFAULT_DNS_PORT);
+		server = server_create(DEFAULT_IPV6_NAME, DEFAULT_DNS_PORT);
 
 		if (server != NULL) {                                   
 			add_tail(servers, (node *)server);              
 		}
 
 		// Add default ipv4 nameservers.
-		server = create_server(DEFAULT_IPV4_NAME, DEFAULT_DNS_PORT);
+		server = server_create(DEFAULT_IPV4_NAME, DEFAULT_DNS_PORT);
 
 		if (server != NULL) {                                   
 			add_tail(servers, (node *)server);              

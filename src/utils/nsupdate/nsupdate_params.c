@@ -82,7 +82,7 @@ static int nsupdate_params_init(params_t *params)
 	params->type_num = KNOT_RRTYPE_SOA;
 	
 	/* Create default server. */
-	server_t *srv = create_server(DEFAULT_IPV4_NAME, DEFAULT_DNS_PORT);
+	server_t *srv = server_create(DEFAULT_IPV4_NAME, DEFAULT_DNS_PORT);
 	add_tail(&params->servers, (node *)srv);
 	
 	/* Initialize RR parser. */
