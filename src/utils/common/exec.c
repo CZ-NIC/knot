@@ -390,8 +390,7 @@ static void print_section_host(const knot_rrset_t **rrsets,
 
 				// Oversize protection.
 				if (buflen > 1000000) {
-					WARN("can't print whole section\n");
-					free(owner);
+					WARN("can't print whole RR set\n");
 					break;
 				}
 			}
