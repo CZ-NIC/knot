@@ -230,6 +230,7 @@ static int parse_partial_rr(scanner_t *s, const char *lp, unsigned flags) {
 		char cls_s[16] = {0};
 		knot_rrclass_to_string(s->default_class, cls_s, sizeof(cls_s));
 		ERR("class mismatch: '%s'\n", cls_s);
+		knot_dname_free(&owner);
 		return KNOT_EPARSEFAIL;
 	}
 	
