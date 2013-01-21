@@ -168,7 +168,6 @@ static int host_params_parse_name(params_t *params, const char *name)
 			query = query_create(fqd_name, KNOT_RRTYPE_A);
 			if (query == NULL) {
 				free(fqd_name);
-				free(fqd_name);
 				return KNOT_ENOMEM;
 			}
 			add_tail(&params->queries, (node *)query);
@@ -177,7 +176,6 @@ static int host_params_parse_name(params_t *params, const char *name)
 			query = query_create(fqd_name, KNOT_RRTYPE_AAAA);
 			if (query == NULL) {
 				free(fqd_name);
-				free(fqd_name);
 				return KNOT_ENOMEM;
 			}
 			add_tail(&params->queries, (node *)query);
@@ -185,7 +183,6 @@ static int host_params_parse_name(params_t *params, const char *name)
 			// Add query for name and type MX.
 			query = query_create(fqd_name, KNOT_RRTYPE_MX);
 			if (query == NULL) {
-				free(fqd_name);
 				free(fqd_name);
 				return KNOT_ENOMEM;
 			}
