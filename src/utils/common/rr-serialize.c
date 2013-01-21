@@ -88,7 +88,7 @@ int rrset_header_write_mem(char *dst, size_t maxlen,
 	wb += ret;
 
 	if (p_ttl) {	
-		ret = snprintf(dst+wb, maxlen-wb, "%-5u\t", rrset->ttl);
+		ret = snprintf(dst+wb, maxlen-wb, "%6u\t", rrset->ttl);
 	} else {
 		ret = snprintf(dst+wb, maxlen-wb, "     \t");
 	}

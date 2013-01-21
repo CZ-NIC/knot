@@ -33,11 +33,12 @@
 
 knot_packet_t* create_empty_packet(knot_packet_prealloc_type_t t, int max_size);
 void process_query(const params_t *params, const query_t *query);
-void print_packet(const params_t      *params,
+void print_packet(const format_t      format,
                   const knot_packet_t *packet,
                   const size_t        wire_len,
                   const int           sockfd,
-                  const float         elapsed);
+                  const float         elapsed,
+                  const size_t        msg_count);
 
 #endif // _UTILS__EXEC_H_
 

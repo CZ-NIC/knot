@@ -235,9 +235,10 @@ static void print_header(const knot_packet_t *packet)
 	       packet->ns_rrsets, packet->ar_rrsets);
 }
 
-static void print_footer(const size_t wire_len,
+static void print_footer(const size_t total_len,
                          const int    sockfd,
-                         const float  elapsed)
+                         const float  elapsed,
+                         const size_t msg_count)
 {
 	struct tm tm;
 	char      date[64];
@@ -287,10 +288,10 @@ static void print_footer(const size_t wire_len,
 	}
 
 	// Print formated info.
-	printf("\n;; Received %zu B (1 message)\n"
+	printf("\n;; Received %zu B (%zu messages)\n"
 	       ";; From %s#%i over %s in %.1f ms\n"
 	       ";; On %s\n",
-	       wire_len, ip, port, proto, elapsed, date);
+	       total_len, msg_count, ip, port, proto, elapsed, date);
 }
 
 static void print_question_section(const knot_dname_t *owner,
@@ -414,28 +415,78 @@ static void print_section_host(const knot_rrset_t **rrsets,
 	free(buf);
 }
 
-static void print_xfr_header()
+static void print_xfr_header(const format_t format, const knot_rr_type_t type)
 {
-	printf("XFR Header:\n");
+	char name[16] = "";
+
+	switch (type) {
+	case KNOT_RRTYPE_AXFR:
+		strcpy(name, "AXFR");
+		break;
+	case KNOT_RRTYPE_IXFR:
+		strcpy(name, "IXFR");
+		break;
+	default:
+		return;
+	}
+
+	switch (format) {
+	case FORMAT_VERBOSE:
+	case FORMAT_MULTILINE:
+		printf(";; %s transfer\n\n", name);
+		break;
+	case FORMAT_DIG:
+	case FORMAT_HOST:
+	default:
+		break;
+	}
 }
 
-static void print_xfr_footer()
+static void print_xfr_footer(const format_t format,
+                             const size_t   total_len,
+                             const int      sockfd,
+                             const float    elapsed,
+                             const size_t   msg_count)
 {
-	printf("XFR Footer:\n");
+	switch (format) {
+	case FORMAT_VERBOSE:
+	case FORMAT_MULTILINE:
+		print_footer(total_len, sockfd, elapsed, msg_count);
+		break;
+	case FORMAT_DIG:
+	case FORMAT_HOST:
+	default:
+		break;
+	}
 }
 
-static void print_xfr_data(const knot_packet_t *packet)
+static void print_xfr_data(const format_t      format,
+                           const knot_packet_t *packet)
 {
-	print_section_verbose(packet->answer, packet->an_rrsets);
+	switch (format) {
+	case FORMAT_DIG:
+		print_section_dig(packet->answer, packet->an_rrsets);
+		break;
+	case FORMAT_HOST:
+		print_section_host(packet->answer, packet->an_rrsets);
+		break;
+	case FORMAT_VERBOSE:
+	case FORMAT_MULTILINE:
+		print_section_verbose(packet->answer, packet->an_rrsets);
+		break;
+	default:
+		break;
+	}
 }
 
-void print_packet(const params_t      *params,
+void print_packet(const format_t      format,
                   const knot_packet_t *packet,
-                  const size_t        wire_len,
+                  const size_t        total_len,
                   const int           sockfd,
-                  const float         elapsed)
+                  const float         elapsed,
+                  const size_t        msg_count)
 {
-	switch (params->format) {
+	switch (format) {
 	case FORMAT_DIG:
 		print_section_dig(packet->answer, packet->an_rrsets);
 		break;
@@ -455,20 +506,23 @@ void print_packet(const params_t      *params,
 
 		if (packet->an_rrsets > 0) {
 			printf("\n;; ANSWER SECTION:\n");
-			print_section_verbose(packet->answer, packet->an_rrsets);
+			print_section_verbose(packet->answer,
+			                      packet->an_rrsets);
 		}
 
 		if (packet->ns_rrsets > 0) {
 			printf("\n;; AUTHORITY SECTION:\n");
-			print_section_verbose(packet->authority, packet->ns_rrsets);
+			print_section_verbose(packet->authority,
+			                      packet->ns_rrsets);
 		}
 
 		if (packet->ar_rrsets > 0) {
 			printf("\n;; ADDITIONAL SECTION:\n");
-			print_section_verbose(packet->additional, packet->ar_rrsets);
+			print_section_verbose(packet->additional,
+			                      packet->ar_rrsets);
 		}
 
-		print_footer(wire_len, sockfd, elapsed);
+		print_footer(total_len, sockfd, elapsed, msg_count);
 		break;
 	default:
 		break;
@@ -584,6 +638,8 @@ void process_query(const params_t *params, const query_t *query)
 	int		in_len;
 	uint8_t		in[MAX_PACKET_SIZE];
 	struct timeval	t_start, t_end;
+	size_t		total_len = 0;
+	size_t		msg_count = 0;
 
 	// Create query packet.
 	out_packet = create_query_packet(params, query, &out, &out_len);
@@ -673,10 +729,17 @@ void process_query(const params_t *params, const query_t *query)
 			// Stop meassuring of query time.
 			gettimeofday(&t_end, NULL);
 
+			// Calculate elapsed time.
 			elapsed = (t_end.tv_sec - t_start.tv_sec) * 1000 +
 			          ((t_end.tv_usec - t_start.tv_usec) / 1000.0);
 
-			print_packet(params, in_packet, in_len, sockfd, elapsed);
+			// Count reply message.
+			msg_count++;
+			total_len += in_len;
+
+			// Print formated data.
+			print_packet(params->format, in_packet, total_len,
+			             sockfd, elapsed, msg_count);
 
 			knot_packet_free(&in_packet);
 
@@ -686,10 +749,14 @@ void process_query(const params_t *params, const query_t *query)
 			break;
 		}
 
-		// Start XFR dump.
-		print_xfr_header(params);
+		// Count first XFR message.
+		msg_count++;
+		total_len += in_len;
 
-		print_xfr_data(in_packet);
+		// Start XFR dump.
+		print_xfr_header(params->format, query->type);
+
+		print_xfr_data(params->format, in_packet);
 
 		// Read first SOA serial.
 		int64_t serial = first_serial_check(in_packet);
@@ -746,12 +813,24 @@ void process_query(const params_t *params, const query_t *query)
 			}
 
 			// Dump message data.
-			print_xfr_data(in_packet);
+			print_xfr_data(params->format, in_packet);
+
+			// Count non-first XFR message.
+			msg_count++;
+			total_len += in_len;
 		}
 
 		// For successful XFR print final information.
 		if (stop == false) {
-			print_xfr_footer(params);
+			// Stop meassuring of query time.
+			gettimeofday(&t_end, NULL);
+
+			// Calculate elapsed time.
+			elapsed = (t_end.tv_sec - t_start.tv_sec) * 1000 +
+			          ((t_end.tv_usec - t_start.tv_usec) / 1000.0);
+
+			print_xfr_footer(params->format, total_len, sockfd,
+			                 elapsed, msg_count);
 
 			knot_packet_free(&in_packet);
 		}
