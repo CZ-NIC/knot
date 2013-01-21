@@ -232,8 +232,8 @@ static int host_params_parse_server(params_t *params, const char *name)
 
 static void host_params_help(int argc, char *argv[])
 {
-	// Not updated!
-	printf("Usage: %s [-aCdvlrT] [-4] [-6] [-c class] [-t type] {name} [server]\n", argv[0]);
+	printf("Usage: %s [-aCdlrsTvw] [-4] [-6] [-c class] [-R retries] "
+	       "[-t type] [-W time] name [server]\n", argv[0]);
 }
 
 int host_params_parse(params_t *params, int argc, char *argv[])
@@ -247,13 +247,23 @@ int host_params_parse(params_t *params, int argc, char *argv[])
 	host_params_init(params);
 
 	// Command line options processing.
-	while ((opt = getopt(argc, argv, "aClrT46swR:W:c:t:dv")) != -1) {
+	while ((opt = getopt(argc, argv, "46aCdlrsTvwc:R:t:W:")) != -1) {
 		switch (opt) {
+		case '4':
+			host_params_flag_ipv4(params);
+			break;
+		case '6':
+			host_params_flag_ipv6(params);
+			break;
 		case 'a':
 			host_params_flag_all(params);
 			break;
 		case 'C':
 			host_params_flag_soa(params);
+			break;
+		case 'd':
+		case 'v': // Fall through.
+			params_flag_verbose(params);
 			break;
 		case 'l':
 			host_params_flag_axfr(params);
@@ -261,35 +271,23 @@ int host_params_parse(params_t *params, int argc, char *argv[])
 		case 'r':
 			host_params_flag_nonrecursive(params);
 			break;
-		case 'T':
-			params_flag_tcp(params);
-			break;
-		case '4':
-			host_params_flag_ipv4(params);
-			break;
-		case '6':
-			host_params_flag_ipv6(params);
-			break;
 		case 's':
 			host_params_flag_servfail(params);
+			break;
+		case 'T':
+			params_flag_tcp(params);
 			break;
 		case 'w':
 			host_params_flag_nowait(params);
 			break;
-		case 'R':
-			if (params_parse_num(optarg, &(params->retries))
-			    != KNOT_EOK) {
-				return KNOT_EINVAL;
-			}
-			break;
-		case 'W':
-			if (params_parse_interval(optarg, &(params->wait))
-			    != KNOT_EOK) {
-				return KNOT_EINVAL;
-			}
-			break;
 		case 'c':
 			if (parse_class(optarg, &(params->class_num))
+			    != KNOT_EOK) {
+				return KNOT_EINVAL;
+			}
+			break;
+		case 'R':
+			if (params_parse_num(optarg, &(params->retries))
 			    != KNOT_EOK) {
 				return KNOT_EINVAL;
 			}
@@ -301,9 +299,11 @@ int host_params_parse(params_t *params, int argc, char *argv[])
 				return KNOT_EINVAL;
 			}
 			break;
-		case 'd':
-		case 'v': // Fall through.
-			params_flag_verbose(params);
+		case 'W':
+			if (params_parse_interval(optarg, &(params->wait))
+			    != KNOT_EOK) {
+				return KNOT_EINVAL;
+			}
 			break;
 		default:
 			host_params_help(argc, argv);
