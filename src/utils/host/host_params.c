@@ -229,8 +229,9 @@ static int host_params_parse_server(params_t *params, const char *name)
 
 static void host_params_help(int argc, char *argv[])
 {
-	printf("Usage: %s [-aCdlrsTvw] [-4] [-6] [-c class] [-R retries] "
-	       "[-t type] [-W time] name [server]\n", argv[0]);
+	printf("Usage: %s [-aCdlrsTvw] [-4] [-6] [-c class] [-R retries]\n"
+	       "       %*c [-t type] [-W time] name [server]\n",
+	       argv[0], (int)strlen(argv[0]), ' ');
 }
 
 int host_params_parse(params_t *params, int argc, char *argv[])
