@@ -310,6 +310,7 @@ static void print_question_section(const knot_dname_t *owner,
 	printf("%s\n", buf);
 
 	knot_rrset_free(&question);
+	free(buf);
 }
 
 static void print_section_verbose(const knot_rrset_t **rrsets,
