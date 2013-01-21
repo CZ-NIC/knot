@@ -769,11 +769,13 @@ int cmd_server(const char* lp, params_t *params)
 	unsigned long port = strtoul(lp, &np, 10);
 	if (!np || (*np != '\0' && !isspace(*np))) {
 		ERR("failed to parse port number '%s'\n", lp);
+		free(addr);
 		return KNOT_EPARSEFAIL;
 	}
 	if (port == 0 || port > 65535) {
 		ERR("invalid port number '%lu', valid range: <1-65535>\n",
 		    port);
+		free(addr);
 		return KNOT_ERANGE;
 	}
 	
