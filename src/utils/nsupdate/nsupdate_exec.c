@@ -764,7 +764,10 @@ int cmd_server(const char* lp, params_t *params)
 	
 	/* Attempt to parse port (optional) */
 	lp = skipspace(lp + len);
-	if (*lp == '\0') return KNOT_EOK;
+	if (*lp == '\0') {
+		free(addr);
+		return KNOT_EOK;
+	}
 	char *np = NULL;
 	unsigned long port = strtoul(lp, &np, 10);
 	if (!np || (*np != '\0' && !isspace(*np))) {
