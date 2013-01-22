@@ -699,10 +699,7 @@ int cmd_send(const char* lp, params_t *params)
 	server_t *srv = TAIL(params->servers);
 	
 	/* Create query helper. */
-	query_t q;
-	memset(&q, 0, sizeof(query_t));
-	q.type = KNOT_RRTYPE_SOA;
-	int sock = send_msg(params, &q, srv, wire, len);
+	int sock = send_msg(params, KNOT_RRTYPE_SOA, srv, wire, len);
 	DBG("%s: send_msg = %d\n", __func__, sock);
 	if (sock < 0) {
 		ERR("failed to send query\n");
@@ -713,7 +710,8 @@ int cmd_send(const char* lp, params_t *params)
 	
 	/* Wait for reception. */
 	uint8_t	rwire[MAX_PACKET_SIZE]; 
-	int rb = receive_msg(params, &q, sock, rwire, sizeof(rwire));
+	int rb = receive_msg(params, KNOT_RRTYPE_SOA, sock, rwire,
+	                     sizeof(rwire));
 	DBG("%s: receive_msg = %d\n", __func__, rb);
 	shutdown(sock, SHUT_RDWR);
 	if (rb < 0) {

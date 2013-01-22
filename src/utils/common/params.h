@@ -27,8 +27,8 @@
 #ifndef _UTILS__PARAMS_H_
 #define _UTILS__PARAMS_H_
 
-#include <stdbool.h>
-#include <stdint.h>
+#include <stdbool.h>			// bool
+#include <stdint.h>			// uint16_t
 
 #include "common/lists.h"		// node
 

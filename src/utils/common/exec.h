@@ -27,9 +27,8 @@
 #ifndef _UTILS__EXEC_H_
 #define _UTILS__EXEC_H_
 
-#include "libknot/packet/packet.h"	// packet_t
+#include "libknot/packet/packet.h"	// knot_packet_t
 #include "utils/common/params.h"	// params_t
-#include "utils/common/resolv.h"	// server_t
 
 knot_packet_t* create_empty_packet(knot_packet_prealloc_type_t t, int max_size);
 void process_query(const params_t *params, const query_t *query);

@@ -20,6 +20,9 @@
 #include <time.h>			// localtime_r
 #include <sys/time.h>			// gettimeofday
 
+#include <arpa/inet.h>			// inet_ntop
+#include <sys/socket.h>                 // AF_INET
+
 #include "common/lists.h"		// list
 #include "common/errcode.h"		// KNOT_EOK
 #include "libknot/consts.h"		// KNOT_RCODE_NOERROR
@@ -684,7 +687,7 @@ void process_query(const params_t *params, const query_t *query)
 		gettimeofday(&t_start, NULL);
 
 		// Send query message.
-		sockfd = send_msg(params, query, (server_t *)server,
+		sockfd = send_msg(params, query->type, (server_t *)server,
 		                  out, out_len);
 
 		if (sockfd < 0) {
@@ -696,7 +699,7 @@ void process_query(const params_t *params, const query_t *query)
 		// Loop over incomming messages, unless reply id is correct.
 		while (id_ok == false) {
 			// Receive reply message.
-			in_len = receive_msg(params, query, sockfd,
+			in_len = receive_msg(params, query->type, sockfd,
 			                     in, sizeof(in));
 
 			if (in_len <= 0) {
@@ -802,7 +805,7 @@ void process_query(const params_t *params, const query_t *query)
 			knot_packet_free(&in_packet);
 
 			// Receive reply message.
-			in_len = receive_msg(params, query, sockfd,
+			in_len = receive_msg(params, query->type, sockfd,
 					     in, sizeof(in));
 
 			if (in_len <= 0) {

@@ -27,19 +27,17 @@
 #ifndef _UTILS__NETIO_H_
 #define _UTILS__NETIO_H_
 
-#include <arpa/inet.h>			// inet_pton
-#include <sys/socket.h>			// AF_INET (BSD)
-#include <netinet/in.h>			// in_addr (BSD)
+#include <stdint.h>			// uint16_t
 
-#include "utils/common/params.h"
-#include "utils/common/resolv.h"
+#include "utils/common/params.h"	// params_t
+#include "utils/common/resolv.h"	// server_t
 
-int get_socktype(const params_t *params, const uint16_t qtype);
+int get_socktype(const params_t *params, const uint16_t type);
 
-int send_msg(const params_t *params, const query_t *query,
+int send_msg(const params_t *params, const uint16_t type,
              const server_t *server, const uint8_t *buf, size_t buf_len);
 
-int receive_msg(const params_t *params, const query_t *query,
+int receive_msg(const params_t *params, const uint16_t type,
                 int sockfd, uint8_t *buf, size_t buf_len);
 
 #endif // _UTILS__NETIO_H_

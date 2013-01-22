@@ -14,19 +14,20 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <stdlib.h>
+#include "utils/common/netio.h"
+
+//#include <stdlib.h>
 #include <netdb.h>			// addrinfo
 #include <poll.h>			// poll
 #include <sys/socket.h>			// AF_INET (BSD)                        
 #include <netinet/in.h>			// ntohl (BSD)
-#include <fcntl.h>
+#include <fcntl.h>			// fcntl
 
-#include "utils/common/netio.h"
-#include "utils/common/msg.h"
+#include "utils/common/msg.h"		// WARN
 #include "libknot/util/descriptor.h"	// KNOT_CLASS_IN
-#include "common/errcode.h"
+#include "common/errcode.h"		// KNOT_E
 
-int get_socktype(const params_t *params, const uint16_t qtype)
+int get_socktype(const params_t *params, const uint16_t type)
 {
 	if (params == NULL) {
 		return KNOT_EINVAL;
@@ -36,12 +37,12 @@ int get_socktype(const params_t *params, const uint16_t qtype)
 	case PROTO_TCP:
 		return SOCK_STREAM;
 	case PROTO_UDP:
-		if (qtype == KNOT_RRTYPE_AXFR || qtype == KNOT_RRTYPE_IXFR) {
+		if (type == KNOT_RRTYPE_AXFR || type == KNOT_RRTYPE_IXFR) {
 			WARN("using UDP for zone transfer\n");
 		}
 		return SOCK_DGRAM;
 	default:
-		if (qtype == KNOT_RRTYPE_AXFR || qtype == KNOT_RRTYPE_IXFR) {
+		if (type == KNOT_RRTYPE_AXFR || type == KNOT_RRTYPE_IXFR) {
 			return SOCK_STREAM;
 		} else {
 			return SOCK_DGRAM;
@@ -50,7 +51,7 @@ int get_socktype(const params_t *params, const uint16_t qtype)
 }
 
 int send_msg(const params_t *params,
-             const query_t  *query,
+             const uint16_t  type,
              const server_t *server,
              const uint8_t  *buf,
              const size_t   buf_len)
@@ -59,7 +60,7 @@ int send_msg(const params_t *params,
 	struct pollfd pfd;
 	int sockfd;
 
-	if (params == NULL || query == NULL || server == NULL || buf == NULL) {
+	if (params == NULL || server == NULL || buf == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -75,7 +76,7 @@ int send_msg(const params_t *params,
 	}
 
 	// Set TCP or UDP.
-	hints.ai_socktype = get_socktype(params, query->type);
+	hints.ai_socktype = get_socktype(params, type);
 
 	// Get connection parameters.
 	if (getaddrinfo(server->name, server->service, &hints, &res) != 0) {
@@ -142,7 +143,7 @@ int send_msg(const params_t *params,
 }
 
 int receive_msg(const params_t *params,
-                const query_t  *query,
+                const uint16_t  type,
                 int            sockfd,
                 uint8_t        *buf,
                 const size_t   buf_len)
@@ -150,7 +151,7 @@ int receive_msg(const params_t *params,
 	ssize_t       ret;
 	struct pollfd pfd;
 
-	if (params == NULL || query == NULL || buf == NULL) {
+	if (params == NULL || buf == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -159,7 +160,7 @@ int receive_msg(const params_t *params,
 	pfd.events = POLLIN;
 	pfd.revents = 0;
 
-	if (get_socktype(params, query->type) == SOCK_STREAM) {
+	if (get_socktype(params, type) == SOCK_STREAM) {
 		uint16_t msg_len;
 		uint32_t total = 0;
 

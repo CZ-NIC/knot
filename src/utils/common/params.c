@@ -17,6 +17,7 @@
 #include "utils/common/params.h"
 
 #include <stdlib.h>			// free
+#include <netinet/in.h>                 // in_addr
 
 #include "common/errcode.h"		// KNOT_EOK
 #include "libknot/util/descriptor.h"	// KNOT_RRTYPE
