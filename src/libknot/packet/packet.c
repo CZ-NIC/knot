@@ -971,6 +971,13 @@ size_t knot_packet_size(const knot_packet_t *packet)
 
 /*----------------------------------------------------------------------------*/
 
+size_t knot_packet_max_size(const knot_packet_t *packet)
+{
+	return packet->max_size;
+}
+
+/*----------------------------------------------------------------------------*/
+
 size_t knot_packet_question_size(const knot_packet_t *packet)
 {
 	return (KNOT_WIRE_HEADER_SIZE + 4

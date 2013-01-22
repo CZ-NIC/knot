@@ -300,8 +300,6 @@ static int pkt_append(params_t *p, int sect)
 		knot_query_set_question(npar->pkt, &q);
 		knot_query_set_opcode(npar->pkt, KNOT_OPCODE_UPDATE);
 		knot_dname_release(q.qname); /* Already on wire. */
-	} else {
-		/*! \todo check remaining size */
 	}
 	
 	/* Create RDATA (not for NXRRSET prereq). */
@@ -368,6 +366,10 @@ static int pkt_append(params_t *p, int sect)
 	if (ret != KNOT_EOK) {
 		DBG("%s: failed to append rdata to appropriate section - %s\n",
 		    __func__, knot_strerror(ret));
+		if (ret == KNOT_ESPACE) {
+			ERR("exceeded UPDATE message maximum size %zu\n",
+			    knot_packet_max_size(npar->pkt));
+		}
 	}
 	
 	return ret;
@@ -468,7 +470,7 @@ static int nsupdate_process(params_t *params, FILE *fp)
 			const char *lp = skipspace(buf + CMD_L(cmd));
 			ret = cmd_handle[ret](lp, params);
 			if (ret != KNOT_EOK) {
-				ERR("incorrect operation '%s' - %s\n",
+				ERR("operation '%s' failed - %s\n",
 				    CMD_S(cmd), knot_strerror(ret));
 				break;
 			}
@@ -477,7 +479,7 @@ static int nsupdate_process(params_t *params, FILE *fp)
 	
 	/* Check for longing query. */
 	nsupdate_params_t *npar = NSUP_PARAM(params);
-	if (npar->pkt) {
+	if (npar->pkt && ret == KNOT_EOK) {
 		cmd_send("", params);
 	}
 
@@ -616,6 +618,7 @@ int cmd_debug(const char* lp, params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 	params_flag_verbose(params);
+	msg_enable_debug(1);
 	return KNOT_EOK;
 }
 
