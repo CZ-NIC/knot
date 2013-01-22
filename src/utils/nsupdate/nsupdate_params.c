@@ -151,9 +151,11 @@ int nsupdate_params_parse(params_t *params, int argc, char *argv[])
 	}
 
 	/* Command line options processing. */
-	while ((opt = getopt(argc, argv, "dvp:t:r:")) != -1) {
+	while ((opt = getopt(argc, argv, "dDvp:t:r:")) != -1) {
 		switch (opt) {
 		case 'd':
+		case 'D': /* Extra debugging. */
+			msg_enable_debug(1);
 			params_flag_verbose(params);
 			break;
 		case 'v':

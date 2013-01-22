@@ -180,6 +180,7 @@ void params_flag_tcp(params_t *params)
 void params_flag_verbose(params_t *params)
 {
 	params->format = FORMAT_VERBOSE;
+	
 }
 
 int params_parse_interval(const char *value, int32_t *dst)

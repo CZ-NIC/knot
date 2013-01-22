@@ -36,8 +36,14 @@
 #define ERR(m...)	{ printf(ERROR_ m); fflush(stdout); }
 #define WARN(m...)	{ printf(WARNING_ m); fflush(stdout); }
 
+/*! \brief Enable/disable debugging. */
+int msg_enable_debug(int val);
+
+/*! \brief Print debug message. */
+int msg_debug(const char *fmt, ...);
+
 #ifndef NDEBUG
- #define DBG(m...)	{ printf(DEBUG_ m); fflush(stdout); }
+ #define DBG(m...) msg_debug(DEBUG_ m)
 #else
  #define DBG(m...)
 #endif

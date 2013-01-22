@@ -274,6 +274,7 @@ doc/running.texi
 src/libknot/zone/zone-diff.h
 src/libknot/zone/zone-diff.c
 src/utils/common/msg.h
+src/utils/common/msg.c
 src/utils/common/params.c
 src/utils/common/params.h
 src/utils/common/resolv.c

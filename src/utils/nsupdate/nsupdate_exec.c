@@ -721,7 +721,7 @@ int cmd_send(const char* lp, params_t *params)
 		return KNOT_ERROR;
 	}
 	
-	/*! \todo TCP fallback, timeout settings. */
+	/*! \todo TCP fallback. */
 	
 	/* Wait for reception. */
 	uint8_t	rwire[MAX_PACKET_SIZE]; 
