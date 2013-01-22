@@ -760,37 +760,25 @@ int cmd_server(const char* lp, params_t *params)
 	if (!addr) return KNOT_ENOMEM;
 	DBG("%s: parsed addr: %s\n", __func__, addr);
 	
-	/* Attempt to parse port (optional) */
+	/* Store port/service if present. */
 	lp = skipspace(lp + len);
 	if (*lp == '\0') {
 		free(addr);
 		return KNOT_EOK;
 	}
-	char *np = NULL;
-	unsigned long port = strtoul(lp, &np, 10);
-	if (!np || (*np != '\0' && !isspace(*np))) {
-		ERR("failed to parse port number '%s'\n", lp);
-		free(addr);
-		return KNOT_EPARSEFAIL;
-	}
-	if (port == 0 || port > 65535) {
-		ERR("invalid port number '%lu', valid range: <1-65535>\n",
-		    port);
-		free(addr);
-		return KNOT_ERANGE;
-	}
-	
-	char *port_s = strndup(lp, np-lp);
-	if (!port_s) {
+
+	len = strcspn(lp, SEP_CHARS);
+	char *port = strndup(lp, len);
+	if (!port) {
 		free(addr);
 		return KNOT_ENOMEM;
 	}
-	DBG("%s: parsed port: %s\n", __func__, port_s);
+	DBG("%s: parsed port: %s\n", __func__, port);
 	
 	/* Create server struct. */
-	server_t *srv = server_create(addr, port_s);
+	server_t *srv = server_create(addr, port);
 	free(addr);
-	free(port_s);
+	free(port);
 	
 	/* Enqueue. */
 	if (!srv) return KNOT_ENOMEM;
