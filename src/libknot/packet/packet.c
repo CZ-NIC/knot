@@ -225,10 +225,8 @@ static int knot_packet_parse_header(const uint8_t *wire, size_t *pos,
 	}
 
 	header->id = knot_wire_get_id(wire);
-	// copy some of the flags: OPCODE and RD
-	// do this by copying flags1 and setting QR to 1, AA to 0 and TC to 0
 	header->flags1 = knot_wire_get_flags1(wire);
-	// do not copy flags2 (all set by server)
+	header->flags2 = knot_wire_get_flags2(wire);
 
 	header->qdcount = knot_wire_get_qdcount(wire);
 	header->ancount = knot_wire_get_ancount(wire);
