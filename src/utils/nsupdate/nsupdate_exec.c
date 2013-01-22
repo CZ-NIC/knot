@@ -130,6 +130,21 @@ enum {
 	PARSE_NAMEONLY  = 1 << 1, /* Parse only name. */
 };
 
+/* RCODE error table. */
+const char *rc_errtable[] = {
+        "NOERROR",
+        "FORMERR",
+        "SERVFAIL",
+        "NXDOMAIN",
+        "NOTIMPL",
+        "REFUSED",
+        "YXDOMAIN",
+        "YXRRSET",
+        "NXRRSET",
+        "NOTAUTH",
+        "NOTZONE"
+};
+
 static inline const char* skipspace(const char *lp) {
 	while (isspace(*lp)) ++lp; return lp;
 }
@@ -721,9 +736,19 @@ int cmd_send(const char* lp, params_t *params)
 	
 	knot_packet_t *resp = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
 	if (!resp) return KNOT_ENOMEM;
-	knot_packet_parse_from_wire(resp, rwire, rb, 0, 0);
+	ret = knot_packet_parse_from_wire(resp, rwire, rb, 1, 0);
+	if (ret != KNOT_EOK) {
+		ERR("failed to parse response, %s\n", knot_strerror(ret));
+		return ret;
+	}
+		
 	
-	/*! \todo Print response if verbose. */
+	/* Check return code. */
+	int rc = knot_packet_rcode(resp);
+	DBG("%s: received rcode=%d\n", __func__, rc);
+	if (rc > KNOT_RCODE_NOERROR && rc <= KNOT_RCODE_NOTZONE) {
+		ERR("update failed: %s\n", rc_errtable[rc]);
+	}
 	
 	/* Free created rrsets. */
 	knot_packet_free_rrsets(npar->pkt);
