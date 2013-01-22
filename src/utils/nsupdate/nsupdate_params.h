@@ -47,6 +47,10 @@ typedef struct nsupdate_params_t {
 	scanner_t	*rrp;
 	/*!< Current packet. */
 	knot_packet_t	*pkt;
+	/*!< Current response. */
+	knot_packet_t	*resp;
+	/*!< Buffer for response. */
+	uint8_t		rwire[MAX_PACKET_SIZE];
 } nsupdate_params_t;
 #define NSUP_PARAM(p) ((nsupdate_params_t*)p->d)
 

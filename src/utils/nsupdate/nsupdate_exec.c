@@ -499,6 +499,9 @@ static int nsupdate_process(params_t *params, FILE *fp)
 	if (npar->pkt && ret == KNOT_EOK) {
 		cmd_send("", params);
 	}
+	
+	/* Free last answer. */
+	knot_packet_free(&npar->resp);
 
 	free(buf);
 	return ret;
@@ -734,28 +737,30 @@ int cmd_send(const char* lp, params_t *params)
 	server_t *srv = TAIL(params->servers);
 	
 	/* Send/recv message (N retries). */
-	uint8_t	rwire[MAX_PACKET_SIZE]; 
 	int retries = params->retries;
 	if (params->protocol == PROTO_TCP) {
 		retries = 1; /* No retries for TCP. */
 	}
 	int rb = 0;
 	for (; retries > 0; --retries) {
-		rb = pkt_sendrecv(params, srv, wire, len, rwire, sizeof(rwire));
+		memset(npar->rwire, 0, MAX_PACKET_SIZE);
+		rb = pkt_sendrecv(params, srv, wire, len,
+		                  npar->rwire, MAX_PACKET_SIZE);
 		if (rb > 0) break;
 	}
 	
-	knot_packet_t *resp = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
-	if (!resp) return KNOT_ENOMEM;
-	ret = knot_packet_parse_from_wire(resp, rwire, rb, 1, 0);
+	/* Clear previous response. */
+	if (npar->resp) knot_packet_free(&npar->resp);
+	npar->resp = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
+	if (!npar->resp) return KNOT_ENOMEM;
+	ret = knot_packet_parse_from_wire(npar->resp, npar->rwire, rb, 1, 0);
 	if (ret != KNOT_EOK) {
 		ERR("failed to parse response, %s\n", knot_strerror(ret));
 		return ret;
 	}
-		
 	
 	/* Check return code. */
-	int rc = knot_packet_rcode(resp);
+	int rc = knot_packet_rcode(npar->resp);
 	DBG("%s: received rcode=%d\n", __func__, rc);
 	if (rc > KNOT_RCODE_NOERROR && rc <= KNOT_RCODE_NOTZONE) {
 		ERR("update failed: %s\n", rc_errtable[rc]);
@@ -766,7 +771,6 @@ int cmd_send(const char* lp, params_t *params)
 	/* Free created rrsets. */
 	knot_packet_free_rrsets(npar->pkt);
 	knot_packet_free(&npar->pkt);
-	knot_packet_free(&resp);
 	return KNOT_EOK;
 }
 
@@ -825,6 +829,30 @@ int cmd_server(const char* lp, params_t *params)
 	return KNOT_EOK;
 }
 
+int cmd_show(const char* lp, params_t *params)
+{
+	DBG("%s: lp='%s'\n", __func__, lp);
+	nsupdate_params_t *npar = NSUP_PARAM(params);
+	/* Show current packet. */
+	if (!npar->pkt) return KNOT_EOK;
+	printf("Outgoing update query:\n");
+	size_t len = knot_packet_size(npar->pkt);
+	print_packet(params->format, npar->pkt, len, -1, 0.0f, 1);
+	return KNOT_EOK;
+}
+
+int cmd_answer(const char* lp, params_t *params)
+{
+	DBG("%s: lp='%s'\n", __func__, lp);
+	nsupdate_params_t *npar = NSUP_PARAM(params);
+	/* Show current answer. */
+	if (!npar->resp) return KNOT_EOK;
+	printf("Answer:\n");
+	size_t len = knot_packet_size(npar->resp);
+	print_packet(params->format, npar->resp, len, -1, 0.0f, 1);
+	return KNOT_EOK;
+}
+
 /*
  *   Not implemented.
  */
@@ -854,18 +882,6 @@ int cmd_oldgsstsig(const char* lp, params_t *params)
 }
 
 int cmd_realm(const char* lp, params_t *params)
-{
-	DBG("%s: lp='%s'\n", __func__, lp);
-	return KNOT_ENOTSUP;
-}
-
-int cmd_show(const char* lp, params_t *params)
-{
-	DBG("%s: lp='%s'\n", __func__, lp);
-	return KNOT_ENOTSUP;
-}
-
-int cmd_answer(const char* lp, params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 	return KNOT_ENOTSUP;

@@ -193,7 +193,7 @@ static knot_lookup_table_t rtypes[] = {
 
 static void print_header(const knot_packet_t *packet)
 {
-	char    flags[64] = "\0";
+	char    flags[64] = {0};
 	uint8_t rcode_id, opcode_id;
 	knot_lookup_table_t *rcode, *opcode;
 
@@ -525,6 +525,7 @@ void print_packet(const format_t      format,
 			print_error_host(rcode, &(packet->question));
 		}
 		break;
+	case FORMAT_NSUPDATE:
 	case FORMAT_VERBOSE:
 	case FORMAT_MULTILINE:
 		print_header(packet);
@@ -554,7 +555,9 @@ void print_packet(const format_t      format,
 			                      packet->ar_rrsets);
 		}
 
-		print_footer(total_len, sockfd, elapsed, msg_count);
+		if (format != FORMAT_NSUPDATE) {
+			print_footer(total_len, sockfd, elapsed, msg_count);
+		}
 		break;
 	default:
 		break;
