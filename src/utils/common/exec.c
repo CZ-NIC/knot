@@ -415,6 +415,27 @@ static void print_section_host(const knot_rrset_t **rrsets,
 	free(buf);
 }
 
+static void print_error_host(const uint8_t         code,
+                             const knot_question_t *question)
+{
+	char type[32] = "NULL";
+	char *owner;
+
+	knot_lookup_table_t *rcode;
+
+	owner = knot_dname_to_str(question->qname);
+	rcode = knot_lookup_by_id(rcodes, code);
+	knot_rrtype_to_string(question->qtype, type, sizeof(type));
+
+	if (code == KNOT_RCODE_NOERROR) {
+		printf("Host %s has no %s record\n", owner, type);
+	} else { 
+		printf("Host %s type %s error: %s\n", owner, type, rcode->name);
+	}
+
+	free(owner);
+}
+
 static void print_xfr_header(const format_t format, const knot_rr_type_t type)
 {
 	char name[16] = "";
@@ -488,10 +509,17 @@ void print_packet(const format_t      format,
 {
 	switch (format) {
 	case FORMAT_DIG:
-		print_section_dig(packet->answer, packet->an_rrsets);
+		if (packet->an_rrsets > 0) {
+			print_section_dig(packet->answer, packet->an_rrsets);
+		}
 		break;
 	case FORMAT_HOST:
-		print_section_host(packet->answer, packet->an_rrsets);
+		if (packet->an_rrsets > 0) {
+			print_section_host(packet->answer, packet->an_rrsets);
+		} else {
+			uint8_t rcode = knot_wire_get_rcode(packet->wireformat);
+			print_error_host(rcode, &(packet->question));
+		}
 		break;
 	case FORMAT_VERBOSE:
 	case FORMAT_MULTILINE:
