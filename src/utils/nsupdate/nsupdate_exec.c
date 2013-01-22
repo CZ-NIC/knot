@@ -24,6 +24,7 @@
 #include <ctype.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <sys/socket.h>
 
 #include "utils/nsupdate/nsupdate_exec.h"
 #include "utils/common/msg.h"
@@ -375,6 +376,22 @@ static int pkt_append(params_t *p, int sect)
 	return ret;
 }
 
+static int pkt_sendrecv(params_t *params, server_t *srv,
+                        uint8_t *qwire, size_t qlen,
+                        uint8_t *rwire, size_t rlen)
+{
+	int sock = send_msg(params, KNOT_RRTYPE_SOA, srv, qwire, qlen);
+	DBG("%s: send_msg = %d\n", __func__, sock);
+	if (sock < 0) return sock;
+	
+	/* Wait for reception. */
+	int rb = receive_msg(params, KNOT_RRTYPE_SOA, sock, rwire, rlen);
+	DBG("%s: receive_msg = %d\n", __func__, rb);
+	shutdown(sock, SHUT_RDWR);
+	
+	return rb;
+}
+
 /*!
  * \brief Scan for matching token described by a match table.
  *
@@ -716,25 +733,16 @@ int cmd_send(const char* lp, params_t *params)
 	if (EMPTY_LIST(params->servers)) return KNOT_EINVAL;
 	server_t *srv = TAIL(params->servers);
 	
-	/* Create query helper. */
-	int sock = send_msg(params, KNOT_RRTYPE_SOA, srv, wire, len);
-	DBG("%s: send_msg = %d\n", __func__, sock);
-	if (sock < 0) {
-		ERR("failed to send query\n");
-		return KNOT_ERROR;
-	}
-	
-	/*! \todo TCP fallback. */
-	
-	/* Wait for reception. */
+	/* Send/recv message (N retries). */
 	uint8_t	rwire[MAX_PACKET_SIZE]; 
-	int rb = receive_msg(params, KNOT_RRTYPE_SOA, sock, rwire,
-	                     sizeof(rwire));
-	DBG("%s: receive_msg = %d\n", __func__, rb);
-	shutdown(sock, SHUT_RDWR);
-	if (rb < 0) {
-		ERR("failed to receive reply\n");
-		return rb;
+	int retries = params->retries;
+	if (params->protocol == PROTO_TCP) {
+		retries = 1; /* No retries for TCP. */
+	}
+	int rb = 0;
+	for (; retries > 0; --retries) {
+		rb = pkt_sendrecv(params, srv, wire, len, rwire, sizeof(rwire));
+		if (rb > 0) break;
 	}
 	
 	knot_packet_t *resp = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
@@ -752,6 +760,8 @@ int cmd_send(const char* lp, params_t *params)
 	if (rc > KNOT_RCODE_NOERROR && rc <= KNOT_RCODE_NOTZONE) {
 		ERR("update failed: %s\n", rc_errtable[rc]);
 	}
+	
+	/*! \todo Should we check TC bit? */
 	
 	/* Free created rrsets. */
 	knot_packet_free_rrsets(npar->pkt);

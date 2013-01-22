@@ -18,6 +18,8 @@
 
 #include <stdlib.h>			// free
 #include <netinet/in.h>                 // in_addr
+#include <arpa/inet.h>
+#include <sys/socket.h>
 
 #include "common/errcode.h"		// KNOT_EOK
 #include "libknot/util/descriptor.h"	// KNOT_RRTYPE

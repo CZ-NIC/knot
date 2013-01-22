@@ -22,6 +22,7 @@
 
 #include <arpa/inet.h>			// inet_ntop
 #include <sys/socket.h>                 // AF_INET
+ #include <netinet/in.h>
 
 #include "common/lists.h"		// list
 #include "common/errcode.h"		// KNOT_EOK
