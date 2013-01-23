@@ -126,9 +126,13 @@ void nsupdate_params_clean(params_t *params)
 	WALK_LIST_DELSAFE(n, nxt, params->servers) {
 		server_free(n);
 	}
+	
+	/* Free TSIG key. */
+	knot_dname_free(&params->key.name);
+	free(params->key.secret);
 
 	/* Clean up the structure. */
-	memset(params, 0, sizeof(*params));
+	memset(params, 0, sizeof(params_t));
 }
 
 static void nsupdate_params_help(int argc, char *argv[])
@@ -152,7 +156,7 @@ int nsupdate_params_parse(params_t *params, int argc, char *argv[])
 	}
 
 	/* Command line options processing. */
-	while ((opt = getopt(argc, argv, "dDvp:t:r:")) != -1) {
+	while ((opt = getopt(argc, argv, "dDvp:t:r:y:")) != -1) {
 		switch (opt) {
 		case 'd':
 		case 'D': /* Extra debugging. */
@@ -163,16 +167,16 @@ int nsupdate_params_parse(params_t *params, int argc, char *argv[])
 			params_flag_tcp(params);
 			break;
 		case 'r':
-			if (params_parse_num(optarg, &params->retries)
-			                != KNOT_EOK) {
-				return KNOT_EINVAL;
-			}
+			ret = params_parse_num(optarg, &params->retries);
+			if (ret != KNOT_EOK) return ret;
 			break;
 		case 't':
-			if (params_parse_interval(optarg, &params->wait)
-			                != KNOT_EOK) {
-				return KNOT_EINVAL;
-			}
+			ret = params_parse_interval(optarg, &params->wait);
+			if (ret != KNOT_EOK) return ret;
+			break;
+		case 'y':
+			ret = params_parse_tsig(optarg, &params->key);
+			if (ret != KNOT_EOK) return ret;
 			break;
 		default:
 			nsupdate_params_help(argc, argv);

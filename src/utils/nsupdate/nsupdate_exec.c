@@ -521,8 +521,8 @@ static int nsupdate_process(params_t *params, FILE *fp)
 			const char *lp = skipspace(buf + CMD_L(cmd));
 			ret = cmd_handle[ret](lp, params);
 			if (ret != KNOT_EOK) {
-				ERR("operation '%s' failed - %s\n",
-				    CMD_S(cmd), knot_strerror(ret));
+				ERR("operation '%s' failed\n", CMD_S(cmd));
+				DBG("reason - %s\n", knot_strerror(ret));
 				break;
 			}
 		}
@@ -547,6 +547,7 @@ int nsupdate_exec(params_t *params)
 		return KNOT_EINVAL;
 	}
 	
+	int ret = KNOT_EOK;
 	nsupdate_params_t* npar = NSUP_PARAM(params);
 
 	/* If not file specified, use stdin. */
@@ -558,7 +559,7 @@ int nsupdate_exec(params_t *params)
 	strnode_t *n = NULL;
 	WALK_LIST(n, npar->qfiles) {
 		if (strcmp(n->str, "-") == 0) {
-			nsupdate_process(params, stdin);
+			ret = nsupdate_process(params, stdin);
 			continue;
 		}
 		FILE *fp = fopen(n->str, "r");
@@ -567,11 +568,11 @@ int nsupdate_exec(params_t *params)
 			    n->str, strerror(errno));
 			return KNOT_ERROR;
 		}
-		nsupdate_process(params, fp);
+		ret = nsupdate_process(params, fp);
 		fclose(fp);
 	}
 
-	return KNOT_EOK;
+	return ret;
 }
 
 int cmd_update(const char* lp, params_t *params)
@@ -785,6 +786,7 @@ int cmd_send(const char* lp, params_t *params)
 	
 	/* Clear previous response. */
 	if (npar->resp) knot_packet_free(&npar->resp);
+	if (rb <= 0) return KNOT_ECONNREFUSED;
 	npar->resp = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
 	if (!npar->resp) return KNOT_ENOMEM;
 	ret = knot_packet_parse_from_wire(npar->resp, npar->rwire, rb, 1, 0);
