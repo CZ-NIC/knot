@@ -283,6 +283,11 @@ src/utils/common/netio.c
 src/utils/common/netio.h
 src/utils/common/rr-serialize.c
 src/utils/common/rr-serialize.h
+src/utils/dig/dig_exec.c
+src/utils/dig/dig_exec.h
+src/utils/dig/dig_main.c
+src/utils/dig/dig_params.c
+src/utils/dig/dig_params.h
 src/utils/host/host_exec.c
 src/utils/host/host_exec.h
 src/utils/host/host_main.c

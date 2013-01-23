@@ -12,26 +12,39 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-/*!
- * \file host_params.h
- *
- * \author Daniel Salzman <daniel.salzman@nic.cz>
- *
- * \brief host command line parameters.
- *
- * \addtogroup utils
- * @{
- */
+*/
 
-#ifndef _HOST__HOST_PARAMS_H_
-#define _HOST__HOST_PARAMS_H_
+#include "utils/dig/dig_exec.h"
 
+#include "common/lists.h"		// list
+#include "common/errcode.h"		// KNOT_EOK
+
+#include "utils/common/msg.h"		// WARN
 #include "utils/common/params.h"	// params_t
+#include "utils/common/exec.h"		// process_query
 
-int host_params_parse(params_t *params, int argc, char *argv[]);
-void host_params_clean(params_t *params);
+int dig_exec(const params_t *params)
+{
+	node *query = NULL;
 
-#endif // _HOST__HOST_PARAMS_H_
+	if (params == NULL) {
+		return KNOT_EINVAL;
+	}
 
-/*! @} */
+	switch (params->operation) {
+	case OPERATION_QUERY:
+		// Loop over query list.
+		WALK_LIST(query, params->queries) {
+			process_query(params, (query_t *)query);
+		}
+
+		break;
+	case OPERATION_LIST_SOA:
+		break;
+	default:
+		ERR("unsupported operation\n");
+		break;
+	}
+
+	return KNOT_EOK;
+}

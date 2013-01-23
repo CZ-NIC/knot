@@ -12,26 +12,26 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-/*!
- * \file host_params.h
- *
- * \author Daniel Salzman <daniel.salzman@nic.cz>
- *
- * \brief host command line parameters.
- *
- * \addtogroup utils
- * @{
- */
+*/
 
-#ifndef _HOST__HOST_PARAMS_H_
-#define _HOST__HOST_PARAMS_H_
+#include <stdlib.h>			// EXIT_FAILURE
 
-#include "utils/common/params.h"	// params_t
+#include "common/errcode.h"		// KNOT_EOK
+#include "utils/dig/dig_params.h"	// dig_params_parse
+#include "utils/dig/dig_exec.h"		// dig_exec
 
-int host_params_parse(params_t *params, int argc, char *argv[]);
-void host_params_clean(params_t *params);
+int main(int argc, char *argv[])
+{
+	params_t params;
 
-#endif // _HOST__HOST_PARAMS_H_
+	if (dig_params_parse(&params, argc, argv) != KNOT_EOK) {
+		return EXIT_FAILURE;
+	}
 
-/*! @} */
+	dig_exec(&params);
+
+	dig_params_clean(&params);
+
+	return EXIT_SUCCESS;
+}
+

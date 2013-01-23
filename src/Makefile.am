@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I ../m4
-libexec_PROGRAMS = knot-zcompile unittests unittests-zcompile unittests-xfr unittests-zscanner khost knsupdate
+libexec_PROGRAMS = knot-zcompile unittests unittests-zcompile unittests-xfr unittests-zscanner kdig khost knsupdate
 sbin_PROGRAMS = knotc knotd
 dist_man_MANS = knot.conf.5 knotc.8 knotd.8
 
@@ -29,6 +29,25 @@ CLEANFILES =					\
 
 knotc_SOURCES =					\
 	knot/ctl/knotc_main.c
+
+kdig_SOURCES =					\
+	utils/common/msg.h			\
+	utils/common/msg.c			\
+	utils/common/exec.c			\
+	utils/common/exec.h			\
+	utils/common/params.c			\
+	utils/common/params.h			\
+	utils/common/resolv.c			\
+	utils/common/resolv.h			\
+	utils/common/netio.c			\
+	utils/common/netio.h			\
+	utils/common/rr-serialize.h		\
+	utils/common/rr-serialize.c		\
+	utils/dig/dig_main.c			\
+	utils/dig/dig_params.c			\
+	utils/dig/dig_params.h			\
+	utils/dig/dig_exec.c			\
+	utils/dig/dig_exec.h
 
 khost_SOURCES =					\
 	utils/common/msg.h			\
@@ -317,6 +336,7 @@ libknots_la_LIBADD = @LIBOBJS@
 libzscanner_la_LIBADD = libknots.la
 knotd_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 knotc_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
+kdig_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 khost_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 knsupdate_LDADD = libknotd.la libknot.la libknots.la libzscanner.la @LIBOBJS@
 knot_zcompile_LDADD = libknots.la libknot.la libknotd.la @LIBOBJS@

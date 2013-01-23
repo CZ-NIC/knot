@@ -14,24 +14,23 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file host_params.h
+ * \file dig_exec.h
  *
  * \author Daniel Salzman <daniel.salzman@nic.cz>
  *
- * \brief host command line parameters.
+ * \brief dig executives.
  *
  * \addtogroup utils
  * @{
  */
 
-#ifndef _HOST__HOST_PARAMS_H_
-#define _HOST__HOST_PARAMS_H_
+#ifndef _DIG__DIG_EXEC_H_
+#define _DIG__DIG_EXEC_H_
 
 #include "utils/common/params.h"	// params_t
 
-int host_params_parse(params_t *params, int argc, char *argv[]);
-void host_params_clean(params_t *params);
+int dig_exec(const params_t *params);
 
-#endif // _HOST__HOST_PARAMS_H_
+#endif // _DIG__DIG_EXEC_H_
 
 /*! @} */
