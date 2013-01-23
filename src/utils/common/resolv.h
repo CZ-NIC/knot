@@ -27,26 +27,8 @@
 #ifndef _UTILS__RESOLV_H_
 #define _UTILS__RESOLV_H_
 
-#include "common/lists.h"		// node
-
-#define DEFAULT_IPV4_NAME       "127.0.0.1"                                     
-#define DEFAULT_IPV6_NAME       "::1"
-#define DEFAULT_DNS_PORT        "53"
-#define SEP_CHARS               "\n\t "
-
-/*! \brief Structure containing nameserver information. */
-typedef struct {
-	/*!< List node (for list container). */
-	node	n;
-	/*!< Name or address of the server. */
-	char	*name;
-	/*!< Name or numbers of the service. */
-	char	*service;
-} server_t;
-
-server_t* server_create(const char *name, const char *service);
-
-void server_free(server_t *server);
+#include "common/lists.h"		// list
+#include "utils/common/netio.h"		// server_t
 
 server_t* parse_nameserver(const char *nameserver);
 

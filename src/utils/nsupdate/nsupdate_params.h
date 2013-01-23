@@ -31,8 +31,8 @@
 
 #include "common/lists.h"		// list
 #include "utils/common/params.h"	// protocol_t
-#include "libknot/packet/query.h"
-#include "zscanner/scanner.h"
+#include "zscanner/scanner.h"		// scanner_t
+#include "libknot/packet/packet.h"	// knot_packet_t
 
 /*! Parser init string. */
 #define PARSER_INIT_STR "$ORIGIN %s\n$TTL %u\n"

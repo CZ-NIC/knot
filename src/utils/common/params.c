@@ -18,13 +18,12 @@
 
 #include <stdlib.h>			// free
 #include <netinet/in.h>                 // in_addr
-#include <arpa/inet.h>
-#include <sys/socket.h>
+#include <arpa/inet.h>			// inet_pton
+#include <sys/socket.h>			// AF_INET (BSD)
 
 #include "common/errcode.h"		// KNOT_EOK
 #include "libknot/util/descriptor.h"	// KNOT_RRTYPE
 #include "utils/common/msg.h"		// WARN
-#include "utils/common/netio.h"
 
 #define IPV4_REVERSE_DOMAIN	"in-addr.arpa."
 #define IPV6_REVERSE_DOMAIN	"ip6.arpa."

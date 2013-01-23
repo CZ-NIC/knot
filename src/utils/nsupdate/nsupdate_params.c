@@ -22,9 +22,10 @@
 
 #include "utils/nsupdate/nsupdate_params.h"
 #include "utils/common/msg.h"
-#include "utils/common/resolv.h"
+#include "utils/common/netio.h"
 #include "libknot/util/descriptor.h"
 #include "common/errcode.h"
+#include "libknot/packet/packet.h"
 
 #define DEFAULT_RETRIES 3
 

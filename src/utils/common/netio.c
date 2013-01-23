@@ -16,16 +16,41 @@
 
 #include "utils/common/netio.h"
 
-//#include <stdlib.h>
+#include <stdlib.h>			// free
 #include <netdb.h>			// addrinfo
 #include <poll.h>			// poll
-#include <sys/socket.h>			// AF_INET (BSD)                        
-#include <netinet/in.h>			// ntohl (BSD)
 #include <fcntl.h>			// fcntl
+#include <sys/socket.h>			// AF_INET (BSD)
+#include <netinet/in.h>			// ntohl (BSD)
 
 #include "utils/common/msg.h"		// WARN
 #include "libknot/util/descriptor.h"	// KNOT_CLASS_IN
 #include "common/errcode.h"		// KNOT_E
+
+server_t* server_create(const char *name, const char *service)
+{
+	// Create output structure.
+	server_t *server = calloc(1, sizeof(server_t));
+
+	// Check output.
+	if (server == NULL) {
+		return NULL;
+	}
+
+	// Fill output.
+	server->name = strdup(name);
+	server->service = strdup(service);
+
+	// Return result.
+	return server;
+}
+
+void server_free(server_t *server)
+{
+	free(server->name);
+	free(server->service);
+	free(server);
+}
 
 int get_socktype(const params_t *params, const uint16_t type)
 {
@@ -197,7 +222,7 @@ int receive_msg(const params_t *params,
 
 			total += ret;
 		}
-		
+
 		return total;
 	} else {
 		// Wait for datagram data.

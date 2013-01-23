@@ -27,10 +27,24 @@
 #ifndef _UTILS__NETIO_H_
 #define _UTILS__NETIO_H_
 
-#include <stdint.h>			// uint16_t
+#include <stdint.h>			// uint_t
 
+#include "common/lists.h"		// node
 #include "utils/common/params.h"	// params_t
-#include "utils/common/resolv.h"	// server_t
+
+/*! \brief Structure containing server information. */
+typedef struct {
+	/*!< List node (for list container). */
+	node	n;
+	/*!< Name or address of the server. */
+	char	*name;
+	/*!< Name or number of the service. */
+	char	*service;
+} server_t;
+
+server_t* server_create(const char *name, const char *service);
+
+void server_free(server_t *server);
 
 int get_socktype(const params_t *params, const uint16_t type);
 

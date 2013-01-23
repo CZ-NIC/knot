@@ -19,28 +19,11 @@
 #include <stdio.h>			// fopen
 #include <stdlib.h>			// free
 
-#include "common/errcode.h"		// KNOT_ENOENT
 #include "common/lists.h"		// list
+#include "common/errcode.h"             // KNOT_ENOENT
+#include "utils/common/params.h"	// DEFAULT_DNS_PORT
 
-#define RESOLV_FILE             "/etc/resolv.conf"
-
-server_t* server_create(const char *name, const char *service)
-{
-	// Create output structure.
-	server_t *server = calloc(1, sizeof(server_t));
-
-	// Check output.
-	if (server == NULL) {
-		return NULL;
-	}
-
-	// Fill output.
-	server->name = strdup(name);
-	server->service = strdup(service);
-
-	// Return result.
-	return server;
-}
+#define RESOLV_FILE	"/etc/resolv.conf"
 
 server_t* parse_nameserver(const char *nameserver)
 {
@@ -171,24 +154,17 @@ int get_nameservers(list *servers)
 		// Add default ipv6 nameservers.
 		server = server_create(DEFAULT_IPV6_NAME, DEFAULT_DNS_PORT);
 
-		if (server != NULL) {                                   
-			add_tail(servers, (node *)server);              
+		if (server != NULL) {
+			add_tail(servers, (node *)server);
 		}
 
 		// Add default ipv4 nameservers.
 		server = server_create(DEFAULT_IPV4_NAME, DEFAULT_DNS_PORT);
 
-		if (server != NULL) {                                   
-			add_tail(servers, (node *)server);              
+		if (server != NULL) {
+			add_tail(servers, (node *)server);
 		}
 
 		return list_size(servers);
 	}
-}
-
-void server_free(server_t *server)
-{
-	free(server->name);
-	free(server->service);
-	free(server);
 }

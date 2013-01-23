@@ -29,7 +29,6 @@
 #include "utils/nsupdate/nsupdate_exec.h"
 #include "utils/common/msg.h"
 #include "utils/common/exec.h"
-#include "utils/common/resolv.h"
 #include "utils/common/netio.h"
 #include "common/errcode.h"
 #include "common/mempattern.h"
@@ -38,6 +37,7 @@
 #include "libknot/packet/response.h"
 #include "libknot/util/debug.h"
 #include "libknot/consts.h"
+#include "libknot/packet/query.h"
 
 /* Declarations of cmd parse functions. */
 typedef int (*cmd_handle_f)(const char *lp, params_t *params);

@@ -22,7 +22,7 @@
 
 #include <arpa/inet.h>			// inet_ntop
 #include <sys/socket.h>                 // AF_INET
- #include <netinet/in.h>
+#include <netinet/in.h>			// sockaddr_in (BSD)
 
 #include "common/lists.h"		// list
 #include "common/errcode.h"		// KNOT_EOK
@@ -31,10 +31,9 @@
 #include "libknot/packet/query.h"	// knot_query_init
 
 #include "utils/common/msg.h"		// WARN
-#include "utils/common/resolv.h"	// server_t
 #include "utils/common/params.h"	// params_t
 #include "utils/common/netio.h"		// send_msg
-#include "utils/common/rr-serialize.h"
+#include "utils/common/rr-serialize.h"	// rrset_write_mem
 
 static knot_packet_t* create_query_packet(const params_t *params,
                                           const query_t  *query,
@@ -193,7 +192,7 @@ static knot_lookup_table_t rtypes[] = {
 
 static void print_header(const knot_packet_t *packet)
 {
-	char    flags[64] = {0};
+	char    flags[64] = "";
 	uint8_t rcode_id, opcode_id;
 	knot_lookup_table_t *rcode, *opcode;
 
