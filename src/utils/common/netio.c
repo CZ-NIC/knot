@@ -145,7 +145,18 @@ int send_msg(const params_t *params,
 		shutdown(sockfd, SHUT_RDWR);
 		return -1;
 	}
-
+	
+	// Check if socket is writeable (waited for NB connect)
+	int err = 0;
+	socklen_t elen = sizeof(err);
+	int cs = getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &err, &elen);
+	if (cs < 0 || err != 0) {
+		WARN("can't connect to nameserver %s port %s\n",
+		     server->name, server->service);
+		shutdown(sockfd, SHUT_RDWR);
+		return -1;
+	}
+	
 	// For TCP add leading length bytes.
 	if (hints.ai_socktype == SOCK_STREAM) {
 		uint16_t pktsize = htons(buf_len);
