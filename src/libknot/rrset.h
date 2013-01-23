@@ -256,6 +256,7 @@ const knot_rrset_t *knot_rrset_rrsigs(const knot_rrset_t *rrset);
 knot_rrset_t *knot_rrset_get_rrsigs(knot_rrset_t *rrset);
 
 int knot_rrset_compare_rdata(const knot_rrset_t *r1, const knot_rrset_t *r2);
+int knot_rrset_rdata_equal(const knot_rrset_t *r1, const knot_rrset_t *r2);
 
 /*! \todo Should support (optional) dname compression. */
 int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
@@ -277,6 +278,10 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
 int knot_rrset_compare(const knot_rrset_t *r1,
                          const knot_rrset_t *r2,
                          knot_rrset_compare_type_t cmp);
+
+int knot_rrset_equal(const knot_rrset_t *r1,
+                     const knot_rrset_t *r2,
+                     knot_rrset_compare_type_t cmp);
 
 int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
                          int copy_rdata_dnames);
@@ -419,7 +424,7 @@ int rrset_serialize_alloc(const knot_rrset_t *rrset, uint8_t **stream,
 
 //TODO test
 int rrset_deserialize(uint8_t *stream, size_t stream_size,
-                      knot_rrset_t **rrset);
+                      knot_rrset_t **rrset)	;
 
 #endif /* _KNOT_RRSET_H_ */
 

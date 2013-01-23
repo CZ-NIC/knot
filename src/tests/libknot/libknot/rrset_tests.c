@@ -286,6 +286,30 @@ static void create_test_rdata()
 	test_rdata_array[TEST_RDATA_MINFO2].wire_size =
 		test_dnames[2]->size + test_dnames[3]->size;
 	test_rdata_array[TEST_RDATA_MINFO2].size = sizeof(knot_dname_t *) * 2;
+	
+	/* TODO Quick fix, remove */
+	knot_dname_retain(test_dnames[0]);
+	knot_dname_retain(test_dnames[0]);
+	knot_dname_retain(test_dnames[0]);
+	knot_dname_retain(test_dnames[0]);
+	knot_dname_retain(test_dnames[0]);
+	knot_dname_retain(test_dnames[0]);
+	knot_dname_retain(test_dnames[1]);
+	knot_dname_retain(test_dnames[1]);
+	knot_dname_retain(test_dnames[1]);
+	knot_dname_retain(test_dnames[1]);
+	knot_dname_retain(test_dnames[1]);
+	knot_dname_retain(test_dnames[2]);
+	knot_dname_retain(test_dnames[2]);
+	knot_dname_retain(test_dnames[2]);
+	knot_dname_retain(test_dnames[2]);
+	knot_dname_retain(test_dnames[3]);
+	knot_dname_retain(test_dnames[3]);
+	knot_dname_retain(test_dnames[3]);
+	knot_dname_retain(test_dnames[3]);
+	knot_dname_retain(test_dnames[3]);
+	knot_dname_retain(test_dnames[3]);
+	knot_dname_retain(test_dnames[3]);
 }
 
 static void create_test_rrsets()
@@ -649,6 +673,7 @@ static int test_rrset_to_wire()
 	size_t wire_size = 65535;
 	uint8_t wire[wire_size];
 	uint16_t rr_count = 0;
+	int failed = 0;
 	for (int i = 0; i < TEST_RRSET_COUNT; i++) {
 		wire_size = 65535;
 		/* Convert to wire. */
@@ -675,7 +700,7 @@ static int test_rrset_to_wire()
 		if (ret) {
 			diag("RDATA of RRSet %d are wrongly converted.\n",
 			     i);
-			return 0;
+			failed = 1;
 		}
 	}
 	
@@ -697,7 +722,7 @@ static int test_rrset_to_wire()
 		return 0;
 	}
 	
-	return 1;
+	return !failed;
 }
 
 static int test_rrset_merge()
@@ -720,9 +745,9 @@ static int test_rrset_merge()
 	
 	//TODO check that merge operation does not cahgne second rr
 	//TODO check that two RRSet that are not mergable will not merge
-	if (knot_rrset_compare(&test_rrset_array[TEST_RRSET_MERGE_UNIQUE2].rrset,
-	                       merge_from,
-	                       KNOT_RRSET_COMPARE_WHOLE)) {
+	if (!knot_rrset_equal(&test_rrset_array[TEST_RRSET_MERGE_UNIQUE2].rrset,
+	                      merge_from,
+	                      KNOT_RRSET_COMPARE_WHOLE)) {
 		diag("Merge corrupted second RRSet.\n");
 		return 0;
 	}
@@ -780,13 +805,13 @@ static int test_rrset_merge_no_dupl()
 		return 0;
 	}
 	
-	if (knot_rrset_compare(&test_rrset_array[TEST_RRSET_MERGE_UNIQUE1].rrset,
-	                       merge_to, KNOT_RRSET_COMPARE_WHOLE)) {
+	if (!knot_rrset_equal(&test_rrset_array[TEST_RRSET_MERGE_UNIQUE1].rrset,
+	                      merge_to, KNOT_RRSET_COMPARE_WHOLE)) {
 		diag("Merge corrupted first RRSet.\n");
 		return 0;
 	}
 	
-	if (knot_rrset_compare(&test_rrset_array[TEST_RRSET_MERGE_UNIQUE1].rrset,
+	if (!knot_rrset_equal(&test_rrset_array[TEST_RRSET_MERGE_UNIQUE1].rrset,
 	                       merge_from, KNOT_RRSET_COMPARE_WHOLE)) {
 		diag("Merge corrupted second RRSet.\n");
 		return 0;
@@ -810,16 +835,16 @@ static int test_rrset_merge_no_dupl()
 		return 0;
 	}
 	
-	if (knot_rrset_compare(&test_rrset_array[TEST_RRSET_MERGE_UNIQUE2].rrset,
-	                       merge_from,
-	                       KNOT_RRSET_COMPARE_WHOLE)) {
+	if (!knot_rrset_equal(&test_rrset_array[TEST_RRSET_MERGE_UNIQUE2].rrset,
+	                      merge_from,
+	                      KNOT_RRSET_COMPARE_WHOLE)) {
 		diag("Merge corrupted second RRSet.\n");
 		return 0;
 	}
 	
-	if (knot_rrset_compare(&test_rrset_array[TEST_RRSET_MERGE_RESULT1].rrset,
-	                       merge_to,
-	                       KNOT_RRSET_COMPARE_WHOLE)) {
+	if (!knot_rrset_equal(&test_rrset_array[TEST_RRSET_MERGE_RESULT1].rrset,
+	                      merge_to,
+	                      KNOT_RRSET_COMPARE_WHOLE)) {
 		diag("Merge did not create correct RDATA.\n");
 		return 0;
 	}
@@ -841,16 +866,16 @@ static int test_rrset_merge_no_dupl()
 		return 0;
 	}
 	
-	if (knot_rrset_compare(&test_rrset_array[TEST_RRSET_MERGE_RESULT1].rrset,
-	                       merge_from,
-	                       KNOT_RRSET_COMPARE_WHOLE)) {
+	if (!knot_rrset_equal(&test_rrset_array[TEST_RRSET_MERGE_RESULT1].rrset,
+	                      merge_from,
+	                      KNOT_RRSET_COMPARE_WHOLE)) {
 		diag("Merge corrupted second RRSet.\n");
 		return 0;
 	}
 	
-	if (knot_rrset_compare(&test_rrset_array[TEST_RRSET_MERGE_RESULT1].rrset,
-	                       merge_to,
-	                       KNOT_RRSET_COMPARE_WHOLE)) {
+	if (!knot_rrset_equal(&test_rrset_array[TEST_RRSET_MERGE_RESULT1].rrset,
+	                      merge_to,
+	                      KNOT_RRSET_COMPARE_WHOLE)) {
 		diag("Merge did not create correct RDATA.\n");
 		return 0;
 	}
@@ -1034,6 +1059,12 @@ static int test_rrset_compare()
 	return 1;
 }
 
+static int test_rrset_equal()
+{
+	// TODO
+	return 0;
+}
+
 static int test_rrset_get_next_dname()
 {
 	/* There are few suitable RR types for this test - we'll use MINFO. */
@@ -1118,7 +1149,7 @@ static int test_rrset_next_dname_pointer()
 	return 1;
 }
 
-static const int KNOT_RRSET_TEST_COUNT = 13;
+static const int KNOT_RRSET_TEST_COUNT = 14;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.

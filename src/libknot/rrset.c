@@ -519,6 +519,8 @@ int knot_rrset_compare_rdata(const knot_rrset_t *r1, const knot_rrset_t *r2)
 	 * this full compare operation is needed scarcely.
 	 */
 	
+	/* TODO */
+	
 	return 0;
 }
 
@@ -537,29 +539,28 @@ int knot_rrset_rdata_equal(const knot_rrset_t *r1, const knot_rrset_t *r2)
 	// compare RDATA sets (order is not significant)
 
 	// find all RDATA from r1 in r2
+	int found = 0;
 	for (uint16_t i = 0; i < r1->rdata_count; i++) {
-		int found = 0;
-		for (uint16_t j = 0; j < r2->rdata_count; j++) {
-			found =
-				!rrset_rdata_compare_one(r1, r2, i, j);
-			if (!found) {
-				// RDATA from r1 not found in r2
-				return 0;
-			}
+		found = 0;
+		for (uint16_t j = 0; j < r2->rdata_count && !found; j++) {
+			found = !rrset_rdata_compare_one(r1, r2, i, j);
 		}
+	}
+	
+	if (!found) {
+		return 0;
 	}
 	
 	// other way around
 	for (uint16_t i = 0; i < r2->rdata_count; i++) {
-		int found = 0;
-		for (uint16_t j = 0; j < r1->rdata_count; j++) {
-			found =
-				!rrset_rdata_compare_one(r1, r2, i, j);
-			if (!found) {
-				// RDATA from r1 not found in r2
-				return 0;
-			}
+		found = 0;
+		for (uint16_t j = 0; j < r1->rdata_count && !found; j++) {
+			found = !rrset_rdata_compare_one(r1, r2, i, j);
 		}
+	}
+	
+	if (!found) {
+		return 0;
 	}
 	
 	return 1;
@@ -921,8 +922,6 @@ int knot_rrset_rdata_from_wire_one(uint8_t **rdata, uint16_t type,
 	return KNOT_EOK;
 }
 
-/*----------------------------------------------------------------------------*/
-
 int knot_rrset_compare(const knot_rrset_t *r1,
                        const knot_rrset_t *r2,
                        knot_rrset_compare_type_t cmp)
@@ -961,7 +960,32 @@ int knot_rrset_compare(const knot_rrset_t *r1,
 	return res;
 }
 
-/*----------------------------------------------------------------------------*/
+int knot_rrset_equal(const knot_rrset_t *r1,
+                     const knot_rrset_t *r2,
+                     knot_rrset_compare_type_t cmp)
+{
+	if (cmp == KNOT_RRSET_COMPARE_PTR) {
+		return r1 == r2;
+	}
+
+	int res = knot_dname_compare_non_canon(r1->owner, r2->owner);
+	if (res != 0) {
+		return 0;
+	}
+	
+	if (r1->rclass == r2->rclass &&
+	    r1->type == r2->type) {
+		res = 1;
+	} else {
+		res = 0;
+	}
+	
+	if (cmp == KNOT_RRSET_COMPARE_WHOLE) {
+		res *= knot_rrset_rdata_equal(r1, r2);
+	}
+
+	return res;
+}
 
 int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
                          int copy_rdata_dnames)
