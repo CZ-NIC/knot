@@ -112,6 +112,11 @@ int descriptor_item_is_dname(int item)
 	       item == KNOT_RDATA_WF_UNCOMPRESSED_DNAME;
 }
 
+int descriptor_item_is_compr_dname(int item)
+{
+	return item == KNOT_RDATA_WF_COMPRESSED_DNAME;
+}
+
 int descriptor_item_is_fixed(int item)
 {
 	if (item > 0) {

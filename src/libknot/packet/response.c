@@ -21,46 +21,13 @@
 #include "util/descriptor.h"
 #include "common.h"
 #include "util/debug.h"
+#include "rrset.h"
 #include "packet/packet.h"
 #include "edns.h"
 
 #define COMPRESSION_PEDANTIC
 
 /*----------------------------------------------------------------------------*/
-/*!
- * \brief Holds information about compressed domain name.
- *
- * Used only to pass information between functions.
- *
- * \todo This description should be revised and clarified.
- */
-struct knot_compr_owner {
-	/*!
-	 * \brief Place where the name is stored in the wire format of the
-	 * packet.
-	 */
-	uint8_t *wire;
-	short size; /*!< Size of the domain name in bytes. */
-	/*! \brief Position of the name relative to the start of the packet. */
-	size_t pos;
-};
-
-typedef struct knot_compr_owner knot_compr_owner_t;
-
-/*!
- * \brief Holds information about compressed domain names in packet.
- *
- * Used only to pass information between functions.
- *
- * \todo This description should be revised and clarified.
- */
-struct knot_compr {
-	knot_compressed_dnames_t *table;  /*!< Compression table. */
-	size_t wire_pos;            /*!< Current position in the wire format. */
-	knot_compr_owner_t owner; /*!< Information about the current name. */
-};
-
-typedef struct knot_compr knot_compr_t;
 
 static const size_t KNOT_RESPONSE_MAX_PTR = 16383;
 
@@ -350,21 +317,8 @@ static int knot_response_put_dname_ptr(const knot_dname_t *dname,
 }
 
 /*----------------------------------------------------------------------------*/
-/*!
- * \brief Tries to compress domain name and creates its wire format.
- *
- * \param dname Domain name to convert and compress.
- * \param compr Compression table holding information about offsets of domain
- *              names in the packet.
- * \param dname_wire Place where to put the wire format of the name.
- * \param max Maximum available size of the place for the wire format.
- * \param compr_cs Set to <> 0 if dname compression should use case sensitive
- *                 comparation. Set to 0 otherwise.
- *
- * \return Size of the domain name's wire format or KNOT_ESPACE if it did not
- *         fit into the provided space.
- */
-static int knot_response_compress_dname(const knot_dname_t *dname,
+
+int knot_response_compress_dname(const knot_dname_t *dname,
 	knot_compr_t *compr, uint8_t *dname_wire, size_t max, int compr_cs)
 {
 	int size = 0;
@@ -505,139 +459,6 @@ dbg_response_exec_detail(
  * \return Size of the RR's wire format or KNOT_ESPACE if it did not fit into
  *         the provided space.
  */
-static int knot_response_rr_to_wire(const knot_rrset_t *rrset,
-                                      const knot_rdata_t *rdata,
-                                      knot_compr_t *compr,
-                                      uint8_t **rrset_wire, size_t max_size,
-                                      int compr_cs)
-{
-	int size = 0;
-	
-	dbg_response_detail("Max size: %zu, owner pos: %zu, owner size: %d\n",
-	                    max_size, compr->owner.pos, compr->owner.size);
-
-	if (size + ((compr->owner.pos == 0
-	             || compr->owner.pos > KNOT_RESPONSE_MAX_PTR) 
-		? compr->owner.size : 2) + 10
-	    > max_size) {
-		return KNOT_ESPACE;
-	}
-
-	dbg_response_detail("Owner position: %zu\n", compr->owner.pos);
-
-	// put owner if needed (already compressed)
-	if (compr->owner.pos == 0 || compr->owner.pos > KNOT_RESPONSE_MAX_PTR) {
-		memcpy(*rrset_wire, compr->owner.wire, compr->owner.size);
-		compr->owner.pos = compr->wire_pos;
-		*rrset_wire += compr->owner.size;
-		size += compr->owner.size;
-	} else {
-		dbg_response_detail("Putting pointer: %zu\n",
-		                    compr->owner.pos);
-		knot_wire_put_pointer(*rrset_wire, compr->owner.pos);
-		*rrset_wire += 2;
-		size += 2;
-	}
-	
-	dbg_response_detail("Max size: %zu, size: %d\n", max_size, size);
-
-	dbg_response_detail("Wire format:\n");
-
-	// put rest of RR 'header'
-	knot_wire_write_u16(*rrset_wire, rrset->type);
-	dbg_response_detail("  Type: %u\n", rrset->type);
-	*rrset_wire += 2;
-
-	knot_wire_write_u16(*rrset_wire, rrset->rclass);
-	dbg_response_detail("  Class: %u\n", rrset->rclass);
-	*rrset_wire += 2;
-
-	knot_wire_write_u32(*rrset_wire, rrset->ttl);
-	dbg_response_detail("  TTL: %u\n", rrset->ttl);
-	*rrset_wire += 4;
-
-	// save space for RDLENGTH
-	uint8_t *rdlength_pos = *rrset_wire;
-	*rrset_wire += 2;
-
-	size += 10;
-	compr->wire_pos += size;
-	
-	dbg_response_detail("Max size: %zu, size: %d\n", max_size, size);
-
-	knot_rrtype_descriptor_t *desc =
-		knot_rrtype_descriptor_by_type(rrset->type);
-
-	uint16_t rdlength = 0;
-
-	for (int i = 0; i < rdata->count; ++i) {
-		if (max_size < size + rdlength) {
-			return KNOT_ESPACE;
-		}
-		
-		switch (desc->wireformat[i]) {
-		case KNOT_RDATA_WF_COMPRESSED_DNAME: {
-			int ret = knot_response_compress_dname(
-				knot_rdata_item(rdata, i)->dname,
-				compr, *rrset_wire, max_size - size - rdlength, 
-				compr_cs);
-
-			if (ret < 0) {
-				return KNOT_ESPACE;
-			}
-
-			dbg_response_detail("Compressed dname size: %d\n", ret);
-			*rrset_wire += ret;
-			rdlength += ret;
-			compr->wire_pos += ret;
-			// TODO: compress domain name
-			break;
-		}
-		case KNOT_RDATA_WF_UNCOMPRESSED_DNAME:
-		case KNOT_RDATA_WF_LITERAL_DNAME: {
-			knot_dname_t *dname =
-				knot_rdata_item(rdata, i)->dname;
-			if (size + rdlength + dname->size > max_size) {
-				return KNOT_ESPACE;
-			}
-
-			// save whole domain name
-			memcpy(*rrset_wire, dname->name, dname->size);
-			dbg_response_detail("Uncompressed dname size: %d\n",
-			                    dname->size);
-			*rrset_wire += dname->size;
-			rdlength += dname->size;
-			compr->wire_pos += dname->size;
-			break;
-		}
-		default: {
-			uint16_t *raw_data =
-				knot_rdata_item(rdata, i)->raw_data;
-
-			if (size + rdlength + raw_data[0] > max_size) {
-				return KNOT_ESPACE;
-			}
-
-			// copy just the rdata item data (without size)
-			memcpy(*rrset_wire, raw_data + 1, raw_data[0]);
-			dbg_response_detail("Raw data size: %d\n",
-			                    raw_data[0]);
-			*rrset_wire += raw_data[0];
-			rdlength += raw_data[0];
-			compr->wire_pos += raw_data[0];
-			break;
-		}
-		}
-	}
-	
-	dbg_response_detail("Max size: %zu, size: %d\n", max_size, size);
-
-	assert(size + rdlength <= max_size);
-	size += rdlength;
-	knot_wire_write_u16(rdlength_pos, rdlength);
-
-	return size;
-}
 
 /*---------------------------------------------------------------------------*/
 /*!
@@ -656,81 +477,6 @@ static int knot_response_rr_to_wire(const knot_rrset_t *rrset,
  * \return Size of the RRSet's wire format or KNOT_ESPACE if it did not fit
  *         into the provided space.
  */
-static int knot_response_rrset_to_wire(const knot_rrset_t *rrset,
-                                         uint8_t **pos, size_t *size,
-                                         size_t max_size, size_t wire_pos,
-                                         uint8_t *owner_tmp,
-                                         knot_compressed_dnames_t *compr,
-                                         int compr_cs)
-{
-dbg_response_exec_verb(
-	char *name = knot_dname_to_str(rrset->owner);
-	dbg_response_verb("Converting RRSet with owner %s, type %u\n",
-	                  name, rrset->type);
-	free(name);
-	dbg_response_verb("  Size before: %zu\n", *size);
-);
-
-	// if no RDATA in RRSet, return
-	if (rrset->rdata == NULL) {
-		return KNOT_EOK;
-	}
-
-	/*
-	 * We may pass the current position to the compression function
-	 * because if the owner will be put somewhere, it will be on the
-	 * current position (first item of a RR). If it will not be put into
-	 * the wireformat, we may remove the dname (and possibly its parents)
-	 * from the compression table.
-	 */
-
-	knot_compr_t compr_info;
-	compr_info.table = compr;
-	compr_info.wire_pos = wire_pos;
-	compr_info.owner.pos = 0;
-	compr_info.owner.wire = owner_tmp;
-	compr_info.owner.size =
-		knot_response_compress_dname(rrset->owner, &compr_info,
-		                               owner_tmp, max_size, compr_cs);
-
-	dbg_response_detail("    Owner size: %d, position: %zu\n",
-	                    compr_info.owner.size, compr_info.owner.pos);
-	if (compr_info.owner.size < 0) {
-		return KNOT_ESPACE;
-	}
-
-	int rrs = 0;
-	short rrset_size = 0;
-
-	const knot_rdata_t *rdata = rrset->rdata;
-	do {
-		int ret = knot_response_rr_to_wire(rrset, rdata, &compr_info,
-		                                     pos, max_size - rrset_size,
-		                                     compr_cs);
-
-		assert(ret != 0);
-
-		if (ret < 0) {
-			// some RR didn't fit in, so no RRs should be used
-			// TODO: remove last entries from compression table
-			dbg_response("Some RR didn't fit in.\n");
-			return KNOT_ESPACE;
-		}
-
-		dbg_response_verb("RR of size %d added.\n", ret);
-		rrset_size += ret;
-		++rrs;
-	} while ((rdata = knot_rrset_rdata_next(rrset, rdata)) != NULL);
-
-
-	// the whole RRSet did fit in
-	assert (rrset_size <= max_size);
-	*size += rrset_size;
-
-	dbg_response_verb("  Size after: %zu\n", *size);
-
-	return rrs;
-}
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -772,10 +518,14 @@ dbg_response_exec(
 );
 
 	uint8_t *pos = resp->wireformat + resp->size;
-	size_t size = 0;
-	int rrs = knot_response_rrset_to_wire(rrset, &pos, &size, max_size,
-	                                        resp->size, resp->owner_tmp,
-	                                        &resp->compression, compr_cs);
+	size_t size = max_size;
+	compression_param_t param;
+	param.compr_cs = compr_cs;
+	param.owner_tmp = resp->owner_tmp;
+	param.compressed_dnames = &resp->compression;
+	//TODO size
+	int rrs = knot_rrset_to_wire(rrset, pos, &size, max_size,
+	                             resp->size, &param);
 
 	if (rrs >= 0) {
 		rrsets[(*rrset_count)++] = rrset;

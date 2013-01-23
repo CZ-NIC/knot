@@ -535,15 +535,16 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	}
 
 	/* Set the digest. */
-	size_t tsig_wire_len = msg_max_len - *msg_len;
+	size_t tsig_wire_len = 0;
 	dbg_tsig("TSIG: msg_len=%zu, msg_max_len=%zu, tsig_max_len=%zu\n",
 		 *msg_len, msg_max_len, tsig_wire_len);
-	int rr_count = 0;
+	uint16_t rr_count = 0;
 	tsig_rdata_set_mac(tmp_tsig, digest_tmp_len, digest_tmp);
 
 	/* Write RRSet to wire */
 	ret = knot_rrset_to_wire(tmp_tsig, msg + *msg_len,
-	                         &tsig_wire_len, &rr_count);
+	                         &tsig_wire_len, msg_max_len - *msg_len,
+	                         &rr_count, NULL);
 	if (ret != KNOT_EOK) {
 		dbg_tsig("TSIG: rrset_to_wire = %s\n", knot_strerror(ret));
 		*digest_len = 0;
@@ -655,10 +656,11 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	dbg_tsig_verb("Message max length: %zu, message length: %zu\n",
 	              msg_max_len, *msg_len);
 
-	size_t tsig_wire_size = msg_max_len - *msg_len;
-	int rr_count = 0;
+	size_t tsig_wire_size = 0;msg_max_len - *msg_len;
+	size_t rr_count = 0;
 	ret = knot_rrset_to_wire(tmp_tsig, msg + *msg_len,
-	                         &tsig_wire_size, &rr_count);
+	                         &tsig_wire_size, msg_max_len - *msg_len,
+	                         &rr_count, NULL);
 	if (ret != KNOT_EOK) {
 		knot_rrset_deep_free(&tmp_tsig, 1, 1);
 		*digest_len = 0;
@@ -901,13 +903,14 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	/* Set other len. */
 	tsig_rdata_set_other_data(tmp_tsig, 0, 0);
 
-	size_t tsig_wire_len = msg_max_len - *msg_len;
+	size_t tsig_wire_len = 0;
 	int rr_count = 0;
 
 	/* Write RRSet to wire */
 	int ret = KNOT_ERROR;
 	ret = knot_rrset_to_wire(tmp_tsig, msg + *msg_len,
-	                         &tsig_wire_len, &rr_count);
+	                         &tsig_wire_len, msg_max_len - *msg_len,
+	                         &rr_count, NULL);
 	if (ret != KNOT_EOK) {
 		dbg_tsig("TSIG: rrset_to_wire = %s\n", knot_strerror(ret));
 		knot_rrset_deep_free(&tmp_tsig, 1, 1);

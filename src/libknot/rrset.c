@@ -26,6 +26,9 @@
 #include "common/descriptor_new.h"
 #include "util/debug.h"
 #include "util/utils.h"
+#include "packet/response.h"
+
+static const size_t KNOT_RESPONSE_MAX_PTR = 16383;
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -570,128 +573,45 @@ int knot_rrset_rdata_equal(const knot_rrset_t *r1, const knot_rrset_t *r2)
 
 static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
                                         size_t rdata_pos,
-                                        size_t header_size,
                                         uint8_t **pos,
-                                        uint16_t *rdlength,
-                                        size_t max_size)
+                                        size_t max_size, size_t *rr_size,
+                                        compression_param_t *comp)
 {
 	assert(rrset);
 	assert(pos);
 	
-	/* Get pointer into RDATA array. */
-	uint8_t *rdata = rrset_rdata_pointer(rrset, rdata_pos);
-	assert(rdata);
-	/* Offset into one RDATA array. */
-	size_t offset = 0;
-	
-	const rdata_descriptor_t *desc = get_rdata_descriptor(rrset->type);
-	assert(desc);
-
-	size_t size = header_size;
-	
-	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
-		int item = desc->block_types[i];
-		if (descriptor_item_is_dname(item)) {
-			knot_dname_t *dname;
-			memcpy(&dname, rdata + offset, sizeof(knot_dname_t *));
-			assert(dname);
-			if (size + *rdlength + dname->size > max_size) {
-				return KNOT_ESPACE;
-			}
-dbg_rrset_exec_detail(
-			char *name = knot_dname_to_str(dname);
-			dbg_rrset_detail("Saving this DNAME=%s\n", name);
-			free(name);
-);
-			// save whole domain name
-			memcpy(*pos, knot_dname_name(dname), 
-			       knot_dname_size(dname));
-			dbg_rrset_detail("Uncompressed dname size: %d\n",
-			                 knot_dname_size(dname));
-			*pos += knot_dname_size(dname);
-			*rdlength += knot_dname_size(dname);
-			offset += sizeof(knot_dname_t *);
-		} else if (descriptor_item_is_fixed(item)) {
-			/* Fixed length chunk. */
-			if (size + *rdlength + item > max_size) {
-				return KNOT_ESPACE;
-			}
-			memcpy(*pos, rdata + offset, item);
-			*pos += item;
-			*rdlength += item;
-			offset += item;
-		} else if (descriptor_item_is_remainder(item)) {
-			/* Check that the remainder fits to stream. */
-			size_t remainder_size =
-				rrset_rdata_remainder_size(rrset, offset,
-			                                   rdata_pos);
-			if (size + *rdlength + remainder_size > max_size) {
-				return KNOT_ESPACE;
-			}
-			memcpy(*pos, rdata + offset, remainder_size);
-			*pos += remainder_size;
-			*rdlength += remainder_size;
-			offset += remainder_size;
-		} else {
-			assert(rrset->type == KNOT_RRTYPE_NAPTR);
-			/* Store the binary chunk. */
-			size_t chunk_size =
-			rrset_rdata_naptr_bin_chunk_size(rrset, rdata_pos);
-			if (size + *rdlength + chunk_size > max_size) {
-				return KNOT_ESPACE;
-			}
-			*pos += chunk_size;
-			*rdlength += chunk_size;
-			offset += chunk_size;
-			/* Store domain name. */
-			knot_dname_t *dname = 
-				(knot_dname_t *)(rdata + offset);
-			assert(dname);
-			if (size + *rdlength + dname->size > max_size) {
-				return KNOT_ESPACE;
-			}
-
-			// save whole domain name
-			memcpy(*pos, knot_dname_name(dname), 
-			       knot_dname_size(dname));
-			dbg_rrset_detail("Uncompressed dname size: %d\n",
-			                 knot_dname_size(dname));
-			*pos += knot_dname_size(dname);
-			*rdlength += knot_dname_size(dname);
-			offset += sizeof(knot_dname_t *);
-		}
-	}
-	
-	return KNOT_EOK;
-}
-
-static int knot_rrset_to_wire_aux(const knot_rrset_t *rrset, 
-                                  uint8_t **pos,
-                                  size_t max_size)
-{
 	size_t size = 0;
 	
-	assert(rrset != NULL);
-	assert(rrset->owner != NULL);
-	assert(pos != NULL);
-	assert(*pos != NULL);
-	
-	dbg_rrset_detail("Max size: %zu, owner: %p, owner size: %d\n",
-	                 max_size, rrset->owner, rrset->owner->size);
+	if (comp) {
+		// put owner if needed (already compressed)
+		knot_compr_t *compr = comp->compr;
+		if (compr->owner.pos == 0 ||
+		    compr->owner.pos > KNOT_RESPONSE_MAX_PTR) {
+			memcpy(*pos, compr->owner.wire,
+			       compr->owner.size);
+			compr->owner.pos = compr->wire_pos;
+			*pos += compr->owner.size;
+			size += compr->owner.size;
+		} else {
+			dbg_response_detail("Putting pointer: %zu\n",
+			                    compr->owner.pos);
+			knot_wire_put_pointer(*pos, compr->owner.pos);
+			*pos += 2;
+			size += 2;
+		}
+	} else {
+		// check if owner fits
+		if (size + knot_dname_size(rrset->owner) + 10 > max_size) {
+			return KNOT_ESPACE;
+		}
 
-	// check if owner fits
-	if (size + knot_dname_size(rrset->owner) + 10 > max_size) {
-		return KNOT_ESPACE;
+		memcpy(*pos, knot_dname_name(rrset->owner), 
+		       knot_dname_size(rrset->owner));
+		*pos += knot_dname_size(rrset->owner);
+		size += knot_dname_size(rrset->owner);
 	}
-	
-	memcpy(*pos, knot_dname_name(rrset->owner), 
-	       knot_dname_size(rrset->owner));
-	*pos += knot_dname_size(rrset->owner);
-	size += knot_dname_size(rrset->owner);
-	
-	dbg_rrset_detail("Max size: %zu, size: %d\n", max_size, size);
 
-	dbg_rrset_detail("Wire format:\n");
+	dbg_rrset_detail("Max size: %zu, size: %d\n", max_size, size);
 
 	// put rest of RR 'header'
 	knot_wire_write_u16(*pos, rrset->type);
@@ -711,6 +631,150 @@ static int knot_rrset_to_wire_aux(const knot_rrset_t *rrset,
 	*pos += 2;
 
 	size += 10;
+
+	/* Get pointer into RDATA array. */
+	uint8_t *rdata = rrset_rdata_pointer(rrset, rdata_pos);
+	assert(rdata);
+	/* Offset into one RDATA array. */
+	size_t offset = 0;
+	/* Actual RDLENGHTH. */
+	uint16_t rdlength = 0;
+	
+	const rdata_descriptor_t *desc = get_rdata_descriptor(rrset->type);
+	assert(desc);
+
+	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
+		int item = desc->block_types[i];
+		if (comp && descriptor_item_is_compr_dname(item)) {
+		} else if (descriptor_item_is_dname(item)) {
+			knot_dname_t *dname;
+			memcpy(&dname, rdata + offset, sizeof(knot_dname_t *));
+			assert(dname);
+			int ret =
+				knot_response_compress_dname(dname,
+				comp->compr, *pos,
+				max_size - size - rdlength,
+				comp->compr_cs);
+
+			if (ret < 0) {
+				return KNOT_ESPACE;
+			}
+
+			dbg_response_detail("Compressed dname size: %d\n", ret);
+			*pos += ret;
+			rdlength += ret;
+			comp->compr->wire_pos += ret;
+			// TODO: compress domain name ??? for LS
+		} else if (descriptor_item_is_dname(item)) {
+			knot_dname_t *dname;
+			memcpy(&dname, rdata + offset, sizeof(knot_dname_t *));
+			assert(dname);
+			if (size + rdlength + dname->size > max_size) {
+				return KNOT_ESPACE;
+			}
+dbg_rrset_exec_detail(
+			char *name = knot_dname_to_str(dname);
+			dbg_rrset_detail("Saving this DNAME=%s\n", name);
+			free(name);
+);
+			// save whole domain name
+			memcpy(*pos, knot_dname_name(dname), 
+			       knot_dname_size(dname));
+			dbg_rrset_detail("Uncompressed dname size: %d\n",
+			                 knot_dname_size(dname));
+			*pos += knot_dname_size(dname);
+			rdlength += knot_dname_size(dname);
+			if (comp) {
+				comp->compr->wire_pos += knot_dname_size(dname);
+			}
+			offset += sizeof(knot_dname_t *);
+		} else if (descriptor_item_is_fixed(item)) {
+			/* Fixed length chunk. */
+			if (size + rdlength + item > max_size) {
+				return KNOT_ESPACE;
+			}
+			memcpy(*pos, rdata + offset, item);
+			*pos += item;
+			rdlength += item;
+			offset += item;
+		} else if (descriptor_item_is_remainder(item)) {
+			/* Check that the remainder fits to stream. */
+			size_t remainder_size =
+				rrset_rdata_remainder_size(rrset, offset,
+			                                   rdata_pos);
+			if (size + rdlength + remainder_size > max_size) {
+				return KNOT_ESPACE;
+			}
+			memcpy(*pos, rdata + offset, remainder_size);
+			*pos += remainder_size;
+			rdlength += remainder_size;
+			offset += remainder_size;
+		} else {
+			assert(rrset->type == KNOT_RRTYPE_NAPTR);
+			/* Store the binary chunk. */
+			size_t chunk_size =
+			rrset_rdata_naptr_bin_chunk_size(rrset, rdata_pos);
+			if (size + rdlength + chunk_size > max_size) {
+				return KNOT_ESPACE;
+			}
+			*pos += chunk_size;
+			rdlength += chunk_size;
+			offset += chunk_size;
+			/* Store domain name. */
+			knot_dname_t *dname = 
+				(knot_dname_t *)(rdata + offset);
+			assert(dname);
+			if (size + rdlength + dname->size > max_size) {
+				return KNOT_ESPACE;
+			}
+
+			// save whole domain name
+			memcpy(*pos, knot_dname_name(dname), 
+			       knot_dname_size(dname));
+			dbg_rrset_detail("Uncompressed dname size: %d\n",
+			                 knot_dname_size(dname));
+			*pos += knot_dname_size(dname);
+			rdlength += knot_dname_size(dname);
+			offset += sizeof(knot_dname_t *);
+		}
+	}
+
+	*rr_size = size;
+	return KNOT_EOK;
+}
+
+static int knot_rrset_to_wire_aux(const knot_rrset_t *rrset, uint8_t **pos,
+                                  size_t max_size, compression_param_t *comp)
+{
+	size_t size = 0;
+	
+	assert(rrset != NULL);
+	assert(rrset->owner != NULL);
+	assert(pos != NULL);
+	assert(*pos != NULL);
+	
+	dbg_rrset_detail("Max size: %zu, owner: %p, owner size: %d\n",
+	                 max_size, rrset->owner, rrset->owner->size);
+	if (comp) {
+		/*
+		 * We may pass the current position to the compression function
+		 * because if the owner will be put somewhere, it will be on the
+		 * current position (first item of a RR). If it will not be put into
+		 * the wireformat, we may remove the dname (and possibly its parents)
+		 * from the compression table.
+		 */
+		
+		knot_compr_t compr_info;
+		compr_info.table = comp->compressed_dnames;
+		compr_info.wire_pos = comp->wire_pos;
+		compr_info.owner.pos = 0;
+		compr_info.owner.wire = comp->owner_tmp;
+		compr_info.owner.size =
+			knot_response_compress_dname(rrset->owner, &compr_info,
+			                             comp->owner_tmp, max_size,
+		                                     comp->compr_cs);
+	}
+	
 	
 	/* This should be checked in the calling function. TODO not an assert*/
 //	assert(max_size >= size + *rdlength);
@@ -723,8 +787,7 @@ static int knot_rrset_to_wire_aux(const knot_rrset_t *rrset,
 
 	for (uint16_t i = 0; i < rrset->rdata_count; i++) {
 		int ret = knot_rrset_rdata_to_wire_one(rrset, i, size,
-		                                       pos, &rdlength,
-		                                       max_size);
+		                                       pos, max_size, comp);
 		if (ret != KNOT_EOK) {
 			dbg_rrset("rrset: to_wire: Cannot convert RR. "
 			          "Reason: %s.\n",
@@ -735,17 +798,13 @@ static int knot_rrset_to_wire_aux(const knot_rrset_t *rrset,
 	
 	dbg_rrset_detail("Max size: %zu, size: %d\n", max_size, size);
 
-	assert(size + rdlength <= max_size);
-	size += rdlength;
-	knot_wire_write_u16(rdlength_pos, rdlength);
-
 	return size;
 }
 
 /*----------------------------------------------------------------------------*/
 
 int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
-                       uint16_t *rr_count)
+                       size_t max_size, uint16_t *rr_count, void *data)
 {
 	// if no RDATA in RRSet, return
 	if (rrset->rdata == NULL) {
@@ -754,13 +813,12 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
 		return KNOT_EOK;
 	}
 	
-	//TODO check with original code
+	compression_param_t *comp_data = (compression_param_t *)data;
 	
-
 	uint8_t *pos = wire;
 
 	int ret = knot_rrset_to_wire_aux(rrset, &pos,
-	                                       *size);
+	                                 max_size, comp_data);
 	
 	assert(ret != 0);
 

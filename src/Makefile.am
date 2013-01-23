@@ -14,6 +14,12 @@ zscanner/scanner.c: zscanner/scanner.rl zscanner/scanner_body.rl
 	$(RAGEL) -s -o zscanner/scanner.c zscanner/scanner.rl
 
 knot_zcompile_SOURCES =				\
+	libknot/packet/packet.h			\
+	libknot/packet/packet.c			\
+	libknot/packet/query.c			\
+	libknot/packet/query.h			\
+	libknot/packet/response.h		\
+	libknot/packet/response.c		\
 	libknot/rrset.c				\
 	libknot/rrset.h				\
 	common/slab/slab.c			\
@@ -29,10 +35,6 @@ knot_zcompile_SOURCES =				\
 	libknot/util/tolower.h			\
 	libknot/util/tolower.c			\
 	libknot/util/wire.h			\
-	libknot/packet/packet.h			\
-	libknot/packet/packet.c			\
-	libknot/packet/query.h			\
-	libknot/packet/query.c			\
 	libknot/zone/zone.c			\
 	libknot/zone/zone-contents.c		\
 	libknot/zone/zone-tree.c		\
@@ -120,9 +122,7 @@ knot_zcompile_SOURCES =				\
 	zscanner/scanner.h			\
 	zscanner/scanner.c			\
 	zscanner/scanner_functions.h		\
-	zscanner/scanner_functions.c		\
-	libknot/nameserver/name-server.h	\
-	libknot/nameserver/name-server.c
+	zscanner/scanner_functions.c
 	
 unittests_libknot_SOURCES =			\
 	libknot/rrset.c				\

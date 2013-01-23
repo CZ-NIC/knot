@@ -681,7 +681,7 @@ static int test_rrset_to_wire()
 		wire_size = 65535;
 		/* Convert to wire. */
 		int ret = knot_rrset_to_wire(&test_rrset_array[i].rrset, wire,
-		                             &wire_size, &rr_count);
+		                             &wire_size, 65535, &rr_count);
 		if (ret) {
 			diag("Could not convert RRSet to wire.\n");
 			return 0;
