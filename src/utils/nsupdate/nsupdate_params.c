@@ -155,6 +155,9 @@ int nsupdate_params_parse(params_t *params, int argc, char *argv[])
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
+	
+	/* Fetch default server. */
+	server_t *srv = TAIL(params->servers);
 
 	/* Command line options processing. */
 	while ((opt = getopt(argc, argv, "dDvp:t:r:y:")) != -1) {
@@ -166,6 +169,14 @@ int nsupdate_params_parse(params_t *params, int argc, char *argv[])
 			break;
 		case 'v':
 			params_flag_tcp(params);
+			break;
+		case 'p':
+			free(srv->service);
+			srv->service = strdup(optarg);
+			if (!srv->service) {
+				ERR("failed to set default port '%s'\n", optarg);
+				return KNOT_ENOMEM;
+			}
 			break;
 		case 'r':
 			ret = params_parse_num(optarg, &params->retries);
