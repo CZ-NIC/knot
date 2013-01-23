@@ -157,7 +157,7 @@ static knot_lookup_table_t opcodes[] = {
 	{ 0, NULL }
 };
 
-static knot_lookup_table_t rcodes[] = {
+knot_lookup_table_t rcodes[] = {
 	{ KNOT_RCODE_NOERROR,  "NOERROR" },
 	{ KNOT_RCODE_FORMERR,  "FORMERR" },
 	{ KNOT_RCODE_SERVFAIL, "SERVFAIL" },

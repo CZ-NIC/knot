@@ -132,21 +132,6 @@ enum {
 	PARSE_NAMEONLY  = 1 << 1, /* Parse only name. */
 };
 
-/* RCODE error table. */
-const char *rc_errtable[] = {
-        "NOERROR",
-        "FORMERR",
-        "SERVFAIL",
-        "NXDOMAIN",
-        "NOTIMPL",
-        "REFUSED",
-        "YXDOMAIN",
-        "YXRRSET",
-        "NXRRSET",
-        "NOTAUTH",
-        "NOTZONE"
-};
-
 static inline const char* skipspace(const char *lp) {
 	while (isspace(*lp)) ++lp; return lp;
 }
@@ -847,11 +832,11 @@ int cmd_send(const char* lp, params_t *params)
 	}
 	
 	/* Check return code. */
+	knot_lookup_table_t *rcode;
 	int rc = knot_packet_rcode(npar->resp);
 	DBG("%s: received rcode=%d\n", __func__, rc);
-	if (rc > KNOT_RCODE_NOERROR && rc <= KNOT_RCODE_NOTZONE) {
-		ERR("update failed: %s\n", rc_errtable[rc]);
-	}
+	rcode = knot_lookup_by_id(rcodes, rc);
+	ERR("update failed: %s\n", rcode->name);
 	
 	/*! \todo Should we check TC bit? */
 	
