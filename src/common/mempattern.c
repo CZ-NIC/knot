@@ -84,6 +84,25 @@ char* sprintf_alloc(const char *fmt, ...)
 	return p;
 }
 
+char* strcdup(const char *s1, const char *s2)
+{
+	if (!s1 || !s2) {
+		return NULL;
+	}
+	
+	size_t slen = strlen(s1);
+	size_t s2len = strlen(s2);
+	size_t nlen = slen + s2len + 1;
+	char* dst = malloc(nlen);
+	if (dst == NULL) {
+		return NULL;
+	}
+
+	memcpy(dst, s1, slen);
+	strncpy(dst + slen, s2, s2len + 1); // With trailing '\0'
+	return dst;
+}
+
 #ifdef MEM_DEBUG
 /*
  * ((destructor)) attribute executes this function after main().

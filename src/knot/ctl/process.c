@@ -29,6 +29,7 @@
 #include "knot/common.h"
 #include "knot/ctl/process.h"
 #include "knot/conf/conf.h"
+#include "common/mempattern.h"
 
 char* pid_filename()
 {
