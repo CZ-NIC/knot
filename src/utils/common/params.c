@@ -244,10 +244,12 @@ int params_parse_num(const char *value, uint32_t *dst)
 
 int params_parse_tsig(const char *value, knot_key_t *key)
 {
-	/* Check for previous key. */
+	/* Invalidate previous key. */
 	if (key->name) {
-		WARN("TSIG key already set, ignoring '%s'\n", value);
-		return KNOT_EOK;
+		knot_dname_free(&key->name);
+		key->algorithm = KNOT_TSIG_ALG_NULL;
+		free(key->secret);
+		key->secret = NULL;
 	}
 	
 	char *h = strdup(value);
@@ -269,6 +271,7 @@ int params_parse_tsig(const char *value, knot_key_t *key)
 		knot_lookup_table_t *alg = NULL;
 		alg = knot_lookup_by_name(tsig_alg_table, h);
 		if (alg) {
+			DBG("%s: parsed algorithm '%s'\n", __func__, h);
 			key->algorithm = alg->id;
 		} else {
 			free(h);
@@ -283,15 +286,19 @@ int params_parse_tsig(const char *value, knot_key_t *key)
 	/* Parse key name. */
 	key->name = create_fqdn_from_str(k, strlen(k));
 	key->secret = strdup(s);
-	free(h);
 	
 	/* Check name and secret. */
 	if (!key->name || !key->secret) {
 		knot_dname_free(&key->name); /* Sets to NULL */
 		free(key->secret);
 		key->secret = NULL;
+		free(h);
 		return KNOT_EINVAL;
 	}
+	
+	DBG("%s: parsed name '%s'\n", __func__, k);
+	DBG("%s: parsed secret '%s'\n", __func__, s);
+	free(h);
 	
 	return KNOT_EOK;
 }

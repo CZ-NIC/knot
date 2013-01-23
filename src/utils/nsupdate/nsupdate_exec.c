@@ -927,17 +927,32 @@ int cmd_answer(const char* lp, params_t *params)
 	return KNOT_EOK;
 }
 
+int cmd_key(const char* lp, params_t *params)
+{
+	DBG("%s: lp='%s'\n", __func__, lp);
+	char *kstr = strdup(lp); /* Convert to default format. */
+	if (!kstr) return KNOT_ENOMEM;
+	
+	
+	int ret = KNOT_EOK;
+	size_t len = strcspn(lp, SEP_CHARS);
+	if(kstr[len] == '\0') {
+		ERR("command 'key' without {secret} specified\n");
+		ret = KNOT_EINVAL;
+	} else {
+		kstr[len] = ':'; /* Replace ' ' with ':' sep */
+		ret = params_parse_tsig(kstr, &params->key);
+	}
+	
+	free(kstr);
+	return ret;
+}
+
 /*
  *   Not implemented.
  */
 
 int cmd_gsstsig(const char* lp, params_t *params)
-{
-	DBG("%s: lp='%s'\n", __func__, lp);
-	return KNOT_ENOTSUP;
-}
-
-int cmd_key(const char* lp, params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 	return KNOT_ENOTSUP;
