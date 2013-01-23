@@ -84,6 +84,7 @@ enum knot_error {
 	KNOT_ECNAME,          /*!< CNAME loop found in zone. */
 	KNOT_ENODIFF,         /*!< No zone diff can be created. */
 	KNOT_EDSDIGESTLEN,    /*!< DS digest length does not match digest type. */
+	KNOT_ENOTSIG,         /*!< expected a TSIG or SIG(0) */
 
 	/* Zone file loader errors. */
 	FLOADER_EFSTAT,
