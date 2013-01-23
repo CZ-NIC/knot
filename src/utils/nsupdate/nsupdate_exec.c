@@ -284,6 +284,38 @@ static int parse_partial_rr(scanner_t *s, const char *lp, unsigned flags) {
 	return ret;
 }
 
+static server_t *parse_host(const char *lp, const char* default_port)
+{
+	/* Extract server address. */
+	server_t *srv = NULL;
+	size_t len = strcspn(lp, SEP_CHARS);
+	char *addr = strndup(lp, len);
+	if (!addr) return NULL;
+	DBG("%s: parsed addr: %s\n", __func__, addr);
+	
+	/* Store port/service if present. */
+	lp = skipspace(lp + len);
+	if (*lp == '\0') {
+		srv = server_create(addr, default_port);
+		free(addr);
+		return srv;
+	}
+
+	len = strcspn(lp, SEP_CHARS);
+	char *port = strndup(lp, len);
+	if (!port) {
+		free(addr);
+		return NULL;
+	}
+	DBG("%s: parsed port: %s\n", __func__, port);
+	
+	/* Create server struct. */
+	srv = server_create(addr, port);
+	free(addr);
+	free(port);
+	return srv;
+}
+
 static int pkt_append(params_t *p, int sect)
 {
 	/* Check packet state first. */
@@ -380,6 +412,8 @@ static int pkt_sendrecv(params_t *params, server_t *srv,
                         uint8_t *qwire, size_t qlen,
                         uint8_t *rwire, size_t rlen)
 {
+	/*! \todo Bind to local if specified by params. */
+	
 	int sock = send_msg(params, KNOT_RRTYPE_SOA, srv, qwire, qlen);
 	DBG("%s: send_msg = %d\n", __func__, sock);
 	if (sock < 0) return sock;
@@ -796,36 +830,26 @@ int cmd_server(const char* lp, params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 	
-	/* Extract server address. */
-	size_t len = strcspn(lp, SEP_CHARS);
-	char *addr = strndup(lp, len);
-	if (!addr) return KNOT_ENOMEM;
-	DBG("%s: parsed addr: %s\n", __func__, addr);
-	
-	/* Store port/service if present. */
-	lp = skipspace(lp + len);
-	if (*lp == '\0') {
-		free(addr);
-		return KNOT_EOK;
-	}
-
-	len = strcspn(lp, SEP_CHARS);
-	char *port = strndup(lp, len);
-	if (!port) {
-		free(addr);
-		return KNOT_ENOMEM;
-	}
-	DBG("%s: parsed port: %s\n", __func__, port);
-	
-	/* Create server struct. */
-	server_t *srv = server_create(addr, port);
-	free(addr);
-	free(port);
+	/* Parse host. */
+	server_t *srv = parse_host(lp, DEFAULT_DNS_PORT);
 	
 	/* Enqueue. */
 	if (!srv) return KNOT_ENOMEM;
 	
 	add_tail(&params->servers, (node *)srv);
+	return KNOT_EOK;
+}
+
+int cmd_local(const char* lp, params_t *params)
+{
+	DBG("%s: lp='%s'\n", __func__, lp);
+	
+	/* Parse host. */
+	nsupdate_params_t *npar = NSUP_PARAM(params);
+	if ((npar->srcif = parse_host(lp, "0")) == NULL) {
+		return KNOT_ENOMEM;
+	}
+	
 	return KNOT_EOK;
 }
 
@@ -864,12 +888,6 @@ int cmd_gsstsig(const char* lp, params_t *params)
 }
 
 int cmd_key(const char* lp, params_t *params)
-{
-	DBG("%s: lp='%s'\n", __func__, lp);
-	return KNOT_ENOTSUP;
-}
-
-int cmd_local(const char* lp, params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 	return KNOT_ENOTSUP;

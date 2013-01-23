@@ -33,6 +33,7 @@
 #include "utils/common/params.h"	// protocol_t
 #include "zscanner/scanner.h"		// scanner_t
 #include "libknot/packet/packet.h"	// knot_packet_t
+#include "utils/common/netio.h"
 
 /*! Parser init string. */
 #define PARSER_INIT_STR "$ORIGIN %s\n$TTL %u\n"
@@ -51,6 +52,8 @@ typedef struct nsupdate_params_t {
 	knot_packet_t	*resp;
 	/*!< Buffer for response. */
 	uint8_t		rwire[MAX_PACKET_SIZE];
+	/*!< Local interface (optional). */
+	server_t	*srcif;
 } nsupdate_params_t;
 #define NSUP_PARAM(p) ((nsupdate_params_t*)p->d)
 
