@@ -410,6 +410,18 @@ knot_dname_t *knot_rrset_get_next_dname(const knot_rrset_t *rrset,
 knot_dname_t **knot_rrset_get_next_dname_pointer(const knot_rrset_t *rrset,
                                                  knot_dname_t **prev_dname);
 
+const knot_dname_t *knot_rrset_rdata_ns_name(const knot_rrset_t *rrset,
+                                             size_t rdata_pos);
+
+const knot_dname_t *knot_rrset_rdata_mx_name(const knot_rrset_t *rrset,
+                                             size_t rdata_pos);
+
+const knot_dname_t *knot_rrset_rdata_srv_name(const knot_rrset_t *rrset,
+                                              size_t rdata_pos);
+
+const knot_dname_t *knot_rrset_rdata_name(const knot_rrset_t *rrset,
+                                          size_t rdata_pos);
+
 uint8_t *knot_rrset_rdata_prealloc(const knot_rrset_t *rrset,
                                    size_t *size);
 

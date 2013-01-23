@@ -1317,7 +1317,9 @@ const knot_dname_t *knot_rrset_rdata_cname_name(const knot_rrset_t *rrset)
 		return NULL;
 	}
 	
-	return (const knot_dname_t *)(rrset->rdata);
+	knot_dname_t *dname;
+	memcpy(dname, rrset->rdata, sizeof(knot_dname_t *));
+	return dname;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2039,5 +2041,67 @@ int rrset_deserialize(uint8_t *stream, size_t stream_size,
 	}
 	
 	return KNOT_EOK;
+}
+
+const knot_dname_t *knot_rrset_rdata_ns_name(const knot_rrset_t *rrset,
+                                             size_t rdata_pos)
+{
+	if (rrset == NULL) {
+		return NULL;
+	}
+	
+	knot_dname_t *dname;
+	memcpy(dname, rrset_rdata_pointer(rrset, rdata_pos),
+	       sizeof(knot_dname_t *));
+	return dname;
+}
+
+const knot_dname_t *knot_rrset_rdata_mx_name(const knot_rrset_t *rrset,
+                                             size_t rdata_pos)
+{
+	if (rrset == NULL) {
+		return NULL;
+	}
+	
+	knot_dname_t *dname;
+	memcpy(dname, rrset_rdata_pointer(rrset, rdata_pos) + 2,
+	       sizeof(knot_dname_t *));
+	return dname;
+}
+
+const knot_dname_t *knot_rrset_rdata_srv_name(const knot_rrset_t *rrset,
+                                              size_t rdata_pos)
+{
+	if (rrset == NULL) {
+		return NULL;
+	}
+	
+	knot_dname_t *dname;
+	memcpy(dname, rrset_rdata_pointer(rrset, rdata_pos) + 6,
+	       sizeof(knot_dname_t *));
+	return dname;
+}
+
+const knot_dname_t *knot_rrset_rdata_name(const knot_rrset_t *rrset,
+                                          size_t rdata_pos)
+{
+	if (rrset == NULL || rrset->rdata_count <= rdata_pos) {
+		return NULL;
+	}
+	
+	// iterate over the rdata items or act as if we knew where the name is?
+
+	switch (rrset->type) {
+		case KNOT_RRTYPE_NS:
+			return knot_rrset_rdata_ns_name(rrset, rdata_pos);
+		case KNOT_RRTYPE_MX:
+			return knot_rrset_rdata_mx_name(rrset, rdata_pos);
+		case KNOT_RRTYPE_SRV:
+			return knot_rrset_rdata_srv_name(rrset, rdata_pos);
+		case KNOT_RRTYPE_CNAME:
+			return knot_rrset_rdata_cname_name(rrset);
+	}
+
+	return NULL;
 }
 
