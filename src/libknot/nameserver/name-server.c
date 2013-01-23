@@ -125,48 +125,18 @@ static const knot_zone_t *ns_get_zone_for_qname(knot_zonedb_t *zdb,
 static knot_rrset_t *ns_synth_from_wildcard(
 	const knot_rrset_t *wildcard_rrset, const knot_dname_t *qname)
 {
-	dbg_ns_verb("Synthetizing RRSet from wildcard...\n");
-
-	knot_dname_t *owner = knot_dname_deep_copy(qname);
-
-	knot_rrset_t *synth_rrset = knot_rrset_new(
-			owner, knot_rrset_type(wildcard_rrset),
-			knot_rrset_class(wildcard_rrset),
-			knot_rrset_ttl(wildcard_rrset));
-
-	/* Release owner, as it's retained in rrset. */
-	knot_dname_release(owner);
-
-	if (synth_rrset == NULL) {
+	knot_rrset_t *rrset = NULL;
+	int ret = knot_rrset_deep_copy(wildcard_rrset, &rrset, 1);
+	if (ret != KNOT_EOK) {
+		dbg_ns("ns: ns_synth_from_wildcard: Could not copy RRSet.\n");
 		return NULL;
 	}
+	
+	knot_dname_release(knot_rrset_get_owner(wildcard_rrset));
+	
+	knot_rrset_set_owner(rrset, qname);
 
-	dbg_ns_verb("Created RRSet header:\n");
-	knot_rrset_dump(synth_rrset, 1);
-
-	// copy all RDATA
-	const knot_rdata_t *rdata = knot_rrset_rdata(wildcard_rrset);
-	while (rdata != NULL) {
-		// we could use the RDATA from the wildcard rrset
-		// but there is no way to distinguish it when deleting
-		// temporary RRSets
-		knot_rdata_t *rdata_copy = knot_rdata_deep_copy(rdata,
-		                               knot_rrset_type(synth_rrset), 0);
-		if (rdata_copy == NULL) {
-			knot_rrset_deep_free(&synth_rrset, 1, 1, 0);
-			return NULL;
-		}
-
-		dbg_ns_verb("Copied RDATA:\n");
-		knot_rdata_dump(rdata_copy,
-		                  knot_rrset_type(synth_rrset), 1);
-
-		int ret = knot_rrset_add_rdata(synth_rrset, rdata_copy);
-		assert(ret == KNOT_EOK);
-		rdata = knot_rrset_rdata_next(wildcard_rrset, rdata);
-	}
-
-	return synth_rrset;
+	return rrset;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -198,13 +168,13 @@ static int ns_check_wildcard(const knot_dname_t *name, knot_packet_t *resp,
 
 dbg_ns_exec_verb(
 		dbg_ns_verb("Synthetized RRSet:\n");
-		knot_rrset_dump(synth_rrset, 1);
+		knot_rrset_dump(synth_rrset);
 );
 
 		int ret = knot_packet_add_tmp_rrset(resp, synth_rrset);
 		if (ret != KNOT_EOK) {
 			dbg_ns("Failed to add sythetized RRSet to tmp list.\n");
-			knot_rrset_deep_free(&synth_rrset, 1, 1, 1);
+			knot_rrset_deep_free(&synth_rrset, 1, 1);
 			return ret;
 		}
 		*rrset = synth_rrset;
@@ -298,7 +268,7 @@ static int ns_follow_cname(const knot_node_t **node,
 	while (*node != NULL
 	       && (cname_rrset = knot_node_get_rrset(*node, KNOT_RRTYPE_CNAME))
 	          != NULL
-	       && (knot_rrset_rdata(cname_rrset) != NULL)) {
+	       && (knot_rrset_rdata_rr_count(cname_rrset))) {
 		/* put the CNAME record to answer, but replace the possible
 		   wildcard name with qname */
 
@@ -325,7 +295,7 @@ static int ns_follow_cname(const knot_node_t **node,
 				dbg_ns("Failed to add synthetized RRSet (CNAME "
 				       "follow) to the tmp RRSets in response."
 				       "\n");
-				knot_rrset_deep_free(&rrset, 1, 1, 1);
+				knot_rrset_deep_free(&rrset, 1, 1);
 				return ret;
 			}
 
@@ -381,8 +351,7 @@ dbg_ns_exec_verb(
 );
 
 		// get the name from the CNAME RDATA
-		const knot_dname_t *cname = knot_rdata_cname_name(
-				knot_rrset_rdata(cname_rrset));
+		const knot_dname_t *cname = knot_rrset_rdata_cname_name(cname_rrset);
 		dbg_ns_detail("CNAME name from RDATA: %p\n", cname);
 		// change the node to the node of that name
 		*node = knot_dname_node(cname);
@@ -520,7 +489,7 @@ dbg_ns_exec_verb(
 		int ret = 0;
 		knot_rrset_t *rrset = knot_node_get_rrset(node, type);
 		knot_rrset_t *rrset2 = rrset;
-		if (rrset != NULL && knot_rrset_rdata(rrset) != NULL) {
+		if (rrset != NULL && knot_rrset_rdata_rr_count(rrset)) {
 			dbg_ns_verb("Found RRSet of type %u\n", type);
 			
 			ret = ns_check_wildcard(name, resp, &rrset2);
@@ -578,18 +547,16 @@ static int ns_put_additional_for_rrset(knot_packet_t *resp,
                                        const knot_rrset_t *rrset)
 {
 	const knot_node_t *node = NULL;
-	const knot_rdata_t *rdata = NULL;
-	const knot_dname_t *dname = NULL;
 
 	int ret = 0;
 
 	// for all RRs in the RRset
-	rdata = knot_rrset_rdata(rrset);
-	while (rdata != NULL) {
+	/* TODO all dnames, or only the ones returned by rdata_get_name? */
+	for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(rrset); i++) {
 		dbg_ns_verb("Getting name from RDATA, type %u..\n",
 		            knot_rrset_type(rrset));
-		dname = knot_rdata_get_name(rdata, knot_rrset_type(rrset));
-
+		const knot_dname_t *dname = knot_rrset_rdata_name(rrset, i);
+		assert(dname);
 dbg_ns_exec_detail(
 		char *name = knot_dname_to_str(dname);
 		dbg_ns_detail("Name: %s\n", name);
@@ -699,8 +666,6 @@ dbg_ns_exec(
 		}
 
 		assert(rrset != NULL);
-		assert(rdata != NULL);
-		rdata = knot_rrset_rdata_next(rrset, rdata);
 	}
 
 	return KNOT_EOK;
@@ -825,7 +790,7 @@ static int ns_put_authority_soa(const knot_zone_contents_t *zone,
 
 	// if SOA's TTL is larger than MINIMUM, copy the RRSet and set
 	// MINIMUM as TTL
-	uint32_t min = knot_rdata_soa_minimum(knot_rrset_rdata(soa_rrset));
+	uint32_t min = knot_rrset_rdata_soa_minimum(soa_rrset);
 	if (min < knot_rrset_ttl(soa_rrset)) {
 		knot_rrset_t *soa_copy = NULL;
 		ret = knot_rrset_deep_copy(soa_rrset, &soa_copy, 0);
@@ -841,7 +806,7 @@ static int ns_put_authority_soa(const knot_zone_contents_t *zone,
 		/* Need to add it as temporary, so it get's freed. */
 		ret = knot_packet_add_tmp_rrset(resp, soa_copy);
 		if (ret != KNOT_EOK) {
-			knot_rrset_deep_free(&soa_copy, 1, 1, 1);
+			knot_rrset_deep_free(&soa_copy, 1, 1);
 			return ret;
 		}
 	}
@@ -920,13 +885,13 @@ static int ns_put_nsec3_from_node(const knot_node_t *node,
 	}
 	
 	int res = KNOT_EOK;
-	if (knot_rrset_rdata(rrset) != NULL) {
+	if (knot_rrset_rdata_rr_count(rrset)) {
 		res = knot_response_add_rrset_authority(resp, rrset, 1, 1, 0, 
 		                                        1);
 	}
 	// add RRSIG for the RRSet
 	if (res == KNOT_EOK && (rrset = knot_rrset_get_rrsigs(rrset)) != NULL
-	    && knot_rrset_rdata(rrset) != NULL) {
+	    && knot_rrset_rdata_rr_count(rrset)) {
 		res = knot_response_add_rrset_authority(resp, rrset, 1, 0, 0,
 		                                        1);
 	}
@@ -1198,7 +1163,7 @@ static int ns_put_nsec_nsec3_nodata(const knot_zone_contents_t *zone,
 		if (nsec3_node != NULL
 		    && (rrset = knot_node_get_rrset(nsec3_node,
 		                                  KNOT_RRTYPE_NSEC3)) != NULL
-		    && knot_rrset_rdata(rrset) != NULL) {
+		    && knot_rrset_rdata_rr_count(rrset)) {
 			dbg_ns_detail("Putting the RRSet to Authority\n");
 			ret = knot_response_add_rrset_authority(resp, rrset, 1,
 			                                        0, 0, 1);
@@ -1207,7 +1172,7 @@ static int ns_put_nsec_nsec3_nodata(const knot_zone_contents_t *zone,
 		dbg_ns_verb("Adding NSEC for NODATA\n");
 		if ((rrset = knot_node_get_rrset(node, KNOT_RRTYPE_NSEC))
 		    != NULL 
-		    && knot_rrset_rdata(rrset) != NULL) {
+		    && knot_rrset_rdata_rr_count(rrset)) {
 			dbg_ns_detail("Putting the RRSet to Authority\n");
 			ret = knot_response_add_rrset_authority(resp, rrset, 1,
 			                                        0, 0, 1);
@@ -1332,7 +1297,7 @@ dbg_ns_exec_verb(
 
 	if (prev_new != previous) {
 		rrset = knot_node_get_rrset(prev_new, KNOT_RRTYPE_NSEC);
-		if (rrset == NULL || knot_rrset_rdata(rrset) == NULL) {
+		if (rrset == NULL || knot_rrset_rdata_rr_count(rrset)) {
 			// bad zone, ignore
 			return KNOT_EOK;
 		}
@@ -1343,7 +1308,7 @@ dbg_ns_exec_verb(
 			return ret;
 		}
 		rrset = knot_rrset_get_rrsigs(rrset);
-		if (rrset == NULL || knot_rrset_rdata(rrset) == NULL) {
+		if (rrset == NULL || knot_rrset_rdata_rr_count(rrset)) {
 			// bad zone, ignore
 			return KNOT_EOK;
 		}
@@ -1525,7 +1490,7 @@ static int ns_put_nsec_wildcard(const knot_zone_contents_t *zone,
 
 	int ret = KNOT_EOK;
 
-	if (rrset != NULL && knot_rrset_rdata(rrset) != NULL) {
+	if (rrset != NULL && knot_rrset_rdata_rr_count(rrset)) {
 		// NSEC proving that there is no node with the searched name
 		ret = knot_response_add_rrset_authority(resp, rrset, 1, 0,
 		                                        0, 1);
@@ -1914,28 +1879,21 @@ static knot_rrset_t *ns_cname_from_dname(const knot_rrset_t *dname_rrset,
 	// replace last labels of qname with DNAME
 	knot_dname_t *cname = knot_dname_replace_suffix(qname,
 	      knot_dname_size(knot_rrset_owner(dname_rrset)),
-	      knot_rdata_get_item(knot_rrset_rdata(dname_rrset), 0)->dname);
+	      knot_rrset_rdata_dname_target(dname_rrset));
 dbg_ns_exec(
 	char *name = knot_dname_to_str(cname);
 	dbg_ns_verb("CNAME canonical name: %s.\n", name);
 	free(name);
 );
-	knot_rdata_t *cname_rdata = knot_rdata_new();
-	knot_rdata_item_t cname_rdata_item;
-	cname_rdata_item.dname = cname;
-	int ret = knot_rdata_set_items(cname_rdata, &cname_rdata_item, 1);
-	if (ret != KNOT_EOK) {
-		knot_rrset_deep_free(&cname_rrset, 1, 1, 1);
-		knot_rdata_deep_free(&cname_rdata, KNOT_RRTYPE_CNAME, 1);
+	uint8_t *cname_rdata = knot_rrset_create_rdata(cname_rrset,
+	                                               sizeof(knot_dname_t *));
+	if (cname_rdata == NULL) {
+		dbg_ns("ns: cname_from_dname: Cannot cerate CNAME RDATA.\n");
 		return NULL;
 	}
-
-	ret = knot_rrset_add_rdata(cname_rrset, cname_rdata);
-	if (ret != KNOT_EOK) {
-		knot_rrset_deep_free(&cname_rrset, 1, 1, 1);
-		knot_rdata_deep_free(&cname_rdata, KNOT_RRTYPE_CNAME, 1);
-		return NULL;
-	}
+	
+	/* Store DNAME into RDATA. */
+	memcpy(cname_rdata, &cname, sizeof(knot_dname_t *));
 
 	return cname_rrset;
 }
@@ -1951,14 +1909,13 @@ dbg_ns_exec(
  * \retval <>0 if the created domain name would be too long.
  * \retval 0 otherwise.
  */
-static int ns_dname_is_too_long(const knot_rrset_t *dname_rrset,
+static int ns_dname_is_too_long(const knot_rrset_t *rrset,
                                 const knot_dname_t *qname)
 {
 	// TODO: add function for getting DNAME target
 	if (knot_dname_label_count(qname)
-	        - knot_dname_label_count(knot_rrset_owner(dname_rrset))
-	        + knot_dname_label_count(knot_rdata_get_item(
-	                             knot_rrset_rdata(dname_rrset), 0)->dname)
+	        - knot_dname_label_count(knot_rrset_owner(rrset))
+	        + knot_dname_label_count(knot_rrset_rdata_dname_target(rrset))
 	        > KNOT_MAX_DNAME_LENGTH) {
 		return 1;
 	} else {
@@ -2024,8 +1981,7 @@ dbg_ns_exec_verb(
 	}
 
 	// get the next SNAME from the CNAME RDATA
-	const knot_dname_t *cname = knot_rdata_cname_name(
-			knot_rrset_rdata(synth_cname));
+	const knot_dname_t *cname = knot_rrset_rdata_cname_name(synth_cname);
 	dbg_ns_verb("CNAME name from RDATA: %p\n", cname);
 
 	// save the new name which should be used for replacing wildcard
@@ -3851,9 +3807,9 @@ int ns_ixfr_load_serials(const knot_ns_xfr_t *xfr, uint32_t *serial_from,
 	}
 	
 	// retrieve origin (xfr) serial and target (zone) serial
-	*serial_to = knot_rdata_soa_serial(knot_rrset_rdata(zone_soa));
-	*serial_from = knot_rdata_soa_serial(knot_rrset_rdata(
-			knot_packet_authority_rrset(xfr->query, 0)));
+	*serial_to = knot_rrset_rdata_soa_serial(zone_soa);
+	*serial_from =
+		knot_rrset_rdata_soa_serial(knot_packet_authority_rrset(xfr->query, 0));
 	
 	return KNOT_EOK;
 }

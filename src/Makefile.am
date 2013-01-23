@@ -120,7 +120,9 @@ knot_zcompile_SOURCES =				\
 	zscanner/scanner.h			\
 	zscanner/scanner.c			\
 	zscanner/scanner_functions.h		\
-	zscanner/scanner_functions.c
+	zscanner/scanner_functions.c		\
+	libknot/nameserver/name-server.h	\
+	libknot/nameserver/name-server.c
 	
 unittests_libknot_SOURCES =			\
 	libknot/rrset.c				\

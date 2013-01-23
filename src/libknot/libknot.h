@@ -34,7 +34,6 @@
 #include "zone/node.h"
 #include "nsec3.h"
 #include "util/wire.h"
-#include "rdata.h"
 #include "packet/response.h"
 #include "rrset.h"
 #include "util/tolower.h"

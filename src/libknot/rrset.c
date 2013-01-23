@@ -1329,7 +1329,9 @@ const knot_dname_t *knot_rrset_rdata_dname_target(const knot_rrset_t *rrset)
 	if (rrset == NULL) {
 		return NULL;
 	}
-	return (const knot_dname_t *)(rrset->rdata);
+	knot_dname_t *dname;
+	memcpy(dname, rrset->rdata, sizeof(knot_dname_t *));
+	return dname;
 }
 
 /*---------------------------------------------------------------------------*/

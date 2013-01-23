@@ -362,11 +362,12 @@ int knot_rrset_merge_no_dupl(void **r1, void **r2);
 const knot_dname_t *knot_rrset_rdata_cname_name(const knot_rrset_t *rrset);
 //TODO test
 const knot_dname_t *knot_rrset_rdata_dname_target(const knot_rrset_t *rrset);
-
 //TODO test
-const knot_dname_t *knot_rrset_rdata_cname_name(const knot_rrset_t *rrset);
+void knot_rrset_rdata_set_cname_name(knot_rrset_t *rrset,
+                                     const knot_dname_t *name);
 //TODO test
-const knot_dname_t *knot_rrset_rdata_dname_target(const knot_rrset_t *rrset);
+void knot_rrset_rdata_set_dname_target(knot_rrset_t *rrset,
+                                       const knot_dname_t *target);
 //TODO test
 int64_t knot_rrset_rdata_soa_serial(const knot_rrset_t *rrset);
 //TODO test
