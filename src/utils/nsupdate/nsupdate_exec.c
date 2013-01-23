@@ -38,6 +38,7 @@
 #include "libknot/util/debug.h"
 #include "libknot/consts.h"
 #include "libknot/packet/query.h"
+#include "libknot/tsig-op.h"
 
 /* Declarations of cmd parse functions. */
 typedef int (*cmd_handle_f)(const char *lp, params_t *params);
@@ -333,6 +334,12 @@ static int pkt_append(params_t *p, int sect)
 		knot_query_set_question(npar->pkt, &q);
 		knot_query_set_opcode(npar->pkt, KNOT_OPCODE_UPDATE);
 		knot_dname_release(q.qname); /* Already on wire. */
+		
+		/* Reserve space for TSIG. */
+		if (p->key.name) {
+			knot_packet_set_tsig_size(npar->pkt,
+			                          tsig_wire_maxsize(&p->key));
+		}
 	}
 	
 	/* Create RDATA (not for NXRRSET prereq). */
@@ -768,6 +775,23 @@ int cmd_send(const char* lp, params_t *params)
 		return ret;
 	}
 	
+	/* Sign if possible. */
+	size_t dlen = 0;
+	uint8_t *digest = NULL;
+	size_t maxlen = knot_packet_max_size(npar->pkt);
+	if (params->key.name) {
+		dlen = tsig_alg_digest_length(params->key.algorithm);
+		digest = malloc(dlen);
+		ret = knot_tsig_sign(wire, &len, maxlen, NULL, 0,
+		                     digest, &dlen, &params->key, 0, 0);
+		if (ret != KNOT_EOK) {
+			ERR("failed to sign UPDATE message - %s\n",
+			    knot_strerror(ret));
+			free(digest);
+			return ret;
+		}
+	}
+	
 	if (EMPTY_LIST(params->servers)) return KNOT_EINVAL;
 	server_t *srv = TAIL(params->servers);
 	
@@ -786,12 +810,39 @@ int cmd_send(const char* lp, params_t *params)
 	
 	/* Clear previous response. */
 	if (npar->resp) knot_packet_free(&npar->resp);
-	if (rb <= 0) return KNOT_ECONNREFUSED;
+	if (rb <= 0) {
+		free(digest);
+		return KNOT_ECONNREFUSED;
+	}
+	
+	/* Clear sent packet and parse response. */
+	knot_packet_free_rrsets(npar->pkt);
+	knot_packet_free(&npar->pkt);
 	npar->resp = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
-	if (!npar->resp) return KNOT_ENOMEM;
-	ret = knot_packet_parse_from_wire(npar->resp, npar->rwire, rb, 1, 0);
+	if (!npar->resp) {
+		free(digest);
+		return KNOT_ENOMEM;
+	}
+	ret = knot_packet_parse_from_wire(npar->resp, npar->rwire, rb, 0, 0);
 	if (ret != KNOT_EOK) {
 		ERR("failed to parse response, %s\n", knot_strerror(ret));
+		free(digest);
+		return ret;
+	}
+	
+	/* Check TSIG if required. */
+	const char *ep = "; TSIG error with server";
+	const knot_rrset_t *tsig_rr = knot_packet_tsig(npar->resp);
+	if (digest && !tsig_rr) {
+		ret = KNOT_ENOTSIG;
+	} else if (digest) {
+		ret = knot_tsig_client_check(tsig_rr, npar->rwire, rb,
+		                             digest, dlen, &params->key,
+		                             0);
+	}
+	free(digest); /* Not needed anymore. */
+	if (ret != KNOT_EOK) { /* Collect TSIG error. */
+		fprintf(stderr, "%s: %s\n", ep, knot_strerror(ret));
 		return ret;
 	}
 	
@@ -804,9 +855,6 @@ int cmd_send(const char* lp, params_t *params)
 	
 	/*! \todo Should we check TC bit? */
 	
-	/* Free created rrsets. */
-	knot_packet_free_rrsets(npar->pkt);
-	knot_packet_free(&npar->pkt);
 	return KNOT_EOK;
 }
 

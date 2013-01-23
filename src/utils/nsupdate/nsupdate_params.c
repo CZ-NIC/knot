@@ -137,8 +137,9 @@ void nsupdate_params_clean(params_t *params)
 
 static void nsupdate_params_help(int argc, char *argv[])
 {
-	printf("Usage: %s [-d] [-v] [-p port] [-t timeout] [-r retries] "
-	       "[filename]\n", argv[0]);
+	printf("Usage: %s [-d] [-v] [-y [hmac:]name:key] [-p port] "
+	       "[-t timeout] [-r retries] [filename]\n",
+	       argv[0]);
 }
 
 int nsupdate_params_parse(params_t *params, int argc, char *argv[])
