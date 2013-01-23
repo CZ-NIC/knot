@@ -43,6 +43,14 @@ int rdata_write_mem(char* dst, size_t maxlen, const knot_rdata_t *rdata,
 		wb += ret;
 		return wb;
 	}
+	
+	/*! \todo Implement for TSIG. */
+	if (type == KNOT_RRTYPE_TSIG) {
+		ret = snprintf(dst+wb, maxlen-wb, "TSIG NOT YET IMPLEMENTED");
+		if (ret < 0 || ret >= maxlen-wb) return KNOT_ESPACE;
+		wb += ret;
+		return wb;
+	}
 
 	for (int i = 0; i < rdata->count; i++) {
 		item_str = rdata_item_to_string(desc->zoneformat[i],
