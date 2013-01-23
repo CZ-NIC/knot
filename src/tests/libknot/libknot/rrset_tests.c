@@ -123,7 +123,7 @@ static test_rdata_t test_rdata_array[TEST_RDATA_COUNT] = {
 	[TEST_RDATA_MX_DNAME_LESS] = {NULL, NULL, sizeof(knot_dname_t *) + 2, 0},
 	[TEST_RDATA_MX_DNAME_GT] = {NULL, NULL, sizeof(knot_dname_t *) + 2, 0},
 	[TEST_RDATA_MX_BIN_LESS] = {NULL, NULL, sizeof(knot_dname_t *) + 2, 0},
-	[TEST_RDATA_MX_BIN_GT] = {NULL, NULL, sizeof(knot_dname_t *) + 2, 0},
+	[	TEST_RDATA_MX_BIN_GT] = {NULL, NULL, sizeof(knot_dname_t *) + 2, 0},
 	[TEST_RDATA_MINFO1] = {NULL, NULL, sizeof(knot_dname_t *) * 2, 0},
 	[TEST_RDATA_MINFO2] = {NULL, NULL, sizeof(knot_dname_t *) * 2, 0}
 };
@@ -319,8 +319,9 @@ static void create_test_rrsets()
 		/* Assign owner. */
 		test_rrset->rrset.owner = test_dnames[test_rrset->owner_id];
 		/* Create header wire. */
+		test_rrset->header_wire_size = test_rrset->rrset.owner->size + 8 + 2;
 		test_rrset->header_wire =
-			xmalloc(test_rrset->rrset.owner->size + 8 + 2);
+			xmalloc(test_rrset->header_wire_size);
 		/* Copy owner wire to header wire. */
 		memcpy(test_rrset->header_wire, test_rrset->rrset.owner->name,
 		       test_rrset->rrset.owner->size);
@@ -354,6 +355,7 @@ static void create_test_rrsets()
 		offset = 0;
 		test_rrset->rrset.rdata = xmalloc(actual_length);
 		test_rrset->rdata_wire = xmalloc(rdlength);
+		test_rrset->rdata_wire_size = rdlength;
 		test_rrset->rrset.rdata_indices =
 			xmalloc(sizeof(uint32_t) * test_rrset->rr_count);
 		for (int j = 0; j < test_rrset->rr_count; j++) {
@@ -378,7 +380,7 @@ static void create_test_rrsets()
 			       test_rrset->test_rdata[j]->wire_size);
 			offset += test_rrset->test_rdata[j]->wire_size;
 		}
-		test_rrset->rdata_wire_size = offset;
+		assert(offset == rdlength);
 	}
 }
 
@@ -675,6 +677,7 @@ static int test_rrset_to_wire()
 	uint16_t rr_count = 0;
 	int failed = 0;
 	for (int i = 0; i < TEST_RRSET_COUNT; i++) {
+		memset(wire, 0, wire_size);
 		wire_size = 65535;
 		/* Convert to wire. */
 		int ret = knot_rrset_to_wire(&test_rrset_array[i].rrset, wire,
@@ -693,6 +696,16 @@ static int test_rrset_to_wire()
 			return 0;
 		}
 		
+		if (wire_size != test_rrset_array[i].rdata_wire_size +
+		    test_rrset_array[i].header_wire_size) {
+			diag("Wrong wire size, in RRSet=%d "
+			     "(should be=%d, is=%d).\n", i,
+			     test_rrset_array[i].rdata_wire_size +
+			     test_rrset_array[i].header_wire_size, wire_size);
+			failed = 1;
+			continue;
+		}
+		
 		/* Check that the RDATA are OK. */
 		ret = memcmp(wire + test_rrset_array[i].header_wire_size,
 		             test_rrset_array[i].rdata_wire,
@@ -701,6 +714,10 @@ static int test_rrset_to_wire()
 			diag("RDATA of RRSet %d are wrongly converted.\n",
 			     i);
 			failed = 1;
+			hex_print(wire + test_rrset_array[i].header_wire_size,
+			          test_rrset_array[i].rdata_wire_size);
+			hex_print(test_rrset_array[i].rdata_wire,
+			          test_rrset_array[i].rdata_wire_size);
 		}
 	}
 	

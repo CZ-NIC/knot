@@ -78,7 +78,7 @@ void knot_rrset_rdata_dump(const knot_rrset_t *rrset, size_t rdata_pos)
 				fprintf(stderr, "DNAME error.\n");
 				return;
 			}
-			fprintf(stderr, "block=%d: (%p) DNAME=%s.\n",
+			fprintf(stderr, "block=%d: (%p) DNAME=%s\n",
 			        i, dname, name);
 			free(name);
 			offset += sizeof(knot_dname_t *);
@@ -590,14 +590,19 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 	size_t size = header_size;
 	
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
-		if (descriptor_item_is_dname(desc->block_types[i])) {
-			knot_dname_t *dname = 
-				(knot_dname_t *)(rdata + offset);
+		int item = desc->block_types[i];
+		if (descriptor_item_is_dname(item)) {
+			knot_dname_t *dname;
+			memcpy(&dname, rdata + offset, sizeof(knot_dname_t *));
 			assert(dname);
 			if (size + *rdlength + dname->size > max_size) {
 				return KNOT_ESPACE;
 			}
-
+dbg_rrset_exec_detail(
+			char *name = knot_dname_to_str(dname);
+			dbg_rrset_detail("Saving this DNAME=%s\n", name);
+			free(name);
+);
 			// save whole domain name
 			memcpy(*pos, knot_dname_name(dname), 
 			       knot_dname_size(dname));
@@ -606,17 +611,16 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 			*pos += knot_dname_size(dname);
 			*rdlength += knot_dname_size(dname);
 			offset += sizeof(knot_dname_t *);
-		} else if (descriptor_item_is_fixed(desc->block_types[i])) {
+		} else if (descriptor_item_is_fixed(item)) {
 			/* Fixed length chunk. */
-			if (size + *rdlength + desc->block_types[i] > max_size) {
+			if (size + *rdlength + item > max_size) {
 				return KNOT_ESPACE;
 			}
-			memcpy(*pos, rdata + offset,
-			       desc->block_types[i]);
-			*pos += desc->block_types[i];
-			*rdlength += desc->block_types[i];
-			offset += desc->block_types[i];
-		} else if (descriptor_item_is_remainder(desc->block_types[i])) {
+			memcpy(*pos, rdata + offset, item);
+			*pos += item;
+			*rdlength += item;
+			offset += item;
+		} else if (descriptor_item_is_remainder(item)) {
 			/* Check that the remainder fits to stream. */
 			size_t remainder_size =
 				rrset_rdata_remainder_size(rrset, offset,
