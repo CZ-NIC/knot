@@ -31,6 +31,7 @@
 #include <stdint.h>			// uint16_t
 
 #include "common/lists.h"		// node
+#include "libknot/tsig.h"
 
 #define DEFAULT_IPV4_NAME	"127.0.0.1"
 #define DEFAULT_IPV6_NAME	"::1"
@@ -120,6 +121,8 @@ typedef struct {
 	bool		servfail_stop;
 	/*!< Verbose mode. */
 	format_t	format;
+	/*!< TSIG key used. */
+	knot_key_t	key;
 	/*!< Implementation specific ptr. */
 	void*		d;
 } params_t;
@@ -146,6 +149,8 @@ void params_flag_verbose(params_t *params);
 int params_parse_interval(const char *value, int32_t *dst);
 
 int params_parse_num(const char *value, uint32_t *dst);
+
+int params_parse_tsig(const char *value, knot_key_t *key);
 
 #endif // _UTILS__PARAMS_H_
 

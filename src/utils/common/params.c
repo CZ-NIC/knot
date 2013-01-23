@@ -22,11 +22,26 @@
 #include <sys/socket.h>			// AF_INET (BSD)
 
 #include "common/errcode.h"		// KNOT_EOK
+#include "common/mempattern.h"		// strcdup
 #include "libknot/util/descriptor.h"	// KNOT_RRTYPE
 #include "utils/common/msg.h"		// WARN
+#include "libknot/dname.h"
 
 #define IPV4_REVERSE_DOMAIN	"in-addr.arpa."
 #define IPV6_REVERSE_DOMAIN	"ip6.arpa."
+
+static knot_dname_t* create_fqdn_from_str(const char *str, size_t len)
+{
+	knot_dname_t *d = NULL;
+	if (str[len - 1] != '.') {
+		char *fqdn = strcdup(str, ".");
+		d = knot_dname_new_from_str(fqdn, len + 1, NULL);
+		free(fqdn);
+	} else {
+		d = knot_dname_new_from_str(str, len, NULL);
+	}
+	return d;
+}
 
 query_t* query_create(const char *name, const uint16_t type)
 {
@@ -227,3 +242,56 @@ int params_parse_num(const char *value, uint32_t *dst)
 	return KNOT_EOK;
 }
 
+int params_parse_tsig(const char *value, knot_key_t *key)
+{
+	/* Check for previous key. */
+	if (key->name) {
+		WARN("TSIG key already set, ignoring '%s'\n", value);
+		return KNOT_EOK;
+	}
+	
+	char *h = strdup(value);
+	if (!h) {
+		return KNOT_ENOMEM;
+	}
+	
+	/* Separate to avoid multiple allocs. */
+	char *k = NULL, *s = NULL;
+	if ((k = (char*)strchr(h, ':'))) { /* Second part - NAME|SECRET */
+		*k++ = '\0';               /* String separator */
+		s = (char*)strchr(k, ':'); /* Thirt part - |SECRET */
+	}
+	
+	/* Determine algorithm. */
+	key->algorithm = KNOT_TSIG_ALG_HMAC_MD5;
+	if (s) {
+		*s++ = '\0';               /* Last part separator */
+		knot_lookup_table_t *alg = NULL;
+		alg = knot_lookup_by_name(tsig_alg_table, h);
+		if (alg) {
+			key->algorithm = alg->id;
+		} else {
+			free(h);
+			ERR("invalid TSIG algorithm name '%s'\n", h);
+			return KNOT_EINVAL;
+		}
+	} else {
+		s = k; /* Ignore first part, push down. */
+		k = h;
+	}
+	
+	/* Parse key name. */
+	key->name = create_fqdn_from_str(k, strlen(k));
+	key->secret = strdup(s);
+	free(h);
+	
+	/* Check name and secret. */
+	if (!key->name || !key->secret) {
+		knot_dname_free(&key->name); /* Sets to NULL */
+		free(key->secret);
+		key->secret = NULL;
+		return KNOT_EINVAL;
+	}
+	
+	return KNOT_EOK;
+}
