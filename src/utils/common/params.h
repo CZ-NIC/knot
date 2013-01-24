@@ -20,7 +20,7 @@
  *
  * \brief Common utils parameters processing.
  *
- * \addtogroup utils
+ * \addtogroup knot_utils
  * @{
  */
 

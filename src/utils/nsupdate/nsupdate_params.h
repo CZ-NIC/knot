@@ -38,8 +38,8 @@
 /*! Parser init string. */
 #define PARSER_INIT_STR "$ORIGIN %s\n$TTL %u\n"
 
-/* nsupdate-specific params data */
-typedef struct nsupdate_params_t {
+/*! \brief nsupdate-specific params data. */
+typedef struct {
 	/*!< List of files with query data. */
 	list		qfiles;
 	/*!< Current zone. */

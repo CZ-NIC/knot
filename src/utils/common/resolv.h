@@ -20,7 +20,7 @@
  *
  * \brief resolv.conf processing.
  *
- * \addtogroup utils
+ * \addtogroup knot_utils
  * @{
  */
 

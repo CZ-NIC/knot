@@ -30,6 +30,7 @@ config.h
 config.h.in
 samples/knot.sample.conf
 src/stamp-*
+html/
 # Generated sources
 src/*.c
 src/*.h

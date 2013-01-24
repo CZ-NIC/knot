@@ -20,7 +20,7 @@
  *
  * \brief dig executives.
  *
- * \addtogroup utils
+ * \addtogroup knot_utils
  * @{
  */
 

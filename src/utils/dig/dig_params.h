@@ -20,7 +20,7 @@
  *
  * \brief Dig command line parameters.
  *
- * \addtogroup knot
+ * \addtogroup knot_utils
  * @{
  */
 
@@ -29,7 +29,10 @@
 
 #include "utils/common/params.h"	// params_t
 
-
+/*! \brief dig-specific params data. */
+typedef struct {
+} dig_params_t;
+#define DIG_PARAM(p) ((dig_params_t*)p->d)
 
 int host_params_parse(params_t *params, int argc, char *argv[]);
 void host_params_clean(params_t *params);

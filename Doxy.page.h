@@ -18,6 +18,9 @@
 \defgroup ctl               Control utility
 \defgroup zone-load-dump    Zone loading and dumping
 \defgroup xfr               Zone transfers
+\defgroup zone_scanner      Zone scanner (core)
+\defgroup zone_scanner_test Zone scanner testing environment
+\defgroup knot_utils        DNS utilities like host, dig and nsupdate
 
 \mainpage Knot API documentation.
 
@@ -76,6 +79,8 @@ $ make pdf
 <h2>Zone processing</h2>
 - \ref zoneparser
 - \ref zone-load-dump
+- \ref zone_scanner
+- \ref zone_scanner_test
 
 <h2>Common library</h2>
 - \ref common_lib
@@ -84,4 +89,7 @@ $ make pdf
 <h2>Other modules</h2>
 - \ref tests
 - \ref ctl
+
+<h2>DNS utilities</h2>
+- \ref knot_utils
  */

@@ -22,7 +22,7 @@
  *
  * \note Valid until the new libknot API is finished.
  *
- * \addtogroup utils
+ * \addtogroup knot_utils
  * @{
  */
 

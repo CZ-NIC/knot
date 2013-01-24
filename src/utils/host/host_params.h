@@ -20,7 +20,7 @@
  *
  * \brief host command line parameters.
  *
- * \addtogroup utils
+ * \addtogroup knot_utils
  * @{
  */
 

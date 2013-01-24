@@ -20,7 +20,7 @@
  *
  * \brief Simple output formatting framework.
  *
- * \addtogroup utils
+ * \addtogroup knot_utils
  * @{
  */
 

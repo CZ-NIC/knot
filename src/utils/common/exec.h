@@ -20,7 +20,7 @@
  *
  * \brief dig/host executives
  *
- * \addtogroup utils
+ * \addtogroup knot_utils
  * @{
  */
 

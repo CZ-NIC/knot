@@ -20,7 +20,7 @@
  *
  * \brief Networking abstraction for utilities.
  *
- * \addtogroup utils
+ * \addtogroup knot_utils
  * @{
  */
 
