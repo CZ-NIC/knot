@@ -160,7 +160,7 @@ int nsupdate_params_parse(params_t *params, int argc, char *argv[])
 	server_t *srv = TAIL(params->servers);
 
 	/* Command line options processing. */
-	while ((opt = getopt(argc, argv, "dDvp:t:r:y:")) != -1) {
+	while ((opt = getopt(argc, argv, "dDvp:t:r:y:k:")) != -1) {
 		switch (opt) {
 		case 'd':
 		case 'D': /* Extra debugging. */
@@ -188,6 +188,10 @@ int nsupdate_params_parse(params_t *params, int argc, char *argv[])
 			break;
 		case 'y':
 			ret = params_parse_tsig(optarg, &params->key);
+			if (ret != KNOT_EOK) return ret;
+			break;
+		case 'k':
+			ret = params_parse_keyfile(optarg, &params->key);
 			if (ret != KNOT_EOK) return ret;
 			break;
 		default:

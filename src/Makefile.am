@@ -41,6 +41,8 @@ kdig_SOURCES =					\
 	utils/common/resolv.h			\
 	utils/common/netio.c			\
 	utils/common/netio.h			\
+	utils/common/token.c			\
+	utils/common/token.h			\
 	utils/common/rr-serialize.h		\
 	utils/common/rr-serialize.c		\
 	utils/dig/dig_main.c			\
@@ -60,6 +62,8 @@ khost_SOURCES =					\
 	utils/common/resolv.h			\
 	utils/common/netio.c			\
 	utils/common/netio.h			\
+	utils/common/token.c			\
+	utils/common/token.h			\
 	utils/common/rr-serialize.h		\
 	utils/common/rr-serialize.c		\
 	utils/host/host_main.c			\
@@ -81,6 +85,8 @@ knsupdate_SOURCES =				\
 	utils/common/resolv.h			\
 	utils/common/netio.c			\
 	utils/common/netio.h			\
+	utils/common/token.c			\
+	utils/common/token.h			\
 	utils/common/rr-serialize.h		\
 	utils/common/rr-serialize.c		\
 	utils/common/exec.c			\

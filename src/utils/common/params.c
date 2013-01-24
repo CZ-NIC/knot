@@ -14,8 +14,14 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+/* FreeBSD POSIX2008 getline() */
+#ifndef _WITH_GETLINE
+ #define _WITH_GETLINE
+#endif
+
 #include "utils/common/params.h"
 
+#include <stdio.h>
 #include <stdlib.h>			// free
 #include <netinet/in.h>                 // in_addr
 #include <arpa/inet.h>			// inet_pton
@@ -26,6 +32,8 @@
 #include "libknot/util/descriptor.h"	// KNOT_RRTYPE
 #include "utils/common/msg.h"		// WARN
 #include "libknot/dname.h"		// knot_dname_t
+#include "utils/common/token.h"
+#include "libknot/dname.h"
 
 #define IPV4_REVERSE_DOMAIN	"in-addr.arpa."
 #define IPV6_REVERSE_DOMAIN	"ip6.arpa."
@@ -41,6 +49,75 @@ static knot_dname_t* create_fqdn_from_str(const char *str, size_t len)
 		d = knot_dname_new_from_str(str, len, NULL);
 	}
 	return d;
+}
+
+/* Table of known keys in private-key-format */
+static const char *pkey_tbl[] = {
+        "\x09" "Activate:",
+        "\x0a" "Algorithm:",
+        "\x05" "Bits:",
+        "\x08" "Created:",
+        "\x04" "Key:",
+        "\x13" "Private-key-format:",
+        "\x08" "Publish:",
+        NULL
+};
+enum {
+	T_PKEY_FORMAT = 0,
+	T_PKEY_ALGO,
+	T_PKEY_KEY,
+	T_PKEY_BITS,
+	T_PKEY_CREATED,
+	T_PKEY_PUBLISH,
+	T_PKEY_ACTIVATE
+};
+
+static int params_parse_keyline(char *lp, int len, void *arg)
+{
+	/* Discard nline */
+	if (lp[len - 1] == '\n') {
+		lp[len - 1] = '\0';
+		len -= 1;
+	}
+	
+	knot_key_t *key = (knot_key_t *)arg;
+	int lpm = -1;
+	int bp = 0;
+	if ((bp = tok_scan(lp, pkey_tbl, &lpm)) < 0) {
+		DBG("%s: unknown token on line '%s', ignoring\n", __func__, lp);
+		return KNOT_EOK;
+	}
+	
+	/* Found valid key. */
+	const char *k = pkey_tbl[bp];
+	char *v = (char *)tok_skipspace(lp + TOK_L(k));
+	size_t vlen = 0;
+	uint32_t n = 0;
+	switch(bp) {
+	case T_PKEY_FORMAT:
+		DBG("%s: file format '%s'\n", __func__, v);
+		break;
+	case T_PKEY_ALGO:
+		vlen = strcspn(v, SEP_CHARS);
+		v[vlen] = '\0'; /* Term after first tok */
+		if (params_parse_num(v, &n) != KNOT_EOK) {
+			return KNOT_EPARSEFAIL;
+		}
+		DBG("%s: algo = %u\n", __func__, n);
+		break;
+	case T_PKEY_KEY:
+		if (key->secret) free(key->secret);
+		key->secret = strndup(v, len);
+		DBG("%s: secret = '%s'\n", __func__, key->secret);
+		break;
+	case T_PKEY_BITS:
+		break;
+	default:
+		DBG("%s: %s = '%s'\n", __func__, TOK_S(k), v);
+		break;
+	}
+	
+	return KNOT_EOK;
 }
 
 int parse_class(const char *rclass, uint16_t *class_num)
@@ -268,4 +345,36 @@ int params_parse_tsig(const char *value, knot_key_t *key)
 	free(h);
 	
 	return KNOT_EOK;
+}
+
+int params_parse_keyfile(const char *filename, knot_key_t *key)
+{
+	int ret = KNOT_EOK;
+	
+	/* Fetch keyname from filename. */
+	const char *bn = strrchr(filename, '/');
+	if (!bn) bn = filename;
+	else     ++bn; /* Skip final slash */
+	if (*bn == 'K') ++bn; /* Skip K */
+	const char* np = strchr(bn, '+');
+	if (np) { /* Attempt to extract dname */
+		key->name = knot_dname_new_from_str(bn, np-bn, NULL);
+	}
+	if (!key->name) {
+		ERR("keyfile not in format K{name}.+157+{rnd}.private\n");
+		return KNOT_ERROR;
+	}
+	
+	FILE *fp = fopen(filename, "r"); /* Open file */
+	if (!fp) {
+		ERR("could not open key file '%s': %s\n",
+		    filename, strerror(errno));
+		return KNOT_ERROR;
+	}
+	
+	/* Parse lines. */
+	ret = tok_process_lines(fp, params_parse_keyline, key);
+	
+	fclose(fp);
+	return ret;
 }

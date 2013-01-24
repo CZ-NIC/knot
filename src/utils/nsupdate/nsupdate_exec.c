@@ -14,22 +14,19 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-/* FreeBSD POSIX2008 getline() */
-#ifndef _WITH_GETLINE
- #define _WITH_GETLINE
-#endif
-
 #include <stdio.h>
 #include <errno.h>
-#include <ctype.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <ctype.h>
 #include <sys/socket.h>
 
 #include "utils/nsupdate/nsupdate_exec.h"
+#include "utils/common/params.h"
 #include "utils/common/msg.h"
 #include "utils/common/exec.h"
 #include "utils/common/netio.h"
+#include "utils/common/token.h"
 #include "common/errcode.h"
 #include "common/mempattern.h"
 #include "libknot/dname.h"
@@ -64,8 +61,6 @@ int cmd_zone(const char* lp, params_t *params);
  * This way we could identify command byte-per-byte and
  * cancel early if the next is lexicographically greater.
  */
-#define CMD_S(x) ((x)+1)
-#define CMD_L(x) ((unsigned char)(x)[0])
 const char* cmd_array[] = {
 	"\x3" "add",
 	"\x6" "answer",
@@ -129,12 +124,8 @@ enum {
 /* RR parser flags */
 enum {
 	PARSE_NODEFAULT = 1 << 0, /* Do not fill defaults. */
-	PARSE_NAMEONLY  = 1 << 1, /* Parse only name. */
+	PARSE_NAMEONLY  = 1 << 1  /* Parse only name. */
 };
-
-static inline const char* skipspace(const char *lp) {
-	while (isspace(*lp)) ++lp; return lp;
-}
 
 static int dname_isvalid(const char *lp, size_t len) {
 	knot_dname_t *dn = knot_dname_new_from_str(lp, len, NULL);
@@ -189,7 +180,7 @@ static int parse_partial_rr(scanner_t *s, const char *lp, unsigned flags) {
 	
 	s->r_owner_length = knot_dname_size(owner);
 	memcpy(s->r_owner, knot_dname_name(owner), s->r_owner_length);
-	lp = skipspace(lp + len);
+	lp = tok_skipspace(lp + len);
 	
 	/* Initialize */
 	s->r_type = KNOT_RRTYPE_ANY;
@@ -214,7 +205,7 @@ static int parse_partial_rr(scanner_t *s, const char *lp, unsigned flags) {
 	if (ttl >= 0 && np && (*np == '\0' || isspace(*np))) {
 		s->r_ttl = ttl;
 		DBG("%s: parsed ttl=%lu\n", __func__, ttl);
-		lp = skipspace(np);
+		lp = tok_skipspace(np);
 	}
 	
 	len = strcspn(lp, SEP_CHARS); /* Try to find class */
@@ -224,7 +215,7 @@ static int parse_partial_rr(scanner_t *s, const char *lp, unsigned flags) {
 	if (v > 0) {
 		s->r_class = v;
 		DBG("%s: parsed class=%u\n", __func__, s->r_class);
-		lp = skipspace(lp + len);
+		lp = tok_skipspace(lp + len);
 	}
 	
 	/* Class must not differ from specified. */
@@ -243,7 +234,7 @@ static int parse_partial_rr(scanner_t *s, const char *lp, unsigned flags) {
 	if (v > 0) {
 		s->r_type = v;
 		DBG("%s: parsed type=%u '%s'\n", __func__, s->r_type, b2);
-		lp = skipspace(lp + len);
+		lp = tok_skipspace(lp + len);
 	}
 	
 	/* Remainder */
@@ -280,7 +271,7 @@ static server_t *parse_host(const char *lp, const char* default_port)
 	DBG("%s: parsed addr: %s\n", __func__, addr);
 	
 	/* Store port/service if present. */
-	lp = skipspace(lp + len);
+	lp = tok_skipspace(lp + len);
 	if (*lp == '\0') {
 		srv = server_create(addr, default_port);
 		free(addr);
@@ -418,107 +409,29 @@ static int pkt_sendrecv(params_t *params, server_t *srv,
 	return rb;
 }
 
-/*!
- * \brief Scan for matching token described by a match table.
- *
- * Table consists of strings, prefixed with 1B length.
- *
- * \param fp File with contents to be read.
- * \param tbl Match description table.
- * \param lpm Pointer to longest prefix match.
- * \retval index to matching record.
- * \retval -1 if no match is found, lpm may be set to longest prefix match.
- */
-static int tok_scan(const char* lp, const char **tbl, int *lpm)
+static int nsupdate_process_line(char *lp, int len, void *arg)
 {
-	const char *prefix = lp; /* Ptr to line start. */
-	int i = 0, pl = 1;       /* Match index, prefix length. */
-	unsigned char len = 0;   /* Read length. */
-	for(;;) {
-		const char *tok = tbl[i];
-		if (*lp == '\0' || isspace(*lp)) {
-			if (tok && CMD_L(tok) == len) { /* Consumed whole w? */
-				return i; /* Identifier */
-			} else { /* Word is shorter than cmd? */
-				break;
-			}
-		}
-
-		/* Find next prefix match. */
-		++len;
-		while (tok) {
-			if (CMD_L(tok) >= len) {  /* Is prefix of current token */
-				if (*lp < tok[pl]) {  /* Terminate early. */
-					tok = NULL;
-					break; /* No match could be found. */
-				}
-				if (*lp == tok[pl]) { /* Match */
-					if(lpm) *lpm = i;
-					++pl;
-					break;
-				}
-			}
-
-			/* No early cut, no match - seek next. */
-			while ((tok = tbl[++i]) != NULL) {
-				if (CMD_L(tok) >= len &&
-				    memcmp(CMD_S(tok), prefix, len) == 0) {
-					break;
-				}
-			}
-		}
-
-		if (tok == NULL) {
-			break; /* All tokens exhausted. */
-		} else {
-			++lp;  /* Next char */
-		}
-	}
-
-	return -1;
-}
-
-static int tok_find(const char *lp, const char **tbl)
-{
-	int lpm = -1;
-	int bp = 0;
-	if ((bp = tok_scan(lp, tbl, &lpm)) < 0) {
-		if (lpm > -1) {
-			ERR("unexpected literal: '%s', did you mean '%s' ?\n",
-			    lp, CMD_S(tbl[lpm]));
-		} else {
-			ERR("unexpected literal: '%s'\n", lp);
-		}
-		ERR("syntax error\n");
-		return KNOT_EPARSEFAIL;
+	params_t *params = (params_t *)arg;
+	
+	if (lp[len - 1] == '\n') lp[len - 1] = '\0'; /* Discard nline */
+	int ret = tok_find(lp, cmd_array);
+	if (ret < 0) return ret; /* Syntax error */
+	
+	const char *cmd = cmd_array[ret];
+	const char *val = tok_skipspace(lp + TOK_L(cmd));
+	ret = cmd_handle[ret](val, params);
+	if (ret != KNOT_EOK) {
+		ERR("operation '%s' failed\n", TOK_S(cmd));
+		DBG("reason - %s\n", knot_strerror(ret));
 	}
 	
-	return bp;
+	return ret;
 }
 
 static int nsupdate_process(params_t *params, FILE *fp)
 {
 	/* Process lines. */
-	int ret = KNOT_EOK;
-	char *buf = NULL;
-	size_t buflen = 0;
-	ssize_t rb = 0;
-	while ((rb = getline(&buf, &buflen, fp)) != -1) {
-		if (buf[rb - 1] == '\n') buf[rb - 1] = '\0'; /* Discard nline */
-		ret = tok_find(buf, cmd_array);
-		if (ret < 0) {
-			break; /* Syntax error */
-		} else {
-			const char *cmd = cmd_array[ret];
-			const char *lp = skipspace(buf + CMD_L(cmd));
-			ret = cmd_handle[ret](lp, params);
-			if (ret != KNOT_EOK) {
-				ERR("operation '%s' failed\n", CMD_S(cmd));
-				DBG("reason - %s\n", knot_strerror(ret));
-				break;
-			}
-		}
-	}
+	int ret = tok_process_lines(fp, nsupdate_process_line, params);
 	
 	/* Check for longing query. */
 	nsupdate_params_t *npar = NSUP_PARAM(params);
@@ -529,7 +442,6 @@ static int nsupdate_process(params_t *params, FILE *fp)
 	/* Free last answer. */
 	knot_packet_free(&npar->resp);
 
-	free(buf);
 	return ret;
 }
 
@@ -583,7 +495,7 @@ int cmd_update(const char* lp, params_t *params)
 		return KNOT_EPARSEFAIL;
 	}
 	
-	return h[bp](skipspace(lp + CMD_L(cmd_array[bp])), params);
+	return h[bp](tok_skipspace(lp + TOK_L(cmd_array[bp])), params);
 }
 
 
@@ -713,8 +625,8 @@ int cmd_prereq(const char* lp, params_t *params)
 	if (bp < 0) return bp; /* Syntax error. */
 	
 	const char *tok = pq_array[bp];
-	DBG("%s: type %s\n", __func__, CMD_S(tok));
-	lp = skipspace(lp + CMD_L(tok));
+	DBG("%s: type %s\n", __func__, TOK_S(tok));
+	lp = tok_skipspace(lp + TOK_L(tok));
 	switch(bp) {
 	case PQ_NXDOMAIN:
 	case PQ_YXDOMAIN:
