@@ -274,8 +274,8 @@ int params_parse_tsig(const char *value, knot_key_t *key)
 			DBG("%s: parsed algorithm '%s'\n", __func__, h);
 			key->algorithm = alg->id;
 		} else {
-			free(h);
 			ERR("invalid TSIG algorithm name '%s'\n", h);
+			free(h);
 			return KNOT_EINVAL;
 		}
 	} else {
