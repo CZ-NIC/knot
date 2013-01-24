@@ -20,8 +20,8 @@
 #include "common/errcode.h"		// KNOT_EOK
 
 #include "utils/common/msg.h"		// WARN
-#include "utils/common/params.h"	// params_t
-#include "utils/common/exec.h"		// process_query
+#include "utils/dig/dig_params.h"	// dig_params_t
+#include "utils/dig/dig_exec.h"		// process_query
 
 int host_exec(const params_t *params)
 {
@@ -31,10 +31,12 @@ int host_exec(const params_t *params)
 		return KNOT_EINVAL;
 	}
 
+	dig_params_t *ext_params = DIG_PARAM(params);
+
 	switch (params->operation) {
 	case OPERATION_QUERY:
 		// Loop over query list.
-		WALK_LIST(query, params->queries) {
+		WALK_LIST(query, ext_params->queries) {
 			process_query(params, (query_t *)query);
 		}
 

@@ -42,18 +42,6 @@
 
 #define SEP_CHARS		"\n\t "
 
-/*! \brief Structure containing basic parameters for DNS query. */
-typedef struct {
-	/*!< List node (for list container). */
-	node		n;
-	/*!< Name to query on. */
-	char		*name;
-	/*!< Type number to query on. */
-	uint16_t	type;
-	/*!< SOA serial for XFR. */
-	int64_t         xfr_serial;
-} query_t;
-
 typedef enum {
 	IP_ALL,
 	IP_4,
@@ -92,9 +80,6 @@ typedef enum {
 typedef struct {
 	/*!< List of nameservers to query to. */
 	list		servers;
-	/*!< List of DNS queries to process. */
-	list		queries;
-
 	/*!< Operation mode. */
 	operation_t	operation;
 	/*!< Version of ip protocol to use. */
@@ -126,13 +111,6 @@ typedef struct {
 	/*!< Implementation specific ptr. */
 	void*		d;
 } params_t;
-
-query_t* query_create(const char *name, const uint16_t type);
-
-void query_free(query_t *query);
-
-void query_set_serial(query_t *query, const uint32_t serial);
-
 
 int parse_class(const char *rclass, uint16_t *class_num);
 

@@ -63,8 +63,12 @@ khost_SOURCES =					\
 	utils/common/rr-serialize.h		\
 	utils/common/rr-serialize.c		\
 	utils/host/host_main.c			\
+	utils/dig/dig_params.c			\
+	utils/dig/dig_params.h			\
 	utils/host/host_params.c		\
 	utils/host/host_params.h		\
+	utils/dig/dig_exec.c			\
+	utils/dig/dig_exec.h			\
 	utils/host/host_exec.c			\
 	utils/host/host_exec.h
 

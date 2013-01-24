@@ -25,11 +25,10 @@
 #include "common/errcode.h"		// KNOT_EOK
 #include "libknot/util/descriptor.h"	// KNOT_CLASS_IN
 #include "utils/common/msg.h"		// WARN
-#include "utils/common/params.h"	// parse_class
+#include "utils/dig/dig_params.h"       // dig_params_t
 #include "utils/common/resolv.h"	// get_nameservers
-#include "utils/common/netio.h"
 
-static void host_params_init(params_t *params)
+static int host_params_init(params_t *params)
 {
 	memset(params, 0, sizeof(*params));
 
@@ -38,8 +37,15 @@ static void host_params_init(params_t *params)
 		WARN("can't read any default nameservers\n");
 	}
 
+	// Create dig specific data structure.
+	params->d = calloc(1, sizeof(dig_params_t));
+	if (!params->d) {
+		return KNOT_ENOMEM;
+	}
+	dig_params_t *ext_params = DIG_PARAM(params);
+
 	// Initialize list of queries.
-	init_list(&params->queries);
+	init_list(&ext_params->queries);
 
 	// Default values.
 	params->operation = OPERATION_QUERY;
@@ -54,6 +60,8 @@ static void host_params_init(params_t *params)
 	params->wait = DEFAULT_WAIT_INTERVAL;
 	params->servfail_stop = false;
 	params->format = FORMAT_HOST;
+
+	return KNOT_EOK;
 }
 
 void host_params_clean(params_t *params)
@@ -64,15 +72,20 @@ void host_params_clean(params_t *params)
 		return;
 	}
 
+	dig_params_t *ext_params = DIG_PARAM(params);
+
 	// Clean up server list.
 	WALK_LIST_DELSAFE(n, nxt, params->servers) {
 		server_free((server_t *)n);
 	}
 
 	// Clean up query list.
-	WALK_LIST_DELSAFE(n, nxt, params->queries) {
+	WALK_LIST_DELSAFE(n, nxt, ext_params->queries) {
 		query_free((query_t *)n);
 	}
+
+	// Destroy dig specific structure.
+	free(ext_params);
 
 	// Clean up the structure.
 	memset(params, 0, sizeof(*params));
@@ -126,6 +139,8 @@ static int host_params_parse_name(params_t *params, const char *name)
 	char	*fqd_name = NULL;
 	query_t	*query;
 
+	dig_params_t *ext_params = DIG_PARAM(params);
+
 	// If name is not FQDN, append trailing dot.
 	fqd_name = get_fqd_name(name);
 
@@ -146,7 +161,7 @@ static int host_params_parse_name(params_t *params, const char *name)
 				free(fqd_name);
 				return KNOT_ENOMEM;
 			}
-			add_tail(&params->queries, (node *)query);
+			add_tail(&ext_params->queries, (node *)query);
 		} else {
 			// Add query for name and specified type.
 			query = query_create(fqd_name, params->type_num);
@@ -159,7 +174,7 @@ static int host_params_parse_name(params_t *params, const char *name)
 			if (params->type_num == KNOT_RRTYPE_IXFR) {
 				query_set_serial(query, params->xfr_serial);
 			}
-			add_tail(&params->queries, (node *)query);
+			add_tail(&ext_params->queries, (node *)query);
 		}
 	// RR type is unknown, use defaults.
 	} else {
@@ -170,7 +185,7 @@ static int host_params_parse_name(params_t *params, const char *name)
 				free(fqd_name);
 				return KNOT_ENOMEM;
 			}
-			add_tail(&params->queries, (node *)query);
+			add_tail(&ext_params->queries, (node *)query);
 
 			// Add query for name and type AAAA.
 			query = query_create(fqd_name, KNOT_RRTYPE_AAAA);
@@ -178,7 +193,7 @@ static int host_params_parse_name(params_t *params, const char *name)
 				free(fqd_name);
 				return KNOT_ENOMEM;
 			}
-			add_tail(&params->queries, (node *)query);
+			add_tail(&ext_params->queries, (node *)query);
 
 			// Add query for name and type MX.
 			query = query_create(fqd_name, KNOT_RRTYPE_MX);
@@ -186,7 +201,7 @@ static int host_params_parse_name(params_t *params, const char *name)
 				free(fqd_name);
 				return KNOT_ENOMEM;
 			}
-			add_tail(&params->queries, (node *)query);
+			add_tail(&ext_params->queries, (node *)query);
 		} else {
 			// Add reverse query for address.
 			query = query_create(reverse, KNOT_RRTYPE_PTR);
@@ -195,7 +210,7 @@ static int host_params_parse_name(params_t *params, const char *name)
 				free(fqd_name);
 				return KNOT_ENOMEM;
 			}
-			add_tail(&params->queries, (node *)query);
+			add_tail(&ext_params->queries, (node *)query);
 		}
 	}
 
@@ -242,7 +257,9 @@ int host_params_parse(params_t *params, int argc, char *argv[])
 		return KNOT_EINVAL;
 	}
 
-	host_params_init(params);
+	if (host_params_init(params) != KNOT_EOK) {
+		return KNOT_ERROR;
+	}
 
 	// Command line options processing.
 	while ((opt = getopt(argc, argv, "46aCdlrsTvwc:R:t:W:")) != -1) {

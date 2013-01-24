@@ -25,7 +25,7 @@
 #include "common/mempattern.h"		// strcdup
 #include "libknot/util/descriptor.h"	// KNOT_RRTYPE
 #include "utils/common/msg.h"		// WARN
-#include "libknot/dname.h"
+#include "libknot/dname.h"		// knot_dname_t
 
 #define IPV4_REVERSE_DOMAIN	"in-addr.arpa."
 #define IPV6_REVERSE_DOMAIN	"ip6.arpa."
@@ -41,39 +41,6 @@ static knot_dname_t* create_fqdn_from_str(const char *str, size_t len)
 		d = knot_dname_new_from_str(str, len, NULL);
 	}
 	return d;
-}
-
-query_t* query_create(const char *name, const uint16_t type)
-{
-	// Create output structure.
-	query_t *query = calloc(1, sizeof(query_t));
-
-	// Check output.
-	if (query == NULL) {
-		return NULL;
-	}
-
-	// Fill output.
-	query->name = strdup(name);
-	query->type = type;
-	query->xfr_serial = -1;
-
-	return query;
-}
-
-void query_set_serial(query_t *query, const uint32_t serial)
-{
-	query->xfr_serial = serial;
-}
-
-void query_free(query_t *query)
-{
-	if (query == NULL) {
-		return;
-	}
-
-	free(query->name);
-	free(query);
 }
 
 int parse_class(const char *rclass, uint16_t *class_num)

@@ -18,7 +18,7 @@
  *
  * \author Daniel Salzman <daniel.salzman@nic.cz>
  *
- * \brief Dig command line parameters.
+ * \brief dig command line parameters.
  *
  * \addtogroup knot_utils
  * @{
@@ -29,13 +29,31 @@
 
 #include "utils/common/params.h"	// params_t
 
+/*! \brief Structure containing basic parameters for DNS query. */
+typedef struct {
+	/*!< List node (for list container). */
+	node		n;
+	/*!< Name to query on. */
+	char		*name;
+	/*!< Type number to query on. */
+	uint16_t	type;
+	/*!< SOA serial for XFR. */
+	int64_t		xfr_serial;
+} query_t;
+
 /*! \brief dig-specific params data. */
 typedef struct {
+	/*!< List of DNS queries to process. */
+	list		queries;
 } dig_params_t;
 #define DIG_PARAM(p) ((dig_params_t*)p->d)
 
-int host_params_parse(params_t *params, int argc, char *argv[]);
-void host_params_clean(params_t *params);
+query_t* query_create(const char *name, const uint16_t type);
+void query_free(query_t *query);
+void query_set_serial(query_t *query, const uint32_t serial);
+
+int dig_params_parse(params_t *params, int argc, char *argv[]);
+void dig_params_clean(params_t *params);
 
 #endif // _DIG__DIG_PARAMS_H_
 
