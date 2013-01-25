@@ -104,11 +104,11 @@ typedef struct {
 	int32_t		wait;
 	/*!< Stop quering if servfail. */
 	bool		servfail_stop;
-	/*!< Verbose mode. */
+	/*!< Output format. */
 	format_t	format;
 	/*!< TSIG key used. */
 	knot_key_t	key;
-	/*!< Implementation specific ptr. */
+	/*!< Implementation specific data. */
 	void*		d;
 } params_t;
 

@@ -87,7 +87,7 @@ static int nsupdate_params_init(params_t *params)
 	add_tail(&params->servers, (node *)srv);
 	
 	/* Initialize RR parser. */
-	npar->rrp = scanner_create("-");
+	npar->rrp = scanner_create(".");
 	if (!npar->rrp) return KNOT_ENOMEM;
 	npar->rrp->process_record = parse_rr;
 	npar->rrp->process_error = parse_err;

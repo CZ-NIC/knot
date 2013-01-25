@@ -227,7 +227,12 @@ struct scanner {
 /*!
  * \brief Creates zone scanner structure.
  *
- * \param file_name	Zone file name.
+ * \note After creation scanner structure, it is necessary to set next items:
+ *       process_record, process_error, default_class, default_ttl, zone_origin.
+ *
+ * \param file_name	Zone file name. If parsing from memory use arbitrary
+ *                      directory name (like "."), because relative includes
+ *                      are considered to this file.
  *
  * \retval scanner	if success.
  * \retval 0		if error.
