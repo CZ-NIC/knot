@@ -20,7 +20,7 @@
  *
  * \brief String tokenizer and simple scanner.
  *
- * \addtogroup utils
+ * \addtogroup knot_utils
  * @{
  */
 
