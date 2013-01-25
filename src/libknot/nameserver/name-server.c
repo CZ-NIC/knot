@@ -2043,16 +2043,11 @@ static int ns_answer_from_zone(const knot_zone_contents_t *zone,
 	uint16_t qtype = knot_packet_qtype(resp);
 
 search:
-#ifdef USE_HASH_TABLE
-	find_ret = knot_zone_contents_find_dname_hash(zone, qname, &node,
-	                                                &closest_encloser);
-#else
 	find_ret = knot_zone_contents_find_dname(zone, qname, &node,
 	                                          &closest_encloser, &previous);
 	node = knot_node_current(node);
 	closest_encloser = knot_node_current(closest_encloser);
 	previous = knot_node_current(previous);
-#endif
 	if (find_ret == KNOT_EINVAL) {
 		return NS_ERR_SERVFAIL;
 	}
@@ -3951,8 +3946,9 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	
 	dbg_ns("ns_process_axfrin: incoming packet, wire size: %zu\n",
 	       xfr->wire_size);
-
-	int ret = xfrin_process_axfr_packet(xfr);
+	assert(0);
+	int ret = 0;
+//	int ret = xfrin_process_axfr_packet(xfr); TODO
 
 	if (ret > 0) { // transfer finished
 		dbg_ns("ns_process_axfrin: AXFR finished, zone created.\n");
@@ -4039,8 +4035,9 @@ int knot_ns_switch_zone(knot_nameserver_t *nameserver,
 	} else {
 		zone->zone = z;
 	}
-
-	int ret = xfrin_switch_zone(z, zone, xfr->type);
+	
+	assert(0);
+	int ret = 0;//xfrin_switch_zone(z, zone, xfr->type); TODO
 
 dbg_ns_exec_verb(
 	dbg_ns_verb("Zone db contents: (zone count: %zu)\n",

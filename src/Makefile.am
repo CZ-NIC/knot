@@ -35,6 +35,8 @@ knot_zcompile_SOURCES =				\
 	libknot/util/tolower.h			\
 	libknot/util/tolower.c			\
 	libknot/util/wire.h			\
+	libknot/nameserver/name-server.h	\
+	libknot/nameserver/name-server.c	\
 	libknot/zone/zone.c			\
 	libknot/zone/zone-contents.c		\
 	libknot/zone/zone-tree.c		\
@@ -147,6 +149,8 @@ unittests_libknot_SOURCES =			\
 	libknot/util/wire.h			\
 	libknot/zone/zone.c			\
 	libknot/zone/zone-contents.c		\
+	libknot/nameserver/name-server.h	\
+	libknot/nameserver/name-server.c	\
 	libknot/zone/zone-tree.c		\
 	libknot/zone/zone-tree.h		\
 	libknot/zone/node.h			\
