@@ -125,6 +125,12 @@ knot_zcompile_SOURCES =				\
 	zscanner/scanner_functions.c
 	
 unittests_libknot_SOURCES =			\
+	libknot/packet/packet.h			\
+	libknot/packet/packet.c			\
+	libknot/packet/query.c			\
+	libknot/packet/query.h			\
+	libknot/packet/response.h		\
+	libknot/packet/response.c		\
 	libknot/rrset.c				\
 	libknot/rrset.h				\
 	common/slab/slab.c			\
@@ -139,10 +145,6 @@ unittests_libknot_SOURCES =			\
 	libknot/util/tolower.h			\
 	libknot/util/tolower.c			\
 	libknot/util/wire.h			\
-	libknot/packet/packet.h			\
-	libknot/packet/packet.c			\
-	libknot/packet/query.h			\
-	libknot/packet/query.c			\
 	libknot/zone/zone.c			\
 	libknot/zone/zone-contents.c		\
 	libknot/zone/zone-tree.c		\

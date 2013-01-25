@@ -24,8 +24,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_response_H_
-#define _KNOT_response_H_
+#ifndef _KNOT_RESPONSE_H_
+#define _KNOT_RESPONSE_H_
 
 #include <stdint.h>
 #include <string.h>

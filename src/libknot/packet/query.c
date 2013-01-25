@@ -144,7 +144,7 @@ int knot_query_add_rrset_authority(knot_packet_t *query,
 	endp -= query->tsig_size;
 	
 	size_t written = 0;
-	int rr_count = 0;
+	uint16_t rr_count = 0;
 	knot_rrset_to_wire(rrset, startp, &written, query->max_size,
 	                   &rr_count, NULL);
 	query->size += written;

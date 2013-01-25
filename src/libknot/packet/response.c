@@ -523,9 +523,10 @@ dbg_response_exec(
 	param.compr_cs = compr_cs;
 	param.owner_tmp = resp->owner_tmp;
 	param.compressed_dnames = &resp->compression;
+	uint16_t rr_count = 0;
 	//TODO size
 	int rrs = knot_rrset_to_wire(rrset, pos, &size, max_size,
-	                             resp->size, &param);
+	                             &rr_count, &param);
 
 	if (rrs >= 0) {
 		rrsets[(*rrset_count)++] = rrset;

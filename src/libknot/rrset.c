@@ -27,6 +27,7 @@
 #include "util/debug.h"
 #include "util/utils.h"
 #include "packet/response.h"
+#include "util/wire.h"
 
 static const size_t KNOT_RESPONSE_MAX_PTR = 16383;
 
@@ -738,6 +739,8 @@ dbg_rrset_exec_detail(
 			offset += sizeof(knot_dname_t *);
 		}
 	}
+	
+	knot_wire_write_u16(rdlength_pos, rdlength);
 
 	*rr_size = size;
 	return KNOT_EOK;
@@ -783,11 +786,11 @@ static int knot_rrset_to_wire_aux(const knot_rrset_t *rrset, uint8_t **pos,
 
 	const rdata_descriptor_t *desc = get_rdata_descriptor(rrset->type);
 	assert(desc);
-	uint16_t rdlength = 0;
 
 	for (uint16_t i = 0; i < rrset->rdata_count; i++) {
-		int ret = knot_rrset_rdata_to_wire_one(rrset, i, size,
-		                                       pos, max_size, comp);
+		int ret = knot_rrset_rdata_to_wire_one(rrset, i,
+		                                       pos, max_size, &size,
+		                                       comp);
 		if (ret != KNOT_EOK) {
 			dbg_rrset("rrset: to_wire: Cannot convert RR. "
 			          "Reason: %s.\n",
