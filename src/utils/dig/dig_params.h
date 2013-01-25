@@ -27,6 +27,8 @@
 #ifndef _DIG__DIG_PARAMS_H_
 #define _DIG__DIG_PARAMS_H_
 
+#include <stdbool.h>			// bool
+
 #include "utils/common/params.h"	// params_t
 
 /*! \brief Structure containing basic parameters for DNS query. */
@@ -45,6 +47,8 @@ typedef struct {
 typedef struct {
 	/*!< List of DNS queries to process. */
 	list		queries;
+	/*!< Recursion desiredflag. */
+	bool		rd_flag;
 } dig_params_t;
 #define DIG_PARAM(p) ((dig_params_t*)p->d)
 

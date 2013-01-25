@@ -77,9 +77,6 @@ static int dig_params_init(params_t *params)
 	}
 	dig_params_t *ext_params = DIG_PARAM(params);
 
-	// Initialize list of queries.
-	init_list(&ext_params->queries);
-
 	// Default values.
 	params->operation = OPERATION_QUERY;
 	params->ip = IP_ALL;
@@ -88,11 +85,16 @@ static int dig_params_init(params_t *params)
 	params->class_num = KNOT_CLASS_IN;
 	params->type_num = -1;
 	params->xfr_serial = -1;
-	params->recursion = true;
 	params->retries = 1;
 	params->wait = DEFAULT_WAIT_INTERVAL;
 	params->servfail_stop = false;
 	params->format = FORMAT_VERBOSE;
+
+	// Initialize list of queries.
+	init_list(&ext_params->queries);
+
+	// Extended params.
+	ext_params->rd_flag = true;
 
 	return KNOT_EOK;
 }
@@ -141,9 +143,9 @@ static void dig_params_flag_axfr(params_t *params)
 	params->type_num = KNOT_RRTYPE_AXFR;
 }
 
-static void dig_params_flag_nonrecursive(params_t *params)
+static void dig_params_flag_norecurse(params_t *params)
 {
-	params->recursion = false;
+	DIG_PARAM(params)->rd_flag = false;
 }
 
 static void dig_params_flag_ipv4(params_t *params)
@@ -317,7 +319,7 @@ int dig_params_parse(params_t *params, int argc, char *argv[])
 			dig_params_flag_axfr(params);
 			break;
 		case 'r':
-			dig_params_flag_nonrecursive(params);
+			dig_params_flag_norecurse(params);
 			break;
 		case 's':
 			dig_params_flag_servfail(params);

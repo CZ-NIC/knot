@@ -38,6 +38,8 @@ static knot_packet_t* create_query_packet(const params_t *params,
 {
 	knot_question_t q;
 
+	dig_params_t *ext_params = DIG_PARAM(params);
+
 	// Set packet buffer size.
 	int max_size = MAX_PACKET_SIZE;
 	if (get_socktype(params, query->type) != SOCK_STREAM) {
@@ -54,7 +56,7 @@ static knot_packet_t* create_query_packet(const params_t *params,
 	}
 
 	// Set recursion bit to wireformat.
-	if (params->recursion == true) {
+	if (ext_params->rd_flag == true) {
 		knot_wire_set_rd(packet->wireformat);
 	} else {
 		knot_wire_flags_clear_rd(packet->wireformat);

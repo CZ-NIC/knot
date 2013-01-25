@@ -44,9 +44,6 @@ static int host_params_init(params_t *params)
 	}
 	dig_params_t *ext_params = DIG_PARAM(params);
 
-	// Initialize list of queries.
-	init_list(&ext_params->queries);
-
 	// Default values.
 	params->operation = OPERATION_QUERY;
 	params->ip = IP_ALL;
@@ -55,11 +52,16 @@ static int host_params_init(params_t *params)
 	params->class_num = KNOT_CLASS_IN;
 	params->type_num = -1;
 	params->xfr_serial = -1;
-	params->recursion = true;
 	params->retries = 1;
 	params->wait = DEFAULT_WAIT_INTERVAL;
 	params->servfail_stop = false;
 	params->format = FORMAT_HOST;
+
+	// Initialize list of queries.
+	init_list(&ext_params->queries);
+
+	// Extended params.
+	ext_params->rd_flag = true;
 
 	return KNOT_EOK;
 }
@@ -110,7 +112,7 @@ static void host_params_flag_axfr(params_t *params)
 
 static void host_params_flag_nonrecursive(params_t *params)
 {
-	params->recursion = false;
+	DIG_PARAM(params)->rd_flag = false;
 }
 
 static void host_params_flag_ipv4(params_t *params)

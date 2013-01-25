@@ -94,8 +94,6 @@ typedef struct {
 	uint32_t	ttl;
 	/*!< Default SOA serial for XFR (32unsigned + -1 uninitialized). */
 	int64_t		xfr_serial;
-	/*!< Use recursion. */
-	bool		recursion;
 	/*!< UDP buffer size. */
 	uint32_t	udp_size;
 	/*!< Number of UDP retries. */
