@@ -681,7 +681,7 @@ static int test_rrset_to_wire()
 		wire_size = 65535;
 		/* Convert to wire. */
 		int ret = knot_rrset_to_wire(&test_rrset_array[i].rrset, wire,
-		                             &wire_size, 65535, &rr_count);
+		                             &wire_size, 65535, &rr_count, NULL);
 		if (ret) {
 			diag("Could not convert RRSet to wire.\n");
 			return 0;
@@ -724,7 +724,7 @@ static int test_rrset_to_wire()
 	/* Check that function does not crash if given small wire. */
 	wire_size = 5; // even header does not fit
 	int ret = knot_rrset_to_wire(&test_rrset_array[0].rrset, wire,
-	                         &wire_size, &rr_count);
+	                         &wire_size, 65535, &rr_count, NULL);
 	if (ret != KNOT_ESPACE) {
 		diag("RRSet was converted to wire even though twe wire was"
 		     " not big enough.\n");
@@ -732,7 +732,7 @@ static int test_rrset_to_wire()
 	}
 	wire_size = 25; // even RDATA do not fit TODO check those values
 	ret = knot_rrset_to_wire(&test_rrset_array[0].rrset, wire,
-	                         &wire_size, &rr_count);
+	                         &wire_size, 65335, &rr_count, NULL);
 	if (ret != KNOT_ESPACE) {
 		diag("RRSet was converted to wire even though twe wire was"
 		     " not big enough.\n");
