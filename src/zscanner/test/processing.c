@@ -126,14 +126,14 @@ void debug_process_record(const scanner_t *s)
 	char rclass[32];
 	char rtype[32];
 
-	if (knot_rrclass_to_string(s->r_class, rclass, sizeof(rclass)) > 0 &&
-	    knot_rrtype_to_string(s->r_type, rtype, sizeof(rtype)) > 0) {
-		printf("LINE(%03"PRIu64") %s %u %*s ",
-		       s->line_counter, rclass, s->r_ttl, 5, rtype);
-	} else {
-		printf("LINE(%03"PRIu64") %u %u %*u ",
-		       s->line_counter, s->r_class, s->r_ttl, 5, s->r_type);
-	}
+//	if (knot_rrclass_to_string(s->r_class, rclass, sizeof(rclass)) > 0 &&
+//	    knot_rrtype_to_string(s->r_type, rtype, sizeof(rtype)) > 0) {
+//		printf("LINE(%03"PRIu64") %s %u %*s ",
+//		       s->line_counter, rclass, s->r_ttl, 5, rtype);
+//	} else {
+//		printf("LINE(%03"PRIu64") %u %u %*u ",
+//		       s->line_counter, s->r_class, s->r_ttl, 5, s->r_type);
+//	}
 
 	print_wire_dname(s->r_owner, s->r_owner_length);
 

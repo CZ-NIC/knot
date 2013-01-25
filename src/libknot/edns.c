@@ -20,7 +20,7 @@
 
 #include "edns.h"
 #include "common.h"
-#include "util/descriptor.h"
+#include "common/descriptor_new.h"
 #include "util/debug.h"
 
 /*! \brief Various EDNS constatns. */

@@ -29,6 +29,7 @@
 #include "packet/response.h"
 #include "packet/query.h"
 #include "consts.h"
+#include "common/descriptor_new.h"
 #include "updates/changesets.h"
 #include "updates/ddns.h"
 #include "tsig-op.h"
@@ -351,8 +352,8 @@ dbg_ns_exec_verb(
 );
 
 		// get the name from the CNAME RDATA
-		const knot_dname_t *cname = knot_rdata_cname_name(
-				knot_rrset_rdata(cname_rrset));
+		const knot_dname_t *cname =
+			knot_rrset_rdata_cname_name(cname_rrset);
 		dbg_ns_detail("CNAME name from RDATA: %p\n", cname);
 		// change the node to the node of that name
 		*node = knot_dname_node(cname);
@@ -490,7 +491,7 @@ dbg_ns_exec_verb(
 		int ret = 0;
 		knot_rrset_t *rrset = knot_node_get_rrset(node, type);
 		knot_rrset_t *rrset2 = rrset;
-		if (rrset != NULL && knot_rrset_rdata(rrset) != NULL) {
+		if (rrset != NULL && knot_rrset_rdata_rr_count(rrset)) {
 			dbg_ns_verb("Found RRSet of type %u\n", type);
 			
 			ret = ns_check_wildcard(name, resp, &rrset2);
@@ -548,7 +549,6 @@ static int ns_put_additional_for_rrset(knot_packet_t *resp,
                                        const knot_rrset_t *rrset)
 {
 	const knot_node_t *node = NULL;
-	const knot_rdata_t *rdata = NULL;
 	const knot_dname_t *dname = NULL;
 
 	int ret = 0;
@@ -669,8 +669,6 @@ dbg_ns_exec(
 		}
 
 		assert(rrset != NULL);
-		assert(rdata != NULL);
-		rdata = knot_rrset_rdata_next(rrset, rdata);
 	}
 
 	return KNOT_EOK;
@@ -4267,8 +4265,9 @@ int knot_ns_process_update2(const knot_packet_t *query,
 	dbg_ns_verb("Creating shallow copy of the zone...\n");
 	knot_zone_contents_t *contents_copy = NULL;
 	knot_changes_t *changes = NULL;
-	int ret = xfrin_prepare_zone_copy(old_contents, &contents_copy,
-	                                  &changes);
+	assert(0); //TODO
+	int ret = 0;//xfrin_prepare_zone_copy(old_contents, &contents_copy,
+//	                                  &changes);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to prepare zone copy: %s\n",
 		          knot_strerror(ret));

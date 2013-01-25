@@ -91,7 +91,7 @@ typedef struct conf_remote_t {
 typedef struct conf_zone_t {
 	node n;
 	char *name;               /*!< Zone name. */
-	enum knot_rr_class cls;   /*!< Zone class (IN or CH). */
+	uint16_t cls;   /*!< Zone class (IN or CH). */
 	char *file;               /*!< Path to a zone file. */
 	char *db;                 /*!< Path to a database file. */
 	char *ixfr_db;            /*!< Path to a IXFR database file. */

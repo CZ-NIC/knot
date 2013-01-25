@@ -21,6 +21,7 @@
 #include <time.h>
 
 #include "common.h"
+#include "common/descriptor_new.h"
 #include "common/base64.h"
 #include "tsig.h"
 #include "tsig-op.h"

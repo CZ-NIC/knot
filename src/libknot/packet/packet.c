@@ -19,7 +19,7 @@
 #include "packet/packet.h"
 #include "util/debug.h"
 #include "common.h"
-#include "util/descriptor.h"
+#include "common/descriptor_new.h"
 #include "util/wire.h"
 #include "tsig.h"
 
@@ -535,7 +535,7 @@ dbg_packet_exec_detail(
 			free(name);
 );
 
-			if (knot_rrset_match((*rrsets)[i], rrset,
+			if (knot_rrset_equal((*rrsets)[i], rrset,
 			                         KNOT_RRSET_COMPARE_HEADER)) {
 				/*! \todo Test this!!! */
 				// no duplicate checking here, the packet should
@@ -1319,19 +1319,19 @@ int knot_packet_contains(const knot_packet_t *packet,
 	}
 
 	for (int i = 0; i < packet->an_rrsets; ++i) {
-		if (knot_rrset_match(packet->answer[i], rrset, cmp)) {
+		if (knot_rrset_equal(packet->answer[i], rrset, cmp)) {
 			return 1;
 		}
 	}
 
 	for (int i = 0; i < packet->ns_rrsets; ++i) {
-		if (knot_rrset_match(packet->authority[i], rrset, cmp)) {
+		if (knot_rrset_equal(packet->authority[i], rrset, cmp)) {
 			return 1;
 		}
 	}
 
 	for (int i = 0; i < packet->ar_rrsets; ++i) {
-		if (knot_rrset_match(packet->additional[i], rrset, cmp)) {
+		if (knot_rrset_equal(packet->additional[i], rrset, cmp)) {
 			return 1;
 		}
 	}
@@ -1623,7 +1623,7 @@ void knot_packet_dump(const knot_packet_t *packet)
 static int knot_packet_free_section(const knot_rrset_t **s, short count) {
 	/*! \todo The API is really incompatible here. */
 	for (short i = 0; i < count; ++i)
-		knot_rrset_deep_free((knot_rrset_t **)s + i, 1, 1, 1);
+		knot_rrset_deep_free((knot_rrset_t **)s + i, 1, 1);
 	return count;
 }
 
