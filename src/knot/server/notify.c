@@ -19,6 +19,7 @@
 #include "knot/server/notify.h"
 
 #include "libknot/dname.h"
+#include "common/descriptor_new.h"
 #include "libknot/packet/packet.h"
 #include "libknot/rrset.h"
 #include "libknot/packet/response.h"

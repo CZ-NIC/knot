@@ -31,7 +31,6 @@
 #include "knot/conf/conf.h"
 #include "libknot/packet/packet.h"
 #include "libknot/rrset.h"
-#include "libknot/rdata.h"
 #include "knot/server/server.h"
 
 /*! \brief Default remote control tool port. */
@@ -176,21 +175,21 @@ knot_rrset_t* remote_build_rr(const char *k, uint16_t t);
  * \param v Text as a string.
  * \return Created rdata or NULL.
  */
-knot_rdata_t* remote_create_txt(const char *v);
+knot_rrset_t* remote_create_txt(const char *v);
 
 /*!
  * \brief Create a CNAME rdata.
  * \param d Domain name as a string.
  * \return Created rdata or NULL.
  */
-knot_rdata_t* remote_create_cname(const char *d);
+knot_rrset_t* remote_create_cname(const char *d);
 
 /*!
  * \brief Parse TXT rdata to string.
  * \param rd TXT rdata.
  * \return Parsed string or NULL.
  */
-char* remote_parse_txt(const knot_rdata_t *rd);
+char* remote_parse_txt(const knot_rrset_t *rrset);
 
 /*!
  * \brief Create dname from str and make sure the name is FQDN.

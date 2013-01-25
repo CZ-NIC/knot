@@ -437,7 +437,7 @@ int rrset_serialize_alloc(const knot_rrset_t *rrset, uint8_t **stream,
                           size_t *size);
 
 //TODO test
-int rrset_deserialize(uint8_t *stream, size_t stream_size,
+int rrset_deserialize(uint8_t *stream, size_t *stream_size,
                       knot_rrset_t **rrset);
 
 #endif /* _KNOT_RRSET_H_ */

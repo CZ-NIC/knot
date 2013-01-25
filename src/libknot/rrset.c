@@ -372,15 +372,6 @@ void knot_rrset_set_ttl(knot_rrset_t *rrset, uint32_t ttl)
 
 /*----------------------------------------------------------------------------*/
 
-void knot_rrset_set_class(knot_rrset_t *rrset, uint16_t rclass)
-{
-	if (rrset) {
-		rrset->rclass = rclass;
-	}
-}
-
-/*----------------------------------------------------------------------------*/
-
 uint16_t knot_rrset_type(const knot_rrset_t *rrset)
 {
 	return rrset->type;
@@ -2050,15 +2041,15 @@ static int rrset_deserialize_rr(knot_rrset_t *rrset, size_t rdata_pos,
 	return KNOT_EOK;
 }
 
-int rrset_deserialize(uint8_t *stream, size_t stream_size,
+int rrset_deserialize(uint8_t *stream, size_t *stream_size,
                       knot_rrset_t **rrset)
 {
-	if (sizeof(uint64_t) > stream_size) {
+	if (sizeof(uint64_t) > *stream_size) {
 		return KNOT_ESPACE;
 	}
 	uint64_t rrset_length = 0;
 	memcpy(&rrset_length, stream, sizeof(uint64_t));
-	if (rrset_length > stream_size) {
+	if (rrset_length > *stream_size) {
 		return KNOT_ESPACE;
 	}
 	
@@ -2111,6 +2102,8 @@ int rrset_deserialize(uint8_t *stream, size_t stream_size,
 		assert(read == rdata_size);
 		offset += read;
 	}
+	
+	*stream_size = *stream_size - offset;
 	
 	return KNOT_EOK;
 }
@@ -2176,3 +2169,4 @@ const knot_dname_t *knot_rrset_rdata_name(const knot_rrset_t *rrset,
 
 	return NULL;
 }
+
