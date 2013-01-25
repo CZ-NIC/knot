@@ -2045,9 +2045,9 @@ static int ns_answer_from_zone(const knot_zone_contents_t *zone,
 search:
 	find_ret = knot_zone_contents_find_dname(zone, qname, &node,
 	                                          &closest_encloser, &previous);
-	node = knot_node_current(node);
-	closest_encloser = knot_node_current(closest_encloser);
-	previous = knot_node_current(previous);
+//	node = knot_node_current(node); TODO for LS
+//	closest_encloser = knot_node_current(closest_encloser);
+//	previous = knot_node_current(previous);
 	if (find_ret == KNOT_EINVAL) {
 		return NS_ERR_SERVFAIL;
 	}
@@ -4071,8 +4071,8 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 	 * and the digest of the query sent to the master or the previous
 	 * digest.
 	 */
-
-	int ret = xfrin_process_ixfr_packet(xfr);
+	assert(0);
+	int ret = 0;//xfrin_process_ixfr_packet(xfr); TODO
 	
 	if (ret == XFRIN_RES_FALLBACK) {
 		dbg_ns("ns_process_ixfrin: Fallback to AXFR.\n");
@@ -4211,7 +4211,9 @@ int knot_ns_process_update(const knot_packet_t *query,
 
 	// 4) Convert update to changeset
 	dbg_ns_verb("Converting UPDATE packet to changeset.\n");
-	int ret = knot_ddns_process_update(zone, query, changeset, rcode);
+	int ret = 0;
+	assert(0);
+//	int ret = knot_ddns_process_update(zone, query, changeset, rcode); TODO
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to check zone for update: "
 		       "%s.\n", knot_strerror(ret));
