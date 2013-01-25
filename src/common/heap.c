@@ -106,13 +106,15 @@ int heap_insert(struct heap *h, void *e)
 	{
 		h->max_size = h->max_size * HEAP_INCREASE_STEP;
 		h->data = realloc(h->data, (h->max_size + 1) * sizeof(heap_val_t));
+		if (!h->data) {
+			return 0;
+		}
 	}
 
 	h->num++;
 	*HELEMENT(h,h->num) = e;
 	_heap_bubble_up(h,h->num);
-
-	return h->data ? 1 : 0;
+	return 1;
 }
 
 int heap_find(struct heap *h, void *elm)	/* FIXME - very slow */

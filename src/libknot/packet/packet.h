@@ -266,6 +266,14 @@ enum {
 	                 + PREALLOC_RRSETS(DEFAULT_TMP_RRSETS)
 };
 
+/*! \brief Flags which control packet parsing. */
+typedef enum {
+	// Don't add duplicate rdata to rrset.
+	KNOT_PACKET_DUPL_NO_MERGE = 1,
+	// Try to merge duplicate rdata to one rrset.
+	KNOT_PACKET_DUPL_SKIP     = 2
+} knot_packet_flag_t;
+
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Creates new empty packet structure.
@@ -285,14 +293,15 @@ knot_packet_t *knot_packet_new(knot_packet_prealloc_type_t prealloc);
  * \param question_only Set to <> 0 if you do not want to parse the whole
  *                      packet. In such case the parsing will end after the
  *                      Question section. Set to 0 to parse the whole packet.
+ * \param flags Can control packet processing.
  *
  * \retval KNOT_EOK
  */
 int knot_packet_parse_from_wire(knot_packet_t *packet,
                                   const uint8_t *wireformat, size_t size,
-                                  int question_only);
+                                  int question_only, knot_packet_flag_t flags);
 
-int knot_packet_parse_rest(knot_packet_t *packet);
+int knot_packet_parse_rest(knot_packet_t *packet, knot_packet_flag_t flags);
 
 int knot_packet_parse_next_rr_answer(knot_packet_t *packet,
                                        knot_rrset_t **rr);
@@ -301,6 +310,8 @@ int knot_packet_parse_next_rr_additional(knot_packet_t *packet,
                                          knot_rrset_t **rr);
 
 size_t knot_packet_size(const knot_packet_t *packet);
+
+size_t knot_packet_max_size(const knot_packet_t *packet);
 
 /*! \brief Returns size of the wireformat of Header and Question sections. */
 size_t knot_packet_question_size(const knot_packet_t *packet);
@@ -558,6 +569,11 @@ void knot_packet_free(knot_packet_t **packet);
  * \param resp Packet to dump.
  */
 void knot_packet_dump(const knot_packet_t *packet);
+
+/*!
+ * \brief Free all rrsets associated with packet.
+ */
+int knot_packet_free_rrsets(knot_packet_t *packet);
 
 #endif /* _KNOT_PACKET_H_ */
 

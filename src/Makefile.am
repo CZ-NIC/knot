@@ -251,3 +251,4 @@ unittests_libknot_LDADD = @LIBOBJS@
 tests/sample_conf.rc: tests/files/sample_conf
 	../resource.sh tests/files/sample_conf >$@
 
+

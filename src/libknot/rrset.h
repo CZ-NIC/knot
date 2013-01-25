@@ -196,6 +196,8 @@ void knot_rrset_set_owner(knot_rrset_t *rrset, knot_dname_t* owner);
  */
 void knot_rrset_set_ttl(knot_rrset_t *rrset, uint32_t ttl);
 
+void knot_rrset_set_class(knot_rrset_t *rrset, uint16_t rclass);
+
 /*!
  * \brief Returns the TYPE of the RRSet.
  *
@@ -441,3 +443,4 @@ int rrset_deserialize(uint8_t *stream, size_t stream_size,
 #endif /* _KNOT_RRSET_H_ */
 
 /*! @} */
+

@@ -1354,8 +1354,10 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 
 	if (nsec3_node_count > 0) {
 		nsec3_first = knot_load_node(f, id_array);
-
-		assert(nsec3_first != NULL);
+		if (nsec3_first == NULL) {
+			log_zone_error("Cannot load NSEC3 data, "
+			               "zone database is probably corrupt.\n");
+		}
 
 		if ((ret = knot_zone_contents_add_nsec3_node(contents,
 		                                             nsec3_first,
@@ -1366,6 +1368,8 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 			knot_zone_deep_free(&zone, 0);
 			cleanup_id_array(id_array, node_count + 1,
 					 nsec3_node_count + 1);
+			log_zone_error("Cannot store NSEC3 data, "
+			               "zone database is probably corrupt.\n");
 			return NULL;
 		}
 
@@ -1392,8 +1396,9 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 
 			last_node = tmp_node;
 		} else {
-			fprintf(stderr, "zone: Node error (in %s).\n",
-				loader->filename);
+			log_zone_error("Cannot load NSEC3 node. "
+			               "Zone database is probably "
+			               "currupted.\n");
 			knot_zone_deep_free(&zone, 0);
 			cleanup_id_array(id_array, node_count + 1,
 					 nsec3_node_count + 1);

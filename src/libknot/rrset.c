@@ -372,6 +372,15 @@ void knot_rrset_set_ttl(knot_rrset_t *rrset, uint32_t ttl)
 
 /*----------------------------------------------------------------------------*/
 
+void knot_rrset_set_class(knot_rrset_t *rrset, uint16_t rclass)
+{
+	if (rrset) {
+		rrset->rclass = rclass;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
 uint16_t knot_rrset_type(const knot_rrset_t *rrset)
 {
 	return rrset->type;
@@ -2167,4 +2176,3 @@ const knot_dname_t *knot_rrset_rdata_name(const knot_rrset_t *rrset,
 
 	return NULL;
 }
-

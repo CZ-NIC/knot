@@ -30,6 +30,7 @@ config.h
 config.h.in
 samples/knot.sample.conf
 src/stamp-*
+html/
 # Generated sources
 src/*.c
 src/*.h
@@ -40,7 +41,6 @@ src/unittests-libknot
 src/unittests-libknot-realdata
 src/unittests-zcompile
 src/unittests-zscanner
-src/zscanner/scanner.c
 src/knotc
 src/knotd
 src/knot-zcompile
@@ -51,6 +51,6 @@ m4/ltversion.m4
 m4/lt~obsolete.m4
 src/unittests-xfr
 INSTALL
-/doc/html
-/doc/*.st
-/doc/*.sts
+kdig
+khost
+knsupdate

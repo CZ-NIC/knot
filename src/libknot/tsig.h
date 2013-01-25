@@ -78,6 +78,10 @@ enum tsig_consts {
 	                          + 6			// time signed
 };
 
+/*! TSIG algorithm/string table. */
+#define TSIG_ALG_TABLE_SIZE 8
+extern knot_lookup_table_t tsig_alg_table[TSIG_ALG_TABLE_SIZE];
+
 /*! TSIG errors are defined in common/errcode.h
  *  and present negative value of the TSIG error to
  *  comply with other parts of the library.

@@ -407,17 +407,6 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	return rc;
 }
 
-static knot_lookup_table_t tsig_algn_tbl[] = {
-	{ KNOT_TSIG_ALG_NULL,       "gss-tsig" },
-	{ KNOT_TSIG_ALG_HMAC_MD5,    "hmac-md5" },
-	{ KNOT_TSIG_ALG_HMAC_SHA1,   "hmac-sha1" },
-	{ KNOT_TSIG_ALG_HMAC_SHA224, "hmac-sha224" },
-	{ KNOT_TSIG_ALG_HMAC_SHA256, "hmac-sha256" },
-	{ KNOT_TSIG_ALG_HMAC_SHA384, "hmac-sha384" },
-	{ KNOT_TSIG_ALG_HMAC_SHA512, "hmac-sha512" },
-	{ KNOT_TSIG_ALG_NULL, NULL }
-};
-
 static int tsig_parse_str(knot_key_t *key, const char *str)
 {
 	char *h = strdup(str);
@@ -436,7 +425,7 @@ static int tsig_parse_str(knot_key_t *key, const char *str)
 	if (s) {
 		*s++ = '\0';               /* Last part separator */
 		knot_lookup_table_t *alg = NULL;
-		alg = knot_lookup_by_name(tsig_algn_tbl, h);
+		alg = knot_lookup_by_name(tsig_alg_table, h);
 		if (alg) {
 			key->algorithm = alg->id;
 		} else {
@@ -491,7 +480,7 @@ static int tsig_parse_line(knot_key_t *k, char *l)
 	}
 	
 	/* Set algorithm. */
-	knot_lookup_table_t *alg = knot_lookup_by_name(tsig_algn_tbl, a);
+	knot_lookup_table_t *alg = knot_lookup_by_name(tsig_alg_table, a);
 	if (alg) {
 		k->algorithm = alg->id;
 	} else {

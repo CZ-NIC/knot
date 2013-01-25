@@ -758,27 +758,33 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone);
 #ifdef DEBUG_ENABLE_BRIEF
 #define dbg_ddns(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
 #define dbg_ddns_hex(data, len)  hex_log(LOG_ZONE, (data), (len))
+#define dbg_ddns_exec(cmds) do { cmds } while (0)
 #else
 #define dbg_ddns(msg...)
 #define dbg_ddns_hex(data, len)
+#define dbg_ddns_exec(cmds)
 #endif
 
 /* Verbose messages. */
 #ifdef DEBUG_ENABLE_VERBOSE
 #define dbg_ddns_verb(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
 #define dbg_ddns_hex_verb(data, len)  hex_log(LOG_ZONE, (data), (len))
+#define dbg_ddns_exec_verb(cmds) do { cmds } while (0)
 #else
 #define dbg_ddns_verb(msg...)
 #define dbg_ddns_hex_verb(data, len)
+#define dbg_ddns_exec_verb(cmds)
 #endif
 
 /* Detail messages. */
 #ifdef DEBUG_ENABLE_DETAILS
 #define dbg_ddns_detail(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
 #define dbg_ddns_hex_detail(data, len)  hex_log(LOG_ZONE, (data), (len))
+#define dbg_ddns_exec_detail(cmds) do { cmds } while (0)
 #else
 #define dbg_ddns_detail(msg...)
 #define dbg_ddns_hex_detail(data, len)
+#define dbg_ddns_exec_detail(cmds)
 #endif
 
 /* No messages. */
@@ -786,9 +792,12 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone);
 #define dbg_ddns(msg...)
 #define dbg_ddns_hex(data, len)
 #define dbg_ddns_verb(msg...)
+#define dbg_ddns_exec(cmds)
 #define dbg_ddns_hex_verb(data, len)
+#define dbg_ddns_exec_verb(cmds)
 #define dbg_ddns_detail(msg...)
 #define dbg_ddns_hex_detail(data, len)
+#define dbg_ddns_exec_detail(cmds)
 #endif
 
 #ifdef KNOT_TSIG_DEBUG

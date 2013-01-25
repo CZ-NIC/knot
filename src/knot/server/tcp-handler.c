@@ -417,7 +417,9 @@ int tcp_send(int fd, uint8_t *msg, size_t msglen)
 	/* Uncork only if corked successfuly. */
 	if (uncork == 0) {
 		cork = 0;
-		setsockopt(fd, SOL_TCP, TCP_CORK, &cork, sizeof(cork));
+		if (setsockopt(fd, SOL_TCP, TCP_CORK, &cork, sizeof(cork)) < 0) {
+			dbg_net("tcp: failed to uncork socket\n");
+		}
 	}
 #endif
 	return sent;

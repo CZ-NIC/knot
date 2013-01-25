@@ -1,0 +1,119 @@
+/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+/* FreeBSD POSIX2008 getline() */
+#ifndef _WITH_GETLINE
+ #define _WITH_GETLINE
+#endif
+
+#include "utils/common/token.h"
+
+#include <stdio.h>
+#include <stdlib.h>			// free
+#include <ctype.h>			// isspace
+#include <string.h>			// memcmp
+
+#include "common/errcode.h"		// KNOT_EOK
+#include "utils/common/msg.h"		// ERR
+
+int tok_scan(const char* lp, const char **tbl, int *lpm)
+{
+	const char *prefix = lp; /* Ptr to line start. */
+	int i = 0, pl = 1;       /* Match index, prefix length. */
+	unsigned char len = 0;   /* Read length. */
+	for(;;) {
+		const char *tok = tbl[i];
+		if (*lp == '\0' || isspace(*lp)) {
+			if (tok && TOK_L(tok) == len) { /* Consumed whole w? */
+				return i; /* Identifier */
+			} else { /* Word is shorter than cmd? */
+				break;
+			}
+		}
+
+		/* Find next prefix match. */
+		++len;
+		while (tok) {
+			if (TOK_L(tok) >= len) {  /* Is prefix of current token */
+				if (*lp < tok[pl]) {  /* Terminate early. */
+					tok = NULL;
+					break; /* No match could be found. */
+				}
+				if (*lp == tok[pl]) { /* Match */
+					if(lpm) *lpm = i;
+					++pl;
+					break;
+				}
+			}
+
+			/* No early cut, no match - seek next. */
+			while ((tok = tbl[++i]) != NULL) {
+				if (TOK_L(tok) >= len &&
+				    memcmp(TOK_S(tok), prefix, len) == 0) {
+					break;
+				}
+			}
+		}
+
+		if (tok == NULL) {
+			break; /* All tokens exhausted. */
+		} else {
+			++lp;  /* Next char */
+		}
+	}
+
+	return -1;
+}
+
+int tok_find(const char *lp, const char **tbl)
+{
+	int lpm = -1;
+	int bp = 0;
+	if ((bp = tok_scan(lp, tbl, &lpm)) < 0) {
+		if (lpm > -1) {
+			ERR("unexpected literal: '%s', did you mean '%s' ?\n",
+			    lp, TOK_S(tbl[lpm]));
+		} else {
+			ERR("unexpected literal: '%s'\n", lp);
+		}
+		ERR("syntax error\n");
+		return KNOT_EPARSEFAIL;
+	}
+	
+	return bp;
+}
+
+const char* tok_skipspace(const char *lp)
+{
+	while (isspace(*lp)) ++lp; return lp;
+}
+
+int tok_process_lines(FILE *fp, lparse_f cb, void *arg)
+{
+	int ret = KNOT_EOK;
+	
+	/* Parse lines. */
+	char *buf = NULL;
+	size_t buflen = 0;
+	ssize_t rb = 0;
+	while ((rb = getline(&buf, &buflen, fp)) != -1) {
+		ret = cb(buf, rb, arg);
+		if (ret != KNOT_EOK) break;
+	}
+	
+	free(buf);
+	return ret;
+}

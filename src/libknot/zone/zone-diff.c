@@ -193,6 +193,7 @@ static int knot_zone_diff_changeset_remove_rrset(knot_changeset_t *changeset,
 	}
 	
 	if (knot_rrset_rdata_rr_count(rrset) == 0) {
+		/* RDATA are the same, however*/
 		dbg_zonediff_detail("zone_diff: Nothing to remove.\n");
 		return KNOT_EOK;
 	}
@@ -251,6 +252,19 @@ static int knot_zone_diff_add_node(const knot_node_t *node,
 			free(rrsets);
 			return ret;
 		}
+		
+		if (knot_rrset_rrsigs(rrsets[i])) {
+			/* Add RRSIGs of the new node. */
+			ret = knot_zone_diff_changeset_add_rrset(changeset,
+						knot_rrset_rrsigs(rrsets[i]));
+			if (ret != KNOT_EOK) {
+				dbg_zonediff("zone_diff: add_node: Cannot "
+				             "add RRSIG (%s).\n",
+				       knot_strerror(ret));
+				free(rrsets);
+				return ret;
+			}
+		}
 	}
 	
 	free(rrsets);
@@ -292,6 +306,18 @@ dbg_zonediff_exec_detail(
 			free(rrsets);
 			return ret;
 		}
+		if (knot_rrset_rrsigs(rrsets[i])) {
+			/* Remove RRSIGs of the old node. */
+			ret = knot_zone_diff_changeset_remove_rrset(changeset,
+						knot_rrset_rrsigs(rrsets[i]));
+			if (ret != KNOT_EOK) {
+				dbg_zonediff("zone_diff: remove_node: Cannot "
+				             "remove RRSIG (%s).\n",
+				       knot_strerror(ret));
+				free(rrsets);
+				return ret;
+			}
+		}
 	}
 	
 	free(rrsets);
@@ -316,10 +342,10 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 	* After the list has been traversed, we have a list of
 	* changed/removed rdatas. This has awful computation time.
 	*/
-	dbg_zonediff_detail("zone_diff: diff_rdata: Diff of %s, type=%u. "
+	dbg_zonediff_detail("zone_diff: diff_rdata: Diff of %s, type=%s. "
 	              "RR count 1=%d RR count 2=%d.\n",
 	              knot_dname_to_str(rrset1->owner),
-	              rrset1->type,
+	              knot_rrtype_to_string(rrset1->type),
 	              knot_rrset_rdata_rr_count(rrset1),
 	              knot_rrset_rdata_rr_count(rrset2));
 
@@ -356,8 +382,8 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 			 * because the list was traversed - there's no match.
 			 */
 			dbg_zonediff("zone_diff: diff_rdata: "
-			       "No match for RR (type=%u owner=%s).\n",
-			       knot_rrset_type(rrset1),
+			       "No match for RR (type=%s owner=%s).\n",
+			       knot_rrtype_to_string(knot_rrset_type(rrset1)),
 			       knot_dname_to_str(rrset1->owner));
 			/* Make a copy of tmp_rdata. */
 			knot_rdata_t *tmp_rdata_copy =
@@ -375,8 +401,8 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 			}
 		} else {
 			dbg_zonediff_detail("zone_diff: diff_rdata: "
-			              "Found matching RR for type %u.\n",
-			              rrset1->type);
+			              "Found matching RR for type %s.\n",
+			              knot_rrtype_to_string(rrset1->type));
 		}
 		tmp_rdata = knot_rrset_rdata_next(rrset1, tmp_rdata);
 	}
@@ -423,6 +449,40 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 	dbg_zonediff_detail("zone_diff: diff_rdata: To remove:\n");
 	knot_rrset_dump(to_remove, 1);
 	
+	/*
+	 * to_remove RRSet might be empty, meaning that
+	 * there are no differences in RDATA, but TTLs can differ.
+	 */
+	if (rrset1 && rrset2 && 
+	    (knot_rrset_ttl(rrset1) != knot_rrset_ttl(rrset2)) &&
+	    knot_rrset_rdata_rr_count(to_remove) == 0) {
+		/* We have to remove old TTL. */
+		assert(knot_rrset_ttl(to_remove) == knot_rrset_ttl(rrset1));
+		/*
+		 * Fill the RDATA so that the change gets saved. All RRs can
+		 * be copied because TTLs are the same for all of them.
+		 */
+		knot_rdata_t *tmp_rdata_copy =
+			knot_rdata_deep_copy(knot_rrset_rdata(rrset1),
+		                             knot_rrset_type(rrset1),
+		                             1);
+		if (tmp_rdata_copy == NULL) {
+			dbg_zonediff("zone diff: diff_rdata: Cannot copy "
+			             "RDATA (Different TTLs).\n");
+			knot_rrset_free(&to_remove);
+			return KNOT_ENOMEM;
+		}
+		int ret = knot_rrset_add_rdata(to_remove, tmp_rdata_copy);
+		if (ret != KNOT_EOK) {
+			dbg_zonediff("zone diff: diff_rdata: Cannot add "
+			             "RDATA to RRSet. Reason: %s\n",
+			             knot_strerror(ret));
+			knot_rdata_free(&tmp_rdata_copy);
+			knot_rrset_free(&to_remove);
+			return ret;
+		}
+	}
+	
 	int ret = knot_zone_diff_changeset_remove_rrset(changeset,
 	                                            to_remove);
 	if (ret != KNOT_EOK) {
@@ -462,6 +522,40 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 	
 	dbg_zonediff_detail("zone_diff: diff_rdata: To add:\n");
 	knot_rrset_dump(to_add, 1);
+	
+	/*
+	 * to_remove RRSet might be empty, meaning that
+	 * there are no differences in RDATA, but TTLs can differ.
+	 */
+	if (rrset1 && rrset2 &&
+	    knot_rrset_ttl(rrset1) != knot_rrset_ttl(rrset2)) {
+		/* We have to add newer TTL. */
+		knot_rrset_set_ttl(to_add, knot_rrset_ttl(rrset2));
+		if (knot_rrset_rdata_rr_count(to_add) == 0) {
+			/*
+			 * Fill the RDATA so that the change gets saved. All RRs can
+			 * be copied because TTLs are the same for all of them.
+			 */
+			knot_rdata_t *tmp_rdata_copy =
+				knot_rdata_deep_copy(knot_rrset_rdata(rrset1),
+			                             knot_rrset_type(rrset1),
+			                             1);
+			if (tmp_rdata_copy == NULL) {
+				dbg_zonediff("zone diff: diff_rdata: Cannot copy "
+				             "RDATA (Different TTLs).\n");
+				/* TODO cleanup. */
+				return KNOT_ENOMEM;
+			}
+			int ret = knot_rrset_add_rdata(to_add, tmp_rdata_copy);
+			if (ret != KNOT_EOK) {
+				dbg_zonediff("zone diff: diff_rdata: Cannot add "
+				             "RDATA to RRSet. Reason: %s\n",
+				             knot_strerror(ret));
+				/* TODO cleanup. */
+				return ret;
+			}
+		}
+	}
 
 	ret = knot_zone_diff_changeset_add_rrset(changeset,
 	                                         to_add);
@@ -639,6 +733,20 @@ static void knot_zone_diff_node(knot_node_t *node, void *data)
 				free(rrsets);
 				return;
 			}
+			
+			/* Remove RRSet's RRSIGs as well. */
+			if (knot_rrset_rrsigs(rrset)) {
+				ret = knot_zone_diff_changeset_remove_rrset(
+				            param->changeset,
+				            knot_rrset_rrsigs(rrset));
+				if (ret != KNOT_EOK) {
+				    dbg_zonediff("zone_diff: diff_node+: "
+				                 "Failed to remove RRSIGs.\n");
+				    param->ret = ret;
+				    free(rrsets);
+				    return;
+				}
+			}
 		} else {
 			dbg_zonediff("zone_diff: diff_node: There is a counterpart "
 			       "for RRSet of type %u in second tree.\n",
@@ -722,6 +830,18 @@ static void knot_zone_diff_node(knot_node_t *node, void *data)
 				param->ret = ret;
 				free(rrsets);
 				return;
+			}
+			if (knot_rrset_rrsigs(rrset)) {
+				int ret = knot_zone_diff_changeset_add_rrset(
+			        param->changeset,
+			         knot_rrset_rrsigs(rrset));
+			   if (ret != KNOT_EOK) {
+			     dbg_zonediff("zone_diff: diff_node: "
+			            "Failed to add RRSIGs.\n");
+			    param->ret = ret;
+					free(rrsets);
+				return;	
+			 }
 			}
 		} else {
 			/* Already handled. */

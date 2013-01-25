@@ -101,14 +101,16 @@ void scanner_free(scanner_t *s)
 	free(s);
 }
 
-int scanner_process(char      *start,
-		    char      *end,
-		    bool      is_last_block,
-		    scanner_t *s)
+int scanner_process(const char *start,
+		    const char *end,
+		    const bool is_last_block,
+		    scanner_t  *s)
 {
 	// Necessary scanner variables.
-	int  stack[RAGEL_STACK_SIZE];
-	char *p = start, *pe = end, *eof = NULL;
+	const char *p = start;
+	const char *pe = end;
+	char       *eof = NULL;
+	int        stack[RAGEL_STACK_SIZE];
 
 	// Auxiliary variables which are used in scanner body.
 	struct in_addr  addr4;
@@ -130,7 +132,7 @@ int scanner_process(char      *start,
 
 	// End of file check.
 	if (is_last_block == true) {
-		eof = pe;
+		eof = (char *)pe;
 	}
 
 	// Writing scanner body (in C).

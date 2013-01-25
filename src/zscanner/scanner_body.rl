@@ -138,8 +138,6 @@
 		(s->dname)[s->dname_tmp_length] += digit_to_num[(uint8_t)fc];
 	}
 	action _label_dec_exit {
-		(s->dname)[s->dname_tmp_length] =
-			(s->dname)[s->dname_tmp_length];
 		s->dname_tmp_length++;
 	}
 	action _label_dec_error {
@@ -469,10 +467,11 @@
 				fhold; fgoto err_line;
 			}
 		} else if (s->buffer_length <= 10) { // Timestamp format.
-			errno = 0;
-			s->number64 = strtoul((char *)(s->buffer), NULL,  10);
+			char *end;
 
-			if (errno != 0) {
+			s->number64 = strtoul((char *)(s->buffer), &end,  10);
+
+			if (end == (char *)(s->buffer) || *end != '\0') {
 				SCANNER_WARNING(ZSCANNER_EBAD_TIMESTAMP);
 				fhold; fgoto err_line;
 			}

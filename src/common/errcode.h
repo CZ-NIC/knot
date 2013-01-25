@@ -84,6 +84,7 @@ enum knot_error {
 	KNOT_ECNAME,          /*!< CNAME loop found in zone. */
 	KNOT_ENODIFF,         /*!< No zone diff can be created. */
 	KNOT_EDSDIGESTLEN,    /*!< DS digest length does not match digest type. */
+	KNOT_ENOTSIG,         /*!< expected a TSIG or SIG(0) */
 
 	/* Zone file loader errors. */
 	FLOADER_EFSTAT,
@@ -91,7 +92,6 @@ enum knot_error {
 	FLOADER_EEMPTY,
 	FLOADER_EDEFAULTS,
 	FLOADER_EMMAP,
-	FLOADER_EOVERLAPPING,
 	FLOADER_EMUNMAP,
 	FLOADER_ESCANNER,
 
@@ -118,11 +118,11 @@ enum knot_error {
 	ZSCANNER_EBAD_IPV6,
 	ZSCANNER_EBAD_GATEWAY,
 	ZSCANNER_EBAD_GATEWAY_KEY,
-	ZSCANNER_EBAD_BASE64_CHAR,
 	ZSCANNER_EBAD_APL,
 	ZSCANNER_EBAD_RDATA,
 	ZSCANNER_EBAD_HEX_RDATA,
 	ZSCANNER_EBAD_HEX_CHAR,
+	ZSCANNER_EBAD_BASE64_CHAR,
 	ZSCANNER_EBAD_BASE32HEX_CHAR,
 	ZSCANNER_EBAD_REST,
 	ZSCANNER_EBAD_TIMESTAMP_CHAR,

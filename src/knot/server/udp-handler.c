@@ -525,7 +525,9 @@ int udp_master(dthread_t *thread)
 #ifndef DISABLE_IPV6
 	if (handler->type == AF_INET6) {
 		/* Disable dual-stack for performance reasons. */
-		setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &flag, sizeof(flag));
+		if(setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &flag, sizeof(flag)) < 0) {
+			dbg_net("udp: failed to set IPV6_V6ONLY to socket, using default config\n");
+		}
 
 		/* UDP packets will not exceed a minimum MTU size. */
 		/*flag = IPV6_MIN_MTU;

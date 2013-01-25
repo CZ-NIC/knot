@@ -288,7 +288,7 @@ static int xfr_process_udp_resp(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 		return KNOT_EOK; /* Ignore */
 	}
 
-	ret = knot_packet_parse_rest(re);
+	ret = knot_packet_parse_rest(re, 0);
 	if (ret != KNOT_EOK) {
 		knot_packet_free(&re);
 		return KNOT_EOK; /* Ignore */
@@ -495,7 +495,7 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode, char **tag)
 	knot_packet_t *qry = xfr->query;
 	knot_key_t *key = 0;
 	const knot_rrset_t *tsig_rr = 0;
-	ret = knot_packet_parse_rest(qry);
+	ret = knot_packet_parse_rest(qry, 0);
 	if (ret == KNOT_EOK) {
 		
 		/* Find TSIG key name from query. */
@@ -1381,7 +1381,6 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 	}
 	
 	/* Finally, answer AXFR/IXFR. */
-	int io_error = 0;
 	if (!xfr_failed) {
 		switch(xfr->type) {
 		case XFR_TYPE_AOUT:
@@ -1397,14 +1396,15 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 		
 		xfr_failed = (ret != KNOT_EOK);
 		errstr = knot_strerror(ret);
-		io_error = (ret == KNOT_ECONN);
+	} else {
+		knot_ns_error_response_from_query(ns, xfr->query,  xfr->rcode,
+		                                  xfr->wire, &xfr->wire_size);
+		/*! \todo Sign with TSIG for some errors. */
+		ret = xfr->send(xfr->session, &xfr->addr, xfr->wire, xfr->wire_size);
 	}
 	
 	/* Check results. */
 	if (xfr_failed) {
-		if (!io_error) {
-			knot_ns_xfr_send_error(ns, xfr, xfr->rcode);
-		}
 		log_server_notice("%s %s\n", xfr->msgpref, errstr);
 	} else {
 		log_server_info("%s Finished.\n", xfr->msgpref);

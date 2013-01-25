@@ -162,9 +162,32 @@ void knot_changeset_set_flags(knot_changeset_t *changeset,
 
 uint32_t knot_changeset_flags(knot_changeset_t *changeset);
 
+int knot_changeset_is_empty(const knot_changeset_t *changeset);
+
 void knot_free_changeset(knot_changeset_t **changeset);
 
 void knot_free_changesets(knot_changesets_t **changesets);
+
+int knot_changes_rrsets_reserve(knot_rrset_t ***rrsets,
+                                int *count, int *allocated, int to_add);
+
+int knot_changes_nodes_reserve(knot_node_t ***nodes,
+                               int *count, int *allocated);
+
+int knot_changes_rdata_reserve(knot_rdata_t ***rdatas, uint16_t **types,
+                               int count, int *allocated, int to_add);
+
+void knot_changes_add_rdata(knot_rdata_t **rdatas, uint16_t *types,
+                            int *count, knot_rdata_t *rdata, uint16_t type);
+
+/*!
+ * \note Also processes RRSIGs. May be switched by a parameter later, if needed.
+ */
+int knot_changes_add_old_rrsets(knot_rrset_t **rrsets, int count,
+                                knot_changes_t *changes, int add_rdata);
+
+int knot_changes_add_new_rrsets(knot_rrset_t **rrsets, int count,
+                                knot_changes_t *changes, int add_rdata);
 
 #endif /* _KNOT_CHANGESETS_H_ */
 

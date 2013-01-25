@@ -411,6 +411,15 @@ static knot_rrtype_descriptor_t
                    KNOT_RDATA_WF_BINARYWITHSHORT },
                   /* Zoneformat not needed. */
                   {0, 0, 0, 0, 0}, true },
+	[251] = { KNOT_RRTYPE_IXFR, "IXFR", 1,
+	          { KNOT_RDATA_WF_TEXT },
+	          { KNOT_RDATA_ZF_TEXT }, false },
+	[252] = { KNOT_RRTYPE_AXFR, "AXFR", 1,
+	          { KNOT_RDATA_WF_TEXT },
+	          { KNOT_RDATA_ZF_TEXT }, false },
+	[255] = { KNOT_RRTYPE_ANY, "ANY", 1,
+	          { KNOT_RDATA_WF_BINARY },
+	          { KNOT_RDATA_ZF_UNKNOWN }, false },
   	/* 32769 */
   	[32769] = { KNOT_RRTYPE_DLV, "DLV", 4,
   	  { KNOT_RDATA_WF_SHORT, KNOT_RDATA_WF_BYTE,
@@ -423,6 +432,8 @@ knot_rrtype_descriptor_t *knot_rrtype_descriptor_by_type(uint16_t type)
 {
 	if (type < KNOT_RRTYPE_LAST + 1) {
 		return &knot_rrtype_descriptors[type];
+	} else if (type == KNOT_RRTYPE_ANY) {
+		return &knot_rrtype_descriptors[KNOT_RRTYPE_ANY];
 	} else if (type == KNOT_RRTYPE_DLV) {
 		return &knot_rrtype_descriptors[KNOT_RRTYPE_DLV];
 	}
@@ -460,7 +471,7 @@ int32_t knot_rrtype_to_string(const uint16_t rrtype,
 	knot_rrtype_descriptor_t *entry =
 	        knot_rrtype_descriptor_by_type(rrtype);
 
-	if (entry->name) {
+	if (entry->name != NULL) {
 		ret = snprintf(out, out_len, "%s", entry->name);
 	} else {
 		ret = snprintf(out, out_len, "TYPE%u", rrtype);
