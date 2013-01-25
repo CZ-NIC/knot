@@ -28,6 +28,9 @@
 #include "utils/dig/dig_params.h"	// dig_params_t
 #include "utils/common/resolv.h"	// get_nameservers
 
+#define DEFAULT_RETRIES_HOST	1
+#define DEFAULT_TIMEOUT_HOST	1
+
 static int host_params_init(params_t *params)
 {
 	memset(params, 0, sizeof(*params));
@@ -52,8 +55,8 @@ static int host_params_init(params_t *params)
 	params->class_num = KNOT_CLASS_IN;
 	params->type_num = -1;
 	params->xfr_serial = -1;
-	params->retries = 1;
-	params->wait = DEFAULT_WAIT_INTERVAL;
+	params->retries = DEFAULT_RETRIES_HOST;
+	params->wait = DEFAULT_TIMEOUT_HOST;
 	params->servfail_stop = false;
 	params->format = FORMAT_HOST;
 
@@ -108,31 +111,6 @@ static void host_params_flag_soa(params_t *params)
 static void host_params_flag_axfr(params_t *params)
 {
 	params->type_num = KNOT_RRTYPE_AXFR;
-}
-
-static void host_params_flag_nonrecursive(params_t *params)
-{
-	DIG_PARAM(params)->rd_flag = false;
-}
-
-static void host_params_flag_ipv4(params_t *params)
-{
-	params->ip = IP_4;
-}
-
-static void host_params_flag_ipv6(params_t *params)
-{
-	params->ip = IP_6;
-}
-
-static void host_params_flag_servfail(params_t *params)
-{
-	params->servfail_stop = true;
-}
-
-static void host_params_flag_nowait(params_t *params)
-{
-	params->wait = -1;
 }
 
 static int host_params_parse_name(params_t *params, const char *name)
@@ -222,33 +200,33 @@ static int host_params_parse_name(params_t *params, const char *name)
 	return KNOT_EOK;
 }
 
-static int host_params_parse_server(params_t *params, const char *name)
+static void host_params_help(int argc, char *argv[])
+{
+	printf("Usage: %s [-aCdlrsTvw] [-4] [-6] [-c class] [-R retries]\n"
+	       "       %*c [-t type] [-W time] name [server]\n",
+	       argv[0], (int)strlen(argv[0]), ' ');
+}
+
+int host_params_parse_server(list *servers, const char *name)
 {
 	node *n = NULL, *nxt = NULL;
 
 	// Remove default nameservers.
-        WALK_LIST_DELSAFE(n, nxt, params->servers) {
-                server_free((server_t *)n);
-        }
+	WALK_LIST_DELSAFE(n, nxt, *servers) {
+		server_free((server_t *)n);
+	}
 
 	// Initialize blank server list.
-	init_list(&params->servers);
+	init_list(servers);
 
 	// Add specified nameserver.
 	server_t *server = parse_nameserver(name);
 	if (server == NULL) {
 		return KNOT_ENOMEM;
 	}
-	add_tail(&params->servers, (node *)server);
+	add_tail(servers, (node *)server);
 
 	return KNOT_EOK;
-}
-
-static void host_params_help(int argc, char *argv[])
-{
-	printf("Usage: %s [-aCdlrsTvw] [-4] [-6] [-c class] [-R retries]\n"
-	       "       %*c [-t type] [-W time] name [server]\n",
-	       argv[0], (int)strlen(argv[0]), ' ');
 }
 
 int host_params_parse(params_t *params, int argc, char *argv[])
@@ -267,10 +245,10 @@ int host_params_parse(params_t *params, int argc, char *argv[])
 	while ((opt = getopt(argc, argv, "46aCdlrsTvwc:R:t:W:")) != -1) {
 		switch (opt) {
 		case '4':
-			host_params_flag_ipv4(params);
+			params_flag_ipv4(params);
 			break;
 		case '6':
-			host_params_flag_ipv6(params);
+			params_flag_ipv6(params);
 			break;
 		case 'a':
 			host_params_flag_all(params);
@@ -286,16 +264,16 @@ int host_params_parse(params_t *params, int argc, char *argv[])
 			host_params_flag_axfr(params);
 			break;
 		case 'r':
-			host_params_flag_nonrecursive(params);
+			dig_params_flag_norecurse(params);
 			break;
 		case 's':
-			host_params_flag_servfail(params);
+			params_flag_servfail(params);
 			break;
 		case 'T':
 			params_flag_tcp(params);
 			break;
 		case 'w':
-			host_params_flag_nowait(params);
+			params_flag_nowait(params);
 			break;
 		case 'c':
 			if (parse_class(optarg, &(params->class_num))
@@ -331,8 +309,8 @@ int host_params_parse(params_t *params, int argc, char *argv[])
 	// Process non-option parameters.
 	switch (argc - optind) {
 	case 2:
-		if (host_params_parse_server(params, argv[optind + 1])
-		    != KNOT_EOK) {
+		if (host_params_parse_server(&(params->servers),
+		                             argv[optind + 1]) != KNOT_EOK) {
 			return KNOT_EINVAL;
 		}
 	case 1: // Fall through.

@@ -28,6 +28,9 @@
 #include "utils/common/params.h"	// parse_class
 #include "utils/common/resolv.h"	// get_nameservers
 
+#define DEFAULT_RETRIES_DIG	3
+#define DEFAULT_TIMEOUT_DIG	5
+
 query_t* query_create(const char *name, const uint16_t type)
 {
 	// Create output structure.
@@ -85,8 +88,8 @@ static int dig_params_init(params_t *params)
 	params->class_num = KNOT_CLASS_IN;
 	params->type_num = -1;
 	params->xfr_serial = -1;
-	params->retries = 1;
-	params->wait = DEFAULT_WAIT_INTERVAL;
+	params->retries = DEFAULT_RETRIES_DIG;
+	params->wait = DEFAULT_TIMEOUT_DIG;
 	params->servfail_stop = false;
 	params->format = FORMAT_VERBOSE;
 
@@ -126,46 +129,10 @@ void dig_params_clean(params_t *params)
 	memset(params, 0, sizeof(*params));
 }
 
-static void dig_params_flag_all(params_t *params)
-{
-	params->type_num = KNOT_RRTYPE_ANY;
-	params->format = FORMAT_VERBOSE;
-}
-
 static void dig_params_flag_soa(params_t *params)
 {
 	params->type_num = KNOT_RRTYPE_SOA;
 	params->operation = OPERATION_LIST_SOA;
-}
-
-static void dig_params_flag_axfr(params_t *params)
-{
-	params->type_num = KNOT_RRTYPE_AXFR;
-}
-
-static void dig_params_flag_norecurse(params_t *params)
-{
-	DIG_PARAM(params)->rd_flag = false;
-}
-
-static void dig_params_flag_ipv4(params_t *params)
-{
-	params->ip = IP_4;
-}
-
-static void dig_params_flag_ipv6(params_t *params)
-{
-	params->ip = IP_6;
-}
-
-static void dig_params_flag_servfail(params_t *params)
-{
-	params->servfail_stop = true;
-}
-
-static void dig_params_flag_nowait(params_t *params)
-{
-	params->wait = -1;
 }
 
 static int dig_params_parse_name(params_t *params, const char *name)
@@ -255,33 +222,38 @@ static int dig_params_parse_name(params_t *params, const char *name)
 	return KNOT_EOK;
 }
 
-static int dig_params_parse_server(params_t *params, const char *name)
+static void dig_params_help(int argc, char *argv[])
+{
+	printf("Usage: %s [-aCdlrsTvw] [-4] [-6] [-c class] [-R retries]\n"
+	       "       %*c [-t type] [-W time] name [server]\n",
+	       argv[0], (int)strlen(argv[0]), ' ');
+}
+
+static int dig_params_parse_server(list *servers, const char *name)
 {
 	node *n = NULL, *nxt = NULL;
 
 	// Remove default nameservers.
-        WALK_LIST_DELSAFE(n, nxt, params->servers) {
-                server_free((server_t *)n);
-        }
+	WALK_LIST_DELSAFE(n, nxt, *servers) {
+		server_free((server_t *)n);
+	}
 
 	// Initialize blank server list.
-	init_list(&params->servers);
+	init_list(servers);
 
 	// Add specified nameserver.
 	server_t *server = parse_nameserver(name);
 	if (server == NULL) {
 		return KNOT_ENOMEM;
 	}
-	add_tail(&params->servers, (node *)server);
+	add_tail(servers, (node *)server);
 
 	return KNOT_EOK;
 }
 
-static void dig_params_help(int argc, char *argv[])
+void dig_params_flag_norecurse(params_t *params)
 {
-	printf("Usage: %s [-aCdlrsTvw] [-4] [-6] [-c class] [-R retries]\n"
-	       "       %*c [-t type] [-W time] name [server]\n",
-	       argv[0], (int)strlen(argv[0]), ' ');
+	DIG_PARAM(params)->rd_flag = false;
 }
 
 int dig_params_parse(params_t *params, int argc, char *argv[])
@@ -300,35 +272,25 @@ int dig_params_parse(params_t *params, int argc, char *argv[])
 	while ((opt = getopt(argc, argv, "46aCdlrsTvwc:R:t:W:")) != -1) {
 		switch (opt) {
 		case '4':
-			dig_params_flag_ipv4(params);
+			params_flag_ipv4(params);
 			break;
 		case '6':
-			dig_params_flag_ipv6(params);
-			break;
-		case 'a':
-			dig_params_flag_all(params);
+			params_flag_ipv6(params);
 			break;
 		case 'C':
 			dig_params_flag_soa(params);
-			break;
-		case 'd':
-		case 'v': // Fall through.
-			params_flag_verbose(params);
-			break;
-		case 'l':
-			dig_params_flag_axfr(params);
 			break;
 		case 'r':
 			dig_params_flag_norecurse(params);
 			break;
 		case 's':
-			dig_params_flag_servfail(params);
+			params_flag_servfail(params);
 			break;
 		case 'T':
 			params_flag_tcp(params);
 			break;
 		case 'w':
-			dig_params_flag_nowait(params);
+			params_flag_nowait(params);
 			break;
 		case 'c':
 			if (parse_class(optarg, &(params->class_num))
@@ -364,8 +326,8 @@ int dig_params_parse(params_t *params, int argc, char *argv[])
 	// Process non-option parameters.
 	switch (argc - optind) {
 	case 2:
-		if (dig_params_parse_server(params, argv[optind + 1])
-		    != KNOT_EOK) {
+		if (dig_params_parse_server(&(params->servers),
+		                            argv[optind + 1]) != KNOT_EOK) {
 			return KNOT_EINVAL;
 		}
 	case 1: // Fall through.

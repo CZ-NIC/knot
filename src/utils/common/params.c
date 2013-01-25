@@ -232,6 +232,26 @@ char* get_fqd_name(const char *name)
 	return fqd_name;
 }
 
+void params_flag_ipv4(params_t *params)
+{
+	params->ip = IP_4;
+}
+
+void params_flag_ipv6(params_t *params)
+{
+	params->ip = IP_6;
+}
+
+void params_flag_servfail(params_t *params)
+{
+	params->servfail_stop = true;
+}
+
+void params_flag_nowait(params_t *params)
+{
+	params->wait = -1;
+}
+
 void params_flag_tcp(params_t *params)
 {
 	params->protocol = PROTO_TCP;
@@ -239,8 +259,7 @@ void params_flag_tcp(params_t *params)
 
 void params_flag_verbose(params_t *params)
 {
-	params->format = FORMAT_VERBOSE;
-	
+	params->format = FORMAT_VERBOSE;	
 }
 
 int params_parse_interval(const char *value, int32_t *dst)

@@ -27,7 +27,8 @@
 #include "common/errcode.h"
 #include "libknot/packet/packet.h"
 
-#define DEFAULT_RETRIES 3
+#define DEFAULT_RETRIES_NSUPDATE	3
+#define DEFAULT_TIMEOUT_NSUPDATE	1
 
 static void parse_rr(const scanner_t *s) {
 	return; /* Dummy */
@@ -77,8 +78,8 @@ static int nsupdate_params_init(params_t *params)
 	params->operation = OPERATION_UPDATE;
 	params->protocol = PROTO_ALL;
 	params->udp_size = DEFAULT_UDP_SIZE;
-	params->retries = DEFAULT_RETRIES;
-	params->wait = DEFAULT_WAIT_INTERVAL;
+	params->retries = DEFAULT_RETRIES_NSUPDATE;
+	params->wait = DEFAULT_TIMEOUT_NSUPDATE;
 	params->format = FORMAT_NSUPDATE;
 	params->type_num = KNOT_RRTYPE_SOA;
 	

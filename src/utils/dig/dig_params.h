@@ -59,6 +59,9 @@ void query_set_serial(query_t *query, const uint32_t serial);
 int dig_params_parse(params_t *params, int argc, char *argv[]);
 void dig_params_clean(params_t *params);
 
+
+void dig_params_flag_norecurse(params_t *params);
+
 #endif // _DIG__DIG_PARAMS_H_
 
 /*! @} */

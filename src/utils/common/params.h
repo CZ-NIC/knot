@@ -38,7 +38,6 @@
 #define DEFAULT_DNS_PORT	"53"
 #define DEFAULT_UDP_SIZE	512
 #define MAX_PACKET_SIZE		65535
-#define DEFAULT_WAIT_INTERVAL	1
 
 #define SEP_CHARS		"\n\t "
 
@@ -117,6 +116,14 @@ int parse_type(const char *rtype, int32_t *type_num, int64_t *ixfr_serial);
 char* get_reverse_name(const char *name);
 
 char* get_fqd_name(const char *name);
+
+void params_flag_ipv4(params_t *params);
+
+void params_flag_ipv6(params_t *params);
+
+void params_flag_servfail(params_t *params);
+
+void params_flag_nowait(params_t *params);
 
 void params_flag_tcp(params_t *params);
 
