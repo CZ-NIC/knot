@@ -134,8 +134,9 @@ static knot_rrset_t *ns_synth_from_wildcard(
 	}
 	
 	knot_dname_release(knot_rrset_get_owner(wildcard_rrset));
-	
-	knot_rrset_set_owner(rrset, qname);
+	/*! \todo This is odd, simple knot_rrset_set_owner would be enough. */
+	knot_dname_t *dname_copy = knot_dname_deep_copy(qname);
+	knot_rrset_set_owner(rrset, dname_copy);
 
 	return rrset;
 }
@@ -549,7 +550,6 @@ static int ns_put_additional_for_rrset(knot_packet_t *resp,
                                        const knot_rrset_t *rrset)
 {
 	const knot_node_t *node = NULL;
-	const knot_dname_t *dname = NULL;
 
 	int ret = 0;
 

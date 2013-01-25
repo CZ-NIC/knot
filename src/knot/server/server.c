@@ -422,7 +422,8 @@ server_t *server_create()
 	OpenSSL_add_all_digests();
 
 	// Create XFR handler
-	server->xfr_h = xfr_create(XFR_THREADS_COUNT, server->nameserver);
+//	server->xfr_h = xfr_create(XFR_THREADS_COUNT, server->nameserver);
+	server->xfr_h = 0x1; //TODO
 	if (!server->xfr_h) {
 		knot_ns_destroy(&server->nameserver);
 		free(server);
@@ -579,7 +580,7 @@ int server_start(server_t *server)
 int server_wait(server_t *server)
 {
 	/* Join threading unit. */
-	xfr_join(server->xfr_h);
+//	xfr_join(server->xfr_h); TODO
 	
 	/* Lock RCU. */
 	rcu_read_lock();
@@ -721,7 +722,7 @@ void server_destroy(server_t **server)
 	dbg_server("server: destroying server instance\n");
 	
 	// Free XFR master
-	xfr_free((*server)->xfr_h);
+//	xfr_free((*server)->xfr_h); TODO XFR
 
 	// Free interfaces
 	node *n = 0, *nxt = 0;

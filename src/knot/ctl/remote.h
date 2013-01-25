@@ -175,14 +175,14 @@ knot_rrset_t* remote_build_rr(const char *k, uint16_t t);
  * \param v Text as a string.
  * \return Created rdata or NULL.
  */
-knot_rrset_t* remote_create_txt(const char *v);
+int remote_create_txt(knot_rrset_t *rr, const char *v);
 
 /*!
  * \brief Create a CNAME rdata.
  * \param d Domain name as a string.
  * \return Created rdata or NULL.
  */
-knot_rrset_t* remote_create_cname(const char *d);
+int remote_create_cname(knot_rrset_t *rr, const char *d);
 
 /*!
  * \brief Parse TXT rdata to string.

@@ -25,6 +25,7 @@
 #include "knot/server/zones.h"
 #include "libknot/util/wire.h"
 #include "libknot/packet/query.h"
+#include "common/descriptor_new.h"
 #include "libknot/packet/response.h"
 #include "libknot/nameserver/name-server.h"
 #include "libknot/tsig-op.h"
@@ -86,24 +87,24 @@ static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *
 		
 		/* Process all zones in data section. */
 		const knot_rrset_t *rr = a->arg[i];
-		if (knot_rrset_type(rr) != KNOT_RRTYPE_CNAME) {
+		//REVIEW MV: had to be changed to NS, CNAME can only have on RDATA.
+		if (knot_rrset_type(rr) != KNOT_RRTYPE_NS) {
 			continue;
 		}
 		
-		const knot_rdata_t *rd = knot_rrset_rdata(rr);
-		while (rd != NULL) {
-			/* Skip empty nodes. */
-			if (knot_rdata_item_count(rd) < 1) {
-				rd = knot_rrset_rdata_next(rr, rd);
-				continue;
-			}
+		for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(rr); i++) {
+			/* Skip empty nodes. */ // REWIEW MV: still relevant?
+//			if (knot_rdata_item_count(rd) < 1) {
+//				rd = knot_rrset_rdata_next(rr, rd);
+//				continue;
+//			}
 			/* Refresh zones. */
-			const knot_dname_t *dn = knot_rdata_item(rd, 0)->dname;
+			const knot_dname_t *dn =
+				knot_rrset_rdata_ns_name(rr, i);
 			zone = knot_zonedb_find_zone(ns->zone_db, dn);
 			if (cb(s, zone) != KNOT_EOK) {
 				a->rc = KNOT_RCODE_SERVFAIL;
 			}
-			rd = knot_rrset_rdata_next(rr, rd);
 		}
 		rcu_read_unlock();
 	}
@@ -157,25 +158,6 @@ static int remote_zone_flush(server_t *s, knot_zone_t *z)
 	}
 	
 	return KNOT_EOK;
-}
-
-/*! \brief Helper to build RDATA from RDATA item. */
-knot_rdata_t* remote_build_rdata(knot_rdata_item_t *i)
-{
-	/* Create RDATA. */
-	knot_rdata_t *rd = knot_rdata_new();
-	if (!rd) {
-		return NULL;
-	}
-	
-	/* Set RDATA items. */
-	int ret = knot_rdata_set_items(rd, i, 1);
-	if (ret != KNOT_EOK) {
-		knot_rdata_free(&rd);
-		return NULL;
-	}
-	
-	return rd;
 }
 
 /*!
@@ -409,10 +391,10 @@ int remote_answer(server_t *s, knot_packet_t *pkt, uint8_t* rwire, size_t *rlen)
 	}
 	ret = knot_packet_to_wire(resp, &wire, &len);
 	if (ret != KNOT_EOK)  {
-                free(cmd);
-                knot_packet_free(&resp);
-                return ret;
-        }
+		free(cmd);
+		knot_packet_free(&resp);
+		return ret;
+	}
 	if (len > 0) {
 		memcpy(rwire, wire, len);
 		*rlen = len;
@@ -420,16 +402,26 @@ int remote_answer(server_t *s, knot_packet_t *pkt, uint8_t* rwire, size_t *rlen)
 	knot_packet_free(&resp);
 	
 	/* Evaluate output. */
-	int rr_count = 0;
+	uint16_t rr_count = 0;
 	knot_rrset_t *rr = remote_build_rr("result.", KNOT_RRTYPE_TXT);
-	knot_rdata_t *rd = remote_create_txt(knot_strerror(ret));
-	knot_rrset_add_rdata(rr, rd);
-		
+	if (!rr) {
+		free(cmd);
+		knot_packet_free(&resp);
+		return ret;
+	}
+	ret = remote_create_txt(rr, knot_strerror(ret));
+	if (ret != KNOT_EOK) {
+		free(cmd);
+		knot_packet_free(&resp);
+		knot_rrset_free(&rr);
+		return ret;
+	}
 	remaining -= *rlen;
-	knot_rrset_to_wire(rr, rwire + *rlen, &remaining, &rr_count);
+	knot_rrset_to_wire(rr, rwire + *rlen, &remaining, remaining,
+	                   &rr_count, NULL);
 	knot_wire_set_nscount(rwire, 1);
 	*rlen += remaining;
-	knot_rrset_deep_free(&rr, 1, 1, 1);
+	knot_rrset_deep_free(&rr, 1, 1);
 	
 	free(cmd);
 	return ret;
@@ -570,13 +562,14 @@ int remote_query_append(knot_packet_t *qry, knot_rrset_t *data)
 	uint8_t *sp = qry->wireformat + qry->size;
 	uint8_t *np   = qry->wireformat + qry->max_size;
 	uint8_t *p = sp;
-	const knot_rdata_t *rd = knot_rrset_rdata(data);
-	while (rd != NULL) {
-		int ret = knot_query_rr_to_wire(data, rd, &p, np);
+	for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(data); i++) {
+		assert(0);
+		//TODO this function does not exist
+//		int ret = knot_query_rr_to_wire(data, i, &p, np);
+		int ret = 0;
 		if (ret == KNOT_EOK) {
 			qry->header.nscount += 1;
 		}
-		rd = knot_rrset_rdata_next(data, rd);
 	}
 
 	/* Finalize packet size. */
@@ -623,68 +616,59 @@ knot_rrset_t* remote_build_rr(const char *k, uint16_t t)
 	return rr;
 }
 
-knot_rdata_t* remote_create_txt(const char *v)
+int remote_create_txt(knot_rrset_t *rr, const char *v)
 {
-	if (!v) {
-		return NULL;
+	if (!rr || !v) {
+		return KNOT_EINVAL;
 	}
 
 	/* Create raw_data item. */
-	size_t v_len = strlen(v);
-	knot_rdata_item_t i;
-	i.raw_data = malloc(v_len + 3);
-	if (!i.raw_data) {
-		return NULL;
-	}
-	*i.raw_data = v_len + 1;
+	char v_len = strlen(v);
+	uint8_t *data = xmalloc(v_len + 1);
+	data[0] = v_len;
+	memcpy(data + 1, v, v_len);
 	
 	/* Write TXT item. */
-	uint8_t *raw_item = (uint8_t*)(i.raw_data + 1);
-	*(raw_item++) = v_len;
-	memcpy(raw_item, v, v_len);
-	
-	knot_rdata_t *rd = remote_build_rdata(&i);
-	if (!rd) {
-		free(i.raw_data);
+	uint8_t *rdata = knot_rrset_create_rdata(rr, v_len + 1);
+	if (!rdata) {
+		return KNOT_ERROR;
 	}
 	
-	return rd;
+	memcpy(rdata, data, v_len + 1);
+	
+	return KNOT_EOK;
 }
 
-knot_rdata_t* remote_create_cname(const char *d)
+int remote_create_cname(knot_rrset_t *rr, const char *d)
 {
-	if (!d) {
-		return NULL;
+	if (!rr || !d) {
+		return KNOT_EINVAL;
 	}
 
-	/* Create dname item. */
-	knot_rdata_item_t i;
+	/* Create dname. */
 	knot_dname_t *dn = remote_dname_fqdn(d);
-	i.dname = dn;
 	
 	/* Build RDATA. */
-	knot_rdata_t *rd = remote_build_rdata(&i);
-	if (!rd) {
-		knot_dname_release(dn);
+	uint8_t *rdata = knot_rrset_create_rdata(rr, knot_dname_size(dn));
+	if (!rdata) {
+		knot_dname_free(&dn);
+		return KNOT_ERROR;
 	}
+	memcpy(rdata, knot_dname_name(dn), knot_dname_size(dn));
 	
-	return rd;
+	return KNOT_EOK;
 }
 
-char* remote_parse_txt(const knot_rdata_t *rd)
+char* remote_parse_txt(const knot_rrset_t *rr)
 {
-	if (!rd || knot_rdata_count(rd) < 1) {
+	if (!rr || knot_rrset_rdata_rr_count(rr) < 1) {
 		return NULL;
 	}
 	
-	const knot_rdata_item_t *ri = knot_rdata_item(rd, 0);
-	if (!ri) {
-		return NULL;
-	}
-	
+	uint8_t *rdata = knot_rrset_get_rdata(rr, 0);
 	/* Packet parser should have already checked the packet validity. */
-	uint8_t item_len = ri->raw_data[1] & 0x00ff;
-	return strndup(((const char*)ri->raw_data) + 3, item_len);
+	uint8_t item_len = rdata[0];
+	return strndup(((const char*)rdata) + 1, item_len);
 }
 
 knot_dname_t* remote_dname_fqdn(const char *k)

@@ -33,6 +33,7 @@
  */
 enum knot_rr_class {
 	KNOT_CLASS_IN   =   1,
+	KNOT_CLASS_CH   =   2,
 	KNOT_CLASS_NONE = 254,
 	KNOT_CLASS_ANY  = 255,
 };

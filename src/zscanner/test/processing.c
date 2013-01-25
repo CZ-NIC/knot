@@ -123,8 +123,8 @@ void debug_process_record(const scanner_t *s)
 {
 	uint32_t block, block_length, i;
 
-	char rclass[32];
-	char rtype[32];
+//	char rclass[32];
+//	char rtype[32];
 
 //	if (knot_rrclass_to_string(s->r_class, rclass, sizeof(rclass)) > 0 &&
 //	    knot_rrtype_to_string(s->r_type, rtype, sizeof(rtype)) > 0) {

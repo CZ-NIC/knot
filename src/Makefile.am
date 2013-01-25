@@ -25,7 +25,7 @@ knot_zcompile_SOURCES =				\
 	libknot/rrset.c				\
 	libknot/rrset.h				\
 	common/slab/slab.c			\
-	zcompile/zcompile_main.c		\
+	knot/main.c					\
 	zcompile/zcompile-error.c		\
 	zcompile/zcompile.c			\
 	zscanner/test/processing.h		\
@@ -131,6 +131,12 @@ knot_zcompile_SOURCES =				\
 	knot/server/tcp-handler.h		\
 	knot/server/udp-handler.c		\
 	knot/server/udp-handler.h		\
+	knot/server/server.h			\
+	knot/server/server.c			\
+	knot/ctl/process.c			\
+	knot/ctl/process.h			\
+	knot/ctl/remote.c			\
+	knot/ctl/remote.h			\
 	knot/conf/conf.c			\
 	knot/conf/conf.h			\
 	knot/conf/logconf.c			\
