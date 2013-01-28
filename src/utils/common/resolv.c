@@ -20,12 +20,12 @@
 #include <stdlib.h>			// free
 
 #include "common/lists.h"		// list
-#include "common/errcode.h"             // KNOT_ENOENT
-#include "utils/common/params.h"	// DEFAULT_DNS_PORT
+#include "common/errcode.h"		// KNOT_ENOENT
+#include "utils/common/params.h"	// DEFAULT_IPV6_NAME
 
 #define RESOLV_FILE	"/etc/resolv.conf"
 
-server_t* parse_nameserver(const char *nameserver)
+server_t* parse_nameserver(const char *nameserver, const char *def_port)
 {
 	char	addr[128];
 	char	port[64];
@@ -37,7 +37,7 @@ server_t* parse_nameserver(const char *nameserver)
 	// Fill nameserver address and port.
 	strncpy(addr, nameserver, sizeof(addr));
 	addr[sizeof(addr) - 1] = '\0';
-	strcpy(port, DEFAULT_DNS_PORT);
+	strcpy(port, def_port);
 
 	// OpenBSD address + port notation: nameserver [address]:port
 	if (nameserver[0] == '[') {
@@ -71,7 +71,7 @@ server_t* parse_nameserver(const char *nameserver)
 	return server_create(addr, port);
 }
 
-static int get_resolv_nameservers(list *servers)
+static int get_resolv_nameservers(list *servers, const char *def_port)
 {
 	char	line[512];
 
@@ -119,7 +119,9 @@ static int get_resolv_nameservers(list *servers)
 
 		// Process value with respect to option name.
 		if (strncmp(option, "nameserver", strlen("nameserver")) == 0) {
-			server_t *server = parse_nameserver(value);
+			server_t *server;
+
+			server = parse_nameserver(value, def_port);
 
 			// If value is correct, add nameserver to the list.
 			if (server != NULL) {
@@ -138,7 +140,7 @@ static int get_resolv_nameservers(list *servers)
 	return list_size(servers);
 }
 
-int get_nameservers(list *servers)
+int get_nameservers(list *servers, const char *def_port)
 {
 	int ret;
 
@@ -150,7 +152,7 @@ int get_nameservers(list *servers)
 	init_list(servers);
 
 	// Read nameservers from resolv file.
-	ret = get_resolv_nameservers(servers);
+	ret = get_resolv_nameservers(servers, def_port);
 
 	// If found nameservers or error.
 	if (ret != 0) {
@@ -160,14 +162,14 @@ int get_nameservers(list *servers)
 		server_t *server;
 
 		// Add default ipv6 nameservers.
-		server = server_create(DEFAULT_IPV6_NAME, DEFAULT_DNS_PORT);
+		server = server_create(DEFAULT_IPV6_NAME, def_port);
 
 		if (server != NULL) {
 			add_tail(servers, (node *)server);
 		}
 
 		// Add default ipv4 nameservers.
-		server = server_create(DEFAULT_IPV4_NAME, DEFAULT_DNS_PORT);
+		server = server_create(DEFAULT_IPV4_NAME, def_port);
 
 		if (server != NULL) {
 			add_tail(servers, (node *)server);

@@ -77,6 +77,7 @@ static int nsupdate_params_init(params_t *params)
 	params->class_num = KNOT_CLASS_IN;
 	params->operation = OPERATION_UPDATE;
 	params->protocol = PROTO_ALL;
+	params->port = strdup(DEFAULT_DNS_PORT);
 	params->udp_size = DEFAULT_UDP_SIZE;
 	params->retries = DEFAULT_RETRIES_NSUPDATE;
 	params->wait = DEFAULT_TIMEOUT_NSUPDATE;
@@ -84,7 +85,8 @@ static int nsupdate_params_init(params_t *params)
 	params->type_num = KNOT_RRTYPE_SOA;
 
 	/* Create default server. */
-	if (params_parse_server(DEFAULT_IPV4_NAME, &params->servers)
+	if (params_parse_server(DEFAULT_IPV4_NAME, &params->servers,
+	                        params->port)
 	    != KNOT_EOK) {
 		return KNOT_EINVAL;
 	}
@@ -129,6 +131,8 @@ void nsupdate_params_clean(params_t *params)
 	WALK_LIST_DELSAFE(n, nxt, params->servers) {
 		server_free(n);
 	}
+
+	free(params->port);
 
 	/* Free TSIG key. */
 	knot_dname_free(&params->key.name);

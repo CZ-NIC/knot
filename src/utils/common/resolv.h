@@ -30,9 +30,9 @@
 #include "common/lists.h"		// list
 #include "utils/common/netio.h"		// server_t
 
-server_t* parse_nameserver(const char *nameserver);
+server_t* parse_nameserver(const char *nameserver, const char *def_port);
 
-int get_nameservers(list *servers);
+int get_nameservers(list *servers, const char *def_port);
 
 #endif // _UTILS__RESOLV_H_
 

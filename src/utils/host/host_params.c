@@ -49,6 +49,7 @@ static int host_params_init(params_t *params)
 	params->operation = OPERATION_QUERY;
 	params->ip = IP_ALL;
 	params->protocol = PROTO_ALL;
+	params->port = strdup(DEFAULT_DNS_PORT);
 	params->udp_size = DEFAULT_UDP_SIZE;
 	params->class_num = KNOT_CLASS_IN;
 	params->type_num = -1;
@@ -86,6 +87,8 @@ void host_params_clean(params_t *params)
 	WALK_LIST_DELSAFE(n, nxt, ext_params->queries) {
 		query_free((query_t *)n);
 	}
+
+	free(params->port);
 
 	// Destroy dig specific structure.
 	free(ext_params);
@@ -285,7 +288,8 @@ int host_params_parse(params_t *params, int argc, char *argv[])
 	// Process non-option parameters.
 	switch (argc - optind) {
 	case 2:
-		if (params_parse_server(argv[optind + 1], &params->servers)
+		if (params_parse_server(argv[optind + 1], &params->servers,
+		                        params->port)
 		    != KNOT_EOK) {
 			return KNOT_EINVAL;
 		}
@@ -302,7 +306,7 @@ int host_params_parse(params_t *params, int argc, char *argv[])
 
 	// If server list is empty, try to read defaults.
 	if (list_size(&params->servers) == 0 &&
-	    get_nameservers(&params->servers) <= 0) {
+	    get_nameservers(&params->servers, params->port) <= 0) {
 		WARN("can't read any default nameservers\n");
 	}
 

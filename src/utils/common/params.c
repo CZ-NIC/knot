@@ -299,14 +299,14 @@ int params_parse_type(const char *value, int32_t *rtype, uint32_t *xfr_serial)
 	return KNOT_EOK;
 }
 
-int params_parse_server(const char *value, list *servers)
+int params_parse_server(const char *value, list *servers, const char *def_port)
 {
 	if (value == NULL || servers == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	// Add specified nameserver.
-	server_t *server = parse_nameserver(value);
+	server_t *server = parse_nameserver(value, def_port);
 	if (server == NULL) {
 		return KNOT_ENOMEM;
 	}

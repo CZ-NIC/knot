@@ -85,6 +85,8 @@ typedef struct {
 	ip_version_t	ip;
 	/*!< Type (TCP, UDP) protocol to use. */
 	protocol_t	protocol;
+	/*!< Default port/service to connect to. */
+	char		*port;
 	/*!< Default class number. */
 	uint16_t	class_num;
 	/*!< Default type number (16unsigned + -1 uninitialized). */
@@ -106,7 +108,7 @@ typedef struct {
 	/*!< TSIG key used. */
 	knot_key_t	key;
 	/*!< Implementation specific data. */
-	void*		d;
+	void		*d;
 } params_t;
 
 char* get_reverse_name(const char *name);
@@ -129,7 +131,7 @@ int params_parse_class(const char *value, uint16_t *rclass);
 
 int params_parse_type(const char *value, int32_t *rtype, uint32_t *xfr_serial);
 
-int params_parse_server(const char *value, list *servers);
+int params_parse_server(const char *value, list *servers, const char *def_port);
 
 int params_parse_interval(const char *value, int32_t *dst);
 
