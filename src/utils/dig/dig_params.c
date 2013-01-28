@@ -33,6 +33,10 @@
 
 query_t* query_create(const char *name, const uint16_t type)
 {
+	if (name == NULL) {
+		return NULL;
+	}
+
 	// Create output structure.
 	query_t *query = calloc(1, sizeof(query_t));
 
@@ -51,6 +55,10 @@ query_t* query_create(const char *name, const uint16_t type)
 
 void query_set_serial(query_t *query, const uint32_t serial)
 {
+	if (query == NULL) {
+		return;
+	}
+
 	query->xfr_serial = serial;
 }
 
@@ -229,6 +237,10 @@ static void dig_params_help(int argc, char *argv[])
 
 void dig_params_flag_norecurse(params_t *params)
 {
+	if (params == NULL) {
+		return;
+	}
+
 	DIG_PARAM(params)->rd_flag = false;
 }
 

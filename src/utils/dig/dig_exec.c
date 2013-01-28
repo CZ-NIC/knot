@@ -237,6 +237,10 @@ void process_query(const params_t *params, const query_t *query)
 	size_t		total_len = 0;
 	size_t		msg_count = 0;
 
+	if (params == NULL || query == NULL) {
+		return;
+	}
+
 	// Create query packet.
 	out_packet = create_query_packet(params, query, &out, &out_len);
 

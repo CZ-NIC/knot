@@ -377,6 +377,10 @@ void print_header_xfr(const format_t format, const knot_rr_type_t type)
 void print_data_xfr(const format_t      format,
                     const knot_packet_t *packet)
 {
+	if (packet == NULL) {
+		return;
+	}
+
 	switch (format) {
 	case FORMAT_DIG:
 		print_section_dig(packet->answer, packet->an_rrsets);
@@ -418,6 +422,10 @@ void print_packet(const format_t      format,
                   const float         elapsed,
                   const size_t        msg_count)
 {
+	if (packet == NULL) {
+		return;
+	}
+
 	switch (format) {
 	case FORMAT_DIG:
 		if (packet->an_rrsets > 0) {

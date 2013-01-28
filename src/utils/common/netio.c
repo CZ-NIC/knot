@@ -29,6 +29,10 @@
 
 server_t* server_create(const char *name, const char *service)
 {
+	if (name == NULL || service == NULL) {
+		return NULL;
+	}
+
 	// Create output structure.
 	server_t *server = calloc(1, sizeof(server_t));
 
@@ -47,6 +51,10 @@ server_t* server_create(const char *name, const char *service)
 
 void server_free(server_t *server)
 {
+	if (server == NULL) {
+		return;
+	}
+
 	free(server->name);
 	free(server->service);
 	free(server);

@@ -30,6 +30,10 @@ server_t* parse_nameserver(const char *nameserver)
 	char	addr[128];
 	char	port[64];
 
+	if (nameserver == NULL) {
+		return NULL;
+	}
+
 	// Fill nameserver address and port.
 	strncpy(addr, nameserver, sizeof(addr));
 	addr[sizeof(addr) - 1] = '\0';
@@ -137,6 +141,10 @@ static int get_resolv_nameservers(list *servers)
 int get_nameservers(list *servers)
 {
 	int ret;
+
+	if (servers == NULL) {
+		return KNOT_EINVAL;
+	}
 
 	// Initialize list of servers.
 	init_list(servers);

@@ -127,6 +127,10 @@ char* get_reverse_name(const char *name)
 	struct in6_addr	addr6;
 	char		buf[128] = "\0";
 
+	if (name == NULL) {
+		return NULL;
+	}
+
         // Check name for IPv4 address, IPv6 address or other.
 	if (inet_pton(AF_INET, name, &addr4) == 1) {
 		uint32_t num = ntohl(addr4.s_addr);
@@ -181,31 +185,55 @@ char* get_fqd_name(const char *name)
 
 void params_flag_ipv4(params_t *params)
 {
+	if (params == NULL) {
+		return;
+	}
+
 	params->ip = IP_4;
 }
 
 void params_flag_ipv6(params_t *params)
 {
+	if (params == NULL) {
+		return;
+	}
+
 	params->ip = IP_6;
 }
 
 void params_flag_servfail(params_t *params)
 {
+	if (params == NULL) {
+		return;
+	}
+
 	params->servfail_stop = true;
 }
 
 void params_flag_nowait(params_t *params)
 {
+	if (params == NULL) {
+		return;
+	}
+
 	params->wait = -1;
 }
 
 void params_flag_tcp(params_t *params)
 {
+	if (params == NULL) {
+		return;
+	}
+
 	params->protocol = PROTO_TCP;
 }
 
 void params_flag_verbose(params_t *params)
 {
+	if (params == NULL) {
+		return;
+	}
+
 	params->format = FORMAT_VERBOSE;
 }
 
@@ -293,6 +321,10 @@ int params_parse_interval(const char *value, int32_t *dst)
 {
 	char *end;
 
+	if (value == NULL || dst == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	/* Convert string to number. */
 	long num = strtol(value, &end, 10);
 
@@ -318,6 +350,10 @@ int params_parse_num(const char *value, uint32_t *dst)
 {
 	char *end;
 
+	if (value == NULL || dst == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	// Convert string to number.
 	unsigned long num = strtoul(value, &end, 10);
 
@@ -334,6 +370,10 @@ int params_parse_num(const char *value, uint32_t *dst)
 
 int params_parse_tsig(const char *value, knot_key_t *key)
 {
+	if (value == NULL || key == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	/* Invalidate previous key. */
 	if (key->name) {
 		knot_dname_free(&key->name);
@@ -397,6 +437,10 @@ int params_parse_keyfile(const char *filename, knot_key_t *key)
 {
 	int ret = KNOT_EOK;
 
+	if (filename == NULL || key == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	/* Fetch keyname from filename. */
 	const char *bn = strrchr(filename, '/');
 	if (!bn) bn = filename;
@@ -424,3 +468,4 @@ int params_parse_keyfile(const char *filename, knot_key_t *key)
 	fclose(fp);
 	return ret;
 }
+
