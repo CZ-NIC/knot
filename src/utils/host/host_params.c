@@ -291,6 +291,7 @@ int host_params_parse(params_t *params, int argc, char *argv[])
 		if (params_parse_server(argv[optind + 1], &params->servers,
 		                        params->port)
 		    != KNOT_EOK) {
+			ERR("invalid nameserver\n");
 			return KNOT_EINVAL;
 		}
 	case 1: // Fall through.

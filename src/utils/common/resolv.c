@@ -41,8 +41,9 @@ server_t* parse_nameserver(const char *nameserver, const char *def_port)
 
 	// OpenBSD address + port notation: nameserver [address]:port
 	if (nameserver[0] == '[') {
-		char *start = (char *)nameserver + 1;
-		char *end = index(nameserver, ']');
+		char   *start = (char *)nameserver + 1;
+		char   *end = index(nameserver, ']');
+		size_t addr_len = end - start;
 
 		// Missing closing bracket -> stop processing.
 		if (end == NULL) {
@@ -50,16 +51,21 @@ server_t* parse_nameserver(const char *nameserver, const char *def_port)
 		}
 
 		// Fill enclosed address.
-		strncpy(addr, start, end - start);
-		addr[end - start] = '\0';
+		strncpy(addr, start, addr_len);
+		addr[addr_len] = '\0';
 
 		// Find possible port.
-		start = index(end, ':') + 1;
+		start += addr_len + 1;
+		if (strlen(start) > 0) {
+			// Check for colon separation.
+			if (*start != ':') {
+				return NULL;
+			}
 
-		// Check port occurence.
-		if (start != NULL) {
+			size_t port_len = strlen(++start);
+
 			// Check port string length.
-			if (strlen(start) >= sizeof(port)) {
+			if (port_len == 0 || port_len >= sizeof(port)) {
 				return NULL;
 			}
 

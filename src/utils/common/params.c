@@ -308,7 +308,7 @@ int params_parse_server(const char *value, list *servers, const char *def_port)
 	// Add specified nameserver.
 	server_t *server = parse_nameserver(value, def_port);
 	if (server == NULL) {
-		return KNOT_ENOMEM;
+		return KNOT_EINVAL;
 	}
 	add_tail(servers, (node *)server);
 

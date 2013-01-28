@@ -368,6 +368,7 @@ int dig_params_parse(params_t *params, int argc, char *argv[])
 			if (params_parse_server(argv[i] + 1, &params->servers,
 			                        params->port)
 			    != KNOT_EOK) {
+				ERR("invalid nameserver\n");
 				return KNOT_EINVAL;
 			}
 			break;
