@@ -220,7 +220,9 @@ int params_parse_class(const char *rclass, uint16_t *class_num)
 	return KNOT_EOK;
 }
 
-int params_parse_type(const char *rtype, int32_t *type_num, int64_t *xfr_serial)
+int params_parse_type(const char *rtype,
+                      int32_t    *type_num,
+                      uint32_t   *xfr_serial)
 {
 	if (rtype == NULL || type_num == NULL || xfr_serial == NULL) {
 		return KNOT_EINVAL;

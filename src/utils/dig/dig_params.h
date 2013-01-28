@@ -40,7 +40,7 @@ typedef struct {
 	/*!< Type number to query on. */
 	uint16_t	type;
 	/*!< SOA serial for XFR. */
-	int64_t		xfr_serial;
+	uint32_t	xfr_serial;
 } query_t;
 
 /*! \brief dig-specific params data. */

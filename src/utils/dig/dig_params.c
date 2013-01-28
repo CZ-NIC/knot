@@ -44,7 +44,7 @@ query_t* query_create(const char *name, const uint16_t type)
 	// Fill output.
 	query->name = strdup(name);
 	query->type = type;
-	query->xfr_serial = -1;
+	query->xfr_serial = 0;
 
 	return query;
 }
@@ -85,7 +85,7 @@ static int dig_params_init(params_t *params)
 	params->udp_size = DEFAULT_UDP_SIZE;
 	params->class_num = KNOT_CLASS_IN;
 	params->type_num = -1;
-	params->xfr_serial = -1;
+	params->xfr_serial = 0;
 	params->retries = DEFAULT_RETRIES_DIG;
 	params->wait = DEFAULT_TIMEOUT_DIG;
 	params->servfail_stop = false;

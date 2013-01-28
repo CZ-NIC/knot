@@ -52,7 +52,7 @@ static int host_params_init(params_t *params)
 	params->udp_size = DEFAULT_UDP_SIZE;
 	params->class_num = KNOT_CLASS_IN;
 	params->type_num = -1;
-	params->xfr_serial = -1;
+	params->xfr_serial = 0;
 	params->retries = DEFAULT_RETRIES_HOST;
 	params->wait = DEFAULT_TIMEOUT_HOST;
 	params->servfail_stop = false;

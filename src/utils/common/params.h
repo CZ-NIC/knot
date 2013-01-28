@@ -91,8 +91,8 @@ typedef struct {
 	int32_t		type_num;
 	/*!< Default TTL. */
 	uint32_t	ttl;
-	/*!< Default SOA serial for XFR (32unsigned + -1 uninitialized). */
-	int64_t		xfr_serial;
+	/*!< Default SOA serial for XFR. */
+	uint32_t	xfr_serial;
 	/*!< UDP buffer size. */
 	uint32_t	udp_size;
 	/*!< Number of UDP retries. */
@@ -127,7 +127,9 @@ void params_flag_verbose(params_t *params);
 
 int params_parse_class(const char *rclass, uint16_t *class_num);
 
-int params_parse_type(const char *rtype, int32_t *type_num, int64_t *xfr_serial);
+int params_parse_type(const char *rtype,
+                      int32_t    *type_num,
+                      uint32_t   *xfr_serial);
 
 int params_parse_server(list *servers, const char *name);
 
