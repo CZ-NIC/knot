@@ -141,6 +141,7 @@ static void dig_params_flag_soa(params_t *params)
 	params->operation = OPERATION_LIST_SOA;
 }
 
+/*
 static int dig_params_parse_name(params_t *params, const char *name)
 {
 	char	*reverse = get_reverse_name(name);
@@ -226,6 +227,27 @@ static int dig_params_parse_name(params_t *params, const char *name)
 	free(fqd_name);
 
 	return KNOT_EOK;
+}*/
+
+static int dig_params_parse_name(const char *value, params_t *params)
+{
+	query_t	*query;
+	char    *fqd_name = NULL;
+
+	// If name is not FQDN, append trailing dot.
+	fqd_name = get_fqd_name(value);
+
+	// Add name to query list.
+	query = query_create(fqd_name, params->type_num);
+	if (query == NULL) {
+		free(fqd_name);
+		return KNOT_ENOMEM;
+	}
+	add_tail(&DIG_PARAM(params)->queries, (node *)query);
+
+	free(fqd_name);
+
+	return KNOT_EOK;
 }
 
 static int dig_params_parse_reverse(const char *value, list *queries)
@@ -283,7 +305,7 @@ int dig_params_parse(params_t *params, int argc, char *argv[])
 	dig_params_t *ext_params = DIG_PARAM(params);
 
 	// Command line options processing.
-	while ((opt = getopt(argc, argv, "46c:t:x:")) != -1) {
+	while ((opt = getopt(argc, argv, "46c:q:t:x:")) != -1) {
 		switch (opt) {
 		case '4':
 			params_flag_ipv4(params);
@@ -293,6 +315,12 @@ int dig_params_parse(params_t *params, int argc, char *argv[])
 			break;
 		case 'c':
 			if (params_parse_class(optarg, &params->class_num)
+			    != KNOT_EOK) {
+				return KNOT_EINVAL;
+			}
+			break;
+		case 'q':
+			if (dig_params_parse_name(optarg, params)
 			    != KNOT_EOK) {
 				return KNOT_EINVAL;
 			}
