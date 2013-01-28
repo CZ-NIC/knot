@@ -35,17 +35,15 @@ static int host_params_init(params_t *params)
 {
 	memset(params, 0, sizeof(*params));
 
-	// Read default nameservers.
-	if (get_nameservers(&params->servers) <= 0) {
-		WARN("can't read any default nameservers\n");
-	}
-
 	// Create dig specific data structure.
 	params->d = calloc(1, sizeof(dig_params_t));
 	if (!params->d) {
 		return KNOT_ENOMEM;
 	}
 	dig_params_t *ext_params = DIG_PARAM(params);
+
+	// Initialize blank server list.
+	init_list(&params->servers);
 
 	// Default values.
 	params->operation = OPERATION_QUERY;
@@ -207,28 +205,6 @@ static void host_params_help(int argc, char *argv[])
 	       argv[0], (int)strlen(argv[0]), ' ');
 }
 
-int host_params_parse_server(list *servers, const char *name)
-{
-	node *n = NULL, *nxt = NULL;
-
-	// Remove default nameservers.
-	WALK_LIST_DELSAFE(n, nxt, *servers) {
-		server_free((server_t *)n);
-	}
-
-	// Initialize blank server list.
-	init_list(servers);
-
-	// Add specified nameserver.
-	server_t *server = parse_nameserver(name);
-	if (server == NULL) {
-		return KNOT_ENOMEM;
-	}
-	add_tail(servers, (node *)server);
-
-	return KNOT_EOK;
-}
-
 int host_params_parse(params_t *params, int argc, char *argv[])
 {
 	int opt = 0;
@@ -276,7 +252,7 @@ int host_params_parse(params_t *params, int argc, char *argv[])
 			params_flag_nowait(params);
 			break;
 		case 'c':
-			if (parse_class(optarg, &(params->class_num))
+			if (params_parse_class(optarg, &(params->class_num))
 			    != KNOT_EOK) {
 				return KNOT_EINVAL;
 			}
@@ -288,8 +264,8 @@ int host_params_parse(params_t *params, int argc, char *argv[])
 			}
 			break;
 		case 't':
-			if (parse_type(optarg, &(params->type_num),
-			               &(params->xfr_serial))
+			if (params_parse_type(optarg, &(params->type_num),
+			                      &(params->xfr_serial))
 			    != KNOT_EOK) {
 				return KNOT_EINVAL;
 			}
@@ -309,8 +285,8 @@ int host_params_parse(params_t *params, int argc, char *argv[])
 	// Process non-option parameters.
 	switch (argc - optind) {
 	case 2:
-		if (host_params_parse_server(&(params->servers),
-		                             argv[optind + 1]) != KNOT_EOK) {
+		if (params_parse_server(&(params->servers),
+		                        argv[optind + 1]) != KNOT_EOK) {
 			return KNOT_EINVAL;
 		}
 	case 1: // Fall through.
@@ -322,6 +298,12 @@ int host_params_parse(params_t *params, int argc, char *argv[])
 	default:
 		host_params_help(argc, argv);
 		return KNOT_ENOTSUP;
+	}
+
+	// If server list is empty, try to read defaults.
+	if (list_size(&params->servers) == 0 &&
+	    get_nameservers(&params->servers) <= 0) {
+		WARN("can't read any default nameservers\n");
 	}
 
 	return KNOT_EOK;

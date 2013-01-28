@@ -109,10 +109,6 @@ typedef struct {
 	void*		d;
 } params_t;
 
-int parse_class(const char *rclass, uint16_t *class_num);
-
-int parse_type(const char *rtype, int32_t *type_num, int64_t *ixfr_serial);
-
 char* get_reverse_name(const char *name);
 
 char* get_fqd_name(const char *name);
@@ -128,6 +124,12 @@ void params_flag_nowait(params_t *params);
 void params_flag_tcp(params_t *params);
 
 void params_flag_verbose(params_t *params);
+
+int params_parse_class(const char *rclass, uint16_t *class_num);
+
+int params_parse_type(const char *rtype, int32_t *type_num, int64_t *xfr_serial);
+
+int params_parse_server(list *servers, const char *name);
 
 int params_parse_interval(const char *value, int32_t *dst);
 
