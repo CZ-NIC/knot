@@ -31,7 +31,7 @@
 #include <stdint.h>			// uint16_t
 
 #include "common/lists.h"		// node
-#include "libknot/tsig.h"
+#include "libknot/tsig.h"		// knot_key_t
 
 #define DEFAULT_IPV4_NAME	"127.0.0.1"
 #define DEFAULT_IPV6_NAME	"::1"
