@@ -135,12 +135,13 @@ void dig_params_clean(params_t *params)
 	memset(params, 0, sizeof(*params));
 }
 
+/*
 static void dig_params_flag_soa(params_t *params)
 {
 	params->type_num = KNOT_RRTYPE_SOA;
 	params->operation = OPERATION_LIST_SOA;
 }
-
+*/
 /*
 static int dig_params_parse_name(params_t *params, const char *name)
 {
@@ -274,6 +275,18 @@ static int dig_params_parse_reverse(const char *value, list *queries)
 	return KNOT_EOK;
 }
 
+static void set_default_query(list *queries)
+{
+	query_t	*query;
+
+	// Add default query: NS to ".".
+	query = query_create(".", KNOT_RRTYPE_NS);
+	if (query == NULL) {
+		return;
+	}
+	add_tail(queries, (node *)query);
+}
+
 static void dig_params_help(int argc, char *argv[])
 {
 	printf("Usage: %s [-aCdlrsTvw] [-4] [-6] [-c class] [-R retries]\n"
@@ -366,6 +379,11 @@ int dig_params_parse(params_t *params, int argc, char *argv[])
 	if (list_size(&params->servers) == 0 &&
 	    get_nameservers(&params->servers) <= 0) {
 		WARN("can't read any default nameservers\n");
+	}
+
+	// If there is no query, add default one.
+	if (list_size(&ext_params->queries) == 0) {
+	    set_default_query(&ext_params->queries);
 	}
 
 	return KNOT_EOK;
