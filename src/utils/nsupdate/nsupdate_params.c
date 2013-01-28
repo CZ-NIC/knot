@@ -84,7 +84,7 @@ static int nsupdate_params_init(params_t *params)
 	params->type_num = KNOT_RRTYPE_SOA;
 
 	/* Create default server. */
-	if (params_parse_server(&params->servers, DEFAULT_IPV4_NAME)
+	if (params_parse_server(DEFAULT_IPV4_NAME, &params->servers)
 	    != KNOT_EOK) {
 		return KNOT_EINVAL;
 	}

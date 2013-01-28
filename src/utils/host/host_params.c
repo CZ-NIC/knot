@@ -111,7 +111,7 @@ static void host_params_flag_axfr(params_t *params)
 	params->type_num = KNOT_RRTYPE_AXFR;
 }
 
-static int host_params_parse_name(params_t *params, const char *name)
+static int host_params_parse_name(const char *name, params_t *params)
 {
 	char	*reverse = get_reverse_name(name);
 	char	*fqd_name = NULL;
@@ -252,26 +252,26 @@ int host_params_parse(params_t *params, int argc, char *argv[])
 			params_flag_nowait(params);
 			break;
 		case 'c':
-			if (params_parse_class(optarg, &(params->class_num))
+			if (params_parse_class(optarg, &params->class_num)
 			    != KNOT_EOK) {
 				return KNOT_EINVAL;
 			}
 			break;
 		case 'R':
-			if (params_parse_num(optarg, &(params->retries))
+			if (params_parse_num(optarg, &params->retries)
 			    != KNOT_EOK) {
 				return KNOT_EINVAL;
 			}
 			break;
 		case 't':
-			if (params_parse_type(optarg, &(params->type_num),
-			                      &(params->xfr_serial))
+			if (params_parse_type(optarg, &params->type_num,
+			                      &params->xfr_serial)
 			    != KNOT_EOK) {
 				return KNOT_EINVAL;
 			}
 			break;
 		case 'W':
-			if (params_parse_interval(optarg, &(params->wait))
+			if (params_parse_interval(optarg, &params->wait)
 			    != KNOT_EOK) {
 				return KNOT_EINVAL;
 			}
@@ -285,12 +285,12 @@ int host_params_parse(params_t *params, int argc, char *argv[])
 	// Process non-option parameters.
 	switch (argc - optind) {
 	case 2:
-		if (params_parse_server(&(params->servers),
-		                        argv[optind + 1]) != KNOT_EOK) {
+		if (params_parse_server(argv[optind + 1], &params->servers)
+		    != KNOT_EOK) {
 			return KNOT_EINVAL;
 		}
 	case 1: // Fall through.
-		if (host_params_parse_name(params, argv[optind])
+		if (host_params_parse_name(argv[optind], params)
 		    != KNOT_EOK) {
 			return KNOT_EINVAL;
 		}

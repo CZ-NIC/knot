@@ -437,7 +437,7 @@ void print_packet(const format_t      format,
 			print_section_host(packet->answer, packet->an_rrsets);
 		} else {
 			uint8_t rcode = knot_wire_get_rcode(packet->wireformat);
-			print_error_host(rcode, &(packet->question));
+			print_error_host(rcode, &packet->question);
 		}
 		break;
 	case FORMAT_NSUPDATE:

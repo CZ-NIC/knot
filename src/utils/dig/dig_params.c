@@ -228,6 +228,13 @@ static int dig_params_parse_name(params_t *params, const char *name)
 	return KNOT_EOK;
 }
 
+static int dig_params_parse_reverse(const char *value, list *queries)
+{
+
+
+	return KNOT_EOK;
+}
+
 static void dig_params_help(int argc, char *argv[])
 {
 	printf("Usage: %s [-aCdlrsTvw] [-4] [-6] [-c class] [-R retries]\n"
@@ -252,12 +259,14 @@ int dig_params_parse(params_t *params, int argc, char *argv[])
 		return KNOT_EINVAL;
 	}
 
+	dig_params_t *ext_params = DIG_PARAM(params);
+
 	if (dig_params_init(params) != KNOT_EOK) {
 		return KNOT_ERROR;
 	}
 
 	// Command line options processing.
-	while ((opt = getopt(argc, argv, "46c:t:")) != -1) {
+	while ((opt = getopt(argc, argv, "46c:t:x:")) != -1) {
 		switch (opt) {
 		case '4':
 			params_flag_ipv4(params);
@@ -266,14 +275,21 @@ int dig_params_parse(params_t *params, int argc, char *argv[])
 			params_flag_ipv6(params);
 			break;
 		case 'c':
-			if (params_parse_class(optarg, &(params->class_num))
+			if (params_parse_class(optarg, &params->class_num)
 			    != KNOT_EOK) {
 				return KNOT_EINVAL;
 			}
 			break;
 		case 't':
-			if (params_parse_type(optarg, &(params->type_num),
-			                      &(params->xfr_serial))
+			if (params_parse_type(optarg, &params->type_num,
+			                      &params->xfr_serial)
+			    != KNOT_EOK) {
+				return KNOT_EINVAL;
+			}
+			break;
+		case 'x':
+			if (dig_params_parse_reverse(optarg,
+			                             &ext_params->queries)
 			    != KNOT_EOK) {
 				return KNOT_EINVAL;
 			}
@@ -288,8 +304,8 @@ int dig_params_parse(params_t *params, int argc, char *argv[])
 	for (int i = optind; i < argc; i++) {
 		switch (argv[i][0]) {
 		case '@':
-			if (params_parse_server(&(params->servers),
-			                        argv[i] + 1) != KNOT_EOK) {
+			if (params_parse_server(argv[i] + 1, &params->servers)
+			    != KNOT_EOK) {
 				return KNOT_EINVAL;
 			}
 			break;

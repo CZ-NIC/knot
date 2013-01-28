@@ -125,13 +125,11 @@ void params_flag_tcp(params_t *params);
 
 void params_flag_verbose(params_t *params);
 
-int params_parse_class(const char *rclass, uint16_t *class_num);
+int params_parse_class(const char *value, uint16_t *rclass);
 
-int params_parse_type(const char *rtype,
-                      int32_t    *type_num,
-                      uint32_t   *xfr_serial);
+int params_parse_type(const char *value, int32_t *rtype, uint32_t *xfr_serial);
 
-int params_parse_server(list *servers, const char *name);
+int params_parse_server(const char *value, list *servers);
 
 int params_parse_interval(const char *value, int32_t *dst);
 

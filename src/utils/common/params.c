@@ -237,46 +237,44 @@ void params_flag_verbose(params_t *params)
 	params->format = FORMAT_VERBOSE;
 }
 
-int params_parse_class(const char *rclass, uint16_t *class_num)
+int params_parse_class(const char *value, uint16_t *rclass)
 {
-	if (rclass == NULL || class_num == NULL) {
+	if (value == NULL || rclass == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	*class_num = knot_rrclass_from_string(rclass);
+	*rclass = knot_rrclass_from_string(value);
 
 	return KNOT_EOK;
 }
 
-int params_parse_type(const char *rtype,
-                      int32_t    *type_num,
-                      uint32_t   *xfr_serial)
+int params_parse_type(const char *value, int32_t *rtype, uint32_t *xfr_serial)
 {
-	if (rtype == NULL || type_num == NULL || xfr_serial == NULL) {
+	if (value == NULL || rtype == NULL || xfr_serial == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	size_t param_pos = strcspn(rtype, "=");
+	size_t param_pos = strcspn(value, "=");
 
 	// There is no additional parameter.
-	if (param_pos == strlen(rtype)) {
-		*type_num = knot_rrtype_from_string(rtype);
+	if (param_pos == strlen(value)) {
+		*rtype = knot_rrtype_from_string(value);
 
 		// IXFR requires serial parameter.
-		if (*type_num == KNOT_RRTYPE_IXFR) {
+		if (*rtype == KNOT_RRTYPE_IXFR) {
 			ERR("required SOA serial for IXFR query\n");
 			return KNOT_ERROR;
 		}
 	} else {
-		char *type_char = strndup(rtype, param_pos);
+		char *type_char = strndup(value, param_pos);
 
-		*type_num = knot_rrtype_from_string(type_char);
+		*rtype = knot_rrtype_from_string(type_char);
 
 		free(type_char);
 
 		// Additional parameter is acceptet for IXFR only.
-		if (*type_num == KNOT_RRTYPE_IXFR) {
-			const char *param_str = rtype + 1 + param_pos;
+		if (*rtype == KNOT_RRTYPE_IXFR) {
+			const char *param_str = value + 1 + param_pos;
 			char *end;
 
 			// Convert string to serial.
@@ -292,7 +290,7 @@ int params_parse_type(const char *rtype,
 			*xfr_serial = serial;
 		} else {
 			char buf[64] = "";
-			knot_rrtype_to_string(*type_num, buf, sizeof(buf));
+			knot_rrtype_to_string(*rtype, buf, sizeof(buf));
 			ERR("type %s can't have a parameter\n", buf);
 			return KNOT_ERROR;
 		}
@@ -301,14 +299,14 @@ int params_parse_type(const char *rtype,
 	return KNOT_EOK;
 }
 
-int params_parse_server(list *servers, const char *name)
+int params_parse_server(const char *value, list *servers)
 {
-	if (servers == NULL || name == NULL) {
+	if (value == NULL || servers == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	// Add specified nameserver.
-	server_t *server = parse_nameserver(name);
+	server_t *server = parse_nameserver(value);
 	if (server == NULL) {
 		return KNOT_ENOMEM;
 	}
