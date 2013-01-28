@@ -230,7 +230,24 @@ static int dig_params_parse_name(params_t *params, const char *name)
 
 static int dig_params_parse_reverse(const char *value, list *queries)
 {
+	char	*reverse = get_reverse_name(value);
+	query_t	*query;
 
+	// Check reverse input.
+	if (reverse == NULL) {
+		ERR("invalid IPv4 or IPv6 address\n");
+		return KNOT_EINVAL;
+	}
+
+	// Add reverse query for address.
+	query = query_create(reverse, KNOT_RRTYPE_PTR);
+	if (query == NULL) {
+		free(reverse);
+		return KNOT_ENOMEM;
+	}
+	add_tail(queries, (node *)query);
+
+	free(reverse);
 
 	return KNOT_EOK;
 }
@@ -259,11 +276,11 @@ int dig_params_parse(params_t *params, int argc, char *argv[])
 		return KNOT_EINVAL;
 	}
 
-	dig_params_t *ext_params = DIG_PARAM(params);
-
 	if (dig_params_init(params) != KNOT_EOK) {
 		return KNOT_ERROR;
 	}
+
+	dig_params_t *ext_params = DIG_PARAM(params);
 
 	// Command line options processing.
 	while ((opt = getopt(argc, argv, "46c:t:x:")) != -1) {

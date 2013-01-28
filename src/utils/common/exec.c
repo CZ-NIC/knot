@@ -138,7 +138,7 @@ static void print_header(const knot_packet_t *packet)
 	}
 
 	// Print formated info.
-	printf(";; ->>HEADER<<- opcode: %s, status: %s, id: %u\n"
+	printf("\n;; ->>HEADER<<- opcode: %s, status: %s, id: %u\n"
 	       ";; Flags:%1s, "
 	       "QUERY: %u, ANSWER: %u, AUTHORITY: %u, ADDITIONAL: %u\n",
 	       opcode->name, rcode->name, knot_packet_id(packet),
