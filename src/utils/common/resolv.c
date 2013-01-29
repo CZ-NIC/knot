@@ -27,20 +27,14 @@
 
 server_t* parse_nameserver(const char *nameserver, const char *def_port)
 {
-	char	addr[128];
-	char	port[64];
-
-	if (nameserver == NULL) {
+	if (nameserver == NULL || def_port == NULL) {
 		return NULL;
 	}
 
-	// Fill nameserver address and port.
-	strncpy(addr, nameserver, sizeof(addr));
-	addr[sizeof(addr) - 1] = '\0';
-	strcpy(port, def_port);
-
-	// OpenBSD address + port notation: nameserver [address]:port
+	// OpenBSD notation: nameserver [address]:port
 	if (nameserver[0] == '[') {
+		char *addr, *port;
+	
 		char   *start = (char *)nameserver + 1;
 		char   *end = index(nameserver, ']');
 		size_t addr_len = end - start;
@@ -51,14 +45,14 @@ server_t* parse_nameserver(const char *nameserver, const char *def_port)
 		}
 
 		// Fill enclosed address.
-		strncpy(addr, start, addr_len);
-		addr[addr_len] = '\0';
+		addr = strndup(start, addr_len);
 
 		// Find possible port.
 		start += addr_len + 1;
 		if (strlen(start) > 0) {
 			// Check for colon separation.
 			if (*start != ':') {
+				free(addr);
 				return NULL;
 			}
 
@@ -66,15 +60,26 @@ server_t* parse_nameserver(const char *nameserver, const char *def_port)
 
 			// Check port string length.
 			if (port_len == 0 || port_len >= sizeof(port)) {
+				free(addr);
 				return NULL;
 			}
 
 			// Fill port part.
-			strcpy(port, start);
+			port = strdup(start);
+		} else {
+			port = strdup(def_port);
 		}
-	}
 
-	return server_create(addr, port);
+		// Create server structure.
+		server_t *server = server_create(addr, port);
+
+		free(addr);
+		free(port);
+
+		return server;
+	} else {
+		return server_create(nameserver, def_port);
+	}
 }
 
 static int get_resolv_nameservers(list *servers, const char *def_port)
@@ -148,9 +153,7 @@ static int get_resolv_nameservers(list *servers, const char *def_port)
 
 int get_nameservers(list *servers, const char *def_port)
 {
-	int ret;
-
-	if (servers == NULL) {
+	if (servers == NULL || def_port == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -158,7 +161,7 @@ int get_nameservers(list *servers, const char *def_port)
 	init_list(servers);
 
 	// Read nameservers from resolv file.
-	ret = get_resolv_nameservers(servers, def_port);
+	int ret = get_resolv_nameservers(servers, def_port);
 
 	// If found nameservers or error.
 	if (ret != 0) {

@@ -14,9 +14,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <stdlib.h>			// EXIT_FAILURE
+#include <stdlib.h>				// EXIT_FAILURE
 
-#include "common/errcode.h"		// KNOT_EOK
+#include "common/errcode.h"			// KNOT_EOK
 #include "utils/nsupdate/nsupdate_params.h"	// params_t
 #include "utils/nsupdate/nsupdate_exec.h"	// host_exec
 
@@ -29,7 +29,6 @@ int main(int argc, char *argv[])
 		if (nsupdate_exec(&params) != KNOT_EOK) {
 			ret = EXIT_FAILURE;
 		}
-		
 	} else {
 		ret = EXIT_FAILURE;
 	}
