@@ -375,10 +375,7 @@ static parser_rrtype_descriptor_t
 
 parser_rrtype_descriptor_t *parser_rrtype_descriptor_by_type(uint16_t type)
 {
-	if (type <= 65535) {
-		return &knot_rrtype_descriptors[type];
-	}
-	return &knot_rrtype_descriptors[0];
+	return &knot_rrtype_descriptors[type];
 }
 
 /* I see a lot of potential here to speed up zone parsing - this is O(n) *

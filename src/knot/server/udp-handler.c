@@ -490,7 +490,7 @@ void __attribute__ ((constructor)) udp_master_init()
 #ifdef MSG_WAITFORONE
 	/* Check for recvmmsg() support. */
 	if (dlsym(RTLD_DEFAULT, "recvmmsg") != 0) {
-		int r = recvmmsg(0, NULL, 0, 0, 0);
+		recvmmsg(0, NULL, 0, 0, 0);
 		if (errno != ENOSYS) {
 			_udp_master = udp_master_recvmmsg;
 		}
