@@ -2051,10 +2051,11 @@ static int ns_answer_from_zone(const knot_zone_contents_t *zone,
 search:
 	find_ret = knot_zone_contents_find_dname(zone, qname, &node,
 	                                          &closest_encloser, &previous);
-//	node = knot_node_current(node); TODO for LS
+//	node = knot_node_current(node);
 //	closest_encloser = knot_node_current(closest_encloser);
 //	previous = knot_node_current(previous);
-	if (find_ret == KNOT_EINVAL) {
+	previous = NULL; // TODO REVIEW LS
+		if (find_ret == KNOT_EINVAL) {
 		return NS_ERR_SERVFAIL;
 	}
 

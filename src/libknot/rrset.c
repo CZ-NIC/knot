@@ -694,6 +694,8 @@ dbg_rrset_exec_detail(
 			offset += sizeof(knot_dname_t *);
 			size += knot_dname_size(dname);
 		} else if (descriptor_item_is_fixed(item)) {
+			dbg_rrset_detail("Saving static chunk, size=%d\n",
+			                 item);
 			/* Fixed length chunk. */
 			if (size + rdlength + item > max_size) {
 				return KNOT_ESPACE;
@@ -708,6 +710,8 @@ dbg_rrset_exec_detail(
 			size_t remainder_size =
 				rrset_rdata_remainder_size(rrset, offset,
 			                                   rdata_pos);
+			dbg_rrset_detail("Saving remaining chunk, size=%d\n",
+			                 remainder_size);
 			if (size + rdlength + remainder_size > max_size) {
 				return KNOT_ESPACE;
 			}
@@ -785,6 +789,8 @@ static int knot_rrset_to_wire_aux(const knot_rrset_t *rrset, uint8_t **pos,
 			knot_response_compress_dname(rrset->owner, &compr_info,
 			                             comp->owner_tmp, max_size,
 		                                     comp->compr_cs);
+		dbg_response_detail("Compressed owner has size=%zu\n",
+		                    compr_info.owner.size);
 		comp->compr = &compr_info;
 	}
 	
@@ -2133,7 +2139,7 @@ const knot_dname_t *knot_rrset_rdata_ns_name(const knot_rrset_t *rrset,
 	}
 	
 	knot_dname_t *dname;
-	memcpy(dname, rrset_rdata_pointer(rrset, rdata_pos),
+	memcpy(&dname, rrset_rdata_pointer(rrset, rdata_pos),
 	       sizeof(knot_dname_t *));
 	return dname;
 }
@@ -2146,7 +2152,7 @@ const knot_dname_t *knot_rrset_rdata_mx_name(const knot_rrset_t *rrset,
 	}
 	
 	knot_dname_t *dname;
-	memcpy(dname, rrset_rdata_pointer(rrset, rdata_pos) + 2,
+	memcpy(&dname, rrset_rdata_pointer(rrset, rdata_pos) + 2,
 	       sizeof(knot_dname_t *));
 	return dname;
 }
@@ -2159,7 +2165,7 @@ const knot_dname_t *knot_rrset_rdata_srv_name(const knot_rrset_t *rrset,
 	}
 	
 	knot_dname_t *dname;
-	memcpy(dname, rrset_rdata_pointer(rrset, rdata_pos) + 6,
+	memcpy(&dname, rrset_rdata_pointer(rrset, rdata_pos) + 6,
 	       sizeof(knot_dname_t *));
 	return dname;
 }
