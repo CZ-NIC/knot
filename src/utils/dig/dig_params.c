@@ -337,7 +337,7 @@ int dig_params_parse(params_t *params, int argc, char *argv[])
 	dig_params_t *ext_params = DIG_PARAM(params);
 
 	// Command line options processing.
-	while ((opt = getopt(argc, argv, "46c:p:q:t:x:")) != -1) {
+	while ((opt = getopt(argc, argv, "46hc:p:q:t:x:")) != -1) {
 		switch (opt) {
 		case '4':
 			params_flag_ipv4(params);
@@ -377,7 +377,8 @@ int dig_params_parse(params_t *params, int argc, char *argv[])
 				return KNOT_EINVAL;
 			}
 			break;
-		default:
+		case 'h':
+		default: // Fall through.
 			dig_params_help(argc, argv);
 			return KNOT_ENOTSUP;
 		}
