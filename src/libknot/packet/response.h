@@ -49,7 +49,7 @@ struct knot_compr_owner {
 	 * packet.
 	 */
 	uint8_t *wire;
-	short size; /*!< Size of the domain name in bytes. */
+	uint8_t size; /*!< Size of the domain name in bytes. */
 	/*! \brief Position of the name relative to the start of the packet. */
 	size_t pos;
 };

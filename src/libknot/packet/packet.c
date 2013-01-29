@@ -1555,7 +1555,7 @@ static void knot_packet_dump_rrsets(const knot_rrset_t **rrsets,
 	assert((rrsets != NULL && *rrsets != NULL) || count < 1);
 
 	for (int i = 0; i < count; ++i) {
-		knot_rrset_dump(rrsets[i], 0);
+		knot_rrset_dump(rrsets[i]);
 	}
 }
 #endif
