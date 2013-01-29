@@ -40,6 +40,7 @@
 #include "libknot/packet/response.h"
 #include "libknot/zone/zone-diff.h"
 #include "libknot/updates/ddns.h"
+#include "zcompile/zcompile.h"
 
 static const size_t XFRIN_CHANGESET_BINARY_SIZE = 100;
 static const size_t XFRIN_CHANGESET_BINARY_STEP = 100;
@@ -872,7 +873,7 @@ static int zones_set_acl(acl_t **acl, list* acl_list)
  * \retval KNOT_EZONEINVAL
  */
 static int zones_load_zone(knot_zone_t **dst, const char *zone_name,
-			   const char *source, const char *filename)
+			   const char *source)
 {
 	if (dst == NULL || zone_name == NULL || source == NULL) {
 		return KNOT_EINVAL;
@@ -890,12 +891,6 @@ static int zones_load_zone(knot_zone_t **dst, const char *zone_name,
 		return KNOT_EINVAL;
 	}
 	zname[zlen - 1] = '\0'; /* Trim last dot */
-	if (filename == NULL) {
-		log_server_error("No file name for zone '%s'.\n", zname);
-		free(zname);
-		return KNOT_EINVAL;
-	}
-	
 	
 	/* Check if the compiled file still exists. */
 	struct stat st;
@@ -907,11 +902,16 @@ static int zones_load_zone(knot_zone_t **dst, const char *zone_name,
 		free(zname);
 		return KNOT_EZONEINVAL;
 	}
-
+	
+	int ret = zone_read(zone_name, source, 0, dst);
 	/* Attempt to open compiled zone for loading. */
-	int ret = KNOT_EOK;
-	zloader_t *zl = NULL;
-	dbg_zones("zones: parsing zone database '%s'\n", filename);
+	if (ret != KNOT_EOK) {
+		log_server_warning("Failed to parser zone file '%s' (%s).\n",
+		                   source, knot_strerror(ret));
+		free(zname);
+		return ret;
+	}
+	
 	//TODO, change to zone parsing
 //	switch(knot_zload_open(&zl, filename)) {
 //	case KNOT_EOK:
@@ -980,7 +980,7 @@ static int zones_load_zone(knot_zone_t **dst, const char *zone_name,
 		ret = KNOT_EZONEINVAL;
 	} else {
 		/* Save the timestamp from the zone db file. */
-		if (stat(filename, &st) < 0) {
+		if (stat(source, &st) < 0) { // TODO REVIEW MV
 			dbg_zones("zones: failed to stat() zone db, "
 				  "something is seriously wrong\n");
 			knot_zone_deep_free(dst, 0);
@@ -1393,7 +1393,6 @@ static int zones_journal_apply(knot_zone_t *zone)
 
 	/* Free changesets and return. */
 	rcu_read_unlock();
-	assert(0);
 	//TODO
 //	knot_free_changesets(&chsets);
 	return ret;
@@ -1479,7 +1478,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 		} else {
 			dbg_zones_verb("zones: loading zone '%s' from '%s'\n",
 			               z->name, z->db);
-			ret = zones_load_zone(&zone, z->name, z->file, z->db);
+			ret = zones_load_zone(&zone, z->name, z->file);
 			const knot_node_t *apex = NULL;
 			const knot_rrset_t *soa = NULL;
 			if (ret == KNOT_EOK) {
@@ -2109,7 +2108,8 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	if (tsig_key) {
 		keytag = knot_dname_to_str(tsig_key->name);
 	}
-	char *r_str = xfr_remote_str(addr, keytag);
+	assert(0);
+	char *r_str = NULL; //xfr_remote_str(addr, keytag);
 	const char *zone_name = ((zonedata_t*)knot_zone_data(zone))->conf->name;
 	char *msg  = sprintf_alloc("UPDATE of '%s' from %s:",
 	                           zone_name, r_str ? r_str : "'unknown'");

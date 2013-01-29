@@ -111,8 +111,8 @@ typedef struct rrset_list rrset_list_t;
  * \retval 0 on success.
  * \retval -1 on error.
  */
-int zone_read(const char *name, const char *zonefile, const char *outfile,
-              int semantic_checks);
+int zone_read(const char *name, const char *zonefile, int semantic_checks,
+              knot_zone_t **out_zone);
 
 #endif /* _KNOTD_ZONEPARSER_H_ */
 

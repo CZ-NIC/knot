@@ -516,13 +516,13 @@ dbg_response_exec(
 	                  name, rrset->type);
 	free(name);
 );
-
 	uint8_t *pos = resp->wireformat + resp->size;
 	size_t size = max_size;
 	compression_param_t param;
 	param.compr_cs = compr_cs;
 	param.owner_tmp = resp->owner_tmp;
 	param.compressed_dnames = &resp->compression;
+	param.wire_pos = 0;
 	uint16_t rr_count = 0;
 	//TODO size
 	int rrs = knot_rrset_to_wire(rrset, pos, &size, max_size,

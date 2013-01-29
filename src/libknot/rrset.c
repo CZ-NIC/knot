@@ -819,6 +819,11 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
 	compression_param_t *comp_data = (compression_param_t *)data;
 	
 	uint8_t *pos = wire;
+	
+dbg_rrset_exec_detail(
+	dbg_rrset_detail("Converting following RRSet:\n");
+	knot_rrset_dump(rrset);
+);
 
 	int ret = knot_rrset_to_wire_aux(rrset, &pos,
 	                                 max_size, comp_data);

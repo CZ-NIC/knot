@@ -627,8 +627,8 @@ static void process_rr(const scanner_t *scanner)
 	return KNOTDZCOMPILE_EOK;
 }
 
-int zone_read(const char *name, const char *zonefile, const char *outfile,
-	      int semantic_checks)
+int zone_read(const char *name, const char *zonefile,
+	      int semantic_checks, knot_zone_t **out_zone)
 {
 	parser_t my_parser;
 	my_parser.origin_from_config = knot_dname_new_from_str(name,
@@ -654,15 +654,15 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	}
 	printf("Zone loaded:\n");
 	knot_zone_contents_adjust(my_parser.current_zone);
-	knot_zone_contents_dump(my_parser.current_zone);
-	knot_zone_deep_free(&zone, 1);
-	knot_dname_free(&my_parser.origin_from_config);
+//	knot_zone_contents_dump(my_parser.current_zone);
 	rrset_list_delete(&my_parser.node_rrsigs);
 	file_loader_free(loader);
 	printf("RRs ok=%d\n", rr_count);
 	printf("RRs err=%d\n", err_count);
 	printf("RRs new=%d\n", new_rr_count);
 	printf("DNAMEs new=%d\n", new_dname_count);
+	*out_zone = zone;
+	return KNOT_EOK;
 }
 
 /*! @} */
