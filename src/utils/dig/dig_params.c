@@ -233,6 +233,22 @@ static int dig_params_parse_name(params_t *params, const char *name)
 	return KNOT_EOK;
 }*/
 
+static int dig_params_parse_port(const char *value, char **port)
+{
+	char *new_port = strdup(value);
+
+	if (new_port == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	// Deallocate old string.
+	free(*port);
+
+	*port = new_port;
+
+	return KNOT_EOK;
+}
+
 static int dig_params_parse_name(const char *value, params_t *params)
 {
 	query_t	*query;
@@ -321,7 +337,7 @@ int dig_params_parse(params_t *params, int argc, char *argv[])
 	dig_params_t *ext_params = DIG_PARAM(params);
 
 	// Command line options processing.
-	while ((opt = getopt(argc, argv, "46c:q:t:x:")) != -1) {
+	while ((opt = getopt(argc, argv, "46c:p:q:t:x:")) != -1) {
 		switch (opt) {
 		case '4':
 			params_flag_ipv4(params);
@@ -331,6 +347,12 @@ int dig_params_parse(params_t *params, int argc, char *argv[])
 			break;
 		case 'c':
 			if (params_parse_class(optarg, &params->class_num)
+			    != KNOT_EOK) {
+				return KNOT_EINVAL;
+			}
+			break;
+		case 'p':
+			if (dig_params_parse_port(optarg, &params->port)
 			    != KNOT_EOK) {
 				return KNOT_EINVAL;
 			}
