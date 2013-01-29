@@ -237,7 +237,23 @@ void params_flag_verbose(params_t *params)
 	params->format = FORMAT_VERBOSE;
 }
 
-int params_parse_class(const char *value, uint16_t *rclass)
+int params_parse_port(const char *value, char **port)
+{
+	char *new_port = strdup(value);
+
+	if (new_port == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	// Deallocate old string.
+	free(*port);
+
+	*port = new_port;
+
+	return KNOT_EOK;
+}
+
+int params_parse_class(const char *value, int32_t *rclass)
 {
 	if (value == NULL || rclass == NULL) {
 		return KNOT_EINVAL;

@@ -87,8 +87,8 @@ typedef struct {
 	protocol_t	protocol;
 	/*!< Default port/service to connect to. */
 	char		*port;
-	/*!< Default class number. */
-	uint16_t	class_num;
+	/*!< Default class number (16unsigned + -1 uninitialized). */
+	int32_t		class_num;
 	/*!< Default type number (16unsigned + -1 uninitialized). */
 	int32_t		type_num;
 	/*!< Default TTL. */
@@ -127,7 +127,9 @@ void params_flag_tcp(params_t *params);
 
 void params_flag_verbose(params_t *params);
 
-int params_parse_class(const char *value, uint16_t *rclass);
+int params_parse_port(const char *value, char **port);
+
+int params_parse_class(const char *value, int32_t *rclass);
 
 int params_parse_type(const char *value, int32_t *rtype, uint32_t *xfr_serial);
 

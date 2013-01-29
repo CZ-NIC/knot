@@ -136,7 +136,8 @@ static int host_params_parse_name(const char *name, params_t *params)
 			}
 
 			// Add reverse query for address.
-			query = query_create(reverse, params->type_num);
+			query = query_create(reverse, params->type_num,
+			                     params->class_num);
 			if (query == NULL) {
 				free(reverse);
 				free(fqd_name);
@@ -145,7 +146,8 @@ static int host_params_parse_name(const char *name, params_t *params)
 			add_tail(&ext_params->queries, (node *)query);
 		} else {
 			// Add query for name and specified type.
-			query = query_create(fqd_name, params->type_num);
+			query = query_create(fqd_name, params->type_num,
+			                     params->class_num);
 			if (query == NULL) {
 				free(reverse);
 				free(fqd_name);
@@ -153,7 +155,7 @@ static int host_params_parse_name(const char *name, params_t *params)
 			}
 			// Set SOA serial for IXFR query.
 			if (params->type_num == KNOT_RRTYPE_IXFR) {
-				query_set_serial(query, params->xfr_serial);
+				query->xfr_serial = params->xfr_serial;
 			}
 			add_tail(&ext_params->queries, (node *)query);
 		}
@@ -161,7 +163,8 @@ static int host_params_parse_name(const char *name, params_t *params)
 	} else {
 		if (reverse == NULL) {
 			// Add query for name and type A.
-			query = query_create(fqd_name, KNOT_RRTYPE_A);
+			query = query_create(fqd_name, KNOT_RRTYPE_A,
+			                     params->class_num);
 			if (query == NULL) {
 				free(fqd_name);
 				return KNOT_ENOMEM;
@@ -169,7 +172,8 @@ static int host_params_parse_name(const char *name, params_t *params)
 			add_tail(&ext_params->queries, (node *)query);
 
 			// Add query for name and type AAAA.
-			query = query_create(fqd_name, KNOT_RRTYPE_AAAA);
+			query = query_create(fqd_name, KNOT_RRTYPE_AAAA,
+			                     params->class_num);
 			if (query == NULL) {
 				free(fqd_name);
 				return KNOT_ENOMEM;
@@ -177,7 +181,8 @@ static int host_params_parse_name(const char *name, params_t *params)
 			add_tail(&ext_params->queries, (node *)query);
 
 			// Add query for name and type MX.
-			query = query_create(fqd_name, KNOT_RRTYPE_MX);
+			query = query_create(fqd_name, KNOT_RRTYPE_MX,
+			                     params->class_num);
 			if (query == NULL) {
 				free(fqd_name);
 				return KNOT_ENOMEM;
@@ -185,7 +190,8 @@ static int host_params_parse_name(const char *name, params_t *params)
 			add_tail(&ext_params->queries, (node *)query);
 		} else {
 			// Add reverse query for address.
-			query = query_create(reverse, KNOT_RRTYPE_PTR);
+			query = query_create(reverse, KNOT_RRTYPE_PTR,
+			                     params->class_num);
 			if (query == NULL) {
 				free(reverse);
 				free(fqd_name);

@@ -31,9 +31,11 @@
 #define DEFAULT_RETRIES_DIG	3
 #define DEFAULT_TIMEOUT_DIG	5
 
-query_t* query_create(const char *name, const uint16_t type)
+query_t* query_create(const char    *qname,
+                      const int32_t qtype,
+                      const int32_t qclass)
 {
-	if (name == NULL) {
+	if (qname == NULL) {
 		return NULL;
 	}
 
@@ -46,20 +48,12 @@ query_t* query_create(const char *name, const uint16_t type)
 	}
 
 	// Fill output.
-	query->name = strdup(name);
-	query->type = type;
+	query->qname = strdup(qname);
+	query->qclass = qclass;
+	query->qtype = qtype;
 	query->xfr_serial = 0;
 
 	return query;
-}
-
-void query_set_serial(query_t *query, const uint32_t serial)
-{
-	if (query == NULL) {
-		return;
-	}
-
-	query->xfr_serial = serial;
 }
 
 void query_free(query_t *query)
@@ -68,8 +62,33 @@ void query_free(query_t *query)
 		return;
 	}
 
-	free(query->name);
+	free(query->qname);
 	free(query);
+}
+
+static void complete_queries(params_t *params)
+{
+	node *query = NULL;
+
+	WALK_LIST(query, DIG_PARAM(params)->queries) {
+		query_t *q = (query_t *)query;
+
+		if (q->qclass <= 0) {
+			if (params->class_num >= 0) {
+				q->qclass = params->class_num;
+			} else {
+				q->qclass = KNOT_CLASS_IN;
+			}
+		}
+		if (q->qtype <= 0) {
+			if (params->type_num >= 0) {
+				q->qtype = params->type_num;
+				q->xfr_serial = params->xfr_serial;
+			} else {
+				q->qtype = KNOT_RRTYPE_A;
+			}
+		}
+	}
 }
 
 static int dig_params_init(params_t *params)
@@ -92,8 +111,8 @@ static int dig_params_init(params_t *params)
 	params->protocol = PROTO_ALL;
 	params->port = strdup(DEFAULT_DNS_PORT);
 	params->udp_size = DEFAULT_UDP_SIZE;
-	params->class_num = KNOT_CLASS_IN;
-	params->type_num = KNOT_RRTYPE_A;
+	params->class_num = -1;
+	params->type_num = -1;
 	params->xfr_serial = 0;
 	params->retries = DEFAULT_RETRIES_DIG;
 	params->wait = DEFAULT_TIMEOUT_DIG;
@@ -233,22 +252,6 @@ static int dig_params_parse_name(params_t *params, const char *name)
 	return KNOT_EOK;
 }*/
 
-static int dig_params_parse_port(const char *value, char **port)
-{
-	char *new_port = strdup(value);
-
-	if (new_port == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	// Deallocate old string.
-	free(*port);
-
-	*port = new_port;
-
-	return KNOT_EOK;
-}
-
 static int dig_params_parse_name(const char *value, params_t *params)
 {
 	query_t	*query;
@@ -258,7 +261,7 @@ static int dig_params_parse_name(const char *value, params_t *params)
 	fqd_name = get_fqd_name(value);
 
 	// Add name to query list.
-	query = query_create(fqd_name, params->type_num);
+	query = query_create(fqd_name, params->type_num, params->class_num);
 	if (query == NULL) {
 		free(fqd_name);
 		return KNOT_ENOMEM;
@@ -270,7 +273,7 @@ static int dig_params_parse_name(const char *value, params_t *params)
 	return KNOT_EOK;
 }
 
-static int dig_params_parse_reverse(const char *value, list *queries)
+static int dig_params_parse_reverse(const char *value, params_t *params)
 {
 	char	*reverse = get_reverse_name(value);
 	query_t	*query;
@@ -282,12 +285,12 @@ static int dig_params_parse_reverse(const char *value, list *queries)
 	}
 
 	// Add reverse query for address.
-	query = query_create(reverse, KNOT_RRTYPE_PTR);
+	query = query_create(reverse, KNOT_RRTYPE_PTR, params->class_num);
 	if (query == NULL) {
 		free(reverse);
 		return KNOT_ENOMEM;
 	}
-	add_tail(queries, (node *)query);
+	add_tail(&DIG_PARAM(params)->queries, (node *)query);
 
 	free(reverse);
 
@@ -299,7 +302,7 @@ static void set_default_query(list *queries)
 	query_t	*query;
 
 	// Add default query: NS to ".".
-	query = query_create(".", KNOT_RRTYPE_NS);
+	query = query_create(".", KNOT_RRTYPE_NS, KNOT_CLASS_IN);
 	if (query == NULL) {
 		return;
 	}
@@ -352,7 +355,7 @@ int dig_params_parse(params_t *params, int argc, char *argv[])
 			}
 			break;
 		case 'p':
-			if (dig_params_parse_port(optarg, &params->port)
+			if (params_parse_port(optarg, &params->port)
 			    != KNOT_EOK) {
 				return KNOT_EINVAL;
 			}
@@ -371,8 +374,7 @@ int dig_params_parse(params_t *params, int argc, char *argv[])
 			}
 			break;
 		case 'x':
-			if (dig_params_parse_reverse(optarg,
-			                             &ext_params->queries)
+			if (dig_params_parse_reverse(optarg, params)
 			    != KNOT_EOK) {
 				return KNOT_EINVAL;
 			}
@@ -409,10 +411,13 @@ int dig_params_parse(params_t *params, int argc, char *argv[])
 		WARN("can't read any default nameservers\n");
 	}
 
-	// If there is no query, add default one.
+	// If there is no query, add the default one.
 	if (list_size(&ext_params->queries) == 0) {
 	    set_default_query(&ext_params->queries);
 	}
+
+	// After all parameters processing, complete missing data in queries.
+	complete_queries(params);
 
 	return KNOT_EOK;
 }

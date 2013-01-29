@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
 	int ret = EXIT_SUCCESS;
 
 	params_t params;
-	if (host_params_parse(&params, argc, argv) != KNOT_EOK) {
+	if (host_params_parse(&params, argc, argv) == KNOT_EOK) {
 		if (host_exec(&params) != KNOT_EOK) {
 			ret = EXIT_FAILURE;
 		}
