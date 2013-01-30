@@ -250,65 +250,6 @@ uint16_t rrset_rdata_item_size(const knot_rrset_t *rrset,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_rrset_remove_rdata(knot_rrset_t *rrset,
-                            size_t pos)
-{
-	if (rrset == NULL || pos >= rrset->rdata_count) {
-		return KNOT_EINVAL;
-	}
-
-	/* Reorganize the actual RDATA array. */
-	uint8_t *rdata_to_remove = rrset_rdata_pointer(rrset, pos);
-	assert(rdata_to_remove);
-	if (pos != rrset->rdata_count - 1) {
-		/* Not the last item in array - we need to move the data. */
-		uint8_t *next_rdata = rrset_rdata_pointer(rrset, pos + 1);
-		assert(next_rdata);
-		/* Get size of remaining RDATA. */ 
-		size_t last_rdata_size =
-		                rrset_rdata_item_size(rrset,
-		                                      rrset->rdata_count - 1);
-		/* Get offset of last item. */
-		uint8_t *last_rdata_offset =
-			rrset_rdata_pointer(rrset, rrset->rdata_count - 1);
-		size_t remainder_size =
-			(last_rdata_offset - next_rdata) + last_rdata_size;
-		/* 
-		 * Copy the all following RR data to where this item is.
-		 * No need to worry about exceeding allocated space now.
-		 */
-		memmove(rdata_to_remove, next_rdata, remainder_size);
-	}
-	
-	uint32_t removed_size = rrset_rdata_item_size(rrset, pos);
-	uint32_t new_size = rrset_rdata_size_total(rrset) - removed_size;
-	
-	/*! \todo Realloc might not be needed. Only if the RRSet is large. */
-	rrset->rdata = xrealloc(rrset->rdata, new_size);
-	
-	/*
-	 * Handle RDATA indices. All indices larger than the removed one have
-	 * to be adjusted. Last index will be changed later.
-	 */
-	for (uint16_t i = pos - 1; i < rrset->rdata_count - 1; ++i) {
-		rrset->rdata_indices[i] = rrset->rdata_indices[i + 1];
-	}
-
-	/* Save size of the whole RDATA array. */
-	rrset->rdata_indices[rrset->rdata_count - 1] = new_size;
-	
-	/* Resize indices, might not be needed, but we'll do it to be proper. */
-	rrset->rdata_indices =
-		xrealloc(rrset->rdata_indices,
-	                 (rrset->rdata_count - 1) * sizeof(uint32_t));
-	--rrset->rdata_count;
-
-	
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
 int knot_rrset_set_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs)
 {
 	if (rrset == NULL) {
@@ -1735,56 +1676,60 @@ knot_dname_t **knot_rrset_get_next_dname_pointer(const knot_rrset_t *rrset,
 	}
 
 	for (uint16_t pos = 0; pos < rrset->rdata_count; pos++) {
-	size_t offset = 0;
-	uint8_t *rdata = rrset_rdata_pointer(rrset, pos);
-	// Cycle through blocks and find dnames
-	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
-		if (descriptor_item_is_dname(desc->block_types[i])) {
-			if (next) {
-				assert(rdata + offset);
-				return (knot_dname_t **)(rdata + offset);
+		//TODO following code needs to be in a function
+		size_t offset = 0;
+		uint8_t *rdata = rrset_rdata_pointer(rrset, pos);
+		// Cycle through blocks and fid dnames
+		for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
+			if (descriptor_item_is_dname(desc->block_types[i])) {
+				if (next) {
+					assert(rdata + offset);
+					return (knot_dname_t **)(rdata + offset);
+				}
+			
+				knot_dname_t **dname =
+					(knot_dname_t **)(rdata +
+				                         offset);
+	
+				assert(prev_dname);
+			
+				if (dname == prev_dname) {
+					//we need to return next dname
+					next = 1;
+				}
+				offset += sizeof(knot_dname_t *);
+			} else if (descriptor_item_is_fixed(desc->block_types[i])) {
+				offset += desc->block_types[i];
+			} else if (descriptor_item_is_remainder(desc->block_types[i])) {
+				uint32_t remainder_size =
+					rrset_rdata_item_size(rrset, pos) - offset;
+				offset += remainder_size;
+			} else {
+				assert(rrset->type == KNOT_RRTYPE_NAPTR);
+				offset += rrset_rdata_naptr_bin_chunk_size(rrset, pos);
+				if (next) {
+					return (knot_dname_t **)(rdata + offset);
+				}
+			
+				knot_dname_t *dname =
+					(knot_dname_t *)(rdata +
+				                         offset);
+			
+				assert(prev_dname);
+			
+				if (dname == *prev_dname) {
+					//we need to return next dname
+					next = 1;
+				}
+			
+				/* 
+				 * Offset does not contain dname from NAPTR yet.
+				 * It should not matter, since this block type
+				 * is the only one in the RR anyway, but to be sure...
+				 */
+				offset += sizeof(knot_dname_t *); // now it does
 			}
-			
-			knot_dname_t **dname =
-				(knot_dname_t **)(rdata +
-			                         offset);
-
-			assert(prev_dname);
-			
-			if (dname == prev_dname) {
-				//we need to return next dname
-				next = 1;
-			}
-			offset += sizeof(knot_dname_t *);
-		} else if (descriptor_item_is_fixed(desc->block_types[i])) {
-			offset += desc->block_types[i];
-		} else if (!descriptor_item_is_remainder(desc->block_types[i])) {
-			assert(rrset->type == KNOT_RRTYPE_NAPTR);
-			offset += rrset_rdata_naptr_bin_chunk_size(rrset, pos);
-			if (next) {
-				return (knot_dname_t **)(rdata + offset);
-			}
-			
-			knot_dname_t *dname =
-				(knot_dname_t *)(rdata +
-			                         offset);
-			
-			assert(prev_dname);
-			
-			if (dname == *prev_dname) {
-				//we need to return next dname
-				next = 1;
-			}
-			
-			/* 
-			 * Offset does not contain dname from NAPTR yet.
-			 * It should not matter, since this block type
-			 * is the only one in the RR anyway, but to be sure...
-			 */
-			offset += sizeof(knot_dname_t *); // now it does
 		}
-		//TODO remainder matters too!
-	}
 	}
 	return NULL;
 }
@@ -2208,5 +2153,103 @@ const knot_dname_t *knot_rrset_rdata_name(const knot_rrset_t *rrset,
 	}
 
 	return NULL;
+}
+
+static int knot_rrset_find_rr_pos(const knot_rrset_t *rr_search,
+                                  const knot_rrset_t *rr_input, size_t pos,
+                                  size_t *pos_out)
+{
+	int found = 0;
+	for (uint16_t i = 0; i < rr_search->rdata_count && !found; i++) {
+		if (rrset_rdata_compare_one(rr_search, rr_input, i, pos) == 0) {
+			*pos_out = i;
+			found = 1;
+		}
+	}
+	
+	return found ? KNOT_EOK : KNOT_ENOENT;
+}
+
+int knot_rrset_remove_rdata_pos(knot_rrset_t *rrset, size_t pos)
+{
+	if (rrset == NULL || pos >= rrset->rdata_count) {
+		return KNOT_EINVAL;
+	}
+
+	/* Reorganize the actual RDATA array. */
+	uint8_t *rdata_to_remove = rrset_rdata_pointer(rrset, pos);
+	assert(rdata_to_remove);
+	if (pos != rrset->rdata_count - 1) {
+		/* Not the last item in array - we need to move the data. */
+		uint8_t *next_rdata = rrset_rdata_pointer(rrset, pos + 1);
+		assert(next_rdata);
+		/* TODO free DNAMES inside. */
+		/* Get size of remaining RDATA. */ 
+		size_t last_rdata_size =
+		                rrset_rdata_item_size(rrset,
+		                                      rrset->rdata_count - 1);
+		/* Get offset of last item. */
+		uint8_t *last_rdata_offset =
+			rrset_rdata_pointer(rrset, rrset->rdata_count - 1);
+		size_t remainder_size =
+			(last_rdata_offset - next_rdata) + last_rdata_size;
+		/* 
+		 * Copy the all following RR data to where this item is.
+		 * No need to worry about exceeding allocated space now.
+		 */
+		memmove(rdata_to_remove, next_rdata, remainder_size);
+	}
+	
+	uint32_t removed_size = rrset_rdata_item_size(rrset, pos);
+	uint32_t new_size = rrset_rdata_size_total(rrset) - removed_size;
+	
+	/*! \todo Realloc might not be needed. Only if the RRSet is large. */
+	rrset->rdata = xrealloc(rrset->rdata, new_size);
+	
+	/*
+	 * Handle RDATA indices. All indices larger than the removed one have
+	 * to be adjusted. Last index will be changed later.
+	 */
+	for (uint16_t i = pos - 1; i < rrset->rdata_count - 1; ++i) {
+		rrset->rdata_indices[i] = rrset->rdata_indices[i + 1];
+	}
+
+	/* Save size of the whole RDATA array. */
+	rrset->rdata_indices[rrset->rdata_count - 1] = new_size;
+	
+	/* Resize indices, might not be needed, but we'll do it to be proper. */
+	rrset->rdata_indices =
+		xrealloc(rrset->rdata_indices,
+	                 (rrset->rdata_count - 1) * sizeof(uint32_t));
+	--rrset->rdata_count;
+
+	return KNOT_EOK;
+}
+
+int knot_rrset_remove_rr(knot_rrset_t *rrset,
+                         const knot_rrset_t *rr_from, size_t rdata_pos)
+{
+	/*
+	 * Position in first and second rrset can differ, we have
+	 * to search for position first.
+	 */
+	size_t pos_to_remove = 0;
+	int ret = knot_rrset_find_rr_pos(rrset, rr_from, rdata_pos,
+	                                 &pos_to_remove);
+	if (ret == KNOT_EOK) {
+		/* Position found, can be removed. */
+		ret = knot_rrset_remove_rdata_pos(rrset, pos_to_remove);
+		if (ret != KNOT_EOK) {
+			dbg_rrset("Cannot remove RDATA from RRSet (%s).\n",
+			          knot_strerror(ret));
+			return ret;
+		}
+	} else {
+		dbg_rrset_verb("rr: remove_rr: RDATA not found (%s).\n",
+		               knot_strerror(ret));
+		return ret;
+	}
+	
+	return KNOT_EOK;
 }
 
