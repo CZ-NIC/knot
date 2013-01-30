@@ -24,6 +24,7 @@
 #include "common/mempattern.h"
 #include "nameserver/name-server.h"  // ns_serial_compare() - TODO: extract
 #include "updates/xfr-in.h"
+#include "common/descriptor_new.h"
 
 /*----------------------------------------------------------------------------*/
 // Copied from XFR - maybe extract somewhere else
@@ -70,7 +71,7 @@ static int knot_ddns_add_prereq_rrset(const knot_rrset_t *rrset,
 	// check if such RRSet is not already there and merge if needed
 	int ret;
 	for (int i = 0; i < *count; ++i) {
-		if (knot_rrset_match(rrset, (*rrsets)[i],
+		if (knot_rrset_equal(rrset, (*rrsets)[i],
 		                       KNOT_RRSET_COMPARE_HEADER) == 1) {
 			ret = knot_rrset_merge((void **)&((*rrsets)[i]),
 			                       (void **)&rrset);
@@ -138,7 +139,7 @@ static int knot_ddns_add_prereq(knot_ddns_prereq_t *prereqs,
 	int ret;
 
 	if (knot_rrset_class(rrset) == KNOT_CLASS_ANY) {
-		if (knot_rrset_rdata(rrset) != NULL) {
+		if (knot_rrset_rdata_rr_count(rrset) == 0) {
 			return KNOT_EMALF;
 		}
 		if (knot_rrset_type(rrset) == KNOT_RRTYPE_ANY) {
@@ -153,7 +154,7 @@ static int knot_ddns_add_prereq(knot_ddns_prereq_t *prereqs,
 			                                &prereqs->exist_allocd);
 		}
 	} else if (knot_rrset_class(rrset) == KNOT_CLASS_NONE) {
-		if (knot_rrset_rdata(rrset) != NULL) {
+		if (knot_rrset_rdata_rr_count(rrset) == 0) {
 			return KNOT_EMALF;
 		}
 		if (knot_rrset_type(rrset) == KNOT_RRTYPE_ANY) {
@@ -202,8 +203,8 @@ static int knot_ddns_check_remove_rr(knot_changeset_t *changeset,
 						    &changeset->add_count, i);
 					dbg_ddns_detail("Removed RRSet from "
 					                "chgset:\n");
-					knot_rrset_dump(remove, 0);
-					knot_rrset_deep_free(&remove, 1, 1, 1);
+					knot_rrset_dump(remove);
+					knot_rrset_deep_free(&remove, 1, 1);
 				}
 			} else if (knot_rrset_type(rr)
 			           == knot_rrset_type(changeset->add[i])){
@@ -867,7 +868,7 @@ static void knot_ddns_check_add_rr(knot_changeset_t *changeset,
 		/* Just check exact match, the changeset contains only 
 		 * whole RRs that have been removed.
 		 */
-		if (knot_rrset_match(rr, changeset->remove[i],
+		if (knot_rrset_equal(rr, changeset->remove[i],
 		                     KNOT_RRSET_COMPARE_WHOLE) == 1) {
 			*removed = knot_changeset_remove_rr(
 			                        changeset->remove,
@@ -980,7 +981,7 @@ static int knot_ddns_process_add_cname(knot_node_t *node,
 	
 	if (removed != NULL) {
 		/* If they are identical, ignore. */
-		if (knot_rrset_match(removed, rr, KNOT_RRSET_COMPARE_WHOLE)
+		if (knot_rrset_equal(removed, rr, KNOT_RRSET_COMPARE_WHOLE)
 		    == 1) {
 			dbg_ddns_verb("CNAME identical to one in the node.\n");
 			return 1;
@@ -1097,7 +1098,7 @@ static int knot_ddns_process_add_soa(knot_node_t *node,
 	if (removed != NULL) {
 		dbg_ddns_detail("Found SOA in the node.\n");
 		/* If they are identical, ignore. */
-		if (knot_rrset_match(removed, rr, KNOT_RRSET_COMPARE_WHOLE)
+		if (knot_rrset_equal(removed, rr, KNOT_RRSET_COMPARE_WHOLE)
 		    == 1) {
 			dbg_ddns_detail("Old and new SOA identical.\n");
 			return 1;

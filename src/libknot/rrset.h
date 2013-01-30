@@ -440,6 +440,9 @@ int rrset_serialize_alloc(const knot_rrset_t *rrset, uint8_t **stream,
 int rrset_deserialize(uint8_t *stream, size_t *stream_size,
                       knot_rrset_t **rrset);
 
+//TODO test
+int knot_rrset_remove_rdata_pos(knot_rrset_t *rrset, size_t pos);
+
 #endif /* _KNOT_RRSET_H_ */
 
 /*! @} */
