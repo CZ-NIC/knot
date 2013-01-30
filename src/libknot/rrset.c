@@ -257,33 +257,52 @@ int knot_rrset_remove_rdata(knot_rrset_t *rrset,
 		return KNOT_EINVAL;
 	}
 
-	/* Reorganize the array. */
+	/* Reorganize the actual RDATA array. */
 	uint8_t *rdata_to_remove = rrset_rdata_pointer(rrset, pos);
 	assert(rdata_to_remove);
 	if (pos != rrset->rdata_count - 1) {
 		/* Not the last item in array - we need to move the data. */
 		uint8_t *next_rdata = rrset_rdata_pointer(rrset, pos + 1);
 		assert(next_rdata);
-		size_t next_rdata_size = rrset_rdata_item_size(rrset, pos + 1);
-		/* Copy the next RR data to where this item is. */
-		/* No need to worry about exceeding allocated space now. */
-		memcpy(rdata_to_remove, next_rdata, next_rdata_size);
+		/* Get size of remaining RDATA. */ 
+		size_t last_rdata_size =
+		                rrset_rdata_item_size(rrset,
+		                                      rrset->rdata_count - 1);
+		/* Get offset of last item. */
+		uint8_t *last_rdata_offset =
+			rrset_rdata_pointer(rrset, rrset->rdata_count - 1);
+		size_t remainder_size =
+			(last_rdata_offset - next_rdata) + last_rdata_size;
+		/* 
+		 * Copy the all following RR data to where this item is.
+		 * No need to worry about exceeding allocated space now.
+		 */
+		memmove(rdata_to_remove, next_rdata, remainder_size);
 	}
 	
+	uint32_t removed_size = rrset_rdata_item_size(rrset, pos);
+	uint32_t new_size = rrset_rdata_size_total(rrset) - removed_size;
+	
 	/*! \todo Realloc might not be needed. Only if the RRSet is large. */
-	void *tmp = realloc(rrset->rdata,
-	                    rrset_rdata_size_total(rrset) -
-	                    rrset_rdata_item_size(rrset, pos));
-	if (tmp == NULL) {
-		/*
-		 * I don't see how this can fail, but oh well. Should this
-		 * happen, RDATA will not be in consistent state.
-		 */
-		ERR_ALLOC_FAILED;
-		return KNOT_ENOMEM;
-	} else {
-		rrset->rdata = tmp;
+	rrset->rdata = xrealloc(rrset->rdata, new_size);
+	
+	/*
+	 * Handle RDATA indices. All indices larger than the removed one have
+	 * to be adjusted. Last index will be changed later.
+	 */
+	for (uint16_t i = pos - 1; i < rrset->rdata_count - 1; ++i) {
+		rrset->rdata_indices[i] = rrset->rdata_indices[i + 1];
 	}
+
+	/* Save size of the whole RDATA array. */
+	rrset->rdata_indices[rrset->rdata_count - 1] = new_size;
+	
+	/* Resize indices, might not be needed, but we'll do it to be proper. */
+	rrset->rdata_indices =
+		xrealloc(rrset->rdata_indices,
+	                 (rrset->rdata_count - 1) * sizeof(uint32_t));
+	--rrset->rdata_count;
+
 	
 	return KNOT_EOK;
 }
@@ -1250,8 +1269,6 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
 	free((*rrset)->rdata_indices);
 
 	if (free_owner) {
-		dbg_rrset("Freeing rrset owner=%s refcount=%d\n",
-		          (*rrset)->owner, (*rrset)->owner->ref.count);
 		knot_dname_release((*rrset)->owner);
 	}
 
