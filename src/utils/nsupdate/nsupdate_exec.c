@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <sys/socket.h>
+#include <unistd.h>
 
 #include "utils/nsupdate/nsupdate_exec.h"
 #include "utils/common/params.h"
@@ -404,7 +405,7 @@ static int pkt_sendrecv(params_t *params, server_t *srv,
 	/* Wait for reception. */
 	int rb = receive_msg(params, KNOT_RRTYPE_SOA, sock, rwire, rlen);
 	DBG("%s: receive_msg = %d\n", __func__, rb);
-	shutdown(sock, SHUT_RDWR);
+	close(sock);
 	
 	return rb;
 }
