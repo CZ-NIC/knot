@@ -60,6 +60,13 @@ src/libknot/zone/zone-tree.c
 src/libknot/zone/dname-table.h
 src/libknot/zone/dname-table.c
 src/Makefile.am
+src/common/hattrie
+src/common/hattrie/ahtable.c
+src/common/hattrie/ahtable.h
+src/common/hattrie/hat-trie.c
+src/common/hattrie/hat-trie.h
+src/common/hattrie/murmurhash3.c
+src/common/hattrie/murmurhash3.h
 src/common/slab/slab.c
 src/common/slab/slab.h
 src/common/slab/alloc-common.h
