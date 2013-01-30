@@ -153,9 +153,7 @@ int knot_query_set_question(knot_packet_t *query,
 	query->header.qdcount = 1;
 
 	// convert the Question to wire format right away
-	knot_packet_question_to_wire(query);
-
-	return KNOT_EOK;
+	return knot_packet_question_to_wire(query);
 }
 
 /*----------------------------------------------------------------------------*/

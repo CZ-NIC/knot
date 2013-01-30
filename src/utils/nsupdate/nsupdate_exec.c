@@ -297,6 +297,7 @@ static server_t *parse_host(const char *lp, const char* default_port)
 static int pkt_append(params_t *p, int sect)
 {
 	/* Check packet state first. */
+	int ret = KNOT_EOK;
 	nsupdate_params_t *npar = NSUP_PARAM(p);
 	scanner_t *s = npar->rrp;
 	if (!npar->pkt) {
@@ -308,9 +309,12 @@ static int pkt_append(params_t *p, int sect)
 		q.qname = knot_dname_new_from_wire(s->zone_origin,
 		                                   s->zone_origin_length,
 		                                   NULL);
-		knot_query_set_question(npar->pkt, &q);
-		knot_query_set_opcode(npar->pkt, KNOT_OPCODE_UPDATE);
+		ret = knot_query_set_question(npar->pkt, &q);
 		knot_dname_release(q.qname); /* Already on wire. */
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		knot_query_set_opcode(npar->pkt, KNOT_OPCODE_UPDATE);
 		
 		/* Reserve space for TSIG. */
 		if (p->key.name) {
@@ -320,7 +324,6 @@ static int pkt_append(params_t *p, int sect)
 	}
 	
 	/* Create RDATA (not for NXRRSET prereq). */
-	int ret = KNOT_EOK;
 	knot_rdata_t *rd = knot_rdata_new();
 	const knot_rrtype_descriptor_t *rdesc = NULL;
 	rdesc = knot_rrtype_descriptor_by_type(s->r_type);
