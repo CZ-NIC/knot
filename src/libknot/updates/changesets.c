@@ -20,6 +20,7 @@
 
 #include "updates/changesets.h"
 #include "libknot/common.h"
+#include "common/descriptor_new.h"
 #include "rrset.h"
 
 static const size_t KNOT_CHANGESET_COUNT = 5;
@@ -66,12 +67,10 @@ static int knot_changeset_check_count(knot_rrset_t ***rrsets, size_t count,
 static int knot_changeset_rrsets_match(const knot_rrset_t *rrset1,
                                          const knot_rrset_t *rrset2)
 {
-	return knot_rrset_match(rrset1, rrset2, KNOT_RRSET_COMPARE_HEADER)
+	return knot_rrset_equal(rrset1, rrset2, KNOT_RRSET_COMPARE_HEADER)
 	       && (knot_rrset_type(rrset1) != KNOT_RRTYPE_RRSIG
-	           || knot_rdata_rrsig_type_covered(
-	                    knot_rrset_rdata(rrset1))
-	              == knot_rdata_rrsig_type_covered(
-	                    knot_rrset_rdata(rrset2)));
+	           || knot_rrset_rdata_rrsig_type_covered(rrset1)
+	              == knot_rrset_rdata_rrsig_type_covered(rrset2));
 }
 
 /*----------------------------------------------------------------------------*/
@@ -208,7 +207,7 @@ void knot_changeset_store_soa(knot_rrset_t **chg_soa,
                                uint32_t *chg_serial, knot_rrset_t *soa)
 {
 	*chg_soa = soa;
-	*chg_serial = knot_rdata_soa_serial(knot_rrset_rdata(soa));
+	*chg_serial = knot_rrset_rdata_soa_serial(soa);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -308,17 +307,17 @@ void knot_free_changeset(knot_changeset_t **changeset)
 
 	int j;
 	for (j = 0; j < (*changeset)->add_count; ++j) {
-		knot_rrset_deep_free(&(*changeset)->add[j], 1, 1, 1);
+		knot_rrset_deep_free(&(*changeset)->add[j], 1, 1);
 	}
 	free((*changeset)->add);
 
 	for (j = 0; j < (*changeset)->remove_count; ++j) {
-		knot_rrset_deep_free(&(*changeset)->remove[j], 1, 1, 1);
+		knot_rrset_deep_free(&(*changeset)->remove[j], 1, 1);
 	}
 	free((*changeset)->remove);
 
-	knot_rrset_deep_free(&(*changeset)->soa_from, 1, 1, 1);
-	knot_rrset_deep_free(&(*changeset)->soa_to, 1, 1, 1);
+	knot_rrset_deep_free(&(*changeset)->soa_from, 1, 1);
+	knot_rrset_deep_free(&(*changeset)->soa_to, 1, 1);
 
 	free((*changeset)->data);
 
@@ -343,7 +342,7 @@ void knot_free_changesets(knot_changesets_t **changesets)
 
 	free((*changesets)->sets);
 	
-	knot_rrset_deep_free(&(*changesets)->first_soa, 1, 1, 1);
+	knot_rrset_deep_free(&(*changesets)->first_soa, 1, 1);
 	
 	assert((*changesets)->changes == NULL);
 
@@ -425,10 +424,10 @@ int knot_changes_nodes_reserve(knot_node_t ***nodes,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_changes_rdata_reserve(knot_rdata_t ***rdatas, uint16_t **types,
-                             int count, int *allocated, int to_add)
+int knot_changes_rdata_reserve(knot_rrset_t ***rdatas,
+                               int count, int *allocated, int to_add)
 {
-	if (rdatas == NULL || types == NULL || allocated == NULL) {
+	if (rdatas == NULL || allocated == NULL) {
 		return KNOT_EINVAL;
 	}
 	
@@ -442,29 +441,18 @@ int knot_changes_rdata_reserve(knot_rdata_t ***rdatas, uint16_t **types,
 	}
 
 	/* Allocate new memory block. */
-	knot_rdata_t **rdatas_new = malloc(new_count * sizeof(knot_rdata_t *));
+	knot_rrset_t **rdatas_new = malloc(new_count * sizeof(knot_rrset_t *));
 	if (rdatas_new == NULL) {
 		return KNOT_ENOMEM;
 	}
 
-	uint16_t *types_new = malloc(new_count * sizeof(uint));
-	if (types_new == NULL) {
-		free(rdatas_new);
-		return KNOT_ENOMEM;
-	}
-
 	/* Initialize new memory and copy old data. */
-	memset(rdatas_new, 0, new_count * sizeof(knot_rdata_t *));
-	memcpy(rdatas_new, *rdatas, (*allocated) * sizeof(knot_rdata_t *));
-
-	memset(types_new, 0, new_count * sizeof(uint));
-	memcpy(types_new, *types, (*allocated) * sizeof(uint));
+	memset(rdatas_new, 0, new_count * sizeof(knot_rrset_t *));
+	memcpy(rdatas_new, *rdatas, (*allocated) * sizeof(knot_rrset_t *));
 
 	/* Free old rdatas and switch pointers. */
 	free(*rdatas);
-	free(*types);
 	*rdatas = rdatas_new;
-	*types = types_new;
 	*allocated = new_count;
 
 	return KNOT_EOK;
@@ -472,24 +460,15 @@ int knot_changes_rdata_reserve(knot_rdata_t ***rdatas, uint16_t **types,
 
 /*----------------------------------------------------------------------------*/
 
-void knot_changes_add_rdata(knot_rdata_t **rdatas, uint16_t *types,
-                            int *count, knot_rdata_t *rdata, uint16_t type)
+/*!< \note Always adds the whole RRSet = all rdata. */
+void knot_changes_add_rdata(knot_rrset_t **rdatas, int *count,
+                            knot_rrset_t *rrset)
 {
-	if (rdatas == NULL || types == NULL || count == NULL || rdata == NULL) {
+	if (rdatas == NULL || count == NULL || rrset == NULL) {
 		return;
 	}
 
-	// Add all RDATAs from the chain!!
-
-	knot_rdata_t *r = rdata;
-	do {
-//		dbg_xfrin_detail("Adding RDATA to RDATA list: %p\n", r);
-		rdatas[*count] = r;
-		types[*count] = type;
-		++*count;
-
-		r = r->next;
-	} while (r != NULL && r != rdata);
+	rdatas[*count++] = rrset;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -528,19 +507,17 @@ int knot_changes_add_old_rrsets(knot_rrset_t **rrsets, int count,
 		if (add_rdata) {
 			
 			/* RDATA count in the RRSet. */
-			int rdata_count = knot_rrset_rdata_rr_count(rrsets[i]);
+			int rdata_count = 1;
 			
 			if (rrsigs != NULL) {
 				/* Increment the RDATA count by the count of 
 				 * RRSIGs. */
-				rdata_count += knot_rrset_rdata_rr_count(
-				                        rrsigs);
+				rdata_count += 1;
 			}
 	
 			/* Remove old RDATA. */
 			
 			ret = knot_changes_rdata_reserve(&changes->old_rdata,
-			                          &changes->old_rdata_types,
 			                          changes->old_rdata_count,
 			                          &changes->old_rdata_allocated,
 			                          rdata_count);
@@ -550,16 +527,12 @@ int knot_changes_add_old_rrsets(knot_rrset_t **rrsets, int count,
 			}
 
 			knot_changes_add_rdata(changes->old_rdata,
-			                       changes->old_rdata_types,
 			                       &changes->old_rdata_count,
-			                       knot_rrset_get_rdata(rrsets[i]),
-			                       knot_rrset_type(rrsets[i]));
+			                       rrsets[i]);
 			
 			knot_changes_add_rdata(changes->old_rdata,
-			                       changes->old_rdata_types,
 			                       &changes->old_rdata_count,
-			                       knot_rrset_get_rdata(rrsigs),
-			                       KNOT_RRTYPE_RRSIG);
+			                       rrsigs);
 		}
 		
 		/* Disconnect RRsigs from rrset. */
@@ -601,7 +574,6 @@ int knot_changes_add_new_rrsets(knot_rrset_t **rrsets, int count,
 		if (add_rdata) {
 			int rdata_count = knot_rrset_rdata_rr_count(rrsets[i]);
 			ret = knot_changes_rdata_reserve(&changes->new_rdata,
-			                          &changes->new_rdata_types,
 			                          changes->new_rdata_count,
 			                          &changes->new_rdata_allocated,
 			                          rdata_count);
@@ -610,10 +582,8 @@ int knot_changes_add_new_rrsets(knot_rrset_t **rrsets, int count,
 			}
 			
 			knot_changes_add_rdata(changes->new_rdata,
-			                       changes->new_rdata_types,
 			                       &changes->new_rdata_count,
-			                       knot_rrset_get_rdata(rrsets[i]),
-			                       knot_rrset_type(rrsets[i]));
+			                       rrsets[i]);
 		}	
 		
 		changes->new_rrsets[changes->new_rrsets_count++] = rrsets[i];

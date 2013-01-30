@@ -51,6 +51,14 @@ knot_zcompile_SOURCES =				\
 	libknot/zone/dname-table.c		\
 	libknot/zone/zonedb.h			\
 	libknot/zone/zonedb.c			\
+	libknot/updates/changesets.c		\
+	libknot/updates/changesets.h		\
+	libknot/updates/ddns.h			\
+	libknot/updates/ddns.c			\
+	libknot/updates/xfr-in.c		\
+	libknot/updates/xfr-in.h		\
+	libknot/zone/zonedb.c			\
+	libknot/zone/zonedb.c			\
 	libknot/dname.c				\
 	libknot/dname.h				\
 	libknot/nsec3.h				\
