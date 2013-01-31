@@ -136,6 +136,10 @@ AC_ARG_ENABLE([lto],
 
 AX_CHECK_COMPILER_FLAGS("-fpredictive-commoning", [CFLAGS="$CFLAGS -fpredictive-commoning"], [])
 
+# Disable strict aliasing
+# FIXME: we break strict aliasing on many occurenes, disable it until resolved or kept
+AX_CHECK_COMPILER_FLAGS("-fno-strict-aliasing", [CFLAGS="$CFLAGS -fno-strict-aliasing"], [])
+
 # Checks for libraries.
 # FIXME: Replace `main' with a function in `-lm':
 # TODO: check if paths exist before appending
