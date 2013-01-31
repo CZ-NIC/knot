@@ -339,6 +339,11 @@ int dig_params_parse(params_t *params, int argc, char *argv[])
 
 	dig_params_t *ext_params = DIG_PARAM(params);
 
+	// Points to the currently parsed query.
+	query_t	 *query = NULL;
+	uint16_t rclass, rtype;
+	uint32_t serial;
+
 	// Command line options processing.
 	while ((opt = getopt(argc, argv, "46hc:p:q:t:x:")) != -1) {
 		switch (opt) {
@@ -349,9 +354,16 @@ int dig_params_parse(params_t *params, int argc, char *argv[])
 			params_flag_ipv6(params);
 			break;
 		case 'c':
-			if (params_parse_class(optarg, &params->class_num)
-			    != KNOT_EOK) {
+			if (params_parse_class(optarg, &rclass) != KNOT_EOK) {
 				return KNOT_EINVAL;
+			}
+
+			// Change default.
+			if (query == NULL) {
+				params->class_num = rclass;
+			// Change current.
+			} else {
+				query->qclass = rclass;
 			}
 			break;
 		case 'p':
@@ -367,10 +379,19 @@ int dig_params_parse(params_t *params, int argc, char *argv[])
 			}
 			break;
 		case 't':
-			if (params_parse_type(optarg, &params->type_num,
-			                      &params->xfr_serial)
+			if (params_parse_type(optarg, &rtype, &serial)
 			    != KNOT_EOK) {
 				return KNOT_EINVAL;
+			}
+
+			// Change default.
+			if (query == NULL) {
+				params->type_num = rtype;
+				params->xfr_serial = serial;
+			// Change current.
+			} else {
+				query->qtype = rtype;
+				query->xfr_serial = serial;
 			}
 			break;
 		case 'x':
