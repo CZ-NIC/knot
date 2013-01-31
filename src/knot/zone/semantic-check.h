@@ -32,8 +32,7 @@
  *       so that code does not have to change if new errors are added.
  */
 enum zonechecks_errors {
-	ZC_ERR_ALLOC = -50,
-	ZC_ERR_UNKNOWN,
+	ZC_ERR_UNKNOWN = -50,
 
 	ZC_ERR_MISSING_SOA,
 	ZC_ERR_MISSING_NS_DEL_POINT,
@@ -125,7 +124,7 @@ struct handler_options {
 struct err_handler {
 	/* Consider moving error messages here */
 	struct handler_options options; /*!< Handler options. */
-	uint errors[(-ZC_ERR_ALLOC) + 1]; /*!< Array with error messages */
+	uint errors[(-ZC_ERR_UNKNOWN) + 1]; /*!< Array with error messages */
 	uint error_count; /*!< Total error count */
 };
 
@@ -153,6 +152,7 @@ err_handler_t *handler_new(char log_cname, char log_glue,
  * \param handler Error handler.
  * \param node Node with semantic error in it.
  * \param error Type of error.
+ * \param data Additional info in string.
  *
  * \retval KNOT_EOK on success.
  * \retval ZC_ERR_UNKNOWN if unknown error.
@@ -160,7 +160,7 @@ err_handler_t *handler_new(char log_cname, char log_glue,
  */
 int err_handler_handle_error(err_handler_t *handler,
 				    const knot_node_t *node,
-				    int error);
+				    int error, const char *data);
 
 /*!
  * \brief Checks if last node in NSEC/NSEC3 chain points to first node in the
