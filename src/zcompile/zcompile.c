@@ -57,15 +57,16 @@ static long new_rr_count = 0;
 static long new_dname_count = 0;
 static long err_count = 0;
 
-struct parser {
+struct parser_context {
 	rrset_list_t *node_rrsigs;
 	knot_zone_contents_t *current_zone;
 	knot_rrset_t *current_rrset;
 	knot_dname_t *origin_from_config;
 	knot_node_t *last_node;
+	int ret;
 };
 
-typedef struct parser parser_t;
+typedef struct parser_context parser_context_t;
 
 /*!
  * \brief Adds RRSet to list.
@@ -208,7 +209,7 @@ static knot_node_t *create_node(knot_zone_contents_t *zone,
 	return node;
 }
 
-static void process_rrsigs_in_node(parser_t *parser,
+static void process_rrsigs_in_node(parser_context_t *parser,
                                    knot_zone_contents_t *zone,
                                    knot_node_t *node)
 {
@@ -341,7 +342,7 @@ static void process_rr(const scanner_t *scanner)
 	              scanner->r_owner);
 	rr_count++;
 	char add = 0;
-	parser_t *parser = scanner->data;
+	parser_context_t *parser = scanner->data;
 	knot_zone_contents_t *contents = parser->current_zone;
 	/* Create rrset. TODO will not be always needed. */
 	knot_dname_t *current_owner = NULL;
@@ -396,17 +397,11 @@ static void process_rr(const scanner_t *scanner)
 	
 	int ret = add_rdata_to_rr(current_rrset, scanner);
 	assert(ret == 0);
-
 	
 	dbg_zp_verb("zp: process_rr: Processing type: %s.\n",
 	            knot_rrtype_to_string(parser->current_rrset->type));
 	dbg_zp_verb("zp: process_rr: RDATA count: %d.\n",\
 	            parser->current_rrset->rdata->count);
-
-//	if (descriptor->fixed_items) {
-//		assert(current_rrset->rdata->count == descriptor->length);
-//	}
-
 
 	assert(current_rrset->rdata_count);
 
@@ -441,11 +436,13 @@ static void process_rr(const scanner_t *scanner)
 			if (!knot_rrset_equal(current_rrset,
 			    knot_node_rrset(knot_zone_contents_apex(contents),
 			    KNOT_RRTYPE_SOA), KNOT_RRSET_COMPARE_WHOLE)) {
-				return KNOTDZCOMPILE_ESOA;
+				parser->ret = KNOTDZCOMPILE_ESOA;
+				return;
 			} else {
-				fprintf(stderr, "encountered identical "
-				                     "extra SOA record");
-				return KNOTDZCOMPILE_EOK;
+				log_zone_warning("encountered identical "
+				                 "extra SOA record");
+				parser->ret = KNOTDZCOMPILE_EOK;
+				return;
 			}
 		}
 	}
@@ -460,7 +457,8 @@ static void process_rr(const scanner_t *scanner)
 				"in config! \n");
 			/* Such SOA cannot even be added, because
 			 * it would not be in the zone apex. */
-			return KNOTDZCOMPILE_EBADSOA;
+			parser->ret = KNOTDZCOMPILE_ESOA;
+			return;
 		}
 	}
 
@@ -505,7 +503,8 @@ static void process_rr(const scanner_t *scanner)
 					knot_rrset_free(&tmp_rrsig);
 					dbg_zp("zp: process_rr: Cannot "
 					       "create new node.\n");
-					return KNOTDZCOMPILE_EBADNODE;
+					parser->ret = KNOTDZCOMPILE_EBADNODE;
+					return;
 				}
 			}
 		}
@@ -513,11 +512,13 @@ static void process_rr(const scanner_t *scanner)
 		if (rrset_list_add(&parser->node_rrsigs, tmp_rrsig) != 0) {
 			dbg_zp("zp: process_rr: Cannot "
 			       "create new node.\n");
-			return KNOTDZCOMPILE_ENOMEM;
+			parser->ret = KNOTDZCOMPILE_ENOMEM;
+			return;
 		}
 		
 		dbg_zp_verb("zp: process_rr: RRSIG proccesed successfully.\n");
-		return KNOTDZCOMPILE_EOK;
+		parser->ret = KNOTDZCOMPILE_EOK;
+		return;
 	}
 	
 	/*! \todo Move RRSIG and RRSet handling to funtions. */
@@ -555,7 +556,8 @@ static void process_rr(const scanner_t *scanner)
 					node_get_func)) == NULL) {
 			dbg_zp("zp: process_rr: Cannot "
 			       "create new node.\n");
-			return KNOTDZCOMPILE_EBADNODE;
+			parser->ret = KNOTDZCOMPILE_EBADNODE;
+			return;
 		}
 	}
 	
@@ -613,7 +615,9 @@ static void process_rr(const scanner_t *scanner)
 		if (ret < 0) {
 			dbg_zp("zp: process_rr: Cannot "
 			       "add RRSets.\n");
-			return KNOTDZCOMPILE_EBRDATA;
+			/*!< \todo mixed error codes, has to be changed. */
+			parser->ret = ret;
+			return;
 		} else if (ret > 0) {
 			knot_rrset_deep_free(&current_rrset, 0, 0);
 		}
@@ -624,13 +628,13 @@ static void process_rr(const scanner_t *scanner)
 	
 	dbg_zp_verb("zp: process_rr: RRSet %p processed successfully.\n",
 	            parser->current_rrset);
-	return KNOTDZCOMPILE_EOK;
+	parser->ret = KNOTDZCOMPILE_EOK;
 }
 
 int zone_read(const char *name, const char *zonefile,
 	      int semantic_checks, knot_zone_t **out_zone)
 {
-	parser_t my_parser;
+	parser_context_t my_parser;
 	my_parser.origin_from_config = knot_dname_new_from_str(name,
 	                                                       strnlen((char *)name,
 	                                                               255),
@@ -652,15 +656,16 @@ int zone_read(const char *name, const char *zonefile,
 		                       my_parser.current_zone,
 		                       my_parser.last_node);
 	}
-	printf("Zone loaded:\n");
+	if (my_parser.ret != KNOTDZCOMPILE_EOK) {
+		log_zone_error("Zone could not be loaded (%d).", my_parser.ret);
+		/*!< \todo Depending on the error, free stuff. */
+		rrset_list_delete(&my_parser.node_rrsigs);
+		file_loader_free(loader);
+		return KNOT_ERROR;
+	}
 	knot_zone_contents_adjust(my_parser.current_zone);
-//	knot_zone_contents_dump(my_parser.current_zone);
 	rrset_list_delete(&my_parser.node_rrsigs);
 	file_loader_free(loader);
-	printf("RRs ok=%d\n", rr_count);
-	printf("RRs err=%d\n", err_count);
-	printf("RRs new=%d\n", new_rr_count);
-	printf("DNAMEs new=%d\n", new_dname_count);
 	*out_zone = zone;
 	return KNOT_EOK;
 }

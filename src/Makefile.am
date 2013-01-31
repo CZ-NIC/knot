@@ -25,7 +25,7 @@ knot_zcompile_SOURCES =				\
 	libknot/rrset.c				\
 	libknot/rrset.h				\
 	common/slab/slab.c			\
-	knot/main.c					\
+	knot/main.c				\
 	zcompile/zcompile-error.c		\
 	zcompile/zcompile.c			\
 	zscanner/test/processing.h		\
@@ -53,6 +53,8 @@ knot_zcompile_SOURCES =				\
 	libknot/zone/zonedb.c			\
 	libknot/updates/changesets.c		\
 	libknot/updates/changesets.h		\
+	libknot/updates/xfr-in.c		\
+	libknot/updates/xfr-in.h		\
 	libknot/dname.c				\
 	libknot/dname.h				\
 	libknot/nsec3.h				\

@@ -172,11 +172,11 @@ int knot_changes_rrsets_reserve(knot_rrset_t ***rrsets,
 int knot_changes_nodes_reserve(knot_node_t ***nodes,
                                int *count, int *allocated);
 
-//int knot_changes_rdata_reserve(knot_rdata_t ***rdatas, uint16_t **types,
-//                               int count, int *allocated, int to_add);
+int knot_changes_rdata_reserve(knot_rrset_t ***rdatas,
+                               int count, int *allocated, int to_add);
 
-//void knot_changes_add_rdata(knot_rdata_t **rdatas, uint16_t *types,
-//                            int *count, knot_rdata_t *rdata, uint16_t type);
+void knot_changes_add_rdata(knot_rrset_t **rdatas, int *count,
+                            knot_rrset_t *rrset);
 
 /*!
  * \note Also processes RRSIGs. May be switched by a parameter later, if needed.

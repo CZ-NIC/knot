@@ -1360,7 +1360,7 @@ const knot_dname_t *knot_rrset_rdata_cname_name(const knot_rrset_t *rrset)
 	}
 	
 	knot_dname_t *dname;
-	memcpy(dname, rrset->rdata, sizeof(knot_dname_t *));
+	memcpy(&dname, rrset->rdata, sizeof(knot_dname_t *));
 	return dname;
 }
 
@@ -1372,7 +1372,7 @@ const knot_dname_t *knot_rrset_rdata_dname_target(const knot_rrset_t *rrset)
 		return NULL;
 	}
 	knot_dname_t *dname;
-	memcpy(dname, rrset->rdata, sizeof(knot_dname_t *));
+	memcpy(&dname, rrset->rdata, sizeof(knot_dname_t *));
 	return dname;
 }
 
