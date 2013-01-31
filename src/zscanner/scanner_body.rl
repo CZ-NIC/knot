@@ -654,7 +654,7 @@
 					  text_origin);
 		}
 
-		if (s->include_filename[0] != '/') { // Relative file path..
+		if (s->include_filename[0] != '/') { // Relative file path.
 			// Get absolute path of the current zone file.
 			if (realpath(s->file_name, (char*)(s->buffer)) != NULL) {
 				char *full_current_zone_file_name =

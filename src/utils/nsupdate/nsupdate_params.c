@@ -27,7 +27,8 @@
 #include "common/errcode.h"
 #include "libknot/packet/packet.h"
 
-#define DEFAULT_RETRIES 3
+#define DEFAULT_RETRIES_NSUPDATE	3
+#define DEFAULT_TIMEOUT_NSUPDATE	1
 
 static void parse_rr(const scanner_t *s) {
 	return; /* Dummy */
@@ -45,49 +46,53 @@ static int parser_set_default(scanner_t *s, const char *fmt, ...)
 	va_start(ap, fmt);
 	int n = vsnprintf(buf, sizeof(buf), fmt, ap);
 	va_end(ap);
-	
+
 	if (n < 0 || n >= sizeof(buf)) {
 		return KNOT_ESPACE;
 	}
-	
+
 	/* fmt must contain newline */
 	if (scanner_process(buf, buf + n, 0, s) < 0) {
 		return KNOT_EPARSEFAIL;
 	}
-	
+
 	return KNOT_EOK;
 }
 
 static int nsupdate_params_init(params_t *params)
 {
 	memset(params, 0, sizeof(*params));
-	
+
 	/* Specific data ptr. */
 	params->d = malloc(sizeof(nsupdate_params_t));
 	if (!params->d) return KNOT_ENOMEM;
 	memset(params->d, 0, sizeof(nsupdate_params_t));
 	nsupdate_params_t *npar = NSUP_PARAM(params);
-	
+
 	/* Lists */
 	init_list(&params->servers);
 	init_list(&npar->qfiles);
-	
+
 	/* Default values. */
 	params->class_num = KNOT_CLASS_IN;
 	params->operation = OPERATION_UPDATE;
 	params->protocol = PROTO_ALL;
+	params->port = strdup(DEFAULT_DNS_PORT);
 	params->udp_size = DEFAULT_UDP_SIZE;
-	params->retries = DEFAULT_RETRIES;
-	params->wait = DEFAULT_WAIT_INTERVAL;
+	params->retries = DEFAULT_RETRIES_NSUPDATE;
+	params->wait = DEFAULT_TIMEOUT_NSUPDATE;
 	params->format = FORMAT_NSUPDATE;
 	params->type_num = KNOT_RRTYPE_SOA;
-	
+
 	/* Create default server. */
-	server_t *srv = server_create(DEFAULT_IPV4_NAME, DEFAULT_DNS_PORT);
-	add_tail(&params->servers, (node *)srv);
-	
+	if (params_parse_server(DEFAULT_IPV4_NAME, &params->servers,
+	                        params->port)
+	    != KNOT_EOK) {
+		return KNOT_EINVAL;
+	}
+
 	/* Initialize RR parser. */
-	npar->rrp = scanner_create("-");
+	npar->rrp = scanner_create(".");
 	if (!npar->rrp) return KNOT_ENOMEM;
 	npar->rrp->process_record = parse_rr;
 	npar->rrp->process_error = parse_err;
@@ -102,7 +107,7 @@ void nsupdate_params_clean(params_t *params)
 	if (params == NULL) {
 		return;
 	}
-	
+
 	/* Free specific structure. */
 	nsupdate_params_t* npar = NSUP_PARAM(params);
 	if (npar) {
@@ -110,23 +115,25 @@ void nsupdate_params_clean(params_t *params)
 		if (npar->rrp) {
 			scanner_free(npar->rrp);
 		}
-	
+
 		/* Free qfiles. */
 		strnode_t *n = NULL, *nxt = NULL;
 		WALK_LIST_DELSAFE(n, nxt, npar->qfiles) {
 			free(n);
 		}
-		
+
 		free(npar);
 		params->d = NULL;
 	}
-	
+
 	/* Free server list. */
 	server_t *n = NULL, *nxt = NULL;
 	WALK_LIST_DELSAFE(n, nxt, params->servers) {
 		server_free(n);
 	}
-	
+
+	free(params->port);
+
 	/* Free TSIG key. */
 	knot_dname_free(&params->key.name);
 	free(params->key.secret);
@@ -155,7 +162,7 @@ int nsupdate_params_parse(params_t *params, int argc, char *argv[])
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-	
+
 	/* Fetch default server. */
 	server_t *srv = TAIL(params->servers);
 
@@ -199,7 +206,7 @@ int nsupdate_params_parse(params_t *params, int argc, char *argv[])
 			return KNOT_ENOTSUP;
 		}
 	}
-	
+
 	/* Process non-option parameters. */
 	nsupdate_params_t* npar = NSUP_PARAM(params);
 	for (; optind < argc; ++optind) {

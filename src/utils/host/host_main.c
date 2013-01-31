@@ -22,16 +22,18 @@
 
 int main(int argc, char *argv[])
 {
-	params_t params;
+	int ret = EXIT_SUCCESS;
 
-	if (host_params_parse(&params, argc, argv) != KNOT_EOK) {
-		return EXIT_FAILURE;
+	params_t params;
+	if (host_params_parse(&params, argc, argv) == KNOT_EOK) {
+		if (host_exec(&params) != KNOT_EOK) {
+			ret = EXIT_FAILURE;
+		}
+	} else {
+		ret = EXIT_FAILURE;
 	}
 
-	host_exec(&params);
-
 	host_params_clean(&params);
-
-	return EXIT_SUCCESS;
+	return ret;
 }
 

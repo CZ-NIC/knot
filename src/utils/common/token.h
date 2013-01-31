@@ -20,7 +20,7 @@
  *
  * \brief String tokenizer and simple scanner.
  *
- * \addtogroup utils
+ * \addtogroup knot_utils
  * @{
  */
 
@@ -79,7 +79,7 @@ const char* tok_skipspace(const char *lp);
 
 /*!
  * \brief Process file by lines.
- * \param fn File handle to be processed.
+ * \param fp File handle to be processed.
  * \param cb Callback function to be called for each line.
  * \param arg Pointer to be passed to callback function.
  * \return KNOT_EOK if success.

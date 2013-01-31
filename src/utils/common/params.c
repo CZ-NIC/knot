@@ -29,11 +29,11 @@
 
 #include "common/errcode.h"		// KNOT_EOK
 #include "common/mempattern.h"		// strcdup
+#include "libknot/dname.h"		// knot_dname_t
 #include "libknot/util/descriptor.h"	// KNOT_RRTYPE
 #include "utils/common/msg.h"		// WARN
-#include "libknot/dname.h"		// knot_dname_t
-#include "utils/common/token.h"
-#include "libknot/dname.h"
+#include "utils/common/resolv.h"	// parse_nameserver
+#include "utils/common/token.h"		// token
 
 #define IPV4_REVERSE_DOMAIN	"in-addr.arpa."
 #define IPV6_REVERSE_DOMAIN	"ip6.arpa."
@@ -62,6 +62,7 @@ static const char *pkey_tbl[] = {
         "\x08" "Publish:",
         NULL
 };
+
 enum {
 	T_PKEY_FORMAT = 0,
 	T_PKEY_ALGO,
@@ -79,7 +80,7 @@ static int params_parse_keyline(char *lp, int len, void *arg)
 		lp[len - 1] = '\0';
 		len -= 1;
 	}
-	
+
 	knot_key_t *key = (knot_key_t *)arg;
 	int lpm = -1;
 	int bp = 0;
@@ -87,7 +88,7 @@ static int params_parse_keyline(char *lp, int len, void *arg)
 		DBG("%s: unknown token on line '%s', ignoring\n", __func__, lp);
 		return KNOT_EOK;
 	}
-	
+
 	/* Found valid key. */
 	const char *k = pkey_tbl[bp];
 	char *v = (char *)tok_skipspace(lp + TOK_L(k));
@@ -116,60 +117,6 @@ static int params_parse_keyline(char *lp, int len, void *arg)
 		DBG("%s: %s = '%s'\n", __func__, TOK_S(k), v);
 		break;
 	}
-	
-	return KNOT_EOK;
-}
-
-int parse_class(const char *rclass, uint16_t *class_num)
-{
-	*class_num = knot_rrclass_from_string(rclass);
-
-	return KNOT_EOK;
-}
-
-int parse_type(const char *rtype, int32_t *type_num, int64_t *xfr_serial)
-{
-	size_t param_pos = strcspn(rtype, "=");
-
-	// There is no additional parameter.
-	if (param_pos == strlen(rtype)) {
-		*type_num = knot_rrtype_from_string(rtype);
-
-		// IXFR requires serial parameter.
-		if (*type_num == KNOT_RRTYPE_IXFR) {
-			ERR("required SOA serial for IXFR query\n");
-			return KNOT_ERROR;
-		}
-	} else {
-		char *type_char = strndup(rtype, param_pos);
-
-		*type_num = knot_rrtype_from_string(type_char);
-
-		free(type_char);
-
-		// Additional parameter is acceptet for IXFR only.
-		if (*type_num == KNOT_RRTYPE_IXFR) {
-			const char *param_str = rtype + 1 + param_pos;
-			char *end;
-
-			// Convert string to serial.
-			unsigned long serial = strtoul(param_str, &end, 10);
-
-			// Check for bad serial string.
-			if (end == param_str || *end != '\0' ||
-			    serial > UINT32_MAX) {
-				ERR("bad SOA serial in IXFR query\n");
-				return KNOT_ERROR;
-			}
-
-			*xfr_serial = serial;
-		} else {
-			char buf[64] = "";
-			knot_rrtype_to_string(*type_num, buf, sizeof(buf));
-			ERR("type %s can't have a parameter\n", buf);
-			return KNOT_ERROR;
-		}
-	}
 
 	return KNOT_EOK;
 }
@@ -179,6 +126,10 @@ char* get_reverse_name(const char *name)
 	struct in_addr	addr4;
 	struct in6_addr	addr6;
 	char		buf[128] = "\0";
+
+	if (name == NULL) {
+		return NULL;
+	}
 
         // Check name for IPv4 address, IPv6 address or other.
 	if (inet_pton(AF_INET, name, &addr4) == 1) {
@@ -232,20 +183,161 @@ char* get_fqd_name(const char *name)
 	return fqd_name;
 }
 
+void params_flag_ipv4(params_t *params)
+{
+	if (params == NULL) {
+		return;
+	}
+
+	params->ip = IP_4;
+}
+
+void params_flag_ipv6(params_t *params)
+{
+	if (params == NULL) {
+		return;
+	}
+
+	params->ip = IP_6;
+}
+
+void params_flag_servfail(params_t *params)
+{
+	if (params == NULL) {
+		return;
+	}
+
+	params->servfail_stop = true;
+}
+
+void params_flag_nowait(params_t *params)
+{
+	if (params == NULL) {
+		return;
+	}
+
+	params->wait = -1;
+}
+
 void params_flag_tcp(params_t *params)
 {
+	if (params == NULL) {
+		return;
+	}
+
 	params->protocol = PROTO_TCP;
 }
 
 void params_flag_verbose(params_t *params)
 {
+	if (params == NULL) {
+		return;
+	}
+
 	params->format = FORMAT_VERBOSE;
-	
+}
+
+int params_parse_port(const char *value, char **port)
+{
+	char *new_port = strdup(value);
+
+	if (new_port == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	// Deallocate old string.
+	free(*port);
+
+	*port = new_port;
+
+	return KNOT_EOK;
+}
+
+int params_parse_class(const char *value, int32_t *rclass)
+{
+	if (value == NULL || rclass == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	*rclass = knot_rrclass_from_string(value);
+
+	return KNOT_EOK;
+}
+
+int params_parse_type(const char *value, int32_t *rtype, uint32_t *xfr_serial)
+{
+	if (value == NULL || rtype == NULL || xfr_serial == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	size_t param_pos = strcspn(value, "=");
+
+	// There is no additional parameter.
+	if (param_pos == strlen(value)) {
+		*rtype = knot_rrtype_from_string(value);
+
+		// IXFR requires serial parameter.
+		if (*rtype == KNOT_RRTYPE_IXFR) {
+			ERR("required SOA serial for IXFR query\n");
+			return KNOT_ERROR;
+		}
+	} else {
+		char *type_char = strndup(value, param_pos);
+
+		*rtype = knot_rrtype_from_string(type_char);
+
+		free(type_char);
+
+		// Additional parameter is acceptet for IXFR only.
+		if (*rtype == KNOT_RRTYPE_IXFR) {
+			const char *param_str = value + 1 + param_pos;
+			char *end;
+
+			// Convert string to serial.
+			unsigned long serial = strtoul(param_str, &end, 10);
+
+			// Check for bad serial string.
+			if (end == param_str || *end != '\0' ||
+			    serial > UINT32_MAX) {
+				ERR("bad SOA serial in IXFR query\n");
+				return KNOT_ERROR;
+			}
+
+			*xfr_serial = serial;
+		} else {
+			char buf[64] = "";
+			knot_rrtype_to_string(*rtype, buf, sizeof(buf));
+			ERR("type %s can't have a parameter\n", buf);
+			return KNOT_ERROR;
+		}
+	}
+
+	return KNOT_EOK;
+}
+
+int params_parse_server(const char *value, list *servers, const char *def_port)
+{
+	if (value == NULL || servers == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	// Add specified nameserver.
+	server_t *server = parse_nameserver(value, def_port);
+	if (server == NULL) {
+		return KNOT_EINVAL;
+	}
+	add_tail(servers, (node *)server);
+
+	return KNOT_EOK;
 }
 
 int params_parse_interval(const char *value, int32_t *dst)
 {
 	char *end;
+
+	if (value == NULL || dst == NULL) {
+		return KNOT_EINVAL;
+	}
 
 	/* Convert string to number. */
 	long num = strtol(value, &end, 10);
@@ -272,6 +364,10 @@ int params_parse_num(const char *value, uint32_t *dst)
 {
 	char *end;
 
+	if (value == NULL || dst == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	// Convert string to number.
 	unsigned long num = strtoul(value, &end, 10);
 
@@ -288,6 +384,10 @@ int params_parse_num(const char *value, uint32_t *dst)
 
 int params_parse_tsig(const char *value, knot_key_t *key)
 {
+	if (value == NULL || key == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	/* Invalidate previous key. */
 	if (key->name) {
 		knot_dname_free(&key->name);
@@ -295,19 +395,19 @@ int params_parse_tsig(const char *value, knot_key_t *key)
 		free(key->secret);
 		key->secret = NULL;
 	}
-	
+
 	char *h = strdup(value);
 	if (!h) {
 		return KNOT_ENOMEM;
 	}
-	
+
 	/* Separate to avoid multiple allocs. */
 	char *k = NULL, *s = NULL;
 	if ((k = (char*)strchr(h, ':'))) { /* Second part - NAME|SECRET */
 		*k++ = '\0';               /* String separator */
 		s = (char*)strchr(k, ':'); /* Thirt part - |SECRET */
 	}
-	
+
 	/* Determine algorithm. */
 	key->algorithm = KNOT_TSIG_ALG_HMAC_MD5;
 	if (s) {
@@ -326,11 +426,11 @@ int params_parse_tsig(const char *value, knot_key_t *key)
 		s = k; /* Ignore first part, push down. */
 		k = h;
 	}
-	
+
 	/* Parse key name. */
 	key->name = create_fqdn_from_str(k, strlen(k));
 	key->secret = strdup(s);
-	
+
 	/* Check name and secret. */
 	if (!key->name || !key->secret) {
 		knot_dname_free(&key->name); /* Sets to NULL */
@@ -339,18 +439,22 @@ int params_parse_tsig(const char *value, knot_key_t *key)
 		free(h);
 		return KNOT_EINVAL;
 	}
-	
+
 	DBG("%s: parsed name '%s'\n", __func__, k);
 	DBG("%s: parsed secret '%s'\n", __func__, s);
 	free(h);
-	
+
 	return KNOT_EOK;
 }
 
 int params_parse_keyfile(const char *filename, knot_key_t *key)
 {
 	int ret = KNOT_EOK;
-	
+
+	if (filename == NULL || key == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	/* Fetch keyname from filename. */
 	const char *bn = strrchr(filename, '/');
 	if (!bn) bn = filename;
@@ -364,17 +468,18 @@ int params_parse_keyfile(const char *filename, knot_key_t *key)
 		ERR("keyfile not in format K{name}.+157+{rnd}.private\n");
 		return KNOT_ERROR;
 	}
-	
+
 	FILE *fp = fopen(filename, "r"); /* Open file */
 	if (!fp) {
 		ERR("could not open key file '%s': %s\n",
 		    filename, strerror(errno));
 		return KNOT_ERROR;
 	}
-	
+
 	/* Parse lines. */
 	ret = tok_process_lines(fp, params_parse_keyline, key);
-	
+
 	fclose(fp);
 	return ret;
 }
+

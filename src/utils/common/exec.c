@@ -138,7 +138,7 @@ static void print_header(const knot_packet_t *packet)
 	}
 
 	// Print formated info.
-	printf(";; ->>HEADER<<- opcode: %s, status: %s, id: %u\n"
+	printf("\n;; ->>HEADER<<- opcode: %s, status: %s, id: %u\n"
 	       ";; Flags:%1s, "
 	       "QUERY: %u, ANSWER: %u, AUTHORITY: %u, ADDITIONAL: %u\n",
 	       opcode->name, rcode->name, knot_packet_id(packet),
@@ -377,6 +377,10 @@ void print_header_xfr(const format_t format, const knot_rr_type_t type)
 void print_data_xfr(const format_t      format,
                     const knot_packet_t *packet)
 {
+	if (packet == NULL) {
+		return;
+	}
+
 	switch (format) {
 	case FORMAT_DIG:
 		print_section_dig(packet->answer, packet->an_rrsets);
@@ -418,6 +422,10 @@ void print_packet(const format_t      format,
                   const float         elapsed,
                   const size_t        msg_count)
 {
+	if (packet == NULL) {
+		return;
+	}
+
 	switch (format) {
 	case FORMAT_DIG:
 		if (packet->an_rrsets > 0) {
@@ -429,7 +437,7 @@ void print_packet(const format_t      format,
 			print_section_host(packet->answer, packet->an_rrsets);
 		} else {
 			uint8_t rcode = knot_wire_get_rcode(packet->wireformat);
-			print_error_host(rcode, &(packet->question));
+			print_error_host(rcode, &packet->question);
 		}
 		break;
 	case FORMAT_NSUPDATE:

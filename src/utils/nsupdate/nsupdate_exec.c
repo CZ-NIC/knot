@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <sys/socket.h>
+#include <unistd.h>
 
 #include "utils/nsupdate/nsupdate_exec.h"
 #include "utils/common/params.h"
@@ -296,6 +297,7 @@ static server_t *parse_host(const char *lp, const char* default_port)
 static int pkt_append(params_t *p, int sect)
 {
 	/* Check packet state first. */
+	int ret = KNOT_EOK;
 	nsupdate_params_t *npar = NSUP_PARAM(p);
 	scanner_t *s = npar->rrp;
 	if (!npar->pkt) {
@@ -307,9 +309,12 @@ static int pkt_append(params_t *p, int sect)
 		q.qname = knot_dname_new_from_wire(s->zone_origin,
 		                                   s->zone_origin_length,
 		                                   NULL);
-		knot_query_set_question(npar->pkt, &q);
-		knot_query_set_opcode(npar->pkt, KNOT_OPCODE_UPDATE);
+		ret = knot_query_set_question(npar->pkt, &q);
 		knot_dname_release(q.qname); /* Already on wire. */
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		knot_query_set_opcode(npar->pkt, KNOT_OPCODE_UPDATE);
 		
 		/* Reserve space for TSIG. */
 		if (p->key.name) {
@@ -319,7 +324,6 @@ static int pkt_append(params_t *p, int sect)
 	}
 	
 	/* Create RDATA (not for NXRRSET prereq). */
-	int ret = KNOT_EOK;
 	knot_rdata_t *rd = knot_rdata_new();
 	const knot_rrtype_descriptor_t *rdesc = NULL;
 	rdesc = knot_rrtype_descriptor_by_type(s->r_type);
@@ -404,7 +408,7 @@ static int pkt_sendrecv(params_t *params, server_t *srv,
 	/* Wait for reception. */
 	int rb = receive_msg(params, KNOT_RRTYPE_SOA, sock, rwire, rlen);
 	DBG("%s: receive_msg = %d\n", __func__, rb);
-	shutdown(sock, SHUT_RDWR);
+	close(sock);
 	
 	return rb;
 }
@@ -808,7 +812,7 @@ int cmd_show(const char* lp, params_t *params)
 	if (!npar->pkt) return KNOT_EOK;
 	printf("Outgoing update query:\n");
 	size_t len = knot_packet_size(npar->pkt);
-	print_packet(params->format, npar->pkt, len, -1, 0.0f, 1);
+	print_packet(params->format, npar->pkt, len, 0, 0.0f, 1);
 	return KNOT_EOK;
 }
 
@@ -820,7 +824,7 @@ int cmd_answer(const char* lp, params_t *params)
 	if (!npar->resp) return KNOT_EOK;
 	printf("Answer:\n");
 	size_t len = knot_packet_size(npar->resp);
-	print_packet(params->format, npar->resp, len, -1, 0.0f, 1);
+	print_packet(params->format, npar->resp, len, 0, 0.0f, 1);
 	return KNOT_EOK;
 }
 

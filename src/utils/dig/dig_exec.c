@@ -38,9 +38,11 @@ static knot_packet_t* create_query_packet(const params_t *params,
 {
 	knot_question_t q;
 
+	dig_params_t *ext_params = DIG_PARAM(params);
+
 	// Set packet buffer size.
 	int max_size = MAX_PACKET_SIZE;
-	if (get_socktype(params, query->type) != SOCK_STREAM) {
+	if (get_socktype(params, query->qtype) != SOCK_STREAM) {
 		// For UDP default or specified EDNS size.
 		max_size = params->udp_size;
 	}
@@ -54,16 +56,16 @@ static knot_packet_t* create_query_packet(const params_t *params,
 	}
 
 	// Set recursion bit to wireformat.
-	if (params->recursion == true) {
+	if (ext_params->rd_flag == true) {
 		knot_wire_set_rd(packet->wireformat);
 	} else {
 		knot_wire_flags_clear_rd(packet->wireformat);
 	}
 
 	// Fill auxiliary question structure.
-	q.qclass = params->class_num;
-	q.qtype = query->type;
-	q.qname = knot_dname_new_from_str(query->name, strlen(query->name), 0);
+	q.qclass = query->qclass;
+	q.qtype = query->qtype;
+	q.qname = knot_dname_new_from_str(query->qname, strlen(query->qname), 0);
 
 	if (q.qname == NULL) {
 		knot_dname_release(q.qname);
@@ -79,7 +81,7 @@ static knot_packet_t* create_query_packet(const params_t *params,
 	}
 
 	// For IXFR query add authority section.
-	if (query->type == KNOT_RRTYPE_IXFR) {
+	if (query->qtype == KNOT_RRTYPE_IXFR) {
 		int ret;
 		size_t pos = 0;
 		// SOA rdata in wireformat.
@@ -235,6 +237,10 @@ void process_query(const params_t *params, const query_t *query)
 	size_t		total_len = 0;
 	size_t		msg_count = 0;
 
+	if (params == NULL || query == NULL) {
+		return;
+	}
+
 	// Create query packet.
 	out_packet = create_query_packet(params, query, &out, &out_len);
 
@@ -250,7 +256,7 @@ void process_query(const params_t *params, const query_t *query)
 		gettimeofday(&t_start, NULL);
 
 		// Send query message.
-		sockfd = send_msg(params, query->type, (server_t *)server,
+		sockfd = send_msg(params, query->qtype, (server_t *)server,
 		                  out, out_len);
 
 		if (sockfd < 0) {
@@ -262,7 +268,7 @@ void process_query(const params_t *params, const query_t *query)
 		// Loop over incomming messages, unless reply id is correct.
 		while (id_ok == false) {
 			// Receive reply message.
-			in_len = receive_msg(params, query->type, sockfd,
+			in_len = receive_msg(params, query->qtype, sockfd,
 			                     in, sizeof(in));
 
 			if (in_len <= 0) {
@@ -318,8 +324,8 @@ void process_query(const params_t *params, const query_t *query)
 		}
 
 		// Dump one standard reply message and finish.
-		if (query->type != KNOT_RRTYPE_AXFR &&
-		    query->type != KNOT_RRTYPE_IXFR) {
+		if (query->qtype != KNOT_RRTYPE_AXFR &&
+		    query->qtype != KNOT_RRTYPE_IXFR) {
 			// Stop meassuring of query time.
 			gettimeofday(&t_end, NULL);
 
@@ -348,7 +354,7 @@ void process_query(const params_t *params, const query_t *query)
 		total_len += in_len;
 
 		// Start XFR dump.
-		print_header_xfr(params->format, query->type);
+		print_header_xfr(params->format, query->qtype);
 
 		print_data_xfr(params->format, in_packet);
 
@@ -368,7 +374,7 @@ void process_query(const params_t *params, const query_t *query)
 			knot_packet_free(&in_packet);
 
 			// Receive reply message.
-			in_len = receive_msg(params, query->type, sockfd,
+			in_len = receive_msg(params, query->qtype, sockfd,
 					     in, sizeof(in));
 
 			if (in_len <= 0) {
