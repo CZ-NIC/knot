@@ -3956,9 +3956,7 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	
 	dbg_ns("ns_process_axfrin: incoming packet, wire size: %zu\n",
 	       xfr->wire_size);
-	assert(0);
-	int ret = 0;
-//	int ret = xfrin_process_axfr_packet(xfr); TODO
+	int ret = xfrin_process_axfr_packet(xfr);
 
 	if (ret > 0) { // transfer finished
 		dbg_ns("ns_process_axfrin: AXFR finished, zone created.\n");
@@ -4046,8 +4044,7 @@ int knot_ns_switch_zone(knot_nameserver_t *nameserver,
 		zone->zone = z;
 	}
 	
-	assert(0);
-	int ret = 0;//xfrin_switch_zone(z, zone, xfr->type); TODO
+	int ret xfrin_switch_zone(z, zone, xfr->type);
 
 dbg_ns_exec_verb(
 	dbg_ns_verb("Zone db contents: (zone count: %zu)\n",
@@ -4081,8 +4078,7 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 	 * and the digest of the query sent to the master or the previous
 	 * digest.
 	 */
-	assert(0);
-	int ret = 0;//xfrin_process_ixfr_packet(xfr); TODO
+	int ret = xfrin_process_ixfr_packet(xfr);
 	
 	if (ret == XFRIN_RES_FALLBACK) {
 		dbg_ns("ns_process_ixfrin: Fallback to AXFR.\n");
@@ -4221,9 +4217,7 @@ int knot_ns_process_update(const knot_packet_t *query,
 
 	// 4) Convert update to changeset
 	dbg_ns_verb("Converting UPDATE packet to changeset.\n");
-	int ret = 0;
-	assert(0);
-//	int ret = knot_ddns_process_update(zone, query, changeset, rcode); TODO
+	int ret = knot_ddns_process_update(zone, query, changeset, rcode);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to check zone for update: "
 		       "%s.\n", knot_strerror(ret));
@@ -4266,9 +4260,8 @@ int knot_ns_process_update2(const knot_packet_t *query,
 	dbg_ns_verb("Creating shallow copy of the zone...\n");
 	knot_zone_contents_t *contents_copy = NULL;
 	knot_changes_t *changes = NULL;
-	assert(0); //TODO
-	int ret = 0;//xfrin_prepare_zone_copy(old_contents, &contents_copy,
-//	                                  &changes);
+	int ret = xfrin_prepare_zone_copy(old_contents, &contents_copy,
+	                                  &changes);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to prepare zone copy: %s\n",
 		          knot_strerror(ret));
