@@ -659,7 +659,7 @@ int remote_create_cname(knot_rrset_t *rr, const char *d)
 	return KNOT_EOK;
 }
 
-char* remote_parse_txt(const knot_rrset_t *rr)
+char* remote_parse_txt(const knot_rrset_t *rr, size_t rr_pos)
 {
 	if (!rr || knot_rrset_rdata_rr_count(rr) < 1) {
 		return NULL;

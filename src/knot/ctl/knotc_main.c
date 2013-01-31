@@ -33,6 +33,7 @@
 #endif
 
 #include "knot/common.h"
+#include "common/descriptor_new.h"
 #include "knot/ctl/process.h"
 #include "knot/ctl/remote.h"
 #include "knot/conf/conf.h"
@@ -164,21 +165,23 @@ static int check_zone(const char *db, const char *source)
 	}
 
 	/* Read zonedb header. */
-	zloader_t *zl = 0;
-	knot_zload_open(&zl, db);
-	if (!zl) {
-		return KNOT_ERROR;
-	}
+	assert(0); // TODO replace with checking actual zone file.
+//	zloader_t *zl = 0;
+//	knot_zload_open(&zl, db);
+//	if (!zl) {
+//		return KNOT_ERROR;
+//	}
 
-	/* Check source files and mtime. */
-	int ret = KNOT_ERROR;
-	int src_changed = strcmp(source, zl->source) != 0;
-	if (!src_changed && !knot_zload_needs_update(zl)) {
-		ret = KNOT_EOK;
-	}
+//	/* Check source files and mtime. */
+//	int ret = KNOT_ERROR;
+//	int src_changed = strcmp(source, zl->source) != 0;
+//	if (!src_changed && !knot_zload_needs_update(zl)) {
+//		ret = KNOT_EOK;
+//	}
 
-	knot_zload_close(zl);
-	return ret;
+//	knot_zload_close(zl);
+//	return ret;
+	return KNOT_EOK;
 }
 
 /*! \brief Zone compiler task. */
@@ -272,22 +275,13 @@ static int cmd_remote_print_reply(const knot_rrset_t *rr)
 		return KNOT_EMALF;
 	}
 	
-	const knot_rdata_t *rd = knot_rrset_rdata(rr);
-	while (rd != NULL) {
-		/* Skip empty nodes. */
-		if (knot_rdata_item_count(rd) < 1) {
-			rd = knot_rrset_rdata_next(rr, rd);
-			continue;
-		}
-
+	for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(rr); i++) {
 		/* Parse TXT. */
-		char* txt = remote_parse_txt(rd);
+		char* txt = remote_parse_txt(rr, i);
 		if (txt) {
 			log_server_info("Server reply: %s\n", txt);
 		}
 		free(txt);
-
-		rd = knot_rrset_rdata_next(rr, rd);
 	}
 	
 	return KNOT_EOK;
@@ -353,24 +347,21 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	}
 	
 	/* Build query data. */
-	knot_rdata_t *rd = NULL;
 	knot_rrset_t *rr = remote_build_rr("data.", rrt);
 	for (int i = 0; i < argc; ++i) {
 		switch(rrt) {
 		case KNOT_RRTYPE_CNAME:
-			rd = remote_create_cname(argv[i]);
+			remote_create_cname(rr, argv[i]);
 			break;
 		case KNOT_RRTYPE_TXT:
 		default:
-			rd = remote_create_txt(argv[i]);
+			remote_create_txt(rr, argv[i]);
 			break;
 		}
-		knot_rrset_add_rdata(rr, rd);
-		rd = NULL;
 	}
 	remote_query_append(qr, rr);
 	if (knot_packet_to_wire(qr, &buf, &buflen) != KNOT_EOK) {
-		knot_rrset_deep_free(&rr, 1, 1, 1);
+		knot_rrset_deep_free(&rr, 1, 1);
 		knot_packet_free(&qr);
 		return 1;
 	}
@@ -399,7 +390,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	}
 	
 	/* Cleanup. */
-	knot_rrset_deep_free(&rr, 1, 1, 1);
+	knot_rrset_deep_free(&rr, 1, 1);
 	
 	/* Close connection. */
 	socket_close(s);

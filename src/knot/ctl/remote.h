@@ -189,7 +189,7 @@ int remote_create_cname(knot_rrset_t *rr, const char *d);
  * \param rd TXT rdata.
  * \return Parsed string or NULL.
  */
-char* remote_parse_txt(const knot_rrset_t *rrset);
+char* remote_parse_txt(const knot_rrset_t *rrset, size_t rr_pos);
 
 /*!
  * \brief Create dname from str and make sure the name is FQDN.
