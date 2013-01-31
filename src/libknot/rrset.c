@@ -1462,6 +1462,143 @@ uint16_t knot_rrset_rdata_rrsig_type_covered(const knot_rrset_t *rrset)
 	return knot_wire_read_u16(rrset->rdata);
 }
 
+uint8_t knot_rrset_rdata_rrsig_algorithm(const knot_rrset_t *rrset, 
+                                         size_t rr_pos)
+{
+	if (rrset == NULL || rr_pos >= rrset->rdata_count) {
+		return 0;
+	}
+	
+	return *(knot_rrset_get_rdata(rrset, rr_pos) + 2);
+}
+
+uint8_t knot_rrset_rdata_rrsig_labels(const knot_rrset_t *rrset,
+                                      size_t rr_pos)
+
+{
+	if (rrset == NULL || rr_pos >= rrset->rdata_count) {
+		return 0;
+	}
+	
+	return *(knot_rrset_get_rdata(rrset, rr_pos) + 3);
+}
+	
+uint32_t knot_rrset_rdata_rrsig_original_ttl(const knot_rrset_t *rrset,
+                                             size_t rr_pos)
+{
+	if (rrset == NULL || rr_pos >= rrset->rdata_count) {
+		return 0;
+	}
+	
+	return knot_wire_read_u32(knot_rrset_get_rdata(rrset, rr_pos) + 4);
+}
+
+uint32_t knot_rrset_rdata_rrsig_sig_expiration(const knot_rrset_t *rrset,
+                                               size_t rr_pos)
+{
+	if (rrset == NULL || rr_pos >= rrset->rdata_count) {
+		return 0;
+	}
+	
+	return knot_wire_read_u32(knot_rrset_get_rdata(rrset, rr_pos) + 8);
+}
+
+uint32_t knot_rrset_rdata_rrsig_sig_inception(const knot_rrset_t *rrset,
+                                              size_t rr_pos)
+{
+	if (rrset == NULL || rr_pos >= rrset->rdata_count) {
+		return 0;
+	}
+	
+	return knot_wire_read_u32(knot_rrset_get_rdata(rrset, rr_pos) + 12);
+}
+
+uint16_t knot_rrset_rdata_rrsig_key_tag(const knot_rrset_t *rrset,
+                                        size_t rr_pos)
+{
+	if (rrset == NULL || rr_pos >= rrset->rdata_count) {
+		return 0;
+	}
+	
+	return knot_wire_read_u16(knot_rrset_get_rdata(rrset, rr_pos) + 16);
+}
+
+const knot_dname_t *knot_rrset_rdata_rrsig_signer_name(const knot_rrset_t *rrset,
+                                                       size_t rr_pos)
+{
+	if (rrset == NULL || rr_pos >= rrset->rdata_count) {
+		return NULL;
+	}
+	
+	const knot_dname_t *dname = NULL;
+	memcpy(&dname, knot_rrset_get_rdata(rrset, rr_pos) + 18,
+	       sizeof(knot_dname_t *));
+	
+	return dname;
+}
+
+uint16_t knot_rrset_rdata_dnskey_flags(const knot_rrset_t *rrset, size_t rr_pos)
+{
+	if (rrset == NULL || rr_pos >= rrset->rdata_count) {
+		return 0;
+	}
+	
+	return knot_wire_read_u16(knot_rrset_get_rdata(rrset, rr_pos));
+}
+
+uint8_t knot_rrset_rdata_dnskey_proto(const knot_rrset_t *rrset, size_t rr_pos)
+{
+	if (rrset == NULL || rr_pos >= rrset->rdata_count) {
+		return 0;
+	}
+	
+	return *(knot_rrset_get_rdata(rrset, rr_pos) + 2);
+}
+
+uint8_t knot_rrset_rdata_dnskey_alg(const knot_rrset_t *rrset, size_t rr_pos)
+{
+	if (rrset == NULL || rr_pos >= rrset->rdata_count) {
+		return 0;
+	}
+	
+	return *(knot_rrset_get_rdata(rrset, rr_pos) + 3);
+}
+
+void knot_rrset_rdata_dnskey_key(const knot_rrset_t *rrset, size_t rr_pos,
+                                 uint8_t **key, uint16_t *key_size)
+{
+	if (rrset == NULL || rr_pos >= rrset->rdata_count) {
+		return;
+	}
+	
+	*key = knot_rrset_get_rdata(rrset, rr_pos) + 4;
+	*key_size = rrset_rdata_item_size(rrset, rr_pos) - 4;
+}
+
+const knot_dname_t *knot_rrset_rdata_nsec_next(const knot_rrset_t *rrset,
+                                               size_t rr_pos)
+{
+	if (rrset == NULL) {
+		return NULL;
+	}
+	
+	const knot_dname_t *dname;
+	memcpy(&dname, rrset_rdata_pointer(rrset, rr_pos),
+	       sizeof(knot_dname_t *));
+	return dname;
+}
+
+void knot_rrset_rdata_nsec_bitmap(const knot_rrset_t *rrset, size_t rr_pos,
+                                  uint8_t **bitmap, uint16_t *size)
+{
+	if (rrset == NULL || rr_pos >= rrset->rdata_count) {
+		return;
+	}
+	
+	*bitmap = knot_rrset_get_rdata(rrset, rr_pos) + sizeof(knot_dname_t *);
+	*size = rrset_rdata_item_size(rrset, rr_pos) - sizeof(knot_dname_t *);
+}
+
 /*---------------------------------------------------------------------------*/
 
 uint8_t knot_rrset_rdata_nsec3_algorithm(const knot_rrset_t *rrset,
@@ -1472,6 +1609,16 @@ uint8_t knot_rrset_rdata_nsec3_algorithm(const knot_rrset_t *rrset,
 	}
 	
 	return *(rrset_rdata_pointer(rrset, pos));
+}
+
+uint8_t knot_rrset_rdata_nsec3_flags(const knot_rrset_t *rrset,
+                                     size_t pos)
+{
+	if (rrset == NULL || pos >= rrset->rdata_count) {
+		return 0;
+	}
+	
+	return *(rrset_rdata_pointer(rrset, pos) + 1);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -1552,6 +1699,18 @@ uint8_t knot_rrset_rdata_nsec3_salt_length(const knot_rrset_t *rrset,
 	}
 	
 	return *(rrset_rdata_pointer(rrset, pos) + 4);
+}
+
+void knot_rrset_rdata_nsec3_next_hashed(const knot_rrset_t *rrset, size_t pos,
+                                        uint8_t **name, uint8_t *name_size)
+{
+	if (rrset == NULL || pos >= rrset->rdata_count) {
+		return;
+	}
+	
+	uint8_t salt_size = knot_rrset_rdata_nsec3_salt_length(rrset, pos);
+	*name = knot_rrset_get_rdata(rrset, pos) + 4 + salt_size + 2;
+	*name_size = *(knot_rrset_get_rdata(rrset, pos) + 4 + salt_size + 1);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -2100,7 +2259,7 @@ const knot_dname_t *knot_rrset_rdata_ns_name(const knot_rrset_t *rrset,
 		return NULL;
 	}
 	
-	knot_dname_t *dname;
+	const knot_dname_t *dname;
 	memcpy(&dname, rrset_rdata_pointer(rrset, rdata_pos),
 	       sizeof(knot_dname_t *));
 	return dname;
@@ -2139,8 +2298,6 @@ const knot_dname_t *knot_rrset_rdata_name(const knot_rrset_t *rrset,
 		return NULL;
 	}
 	
-	// iterate over the rdata items or act as if we knew where the name is?
-
 	switch (rrset->type) {
 		case KNOT_RRTYPE_NS:
 			return knot_rrset_rdata_ns_name(rrset, rdata_pos);

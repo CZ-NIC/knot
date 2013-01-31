@@ -383,15 +383,44 @@ uint32_t knot_rrset_rdata_soa_expire(const knot_rrset_t *rrset);
 uint32_t knot_rrset_rdata_soa_minimum(const knot_rrset_t *rrset);
 //TODO test
 uint16_t knot_rrset_rdata_rrsig_type_covered(const knot_rrset_t *rrset);
+/* TODO not all of these need to have rr_pos as a parameter. */
+uint8_t knot_rrset_rdata_rrsig_algorithm(const knot_rrset_t *rrset,
+                                         size_t rr_pos);
+uint8_t knot_rrset_rdata_rrsig_labels(const knot_rrset_t *rrset, size_t rr_pos);
+uint32_t knot_rrset_rdata_rrsig_original_ttl(const knot_rrset_t *rrset,
+                                             size_t rr_pos);
+uint32_t knot_rrset_rdata_rrsig_sig_expiration(const knot_rrset_t *rrset,
+                                               size_t rr_pos);
+uint32_t knot_rrset_rdata_rrsig_sig_inception(const knot_rrset_t *rrset,
+                                              size_t rr_pos);
+uint16_t knot_rrset_rdata_rrsig_key_tag(const knot_rrset_t *rrset,
+                                        size_t rr_pos);
+const knot_dname_t *knot_rrset_rdata_rrsig_signer_name(const knot_rrset_t *rrset,
+                                                       size_t rr_pos);
+
+uint16_t knot_rrset_rdata_dnskey_flags(const knot_rrset_t *rrset, size_t rr_pos);
+uint8_t knot_rrset_rdata_dnskey_proto(const knot_rrset_t *rrset, size_t rr_pos);
+uint8_t knot_rrset_rdata_dnskey_alg(const knot_rrset_t *rrset, size_t rr_pos);
+void knot_rrset_rdata_dnskey_key(const knot_rrset_t *rrset, size_t rr_pos,
+                                 uint8_t **key, uint16_t *key_size);
+const knot_dname_t *knot_rrset_rdata_nsec_next(const knot_rrset_t *rrset,
+                                               size_t rr_pos);
+void knot_rrset_rdata_nsec_bitmap(const knot_rrset_t *rrset, size_t rr_pos,
+                                  uint8_t **bitmap, uint16_t *size);
 //TODO test
 uint8_t knot_rrset_rdata_nsec3_algorithm(const knot_rrset_t *rrset,
                                          size_t pos);
+uint8_t knot_rrset_rdata_nsec3_flags(const knot_rrset_t *rrset,
+                                     size_t pos);
 //TODO test
 uint16_t knot_rrset_rdata_nsec3_iterations(const knot_rrset_t *rrset,
                                            size_t pos);
 //TODO test
 uint8_t knot_rrset_rdata_nsec3_salt_length(const knot_rrset_t *rrset,
                                            size_t pos);
+// TODO same as salt, size and data
+void knot_rrset_rdata_nsec3_next_hashed(const knot_rrset_t *rrset, size_t pos,
+                                        uint8_t **name, uint8_t *name_size);
 //TODO test
 const uint8_t *knot_rrset_rdata_nsec3_salt(const knot_rrset_t *rrset,
                                            size_t pos);
