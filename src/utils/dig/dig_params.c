@@ -144,10 +144,12 @@ static int parse_name(const char *value, params_t *params)
 
 	free(fqd_name);
 
-	add_tail(&DIG_PARAM(params)->queries, (node *)query);
 	if (query == NULL) {
 		return KNOT_ENOMEM;
 	}
+
+	// Add new query to the queries.
+	add_tail(&DIG_PARAM(params)->queries, (node *)query);
 
 	return KNOT_EOK;
 }
@@ -170,10 +172,12 @@ static int parse_reverse(const char *value, params_t *params)
 
 	free(reverse);
 
-	add_tail(&DIG_PARAM(params)->queries, (node *)query);
 	if (query == NULL) {
 		return KNOT_ENOMEM;
 	}
+
+	// Add new query to the queries.
+	add_tail(&DIG_PARAM(params)->queries, (node *)query);
 
 	return KNOT_EOK;
 }
