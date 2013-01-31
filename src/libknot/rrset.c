@@ -2170,7 +2170,7 @@ static int knot_rrset_find_rr_pos(const knot_rrset_t *rr_search,
 	return found ? KNOT_EOK : KNOT_ENOENT;
 }
 
-int knot_rrset_remove_rdata_pos(knot_rrset_t *rrset, size_t pos)
+static int knot_rrset_remove_rdata_pos(knot_rrset_t *rrset, size_t pos)
 {
 	if (rrset == NULL || pos >= rrset->rdata_count) {
 		return KNOT_EINVAL;
@@ -2249,6 +2249,41 @@ int knot_rrset_remove_rr(knot_rrset_t *rrset,
 		               knot_strerror(ret));
 		return ret;
 	}
+	
+	return KNOT_EOK;
+}
+
+int knot_rrset_rdata_reset(knot_rrset_t *rrset)
+{
+	if (rrset == NULL) {
+		return KNOT_EINVAL;
+	}
+	
+	rrset->rdata = NULL;
+	rrset->rdata_indices = NULL;
+	rrset->rdata_count = 0;
+	
+	return KNOT_EOK;
+}
+
+int knot_rrset_add_rr_from_rrset(knot_rrset_t *dest, const knot_rrset_t *source,
+                                 size_t rdata_pos)
+{
+	if (dest == NULL || source == NULL) {
+		return KNOT_EINVAL;
+	}
+	
+	/* Get size of RDATA to be copied. */
+	uint16_t item_size = rrset_rdata_item_size(source, rdata_pos);
+	/* Reserve space in dest RRSet. */
+	uint8_t *rdata = knot_rrset_create_rdata(dest, item_size);
+	if (rdata == NULL) {
+		dbg_rrset("rr: add_rr_from_rrset: Could not create RDATA.\n");
+		return KNOT_ERROR;
+	}
+	
+	/* Copy actual data. */
+	memcpy(rdata, rrset_rdata_pointer(source, rdata_pos), item_size);
 	
 	return KNOT_EOK;
 }
