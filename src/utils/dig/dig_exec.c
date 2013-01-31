@@ -170,20 +170,23 @@ static int check_rcode(const params_t *params, const knot_packet_t *reply)
 	return rcode;
 }
 
-static bool check_question(const knot_packet_t *query,
+static void check_question(const knot_packet_t *query,
                            const knot_packet_t *reply)
 {
+	if (reply->header.qdcount < 1) {
+		WARN("response doesn't have question section\n");
+		return;
+	}
+
 	int name_diff = knot_dname_compare_cs(reply->question.qname,
 	                                      query->question.qname);
 
 	if (reply->question.qclass != query->question.qclass ||
 	    reply->question.qtype  != query->question.qtype ||
 	    name_diff != 0) {
-		WARN("different question sections\n");
-		return false;
+		WARN("query/response question sections are different\n");
+		return;
 	}
-
-	return true;
 }
 
 static int64_t first_serial_check(const knot_packet_t *reply)
@@ -318,10 +321,7 @@ void process_query(const params_t *params, const query_t *query)
 		}
 
 		// Check for question sections equality.
-		if (check_question(out_packet, in_packet) == false) {
-			shutdown(sockfd, SHUT_RDWR);
-			continue;
-		}
+		check_question(out_packet, in_packet);
 
 		// Dump one standard reply message and finish.
 		if (query->qtype != KNOT_RRTYPE_AXFR &&
