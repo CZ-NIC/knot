@@ -44,7 +44,7 @@ enum knot_error {
 	KNOT_EINVAL = -EINVAL,             /*!< Invalid parameter passed. */
 	KNOT_ENOTSUP = -ENOTSUP,           /*!< Parameter not supported. */
 	KNOT_EBUSY = -EBUSY,               /*!< Requested resource is busy. */
-	KNOT_EAGAIN = -EAGAIN,            /*!< OS lacked necessary resources. */
+	KNOT_EAGAIN = -EAGAIN,             /*!< OS lacked necessary resources. */
 	KNOT_EACCES = -EACCES,             /*!< Permission is denied. */
 	KNOT_ECONNREFUSED = -ECONNREFUSED, /*!< Connection is refused. */
 	KNOT_EISCONN = -EISCONN,           /*!< Already connected. */
@@ -84,7 +84,8 @@ enum knot_error {
 	KNOT_ECNAME,          /*!< CNAME loop found in zone. */
 	KNOT_ENODIFF,         /*!< No zone diff can be created. */
 	KNOT_EDSDIGESTLEN,    /*!< DS digest length does not match digest type. */
-	KNOT_ENOTSIG,         /*!< expected a TSIG or SIG(0) */
+	KNOT_ENOTSIG,         /*!< Expected a TSIG or SIG(0). */
+	KNOT_ESTOP,           /*!< Stop doing something. */
 
 	/* Zone file loader errors. */
 	FLOADER_EFSTAT,

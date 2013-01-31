@@ -63,8 +63,8 @@ query_t* query_create(const char    *qname,
                       const int32_t qclass);
 void query_free(query_t *query);
 
-int dig_params_parse(params_t *params, int argc, char *argv[]);
-void dig_params_clean(params_t *params);
+int dig_parse(params_t *params, int argc, char *argv[]);
+void dig_clean(params_t *params);
 
 void dig_params_flag_norecurse(params_t *params);
 
