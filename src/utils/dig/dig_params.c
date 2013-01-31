@@ -163,7 +163,6 @@ static int parse_reverse(const char *value, params_t *params)
 
 	// Check reverse input.
 	if (reverse == NULL) {
-		ERR("invalid IPv4 or IPv6 address\n");
 		return KNOT_EINVAL;
 	}
 
@@ -291,7 +290,13 @@ void dig_params_flag_norecurse(params_t *params)
 
 static int parse_server(const char *value, params_t *params)
 {
-	return params_parse_server(value, &params->servers, params->port);
+	int ret = params_parse_server(value, &params->servers, params->port);
+
+	if (ret != KNOT_EOK) {
+		ERR("invalid nameserver: %s\n", value);
+	}
+
+	return ret;
 }
 
 static int parse_opt1(const char *opt, const char *value,
@@ -323,7 +328,13 @@ static int parse_opt1(const char *opt, const char *value,
 		params_flag_ipv6(params);
 		break;
 	case 'c':
+		if (val == NULL) {
+			ERR("missing class\n");
+			return KNOT_EINVAL;
+		}
+
 		if (parse_class(val, params) != KNOT_EOK) {
+			ERR("invalid class: %s\n", val);
 			return KNOT_EINVAL;
 		}
 		*index += add;
@@ -336,31 +347,56 @@ static int parse_opt1(const char *opt, const char *value,
 		dig_help(true);
 		return KNOT_ESTOP;;
 	case 'p':
+		if (val == NULL) {
+			ERR("missing port\n");
+			return KNOT_EINVAL;
+		}
+
 		if (params_parse_port(val, &params->port)
 		    != KNOT_EOK) {
+			ERR("invalid port: %s\n", val);
 			return KNOT_EINVAL;
 		}
 		*index += add;
 		break;
 	case 'q':
+		if (val == NULL) {
+			ERR("missing name\n");
+			return KNOT_EINVAL;
+		}
+
 		if (parse_name(val, params) != KNOT_EOK) {
+			ERR("invalid name: %s\n", val);
 			return KNOT_EINVAL;
 		}
 		*index += add;
 		break;
 	case 't':
+		if (val == NULL) {
+			ERR("missing type\n");
+			return KNOT_EINVAL;
+		}
+
 		if (parse_type(val, params) != KNOT_EOK) {
+			ERR("invalid type: %s\n", val);
 			return KNOT_EINVAL;
 		}
 		*index += add;
 		break;
 	case 'x':
+		if (val == NULL) {
+			ERR("missing address\n");
+			return KNOT_EINVAL;
+		}
+
 		if (parse_reverse(val, params) != KNOT_EOK) {
+			ERR("invalid IPv4 or IPv6 address: %s\n", val);
 			return KNOT_EINVAL;
 		}
 		*index += add;
 		break;
 	default:
+		ERR("unknown option: -%s\n", opt);
 		return KNOT_ENOTSUP;
 	}
 
@@ -369,6 +405,8 @@ static int parse_opt1(const char *opt, const char *value,
 
 static int parse_opt2(const char *value, params_t *params)
 {
+	ERR("invalid option: %s\n", value);
+
 	return KNOT_EOK;
 }
 
@@ -382,6 +420,8 @@ static int parse_token(const char *value, params_t *params)
 	} else if (parse_name(value, params) == KNOT_EOK) {
 		return KNOT_EOK;
 	}
+
+	ERR("invalid parameter: %s\n", value);
 
 	return KNOT_ERROR;
 }
@@ -404,27 +444,15 @@ int dig_parse(params_t *params, int argc, char *argv[])
 		switch (argv[i][0]) {
 		case '@':
 			ret = parse_server(argv[i] + 1, params);
-			if (ret != KNOT_EOK) {
-				ERR("invalid nameserver: %s\n", argv[i]);
-			}
 			break;
 		case '-':
 			ret = parse_opt1(argv[i] + 1, argv[i + 1], params, &i);
-			if (ret != KNOT_EOK && ret != KNOT_ESTOP) {
-				ERR("invalid option: %s\n", argv[i]);
-			}
 			break;
 		case '+':
 			ret = parse_opt2(argv[i] + 1, params);
-			if (ret != KNOT_EOK) {
-				ERR("invalid option: %s\n", argv[i]);
-			}
 			break;
 		default:
 			ret = parse_token(argv[i], params);
-			if (ret != KNOT_EOK) {
-				ERR("invalid parameter: %s\n", argv[i]);
-			}
 			break;
 		}
 
