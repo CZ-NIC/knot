@@ -44,7 +44,7 @@ size_t     hattrie_weight (hattrie_t*);       //< Number of entries
  */
 void hattrie_build_index (hattrie_t*);
 
-void hattrie_apply_rev(hattrie_t*, void (*f)(value_t*,void*), void* d);
+void hattrie_apply_rev(hattrie_t*, void (*f)(value_t,void*), void* d);
 
 /** Find the given key in the trie, inserting it if it does not exist, and
  * returning a pointer to it's key.

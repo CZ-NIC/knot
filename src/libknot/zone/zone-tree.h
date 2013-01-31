@@ -29,34 +29,31 @@
 #ifndef _KNOT_ZONE_TREE_H_
 #define _KNOT_ZONE_TREE_H_
 
-#include "common/tree.h"
+#include "common/hattrie/hat-trie.h"
 #include "zone/node.h"
 
 /*----------------------------------------------------------------------------*/
 
-typedef struct knot_zone_tree_node {
-	/*! \brief Structure for connecting this node to an AVL tree. */
-	TREE_ENTRY(knot_zone_tree_node) avl;
-	/*! \brief Zone tree data. */
-	knot_node_t *node;
-} knot_zone_tree_node_t;
+typedef knot_node_t knot_zone_tree_node_t;
 
 /*----------------------------------------------------------------------------*/
 
-typedef TREE_HEAD(knot_zone_tree, knot_zone_tree_node) knot_zone_tree_t;
+typedef hattrie_t knot_zone_tree_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Initializes the zone tree.
+ * \brief Creates the zone tree.
  *
- * Does not allocate the structure. Must be called before any use of the tree.
- *
- * \param tree Zone tree structure to initialize.
- *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL
+ * \return created zone tree structure.
  */
-int knot_zone_tree_init(knot_zone_tree_t *tree);
+knot_zone_tree_t* knot_zone_tree_create();
+
+/*!
+ * \brief Return weight of the zone tree (number of nodes).
+ * \param tree Zone tree.
+ * \return number of nodes in tree.
+ */
+size_t knot_zone_tree_weight(knot_zone_tree_t* tree);
 
 /*!
  * \brief Inserts the given node into the zone tree.
@@ -182,7 +179,25 @@ int knot_zone_tree_remove(knot_zone_tree_t *tree,
  * \retval KNOT_EOK
  * \retval KNOT_EINVAL
  */
-int knot_zone_tree_forward_apply_inorder(knot_zone_tree_t *tree,
+int knot_zone_tree_apply_inorder(knot_zone_tree_t *tree,
+                                 void (*function)(knot_zone_tree_node_t *node,
+                                                  void *data),
+                                 void *data);
+
+/*!
+ * \brief Applies the given function to each node in the zone.
+ *
+ * This function visits leafe nodes before their parents.
+ * But doesn't maintain any specific ordering.
+ *
+ * \param tree Zone tree to apply the function to.
+ * \param function Function to be applied to each node of the zone.
+ * \param data Arbitrary data to be passed to the function.
+ *
+ * \retval KNOT_EOK
+ * \retval KNOT_EINVAL
+ */
+int knot_zone_tree_apply_recursive(knot_zone_tree_t *tree,
                                            void (*function)(
                                                   knot_zone_tree_node_t *node,
                                                   void *data),
@@ -191,12 +206,6 @@ int knot_zone_tree_forward_apply_inorder(knot_zone_tree_t *tree,
 /*!
  * \brief Applies the given function to each node in the zone.
  *
- * This function uses post-order depth-first forward traversal, i.e. the
- * function is first recursively applied to subtrees and then to the root.
- *
- * \note This implies that the zone is stored in a binary tree. Is there a way
- *       to make this traversal independent on the underlying structure?
- *
  * \param tree Zone tree to apply the function to.
  * \param function Function to be applied to each node of the zone.
  * \param data Arbitrary data to be passed to the function.
@@ -204,57 +213,9 @@ int knot_zone_tree_forward_apply_inorder(knot_zone_tree_t *tree,
  * \retval KNOT_EOK
  * \retval KNOT_EINVAL
  */
-int knot_zone_tree_forward_apply_postorder(knot_zone_tree_t *tree,
-                                             void (*function)(
-                                                  knot_zone_tree_node_t *node,
-                                                  void *data),
-                                             void *data);
-
-/*!
- * \brief Applies the given function to each node in the zone.
- *
- * This function uses in-order depth-first reverse traversal, i.e. the function
- * is first recursively applied to right subtree, then to the root and then to
- * the left subtree.
- *
- * \note This implies that the zone is stored in a binary tree. Is there a way
- *       to make this traversal independent on the underlying structure?
- *
- * \param tree Zone tree to apply the function to.
- * \param function Function to be applied to each node of the zone.
- * \param data Arbitrary data to be passed to the function.
- *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL
- */
-int knot_zone_tree_reverse_apply_inorder(knot_zone_tree_t *tree,
-                                           void (*function)(
-                                                  knot_zone_tree_node_t *node,
-                                                  void *data),
-                                           void *data);
-
-/*!
- * \brief Applies the given function to each node in the zone.
- *
- * This function uses post-order depth-first reverse traversal, i.e. the
- * function is first recursively applied to right subtree, then to the
- * left subtree and then to the root.
- *
- * \note This implies that the zone is stored in a binary tree. Is there a way
- *       to make this traversal independent on the underlying structure?
- *
- * \param tree Zone tree to apply the function to.
- * \param function Function to be applied to each node of the zone.
- * \param data Arbitrary data to be passed to the function.
- *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL
- */
-int knot_zone_tree_reverse_apply_postorder(knot_zone_tree_t *tree,
-                                             void (*function)(
-                                                  knot_zone_tree_node_t *node,
-                                                  void *data),
-                                             void *data);
+int knot_zone_tree_apply(knot_zone_tree_t *tree,
+                         void (*function)(knot_node_t *node, void *data),
+                         void *data);
 
 /*!
  * \brief Copies the whole zone tree structure (but not the data contained
@@ -269,11 +230,11 @@ int knot_zone_tree_reverse_apply_postorder(knot_zone_tree_t *tree,
  * \retval KNOT_EOK
  * \retval KNOT_ENOMEM
  */
-int knot_zone_tree_shallow_copy(knot_zone_tree_t *from, 
-                                  knot_zone_tree_t *to);
+int knot_zone_tree_shallow_copy(knot_zone_tree_t *from,
+                                  knot_zone_tree_t **to);
 
 int knot_zone_tree_deep_copy(knot_zone_tree_t *from,
-                             knot_zone_tree_t *to);
+                             knot_zone_tree_t **to);
 
 /*!
  * \brief Destroys the zone tree, not touching the saved data.

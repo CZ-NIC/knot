@@ -394,20 +394,6 @@ const knot_nsec3_params_t *knot_zone_contents_nsec3params(
 /*!
  * \brief Applies the given function to each regular node in the zone.
  *
- * This function uses post-order depth-first forward traversal, i.e. the
- * function is first recursively applied to subtrees and then to the root.
- *
- * \param zone Nodes of this zone will be used as parameters for the function.
- * \param function Function to be applied to each node of the zone.
- * \param data Arbitrary data to be passed to the function.
- */
-int knot_zone_contents_tree_apply_postorder(knot_zone_contents_t *contents,
-                              void (*function)(knot_node_t *node, void *data),
-                              void *data);
-
-/*!
- * \brief Applies the given function to each regular node in the zone.
- *
  * This function uses in-order depth-first forward traversal, i.e. the function
  * is first recursively applied to left subtree, then to the root and then to
  * the right subtree.
@@ -440,21 +426,6 @@ int knot_zone_contents_tree_apply_inorder(knot_zone_contents_t *contents,
 int knot_zone_contents_tree_apply_inorder_reverse(
 	knot_zone_contents_t *contents,
 	void (*function)(knot_node_t *node, void *data), void *data);
-
-/*!
- * \brief Applies the given function to each NSEC3 node in the zone.
- *
- * This function uses post-order depth-first forward traversal, i.e. the
- * function is first recursively applied to subtrees and then to the root.
- *
- * \param zone NSEC3 nodes of this zone will be used as parameters for the
- *             function.
- * \param function Function to be applied to each node of the zone.
- * \param data Arbitrary data to be passed to the function.
- */
-int knot_zone_contents_nsec3_apply_postorder(knot_zone_contents_t *contents,
-                              void (*function)(knot_node_t *node, void *data),
-                              void *data);
 
 /*!
  * \brief Applies the given function to each NSEC3 node in the zone.

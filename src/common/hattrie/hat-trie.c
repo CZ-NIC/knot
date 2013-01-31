@@ -296,7 +296,6 @@ void hattrie_build_index(hattrie_t *T)
 
 static void node_apply(node_ptr node, void (*f)(value_t,void*), void* d)
 {
-    /* build index on all ahtable nodes */
     if (*node.flag & NODE_TYPE_TRIE) {
         size_t i;
         for (i = 0; i < NODE_CHILDS; ++i) {
@@ -318,7 +317,7 @@ static void node_apply(node_ptr node, void (*f)(value_t,void*), void* d)
     }
 }
 
-void hattrie_apply_rev(hattrie_t* T, void (*f)(value_t*,void*), void* d)
+void hattrie_apply_rev(hattrie_t* T, void (*f)(value_t,void*), void* d)
 {
 	node_apply(T->root, f, d);
 }

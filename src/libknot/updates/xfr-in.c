@@ -2955,6 +2955,9 @@ static int xfrin_remove_empty_nodes(knot_zone_contents_t *contents,
 	dbg_xfrin_verb("OLD NSEC3 NODES COUNT: %d\n", changes->old_nsec3_count);
 
 	// walk through the zone and select nodes to be removed
+	/* \note This function doesn't require order, but requires to be applied
+	 * on the leaves first and then on the their parent.
+	 */
 	ret = knot_zone_contents_tree_apply_inorder_reverse(contents,
 	                                                    xfrin_mark_empty,
 	                                                    (void *)changes);
