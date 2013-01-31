@@ -226,6 +226,9 @@ int host_params_parse(params_t *params, int argc, char *argv[])
 		return KNOT_ERROR;
 	}
 
+	uint16_t rclass, rtype;
+	uint32_t serial;
+
 	// Command line options processing.
 	while ((opt = getopt(argc, argv, "46aCdlrsTvwc:R:t:W:")) != -1) {
 		switch (opt) {
@@ -261,10 +264,10 @@ int host_params_parse(params_t *params, int argc, char *argv[])
 			params_flag_nowait(params);
 			break;
 		case 'c':
-			if (params_parse_class(optarg, &params->class_num)
-			    != KNOT_EOK) {
+			if (params_parse_class(optarg, &rclass) != KNOT_EOK) {
 				return KNOT_EINVAL;
 			}
+			params->class_num = rclass;
 			break;
 		case 'R':
 			if (params_parse_num(optarg, &params->retries)
@@ -273,11 +276,12 @@ int host_params_parse(params_t *params, int argc, char *argv[])
 			}
 			break;
 		case 't':
-			if (params_parse_type(optarg, &params->type_num,
-			                      &params->xfr_serial)
+			if (params_parse_type(optarg, &rtype, &serial)
 			    != KNOT_EOK) {
 				return KNOT_EINVAL;
 			}
+			params->type_num = rtype;
+			params->xfr_serial = serial;
 			break;
 		case 'W':
 			if (params_parse_interval(optarg, &params->wait)

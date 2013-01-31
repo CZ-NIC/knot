@@ -253,7 +253,7 @@ int params_parse_port(const char *value, char **port)
 	return KNOT_EOK;
 }
 
-int params_parse_class(const char *value, int32_t *rclass)
+int params_parse_class(const char *value, uint16_t *rclass)
 {
 	if (value == NULL || rclass == NULL) {
 		return KNOT_EINVAL;
@@ -264,7 +264,7 @@ int params_parse_class(const char *value, int32_t *rclass)
 	return KNOT_EOK;
 }
 
-int params_parse_type(const char *value, int32_t *rtype, uint32_t *xfr_serial)
+int params_parse_type(const char *value, uint16_t *rtype, uint32_t *xfr_serial)
 {
 	if (value == NULL || rtype == NULL || xfr_serial == NULL) {
 		return KNOT_EINVAL;
