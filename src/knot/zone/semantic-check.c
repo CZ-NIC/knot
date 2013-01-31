@@ -4,17 +4,15 @@
 
 #include "knot/common.h"
 #include "knot/zone/zone-dump.h"
-#include "knot/other/error.h"
 #include "knot/other/debug.h"
 #include "libknot/libknot.h"
 #include "common/base32hex.h"
 #include "common/crc.h"
+#include "common/descriptor_new.h"
 
 #include "semantic-check.h"
 
-static char *error_messages[(-ZC_ERR_ALLOC) + 1] = {
-	[-ZC_ERR_ALLOC] = "Memory allocation error!\n",
-
+static char *error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	[-ZC_ERR_MISSING_SOA] = "SOA record missing in zone!\n",
 	[-ZC_ERR_MISSING_NS_DEL_POINT] = "NS record missing in zone apex or in "
 	                "delegation point!",
@@ -170,12 +168,7 @@ int err_handler_handle_error(err_handler_t *handler,
 	assert(handler && node);
 	if ((error != 0) &&
 	    (error > ZC_ERR_GLUE_GENERAL_ERROR)) {
-		return KNOT_EBADARG;
-	}
-
-	/*!< \todo #1886 this is so wrong! Should not even return anything. */
-	if (error == ZC_ERR_ALLOC || error == 0) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 
 	/* missing SOA can only occur once, so there
@@ -257,24 +250,22 @@ static int check_cname_cycles_in_zone(knot_zone_contents_t *zone,
 {
 	if (rrset->type != KNOT_RRTYPE_CNAME &&
 	    rrset->type != KNOT_RRTYPE_DNAME) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	const knot_rrset_t *next_rrset = rrset;
 	assert(rrset);
-	const knot_rdata_t *tmp_rdata = knot_rrset_rdata(next_rrset);
 	const knot_node_t *next_node = NULL;
 
 	uint i = 0;
 	
-	if (tmp_rdata == NULL) {
+	if (knot_rrset_rdata_rr_count(rrset) == 0) {
 		return KNOT_EOK;
 	}
 	
 	const knot_dname_t *next_dname =
-		knot_rdata_cname_name(tmp_rdata);
+		knot_rrset_rdata_cname_name(rrset);
 	/* (cname_name == dname_target) */
-
 	assert(next_dname);
 	
 	/* Check wildcard pointing to itself. */
@@ -430,7 +421,7 @@ static int check_cname_cycles_in_zone(knot_zone_contents_t *zone,
 						     rrset->type);
 			if (next_rrset != NULL && next_rrset->rdata != NULL) {
 				next_dname =
-				knot_rdata_cname_name(next_rrset->rdata);
+				knot_rrset_rdata_cname_name(next_rrset);
 			} else {
 				next_node = NULL;
 				next_dname = NULL;
@@ -451,28 +442,6 @@ static int check_cname_cycles_in_zone(knot_zone_contents_t *zone,
 }
 
 /*!
- * \brief Return raw data from rdata item structure (without length).
- *
- * \param item Item to get rdata from.
- * \return uint16_t * raw data without length.
- */
-static inline uint16_t *rdata_item_data(const knot_rdata_item_t *item)
-{
-	return (uint16_t *)(item->raw_data + 1);
-}
-
-/*!
- * \brief Returns type covered field from RRSIG RRSet's rdata.
- *
- * \param rdata RRSIG rdata.
- * \return uint16_t Type covered.
- */
-uint16_t type_covered_from_rdata(const knot_rdata_t *rdata)
-{
-	return ntohs(*(uint16_t *) rdata_item_data(&(rdata->items[0])));
-}
-
-/*!
  * \brief Check whether DNSKEY rdata are valid.
  *
  * \param rdata DNSKEY rdata to be checked.
@@ -480,14 +449,13 @@ uint16_t type_covered_from_rdata(const knot_rdata_t *rdata)
  * \retval KNOT_EOK when rdata are OK.
  * \retval ZC_ERR_RRSIG_RDATA_DNSKEY_OWNER when rdata are not OK.
  */
-static int check_dnskey_rdata(const knot_rdata_t *rdata)
+static int check_dnskey_rdata(const knot_rrset_t *rrset, size_t rdata_pos)
 {
 	/* check that Zone key bit it set - position 7 in net order */
-	uint16_t mask = 1 << 8; //0b0000000100000000;
+	const uint16_t mask = 1 << 8; //0b0000000100000000;
 
 	uint16_t flags =
-		knot_wire_read_u16((uint8_t *)rdata_item_data
-				     (knot_rdata_item(rdata, 0)));
+		knot_wire_read_u16(knot_rrset_get_rdata(rrset, rdata_pos));
 
 	if (flags & mask) {
 		return KNOT_EOK;
@@ -543,18 +511,6 @@ static uint16_t keytag(uint8_t *key, uint16_t keysize )
 }
 
 /*!
- * \brief Returns size of raw data item.
- *
- * \param item Raw data item.
- *
- * \return uint16_t Size of raw data item.
- */
-static inline uint16_t rdata_item_size(const knot_rdata_item_t *item)
-{
-	return item->raw_data[0];
-}
-
-/*!
  * \brief Converts DNSKEY rdata to wireformat.
  *
  * \param rdata DNSKEY rdata to be converted.
@@ -564,32 +520,14 @@ static inline uint16_t rdata_item_size(const knot_rdata_item_t *item)
  * \retval KNOT_EOK on success.
  * \retval KNOT_ENOMEM on memory error.
  */
-static int dnskey_to_wire(const knot_rdata_t *rdata, uint8_t **wire,
+static int dnskey_to_wire(const knot_rrset_t *rrset, size_t rr_pos, uint8_t **wire,
 			  uint *size)
 {
-	assert(*wire == NULL);
-	/* flags + algorithm + protocol + keysize */
-	*size = 2 + 1 + 1 + knot_rdata_item(rdata, 3)->raw_data[0];
-	*wire = malloc(sizeof(uint8_t) * *size);
-	CHECK_ALLOC_LOG(*wire, KNOT_ENOMEM);
-
-	/* copy the wire octet by octet */
-
-	if (rdata->count < 4) {
-		free(*wire);
-		*wire = NULL;
-		*size = 0;
-		return KNOT_ERROR;
-	}
-
-	(*wire)[0] = ((uint8_t *)(knot_rdata_item(rdata, 0)->raw_data))[2];
-	(*wire)[1] = ((uint8_t *)(knot_rdata_item(rdata, 0)->raw_data))[3];
-
-	(*wire)[2] = ((uint8_t *)(knot_rdata_item(rdata, 1)->raw_data))[2];
-	(*wire)[3] = ((uint8_t *)(knot_rdata_item(rdata, 2)->raw_data))[2];
-
-	memcpy(*wire + 4, knot_rdata_item(rdata, 3)->raw_data + 1,
-	       knot_rdata_item(rdata, 3)->raw_data[0]);
+	/* DNSKEY RDATA - all binary. */
+	uint16_t item_size = rrset_rdata_item_size(rrset, rr_pos);
+	*wire = xmalloc(item_size);
+	memcpy(*wire, knot_rrset_get_rdata(rrset, rr_pos), item_size);
+	*size = item_size;
 
 	return KNOT_EOK;
 }
@@ -607,17 +545,18 @@ static int dnskey_to_wire(const knot_rdata_t *rdata, uint8_t **wire,
  */
 static int check_rrsig_rdata(err_handler_t *handler,
                              const knot_node_t *node,
-                             const knot_rdata_t *rdata_rrsig,
+                             const knot_rrset_t *rrsig,
+                             size_t rr_pos,
                              const knot_rrset_t *rrset,
                              const knot_rrset_t *dnskey_rrset)
 {
-	if (rdata_rrsig == NULL) {
+	if (knot_rrset_rdata_rr_count(rrsig) == 0) {
 		err_handler_handle_error(handler, node, ZC_ERR_RRSIG_NO_RRSIG,
 		                         NULL);
 		return KNOT_EOK;
 	}
 
-	if (type_covered_from_rdata(rdata_rrsig) !=
+	if (knot_rrset_rdata_rrsig_type_covered(rrsig) !=
 	    knot_rrset_type(rrset)) {
 		/* zoneparser would not let this happen
 		 * but to be on the safe side
@@ -628,10 +567,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	}
 
 	/* label number at the 2nd index should be same as owner's */
-	uint16_t *raw_data =
-		rdata_item_data(knot_rdata_item(rdata_rrsig, 2));
-
-	uint8_t labels_rdata = ((uint8_t *)raw_data)[0];
+	uint8_t labels_rdata = knot_rrset_rdata_rrsig_labels(rrsig, rr_pos);
 
 	int tmp = knot_dname_label_count(knot_rrset_owner(rrset)) -
 		  labels_rdata;
@@ -653,8 +589,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 
 	/* check original TTL */
 	uint32_t original_ttl =
-		knot_wire_read_u32((uint8_t *)rdata_item_data(
-				     knot_rdata_item(rdata_rrsig, 3)));
+		knot_rrset_rdata_rrsig_original_ttl(rrsig, rr_pos);
 
 	if (original_ttl != knot_rrset_ttl(rrset)) {
 		err_handler_handle_error(handler, node, ZC_ERR_RRSIG_RDATA_TTL,
@@ -662,8 +597,8 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	}
 
 	/* signer's name is same as in the zone apex */
-	knot_dname_t *signer_name =
-		knot_rdata_item(rdata_rrsig, 7)->dname;
+	const knot_dname_t *signer_name =
+		knot_rrset_rdata_rrsig_signer_name(rrset, rr_pos);
 
 	/* dnskey is in the apex node */
 	if (knot_dname_compare(signer_name,
@@ -676,50 +611,58 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	/* Compare algorithm, key tag and signer's name with DNSKEY rrset
 	 * one of the records has to match. Signer name has been checked
 	 * before */
-	char match = 0;
-	const knot_rdata_t *tmp_dnskey_rdata =
-		knot_rrset_rdata(dnskey_rrset);
-	do {
-		uint8_t alg =
-		((uint8_t *)(knot_rdata_item(rdata_rrsig, 1)->raw_data))[2];
-		uint8_t alg_dnskey =
-		((uint8_t *)(knot_rdata_item(tmp_dnskey_rdata,
-					       2)->raw_data))[2];
-
-		raw_data = rdata_item_data(knot_rdata_item(rdata_rrsig, 6));
-		uint16_t key_tag_rrsig =
-			knot_wire_read_u16((uint8_t *)raw_data);
-
-/*		raw_data =
-			rdata_item_data(knot_rdata_item(
-					tmp_dnskey_rdata, 3));
-
-		uint16_t raw_length = rdata_item_size(knot_rdata_item(
-						     tmp_dnskey_rdata, 3)); */
-
-		uint8_t *dnskey_wire = NULL;
-		uint dnskey_wire_size = 0;
-
-		int ret = 0;
-		if ((ret = dnskey_to_wire(tmp_dnskey_rdata, &dnskey_wire,
-				   &dnskey_wire_size)) != KNOT_EOK) {
-			return ret;
+	
+	int match = 0;
+	uint8_t rrsig_alg = knot_rrset_rdata_rrsig_algorithm(rrsig, rr_pos);
+	uint16_t key_tag_rrsig = knot_rrset_rdata_rrsig_key_tag(rrsig, rr_pos);
+	for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(dnskey_rrset) &&
+	     !match; ++i) {
+		uint8_t dnskey_alg =
+			knot_rrset_rdata_rrsig_algorithm(dnskey_rrset, i);
+		if (rrsig_alg != dnskey_alg) {
+			continue;
 		}
+		
+		/* Get DNSKEY key wire. */ /* TODO key only or what? see below.*/
+		uint16_t key_size = 0;
+		uint8_t *key = NULL;
+		knot_rrset_rdata_dnskey_key(dnskey_rrset, i, &key, &key_size);
+		assert(key_size);
+		/* Calculate keytag. */
+		uint16_t dnskey_key_tag = keytag(key, key_size);
+		if (key_tag_rrsig != dnskey_key_tag) {
+			continue;
+		}
+		
+		/* Final step - check DNSKEY validity. TODO should be checked elsewhere. */
+		if (check_dnskey_rdata(dnskey_rrset, i) == KNOT_EOK) {
+			match = 1;
+		}
+	}
+	
+//		uint8_t *dnskey_wire = NULL;
+//		uint dnskey_wire_size = 0;
 
-		uint16_t key_tag_dnskey =
-			keytag(dnskey_wire, dnskey_wire_size);
+//		int ret = 0;
+//		if ((ret = dnskey_to_wire(tmp_dnskey_rdata, &dnskey_wire,
+//				   &dnskey_wire_size)) != KNOT_EOK) {
+//			return ret;
+//		}
 
-		free(dnskey_wire);
+//		uint16_t key_tag_dnskey =
+//			keytag(dnskey_wire, dnskey_wire_size);
 
-		match = (alg == alg_dnskey) &&
-			(key_tag_rrsig == key_tag_dnskey) &&
-			!check_dnskey_rdata(tmp_dnskey_rdata);
+//		free(dnskey_wire);
 
-	} while (!match &&
-		 ((tmp_dnskey_rdata =
-			knot_rrset_rdata_next(dnskey_rrset,
-						tmp_dnskey_rdata))
-		!= NULL));
+//		match = (alg == alg_dnskey) &&
+//			(key_tag_rrsig == key_tag_dnskey) &&
+//			!check_dnskey_rdata(tmp_dnskey_rdata);
+
+//	} while (!match &&
+//		 ((tmp_dnskey_rdata =
+//			knot_rrset_rdata_next(dnskey_rrset,
+//						tmp_dnskey_rdata))
+//		!= NULL));
 
 	if (!match) {
 		err_handler_handle_error(handler, node, ZC_ERR_RRSIG_NO_RRSIG,
@@ -748,13 +691,13 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 {
 	if (handler == NULL || node == NULL || rrset == NULL ||
 	    dnskey_rrset == NULL) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	
 	/* Prepare additional info string. */
 	char info_str[50];
-	sprintf(info_str, "Record type: %s.",
-	        knot_rrtype_to_string(knot_rrset_type(rrset)));
+	sprintf(info_str, "Record type: %d.",
+	        knot_rrset_type(rrset));
 	
 	assert(dnskey_rrset && rrset);
 
@@ -796,30 +739,22 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 		                         info_str);
 	}
 
-	const knot_rdata_t *tmp_rdata = knot_rrset_rdata(rrset);
-	const knot_rdata_t *tmp_rrsig_rdata = knot_rrset_rdata(rrsigs);
-	
-	assert(tmp_rrsig_rdata != NULL);
-	if (tmp_rdata == NULL) {
-		/* Only RRSIG, valid, but we can't check anything. */
+	if (knot_rrset_rdata_rr_count(rrsigs) == 0) {
+		/* Nothing to check, and should not happen. */
 		return KNOT_EOK;
 	}
 	
-	int ret = 0;
-	do {
-		if ((ret = check_rrsig_rdata(handler, node,
-		                             tmp_rrsig_rdata,
-					     rrset,
-					     dnskey_rrset)) != 0) {
-			/*!< \todo This should go to handler. */
-			return ret;
+	for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(rrsigs); ++i) {
+		int ret = check_rrsig_rdata(handler, node, rrsigs, i, rrset,
+		                            dnskey_rrset);
+		if (ret != KNOT_EOK) {
+			dbg_semcheck("Could not check RRSIG properly (%s).\n",
+			             knot_strerror(ret));
 		}
-		tmp_rdata = knot_rrset_rdata_next(rrset, tmp_rdata);
-		tmp_rrsig_rdata = knot_rrset_rdata_next(rrsigs,
-		                                        tmp_rrsig_rdata);
-	} while (tmp_rdata != NULL && tmp_rrsig_rdata != NULL);
+	}
 	
-	char all_signed = tmp_rdata == NULL && tmp_rrsig_rdata == NULL;
+	int all_signed =
+		knot_rrset_rdata_rr_count(rrset) == knot_rrset_rdata_rr_count(rrsigs);
 	if (!all_signed) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_NOT_ALL,
@@ -856,18 +791,18 @@ static int get_bit(uint8_t *bits, size_t index)
  * \retval KNOT_OK on success.
  * \retval KNOT_NOMEM on memory error.
  */
-static int rdata_nsec_to_type_array(const knot_rdata_item_t *item,
-			      uint16_t **array,
-			      uint *count)
+static int rdata_nsec_to_type_array(const knot_rrset_t *rrset, size_t pos,
+				    uint16_t **array, size_t *count)
 {
 	assert(*array == NULL);
-
-	uint8_t *data = (uint8_t *)rdata_item_data(item);
-
-	int increment = 0;
+	
+	uint8_t *data = NULL;
+	uint16_t bitmap_size = 0;
+	knot_rrset_rdata_nsec_bitmap(rrset, pos, &data, &bitmap_size);
+	
 	*count = 0;
-
-	for (int i = 0; i < rdata_item_size(item); i += increment) {
+	int increment = 0;
+	for (int i = 0; i < bitmap_size; i += increment) {
 		increment = 0;
 		uint8_t window = data[i];
 		increment++;
@@ -923,8 +858,8 @@ static int rdata_nsec_to_type_array(const knot_rdata_item_t *item,
  *
  * \return Appropriate error code if error was found.
  */
-static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *node,
-                                    err_handler_t *handler)
+static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
+                                    knot_node_t *node, err_handler_t *handler)
 {
 	assert(handler);
 	const knot_node_t *nsec3_node = knot_node_nsec3_node(node);
@@ -959,14 +894,13 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 
 			const knot_rrset_t *previous_rrset =
 				knot_node_rrset(nsec3_previous,
-						  KNOT_RRTYPE_NSEC3);
+						KNOT_RRTYPE_NSEC3);
 
 			assert(previous_rrset);
 
 			/* check for Opt-Out flag */
 			uint8_t flags =
-		((uint8_t *)(previous_rrset->rdata->items[1].raw_data))[2];
-
+				knot_rrset_rdata_nsec3_flags(previous_rrset, 0);
 			uint8_t opt_out_mask = 1;
 
 			if (!(flags & opt_out_mask)) {
@@ -986,14 +920,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 		knot_node_rrset(knot_zone_contents_apex(zone),
 	                        KNOT_RRTYPE_SOA);
 	assert(soa_rrset);
-	
-	const knot_rdata_t *soa_rdata = knot_rrset_rdata(soa_rrset);
-	if (soa_rdata == NULL) {
-		err_handler_handle_error(handler, node, ZC_ERR_UNKNOWN, NULL);
-		return KNOT_EOK;
-	}
-	
-	uint32_t minimum_ttl = knot_rdata_soa_minimum(soa_rdata);
+	uint32_t minimum_ttl = knot_rrset_rdata_soa_minimum(soa_rrset);
 
 	if (knot_rrset_ttl(nsec3_rrset) != minimum_ttl) {
 			err_handler_handle_error(handler, node,
@@ -1001,15 +928,16 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 	}
 
 	/* check that next dname is in the zone */
+	uint8_t *next_dname_str = NULL;
+	uint8_t next_dname_size = 0;
 	uint8_t *next_dname_decoded = NULL;
-	size_t real_size = 0;
-
-	if (((real_size = base32hex_encode_alloc(((char *)
-		rdata_item_data(&(nsec3_rrset->rdata->items[4]))) + 1,
-		rdata_item_size(&nsec3_rrset->rdata->items[4]) - 1,
-		(char **)&next_dname_decoded)) <= 0) ||
-		(next_dname_decoded == NULL)) {
-		fprintf(stderr, "Could not encode base32 string!\n");
+	knot_rrset_rdata_nsec3_next_hashed(nsec3_rrset, 0, &next_dname_str,
+	                                   &next_dname_size);
+	size_t real_size =
+		base32hex_encode_alloc(next_dname_str,
+	                               next_dname_size, &next_dname_decoded);
+	if (real_size <= 0 || next_dname_decoded == NULL) {
+		dbg_semcheck("Could not encode base32 string!\n");
 		return KNOT_ERROR;
 	}
 
@@ -1040,12 +968,10 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 	/* Directly discard. */
 	knot_dname_free(&next_dname);
 	
-	uint count;
+	size_t arr_size;
 	uint16_t *array = NULL;
-	int ret = rdata_nsec_to_type_array(
-		    knot_rdata_item(
-		    knot_rrset_rdata(nsec3_rrset), 5),
-		    &array, &count);
+	/* TODO only works for one NSEC3 RR. */
+	int ret = rdata_nsec_to_type_array(nsec3_rrset, 0, &array, &arr_size);
 	if (ret != KNOT_EOK) {
 		dbg_semcheck("semchecks: check_nsec3_node: Could not "
 		             "convert NSEC to type array. Reason: %s\n",
@@ -1054,7 +980,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 	}
 
 	uint16_t type = 0;
-	for (int j = 0; j < count; j++) {
+	for (int j = 0; j < arr_size; j++) {
 		/* test for each type's presence */
 		type = array[j];
 		if (type == KNOT_RRTYPE_RRSIG) {
@@ -1153,9 +1079,7 @@ static int semantic_checks_plain(knot_zone_contents_t *zone,
 			}
 		}
 
-		if (knot_rrset_rdata(cname_rrset) &&
-		    knot_rrset_rdata(cname_rrset)->next !=
-		    knot_rrset_rdata(cname_rrset)) {
+		if (knot_rrset_rdata_rr_count(cname_rrset) != 1) {
 			*fatal_error = 1;
 			err_handler_handle_error(handler, node,
 			                         ZC_ERR_CNAME_MULTIPLE, NULL);
@@ -1238,10 +1162,10 @@ static int semantic_checks_plain(knot_zone_contents_t *zone,
 		}
 		//FIXME this should be an error as well ! (i guess)
 
+		/* TODO How about multiple RRs? */
 		knot_dname_t *ns_dname =
-			knot_dname_deep_copy(
-				knot_rdata_get_item(knot_rrset_rdata
-				                    (ns_rrset), 0)->dname);
+			knot_dname_deep_copy(knot_rrset_rdata_ns_name(ns_rrset,
+		                             0));
 		if (ns_dname == NULL) {
 			return KNOT_ENOMEM;
 		}
@@ -1355,18 +1279,14 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 				err_handler_handle_error(handler, node,
 							 ZC_ERR_NO_NSEC, NULL);
 			} else {
-
 				/* check NSEC/NSEC3 bitmap */
-
-				uint count;
-
+				size_t count;
 				uint16_t *array = NULL;
 				
-				int ret = rdata_nsec_to_type_array(
-					knot_rdata_item(
-					knot_rrset_rdata(nsec_rrset),
-					1),
-					&array, &count);
+				int ret = rdata_nsec_to_type_array(nsec_rrset,
+				                                   0,
+				                                   &array,
+				                                   &count);
 				if (ret != KNOT_EOK) {
 					dbg_semcheck("semchecks: "
 					             "Could not create type "
@@ -1396,9 +1316,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 			/* Test that only one record is in the
 				 * NSEC RRSet */
 
-			if ((nsec_rrset != NULL) &&
-			    knot_rrset_rdata(nsec_rrset)->next !=
-			    knot_rrset_rdata(nsec_rrset)) {
+			if (knot_rrset_rdata_rr_count(nsec_rrset) != 1) {
 				err_handler_handle_error(handler,
 						 node,
 						 ZC_ERR_NSEC_RDATA_MULTIPLE,
@@ -1414,11 +1332,8 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 			 */
 
 			if (nsec_rrset != NULL) {
-				knot_dname_t *next_domain =
-					knot_rdata_item(
-					knot_rrset_rdata(nsec_rrset),
-					0)->dname;
-
+				const knot_dname_t *next_domain =
+					knot_rrset_rdata_nsec_next(nsec_rrset, 0);
 				assert(next_domain);
 
 				if (knot_zone_contents_find_node(zone,
@@ -1514,7 +1429,7 @@ int zone_do_sem_checks(knot_zone_contents_t *zone, char do_checks,
                         knot_node_t **last_node)
 {
 	if (!handler) {
-		return KNOT_EBADARG;
+		return KNOT_EINVAL;
 	}
 	arg_t arguments;
 	arguments.arg1 = zone;
@@ -1556,17 +1471,16 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 		}
 
 		/* check that next dname is in the zone */
+		uint8_t *next_dname_str = NULL;
+		uint8_t next_dname_size = 0;
 		uint8_t *next_dname_decoded = NULL;
-		size_t real_size = 0;
-
-		if (((real_size = base32hex_encode_alloc(((char *)
-			rdata_item_data(&(nsec3_rrset->rdata->items[4]))) + 1,
-			rdata_item_size(&nsec3_rrset->rdata->items[4]) - 1,
-			(char **)&next_dname_decoded)) <= 0) ||
-			(next_dname_decoded == NULL)) {
-			fprintf(stderr, "Could not encode base32 string!\n");
-			err_handler_handle_error(handler, last_nsec3_node,
-						 ZC_ERR_NSEC3_RDATA_CHAIN, NULL);
+		knot_rrset_rdata_nsec3_next_hashed(nsec3_rrset, 0, &next_dname_str,
+		                                   &next_dname_size);
+		size_t real_size =
+			base32hex_encode_alloc(next_dname_str,
+		                               next_dname_size, &next_dname_decoded);
+		if (real_size <= 0 || next_dname_decoded == NULL) {
+			dbg_semcheck("Could not encode base32 string!\n");
 			return;
 		}
 
@@ -1627,8 +1541,7 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 			}
 
 			const knot_dname_t *next_dname =
-				knot_rdata_item(
-				knot_rrset_rdata(nsec_rrset), 0)->dname;
+				knot_rrset_rdata_nsec_next(nsec_rrset, 0);
 			assert(next_dname);
 
 			const knot_dname_t *apex_dname =
