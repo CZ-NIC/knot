@@ -325,18 +325,20 @@ knot_rrtype_descriptor_t *knot_rrtype_descriptor_by_name(const char *name);
  * \return Length of output string.
  * \return -1 if error.
  */
-int32_t knot_rrtype_to_string(const uint16_t rrtype,
-			      char           *out,
-			      const uint32_t out_len);
+int knot_rrtype_to_string(const uint16_t rrtype,
+                          char           *out,
+                          const size_t   out_len);
 
 /*!
  * \brief Converts mnemonic string representation of a type to numeric one.
  *
  * \param name Mnemonic string to be converted.
+ * \param num  Output variable.
  *
- * \return Correct code if found, 0 otherwise.
+ * \return  0 if OK.
+ * \return -1 if error.
  */
-uint16_t knot_rrtype_from_string(const char *name);
+int knot_rrtype_from_string(const char *name, uint16_t *num);
 
 /*!
  * \brief Converts numeric class representation to the string one.
@@ -348,18 +350,20 @@ uint16_t knot_rrtype_from_string(const char *name);
  * \return Length of output string.
  * \return -1 if error.
  */
-int32_t knot_rrclass_to_string(const uint16_t rrclass,
-			       char           *out,
-			       const uint32_t out_len);
+int knot_rrclass_to_string(const uint16_t rrclass,
+                           char           *out,
+                           const size_t   out_len);
 
 /*!
  * \brief Converts string representation of a class to numeric one.
  *
- * \param name Class string to be converted.
+ * \param name Mnemonic string to be converted.
+ * \param num  Output variable.
  *
- * \return Correct code if found, 0 otherwise.
+ * \return  0 if OK.
+ * \return -1 if error.
  */
-uint16_t knot_rrclass_from_string(const char *name);
+int knot_rrclass_from_string(const char *name, uint16_t *num);
 
 /*!
  * \brief Returns size of wireformat type in bytes.

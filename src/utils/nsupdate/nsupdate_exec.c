@@ -212,8 +212,9 @@ static int parse_partial_rr(scanner_t *s, const char *lp, unsigned flags) {
 	len = strcspn(lp, SEP_CHARS); /* Try to find class */
 	memset(b1, 0, sizeof(b1));
 	strncpy(b1, lp, len < sizeof(b1) ? len : sizeof(b1));
-	uint16_t v = knot_rrclass_from_string(b1);
-	if (v > 0) {
+
+	uint16_t v;
+	if (knot_rrclass_from_string(b1, &v) == 0) {
 		s->r_class = v;
 		DBG("%s: parsed class=%u\n", __func__, s->r_class);
 		lp = tok_skipspace(lp + len);
@@ -231,8 +232,7 @@ static int parse_partial_rr(scanner_t *s, const char *lp, unsigned flags) {
 	len = strcspn(lp, SEP_CHARS); /* Type */
 	memset(b2, 0, sizeof(b2));
 	strncpy(b2, lp, len < sizeof(b2) ? len : sizeof(b2));
-	v = knot_rrtype_from_string(b2);
-	if (v > 0) {
+	if (knot_rrtype_from_string(b2, &v) == 0) {
 		s->r_type = v;
 		DBG("%s: parsed type=%u '%s'\n", __func__, s->r_type, b2);
 		lp = tok_skipspace(lp + len);
@@ -554,11 +554,13 @@ int cmd_class(const char* lp, params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 	
-	params->class_num = knot_rrclass_from_string(lp);
-	if (params->class_num == 0) {
+	uint16_t cls;
+
+	if (knot_rrclass_from_string(lp, &cls) != 0) {
 		ERR("failed to parse class '%s'\n", lp);
 		return KNOT_EPARSEFAIL;
 	} else {
+		params->class_num = cls;
 		scanner_t *s = NSUP_PARAM(params)->rrp;
 		s->default_class = params->class_num;
 	}

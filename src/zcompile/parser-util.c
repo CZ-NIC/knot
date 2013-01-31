@@ -1834,9 +1834,9 @@ uint16_t * zparser_conv_b64(const char *b64)
 uint16_t * zparser_conv_rrtype(const char *text)
 {
 	uint16_t *r = NULL;
-	uint16_t type = knot_rrtype_from_string(text);
+	uint16_t type;
 
-	if (type == 0) {
+	if (knot_rrtype_from_string(text, &type) != 0) {
 		zc_error_prev_line("unrecognized RR type '%s'", text);
 		parser->error_occurred = KNOTDZCOMPILE_EBRDATA;
 	} else {

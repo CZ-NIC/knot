@@ -259,9 +259,11 @@ int params_parse_class(const char *value, uint16_t *rclass)
 		return KNOT_EINVAL;
 	}
 
-	*rclass = knot_rrclass_from_string(value);
-
-	return KNOT_EOK;
+	if (knot_rrclass_from_string(value, rclass) == 0) {
+		return KNOT_EOK;
+	} else {
+		return KNOT_EINVAL;
+	}
 }
 
 int params_parse_type(const char *value, uint16_t *rtype, uint32_t *xfr_serial)
@@ -274,7 +276,9 @@ int params_parse_type(const char *value, uint16_t *rtype, uint32_t *xfr_serial)
 
 	// There is no additional parameter.
 	if (param_pos == strlen(value)) {
-		*rtype = knot_rrtype_from_string(value);
+		if (knot_rrtype_from_string(value, rtype) != 0) {
+			return KNOT_EINVAL;
+		}
 
 		// IXFR requires serial parameter.
 		if (*rtype == KNOT_RRTYPE_IXFR) {
@@ -284,7 +288,10 @@ int params_parse_type(const char *value, uint16_t *rtype, uint32_t *xfr_serial)
 	} else {
 		char *type_char = strndup(value, param_pos);
 
-		*rtype = knot_rrtype_from_string(type_char);
+		if (knot_rrtype_from_string(type_char, rtype) != 0) {
+			free(type_char);
+			return KNOT_EINVAL;
+		}
 
 		free(type_char);
 

@@ -634,8 +634,11 @@ concatenated_str_seq:	STR
 /* used to convert a nxt list of types */
 nxt_seq:	STR
     {
-	    uint16_t type = knot_rrtype_from_string($1.str);
-	    if (type != 0 && type < 128) {
+	    uint16_t type;
+
+	    int ret = knot_rrtype_from_string($1.str, &type);
+
+	    if (ret == 0 && type < 128) {
 		    set_bit(nxtbits, type);
 	    } else {
 		    zc_error("bad type %d in NXT record", (int) type);
@@ -645,8 +648,11 @@ nxt_seq:	STR
     }
     |	nxt_seq sp STR
     {
-	    uint16_t type = knot_rrtype_from_string($3.str);
-	    if (type != 0 && type < 128) {
+	    uint16_t type;
+
+	    int ret = knot_rrtype_from_string($3.str, &type);
+
+	    if (ret == 0 && type < 128) {
 		    set_bit(nxtbits, type);
 	    } else {
 		    zc_error("bad type %d in NXT record", (int) type);
@@ -664,8 +670,11 @@ nsec_more:	SP nsec_more
     }
     |	STR nsec_seq
     {
-	    uint16_t type = knot_rrtype_from_string($1.str);
-	    if (type != 0) {
+	    uint16_t type;
+
+	    int ret = knot_rrtype_from_string($1.str, &type);
+
+	    if (ret == 0) {
 		    if (type > nsec_highest_rcode) {
 			    nsec_highest_rcode = type;
 		    }
