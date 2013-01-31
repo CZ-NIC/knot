@@ -188,16 +188,6 @@ int knot_zone_contents_remove_nsec3_node(knot_zone_contents_t *contents,
 	const knot_node_t *node, knot_zone_tree_node_t **removed);
 
 /*!
- * \warning Always call knot_zone_adjust_dnames() prior to calling this
- *          function. Otherwise the node count would not be set.
- *
- * \note Currently, all nodes (even non-authoritative) are inserted into the
- *       hash table.
- */
-int knot_zone_contents_create_and_fill_hash_table(
-	knot_zone_contents_t *contents);
-
-/*!
  * \brief Tries to find a node with the specified name in the zone.
  *
  * \param zone Zone where the name should be searched for.

@@ -18,7 +18,7 @@ knot_zcompile_SOURCES =				\
 	knot/server/zones.h			\
 	libknot/packet/packet.h			\
 	libknot/packet/packet.c			\
-	libknot/packet/query.c			\
+	libknot/packet/query.c			
 	libknot/packet/query.h			\
 	libknot/packet/response.h		\
 	libknot/packet/response.c		\
@@ -55,6 +55,8 @@ knot_zcompile_SOURCES =				\
 	libknot/updates/changesets.h		\
 	libknot/updates/xfr-in.c		\
 	libknot/updates/xfr-in.h		\
+	libknot/updates/ddns.h			\
+	libknot/updates/ddns.c			\
 	libknot/dname.c				\
 	libknot/dname.h				\
 	libknot/nsec3.h				\
@@ -135,6 +137,8 @@ knot_zcompile_SOURCES =				\
 	knot/server/tcp-handler.h		\
 	knot/server/udp-handler.c		\
 	knot/server/udp-handler.h		\
+	knot/server/xfr-handler.h		\
+	knot/server/xfr-handler.c		\
 	knot/server/server.h			\
 	knot/server/server.c			\
 	knot/ctl/process.c			\

@@ -1253,59 +1253,6 @@ static void xfrin_zone_contents_free(knot_zone_contents_t **contents)
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_remove_rdata(knot_rrset_t *from, const knot_rrset_t *what,
-                              knot_rrset_t **rr_deleted, int ddns_check)
-{
-	knot_rrset_t *return_rr = NULL;
-	int ret = knot_rrset_shallow_copy(what, &return_rr);
-	if (ret != KNOT_EOK) {
-		dbg_xfrin("xfr: remove_rdata: Could not copy RRSet (%s).\n",
-		          knot_strerror(ret));
-		return ret;
-	}
-	/* Reset RDATA. */
-	knot_rrset_rdata_reset(return_rr);
-
-	for (uint16_t i = 0; i < what->rdata_count; ++i) {
-		/*
-		 * DDNS special handling - last apex NS should remain in the
-		 * zone.
-		 *
-		 * TODO: this is not correct, the last NS from the 'what' RRSet
-		 * may not even be in the zone.
-		 */
-		//TODO REVIEW LS : relevant?
-		if (ddns_check && i == what->rdata_count - 1) {
-			assert(knot_rrset_type(from) == KNOT_RRTYPE_NS);
-			*rr_deleted = return_rr;
-			return KNOT_EOK;
-		}
-		
-		ret = knot_rrset_remove_rr(from, what, i);
-		if (ret == KNOT_EOK) {
-			/* RR was removed, can be added to 'return' RRSet. */
-			ret = knot_rrset_add_rr_from_rrset(return_rr, what, i);
-			if (ret != KNOT_EOK) {
-				knot_rrset_deep_free(&return_rr, 0, 0);
-				dbg_xfrin("xfr: Could not add RR (%s).\n",
-				          knot_strerror(ret));
-				return ret;
-			}
-		} else if (ret != KNOT_ENOENT) {
-			/* NOENT is OK, but other errors are not. */
-			dbg_xfrin("xfr: RRSet removal failed (%s).\n",
-			          knot_strerror(ret));
-			knot_rrset_deep_free(&return_rr, 0, 0);
-			return ret;
-		}
-	}
-	
-	*rr_deleted = return_rr;
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
 int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
                          knot_changes_t *changes, int save_new)
 {
@@ -1536,7 +1483,7 @@ static int xfrin_apply_remove_rrsigs(knot_changes_t *changes,
 	// and in 'rrsigs' we have the copy of the RRSIGs
 	
 	knot_rrset_t *rr_removed = NULL;
-	ret = xfrin_remove_rdata(rrsigs, remove, &rr_removed, 0);
+	ret = knot_rrset_remove_rr_using_rrset(rrsigs, remove, &rr_removed, 0);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to remove RDATA from RRSet: %s.\n",
 		          knot_strerror(ret));
@@ -1680,7 +1627,7 @@ dbg_xfrin_exec_detail(
 	                ((chflags & KNOT_CHANGESET_TYPE_DDNS) && is_apex
 	                 && knot_rrset_type(*rrset) == KNOT_RRTYPE_NS);
 	knot_rrset_t *rr_remove = NULL;
-	ret = xfrin_remove_rdata(*rrset, remove, &rr_remove,
+	ret = knot_rrset_remove_rr_using_rrset(*rrset, remove, &rr_remove,
 	                         ddns_remove_ns_from_apex);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("xfr: remove_normal: Could not remove RR (%s).\n",

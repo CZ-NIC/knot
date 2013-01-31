@@ -39,6 +39,7 @@
 #include "libknot/tsig-op.h"
 #include "common/evsched.h"
 #include "common/prng.h"
+#include "common/descriptor_new.h"
 
 /* Constants */
 #define XFR_SWEEP_INTERVAL 2 /*! [seconds] between sweeps. */
@@ -82,13 +83,13 @@ static int xfr_xfrin_cleanup(xfrworker_t *w, knot_ns_xfr_t *data)
 	case XFR_TYPE_AIN:
 		if (data->flags & XFR_FLAG_AXFR_FINISHED) {
 			knot_zone_contents_deep_free(
-				&data->new_contents, 1);
+				&data->new_contents);
 		} else {
 			if (data->data) {
 				xfrin_constructed_zone_t *constr_zone =
 					(xfrin_constructed_zone_t *)data->data;
 				knot_zone_contents_deep_free(
-						&(constr_zone->contents), 0);
+						&(constr_zone->contents));
 				xfrin_free_orphan_rrsigs(&(constr_zone->rrsigs));
 				free(data->data);
 				data->data = 0;

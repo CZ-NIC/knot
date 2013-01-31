@@ -3969,15 +3969,15 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		knot_zone_contents_t *zone = constr_zone->contents;
 		assert(zone != NULL);
 
-		/* Create and fill hash table */
-		dbg_ns_verb("ns_process_axfrin: filling hash table.\n");
-		int rc = knot_zone_contents_create_and_fill_hash_table(zone);
-		if (rc != KNOT_EOK) {
-			return KNOT_ERROR;	// TODO: change error code
-		}
+//		/* Create and fill hash table */
+//		dbg_ns_verb("ns_process_axfrin: filling hash table.\n");
+//		int rc = knot_zone_contents_create_and_fill_hash_table(zone);
+//		if (rc != KNOT_EOK) {
+//			return KNOT_ERROR;	// TODO: change error code
+//		}
 
 		dbg_ns_verb("ns_process_axfrin: adjusting zone.\n");
-		rc = knot_zone_contents_adjust(zone);
+		int rc = knot_zone_contents_adjust(zone);
 		if (rc != KNOT_EOK) {
 			return rc;
 		}

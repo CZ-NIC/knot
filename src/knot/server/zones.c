@@ -30,6 +30,7 @@
 #include "common/log.h"
 #include "knot/server/notify.h"
 #include "knot/server/server.h"
+#include "knot/server/xfr-handler.h"
 #include "libknot/updates/xfr-in.h"
 #include "knot/server/zones.h"
 #include "knot/zone/zone-dump.h"
@@ -1099,7 +1100,7 @@ int zones_changesets_from_binary(knot_changesets_t *chgsets)
 			/* Parse next RRSet. */
 			rrset = 0;
 			stream = chs->data + (chs->size - remaining);
-			ret = knot_zload_rrset_deserialize(&rrset, stream, &remaining);
+			ret = rrset_deserialize(stream, &remaining, &rrset);
 			if (ret != KNOT_EOK) {
 				dbg_xfr("xfr: failed to deserialize data "
 				        "from changeset, %s\n",

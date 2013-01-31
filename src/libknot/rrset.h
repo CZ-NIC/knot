@@ -448,6 +448,13 @@ int knot_rrset_rdata_reset(knot_rrset_t *rrset);
 int knot_rrset_add_rr_from_rrset(knot_rrset_t *dest, const knot_rrset_t *source,
                                  size_t rdata_pos);
 
+int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
+                                     const knot_rrset_t *what,
+                                     knot_rrset_t **rr_deleted, int ddns_check);
+
+int knot_rrset_remove_rr_using_rrset_del(knot_rrset_t *from,
+                                         const knot_rrset_t *what);
+
 #endif /* _KNOT_RRSET_H_ */
 
 /*! @} */

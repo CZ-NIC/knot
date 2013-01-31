@@ -132,6 +132,7 @@ int descriptor_item_is_dname(int item);
 int descriptor_item_is_fixed(int item);
 int descriptor_item_is_remainder(int item);
 int descriptor_item_is_compr_dname(int item);
+int knot_rrtype_is_metatype(uint16_t type);
 
 
 #endif // _KNOT_DESCRIPTOR_NEW_H_

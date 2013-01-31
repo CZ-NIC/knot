@@ -422,8 +422,7 @@ server_t *server_create()
 	OpenSSL_add_all_digests();
 
 	// Create XFR handler
-//	server->xfr_h = xfr_create(XFR_THREADS_COUNT, server->nameserver);
-	server->xfr_h = 0x1; //TODO
+	server->xfr_h = xfr_create(XFR_THREADS_COUNT, server->nameserver);
 	if (!server->xfr_h) {
 		knot_ns_destroy(&server->nameserver);
 		free(server);

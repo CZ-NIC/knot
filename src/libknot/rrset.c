@@ -2160,7 +2160,7 @@ static int knot_rrset_find_rr_pos(const knot_rrset_t *rr_search,
                                   size_t *pos_out)
 {
 	int found = 0;
-	for (uint16_t i = 0; i < rr_search->rdata_count && !found; i++) {
+	for (uint16_t i = 0; i < rr_search->rdata_count && !found; ++i) {
 		if (rrset_rdata_compare_one(rr_search, rr_input, i, pos) == 0) {
 			*pos_out = i;
 			found = 1;
@@ -2288,3 +2288,79 @@ int knot_rrset_add_rr_from_rrset(knot_rrset_t *dest, const knot_rrset_t *source,
 	return KNOT_EOK;
 }
 
+int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
+                                     const knot_rrset_t *what,
+                                     knot_rrset_t **rr_deleted, int ddns_check)
+{
+	knot_rrset_t *return_rr = NULL;
+	int ret = knot_rrset_shallow_copy(what, &return_rr);
+	if (ret != KNOT_EOK) {
+		dbg_xfrin("xfr: remove_rdata: Could not copy RRSet (%s).\n",
+		          knot_strerror(ret));
+		return ret;
+	}
+	/* Reset RDATA. */
+	knot_rrset_rdata_reset(return_rr);
+
+	for (uint16_t i = 0; i < what->rdata_count; ++i) {
+		/*
+		 * DDNS special handling - last apex NS should remain in the
+		 * zone.
+		 *
+		 * TODO: this is not correct, the last NS from the 'what' RRSet
+		 * may not even be in the zone.
+		 */
+		//TODO REVIEW LS : relevant?
+		if (ddns_check && i == what->rdata_count - 1) {
+			assert(knot_rrset_type(from) == KNOT_RRTYPE_NS);
+			*rr_deleted = return_rr;
+			return KNOT_EOK;
+		}
+		
+		ret = knot_rrset_remove_rr(from, what, i);
+		if (ret == KNOT_EOK) {
+			/* RR was removed, can be added to 'return' RRSet. */
+			ret = knot_rrset_add_rr_from_rrset(return_rr, what, i);
+			if (ret != KNOT_EOK) {
+				knot_rrset_deep_free(&return_rr, 0, 0);
+				dbg_xfrin("xfr: Could not add RR (%s).\n",
+				          knot_strerror(ret));
+				return ret;
+			}
+		} else if (ret != KNOT_ENOENT) {
+			/* NOENT is OK, but other errors are not. */
+			dbg_xfrin("xfr: RRSet removal failed (%s).\n",
+			          knot_strerror(ret));
+			knot_rrset_deep_free(&return_rr, 0, 0);
+			return ret;
+		}
+	}
+	
+	*rr_deleted = return_rr;
+	return KNOT_EOK;
+}
+
+int knot_rrset_remove_rr_using_rrset_del(knot_rrset_t *from,
+                                         const knot_rrset_t *what)
+{
+	for (uint16_t i = 0; i < what->rdata_count; ++i) {
+		int ret = knot_rrset_remove_rr(from, what, i);
+		if (ret != KNOT_ENOENT || ret != KNOT_EOK) {
+			/* NOENT is OK, but other errors are not. */
+			dbg_xfrin("xfr: RRSet removal failed (%s).\n",
+			          knot_strerror(ret));
+			return ret;
+		}
+	}
+	
+	return KNOT_EOK;
+}
+
+void knot_rrset_set_class(knot_rrset_t *rrset, uint16_t rclass)
+{
+	if (!rrset) {
+		return;
+	}
+	
+	rrset->rclass = rclass;
+}
