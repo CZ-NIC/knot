@@ -455,6 +455,11 @@ int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
 int knot_rrset_remove_rr_using_rrset_del(knot_rrset_t *from,
                                          const knot_rrset_t *what);
 
+int knot_rrset_find_rr_pos(const knot_rrset_t *rr_search,
+                           const knot_rrset_t *rr_input, size_t pos,
+                           size_t *pos_out);
+
+
 #endif /* _KNOT_RRSET_H_ */
 
 /*! @} */

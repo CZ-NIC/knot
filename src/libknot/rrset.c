@@ -2155,9 +2155,9 @@ const knot_dname_t *knot_rrset_rdata_name(const knot_rrset_t *rrset,
 	return NULL;
 }
 
-static int knot_rrset_find_rr_pos(const knot_rrset_t *rr_search,
-                                  const knot_rrset_t *rr_input, size_t pos,
-                                  size_t *pos_out)
+int knot_rrset_find_rr_pos(const knot_rrset_t *rr_search,
+                           const knot_rrset_t *rr_input, size_t pos,
+                           size_t *pos_out)
 {
 	int found = 0;
 	for (uint16_t i = 0; i < rr_search->rdata_count && !found; ++i) {
@@ -2269,7 +2269,8 @@ int knot_rrset_rdata_reset(knot_rrset_t *rrset)
 int knot_rrset_add_rr_from_rrset(knot_rrset_t *dest, const knot_rrset_t *source,
                                  size_t rdata_pos)
 {
-	if (dest == NULL || source == NULL) {
+	if (dest == NULL || source == NULL ||
+	    rdata_pos >= source->rdata_count) {
 		return KNOT_EINVAL;
 	}
 	
