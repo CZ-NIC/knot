@@ -2824,9 +2824,8 @@ int zones_process_update(knot_nameserver_t *nameserver,
 
 	/*
 	 * 1) DDNS Zone Section check (RFC2136, Section 3.1).
-	 * Do not have to check the return value, the RCODE is sufficient.
 	 */
-	(void)knot_ddns_check_zone(contents, query, &rcode);
+	ret = knot_ddns_check_zone(contents, query, &rcode);
 
 	/*
 	 * 2) DDNS Prerequisities Section processing (RFC2136, Section 3.2).
@@ -2838,7 +2837,9 @@ int zones_process_update(knot_nameserver_t *nameserver,
 	// a) Convert prerequisities
 	dbg_zones_verb("Processing prerequisities.\n");
 	knot_ddns_prereq_t *prereqs = NULL;
-	ret = knot_ddns_process_prereqs(query, &prereqs, &rcode);
+	if (ret == KNOT_EOK) {
+		ret = knot_ddns_process_prereqs(query, &prereqs, &rcode);
+	}
 	if (ret != KNOT_EOK) {
 		dbg_zones("Failed to check zone for update: "
 		       "%s.\n", knot_strerror(ret));
