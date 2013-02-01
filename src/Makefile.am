@@ -11,18 +11,12 @@ libknotd_la_LFLAGS = # TODO: reentrant parser, prefix
 
 BUILT_SOURCES =					\
 	tests/sample_conf.rc			\
-	zparser.h				\
-	zparser.c				\
-	zlexer.c				\
 	libknotd_la-cf-lex.c			\
 	libknotd_la-cf-parse.c			\
 	libknotd_la-cf-parse.h
 
 CLEANFILES =					\
 	tests/sample_conf.rc			\
-	zparser.h				\
-	zparser.c				\
-	zlexer.c				\
 	libknotd_la-cf-lex.c			\
 	libknotd_la-cf-parse.c			\
 	libknotd_la-cf-parse.h
