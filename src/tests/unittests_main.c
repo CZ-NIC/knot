@@ -30,6 +30,7 @@
 #include "tests/knot/journal_tests.h"
 #include "tests/knot/server_tests.h"
 #include "tests/knot/conf_tests.h"
+#include "tests/libknot/wire_tests.h"
 
 // Run all loaded units
 int main(int argc, char *argv[])
@@ -52,6 +53,9 @@ int main(int argc, char *argv[])
 		&fdset_tests_api,	//! FDSET polling wrapper
 		&base64_tests_api,	//! Base64 encoding
 		&base32hex_tests_api,	//! Base32hex encoding
+
+		/* Library. */
+		&wire_tests_api,
 
 		/* Server parts. */
 		&conf_tests_api,	//! Configuration parser tests

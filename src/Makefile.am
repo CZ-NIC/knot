@@ -131,6 +131,8 @@ unittests_SOURCES =				\
 	tests/knot/journal_tests.h		\
 	tests/knot/server_tests.c		\
 	tests/knot/server_tests.h		\
+	tests/libknot/wire_tests.c		\
+	tests/libknot/wire_tests.h		\
 	tests/unittests_main.c
 
 unittests_zcompile_SOURCES =			\
