@@ -32,10 +32,8 @@
 #include "zone/node.h"
 #include "dname.h"
 #include "nsec3.h"
-#include "zone/dname-table.h"
 #include "common/tree.h"
 #include "common/ref.h"
-#include "hash/cuckoo-hash-table.h"
 
 #include "zone-tree.h"
 
@@ -109,7 +107,7 @@ knot_zone_t *knot_zone_new_empty(knot_dname_t *name);
  *
  * \return The initialized zone structure or NULL if an error occured.
  */
-knot_zone_t *knot_zone_new(knot_node_t *apex, uint node_count,
+knot_zone_t *knot_zone_new(knot_node_t *apex, size_t node_count,
                                int use_domain_table);
 
 knot_zone_contents_t *knot_zone_get_contents(

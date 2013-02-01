@@ -15,6 +15,7 @@
  */
 
 #include <assert.h>
+#include <stdlib.h>
 
 #include "packet/packet.h"
 #include "util/debug.h"

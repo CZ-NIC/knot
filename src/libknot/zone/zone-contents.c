@@ -948,17 +948,6 @@ knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
 		goto cleanup;
 	}
 
-	if (use_domain_table) {
-		dbg_zone_verb("Creating domain name table.\n");
-		contents->dname_table = knot_dname_table_new();
-		if (contents->dname_table == NULL) {
-			ERR_ALLOC_FAILED;
-			goto cleanup;
-		}
-	} else {
-		contents->dname_table = NULL;
-	}
-
 	//contents->node_count = node_count;
 
 	/* Initialize NSEC3 params */
@@ -996,7 +985,6 @@ knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
 
 cleanup:
 	dbg_zone_verb("Cleaning up.\n");
-	free(contents->dname_table);
 	free(contents->nodes);
 	free(contents->nsec3_nodes);
 	free(contents);
@@ -1490,8 +1478,7 @@ int knot_zone_contents_add_nsec3_rrset(knot_zone_contents_t *zone,
 /*----------------------------------------------------------------------------*/
 
 int knot_zone_contents_remove_node(knot_zone_contents_t *contents, 
-	const knot_node_t *node, knot_zone_tree_node_t **removed_tree, 
-	ck_hash_table_item_t **removed_hash)
+	const knot_node_t *node, knot_zone_tree_node_t **removed_tree)
 {
 	if (contents == NULL || node == NULL) {
 		return KNOT_EINVAL;
@@ -2210,14 +2197,6 @@ knot_zone_tree_t *knot_zone_contents_get_nsec3_nodes(
 
 /*----------------------------------------------------------------------------*/
 
-ck_hash_table_t *knot_zone_contents_get_hash_table(
-		knot_zone_contents_t *contents)
-{
-	return contents->table;
-}
-
-/*----------------------------------------------------------------------------*/
-
 /*----------------------------------------------------------------------------*/
 
 int knot_zone_contents_shallow_copy(const knot_zone_contents_t *from,
@@ -2271,7 +2250,6 @@ int knot_zone_contents_shallow_copy(const knot_zone_contents_t *from,
 cleanup:
 	knot_zone_tree_free(&contents->nodes);
 	knot_zone_tree_free(&contents->nsec3_nodes);
-	free(contents->dname_table);
 	free(contents);
 	return ret;
 }
@@ -2329,7 +2307,6 @@ int knot_zone_contents_shallow_copy2(const knot_zone_contents_t *from,
 cleanup:
 	knot_zone_tree_free(&contents->nodes);
 	knot_zone_tree_free(&contents->nsec3_nodes);
-	free(contents->dname_table);
 	free(contents);
 	return ret;
 }
@@ -2348,8 +2325,6 @@ void knot_zone_contents_free(knot_zone_contents_t **contents)
 
 	knot_nsec3_params_free(&(*contents)->nsec3_params);
 	
-	knot_dname_table_free(&(*contents)->dname_table);
-
 	free(*contents);
 	*contents = NULL;
 }

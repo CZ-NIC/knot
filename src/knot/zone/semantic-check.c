@@ -3,12 +3,12 @@
 #include <arpa/inet.h>
 
 #include "knot/common.h"
-#include "knot/zone/zone-dump.h"
 #include "knot/other/debug.h"
 #include "libknot/libknot.h"
 #include "common/base32hex.h"
 #include "common/crc.h"
 #include "common/descriptor_new.h"
+#include "common/mempattern.h"
 
 #include "semantic-check.h"
 

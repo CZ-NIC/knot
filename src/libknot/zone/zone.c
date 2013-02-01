@@ -27,7 +27,6 @@
 #include "dname.h"
 #include "util/debug.h"
 #include "util/utils.h"
-#include "hash/cuckoo-hash-table.h"
 #include "zone/zone-contents.h"
 
 /*! \brief Adaptor for knot_zone_deep_free() */

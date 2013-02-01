@@ -16,11 +16,11 @@
 /*!
  * \file zone-load.h
  *
+ * \author Marek Vavrusa <marek.vavrusa@nic.cz>
  * \author Jan Kadlec <jan.kadlec@nic.cz>
  *
- * \brief Loader of previously parsed zone
+ * \brief Zone loading
  *
- * \addtogroup zone-load-dump
  * @{
  */
 
@@ -30,15 +30,44 @@
 #include <stdio.h>
 
 #include "libknot/zone/zone.h"
+#include "zscanner/file_loader.h"
+
+#define MAGIC_LENGTH 8
+#define MAGIC "knotv130"
+
+/* TODO this structure is highly redundant, remove. Maybe use oh-so-great BIRD lists. */
+/*!
+ * \brief One-purpose linked list holding pointers to RRSets.
+ */
+struct rrset_list {
+	knot_rrset_t *data; /*!< List data. */
+	struct rrset_list *next; /*!< Next node. */
+};
+
+typedef struct rrset_list rrset_list_t;
+
+
+struct parser_context {
+	rrset_list_t *node_rrsigs;
+	knot_zone_contents_t *current_zone;
+	knot_rrset_t *current_rrset;
+	knot_dname_t *origin_from_config;
+	knot_node_t *last_node;
+	int ret;
+};
+
+typedef struct parser_context parser_context_t;
 
 /*!
  * \brief Zone loader structure.
  */
 typedef struct zloader_t
 {
-	char *filename;           /*!< Compiled zone filename. */
 	char *source;             /*!< Zone source file. */
-	FILE *fp;                 /*!< Open filepointer to compiled zone. */
+	char *origin;             /*!< Zone's origin string. */
+	int semantic_checks;      /*!< Wanted level of semantic checks. */
+	file_loader_t *file_loader;/*!< Scanner's file loader. */
+	parser_context_t *context;/*!< Loader context. */
 
 } zloader_t;
 
@@ -51,7 +80,8 @@ typedef struct zloader_t
  * \retval Initialized loader on success.
  * \retval NULL on error.
  */
-int knot_zload_open(zloader_t **loader, const char *filename);
+int knot_zload_open(zloader_t **loader, const char *source, const char *origin,
+                    int semantic_checks);
 
 /*!
  * \brief Loads zone from a compiled and serialized zone file.
@@ -71,8 +101,8 @@ knot_zone_t *knot_zload_load(zloader_t *loader);
  * \retval 1 is if needs to be recompiled.
  * \retval 0 if it is up to date.
  */
+//TODO will not work, has to look at serials probably
 int knot_zload_needs_update(zloader_t *loader);
-
 
 /*!
  * \brief Free zone loader.
@@ -80,24 +110,6 @@ int knot_zload_needs_update(zloader_t *loader);
  * \param loader Zone loader instance.
  */
 void knot_zload_close(zloader_t *loader);
-
-/*!
- * \brief Loads RRSet serialized by knot_zdump_rrset_serialize().
- *
- * \param stream Stream containing serialized RRSet.
- * \param size Size of stream. This variable will contain remaining length of
- *        stream, once the function has ended.
- * \param rrset Place for created RRSet.
- *
- * \note If RRSet contains RRSIGs, their owners are not copies, but only links
- *       to the owner of RRSet. All RDATA dnames are copied.
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EBADAG on wrong arguments.
- * \retval KNOT_EMALF when stream is malformed.
- */
-int knot_zload_rrset_deserialize(knot_rrset_t **rrset,
-                                   uint8_t *stream, size_t *size);
 
 #endif /* _KNOTD_ZONELOAD_H_ */
 

@@ -89,12 +89,8 @@ libknot_la_SOURCES =				\
 	libknot/zone/zonedb.c			\
 	libknot/zone/zonedb.h			\
 	libknot/zone/node.c			\
-	libknot/zone/dname-table.h		\
-	libknot/zone/dname-table.c		\
 	libknot/zone/zone-diff.h		\
 	libknot/zone/zone-diff.c		\
-	zcompile/zcompile.h			\
-	zcompile/zcompile.c			\
 	libknot/hash/hash-functions.c		\
 	libknot/hash/cuckoo-hash-table.c	\
 	libknot/hash/universal-system.c		\
@@ -225,6 +221,8 @@ libknotd_la_SOURCES =				\
 	knot/server/zones.h			\
 	knot/zone/semantic-check.c		\
 	knot/zone/semantic-check.h		\
+	knot/zone/zone-load.h			\
+	knot/zone/zone-load.c			\
 	knot/server/server.h
 
 zscanner/scanner.c: zscanner/scanner.rl zscanner/scanner_body.rl

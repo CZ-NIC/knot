@@ -32,9 +32,7 @@
 #include "zone/node.h"
 #include "dname.h"
 #include "nsec3.h"
-#include "zone/dname-table.h"
 #include "common/tree.h"
-#include "hash/cuckoo-hash-table.h"
 
 #include "zone-tree.h"
 
@@ -45,11 +43,8 @@ struct knot_zone;
 typedef struct knot_zone_contents_t {
 	knot_node_t *apex;       /*!< Apex node of the zone (holding SOA) */
 
-	ck_hash_table_t *table;     /*!< Hash table for holding zone nodes. */
 	knot_zone_tree_t *nodes;
 	knot_zone_tree_t *nsec3_nodes;
-
-	knot_dname_table_t *dname_table;
 
 	struct knot_zone *zone;
 
@@ -58,7 +53,7 @@ typedef struct knot_zone_contents_t {
 	/*!
 	 * \todo Unify the use of this field - authoritative nodes vs. all.
 	 */
-	uint node_count;
+	size_t node_count;
 
 	/*! \brief Various flags
 	 * 
@@ -80,7 +75,7 @@ typedef struct knot_zone_contents_t {
 /*----------------------------------------------------------------------------*/
 
 knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
-                                             uint node_count,
+                                             size_t node_count,
                                              int use_domain_table,
                                              struct knot_zone *zone);
 
@@ -181,8 +176,7 @@ int knot_zone_contents_add_nsec3_rrset(knot_zone_contents_t *contents,
                                          int use_domain_table);
 
 int knot_zone_contents_remove_node(knot_zone_contents_t *contents, 
-	const knot_node_t *node, knot_zone_tree_node_t **removed_tree, 
-	ck_hash_table_item_t **removed_hash);
+	const knot_node_t *node, knot_zone_tree_node_t **removed_tree);
 
 int knot_zone_contents_remove_nsec3_node(knot_zone_contents_t *contents, 
 	const knot_node_t *node, knot_zone_tree_node_t **removed);
@@ -504,9 +498,6 @@ knot_zone_tree_t *knot_zone_contents_get_nodes(
 		knot_zone_contents_t *contents);
 
 knot_zone_tree_t *knot_zone_contents_get_nsec3_nodes(
-		knot_zone_contents_t *contents);
-
-ck_hash_table_t *knot_zone_contents_get_hash_table(
 		knot_zone_contents_t *contents);
 
 int knot_zone_contents_dname_table_apply(knot_zone_contents_t *contents,

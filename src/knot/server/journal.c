@@ -24,8 +24,8 @@
 #include <sys/mman.h>
 
 #include "common/crc.h"
+#include "common.h"
 #include "knot/other/debug.h"
-#include "knot/zone/zone-dump.h"
 #include "journal.h"
 
 /*! \brief Infinite file size limit. */

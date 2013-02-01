@@ -15,11 +15,13 @@
  */
 
 #include <assert.h>
+#include <stdlib.h>
 
 #include "updates/ddns.h"
 #include "updates/changesets.h"
 #include "util/debug.h"
 #include "packet/packet.h"
+#include "common.h"
 #include "consts.h"
 #include "common/mempattern.h"
 #include "nameserver/name-server.h"  // ns_serial_compare() - TODO: extract

@@ -16,8 +16,10 @@
 
 #include <assert.h>
 #include <config.h>
+#include <stdlib.h>
 
 #include "libknot/util/debug.h"
+#include "common/errcode.h"
 #include "zone-diff.h"
 #include "libknot/nameserver/name-server.h"
 #include "common/descriptor_new.h"

@@ -24,6 +24,8 @@
 #include "updates/xfr-in.h"
 
 #include "libknot.h"
+#include "common/errcode.h"
+#include "common.h"
 #include "util/debug.h"
 #include "packet/packet.h"
 #include "packet/response.h"

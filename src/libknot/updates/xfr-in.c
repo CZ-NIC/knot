@@ -26,6 +26,7 @@
 #include "dname.h"
 #include "zone/zone.h"
 #include "packet/query.h"
+#include "common.h"
 #include "updates/changesets.h"
 #include "tsig.h"
 #include "tsig-op.h"
@@ -1244,8 +1245,6 @@ static void xfrin_zone_contents_free(knot_zone_contents_t **contents)
 	knot_zone_tree_deep_free(&(*contents)->nsec3_nodes);
 
 	knot_nsec3_params_free(&(*contents)->nsec3_params);
-
-	knot_dname_table_deep_free(&(*contents)->dname_table);
 	
 	free(*contents);
 	*contents = NULL;
@@ -2418,27 +2417,6 @@ static void xfrin_switch_nodes_in_node(knot_node_t *node, void *data)
 
 /*----------------------------------------------------------------------------*/
 
-static void xfrin_switch_node_in_hash_table(ck_hash_table_item_t *item,
-                                            void *data)
-{
-	UNUSED(data);
-
-	if (item == NULL) {
-		return;
-	}
-
-	knot_node_t *node = (knot_node_t *)item->value;
-	knot_node_t *new_node = knot_node_get_new_node(node);
-
-	assert(new_node != NULL);
-
-	if (new_node != NULL) {
-		item->value = new_node;
-	}
-}
-
-/*----------------------------------------------------------------------------*/
-
 static void xfrin_switch_node_in_dname_table(knot_dname_t *dname, void *data)
 {
 	UNUSED(data);
@@ -2504,8 +2482,6 @@ static void xfrin_zone_contents_free2(knot_zone_contents_t **contents)
 	knot_zone_tree_deep_free(&(*contents)->nsec3_nodes);
 
 	knot_nsec3_params_free(&(*contents)->nsec3_params);
-
-	knot_dname_table_deep_free(&(*contents)->dname_table);
 
 	free(*contents);
 	*contents = NULL;
@@ -3010,12 +2986,10 @@ static int xfrin_remove_empty_nodes(knot_zone_contents_t *contents,
 	dbg_xfrin_verb("OLD NSEC3 NODES COUNT: %d\n", changes->old_nsec3_count);
 
 	// remove these nodes from both hash table and the tree
-	ck_hash_table_item_t *hash_item = NULL;
 	knot_zone_tree_node_t *zone_node = NULL;
 
 	for (int i = 0; i < changes->old_nodes_count; ++i) {
 		zone_node = NULL;
-		hash_item = NULL;
 
 dbg_xfrin_exec_detail(
 		char *name = knot_dname_to_str(knot_node_owner(
@@ -3026,15 +3000,12 @@ dbg_xfrin_exec_detail(
 );
 
 		ret = knot_zone_contents_remove_node(
-			contents, changes->old_nodes[i], &zone_node,
-			&hash_item);
+			contents, changes->old_nodes[i], &zone_node);
 
 		if (ret != KNOT_EOK) {
 			dbg_xfrin("Failed to remove node from zone!\n");
 			return KNOT_ENONODE;
 		}
-
-		free(hash_item);
 		free(zone_node);
 	}
 

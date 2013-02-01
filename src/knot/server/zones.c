@@ -33,7 +33,6 @@
 #include "knot/server/xfr-handler.h"
 #include "libknot/updates/xfr-in.h"
 #include "knot/server/zones.h"
-#include "knot/zone/zone-dump.h"
 #include "libknot/nameserver/name-server.h"
 #include "libknot/updates/changesets.h"
 #include "libknot/tsig-op.h"
@@ -41,7 +40,6 @@
 #include "libknot/packet/response.h"
 #include "libknot/zone/zone-diff.h"
 #include "libknot/updates/ddns.h"
-#include "zcompile/zcompile.h"
 
 static const size_t XFRIN_CHANGESET_BINARY_SIZE = 100;
 static const size_t XFRIN_CHANGESET_BINARY_STEP = 100;
@@ -875,36 +873,17 @@ static int zones_load_zone(knot_zone_t **dst, const char *zone_name,
 	}
 	*dst = NULL;
 	
-	/* Duplicate zone name. */
-	size_t zlen = strlen(zone_name);
-	char *zname = NULL;
-	if (zlen > 0) {
-		if ((zname = strdup(zone_name)) == NULL) {
-			return KNOT_ENOMEM;
-		}
-	} else {
-		return KNOT_EINVAL;
-	}
-	zname[zlen - 1] = '\0'; /* Trim last dot */
-	
-	/* Check if the compiled file still exists. */
-	struct stat st;
-	if (stat(source, &st) != 0) {
-		char reason[256] = {0};
-		strerror_r(errno, reason, sizeof(reason));
-		log_server_warning("Failed to open zone file '%s' (%s).\n",
-		                   zname, reason);
-		free(zname);
-		return KNOT_EZONEINVAL;
-	}
-	
-	int ret = zone_read(zone_name, source, 0, dst);
-	/* Attempt to open compiled zone for loading. */
+	zloader_t *zl = NULL;
+	int ret = knot_zload_open(&zl, source, zone_name, 0);
 	if (ret != KNOT_EOK) {
-		log_server_warning("Failed to parser zone file '%s' (%s).\n",
-		                   source, knot_strerror(ret));
-		free(zname);
 		return ret;
+	}
+	
+	*dst = knot_zload_load(zl);
+	if (*dst == NULL) {
+		log_zone_error("Zone %s could not be loaded.\n", zone_name);
+		knot_zload_close(zl);
+		return KNOT_ERROR;
 	}
 	
 	//TODO, change to zone parsing
@@ -966,7 +945,7 @@ static int zones_load_zone(knot_zone_t **dst, const char *zone_name,
 	/* Check if loaded origin matches. */
 	const knot_dname_t *dname = knot_zone_name(*dst);
 	knot_dname_t *dname_req = NULL;
-	dname_req = knot_dname_new_from_str(zone_name, zlen, 0);
+	dname_req = knot_dname_new_from_str(zone_name, strlen(zone_name), 0);
 	if (knot_dname_compare(dname, dname_req) != 0) {
 		log_server_error("Origin of the zone db file is "
 				 "different than '%s'\n",
@@ -975,18 +954,17 @@ static int zones_load_zone(knot_zone_t **dst, const char *zone_name,
 		ret = KNOT_EZONEINVAL;
 	} else {
 		/* Save the timestamp from the zone db file. */
-		if (stat(source, &st) < 0) { // TODO REVIEW MV
-			dbg_zones("zones: failed to stat() zone db, "
-				  "something is seriously wrong\n");
-			knot_zone_deep_free(dst, 0);
-			ret = KNOT_EZONEINVAL;
-		} else {
-			knot_zone_set_version(*dst, st.st_mtime);
-		}
+//		if (stat(source, &st) < 0) { // TODO REVIEW MV
+//			dbg_zones("zones: failed to stat() zone db, "
+//				  "something is seriously wrong\n");
+//			knot_zone_deep_free(dst, 0);
+//			ret = KNOT_EZONEINVAL;
+//		} else {
+//			knot_zone_set_version(*dst, st.st_mtime);
+//		}
 	}
 	knot_dname_free(&dname_req);
-//	knot_zload_close(zl);
-	free(zname);
+	knot_zload_close(zl);
 	return ret;
 }
 
