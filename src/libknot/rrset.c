@@ -1981,7 +1981,7 @@ void knot_rrset_dump(const knot_rrset_t *rrset)
 	}
 }
 
-static size_t rrset_binary_length_one(const knot_rrset_t *rrset,
+static size_t rrset_binary_size_one(const knot_rrset_t *rrset,
                                       size_t rdata_pos)
 {
 	const rdata_descriptor_t *desc =
@@ -2015,7 +2015,7 @@ static size_t rrset_binary_length_one(const knot_rrset_t *rrset,
 	return size;
 }
 
-uint64_t rrset_binary_length(const knot_rrset_t *rrset)
+uint64_t rrset_binary_size(const knot_rrset_t *rrset)
 {
 	if (rrset == NULL || rrset->rdata_count == 0) {
 		return 0;
@@ -2029,7 +2029,7 @@ uint64_t rrset_binary_length(const knot_rrset_t *rrset)
 	              sizeof(uint16_t) +  //RR count
 	              2 * sizeof(uint32_t) * rrset->rdata_count; //RR indices + binary lengths
 	for (uint16_t i = 0; i < rrset->rdata_count; i++) {
-		size += rrset_binary_length_one(rrset, i);
+		size += rrset_binary_size_one(rrset, i);
 	}
 	
 	return size;
@@ -2080,7 +2080,7 @@ int rrset_serialize(const knot_rrset_t *rrset, uint8_t *stream, size_t *size)
 		return KNOT_EINVAL;
 	}
 	
-	uint64_t rrset_length = rrset_binary_length(rrset);
+	uint64_t rrset_length = rrset_binary_size(rrset);
 	memcpy(stream, &rrset_length, sizeof(uint64_t));
 	
 	size_t offset = sizeof(uint64_t);
@@ -2110,7 +2110,7 @@ int rrset_serialize(const knot_rrset_t *rrset, uint8_t *stream, size_t *size)
 		size_t size_one = 0;
 		/* This cannot fail, if it does, RDATA are malformed. TODO */
 		/* TODO this can be written later. */
-		uint32_t rr_size = rrset_binary_length_one(rrset, i);
+		uint32_t rr_size = rrset_binary_size_one(rrset, i);
 		memcpy(stream + offset, &rr_size, sizeof(uint32_t));
 		offset += sizeof(uint32_t);
 		rrset_serialize_rr(rrset, i, stream + offset + actual_size,
@@ -2128,7 +2128,7 @@ int rrset_serialize_alloc(const knot_rrset_t *rrset, uint8_t **stream,
                           size_t *size)
 {
 	/* Get the binary size. */
-	*size = rrset_binary_length(rrset);
+	*size = rrset_binary_size(rrset);
 	if (*size == 0) {
 		/* Nothing to serialize. */
 		dbg_rrset("rrset: serialize alloc: No data to serialize.\n");

@@ -460,6 +460,7 @@ void knot_rrset_dump(const knot_rrset_t *rrset);
 
 //TODO test
 int rrset_serialize(const knot_rrset_t *rrset, uint8_t *stream, size_t *size);
+uint64_t rrset_binary_size(const knot_rrset_t *rrset);
 
 //TODO test
 int rrset_serialize_alloc(const knot_rrset_t *rrset, uint8_t **stream,

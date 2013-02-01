@@ -3243,64 +3243,25 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 /* Counting size of changeset in serialized form.                             */
 /*----------------------------------------------------------------------------*/
 
-static inline size_t zones_dname_binary_size(const knot_dname_t *dname)
-{
-	if (dname == NULL) {
-		return 0;
-	}
-
-	size_t size = 10; // 4B ID, 4B size, 2B label count
-
-	// dname size in wire format
-	size += knot_dname_size(dname);
-	// label array size
-	size += knot_dname_label_count(dname);
-
-	return size;
-}
-
-/*----------------------------------------------------------------------------*/
-
-static size_t zones_rrset_binary_size(const knot_rrset_t *rrset)
-{
-	assert(rrset != NULL);
-
-	size_t size = 0;
-
-	size += 13; // 2B type, 2B class, 4B TTL, 4B RDATA count, 1B flags
-	size += zones_dname_binary_size(rrset->owner);
-
-	assert(0); //TODO
-//	const knot_rdata_t *rdata = knot_rrset_rdata(rrset);
-//	while (rdata != NULL) {
-//		size += zones_rdata_binary_size(rdata, desc);
-//		rdata = knot_rrset_rdata_next(rrset, rdata);
-//	}
-
-	return size;
-}
-
-/*----------------------------------------------------------------------------*/
-
 int zones_changeset_binary_size(const knot_changeset_t *chgset, size_t *size)
 {
 	if (chgset == NULL || size == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	size_t soa_from_size = zones_rrset_binary_size(chgset->soa_from);
-	size_t soa_to_size = zones_rrset_binary_size(chgset->soa_to);
+	size_t soa_from_size = rrset_binary_size(chgset->soa_from);
+	size_t soa_to_size = rrset_binary_size(chgset->soa_to);
 
 	size_t remove_size = 0;
 	for (int i = 0; i < chgset->remove_count; ++i)
 	{
-		remove_size += zones_rrset_binary_size(chgset->remove[i]);
+		remove_size += rrset_binary_size(chgset->remove[i]);
 	}
 
 	size_t add_size = 0;
 	for (int i = 0; i < chgset->add_count; ++i)
 	{
-		add_size += zones_rrset_binary_size(chgset->add[i]);
+		add_size += rrset_binary_size(chgset->add[i]);
 	}
 
 	/*! \todo How is the changeset serialized? Any other parts? */
