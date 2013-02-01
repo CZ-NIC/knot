@@ -1875,29 +1875,6 @@ static int zones_check_tsig_query(const knot_zone_t *zone,
 	assert(rcode != NULL);
 	assert(tsig_key_zone != NULL);
 
-	const knot_rrset_t *tsig = knot_packet_tsig(query);
-
-	// not required, TSIG is already found
-//	if (knot_packet_additional_rrset_count(query) > 0) {
-//		/*! \todo warning */
-//		tsig = knot_packet_additional_rrset(query,
-//		                 knot_packet_additional_rrset_count(query) - 1);
-//		if (knot_rrset_type(tsig) == KNOT_RRTYPE_TSIG) {
-//			dbg_zones_verb("found TSIG in normal query\n");
-//		} else {
-//			tsig = NULL; /* Invalidate if not TSIG RRTYPE. */
-//		}
-//	}
-
-	if (tsig == NULL) {
-		// no TSIG, this is completely valid
-		/*! \note This function is (should be) called only in case of
-		          normal query, i.e. we do not have to check ACL.
-		 */
-		*tsig_rcode = 0;
-		return KNOT_EOK;
-	}
-
 	// if there is some TSIG in the query, find the TSIG associated with
 	// the zone
 	dbg_zones_verb("Checking zone and ACL.\n");
@@ -2620,10 +2597,17 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 			ret = KNOT_TSIG_EBADKEY;
 		} else {
 			dbg_zones_verb("Checking TSIG in query.\n");
-			ret = zones_check_tsig_query(zone, query, addr,
-			                             &rcode, &tsig_rcode,
-			                             &tsig_key_zone,
-			                             &tsig_prev_time_signed);
+			const knot_rrset_t *tsig = knot_packet_tsig(query);
+			if (tsig == NULL) {
+				// no TSIG, this is completely valid
+				tsig_rcode = 0;
+				ret = KNOT_EOK;
+			} else {
+				ret = zones_check_tsig_query(zone, query, addr,
+				                             &rcode, &tsig_rcode,
+				                             &tsig_key_zone,
+				                             &tsig_prev_time_signed);
+			}
 		}
 
 		if (ret == KNOT_EOK) {
@@ -4104,7 +4088,10 @@ int zones_verify_tsig_query(const knot_packet_t *query,
 	assert(tsig_rcode != NULL);
 	
 	const knot_rrset_t *tsig_rr = knot_packet_tsig(query);
-	assert(tsig_rr != NULL);
+	if (tsig_rr == NULL) {
+		*rcode = KNOT_RCODE_NOTAUTH;
+		return KNOT_TSIG_EBADKEY;
+	}
 
 	/*
 	 * 1) Check if we support the requested algorithm.
