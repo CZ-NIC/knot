@@ -46,12 +46,20 @@ server_t* server_create(const char *name, const char *service);
 
 void server_free(server_t *server);
 
+int get_iptype(const ip_t ip);
+
 int get_socktype(const protocol_t proto, const uint16_t type);
 
-int send_msg(const params_t *params, const uint16_t type,
-             const server_t *server, const uint8_t *buf, size_t buf_len);
+int send_msg(const server_t *server,
+             const int      iptype,
+             const int      socktype,
+             const int32_t  wait,
+             const uint8_t  *buf,
+             const size_t   buf_len);
 
-int receive_msg(const params_t *params, const uint16_t type,
-                int sockfd, uint8_t *buf, size_t buf_len);
-
+int receive_msg(int            sockfd,
+                const int      socktype,
+                const int32_t  wait,
+                uint8_t        *buf,
+                const size_t   buf_len);
 #endif // _UTILS__NETIO_H_

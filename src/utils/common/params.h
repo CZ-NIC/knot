@@ -45,7 +45,7 @@ typedef enum {
 	IP_ALL,
 	IP_4,
 	IP_6
-} ip_version_t;
+} ip_t;
 
 typedef enum {
 	PROTO_ALL,
@@ -82,7 +82,7 @@ typedef struct {
 	/*!< Operation mode. */
 	operation_t	operation;
 	/*!< Version of ip protocol to use. */
-	ip_version_t	ip;
+	ip_t		ip;
 	/*!< Type (TCP, UDP) protocol to use. */
 	protocol_t	protocol;
 	/*!< Default port/service to connect to. */

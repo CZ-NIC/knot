@@ -401,12 +401,21 @@ static int pkt_sendrecv(params_t *params, server_t *srv,
 {
 	/*! \todo Bind to local if specified by params. */
 	
-	int sock = send_msg(params, KNOT_RRTYPE_SOA, srv, qwire, qlen);
+	int sock = send_msg(srv,
+	                    get_iptype(params->ip),
+	                    get_socktype(params->protocol, KNOT_RRTYPE_SOA),
+	                    params->wait,
+	                    qwire,
+	                    qlen);
 	DBG("%s: send_msg = %d\n", __func__, sock);
 	if (sock < 0) return sock;
 	
 	/* Wait for reception. */
-	int rb = receive_msg(params, KNOT_RRTYPE_SOA, sock, rwire, rlen);
+	int rb = receive_msg(sock,
+	                     get_socktype(params->protocol, KNOT_RRTYPE_SOA),
+	                     params->wait,
+	                     rwire,
+	                     rlen);
 	DBG("%s: receive_msg = %d\n", __func__, rb);
 	close(sock);
 	

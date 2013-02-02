@@ -61,7 +61,7 @@ typedef struct {
 	/*!< Output format. */
 	format_t	format;
 	/*!< Version of ip protocol to use. */
-	ip_version_t	ip;
+	ip_t		ip;
 	/*!< Type (TCP, UDP) protocol to use. */
 	protocol_t	protocol;
 	/*!< Default port/service to connect to. */

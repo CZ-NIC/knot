@@ -60,6 +60,18 @@ void server_free(server_t *server)
 	free(server);
 }
 
+int get_iptype(const ip_t ip)
+{
+	switch (ip) {
+	case IP_4:
+		return AF_INET;
+	case IP_6:
+		return AF_INET6;
+	default:
+		return AF_UNSPEC;
+	}
+}
+
 int get_socktype(const protocol_t proto, const uint16_t type)
 {
 	switch (proto) {
@@ -79,9 +91,10 @@ int get_socktype(const protocol_t proto, const uint16_t type)
 	}
 }
 
-int send_msg(const params_t *params,
-             const uint16_t  type,
-             const server_t *server,
+int send_msg(const server_t *server,
+             const int      iptype,
+             const int      socktype,
+             const int32_t  wait,
              const uint8_t  *buf,
              const size_t   buf_len)
 {
@@ -89,23 +102,15 @@ int send_msg(const params_t *params,
 	struct pollfd pfd;
 	int sockfd;
 
-	if (params == NULL || server == NULL || buf == NULL) {
+	if (server == NULL || buf == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	memset(&hints, 0, sizeof hints);
 
-	// Set IP type.
-	if (params->ip == IP_4) {
-		hints.ai_family = AF_INET;
-	} else if (params->ip == IP_6) {
-		hints.ai_family = AF_INET6;
-	} else {
-		hints.ai_family = AF_UNSPEC;
-	}
-
-	// Set TCP or UDP.
-	hints.ai_socktype = get_socktype(params->protocol, type);
+	// Fill in relevant hints.
+	hints.ai_family = iptype;
+	hints.ai_socktype = socktype;
 
 	// Get connection parameters.
 	if (getaddrinfo(server->name, server->service, &hints, &res) != 0) {
@@ -143,7 +148,7 @@ int send_msg(const params_t *params,
 	}
 
 	// Check for connection timeout.
-	if (poll(&pfd, 1, 1000 * params->wait) != 1) {
+	if (poll(&pfd, 1, 1000 * wait) != 1) {
 		WARN("can't wait for connection to nameserver %s port %s\n",
 		     server->name, server->service);
 		shutdown(sockfd, SHUT_RDWR);
@@ -182,16 +187,16 @@ int send_msg(const params_t *params,
 	return sockfd;
 }
 
-int receive_msg(const params_t *params,
-                const uint16_t  type,
-                int            sockfd,
+int receive_msg(int            sockfd,
+                const int      socktype,
+                const int32_t  wait,
                 uint8_t        *buf,
                 const size_t   buf_len)
 {
 	ssize_t       ret;
 	struct pollfd pfd;
 
-	if (params == NULL || buf == NULL) {
+	if (buf == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -200,12 +205,12 @@ int receive_msg(const params_t *params,
 	pfd.events = POLLIN;
 	pfd.revents = 0;
 
-	if (get_socktype(params->protocol, type) == SOCK_STREAM) {
+	if (socktype == SOCK_STREAM) {
 		uint16_t msg_len;
 		uint32_t total = 0;
 
 		// Wait for data.
-		if (poll(&pfd, 1, 1000 * params->wait) != 1) {
+		if (poll(&pfd, 1, 1000 * wait) != 1) {
 			WARN("can't wait for TCP message length\n");
 			return KNOT_ERROR;
 		}
@@ -222,7 +227,7 @@ int receive_msg(const params_t *params,
 
 		// Receive whole answer message by parts.
 		while (total < msg_len) {
-			if (poll(&pfd, 1, 1000 * params->wait) != 1) {
+			if (poll(&pfd, 1, 1000 * wait) != 1) {
 				WARN("can't wait for TCP answer\n");
 				return KNOT_ERROR;
 			}
@@ -241,7 +246,7 @@ int receive_msg(const params_t *params,
 		return total;
 	} else {
 		// Wait for datagram data.
-		if (poll(&pfd, 1, 1000 * params->wait) != 1) {
+		if (poll(&pfd, 1, 1000 * wait) != 1) {
 			WARN("can't wait for UDP answer\n");
 			return KNOT_ERROR;
 		}

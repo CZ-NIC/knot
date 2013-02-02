@@ -256,8 +256,10 @@ void process_query(const dig_params_t *params, const query_t *query)
 		gettimeofday(&t_start, NULL);
 
 		// Send query message.
-		sockfd = send_msg(params, query->qtype, (server_t *)server,
-		                  out, out_len);
+		sockfd = send_msg((server_t *)server,
+		                  get_iptype(params->ip),
+		                  get_socktype(params->protocol, query->qtype),
+		                  params->wait, out, out_len);
 
 		if (sockfd < 0) {
 			continue;
@@ -268,8 +270,9 @@ void process_query(const dig_params_t *params, const query_t *query)
 		// Loop over incomming messages, unless reply id is correct.
 		while (id_ok == false) {
 			// Receive reply message.
-			in_len = receive_msg(params, query->qtype, sockfd,
-			                     in, sizeof(in));
+			in_len = receive_msg(sockfd,
+			                     get_socktype(params->protocol, query->qtype),
+			                     params->wait, in, sizeof(in));
 
 			if (in_len <= 0) {
 				stop = true;
@@ -371,8 +374,9 @@ void process_query(const dig_params_t *params, const query_t *query)
 			knot_packet_free(&in_packet);
 
 			// Receive reply message.
-			in_len = receive_msg(params, query->qtype, sockfd,
-					     in, sizeof(in));
+			in_len = receive_msg(sockfd,
+			                     get_socktype(params->protocol, query->qtype),
+			                     params->wait, in, sizeof(in));
 
 			if (in_len <= 0) {
 				stop = true;
