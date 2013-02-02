@@ -32,7 +32,8 @@
 #include "utils/common/params.h"	// params_t
 
 typedef struct {
-
+	/*!< Recursion desired flag. */
+	bool		rd_flag;
 } options_t;
 
 /*! \brief Structure containing basic parameters for DNS query. */
@@ -53,8 +54,8 @@ typedef struct {
 typedef struct {
 	/*!< List of DNS queries to process. */
 	list		queries;
-	/*!< Recursion desiredflag. */
-	bool		rd_flag;
+	/*!< Global options. */
+	options_t	options;
 } dig_params_t;
 #define DIG_PARAM(p) ((dig_params_t*)p->d)
 

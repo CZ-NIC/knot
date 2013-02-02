@@ -63,7 +63,7 @@ static int host_params_init(params_t *params)
 	init_list(&ext_params->queries);
 
 	// Extended params.
-	ext_params->rd_flag = true;
+	ext_params->options.rd_flag = true;
 
 	return KNOT_EOK;
 }

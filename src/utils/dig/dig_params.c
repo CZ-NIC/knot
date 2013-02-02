@@ -98,7 +98,7 @@ static int dig_init(params_t *params)
 	init_list(&ext_params->queries);
 
 	// Extended params.
-	ext_params->rd_flag = true;
+	ext_params->options.rd_flag = true;
 
 	return KNOT_EOK;
 }
@@ -285,7 +285,7 @@ void dig_params_flag_norecurse(params_t *params)
 		return;
 	}
 
-	DIG_PARAM(params)->rd_flag = false;
+	DIG_PARAM(params)->options.rd_flag = false;
 }
 
 static int parse_server(const char *value, params_t *params)

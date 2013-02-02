@@ -56,7 +56,7 @@ static knot_packet_t* create_query_packet(const params_t *params,
 	}
 
 	// Set recursion bit to wireformat.
-	if (ext_params->rd_flag == true) {
+	if (ext_params->options.rd_flag == true) {
 		knot_wire_set_rd(packet->wireformat);
 	} else {
 		knot_wire_flags_clear_rd(packet->wireformat);
