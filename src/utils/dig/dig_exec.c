@@ -42,7 +42,7 @@ static knot_packet_t* create_query_packet(const params_t *params,
 
 	// Set packet buffer size.
 	int max_size = MAX_PACKET_SIZE;
-	if (get_socktype(params, query->qtype) != SOCK_STREAM) {
+	if (get_socktype(params->protocol, query->qtype) != SOCK_STREAM) {
 		// For UDP default or specified EDNS size.
 		max_size = params->udp_size;
 	}

@@ -46,7 +46,7 @@ server_t* server_create(const char *name, const char *service);
 
 void server_free(server_t *server);
 
-int get_socktype(const params_t *params, const uint16_t type);
+int get_socktype(const protocol_t proto, const uint16_t type);
 
 int send_msg(const params_t *params, const uint16_t type,
              const server_t *server, const uint8_t *buf, size_t buf_len);

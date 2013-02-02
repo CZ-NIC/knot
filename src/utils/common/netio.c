@@ -60,13 +60,9 @@ void server_free(server_t *server)
 	free(server);
 }
 
-int get_socktype(const params_t *params, const uint16_t type)
+int get_socktype(const protocol_t proto, const uint16_t type)
 {
-	if (params == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	switch (params->protocol) {
+	switch (proto) {
 	case PROTO_TCP:
 		return SOCK_STREAM;
 	case PROTO_UDP:
@@ -109,7 +105,7 @@ int send_msg(const params_t *params,
 	}
 
 	// Set TCP or UDP.
-	hints.ai_socktype = get_socktype(params, type);
+	hints.ai_socktype = get_socktype(params->protocol, type);
 
 	// Get connection parameters.
 	if (getaddrinfo(server->name, server->service, &hints, &res) != 0) {
@@ -204,7 +200,7 @@ int receive_msg(const params_t *params,
 	pfd.events = POLLIN;
 	pfd.revents = 0;
 
-	if (get_socktype(params, type) == SOCK_STREAM) {
+	if (get_socktype(params->protocol, type) == SOCK_STREAM) {
 		uint16_t msg_len;
 		uint32_t total = 0;
 
