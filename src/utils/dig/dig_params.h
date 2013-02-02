@@ -31,11 +31,6 @@
 
 #include "utils/common/params.h"	// params_t
 
-typedef struct {
-	/*!< Recursion desired flag. */
-	bool		rd_flag;
-} options_t;
-
 /*! \brief Structure containing basic parameters for DNS query. */
 typedef struct {
 	/*!< List node (for list container). */
@@ -50,24 +45,52 @@ typedef struct {
 	uint32_t	xfr_serial;
 } query_t;
 
-/*! \brief dig-specific params data. */
 typedef struct {
+	/*!< Recursion desired flag. */
+	bool		rd_flag;
+} options_t;
+
+/*! \brief Settings for dig. */
+typedef struct {
+	/*!< List of nameservers to query to. */
+	list		servers;
 	/*!< List of DNS queries to process. */
 	list		queries;
+	/*!< Operation mode. */
+	operation_t	operation;
+	/*!< Output format. */
+	format_t	format;
+	/*!< Version of ip protocol to use. */
+	ip_version_t	ip;
+	/*!< Type (TCP, UDP) protocol to use. */
+	protocol_t	protocol;
+	/*!< Default port/service to connect to. */
+	char		*port;
+	/*!< UDP buffer size. */
+	uint32_t	udp_size;
+	/*!< Number of UDP retries. */
+	uint32_t	retries;
+	/*!< Wait for network response in seconds (-1 means forever). */
+	int32_t		wait;
+	/*!< Stop quering if servfail. */
+	bool		servfail_stop;
+	/*!< Default class number (16unsigned + -1 uninitialized). */
+	int32_t		class_num;
+	/*!< Default type number (16unsigned + -1 uninitialized). */
+	int32_t		type_num;
+	/*!< Default SOA serial for XFR. */
+	uint32_t	xfr_serial;
 	/*!< Global options. */
 	options_t	options;
 } dig_params_t;
-#define DIG_PARAM(p) ((dig_params_t*)p->d)
 
 query_t* query_create(const char    *qname,
                       const int32_t qtype,
                       const int32_t qclass);
 void query_free(query_t *query);
 
-int dig_parse(params_t *params, int argc, char *argv[]);
-void dig_clean(params_t *params);
-
-void dig_params_flag_norecurse(params_t *params);
+int dig_parse(dig_params_t *params, int argc, char *argv[]);
+void dig_clean(dig_params_t *params);
 
 #endif // _DIG__DIG_PARAMS_H_
 

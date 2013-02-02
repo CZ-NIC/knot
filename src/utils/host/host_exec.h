@@ -27,9 +27,9 @@
 #ifndef _HOST__HOST_EXEC_H_
 #define _HOST__HOST_EXEC_H_
 
-#include "utils/common/params.h"	// params_t
+#include "utils/dig/dig_params.h"	// dig_params_t
 
-int host_exec(const params_t *params);
+int host_exec(const dig_params_t *params);
 
 #endif // _HOST__HOST_EXEC_H_
 

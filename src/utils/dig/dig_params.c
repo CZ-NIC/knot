@@ -66,44 +66,35 @@ void query_free(query_t *query)
 	free(query);
 }
 
-static int dig_init(params_t *params)
+static int dig_init(dig_params_t *params)
 {
 	memset(params, 0, sizeof(*params));
 
-	// Create dig specific data structure.
-	params->d = calloc(1, sizeof(dig_params_t));
-	if (!params->d) {
-		return KNOT_ENOMEM;
-	}
-	dig_params_t *ext_params = DIG_PARAM(params);
-
-	// Initialize blank server list.
+	// Initialize servers and queries lists.
 	init_list(&params->servers);
+	init_list(&params->queries);
 
-	// Default values.
+	// Default settings.
 	params->operation = OPERATION_QUERY;
+	params->format = FORMAT_VERBOSE;
 	params->ip = IP_ALL;
 	params->protocol = PROTO_ALL;
 	params->port = strdup(DEFAULT_DNS_PORT);
 	params->udp_size = DEFAULT_UDP_SIZE;
-	params->class_num = -1;
-	params->type_num = -1;
-	params->xfr_serial = 0;
 	params->retries = DEFAULT_RETRIES_DIG;
 	params->wait = DEFAULT_TIMEOUT_DIG;
 	params->servfail_stop = false;
-	params->format = FORMAT_VERBOSE;
+	params->class_num = -1;
+	params->type_num = -1;
+	params->xfr_serial = 0;
 
-	// Initialize list of queries.
-	init_list(&ext_params->queries);
-
-	// Extended params.
-	ext_params->options.rd_flag = true;
+	// Default options.
+	params->options.rd_flag = true;
 
 	return KNOT_EOK;
 }
 
-void dig_clean(params_t *params)
+void dig_clean(dig_params_t *params)
 {
 	node *n = NULL, *nxt = NULL;
 
@@ -111,28 +102,23 @@ void dig_clean(params_t *params)
 		return;
 	}
 
-	dig_params_t *ext_params = DIG_PARAM(params);
-
-	// Clean up server list.
+	// Clean up servers.
 	WALK_LIST_DELSAFE(n, nxt, params->servers) {
 		server_free((server_t *)n);
 	}
 
-	// Clean up query list.
-	WALK_LIST_DELSAFE(n, nxt, ext_params->queries) {
+	// Clean up queries.
+	WALK_LIST_DELSAFE(n, nxt, params->queries) {
 		query_free((query_t *)n);
 	}
 
 	free(params->port);
 
-	// Destroy dig specific structure.
-	free(ext_params);
-
 	// Clean up the structure.
 	memset(params, 0, sizeof(*params));
 }
 
-static int parse_name(const char *value, params_t *params)
+static int parse_name(const char *value, dig_params_t *params)
 {
 	query_t *query = NULL;
 
@@ -149,12 +135,12 @@ static int parse_name(const char *value, params_t *params)
 	}
 
 	// Add new query to the queries.
-	add_tail(&DIG_PARAM(params)->queries, (node *)query);
+	add_tail(&params->queries, (node *)query);
 
 	return KNOT_EOK;
 }
 
-static int parse_reverse(const char *value, params_t *params)
+static int parse_reverse(const char *value, dig_params_t *params)
 {
 	query_t *query = NULL;
 
@@ -176,30 +162,28 @@ static int parse_reverse(const char *value, params_t *params)
 	}
 
 	// Add new query to the queries.
-	add_tail(&DIG_PARAM(params)->queries, (node *)query);
+	add_tail(&params->queries, (node *)query);
 
 	return KNOT_EOK;
 }
 
-static void complete_queries(params_t *params)
+static void complete_queries(dig_params_t *params)
 {
 	query_t *query = NULL;
 	node    *n = NULL;
 
-	dig_params_t *ext_params = DIG_PARAM(params);
-
 	// If there is no query, add default query: NS to ".".
-	if (list_size(&ext_params->queries) == 0) {
+	if (list_size(&params->queries) == 0) {
 		query = query_create(".", KNOT_RRTYPE_NS, KNOT_CLASS_IN);
 		if (query == NULL) {
 			WARN("can't create query . NS IN\n");
 			return;
 		}
-		add_tail(&ext_params->queries, (node *)query);
+		add_tail(&params->queries, (node *)query);
 		query = NULL;
 	}
 
-	WALK_LIST(n, ext_params->queries) {
+	WALK_LIST(n, params->queries) {
 		query_t *q = (query_t *)n;
 
 		if (q->qclass < 0) {
@@ -220,7 +204,7 @@ static void complete_queries(params_t *params)
 	}
 }
 
-static int parse_class(const char *value, params_t *params)
+static int parse_class(const char *value, dig_params_t *params)
 {
 	uint16_t rclass;
 
@@ -228,14 +212,12 @@ static int parse_class(const char *value, params_t *params)
 		return KNOT_EINVAL;
 	}
 
-	list *queries = &DIG_PARAM(params)->queries;
-
 	// Change default.
-	if (list_size(queries) == 0) {
+	if (list_size(&params->queries) == 0) {
 		params->class_num = rclass;
 	// Change current.
 	} else {
-		query_t *query = TAIL(*queries);
+		query_t *query = TAIL(params->queries);
 
 		query->qclass = rclass;
 	}
@@ -243,7 +225,7 @@ static int parse_class(const char *value, params_t *params)
 	return KNOT_EOK;
 }
 
-static int parse_type(const char *value, params_t *params)
+static int parse_type(const char *value, dig_params_t *params)
 {
 	uint16_t rtype;
 	uint32_t serial;
@@ -252,15 +234,13 @@ static int parse_type(const char *value, params_t *params)
 		return KNOT_EINVAL;
 	}
 
-	list *queries = &DIG_PARAM(params)->queries;
-
 	// Change default.
-	if (list_size(queries) == 0) {
+	if (list_size(&params->queries) == 0) {
 		params->type_num = rtype;
 		params->xfr_serial = serial;
 	// Change current.
 	} else {
-		query_t *query = TAIL(*queries);
+		query_t *query = TAIL(params->queries);
 
 		query->qtype = rtype;
 		query->xfr_serial = serial;
@@ -279,16 +259,7 @@ static void dig_help(const bool verbose)
 	}
 }
 
-void dig_params_flag_norecurse(params_t *params)
-{
-	if (params == NULL) {
-		return;
-	}
-
-	DIG_PARAM(params)->options.rd_flag = false;
-}
-
-static int parse_server(const char *value, params_t *params)
+static int parse_server(const char *value, dig_params_t *params)
 {
 	int ret = params_parse_server(value, &params->servers, params->port);
 
@@ -300,7 +271,7 @@ static int parse_server(const char *value, params_t *params)
 }
 
 static int parse_opt1(const char *opt, const char *value,
-                         params_t *params, int *index)
+                      dig_params_t *params, int *index)
 {
 	const char *val = value;
 	size_t     len = strlen(opt);
@@ -318,14 +289,14 @@ static int parse_opt1(const char *opt, const char *value,
 			return KNOT_ENOTSUP;
 		}
 
-		params_flag_ipv4(params);
+		params->ip = IP_4;
 		break;
 	case '6':
 		if (len > 1) {
 			return KNOT_ENOTSUP;
 		}
 
-		params_flag_ipv6(params);
+		params->ip = IP_6;
 		break;
 	case 'c':
 		if (val == NULL) {
@@ -403,14 +374,14 @@ static int parse_opt1(const char *opt, const char *value,
 	return KNOT_EOK;
 }
 
-static int parse_opt2(const char *value, params_t *params)
+static int parse_opt2(const char *value, dig_params_t *params)
 {
 	ERR("invalid option: %s\n", value);
 
 	return KNOT_EOK;
 }
 
-static int parse_token(const char *value, params_t *params)
+static int parse_token(const char *value, dig_params_t *params)
 {
 
 	if (parse_type(value, params) == KNOT_EOK) {
@@ -426,7 +397,7 @@ static int parse_token(const char *value, params_t *params)
 	return KNOT_ERROR;
 }
 
-int dig_parse(params_t *params, int argc, char *argv[])
+int dig_parse(dig_params_t *params, int argc, char *argv[])
 {
 	if (params == NULL || argv == NULL) {
 		return KNOT_EINVAL;
@@ -477,4 +448,3 @@ int dig_parse(params_t *params, int argc, char *argv[])
 
 	return KNOT_EOK;
 }
-

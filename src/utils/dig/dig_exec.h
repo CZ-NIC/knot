@@ -30,9 +30,9 @@
 #include "utils/common/params.h"	// params_t
 #include "utils/dig/dig_params.h"	// query_t
 
-int dig_exec(const params_t *params);
+int dig_exec(const dig_params_t *params);
 
-void process_query(const params_t *params, const query_t *query);
+void process_query(const dig_params_t *params, const query_t *query);
 
 #endif // _DIG__DIG_EXEC_H_
 

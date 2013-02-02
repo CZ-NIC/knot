@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
 {
 	int ret = EXIT_SUCCESS;
 
-	params_t params;
+	dig_params_t params;
 	switch (dig_parse(&params, argc, argv)) {
 	case KNOT_EOK:
 		if (dig_exec(&params) != KNOT_EOK) {

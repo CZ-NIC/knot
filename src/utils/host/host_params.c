@@ -31,44 +31,35 @@
 #define DEFAULT_RETRIES_HOST	1
 #define DEFAULT_TIMEOUT_HOST	1
 
-static int host_params_init(params_t *params)
+static int host_init(dig_params_t *params)
 {
 	memset(params, 0, sizeof(*params));
 
-	// Create dig specific data structure.
-	params->d = calloc(1, sizeof(dig_params_t));
-	if (!params->d) {
-		return KNOT_ENOMEM;
-	}
-	dig_params_t *ext_params = DIG_PARAM(params);
-
-	// Initialize blank server list.
+	// Initialize servers and queries lists.
 	init_list(&params->servers);
+	init_list(&params->queries);
 
-	// Default values.
+	// Default settings.
 	params->operation = OPERATION_QUERY;
+	params->format = FORMAT_HOST;
 	params->ip = IP_ALL;
 	params->protocol = PROTO_ALL;
 	params->port = strdup(DEFAULT_DNS_PORT);
 	params->udp_size = DEFAULT_UDP_SIZE;
-	params->class_num = KNOT_CLASS_IN;
-	params->type_num = -1;
-	params->xfr_serial = 0;
 	params->retries = DEFAULT_RETRIES_HOST;
 	params->wait = DEFAULT_TIMEOUT_HOST;
 	params->servfail_stop = false;
-	params->format = FORMAT_HOST;
+	params->class_num = KNOT_CLASS_IN;
+	params->type_num = -1;
+	params->xfr_serial = 0;
 
-	// Initialize list of queries.
-	init_list(&ext_params->queries);
-
-	// Extended params.
-	ext_params->options.rd_flag = true;
+	// Default options.
+	params->options.rd_flag = true;
 
 	return KNOT_EOK;
 }
 
-void host_params_clean(params_t *params)
+void host_clean(dig_params_t *params)
 {
 	node *n = NULL, *nxt = NULL;
 
@@ -76,51 +67,27 @@ void host_params_clean(params_t *params)
 		return;
 	}
 
-	dig_params_t *ext_params = DIG_PARAM(params);
-
-	// Clean up server list.
+	// Clean up servers.
 	WALK_LIST_DELSAFE(n, nxt, params->servers) {
 		server_free((server_t *)n);
 	}
 
-	// Clean up query list.
-	WALK_LIST_DELSAFE(n, nxt, ext_params->queries) {
+	// Clean up queries.
+	WALK_LIST_DELSAFE(n, nxt, params->queries) {
 		query_free((query_t *)n);
 	}
 
 	free(params->port);
 
-	// Destroy dig specific structure.
-	free(ext_params);
-
 	// Clean up the structure.
 	memset(params, 0, sizeof(*params));
 }
 
-static void host_params_flag_all(params_t *params)
-{
-	params->type_num = KNOT_RRTYPE_ANY;
-	params->format = FORMAT_VERBOSE;
-}
-
-static void host_params_flag_soa(params_t *params)
-{
-	params->type_num = KNOT_RRTYPE_SOA;
-	params->operation = OPERATION_LIST_SOA;
-}
-
-static void host_params_flag_axfr(params_t *params)
-{
-	params->type_num = KNOT_RRTYPE_AXFR;
-}
-
-static int host_params_parse_name(const char *name, params_t *params)
+static int host_parse_name(const char *name, dig_params_t *params)
 {
 	char	*reverse = get_reverse_name(name);
 	char	*fqd_name = NULL;
 	query_t	*query;
-
-	dig_params_t *ext_params = DIG_PARAM(params);
 
 	// If name is not FQDN, append trailing dot.
 	fqd_name = get_fqd_name(name);
@@ -143,7 +110,7 @@ static int host_params_parse_name(const char *name, params_t *params)
 				free(fqd_name);
 				return KNOT_ENOMEM;
 			}
-			add_tail(&ext_params->queries, (node *)query);
+			add_tail(&params->queries, (node *)query);
 		} else {
 			// Add query for name and specified type.
 			query = query_create(fqd_name, params->type_num,
@@ -157,7 +124,7 @@ static int host_params_parse_name(const char *name, params_t *params)
 			if (params->type_num == KNOT_RRTYPE_IXFR) {
 				query->xfr_serial = params->xfr_serial;
 			}
-			add_tail(&ext_params->queries, (node *)query);
+			add_tail(&params->queries, (node *)query);
 		}
 	// RR type is unknown, use defaults.
 	} else {
@@ -169,7 +136,7 @@ static int host_params_parse_name(const char *name, params_t *params)
 				free(fqd_name);
 				return KNOT_ENOMEM;
 			}
-			add_tail(&ext_params->queries, (node *)query);
+			add_tail(&params->queries, (node *)query);
 
 			// Add query for name and type AAAA.
 			query = query_create(fqd_name, KNOT_RRTYPE_AAAA,
@@ -178,7 +145,7 @@ static int host_params_parse_name(const char *name, params_t *params)
 				free(fqd_name);
 				return KNOT_ENOMEM;
 			}
-			add_tail(&ext_params->queries, (node *)query);
+			add_tail(&params->queries, (node *)query);
 
 			// Add query for name and type MX.
 			query = query_create(fqd_name, KNOT_RRTYPE_MX,
@@ -187,7 +154,7 @@ static int host_params_parse_name(const char *name, params_t *params)
 				free(fqd_name);
 				return KNOT_ENOMEM;
 			}
-			add_tail(&ext_params->queries, (node *)query);
+			add_tail(&params->queries, (node *)query);
 		} else {
 			// Add reverse query for address.
 			query = query_create(reverse, KNOT_RRTYPE_PTR,
@@ -197,7 +164,7 @@ static int host_params_parse_name(const char *name, params_t *params)
 				free(fqd_name);
 				return KNOT_ENOMEM;
 			}
-			add_tail(&ext_params->queries, (node *)query);
+			add_tail(&params->queries, (node *)query);
 		}
 	}
 
@@ -207,14 +174,14 @@ static int host_params_parse_name(const char *name, params_t *params)
 	return KNOT_EOK;
 }
 
-static void host_params_help(int argc, char *argv[])
+static void host_help(int argc, char *argv[])
 {
 	printf("Usage: %s [-aCdlrsTvw] [-4] [-6] [-c class] [-R retries]\n"
 	       "       %*c [-t type] [-W time] name [server]\n",
 	       argv[0], (int)strlen(argv[0]), ' ');
 }
 
-int host_params_parse(params_t *params, int argc, char *argv[])
+int host_parse(dig_params_t *params, int argc, char *argv[])
 {
 	int opt = 0;
 
@@ -222,7 +189,7 @@ int host_params_parse(params_t *params, int argc, char *argv[])
 		return KNOT_EINVAL;
 	}
 
-	if (host_params_init(params) != KNOT_EOK) {
+	if (host_init(params) != KNOT_EOK) {
 		return KNOT_ERROR;
 	}
 
@@ -233,35 +200,37 @@ int host_params_parse(params_t *params, int argc, char *argv[])
 	while ((opt = getopt(argc, argv, "46aCdlrsTvwc:R:t:W:")) != -1) {
 		switch (opt) {
 		case '4':
-			params_flag_ipv4(params);
+			params->ip = IP_4;
 			break;
 		case '6':
-			params_flag_ipv6(params);
+			params->ip = IP_6;
 			break;
 		case 'a':
-			host_params_flag_all(params);
+			params->type_num = KNOT_RRTYPE_ANY;
+			params->format = FORMAT_VERBOSE;
 			break;
 		case 'C':
-			host_params_flag_soa(params);
+			params->type_num = KNOT_RRTYPE_SOA;
+			params->operation = OPERATION_LIST_SOA;
 			break;
 		case 'd':
 		case 'v': // Fall through.
-			params_flag_verbose(params);
+			params->format = FORMAT_VERBOSE;
 			break;
 		case 'l':
-			host_params_flag_axfr(params);
+			params->type_num = KNOT_RRTYPE_AXFR;
 			break;
 		case 'r':
-			dig_params_flag_norecurse(params);
+			params->options.rd_flag = false;
 			break;
 		case 's':
-			params_flag_servfail(params);
+			params->servfail_stop = true;
 			break;
 		case 'T':
-			params_flag_tcp(params);
+			params->protocol = PROTO_TCP;
 			break;
 		case 'w':
-			params_flag_nowait(params);
+			params->wait = -1;
 			break;
 		case 'c':
 			if (params_parse_class(optarg, &rclass) != KNOT_EOK) {
@@ -290,7 +259,7 @@ int host_params_parse(params_t *params, int argc, char *argv[])
 			}
 			break;
 		default:
-			host_params_help(argc, argv);
+			host_help(argc, argv);
 			return KNOT_ENOTSUP;
 		}
 	}
@@ -305,13 +274,13 @@ int host_params_parse(params_t *params, int argc, char *argv[])
 			return KNOT_EINVAL;
 		}
 	case 1: // Fall through.
-		if (host_params_parse_name(argv[optind], params)
+		if (host_parse_name(argv[optind], params)
 		    != KNOT_EOK) {
 			return KNOT_EINVAL;
 		}
 		break;
 	default:
-		host_params_help(argc, argv);
+		host_help(argc, argv);
 		return KNOT_ENOTSUP;
 	}
 

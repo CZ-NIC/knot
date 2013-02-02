@@ -27,18 +27,15 @@
 #include "libknot/util/wire.h"		// knot_wire_set_rd
 #include "libknot/packet/query.h"	// knot_query_init
 #include "utils/common/msg.h"		// WARN
-#include "utils/common/params.h"	// params_t
 #include "utils/common/netio.h"		// get_socktype
 #include "utils/common/exec.h"		// print_packet
 
-static knot_packet_t* create_query_packet(const params_t *params,
-                                          const query_t  *query,
-                                          uint8_t        **data,
-                                          size_t         *data_len)
+static knot_packet_t* create_query_packet(const dig_params_t *params,
+                                          const query_t      *query,
+                                          uint8_t            **data,
+                                          size_t             *data_len)
 {
 	knot_question_t q;
-
-	dig_params_t *ext_params = DIG_PARAM(params);
 
 	// Set packet buffer size.
 	int max_size = MAX_PACKET_SIZE;
@@ -56,7 +53,7 @@ static knot_packet_t* create_query_packet(const params_t *params,
 	}
 
 	// Set recursion bit to wireformat.
-	if (ext_params->options.rd_flag == true) {
+	if (params->options.rd_flag == true) {
 		knot_wire_set_rd(packet->wireformat);
 	} else {
 		knot_wire_flags_clear_rd(packet->wireformat);
@@ -159,11 +156,11 @@ static bool check_id(const knot_packet_t *query, const knot_packet_t *reply)
 	return true;
 }
 
-static int check_rcode(const params_t *params, const knot_packet_t *reply)
+static int check_rcode(const bool servfail_stop, const knot_packet_t *reply)
 {
 	uint8_t rcode = knot_wire_get_rcode(reply->wireformat);
 
-	if (rcode == KNOT_RCODE_SERVFAIL && params->servfail_stop == true) {
+	if (rcode == KNOT_RCODE_SERVFAIL && servfail_stop == true) {
 		return -1;
 	}
 
@@ -225,7 +222,7 @@ static bool last_serial_check(const uint32_t serial, const knot_packet_t *reply)
 	}
 }
 
-void process_query(const params_t *params, const query_t *query)
+void process_query(const dig_params_t *params, const query_t *query)
 {
 	float		elapsed;
 	bool 		id_ok, stop;
@@ -308,7 +305,7 @@ void process_query(const params_t *params, const query_t *query)
 		}
 
 		// Check rcode.
-		rcode = check_rcode(params, in_packet);
+		rcode = check_rcode(params->servfail_stop, in_packet);
 
 		// Servfail + stop if servfail -> stop processing.
 		if (rcode == -1) {
@@ -404,7 +401,7 @@ void process_query(const params_t *params, const query_t *query)
 			id_ok = check_id(out_packet, in_packet);
 
 			// Check rcode.
-			rcode = check_rcode(params, in_packet);
+			rcode = check_rcode(params->servfail_stop, in_packet);
 
 			if (rcode != KNOT_RCODE_NOERROR) {
 				stop = true;
@@ -445,7 +442,7 @@ void process_query(const params_t *params, const query_t *query)
 	knot_packet_free(&out_packet);
 }
 
-int dig_exec(const params_t *params)
+int dig_exec(const dig_params_t *params)
 {
 	node *query = NULL;
 
@@ -453,12 +450,10 @@ int dig_exec(const params_t *params)
 		return KNOT_EINVAL;
 	}
 
-	dig_params_t *ext_params = DIG_PARAM(params);
-
 	switch (params->operation) {
 	case OPERATION_QUERY:
 		// Loop over query list.
-		WALK_LIST(query, ext_params->queries) {
+		WALK_LIST(query, params->queries) {
 			process_query(params, (query_t *)query);
 		}
 
