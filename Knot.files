@@ -277,6 +277,7 @@ src/libknot/zone/zone-diff.h
 src/libknot/zone/zone-diff.c
 src/zscanner/file_loader.c
 src/zscanner/file_loader.h
+src/zscanner/scanner.rl
 src/zscanner/scanner.h
 src/zscanner/scanner_body.rl
 src/zscanner/scanner_functions.c

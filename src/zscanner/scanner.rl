@@ -97,8 +97,10 @@ scanner_t* scanner_create(const char *file_name)
 
 void scanner_free(scanner_t *s)
 {
-	free(s->file_name);
-	free(s);
+	if (s != NULL) {
+		free(s->file_name);
+		free(s);
+	}
 }
 
 int scanner_process(const char *start,
