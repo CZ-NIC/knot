@@ -204,7 +204,12 @@ int nsupdate_set_ttl(nsupdate_params_t *params, const uint32_t ttl)
 
 int nsupdate_set_origin(nsupdate_params_t *params, const char *origin)
 {
-	int ret = parser_set_default(params->rrp, "$ORIGIN %s\n", origin);
+	char *fqdn = get_fqd_name(origin);
+
+	int ret = parser_set_default(params->rrp, "$ORIGIN %s\n", fqdn);
+
+	free(fqdn);
+
 	if (ret == KNOT_EOK) {
 		if (params->zone) free(params->zone);
 		params->zone = strdup(origin);
