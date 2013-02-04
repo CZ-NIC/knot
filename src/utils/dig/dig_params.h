@@ -45,6 +45,15 @@ typedef struct {
 	uint32_t	xfr_serial;
 } query_t;
 
+typedef enum {
+	/*!< Classic queries in list. */
+	OPERATION_QUERY,
+	/*!< Query for NS and all authoritative SOA records. */
+	OPERATION_LIST_SOA,
+	/*!< Default mode for nsupdate. */
+	OPERATION_UPDATE,
+} operation_t;
+
 typedef struct {
 	/*!< Recursion desired flag. */
 	bool		rd_flag;

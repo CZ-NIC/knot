@@ -27,10 +27,9 @@
 #ifndef _UTILS__PARAMS_H_
 #define _UTILS__PARAMS_H_
 
-#include <stdbool.h>			// bool
 #include <stdint.h>			// uint16_t
 
-#include "common/lists.h"		// node
+#include "common/lists.h"		// list
 #include "libknot/tsig.h"		// knot_key_t
 
 #define DEFAULT_IPV4_NAME	"127.0.0.1"
@@ -54,15 +53,6 @@ typedef enum {
 } protocol_t;
 
 typedef enum {
-	/*!< Classic queries in list. */
-	OPERATION_QUERY,
-	/*!< Query for NS and all authoritative SOA records. */
-	OPERATION_LIST_SOA,
-	/*!< Default mode for nsupdate. */
-	OPERATION_UPDATE,
-} operation_t;
-
-typedef enum {
 	/*!< Short dig output. */
 	FORMAT_DIG,
 	/*!< Brief host output. */
@@ -75,57 +65,9 @@ typedef enum {
 	FORMAT_MULTILINE,
 } format_t;
 
-/*! \brief Structure containing parameters. */
-typedef struct {
-	/*!< List of nameservers to query to. */
-	list		servers;
-	/*!< Operation mode. */
-	operation_t	operation;
-	/*!< Version of ip protocol to use. */
-	ip_t		ip;
-	/*!< Type (TCP, UDP) protocol to use. */
-	protocol_t	protocol;
-	/*!< Default port/service to connect to. */
-	char		*port;
-	/*!< Default class number (16unsigned + -1 uninitialized). */
-	int32_t		class_num;
-	/*!< Default type number (16unsigned + -1 uninitialized). */
-	int32_t		type_num;
-	/*!< Default TTL. */
-	uint32_t	ttl;
-	/*!< Default SOA serial for XFR. */
-	uint32_t	xfr_serial;
-	/*!< UDP buffer size. */
-	uint32_t	udp_size;
-	/*!< Number of UDP retries. */
-	uint32_t	retries;
-	/*!< Wait for network response in seconds (-1 means forever). */
-	int32_t		wait;
-	/*!< Stop quering if servfail. */
-	bool		servfail_stop;
-	/*!< Output format. */
-	format_t	format;
-	/*!< TSIG key used. */
-	knot_key_t	key;
-	/*!< Implementation specific data. */
-	void		*d;
-} params_t;
-
 char* get_reverse_name(const char *name);
 
 char* get_fqd_name(const char *name);
-
-void params_flag_ipv4(params_t *params);
-
-void params_flag_ipv6(params_t *params);
-
-void params_flag_servfail(params_t *params);
-
-void params_flag_nowait(params_t *params);
-
-void params_flag_tcp(params_t *params);
-
-void params_flag_verbose(params_t *params);
 
 int params_parse_port(const char *value, char **port);
 

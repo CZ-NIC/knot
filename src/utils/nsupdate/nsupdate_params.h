@@ -30,10 +30,10 @@
 #include <stdint.h>
 
 #include "common/lists.h"		// list
-#include "utils/common/params.h"	// protocol_t
-#include "zscanner/scanner.h"		// scanner_t
 #include "libknot/packet/packet.h"	// knot_packet_t
-#include "utils/common/netio.h"
+#include "zscanner/scanner.h"		// scanner_t
+#include "utils/common/netio.h"		// server_t
+#include "utils/common/params.h"	// protocol_t
 
 /*! Parser init string. */
 #define PARSER_INIT_STR "$ORIGIN %s\n$TTL %u\n"
@@ -42,6 +42,26 @@
 typedef struct {
 	/*!< List of files with query data. */
 	list		qfiles;
+	/*!< List of nameservers to query to. */
+	server_t	*server;
+	/*!< Output format. */
+	format_t	format;
+	/*!< Local interface (optional). */
+	server_t	*srcif;
+	/*!< Operation mode. */
+	ip_t		ip;
+	/*!< Type (TCP, UDP) protocol to use. */
+	protocol_t	protocol;
+	/*!< Default class number. */
+	uint16_t	class_num;
+	/*!< Default type number. */
+	uint16_t	type_num;
+	/*!< Default TTL. */
+	uint32_t	ttl;
+	/*!< Number of UDP retries. */
+	uint32_t	retries;
+	/*!< Wait for network response in seconds (-1 means forever). */
+	int32_t		wait;
 	/*!< Current zone. */
 	char		*zone;
 	/*!< RR parser. */
@@ -52,15 +72,14 @@ typedef struct {
 	knot_packet_t	*resp;
 	/*!< Buffer for response. */
 	uint8_t		rwire[MAX_PACKET_SIZE];
-	/*!< Local interface (optional). */
-	server_t	*srcif;
+	/*!< TSIG key used. */
+	knot_key_t	key;
 } nsupdate_params_t;
-#define NSUP_PARAM(p) ((nsupdate_params_t*)p->d)
 
-int nsupdate_params_parse(params_t *params, int argc, char *argv[]);
-int nsupdate_params_set_ttl(params_t *params, uint32_t ttl);
-int nsupdate_params_set_origin(params_t *params, const char *origin);
-void nsupdate_params_clean(params_t *params);
+int nsupdate_parse(nsupdate_params_t *params, int argc, char *argv[]);
+int nsupdate_set_ttl(nsupdate_params_t *params, const uint32_t ttl);
+int nsupdate_set_origin(nsupdate_params_t *params, const char *origin);
+void nsupdate_clean(nsupdate_params_t *params);
 
 #endif // _NSUPDATE__NSUPDATE_PARAMS_H_
 

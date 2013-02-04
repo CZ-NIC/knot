@@ -23,9 +23,9 @@
 #include "utils/nsupdate/nsupdate_params.h"
 #include "utils/common/msg.h"
 #include "utils/common/netio.h"
-#include "libknot/util/descriptor.h"
 #include "common/errcode.h"
 #include "libknot/packet/packet.h"
+#include "libknot/util/descriptor.h"
 
 #define DEFAULT_RETRIES_NSUPDATE	3
 #define DEFAULT_TIMEOUT_NSUPDATE	1
@@ -59,97 +59,72 @@ static int parser_set_default(scanner_t *s, const char *fmt, ...)
 	return KNOT_EOK;
 }
 
-static int nsupdate_params_init(params_t *params)
+static int nsupdate_init(nsupdate_params_t *params)
 {
 	memset(params, 0, sizeof(*params));
 
-	/* Specific data ptr. */
-	params->d = malloc(sizeof(nsupdate_params_t));
-	if (!params->d) return KNOT_ENOMEM;
-	memset(params->d, 0, sizeof(nsupdate_params_t));
-	nsupdate_params_t *npar = NSUP_PARAM(params);
+	/* Initialize list. */
+	init_list(&params->qfiles);
 
-	/* Lists */
-	init_list(&params->servers);
-	init_list(&npar->qfiles);
-
-	/* Default values. */
-	params->class_num = KNOT_CLASS_IN;
-	params->operation = OPERATION_UPDATE;
+	/* Default settings. */
+	params->format = FORMAT_NSUPDATE;
+	params->ip = IP_ALL;
 	params->protocol = PROTO_ALL;
-	params->port = strdup(DEFAULT_DNS_PORT);
-	params->udp_size = DEFAULT_UDP_SIZE;
 	params->retries = DEFAULT_RETRIES_NSUPDATE;
 	params->wait = DEFAULT_TIMEOUT_NSUPDATE;
-	params->format = FORMAT_NSUPDATE;
+	params->class_num = KNOT_CLASS_IN;
 	params->type_num = KNOT_RRTYPE_SOA;
-
-	/* Create default server. */
-	if (params_parse_server(DEFAULT_IPV4_NAME, &params->servers,
-	                        params->port)
-	    != KNOT_EOK) {
-		return KNOT_EINVAL;
-	}
+	params->server = server_create(DEFAULT_IPV4_NAME, DEFAULT_DNS_PORT);
+	if (!params->server) return KNOT_ENOMEM;
 
 	/* Initialize RR parser. */
-	npar->rrp = scanner_create(".");
-	if (!npar->rrp) return KNOT_ENOMEM;
-	npar->rrp->process_record = parse_rr;
-	npar->rrp->process_error = parse_err;
-	npar->rrp->default_class = params->class_num;
-	nsupdate_params_set_ttl(params, 0);
-	nsupdate_params_set_origin(params, ".");
+	params->rrp = scanner_create(".");
+	if (!params->rrp) return KNOT_ENOMEM;
+	params->rrp->process_record = parse_rr;
+	params->rrp->process_error = parse_err;
+	params->rrp->default_class = params->class_num;
+	nsupdate_set_ttl(params, 0);
+	nsupdate_set_origin(params, ".");
+
 	return KNOT_EOK;
 }
 
-void nsupdate_params_clean(params_t *params)
+void nsupdate_clean(nsupdate_params_t *params)
 {
+	strnode_t *n = NULL, *nxt = NULL;
+
 	if (params == NULL) {
 		return;
 	}
 
-	/* Free specific structure. */
-	nsupdate_params_t* npar = NSUP_PARAM(params);
-	if (npar) {
-		free(npar->zone);
-		if (npar->rrp) {
-			scanner_free(npar->rrp);
-		}
+	server_free(params->server);
+	server_free(params->srcif);
+	free(params->zone);
+	scanner_free(params->rrp);
+	knot_packet_free(&params->pkt);
+	knot_packet_free(&params->resp);
 
-		/* Free qfiles. */
-		strnode_t *n = NULL, *nxt = NULL;
-		WALK_LIST_DELSAFE(n, nxt, npar->qfiles) {
-			free(n);
-		}
-
-		free(npar);
-		params->d = NULL;
+	/* Free qfiles. */
+	WALK_LIST_DELSAFE(n, nxt, params->qfiles) {
+		free(n);
 	}
-
-	/* Free server list. */
-	server_t *n = NULL, *nxt = NULL;
-	WALK_LIST_DELSAFE(n, nxt, params->servers) {
-		server_free(n);
-	}
-
-	free(params->port);
 
 	/* Free TSIG key. */
 	knot_dname_free(&params->key.name);
 	free(params->key.secret);
 
 	/* Clean up the structure. */
-	memset(params, 0, sizeof(params_t));
+	memset(params, 0, sizeof(*params));
 }
 
-static void nsupdate_params_help(int argc, char *argv[])
+static void nsupdate_help(int argc, char *argv[])
 {
 	printf("Usage: %s [-d] [-v] [-y [hmac:]name:key] [-p port] "
 	       "[-t timeout] [-r retries] [filename]\n",
 	       argv[0]);
 }
 
-int nsupdate_params_parse(params_t *params, int argc, char *argv[])
+int nsupdate_parse(nsupdate_params_t *params, int argc, char *argv[])
 {
 	int opt = 0;
 	int ret = KNOT_EOK;
@@ -158,13 +133,10 @@ int nsupdate_params_parse(params_t *params, int argc, char *argv[])
 		return KNOT_EINVAL;
 	}
 
-	ret = nsupdate_params_init(params);
+	ret = nsupdate_init(params);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-
-	/* Fetch default server. */
-	server_t *srv = TAIL(params->servers);
 
 	/* Command line options processing. */
 	while ((opt = getopt(argc, argv, "dDvp:t:r:y:k:")) != -1) {
@@ -172,15 +144,15 @@ int nsupdate_params_parse(params_t *params, int argc, char *argv[])
 		case 'd':
 		case 'D': /* Extra debugging. */
 			msg_enable_debug(1);
-			params_flag_verbose(params);
+			params->format = FORMAT_VERBOSE;
 			break;
 		case 'v':
-			params_flag_tcp(params);
+			params->protocol = PROTO_TCP;
 			break;
 		case 'p':
-			free(srv->service);
-			srv->service = strdup(optarg);
-			if (!srv->service) {
+			free(params->server->service);
+			params->server->service = strdup(optarg);
+			if (!params->server->service) {
 				ERR("failed to set default port '%s'\n", optarg);
 				return KNOT_ENOMEM;
 			}
@@ -202,29 +174,27 @@ int nsupdate_params_parse(params_t *params, int argc, char *argv[])
 			if (ret != KNOT_EOK) return ret;
 			break;
 		default:
-			nsupdate_params_help(argc, argv);
+			nsupdate_help(argc, argv);
 			return KNOT_ENOTSUP;
 		}
 	}
 
 	/* Process non-option parameters. */
-	nsupdate_params_t* npar = NSUP_PARAM(params);
 	for (; optind < argc; ++optind) {
 		strnode_t *n = malloc(sizeof(strnode_t));
 		if (!n) { /* Params will be cleaned on exit. */
 			return KNOT_ENOMEM;
 		}
 		n->str = argv[optind];
-		add_tail(&npar->qfiles, &n->n);
+		add_tail(&params->qfiles, &n->n);
 	}
 
 	return ret;
 }
 
-int nsupdate_params_set_ttl(params_t *params, uint32_t ttl)
+int nsupdate_set_ttl(nsupdate_params_t *params, const uint32_t ttl)
 {
-	nsupdate_params_t* npar = NSUP_PARAM(params);
-	int ret = parser_set_default(npar->rrp, "$TTL %u\n", ttl);
+	int ret = parser_set_default(params->rrp, "$TTL %u\n", ttl);
 	if (ret == KNOT_EOK) {
 		params->ttl = ttl;
 	} else {
@@ -233,13 +203,12 @@ int nsupdate_params_set_ttl(params_t *params, uint32_t ttl)
 	return ret;
 }
 
-int nsupdate_params_set_origin(params_t *params, const char *origin)
+int nsupdate_set_origin(nsupdate_params_t *params, const char *origin)
 {
-	nsupdate_params_t* npar = NSUP_PARAM(params);
-	int ret = parser_set_default(npar->rrp, "$ORIGIN %s\n", origin);
+	int ret = parser_set_default(params->rrp, "$ORIGIN %s\n", origin);
 	if (ret == KNOT_EOK) {
-		if (npar->zone) free(npar->zone);
-		npar->zone = strdup(origin);
+		if (params->zone) free(params->zone);
+		params->zone = strdup(origin);
 	} else {
 		ERR("failed to set default origin, %s\n", knot_strerror(ret));
 	}

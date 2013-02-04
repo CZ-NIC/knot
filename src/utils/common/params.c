@@ -23,7 +23,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>			// free
-#include <netinet/in.h>                 // in_addr
+#include <netinet/in.h>			// in_addr
 #include <arpa/inet.h>			// inet_pton
 #include <sys/socket.h>			// AF_INET (BSD)
 
@@ -53,14 +53,14 @@ static knot_dname_t* create_fqdn_from_str(const char *str, size_t len)
 
 /* Table of known keys in private-key-format */
 static const char *pkey_tbl[] = {
-        "\x09" "Activate:",
-        "\x0a" "Algorithm:",
-        "\x05" "Bits:",
-        "\x08" "Created:",
-        "\x04" "Key:",
-        "\x13" "Private-key-format:",
-        "\x08" "Publish:",
-        NULL
+	"\x09" "Activate:",
+	"\x0a" "Algorithm:",
+	"\x05" "Bits:",
+	"\x08" "Created:",
+	"\x04" "Key:",
+	"\x13" "Private-key-format:",
+	"\x08" "Publish:",
+	NULL
 };
 
 enum {
@@ -181,60 +181,6 @@ char* get_fqd_name(const char *name)
 	}
 
 	return fqd_name;
-}
-
-void params_flag_ipv4(params_t *params)
-{
-	if (params == NULL) {
-		return;
-	}
-
-	params->ip = IP_4;
-}
-
-void params_flag_ipv6(params_t *params)
-{
-	if (params == NULL) {
-		return;
-	}
-
-	params->ip = IP_6;
-}
-
-void params_flag_servfail(params_t *params)
-{
-	if (params == NULL) {
-		return;
-	}
-
-	params->servfail_stop = true;
-}
-
-void params_flag_nowait(params_t *params)
-{
-	if (params == NULL) {
-		return;
-	}
-
-	params->wait = -1;
-}
-
-void params_flag_tcp(params_t *params)
-{
-	if (params == NULL) {
-		return;
-	}
-
-	params->protocol = PROTO_TCP;
-}
-
-void params_flag_verbose(params_t *params)
-{
-	if (params == NULL) {
-		return;
-	}
-
-	params->format = FORMAT_VERBOSE;
 }
 
 int params_parse_port(const char *value, char **port)
