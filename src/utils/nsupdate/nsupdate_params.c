@@ -144,7 +144,6 @@ int nsupdate_parse(nsupdate_params_t *params, int argc, char *argv[])
 		case 'd':
 		case 'D': /* Extra debugging. */
 			msg_enable_debug(1);
-			params->format = FORMAT_VERBOSE;
 			break;
 		case 'v':
 			params->protocol = PROTO_TCP;

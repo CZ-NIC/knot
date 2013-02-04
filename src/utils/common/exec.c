@@ -98,7 +98,7 @@ knot_packet_t* create_empty_packet(knot_packet_prealloc_type_t t, int max_size)
 	return packet;
 }
 
-static void print_header(const knot_packet_t *packet)
+static void print_header(const format_t format, const knot_packet_t *packet)
 {
 	char    flags[64] = "";
 	uint8_t rcode_id, opcode_id;
@@ -138,12 +138,25 @@ static void print_header(const knot_packet_t *packet)
 	}
 
 	// Print formated info.
-	printf("\n;; ->>HEADER<<- opcode: %s, status: %s, id: %u\n"
-	       ";; Flags:%1s, "
-	       "QUERY: %u, ANSWER: %u, AUTHORITY: %u, ADDITIONAL: %u\n",
-	       opcode->name, rcode->name, knot_packet_id(packet),
-	       flags, packet->header.qdcount, packet->an_rrsets,
-	       packet->ns_rrsets, packet->ar_rrsets);
+	switch (format) {
+	case FORMAT_NSUPDATE:
+		printf("\n;; ->>HEADER<<- opcode: %s, status: %s, id: %u\n"
+		       ";; Flags:%1s, "
+		       "ZONE: %u, PREREQ: %u, UPDATE: %u, ADDITIONAL: %u\n",
+		       opcode->name, rcode->name, knot_packet_id(packet),
+		       flags, packet->header.qdcount, packet->an_rrsets,
+		       packet->ns_rrsets, packet->ar_rrsets);
+
+		break;
+	default:
+		printf("\n;; ->>HEADER<<- opcode: %s, status: %s, id: %u\n"
+		       ";; Flags:%1s, "
+		       "QUERY: %u, ANSWER: %u, AUTHORITY: %u, ADDITIONAL: %u\n",
+		       opcode->name, rcode->name, knot_packet_id(packet),
+		       flags, packet->header.qdcount, packet->an_rrsets,
+		       packet->ns_rrsets, packet->ar_rrsets);
+		break;
+	}
 }
 
 static void print_footer(const size_t total_len,
@@ -441,9 +454,36 @@ void print_packet(const format_t      format,
 		}
 		break;
 	case FORMAT_NSUPDATE:
+		print_header(format, packet);
+
+		if (packet->header.qdcount > 0) {
+			printf("\n;; ZONE SECTION:\n;; ");
+			print_section_question(packet->question.qname,
+			                       packet->question.qclass,
+			                       packet->question.qtype);
+		}
+
+		if (packet->an_rrsets > 0) {
+			printf("\n;; PREREQUISITE SECTION:\n");
+			print_section_verbose(packet->answer,
+			                      packet->an_rrsets);
+		}
+
+		if (packet->ns_rrsets > 0) {
+			printf("\n;; UPDATE SECTION:\n");
+			print_section_verbose(packet->authority,
+			                      packet->ns_rrsets);
+		}
+
+		if (packet->ar_rrsets > 0) {
+			printf("\n;; ADDITIONAL DATA:\n");
+			print_section_verbose(packet->additional,
+			                      packet->ar_rrsets);
+		}
+		break;
 	case FORMAT_VERBOSE:
 	case FORMAT_MULTILINE:
-		print_header(packet);
+		print_header(format, packet);
 
 		if (packet->header.qdcount > 0) {
 			printf("\n;; QUESTION SECTION:\n;; ");
@@ -470,9 +510,7 @@ void print_packet(const format_t      format,
 			                      packet->ar_rrsets);
 		}
 
-		if (format != FORMAT_NSUPDATE) {
-			print_footer(total_len, sockfd, elapsed, msg_count);
-		}
+		print_footer(total_len, sockfd, elapsed, msg_count);
 		break;
 	default:
 		break;

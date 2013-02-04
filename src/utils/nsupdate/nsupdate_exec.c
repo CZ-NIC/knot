@@ -588,7 +588,6 @@ int cmd_ttl(const char* lp, nsupdate_params_t *params)
 int cmd_debug(const char* lp, nsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
-	params->format = FORMAT_VERBOSE;
 	msg_enable_debug(1);
 	return KNOT_EOK;
 }
