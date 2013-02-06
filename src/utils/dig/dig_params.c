@@ -31,6 +31,16 @@
 #define DEFAULT_RETRIES_DIG	3
 #define DEFAULT_TIMEOUT_DIG	5
 
+const flags_t DEFAULT_FLAGS = {
+	.aa_flag = false,
+	.tc_flag = false,
+	.rd_flag = true,
+	.ra_flag = false,
+	.z_flag  = false,
+	.ad_flag = false,
+	.cd_flag = false,
+};
+
 query_t* query_create(const char    *qname,
                       const int32_t qtype,
                       const int32_t qclass)
@@ -52,6 +62,8 @@ query_t* query_create(const char    *qname,
 	query->qclass = qclass;
 	query->qtype = qtype;
 	query->xfr_serial = 0;
+	query->flags = DEFAULT_FLAGS;
+	query->style = DEFAULT_STYLE;
 
 	return query;
 }
@@ -76,7 +88,6 @@ static int dig_init(dig_params_t *params)
 
 	// Default settings.
 	params->operation = OPERATION_QUERY;
-	params->format = FORMAT_VERBOSE;
 	params->ip = IP_ALL;
 	params->protocol = PROTO_ALL;
 	params->port = strdup(DEFAULT_DNS_PORT);
@@ -88,8 +99,12 @@ static int dig_init(dig_params_t *params)
 	params->type_num = -1;
 	params->xfr_serial = 0;
 
-	// Default options.
-	params->options.rd_flag = true;
+	// Default flags.
+	params->flags = DEFAULT_FLAGS;
+
+	// Default style.
+	params->style = DEFAULT_STYLE;
+	params->style.format = FORMAT_VERBOSE;
 
 	return KNOT_EOK;
 }
@@ -134,6 +149,10 @@ static int parse_name(const char *value, dig_params_t *params)
 		return KNOT_ENOMEM;
 	}
 
+	// Copy global settings.
+	query->flags = params->flags;
+	query->style = params->style;
+
 	// Add new query to the queries.
 	add_tail(&params->queries, (node *)query);
 
@@ -161,6 +180,10 @@ static int parse_reverse(const char *value, dig_params_t *params)
 		return KNOT_ENOMEM;
 	}
 
+	// Copy global settings.
+	query->flags = params->flags;
+	query->style = params->style;
+
 	// Add new query to the queries.
 	add_tail(&params->queries, (node *)query);
 
@@ -179,6 +202,8 @@ static void complete_queries(dig_params_t *params)
 			WARN("can't create query . NS IN\n");
 			return;
 		}
+		query->flags = params->flags;
+		query->style = params->style;
 		add_tail(&params->queries, (node *)query);
 		query = NULL;
 	}
@@ -376,7 +401,41 @@ static int parse_opt1(const char *opt, const char *value,
 
 static int parse_opt2(const char *value, dig_params_t *params)
 {
-	ERR("invalid option: %s\n", value);
+	if (strcmp(value, "all") == 0) {
+
+	} else if (strcmp(value, "noall") == 0) {
+
+	} else if (strcmp(value, "qr") == 0) {
+		params->style.show_query = true;
+	} else if (strcmp(value, "noqr") == 0) {
+		params->style.show_query = false;
+	} else if (strcmp(value, "question") == 0) {
+		params->style.show_question = true;
+	} else if (strcmp(value, "noquestion") == 0) {
+		params->style.show_question = false;
+	} else if (strcmp(value, "answer") == 0) {
+		params->style.show_answer = true;
+	} else if (strcmp(value, "noanswer") == 0) {
+		params->style.show_answer = false;
+	} else if (strcmp(value, "authority") == 0) {
+		params->style.show_authority = true;
+	} else if (strcmp(value, "noauthority") == 0) {
+		params->style.show_authority = false;
+	} else if (strcmp(value, "additional") == 0) {
+		params->style.show_additional = true;
+	} else if (strcmp(value, "noadditional") == 0) {
+		params->style.show_additional = false;
+	} else if (strcmp(value, "cl") == 0) {
+		params->style.show_class = true;
+	} else if (strcmp(value, "nocl") == 0) {
+		params->style.show_class = false;
+	} else if (strcmp(value, "ttl") == 0) {
+		params->style.show_ttl = true;
+	} else if (strcmp(value, "nottl") == 0) {
+		params->style.show_ttl = false;
+	} else {
+		ERR("invalid option: %s\n", value);
+	}
 
 	return KNOT_EOK;
 }

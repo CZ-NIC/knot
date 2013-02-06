@@ -44,8 +44,6 @@ typedef struct {
 	list		qfiles;
 	/*!< List of nameservers to query to. */
 	server_t	*server;
-	/*!< Output format. */
-	format_t	format;
 	/*!< Local interface (optional). */
 	server_t	*srcif;
 	/*!< Operation mode. */
@@ -74,6 +72,8 @@ typedef struct {
 	uint8_t		rwire[MAX_PACKET_SIZE];
 	/*!< TSIG key used. */
 	knot_key_t	key;
+	/*!< Default output settings. */
+	style_t		style;
 } nsupdate_params_t;
 
 int nsupdate_parse(nsupdate_params_t *params, int argc, char *argv[]);

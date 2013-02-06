@@ -28,7 +28,7 @@
 #define _UTILS__EXEC_H_
 
 #include "libknot/packet/packet.h"	// knot_packet_t
-#include "utils/common/params.h"	// format_t
+#include "utils/common/params.h"	// style_t
 
 extern knot_lookup_table_t opcodes[];
 extern knot_lookup_table_t rcodes[];
@@ -36,18 +36,18 @@ extern knot_lookup_table_t rtypes[];
 
 knot_packet_t* create_empty_packet(knot_packet_prealloc_type_t t, int max_size);
 
-void print_header_xfr(const format_t format, const knot_rr_type_t type);
+void print_header_xfr(const style_t *style, const knot_rr_type_t type);
 
-void print_data_xfr(const format_t      format,
+void print_data_xfr(const style_t       *style,
                     const knot_packet_t *packet);
 
-void print_footer_xfr(const format_t format,
-                      const size_t   total_len,
-                      const int      sockfd,
-                      const float    elapsed,
-                      const size_t   msg_count);
+void print_footer_xfr(const style_t *style,
+                      const size_t  total_len,
+                      const int     sockfd,
+                      const float   elapsed,
+                      const size_t  msg_count);
 
-void print_packet(const format_t      format,
+void print_packet(const style_t       *style,
                   const knot_packet_t *packet,
                   const size_t        wire_len,
                   const int           sockfd,

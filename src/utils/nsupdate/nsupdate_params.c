@@ -66,16 +66,21 @@ static int nsupdate_init(nsupdate_params_t *params)
 	/* Initialize list. */
 	init_list(&params->qfiles);
 
+	/* Default server. */
+	params->server = server_create(DEFAULT_IPV4_NAME, DEFAULT_DNS_PORT);
+	if (!params->server) return KNOT_ENOMEM;
+
 	/* Default settings. */
-	params->format = FORMAT_NSUPDATE;
 	params->ip = IP_ALL;
 	params->protocol = PROTO_ALL;
 	params->retries = DEFAULT_RETRIES_NSUPDATE;
 	params->wait = DEFAULT_TIMEOUT_NSUPDATE;
 	params->class_num = KNOT_CLASS_IN;
 	params->type_num = KNOT_RRTYPE_SOA;
-	params->server = server_create(DEFAULT_IPV4_NAME, DEFAULT_DNS_PORT);
-	if (!params->server) return KNOT_ENOMEM;
+
+	/* Default style. */
+	params->style = DEFAULT_STYLE;
+	params->style.format = FORMAT_NSUPDATE;
 
 	/* Initialize RR parser. */
 	params->rrp = scanner_create(".");

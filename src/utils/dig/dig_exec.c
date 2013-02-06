@@ -53,7 +53,7 @@ static knot_packet_t* create_query_packet(const dig_params_t *params,
 	}
 
 	// Set recursion bit to wireformat.
-	if (params->options.rd_flag == true) {
+	if (query->flags.rd_flag == true) {
 		knot_wire_set_rd(packet->wireformat);
 	} else {
 		knot_wire_flags_clear_rd(packet->wireformat);
@@ -338,7 +338,7 @@ void process_query(const dig_params_t *params, const query_t *query)
 			total_len += in_len;
 
 			// Print formated data.
-			print_packet(params->format, in_packet, total_len,
+			print_packet(&query->style, in_packet, total_len,
 			             sockfd, elapsed, msg_count);
 
 			knot_packet_free(&in_packet);
@@ -354,9 +354,9 @@ void process_query(const dig_params_t *params, const query_t *query)
 		total_len += in_len;
 
 		// Start XFR dump.
-		print_header_xfr(params->format, query->qtype);
+		print_header_xfr(&query->style, query->qtype);
 
-		print_data_xfr(params->format, in_packet);
+		print_data_xfr(&query->style, in_packet);
 
 		// Read first SOA serial.
 		int64_t serial = first_serial_check(in_packet);
@@ -414,7 +414,7 @@ void process_query(const dig_params_t *params, const query_t *query)
 			}
 
 			// Dump message data.
-			print_data_xfr(params->format, in_packet);
+			print_data_xfr(&query->style, in_packet);
 
 			// Count non-first XFR message.
 			msg_count++;
@@ -430,7 +430,7 @@ void process_query(const dig_params_t *params, const query_t *query)
 			elapsed = (t_end.tv_sec - t_start.tv_sec) * 1000 +
 			          ((t_end.tv_usec - t_start.tv_usec) / 1000.0);
 
-			print_footer_xfr(params->format, total_len, sockfd,
+			print_footer_xfr(&query->style, total_len, sockfd,
 			                 elapsed, msg_count);
 
 			knot_packet_free(&in_packet);

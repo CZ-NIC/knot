@@ -38,6 +38,19 @@
 #define IPV4_REVERSE_DOMAIN	"in-addr.arpa."
 #define IPV6_REVERSE_DOMAIN	"ip6.arpa."
 
+const style_t DEFAULT_STYLE = {
+	.format = FORMAT_VERBOSE,
+	.show_header = true,
+	.show_footer = true,
+	.show_query = false,
+	.show_question = true,
+	.show_answer = true,
+	.show_authority = true,
+	.show_additional = true,
+	.show_class = true,
+	.show_ttl = true,
+};
+
 static knot_dname_t* create_fqdn_from_str(const char *str, size_t len)
 {
 	knot_dname_t *d = NULL;

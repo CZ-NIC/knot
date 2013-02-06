@@ -31,7 +31,25 @@
 
 #include "utils/common/params.h"	// params_t
 
-/*! \brief Structure containing basic parameters for DNS query. */
+/*! \brief DNS header flags. */
+typedef struct {
+	/*!< Authoritative answer flag. */
+	bool		aa_flag;
+	/*!< Truncated flag. */
+	bool		tc_flag;
+	/*!< Recursion desired flag. */
+	bool		rd_flag;
+	/*!< Recursion available flag. */
+	bool		ra_flag;
+	/*!< Z flag. */
+	bool		z_flag;
+	/*!< Authenticated data flag. */
+	bool		ad_flag;
+	/*!< Checking disabled flag. */
+	bool		cd_flag;
+} flags_t;
+
+/*! \brief Basic parameters for DNS query. */
 typedef struct {
 	/*!< List node (for list container). */
 	node		n;
@@ -43,21 +61,19 @@ typedef struct {
 	int32_t		qtype;
 	/*!< SOA serial for XFR. */
 	uint32_t	xfr_serial;
+	/*!< Header flags. */
+	flags_t		flags;
+	/*!< Output settings. */
+	style_t		style;
 } query_t;
 
+/*! \brief Operation mode of dig. */
 typedef enum {
 	/*!< Classic queries in list. */
 	OPERATION_QUERY,
 	/*!< Query for NS and all authoritative SOA records. */
 	OPERATION_LIST_SOA,
-	/*!< Default mode for nsupdate. */
-	OPERATION_UPDATE,
 } operation_t;
-
-typedef struct {
-	/*!< Recursion desired flag. */
-	bool		rd_flag;
-} options_t;
 
 /*! \brief Settings for dig. */
 typedef struct {
@@ -67,8 +83,6 @@ typedef struct {
 	list		queries;
 	/*!< Operation mode. */
 	operation_t	operation;
-	/*!< Output format. */
-	format_t	format;
 	/*!< Version of ip protocol to use. */
 	ip_t		ip;
 	/*!< Type (TCP, UDP) protocol to use. */
@@ -89,9 +103,14 @@ typedef struct {
 	int32_t		type_num;
 	/*!< Default SOA serial for XFR. */
 	uint32_t	xfr_serial;
-	/*!< Global options. */
-	options_t	options;
+	/*!< Header flags. */
+	flags_t		flags;
+	/*!< Default output settings. */
+	style_t		style;
 } dig_params_t;
+
+/*! \brief Default header flags. */ 
+extern const flags_t DEFAULT_FLAGS;
 
 query_t* query_create(const char    *qname,
                       const int32_t qtype,

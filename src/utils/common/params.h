@@ -40,18 +40,21 @@
 
 #define SEP_CHARS		"\n\t "
 
+/*! \brief Variants of IP protocol. */
 typedef enum {
 	IP_ALL,
 	IP_4,
 	IP_6
 } ip_t;
 
+/*! \brief Variants of transport protocol. */
 typedef enum {
 	PROTO_ALL,
 	PROTO_TCP,
 	PROTO_UDP
 } protocol_t;
 
+/*! \brief Variants of text output format. */
 typedef enum {
 	/*!< Short dig output. */
 	FORMAT_DIG,
@@ -64,6 +67,37 @@ typedef enum {
 	/*!< Verbose multiline output. */
 	FORMAT_MULTILINE,
 } format_t;
+
+/*! \brief Text output settings. */
+typedef struct {
+	/*!< Output format. */
+	format_t	format;
+
+	/*!< Show header info. */
+	bool		show_header;
+	/*!< Show footer info. */
+	bool		show_footer;
+
+	/*!< Show query packet. */
+	bool		show_query;
+
+	/*!< Show QUERY/ZONE section. */
+	bool		show_question;
+	/*!< Show ANSWER/PREREQ section. */
+	bool		show_answer;
+	/*!< Show UPDATE/AUTHORITY section. */
+	bool		show_authority;
+	/*!< Show ADDITIONAL section. */
+	bool		show_additional;
+
+	/*!< Show class. */
+	bool		show_class;
+	/*!< Show ttl. */
+	bool		show_ttl;
+} style_t;
+
+/*! \brief Default style settings. */
+extern const style_t DEFAULT_STYLE;
 
 char* get_reverse_name(const char *name);
 

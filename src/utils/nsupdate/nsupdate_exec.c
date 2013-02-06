@@ -817,7 +817,7 @@ int cmd_show(const char* lp, nsupdate_params_t *params)
 	if (!params->pkt) return KNOT_EOK;
 	printf("Outgoing update query:\n");
 	size_t len = knot_packet_size(params->pkt);
-	print_packet(params->format, params->pkt, len, 0, 0.0f, 1);
+	print_packet(&params->style, params->pkt, len, 0, 0.0f, 1);
 	return KNOT_EOK;
 }
 
@@ -828,7 +828,7 @@ int cmd_answer(const char* lp, nsupdate_params_t *params)
 	if (!params->resp) return KNOT_EOK;
 	printf("Answer:\n");
 	size_t len = knot_packet_size(params->resp);
-	print_packet(params->format, params->resp, len, 0, 0.0f, 1);
+	print_packet(&params->style, params->resp, len, 0, 0.0f, 1);
 	return KNOT_EOK;
 }
 

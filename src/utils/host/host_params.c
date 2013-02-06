@@ -41,7 +41,6 @@ static int host_init(dig_params_t *params)
 
 	// Default settings.
 	params->operation = OPERATION_QUERY;
-	params->format = FORMAT_HOST;
 	params->ip = IP_ALL;
 	params->protocol = PROTO_ALL;
 	params->port = strdup(DEFAULT_DNS_PORT);
@@ -53,8 +52,12 @@ static int host_init(dig_params_t *params)
 	params->type_num = -1;
 	params->xfr_serial = 0;
 
-	// Default options.
-	params->options.rd_flag = true;
+	// Default flags.
+	params->flags = DEFAULT_FLAGS;
+
+	// Default style.
+	params->style = DEFAULT_STYLE;
+	params->style.format = FORMAT_HOST;
 
 	return KNOT_EOK;
 }
@@ -110,6 +113,8 @@ static int host_parse_name(const char *name, dig_params_t *params)
 				free(fqd_name);
 				return KNOT_ENOMEM;
 			}
+			query->flags = params->flags;
+			query->style = params->style;
 			add_tail(&params->queries, (node *)query);
 		} else {
 			// Add query for name and specified type.
@@ -124,6 +129,8 @@ static int host_parse_name(const char *name, dig_params_t *params)
 			if (params->type_num == KNOT_RRTYPE_IXFR) {
 				query->xfr_serial = params->xfr_serial;
 			}
+			query->flags = params->flags;
+			query->style = params->style;
 			add_tail(&params->queries, (node *)query);
 		}
 	// RR type is unknown, use defaults.
@@ -136,6 +143,8 @@ static int host_parse_name(const char *name, dig_params_t *params)
 				free(fqd_name);
 				return KNOT_ENOMEM;
 			}
+			query->flags = params->flags;
+			query->style = params->style;
 			add_tail(&params->queries, (node *)query);
 
 			// Add query for name and type AAAA.
@@ -145,6 +154,8 @@ static int host_parse_name(const char *name, dig_params_t *params)
 				free(fqd_name);
 				return KNOT_ENOMEM;
 			}
+			query->flags = params->flags;
+			query->style = params->style;
 			add_tail(&params->queries, (node *)query);
 
 			// Add query for name and type MX.
@@ -154,6 +165,8 @@ static int host_parse_name(const char *name, dig_params_t *params)
 				free(fqd_name);
 				return KNOT_ENOMEM;
 			}
+			query->flags = params->flags;
+			query->style = params->style;
 			add_tail(&params->queries, (node *)query);
 		} else {
 			// Add reverse query for address.
@@ -164,6 +177,8 @@ static int host_parse_name(const char *name, dig_params_t *params)
 				free(fqd_name);
 				return KNOT_ENOMEM;
 			}
+			query->flags = params->flags;
+			query->style = params->style;
 			add_tail(&params->queries, (node *)query);
 		}
 	}
@@ -207,7 +222,7 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 			break;
 		case 'a':
 			params->type_num = KNOT_RRTYPE_ANY;
-			params->format = FORMAT_VERBOSE;
+			params->style.format = FORMAT_VERBOSE;
 			break;
 		case 'C':
 			params->type_num = KNOT_RRTYPE_SOA;
@@ -215,13 +230,13 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 			break;
 		case 'd':
 		case 'v': // Fall through.
-			params->format = FORMAT_VERBOSE;
+			params->style.format = FORMAT_VERBOSE;
 			break;
 		case 'l':
 			params->type_num = KNOT_RRTYPE_AXFR;
 			break;
 		case 'r':
-			params->options.rd_flag = false;
+			params->flags.rd_flag = false;
 			break;
 		case 's':
 			params->servfail_stop = true;

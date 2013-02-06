@@ -19,7 +19,6 @@
 #include <stdlib.h>			// free
 #include <time.h>			// localtime_r
 #include <sys/time.h>			// gettimeofday
-
 #include <arpa/inet.h>			// inet_ntop
 #include <sys/socket.h>			// AF_INET
 #include <netinet/in.h>			// sockaddr_in (BSD)
@@ -29,7 +28,6 @@
 #include "libknot/consts.h"		// KNOT_RCODE_NOERROR
 #include "libknot/util/wire.h"		// knot_wire_set_rd
 #include "libknot/packet/query.h"	// knot_query_init
-
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/params.h"	// params_t
 #include "utils/common/netio.h"		// send_msg
@@ -98,7 +96,7 @@ knot_packet_t* create_empty_packet(knot_packet_prealloc_type_t t, int max_size)
 	return packet;
 }
 
-static void print_header(const format_t format, const knot_packet_t *packet)
+static void print_header(const style_t *style, const knot_packet_t *packet)
 {
 	char    flags[64] = "";
 	uint8_t rcode_id, opcode_id;
@@ -138,7 +136,7 @@ static void print_header(const format_t format, const knot_packet_t *packet)
 	}
 
 	// Print formated info.
-	switch (format) {
+	switch (style->format) {
 	case FORMAT_NSUPDATE:
 		printf("\n;; ->>HEADER<<- opcode: %s, status: %s, id: %u\n"
 		       ";; Flags:%1s, "
@@ -293,7 +291,7 @@ static void print_section_dig(const knot_rrset_t **rrsets,
 }
 
 static void print_section_host(const knot_rrset_t **rrsets,
-                              const uint16_t     count)
+                               const uint16_t     count)
 {
 	size_t buflen = 8192;
 	char   *buf = malloc(buflen);
@@ -360,7 +358,7 @@ static void print_error_host(const uint8_t         code,
 	free(owner);
 }
 
-void print_header_xfr(const format_t format, const knot_rr_type_t type)
+void print_header_xfr(const style_t *style, const knot_rr_type_t type)
 {
 	char name[16] = "";
 
@@ -375,7 +373,7 @@ void print_header_xfr(const format_t format, const knot_rr_type_t type)
 		return;
 	}
 
-	switch (format) {
+	switch (style->format) {
 	case FORMAT_VERBOSE:
 	case FORMAT_MULTILINE:
 		printf(";; %s transfer\n\n", name);
@@ -387,14 +385,14 @@ void print_header_xfr(const format_t format, const knot_rr_type_t type)
 	}
 }
 
-void print_data_xfr(const format_t      format,
+void print_data_xfr(const style_t       *style,
                     const knot_packet_t *packet)
 {
 	if (packet == NULL) {
 		return;
 	}
 
-	switch (format) {
+	switch (style->format) {
 	case FORMAT_DIG:
 		print_section_dig(packet->answer, packet->an_rrsets);
 		break;
@@ -410,13 +408,13 @@ void print_data_xfr(const format_t      format,
 	}
 }
 
-void print_footer_xfr(const format_t format,
+void print_footer_xfr(const style_t  *style,
                       const size_t   total_len,
                       const int      sockfd,
                       const float    elapsed,
                       const size_t   msg_count)
 {
-	switch (format) {
+	switch (style->format) {
 	case FORMAT_VERBOSE:
 	case FORMAT_MULTILINE:
 		print_footer(total_len, sockfd, elapsed, msg_count);
@@ -428,7 +426,7 @@ void print_footer_xfr(const format_t format,
 	}
 }
 
-void print_packet(const format_t      format,
+void print_packet(const style_t       *style,
                   const knot_packet_t *packet,
                   const size_t        total_len,
                   const int           sockfd,
@@ -439,7 +437,7 @@ void print_packet(const format_t      format,
 		return;
 	}
 
-	switch (format) {
+	switch (style->format) {
 	case FORMAT_DIG:
 		if (packet->an_rrsets > 0) {
 			print_section_dig(packet->answer, packet->an_rrsets);
@@ -454,7 +452,7 @@ void print_packet(const format_t      format,
 		}
 		break;
 	case FORMAT_NSUPDATE:
-		print_header(format, packet);
+		print_header(style, packet);
 
 		if (packet->header.qdcount > 0) {
 			printf("\n;; ZONE SECTION:\n;; ");
@@ -483,7 +481,7 @@ void print_packet(const format_t      format,
 		break;
 	case FORMAT_VERBOSE:
 	case FORMAT_MULTILINE:
-		print_header(format, packet);
+		print_header(style, packet);
 
 		if (packet->header.qdcount > 0) {
 			printf("\n;; QUESTION SECTION:\n;; ");
