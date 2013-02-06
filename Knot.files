@@ -49,6 +49,7 @@ src/libknot/util/utils.h
 src/libknot/util/utils.c
 src/libknot/util/descriptor.h
 src/libknot/util/descriptor.c
+src/libknot/util/endian.h
 src/libknot/zone/zonedb.h
 src/libknot/zone/zonedb.c
 src/libknot/zone/node.h
@@ -225,6 +226,8 @@ src/tests/libknot/libknot/query_tests.c
 src/tests/libknot/libknot/query_tests.h
 src/tests/libknot/libknot/nsec3_tests.c
 src/tests/libknot/libknot/nsec3_tests.h
+src/tests/libknot/wire_tests.c
+src/tests/libknot/wire_tests.h
 src/tests/libknot/realdata/unittests_libknot_realdata.c
 src/tests/libknot/realdata/libknot/packet_tests_realdata.c
 src/tests/libknot/realdata/libknot/packet_tests_realdata.h

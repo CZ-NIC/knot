@@ -27,10 +27,10 @@
 #ifndef _KNOT_UTILS_H_
 #define _KNOT_UTILS_H_
 
+#include "util/endian.h"
 #include <string.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <arpa/inet.h>
 
 /*!
  * \brief A general purpose lookup table.
@@ -90,11 +90,11 @@ size_t knot_strlcpy(char *dst, const char *src, size_t size);
  *
  * \param pos Data to read the 2 bytes from.
  *
- * \return The 2 bytes read, in inverse endian.
+ * \return The 2 bytes read, in host byte order.
  */
 static inline uint16_t knot_wire_read_u16(const uint8_t *pos)
 {
-	return ntohs(*(uint16_t *)pos);
+	return be16toh(*(uint16_t *)pos);
 }
 
 /*!
@@ -102,11 +102,11 @@ static inline uint16_t knot_wire_read_u16(const uint8_t *pos)
  *
  * \param pos Data to read the 4 bytes from.
  *
- * \return The 4 bytes read, in inverse endian.
+ * \return The 4 bytes read, in host byte order.
  */
 static inline uint32_t knot_wire_read_u32(const uint8_t *pos)
 {
-	return ntohl(*(uint32_t *)pos);
+	return be32toh(*(uint32_t *)pos);
 }
 
 /*!
@@ -114,67 +114,95 @@ static inline uint32_t knot_wire_read_u32(const uint8_t *pos)
  *
  * \param pos Data to read the 6 bytes from.
  *
- * \return The 6 bytes read, in inverse endian.
+ * \return The 6 bytes read, in host byte order.
  */
 static inline uint64_t knot_wire_read_u48(const uint8_t *pos)
 {
+	uint64_t input = 0;
+	uint64_t swapped;
+
+	memcpy((void *)&input, (void *)pos, 6);
+	swapped = be64toh(input);
+
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-	return ((uint64_t)ntohl(*(uint32_t *)pos)) << 16 |
-	       ((uint64_t)ntohs(*(uint16_t *)(pos + 4)));
+	return swapped >> 16;
 #elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-	return ((uint64_t)(*(uint32_t *)pos)) |
-	       ((uint64_t)(*(uint16_t *)(pos + 4))) << 32;
+	return swapped;
 #else
 #error Unsupported byte order.
 #endif
 }
 
 /*!
+ * \brief Read 8 bytes from the wireformat data.
+ *
+ * \param pos Data to read the 8 bytes from.
+ *
+ * \return The 8 bytes read, in host byte order.
+ */
+static inline uint64_t knot_wire_read_u64(const uint8_t *pos)
+{
+	return be64toh(*(uint64_t *)pos);
+}
+
+/*!
  * \brief Writes 2 bytes in wireformat.
  *
- * The endian of the data is inverted.
+ * The data are stored in network byte order (big endian).
  *
  * \param pos Position where to put the 2 bytes.
  * \param data Data to put.
  */
 static inline void knot_wire_write_u16(uint8_t *pos, uint16_t data)
 {
-	*(uint16_t *)pos = htons(data);
+	*(uint16_t *)pos = htobe16(data);
 }
 
 /*!
  * \brief Writes 4 bytes in wireformat.
  *
- * The endian of the data is inverted.
+ * The data are stored in network byte order (big endian).
  *
  * \param pos Position where to put the 4 bytes.
  * \param data Data to put.
  */
 static inline void knot_wire_write_u32(uint8_t *pos, uint32_t data)
 {
-	*(uint32_t *)pos = htonl(data);
+	*(uint32_t *)pos = htobe32(data);
 }
 
 /*!
  * \brief Writes 6 bytes in wireformat.
  *
- * The endian of the data is inverted.
+ * The data are stored in network byte order (big endian).
  *
  * \param pos Position where to put the 4 bytes.
  * \param data Data to put.
  */
 static inline void knot_wire_write_u48(uint8_t *pos, uint64_t data)
 {
-	uint8_t *dataptr = (void *)&data;
+	uint64_t swapped = htobe64(data);
+
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-	*(uint32_t *)(pos + 2) = htonl(*(uint32_t *)dataptr);
-	*(uint16_t *)pos = htons(*(uint16_t *)(dataptr + 4));
+	memcpy((void *)pos, ((void *)&swapped) + 2, 6);
 #elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-	*(uint32_t *)pos = *(uint32_t *)dataptr;
-	*(uint16_t *)(pos + 4) = *(uint16_t *)(dataptr + 4);
+	memcpy((void *)pos, (void *)&swapped, 6);
 #else
 #error Unsupported byte order.
 #endif
+}
+
+/*!
+ * \brief Writes 8 bytes in wireformat.
+ *
+ * The data are stored in network byte order (big endian).
+ *
+ * \param pos Position where to put the 8 bytes.
+ * \param data Data to put.
+ */
+static inline void knot_wire_write_u64(uint8_t *pos, uint64_t data)
+{
+	*(uint64_t *)pos = htobe64(data);
 }
 
 /*!

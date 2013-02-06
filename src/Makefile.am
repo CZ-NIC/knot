@@ -172,6 +172,7 @@ libknot_la_SOURCES =				\
 	libknot/util/tolower.c			\
 	libknot/util/descriptor.h		\
 	libknot/util/wire.h			\
+	libknot/util/endian.h			\
 	libknot/packet/query.c			\
 	libknot/packet/response.c		\
 	libknot/packet/packet.c			\

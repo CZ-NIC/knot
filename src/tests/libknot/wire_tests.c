@@ -28,13 +28,15 @@ unit_api wire_tests_api = {
 
 static int wire_tests_count(int argc, char *argv[])
 {
-	return 6;
+	return 8;
 }
 
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-	#define ENDIAN_MATCH(expression, match_little, match_big) ((expression) == (match_little))
+	#define ENDIAN_MATCH(expression, match_little, match_big) \
+		((expression) == (match_little))
 #elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-	#define ENDIAN_MATCH(expression, match_little, match_big) ((expression) == (match_big))
+	#define ENDIAN_MATCH(expression, match_little, match_big) \
+		((expression) == (match_big))
 #else
 	#error Unsupported byte order.
 #endif
@@ -44,7 +46,8 @@ static int wire_tests_run(int argc, char *argv[])
 	// 1. - 16-bit read
 	{
 		uint16_t data = 0xAABB;
-		ok(ENDIAN_MATCH(knot_wire_read_u16((uint8_t *)&data), 0xBBAA, 0xAABB), "16-bit read");
+		ok(ENDIAN_MATCH(knot_wire_read_u16((uint8_t *)&data),
+		   0xBBAA, 0xAABB), "16-bit read");
 	}
 
 	// 2. - 16-bit read
@@ -52,13 +55,15 @@ static int wire_tests_run(int argc, char *argv[])
 		uint16_t data_in = 0xAABB;
 		uint64_t data_out = 0xFF0000;
 		knot_wire_write_u16((uint8_t *)&data_out, data_in);
-		ok(ENDIAN_MATCH(data_out, 0xFFBBAA, 0xFFAABB), "16-bit write");
+		ok(ENDIAN_MATCH(data_out,
+		   0xFFBBAA, 0xFFAABB), "16-bit write");
 	}
 
 	// 3. - 32-bit read
 	{
 		uint32_t data = 0xAABBCCDD;
-		ok(ENDIAN_MATCH(knot_wire_read_u32((uint8_t *)&data), 0xDDCCBBAA, 0xAABBCCDD), "32-bit read");
+		ok(ENDIAN_MATCH(knot_wire_read_u32((uint8_t *)&data),
+		   0xDDCCBBAA, 0xAABBCCDD), "32-bit read");
 	}
 
 	// 4. - 32-bit write
@@ -66,22 +71,41 @@ static int wire_tests_run(int argc, char *argv[])
 		uint32_t data_in = 0xAABBCCDD;
 		uint64_t data_out = 0xFF00000000;
 		knot_wire_write_u32((uint8_t *)&data_out, data_in);
-		ok(ENDIAN_MATCH(data_out, 0xFFDDCCBBAA, 0xFFAABBCCDD), "32-bit write");
+		ok(ENDIAN_MATCH(data_out,
+		   0xFFDDCCBBAA, 0xFFAABBCCDD), "32-bit write");
 
 	}
 
 	// 5. - 48-bit read
 	{
-		uint64_t data = 0xAABBCCDDEEFF;
-		ok(ENDIAN_MATCH(knot_wire_read_u48((uint8_t *)&data), 0xFFEEDDCCBBAA, 0xAABBCCDDEEFF), "48-bit read");
+		uint64_t data = 0x81AABBCCDDEEFF;
+		ok(ENDIAN_MATCH(knot_wire_read_u48((uint8_t *)&data),
+		   0xFFEEDDCCBBAA, 0xAABBCCDDEEFF), "48-bit read");
 	}
 
 	// 6. - 48-bit write
 	{
-		uint64_t data_in = 0xAABBCCDDEEFF;
+		uint64_t data_in = 0x81AABBCCDDEEFF;
 		uint64_t data_out = 0xDD000000000000;
 		knot_wire_write_u48((uint8_t *)&data_out, data_in);
-		ok(ENDIAN_MATCH(data_out, 0xDDFFEEDDCCBBAA, 0xDDAABBCCDDEEFF), "48-bit write");
+		ok(ENDIAN_MATCH(data_out,
+		   0xDDFFEEDDCCBBAA, 0xDDAABBCCDDEEFF), "48-bit write");
+	}
+
+	// 7. - 64-bit read
+	{
+		uint64_t data = 0x8899AABBCCDDEEFF;
+		ok(ENDIAN_MATCH(knot_wire_read_u64((uint8_t *)&data),
+		   0xFFEEDDCCBBAA9988, 0x8899AABBCCDDEEFF), "64-bit read");
+	}
+
+	// 8. - 64-bit write
+	{
+		uint64_t data_in = 0x8899AABBCCDDEEFF;
+		uint64_t data_out = 0x0;
+		knot_wire_write_u64((uint8_t *)&data_out, data_in);
+		ok(ENDIAN_MATCH(data_out,
+		   0xFFEEDDCCBBAA9988, 0x8899AABBCCDDEEFF), "64-bit write");
 	}
 
 	return 0;
