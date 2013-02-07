@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I ../m4
-libexec_PROGRAMS = unittests unittests-xfr unittests-zscanner
+libexec_PROGRAMS = unittests unittests-xfr unittests-zscanner unittests-libknot
 sbin_PROGRAMS = knotc knotd
 dist_man_MANS = knot.conf.5 knotc.8 knotd.8
 
@@ -50,16 +50,17 @@ unittests_SOURCES =				\
 	tests/knot/server_tests.c		\
 	tests/knot/server_tests.h		\
 	tests/unittests_main.c
+	
+unittests_libknot_SOURCES = 			\
+	tests/libknot/unittests_libknot.c	\
+	tests/libknot/libknot/rrset_tests.h	\
+	tests/libknot/libknot/rrset_tests.c
 
 unittests_xfr_SOURCES = 			\
 	tests/xfr_tests.c			\
 	tests/xfr_tests.h
 
 nodist_unittests_SOURCES =			\
-	tests/libknot/parsed_data.rc		\
-	tests/libknot/raw_data_queries.rc	\
-	tests/libknot/raw_data.rc		\
-	tests/libknot/parsed_data_queries.rc	\
 	tests/sample_conf.rc
 
 knotd_SOURCES =					\
@@ -251,6 +252,7 @@ libzscanner_la_LIBADD = @LIBOBJS@
 knotd_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 knotc_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 unittests_LDADD = libknotd.la libknots.la @LIBOBJS@
+unittests_libknot_LDADD = libknotd.la libknot.la @LIBOBJS@
 unittests_xfr_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 unittests_zscanner_LDADD = libknots.la libknot.la libknotd.la libzscanner.la @LIBOBJS@
 
