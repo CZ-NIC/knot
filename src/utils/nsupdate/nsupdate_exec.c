@@ -309,7 +309,6 @@ static int pkt_append(nsupdate_params_t *p, int sect)
 		                                   s->zone_origin_length,
 		                                   NULL);
 		ret = knot_query_set_question(p->pkt, &q);
-		knot_dname_release(q.qname); /* Already on wire. */
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -449,7 +448,7 @@ static int nsupdate_process(nsupdate_params_t *params, FILE *fp)
 	if (params->pkt && ret == KNOT_EOK) {
 		cmd_send("", params);
 	}
-	
+
 	/* Free last answer. */
 	knot_packet_free(&params->resp);
 
@@ -722,6 +721,8 @@ int cmd_send(const char* lp, nsupdate_params_t *params)
 	}
 	
 	/* Clear sent packet and parse response. */
+	knot_question_t *q = knot_packet_question(params->pkt);
+	knot_dname_release(q->qname);
 	knot_packet_free_rrsets(params->pkt);
 	knot_packet_free(&params->pkt);
 	params->resp = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);

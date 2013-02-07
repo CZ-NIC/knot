@@ -1065,6 +1065,14 @@ uint8_t knot_packet_opcode(const knot_packet_t *packet)
 
 /*----------------------------------------------------------------------------*/
 
+knot_question_t *knot_packet_question(knot_packet_t *packet)
+{
+	if (packet == NULL) return NULL;
+	return &packet->question;
+}
+
+/*----------------------------------------------------------------------------*/
+
 const knot_dname_t *knot_packet_qname(const knot_packet_t *packet)
 {
 	if (packet == NULL) {

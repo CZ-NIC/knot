@@ -358,6 +358,15 @@ void knot_packet_set_random_id(knot_packet_t *packet);
 uint8_t knot_packet_opcode(const knot_packet_t *packet);
 
 /*!
+ * \brief Return question section from the packet.
+ *
+ * \param packet Packet instance.
+ *
+ * \return pointer to question section.
+ */
+knot_question_t *knot_packet_question(knot_packet_t *packet);
+
+/*!
  * \brief Returns the QNAME from the packet.
  *
  * \param packet Packet (with parsed query) to get the QNAME from.
