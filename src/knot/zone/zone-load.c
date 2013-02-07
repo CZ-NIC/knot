@@ -214,9 +214,11 @@ static void process_error(const scanner_t *s)
 {
 	err_count++;
 	if (s->stop == true) {
-		printf("ERROR=%s\n", knot_strerror(s->error_code));
+		log_zone_error("FATAL ERROR=%s on line=%llu\n", knot_strerror(s->error_code),
+		       s->line_counter);
 	} else {
-		printf("WARNG=%s\n", knot_strerror(s->error_code));
+		log_zone_error("ERROR=%s on line=%llu\n", knot_strerror(s->error_code),
+		       s->line_counter);
 	}
 	fflush(stdout);
 }
@@ -689,6 +691,19 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 		rrset_list_delete(&c->node_rrsigs);
 		return NULL;
 	}
+	
+	if (loader->file_loader->scanner->error_counter > 0) {
+		log_zone_error("Zone could not be loaded due to %llu errors "
+		               "encountered.\n",
+		               loader->file_loader->scanner->error_counter);
+		rrset_list_delete(&c->node_rrsigs);
+		knot_zone_t *zone_to_free = c->current_zone->zone;
+		knot_zone_contents_deep_free(&c->current_zone);
+		zone_to_free->contents = NULL;
+		knot_zone_free(&zone_to_free);
+		return NULL;
+	}
+	
 	knot_zone_contents_adjust(c->current_zone);
 	rrset_list_delete(&c->node_rrsigs);
 	
