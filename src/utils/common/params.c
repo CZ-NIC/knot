@@ -393,6 +393,12 @@ int params_parse_tsig(const char *value, knot_key_t *key)
 		k = h;
 	}
 
+	if (!s) {
+		ERR("invalid key option format, use [hmac:]keyname:secret\n");
+		free(h);
+		return KNOT_EINVAL;
+	}
+
 	/* Parse key name. */
 	key->name = create_fqdn_from_str(k, strlen(k));
 	key->secret = strdup(s);
