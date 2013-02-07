@@ -119,18 +119,8 @@ static inline uint32_t knot_wire_read_u32(const uint8_t *pos)
 static inline uint64_t knot_wire_read_u48(const uint8_t *pos)
 {
 	uint64_t input = 0;
-	uint64_t swapped;
-
-	memcpy((void *)&input, (void *)pos, 6);
-	swapped = be64toh(input);
-
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-	return swapped >> 16;
-#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-	return swapped;
-#else
-#error Unsupported byte order.
-#endif
+	memcpy((void *)&input + 1, (void *)pos, 6);
+	return be64toh(input) >> 8;
 }
 
 /*!
@@ -181,15 +171,8 @@ static inline void knot_wire_write_u32(uint8_t *pos, uint32_t data)
  */
 static inline void knot_wire_write_u48(uint8_t *pos, uint64_t data)
 {
-	uint64_t swapped = htobe64(data);
-
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-	memcpy((void *)pos, ((void *)&swapped) + 2, 6);
-#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-	memcpy((void *)pos, (void *)&swapped, 6);
-#else
-#error Unsupported byte order.
-#endif
+	uint64_t swapped = htobe64(data << 8);
+	memcpy((void *)pos, (uint8_t *)&swapped + 1, 6);
 }
 
 /*!
