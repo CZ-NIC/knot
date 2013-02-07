@@ -61,6 +61,8 @@ typedef struct {
 	int32_t		qtype;
 	/*!< SOA serial for XFR. */
 	uint32_t	xfr_serial;
+	/*!< Protocol type. */
+	protocol_t	protocol;
 	/*!< Header flags. */
 	flags_t		flags;
 	/*!< Output settings. */
@@ -85,7 +87,7 @@ typedef struct {
 	operation_t	operation;
 	/*!< Version of ip protocol to use. */
 	ip_t		ip;
-	/*!< Type (TCP, UDP) protocol to use. */
+	/*!< Protocol type (TCP, UDP) to use. */
 	protocol_t	protocol;
 	/*!< Default port/service to connect to. */
 	char		*port;
@@ -116,6 +118,7 @@ query_t* query_create(const char    *qname,
                       const int32_t qtype,
                       const int32_t qclass);
 void query_free(query_t *query);
+void query_set(query_t *query, const dig_params_t *params);
 
 int dig_parse(dig_params_t *params, int argc, char *argv[]);
 void dig_clean(dig_params_t *params);

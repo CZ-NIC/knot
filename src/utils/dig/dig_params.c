@@ -62,6 +62,7 @@ query_t* query_create(const char    *qname,
 	query->qclass = qclass;
 	query->qtype = qtype;
 	query->xfr_serial = 0;
+	query->protocol = PROTO_ALL;
 	query->flags = DEFAULT_FLAGS;
 	query->style = DEFAULT_STYLE;
 
@@ -76,6 +77,17 @@ void query_free(query_t *query)
 
 	free(query->qname);
 	free(query);
+}
+
+void query_set(query_t *query, const dig_params_t *params)
+{
+	if (query == NULL || params == NULL) {
+		return;
+	}
+
+	query->protocol = params->protocol;
+	query->flags = params->flags;
+	query->style = params->style;
 }
 
 static int dig_init(dig_params_t *params)
@@ -150,8 +162,7 @@ static int parse_name(const char *value, dig_params_t *params)
 	}
 
 	// Copy global settings.
-	query->flags = params->flags;
-	query->style = params->style;
+	query_set(query, params);
 
 	// Add new query to the queries.
 	add_tail(&params->queries, (node *)query);
@@ -181,8 +192,7 @@ static int parse_reverse(const char *value, dig_params_t *params)
 	}
 
 	// Copy global settings.
-	query->flags = params->flags;
-	query->style = params->style;
+	query_set(query, params);
 
 	// Add new query to the queries.
 	add_tail(&params->queries, (node *)query);
@@ -202,10 +212,8 @@ static void complete_queries(dig_params_t *params)
 			WARN("can't create query . NS IN\n");
 			return;
 		}
-		query->flags = params->flags;
-		query->style = params->style;
+		query_set(query, params);
 		add_tail(&params->queries, (node *)query);
-		query = NULL;
 	}
 
 	WALK_LIST(n, params->queries) {
@@ -433,6 +441,10 @@ static int parse_opt2(const char *value, dig_params_t *params)
 		params->style.show_ttl = true;
 	} else if (strcmp(value, "nottl") == 0) {
 		params->style.show_ttl = false;
+	} else if (strcmp(value, "tcp") == 0) {
+		params->protocol = PROTO_TCP;
+	} else if (strcmp(value, "notcp") == 0) {
+		params->protocol = PROTO_UDP;
 	} else {
 		ERR("invalid option: %s\n", value);
 	}
