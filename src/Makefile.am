@@ -13,13 +13,15 @@ BUILT_SOURCES =					\
 	tests/sample_conf.rc			\
 	libknotd_la-cf-lex.c			\
 	libknotd_la-cf-parse.c			\
-	libknotd_la-cf-parse.h
+	libknotd_la-cf-parse.h			\
+	zscanner/scanner.c
 
 CLEANFILES =					\
 	tests/sample_conf.rc			\
 	libknotd_la-cf-lex.c			\
 	libknotd_la-cf-parse.c			\
-	libknotd_la-cf-parse.h
+	libknotd_la-cf-parse.h			\
+	zscanner/scanner.c
 
 knotc_SOURCES =					\
 	knot/ctl/knotc_main.c
