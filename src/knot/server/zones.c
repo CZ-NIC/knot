@@ -879,6 +879,8 @@ static int zones_load_zone(knot_zone_t **dst, const char *zone_name,
 		return ret;
 	}
 	
+	assert(zl);
+	
 	*dst = knot_zload_load(zl);
 	if (*dst == NULL) {
 		log_zone_error("Zone %s could not be loaded.\n", zone_name);

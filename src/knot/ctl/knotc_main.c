@@ -102,7 +102,6 @@ knot_cmd_t knot_cmd_tbl[] = {
 	{"status",    &cmd_status, "\tCheck if server is running.",0},
 	{"checkconf", &cmd_checkconf, "Check server configuration.",1},
 	{"checkzone", &cmd_checkzone, "Check specified zone files.",1},
-	{"compile",   &cmd_compile, "Compile zone files (all if not specified).",1},
 	{NULL, NULL, NULL,0}
 };
 
@@ -144,6 +143,7 @@ void help(int argc, char **argv)
  */
 static int check_zone(const char *db, const char *source)
 {
+	return 0;
 	/* Check zonefile. */
 	struct stat st;
 	if (stat(source, &st) != 0) {
@@ -770,7 +770,7 @@ static int cmd_start(int argc, char *argv[], unsigned flags, int jobs)
 	}
 	
 	/* Recompile zones if needed. */
-	cmd_compile(argc, argv, flags, jobs);
+//	cmd_compile(argc, argv, flags, jobs);
 
 	/* Prepare command */
 	const char *cfg = conf()->filename;
@@ -926,7 +926,8 @@ static int cmd_checkconf(int argc, char *argv[], unsigned flags, int jobs)
 
 static int cmd_checkzone(int argc, char *argv[], unsigned flags, int jobs)
 {
-	return cmd_compile(argc, argv, flags | F_DRYRUN, jobs);
+//	return cmd_compile(argc, argv, flags | F_DRYRUN, jobs);
+	return 0;
 }
 
 static int cmd_compile(int argc, char *argv[], unsigned flags, int jobs)

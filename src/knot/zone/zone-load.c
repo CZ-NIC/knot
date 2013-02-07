@@ -662,6 +662,7 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 	zl->source = strdup(source);
 	zl->origin = strdup(origin);
 	zl->file_loader = loader;
+	zl->context = context;
 	*dst = zl;
 
 	return KNOT_EOK;
@@ -676,6 +677,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	}
 	
 	parser_context_t *c = loader->context;
+	assert(c);
 	
 	file_loader_process(loader->file_loader);
 	if (c->last_node && c->node_rrsigs) {
