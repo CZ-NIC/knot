@@ -396,12 +396,13 @@ static size_t rrset_rdata_remainder_size(const knot_rrset_t *rrset,
                                          size_t offset,
                                          size_t pos)
 {
-	if (pos == 0) {
-		return rrset->rdata_indices[1] - offset;
-	} else {
-		return (rrset->rdata_indices[pos + 1] -
-		        rrset->rdata_indices[pos]) - offset;
-	}
+	return rrset_rdata_item_size(rrset, pos) - offset;
+//	if (pos == 0) {
+//		return rrset->rdata_indices[1] - offset;
+//	} else {
+//		return (rrset->rdata_indices[pos + 1] -
+//		        rrset->rdata_indices[pos]) - offset;
+//	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -770,8 +771,7 @@ static int knot_rrset_to_wire_aux(const knot_rrset_t *rrset, uint8_t **pos,
 		                                       comp);
 		if (ret != KNOT_EOK) {
 			dbg_rrset("rrset: to_wire: Cannot convert RR. "
-			          "Reason: %s.\n",
-			          knot_strerror(ret));
+			          "Reason: %s.\n", knot_strerror(ret));
 			return ret;
 		}
 		dbg_rrset_detail("Converted RR nr=%d, size=%d\n", i, rr_size);

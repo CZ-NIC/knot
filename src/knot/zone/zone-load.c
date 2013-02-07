@@ -150,10 +150,11 @@ static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
 	if (tmp_rrset->ttl != rrsig->ttl) {
 		char *name = knot_dname_to_str(tmp_rrset->owner);
 		assert(name);
-		log_zone_warning("RRSIG owned by: %s cannot be added to "
+		log_zone_warning("RRSIG owned by: %s (covering type %d) cannot be added to "
 		                 "its RRSet, because their TTLs differ. "
-		                 "Changing TTL to value=%d.\n",
-		                 name, tmp_rrset->ttl);
+		                 "Changing TTL=%d to value=%d.\n",
+		                 name, knot_rrset_rdata_rrsig_type_covered(rrsig),
+		                 rrsig->ttl, tmp_rrset->ttl);
 		free(name);
 	}
 
