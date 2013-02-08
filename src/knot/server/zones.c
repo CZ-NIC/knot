@@ -2777,105 +2777,43 @@ int zones_process_update(knot_nameserver_t *nameserver,
 	knot_packet_t *resp = NULL;
 	knot_zone_t *zone = NULL;
 	knot_rcode_t rcode = KNOT_RCODE_NOERROR;
-
-	// Parse rest of the query, prepare response, find zone
-	dbg_zones_verb("Preparing response structure.\n");
-	int ret = knot_ns_prep_update_response(nameserver, query, &resp, &zone,
-	                                       (transport == NS_TRANSPORT_TCP)
-	                                       ? *rsize : 0);
-	switch (ret) {
-	case KNOT_EOK:
-		rcode = KNOT_RCODE_NOERROR;
-		break;
-	case KNOT_EMALF:
-		// no TSIG signing in this case
-		rcode = KNOT_RCODE_FORMERR;
-		break;
-	default:
-		// no TSIG signing in this case
-		/*! \todo ref #937 is SERVFAIL answer really unsigned? */
-		rcode = KNOT_RCODE_SERVFAIL;
-		break;
-	}
-
-	/* Check if zone is not discarded. */
-	if (zone && (knot_zone_flags(zone) & KNOT_ZONE_DISCARDED)) {
-		rcode = KNOT_RCODE_SERVFAIL;
-	}
-
-	const knot_zone_contents_t *contents = knot_zone_contents(zone);
-
-	/*
-	 * 1) DDNS Zone Section check (RFC2136, Section 3.1).
-	 */
-	ret = knot_ddns_check_zone(contents, query, &rcode);
-
-	/*
-	 * 2) DDNS Prerequisities Section processing (RFC2136, Section 3.2).
-	 *
-	 * Altough IMHO completely illogical, the prerequisities should be
-	 * checked BEFORE ACL & TSIG checks. Well, never mind, just follow the
-	 * RFC...
-	 */
-	// a) Convert prerequisities
-	dbg_zones_verb("Processing prerequisities.\n");
-	knot_ddns_prereq_t *prereqs = NULL;
-	if (ret == KNOT_EOK) {
-		ret = knot_ddns_process_prereqs(query, &prereqs, &rcode);
-	}
-	if (ret != KNOT_EOK) {
-		dbg_zones("Failed to check zone for update: "
-		       "%s.\n", knot_strerror(ret));
-		// RCODE should be set, checked later
-	} else {
-		assert(prereqs != NULL);
-
-		// b) Check prerequisities
-		dbg_zones_verb("Checking prerequisities.\n");
-		ret = knot_ddns_check_prereqs(contents, &prereqs, &rcode);
-		if (ret != KNOT_EOK) {
-			dbg_zones("Failed to check zone for update: "
-			       "%s.\n", knot_strerror(ret));
-			// RCODE should be set, checked later
-		}
-
-		// Not needed anymore
-		knot_ddns_prereqs_free(&prereqs);
-	}
-	
-	if (rcode != KNOT_RCODE_NOERROR) {
-		dbg_zones_verb("Failed preparing response structure: %s.\n",
-		               knot_strerror(rcode));
-
-		// Error response without Question section
-		/*! \todo Change to error_response_from_query() to retain the
-		 *        Question section if possible - see
-		 *        normal_query_answer().
-		 */
-		knot_ns_error_response_from_query_wire(nameserver,
-		                          knot_packet_wireformat(query),
-		                          knot_packet_size(query),
-		                          rcode, resp_wire, rsize);
-		knot_packet_free(&resp);
-		rcu_read_unlock();
-		return KNOT_EOK;
-	}
-
-
-
-	/* Now we have zone. Verify TSIG if it is in the packet. */
 	size_t rsize_max = *rsize;
 	knot_key_t *tsig_key_zone = NULL;
 	uint16_t tsig_rcode = 0;
 	uint64_t tsig_prev_time_signed = 0;
-	const knot_rrset_t *tsig_rr = knot_packet_tsig(query);
-	if (zone == NULL) {
-		/* Treat as BADKEY error. */
-		assert(knot_packet_tsig(query) != NULL);
+	const knot_rrset_t *tsig_rr = NULL; 
+
+	// Parse rest of the query, prepare response, find zone
+	int ret = knot_ns_prep_update_response(nameserver, query, &resp, &zone,
+	                                       (transport == NS_TRANSPORT_TCP)
+	                                       ? *rsize : 0);
+	dbg_zones_verb("Preparing response structure = %s\n", knot_strerror(ret));
+	switch (ret) {
+	case KNOT_EOK: break;
+	case KNOT_EMALF: /* No TSIG signing in this case. */
+		rcode = KNOT_RCODE_FORMERR;
+		break;
+	default:
+		rcode = KNOT_RCODE_SERVFAIL;
+		break;
+	}
+
+	/* Check if zone is valid. */
+	const knot_zone_contents_t *contents = knot_zone_contents(zone);
+	if (zone && (knot_zone_flags(zone) & KNOT_ZONE_DISCARDED)) {
+		rcode = KNOT_RCODE_SERVFAIL; /* It's ok, temporarily. */
+		tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
+		ret = KNOT_ENOZONE;
+	} else if (!zone || !contents) {     /* Treat as BADKEY. */
 		rcode = KNOT_RCODE_NOTAUTH;
 		tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
 		ret = KNOT_TSIG_EBADKEY;
-	} else {
+		dbg_zones_verb("No zone or empty, refusing UPDATE.\n");
+	}
+
+	/* Verify TSIG if it is in the packet. */
+	tsig_rr = knot_packet_tsig(query);
+	if (ret == KNOT_EOK) { /* Have valid zone to check ACLs against. */
 		dbg_zones_verb("Checking TSIG in query.\n");
 		ret = zones_check_tsig_query(zone, query, addr,
 					     &rcode, &tsig_rcode,
@@ -2885,7 +2823,8 @@ int zones_process_update(knot_nameserver_t *nameserver,
 
 	/* Allow pass-through of an unknown TSIG in DDNS forwarding (must have zone). */
 	if (zone && (ret == KNOT_EOK || (ret == KNOT_TSIG_EBADKEY && !tsig_key_zone))) {
-		/* Message is authenticated and has primary master,
+		/* Transaction is authenticated (or unprotected)
+		 * and zone has primary master set,
 		 * proceed to forward the query to the next hop.
 		 */
 		zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
@@ -2898,42 +2837,57 @@ int zones_process_update(knot_nameserver_t *nameserver,
 			return ret;
 		}
 	}
-
-	/* Process query. */
+	
+	/*
+	 * 1) DDNS Zone Section check (RFC2136, Section 3.1).
+	 */
 	if (ret == KNOT_EOK) {
-		/* Lock zone for xfers. */
+		ret = knot_ddns_check_zone(contents, query, &rcode);
+		dbg_zones_verb("Checking zone = %s\n", knot_strerror(ret));
+	}
+
+	/*
+	 * 2) DDNS Prerequisities Section processing (RFC2136, Section 3.2).
+	 *
+	 * \note Permissions section means probably policies and fine grained
+	 *       access control, not transaction security.
+	 */
+	knot_ddns_prereq_t *prereqs = NULL;
+	if (ret == KNOT_EOK) {
+		ret = knot_ddns_process_prereqs(query, &prereqs, &rcode);
+		dbg_zones_verb("Processing prereq = %s\n", knot_strerror(ret));
+	}
+	if (ret == KNOT_EOK) {
+		assert(prereqs != NULL);
+		ret = knot_ddns_check_prereqs(contents, &prereqs, &rcode);
+		dbg_zones_verb("Checking prereq = %s\n", knot_strerror(ret));
+		knot_ddns_prereqs_free(&prereqs);
+	}
+
+	/*
+	 * 3) Process query.
+	*/
+	if (ret == KNOT_EOK) {
 		zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 		pthread_mutex_lock(&zd->xfr_in.lock);
 
-		/* This function expects RCU locked. */
+		/*! \note This function expects RCU locked. */
 		ret = zones_process_update_auth(zone, resp, resp_wire, rsize,
 		                                &rcode, addr, tsig_key_zone);
-
+		dbg_zones_verb("Auth, update_proc = %s\n", knot_strerror(ret));
+		
 		pthread_mutex_unlock(&zd->xfr_in.lock);
-	} else {
-		if (tsig_rcode != KNOT_RCODE_NOERROR) {
-			dbg_zones_verb("Failed TSIG check: %s, TSIG err: %u.\n",
-				       knot_strerror(ret), tsig_rcode);
-			/* First, convert the response to wire format. */
-			dbg_zones_verb("Sending TSIG error.\n");
-			knot_response_set_rcode(resp, rcode);
-			ret = ns_response_to_wire(resp, resp_wire, rsize);
-			dbg_zones_detail("Packet to wire returned %d\n", ret);
-		}
 	}
 
-
-	
 	/* Create error query if processing failed. */
 	if (ret != KNOT_EOK) {
-		ret = knot_ns_error_response_from_query_wire(nameserver,
-							     knot_packet_wireformat(query),
-							     knot_packet_size(query),
-							     rcode, resp_wire, rsize);
+		ret = knot_ns_error_response_from_query(nameserver,
+		                                        query, rcode,
+		                                        resp_wire, rsize);
 	}
 	
-	/* Finish processing if no TSIG signing is required (or no response). */
-	if (*rsize == 0 || !tsig_key_zone) {
+	/* No response, no signing required or FORMERR. */
+	if (*rsize == 0 || !tsig_rr || rcode == KNOT_RCODE_FORMERR) {
 		knot_packet_free(&resp);
 		rcu_read_unlock();
 		return ret;
@@ -2941,10 +2895,10 @@ int zones_process_update(knot_nameserver_t *nameserver,
 	
 	/* Just add TSIG RR on most errors. */
 	if (tsig_rcode != 0 && tsig_rcode != KNOT_TSIG_RCODE_BADTIME) {
-		dbg_zones_verb("Adding TSIG to error.\n");
-		ret = knot_tsig_add(resp_wire, rsize, *rsize,
-				    tsig_rcode, tsig_rr);
-	} else {
+		ret = knot_tsig_add(resp_wire, rsize, rsize_max,
+		                    tsig_rcode, tsig_rr);
+		dbg_zones_verb("Adding TSIG = %s\n", knot_strerror(ret));
+	} else if (tsig_key_zone) {
 		dbg_zones_verb("Signing message with TSIG.\n");
 		size_t digest_len = tsig_alg_digest_length(tsig_key_zone->algorithm);
 		uint8_t *digest = (uint8_t *)malloc(digest_len);
