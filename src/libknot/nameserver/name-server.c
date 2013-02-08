@@ -522,8 +522,7 @@ dbg_ns_exec_verb(
 		knot_rrset_t *rrset = knot_node_get_rrset(node, type);
 		knot_rrset_t *rrset2 = rrset;
 		if (rrset != NULL && knot_rrset_rdata(rrset) != NULL) {
-			dbg_ns_verb("Found RRSet of type %s\n",
-				        knot_rrtype_to_string(type));
+			dbg_ns_verb("Found RRSet of type %u\n",type);
 			
 			ret = ns_check_wildcard(name, resp, &rrset2);
 			if (ret != KNOT_EOK) {
@@ -588,8 +587,8 @@ static int ns_put_additional_for_rrset(knot_packet_t *resp,
 	// for all RRs in the RRset
 	rdata = knot_rrset_rdata(rrset);
 	while (rdata != NULL) {
-		dbg_ns_verb("Getting name from RDATA, type %s..\n",
-		            knot_rrtype_to_string(knot_rrset_type(rrset)));
+		dbg_ns_verb("Getting name from RDATA, type %u..\n",
+		            knot_rrset_type(rrset));
 		dname = knot_rdata_get_name(rdata, knot_rrset_type(rrset));
 
 dbg_ns_exec_detail(
@@ -2620,8 +2619,7 @@ dbg_ns_exec_verb(
 		assert(rrsets[i] != NULL);
 		rrset = rrsets[i];
 rrset:
-		dbg_ns_verb("  Type: %s\n",
-		            knot_rrtype_to_string(knot_rrset_type(rrset)));
+		dbg_ns_verb("  Type: %u\n", knot_rrset_type(rrset));
 
 		// do not add SOA
 		if (knot_rrset_type(rrset) == KNOT_RRTYPE_SOA) {
