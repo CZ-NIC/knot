@@ -2324,6 +2324,7 @@ int knot_ddns_process_update2(knot_zone_contents_t *zone,
 			continue;
 		}
 
+		dbg_ddns_verb("Processing RR %p...\n", rr);
 		ret = knot_ddns_process_rr(rr, zone, changeset, changes,
 		                           knot_packet_qclass(query),
 		                           &rr_copy);

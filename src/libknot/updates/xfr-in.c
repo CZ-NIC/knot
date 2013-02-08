@@ -1464,7 +1464,7 @@ static int xfrin_apply_remove_rrsigs(knot_changes_t *changes,
 	 *        one RRSet of each type and owner in the changeset.
 	 */
 	
-	int ret;
+	int ret = KNOT_EOK;
 
 	int copied = 0;
 
@@ -2401,7 +2401,7 @@ void xfrin_cleanup_successful_update(knot_changes_t **changes)
 
 	// delete old RDATA
 	for (int i = 0; i < (*changes)->old_rdata_count; ++i) {
-		dbg_xfrin_detail("Deleting old RDATA: %p, type: %s\n", 
+		dbg_xfrin_detail("Deleting old RDATA: %p, type: %u\n", 
 		         (*changes)->old_rdata[i],
 		         (*changes)->old_rdata_types[i]);
 		knot_rdata_dump((*changes)->old_rdata[i],
@@ -2690,7 +2690,7 @@ static int xfrin_apply_remove(knot_zone_contents_t *contents,
 dbg_xfrin_exec_verb(
 		char *name = knot_dname_to_str(
 			knot_rrset_owner(chset->remove[i]));
-		dbg_xfrin_verb("Removing RRSet: %s, type %s\n", name,
+		dbg_xfrin_verb("Removing RRSet: %s, type %u\n", name,
 		               knot_rrset_type(chset->remove[i]));
 		free(name);
 );
@@ -2784,7 +2784,7 @@ static int xfrin_apply_add(knot_zone_contents_t *contents,
 dbg_xfrin_exec_verb(
 		char *name = knot_dname_to_str(
 			knot_rrset_owner(chset->add[i]));
-		dbg_xfrin_verb("Adding RRSet: %s, type: %s\n", name,
+		dbg_xfrin_verb("Adding RRSet: %s, type: %u\n", name,
 		               knot_rrset_type(chset->add[i]));
 		free(name);
 );
