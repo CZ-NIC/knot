@@ -267,6 +267,11 @@ static int knot_dname_find_labels(knot_dname_t *dname, int alloc)
 	short label_count = 0;
 
 	while (pos - name < size && *pos != '\0' && label_count < KNOT_MAX_DNAME_LABELS ) {
+		if (*pos > 63) { /* Check label lengths. */
+			dbg_dname("Wrong wire format of domain name!\n");
+			dbg_dname("Label %d exceeds 63 bytes.\n", label_count);
+			return -1;
+		}
 		labels[label_count++] = pos - name;
 		pos += *pos + 1;
 	}
