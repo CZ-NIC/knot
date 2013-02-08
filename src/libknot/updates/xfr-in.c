@@ -3402,7 +3402,7 @@ int xfrin_switch_zone(knot_zone_t *zone,
 	               old, (old) ? old->apex : NULL, new_contents->apex);
 
 	// switch pointers in domain names, now only the new zone is used
-	if (transfer_type == XFR_TYPE_IIN) {
+	if (transfer_type == XFR_TYPE_IIN || transfer_type == XFR_TYPE_UPDATE) {
 		// Traverse also the dname table and change the node pointers
 		// in dnames
 		int ret = knot_zone_contents_dname_table_apply(
