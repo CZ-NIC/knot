@@ -4089,7 +4089,8 @@ int zones_verify_tsig_query(const knot_packet_t *query,
 	
 	const knot_rrset_t *tsig_rr = knot_packet_tsig(query);
 	if (tsig_rr == NULL) {
-		*rcode = KNOT_RCODE_NOTAUTH;
+		dbg_zones("TSIG key required, but not in query - REFUSED.\n");
+		*rcode = KNOT_RCODE_REFUSED;
 		return KNOT_TSIG_EBADKEY;
 	}
 

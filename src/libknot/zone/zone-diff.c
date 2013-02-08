@@ -382,8 +382,8 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 			 * because the list was traversed - there's no match.
 			 */
 			dbg_zonediff("zone_diff: diff_rdata: "
-			       "No match for RR (type=%s owner=%s).\n",
-			       knot_rrtype_to_string(knot_rrset_type(rrset1)),
+			       "No match for RR (type=%u owner=%s).\n",
+			       knot_rrset_type(rrset1),
 			       knot_dname_to_str(rrset1->owner));
 			/* Make a copy of tmp_rdata. */
 			knot_rdata_t *tmp_rdata_copy =
