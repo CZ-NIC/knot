@@ -396,7 +396,9 @@ static size_t rrset_rdata_remainder_size(const knot_rrset_t *rrset,
                                          size_t offset,
                                          size_t pos)
 {
-	return rrset_rdata_item_size(rrset, pos) - offset;
+	size_t ret = rrset_rdata_item_size(rrset, pos) - offset;
+	assert(ret <= rrset_rdata_size_total(rrset));
+	return ret;
 //	if (pos == 0) {
 //		return rrset->rdata_indices[1] - offset;
 //	} else {
@@ -671,8 +673,10 @@ dbg_rrset_exec_detail(
 			size_t remainder_size =
 				rrset_rdata_remainder_size(rrset, offset,
 			                                   rdata_pos);
-			dbg_rrset_detail("Saving remaining chunk, size=%d\n",
-			                 remainder_size);
+			dbg_rrset_detail("Saving remaining chunk, size=%d, "
+			                 "size with remainder=%d\n",
+			                 remainder_size,
+			                 size + rdlength + remainder_size);
 			if (size + rdlength + remainder_size > max_size) {
 				return KNOT_ESPACE;
 			}

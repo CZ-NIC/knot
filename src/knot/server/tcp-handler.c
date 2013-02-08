@@ -234,9 +234,7 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 		}
 		
 		/* Prepare context. */
-		assert(0);
-		//TODO
-//		res = xfr_request_init(&xfr, xfrt, XFR_FLAG_TCP, packet);
+		res = xfr_request_init(&xfr, xfrt, XFR_FLAG_TCP, packet);
 		if (res != KNOT_EOK) {
 			knot_ns_error_response_from_query(ns, packet,
 			                                  KNOT_RCODE_SERVFAIL,
