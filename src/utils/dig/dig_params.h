@@ -31,44 +31,6 @@
 
 #include "utils/common/params.h"	// params_t
 
-/*! \brief DNS header flags. */
-typedef struct {
-	/*!< Authoritative answer flag. */
-	bool		aa_flag;
-	/*!< Truncated flag. */
-	bool		tc_flag;
-	/*!< Recursion desired flag. */
-	bool		rd_flag;
-	/*!< Recursion available flag. */
-	bool		ra_flag;
-	/*!< Z flag. */
-	bool		z_flag;
-	/*!< Authenticated data flag. */
-	bool		ad_flag;
-	/*!< Checking disabled flag. */
-	bool		cd_flag;
-} flags_t;
-
-/*! \brief Basic parameters for DNS query. */
-typedef struct {
-	/*!< List node (for list container). */
-	node		n;
-	/*!< Name to query on. */
-	char		*qname;
-	/*!< Class number (16unsigned + -1 uninitialized). */
-	int32_t		qclass;
-	/*!< Type number (16unsigned + -1 uninitialized). */
-	int32_t		qtype;
-	/*!< SOA serial for XFR. */
-	uint32_t	xfr_serial;
-	/*!< Protocol type. */
-	protocol_t	protocol;
-	/*!< Header flags. */
-	flags_t		flags;
-	/*!< Output settings. */
-	style_t		style;
-} query_t;
-
 /*! \brief Operation mode of dig. */
 typedef enum {
 	/*!< Classic queries in list. */
@@ -77,19 +39,39 @@ typedef enum {
 	OPERATION_LIST_SOA,
 } operation_t;
 
-/*! \brief Settings for dig. */
+/*! \brief DNS header flags. */
 typedef struct {
+	/*!< Authoritative answer flag. */
+	bool	aa_flag;
+	/*!< Truncated flag. */
+	bool	tc_flag;
+	/*!< Recursion desired flag. */
+	bool	rd_flag;
+	/*!< Recursion available flag. */
+	bool	ra_flag;
+	/*!< Z flag. */
+	bool	z_flag;
+	/*!< Authenticated data flag. */
+	bool	ad_flag;
+	/*!< Checking disabled flag. */
+	bool	cd_flag;
+} flags_t;
+
+/*! \brief Basic parameters for DNS query. */
+typedef struct {
+	/*!< List node (for list container). */
+	node		n;
+	/*!< Name to query on. */
+	char		*owner;
 	/*!< List of nameservers to query to. */
 	list		servers;
-	/*!< List of DNS queries to process. */
-	list		queries;
 	/*!< Operation mode. */
 	operation_t	operation;
 	/*!< Version of ip protocol to use. */
 	ip_t		ip;
 	/*!< Protocol type (TCP, UDP) to use. */
 	protocol_t	protocol;
-	/*!< Default port/service to connect to. */
+	/*!< Port/service to connect to. */
 	char		*port;
 	/*!< UDP buffer size. */
 	uint32_t	udp_size;
@@ -99,27 +81,34 @@ typedef struct {
 	int32_t		wait;
 	/*!< Stop quering if servfail. */
 	bool		servfail_stop;
-	/*!< Default class number (16unsigned + -1 uninitialized). */
+	/*!< Class number (16unsigned + -1 uninitialized). */
 	int32_t		class_num;
-	/*!< Default type number (16unsigned + -1 uninitialized). */
+	/*!< Type number (16unsigned + -1 uninitialized). */
 	int32_t		type_num;
-	/*!< Default SOA serial for XFR. */
+	/*!< SOA serial for XFR. */
 	uint32_t	xfr_serial;
 	/*!< Header flags. */
 	flags_t		flags;
-	/*!< Default output settings. */
+	/*!< Output settings. */
 	style_t		style;
+} query_t;
+
+/*! \brief Settings for dig. */
+typedef struct {
+	/*!< List of DNS queries to process. */
+	list	queries;
+	/*!< Default settings for queries. */
+	query_t	*config;
 } dig_params_t;
 
 /*! \brief Default header flags. */ 
 extern const flags_t DEFAULT_FLAGS;
 
-query_t* query_create(const char    *qname,
-                      const int32_t qtype,
-                      const int32_t qclass);
+query_t* query_create(const char *owner, const query_t *config);
 void query_free(query_t *query);
-void query_set(query_t *query, const dig_params_t *params);
+void complete_queries(list *queries, const query_t *conf);
 
+int dig_init(dig_params_t *params);
 int dig_parse(dig_params_t *params, int argc, char *argv[]);
 void dig_clean(dig_params_t *params);
 

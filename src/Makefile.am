@@ -72,9 +72,7 @@ khost_SOURCES =					\
 	utils/host/host_params.c		\
 	utils/host/host_params.h		\
 	utils/dig/dig_exec.c			\
-	utils/dig/dig_exec.h			\
-	utils/host/host_exec.c			\
-	utils/host/host_exec.h
+	utils/dig/dig_exec.h
 
 knsupdate_SOURCES =				\
 	utils/common/msg.h			\

@@ -41,82 +41,96 @@ const flags_t DEFAULT_FLAGS = {
 	.cd_flag = false,
 };
 
-query_t* query_create(const char    *qname,
-                      const int32_t qtype,
-                      const int32_t qclass)
+query_t* query_create(const char *owner, const query_t *conf)
 {
-	if (qname == NULL) {
-		return NULL;
-	}
-
 	// Create output structure.
 	query_t *query = calloc(1, sizeof(query_t));
 
-	// Check output.
 	if (query == NULL) {
 		return NULL;
 	}
 
-	// Fill output.
-	query->qname = strdup(qname);
-	query->qclass = qclass;
-	query->qtype = qtype;
-	query->xfr_serial = 0;
-	query->protocol = PROTO_ALL;
-	query->flags = DEFAULT_FLAGS;
-	query->style = DEFAULT_STYLE;
+	// Set an owner if any.
+	if (owner != NULL) {
+		if ((query->owner = strdup(owner)) == NULL) {
+			query_free(query);
+			return NULL;
+		}
+	}
+
+	// Initialize list of servers.
+	init_list(&query->servers);
+
+	// Initialization with defaults or with reference query.
+	if (conf == NULL) {
+		query->operation = OPERATION_QUERY;
+		query->ip = IP_ALL;
+		query->protocol = PROTO_ALL;
+		query->port = strdup(DEFAULT_DNS_PORT);
+		query->udp_size = DEFAULT_UDP_SIZE;
+		query->retries = DEFAULT_RETRIES_DIG;
+		query->wait = DEFAULT_TIMEOUT_DIG;
+		query->servfail_stop = false;
+		query->class_num = -1;
+		query->type_num = -1;
+		query->xfr_serial = 0;
+		query->flags = DEFAULT_FLAGS;
+		query->style = DEFAULT_STYLE;
+		query->style.format = FORMAT_VERBOSE;
+	} else {
+		query->operation = conf->operation;
+		query->ip = conf->ip;
+		query->protocol = conf->protocol;
+		query->port = strdup(conf->port);
+		query->udp_size = conf->udp_size;
+		query->retries = conf->retries;
+		query->wait = conf->wait;
+		query->servfail_stop = conf->servfail_stop;
+		query->class_num = conf->class_num;
+		query->type_num = conf->type_num;
+		query->xfr_serial = conf->xfr_serial;
+		query->flags = conf->flags;
+		query->style = conf->style;
+	}
+
+	// Check port.
+	if (query->port == NULL) {
+		query_free(query);
+		return NULL;
+	}
 
 	return query;
 }
 
 void query_free(query_t *query)
 {
+	node *n = NULL, *nxt = NULL;
+
 	if (query == NULL) {
 		return;
 	}
 
-	free(query->qname);
+	// Clean up servers.
+	WALK_LIST_DELSAFE(n, nxt, query->servers) {
+		server_free((server_t *)n);
+	}
+
+	free(query->owner);
+	free(query->port);
 	free(query);
 }
 
-void query_set(query_t *query, const dig_params_t *params)
-{
-	if (query == NULL || params == NULL) {
-		return;
-	}
-
-	query->protocol = params->protocol;
-	query->flags = params->flags;
-	query->style = params->style;
-}
-
-static int dig_init(dig_params_t *params)
+int dig_init(dig_params_t *params)
 {
 	memset(params, 0, sizeof(*params));
 
-	// Initialize servers and queries lists.
-	init_list(&params->servers);
+	// Initialize list of queries.
 	init_list(&params->queries);
 
-	// Default settings.
-	params->operation = OPERATION_QUERY;
-	params->ip = IP_ALL;
-	params->protocol = PROTO_ALL;
-	params->port = strdup(DEFAULT_DNS_PORT);
-	params->udp_size = DEFAULT_UDP_SIZE;
-	params->retries = DEFAULT_RETRIES_DIG;
-	params->wait = DEFAULT_TIMEOUT_DIG;
-	params->servfail_stop = false;
-	params->class_num = -1;
-	params->type_num = -1;
-	params->xfr_serial = 0;
-
-	// Default flags.
-	params->flags = DEFAULT_FLAGS;
-
-	// Default style.
-	params->style = DEFAULT_STYLE;
-	params->style.format = FORMAT_VERBOSE;
+	// Create config query.
+	if ((params->config = query_create(NULL, NULL)) == NULL) {
+		return KNOT_ENOMEM;
+	}
 
 	return KNOT_EOK;
 }
@@ -129,23 +143,19 @@ void dig_clean(dig_params_t *params)
 		return;
 	}
 
-	// Clean up servers.
-	WALK_LIST_DELSAFE(n, nxt, params->servers) {
-		server_free((server_t *)n);
-	}
-
 	// Clean up queries.
 	WALK_LIST_DELSAFE(n, nxt, params->queries) {
 		query_free((query_t *)n);
 	}
 
-	free(params->port);
+	// Clean up config.
+	query_free((query_t *)params->config);
 
 	// Clean up the structure.
 	memset(params, 0, sizeof(*params));
 }
 
-static int parse_name(const char *value, dig_params_t *params)
+static int parse_name(const char *value, list *queries, const query_t *conf)
 {
 	query_t *query = NULL;
 
@@ -153,7 +163,7 @@ static int parse_name(const char *value, dig_params_t *params)
 	char *fqd_name = get_fqd_name(value);
 
 	// Create new query.
-	query = query_create(fqd_name, params->type_num, params->class_num);
+	query = query_create(fqd_name, conf);
 
 	free(fqd_name);
 
@@ -161,29 +171,25 @@ static int parse_name(const char *value, dig_params_t *params)
 		return KNOT_ENOMEM;
 	}
 
-	// Copy global settings.
-	query_set(query, params);
-
 	// Add new query to the queries.
-	add_tail(&params->queries, (node *)query);
+	add_tail(queries, (node *)query);
 
 	return KNOT_EOK;
 }
 
-static int parse_reverse(const char *value, dig_params_t *params)
+static int parse_reverse(const char *value, list *queries, const query_t *conf)
 {
 	query_t *query = NULL;
 
 	// Create reverse name.
 	char *reverse = get_reverse_name(value);
 
-	// Check reverse input.
 	if (reverse == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	// Create reverse query for given address.
-	query = query_create(reverse, KNOT_RRTYPE_PTR, params->class_num);
+	query = query_create(reverse, conf);
 
 	free(reverse);
 
@@ -191,53 +197,88 @@ static int parse_reverse(const char *value, dig_params_t *params)
 		return KNOT_ENOMEM;
 	}
 
-	// Copy global settings.
-	query_set(query, params);
+	// Set type for reverse query.
+	query->type_num = KNOT_RRTYPE_PTR;
 
 	// Add new query to the queries.
-	add_tail(&params->queries, (node *)query);
+	add_tail(queries, (node *)query);
 
 	return KNOT_EOK;
 }
 
-static void complete_queries(dig_params_t *params)
+static void complete_servers(query_t *query, const query_t *conf)
 {
-	query_t *query = NULL;
+	node *n = NULL;
+
+	// Use servers from config if any.
+	if (list_size(&conf->servers) > 0) {
+		server_t *server;
+
+		WALK_LIST(n, conf->servers) {
+			server_t *s = (server_t *)n;
+
+			server = server_create(s->name, query->port);
+
+			if (server == NULL) {
+				WARN("can't set nameserver %s port %s\n",
+				     s->name, s->service);
+				return;
+			}
+			add_tail(&query->servers, (node *)server);
+		}
+	// Use system specific.
+	} else if (get_nameservers(&query->servers, query->port) <= 0) {
+		WARN("can't read any nameservers\n");
+	}
+}
+
+void complete_queries(list *queries, const query_t *conf)
+{
+	query_t *q = NULL;
 	node    *n = NULL;
 
 	// If there is no query, add default query: NS to ".".
-	if (list_size(&params->queries) == 0) {
-		query = query_create(".", KNOT_RRTYPE_NS, KNOT_CLASS_IN);
-		if (query == NULL) {
+	if (list_size(queries) == 0) {
+		q = query_create(".", conf);
+		if (q == NULL) {
 			WARN("can't create query . NS IN\n");
 			return;
 		}
-		query_set(query, params);
-		add_tail(&params->queries, (node *)query);
+		q->class_num = KNOT_CLASS_IN;
+		q->type_num = KNOT_RRTYPE_NS;
+		add_tail(queries, (node *)q);
 	}
 
-	WALK_LIST(n, params->queries) {
+	WALK_LIST(n, *queries) {
 		query_t *q = (query_t *)n;
 
-		if (q->qclass < 0) {
-			if (params->class_num >= 0) {
-				q->qclass = params->class_num;
+		// Fill class number if missing.
+		if (q->class_num < 0) {
+			if (conf->class_num >= 0) {
+				q->class_num = conf->class_num;
 			} else {
-				q->qclass = KNOT_CLASS_IN;
+				q->class_num = KNOT_CLASS_IN;
 			}
 		}
-		if (q->qtype < 0) {
-			if (params->type_num >= 0) {
-				q->qtype = params->type_num;
-				q->xfr_serial = params->xfr_serial;
+
+		// Fill type number if missing.
+		if (q->type_num < 0) {
+			if (conf->type_num >= 0) {
+				q->type_num = conf->type_num;
+				q->xfr_serial = conf->xfr_serial;
 			} else {
-				q->qtype = KNOT_RRTYPE_A;
+				q->type_num = KNOT_RRTYPE_A;
 			}
+		}
+
+		// Fill nameserver list if empty.
+		if (list_size(&q->servers) == 0) {
+			complete_servers(q, conf);
 		}
 	}
 }
 
-static int parse_class(const char *value, dig_params_t *params)
+static int parse_class(const char *value, query_t *query)
 {
 	uint16_t rclass;
 
@@ -245,20 +286,12 @@ static int parse_class(const char *value, dig_params_t *params)
 		return KNOT_EINVAL;
 	}
 
-	// Change default.
-	if (list_size(&params->queries) == 0) {
-		params->class_num = rclass;
-	// Change current.
-	} else {
-		query_t *query = TAIL(params->queries);
-
-		query->qclass = rclass;
-	}
+	query->class_num = rclass;
 
 	return KNOT_EOK;
 }
 
-static int parse_type(const char *value, dig_params_t *params)
+static int parse_type(const char *value, query_t *query)
 {
 	uint16_t rtype;
 	uint32_t serial;
@@ -267,17 +300,8 @@ static int parse_type(const char *value, dig_params_t *params)
 		return KNOT_EINVAL;
 	}
 
-	// Change default.
-	if (list_size(&params->queries) == 0) {
-		params->type_num = rtype;
-		params->xfr_serial = serial;
-	// Change current.
-	} else {
-		query_t *query = TAIL(params->queries);
-
-		query->qtype = rtype;
-		query->xfr_serial = serial;
-	}
+	query->type_num = rtype;
+	query->xfr_serial = serial;
 
 	return KNOT_EOK;
 }
@@ -294,7 +318,16 @@ static void dig_help(const bool verbose)
 
 static int parse_server(const char *value, dig_params_t *params)
 {
-	int ret = params_parse_server(value, &params->servers, params->port);
+	query_t *query;
+
+	// Set current query (last or config).
+	if (list_size(&params->queries) > 0) {
+		query = TAIL(params->queries);
+	} else {
+		query = params->config;
+	}
+
+	int ret = params_parse_server(value, &query->servers, query->port);
 
 	if (ret != KNOT_EOK) {
 		ERR("invalid nameserver: %s\n", value);
@@ -303,12 +336,20 @@ static int parse_server(const char *value, dig_params_t *params)
 	return ret;
 }
 
-static int parse_opt1(const char *opt, const char *value,
-                      dig_params_t *params, int *index)
+static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
+                      int *index)
 {
 	const char *val = value;
 	size_t     len = strlen(opt);
 	int        add = 1;
+	query_t    *query;
+
+	// Set current query (last or config).
+	if (list_size(&params->queries) > 0) {
+		query = TAIL(params->queries);
+	} else {
+		query = params->config;
+	}
 
 	// If there is no space between option and argument.
 	if (len > 1) {
@@ -322,14 +363,14 @@ static int parse_opt1(const char *opt, const char *value,
 			return KNOT_ENOTSUP;
 		}
 
-		params->ip = IP_4;
+		query->ip = IP_4;
 		break;
 	case '6':
 		if (len > 1) {
 			return KNOT_ENOTSUP;
 		}
 
-		params->ip = IP_6;
+		query->ip = IP_6;
 		break;
 	case 'c':
 		if (val == NULL) {
@@ -337,7 +378,7 @@ static int parse_opt1(const char *opt, const char *value,
 			return KNOT_EINVAL;
 		}
 
-		if (parse_class(val, params) != KNOT_EOK) {
+		if (parse_class(val, query) != KNOT_EOK) {
 			ERR("invalid class: %s\n", val);
 			return KNOT_EINVAL;
 		}
@@ -356,7 +397,7 @@ static int parse_opt1(const char *opt, const char *value,
 			return KNOT_EINVAL;
 		}
 
-		if (params_parse_port(val, &params->port)
+		if (params_parse_port(val, &query->port)
 		    != KNOT_EOK) {
 			ERR("invalid port: %s\n", val);
 			return KNOT_EINVAL;
@@ -369,7 +410,8 @@ static int parse_opt1(const char *opt, const char *value,
 			return KNOT_EINVAL;
 		}
 
-		if (parse_name(val, params) != KNOT_EOK) {
+		if (parse_name(val, &params->queries, params->config)
+		    != KNOT_EOK) {
 			ERR("invalid name: %s\n", val);
 			return KNOT_EINVAL;
 		}
@@ -381,7 +423,7 @@ static int parse_opt1(const char *opt, const char *value,
 			return KNOT_EINVAL;
 		}
 
-		if (parse_type(val, params) != KNOT_EOK) {
+		if (parse_type(val, query) != KNOT_EOK) {
 			ERR("invalid type: %s\n", val);
 			return KNOT_EINVAL;
 		}
@@ -393,7 +435,8 @@ static int parse_opt1(const char *opt, const char *value,
 			return KNOT_EINVAL;
 		}
 
-		if (parse_reverse(val, params) != KNOT_EOK) {
+		if (parse_reverse(val, &params->queries, params->config)
+		    != KNOT_EOK) {
 			ERR("invalid IPv4 or IPv6 address: %s\n", val);
 			return KNOT_EINVAL;
 		}
@@ -409,42 +452,64 @@ static int parse_opt1(const char *opt, const char *value,
 
 static int parse_opt2(const char *value, dig_params_t *params)
 {
-	if (strcmp(value, "all") == 0) {
+	query_t *query;
+
+	// Set current query (last or config).
+	if (list_size(&params->queries) > 0) {
+		query = TAIL(params->queries);
+	} else {
+		query = params->config;
+	}
+
+	// Process option.
+	if (strcmp(value, "multiline") == 0) {
+		query->style.format = FORMAT_MULTILINE;
+	} else if (strcmp(value, "nomultiline") == 0) {
+		query->style.format = FORMAT_VERBOSE;
+	} else if (strcmp(value, "short") == 0) {
+		query->style.format = FORMAT_DIG;
+	} else if (strcmp(value, "noshort") == 0) {
+		query->style.format = FORMAT_VERBOSE;
+	} else if (strcmp(value, "all") == 0) {
 
 	} else if (strcmp(value, "noall") == 0) {
 
 	} else if (strcmp(value, "qr") == 0) {
-		params->style.show_query = true;
+		query->style.show_query = true;
 	} else if (strcmp(value, "noqr") == 0) {
-		params->style.show_query = false;
+		query->style.show_query = false;
 	} else if (strcmp(value, "question") == 0) {
-		params->style.show_question = true;
+		query->style.show_question = true;
 	} else if (strcmp(value, "noquestion") == 0) {
-		params->style.show_question = false;
+		query->style.show_question = false;
 	} else if (strcmp(value, "answer") == 0) {
-		params->style.show_answer = true;
+		query->style.show_answer = true;
 	} else if (strcmp(value, "noanswer") == 0) {
-		params->style.show_answer = false;
+		query->style.show_answer = false;
 	} else if (strcmp(value, "authority") == 0) {
-		params->style.show_authority = true;
+		query->style.show_authority = true;
 	} else if (strcmp(value, "noauthority") == 0) {
-		params->style.show_authority = false;
+		query->style.show_authority = false;
 	} else if (strcmp(value, "additional") == 0) {
-		params->style.show_additional = true;
+		query->style.show_additional = true;
 	} else if (strcmp(value, "noadditional") == 0) {
-		params->style.show_additional = false;
+		query->style.show_additional = false;
 	} else if (strcmp(value, "cl") == 0) {
-		params->style.show_class = true;
+		query->style.show_class = true;
 	} else if (strcmp(value, "nocl") == 0) {
-		params->style.show_class = false;
+		query->style.show_class = false;
 	} else if (strcmp(value, "ttl") == 0) {
-		params->style.show_ttl = true;
+		query->style.show_ttl = true;
 	} else if (strcmp(value, "nottl") == 0) {
-		params->style.show_ttl = false;
+		query->style.show_ttl = false;
 	} else if (strcmp(value, "tcp") == 0) {
-		params->protocol = PROTO_TCP;
+		query->protocol = PROTO_TCP;
 	} else if (strcmp(value, "notcp") == 0) {
-		params->protocol = PROTO_UDP;
+		query->protocol = PROTO_UDP;
+	} else if (strcmp(value, "fail") == 0) {
+		query->servfail_stop = true;
+	} else if (strcmp(value, "nofail") == 0) {
+		query->servfail_stop = false;
 	} else {
 		ERR("invalid option: %s\n", value);
 	}
@@ -454,12 +519,22 @@ static int parse_opt2(const char *value, dig_params_t *params)
 
 static int parse_token(const char *value, dig_params_t *params)
 {
+	query_t *query;
 
-	if (parse_type(value, params) == KNOT_EOK) {
+	// Set current query (last or config).
+	if (list_size(&params->queries) > 0) {
+		query = TAIL(params->queries);
+	} else {
+		query = params->config;
+	}
+
+	// Try to guess the meaning of the token.
+	if (parse_type(value, query) == KNOT_EOK) {
 		return KNOT_EOK;
-	} else if (parse_class(value, params) == KNOT_EOK) {
+	} else if (parse_class(value, query) == KNOT_EOK) {
 		return KNOT_EOK;
-	} else if (parse_name(value, params) == KNOT_EOK) {
+	} else if (parse_name(value, &params->queries, params->config)
+	           == KNOT_EOK) {
 		return KNOT_EOK;
 	}
 
@@ -483,6 +558,7 @@ int dig_parse(dig_params_t *params, int argc, char *argv[])
 	for (int i = 1; i < argc; i++) {
 		int ret = KNOT_ERROR;
 
+		// Process parameter.
 		switch (argv[i][0]) {
 		case '@':
 			ret = parse_server(argv[i] + 1, params);
@@ -498,6 +574,7 @@ int dig_parse(dig_params_t *params, int argc, char *argv[])
 			break;
 		}
 
+		// Check return.
 		switch (ret) {
 		case KNOT_EOK:
 			break;
@@ -508,14 +585,8 @@ int dig_parse(dig_params_t *params, int argc, char *argv[])
 		}
 	}
 
-	// If server list is empty, try to read defaults.
-	if (list_size(&params->servers) == 0 &&
-	    get_nameservers(&params->servers, params->port) <= 0) {
-		WARN("can't read any default nameservers\n");
-	}
-
 	// Complete missing data in queries based on defaults.
-	complete_queries(params);
+	complete_queries(&params->queries, params->config);
 
 	return KNOT_EOK;
 }

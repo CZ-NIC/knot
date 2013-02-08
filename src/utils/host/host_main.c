@@ -17,8 +17,8 @@
 #include <stdlib.h>			// EXIT_FAILURE
 
 #include "common/errcode.h"		// KNOT_EOK
-#include "utils/host/host_params.h"	// host_params_parse
-#include "utils/host/host_exec.h"	// host_exec
+#include "utils/host/host_params.h"	// host_parse
+#include "utils/dig/dig_exec.h"		// dig_exec
 
 int main(int argc, char *argv[])
 {
@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
 
 	dig_params_t params;
 	if (host_parse(&params, argc, argv) == KNOT_EOK) {
-		if (host_exec(&params) != KNOT_EOK) {
+		if (dig_exec(&params) != KNOT_EOK) {
 			ret = EXIT_FAILURE;
 		}
 	} else {

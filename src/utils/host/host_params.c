@@ -33,71 +33,39 @@
 
 static int host_init(dig_params_t *params)
 {
-	memset(params, 0, sizeof(*params));
+	// Initialize params with dig defaults.
+	int ret = dig_init(params);
 
-	// Initialize servers and queries lists.
-	init_list(&params->servers);
-	init_list(&params->queries);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 
-	// Default settings.
-	params->operation = OPERATION_QUERY;
-	params->ip = IP_ALL;
-	params->protocol = PROTO_ALL;
-	params->port = strdup(DEFAULT_DNS_PORT);
-	params->udp_size = DEFAULT_UDP_SIZE;
-	params->retries = DEFAULT_RETRIES_HOST;
-	params->wait = DEFAULT_TIMEOUT_HOST;
-	params->servfail_stop = false;
-	params->class_num = KNOT_CLASS_IN;
-	params->type_num = -1;
-	params->xfr_serial = 0;
-
-	// Default flags.
-	params->flags = DEFAULT_FLAGS;
-
-	// Default style.
-	params->style = DEFAULT_STYLE;
-	params->style.format = FORMAT_HOST;
+	// Set host specific defaults.
+	params->config->retries = DEFAULT_RETRIES_HOST;
+	params->config->wait = DEFAULT_TIMEOUT_HOST;
+	params->config->class_num = KNOT_CLASS_IN;
+	params->config->style.format = FORMAT_HOST;
 
 	return KNOT_EOK;
 }
 
 void host_clean(dig_params_t *params)
 {
-	node *n = NULL, *nxt = NULL;
-
-	if (params == NULL) {
-		return;
-	}
-
-	// Clean up servers.
-	WALK_LIST_DELSAFE(n, nxt, params->servers) {
-		server_free((server_t *)n);
-	}
-
-	// Clean up queries.
-	WALK_LIST_DELSAFE(n, nxt, params->queries) {
-		query_free((query_t *)n);
-	}
-
-	free(params->port);
-
-	// Clean up the structure.
-	memset(params, 0, sizeof(*params));
+	dig_clean(params);
 }
 
-static int host_parse_name(const char *name, dig_params_t *params)
+static int parse_name(const char *value, list *queries, const query_t *conf)
 {
-	char	*reverse = get_reverse_name(name);
+	char	*reverse = get_reverse_name(value);
 	char	*fqd_name = NULL;
 	query_t	*query;
 
 	// If name is not FQDN, append trailing dot.
-	fqd_name = get_fqd_name(name);
+	fqd_name = get_fqd_name(value);
 
 	// RR type is known.
-	if (params->type_num >= 0) {
-		if (params->type_num == KNOT_RRTYPE_PTR) {
+	if (conf->type_num >= 0) {
+		if (conf->type_num == KNOT_RRTYPE_PTR) {
 			// Check for correct address.
 			if (reverse == NULL) {
 				ERR("invalid IPv4 or IPv6 address\n");
@@ -106,74 +74,62 @@ static int host_parse_name(const char *name, dig_params_t *params)
 			}
 
 			// Add reverse query for address.
-			query = query_create(reverse, params->type_num,
-			                     params->class_num);
+			query = query_create(reverse, conf);
 			if (query == NULL) {
 				free(reverse);
 				free(fqd_name);
 				return KNOT_ENOMEM;
 			}
-			query_set(query, params);
-			add_tail(&params->queries, (node *)query);
+			add_tail(queries, (node *)query);
 		} else {
 			// Add query for name and specified type.
-			query = query_create(fqd_name, params->type_num,
-			                     params->class_num);
+			query = query_create(fqd_name, conf);
 			if (query == NULL) {
 				free(reverse);
 				free(fqd_name);
 				return KNOT_ENOMEM;
 			}
-			// Set SOA serial for IXFR query.
-			if (params->type_num == KNOT_RRTYPE_IXFR) {
-				query->xfr_serial = params->xfr_serial;
-			}
-			query_set(query, params);
-			add_tail(&params->queries, (node *)query);
+			add_tail(queries, (node *)query);
 		}
 	// RR type is unknown, use defaults.
 	} else {
 		if (reverse == NULL) {
 			// Add query for name and type A.
-			query = query_create(fqd_name, KNOT_RRTYPE_A,
-			                     params->class_num);
+			query = query_create(fqd_name, conf);
 			if (query == NULL) {
 				free(fqd_name);
 				return KNOT_ENOMEM;
 			}
-			query_set(query, params);
-			add_tail(&params->queries, (node *)query);
+			query->type_num = KNOT_RRTYPE_A;
+			add_tail(queries, (node *)query);
 
 			// Add query for name and type AAAA.
-			query = query_create(fqd_name, KNOT_RRTYPE_AAAA,
-			                     params->class_num);
+			query = query_create(fqd_name, conf);
 			if (query == NULL) {
 				free(fqd_name);
 				return KNOT_ENOMEM;
 			}
-			query_set(query, params);
-			add_tail(&params->queries, (node *)query);
+			query->type_num = KNOT_RRTYPE_AAAA;
+			add_tail(queries, (node *)query);
 
 			// Add query for name and type MX.
-			query = query_create(fqd_name, KNOT_RRTYPE_MX,
-			                     params->class_num);
+			query = query_create(fqd_name, conf);
 			if (query == NULL) {
 				free(fqd_name);
 				return KNOT_ENOMEM;
 			}
-			query_set(query, params);
-			add_tail(&params->queries, (node *)query);
+			query->type_num = KNOT_RRTYPE_MX;
+			add_tail(queries, (node *)query);
 		} else {
 			// Add reverse query for address.
-			query = query_create(reverse, KNOT_RRTYPE_PTR,
-			                     params->class_num);
+			query = query_create(fqd_name, conf);
 			if (query == NULL) {
 				free(reverse);
 				free(fqd_name);
 				return KNOT_ENOMEM;
 			}
-			query_set(query, params);
-			add_tail(&params->queries, (node *)query);
+			query->type_num = KNOT_RRTYPE_PTR;
+			add_tail(queries, (node *)query);
 		}
 	}
 
@@ -202,6 +158,7 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 		return KNOT_ERROR;
 	}
 
+	query_t  *conf = params->config;
 	uint16_t rclass, rtype;
 	uint32_t serial;
 
@@ -209,46 +166,47 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 	while ((opt = getopt(argc, argv, "46aCdlrsTvwc:R:t:W:")) != -1) {
 		switch (opt) {
 		case '4':
-			params->ip = IP_4;
+			conf->ip = IP_4;
 			break;
 		case '6':
-			params->ip = IP_6;
+			conf->ip = IP_6;
 			break;
 		case 'a':
-			params->type_num = KNOT_RRTYPE_ANY;
-			params->style.format = FORMAT_VERBOSE;
+			conf->type_num = KNOT_RRTYPE_ANY;
+			conf->style.format = FORMAT_VERBOSE;
 			break;
 		case 'C':
-			params->type_num = KNOT_RRTYPE_SOA;
-			params->operation = OPERATION_LIST_SOA;
+			conf->type_num = KNOT_RRTYPE_SOA;
+			conf->operation = OPERATION_LIST_SOA;
 			break;
 		case 'd':
 		case 'v': // Fall through.
-			params->style.format = FORMAT_VERBOSE;
+			conf->style.format = FORMAT_VERBOSE;
 			break;
 		case 'l':
-			params->type_num = KNOT_RRTYPE_AXFR;
+			conf->type_num = KNOT_RRTYPE_AXFR;
 			break;
 		case 'r':
-			params->flags.rd_flag = false;
+			conf->flags.rd_flag = false;
 			break;
 		case 's':
-			params->servfail_stop = true;
+			conf->servfail_stop = true;
 			break;
 		case 'T':
-			params->protocol = PROTO_TCP;
+			conf->protocol = PROTO_TCP;
 			break;
 		case 'w':
-			params->wait = -1;
+			conf->wait = -1;
 			break;
 		case 'c':
-			if (params_parse_class(optarg, &rclass) != KNOT_EOK) {
+			if (params_parse_class(optarg, &rclass)
+			    != KNOT_EOK) {
 				return KNOT_EINVAL;
 			}
-			params->class_num = rclass;
+			conf->class_num = rclass;
 			break;
 		case 'R':
-			if (params_parse_num(optarg, &params->retries)
+			if (params_parse_num(optarg, &conf->retries)
 			    != KNOT_EOK) {
 				return KNOT_EINVAL;
 			}
@@ -258,11 +216,11 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 			    != KNOT_EOK) {
 				return KNOT_EINVAL;
 			}
-			params->type_num = rtype;
-			params->xfr_serial = serial;
+			conf->type_num = rtype;
+			conf->xfr_serial = serial;
 			break;
 		case 'W':
-			if (params_parse_interval(optarg, &params->wait)
+			if (params_parse_interval(optarg, &conf->wait)
 			    != KNOT_EOK) {
 				return KNOT_EINVAL;
 			}
@@ -276,14 +234,14 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 	// Process non-option parameters.
 	switch (argc - optind) {
 	case 2:
-		if (params_parse_server(argv[optind + 1], &params->servers,
-		                        params->port)
+		if (params_parse_server(argv[optind + 1], &conf->servers,
+		                        conf->port)
 		    != KNOT_EOK) {
 			ERR("invalid nameserver\n");
 			return KNOT_EINVAL;
 		}
 	case 1: // Fall through.
-		if (host_parse_name(argv[optind], params)
+		if (parse_name(argv[optind], &params->queries, conf)
 		    != KNOT_EOK) {
 			return KNOT_EINVAL;
 		}
@@ -293,11 +251,8 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 		return KNOT_ENOTSUP;
 	}
 
-	// If server list is empty, try to read defaults.
-	if (list_size(&params->servers) == 0 &&
-	    get_nameservers(&params->servers, params->port) <= 0) {
-		WARN("can't read any default nameservers\n");
-	}
+	// Complete missing data in queries based on defaults.
+	complete_queries(&params->queries, params->config);
 
 	return KNOT_EOK;
 }

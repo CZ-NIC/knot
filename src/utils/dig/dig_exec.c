@@ -30,18 +30,16 @@
 #include "utils/common/netio.h"		// get_socktype
 #include "utils/common/exec.h"		// print_packet
 
-static knot_packet_t* create_query_packet(const dig_params_t *params,
-                                          const query_t      *query,
-                                          uint8_t            **data,
-                                          size_t             *data_len)
+static knot_packet_t* create_query_packet(const query_t *query,
+                                          uint8_t       **data,
+                                          size_t        *data_len)
 {
 	knot_question_t q;
 
 	// Set packet buffer size.
 	int max_size = MAX_PACKET_SIZE;
-	if (get_socktype(query->protocol, query->qtype) != SOCK_STREAM) {
-		// For UDP default or specified EDNS size.
-		max_size = params->udp_size;
+	if (get_socktype(query->protocol, query->type_num) != SOCK_STREAM) {
+		max_size = query->udp_size;
 	}
 
 	// Create packet skeleton.
@@ -60,9 +58,9 @@ static knot_packet_t* create_query_packet(const dig_params_t *params,
 	}
 
 	// Fill auxiliary question structure.
-	q.qclass = query->qclass;
-	q.qtype = query->qtype;
-	q.qname = knot_dname_new_from_str(query->qname, strlen(query->qname), 0);
+	q.qclass = query->class_num;
+	q.qtype = query->type_num;
+	q.qname = knot_dname_new_from_str(query->owner, strlen(query->owner), 0);
 
 	if (q.qname == NULL) {
 		knot_dname_release(q.qname);
@@ -78,7 +76,7 @@ static knot_packet_t* create_query_packet(const dig_params_t *params,
 	}
 
 	// For IXFR query add authority section.
-	if (query->qtype == KNOT_RRTYPE_IXFR) {
+	if (query->type_num == KNOT_RRTYPE_IXFR) {
 		int ret;
 		size_t pos = 0;
 		// SOA rdata in wireformat.
@@ -107,7 +105,7 @@ static knot_packet_t* create_query_packet(const dig_params_t *params,
 		// Create rrset with SOA record.
 		knot_rrset_t *soa = knot_rrset_new(q.qname,
 		                                   KNOT_RRTYPE_SOA,
-		                                   params->class_num,
+		                                   query->class_num,
 		                                   0);
 		ret = knot_rrset_add_rdata(soa, soa_data);
 
@@ -222,7 +220,7 @@ static bool last_serial_check(const uint32_t serial, const knot_packet_t *reply)
 	}
 }
 
-void process_query(const dig_params_t *params, const query_t *query)
+void process_query(const query_t *query)
 {
 	float		elapsed;
 	bool 		id_ok, stop;
@@ -237,18 +235,18 @@ void process_query(const dig_params_t *params, const query_t *query)
 	size_t		total_len = 0;
 	size_t		msg_count = 0;
 
-	if (params == NULL || query == NULL) {
+	if (query == NULL) {
 		return;
 	}
 
 	// Create query packet.
-	out_packet = create_query_packet(params, query, &out, &out_len);
+	out_packet = create_query_packet(query, &out, &out_len);
 
 	if (out_packet == NULL) {
 		return;
 	}
 
-	WALK_LIST(server, params->servers) {
+	WALK_LIST(server, query->servers) {
 		int  sockfd;
 		int  rcode;
 
@@ -257,9 +255,9 @@ void process_query(const dig_params_t *params, const query_t *query)
 
 		// Send query message.
 		sockfd = send_msg((server_t *)server,
-		                  get_iptype(params->ip),
-		                  get_socktype(query->protocol, query->qtype),
-		                  params->wait, out, out_len);
+		                  get_iptype(query->ip),
+		                  get_socktype(query->protocol, query->type_num),
+		                  query->wait, out, out_len);
 
 		if (sockfd < 0) {
 			continue;
@@ -271,8 +269,8 @@ void process_query(const dig_params_t *params, const query_t *query)
 		while (id_ok == false) {
 			// Receive reply message.
 			in_len = receive_msg(sockfd,
-			                     get_socktype(query->protocol, query->qtype),
-			                     params->wait, in, sizeof(in));
+			                     get_socktype(query->protocol, query->type_num),
+			                     query->wait, in, sizeof(in));
 
 			if (in_len <= 0) {
 				stop = true;
@@ -308,7 +306,7 @@ void process_query(const dig_params_t *params, const query_t *query)
 		}
 
 		// Check rcode.
-		rcode = check_rcode(params->servfail_stop, in_packet);
+		rcode = check_rcode(query->servfail_stop, in_packet);
 
 		// Servfail + stop if servfail -> stop processing.
 		if (rcode == -1) {
@@ -324,8 +322,8 @@ void process_query(const dig_params_t *params, const query_t *query)
 		check_question(out_packet, in_packet);
 
 		// Dump one standard reply message and finish.
-		if (query->qtype != KNOT_RRTYPE_AXFR &&
-		    query->qtype != KNOT_RRTYPE_IXFR) {
+		if (query->type_num != KNOT_RRTYPE_AXFR &&
+		    query->type_num != KNOT_RRTYPE_IXFR) {
 			// Stop meassuring of query time.
 			gettimeofday(&t_end, NULL);
 
@@ -354,7 +352,7 @@ void process_query(const dig_params_t *params, const query_t *query)
 		total_len += in_len;
 
 		// Start XFR dump.
-		print_header_xfr(&query->style, query->qtype);
+		print_header_xfr(&query->style, query->type_num);
 
 		print_data_xfr(&query->style, in_packet);
 
@@ -375,8 +373,8 @@ void process_query(const dig_params_t *params, const query_t *query)
 
 			// Receive reply message.
 			in_len = receive_msg(sockfd,
-			                     get_socktype(query->protocol, query->qtype),
-			                     params->wait, in, sizeof(in));
+			                     get_socktype(query->protocol, query->type_num),
+			                     query->wait, in, sizeof(in));
 
 			if (in_len <= 0) {
 				stop = true;
@@ -405,7 +403,7 @@ void process_query(const dig_params_t *params, const query_t *query)
 			id_ok = check_id(out_packet, in_packet);
 
 			// Check rcode.
-			rcode = check_rcode(params->servfail_stop, in_packet);
+			rcode = check_rcode(query->servfail_stop, in_packet);
 
 			if (rcode != KNOT_RCODE_NOERROR) {
 				stop = true;
@@ -448,25 +446,26 @@ void process_query(const dig_params_t *params, const query_t *query)
 
 int dig_exec(const dig_params_t *params)
 {
-	node *query = NULL;
+	node *n = NULL;
 
 	if (params == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	switch (params->operation) {
-	case OPERATION_QUERY:
-		// Loop over query list.
-		WALK_LIST(query, params->queries) {
-			process_query(params, (query_t *)query);
-		}
+	// Loop over query list.
+	WALK_LIST(n, params->queries) {
+		query_t *query = (query_t *)n;
 
-		break;
-	case OPERATION_LIST_SOA:
-		break;
-	default:
-		ERR("unsupported operation\n");
-		break;
+		switch (query->operation) {
+		case OPERATION_QUERY:
+			process_query(query);
+			break;
+		case OPERATION_LIST_SOA:
+			break;
+		default:
+			ERR("unsupported operation\n");
+			break;
+		}
 	}
 
 	return KNOT_EOK;
