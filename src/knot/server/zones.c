@@ -2866,7 +2866,7 @@ int zones_process_update(knot_nameserver_t *nameserver,
 
 	/*
 	 * 3) Process query.
-	*/
+	 */
 	if (ret == KNOT_EOK) {
 		zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 		pthread_mutex_lock(&zd->xfr_in.lock);
