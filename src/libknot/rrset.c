@@ -645,9 +645,10 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 			comp->compr->wire_pos += ret;
 			// TODO: compress domain name ??? for LS
 		} else if (descriptor_item_is_dname(item)) {
+			assert(comp == NULL);
 			knot_dname_t *dname;
 			memcpy(&dname, rdata + offset, sizeof(knot_dname_t *));
-			assert(dname);
+			assert(dname && dname->name);
 			if (size + rdlength + knot_dname_size(dname) > max_size) {
 				dbg_rrset("rr: to_wire: DNAME does not fit into RR.\n");
 				return KNOT_ESPACE;
@@ -2055,8 +2056,11 @@ uint64_t rrset_binary_size(const knot_rrset_t *rrset)
 	              sizeof(uint16_t) + // class
 	              sizeof(uint32_t) + // ttl
 	              sizeof(uint16_t) +  //RR count
-	              2 * sizeof(uint32_t) * rrset->rdata_count; //RR indices + binary lengths
+	              sizeof(uint32_t) * rrset->rdata_count; //RR indices
 	for (uint16_t i = 0; i < rrset->rdata_count; i++) {
+		/* Space to store length of one RR. */
+		size += sizeof(uint32_t);
+		/* Actual data. */
 		size += rrset_binary_size_one(rrset, i);
 	}
 	
@@ -2093,13 +2097,15 @@ static void rrset_serialize_rr(const knot_rrset_t *rrset, size_t rdata_pos,
 				rrset_rdata_item_size(rrset,
 			                              rdata_pos) - offset;
 			memcpy(stream + *size, rdata + offset, remainder_size);
-			size += remainder_size;
+			*size += remainder_size;
 		} else {
 			fprintf(stderr, "NAPTR, failing miserably\n");
 			assert(rrset->type == KNOT_RRTYPE_NAPTR);
 			assert(0);
 		}
 	}
+	
+	dbg_rrset_detail("RR nr=%d serialized, size=%d\n", rdata_pos, *size);
 }
 
 int rrset_serialize(const knot_rrset_t *rrset, uint8_t *stream, size_t *size)
@@ -2109,6 +2115,7 @@ int rrset_serialize(const knot_rrset_t *rrset, uint8_t *stream, size_t *size)
 	}
 	
 	uint64_t rrset_length = rrset_binary_size(rrset);
+	dbg_rrset_detail("rr: serialize: Binary size=%d\n", rrset_length);
 	memcpy(stream, &rrset_length, sizeof(uint64_t));
 	
 	size_t offset = sizeof(uint64_t);
@@ -2117,10 +2124,11 @@ int rrset_serialize(const knot_rrset_t *rrset, uint8_t *stream, size_t *size)
 	offset += sizeof(uint16_t);
 	memcpy(stream + offset, rrset->rdata_indices,
 	       rrset->rdata_count * sizeof(uint32_t));
+	offset += sizeof(uint32_t) * rrset->rdata_count;
 	/* Save owner. Size first. */
 	memcpy(stream + offset, &rrset->owner->size, 1);
 	++offset;
-	memcpy(stream, knot_dname_name(rrset->owner),
+	memcpy(stream + offset, knot_dname_name(rrset->owner),
 	       knot_dname_size(rrset->owner));
 	offset += knot_dname_size(rrset->owner);
 	
@@ -2139,6 +2147,8 @@ int rrset_serialize(const knot_rrset_t *rrset, uint8_t *stream, size_t *size)
 		/* This cannot fail, if it does, RDATA are malformed. TODO */
 		/* TODO this can be written later. */
 		uint32_t rr_size = rrset_binary_size_one(rrset, i);
+		dbg_rrset_detail("rr: serialize: RR index=%d size=%d\n",
+		                 i, rr_size);
 		memcpy(stream + offset, &rr_size, sizeof(uint32_t));
 		offset += sizeof(uint32_t);
 		rrset_serialize_rr(rrset, i, stream + offset + actual_size,
@@ -2148,8 +2158,9 @@ int rrset_serialize(const knot_rrset_t *rrset, uint8_t *stream, size_t *size)
 	}
 	
 	*size = offset + actual_size;
+	assert(*size == rrset_length);
+	dbg_rrset_detail("rr: serialize: RRSet serialized, size=%d\n", *size);
 	return KNOT_EOK;
-
 }
 
 int rrset_serialize_alloc(const knot_rrset_t *rrset, uint8_t **stream,
@@ -2164,7 +2175,10 @@ int rrset_serialize_alloc(const knot_rrset_t *rrset, uint8_t **stream,
 	}
 	
 	/* Prepare memory. */
-	*stream = xmalloc(*size);
+	*stream = malloc(*size);
+	if (*stream == NULL) {
+		return KNOT_ENOMEM;
+	}
 	
 	return rrset_serialize(rrset, *stream, size);
 }
@@ -2217,11 +2231,15 @@ int rrset_deserialize(uint8_t *stream, size_t *stream_size,
                       knot_rrset_t **rrset)
 {
 	if (sizeof(uint64_t) > *stream_size) {
+		dbg_rrset("rr: deserialize: No space for length.\n");
 		return KNOT_ESPACE;
 	}
 	uint64_t rrset_length = 0;
 	memcpy(&rrset_length, stream, sizeof(uint64_t));
 	if (rrset_length > *stream_size) {
+		dbg_rrset("rr: deserialize: No space for whole RRSet. "
+		          "(given=%d needed=%d)\n", *stream_size,
+		          rrset_length);
 		return KNOT_ESPACE;
 	}
 	
@@ -2267,14 +2285,21 @@ int rrset_deserialize(uint8_t *stream, size_t *stream_size,
 		 */
 		uint32_t rdata_size = 0;
 		memcpy(&rdata_size, stream + offset, sizeof(uint32_t));
+		offset += sizeof(uint32_t);
 		size_t read = 0;
-		rrset_deserialize_rr((*rrset), i,
-		                     stream + offset, rdata_size, &read);
+		rrset_deserialize_rr((*rrset), i, stream + offset, rdata_size,
+		                     &read);
 		/* TODO handle malformations. */
+		dbg_rrset_detail("rr: deserilaze: RR read size=%d, actual=%d\n",
+		                 read, rdata_size);
 		assert(read == rdata_size);
 		offset += read;
 	}
 	
+dbg_rrset_exec_detail(
+	dbg_rrset_detail("RRSet deserialized:\n");
+	knot_rrset_dump(*rrset);
+);
 	*stream_size = *stream_size - offset;
 	
 	return KNOT_EOK;
