@@ -13,15 +13,13 @@ BUILT_SOURCES =					\
 	tests/sample_conf.rc			\
 	libknotd_la-cf-lex.c			\
 	libknotd_la-cf-parse.c			\
-	libknotd_la-cf-parse.h			\
-	zscanner/scanner.c
+	libknotd_la-cf-parse.h
 
 CLEANFILES =					\
 	tests/sample_conf.rc			\
 	libknotd_la-cf-lex.c			\
 	libknotd_la-cf-parse.c			\
-	libknotd_la-cf-parse.h			\
-	zscanner/scanner.c
+	libknotd_la-cf-parse.h
 
 knotc_SOURCES =					\
 	knot/ctl/knotc_main.c
@@ -229,7 +227,7 @@ libknotd_la_SOURCES =				\
 	knot/server/server.h
 
 zscanner/scanner.c: zscanner/scanner.rl zscanner/scanner_body.rl
-	$(RAGEL) -s -o zscanner/scanner.c zscanner/scanner.rl
+	$(RAGEL)-s -o zscanner/scanner.c zscanner/scanner.rl
 
 unittests_zscanner_SOURCES =			\
 	zscanner/test/zscanner_test.c		\
