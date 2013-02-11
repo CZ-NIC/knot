@@ -2279,7 +2279,7 @@ int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
 		return KNOT_ERROR;
 	}
 
-	log_server_info("Loading %d compiled zones...\n", conf->zones_count);
+	log_server_info("Loading %d zones...\n", conf->zones_count);
 
 	/* Insert all required zones to the new zone DB. */
 	/*! \warning RCU must not be locked as some contents switching will 

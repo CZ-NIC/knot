@@ -556,6 +556,10 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 		knot_compr_t *compr = comp->compr;
 		if (compr->owner.pos == 0 ||
 		    compr->owner.pos > KNOT_RESPONSE_MAX_PTR) {
+			if (size + compr->owner.size > max_size) {
+				dbg_response("Owner does not fit into RR\n");
+				return KNOT_ESPACE;
+			}
 			memcpy(*pos, compr->owner.wire,
 			       compr->owner.size);
 			compr->owner.pos = compr->wire_pos;
@@ -584,6 +588,11 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 	}
 
 	dbg_rrset_detail("Max size: %zu, size: %d\n", max_size, size);
+	
+	if (size + 10 > max_size) {
+		dbg_rrset("rr: to_wire: Not enough space for static part of RR\n");
+		return KNOT_ESPACE;
+	}
 
 	// put rest of RR 'header'
 	knot_wire_write_u16(*pos, rrset->type);
@@ -626,22 +635,21 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 				comp->compr, *pos,
 				max_size - size - rdlength,
 				comp->compr_cs);
-
 			if (ret < 0) {
 				return KNOT_ESPACE;
 			}
-
+			assert(ret + size + rdlength <= max_size);
 			dbg_response_detail("Compressed dname size: %d\n", ret);
 			*pos += ret;
 			rdlength += ret;
 			comp->compr->wire_pos += ret;
-			size += ret;
 			// TODO: compress domain name ??? for LS
 		} else if (descriptor_item_is_dname(item)) {
 			knot_dname_t *dname;
 			memcpy(&dname, rdata + offset, sizeof(knot_dname_t *));
 			assert(dname);
-			if (size + rdlength + dname->size > max_size) {
+			if (size + rdlength + knot_dname_size(dname) > max_size) {
+				dbg_rrset("rr: to_wire: DNAME does not fit into RR.\n");
 				return KNOT_ESPACE;
 			}
 dbg_rrset_exec_detail(
@@ -660,7 +668,6 @@ dbg_rrset_exec_detail(
 				comp->compr->wire_pos += knot_dname_size(dname);
 			}
 			offset += sizeof(knot_dname_t *);
-			size += knot_dname_size(dname);
 		} else if (descriptor_item_is_fixed(item)) {
 			dbg_rrset_detail("Saving static chunk, size=%d\n",
 			                 item);
@@ -672,7 +679,6 @@ dbg_rrset_exec_detail(
 			*pos += item;
 			rdlength += item;
 			offset += item;
-			size += item;
 		} else if (descriptor_item_is_remainder(item)) {
 			/* Check that the remainder fits to stream. */
 			size_t remainder_size =
@@ -683,19 +689,22 @@ dbg_rrset_exec_detail(
 			                 remainder_size,
 			                 size + rdlength + remainder_size);
 			if (size + rdlength + remainder_size > max_size) {
+				dbg_rrset("rr: to_wire: Remainder does not fit "
+				          "to wire.\n");
 				return KNOT_ESPACE;
 			}
 			memcpy(*pos, rdata + offset, remainder_size);
 			*pos += remainder_size;
 			rdlength += remainder_size;
 			offset += remainder_size;
-			size += remainder_size;
 		} else {
 			assert(rrset->type == KNOT_RRTYPE_NAPTR);
 			/* Store the binary chunk. */
 			size_t chunk_size =
 			rrset_rdata_naptr_bin_chunk_size(rrset, rdata_pos);
 			if (size + rdlength + chunk_size > max_size) {
+				dbg_rrset("rr: to_wire: NAPTR chunk does not "
+				          "fit to wire.\n");
 				return KNOT_ESPACE;
 			}
 			*pos += chunk_size;
@@ -706,7 +715,9 @@ dbg_rrset_exec_detail(
 			knot_dname_t *dname = 
 				(knot_dname_t *)(rdata + offset);
 			assert(dname);
-			if (size + rdlength + dname->size > max_size) {
+			if (size + rdlength + knot_dname_size(dname) > max_size) {
+				dbg_rrset("rr: to_wire: NAPTR DNAME does not "
+				          "fit to wire.\n");
 				return KNOT_ESPACE;
 			}
 
@@ -718,13 +729,14 @@ dbg_rrset_exec_detail(
 			*pos += knot_dname_size(dname);
 			rdlength += knot_dname_size(dname);
 			offset += sizeof(knot_dname_t *);
-			size += knot_dname_size(dname);
 		}
 	}
 	
 	knot_wire_write_u16(rdlength_pos, rdlength);
+	size += rdlength;
 
 	*rr_size = size;
+	assert(size <= max_size);
 	return KNOT_EOK;
 }
 
@@ -773,18 +785,22 @@ static int knot_rrset_to_wire_aux(const knot_rrset_t *rrset, uint8_t **pos,
 	const rdata_descriptor_t *desc = get_rdata_descriptor(rrset->type);
 	assert(desc);
 
-	for (uint16_t i = 0; i < rrset->rdata_count; i++) {
+	for (uint16_t i = 0; i < rrset->rdata_count; ++i) {
+		dbg_rrset_detail("rrset: to_wire: Current max_size=%d\n",
+			         max_size);
 		size_t rr_size = 0;
-		int ret = knot_rrset_rdata_to_wire_one(rrset, i,
-		                                       pos, max_size, &rr_size,
-		                                       comp);
+		int ret = knot_rrset_rdata_to_wire_one(rrset, i, pos, max_size,
+		                                       &rr_size, comp);
 		if (ret != KNOT_EOK) {
 			dbg_rrset("rrset: to_wire: Cannot convert RR. "
 			          "Reason: %s.\n", knot_strerror(ret));
 			return ret;
 		}
 		dbg_rrset_detail("Converted RR nr=%d, size=%d\n", i, rr_size);
+		/* Change size of whole RRSet. */
 		size += rr_size;
+		/* Change max size. */
+		max_size -= rr_size;
 	}
 	
 	dbg_rrset_detail("Max size: %zu, size: %d\n", max_size, size);
@@ -825,6 +841,9 @@ dbg_rrset_exec_detail(
 	}
 
 	// the whole RRSet did fit in
+	if (ret > max_size) {
+		assert(0);
+	}
 	assert(ret <= max_size);
 	assert(pos - wire == ret);
 	*size = ret;
