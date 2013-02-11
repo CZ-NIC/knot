@@ -50,11 +50,27 @@ static knot_packet_t* create_query_packet(const query_t *query,
 		return NULL;
 	}
 
-	// Set recursion bit to wireformat.
+	// Set flags to wireformat.
+	if (query->flags.aa_flag == true) {
+		knot_wire_set_aa(packet->wireformat);
+	}
+	if (query->flags.tc_flag == true) {
+		knot_wire_set_tc(packet->wireformat);
+	}
 	if (query->flags.rd_flag == true) {
 		knot_wire_set_rd(packet->wireformat);
-	} else {
-		knot_wire_flags_clear_rd(packet->wireformat);
+	}
+	if (query->flags.ra_flag == true) {
+		knot_wire_set_ra(packet->wireformat);
+	}
+	if (query->flags.z_flag == true) {
+		knot_wire_set_z(packet->wireformat);
+	}
+	if (query->flags.ad_flag == true) {
+		knot_wire_set_ad(packet->wireformat);
+	}
+	if (query->flags.cd_flag == true) {
+		knot_wire_set_cd(packet->wireformat);
 	}
 
 	// Fill auxiliary question structure.

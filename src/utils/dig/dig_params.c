@@ -470,6 +470,34 @@ static int parse_opt2(const char *value, dig_params_t *params)
 		query->style.format = FORMAT_DIG;
 	} else if (strcmp(value, "noshort") == 0) {
 		query->style.format = FORMAT_VERBOSE;
+	} else if (strcmp(value, "aaflag") == 0) {
+		query->flags.aa_flag = true;
+	} else if (strcmp(value, "noaaflag") == 0) {
+		query->flags.aa_flag = false;
+	} else if (strcmp(value, "tcflag") == 0) {
+		query->flags.tc_flag = true;
+	} else if (strcmp(value, "notcflag") == 0) {
+		query->flags.tc_flag = false;
+	} else if (strcmp(value, "recurse") == 0) {
+		query->flags.rd_flag = true;
+	} else if (strcmp(value, "norecurse") == 0) {
+		query->flags.rd_flag = false;
+	} else if (strcmp(value, "raflag") == 0) {
+		query->flags.ra_flag = true;
+	} else if (strcmp(value, "noraflag") == 0) {
+		query->flags.ra_flag = false;
+	} else if (strcmp(value, "zflag") == 0) {
+		query->flags.z_flag = true;
+	} else if (strcmp(value, "nozflag") == 0) {
+		query->flags.z_flag = false;
+	} else if (strcmp(value, "dnssec") == 0) {
+		query->flags.ad_flag = true;
+	} else if (strcmp(value, "nodnssec") == 0) {
+		query->flags.ad_flag = false;
+	} else if (strcmp(value, "cdflag") == 0) {
+		query->flags.cd_flag = true;
+	} else if (strcmp(value, "nocdflag") == 0) {
+		query->flags.cd_flag = false;
 	} else if (strcmp(value, "all") == 0) {
 
 	} else if (strcmp(value, "noall") == 0) {
