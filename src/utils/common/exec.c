@@ -216,6 +216,14 @@ static void print_footer(const size_t total_len,
 	       total_len, msg_count, ip, port, proto, elapsed, date);
 }
 
+static void print_opt_section(const knot_opt_rr_t *rr)
+{
+	printf("Version: %u, flags: %s, UDP size: %u B\n",
+	       knot_edns_get_version(rr),
+	       (knot_edns_do(rr) != 0) ? "DO" : "",
+	       knot_edns_get_payload(rr));
+}
+
 static void print_section_question(const knot_dname_t *owner,
                                    const uint16_t     qclass,
                                    const uint16_t     qtype)
@@ -483,6 +491,12 @@ void print_packet(const style_t       *style,
 	case FORMAT_MULTILINE:
 		print_header(style, packet);
 
+		if (knot_edns_get_version(&packet->opt_rr)
+		    != EDNS_NOT_SUPPORTED) {
+			printf("\n;; EDNS PSEUDOSECTION:\n;; ");
+			print_opt_section(&packet->opt_rr);
+		}
+
 		if (packet->header.qdcount > 0) {
 			printf("\n;; QUESTION SECTION:\n;; ");
 			print_section_question(packet->question.qname,
@@ -504,8 +518,15 @@ void print_packet(const style_t       *style,
 
 		if (packet->ar_rrsets > 0) {
 			printf("\n;; ADDITIONAL SECTION:\n");
-			print_section_verbose(packet->additional,
-			                      packet->ar_rrsets);
+
+			if (knot_edns_get_version(&packet->opt_rr)
+			    != EDNS_NOT_SUPPORTED) {
+				print_section_verbose(packet->additional,
+				                      packet->ar_rrsets - 1);
+			} else {
+				print_section_verbose(packet->additional,
+				                      packet->ar_rrsets);
+			}
 		}
 
 		print_footer(total_len, sockfd, elapsed, msg_count);

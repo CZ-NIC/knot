@@ -39,7 +39,7 @@ typedef enum {
 	OPERATION_LIST_SOA,
 } operation_t;
 
-/*! \brief DNS header flags. */
+/*! \brief DNS header and EDNS flags. */
 typedef struct {
 	/*!< Authoritative answer flag. */
 	bool	aa_flag;
@@ -55,6 +55,8 @@ typedef struct {
 	bool	ad_flag;
 	/*!< Checking disabled flag. */
 	bool	cd_flag;
+	/*!< DNSSEC OK flag. */
+	bool	do_flag;
 } flags_t;
 
 /*! \brief Basic parameters for DNS query. */
@@ -73,8 +75,8 @@ typedef struct {
 	protocol_t	protocol;
 	/*!< Port/service to connect to. */
 	char		*port;
-	/*!< UDP buffer size. */
-	uint32_t	udp_size;
+	/*!< UDP buffer size (16unsigned + -1 uninitialized). */
+	int32_t		udp_size;
 	/*!< Number of UDP retries. */
 	uint32_t	retries;
 	/*!< Wait for network response in seconds (-1 means forever). */

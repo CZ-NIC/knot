@@ -39,6 +39,7 @@ const flags_t DEFAULT_FLAGS = {
 	.z_flag  = false,
 	.ad_flag = false,
 	.cd_flag = false,
+	.do_flag = false
 };
 
 query_t* query_create(const char *owner, const query_t *conf)
@@ -67,7 +68,7 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->ip = IP_ALL;
 		query->protocol = PROTO_ALL;
 		query->port = strdup(DEFAULT_DNS_PORT);
-		query->udp_size = DEFAULT_UDP_SIZE;
+		query->udp_size = -1;
 		query->retries = DEFAULT_RETRIES_DIG;
 		query->wait = DEFAULT_TIMEOUT_DIG;
 		query->servfail_stop = false;
@@ -461,84 +462,125 @@ static int parse_opt2(const char *value, dig_params_t *params)
 		query = params->config;
 	}
 
-	// Process option.
+	// Check for format option.
 	if (strcmp(value, "multiline") == 0) {
 		query->style.format = FORMAT_MULTILINE;
 	} else if (strcmp(value, "nomultiline") == 0) {
 		query->style.format = FORMAT_VERBOSE;
-	} else if (strcmp(value, "short") == 0) {
+	}
+	else if (strcmp(value, "short") == 0) {
 		query->style.format = FORMAT_DIG;
 	} else if (strcmp(value, "noshort") == 0) {
 		query->style.format = FORMAT_VERBOSE;
-	} else if (strcmp(value, "aaflag") == 0) {
+	}
+
+	// Check for flag option.
+	else if (strcmp(value, "aaflag") == 0) {
 		query->flags.aa_flag = true;
 	} else if (strcmp(value, "noaaflag") == 0) {
 		query->flags.aa_flag = false;
-	} else if (strcmp(value, "tcflag") == 0) {
+	}
+	else if (strcmp(value, "tcflag") == 0) {
 		query->flags.tc_flag = true;
 	} else if (strcmp(value, "notcflag") == 0) {
 		query->flags.tc_flag = false;
-	} else if (strcmp(value, "recurse") == 0) {
+	}
+	else if (strcmp(value, "rdflag") == 0 ||
+	         strcmp(value, "recurse") == 0) {
 		query->flags.rd_flag = true;
-	} else if (strcmp(value, "norecurse") == 0) {
+	} else if (strcmp(value, "nordflag") == 0 ||
+	           strcmp(value, "norecurse") == 0) {
 		query->flags.rd_flag = false;
-	} else if (strcmp(value, "raflag") == 0) {
+	}
+	else if (strcmp(value, "raflag") == 0) {
 		query->flags.ra_flag = true;
 	} else if (strcmp(value, "noraflag") == 0) {
 		query->flags.ra_flag = false;
-	} else if (strcmp(value, "zflag") == 0) {
+	}
+	else if (strcmp(value, "zflag") == 0) {
 		query->flags.z_flag = true;
 	} else if (strcmp(value, "nozflag") == 0) {
 		query->flags.z_flag = false;
-	} else if (strcmp(value, "dnssec") == 0) {
+	}
+	else if (strcmp(value, "adflag") == 0) {
 		query->flags.ad_flag = true;
-	} else if (strcmp(value, "nodnssec") == 0) {
+	} else if (strcmp(value, "noadflag") == 0) {
 		query->flags.ad_flag = false;
-	} else if (strcmp(value, "cdflag") == 0) {
+	}
+	else if (strcmp(value, "cdflag") == 0) {
 		query->flags.cd_flag = true;
 	} else if (strcmp(value, "nocdflag") == 0) {
 		query->flags.cd_flag = false;
-	} else if (strcmp(value, "all") == 0) {
+	}
+	else if (strcmp(value, "dnssec") == 0) {
+		query->flags.do_flag = true;
+	} else if (strcmp(value, "nodnssec") == 0) {
+		query->flags.do_flag = false;
+	}
 
+	// Check for display option.
+	else if (strcmp(value, "all") == 0) {
+		query->style.show_question = true;
+		query->style.show_answer = true;
+		query->style.show_authority = true;
+		query->style.show_additional = true;
 	} else if (strcmp(value, "noall") == 0) {
-
-	} else if (strcmp(value, "qr") == 0) {
+		query->style.show_query = false;
+		query->style.show_question = false;
+		query->style.show_answer = false;
+		query->style.show_authority = false;
+		query->style.show_additional = false;
+	}
+	else if (strcmp(value, "qr") == 0) {
 		query->style.show_query = true;
 	} else if (strcmp(value, "noqr") == 0) {
 		query->style.show_query = false;
-	} else if (strcmp(value, "question") == 0) {
+	}
+	else if (strcmp(value, "question") == 0) {
 		query->style.show_question = true;
 	} else if (strcmp(value, "noquestion") == 0) {
 		query->style.show_question = false;
-	} else if (strcmp(value, "answer") == 0) {
+	}
+	else if (strcmp(value, "answer") == 0) {
 		query->style.show_answer = true;
 	} else if (strcmp(value, "noanswer") == 0) {
 		query->style.show_answer = false;
-	} else if (strcmp(value, "authority") == 0) {
+	}
+	else if (strcmp(value, "authority") == 0) {
 		query->style.show_authority = true;
 	} else if (strcmp(value, "noauthority") == 0) {
 		query->style.show_authority = false;
-	} else if (strcmp(value, "additional") == 0) {
+	}
+	else if (strcmp(value, "additional") == 0) {
 		query->style.show_additional = true;
 	} else if (strcmp(value, "noadditional") == 0) {
 		query->style.show_additional = false;
-	} else if (strcmp(value, "cl") == 0) {
+	}
+	else if (strcmp(value, "cl") == 0) {
 		query->style.show_class = true;
 	} else if (strcmp(value, "nocl") == 0) {
 		query->style.show_class = false;
-	} else if (strcmp(value, "ttl") == 0) {
+	}
+	else if (strcmp(value, "ttl") == 0) {
 		query->style.show_ttl = true;
 	} else if (strcmp(value, "nottl") == 0) {
 		query->style.show_ttl = false;
-	} else if (strcmp(value, "tcp") == 0) {
+	}
+
+	// Check for connection option.
+	else if (strcmp(value, "tcp") == 0) {
 		query->protocol = PROTO_TCP;
 	} else if (strcmp(value, "notcp") == 0) {
 		query->protocol = PROTO_UDP;
-	} else if (strcmp(value, "fail") == 0) {
+	}
+	else if (strcmp(value, "fail") == 0) {
 		query->servfail_stop = true;
 	} else if (strcmp(value, "nofail") == 0) {
 		query->servfail_stop = false;
-	} else {
+	}
+
+	// Unknown option.
+	else {
 		ERR("invalid option: %s\n", value);
 	}
 

@@ -26,6 +26,7 @@
 #include "libknot/consts.h"		// KNOT_RCODE_NOERROR
 #include "libknot/util/wire.h"		// knot_wire_set_rd
 #include "libknot/packet/query.h"	// knot_query_init
+#include "libknot/packet/response.h"	// knot_response_add_opt
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/netio.h"		// get_socktype
 #include "utils/common/exec.h"		// print_packet
@@ -35,16 +36,24 @@ static knot_packet_t* create_query_packet(const query_t *query,
                                           size_t        *data_len)
 {
 	knot_question_t q;
+	knot_packet_t   *packet;
 
 	// Set packet buffer size.
-	int max_size = MAX_PACKET_SIZE;
-	if (get_socktype(query->protocol, query->type_num) != SOCK_STREAM) {
-		max_size = query->udp_size;
+	int max_size = query->udp_size;
+
+	if (max_size < 0) {
+		if (get_socktype(query->protocol, query->type_num)
+		    == SOCK_STREAM) {
+			max_size = MAX_PACKET_SIZE;
+		} else if (query->flags.do_flag == true) {
+			max_size = DEFAULT_EDNS_SIZE;
+		} else {
+			max_size = DEFAULT_UDP_SIZE;
+		}
 	}
 
 	// Create packet skeleton.
-	knot_packet_t *packet = create_empty_packet(KNOT_PACKET_PREALLOC_NONE,
-	                                            max_size);
+	packet = create_empty_packet(KNOT_PACKET_PREALLOC_NONE, max_size);
 
 	if (packet == NULL) {
 		return NULL;
@@ -143,6 +152,34 @@ static knot_packet_t* create_query_packet(const query_t *query,
 			knot_packet_free(&packet);
 			return NULL;
 		}
+	}
+
+	// Set DO flag to EDNS section.
+	if (query->flags.do_flag == true) {
+		knot_opt_rr_t *opt_rr = knot_edns_new();
+
+		if (opt_rr == NULL) {
+			ERR("can't create EDNS section\n");
+			knot_edns_free(&opt_rr);
+			knot_dname_release(q.qname);
+			knot_packet_free(&packet);
+			return NULL;
+		}
+
+		knot_edns_set_version(opt_rr, 0);
+		knot_edns_set_payload(opt_rr, max_size);
+
+		if (knot_response_add_opt(packet, opt_rr, 0, 0) != KNOT_EOK) {
+			ERR("can't set EDNS section\n");
+			knot_edns_free(&opt_rr);
+			knot_dname_release(q.qname);
+			knot_packet_free(&packet);
+			return NULL;
+		}
+
+		knot_edns_set_do(&packet->opt_rr);
+
+		knot_edns_free(&opt_rr);
 	}
 
 	// Create wire query.

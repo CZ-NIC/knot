@@ -36,6 +36,7 @@
 #define DEFAULT_IPV6_NAME	"::1"
 #define DEFAULT_DNS_PORT	"53"
 #define DEFAULT_UDP_SIZE	512
+#define DEFAULT_EDNS_SIZE	4096
 #define MAX_PACKET_SIZE		65535
 
 #define SEP_CHARS		"\n\t "
