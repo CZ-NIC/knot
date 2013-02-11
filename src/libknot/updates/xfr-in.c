@@ -1644,15 +1644,15 @@ dbg_xfrin_exec_detail(
 	}
 	
 dbg_xfrin_exec_detail(
-	dbg_xfrin_detail("Removed rdata: \n");
-	knot_rdata_t *r = rdata;
-	if (r != NULL) {
-		do {
-			dbg_xfrin_detail("pointer: %p\n", r);
-			knot_rdata_dump(r, knot_rrset_type(remove), 0);
-			r = r->next;
-		} while (r != NULL && r != rdata);
-	}
+//	dbg_xfrin_detail("Removed rdata: \n");
+//	knot_rdata_t *r = rdata;
+//	if (r != NULL) {
+//		do {
+//			dbg_xfrin_detail("pointer: %p\n", r);
+//			knot_rdata_dump(r, knot_rrset_type(remove), 0);
+//			r = r->next;
+//		} while (r != NULL && r != rdata);
+//	}
 );
 
 	if (rr_remove->rdata_count != 0) {
@@ -1972,11 +1972,9 @@ static int xfrin_apply_add_normal_ddns(knot_changes_t *changes,
 		} else {
 			dbg_ddns_verb("DDNS: replacing SOA (old serial: %u,"
 			              " new serial: %u.\n",
-			              knot_rdata_soa_serial(knot_rrset_rdata(
-			                  knot_node_rrset(node,
-			                                  KNOT_RRTYPE_SOA))),
-			              knot_rdata_soa_serial(knot_rrset_rdata(
-			                                            add)));
+			              knot_rrset_rdata_soa_serial(knot_node_rrset(node,
+			                                  KNOT_RRTYPE_SOA)),
+			              knot_rrset_rdata_soa_serial(add));
 			/* b) Otherwise, replace the current SOA. */
 			ret = xfrin_replace_rrset_in_node(node, add,
 			                                      changes,
@@ -2043,7 +2041,7 @@ static int xfrin_apply_add_normal(knot_changes_t *changes,
 
 dbg_xfrin_exec_detail(
 	dbg_xfrin_detail("applying rrset:\n");
-	knot_rrset_dump(add, 0);
+	knot_rrset_dump(add);
 );
 
 	/* DDNS special cases. */
@@ -2088,7 +2086,7 @@ dbg_xfrin_exec_detail(
 	
 dbg_xfrin_exec_detail(
 	dbg_xfrin_detail("Removed RRSet: \n");
-	knot_rrset_dump(*rrset, 1);
+	knot_rrset_dump(*rrset);
 );
 
 	if (*rrset == NULL) {
@@ -2346,23 +2344,9 @@ void xfrin_cleanup_successful_update(knot_changes_t **changes)
 
 	// delete old RDATA
 	for (int i = 0; i < (*changes)->old_rdata_count; ++i) {
-		dbg_xfrin_detail("Deleting old RDATA: %p, type: %s\n", 
-		         (*changes)->old_rdata[i],
-		         (*changes)->old_rdata_types[i]);
 		knot_rrset_dump((*changes)->old_rdata[i]);
 		// RDATA are stored separately so do not delete the whole chain
 		knot_rrset_deep_free(&(*changes)->old_rdata[i], 1, 0);
-//		knot_rdata_t *rdata = (*changes)->old_rdata[i];
-//		if (rdata != NULL) {
-//			do {
-//				knot_rdata_t *tmp = rdata->next;
-//				knot_rdata_deep_free(&rdata,
-//				             (*changes)->old_rdata_types[i], 1);
-//				rdata = tmp;
-//			} while (rdata != NULL
-//			         && rdata != (*changes)->old_rdata[i]);
-//		}
-
 	}
 
 	// free the empty nodes
@@ -2608,7 +2592,7 @@ dbg_xfrin_exec_verb(
 		free(name);
 );
 dbg_xfrin_exec_detail(
-		knot_rrset_dump(chset->remove[i], 0);
+		knot_rrset_dump(chset->remove[i]);
 );
 
 		is_nsec3 = 0;
@@ -2701,7 +2685,7 @@ dbg_xfrin_exec_verb(
 		free(name);
 );
 dbg_xfrin_exec_detail(
-		knot_rrset_dump(chset->add[i], 0);
+		knot_rrset_dump(chset->add[i]);
 );
 
 		is_nsec3 = 0;

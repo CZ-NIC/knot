@@ -1413,9 +1413,9 @@ static int knot_ddns_add_rr(knot_node_t *node, const knot_rrset_t *rr,
 		/* We have copied the RRSet from the node. */
 dbg_ddns_exec_detail(
 		dbg_ddns_detail("Merging RR to an existing RRSet.\n");
-		knot_rrset_dump(node_rrset_copy, 1);
+		knot_rrset_dump(node_rrset_copy);
 		dbg_ddns_detail("New RR:\n");
-		knot_rrset_dump(*rr_copy, 0);
+		knot_rrset_dump(*rr_copy);
 );
 		
 		if (type_covered != type) {
@@ -1429,7 +1429,7 @@ dbg_ddns_exec_detail(
 
 dbg_ddns_exec_detail(
 		dbg_ddns_detail("After merge:\n");
-		knot_rrset_dump(node_rrset_copy, 1);
+		knot_rrset_dump(node_rrset_copy);
 );
 
 		if (ret < KNOT_EOK) {

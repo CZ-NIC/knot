@@ -2147,7 +2147,7 @@ int rrset_serialize(const knot_rrset_t *rrset, uint8_t *stream, size_t *size)
 		actual_size += size_one;
 	}
 	
-	assert(actual_size == *size);
+	*size = offset + actual_size;
 	return KNOT_EOK;
 
 }

@@ -284,7 +284,7 @@ static int knot_zone_diff_remove_node(knot_changeset_t *changeset,
 	
 	dbg_zonediff("zone_diff: remove_node: Removing node:\n");
 dbg_zonediff_exec_detail(
-	knot_node_dump((knot_node_t *)node, 1);
+	knot_node_dump((knot_node_t *)node);
 );
 
 	const knot_rrset_t **rrsets = knot_node_rrsets(node);
@@ -344,10 +344,9 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 	* After the list has been traversed, we have a list of
 	* changed/removed rdatas. This has awful computation time.
 	*/
-	dbg_zonediff_detail("zone_diff: diff_rdata: Diff of %s, type=%s. "
+	dbg_zonediff_detail("zone_diff: diff_rdata: Diff of %s, type=%d. "
 	              "RR count 1=%d RR count 2=%d.\n",
-	              knot_dname_to_str(rrset1->owner),
-	              knot_rrtype_to_string(rrset1->type),
+	              knot_dname_to_str(rrset1->owner), rrset1->type,
 	              knot_rrset_rdata_rr_count(rrset1),
 	              knot_rrset_rdata_rr_count(rrset2));
 
@@ -973,32 +972,32 @@ int knot_zone_contents_diff(const knot_zone_contents_t *zone1,
 }
 
 #ifdef KNOT_ZONEDIFF_DEBUG
-#ifdef DEBUG_ENABLE_DETAILS
-static void knot_zone_diff_dump_changeset(knot_changeset_t *ch)
-{
-	dbg_zonediff_detail("Changeset FROM: %d\n", ch->serial_from);
-	rrset_dump_text(ch->soa_from, stderr);
-	dbg_zonediff_detail("\n");
-	dbg_zonediff_detail("Changeset TO: %d\n", ch->serial_to);
-	rrset_dump_text(ch->soa_to, stderr);
-	dbg_zonediff_detail("\n");
-	dbg_zonediff_detail("Adding %d RRs.\n", ch->add_count);
-	dbg_zonediff_detail("Removing %d RRs.\n", ch->remove_count);
+//#ifdef DEBUG_ENABLE_DETAILS
+//static void knot_zone_diff_dump_changeset(knot_changeset_t *ch)
+//{
+//	dbg_zonediff_detail("Changeset FROM: %d\n", ch->serial_from);
+//	rrset_dump_text(ch->soa_from, stderr);
+//	dbg_zonediff_detail("\n");
+//	dbg_zonediff_detail("Changeset TO: %d\n", ch->serial_to);
+//	rrset_dump_text(ch->soa_to, stderr);
+//	dbg_zonediff_detail("\n");
+//	dbg_zonediff_detail("Adding %d RRs.\n", ch->add_count);
+//	dbg_zonediff_detail("Removing %d RRs.\n", ch->remove_count);
 	
-	dbg_zonediff_detail("ADD section:\n");
-	dbg_zonediff_detail("**********************************************\n");
-	for (int i = 0; i < ch->add_count; i++) {
-		rrset_dump_text(ch->add[i], stderr);
-		dbg_zonediff_detail("\n");
-	}
-	dbg_zonediff_detail("REMOVE section:\n");
-	dbg_zonediff_detail("**********************************************\n");
-	for (int i = 0; i < ch->remove_count; i++) {
-		rrset_dump_text(ch->remove[i], stderr);
-		dbg_zonediff_detail("\n");
-	}
-}
-#endif
+//	dbg_zonediff_detail("ADD section:\n");
+//	dbg_zonediff_detail("**********************************************\n");
+//	for (int i = 0; i < ch->add_count; i++) {
+//		rrset_dump_text(ch->add[i], stderr);
+//		dbg_zonediff_detail("\n");
+//	}
+//	dbg_zonediff_detail("REMOVE section:\n");
+//	dbg_zonediff_detail("**********************************************\n");
+//	for (int i = 0; i < ch->remove_count; i++) {
+//		rrset_dump_text(ch->remove[i], stderr);
+//		dbg_zonediff_detail("\n");
+//	}
+//}
+//#endif
 #endif
 
 int knot_zone_diff_create_changesets(const knot_zone_contents_t *z1,
@@ -1036,59 +1035,9 @@ int knot_zone_diff_create_changesets(const knot_zone_contents_t *z1,
 	dbg_zonediff("Changesets created successfully!\n");
 	dbg_zonediff_detail("Changeset dump:\n");
 dbg_zonediff_exec_detail(
-	knot_zone_diff_dump_changeset((*changesets)->sets);
+//	knot_zone_diff_dump_changeset((*changesets)->sets);
 );
 	
 	return KNOT_EOK;
 }
-
-/* Mostly just for testing. We only shall diff zones in memory later. */
-//int knot_zone_diff_zones(const char *zonefile1, const char *zonefile2)
-//{
-	/* Compile test zones. */
-//	int ret = zone_read("example.com.", "/home/jan/test/testzone1", "tmpzone1.db", 0);
-//	assert(ret == KNOT_EOK);
-//	ret = zone_read("example.com.", "/home/jan/test/testzone2", "tmpzone2.db", 0);
-//	assert(ret == KNOT_EOK);
-//	/* Load test zones. */
-//	zloader_t *loader = NULL;
-//	int ret = knot_zload_open(&loader, "tmpzone1.db");
-//	assert(ret == KNOT_EOK);
-//	knot_zone_t *z1 = knot_zload_load(loader);
-//	ret = knot_zload_open(&loader, "tmpzone2.db");
-//	assert(ret == KNOT_EOK);
-//	knot_zone_t *z2 = knot_zload_load(loader);
-//	assert(z1 && z2);
-//	knot_changeset_t *changeset = malloc(sizeof(knot_changeset_t));
-//	memset(changeset, 0, sizeof(knot_changeset_t));
-//	assert(knot_zone_contents_diff(z1->contents, z2->contents,
-//	                               changeset) == KNOT_EOK);
-//	dbg_zonediff("Changeset created: From=%d to=%d.\n", changeset.serial_from,
-//	       changeset.serial_to);
-////	knot_changesets_t chngsets;
-////	chngsets->sets = malloc(sizeof(knot_changeset_t));
-////	chngsets->sets[0] = changeset;
-////	chngsets->count = 1;
-////	chngsets->allocated = 1;
-////	knot_zone_contents_t *new_zone = NULL;
-////	ret = xfrin_apply_changesets(z1, chngsets, &new_zone);
-////	if (ret != KNOT_EOK) {
-////		dbg_zonediff("Application of changesets failed. (%s)\n",
-////		       knot_strerror(ret));
-////	}
-	
-////	assert(new_zone);
-	
-//	/* Dump creted zone. */
-////	FILE *f = fopen("testovani", "w");
-////	zone_dump_text(new_zone, f);
-	
-//	knot_zone_deep_free(&z2, 0);
-//	knot_zone_deep_free(&z1, 0);
-////	knot_zone_contents_deep_free(&new_zone, 1);
-////	knot_zone_free(&z1);
-	
-//	knot_free_changeset(&changeset);
-//	exit(0);
-//}
 
