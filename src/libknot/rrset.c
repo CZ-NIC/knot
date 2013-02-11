@@ -35,8 +35,8 @@ static const size_t KNOT_RESPONSE_MAX_PTR = 16383;
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
 
-static size_t rrset_rdata_offset(const knot_rrset_t *rrset,
-                                 size_t pos)
+static uint32_t rrset_rdata_offset(const knot_rrset_t *rrset,
+                                   size_t pos)
 {
 	if (rrset == NULL || rrset->rdata_indices == NULL ||
 	    pos >= rrset->rdata_count || pos == 0) {
@@ -236,14 +236,16 @@ uint16_t rrset_rdata_item_size(const knot_rrset_t *rrset,
 {
 	if (rrset == NULL || rrset->rdata_indices == NULL ||
 	    rrset->rdata_count == 0) {
+		//invalid case
 		return 0;
 	}
 	
-	if (rrset->rdata_count == 1) {
-		return rrset_rdata_size_total(rrset);
+	if (rrset->rdata_count == 1 || pos == 0) {
+		//first RR or only one RR (either size of first RR or total size)
+		return rrset->rdata_indices[0];
 	}
 	
-	assert(rrset->rdata_count >= 2);
+	assert(rrset->rdata_count >= 2 && pos != 0);
 	return rrset_rdata_offset(rrset, pos) -
 	                          rrset_rdata_offset(rrset, pos - 1);
 }
@@ -396,6 +398,9 @@ static size_t rrset_rdata_remainder_size(const knot_rrset_t *rrset,
                                          size_t offset,
                                          size_t pos)
 {
+	if (rrset_rdata_item_size(rrset, pos) == 0) {
+		assert(0);
+	}
 	size_t ret = rrset_rdata_item_size(rrset, pos) - offset;
 	assert(ret <= rrset_rdata_size_total(rrset));
 	return ret;
@@ -808,7 +813,7 @@ dbg_rrset_exec_detail(
 	knot_rrset_dump(rrset);
 );
 
-	int ret = knot_rrset_to_wire_aux(rrset, &pos, max_size, comp_data);
+	int ret = knot_rrset_to_wire_aux(rrset, &pos, max_size, NULL);//comp_data);
 	
 	assert(ret != 0);
 
