@@ -481,8 +481,9 @@ knot_dname_t *knot_dname_new_from_wire(const uint8_t *name, uint size,
 /*----------------------------------------------------------------------------*/
 
 knot_dname_t *knot_dname_parse_from_wire(const uint8_t *wire,
-                                             size_t *pos, size_t size,
-                                             knot_node_t *node)
+                                         size_t *pos, size_t size,
+                                         knot_node_t *node,
+                                         knot_dname_t *dname)
 {
 	uint8_t name[KNOT_MAX_DNAME_LENGTH];
 	uint8_t labels[KNOT_MAX_DNAME_LABELS];
@@ -549,7 +550,10 @@ knot_dname_t *knot_dname_parse_from_wire(const uint8_t *wire,
 		*pos += 1;
 	}
 
-	knot_dname_t *dname = knot_dname_new();
+	/* Allocate if NULL. */
+	if (dname == NULL) {
+		dname = knot_dname_new();
+	}
 
 	if (dname == NULL) {
 		ERR_ALLOC_FAILED;
