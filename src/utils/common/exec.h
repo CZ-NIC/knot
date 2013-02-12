@@ -28,6 +28,7 @@
 #define _UTILS__EXEC_H_
 
 #include "libknot/packet/packet.h"	// knot_packet_t
+#include "utils/common/netio.h"		// net_t
 #include "utils/common/params.h"	// style_t
 
 extern knot_lookup_table_t opcodes[];
@@ -41,17 +42,17 @@ void print_header_xfr(const style_t *style, const knot_rr_type_t type);
 void print_data_xfr(const style_t       *style,
                     const knot_packet_t *packet);
 
-void print_footer_xfr(const style_t *style,
-                      const size_t  total_len,
-                      const int     sockfd,
-                      const float   elapsed,
-                      const size_t  msg_count);
+void print_footer_xfr(const net_t    *net,
+                      const style_t  *style,
+                      const float    elapsed,
+                      const size_t   total_len,
+                      const size_t   msg_count);
 
-void print_packet(const style_t       *style,
+void print_packet(const net_t         *net,
+                  const style_t       *style,
                   const knot_packet_t *packet,
-                  const size_t        wire_len,
-                  const int           sockfd,
                   const float         elapsed,
+                  const size_t        total_len,
                   const size_t        msg_count);
 
 #endif // _UTILS__EXEC_H_

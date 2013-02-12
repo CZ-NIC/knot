@@ -300,19 +300,27 @@ void process_query(const query_t *query)
 	}
 
 	WALK_LIST(server, query->servers) {
-		int  sockfd;
-		int  rcode;
+		net_t net;
+		int   rcode, ret;
 
 		// Start meassuring of query/xfr time.
 		gettimeofday(&t_start, NULL);
 
 		// Send query message.
-		sockfd = send_msg((server_t *)server,
+		ret = net_connect((server_t *)server,
 		                  get_iptype(query->ip),
 		                  get_socktype(query->protocol, query->type_num),
-		                  query->wait, out, out_len);
+		                  query->wait,
+		                  &net);
 
-		if (sockfd < 0) {
+		if (ret != KNOT_EOK) {
+			continue;
+		}
+
+		ret = net_send(&net, out, out_len);
+
+		if (ret != KNOT_EOK) {
+			net_close(&net);
 			continue;
 		}
 
@@ -321,9 +329,7 @@ void process_query(const query_t *query)
 		// Loop over incomming messages, unless reply id is correct.
 		while (id_ok == false) {
 			// Receive reply message.
-			in_len = receive_msg(sockfd,
-			                     get_socktype(query->protocol, query->type_num),
-			                     query->wait, in, sizeof(in));
+			in_len = net_receive(&net, in, sizeof(in));
 
 			if (in_len <= 0) {
 				stop = true;
@@ -354,7 +360,7 @@ void process_query(const query_t *query)
 
 		// Timeout/data error -> try next nameserver.
 		if (stop == true) {
-			shutdown(sockfd, SHUT_RDWR);
+			net_close(&net);
 			continue;
 		}
 
@@ -363,11 +369,11 @@ void process_query(const query_t *query)
 
 		// Servfail + stop if servfail -> stop processing.
 		if (rcode == -1) {
-			shutdown(sockfd, SHUT_RDWR);
+			net_close(&net);
 			break;
 		// Servfail -> try next nameserver.
 		} else if (rcode == KNOT_RCODE_SERVFAIL) {
-			shutdown(sockfd, SHUT_RDWR);
+			net_close(&net);
 			continue;
 		}
 
@@ -389,12 +395,12 @@ void process_query(const query_t *query)
 			total_len += in_len;
 
 			// Print formated data.
-			print_packet(&query->style, in_packet, total_len,
-			             sockfd, elapsed, msg_count);
+			print_packet(&net, &query->style, in_packet, elapsed,
+			             total_len, msg_count);
 
 			knot_packet_free(&in_packet);
 
-			shutdown(sockfd, SHUT_RDWR);
+			net_close(&net);
 
 			// Stop quering nameservers.
 			break;
@@ -414,7 +420,7 @@ void process_query(const query_t *query)
 
 		if (serial < 0) {
 			ERR("first answer resource record must be SOA\n");
-			shutdown(sockfd, SHUT_RDWR);
+			net_close(&net);
 			continue;
 		}
 
@@ -425,9 +431,7 @@ void process_query(const query_t *query)
 			knot_packet_free(&in_packet);
 
 			// Receive reply message.
-			in_len = receive_msg(sockfd,
-			                     get_socktype(query->protocol, query->type_num),
-			                     query->wait, in, sizeof(in));
+			in_len = net_receive(&net, in, sizeof(in));
 
 			if (in_len <= 0) {
 				stop = true;
@@ -481,13 +485,13 @@ void process_query(const query_t *query)
 			elapsed = (t_end.tv_sec - t_start.tv_sec) * 1000 +
 			          ((t_end.tv_usec - t_start.tv_usec) / 1000.0);
 
-			print_footer_xfr(&query->style, total_len, sockfd,
-			                 elapsed, msg_count);
+			print_footer_xfr(&net, &query->style, elapsed,
+			                 total_len, msg_count);
 
 			knot_packet_free(&in_packet);
 		}
 
-		shutdown(sockfd, SHUT_RDWR);
+		net_close(&net);
 
 		// Stop quering nameservers.
 		break;

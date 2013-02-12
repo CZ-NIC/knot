@@ -42,6 +42,15 @@ typedef struct {
 	char	*service;
 } server_t;
 
+typedef struct {
+	int	sockfd;
+	int	socktype;
+	char	*proto;
+	char	*addr;
+	int	port;
+	int	wait;
+} net_t;
+
 server_t* server_create(const char *name, const char *service);
 
 void server_free(server_t *server);
@@ -50,16 +59,16 @@ int get_iptype(const ip_t ip);
 
 int get_socktype(const protocol_t proto, const uint16_t type);
 
-int send_msg(const server_t *server,
-             const int      iptype,
-             const int      socktype,
-             const int32_t  wait,
-             const uint8_t  *buf,
-             const size_t   buf_len);
-
-int receive_msg(int            sockfd,
+int net_connect(const server_t *server,
+                const int      iptype,
                 const int      socktype,
-                const int32_t  wait,
-                uint8_t        *buf,
-                const size_t   buf_len);
+                const int      wait,
+                net_t          *net);
+
+int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len);
+
+int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len);
+
+void net_close(net_t *net);
+
 #endif // _UTILS__NETIO_H_

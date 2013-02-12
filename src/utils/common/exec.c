@@ -18,10 +18,6 @@
 
 #include <stdlib.h>			// free
 #include <time.h>			// localtime_r
-#include <sys/time.h>			// gettimeofday
-#include <arpa/inet.h>			// inet_ntop
-#include <sys/socket.h>			// AF_INET
-#include <netinet/in.h>			// sockaddr_in (BSD)
 
 #include "common/lists.h"		// list
 #include "common/errcode.h"		// KNOT_EOK
@@ -157,24 +153,13 @@ static void print_header(const style_t *style, const knot_packet_t *packet)
 	}
 }
 
-static void print_footer(const size_t total_len,
-                         const int    sockfd,
+static void print_footer(const net_t  *net,
                          const float  elapsed,
+                         const size_t total_len,
                          const size_t msg_count)
 {
 	struct tm tm;
 	char      date[64];
-
-	struct sockaddr_storage addr;
-	socklen_t addr_len;
-	socklen_t socktype_len;
-	int       socktype;
-	char      proto[8] = "NULL";
-	char      ip[INET6_ADDRSTRLEN] = "NULL";
-	int       port = -1;
-
-	addr_len = sizeof(addr);
-	socktype_len = sizeof(socktype);
 
 	// Get current timestamp.
 	time_t now = time(NULL);
@@ -183,37 +168,12 @@ static void print_footer(const size_t total_len,
 	// Create formated date-time string.
 	strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S %Z", &tm);
 
-	// Get connected address.
-	if (getpeername(sockfd, (struct sockaddr*)&addr, &addr_len) == 0) {
-		if (addr.ss_family == AF_INET) {
-			struct sockaddr_in *s = (struct sockaddr_in *)&addr;
-			port = ntohs(s->sin_port);
-			inet_ntop(AF_INET, &s->sin_addr, ip, sizeof(ip));
-		} else { // AF_INET6
-			struct sockaddr_in6 *s = (struct sockaddr_in6 *)&addr;
-			port = ntohs(s->sin6_port);
-			inet_ntop(AF_INET6, &s->sin6_addr, ip, sizeof(ip));
-		}
-	}
-
-	// Get connected socket type.
-	if (getsockopt(sockfd, SOL_SOCKET, SO_TYPE, (char*)&socktype,
-	    &socktype_len) == 0) {
-		switch (socktype) {
-		case SOCK_STREAM:
-			strcpy(proto, "TCP");
-			break;
-		case SOCK_DGRAM:
-			strcpy(proto, "UDP");
-			break;
-		}
-	}
-
 	// Print formated info.
 	printf("\n;; Received %zu B (%zu messages)\n"
 	       ";; From %s#%i over %s in %.1f ms\n"
 	       ";; On %s\n",
-	       total_len, msg_count, ip, port, proto, elapsed, date);
+	       total_len, msg_count, net->addr, net->port, net->proto,
+	       elapsed, date);
 }
 
 static void print_opt_section(const knot_opt_rr_t *rr)
@@ -368,6 +328,10 @@ static void print_error_host(const uint8_t         code,
 
 void print_header_xfr(const style_t *style, const knot_rr_type_t type)
 {
+	if (style == NULL) {
+		return;
+	}
+
 	char name[16] = "";
 
 	switch (type) {
@@ -396,7 +360,7 @@ void print_header_xfr(const style_t *style, const knot_rr_type_t type)
 void print_data_xfr(const style_t       *style,
                     const knot_packet_t *packet)
 {
-	if (packet == NULL) {
+	if (style == NULL || packet == NULL) {
 		return;
 	}
 
@@ -416,16 +380,20 @@ void print_data_xfr(const style_t       *style,
 	}
 }
 
-void print_footer_xfr(const style_t  *style,
-                      const size_t   total_len,
-                      const int      sockfd,
+void print_footer_xfr(const net_t    *net,
+                      const style_t  *style,
                       const float    elapsed,
+                      const size_t   total_len,
                       const size_t   msg_count)
 {
+	if (net == NULL || style == NULL) {
+		return;
+	}
+
 	switch (style->format) {
 	case FORMAT_VERBOSE:
 	case FORMAT_MULTILINE:
-		print_footer(total_len, sockfd, elapsed, msg_count);
+		print_footer(net, elapsed, total_len, msg_count);
 		break;
 	case FORMAT_DIG:
 	case FORMAT_HOST:
@@ -434,14 +402,14 @@ void print_footer_xfr(const style_t  *style,
 	}
 }
 
-void print_packet(const style_t       *style,
+void print_packet(const net_t         *net,
+                  const style_t       *style,
                   const knot_packet_t *packet,
-                  const size_t        total_len,
-                  const int           sockfd,
                   const float         elapsed,
+                  const size_t        total_len,
                   const size_t        msg_count)
 {
-	if (packet == NULL) {
+	if (style == NULL || packet == NULL) {
 		return;
 	}
 
@@ -529,7 +497,11 @@ void print_packet(const style_t       *style,
 			}
 		}
 
-		print_footer(total_len, sockfd, elapsed, msg_count);
+		if (net == NULL) {
+			break;
+		}
+
+		print_footer(net, elapsed, total_len, msg_count);
 		break;
 	default:
 		break;

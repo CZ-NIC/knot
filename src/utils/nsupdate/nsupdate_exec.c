@@ -397,26 +397,35 @@ static int pkt_sendrecv(nsupdate_params_t *params, server_t *srv,
                         uint8_t *qwire, size_t qlen,
                         uint8_t *rwire, size_t rlen)
 {
+	net_t net;
+	int   ret;
+
 	/*! \todo Bind to local if specified by params. */
 	
-	int sock = send_msg(srv,
-	                    get_iptype(params->ip),
-	                    get_socktype(params->protocol, KNOT_RRTYPE_SOA),
-	                    params->wait,
-	                    qwire,
-	                    qlen);
-	DBG("%s: send_msg = %d\n", __func__, sock);
-	if (sock < 0) return sock;
-	
+	ret = net_connect(srv,
+	                  get_iptype(params->ip),
+	                  get_socktype(params->protocol, KNOT_RRTYPE_SOA),
+	                  params->wait,
+	                  &net);
+	DBG("%s: send_msg = %d\n", __func__, net.sockfd);
+	if (ret != KNOT_EOK) return -1;
+
+	ret = net_send(&net, qwire, qlen);
+	if (ret != KNOT_EOK) {
+		net_close(&net);
+		return -1;
+	}
+
 	/* Wait for reception. */
-	int rb = receive_msg(sock,
-	                     get_socktype(params->protocol, KNOT_RRTYPE_SOA),
-	                     params->wait,
-	                     rwire,
-	                     rlen);
+	int rb = net_receive(&net, rwire, rlen); 
 	DBG("%s: receive_msg = %d\n", __func__, rb);
-	close(sock);
+	if (rb <= 0) {
+		net_close(&net);
+		return -1;
+	}
 	
+	net_close(&net);
+
 	return rb;
 }
 
@@ -818,7 +827,7 @@ int cmd_show(const char* lp, nsupdate_params_t *params)
 	if (!params->pkt) return KNOT_EOK;
 	printf("Outgoing update query:\n");
 	size_t len = knot_packet_size(params->pkt);
-	print_packet(&params->style, params->pkt, len, 0, 0.0f, 1);
+	print_packet(NULL, &params->style, params->pkt, 0.0f, len, 1);
 	return KNOT_EOK;
 }
 
@@ -829,7 +838,7 @@ int cmd_answer(const char* lp, nsupdate_params_t *params)
 	if (!params->resp) return KNOT_EOK;
 	printf("Answer:\n");
 	size_t len = knot_packet_size(params->resp);
-	print_packet(&params->style, params->resp, len, 0, 0.0f, 1);
+	print_packet(NULL, &params->style, params->resp, 0.0f, len, 1);
 	return KNOT_EOK;
 }
 
