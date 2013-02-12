@@ -242,7 +242,7 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 		case KNOT_RDATA_WF_LITERAL_DNAME:
 			pos2 = *pos;
 			dname = knot_dname_parse_from_wire(
-				wire, &pos2, total_size, NULL);
+				wire, &pos2, total_size, NULL, NULL);
 			if (dname == NULL) {
 				free(items);
 				return KNOT_ERROR;
@@ -308,7 +308,7 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 			case 3:
 				pos2 = *pos;
 				dname = knot_dname_parse_from_wire(
-					         wire, &pos2, total_size, NULL);
+					   wire, &pos2, total_size, NULL, NULL);
 				if (dname == NULL) {
 					knot_rdata_free_items(items, i,
 					                      desc->type, 1);
