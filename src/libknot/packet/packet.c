@@ -283,21 +283,23 @@ static int knot_packet_parse_question(const uint8_t *wire, size_t *pos,
 	                      "%zu bytes long.\n", *pos, i - *pos + 1);
 	dbg_packet_verb("Alloc: %d\n", alloc);
 	if (alloc) {
-		question->qname = knot_dname_new_from_wire(
-				wire + *pos, i - *pos + 1, NULL);
+		question->qname = knot_dname_parse_from_wire(wire, pos,
+		                                             i - *pos + 1,
+		                                             NULL, NULL);
 		if (question->qname == NULL) {
 			return KNOT_ENOMEM;
 		}
 	} else {
-		int res = knot_dname_from_wire(wire + *pos, i - *pos + 1,
-	                                         NULL, question->qname);
+		int res = knot_dname_parse_from_wire(wire, pos,
+		                                     i - *pos + 1,
+	                                             NULL, question->qname);
 		if (res != KNOT_EOK) {
 			assert(res != KNOT_EINVAL);
 			return res;
 		}
 	}
 
-	*pos = i + 1;
+	//*pos = i + 1;
 	question->qtype = knot_wire_read_u16(wire + i + 1);
 	question->qclass = knot_wire_read_u16(wire + i + 3);
 	*pos += 4;
@@ -377,7 +379,7 @@ static knot_rrset_t *knot_packet_parse_rr(const uint8_t *wire, size_t *pos,
 	           *pos, size);
 
 	knot_dname_t *owner = knot_dname_parse_from_wire(wire, pos, size,
-	                                                     NULL);
+	                                                     NULL, NULL);
 	dbg_packet_detail("Created owner: %p, actual position: %zu\n", owner,
 	                  *pos);
 	if (owner == NULL) {
