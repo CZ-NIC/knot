@@ -307,7 +307,8 @@ void process_query(const query_t *query)
 		gettimeofday(&t_start, NULL);
 
 		// Send query message.
-		ret = net_connect((server_t *)server,
+		ret = net_connect(NULL,
+		                  (server_t *)server,
 		                  get_iptype(query->ip),
 		                  get_socktype(query->protocol, query->type_num),
 		                  query->wait,

@@ -133,7 +133,8 @@ static void net_info(net_t *net)
 	net->port = port;
 }
 
-int net_connect(const server_t *server,
+int net_connect(const server_t *local,
+                const server_t *remote,
                 const int      iptype,
                 const int      socktype,
                 const int      wait,
@@ -144,20 +145,20 @@ int net_connect(const server_t *server,
 	int             sockfd, cs, err = 0;
 	socklen_t       err_len = sizeof(err);
 
-	if (server == NULL || net == NULL) {
+	if (remote == NULL || net == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	memset(&hints, 0, sizeof hints);
+	memset(&hints, 0, sizeof(hints));
 
 	// Fill in relevant hints.
 	hints.ai_family = iptype;
 	hints.ai_socktype = socktype;
 
 	// Get connection parameters.
-	if (getaddrinfo(server->name, server->service, &hints, &res) != 0) {
+	if (getaddrinfo(remote->name, remote->service, &hints, &res) != 0) {
 		WARN("can't use server %s service %s\n",
-		     server->name, server->service);
+		     remote->name, remote->service);
 		return KNOT_ERROR;
 	}
 
@@ -165,7 +166,7 @@ int net_connect(const server_t *server,
 	sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
 	if (sockfd == -1) {
 		WARN("can't create socket for %s#%s\n",
-		     server->name, server->service);
+		     remote->name, remote->service);
 		freeaddrinfo(res);
 		return KNOT_ERROR;
 	}
@@ -180,11 +181,35 @@ int net_connect(const server_t *server,
 		WARN("can't create non-blocking socket\n");
 	}
 
+	// Bind to address if specified.
+	if (local != NULL) {
+		struct addrinfo lhints, *lres;
+
+		memset(&lhints, 0, sizeof(lhints));
+
+		// Fill in relevant hints.
+		lhints.ai_family = iptype;
+		lhints.ai_socktype = socktype;
+
+		// Get connection parameters.
+		if (getaddrinfo(local->name, local->service, &lhints, &lres)
+		    != 0) {
+			WARN("can't use local %s service %s\n",
+			     local->name, local->service);
+		}
+
+		// Bind to the address.
+		if (bind(sockfd, lres->ai_addr, lres->ai_addrlen) == -1) {
+			WARN("can't bind to %s#%s\n",
+			     local->name, local->service);
+		}
+	}
+
 	// Connect using socket.
 	if (connect(sockfd, res->ai_addr, res->ai_addrlen) == -1 &&
 	    errno != EINPROGRESS) {
 		WARN("can't connect to %s#%s\n",
-		     server->name, server->service);
+		     remote->name, remote->service);
 		close(sockfd);
 		freeaddrinfo(res);
 		return KNOT_ERROR;
@@ -196,7 +221,7 @@ int net_connect(const server_t *server,
 	// Check for connection timeout.
 	if (poll(&pfd, 1, 1000 * wait) != 1) {
 		WARN("can't wait for connection to %s#%s\n",
-		     server->name, server->service);
+		     remote->name, remote->service);
 		close(sockfd);
 		return KNOT_ERROR;
 	}
@@ -205,7 +230,7 @@ int net_connect(const server_t *server,
 	cs = getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &err, &err_len);
 	if (cs < 0 || err != 0) {
 		WARN("can't connect to %s#%s\n",
-		     server->name, server->service);
+		     remote->name, remote->service);
 		close(sockfd);
 		return KNOT_ERROR;
 	}

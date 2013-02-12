@@ -393,16 +393,15 @@ static int pkt_append(nsupdate_params_t *p, int sect)
 	return ret;
 }
 
-static int pkt_sendrecv(nsupdate_params_t *params, server_t *srv,
+static int pkt_sendrecv(nsupdate_params_t *params,
                         uint8_t *qwire, size_t qlen,
                         uint8_t *rwire, size_t rlen)
 {
 	net_t net;
 	int   ret;
 
-	/*! \todo Bind to local if specified by params. */
-	
-	ret = net_connect(srv,
+	ret = net_connect(params->srcif,
+	                  params->server,
 	                  get_iptype(params->ip),
 	                  get_socktype(params->protocol, KNOT_RRTYPE_SOA),
 	                  params->wait,
@@ -717,7 +716,7 @@ int cmd_send(const char* lp, nsupdate_params_t *params)
 	int rb = 0;
 	for (; retries > 0; --retries) {
 		memset(params->rwire, 0, MAX_PACKET_SIZE);
-		rb = pkt_sendrecv(params, params->server, wire, len,
+		rb = pkt_sendrecv(params, wire, len,
 		                  params->rwire, MAX_PACKET_SIZE);
 		if (rb > 0) break;
 	}
@@ -813,10 +812,14 @@ int cmd_local(const char* lp, nsupdate_params_t *params)
 	DBG("%s: lp='%s'\n", __func__, lp);
 	
 	/* Parse host. */
-	if ((params->srcif = parse_host(lp, "0")) == NULL) {
-		return KNOT_ENOMEM;
-	}
-	
+	server_t *srv = parse_host(lp, "0");
+
+	/* Enqueue. */
+	if (!srv) return KNOT_ENOMEM;
+
+	server_free(params->srcif);
+	params->srcif = srv;
+
 	return KNOT_EOK;
 }
 

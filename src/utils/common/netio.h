@@ -59,7 +59,8 @@ int get_iptype(const ip_t ip);
 
 int get_socktype(const protocol_t proto, const uint16_t type);
 
-int net_connect(const server_t *server,
+int net_connect(const server_t *local,
+                const server_t *remote,
                 const int      iptype,
                 const int      socktype,
                 const int      wait,
