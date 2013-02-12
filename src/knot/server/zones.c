@@ -1892,10 +1892,14 @@ static int zones_check_tsig_query(const knot_zone_t *zone,
 			                              tsig_prev_time_signed);
 		} else {
 			dbg_zones_verb("No key configured for zone.\n");
-			// no key configured for zone, return BADKEY
-			*tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
-			*rcode = KNOT_RCODE_NOTAUTH;
-			ret = KNOT_TSIG_EBADKEY;
+			if (knot_packet_tsig(query)) {
+				// no key configured for zone, return BADKEY
+				dbg_zones_verb("TSIG used, but not configured "
+				               "for this zone, ret=BADKEY.\n");
+				*tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
+				*rcode = KNOT_RCODE_NOTAUTH;
+				ret = KNOT_TSIG_EBADKEY;
+			}
 		}
 	}
 
