@@ -31,6 +31,7 @@
 #include "tests/knot/server_tests.h"
 #include "tests/knot/conf_tests.h"
 #include "tests/libknot/wire_tests.h"
+#include "tests/libknot/dname_tests.h"
 
 // Run all loaded units
 int main(int argc, char *argv[])
@@ -43,24 +44,25 @@ int main(int argc, char *argv[])
 
 	// Build test set
 	unit_api *tests[] = {
-		/* Core data structures. */
-		&journal_tests_api,	//! Journal unit
-		&slab_tests_api,	//! SLAB allocator unit
-		&skiplist_tests_api,	//! Skip list unit
-		&dthreads_tests_api,	//! DThreads testing unit
-		&events_tests_api,	//! Events testing unit
-		&acl_tests_api,		//! ACLs
-		&fdset_tests_api,	//! FDSET polling wrapper
-		&base64_tests_api,	//! Base64 encoding
-		&base32hex_tests_api,	//! Base32hex encoding
+	        /* Core data structures. */
+	        &journal_tests_api,	//! Journal unit
+	        &slab_tests_api,	//! SLAB allocator unit
+	        &skiplist_tests_api,	//! Skip list unit
+	        &dthreads_tests_api,	//! DThreads testing unit
+	        &events_tests_api,	//! Events testing unit
+	        &acl_tests_api,		//! ACLs
+	        &fdset_tests_api,	//! FDSET polling wrapper
+	        &base64_tests_api,	//! Base64 encoding
+	        &base32hex_tests_api,	//! Base32hex encoding
 
-		/* Library. */
-		&wire_tests_api,
+	        /* Library. */
+	        &wire_tests_api,
+	        &dname_tests_api,
 
-		/* Server parts. */
-		&conf_tests_api,	//! Configuration parser tests
-		&server_tests_api,	//! Server unit
-		NULL
+	        /* Server parts. */
+	        &conf_tests_api,	//! Configuration parser tests
+	        &server_tests_api,	//! Server unit
+	        NULL
 	};
 
 	// Plan number of tests

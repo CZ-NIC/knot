@@ -228,6 +228,8 @@ src/tests/libknot/libknot/nsec3_tests.c
 src/tests/libknot/libknot/nsec3_tests.h
 src/tests/libknot/wire_tests.c
 src/tests/libknot/wire_tests.h
+src/tests/libknot/dname_tests.c
+src/tests/libknot/dname_tests.h
 src/tests/libknot/realdata/unittests_libknot_realdata.c
 src/tests/libknot/realdata/libknot/packet_tests_realdata.c
 src/tests/libknot/realdata/libknot/packet_tests_realdata.h
