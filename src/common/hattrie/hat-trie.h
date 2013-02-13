@@ -36,15 +36,18 @@ typedef struct hattrie_t_ hattrie_t;
 
 hattrie_t* hattrie_create (void);             //< Create an empty hat-trie.
 void       hattrie_free   (hattrie_t*);       //< Free all memory used by a trie.
-hattrie_t* hattrie_dup    (const hattrie_t*); //< Duplicate an existing trie.
 void       hattrie_clear  (hattrie_t*);       //< Remove all entries.
 size_t     hattrie_weight (hattrie_t*);       //< Number of entries
+
+/** Duplicate an existing trie.
+ */
+hattrie_t* hattrie_dup (const hattrie_t*, value_t (*nval)(value_t));
 
 /** Build order index on all ahtable nodes in trie.
  */
 void hattrie_build_index (hattrie_t*);
 
-void hattrie_apply_rev(hattrie_t*, void (*f)(value_t,void*), void* d);
+void hattrie_apply_rev (hattrie_t*, void (*f)(value_t,void*), void* d);
 
 /** Find the given key in the trie, inserting it if it does not exist, and
  * returning a pointer to it's key.

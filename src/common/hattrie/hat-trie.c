@@ -251,7 +251,7 @@ void hattrie_free(hattrie_t* T)
     free(T);
 }
 
-hattrie_t* hattrie_dup(const hattrie_t* T)
+hattrie_t* hattrie_dup(const hattrie_t* T, value_t (*nval)(value_t))
 {
     hattrie_t *N = hattrie_create();
 
@@ -262,7 +262,7 @@ hattrie_t* hattrie_dup(const hattrie_t* T)
     hattrie_iter_t *i = hattrie_iter_begin(T, false);
     while (!hattrie_iter_finished(i)) {
         k = hattrie_iter_key(i, &l);
-        *hattrie_get(N, k, l) = *hattrie_iter_val(i);
+        *hattrie_get(N, k, l) = nval(*hattrie_iter_val(i));
         hattrie_iter_next(i);
     }
     hattrie_iter_free(i);
