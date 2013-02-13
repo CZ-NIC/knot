@@ -2438,7 +2438,6 @@ static int xfrin_switch_nodes(knot_zone_contents_t *contents_copy)
 
 	// Then traverse the hash table and change each pointer in hash table
 	// item from old node to new node.
-	assert(0);
 	//TODO change to trie
 //	int ret = ck_apply(knot_zone_contents_get_hash_table(contents_copy),
 //	                   xfrin_switch_node_in_hash_table, NULL);

@@ -682,8 +682,8 @@ static void knot_packet_free_allocated_space(knot_packet_t *pkt)
 
 /*----------------------------------------------------------------------------*/
 
-static int knot_packet_parse_rr_sections(knot_packet_t *packet,
-                                         size_t *pos, knot_packet_flag_t flags)
+static int knot_packet_parse_rr_sections(knot_packet_t *packet, size_t *pos,
+                                         knot_packet_flag_t flags)
 {
 	assert(packet != NULL);
 	assert(packet->wireformat != NULL);

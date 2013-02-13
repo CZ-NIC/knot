@@ -52,7 +52,7 @@ static int rrset_release_dnames_in_rr(knot_dname_t *dname, void *data)
 	if (dname == NULL) {
 		return KNOT_EINVAL;
 	}
-	
+
 	knot_dname_release(dname);
 	return KNOT_EOK;
 }
@@ -852,7 +852,7 @@ dbg_rrset_exec_detail(
 	knot_rrset_dump(rrset);
 );
 
-	int ret = knot_rrset_to_wire_aux(rrset, &pos, max_size, NULL);//comp_data);
+	int ret = knot_rrset_to_wire_aux(rrset, &pos, max_size, comp_data);
 	
 	assert(ret != 0);
 
@@ -864,9 +864,6 @@ dbg_rrset_exec_detail(
 	}
 
 	// the whole RRSet did fit in
-	if (ret > max_size) {
-		assert(0);
-	}
 	assert(ret <= max_size);
 	assert(pos - wire == ret);
 	*size = ret;
@@ -2448,23 +2445,29 @@ static int knot_rrset_remove_rdata_pos(knot_rrset_t *rrset, size_t pos)
 	uint32_t new_size = rrset_rdata_size_total(rrset) - removed_size;
 	
 	/*! \todo Realloc might not be needed. Only if the RRSet is large. */
-	rrset->rdata = xrealloc(rrset->rdata, new_size);
+	if (new_size == 0) {
+		assert(rrset->rdata_count == 1);
+		free(rrset->rdata);
+		free(rrset->rdata_indices);
+	} else {
+		rrset->rdata = xrealloc(rrset->rdata, new_size);
+		/*
+		 * Handle RDATA indices. All indices larger than the removed one have
+		 * to be adjusted. Last index will be changed later.
+		 */
+		for (uint16_t i = pos - 1; i < rrset->rdata_count - 1; ++i) {
+			rrset->rdata_indices[i] = rrset->rdata_indices[i + 1];
+		}
 	
-	/*
-	 * Handle RDATA indices. All indices larger than the removed one have
-	 * to be adjusted. Last index will be changed later.
-	 */
-	for (uint16_t i = pos - 1; i < rrset->rdata_count - 1; ++i) {
-		rrset->rdata_indices[i] = rrset->rdata_indices[i + 1];
+		/* Save size of the whole RDATA array. */
+		rrset->rdata_indices[rrset->rdata_count - 1] = new_size;
+	
+		/* Resize indices, might not be needed, but we'll do it to be proper. */
+		rrset->rdata_indices =
+			xrealloc(rrset->rdata_indices,
+		                 (rrset->rdata_count - 1) * sizeof(uint32_t));
 	}
-
-	/* Save size of the whole RDATA array. */
-	rrset->rdata_indices[rrset->rdata_count - 1] = new_size;
 	
-	/* Resize indices, might not be needed, but we'll do it to be proper. */
-	rrset->rdata_indices =
-		xrealloc(rrset->rdata_indices,
-	                 (rrset->rdata_count - 1) * sizeof(uint32_t));
 	--rrset->rdata_count;
 
 	return KNOT_EOK;
@@ -2516,11 +2519,24 @@ int rrset_rr_dnames_apply(knot_rrset_t *rrset, size_t rdata_pos,
 	if (rrset == NULL || rdata_pos >= rrset->rdata_count || func == NULL) {
 		return KNOT_EINVAL;
 	}
+
+	
+dbg_rrset_exec_detail(
+	char *name = knot_dname_to_str(rrset->owner);
+	dbg_rrset_detail("rr: dnames_apply: Appling function to RRSet owned "
+	                 "by %s type=%d\n", name, rrset->type);
+	free(name);
+);
 	
 	knot_dname_t **dname = NULL;
 	while ((dname = knot_rrset_rdata_get_next_dname_pointer(rrset, dname,
 	                                                        rdata_pos))) {
-		assert(dname);
+	assert(dname);
+dbg_rrset_exec_detail(
+	char *name = knot_dname_to_str(*dname);
+	dbg_rrset_detail("rr: dnames_apply: Got dname %s.\n", name);
+	free(name);
+);
 		int ret = func(*dname, data);
 		if (ret != KNOT_EOK) {
 			dbg_rrset("rr: rr_dnames_apply: Function could not be"
