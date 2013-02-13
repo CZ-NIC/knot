@@ -525,14 +525,20 @@ dbg_response_exec(
 	param.wire_pos = 0;
 	uint16_t rr_count = 0;
 	//TODO size
-	int rrs = knot_rrset_to_wire(rrset, pos, &size, max_size,
+	int ret = knot_rrset_to_wire(rrset, pos, &size, max_size,
 	                             &rr_count, &param);
+	
+	if (ret != KNOT_EOK) {
+		dbg_response("Failed to convert RRSet to wire. (%s).\n,",
+		             knot_strerror(ret));
+		return ret;
+	}
 
-	if (rrs >= 0) {
+	if (rr_count >= 0) {
 		rrsets[(*rrset_count)++] = rrset;
 		resp->size += size;
 		dbg_response_verb("RRset added, size: %zu, RRs: %d, total "
-		                  "size of response: %zu\n\n", size, rrs,
+		                  "size of response: %zu\n\n", size, rr_count,
 		                  resp->size);
 	} else if (tc) {
 		dbg_response_verb("Setting TC bit.\n");
@@ -540,7 +546,7 @@ dbg_response_exec(
 		knot_wire_set_tc(resp->wireformat);
 	}
 
-	return rrs;
+	return rr_count;
 }
 
 /*----------------------------------------------------------------------------*/

@@ -874,7 +874,7 @@ dbg_rrset_exec_detail(
 	dbg_rrset_detail("Size after: %zu\n", *size);
 
 	*rr_count = rrset->rdata_count;
-
+	
 	return KNOT_EOK;
 }
 
