@@ -448,8 +448,8 @@ static int zones_refresh_ev(event_t *e)
 			return KNOT_EOK;
 		}
 		
-//		log_zone_info("Attempting to bootstrap zone %s from master\n",
-//			      zd->conf->name);
+		dbg_zones("zones: attempting to bootstrap zone '%s'\n",
+		          zd->conf->name);
 		++zd->xfr_in.scheduled;
 		pthread_mutex_unlock(&zd->xfr_in.lock);
 		
@@ -462,6 +462,7 @@ static int zones_refresh_ev(event_t *e)
 		/* Mark as finished to prevent stalling. */
 		evsched_event_finished(e->parent);
 		int ret = xfr_request(zd->server->xfr_h, &xfr_req);
+		dbg_zones("zones: issued request, ret = %d\n", ret);
 		if (ret != KNOT_EOK) {
 			knot_zone_release(xfr_req.zone); /* Discard */
 		}
