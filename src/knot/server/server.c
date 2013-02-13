@@ -545,7 +545,7 @@ int server_start(server_t *server)
 	dbg_server("server: starting server instance\n");
 
 	/* Start XFR handler. */
-//	xfr_start(server->xfr_h);
+	xfr_start(server->xfr_h);
 
 	/* Lock configuration. */
 	rcu_read_lock();
@@ -579,7 +579,7 @@ int server_start(server_t *server)
 int server_wait(server_t *server)
 {
 	/* Join threading unit. */
-//	xfr_join(server->xfr_h); TODO
+	xfr_join(server->xfr_h);
 	
 	/* Lock RCU. */
 	rcu_read_lock();
