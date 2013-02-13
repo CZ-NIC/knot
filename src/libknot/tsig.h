@@ -94,7 +94,7 @@ extern knot_lookup_table_t tsig_alg_table[TSIG_ALG_TABLE_SIZE];
 /*!
  * \note Uses the given domain name, do not deallocate it!
  */
-int tsig_create_rdata(knot_rrset_t *rr, tsig_algorithm_t alg);
+int tsig_create_rdata(knot_rrset_t *rr, tsig_algorithm_t alg, uint16_t tsig_err);
 int tsig_rdata_set_alg_name(knot_rrset_t *tsig, knot_dname_t *alg_name);
 int tsig_rdata_set_alg(knot_rrset_t *tsig, tsig_algorithm_t alg);
 int tsig_rdata_set_time_signed(knot_rrset_t *tsig, uint64_t time);
@@ -103,7 +103,7 @@ int tsig_rdata_set_fudge(knot_rrset_t *tsig, uint16_t fudge);
 int tsig_rdata_set_mac(knot_rrset_t *tsig, uint16_t length,
                        const uint8_t *mac);
 int tsig_rdata_set_orig_id(knot_rrset_t *tsig, uint16_t id);
-int tsig_rdata_set_tsig_error(knot_rrset_t *tsig, uint16_t tsig_error);
+//int tsig_rdata_set_tsig_error(knot_rrset_t *tsig, uint16_t tsig_error);
 int tsig_rdata_set_other_data(knot_rrset_t *tsig, uint16_t length,
                               const uint8_t *other_data);
 

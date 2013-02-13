@@ -26,6 +26,7 @@
 #include "util/utils.h"
 #include "rrset.h"
 #include "dname.h"
+#include "consts.h"
 
 /*! \brief TSIG algorithms table. */
 knot_lookup_table_t tsig_alg_table[TSIG_ALG_TABLE_SIZE] = {
@@ -58,6 +59,14 @@ typedef enum tsig_off_t {
 #define TSIG_OFF_MACLEN (TSIG_NAMELEN + 4 * sizeof(uint16_t))
 #define TSIG_FIXED_RDLEN (TSIG_NAMELEN + 11 * sizeof(uint16_t))
 
+/*!
+ * \brief Seek offset of a TSIG RR field.
+ *
+ * \param rr TSIG RR.
+ * \param id Field index.
+ * \param nb Required number of bytes after the offset (for boundaries check).
+ * \return pointer to field on wire or NULL.
+ */
 static uint8_t* tsig_rdata_seek(const knot_rrset_t *rr, tsig_off_t id, size_t nb)
 {
 	uint8_t *rd = knot_rrset_get_rdata(rr, 0);
@@ -110,7 +119,18 @@ static uint8_t* tsig_rdata_seek(const knot_rrset_t *rr, tsig_off_t id, size_t nb
 	return rd;
 }
 
-int tsig_create_rdata(knot_rrset_t *rr, tsig_algorithm_t alg)
+static int tsig_rdata_set_tsig_error(knot_rrset_t *tsig, uint16_t tsig_error)
+{
+	uint8_t *rd = tsig_rdata_seek(tsig, TSIG_ERROR_O, sizeof(uint16_t));
+	if (!rd) {
+		return KNOT_ERROR;
+	}
+	
+	knot_wire_write_u16(rd, tsig_error);
+	return KNOT_EOK;
+}
+
+int tsig_create_rdata(knot_rrset_t *rr, tsig_algorithm_t alg, uint16_t tsig_err)
 {
 	if (!rr) {
 		return KNOT_EINVAL;
@@ -119,12 +139,18 @@ int tsig_create_rdata(knot_rrset_t *rr, tsig_algorithm_t alg)
 	/* We already checked rr and know rdlen > 0, no need to check rets. */
 	uint16_t alen = tsig_alg_digest_length(alg);
 	size_t rdlen = TSIG_FIXED_RDLEN + alen;
+	if (tsig_err != KNOT_TSIG_RCODE_BADTIME) {
+		rdlen -= TSIG_OTHER_MAXLEN;
+	}
 	uint8_t *rd = knot_rrset_create_rdata(rr, rdlen);
 	memset(rd, 0, rdlen);
 	
 	/* Set MAC variable length in advance. */
 	rd += TSIG_OFF_MACLEN;
 	knot_wire_write_u16(rd, alen);
+	
+	/* Set error. */
+	tsig_rdata_set_tsig_error(rr, tsig_err);
 
 	return KNOT_EOK;
 }
@@ -195,17 +221,6 @@ int tsig_rdata_set_orig_id(knot_rrset_t *tsig, uint16_t id)
 	
 	/* Write the length - 2. */
 	knot_wire_write_u16(rd, id);
-	return KNOT_EOK;
-}
-
-int tsig_rdata_set_tsig_error(knot_rrset_t *tsig, uint16_t tsig_error)
-{
-	uint8_t *rd = tsig_rdata_seek(tsig, TSIG_ERROR_O, sizeof(uint16_t));
-	if (!rd) {
-		return KNOT_ERROR;
-	}
-	
-	knot_wire_write_u16(rd, tsig_error);
 	return KNOT_EOK;
 }
 

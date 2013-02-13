@@ -486,13 +486,11 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	}
 
 	/* Create rdata for TSIG RR. */
-	tsig_create_rdata(tmp_tsig, key->algorithm);
+	tsig_create_rdata(tmp_tsig, key->algorithm, tsig_rcode);
 	tsig_rdata_set_alg(tmp_tsig, key->algorithm);
 
 	/* Distinguish BADTIME response. */
 	if (tsig_rcode == KNOT_TSIG_RCODE_BADTIME) {
-		/* Set error */
-		tsig_rdata_set_tsig_error(tmp_tsig, tsig_rcode);
 		/* Set client's time signed into the time signed field. */
 		tsig_rdata_set_time_signed(tmp_tsig, request_time_signed);
 
@@ -506,7 +504,6 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 		tsig_rdata_set_other_data(tmp_tsig, 6, time_signed);
 	} else {
 		tsig_rdata_store_current_time(tmp_tsig);
-		tsig_rdata_set_tsig_error(tmp_tsig, 0);
 
 		/* Set other len. */
 		tsig_rdata_set_other_data(tmp_tsig, 0, 0);
@@ -555,6 +552,7 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 
 	knot_rrset_deep_free(&tmp_tsig, 1, 1);
 
+	dbg_tsig("TSIG: written TSIG RR (wire len %zu)\n", tsig_wire_len);
 	*msg_len += tsig_wire_len;
 
 	uint16_t arcount = knot_wire_get_arcount(msg);
@@ -588,7 +586,7 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	}
 	
 	/* Create rdata for TSIG RR. */
-	tsig_create_rdata(tmp_tsig, key->algorithm);
+	tsig_create_rdata(tmp_tsig, key->algorithm, 0);
 	tsig_rdata_set_alg(tmp_tsig, key->algorithm);
 	tsig_rdata_store_current_time(tmp_tsig);
 	tsig_rdata_set_fudge(tmp_tsig, KNOT_TSIG_FUDGE_DEFAULT);
@@ -647,9 +645,6 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	
 	/* Set original id. */
 	tsig_rdata_set_orig_id(tmp_tsig, knot_wire_get_id(msg));
-
-	/* Set TSIG error. */
-	tsig_rdata_set_tsig_error(tmp_tsig, 0);
 	
 	/* Set other data. */
 	tsig_rdata_set_other_data(tmp_tsig, 0, NULL);
@@ -882,7 +877,9 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 		knot_dname_free(&alg_name);
 		return KNOT_ERROR;
 	}
-	tsig_create_rdata(tmp_tsig, alg);
+	
+	assert(tsig_rcode != KNOT_TSIG_RCODE_BADTIME);
+	tsig_create_rdata(tmp_tsig, alg, tsig_rcode);
 
 	tsig_rdata_set_alg_name(tmp_tsig, alg_name);
 	tsig_rdata_set_time_signed(tmp_tsig, tsig_rdata_time_signed(tsig_rr));
@@ -897,10 +894,7 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	/* Set original ID */
 	tsig_rdata_set_orig_id(tmp_tsig, knot_wire_get_id(msg));
 
-	/* Set error */
-	tsig_rdata_set_tsig_error(tmp_tsig, tsig_rcode);
-
-	assert(tsig_rcode != KNOT_TSIG_RCODE_BADTIME);
+	
 	/* Set other len. */
 	tsig_rdata_set_other_data(tmp_tsig, 0, 0);
 
