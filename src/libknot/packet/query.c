@@ -143,8 +143,11 @@ int knot_query_add_rrset_authority(knot_packet_t *query,
 	
 	size_t written = 0;
 	uint16_t rr_count = 0;
-	knot_rrset_to_wire(rrset, startp, &written, query->max_size,
-	                   &rr_count, NULL);
+	int ret = knot_rrset_to_wire(rrset, startp, &written, query->max_size,
+	                             &rr_count, NULL);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 	query->size += written;
 	++query->ns_rrsets;
 	++query->header.nscount;

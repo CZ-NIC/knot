@@ -524,7 +524,6 @@ dbg_response_exec(
 	param.compressed_dnames = &resp->compression;
 	param.wire_pos = 0;
 	uint16_t rr_count = 0;
-	//TODO size
 	int ret = knot_rrset_to_wire(rrset, pos, &size, max_size,
 	                             &rr_count, &param);
 	
@@ -534,7 +533,7 @@ dbg_response_exec(
 		return ret;
 	}
 
-	if (rr_count >= 0) {
+	if (rr_count > 0) {
 		rrsets[(*rrset_count)++] = rrset;
 		resp->size += size;
 		dbg_response_verb("RRset added, size: %zu, RRs: %d, total "
