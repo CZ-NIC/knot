@@ -47,7 +47,6 @@ struct knot_dname {
 	uint8_t *name;	/*!< Wire format of the domain name. */
 	uint8_t *labels;
 	struct knot_node *node; /*!< Zone node the domain name belongs to. */
-	unsigned int id; /*!< ID of domain name used in zone dumping. */
 
 	/*!
 	 * \brief Size of the domain name in octets.
@@ -213,8 +212,6 @@ const uint8_t *knot_dname_name(const knot_dname_t *dname);
  * \return Size of the domain name in wire format in octets.
  */
 unsigned int knot_dname_size(const knot_dname_t *dname);
-
-unsigned int knot_dname_id(const knot_dname_t *dname);
 
 /*!
  * \brief Returns size of a part of domain name.
@@ -392,10 +389,6 @@ int knot_dname_compare_non_canon(const knot_dname_t *d1,
  *         the operation is not valid (e.g. \a d1 is a FQDN).
  */
 knot_dname_t *knot_dname_cat(knot_dname_t *d1, const knot_dname_t *d2);
-
-void knot_dname_set_id(knot_dname_t *dname, unsigned int id);
-
-unsigned int knot_dname_get_id(const knot_dname_t *dname);
 
 /*!
  * \brief Increment reference counter for dname.

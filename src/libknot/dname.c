@@ -382,7 +382,6 @@ knot_dname_t *knot_dname_new()
 	dname->node = NULL;
 	dname->labels = NULL;
 	dname->label_count = -1;
-	dname->id = 0;
 
 	/* Initialize reference counting. */
 	ref_init(&dname->ref, knot_dname_dtor);
@@ -434,8 +433,6 @@ dbg_dname_exec_verb(
 	assert(dname->name != NULL);
 
 	dname->node = node;
-	dname->id = 0;
-
 	return dname;
 }
 
@@ -473,8 +470,6 @@ knot_dname_t *knot_dname_new_from_wire(const uint8_t *name, uint size,
 	}
 
 	dname->node = node;
-	dname->id = 0;
-
 	return dname;
 }
 
@@ -591,7 +586,6 @@ int knot_dname_from_wire(const uint8_t *name, uint size,
 	memcpy(target->name, name, size);
 	target->size = size;
 	target->node = node;
-	target->id = 0;
 
 	return knot_dname_find_labels(target, 0);
 }
@@ -724,13 +718,6 @@ const uint8_t *knot_dname_name(const knot_dname_t *dname)
 uint knot_dname_size(const knot_dname_t *dname)
 {
 	return dname->size;
-}
-
-/*----------------------------------------------------------------------------*/
-
-unsigned int knot_dname_id(const knot_dname_t *dname)
-{
-	return dname->id;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1164,16 +1151,3 @@ knot_dname_t *knot_dname_cat(knot_dname_t *d1, const knot_dname_t *d2)
 	return d1;
 }
 
-void knot_dname_set_id(knot_dname_t *dname, unsigned int id)
-{
-	dname->id = id;
-}
-
-unsigned int knot_dname_get_id(const knot_dname_t *dname)
-{
-	if (dname != NULL) {
-		return dname->id;
-	} else {
-		return 0; /* 0 should never be used and is reserved for err. */
-	}
-}
