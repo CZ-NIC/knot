@@ -496,7 +496,6 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode, char **tag)
 	knot_packet_t *qry = xfr->query;
 	knot_key_t *key = 0;
 	const knot_rrset_t *tsig_rr = 0;
-	ret = knot_packet_parse_rest(qry, 0);
 	if (ret == KNOT_EOK) {
 		
 		/* Find TSIG key name from query. */
