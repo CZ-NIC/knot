@@ -489,6 +489,11 @@ int knot_rrset_find_rr_pos(const knot_rrset_t *rr_search,
                            const knot_rrset_t *rr_input, size_t pos,
                            size_t *pos_out);
 
+int rrset_rr_dnames_apply(knot_rrset_t *rrset, size_t rdata_pos,
+                          int (*func)(knot_dname_t *, void *), void *data);
+
+int rrset_dnames_apply(knot_rrset_t *rrset, int (*func)(knot_dname_t *, void *),
+                       void *data);
 
 #endif /* _KNOT_RRSET_H_ */
 

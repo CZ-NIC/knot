@@ -35,6 +35,28 @@ static const size_t KNOT_RESPONSE_MAX_PTR = 16383;
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
 
+static int rrset_retain_dnames_in_rr(knot_dname_t *dname, void *data)
+{
+	UNUSED(data);
+	if (dname == NULL) {
+		return KNOT_EINVAL;
+	}
+	
+	knot_dname_retain(dname);
+	return KNOT_EOK;
+}
+
+static int rrset_release_dnames_in_rr(knot_dname_t *dname, void *data)
+{
+	UNUSED(data);
+	if (dname == NULL) {
+		return KNOT_EINVAL;
+	}
+	
+	knot_dname_release(dname);
+	return KNOT_EOK;
+}
+
 static uint32_t rrset_rdata_offset(const knot_rrset_t *rrset,
                                    size_t pos)
 {
@@ -2273,6 +2295,10 @@ int rrset_deserialize(uint8_t *stream, size_t *stream_size,
 	
 	/* Create new RRSet. */
 	*rrset = knot_rrset_new(owner, type, rclass, ttl);
+	if (*rrset == NULL) {
+		return KNOT_ENOMEM;
+	}
+	
 	(*rrset)->rdata_indices = rdata_indices;
 	(*rrset)->rdata_count = rdata_count;
 	(*rrset)->rdata = xmalloc(rdata_indices[rdata_count - 1]);
@@ -2290,8 +2316,8 @@ int rrset_deserialize(uint8_t *stream, size_t *stream_size,
 		rrset_deserialize_rr((*rrset), i, stream + offset, rdata_size,
 		                     &read);
 		/* TODO handle malformations. */
-		dbg_rrset_detail("rr: deserilaze: RR read size=%d, actual=%d\n",
-		                 read, rdata_size);
+		dbg_rrset_detail("rr: deserialaze: RR read size=%d,"
+		                 "actual=%d\n", read, rdata_size);
 		assert(read == rdata_size);
 		offset += read;
 	}
@@ -2385,6 +2411,15 @@ static int knot_rrset_remove_rdata_pos(knot_rrset_t *rrset, size_t pos)
 	if (rrset == NULL || pos >= rrset->rdata_count) {
 		return KNOT_EINVAL;
 	}
+	
+	/* Handle DNAMEs inside RDATA. */
+	int ret = rrset_rr_dnames_apply(rrset, pos, rrset_release_dnames_in_rr,
+	                                NULL);
+	if (ret != KNOT_EOK) {
+		dbg_rrset("rr: remove_rdata_pos: Could not release DNAMEs "
+		          "within RDATA (%s).\n", knot_strerror(ret));
+		return ret;
+	}
 
 	/* Reorganize the actual RDATA array. */
 	uint8_t *rdata_to_remove = rrset_rdata_pointer(rrset, pos);
@@ -2393,7 +2428,6 @@ static int knot_rrset_remove_rdata_pos(knot_rrset_t *rrset, size_t pos)
 		/* Not the last item in array - we need to move the data. */
 		uint8_t *next_rdata = rrset_rdata_pointer(rrset, pos + 1);
 		assert(next_rdata);
-		/* TODO free DNAMES inside. */
 		/* Get size of remaining RDATA. */ 
 		size_t last_rdata_size =
 		                rrset_rdata_item_size(rrset,
@@ -2476,6 +2510,45 @@ int knot_rrset_rdata_reset(knot_rrset_t *rrset)
 	return KNOT_EOK;
 }
 
+int rrset_rr_dnames_apply(knot_rrset_t *rrset, size_t rdata_pos,
+                          int (*func)(knot_dname_t *, void *), void *data)
+{
+	if (rrset == NULL || rdata_pos >= rrset->rdata_count || func == NULL) {
+		return KNOT_EINVAL;
+	}
+	
+	knot_dname_t **dname = NULL;
+	while ((dname = knot_rrset_rdata_get_next_dname_pointer(rrset, dname,
+	                                                        rdata_pos))) {
+		assert(dname);
+		int ret = func(*dname, data);
+		if (ret != KNOT_EOK) {
+			dbg_rrset("rr: rr_dnames_apply: Function could not be"
+			          "applied (%s).\n", knot_strerror(ret));
+			return ret;
+		}
+	}
+	
+	return KNOT_EOK;
+}
+
+int rrset_dnames_apply(knot_rrset_t *rrset, int (*func)(knot_dname_t *, void *),
+                       void *data)
+{
+	if (rrset == NULL || rrset->rdata_count == 0 || func == NULL) {
+		return KNOT_EINVAL;
+	}
+	
+	for (uint16_t i = 0; i < rrset->rdata_count; ++i) {
+		int ret = rrset_rr_dnames_apply(rrset, i, func, data);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+	
+	return KNOT_EOK;
+}
+
 int knot_rrset_add_rr_from_rrset(knot_rrset_t *dest, const knot_rrset_t *source,
                                  size_t rdata_pos)
 {
@@ -2495,6 +2568,15 @@ int knot_rrset_add_rr_from_rrset(knot_rrset_t *dest, const knot_rrset_t *source,
 	
 	/* Copy actual data. */
 	memcpy(rdata, rrset_rdata_pointer(source, rdata_pos), item_size);
+	
+	/* Retain DNAMEs inside RDATA. */
+	int ret = rrset_rr_dnames_apply(dest, rdata_pos,
+	                                rrset_retain_dnames_in_rr, NULL);
+	if (ret != KNOT_EOK) {
+		dbg_rrset("rr: add_rr_from_rrset: Could not retain DNAMEs"
+		          " in RR (%s).\n", knot_strerror(ret));
+		return ret;
+	}
 	
 	return KNOT_EOK;
 }
