@@ -228,7 +228,6 @@ int avl_get_less_or_equal(knot_zone_avl_tree_t *tree,
 	
 			dbg_zone_detail("Searched for owner %s in zone tree.\n",
 					name);
-			dbg_zone_detail("Exact match: %d\n", ret);
 			dbg_zone_detail("Found node: %p: %s.\n", *found, name_f);
 			dbg_zone_detail("Previous node: %p.\n", *previous);
 	
