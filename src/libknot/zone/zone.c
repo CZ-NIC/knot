@@ -69,7 +69,7 @@ knot_zone_t *knot_zone_new_empty(knot_dname_t *name)
 
 /*----------------------------------------------------------------------------*/
 
-knot_zone_t *knot_zone_new(knot_node_t *apex, uint node_count,
+knot_zone_t *knot_zone_new(knot_node_t *apex, size_t node_count,
                                int use_domain_table)
 {
 	knot_zone_t *zone = knot_zone_new_empty(

@@ -60,7 +60,7 @@ static void tree_apply_cb(knot_zone_tree_node_t *node,
 	}
 
 	knot_zone_tree_func_t *f = (knot_zone_tree_func_t *)data;
-	f->func(node, f->data);
+	f->func(node->node, f->data);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -117,10 +117,11 @@ static void knot_zone_contents_destroy_node_rrsets_from_tree(
 	knot_zone_tree_node_t *tnode, void *data)
 {
 	assert(tnode != NULL);
+	knot_node_t *node = tnode->node;
 
 	int free_rdata_dnames = (int)((intptr_t)data);
-	knot_node_free_rrsets(tnode, free_rdata_dnames);
-	knot_node_free(&tnode);
+	knot_node_free_rrsets(node, free_rdata_dnames);
+	knot_node_free(&node);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -438,7 +439,7 @@ static void knot_zone_contents_adjust_node_in_tree(
 	assert(tnode != NULL);
 
 	knot_zone_adjust_arg_t *args = (knot_zone_adjust_arg_t *)data;
-	knot_node_t *node = tnode;
+	knot_node_t *node = tnode->node;
 
 	if (args->err != KNOT_EOK) {
 		dbg_xfrin_detail("Error during adjusting: %s, skipping node.\n",
@@ -470,7 +471,7 @@ static void knot_zone_contents_adjust_node_in_tree_ptr(
 	assert(tnode != NULL);
 
 	knot_zone_adjust_arg_t *args = (knot_zone_adjust_arg_t *)data;
-	knot_node_t *node = tnode;
+	knot_node_t *node = tnode->node;
 
 	/*
 	 * 1) Set previous node pointer.
@@ -505,7 +506,7 @@ static void knot_zone_contents_adjust_nsec3_node_in_tree(
 {
 	assert(data != NULL);
 	assert(tnode != NULL);
-	knot_node_t *node = tnode;
+	knot_node_t *node = tnode->node;
 
 	knot_zone_adjust_arg_t *args = (knot_zone_adjust_arg_t *)data;
 
@@ -545,7 +546,7 @@ static void knot_zone_contents_adjust_nsec3_node_in_tree_ptr(
 	assert(tnode != NULL);
 
 	knot_zone_adjust_arg_t *args = (knot_zone_adjust_arg_t *)data;
-	knot_node_t *node = tnode;
+	knot_node_t *node = tnode->node;
 
 	// set previous node
 	knot_node_set_previous(node, args->previous_node);
@@ -790,7 +791,7 @@ static void knot_zone_contents_check_loops_in_tree(knot_zone_tree_node_t *tnode,
 	assert(data != NULL);
 
 	loop_check_data_t *args = (loop_check_data_t *)data;
-	const knot_node_t *node = tnode;
+	const knot_node_t *node = tnode->node;
 
 	assert(args->zone != NULL);
 
@@ -889,7 +890,7 @@ static int knot_zc_nsec3_parameters_match(const knot_rrset_t *rrset,
 /*----------------------------------------------------------------------------*/
 
 knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
-                                             uint node_count,
+                                             size_t node_count,
                                              int use_domain_table,
                                              struct knot_zone *zone)
 {
@@ -1865,6 +1866,10 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone)
 	if (zone == NULL) {
 		return KNOT_EINVAL;
 	}
+	
+	/* Heal zone indexes. */
+	hattrie_build_index(zone->nodes->T);
+	hattrie_build_index(zone->nsec3_nodes->T);
 
 	// load NSEC3PARAM (needed on adjusting function)
 	knot_zone_contents_load_nsec3param(zone);
@@ -2665,13 +2670,14 @@ void reset_child_count(knot_zone_tree_node_t *tree_node, void *data)
 	assert(tree_node != NULL);
 	assert(data != NULL);
 
+	knot_node_t *node = tree_node->node;
 	knot_node_t **apex_copy = (knot_node_t **)data;
 	if (*apex_copy == NULL) {
-		*apex_copy = tree_node;
+		*apex_copy = node;
 	}
 
 	if (tree_node != NULL) {
-		tree_node->children = 0;
+		node->children = 0;
 	}
 }
 
@@ -2680,11 +2686,12 @@ void reset_child_count(knot_zone_tree_node_t *tree_node, void *data)
 void count_children(knot_zone_tree_node_t *tree_node, void *data)
 {
 	UNUSED(data);
-	if (tree_node != NULL && tree_node->parent != NULL) {
-		assert(tree_node->parent->new_node != NULL);
+	knot_node_t *node = tree_node->node;
+	if (node != NULL && node->parent != NULL) {
+		assert(node->parent->new_node != NULL);
 		// fix parent pointer
-		tree_node->parent = tree_node->parent->new_node;
-		++tree_node->parent->children;
+		node->parent = node->parent->new_node;
+		++node->parent->children;
 	}
 }
 
@@ -2696,7 +2703,7 @@ void check_child_count(knot_zone_tree_node_t *tree_node, void *data)
 	assert(data != NULL);
 
 	check_data_t *check_data = (check_data_t *)data;
-	knot_node_t *node = tree_node;
+	knot_node_t *node = tree_node->node;
 
 	// find corresponding node in the given contents
 	const knot_node_t *found = NULL;
@@ -2723,7 +2730,8 @@ static void reset_new_nodes(knot_zone_tree_node_t *tree_node, void *data)
 	assert(tree_node != NULL);
 	UNUSED(data);
 
-	knot_node_set_new_node(tree_node, NULL);
+	knot_node_t *node = tree_node->node;
+	knot_node_set_new_node(node, NULL);
 }
 
 ///*----------------------------------------------------------------------------*/
@@ -2853,13 +2861,13 @@ static void find_dname_in_rdata(knot_zone_tree_node_t *node, void *data)
 	}
 	
 	/* For all RRSets in node. */
-	const knot_rrset_t **rrsets = knot_node_rrsets(node);
+	const knot_rrset_t **rrsets = knot_node_rrsets(node->node);
 	if (rrsets == NULL) {
 		return;
 	}
 
 	
-	for (unsigned short i = 0; i < node->rrset_count; i++) {
+	for (unsigned short i = 0; i < node->node->rrset_count; i++) {
 		knot_dname_t *dname = NULL;
 		/* For all DNAMEs in RRSet. */
 		while ((dname = knot_rrset_get_next_dname(rrsets[i], NULL))!=NULL) {
