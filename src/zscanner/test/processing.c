@@ -170,7 +170,7 @@ void test_process_record(const scanner_t *s)
 
 	printf("OWNER=");
 	for (i = 0; i < s->r_owner_length; i++) {
-		printf("%02x", s->r_owner[i]);
+		printf("%02X", s->r_owner[i]);
 	}
 	printf("\n");
 	printf("CLASS=%04X\n", s->r_class);
