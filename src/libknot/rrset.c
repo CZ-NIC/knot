@@ -853,7 +853,7 @@ dbg_rrset_exec_detail(
 
 	*rr_count = rrset->rdata_count;
 
-	return *rr_count;
+	return KNOT_EOK;
 }
 
 static int knot_rrset_rdata_store_binary(uint8_t *rdata,
