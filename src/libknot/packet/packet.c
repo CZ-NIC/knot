@@ -282,24 +282,25 @@ static int knot_packet_parse_question(const uint8_t *wire, size_t *pos,
 	dbg_packet_verb("Parsing dname starting on position %zu and "
 	                      "%zu bytes long.\n", *pos, i - *pos + 1);
 	dbg_packet_verb("Alloc: %d\n", alloc);
+	size_t bp = *pos;
 	if (alloc) {
 		question->qname = knot_dname_parse_from_wire(wire, pos,
-		                                             i - *pos + 1,
+		                                             i + 1,
 		                                             NULL, NULL);
 		if (question->qname == NULL) {
 			return KNOT_ENOMEM;
 		}
 	} else {
-		int res = knot_dname_parse_from_wire(wire, pos,
-		                                     i - *pos + 1,
+		void *parsed = knot_dname_parse_from_wire(wire, pos,
+		                                     i + 1,
 	                                             NULL, question->qname);
-		if (res != KNOT_EOK) {
-			assert(res != KNOT_EINVAL);
-			return res;
+		if (!parsed) {
+			return KNOT_EMALF;
 		}
 	}
-
-	//*pos = i + 1;
+	if (*pos != i + 1) {
+		dbg_packet("Parsed dname expected len=%zu, parsed=%zu.\n", i+1-bp, *pos-bp);
+	}
 	question->qtype = knot_wire_read_u16(wire + i + 1);
 	question->qclass = knot_wire_read_u16(wire + i + 3);
 	*pos += 4;
