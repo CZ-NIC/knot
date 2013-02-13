@@ -551,7 +551,7 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode, char **tag)
 			*rcode = KNOT_RCODE_NOTAUTH;
 			ret = KNOT_TSIG_EBADKEY;
 			xfr->tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
-			key = 0; /* Invalidate, ret already set to BADKEY */
+			key = NULL; /* Invalidate, ret already set to BADKEY */
 		}
 
 		/* Validate with TSIG. */
@@ -1356,12 +1356,6 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 	switch (ret) {
 	case KNOT_EXFRDENIED:
 		log_server_info("%s TSIG required, but not found in query.\n",
-		                xfr->msgpref);
-		break;
-	case KNOT_TSIG_EBADKEY:
-		log_server_info("%s Unsupported digest "
-		                "algorithm requested, "
-		                "treating as bad key.\n",
 		                xfr->msgpref);
 		break;
 	default:
