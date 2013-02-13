@@ -553,6 +553,10 @@ knot_dname_t *knot_dname_parse_from_wire(const uint8_t *wire,
 	/* Allocate if NULL. */
 	if (dname == NULL) {
 		dname = knot_dname_new();
+		if (dname) {
+			dname->name = (uint8_t *)malloc((i + 1) * sizeof(uint8_t));
+			dname->labels = (uint8_t *)malloc((l + 1) * sizeof(uint8_t));
+		}
 	}
 
 	if (dname == NULL) {
@@ -560,27 +564,16 @@ knot_dname_t *knot_dname_parse_from_wire(const uint8_t *wire,
 		return NULL;
 	}
 
-	dname->name = (uint8_t *)malloc((i + 1) * sizeof(uint8_t));
-	if (dname->name == NULL) {
+	if (dname->name == NULL || dname->labels == NULL) {
 		ERR_ALLOC_FAILED;
 		knot_dname_free(&dname);
 		return NULL;
 	}
 
 	memcpy(dname->name, name, i + 1);
-	dname->size = i + 1;
-
-	/*! \todo Why l + 1 ?? */
-	dname->labels = (uint8_t *)malloc((l + 1) * sizeof(uint8_t));
-	if (dname->labels == NULL) {
-		ERR_ALLOC_FAILED;
-		knot_dname_free(&dname);
-		return NULL;
-	}
 	memcpy(dname->labels, labels, l + 1);
-
+	dname->size = i + 1;
 	dname->label_count = l;
-
 	dname->node = node;
 
 	return dname;
