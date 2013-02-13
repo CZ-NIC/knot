@@ -71,6 +71,7 @@ const error_table_t knot_error_msgs[] = {
 	{KNOT_ENODIFF, "Cannot create zone diff."},
 	{KNOT_EDSDIGESTLEN, "DS digest length does not match digest type."},
 	{KNOT_ENOTSIG, "expected a TSIG or SIG(0)" },
+	{KNOT_ESTOP, "Stop." },
 
 	/* Zone file loader errors. */
 	{FLOADER_EFSTAT, "Fstat error!"},

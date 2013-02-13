@@ -283,22 +283,25 @@ static int knot_packet_parse_question(const uint8_t *wire, size_t *pos,
 	dbg_packet_verb("Parsing dname starting on position %zu and "
 	                      "%zu bytes long.\n", *pos, i - *pos + 1);
 	dbg_packet_verb("Alloc: %d\n", alloc);
+	size_t bp = *pos;
 	if (alloc) {
-		question->qname = knot_dname_new_from_wire(
-				wire + *pos, i - *pos + 1, NULL);
+		question->qname = knot_dname_parse_from_wire(wire, pos,
+		                                             i + 1,
+		                                             NULL, NULL);
 		if (question->qname == NULL) {
 			return KNOT_ENOMEM;
 		}
 	} else {
-		int res = knot_dname_from_wire(wire + *pos, i - *pos + 1,
-	                                         NULL, question->qname);
-		if (res != KNOT_EOK) {
-			assert(res != KNOT_EINVAL);
-			return res;
+		void *parsed = knot_dname_parse_from_wire(wire, pos,
+		                                     i + 1,
+	                                             NULL, question->qname);
+		if (!parsed) {
+			return KNOT_EMALF;
 		}
 	}
-
-	*pos = i + 1;
+	if (*pos != i + 1) {
+		dbg_packet("Parsed dname expected len=%zu, parsed=%zu.\n", i+1-bp, *pos-bp);
+	}
 	question->qtype = knot_wire_read_u16(wire + i + 1);
 	question->qclass = knot_wire_read_u16(wire + i + 3);
 	*pos += 4;
@@ -380,7 +383,7 @@ static int knot_packet_parse_rdata(knot_rrset_t *rr, const uint8_t *wire,
 		const int id = desc->block_types[i];
 		if (descriptor_item_is_dname(id)) {
 			knot_dname_t *dn = NULL;
-			dn = knot_dname_parse_from_wire(wire, pos, total_size, NULL);
+			dn = knot_dname_parse_from_wire(wire, pos, total_size, NULL, NULL);
 			if (dn == NULL) {
 				return KNOT_EMALF;
 			}
@@ -416,7 +419,7 @@ static knot_rrset_t *knot_packet_parse_rr(const uint8_t *wire, size_t *pos,
 	           *pos, size);
 
 	knot_dname_t *owner = knot_dname_parse_from_wire(wire, pos, size,
-	                                                     NULL);
+	                                                     NULL, NULL);
 	dbg_packet_detail("Created owner: %p, actual position: %zu\n", owner,
 	                  *pos);
 	if (owner == NULL) {
@@ -1094,6 +1097,14 @@ uint8_t knot_packet_opcode(const knot_packet_t *packet)
 {
 	assert(packet != NULL);
 	return knot_wire_flags_get_opcode(packet->header.flags1);
+}
+
+/*----------------------------------------------------------------------------*/
+
+knot_question_t *knot_packet_question(knot_packet_t *packet)
+{
+	if (packet == NULL) return NULL;
+	return &packet->question;
 }
 
 /*----------------------------------------------------------------------------*/

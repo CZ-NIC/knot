@@ -27,6 +27,7 @@
 #ifndef _KNOT_UTILS_H_
 #define _KNOT_UTILS_H_
 
+#include "util/endian.h"
 #include <string.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -89,13 +90,11 @@ size_t knot_strlcpy(char *dst, const char *src, size_t size);
  *
  * \param pos Data to read the 2 bytes from.
  *
- * \todo Wrong assumption of endianness (issue #1558).
- *
- * \return The 2 bytes read, in inverse endian.
+ * \return The 2 bytes read, in host byte order.
  */
 static inline uint16_t knot_wire_read_u16(const uint8_t *pos)
 {
-	return (pos[0] << 8) | pos[1];
+	return be16toh(*(uint16_t *)pos);
 }
 
 /*!
@@ -103,13 +102,11 @@ static inline uint16_t knot_wire_read_u16(const uint8_t *pos)
  *
  * \param pos Data to read the 4 bytes from.
  *
- * \todo Wrong assumption of endianness (issue #1558).
- *
- * \return The 4 bytes read, in inverse endian.
+ * \return The 4 bytes read, in host byte order.
  */
 static inline uint32_t knot_wire_read_u32(const uint8_t *pos)
 {
-	return (pos[0] << 24) | (pos[1] << 16) | (pos[2] << 8) | pos[3];
+	return be32toh(*(uint32_t *)pos);
 }
 
 /*!
@@ -117,69 +114,78 @@ static inline uint32_t knot_wire_read_u32(const uint8_t *pos)
  *
  * \param pos Data to read the 6 bytes from.
  *
- * \todo Wrong assumption of endianness (issue #1558).
- *
- * \return The 6 bytes read, in inverse endian.
+ * \return The 6 bytes read, in host byte order.
  */
 static inline uint64_t knot_wire_read_u48(const uint8_t *pos)
 {
-	return ((uint64_t)(pos[0]) << 40) | ((uint64_t)(pos[1]) << 32)
-	        | ((uint64_t)(pos[2]) << 24) | ((uint64_t)(pos[3]) << 16)
-	        | ((uint64_t)(pos[4]) << 8) | (uint64_t)pos[5];
+	uint64_t input = 0;
+	memcpy((void *)&input + 1, (void *)pos, 6);
+	return be64toh(input) >> 8;
+}
+
+/*!
+ * \brief Read 8 bytes from the wireformat data.
+ *
+ * \param pos Data to read the 8 bytes from.
+ *
+ * \return The 8 bytes read, in host byte order.
+ */
+static inline uint64_t knot_wire_read_u64(const uint8_t *pos)
+{
+	return be64toh(*(uint64_t *)pos);
 }
 
 /*!
  * \brief Writes 2 bytes in wireformat.
  *
- * The endian of the data is inverted.
- *
- * \todo Wrong assumption of endianness (issue #1558).
+ * The data are stored in network byte order (big endian).
  *
  * \param pos Position where to put the 2 bytes.
  * \param data Data to put.
  */
 static inline void knot_wire_write_u16(uint8_t *pos, uint16_t data)
 {
-	*(pos++) = (uint8_t)((data >> 8) & 0xff);
-	*pos = (uint8_t)(data & 0xff);
+	*(uint16_t *)pos = htobe16(data);
 }
 
 /*!
  * \brief Writes 4 bytes in wireformat.
  *
- * The endian of the data is inverted.
- *
- * \todo Wrong assumption of endianness (issue #1558).
+ * The data are stored in network byte order (big endian).
  *
  * \param pos Position where to put the 4 bytes.
  * \param data Data to put.
  */
 static inline void knot_wire_write_u32(uint8_t *pos, uint32_t data)
 {
-	*(pos++) = (uint8_t)((data >> 24) & 0xff);
-	*(pos++) = (uint8_t)((data >> 16) & 0xff);
-	*(pos++) = (uint8_t)((data >> 8) & 0xff);
-	*pos = (uint8_t)(data & 0xff);
+	*(uint32_t *)pos = htobe32(data);
 }
 
 /*!
  * \brief Writes 6 bytes in wireformat.
  *
- * The endian of the data is inverted.
- *
- * \todo Wrong assumption of endianness (issue #1558).
+ * The data are stored in network byte order (big endian).
  *
  * \param pos Position where to put the 4 bytes.
  * \param data Data to put.
  */
 static inline void knot_wire_write_u48(uint8_t *pos, uint64_t data)
 {
-	*(pos++) = (uint8_t)((data >> 40) & 0xff);
-	*(pos++) = (uint8_t)((data >> 32) & 0xff);
-	*(pos++) = (uint8_t)((data >> 24) & 0xff);
-	*(pos++) = (uint8_t)((data >> 16) & 0xff);
-	*(pos++) = (uint8_t)((data >> 8) & 0xff);
-	*pos = (uint8_t)(data & 0xff);
+	uint64_t swapped = htobe64(data << 8);
+	memcpy((void *)pos, (uint8_t *)&swapped + 1, 6);
+}
+
+/*!
+ * \brief Writes 8 bytes in wireformat.
+ *
+ * The data are stored in network byte order (big endian).
+ *
+ * \param pos Position where to put the 8 bytes.
+ * \param data Data to put.
+ */
+static inline void knot_wire_write_u64(uint8_t *pos, uint64_t data)
+{
+	*(uint64_t *)pos = htobe64(data);
 }
 
 /*!

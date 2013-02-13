@@ -47,6 +47,10 @@ unittests_SOURCES =				\
 	tests/knot/journal_tests.h		\
 	tests/knot/server_tests.c		\
 	tests/knot/server_tests.h		\
+	tests/libknot/dname_tests.c		\
+	tests/libknot/dname_tests.h		\
+	tests/libknot/wire_tests.h		\
+	tests/libknot/wire_tests.c		\
 	tests/unittests_main.c
 	
 unittests_libknot_SOURCES = 			\
@@ -74,6 +78,7 @@ libknot_la_SOURCES =				\
 	libknot/util/tolower.h			\
 	libknot/util/tolower.c			\
 	libknot/util/wire.h			\
+	libknot/util/endian.h			\
 	libknot/packet/query.c			\
 	libknot/packet/response.c		\
 	libknot/packet/packet.c			\

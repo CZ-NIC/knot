@@ -932,7 +932,7 @@ int knot_rrset_rdata_from_wire_one(uint8_t **rdata, uint16_t type,
 			pos2 = *pos;
 			knot_dname_t *dname =
 				knot_dname_parse_from_wire(
-					wire, &pos2, total_size, NULL);
+					wire, &pos2, total_size, NULL, NULL);
 			if (dname == NULL) {
 				return KNOT_ERROR;
 			}
@@ -1009,7 +1009,7 @@ int knot_rrset_rdata_from_wire_one(uint8_t **rdata, uint16_t type,
 			/* Dname remaining. No need to note read size. */
 			knot_dname_t *dname =
 				knot_dname_parse_from_wire(
-					wire, pos, total_size, NULL);
+					wire, pos, total_size, NULL, NULL);
 			if (dname == NULL) {
 				return KNOT_ERROR;
 			}

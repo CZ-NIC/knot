@@ -165,7 +165,7 @@ void list_dup(list *dst, list *src, size_t itemsz)
  *
  * This function counts nodes in list @l and returns this number.
  */
-size_t list_size(list *l)
+size_t list_size(const list *l)
 {
 	size_t count = 0;
 

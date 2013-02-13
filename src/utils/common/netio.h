@@ -42,16 +42,34 @@ typedef struct {
 	char	*service;
 } server_t;
 
+typedef struct {
+	int	sockfd;
+	int	socktype;
+	char	*proto;
+	char	*addr;
+	int	port;
+	int	wait;
+} net_t;
+
 server_t* server_create(const char *name, const char *service);
 
 void server_free(server_t *server);
 
-int get_socktype(const params_t *params, const uint16_t type);
+int get_iptype(const ip_t ip);
 
-int send_msg(const params_t *params, const uint16_t type,
-             const server_t *server, const uint8_t *buf, size_t buf_len);
+int get_socktype(const protocol_t proto, const uint16_t type);
 
-int receive_msg(const params_t *params, const uint16_t type,
-                int sockfd, uint8_t *buf, size_t buf_len);
+int net_connect(const server_t *local,
+                const server_t *remote,
+                const int      iptype,
+                const int      socktype,
+                const int      wait,
+                net_t          *net);
+
+int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len);
+
+int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len);
+
+void net_close(net_t *net);
 
 #endif // _UTILS__NETIO_H_

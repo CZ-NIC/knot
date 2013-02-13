@@ -13,24 +13,12 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*!
- * \file host_exec.h
- *
- * \author Daniel Salzman <daniel.salzman@nic.cz>
- *
- * \brief host executives.
- *
- * \addtogroup knot_utils
- * @{
- */
 
-#ifndef _HOST__HOST_EXEC_H_
-#define _HOST__HOST_EXEC_H_
+#ifndef _KNOTD_WIRE_TESTS_
+#define _KNOTD_WIRE_TESTS_
 
-#include "utils/common/params.h"	// params_t
+#include "common/libtap/tap_unit.h"
 
-int host_exec(const params_t *params);
+unit_api wire_tests_api;
 
-#endif // _HOST__HOST_EXEC_H_
-
-/*! @} */
+#endif

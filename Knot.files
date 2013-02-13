@@ -47,6 +47,7 @@ src/libknot/util/utils.h
 src/libknot/util/utils.c
 src/libknot/util/descriptor.h
 src/libknot/util/descriptor.c
+src/libknot/util/endian.h
 src/libknot/zone/zonedb.h
 src/libknot/zone/zonedb.c
 src/libknot/zone/node.h
@@ -191,13 +192,15 @@ src/tests/knot/server_tests.h
 src/tests/libknot/unittests_libknot.c
 src/tests/libknot/libknot/rrset_tests.c
 src/tests/libknot/libknot/rrset_tests.h
+src/tests/libknot/libknot/dname_tests.c
+src/tests/libknot/libknot/dname_tests.h
+src/tests/libknot/libknot/wire_tests.c
+src/tests/libknot/libknot/wire_tests.h
 samples/Makefile.am
 src/libknot/tsig.h
 src/libknot/tsig.c
 src/libknot/tsig-op.c
 src/libknot/tsig-op.h
-src/tests/libknot/libknot/tsig_tests.h
-src/tests/libknot/libknot/tsig_tests.c
 src/knot/zone/semantic-check.c
 src/knot/zone/semantic-check.h
 src/tests/xfr_tests.h
@@ -220,6 +223,7 @@ src/libknot/zone/zone-diff.h
 src/libknot/zone/zone-diff.c
 src/zscanner/file_loader.c
 src/zscanner/file_loader.h
+src/zscanner/scanner.rl
 src/zscanner/scanner.h
 src/zscanner/scanner_body.rl
 src/zscanner/scanner_functions.c

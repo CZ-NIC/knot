@@ -317,7 +317,7 @@ static knot_rrtype_descriptor_t
             KNOT_RDATA_ZF_APL, KNOT_RDATA_ZF_APL,
             KNOT_RDATA_ZF_APL, KNOT_RDATA_ZF_APL,
             KNOT_RDATA_ZF_APL, KNOT_RDATA_ZF_APL,
-            KNOT_RDATA_ZF_APL, KNOT_RDATA_ZF_APL }, 
+            KNOT_RDATA_ZF_APL, KNOT_RDATA_ZF_APL },
           false },
   	/* 43 */
   	{ KNOT_RRTYPE_DS, "DS", 4,
@@ -397,7 +397,7 @@ static knot_rrtype_descriptor_t
      /* it is indeed needed, in rrtype_from_string */
 
     /* There's a GNU extension that works like this: [first ... last] = value */
-        
+
         [53 ... 98] = { 0, NULL, 1, { KNOT_RDATA_WF_BINARY }, { KNOT_RDATA_ZF_UNKNOWN }, true },
   	/* 99 */
 	[99] = { KNOT_RRTYPE_SPF, "SPF", 1,
@@ -462,9 +462,9 @@ knot_rrtype_descriptor_t *knot_rrtype_descriptor_by_name(const char *name)
 	return NULL;
 }
 
-int32_t knot_rrtype_to_string(const uint16_t rrtype,
-			      char           *out,
-			      const uint32_t out_len)
+int knot_rrtype_to_string(const uint16_t rrtype,
+                          char           *out,
+                          const size_t   out_len)
 {
 	int ret;
 
@@ -484,7 +484,7 @@ int32_t knot_rrtype_to_string(const uint16_t rrtype,
 	}
 }
 
-uint16_t knot_rrtype_from_string(const char *name)
+int knot_rrtype_from_string(const char *name, uint16_t *num)
 {
 	char *end;
 	long rrtype;
@@ -492,36 +492,38 @@ uint16_t knot_rrtype_from_string(const char *name)
 
 	entry = knot_rrtype_descriptor_by_name(name);
 	if (entry) {
-		return entry->type;
+		*num = entry->type;
+		return 0;
 	}
 
 	if (strlen(name) < 5) {
-		return 0;
+		return -1;
 	}
 
 	if (strncasecmp(name, "TYPE", 4) != 0) {
-		return 0;
+		return -1;
 	}
 
 	if (!isdigit((int)name[4])) {
-		return 0;
+		return -1;
 	}
 
-	/* The rest from the string must be a number.  */
+	/* The rest from the string must be a number. */
 	rrtype = strtol(name + 4, &end, 10);
 	if (*end != '\0') {
-		return 0;
+		return -1;
 	}
 	if (rrtype < 0 || rrtype > 65535L) {
-		return 0;
+		return -1;
 	}
 
-	return (uint16_t) rrtype;
+	*num = rrtype;
+	return 0;
 }
 
-int32_t knot_rrclass_to_string(const uint16_t rrclass,
-			       char           *out,
-			       const uint32_t out_len)
+int knot_rrclass_to_string(const uint16_t rrclass,
+                           char           *out,
+                           const size_t   out_len)
 {
 	int ret;
 
@@ -541,7 +543,7 @@ int32_t knot_rrclass_to_string(const uint16_t rrclass,
 	}
 }
 
-uint16_t knot_rrclass_from_string(const char *name)
+int knot_rrclass_from_string(const char *name, uint16_t *num)
 {
 	char *end;
 	long rrclass;
@@ -549,31 +551,33 @@ uint16_t knot_rrclass_from_string(const char *name)
 
 	entry = knot_lookup_by_name(dns_rrclasses, name);
 	if (entry) {
-		return (uint16_t) entry->id;
+		*num = entry->id;
+		return 0;
 	}
 
 	if (strlen(name) < 6) {
-		return 0;
+		return -1;
 	}
 
 	if (strncasecmp(name, "CLASS", 5) != 0) {
-		return 0;
+		return -1;
 	}
 
 	if (!isdigit((int)name[5])) {
-		return 0;
+		return -1;
 	}
 
 	// The rest from the string must be a number.
 	rrclass = strtol(name + 5, &end, 10);
 	if (*end != '\0') {
-		return 0;
+		return -1;
 	}
 	if (rrclass < 0 || rrclass > 65535L) {
-		return 0;
+		return -1;
 	}
 
-	return (uint16_t) rrclass;
+	*num = rrclass;
+	return 0;
 }
 
 size_t knot_wireformat_size(unsigned int wire_type)

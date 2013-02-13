@@ -31,42 +31,88 @@
 
 #include "utils/common/params.h"	// params_t
 
+/*! \brief Operation mode of dig. */
+typedef enum {
+	/*!< Classic queries in list. */
+	OPERATION_QUERY,
+	/*!< Query for NS and all authoritative SOA records. */
+	OPERATION_LIST_SOA,
+} operation_t;
+
+/*! \brief DNS header and EDNS flags. */
 typedef struct {
+	/*!< Authoritative answer flag. */
+	bool	aa_flag;
+	/*!< Truncated flag. */
+	bool	tc_flag;
+	/*!< Recursion desired flag. */
+	bool	rd_flag;
+	/*!< Recursion available flag. */
+	bool	ra_flag;
+	/*!< Z flag. */
+	bool	z_flag;
+	/*!< Authenticated data flag. */
+	bool	ad_flag;
+	/*!< Checking disabled flag. */
+	bool	cd_flag;
+	/*!< DNSSEC OK flag. */
+	bool	do_flag;
+} flags_t;
 
-} options_t;
-
-/*! \brief Structure containing basic parameters for DNS query. */
+/*! \brief Basic parameters for DNS query. */
 typedef struct {
 	/*!< List node (for list container). */
 	node		n;
 	/*!< Name to query on. */
-	char		*qname;
+	char		*owner;
+	/*!< List of nameservers to query to. */
+	list		servers;
+	/*!< Operation mode. */
+	operation_t	operation;
+	/*!< Version of ip protocol to use. */
+	ip_t		ip;
+	/*!< Protocol type (TCP, UDP) to use. */
+	protocol_t	protocol;
+	/*!< Port/service to connect to. */
+	char		*port;
+	/*!< UDP buffer size (16unsigned + -1 uninitialized). */
+	int32_t		udp_size;
+	/*!< Number of UDP retries. */
+	uint32_t	retries;
+	/*!< Wait for network response in seconds (-1 means forever). */
+	int32_t		wait;
+	/*!< Stop quering if servfail. */
+	bool		servfail_stop;
 	/*!< Class number (16unsigned + -1 uninitialized). */
-	int32_t		qclass;
+	int32_t		class_num;
 	/*!< Type number (16unsigned + -1 uninitialized). */
-	int32_t		qtype;
+	int32_t		type_num;
 	/*!< SOA serial for XFR. */
 	uint32_t	xfr_serial;
+	/*!< Header flags. */
+	flags_t		flags;
+	/*!< Output settings. */
+	style_t		style;
 } query_t;
 
-/*! \brief dig-specific params data. */
+/*! \brief Settings for dig. */
 typedef struct {
 	/*!< List of DNS queries to process. */
-	list		queries;
-	/*!< Recursion desiredflag. */
-	bool		rd_flag;
+	list	queries;
+	/*!< Default settings for queries. */
+	query_t	*config;
 } dig_params_t;
-#define DIG_PARAM(p) ((dig_params_t*)p->d)
 
-query_t* query_create(const char    *qname,
-                      const int32_t qtype,
-                      const int32_t qclass);
+/*! \brief Default header flags. */ 
+extern const flags_t DEFAULT_FLAGS;
+
+query_t* query_create(const char *owner, const query_t *config);
 void query_free(query_t *query);
+void complete_queries(list *queries, const query_t *conf);
 
-int dig_params_parse(params_t *params, int argc, char *argv[]);
-void dig_params_clean(params_t *params);
-
-void dig_params_flag_norecurse(params_t *params);
+int dig_init(dig_params_t *params);
+int dig_parse(dig_params_t *params, int argc, char *argv[]);
+void dig_clean(dig_params_t *params);
 
 #endif // _DIG__DIG_PARAMS_H_
 

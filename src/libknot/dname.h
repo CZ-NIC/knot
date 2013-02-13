@@ -124,9 +124,22 @@ knot_dname_t *knot_dname_new_from_wire(const uint8_t *name,
                                            unsigned int size,
                                            struct knot_node *node);
 
+/*!
+ * \brief Parse dname from wire.
+ *
+ * \param wire Message in wire format.
+ * \param pos Position of the domain name on wire.
+ * \param size Domain name length.
+ * \param node Zone node the domain name belongs to. Set to NULL if not
+ *             applicable.
+ * \param dname Destination dname (will allocate new when NULL).
+ *
+ * \return parsed domain name or NULL.
+ */
 knot_dname_t *knot_dname_parse_from_wire(const uint8_t *wire,
-                                             size_t *pos, size_t size,
-                                             struct knot_node *node);
+                                         size_t *pos, size_t size,
+                                         struct knot_node *node,
+                                         knot_dname_t *dname);
 
 /*!
  * \brief Initializes domain name by the name given in wire format.

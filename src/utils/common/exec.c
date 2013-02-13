@@ -18,18 +18,12 @@
 
 #include <stdlib.h>			// free
 #include <time.h>			// localtime_r
-#include <sys/time.h>			// gettimeofday
-
-#include <arpa/inet.h>			// inet_ntop
-#include <sys/socket.h>			// AF_INET
-#include <netinet/in.h>			// sockaddr_in (BSD)
 
 #include "common/lists.h"		// list
 #include "common/errcode.h"		// KNOT_EOK
 #include "libknot/consts.h"		// KNOT_RCODE_NOERROR
 #include "libknot/util/wire.h"		// knot_wire_set_rd
 #include "libknot/packet/query.h"	// knot_query_init
-
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/params.h"	// params_t
 #include "utils/common/netio.h"		// send_msg
@@ -98,7 +92,7 @@ knot_packet_t* create_empty_packet(knot_packet_prealloc_type_t t, int max_size)
 	return packet;
 }
 
-static void print_header(const knot_packet_t *packet)
+static void print_header(const style_t *style, const knot_packet_t *packet)
 {
 	char    flags[64] = "";
 	uint8_t rcode_id, opcode_id;
@@ -138,32 +132,34 @@ static void print_header(const knot_packet_t *packet)
 	}
 
 	// Print formated info.
-	printf("\n;; ->>HEADER<<- opcode: %s, status: %s, id: %u\n"
-	       ";; Flags:%1s, "
-	       "QUERY: %u, ANSWER: %u, AUTHORITY: %u, ADDITIONAL: %u\n",
-	       opcode->name, rcode->name, knot_packet_id(packet),
-	       flags, packet->header.qdcount, packet->an_rrsets,
-	       packet->ns_rrsets, packet->ar_rrsets);
+	switch (style->format) {
+	case FORMAT_NSUPDATE:
+		printf("\n;; ->>HEADER<<- opcode: %s, status: %s, id: %u\n"
+		       ";; Flags:%1s, "
+		       "ZONE: %u, PREREQ: %u, UPDATE: %u, ADDITIONAL: %u\n",
+		       opcode->name, rcode->name, knot_packet_id(packet),
+		       flags, packet->header.qdcount, packet->an_rrsets,
+		       packet->ns_rrsets, packet->ar_rrsets);
+
+		break;
+	default:
+		printf("\n;; ->>HEADER<<- opcode: %s, status: %s, id: %u\n"
+		       ";; Flags:%1s, "
+		       "QUERY: %u, ANSWER: %u, AUTHORITY: %u, ADDITIONAL: %u\n",
+		       opcode->name, rcode->name, knot_packet_id(packet),
+		       flags, packet->header.qdcount, packet->an_rrsets,
+		       packet->ns_rrsets, packet->ar_rrsets);
+		break;
+	}
 }
 
-static void print_footer(const size_t total_len,
-                         const int    sockfd,
+static void print_footer(const net_t  *net,
                          const float  elapsed,
+                         const size_t total_len,
                          const size_t msg_count)
 {
 	struct tm tm;
 	char      date[64];
-
-	struct sockaddr_storage addr;
-	socklen_t addr_len;
-	socklen_t socktype_len;
-	int       socktype;
-	char      proto[8] = "NULL";
-	char      ip[INET6_ADDRSTRLEN] = "NULL";
-	int       port = -1;
-
-	addr_len = sizeof(addr);
-	socktype_len = sizeof(socktype);
 
 	// Get current timestamp.
 	time_t now = time(NULL);
@@ -172,37 +168,20 @@ static void print_footer(const size_t total_len,
 	// Create formated date-time string.
 	strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S %Z", &tm);
 
-	// Get connected address.
-	if (getpeername(sockfd, (struct sockaddr*)&addr, &addr_len) == 0) {
-		if (addr.ss_family == AF_INET) {
-			struct sockaddr_in *s = (struct sockaddr_in *)&addr;
-			port = ntohs(s->sin_port);
-			inet_ntop(AF_INET, &s->sin_addr, ip, sizeof(ip));
-		} else { // AF_INET6
-			struct sockaddr_in6 *s = (struct sockaddr_in6 *)&addr;
-			port = ntohs(s->sin6_port);
-			inet_ntop(AF_INET6, &s->sin6_addr, ip, sizeof(ip));
-		}
-	}
-
-	// Get connected socket type.
-	if (getsockopt(sockfd, SOL_SOCKET, SO_TYPE, (char*)&socktype,
-	    &socktype_len) == 0) {
-		switch (socktype) {
-		case SOCK_STREAM:
-			strcpy(proto, "TCP");
-			break;
-		case SOCK_DGRAM:
-			strcpy(proto, "UDP");
-			break;
-		}
-	}
-
 	// Print formated info.
 	printf("\n;; Received %zu B (%zu messages)\n"
 	       ";; From %s#%i over %s in %.1f ms\n"
 	       ";; On %s\n",
-	       total_len, msg_count, ip, port, proto, elapsed, date);
+	       total_len, msg_count, net->addr, net->port, net->proto,
+	       elapsed, date);
+}
+
+static void print_opt_section(const knot_opt_rr_t *rr)
+{
+	printf("Version: %u, flags: %s, UDP size: %u B\n",
+	       knot_edns_get_version(rr),
+	       (knot_edns_do(rr) != 0) ? "DO" : "",
+	       knot_edns_get_payload(rr));
 }
 
 static void print_section_question(const knot_dname_t *owner,
@@ -280,7 +259,7 @@ static void print_section_dig(const knot_rrset_t **rrsets,
 }
 
 static void print_section_host(const knot_rrset_t **rrsets,
-                              const uint16_t     count)
+                               const uint16_t     count)
 {
 	size_t buflen = 8192;
 	char   *buf = malloc(buflen);
@@ -347,8 +326,12 @@ static void print_error_host(const uint8_t         code,
 	free(owner);
 }
 
-void print_header_xfr(const format_t format, const knot_rr_type_t type)
+void print_header_xfr(const style_t *style, const knot_rr_type_t type)
 {
+	if (style == NULL) {
+		return;
+	}
+
 	char name[16] = "";
 
 	switch (type) {
@@ -362,7 +345,7 @@ void print_header_xfr(const format_t format, const knot_rr_type_t type)
 		return;
 	}
 
-	switch (format) {
+	switch (style->format) {
 	case FORMAT_VERBOSE:
 	case FORMAT_MULTILINE:
 		printf(";; %s transfer\n\n", name);
@@ -374,14 +357,14 @@ void print_header_xfr(const format_t format, const knot_rr_type_t type)
 	}
 }
 
-void print_data_xfr(const format_t      format,
+void print_data_xfr(const style_t       *style,
                     const knot_packet_t *packet)
 {
-	if (packet == NULL) {
+	if (style == NULL || packet == NULL) {
 		return;
 	}
 
-	switch (format) {
+	switch (style->format) {
 	case FORMAT_DIG:
 		print_section_dig(packet->answer, packet->an_rrsets);
 		break;
@@ -397,16 +380,20 @@ void print_data_xfr(const format_t      format,
 	}
 }
 
-void print_footer_xfr(const format_t format,
-                      const size_t   total_len,
-                      const int      sockfd,
+void print_footer_xfr(const net_t    *net,
+                      const style_t  *style,
                       const float    elapsed,
+                      const size_t   total_len,
                       const size_t   msg_count)
 {
-	switch (format) {
+	if (net == NULL || style == NULL) {
+		return;
+	}
+
+	switch (style->format) {
 	case FORMAT_VERBOSE:
 	case FORMAT_MULTILINE:
-		print_footer(total_len, sockfd, elapsed, msg_count);
+		print_footer(net, elapsed, total_len, msg_count);
 		break;
 	case FORMAT_DIG:
 	case FORMAT_HOST:
@@ -415,18 +402,18 @@ void print_footer_xfr(const format_t format,
 	}
 }
 
-void print_packet(const format_t      format,
+void print_packet(const net_t         *net,
+                  const style_t       *style,
                   const knot_packet_t *packet,
-                  const size_t        total_len,
-                  const int           sockfd,
                   const float         elapsed,
+                  const size_t        total_len,
                   const size_t        msg_count)
 {
-	if (packet == NULL) {
+	if (style == NULL || packet == NULL) {
 		return;
 	}
 
-	switch (format) {
+	switch (style->format) {
 	case FORMAT_DIG:
 		if (packet->an_rrsets > 0) {
 			print_section_dig(packet->answer, packet->an_rrsets);
@@ -441,9 +428,42 @@ void print_packet(const format_t      format,
 		}
 		break;
 	case FORMAT_NSUPDATE:
+		print_header(style, packet);
+
+		if (packet->header.qdcount > 0) {
+			printf("\n;; ZONE SECTION:\n;; ");
+			print_section_question(packet->question.qname,
+			                       packet->question.qclass,
+			                       packet->question.qtype);
+		}
+
+		if (packet->an_rrsets > 0) {
+			printf("\n;; PREREQUISITE SECTION:\n");
+			print_section_verbose(packet->answer,
+			                      packet->an_rrsets);
+		}
+
+		if (packet->ns_rrsets > 0) {
+			printf("\n;; UPDATE SECTION:\n");
+			print_section_verbose(packet->authority,
+			                      packet->ns_rrsets);
+		}
+
+		if (packet->ar_rrsets > 0) {
+			printf("\n;; ADDITIONAL DATA:\n");
+			print_section_verbose(packet->additional,
+			                      packet->ar_rrsets);
+		}
+		break;
 	case FORMAT_VERBOSE:
 	case FORMAT_MULTILINE:
-		print_header(packet);
+		print_header(style, packet);
+
+		if (knot_edns_get_version(&packet->opt_rr)
+		    != EDNS_NOT_SUPPORTED) {
+			printf("\n;; EDNS PSEUDOSECTION:\n;; ");
+			print_opt_section(&packet->opt_rr);
+		}
 
 		if (packet->header.qdcount > 0) {
 			printf("\n;; QUESTION SECTION:\n;; ");
@@ -466,13 +486,22 @@ void print_packet(const format_t      format,
 
 		if (packet->ar_rrsets > 0) {
 			printf("\n;; ADDITIONAL SECTION:\n");
-			print_section_verbose(packet->additional,
-			                      packet->ar_rrsets);
+
+			if (knot_edns_get_version(&packet->opt_rr)
+			    != EDNS_NOT_SUPPORTED) {
+				print_section_verbose(packet->additional,
+				                      packet->ar_rrsets - 1);
+			} else {
+				print_section_verbose(packet->additional,
+				                      packet->ar_rrsets);
+			}
 		}
 
-		if (format != FORMAT_NSUPDATE) {
-			print_footer(total_len, sockfd, elapsed, msg_count);
+		if (net == NULL) {
+			break;
 		}
+
+		print_footer(net, elapsed, total_len, msg_count);
 		break;
 	default:
 		break;

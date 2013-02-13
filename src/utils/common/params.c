@@ -23,7 +23,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>			// free
-#include <netinet/in.h>                 // in_addr
+#include <netinet/in.h>			// in_addr
 #include <arpa/inet.h>			// inet_pton
 #include <sys/socket.h>			// AF_INET (BSD)
 
@@ -37,6 +37,19 @@
 
 #define IPV4_REVERSE_DOMAIN	"in-addr.arpa."
 #define IPV6_REVERSE_DOMAIN	"ip6.arpa."
+
+const style_t DEFAULT_STYLE = {
+	.format = FORMAT_VERBOSE,
+	.show_header = true,
+	.show_footer = true,
+	.show_query = false,
+	.show_question = true,
+	.show_answer = true,
+	.show_authority = true,
+	.show_additional = true,
+	.show_class = true,
+	.show_ttl = true,
+};
 
 static knot_dname_t* create_fqdn_from_str(const char *str, size_t len)
 {
@@ -53,14 +66,14 @@ static knot_dname_t* create_fqdn_from_str(const char *str, size_t len)
 
 /* Table of known keys in private-key-format */
 static const char *pkey_tbl[] = {
-        "\x09" "Activate:",
-        "\x0a" "Algorithm:",
-        "\x05" "Bits:",
-        "\x08" "Created:",
-        "\x04" "Key:",
-        "\x13" "Private-key-format:",
-        "\x08" "Publish:",
-        NULL
+	"\x09" "Activate:",
+	"\x0a" "Algorithm:",
+	"\x05" "Bits:",
+	"\x08" "Created:",
+	"\x04" "Key:",
+	"\x13" "Private-key-format:",
+	"\x08" "Publish:",
+	NULL
 };
 
 enum {
@@ -183,60 +196,6 @@ char* get_fqd_name(const char *name)
 	return fqd_name;
 }
 
-void params_flag_ipv4(params_t *params)
-{
-	if (params == NULL) {
-		return;
-	}
-
-	params->ip = IP_4;
-}
-
-void params_flag_ipv6(params_t *params)
-{
-	if (params == NULL) {
-		return;
-	}
-
-	params->ip = IP_6;
-}
-
-void params_flag_servfail(params_t *params)
-{
-	if (params == NULL) {
-		return;
-	}
-
-	params->servfail_stop = true;
-}
-
-void params_flag_nowait(params_t *params)
-{
-	if (params == NULL) {
-		return;
-	}
-
-	params->wait = -1;
-}
-
-void params_flag_tcp(params_t *params)
-{
-	if (params == NULL) {
-		return;
-	}
-
-	params->protocol = PROTO_TCP;
-}
-
-void params_flag_verbose(params_t *params)
-{
-	if (params == NULL) {
-		return;
-	}
-
-	params->format = FORMAT_VERBOSE;
-}
-
 int params_parse_port(const char *value, char **port)
 {
 	char *new_port = strdup(value);
@@ -253,18 +212,20 @@ int params_parse_port(const char *value, char **port)
 	return KNOT_EOK;
 }
 
-int params_parse_class(const char *value, int32_t *rclass)
+int params_parse_class(const char *value, uint16_t *rclass)
 {
 	if (value == NULL || rclass == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	*rclass = knot_rrclass_from_string(value);
-
-	return KNOT_EOK;
+	if (knot_rrclass_from_string(value, rclass) == 0) {
+		return KNOT_EOK;
+	} else {
+		return KNOT_EINVAL;
+	}
 }
 
-int params_parse_type(const char *value, int32_t *rtype, uint32_t *xfr_serial)
+int params_parse_type(const char *value, uint16_t *rtype, uint32_t *xfr_serial)
 {
 	if (value == NULL || rtype == NULL || xfr_serial == NULL) {
 		return KNOT_EINVAL;
@@ -274,7 +235,9 @@ int params_parse_type(const char *value, int32_t *rtype, uint32_t *xfr_serial)
 
 	// There is no additional parameter.
 	if (param_pos == strlen(value)) {
-		*rtype = knot_rrtype_from_string(value);
+		if (knot_rrtype_from_string(value, rtype) != 0) {
+			return KNOT_EINVAL;
+		}
 
 		// IXFR requires serial parameter.
 		if (*rtype == KNOT_RRTYPE_IXFR) {
@@ -284,7 +247,10 @@ int params_parse_type(const char *value, int32_t *rtype, uint32_t *xfr_serial)
 	} else {
 		char *type_char = strndup(value, param_pos);
 
-		*rtype = knot_rrtype_from_string(type_char);
+		if (knot_rrtype_from_string(type_char, rtype) != 0) {
+			free(type_char);
+			return KNOT_EINVAL;
+		}
 
 		free(type_char);
 
@@ -425,6 +391,12 @@ int params_parse_tsig(const char *value, knot_key_t *key)
 	} else {
 		s = k; /* Ignore first part, push down. */
 		k = h;
+	}
+
+	if (!s) {
+		ERR("invalid key option format, use [hmac:]keyname:secret\n");
+		free(h);
+		return KNOT_EINVAL;
 	}
 
 	/* Parse key name. */

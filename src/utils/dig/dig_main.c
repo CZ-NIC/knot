@@ -17,23 +17,29 @@
 #include <stdlib.h>			// EXIT_FAILURE
 
 #include "common/errcode.h"		// KNOT_EOK
-#include "utils/dig/dig_params.h"	// dig_params_parse
+#include "utils/dig/dig_params.h"	// dig_parse
 #include "utils/dig/dig_exec.h"		// dig_exec
 
 int main(int argc, char *argv[])
 {
 	int ret = EXIT_SUCCESS;
 
-	params_t params;
-	if (dig_params_parse(&params, argc, argv) == KNOT_EOK) {
+	dig_params_t params;
+	switch (dig_parse(&params, argc, argv)) {
+	case KNOT_EOK:
 		if (dig_exec(&params) != KNOT_EOK) {
 			ret = EXIT_FAILURE;
 		}
-	} else {
+		break;
+	case KNOT_ESTOP:
+		ret = EXIT_SUCCESS;
+		break;
+	default:
 		ret = EXIT_FAILURE;
+		break;
 	}
 
-	dig_params_clean(&params);
+	dig_clean(&params);
 	return ret;
 }
 

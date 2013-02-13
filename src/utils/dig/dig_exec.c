@@ -26,46 +26,66 @@
 #include "libknot/consts.h"		// KNOT_RCODE_NOERROR
 #include "libknot/util/wire.h"		// knot_wire_set_rd
 #include "libknot/packet/query.h"	// knot_query_init
+#include "libknot/packet/response.h"	// knot_response_add_opt
 #include "utils/common/msg.h"		// WARN
-#include "utils/common/params.h"	// params_t
 #include "utils/common/netio.h"		// get_socktype
 #include "utils/common/exec.h"		// print_packet
 
-static knot_packet_t* create_query_packet(const params_t *params,
-                                          const query_t  *query,
-                                          uint8_t        **data,
-                                          size_t         *data_len)
+static knot_packet_t* create_query_packet(const query_t *query,
+                                          uint8_t       **data,
+                                          size_t        *data_len)
 {
 	knot_question_t q;
-
-	dig_params_t *ext_params = DIG_PARAM(params);
+	knot_packet_t   *packet;
 
 	// Set packet buffer size.
-	int max_size = MAX_PACKET_SIZE;
-	if (get_socktype(params, query->qtype) != SOCK_STREAM) {
-		// For UDP default or specified EDNS size.
-		max_size = params->udp_size;
+	int max_size = query->udp_size;
+
+	if (max_size < 0) {
+		if (get_socktype(query->protocol, query->type_num)
+		    == SOCK_STREAM) {
+			max_size = MAX_PACKET_SIZE;
+		} else if (query->flags.do_flag == true) {
+			max_size = DEFAULT_EDNS_SIZE;
+		} else {
+			max_size = DEFAULT_UDP_SIZE;
+		}
 	}
 
 	// Create packet skeleton.
-	knot_packet_t *packet = create_empty_packet(KNOT_PACKET_PREALLOC_NONE,
-	                                            max_size);
+	packet = create_empty_packet(KNOT_PACKET_PREALLOC_NONE, max_size);
 
 	if (packet == NULL) {
 		return NULL;
 	}
 
-	// Set recursion bit to wireformat.
-	if (ext_params->rd_flag == true) {
+	// Set flags to wireformat.
+	if (query->flags.aa_flag == true) {
+		knot_wire_set_aa(packet->wireformat);
+	}
+	if (query->flags.tc_flag == true) {
+		knot_wire_set_tc(packet->wireformat);
+	}
+	if (query->flags.rd_flag == true) {
 		knot_wire_set_rd(packet->wireformat);
-	} else {
-		knot_wire_flags_clear_rd(packet->wireformat);
+	}
+	if (query->flags.ra_flag == true) {
+		knot_wire_set_ra(packet->wireformat);
+	}
+	if (query->flags.z_flag == true) {
+		knot_wire_set_z(packet->wireformat);
+	}
+	if (query->flags.ad_flag == true) {
+		knot_wire_set_ad(packet->wireformat);
+	}
+	if (query->flags.cd_flag == true) {
+		knot_wire_set_cd(packet->wireformat);
 	}
 
 	// Fill auxiliary question structure.
-	q.qclass = query->qclass;
-	q.qtype = query->qtype;
-	q.qname = knot_dname_new_from_str(query->qname, strlen(query->qname), 0);
+	q.qclass = query->class_num;
+	q.qtype = query->type_num;
+	q.qname = knot_dname_new_from_str(query->owner, strlen(query->owner), 0);
 
 	if (q.qname == NULL) {
 		knot_dname_release(q.qname);
@@ -81,7 +101,7 @@ static knot_packet_t* create_query_packet(const params_t *params,
 	}
 
 	// For IXFR query add authority section.
-	if (query->qtype == KNOT_RRTYPE_IXFR) {
+	if (query->type_num == KNOT_RRTYPE_IXFR) {
 		int ret;
 		size_t pos = 0;
 		// SOA rdata in wireformat.
@@ -110,7 +130,7 @@ static knot_packet_t* create_query_packet(const params_t *params,
 		// Create rrset with SOA record.
 		knot_rrset_t *soa = knot_rrset_new(q.qname,
 		                                   KNOT_RRTYPE_SOA,
-		                                   params->class_num,
+		                                   query->class_num,
 		                                   0);
 		ret = knot_rrset_add_rdata(soa, soa_data);
 
@@ -132,6 +152,34 @@ static knot_packet_t* create_query_packet(const params_t *params,
 			knot_packet_free(&packet);
 			return NULL;
 		}
+	}
+
+	// Set DO flag to EDNS section.
+	if (query->flags.do_flag == true) {
+		knot_opt_rr_t *opt_rr = knot_edns_new();
+
+		if (opt_rr == NULL) {
+			ERR("can't create EDNS section\n");
+			knot_edns_free(&opt_rr);
+			knot_dname_release(q.qname);
+			knot_packet_free(&packet);
+			return NULL;
+		}
+
+		knot_edns_set_version(opt_rr, 0);
+		knot_edns_set_payload(opt_rr, max_size);
+
+		if (knot_response_add_opt(packet, opt_rr, 0, 0) != KNOT_EOK) {
+			ERR("can't set EDNS section\n");
+			knot_edns_free(&opt_rr);
+			knot_dname_release(q.qname);
+			knot_packet_free(&packet);
+			return NULL;
+		}
+
+		knot_edns_set_do(&packet->opt_rr);
+
+		knot_edns_free(&opt_rr);
 	}
 
 	// Create wire query.
@@ -159,31 +207,34 @@ static bool check_id(const knot_packet_t *query, const knot_packet_t *reply)
 	return true;
 }
 
-static int check_rcode(const params_t *params, const knot_packet_t *reply)
+static int check_rcode(const bool servfail_stop, const knot_packet_t *reply)
 {
 	uint8_t rcode = knot_wire_get_rcode(reply->wireformat);
 
-	if (rcode == KNOT_RCODE_SERVFAIL && params->servfail_stop == true) {
+	if (rcode == KNOT_RCODE_SERVFAIL && servfail_stop == true) {
 		return -1;
 	}
 
 	return rcode;
 }
 
-static bool check_question(const knot_packet_t *query,
+static void check_question(const knot_packet_t *query,
                            const knot_packet_t *reply)
 {
+	if (reply->header.qdcount < 1) {
+		WARN("response doesn't have question section\n");
+		return;
+	}
+
 	int name_diff = knot_dname_compare_cs(reply->question.qname,
 	                                      query->question.qname);
 
 	if (reply->question.qclass != query->question.qclass ||
 	    reply->question.qtype  != query->question.qtype ||
 	    name_diff != 0) {
-		WARN("different question sections\n");
-		return false;
+		WARN("query/response question sections are different\n");
+		return;
 	}
-
-	return true;
 }
 
 static int64_t first_serial_check(const knot_packet_t *reply)
@@ -222,7 +273,7 @@ static bool last_serial_check(const uint32_t serial, const knot_packet_t *reply)
 	}
 }
 
-void process_query(const params_t *params, const query_t *query)
+void process_query(const query_t *query)
 {
 	float		elapsed;
 	bool 		id_ok, stop;
@@ -237,29 +288,40 @@ void process_query(const params_t *params, const query_t *query)
 	size_t		total_len = 0;
 	size_t		msg_count = 0;
 
-	if (params == NULL || query == NULL) {
+	if (query == NULL) {
 		return;
 	}
 
 	// Create query packet.
-	out_packet = create_query_packet(params, query, &out, &out_len);
+	out_packet = create_query_packet(query, &out, &out_len);
 
 	if (out_packet == NULL) {
 		return;
 	}
 
-	WALK_LIST(server, params->servers) {
-		int  sockfd;
-		int  rcode;
+	WALK_LIST(server, query->servers) {
+		net_t net;
+		int   rcode, ret;
 
 		// Start meassuring of query/xfr time.
 		gettimeofday(&t_start, NULL);
 
 		// Send query message.
-		sockfd = send_msg(params, query->qtype, (server_t *)server,
-		                  out, out_len);
+		ret = net_connect(NULL,
+		                  (server_t *)server,
+		                  get_iptype(query->ip),
+		                  get_socktype(query->protocol, query->type_num),
+		                  query->wait,
+		                  &net);
 
-		if (sockfd < 0) {
+		if (ret != KNOT_EOK) {
+			continue;
+		}
+
+		ret = net_send(&net, out, out_len);
+
+		if (ret != KNOT_EOK) {
+			net_close(&net);
 			continue;
 		}
 
@@ -268,8 +330,7 @@ void process_query(const params_t *params, const query_t *query)
 		// Loop over incomming messages, unless reply id is correct.
 		while (id_ok == false) {
 			// Receive reply message.
-			in_len = receive_msg(params, query->qtype, sockfd,
-			                     in, sizeof(in));
+			in_len = net_receive(&net, in, sizeof(in));
 
 			if (in_len <= 0) {
 				stop = true;
@@ -300,32 +361,29 @@ void process_query(const params_t *params, const query_t *query)
 
 		// Timeout/data error -> try next nameserver.
 		if (stop == true) {
-			shutdown(sockfd, SHUT_RDWR);
+			net_close(&net);
 			continue;
 		}
 
 		// Check rcode.
-		rcode = check_rcode(params, in_packet);
+		rcode = check_rcode(query->servfail_stop, in_packet);
 
 		// Servfail + stop if servfail -> stop processing.
 		if (rcode == -1) {
-			shutdown(sockfd, SHUT_RDWR);
+			net_close(&net);
 			break;
 		// Servfail -> try next nameserver.
 		} else if (rcode == KNOT_RCODE_SERVFAIL) {
-			shutdown(sockfd, SHUT_RDWR);
+			net_close(&net);
 			continue;
 		}
 
 		// Check for question sections equality.
-		if (check_question(out_packet, in_packet) == false) {
-			shutdown(sockfd, SHUT_RDWR);
-			continue;
-		}
+		check_question(out_packet, in_packet);
 
 		// Dump one standard reply message and finish.
-		if (query->qtype != KNOT_RRTYPE_AXFR &&
-		    query->qtype != KNOT_RRTYPE_IXFR) {
+		if (query->type_num != KNOT_RRTYPE_AXFR &&
+		    query->type_num != KNOT_RRTYPE_IXFR) {
 			// Stop meassuring of query time.
 			gettimeofday(&t_end, NULL);
 
@@ -338,12 +396,12 @@ void process_query(const params_t *params, const query_t *query)
 			total_len += in_len;
 
 			// Print formated data.
-			print_packet(params->format, in_packet, total_len,
-			             sockfd, elapsed, msg_count);
+			print_packet(&net, &query->style, in_packet, elapsed,
+			             total_len, msg_count);
 
 			knot_packet_free(&in_packet);
 
-			shutdown(sockfd, SHUT_RDWR);
+			net_close(&net);
 
 			// Stop quering nameservers.
 			break;
@@ -354,16 +412,16 @@ void process_query(const params_t *params, const query_t *query)
 		total_len += in_len;
 
 		// Start XFR dump.
-		print_header_xfr(params->format, query->qtype);
+		print_header_xfr(&query->style, query->type_num);
 
-		print_data_xfr(params->format, in_packet);
+		print_data_xfr(&query->style, in_packet);
 
 		// Read first SOA serial.
 		int64_t serial = first_serial_check(in_packet);
 
 		if (serial < 0) {
 			ERR("first answer resource record must be SOA\n");
-			shutdown(sockfd, SHUT_RDWR);
+			net_close(&net);
 			continue;
 		}
 
@@ -374,8 +432,7 @@ void process_query(const params_t *params, const query_t *query)
 			knot_packet_free(&in_packet);
 
 			// Receive reply message.
-			in_len = receive_msg(params, query->qtype, sockfd,
-					     in, sizeof(in));
+			in_len = net_receive(&net, in, sizeof(in));
 
 			if (in_len <= 0) {
 				stop = true;
@@ -404,7 +461,7 @@ void process_query(const params_t *params, const query_t *query)
 			id_ok = check_id(out_packet, in_packet);
 
 			// Check rcode.
-			rcode = check_rcode(params, in_packet);
+			rcode = check_rcode(query->servfail_stop, in_packet);
 
 			if (rcode != KNOT_RCODE_NOERROR) {
 				stop = true;
@@ -413,7 +470,7 @@ void process_query(const params_t *params, const query_t *query)
 			}
 
 			// Dump message data.
-			print_data_xfr(params->format, in_packet);
+			print_data_xfr(&query->style, in_packet);
 
 			// Count non-first XFR message.
 			msg_count++;
@@ -429,13 +486,13 @@ void process_query(const params_t *params, const query_t *query)
 			elapsed = (t_end.tv_sec - t_start.tv_sec) * 1000 +
 			          ((t_end.tv_usec - t_start.tv_usec) / 1000.0);
 
-			print_footer_xfr(params->format, total_len, sockfd,
-			                 elapsed, msg_count);
+			print_footer_xfr(&net, &query->style, elapsed,
+			                 total_len, msg_count);
 
 			knot_packet_free(&in_packet);
 		}
 
-		shutdown(sockfd, SHUT_RDWR);
+		net_close(&net);
 
 		// Stop quering nameservers.
 		break;
@@ -445,29 +502,28 @@ void process_query(const params_t *params, const query_t *query)
 	knot_packet_free(&out_packet);
 }
 
-int dig_exec(const params_t *params)
+int dig_exec(const dig_params_t *params)
 {
-	node *query = NULL;
+	node *n = NULL;
 
 	if (params == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	dig_params_t *ext_params = DIG_PARAM(params);
+	// Loop over query list.
+	WALK_LIST(n, params->queries) {
+		query_t *query = (query_t *)n;
 
-	switch (params->operation) {
-	case OPERATION_QUERY:
-		// Loop over query list.
-		WALK_LIST(query, ext_params->queries) {
-			process_query(params, (query_t *)query);
+		switch (query->operation) {
+		case OPERATION_QUERY:
+			process_query(query);
+			break;
+		case OPERATION_LIST_SOA:
+			break;
+		default:
+			ERR("unsupported operation\n");
+			break;
 		}
-
-		break;
-	case OPERATION_LIST_SOA:
-		break;
-	default:
-		ERR("unsupported operation\n");
-		break;
 	}
 
 	return KNOT_EOK;

@@ -27,41 +27,35 @@
 #ifndef _UTILS__PARAMS_H_
 #define _UTILS__PARAMS_H_
 
-#include <stdbool.h>			// bool
 #include <stdint.h>			// uint16_t
 
-#include "common/lists.h"		// node
+#include "common/lists.h"		// list
 #include "libknot/tsig.h"		// knot_key_t
 
 #define DEFAULT_IPV4_NAME	"127.0.0.1"
 #define DEFAULT_IPV6_NAME	"::1"
 #define DEFAULT_DNS_PORT	"53"
 #define DEFAULT_UDP_SIZE	512
+#define DEFAULT_EDNS_SIZE	4096
 #define MAX_PACKET_SIZE		65535
 
 #define SEP_CHARS		"\n\t "
 
+/*! \brief Variants of IP protocol. */
 typedef enum {
 	IP_ALL,
 	IP_4,
 	IP_6
-} ip_version_t;
+} ip_t;
 
+/*! \brief Variants of transport protocol. */
 typedef enum {
 	PROTO_ALL,
 	PROTO_TCP,
 	PROTO_UDP
 } protocol_t;
 
-typedef enum {
-	/*!< Classic queries in list. */
-	OPERATION_QUERY,
-	/*!< Query for NS and all authoritative SOA records. */
-	OPERATION_LIST_SOA,
-	/*!< Default mode for nsupdate. */
-	OPERATION_UPDATE,
-} operation_t;
-
+/*! \brief Variants of text output format. */
 typedef enum {
 	/*!< Short dig output. */
 	FORMAT_DIG,
@@ -75,63 +69,46 @@ typedef enum {
 	FORMAT_MULTILINE,
 } format_t;
 
-/*! \brief Structure containing parameters. */
+/*! \brief Text output settings. */
 typedef struct {
-	/*!< List of nameservers to query to. */
-	list		servers;
-	/*!< Operation mode. */
-	operation_t	operation;
-	/*!< Version of ip protocol to use. */
-	ip_version_t	ip;
-	/*!< Type (TCP, UDP) protocol to use. */
-	protocol_t	protocol;
-	/*!< Default port/service to connect to. */
-	char		*port;
-	/*!< Default class number (16unsigned + -1 uninitialized). */
-	int32_t		class_num;
-	/*!< Default type number (16unsigned + -1 uninitialized). */
-	int32_t		type_num;
-	/*!< Default TTL. */
-	uint32_t	ttl;
-	/*!< Default SOA serial for XFR. */
-	uint32_t	xfr_serial;
-	/*!< UDP buffer size. */
-	uint32_t	udp_size;
-	/*!< Number of UDP retries. */
-	uint32_t	retries;
-	/*!< Wait for network response in seconds (-1 means forever). */
-	int32_t		wait;
-	/*!< Stop quering if servfail. */
-	bool		servfail_stop;
 	/*!< Output format. */
 	format_t	format;
-	/*!< TSIG key used. */
-	knot_key_t	key;
-	/*!< Implementation specific data. */
-	void		*d;
-} params_t;
+
+	/*!< Show header info. */
+	bool		show_header;
+	/*!< Show footer info. */
+	bool		show_footer;
+
+	/*!< Show query packet. */
+	bool		show_query;
+
+	/*!< Show QUERY/ZONE section. */
+	bool		show_question;
+	/*!< Show ANSWER/PREREQ section. */
+	bool		show_answer;
+	/*!< Show UPDATE/AUTHORITY section. */
+	bool		show_authority;
+	/*!< Show ADDITIONAL section. */
+	bool		show_additional;
+
+	/*!< Show class. */
+	bool		show_class;
+	/*!< Show ttl. */
+	bool		show_ttl;
+} style_t;
+
+/*! \brief Default style settings. */
+extern const style_t DEFAULT_STYLE;
 
 char* get_reverse_name(const char *name);
 
 char* get_fqd_name(const char *name);
 
-void params_flag_ipv4(params_t *params);
-
-void params_flag_ipv6(params_t *params);
-
-void params_flag_servfail(params_t *params);
-
-void params_flag_nowait(params_t *params);
-
-void params_flag_tcp(params_t *params);
-
-void params_flag_verbose(params_t *params);
-
 int params_parse_port(const char *value, char **port);
 
-int params_parse_class(const char *value, int32_t *rclass);
+int params_parse_class(const char *value, uint16_t *rclass);
 
-int params_parse_type(const char *value, int32_t *rtype, uint32_t *xfr_serial);
+int params_parse_type(const char *value, uint16_t *rtype, uint32_t *xfr_serial);
 
 int params_parse_server(const char *value, list *servers, const char *def_port);
 

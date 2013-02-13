@@ -1412,7 +1412,7 @@ static int xfrin_apply_remove_rrsigs(knot_changes_t *changes,
 	 *        one RRSet of each type and owner in the changeset.
 	 */
 	
-	int ret;
+	int ret = KNOT_EOK;
 
 	int copied = 0;
 
@@ -2587,7 +2587,7 @@ static int xfrin_apply_remove(knot_zone_contents_t *contents,
 dbg_xfrin_exec_verb(
 		char *name = knot_dname_to_str(
 			knot_rrset_owner(chset->remove[i]));
-		dbg_xfrin_verb("Removing RRSet: %s, type %s\n", name,
+		dbg_xfrin_verb("Removing RRSet: %s, type %u\n", name,
 		               knot_rrset_type(chset->remove[i]));
 		free(name);
 );
@@ -3286,10 +3286,9 @@ int xfrin_switch_zone(knot_zone_t *zone,
 	               old, (old) ? old->apex : NULL, new_contents->apex);
 
 	// switch pointers in domain names, now only the new zone is used
-	if (transfer_type == XFR_TYPE_IIN) {
+	if (transfer_type == XFR_TYPE_IIN || transfer_type == XFR_TYPE_UPDATE) {
 		// Traverse also the dname table and change the node pointers
 		// in dnames
-		assert(0);
 		//TODO still valid?
 //		int ret = knot_zone_contents_dname_table_apply(
 //		                        new_contents,

@@ -371,7 +371,7 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 		if (ret == KNOT_ENOENT) {
 			/* No such RR is present in 'rrset2'. */
 			dbg_zonediff("zone_diff: diff_rdata: "
-			       "No match for RR (type=%d owner=%s).\n",
+			       "No match for RR (type=%d owner=%u).\n",
 			       knot_rrset_type(rrset1),
 			       knot_dname_to_str(rrset1->owner));
 			/* We'll copy index 'i' into 'changes' RRSet. */
