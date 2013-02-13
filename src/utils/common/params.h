@@ -104,8 +104,6 @@ char* get_reverse_name(const char *name);
 
 char* get_fqd_name(const char *name);
 
-int params_parse_port(const char *value, char **port);
-
 int params_parse_class(const char *value, uint16_t *rclass);
 
 int params_parse_type(const char *value, uint16_t *rtype, uint32_t *xfr_serial);

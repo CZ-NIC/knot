@@ -307,6 +307,22 @@ static int parse_type(const char *value, query_t *query)
 	return KNOT_EOK;
 }
 
+static int parse_port(const char *value, char **port)
+{
+	char *new_port = strdup(value);
+
+	if (new_port == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	// Deallocate old string.
+	free(*port);
+
+	*port = new_port;
+
+	return KNOT_EOK;
+}
+
 static void dig_help(const bool verbose)
 {
 	if (verbose == true) {
@@ -398,8 +414,7 @@ static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
 			return KNOT_EINVAL;
 		}
 
-		if (params_parse_port(val, &query->port)
-		    != KNOT_EOK) {
+		if (parse_port(val, &query->port) != KNOT_EOK) {
 			ERR("invalid port: %s\n", val);
 			return KNOT_EINVAL;
 		}
@@ -565,6 +580,12 @@ static int parse_opt2(const char *value, dig_params_t *params)
 		query->style.show_ttl = true;
 	} else if (strcmp(value, "nottl") == 0) {
 		query->style.show_ttl = false;
+	}
+	else if (strncmp(value, "time=", 5) == 0) {
+	}
+	else if (strncmp(value, "tries=", 6) == 0) {
+	}
+	else if (strncmp(value, "bufsize=", 8) == 0) {
 	}
 
 	// Check for connection option.

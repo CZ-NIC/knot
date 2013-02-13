@@ -350,8 +350,9 @@ void process_query(const query_t *query)
 			                                in_len, 0,
 			                              KNOT_PACKET_DUPL_NO_MERGE)
 			    != KNOT_EOK) {
-				knot_packet_free(&in_packet);
+				ERR("can't parse reply packet\n");
 				stop = true;
+				knot_packet_free(&in_packet);
 				break;
 			}
 
@@ -452,6 +453,7 @@ void process_query(const query_t *query)
 							in_len, 0,
 						      KNOT_PACKET_DUPL_NO_MERGE)
 			    != KNOT_EOK) {
+				ERR("can't parse reply packet\n");
 				stop = true;
 				knot_packet_free(&in_packet);
 				break;

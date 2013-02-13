@@ -196,22 +196,6 @@ char* get_fqd_name(const char *name)
 	return fqd_name;
 }
 
-int params_parse_port(const char *value, char **port)
-{
-	char *new_port = strdup(value);
-
-	if (new_port == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	// Deallocate old string.
-	free(*port);
-
-	*port = new_port;
-
-	return KNOT_EOK;
-}
-
 int params_parse_class(const char *value, uint16_t *rclass)
 {
 	if (value == NULL || rclass == NULL) {
