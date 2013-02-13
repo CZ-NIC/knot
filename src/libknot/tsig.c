@@ -66,9 +66,10 @@ static uint8_t* tsig_rdata_seek(const knot_rrset_t *rr, tsig_off_t id, size_t nb
 	}
 	
 	/* Check if fixed part is readable. */
-	uint32_t lim = rrset_rdata_item_size(rr, 0);
+	uint16_t lim = rrset_rdata_item_size(rr, 0);
 	if (lim < TSIG_NAMELEN + 5 * sizeof(uint16_t)) {
-		dbg_tsig("TSIG: rdata: not enough items.\n");
+		dbg_tsig("TSIG: rdata: not enough items (has %u, min %lu).\n",
+		         lim, TSIG_NAMELEN + 5 * sizeof(uint16_t));
 		return NULL;
 	}
 	
@@ -82,26 +83,27 @@ static uint8_t* tsig_rdata_seek(const knot_rrset_t *rr, tsig_off_t id, size_t nb
 	case TSIG_MAC_O: rd += TSIG_NAMELEN + 5 * sizeof(uint16_t); break;
 	case TSIG_ORIGID_O:
 		rd += TSIG_NAMELEN + 4 * sizeof(uint16_t);
-		rd += *((uint16_t*)rd) + sizeof(uint16_t);
+		rd += knot_wire_read_u16(rd) + sizeof(uint16_t);
 		break;
 		
 	case TSIG_ERROR_O:
 		rd += TSIG_NAMELEN + 4 * sizeof(uint16_t);
-		rd += *((uint16_t*)rd) + 2 * sizeof(uint16_t);
+		rd += knot_wire_read_u16(rd) + 2 * sizeof(uint16_t);
 		break;
 	case TSIG_OLEN_O:
 		rd += TSIG_NAMELEN + 4 * sizeof(uint16_t);
-		rd += *((uint16_t*)rd) + 3 * sizeof(uint16_t);
+		rd += knot_wire_read_u16(rd) + 3 * sizeof(uint16_t);
 		break;
 	case TSIG_OTHER_O:
 		rd += TSIG_NAMELEN + 4 * sizeof(uint16_t);
-		rd += *((uint16_t*)rd) + 4 * sizeof(uint16_t);
+		rd += knot_wire_read_u16(rd) + 4 * sizeof(uint16_t);
 		break;
 	}
 	
 	/* Check remaining bytes. */
 	if (rd + nb > bp + lim) {
-		dbg_tsig("TSIG: rdata: not enough items.\n");
+		dbg_tsig("TSIG: rdata: not enough items (needs %zu, has %u).\n",
+		         (rd-bp)+nb, lim);
 		return NULL;
 	}
 	
@@ -211,7 +213,7 @@ int tsig_rdata_set_other_data(knot_rrset_t *tsig, uint16_t len,
                               const uint8_t *other_data)
 {
 	if (len > TSIG_OTHER_MAXLEN) {
-		dbg_tsig("TSIG: rdata: other len > %uB\n", TSIG_OTHER_MAXLEN);
+		dbg_tsig("TSIG: rdata: other len > %luB\n", TSIG_OTHER_MAXLEN);
 		return KNOT_EINVAL;
 	}
 
