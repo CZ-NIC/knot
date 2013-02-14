@@ -358,6 +358,8 @@ static int knot_packet_parse_rdata(knot_rrset_t *rr, const uint8_t *wire,
 		return KNOT_EINVAL;
 	}
 	
+	
+	
 	/*! \todo As I'm revising it, seems highly inefficient to me.
 	 *        We just need to skim through the packet,
 	 *        check if it is in valid format and store pointers to various
@@ -367,45 +369,53 @@ static int knot_packet_parse_rdata(knot_rrset_t *rr, const uint8_t *wire,
 	 *        be handled in-situ without additional memory allocs...
 	 */
 	
-	uint8_t* rd = knot_rrset_create_rdata(rr, rdlength);
-	if (!rd) {
-		return KNOT_ERROR;
+	int ret = knot_rrset_rdata_from_wire_one(rr, wire, pos, total_size,
+	                                         rdlength);
+	if (ret != KNOT_EOK) {
+		dbg_packet("packet: parse_rdata: Failed to parse RDATA (%s).\n",
+		           knot_strerror(ret));
+		return ret;
 	}
-	uint8_t* np = rd + rdlength;
 	
-	const rdata_descriptor_t *desc = get_rdata_descriptor(knot_rrset_type(rr));
-	if (!desc) {
-		/*! \todo Free rdata mem ? Not essential, but nice. */
-		return KNOT_EINVAL;
-	}
+//	uint8_t* rd = knot_rrset_create_rdata(rr, rdlength);
+//	if (!rd) {
+//		return KNOT_ERROR;
+//	}
+//	uint8_t* np = rd + rdlength;
+	
+//	const rdata_descriptor_t *desc = get_rdata_descriptor(knot_rrset_type(rr));
+//	if (!desc) {
+//		/*! \todo Free rdata mem ? Not essential, but nice. */
+//		return KNOT_EINVAL;
+//	}
 
-	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
-		const int id = desc->block_types[i];
-		if (descriptor_item_is_dname(id)) {
-			knot_dname_t *dn = NULL;
-			dn = knot_dname_parse_from_wire(wire, pos, total_size, NULL, NULL);
-			if (dn == NULL) {
-				return KNOT_EMALF;
-			}
-			/* Store ptr in rdata. */
-			*((knot_dname_t**)rd) = dn;
-			rd += sizeof(knot_dname_t*);
-		} else if (descriptor_item_is_fixed(id)) {
-			memcpy(rd, wire + *pos, id);
-			rd += id; /* Item represents fixed len here */
-			*pos += id;
-		} else if (descriptor_item_is_remainder(id)) {
-			size_t rchunk = np - rd;
-			memcpy(rd, wire + *pos, rchunk);
-			rd += rchunk;
-			*pos += rchunk;
-		} else {
-			//NAPTR
-			assert(knot_rrset_type(rr) == KNOT_RRTYPE_NAPTR);
-			assert(0);
-		}
+//	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
+//		const int id = desc->block_types[i];
+//		if (descriptor_item_is_dname(id)) {
+//			knot_dname_t *dn = NULL;
+//			dn = knot_dname_parse_from_wire(wire, pos, total_size, NULL, NULL);
+//			if (dn == NULL) {
+//				return KNOT_EMALF;
+//			}
+//			/* Store ptr in rdata. */
+//			*((knot_dname_t**)rd) = dn;
+//			rd += sizeof(knot_dname_t*);
+//		} else if (descriptor_item_is_fixed(id)) {
+//			memcpy(rd, wire + *pos, id);
+//			rd += id; /* Item represents fixed len here */
+//			*pos += id;
+//		} else if (descriptor_item_is_remainder(id)) {
+//			size_t rchunk = np - rd;
+//			memcpy(rd, wire + *pos, rchunk);
+//			rd += rchunk;
+//			*pos += rchunk;
+//		} else {
+//			//NAPTR
+//			assert(knot_rrset_type(rr) == KNOT_RRTYPE_NAPTR);
+//			assert(0);
+//		}
 		
-	}
+//	}
 
 	return KNOT_EOK;
 }
