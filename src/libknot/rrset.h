@@ -495,6 +495,10 @@ int rrset_rr_dnames_apply(knot_rrset_t *rrset, size_t rdata_pos,
 int rrset_dnames_apply(knot_rrset_t *rrset, int (*func)(knot_dname_t *, void *),
                        void *data);
 
+int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset, 
+                                   const uint8_t *wire, size_t *pos,
+                                   size_t total_size, size_t rdlength);
+
 #endif /* _KNOT_RRSET_H_ */
 
 /*! @} */
