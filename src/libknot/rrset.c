@@ -907,7 +907,6 @@ static int knot_rrset_rdata_store_binary(uint8_t *rdata, size_t *offset,
 	return KNOT_EOK;
 }
 
-/* This should never be called directly now i guess. */
 int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
                                    const uint8_t *wire, size_t *pos,
                                    size_t total_size, size_t rdlength)
