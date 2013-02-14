@@ -1920,7 +1920,8 @@ knot_dname_t **knot_rrset_get_next_dname_pointer(const knot_rrset_t *rrset,
 	
 				assert(prev_dname);
 			
-				if (dname == prev_dname) {
+				if (knot_dname_compare_non_canon(*dname,
+				                                 *prev_dname) == 0) {
 					//we need to return next dname
 					next = 1;
 				}
@@ -1944,7 +1945,8 @@ knot_dname_t **knot_rrset_get_next_dname_pointer(const knot_rrset_t *rrset,
 			
 				assert(prev_dname);
 			
-				if (dname == *prev_dname) {
+				if (knot_dname_compare_non_canon(dname,
+				                                 *prev_dname) == 0) {
 					//we need to return next dname
 					next = 1;
 				}
