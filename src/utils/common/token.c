@@ -32,6 +32,7 @@
 int tok_scan(const char* lp, const char **tbl, int *lpm)
 {
 	if (lp == NULL || tbl == NULL || *tbl == NULL || lpm == NULL) {
+		DBG_NULL;
 		return -1;
 	}
 
@@ -85,6 +86,7 @@ int tok_scan(const char* lp, const char **tbl, int *lpm)
 int tok_find(const char *lp, const char **tbl)
 {
 	if (lp == NULL || tbl == NULL || *tbl == NULL) {
+		DBG_NULL;
 		return KNOT_EINVAL;
 	}
 
@@ -107,6 +109,7 @@ int tok_find(const char *lp, const char **tbl)
 const char* tok_skipspace(const char *lp)
 {
 	if (lp == NULL) {
+		DBG_NULL;
 		return NULL;
 	}
 
@@ -116,6 +119,7 @@ const char* tok_skipspace(const char *lp)
 int tok_process_lines(FILE *fp, lparse_f cb, void *arg)
 {
 	if (fp == NULL || cb == NULL) {
+		DBG_NULL;
 		return KNOT_EINVAL;
 	}
 

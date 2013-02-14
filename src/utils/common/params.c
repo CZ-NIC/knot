@@ -141,6 +141,7 @@ char* get_reverse_name(const char *name)
 	char		buf[128] = "\0";
 
 	if (name == NULL) {
+		DBG_NULL;
 		return NULL;
 	}
 
@@ -180,6 +181,7 @@ char* get_fqd_name(const char *name)
 	char *fqd_name = NULL;
 
 	if (name == NULL) {
+		DBG_NULL;
 		return NULL;
 	}
 
@@ -199,6 +201,7 @@ char* get_fqd_name(const char *name)
 int params_parse_class(const char *value, uint16_t *rclass)
 {
 	if (value == NULL || rclass == NULL) {
+		DBG_NULL;
 		return KNOT_EINVAL;
 	}
 
@@ -212,6 +215,7 @@ int params_parse_class(const char *value, uint16_t *rclass)
 int params_parse_type(const char *value, uint16_t *rtype, uint32_t *xfr_serial)
 {
 	if (value == NULL || rtype == NULL || xfr_serial == NULL) {
+		DBG_NULL;
 		return KNOT_EINVAL;
 	}
 
@@ -225,8 +229,8 @@ int params_parse_type(const char *value, uint16_t *rtype, uint32_t *xfr_serial)
 
 		// IXFR requires serial parameter.
 		if (*rtype == KNOT_RRTYPE_IXFR) {
-			ERR("required SOA serial for IXFR query\n");
-			return KNOT_ERROR;
+			DBG("SOA serial is required for IXFR query\n");
+			return KNOT_EINVAL;
 		}
 	} else {
 		char *type_char = strndup(value, param_pos);
@@ -238,7 +242,7 @@ int params_parse_type(const char *value, uint16_t *rtype, uint32_t *xfr_serial)
 
 		free(type_char);
 
-		// Additional parameter is acceptet for IXFR only.
+		// Additional parameter is accepted for IXFR only.
 		if (*rtype == KNOT_RRTYPE_IXFR) {
 			const char *param_str = value + 1 + param_pos;
 			char *end;
@@ -249,16 +253,16 @@ int params_parse_type(const char *value, uint16_t *rtype, uint32_t *xfr_serial)
 			// Check for bad serial string.
 			if (end == param_str || *end != '\0' ||
 			    serial > UINT32_MAX) {
-				ERR("bad SOA serial in IXFR query\n");
-				return KNOT_ERROR;
+				DBG("bad SOA serial %s\n", param_str);
+				return KNOT_EINVAL;
 			}
 
 			*xfr_serial = serial;
 		} else {
 			char buf[64] = "";
 			knot_rrtype_to_string(*rtype, buf, sizeof(buf));
-			ERR("type %s can't have a parameter\n", buf);
-			return KNOT_ERROR;
+			DBG("type %s can't have a parameter\n", buf);
+			return KNOT_EINVAL;
 		}
 	}
 
@@ -268,12 +272,14 @@ int params_parse_type(const char *value, uint16_t *rtype, uint32_t *xfr_serial)
 int params_parse_server(const char *value, list *servers, const char *def_port)
 {
 	if (value == NULL || servers == NULL) {
+		DBG_NULL;
 		return KNOT_EINVAL;
 	}
 
 	// Add specified nameserver.
 	server_t *server = parse_nameserver(value, def_port);
 	if (server == NULL) {
+		ERR("bad nameserver %s\n", value);
 		return KNOT_EINVAL;
 	}
 	add_tail(servers, (node *)server);
@@ -281,11 +287,12 @@ int params_parse_server(const char *value, list *servers, const char *def_port)
 	return KNOT_EOK;
 }
 
-int params_parse_interval(const char *value, int32_t *dst)
+int params_parse_wait(const char *value, int32_t *dst)
 {
 	char *end;
 
 	if (value == NULL || dst == NULL) {
+		DBG_NULL;
 		return KNOT_EINVAL;
 	}
 
@@ -294,15 +301,15 @@ int params_parse_interval(const char *value, int32_t *dst)
 
 	/* Check for bad string (empty or incorrect). */
 	if (end == value || *end != '\0') {
-		ERR("bad interval value\n");
-		return KNOT_ERROR;
+		ERR("bad time value %s\n", value);
+		return KNOT_EINVAL;
 	} else if (num < 1) {
 		num = 1;
-		WARN("interval is too short, using %ld seconds\n", num);
+		WARN("time %s is too short, using %ld instead\n", value, num);
 	/* Reduce maximal value. Poll takes signed int in milliseconds. */
 	} else if (num > INT32_MAX) {
 		num = INT32_MAX / 1000;
-		WARN("interval is too long, using %ld seconds\n", num);
+		WARN("time %s is too big, using %ld instead\n", value, num);
 	}
 
 	*dst = num;
@@ -315,6 +322,7 @@ int params_parse_num(const char *value, uint32_t *dst)
 	char *end;
 
 	if (value == NULL || dst == NULL) {
+		DBG_NULL;
 		return KNOT_EINVAL;
 	}
 
@@ -322,9 +330,42 @@ int params_parse_num(const char *value, uint32_t *dst)
 	unsigned long num = strtoul(value, &end, 10);
 
 	// Check for bad string.
-	if (end == value || *end != '\0' || num > UINT32_MAX) {
-		ERR("bad numeric value\n");
-		return KNOT_ERROR;
+	if (end == value || *end != '\0') {
+		ERR("bad number %s\n", value);
+		return KNOT_EINVAL;
+	}
+
+	if (num > UINT32_MAX) {
+		num = UINT32_MAX;
+		WARN("number %s is too big, using %lu instead\n", value, num);
+	}
+
+	*dst = num;
+
+	return KNOT_EOK;
+}
+
+int params_parse_bufsize(const char *value, int32_t *dst)
+{
+	char *end;
+
+	if (value == NULL || dst == NULL) {
+		DBG_NULL;
+		return KNOT_EINVAL;
+	}
+
+	// Convert string to number.
+	unsigned long num = strtoul(value, &end, 10);
+
+	// Check for bad string.
+	if (end == value || *end != '\0') {
+		ERR("bad size %s\n", value);
+		return KNOT_EINVAL;
+	}
+
+	if (num > UINT16_MAX) {
+		num = UINT16_MAX;
+		WARN("size %s is too big, using %lu instead\n", value, num);
 	}
 
 	*dst = num;
@@ -335,6 +376,7 @@ int params_parse_num(const char *value, uint32_t *dst)
 int params_parse_tsig(const char *value, knot_key_t *key)
 {
 	if (value == NULL || key == NULL) {
+		DBG_NULL;
 		return KNOT_EINVAL;
 	}
 
@@ -408,6 +450,7 @@ int params_parse_keyfile(const char *filename, knot_key_t *key)
 	int ret = KNOT_EOK;
 
 	if (filename == NULL || key == NULL) {
+		DBG_NULL;
 		return KNOT_EINVAL;
 	}
 

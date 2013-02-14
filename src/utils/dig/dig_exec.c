@@ -289,6 +289,7 @@ void process_query(const query_t *query)
 	size_t		msg_count = 0;
 
 	if (query == NULL) {
+		DBG_NULL;
 		return;
 	}
 
@@ -509,6 +510,7 @@ int dig_exec(const dig_params_t *params)
 	node *n = NULL;
 
 	if (params == NULL) {
+		DBG_NULL;
 		return KNOT_EINVAL;
 	}
 

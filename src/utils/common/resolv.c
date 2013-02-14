@@ -21,6 +21,7 @@
 
 #include "common/lists.h"		// list
 #include "common/errcode.h"		// KNOT_ENOENT
+#include "utils/common/msg.h"		// DBG_NULL
 #include "utils/common/params.h"	// DEFAULT_IPV6_NAME
 
 #define RESOLV_FILE	"/etc/resolv.conf"
@@ -28,6 +29,7 @@
 server_t* parse_nameserver(const char *nameserver, const char *def_port)
 {
 	if (nameserver == NULL || def_port == NULL) {
+		DBG_NULL;
 		return NULL;
 	}
 
@@ -154,6 +156,7 @@ static int get_resolv_nameservers(list *servers, const char *def_port)
 int get_nameservers(list *servers, const char *def_port)
 {
 	if (servers == NULL || def_port == NULL) {
+		DBG_NULL;
 		return KNOT_EINVAL;
 	}
 

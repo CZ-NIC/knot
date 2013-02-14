@@ -17,6 +17,7 @@
 #include <config.h>
 #include <stdbool.h>
 
+#include "utils/common/msg.h"
 #include "utils/common/rr-serialize.h"
 #include "knot/zone/zone-dump-text.h"
 #include "libknot/libknot.h"
@@ -25,6 +26,7 @@ int rdata_write_mem(char* dst, size_t maxlen, const knot_rdata_t *rdata,
                     uint16_t type)
 {
 	if (dst == NULL || rdata == NULL) {
+		DBG_NULL;
 		return KNOT_EINVAL;
 	}
 	
@@ -82,6 +84,7 @@ int rrset_header_write_mem(char *dst, size_t maxlen,
                            const bool p_class, const bool p_ttl)
 {
 	if (dst == NULL || rrset == NULL) {
+		DBG_NULL;
 		return KNOT_EINVAL;
 	}
 	
@@ -126,10 +129,6 @@ int rrset_header_write_mem(char *dst, size_t maxlen,
 
 static int rrsig_write_mem(char *dst, size_t maxlen, knot_rrset_t *rrsig)
 {
-	if (dst == NULL || rrsig == NULL) {
-		return KNOT_EINVAL;
-	}
-	
 	int wb = 0;
 	int ret = rrset_header_write_mem(dst, maxlen, rrsig, true, true);
 	if (ret < 0) return KNOT_ESPACE;
@@ -160,6 +159,7 @@ static int rrsig_write_mem(char *dst, size_t maxlen, knot_rrset_t *rrsig)
 int rrset_write_mem(char *dst, size_t maxlen, const knot_rrset_t *rrset)
 {
 	if (dst == NULL || rrset == NULL) {
+		DBG_NULL;
 		return KNOT_EINVAL;
 	}
 	
