@@ -2679,7 +2679,7 @@ static int xfrin_apply_add(knot_zone_contents_t *contents,
 dbg_xfrin_exec_verb(
 		char *name = knot_dname_to_str(
 			knot_rrset_owner(chset->add[i]));
-		dbg_xfrin_verb("Adding RRSet: %s, type: %s\n", name,
+		dbg_xfrin_verb("Adding RRSet: %s, type: %u\n", name,
 		               knot_rrset_type(chset->add[i]));
 		free(name);
 );

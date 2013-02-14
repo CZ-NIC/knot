@@ -83,7 +83,7 @@ static int dname_lf(char *dst, const knot_dname_t *src, size_t maxlen) {
 }
 
 /* TAG:AVL */
-#include "libknot/zone/zone-tree-avl.c"
+//#include "libknot/zone/zone-tree-avl.c"
 
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
@@ -97,7 +97,7 @@ knot_zone_tree_t* knot_zone_tree_create()
 	tree->T = hattrie_create();
 	
 	/* TAG:AVL */
-	avl_create(&tree->avl);
+//	avl_create(&tree->avl);
 	return tree;
 }
 
@@ -123,7 +123,7 @@ int knot_zone_tree_insert(knot_zone_tree_t *tree, knot_node_t *node)
 	*hattrie_get(tree->T, lf+1, *lf) = n;
 	
 	/* TAG:AVL */
-	avl_insert(&tree->avl, n);
+//	avl_insert(&tree->avl, n);
 	return KNOT_EOK;
 }
 
@@ -162,10 +162,10 @@ int knot_zone_tree_get(knot_zone_tree_t *tree, const knot_dname_t *owner,
 	}
 	
 	/* TAG:AVL */
-	knot_node_t *avl_found = NULL;
-	avl_get(&tree->avl, owner, &avl_found);
-	if (avl_found != *found)
-		fprintf(stderr, "%s: avl=%p, ht=%p\n", __func__, avl_found, *found);
+//	knot_node_t *avl_found = NULL;
+//	avl_get(&tree->avl, owner, &avl_found);
+//	if (avl_found != *found)
+//		fprintf(stderr, "%s: avl=%p, ht=%p\n", __func__, avl_found, *found);
 	
 	return KNOT_EOK;
 }
@@ -244,19 +244,19 @@ dbg_zone_exec_detail(
 );
 	
 	/* TAG:AVL */
-	knot_node_t *avl_found = NULL;
-	knot_node_t *avl_prev = NULL;
-	int avl_em = avl_get_less_or_equal(&tree->avl, owner, &avl_found, &avl_prev);
-	if(!(exact_match == avl_em && *found == avl_found && *previous == avl_prev)) {
-		fprintf(stderr, "%s: '%s' (ht,avl)\n...exact_match=(%d,%d)\n...found=(%s, %s)\n...prev=(%s, %s)\n",
-		        __func__, knot_dname_to_str(owner), exact_match, avl_em,
-		        knot_dname_to_str((*found)->owner),
-		        knot_dname_to_str(avl_found->owner),
-		        knot_dname_to_str((*previous)->owner),
-		        knot_dname_to_str(avl_prev->owner));
-		assert(knot_node_compare(*previous, avl_prev) >= 0 && knot_node_compare(*previous, *found) < 0);
+//	knot_node_t *avl_found = NULL;
+//	knot_node_t *avl_prev = NULL;
+//	int avl_em = avl_get_less_or_equal(&tree->avl, owner, &avl_found, &avl_prev);
+//	if(!(exact_match == avl_em && *found == avl_found && *previous == avl_prev)) {
+//		fprintf(stderr, "%s: '%s' (ht,avl)\n...exact_match=(%d,%d)\n...found=(%s, %s)\n...prev=(%s, %s)\n",
+//		        __func__, knot_dname_to_str(owner), exact_match, avl_em,
+//		        knot_dname_to_str((*found)->owner),
+//		        knot_dname_to_str(avl_found->owner),
+//		        knot_dname_to_str((*previous)->owner),
+//		        knot_dname_to_str(avl_prev->owner));
+//		assert(knot_node_compare(*previous, avl_prev) >= 0 && knot_node_compare(*previous, *found) < 0);
 		
-	}
+//	}
 	
 
 	return exact_match;
@@ -286,10 +286,10 @@ int knot_zone_tree_remove(knot_zone_tree_t *tree,
 	hattrie_del(tree->T, lf+1, *lf);
 	
 	/* TAG:AVL */
-	knot_zone_tree_node_t *avl_removed = NULL;
-	avl_remove(&tree->avl, owner, &avl_removed);
-	if (*removed != avl_removed)
-		fprintf(stderr, "%s: ht=%p, avl=%p\n", __func__, *removed, avl_removed);
+//	knot_zone_tree_node_t *avl_removed = NULL;
+//	avl_remove(&tree->avl, owner, &avl_removed);
+//	if (*removed != avl_removed)
+//		fprintf(stderr, "%s: ht=%p, avl=%p\n", __func__, *removed, avl_removed);
 	
 	return KNOT_EOK;
 }
@@ -363,6 +363,7 @@ int knot_zone_tree_apply(knot_zone_tree_t *tree,
 value_t knot_zone_node_copy(value_t v) {
 	knot_zone_tree_node_t *n = (knot_zone_tree_node_t *)v;
 	knot_zone_tree_node_t *nv = malloc(sizeof(knot_zone_tree_node_t));
+	memset(nv, 0, sizeof(knot_zone_tree_node_t));
 	nv->node = n->node;
 	return (value_t)nv;
 }
@@ -370,7 +371,9 @@ value_t knot_zone_node_copy(value_t v) {
 value_t knot_zone_node_deep_copy(value_t v) {
 	knot_zone_tree_node_t *n = (knot_zone_tree_node_t *)v;
 	knot_zone_tree_node_t *nv = malloc(sizeof(knot_zone_tree_node_t));
+	memset(nv, 0, sizeof(knot_zone_tree_node_t));
 	knot_node_shallow_copy(n->node, &nv->node);
+	knot_node_set_new_node(n->node, nv->node);
 	return (value_t)nv;
 }
 
@@ -380,12 +383,12 @@ int knot_zone_tree_shallow_copy(knot_zone_tree_t *from,
 	if (to == NULL || from == NULL) {
 		return KNOT_EINVAL;
 	}
-
+	
 	*to = malloc(sizeof(knot_zone_tree_t));
 	(*to)->T = hattrie_dup(from->T, knot_zone_node_copy);
 	
 	/* TAG:AVL */
-	avl_shallow_copy(&from->avl, &(*to)->avl);
+//	avl_shallow_copy(&from->avl, &(*to)->avl);
 	
 	return KNOT_EOK;
 }
@@ -403,7 +406,7 @@ int knot_zone_tree_deep_copy(knot_zone_tree_t *from,
 	(*to)->T = hattrie_dup(from->T, knot_zone_node_deep_copy);
 	
 	/* TAG:AVL */
-	avl_deep_copy(&from->avl, &(*to)->avl);
+//	avl_deep_copy(&from->avl, &(*to)->avl);
 	return KNOT_EOK;
 }
 
@@ -417,7 +420,7 @@ void knot_zone_tree_free(knot_zone_tree_t **tree)
 	hattrie_free((*tree)->T);
 	
 	/* TAG:AVL */
-	avl_free(&(*tree)->avl);
+//	avl_free(&(*tree)->avl);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -433,7 +436,7 @@ void knot_zone_tree_deep_free(knot_zone_tree_t **tree)
 	knot_zone_tree_free(tree);
 	
 	/* TAG:AVL */
-	knot_zone_tree_free_node((*tree)->avl.th_root, 1);
+//	knot_zone_tree_free_node((*tree)->avl.th_root, 1);
 }
 
 /*----------------------------------------------------------------------------*/

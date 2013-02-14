@@ -3045,6 +3045,9 @@ static int zones_open_free_filename(const char *old_name, char **new_name)
 
 static int zones_dump_zone_text(knot_zone_contents_t *zone, const char *fname)
 {
+	log_zone_warning("ZONE DUMP NOT IMPLEMENTED\n");
+	return KNOT_EOK;
+	
 	assert(zone != NULL && fname != NULL);
 
 	char *new_fname = NULL;
