@@ -449,8 +449,11 @@ static int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
 
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
 		if (descriptor_item_is_dname(desc->block_types[i])) {
-			cmp = knot_dname_compare((knot_dname_t *)(r1 + offset),
-			                         (knot_dname_t *)(r2 + offset));
+			knot_dname_t *dname1 = NULL;
+			memcpy(&dname1, r1 + offset, sizeof(knot_dname_t *));
+			knot_dname_t *dname2 = NULL;
+			memcpy(&dname2, r2 + offset, sizeof(knot_dname_t *));
+			cmp = knot_dname_compare(dname1, dname2);
 			offset += sizeof(knot_dname_t *);
 		} else if (descriptor_item_is_fixed(desc->block_types[i])) {
 			cmp = memcmp(r1 + offset, r2 + offset,
@@ -481,8 +484,11 @@ static int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
 			/* Binary part was equal, we have to compare DNAMEs. */
 			assert(naptr_chunk_size1 == naptr_chunk_size2);
 			offset += naptr_chunk_size1;
-			cmp = knot_dname_compare((knot_dname_t *)(r1 + offset),
-			                         (knot_dname_t *)(r2 + offset));
+			knot_dname_t *dname1 = NULL;
+			memcpy(&dname1, r1 + offset, sizeof(knot_dname_t *));
+			knot_dname_t *dname2 = NULL;
+			memcpy(&dname2, r2 + offset, sizeof(knot_dname_t *));
+			cmp = knot_dname_compare(dname1, dname2);
 			offset += sizeof(knot_dname_t *);
 		}
 
@@ -852,7 +858,7 @@ dbg_rrset_exec_detail(
 	knot_rrset_dump(rrset);
 );
 
-	int ret = knot_rrset_to_wire_aux(rrset, &pos, max_size, comp_data);
+	int ret = knot_rrset_to_wire_aux(rrset, &pos, max_size, NULL);//comp_data);
 	
 	assert(ret != 0);
 
@@ -1092,8 +1098,11 @@ int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
 	
 	*to = xmalloc(sizeof(knot_rrset_t));
 
-	(*to)->owner = from->owner;
-	knot_dname_retain((*to)->owner);
+	(*to)->owner = knot_dname_deep_copy(from->owner);
+	if ((*to)->owner == NULL) {
+		return KNOT_ENOMEM;
+	}
+	
 	(*to)->rclass = from->rclass;
 	(*to)->ttl = from->ttl;
 	(*to)->type = from->type;
@@ -1116,7 +1125,6 @@ int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
 	(*to)->rdata_indices = xmalloc(sizeof(uint32_t) * from->rdata_count);
 	memcpy((*to)->rdata_indices, from->rdata_indices,
 	       sizeof(uint32_t) * from->rdata_count);
-	
 	/* Here comes the hard part. */
 	if (copy_rdata_dnames) {
 		knot_dname_t *dname_from = NULL;
@@ -1124,6 +1132,12 @@ int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
 		knot_dname_t *dname_copy = NULL;
 		while ((dname_from =
 		        knot_rrset_get_next_dname(from, dname_from)) != NULL) {
+dbg_rrset_exec_detail(
+			char *name = knot_dname_to_str(dname_from);
+			dbg_rrset_detail("rrset: deep_copy: copying RDATA DNAME"
+			                 "=%s\n", name);
+			free(name);
+);
 			dname_to =
 				knot_rrset_get_next_dname_pointer(*to,
 					dname_to);
@@ -1855,16 +1869,22 @@ knot_dname_t *knot_rrset_get_next_dname(const knot_rrset_t *rrset,
 		return NULL;
 	}
 	
-	for (uint16_t i = 0; i < rrset->rdata_count; i++) {
-		knot_dname_t **ret =
-			knot_rrset_rdata_get_next_dname_pointer(rrset,
-		                                                &prev_dname, i);
-		if (ret != NULL) {
-			return *ret;
-		}
+	knot_dname_t **pr;
+	if (prev_dname == NULL) {
+		pr = NULL;
+	} else {
+		pr = &prev_dname;
 	}
 	
-	return NULL;
+	knot_dname_t **dp =
+		knot_rrset_get_next_dname_pointer(rrset, pr);
+	
+	
+	if (dp != NULL) {
+		return *dp;
+	} else {
+		return NULL;
+	}
 }
 
 knot_dname_t **knot_rrset_get_next_dname_pointer(const knot_rrset_t *rrset,
@@ -2222,8 +2242,8 @@ static int rrset_deserialize_rr(knot_rrset_t *rrset, size_t rdata_pos,
 			memcpy(&dname_size, stream + stream_offset, 1);
 			stream_offset += 1;
 			knot_dname_t *dname =
-				knot_dname_new_from_str((char *)(stream + stream_offset),
-			                                dname_size, NULL);
+				knot_dname_new_from_wire((char *)(stream + stream_offset),
+			                                 dname_size, NULL);
 			memcpy(rdata + rdata_offset, &dname,
 			       sizeof(knot_dname_t *));
 			stream_offset += dname_size;

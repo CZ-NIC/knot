@@ -971,34 +971,34 @@ int knot_zone_contents_diff(const knot_zone_contents_t *zone1,
 	return KNOT_EOK;
 }
 
-#ifdef KNOT_ZONEDIFF_DEBUG
+//#ifdef KNOT_ZONEDIFF_DEBUG
 //#ifdef DEBUG_ENABLE_DETAILS
-//static void knot_zone_diff_dump_changeset(knot_changeset_t *ch)
-//{
-//	dbg_zonediff_detail("Changeset FROM: %d\n", ch->serial_from);
-//	rrset_dump_text(ch->soa_from, stderr);
-//	dbg_zonediff_detail("\n");
-//	dbg_zonediff_detail("Changeset TO: %d\n", ch->serial_to);
-//	rrset_dump_text(ch->soa_to, stderr);
-//	dbg_zonediff_detail("\n");
-//	dbg_zonediff_detail("Adding %d RRs.\n", ch->add_count);
-//	dbg_zonediff_detail("Removing %d RRs.\n", ch->remove_count);
+static void knot_zone_diff_dump_changeset(knot_changeset_t *ch)
+{
+	dbg_zonediff_detail("Changeset FROM: %d\n", ch->serial_from);
+	knot_rrset_dump(ch->soa_from);
+	dbg_zonediff_detail("\n");
+	dbg_zonediff_detail("Changeset TO: %d\n", ch->serial_to);
+	knot_rrset_dump(ch->soa_to);
+	dbg_zonediff_detail("\n");
+	dbg_zonediff_detail("Adding %d RRs.\n", ch->add_count);
+	dbg_zonediff_detail("Removing %d RRs.\n", ch->remove_count);
 	
-//	dbg_zonediff_detail("ADD section:\n");
-//	dbg_zonediff_detail("**********************************************\n");
-//	for (int i = 0; i < ch->add_count; i++) {
-//		rrset_dump_text(ch->add[i], stderr);
-//		dbg_zonediff_detail("\n");
-//	}
-//	dbg_zonediff_detail("REMOVE section:\n");
-//	dbg_zonediff_detail("**********************************************\n");
-//	for (int i = 0; i < ch->remove_count; i++) {
-//		rrset_dump_text(ch->remove[i], stderr);
-//		dbg_zonediff_detail("\n");
-//	}
-//}
+	dbg_zonediff_detail("ADD section:\n");
+	dbg_zonediff_detail("**********************************************\n");
+	for (int i = 0; i < ch->add_count; i++) {
+		knot_rrset_dump(ch->add[i]);
+		dbg_zonediff_detail("\n");
+	}
+	dbg_zonediff_detail("REMOVE section:\n");
+	dbg_zonediff_detail("**********************************************\n");
+	for (int i = 0; i < ch->remove_count; i++) {
+		knot_rrset_dump(ch->remove[i]);
+		dbg_zonediff_detail("\n");
+	}
+}
 //#endif
-#endif
+//#endif
 
 int knot_zone_diff_create_changesets(const knot_zone_contents_t *z1,
                                      const knot_zone_contents_t *z2,
@@ -1035,7 +1035,7 @@ int knot_zone_diff_create_changesets(const knot_zone_contents_t *z1,
 	dbg_zonediff("Changesets created successfully!\n");
 	dbg_zonediff_detail("Changeset dump:\n");
 dbg_zonediff_exec_detail(
-//	knot_zone_diff_dump_changeset((*changesets)->sets);
+	knot_zone_diff_dump_changeset((*changesets)->sets);
 );
 	
 	return KNOT_EOK;
