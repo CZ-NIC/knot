@@ -860,7 +860,6 @@ static int zones_set_acl(acl_t **acl, list* acl_list)
  * \param dst Loaded zone will be returned in this parameter.
  * \param zone_name Zone name (owner of the apex node).
  * \param source Path to zone file source.
- * \param filename Path to requested compiled zone file.
  *
  * \retval KNOT_EOK
  * \retval KNOT_EINVAL
@@ -872,78 +871,35 @@ static int zones_load_zone(knot_zone_t **dst, const char *zone_name,
 	if (dst == NULL || zone_name == NULL || source == NULL) {
 		return KNOT_EINVAL;
 	}
-	*dst = NULL;
 	
+	
+	int ret = KNOT_EOK;
 	zloader_t *zl = NULL;
-	int ret = knot_zload_open(&zl, source, zone_name, 0);
-	if (ret != KNOT_EOK) {
-		return ret;
+	*dst = NULL;
+
+	/* Open zone file for parsing. */
+	switch(knot_zload_open(&zl, source, zone_name, 0)) {
+	case KNOT_EOK: /* OK */ break;
+	case KNOT_EACCES:
+		log_server_error("Failed to open zone file '%s' "
+				 "(Permission denied).\n", source);
+		return KNOT_EZONEINVAL;
+	case KNOT_ENOENT:
+		log_server_error("Couldn't find zone file '%s'\n", source);
+		return KNOT_EZONEINVAL;
+	default:
+		log_server_error("Failed to load zone file '%s'\n", source);
+		return KNOT_EZONEINVAL;
 	}
 	
-	assert(zl);
-	
+	/* Check the source file */
+	assert(zl != NULL);
 	*dst = knot_zload_load(zl);
 	if (*dst == NULL) {
 		log_zone_error("Zone %s could not be loaded.\n", zone_name);
 		knot_zload_close(zl);
 		return KNOT_ERROR;
 	}
-	
-	//TODO, change to zone parsing
-//	switch(knot_zload_open(&zl, filename)) {
-//	case KNOT_EOK:
-//		/* OK */
-//		break;
-//	case KNOT_EACCES:
-//		log_server_error("Failed to open compiled zone '%s' "
-//				 "(Permission denied).\n", filename);
-//		free(zname);
-//		return KNOT_EZONEINVAL;
-//	case KNOT_ENOENT:
-//		log_server_error("Couldn't find compiled zone. "
-//				 "Please recompile '%s'.\n", zname);
-//		free(zname);
-//		return KNOT_EZONEINVAL;
-//	case KNOT_ECRC:
-//		log_server_error("Compiled zone db CRC mismatch, "
-//				 "db is corrupted or .crc file is "
-//				 "deleted. Please recompile '%s'.\n",
-//				 zname);
-//		free(zname);
-//		return KNOT_EZONEINVAL;
-//	case KNOT_EMALF:
-//		log_server_error("Compiled db '%s' is too old. "
-//				 "Please recompile '%s'.\n",
-//				 filename, zname);
-//		free(zname);
-//		return KNOT_EZONEINVAL;
-//	case KNOT_EFEWDATA:
-//	case KNOT_ERROR:
-//	case KNOT_ENOMEM:
-//	default:
-//		log_server_error("Failed to load compiled zone file "
-//				 "'%s'.\n", filename);
-//		free(zname);
-//		return KNOT_EZONEINVAL;
-//	}
-	
-//	/* Check the source file */
-//	assert(zl != NULL);
-//	int src_changed = strcmp(source, zl->source) != 0;
-//	if (src_changed || knot_zload_needs_update(zl)) {
-//		log_server_warning("Database for zone '%s' is not "
-//				   "up-to-date. Please recompile.\n",
-//				   zname);
-//	}
-	
-//	*dst = knot_zload_load(zl);
-//	if (*dst == NULL) {
-//		log_server_error("Failed to load db '%s' for zone '%s'.\n",
-//				 filename, zname);
-//		knot_zload_close(zl);
-//		free(zname);
-//		return KNOT_EZONEINVAL;
-//	}
 	
 	/* Check if loaded origin matches. */
 	const knot_dname_t *dname = knot_zone_name(*dst);
@@ -957,14 +913,15 @@ static int zones_load_zone(knot_zone_t **dst, const char *zone_name,
 		ret = KNOT_EZONEINVAL;
 	} else {
 		/* Save the timestamp from the zone db file. */
-//		if (stat(source, &st) < 0) { // TODO REVIEW MV
-//			dbg_zones("zones: failed to stat() zone db, "
-//				  "something is seriously wrong\n");
-//			knot_zone_deep_free(dst, 0);
-//			ret = KNOT_EZONEINVAL;
-//		} else {
-//			knot_zone_set_version(*dst, st.st_mtime);
-//		}
+		struct stat st;
+		if (stat(source, &st) < 0) {
+			dbg_zones("zones: failed to stat() zone db, "
+				  "something is seriously wrong\n");
+			knot_zone_deep_free(dst, 0);
+			ret = KNOT_EZONEINVAL;
+		} else {
+			knot_zone_set_version(*dst, st.st_mtime);
+		}
 	}
 	knot_dname_free(&dname_req);
 	knot_zload_close(zl);

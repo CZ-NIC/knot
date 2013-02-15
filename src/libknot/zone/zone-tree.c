@@ -55,7 +55,7 @@ static int dname_lf(char *dst, const knot_dname_t *src, size_t maxlen) {
 	if (src->size > maxlen) return KNOT_ESPACE;
 	*dst++ = src->size - 1;
 	*dst = '\0';
-	char* pdst = dst;
+//	char* pdst = dst;
 	uint8_t* l = src->name;
 	uint8_t lstack[127];
 	uint8_t *sp = lstack;
@@ -70,15 +70,15 @@ static int dname_lf(char *dst, const knot_dname_t *src, size_t maxlen) {
 		*dst++ = '\0';         /* label separator */
 	}
 	
-	/*! DEBUG ---> */
-	printf("dname_lf: '%s' => '", knot_dname_to_str(src));
-	for(unsigned i = 0; i < src->size - 1; ++i) {
-		char *c = pdst + i;
-		if (*c == '\0') printf("0");
-		else printf("%c", *c);
-	}
-	printf("'\n");
-	/*! <--- DEBUG */
+//	/*! DEBUG ---> */
+//	printf("dname_lf: '%s' => '", knot_dname_to_str(src));
+//	for(unsigned i = 0; i < src->size - 1; ++i) {
+//		char *c = pdst + i;
+//		if (*c == '\0') printf("0");
+//		else printf("%c", *c);
+//	}
+//	printf("'\n");
+//	/*! <--- DEBUG */
 	return KNOT_EOK;
 }
 

@@ -635,6 +635,13 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 	}
 	
 	*dst = NULL;
+	
+	/* Check zone file. */
+	struct stat st;
+	if (stat(source, &st) < 0) {
+		return knot_map_errno(errno);
+	}
+	
 	/* Create context. */
 	parser_context_t *context = xmalloc(sizeof(parser_context_t));
 	context->origin_from_config = knot_dname_new_from_str(origin,
