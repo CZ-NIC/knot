@@ -1090,18 +1090,18 @@ static int test_rrset_get_next_dname()
 	knot_dname_t *dname2 = NULL;
 	
 	knot_dname_t *dname = NULL;
-	dname = knot_rrset_get_next_dname(rrset, dname);
+	dname = knot_rrset_get_next_dname(rrset, dname, 0);
 	if (dname != dname1) {
 		diag("Failed to extract correct first DNAME from RRSet.\n");
 		return 0;
 	}
-	dname = knot_rrset_get_next_dname(rrset, dname);
+	dname = knot_rrset_get_next_dname(rrset, dname, 0);
 	if (dname != dname2) {
 		diag("Failed to extract correct second DNAME from RRSet.\n");
 		return 0;
 	}
 	
-	dname = knot_rrset_get_next_dname(rrset, dname);
+	dname = knot_rrset_get_next_dname(rrset, dname, 0);
 	if (dname != NULL) {
 		diag("Failed to return NULL after all DNAMEs "
 		     "have been extracted.\n");
@@ -1110,7 +1110,7 @@ static int test_rrset_get_next_dname()
 	
 	/* Test that RRSet with no DNAMEs in it returns NULL. */
 	dname = NULL;
-	dname = knot_rrset_get_next_dname(rrset, dname);
+	dname = knot_rrset_get_next_dname(rrset, dname, 0);
 	if (dname != NULL) {
 		diag("rrset_rdata_get_next_dname() found DNAME in RRSet with "
 		     "no DNAMEs.\n");
@@ -1131,7 +1131,7 @@ static int test_rrset_next_dname_pointer()
 	extracted_dnames[3] = test_dnames[3];
 	knot_dname_t **dname = NULL;
 	int i = 0;
-	while ((dname = knot_rrset_get_next_dname_pointer(rrset, dname))) {
+	while ((dname = knot_rrset_get_next_dname_pointer(rrset, dname, 0))) {
 		if (extracted_dnames[i] != *dname) {
 			diag("Got wrong DNAME from RDATA.");
 			return 0;
@@ -1144,7 +1144,7 @@ static int test_rrset_next_dname_pointer()
 	                     &rrset, 1);
 	dname = NULL;
 	i = 4;
-	while ((dname = knot_rrset_get_next_dname_pointer(rrset, dname))) {
+	while ((dname = knot_rrset_get_next_dname_pointer(rrset, dname, 0))) {
 		memcpy(dname, &test_dnames[i], sizeof(knot_dname_t *));
 		i++;
 	}
@@ -1152,7 +1152,7 @@ static int test_rrset_next_dname_pointer()
 	knot_dname_t *dname_read = NULL;
 	i = 4;
 	while ((dname_read = knot_rrset_get_next_dname(rrset,
-	                                               dname_read))) {
+	                                               dname_read, 0))) {
 		if (dname_read != test_dnames[i]) {
 			diag("Rewriting of DNAMEs in RDATA was "
 			     "not successful.\n");
