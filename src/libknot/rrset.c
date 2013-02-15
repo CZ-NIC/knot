@@ -82,7 +82,7 @@ static uint8_t *rrset_rdata_pointer(const knot_rrset_t *rrset,
 
 void knot_rrset_rdata_dump(const knot_rrset_t *rrset, size_t rdata_pos)
 {
-	fprintf(stderr, "      ------- RDATA pos=%d -------\n", rdata_pos);
+	fprintf(stderr, "      ------- RDATA pos=%zu -------\n", rdata_pos);
 	if (rrset->rdata_count == 0) {
 		fprintf(stderr, "      There are no rdata in this RRset!\n");
 		fprintf(stderr, "      ------- RDATA -------\n");
@@ -114,7 +114,7 @@ void knot_rrset_rdata_dump(const knot_rrset_t *rrset, size_t rdata_pos)
 			hex_print((char *)(rdata + offset), item);
 			offset += item;
 		} else if (descriptor_item_is_remainder(item)) {
-			fprintf(stderr, "block=%d Remainder (size=%d):\n",
+			fprintf(stderr, "block=%d Remainder (size=%zu):\n",
 			        i, rrset_rdata_item_size(rrset,
 			                                 rdata_pos) - offset);
 			hex_print((char *)(rdata + offset),
@@ -1166,21 +1166,22 @@ int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
 	       sizeof(uint32_t) * from->rdata_count);
 	/* Here comes the hard part. */
 	if (copy_rdata_dnames) {
-		knot_dname_t *dname_from = NULL;
+		unsigned blk = 0;
+		knot_dname_t **dname_from = NULL;
 		knot_dname_t **dname_to = NULL;
 		knot_dname_t *dname_copy = NULL;
-		for (uint16_t i = 0; i < from->rdata_count; ++i) {
-			dname_from = knot_rrset_get_next_dname(from, dname_from, i);
-			char *name = knot_dname_to_str(dname_from);
+		while ((dname_from = knot_rrset_get_next_dname(from, dname_from, &blk))) {
 dbg_rrset_exec_detail(
+			char *name = knot_dname_to_str(*dname_from);
 			dbg_rrset_detail("rrset: deep_copy: copying RDATA DNAME"
 			                 "=%s\n", name);
 			free(name);
 );
-			dname_to = knot_rrset_get_next_dname_pointer(*to, dname_to, i);
+			size_t off = (uint8_t*)dname_from - from->rdata;
+			dname_to = (knot_dname_t **)((*to)->rdata + off);
 			/* These pointers have to be the same. */
-			assert(dname_from == *dname_to);
-			dname_copy = knot_dname_deep_copy(dname_from);
+			assert(*dname_from == *dname_to);
+			dname_copy = knot_dname_deep_copy(*dname_from);
 			if (dname_copy == NULL) {
 				dbg_rrset("rrset: deep_copy: Cannot copy RDATA"
 				          " dname.\n");
@@ -1883,8 +1884,8 @@ const uint8_t *knot_rrset_rdata_nsec3_salt(const knot_rrset_t *rrset,
 	return rrset_rdata_pointer(rrset, pos) + 4;
 }
 
-/* TODO rewrite in the same fashion as knot_rrset_get_next_dname_pointer. */
-static knot_dname_t **knot_rrset_rdata_get_next_dname_pointer(
+/* TODO rewrite in the same fashion as knot_rrset_get_next_dname. */
+static knot_dname_t **knot_rrset_rdata_get_next_dname_pointer (
 	const knot_rrset_t *rrset,
 	knot_dname_t **prev_dname, size_t pos)
 {
@@ -1952,30 +1953,6 @@ static knot_dname_t **knot_rrset_rdata_get_next_dname_pointer(
 	return NULL;
 }
 
-knot_dname_t *knot_rrset_get_next_dname(const knot_rrset_t *rrset,
-                                        knot_dname_t *prev_dname, size_t pos)
-{
-	if (rrset == NULL) {
-		return NULL;
-	}
-	
-	knot_dname_t **pr;
-	if (prev_dname == NULL) {
-		pr = NULL;
-	} else {
-		pr = &prev_dname;
-	}
-	
-	knot_dname_t **dp =
-		knot_rrset_get_next_dname_pointer(rrset, pr, pos);
-	
-	if (dp != NULL) {
-		return *dp;
-	} else {
-		return NULL;
-	}
-}
-
 static int rrset_type_multiple_dnames(const knot_rrset_t *rrset)
 {
 	if (rrset->type == KNOT_RRTYPE_RP || rrset->type == KNOT_RRTYPE_MINFO) {
@@ -1985,79 +1962,46 @@ static int rrset_type_multiple_dnames(const knot_rrset_t *rrset)
 	}
 }
 
-knot_dname_t **knot_rrset_get_next_dname_pointer(const knot_rrset_t *rrset,
-                                                 knot_dname_t **prev_dname,
-                                                 size_t pos)
+knot_dname_t **knot_rrset_get_next_dname(const knot_rrset_t *rrset,
+                                                 knot_dname_t **prev,
+                                                 unsigned *blk)
 {
-	if (rrset == NULL) {
+	if (rrset == NULL || rrset->rdata_count == 0) {
 		return NULL;
 	}
 
-	uint8_t *rdata = rrset_rdata_pointer(rrset, pos);
-	if (rrset->type == KNOT_RRTYPE_SOA) {
-		/* SOA only has one RR. */
-		knot_dname_t *d1 = knot_rrset_rdata_soa_primary_ns(rrset);
-		if (prev_dname == NULL) {
-			/* NULL - first DNAME. */
-			dbg_rrset_detail("rr: next_dname_pointer: Returning "
-			                 "first SOA DNAME.\n");
-			return (knot_dname_t **)rdata;
-		} else if (*prev_dname == d1) {
-			/* Return second DNAME. */
-			dbg_rrset_detail("rr: next_dname_pointer: Returning "
-			                 "second SOA DNAME.\n");
-			return (knot_dname_t **)(rdata + sizeof(knot_dname_t *));
-		} else {
-			/* Second DNAME already returned. */
-			dbg_rrset_detail("rr: next_dname_pointer: Returning "
-			                 "NULL.\n");
-			assert(*prev_dname == knot_rrset_rdata_soa_mailbox(rrset));
-			return NULL;
-		}
-	} else if (rrset_type_multiple_dnames(rrset)) {
-		/* RP or MINFO - no matter, DNAMEs on same position. */
-		knot_dname_t *d1 = knot_rrset_rdata_rp_first_dname(rrset, pos);
-		if (prev_dname == NULL) {
-			dbg_rrset_detail("rr: next_dname_pointer: Returning "
-			                 "first RP/MINFO DNAME.\n");
-			assert(pos == 0);
-			/* NULL - first DNAME. */
-			return (knot_dname_t **)rdata;
-		} else if (*prev_dname == d1) {
-			/* Return second DNAME. */
-			dbg_rrset_detail("rr: next_dname_pointer: Returning "
-			                 "second RP/MINFO DNAME.\n");
-			return (knot_dname_t **)(rdata + sizeof(knot_dname_t *));
-		} else if (pos != rrset->rdata_count) {
-			dbg_rrset_detail("rr: next_dname_pointer: Returning "
-			                 "first RP/MINFO DNAME (pos != 0).\n");
-			/* Not first in first RR, but first in next one. */
-			assert(pos != 0);
-			return (knot_dname_t **)rdata;
-		} else {
-			dbg_rrset_detail("rr: next_dname_pointer: Returning "
-			                 "NULL.\n");
-			return NULL;
-		}
-	} else {
-		/* Return DNAME, if any. */
-		size_t offset = 0;
-		const rdata_descriptor_t *desc =
-			get_rdata_descriptor(rrset->type);
-		for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; ++i) {
-			if (descriptor_item_is_dname(desc->block_types[i])) {
-				return (knot_dname_t **)(rdata + offset);
-			} else if (descriptor_item_is_fixed(desc->block_types[i])) {
-				offset += desc->block_types[i];
-			} else if (descriptor_item_is_remainder(desc->block_types[i])) {
-				uint32_t remainder_size =
-					rrset_rdata_item_size(rrset, pos) - offset;
-				offset += remainder_size;
-			} else {
-				assert(rrset->type == KNOT_RRTYPE_NAPTR);
-				return (knot_dname_t **)(rdata + offset);
+	/* Convert ptr for easier manipulation. */
+	uint8_t *p = (uint8_t *)prev;
+	if (p == NULL) { /* Check first. */
+		p = rrset->rdata;
+	} else {         /* Next block. */
+		p += sizeof(knot_dname_t **);
+		++*blk;
+	}
+	
+	/* Find next dname in rdata or EOB. */
+	const rdata_descriptor_t *desc = get_rdata_descriptor(rrset->type);
+	const uint8_t *np = rrset->rdata + rrset->rdata_indices[rrset->rdata_count - 1];
+	while(p < np) {
+		if (desc->block_types[*blk] == KNOT_RDATA_WF_END) *blk = 0;
+
+		if (descriptor_item_is_dname(desc->block_types[*blk])) {
+			return (knot_dname_t **)p;
+		} else if (descriptor_item_is_fixed(desc->block_types[*blk])) {
+			p += desc->block_types[*blk];
+		} else if (descriptor_item_is_remainder(desc->block_types[*blk])) {
+			size_t off = p - rrset->rdata;
+			for (unsigned k = 0; k < rrset->rdata_count; ++k) {
+				if (off < rrset->rdata_indices[k]) {
+					p = rrset->rdata + rrset->rdata_indices[k];
+					break;
+				}
 			}
+		} else {
+			assert(rrset->type == KNOT_RRTYPE_NAPTR);
+			return (knot_dname_t **)p;
 		}
+		++*blk; /* Didn't find dname in this block. */
 	}
 
 	return NULL;
@@ -2344,7 +2288,7 @@ static int rrset_deserialize_rr(knot_rrset_t *rrset, size_t rdata_pos,
 			memcpy(&dname_size, stream + stream_offset, 1);
 			stream_offset += 1;
 			knot_dname_t *dname =
-				knot_dname_new_from_wire((char *)(stream + stream_offset),
+				knot_dname_new_from_wire(stream + stream_offset,
 			                                 dname_size, NULL);
 			memcpy(rdata + rdata_offset, &dname,
 			       sizeof(knot_dname_t *));
