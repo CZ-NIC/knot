@@ -207,7 +207,7 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
 
 	value_t* fval = NULL;
 	int ret = hattrie_find_leq(tree->T, lf+1, *lf, &fval);
-	if (*fval) *found = ((knot_zone_tree_node_t *)(*fval))->node;
+	if (fval) *found = ((knot_zone_tree_node_t *)(*fval))->node;
 	int exact_match = 0;
 	if (ret == 0) {
 		*previous = knot_node_get_previous(*found);
