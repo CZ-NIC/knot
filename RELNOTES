@@ -1,6 +1,11 @@
-v1.2 - Jan 30, 2013
+v1.2-rc2 - Feb 15, 2013
 -------------------
 
+Bugfixes:
+	* Fixed processing of some non-standard dnames.
+	* Correct checking of label length bounds in some cases. 
+	* More compliant rcodes in case of DDNS/TSIG failures.
+	* Correct processing of malformed DDNS prereq section.
 
 v1.2-rc1 - Jan 4, 2013
 ------------------
