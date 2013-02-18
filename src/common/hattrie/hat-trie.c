@@ -202,12 +202,7 @@ static node_ptr hattrie_find_ns(node_ptr **s, size_t *sp, size_t slen,
 static inline node_ptr hattrie_find(node_ptr *parent, const char **key, size_t *len)
 {
     size_t sp = 0;
-    node_ptr bs[NODESTACK_INIT];  /* base stack (will be enough mostly) */
-    node_ptr *ns = bs;            /* generic ptr, could point to new mem */
-    ns[sp] = *parent;
-    node_ptr ret = hattrie_find_ns(&ns, &sp, NODESTACK_INIT, key, len);
-    if (ns != bs) free(ns);
-    return ret;
+    return hattrie_find_ns(&parent, &sp, 0, key, len);
 }
 
 static inline value_t hattrie_setval(value_t v) {
