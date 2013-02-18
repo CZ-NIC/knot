@@ -26,6 +26,7 @@
 #include "tests/common/fdset_tests.h"
 #include "tests/common/base64_tests.h"
 #include "tests/common/base32hex_tests.h"
+#include "tests/common/descriptor_tests.h"
 #include "tests/knot/dthreads_tests.h"
 #include "tests/knot/journal_tests.h"
 #include "tests/knot/server_tests.h"
@@ -54,6 +55,7 @@ int main(int argc, char *argv[])
 	        &fdset_tests_api,	//! FDSET polling wrapper
 	        &base64_tests_api,	//! Base64 encoding
 	        &base32hex_tests_api,	//! Base32hex encoding
+	        &descriptor_tests_api,	//! RR descriptors
 
 	        /* Library. */
 	        &wire_tests_api,

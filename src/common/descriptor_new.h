@@ -18,13 +18,15 @@
  *
  * \author Jan Kadlec <jan.kadlec@nic.cz>
  *
+ * \addtogroup common_lib
  * @{
  */
 
 #ifndef _KNOT_DESCRIPTOR_NEW_H_
 #define _KNOT_DESCRIPTOR_NEW_H_
 
-#include <stdint.h>
+#include <stdint.h>			// uint16_t
+#include <stdio.h>			// size_t
 
 #define KNOT_MAX_RDATA_BLOCKS	8
 
@@ -71,7 +73,7 @@ enum knot_rr_type {
 
 	KNOT_RRTYPE_DNAME      =  39, /*!< Delegation name. */
 
-	KNOT_RRTYPE_OPT        =  41, /*!< Option for EDNS*/
+	KNOT_RRTYPE_OPT        =  41, /*!< METATYPE. Option for EDNS. */
 	KNOT_RRTYPE_APL        =  42, /*!< Address prefix list. */
 	KNOT_RRTYPE_DS         =  43, /*!< Delegation signer. */
 	KNOT_RRTYPE_SSHFP      =  44, /*!< SSH public key fingerprint. */
@@ -82,15 +84,16 @@ enum knot_rr_type {
 	KNOT_RRTYPE_DHCID      =  49, /*!< DHCP identifier. */
 	KNOT_RRTYPE_NSEC3      =  50, /*!< NSEC version 3. */
 	KNOT_RRTYPE_NSEC3PARAM =  51, /*!< NSEC3 parameters. */
-	KNOT_RRTYPE_TLSA       =  52, /*!< DANE. */
+	KNOT_RRTYPE_TLSA       =  52, /*!< DANE record. */
 
 	KNOT_RRTYPE_SPF        =  99, /*!< Sender policy framework. */
 
-	KNOT_RRTYPE_TSIG       = 250, /*!< Transaction signature. */
-	KNOT_RRTYPE_IXFR       = 251, /*!< Incremental zone transfer. */
-	KNOT_RRTYPE_AXFR       = 252, /*!< Authoritative zone transfer. */
+	KNOT_RRTYPE_TKEY       = 249, /*!< METATYPE. Transaction key. */
+	KNOT_RRTYPE_TSIG       = 250, /*!< METATYPE. Transaction signature. */
+	KNOT_RRTYPE_IXFR       = 251, /*!< QTYPE. Incremental zone transfer. */
+	KNOT_RRTYPE_AXFR       = 252, /*!< QTYPE. Authoritative zone transfer. */
 
-	KNOT_RRTYPE_ANY        = 255, /*!< Any record. */
+	KNOT_RRTYPE_ANY        = 255, /*!< QTYPE. Any record. */
 };
 
 /*!
@@ -115,7 +118,10 @@ enum knot_rdata_wireformat {
  * \brief Structure describing rdata.
  */
 typedef struct {
-	int block_types[KNOT_MAX_RDATA_BLOCKS];
+	/*!< Item types describing rdata. */
+	const int  block_types[KNOT_MAX_RDATA_BLOCKS];
+	/*!< RR type name. */
+	const char *type_name;
 } rdata_descriptor_t;
 
 /*!
@@ -128,12 +134,105 @@ typedef struct {
  */
 const rdata_descriptor_t *get_rdata_descriptor(const uint16_t type);
 
-int descriptor_item_is_dname(int item);
-int descriptor_item_is_fixed(int item);
-int descriptor_item_is_remainder(int item);
-int descriptor_item_is_compr_dname(int item);
-int knot_rrtype_is_metatype(uint16_t type);
+/*!
+ * \brief Converts numeric type representation to mnemonic string.
+ *
+ * \param rrtype  Type RR type code to be converted.
+ * \param out     Output buffer.
+ * \param out_len Length of the output buffer.
+ *
+ * \return Length of output string.
+ * \return -1 if error.
+ */
+int knot_rrtype_to_string(const uint16_t rrtype,
+                          char           *out,
+                          const size_t   out_len);
 
+/*!
+ * \brief Converts mnemonic string representation of a type to numeric one.
+ *
+ * \param name Mnemonic string to be converted.
+ * \param num  Output variable.
+ *
+ * \return  0 if OK.
+ * \return -1 if error.
+ */
+int knot_rrtype_from_string(const char *name, uint16_t *num);
+
+/*!
+ * \brief Converts numeric class representation to the string one.
+ *
+ * \param rrclass Class code to be converted.
+ * \param out     Output buffer.
+ * \param out_len Length of the output buffer.
+ *
+ * \return Length of output string.
+ * \return -1 if error.
+ */
+int knot_rrclass_to_string(const uint16_t rrclass,
+                           char           *out,
+                           const size_t   out_len);
+
+/*!
+ * \brief Converts string representation of a class to numeric one.
+ *
+ * \param name Mnemonic string to be converted.
+ * \param num  Output variable.
+ *
+ * \return  0 if OK.
+ * \return -1 if error.
+ */
+int knot_rrclass_from_string(const char *name, uint16_t *num);
+
+/*!
+ * \brief Checks if given item is one of dname types.
+ *
+ * \param item Item value.
+ *
+ * \return 1 if YES.
+ * \return 0 if NO.
+ */
+int descriptor_item_is_dname(const int item);
+
+/*!
+ * \brief Checks if given item is compressible dname.
+ *
+ * \param item Item value.
+ *
+ * \return 1 if YES.
+ * \return 0 if NO.
+ */
+int descriptor_item_is_compr_dname(const int item);
+
+/*!
+ * \brief Checks if given item has fixed size.
+ *
+ * \param item Item value.
+ *
+ * \return 1 if YES.
+ * \return 0 if NO.
+ */
+int descriptor_item_is_fixed(const int item);
+
+/*!
+ * \brief Checks if given item is remainder.
+ *
+ * \param item Item value.
+ *
+ * \return 1 if YES.
+ * \return 0 if NO.
+ */
+int descriptor_item_is_remainder(const int item);
+
+/*!
+ * \brief Checks if given item is one of metatypes or qtypes.
+ *
+ * \param item Item value.
+ *
+ * \return 1 if YES.
+ * \return 0 if NO.
+ */
+int knot_rrtype_is_metatype(const uint16_t type);
 
 #endif // _KNOT_DESCRIPTOR_NEW_H_
 

@@ -177,6 +177,8 @@ src/tests/common/base64_tests.c
 src/tests/common/base64_tests.h
 src/tests/common/base32hex_tests.c
 src/tests/common/base32hex_tests.h
+src/tests/common/descriptor_tests.c
+src/tests/common/descriptor_tests.h
 src/tests/knot/dthreads_tests.c
 src/tests/knot/dthreads_tests.h
 src/tests/knot/conf_tests.c
