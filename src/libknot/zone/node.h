@@ -32,7 +32,6 @@
 #include "common/skip-list.h"
 #include "rrset.h"
 #include "common/tree.h"
-#include "common/general-tree.h"
 
 struct knot_zone;
 
@@ -48,7 +47,7 @@ struct knot_node {
 	struct knot_node *parent; /*!< Parent node in the name hierarchy. */
 
 	/*! \brief Type-ordered list of RRSets belonging to this node. */
-	general_tree_t *rrset_tree;
+	knot_rrset_t **rrset_tree;
 
 	/*! \brief Wildcard node being the direct descendant of this node. */
 	struct knot_node *wildcard_child;

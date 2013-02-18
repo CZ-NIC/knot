@@ -2460,16 +2460,6 @@ static void knot_zc_integrity_check_rrset_count(const knot_node_t *node,
                                                 check_data_t *check_data,
                                                 const char *name)
 {
-	// count RRSets
-	int real_count = knot_node_count_rrsets(node);
-	int count = knot_node_rrset_count(node);
-
-	if (count != real_count) {
-		fprintf(stderr, "Wrong RRSet count: node %s, count %d. "
-		        "Should be %d\n", name, count, real_count);
-
-		++check_data->errors;
-	}
 }
 
 ///*----------------------------------------------------------------------------*/
