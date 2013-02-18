@@ -282,7 +282,6 @@ static int knot_packet_parse_question(const uint8_t *wire, size_t *pos,
 	dbg_packet_verb("Parsing dname starting on position %zu and "
 	                      "%zu bytes long.\n", *pos, i - *pos + 1);
 	dbg_packet_verb("Alloc: %d\n", alloc);
-	size_t bp = *pos;
 	if (alloc) {
 		question->qname = knot_dname_parse_from_wire(wire, pos,
 		                                             i + 1,

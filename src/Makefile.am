@@ -113,14 +113,16 @@ unittests_SOURCES =				\
 	tests/common/base32hex_tests.h		\
 	tests/common/base64_tests.c		\
 	tests/common/base64_tests.h		\
+	tests/common/descriptor_tests.h		\
+	tests/common/descriptor_tests.c		\
 	tests/common/events_tests.c		\
 	tests/common/events_tests.h		\
+	tests/common/fdset_tests.c		\
+	tests/common/fdset_tests.h		\
 	tests/common/skiplist_tests.c		\
 	tests/common/skiplist_tests.h		\
 	tests/common/slab_tests.c		\
 	tests/common/slab_tests.h		\
-	tests/common/fdset_tests.c		\
-	tests/common/fdset_tests.h		\
 	tests/knot/conf_tests.c			\
 	tests/knot/conf_tests.h			\
 	tests/knot/dthreads_tests.c		\
