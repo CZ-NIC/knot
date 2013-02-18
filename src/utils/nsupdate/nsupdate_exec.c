@@ -431,8 +431,9 @@ static int pkt_sendrecv(nsupdate_params_t *params,
 static int nsupdate_process_line(char *lp, int len, void *arg)
 {
 	nsupdate_params_t *params = (nsupdate_params_t *)arg;
-	
+
 	if (lp[len - 1] == '\n') lp[len - 1] = '\0'; /* Discard nline */
+	if (lp[0] == '\0' || lp[0] == ';') return KNOT_EOK; /* Empty/comment */
 	int ret = tok_find(lp, cmd_array);
 	if (ret < 0) return ret; /* Syntax error */
 	
