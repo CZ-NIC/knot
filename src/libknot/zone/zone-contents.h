@@ -176,10 +176,10 @@ int knot_zone_contents_add_nsec3_rrset(knot_zone_contents_t *contents,
                                          int use_domain_table);
 
 int knot_zone_contents_remove_node(knot_zone_contents_t *contents, 
-	const knot_node_t *node, knot_zone_tree_node_t **removed_tree);
+	const knot_node_t *node, knot_node_t **removed_tree);
 
 int knot_zone_contents_remove_nsec3_node(knot_zone_contents_t *contents, 
-	const knot_node_t *node, knot_zone_tree_node_t **removed);
+	const knot_node_t *node, knot_node_t **removed);
 
 /*!
  * \brief Tries to find a node with the specified name in the zone.

@@ -2972,7 +2972,7 @@ static int xfrin_remove_empty_nodes(knot_zone_contents_t *contents,
 	dbg_xfrin_verb("OLD NSEC3 NODES COUNT: %d\n", changes->old_nsec3_count);
 
 	// remove these nodes from both hash table and the tree
-	knot_zone_tree_node_t *zone_node = NULL;
+	knot_node_t *zone_node = NULL;
 
 	for (int i = 0; i < changes->old_nodes_count; ++i) {
 		zone_node = NULL;

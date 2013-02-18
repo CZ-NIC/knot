@@ -30,31 +30,11 @@
 #define _KNOT_ZONE_TREE_H_
 
 #include "common/hattrie/hat-trie.h"
-#include "common/tree.h"
 #include "zone/node.h"
 
 /*----------------------------------------------------------------------------*/
 
-/* TAG:AVL */
-typedef struct knot_zone_tree_node {
-        /*! \brief Structure for connecting this node to an AVL tree. */
-        TREE_ENTRY(knot_zone_tree_node) avl;
-        /*! \brief Zone tree data. */
-        knot_node_t *node;
-} knot_zone_tree_node_t;
-
-/*----------------------------------------------------------------------------*/
-
-/* TAG:AVL */
-typedef TREE_HEAD(knot_zone_tree, knot_zone_tree_node) knot_zone_avl_tree_t;
-
-/*----------------------------------------------------------------------------*/
-
-/* TAG:AVL */
-typedef struct {
-	hattrie_t *T;
-	knot_zone_avl_tree_t avl;	
-} knot_zone_tree_t;
+typedef hattrie_t knot_zone_tree_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -176,7 +156,7 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
  */
 int knot_zone_tree_remove(knot_zone_tree_t *tree,
                             const knot_dname_t *owner,
-                            knot_zone_tree_node_t **removed);
+                            knot_node_t **removed);
 
 /*!
  * \brief Applies the given function to each node in the zone.
@@ -196,7 +176,7 @@ int knot_zone_tree_remove(knot_zone_tree_t *tree,
  * \retval KNOT_EINVAL
  */
 int knot_zone_tree_apply_inorder(knot_zone_tree_t *tree,
-                                 void (*function)(knot_zone_tree_node_t *node,
+                                 void (*function)(knot_node_t **node,
                                                   void *data),
                                  void *data);
 
@@ -215,7 +195,7 @@ int knot_zone_tree_apply_inorder(knot_zone_tree_t *tree,
  */
 int knot_zone_tree_apply_recursive(knot_zone_tree_t *tree,
                                            void (*function)(
-                                                  knot_zone_tree_node_t *node,
+                                                  knot_node_t **node,
                                                   void *data),
                                            void *data);
 
@@ -230,7 +210,7 @@ int knot_zone_tree_apply_recursive(knot_zone_tree_t *tree,
  * \retval KNOT_EINVAL
  */
 int knot_zone_tree_apply(knot_zone_tree_t *tree,
-                         void (*function)(knot_zone_tree_node_t *node, void *data),
+                         void (*function)(knot_node_t **node, void *data),
                          void *data);
 
 /*!

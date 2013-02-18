@@ -18,7 +18,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "zone/zone-tree.h"
 #include "zone/node.h"
 #include "util/debug.h"
 #include "common/hattrie/hat-trie.h"
@@ -55,7 +54,6 @@ static int dname_lf(char *dst, const knot_dname_t *src, size_t maxlen) {
 	if (src->size > maxlen) return KNOT_ESPACE;
 	*dst++ = src->size - 1;
 	*dst = '\0';
-//	char* pdst = dst;
 	uint8_t* l = src->name;
 	uint8_t lstack[127];
 	uint8_t *sp = lstack;
@@ -70,20 +68,21 @@ static int dname_lf(char *dst, const knot_dname_t *src, size_t maxlen) {
 		*dst++ = '\0';         /* label separator */
 	}
 	
-//	/*! DEBUG ---> */
-//	printf("dname_lf: '%s' => '", knot_dname_to_str(src));
-//	for(unsigned i = 0; i < src->size - 1; ++i) {
-//		char *c = pdst + i;
-//		if (*c == '\0') printf("0");
-//		else printf("%c", *c);
-//	}
-//	printf("'\n");
-//	/*! <--- DEBUG */
 	return KNOT_EOK;
 }
 
-/* TAG:AVL */
-//#include "libknot/zone/zone-tree-avl.c"
+static value_t knot_zone_node_copy(value_t v)
+{
+	return v;
+}
+
+static value_t knot_zone_node_deep_copy(value_t v)
+{
+	knot_node_t *n = NULL;
+	knot_node_shallow_copy((knot_node_t *)v, &n);
+	knot_node_set_new_node((knot_node_t *)v, n);
+	return (value_t)n;
+}
 
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
@@ -91,21 +90,14 @@ static int dname_lf(char *dst, const knot_dname_t *src, size_t maxlen) {
 
 knot_zone_tree_t* knot_zone_tree_create()
 {
-	
-	knot_zone_tree_t *tree = malloc(sizeof(knot_zone_tree_t));
-	if (!tree) return NULL;
-	tree->T = hattrie_create();
-	
-	/* TAG:AVL */
-//	avl_create(&tree->avl);
-	return tree;
+	return hattrie_create();
 }
 
 /*----------------------------------------------------------------------------*/
 
 size_t knot_zone_tree_weight(knot_zone_tree_t* tree)
 {
-	return hattrie_weight(tree->T);
+	return hattrie_weight(tree);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -116,14 +108,7 @@ int knot_zone_tree_insert(knot_zone_tree_t *tree, knot_node_t *node)
 	char lf[DNAME_LFT_MAXLEN];
 	dname_lf(lf, node->owner, sizeof(lf));
 
-	knot_zone_tree_node_t *n = malloc(sizeof(knot_zone_tree_node_t));
-	memset(n, 0, sizeof(knot_zone_tree_node_t));
-	n->node = node;
-
-	*hattrie_get(tree->T, lf+1, *lf) = n;
-	
-	/* TAG:AVL */
-//	avl_insert(&tree->avl, n);
+	*hattrie_get(tree, lf+1, *lf) = node;
 	return KNOT_EOK;
 }
 
@@ -136,10 +121,7 @@ int knot_zone_tree_find(knot_zone_tree_t *tree, const knot_dname_t *owner,
 		return KNOT_EINVAL;
 	}
 	
-	knot_node_t *f = NULL;
-	int ret = knot_zone_tree_get(tree, owner, &f);
-	*found = f;
-	return ret;
+	return knot_zone_tree_get(tree, owner, (knot_node_t **)found);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -154,19 +136,13 @@ int knot_zone_tree_get(knot_zone_tree_t *tree, const knot_dname_t *owner,
 	char lf[DNAME_LFT_MAXLEN];
 	dname_lf(lf, owner, sizeof(lf));
 
-	value_t *val = hattrie_tryget(tree->T, lf+1, *lf);
+	value_t *val = hattrie_tryget(tree, lf+1, *lf);
 	if (val == NULL) {
 		*found = NULL;
 	} else {
-		*found = ((knot_zone_tree_node_t*)(*val))->node;
+		*found = (knot_node_t*)(*val);
 	}
-	
-	/* TAG:AVL */
-//	knot_node_t *avl_found = NULL;
-//	avl_get(&tree->avl, owner, &avl_found);
-//	if (avl_found != *found)
-//		fprintf(stderr, "%s: avl=%p, ht=%p\n", __func__, avl_found, *found);
-	
+
 	return KNOT_EOK;
 }
 
@@ -205,9 +181,9 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
 	char lf[DNAME_LFT_MAXLEN];
 	dname_lf(lf, owner, sizeof(lf));
 
-	value_t* fval = NULL;
-	int ret = hattrie_find_leq(tree->T, lf+1, *lf, &fval);
-	if (fval) *found = ((knot_zone_tree_node_t *)(*fval))->node;
+	value_t *fval = NULL;
+	int ret = hattrie_find_leq(tree, lf+1, *lf, &fval);
+	if (fval) *found = (knot_node_t *)(*fval);
 	int exact_match = 0;
 	if (ret == 0) {
 		*previous = knot_node_get_previous(*found);
@@ -242,22 +218,6 @@ dbg_zone_exec_detail(
 			free(name_f);
 		}
 );
-	
-	/* TAG:AVL */
-//	knot_node_t *avl_found = NULL;
-//	knot_node_t *avl_prev = NULL;
-//	int avl_em = avl_get_less_or_equal(&tree->avl, owner, &avl_found, &avl_prev);
-//	if(!(exact_match == avl_em && *found == avl_found && *previous == avl_prev)) {
-//		fprintf(stderr, "%s: '%s' (ht,avl)\n...exact_match=(%d,%d)\n...found=(%s, %s)\n...prev=(%s, %s)\n",
-//		        __func__, knot_dname_to_str(owner), exact_match, avl_em,
-//		        knot_dname_to_str((*found)->owner),
-//		        knot_dname_to_str(avl_found->owner),
-//		        knot_dname_to_str((*previous)->owner),
-//		        knot_dname_to_str(avl_prev->owner));
-//		assert(knot_node_compare(*previous, avl_prev) >= 0 && knot_node_compare(*previous, *found) < 0);
-		
-//	}
-	
 
 	return exact_match;
 }
@@ -266,7 +226,7 @@ dbg_zone_exec_detail(
 
 int knot_zone_tree_remove(knot_zone_tree_t *tree,
                             const knot_dname_t *owner,
-                          knot_zone_tree_node_t **removed)
+                          knot_node_t **removed)
 {
 	if (tree == NULL || owner == NULL) {
 		return KNOT_EINVAL;
@@ -275,29 +235,22 @@ int knot_zone_tree_remove(knot_zone_tree_t *tree,
 	char lf[DNAME_LFT_MAXLEN];
 	dname_lf(lf, owner, sizeof(lf));
 
-	value_t *rval = hattrie_tryget(tree->T, lf+1, *lf);
+	value_t *rval = hattrie_tryget(tree, lf+1, *lf);
 	if (rval == NULL) {
 		return KNOT_ENOENT;
 	} else {
-		*removed = (*rval);
+		*removed = (knot_node_t *)(*rval);
 	}
 	
 	
-	hattrie_del(tree->T, lf+1, *lf);
-	
-	/* TAG:AVL */
-//	knot_zone_tree_node_t *avl_removed = NULL;
-//	avl_remove(&tree->avl, owner, &avl_removed);
-//	if (*removed != avl_removed)
-//		fprintf(stderr, "%s: ht=%p, avl=%p\n", __func__, *removed, avl_removed);
-	
+	hattrie_del(tree, lf+1, *lf);
 	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
 int knot_zone_tree_apply_inorder(knot_zone_tree_t *tree,
-                                 void (*function)(knot_zone_tree_node_t *node,
+                                 void (*function)(knot_node_t **node,
                                                   void *data),
                                  void *data)
 {
@@ -305,15 +258,12 @@ int knot_zone_tree_apply_inorder(knot_zone_tree_t *tree,
 		return KNOT_EINVAL;
 	}
 
-	hattrie_iter_t *i = hattrie_iter_begin(tree->T, 1);
+	hattrie_iter_t *i = hattrie_iter_begin(tree, 1);
 	while(!hattrie_iter_finished(i)) {
-		function(*hattrie_iter_val(i), data);
+		function((knot_node_t **)hattrie_iter_val(i), data);
 		hattrie_iter_next(i);
 	}
 	hattrie_iter_free(i);
-	
-	/* TAG:AVL */
-//	avl_forward_apply_inorder(&tree->avl, function, data);
 
 	return KNOT_EOK;
 }
@@ -322,7 +272,7 @@ int knot_zone_tree_apply_inorder(knot_zone_tree_t *tree,
 
 int knot_zone_tree_apply_recursive(knot_zone_tree_t *tree,
                                            void (*function)(
-                                               knot_zone_tree_node_t *node,
+                                               knot_node_t **node,
                                                void *data),
                                            void *data)
 {
@@ -330,11 +280,7 @@ int knot_zone_tree_apply_recursive(knot_zone_tree_t *tree,
 		return KNOT_EINVAL;
 	}
 	
-	hattrie_apply_rev(tree->T, (void (*)(void*,void*))function, data);
-	
-	/* TAG:AVL */
-//	avl_forward_apply_postorder(&tree->avl, function, data);
-
+	hattrie_apply_rev(tree, (void (*)(void*,void*))function, data);
 
 	return KNOT_EOK;
 }
@@ -342,40 +288,20 @@ int knot_zone_tree_apply_recursive(knot_zone_tree_t *tree,
 /*----------------------------------------------------------------------------*/
 
 int knot_zone_tree_apply(knot_zone_tree_t *tree,
-                         void (*function)(knot_zone_tree_node_t *node, void *data),
+                         void (*function)(knot_node_t **node, void *data),
                          void *data)
 {
-	hattrie_iter_t *i = hattrie_iter_begin(tree->T, 0);
+	hattrie_iter_t *i = hattrie_iter_begin(tree, 0);
 	while(!hattrie_iter_finished(i)) {
-		function(*hattrie_iter_val(i), data);
+		function((knot_node_t **)hattrie_iter_val(i), data);
 		hattrie_iter_next(i);
 	}
 	hattrie_iter_free(i);
-	
-	/* TAG:AVL */
-//	avl_forward_apply_inorder(&tree->avl, function, data);
-	
+
 	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
-
-value_t knot_zone_node_copy(value_t v) {
-	knot_zone_tree_node_t *n = (knot_zone_tree_node_t *)v;
-	knot_zone_tree_node_t *nv = malloc(sizeof(knot_zone_tree_node_t));
-	memset(nv, 0, sizeof(knot_zone_tree_node_t));
-	nv->node = n->node;
-	return (value_t)nv;
-}
-
-value_t knot_zone_node_deep_copy(value_t v) {
-	knot_zone_tree_node_t *n = (knot_zone_tree_node_t *)v;
-	knot_zone_tree_node_t *nv = malloc(sizeof(knot_zone_tree_node_t));
-	memset(nv, 0, sizeof(knot_zone_tree_node_t));
-	knot_node_shallow_copy(n->node, &nv->node);
-	knot_node_set_new_node(n->node, nv->node);
-	return (value_t)nv;
-}
 
 int knot_zone_tree_shallow_copy(knot_zone_tree_t *from,
                                   knot_zone_tree_t **to)
@@ -384,12 +310,8 @@ int knot_zone_tree_shallow_copy(knot_zone_tree_t *from,
 		return KNOT_EINVAL;
 	}
 	
-	*to = malloc(sizeof(knot_zone_tree_t));
-	(*to)->T = hattrie_dup(from->T, knot_zone_node_copy);
-	
-	/* TAG:AVL */
-//	avl_shallow_copy(&from->avl, &(*to)->avl);
-	
+	*to = hattrie_dup(from, knot_zone_node_copy);
+
 	return KNOT_EOK;
 }
 
@@ -402,11 +324,8 @@ int knot_zone_tree_deep_copy(knot_zone_tree_t *from,
 		return KNOT_EINVAL;
 	}
 
-	*to = malloc(sizeof(knot_zone_tree_t));
-	(*to)->T = hattrie_dup(from->T, knot_zone_node_deep_copy);
-	
-	/* TAG:AVL */
-//	avl_deep_copy(&from->avl, &(*to)->avl);
+	*to = hattrie_dup(from, knot_zone_node_deep_copy);
+
 	return KNOT_EOK;
 }
 
@@ -417,10 +336,7 @@ void knot_zone_tree_free(knot_zone_tree_t **tree)
 	if (tree == NULL || *tree == NULL) {
 		return;
 	}
-	hattrie_free((*tree)->T);
-	
-	/* TAG:AVL */
-//	avl_free(&(*tree)->avl);
+	hattrie_free((*tree));
 }
 
 /*----------------------------------------------------------------------------*/
@@ -432,11 +348,8 @@ void knot_zone_tree_deep_free(knot_zone_tree_t **tree)
 	}
 	
 	/*! \todo free node data */
-
-	knot_zone_tree_free(tree);
 	
-	/* TAG:AVL */
-//	knot_zone_tree_free_node((*tree)->avl.th_root, 1);
+	knot_zone_tree_free(tree);
 }
 
 /*----------------------------------------------------------------------------*/
