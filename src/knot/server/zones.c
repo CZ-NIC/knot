@@ -2258,6 +2258,9 @@ int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
 	 */
 	int ret = zones_remove_zones(db_new, *db_old);
 	
+	/* Heal zonedb index. */
+	hattrie_build_index(db_new->zone_tree);
+	
 	/* Unlock RCU, messing with any data will not affect us now */
 	rcu_read_unlock();
 	

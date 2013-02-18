@@ -30,7 +30,7 @@
 #ifndef _KNOT_ZONEDB_H_
 #define _KNOT_ZONEDB_H_
 
-#include "common/general-tree.h"
+#include "common/hattrie/hat-trie.h"
 #include "zone/zone.h"
 #include "zone/node.h"
 #include "dname.h"
@@ -39,7 +39,7 @@
  * \brief Zone database structure. Contains all zones managed by the server.
  */
 struct knot_zonedb {
-	general_tree_t *zone_tree; /*!< AVL tree of zones. */
+	hattrie_t *zone_tree; /*!< AVL tree of zones. */
 	size_t zone_count;
 };
 
