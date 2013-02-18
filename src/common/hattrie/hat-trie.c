@@ -593,6 +593,11 @@ static value_t* hattrie_walk(node_ptr* s, size_t sp,
                 return r;
             }
         }
+
+        /* use trie node value if possible */
+        if (s[sp].t->flag & NODE_HAS_VAL) {
+            return &s[sp].t->val;
+        }
         
         /* consumed whole stack */
         if (sp == 0) {
