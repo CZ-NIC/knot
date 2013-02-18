@@ -22,7 +22,7 @@
 #include <sys/time.h>
 #include <config.h>
 #ifdef HAVE_MEMALIGN
-#include <malloc.h>
+#include <stdlib.h>
 #endif
 
 #include "prng.h"
