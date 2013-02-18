@@ -471,6 +471,9 @@ int params_parse_keyfile(const char *filename, knot_key_t *key)
 		return KNOT_ERROR;
 	}
 
+	/* Set defaults. */
+	key->algorithm = KNOT_TSIG_ALG_HMAC_MD5;
+
 	/* Parse lines. */
 	ret = tok_process_lines(fp, params_parse_keyline, key);
 
