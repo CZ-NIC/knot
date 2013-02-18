@@ -1055,20 +1055,16 @@ struct dump_param {
 
 int apex_node_dump_text(knot_node_t *node, FILE *f)
 {
-	knot_rrset_t dummy_rrset;
-	dummy_rrset.type = KNOT_RRTYPE_SOA;
-	knot_rrset_t *tmp_rrset =
-		(knot_rrset_t *)gen_tree_find(node->rrset_tree,
-		                                &dummy_rrset);
-	assert(tmp_rrset);
-	int ret = rrset_dump_text(tmp_rrset, f);
+	knot_rrset_t *rr = knot_node_get_rrset(node, KNOT_RRTYPE_SOA);
+
+	assert(rr);
+	int ret = rrset_dump_text(rr, f);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	const knot_rrset_t **rrsets =
-		knot_node_rrsets(node);
-
+	const knot_rrset_t **rrsets = knot_node_rrsets(node);
+	
 	for (int i = 0; i < node->rrset_count; i++) {
 		if (rrsets[i]->type != KNOT_RRTYPE_SOA) {
 			ret = rrset_dump_text(rrsets[i], f);
