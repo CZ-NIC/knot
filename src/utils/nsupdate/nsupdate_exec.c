@@ -767,7 +767,9 @@ int cmd_send(const char* lp, nsupdate_params_t *params)
 	int rc = knot_packet_rcode(params->resp);
 	DBG("%s: received rcode=%d\n", __func__, rc);
 	rcode = knot_lookup_by_id(rcodes, rc);
-	ERR("update failed: %s\n", rcode->name);
+	if (rcode && rcode->id > KNOT_RCODE_NOERROR) {
+		ERR("update failed: %s\n", rcode->name);
+	}
 	
 	/*! \todo Should we check TC bit? */
 	
