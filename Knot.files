@@ -105,8 +105,6 @@ src/common/crc.h
 src/common/ref.c
 src/common/ref.h
 src/common/modified_tree.h
-src/common/general-tree.h
-src/common/general-tree.c
 src/common/dSFMT.c
 src/common/dSFMT.h
 src/common/dSFMT-params.h
