@@ -68,8 +68,6 @@ struct knot_node {
 	 */
 	struct knot_node *nsec3_node;
 
-	struct knot_node *nsec3_referer;
-
 	const struct knot_zone *zone;
 
 	struct knot_node *new_node;
