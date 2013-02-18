@@ -207,7 +207,7 @@ static void conf_zone_start(void *scanner, char *name) {
      cf_error(scanner, "invalid zone origin");
    } else {
      /* Check for duplicates. */
-     if (gen_tree_find(new_config->zone_tree, dn) != NULL) {
+     if (hattrie_tryget(new_config->names, (const char*)dn->name, dn->size) != NULL) {
            snprintf(buf, sizeof(buf), "zone '%s' is already present, "
                                       "refusing to duplicate", this_zone->name);
            knot_dname_free(&dn);
@@ -222,8 +222,9 @@ static void conf_zone_start(void *scanner, char *name) {
 
      /* Directly discard dname, won't be needed. */
      add_tail(&new_config->zones, &this_zone->n);
-     gen_tree_add(new_config->zone_tree, dn, NULL); /* Will hold reference. */
+     *hattrie_get(new_config->names, (const char*)dn->name, dn->size) = 1;
      ++new_config->zones_count;
+     knot_dname_free(&dn);
 
      /* Initialize ACL lists. */
      init_list(&this_zone->acl.xfr_in);

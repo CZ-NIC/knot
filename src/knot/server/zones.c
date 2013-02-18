@@ -883,12 +883,15 @@ static int zones_load_zone(knot_zone_t **dst, const char *zone_name,
 	case KNOT_EACCES:
 		log_server_error("Failed to open zone file '%s' "
 				 "(Permission denied).\n", source);
+		knot_zload_close(zl);
 		return KNOT_EZONEINVAL;
 	case KNOT_ENOENT:
 		log_server_error("Couldn't find zone file '%s'\n", source);
+		knot_zload_close(zl);
 		return KNOT_EZONEINVAL;
 	default:
 		log_server_error("Failed to load zone file '%s'\n", source);
+		knot_zload_close(zl);
 		return KNOT_EZONEINVAL;
 	}
 	

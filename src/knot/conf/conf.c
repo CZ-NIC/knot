@@ -73,27 +73,16 @@ void cf_error(void *scanner, const char *msg)
 	_parser_res = KNOT_EPARSEFAIL;
 }
 
-static int conf_ztree_compare(void *p1, void *p2)
-{
-	return knot_dname_compare((knot_dname_t*)p1, (knot_dname_t*)p2);
-}
-
-static void conf_ztree_free(void *node, void *data)
-{
-	UNUSED(data);
-	knot_dname_t *zname = (knot_dname_t*)node;
-	knot_dname_free(&zname);
-}
-
 static void conf_parse_begin(conf_t *conf)
 {
-	conf->zone_tree = gen_tree_new(conf_ztree_compare);
+	conf->names = hattrie_create();
 }
 
 static void conf_parse_end(conf_t *conf) 
 {
-	if (conf->zone_tree) {
-		gen_tree_destroy(&conf->zone_tree, conf_ztree_free, NULL);
+	if (conf->names) {
+		hattrie_free(conf->names);
+		conf->names = NULL;
 	}
 }
 
