@@ -86,7 +86,6 @@ src/common/latency.c
 src/common/latency.h
 src/common/skip-list.c
 src/common/skip-list.h
-src/common/tree.h
 src/common/base32hex.h
 src/common/base32hex.c
 src/common/evqueue.c
@@ -104,7 +103,6 @@ src/common/sockaddr.c
 src/common/crc.h
 src/common/ref.c
 src/common/ref.h
-src/common/modified_tree.h
 src/common/dSFMT.c
 src/common/dSFMT.h
 src/common/dSFMT-params.h

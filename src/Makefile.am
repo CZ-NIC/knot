@@ -147,7 +147,6 @@ libknots_la_SOURCES =				\
 	common/skip-list.c			\
 	common/base32hex.c			\
 	common/skip-list.h			\
-	common/tree.h				\
 	common/base32hex.h			\
 	common/evqueue.h			\
 	common/evqueue.c			\

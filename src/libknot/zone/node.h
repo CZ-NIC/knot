@@ -31,7 +31,6 @@
 #include "dname.h"
 #include "common/skip-list.h"
 #include "rrset.h"
-#include "common/tree.h"
 
 struct knot_zone;
 

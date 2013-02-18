@@ -32,7 +32,6 @@
 #include "zone/node.h"
 #include "dname.h"
 #include "nsec3.h"
-#include "common/tree.h"
 
 #include "zone-tree.h"
 
