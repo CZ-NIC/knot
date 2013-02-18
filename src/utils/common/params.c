@@ -77,13 +77,13 @@ static const char *pkey_tbl[] = {
 };
 
 enum {
-	T_PKEY_FORMAT = 0,
+	T_PKEY_ACTIVATE = 0,
 	T_PKEY_ALGO,
-	T_PKEY_KEY,
 	T_PKEY_BITS,
 	T_PKEY_CREATED,
-	T_PKEY_PUBLISH,
-	T_PKEY_ACTIVATE
+	T_PKEY_KEY,
+	T_PKEY_FORMAT,
+	T_PKEY_PUBLISH
 };
 
 static int params_parse_keyline(char *lp, int len, void *arg)
@@ -108,15 +108,13 @@ static int params_parse_keyline(char *lp, int len, void *arg)
 	size_t vlen = 0;
 	uint32_t n = 0;
 	switch(bp) {
-	case T_PKEY_FORMAT:
-		DBG("%s: file format '%s'\n", __func__, v);
-		break;
 	case T_PKEY_ALGO:
 		vlen = strcspn(v, SEP_CHARS);
 		v[vlen] = '\0'; /* Term after first tok */
 		if (params_parse_num(v, &n) != KNOT_EOK) {
 			return KNOT_EPARSEFAIL;
 		}
+		key->algorithm = n;
 		DBG("%s: algo = %u\n", __func__, n);
 		break;
 	case T_PKEY_KEY:
@@ -124,10 +122,8 @@ static int params_parse_keyline(char *lp, int len, void *arg)
 		key->secret = strndup(v, len);
 		DBG("%s: secret = '%s'\n", __func__, key->secret);
 		break;
-	case T_PKEY_BITS:
-		break;
 	default:
-		DBG("%s: %s = '%s'\n", __func__, TOK_S(k), v);
+		DBG("%s: %s = '%s' (ignoring)\n", __func__, TOK_S(k), v);
 		break;
 	}
 
