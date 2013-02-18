@@ -117,11 +117,12 @@ static void knot_zone_contents_destroy_node_rrsets_from_tree(
 	knot_zone_tree_node_t *tnode, void *data)
 {
 	assert(tnode != NULL);
-	knot_node_t *node = tnode->node;
+
+	if (!tnode->node) return; /* non-existent node */
 
 	int free_rdata_dnames = (int)((intptr_t)data);
-	knot_node_free_rrsets(node, free_rdata_dnames);
-	knot_node_free(&node);
+	knot_node_free_rrsets(tnode->node, free_rdata_dnames);
+	knot_node_free(&tnode->node);
 }
 
 /*----------------------------------------------------------------------------*/
