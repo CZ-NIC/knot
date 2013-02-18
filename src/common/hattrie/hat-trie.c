@@ -206,6 +206,10 @@ static inline node_ptr hattrie_find(node_ptr *parent, const char **key, size_t *
     
 }
 
+static inline value_t hattrie_setval(value_t v) {
+    return v;
+}
+
 hattrie_t* hattrie_create()
 {
     hattrie_t* T = malloc(sizeof(hattrie_t));
@@ -254,6 +258,9 @@ void hattrie_free(hattrie_t* T)
 hattrie_t* hattrie_dup(const hattrie_t* T, value_t (*nval)(value_t))
 {
     hattrie_t *N = hattrie_create();
+    
+    /* assignment */
+    if (!nval) nval = hattrie_setval;
 
     /*! \todo could be probably implemented faster */
 
@@ -294,7 +301,7 @@ void hattrie_build_index(hattrie_t *T)
     node_build_index(T->root);
 }
 
-static void node_apply(node_ptr node, void (*f)(value_t,void*), void* d)
+static void node_apply(node_ptr node, void (*f)(value_t*,void*), void* d)
 {
     if (*node.flag & NODE_TYPE_TRIE) {
         size_t i;
@@ -302,7 +309,7 @@ static void node_apply(node_ptr node, void (*f)(value_t,void*), void* d)
             if (i > 0 && node.t->xs[i].t == node.t->xs[i - 1].t) continue;
             if (node.t->xs[i].t) node_apply(node.t->xs[i], f, d);
 	    if (*node.flag & NODE_HAS_VAL) {
-		    f(node.t->val, d);
+		    f(&node.t->val, d);
 	    }
         }
     }
@@ -310,14 +317,14 @@ static void node_apply(node_ptr node, void (*f)(value_t,void*), void* d)
 	    ahtable_iter_t i;
 	    ahtable_iter_begin(node.b, &i, false);
 	    while (!ahtable_iter_finished(&i)) {
-		    f(*ahtable_iter_val(&i), d);
+		    f(ahtable_iter_val(&i), d);
 		    ahtable_iter_next(&i);
 	    }
 	    ahtable_iter_free(&i);
     }
 }
 
-void hattrie_apply_rev(hattrie_t* T, void (*f)(value_t,void*), void* d)
+void hattrie_apply_rev(hattrie_t* T, void (*f)(value_t*,void*), void* d)
 {
 	node_apply(T->root, f, d);
 }

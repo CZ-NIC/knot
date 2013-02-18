@@ -280,7 +280,7 @@ int knot_zone_tree_apply_recursive(knot_zone_tree_t *tree,
 		return KNOT_EINVAL;
 	}
 	
-	hattrie_apply_rev(tree, (void (*)(void*,void*))function, data);
+	hattrie_apply_rev(tree, (void (*)(value_t*,void*))function, data);
 
 	return KNOT_EOK;
 }
