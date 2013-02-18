@@ -50,7 +50,6 @@ struct knot_key {
 	knot_dname_t *name;   /*!< Key name. */
 	tsig_algorithm_t algorithm; /*!< Key algorithm.  */
 	char *secret;         /*!< Key data. */
-	size_t secret_size;   /*!< Key length. */
 };
 
 typedef struct knot_key knot_key_t;
