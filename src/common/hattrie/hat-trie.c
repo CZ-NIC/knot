@@ -15,7 +15,7 @@
 /* number of child nodes for used alphabet */
 #define NODE_CHILDS (TRIE_MAXCHAR+1)
 /* initial nodestack size */
-#define NODESTACK_INIT 32
+#define NODESTACK_INIT 512
 
 static const uint8_t NODE_TYPE_TRIE          = 0x1;
 static const uint8_t NODE_TYPE_PURE_BUCKET   = 0x2;
@@ -202,8 +202,12 @@ static node_ptr hattrie_find_ns(node_ptr **s, size_t *sp, size_t slen,
 static inline node_ptr hattrie_find(node_ptr *parent, const char **key, size_t *len)
 {
     size_t sp = 0;
-    return hattrie_find_ns(&parent, &sp, 1, key, len);
-    
+    node_ptr bs[NODESTACK_INIT];  /* base stack (will be enough mostly) */
+    node_ptr *ns = bs;            /* generic ptr, could point to new mem */
+    ns[sp] = *parent;
+    node_ptr ret = hattrie_find_ns(&ns, &sp, NODESTACK_INIT, key, len);
+    if (ns != bs) free(ns);
+    return ret;
 }
 
 static inline value_t hattrie_setval(value_t v) {
