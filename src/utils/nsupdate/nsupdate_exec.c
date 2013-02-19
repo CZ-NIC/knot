@@ -699,7 +699,7 @@ int cmd_send(const char* lp, nsupdate_params_t *params)
 	size_t dlen = 0;
 	uint8_t *digest = NULL;
 	size_t maxlen = knot_packet_max_size(params->pkt);
-	if (params->key.name) {
+	if (params->key.secret) {
 		dlen = tsig_alg_digest_length(params->key.algorithm);
 		digest = malloc(dlen);
 		ret = knot_tsig_sign(wire, &len, maxlen, NULL, 0,
