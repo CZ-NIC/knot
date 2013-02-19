@@ -99,6 +99,8 @@ libknot_la_SOURCES =				\
 	libknot/zone/node.c			\
 	libknot/zone/zone-diff.h		\
 	libknot/zone/zone-diff.c		\
+	libknot/zone/zone-dump.h		\
+	libknot/zone/zone-dump.c		\
 	libknot/hash/hash-functions.c		\
 	libknot/hash/cuckoo-hash-table.c	\
 	libknot/hash/universal-system.c		\
