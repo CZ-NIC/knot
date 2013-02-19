@@ -587,9 +587,13 @@ int cmd_ttl(const char* lp, nsupdate_params_t *params)
 	DBG("%s: lp='%s'\n", __func__, lp);
 	
 	uint32_t ttl = 0;
-	params_parse_num(lp, &ttl);
-	nsupdate_set_ttl(params, ttl);
-	
+
+	if (params_parse_num(lp, &ttl) != KNOT_EOK) {
+		return KNOT_EPARSEFAILT;
+	}
+
+	nsupdate_set_ttl(params, ttl);	
+
 	return KNOT_EOK;
 }
 
