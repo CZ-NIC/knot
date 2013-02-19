@@ -269,7 +269,7 @@ int knot_zone_tree_find_less_or_equal(knot_zone_tree_t *tree,
 		return KNOT_EINVAL;
 	}
 	
-	knot_node_t *f, *p;
+	knot_node_t *f = NULL, *p = NULL;
 	int ret = knot_zone_tree_get_less_or_equal(tree, owner, &f, &p);
 
 	*found = f;

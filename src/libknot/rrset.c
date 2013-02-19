@@ -346,6 +346,9 @@ knot_rdata_t *knot_rrset_get_rdata(knot_rrset_t *rrset)
 knot_rdata_t *knot_rrset_rdata_get_next(knot_rrset_t *rrset,
                                             knot_rdata_t *rdata)
 {
+	if (!rdata || !rrset) {
+		return NULL;
+	}
 	if (rdata->next == rrset->rdata) {
 		return NULL;
 	} else {

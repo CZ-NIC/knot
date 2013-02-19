@@ -226,6 +226,10 @@ static int conf_process(conf_t *conf)
 		// Default zone file
 		if (zone->file == NULL) {
 			zone->file = strcdup(zone->name, ".zone");
+			if (!zone->file) {
+				ret = KNOT_ENOMEM;
+				continue;
+			}
 		}
 		
 		// Relative zone filenames should be relative to storage

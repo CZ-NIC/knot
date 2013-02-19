@@ -193,7 +193,11 @@ void knot_zone_set_dtor(knot_zone_t *zone, int (*dtor)(struct knot_zone *));
  * \param zone Zone.
  */
 static inline unsigned knot_zone_flags(knot_zone_t *zone) {
-	return zone->flags;
+	if (zone) {
+		return zone->flags;
+	} else {
+		return 0;
+	}
 }
 
 /*!

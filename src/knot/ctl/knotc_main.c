@@ -684,6 +684,7 @@ int main(int argc, char **argv)
 	/* Command not found. */
 	if (!cmd->name) {
 		log_server_error("Invalid command: '%s'\n", argv[optind]);
+		free(config_fn);
 		tsig_key_cleanup(&r_key);
 		log_close();
 		return 1;
@@ -775,7 +776,6 @@ static int cmd_start(int argc, char *argv[], unsigned flags, int jobs)
 		} else {
 			log_server_info("Forcing server start.\n");
 			pid_remove(pidfile);
-			pid = -1;
 		}
 	} else {
 		/* Create empty PID file. */

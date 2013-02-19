@@ -215,6 +215,9 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 	int i = 0;
 	uint8_t item_type;
 	size_t parsed = 0;
+	if (!rdata || !wire || !pos || !desc) {
+		return KNOT_EINVAL;
+	}
 
 	if (rdlength == 0) {
 		rdata->items = NULL;

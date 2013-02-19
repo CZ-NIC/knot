@@ -96,7 +96,9 @@ static const uint8_t FLAG_REHASH          = 0x4; // 00000100
 /*! \brief Clears the table / item flags. */
 static inline void CLEAR_FLAGS(uint8_t *flags)
 {
-	*flags = (uint8_t)0x0;
+	if (flags) {
+		*flags = (uint8_t)0x0;
+	}
 }
 
 /*! \brief Returns the generation stored in the flags. */
@@ -120,7 +122,9 @@ static inline int IS_GENERATION1(uint8_t flags)
 /*! \brief Sets the generation stored in the flags to 1. */
 static inline void SET_GENERATION1(uint8_t *flags)
 {
-	*flags = ((*flags) & ~FLAG_GENERATION2) | FLAG_GENERATION1;
+	if (flags) {
+		*flags = ((*flags) & ~FLAG_GENERATION2) | FLAG_GENERATION1;
+	}
 }
 
 /*! \brief Checks if the generation stored in the flags is 2. */
@@ -132,19 +136,26 @@ static inline int IS_GENERATION2(uint8_t flags)
 /*! \brief Sets the generation stored in the flags to 2. */
 static inline void SET_GENERATION2(uint8_t *flags)
 {
-	*flags = ((*flags) & ~FLAG_GENERATION1) | FLAG_GENERATION2;
+	if (flags) {
+		*flags = ((*flags) & ~FLAG_GENERATION1) | FLAG_GENERATION2;
+	}
 }
 
 /*! \brief Sets the generation stored in the flags to the given generation. */
 static inline void SET_GENERATION(uint8_t *flags, uint8_t generation)
 {
-	*flags = ((*flags) & ~FLAG_GENERATION_BOTH) | generation;
+	if (flags) {
+		*flags = ((*flags) & ~FLAG_GENERATION_BOTH) | generation;
+	}
 }
 
 /*! \brief Sets the generation stored in the flags to the next one (cyclic). */
 static inline uint8_t SET_NEXT_GENERATION(uint8_t *flags)
 {
-	return ((*flags) ^= FLAG_GENERATION_BOTH);
+	if (flags) {
+		return ((*flags) ^= FLAG_GENERATION_BOTH);
+	}
+	return 0;
 }
 
 /*! \brief Returns the next generation to the one stored in flags (cyclic). */
@@ -156,13 +167,17 @@ static inline uint8_t NEXT_GENERATION(uint8_t flags)
 /*! \brief Sets the rehashing flag to the flags. */
 static inline void SET_REHASHING_ON(uint8_t *flags)
 {
-	*flags = (*flags | FLAG_REHASH);
+	if (flags) {
+		*flags = (*flags | FLAG_REHASH);
+	}
 }
 
 /*! \brief Removes the rehashing flag from the flags. */
 static inline void SET_REHASHING_OFF(uint8_t *flags)
 {
-	*flags = (*flags & ~FLAG_REHASH);
+	if (flags) {
+		*flags = (*flags & ~FLAG_REHASH);
+	}
 }
 
 /*! \brief Checks if the rehashing flag is set in the flags. */
@@ -1245,7 +1260,7 @@ int ck_shallow_copy(const ck_hash_table_t *from, ck_hash_table_t **to)
 	// copy the stash - we must explicitly copy each stash item, but do not
 	// copy the ck_hash_table_item_t within them.
 	ck_stash_item_t *si = from->stash;
-	ck_stash_item_t **pos = &(*to)->stash;
+	ck_stash_item_t *last = NULL;
 	dbg_ck_verb("Copying hash table stash.\n");
 	while (si != NULL) {
 		ck_stash_item_t *si_new = (ck_stash_item_t *)
@@ -1272,8 +1287,13 @@ int ck_shallow_copy(const ck_hash_table_t *from, ck_hash_table_t **to)
 		              si->item->key);
 
 		si_new->item = si->item;
-		*pos = si_new;
-		pos = &si_new->next;
+		si_new->next = NULL;
+		if (last == NULL) {
+			(*to)->stash = si_new;
+		} else {
+			last->next = si_new;
+		}
+		last = si_new;
 		si = si->next;
 
 dbg_ck_exec_detail(
@@ -1289,8 +1309,6 @@ dbg_ck_exec_detail(
 		              si_new->item->key);
 );
 	}
-	
-	*pos = NULL;
 	
 	// there should be no item being hashed right now
 	/*! \todo This operation should not be done while inserting / rehashing. 
@@ -1534,6 +1552,9 @@ int ck_apply(ck_hash_table_t *table,
 int ck_rehash(ck_hash_table_t *table)
 {
 	dbg_ck_hash("Rehashing items in table.\n");
+	if (!table) {
+		return -1;
+	}
 	SET_REHASHING_ON(&table->generation);
 
 	ck_stash_item_t *free_stash_items = NULL;

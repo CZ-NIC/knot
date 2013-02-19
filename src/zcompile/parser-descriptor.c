@@ -460,6 +460,9 @@ uint16_t parser_rrtype_from_string(const char *name)
 	char *end;
 	long rrtype;
 	parser_rrtype_descriptor_t *entry;
+	if (!name) {
+		return 0;
+	}
 
 	entry = parser_rrtype_descriptor_by_name(name);
 	if (entry) {

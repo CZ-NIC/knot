@@ -649,6 +649,7 @@ char *rdata_nsap_to_string(knot_rdata_item_t item)
 	char *converted = knot_hex_to_string(rdata_item_data(item),
 	                                     rdata_item_size(item));
 	if (converted == NULL) {
+		free(ret);
 		return NULL;
 	}
 

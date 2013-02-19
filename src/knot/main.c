@@ -356,7 +356,6 @@ int main(int argc, char **argv)
 		/* Close remote control interface */
 		if (remote > -1) {
 			close(remote);
-			remote = -1;
 		}
 
 		if ((server_wait(server)) != KNOT_EOK) {

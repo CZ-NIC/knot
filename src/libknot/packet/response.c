@@ -368,6 +368,9 @@ static int knot_response_compress_dname(const knot_dname_t *dname,
 	knot_compr_t *compr, uint8_t *dname_wire, size_t max, int compr_cs)
 {
 	int size = 0;
+	if (!dname || !compr || !dname_wire) {
+		return KNOT_EINVAL;
+	}
 
 	// try to find the name or one of its ancestors in the compr. table
 #ifdef COMPRESSION_PEDANTIC

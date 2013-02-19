@@ -50,7 +50,7 @@ typedef struct acl_t {
 	acl_rule_t default_rule; /*!< \brief Default rule. */
 	skip_list_t *rules;      /*!< \brief Data container. */
 	skip_list_t *rules_pref; /*!< \brief Preferred data container. */
-	const char name[];       /*!< \brief ACL semantic name. */
+	char name[];       /*!< \brief ACL semantic name. */
 } acl_t;
 
 /*! \brief Single ACL value. */

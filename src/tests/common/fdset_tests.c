@@ -83,10 +83,9 @@ void* thr_action(void *arg)
 
 	/* Write pattern. */
 	char pattern = WRITE_PATTERN;
-	int ret = write(*fd, &pattern, WRITE_PATTERN_LEN);
-	ret = ret; /* Use variable. */
+	(void)write(*fd, &pattern, WRITE_PATTERN_LEN);
 
-	return 0;
+	return NULL;
 }
 
 static int fdset_tests_count(int argc, char *argv[])
