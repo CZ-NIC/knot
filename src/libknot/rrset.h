@@ -456,13 +456,23 @@ const knot_dname_t *knot_rrset_rdata_minfo_second_dname(const knot_rrset_t *rrse
  * \brief Find next dname in rrset relative to prev.
  *
  * \param rrset Inspected rrset.
- * \param prev Pointer to previous dname.
- * \param blk Pointer to current block id (should be initialized to 0 on start).
+ * \param prev_dname Pointer to previous dname.
  * \return next dname or NULL.
  */
 knot_dname_t **knot_rrset_get_next_dname(const knot_rrset_t *rrset,
-                                                 knot_dname_t **prev,
-                                                 unsigned *blk);
+                                                 knot_dname_t **prev);
+
+/*!
+ * \brief Find next dname in RR relative to prev.
+ *
+ * \param rrset Inspected rrset.
+ * \param prev_dname Pointer to previous dname.
+ * \param rr_pos Position of RR.
+ * \return next dname or NULL.
+ */
+knot_dname_t **knot_rrset_get_next_rr_dname(const knot_rrset_t *rrset,
+                                            knot_dname_t **prev_dname,
+                                            size_t rr_pos);
 
 const knot_dname_t *knot_rrset_rdata_ns_name(const knot_rrset_t *rrset,
                                              size_t rdata_pos);
