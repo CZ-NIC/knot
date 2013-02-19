@@ -114,8 +114,6 @@ static int xfrin_create_query(knot_dname_t *qname, uint16_t qtype,
 		dbg_xfrin_detail("Signing XFR query with key (name %s): \n",
 		                  name);
 		free(name);
-		dbg_xfrin_hex_detail(xfr->tsig_key->secret, 
-		                     xfr->tsig_key->secret_size);
 		
 		xfr->digest_size = xfr->digest_max_size;
 		rc = knot_tsig_sign(wire, &wire_size, *size, NULL, 0, 

@@ -14,42 +14,34 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file msg.h
+ * \file getline_wrap.h
  *
  * \author Daniel Salzman <daniel.salzman@nic.cz>
  *
- * \brief Simple output formatting framework.
+ * \brief getline wrapper.
  *
- * \addtogroup knot_utils
+ * \addtogroup common_lib
  * @{
  */
 
-#ifndef _UTILS__MSG_H_
-#define _UTILS__MSG_H_
+#ifndef _KNOTD_COMMON_GETLINE_WRAP_H_
+#define _KNOTD_COMMON_GETLINE_WRAP_H_
 
-#include <stdio.h>			// printf
+#include <stdio.h>		// size_t
 
-#define ERROR_		"Error: "
-#define WARNING_	"Warning: "
-#define DEBUG_		"Debug: "
+/*!
+ * \brief Reads a line from stream.
+ *
+ * This wrapper switches between getline (Linux) and fgetln (BSD).
+ *
+ * \note It is necessary to free buffer after use.
+ *
+ * \param stream	input stream.
+ * \param len		length of output buffer.
+ *
+ * \retval pointer to a buffer.
+ */
+char* getline_wrap(FILE *stream, size_t *len);
 
-#define ERR(m...)	{ printf(ERROR_ m); fflush(stdout); }
-#define WARN(m...)	{ printf(WARNING_ m); fflush(stdout); }
-
-/*! \brief Enable/disable debugging. */
-int msg_enable_debug(int val);
-
-/*! \brief Print debug message. */
-int msg_debug(const char *fmt, ...);
-
-#ifndef NDEBUG
- #define DBG(m...) msg_debug(DEBUG_ m)
-#else
- #define DBG(m...)
-#endif
-
-/*! \brief Debug message for null input. */
-#define DBG_NULL	DBG("%s: null parameter\n", __func__)
-
-#endif // _UTILS__MSG_H_
+#endif // _KNOTD_COMMON_GETLINE_WRAP_H_
 

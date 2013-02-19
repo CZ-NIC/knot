@@ -36,7 +36,7 @@
 enum tsig_algorithm {
 	KNOT_TSIG_ALG_NULL = 0,
 	KNOT_TSIG_ALG_GSS_TSIG = 128, /*!< \brief gss-tsig. */
-	KNOT_TSIG_ALG_HMAC_MD5, /*!< \brief HMAC-MD5.SIG-ALG.REG.INT. */
+	KNOT_TSIG_ALG_HMAC_MD5 = 157, /*!< \brief HMAC-MD5.SIG-ALG.REG.INT. */
 	KNOT_TSIG_ALG_HMAC_SHA1, /*!< \brief hmac-sha1. */
 	KNOT_TSIG_ALG_HMAC_SHA224, /*!< \brief hmac-sha224. */
 	KNOT_TSIG_ALG_HMAC_SHA256, /*!< \brief hmac-sha256. */
@@ -50,7 +50,6 @@ struct knot_key {
 	knot_dname_t *name;   /*!< Key name. */
 	tsig_algorithm_t algorithm; /*!< Key algorithm.  */
 	char *secret;         /*!< Key data. */
-	size_t secret_size;   /*!< Key length. */
 };
 
 typedef struct knot_key knot_key_t;

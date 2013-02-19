@@ -166,7 +166,7 @@ int nsupdate_parse(nsupdate_params_t *params, int argc, char *argv[])
 			if (ret != KNOT_EOK) return ret;
 			break;
 		case 't':
-			ret = params_parse_interval(optarg, &params->wait);
+			ret = params_parse_wait(optarg, &params->wait);
 			if (ret != KNOT_EOK) return ret;
 			break;
 		case 'y':

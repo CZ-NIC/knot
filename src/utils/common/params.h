@@ -104,17 +104,17 @@ char* get_reverse_name(const char *name);
 
 char* get_fqd_name(const char *name);
 
-int params_parse_port(const char *value, char **port);
-
 int params_parse_class(const char *value, uint16_t *rclass);
 
 int params_parse_type(const char *value, uint16_t *rtype, uint32_t *xfr_serial);
 
 int params_parse_server(const char *value, list *servers, const char *def_port);
 
-int params_parse_interval(const char *value, int32_t *dst);
+int params_parse_wait(const char *value, int32_t *dst);
 
 int params_parse_num(const char *value, uint32_t *dst);
+
+int params_parse_bufsize(const char *value, int32_t *dst);
 
 int params_parse_tsig(const char *value, knot_key_t *key);
 

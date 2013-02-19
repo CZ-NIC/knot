@@ -81,12 +81,11 @@ void* thr_action(void *arg)
 	tv.tv_usec = 100 * 1000; // 100ms
 	select(0, 0, 0, 0, &tv);
 
-	/* Write pattern. */
+	/* Write pattern (if removes compile warning). */
 	char pattern = WRITE_PATTERN;
-	int ret = write(*fd, &pattern, WRITE_PATTERN_LEN);
-	ret = ret; /* Use variable. */
+	if (write(*fd, &pattern, WRITE_PATTERN_LEN));
 
-	return 0;
+	return NULL;
 }
 
 static int fdset_tests_count(int argc, char *argv[])

@@ -48,6 +48,7 @@ query_t* query_create(const char *owner, const query_t *conf)
 	query_t *query = calloc(1, sizeof(query_t));
 
 	if (query == NULL) {
+		DBG_NULL;
 		return NULL;
 	}
 
@@ -108,6 +109,7 @@ void query_free(query_t *query)
 	node *n = NULL, *nxt = NULL;
 
 	if (query == NULL) {
+		DBG_NULL;
 		return;
 	}
 
@@ -123,6 +125,11 @@ void query_free(query_t *query)
 
 int dig_init(dig_params_t *params)
 {
+	if (params == NULL) {
+		DBG_NULL;
+		return KNOT_EINVAL;
+	}
+
 	memset(params, 0, sizeof(*params));
 
 	// Initialize list of queries.
@@ -141,6 +148,7 @@ void dig_clean(dig_params_t *params)
 	node *n = NULL, *nxt = NULL;
 
 	if (params == NULL) {
+		DBG_NULL;
 		return;
 	}
 
@@ -238,6 +246,11 @@ void complete_queries(list *queries, const query_t *conf)
 	query_t *q = NULL;
 	node    *n = NULL;
 
+	if (queries == NULL || conf == NULL) {
+		DBG_NULL;
+		return;
+	}
+
 	// If there is no query, add default query: NS to ".".
 	if (list_size(queries) == 0) {
 		q = query_create(".", conf);
@@ -307,6 +320,22 @@ static int parse_type(const char *value, query_t *query)
 	return KNOT_EOK;
 }
 
+static int parse_port(const char *value, char **port)
+{
+	char *new_port = strdup(value);
+
+	if (new_port == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	// Deallocate old string.
+	free(*port);
+
+	*port = new_port;
+
+	return KNOT_EOK;
+}
+
 static void dig_help(const bool verbose)
 {
 	if (verbose == true) {
@@ -328,13 +357,7 @@ static int parse_server(const char *value, dig_params_t *params)
 		query = params->config;
 	}
 
-	int ret = params_parse_server(value, &query->servers, query->port);
-
-	if (ret != KNOT_EOK) {
-		ERR("invalid nameserver: %s\n", value);
-	}
-
-	return ret;
+	return params_parse_server(value, &query->servers, query->port);
 }
 
 static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
@@ -361,6 +384,7 @@ static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
 	switch (opt[0]) {
 	case '4':
 		if (len > 1) {
+			ERR("invalid option -%s\n", opt);
 			return KNOT_ENOTSUP;
 		}
 
@@ -368,6 +392,7 @@ static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
 		break;
 	case '6':
 		if (len > 1) {
+			ERR("invalid option -%s\n", opt);
 			return KNOT_ENOTSUP;
 		}
 
@@ -380,13 +405,17 @@ static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
 		}
 
 		if (parse_class(val, query) != KNOT_EOK) {
-			ERR("invalid class: %s\n", val);
+			ERR("bad class %s\n", val);
 			return KNOT_EINVAL;
 		}
 		*index += add;
 		break;
+	case 'd':
+		msg_enable_debug(1);
+		break;
 	case 'h':
 		if (len > 1) {
+			ERR("invalid option -%s\n", opt);
 			return KNOT_ENOTSUP;
 		}
 
@@ -398,9 +427,8 @@ static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
 			return KNOT_EINVAL;
 		}
 
-		if (params_parse_port(val, &query->port)
-		    != KNOT_EOK) {
-			ERR("invalid port: %s\n", val);
+		if (parse_port(val, &query->port) != KNOT_EOK) {
+			ERR("bad port %s\n", value);
 			return KNOT_EINVAL;
 		}
 		*index += add;
@@ -413,7 +441,7 @@ static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
 
 		if (parse_name(val, &params->queries, params->config)
 		    != KNOT_EOK) {
-			ERR("invalid name: %s\n", val);
+			ERR("bad query name %s\n", val);
 			return KNOT_EINVAL;
 		}
 		*index += add;
@@ -425,7 +453,7 @@ static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
 		}
 
 		if (parse_type(val, query) != KNOT_EOK) {
-			ERR("invalid type: %s\n", val);
+			ERR("bad type %s\n", val);
 			return KNOT_EINVAL;
 		}
 		*index += add;
@@ -438,13 +466,13 @@ static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
 
 		if (parse_reverse(val, &params->queries, params->config)
 		    != KNOT_EOK) {
-			ERR("invalid IPv4 or IPv6 address: %s\n", val);
+			ERR("bad reverse name %s\n", val);
 			return KNOT_EINVAL;
 		}
 		*index += add;
 		break;
 	default:
-		ERR("unknown option: -%s\n", opt);
+		ERR("invalid option: -%s\n", opt);
 		return KNOT_ENOTSUP;
 	}
 
@@ -566,6 +594,24 @@ static int parse_opt2(const char *value, dig_params_t *params)
 	} else if (strcmp(value, "nottl") == 0) {
 		query->style.show_ttl = false;
 	}
+	else if (strncmp(value, "time=", 5) == 0) {
+		if (params_parse_wait(value + 5, &query->wait)
+		    != KNOT_EOK) {
+			return KNOT_EINVAL;
+		}
+	}
+	else if (strncmp(value, "tries=", 6) == 0) {
+		if (params_parse_num(value + 6, &query->retries)
+		    != KNOT_EOK) {
+			return KNOT_EINVAL;
+		}
+	}
+	else if (strncmp(value, "bufsize=", 8) == 0) {
+		if (params_parse_bufsize(value + 8, &query->udp_size)
+		    != KNOT_EOK) {
+			return KNOT_EINVAL;
+		}
+	}
 
 	// Check for connection option.
 	else if (strcmp(value, "tcp") == 0) {
@@ -581,7 +627,8 @@ static int parse_opt2(const char *value, dig_params_t *params)
 
 	// Unknown option.
 	else {
-		ERR("invalid option: %s\n", value);
+		ERR("invalid option: +%s\n", value);
+		return KNOT_ENOTSUP;
 	}
 
 	return KNOT_EOK;
@@ -609,13 +656,13 @@ static int parse_token(const char *value, dig_params_t *params)
 	}
 
 	ERR("invalid parameter: %s\n", value);
-
-	return KNOT_ERROR;
+	return KNOT_ENOTSUP;
 }
 
 int dig_parse(dig_params_t *params, int argc, char *argv[])
 {
 	if (params == NULL || argv == NULL) {
+		DBG_NULL;
 		return KNOT_EINVAL;
 	}
 

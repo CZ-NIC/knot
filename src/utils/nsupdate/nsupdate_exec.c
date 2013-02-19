@@ -431,8 +431,9 @@ static int pkt_sendrecv(nsupdate_params_t *params,
 static int nsupdate_process_line(char *lp, int len, void *arg)
 {
 	nsupdate_params_t *params = (nsupdate_params_t *)arg;
-	
+
 	if (lp[len - 1] == '\n') lp[len - 1] = '\0'; /* Discard nline */
+	if (lp[0] == '\0' || lp[0] == ';') return KNOT_EOK; /* Empty/comment */
 	int ret = tok_find(lp, cmd_array);
 	if (ret < 0) return ret; /* Syntax error */
 	
@@ -586,9 +587,13 @@ int cmd_ttl(const char* lp, nsupdate_params_t *params)
 	DBG("%s: lp='%s'\n", __func__, lp);
 	
 	uint32_t ttl = 0;
-	params_parse_num(lp, &ttl);
-	nsupdate_set_ttl(params, ttl);
-	
+
+	if (params_parse_num(lp, &ttl) != KNOT_EOK) {
+		return KNOT_EPARSEFAIL;
+	}
+
+	nsupdate_set_ttl(params, ttl);	
+
 	return KNOT_EOK;
 }
 
@@ -694,7 +699,7 @@ int cmd_send(const char* lp, nsupdate_params_t *params)
 	size_t dlen = 0;
 	uint8_t *digest = NULL;
 	size_t maxlen = knot_packet_max_size(params->pkt);
-	if (params->key.name) {
+	if (params->key.secret) {
 		dlen = tsig_alg_digest_length(params->key.algorithm);
 		digest = malloc(dlen);
 		ret = knot_tsig_sign(wire, &len, maxlen, NULL, 0,
@@ -766,7 +771,9 @@ int cmd_send(const char* lp, nsupdate_params_t *params)
 	int rc = knot_packet_rcode(params->resp);
 	DBG("%s: received rcode=%d\n", __func__, rc);
 	rcode = knot_lookup_by_id(rcodes, rc);
-	ERR("update failed: %s\n", rcode->name);
+	if (rcode && rcode->id > KNOT_RCODE_NOERROR) {
+		ERR("update failed: %s\n", rcode->name);
+	}
 	
 	/*! \todo Should we check TC bit? */
 	
