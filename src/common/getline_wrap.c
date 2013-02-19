@@ -17,8 +17,14 @@
 #include "common/getline_wrap.h"
 #include "config.h"		// HAVE_
 
+// FreeBSD POSIX2008 getline
+#ifndef _WITH_GETLINE
+ #define _WITH_GETLINE
+#endif
+
 #include <stdio.h>		// getline or fgetln
 #include <stdlib.h>		// free
+#include <string.h>		// memcpy
 
 char* getline_wrap(FILE *stream, size_t *len)
 {
@@ -35,24 +41,24 @@ char* getline_wrap(FILE *stream, size_t *len)
 
 	return buf;
 #elif HAVE_FGETLN
-	buf = fgetln(stream, len);
+	buf = fgetln(stream, *len);
 
 	if (buf == NULL) {
 		return NULL;
 	}
 
-	if (buf[len - 1] == '\n') {
-		buf[len - 1] = '\0';
+	if (buf[*len - 1] == '\n') {
+		buf[*len - 1] = '\0';
 	} else {
 		char *lbuf = NULL;
 
-		if ((lbuf = (char *)malloc(len + 1)) == NULL) {
+		if ((lbuf = (char *)malloc(*len + 1)) == NULL) {
 			free(buf);
 			return NULL;
 		}
 
-		memcpy(lbuf, buf, len);
-		lbuf[len] = '\0';
+		memcpy(lbuf, buf, *len);
+		lbuf[*len] = '\0';
 		free(buf);
 		buf = lbuf;
 	}
