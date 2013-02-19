@@ -450,6 +450,8 @@ int params_parse_keyfile(const char *filename, knot_key_t *key)
 		return KNOT_EINVAL;
 	}
 
+	/*! \todo #2360 read key name from RR record in .key file */
+
 	/* Fetch keyname from filename. */
 	const char *bn = strrchr(filename, '/');
 	if (!bn) bn = filename;
