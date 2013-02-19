@@ -237,7 +237,7 @@ knot_rrset_t *knot_node_remove_rrset(knot_node_t *node, uint16_t type)
 	for (; i < node->rrset_count; ++i) {
 		if (rrs[i]->type == type) {
 			ret = rrs[i];
-			memmove(rrs + i, rrs + i + 1, node->rrset_count - i - 1);
+			memmove(rrs + i, rrs + i + 1, (node->rrset_count - i - 1) * sizeof(knot_rrset_t *));
 			--node->rrset_count;
 			return ret;
 		}
