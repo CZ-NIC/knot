@@ -290,15 +290,14 @@ static int knot_packet_parse_question(const uint8_t *wire, size_t *pos,
 			return KNOT_ENOMEM;
 		}
 	} else {
-		void *parsed = knot_dname_parse_from_wire(wire, pos,
-		                                     i + 1,
-	                                             NULL, question->qname);
-		if (!parsed) {
+		if (knot_dname_parse_from_wire(wire, pos, i + 1, NULL,
+		                               question->qname) == NULL) {
 			return KNOT_EMALF;
 		}
 	}
 	if (*pos != i + 1) {
-		dbg_packet("Parsed dname expected len=%zu, parsed=%zu.\n", i+1-bp, *pos-bp);
+		dbg_packet("Parsed dname expected len=%zu, parsed=%zu.\n",
+		           i+1-bp, *pos-bp);
 	}
 	question->qtype = knot_wire_read_u16(wire + i + 1);
 	question->qclass = knot_wire_read_u16(wire + i + 3);
