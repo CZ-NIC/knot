@@ -284,9 +284,8 @@ static void knot_zone_contents_adjust_rdata_in_rrset(knot_rrset_t *rrset,
                                                      knot_zone_contents_t *zone,
                                                      knot_node_t *node)
 {
-	unsigned i = 0;
 	knot_dname_t **dn = NULL;
-	while((dn = knot_rrset_get_next_dname(rrset, dn, &i))) {
+	while((dn = knot_rrset_get_next_dname(rrset, dn))) {
 		knot_zone_contents_adjust_rdata_dname(zone,
 		                                      lookup_tree,
 		                                      node,
@@ -2556,9 +2555,8 @@ static void knot_zc_integrity_check_dnames_in_rrset(const knot_rrset_t *rrset,
 	                        check_data->contents,
 	                        knot_rrset_owner(rrset), name);
 	
-	unsigned blk = 0;
 	knot_dname_t **dname = NULL;
-	while ((dname = knot_rrset_get_next_dname(rrset, dname, &blk))) {
+	while ((dname = knot_rrset_get_next_dname(rrset, dname))) {
 		check_data->errors += knot_zc_integrity_check_find_dname(
 		                        check_data->contents, *dname, name);
 	}
@@ -2858,9 +2856,8 @@ static void find_dname_in_rdata(knot_node_t **tnode, void *data)
 
 	
 	for (unsigned short i = 0; i < (*tnode)->rrset_count; i++) {
-		unsigned blk = 0;
 		knot_dname_t **dname = NULL;
-		while ((dname = knot_rrset_get_next_dname(rrsets[i], dname, &blk))) {
+		while ((dname = knot_rrset_get_next_dname(rrsets[i], dname))) {
 			if (*dname == in_data->dname) {
 				in_data->found_dname = *dname;
 				in_data->stopped = 1;
