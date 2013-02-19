@@ -249,6 +249,8 @@ libknots_la_SOURCES =				\
 	common/skip-list.h			\
 	common/general-tree.h			\
 	common/general-tree.c			\
+	common/getline_wrap.h			\
+	common/getline_wrap.c			\
 	common/tree.h				\
 	common/base32hex.h			\
 	common/evqueue.h			\
