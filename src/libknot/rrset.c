@@ -1936,7 +1936,7 @@ knot_dname_t **knot_rrset_get_next_rr_dname(const knot_rrset_t *rrset,
                                             knot_dname_t **prev_dname,
                                             size_t rr_pos)
 {
-	if (rrset == NULL || rrset->rdata_count == 0) {
+	if (rrset == NULL || rr_pos >= rrset->rdata_count) {
 		return NULL;
 	}
 	
@@ -1974,6 +1974,8 @@ knot_dname_t **knot_rrset_get_next_rr_dname(const knot_rrset_t *rrset,
 			}
 		}
 	}
+	
+	return NULL;
 }
 
 knot_dname_t **knot_rrset_get_next_dname(const knot_rrset_t *rrset,
@@ -2629,7 +2631,7 @@ dbg_rrset_exec_detail(
 	knot_dname_t **dname = NULL;
 	while ((dname = knot_rrset_get_next_rr_dname(rrset, dname,
 	                                             rdata_pos))) {
-		assert(dname);
+		assert(dname && *dname);
 dbg_rrset_exec_detail(
 		char *name = knot_dname_to_str(*dname);
 		dbg_rrset_detail("rr: dnames_apply: Got dname %s.\n", name);
