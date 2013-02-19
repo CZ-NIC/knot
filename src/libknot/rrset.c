@@ -876,6 +876,8 @@ int knot_rrset_rdata_equal(const knot_rrset_t *r1, const knot_rrset_t *r2)
 int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
                        size_t max_size, uint16_t *rr_count, void *data)
 {
+	/* [code-review] Missing parameter checks. */
+	
 	// if no RDATA in RRSet, return
 	if (rrset->rdata == NULL) {
 		*size = 0;
@@ -921,6 +923,8 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
                                    const uint8_t *wire, size_t *pos,
                                    size_t total_size, size_t rdlength)
 {
+	/* [code-review] Missing parameter checks. */
+	
 	if (rdlength == 0) {
 		return KNOT_EOK;
 	}
@@ -1064,6 +1068,8 @@ dbg_rrset_exec_detail(
 			}
 			*((knot_dname_t **)rdata_buffer + offset) = dname;
 			offset += sizeof(knot_dname_t *);
+			
+			/* [code-review] 'parsed' is not updated, is it ok? */
 		}
 	}
 	
@@ -1081,6 +1087,8 @@ int knot_rrset_compare(const knot_rrset_t *r1,
                        const knot_rrset_t *r2,
                        knot_rrset_compare_type_t cmp)
 {
+	/* [code-review] Missing parameter checks. */
+	
 	if (cmp == KNOT_RRSET_COMPARE_PTR) {
 		if ((size_t)r1 > (size_t)r2) {
 			return 1;
@@ -1135,8 +1143,8 @@ int knot_rrset_equal(const knot_rrset_t *r1,
 		res = 0;
 	}
 	
-	if (cmp == KNOT_RRSET_COMPARE_WHOLE) {
-		res *= knot_rrset_rdata_equal(r1, r2);
+	if (cmp == KNOT_RRSET_COMPARE_WHOLE && res == 1) {
+		res = knot_rrset_rdata_equal(r1, r2);
 	}
 
 	return res;
@@ -1199,6 +1207,7 @@ dbg_rrset_exec_detail(
 				dbg_rrset("rrset: deep_copy: Cannot copy RDATA"
 				          " dname.\n");
 				/*! \todo This will leak. Is it worth fixing? */
+				/* [code-review] Why will it leak? */
 				knot_rrset_deep_free(&(*to)->rrsigs, 1,
 				                     copy_rdata_dnames);
 				free((*to)->rdata);
@@ -1253,7 +1262,10 @@ void knot_rrset_free(knot_rrset_t **rrset)
 }
 
 /*----------------------------------------------------------------------------*/
-
+/* [code-review] This function just frees all dnames in one RDATA? 
+ * It should be documented at least a little. Also it is used only in this file,
+ * so maybe it should be static?
+ */
 void knot_rrset_rdata_deep_free_one(knot_rrset_t *rrset, size_t pos,
                                     int free_dnames)
 {
@@ -1315,6 +1327,10 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
 	}
 
 	// RRSIGs should have the same owner as this RRSet, so do not delete it
+	/* [code-review] Wrong, it must be deleted (== released reference), 
+	 * because the pointer in the RRSIG RRSet should have been retained 
+	 * previously. Otherwise the reference count will be wrong.
+	 */
 	if ((*rrset)->rrsigs != NULL) {
 		knot_rrset_deep_free(&(*rrset)->rrsigs, 0, free_rdata_dnames);
 	}
@@ -1331,7 +1347,7 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
 }
 
 /*----------------------------------------------------------------------------*/
-
+/* [code-review] Remove. */
 // This might not be needed, we have to store the last index anyway
 //	/*
 //	 * The last one has to be traversed.
