@@ -325,9 +325,9 @@ knot_rrtype_descriptor_t *knot_rrtype_descriptor_by_name(const char *name);
  * \return Length of output string.
  * \return -1 if error.
  */
-//int knot_rrtype_to_string(const uint16_t rrtype,
-//                         char           *out,
-//                          const size_t   out_len);
+int knot_rrtype_to_string(const uint16_t rrtype,
+                         char           *out,
+                          const size_t   out_len);
 
 /*!
  * \brief Converts mnemonic string representation of a type to numeric one.
@@ -338,7 +338,7 @@ knot_rrtype_descriptor_t *knot_rrtype_descriptor_by_name(const char *name);
  * \return  0 if OK.
  * \return -1 if error.
  */
-//int knot_rrtype_from_string(const char *name, uint16_t *num);
+int knot_rrtype_from_string(const char *name, uint16_t *num);
 
 /*!
  * \brief Converts numeric class representation to the string one.
@@ -350,9 +350,9 @@ knot_rrtype_descriptor_t *knot_rrtype_descriptor_by_name(const char *name);
  * \return Length of output string.
  * \return -1 if error.
  */
-//int knot_rrclass_to_string(const uint16_t rrclass,
-//                           char           *out,
-//                           const size_t   out_len);
+int knot_rrclass_to_string(const uint16_t rrclass,
+                           char           *out,
+                           const size_t   out_len);
 
 /*!
  * \brief Converts string representation of a class to numeric one.
@@ -363,7 +363,7 @@ knot_rrtype_descriptor_t *knot_rrtype_descriptor_by_name(const char *name);
  * \return  0 if OK.
  * \return -1 if error.
  */
-//int knot_rrclass_from_string(const char *name, uint16_t *num);
+int knot_rrclass_from_string(const char *name, uint16_t *num);
 
 /*!
  * \brief Returns size of wireformat type in bytes.
@@ -375,7 +375,7 @@ knot_rrtype_descriptor_t *knot_rrtype_descriptor_by_name(const char *name);
  */
 size_t knot_wireformat_size(unsigned int wire_type);
 
-//int knot_rrtype_is_metatype(uint16_t type);
+int knot_rrtype_is_metatype(uint16_t type);
 
 size_t knot_ds_digest_length(uint8_t algorithm);
 
