@@ -50,6 +50,11 @@ struct knot_rrset {
 	uint16_t type; /*!< TYPE of the RRset. */
 	uint16_t rclass; /*!< CLASS of the RRSet. */
 	uint32_t ttl; /*!< TTL of the RRSet. */
+	
+	/* [code-review] It would be fine to better describe the format of this
+	 * array and the meaning of the indices. Maybe even draw some simple
+	 * image :-) 
+	 */
 	uint8_t *rdata; /*!< RDATA array (All RRs). */
 	/*! \brief Beginnings of RRs - first one does not contain 0, last
 	 *         last one holds total length of all RRs together
@@ -105,7 +110,7 @@ knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
  * \retval KNOT_EINVAL on wrong arguments.
  * \retval KNOT_EOK on success.
  */
-int knot_rrset_add_rdata(knot_rrset_t *rrset, uint8_t *rdata,
+int knot_rrset_add_rdata(knot_rrset_t *rrset, const uint8_t *rdata,
                          uint16_t size);
 
 /*!
@@ -119,7 +124,7 @@ int knot_rrset_add_rdata(knot_rrset_t *rrset, uint8_t *rdata,
  * \return Pointer to memory to be written to.
  * \retval NULL if arguments are invalid
  */
-uint8_t* knot_rrset_create_rdata(knot_rrset_t *rrset, uint16_t size);
+uint8_t* knot_rrset_create_rdata(knot_rrset_t *rrset, const uint16_t size);
 
 /*!
  * \brief Returns size of an RR RDATA on a given position.
