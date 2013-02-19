@@ -333,6 +333,7 @@ static int knot_packet_realloc_rrsets(const knot_rrset_t ***rrsets,
 		new_max_count * sizeof(knot_rrset_t *));
 	CHECK_ALLOC_LOG(new_rrsets, KNOT_ENOMEM);
 
+	memset(new_rrsets, 0, new_max_count * sizeof(knot_rrset_t *));
 	memcpy(new_rrsets, *rrsets, (*max_count) * sizeof(knot_rrset_t *));
 
 	*rrsets = new_rrsets;
