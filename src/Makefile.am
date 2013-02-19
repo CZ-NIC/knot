@@ -231,7 +231,7 @@ libknotd_la_SOURCES =				\
 	knot/server/server.h
 
 zscanner/scanner.c: zscanner/scanner.rl zscanner/scanner_body.rl
-	$(RAGEL)-s -o zscanner/scanner.c zscanner/scanner.rl
+	$(RAGEL) -s -o zscanner/scanner.c zscanner/scanner.rl
 
 unittests_zscanner_SOURCES =			\
 	zscanner/test/zscanner_test.c		\
