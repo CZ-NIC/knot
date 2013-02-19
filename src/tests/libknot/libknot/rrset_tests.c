@@ -1168,7 +1168,7 @@ static int test_rrset_rdata_equal()
 	return 0;
 }
 
-static int test_rrset_next_dname_pointer()
+static int test_rrset_next_dname()
 {
 	/* Same test as in above, but we'll use multiple RRs within one SET. */
 	knot_rrset_t *rrset = &test_rrset_array[TEST_RRSET_MINFO_MULTIPLE].rrset;
@@ -1179,7 +1179,7 @@ static int test_rrset_next_dname_pointer()
 	extracted_dnames[3] = test_dnames[3];
 	knot_dname_t **dname = NULL;
 	int i = 0;
-	while ((dname = knot_rrset_get_next_dname_pointer(rrset, dname))) {
+	while ((dname = knot_rrset_get_next_dname(rrset, dname))) {
 		if (knot_dname_compare_non_canon(extracted_dnames[i], *dname)) {
 			diag("Got wrong DNAME from RDATA. on index %d\n", i);
 			diag("DNAME should be %s, but was %s (%p - %p)\n",
@@ -1199,12 +1199,12 @@ static int test_rrset_next_dname_pointer()
 	/* Now try NS. */
 	rrset = &test_rrset_array[TEST_RRSET_NS_GT].rrset;
 	dname = NULL;
-	dname = knot_rrset_get_next_dname_pointer(rrset, dname);
+	dname = knot_rrset_get_next_dname(rrset, dname);
 	if (knot_dname_compare_non_canon(*dname, test_dnames[TEST_DNAME_GENERIC])) {
 		diag("Got wrong DNAME from NS RDATA. on index %d\n", i);
 		return 0;
 	}
-	dname = knot_rrset_get_next_dname_pointer(rrset, dname);
+	dname = knot_rrset_get_next_dname(rrset, dname);
 	if (dname != NULL) {
 		diag("Got DNAME from RRSet even though all had been extracted previously. (NS)\n");
 		return 0;
@@ -1212,12 +1212,12 @@ static int test_rrset_next_dname_pointer()
 	/* Now try MX. */
         rrset = &test_rrset_array[TEST_RRSET_MX_BIN_GT].rrset;
         dname = NULL;
-        dname = knot_rrset_get_next_dname_pointer(rrset, dname);
+        dname = knot_rrset_get_next_dname(rrset, dname);
         if (knot_dname_compare_non_canon(*dname, test_dnames[2])) {
             diag("Got wrong DNAME from NS RDATA. on index %d\n", i);
             return 0;
         }
-        dname = knot_rrset_get_next_dname_pointer(rrset, dname);
+        dname = knot_rrset_get_next_dname(rrset, dname);
         if (dname != NULL) {
             diag("Got DNAME from RRSet even though all had been extracted previously. (MX)\n");
             return 0;
@@ -1228,23 +1228,33 @@ static int test_rrset_next_dname_pointer()
 	                     &rrset, 1);
 	dname = NULL;
 	i = 4;
-	while ((dname = knot_rrset_get_next_dname_pointer(rrset, dname))) {
+	while ((dname = knot_rrset_get_next_dname(rrset, dname))) {
 		knot_dname_free(dname);
 		memcpy(dname, &test_dnames[i], sizeof(knot_dname_t *));
 		i++;
 	}
 	
-	knot_dname_t *dname_read = NULL;
+	if (i != 8) {
+		diag("Not all DNAMEs were traversed (%d).\n", i);
+		return 0;
+	}
+	
+	knot_dname_t **dname_read = NULL;
 	i = 4;
 	while ((dname_read = knot_rrset_get_next_dname(rrset,
 	                                               dname_read))) {
-		if (dname_read != test_dnames[i]) {
+		if (*dname_read != test_dnames[i]) {
 			diag("Rewriting of DNAMEs in RDATA was "
 			     "not successful.\n");
 			knot_rrset_deep_free(&rrset, 1, 1);
 			return 0;
 		}
 		i++;
+	}
+	
+	if (i != 8) {
+		diag("Not all DNAMEs were traversed (%d).\n", i);
+		return 0;
 	}
 	
 	knot_rrset_deep_free(&rrset, 1, 1);
@@ -1324,8 +1334,8 @@ static int knot_rrset_tests_run(int argc, char *argv[])
 	ok(res, "rrset: merge no dupl");
 	res_final *= res;
 	
-	res = test_rrset_next_dname_pointer();
-	ok(res, "rrset: next dname pointer");
+	res = test_rrset_next_dname();
+	ok(res, "rrset: next dname");
 	res_final *= res;
 	
 	return res_final;
