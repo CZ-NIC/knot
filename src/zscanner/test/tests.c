@@ -14,6 +14,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+// strptime under Linux
+#define _XOPEN_SOURCE
+
 #include "zscanner/test/tests.h"
 
 #include <inttypes.h>			// PRIu64
