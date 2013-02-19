@@ -25,7 +25,7 @@
 #define RRL_CLSBLK_MAXLEN (4 + 8 + 1 + 256)
 /* CIDR block prefix lengths for v4/v6 */
 #define RRL_V4_PREFIX ((uint32_t)0xffffff00)         /* /24 */
-#define RRL_V6_PREFIX ((uint32_t)0xffffffffffffff00) /* /56 */
+#define RRL_V6_PREFIX ((uint64_t)0xffffffffffffff00) /* /56 */
 /* Defaults */
 #define RRL_DEFAULT_RATE 100
 #define RRL_CAPACITY 8 /* N seconds. */
