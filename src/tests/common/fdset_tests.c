@@ -81,9 +81,9 @@ void* thr_action(void *arg)
 	tv.tv_usec = 100 * 1000; // 100ms
 	select(0, 0, 0, 0, &tv);
 
-	/* Write pattern. */
+	/* Write pattern (if removes compile warning). */
 	char pattern = WRITE_PATTERN;
-	(void)write(*fd, &pattern, WRITE_PATTERN_LEN);
+	if (write(*fd, &pattern, WRITE_PATTERN_LEN));
 
 	return NULL;
 }
