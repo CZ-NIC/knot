@@ -892,7 +892,7 @@ dbg_rrset_exec_detail(
 	knot_rrset_dump(rrset);
 );
 
-	int ret = knot_rrset_to_wire_aux(rrset, &pos, max_size, comp_data);
+	int ret = knot_rrset_to_wire_aux(rrset, &pos, max_size, NULL);//comp_data);
 	
 	assert(ret != 0);
 
