@@ -14,13 +14,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "common/getline_wrap.h"
-#include "config.h"		// HAVE_
-
 // FreeBSD POSIX2008 getline
 #ifndef _WITH_GETLINE
  #define _WITH_GETLINE
 #endif
+
+#include "common/getline_wrap.h"
+#include "config.h"		// HAVE_
 
 #include <stdio.h>		// getline or fgetln
 #include <stdlib.h>		// free
