@@ -589,7 +589,7 @@ int cmd_ttl(const char* lp, nsupdate_params_t *params)
 	uint32_t ttl = 0;
 
 	if (params_parse_num(lp, &ttl) != KNOT_EOK) {
-		return KNOT_EPARSEFAILT;
+		return KNOT_EPARSEFAIL;
 	}
 
 	nsupdate_set_ttl(params, ttl);	
