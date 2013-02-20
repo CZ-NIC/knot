@@ -342,15 +342,7 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 			*pos += ret;
 			rdlength += ret;
 			comp->compr->wire_pos += ret;
-			// TODO: compress domain name ??? for LS
-			
-			/* [code-review] What about this TODO? The 
-			 * knot_response_compress_dname() should copy the
-			 * compressed name into the buffer. Or am I missing
-			 * something?
-			 */
-			
-			/* [code-review] 'offset' is not adjusted. */
+			offset += sizeof(knot_dname_t *);
 		} else if (descriptor_item_is_dname(item)) {
 			assert(comp == NULL);
 			knot_dname_t *dname;
@@ -893,7 +885,7 @@ dbg_rrset_exec_detail(
 	knot_rrset_dump(rrset);
 );
 
-	int ret = knot_rrset_to_wire_aux(rrset, &pos, max_size, NULL);//comp_data);
+	int ret = knot_rrset_to_wire_aux(rrset, &pos, max_size, comp_data);
 	
 	assert(ret != 0);
 
