@@ -25,6 +25,7 @@
 #include <fcntl.h>
 #include <time.h>
 #include <unistd.h>
+#include <inttypes.h>
 
 #include "common/crc.h"
 #include "libknot/common.h"
@@ -43,12 +44,13 @@
  * \retval 1 when x > y.
  * \retval -1 when x < y.
  */
-static int timet_cmp(time_t x, time_t y)
+/*static int timet_cmp(time_t x, time_t y)
 {
 	if (x > y) return 1;
 	if (x < y) return -1;
 	return 0;
 }
+*/
 
 /* ZONE LOADING FROM FILE USING RAGEL PARSER */
 
@@ -215,11 +217,11 @@ static void process_error(const scanner_t *s)
 {
 	err_count++;
 	if (s->stop == true) {
-		log_zone_error("FATAL ERROR=%s on line=%llu\n", knot_strerror(s->error_code),
-		       s->line_counter);
+		log_zone_error("FATAL ERROR=%s on line=%"PRIu64"\n",
+		               knot_strerror(s->error_code), s->line_counter);
 	} else {
-		log_zone_error("ERROR=%s on line=%llu\n", knot_strerror(s->error_code),
-		       s->line_counter);
+		log_zone_error("ERROR=%s on line=%"PRIu64"\n",
+		               knot_strerror(s->error_code), s->line_counter);
 	}
 	fflush(stdout);
 }
@@ -701,8 +703,8 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	}
 	
 	if (loader->file_loader->scanner->error_counter > 0) {
-		log_zone_error("Zone could not be loaded due to %llu errors "
-		               "encountered.\n",
+		log_zone_error("Zone could not be loaded due to %"PRIu64" errors"
+		               " encountered.\n",
 		               loader->file_loader->scanner->error_counter);
 		rrset_list_delete(&c->node_rrsigs);
 		knot_zone_t *zone_to_free = c->current_zone->zone;
