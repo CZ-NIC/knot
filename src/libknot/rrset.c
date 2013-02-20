@@ -1149,6 +1149,9 @@ int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
 		return KNOT_EINVAL;
 	}
 	
+	dbg_rrset_detail("rr: deep_copy: Copying RRs of type %d\n",
+	                 from->type);
+	
 	*to = xmalloc(sizeof(knot_rrset_t));
 
 	(*to)->owner = knot_dname_deep_copy(from->owner);
