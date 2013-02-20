@@ -95,7 +95,7 @@ void knot_rrset_rdata_dump(const knot_rrset_t *rrset, size_t rdata_pos)
 	size_t offset = 0;
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
 		int item = desc->block_types[i];
-		uint8_t *rdata = rrset_rdata_pointer(rrset, rdata_pos);
+		const uint8_t *rdata = rrset_rdata_pointer(rrset, rdata_pos);
 		if (descriptor_item_is_dname(item)) {
 			knot_dname_t *dname;
 			memcpy(&dname, rdata + offset, sizeof(knot_dname_t *));
@@ -883,8 +883,9 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
 		return KNOT_EOK;
 	}
 	
-	compression_param_t *comp_data = (compression_param_t *)data;
+	assert(rrset->rdata_count > 0);
 	
+	compression_param_t *comp_data = (compression_param_t *)data;
 	uint8_t *pos = wire;
 	
 dbg_rrset_exec_detail(
@@ -2095,7 +2096,6 @@ uint8_t *knot_rrset_rdata_prealloc(const knot_rrset_t *rrset,
 	return ret;
 }
 
-
 void knot_rrset_dump(const knot_rrset_t *rrset)
 {
 	if (rrset == NULL) {
@@ -2555,7 +2555,9 @@ static int knot_rrset_remove_rdata_pos(knot_rrset_t *rrset, size_t pos)
 	if (new_size == 0) {
 		assert(rrset->rdata_count == 1);
 		free(rrset->rdata);
+		rrset->rdata = NULL;
 		free(rrset->rdata_indices);
+		rrset->rdata = NULL;
 	} else {
 		rrset->rdata = xrealloc(rrset->rdata, new_size);
 		/*
@@ -2711,11 +2713,11 @@ int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
 	knot_rrset_t *return_rr = NULL;
 	int ret = knot_rrset_shallow_copy(what, &return_rr);
 	if (ret != KNOT_EOK) {
-		dbg_xfrin("xfr: remove_rdata: Could not copy RRSet (%s).\n",
+		dbg_rrset(": remove_rr_using_rrset: Could not copy RRSet (%s).\n",
 		          knot_strerror(ret));
 		return ret;
 	}
-	/* Reset RDATA. */
+	/* Reset RDATA of returned RRSet. */
 	knot_rrset_rdata_reset(return_rr);
 
 	for (uint16_t i = 0; i < what->rdata_count; ++i) {
@@ -2743,9 +2745,13 @@ int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
 				          knot_strerror(ret));
 				return ret;
 			}
+			dbg_rrset_detail("rrset: remove_rr_using_rrset: "
+			                 "Successfuly removed and returned this RR:\n");
+			knot_rrset_rdata_dump(return_rr, return_rr->rdata_count - 1);
 		} else if (ret != KNOT_ENOENT) {
 			/* NOENT is OK, but other errors are not. */
-			dbg_xfrin("xfr: RRSet removal failed (%s).\n",
+			dbg_rrset("rrset: remove_using_rrset: "
+			          "RRSet removal failed (%s).\n",
 			          knot_strerror(ret));
 			knot_rrset_deep_free(&return_rr, 0, 0);
 			return ret;

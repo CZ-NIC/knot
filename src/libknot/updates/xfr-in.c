@@ -2332,11 +2332,9 @@ dbg_xfrin_exec_detail(
 
 void xfrin_cleanup_successful_update(knot_changes_t **changes)
 {
-
 	for (int i = 0; i < (*changes)->old_rrsets_count; ++i) {
 		dbg_xfrin_detail("Deleting old RRSet: %p\n",
 		                 (*changes)->old_rrsets[i]);
-		knot_rrset_dump((*changes)->old_rrsets[i]);
 		knot_rrset_free(&(*changes)->old_rrsets[i]);
 	}
 
