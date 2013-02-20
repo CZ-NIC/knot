@@ -27,6 +27,7 @@
 #include "common/skip-list.h"
 #include "common/base32hex.h"
 
+#ifdef GRR
 /*!< \todo #1683 Find all maximum lengths to be used in strcnat. */
 
 enum uint_max_length {
@@ -951,27 +952,6 @@ int rdata_dump_text(const knot_rdata_t *rdata, uint16_t type, FILE *f,
 	return KNOT_EOK;
 }
 
-void dump_rrset_header(const knot_rrset_t *rrset, FILE *f)
-{
-	char buff[32];
-
-	char *name = knot_dname_to_str(rrset->owner);
-	fprintf(f, "%-20s ",  name);
-	free(name);
-
-	fprintf(f, "%-5u ", rrset->ttl);
-
-	if (knot_rrclass_to_string(rrset->rclass, buff, sizeof(buff)) < 0) {
-		return;
-	}
-	fprintf(f, "%-2s ", buff);
-
-	if (knot_rrtype_to_string(rrset->type, buff, sizeof(buff)) < 0) {
-		return;
-	}
-	fprintf(f, "%-5s ",  buff);
-}
-
 int rrsig_set_dump_text(knot_rrset_t *rrsig, FILE *f)
 {
 	dump_rrset_header(rrsig, f);
@@ -994,13 +974,34 @@ int rrsig_set_dump_text(knot_rrset_t *rrsig, FILE *f)
 
 	return KNOT_EOK;
 }
+#endif
 
+void dump_rrset_header(const knot_rrset_t *rrset, FILE *f)
+{
+	char buff[32];
+
+	char *name = knot_dname_to_str(rrset->owner);
+	fprintf(f, "%-20s ",  name);
+	free(name);
+
+	fprintf(f, "%-5u ", rrset->ttl);
+
+	if (knot_rrclass_to_string(rrset->rclass, buff, sizeof(buff)) < 0) {
+		return;
+	}
+	fprintf(f, "%-2s ", buff);
+
+	if (knot_rrtype_to_string(rrset->type, buff, sizeof(buff)) < 0) {
+		return;
+	}
+	fprintf(f, "%-5s ",  buff);
+}
 
 int rrset_dump_text(const knot_rrset_t *rrset, FILE *f)
 {
 	if (rrset->rdata != NULL) { // No sense in dumping empty RR
 		dump_rrset_header(rrset, f);
-
+/*
 		knot_rdata_t *tmp = rrset->rdata;
 
 		while (tmp->next != rrset->rdata) {
@@ -1013,13 +1014,14 @@ int rrset_dump_text(const knot_rrset_t *rrset, FILE *f)
 		}
 
 		rdata_dump_text(tmp, rrset->type, f, rrset);
+*/
 	}
-
+/*
 	knot_rrset_t *rrsig_set = rrset->rrsigs;
 	if (rrsig_set != NULL) {
 		rrsig_set_dump_text(rrsig_set, f);
 	}
-
+*/
 	return KNOT_EOK;
 }
 
@@ -1067,8 +1069,7 @@ void node_dump_text(knot_node_t *node, void *data)
 		return;
 	}
 
-	const knot_rrset_t **rrsets =
-		knot_node_rrsets(node);
+	const knot_rrset_t **rrsets = knot_node_rrsets(node);
 
 	for (int i = 0; i < node->rrset_count; i++) {
 		rrset_dump_text(rrsets[i], f);
