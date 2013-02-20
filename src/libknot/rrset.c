@@ -1963,6 +1963,10 @@ knot_dname_t **knot_rrset_get_next_rr_dname(const knot_rrset_t *rrset,
 		 * Return DNAME from normal RR, if any.
 		 * Find DNAME in blocks. No need to check remainder. TODO: NAPTR.
 		 */
+		if (prev_dname) {
+			/* Nothing left to return. */
+			return NULL;
+		}
 		size_t offset = 0;
 		const rdata_descriptor_t *desc =
 			get_rdata_descriptor(rrset->type);
