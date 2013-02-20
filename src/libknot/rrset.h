@@ -486,9 +486,6 @@ const knot_dname_t *knot_rrset_rdata_srv_name(const knot_rrset_t *rrset,
 const knot_dname_t *knot_rrset_rdata_name(const knot_rrset_t *rrset,
                                           size_t rdata_pos);
 
-uint8_t *knot_rrset_rdata_prealloc(const knot_rrset_t *rrset,
-                                   size_t *size);
-
 void knot_rrset_dump(const knot_rrset_t *rrset);
 
 //TODO test

@@ -789,7 +789,6 @@ const knot_rrset_t *knot_rrset_rrsigs(const knot_rrset_t *rrset)
 knot_rrset_t *knot_rrset_get_rrsigs(knot_rrset_t *rrset)
 {
 	if (rrset == NULL) {
-		assert(0);	/* [code-review] This should not be here. */
 		return NULL;
 	} else {
 		return rrset->rrsigs;
@@ -1008,7 +1007,6 @@ dbg_rrset_exec_detail(
 			parsed += remainder_size;
 		} else {
 			assert(rrset->type = KNOT_RRTYPE_NAPTR);
-			assert(0);
 			/* Read fixed part - 2 shorts. */
 			const size_t naptr_fixed_part_size = 4;
 			int ret = knot_rrset_rdata_store_binary(rdata_buffer,
@@ -1954,7 +1952,7 @@ knot_dname_t **knot_rrset_get_next_rr_dname(const knot_rrset_t *rrset,
 	} else {
 		/*
 		 * Return DNAME from normal RR, if any.
-		 * Find DNAME in blocks. No need to check remainder. TODO: NAPTR.
+		 * Find DNAME in blocks. No need to check remainder.
 		 */
 		if (prev_dname) {
 			/* Nothing left to return. */
@@ -1969,6 +1967,9 @@ knot_dname_t **knot_rrset_get_next_rr_dname(const knot_rrset_t *rrset,
 			} else if (descriptor_item_is_fixed(desc->block_types[i])) {
 				offset += desc->block_types[i];
 			} else if (!descriptor_item_is_remainder(desc->block_types[i])) {
+				offset +=
+					rrset_rdata_naptr_bin_chunk_size(rrset,
+				                                         rr_pos);
 				assert(rrset->type == KNOT_RRTYPE_NAPTR);
 				return (knot_dname_t **)(rdata + offset);
 			}
@@ -2033,59 +2034,15 @@ knot_dname_t **knot_rrset_get_next_dname(const knot_rrset_t *rrset,
 				offset += desc->block_types[i];
 			} else if (!descriptor_item_is_remainder(desc->block_types[i])) {
 				assert(rrset->type == KNOT_RRTYPE_NAPTR);
+				offset +=
+					rrset_rdata_naptr_bin_chunk_size(rrset,
+				                                         pos);
 				return (knot_dname_t **)(rdata + offset);
 			}
 		}
 	}
 
 	return NULL;
-}
-
-uint8_t *knot_rrset_rdata_prealloc(const knot_rrset_t *rrset,
-                                   size_t *rdata_size)
-{
-	/*
-	 * Length of data can be sometimes guessed
-	 * easily. Well, for some types anyway.
-	 */
-	const rdata_descriptor_t *desc = get_rdata_descriptor(rrset->type);
-	assert(desc);
-	*rdata_size = 0;
-	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
-		int item = desc->block_types[i];
-		if (descriptor_item_is_fixed(item)) {
-			*rdata_size += item;
-		} else if (descriptor_item_is_dname(item)) {
-			*rdata_size += sizeof(knot_dname_t *);
-		} else if (descriptor_item_is_remainder(item)) {
-			//TODO
-			switch(rrset->type) {
-				case KNOT_RRTYPE_DS:
-					*rdata_size += 64;
-				break;
-				case KNOT_RRTYPE_RRSIG:
-					*rdata_size += 256;
-				break;
-				case KNOT_RRTYPE_DNSKEY:
-					*rdata_size += 1024;
-				break;
-				default:
-					*rdata_size += 512;
-			} //switch
-		} else {
-			assert(0);
-		}
-	}
-	
-	uint8_t *ret = malloc(*rdata_size);
-	if (ret == NULL) {
-		ERR_ALLOC_FAILED;
-		*rdata_size = 0;
-		return NULL;
-	}
-	/* TODO do properly. */
-	
-	return ret;
 }
 
 void knot_rrset_dump(const knot_rrset_t *rrset)
@@ -2153,9 +2110,14 @@ static size_t rrset_binary_size_one(const knot_rrset_t *rrset,
 			size += rrset_rdata_item_size(rrset, rdata_pos) -
 			        offset;
 		} else {
-			fprintf(stderr, "NAPTR, failing miserably\n");
 			assert(rrset->type == KNOT_RRTYPE_NAPTR);
-			assert(0);
+			size_t naptr_chunk_size =
+				rrset_rdata_naptr_bin_chunk_size(rrset, rdata_pos);
+			size += naptr_chunk_size;
+			offset += naptr_chunk_size;
+			const knot_dname_t *dname =
+				*((const knot_dname_t **)(rdata + offset));
+			size += knot_dname_size(dname) + 1; // extra 1 - we need a size
 		}
 	}
 	
@@ -2211,14 +2173,17 @@ static void rrset_serialize_rr(const knot_rrset_t *rrset, size_t rdata_pos,
 			offset += item;
 			*size += item;
 		} else if (descriptor_item_is_remainder(item)) {
-			uint32_t remainder_size =
+			uint16_t remainder_size =
 				rrset_rdata_item_size(rrset,
 			                              rdata_pos) - offset;
 			memcpy(stream + *size, rdata + offset, remainder_size);
 			*size += remainder_size;
 		} else {
-			fprintf(stderr, "NAPTR, failing miserably\n");
 			assert(rrset->type == KNOT_RRTYPE_NAPTR);
+			/* Copy static chunk. */
+			uint16_t naptr_chunk_size =
+				rrset_rdata_naptr_bin_chunk_size(rrset, rdata_pos);
+			memcpy(stream + *size, rdata + offset, naptr_chunk_size);
 			assert(0);
 		}
 	}
