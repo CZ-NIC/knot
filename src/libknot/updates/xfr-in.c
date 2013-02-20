@@ -2397,29 +2397,6 @@ static void xfrin_switch_nodes_in_node(knot_node_t *node, void *data)
 
 /*----------------------------------------------------------------------------*/
 
-static void xfrin_switch_node_in_dname_table(knot_dname_t *dname, void *data)
-{
-	UNUSED(data);
-
-dbg_xfrin_exec_detail(
-	char *name = knot_dname_to_str(dname);
-	dbg_xfrin_detail("Switching node in dname %s (%p)\n", name, dname->node);
-	free(name);
-);
-	/* dname is not checked here (for NULL value), which resulted in crash
-	 * on howl recently. However, dname should not be NULL here at all, 
-	 * it is a sign of some other error.
-	 */
-
-	if (dname->node == NULL) {
-		return;
-	}
-
-	knot_dname_update_node(dname);
-}
-
-/*----------------------------------------------------------------------------*/
-
 static int xfrin_switch_nodes(knot_zone_contents_t *contents_copy)
 {
 	assert(contents_copy != NULL);
@@ -2431,19 +2408,6 @@ static int xfrin_switch_nodes(knot_zone_contents_t *contents_copy)
 
 	knot_zone_contents_nsec3_apply_inorder(contents_copy,
 	                                      xfrin_switch_nodes_in_node, NULL);
-
-	// Then traverse the hash table and change each pointer in hash table
-	// item from old node to new node.
-	//TODO change to trie
-//	int ret = ck_apply(knot_zone_contents_get_hash_table(contents_copy),
-//	                   xfrin_switch_node_in_hash_table, NULL);
-//	assert(ret == 0);
-
-//	// Traverse also the dname table and change the node pointers in dnames
-//	knot_zone_contents_dname_table_apply(contents_copy,
-//	                                     xfrin_switch_node_in_dname_table,
-//	                                     NULL);
-
 	return KNOT_EOK;
 }
 
@@ -2989,6 +2953,7 @@ dbg_xfrin_exec_detail(
 			return KNOT_ENONODE;
 		}
 		free(zone_node);
+		changes->old_nodes[i] = NULL;
 	}
 
 	// remove NSEC3 nodes
