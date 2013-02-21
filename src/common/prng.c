@@ -21,7 +21,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <config.h>
-#ifdef HAVE_MEMALIGN
+#ifdef HAVE_POSIX_MEMALIGN
 #include <stdlib.h>
 #endif
 
@@ -84,18 +84,18 @@ double tls_rand()
 
 		/* Initialize PRNG state. */
 #ifdef HAVE_MEMALIGN
-		s = memalign(16, sizeof(dsfmt_t));
-#else
-		s = malloc(sizeof(dsfmt_t));
-#endif
-		if (s == NULL) {
+		if (posix_memalign((void **)&s, 16, sizeof(dsfmt_t)) != 0) {
 			fprintf(stderr, "error: PRNG: not enough memory\n");
 			return .0;
-		} else {
-			dsfmt_init_gen_rand(s, seed);
-			(void)pthread_setspecific(tls_prng_key, s);
 		}
-		
+#else
+		if ((s = malloc(sizeof(dsfmt_t))) == NULL) {
+			fprintf(stderr, "error: PRNG: not enough memory\n");
+			return .0;
+		}
+#endif
+		dsfmt_init_gen_rand(s, seed);
+		(void)pthread_setspecific(tls_prng_key, s);
 	}
 
 	return dsfmt_genrand_close_open(s);
