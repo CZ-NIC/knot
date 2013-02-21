@@ -32,10 +32,7 @@
 #include "libknot/packet/packet.h"
 
 typedef struct rrl_item {
-	union {
-		uint32_t v4;
-		uint64_t v6;
-	} ip;                /* Query prefix */
+	uint64_t pref;       /* Prefix associated. */
 	uint16_t ntok;       /* Tokens available */
 	uint16_t flags;      /* Flags */
 	uint32_t time;       /* Timestamp */

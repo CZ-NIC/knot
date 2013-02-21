@@ -29,6 +29,7 @@
 /* Defaults */
 #define RRL_DEFAULT_RATE 100
 #define RRL_CAPACITY 8 /* N seconds. */
+#define RRL_SSTART 4 /* 1/Nth of the rate for slow start */
 
 /* Classification */
 enum {
@@ -36,7 +37,8 @@ enum {
 	CLS_NORMAL   = 1 << 0, /* Normal response. */
 	CLS_ERROR    = 1 << 1, /* Error response. */
 	CLS_NXDOMAIN = 1 << 2, /* NXDOMAIN (special case of error). */
-	CLS_EMPTY    = 1 << 3  /* Empty response. */
+	CLS_EMPTY    = 1 << 3, /* Empty response. */
+	CLS_SSTART   = 1 << 4  /* Bucket in slow-start after collision. */
 };
 
 static uint8_t rrl_clsid(knot_packet_t *p) {
@@ -53,40 +55,40 @@ static int rrl_clsname(char *dst, uint8_t cls, knot_packet_t *p)
 static int rrl_classify(char *dst, size_t maxlen,
                         sockaddr_t *a, knot_packet_t *p, uint32_t seed)
 {
-	/* Address (in network byteorder, adjust masks). */
-	uint64_t nb = 0;
-	int blklen = 0;
-	if (a->family == AF_INET6) { /* Take the /56 prefix. */
-		nb = *((uint64_t*)&a->addr6.sin6_addr) & RRL_V6_PREFIX;
-		blklen = 7 * sizeof(uint8_t);
-	} else {                     /* Take the /24 prefix */
-		nb = (uint32_t)a->addr4.sin_addr.s_addr & RRL_V4_PREFIX;
-		blklen = 3 * sizeof(uint8_t);
-	}
-	memcpy(dst, (void*)&nb, blklen);
-	
 	/* Class */
+	int blklen = 0;
 	uint8_t cls = rrl_clsid(p);
-	*(dst + blklen) = cls;
+	*dst = cls;
 	blklen += sizeof(cls);
 	
+	/* Address (in network byteorder, adjust masks). */
+	uint64_t nb = 0;
+	if (a->family == AF_INET6) { /* Take the /56 prefix. */
+		nb = *((uint64_t*)&a->addr6.sin6_addr) & RRL_V6_PREFIX;
+	} else {                     /* Take the /24 prefix */
+		nb = (uint32_t)a->addr4.sin_addr.s_addr & RRL_V4_PREFIX;
+	}
+	memcpy(dst + blklen, (void*)&nb, sizeof(nb));
+	blklen += sizeof(nb);
+
 	/* Name */
-	int nl = rrl_clsname(dst + blklen, cls, p);
-	if (nl < 0) {
+	int len = rrl_clsname(dst + blklen, cls, p);
+	if (len < 0) {
 		return KNOT_ERROR;
 	} else {
-		blklen += nl;
+		blklen += len;
 	}
 	
 	/* Seed. */
-	if (memcpy(dst + blklen, (void*)&seed, sizeof(seed)) == 0) {
-		blklen += nl;
+	len = sizeof(seed);
+	if (memcpy(dst + blklen, (void*)&seed, len) == 0) {
+		blklen += len;
 	}
 	
 	return blklen;
 }
 
-static rrl_item_t* rrl_hash(rrl_table_t *t, sockaddr_t *a, knot_packet_t *p)
+static rrl_item_t* rrl_hash(rrl_table_t *t, sockaddr_t *a, knot_packet_t *p, uint32_t stamp)
 {
 	char buf[RRL_CLSBLK_MAXLEN];
 	int len = rrl_classify(buf, sizeof(buf), a, p, t->seed);
@@ -95,8 +97,26 @@ static rrl_item_t* rrl_hash(rrl_table_t *t, sockaddr_t *a, knot_packet_t *p)
 	}
 	
 	uint32_t id = hash(buf, len) % t->size;
-	dbg_rrl("%s: classified pkt as '0x%04x'\n", __func__, id);
-	return t->arr + id;
+	rrl_item_t *b = t->arr + id;
+	dbg_rrl("%s: classified pkt as '0x%x' bucket=%p\n", __func__, id, b);
+
+	/* Inspect bucket state. */
+	uint64_t nprefix = *((uint64_t*)(buf + sizeof(uint8_t)));
+	if (b->flags == CLS_NULL) {
+		b->flags = *buf; /* Stored as a first byte in clsblock. */
+		b->ntok = t->rate;
+		b->time = stamp;
+		b->pref = nprefix; /* Invalidate */
+	}
+	/* Check for collisions. */
+	if (b->pref != nprefix) {
+		dbg_rrl("%s: collising in bucket '0x%4x'\n", __func__, id);
+		b->pref= nprefix;
+		b->time = stamp; /* Reset time */
+		b->ntok = t->rate / RRL_SSTART; /*! Slow start, better to track rep. collisions */
+	}
+	
+	return b;
 }
 
 rrl_table_t *rrl_create(size_t size)
@@ -132,20 +152,11 @@ int rrl_query(rrl_table_t *rrl, sockaddr_t* src, knot_packet_t *resp)
 	
 	/* Calculate hash and fetch */
 	int ret = KNOT_EOK;
-	rrl_item_t *b = rrl_hash(rrl, src, resp);
+	uint32_t now = time(NULL);
+	rrl_item_t *b = rrl_hash(rrl, src, resp, now);
 	if (!b) {
 		dbg_rrl("%s: failed to compute bucket from packet\n", __func__);
 		return KNOT_ERROR;
-	}
-	
-	/* Initialize. */
-	uint32_t now = time(NULL);
-	if (b->flags == CLS_NULL) {
-		b->flags = rrl_clsid(resp);
-		b->ntok = rrl->rate;
-		b->time = now;
-		/*! \todo Reuse from rrl_hash() and also store address. */
-		/*! \todo Should check address for collisions. */
 	}
 
 	/* Calculate rate for dT */
@@ -156,7 +167,12 @@ int rrl_query(rrl_table_t *rrl, sockaddr_t* src, knot_packet_t *resp)
 	dbg_rrl("%s: bucket=%p tokens=%hu flags=%x dt=%u\n",
 	        __func__, b, b->ntok, b->flags, dt);
 	if (dt > 0) { /* Window moved. */
-		b->ntok += rrl->rate * dt; /*! \todo Interpolate. */
+		uint32_t dn = rrl->rate * dt; /*! \todo Interpolate. */
+		if (b->flags & CLS_SSTART) { /* Bucket in slow-start. */
+			dn /= RRL_SSTART;
+			b->flags &= ~CLS_SSTART;
+		}
+		b->ntok += dn;
 		if (b->ntok > RRL_CAPACITY * rrl->rate) {
 			b->ntok = RRL_CAPACITY * rrl->rate;
 		}
