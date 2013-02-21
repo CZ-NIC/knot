@@ -51,7 +51,7 @@ AS_IF([test "x$YACC_BISON" != "xbison"],
 AC_PROG_INSTALL
 
 # Check for Ragel
-AC_PATH_PROG(RAGEL, ragel)
+AC_PATH_PROG([RAGEL], [ragel], [echo !UNPROCESSED! ragel])
 
 # Set compiler compatibility flags
 AC_PROG_CPP_WERROR
