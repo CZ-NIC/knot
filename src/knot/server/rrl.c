@@ -24,8 +24,8 @@
 /* Limits */
 #define RRL_CLSBLK_MAXLEN (4 + 8 + 1 + 256)
 /* CIDR block prefix lengths for v4/v6 */
-#define RRL_V4_PREFIX ((uint32_t)0xffffff00)         /* /24 */
-#define RRL_V6_PREFIX ((uint64_t)0xffffffffffffff00) /* /56 */
+#define RRL_V4_PREFIX ((uint32_t)0x00ffffff)         /* /24 */
+#define RRL_V6_PREFIX ((uint64_t)0x00ffffffffffffff) /* /56 */
 /* Defaults */
 #define RRL_DEFAULT_RATE 100
 #define RRL_CAPACITY 8 /* N seconds. */
@@ -53,14 +53,13 @@ static int rrl_clsname(char *dst, uint8_t cls, knot_packet_t *p)
 static int rrl_classify(char *dst, size_t maxlen,
                         sockaddr_t *a, knot_packet_t *p, uint32_t seed)
 {
-	/* Address. */
-	/*! \todo This is wrong, as the addr is in net byteorder. */
+	/* Address (in network byteorder, adjust masks). */
 	uint64_t nb = 0;
 	int blklen = 0;
-	if (a->family == AF_INET6) { /* Take top 56 bits */
+	if (a->family == AF_INET6) { /* Take the /56 prefix. */
 		nb = *((uint64_t*)&a->addr6.sin6_addr) & RRL_V6_PREFIX;
 		blklen = 7 * sizeof(uint8_t);
-	} else {
+	} else {                     /* Take the /24 prefix */
 		nb = (uint32_t)a->addr4.sin_addr.s_addr & RRL_V4_PREFIX;
 		blklen = 3 * sizeof(uint8_t);
 	}

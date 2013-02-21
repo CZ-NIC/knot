@@ -38,7 +38,7 @@ unit_api rrl_tests_api = {
 
 static int rrl_tests_count(int argc, char *argv[])
 {
-	return 4;
+	return 5;
 }
 
 static int rrl_tests_run(int argc, char *argv[])
@@ -51,24 +51,31 @@ static int rrl_tests_run(int argc, char *argv[])
 	uint32_t rate = 10;
 	rrl_setrate(rrl, rate);
 	ok(rate == rrl_rate(rrl), "rrl: setrate");
-	
+
 	/* 3. N unlimited requests. */
 	sockaddr_t addr;
-	sockaddr_set(&addr, AF_INET, "127.0.0.1", 0);
+	sockaddr_t addr6;
+	sockaddr_set(&addr, AF_INET, "1.2.3.4", 0);
+	sockaddr_set(&addr6, AF_INET6, "1122:3344:5566:7788::aabb", 0);
 	knot_packet_t *pkt = knot_packet_new(KNOT_PACKET_PREALLOC_NONE);
 	knot_response_init(pkt);
 	int ret = 0;
 	for (unsigned i = 0; i < rate; ++i) {
-		if (rrl_query(rrl, &addr, pkt) != KNOT_EOK) {
+		if (rrl_query(rrl, &addr, pkt) != KNOT_EOK ||
+		    rrl_query(rrl, &addr6, pkt) != KNOT_EOK) {
 			ret = KNOT_ELIMIT;
 			break;
 		}
 	}
-	ok(ret == 0, "rrl: unlimited requests");
+	ok(ret == 0, "rrl: unlimited IPv4/v6 requests");
 	
-	/* 4 limited request */
+	/* 4. limited request */
 	ret = rrl_query(rrl, &addr, pkt);
-	ok(ret != 0, "rrl: throttled request");
+	ok(ret != 0, "rrl: throttled IPv4 request");
+
+	/* 5. limited IPv6 request */
+	ret = rrl_query(rrl, &addr6, pkt);
+	ok(ret != 0, "rrl: throttled IPv6 request");
 	
 	rrl_destroy(rrl);
 	return 0;
