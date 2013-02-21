@@ -21,7 +21,7 @@
 #include <arpa/inet.h>			// ntohs
 
 #include "common/errcode.h"		// knot_strerror
-#include "util/descriptor.h"		// knot_rrtype_to_string
+#include "common/descriptor_new.h"	// knot_rrtype_to_string
 #include "zscanner/scanner.h"		// scanner_t
 
 #define ERROR_CODE_TO_STRING(code) [code - ZSCANNER_UNCOVERED_STATE] = #code
@@ -123,17 +123,17 @@ void debug_process_record(const scanner_t *s)
 {
 	uint32_t block, block_length, i;
 
-//	char rclass[32];
-//	char rtype[32];
+	char rclass[32];
+	char rtype[32];
 
-//	if (knot_rrclass_to_string(s->r_class, rclass, sizeof(rclass)) > 0 &&
-//	    knot_rrtype_to_string(s->r_type, rtype, sizeof(rtype)) > 0) {
-//		printf("LINE(%03"PRIu64") %s %u %*s ",
-//		       s->line_counter, rclass, s->r_ttl, 5, rtype);
-//	} else {
-//		printf("LINE(%03"PRIu64") %u %u %*u ",
-//		       s->line_counter, s->r_class, s->r_ttl, 5, s->r_type);
-//	}
+	if (knot_rrclass_to_string(s->r_class, rclass, sizeof(rclass)) > 0 &&
+	    knot_rrtype_to_string(s->r_type, rtype, sizeof(rtype)) > 0) {
+		printf("LINE(%03"PRIu64") %s %u %*s ",
+		       s->line_counter, rclass, s->r_ttl, 5, rtype);
+	} else {
+		printf("LINE(%03"PRIu64") %u %u %*u ",
+		       s->line_counter, s->r_class, s->r_ttl, 5, s->r_type);
+	}
 
 	print_wire_dname(s->r_owner, s->r_owner_length);
 
