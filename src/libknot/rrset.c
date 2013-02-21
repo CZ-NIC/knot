@@ -341,7 +341,6 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 			comp->compr->wire_pos += ret;
 			offset += sizeof(knot_dname_t *);
 		} else if (descriptor_item_is_dname(item)) {
-			assert(comp == NULL);
 			knot_dname_t *dname;
 			memcpy(&dname, rdata + offset, sizeof(knot_dname_t *));
 			assert(dname && dname->name);
@@ -2700,7 +2699,8 @@ int knot_rrset_remove_rr_using_rrset_del(knot_rrset_t *from,
 		int ret = knot_rrset_remove_rr(from, what, i);
 		if (ret != KNOT_ENOENT || ret != KNOT_EOK) {
 			/* NOENT is OK, but other errors are not. */
-			dbg_xfrin("xfr: RRSet removal failed (%s).\n",
+			dbg_rrset("rrset: remove_rr_using_rrset: "
+			          "RRSet removal failed (%s).\n",
 			          knot_strerror(ret));
 			return ret;
 		}
