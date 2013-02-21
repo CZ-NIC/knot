@@ -21,7 +21,7 @@
 #include <arpa/inet.h>			// ntohs
 
 #include "common/errcode.h"		// knot_strerror
-#include "util/descriptor.h"		// knot_rrtype_to_string
+#include "common/descriptor_new.h"	// knot_rrtype_to_string
 #include "zscanner/scanner.h"		// scanner_t
 
 #define ERROR_CODE_TO_STRING(code) [code - ZSCANNER_UNCOVERED_STATE] = #code
