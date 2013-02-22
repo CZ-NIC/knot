@@ -564,6 +564,145 @@ static int rrset_find_rr_pos_for_pointer(const knot_rrset_t *rrset,
 	return KNOT_EOK;
 }
 
+static size_t rrset_binary_size_one(const knot_rrset_t *rrset,
+                                      size_t rdata_pos)
+{
+	const rdata_descriptor_t *desc =
+		get_rdata_descriptor(knot_rrset_type(rrset));
+	assert(desc != NULL);
+	
+	size_t offset = 0;
+	size_t size = 0;
+	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
+		int item = desc->block_types[i];
+		uint8_t *rdata = rrset_rdata_pointer(rrset, rdata_pos);
+		if (descriptor_item_is_dname(item)) {
+			knot_dname_t *dname;
+			memcpy(&dname, rdata + offset, sizeof(knot_dname_t *));
+			assert(dname);
+			offset += sizeof(knot_dname_t *);
+			size += knot_dname_size(dname) + 1; // extra 1 - we need a size
+		} else if (descriptor_item_is_fixed(item)) {
+			offset += item;
+			size += item;
+		} else if (descriptor_item_is_remainder(item)) {
+			size += rrset_rdata_item_size(rrset, rdata_pos) -
+			        offset;
+		} else {
+			assert(rrset->type == KNOT_RRTYPE_NAPTR);
+			uint16_t naptr_chunk_size =
+				rrset_rdata_naptr_bin_chunk_size(rrset, rdata_pos);
+			/*
+			 * Regular expressions in NAPTR are TXT's, so they
+			 * can be upto 64k long.
+			 */
+			size += naptr_chunk_size + 2;
+			offset += naptr_chunk_size;
+		}
+	}
+	
+	return size;
+}
+
+static void rrset_serialize_rr(const knot_rrset_t *rrset, size_t rdata_pos,
+                               uint8_t *stream, size_t *size)
+{
+	const rdata_descriptor_t *desc =
+		get_rdata_descriptor(knot_rrset_type(rrset));
+	assert(desc != NULL);
+	
+	size_t offset = 0;
+	*size = 0;
+	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
+		int item = desc->block_types[i];
+		uint8_t *rdata = rrset_rdata_pointer(rrset, rdata_pos);
+		if (descriptor_item_is_dname(item)) {
+			knot_dname_t *dname;
+			memcpy(&dname, rdata + offset, sizeof(knot_dname_t *));
+			assert(dname);
+			memcpy(stream + *size, &dname->size, 1);
+			*size += 1;
+			memcpy(stream + *size, dname->name, dname->size);
+			offset += sizeof(knot_dname_t *);
+			*size += dname->size;
+		} else if (descriptor_item_is_fixed(item)) {
+			memcpy(stream + *size, rdata + offset, item);
+			offset += item;
+			*size += item;
+		} else if (descriptor_item_is_remainder(item)) {
+			uint16_t remainder_size =
+				rrset_rdata_item_size(rrset,
+			                              rdata_pos) - offset;
+			memcpy(stream + *size, rdata + offset, remainder_size);
+			*size += remainder_size;
+		} else {
+			assert(rrset->type == KNOT_RRTYPE_NAPTR);
+			/* Copy static chunk. */
+			uint16_t naptr_chunk_size =
+				rrset_rdata_naptr_bin_chunk_size(rrset, rdata_pos);
+			/* We need a length. */
+			memcpy(stream + *size, &naptr_chunk_size,
+			       sizeof(uint16_t));
+			*size += sizeof(uint16_t);
+			/* Write data. */
+			memcpy(stream + *size, rdata + offset, naptr_chunk_size);
+		}
+	}
+	
+	dbg_rrset_detail("RR nr=%d serialized, size=%d\n", rdata_pos, *size);
+}
+
+static int rrset_deserialize_rr(knot_rrset_t *rrset, size_t rdata_pos,
+                                uint8_t *stream, uint32_t rdata_size,
+                                size_t *read)
+{
+	const rdata_descriptor_t *desc =
+		get_rdata_descriptor(knot_rrset_type(rrset));
+	assert(desc != NULL);
+	
+	size_t stream_offset = 0;
+	size_t rdata_offset = 0;
+	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
+		int item = desc->block_types[i];
+		uint8_t *rdata = rrset_rdata_pointer(rrset, rdata_pos);
+		if (descriptor_item_is_dname(item)) {
+			/* Read dname size. */
+			uint8_t dname_size = 0;
+			memcpy(&dname_size, stream + stream_offset, 1);
+			stream_offset += 1;
+			knot_dname_t *dname =
+				knot_dname_new_from_wire(stream + stream_offset,
+			                                 dname_size, NULL);
+			memcpy(rdata + rdata_offset, &dname,
+			       sizeof(knot_dname_t *));
+			stream_offset += dname_size;
+			rdata_offset += sizeof(knot_dname_t *);
+		} else if (descriptor_item_is_fixed(item)) {
+			memcpy(rdata + rdata_offset, stream + stream_offset, item);
+			rdata_offset += item;
+			stream_offset += item;
+		} else if (descriptor_item_is_remainder(item)) {
+			size_t remainder_size = rdata_size - stream_offset;
+			memcpy(rdata + rdata_offset, stream + stream_offset,
+			       remainder_size);
+			stream_offset += remainder_size;
+		} else {
+			assert(rrset->type == KNOT_RRTYPE_NAPTR);
+			/* Read size. */
+			uint16_t naptr_chunk_size;
+			memcpy(&naptr_chunk_size, stream + stream_offset,
+			       sizeof(uint16_t));
+			stream_offset += sizeof(uint16_t);
+			memcpy(rdata + rdata_offset, stream + stream_offset,
+			       naptr_chunk_size);
+			stream_offset += naptr_chunk_size;
+			rdata_offset += rdata_offset;
+		}
+	}
+	*read = stream_offset;
+	return KNOT_EOK;
+}
+
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
@@ -2039,46 +2178,6 @@ void knot_rrset_dump(const knot_rrset_t *rrset)
 	}
 }
 
-static size_t rrset_binary_size_one(const knot_rrset_t *rrset,
-                                      size_t rdata_pos)
-{
-	const rdata_descriptor_t *desc =
-		get_rdata_descriptor(knot_rrset_type(rrset));
-	assert(desc != NULL);
-	
-	size_t offset = 0;
-	size_t size = 0;
-	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
-		int item = desc->block_types[i];
-		uint8_t *rdata = rrset_rdata_pointer(rrset, rdata_pos);
-		if (descriptor_item_is_dname(item)) {
-			knot_dname_t *dname;
-			memcpy(&dname, rdata + offset, sizeof(knot_dname_t *));
-			assert(dname);
-			offset += sizeof(knot_dname_t *);
-			size += knot_dname_size(dname) + 1; // extra 1 - we need a size
-		} else if (descriptor_item_is_fixed(item)) {
-			offset += item;
-			size += item;
-		} else if (descriptor_item_is_remainder(item)) {
-			size += rrset_rdata_item_size(rrset, rdata_pos) -
-			        offset;
-		} else {
-			assert(rrset->type == KNOT_RRTYPE_NAPTR);
-			uint16_t naptr_chunk_size =
-				rrset_rdata_naptr_bin_chunk_size(rrset, rdata_pos);
-			/*
-			 * Regular expressions in NAPTR are TXT's, so they
-			 * can be upto 64k long.
-			 */
-			size += naptr_chunk_size + 2;
-			offset += naptr_chunk_size;
-		}
-	}
-	
-	return size;
-}
-
 uint64_t rrset_binary_size(const knot_rrset_t *rrset)
 {
 	if (rrset == NULL || rrset->rdata_count == 0) {
@@ -2100,54 +2199,6 @@ uint64_t rrset_binary_size(const knot_rrset_t *rrset)
 	}
 	
 	return size;
-}
-
-static void rrset_serialize_rr(const knot_rrset_t *rrset, size_t rdata_pos,
-                               uint8_t *stream, size_t *size)
-{
-	const rdata_descriptor_t *desc =
-		get_rdata_descriptor(knot_rrset_type(rrset));
-	assert(desc != NULL);
-	
-	size_t offset = 0;
-	*size = 0;
-	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
-		int item = desc->block_types[i];
-		uint8_t *rdata = rrset_rdata_pointer(rrset, rdata_pos);
-		if (descriptor_item_is_dname(item)) {
-			knot_dname_t *dname;
-			memcpy(&dname, rdata + offset, sizeof(knot_dname_t *));
-			assert(dname);
-			memcpy(stream + *size, &dname->size, 1);
-			*size += 1;
-			memcpy(stream + *size, dname->name, dname->size);
-			offset += sizeof(knot_dname_t *);
-			*size += dname->size;
-		} else if (descriptor_item_is_fixed(item)) {
-			memcpy(stream + *size, rdata + offset, item);
-			offset += item;
-			*size += item;
-		} else if (descriptor_item_is_remainder(item)) {
-			uint16_t remainder_size =
-				rrset_rdata_item_size(rrset,
-			                              rdata_pos) - offset;
-			memcpy(stream + *size, rdata + offset, remainder_size);
-			*size += remainder_size;
-		} else {
-			assert(rrset->type == KNOT_RRTYPE_NAPTR);
-			/* Copy static chunk. */
-			uint16_t naptr_chunk_size =
-				rrset_rdata_naptr_bin_chunk_size(rrset, rdata_pos);
-			/* We need a length. */
-			memcpy(stream + *size, &naptr_chunk_size,
-			       sizeof(uint16_t));
-			*size += sizeof(uint16_t);
-			/* Write data. */
-			memcpy(stream + *size, rdata + offset, naptr_chunk_size);
-		}
-	}
-	
-	dbg_rrset_detail("RR nr=%d serialized, size=%d\n", rdata_pos, *size);
 }
 
 int rrset_serialize(const knot_rrset_t *rrset, uint8_t *stream, size_t *size)
@@ -2223,58 +2274,6 @@ int rrset_serialize_alloc(const knot_rrset_t *rrset, uint8_t **stream,
 	}
 	
 	return rrset_serialize(rrset, *stream, size);
-}
-
-
-static int rrset_deserialize_rr(knot_rrset_t *rrset, size_t rdata_pos,
-                                uint8_t *stream, uint32_t rdata_size,
-                                size_t *read)
-{
-	const rdata_descriptor_t *desc =
-		get_rdata_descriptor(knot_rrset_type(rrset));
-	assert(desc != NULL);
-	
-	size_t stream_offset = 0;
-	size_t rdata_offset = 0;
-	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
-		int item = desc->block_types[i];
-		uint8_t *rdata = rrset_rdata_pointer(rrset, rdata_pos);
-		if (descriptor_item_is_dname(item)) {
-			/* Read dname size. */
-			uint8_t dname_size = 0;
-			memcpy(&dname_size, stream + stream_offset, 1);
-			stream_offset += 1;
-			knot_dname_t *dname =
-				knot_dname_new_from_wire(stream + stream_offset,
-			                                 dname_size, NULL);
-			memcpy(rdata + rdata_offset, &dname,
-			       sizeof(knot_dname_t *));
-			stream_offset += dname_size;
-			rdata_offset += sizeof(knot_dname_t *);
-		} else if (descriptor_item_is_fixed(item)) {
-			memcpy(rdata + rdata_offset, stream + stream_offset, item);
-			rdata_offset += item;
-			stream_offset += item;
-		} else if (descriptor_item_is_remainder(item)) {
-			size_t remainder_size = rdata_size - stream_offset;
-			memcpy(rdata + rdata_offset, stream + stream_offset,
-			       remainder_size);
-			stream_offset += remainder_size;
-		} else {
-			assert(rrset->type == KNOT_RRTYPE_NAPTR);
-			/* Read size. */
-			uint16_t naptr_chunk_size;
-			memcpy(&naptr_chunk_size, stream + stream_offset,
-			       sizeof(uint16_t));
-			stream_offset += sizeof(uint16_t);
-			memcpy(rdata + rdata_offset, stream + stream_offset,
-			       naptr_chunk_size);
-			stream_offset += naptr_chunk_size;
-			rdata_offset += rdata_offset;
-		}
-	}
-	*read = stream_offset;
-	return KNOT_EOK;
 }
 
 int rrset_deserialize(uint8_t *stream, size_t *stream_size,
