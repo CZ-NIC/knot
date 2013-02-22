@@ -130,10 +130,9 @@ knot_node_t *knot_node_new(knot_dname_t *owner, knot_node_t *parent,
  * \retval KNOT_EOK on success.
  * \retval KNOT_ERROR if the RRSet could not be inserted.
  */
-int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset,
-                          int merge);
+int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset);
 
-int knot_node_add_rrset_no_dupl(knot_node_t *node, knot_rrset_t *rrset);
+int knot_node_add_rrset_no_merge(knot_node_t *node, knot_rrset_t *rrset);
 
 /*!
  * \brief Returns the RRSet of the given type from the node.

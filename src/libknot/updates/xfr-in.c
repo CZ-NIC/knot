@@ -775,7 +775,7 @@ dbg_xfrin_exec_verb(
 			dbg_xfrin_detail("Created new node for the record.\n");
 
 			// insert the RRSet to the node
-			ret = knot_node_add_rrset_no_dupl(node, rr);
+			ret = knot_node_add_rrset(node, rr);
 			if (ret < 0) {
 				dbg_xfrin("Failed to add RRSet to node (%s)\n",
 				          knot_strerror(ret));
@@ -1383,7 +1383,7 @@ dbg_xfrin_exec_detail(
 	dbg_xfrin_detail("Copied old rrset %p to new %p.\n", old, *rrset);
 	
 	// replace the RRSet in the node copy by the new one
-	ret = knot_node_add_rrset(node, *rrset, 0);
+	ret = knot_node_add_rrset_no_merge(node, *rrset);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to add RRSet copy to node\n");
 		return KNOT_ERROR;
@@ -1758,7 +1758,7 @@ dbg_xfrin_exec_verb(
 				    || knot_rrset_type(rrsets[i])
 				       == KNOT_RRTYPE_NS) {
 					dbg_xfrin_detail("Returning...\n");
-					knot_node_add_rrset(node, rrsets[i], 0);
+					knot_node_add_rrset_no_merge(node, rrsets[i]);
 					rrsets[i] = NULL;
 				}
 			}
@@ -2162,7 +2162,7 @@ dbg_xfrin_exec_detail(
 	knot_rrset_dump(*rrset);
 
 	if (copied) {
-		ret = knot_node_add_rrset(node, *rrset, 0);
+		ret = knot_node_add_rrset_no_merge(node, *rrset);
 
 		if (ret < 0) {
 			dbg_xfrin("Failed to add merged RRSet to the node.\n");
@@ -2254,7 +2254,7 @@ dbg_xfrin_exec_verb(
 		// add the new RRSet to the node
 		// not needed to insert it through the zone_contents() function,
 		// as the owner is already in the dname table
-		ret = knot_node_add_rrset(node, *rrset, 0);
+		ret = knot_node_add_rrset_no_merge(node, *rrset);
 		if (ret != KNOT_EOK) {
 			dbg_xfrin("Failed to add RRSet to node.\n");
 			knot_rrset_free(rrset);

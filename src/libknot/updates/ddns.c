@@ -1152,7 +1152,7 @@ static int knot_ddns_add_rr_new_normal(knot_node_t *node, knot_rrset_t *rr_copy,
 	}
 	
 	/* Add the RRSet to the node. */
-	ret = knot_node_add_rrset(node, rr_copy, 0);
+	ret = knot_node_add_rrset_no_merge(node, rr_copy);
 	if (ret != KNOT_EOK) {
 		dbg_ddns("Failed to add RR to node: %s\n", knot_strerror(ret));
 		return ret;
@@ -1186,7 +1186,7 @@ static int knot_ddns_add_rr_new_rrsig(knot_node_t *node, knot_rrset_t *rr_copy,
 	}
 	
 	/* Add the RRSet to the node. */
-	int ret = knot_node_add_rrset(node, covered_rrset, 0);
+	int ret = knot_node_add_rrset_no_merge(node, covered_rrset);
 	if (ret != KNOT_EOK) {
 		dbg_ddns("Failed to add the RRSet to be covered to the node: %s"
 		         ".\n", knot_strerror(ret));
@@ -1877,7 +1877,7 @@ static int knot_ddns_process_rem_rrsig(knot_node_t *node,
 	}
 	
 	/* Put the copy to the node. */
-	ret = knot_node_add_rrset(node, rrset_copy, 0);
+	ret = knot_node_add_rrset_no_merge(node, rrset_copy);
 	if (ret != KNOT_EOK) {
 		dbg_ddns("Failed to add RRSet copy to the node: %s\n",
 		         knot_strerror(ret));

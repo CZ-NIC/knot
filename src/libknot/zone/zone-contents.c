@@ -1222,9 +1222,9 @@ dbg_zone_exec_detail(
 
 	/*! \todo REMOVE RRSET */
 	if (dupl == KNOT_RRSET_DUPL_MERGE) {
-		rc = knot_node_add_rrset_no_dupl(*node, rrset);
+		rc = knot_node_add_rrset(*node, rrset);
 	} else {
-		rc = knot_node_add_rrset(*node, rrset, 0);
+		rc = knot_node_add_rrset_no_merge(*node, rrset);
 	}
 
 	if (rc < 0) {
@@ -1419,9 +1419,9 @@ int knot_zone_contents_add_nsec3_rrset(knot_zone_contents_t *zone,
 
 	/*! \todo REMOVE RRSET */
 	if (dupl == KNOT_RRSET_DUPL_MERGE) {
-		rc = knot_node_add_rrset_no_dupl(*node, rrset);
+		rc = knot_node_add_rrset(*node, rrset);
 	} else {
-		rc = knot_node_add_rrset(*node, rrset, 0);
+		rc = knot_node_add_rrset_no_merge(*node, rrset);
 	}
 
 	if (rc < 0) {
