@@ -721,8 +721,6 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	knot_zone_contents_adjust(c->current_zone);
 	rrset_list_delete(&c->node_rrsigs);
 	
-	knot_zone_contents_dump(c->current_zone);
-	
 	return c->current_zone->zone;
 }
 
