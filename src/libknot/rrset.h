@@ -59,6 +59,7 @@ struct knot_rrset {
 	/*! \brief Beginnings of RRs - first one does not contain 0, last
 	 *         last one holds total length of all RRs together
 	 */
+	/* [code-review] Does this have to be 32b integer? Isn't 16b enough? */
 	uint32_t *rdata_indices; /*!< Indices to beginnings of RRs (without 0)*/
 	uint16_t rdata_count; /*!< Count of RRs in this RRSet. */
 	struct knot_rrset *rrsigs; /*!< Set of RRSIGs covering this RRSet. */
@@ -135,6 +136,7 @@ uint8_t* knot_rrset_create_rdata(knot_rrset_t *rrset, const uint16_t size);
  * \retval 0 on error.
  * \return Item size on success.
  */
+/* [code-review] Misleading name, maybe remove the word 'item'. */
 uint16_t rrset_rdata_item_size(const knot_rrset_t *rrset,
                                size_t pos);
 
@@ -459,16 +461,20 @@ const knot_dname_t *knot_rrset_rdata_minfo_second_dname(const knot_rrset_t *rrse
  * \param prev_dname Pointer to previous dname.
  * \return next dname or NULL.
  */
+/* [code-review] Emphasize that the 'prev' pointer must point into the RDATA 
+ * array of the given RRSet. 
+ */
 knot_dname_t **knot_rrset_get_next_dname(const knot_rrset_t *rrset,
                                                  knot_dname_t **prev);
 
 /*!
- * \brief Find next dname in RR relative to prev.
+ * \brief Find next dname in RR relative to previous one.
  *
  * \param rrset Inspected rrset.
- * \param prev_dname Pointer to previous dname.
+ * \param prev_dname Previous dname. This must be a pointer to the rrset's
+ *                   RDATA array.
  * \param rr_pos Position of RR.
- * \return next dname or NULL.
+ * \return Next dname or NULL if there is no other dname in the RR.
  */
 knot_dname_t **knot_rrset_get_next_rr_dname(const knot_rrset_t *rrset,
                                             knot_dname_t **prev_dname,

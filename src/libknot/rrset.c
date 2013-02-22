@@ -521,6 +521,49 @@ static int knot_rrset_rdata_store_binary(uint8_t *rdata, size_t *offset,
 	return KNOT_EOK;
 }
 
+static int rrset_type_multiple_dnames(const knot_rrset_t *rrset)
+{
+	if (rrset->type == KNOT_RRTYPE_SOA || rrset->type == KNOT_RRTYPE_MINFO ||
+	    rrset->type == KNOT_RRTYPE_RP) {
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
+static int rrset_find_rr_pos_for_pointer(const knot_rrset_t *rrset,
+                                         knot_dname_t **p, size_t *pos)
+{
+	if (p == NULL) {
+		return 0;
+	}
+	
+	/* [code-review] Added check of 'p' validity - whether it
+	 * points to the RDATA array of 'rrset'.
+	 */
+	if ((size_t)p < (size_t)rrset->rdata 
+	    || (size_t)p > (size_t)rrset->rdata 
+	                   + rrset_rdata_size_total(rrset)) {
+		// 'p' is not within the RDATA array
+		return KNOT_ERANGE;
+	}
+	
+	size_t offset = (size_t)p - (size_t)rrset->rdata;
+
+	if (offset < rrset_rdata_item_size(rrset, 0)) {
+		return 0;
+	}
+	for (uint16_t i = 0; i < rrset->rdata_count; ++i) {
+		if (rrset_rdata_offset(rrset, i) >= offset) {
+			/* [code-review] Shouldn't it be 'i-1'? */
+			*pos = i;
+			return KNOT_EOK;
+		}
+	}
+	*pos = rrset->rdata_count - 1;
+	return KNOT_EOK;
+}
+
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
@@ -1327,6 +1370,7 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
 
 int knot_rrset_merge(void **r1, void **r2)
 {
+	/* [code-review] Missing parameter checks. */
 	knot_rrset_t *rrset1 = (knot_rrset_t *)(*r1);
 	knot_rrset_t *rrset2 = (knot_rrset_t *)(*r2);
 	if (rrset1 == NULL || rrset2 == NULL) {
@@ -1340,6 +1384,7 @@ int knot_rrset_merge(void **r1, void **r2)
 	    (rrset1->rdata_count == 0 && rrset2->rdata_count)) {
 		return KNOT_EINVAL;
 	}
+	/* [code-review] Why merging empty RRSet with non-empty one is invalid? */
 	
 	/* Add all RDATAs from rrset2 to rrset1 (i.e. concatenate two arrays) */
 	
@@ -1526,6 +1571,7 @@ int64_t knot_rrset_rdata_soa_serial(const knot_rrset_t *rrset)
 	}
 	
 	//read u64??? TODO
+	/* [code-review] Why u64? */
 	return knot_wire_read_u32(rrset->rdata + 
 	                          sizeof(knot_dname_t *) * 2);
 
@@ -1712,7 +1758,7 @@ void knot_rrset_rdata_dnskey_key(const knot_rrset_t *rrset, size_t rr_pos,
 	if (rrset == NULL || rr_pos >= rrset->rdata_count) {
 		return;
 	}
-	
+
 	*key = knot_rrset_get_rdata(rrset, rr_pos) + 4;
 	*key_size = rrset_rdata_item_size(rrset, rr_pos) - 4;
 }
@@ -1867,41 +1913,6 @@ const uint8_t *knot_rrset_rdata_nsec3_salt(const knot_rrset_t *rrset,
 	return rrset_rdata_pointer(rrset, pos) + 4;
 }
 
-static int rrset_type_multiple_dnames(const knot_rrset_t *rrset)
-{
-	if (rrset->type == KNOT_RRTYPE_SOA || rrset->type == KNOT_RRTYPE_MINFO ||
-	    rrset->type == KNOT_RRTYPE_RP) {
-		return 1;
-	} else {
-		return 0;
-	}
-}
-
-static int rrset_find_rr_pos_for_pointer(const knot_rrset_t *rrset,
-                                         knot_dname_t **p, size_t *pos)
-{
-	if (p == NULL) {
-		return 0;
-	}
-	
-	size_t offset = (size_t)p - (size_t)rrset->rdata;
-	if (offset >= rrset_rdata_size_total(rrset)) {
-		return KNOT_ESPACE;
-	}
-	if (offset < rrset_rdata_item_size(rrset, 0)) {
-		return 0;
-	}
-	for (uint16_t i = 0; i < rrset->rdata_count; ++i) {
-		if (rrset_rdata_offset(rrset, i) >= offset) {
-			*pos = i;
-			return KNOT_EOK;
-		}
-	}
-	*pos = rrset->rdata_count - 1;
-	return KNOT_EOK;
-}
-
-
 knot_dname_t **knot_rrset_get_next_rr_dname(const knot_rrset_t *rrset,
                                             knot_dname_t **prev_dname,
                                             size_t rr_pos)
@@ -1914,6 +1925,9 @@ knot_dname_t **knot_rrset_get_next_rr_dname(const knot_rrset_t *rrset,
 	if (rrset_type_multiple_dnames(rrset)) {
 		if (prev_dname == NULL) {
 			/* The very first DNAME. */
+			/* [code-review] How do you know the dname is the first
+			 * item in the RDATA?
+			 */
 			return (knot_dname_t **)rdata;
 		}
 		assert((size_t)prev_dname >= (size_t)rdata);
@@ -1961,62 +1975,28 @@ knot_dname_t **knot_rrset_get_next_dname(const knot_rrset_t *rrset,
 		return NULL;
 	}
 	
+	/* [code-review] This should do the same as the old code. But please
+	 * check and test it!
+	 */
+	
+	/* 1) Find in which RR is the given dname. */
 	size_t pos = 0;
 	int ret = rrset_find_rr_pos_for_pointer(rrset, prev_dname, &pos);
 	if (ret != KNOT_EOK) {
 		return NULL;
 	}
 	
-	uint8_t *rdata = rrset_rdata_pointer(rrset, pos);
-	if (rrset_type_multiple_dnames(rrset)) {
-		if (prev_dname == NULL) {
-			/* The very first DNAME. */
-			return (knot_dname_t **)rdata;
-		}
-		assert((size_t)prev_dname >= (size_t)rdata);
-		if ((size_t)prev_dname - (size_t)rdata == sizeof(knot_dname_t *)) {
-			/* Already after second DNAME. */
-			if (pos + 1 >= rrset->rdata_count) {
-				/* No more DNAMEs to return. */
-				return NULL;
-			}
-			/* Returning first DNAME from next RR. */
-			/* Get RDATA from next RR. */
-			rdata = rrset_rdata_pointer(rrset, pos + 1);
-			return (knot_dname_t **)rdata;
-		} else {
-			/* Return second DNAME from RR. */
-			assert((size_t)prev_dname == (size_t)rdata);
-			return (knot_dname_t **)(rdata + sizeof(knot_dname_t *));
-		}
-	} else {
-		/* Return DNAME from normal RR, if any. */
-		if (prev_dname) {
-			if (pos + 1 >= rrset->rdata_count) {
-				return NULL;
-			}
-			rdata = rrset_rdata_pointer(rrset, pos + 1);
-		}
-				
-		/* Find DNAME in blocks. No need to check remainder. TODO: NAPTR */
-		size_t offset = 0;
-		const rdata_descriptor_t *desc =
-			get_rdata_descriptor(rrset->type);
-		for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; ++i) {
-			if (descriptor_item_is_dname(desc->block_types[i])) {
-				return (knot_dname_t **)(rdata + offset);
-			} else if (descriptor_item_is_fixed(desc->block_types[i])) {
-				offset += desc->block_types[i];
-			} else if (!descriptor_item_is_remainder(desc->block_types[i])) {
-				assert(rrset->type == KNOT_RRTYPE_NAPTR);
-				offset +=
-					rrset_rdata_naptr_bin_chunk_size(rrset,
-				                                         pos);
-			}
-		}
+	/* 2) Try to get next dname from the RR. */
+	knot_dname_t *next = 
+	                knot_rrset_get_next_rr_dname(rrset, prev_dname, pos);
+	
+	/* 3) If not found and there is a next RR to search in, try it. */
+	if (next == NULL && pos < rrset->rdata_count - 1) {
+		// prev_dname = NULL because in this RR we haven't searched yet
+		next = knot_rrset_get_next_rr_dname(rrset, NULL, pos + 1);
 	}
-
-	return NULL;
+	
+	return next;
 }
 
 void knot_rrset_dump(const knot_rrset_t *rrset)
