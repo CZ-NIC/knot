@@ -3008,13 +3008,10 @@ static int zones_open_free_filename(const char *old_name, char **new_name)
 
 static int zones_dump_zone_text(knot_zone_contents_t *zone, const char *fname)
 {
-	log_zone_warning("ZONE DUMP NOT IMPLEMENTED\n");
-	return KNOT_EOK;
-	
 	assert(zone != NULL && fname != NULL);
 
 	char *new_fname = NULL;
-	int fd = zones_open_free_filename(fname, &new_fname);
+	int fd = zones_open_free_filename("/tmp/zone.txt", &new_fname);
 	if (fd < 0) {
 		log_zone_warning("Failed to find filename for temporary "
 		                 "storage of the transferred zone.\n");
@@ -3029,22 +3026,21 @@ static int zones_dump_zone_text(knot_zone_contents_t *zone, const char *fname)
 		return KNOT_ERROR;
 	}
 	
-	assert(0);
-	//TODO
-//	if (zone_dump_text(zone, f) != KNOT_EOK) {
-//		log_zone_warning("Failed to save the transferred zone to '%s'.\n",
-//		                 new_fname);
-//		fclose(f);
-//		unlink(new_fname);
-//		free(new_fname);
-//		return KNOT_ERROR;
-//	}
+	if (zone_dump_text(zone, f) != KNOT_EOK) {
+		log_zone_warning("Failed to save the transferred zone to '%s'.\n",
+		                 new_fname);
+		fclose(f);
+		unlink(new_fname);
+		free(new_fname);
+		return KNOT_ERROR;
+	}
 	
 	/* Set zone file rights to 0640. */
 	fchmod(fd, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
 
 	/* Swap temporary zonefile and new zonefile. */
 	fclose(f);
+/*
 	int ret = rename(new_fname, fname);
 	if (ret < 0 && ret != EEXIST) {
 		log_zone_warning("Failed to replace old zone file '%s'' with a new"
@@ -3053,7 +3049,7 @@ static int zones_dump_zone_text(knot_zone_contents_t *zone, const char *fname)
 		free(new_fname);
 		return KNOT_ERROR;
 	}
-	
+*/	
 	free(new_fname);
 	return KNOT_EOK;
 }

@@ -952,31 +952,9 @@ int rdata_dump_text(const knot_rdata_t *rdata, uint16_t type, FILE *f,
 	return KNOT_EOK;
 }
 
-int rrsig_set_dump_text(knot_rrset_t *rrsig, FILE *f)
-{
-	dump_rrset_header(rrsig, f);
-	knot_rdata_t *tmp = rrsig->rdata;
-
-	while (tmp->next != rrsig->rdata) {
-		int ret = rdata_dump_text(tmp, KNOT_RRTYPE_RRSIG, f, rrsig);
-		if (ret != KNOT_EOK) {
-			return KNOT_ERROR;
-		}
-
-		dump_rrset_header(rrsig, f);
-		tmp = tmp->next;
-	}
-
-	int ret = rdata_dump_text(tmp, KNOT_RRTYPE_RRSIG, f, rrsig);
-	if (ret != KNOT_EOK) {
-		return KNOT_ERROR;
-	}
-
-	return KNOT_EOK;
-}
 #endif
 
-void dump_rrset_header(const knot_rrset_t *rrset, FILE *f)
+int dump_rrset_header(const knot_rrset_t *rrset, FILE *f)
 {
 	char buff[32];
 
@@ -987,41 +965,45 @@ void dump_rrset_header(const knot_rrset_t *rrset, FILE *f)
 	fprintf(f, "%-5u ", rrset->ttl);
 
 	if (knot_rrclass_to_string(rrset->rclass, buff, sizeof(buff)) < 0) {
-		return;
+		return KNOT_ERROR;
 	}
 	fprintf(f, "%-2s ", buff);
 
 	if (knot_rrtype_to_string(rrset->type, buff, sizeof(buff)) < 0) {
-		return;
+		return KNOT_ERROR;
 	}
 	fprintf(f, "%-5s ",  buff);
+
+	return KNOT_EOK;
+}
+
+int dump_rrset_data(const knot_rrset_t *rrset, const size_t pos, FILE *f)
+{
+	fprintf(f, "\\# \n");
+
+	uint16_t count = knot_rrset_rdata_rr_count(rrset);
+
+	return KNOT_EOK;
 }
 
 int rrset_dump_text(const knot_rrset_t *rrset, FILE *f)
 {
-	if (rrset->rdata != NULL) { // No sense in dumping empty RR
-		dump_rrset_header(rrset, f);
-/*
-		knot_rdata_t *tmp = rrset->rdata;
-
-		while (tmp->next != rrset->rdata) {
-			int ret = rdata_dump_text(tmp, rrset->type, f, rrset);
-			if (ret != KNOT_EOK) {
-				return ret;
-			}
-			dump_rrset_header(rrset, f);
-			tmp = tmp->next;
+	for (size_t i = 0; i < rrset->rdata_count; i++) {
+		if (dump_rrset_header(rrset, f) != KNOT_EOK) {
+			return KNOT_ERROR;
 		}
 
-		rdata_dump_text(tmp, rrset->type, f, rrset);
-*/
+		if (dump_rrset_data(rrset, i, f) != KNOT_EOK) {
+			return KNOT_ERROR;
+		}
 	}
-/*
-	knot_rrset_t *rrsig_set = rrset->rrsigs;
-	if (rrsig_set != NULL) {
-		rrsig_set_dump_text(rrsig_set, f);
+
+	if (rrset->rrsigs != NULL) {
+		if (rrset_dump_text(rrset->rrsigs, f) != KNOT_EOK) {
+			return KNOT_ERROR;
+		}
 	}
-*/
+
 	return KNOT_EOK;
 }
 
