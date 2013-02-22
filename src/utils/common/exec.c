@@ -77,6 +77,7 @@ knot_packet_t* create_empty_packet(knot_packet_prealloc_type_t t, int max_size)
 	// Create packet skeleton.
 	knot_packet_t *packet = knot_packet_new(t);
 	if (packet == NULL) {
+		DBG_NULL;
 		return NULL;
 	}
 
@@ -329,6 +330,7 @@ static void print_error_host(const uint8_t         code,
 void print_header_xfr(const style_t *style, const knot_rr_type_t type)
 {
 	if (style == NULL) {
+		DBG_NULL;
 		return;
 	}
 
@@ -361,6 +363,7 @@ void print_data_xfr(const style_t       *style,
                     const knot_packet_t *packet)
 {
 	if (style == NULL || packet == NULL) {
+		DBG_NULL;
 		return;
 	}
 
@@ -387,6 +390,7 @@ void print_footer_xfr(const net_t    *net,
                       const size_t   msg_count)
 {
 	if (net == NULL || style == NULL) {
+		DBG_NULL;
 		return;
 	}
 
@@ -410,6 +414,7 @@ void print_packet(const net_t         *net,
                   const size_t        msg_count)
 {
 	if (style == NULL || packet == NULL) {
+		DBG_NULL;
 		return;
 	}
 

@@ -14,6 +14,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+// strptime under Linux
+#define _XOPEN_SOURCE
+
 #include "zscanner/test/tests.h"
 
 #include <inttypes.h>			// PRIu64
@@ -27,6 +30,7 @@ int test__date_to_timestamp()
 	time_t    ref_timestamp, max_timestamp;
 	uint32_t  test_timestamp;
 	uint8_t   buffer[16];
+	uint64_t  val1, val2; // For time_t type unification.
 	struct tm tm;
 
 	// Set UTC for strftime.
@@ -50,19 +54,22 @@ int test__date_to_timestamp()
 
 		// Some continuous loging.
 		if (ref_timestamp % 10000000 == 0) {
-			printf("%s = %"PRIu64"\n", buffer, ref_timestamp);
+			val1 = ref_timestamp;
+			printf("%s = %"PRIu64"\n", buffer, val1);
 		}
 
 		// Comparing results.
 		if (ref_timestamp != test_timestamp) {
-			if (ref_timestamp > test_timestamp) { 
+			val1 = ref_timestamp;
+
+			if (ref_timestamp > test_timestamp) {
+				val2 = ref_timestamp - test_timestamp;
 				printf("%s = %"PRIu64", in - out = %"PRIu64"\n",
-				       buffer, ref_timestamp,
-				       ref_timestamp - test_timestamp);
+				       buffer, val1, val2);
 			} else {
+				val2 = test_timestamp - ref_timestamp;
 				printf("%s = %"PRIu64", out - in = %"PRIu64"\n",
-				       buffer, ref_timestamp,
-				       test_timestamp - ref_timestamp);
+				       buffer, val1, val2);
 			}
 
 			return -1;

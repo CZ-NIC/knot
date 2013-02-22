@@ -60,13 +60,13 @@ enum desclen { KNOT_RRTYPE_DESCRIPTORS_LENGTH = 32770 }; // used to be 101
 /*!
  * \brief Table for linking RR class constants to their textual representation.
  */
-static knot_lookup_table_t dns_rrclasses[] = {
-	{ KNOT_CLASS_IN, "IN" },	/* the Internet */
-	{ KNOT_CLASS_CS, "CS" },	/* the CSNET class (Obsolete) */
-	{ KNOT_CLASS_CH, "CH" },	/* the CHAOS class */
-	{ KNOT_CLASS_HS, "HS" },	/* Hesiod */
+/*static knot_lookup_table_t dns_rrclasses[] = {
+	{ KNOT_CLASS_IN, "IN" },
+	{ KNOT_CLASS_CS, "CS" },
+	{ KNOT_CLASS_CH, "CH" },
+	{ KNOT_CLASS_HS, "HS" },
 	{ 0, NULL }
-};
+};*/
 
 /*! \brief DS digest lengths. */
 enum knot_ds_algorithm_len
@@ -461,7 +461,7 @@ knot_rrtype_descriptor_t *knot_rrtype_descriptor_by_name(const char *name)
 
 	return NULL;
 }
-
+/*
 int knot_rrtype_to_string(const uint16_t rrtype,
                           char           *out,
                           const size_t   out_len)
@@ -508,7 +508,6 @@ int knot_rrtype_from_string(const char *name, uint16_t *num)
 		return -1;
 	}
 
-	/* The rest from the string must be a number. */
 	rrtype = strtol(name + 4, &end, 10);
 	if (*end != '\0') {
 		return -1;
@@ -579,7 +578,7 @@ int knot_rrclass_from_string(const char *name, uint16_t *num)
 	*num = rrclass;
 	return 0;
 }
-
+*/
 size_t knot_wireformat_size(unsigned int wire_type)
 {
 	switch(wire_type) {
@@ -600,10 +599,9 @@ size_t knot_wireformat_size(unsigned int wire_type)
 			break;
 	} /* switch */
 }
-
+/*
 int knot_rrtype_is_metatype(uint16_t type)
 {
-	/*! \todo Check if there are some other metatypes. */
 	return (type == KNOT_RRTYPE_ANY
 	        || type == KNOT_RRTYPE_AXFR
 	        || type == KNOT_RRTYPE_IXFR
@@ -611,7 +609,7 @@ int knot_rrtype_is_metatype(uint16_t type)
 	        || type == KNOT_RRTYPE_MAILB
 	        || type == KNOT_RRTYPE_OPT);
 }
-
+*/
 size_t knot_ds_digest_length(uint8_t algorithm)
 {
 	switch (algorithm) {

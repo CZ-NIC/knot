@@ -56,6 +56,8 @@ src/libknot/zone/zone.h
 src/libknot/zone/zone.c
 src/libknot/zone/zone-contents.c
 src/libknot/zone/zone-contents.h
+src/libknot/zone/zone-dump.h
+src/libknot/zone/zone-dump.c
 src/libknot/zone/zone-tree.h
 src/libknot/zone/zone-tree.c
 src/Makefile.am
@@ -160,8 +162,6 @@ src/knot/conf/logconf.c
 src/knot/conf/logconf.h
 src/knot/zone/zone-load.c
 src/knot/zone/zone-load.h
-src/knot/zone/zone-dump-text.h
-src/knot/zone/zone-dump-text.c
 src/tests/unittests_main.c
 src/tests/common/acl_tests.c
 src/tests/common/acl_tests.h

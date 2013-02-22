@@ -21,7 +21,7 @@
 #include "common/prng.h"
 #include "libknot/dname.h"
 #include "libknot/util/wire.h"
-#include "knot/zone/zone-dump-text.h"
+#include "libknot/zone/zone-dump.h"
 #include "knot/zone/zone-load.h"
 #include "libknot/zone/zone.h"
 #include "libknot/zone/zonedb.h"

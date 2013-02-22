@@ -80,6 +80,32 @@ static uint8_t *rrset_rdata_pointer(const knot_rrset_t *rrset,
 	return rrset->rdata + rrset_rdata_offset(rrset, pos);
 }
 
+static uint16_t rrset_rdata_naptr_bin_chunk_size(const knot_rrset_t *rrset,
+                                               size_t pos)
+{
+	if (rrset == NULL || rrset->rdata_count >= pos) {
+		return 0;
+	}
+	
+	size_t size = 0;
+	uint8_t *rdata = rrset_rdata_pointer(rrset, pos);
+	assert(rdata);
+	
+	/* Two shorts at the beginning. */
+	size += 4;
+	/* 3 binary TXTs with length in the first byte. */
+	for (int i = 0; i < 3; i++) {
+		size += *(rdata + size);
+	}
+	
+	/* 
+	 * Dname remaning, but we usually want to get to the DNAME, so
+	 * there's no need to include it in the returned size.
+	 */
+	
+	return size;
+}
+
 void knot_rrset_rdata_dump(const knot_rrset_t *rrset, size_t rdata_pos)
 {
 	fprintf(stderr, "      ------- RDATA pos=%zu -------\n", rdata_pos);
@@ -95,7 +121,7 @@ void knot_rrset_rdata_dump(const knot_rrset_t *rrset, size_t rdata_pos)
 	size_t offset = 0;
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
 		int item = desc->block_types[i];
-		uint8_t *rdata = rrset_rdata_pointer(rrset, rdata_pos);
+		const uint8_t *rdata = rrset_rdata_pointer(rrset, rdata_pos);
 		if (descriptor_item_is_dname(item)) {
 			knot_dname_t *dname;
 			memcpy(&dname, rdata + offset, sizeof(knot_dname_t *));
@@ -121,37 +147,15 @@ void knot_rrset_rdata_dump(const knot_rrset_t *rrset, size_t rdata_pos)
 			          rrset_rdata_item_size(rrset,
 			                                rdata_pos) - offset);
 		} else {
-			fprintf(stderr, "NAPTR, failing miserably\n");
 			assert(rrset->type == KNOT_RRTYPE_NAPTR);
-			assert(0);
+			uint16_t naptr_chunk_size =
+				rrset_rdata_naptr_bin_chunk_size(rrset, rdata_pos);
+			fprintf(stderr, "NAPTR, REGEXP block (size=%zu):\n",
+			        naptr_chunk_size);
+			hex_print((char *)(rdata + offset), naptr_chunk_size);
+			offset += naptr_chunk_size;
 		}
 	}
-}
-
-static size_t rrset_rdata_naptr_bin_chunk_size(const knot_rrset_t *rrset,
-                                               size_t pos)
-{
-	if (rrset == NULL || rrset->rdata_count >= pos) {
-		return 0;
-	}
-	
-	size_t size = 0;
-	uint8_t *rdata = rrset_rdata_pointer(rrset, pos);
-	assert(rdata);
-	
-	/* Two shorts at the beginning. */
-	size += 4;
-	/* 3 binary TXTs with length in the first byte. */
-	for (int i = 0; i < 3; i++) {
-		size += *(rdata + size);
-	}
-	
-	/* 
-	 * Dname remaning, but we usually want to get to the DNAME, so
-	 * there's no need to include it in the returned size.
-	 */
-	
-	return size;
 }
 
 static size_t rrset_rdata_remainder_size(const knot_rrset_t *rrset,
@@ -210,9 +214,9 @@ static int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
 			assert(desc->block_types[i + 1] == KNOT_RDATA_WF_END);
 		} else {
 			assert(rrset1->type == KNOT_RRTYPE_NAPTR);
-			size_t naptr_chunk_size1 =
+			uint16_t naptr_chunk_size1 =
 				rrset_rdata_naptr_bin_chunk_size(rrset1, pos1);
-			size_t naptr_chunk_size2 =
+			uint16_t naptr_chunk_size2 =
 				rrset_rdata_naptr_bin_chunk_size(rrset2, pos2);
 			cmp = memcmp(r1, r2,
 			             naptr_chunk_size1 <= naptr_chunk_size2 ?
@@ -220,16 +224,9 @@ static int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
 			if (cmp != 0) {
 				return cmp;
 			}
-		
 			/* Binary part was equal, we have to compare DNAMEs. */
 			assert(naptr_chunk_size1 == naptr_chunk_size2);
 			offset += naptr_chunk_size1;
-			knot_dname_t *dname1 = NULL;
-			memcpy(&dname1, r1 + offset, sizeof(knot_dname_t *));
-			knot_dname_t *dname2 = NULL;
-			memcpy(&dname2, r2 + offset, sizeof(knot_dname_t *));
-			cmp = knot_dname_compare(dname1, dname2);
-			offset += sizeof(knot_dname_t *);
 		}
 
 		if (cmp != 0) {
@@ -342,17 +339,8 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 			*pos += ret;
 			rdlength += ret;
 			comp->compr->wire_pos += ret;
-			// TODO: compress domain name ??? for LS
-			
-			/* [code-review] What about this TODO? The 
-			 * knot_response_compress_dname() should copy the
-			 * compressed name into the buffer. Or am I missing
-			 * something?
-			 */
-			
-			/* [code-review] 'offset' is not adjusted. */
+			offset += sizeof(knot_dname_t *);
 		} else if (descriptor_item_is_dname(item)) {
-			assert(comp == NULL);
 			knot_dname_t *dname;
 			memcpy(&dname, rdata + offset, sizeof(knot_dname_t *));
 			assert(dname && dname->name);
@@ -408,7 +396,7 @@ dbg_rrset_exec_detail(
 		} else {
 			assert(rrset->type == KNOT_RRTYPE_NAPTR);
 			/* Store the binary chunk. */
-			size_t chunk_size =
+			uint16_t chunk_size =
 			rrset_rdata_naptr_bin_chunk_size(rrset, rdata_pos);
 			if (size + rdlength + chunk_size > max_size) {
 				dbg_rrset("rr: to_wire: NAPTR chunk does not "
@@ -428,15 +416,6 @@ dbg_rrset_exec_detail(
 				          "fit to wire.\n");
 				return KNOT_ESPACE;
 			}
-
-			// save whole domain name
-			memcpy(*pos, knot_dname_name(dname), 
-			       knot_dname_size(dname));
-			dbg_rrset_detail("Uncompressed dname size: %d\n",
-			                 knot_dname_size(dname));
-			*pos += knot_dname_size(dname);
-			rdlength += knot_dname_size(dname);
-			offset += sizeof(knot_dname_t *);
 		}
 	}
 	
@@ -576,18 +555,6 @@ knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
 	ret->rrsigs = NULL;
 
 	return ret;
-}
-
-/*----------------------------------------------------------------------------*/
-/* [code-review] not in header file  */
-int knot_rrset_add_rdata_single(knot_rrset_t *rrset, const uint8_t *rdata,
-                                uint32_t size)
-{
-	rrset->rdata_indices = xmalloc(sizeof(uint32_t));
-	rrset->rdata_indices[0] = size;
-	rrset->rdata = rdata;
-	rrset->rdata_count = 1;
-	return KNOT_EOK;
 }
 
 int knot_rrset_add_rdata(knot_rrset_t *rrset,
@@ -797,7 +764,6 @@ const knot_rrset_t *knot_rrset_rrsigs(const knot_rrset_t *rrset)
 knot_rrset_t *knot_rrset_get_rrsigs(knot_rrset_t *rrset)
 {
 	if (rrset == NULL) {
-		assert(0);	/* [code-review] This should not be here. */
 		return NULL;
 	} else {
 		return rrset->rrsigs;
@@ -885,8 +851,9 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
 		return KNOT_EOK;
 	}
 	
-	compression_param_t *comp_data = (compression_param_t *)data;
+	assert(rrset->rdata_count > 0);
 	
+	compression_param_t *comp_data = (compression_param_t *)data;
 	uint8_t *pos = wire;
 	
 dbg_rrset_exec_detail(
@@ -894,7 +861,7 @@ dbg_rrset_exec_detail(
 	knot_rrset_dump(rrset);
 );
 
-	int ret = knot_rrset_to_wire_aux(rrset, &pos, max_size, NULL);//comp_data);
+	int ret = knot_rrset_to_wire_aux(rrset, &pos, max_size, comp_data);
 	
 	assert(ret != 0);
 
@@ -1019,7 +986,6 @@ dbg_rrset_exec_detail(
 			parsed += remainder_size;
 		} else {
 			assert(rrset->type = KNOT_RRTYPE_NAPTR);
-			assert(0);
 			/* Read fixed part - 2 shorts. */
 			const size_t naptr_fixed_part_size = 4;
 			int ret = knot_rrset_rdata_store_binary(rdata_buffer,
@@ -1058,18 +1024,6 @@ dbg_rrset_exec_detail(
 				}
 				offset += txt_size + 1;
 			}
-			
-			/* Dname remaining. No need to note read size. */
-			knot_dname_t *dname =
-				knot_dname_parse_from_wire(
-					wire, pos, total_size, NULL, NULL);
-			if (dname == NULL) {
-				return KNOT_ERROR;
-			}
-			*((knot_dname_t **)rdata_buffer + offset) = dname;
-			offset += sizeof(knot_dname_t *);
-			
-			/* [code-review] 'parsed' is not updated, is it ok? */
 		}
 	}
 	
@@ -1156,6 +1110,9 @@ int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
 	if (from == NULL || to == NULL) {
 		return KNOT_EINVAL;
 	}
+	
+	dbg_rrset_detail("rr: deep_copy: Copying RRs of type %d\n",
+	                 from->type);
 	
 	*to = xmalloc(sizeof(knot_rrset_t));
 
@@ -1303,9 +1260,6 @@ void knot_rrset_rdata_deep_free_one(knot_rrset_t *rrset, size_t pos,
 				offset +=
 					rrset_rdata_naptr_bin_chunk_size(rrset,
 				                                         pos);
-				knot_dname_t *dname =
-					(knot_dname_t *)rdata + offset;
-				knot_dname_release(dname);
 			}
 		}
 	}
@@ -1952,7 +1906,7 @@ knot_dname_t **knot_rrset_get_next_rr_dname(const knot_rrset_t *rrset,
                                             knot_dname_t **prev_dname,
                                             size_t rr_pos)
 {
-	if (rrset == NULL || rrset->rdata_count == 0) {
+	if (rrset == NULL || rr_pos >= rrset->rdata_count) {
 		return NULL;
 	}
 	
@@ -1974,8 +1928,12 @@ knot_dname_t **knot_rrset_get_next_rr_dname(const knot_rrset_t *rrset,
 	} else {
 		/*
 		 * Return DNAME from normal RR, if any.
-		 * Find DNAME in blocks. No need to check remainder. TODO: NAPTR.
+		 * Find DNAME in blocks. No need to check remainder.
 		 */
+		if (prev_dname) {
+			/* Nothing left to return. */
+			return NULL;
+		}
 		size_t offset = 0;
 		const rdata_descriptor_t *desc =
 			get_rdata_descriptor(rrset->type);
@@ -1986,10 +1944,14 @@ knot_dname_t **knot_rrset_get_next_rr_dname(const knot_rrset_t *rrset,
 				offset += desc->block_types[i];
 			} else if (!descriptor_item_is_remainder(desc->block_types[i])) {
 				assert(rrset->type == KNOT_RRTYPE_NAPTR);
-				return (knot_dname_t **)(rdata + offset);
+				offset +=
+					rrset_rdata_naptr_bin_chunk_size(rrset,
+				                                         rr_pos);
 			}
 		}
 	}
+	
+	return NULL;
 }
 
 knot_dname_t **knot_rrset_get_next_dname(const knot_rrset_t *rrset,
@@ -2047,61 +2009,15 @@ knot_dname_t **knot_rrset_get_next_dname(const knot_rrset_t *rrset,
 				offset += desc->block_types[i];
 			} else if (!descriptor_item_is_remainder(desc->block_types[i])) {
 				assert(rrset->type == KNOT_RRTYPE_NAPTR);
-				return (knot_dname_t **)(rdata + offset);
+				offset +=
+					rrset_rdata_naptr_bin_chunk_size(rrset,
+				                                         pos);
 			}
 		}
 	}
 
 	return NULL;
 }
-
-uint8_t *knot_rrset_rdata_prealloc(const knot_rrset_t *rrset,
-                                   size_t *rdata_size)
-{
-	/*
-	 * Length of data can be sometimes guessed
-	 * easily. Well, for some types anyway.
-	 */
-	const rdata_descriptor_t *desc = get_rdata_descriptor(rrset->type);
-	assert(desc);
-	*rdata_size = 0;
-	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
-		int item = desc->block_types[i];
-		if (descriptor_item_is_fixed(item)) {
-			*rdata_size += item;
-		} else if (descriptor_item_is_dname(item)) {
-			*rdata_size += sizeof(knot_dname_t *);
-		} else if (descriptor_item_is_remainder(item)) {
-			//TODO
-			switch(rrset->type) {
-				case KNOT_RRTYPE_DS:
-					*rdata_size += 64;
-				break;
-				case KNOT_RRTYPE_RRSIG:
-					*rdata_size += 256;
-				break;
-				case KNOT_RRTYPE_DNSKEY:
-					*rdata_size += 1024;
-				break;
-				default:
-					*rdata_size += 512;
-			} //switch
-		} else {
-			assert(0);
-		}
-	}
-	
-	uint8_t *ret = malloc(*rdata_size);
-	if (ret == NULL) {
-		ERR_ALLOC_FAILED;
-		*rdata_size = 0;
-		return NULL;
-	}
-	/* TODO do properly. */
-	
-	return ret;
-}
-
 
 void knot_rrset_dump(const knot_rrset_t *rrset)
 {
@@ -2168,9 +2084,15 @@ static size_t rrset_binary_size_one(const knot_rrset_t *rrset,
 			size += rrset_rdata_item_size(rrset, rdata_pos) -
 			        offset;
 		} else {
-			fprintf(stderr, "NAPTR, failing miserably\n");
 			assert(rrset->type == KNOT_RRTYPE_NAPTR);
-			assert(0);
+			uint16_t naptr_chunk_size =
+				rrset_rdata_naptr_bin_chunk_size(rrset, rdata_pos);
+			/*
+			 * Regular expressions in NAPTR are TXT's, so they
+			 * can be upto 64k long.
+			 */
+			size += naptr_chunk_size + 2;
+			offset += naptr_chunk_size;
 		}
 	}
 	
@@ -2226,15 +2148,22 @@ static void rrset_serialize_rr(const knot_rrset_t *rrset, size_t rdata_pos,
 			offset += item;
 			*size += item;
 		} else if (descriptor_item_is_remainder(item)) {
-			uint32_t remainder_size =
+			uint16_t remainder_size =
 				rrset_rdata_item_size(rrset,
 			                              rdata_pos) - offset;
 			memcpy(stream + *size, rdata + offset, remainder_size);
 			*size += remainder_size;
 		} else {
-			fprintf(stderr, "NAPTR, failing miserably\n");
 			assert(rrset->type == KNOT_RRTYPE_NAPTR);
-			assert(0);
+			/* Copy static chunk. */
+			uint16_t naptr_chunk_size =
+				rrset_rdata_naptr_bin_chunk_size(rrset, rdata_pos);
+			/* We need a length. */
+			memcpy(stream + *size, &naptr_chunk_size,
+			       sizeof(uint16_t));
+			*size += sizeof(uint16_t);
+			/* Write data. */
+			memcpy(stream + *size, rdata + offset, naptr_chunk_size);
 		}
 	}
 	
@@ -2248,7 +2177,7 @@ int rrset_serialize(const knot_rrset_t *rrset, uint8_t *stream, size_t *size)
 	}
 	
 	uint64_t rrset_length = rrset_binary_size(rrset);
-	dbg_rrset_detail("rr: serialize: Binary size=%d\n", rrset_length);
+	dbg_rrset_detail("rr: serialize: Binary size=%llu\n", rrset_length);
 	memcpy(stream, &rrset_length, sizeof(uint64_t));
 	
 	size_t offset = sizeof(uint64_t);
@@ -2353,7 +2282,15 @@ static int rrset_deserialize_rr(knot_rrset_t *rrset, size_t rdata_pos,
 			stream_offset += remainder_size;
 		} else {
 			assert(rrset->type == KNOT_RRTYPE_NAPTR);
-			assert(0);
+			/* Read size. */
+			uint16_t naptr_chunk_size;
+			memcpy(&naptr_chunk_size, stream + stream_offset,
+			       sizeof(uint16_t));
+			stream_offset += sizeof(uint16_t);
+			memcpy(rdata + rdata_offset, stream + stream_offset,
+			       naptr_chunk_size);
+			stream_offset += naptr_chunk_size;
+			rdata_offset += rdata_offset;
 		}
 	}
 	*read = stream_offset;
@@ -2371,7 +2308,7 @@ int rrset_deserialize(uint8_t *stream, size_t *stream_size,
 	memcpy(&rrset_length, stream, sizeof(uint64_t));
 	if (rrset_length > *stream_size) {
 		dbg_rrset("rr: deserialize: No space for whole RRSet. "
-		          "(given=%d needed=%d)\n", *stream_size,
+		          "(given=%zu needed=%llu)\n", *stream_size,
 		          rrset_length);
 		return KNOT_ESPACE;
 	}
@@ -2562,7 +2499,9 @@ static int knot_rrset_remove_rdata_pos(knot_rrset_t *rrset, size_t pos)
 	if (new_size == 0) {
 		assert(rrset->rdata_count == 1);
 		free(rrset->rdata);
+		rrset->rdata = NULL;
 		free(rrset->rdata_indices);
+		rrset->rdata = NULL;
 	} else {
 		rrset->rdata = xrealloc(rrset->rdata, new_size);
 		/*
@@ -2645,7 +2584,7 @@ dbg_rrset_exec_detail(
 	knot_dname_t **dname = NULL;
 	while ((dname = knot_rrset_get_next_rr_dname(rrset, dname,
 	                                             rdata_pos))) {
-		assert(dname);
+		assert(dname && *dname);
 dbg_rrset_exec_detail(
 		char *name = knot_dname_to_str(*dname);
 		dbg_rrset_detail("rr: dnames_apply: Got dname %s.\n", name);
@@ -2718,11 +2657,11 @@ int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
 	knot_rrset_t *return_rr = NULL;
 	int ret = knot_rrset_shallow_copy(what, &return_rr);
 	if (ret != KNOT_EOK) {
-		dbg_xfrin("xfr: remove_rdata: Could not copy RRSet (%s).\n",
+		dbg_rrset(": remove_rr_using_rrset: Could not copy RRSet (%s).\n",
 		          knot_strerror(ret));
 		return ret;
 	}
-	/* Reset RDATA. */
+	/* Reset RDATA of returned RRSet. */
 	knot_rrset_rdata_reset(return_rr);
 
 	for (uint16_t i = 0; i < what->rdata_count; ++i) {
@@ -2750,9 +2689,13 @@ int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
 				          knot_strerror(ret));
 				return ret;
 			}
+			dbg_rrset_detail("rrset: remove_rr_using_rrset: "
+			                 "Successfuly removed and returned this RR:\n");
+			knot_rrset_rdata_dump(return_rr, return_rr->rdata_count - 1);
 		} else if (ret != KNOT_ENOENT) {
 			/* NOENT is OK, but other errors are not. */
-			dbg_xfrin("xfr: RRSet removal failed (%s).\n",
+			dbg_rrset("rrset: remove_using_rrset: "
+			          "RRSet removal failed (%s).\n",
 			          knot_strerror(ret));
 			knot_rrset_deep_free(&return_rr, 0, 0);
 			return ret;
@@ -2770,7 +2713,8 @@ int knot_rrset_remove_rr_using_rrset_del(knot_rrset_t *from,
 		int ret = knot_rrset_remove_rr(from, what, i);
 		if (ret != KNOT_ENOENT || ret != KNOT_EOK) {
 			/* NOENT is OK, but other errors are not. */
-			dbg_xfrin("xfr: RRSet removal failed (%s).\n",
+			dbg_rrset("rrset: remove_rr_using_rrset: "
+			          "RRSet removal failed (%s).\n",
 			          knot_strerror(ret));
 			return ret;
 		}

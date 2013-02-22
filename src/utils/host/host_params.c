@@ -51,6 +51,11 @@ static int host_init(dig_params_t *params)
 
 void host_clean(dig_params_t *params)
 {
+	if (params == NULL) {
+		DBG_NULL;
+		return;
+	}
+
 	dig_clean(params);
 }
 
@@ -66,27 +71,28 @@ static int parse_name(const char *value, list *queries, const query_t *conf)
 	// RR type is known.
 	if (conf->type_num >= 0) {
 		if (conf->type_num == KNOT_RRTYPE_PTR) {
+			free(fqd_name);
+
 			// Check for correct address.
 			if (reverse == NULL) {
-				ERR("invalid IPv4 or IPv6 address\n");
-				free(fqd_name);
+				ERR("invalid IPv4 or IPv6 address %s\n", value);
 				return KNOT_EINVAL;
 			}
 
 			// Add reverse query for address.
 			query = query_create(reverse, conf);
+			free(reverse);
 			if (query == NULL) {
-				free(reverse);
-				free(fqd_name);
 				return KNOT_ENOMEM;
 			}
 			add_tail(queries, (node *)query);
 		} else {
+			free(reverse);
+
 			// Add query for name and specified type.
 			query = query_create(fqd_name, conf);
+			free(fqd_name);
 			if (query == NULL) {
-				free(reverse);
-				free(fqd_name);
 				return KNOT_ENOMEM;
 			}
 			add_tail(queries, (node *)query);
@@ -118,23 +124,22 @@ static int parse_name(const char *value, list *queries, const query_t *conf)
 				free(fqd_name);
 				return KNOT_ENOMEM;
 			}
+			free(fqd_name);
 			query->type_num = KNOT_RRTYPE_MX;
 			add_tail(queries, (node *)query);
 		} else {
+			free(fqd_name);
+
 			// Add reverse query for address.
-			query = query_create(fqd_name, conf);
+			query = query_create(reverse, conf);
+			free(reverse);
 			if (query == NULL) {
-				free(reverse);
-				free(fqd_name);
 				return KNOT_ENOMEM;
 			}
 			query->type_num = KNOT_RRTYPE_PTR;
 			add_tail(queries, (node *)query);
 		}
 	}
-
-	free(reverse);
-	free(fqd_name);
 
 	return KNOT_EOK;
 }
@@ -151,6 +156,7 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 	int opt = 0;
 
 	if (params == NULL || argv == NULL) {
+		DBG_NULL;
 		return KNOT_EINVAL;
 	}
 
@@ -180,7 +186,9 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 			conf->operation = OPERATION_LIST_SOA;
 			break;
 		case 'd':
-		case 'v': // Fall through.
+			msg_enable_debug(1);
+			break;
+		case 'v':
 			conf->style.format = FORMAT_VERBOSE;
 			break;
 		case 'l':
@@ -201,6 +209,7 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 		case 'c':
 			if (params_parse_class(optarg, &rclass)
 			    != KNOT_EOK) {
+				ERR("bad class %s\n", optarg);
 				return KNOT_EINVAL;
 			}
 			conf->class_num = rclass;
@@ -214,13 +223,14 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 		case 't':
 			if (params_parse_type(optarg, &rtype, &serial)
 			    != KNOT_EOK) {
+				ERR("bad type %s\n", optarg);
 				return KNOT_EINVAL;
 			}
 			conf->type_num = rtype;
 			conf->xfr_serial = serial;
 			break;
 		case 'W':
-			if (params_parse_interval(optarg, &conf->wait)
+			if (params_parse_wait(optarg, &conf->wait)
 			    != KNOT_EOK) {
 				return KNOT_EINVAL;
 			}
@@ -237,7 +247,6 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 		if (params_parse_server(argv[optind + 1], &conf->servers,
 		                        conf->port)
 		    != KNOT_EOK) {
-			ERR("invalid nameserver\n");
 			return KNOT_EINVAL;
 		}
 	case 1: // Fall through.

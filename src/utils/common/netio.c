@@ -32,6 +32,7 @@
 server_t* server_create(const char *name, const char *service)
 {
 	if (name == NULL || service == NULL) {
+		DBG_NULL;
 		return NULL;
 	}
 
@@ -54,6 +55,7 @@ server_t* server_create(const char *name, const char *service)
 void server_free(server_t *server)
 {
 	if (server == NULL) {
+		DBG_NULL;
 		return;
 	}
 
@@ -146,6 +148,7 @@ int net_connect(const server_t *local,
 	socklen_t       err_len = sizeof(err);
 
 	if (remote == NULL || net == NULL) {
+		DBG_NULL;
 		return KNOT_EINVAL;
 	}
 
@@ -249,6 +252,7 @@ int net_connect(const server_t *local,
 int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 {
 	if (net == NULL || buf == NULL) {
+		DBG_NULL;
 		return KNOT_EINVAL;
 	}
 
@@ -280,6 +284,7 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 	struct pollfd pfd;
 
 	if (net == NULL || buf == NULL) {
+		DBG_NULL;
 		return KNOT_EINVAL;
 	}
 
@@ -357,6 +362,7 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 void net_close(net_t *net)
 {
 	if (net == NULL) {
+		DBG_NULL;
 		return;
 	}
 

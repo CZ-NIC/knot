@@ -99,6 +99,8 @@ libknot_la_SOURCES =				\
 	libknot/zone/node.c			\
 	libknot/zone/zone-diff.h		\
 	libknot/zone/zone-diff.c		\
+	libknot/zone/zone-dump.h		\
+	libknot/zone/zone-dump.c		\
 	libknot/hash/hash-functions.c		\
 	libknot/hash/cuckoo-hash-table.c	\
 	libknot/hash/universal-system.c		\
@@ -231,7 +233,7 @@ libknotd_la_SOURCES =				\
 	knot/server/server.h
 
 zscanner/scanner.c: zscanner/scanner.rl zscanner/scanner_body.rl
-	$(RAGEL)-s -o zscanner/scanner.c zscanner/scanner.rl
+	$(RAGEL) -s -o zscanner/scanner.c zscanner/scanner.rl
 
 unittests_zscanner_SOURCES =			\
 	zscanner/test/zscanner_test.c		\

@@ -258,10 +258,7 @@ static dthread_t *dt_create_thread(dt_unit_t *unit)
 static void dt_delete_thread(dthread_t **thread)
 {
 	// Check
-	if (thread == 0) {
-		return;
-	}
-	if (*thread == 0) {
+	if (!thread || !*thread) {
 		return;
 	}
 

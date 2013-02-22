@@ -14,11 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-/* FreeBSD POSIX2008 getline() */
-#ifndef _WITH_GETLINE
- #define _WITH_GETLINE
-#endif
-
 #include "utils/common/token.h"
 
 #include <stdio.h>
@@ -27,11 +22,13 @@
 #include <string.h>			// memcmp
 
 #include "common/errcode.h"		// KNOT_EOK
+#include "common/getline_wrap.h"	// getline_wrap
 #include "utils/common/msg.h"		// ERR
 
 int tok_scan(const char* lp, const char **tbl, int *lpm)
 {
 	if (lp == NULL || tbl == NULL || *tbl == NULL || lpm == NULL) {
+		DBG_NULL;
 		return -1;
 	}
 
@@ -85,6 +82,7 @@ int tok_scan(const char* lp, const char **tbl, int *lpm)
 int tok_find(const char *lp, const char **tbl)
 {
 	if (lp == NULL || tbl == NULL || *tbl == NULL) {
+		DBG_NULL;
 		return KNOT_EINVAL;
 	}
 
@@ -107,6 +105,7 @@ int tok_find(const char *lp, const char **tbl)
 const char* tok_skipspace(const char *lp)
 {
 	if (lp == NULL) {
+		DBG_NULL;
 		return NULL;
 	}
 
@@ -116,6 +115,7 @@ const char* tok_skipspace(const char *lp)
 int tok_process_lines(FILE *fp, lparse_f cb, void *arg)
 {
 	if (fp == NULL || cb == NULL) {
+		DBG_NULL;
 		return KNOT_EINVAL;
 	}
 
@@ -123,14 +123,13 @@ int tok_process_lines(FILE *fp, lparse_f cb, void *arg)
 	
 	/* Parse lines. */
 	char *buf = NULL;
-	size_t buflen = 0;
-	ssize_t rb = 0;
-	while ((rb = getline(&buf, &buflen, fp)) != -1) {
+	size_t rb = 0;
+	while ((buf = getline_wrap(fp, &rb)) != NULL && rb > 0) {
 		ret = cb(buf, rb, arg);
+		free(buf);
 		if (ret != KNOT_EOK) break;
 	}
 	
-	free(buf);
 	return ret;
 }
 

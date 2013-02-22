@@ -560,7 +560,7 @@ int remote_query_append(knot_packet_t *qry, knot_rrset_t *data)
 	}
 	
 	uint8_t *sp = qry->wireformat + qry->size;
-	uint8_t *np   = qry->wireformat + qry->max_size;
+//	uint8_t *np   = qry->wireformat + qry->max_size;
 	uint8_t *p = sp;
 	for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(data); i++) {
 		assert(0);

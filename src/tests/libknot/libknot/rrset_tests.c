@@ -20,6 +20,7 @@
 #include "tests/libknot/libknot/rrset_tests.h"
 #include "common/descriptor_new.h"
 #include "common/errcode.h"
+#include "common/print.h"
 #include "libknot/rrset.h"
 #include "libknot/util/wire.h"
 #include "common/mempattern.h"
@@ -732,9 +733,9 @@ static int test_rrset_to_wire()
 			diag("RDATA of RRSet %d are wrongly converted.\n",
 			     i);
 			failed = 1;
-			hex_print(wire + test_rrset_array[i].header_wire_size,
+			hex_print((char *)(wire + test_rrset_array[i].header_wire_size),
 			          test_rrset_array[i].rdata_wire_size);
-			hex_print(test_rrset_array[i].rdata_wire,
+			hex_print((char *)(test_rrset_array[i].rdata_wire),
 			          test_rrset_array[i].rdata_wire_size);
 		}
 	}
@@ -1046,7 +1047,7 @@ static int test_rrset_compare_rdata()
 //		return 0;
 //	}
 	
-//	return 1;
+	return 1;
 }
 
 static int test_rrset_compare()

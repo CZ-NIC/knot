@@ -1,46 +1,20 @@
-/*!
- * \file zone-dump-text.c
- *
- * \author modifications (non-buffer implementation, zone-specific functions)
- *         by Jan Kadlec <jan.kadlec@nic.cz>,
- *         conversion functions by NLnet Labs,
- *         Copyright (c) 2001-2011, NLnet Labs. All rights reserved.
- *         b64ntop by ISC.
+/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*
- * Copyright (c) 2001-2011, NLnet Labs. All rights reserved.
- *
- * This software is open source.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * Redistributions of source code must retain the above copyright notice,
- * this list of conditions and the following disclaimer.
- *
- * Redistributions in binary form must reproduce the above copyright notice,
- * this list of conditions and the following disclaimer in the documentation
- * and/or other materials provided with the distribution.
- *
- * Neither the name of the NLNET LABS nor the names of its contributors may
- * be used to endorse or promote products derived from this software without
- * specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
- * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- */
-
+#include "common/descriptor_new.h"
 #include <config.h>
 
 #include <ctype.h>
@@ -53,6 +27,7 @@
 #include "common/skip-list.h"
 #include "common/base32hex.h"
 
+#ifdef GRR
 /*!< \todo #1683 Find all maximum lengths to be used in strcnat. */
 
 enum uint_max_length {
@@ -654,6 +629,7 @@ char *rdata_nsap_to_string(knot_rdata_item_t item)
 	char *converted = knot_hex_to_string(rdata_item_data(item),
 	                                     rdata_item_size(item));
 	if (converted == NULL) {
+		free(ret);
 		return NULL;
 	}
 
@@ -976,27 +952,6 @@ int rdata_dump_text(const knot_rdata_t *rdata, uint16_t type, FILE *f,
 	return KNOT_EOK;
 }
 
-void dump_rrset_header(const knot_rrset_t *rrset, FILE *f)
-{
-	char buff[32];
-
-	char *name = knot_dname_to_str(rrset->owner);
-	fprintf(f, "%-20s ",  name);
-	free(name);
-
-	fprintf(f, "%-5u ", rrset->ttl);
-
-	if (knot_rrclass_to_string(rrset->rclass, buff, sizeof(buff)) < 0) {
-		return;
-	}
-	fprintf(f, "%-2s ", buff);
-
-	if (knot_rrtype_to_string(rrset->type, buff, sizeof(buff)) < 0) {
-		return;
-	}
-	fprintf(f, "%-5s ",  buff);
-}
-
 int rrsig_set_dump_text(knot_rrset_t *rrsig, FILE *f)
 {
 	dump_rrset_header(rrsig, f);
@@ -1019,13 +974,34 @@ int rrsig_set_dump_text(knot_rrset_t *rrsig, FILE *f)
 
 	return KNOT_EOK;
 }
+#endif
 
+void dump_rrset_header(const knot_rrset_t *rrset, FILE *f)
+{
+	char buff[32];
+
+	char *name = knot_dname_to_str(rrset->owner);
+	fprintf(f, "%-20s ",  name);
+	free(name);
+
+	fprintf(f, "%-5u ", rrset->ttl);
+
+	if (knot_rrclass_to_string(rrset->rclass, buff, sizeof(buff)) < 0) {
+		return;
+	}
+	fprintf(f, "%-2s ", buff);
+
+	if (knot_rrtype_to_string(rrset->type, buff, sizeof(buff)) < 0) {
+		return;
+	}
+	fprintf(f, "%-5s ",  buff);
+}
 
 int rrset_dump_text(const knot_rrset_t *rrset, FILE *f)
 {
 	if (rrset->rdata != NULL) { // No sense in dumping empty RR
 		dump_rrset_header(rrset, f);
-
+/*
 		knot_rdata_t *tmp = rrset->rdata;
 
 		while (tmp->next != rrset->rdata) {
@@ -1038,13 +1014,14 @@ int rrset_dump_text(const knot_rrset_t *rrset, FILE *f)
 		}
 
 		rdata_dump_text(tmp, rrset->type, f, rrset);
+*/
 	}
-
+/*
 	knot_rrset_t *rrsig_set = rrset->rrsigs;
 	if (rrsig_set != NULL) {
 		rrsig_set_dump_text(rrsig_set, f);
 	}
-
+*/
 	return KNOT_EOK;
 }
 
@@ -1055,20 +1032,16 @@ struct dump_param {
 
 int apex_node_dump_text(knot_node_t *node, FILE *f)
 {
-	knot_rrset_t dummy_rrset;
-	dummy_rrset.type = KNOT_RRTYPE_SOA;
-	knot_rrset_t *tmp_rrset =
-		(knot_rrset_t *)gen_tree_find(node->rrset_tree,
-		                                &dummy_rrset);
-	assert(tmp_rrset);
-	int ret = rrset_dump_text(tmp_rrset, f);
+	knot_rrset_t *rr = knot_node_get_rrset(node, KNOT_RRTYPE_SOA);
+
+	assert(rr);
+	int ret = rrset_dump_text(rr, f);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	const knot_rrset_t **rrsets =
-		knot_node_rrsets(node);
-
+	const knot_rrset_t **rrsets = knot_node_rrsets(node);
+	
 	for (int i = 0; i < node->rrset_count; i++) {
 		if (rrsets[i]->type != KNOT_RRTYPE_SOA) {
 			ret = rrset_dump_text(rrsets[i], f);
@@ -1096,8 +1069,7 @@ void node_dump_text(knot_node_t *node, void *data)
 		return;
 	}
 
-	const knot_rrset_t **rrsets =
-		knot_node_rrsets(node);
+	const knot_rrset_t **rrsets = knot_node_rrsets(node);
 
 	for (int i = 0; i < node->rrset_count; i++) {
 		rrset_dump_text(rrsets[i], f);

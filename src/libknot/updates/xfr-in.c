@@ -114,8 +114,6 @@ static int xfrin_create_query(knot_dname_t *qname, uint16_t qtype,
 		dbg_xfrin_detail("Signing XFR query with key (name %s): \n",
 		                  name);
 		free(name);
-		dbg_xfrin_hex_detail(xfr->tsig_key->secret, 
-		                     xfr->tsig_key->secret_size);
 		
 		xfr->digest_size = xfr->digest_max_size;
 		rc = knot_tsig_sign(wire, &wire_size, *size, NULL, 0, 
@@ -2334,11 +2332,9 @@ dbg_xfrin_exec_detail(
 
 void xfrin_cleanup_successful_update(knot_changes_t **changes)
 {
-
 	for (int i = 0; i < (*changes)->old_rrsets_count; ++i) {
 		dbg_xfrin_detail("Deleting old RRSet: %p\n",
 		                 (*changes)->old_rrsets[i]);
-		knot_rrset_dump((*changes)->old_rrsets[i]);
 		knot_rrset_free(&(*changes)->old_rrsets[i]);
 	}
 
@@ -2401,29 +2397,6 @@ static void xfrin_switch_nodes_in_node(knot_node_t *node, void *data)
 
 /*----------------------------------------------------------------------------*/
 
-static void xfrin_switch_node_in_dname_table(knot_dname_t *dname, void *data)
-{
-	UNUSED(data);
-
-dbg_xfrin_exec_detail(
-	char *name = knot_dname_to_str(dname);
-	dbg_xfrin_detail("Switching node in dname %s (%p)\n", name, dname->node);
-	free(name);
-);
-	/* dname is not checked here (for NULL value), which resulted in crash
-	 * on howl recently. However, dname should not be NULL here at all, 
-	 * it is a sign of some other error.
-	 */
-
-	if (dname->node == NULL) {
-		return;
-	}
-
-	knot_dname_update_node(dname);
-}
-
-/*----------------------------------------------------------------------------*/
-
 static int xfrin_switch_nodes(knot_zone_contents_t *contents_copy)
 {
 	assert(contents_copy != NULL);
@@ -2435,19 +2408,6 @@ static int xfrin_switch_nodes(knot_zone_contents_t *contents_copy)
 
 	knot_zone_contents_nsec3_apply_inorder(contents_copy,
 	                                      xfrin_switch_nodes_in_node, NULL);
-
-	// Then traverse the hash table and change each pointer in hash table
-	// item from old node to new node.
-	//TODO change to trie
-//	int ret = ck_apply(knot_zone_contents_get_hash_table(contents_copy),
-//	                   xfrin_switch_node_in_hash_table, NULL);
-//	assert(ret == 0);
-
-//	// Traverse also the dname table and change the node pointers in dnames
-//	knot_zone_contents_dname_table_apply(contents_copy,
-//	                                     xfrin_switch_node_in_dname_table,
-//	                                     NULL);
-
 	return KNOT_EOK;
 }
 
@@ -2993,6 +2953,7 @@ dbg_xfrin_exec_detail(
 			return KNOT_ENONODE;
 		}
 		free(zone_node);
+		changes->old_nodes[i] = NULL;
 	}
 
 	// remove NSEC3 nodes

@@ -2208,8 +2208,13 @@ static int knot_ddns_process_rr(const knot_rrset_t *rr,
 		return knot_ddns_process_add(rr, node, zone, changeset,
 		                             changes, rr_copy);
 	} else if (knot_rrset_class(rr) == KNOT_CLASS_NONE) {
-		return knot_ddns_process_rem_rr(rr, node, zone, changeset,
-		                                changes, qclass);
+		if (node != NULL) {
+			return knot_ddns_process_rem_rr(rr, node, zone, changeset,
+			                                changes, qclass);
+		} else {
+			//Nothing to remove
+			return KNOT_EOK;
+		}
 	} else if (knot_rrset_class(rr) == KNOT_CLASS_ANY) {
 		if (knot_rrset_type(rr) == KNOT_RRTYPE_ANY) {
 			return knot_ddns_process_rem_all(node, changeset,

@@ -2432,7 +2432,7 @@ static void knot_zc_integrity_check_parent(const knot_node_t *node,
 			       != node) {
 				char *wc = (knot_node_wildcard_child(
 				                 check_data->parent) == NULL)
-				   ? "none"
+				   ? strdup("none")
 				   : knot_dname_to_str(knot_node_owner(
 				           knot_node_wildcard_child(
 				                   check_data->parent)));
@@ -2441,8 +2441,8 @@ static void knot_zc_integrity_check_parent(const knot_node_t *node,
 				        pname, wc, name);
 				if (knot_node_wildcard_child(
 				       check_data->parent) != NULL) {
-					free(wc);
 				}
+				free(wc);
 
 				++check_data->errors;
 			}

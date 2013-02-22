@@ -14,7 +14,7 @@ tld		NS	@	; Relative form
 _a_.-b-c-./d/.	NS	@	; Allowed characters '_' '-' '/' anywhere
 ABCDEFGHIJKLMNOPQRSTUVWXYZ	NS	@	; All upper-case letters
 abcdefghijklmnopqrstuvwxyz	NS	@	; All lower-case letters
-\0320\ \\\"\.\@\*.tld.		NS	@	; Label with special chars
+\000\0320\ \\\"\.\@\*.tld.	NS	@	; Label with special chars
 b.a.9.8.7.6.5.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa.	NS	@	; IPv6 reverse
 12345678901234567890123456789012345678901234567890123456789012\051.tld.		NS	@	; Label of maximal length
 123456789012345678901234567890123456789012345678901234567890123.123456789012345678901234567890123456789012345678901234567890123.123456789012345678901234567890123456789012345678901234567890123.1234567890123456789012345678901234567890123456789012345678901.	NS	@	; Domain name of maximal length

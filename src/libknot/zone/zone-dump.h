@@ -14,20 +14,19 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file zone-dump-text.h
+ * \file zone-dump.h
  *
- * \author Jan Kadlec <jan.kadlec@nic.cz>
+ * \author Daniel Salzman <daniel.salzman@nic.cz>
  *
- * \brief Functions for dumping zone to text file.
+ * \brief Zone text dump facility.
  *
- * \addtogroup zone-load-dump
+ * \addtogroup libknot
  * @{
  */
 
-#ifndef _KNOT_ZONE_DUMP_TEXT_H_
-#define _KNOT_ZONE_DUMP_TEXT_H_
+#ifndef _KNOT_ZONE_DUMP_H_
+#define _KNOT_ZONE_DUMP_H_
 
-#include "libknot/util/descriptor.h"
 #include "libknot/zone/zone.h"
 
 /*!
@@ -41,6 +40,6 @@
  */
 int zone_dump_text(knot_zone_contents_t *zone, FILE *f);
 
-#endif // _KNOT_ZONE_DUMP_TEXT_H_
+#endif // _KNOT_ZONE_DUMP_H_
 
 /*! @} */

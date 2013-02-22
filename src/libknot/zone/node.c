@@ -126,28 +126,6 @@ static inline uint8_t knot_node_flags_get_empty(uint8_t flags)
 }
 
 /*----------------------------------------------------------------------------*/
-/*!
- * \brief Compares the two keys as RR types.
- *
- * \note This function may be used in data structures requiring generic
- *       comparation function.
- *
- * \param key1 First RR type.
- * \param key2 Second RR type.
- *
- * \retval 0 if \a key1 is equal to \a key2.
- * \retval < 0 if \a key1 is lower than \a key2.
- * \retval > 0 if \a key1 is higher than \a key2.
- */
-static int compare_rrset_types(void *rr1, void *rr2)
-{
-	knot_rrset_t *rrset1 = (knot_rrset_t *)rr1;
-	knot_rrset_t *rrset2 = (knot_rrset_t *)rr2;
-	return ((rrset1->type > rrset2->type) ? 1 :
-	        (rrset1->type == rrset2->type) ? 0 : -1);
-}
-
-/*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
@@ -259,7 +237,7 @@ knot_rrset_t *knot_node_remove_rrset(knot_node_t *node, uint16_t type)
 	for (; i < node->rrset_count; ++i) {
 		if (rrs[i]->type == type) {
 			ret = rrs[i];
-			memmove(rrs + i, rrs + i + 1, node->rrset_count - i - 1);
+			memmove(rrs + i, rrs + i + 1, (node->rrset_count - i - 1) * sizeof(knot_rrset_t *));
 			--node->rrset_count;
 			return ret;
 		}
@@ -445,9 +423,6 @@ void knot_node_set_nsec3_node(knot_node_t *node, knot_node_t *nsec3_node)
 	}
 
 	node->nsec3_node = nsec3_node;
-	if (nsec3_node != NULL) {
-		nsec3_node->nsec3_referer = node;
-	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -592,8 +567,6 @@ void knot_node_update_refs(knot_node_t *node)
 	knot_node_update_ref(&node->wildcard_child);
 	// reference to NSEC3 node
 	knot_node_update_ref(&node->nsec3_node);
-	// reference to NSEC3 referrer
-	knot_node_update_ref(&node->nsec3_referer);
 }
 
 /*----------------------------------------------------------------------------*/

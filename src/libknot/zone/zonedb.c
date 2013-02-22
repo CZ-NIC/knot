@@ -113,7 +113,7 @@ knot_zone_t *knot_zonedb_find_zone(const knot_zonedb_t *db,
 	size_t klen = knot_dname_size(zone_name);
 	value_t *val = hattrie_tryget(db->zone_tree, key, klen);
 	if (!val) return NULL;
-	return (knot_zone_t *)val;
+	return (knot_zone_t *)*val;
 }
 
 /*----------------------------------------------------------------------------*/

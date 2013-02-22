@@ -377,4 +377,3 @@
 #endif /* _KNOT_DESCRIPTOR_H_ */
 
 /*! @} */
-
