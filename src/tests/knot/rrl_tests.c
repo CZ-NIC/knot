@@ -53,6 +53,8 @@ static int rrl_tests_run(int argc, char *argv[])
 	ok(rate == rrl_rate(rrl), "rrl: setrate");
 
 	/* 3. N unlimited requests. */
+	knot_dname_t *apex = knot_dname_new_from_str("rrl.", 4, NULL);
+	knot_zone_t *zone = knot_zone_new(knot_node_new(apex, NULL, 0), 0, 0);
 	sockaddr_t addr;
 	sockaddr_t addr6;
 	sockaddr_set(&addr, AF_INET, "1.2.3.4", 0);
@@ -61,8 +63,8 @@ static int rrl_tests_run(int argc, char *argv[])
 	knot_response_init(pkt);
 	int ret = 0;
 	for (unsigned i = 0; i < rate; ++i) {
-		if (rrl_query(rrl, &addr, pkt) != KNOT_EOK ||
-		    rrl_query(rrl, &addr6, pkt) != KNOT_EOK) {
+		if (rrl_query(rrl, &addr, pkt, zone) != KNOT_EOK ||
+		    rrl_query(rrl, &addr6, pkt, zone) != KNOT_EOK) {
 			ret = KNOT_ELIMIT;
 			break;
 		}
@@ -70,13 +72,14 @@ static int rrl_tests_run(int argc, char *argv[])
 	ok(ret == 0, "rrl: unlimited IPv4/v6 requests");
 	
 	/* 4. limited request */
-	ret = rrl_query(rrl, &addr, pkt);
+	ret = rrl_query(rrl, &addr, pkt, zone);
 	ok(ret != 0, "rrl: throttled IPv4 request");
 
 	/* 5. limited IPv6 request */
-	ret = rrl_query(rrl, &addr6, pkt);
+	ret = rrl_query(rrl, &addr6, pkt, zone);
 	ok(ret != 0, "rrl: throttled IPv6 request");
 	
+	knot_zone_deep_free(&zone, 0);
 	rrl_destroy(rrl);
 	return 0;
 }

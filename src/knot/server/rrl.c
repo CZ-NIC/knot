@@ -16,9 +16,11 @@
 
 #include <time.h>
 #include <sys/socket.h>
+#include <assert.h>
 
 #include "knot/server/rrl.h"
 #include "knot/common.h"
+#include "libknot/consts.h"
 #include "common/hattrie/murmurhash3.h"
 
 /* Limits */
@@ -30,6 +32,7 @@
 #define RRL_DEFAULT_RATE 100
 #define RRL_CAPACITY 8 /* N seconds. */
 #define RRL_SSTART 4 /* 1/Nth of the rate for slow start */
+#define RRL_PSIZE_LARGE 1024
 
 /* Classification */
 enum {
@@ -38,28 +41,86 @@ enum {
 	CLS_ERROR    = 1 << 1, /* Error response. */
 	CLS_NXDOMAIN = 1 << 2, /* NXDOMAIN (special case of error). */
 	CLS_EMPTY    = 1 << 3, /* Empty response. */
-	CLS_SSTART   = 1 << 4  /* Bucket in slow-start after collision. */
+	CLS_LARGE    = 1 << 4, /* Response size over threshold (1024k). */
+	CLS_WILDCARD = 1 << 5, /* Wildcard query. */
+	CLS_SSTART   = 1 << 6  /* Bucket in slow-start after collision. */
 };
 
 static uint8_t rrl_clsid(knot_packet_t *p) {
-	/*! \todo */
-	return CLS_NORMAL;
+	/* Check error code */
+	int ret = CLS_NULL;
+	switch (knot_packet_rcode(p)) {
+	case KNOT_RCODE_NOERROR: ret = CLS_NORMAL; break;
+	case KNOT_RCODE_NXDOMAIN: return CLS_NXDOMAIN; break;
+	default: return CLS_ERROR; break;
+	}
+
+	/* Check if answered from a qname */
+	if (ret == CLS_NORMAL && p->flags & KNOT_PF_WILDCARD) {
+		return CLS_WILDCARD;
+	}
+
+	/* Check packet size */
+	if (knot_packet_size(p) >= RRL_PSIZE_LARGE) {
+		return CLS_LARGE;
+	}
+
+	/* Check ancount */
+	if (knot_packet_ancount(p) == 0) {
+		return CLS_EMPTY;
+	}
+
+	return ret;
 }
 
-static int rrl_clsname(char *dst, uint8_t cls, knot_packet_t *p)
+static int rrl_clsname(char *dst, size_t maxlen, uint8_t cls,
+                            knot_packet_t *p, const knot_zone_t *z)
 {
-	/*! \todo */
-	return 0;
+	const knot_dname_t *dn = NULL;
+	const uint8_t *n = (const uint8_t*)"\x00"; /* Fallback zone (for errors etc.) */
+	int nb = 1;
+	if (z) { /* Found associated zone. */
+		dn = knot_zone_name(z);
+	}
+	switch (cls) {
+	case CLS_ERROR:    /* Could be a non-existent zone or garbage. */
+	case CLS_NXDOMAIN: /* Queries to non-existent names in zone. */
+	case CLS_WILDCARD: /* Queries to names covered by a wildcard. */
+		dbg_rrl_verb("%s: using zone/fallback name\n", __func__);
+		break;
+	default:
+		dn = knot_packet_qname(p);
+		break;
+	}
+	
+	if (dn) { /* Check used dname. */
+		assert(dn); /* Should be always set. */
+		n = knot_dname_name(dn);
+		nb = (int)knot_dname_size(dn);
+	}
+	
+	/* Write to wire */
+	if (nb > maxlen) return KNOT_ESPACE;
+	if (memcpy(dst, n, nb) == NULL) {
+		dbg_rrl("%s: failed to serialize name=%p len=%u\n",
+		        __func__, n, nb);
+		return KNOT_ERROR;
+	}
+	
+	return nb;
 }
 
-static int rrl_classify(char *dst, size_t maxlen,
-                        sockaddr_t *a, knot_packet_t *p, uint32_t seed)
+static int rrl_classify(char *dst, size_t maxlen, sockaddr_t *a,
+                        knot_packet_t *p, const knot_zone_t *z, uint32_t seed)
 {
+	if (!dst || !a || !p || maxlen == 0) {
+		return KNOT_EINVAL;
+	}
+	
 	/* Class */
-	int blklen = 0;
 	uint8_t cls = rrl_clsid(p);
 	*dst = cls;
-	blklen += sizeof(cls);
+	int blklen = sizeof(cls);
 	
 	/* Address (in network byteorder, adjust masks). */
 	uint64_t nb = 0;
@@ -68,30 +129,29 @@ static int rrl_classify(char *dst, size_t maxlen,
 	} else {                     /* Take the /24 prefix */
 		nb = (uint32_t)a->addr4.sin_addr.s_addr & RRL_V4_PREFIX;
 	}
+	if (blklen + sizeof(nb) > maxlen) return KNOT_ESPACE;
 	memcpy(dst + blklen, (void*)&nb, sizeof(nb));
 	blklen += sizeof(nb);
 
 	/* Name */
-	int len = rrl_clsname(dst + blklen, cls, p);
-	if (len < 0) {
-		return KNOT_ERROR;
-	} else {
-		blklen += len;
-	}
+	int len = rrl_clsname(dst + blklen, maxlen - blklen, cls, p, z);
+	if (len < 0) return len;
+	blklen += len;
 	
 	/* Seed. */
-	len = sizeof(seed);
-	if (memcpy(dst + blklen, (void*)&seed, len) == 0) {
-		blklen += len;
+	if (blklen + sizeof(seed) > maxlen) return KNOT_ESPACE;
+	if (memcpy(dst + blklen, (void*)&seed, sizeof(seed)) == 0) {
+		blklen += sizeof(seed);
 	}
 	
 	return blklen;
 }
 
-static rrl_item_t* rrl_hash(rrl_table_t *t, sockaddr_t *a, knot_packet_t *p, uint32_t stamp)
+static rrl_item_t* rrl_hash(rrl_table_t *t, sockaddr_t *a, knot_packet_t *p,
+                            const knot_zone_t *zone, uint32_t stamp)
 {
 	char buf[RRL_CLSBLK_MAXLEN];
-	int len = rrl_classify(buf, sizeof(buf), a, p, t->seed);
+	int len = rrl_classify(buf, sizeof(buf), a, p, zone, t->seed);
 	if (len < 0) {
 		return NULL;
 	}
@@ -146,14 +206,14 @@ uint32_t rrl_rate(rrl_table_t *rrl)
 	return rrl->rate;
 }
 
-int rrl_query(rrl_table_t *rrl, sockaddr_t* src, knot_packet_t *resp)
+int rrl_query(rrl_table_t *rrl, sockaddr_t* src, knot_packet_t *resp, const knot_zone_t *zone)
 {
 	if (!rrl || !src || !resp) return KNOT_EINVAL;
 	
 	/* Calculate hash and fetch */
 	int ret = KNOT_EOK;
 	uint32_t now = time(NULL);
-	rrl_item_t *b = rrl_hash(rrl, src, resp, now);
+	rrl_item_t *b = rrl_hash(rrl, src, resp, zone, now);
 	if (!b) {
 		dbg_rrl("%s: failed to compute bucket from packet\n", __func__);
 		return KNOT_ERROR;

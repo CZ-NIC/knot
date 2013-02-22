@@ -30,6 +30,7 @@
 #include <stdint.h>
 #include "common/sockaddr.h"
 #include "libknot/packet/packet.h"
+#include "libknot/zone/zone.h"
 
 typedef struct rrl_item {
 	uint64_t pref;       /* Prefix associated. */
@@ -39,7 +40,7 @@ typedef struct rrl_item {
 } rrl_item_t;
 
 typedef struct rrl_table {
-	uint32_t rate;        /* Configured RRL limit */
+	uint32_t rate;       /* Configured RRL limit */
 	uint32_t seed;       /* Pseudorandom seed for hashing. */
 	size_t size;         /* Number of buckets */
 	rrl_item_t arr[];    /* Buckets */
@@ -48,7 +49,7 @@ typedef struct rrl_table {
 rrl_table_t *rrl_create(size_t size);
 uint32_t rrl_setrate(rrl_table_t *rrl, uint32_t rate);
 uint32_t rrl_rate(rrl_table_t *rrl);
-int rrl_query(rrl_table_t *rrl, sockaddr_t* src, knot_packet_t *resp);
+int rrl_query(rrl_table_t *rrl, sockaddr_t* src, knot_packet_t *resp, const knot_zone_t *zone);
 int rrl_destroy(rrl_table_t *rrl);
 
 
