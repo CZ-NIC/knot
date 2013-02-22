@@ -141,9 +141,8 @@ typedef struct err_handler err_handler_t;
  *
  * \return err_handler_t * Created error handler.
  */
-err_handler_t *handler_new(char log_cname, char log_glue,
-				  char log_rrsigs, char log_nsec,
-				  char log_nsec3);
+err_handler_t *handler_new(int log_cname, int log_glue, int log_rrsigs,
+                           int log_nsec, int log_nsec3);
 
 /*!
  * \brief Called when error has been encountered in node. Will either log error

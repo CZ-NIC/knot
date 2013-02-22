@@ -327,6 +327,7 @@ dbg_zp_exec_detail(
 
 static void process_rr(const scanner_t *scanner)
 {
+	/*!< \todo Refactor, too long. */
 	dbg_zp_detail("Owner from parser=%s\n",
 	              scanner->r_owner);
 	rr_count++;
@@ -658,8 +659,7 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 	/* Create file loader. */
 	file_loader_t *loader = file_loader_create(source, origin,
 	                                           KNOT_CLASS_IN, 3600,
-	                                           process_rr,
-	                                           process_error,
+	                                           process_rr, process_error,
 	                                           context);
 	if (loader == NULL) {
 		dbg_zload("Could not create file loader.\n");
@@ -674,6 +674,12 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 	zl->file_loader = loader;
 	zl->context = context;
 	*dst = zl;
+	
+	/* Do semantic check. */
+	if (semantic_checks == 0) {
+		/* Only mandatory tests. */
+		
+	}
 
 	return KNOT_EOK;
 }
@@ -714,6 +720,8 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	
 	knot_zone_contents_adjust(c->current_zone);
 	rrset_list_delete(&c->node_rrsigs);
+	
+	knot_zone_contents_dump(c->current_zone);
 	
 	return c->current_zone->zone;
 }

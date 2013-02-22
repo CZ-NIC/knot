@@ -130,7 +130,7 @@ void knot_node_dump(knot_node_t *node)
 	fprintf(stderr, "NSEC3 node: ");
 
 	if (node->nsec3_node != NULL) {
-		/*! \todo This causes segfault when nsec3_node was free'd,
+		/*! \todo This causes segfault when n	sec3_node was free'd,
 		 *        e.g. when applying changesets.
 		 */
 		name = knot_dname_to_str(node->nsec3_node->owner);

@@ -101,9 +101,8 @@ static char *error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 
 static const uint MAX_CNAME_CYCLE_DEPTH = 15;
 
-err_handler_t *handler_new(char log_cname, char log_glue,
-				  char log_rrsigs, char log_nsec,
-				  char log_nsec3)
+err_handler_t *handler_new(int log_cname, int log_glue, int log_rrsigs,
+                           int log_nsec, int log_nsec3)
 {
 	err_handler_t *handler = malloc(sizeof(err_handler_t));
 	CHECK_ALLOC_LOG(handler, NULL);
@@ -161,9 +160,8 @@ static void log_error_from_node(err_handler_t *handler,
 	}
 }
 
-int err_handler_handle_error(err_handler_t *handler,
-			    const knot_node_t *node,
-			    int error, const char *data)
+int err_handler_handle_error(err_handler_t *handler, const knot_node_t *node,
+                             int error, const char *data)
 {
 	assert(handler && node);
 	if ((error != 0) &&
@@ -171,48 +169,39 @@ int err_handler_handle_error(err_handler_t *handler,
 		return KNOT_EINVAL;
 	}
 
-	/* missing SOA can only occur once, so there
-	 * needn't to be an option for it */
+	/* 
+	 * A missing SOA can only occur once, so there needn't be 
+	 * an option for it.
+	 */
 
 	if ((error != 0) &&
 	    (error < ZC_ERR_GENERIC_GENERAL_ERROR)) {
 		/* The two errors before SOA were handled */
 		log_error_from_node(handler, node, error, data);
 		return KNOT_EOK;
-
 	} else if ((error < ZC_ERR_RRSIG_GENERAL_ERROR) &&
 		   ((handler->errors[-error] == 0) ||
 		   (handler->options.log_rrsigs))) {
-
 		log_error_from_node(handler, node, error, data);
-
 	} else if ((error > ZC_ERR_RRSIG_GENERAL_ERROR) &&
 		   (error < ZC_ERR_NSEC_GENERAL_ERROR) &&
 		   ((handler->errors[-error] == 0) ||
 		    (handler->options.log_nsec))) {
-
 		log_error_from_node(handler, node, error, data);
-
 	} else if ((error > ZC_ERR_NSEC_GENERAL_ERROR) &&
 		   (error < ZC_ERR_NSEC3_GENERAL_ERROR) &&
 		   ((handler->errors[-error] == 0) ||
 		    (handler->options.log_nsec3))) {
-
 		log_error_from_node(handler, node, error, data);
-
 	} else if ((error > ZC_ERR_NSEC3_GENERAL_ERROR) &&
 		   (error < ZC_ERR_CNAME_GENERAL_ERROR) &&
 		   ((handler->errors[-error] == 0) ||
 		    (handler->options.log_cname))) {
-
 		log_error_from_node(handler, node, error, data);
-
 	} else if ((error > ZC_ERR_CNAME_GENERAL_ERROR) &&
 		   (error < ZC_ERR_GLUE_GENERAL_ERROR) &&
 		    handler->options.log_glue) {
-
 		log_error_from_node(handler, node, error, data);
-
 	}
 
 	handler->errors[-error]++;
@@ -640,30 +629,6 @@ static int check_rrsig_rdata(err_handler_t *handler,
 		}
 	}
 	
-//		uint8_t *dnskey_wire = NULL;
-//		uint dnskey_wire_size = 0;
-
-//		int ret = 0;
-//		if ((ret = dnskey_to_wire(tmp_dnskey_rdata, &dnskey_wire,
-//				   &dnskey_wire_size)) != KNOT_EOK) {
-//			return ret;
-//		}
-
-//		uint16_t key_tag_dnskey =
-//			keytag(dnskey_wire, dnskey_wire_size);
-
-//		free(dnskey_wire);
-
-//		match = (alg == alg_dnskey) &&
-//			(key_tag_rrsig == key_tag_dnskey) &&
-//			!check_dnskey_rdata(tmp_dnskey_rdata);
-
-//	} while (!match &&
-//		 ((tmp_dnskey_rdata =
-//			knot_rrset_rdata_next(dnskey_rrset,
-//						tmp_dnskey_rdata))
-//		!= NULL));
-
 	if (!match) {
 		err_handler_handle_error(handler, node, ZC_ERR_RRSIG_NO_RRSIG,
 		                         NULL);
@@ -715,7 +680,7 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_SIGNED,
 		                         info_str);
-		// safe to continue
+		/* Safe to continue, nothing is malformed. */
 	}
 
 	/* Different owner, class, ttl */
@@ -1452,11 +1417,11 @@ int zone_do_sem_checks(knot_zone_contents_t *zone, char do_checks,
 }
 
 void log_cyclic_errors_in_zone(err_handler_t *handler,
-				      knot_zone_contents_t *zone,
-				      knot_node_t *last_node,
-				      const knot_node_t *first_nsec3_node,
-				      const knot_node_t *last_nsec3_node,
-				      char do_checks)
+                               knot_zone_contents_t *zone,
+                               knot_node_t *last_node,
+                               const knot_node_t *first_nsec3_node,
+                               const knot_node_t *last_nsec3_node,
+                               char do_checks)
 {
 	if (do_checks == 3) {
 		/* Each NSEC3 node should only contain one RRSET. */

@@ -155,32 +155,7 @@ knot_node_t *knot_node_new(knot_dname_t *owner, knot_node_t *parent,
  *        this function is never called with merge=1, so it's not a problem,
  *        but it may be in the future.
  */
-int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset,
-                        int merge)
-{
-	if (node == NULL) {
-		return KNOT_EINVAL;
-	}
-	
-	/* Check for mergeable. */
-	int ret = KNOT_EOK;
-	if (merge) {
-		for (unsigned i = 0; i < node->rrset_count; ++i) {
-			if (node->rrset_tree[i]->type == rrset->type) {
-				ret = knot_rrset_merge((void**)node->rrset_tree + i,
-				                       (void**)&rrset);
-				if (ret == KNOT_EOK) {
-					return ret;
-				}
-			}
-		}
-	}
-
-	/* Cannot merge, append. */
-	return knot_node_add_rrset_no_dupl(node, rrset);
-}
-
-int knot_node_add_rrset_no_dupl(knot_node_t *node, knot_rrset_t *rrset)
+int knot_node_add_rrset_no_merge(knot_node_t *node, knot_rrset_t *rrset)
 {
 	if (node == NULL) {
 		return KNOT_EINVAL;
@@ -195,6 +170,25 @@ int knot_node_add_rrset_no_dupl(knot_node_t *node, knot_rrset_t *rrset)
 	node->rrset_tree[node->rrset_count] = rrset;
 	++node->rrset_count;
 	return KNOT_EOK;
+
+	
+}
+
+int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset)
+{
+	if (node == NULL) {
+		return KNOT_EINVAL;
+	}
+	
+	for (unsigned i = 0; i < node->rrset_count; ++i) {
+		if (node->rrset_tree[i]->type == rrset->type) {
+			int ret = knot_rrset_merge((void**)node->rrset_tree + i,
+			                           (void**)&rrset);
+			if (ret == KNOT_EOK) {
+				return ret;
+			}
+		}
+	}
 }
 
 /*----------------------------------------------------------------------------*/
