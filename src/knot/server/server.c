@@ -754,6 +754,9 @@ void server_destroy(server_t **server)
 
 	// Delete event scheduler
 	evsched_delete(&(*server)->sched);
+	
+	/* Delete rate limiting table. */
+	rrl_destroy((*server)->rrl);
 
 	free(*server);
 
@@ -768,6 +771,22 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 
 	if (!server) {
 		return KNOT_EINVAL;
+	}
+	
+	/* Rate limiting. */
+	if (!server->rrl && conf->rrl_size > 0) {
+		server->rrl = rrl_create(conf->rrl_size);
+		if (!server->rrl) {
+			log_server_error("Couldn't init rate limiting table.\n");
+		} else {
+			rrl_setlocks(server->rrl, RRL_LOCK_GRANULARITY);
+		}
+	}
+	if (server->rrl) {
+		if (rrl_rate(server->rrl) != conf->rrl) {
+			printf("server: new rrl rate=%d\n", conf->rrl);
+			rrl_setrate(server->rrl, conf->rrl);
+		} /* At this point, old buckets will converge to new rate. */
 	}
 
 	/* Update bound sockets. */
