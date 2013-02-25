@@ -150,7 +150,7 @@ void knot_rrset_rdata_dump(const knot_rrset_t *rrset, size_t rdata_pos)
 			assert(rrset->type == KNOT_RRTYPE_NAPTR);
 			uint16_t naptr_chunk_size =
 				rrset_rdata_naptr_bin_chunk_size(rrset, rdata_pos);
-			fprintf(stderr, "NAPTR, REGEXP block (size=%zu):\n",
+			fprintf(stderr, "NAPTR, REGEXP block (size=%u):\n",
 			        naptr_chunk_size);
 			hex_print((char *)(rdata + offset), naptr_chunk_size);
 			offset += naptr_chunk_size;
@@ -2207,7 +2207,7 @@ knot_dname_t **knot_rrset_get_next_dname(const knot_rrset_t *rrset,
 	}
 	
 	/* 2) Try to get next dname from the RR. */
-	knot_dname_t *next = 
+	knot_dname_t **next = 
 	                knot_rrset_get_next_rr_dname(rrset, prev_dname, pos);
 	
 	/* 3) If not found and there is a next RR to search in, try it. */
