@@ -703,6 +703,91 @@ static int rrset_deserialize_rr(knot_rrset_t *rrset, size_t rdata_pos,
 	return KNOT_EOK;
 }
 
+static int knot_rrset_remove_rdata_pos(knot_rrset_t *rrset, size_t pos)
+{
+	if (rrset == NULL || pos >= rrset->rdata_count) {
+		return KNOT_EINVAL;
+	}
+	
+	/* Handle DNAMEs inside RDATA. */
+	int ret = rrset_rr_dnames_apply(rrset, pos, rrset_release_dnames_in_rr,
+	                                NULL);
+	if (ret != KNOT_EOK) {
+		dbg_rrset("rr: remove_rdata_pos: Could not release DNAMEs "
+		          "within RDATA (%s).\n", knot_strerror(ret));
+		return ret;
+	}
+
+	/* Reorganize the actual RDATA array. */
+	uint8_t *rdata_to_remove = rrset_rdata_pointer(rrset, pos);
+	assert(rdata_to_remove);
+	if (pos != rrset->rdata_count - 1) {
+		/* Not the last item in array - we need to move the data. */
+		uint8_t *next_rdata = rrset_rdata_pointer(rrset, pos + 1);
+		assert(next_rdata);
+		
+		/* [code-review] This calculation may be done easier:
+		 * remainder_size = rrset_rdata_size_total(rrset)
+		 *                   - rrset_rdata_offset(rrset, pos + 1);
+		 */
+		
+		/* Get size of remaining RDATA. */ 
+		size_t last_rdata_size =
+		                rrset_rdata_item_size(rrset,
+		                                      rrset->rdata_count - 1);
+		/* Get offset of last item. */
+		uint8_t *last_rdata_offset =
+			rrset_rdata_pointer(rrset, rrset->rdata_count - 1);
+		size_t remainder_size =
+			(last_rdata_offset - next_rdata) + last_rdata_size;
+		/* 
+		 * Copy the all following RR data to where this item is.
+		 * No need to worry about exceeding allocated space now.
+		 */
+		memmove(rdata_to_remove, next_rdata, remainder_size);
+	}
+	
+	uint32_t removed_size = rrset_rdata_item_size(rrset, pos);
+	uint32_t new_size = rrset_rdata_size_total(rrset) - removed_size;
+	
+	/*! \todo Realloc might not be needed. Only if the RRSet is large. */
+	if (new_size == 0) {
+		assert(rrset->rdata_count == 1);
+		free(rrset->rdata);
+		rrset->rdata = NULL;
+		free(rrset->rdata_indices);
+		rrset->rdata_indices = NULL;
+	} else {
+		/* [code-review] Should not be done always - as said in the TODO
+		 *               above. But also, why here and not in the part
+		 *               handling the RDATA array?
+		 */
+		rrset->rdata = xrealloc(rrset->rdata, new_size);
+		/*
+		 * Handle RDATA indices. All indices larger than the removed one
+		 * have to be adjusted. Last index will be changed later.
+		 */
+		/* [code-review] The upper bound should be rdata_count - 2, it
+		 *               has not yet been adjusted.
+		 */
+		for (uint16_t i = pos - 1; i < rrset->rdata_count - 1; ++i) {
+			rrset->rdata_indices[i] = rrset->rdata_indices[i + 1];
+		}
+	
+		/* Save size of the whole RDATA array. */
+		rrset->rdata_indices[rrset->rdata_count - 1] = new_size;
+	
+		/* Resize indices, might not be needed, but we'll do it to be proper. */
+		rrset->rdata_indices =
+			xrealloc(rrset->rdata_indices,
+		                 (rrset->rdata_count - 1) * sizeof(uint32_t));
+	}
+	
+	--rrset->rdata_count;
+
+	return KNOT_EOK;
+}
+
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
@@ -2433,81 +2518,10 @@ int knot_rrset_find_rr_pos(const knot_rrset_t *rr_search,
 	return found ? KNOT_EOK : KNOT_ENOENT;
 }
 
-static int knot_rrset_remove_rdata_pos(knot_rrset_t *rrset, size_t pos)
-{
-	if (rrset == NULL || pos >= rrset->rdata_count) {
-		return KNOT_EINVAL;
-	}
-	
-	/* Handle DNAMEs inside RDATA. */
-	int ret = rrset_rr_dnames_apply(rrset, pos, rrset_release_dnames_in_rr,
-	                                NULL);
-	if (ret != KNOT_EOK) {
-		dbg_rrset("rr: remove_rdata_pos: Could not release DNAMEs "
-		          "within RDATA (%s).\n", knot_strerror(ret));
-		return ret;
-	}
-
-	/* Reorganize the actual RDATA array. */
-	uint8_t *rdata_to_remove = rrset_rdata_pointer(rrset, pos);
-	assert(rdata_to_remove);
-	if (pos != rrset->rdata_count - 1) {
-		/* Not the last item in array - we need to move the data. */
-		uint8_t *next_rdata = rrset_rdata_pointer(rrset, pos + 1);
-		assert(next_rdata);
-		/* Get size of remaining RDATA. */ 
-		size_t last_rdata_size =
-		                rrset_rdata_item_size(rrset,
-		                                      rrset->rdata_count - 1);
-		/* Get offset of last item. */
-		uint8_t *last_rdata_offset =
-			rrset_rdata_pointer(rrset, rrset->rdata_count - 1);
-		size_t remainder_size =
-			(last_rdata_offset - next_rdata) + last_rdata_size;
-		/* 
-		 * Copy the all following RR data to where this item is.
-		 * No need to worry about exceeding allocated space now.
-		 */
-		memmove(rdata_to_remove, next_rdata, remainder_size);
-	}
-	
-	uint32_t removed_size = rrset_rdata_item_size(rrset, pos);
-	uint32_t new_size = rrset_rdata_size_total(rrset) - removed_size;
-	
-	/*! \todo Realloc might not be needed. Only if the RRSet is large. */
-	if (new_size == 0) {
-		assert(rrset->rdata_count == 1);
-		free(rrset->rdata);
-		rrset->rdata = NULL;
-		free(rrset->rdata_indices);
-		rrset->rdata = NULL;
-	} else {
-		rrset->rdata = xrealloc(rrset->rdata, new_size);
-		/*
-		 * Handle RDATA indices. All indices larger than the removed one have
-		 * to be adjusted. Last index will be changed later.
-		 */
-		for (uint16_t i = pos - 1; i < rrset->rdata_count - 1; ++i) {
-			rrset->rdata_indices[i] = rrset->rdata_indices[i + 1];
-		}
-	
-		/* Save size of the whole RDATA array. */
-		rrset->rdata_indices[rrset->rdata_count - 1] = new_size;
-	
-		/* Resize indices, might not be needed, but we'll do it to be proper. */
-		rrset->rdata_indices =
-			xrealloc(rrset->rdata_indices,
-		                 (rrset->rdata_count - 1) * sizeof(uint32_t));
-	}
-	
-	--rrset->rdata_count;
-
-	return KNOT_EOK;
-}
-
 int knot_rrset_remove_rr(knot_rrset_t *rrset,
                          const knot_rrset_t *rr_from, size_t rdata_pos)
 {
+	/* [code-review] Missing parameter checks. */
 	/*
 	 * Position in first and second rrset can differ, we have
 	 * to search for position first.
@@ -2633,10 +2647,12 @@ int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
                                      const knot_rrset_t *what,
                                      knot_rrset_t **rr_deleted, int ddns_check)
 {
+	/* [code-review] Missing parameter checks. */
+	
 	knot_rrset_t *return_rr = NULL;
 	int ret = knot_rrset_shallow_copy(what, &return_rr);
 	if (ret != KNOT_EOK) {
-		dbg_rrset(": remove_rr_using_rrset: Could not copy RRSet (%s).\n",
+		dbg_rrset("remove_rr_using_rrset: Could not copy RRSet (%s).\n",
 		          knot_strerror(ret));
 		return ret;
 	}
@@ -2652,6 +2668,15 @@ int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
 		 * may not even be in the zone.
 		 */
 		//TODO REVIEW LS : relevant?
+		/* [code-review] Hm, it seems OK, but the variable should be 
+		 *               documented, maybe even named differently. 
+		 *               Setting it to 1 means: 'leave the last RR in 
+		 *               the RRSet'. Deciding whether to leave the last
+		 *               there is on the caller. Thus the assert() is 
+		 *               wrong (it MAY be used in other cases).
+		 *               Also there can be just break; instead of the
+		 *               parameter setting and return.
+		 */
 		if (ddns_check && i == what->rdata_count - 1) {
 			assert(knot_rrset_type(from) == KNOT_RRTYPE_NS);
 			*rr_deleted = return_rr;
