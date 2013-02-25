@@ -412,6 +412,7 @@ server_t *server_create()
 		ERR_ALLOC_FAILED;
 		return NULL;
 	}
+	memset(server, 0, sizeof(server_t));
 
 	server->state = ServerIdle;
 	init_list(&server->handlers);
@@ -784,7 +785,6 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 	}
 	if (server->rrl) {
 		if (rrl_rate(server->rrl) != conf->rrl) {
-			printf("server: new rrl rate=%d\n", conf->rrl);
 			rrl_setrate(server->rrl, conf->rrl);
 		} /* At this point, old buckets will converge to new rate. */
 	}
