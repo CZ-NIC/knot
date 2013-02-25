@@ -34,6 +34,7 @@
 #include "rrset.h"
 #include "edns.h"
 #include "zone/node.h"
+#include "zone/zone.h"
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -164,6 +165,7 @@ struct knot_packet {
 	size_t tsig_size;	/*!< Space to reserve for the TSIG RR. */
 	knot_rrset_t *tsig_rr;  /*!< TSIG RR stored in the packet. */
 	uint16_t flags;         /*!< Packet flags. */
+	const knot_zone_t *zone; /*!< Associated zone. */
 };
 
 typedef struct knot_packet knot_packet_t;
