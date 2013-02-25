@@ -35,16 +35,16 @@
 #define RRL_PSIZE_LARGE 1024
 
 /* RRL granular locking. */
-static int rrl_lock(rrl_table_t *t, int lk_id)
+static int rrl_lock_mx(rrl_table_t *t, int lk_id)
 {
 	dbg_rrl_verb("%s: locking id '%d'\n", __func__, lk_id);
-	return pthread_mutex_lock(t->lk + lk_id);
+	return pthread_mutex_lock(&t->lk[lk_id].mx);
 }
 
-static int rrl_unlock(rrl_table_t *t, int lk_id)
+static int rrl_unlock_mx(rrl_table_t *t, int lk_id)
 {
 	dbg_rrl_verb("%s: unlocking id '%d'\n", __func__, lk_id);
-	return pthread_mutex_unlock(t->lk + lk_id);
+	return pthread_mutex_unlock(&t->lk[lk_id].mx);
 }
 
 /* Classification */
@@ -175,7 +175,7 @@ static rrl_item_t* rrl_hash(rrl_table_t *t, sockaddr_t *a, knot_packet_t *p,
 	*lk = -1;
 	if (t->lk_count > 0) {
 		*lk = id % t->lk_count;
-		rrl_lock(t, *lk);
+		rrl_lock_mx(t, *lk);
 	}
 	
 	rrl_item_t *b = t->arr + id;
@@ -234,19 +234,19 @@ int rrl_setlocks(rrl_table_t *rrl, size_t granularity)
 	assert(!rrl->lk); /* Cannot change while locks are used. */
 	
 	/* Alloc new locks. */
-	rrl->lk = malloc(granularity * sizeof(pthread_mutex_t));
+	rrl->lk = malloc(granularity * sizeof(rrl_lock_t));
 	if (!rrl->lk) return KNOT_ENOMEM;
-	
+	memset(rrl->lk, 0, granularity * sizeof(rrl_lock_t));
 	
 	/* Initialize. */
 	for (size_t i = 0; i < granularity; ++i) {
-		if (pthread_mutex_init(rrl->lk + i, NULL) < 0) break;
+		if (pthread_mutex_init(&rrl->lk[i].mx, NULL) < 0) break;
 		++rrl->lk_count;
 	}
 	/* Incomplete initialization */
 	if (rrl->lk_count != granularity) {
 		for (size_t i = 0; i < rrl->lk_count; ++i) {
-			pthread_mutex_destroy(rrl->lk + i);
+			pthread_mutex_destroy(&rrl->lk[i].mx);
 		}
 		free(rrl->lk);
 		rrl->lk_count = 0;
@@ -303,7 +303,7 @@ int rrl_query(rrl_table_t *rrl, sockaddr_t* src, knot_packet_t *resp, const knot
 	}
 	
 	/* Unlock bucket. */
-	rrl_unlock(rrl, lock);
+	rrl_unlock_mx(rrl, lock);
 	
 	return ret;
 }
@@ -313,7 +313,7 @@ int rrl_destroy(rrl_table_t *rrl)
 	if (rrl) {
 		dbg_rrl("%s: freeing table %p\n", __func__, rrl);
 		for (size_t i = 0; i < rrl->lk_count; ++i) {
-			pthread_mutex_destroy(rrl->lk + i);
+			pthread_mutex_destroy(&rrl->lk[i].mx);
 		}
 		free(rrl->lk);
 	}

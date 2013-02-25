@@ -43,10 +43,14 @@ typedef struct rrl_item {
 	uint32_t time;       /* Timestamp */
 } rrl_item_t;
 
+typedef struct rrl_lock {    /* Wrapper around lock struct. */
+	pthread_mutex_t mx;
+} rrl_lock_t;
+
 typedef struct rrl_table {
 	uint32_t rate;       /* Configured RRL limit */
 	uint32_t seed;       /* Pseudorandom seed for hashing. */
-	pthread_mutex_t *lk; /* Table locks. */
+	rrl_lock_t *lk;      /* Table locks. */
 	size_t lk_count;     /* Table lock count (granularity). */
 	size_t size;         /* Number of buckets */
 	rrl_item_t arr[];    /* Buckets */
