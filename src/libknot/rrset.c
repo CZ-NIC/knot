@@ -1788,17 +1788,13 @@ const knot_dname_t *knot_rrset_rdata_minfo_second_dname(const knot_rrset_t *rrse
 	return knot_rrset_rdata_rp_second_dname(rrset, pos);
 }
 
-int64_t knot_rrset_rdata_soa_serial(const knot_rrset_t *rrset)
+uint32_t knot_rrset_rdata_soa_serial(const knot_rrset_t *rrset)
 {
 	if (rrset == NULL) {
 		return 0;
 	}
 	
-	//read u64??? TODO
-	/* [code-review] Why u64? */
-	return knot_wire_read_u32(rrset->rdata + 
-	                          sizeof(knot_dname_t *) * 2);
-
+	return knot_wire_read_u32(rrset->rdata + sizeof(knot_dname_t *) * 2);
 }
 
 /*---------------------------------------------------------------------------*/

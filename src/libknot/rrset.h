@@ -380,7 +380,7 @@ void knot_rrset_rdata_set_dname_target(knot_rrset_t *rrset,
 const knot_dname_t *knot_rrset_rdata_soa_primary_ns(const knot_rrset_t *rrset);
 //TODO test
 const knot_dname_t *knot_rrset_rdata_soa_mailbox(const knot_rrset_t *rrset);
-int64_t knot_rrset_rdata_soa_serial(const knot_rrset_t *rrset);
+uint32_t knot_rrset_rdata_soa_serial(const knot_rrset_t *rrset);
 //TODO test
 void knot_rrset_rdata_soa_serial_set(knot_rrset_t *rrset, uint32_t serial);
 //TODO test
