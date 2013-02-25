@@ -30,7 +30,24 @@
 #ifndef _KNOTD_COMMON_PRINT_H_
 #define _KNOTD_COMMON_PRINT_H_
 
+#include <stdio.h>
+#include <stdint.h>
+
 typedef int (*printf_t)(const char *fmt, ...);
+
+/*!
+ * \brief Prints the given data as hexadecimal characters to output buffer.
+ *
+ * \param in Data to print.
+ * \param inlen Size of the \a in array.
+ * \param out Output buffer.
+ * \param maxout Size of the \a out buffer.
+ *
+ * \retval length of output string.
+ * \retval -1 if error.
+ */
+int hex_snprintf(const uint8_t *in, size_t inlen, char *out,
+                 const size_t maxout);
 
 /*!
  * \brief Prints the given data as hexadecimal characters.

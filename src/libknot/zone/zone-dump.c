@@ -17,6 +17,9 @@
 #include "common/descriptor_new.h"
 #include <config.h>
 
+#include "common/print.h"		// hex_printf
+#include "libknot/dname.h"
+
 #include <ctype.h>
 #include <assert.h>
 #include <arpa/inet.h>
@@ -954,127 +957,261 @@ int rdata_dump_text(const knot_rdata_t *rdata, uint16_t type, FILE *f,
 
 #endif
 
-int dump_rrset_header(const knot_rrset_t *rrset, FILE *f)
+int knot_rrset_txt_dump_header(const knot_rrset_t *rrset, char *dst,
+                               const size_t maxlen)
 {
-	char buff[32];
+	if (rrset == NULL || dst == NULL) {
+		return KNOT_EINVAL;
+	}
 
+	size_t len = 0;
+	char   buf[32];
+	int    ret;
+
+	// Dump rrset owner.
 	char *name = knot_dname_to_str(rrset->owner);
-	fprintf(f, "%-20s ",  name);
+	ret = snprintf(dst + len, maxlen - len, "%-20s\t", name);
 	free(name);
-
-	fprintf(f, "%-5u ", rrset->ttl);
-
-	if (knot_rrclass_to_string(rrset->rclass, buff, sizeof(buff)) < 0) {
-		return KNOT_ERROR;
+	if (ret < 0 || ret >= maxlen - len) {
+		return KNOT_ESPACE;
 	}
-	fprintf(f, "%-2s ", buff);
+	len += ret;
 
-	if (knot_rrtype_to_string(rrset->type, buff, sizeof(buff)) < 0) {
-		return KNOT_ERROR;
+	// Dump rrset ttl.
+	if (1) {	
+		ret = snprintf(dst + len, maxlen - len, "%6u\t", rrset->ttl);
+	} else {
+		ret = snprintf(dst + len, maxlen - len, "     \t");
 	}
-	fprintf(f, "%-5s ",  buff);
+	if (ret < 0 || ret >= maxlen - len) {
+		return KNOT_ESPACE;
+	}
+	len += ret;
+
+	// Dump rrset class.
+	if (1) {
+		if (knot_rrclass_to_string(rrset->rclass, buf, sizeof(buf)) < 0)
+		{
+			return KNOT_ESPACE;
+		}
+		ret = snprintf(dst + len, maxlen - len, "%-2s\t", buf);
+	} else {
+		ret = snprintf(dst + len, maxlen - len, "  \t");
+	}
+	if (ret < 0 || ret >= maxlen - len) {
+		return KNOT_ESPACE;
+	}
+	len += ret;
+
+	// Dump rrset type.
+	if (knot_rrtype_to_string(rrset->type, buf, sizeof(buf)) < 0) {
+		return KNOT_ESPACE;
+	}
+	ret = snprintf(dst + len, maxlen - len, "%-5s\t", buf);
+	if (ret < 0 || ret >= maxlen - len) {
+		return KNOT_ESPACE;
+	}
+	len += ret;
+	
+	return len;
+}
+
+int knot_rrset_txt_dump_data(const knot_rrset_t *rrset, const size_t pos,
+                             char *dst, const size_t maxlen)
+{
+	if (rrset == NULL || dst == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	const rdata_descriptor_t *desc =
+		get_rdata_descriptor(knot_rrset_type(rrset));
+
+	size_t len = 0, offset = 0;
+	int    ret;
+/*
+	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
+		int item = desc->block_types[i];
+		const uint8_t *rdata = rrset_rdata_pointer(rrset, pos);
+
+		if (descriptor_item_is_dname(item)) {
+			knot_dname_t *dname;
+			memcpy(&dname, rdata + offset, sizeof(knot_dname_t *));
+			uint8_t *wire_dname = knot_dname_name(dname);
+			ret = snprintf(dst + len, maxlen - len, "%s", wire_dname);
+			ret = hex_snprintf(wire_dname, knot_dname_size(dname),
+			                   dst, maxlen - len);
+			if (ret < 0) {
+				return KNOT_ESPACE;
+			}
+			len += ret;
+			offset += sizeof(knot_dname_t *);
+		} else if (descriptor_item_is_fixed(item)) {
+			ret = hex_snprintf(rdata + offset, item, dst,
+			                   maxlen - len);
+			if (ret < 0) {
+				return KNOT_ESPACE;
+			}
+			len += ret;
+			offset += item;
+		} else if (descriptor_item_is_remainder(item)) {
+			          rrset_rdata_item_size(rrset,
+			                                rdata_pos) - offset);
+			ret = hex_snprintf(rdata + offset, item, dst,
+			                   maxlen - len);
+			if (ret < 0) {
+				return KNOT_ESPACE;
+			}
+			len += ret;
+			offset += item;
+		} else {
+			assert(rrset->type == KNOT_RRTYPE_NAPTR);
+			uint16_t naptr_chunk_size =
+				rrset_rdata_naptr_bin_chunk_size(rrset, rdata_pos);
+			fprintf(stderr, "NAPTR, REGEXP block (size=%u):\n",
+			        naptr_chunk_size);
+			hex_print((char *)(rdata + offset), naptr_chunk_size);
+			offset += naptr_chunk_size;
+		}
+	}
+*/
+//	fprintf(f, "\\# \n");
 
 	return KNOT_EOK;
 }
 
-int dump_rrset_data(const knot_rrset_t *rrset, const size_t pos, FILE *f)
+int knot_rrset_txt_dump(const knot_rrset_t *rrset, char *dst, const size_t maxlen)
 {
-	fprintf(f, "\\# \n");
+	if (rrset == NULL || dst == NULL) {
+		return KNOT_EINVAL;
+	}
 
-	uint16_t count = knot_rrset_rdata_rr_count(rrset);
+	size_t len = 0;
+	int    ret;
 
-	return KNOT_EOK;
-}
-
-int rrset_dump_text(const knot_rrset_t *rrset, FILE *f)
-{
+	// Loop over rdata in rrset.
 	for (size_t i = 0; i < rrset->rdata_count; i++) {
-		if (dump_rrset_header(rrset, f) != KNOT_EOK) {
-			return KNOT_ERROR;
+		// Dump rdata owner, class, ttl and type.
+		ret = knot_rrset_txt_dump_header(rrset, dst + len, maxlen - len);
+		if (ret < 0) {
+			return KNOT_ESPACE;
 		}
+		len += ret;
 
-		if (dump_rrset_data(rrset, i, f) != KNOT_EOK) {
-			return KNOT_ERROR;
+		// Dump rdata as such.
+		ret = knot_rrset_txt_dump_data(rrset, i, dst + len, maxlen - len);
+		if (ret < 0) {
+			return KNOT_ESPACE;
 		}
+		len += ret;
 	}
 
+	// Dump RRSIG records if any via recursion call.
 	if (rrset->rrsigs != NULL) {
-		if (rrset_dump_text(rrset->rrsigs, f) != KNOT_EOK) {
-			return KNOT_ERROR;
+		ret = knot_rrset_txt_dump(rrset->rrsigs, dst + len, maxlen - len);
+		if (ret < 0) {
+			return KNOT_ESPACE;
 		}
+		len += ret;
 	}
 
-	return KNOT_EOK;
+	return len;
 }
 
-struct dump_param {
-	FILE *f;
+typedef struct {
+	int    ret;
+	FILE   *file;
+	char   *buf;
+	size_t buflen;
 	const knot_dname_t *origin;
-};
+} dump_params_t;
 
-int apex_node_dump_text(knot_node_t *node, FILE *f)
+static void apex_node_dump_text(knot_node_t *node, dump_params_t *params)
 {
 	knot_rrset_t *rr = knot_node_get_rrset(node, KNOT_RRTYPE_SOA);
 
-	assert(rr);
-	int ret = rrset_dump_text(rr, f);
-	if (ret != KNOT_EOK) {
-		return ret;
+	int ret = knot_rrset_txt_dump(rr, params->buf, params->buflen);
+	if (ret < 0) {
+		params->ret = KNOT_ENOMEM;
+		return;
 	}
+	fprintf(params->file, "%s\n", params->buf);
 
 	const knot_rrset_t **rrsets = knot_node_rrsets(node);
 	
 	for (int i = 0; i < node->rrset_count; i++) {
 		if (rrsets[i]->type != KNOT_RRTYPE_SOA) {
-			ret = rrset_dump_text(rrsets[i], f);
-			if (ret != KNOT_EOK) {
-				return ret;
+			ret = knot_rrset_txt_dump(rrsets[i], params->buf,
+			                          params->buflen);
+			if (ret < 0) {
+				free(rrsets);
+				params->ret = KNOT_ENOMEM;
+				return;
 			}
+			fprintf(params->file, "%s\n", params->buf);
 		}
 	}
 
 	free(rrsets);
 
-	return KNOT_EOK;
+	params->ret = KNOT_EOK;
 }
 
 void node_dump_text(knot_node_t *node, void *data)
 {
-	struct dump_param *param;
-	param = (struct dump_param *)data;
-	FILE *f = param->f;
-	const knot_dname_t *origin = param->origin;
+	dump_params_t *params = (dump_params_t *)data;
 
-	/* pointers should do in this case */
-	if (node->owner == origin) {
-		apex_node_dump_text(node, f);
+	if (node->owner == params->origin) {
+		apex_node_dump_text(node, params);
 		return;
 	}
 
 	const knot_rrset_t **rrsets = knot_node_rrsets(node);
 
+	int ret;
 	for (int i = 0; i < node->rrset_count; i++) {
-		rrset_dump_text(rrsets[i], f);
+		ret = knot_rrset_txt_dump(rrsets[i], params->buf, params->buflen);
+		if (ret < 0) {
+			params->ret = KNOT_ENOMEM;
+			return;
+		}
 	}
 
 	free(rrsets);
+
+	params->ret = KNOT_EOK;
 }
 
-int zone_dump_text(knot_zone_contents_t *zone, FILE *f)
+#define DUMP_BUF_LEN (70 * 1024)
+
+int zone_dump_text(knot_zone_contents_t *zone, FILE *file)
 {
-	if (f == NULL) {
+	if (zone == NULL || file == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	fprintf(f, ";Dumped using %s v. %s\n", PACKAGE_NAME, PACKAGE_VERSION);
+	char *buf = malloc(DUMP_BUF_LEN);
+	if (buf == NULL) {
+		return KNOT_ENOMEM;
+	}
 
-	struct dump_param param;
-	param.f = f;
-	assert(zone->apex != NULL && zone->apex->owner != NULL);
-	param.origin = knot_node_owner(knot_zone_contents_apex(zone));
-	knot_zone_contents_tree_apply_inorder(zone, node_dump_text, &param);
-	knot_zone_contents_nsec3_apply_inorder(zone, node_dump_text, &param);
+	fprintf(file, ";Dumped using %s v. %s\n", PACKAGE_NAME, PACKAGE_VERSION);
+
+	dump_params_t params;
+	params.ret = KNOT_ERROR;
+	params.file = file;
+	params.buf = buf;
+	params.buflen = DUMP_BUF_LEN;
+	params.origin = knot_node_owner(knot_zone_contents_apex(zone));
+
+	knot_zone_contents_tree_apply_inorder(zone, node_dump_text, &params);
+	if (params.ret != KNOT_EOK) {
+		return params.ret;
+	}
+
+	knot_zone_contents_nsec3_apply_inorder(zone, node_dump_text, &params);
+	if (params.ret != KNOT_EOK) {
+		return params.ret;
+	}
 
 	return KNOT_EOK;
 }
-
