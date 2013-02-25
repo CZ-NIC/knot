@@ -28,9 +28,13 @@
 #define _KNOTD_RRL_H_
 
 #include <stdint.h>
+#include <pthread.h>
 #include "common/sockaddr.h"
 #include "libknot/packet/packet.h"
 #include "libknot/zone/zone.h"
+
+/* Defaults */
+#define RRL_LOCK_GRANULARITY 10 /* Last digit granularity */
 
 typedef struct rrl_item {
 	uint64_t pref;       /* Prefix associated. */
@@ -42,6 +46,8 @@ typedef struct rrl_item {
 typedef struct rrl_table {
 	uint32_t rate;       /* Configured RRL limit */
 	uint32_t seed;       /* Pseudorandom seed for hashing. */
+	pthread_mutex_t *lk; /* Table locks. */
+	size_t lk_count;     /* Table lock count (granularity). */
 	size_t size;         /* Number of buckets */
 	rrl_item_t arr[];    /* Buckets */
 } rrl_table_t;
@@ -49,6 +55,7 @@ typedef struct rrl_table {
 rrl_table_t *rrl_create(size_t size);
 uint32_t rrl_setrate(rrl_table_t *rrl, uint32_t rate);
 uint32_t rrl_rate(rrl_table_t *rrl);
+int rrl_setlocks(rrl_table_t *rrl, size_t granularity);
 int rrl_query(rrl_table_t *rrl, sockaddr_t* src, knot_packet_t *resp, const knot_zone_t *zone);
 int rrl_destroy(rrl_table_t *rrl);
 

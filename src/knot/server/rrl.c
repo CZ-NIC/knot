@@ -34,6 +34,19 @@
 #define RRL_SSTART 4 /* 1/Nth of the rate for slow start */
 #define RRL_PSIZE_LARGE 1024
 
+/* RRL granular locking. */
+static int rrl_lock(rrl_table_t *t, int lk_id)
+{
+	dbg_rrl_verb("%s: locking id '%d'\n", __func__, lk_id);
+	return pthread_mutex_lock(t->lk + lk_id);
+}
+
+static int rrl_unlock(rrl_table_t *t, int lk_id)
+{
+	dbg_rrl_verb("%s: unlocking id '%d'\n", __func__, lk_id);
+	return pthread_mutex_unlock(t->lk + lk_id);
+}
+
 /* Classification */
 enum {
 	CLS_NULL     = 0 << 0, /* Empty bucket. */
@@ -148,7 +161,7 @@ static int rrl_classify(char *dst, size_t maxlen, sockaddr_t *a,
 }
 
 static rrl_item_t* rrl_hash(rrl_table_t *t, sockaddr_t *a, knot_packet_t *p,
-                            const knot_zone_t *zone, uint32_t stamp)
+                            const knot_zone_t *zone, uint32_t stamp, int *lk)
 {
 	char buf[RRL_CLSBLK_MAXLEN];
 	int len = rrl_classify(buf, sizeof(buf), a, p, zone, t->seed);
@@ -157,6 +170,14 @@ static rrl_item_t* rrl_hash(rrl_table_t *t, sockaddr_t *a, knot_packet_t *p,
 	}
 	
 	uint32_t id = hash(buf, len) % t->size;
+	
+	/* Check locking. */
+	*lk = -1;
+	if (t->lk_count > 0) {
+		*lk = id % t->lk_count;
+		rrl_lock(t, *lk);
+	}
+	
 	rrl_item_t *b = t->arr + id;
 	dbg_rrl("%s: classified pkt as '0x%x' bucket=%p\n", __func__, id, b);
 
@@ -189,6 +210,7 @@ rrl_table_t *rrl_create(size_t size)
 	t->rate = RRL_DEFAULT_RATE;
 	t->seed = time(NULL);
 	t->size = size;
+	dbg_rrl("%s: created table size '%zu'\n", __func__, t->size);
 	return t;
 }
 
@@ -206,15 +228,47 @@ uint32_t rrl_rate(rrl_table_t *rrl)
 	return rrl->rate;
 }
 
+int rrl_setlocks(rrl_table_t *rrl, size_t granularity)
+{
+	if (!rrl) return KNOT_EINVAL;
+	assert(!rrl->lk); /* Cannot change while locks are used. */
+	
+	/* Alloc new locks. */
+	rrl->lk = malloc(granularity * sizeof(pthread_mutex_t));
+	if (!rrl->lk) return KNOT_ENOMEM;
+	
+	
+	/* Initialize. */
+	for (size_t i = 0; i < granularity; ++i) {
+		if (pthread_mutex_init(rrl->lk + i, NULL) < 0) break;
+		++rrl->lk_count;
+	}
+	/* Incomplete initialization */
+	if (rrl->lk_count != granularity) {
+		for (size_t i = 0; i < rrl->lk_count; ++i) {
+			pthread_mutex_destroy(rrl->lk + i);
+		}
+		free(rrl->lk);
+		rrl->lk_count = 0;
+		dbg_rrl("%s: failed to init locks\n", __func__);
+		return KNOT_ERROR;
+	}
+	
+	dbg_rrl("%s: set granularity to '%zu'\n", __func__, granularity);
+	return KNOT_EOK;
+}
+
 int rrl_query(rrl_table_t *rrl, sockaddr_t* src, knot_packet_t *resp, const knot_zone_t *zone)
 {
 	if (!rrl || !src || !resp) return KNOT_EINVAL;
 	
 	/* Calculate hash and fetch */
 	int ret = KNOT_EOK;
+	int lock = -1;
 	uint32_t now = time(NULL);
-	rrl_item_t *b = rrl_hash(rrl, src, resp, zone, now);
+	rrl_item_t *b = rrl_hash(rrl, src, resp, zone, now, &lock);
 	if (!b) {
+		assert(lock < 0);
 		dbg_rrl("%s: failed to compute bucket from packet\n", __func__);
 		return KNOT_ERROR;
 	}
@@ -248,11 +302,22 @@ int rrl_query(rrl_table_t *rrl, sockaddr_t* src, knot_packet_t *resp, const knot
 		ret = KNOT_ELIMIT; /* No available token. */
 	}
 	
+	/* Unlock bucket. */
+	rrl_unlock(rrl, lock);
+	
 	return ret;
 }
 
 int rrl_destroy(rrl_table_t *rrl)
 {
+	if (rrl) {
+		dbg_rrl("%s: freeing table %p\n", __func__, rrl);
+		for (size_t i = 0; i < rrl->lk_count; ++i) {
+			pthread_mutex_destroy(rrl->lk + i);
+		}
+		free(rrl->lk);
+	}
+	
 	free(rrl);
 	return KNOT_EOK;
 }
