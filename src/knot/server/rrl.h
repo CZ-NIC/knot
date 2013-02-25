@@ -56,11 +56,19 @@ typedef struct rrl_table {
 	rrl_item_t arr[];    /* Buckets */
 } rrl_table_t;
 
+typedef struct rrl_req {
+	const uint8_t *w;
+	uint16_t len;
+	unsigned flags;
+	const knot_dname_t *qname;
+} rrl_req_t;
+
 rrl_table_t *rrl_create(size_t size);
 uint32_t rrl_setrate(rrl_table_t *rrl, uint32_t rate);
 uint32_t rrl_rate(rrl_table_t *rrl);
 int rrl_setlocks(rrl_table_t *rrl, size_t granularity);
-int rrl_query(rrl_table_t *rrl, sockaddr_t* src, knot_packet_t *resp, const knot_zone_t *zone);
+int rrl_query(rrl_table_t *rrl, const sockaddr_t *a, rrl_req_t *req,
+              const knot_zone_t *zone);
 int rrl_destroy(rrl_table_t *rrl);
 
 

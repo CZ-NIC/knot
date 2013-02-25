@@ -21,6 +21,7 @@
 #include "knot/server/rrl.h"
 #include "knot/common.h"
 #include "libknot/consts.h"
+#include "libknot/util/wire.h"
 #include "common/hattrie/murmurhash3.h"
 
 /* Limits */
@@ -33,16 +34,20 @@
 #define RRL_CAPACITY 8 /* N seconds. */
 #define RRL_SSTART 4 /* 1/Nth of the rate for slow start */
 #define RRL_PSIZE_LARGE 1024
+/* Enable RRL logging. */
+#define RRL_ENABLE_LOG
 
 /* RRL granular locking. */
 static int rrl_lock_mx(rrl_table_t *t, int lk_id)
 {
+	assert(lk_id > -1);
 	dbg_rrl_verb("%s: locking id '%d'\n", __func__, lk_id);
 	return pthread_mutex_lock(&t->lk[lk_id].mx);
 }
 
 static int rrl_unlock_mx(rrl_table_t *t, int lk_id)
 {
+	assert(lk_id > -1);
 	dbg_rrl_verb("%s: unlocking id '%d'\n", __func__, lk_id);
 	return pthread_mutex_unlock(&t->lk[lk_id].mx);
 }
@@ -55,14 +60,21 @@ enum {
 	CLS_NXDOMAIN = 1 << 2, /* NXDOMAIN (special case of error). */
 	CLS_EMPTY    = 1 << 3, /* Empty response. */
 	CLS_LARGE    = 1 << 4, /* Response size over threshold (1024k). */
-	CLS_WILDCARD = 1 << 5, /* Wildcard query. */
-	CLS_SSTART   = 1 << 6  /* Bucket in slow-start after collision. */
+	CLS_WILDCARD = 1 << 5  /* Wildcard query. */
 };
 
-static uint8_t rrl_clsid(knot_packet_t *p) {
+/* Bucket flags. */
+enum {
+	RRL_BF_NULL   = 0 << 0, /* No flags. */
+	RRL_BF_SSTART = 1 << 0, /* Bucket in slow-start after collision. */
+	RRL_BF_ELIMIT = 1 << 1  /* Bucket is rate-limited. */
+};
+
+static uint8_t rrl_clsid(rrl_req_t *p)
+{
 	/* Check error code */
 	int ret = CLS_NULL;
-	switch (knot_packet_rcode(p)) {
+	switch (knot_wire_get_rcode(p->w)) {
 	case KNOT_RCODE_NOERROR: ret = CLS_NORMAL; break;
 	case KNOT_RCODE_NXDOMAIN: return CLS_NXDOMAIN; break;
 	default: return CLS_ERROR; break;
@@ -74,12 +86,12 @@ static uint8_t rrl_clsid(knot_packet_t *p) {
 	}
 
 	/* Check packet size */
-	if (knot_packet_size(p) >= RRL_PSIZE_LARGE) {
+	if (p->len >= RRL_PSIZE_LARGE) {
 		return CLS_LARGE;
 	}
 
 	/* Check ancount */
-	if (knot_packet_ancount(p) == 0) {
+	if (knot_wire_get_ancount(p->w) == 0) {
 		return CLS_EMPTY;
 	}
 
@@ -87,7 +99,7 @@ static uint8_t rrl_clsid(knot_packet_t *p) {
 }
 
 static int rrl_clsname(char *dst, size_t maxlen, uint8_t cls,
-                            knot_packet_t *p, const knot_zone_t *z)
+                       rrl_req_t *p, const knot_zone_t *z)
 {
 	const knot_dname_t *dn = NULL;
 	const uint8_t *n = (const uint8_t*)"\x00"; /* Fallback zone (for errors etc.) */
@@ -102,7 +114,7 @@ static int rrl_clsname(char *dst, size_t maxlen, uint8_t cls,
 		dbg_rrl_verb("%s: using zone/fallback name\n", __func__);
 		break;
 	default:
-		dn = knot_packet_qname(p);
+		dn = p->qname;
 		break;
 	}
 	
@@ -123,10 +135,10 @@ static int rrl_clsname(char *dst, size_t maxlen, uint8_t cls,
 	return nb;
 }
 
-static int rrl_classify(char *dst, size_t maxlen, sockaddr_t *a,
-                        knot_packet_t *p, const knot_zone_t *z, uint32_t seed)
+static int rrl_classify(char *dst, size_t maxlen, const sockaddr_t *a,
+                        rrl_req_t *p, const knot_zone_t *z, uint32_t seed)
 {
-	if (!dst || !a || !p || maxlen == 0) {
+	if (!dst || !p || !a || maxlen == 0) {
 		return KNOT_EINVAL;
 	}
 	
@@ -160,7 +172,7 @@ static int rrl_classify(char *dst, size_t maxlen, sockaddr_t *a,
 	return blklen;
 }
 
-static rrl_item_t* rrl_hash(rrl_table_t *t, sockaddr_t *a, knot_packet_t *p,
+static rrl_item_t* rrl_hash(rrl_table_t *t, const sockaddr_t *a, rrl_req_t *p,
                             const knot_zone_t *zone, uint32_t stamp, int *lk)
 {
 	char buf[RRL_CLSBLK_MAXLEN];
@@ -258,15 +270,16 @@ int rrl_setlocks(rrl_table_t *rrl, size_t granularity)
 	return KNOT_EOK;
 }
 
-int rrl_query(rrl_table_t *rrl, sockaddr_t* src, knot_packet_t *resp, const knot_zone_t *zone)
+int rrl_query(rrl_table_t *rrl, const sockaddr_t *a, rrl_req_t *req,
+              const knot_zone_t *zone)
 {
-	if (!rrl || !src || !resp) return KNOT_EINVAL;
+	if (!rrl || !req) return KNOT_EINVAL;
 	
 	/* Calculate hash and fetch */
 	int ret = KNOT_EOK;
 	int lock = -1;
 	uint32_t now = time(NULL);
-	rrl_item_t *b = rrl_hash(rrl, src, resp, zone, now, &lock);
+	rrl_item_t *b = rrl_hash(rrl, a, req, zone, now, &lock);
 	if (!b) {
 		assert(lock < 0);
 		dbg_rrl("%s: failed to compute bucket from packet\n", __func__);
@@ -282,9 +295,9 @@ int rrl_query(rrl_table_t *rrl, sockaddr_t* src, knot_packet_t *resp, const knot
 	        __func__, b, b->ntok, b->flags, dt);
 	if (dt > 0) { /* Window moved. */
 		uint32_t dn = rrl->rate * dt; /*! \todo Interpolate. */
-		if (b->flags & CLS_SSTART) { /* Bucket in slow-start. */
+		if (b->flags & RRL_BF_SSTART) { /* Bucket in slow-start. */
 			dn /= RRL_SSTART;
-			b->flags &= ~CLS_SSTART;
+			b->flags &= ~RRL_BF_SSTART;
 		}
 		b->ntok += dn;
 		if (b->ntok > RRL_CAPACITY * rrl->rate) {
@@ -298,12 +311,34 @@ int rrl_query(rrl_table_t *rrl, sockaddr_t* src, knot_packet_t *resp, const knot
 	/* Check token count */
 	if (b->ntok > 0) {
 		--b->ntok;
+#ifdef RRL_ENABLE_LOG
+		char saddr[SOCKADDR_STRLEN];
+		if (b->flags & RRL_BF_ELIMIT) {
+			memset(saddr, 0, sizeof(saddr));
+			sockaddr_tostr(a, saddr, sizeof(saddr));
+			log_server_notice("Netblock '%s' leaves rate-limiting.\n",
+			                  saddr);
+			b->flags &= ~RRL_BF_ELIMIT;
+		}
+#endif
 	} else {
+#ifdef RRL_ENABLE_LOG
+		char saddr[SOCKADDR_STRLEN];
+		if (!(b->flags & RRL_BF_ELIMIT)) {
+			memset(saddr, 0, sizeof(saddr));
+			sockaddr_tostr(a, saddr, sizeof(saddr));
+			log_server_notice("Netblock '%s' enters rate-limiting.\n",
+			                  saddr);
+			b->flags |= RRL_BF_ELIMIT;
+		}
+#endif
 		ret = KNOT_ELIMIT; /* No available token. */
 	}
 	
 	/* Unlock bucket. */
-	rrl_unlock_mx(rrl, lock);
+	if (lock > -1) {
+		rrl_unlock_mx(rrl, lock);
+	}
 	
 	return ret;
 }

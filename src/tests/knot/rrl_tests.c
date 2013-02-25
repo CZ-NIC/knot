@@ -19,6 +19,8 @@
 #include "knot/server/rrl.h"
 #include "knot/common.h"
 #include "libknot/packet/response.h"
+#include "libknot/packet/query.h"
+#include "libknot/nameserver/name-server.h"
 
 static int rrl_tests_count(int argc, char *argv[]);
 static int rrl_tests_run(int argc, char *argv[]);
@@ -43,8 +45,31 @@ static int rrl_tests_count(int argc, char *argv[])
 
 static int rrl_tests_run(int argc, char *argv[])
 {
+	/* Prepare query. */
+	knot_question_t qst;
+	qst.qclass = KNOT_CLASS_IN;
+	qst.qtype = KNOT_RRTYPE_A;
+	qst.qname = knot_dname_new_from_str("beef.", 5, NULL);
+	knot_packet_t *query = knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
+	knot_query_init(query);
+	knot_packet_set_max_size(query, 512);
+	knot_query_set_question(query, &qst);
+	
+	/* Prepare response */
+	knot_nameserver_t *ns = knot_ns_create();
+	uint8_t rbuf[65535];
+	size_t rlen = sizeof(rbuf);
+	memset(rbuf, 0, sizeof(rbuf));
+	knot_ns_error_response_from_query(ns, query, KNOT_RCODE_NOERROR, rbuf, &rlen);
+	
+	rrl_req_t rq;
+	rq.w = rbuf;
+	rq.len = rlen;
+	rq.qname = qst.qname;
+	rq.flags = 0;
+	
 	/* 1. create rrl table */
-	rrl_table_t *rrl = rrl_create(100);
+	rrl_table_t *rrl = rrl_create(101);
 	ok(rrl != NULL, "rrl: create");
 	
 	/* 2. set rate limit */
@@ -59,12 +84,10 @@ static int rrl_tests_run(int argc, char *argv[])
 	sockaddr_t addr6;
 	sockaddr_set(&addr, AF_INET, "1.2.3.4", 0);
 	sockaddr_set(&addr6, AF_INET6, "1122:3344:5566:7788::aabb", 0);
-	knot_packet_t *pkt = knot_packet_new(KNOT_PACKET_PREALLOC_NONE);
-	knot_response_init(pkt);
 	int ret = 0;
 	for (unsigned i = 0; i < rate; ++i) {
-		if (rrl_query(rrl, &addr, pkt, zone) != KNOT_EOK ||
-		    rrl_query(rrl, &addr6, pkt, zone) != KNOT_EOK) {
+		if (rrl_query(rrl, &addr, &rq, zone) != KNOT_EOK ||
+		    rrl_query(rrl, &addr6, &rq, zone) != KNOT_EOK) {
 			ret = KNOT_ELIMIT;
 			break;
 		}
@@ -72,14 +95,18 @@ static int rrl_tests_run(int argc, char *argv[])
 	ok(ret == 0, "rrl: unlimited IPv4/v6 requests");
 	
 	/* 4. limited request */
-	ret = rrl_query(rrl, &addr, pkt, zone);
+	ret = rrl_query(rrl, &addr, &rq, zone);
 	ok(ret != 0, "rrl: throttled IPv4 request");
 
 	/* 5. limited IPv6 request */
-	ret = rrl_query(rrl, &addr6, pkt, zone);
+	ret = rrl_query(rrl, &addr6, &rq, zone);
 	ok(ret != 0, "rrl: throttled IPv6 request");
 	
+	knot_dname_release(qst.qname);
+	knot_dname_release(apex);
 	knot_zone_deep_free(&zone, 0);
+	knot_ns_destroy(&ns);
+	knot_packet_free(&query);
 	rrl_destroy(rrl);
 	return 0;
 }
