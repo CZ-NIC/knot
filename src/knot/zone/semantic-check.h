@@ -27,6 +27,9 @@
 #ifndef _KNOT_SEMANTIC_CHECK_H_
 #define _KNOT_SEMANTIC_CHECK_H_
 
+#include "libknot/zone/node.h"
+#include "libknot/zone/zone-contents.h"
+
 /*!
  *\brief Internal error constants. General errors are added for convenience,
  *       so that code does not have to change if new errors are added.
@@ -92,6 +95,7 @@ enum zonechecks_errors {
 /*!
  * \brief Arguments to be used with tree traversal functions. Uses void pointers
  *        to be more versatile.
+ * \todo This is not needed. Just enumerate all the variables.
  *
  */
 struct arg {
@@ -189,12 +193,11 @@ void err_handler_log_all(err_handler_t *handler);
  *        calls function that does the actual work.
  *
  * \param zone Zone to be searched / checked
- * \param list Skip list of closests enclosers.
- * \param do_checks Level of semantic checks.
+ * \param check_level Level of semantic checks.
  * \param handler Semantic error handler.
- * \param last_node Last checked node, which is part of NSEC(3) chain.
+ * \param last_node Last checked node, that is a part of NSEC(3) chain.
  */
-int zone_do_sem_checks(knot_zone_contents_t *zone, char do_checks,
+int zone_do_sem_checks(knot_zone_contents_t *zone, int check_level,
                         err_handler_t *handler,
                         knot_node_t **last_node);
 

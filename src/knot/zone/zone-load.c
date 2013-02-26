@@ -29,38 +29,13 @@
 
 #include "common/crc.h"
 #include "libknot/common.h"
+#include "knot/zone/semantic-check.h"
 #include "knot/other/debug.h"
 #include "knot/zone/zone-load.h"
 #include "libknot/libknot.h"
 #include "zscanner/file_loader.h"
 
-/*!
- * \brief Compares two time_t values.
- *
- * \param x First time_t value to be compared.
- * \param y Second time_t value to be compared.
- *
- * \retval 0 when times are the some.
- * \retval 1 when x > y.
- * \retval -1 when x < y.
- */
-/*static int timet_cmp(time_t x, time_t y)
-{
-	if (x > y) return 1;
-	if (x < y) return -1;
-	return 0;
-}
-*/
-
 /* ZONE LOADING FROM FILE USING RAGEL PARSER */
-
-
-// TODO remove once debugging is done
-static long rr_count = 0;
-static long new_rr_count = 0;
-static long new_dname_count = 0;
-static long err_count = 0;
-
 
 /*!
  * \brief Adds RRSet to list.
@@ -215,7 +190,6 @@ static void process_rrsigs_in_node(parser_context_t *parser,
 
 static void process_error(const scanner_t *s)
 {
-	err_count++;
 	if (s->stop == true) {
 		log_zone_error("FATAL ERROR=%s on line=%"PRIu64"\n",
 		               knot_strerror(s->error_code), s->line_counter);
@@ -241,12 +215,9 @@ static size_t calculate_item_size(const knot_rrset_t *rrset,
 			assert(item == scanner->r_data_blocks[i + 1] -
 			       scanner->r_data_blocks[i]);
 			size += item;
-		} else if (descriptor_item_is_remainder(item)) {
+		} else {
 			size += scanner->r_data_blocks[i + 1] -
 			        scanner->r_data_blocks[i];
-		} else {
-			//naptr
-			assert(0);
 		}
 	}
 	
@@ -307,18 +278,14 @@ dbg_zp_exec_detail(
 			       scanner->r_data + scanner->r_data_blocks[i],
 			       item);
 			offset += item;
-		} else if (descriptor_item_is_remainder(item)) {
-			//copy the rest
+		} else {
+			//copy the rest TODO, should work for NAPTR as well, but needs test
 			memcpy(rdata + offset,
 			       scanner->r_data + scanner->r_data_blocks[i],
 			       scanner->r_data_blocks[i + 1] -
 			       scanner->r_data_blocks[i]);
 			offset += scanner->r_data_blocks[i + 1] -
 			          scanner->r_data_blocks[i];
-		} else {
-			//NAPTR
-			assert(knot_rrset_type(rrset) == KNOT_RRTYPE_NAPTR);
-			assert(0);
 		}
 	}
 	
@@ -330,7 +297,6 @@ static void process_rr(const scanner_t *scanner)
 	/*!< \todo Refactor, too long. */
 	dbg_zp_detail("Owner from parser=%s\n",
 	              scanner->r_owner);
-	rr_count++;
 	char add = 0;
 	parser_context_t *parser = scanner->data;
 	knot_zone_contents_t *contents = parser->current_zone;
@@ -348,7 +314,6 @@ static void process_rr(const scanner_t *scanner)
 		                                    scanner->r_type);
 		if (current_rrset == NULL) {
 			add = 1;
-			new_rr_count++	;
 			current_rrset =
 				knot_rrset_new(current_owner,
 				               scanner->r_type,
@@ -371,8 +336,6 @@ static void process_rr(const scanner_t *scanner)
 			knot_dname_new_from_wire(scanner->r_owner,
 			                         scanner->r_owner_length,
 			                         NULL);
-		new_rr_count++;
-		new_dname_count++;
 		current_rrset =
 			knot_rrset_new(current_owner,
 			               scanner->r_type,
@@ -675,10 +638,11 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 	zl->context = context;
 	*dst = zl;
 	
-	/* Do semantic check. */
-	if (semantic_checks == 0) {
-		/* Only mandatory tests. */
-		
+	if (semantic_checks) {
+		/* Log all information for now - possibly more config options. */
+		zl->err_handler = handler_new(1, 1, 1, 1, 1);
+	} else {
+		zl->err_handler = NULL;
 	}
 
 	return KNOT_EOK;
@@ -721,23 +685,20 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	knot_zone_contents_adjust(c->current_zone);
 	rrset_list_delete(&c->node_rrsigs);
 	
-	return c->current_zone->zone;
-}
-
-int knot_zload_needs_update(zloader_t *loader)
-{
-	assert(0);
-	if (!loader) {
-		return 1;
+	if (loader->err_handler) {
+		int check_level = 1;
+		knot_rrset_t *soa_rr =
+			knot_node_rrset(knot_zone_contents_apex(c->current_zone),
+		                        KNOT_RRTYPE_SOA);
+		assert(soa_rr); // In this point, SOA has to exist
+		if (soa_rr->rrsigs) {
+			check_level = 2;
+		}
+//		zone_do_sem_checks(c->current_zone, check_level,
+//		                   loader->err_handler, NULL);
 	}
 	
-	/* Compare the mtime of the source and file. */
-	/*! \todo Inspect types on Linux. */
-//	if (timet_cmp(st_bin.st_mtime, st_src.st_mtime) < 0) {
-//		return 1;
-//	}
-
-	return 0;
+	return c->current_zone->zone;
 }
 
 void knot_zload_close(zloader_t *loader)

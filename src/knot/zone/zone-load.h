@@ -30,6 +30,7 @@
 #include <stdio.h>
 
 #include "libknot/zone/zone.h"
+#include "knot/zone/semantic-check.h"
 #include "zscanner/file_loader.h"
 
 #define MAGIC_LENGTH 8
@@ -66,8 +67,9 @@ typedef struct zloader_t
 	char *source;             /*!< Zone source file. */
 	char *origin;             /*!< Zone's origin string. */
 	int semantic_checks;      /*!< Wanted level of semantic checks. */
-	file_loader_t *file_loader;/*!< Scanner's file loader. */
-	parser_context_t *context;/*!< Loader context. */
+	err_handler_t *err_handler; /*!< Semantic checks error handler. */
+	file_loader_t *file_loader; /*!< Scanner's file loader. */
+	parser_context_t *context; /*!< Loader context. */
 
 } zloader_t;
 

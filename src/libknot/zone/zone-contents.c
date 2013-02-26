@@ -22,6 +22,7 @@
 #include "common/base32hex.h"
 #include "common/descriptor_new.h"
 #include "common/hattrie/hat-trie.h"
+#include "libknot/zone/zone-tree.h"
 #include "consts.h"
 
 /*----------------------------------------------------------------------------*/
@@ -194,7 +195,7 @@ static void knot_zone_contents_adjust_rdata_dname(knot_zone_contents_t *zone,
 	if (found_dname != NULL &&
 	    found_dname != *in_dname) {
 		/* Duplicate. */
-		knot_dname_release(in_dname);
+		knot_dname_release(*in_dname);
 		*in_dname = found_dname;
 	} else {
 		assert(found_dname == NULL);

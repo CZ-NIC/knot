@@ -104,8 +104,7 @@ static const uint MAX_CNAME_CYCLE_DEPTH = 15;
 err_handler_t *handler_new(int log_cname, int log_glue, int log_rrsigs,
                            int log_nsec, int log_nsec3)
 {
-	err_handler_t *handler = malloc(sizeof(err_handler_t));
-	CHECK_ALLOC_LOG(handler, NULL);
+	err_handler_t *handler = xmalloc(sizeof(err_handler_t));
 
 	memset(handler->errors, 0, sizeof(uint) * (-ZC_ERR_UNKNOWN + 1));
 	
@@ -1008,12 +1007,12 @@ static void count_nodes_in_tree(knot_node_t *node, void *data)
  *
  * \return Appropriate error code if error was found.
  */
-static int semantic_checks_plain(knot_zone_contents_t *zone,
-				 knot_node_t *node,
-				 char do_checks,
-				 err_handler_t *handler,
-				 int only_mandatory,
-				 char *fatal_error)
+int sem_check_node_plain(knot_zone_contents_t *zone,
+                         knot_node_t *node,
+                         char do_checks,
+                         err_handler_t *handler,
+                         int only_mandatory,
+                         char *fatal_error)
 {
 	assert(handler);
 	const knot_rrset_t *cname_rrset =
@@ -1335,6 +1334,14 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 	return KNOT_EOK;
 }
 
+static int zone_is_secure(const knot_zone_contents_t *z)
+{
+	knot_rrset_t *soa_rr =
+		knot_node_rrset(knot_zone_contents_apex(z),
+	                        KNOT_RRTYPE_SOA);
+	return (soa_rr->rrsigs ? 1 : 0);
+}
+
 /*!
  * \brief Function called by zone traversal function. Used to call
  *        knot_zone_save_enclosers.
@@ -1366,18 +1373,16 @@ static void do_checks_in_tree(knot_node_t *node, void *data)
 	char do_checks = *((char *)(args->arg3));
 
 	if (do_checks) {
-		semantic_checks_plain(zone, node, do_checks, handler, 0,
+		sem_check_node_plain(zone, node, do_checks, handler, 0,
 		                      (char *)args->arg7);
 	} else {
 		assert(handler);
 		/* All CNAME/DNAME checks are mandatory. */
 		handler->options.log_cname = 1;
 		int check_level = 1 + (zone_is_secure(zone) ? 1 : 0);
-		semantic_checks_plain(zone, node, check_level, handler, 1,
+		sem_check_node_plain(zone, node, check_level, handler, 1,
 		                      (char *)args->arg7);
-		
 		free(rrsets);
-		assert(do_checks == 0);
 		return;
 	}
 
@@ -1389,9 +1394,9 @@ static void do_checks_in_tree(knot_node_t *node, void *data)
 	free(rrsets);
 }
 
-int zone_do_sem_checks(knot_zone_contents_t *zone, char do_checks,
-                        err_handler_t *handler,
-                        knot_node_t **last_node)
+int zone_do_sem_checks(knot_zone_contents_t *zone, int do_checks,
+                       err_handler_t *handler,
+                       knot_node_t **last_node)
 {
 	if (!handler) {
 		return KNOT_EINVAL;
