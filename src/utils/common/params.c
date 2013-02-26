@@ -26,6 +26,7 @@
 #include "common/errcode.h"		// KNOT_EOK
 #include "common/mempattern.h"		// strcdup
 #include "common/descriptor.h"		// KNOT_RRTYPE_ 
+#include "libknot/sign/key.h"		// knot_key_params_t
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/resolv.h"	// parse_nameserver
 #include "utils/common/token.h"		// token
@@ -404,7 +405,7 @@ int params_parse_tsig(const char *value, knot_key_t *key)
 	}
 
 	/* Parse key name. */
-	key->name = create_fqdn_from_str(k, strlen(k));
+	key->name = knot_dname_new_from_nonfqdn_str(k, strlen(k), NULL);
 	key->secret = strdup(s);
 
 	/* Check name and secret. */
@@ -425,42 +426,18 @@ int params_parse_tsig(const char *value, knot_key_t *key)
 
 int params_parse_keyfile(const char *filename, knot_key_t *key)
 {
-	int ret = KNOT_EOK;
+	int result;
 
-	if (filename == NULL || key == NULL) {
-		DBG_NULL;
-		return KNOT_EINVAL;
-	}
+	//! \todo temporary code, this will be changed
 
-	/*! \todo #2360 read key name from RR record in .key file */
+	knot_key_params_t key_params = { 0 };
+	result = knot_load_key_params(filename, &key_params);
+	if (result != KNOT_EOK)
+		return result;
 
-	/* Fetch keyname from filename. */
-	const char *bn = strrchr(filename, '/');
-	if (!bn) bn = filename;
-	else     ++bn; /* Skip final slash */
-	if (*bn == 'K') ++bn; /* Skip K */
-	const char* np = strchr(bn, '+');
-	if (np) { /* Attempt to extract dname */
-		key->name = knot_dname_new_from_str(bn, np-bn, NULL);
-	}
-	if (!key->name) {
-		ERR("keyfile not in format K{name}.+157+{rnd}.private\n");
-		return KNOT_ERROR;
-	}
+	result = knot_tsig_key_from_key_params(&key_params, key);
 
-	FILE *fp = fopen(filename, "r"); /* Open file */
-	if (!fp) {
-		ERR("could not open key file '%s': %s\n",
-		    filename, strerror(errno));
-		return KNOT_ERROR;
-	}
+	knot_free_key_params(&key_params);
 
-	/* Set defaults. */
-	key->algorithm = KNOT_TSIG_ALG_HMAC_MD5;
-
-	/* Parse lines. */
-	ret = tok_process_lines(fp, params_parse_keyline, key);
-
-	fclose(fp);
-	return ret;
+	return result;
 }

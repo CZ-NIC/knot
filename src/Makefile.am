@@ -78,10 +78,10 @@ knsupdate_SOURCES =				\
 	utils/common/exec.c			\
 	utils/common/exec.h			\
 	utils/nsupdate/nsupdate_main.c		\
-	utils/nsupdate/nsupdate_params.c	\
 	utils/nsupdate/nsupdate_params.h	\
-	utils/nsupdate/nsupdate_exec.c		\
-	utils/nsupdate/nsupdate_exec.h
+	utils/nsupdate/nsupdate_params.c	\
+	utils/nsupdate/nsupdate_exec.h		\
+	utils/nsupdate/nsupdate_exec.c
 
 unittests_SOURCES =				\
 	tests/common/acl_tests.c		\
