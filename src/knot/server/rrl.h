@@ -38,8 +38,9 @@
 
 typedef struct rrl_item {
 	uint64_t pref;       /* Prefix associated. */
-	uint16_t ntok;        /* Tokens available */
-	uint16_t flags;      /* Flags */
+	uint16_t ntok;       /* Tokens available */
+	uint8_t  cls;        /* Bucket class */
+	uint8_t  flags;      /* Flags */
 	uint32_t time;       /* Timestamp */
 } rrl_item_t;
 
