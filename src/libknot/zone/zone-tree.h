@@ -248,6 +248,9 @@ void knot_zone_tree_free(knot_zone_tree_t **tree);
  */
 void knot_zone_tree_deep_free(knot_zone_tree_t **tree);
 
+void hattrie_insert_dname(hattrie_t *tr, knot_dname_t *dname);
+knot_dname_t *hattrie_get_dname(hattrie_t *tr, knot_dname_t *dname);
+
 /*----------------------------------------------------------------------------*/
 
 #endif // _KNOT_ZONE_TREE_H_

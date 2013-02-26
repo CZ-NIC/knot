@@ -1128,7 +1128,7 @@ dbg_rrset_exec_detail(
 	knot_rrset_dump(rrset);
 );
 
-	int ret = knot_rrset_to_wire_aux(rrset, &pos, max_size, comp_data);
+	int ret = knot_rrset_to_wire_aux(rrset, &pos, max_size, NULL);// comp_data);
 	
 	assert(ret != 0);
 
@@ -2195,10 +2195,6 @@ knot_dname_t **knot_rrset_get_next_dname(const knot_rrset_t *rrset,
 		return NULL;
 	}
 	
-	/* [code-review] This should do the same as the old code. But please
-	 * check and test it!
-	 */
-	
 	/* 1) Find in which RR is the given dname. */
 	size_t pos = 0;
 	int ret = rrset_find_rr_pos_for_pointer(rrset, prev_dname, &pos);
@@ -2208,7 +2204,7 @@ knot_dname_t **knot_rrset_get_next_dname(const knot_rrset_t *rrset,
 	
 	/* 2) Try to get next dname from the RR. */
 	knot_dname_t **next = 
-	                knot_rrset_get_next_rr_dname(rrset, prev_dname, pos);
+		knot_rrset_get_next_rr_dname(rrset, prev_dname, pos);
 	
 	/* 3) If not found and there is a next RR to search in, try it. */
 	if (next == NULL && pos < rrset->rdata_count - 1) {
