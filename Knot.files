@@ -52,6 +52,8 @@ src/libknot/zone/zone-contents.c
 src/libknot/zone/zone-contents.h
 src/libknot/zone/zone-tree.h
 src/libknot/zone/zone-tree.c
+src/libknot/sign/key.c
+src/libknot/sign/key.h
 src/Makefile.am
 src/common/hattrie
 src/common/hattrie/ahtable.c

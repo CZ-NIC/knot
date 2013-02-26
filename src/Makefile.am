@@ -185,7 +185,9 @@ libknot_la_SOURCES =				\
 	libknot/tsig.h				\
 	libknot/tsig.c				\
 	libknot/tsig-op.h			\
-	libknot/tsig-op.c
+	libknot/tsig-op.c			\
+	libknot/sign/key.h			\
+	libknot/sign/key.c
 
 libknots_la_SOURCES =				\
 	common/slab/slab.c			\
