@@ -1023,58 +1023,77 @@ int knot_rrset_txt_dump_data(const knot_rrset_t *rrset, const size_t pos,
 		return KNOT_EINVAL;
 	}
 
-	const rdata_descriptor_t *desc =
-		get_rdata_descriptor(knot_rrset_type(rrset));
+	const uint8_t *rdata = knot_rrset_get_rdata(rrset, pos);
+	size_t data_len = rrset_rdata_item_size(rrset, pos);
 
-	size_t len = 0, offset = 0;
-	int    ret;
-/*
-	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
-		int item = desc->block_types[i];
-		const uint8_t *rdata = rrset_rdata_pointer(rrset, pos);
-
-		if (descriptor_item_is_dname(item)) {
-			knot_dname_t *dname;
-			memcpy(&dname, rdata + offset, sizeof(knot_dname_t *));
-			uint8_t *wire_dname = knot_dname_name(dname);
-			ret = snprintf(dst + len, maxlen - len, "%s", wire_dname);
-			ret = hex_snprintf(wire_dname, knot_dname_size(dname),
-			                   dst, maxlen - len);
-			if (ret < 0) {
-				return KNOT_ESPACE;
-			}
-			len += ret;
-			offset += sizeof(knot_dname_t *);
-		} else if (descriptor_item_is_fixed(item)) {
-			ret = hex_snprintf(rdata + offset, item, dst,
-			                   maxlen - len);
-			if (ret < 0) {
-				return KNOT_ESPACE;
-			}
-			len += ret;
-			offset += item;
-		} else if (descriptor_item_is_remainder(item)) {
-			          rrset_rdata_item_size(rrset,
-			                                rdata_pos) - offset);
-			ret = hex_snprintf(rdata + offset, item, dst,
-			                   maxlen - len);
-			if (ret < 0) {
-				return KNOT_ESPACE;
-			}
-			len += ret;
-			offset += item;
-		} else {
-			assert(rrset->type == KNOT_RRTYPE_NAPTR);
-			uint16_t naptr_chunk_size =
-				rrset_rdata_naptr_bin_chunk_size(rrset, rdata_pos);
-			fprintf(stderr, "NAPTR, REGEXP block (size=%u):\n",
-			        naptr_chunk_size);
-			hex_print((char *)(rdata + offset), naptr_chunk_size);
-			offset += naptr_chunk_size;
-		}
+	switch (knot_rrset_type(rrset)) {
+		case KNOT_RRTYPE_A:
+			break;
+		case KNOT_RRTYPE_NS:
+			break;
+		case KNOT_RRTYPE_CNAME:
+			break;
+		case KNOT_RRTYPE_SOA:
+			break;
+		case KNOT_RRTYPE_PTR:
+			break;
+		case KNOT_RRTYPE_HINFO:
+			break;
+		case KNOT_RRTYPE_MINFO:
+			break;
+		case KNOT_RRTYPE_MX:
+			break;
+		case KNOT_RRTYPE_TXT:
+			break;
+		case KNOT_RRTYPE_RP:
+			break;
+		case KNOT_RRTYPE_AFSDB:
+			break;
+		case KNOT_RRTYPE_RT:
+			break;
+		case KNOT_RRTYPE_KEY:
+			break;
+		case KNOT_RRTYPE_AAAA:
+			break;
+		case KNOT_RRTYPE_LOC:
+			break;
+		case KNOT_RRTYPE_SRV:
+			break;
+		case KNOT_RRTYPE_NAPTR:
+			break;
+		case KNOT_RRTYPE_KX:
+			break;
+		case KNOT_RRTYPE_CERT:
+			break;
+		case KNOT_RRTYPE_DNAME:
+			break;
+		case KNOT_RRTYPE_APL:
+			break;
+		case KNOT_RRTYPE_DS:
+			break;
+		case KNOT_RRTYPE_SSHFP:
+			break;
+		case KNOT_RRTYPE_IPSECKEY:
+			break;
+		case KNOT_RRTYPE_RRSIG:
+			break;
+		case KNOT_RRTYPE_NSEC:
+			break;
+		case KNOT_RRTYPE_DNSKEY:
+			break;
+		case KNOT_RRTYPE_DHCID:
+			break;
+		case KNOT_RRTYPE_NSEC3:
+			break;
+		case KNOT_RRTYPE_NSEC3PARAM:
+			break;
+		case KNOT_RRTYPE_TLSA:
+			break;
+		case KNOT_RRTYPE_SPF:
+			break;
+		default:
+			break;
 	}
-*/
-//	fprintf(f, "\\# \n");
 
 	return KNOT_EOK;
 }

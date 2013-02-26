@@ -14,31 +14,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "print.h"
-
 #include <stdio.h>
-#include <stdint.h>
-
-int hex_snprintf(const uint8_t *in, size_t inlen, char *out,
-                 const size_t maxout)
-{
-	if (in == NULL || out == NULL) {
-		return -1;
-	}
-
-	size_t len = 0;
-	int    ret;
-
-	for (unsigned i = 0; i < inlen; i++) {
-		ret = snprintf(out, maxout - len, "0x%02X ", *(in + i));
-		if (ret < 0 || ret >= maxout - len) {
-			return -1;
-		}
-		len += ret;
-	}
-
-	return len;
-}
+#include "print.h"
 
 void hex_printf(const char *data, int length, printf_t print_handler)
 {
