@@ -775,7 +775,7 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 	}
 	
 	/* Rate limiting. */
-	if (!server->rrl && conf->rrl_size > 0) {
+	if (!server->rrl && conf->rrl > 0) {
 		server->rrl = rrl_create(conf->rrl_size);
 		if (!server->rrl) {
 			log_server_error("Couldn't init rate limiting table.\n");

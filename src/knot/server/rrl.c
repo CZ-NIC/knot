@@ -242,7 +242,7 @@ rrl_table_t *rrl_create(size_t size)
 	if (!t) return NULL;
 	
 	memset(t, 0, tbl_len);
-	t->rate = RRL_DEFAULT_RATE;
+	t->rate = 0;
 	t->seed = (uint32_t)(tls_rand() * (double)UINT32_MAX);
 	t->size = size;
 	dbg_rrl("%s: created table size '%zu'\n", __func__, t->size);

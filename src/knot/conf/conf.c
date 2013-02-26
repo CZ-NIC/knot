@@ -186,6 +186,9 @@ static int conf_process(conf_t *conf)
 	if (conf->rrl_slip < 0) {
 		conf->rrl_slip = CONFIG_RRL_SLIP;
 	}
+	if (conf->rrl_size == 0) {
+		conf->rrl_size = CONFIG_RRL_SIZE;
+	}
 
 	// Postprocess zones
 	int ret = KNOT_EOK;
