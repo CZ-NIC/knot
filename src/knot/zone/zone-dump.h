@@ -20,26 +20,26 @@
  *
  * \brief Zone text dump facility.
  *
- * \addtogroup libknot
+ * \addtogroup zone-load-dump
  * @{
  */
 
-#ifndef _KNOT_ZONE_DUMP_H_
-#define _KNOT_ZONE_DUMP_H_
+#ifndef _KNOTD_ZONEDUMP_H_
+#define _KNOTD_ZONEDUMP_H_
 
 #include "libknot/zone/zone.h"
 
 /*!
- * \brief Dumps given zone to text (BIND-like) file.
+ * \brief Dumps given zone to text file.
  *
  * \param zone Zone to be saved.
- * \param File file to write to.
+ * \param file File to write to.
  *
  * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL if the specified file is not valid for writing.
+ * \retval < 0 if error.
  */
-int zone_dump_text(knot_zone_contents_t *zone, FILE *f);
+int zone_dump_text(knot_zone_contents_t *zone, FILE *file);
 
-#endif // _KNOT_ZONE_DUMP_H_
+#endif // _KNOTD_ZONEDUMP_H_
 
 /*! @} */

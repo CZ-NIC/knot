@@ -1,13 +1,3 @@
-/*!
- * \file libknot.h
- *
- * \author Jan Kadlec <jan.kadlec@nic.cz>
- *
- * \brief Convenience header for including whole library.
- *
- * \addtogroup libknot
- * @{
- */
 /*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
@@ -23,25 +13,26 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+/*!
+ * \file rrset-dump.h
+ *
+ * \author Daniel Salzman <daniel.salzman@nic.cz>
+ *
+ * \brief RRset text dump facility.
+ *
+ * \addtogroup libknot
+ * @{
+ */
 
-#ifndef _KNOT_LIBKNOT_H_
-#define _KNOT_LIBKNOT_H_
+#ifndef _KNOT_RRSETDUMP_H_
+#define _KNOT_RRSETDUMP_H_
 
-#include "consts.h"
-#include "util/descriptor.h"
-#include "dname.h"
-#include "edns.h"
-#include "zone/node.h"
-#include "nsec3.h"
-#include "util/wire.h"
-#include "packet/response.h"
-#include "rrset.h"
-#include "rrset-dump.h"
-#include "util/tolower.h"
-#include "util/utils.h"
-#include "zone/zone.h"
-#include "zone/zonedb.h"
+//#include <std>
 
-#endif
+#include "libknot/rrset.h"
+
+int knot_rrset_txt_dump(const knot_rrset_t *rrset, char *dst, const size_t maxlen);
+
+#endif // _KNOT_RRSETDUMP_H_
 
 /*! @} */

@@ -99,8 +99,6 @@ libknot_la_SOURCES =				\
 	libknot/zone/node.c			\
 	libknot/zone/zone-diff.h		\
 	libknot/zone/zone-diff.c		\
-	libknot/zone/zone-dump.h		\
-	libknot/zone/zone-dump.c		\
 	libknot/hash/hash-functions.c		\
 	libknot/hash/cuckoo-hash-table.c	\
 	libknot/hash/universal-system.c		\
@@ -115,16 +113,18 @@ libknot_la_SOURCES =				\
 	libknot/updates/xfr-in.c		\
 	libknot/updates/ddns.h			\
 	libknot/updates/ddns.c			\
-	libknot/edns.c				\
-	libknot/rrset.c				\
-	libknot/dname.c				\
-	libknot/nsec3.c				\
 	libknot/consts.h			\
-	libknot/edns.h				\
-	libknot/libknot.h			\
 	libknot/dname.h				\
-	libknot/rrset.h				\
+	libknot/dname.c				\
+	libknot/edns.h				\
+	libknot/edns.c				\
+	libknot/libknot.h			\
 	libknot/nsec3.h				\
+	libknot/nsec3.c				\
+	libknot/rrset.h				\
+	libknot/rrset.c				\
+	libknot/rrset-dump.h			\
+	libknot/rrset-dump.c			\
 	libknot/tsig.h				\
 	libknot/tsig.c				\
 	libknot/tsig-op.h			\
@@ -228,6 +228,8 @@ libknotd_la_SOURCES =				\
 	knot/server/zones.h			\
 	knot/zone/semantic-check.c		\
 	knot/zone/semantic-check.h		\
+	knot/zone/zone-dump.h			\
+	knot/zone/zone-dump.c			\
 	knot/zone/zone-load.h			\
 	knot/zone/zone-load.c			\
 	knot/server/server.h
