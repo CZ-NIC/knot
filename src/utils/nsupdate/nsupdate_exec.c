@@ -680,7 +680,7 @@ int cmd_send(const char* lp, nsupdate_params_t *params)
 		ERR("couldn't serialize packet, %s\n", knot_strerror(ret));
 		return ret;
 	}
-	
+
 	/* Sign if possible. */
 	size_t dlen = 0;
 	uint8_t *digest = NULL;
