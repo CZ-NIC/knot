@@ -786,6 +786,8 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 	if (server->rrl) {
 		if (rrl_rate(server->rrl) != conf->rrl) {
 			rrl_setrate(server->rrl, conf->rrl);
+			log_server_info("Rate limiting set to %u responses/sec.\n",
+			                conf->rrl);
 		} /* At this point, old buckets will converge to new rate. */
 	}
 
