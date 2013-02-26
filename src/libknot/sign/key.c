@@ -89,8 +89,8 @@ static int get_key_filenames(const char *input, char **public, char **private)
 	size_t base_length;
 
 	if (name_end && (*(name_end + 1) == '\0' ||
-			 strcmp(name_end, ".public") ||
-			 strcmp(name_end, ".private"))
+			 strcmp(name_end, ".public") == 0 ||
+			 strcmp(name_end, ".private") == 0)
 	) {
 		base_length = name_end - input;
 	} else {
@@ -238,7 +238,7 @@ int knot_load_key_params(const char *filename, knot_key_params_t *key_params)
 		return KNOT_ERROR; //!< \todo better error code
 	}
 
-	FILE *fp = fopen(filename, "r");
+	FILE *fp = fopen(private_key, "r");
 	if (!fp) {
 		free(public_key);
 		free(private_key);
