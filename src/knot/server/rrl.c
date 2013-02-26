@@ -315,15 +315,15 @@ int rrl_query(rrl_table_t *rrl, const sockaddr_t *a, rrl_req_t *req,
 	if (dt > RRL_CAPACITY) {
 		dt = RRL_CAPACITY;
 	}
-	dbg_rrl_verb("%s: bucket=%p tokens=%hu flags=%x dt=%u\n",
-	             __func__, b, b->ntok, b->flags, dt);
+	dbg_rrl("%s: bucket=0x%x tokens=%hu flags=%x dt=%u\n",
+	        __func__, b - rrl->arr, b->ntok, b->flags, dt);
 	if (dt > 0) { /* Window moved. */
 		dn = rrl->rate * dt;
 		if (b->flags & RRL_BF_SSTART) { /* Bucket in slow-start. */
 			dn /= RRL_SSTART;
 			b->flags &= ~RRL_BF_SSTART;
-			dbg_rrl("%s: bucket '0x%4x' slow-start finished\n",
-			        __func__, id);
+			dbg_rrl("%s: bucket '0x%x' slow-start finished\n",
+			        __func__, b - rrl->arr);
 		}
 	}
 	
