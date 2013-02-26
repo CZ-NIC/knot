@@ -22,6 +22,8 @@
 #include <time.h>			// strftime
 #include <ctype.h>			// isprint
 #include <arpa/inet.h>			// ntohs
+#include <sys/socket.h>			// AF_INET (BSD)
+#include <netinet/in.h>			// in_addr (BSD)
 
 #include "common/errcode.h"		// KNOT_EOK
 #include "common/base64.h"		// base64

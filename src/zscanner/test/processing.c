@@ -18,7 +18,6 @@
 
 #include <inttypes.h>			// PRIu64
 #include <stdio.h>			// printf
-#include <arpa/inet.h>			// ntohs
 
 #include "common/errcode.h"		// knot_strerror
 #include "common/descriptor_new.h"	// knot_rrtype_to_string
