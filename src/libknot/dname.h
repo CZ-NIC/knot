@@ -95,6 +95,20 @@ knot_dname_t *knot_dname_new_from_str(const char *name, unsigned int size,
                                           struct knot_node *node);
 
 /*!
+ * \brief Creates a dname structure from domain name possibly given in
+ *        non-presentation format.
+ *
+ * Works the same as knot_dname_new_from_str but makes sure, that the name
+ * is terminated with a dot.
+ *
+ * \see knot_dname_new_from_str
+ *
+ */
+knot_dname_t *knot_dname_new_from_nonfqdn_str(const char *name,
+                                              unsigned int size,
+                                              struct knot_node *node);
+
+/*!
  * \brief Creates a dname structure from domain name given in wire format.
  *
  * \note The name is copied into the structure.
