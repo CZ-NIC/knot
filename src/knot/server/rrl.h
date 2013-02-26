@@ -38,7 +38,7 @@
 
 typedef struct rrl_item {
 	uint64_t pref;       /* Prefix associated. */
-	uint16_t ntok;       /* Tokens available */
+	uint16_t ntok;        /* Tokens available */
 	uint16_t flags;      /* Flags */
 	uint32_t time;       /* Timestamp */
 } rrl_item_t;
@@ -60,7 +60,7 @@ typedef struct rrl_req {
 	const uint8_t *w;
 	uint16_t len;
 	unsigned flags;
-	const knot_dname_t *qname;
+	const knot_question_t *qst;
 } rrl_req_t;
 
 rrl_table_t *rrl_create(size_t size);

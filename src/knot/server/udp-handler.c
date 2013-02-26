@@ -78,7 +78,17 @@ static size_t udp_rrl_reject(const knot_nameserver_t *ns,
 	int n_slip = conf()->rrl_slip; /* Check SLIP. */
 	if (n_slip > 0 && n_slip == ++*slip) {
 		knot_ns_error_response_from_query(ns, packet, rcode, resp, &rlen);
-		knot_wire_set_tc(resp); /* Set TC=1 */
+		switch(rcode) { /* Do not set TC=1 to some RCODEs. */
+		case KNOT_RCODE_FORMERR:
+		case KNOT_RCODE_REFUSED:
+		case KNOT_RCODE_SERVFAIL:
+		case KNOT_RCODE_NOTIMPL:
+			break;
+		default:
+			knot_wire_set_tc(resp); /* Set TC=1 */
+			break;
+		}
+		
 		*slip = 0; /* Restart SLIP interval. */
 		return rlen;
 	}
@@ -123,7 +133,7 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 	
 	/* Parse query. */
 	int res = knot_ns_parse_packet(qbuf, qbuflen, packet, &qtype);
-	if (rrl) rrl_rq.qname = knot_packet_qname(packet);
+	if (rrl) rrl_rq.qst = &packet->question;
 	if (knot_unlikely(res != KNOT_EOK)) {
 		dbg_net("udp: failed to parse packet on fd=%d\n", fd);
 		if (res > 0) { /* Returned RCODE */

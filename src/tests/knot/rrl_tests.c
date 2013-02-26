@@ -65,7 +65,7 @@ static int rrl_tests_run(int argc, char *argv[])
 	rrl_req_t rq;
 	rq.w = rbuf;
 	rq.len = rlen;
-	rq.qname = qst.qname;
+	rq.qst = &qst;
 	rq.flags = 0;
 	
 	/* 1. create rrl table */

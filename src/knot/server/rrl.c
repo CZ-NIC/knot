@@ -23,6 +23,7 @@
 #include "libknot/consts.h"
 #include "libknot/util/wire.h"
 #include "common/hattrie/murmurhash3.h"
+#include "common/prng.h"
 
 /* Limits */
 #define RRL_CLSBLK_MAXLEN (4 + 8 + 1 + 256)
@@ -32,7 +33,7 @@
 /* Defaults */
 #define RRL_DEFAULT_RATE 100
 #define RRL_CAPACITY 8 /* N seconds. */
-#define RRL_SSTART 4 /* 1/Nth of the rate for slow start */
+#define RRL_SSTART 2 /* 1/Nth of the rate for slow start */
 #define RRL_PSIZE_LARGE 1024
 /* Enable RRL logging. */
 #define RRL_ENABLE_LOG
@@ -60,7 +61,9 @@ enum {
 	CLS_NXDOMAIN = 1 << 2, /* NXDOMAIN (special case of error). */
 	CLS_EMPTY    = 1 << 3, /* Empty response. */
 	CLS_LARGE    = 1 << 4, /* Response size over threshold (1024k). */
-	CLS_WILDCARD = 1 << 5  /* Wildcard query. */
+	CLS_WILDCARD = 1 << 5, /* Wildcard query. */
+	CLS_ANY      = 1 << 6, /* ANY query (spec. class). */
+	CLS_DNSSEC   = 1 << 7  /* DNSSEC related RR query (spec. class) */
 };
 
 /* Bucket flags. */
@@ -84,8 +87,24 @@ static uint8_t rrl_clsid(rrl_req_t *p)
 	if (ret == CLS_NORMAL && p->flags & KNOT_PF_WILDCARD) {
 		return CLS_WILDCARD;
 	}
+	
+	/* Check query type for spec. classes. */
+	if (p->qst) {
+		switch(p->qst->qtype) {
+		case KNOT_RRTYPE_ANY:      /* ANY spec. class */
+			return CLS_ANY;
+			break;
+		case KNOT_RRTYPE_DNSKEY:
+		case KNOT_RRTYPE_RRSIG:
+		case KNOT_RRTYPE_DS:      /* DNSSEC-related RR class. */
+			return CLS_DNSSEC;
+			break;
+		default:
+			break;
+		}
+	}
 
-	/* Check packet size */
+	/* Check packet size for threshold. */
 	if (p->len >= RRL_PSIZE_LARGE) {
 		return CLS_LARGE;
 	}
@@ -114,7 +133,7 @@ static int rrl_clsname(char *dst, size_t maxlen, uint8_t cls,
 		dbg_rrl_verb("%s: using zone/fallback name\n", __func__);
 		break;
 	default:
-		dn = p->qname;
+		if (p->qst) dn = p->qst->qname;
 		break;
 	}
 	
@@ -204,9 +223,13 @@ static rrl_item_t* rrl_hash(rrl_table_t *t, const sockaddr_t *a, rrl_req_t *p,
 	/* Check for collisions. */
 	if (b->pref != nprefix) {
 		dbg_rrl("%s: collising in bucket '0x%4x'\n", __func__, id);
-		b->pref= nprefix;
-		b->time = stamp; /* Reset time */
-		b->ntok = t->rate / RRL_SSTART; /*! Slow start, better to track rep. collisions */
+		if (!(b->flags & RRL_BF_SSTART)) {
+			b->pref= nprefix;
+			b->time = stamp; /* Reset time */
+			b->ntok = t->rate / RRL_SSTART;
+			b->flags |= RRL_BF_SSTART;
+			dbg_rrl("%s: bucket '0x%4x' slow-start\n", __func__, id);
+		}
 	}
 	
 	return b;
@@ -220,7 +243,7 @@ rrl_table_t *rrl_create(size_t size)
 	
 	memset(t, 0, tbl_len);
 	t->rate = RRL_DEFAULT_RATE;
-	t->seed = time(NULL);
+	t->seed = (uint32_t)(tls_rand() * (double)UINT32_MAX);
 	t->size = size;
 	dbg_rrl("%s: created table size '%zu'\n", __func__, t->size);
 	return t;
@@ -285,56 +308,58 @@ int rrl_query(rrl_table_t *rrl, const sockaddr_t *a, rrl_req_t *req,
 		dbg_rrl("%s: failed to compute bucket from packet\n", __func__);
 		return KNOT_ERROR;
 	}
-
+	
 	/* Calculate rate for dT */
+	int16_t dn = 0;
 	uint32_t dt = now - b->time;
 	if (dt > RRL_CAPACITY) {
 		dt = RRL_CAPACITY;
 	}
-	dbg_rrl("%s: bucket=%p tokens=%hu flags=%x dt=%u\n",
-	        __func__, b, b->ntok, b->flags, dt);
+	dbg_rrl_verb("%s: bucket=%p tokens=%hu flags=%x dt=%u\n",
+	             __func__, b, b->ntok, b->flags, dt);
 	if (dt > 0) { /* Window moved. */
-		uint32_t dn = rrl->rate * dt; /*! \todo Interpolate. */
+		dn = rrl->rate * dt;
 		if (b->flags & RRL_BF_SSTART) { /* Bucket in slow-start. */
 			dn /= RRL_SSTART;
 			b->flags &= ~RRL_BF_SSTART;
-		}
-		b->ntok += dn;
-		if (b->ntok > RRL_CAPACITY * rrl->rate) {
-			b->ntok = RRL_CAPACITY * rrl->rate;
+			dbg_rrl("%s: bucket '0x%4x' slow-start finished\n",
+			        __func__, id);
 		}
 	}
 	
 	/* Visit bucket. */
 	b->time = now;
 	
-	/* Check token count */
-	if (b->ntok > 0) {
-		--b->ntok;
 #ifdef RRL_ENABLE_LOG
+	if (dt > 0) {
 		char saddr[SOCKADDR_STRLEN];
-		if (b->flags & RRL_BF_ELIMIT) {
-			memset(saddr, 0, sizeof(saddr));
-			sockaddr_tostr(a, saddr, sizeof(saddr));
+		memset(saddr, 0, sizeof(saddr));
+		sockaddr_tostr(a, saddr, sizeof(saddr));
+		if (b->ntok > 0 && b->flags & RRL_BF_ELIMIT) {
 			log_server_notice("Netblock '%s' leaves rate-limiting.\n",
 			                  saddr);
 			b->flags &= ~RRL_BF_ELIMIT;
-		}
-#endif
-	} else {
-#ifdef RRL_ENABLE_LOG
-		char saddr[SOCKADDR_STRLEN];
-		if (!(b->flags & RRL_BF_ELIMIT)) {
-			memset(saddr, 0, sizeof(saddr));
-			sockaddr_tostr(a, saddr, sizeof(saddr));
+			
+		} else if (b->ntok == 0 && !(b->flags & RRL_BF_ELIMIT)) {
 			log_server_notice("Netblock '%s' enters rate-limiting.\n",
 			                  saddr);
 			b->flags |= RRL_BF_ELIMIT;
 		}
-#endif
-		ret = KNOT_ELIMIT; /* No available token. */
 	}
-	
+#endif
+	/* Add new tokens. */
+	b->ntok += dn;
+	if (b->ntok > RRL_CAPACITY * rrl->rate) {
+		b->ntok = RRL_CAPACITY * rrl->rate;
+	}
+
+	/* Decay current bucket. */
+	if (b->ntok > 0) {
+		--b->ntok;
+	} else if (b->ntok == 0) {
+		ret = KNOT_ELIMIT;
+	}
+
 	/* Unlock bucket. */
 	if (lock > -1) {
 		rrl_unlock_mx(rrl, lock);
