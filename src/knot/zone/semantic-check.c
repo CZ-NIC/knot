@@ -242,7 +242,7 @@ void err_handler_log_all(err_handler_t *handler)
  */
 static int check_cname_cycles_in_zone(knot_zone_contents_t *zone,
 				      const knot_rrset_t *rrset,
-                                      char *fatal_error)
+                                      int *fatal_error)
 {
 	if (rrset->type != KNOT_RRTYPE_CNAME &&
 	    rrset->type != KNOT_RRTYPE_DNAME) {
@@ -1011,30 +1011,10 @@ static int zone_is_secure(const knot_zone_contents_t *z)
 	return (soa_rr->rrsigs ? 1 : 0);
 }
 
-/*!
- * \brief Run semantic checks for node without DNSSEC-related types.
- *
- * \param zone Current zone.
- * \param node Node to be checked.
- * \param do_checks Level of checks to be done.
- * \param handler Error handler.
- *
- * \retval KNOT_EOK if no error was found.
- *
- * \return Appropriate error code if error was found.
- */
-int sem_check_node_plain(knot_zone_contents_t *zone,
-                         knot_node_t *node,
-                         int do_checks,
-                         err_handler_t *handler,
-                         int only_mandatory,
-                         int *fatal_error)
+static int sem_check_node_mandatory(knot_zone_contents_t *zone,
+                                    knot_node_t *node, int level,
+                                    err_handler_t *handler, int *fatal_error)
 {
-	assert(handler);
-	if (do_checks == -1) {
-		/* Determine level for our own. */
-		do_checks = (zone_is_secure(zone) ? 2 : 1);
-	}
 	const knot_rrset_t *cname_rrset =
 			knot_node_rrset(node, KNOT_RRTYPE_CNAME);
 	if (cname_rrset != NULL) {
@@ -1046,7 +1026,7 @@ int sem_check_node_plain(knot_zone_contents_t *zone,
 		}
 
 		/* No DNSSEC and yet there is more than one rrset in node */
-		if (do_checks == 1 &&
+		if (level == 1 &&
 		                knot_node_rrset_count(node) != 1) {
 			*fatal_error = 1;
 			err_handler_handle_error(handler, node,
@@ -1127,13 +1107,12 @@ int sem_check_node_plain(knot_zone_contents_t *zone,
 		}
 	}
 	
-	if (only_mandatory) {
-		return KNOT_EOK;
-	}
-	
-	/*!< \todo #1887 Good Lord, move this to ist own function. */
+	return KNOT_EOK;
+}
 
-	/* check for glue records at zone cuts and in apex. */
+static int sem_check_node_optional(knot_zone_contents_t *zone,
+                                   knot_node_t *node, err_handler_t *handler)
+{
 	if (knot_node_is_deleg_point(node) || knot_zone_contents_apex(zone) ==
 	                node) {
 		const knot_rrset_t *ns_rrset =
@@ -1209,6 +1188,43 @@ int sem_check_node_plain(knot_zone_contents_t *zone,
 		knot_dname_free(&ns_dname);
 	}
 	return KNOT_EOK;
+}
+
+/*!
+ * \brief Run semantic checks for node without DNSSEC-related types.
+ *
+ * \param zone Current zone.
+ * \param node Node to be checked.
+ * \param do_checks Level of checks to be done.
+ * \param handler Error handler.
+ *
+ * \retval KNOT_EOK if no error was found.
+ *
+ * \return Appropriate error code if error was found.
+ */
+int sem_check_node_plain(knot_zone_contents_t *zone,
+                         knot_node_t *node,
+                         int do_checks,
+                         err_handler_t *handler,
+                         int only_mandatory,
+                         int *fatal_error)
+{
+	assert(handler);
+	if (do_checks == -1) {
+		/* Determine level for our own. */
+		do_checks = (zone_is_secure(zone) ? 2 : 1);
+	}
+	
+	if (only_mandatory == 1) {
+		return sem_check_node_mandatory(zone, node, do_checks, handler,
+		                                fatal_error);
+	} else {
+		/*
+		 * This is an extra run, so we do not need to check mandatory
+		 * things, since they've already been checked during parsing.
+		 */
+		return sem_check_node_optional(zone, node, handler);
+	}
 }
 
 /*!
@@ -1386,14 +1402,14 @@ static void do_checks_in_tree(knot_node_t *node, void *data)
 
 	if (do_checks) {
 		sem_check_node_plain(zone, node, do_checks, handler, 0,
-		                      (char *)args->arg7);
+		                      (int *)args->arg7);
 	} else {
 		assert(handler);
 		/* All CNAME/DNAME checks are mandatory. */
 		handler->options.log_cname = 1;
 		int check_level = 1 + (zone_is_secure(zone) ? 1 : 0);
 		sem_check_node_plain(zone, node, check_level, handler, 1,
-		                      (char *)args->arg7);
+		                      (int *)args->arg7);
 		free(rrsets);
 		return;
 	}
@@ -1420,7 +1436,7 @@ int zone_do_sem_checks(knot_zone_contents_t *zone, int do_checks,
 	arguments.arg4 = NULL;
 	arguments.arg5 = &last_node;
 	arguments.arg6 = handler;
-	char fatal_error = 0;
+	int fatal_error = 0;
 	arguments.arg7 = (void *)&fatal_error;
 
 	knot_zone_contents_tree_apply_inorder(zone,
