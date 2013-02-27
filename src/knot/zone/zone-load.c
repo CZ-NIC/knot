@@ -113,7 +113,7 @@ static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
 		}
 
 		ret = knot_zone_contents_add_rrset(zone, tmp_rrset, &node,
-		                                   KNOT_RRSET_DUPL_MERGE, 1);
+		                                   KNOT_RRSET_DUPL_MERGE);
 		assert(ret <= 0);
 		if (ret < 0) {
 			dbg_zp("zp: Failed to add new dummy RRSet to the zone."
@@ -136,7 +136,7 @@ static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
 	}
 
 	ret = knot_zone_contents_add_rrsigs(zone, rrsig, &tmp_rrset, &node,
-			                    KNOT_RRSET_DUPL_MERGE, 1);
+			                    KNOT_RRSET_DUPL_MERGE);
 	if (ret < 0) {
 		dbg_zp("zp: find_rr_for_sig: Cannot add RRSIG.\n");
 		return KNOT_EINVAL;
@@ -154,7 +154,7 @@ static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
 static knot_node_t *create_node(knot_zone_contents_t *zone,
 	knot_rrset_t *current_rrset,
 	int (*node_add_func)(knot_zone_contents_t *zone, knot_node_t *node,
-	                     int create_parents, uint8_t, int),
+	                     int create_parents, uint8_t),
 	knot_node_t *(*node_get_func)(const knot_zone_contents_t *zone,
 					const knot_dname_t *owner))
 {
@@ -162,7 +162,7 @@ static knot_node_t *create_node(knot_zone_contents_t *zone,
 	            current_rrset);
 	knot_node_t *node =
 		knot_node_new(current_rrset->owner, NULL, 0);
-	if (node_add_func(zone, node, 1, 0, 1) != 0) {
+	if (node_add_func(zone, node, 1, 0) != 0) {
 		return NULL;
 	}
 	
@@ -359,7 +359,7 @@ static void process_rr(const scanner_t *scanner)
 	assert(current_rrset->rdata_count);
 
 	int (*node_add_func)(knot_zone_contents_t *, knot_node_t *, int,
-	                     uint8_t, int);
+	                     uint8_t);
 	knot_node_t *(*node_get_func)(const knot_zone_contents_t *,
 	                                const knot_dname_t *);
 
@@ -572,7 +572,7 @@ static void process_rr(const scanner_t *scanner)
 	if (add) {
 		ret = knot_zone_contents_add_rrset(contents, current_rrset,
 		                                   &node,
-		                                   KNOT_RRSET_DUPL_MERGE, 1);
+		                                   KNOT_RRSET_DUPL_MERGE);
 		if (ret < 0) {
 			dbg_zp("zp: process_rr: Cannot "
 			       "add RRSets.\n");
@@ -615,7 +615,7 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 	assert(context->origin_from_config);
 	context->last_node = knot_node_new(context->origin_from_config,
 	                                    NULL, 0);
-	knot_zone_t *zone = knot_zone_new(context->last_node, 0, 0);
+	knot_zone_t *zone = knot_zone_new(context->last_node);
 	context->current_zone = knot_zone_get_contents(zone);
 	context->node_rrsigs = NULL;
 	
@@ -686,7 +686,8 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 		return NULL;
 	}
 	
-	knot_zone_contents_adjust(c->current_zone);
+	knot_node_t *last_nsec_node = NULL;
+	knot_zone_contents_adjust(c->current_zone, &last_nsec_node);
 	rrset_list_delete(&c->node_rrsigs);
 	
 	if (loader->err_handler) {
@@ -700,7 +701,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 			check_level = 2;
 		}
 		zone_do_sem_checks(c->current_zone, check_level,
-		                   loader->err_handler, NULL);
+		                   loader->err_handler, last_nsec_node);
 		char *zname = knot_dname_to_str(knot_rrset_owner(soa_rr));
 		log_zone_info("Semantic checks completed for zone=%s\n", zname);
 		free(zname);

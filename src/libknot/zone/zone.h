@@ -102,12 +102,10 @@ knot_zone_t *knot_zone_new_empty(knot_dname_t *name);
  * \brief Creates new DNS zone.
  *
  * \param apex Node representing the zone apex.
- * \param node_count Number of authorative nodes in the zone.
  *
  * \return The initialized zone structure or NULL if an error occured.
  */
-knot_zone_t *knot_zone_new(knot_node_t *apex, size_t node_count,
-                               int use_domain_table);
+knot_zone_t *knot_zone_new(knot_node_t *apex);
 
 knot_zone_contents_t *knot_zone_get_contents(
 	const knot_zone_t *zone);

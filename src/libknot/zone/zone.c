@@ -69,8 +69,7 @@ knot_zone_t *knot_zone_new_empty(knot_dname_t *name)
 
 /*----------------------------------------------------------------------------*/
 
-knot_zone_t *knot_zone_new(knot_node_t *apex, size_t node_count,
-                               int use_domain_table)
+knot_zone_t *knot_zone_new(knot_node_t *apex)
 {
 	knot_zone_t *zone = knot_zone_new_empty(
 			knot_dname_deep_copy(knot_node_owner(apex)));
@@ -79,8 +78,7 @@ knot_zone_t *knot_zone_new(knot_node_t *apex, size_t node_count,
 	}
 
 	dbg_zone("Creating zone contents.\n");
-	zone->contents = knot_zone_contents_new(apex, node_count,
-	                                          use_domain_table, zone);
+	zone->contents = knot_zone_contents_new(apex, zone);
 	if (zone->contents == NULL) {
 		knot_dname_release(zone->name);
 		free(zone);

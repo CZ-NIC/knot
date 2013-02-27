@@ -74,8 +74,6 @@ typedef struct knot_zone_contents_t {
 /*----------------------------------------------------------------------------*/
 
 knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
-                                             size_t node_count,
-                                             int use_domain_table,
                                              struct knot_zone *zone);
 
 int knot_zone_contents_gen_is_old(const knot_zone_contents_t *contents);
@@ -113,7 +111,7 @@ uint16_t knot_zone_contents_class(const knot_zone_contents_t *contents);
  */
 int knot_zone_contents_add_node(knot_zone_contents_t *contents,
                                   knot_node_t *node, int create_parents,
-                                  uint8_t flags, int use_domain_table);
+                                  uint8_t flags);
 
 /*!
  * \brief Adds a RRSet to the given zone.
@@ -140,14 +138,12 @@ int knot_zone_contents_add_node(knot_zone_contents_t *contents,
 int knot_zone_contents_add_rrset(knot_zone_contents_t *contents,
                           knot_rrset_t *rrset,
                           knot_node_t **node,
-                          knot_rrset_dupl_handling_t dupl,
-                          int use_domain_table);
+                          knot_rrset_dupl_handling_t dupl);
 
 int knot_zone_contents_add_rrsigs(knot_zone_contents_t *contents,
                            knot_rrset_t *rrsigs,
                            knot_rrset_t **rrset, knot_node_t **node,
-                           knot_rrset_dupl_handling_t dupl,
-                           int use_domain_table);
+                           knot_rrset_dupl_handling_t dupl);
 
 /*!
  * \brief Adds a node holding NSEC3 records to the given zone.
@@ -166,13 +162,12 @@ int knot_zone_contents_add_rrsigs(knot_zone_contents_t *contents,
  */
 int knot_zone_contents_add_nsec3_node(knot_zone_contents_t *contents,
                                         knot_node_t *node, int create_parents,
-                                        uint8_t flags, int use_domain_table);
+                                        uint8_t flags);
 
 int knot_zone_contents_add_nsec3_rrset(knot_zone_contents_t *contents,
                                          knot_rrset_t *rrset,
                                          knot_node_t **node,
-                                         knot_rrset_dupl_handling_t dupl,
-                                         int use_domain_table);
+                                         knot_rrset_dupl_handling_t dupl);
 
 int knot_zone_contents_remove_node(knot_zone_contents_t *contents, 
 	const knot_node_t *node, knot_node_t **removed_tree);
@@ -340,7 +335,8 @@ knot_node_t *knot_zone_contents_get_apex(
  *
  * \param zone Zone to adjust domain names in.
  */
-int knot_zone_contents_adjust(knot_zone_contents_t *contents);
+int knot_zone_contents_adjust(knot_zone_contents_t *contents,
+                              knot_node_t **last_nsec_node);
 
 int knot_zone_contents_check_loops(knot_zone_contents_t *zone);
 

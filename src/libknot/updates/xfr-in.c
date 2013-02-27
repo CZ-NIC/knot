@@ -306,7 +306,7 @@ static int xfrin_process_orphan_rrsigs(knot_zone_contents_t *zone,
 		knot_node_t *node = NULL;
 		ret = knot_zone_contents_add_rrsigs(zone, (*last)->rrsig, 
 		                                    &rrset, &node, 
-		                                    KNOT_RRSET_DUPL_MERGE, 1);
+		                                    KNOT_RRSET_DUPL_MERGE);
 		if (ret > 0) {
 			knot_rrset_free(&(*last)->rrsig);
 		} else if (ret != KNOT_EOK) {
@@ -560,8 +560,7 @@ dbg_xfrin_exec(
 		memset(*constr, 0, sizeof(xfrin_constructed_zone_t));
 		
 		dbg_xfrin_verb("Creating new zone contents.\n");
-		(*constr)->contents = knot_zone_contents_new(node, 0, 1, 
-		                                             xfr->zone);
+		(*constr)->contents = knot_zone_contents_new(node, xfr->zone);
 		if ((*constr)->contents== NULL) {
 			dbg_xfrin("Failed to create new zone.\n");
 			knot_packet_free(&packet);
@@ -578,7 +577,7 @@ dbg_xfrin_exec(
 		assert(zone->apex->owner == rr->owner);
 		// add the RRSet to the node
 		ret = knot_zone_contents_add_rrset(zone, rr, &node,
-		                                    KNOT_RRSET_DUPL_MERGE, 1);
+		                                    KNOT_RRSET_DUPL_MERGE);
 		if (ret < 0) {
 			dbg_xfrin("Failed to add RRSet to zone node: %s.\n",
 			          knot_strerror(ret));
@@ -669,7 +668,7 @@ dbg_xfrin_exec_detail(
 			// nodes for them
 			knot_rrset_t *tmp_rrset = NULL;
 			ret = knot_zone_contents_add_rrsigs(zone, rr,
-			         &tmp_rrset, &node, KNOT_RRSET_DUPL_MERGE, 1);
+			         &tmp_rrset, &node, KNOT_RRSET_DUPL_MERGE);
 			if (ret == KNOT_ENONODE || ret == KNOT_ENORRSET) {
 				dbg_xfrin_verb("No node or RRSet for RRSIGs\n");
 				dbg_xfrin_verb("Saving for later insertion.\n");
@@ -745,7 +744,7 @@ dbg_xfrin_exec_verb(
 		knot_node_t *(*get_node)(const knot_zone_contents_t *,
 		                         const knot_dname_t *) = NULL;
 		int (*add_node)(knot_zone_contents_t *, knot_node_t *, int,
-		                uint8_t, int) = NULL;
+		                uint8_t) = NULL;
 
 		if (knot_rrset_type(rr) == KNOT_RRTYPE_NSEC3) {
 			get_node = knot_zone_contents_get_nsec3_node;
@@ -789,7 +788,7 @@ dbg_xfrin_exec_verb(
 			}
 
 			// insert the node into the zone
-			ret = add_node(zone, node, 1, 0, 1);
+			ret = add_node(zone, node, 1, 0);
 			assert(node != NULL);
 			if (ret != KNOT_EOK) {
 				dbg_xfrin("Failed to add node to zone (%s).\n",
@@ -805,7 +804,7 @@ dbg_xfrin_exec_verb(
 			assert(in_zone);
 
 			ret = knot_zone_contents_add_rrset(zone, rr, &node,
-			                            KNOT_RRSET_DUPL_MERGE, 1);
+			                            KNOT_RRSET_DUPL_MERGE);
 			if (ret < 0) {
 				knot_packet_free(&packet);
 				dbg_xfrin("Failed to add RRSet to zone :%s.\n",
@@ -845,7 +844,7 @@ dbg_xfrin_exec_verb(
 	// if the last node is not yet in the zone, insert
 	if (!in_zone) {
 		assert(node != NULL);
-		ret = knot_zone_contents_add_node(zone, node, 1, 0, 1);
+		ret = knot_zone_contents_add_node(zone, node, 1, 0);
 		if (ret != KNOT_EOK) {
 			dbg_xfrin("Failed to add last node into zone (%s).\n",
 			          knot_strerror(ret));
@@ -1841,10 +1840,9 @@ static knot_node_t *xfrin_add_new_node(knot_zone_contents_t *contents,
 	// insert the node into zone structures and create parents if
 	// necessary
 	if (is_nsec3) {
-		ret = knot_zone_contents_add_nsec3_node(contents, node, 1, 0,
-		                                        1);
+		ret = knot_zone_contents_add_nsec3_node(contents, node, 1, 0);
 	} else {
-		ret = knot_zone_contents_add_node(contents, node, 1, 0, 1);
+		ret = knot_zone_contents_add_node(contents, node, 1, 0);
 	}
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to add new node to zone contents.\n");
@@ -1929,7 +1927,7 @@ int xfrin_replace_rrset_in_node(knot_node_t *node,
 	// insert the new RRSet to the node
 	dbg_xfrin_verb("Adding new RRSet.\n");
 	ret = knot_zone_contents_add_rrset(contents, rrset_new, &node,
-	                                   KNOT_RRSET_DUPL_SKIP, 1);
+	                                   KNOT_RRSET_DUPL_SKIP);
 
 	if (ret < 0) {
 		dbg_xfrin("Failed to add RRSet to node.\n");
@@ -2105,7 +2103,7 @@ dbg_xfrin_exec_detail(
 		 */
 //		ret = knot_node_add_rrset(node, add, 0);
 		ret = knot_zone_contents_add_rrset(contents, add, &node,
-		                                   KNOT_RRSET_DUPL_SKIP, 1);
+		                                   KNOT_RRSET_DUPL_SKIP);
 
 		if (ret < 0) {
 			dbg_xfrin("Failed to add RRSet to node.\n");
@@ -2275,7 +2273,7 @@ dbg_xfrin_exec_detail(
 
 		dbg_xfrin_detail("Adding new RRSIGs to RRSet.\n");
 		ret = knot_zone_contents_add_rrsigs(contents, add, rrset, &node,
-		                                    KNOT_RRSET_DUPL_SKIP, 1);
+		                                    KNOT_RRSET_DUPL_SKIP);
 
 		if (ret < 0) {
 			dbg_xfrin("Failed to add RRSIGs to the RRSet.\n");
@@ -3136,7 +3134,8 @@ int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
 	dbg_xfrin("Adjusting zone contents.\n");
 	dbg_xfrin_verb("Old contents apex: %p, new apex: %p\n",
 	               old_contents->apex, contents_copy->apex);
-	ret = knot_zone_contents_adjust(contents_copy);
+	knot_node_t *last_nsec_node = NULL;
+	ret = knot_zone_contents_adjust(contents_copy, &last_nsec_node);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to finalize zone contents: %s\n",
 		          knot_strerror(ret));

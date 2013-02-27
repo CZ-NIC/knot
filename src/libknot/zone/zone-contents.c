@@ -888,11 +888,8 @@ static int knot_zc_nsec3_parameters_match(const knot_rrset_t *rrset,
 /*----------------------------------------------------------------------------*/
 
 knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
-                                             size_t node_count,
-                                             int use_domain_table,
                                              struct knot_zone *zone)
 {
-	dbg_zone("Creating contents for %u nodes.\n", node_count);
 	knot_zone_contents_t *contents = (knot_zone_contents_t *)
 	                              calloc(1, sizeof(knot_zone_contents_t));
 	if (contents == NULL) {
@@ -919,8 +916,6 @@ knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
 		goto cleanup;
 	}
 
-	//contents->node_count = node_count;
-
 	/* Initialize NSEC3 params */
 	dbg_zone_verb("Initializing NSEC3 parameters.\n");
 	contents->nsec3_params.algorithm = 0;
@@ -934,17 +929,6 @@ knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
 		dbg_zone("Failed to insert apex to the zone tree.\n");
 		goto cleanup;
 	}
-
-	// insert names from the apex to the domain table
-//	if (use_domain_table) {
-//		dbg_zone_verb("Inserting names from apex to table.\n");
-//		int rc = knot_zone_contents_dnames_from_node_to_table(
-//		             contents->dname_table, apex);
-//		if (rc != KNOT_EOK) {
-//			ck_destroy_table(&contents->table, NULL, 0);
-//			goto cleanup;
-//		}
-//	}
 
 	return contents;
 
@@ -1043,7 +1027,7 @@ uint16_t knot_zone_contents_class(const knot_zone_contents_t *contents)
 
 int knot_zone_contents_add_node(knot_zone_contents_t *zone,
                                   knot_node_t *node, int create_parents,
-                                  uint8_t flags, int use_domain_table)
+                                  uint8_t flags)
 {
 	if (zone == NULL || node == NULL) {
 		return KNOT_EINVAL;
@@ -1186,8 +1170,7 @@ dbg_zone_exec_detail(
 
 int knot_zone_contents_add_rrset(knot_zone_contents_t *zone,
                                  knot_rrset_t *rrset, knot_node_t **node,
-                                 knot_rrset_dupl_handling_t dupl,
-                                 int use_domain_table)
+                                 knot_rrset_dupl_handling_t dupl)
 {
 	if (zone == NULL || rrset == NULL || zone->apex == NULL
 	    || zone->apex->owner == NULL || node == NULL) {
@@ -1249,11 +1232,10 @@ dbg_zone_exec_detail(
 /*----------------------------------------------------------------------------*/
 
 int knot_zone_contents_add_rrsigs(knot_zone_contents_t *zone,
-                                    knot_rrset_t *rrsigs,
-                                    knot_rrset_t **rrset,
-                                    knot_node_t **node,
-                                    knot_rrset_dupl_handling_t dupl,
-                                    int use_domain_table)
+                                  knot_rrset_t *rrsigs,
+                                  knot_rrset_t **rrset,
+                                  knot_node_t **node,
+                                  knot_rrset_dupl_handling_t dupl)
 {
 	dbg_zone_verb("Adding RRSIGs to zone contents.\n");
 
@@ -1350,7 +1332,7 @@ dbg_zone_exec(
 
 int knot_zone_contents_add_nsec3_node(knot_zone_contents_t *zone,
                                         knot_node_t *node, int create_parents,
-                                        uint8_t flags, int use_domain_table)
+                                        uint8_t flags)
 {
 	UNUSED(create_parents);
 	UNUSED(flags);
@@ -1390,8 +1372,7 @@ int knot_zone_contents_add_nsec3_node(knot_zone_contents_t *zone,
 int knot_zone_contents_add_nsec3_rrset(knot_zone_contents_t *zone,
                                          knot_rrset_t *rrset,
                                          knot_node_t **node,
-                                         knot_rrset_dupl_handling_t dupl,
-                                         int use_domain_table)
+                                         knot_rrset_dupl_handling_t dupl)
 {
 	if (zone == NULL || rrset == NULL || zone->apex == NULL
 	    || zone->apex->owner == NULL || node == NULL) {
@@ -1413,8 +1394,6 @@ int knot_zone_contents_add_nsec3_rrset(knot_zone_contents_t *zone,
 	}
 
 	assert(*node != NULL);
-
-	// add all domain names from the RRSet to domain name table
 	int rc;
 
 	/*! \todo REMOVE RRSET */
@@ -1859,7 +1838,8 @@ knot_node_t *knot_zone_contents_get_apex(const knot_zone_contents_t *zone)
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_contents_adjust(knot_zone_contents_t *zone)
+int knot_zone_contents_adjust(knot_zone_contents_t *zone,
+                              knot_node_t **last_nsec_node)
 {
 	if (zone == NULL) {
 		return KNOT_EINVAL;
@@ -1905,6 +1885,7 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone)
 		knot_node_set_previous(adjust_arg.first_node,
 		                       adjust_arg.previous_node);
 	}
+	*last_nsec_node = adjust_arg.previous_node;
 	dbg_zone("Done.\n");
 
 	adjust_arg.first_node = NULL;
@@ -2130,8 +2111,6 @@ knot_zone_tree_t *knot_zone_contents_get_nsec3_nodes(
 
 /*----------------------------------------------------------------------------*/
 
-/*----------------------------------------------------------------------------*/
-
 int knot_zone_contents_shallow_copy(const knot_zone_contents_t *from,
                                     knot_zone_contents_t **to)
 {
@@ -2305,7 +2284,7 @@ typedef struct check_data {
 	int errors;
 } check_data_t;
 
-///*----------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 
 static void knot_zc_integrity_check_previous(const knot_node_t *node,
                                              check_data_t *check_data,
@@ -2331,7 +2310,7 @@ static void knot_zc_integrity_check_previous(const knot_node_t *node,
 	}
 }
 
-///*----------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 
 static void knot_zc_integrity_check_flags(const knot_node_t *node,
                                           check_data_t *check_data,
@@ -2387,7 +2366,7 @@ static void knot_zc_integrity_check_flags(const knot_node_t *node,
 	}
 }
 
-///*----------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 
 static void knot_zc_integrity_check_parent(const knot_node_t *node,
                                            check_data_t *check_data,
@@ -2453,71 +2432,23 @@ static void knot_zc_integrity_check_parent(const knot_node_t *node,
 	check_data->parent = node;
 }
 
-///*----------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 
 static void knot_zc_integrity_check_rrset_count(const knot_node_t *node,
                                                 check_data_t *check_data,
                                                 const char *name)
 {
+	//TODO;
 }
 
-///*----------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 
 typedef struct find_dname_data {
 	const knot_dname_t *to_find;
 	const knot_dname_t *found;
 } find_dname_data_t;
 
-///*----------------------------------------------------------------------------*/
-
-//void find_in_dname_table(knot_dname_t *dname, void *data)
-//{
-//	assert(dname != NULL);
-//	assert(data != NULL);
-
-//	find_dname_data_t *fdata = (find_dname_data_t *)data;
-
-//	if (fdata->found != NULL) {
-//		return;
-//	}
-
-//	if (knot_dname_compare(dname, fdata->to_find) == 0) {
-//		fdata->found = dname;
-//	}
-//}
-
 /*----------------------------------------------------------------------------*/
-
-static int knot_zc_integrity_check_find_dname(const knot_zone_contents_t *zone,
-                                              const knot_dname_t *to_find,
-                                              const char *node_name)
-{
-	/* TODO */
-//	int ret = 0;
-	
-//	knot_dname_t *found = knot_dname_table_find_dname(zone->dname_table, 
-//	                                               (knot_dname_t *)to_find);
-
-//	char *to_find_name = knot_dname_to_str(to_find);
-
-//	if (!found || found != to_find) {
-//		fprintf(stderr, "Dname not stored in dname table: "
-//		        "node %s, name %s, found some dname: %s\n", node_name,
-//		       to_find_name, (found != NULL) ? "yes" : "no");
-//		fprintf(stderr, "Dname to find: %p, found dname: %p\n",
-//		        found, to_find);
-//		ret = 1;
-//	}
-
-//	free(to_find_name);
-
-//	knot_dname_release(found);
-
-//	return ret;
-	return KNOT_EOK;
-}
-
-///*----------------------------------------------------------------------------*/
 
 static void knot_zc_integrity_check_owner(const knot_node_t *node,
                                           check_data_t *check_data,
@@ -2538,48 +2469,9 @@ static void knot_zc_integrity_check_owner(const knot_node_t *node,
 
 		++check_data->errors;
 	}
-
-	// check if the owner is stored in dname table
-	check_data->errors += knot_zc_integrity_check_find_dname(
-	                     check_data->contents, knot_node_owner(node), name);
 }
 
-///*----------------------------------------------------------------------------*/
-
-static void knot_zc_integrity_check_dnames_in_rrset(const knot_rrset_t *rrset,
-                                                    check_data_t *check_data,
-                                                    const char *name)
-{
-	// check owner of the RRSet
-	check_data->errors += knot_zc_integrity_check_find_dname(
-	                        check_data->contents,
-	                        knot_rrset_owner(rrset), name);
-	
-	knot_dname_t **dname = NULL;
-	while ((dname = knot_rrset_get_next_dname(rrset, dname))) {
-		check_data->errors += knot_zc_integrity_check_find_dname(
-		                        check_data->contents, *dname, name);
-	}
-}
-
-///*----------------------------------------------------------------------------*/
-
-static void knot_zc_integrity_check_dnames(const knot_node_t *node,
-                                           check_data_t *check_data,
-                                           const char *name)
-{
-	// check all dnames in all RRSets - both owners and in RDATA
-	const knot_rrset_t **rrsets = knot_node_rrsets(node);
-	if (rrsets != NULL) {
-		for (int i = 0; i < knot_node_rrset_count(node); ++i) {
-			knot_zc_integrity_check_dnames_in_rrset(rrsets[i],
-			                                      check_data, name);
-		}
-	}
-	free(rrsets);
-}
-
-///*----------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 
 static void knot_zc_integrity_check_node(knot_node_t *node, void *data)
 {
@@ -2607,15 +2499,12 @@ static void knot_zc_integrity_check_node(knot_node_t *node, void *data)
 	// check owner
 	knot_zc_integrity_check_owner(node, check_data, name);
 
-	// check dnames
-	knot_zc_integrity_check_dnames(node, check_data, name);
-
 	/*! \todo Check NSEC3 node. */
 
 	free(name);
 }
 
-///*----------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 
 static void knot_zc_integrity_check_nsec3(knot_node_t *node, void *data)
 {
@@ -2645,13 +2534,10 @@ static void knot_zc_integrity_check_nsec3(knot_node_t *node, void *data)
 	// check owner
 	knot_zc_integrity_check_owner(node, check_data, name);
 
-	// check dnames
-	knot_zc_integrity_check_dnames(node, check_data, name);
-
 	free(name);
 }
 
-///*----------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 
 void reset_child_count(knot_node_t **tnode, void *data)
 {
@@ -2669,7 +2555,7 @@ void reset_child_count(knot_node_t **tnode, void *data)
 	}
 }
 
-///*----------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 
 void count_children(knot_node_t **tnode, void *data)
 {
@@ -2683,7 +2569,7 @@ void count_children(knot_node_t **tnode, void *data)
 	}
 }
 
-///*----------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 
 void check_child_count(knot_node_t **tnode, void *data)
 {
