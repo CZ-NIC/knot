@@ -124,7 +124,7 @@ static int events_tests_run(int argc, char *argv[])
 	ok(s != 0, "evsched: new");
 
 	// 2. Schedule event to happen after N ms
-	int msecs = 50;
+	int msecs = 200;
 	struct timeval st, rt;
 	gettimeofday(&st, 0);
 	e = evsched_schedule_cb(s, 0, (void*)0xcafe, msecs);
@@ -139,7 +139,7 @@ static int events_tests_run(int argc, char *argv[])
 	// 4. Check receive time
 	double passed = (rt.tv_sec - st.tv_sec) * 1000;
 	passed += (rt.tv_usec - st.tv_usec) / 1000;
-	double margin = msecs * 0.2;
+	double margin = msecs * 0.4;
 	double lb = msecs - margin, ub = msecs + margin;
 	int in_bounds = (passed >= lb) && (passed <= ub);
 	ok(in_bounds, "evsched: receive time %.1lfms is in <%.1lf,%.1lf>",
