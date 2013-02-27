@@ -1403,17 +1403,18 @@ static void do_checks_in_tree(knot_node_t *node, void *data)
 }
 
 int zone_do_sem_checks(knot_zone_contents_t *zone, int do_checks,
-                       err_handler_t *handler,
-                       knot_node_t **last_node)
+                       err_handler_t *handler, knot_node_t *first_nsec3_node,
+                       knot_node_t *last_nsec3_node)
 {
 	if (!handler) {
 		return KNOT_EINVAL;
 	}
+	knot_node_t *last_node = NULL;
 	arg_t arguments;
 	arguments.arg1 = zone;
 	arguments.arg3 = &do_checks;
 	arguments.arg4 = NULL;
-	arguments.arg5 = last_node;
+	arguments.arg5 = &last_node;
 	arguments.arg6 = handler;
 	char fatal_error = 0;
 	arguments.arg7 = (void *)&fatal_error;
@@ -1425,6 +1426,10 @@ int zone_do_sem_checks(knot_zone_contents_t *zone, int do_checks,
 	if (fatal_error) {
 		return KNOT_ERROR;
 	}
+	
+	assert(last_node);
+	log_cyclic_errors_in_zone(handler, zone, last_node, first_nsec3_node,
+	                          last_nsec3_node, do_checks);
 	
 	return KNOT_EOK;
 }

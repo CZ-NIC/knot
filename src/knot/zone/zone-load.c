@@ -686,8 +686,10 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 		return NULL;
 	}
 	
-	knot_node_t *last_nsec_node = NULL;
-	knot_zone_contents_adjust(c->current_zone, &last_nsec_node);
+	knot_node_t *first_nsec3_node = NULL;
+	knot_node_t *last_nsec3_node = NULL;
+	knot_zone_contents_adjust(c->current_zone, &first_nsec3_node,
+	                          &last_nsec3_node);
 	rrset_list_delete(&c->node_rrsigs);
 	
 	if (loader->err_handler) {
@@ -701,7 +703,8 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 			check_level = 2;
 		}
 		zone_do_sem_checks(c->current_zone, check_level,
-		                   loader->err_handler, last_nsec_node);
+		                   loader->err_handler, first_nsec3_node,
+		                   last_nsec3_node);
 		char *zname = knot_dname_to_str(knot_rrset_owner(soa_rr));
 		log_zone_info("Semantic checks completed for zone=%s\n", zname);
 		free(zname);

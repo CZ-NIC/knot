@@ -198,8 +198,8 @@ void err_handler_log_all(err_handler_t *handler);
  * \param last_node Last checked node, that is a part of NSEC(3) chain.
  */
 int zone_do_sem_checks(knot_zone_contents_t *zone, int check_level,
-                        err_handler_t *handler,
-                        knot_node_t **last_node);
+                       err_handler_t *handler, knot_node_t *first_nsec3_node,
+                       knot_node_t *last_nsec3_node);
 
 #endif // _KNOT_SEMANTIC_CHECK_H_
 

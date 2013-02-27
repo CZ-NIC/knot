@@ -3134,8 +3134,7 @@ int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
 	dbg_xfrin("Adjusting zone contents.\n");
 	dbg_xfrin_verb("Old contents apex: %p, new apex: %p\n",
 	               old_contents->apex, contents_copy->apex);
-	knot_node_t *last_nsec_node = NULL;
-	ret = knot_zone_contents_adjust(contents_copy, &last_nsec_node);
+	ret = knot_zone_contents_adjust(contents_copy, NULL, NULL);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to finalize zone contents: %s\n",
 		          knot_strerror(ret));

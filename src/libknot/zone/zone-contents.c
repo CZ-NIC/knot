@@ -1839,7 +1839,8 @@ knot_node_t *knot_zone_contents_get_apex(const knot_zone_contents_t *zone)
 /*----------------------------------------------------------------------------*/
 
 int knot_zone_contents_adjust(knot_zone_contents_t *zone,
-                              knot_node_t **last_nsec_node)
+                              knot_node_t **first_nsec3_node,
+                              knot_node_t **last_nsec3_node)
 {
 	if (zone == NULL) {
 		return KNOT_EINVAL;
@@ -1885,7 +1886,12 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone,
 		knot_node_set_previous(adjust_arg.first_node,
 		                       adjust_arg.previous_node);
 	}
-	*last_nsec_node = adjust_arg.previous_node;
+	if (first_nsec3_node) {
+		*first_nsec3_node = adjust_arg.first_node;
+	}
+	if (last_nsec3_node) {
+		*last_nsec3_node = adjust_arg.previous_node;
+	}
 	dbg_zone("Done.\n");
 
 	adjust_arg.first_node = NULL;

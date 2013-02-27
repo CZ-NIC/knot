@@ -332,11 +332,15 @@ knot_node_t *knot_zone_contents_get_apex(
 /*!
  * \brief Optimizes zone by replacing domain names in RDATA with references to
  *        domain names present in zone (as node owners).
- *
+ * \param first_nsec3_node First node in NSEC3 tree - needed in sem. checks.
+ *        Will not be saved if set to NULL.
+ * \param last_nsec3_node Last node in NSEC3 tree - needed in sem. checks.
+ *        Will not be saved if set to NULL.
  * \param zone Zone to adjust domain names in.
  */
 int knot_zone_contents_adjust(knot_zone_contents_t *contents,
-                              knot_node_t **last_nsec_node);
+                              knot_node_t **first_nsec3_node,
+                              knot_node_t **last_nsec3_node);
 
 int knot_zone_contents_check_loops(knot_zone_contents_t *zone);
 
