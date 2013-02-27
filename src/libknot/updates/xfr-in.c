@@ -707,9 +707,7 @@ dbg_xfrin_exec_verb(
 				free(name);
 );
 				in_zone = 1;
-				assert(0);
-				//TODO why not RDATA?
-//				knot_rrset_deep_free(&rr, 1, 0, 0);
+				knot_rrset_deep_free(&rr, 1, 0, 0);
 			} else if (ret == 2) {
 				// should not happen
 				assert(0);
