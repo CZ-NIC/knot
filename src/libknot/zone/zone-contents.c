@@ -192,13 +192,12 @@ static void knot_zone_contents_adjust_rdata_dname(knot_zone_contents_t *zone,
 	assert(in_dname && *in_dname);
 	/* First thing - make sure dname is not duplicated. */
 	knot_dname_t *found_dname = hattrie_get_dname(lookup_tree, *in_dname);
-	if (found_dname != NULL &&
-	    found_dname != *in_dname) {
+	if (found_dname != NULL && found_dname != *in_dname) {
 		/* Duplicate. */
 		knot_dname_release(*in_dname);
 		*in_dname = found_dname;
 	} else {
-		assert(found_dname == NULL);
+		assert(found_dname == NULL || found_dname == *in_dname);
 		/* Into the tree it goes. */
 		hattrie_insert_dname(lookup_tree, *in_dname);
 	}
