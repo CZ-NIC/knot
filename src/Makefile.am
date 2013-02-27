@@ -125,7 +125,9 @@ unittests_libknot_SOURCES = 			\
 	tests/libknot/wire_tests.h		\
 	tests/libknot/wire_tests.c		\
 	tests/libknot/libknot/rrset_tests.h	\
-	tests/libknot/libknot/rrset_tests.c
+	tests/libknot/libknot/rrset_tests.c	\
+	tests/libknot/sign_tests.c		\
+	tests/libknot/sign_tests.h
 
 nodist_unittests_SOURCES =			\
 	tests/sample_conf.rc

@@ -198,6 +198,8 @@ src/tests/libknot/ztree_tests.c
 src/tests/libknot/ztree_tests.h
 src/tests/libknot/libknot/rrset_tests.c
 src/tests/libknot/libknot/rrset_tests.h
+src/tests/libknot/sign_tests.c
+src/tests/libknot/sign_tests.h
 samples/Makefile.am
 src/libknot/tsig.h
 src/libknot/tsig.c
