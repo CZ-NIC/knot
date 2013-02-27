@@ -54,6 +54,7 @@ struct parser_context {
 	knot_rrset_t *current_rrset;
 	knot_dname_t *origin_from_config;
 	knot_node_t *last_node;
+	err_handler_t *err_handler;
 	int ret;
 };
 

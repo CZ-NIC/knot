@@ -582,6 +582,24 @@ static void process_rr(const scanner_t *scanner)
 		} else if (ret > 0) {
 			knot_rrset_deep_free(&current_rrset, 0, 0);
 		}
+		assert(node);
+		int sem_fatal_error = 0;
+		ret = sem_check_node_plain(parser->current_zone, node, -1,
+		                           parser->err_handler, 1,
+		                           &sem_fatal_error);
+		if (ret != KNOT_EOK) {
+			log_zone_error("Semantic check failed to run (%s)\n",
+			               knot_strerror(ret));
+			parser->ret = ret;
+			return;
+		}
+		if (sem_fatal_error) {
+			log_zone_error("Semantic check found fatal error "
+			               "on line=%"PRIu64"\n",
+			               scanner->line_counter);
+			parser->ret = KNOT_EMALF;
+			return;
+		}
 	}
 //	}
 
@@ -636,18 +654,17 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 	zl->origin = strdup(origin);
 	zl->file_loader = loader;
 	zl->context = context;
+	zl->semantic_checks = semantic_checks;
 	*dst = zl;
 	
-	if (semantic_checks) {
-		/* Log all information for now - possibly more config options. */
-		zl->err_handler = handler_new(1, 1, 1, 1, 1);
-		if (zl->err_handler == NULL) {
-			dbg_zones("zones: zone_load: Could not create semantic "
-			          "checks handler.\n");
-		}
-	} else {
-		zl->err_handler = NULL;
+	/* Log all information for now - possibly more config options. */
+	zl->err_handler = handler_new(1, 1, 1, 1, 1);
+	if (zl->err_handler == NULL) {
+		dbg_zones("zones: zone_load: Could not create semantic "
+		          "checks handler.\n");
 	}
+	
+	context->err_handler = zl->err_handler;
 
 	return KNOT_EOK;
 }
@@ -692,7 +709,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	                          &last_nsec3_node);
 	rrset_list_delete(&c->node_rrsigs);
 	
-	if (loader->err_handler) {
+	if (loader->semantic_checks) {
 		int check_level = 1;
 		const knot_rrset_t *soa_rr =
 			knot_node_rrset(knot_zone_contents_apex(c->current_zone),

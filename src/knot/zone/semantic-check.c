@@ -1003,6 +1003,14 @@ static void count_nodes_in_tree(knot_node_t *node, void *data)
 	param->node_count++;
 }
 
+static int zone_is_secure(const knot_zone_contents_t *z)
+{
+	const knot_rrset_t *soa_rr =
+		knot_node_rrset(knot_zone_contents_apex(z),
+	                        KNOT_RRTYPE_SOA);
+	return (soa_rr->rrsigs ? 1 : 0);
+}
+
 /*!
  * \brief Run semantic checks for node without DNSSEC-related types.
  *
@@ -1017,12 +1025,16 @@ static void count_nodes_in_tree(knot_node_t *node, void *data)
  */
 int sem_check_node_plain(knot_zone_contents_t *zone,
                          knot_node_t *node,
-                         char do_checks,
+                         int do_checks,
                          err_handler_t *handler,
                          int only_mandatory,
-                         char *fatal_error)
+                         int *fatal_error)
 {
 	assert(handler);
+	if (do_checks == -1) {
+		/* Determine level for our own. */
+		do_checks = (zone_is_secure(zone) ? 2 : 1);
+	}
 	const knot_rrset_t *cname_rrset =
 			knot_node_rrset(node, KNOT_RRTYPE_CNAME);
 	if (cname_rrset != NULL) {
@@ -1340,14 +1352,6 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 	free(rrsets);
 
 	return KNOT_EOK;
-}
-
-static int zone_is_secure(const knot_zone_contents_t *z)
-{
-	const knot_rrset_t *soa_rr =
-		knot_node_rrset(knot_zone_contents_apex(z),
-	                        KNOT_RRTYPE_SOA);
-	return (soa_rr->rrsigs ? 1 : 0);
 }
 
 /*!

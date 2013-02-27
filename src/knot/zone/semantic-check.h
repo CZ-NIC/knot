@@ -201,6 +201,13 @@ int zone_do_sem_checks(knot_zone_contents_t *zone, int check_level,
                        err_handler_t *handler, knot_node_t *first_nsec3_node,
                        knot_node_t *last_nsec3_node);
 
+int sem_check_node_plain(knot_zone_contents_t *zone,
+                         knot_node_t *node,
+                         int do_checks,
+                         err_handler_t *handler,
+                         int only_mandatory,
+                         int *fatal_error);
+
 #endif // _KNOT_SEMANTIC_CHECK_H_
 
 /*! @} */
