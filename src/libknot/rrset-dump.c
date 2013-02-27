@@ -37,7 +37,6 @@
 inline static uint32_t write_indent(char *out) {
 	// Write padding block.
 	memcpy(out, &BLOCK_INDENT, BLOCK_INDENT_LEN);
-
 	return BLOCK_INDENT_LEN;
 }
 
@@ -457,7 +456,7 @@ static int32_t time_to_human_str(uint32_t       data,
 		ret = snprintf(out + total_len, out_len - total_len,
 		               "%ud", num);
 
-		if (ret <= 0) {
+		if (ret <= 0 || ret >= out_len - total_len) {
 			return -1;
 		}
 
@@ -471,7 +470,7 @@ static int32_t time_to_human_str(uint32_t       data,
 		ret = snprintf(out + total_len, out_len - total_len,
 		               "%uh", num);
 
-		if (ret <= 0) {
+		if (ret <= 0 || ret >= out_len - total_len) {
 			return -1;
 		}
 
@@ -485,7 +484,7 @@ static int32_t time_to_human_str(uint32_t       data,
 		ret = snprintf(out + total_len, out_len - total_len,
 		               "%um", num);
 
-		if (ret <= 0) {
+		if (ret <= 0 || ret >= out_len - total_len) {
 			return -1;
 		}
 
@@ -499,7 +498,7 @@ static int32_t time_to_human_str(uint32_t       data,
 		ret = snprintf(out + total_len, out_len - total_len,
 		               "%us", num);
 
-		if (ret <= 0) {
+		if (ret <= 0 || ret >= out_len - total_len) {
 			return -1;
 		}
 
