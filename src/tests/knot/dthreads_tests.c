@@ -36,7 +36,7 @@ unit_api dthreads_tests_api = {
 /*
  *  Unit implementation.
  */
-static const int DT_TEST_COUNT = 22;
+static const int DT_TEST_COUNT = 23;
 
 /* Unit runnable data. */
 static pthread_mutex_t _runnable_mx;
@@ -334,7 +334,7 @@ static int dt_tests_run(int argc, char *argv[])
 	   "dthreads: shrinking unit to size / 2 (%d threads)", size);
 
 	/* Test 16: Resize while threads are active. */
-	//ok(dt_test_liveresize(unit), "dthreads: resizing unit while active");
+	ok(dt_test_liveresize(unit), "dthreads: resizing unit while active");
 
 	/* Test 17: Deinitialize */
 	dt_delete(&unit);
