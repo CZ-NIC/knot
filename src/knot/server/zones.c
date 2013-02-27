@@ -866,7 +866,7 @@ static int zones_set_acl(acl_t **acl, list* acl_list)
  * \retval KNOT_EZONEINVAL
  */
 static int zones_load_zone(knot_zone_t **dst, const char *zone_name,
-			   const char *source)
+			   const char *source, int enable_checks)
 {
 	if (dst == NULL || zone_name == NULL || source == NULL) {
 		return KNOT_EINVAL;
@@ -878,7 +878,7 @@ static int zones_load_zone(knot_zone_t **dst, const char *zone_name,
 	*dst = NULL;
 
 	/* Open zone file for parsing. */
-	switch(knot_zload_open(&zl, source, zone_name, 0)) {
+	switch(knot_zload_open(&zl, source, zone_name, enable_checks)) {
 	case KNOT_EOK: /* OK */ break;
 	case KNOT_EACCES:
 		log_server_error("Failed to open zone file '%s' "
@@ -1407,7 +1407,8 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 		} else {
 			dbg_zones_verb("zones: loading zone '%s' from '%s'\n",
 			               z->name, z->db);
-			ret = zones_load_zone(&zone, z->name, z->file);
+			ret = zones_load_zone(&zone, z->name, z->file,
+			                      z->enable_checks);
 			const knot_node_t *apex = NULL;
 			const knot_rrset_t *soa = NULL;
 			if (ret == KNOT_EOK) {

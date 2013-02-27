@@ -641,6 +641,10 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 	if (semantic_checks) {
 		/* Log all information for now - possibly more config options. */
 		zl->err_handler = handler_new(1, 1, 1, 1, 1);
+		if (zl->err_handler == NULL) {
+			dbg_zones("zones: zone_load: Could not create semantic "
+			          "checks handler.\n");
+		}
 	} else {
 		zl->err_handler = NULL;
 	}
@@ -687,15 +691,19 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	
 	if (loader->err_handler) {
 		int check_level = 1;
-		knot_rrset_t *soa_rr =
+		const knot_rrset_t *soa_rr =
 			knot_node_rrset(knot_zone_contents_apex(c->current_zone),
 		                        KNOT_RRTYPE_SOA);
 		assert(soa_rr); // In this point, SOA has to exist
 		if (soa_rr->rrsigs) {
+			/* Set check level to DNSSEC. */
 			check_level = 2;
 		}
-//		zone_do_sem_checks(c->current_zone, check_level,
-//		                   loader->err_handler, NULL);
+		zone_do_sem_checks(c->current_zone, check_level,
+		                   loader->err_handler, NULL);
+		char *zname = knot_dname_to_str(knot_rrset_owner(soa_rr));
+		log_zone_info("Semantic checks completed for zone=%s\n", zname);
+		free(zname);
 	}
 	
 	return c->current_zone->zone;

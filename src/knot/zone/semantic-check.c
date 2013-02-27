@@ -132,28 +132,36 @@ static void log_error_from_node(err_handler_t *handler,
 				int error, const char *data)
 {
 	if (error > (int)ZC_ERR_GLUE_RECORD) {
-		fprintf(stderr, "Unknown error.\n");
+		log_zone_warning("Unknown error.\n");
 		return;
 	}
+	
+	char buffer[1024] = {0};
+	size_t offset = 0;
 	
 	if (node != NULL) {
 		handler->error_count++;
 		char *name =
 			knot_dname_to_str(knot_node_owner(node));
-		fprintf(stderr, "Semantic warning in node: %s: ", name);
+		offset += snprintf(buffer, 1024,
+		                   "Semantic warning in node: %s: ", name);
 		if (error_messages[-error] != NULL) {
-			fprintf(stderr, "%s", error_messages[-error]);
+			offset += snprintf(buffer + offset, 1024 - offset,
+			                   "%s", error_messages[-error]);
 			if (data == NULL) {
-				fprintf(stderr, "\n");
+				offset += snprintf(buffer + offset,
+				                   1024 - offset, "\n");
 			} else {
-				fprintf(stderr, "%s\n", data);
+				offset += snprintf(buffer + offset,
+				                   1024 - offset, "%s\n", data);
 			}
+			log_zone_warning("%s", buffer);
 		} else {
-			fprintf(stderr, "Unknown error (%d).\n", error);
+			log_zone_warning("Unknown error (%d).\n", error);
 		}
 		free(name);
 	} else {
-		fprintf(stderr, "Total number of warnings is: %d for error: %s",
+		log_zone_warning("Total number of warnings is: %d for error: %s",
 			handler->errors[-error],
 			error_messages[-error]);
 	}
@@ -919,7 +927,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 	
 	if (knot_dname_cat(next_dname,
 		     knot_node_owner(knot_zone_contents_apex(zone))) == NULL) {
-		fprintf(stderr, "Could not concatenate dnames!\n");
+		log_zone_warning("Could not concatenate dnames!\n");
 		return KNOT_ERROR;
 
 	}
@@ -1336,7 +1344,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 
 static int zone_is_secure(const knot_zone_contents_t *z)
 {
-	knot_rrset_t *soa_rr =
+	const knot_rrset_t *soa_rr =
 		knot_node_rrset(knot_zone_contents_apex(z),
 	                        KNOT_RRTYPE_SOA);
 	return (soa_rr->rrsigs ? 1 : 0);
@@ -1469,7 +1477,7 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 		if (knot_dname_cat(next_dname,
 			     knot_node_owner(knot_zone_contents_apex(zone))) ==
 		                NULL) {
-			fprintf(stderr, "Could not concatenate dnames!\n");
+			log_zone_warning("Could not concatenate dnames!\n");
 			err_handler_handle_error(handler, last_nsec3_node,
 						 ZC_ERR_NSEC3_RDATA_CHAIN, NULL);
 			return;

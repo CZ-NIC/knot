@@ -678,7 +678,7 @@ void knot_node_free(knot_node_t **node)
 	}
 
 	dbg_node_detail("Releasing owner %s refcount=%d.\n",
-	                (*node)->owner, (*node)->owner->ref.count);
+	                (*node)->owner->name, (*node)->owner->ref.count);
 	knot_dname_release((*node)->owner);
 
 	free(*node);

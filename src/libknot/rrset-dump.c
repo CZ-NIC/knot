@@ -623,7 +623,7 @@ int knot_rrset_txt_dump_data(const knot_rrset_t *rrset, const size_t pos,
 	const uint8_t *data = knot_rrset_get_rdata(rrset, pos);
 	size_t        data_len = rrset_rdata_item_size(rrset, pos);
 
-	int ret;
+	int ret = 0;
 
 	switch (knot_rrset_type(rrset)) {
 		case KNOT_RRTYPE_A:

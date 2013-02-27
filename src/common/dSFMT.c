@@ -509,6 +509,7 @@ int dsfmt_get_min_array_size(void) {
 void dsfmt_gen_rand_all(dsfmt_t *dsfmt) {
     int i;
     w128_t lung;
+    return;
 
     lung = dsfmt->status[DSFMT_N];
     do_recursion(&dsfmt->status[0], &dsfmt->status[0],
