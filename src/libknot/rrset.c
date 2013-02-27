@@ -2217,6 +2217,7 @@ knot_dname_t **knot_rrset_get_next_dname(const knot_rrset_t *rrset,
 
 void knot_rrset_dump(const knot_rrset_t *rrset)
 {
+dbg_rrset_exec_detail(
 	if (rrset == NULL) {
 		return;
 	}
@@ -2253,6 +2254,7 @@ void knot_rrset_dump(const knot_rrset_t *rrset)
 	for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(rrset);i ++) {
 		knot_rrset_rdata_dump(rrset, i);
 	}
+);
 }
 
 uint64_t rrset_binary_size(const knot_rrset_t *rrset)

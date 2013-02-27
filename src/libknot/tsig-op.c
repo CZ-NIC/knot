@@ -520,8 +520,10 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	uint8_t digest_tmp[KNOT_TSIG_MAX_DIGEST_SIZE];
 	size_t digest_tmp_len = 0;
 
+dbg_rrset_exec_detail(
 	dbg_tsig_detail("tmp_tsig before sign_wire():\n");
 	knot_rrset_dump(tmp_tsig);
+);
 
 	int ret = KNOT_ERROR;
 	ret = knot_tsig_create_sign_wire(msg, *msg_len, /*msg_max_len,*/
