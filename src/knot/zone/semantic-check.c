@@ -1447,7 +1447,6 @@ int zone_do_sem_checks(knot_zone_contents_t *zone, int do_checks,
 		return KNOT_ERROR;
 	}
 	
-	assert(last_node);
 	log_cyclic_errors_in_zone(handler, zone, last_node, first_nsec3_node,
 	                          last_nsec3_node, do_checks);
 	
