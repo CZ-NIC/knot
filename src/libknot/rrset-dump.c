@@ -34,23 +34,20 @@
 #define BLOCK_INDENT		"\n\t\t\t\t"
 #define BLOCK_INDENT_LEN	5
 
-inline static uint32_t write_indent(char *out) {
+inline static size_t write_indent(char *out) {
 	// Write padding block.
 	memcpy(out, &BLOCK_INDENT, BLOCK_INDENT_LEN);
 	return BLOCK_INDENT_LEN;
 }
 
-static int32_t wire_num8_to_str(const uint8_t  *in,
-                                char           *out,
-                                const uint32_t out_len)
+static int wire_num8_to_str(const uint8_t *in,
+                            char          *out,
+                            const size_t  out_len)
 {
 	uint8_t data = *in;
-	int32_t ret;
 
 	// Write number.
-	ret = snprintf(out, out_len, "%u", data);
-
-	// Check output length.
+	int ret = snprintf(out, out_len, "%u", data);
 	if (ret <= 0 || ret >= out_len) {
 		return -1;
 	}
@@ -58,12 +55,11 @@ static int32_t wire_num8_to_str(const uint8_t  *in,
 	return ret;
 }
 
-static int32_t wire_num16_to_str(const uint8_t  *in,
-                                 char           *out,
-                                 const uint32_t out_len)
+static int wire_num16_to_str(const uint8_t *in,
+                             char          *out,
+                             const size_t  out_len)
 {
 	uint16_t data;
-	int32_t  ret;
 
 	// Copy input data correctly.
 	if (memcpy(&data, in, sizeof(data)) == NULL) {
@@ -71,9 +67,7 @@ static int32_t wire_num16_to_str(const uint8_t  *in,
 	}
 
 	// Write number.
-	ret = snprintf(out, out_len, "%u", ntohs(data));
-
-	// Check output length.
+	int ret = snprintf(out, out_len, "%u", ntohs(data));
 	if (ret <= 0 || ret >= out_len) {
 		return -1;
 	}
@@ -81,12 +75,11 @@ static int32_t wire_num16_to_str(const uint8_t  *in,
 	return ret;
 }
 
-static int32_t wire_num32_to_str(const uint8_t  *in,
-                                 char           *out,
-                                 const uint32_t out_len)
+static int wire_num32_to_str(const uint8_t *in,
+                             char          *out,
+                             const size_t  out_len)
 {
 	uint32_t data;
-	int32_t  ret;
 
 	// Copy input data correctly.
 	if (memcpy(&data, in, sizeof(data)) == NULL) {
@@ -94,9 +87,7 @@ static int32_t wire_num32_to_str(const uint8_t  *in,
 	}
 
 	// Write number.
-	ret = snprintf(out, out_len, "%u", ntohl(data));
-
-	// Check output length.
+	int ret = snprintf(out, out_len, "%u", ntohl(data));
 	if (ret <= 0 || ret >= out_len) {
 		return -1;
 	}
@@ -104,9 +95,9 @@ static int32_t wire_num32_to_str(const uint8_t  *in,
 	return ret;
 }
 
-static int32_t wire_ipv4_to_str(const uint8_t  *in,
-                                char           *out,
-                                const uint32_t out_len)
+static int wire_ipv4_to_str(const uint8_t *in,
+                            char          *out,
+                            const size_t  out_len)
 {
 	struct in_addr addr4;
 
@@ -123,9 +114,9 @@ static int32_t wire_ipv4_to_str(const uint8_t  *in,
 	return strlen(out);
 }
 
-static int32_t wire_ipv6_to_str(const uint8_t  *in,
-                                char           *out,
-                                const uint32_t out_len)
+static int wire_ipv6_to_str(const uint8_t *in,
+                            char          *out,
+                            const size_t  out_len)
 {
 	struct in6_addr addr6;
 
@@ -142,12 +133,11 @@ static int32_t wire_ipv6_to_str(const uint8_t  *in,
 	return strlen(out);
 }
 
-static int32_t wire_type_to_str(const uint8_t  *in,
-                                char           *out,
-                                const uint32_t out_len)
+static int wire_type_to_str(const uint8_t *in,
+                            char          *out,
+                            const size_t  out_len)
 {
 	uint16_t data;
-	int32_t  ret;
 	char     type[32];
 
 	// Copy input data correctly.
@@ -160,9 +150,7 @@ static int32_t wire_type_to_str(const uint8_t  *in,
 		return -1;
 	}
 
-	ret = snprintf(out, out_len, "%s", type);
-
-	// Check output length.
+	int ret = snprintf(out, out_len, "%s", type);
 	if (ret <= 0 || ret >= out_len) {
 		return -1;
 	}
@@ -170,34 +158,30 @@ static int32_t wire_type_to_str(const uint8_t  *in,
 	return ret;
 }
 
-static int32_t wire_base64_to_str(const uint8_t  *in,
-                                  const uint32_t in_len,
-                                  char           *out,
-                                  const uint32_t out_len,
-                                  const bool     wrap)
+static int wire_base64_to_str(const uint8_t *in,
+                              const size_t  in_len,
+                              char          *out,
+                              const size_t  out_len,
+                              const bool    wrap)
 {
-	int32_t  ret;
-	uint32_t total_len = 0;
+	size_t total_len = 0;
+	int    ret;
 
 	// One-line vs multi-line mode.
 	if (wrap == false) {
 		// Encode data directly to the output.
 		ret = base64_encode(in, in_len, (uint8_t *)out, out_len);
-
-		// Check output.
 		if (ret <= 0) {
 			return -1;
 		}
 
 		total_len = ret;
 	} else {
-		int32_t src_begin, src_len;
-		char    *buf;
+		int  src_begin, src_len;
+		char *buf;
 
 		// Encode data to the temporary buffer.
 		ret = base64_encode_alloc(in, in_len, (uint8_t **)&buf);
-
-		// Check output and output buffer for additional characters.
 		if (ret <= 0 ||
 		    //               2 ~ 1 final indent + 1 int rounding.
 		    out_len < ret + (2 + ret / BLOCK_WIDTH) * BLOCK_INDENT_LEN)
@@ -236,34 +220,30 @@ static int32_t wire_base64_to_str(const uint8_t  *in,
 	return total_len;
 }
 
-static int32_t wire_base32hex_to_str(const uint8_t  *in,
-                                     const uint32_t in_len,
-                                     char           *out,
-                                     const uint32_t out_len,
-                                     const bool     wrap)
+static int wire_base32hex_to_str(const uint8_t *in,
+                                 const size_t  in_len,
+                                 char          *out,
+                                 const size_t  out_len,
+                                 const bool    wrap)
 {
-	int32_t  ret;
-	uint32_t total_len = 0;
+	size_t total_len = 0;
+	int    ret;
 
 	// One-line vs multi-line mode.
 	if (wrap == false) {
 		// Encode data directly to the output.
 		ret = base32hex_encode(in, in_len, (uint8_t *)out, out_len);
-
-		// Check output.
 		if (ret <= 0) {
 			return -1;
 		}
 
 		total_len = ret;
 	} else {
-		int32_t src_begin, src_len;
-		char    *buf;
+		int  src_begin, src_len;
+		char *buf;
 
 		// Encode data to the temporary buffer.
 		ret = base32hex_encode_alloc(in, in_len, (uint8_t **)&buf);
-
-		// Check output and output buffer for additional characters.
 		if (ret <= 0 ||
 		    //               2 ~ 1 final indent + 1 int rounding.
 		    out_len < ret + (2 + ret / BLOCK_WIDTH) * BLOCK_INDENT_LEN)
@@ -302,47 +282,45 @@ static int32_t wire_base32hex_to_str(const uint8_t  *in,
 	return total_len;
 }
 
-static void hex_dump(const uint8_t *in, const uint32_t in_len, char *out)
+static int hex_dump(const uint8_t *in,
+                    const size_t  in_len,
+                    char          *out,
+                    const size_t  out_len)
 {
 	static const char hex[] = "0123456789ABCDEF";
 
-	uint32_t i;
+	if (out_len < 2 * in_len) {
+		return -1;
+	}
 
-	for (i = 0; i < in_len; i++) {
+	for (size_t i = 0; i < in_len; i++) {
 		out[2 * i]     = hex[in[i] / 16];
 		out[2 * i + 1] = hex[in[i] % 16];
 	}
+
+	return 2 * in_len;
 }
 
-static int32_t wire_hex_to_str(const uint8_t  *in,
-                               const uint32_t in_len,
-                               char           *out,
-                               const uint32_t out_len,
-                               const bool     wrap)
+static int wire_hex_to_str(const uint8_t *in,
+                           const size_t  in_len,
+                           char          *out,
+                           const size_t  out_len,
+                           const bool    wrap)
 {
-	uint32_t total_len = 0;
+	size_t total_len = 0;
+	int ret;
 
 	// One-line vs multi-line mode.
 	if (wrap == false) {
-		// Check output (including termination).
-		if (out_len <= 2 * in_len) {
-			return -1;
-		}
-
 		// Encode data directly to the output.
-		hex_dump(in, in_len, out);
-
-		total_len = 2 * in_len;
-	} else {
-		int32_t src_begin, src_len;
-
-		// Check output buffer (including termination).
-		//           = ~ '\0'    2 ~ 1 final indent + 1 int rounding.
-		if (out_len <= in_len + (2 + (2 * in_len) / BLOCK_WIDTH) *
-		              BLOCK_INDENT_LEN)
-		{
+		ret = hex_dump(in, in_len, out, out_len);
+		if (ret < 0) {
 			return -1;
 		}
+
+		total_len += ret;
+	} else {
+		int src_begin, src_len;
 
 		// Loop which wraps hex block in more lines.
 		for (src_begin = 0; src_begin < in_len;
@@ -356,73 +334,89 @@ static int32_t wire_hex_to_str(const uint8_t  *in,
 			          (in_len - src_begin) : (BLOCK_WIDTH / 2);
 
 			// Write data block.
-			hex_dump(in + src_begin, src_len, out + total_len);
-			total_len += 2 * src_len;
+			ret = hex_dump(in + src_begin, src_len, out + total_len,
+			               out_len - total_len);
+			if (ret < 0) {
+				return -1;
+			}
+
+			total_len += ret;
 		}
 
 		// Write trailing indent block.
 		total_len += write_indent(out + total_len);
 	}
 
-	// String termination.
+	// Check space for string termination.
+	if (total_len >= out_len) {
+		return -1;
+	}
 	out[total_len] = '\0';
 
 	return total_len;
 }
 
-static int32_t wire_text_to_str(const uint8_t  *in,
-                                const uint32_t in_len,
-                                char           *out,
-                                const uint32_t out_len)
+static int wire_text_to_str(const uint8_t *in,
+                            const size_t  in_len,
+                            char          *out,
+                            const size_t  out_len)
 {
-	char     ch;
-	uint32_t i, total_len = 0;
-
-	// Check length of the output buffer (+ 2x'"' + 1x'\0').
-	if (out_len < in_len + 3) {
-		return -1;
-	}
+	size_t total_len = 0;
+	char   ch;
+	int    ret;
 
 	// Opening quoatition.
+	if (out_len <= total_len) {
+		return -1;
+	}
 	out[total_len++] = '"';
 
 	// Loop over all characters.
-	for (i = 0; i < in_len; i++) {
+	for (size_t i = 0; i < in_len; i++) {
 		ch = (char)in[i];
 
 		if (isprint(ch) != 0) {
 			// For special chars print leading slash.
 			if (ch == '\\' || ch == '"') {
+				if (out_len <= total_len) {
+					return -1;
+				}
 				out[total_len++] = '\\';
 			}
 
+			if (out_len <= total_len) {
+				return -1;
+			}
 			out[total_len++] = ch;
 		} else {
-			// Check output buffer length for additional space.
-			if (out_len <= total_len + 5) {
+			// Unprintable chars encode via \ddd notation.
+			ret = snprintf(out + total_len, out_len - total_len,
+			               "\\%03u", ch);
+			if (ret <= 0 || ret >= out_len - total_len) {
 				return -1;
 			}
 
-			// Unprintable chars encode via \ddd notation..
-			sprintf(out + total_len, "\\%03u", ch);
-			total_len += 4;
+			total_len += ret;
 		}
 	}
 
-	// Closing quoatition.
+	// Closing quoatition + string termination.
+	if (out_len <= total_len + 1) {
+		return -1;
+	}
 	out[total_len++] = '"';
 	out[total_len] = '\0';
 
 	return total_len;
 }
 
-static int32_t wire_timestamp_to_str(const uint8_t  *in,
-                                     char           *out,
-                                     const uint32_t out_len)
+static int wire_timestamp_to_str(const uint8_t *in,
+                                 char          *out,
+                                 const size_t  out_len)
 {
-	uint32_t  data;
-	int32_t   ret;
-	time_t    timestamp;
+	size_t data;
+	time_t timestamp;
+	int   ret;
 
 	// Copy input data correctly.
 	if (memcpy(&data, in, sizeof(data)) == NULL) {
@@ -434,8 +428,6 @@ static int32_t wire_timestamp_to_str(const uint8_t  *in,
 
 	// Write formated timestamp.
 	ret = strftime(out, out_len, "%Y%m%d%H%M%S", gmtime(&timestamp));
-
-	// Check output length.
 	if (ret <= 0) {
 		return -1;
 	}
@@ -443,19 +435,19 @@ static int32_t wire_timestamp_to_str(const uint8_t  *in,
 	return ret;
 }
 
-static int32_t time_to_human_str(uint32_t       data,
-                                 char           *out,
-                                 const uint32_t out_len)
+static int time_to_human_str(uint32_t     data,
+                             char         *out,
+                             const size_t out_len)
 {
-	uint32_t  num, total_len = 0;
-	int32_t   ret;
+	size_t   total_len = 0;
+	uint32_t num;
+	int      ret;
 
 	// Process days.
 	num = data / 86400;
 	if (num > 0) {
 		ret = snprintf(out + total_len, out_len - total_len,
 		               "%ud", num);
-
 		if (ret <= 0 || ret >= out_len - total_len) {
 			return -1;
 		}
@@ -469,7 +461,6 @@ static int32_t time_to_human_str(uint32_t       data,
 	if (num > 0) {
 		ret = snprintf(out + total_len, out_len - total_len,
 		               "%uh", num);
-
 		if (ret <= 0 || ret >= out_len - total_len) {
 			return -1;
 		}
@@ -483,7 +474,6 @@ static int32_t time_to_human_str(uint32_t       data,
 	if (num > 0) {
 		ret = snprintf(out + total_len, out_len - total_len,
 		               "%um", num);
-
 		if (ret <= 0 || ret >= out_len - total_len) {
 			return -1;
 		}
@@ -497,7 +487,6 @@ static int32_t time_to_human_str(uint32_t       data,
 	if (num > 0) {
 		ret = snprintf(out + total_len, out_len - total_len,
 		               "%us", num);
-
 		if (ret <= 0 || ret >= out_len - total_len) {
 			return -1;
 		}
@@ -508,9 +497,9 @@ static int32_t time_to_human_str(uint32_t       data,
 	return total_len;
 }
 
-static int32_t wire_time_to_human_str(const uint8_t  *in,
-                                      char           *out,
-                                      const uint32_t out_len)
+static int wire_time_to_human_str(const uint8_t *in,
+                                  char          *out,
+                                  const size_t  out_len)
 {
 	uint32_t  data;
 
@@ -525,12 +514,12 @@ static int32_t wire_time_to_human_str(const uint8_t  *in,
 	return time_to_human_str(data, out, out_len);
 }
 
-static int32_t wire_bitmap_to_str(const uint8_t  *in,
-                                  const uint32_t in_len,
-                                  char           *out,
-                                  const uint32_t out_len)
+static int wire_bitmap_to_str(const uint8_t *in,
+                              const size_t  in_len,
+                              char          *out,
+                              const size_t  out_len)
 {
-	uint32_t i = 0, j, total_len = 0;
+	size_t i = 0, j, total_len = 0;
 	uint16_t type_num;
 	uint8_t  win, bitmap_len;
 	char     type[32];
@@ -573,9 +562,9 @@ static int32_t wire_bitmap_to_str(const uint8_t  *in,
 	return total_len;
 }
 
-static int32_t dname_to_str(const uint8_t  *in,
-                            char           *out,
-                            const uint32_t out_len)
+static int dname_to_str(const uint8_t *in,
+                        char          *out,
+                        const size_t  out_len)
 {
 	knot_dname_t *dname;
 	memcpy(&dname, in, sizeof(knot_dname_t *));
@@ -583,9 +572,7 @@ static int32_t dname_to_str(const uint8_t  *in,
 	char *dname_str = knot_dname_to_str(dname);
 
 	int ret = snprintf(out, out_len, "%s", dname_str);
-
 	free(dname_str);
-
 	if (ret < 0 || ret >= out_len) {
 		return -1;
 	}
@@ -612,8 +599,10 @@ static int dump_rdata_aaaa(const uint8_t *data, const size_t len, char *dst,
 	return wire_ipv6_to_str(data, dst, maxlen);
 }
 
-int knot_rrset_txt_dump_data(const knot_rrset_t *rrset, const size_t pos,
-                             char *dst, const size_t maxlen)
+int knot_rrset_txt_dump_data(const knot_rrset_t *rrset,
+                             const size_t       pos,
+                             char               *dst,
+                             const size_t       maxlen)
 {
 	if (rrset == NULL || dst == NULL) {
 		return KNOT_EINVAL;
@@ -699,8 +688,9 @@ int knot_rrset_txt_dump_data(const knot_rrset_t *rrset, const size_t pos,
 	return ret;
 }
 
-int knot_rrset_txt_dump_header(const knot_rrset_t *rrset, char *dst,
-                               const size_t maxlen)
+int knot_rrset_txt_dump_header(const knot_rrset_t *rrset,
+                               char               *dst,
+                               const size_t       maxlen)
 {
 	if (rrset == NULL || dst == NULL) {
 		return KNOT_EINVAL;
@@ -758,7 +748,9 @@ int knot_rrset_txt_dump_header(const knot_rrset_t *rrset, char *dst,
 	return len;
 }
 
-int knot_rrset_txt_dump(const knot_rrset_t *rrset, char *dst, const size_t maxlen)
+int knot_rrset_txt_dump(const knot_rrset_t *rrset,
+                        char               *dst,
+                        const size_t       maxlen)
 {
 	if (rrset == NULL || dst == NULL) {
 		return KNOT_EINVAL;
