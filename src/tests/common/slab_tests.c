@@ -48,7 +48,7 @@ unit_api slab_tests_api = {
 
 static int slab_tests_count(int argc, char *argv[])
 {
-	return 7;
+	return 5;
 }
 
 static int slab_tests_run(int argc, char *argv[])
@@ -112,35 +112,6 @@ static int slab_tests_run(int argc, char *argv[])
 	// 5. Delete cache
 	slab_cache_destroy(&cache);
 	ok(cache.bufsize == 0, "slab: freed cache");
-
-	// 6. Greate GP allocator
-	slab_alloc_t alloc;
-	ret = slab_alloc_init(&alloc);
-	ok(ret == 0, "slab: created GP allocator");
-
-	// 7. Stress allocator
-	unsigned ncount = 0;
-	ptrs_i = 0;
-	for(int i = 0; i < alloc_count; ++i) {
-		double roll = rand() / (double) RAND_MAX;
-		size_t bsize = roll * 2048;
-		bsize = SLAB_MAX(bsize, 8);
-		if ((ptrs_i == 0) || (roll < 0.6)) {
-			void* m = slab_alloc_alloc(&alloc, bsize);
-			if (m == 0) {
-				++ncount;
-			} else {
-				ptrs[ptrs_i++] = m;
-			}
-		} else {
-			slab_free(ptrs[--ptrs_i]);
-		}
-	}
-
-	cmp_ok(ncount, "==", 0, "slab: GP allocator alloc/free working");
-
-	// 7. Destroy allocator
-	slab_alloc_destroy(&alloc);
 
 	return 0;
 }
