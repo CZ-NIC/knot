@@ -1410,8 +1410,9 @@ dbg_packet_exec(
 );
 		// TODO: this is quite ugly, but better than copying whole
 		// function (for reallocating rrset array)
+		// TODO sort out freeing, this WILL leak.
 		knot_rrset_deep_free(
-			&(((knot_rrset_t **)(pkt->tmp_rrsets))[i]), 1, 1);
+			&(((knot_rrset_t **)(pkt->tmp_rrsets))[i]), 1, 0);
 	}
 }
 
