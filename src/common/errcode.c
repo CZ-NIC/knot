@@ -70,6 +70,7 @@ const error_table_t knot_error_msgs[] = {
 	{KNOT_ECNAME, "CNAME loop found in zone."},
 	{KNOT_ENODIFF, "Cannot create zone diff."},
 	{KNOT_EDSDIGESTLEN, "DS digest length does not match digest type." },
+	{KNOT_ELIMIT, "Exceeded response rate limit." },
 
 	{KNOT_ERROR, 0}
 };

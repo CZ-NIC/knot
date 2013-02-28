@@ -205,7 +205,7 @@ int fdset_sweep(fdset_t* fdset, void(*cb)(fdset_t*, int, void*), void *data)
 }
 
 /* OpenBSD compatibility. */
-#ifndef HAVE_PSELECT
+#if !defined(HAVE_PSELECT) || defined(PSELECT_COMPAT)
 /*
  * Like select(2) but set the signals to block while waiting in
  * select.  This version is not entirely race condition safe.  Only
@@ -248,12 +248,12 @@ int fdset_sweep(fdset_t* fdset, void(*cb)(fdset_t*, int, void*), void *data)
 #include <signal.h>
 
 static int
-pselect (int n,
-	 fd_set *readfds,
-	 fd_set *writefds,
-	 fd_set *exceptfds,
-	 const struct timespec *timeout,
-	 const sigset_t *sigmask)
+pselect_compat (int n,
+                fd_set *readfds,
+                fd_set *writefds,
+                fd_set *exceptfds,
+                const struct timespec *timeout,
+                const sigset_t *sigmask)
 {
 	int result;
 	sigset_t saved_sigmask;
@@ -276,10 +276,17 @@ pselect (int n,
 	return result;
 }
 
-#endif
+int fdset_pselect(int n, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
+                  const struct timespec *timeout, const sigset_t *sigmask)
+{
+	return pselect_compat(n, readfds, writefds, exceptfds, timeout, sigmask);
+}
+
+#else
 
 int fdset_pselect(int n, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
                   const struct timespec *timeout, const sigset_t *sigmask)
 {
 	return pselect(n, readfds, writefds, exceptfds, timeout, sigmask);
 }
+#endif

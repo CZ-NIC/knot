@@ -95,6 +95,9 @@ ixfr-from-differences { lval.t = yytext; return BUILD_DIFFS; }
 max-conn-idle   { lval.t = yytext; return MAX_CONN_IDLE; }
 max-conn-handshake { lval.t = yytext; return MAX_CONN_HS; }
 max-conn-reply  { lval.t = yytext; return MAX_CONN_REPLY; }
+rate-limit      { lval.t = yytext; return RATE_LIMIT; }
+rate-limit-size { lval.t = yytext; return RATE_LIMIT_SIZE; }
+rate-limit-slip { lval.t = yytext; return RATE_LIMIT_SLIP; }
 
 interfaces      { lval.t = yytext; return INTERFACES; }
 address         { lval.t = yytext; return ADDRESS; }

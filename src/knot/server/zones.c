@@ -2527,6 +2527,7 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 	int ret = knot_ns_prep_normal_response(nameserver, query, &resp, &zone,
 	                                       (transport == NS_TRANSPORT_TCP)
 	                                       ? *rsize : 0);
+	query->zone = zone;
 
 	// check for TSIG in the query
 	// not required, TSIG is already found if it is there
@@ -2638,6 +2639,7 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 				                            &answer_size,
 				                            transport ==
 				                            NS_TRANSPORT_UDP);
+				query->flags = resp->flags; /* Copy markers. */
 			}
 
 			dbg_zones_detail("rsize = %zu\n", *rsize);

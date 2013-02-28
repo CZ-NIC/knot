@@ -62,6 +62,8 @@ src/libknot/zone/zone-tree.c
 src/libknot/zone/dname-table.h
 src/libknot/zone/dname-table.c
 src/Makefile.am
+src/common/hattrie/murmurhash3.c
+src/common/hattrie/murmurhash3.h
 src/common/slab/slab.c
 src/common/slab/slab.h
 src/common/slab/alloc-common.h
@@ -160,6 +162,8 @@ src/knot/server/journal.c
 src/knot/server/journal.h
 src/knot/server/notify.c
 src/knot/server/notify.h
+src/knot/server/rrl.c
+src/knot/server/rrl.h
 src/knot/ctl/process.c
 src/knot/ctl/process.h
 src/knot/conf/cf-lex.l
@@ -196,6 +200,8 @@ src/tests/knot/journal_tests.c
 src/tests/knot/journal_tests.h
 src/tests/knot/server_tests.c
 src/tests/knot/server_tests.h
+src/tests/knot/rrl_tests.c
+src/tests/knot/rrl_tests.h
 src/tests/libknot/unittests_libknot.c
 src/tests/libknot/libknot/dname_tests.c
 src/tests/libknot/libknot/dname_tests.h

@@ -42,6 +42,9 @@ else.
   [ @code{max-conn-idle} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
   [ @code{max-conn-hs} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
   [ @code{max-conn-reply} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
+  [ @code{rate-limit} @kbd{integer}@code{;} ]
+  [ @code{rate-limit-size} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
+  [ @code{rate-limit-slip} @kbd{integer}@code{;} ]
 @code{@}}
 @end example
 
@@ -56,9 +59,12 @@ else.
 * pidfile::                     
 * workers::                     
 * user::                        
-* max-conn-idle::
-* max-conn-hs::
-* max-conn-reply::
+* max-conn-idle::               
+* max-conn-hs::                 
+* max-conn-reply::              
+* rate-limit::
+* rate-limit-size::
+* rate-limit-slip::
 @end menu
 
 @node identity
@@ -177,6 +183,38 @@ that already made at least 1 meaningful query.
 @vindex max-conn-reply
 
 Maximum time to wait for a reply to an issued SOA query.
+
+@node rate-limit
+@subsubsection rate-limit
+@vindex rate-limit
+
+Rate limiting is based on a token bucket scheme, rate basically represents number of tokens available each second.
+Each response is processed and classified (based on a several discriminators, f.e. source netblock, qtype, name, rcode, etc.).
+Classified responses are then hashed and assigned to a bucket containing number of available tokens, timestamp and metadata.
+When available tokens are exhausted, response is rejected or enters SLIP (server responds with a truncated response).
+Number of available tokens is recalculated each second.
+
+Default value: @kbd{0 (disabled)}
+
+@node rate-limit-size
+@subsubsection rate-limit-size
+@vindex rate-limit-size
+
+Option controls the size of a hashtable of buckets. The larger the hashtable, the lesser probability of a hash collision, but
+at the expense of additional memory costs. Each bucket is estimated roughly to 16B.
+Size should be selected as a reasonably large prime due to the better hash function distribution properties.
+
+Default value: @kbd{1572869}
+
+@node rate-limit-slip
+@subsubsection rate-limit-slip
+@vindex rate-limit-slip
+
+As attacks using DNS/UDP are usually based on a forged source address, an attacker could deny services to the victim netblock
+if all responses would be completely blocked. The idea behind SLIP mechanism is to send each Nth response as truncated, thus allowing
+client to reconnect via TCP for at least some degree of service. It is worth noting, that some responses can't be truncated (f.e. SERVFAIL).
+
+Default value: @kbd{2}
 
 @node system Example
 @subsection system Example

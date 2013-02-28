@@ -171,6 +171,12 @@ Statement Definition and Usage
 * pidfile::                     
 * workers::                     
 * user::                        
+* max-conn-idle::
+* max-conn-hs::
+* max-conn-reply::
+* rate-limit::
+* rate-limit-size::
+* rate-limit-slip::
 
 @code{keys} Statement
 

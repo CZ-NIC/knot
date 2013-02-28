@@ -189,6 +189,7 @@ static int ns_check_wildcard(const knot_dname_t *name, knot_packet_t *resp,
 	assert(*rrset != NULL);
 
 	if (knot_dname_is_wildcard((*rrset)->owner)) {
+		resp->flags |= KNOT_PF_WILDCARD; /* Mark */
 		knot_rrset_t *synth_rrset =
 			ns_synth_from_wildcard(*rrset, name);
 		if (synth_rrset == NULL) {

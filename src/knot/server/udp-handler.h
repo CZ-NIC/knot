@@ -53,7 +53,8 @@
  * \retval KNOT_ENOMEM
  */
 int udp_handle(int sock, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
-	       sockaddr_t* addr, knot_nameserver_t *ns);
+	       sockaddr_t* addr, knot_nameserver_t *ns,
+               rrl_table_t *rrl, unsigned *slip);
 
 /*!
  * \brief UDP handler thread runnable.
