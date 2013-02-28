@@ -334,7 +334,7 @@ int rrl_setlocks(rrl_table_t *rrl, size_t granularity)
 int rrl_query(rrl_table_t *rrl, const sockaddr_t *a, rrl_req_t *req,
               const knot_zone_t *zone)
 {
-	if (!rrl || !req) return KNOT_EINVAL;
+	if (!rrl || !req || !a) return KNOT_EINVAL;
 	
 	/* Calculate hash and fetch */
 	int ret = KNOT_EOK;

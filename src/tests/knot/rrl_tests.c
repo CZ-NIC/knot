@@ -22,6 +22,9 @@
 #include "libknot/packet/query.h"
 #include "libknot/nameserver/name-server.h"
 
+/* Enable time-dependent tests. */
+//#define ENABLE_TIMED_TESTS
+
 static int rrl_tests_count(int argc, char *argv[]);
 static int rrl_tests_run(int argc, char *argv[]);
 
@@ -40,7 +43,11 @@ unit_api rrl_tests_api = {
 
 static int rrl_tests_count(int argc, char *argv[])
 {
-	return 5;
+	int c = 6;
+#ifndef ENABLE_TIMED_TESTS
+	c -= 2;
+#endif
+	return c;
 }
 
 static int rrl_tests_run(int argc, char *argv[])
@@ -93,7 +100,8 @@ static int rrl_tests_run(int argc, char *argv[])
 		}
 	}
 	ok(ret == 0, "rrl: unlimited IPv4/v6 requests");
-	
+
+#ifdef ENABLE_TIMED_TESTS
 	/* 4. limited request */
 	ret = rrl_query(rrl, &addr, &rq, zone);
 	ok(ret != 0, "rrl: throttled IPv4 request");
@@ -101,6 +109,20 @@ static int rrl_tests_run(int argc, char *argv[])
 	/* 5. limited IPv6 request */
 	ret = rrl_query(rrl, &addr6, &rq, zone);
 	ok(ret != 0, "rrl: throttled IPv6 request");
+#endif
+	
+	/* 6. invalid values. */
+	ret = 0;
+	lives_ok( {
+	                  rrl_create(0);            // NULL
+	                  ret += rrl_setrate(0, 0); // 0
+	                  ret += rrl_rate(0);       // 0
+	                  ret += rrl_setlocks(0,0); // -1
+	                  ret += rrl_query(0, 0, 0, 0); // -1
+	                  ret += rrl_query(rrl, 0, 0, 0); // -1
+	                  ret += rrl_query(rrl, (void*)0x1, 0, 0); // -1
+	                  ret += rrl_destroy(0); // -1
+	}, "dthreads: not crashed while executing functions on NULL context");
 	
 	knot_dname_release(qst.qname);
 	knot_dname_release(apex);
