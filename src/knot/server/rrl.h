@@ -36,6 +36,9 @@
 /* Defaults */
 #define RRL_LOCK_GRANULARITY 10 /* Last digit granularity */
 
+/*!
+ * \brief RRL hash bucket.
+ */
 typedef struct rrl_item {
 	uint64_t pref;       /* Prefix associated. */
 	uint16_t ntok;       /* Tokens available */
@@ -48,6 +51,18 @@ typedef struct rrl_lock {    /* Wrapper around lock struct. */
 	pthread_mutex_t mx;
 } rrl_lock_t;
 
+/*!
+ * \brief RRL hash bucket table.
+ * 
+ * Table is fixed size, so collisions may occur and are dealt with
+ * in a way, that hashbucket rate is reset and enters slow-start for 1 dt.
+ * When a bucket is in a slow-start mode, it cannot reset again for the time
+ * period.
+ *
+ * To avoid lock contention, N locks are created and distributed amongst buckets.
+ * As of now lock K for bucket N is calculated as K = N % (num_buckets).
+ */
+ 
 typedef struct rrl_table {
 	uint32_t rate;       /* Configured RRL limit */
 	uint32_t seed;       /* Pseudorandom seed for hashing. */
@@ -57,6 +72,9 @@ typedef struct rrl_table {
 	rrl_item_t arr[];    /* Buckets */
 } rrl_table_t;
 
+/*!
+ * \brief RRL request descriptor.
+ */
 typedef struct rrl_req {
 	const uint8_t *w;
 	uint16_t len;
@@ -64,12 +82,59 @@ typedef struct rrl_req {
 	const knot_question_t *qst;
 } rrl_req_t;
 
+/*!
+ * \brief Create a RRL table.
+ * \param size Fixed hashtable size (reasonable large prime is recommended).
+ * \return created table or NULL.
+ */
 rrl_table_t *rrl_create(size_t size);
-uint32_t rrl_setrate(rrl_table_t *rrl, uint32_t rate);
+
+/*!
+ * \brief Get RRL table default rate.
+ * \param rrl RRL table.
+ * \return rate
+ */
 uint32_t rrl_rate(rrl_table_t *rrl);
+
+/*!
+ * \brief Set RRL table default rate.
+ *
+ * \note When changing the rate, it is NOT applied to all buckets immediately.
+ *
+ * \param rrl RRL table.
+ * \param rate New rate (in pkts/sec).
+ * \return old rate
+ */
+uint32_t rrl_setrate(rrl_table_t *rrl, uint32_t rate);
+
+/*!
+ * \brief Set N distributed locks for the RRL table.
+ *
+ * \param rrl RRL table.
+ * \param granularity Number of created locks.
+ * \retval KNOT_EOK
+ * \retval KNOT_EINVAL
+ */
 int rrl_setlocks(rrl_table_t *rrl, size_t granularity);
+
+/*!
+ * \brief Query the RRL table for accept or deny, when the rate limit is reached.
+ *
+ * \param rrl RRL table.
+ * \param a Source address.
+ * \param req RRL request (containing resp., flags and question).
+ * \param zone Zone related to the response (or NULL).
+ * \retval KNOT_EOK if passed.
+ * \retval KNOT_ELIMIT when the limit is reached.
+ */
 int rrl_query(rrl_table_t *rrl, const sockaddr_t *a, rrl_req_t *req,
               const knot_zone_t *zone);
+
+/*!
+ * \brief Destroy RRL table.
+ * \param rrl RRL table.
+ * \return KNOT_EOK 
+ */
 int rrl_destroy(rrl_table_t *rrl);
 
 
