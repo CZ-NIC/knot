@@ -670,7 +670,6 @@ int dt_start_id(dthread_t *thread)
 		dbg_dt("dthreads: [%p] %s: refused to recreate thread\n",
 		         thread, __func__);
 		unlock_thread_rw(thread);
-		dt_activate(thread);
 		return 0;
 	}
 
