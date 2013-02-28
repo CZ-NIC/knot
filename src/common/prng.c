@@ -83,7 +83,7 @@ double tls_rand()
 		}
 
 		/* Initialize PRNG state. */
-#ifdef HAVE_MEMALIGN
+#ifdef HAVE_POSIX_MEMALIGN
 		if (posix_memalign((void **)&s, 16, sizeof(dsfmt_t)) != 0) {
 			fprintf(stderr, "error: PRNG: not enough memory\n");
 			return .0;
