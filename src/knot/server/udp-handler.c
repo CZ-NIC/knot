@@ -23,8 +23,9 @@
 #include <time.h>
 #include <unistd.h>
 #include <errno.h>
-#include <arpa/inet.h>
+#include <sys/types.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
 #include <sys/poll.h>
 #include <sys/syscall.h>
 #include <netinet/in.h>
