@@ -1216,6 +1216,7 @@ int sem_check_node_plain(knot_zone_contents_t *zone,
 	}
 	
 	if (only_mandatory == 1) {
+		/* Check CNAME and DNAME, else no-op. */
 		return sem_check_node_mandatory(zone, node, do_checks, handler,
 		                                fatal_error);
 	} else {

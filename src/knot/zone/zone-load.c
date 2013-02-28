@@ -349,7 +349,11 @@ static void process_rr(const scanner_t *scanner)
 	assert(current_rrset);
 	
 	int ret = add_rdata_to_rr(current_rrset, scanner);
-	assert(ret == 0);
+	if (ret != KNOT_EOK) {
+		log_zone_error("Cannot add RDATA to zone, load failed.\n");
+		parser->ret = ret;
+		return;
+	}
 	
 	dbg_zp_verb("zp: process_rr: Processing type: %s.\n",
 	            knot_rrtype_to_string(parser->current_rrset->type));
@@ -392,7 +396,7 @@ static void process_rr(const scanner_t *scanner)
 				log_zone_error("Extra SOA record in the "
 				               "zone.\n");
 				/*!< \todo consider a new error */
-				parser->ret = KNOT_EBADZONE;
+				parser->ret = KNOT_EMALF;
 				return;
 			} else {
 				log_zone_warning("encountered identical "
@@ -582,7 +586,7 @@ static void process_rr(const scanner_t *scanner)
 		} else if (ret > 0) {
 			knot_rrset_deep_free(&current_rrset, 0, 0);
 		}
-		assert(node);
+		assert(parser->current_zone && node);
 		int sem_fatal_error = 0;
 		ret = sem_check_node_plain(parser->current_zone, node, -1,
 		                           parser->err_handler, 1,
@@ -632,7 +636,7 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 		knot_dname_new_from_str(origin, strlen(origin), NULL);
 	assert(context->origin_from_config);
 	context->last_node = knot_node_new(context->origin_from_config,
-	                                    NULL, 0);
+	                                   NULL, 0);
 	knot_zone_t *zone = knot_zone_new(context->last_node);
 	context->current_zone = knot_zone_get_contents(zone);
 	context->node_rrsigs = NULL;
