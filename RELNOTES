@@ -1,5 +1,15 @@
-v1.2-rc2 - Feb 15, 2013
--------------------
+v1.2.0-rc3 - Mar 1, 2013
+------------------------
+
+Features:
+	* Response rate limiting (see documentation)
+
+Bugfixes:
+	* Fixed OpenBSD build
+	* Responses to ANY should contain RRSIGs
+
+v1.2.0-rc2 - Feb 15, 2013
+-------------------------
 
 Bugfixes:
 	* Fixed processing of some non-standard dnames.
@@ -7,7 +17,7 @@ Bugfixes:
 	* More compliant rcodes in case of DDNS/TSIG failures.
 	* Correct processing of malformed DDNS prereq section.
 
-v1.2-rc1 - Jan 4, 2013
+v1.2.0-rc1 - Jan 4, 2013
 ------------------
 
 Features:
