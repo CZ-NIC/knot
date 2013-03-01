@@ -165,14 +165,12 @@ int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr,
 	int rc = 0;
 	dbg_edns_verb("Parsing options.\n");
 	uint8_t *raw = knot_rrset_get_rdata(rrset, 0);
+	uint16_t size = rrset_rdata_item_size(rrset, 0);
 
-	// in OPT RR, all RDATA are in one RDATA item stored as BINARY data,
-	// i.e. preceded by their length
 	if (raw != NULL) {
-		uint16_t size = *((uint16_t*)raw);
-		int pos = 2;
+		size_t pos = 0;
 		assert(size > 0);
-		while (pos - 2 < size) {
+		while (pos < size) {
 			// ensure there is enough data to parse the OPTION CODE
 			// and OPTION LENGTH
 			if (size - pos + 2 < 4) {
@@ -184,10 +182,10 @@ int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr,
 
 			// there should be enough data for parsing the OPTION
 			// data
-			if (size - pos - 2 < opt_size) {
+			if (size - pos < opt_size) {
 				dbg_edns("Not enough data to parse options: "
-				         "size - pos - 2=%d, opt_size=%d\n",
-				         size - pos - 2, opt_size);
+				         "size - pos=%d, opt_size=%d\n",
+				         size - pos, opt_size);
 				return KNOT_EMALF;
 			}
 			rc = knot_edns_add_option(opt_rr, opt_code, opt_size,
