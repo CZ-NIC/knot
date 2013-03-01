@@ -299,6 +299,7 @@ static int knot_packet_parse_question(const uint8_t *wire, size_t *pos,
 			return KNOT_ENOMEM;
 		}
 	} else {
+		assert(question->qname != NULL); /* When alloc=0, must be set. */
 		void *parsed = knot_dname_parse_from_wire(wire, pos,
 		                                     i + 1,
 	                                             NULL, question->qname);
