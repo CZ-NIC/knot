@@ -483,7 +483,7 @@ static int sign_packet(nsupdate_params_t *params, uint8_t *wire,
 
 		knot_packet_t *packet = params->pkt;
 		size_t max_size = knot_packet_max_size(packet);
-		size_t tsig_size = tsig_wire_maxsize(key->name, key->algorithm);
+		size_t tsig_size = tsig_wire_maxsize(key);
 
 		sign_ctx->digest_size = tsig_alg_digest_length(key->algorithm);
 		sign_ctx->digest = malloc(sign_ctx->digest_size);

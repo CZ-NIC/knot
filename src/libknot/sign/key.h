@@ -17,7 +17,6 @@
 #ifndef _KNOT_SIGN_KEY_H_
 #define _KNOT_SIGN_KEY_H_
 
-#include "binary.h"
 #include "dname.h"
 #include "tsig.h"
 
@@ -59,13 +58,6 @@ knot_key_type_t knot_get_key_type(const knot_key_params_t *key_params);
 
 /*----------------------------------------------------------------------------*/
 
-struct knot_tsig_key {
-	knot_dname_t *name;
-	tsig_algorithm_t algorithm;
-	knot_binary_t secret;
-};
-
-typedef struct knot_tsig_key knot_tsig_key_t;
 
 int knot_tsig_key_from_params(const knot_key_params_t *params,
                               knot_tsig_key_t *key);
