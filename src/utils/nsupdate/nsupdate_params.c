@@ -127,9 +127,7 @@ void nsupdate_clean(nsupdate_params_t *params)
 		free(n);
 	}
 
-	/* Free TSIG key. */
-	knot_dname_free(&params->key.name);
-	free(params->key.secret);
+	knot_free_key_params(&params->key_params);
 
 	/* Clean up the structure. */
 	memset(params, 0, sizeof(*params));
@@ -183,11 +181,11 @@ int nsupdate_parse(nsupdate_params_t *params, int argc, char *argv[])
 			if (ret != KNOT_EOK) return ret;
 			break;
 		case 'y':
-			ret = params_parse_tsig(optarg, &params->key);
+			ret = params_parse_tsig(optarg, &params->key_params);
 			if (ret != KNOT_EOK) return ret;
 			break;
 		case 'k':
-			ret = params_parse_keyfile(optarg, &params->key);
+			ret = params_parse_keyfile(optarg, &params->key_params);
 			if (ret != KNOT_EOK) return ret;
 			break;
 		default:

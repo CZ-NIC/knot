@@ -352,19 +352,16 @@ int params_parse_bufsize(const char *value, int32_t *dst)
 	return KNOT_EOK;
 }
 
-int params_parse_tsig(const char *value, knot_key_t *key)
+int params_parse_tsig(const char *value, knot_key_params_t *key_params)
 {
-	if (value == NULL || key == NULL) {
+	if (value == NULL || key_params == NULL) {
 		DBG_NULL;
 		return KNOT_EINVAL;
 	}
 
 	/* Invalidate previous key. */
-	if (key->name) {
-		knot_dname_free(&key->name);
-		key->algorithm = KNOT_TSIG_ALG_NULL;
-		free(key->secret);
-		key->secret = NULL;
+	if (key_params->name) {
+		knot_free_key_params(key_params);
 	}
 
 	char *h = strdup(value);
@@ -380,14 +377,14 @@ int params_parse_tsig(const char *value, knot_key_t *key)
 	}
 
 	/* Determine algorithm. */
-	key->algorithm = KNOT_TSIG_ALG_HMAC_MD5;
+	key_params->algorithm = KNOT_TSIG_ALG_HMAC_MD5;
 	if (s) {
 		*s++ = '\0';               /* Last part separator */
 		knot_lookup_table_t *alg = NULL;
 		alg = knot_lookup_by_name(tsig_alg_table, h);
 		if (alg) {
 			DBG("%s: parsed algorithm '%s'\n", __func__, h);
-			key->algorithm = alg->id;
+			key_params->algorithm = alg->id;
 		} else {
 			ERR("invalid TSIG algorithm name '%s'\n", h);
 			free(h);
@@ -404,18 +401,9 @@ int params_parse_tsig(const char *value, knot_key_t *key)
 		return KNOT_EINVAL;
 	}
 
-	/* Parse key name. */
-	key->name = knot_dname_new_from_nonfqdn_str(k, strlen(k), NULL);
-	key->secret = strdup(s);
-
-	/* Check name and secret. */
-	if (!key->name || !key->secret) {
-		knot_dname_free(&key->name); /* Sets to NULL */
-		free(key->secret);
-		key->secret = NULL;
-		free(h);
-		return KNOT_EINVAL;
-	}
+	/* Set key name and secret. */
+	key_params->name = strndup(k, strlen(k));
+	key_params->secret = strdup(s);
 
 	DBG("%s: parsed name '%s'\n", __func__, k);
 	DBG("%s: parsed secret '%s'\n", __func__, s);
@@ -424,20 +412,10 @@ int params_parse_tsig(const char *value, knot_key_t *key)
 	return KNOT_EOK;
 }
 
-int params_parse_keyfile(const char *filename, knot_key_t *key)
+int params_parse_keyfile(const char *filename, knot_key_params_t *key_params)
 {
-	int result;
+	if (key_params->name)
+		knot_free_key_params(key_params);
 
-	//! \todo temporary code, this will be changed
-
-	knot_key_params_t key_params = { 0 };
-	result = knot_load_key_params(filename, &key_params);
-	if (result != KNOT_EOK)
-		return result;
-
-	result = knot_tsig_key_from_key_params(&key_params, key);
-
-	knot_free_key_params(&key_params);
-
-	return result;
+	return knot_load_key_params(filename, key_params);
 }

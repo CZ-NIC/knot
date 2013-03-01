@@ -308,12 +308,6 @@ static int pkt_append(nsupdate_params_t *p, int sect)
 			return ret;
 		}
 		knot_query_set_opcode(p->pkt, KNOT_OPCODE_UPDATE);
-		
-		/* Reserve space for TSIG. */
-		if (p->key.name) {
-			knot_packet_set_tsig_size(p->pkt,
-			                          tsig_wire_maxsize(&p->key));
-		}
 	}
 
 	/* Form a rrset. */
@@ -449,6 +443,91 @@ static int nsupdate_process(nsupdate_params_t *params, FILE *fp)
 
 	return ret;
 }
+
+//! \brief Holds data required between signing and signature verification.
+struct sign_context {
+	knot_tsig_key_t tsig_key;
+	uint8_t *digest;
+	size_t digest_size;
+};
+
+typedef struct sign_context sign_context_t;
+
+static void free_sign_context(sign_context_t *ctx)
+{
+	if (ctx->tsig_key.name)
+		knot_tsig_key_free(&ctx->tsig_key);
+
+	if (ctx->digest)
+		free(ctx->digest);
+
+	memset(ctx, '\0', sizeof(sign_context_t));
+}
+
+static int sign_packet(nsupdate_params_t *params, uint8_t *wire,
+                       size_t *wire_size, sign_context_t *sign_ctx)
+{
+	if (!sign_ctx)
+		return KNOT_EINVAL;
+
+	int result;
+	knot_key_type_t key_type = knot_get_key_type(&params->key_params);
+
+	if (key_type == KNOT_KEY_TSIG) {
+		result = knot_tsig_key_from_params(&params->key_params,
+		                                    &sign_ctx->tsig_key);
+		if (result != KNOT_EOK)
+			return result;
+
+		knot_tsig_key_t *key = &sign_ctx->tsig_key;
+
+		knot_packet_t *packet = params->pkt;
+		size_t max_size = knot_packet_max_size(packet);
+		size_t tsig_size = tsig_wire_maxsize(key->name, key->algorithm);
+
+		sign_ctx->digest_size = tsig_alg_digest_length(key->algorithm);
+		sign_ctx->digest = malloc(sign_ctx->digest_size);
+
+		knot_packet_set_tsig_size(packet, tsig_size);
+		result = knot_tsig_sign(wire, wire_size, max_size, NULL, 0,
+		                        sign_ctx->digest,
+		                        &sign_ctx->digest_size, key, 0, 0);
+
+		return result;
+	}
+
+	//! \todo SIG(0)
+
+	return KNOT_EINVAL;
+}
+
+static int check_sign(nsupdate_params_t *params, size_t wire_size,
+                      sign_context_t *sign_ctx)
+{
+	if (!sign_ctx)
+		return KNOT_EINVAL;
+
+	int result;
+	knot_key_type_t key_type = knot_get_key_type(&params->key_params);
+
+	if (key_type == KNOT_KEY_TSIG) {
+		const knot_rrset_t *tsig_rr = knot_packet_tsig(params->resp);
+		if (!tsig_rr)
+			return KNOT_ENOTSIG;
+
+		result = knot_tsig_client_check(tsig_rr, params->rwire,
+		                                wire_size, sign_ctx->digest,
+						sign_ctx->digest_size,
+		                                &sign_ctx->tsig_key, 0);
+
+		return result;
+	}
+
+	//! \todo SIG(0)
+
+	return KNOT_EINVAL;
+}
+
 
 int nsupdate_exec(nsupdate_params_t *params)
 {
@@ -681,23 +760,18 @@ int cmd_send(const char* lp, nsupdate_params_t *params)
 		return ret;
 	}
 
-	/* Sign if possible. */
-	size_t dlen = 0;
-	uint8_t *digest = NULL;
-	size_t maxlen = knot_packet_max_size(params->pkt);
-	if (params->key.secret) {
-		dlen = tsig_alg_digest_length(params->key.algorithm);
-		digest = malloc(dlen);
-		ret = knot_tsig_sign(wire, &len, maxlen, NULL, 0,
-		                     digest, &dlen, &params->key, 0, 0);
+	sign_context_t sign_ctx;
+	memset(&sign_ctx, '\0', sizeof(sign_context_t));
+
+	/* Sign if key specified. */
+	if (params->key_params.name) {
+		ret = sign_packet(params, wire, &len, &sign_ctx);
 		if (ret != KNOT_EOK) {
 			ERR("failed to sign UPDATE message - %s\n",
 			    knot_strerror(ret));
-			free(digest);
 			return ret;
 		}
 	}
-	
 	
 	/* Send/recv message (N retries). */
 	int retries = params->retries;
@@ -715,7 +789,7 @@ int cmd_send(const char* lp, nsupdate_params_t *params)
 	/* Clear previous response. */
 	if (params->resp) knot_packet_free(&params->resp);
 	if (rb <= 0) {
-		free(digest);
+		free_sign_context(&sign_ctx);
 		return KNOT_ECONNREFUSED;
 	}
 	
@@ -726,32 +800,27 @@ int cmd_send(const char* lp, nsupdate_params_t *params)
 	knot_packet_free(&params->pkt);
 	params->resp = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
 	if (!params->resp) {
-		free(digest);
+		free_sign_context(&sign_ctx);
 		return KNOT_ENOMEM;
 	}
 	ret = knot_packet_parse_from_wire(params->resp, params->rwire, rb, 0, 0);
 	if (ret != KNOT_EOK) {
 		ERR("failed to parse response, %s\n", knot_strerror(ret));
-		free(digest);
+		free_sign_context(&sign_ctx);
 		return ret;
 	}
 	
-	/* Check TSIG if required. */
-	const char *ep = "; TSIG error with server";
-	const knot_rrset_t *tsig_rr = knot_packet_tsig(params->resp);
-	if (digest && !tsig_rr) {
-		ret = KNOT_ENOTSIG;
-	} else if (digest) {
-		ret = knot_tsig_client_check(tsig_rr, params->rwire, rb,
-		                             digest, dlen, &params->key,
-		                             0);
+	/* Check signature if expected. */
+	if (params->key_params.name) {
+		ret = check_sign(params, rb, &sign_ctx);
+		free_sign_context(&sign_ctx);
 	}
-	free(digest); /* Not needed anymore. */
 	if (ret != KNOT_EOK) { /* Collect TSIG error. */
-		fprintf(stderr, "%s: %s\n", ep, knot_strerror(ret));
+		fprintf(stderr, "%s: %s\n", "; TSIG error with server",
+		        knot_strerror(ret));
 		return ret;
 	}
-	
+
 	/* Check return code. */
 	knot_lookup_table_t *rcode;
 	int rc = knot_packet_rcode(params->resp);
@@ -852,7 +921,7 @@ int cmd_key(const char* lp, nsupdate_params_t *params)
 		ret = KNOT_EINVAL;
 	} else {
 		kstr[len] = ':'; /* Replace ' ' with ':' sep */
-		ret = params_parse_tsig(kstr, &params->key);
+		ret = params_parse_tsig(kstr, &params->key_params);
 	}
 	
 	free(kstr);
