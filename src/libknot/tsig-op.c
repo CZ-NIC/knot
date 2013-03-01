@@ -22,19 +22,15 @@
 
 #include "common.h"
 #include "common/descriptor.h"
-#include "common/base64.h"
 #include "tsig.h"
 #include "tsig-op.h"
 #include "util/wire.h"
 #include "util/debug.h"
 #include "consts.h"
-
+#include "sign/key.h"
 
 const int KNOT_TSIG_MAX_DIGEST_SIZE = 64;    // size of HMAC-SHA512 digest
 const uint16_t KNOT_TSIG_FUDGE_DEFAULT = 300;  // default Fudge value
-enum b64_const {
-	B64BUFSIZE = 65535
-};
 
 static int knot_tsig_check_algorithm(const knot_rrset_t *tsig_rr)
 {
@@ -58,7 +54,7 @@ static int knot_tsig_check_algorithm(const knot_rrset_t *tsig_rr)
 }
 
 static int knot_tsig_check_key(const knot_rrset_t *tsig_rr,
-                               const knot_key_t *tsig_key)
+                               const knot_tsig_key_t *tsig_key)
 {
 	if (tsig_rr == NULL || tsig_key == NULL) {
 		return KNOT_EINVAL;
@@ -87,7 +83,7 @@ static int knot_tsig_check_key(const knot_rrset_t *tsig_rr,
 
 static int knot_tsig_compute_digest(const uint8_t *wire, size_t wire_len,
                                     uint8_t *digest, size_t *digest_len,
-                                    const knot_key_t *key)
+                                    const knot_tsig_key_t *key)
 {
 	if (!wire || !digest || !digest_len || !key) {
 		dbg_tsig("TSIG: digest: bad args.\n");
@@ -105,23 +101,9 @@ static int knot_tsig_compute_digest(const uint8_t *wire, size_t wire_len,
 		return KNOT_TSIG_EBADSIG;
 	}
 
-	/* Decode key from Base64. */
-	char decoded_key[B64BUFSIZE];
-	memset(decoded_key, 0, sizeof(decoded_key));
-	
-	int32_t ret = base64_decode((uint8_t *)key->secret, strlen(key->secret),
-	                            (uint8_t *)decoded_key, B64BUFSIZE);
-
-	if (ret < 0) {
-		dbg_tsig("TSIG: Could not decode Base64\n");
-		return KNOT_ERROR;
-	}
-	
-	size_t decoded_key_size = ret;
-
-	dbg_tsig_detail("TSIG: decoded key size: %d\n", decoded_key_size);
-	dbg_tsig_detail("TSIG: decoded key:\n");
-	dbg_tsig_hex_detail(decoded_key, decoded_key_size);
+	dbg_tsig_detail("TSIG: key size: %d\n", key->secret.size);
+	dbg_tsig_detail("TSIG: key:\n");
+	dbg_tsig_hex_detail(key->secret.data, key->secret.size);
 	dbg_tsig_detail("Wire for signing is %zu bytes long.\n", wire_len);
 
 	/* Compute digest. */
@@ -129,16 +111,16 @@ static int knot_tsig_compute_digest(const uint8_t *wire, size_t wire_len,
 
 	switch (tsig_alg) {
 		case KNOT_TSIG_ALG_HMAC_MD5:
-			HMAC_Init(&ctx, decoded_key,
-			          decoded_key_size, EVP_md5());
+			HMAC_Init(&ctx, key->secret.data,
+			          key->secret.size, EVP_md5());
 			break;
 		case KNOT_TSIG_ALG_HMAC_SHA1:
-			HMAC_Init(&ctx, decoded_key,
-			          decoded_key_size, EVP_sha1());
+			HMAC_Init(&ctx, key->secret.data,
+			          key->secret.size, EVP_sha1());
 			break;
 		case KNOT_TSIG_ALG_HMAC_SHA256:
-			HMAC_Init(&ctx, decoded_key,
-			          decoded_key_size, EVP_sha256());
+			HMAC_Init(&ctx, key->secret.data,
+			          key->secret.size, EVP_sha256());
 			break;
 		default:
 			return KNOT_ENOTSUP;
@@ -316,7 +298,7 @@ static int knot_tsig_create_sign_wire(const uint8_t *msg, size_t msg_len,
 		                      size_t request_mac_len,
 		                      uint8_t *digest, size_t *digest_len,
 				      const knot_rrset_t *tmp_tsig,
-		                      const knot_key_t *key)
+		                      const knot_tsig_key_t *key)
 {
 	if (!msg || !key || digest_len == NULL) {
 		dbg_tsig("TSIG: create wire: bad args.\n");
@@ -392,7 +374,7 @@ static int knot_tsig_create_sign_wire_next(const uint8_t *msg, size_t msg_len,
                                            size_t prev_mac_len,
                                            uint8_t *digest, size_t *digest_len,
                                            const knot_rrset_t *tmp_tsig,
-                                           const knot_key_t *key)
+                                           const knot_tsig_key_t *key)
 {
 	if (!msg || !key || digest_len == NULL) {
 		dbg_tsig("TSIG: create wire: bad args.\n");
@@ -462,7 +444,7 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
                    size_t msg_max_len, const uint8_t *request_mac,
                    size_t request_mac_len,
                    uint8_t *digest, size_t *digest_len,
-                   const knot_key_t *key, uint16_t tsig_rcode,
+                   const knot_tsig_key_t *key, uint16_t tsig_rcode,
                    uint64_t request_time_signed)
 {
 	if (!msg || !msg_len || !key || digest == NULL || digest_len == NULL) {
@@ -573,7 +555,7 @@ dbg_rrset_exec_detail(
 int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
                         const uint8_t *prev_digest, size_t prev_digest_len,
                         uint8_t *digest, size_t *digest_len,
-                        const knot_key_t *key, uint8_t *to_sign,
+                        const knot_tsig_key_t *key, uint8_t *to_sign,
                         size_t to_sign_len)
 {
 	if (!msg || !msg_len || !key || !key || !digest || !digest_len) {
@@ -687,7 +669,7 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
                                   const uint8_t *wire, size_t size,
                                   const uint8_t *request_mac,
                                   size_t request_mac_len,
-                                  const knot_key_t *tsig_key,
+                                  const knot_tsig_key_t *tsig_key,
                                   uint64_t prev_time_signed,
                                   int use_times)
 {
@@ -801,7 +783,7 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
 
 int knot_tsig_server_check(const knot_rrset_t *tsig_rr,
                            const uint8_t *wire, size_t size,
-                           const knot_key_t *tsig_key)
+                           const knot_tsig_key_t *tsig_key)
 {
 	dbg_tsig("tsig_server_check()\n");
 	return knot_tsig_check_digest(tsig_rr, wire, size, NULL, 0, tsig_key,
@@ -811,7 +793,7 @@ int knot_tsig_server_check(const knot_rrset_t *tsig_rr,
 int knot_tsig_client_check(const knot_rrset_t *tsig_rr,
                            const uint8_t *wire, size_t size,
                            const uint8_t *request_mac, size_t request_mac_len,
-                           const knot_key_t *tsig_key,
+                           const knot_tsig_key_t *tsig_key,
                            uint64_t prev_time_signed)
 {
 	dbg_tsig("tsig_client_check()\n");
@@ -824,7 +806,7 @@ int knot_tsig_client_check_next(const knot_rrset_t *tsig_rr,
                                 const uint8_t *wire, size_t size,
                                 const uint8_t *prev_digest,
                                 size_t prev_digest_len,
-                                const knot_key_t *tsig_key,
+                                const knot_tsig_key_t *tsig_key,
                                 uint64_t prev_time_signed)
 {
 	dbg_tsig("tsig_client_check_next()\n");

@@ -137,11 +137,12 @@ uint16_t tsig_alg_digest_length(tsig_algorithm_t alg);
 /*!
  * \brief Return TSIG RRSET maximum wire size for given algorithm.
  *
- * \param key Signing key descriptor.
+ * \param name      Signing key name.
+ * \param algorithm Signing algorithm identification.
  *
  * \return RRSET wire size.
  */
-size_t tsig_wire_maxsize(const knot_key_t *key);
+size_t tsig_wire_maxsize(const knot_dname_t *name, tsig_algorithm_t algorithm);
 size_t tsig_wire_actsize(const knot_rrset_t *tsig);
 
 int tsig_rdata_is_ok(const knot_rrset_t *tsig);

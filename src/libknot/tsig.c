@@ -450,16 +450,12 @@ const char* tsig_alg_to_str(tsig_algorithm_t alg)
 	return "";
 }
 
-size_t tsig_wire_maxsize(const knot_key_t* key)
+size_t tsig_wire_maxsize(const knot_dname_t *name, tsig_algorithm_t algorithm)
 {
-	if (key == NULL) {
-		return 0;
-	}
-	
-	size_t alg_name_size = strlen(tsig_alg_to_str(key->algorithm)) + 1;
+	size_t alg_name_size = strlen(tsig_alg_to_str(algorithm)) + 1;
 
 	/*! \todo Used fixed size as a base. */
-	return knot_dname_size(key->name) +
+	return knot_dname_size(name) +
 	sizeof(uint16_t) + /* TYPE */
 	sizeof(uint16_t) + /* CLASS */
 	sizeof(uint32_t) + /* TTL */
@@ -468,7 +464,7 @@ size_t tsig_wire_maxsize(const knot_key_t* key)
 	6 * sizeof(uint8_t) + /* Time signed */
 	sizeof(uint16_t) + /* Fudge */
 	sizeof(uint16_t) + /* MAC size */
-	tsig_alg_digest_length(key->algorithm) + /* MAC */
+	tsig_alg_digest_length(algorithm) + /* MAC */
 	sizeof(uint16_t) + /* Original ID */
 	sizeof(uint16_t) + /* Error */
 	sizeof(uint16_t) + /* Other len */
