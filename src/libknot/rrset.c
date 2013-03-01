@@ -108,6 +108,7 @@ static uint16_t rrset_rdata_naptr_bin_chunk_size(const knot_rrset_t *rrset,
 
 void knot_rrset_rdata_dump(const knot_rrset_t *rrset, size_t rdata_pos)
 {
+dbg_rrset_exec_detail(
 	fprintf(stderr, "      ------- RDATA pos=%zu -------\n", rdata_pos);
 	if (rrset->rdata_count == 0) {
 		fprintf(stderr, "      There are no rdata in this RRset!\n");
@@ -156,6 +157,7 @@ void knot_rrset_rdata_dump(const knot_rrset_t *rrset, size_t rdata_pos)
 			offset += naptr_chunk_size;
 		}
 	}
+);
 }
 
 static size_t rrset_rdata_remainder_size(const knot_rrset_t *rrset,
