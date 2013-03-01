@@ -32,260 +32,247 @@
 
 #define BLOCK_WIDTH		40
 #define BLOCK_INDENT		"\n\t\t\t\t"
-#define BLOCK_INDENT_LEN	5
 
-inline static size_t write_indent(char *out) {
-	// Write padding block.
-	memcpy(out, &BLOCK_INDENT, BLOCK_INDENT_LEN);
-	return BLOCK_INDENT_LEN;
-}
+typedef struct {
+	uint8_t *in;
+	size_t  in_max;
+	char    *out;
+	size_t  out_max;
+	size_t  total;
+	int     ret;
+} rrset_dump_params_t;
 
-static int wire_num8_to_str(const uint8_t *in,
-                            char          *out,
-                            const size_t  out_len)
+static void dump_string(rrset_dump_params_t *p, const char *str)
 {
-	uint8_t data = *in;
+	size_t in_len = strlen(str);
 
-	// Write number.
-	int ret = snprintf(out, out_len, "%u", data);
-	if (ret <= 0 || ret >= out_len) {
-		return -1;
+	p->ret = -1;
+
+	// Check input size.
+	if (in_len > p->in_max) {
+		return;
 	}
 
-	return ret;
+	// Copy string including termination '\0'!
+	if (memcpy(p->out, str, in_len + 1) == NULL) {
+		return;
+	}
+
+	// Fill in output.
+	p->out += in_len;
+	p->out_max -= in_len;
+	p->total += in_len;
+	p->ret = 0;
 }
 
-static int wire_num16_to_str(const uint8_t *in,
-                             char          *out,
-                             const size_t  out_len)
+static void wire_num8_to_str(rrset_dump_params_t *p)
+{
+	uint8_t data = *(p->in);
+	size_t  in_len = sizeof(data);
+	size_t  out_len = 0;
+
+	p->ret = -1;
+
+	// Check input size.
+	if (in_len > p->in_max) {
+		return;
+	}
+
+	// Write number.
+	int ret = snprintf(p->out, p->out_max, "%u", data);
+	if (ret <= 0 || ret >= p->out_max) {
+		return;
+	}
+	out_len = ret;
+
+	// Fill in output.
+	p->in += in_len;
+	p->in_max -= in_len;
+	p->out += out_len;
+	p->out_max -= out_len;
+	p->total += out_len;
+	p->ret = 0;
+}
+
+static void wire_num16_to_str(rrset_dump_params_t *p)
 {
 	uint16_t data;
+	size_t   in_len = sizeof(data);
+	size_t   out_len = 0;
 
-	// Copy input data correctly.
-	if (memcpy(&data, in, sizeof(data)) == NULL) {
-		return -1;
+	p->ret = -1;
+
+	// Check input size.
+	if (in_len > p->in_max) {
+		return;
+	}
+
+	// Fill in input data.
+	if (memcpy(&data, p->in, in_len) == NULL) {
+		return;
 	}
 
 	// Write number.
-	int ret = snprintf(out, out_len, "%u", ntohs(data));
-	if (ret <= 0 || ret >= out_len) {
-		return -1;
+	int ret = snprintf(p->out, p->out_max, "%u", ntohs(data));
+	if (ret <= 0 || ret >= p->out_max) {
+		return;
 	}
+	out_len = ret;
 
-	return ret;
+	// Fill in output.
+	p->in += in_len;
+	p->in_max -= in_len;
+	p->out += out_len;
+	p->out_max -= out_len;
+	p->total += out_len;
+	p->ret = 0;
 }
 
-static int wire_num32_to_str(const uint8_t *in,
-                             char          *out,
-                             const size_t  out_len)
+static void wire_num32_to_str(rrset_dump_params_t *p)
 {
 	uint32_t data;
+	size_t   in_len = sizeof(data);
+	size_t   out_len = 0;
 
-	// Copy input data correctly.
-	if (memcpy(&data, in, sizeof(data)) == NULL) {
-		return -1;
+	p->ret = -1;
+
+	// Check input size.
+	if (in_len > p->in_max) {
+		return;
+	}
+
+	// Fill in input data.
+	if (memcpy(&data, p->in, in_len) == NULL) {
+		return;
 	}
 
 	// Write number.
-	int ret = snprintf(out, out_len, "%u", ntohl(data));
-	if (ret <= 0 || ret >= out_len) {
-		return -1;
+	int ret = snprintf(p->out, p->out_max, "%u", ntohl(data));
+	if (ret <= 0 || ret >= p->out_max) {
+		return;
 	}
+	out_len = ret;
 
-	return ret;
+	// Fill in output.
+	p->in += in_len;
+	p->in_max -= in_len;
+	p->out += out_len;
+	p->out_max -= out_len;
+	p->total += out_len;
+	p->ret = 0;
 }
 
-static int wire_ipv4_to_str(const uint8_t *in,
-                            char          *out,
-                            const size_t  out_len)
+static void wire_ipv4_to_str(rrset_dump_params_t *p)
 {
 	struct in_addr addr4;
+	size_t in_len = sizeof(addr4.s_addr);
+	size_t out_len = 0;
 
-	// Fill address structure.
-	if (memcpy(&(addr4.s_addr), in, sizeof(addr4.s_addr)) == NULL) {
-		return -1;
+	p->ret = -1;
+
+	// Check input size.
+	if (in_len > p->in_max) {
+		return;
+	}
+
+	// Fill in input data.
+	if (memcpy(&(addr4.s_addr), p->in, in_len) == NULL) {
+		return;
 	}
 
 	// Write address.
-	if (inet_ntop(AF_INET, &addr4, out, out_len) == NULL) {
-		return -1;
+	if (inet_ntop(AF_INET, &addr4, p->out, p->out_max) == NULL) {
+		return;
 	}
+	out_len = strlen(p->out);
 
-	return strlen(out);
+	// Fill in output.
+	p->in += in_len;
+	p->in_max -= in_len;
+	p->out += out_len;
+	p->out_max -= out_len;
+	p->total += out_len;
+	p->ret = 0;
 }
 
-static int wire_ipv6_to_str(const uint8_t *in,
-                            char          *out,
-                            const size_t  out_len)
+static void wire_ipv6_to_str(rrset_dump_params_t *p)
 {
 	struct in6_addr addr6;
+	size_t in_len = sizeof(addr6.s6_addr);
+	size_t out_len = 0;
 
-	// Fill address structure.
-	if (memcpy(&(addr6.s6_addr), in, sizeof(addr6.s6_addr)) == NULL) {
-		return -1;
+	p->ret = -1;
+
+	// Check input size.
+	if (in_len > p->in_max) {
+		return;
+	}
+
+	// Fill in input data.
+	if (memcpy(&(addr6.s6_addr), p->in, in_len) == NULL) {
+		return;
 	}
 
 	// Write address.
-	if (inet_ntop(AF_INET6, &addr6, out, out_len) == NULL) {
-		return -1;
+	if (inet_ntop(AF_INET6, &addr6, p->out, p->out_max) == NULL) {
+		return;
 	}
+	out_len = strlen(p->out);
 
-	return strlen(out);
+	// Fill in output.
+	p->in += in_len;
+	p->in_max -= in_len;
+	p->out += out_len;
+	p->out_max -= out_len;
+	p->total += out_len;
+	p->ret = 0;
 }
 
-static int wire_type_to_str(const uint8_t *in,
-                            char          *out,
-                            const size_t  out_len)
+static void wire_type_to_str(rrset_dump_params_t *p)
 {
-	uint16_t data;
 	char     type[32];
+	uint16_t data;
+	size_t   in_len = sizeof(data);
+	size_t   out_len = 0;
 
-	// Copy input data correctly.
-	if (memcpy(&data, in, sizeof(data)) == NULL) {
-		return -1;
+	p->ret = -1;
+
+	// Check input size.
+	if (in_len > p->in_max) {
+		return;
 	}
 
-	// Write record type name.
+	// Fill in input data.
+	if (memcpy(&data, p->in, in_len) == NULL) {
+		return;
+	}
+
+	// Get record type name string.
 	if (knot_rrtype_to_string(ntohs(data), type, sizeof(type)) <= 0) {
-		return -1;
+		return;
 	}
 
-	int ret = snprintf(out, out_len, "%s", type);
-	if (ret <= 0 || ret >= out_len) {
-		return -1;
+	// Write string.
+	int ret = snprintf(p->out, p->out_max, "%s", type);
+	if (ret <= 0 || ret >= p->out_max) {
+		return;
 	}
+	out_len = ret;
 
-	return ret;
+	// Fill in output.
+	p->in += in_len;
+	p->in_max -= in_len;
+	p->out += out_len;
+	p->out_max -= out_len;
+	p->total += out_len;
+	p->ret = 0;
 }
 
-static int wire_base64_to_str(const uint8_t *in,
-                              const size_t  in_len,
-                              char          *out,
-                              const size_t  out_len,
-                              const bool    wrap)
-{
-	size_t total_len = 0;
-	int    ret;
 
-	// One-line vs multi-line mode.
-	if (wrap == false) {
-		// Encode data directly to the output.
-		ret = base64_encode(in, in_len, (uint8_t *)out, out_len);
-		if (ret <= 0) {
-			return -1;
-		}
-
-		total_len = ret;
-	} else {
-		int  src_begin, src_len;
-		char *buf;
-
-		// Encode data to the temporary buffer.
-		ret = base64_encode_alloc(in, in_len, (uint8_t **)&buf);
-		if (ret <= 0 ||
-		    //               2 ~ 1 final indent + 1 int rounding.
-		    out_len < ret + (2 + ret / BLOCK_WIDTH) * BLOCK_INDENT_LEN)
-		{
-			return -1;
-		}
-
-		// Loop which wraps base64 block in more lines.
-		for (src_begin = 0; src_begin < ret; src_begin += BLOCK_WIDTH) {
-			// Write indent block.
-			total_len += write_indent(out + total_len);
-
-			// Compute block length (the last one can be shorter).
-			src_len = (ret - src_begin) < BLOCK_WIDTH ?
-			          (ret - src_begin) : BLOCK_WIDTH;
-
-			// Write data block.
-			memcpy(out + total_len, buf + src_begin, src_len);
-			total_len += src_len;
-		}
-
-		// Write trailing indent block.
-		total_len += write_indent(out + total_len);
-
-		// Destroy temporary buffer.
-		free(buf);
-	}
-
-	// String termination.
-	if (out_len > total_len) {
-		out[total_len] = '\0';
-	} else {
-		return -1;
-	}
-
-	return total_len;
-}
-
-static int wire_base32hex_to_str(const uint8_t *in,
-                                 const size_t  in_len,
-                                 char          *out,
-                                 const size_t  out_len,
-                                 const bool    wrap)
-{
-	size_t total_len = 0;
-	int    ret;
-
-	// One-line vs multi-line mode.
-	if (wrap == false) {
-		// Encode data directly to the output.
-		ret = base32hex_encode(in, in_len, (uint8_t *)out, out_len);
-		if (ret <= 0) {
-			return -1;
-		}
-
-		total_len = ret;
-	} else {
-		int  src_begin, src_len;
-		char *buf;
-
-		// Encode data to the temporary buffer.
-		ret = base32hex_encode_alloc(in, in_len, (uint8_t **)&buf);
-		if (ret <= 0 ||
-		    //               2 ~ 1 final indent + 1 int rounding.
-		    out_len < ret + (2 + ret / BLOCK_WIDTH) * BLOCK_INDENT_LEN)
-		{
-			return -1;
-		}
-
-		// Loop which wraps base32hex block in more lines.
-		for (src_begin = 0; src_begin < ret; src_begin += BLOCK_WIDTH) {
-			// Write indent block.
-			total_len += write_indent(out + total_len);
-
-			// Compute block length (the last one can be shorter).
-			src_len = (ret - src_begin) < BLOCK_WIDTH ?
-			          (ret - src_begin) : BLOCK_WIDTH;
-
-			// Write data block.
-			memcpy(out + total_len, buf + src_begin, src_len);
-			total_len += src_len;
-		}
-
-		// Write trailing indent block.
-		total_len += write_indent(out + total_len);
-
-		// Destroy temporary buffer.
-		free(buf);
-	}
-
-	// String termination.
-	if (out_len > total_len) {
-		out[total_len] = '\0';
-	} else {
-		return -1;
-	}
-
-	return total_len;
-}
-
-static int hex_dump(const uint8_t *in,
-                    const size_t  in_len,
-                    char          *out,
-                    const size_t  out_len)
+static int hex_encode(const uint8_t  *in,
+                      const uint32_t in_len,
+                      uint8_t        *out,
+                      const uint32_t out_len)
 {
 	static const char hex[] = "0123456789ABCDEF";
 
@@ -293,7 +280,7 @@ static int hex_dump(const uint8_t *in,
 		return -1;
 	}
 
-	for (size_t i = 0; i < in_len; i++) {
+	for (uint32_t i = 0; i < in_len; i++) {
 		out[2 * i]     = hex[in[i] / 16];
 		out[2 * i + 1] = hex[in[i] % 16];
 	}
@@ -301,113 +288,178 @@ static int hex_dump(const uint8_t *in,
 	return 2 * in_len;
 }
 
-static int wire_hex_to_str(const uint8_t *in,
-                           const size_t  in_len,
-                           char          *out,
-                           const size_t  out_len,
-                           const bool    wrap)
+static int hex_encode_alloc(const uint8_t  *in,
+                            const uint32_t in_len,
+                            uint8_t        **out)
 {
-	size_t total_len = 0;
-	int ret;
+	uint32_t out_len = 2 * in_len;
 
-	// One-line vs multi-line mode.
-	if (wrap == false) {
-		// Encode data directly to the output.
-		ret = hex_dump(in, in_len, out, out_len);
-		if (ret < 0) {
-			return -1;
-		}
+	// Allocating output buffer.
+	*out = malloc(out_len);
 
-		total_len += ret;
-	} else {
-		int src_begin, src_len;
-
-		// Loop which wraps hex block in more lines.
-		for (src_begin = 0; src_begin < in_len;
-		     src_begin += BLOCK_WIDTH / 2)
-		{
-			// Write indent block.
-			total_len += write_indent(out + total_len);
-
-			// Compute block length (the last one can be shorter).
-			src_len = (in_len - src_begin) < (BLOCK_WIDTH / 2) ?
-			          (in_len - src_begin) : (BLOCK_WIDTH / 2);
-
-			// Write data block.
-			ret = hex_dump(in + src_begin, src_len, out + total_len,
-			               out_len - total_len);
-			if (ret < 0) {
-				return -1;
-			}
-
-			total_len += ret;
-		}
-
-		// Write trailing indent block.
-		total_len += write_indent(out + total_len);
-	}
-
-	// Check space for string termination.
-	if (total_len >= out_len) {
+	if (*out == NULL) {
 		return -1;
 	}
-	out[total_len] = '\0';
 
-	return total_len;
+	// Encoding data.
+	return hex_encode(in, in_len, *out, out_len);
 }
 
-static int wire_text_to_str(const uint8_t *in,
-                            const size_t  in_len,
-                            char          *out,
-                            const size_t  out_len)
+typedef int (*encode_t)(const uint8_t *in, const uint32_t in_len,
+                        uint8_t *out, const uint32_t out_len);
+
+typedef int (*encode_alloc_t)(const uint8_t *in, const uint32_t in_len,
+                              uint8_t **out);
+
+static void wire_data_encode_to_str(rrset_dump_params_t *p,
+                                    encode_t enc, encode_alloc_t enc_alloc)
 {
-	size_t total_len = 0;
-	char   ch;
 	int    ret;
+	size_t in_len = p->in_max;
+
+	p->ret = -1;
+
+	// One-line vs multi-line mode.
+	if (false) {
+		// Encode data directly to the output.
+		ret = enc(p->in, in_len, (uint8_t *)(p->out), p->out_max);
+		if (ret <= 0) {
+			return;
+		}
+		size_t out_len = ret;
+
+		p->out += out_len;
+		p->out_max -= out_len;
+		p->total += out_len;
+	} else {
+		int  src_begin, src_len;
+		char *buf;
+
+		// Encode data to the temporary buffer.
+		ret = enc_alloc(p->in, in_len, (uint8_t **)&buf);
+		if (ret <= 0) {
+			return;
+		}
+
+		// Loop which wraps base64 block in more lines.
+		for (src_begin = 0; src_begin < ret; src_begin += BLOCK_WIDTH) {
+			// Write indent block.
+			dump_string(p, BLOCK_INDENT);
+			if (p->ret != 0) {
+				free(buf);
+				return;
+			}
+
+			// Compute block length (the last one can be shorter).
+			src_len = (ret - src_begin) < BLOCK_WIDTH ?
+			          (ret - src_begin) : BLOCK_WIDTH;
+
+			if (src_len > p->out_max) {
+				free(buf);
+				return;
+			}
+
+			// Write data block.
+			memcpy(p->out, buf + src_begin, src_len);
+
+			p->out += src_len;
+			p->out_max -= src_len;
+			p->total += src_len;
+		}
+
+		// Destroy temporary buffer.
+		free(buf);
+	}
+
+	// String termination.
+	if (p->out_max > 0) {
+		p->out = '\0';
+	} else {
+		return;
+	}
+
+	// Fill in output.
+	p->in += in_len;
+	p->in_max -= in_len;
+	p->ret = 0;
+}
+
+static void wire_text_to_str(rrset_dump_params_t *p)
+{
+	// First byte is string length.
+	size_t in_len = *(p->in);
+	p->in++;
+	p->in_max--;
+
+	p->ret = -1;
+
+	// Check if the given length makes sense.
+	if (in_len > p->in_max) {
+		return;
+	}
 
 	// Opening quoatition.
-	if (out_len <= total_len) {
-		return -1;
+	dump_string(p, "\"");
+	if (p->ret != 0) {
+		return;
 	}
-	out[total_len++] = '"';
 
 	// Loop over all characters.
 	for (size_t i = 0; i < in_len; i++) {
-		ch = (char)in[i];
+		char ch = (char)(p->in)[i];
 
 		if (isprint(ch) != 0) {
-			// For special chars print leading slash.
+			// For special character print leading slash.
 			if (ch == '\\' || ch == '"') {
-				if (out_len <= total_len) {
-					return -1;
+				if (p->out_max == 0) {
+					return;
 				}
-				out[total_len++] = '\\';
+
+				*p->out = '\\';
+				p->out++;
+				p->out_max--;
+				p->total++;
 			}
 
-			if (out_len <= total_len) {
-				return -1;
+			// Print text character.
+			if (p->out_max == 0) {
+				return;
 			}
-			out[total_len++] = ch;
+
+			*p->out = ch;
+			p->out++;
+			p->out_max--;
+			p->total++;
 		} else {
-			// Unprintable chars encode via \ddd notation.
-			ret = snprintf(out + total_len, out_len - total_len,
-			               "\\%03u", ch);
-			if (ret <= 0 || ret >= out_len - total_len) {
-				return -1;
+			// Unprintable character encode via \ddd notation.
+			int ret = snprintf(p->out, p->out_max,"\\%03u", ch);
+			if (ret <= 0 || ret >= p->out_max) {
+				return;
 			}
 
-			total_len += ret;
+			p->out += ret;
+			p->out_max -= ret;
+			p->total += ret;
 		}
 	}
 
-	// Closing quoatition + string termination.
-	if (out_len <= total_len + 1) {
-		return -1;
+	// Closing quoatition.
+	dump_string(p, "\"");
+	if (p->ret != 0) {
+		return;
 	}
-	out[total_len++] = '"';
-	out[total_len] = '\0';
 
-	return total_len;
+	// String termination.
+	if (p->out_max > 0) {
+		*p->out = '\0';
+	} else {
+		return;
+	}
+
+	// Fill in output.
+	p->in += in_len;
+	p->in_max -= in_len;
+	p->ret = 0;
 }
 
 static int wire_timestamp_to_str(const uint8_t *in,
@@ -562,41 +614,141 @@ static int wire_bitmap_to_str(const uint8_t *in,
 	return total_len;
 }
 
-static int dname_to_str(const uint8_t *in,
-                        char          *out,
-                        const size_t  out_len)
+static void wire_dname_to_str(rrset_dump_params_t *p)
 {
 	knot_dname_t *dname;
-	memcpy(&dname, in, sizeof(knot_dname_t *));
+	size_t in_len = sizeof(knot_dname_t *);
+	size_t out_len = 0;
 
-	char *dname_str = knot_dname_to_str(dname);
+	p->ret = -1;
 
-	int ret = snprintf(out, out_len, "%s", dname_str);
-	free(dname_str);
-	if (ret < 0 || ret >= out_len) {
-		return -1;
+	// Check input size.
+	if (in_len > p->in_max) {
+		return;
 	}
 
-	return ret;
+	// Fill in input data.
+	if (memcpy(&dname, p->in, in_len) == NULL) {
+		return;
+	}
+
+	// Write dname string.
+	char *dname_str = knot_dname_to_str(dname);
+	int ret = snprintf(p->out, p->out_max, "%s", dname_str);
+	free(dname_str);
+	if (ret < 0 || ret >= p->out_max) {
+		return;
+	}
+	out_len = ret;
+
+	// Fill in output.
+	p->in += in_len;
+	p->in_max -= in_len;
+	p->out += out_len;
+	p->out_max -= out_len;
+	p->total += out_len;
+	p->ret = 0;
 }
 
-static int dump_rdata_a(const uint8_t *data, const size_t len, char *dst,
-                        const size_t maxlen)
+#define DUMP_PARAMS	uint8_t *in, const size_t in_len, \
+			char *out, const size_t out_max
+#define DUMP_INIT	rrset_dump_params_t p = { in, in_len, out, out_max }
+#define	DUMP_END	return p.total
+
+#define CHECK_RET(p)	if (p.ret != 0) return -1
+
+#define DUMP_SPACE	dump_string(&p, " "); CHECK_RET(p);
+#define DUMP_NUM8	wire_num8_to_str(&p); CHECK_RET(p);
+#define DUMP_NUM16	wire_num16_to_str(&p); CHECK_RET(p);
+#define DUMP_NUM32	wire_num32_to_str(&p); CHECK_RET(p);
+#define DUMP_DNAME	wire_dname_to_str(&p); CHECK_RET(p);
+#define DUMP_IPV4	wire_ipv4_to_str(&p); CHECK_RET(p);
+#define DUMP_IPV6	wire_ipv6_to_str(&p); CHECK_RET(p);
+#define DUMP_TYPE	wire_type_to_str(&p); CHECK_RET(p);
+#define DUMP_HEX	{ wire_data_encode_to_str(&p, &hex_encode, \
+				&hex_encode_alloc); CHECK_RET(p); }
+#define DUMP_BASE64	{ wire_data_encode_to_str(&p, &base64_encode, \
+				&base64_encode_alloc); CHECK_RET(p); }
+#define DUMP_BASE32HEX	{ wire_data_encode_to_str(&p, &base64_encode, \
+				&base64_encode_alloc); CHECK_RET(p); }
+#define DUMP_TEXT	wire_text_to_str(&p); CHECK_RET(p);
+
+static int dump_a(DUMP_PARAMS)
 {
-	return wire_ipv4_to_str(data, dst, maxlen);
+	DUMP_INIT;
+
+	DUMP_IPV4;
+
+	DUMP_END;
 }
 
-static int dump_rdata_ns(const uint8_t *data, const size_t len, char *dst,
-                         const size_t maxlen)
+static int dump_ns(DUMP_PARAMS)
 {
+	DUMP_INIT;
 
-	return dname_to_str(data, dst, maxlen);
+	DUMP_DNAME;
+
+	DUMP_END;
 }
 
-static int dump_rdata_aaaa(const uint8_t *data, const size_t len, char *dst,
-                           const size_t maxlen)
+static int dump_soa(DUMP_PARAMS)
 {
-	return wire_ipv6_to_str(data, dst, maxlen);
+	DUMP_INIT;
+
+	DUMP_DNAME; DUMP_SPACE;
+	DUMP_DNAME; DUMP_SPACE;
+	DUMP_NUM32; DUMP_SPACE;
+	DUMP_NUM32; DUMP_SPACE;
+	DUMP_NUM32; DUMP_SPACE;
+	DUMP_NUM32;
+
+	DUMP_END;
+}
+
+static int dump_hinfo(DUMP_PARAMS)
+{
+	DUMP_INIT;
+
+	DUMP_TEXT; DUMP_SPACE;
+	DUMP_TEXT;
+
+	DUMP_END;
+}
+
+static int dump_mx(DUMP_PARAMS)
+{
+	DUMP_INIT;
+
+	DUMP_NUM16; DUMP_SPACE;
+	DUMP_DNAME;
+
+	DUMP_END;
+}
+
+static int dump_aaaa(DUMP_PARAMS)
+{
+	DUMP_INIT;
+
+	DUMP_IPV6;
+
+	DUMP_END;
+}
+
+static int dump_rrsig(DUMP_PARAMS)
+{
+	DUMP_INIT;
+
+	DUMP_TYPE; DUMP_SPACE;
+	DUMP_NUM8; DUMP_SPACE;
+	DUMP_NUM8; DUMP_SPACE;
+	DUMP_NUM32; DUMP_SPACE;
+	DUMP_NUM32; DUMP_SPACE;
+	DUMP_NUM32; DUMP_SPACE;
+	DUMP_NUM16; DUMP_SPACE;
+	DUMP_DNAME; DUMP_SPACE;
+	DUMP_BASE64;
+
+	DUMP_END;
 }
 
 int knot_rrset_txt_dump_data(const knot_rrset_t *rrset,
@@ -608,42 +760,44 @@ int knot_rrset_txt_dump_data(const knot_rrset_t *rrset,
 		return KNOT_EINVAL;
 	}
 
-	const uint8_t *data = knot_rrset_get_rdata(rrset, pos);
-	size_t        data_len = rrset_rdata_item_size(rrset, pos);
+	uint8_t *data = knot_rrset_get_rdata(rrset, pos);
+	size_t  data_len = rrset_rdata_item_size(rrset, pos);
 
 	int ret = 0;
 
 	switch (knot_rrset_type(rrset)) {
 		case KNOT_RRTYPE_A:
-			ret = dump_rdata_a(data, data_len, dst, maxlen);
+			ret = dump_a(data, data_len, dst, maxlen);
 			break;
 		case KNOT_RRTYPE_NS:
-			ret = dump_rdata_ns(data, data_len, dst, maxlen);
-			break;
 		case KNOT_RRTYPE_CNAME:
+		case KNOT_RRTYPE_PTR:
+		case KNOT_RRTYPE_DNAME:
+			ret = dump_ns(data, data_len, dst, maxlen);
 			break;
 		case KNOT_RRTYPE_SOA:
-			break;
-		case KNOT_RRTYPE_PTR:
+			ret = dump_soa(data, data_len, dst, maxlen);
 			break;
 		case KNOT_RRTYPE_HINFO:
+			ret = dump_hinfo(data, data_len, dst, maxlen);
 			break;
 		case KNOT_RRTYPE_MINFO:
-			break;
-		case KNOT_RRTYPE_MX:
-			break;
-		case KNOT_RRTYPE_TXT:
-			break;
 		case KNOT_RRTYPE_RP:
 			break;
+		case KNOT_RRTYPE_MX:
 		case KNOT_RRTYPE_AFSDB:
-			break;
 		case KNOT_RRTYPE_RT:
+		case KNOT_RRTYPE_KX:
+			ret = dump_mx(data, data_len, dst, maxlen);
+			break;
+		case KNOT_RRTYPE_TXT:
+		case KNOT_RRTYPE_SPF:
 			break;
 		case KNOT_RRTYPE_KEY:
+		case KNOT_RRTYPE_DNSKEY:
 			break;
 		case KNOT_RRTYPE_AAAA:
-			ret = dump_rdata_aaaa(data, data_len, dst, maxlen);
+			ret = dump_aaaa(data, data_len, dst, maxlen);
 			break;
 		case KNOT_RRTYPE_LOC:
 			break;
@@ -651,11 +805,7 @@ int knot_rrset_txt_dump_data(const knot_rrset_t *rrset,
 			break;
 		case KNOT_RRTYPE_NAPTR:
 			break;
-		case KNOT_RRTYPE_KX:
-			break;
 		case KNOT_RRTYPE_CERT:
-			break;
-		case KNOT_RRTYPE_DNAME:
 			break;
 		case KNOT_RRTYPE_APL:
 			break;
@@ -666,10 +816,9 @@ int knot_rrset_txt_dump_data(const knot_rrset_t *rrset,
 		case KNOT_RRTYPE_IPSECKEY:
 			break;
 		case KNOT_RRTYPE_RRSIG:
+			ret = dump_rrsig(data, data_len, dst, maxlen);
 			break;
 		case KNOT_RRTYPE_NSEC:
-			break;
-		case KNOT_RRTYPE_DNSKEY:
 			break;
 		case KNOT_RRTYPE_DHCID:
 			break;
@@ -678,8 +827,6 @@ int knot_rrset_txt_dump_data(const knot_rrset_t *rrset,
 		case KNOT_RRTYPE_NSEC3PARAM:
 			break;
 		case KNOT_RRTYPE_TLSA:
-			break;
-		case KNOT_RRTYPE_SPF:
 			break;
 		default:
 			break;
@@ -711,7 +858,8 @@ int knot_rrset_txt_dump_header(const knot_rrset_t *rrset,
 
 	// Dump rrset ttl.
 	if (1) {	
-		ret = snprintf(dst + len, maxlen - len, "%6u\t", rrset->ttl);
+//		ret = snprintf(dst + len, maxlen - len, "%6u\t", rrset->ttl);
+		ret = time_to_human_str(rrset->ttl, dst + len, maxlen - len);
 	} else {
 		ret = snprintf(dst + len, maxlen - len, "     \t");
 	}
