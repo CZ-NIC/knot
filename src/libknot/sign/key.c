@@ -23,6 +23,7 @@
 #include <string.h>
 
 #include "common.h"
+#include "common/base64.h"
 #include "common/getline_wrap.h"
 #include "dname.h"
 #include "sign/key.h"
@@ -290,34 +291,61 @@ int knot_free_key_params(knot_key_params_t *key_params)
 	return KNOT_EOK;
 }
 
-int knot_tsig_key_from_key_params(const knot_key_params_t *params,
-                                  knot_key_t *key)
+knot_key_type_t knot_get_key_type(const knot_key_params_t *key_params)
+{
+	assert(key_params);
+
+	if (key_params->secret) {
+		return KNOT_KEY_TSIG;
+	}
+
+	//! \todo DNSSEC key recognition
+
+	//! \todo TKEY key recognition
+
+	return KNOT_KEY_UNKNOWN;
+}
+
+int knot_tsig_key_from_params(const knot_key_params_t *params,
+                               knot_tsig_key_t *key)
 {
 	assert(key);
 
-	if (!params->secret || !params->name)
+	if (!params->secret || !params->name) {
 		return KNOT_EINVAL;
+	}
 
-	key->name = knot_dname_new_from_nonfqdn_str(params->name,
-	                                            strlen(params->name),
-	                                            NULL);
-	key->secret = strdup(params->secret);
+	knot_dname_t *name = knot_dname_new_from_nonfqdn_str(params->name,
+	                                       strlen(params->name), NULL);
+	if (!name) {
+		return KNOT_ENOMEM;
+	}
+
+	uint8_t *secret;
+	int32_t secret_size = base64_decode_alloc((uint8_t *)params->secret,
+	                                  strlen(params->secret), &secret);
+	if (secret_size < 0) {
+		knot_dname_free(&name);
+		return KNOT_ENOMEM;
+	}
+
+	key->name = name;
+	key->secret.data = secret;
+	key->secret.size = (size_t)secret_size;
 	key->algorithm = params->algorithm ? params->algorithm
 	                                   : KNOT_TSIG_ALG_HMAC_MD5;
 
 	return KNOT_EOK;
 }
 
-#if 0
-
-int knot_dnssec_key_from_key_params(const knot_key_params_t *params,
-                                    knot_dnssec_key_t *key)
+int knot_tsig_key_free(knot_tsig_key_t *key)
 {
-	// determine key type
+	assert(key);
 
-	// load into structure
+	if (key->name) knot_dname_free(&key->name);
+	if (key->secret.data) free(key->secret.data);
 
-	return ENOT_EOK;
+	memset(key, '\0', sizeof(knot_tsig_key_t));
+
+	return KNOT_EOK;
 }
-
-#endif

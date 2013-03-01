@@ -17,20 +17,11 @@
 #ifndef _KNOT_SIGN_KEY_H_
 #define _KNOT_SIGN_KEY_H_
 
+#include "binary.h"
+#include "dname.h"
 #include "tsig.h"
 
-enum knot_key_type {
-	KNOT_KEY_UNKNOWN = 0,
-	KNOT_KEY_DNSSEC, //!< DNSSEC key. Described in RFC 2535 and RFC 4034.
-	KNOT_KEY_TSIG,   //!< Transaction Signature. Described in RFC 2845.
-	KNOT_KEY_TKEY    //!< Transaction Key. Described in RFC 2930.
-};
-
-enum knot_key_usage {
-	KNOT_KEY_USAGE_NONE = 0,
-	KNOT_KEY_USAGE_ZONE_SIGN = 1,
-	KNOT_KEY_USAGE_TRANSACTION_SIGN = 2
-};
+/*----------------------------------------------------------------------------*/
 
 /*!
  * \brief Key attributes loaded from keyfile.
@@ -53,10 +44,45 @@ struct knot_key_params {
 
 typedef struct knot_key_params knot_key_params_t;
 
+enum knot_key_type {
+	KNOT_KEY_UNKNOWN = 0,
+	KNOT_KEY_DNSSEC, //!< DNSSEC key. Described in RFC 2535 and RFC 4034.
+	KNOT_KEY_TSIG,   //!< Transaction Signature. Described in RFC 2845.
+	KNOT_KEY_TKEY    //!< Transaction Key. Described in RFC 2930.
+};
+
+typedef enum knot_key_type knot_key_type_t;
+
 int knot_load_key_params(const char *filename, knot_key_params_t *key_params);
 int knot_free_key_params(knot_key_params_t *key_params);
+knot_key_type_t knot_get_key_type(const knot_key_params_t *key_params);
 
-int knot_tsig_key_from_key_params(const knot_key_params_t *params, knot_key_t *key);
+/*----------------------------------------------------------------------------*/
+
+struct knot_tsig_key {
+	knot_dname_t *name;
+	tsig_algorithm_t algorithm;
+	knot_binary_t secret;
+};
+
+typedef struct knot_tsig_key knot_tsig_key_t;
+
+int knot_tsig_key_from_params(const knot_key_params_t *params,
+                              knot_tsig_key_t *key);
+
+int knot_tsig_key_free(knot_tsig_key_t *key);
+
+/*----------------------------------------------------------------------------*/
+
+enum knot_dnssec_key_usage {
+	KNOT_KEY_USAGE_NONE = 0,
+	KNOT_KEY_USAGE_ZONE_SIGN = 1,
+	KNOT_KEY_USAGE_TRANSACTION_SIGN = 2
+};
+
+typedef enum knot_dnssec_key_usage knot_dnssec_key_usage_t;
+
+
 //int knot_dnssec_key_from_key_params(const knot_key_params_t *params, knot_dnssec_key_t *key);
 
 #endif // _KNOT_SIGN_KEY_H_
