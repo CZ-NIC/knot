@@ -842,12 +842,7 @@ void conf_free_zone(conf_zone_t *zone)
 
 void conf_free_key(conf_key_t *k)
 {
-	/* Secure erase. */
-	if (k->k.secret) {
-		memset(k->k.secret, 0, strlen(k->k.secret));
-	}
-	free(k->k.secret);
-	knot_dname_free(&k->k.name);
+	knot_tsig_key_free(&k->k);
 	free(k);
 }
 
