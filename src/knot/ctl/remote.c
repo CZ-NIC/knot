@@ -592,7 +592,7 @@ int remote_process(server_t *s, int r, uint8_t* buf, size_t buflen)
 		
 		/* Check ACL list. */
 		rcu_read_lock();
-		knot_key_t *k = NULL;
+		knot_tsig_key_t *k = NULL;
 		acl_key_t *m = NULL;
 		knot_rcode_t ts_rc = 0;
 		uint16_t ts_trc = 0;
@@ -637,7 +637,7 @@ int remote_process(server_t *s, int r, uint8_t* buf, size_t buflen)
 	return ret;
 }
 
-knot_packet_t* remote_query(const char *query, const knot_key_t *key)
+knot_packet_t* remote_query(const char *query, const knot_tsig_key_t *key)
 {
 	if (!query) {
 		return NULL;
@@ -708,7 +708,7 @@ int remote_query_append(knot_packet_t *qry, knot_rrset_t *data)
 
 
 int remote_query_sign(uint8_t *wire, size_t *size, size_t maxlen,
-                      const knot_key_t *key)
+                      const knot_tsig_key_t *key)
 {
 	if (!wire || !size || !key) {
 		return KNOT_EINVAL;

@@ -350,7 +350,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	return rc;
 }
 
-static int tsig_parse_str(knot_key_t *key, const char *str)
+static int tsig_parse_str(knot_tsig_key_t *key, const char *str)
 {
 	char *h = strdup(str);
 	if (!h) {
@@ -364,13 +364,14 @@ static int tsig_parse_str(knot_key_t *key, const char *str)
 	}
 	
 	/* Determine algorithm. */
-	key->algorithm = KNOT_TSIG_ALG_HMAC_MD5;
+
+	int algorithm = KNOT_TSIG_ALG_HMAC_MD5;
 	if (s) {
 		*s++ = '\0';               /* Last part separator */
 		knot_lookup_table_t *alg = NULL;
 		alg = knot_lookup_by_name(tsig_alg_table, h);
 		if (alg) {
-			key->algorithm = alg->id;
+			algorithm = alg->id;
 		} else {
 			free(h);
 			return KNOT_EINVAL;
@@ -381,19 +382,13 @@ static int tsig_parse_str(knot_key_t *key, const char *str)
 	}
 	
 	/* Parse key name. */
-	key->name = remote_dname_fqdn(k);
-	key->secret = strdup(s);
+
+	int result = knot_tsig_create_key(k, algorithm, s, key);
 	free(h);
-	
-	/* Check name and secret. */
-	if (!key->name || !key->secret) {
-		return KNOT_EINVAL;
-	}
-	
-	return KNOT_EOK;
+	return result;
 }
 
-static int tsig_parse_line(knot_key_t *k, char *l)
+static int tsig_parse_line(knot_tsig_key_t *k, char *l)
 {
 	const char *n, *a, *s;
 	n = a = s = NULL;
@@ -422,27 +417,17 @@ static int tsig_parse_line(knot_key_t *k, char *l)
 		a = "hmac-md5";
 	}
 	
-	/* Set algorithm. */
+	/* Lookup algorithm. */
 	knot_lookup_table_t *alg = knot_lookup_by_name(tsig_alg_table, a);
-	if (alg) {
-		k->algorithm = alg->id;
-	} else {
+	if (!alg) {
 		return KNOT_EMALF;
 	}
 	
-	/* Set name. */
-	k->name = remote_dname_fqdn(n);
-	k->secret = strdup(s);
-	
-	/* Check name and secret. */
-	if (!k->name || !k->secret) {
-		return KNOT_EINVAL;
-	}
-
-	return KNOT_EOK;
+	/* Create the key data. */
+	return knot_tsig_create_key(n, alg->id, s, k);
 }
 
-static int tsig_parse_file(knot_key_t *k, const char *f)
+static int tsig_parse_file(knot_tsig_key_t *k, const char *f)
 {
 	FILE* fp = fopen(f, "r");
 	if (!fp) {
@@ -486,14 +471,6 @@ static int tsig_parse_file(knot_key_t *k, const char *f)
 	return ret;
 }
 
-static void tsig_key_cleanup(knot_key_t *k)
-{
-	if (k) {
-		knot_dname_free(&k->name);
-		free(k->secret);
-	}
-}
-
 int main(int argc, char **argv)
 {
 	/* Parse command line arguments */
@@ -507,7 +484,7 @@ int main(int argc, char **argv)
 	int ret = KNOT_EOK;
 	const char *r_addr = NULL;
 	int r_port = -1;
-	knot_key_t r_key;
+	knot_tsig_key_t r_key;
 	memset(&r_key, 0, sizeof(knot_key_t));
 	
 	/* Initialize. */
@@ -544,7 +521,7 @@ int main(int argc, char **argv)
 			if (ret != KNOT_EOK) {
 				log_server_error("Couldn't parse TSIG key '%s' "
 				                 "\n", optarg);
-				tsig_key_cleanup(&r_key);
+				knot_tsig_key_free(&r_key);
 				log_close();
 				return 1;
 			}
@@ -554,7 +531,7 @@ int main(int argc, char **argv)
 			if (ret != KNOT_EOK) {
 				log_server_error("Couldn't parse TSIG key file "
 				                 "'%s'\n", optarg);
-				tsig_key_cleanup(&r_key);
+				knot_tsig_key_free(&r_key);
 				log_close();
 				return 1;
 			}
@@ -609,7 +586,7 @@ int main(int argc, char **argv)
 	/* Check if there's at least one remaining non-option. */
 	if (argc - optind < 1) {
 		help(argc, argv);
-		tsig_key_cleanup(&r_key);
+		knot_tsig_key_free(&r_key);
 		log_close();
 		free(config_fn);
 		free(default_config);
@@ -628,7 +605,7 @@ int main(int argc, char **argv)
 	/* Command not found. */
 	if (!cmd->name) {
 		log_server_error("Invalid command: '%s'\n", argv[optind]);
-		tsig_key_cleanup(&r_key);
+		knot_tsig_key_free(&r_key);
 		log_close();
 		free(config_fn);
 		free(default_config);
@@ -656,9 +633,9 @@ int main(int argc, char **argv)
 
 		/* Create empty key. */
 		if (r_key.name) {
-			ctl_if->key = malloc(sizeof(knot_key_t));
+			ctl_if->key = malloc(sizeof(knot_tsig_key_t));
 			if (ctl_if->key) {
-				memcpy(ctl_if->key, &r_key, sizeof(knot_key_t));
+				memcpy(ctl_if->key, &r_key, sizeof(knot_tsig_key_t));
 			}
 		}
 	}
@@ -689,7 +666,7 @@ int main(int argc, char **argv)
 	int rc = cmd->cb(argc - optind - 1, argv + optind + 1, flags, jobs);
 
 	/* Finish */
-	tsig_key_cleanup(&r_key); /* Not cleaned by config deinit. */
+	knot_tsig_key_free(&r_key); /* Not cleaned by config deinit. */
 	log_close();
 	free(config_fn);
 	free(default_config);

@@ -31,6 +31,7 @@
 #include "knot/conf/conf.h"
 #include "libknot/packet/packet.h"
 #include "libknot/rrset.h"
+#include "libknot/sign/key.h"
 #include "knot/server/server.h"
 
 /*! \brief Default remote control tool port. */
@@ -132,7 +133,7 @@ int remote_process(server_t *s, int r, uint8_t* buf, size_t buflen);
  * \retval KNOT_EOK on success.
  * \retval knot_error else.
  */
-knot_packet_t* remote_query(const char *query, const knot_key_t *key);
+knot_packet_t* remote_query(const char *query, const knot_tsig_key_t *key);
 
 /*!
  * \brief Append extra data to RC command packet.
@@ -157,7 +158,7 @@ int remote_query_append(knot_packet_t *qry, knot_rrset_t *data);
  * \retval knot_error else.
  */
 int remote_query_sign(uint8_t *wire, size_t *size, size_t maxlen,
-                      const knot_key_t *key);
+                      const knot_tsig_key_t *key);
 
 /*! \todo #1291 RR building should be a part of DNS library. */
 
