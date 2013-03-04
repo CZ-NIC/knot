@@ -68,18 +68,18 @@ typedef struct zonedata_t
 
 	/*! \brief XFR-IN scheduler. */
 	struct {
-		acl_t         *acl;      /*!< ACL for xfr-in.*/
-		sockaddr_t     master;   /*!< Master server for xfr-in.*/
-		sockaddr_t     via;      /*!< Master server transit interface.*/
-		knot_key_t    tsig_key;  /*!< Master TSIG key. */
-		struct event_t *timer;   /*!< Timer for REFRESH/RETRY. */
-		struct event_t *expire;  /*!< Timer for REFRESH. */
-		pthread_mutex_t lock;    /*!< Pending XFR/IN lock. */
-		void           *wrkr;    /*!< Pending XFR/IN worker. */
-		int next_id;             /*!< ID of the next awaited SOA resp.*/
-		uint32_t bootstrap_retry;/*!< AXFR/IN bootstrap retry. */
-		unsigned       scheduled;/*!< Scheduled operations. */ 
-		int has_master;          /*!< True if it has master set. */
+		acl_t          *acl;      /*!< ACL for xfr-in.*/
+		sockaddr_t      master;   /*!< Master server for xfr-in.*/
+		sockaddr_t      via;      /*!< Master server transit interface.*/
+		knot_tsig_key_t tsig_key; /*!< Master TSIG key. */
+		struct event_t *timer;    /*!< Timer for REFRESH/RETRY. */
+		struct event_t *expire;   /*!< Timer for REFRESH. */
+		pthread_mutex_t lock;     /*!< Pending XFR/IN lock. */
+		void           *wrkr;     /*!< Pending XFR/IN worker. */
+		int next_id;              /*!< ID of the next awaited SOA resp.*/
+		uint32_t bootstrap_retry; /*!< AXFR/IN bootstrap retry. */
+		unsigned       scheduled; /*!< Scheduled operations. */
+		int has_master;           /*!< True if it has master set. */
 	} xfr_in;
 
 	/*! \brief List of pending NOTIFY events. */
@@ -138,7 +138,7 @@ int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal);
  * \todo Document me.
  */
 int zones_query_check_zone(const knot_zone_t *zone, uint8_t q_opcode,
-                           const sockaddr_t *addr, knot_key_t **tsig_key,
+                           const sockaddr_t *addr, knot_tsig_key_t **tsig_key,
                            knot_rcode_t *rcode);
 
 /*!
@@ -350,7 +350,7 @@ int zones_process_update_response(knot_ns_xfr_t *data, uint8_t *rwire, size_t *r
  * \return KNOT_EOK if verified or error if not.
  */
 int zones_verify_tsig_query(const knot_packet_t *query,
-                            const knot_key_t *key,
+                            const knot_tsig_key_t *key,
                             knot_rcode_t *rcode, uint16_t *tsig_rcode,
                             uint64_t *tsig_prev_time_signed);
 #endif // _KNOTD_ZONES_H_
