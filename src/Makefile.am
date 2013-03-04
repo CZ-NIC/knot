@@ -188,6 +188,8 @@ libknot_la_SOURCES =				\
 	libknot/tsig.c				\
 	libknot/tsig-op.h			\
 	libknot/tsig-op.c			\
+	libknot/binary.h			\
+	libknot/binary.c			\
 	libknot/sign/key.h			\
 	libknot/sign/key.c
 

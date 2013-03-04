@@ -8,6 +8,8 @@ KNOWN_ISSUES
 README
 tests/querytcp.c
 src/libknot/libknot.h
+src/libknot/binary.h
+src/libknot/binary.c
 src/libknot/common.h
 src/libknot/dname.h
 src/libknot/dname.c
