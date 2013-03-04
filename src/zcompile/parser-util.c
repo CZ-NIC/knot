@@ -54,8 +54,9 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <time.h>
-#include <netinet/in.h>
+#include <sys/types.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
 #include <netdb.h>
 
 //#include "common.h"

@@ -2206,6 +2206,9 @@ static int knot_ddns_process_rr(const knot_rrset_t *rr,
 	if (knot_rrset_class(rr) == knot_zone_contents_class(zone)) {
 		return knot_ddns_process_add(rr, node, zone, changeset,
 		                             changes, rr_copy);
+	} else if (node == NULL) {
+		// Removing from non-existing node, just ignore the entry
+		return KNOT_EOK;
 	} else if (knot_rrset_class(rr) == KNOT_CLASS_NONE) {
 		return knot_ddns_process_rem_rr(rr, node, zone, changeset,
 		                                changes, qclass);

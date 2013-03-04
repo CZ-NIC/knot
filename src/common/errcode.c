@@ -72,6 +72,7 @@ const error_table_t knot_error_msgs[] = {
 	{KNOT_EDSDIGESTLEN, "DS digest length does not match digest type."},
 	{KNOT_ENOTSIG, "expected a TSIG or SIG(0)" },
 	{KNOT_ESTOP, "Stop." },
+	{KNOT_ELIMIT, "Exceeded response rate limit." },
 
 	/* Zone file loader errors. */
 	{FLOADER_EFSTAT, "Fstat error!"},

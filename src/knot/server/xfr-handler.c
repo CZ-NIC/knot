@@ -17,9 +17,10 @@
 #include <config.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 #include <netinet/tcp.h>
 #include <netinet/in.h>
-#include <sys/socket.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>

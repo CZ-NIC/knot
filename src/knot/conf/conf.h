@@ -50,6 +50,8 @@
 #define CONFIG_REPLY_WD 10 /*!< SOA/NOTIFY query timeout [s]. */
 #define CONFIG_HANDSHAKE_WD 10 /*!< [secs] for connection to make a request.*/
 #define CONFIG_IDLE_WD  60 /*!< [secs] of allowed inactivity between requests */
+#define CONFIG_RRL_SLIP 2 /*!< Default slip value. */
+#define CONFIG_RRL_SIZE 1572869 /*!< Htable default size. */
 
 /*!
  * \brief Configuration for the interface
@@ -180,6 +182,9 @@ typedef struct conf_t {
 	int   max_conn_idle; /*!< TCP idle timeout. */
 	int   max_conn_hs;   /*!< TCP of inactivity before first query. */
 	int   max_conn_reply; /*!< TCP/UDP query timeout. */
+	int    rrl;      /*!< Rate limit (in responses per second). */
+	size_t rrl_size; /*!< Rate limit htable size. */
+	int    rrl_slip;  /*!< Rate limit SLIP. */
 
 	/*
 	 * Log

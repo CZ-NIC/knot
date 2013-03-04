@@ -131,6 +131,8 @@ unittests_SOURCES =				\
 	tests/knot/journal_tests.h		\
 	tests/knot/server_tests.c		\
 	tests/knot/server_tests.h		\
+	tests/knot/rrl_tests.c			\
+	tests/knot/rrl_tests.h			\
 	tests/libknot/wire_tests.c		\
 	tests/libknot/wire_tests.h		\
 	tests/libknot/dname_tests.c		\
@@ -227,6 +229,8 @@ libknot_la_SOURCES =				\
 	libknot/tsig-op.c
 
 libknots_la_SOURCES =				\
+	common/hattrie/murmurhash3.c		\
+	common/hattrie/murmurhash3.h		\
 	common/slab/slab.c			\
 	common/slab/slab.h			\
 	common/libtap/tap.c			\
@@ -316,10 +320,12 @@ libknotd_la_SOURCES =				\
 	knot/server/xfr-handler.h		\
 	knot/server/dthreads.h			\
 	knot/server/journal.h			\
-	knot/server/zones.h			\
-	knot/server/notify.h			\
-	knot/server/notify.c			\
-	knot/server/zones.h			\
+	knot/server/zones.h				\
+	knot/server/notify.h				\
+	knot/server/notify.c				\
+	knot/server/zones.h				\
+	knot/server/rrl.c			\
+	knot/server/rrl.h			\
 	knot/zone/zone-load.c			\
 	knot/zone/zone-load.h			\
 	knot/zone/semantic-check.c		\

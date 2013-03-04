@@ -35,6 +35,7 @@
 
 /* Do not include from latency.c */
 #include <sys/time.h>
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <pthread.h>
 

@@ -189,6 +189,7 @@ static int ns_check_wildcard(const knot_dname_t *name, knot_packet_t *resp,
 	assert(*rrset != NULL);
 
 	if (knot_dname_is_wildcard((*rrset)->owner)) {
+		resp->flags |= KNOT_PF_WILDCARD; /* Mark */
 		knot_rrset_t *synth_rrset =
 			ns_synth_from_wildcard(*rrset, name);
 		if (synth_rrset == NULL) {
@@ -253,7 +254,8 @@ static int ns_add_rrsigs(knot_rrset_t *rrset, knot_packet_t *resp,
 	dbg_ns_detail("RRSIGS: %p\n", knot_rrset_rrsigs(rrset));
 
 	if (DNSSEC_ENABLED
-	    && knot_query_dnssec_requested(knot_packet_query(resp))
+	    && (knot_query_dnssec_requested(knot_packet_query(resp))
+	        || knot_packet_qtype(resp) == KNOT_RRTYPE_ANY)
 	    && (rrsigs = knot_rrset_get_rrsigs(rrset)) != NULL) {
 		if (name != NULL) {
 			int ret = ns_check_wildcard(name, resp, &rrsigs);

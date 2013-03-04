@@ -294,6 +294,9 @@ static int conf_mask(void* scanner, int nval, int prefixlen) {
 %token <tok> MAX_CONN_IDLE
 %token <tok> MAX_CONN_HS
 %token <tok> MAX_CONN_REPLY
+%token <tok> RATE_LIMIT
+%token <tok> RATE_LIMIT_SIZE
+%token <tok> RATE_LIMIT_SLIP
 
 %token <tok> INTERFACES ADDRESS PORT
 %token <tok> IPA
@@ -435,6 +438,10 @@ system:
  | system MAX_CONN_IDLE INTERVAL ';' { new_config->max_conn_idle = $3.i; }
  | system MAX_CONN_HS INTERVAL ';' { new_config->max_conn_hs = $3.i; }
  | system MAX_CONN_REPLY INTERVAL ';' { new_config->max_conn_reply = $3.i; }
+ | system RATE_LIMIT NUM ';' { new_config->rrl = $3.i; }
+ | system RATE_LIMIT_SIZE SIZE ';' { new_config->rrl_size = $3.l; }
+ | system RATE_LIMIT_SIZE NUM ';' { new_config->rrl_size = $3.i; }
+ | system RATE_LIMIT_SLIP NUM ';' { new_config->rrl_slip = $3.i; }
  ;
 
 keys:

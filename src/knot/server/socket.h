@@ -34,6 +34,7 @@
 #define _KNOTD_SOCKET_H_
 
 /* POSIX only. */
+#include <sys/types.h>
 #include <sys/socket.h>
 #include "common/sockaddr.h"
 
