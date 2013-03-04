@@ -29,7 +29,7 @@ unit_api sign_tests_api = {
 
 static int sign_tests_count(int argc, char *argv[])
 {
-	return 32;
+	return 31;
 }
 
 static int sign_tests_run(int argc, char *argv[])
@@ -234,39 +234,38 @@ static int sign_tests_run(int argc, char *argv[])
 		   "knot_free_key_params(), regular free");
 	}
 
-	// 28. - knot_tsig_key_from_key_params()
+	// 28-31. - knot_tsig_key_from_params()
 	{
 		int result;
 		knot_key_params_t params = { 0 };
-		knot_key_t tsig_key;
+		knot_tsig_key_t tsig_key;
 
-		result = knot_tsig_key_from_key_params(&params, &tsig_key);
+		result = knot_tsig_key_from_params(&params, &tsig_key);
 		ok(result == KNOT_EINVAL,
-		   "knot_tsig_key_from_key_params(), empty parameters");
+		   "knot_tsig_key_from_params(), empty parameters");
 
 		params.secret = "Ok6NmA==";
-		result = knot_tsig_key_from_key_params(&params, &tsig_key);
+		result = knot_tsig_key_from_params(&params, &tsig_key);
 		ok(result == KNOT_EINVAL,
-		   "knot_tsig_key_from_key_params(), no key name");
+		   "knot_tsig_key_from_params(), no key name");
 
 		params.name = "shared.example.com";
 		params.secret = NULL;
-		result = knot_tsig_key_from_key_params(&params, &tsig_key);
+		result = knot_tsig_key_from_params(&params, &tsig_key);
 		ok(result == KNOT_EINVAL,
-		   "knot_tsig_key_from_key_params(), no shared secret");
+		   "knot_tsig_key_from_params(), no shared secret");
 
 		params.name = "shared.example.com";
 		params.secret = "Ok6NmA==";
-		result = knot_tsig_key_from_key_params(&params, &tsig_key);
-		ok(result == KNOT_EOK &&
-		   tsig_key.algorithm == KNOT_TSIG_ALG_HMAC_MD5,
-		   "knot_tsig_key_from_key_params(), default algorithm");
-		ok(result == KNOT_EOK &&
-		   strcmp(params.secret, tsig_key.secret) == 0,
-		   "knot_tsig_key_from_key_params(), secret set properly");
-		//! \todo rewrite when there is an interface for free
-		knot_dname_free(&tsig_key.name);
-		free(tsig_key.secret);
+		uint8_t decoded_secret[] = { 0x3a, 0x4e, 0x8d, 0x98 };
+		result = knot_tsig_key_from_params(&params, &tsig_key);
+		ok(result == KNOT_EOK
+		   && tsig_key.secret.size == sizeof(decoded_secret)
+		   && memcmp(tsig_key.secret.data, decoded_secret,
+		             sizeof(decoded_secret)) == 0,
+		   "knot_tsig_key_from_params(), secret set properly");
+
+		knot_tsig_key_free(&tsig_key);
 	}
 
 	return 0;
