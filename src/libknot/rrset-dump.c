@@ -29,6 +29,7 @@
 #include "common/base64.h"		// base64
 #include "common/base32hex.h"		// base32hex
 #include "common/descriptor_new.h"	// KNOT_RRTYPE
+#include "libknot/util/utils.h"		// knot_wire_read_u16
 
 #define BLOCK_WIDTH		40
 #define BLOCK_INDENT		"\n\t\t\t\t"
@@ -393,27 +394,36 @@ static void wire_len_data_encode_to_str(rrset_dump_params_t *p, encode_t enc)
 
 	p->ret = -1;
 
-	// Encode data directly to the output.
-	int ret = enc(p->in, in_len, (uint8_t *)(p->out), p->out_max);
-	if (ret <= 0) {
-		return;
-	}
-	size_t out_len = ret;
+	if (in_len > 0) {
+		// Encode data directly to the output.
+		int ret = enc(p->in, in_len, (uint8_t *)(p->out), p->out_max);
+		if (ret <= 0) {
+			return;
+		}
+		size_t out_len = ret;
+	
+		p->out += out_len;
+		p->out_max -= out_len;
+		p->total += out_len;
+	
+		// String termination.
+		if (p->out_max > 0) {
+			*p->out = '\0';
+		} else {
+			return;
+		}
 
-	p->out += out_len;
-	p->out_max -= out_len;
-	p->total += out_len;
-
-	// String termination.
-	if (p->out_max > 0) {
-		*p->out = '\0';
+		// Fill in output.
+		p->in += in_len;
+		p->in_max -= in_len;
 	} else {
-		return;
+		// Dump "-" if no salt.
+		dump_string(p, "-");
+		if (p->ret != 0) {
+			return;
+		}
 	}
 
-	// Fill in output.
-	p->in += in_len;
-	p->in_max -= in_len;
 	p->ret = 0;
 }
 
@@ -444,14 +454,10 @@ static void wire_text_to_str(rrset_dump_params_t *p)
 		if (isprint(ch) != 0) {
 			// For special character print leading slash.
 			if (ch == '\\' || ch == '"') {
-				if (p->out_max == 0) {
+				dump_string(p, "\\");
+				if (p->ret != 0) {
 					return;
 				}
-
-				*p->out = '\\';
-				p->out++;
-				p->out_max--;
-				p->total++;
 			}
 
 			// Print text character.
@@ -700,6 +706,178 @@ static void wire_dname_to_str(rrset_dump_params_t *p)
 	p->ret = 0;
 }
 
+static void wire_apl_to_str(rrset_dump_params_t *p)
+{
+	struct in_addr addr4;
+	struct in6_addr addr6;
+	int    ret;
+	size_t out_len = 0;
+
+	p->ret = -1;
+
+	// Input check: family(2B) + prefix(1B) + afdlen(1B).
+	if (p->in_max < 4) {
+		return;
+	}
+
+	// Read fixed size values.
+	uint16_t family   = knot_wire_read_u16(p->in);
+	uint8_t  prefix   = *(p->in + 2);
+	uint8_t  negation = *(p->in + 3) >> 7;
+	uint8_t  afdlen   = *(p->in + 3) & 0x7F;
+	p->in += 4;
+	p->in_max -= 4;
+
+	// Write negation mark.
+	if (negation != 0) {
+		dump_string(p, "!");
+		if (p->ret != 0) {
+			return;
+		}
+	}
+
+	// Write address family with colon.
+	ret = snprintf(p->out, p->out_max, "%u:", family);
+	if (ret <= 0 || ret >= p->out_max) {
+		return;
+	}
+	p->out += ret;
+	p->out_max -= ret;
+	p->total += ret;
+
+	// Write address.
+	switch (family) {
+	case 1:
+		memset(&addr4, 0, sizeof(addr4));
+
+		if (afdlen > sizeof(addr4.s_addr) || afdlen > p->in_max) {
+			return;
+		}
+
+		if (memcpy(&(addr4.s_addr), p->in, afdlen) == NULL) {
+			return;
+		}
+
+		// Write address.
+		if (inet_ntop(AF_INET, &addr4, p->out, p->out_max) == NULL) {
+			return;
+		}
+		out_len = strlen(p->out);
+
+		break;
+	case 2:
+		memset(&addr6, 0, sizeof(addr6));
+
+		if (afdlen > sizeof(addr6.s6_addr) || afdlen > p->in_max) {
+			return;
+		}
+
+		if (memcpy(&(addr6.s6_addr), p->in, afdlen) == NULL) {
+			return;
+		}
+
+		// Write address.
+		if (inet_ntop(AF_INET6, &addr6, p->out, p->out_max) == NULL) {
+			return;
+		}
+		out_len = strlen(p->out);
+
+		break;
+	default:
+		return;
+	}
+	p->in += afdlen;
+	p->in_max -= afdlen;
+	p->out += out_len;
+	p->out_max -= out_len;
+	p->total += out_len;
+
+	// Write prefix length with forward slash.
+	ret = snprintf(p->out, p->out_max, "/%u", prefix);
+	if (ret <= 0 || ret >= p->out_max) {
+		return;
+	}
+	p->out += ret;
+	p->out_max -= ret;
+	p->total += ret;
+
+	p->ret = 0;
+}
+
+static void wire_gateway_to_str(rrset_dump_params_t *p)
+{
+	p->ret = -1;
+
+	// Input check: type(1B) + algo(1B).
+	if (p->in_max < 2) {
+		return;
+	}
+
+	uint8_t type = *p->in;
+	uint8_t alg = *(p->in + 1);
+
+	// Write gateway type.
+	wire_num8_to_str(p);
+	if (p->ret != 0) {
+		return;
+	}
+
+	// Write space.
+	dump_string(p, " ");
+	if (p->ret != 0) {
+		return;
+	}
+
+	// Write algorithm number.
+	wire_num8_to_str(p);
+	if (p->ret != 0) {
+		return;
+	}
+
+	// Write space.
+	dump_string(p, " ");
+	if (p->ret != 0) {
+		return;
+	}
+
+	// Write appropriate gateway.
+	switch (type) {
+	case 0:
+		dump_string(p, ".");
+		break;
+	case 1:
+		wire_ipv4_to_str(p);
+		break;
+	case 2:
+		wire_ipv6_to_str(p);
+		break;
+	case 3:
+		wire_dname_to_str(p);
+		break;
+	default:
+		return;
+	}
+	if (p->ret != 0) {
+		return;
+	}
+
+	if (alg > 0) {
+		// Write space.
+		dump_string(p, " ");
+		if (p->ret != 0) {
+			return;
+		}
+
+		// Write ipsec key.
+		wire_data_encode_to_str(p, &base64_encode, &base64_encode_alloc);
+		if (p->ret != 0) {
+			return;
+		}
+	}
+
+	p->ret = 0;
+}
+
 static void wire_unknown_to_str(rrset_dump_params_t *p)
 {
 	int    ret;
@@ -738,6 +916,7 @@ static void wire_unknown_to_str(rrset_dump_params_t *p)
 #define DUMP_PARAMS	uint8_t *in, const size_t in_len, \
 				char *out, const size_t out_max
 #define DUMP_INIT	rrset_dump_params_t p = { in, in_len, out, out_max };
+//#define	DUMP_END	return (p.in_max == 0 ? p.total : -1);
 #define	DUMP_END	return p.total;
 
 #define CHECK_RET(p)	if (p.ret != 0) return -1;
@@ -760,6 +939,8 @@ static void wire_unknown_to_str(rrset_dump_params_t *p)
 				CHECK_RET(p);
 #define DUMP_TEXT	wire_text_to_str(&p); CHECK_RET(p);
 #define DUMP_BITMAP	wire_bitmap_to_str(&p); CHECK_RET(p);
+#define DUMP_APL	wire_apl_to_str(&p); CHECK_RET(p);
+#define DUMP_GATEWAY	wire_gateway_to_str(&p); CHECK_RET(p);
 #define DUMP_UNKNOWN	wire_unknown_to_str(&p); CHECK_RET(p);
 
 static int dump_a(DUMP_PARAMS)
@@ -898,6 +1079,23 @@ static int dump_cert(DUMP_PARAMS)
 	DUMP_END;
 }
 
+static int dump_apl(DUMP_PARAMS)
+{
+	DUMP_INIT;
+
+printf("X:");
+hex_print(p.in, p.in_max); fflush(stdout);
+	// Print list of APLs.
+	while (p.in_max > 0) {
+		if (p.total > 0) {
+			DUMP_SPACE;
+		}
+		DUMP_APL;
+	}
+
+	DUMP_END;
+}
+
 static int dump_ds(DUMP_PARAMS)
 {
 	DUMP_INIT;
@@ -917,6 +1115,16 @@ static int dump_sshfp(DUMP_PARAMS)
 	DUMP_NUM8; DUMP_SPACE;
 	DUMP_NUM8; DUMP_SPACE;
 	DUMP_HEX;
+
+	DUMP_END;
+}
+
+static int dump_ipseckey(DUMP_PARAMS)
+{
+	DUMP_INIT;
+
+	DUMP_NUM8; DUMP_SPACE;
+	DUMP_GATEWAY;
 
 	DUMP_END;
 }
@@ -1067,6 +1275,7 @@ int knot_rrset_txt_dump_data(const knot_rrset_t *rrset,
 			ret = dump_cert(data, data_len, dst, maxlen);
 			break;
 		case KNOT_RRTYPE_APL:
+			ret = dump_apl(data, data_len, dst, maxlen);
 			break;
 		case KNOT_RRTYPE_DS:
 			ret = dump_ds(data, data_len, dst, maxlen);
@@ -1075,6 +1284,7 @@ int knot_rrset_txt_dump_data(const knot_rrset_t *rrset,
 			ret = dump_sshfp(data, data_len, dst, maxlen);
 			break;
 		case KNOT_RRTYPE_IPSECKEY:
+			ret = dump_ipseckey(data, data_len, dst, maxlen);
 			break;
 		case KNOT_RRTYPE_RRSIG:
 			ret = dump_rrsig(data, data_len, dst, maxlen);
