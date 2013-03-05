@@ -27,6 +27,7 @@
 #include "common/getline_wrap.h"
 #include "dname.h"
 #include "sign/key.h"
+#include "sign/sig0.h"
 #include "tsig.h"
 
 /*!
@@ -80,11 +81,11 @@ static char *get_key_name_from_public_key(const char *filename)
  * derived from the previous part of the string. Otherwise, just append the
  * extensions.
  */
-static int get_key_filenames(const char *input, char **public, char **private)
+static int get_key_filenames(const char *input, char **pubname, char **privname)
 {
 	assert(input);
-	assert(public);
-	assert(private);
+	assert(pubname);
+	assert(privname);
 
 	char *name_end = strrchr(input, '.');
 	size_t base_length;
@@ -98,15 +99,15 @@ static int get_key_filenames(const char *input, char **public, char **private)
 		base_length = strlen(input);
 	}
 
-	*public = strndup_with_suffix(input, base_length, ".public");
-	if (!*public) {
+	*pubname = strndup_with_suffix(input, base_length, ".public");
+	if (!*pubname) {
 		return KNOT_ENOMEM;
 	}
 
-	*private = strndup_with_suffix(input, base_length, ".private");
-	if (!*private) {
-		free(*public);
-		*public = NULL;
+	*privname = strndup_with_suffix(input, base_length, ".private");
+	if (!*privname) {
+		free(*pubname);
+		*pubname = NULL;
 		return KNOT_ENOMEM;
 	}
 
@@ -299,7 +300,9 @@ knot_key_type_t knot_get_key_type(const knot_key_params_t *key_params)
 		return KNOT_KEY_TSIG;
 	}
 
-	//! \todo DNSSEC key recognition
+	if (key_params->prime_one) {
+		return KNOT_KEY_DNSSEC;
+	}
 
 	//! \todo TKEY key recognition
 

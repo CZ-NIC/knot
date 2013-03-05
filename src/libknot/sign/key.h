@@ -66,17 +66,4 @@ int knot_tsig_key_from_params(const knot_key_params_t *params,
 
 int knot_tsig_key_free(knot_tsig_key_t *key);
 
-/*----------------------------------------------------------------------------*/
-
-enum knot_dnssec_key_usage {
-	KNOT_KEY_USAGE_NONE = 0,
-	KNOT_KEY_USAGE_ZONE_SIGN = 1,
-	KNOT_KEY_USAGE_TRANSACTION_SIGN = 2
-};
-
-typedef enum knot_dnssec_key_usage knot_dnssec_key_usage_t;
-
-
-//int knot_dnssec_key_from_key_params(const knot_key_params_t *params, knot_dnssec_key_t *key);
-
 #endif // _KNOT_SIGN_KEY_H_

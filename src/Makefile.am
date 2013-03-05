@@ -191,7 +191,11 @@ libknot_la_SOURCES =				\
 	libknot/binary.h			\
 	libknot/binary.c			\
 	libknot/sign/key.h			\
-	libknot/sign/key.c
+	libknot/sign/key.c			\
+	libknot/sign/bnutils.h			\
+	libknot/sign/bnutils.c			\
+	libknot/sign/sig0.h			\
+	libknot/sign/sig0.c
 
 libknots_la_SOURCES =				\
 	common/slab/slab.c			\
