@@ -658,6 +658,8 @@ static void wire_bitmap_to_str(rrset_dump_params_t *p)
 					return;
 				}
 				out_len += ret;
+				p->out += ret;
+				p->out_max -= ret;
 			}
 		}
 
@@ -667,8 +669,6 @@ static void wire_bitmap_to_str(rrset_dump_params_t *p)
 	// Fill in output.
 	p->in += in_len;
 	p->in_max -= in_len;
-	p->out += out_len;
-	p->out_max -= out_len;
 	p->total += out_len;
 	p->ret = 0;
 }

@@ -80,6 +80,7 @@ void node_dump_text(knot_node_t *node, void *data)
 			params->ret = KNOT_ENOMEM;
 			return;
 		}
+		fprintf(params->file, "%s", params->buf);
 	}
 
 	free(rrsets);
