@@ -21,6 +21,7 @@
 #include <string.h>			// memcpy
 #include <time.h>			// strftime
 #include <ctype.h>			// isprint
+#include <math.h>			// pow
 #include <arpa/inet.h>			// ntohs
 #include <sys/socket.h>			// AF_INET (BSD)
 #include <netinet/in.h>			// in_addr (BSD)
@@ -33,6 +34,8 @@
 
 #define BLOCK_WIDTH		40
 #define BLOCK_INDENT		"\n\t\t\t\t"
+
+#define LOC_ZERO		2147483648	// 2^31
 
 typedef struct {
 	uint8_t *in;
@@ -804,6 +807,120 @@ static void wire_apl_to_str(rrset_dump_params_t *p)
 	p->ret = 0;
 }
 
+static void wire_loc_to_str(rrset_dump_params_t *p)
+{
+	int    ret;
+	size_t in_len = 16;
+
+	p->ret = -1;
+
+	// Check input size (1 LOC = 16 B).
+	if (in_len > p->in_max) {
+		return;
+	}
+
+	// Read values.
+	uint8_t version = *p->in;
+	p->in++;
+	uint8_t size_w = *p->in;
+	p->in++;
+	uint8_t hpre_w = *p->in;
+	p->in++;
+	uint8_t vpre_w = *p->in;
+	p->in++;
+	uint32_t lat_w = knot_wire_read_u32(p->in);
+	p->in += 4;
+	uint32_t lon_w = knot_wire_read_u32(p->in);
+	p->in += 4;
+	uint32_t alt_w = knot_wire_read_u32(p->in);
+	p->in += 4;
+
+	p->in_max -= in_len;
+
+	// Version check.
+	if (version != 0) {
+		return;
+	}
+
+	// Latitude calculation.
+	char lat_mark;
+	uint32_t lat;
+	if (lat_w >= LOC_ZERO) {
+		lat_mark = 'N';
+		lat = lat_w - LOC_ZERO;
+	} else {
+		lat_mark = 'S';
+		lat = LOC_ZERO - lat_w;
+	}
+
+	uint32_t d1 = lat / 3600000;
+	uint32_t m1 = (lat - 3600000 * d1) / 60000;
+	double s1 = 0.001 * (lat - 3600000 * d1 - 60000 * m1);
+
+	// Longitude calculation.
+	char lon_mark;
+	uint32_t lon;
+	if (lon_w >= LOC_ZERO) {
+		lon_mark = 'E';
+		lon = lon_w - LOC_ZERO;
+	} else {
+		lon_mark = 'W';
+		lon = LOC_ZERO - lon_w; 
+	}
+
+	uint32_t d2 = lon / 3600000;
+	uint32_t m2 = (lon - 3600000 * d2) / 60000;
+	double s2 = 0.001 * (lon - 3600000 * d2 - 60000 * m2);
+
+	// Write latitude and longitude. 
+	ret = snprintf(p->out, p->out_max, "%u %u %.*f %c  %u %u %.*f %c",
+	               d1, m1, (uint32_t)s1 != s1 ? 3 : 0, s1, lat_mark,
+	               d2, m2, (uint32_t)s2 != s2 ? 3 : 0, s2, lon_mark);
+	if (ret <= 0 || ret >= p->out_max) {
+		return;
+	}
+	p->out += ret;
+	p->out_max -= ret;
+	p->total += ret;
+
+	// Altitude calculation.
+	double alt = 0.01 * alt_w - 100000.0;
+
+	// Compute mantisa and exponent for each size.
+	uint8_t size_m = size_w >> 4;
+	uint8_t size_e = size_w & 0xF;
+	uint8_t hpre_m = hpre_w >> 4;
+	uint8_t hpre_e = hpre_w & 0xF;
+	uint8_t vpre_m = vpre_w >> 4;
+	uint8_t vpre_e = vpre_w & 0xF;
+
+	// Sizes check.
+	if (size_m > 9 || size_e > 9 || hpre_m > 9 || hpre_e > 9 ||
+	    vpre_m > 9 || vpre_e > 9) {
+		return;
+	}
+
+	// Size and precisions calculation.
+	double size = 0.01 * size_m * pow(10, size_e);
+	double hpre = 0.01 * hpre_m * pow(10, hpre_e);
+	double vpre = 0.01 * vpre_m * pow(10, vpre_e);
+
+	// Write altitude and precisions.
+	ret = snprintf(p->out, p->out_max, "  %.*fm  %.*fm %.*fm %.*fm",
+	               (int32_t)alt != alt ? 2 : 0, alt,
+	               (uint32_t)size != size ? 2 : 0, size,
+	               (uint32_t)hpre != hpre ? 2 : 0, hpre,
+	               (uint32_t)vpre != vpre ? 2 : 0, vpre);
+	if (ret <= 0 || ret >= p->out_max) {
+		return;
+	}
+	p->out += ret;
+	p->out_max -= ret;
+	p->total += ret;
+
+	p->ret = 0;
+}
+
 static void wire_gateway_to_str(rrset_dump_params_t *p)
 {
 	p->ret = -1;
@@ -940,6 +1057,7 @@ static void wire_unknown_to_str(rrset_dump_params_t *p)
 #define DUMP_TEXT	wire_text_to_str(&p); CHECK_RET(p);
 #define DUMP_BITMAP	wire_bitmap_to_str(&p); CHECK_RET(p);
 #define DUMP_APL	wire_apl_to_str(&p); CHECK_RET(p);
+#define DUMP_LOC	wire_loc_to_str(&p); CHECK_RET(p);
 #define DUMP_GATEWAY	wire_gateway_to_str(&p); CHECK_RET(p);
 #define DUMP_UNKNOWN	wire_unknown_to_str(&p); CHECK_RET(p);
 
@@ -1041,6 +1159,15 @@ static int dump_aaaa(DUMP_PARAMS)
 	DUMP_END;
 }
 
+static int dump_loc(DUMP_PARAMS)
+{
+	DUMP_INIT;
+
+	DUMP_LOC;
+
+	DUMP_END;
+}
+
 static int dump_srv(DUMP_PARAMS)
 {
 	DUMP_INIT;
@@ -1083,9 +1210,7 @@ static int dump_apl(DUMP_PARAMS)
 {
 	DUMP_INIT;
 
-printf("X:");
-hex_print(p.in, p.in_max); fflush(stdout);
-	// Print list of APLs.
+	// Print list of APLs (empty list is allowed).
 	while (p.in_max > 0) {
 		if (p.total > 0) {
 			DUMP_SPACE;
@@ -1264,6 +1389,7 @@ int knot_rrset_txt_dump_data(const knot_rrset_t *rrset,
 			ret = dump_aaaa(data, data_len, dst, maxlen);
 			break;
 		case KNOT_RRTYPE_LOC:
+			ret = dump_loc(data, data_len, dst, maxlen);
 			break;
 		case KNOT_RRTYPE_SRV:
 			ret = dump_srv(data, data_len, dst, maxlen);
