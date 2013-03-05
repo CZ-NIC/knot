@@ -570,7 +570,30 @@ static int test_rrset_rdata_item_size()
         if (rrset_rdata_item_size(rrset, 0) != 2 + sizeof(knot_dname_t *)) {
             diag("Wrong item length read from A RRSet.\n");
             return 0;
-        }	
+        }
+	
+	knot_rrset_t *rrset1 = knot_rrset_new(rrset->owner,
+	                                      KNOT_RRTYPE_TXT, KNOT_CLASS_IN,
+	                                      3600);
+	
+	knot_rrset_create_rdata(rrset1, 16);
+	knot_rrset_add_rdata(rrset1, "somedatathatdonotmatter", 25);
+	knot_rrset_create_rdata(rrset1, 38);
+	
+	if (rrset_rdata_item_size(rrset1, 0) != 16) {
+		diag("Wrong item lenght in read (first).\n");
+		return 0;
+	}
+	
+	if (rrset_rdata_item_size(rrset1, 1) != 25) {
+		diag("Wrong item lenght in read (middle).\n");
+		return 0;
+	}
+	
+	if (rrset_rdata_item_size(rrset1, 2) != 38) {
+		diag("Wrong item lenght in read (last).\n");
+		return 0;
+	}
 	
 	return 1;
 }

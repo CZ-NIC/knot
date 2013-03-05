@@ -297,52 +297,60 @@ static void process_rr(const scanner_t *scanner)
 	/*!< \todo Refactor, too long. */
 	dbg_zp_detail("Owner from parser=%s\n",
 	              scanner->r_owner);
-	char add = 0;
+	char add = 1;
 	parser_context_t *parser = scanner->data;
 	knot_zone_contents_t *contents = parser->current_zone;
 	/* Create rrset. TODO will not be always needed. */
 	knot_dname_t *current_owner = NULL;
 	knot_rrset_t *current_rrset = NULL;
-	if (parser->last_node &&
-	    (scanner->r_owner_length == parser->last_node->owner->size) &&
-	    (strncmp((char *)parser->last_node->owner->name,
-	            (char *)scanner->r_owner, scanner->r_owner_length) == 0)) {
-		// no need to create new dname;
-		current_owner = parser->last_node->owner;
-		// what about RRSet, do we need a new one?
-		current_rrset = knot_node_get_rrset(parser->last_node,
-		                                    scanner->r_type);
-		if (current_rrset == NULL) {
-			add = 1;
-			current_rrset =
-				knot_rrset_new(current_owner,
-				               scanner->r_type,
-				               scanner->r_class,
-				               scanner->r_ttl);
-		}
-	} else {
-		add = 1;
-//		if (strncmp((char *)parser->last_node->owner->name,
-//	                (char *)scanner->r_owner, scanner->r_owner_length)) {
-//			new_dname_count++;
-//			current_owner = 
-//		                knot_dname_new_from_wire(scanner->r_owner,
-//	                                         scanner->r_owner_length,
-//	                                         NULL);
-//		} else {
-//			current_owner = parser->last_node->owner;
+//	if (parser->last_node &&
+//	    (scanner->r_owner_length == parser->last_node->owner->size) &&
+//	    (strncmp((char *)parser->last_node->owner->name,
+//	            (char *)scanner->r_owner, scanner->r_owner_length) == 0)) {
+//		// no need to create new dname;
+//		current_owner = parser->last_node->owner;
+//		// what about RRSet, do we need a new one?
+//		current_rrset = knot_node_get_rrset(parser->last_node,
+//		                                    scanner->r_type);
+//		if (current_rrset == NULL) {
+//			add = 1;
+//			current_rrset =
+//				knot_rrset_new(current_owner,
+//				               scanner->r_type,
+//				               scanner->r_class,
+//				               scanner->r_ttl);
 //		}
-		current_owner = 
-			knot_dname_new_from_wire(scanner->r_owner,
-			                         scanner->r_owner_length,
-			                         NULL);
-		current_rrset =
-			knot_rrset_new(current_owner,
-			               scanner->r_type,
-			               scanner->r_class,
-			               scanner->r_ttl);
-		knot_dname_release(current_owner);
-	}
+//	} else {
+//		add = 1;
+////		if (strncmp((char *)parser->last_node->owner->name,
+////	                (char *)scanner->r_owner, scanner->r_owner_length)) {
+////			new_dname_count++;
+////			current_owner = 
+////		                knot_dname_new_from_wire(scanner->r_owner,
+////	                                         scanner->r_owner_length,
+////	                                         NULL);
+////		} else {
+////			current_owner = parser->last_node->owner;
+////		}
+//		current_owner = 
+//			knot_dname_new_from_wire(scanner->r_owner,
+//			                         scanner->r_owner_length,
+//			                         NULL);
+//		current_rrset =
+//			knot_rrset_new(current_owner,
+//			               scanner->r_type,
+//			               scanner->r_class,
+//			               scanner->r_ttl);
+//		knot_dname_release(current_owner);
+//	}
+	current_owner = 
+		knot_dname_new_from_wire(scanner->r_owner,
+	                         scanner->r_owner_length,
+	                         NULL);
+	current_rrset = knot_rrset_new(current_owner,
+	               scanner->r_type,
+	               scanner->r_class,
+	               scanner->r_ttl);
 	
 	assert(current_owner);
 	parser->current_rrset = current_rrset;
@@ -571,39 +579,36 @@ static void process_rr(const scanner_t *scanner)
 //			"Changing to %d.\n", rrset->ttl);
 //	}
 
-	if (add) {
-		ret = knot_zone_contents_add_rrset(contents, current_rrset,
-		                                   &node,
-		                                   KNOT_RRSET_DUPL_MERGE);
-		if (ret < 0) {
-			dbg_zp("zp: process_rr: Cannot "
-			       "add RRSets.\n");
-			/*!< \todo mixed error codes, has to be changed. */
-			parser->ret = ret;
-			return;
-		} else if (ret > 0) {
-			knot_rrset_deep_free(&current_rrset, 0, 0);
-		}
-		assert(parser->current_zone && node);
-		int sem_fatal_error = 0;
-		ret = sem_check_node_plain(parser->current_zone, node, -1,
-		                           parser->err_handler, 1,
-		                           &sem_fatal_error);
-		if (ret != KNOT_EOK) {
-			log_zone_error("Semantic check failed to run (%s)\n",
-			               knot_strerror(ret));
-			parser->ret = ret;
-			return;
-		}
-		if (sem_fatal_error) {
-			log_zone_error("Semantic check found fatal error "
-			               "on line=%"PRIu64"\n",
-			               scanner->line_counter);
-			parser->ret = KNOT_EMALF;
-			return;
-		}
+	ret = knot_zone_contents_add_rrset(contents, current_rrset,
+	                                   &node,
+	                                   KNOT_RRSET_DUPL_MERGE);
+	if (ret < 0) {
+		dbg_zp("zp: process_rr: Cannot "
+		       "add RRSets.\n");
+		/*!< \todo mixed error codes, has to be changed. */
+		parser->ret = ret;
+		return;
+	} else if (ret > 0) {
+		knot_rrset_deep_free(&current_rrset, 0, 0);
 	}
-//	}
+	assert(parser->current_zone && node);
+	int sem_fatal_error = 0;
+	ret = sem_check_node_plain(parser->current_zone, node, -1,
+	                           parser->err_handler, 1,
+	                           &sem_fatal_error);
+	if (ret != KNOT_EOK) {
+		log_zone_error("Semantic check failed to run (%s)\n",
+		               knot_strerror(ret));
+		parser->ret = ret;
+		return;
+	}
+	if (sem_fatal_error) {
+		log_zone_error("Semantic check found fatal error "
+		               "on line=%"PRIu64"\n",
+		               scanner->line_counter);
+		parser->ret = KNOT_EMALF;
+		return;
+	}
 
 	parser->last_node = node;
 	

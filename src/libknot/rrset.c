@@ -892,8 +892,7 @@ uint16_t rrset_rdata_item_size(const knot_rrset_t *rrset,
 	}
 	
 	assert(rrset->rdata_count >= 2 && pos != 0);
-	return rrset_rdata_offset(rrset, pos) -
-	                          rrset_rdata_offset(rrset, pos - 1);
+	return rrset->rdata_indices[pos] - rrset->rdata_indices[pos - 1];
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1569,31 +1568,6 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
 	*rrset = NULL;
 }
 
-/*----------------------------------------------------------------------------*/
-/* [code-review] Remove. */
-// This might not be needed, we have to store the last index anyway
-//	/*
-//	 * The last one has to be traversed.
-//	 */
-//	rdata_descriptor_t *desc = get_rdata_descriptor(rrset->type);
-//	assert(desc);
-//	size_t size = 0;
-//	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
-//		int tyt_rrset->rrset.rdata_count = test_rrset->rr_count;e = desc->block_types[i];
-//		if (descriptor_item_is_dname(type)) {
-//			size += sizeof(knot_dname_t *);
-//		} else if (descriptor_item_is_fixed(type)) {
-//			size += type;
-//		} else if (descriptor_item_is_remainder(type)) {
-//			// size has to be computed from index
-//			size += 
-//		} else {
-//			//TODO naptr
-//		}
-//	}
-//}
-
-
 int knot_rrset_merge(void **r1, void **r2)
 {
 	/* [code-review] Missing parameter checks. */
@@ -1607,11 +1581,9 @@ int knot_rrset_merge(void **r1, void **r2)
 	if (rrset1->type != rrset2->type ||
 	    rrset1->rclass != rrset2->rclass ||
 	    (knot_dname_compare_non_canon(rrset1->owner, rrset2->owner) != 0) ||
-	    (rrset1->rdata_count == 0 && rrset2->rdata_count)) {
+	    (rrset1->rdata_count == 0 && rrset2->rdata_count == 0)) {
 		return KNOT_EINVAL;
 	}
-	/* [code-review] Why merging empty RRSet with non-empty one is invalid? */
-	
 	/* Add all RDATAs from rrset2 to rrset1 (i.e. concatenate two arrays) */
 	
 	/*! \note The following code should work for
@@ -1690,15 +1662,21 @@ dbg_rrset_exec_detail(
 		/* Compare with all RRs in the first RRSet. */
 		for (uint16_t j = 0; j < rrset1->rdata_count && !duplicated;
 		     j++) {
-			duplicated = !rrset_rdata_compare_one(rrset2, rrset1,
-			                                      i, j);
+			duplicated = !rrset_rdata_compare_one(rrset1, rrset2,
+			                                      j, i);
 		}
 		
 		if (!duplicated) {
 			// This index goes to merged RRSet.
-			knot_rrset_add_rdata(rrset1,
-			                     rrset_rdata_pointer(rrset2, i),
-			                     rrset_rdata_item_size(rrset2, i));
+			int ret = knot_rrset_add_rdata(rrset1,
+			                               rrset_rdata_pointer(rrset2, i),
+			                               rrset_rdata_item_size(rrset2, i));
+			if (ret != KNOT_EOK) {
+				dbg_rrset("rrset: merge_no_dupl: Could not "
+				          "add RDATA to RRSet. (%s)\n",
+				          knot_strerror(ret));
+				return ret;
+			}
 		}
 	}
 	
@@ -2253,7 +2231,7 @@ dbg_rrset_exec_detail(
 		fprintf(stderr, "NO RDATA\n");
 	}
 	
-	for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(rrset);i ++) {
+	for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(rrset); i++) {
 		knot_rrset_rdata_dump(rrset, i);
 	}
 );

@@ -2574,7 +2574,7 @@ dbg_ns_exec_verb(
 		rrset = rrsets[i];
 rrset:
 		dbg_ns_verb("  Type: %u\n",
-		            knot_rrtype_to_string(knot_rrset_type(rrset)));
+		            knot_rrset_type(rrset));
 
 		// do not add SOA
 		if (knot_rrset_type(rrset) == KNOT_RRTYPE_SOA) {
