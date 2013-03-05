@@ -27,10 +27,10 @@
 #include <arpa/inet.h>			// inet_pton
 #include <sys/socket.h>			// AF_INET (BSD)
 
+#include "libknot/libknot.h"
 #include "common/errcode.h"		// KNOT_EOK
 #include "common/mempattern.h"		// strcdup
-#include "libknot/dname.h"		// knot_dname_t
-#include "libknot/util/descriptor.h"	// KNOT_RRTYPE
+#include "common/descriptor_new.h"	// KNOT_RRTYPE_ 
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/resolv.h"	// parse_nameserver
 #include "utils/common/token.h"		// token

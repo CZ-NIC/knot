@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I ../m4
-libexec_PROGRAMS = unittests unittests-xfr unittests-zscanner unittests-libknot
+libexec_PROGRAMS = unittests unittests-xfr unittests-zscanner unittests-libknot kdig khost knsupdate
 sbin_PROGRAMS = knotc knotd
 dist_man_MANS = knot.conf.5 knotc.8 knotd.8
 
@@ -23,6 +23,65 @@ CLEANFILES =					\
 
 knotc_SOURCES =					\
 	knot/ctl/knotc_main.c
+
+kdig_SOURCES =					\
+	utils/common/msg.h			\
+	utils/common/msg.c			\
+	utils/common/exec.c			\
+	utils/common/exec.h			\
+	utils/common/params.c			\
+	utils/common/params.h			\
+	utils/common/resolv.c			\
+	utils/common/resolv.h			\
+	utils/common/netio.c			\
+	utils/common/netio.h			\
+	utils/common/token.c			\
+	utils/common/token.h			\
+	utils/dig/dig_main.c			\
+	utils/dig/dig_params.c			\
+	utils/dig/dig_params.h			\
+	utils/dig/dig_exec.c			\
+	utils/dig/dig_exec.h
+
+khost_SOURCES =					\
+	utils/common/msg.h			\
+	utils/common/msg.c			\
+	utils/common/exec.c			\
+	utils/common/exec.h			\
+	utils/common/params.c			\
+	utils/common/params.h			\
+	utils/common/resolv.c			\
+	utils/common/resolv.h			\
+	utils/common/netio.c			\
+	utils/common/netio.h			\
+	utils/common/token.c			\
+	utils/common/token.h			\
+	utils/host/host_main.c			\
+	utils/dig/dig_params.c			\
+	utils/dig/dig_params.h			\
+	utils/host/host_params.c		\
+	utils/host/host_params.h		\
+	utils/dig/dig_exec.c			\
+	utils/dig/dig_exec.h
+
+knsupdate_SOURCES =				\
+	utils/common/msg.h			\
+	utils/common/msg.c			\
+	utils/common/params.c			\
+	utils/common/params.h			\
+	utils/common/resolv.c			\
+	utils/common/resolv.h			\
+	utils/common/netio.c			\
+	utils/common/netio.h			\
+	utils/common/token.c			\
+	utils/common/token.h			\
+	utils/common/exec.c			\
+	utils/common/exec.h			\
+	utils/nsupdate/nsupdate_main.c		\
+	utils/nsupdate/nsupdate_params.c	\
+	utils/nsupdate/nsupdate_params.h	\
+	utils/nsupdate/nsupdate_exec.c		\
+	utils/nsupdate/nsupdate_exec.h
 
 unittests_SOURCES =				\
 	tests/common/acl_tests.c		\
@@ -181,6 +240,8 @@ libknots_la_SOURCES =				\
 	common/fdset_kqueue.c			\
 	common/fdset_epoll.h			\
 	common/fdset_epoll.c			\
+	common/getline_wrap.h			\
+	common/getline_wrap.c			\
 	common/log.c				\
 	common/log.h				\
 	common/hattrie/ahtable.c		\
@@ -257,6 +318,9 @@ libknots_la_LIBADD = libzscanner.la @LIBOBJS@
 libzscanner_la_LIBADD = @LIBOBJS@
 knotd_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 knotc_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
+kdig_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
+khost_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
+knsupdate_LDADD = libknotd.la libknot.la libknots.la libzscanner.la @LIBOBJS@
 unittests_LDADD = libknotd.la libknots.la @LIBOBJS@
 unittests_libknot_LDADD = libknotd.la libknot.la @LIBOBJS@
 unittests_xfr_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@

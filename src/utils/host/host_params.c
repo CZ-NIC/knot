@@ -23,7 +23,7 @@
 
 #include "common/lists.h"		// list
 #include "common/errcode.h"		// KNOT_EOK
-#include "libknot/util/descriptor.h"	// KNOT_CLASS_IN
+#include "common/descriptor_new.h"	// KNOT_CLASS_IN
 #include "utils/common/msg.h"		// WARN
 #include "utils/dig/dig_params.h"	// dig_params_t
 #include "utils/common/resolv.h"	// get_nameservers

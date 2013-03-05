@@ -34,6 +34,8 @@
 #include "zone/node.h"
 #include "nsec3.h"
 #include "util/wire.h"
+#include "packet/packet.h"
+#include "packet/query.h"
 #include "packet/response.h"
 #include "rrset.h"
 #include "rrset-dump.h"

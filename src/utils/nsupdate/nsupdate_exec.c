@@ -30,13 +30,8 @@
 #include "utils/common/token.h"
 #include "common/errcode.h"
 #include "common/mempattern.h"
-#include "libknot/dname.h"
-#include "libknot/util/descriptor.h"
-#include "libknot/packet/response.h"
-#include "libknot/util/debug.h"
-#include "libknot/consts.h"
-#include "libknot/packet/query.h"
-#include "libknot/tsig-op.h"
+#include "common/descriptor_new.h"
+#include "libknot/libknot.h"
 
 /* Declarations of cmd parse functions. */
 typedef int (*cmd_handle_f)(const char *lp, nsupdate_params_t *params);
@@ -320,43 +315,29 @@ static int pkt_append(nsupdate_params_t *p, int sect)
 			                          tsig_wire_maxsize(&p->key));
 		}
 	}
-	
-	/* Create RDATA (not for NXRRSET prereq). */
-	knot_rdata_t *rd = knot_rdata_new();
-	const knot_rrtype_descriptor_t *rdesc = NULL;
-	rdesc = knot_rrtype_descriptor_by_type(s->r_type);
-	if (s->r_data_length > 0 && sect != PQ_NXRRSET) {
-		size_t pos = 0;
-		ret = knot_rdata_from_wire(rd, s->r_data, &pos,
-		                           s->r_data_length, s->r_data_length,
-		                           rdesc);
-		if (ret != KNOT_EOK) {
-			DBG("%s: failed to created rd from wire - %s\n",
-			    __func__, knot_strerror(ret));
-			knot_rdata_free(&rd);
-			return ret;
-		}
-	}
-	
+
 	/* Form a rrset. */
 	knot_dname_t *o = knot_dname_new_from_wire(s->r_owner, s->r_owner_length, NULL);
 	knot_rrset_t *rr = knot_rrset_new(o, s->r_type, s->r_class, s->r_ttl);
 	if (!rr) {
 		DBG("%s: failed to create rrset - %s\n",
 		    __func__, knot_strerror(ret));
-		knot_rdata_free(&rd);
 		return KNOT_ENOMEM;
 	}
 	knot_dname_release(o);
-	
-	/* Append rdata. */
-	ret = knot_rrset_add_rdata(rr, rd);
-	if (ret != KNOT_EOK) {
-		DBG("%s: failed to add rdata - %s\n",
-		    __func__, knot_strerror(ret));
-		knot_rdata_free(&rd);
-		knot_rrset_free(&rr);
-		return ret;
+
+	/* Create RDATA (not for NXRRSET prereq). */
+	if (s->r_data_length > 0 && sect != PQ_NXRRSET) {
+		size_t pos = 0;
+		ret = knot_rrset_rdata_from_wire_one(rr, s->r_data, &pos,
+		                                     s->r_data_length,
+		                                     s->r_data_length);
+		if (ret != KNOT_EOK) {
+			DBG("%s: failed to set rrset from wire - %s\n",
+			    __func__, knot_strerror(ret));
+			knot_rrset_free(&rr);
+			return ret;
+		}
 	}
 
 	/* Add to correct section.

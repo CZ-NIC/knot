@@ -28,6 +28,7 @@
 #define _UTILS__PARAMS_H_
 
 #include <stdint.h>			// uint16_t
+#include <stdbool.h>			// bool
 
 #include "common/lists.h"		// list
 #include "libknot/tsig.h"		// knot_key_t

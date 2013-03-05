@@ -21,12 +21,10 @@
 #include <sys/socket.h>                 // AF_INET
 #include <netinet/in.h>                 // sockaddr_in (BSD)
 
+#include "libknot/libknot.h"
 #include "common/lists.h"		// list
 #include "common/errcode.h"		// KNOT_EOK
-#include "libknot/consts.h"		// KNOT_RCODE_NOERROR
-#include "libknot/util/wire.h"		// knot_wire_set_rd
-#include "libknot/packet/query.h"	// knot_query_init
-#include "libknot/packet/response.h"	// knot_response_add_opt
+#include "common/descriptor_new.h"	// KNOT_RRTYPE_
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/netio.h"		// get_socktype
 #include "utils/common/exec.h"		// print_packet
@@ -102,51 +100,38 @@ static knot_packet_t* create_query_packet(const query_t *query,
 
 	// For IXFR query add authority section.
 	if (query->type_num == KNOT_RRTYPE_IXFR) {
-		int ret;
-		size_t pos = 0;
 		// SOA rdata in wireformat.
 		uint8_t wire[22] = { 0x0 };
-		// Set SOA serial.
-		uint32_t serial = htonl(query->xfr_serial);
-		memcpy(wire + 2, &serial, sizeof(serial));
-
-		// Create SOA rdata.
-		knot_rdata_t *soa_data = knot_rdata_new();
-		ret = knot_rdata_from_wire(soa_data,
-		                           wire,
-		                           &pos,
-		                           sizeof(wire),
-		                           sizeof(wire),
-		                           knot_rrtype_descriptor_by_type(
-		                                             KNOT_RRTYPE_SOA));
-
-		if (ret != KNOT_EOK) {
-			free(soa_data);
-			knot_dname_release(q.qname);
-			knot_packet_free(&packet);
-			return NULL;
-		}
+		size_t  pos = 0;
+		int     ret;
 
 		// Create rrset with SOA record.
 		knot_rrset_t *soa = knot_rrset_new(q.qname,
 		                                   KNOT_RRTYPE_SOA,
 		                                   query->class_num,
 		                                   0);
-		ret = knot_rrset_add_rdata(soa, soa_data);
+		if (soa == NULL) {
+			knot_dname_release(q.qname);
+			knot_packet_free(&packet);
+			return NULL;
+		}
 
+		// Fill in blank SOA rdata to rrset.
+		ret = knot_rrset_rdata_from_wire_one(soa, wire, &pos,
+		                                    sizeof(wire), sizeof(wire));
 		if (ret != KNOT_EOK) {
-			free(soa_data);
 			free(soa);
 			knot_dname_release(q.qname);
 			knot_packet_free(&packet);
 			return NULL;
 		}
 
+		// Set SOA serial.
+		knot_rrset_rdata_soa_serial_set(soa, query->xfr_serial);
+
 		// Add authority section.
 		ret = knot_query_add_rrset_authority(packet, soa);
-
 		if (ret != KNOT_EOK) {
-			free(soa_data);
 			free(soa);
 			knot_dname_release(q.qname);
 			knot_packet_free(&packet);
@@ -248,7 +233,7 @@ static int64_t first_serial_check(const knot_packet_t *reply)
 	if (first->type != KNOT_RRTYPE_SOA) {
 		return -1;
 	} else {
-		return knot_rdata_soa_serial(first->rdata);
+		return knot_rrset_rdata_soa_serial(first);
 	}
 }
 
@@ -263,7 +248,7 @@ static bool last_serial_check(const uint32_t serial, const knot_packet_t *reply)
 	if (last->type != KNOT_RRTYPE_SOA) {
 		return false;
 	} else {
-		int64_t last_serial = knot_rdata_soa_serial(last->rdata);
+		int64_t last_serial = knot_rrset_rdata_soa_serial(last);
 
 		if (last_serial == serial) {
 			return true;

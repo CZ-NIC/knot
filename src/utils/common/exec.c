@@ -19,15 +19,13 @@
 #include <stdlib.h>			// free
 #include <time.h>			// localtime_r
 
+#include "libknot/libknot.h"
 #include "common/lists.h"		// list
 #include "common/errcode.h"		// KNOT_EOK
-#include "libknot/consts.h"		// KNOT_RCODE_NOERROR
-#include "libknot/util/wire.h"		// knot_wire_set_rd
-#include "libknot/packet/query.h"	// knot_query_init
+#include "common/descriptor_new.h"	// KNOT_RRTYPE_
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/params.h"	// params_t
 #include "utils/common/netio.h"		// send_msg
-#include "utils/common/rr-serialize.h"	// rrset_write_mem
 
 knot_lookup_table_t opcodes[] = {
 	{ KNOT_OPCODE_QUERY,  "QUERY" },
@@ -195,7 +193,7 @@ static void print_section_question(const knot_dname_t *owner,
 	knot_rrset_t *question = knot_rrset_new((knot_dname_t *)owner, qtype,
 	                                        qclass, 0);
 
-	if (rrset_header_write_mem(buf, buflen, question, true, false) < 0) {
+	if (knot_rrset_txt_dump_header(question, buf, buflen) < 0) {
 		WARN("can't dump whole question section\n");
 	}
 
@@ -212,7 +210,7 @@ static void print_section_verbose(const knot_rrset_t **rrsets,
 	char   *buf = malloc(buflen);
 
 	for (uint16_t i = 0; i < count; i++) {
-		while (rrset_write_mem(buf, buflen, rrsets[i]) < 0) {
+        while (knot_rrset_txt_dump(rrsets[i], buf, buflen) < 0) {
 			buflen += 4096;
 			buf = realloc(buf, buflen);
 
@@ -234,12 +232,11 @@ static void print_section_dig(const knot_rrset_t **rrsets,
 	size_t buflen = 8192;
 	char   *buf = malloc(buflen);
 
-	for (uint16_t i = 0; i < count; i++) {
+	for (size_t i = 0; i < count; i++) {
 		const knot_rrset_t *rrset = rrsets[i];
-		knot_rdata_t *tmp = rrset->rdata;
 
-		do {
-			while (rdata_write_mem(buf, buflen, tmp, rrset->type)
+		for (size_t j = 0; j < rrset->rdata_count; j++) {
+			while (knot_rrset_txt_dump_data(rrset, j, buf, buflen)
 			       < 0) {
 				buflen += 4096;
 				buf = realloc(buf, buflen);
@@ -251,9 +248,7 @@ static void print_section_dig(const knot_rrset_t **rrsets,
 				}
 			}
 			printf("%s\n", buf);
-
-			tmp = tmp->next;
-		} while (tmp != rrset->rdata);
+		}
 	}
 
 	free(buf);
@@ -267,7 +262,6 @@ static void print_section_host(const knot_rrset_t **rrsets,
 
 	for (uint16_t i = 0; i < count; i++) {
 		const knot_rrset_t  *rrset = rrsets[i];
-		knot_rdata_t        *tmp = rrset->rdata;
 		knot_lookup_table_t *descr;
 		char                type[32] = "NULL";
 		char                *owner;
@@ -275,8 +269,8 @@ static void print_section_host(const knot_rrset_t **rrsets,
 		owner = knot_dname_to_str(rrset->owner);
 		descr = knot_lookup_by_id(rtypes, rrset->type);
 
-		do {
-			while (rdata_write_mem(buf, buflen, tmp, rrset->type)
+		for (size_t j = 0; j < rrset->rdata_count; j++) {
+			while (knot_rrset_txt_dump_data(rrset, j, buf, buflen)
 			       < 0) {
 				buflen += 4096;
 				buf = realloc(buf, buflen);
@@ -292,13 +286,11 @@ static void print_section_host(const knot_rrset_t **rrsets,
 				printf("%s %s %s\n", owner, descr->name, buf);
 			} else {
 				knot_rrtype_to_string(rrset->type, type,
-				                      sizeof(type));
+						      sizeof(type));
 				printf("%s has %s record %s\n",
 				       owner, type, buf);
 			}
-
-			tmp = tmp->next;
-		} while (tmp != rrset->rdata);
+		}
 
 		free(owner);
 	}
@@ -327,7 +319,7 @@ static void print_error_host(const uint8_t         code,
 	free(owner);
 }
 
-void print_header_xfr(const style_t *style, const knot_rr_type_t type)
+void print_header_xfr(const style_t *style, const uint16_t type)
 {
 	if (style == NULL) {
 		DBG_NULL;

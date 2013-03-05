@@ -24,8 +24,8 @@
 #include "utils/common/msg.h"
 #include "utils/common/netio.h"
 #include "common/errcode.h"
-#include "libknot/packet/packet.h"
-#include "libknot/util/descriptor.h"
+#include "common/descriptor_new.h"
+#include "libknot/libknot.h"
 
 #define DEFAULT_RETRIES_NSUPDATE	3
 #define DEFAULT_TIMEOUT_NSUPDATE	1
