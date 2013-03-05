@@ -243,8 +243,6 @@ src/utils/common/token.c
 src/utils/common/token.h
 src/utils/common/netio.c
 src/utils/common/netio.h
-src/utils/common/rr-serialize.c
-src/utils/common/rr-serialize.h
 src/utils/dig/dig_exec.c
 src/utils/dig/dig_exec.h
 src/utils/dig/dig_main.c
