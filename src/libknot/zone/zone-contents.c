@@ -321,6 +321,7 @@ static void knot_zone_contents_adjust_rrsets(knot_node_t *node,
 		}
 
 		dbg_zone("Adjusting next RRSet.\n");
+		knot_rrset_dump(rrsets[r]);
 		knot_zone_contents_adjust_rdata_in_rrset(rrsets[r],
 		                                         lookup_tree, zone,
 		                                         node);

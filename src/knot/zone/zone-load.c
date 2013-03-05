@@ -355,10 +355,8 @@ static void process_rr(const scanner_t *scanner)
 		return;
 	}
 	
-	dbg_zp_verb("zp: process_rr: Processing type: %s.\n",
-	            knot_rrtype_to_string(parser->current_rrset->type));
-	dbg_zp_verb("zp: process_rr: RDATA count: %d.\n",\
-	            parser->current_rrset->rdata->count);
+	dbg_zp_verb("zp: process_rr: Processing type: %d.\n",
+	            parser->current_rrset->type);
 
 	assert(current_rrset->rdata_count);
 
@@ -730,6 +728,8 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 //		log_zone_info("Semantic checks completed for zone=%s\n", zname);
 //		free(zname);
 //	}
+	
+	zone_dump_text(c->current_zone, stderr);
 	
 	return c->current_zone->zone;
 }

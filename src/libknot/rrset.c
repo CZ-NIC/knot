@@ -83,7 +83,7 @@ static uint8_t *rrset_rdata_pointer(const knot_rrset_t *rrset,
 static uint16_t rrset_rdata_naptr_bin_chunk_size(const knot_rrset_t *rrset,
                                                size_t pos)
 {
-	if (rrset == NULL || rrset->rdata_count >= pos) {
+	if (rrset == NULL || pos >= rrset->rdata_count) {
 		return 0;
 	}
 	
@@ -95,7 +95,8 @@ static uint16_t rrset_rdata_naptr_bin_chunk_size(const knot_rrset_t *rrset,
 	size += 4;
 	/* 3 binary TXTs with length in the first byte. */
 	for (int i = 0; i < 3; i++) {
-		size += *(rdata + size);
+		printf("TXT size: %d\n", *(rdata + size));
+		size += *(rdata + size) + 1;
 	}
 	
 	/* 
