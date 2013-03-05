@@ -95,7 +95,6 @@ static uint16_t rrset_rdata_naptr_bin_chunk_size(const knot_rrset_t *rrset,
 	size += 4;
 	/* 3 binary TXTs with length in the first byte. */
 	for (int i = 0; i < 3; i++) {
-		printf("TXT size: %d\n", *(rdata + size));
 		size += *(rdata + size) + 1;
 	}
 	

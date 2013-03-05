@@ -729,8 +729,6 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 //		free(zname);
 //	}
 	
-	zone_dump_text(c->current_zone, stderr);
-	
 	return c->current_zone->zone;
 }
 
