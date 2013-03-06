@@ -22,6 +22,7 @@
 #include "libknot/packet/response.h"
 #include "libknot/packet/query.h"
 #include "libknot/nameserver/name-server.h"
+#include "common/descriptor_new.h"
 
 /* Enable time-dependent tests. */
 //#define ENABLE_TIMED_TESTS
@@ -87,7 +88,7 @@ static int rrl_tests_run(int argc, char *argv[])
 
 	/* 3. N unlimited requests. */
 	knot_dname_t *apex = knot_dname_new_from_str("rrl.", 4, NULL);
-	knot_zone_t *zone = knot_zone_new(knot_node_new(apex, NULL, 0), 0, 0);
+	knot_zone_t *zone = knot_zone_new(knot_node_new(apex, NULL, 0));
 	sockaddr_t addr;
 	sockaddr_t addr6;
 	sockaddr_set(&addr, AF_INET, "1.2.3.4", 0);

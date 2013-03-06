@@ -108,6 +108,8 @@ unittests_SOURCES =				\
 	tests/knot/journal_tests.h		\
 	tests/knot/server_tests.c		\
 	tests/knot/server_tests.h		\
+	tests/knot/rrl_tests.h			\
+	tests/knot/rrl_tests.c			\
 	tests/libknot/wire_tests.c		\
 	tests/libknot/wire_tests.h		\
 	tests/libknot/dname_tests.c		\
@@ -209,7 +211,7 @@ libknots_la_SOURCES =				\
 	common/print.h				\
 	common/skip-list.c			\
 	common/base32hex.c			\
-	common/skip-list.h			\	\
+	common/skip-list.h			\
 	common/base32hex.h			\
 	common/evqueue.h			\
 	common/evqueue.c			\
