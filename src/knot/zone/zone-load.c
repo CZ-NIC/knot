@@ -606,7 +606,7 @@ static void process_rr(const scanner_t *scanner)
 		parser->ret = KNOT_EMALF;
 		return;
 	}
-
+	
 	parser->last_node = node;
 	
 	dbg_zp_verb("zp: process_rr: RRSet %p processed successfully.\n",

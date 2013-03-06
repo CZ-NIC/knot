@@ -332,6 +332,14 @@ static void knot_zone_contents_adjust_rrsets(knot_node_t *node,
 		                                         lookup_tree, zone,
 			                                         node);
 		}
+		
+		uint8_t *test_stream = NULL;
+		size_t size = 0;
+		rrset_serialize_alloc(rrsets[r], &test_stream, &size);
+		knot_rrset_t *test_rrset = NULL;
+		assert(size == rrset_binary_size(rrsets[r]));
+		rrset_deserialize(test_stream, &size, &test_rrset);
+		knot_rrset_dump(test_rrset);
 	}
 
 	free(rrsets);

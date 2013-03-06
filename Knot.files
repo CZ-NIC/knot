@@ -195,10 +195,6 @@ src/tests/knot/rrl_tests.h
 src/tests/libknot/unittests_libknot.c
 src/tests/libknot/libknot/rrset_tests.c
 src/tests/libknot/libknot/rrset_tests.h
-src/tests/libknot/libknot/dname_tests.c
-src/tests/libknot/libknot/dname_tests.h
-src/tests/libknot/libknot/wire_tests.c
-src/tests/libknot/libknot/wire_tests.h
 samples/Makefile.am
 src/libknot/tsig.h
 src/libknot/tsig.c
