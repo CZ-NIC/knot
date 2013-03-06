@@ -1490,55 +1490,6 @@ void knot_rrset_free(knot_rrset_t **rrset)
 	*rrset = NULL;
 }
 
-/*----------------------------------------------------------------------------*/
-/* [code-review] This function just frees all dnames in one RDATA? 
- * It should be documented at least a little. Also it is used only in this file,
- * so maybe it should be static?
- */
-void knot_rrset_rdata_deep_free_one(knot_rrset_t *rrset, size_t pos,
-                                    int free_dnames)
-{
-	if (rrset == NULL || rrset->rdata == NULL ||
-	    rrset->rdata_indices == NULL) {
-		return;
-	}
-	
-	size_t offset = 0;
-	uint8_t *rdata = rrset_rdata_pointer(rrset, pos);
-	if (rdata == NULL) {
-		return;
-	}
-	
-	if (free_dnames) {
-		/* Go through the data and free dnames. Pointers can stay. */
-		const rdata_descriptor_t *desc =
-			get_rdata_descriptor(rrset->type);
-		assert(desc);
-		for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END;i++) {
-			int item = desc->block_types[i];
-			if (descriptor_item_is_dname(item)) {
-				knot_dname_t *dname;
-				memcpy(&dname, rdata + offset,
-				       sizeof(knot_dname_t *));
-//				printf("%Freeing dname: %s\n",
-//				       knot_dname_to_str(dname));
-				knot_dname_release(dname);
-				offset += sizeof(knot_dname_t *);
-			} else if (descriptor_item_is_fixed(item)) {
-				offset += item;
-			} else if (!descriptor_item_is_remainder(item)) {
-				assert(rrset->type == KNOT_RRTYPE_NAPTR);
-				/* Skip the binary beginning. */
-				offset +=
-					rrset_rdata_naptr_bin_chunk_size(rrset,
-				                                         pos);
-			}
-		}
-	}
-	
-	return;
-}
-
 void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
                           int free_rdata_dnames)
 {
@@ -1546,19 +1497,16 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
 		return;
 	}
 	
-	// rdata have to be freed no matter what
-	for (uint16_t i = 0; i < (*rrset)->rdata_count; i++) {
-		knot_rrset_rdata_deep_free_one(*rrset, i,
-		                               free_rdata_dnames);
-	}
-
-	// RRSIGs should have the same owner as this RRSet, so do not delete it
-	/* [code-review] Wrong, it must be deleted (== released reference), 
-	 * because the pointer in the RRSIG RRSet should have been retained 
-	 * previously. Otherwise the reference count will be wrong.
-	 */
 	if ((*rrset)->rrsigs != NULL) {
-		knot_rrset_deep_free(&(*rrset)->rrsigs, 0, free_rdata_dnames);
+		knot_rrset_deep_free(&(*rrset)->rrsigs, 1, free_rdata_dnames);
+	}
+	
+	if (free_rdata_dnames) {
+		int ret = rrset_dnames_apply(*rrset, rrset_release_dnames_in_rr,
+		                             NULL);
+		if (ret != KNOT_EOK) {
+			dbg_rrset("rr: deep_free: Could not free DNAMEs in RDATA.\n");
+		}
 	}
 	
 	free((*rrset)->rdata);

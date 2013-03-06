@@ -738,7 +738,7 @@ void server_destroy(server_t **server)
 	dbg_server("server: destroying server instance\n");
 	
 	// Free XFR master
-//	xfr_free((*server)->xfr_h); TODO XFR
+	xfr_free((*server)->xfr_h);
 
 	// Free interfaces
 	node *n = 0, *nxt = 0;

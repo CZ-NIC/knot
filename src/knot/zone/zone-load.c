@@ -300,6 +300,7 @@ static void process_rr(const scanner_t *scanner)
 	/* Create rrset. TODO will not be always needed. */
 	knot_dname_t *current_owner = NULL;
 	knot_rrset_t *current_rrset = NULL;
+	// TODO this needs to work again, but does not merge as it is now.
 //	if (parser->last_node &&
 //	    (scanner->r_owner_length == parser->last_node->owner->size) &&
 //	    (strncmp((char *)parser->last_node->owner->name,
@@ -348,6 +349,7 @@ static void process_rr(const scanner_t *scanner)
 	               scanner->r_type,
 	               scanner->r_class,
 	               scanner->r_ttl);
+	knot_dname_release(current_owner);
 	
 	assert(current_owner);
 	parser->current_rrset = current_rrset;
@@ -744,5 +746,8 @@ void knot_zload_close(zloader_t *loader)
 
 	free(loader->source);
 	free(loader->origin);
+	knot_dname_release(loader->context->origin_from_config);
+	free(loader->context);
+	free(loader->err_handler);
 	free(loader);
 }

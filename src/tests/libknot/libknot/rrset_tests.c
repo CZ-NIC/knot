@@ -577,7 +577,7 @@ static int test_rrset_rdata_item_size()
 	                                      3600);
 	
 	knot_rrset_create_rdata(rrset1, 16);
-	knot_rrset_add_rdata(rrset1, "somedatathatdonotmatter", 25);
+	knot_rrset_add_rdata(rrset1, (uint8_t *)"somedatathatdonotmatter", 25);
 	knot_rrset_create_rdata(rrset1, 38);
 	
 	if (rrset_rdata_item_size(rrset1, 0) != 16) {
