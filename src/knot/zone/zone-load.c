@@ -143,9 +143,6 @@ static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
 	} else if (ret > 0) {
 		knot_rrset_deep_free(&rrsig, 0, 0);
 	}
-	
-	knot_dname_release(tmp_rrset->owner);
-
 	assert(tmp_rrset->rrsigs != NULL);
 
 	return KNOT_EOK;
