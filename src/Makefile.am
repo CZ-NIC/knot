@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I ../m4
-libexec_PROGRAMS = unittests unittests-xfr unittests-zscanner unittests-libknot kdig khost knsupdate
+libexec_PROGRAMS = unittests unittests-xfr unittests-zscanner kdig khost knsupdate
 sbin_PROGRAMS = knotc knotd
 dist_man_MANS = knot.conf.5 knotc.8 knotd.8
 
@@ -108,16 +108,11 @@ unittests_SOURCES =				\
 	tests/knot/journal_tests.h		\
 	tests/knot/server_tests.c		\
 	tests/knot/server_tests.h		\
+	tests/libknot/wire_tests.c		\
+	tests/libknot/wire_tests.h		\
 	tests/libknot/dname_tests.c		\
 	tests/libknot/dname_tests.h		\
-	tests/libknot/wire_tests.h		\
-	tests/libknot/wire_tests.c		\
 	tests/unittests_main.c
-	
-unittests_libknot_SOURCES = 			\
-	tests/libknot/unittests_libknot.c	\
-	tests/libknot/libknot/rrset_tests.h	\
-	tests/libknot/libknot/rrset_tests.c
 
 unittests_xfr_SOURCES = 			\
 	tests/xfr_tests.c			\
@@ -172,16 +167,16 @@ libknot_la_SOURCES =				\
 	libknot/updates/xfr-in.c		\
 	libknot/updates/ddns.h			\
 	libknot/updates/ddns.c			\
-	libknot/consts.h			\
-	libknot/dname.h				\
 	libknot/dname.c				\
+	libknot/nsec3.c				\
+	libknot/consts.h			\
 	libknot/edns.h				\
 	libknot/edns.c				\
 	libknot/libknot.h			\
-	libknot/nsec3.h				\
-	libknot/nsec3.c				\
+	libknot/dname.h				\
 	libknot/rrset.h				\
 	libknot/rrset.c				\
+	libknot/nsec3.h				\
 	libknot/rrset-dump.h			\
 	libknot/rrset-dump.c			\
 	libknot/tsig.h				\
@@ -209,7 +204,7 @@ libknots_la_SOURCES =				\
 	common/print.h				\
 	common/skip-list.c			\
 	common/base32hex.c			\
-	common/skip-list.h			\
+	common/skip-list.h			\	\
 	common/base32hex.h			\
 	common/evqueue.h			\
 	common/evqueue.c			\
@@ -251,7 +246,6 @@ libknots_la_SOURCES =				\
 	common/hattrie/murmurhash3.c		\
 	common/hattrie/murmurhash3.h
 
-
 libknotd_la_SOURCES =				\
 	knot/stat/gatherer.c			\
 	knot/stat/stat.c			\
@@ -287,6 +281,8 @@ libknotd_la_SOURCES =				\
 	knot/server/notify.h			\
 	knot/server/notify.c			\
 	knot/server/zones.h			\
+	knot/server/rrl.h			\
+	knot/server/rrl.c			\
 	knot/zone/semantic-check.c		\
 	knot/zone/semantic-check.h		\
 	knot/zone/zone-dump.h			\
@@ -304,7 +300,7 @@ unittests_zscanner_SOURCES =			\
 	zscanner/test/tests.c			\
 	zscanner/test/processing.h		\
 	zscanner/test/processing.c
-
+	
 libzscanner_la_SOURCES =			\
 	zscanner/file_loader.h			\
 	zscanner/file_loader.c			\
@@ -322,7 +318,6 @@ kdig_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 khost_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 knsupdate_LDADD = libknotd.la libknot.la libknots.la libzscanner.la @LIBOBJS@
 unittests_LDADD = libknotd.la libknots.la @LIBOBJS@
-unittests_libknot_LDADD = libknotd.la libknot.la @LIBOBJS@
 unittests_xfr_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 unittests_zscanner_LDADD = libknots.la libknot.la libknotd.la libzscanner.la @LIBOBJS@
 

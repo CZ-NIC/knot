@@ -17,9 +17,10 @@
 #include <config.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 #include <netinet/tcp.h>
 #include <netinet/in.h>
-#include <sys/socket.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,6 +41,7 @@
 #include "common/evsched.h"
 #include "common/prng.h"
 #include "common/descriptor_new.h"
+#include "libknot/rrset.h"
 
 /* Constants */
 #define XFR_SWEEP_INTERVAL 2 /*! [seconds] between sweeps. */

@@ -33,6 +33,7 @@
 #include "tests/knot/conf_tests.h"
 #include "tests/libknot/wire_tests.h"
 #include "tests/libknot/dname_tests.h"
+#include "tests/knot/rrl_tests.h"
 
 // Run all loaded units
 int main(int argc, char *argv[])
@@ -64,6 +65,7 @@ int main(int argc, char *argv[])
 	        /* Server parts. */
 	        &conf_tests_api,	//! Configuration parser tests
 	        &server_tests_api,	//! Server unit
+		&rrl_tests_api,		//! RRL tests
 	        NULL
 	};
 

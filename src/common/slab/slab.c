@@ -29,35 +29,9 @@
  * Magic constants.
  */
 #define SLAB_MAGIC    0x51  /*!< "Sl" magic byte (slab type). */
-#define LOBJ_MAGIC    0x0B  /*!< "Ob" magic byte (object type). */
 #define POISON_DWORD  0xdeadbeef /*!< Memory boundary guard magic. */
 #define SLAB_MINCOLOR 64 /*!< Minimum space reserved for cache coloring. */
-#define SLAB_HEADER   sizeof(slab_t) /*!< Slab header size. */
-#define ALIGN_PTRSZ   __attribute__ ((__aligned__(sizeof(void*))))
 
-/*! \brief Fast cache id lookup table.
- *
- * Provides O(1) lookup.
- * Filled with interesting values from default
- * or on-demand.
- */
-unsigned ALIGN_PTRSZ SLAB_CACHE_LUT[SLAB_SIZE] = {
-        [24]  = SLAB_GP_COUNT + 1,
-        [800] = SLAB_GP_COUNT + 2
-};
-
-/*! \brief Find the next highest power of 2. */
-static inline unsigned get_next_pow2(unsigned v)
-{
-	// Next highest power of 2
-	--v;
-	v |= v >> 1; v |= v >> 2;
-	v |= v >> 4; v |= v >> 8;
-	v |= v >> 16;
-	++v;
-
-	return v;
-}
 
 /*! \brief Return binary logarithm of a number, which is a power of 2. */
 static inline unsigned fastlog2(unsigned v)
@@ -71,45 +45,12 @@ static inline unsigned fastlog2(unsigned v)
 	return r;
 }
 
-/*!
- * \brief Fast hashing function.
- *
- * Finds the next highest power of 2 and returns binary logarithm.
- * Values are stored in LUT cache for future access.
- */
-static unsigned slab_cache_id(unsigned size)
-{
-	// Assert cache id of the smallest bufsize is 0
-	if(size <= SLAB_MIN_BUFLEN) {
-		return 0;
-	}
-
-	// Check LUT
-	unsigned id = 0;
-	if ((id = SLAB_CACHE_LUT[size])) {
-		return id;
-	} else {
-
-		// Compute binary logarithm
-		// Next highest power of 2
-		id = fastlog2(get_next_pow2(size));
-
-		// Shift cacheid of SLAB_MIN_BUFLEN to 0
-		id -= SLAB_EXP_OFFSET;
-
-		// Store
-		SLAB_CACHE_LUT[size] = id;
-	}
-
-	return id;
-}
-
 /*
  * Slab run-time constants.
  */
 
+size_t SLAB_SZ = 0; /*!< Slab size. */
 size_t SLAB_MASK = 0; /*!< \brief Slab address mask (for computing offsets). */
-static unsigned SLAB_LOGSIZE = 0; /*!< \brief Binary logarithm of slab size. */
 
 /*!
  * Depot is a caching sub-allocator of slabs.
@@ -150,7 +91,7 @@ static void* slab_depot_alloc(size_t bufsize)
 
 	}
 #else // MEM_SLAB_DEPOT
-    if(posix_memalign(&page, SLAB_SIZE, SLAB_SIZE) == 0) {
+    if(posix_memalign(&page, SLAB_SZ, SLAB_SZ) == 0) {
 	((slab_t*)page)->bufsize = 0;
     } else {
 	page = 0;
@@ -203,12 +144,18 @@ static void slab_depot_destroy()
 /*! \brief Initializes slab subsystem (it is called automatically). */
 void __attribute__ ((constructor)) slab_init()
 {
+	long slab_size = sysconf(_SC_PAGESIZE);
+	if (slab_size < 0) {
+		slab_size = SLAB_MINSIZE;
+	}
+	
 	// Fetch page size
-	SLAB_LOGSIZE = fastlog2(SLAB_SIZE);
+	SLAB_SZ = (size_t)slab_size;
+	unsigned slab_logsz = fastlog2(SLAB_SZ);
 
 	// Compute slab page mask
 	SLAB_MASK = 0;
-	for (int i = 0; i < SLAB_LOGSIZE; ++i) {
+	for (int i = 0; i < slab_logsz; ++i) {
 		SLAB_MASK |= 1 << i;
 	}
 	SLAB_MASK = ~SLAB_MASK;
@@ -220,10 +167,9 @@ void __attribute__ ((constructor)) slab_init()
 /*! \brief Deinitializes slab subsystem (it is called automatically). */
 void __attribute__ ((destructor)) slab_deinit()
 {
-	// Deinitialize global allocator
-	if (SLAB_LOGSIZE) {
+	// Deinitialize depot
+	if (SLAB_MASK) {
 		slab_depot_destroy();
-		SLAB_LOGSIZE = SLAB_MASK = 0;
 	}
 }
 
@@ -334,7 +280,7 @@ static inline void slab_list_move(slab_t** target, slab_t* slab)
 
 slab_t* slab_create(slab_cache_t* cache)
 {
-	const size_t size = SLAB_SIZE;
+	const size_t size = SLAB_SZ;
 
 	slab_t* slab = slab_depot_alloc(cache->bufsize);
 
@@ -582,149 +528,4 @@ int slab_cache_reap(slab_cache_t* cache)
 	return count;
 }
 
-int slab_alloc_init(slab_alloc_t* alloc)
-{
-	// Invalidate
-	memset(alloc, 0, sizeof(slab_alloc_t));
-
-	// Initialize descriptors cache
-	slab_cache_init(&alloc->descriptors, sizeof(slab_cache_t));
-
-	return 0;
-}
-
-void slab_alloc_destroy(slab_alloc_t* alloc)
-{
-	// Destroy all caches
-	for (unsigned i = 0; i < SLAB_CACHE_COUNT; ++i) {
-		if (alloc->caches[i] != 0) {
-			slab_cache_destroy(alloc->caches[i]);
-		}
-	}
-
-	// Destroy cache for descriptors
-	slab_cache_destroy(&alloc->descriptors);
-}
-
-void* slab_alloc_alloc(slab_alloc_t* alloc, size_t size)
-{
-	// Invalid size check
-	if (knot_unlikely(!size)) {
-		return 0;
-	}
-
-#ifdef MEM_POISON
-	// Reserve memory for poison
-	size += sizeof(int);
-#endif
-	// Directly map large block
-	if (knot_unlikely(size > SLAB_SIZE/2)) {
-
-		// Map block
-		size += sizeof(slab_obj_t);
-		slab_obj_t* p = 0;
-		p = malloc(size);
-
-		dbg_mem("%s: mapping large block of %zu bytes at %p\n",
-		          __func__, size, p + 1);
-
-		/* Initialize. */
-		p->magic = LOBJ_MAGIC;
-		p->size = size - sizeof(slab_obj_t);
-
-#ifdef MEM_POISON
-		// Reduce real size
-		p->size -= sizeof(int);
-
-		// Memory barrier
-		int* pb = (int*)((char*)p + size - sizeof(int));
-		*pb = POISON_DWORD;
-		mprotect(pb, sizeof(int), PROT_NONE);
-#endif
-
-		return p + 1;
-	}
-
-	// Get cache id from size
-	unsigned cache_id = slab_cache_id(size);
-
-	// Check if associated cache exists
-	if (knot_unlikely(alloc->caches[cache_id] == 0)) {
-
-		// Assert minimum cache size
-		if (knot_unlikely(size < SLAB_MIN_BUFLEN)) {
-			size = SLAB_MIN_BUFLEN;
-		}
-
-		// Calculate cache bufsize
-		size_t bufsize = size;
-		if (cache_id < SLAB_GP_COUNT) {
-			bufsize = get_next_pow2(size);
-		}
-
-		// Create cache
-		dbg_mem("%s: creating cache of %zuB (req. %zuB) (id=%u)\n",
-		          __func__, bufsize, size, cache_id);
-
-		slab_cache_t* cache = slab_cache_alloc(&alloc->descriptors);
-		slab_cache_init(cache, bufsize);
-		alloc->caches[cache_id] = cache;
-	}
-
-	// Allocate from cache
-	void* mem = slab_cache_alloc(alloc->caches[cache_id]);
-
-#ifdef MEM_POISON
-	// Memory barrier
-	//int* pb = (int*)((char*)mem + size - sizeof(int));
-	//mprotect(pb, sizeof(int), PROT_NONE);
-#endif
-	return mem;
-}
-
-void *slab_alloc_realloc(slab_alloc_t* alloc, void *ptr, size_t size)
-{
-	// realloc(0) equals to free(ptr)
-	if (!size) {
-		slab_free(ptr);
-		return 0;
-	}
-
-	// Allocate new buf
-	void *nptr = slab_alloc_alloc(alloc, size);
-	assert(nptr);
-
-	// Copy memory if present
-	if (ptr) {
-		slab_t* slab = slab_from_ptr(ptr);
-		memcpy(nptr, ptr, slab->cache->bufsize);
-
-		// Free old buf
-		slab_free(ptr);
-	}
-
-	return nptr;
-}
-
-void slab_alloc_stats(slab_alloc_t* alloc)
-{
-#ifdef MEM_DEBUG
-	printf("Cache usage:\n");
-	for (int i = 0; i < SLAB_CACHE_COUNT; ++i) {
-
-		if (!alloc->caches[i])
-			continue;
-
-		slab_cache_t* cache = alloc->caches[i];
-		unsigned free_s = slab_list_walk(cache->slabs_free);
-		unsigned full_s = slab_list_walk(cache->slabs_full);
-		printf("%4zu: allocs=%lu frees=%lu "
-		       "(%u empty+partial, %u full)\n",
-		       cache->bufsize, cache->stat_allocs,
-		       cache->stat_frees, free_s, full_s);
-	}
-#else
-	printf("Cache usage: not available, enable MEM_DEBUG and recompile.\n");
-#endif
-}
 

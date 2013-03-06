@@ -12,6 +12,7 @@ In this chapter we provide suggested configurations and explain the meaning of i
 * Remote control interface::       
 * Enabling zone semantic checks::
 * Creating IXFR differences from zone file changes::
+* Using Response Rate Limiting::
 @end menu
 
 @node Minimal configuration
@@ -255,4 +256,32 @@ which checks are enabled by default and which are optional.
 If Knot is being run as a master server, experimental feature @code{ixfr-from-differences} 
 can be enabled to create IXFR differences from changes made to the master zone file.
 See @ref{Controlling running daemon} for more information. For more about @code{zones} statement see @ref{zones}.
+
+@node Using Response Rate Limiting
+@section Using Response Rate Limiting
+
+Response rate limiting (RRL) is a method to combat recent DNS reflection amplification attacks.
+These attacked rely on the fact that source address of a UDP query could be forged,
+and without a worldwide deployment of BCP38, such a forgery could not be detected.
+Attacker could then exploit DNS server responding to every query, potentially flooding the
+victim with a large unsolicited DNS responses.
+
+As of Knot DNS version 1.2.0, RRL is compiled in, but disabled by default.
+You can enable it with the @ref{rate-limit} option in the @ref{system} section.
+Setting to a value greater than @code{0} means that every flow is allowed N responses per second,
+(i.e. @code{rate-limit 50;} means @code{50} responses per second).
+It is also possible to configure SLIP interval, which causes every Nth blocked response to be slipped
+as a truncated response. Not that some error responses cannot be truncated and are slipped as-is.
+For more information, refer to @ref{rate-limit-slip}.
+It is advisable to not set slip interval to a value larger than 2, to allow legitimate clients
+get at least some level of service.
+
+Example configuration:
+@example
+system @{
+	rate-limit 200;    # Each flow is allowed to 200 resp. per second
+	rate-limit-slip 2; # Every other response is slipped (default) 
+@}
+@end example
+
 

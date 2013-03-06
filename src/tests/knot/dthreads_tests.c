@@ -159,8 +159,8 @@ static inline int dt_test_resize(dt_unit_t *unit, int size)
 	_runnable_i = 0;
 	for (int i = 0; i < size; ++i) {
 		ret += dt_repurpose(unit->threads[i], &runnable, 0);
-		ret += dt_start_id(unit->threads[i]);
 	}
+	ret += dt_start(unit);
 
 	// Wait for finish
 	ret += dt_join(unit);
@@ -266,7 +266,7 @@ static int dt_tests_run(int argc, char *argv[])
 	pthread_mutex_init(&_runnable_mx, NULL);
 
 	/* Test 1: Create unit */
-	dt_unit_t *unit = dt_test_create(dt_optimal_size());
+	dt_unit_t *unit = dt_test_create(2);
 	ok(unit != 0, "dthreads: create unit (optimal size %d)", unit->size);
 	skip(unit == 0, DT_TEST_COUNT - 1);
 
@@ -316,7 +316,8 @@ static int dt_tests_run(int argc, char *argv[])
 	       "dthreads: result %d is => %d", _runnable_i, expected_lo);
 
 	/* Test 12: Compare counter #2. */
-	int expected_hi = _runnable_cycles * unit->size;
+	/*! \note repurpose could trigger next run of the unit if both finished */
+	int expected_hi = _runnable_cycles * (unit->size + unit->size - 1);
 	cmp_ok(_runnable_i, "<=", expected_hi,
 	       "dthreads: result %d is <= %d", _runnable_i, expected_hi);
 

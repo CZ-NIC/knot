@@ -23,8 +23,9 @@
 #include <time.h>
 #include <unistd.h>
 #include <errno.h>
-#include <arpa/inet.h>
+#include <sys/types.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
 #include <sys/poll.h>
 #include <sys/syscall.h>
 #include <netinet/in.h>
@@ -56,20 +57,52 @@
   #endif
 #endif
 
+/* UDP request struct. */
+struct udp_req_t {
+	sockaddr_t *addr;
+	uint8_t *qbuf;
+	size_t qbuflen;
+	size_t *resplen;
+	rrl_table_t *rrl;
+	unsigned slip;
+};
+
 /*! \brief Pointer to selected UDP master implementation. */
 static int (*_udp_master)(dthread_t *, stat_t *) = 0;
 
-///*! \brief Wrapper for UDP send. */
-//static int xfr_send_udp(int session, sockaddr_t *addr, uint8_t *msg, size_t msglen)
-//{
-//	return sendto(session, msg, msglen, 0, addr->ptr, addr->len);
-//}
+/*! \brief RRL reject procedure. */
+static size_t udp_rrl_reject(const knot_nameserver_t *ns,
+                             const knot_packet_t *packet,
+                             uint8_t* resp, size_t rlen,
+                             uint8_t rcode, unsigned *slip)
+{
+	int n_slip = conf()->rrl_slip; /* Check SLIP. */
+	if (n_slip > 0 && n_slip == ++*slip) {
+		knot_ns_error_response_from_query(ns, packet, rcode, resp, &rlen);
+		switch(rcode) { /* Do not set TC=1 to some RCODEs. */
+		case KNOT_RCODE_FORMERR:
+		case KNOT_RCODE_REFUSED:
+		case KNOT_RCODE_SERVFAIL:
+		case KNOT_RCODE_NOTIMPL:
+			break;
+		default:
+			knot_wire_set_tc(resp); /* Set TC=1 */
+			break;
+		}
+		
+		*slip = 0; /* Restart SLIP interval. */
+		return rlen;
+	}
+	
+	return 0; /* Discard response. */
+}
 
 int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
-	       sockaddr_t* addr, knot_nameserver_t *ns)
+	       sockaddr_t* addr, knot_nameserver_t *ns, rrl_table_t *rrl, unsigned *slip)
 {
 #ifdef DEBUG_ENABLE_BRIEF
 	char strfrom[SOCKADDR_STRLEN];
+	memset(strfrom, 0, sizeof(strfrom));
 	sockaddr_tostr(addr, strfrom, sizeof(strfrom));
 	dbg_net("udp: fd=%d received %zd bytes from '%s@%d'.\n", fd, qbuflen,
 	        strfrom, sockaddr_portnum(addr));
@@ -93,44 +126,37 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 
 		return KNOT_EOK; /* Created error response. */
 	}
-
+	
+	/* Prepare RRL structs. */
+	rrl_req_t rrl_rq;
+	memset(&rrl_rq, 0, sizeof(rrl_req_t));
+	rrl_rq.w = qbuf; /* Wire */
+	
 	/* Parse query. */
 	int res = knot_ns_parse_packet(qbuf, qbuflen, packet, &qtype);
+	if (rrl) rrl_rq.qst = &packet->question;
 	if (knot_unlikely(res != KNOT_EOK)) {
 		dbg_net("udp: failed to parse packet on fd=%d\n", fd);
 		if (res > 0) { /* Returned RCODE */
-//			int ret = knot_ns_error_response_from_query_wire(ns,
-//				qbuf, qbuflen, res, qbuf, resp_len);
-			int ret = knot_ns_error_response_from_query(ns,
-				packet, res, qbuf, resp_len);
-
-			if (ret != KNOT_EOK) {
+			res = knot_ns_error_response_from_query(
+			       ns, packet, res, qbuf, resp_len);
+			if (res != KNOT_EOK) {
 				knot_packet_free(&packet);
 				return KNOT_EMALF;
 			}
 		} else {
-			assert(res < 0);
-			int ret = knot_ns_error_response_from_query_wire(
+			res = knot_ns_error_response_from_query_wire(
 			       ns, qbuf, qbuflen, KNOT_RCODE_SERVFAIL, qbuf, 
 			       resp_len);
-			
-			if (ret != KNOT_EOK) {
+			if (res != KNOT_EOK) {
 				knot_packet_free(&packet);
-				return ret;
+				return res;
 			}
 		}
-
-		knot_packet_free(&packet);
-		return KNOT_EOK; /* Created error response. */
 	}
-
+	
 	/* Handle query. */
-//	server_t *srv = (server_t *)knot_ns_get_data(ns);
-//	knot_ns_xfr_t xfr;
-	res = KNOT_ERROR;
 	switch(qtype) {
-
-	/* Query types. */
 	case KNOT_QUERY_NORMAL:
 		res = zones_normal_query_answer(ns, packet, addr, qbuf,
 		                                resp_len, NS_TRANSPORT_UDP);
@@ -139,33 +165,23 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		/* RFC1034, p.28 requires reliable transfer protocol.
 		 * Bind responds with FORMERR.
  		 */
-		/*! \note Draft exists for AXFR/UDP, but has not been standardized. */
 		knot_ns_error_response_from_query(ns, packet,
 		                                  KNOT_RCODE_FORMERR, qbuf,
 		                                  resp_len);
 		res = KNOT_EOK;
 		break;
 	case KNOT_QUERY_IXFR:
-		/* According to RFC1035, respond with SOA. 
-		 * Draft proposes trying to fit response into one packet,
-		 * but I have found no tool or slave server to actually attempt
-		 * IXFR/UDP.
-		 */
-//		knot_packet_set_qtype(packet, KNOT_RRTYPE_SOA);
+		/* According to RFC1035, respond with SOA. */
 		res = zones_normal_query_answer(ns, packet, addr,
 		                                qbuf, resp_len, 
 		                                NS_TRANSPORT_UDP);
 		break;
 	case KNOT_QUERY_NOTIFY:
 		res = notify_process_request(ns, packet, addr,
-					     qbuf, resp_len);
+		                             qbuf, resp_len);
 		break;
 		
 	case KNOT_QUERY_UPDATE:
-//		dbg_net("udp: UPDATE query on fd=%d not implemented\n", fd);
-//		knot_ns_error_response_from_query(ns, packet,
-//		                                  KNOT_RCODE_NOTIMPL, qbuf,
-//		                                  resp_len);
 		res = zones_process_update(ns, packet, addr, qbuf, resp_len,
 		                           fd, NS_TRANSPORT_UDP);
 		break;
@@ -187,6 +203,20 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		res = KNOT_EOK;
 		break;
 	}
+	
+	/* Process RRL. */
+	if (rrl) {
+		rcu_read_lock();
+		rrl_rq.flags = packet->flags;
+		if (rrl_query(rrl, addr, &rrl_rq, packet->zone) != KNOT_EOK) {
+			*resp_len = udp_rrl_reject(ns, packet, qbuf,
+			                           SOCKET_MTU_SZ,
+			                           knot_wire_get_rcode(qbuf),
+			                           slip);
+		}
+		rcu_read_unlock();
+	}
+	
 
 	knot_packet_free(&packet);
 
@@ -239,6 +269,10 @@ static inline int udp_master_recvfrom(dthread_t *thread, stat_t *thread_stat)
 	} else {
 		sock = sock_dup;
 	}
+	
+	/* Initialize RRL if configured. */
+	unsigned rrl_slip = 0; 
+	rrl_table_t *rrl = h->server->rrl;
 
 	/* Loop until all data is read. */
 	ssize_t n = 0;
@@ -268,7 +302,8 @@ static inline int udp_master_recvfrom(dthread_t *thread, stat_t *thread_stat)
 
 		/* Handle received pkt. */
 		size_t resp_len = 0;
-		int rc = udp_handle(sock, qbuf, n, &resp_len, &addr, ns);
+		int rc = udp_handle(sock, qbuf, n, &resp_len, &addr, ns,
+		                    rrl, &rrl_slip);
 
 		/* Send response. */
 		if (rc == KNOT_EOK && resp_len > 0) {
@@ -413,6 +448,10 @@ static inline int udp_master_recvmmsg(dthread_t *thread, stat_t *thread_stat)
 		cpu[0] = cpu[0] % cpcount;
 		dt_setaffinity(thread, cpu, 2);
 	}
+	
+	/* Initialize RRL if configured. */
+	unsigned rrl_slip = 0; 
+	rrl_table_t *rrl = h->server->rrl;
 
 	/* Loop until all data is read. */
 	ssize_t n = 0;
@@ -448,7 +487,7 @@ static inline int udp_master_recvmmsg(dthread_t *thread, stat_t *thread_stat)
 			struct iovec *cvec = msgs[i].msg_hdr.msg_iov;
 			size_t resp_len = msgs[i].msg_len;
 			ret = udp_handle(sock, cvec->iov_base, resp_len, &resp_len,
-			                 addrs + i, ns);
+			                 addrs + i, ns, rrl, &rrl_slip);
 			if (ret == KNOT_EOK) {
 				msgs[i].msg_len = resp_len;
 				iov[i].iov_len = resp_len;

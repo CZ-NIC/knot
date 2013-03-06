@@ -41,6 +41,7 @@
 #include "knot/server/xfr-handler.h"
 #include "knot/server/socket.h"
 #include "knot/server/dthreads.h"
+#include "knot/server/rrl.h"
 #include "libknot/zone/zonedb.h"
 #include "common/evsched.h"
 #include "common/lists.h"
@@ -118,6 +119,9 @@ typedef struct server_t {
 
 	/*! \brief List of interfaces. */
 	list* ifaces;
+	
+	/*! \brief Rate limiting. */
+	rrl_table_t *rrl;
 
 } server_t;
 

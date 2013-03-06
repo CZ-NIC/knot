@@ -30,8 +30,9 @@
 #include <time.h>
 #include <stdbool.h>
 #include <pthread.h>
-#include <arpa/inet.h>
+#include <sys/types.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
 #include <netinet/in.h>
 
 #include "knot/stat/gatherer.h"

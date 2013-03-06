@@ -88,6 +88,7 @@ src/common/latency.c
 src/common/latency.h
 src/common/skip-list.c
 src/common/skip-list.h
+
 src/common/base32hex.h
 src/common/base32hex.c
 src/common/evqueue.c
@@ -189,6 +190,8 @@ src/tests/knot/journal_tests.c
 src/tests/knot/journal_tests.h
 src/tests/knot/server_tests.c
 src/tests/knot/server_tests.h
+src/tests/knot/rrl_tests.c
+src/tests/knot/rrl_tests.h
 src/tests/libknot/unittests_libknot.c
 src/tests/libknot/libknot/rrset_tests.c
 src/tests/libknot/libknot/rrset_tests.h
@@ -201,6 +204,8 @@ src/libknot/tsig.h
 src/libknot/tsig.c
 src/libknot/tsig-op.c
 src/libknot/tsig-op.h
+src/tests/libknot/libknot/tsig_tests.h
+src/tests/libknot/libknot/tsig_tests.c
 src/knot/zone/semantic-check.c
 src/knot/zone/semantic-check.h
 src/tests/xfr_tests.h
@@ -248,8 +253,6 @@ src/utils/dig/dig_exec.h
 src/utils/dig/dig_main.c
 src/utils/dig/dig_params.c
 src/utils/dig/dig_params.h
-src/utils/host/host_exec.c
-src/utils/host/host_exec.h
 src/utils/host/host_main.c
 src/utils/host/host_params.c
 src/utils/host/host_params.h

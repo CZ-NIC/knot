@@ -83,7 +83,7 @@ void* thr_action(void *arg)
 
 	/* Write pattern (if removes compile warning). */
 	char pattern = WRITE_PATTERN;
-	if (write(*fd, &pattern, WRITE_PATTERN_LEN));
+	(void)write(*fd, &pattern, WRITE_PATTERN_LEN);
 
 	return NULL;
 }

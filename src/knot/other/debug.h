@@ -33,6 +33,7 @@
   #define KNOTD_THREADS_DEBUG
   #define KNOTD_JOURNAL_DEBUG
   #define KNOTD_NET_DEBUG
+  #define KNOTD_RRL_DEBUG
 #endif
 
 #ifdef KNOT_ZONES_DEBUG
@@ -175,6 +176,47 @@
 #define dbg_net_hex_verb(data, len)
 #define dbg_net_detail(msg...)
 #define dbg_net_hex_detail(data, len)
+#endif
+
+/******************************************************************************/
+
+#ifdef KNOTD_RRL_DEBUG
+
+/* Brief messages. */
+#ifdef DEBUG_ENABLE_BRIEF
+#define dbg_rrl(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_rrl_hex(data, len) hex_log(LOG_SERVER, (data), (len))
+#else
+#define dbg_rrl(msg...)
+#define dbg_rrl_hex(data, len)
+#endif
+
+/* Verbose messages. */
+#ifdef DEBUG_ENABLE_VERBOSE
+#define dbg_rrl_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_rrl_hex_verb(data, len) hex_log(LOG_SERVER, (data), (len))
+#else
+#define dbg_rrl_verb(msg...)
+#define dbg_rrl_hex_verb(data, len)
+#endif
+
+/* Detail messages. */
+#ifdef DEBUG_ENABLE_DETAILS
+#define dbg_rrl_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_rrl_hex_detail(data, len) hex_log(LOG_SERVER, (data), (len))
+#else
+#define dbg_rrl_detail(msg...)
+#define dbg_rrl_hex_detail(data, len)
+#endif
+
+/* No messages. */
+#else
+#define dbg_rrl(msg...)
+#define dbg_rrl_hex(data, len)
+#define dbg_rrl_verb(msg...)
+#define dbg_rrl_hex_verb(data, len)
+#define dbg_rrl_detail(msg...)
+#define dbg_rrl_hex_detail(data, len)
 #endif
 
 /******************************************************************************/
