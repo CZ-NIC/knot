@@ -675,6 +675,10 @@ static int rrset_deserialize_rr(knot_rrset_t *rrset, size_t rdata_pos,
 			knot_dname_t *dname =
 				knot_dname_new_from_wire(stream + stream_offset,
 			                                 dname_size, NULL);
+			if (dname == NULL) {
+				return KNOT_ERROR;
+			}
+			assert(dname->size = dname_size);
 			memcpy(rdata + rdata_offset, &dname,
 			       sizeof(knot_dname_t *));
 			stream_offset += dname_size;
@@ -2293,7 +2297,6 @@ int rrset_serialize(const knot_rrset_t *rrset, uint8_t *stream, size_t *size)
 	offset += sizeof(uint32_t);
 	
 	/* Copy RDATA. */
-	size_t actual_size = 0;
 	for (uint16_t i = 0; i < rrset->rdata_count; i++) {
 		size_t size_one = 0;
 		/* This cannot fail, if it does, RDATA are malformed. TODO */
@@ -2303,13 +2306,12 @@ int rrset_serialize(const knot_rrset_t *rrset, uint8_t *stream, size_t *size)
 		                 i, rr_size);
 		memcpy(stream + offset, &rr_size, sizeof(uint32_t));
 		offset += sizeof(uint32_t);
-		rrset_serialize_rr(rrset, i, stream + offset + actual_size,
-		                   &size_one);
+		rrset_serialize_rr(rrset, i, stream + offset, &size_one);
 		assert(size_one == rr_size);
-		actual_size += size_one;
+		offset += size_one;
 	}
 	
-	*size = offset + actual_size;
+	*size = offset;
 	assert(*size == rrset_length);
 	dbg_rrset_detail("rr: serialize: RRSet serialized, size=%d\n", *size);
 	return KNOT_EOK;
@@ -2387,6 +2389,7 @@ int rrset_deserialize(uint8_t *stream, size_t *stream_size,
 	
 	(*rrset)->rdata_indices = rdata_indices;
 	(*rrset)->rdata_count = rdata_count;
+
 	(*rrset)->rdata = xmalloc(rdata_indices[rdata_count - 1]);
 	memset((*rrset)->rdata, 0, rdata_indices[rdata_count - 1]);
 	/* Read RRs. */
@@ -2399,8 +2402,14 @@ int rrset_deserialize(uint8_t *stream, size_t *stream_size,
 		memcpy(&rdata_size, stream + offset, sizeof(uint32_t));
 		offset += sizeof(uint32_t);
 		size_t read = 0;
-		rrset_deserialize_rr((*rrset), i, stream + offset, rdata_size,
-		                     &read);
+		int ret = rrset_deserialize_rr((*rrset), i, stream + offset,
+		                               rdata_size, &read);
+		if (ret != KNOT_EOK) {
+			free((*rrset)->rdata);
+			free(rdata_indices);
+			knot_dname_release(owner);
+			return ret;
+		}
 		/* TODO handle malformations. */
 		dbg_rrset_detail("rr: deserialaze: RR read size=%d,"
 		                 "actual=%d\n", read, rdata_size);

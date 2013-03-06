@@ -333,6 +333,8 @@ static void knot_zone_contents_adjust_rrsets(knot_node_t *node,
 			                                         node);
 		}
 		
+		fprintf(stderr, "Serializing:\n");
+		knot_rrset_dump(rrsets[r]);
 		uint8_t *test_stream = NULL;
 		size_t size = 0;
 		rrset_serialize_alloc(rrsets[r], &test_stream, &size);
