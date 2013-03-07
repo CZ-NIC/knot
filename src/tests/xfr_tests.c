@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <assert.h>
 
 #include "knot/common.h"
 #include "knot/server/server.h"
@@ -314,7 +315,10 @@ int main(int argc, char **argv)
 			if (zone == NULL) sig_integrity_check = 0;
 			if (sig_integrity_check) {
 				log_server_info("Starting integrity check of zone: %s\n", zone);
-				knot_dname_t* zdn = knot_dname_new_from_str(zone, strlen(zone), NULL);
+				strcat(zone, ".");
+				knot_dname_t* zdn = knot_dname_new_from_str(zone,
+				                                            strlen(zone), NULL);
+				assert(zdn);
 				knot_zone_t *z = knot_zonedb_find_zone(server->nameserver->zone_db, zdn);
 				int ic_ret = knot_zone_contents_integrity_check(z->contents);
 				log_server_info("Integrity check: %d errors discovered.\n", ic_ret);
