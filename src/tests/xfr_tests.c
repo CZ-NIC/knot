@@ -124,7 +124,7 @@ int main(int argc, char **argv)
 			printf("%s, version %s\n", "Knot DNS", PACKAGE_VERSION);
 			return 0;
 		case 'z':
-			zone = strdup(optarg);
+			zone = strndup(optarg, strlen(optarg) + 1);
 			break;
 		case 'h':
 		case '?':
