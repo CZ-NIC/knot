@@ -776,7 +776,7 @@ static int knot_rrset_remove_rdata_pos(knot_rrset_t *rrset, size_t pos)
 		/* [code-review] The upper bound should be rdata_count - 2, it
 		 *               has not yet been adjusted.
 		 */
-		for (uint16_t i = pos - 1; i < rrset->rdata_count - 1; ++i) {
+		for (uint16_t i = pos; i < rrset->rdata_count - 1; ++i) {
 			rrset->rdata_indices[i] = rrset->rdata_indices[i + 1];
 		}
 	
