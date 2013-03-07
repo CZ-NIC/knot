@@ -709,7 +709,7 @@ static int rrset_deserialize_rr(knot_rrset_t *rrset, size_t rdata_pos,
 	return KNOT_EOK;
 }
 
-static int knot_rrset_remove_rdata_pos(knot_rrset_t *rrset, size_t pos)
+int knot_rrset_remove_rdata_pos(knot_rrset_t *rrset, size_t pos)
 {
 	if (rrset == NULL || pos >= rrset->rdata_count) {
 		return KNOT_EINVAL;
@@ -2465,6 +2465,9 @@ int knot_rrset_remove_rr(knot_rrset_t *rrset,
 	                                 &pos_to_remove);
 	if (ret == KNOT_EOK) {
 		/* Position found, can be removed. */
+		dbg_rrset_detail("rr: remove_rr: Counter position found=%zu\n",
+		                 pos_to_remove);
+		assert(pos_to_remove < rrset->rdata_count);
 		ret = knot_rrset_remove_rdata_pos(rrset, pos_to_remove);
 		if (ret != KNOT_EOK) {
 			dbg_rrset("Cannot remove RDATA from RRSet (%s).\n",
@@ -2573,8 +2576,6 @@ int knot_rrset_add_rr_from_rrset(knot_rrset_t *dest, const knot_rrset_t *source,
 		          " in RR (%s).\n", knot_strerror(ret));
 		return ret;
 	}
-	
-	dest->rdata_count += 1;
 	
 	return KNOT_EOK;
 }
