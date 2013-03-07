@@ -2574,7 +2574,7 @@ int knot_rrset_add_rr_from_rrset(knot_rrset_t *dest, const knot_rrset_t *source,
 		return ret;
 	}
 	
-	dest->rdata_count = 1;
+	dest->rdata_count += 1;
 	
 	return KNOT_EOK;
 }
