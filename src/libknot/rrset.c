@@ -2566,7 +2566,7 @@ int knot_rrset_add_rr_from_rrset(knot_rrset_t *dest, const knot_rrset_t *source,
 	memcpy(rdata, rrset_rdata_pointer(source, rdata_pos), item_size);
 	
 	/* Retain DNAMEs inside RDATA. */
-	int ret = rrset_rr_dnames_apply(dest, rdata_pos,
+	int ret = rrset_rr_dnames_apply(source, rdata_pos,
 	                                rrset_retain_dnames_in_rr, NULL);
 	if (ret != KNOT_EOK) {
 		dbg_rrset("rr: add_rr_from_rrset: Could not retain DNAMEs"
