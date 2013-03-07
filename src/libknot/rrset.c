@@ -791,7 +791,8 @@ static int knot_rrset_remove_rdata_pos(knot_rrset_t *rrset, size_t pos)
 	
 	--rrset->rdata_count;
 	
-	dbg_rrsee
+	dbg_rrset_detail("rrset: remove rdata pos: RR after removal:\n");
+	knot_rrset_dump(rrset);
 
 	return KNOT_EOK;
 }
