@@ -320,8 +320,18 @@ static int parse_type(const char *value, query_t *query)
 	return KNOT_EOK;
 }
 
-static int parse_port(const char *value, char **port)
+static int parse_port(const char *value, query_t *query)
 {
+	char **port;
+
+	// Set current server port (last or query default).
+	if (list_size(&query->servers) > 0) {
+		server_t *server = TAIL(query->servers);
+		port = &(server->service);
+	} else {
+		port = &(query->port);
+	}
+
 	char *new_port = strdup(value);
 
 	if (new_port == NULL) {
@@ -342,7 +352,7 @@ static void dig_help(const bool verbose)
 		printf("Big help\n");
 	} else {
 		printf("Usage: [-aCdlrsTvw] [-4] [-6] [-c class] [-R retries]\n"
-	       	"       [-t type] [-W time] name [server]\n");
+		       "       [-t type] [-W time] name [server]\n");
 	}
 }
 
@@ -427,7 +437,7 @@ static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
 			return KNOT_EINVAL;
 		}
 
-		if (parse_port(val, &query->port) != KNOT_EOK) {
+		if (parse_port(val, query) != KNOT_EOK) {
 			ERR("bad port %s\n", value);
 			return KNOT_EINVAL;
 		}
