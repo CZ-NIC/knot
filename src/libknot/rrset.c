@@ -790,6 +790,8 @@ static int knot_rrset_remove_rdata_pos(knot_rrset_t *rrset, size_t pos)
 	}
 	
 	--rrset->rdata_count;
+	
+	dbg_rrsee
 
 	return KNOT_EOK;
 }
@@ -2570,6 +2572,8 @@ int knot_rrset_add_rr_from_rrset(knot_rrset_t *dest, const knot_rrset_t *source,
 		          " in RR (%s).\n", knot_strerror(ret));
 		return ret;
 	}
+	
+	dest->rdata_count = 1;
 	
 	return KNOT_EOK;
 }
