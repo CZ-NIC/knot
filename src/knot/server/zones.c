@@ -3029,14 +3029,14 @@ static int zones_dump_zone_text(knot_zone_contents_t *zone, const char *fname)
 		return KNOT_ERROR;
 	}
 	
-	if (zone_dump_text(zone, f) != KNOT_EOK) {
-		log_zone_warning("Failed to save the transferred zone to '%s'.\n",
-		                 new_fname);
-		fclose(f);
-		unlink(new_fname);
-		free(new_fname);
-		return KNOT_ERROR;
-	}
+//	if (zone_dump_text(zone, f) != KNOT_EOK) {
+//		log_zone_warning("Failed to save the transferred zone to '%s'.\n",
+//		                 new_fname);
+//		fclose(f);
+//		unlink(new_fname);
+//		free(new_fname);
+//		return KNOT_ERROR;
+//	}
 	
 	/* Set zone file rights to 0640. */
 	fchmod(fd, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);

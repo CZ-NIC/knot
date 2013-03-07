@@ -108,6 +108,7 @@ int main(int argc, char **argv)
 		{0, 0, 0, 0}
 	};
 	
+	char *buffer = NULL;
 	while ((c = getopt_long(argc, argv, "c:z:dvVh", opts, &li)) != -1) {
 		switch (c)
 		{
@@ -124,7 +125,10 @@ int main(int argc, char **argv)
 			printf("%s, version %s\n", "Knot DNS", PACKAGE_VERSION);
 			return 0;
 		case 'z':
-			zone = strndup(optarg, strlen(optarg) + 1);
+			buffer = malloc(strlen(optarg) + 2);
+			strcpy(buffer, optarg);
+			strcat(buffer, ".");
+			zone = buffer;
 			break;
 		case 'h':
 		case '?':
@@ -315,9 +319,7 @@ int main(int argc, char **argv)
 			if (zone == NULL) sig_integrity_check = 0;
 			if (sig_integrity_check) {
 				log_server_info("Starting integrity check of zone: %s\n", zone);
-				strcat(zone, ".");
-				knot_dname_t* zdn = knot_dname_new_from_str(zone,
-				                                            strlen(zone), NULL);
+				knot_dname_t* zdn = knot_dname_new_from_str(zone, strlen(zone), NULL);
 				assert(zdn);
 				knot_zone_t *z = knot_zonedb_find_zone(server->nameserver->zone_db, zdn);
 				int ic_ret = knot_zone_contents_integrity_check(z->contents);
