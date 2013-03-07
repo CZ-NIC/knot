@@ -3229,7 +3229,9 @@ static int xfrin_switch_node_in_rdata(knot_dname_t *dname, void *data)
 		return KNOT_EINVAL;
 	}
 	
-	knot_dname_update_node(dname);
+	if (dname->node != NULL) {
+		knot_dname_update_node(dname);
+	}
 	
 	return KNOT_EOK;
 }
