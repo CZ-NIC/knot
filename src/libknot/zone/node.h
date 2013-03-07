@@ -190,6 +190,8 @@ knot_rrset_t **knot_node_get_rrsets(const knot_node_t *node);
  * \return Newly allocated array of RRSets or NULL if an error occured.
  */
 const knot_rrset_t **knot_node_rrsets(const knot_node_t *node);
+const knot_rrset_t **knot_node_rrsets_no_copy(const knot_node_t *node);
+knot_rrset_t **knot_node_get_rrsets_no_copy(const knot_node_t *node);
 
 int knot_node_count_rrsets(const knot_node_t *node);
 

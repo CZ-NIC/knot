@@ -294,6 +294,21 @@ const knot_rrset_t **knot_node_rrsets(const knot_node_t *node)
 	return (const knot_rrset_t **)knot_node_get_rrsets(node);
 }
 
+knot_rrset_t **knot_node_get_rrsets_no_copy(const knot_node_t *node)
+{	
+	if (node == NULL) {
+		return NULL;
+	}
+	
+	return node->rrset_tree;
+}
+
+const knot_rrset_t **knot_node_rrsets_no_copy(const knot_node_t *node)
+{	
+	return (const knot_rrset_t **)knot_node_get_rrsets_no_copy(node);
+}
+
+
 /*----------------------------------------------------------------------------*/
 
 const knot_node_t *knot_node_parent(const knot_node_t *node)

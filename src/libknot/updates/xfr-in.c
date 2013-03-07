@@ -3222,6 +3222,47 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
+static int xfrin_switch_node_in_rdata(knot_dname_t *dname, void *data)
+{
+	UNUSED(data);
+	if (dname == NULL) {
+		return KNOT_EINVAL;
+	}
+	
+	knot_dname_update_node(dname);
+	
+	return KNOT_EOK;
+}
+
+static void xfrin_switch_node_in_rrset(knot_rrset_t *rrset)
+{
+	if (rrset == NULL) {
+		return;
+	}
+	
+	knot_dname_update_node(rrset->owner);
+	
+	rrset_dnames_apply(rrset, xfrin_switch_node_in_rdata, NULL);
+}
+
+static void xfrin_switch_node_in_node(knot_node_t **node, void *data)
+{
+	UNUSED(data);
+	if (node == NULL || *node == NULL) {
+		return;
+	}
+	
+	knot_dname_update_node((*node)->owner);
+
+	knot_node_rrsets_no_copy(*node);
+	knot_rrset_t **rr_array = knot_node_get_rrsets_no_copy(*node);
+	for (int i = 0; i < (*node)->rrset_count; ++i) {
+		xfrin_switch_node_in_rrset(rr_array[i]);
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
 int xfrin_switch_zone(knot_zone_t *zone,
                       knot_zone_contents_t *new_contents,
                       int transfer_type)
@@ -3243,13 +3284,13 @@ int xfrin_switch_zone(knot_zone_t *zone,
 
 	// switch pointers in domain names, now only the new zone is used
 	if (transfer_type == XFR_TYPE_IIN || transfer_type == XFR_TYPE_UPDATE) {
-		// Traverse also the dname table and change the node pointers
-		// in dnames
-		//TODO still valid?
-//		int ret = knot_zone_contents_dname_table_apply(
-//		                        new_contents,
-//		                        xfrin_switch_node_in_dname_table, NULL);
-//		assert(ret == KNOT_EOK);
+		/* Switch node references in owner DNAMEs and RDATA dnames. */
+		int ret = knot_zone_tree_apply(new_contents->nodes,
+		                               xfrin_switch_node_in_node, NULL);
+		assert(ret == KNOT_EOK);
+		ret = knot_zone_tree_apply(new_contents->nsec3_nodes,
+		                           xfrin_switch_node_in_node, NULL);
+		assert(ret == KNOT_EOK);
 	}
 
 	// set generation to old, so that the flags may be used in next transfer
