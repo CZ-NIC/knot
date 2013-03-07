@@ -525,15 +525,6 @@ static void knot_zone_contents_adjust_nsec3_node_in_tree(
 	 */
 	knot_zone_contents_t *zone = args->zone;
 	assert(zone != NULL);
-// TODO only for transfers, sort out later
-//	int ret = knot_zone_contents_dnames_from_node_to_table(
-//	                        zone->dname_table, node);
-//	if (ret != KNOT_EOK) {
-//		dbg_xfrin("Failed to add dnames from adjusted node to "
-//		          "table: %s\n", knot_strerror(ret));
-//		args->err = ret;
-//		return;
-//	}
 }
 
 /*----------------------------------------------------------------------------*/

@@ -709,7 +709,7 @@ static int rrset_deserialize_rr(knot_rrset_t *rrset, size_t rdata_pos,
 	return KNOT_EOK;
 }
 
-static int knot_rrset_remove_rdata_pos(knot_rrset_t *rrset, size_t pos)
+int knot_rrset_remove_rdata_pos(knot_rrset_t *rrset, size_t pos)
 {
 	if (rrset == NULL || pos >= rrset->rdata_count) {
 		return KNOT_EINVAL;
@@ -776,7 +776,7 @@ static int knot_rrset_remove_rdata_pos(knot_rrset_t *rrset, size_t pos)
 		/* [code-review] The upper bound should be rdata_count - 2, it
 		 *               has not yet been adjusted.
 		 */
-		for (uint16_t i = pos - 1; i < rrset->rdata_count - 1; ++i) {
+		for (uint16_t i = pos; i < rrset->rdata_count - 1; ++i) {
 			rrset->rdata_indices[i] = rrset->rdata_indices[i + 1];
 		}
 	
@@ -790,6 +790,9 @@ static int knot_rrset_remove_rdata_pos(knot_rrset_t *rrset, size_t pos)
 	}
 	
 	--rrset->rdata_count;
+	
+	dbg_rrset_detail("rrset: remove rdata pos: RR after removal:\n");
+	knot_rrset_dump(rrset);
 
 	return KNOT_EOK;
 }
@@ -2462,6 +2465,9 @@ int knot_rrset_remove_rr(knot_rrset_t *rrset,
 	                                 &pos_to_remove);
 	if (ret == KNOT_EOK) {
 		/* Position found, can be removed. */
+		dbg_rrset_detail("rr: remove_rr: Counter position found=%zu\n",
+		                 pos_to_remove);
+		assert(pos_to_remove < rrset->rdata_count);
 		ret = knot_rrset_remove_rdata_pos(rrset, pos_to_remove);
 		if (ret != KNOT_EOK) {
 			dbg_rrset("Cannot remove RDATA from RRSet (%s).\n",
@@ -2563,7 +2569,7 @@ int knot_rrset_add_rr_from_rrset(knot_rrset_t *dest, const knot_rrset_t *source,
 	memcpy(rdata, rrset_rdata_pointer(source, rdata_pos), item_size);
 	
 	/* Retain DNAMEs inside RDATA. */
-	int ret = rrset_rr_dnames_apply(dest, rdata_pos,
+	int ret = rrset_rr_dnames_apply(source, rdata_pos,
 	                                rrset_retain_dnames_in_rr, NULL);
 	if (ret != KNOT_EOK) {
 		dbg_rrset("rr: add_rr_from_rrset: Could not retain DNAMEs"

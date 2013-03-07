@@ -1285,7 +1285,43 @@ static int test_rrset_next_dname()
 	return 1;
 }
 
-static const int KNOT_RRSET_TEST_COUNT = 14;
+
+static int test_rrset_remove_rr()
+{
+	/* Remove RR and test that the returned data were OK. */
+	
+	/* Create some mockup TXT RRSets. */
+	knot_rrset_t *rrset_source = knot_rrset_new(test_dnames[0], KNOT_RRTYPE_TXT,
+	                                            KNOT_CLASS_IN, 3600);
+	uint8_t *mock_data = (uint8_t *)"cafebabebadcafecafecafecafe";
+	/* Test removal of two exactly same items. */
+	uint8_t *rdata1 = knot_rrset_create_rdata(rrset_source,
+	                                          strlen(mock_data));
+	memcpy(rdata1, mock_data, strlen(mock_data));
+	knot_rrset_t *rrset_dest = NULL;
+	/* Create copy. */
+	knot_rrset_deep_copy(rrset_source, &rrset_dest, 1);
+	knot_rrset_dump(rrset_dest);
+	knot_rrset_t *returned_rr = NULL;
+	int ret = knot_rrset_remove_rr_using_rrset(rrset_dest, rrset_source, &returned_rr, 0);
+	if (ret != KNOT_EOK) {
+		diag("Could not remove");
+		return 0;
+	}
+	
+	/* Only one RR within RRSet, needs to be the same. */
+	if (knot_rrset_equal(rrset_source, returned_rr,
+	                     KNOT_RRSET_COMPARE_WHOLE)) {
+		diag("Got wrong data in return rrset.");
+		knot_rrset_dump(returned_rr);
+		knot_rrset_dump(rrset_source);
+		return 0;
+	}
+	
+	return 1;
+}
+
+static const int KNOT_RRSET_TEST_COUNT = 15;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
@@ -1360,6 +1396,10 @@ static int knot_rrset_tests_run(int argc, char *argv[])
 	
 	res = test_rrset_next_dname();
 	ok(res, "rrset: next dname");
+	res_final *= res;
+	
+	res = test_rrset_remove_rr();
+	ok(res, "rrset: remove rr");
 	res_final *= res;
 	
 	return res_final;
