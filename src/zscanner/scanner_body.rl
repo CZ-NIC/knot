@@ -839,42 +839,34 @@
 		// Write prefix length in bites.
 		*(rdata_tail) = s->apl.prefix_length;
 		rdata_tail += 1;
-		// Computed maximal prefix length in bytes (real can be smaller).
-		s->number64 = (s->apl.prefix_length + 7) / 8;
-		if (s->number64 > 127) { // At most 7 bits.
-			SCANNER_WARNING(ZSCANNER_EBAD_APL);
-			fhold; fgoto err_line;
-		}
 		// Copy address to buffer.
+		uint8_t len;
 		switch (s->apl.addr_family) {
 		case 1:
-			memcpy(s->buffer, &(addr4.s_addr), INET4_ADDR_LENGTH);
+			len = INET4_ADDR_LENGTH;
+			memcpy(s->buffer, &(addr4.s_addr), len);
 			break;
 		case 2:
-			memcpy(s->buffer, &(addr6.s6_addr), INET6_ADDR_LENGTH);
+			len = INET6_ADDR_LENGTH;
+			memcpy(s->buffer, &(addr6.s6_addr), len);
 			break;
 		default:
 			SCANNER_WARNING(ZSCANNER_EBAD_APL);
 			fhold; fgoto err_line;
 		}
-		// Find real prefix (without trailing zeroes).
-		while (s->number64 > 0 ) {
-			if ((s->buffer[s->number64 - 1] & 255) != 0) {
-				// Apply mask on last byte if not precise prefix.
-				// (Bind does't do this).
-				s->buffer[s->number64 - 1] &=
-					((uint8_t)255 << (s->number64 * 8 -
-					                  s->apl.prefix_length));
+		// Find prefix without trailing zeroes.
+		while (len > 0) {
+			if ((s->buffer[len - 1] & 255) != 0) {
 				break;
 			}
-			s->number64--;
+			len--;
 		}
 		// Write negation flag + prefix length in bytes.
-		*(rdata_tail) = (uint8_t)(s->number64) + s->apl.excl_flag;
+		*(rdata_tail) = len + s->apl.excl_flag;
 		rdata_tail += 1;
-		// Write address prefix.
-		memcpy(rdata_tail, s->buffer, s->number64);
-		rdata_tail += s->number64;
+		// Write address prefix non-null data.
+		memcpy(rdata_tail, s->buffer, len);
+		rdata_tail += len;
 	}
 	action _apl_error {
 		SCANNER_WARNING(ZSCANNER_EBAD_APL);
