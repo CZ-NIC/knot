@@ -724,26 +724,15 @@ int knot_rrset_remove_rdata_pos(knot_rrset_t *rrset, size_t pos)
 
 	/* Reorganize the actual RDATA array. */
 	uint8_t *rdata_to_remove = rrset_rdata_pointer(rrset, pos);
+	dbg_rrset_detail("rr: remove_rdata_pos: Removing data=%p on "
+	                 "position=%zu\n", rdata_to_remove, pos);
 	assert(rdata_to_remove);
 	if (pos != rrset->rdata_count - 1) {
 		/* Not the last item in array - we need to move the data. */
 		uint8_t *next_rdata = rrset_rdata_pointer(rrset, pos + 1);
 		assert(next_rdata);
-		
-		/* [code-review] This calculation may be done easier:
-		 * remainder_size = rrset_rdata_size_total(rrset)
-		 *                   - rrset_rdata_offset(rrset, pos + 1);
-		 */
-		
-		/* Get size of remaining RDATA. */ 
-		size_t last_rdata_size =
-		                rrset_rdata_item_size(rrset,
-		                                      rrset->rdata_count - 1);
-		/* Get offset of last item. */
-		uint8_t *last_rdata_offset =
-			rrset_rdata_pointer(rrset, rrset->rdata_count - 1);
-		size_t remainder_size =
-			(last_rdata_offset - next_rdata) + last_rdata_size;
+		size_t remainder_size = rrset_rdata_size_total(rrset)
+		                        - rrset_rdata_offset(rrset, pos + 1);
 		/* 
 		 * Copy the all following RR data to where this item is.
 		 * No need to worry about exceeding allocated space now.
@@ -775,11 +764,11 @@ int knot_rrset_remove_rdata_pos(knot_rrset_t *rrset, size_t pos)
 		 *               has not yet been adjusted.
 		 */
 		for (uint16_t i = pos; i < rrset->rdata_count - 1; ++i) {
-			rrset->rdata_indices[i] = rrset->rdata_indices[i + 1];
+			rrset->rdata_indices[i] = rrset->rdata_indices[i + 1] - removed_size;
 		}
 	
 		/* Save size of the whole RDATA array. */
-		rrset->rdata_indices[rrset->rdata_count - 1] = new_size;
+		rrset->rdata_indices[rrset->rdata_count - 2] = new_size;
 	
 		/* Resize indices, might not be needed, but we'll do it to be proper. */
 		rrset->rdata_indices =

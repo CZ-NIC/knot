@@ -1344,6 +1344,8 @@ static int test_rrset_remove_rr()
 	knot_rrset_t *rrset_dest = NULL;
 	/* Create copy. */
 	knot_rrset_deep_copy(rrset_source, &rrset_dest, 1);
+	rdata = knot_rrset_create_rdata(rrset_dest, 16);
+	memcpy(rdata, "foobarfoobarfoo", 16);
 	knot_rrset_t *returned_rr = NULL;
 	int ret = knot_rrset_remove_rr_using_rrset(rrset_dest, rrset_source, &returned_rr, 0);
 	if (ret != KNOT_EOK) {
