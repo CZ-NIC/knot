@@ -68,6 +68,9 @@ static const rdata_descriptor_t rdata_descriptors[] = {
 	                               KNOT_RDATA_WF_END }, "AFSDB" },
 	[KNOT_RRTYPE_RT]         = { { 2, KNOT_RDATA_WF_COMPRESSED_DNAME,
 	                               KNOT_RDATA_WF_END }, "RT" },
+	[KNOT_RRTYPE_SIG]        = { { 18, KNOT_RDATA_WF_COMPRESSED_DNAME,
+	                               KNOT_RDATA_WF_REMAINDER,
+	                               KNOT_RDATA_WF_END }, "SIG" },
 	[KNOT_RRTYPE_KEY]        = { { KNOT_RDATA_WF_REMAINDER,
 	                               KNOT_RDATA_WF_END }, "KEY" },
 	[KNOT_RRTYPE_AAAA]       = { { 16, KNOT_RDATA_WF_END }, "AAAA" },
@@ -275,6 +278,7 @@ int knot_rrtype_is_metatype(const uint16_t type)
 	        type == KNOT_RRTYPE_TSIG ||
 	        type == KNOT_RRTYPE_IXFR ||
 	        type == KNOT_RRTYPE_AXFR ||
+	        type == KNOT_RRTYPE_SIG ||
 	        type == KNOT_RRTYPE_ANY);
 }
 
