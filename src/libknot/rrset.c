@@ -258,6 +258,10 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 	
 	size_t size = 0;
 	
+	if (rrset->owner == NULL) {
+		return KNOT_EMALF;
+	}
+	
 	if (comp) {
 		// put owner if needed (already compressed)
 		knot_compr_t *compr = comp->compr;
