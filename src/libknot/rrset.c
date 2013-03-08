@@ -678,7 +678,7 @@ static int rrset_deserialize_rr(knot_rrset_t *rrset, size_t rdata_pos,
 			if (dname == NULL) {
 				return KNOT_ERROR;
 			}
-			assert(dname->size = dname_size);
+			assert(dname->size == dname_size);
 			memcpy(rdata + rdata_offset, &dname,
 			       sizeof(knot_dname_t *));
 			stream_offset += dname_size;
