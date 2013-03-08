@@ -1260,7 +1260,7 @@ dbg_rrset_exec_detail(
 			}
 			parsed += remainder_size;
 		} else {
-			assert(rrset->type = KNOT_RRTYPE_NAPTR);
+			assert(rrset->type == KNOT_RRTYPE_NAPTR);
 			/* Read fixed part - 2 shorts. */
 			const size_t naptr_fixed_part_size = 4;
 			int ret = knot_rrset_rdata_store_binary(rdata_buffer,
