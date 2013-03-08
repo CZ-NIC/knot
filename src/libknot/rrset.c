@@ -405,19 +405,10 @@ dbg_rrset_exec_detail(
 				          "fit to wire.\n");
 				return KNOT_ESPACE;
 			}
+			memcpy(*pos, rdata + offset, chunk_size);
 			*pos += chunk_size;
 			rdlength += chunk_size;
 			offset += chunk_size;
-			size += chunk_size;
-			/* Store domain name. */
-			knot_dname_t *dname = 
-				(knot_dname_t *)(rdata + offset);
-			assert(dname);
-			if (size + rdlength + knot_dname_size(dname) > max_size) {
-				dbg_rrset("rr: to_wire: NAPTR DNAME does not "
-				          "fit to wire.\n");
-				return KNOT_ESPACE;
-			}
 		}
 	}
 	
@@ -1279,13 +1270,10 @@ dbg_rrset_exec_detail(
 			parsed += naptr_fixed_part_size;
 			for (int j = 0; j < 3; ++j) {
 				/* Read sizes of TXT's - one byte. */
-				uint8_t txt_size = *(wire + (*pos));
+				uint8_t txt_size = *(wire + (*pos)) + 1;
 				dbg_rrset_detail("rrset: rdata_from_wire: "
 				                 "Read TXT nr=%d size=%d\n", j,
 				                 txt_size);
-				*pos += 1;
-				offset += 1;
-				parsed += 1;
 				int ret = knot_rrset_rdata_store_binary(rdata_buffer,
 				                                        &offset,
 				                                        packet_offset,
@@ -1299,7 +1287,6 @@ dbg_rrset_exec_detail(
 					          "Reason: %s.\n", knot_strerror(ret));
 					return ret;
 				}
-				offset += txt_size;
 				parsed += txt_size;
 			}
 		}
