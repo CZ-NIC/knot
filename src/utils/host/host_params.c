@@ -41,10 +41,17 @@ static int host_init(dig_params_t *params)
 	}
 
 	// Set host specific defaults.
+	params->config->port = strdup(DEFAULT_DNS_PORT);
 	params->config->retries = DEFAULT_RETRIES_HOST;
 	params->config->wait = DEFAULT_TIMEOUT_HOST;
 	params->config->class_num = KNOT_CLASS_IN;
 	params->config->style.format = FORMAT_HOST;
+
+	// Check port.
+	if (params->config->port == NULL) {
+		query_free(params->config);
+		return KNOT_ENOMEM;
+	}
 
 	return KNOT_EOK;
 }

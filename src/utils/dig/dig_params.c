@@ -68,7 +68,7 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->operation = OPERATION_QUERY;
 		query->ip = IP_ALL;
 		query->protocol = PROTO_ALL;
-		query->port = strdup(DEFAULT_DNS_PORT);
+		query->port = strdup("");
 		query->udp_size = -1;
 		query->retries = DEFAULT_RETRIES_DIG;
 		query->wait = DEFAULT_TIMEOUT_DIG;
@@ -218,6 +218,16 @@ static int parse_reverse(const char *value, list *queries, const query_t *conf)
 static void complete_servers(query_t *query, const query_t *conf)
 {
 	node *n = NULL;
+	char *def_port;
+
+	// Decide which default port use.
+	if (strlen(query->port) > 0) {
+		def_port = query->port;
+	} else if (strlen(conf->port) > 0) {
+		def_port = conf->port;
+	} else {
+		def_port = DEFAULT_DNS_PORT;
+	}
 
 	// Use servers from config if any.
 	if (list_size(&conf->servers) > 0) {
@@ -225,8 +235,14 @@ static void complete_servers(query_t *query, const query_t *conf)
 
 		WALK_LIST(n, conf->servers) {
 			server_t *s = (server_t *)n;
+			char     *port = def_port;
 
-			server = server_create(s->name, query->port);
+			// If the port is already specified, use it.
+			if (strlen(s->service) > 0) {
+				port = s->service;
+			}
+
+			server = server_create(s->name, port);
 
 			if (server == NULL) {
 				WARN("can't set nameserver %s port %s\n",
@@ -236,7 +252,7 @@ static void complete_servers(query_t *query, const query_t *conf)
 			add_tail(&query->servers, (node *)server);
 		}
 	// Use system specific.
-	} else if (get_nameservers(&query->servers, query->port) <= 0) {
+	} else if (get_nameservers(&query->servers, def_port) <= 0) {
 		WARN("can't read any nameservers\n");
 	}
 }
