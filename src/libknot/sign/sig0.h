@@ -19,8 +19,6 @@
 
 #include "sign/key.h"
 
-#if 0
-
 /*!
  * \brief DNSSEC Algorithm Numbers
  *
@@ -52,8 +50,6 @@ enum knot_dnssec_algorithm {
 
 typedef enum knot_dnssec_algorithm knot_dnssec_algorithm_t;
 
-#endif
-
 enum knot_dnssec_key_usage {
 	KNOT_KEY_USAGE_NONE = 0,
 	KNOT_KEY_USAGE_ZONE_SIGN = 1,
@@ -62,20 +58,27 @@ enum knot_dnssec_key_usage {
 
 typedef enum knot_dnssec_key_usage knot_dnssec_key_usage_t;
 
+struct algorithm_callbacks;
+typedef struct algorithm_callbacks algorithm_callbacks_t;
+
 /*!
  * \brief DNSSEC key representation.
  */
 struct knot_dnssec_key {
-	char *name;				//!< Key name.
-	knot_dnssec_algorithm_t algorithm;	//!< Algorithm identification.
-	void *context;				//!< Algorithm dependent data.
+	knot_dname_t *name;		    //!< Key name (idenfies signer).
+	knot_dnssec_algorithm_t algorithm;  //!< Algorithm identification.
+	const algorithm_callbacks_t *callbacks; //!< Algorithm callbacks.
+	void *algorithm_data;		    //!< Algorithm custom data.
 };
 
 typedef struct knot_dnssec_key knot_dnssec_key_t;
 
 int knot_dnssec_key_from_params(const knot_key_params_t *params,
-				    knot_dnssec_key_t *key);
+				knot_dnssec_key_t *key);
 
 int knot_dnssec_key_free(knot_dnssec_key_t *key);
+
+int knot_sig0_sign(uint8_t *wire, size_t *wire_size, size_t wire_max_size,
+		   knot_dnssec_key_t *key);
 
 #endif // _KNOT_SIGN_SIG0_H_
