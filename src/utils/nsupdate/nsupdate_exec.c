@@ -367,8 +367,6 @@ static int pkt_append(nsupdate_params_t *p, int sect)
 		break;
 	}
 	
-	knot_rrset_free(&rr);
-
 	if (ret != KNOT_EOK) {
 		DBG("%s: failed to append rdata to appropriate section - %s\n",
 		    __func__, knot_strerror(ret));
