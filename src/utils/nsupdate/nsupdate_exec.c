@@ -32,6 +32,8 @@
 #include "common/mempattern.h"
 #include "common/descriptor.h"
 #include "libknot/libknot.h"
+#include "libknot/tsig-op.h"
+#include "libknot/sign/sig0.h"
 
 /* Declarations of cmd parse functions. */
 typedef int (*cmd_handle_f)(const char *lp, nsupdate_params_t *params);
@@ -447,6 +449,7 @@ static int nsupdate_process(nsupdate_params_t *params, FILE *fp)
 //! \brief Holds data required between signing and signature verification.
 struct sign_context {
 	knot_tsig_key_t tsig_key;
+	knot_dnssec_key_t dnssec_key;
 	uint8_t *digest;
 	size_t digest_size;
 };
@@ -457,6 +460,9 @@ static void free_sign_context(sign_context_t *ctx)
 {
 	if (ctx->tsig_key.name)
 		knot_tsig_key_free(&ctx->tsig_key);
+
+	if (ctx->dnssec_key.name)
+		knot_dnssec_key_free(&ctx->dnssec_key);
 
 	if (ctx->digest)
 		free(ctx->digest);
@@ -471,24 +477,25 @@ static int sign_packet(nsupdate_params_t *params, uint8_t *wire,
 		return KNOT_EINVAL;
 
 	int result;
+
+	knot_packet_t *packet = params->pkt;
+	size_t max_size = knot_packet_max_size(packet);
 	knot_key_type_t key_type = knot_get_key_type(&params->key_params);
 
 	if (key_type == KNOT_KEY_TSIG) {
 		result = knot_tsig_key_from_params(&params->key_params,
-		                                    &sign_ctx->tsig_key);
+		                                   &sign_ctx->tsig_key);
 		if (result != KNOT_EOK)
 			return result;
 
 		knot_tsig_key_t *key = &sign_ctx->tsig_key;
 
-		knot_packet_t *packet = params->pkt;
-		size_t max_size = knot_packet_max_size(packet);
-		size_t tsig_size = tsig_wire_maxsize(key);
-
 		sign_ctx->digest_size = tsig_alg_digest_length(key->algorithm);
 		sign_ctx->digest = malloc(sign_ctx->digest_size);
 
+		size_t tsig_size = tsig_wire_maxsize(key);
 		knot_packet_set_tsig_size(packet, tsig_size);
+
 		result = knot_tsig_sign(wire, wire_size, max_size, NULL, 0,
 		                        sign_ctx->digest,
 		                        &sign_ctx->digest_size, key, 0, 0);
@@ -496,7 +503,18 @@ static int sign_packet(nsupdate_params_t *params, uint8_t *wire,
 		return result;
 	}
 
-	//! \todo SIG(0)
+	if (key_type == KNOT_KEY_DNSSEC) {
+		result = knot_dnssec_key_from_params(&params->key_params,
+						     &sign_ctx->dnssec_key);
+		if (result != KNOT_EOK)
+			return result;
+
+		knot_dnssec_key_t *key = &sign_ctx->dnssec_key;
+		result = knot_sig0_sign(wire, wire_size, max_size, key);
+
+		fprintf(stderr, "DEBUG: sign_packet with DNSSEC %d\n", result);
+		return result;
+	}
 
 	return KNOT_EINVAL;
 }
@@ -523,7 +541,10 @@ static int check_sign(nsupdate_params_t *params, size_t wire_size,
 		return result;
 	}
 
-	//! \todo SIG(0)
+	if (key_type == KNOT_KEY_DNSSEC) {
+		//! \todo not implemented yet
+		return KNOT_ERROR;
+	}
 
 	return KNOT_EINVAL;
 }
@@ -534,7 +555,7 @@ int nsupdate_exec(nsupdate_params_t *params)
 	if (!params) {
 		return KNOT_EINVAL;
 	}
-	
+
 	int ret = KNOT_EOK;
 
 	/* If not file specified, use stdin. */
