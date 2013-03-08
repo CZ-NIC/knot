@@ -390,12 +390,15 @@ static void wire_data_encode_to_str(rrset_dump_params_t *p,
 
 static void wire_len_data_encode_to_str(rrset_dump_params_t *p, encode_t enc)
 {
-	// First byte is string length.
+	p->ret = -1;
+
+	// First byte is data length.
+	if (p->in_max < 1) {
+		return;
+	}
 	size_t in_len = *(p->in);
 	p->in++;
 	p->in_max--;
-
-	p->ret = -1;
 
 	if (in_len > 0) {
 		// Encode data directly to the output.
@@ -432,12 +435,15 @@ static void wire_len_data_encode_to_str(rrset_dump_params_t *p, encode_t enc)
 
 static void wire_text_to_str(rrset_dump_params_t *p)
 {
+	p->ret = -1;
+
 	// First byte is string length.
+	if (p->in_max < 1) {
+		return;
+	}
 	size_t in_len = *(p->in);
 	p->in++;
 	p->in_max--;
-
-	p->ret = -1;
 
 	// Check if the given length makes sense.
 	if (in_len > p->in_max) {
@@ -674,6 +680,57 @@ static void wire_bitmap_to_str(rrset_dump_params_t *p)
 }
 
 static void wire_dname_to_str(rrset_dump_params_t *p)
+{
+	knot_dname_t *dname;
+	uint8_t label_len;
+	size_t  in_len = 0;
+	size_t  out_len = 0;
+
+	p->ret = -1;
+
+	// Compute dname length.
+	do {
+		// Read label length.
+		if (p->in_max < 1) {
+			return;
+		}
+		label_len = *(p->in);
+		in_len++;
+		p->in++;
+		p->in_max--;
+
+		if (label_len > p->in_max) {
+			return;
+		}
+		in_len += label_len;
+		p->in += label_len;
+		p->in_max -= label_len;
+	} while (label_len > 0);
+
+	// Create dname.
+	dname = knot_dname_new_from_wire(p->in - in_len, in_len, NULL);
+	if (dname == NULL) {
+		return;
+	}
+
+	// Write dname string.
+	char *dname_str = knot_dname_to_str(dname);
+	free(dname);
+	int ret = snprintf(p->out, p->out_max, "%s", dname_str);
+	free(dname_str);
+	if (ret < 0 || ret >= p->out_max) {
+		return;
+	}
+	out_len = ret;
+
+	// Fill in output.
+	p->out += out_len;
+	p->out_max -= out_len;
+	p->total += out_len;
+	p->ret = 0;
+}
+
+static void ptr_dname_to_str(rrset_dump_params_t *p)
 {
 	knot_dname_t *dname;
 	size_t in_len = sizeof(knot_dname_t *);
@@ -1042,7 +1099,7 @@ static void wire_unknown_to_str(rrset_dump_params_t *p)
 #define DUMP_NUM8	wire_num8_to_str(&p); CHECK_RET(p);
 #define DUMP_NUM16	wire_num16_to_str(&p); CHECK_RET(p);
 #define DUMP_NUM32	wire_num32_to_str(&p); CHECK_RET(p);
-#define DUMP_DNAME	wire_dname_to_str(&p); CHECK_RET(p);
+#define DUMP_DNAME	ptr_dname_to_str(&p); CHECK_RET(p);
 #define DUMP_IPV4	wire_ipv4_to_str(&p); CHECK_RET(p);
 #define DUMP_IPV6	wire_ipv6_to_str(&p); CHECK_RET(p);
 #define DUMP_TYPE	wire_type_to_str(&p); CHECK_RET(p);
