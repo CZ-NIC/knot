@@ -1277,16 +1277,18 @@ dbg_rrset_exec_detail(
 				return ret;
 			}
 			parsed += naptr_fixed_part_size;
-			
-			// TODO +1? Boundary checks!!!
-			/* Read three binary TXTs. */
 			for (int j = 0; j < 3; ++j) {
-				//maybe store the whole thing using store binary
-				uint8_t txt_size = *(wire + (*pos + 1));
+				/* Read sizes of TXT's - one byte. */
+				uint8_t txt_size = *(wire + (*pos));
+				dbg_rrset_detail("rrset: rdata_from_wire: "
+				                 "Read TXT nr=%d size=%d\n", j,
+				                 txt_size);
+				*pos += 1;
 				offset += 1;
+				parsed += 1;
 				int ret = knot_rrset_rdata_store_binary(rdata_buffer,
 				                                        &offset,
-			                                                packet_offset,
+				                                        packet_offset,
 				                                        wire,
 				                                        pos,
 				                                        rdlength,
@@ -1297,7 +1299,8 @@ dbg_rrset_exec_detail(
 					          "Reason: %s.\n", knot_strerror(ret));
 					return ret;
 				}
-				offset += txt_size + 1;
+				offset += txt_size;
+				parsed += txt_size;
 			}
 		}
 	}
@@ -2437,13 +2440,14 @@ const knot_dname_t *knot_rrset_rdata_name(const knot_rrset_t *rrset,
 	return NULL;
 }
 
-int knot_rrset_find_rr_pos(const knot_rrset_t *rr_search,
-                           const knot_rrset_t *rr_input, size_t pos,
+int knot_rrset_find_rr_pos(const knot_rrset_t *rr_search_in,
+                           const knot_rrset_t *rr_reference, size_t pos,
                            size_t *pos_out)
 {
 	int found = 0;
-	for (uint16_t i = 0; i < rr_search->rdata_count && !found; ++i) {
-		if (rrset_rdata_compare_one(rr_search, rr_input, i, pos) == 0) {
+	for (uint16_t i = 0; i < rr_search_in->rdata_count && !found; ++i) {
+		if (rrset_rdata_compare_one(rr_search_in,
+		                            rr_reference, i, pos) == 0) {
 			*pos_out = i;
 			found = 1;
 		}
@@ -2569,7 +2573,7 @@ int knot_rrset_add_rr_from_rrset(knot_rrset_t *dest, const knot_rrset_t *source,
 	memcpy(rdata, rrset_rdata_pointer(source, rdata_pos), item_size);
 	
 	/* Retain DNAMEs inside RDATA. */
-	int ret = rrset_rr_dnames_apply(source, rdata_pos,
+	int ret = rrset_rr_dnames_apply((knot_rrset_t *)source, rdata_pos,
 	                                rrset_retain_dnames_in_rr, NULL);
 	if (ret != KNOT_EOK) {
 		dbg_rrset("rr: add_rr_from_rrset: Could not retain DNAMEs"

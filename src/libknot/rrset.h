@@ -521,8 +521,8 @@ int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
 int knot_rrset_remove_rr_using_rrset_del(knot_rrset_t *from,
                                          const knot_rrset_t *what);
 
-int knot_rrset_find_rr_pos(const knot_rrset_t *rr_search,
-                           const knot_rrset_t *rr_input, size_t pos,
+int knot_rrset_find_rr_pos(const knot_rrset_t *rr_search_in,
+                           const knot_rrset_t *rr_reference, size_t pos,
                            size_t *pos_out);
 
 int rrset_rr_dnames_apply(knot_rrset_t *rrset, size_t rdata_pos,
