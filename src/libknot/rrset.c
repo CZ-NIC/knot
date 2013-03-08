@@ -212,6 +212,9 @@ static int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
 			                                          pos2);
 			cmp = memcmp(r1 + offset, r2 + offset,
 			             size1 <= size2 ? size1 : size2);
+			if (cmp == 0 && size1 != size2) {
+				cmp = size1 < size2 ? -1 : 1;
+			}
 			/* No need to move offset, this should be end anyway. */
 			assert(desc->block_types[i + 1] == KNOT_RDATA_WF_END);
 		} else {
@@ -223,11 +226,15 @@ static int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
 			cmp = memcmp(r1, r2,
 			             naptr_chunk_size1 <= naptr_chunk_size2 ?
 			             naptr_chunk_size1 : naptr_chunk_size2);
-			if (cmp != 0) {
-				return cmp;
+			if (cmp == 0 && naptr_chunk_size1 == naptr_chunk_size2) {
+				cmp = naptr_chunk_size1 < naptr_chunk_size2 ? -1 : 1;
 			}
-			/* Binary part was equal, we have to compare DNAMEs. */
-			assert(naptr_chunk_size1 == naptr_chunk_size2);
+			
+			/*
+			 * It does not matter which one we assign. If the
+			 * offsets were different, then cmp != 0, if yes, 
+			 * NAPTR DNAME will be on correct offset.
+			 */
 			offset += naptr_chunk_size1;
 		}
 

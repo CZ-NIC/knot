@@ -1292,13 +1292,13 @@ static int test_rrset_find_pos()
 	                                            KNOT_CLASS_IN, 3600);
 	uint8_t *mock_data = (uint8_t *)"cafebabebadcafecafecafecafe";
 	/* Test removal of two exactly same items. */
-	uint8_t *rdata1 = knot_rrset_create_rdata(rrset_source,
+	uint8_t *rdata = knot_rrset_create_rdata(rrset_source,
 	                                          strlen(mock_data));
-	memcpy(rdata1, mock_data, strlen(mock_data));
+	memcpy(rdata, mock_data, strlen(mock_data));
 	knot_rrset_t *rrset_find_in = NULL;
-	knot_rrset_deep_copy(knot_rrset_new, &rrset_find_in, 1);
-	rdata1 = knot_rrset_create_rdata(rrset_source, 10);
-	memcpy(rdata1, mock_data ,10);
+	knot_rrset_deep_copy(rrset_source, &rrset_find_in, 1);
+	rdata = knot_rrset_create_rdata(rrset_source, 10);
+	memcpy(rdata, mock_data ,10);
 	size_t rr_pos = 0;
 	int ret = knot_rrset_find_rr_pos(rrset_source, rrset_find_in, 0, &rr_pos);
 	if (ret != KNOT_EOK) {
@@ -1306,9 +1306,24 @@ static int test_rrset_find_pos()
 		return 0;
 	}
 	if (rr_pos != 0) {
-		diag("Wrong index returned.");
+		diag("Wrong index returned. Should be 0, was %zu", rr_pos);
 		return 0;
 	}
+	
+	/* Add second RR. */
+	rdata = knot_rrset_create_rdata(rrset_find_in, 10);
+	memcpy(rdata, mock_data ,10);
+	knot_rrset_dump(rrset_find_in);
+	ret = knot_rrset_find_rr_pos(rrset_source, rrset_find_in, 1, &rr_pos);
+	if (ret != KNOT_EOK) {
+		diag("RR was not found, even though it should have been.");
+		return 0;
+	}
+	if (rr_pos != 1) {
+		diag("Wrong index returned. Should be 1, was %zu", rr_pos);
+		return 0;
+	}
+	
 	return 1;
 }
 
@@ -1321,11 +1336,11 @@ static int test_rrset_remove_rr()
 	                                            KNOT_CLASS_IN, 3600);
 	uint8_t *mock_data = (uint8_t *)"cafebabebadcafecafecafecafe";
 	/* Test removal of two exactly same items. */
-	uint8_t *rdata1 = knot_rrset_create_rdata(rrset_source,
-	                                          strlen(mock_data));
-	memcpy(rdata1, mock_data, strlen(mock_data));
-	rdata1 = knot_rrset_create_rdata(rrset_source, 10);
-	memcpy(rdata1, mock_data ,10);
+	uint8_t *rdata = knot_rrset_create_rdata(rrset_source,
+	                                         strlen(mock_data));
+	memcpy(rdata, mock_data, strlen(mock_data));
+	rdata = knot_rrset_create_rdata(rrset_source, 10);
+	memcpy(rdata, mock_data ,10);
 	knot_rrset_t *rrset_dest = NULL;
 	/* Create copy. */
 	knot_rrset_deep_copy(rrset_source, &rrset_dest, 1);
@@ -1353,7 +1368,7 @@ static int test_rrset_remove_rr()
 	return 1;
 }
 
-static const int KNOT_RRSET_TEST_COUNT = 15;
+static const int KNOT_RRSET_TEST_COUNT = 16;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
@@ -1430,11 +1445,11 @@ static int knot_rrset_tests_run(int argc, char *argv[])
 	ok(res, "rrset: next dname");
 	res_final *= res;
 	
-	res = test_rrset_find_pos();
-	ok(res, "rrset: find pos");
-	
 	res = test_rrset_remove_rr();
 	ok(res, "rrset: remove rr");
+	
+	res = test_rrset_find_pos();
+	ok(res, "rrset: find pos");
 	res_final *= res;
 	
 	return res_final;
