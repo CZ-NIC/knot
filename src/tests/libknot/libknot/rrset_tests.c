@@ -1285,6 +1285,32 @@ static int test_rrset_next_dname()
 	return 1;
 }
 
+static int test_rrset_find_pos()
+{
+	/* Create some mockup TXT RRSets. */
+	knot_rrset_t *rrset_source = knot_rrset_new(test_dnames[0], KNOT_RRTYPE_TXT,
+	                                            KNOT_CLASS_IN, 3600);
+	uint8_t *mock_data = (uint8_t *)"cafebabebadcafecafecafecafe";
+	/* Test removal of two exactly same items. */
+	uint8_t *rdata1 = knot_rrset_create_rdata(rrset_source,
+	                                          strlen(mock_data));
+	memcpy(rdata1, mock_data, strlen(mock_data));
+	knot_rrset_t *rrset_find_in = NULL;
+	knot_rrset_deep_copy(knot_rrset_new, &rrset_find_in, 1);
+	rdata1 = knot_rrset_create_rdata(rrset_source, 10);
+	memcpy(rdata1, mock_data ,10);
+	size_t rr_pos = 0;
+	int ret = knot_rrset_find_rr_pos(rrset_source, rrset_find_in, 0, &rr_pos);
+	if (ret != KNOT_EOK) {
+		diag("RR was not found, even though it should have been.");
+		return 0;
+	}
+	if (rr_pos != 0) {
+		diag("Wrong index returned.");
+		return 0;
+	}
+	return 1;
+}
 
 static int test_rrset_remove_rr()
 {
@@ -1298,10 +1324,11 @@ static int test_rrset_remove_rr()
 	uint8_t *rdata1 = knot_rrset_create_rdata(rrset_source,
 	                                          strlen(mock_data));
 	memcpy(rdata1, mock_data, strlen(mock_data));
+	rdata1 = knot_rrset_create_rdata(rrset_source, 10);
+	memcpy(rdata1, mock_data ,10);
 	knot_rrset_t *rrset_dest = NULL;
 	/* Create copy. */
 	knot_rrset_deep_copy(rrset_source, &rrset_dest, 1);
-	knot_rrset_dump(rrset_dest);
 	knot_rrset_t *returned_rr = NULL;
 	int ret = knot_rrset_remove_rr_using_rrset(rrset_dest, rrset_source, &returned_rr, 0);
 	if (ret != KNOT_EOK) {
@@ -1309,12 +1336,17 @@ static int test_rrset_remove_rr()
 		return 0;
 	}
 	
+	diag("Returned\n");
+	knot_rrset_dump(returned_rr);
+	diag("Source\n");
+	knot_rrset_dump(rrset_source);
+	diag("Destinantion\n");
+	knot_rrset_dump(rrset_dest);
+
 	/* Only one RR within RRSet, needs to be the same. */
 	if (knot_rrset_equal(rrset_source, returned_rr,
 	                     KNOT_RRSET_COMPARE_WHOLE)) {
 		diag("Got wrong data in return rrset.");
-		knot_rrset_dump(returned_rr);
-		knot_rrset_dump(rrset_source);
 		return 0;
 	}
 	
@@ -1397,6 +1429,9 @@ static int knot_rrset_tests_run(int argc, char *argv[])
 	res = test_rrset_next_dname();
 	ok(res, "rrset: next dname");
 	res_final *= res;
+	
+	res = test_rrset_find_pos();
+	ok(res, "rrset: find pos");
 	
 	res = test_rrset_remove_rr();
 	ok(res, "rrset: remove rr");
