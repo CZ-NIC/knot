@@ -318,13 +318,18 @@ static int pkt_append(nsupdate_params_t *p, int sect)
 
 	/* Form a rrset. */
 	knot_dname_t *o = knot_dname_new_from_wire(s->r_owner, s->r_owner_length, NULL);
+	if (!o) {
+		DBG("%s: failed to create dname - %s\n",
+		    __func__, knot_strerror(ret));
+		return KNOT_ENOMEM;
+	}
 	knot_rrset_t *rr = knot_rrset_new(o, s->r_type, s->r_class, s->r_ttl);
+	knot_dname_release(o);
 	if (!rr) {
 		DBG("%s: failed to create rrset - %s\n",
 		    __func__, knot_strerror(ret));
 		return KNOT_ENOMEM;
 	}
-	knot_dname_release(o);
 
 	/* Create RDATA (not for NXRRSET prereq). */
 	if (s->r_data_length > 0 && sect != PQ_NXRRSET) {
@@ -362,6 +367,8 @@ static int pkt_append(nsupdate_params_t *p, int sect)
 		break;
 	}
 	
+	knot_rrset_free(&rr);
+
 	if (ret != KNOT_EOK) {
 		DBG("%s: failed to append rdata to appropriate section - %s\n",
 		    __func__, knot_strerror(ret));
