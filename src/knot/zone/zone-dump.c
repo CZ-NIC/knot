@@ -78,6 +78,7 @@ void node_dump_text(knot_node_t *node, void *data)
 		ret = knot_rrset_txt_dump(rrsets[i], params->buf, params->buflen);
 		if (ret < 0) {
 			params->ret = KNOT_ENOMEM;
+			free(rrsets);
 			return;
 		}
 		fprintf(params->file, "%s", params->buf);
