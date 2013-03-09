@@ -182,7 +182,8 @@ dbg_response_exec(
 	int i = 0, copied = 0;
 
 	while (to_save != NULL && i < knot_dname_label_count(dname)
-	       && parent_pos <= KNOT_RESPONSE_MAX_PTR) {
+	       && parent_pos <= KNOT_RESPONSE_MAX_PTR && 
+		 parent_pos >= KNOT_WIRE_HEADER_SIZE) {
 		if (i == not_matched) {
 			parent_pos = unmatched_offset;
 		}
