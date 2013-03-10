@@ -2214,9 +2214,6 @@ static int knot_ddns_process_rr(const knot_rrset_t *rr,
 		if (node != NULL) {
 			return knot_ddns_process_rem_rr(rr, node, zone, changeset,
 			                                changes, qclass);
-		} else {
-			//Nothing to remove
-			return KNOT_EOK;
 		}
 	} else if (knot_rrset_class(rr) == KNOT_CLASS_ANY) {
 		if (knot_rrset_type(rr) == KNOT_RRTYPE_ANY) {
