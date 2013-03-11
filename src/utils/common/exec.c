@@ -193,7 +193,7 @@ static void print_section_question(const knot_dname_t *owner,
 	knot_rrset_t *question = knot_rrset_new((knot_dname_t *)owner, qtype,
 	                                        qclass, 0);
 
-	if (knot_rrset_txt_dump_header(question, buf, buflen) < 0) {
+	if (knot_rrset_txt_dump_header(question, 0, buf, buflen, &KNOT_DUMP_STYLE_DEFAULT) < 0) {
 		WARN("can't dump whole question section\n");
 	}
 
@@ -210,7 +210,7 @@ static void print_section_verbose(const knot_rrset_t **rrsets,
 	char   *buf = malloc(buflen);
 
 	for (uint16_t i = 0; i < count; i++) {
-        while (knot_rrset_txt_dump(rrsets[i], buf, buflen) < 0) {
+        while (knot_rrset_txt_dump(rrsets[i], buf, buflen, &KNOT_DUMP_STYLE_DEFAULT) < 0) {
 			buflen += 4096;
 			buf = realloc(buf, buflen);
 
@@ -236,7 +236,7 @@ static void print_section_dig(const knot_rrset_t **rrsets,
 		const knot_rrset_t *rrset = rrsets[i];
 
 		for (size_t j = 0; j < rrset->rdata_count; j++) {
-			while (knot_rrset_txt_dump_data(rrset, j, buf, buflen)
+			while (knot_rrset_txt_dump_data(rrset, j, buf, buflen, &KNOT_DUMP_STYLE_DEFAULT)
 			       < 0) {
 				buflen += 4096;
 				buf = realloc(buf, buflen);
@@ -270,7 +270,7 @@ static void print_section_host(const knot_rrset_t **rrsets,
 		descr = knot_lookup_by_id(rtypes, rrset->type);
 
 		for (size_t j = 0; j < rrset->rdata_count; j++) {
-			while (knot_rrset_txt_dump_data(rrset, j, buf, buflen)
+			while (knot_rrset_txt_dump_data(rrset, j, buf, buflen, &KNOT_DUMP_STYLE_DEFAULT)
 			       < 0) {
 				buflen += 4096;
 				buf = realloc(buf, buflen);

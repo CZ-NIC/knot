@@ -31,6 +31,7 @@ typedef struct {
 	char   *buf;
 	size_t buflen;
 	const knot_dname_t *origin;
+	const knot_dump_style_t *style;
 } dump_params_t;
 
 static void apex_node_dump_text(knot_node_t *node, dump_params_t *params)
@@ -38,7 +39,8 @@ static void apex_node_dump_text(knot_node_t *node, dump_params_t *params)
 	knot_rrset_t *rr = knot_node_get_rrset(node, KNOT_RRTYPE_SOA);
 
 	// Dump SOA record as a first.
-	if (knot_rrset_txt_dump(rr, params->buf, params->buflen) < 0) {
+	if (knot_rrset_txt_dump(rr, params->buf, params->buflen,
+	                        params->style) < 0) {
 		params->ret = KNOT_ENOMEM;
 		return;
 	}
@@ -50,7 +52,8 @@ static void apex_node_dump_text(knot_node_t *node, dump_params_t *params)
 	for (int i = 0; i < node->rrset_count; i++) {
 		if (rrsets[i]->type != KNOT_RRTYPE_SOA) {
 			if (knot_rrset_txt_dump(rrsets[i], params->buf,
-			                        params->buflen) < 0) {
+			                        params->buflen, params->style)
+			    < 0) {
 				params->ret = KNOT_ENOMEM;
 				free(rrsets);
 				return;
@@ -78,8 +81,8 @@ static void node_dump_text(knot_node_t *node, void *data)
 
 	// Dump non-apex rrsets.
 	for (int i = 0; i < node->rrset_count; i++) {
-		if (knot_rrset_txt_dump(rrsets[i], params->buf, params->buflen)
-		    < 0) {
+		if (knot_rrset_txt_dump(rrsets[i], params->buf, params->buflen,
+		                        params->style) < 0) {
 			params->ret = KNOT_ENOMEM;
 			free(rrsets);
 			return;
@@ -113,6 +116,7 @@ int zone_dump_text(knot_zone_contents_t *zone, FILE *file)
 	params.buf = buf;
 	params.buflen = DUMP_BUF_LEN;
 	params.origin = knot_node_owner(knot_zone_contents_apex(zone));
+	params.style = &KNOT_DUMP_STYLE_DEFAULT;
 
 	// Dump standard zone records.
 	knot_zone_contents_tree_apply_inorder(zone, node_dump_text, &params);

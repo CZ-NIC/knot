@@ -32,12 +32,14 @@
 #include "common/descriptor_new.h"	// KNOT_RRTYPE
 #include "libknot/util/utils.h"		// knot_wire_read_u16
 
+#define TAB_WIDTH		8
 #define BLOCK_WIDTH		40
 #define BLOCK_INDENT		"\n\t\t\t\t"
 
 #define LOC_ZERO		2147483648	// 2^31
 
 typedef struct {
+	const knot_dump_style_t *style;
 	uint8_t *in;
 	size_t  in_max;
 	char    *out;
@@ -45,6 +47,14 @@ typedef struct {
 	size_t  total;
 	int     ret;
 } rrset_dump_params_t;
+
+const knot_dump_style_t KNOT_DUMP_STYLE_DEFAULT = {
+	.wrap = false,
+	.show_class = true,
+	.show_ttl = true,
+	.verbose = false,
+	.reduce = true,
+};
 
 static void dump_string(rrset_dump_params_t *p, const char *str)
 {
@@ -324,7 +334,7 @@ static void wire_data_encode_to_str(rrset_dump_params_t *p,
 	p->ret = -1;
 
 	// One-line vs multi-line mode.
-	if (true) {
+	if (p->style->wrap == false) {
 		// Encode data directly to the output.
 		ret = enc(p->in, in_len, (uint8_t *)(p->out), p->out_max);
 		if (ret <= 0) {
@@ -510,34 +520,55 @@ static void wire_text_to_str(rrset_dump_params_t *p)
 	p->ret = 0;
 }
 
-static int wire_timestamp_to_str(const uint8_t *in,
-                                 char          *out,
-                                 const size_t  out_len)
+static void wire_timestamp_to_str(rrset_dump_params_t *p)
 {
-	size_t data;
-	time_t timestamp;
-	int   ret;
+	uint32_t data;
+	size_t   in_len = sizeof(data);
+	size_t   out_len = 0;
+	int      ret;
 
-	// Copy input data correctly.
-	if (memcpy(&data, in, sizeof(data)) == NULL) {
-		return -1;
+	p->ret = -1;
+
+	// Check input size.
+	if (in_len > p->in_max) {
+		return;
 	}
 
-	// Convert number from network to host byte order.
-	timestamp = ntohl(data);
-
-	// Write formated timestamp.
-	ret = strftime(out, out_len, "%Y%m%d%H%M%S", gmtime(&timestamp));
-	if (ret <= 0) {
-		return -1;
+	// Fill in input data.
+	if (memcpy(&data, p->in, in_len) == NULL) {
+		return;
 	}
 
-	return ret;
+	time_t timestamp = ntohl(data);
+
+	if (p->style->verbose) {
+		// Write timestamp in YYYYMMDDhhmmss format.
+		ret = strftime(p->out, p->out_max, "%Y%m%d%H%M%S",
+		               gmtime(&timestamp));
+		if (ret == 0) {
+			return;
+		}
+	} else {
+		// Write timestamp only.
+		ret = snprintf(p->out, p->out_max, "%u", ntohl(data));
+		if (ret <= 0 || ret >= p->out_max) {
+			return;
+		}
+	}
+	out_len = ret;
+
+	// Fill in output.
+	p->in += in_len;
+	p->in_max -= in_len;
+	p->out += out_len;
+	p->out_max -= out_len;
+	p->total += out_len;
+	p->ret = 0;
 }
 
-static int time_to_human_str(uint32_t     data,
-                             char         *out,
-                             const size_t out_len)
+static int time_to_human_str(char         *out,
+                             const size_t out_len,
+                             uint32_t     data)
 {
 	size_t   total_len = 0;
 	uint32_t num;
@@ -584,7 +615,7 @@ static int time_to_human_str(uint32_t     data,
 
 	// Process seconds.
 	num = data;
-	if (num > 0) {
+	if (num > 0 || total_len == 0) {
 		ret = snprintf(out + total_len, out_len - total_len,
 		               "%us", num);
 		if (ret <= 0 || ret >= out_len - total_len) {
@@ -597,21 +628,47 @@ static int time_to_human_str(uint32_t     data,
 	return total_len;
 }
 
-static int wire_time_to_human_str(const uint8_t *in,
-                                  char          *out,
-                                  const size_t  out_len)
+static void wire_ttl_to_str(rrset_dump_params_t *p)
 {
-	uint32_t  data;
+	uint32_t data;
+	size_t   in_len = sizeof(data);
+	size_t   out_len = 0;
+	int      ret;
 
-	// Copy input data correctly.
-	if (memcpy(&data, in, sizeof(data)) == NULL) {
-		return -1;
+	p->ret = -1;
+
+	// Check input size.
+	if (in_len > p->in_max) {
+		return;
 	}
 
-	// Convert number from network to host byte order.
-	data = ntohl(data);
+	// Fill in input data.
+	if (memcpy(&data, p->in, in_len) == NULL) {
+		return;
+	}
 
-	return time_to_human_str(data, out, out_len);
+	if (p->style->verbose) {
+		// Write time in human readable format.
+		ret = time_to_human_str(p->out, p->out_max, ntohl(data));
+		if (ret <= 0) {
+			return;
+		}
+	} else {
+		// Write timestamp only.
+		ret = snprintf(p->out, p->out_max, "%u", ntohl(data));
+		if (ret <= 0 || ret >= p->out_max) {
+			return;
+		}
+	}
+	out_len = ret;
+
+	// Fill in output.
+	p->in += in_len;
+	p->in_max -= in_len;
+	p->out += out_len;
+	p->out_max -= out_len;
+	p->total += out_len;
+	p->ret = 0;
 }
 
 static void wire_bitmap_to_str(rrset_dump_params_t *p)
@@ -1087,9 +1144,10 @@ static void wire_unknown_to_str(rrset_dump_params_t *p)
 	p->ret = 0;
 }
 
-#define DUMP_PARAMS	uint8_t *in, const size_t in_len, \
-				char *out, const size_t out_max
-#define DUMP_INIT	rrset_dump_params_t p = { in, in_len, out, out_max };
+#define DUMP_PARAMS	uint8_t *in, const size_t in_len, char *out, \
+			const size_t out_max, const knot_dump_style_t *style
+#define DUMP_INIT	rrset_dump_params_t p = { .style = style, .in = in, \
+			.in_max = in_len, .out = out, .out_max = out_max };
 //#define	DUMP_END	return (p.in_max == 0 ? p.total : -1);
 #define	DUMP_END	return p.total;
 
@@ -1100,6 +1158,8 @@ static void wire_unknown_to_str(rrset_dump_params_t *p)
 #define DUMP_NUM16	wire_num16_to_str(&p); CHECK_RET(p);
 #define DUMP_NUM32	wire_num32_to_str(&p); CHECK_RET(p);
 #define DUMP_DNAME	ptr_dname_to_str(&p); CHECK_RET(p);
+#define DUMP_TIME	wire_ttl_to_str(&p); CHECK_RET(p);
+#define DUMP_TIMESTAMP	wire_timestamp_to_str(&p); CHECK_RET(p);
 #define DUMP_IPV4	wire_ipv4_to_str(&p); CHECK_RET(p);
 #define DUMP_IPV6	wire_ipv6_to_str(&p); CHECK_RET(p);
 #define DUMP_TYPE	wire_type_to_str(&p); CHECK_RET(p);
@@ -1143,10 +1203,10 @@ static int dump_soa(DUMP_PARAMS)
 	DUMP_DNAME; DUMP_SPACE;
 	DUMP_DNAME; DUMP_SPACE;
 	DUMP_NUM32; DUMP_SPACE;
-	DUMP_NUM32; DUMP_SPACE;
-	DUMP_NUM32; DUMP_SPACE;
-	DUMP_NUM32; DUMP_SPACE;
-	DUMP_NUM32;
+	DUMP_TIME; DUMP_SPACE;
+	DUMP_TIME; DUMP_SPACE;
+	DUMP_TIME; DUMP_SPACE;
+	DUMP_TIME;
 
 	DUMP_END;
 }
@@ -1320,8 +1380,8 @@ static int dump_rrsig(DUMP_PARAMS)
 	DUMP_NUM8; DUMP_SPACE;
 	DUMP_NUM8; DUMP_SPACE;
 	DUMP_NUM32; DUMP_SPACE;
-	DUMP_NUM32; DUMP_SPACE;
-	DUMP_NUM32; DUMP_SPACE;
+	DUMP_TIMESTAMP; DUMP_SPACE;
+	DUMP_TIMESTAMP; DUMP_SPACE;
 	DUMP_NUM16; DUMP_SPACE;
 	DUMP_DNAME; DUMP_SPACE;
 	DUMP_BASE64;
@@ -1395,12 +1455,13 @@ static int dump_unknown(DUMP_PARAMS)
 	DUMP_END;
 }
 
-int knot_rrset_txt_dump_data(const knot_rrset_t *rrset,
-                             const size_t       pos,
-                             char               *dst,
-                             const size_t       maxlen)
+int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
+                             const size_t            pos,
+                             char                    *dst,
+                             const size_t            maxlen,
+                             const knot_dump_style_t *style)
 {
-	if (rrset == NULL || dst == NULL) {
+	if (rrset == NULL || dst == NULL || style == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -1411,96 +1472,98 @@ int knot_rrset_txt_dump_data(const knot_rrset_t *rrset,
 
 	switch (knot_rrset_type(rrset)) {
 		case KNOT_RRTYPE_A:
-			ret = dump_a(data, data_len, dst, maxlen);
+			ret = dump_a(data, data_len, dst, maxlen, style);
 			break;
 		case KNOT_RRTYPE_NS:
 		case KNOT_RRTYPE_CNAME:
 		case KNOT_RRTYPE_PTR:
 		case KNOT_RRTYPE_DNAME:
-			ret = dump_ns(data, data_len, dst, maxlen);
+			ret = dump_ns(data, data_len, dst, maxlen, style);
 			break;
 		case KNOT_RRTYPE_SOA:
-			ret = dump_soa(data, data_len, dst, maxlen);
+			ret = dump_soa(data, data_len, dst, maxlen, style);
 			break;
 		case KNOT_RRTYPE_HINFO:
-			ret = dump_hinfo(data, data_len, dst, maxlen);
+			ret = dump_hinfo(data, data_len, dst, maxlen, style);
 			break;
 		case KNOT_RRTYPE_MINFO:
 		case KNOT_RRTYPE_RP:
-			ret = dump_minfo(data, data_len, dst, maxlen);
+			ret = dump_minfo(data, data_len, dst, maxlen, style);
 			break;
 		case KNOT_RRTYPE_MX:
 		case KNOT_RRTYPE_AFSDB:
 		case KNOT_RRTYPE_RT:
 		case KNOT_RRTYPE_KX:
-			ret = dump_mx(data, data_len, dst, maxlen);
+			ret = dump_mx(data, data_len, dst, maxlen, style);
 			break;
 		case KNOT_RRTYPE_TXT:
 		case KNOT_RRTYPE_SPF:
-			ret = dump_txt(data, data_len, dst, maxlen);
+			ret = dump_txt(data, data_len, dst, maxlen, style);
 			break;
 		case KNOT_RRTYPE_KEY:
 		case KNOT_RRTYPE_DNSKEY:
-			ret = dump_dnskey(data, data_len, dst, maxlen);
+			ret = dump_dnskey(data, data_len, dst, maxlen, style);
 			break;
 		case KNOT_RRTYPE_AAAA:
-			ret = dump_aaaa(data, data_len, dst, maxlen);
+			ret = dump_aaaa(data, data_len, dst, maxlen, style);
 			break;
 		case KNOT_RRTYPE_LOC:
-			ret = dump_loc(data, data_len, dst, maxlen);
+			ret = dump_loc(data, data_len, dst, maxlen, style);
 			break;
 		case KNOT_RRTYPE_SRV:
-			ret = dump_srv(data, data_len, dst, maxlen);
+			ret = dump_srv(data, data_len, dst, maxlen, style);
 			break;
 		case KNOT_RRTYPE_NAPTR:
-			ret = dump_naptr(data, data_len, dst, maxlen);
+			ret = dump_naptr(data, data_len, dst, maxlen, style);
 			break;
 		case KNOT_RRTYPE_CERT:
-			ret = dump_cert(data, data_len, dst, maxlen);
+			ret = dump_cert(data, data_len, dst, maxlen, style);
 			break;
 		case KNOT_RRTYPE_APL:
-			ret = dump_apl(data, data_len, dst, maxlen);
+			ret = dump_apl(data, data_len, dst, maxlen, style);
 			break;
 		case KNOT_RRTYPE_DS:
-			ret = dump_ds(data, data_len, dst, maxlen);
+			ret = dump_ds(data, data_len, dst, maxlen, style);
 			break;
 		case KNOT_RRTYPE_SSHFP:
-			ret = dump_sshfp(data, data_len, dst, maxlen);
+			ret = dump_sshfp(data, data_len, dst, maxlen, style);
 			break;
 		case KNOT_RRTYPE_IPSECKEY:
-			ret = dump_ipseckey(data, data_len, dst, maxlen);
+			ret = dump_ipseckey(data, data_len, dst, maxlen, style);
 			break;
 		case KNOT_RRTYPE_RRSIG:
-			ret = dump_rrsig(data, data_len, dst, maxlen);
+			ret = dump_rrsig(data, data_len, dst, maxlen, style);
 			break;
 		case KNOT_RRTYPE_NSEC:
-			ret = dump_nsec(data, data_len, dst, maxlen);
+			ret = dump_nsec(data, data_len, dst, maxlen, style);
 			break;
 		case KNOT_RRTYPE_DHCID:
-			ret = dump_dhcid(data, data_len, dst, maxlen);
+			ret = dump_dhcid(data, data_len, dst, maxlen, style);
 			break;
 		case KNOT_RRTYPE_NSEC3:
-			ret = dump_nsec3(data, data_len, dst, maxlen);
+			ret = dump_nsec3(data, data_len, dst, maxlen, style);
 			break;
 		case KNOT_RRTYPE_NSEC3PARAM:
-			ret = dump_nsec3param(data, data_len, dst, maxlen);
+			ret = dump_nsec3param(data, data_len, dst, maxlen, style);
 			break;
 		case KNOT_RRTYPE_TLSA:
-			ret = dump_tlsa(data, data_len, dst, maxlen);
+			ret = dump_tlsa(data, data_len, dst, maxlen, style);
 			break;
 		default:
-			ret = dump_unknown(data, data_len, dst, maxlen);
+			ret = dump_unknown(data, data_len, dst, maxlen, style);
 			break;
 	}
 
 	return ret;
 }
 
-int knot_rrset_txt_dump_header(const knot_rrset_t *rrset,
-                               char               *dst,
-                               const size_t       maxlen)
+int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
+                               const size_t            pos,
+                               char                    *dst,
+                               const size_t            maxlen,
+                               const knot_dump_style_t *style)
 {
-	if (rrset == NULL || dst == NULL) {
+	if (rrset == NULL || dst == NULL || style == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -1510,7 +1573,27 @@ int knot_rrset_txt_dump_header(const knot_rrset_t *rrset,
 
 	// Dump rrset owner.
 	char *name = knot_dname_to_str(rrset->owner);
-	ret = snprintf(dst + len, maxlen - len, "%-20s\t", name);
+	// If reduced style don't print non-first records in rrset or rrsigs.
+	if (style->reduce && (pos > 0 || rrset->type == KNOT_RRTYPE_RRSIG)) {
+		// Fill buffer with tabs.
+		memset(buf, '\t', sizeof(buf));
+		// Compute leading number of tabs.
+		size_t tabs = (strlen(name) + TAB_WIDTH - 1) / TAB_WIDTH;
+		// Check number of tabs.
+		tabs = tabs < sizeof(buf) ? tabs : (sizeof(buf) - 1);
+		// Terminate tabs string.
+		buf[tabs] = '\0';
+
+		ret = snprintf(dst + len, maxlen - len, "%s", buf);
+	} else {
+		// Get rrset owner.
+		if (style->reduce) {
+			// If reduced style don't print extra spaces.
+			ret = snprintf(dst + len, maxlen - len, "%s\t", name);
+		} else {
+			ret = snprintf(dst + len, maxlen - len, "%-20s\t", name);
+		}
+	}
 	free(name);
 	if (ret < 0 || ret >= maxlen - len) {
 		return KNOT_ESPACE;
@@ -1518,9 +1601,18 @@ int knot_rrset_txt_dump_header(const knot_rrset_t *rrset,
 	len += ret;
 
 	// Dump rrset ttl.
-	if (1) {	
-		ret = snprintf(dst + len, maxlen - len, "%6u\t", rrset->ttl);
-//		ret = time_to_human_str(rrset->ttl, dst + len, maxlen - len);
+	if (style->show_ttl) {
+		if (style->verbose) {
+			// Create human readable ttl string.
+			ret = time_to_human_str(buf, sizeof(buf), rrset->ttl);
+			if (ret < 0) {
+				return KNOT_ESPACE;
+			}
+			ret = snprintf(dst + len, maxlen - len, "%s\t", buf);
+		} else {
+			ret = snprintf(dst + len, maxlen - len, "%6u\t",
+			               rrset->ttl);
+		}
 	} else {
 		ret = snprintf(dst + len, maxlen - len, "     \t");
 	}
@@ -1530,7 +1622,7 @@ int knot_rrset_txt_dump_header(const knot_rrset_t *rrset,
 	len += ret;
 
 	// Dump rrset class.
-	if (1) {
+	if (style->show_class) {
 		if (knot_rrclass_to_string(rrset->rclass, buf, sizeof(buf)) < 0)
 		{
 			return KNOT_ESPACE;
@@ -1557,11 +1649,12 @@ int knot_rrset_txt_dump_header(const knot_rrset_t *rrset,
 	return len;
 }
 
-int knot_rrset_txt_dump(const knot_rrset_t *rrset,
-                        char               *dst,
-                        const size_t       maxlen)
+int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
+                        char                    *dst,
+                        const size_t            maxlen,
+                        const knot_dump_style_t *style)
 {
-	if (rrset == NULL || dst == NULL) {
+	if (rrset == NULL || dst == NULL || style == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -1571,14 +1664,16 @@ int knot_rrset_txt_dump(const knot_rrset_t *rrset,
 	// Loop over rdata in rrset.
 	for (size_t i = 0; i < rrset->rdata_count; i++) {
 		// Dump rdata owner, class, ttl and type.
-		ret = knot_rrset_txt_dump_header(rrset, dst + len, maxlen - len);
+		ret = knot_rrset_txt_dump_header(rrset, i, dst + len,
+		                                 maxlen - len, style);
 		if (ret < 0) {
 			return KNOT_ESPACE;
 		}
 		len += ret;
 
 		// Dump rdata as such.
-		ret = knot_rrset_txt_dump_data(rrset, i, dst + len, maxlen - len);
+		ret = knot_rrset_txt_dump_data(rrset, i, dst + len,
+		                               maxlen - len, style);
 		if (ret < 0) {
 			return KNOT_ESPACE;
 		}
@@ -1594,7 +1689,8 @@ int knot_rrset_txt_dump(const knot_rrset_t *rrset,
 
 	// Dump RRSIG records if any via recursion call.
 	if (rrset->rrsigs != NULL) {
-		ret = knot_rrset_txt_dump(rrset->rrsigs, dst + len, maxlen - len);
+		ret = knot_rrset_txt_dump(rrset->rrsigs, dst + len,
+		                          maxlen - len, style);
 		if (ret < 0) {
 			return KNOT_ESPACE;
 		}

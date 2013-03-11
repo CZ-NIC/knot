@@ -14,11 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-/* FreeBSD POSIX2008 getline() */
-#ifndef _WITH_GETLINE
- #define _WITH_GETLINE
-#endif
-
 #include "utils/common/params.h"
 
 #include <stdio.h>

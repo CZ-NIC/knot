@@ -27,11 +27,43 @@
 #ifndef _KNOT_RRSETDUMP_H_
 #define _KNOT_RRSETDUMP_H_
 
-//#include <std>
+#include <stdbool.h>		// bool
 
 #include "libknot/rrset.h"
 
-int knot_rrset_txt_dump(const knot_rrset_t *rrset, char *dst, const size_t maxlen);
+/*! \brief Text output settings. */
+typedef struct {
+	/*!< Wrap long records. */
+	bool	wrap;
+	/*!< Show class. */
+	bool	show_class;
+	/*!< Show ttl. */
+	bool	show_ttl;
+	/*!< Show additional information using comments. */
+	bool	verbose;
+	/*!< Reduce dumping all items in rrset. */
+	bool	reduce;
+} knot_dump_style_t;
+
+/*! \brief Default dump style. */
+extern const knot_dump_style_t KNOT_DUMP_STYLE_DEFAULT;
+
+int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
+                               const size_t            pos,
+                               char                    *dst,
+                               const size_t            maxlen,
+                               const knot_dump_style_t *style);
+
+int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
+                             const size_t            pos,
+                             char                    *dst,
+                             const size_t            maxlen,
+                             const knot_dump_style_t *style);
+
+int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
+                        char                    *dst,
+                        const size_t            maxlen,
+                        const knot_dump_style_t *style);
 
 #endif // _KNOT_RRSETDUMP_H_
 
