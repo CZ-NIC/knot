@@ -1293,8 +1293,8 @@ static int test_rrset_find_pos()
 	uint8_t *mock_data = (uint8_t *)"cafebabebadcafecafecafecafe";
 	/* Test removal of two exactly same items. */
 	uint8_t *rdata = knot_rrset_create_rdata(rrset_source,
-	                                          strlen(mock_data));
-	memcpy(rdata, mock_data, strlen(mock_data));
+	                                          strlen((char *)mock_data));
+	memcpy(rdata, mock_data, strlen((char *)mock_data));
 	knot_rrset_t *rrset_find_in = NULL;
 	knot_rrset_deep_copy(rrset_source, &rrset_find_in, 1);
 	rdata = knot_rrset_create_rdata(rrset_source, 10);
@@ -1337,8 +1337,8 @@ static int test_rrset_remove_rr()
 	uint8_t *mock_data = (uint8_t *)"cafebabebadcafecafecafecafe";
 	/* Test removal of two exactly same items. */
 	uint8_t *rdata = knot_rrset_create_rdata(rrset_source,
-	                                         strlen(mock_data));
-	memcpy(rdata, mock_data, strlen(mock_data));
+	                                         strlen((char *)mock_data));
+	memcpy(rdata, mock_data, strlen((char *)mock_data));
 	rdata = knot_rrset_create_rdata(rrset_source, 10);
 	memcpy(rdata, mock_data ,10);
 	knot_rrset_t *rrset_dest = NULL;

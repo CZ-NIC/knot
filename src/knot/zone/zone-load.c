@@ -294,7 +294,7 @@ static void process_rr(const scanner_t *scanner)
 	/*!< \todo Refactor, too long. */
 	dbg_zp_detail("Owner from parser=%s\n",
 	              scanner->r_owner);
-	char add = 1;
+//	char add = 1;
 	parser_context_t *parser = scanner->data;
 	knot_zone_contents_t *contents = parser->current_zone;
 	/* Create rrset. TODO will not be always needed. */
