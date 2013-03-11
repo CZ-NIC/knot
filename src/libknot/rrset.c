@@ -480,8 +480,8 @@ static int knot_rrset_to_wire_aux(const knot_rrset_t *rrset, uint8_t **pos,
 			         max_size);
 		size_t rr_size = 0;
 		int ret = knot_rrset_rdata_to_wire_one(rrset, i, pos, max_size,
-		                                       &rr_size, &compr_info,
-		                                       comp->compr_cs);
+		                                       &rr_size, comp ? &compr_info : NULL,
+		                                       comp ? comp->compr_cs : 0);
 		if (ret != KNOT_EOK) {
 			dbg_rrset("rrset: to_wire: Cannot convert RR. "
 			          "Reason: %s.\n", knot_strerror(ret));
