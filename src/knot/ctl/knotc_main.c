@@ -556,8 +556,10 @@ static int tsig_parse_file(knot_key_t *k, const char *f)
 
 static void tsig_key_cleanup(knot_key_t *k)
 {
-	knot_dname_free(&k->name);
-	free(k->secret);
+	if (k) {
+		knot_dname_free(&k->name);
+		free(k->secret);
+	}
 }
 
 int main(int argc, char **argv)
@@ -567,16 +569,18 @@ int main(int argc, char **argv)
 	unsigned jobs = 1;
 	unsigned flags = F_NULL;
 	char *config_fn = NULL;
+	char *default_config = conf_find_default();
 	
 	/* Remote server descriptor. */
 	int ret = KNOT_EOK;
-	const char *r_addr = "127.0.0.1";
-	int r_port = REMOTE_DPORT;
+	const char *r_addr = NULL;
+	int r_port = -1;
 	knot_key_t r_key;
 	memset(&r_key, 0, sizeof(knot_key_t));
 	
 	/* Initialize. */
 	log_init();
+	log_levels_set(LOG_SYSLOG, LOG_ANY, 0);
 	
 	/* Long options. */
 	struct option opts[] = {
@@ -691,31 +695,29 @@ int main(int argc, char **argv)
 	}
 
 	/* Open config, allow if not exists. */
-	if (cmd->need_conf) {
-		if (!config_fn) {
-			config_fn = conf_find_default();
-		}
-		if (conf_open(config_fn) != KNOT_EOK) {
+	if (conf_open(config_fn) != KNOT_EOK) {
+		if(conf_open(default_config) != KNOT_EOK) {
 			flags |= F_NOCONF;
 		}
-		free(config_fn);
-		config_fn = NULL;
+	}
+	if (flags & F_NOCONF) {
+		s_config = conf_new(NULL);
+		flags |= F_NOCONF;
 	}
 	
-	/* Discard remote interface. */
+	/* Create remote iface if not present in config. */
 	conf_iface_t *ctl_if = conf()->ctl.iface;
-	conf_free_iface(ctl_if);
-	
-	/* Update remote interface. */
-	ctl_if = malloc(sizeof(conf_iface_t));
-	if (ctl_if) {
+	if (!ctl_if) {
+		ctl_if = malloc(sizeof(conf_iface_t));
+		assert(ctl_if);
+		conf()->ctl.iface = ctl_if;
 		memset(ctl_if, 0, sizeof(conf_iface_t));
-		ctl_if->address = strdup(r_addr);
-		ctl_if->port = r_port;
-		ctl_if->family = AF_INET;
-		if (strchr(r_addr, ':')) { /* Dumb way to check for v6 addr. */
-			ctl_if->family = AF_INET6;
-		}
+		
+		/* Fill defaults. */
+		if (!r_addr) r_addr = "127.0.0.1";
+		if (r_port < 0) r_port =  REMOTE_DPORT;
+
+		/* Create empty key. */
 		if (r_key.name) {
 			ctl_if->key = malloc(sizeof(knot_key_t));
 			if (ctl_if->key) {
@@ -723,7 +725,22 @@ int main(int argc, char **argv)
 			}
 		}
 	}
-	conf()->ctl.iface = ctl_if;
+	
+	/* Override from command line. */
+	if (r_addr) {
+		free(ctl_if->address);
+		ctl_if->address = strdup(r_addr);
+		ctl_if->family = AF_INET;
+		if (strchr(r_addr, ':')) { /* Dumb way to check for v6 addr. */
+			ctl_if->family = AF_INET6;
+		}
+	}
+	if (r_port > -1) ctl_if->port = r_port;
+	if (r_key.name != NULL) {
+		tsig_key_cleanup(ctl_if->key);
+		ctl_if->key = &r_key;
+	}
+	
 
 	/* Verbose mode. */
 	if (has_flag(flags, F_VERBOSE)) {
@@ -737,6 +754,8 @@ int main(int argc, char **argv)
 	/* Finish */
 	tsig_key_cleanup(&r_key); /* Not cleaned by config deinit. */
 	log_close();
+	free(config_fn);
+	free(default_config);
 	return rc;
 }
 
