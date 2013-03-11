@@ -75,7 +75,6 @@ struct compression_param {
 	size_t wire_pos;
 	uint8_t *owner_tmp;
 	knot_compressed_dnames_t *compressed_dnames;
-	knot_compr_t *compr;
 	int compr_cs;
 };
 

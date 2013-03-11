@@ -182,8 +182,7 @@ dbg_response_exec(
 	int i = 0, copied = 0;
 
 	while (to_save != NULL && i < knot_dname_label_count(dname)
-	       && parent_pos <= KNOT_RESPONSE_MAX_PTR && 
-		 parent_pos >= KNOT_WIRE_HEADER_SIZE) {
+	       && parent_pos <= KNOT_RESPONSE_MAX_PTR) {
 		if (i == not_matched) {
 			parent_pos = unmatched_offset;
 		}
@@ -526,7 +525,7 @@ dbg_response_exec(
 	param.compr_cs = compr_cs;
 	param.owner_tmp = resp->owner_tmp;
 	param.compressed_dnames = &resp->compression;
-	param.wire_pos = 0;
+	param.wire_pos = resp->size;
 	uint16_t rr_count = 0;
 	int ret = knot_rrset_to_wire(rrset, pos, &size, max_size,
 	                             &rr_count, &param);
