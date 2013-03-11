@@ -167,6 +167,24 @@ dbg_zone_exec_detail(
 	}
 }
 
+static void knot_zone_contents_insert_dname_into_table(knot_dname_t **in_dname,
+                                                       hattrie_t *lookup_tree)
+{
+        assert(in_dname && *in_dname);
+        /* First thing - make sure dname is not duplicated. */
+        knot_dname_t *found_dname = hattrie_get_dname(lookup_tree, *in_dname);
+        if (found_dname != NULL && found_dname != *in_dname) {
+            /* Duplicate. */
+            knot_dname_release(*in_dname);
+            knot_dname_retain(found_dname);
+            *in_dname = found_dname;
+        } else {
+            assert(found_dname == NULL || found_dname == *in_dname);
+            /* Into the tree it goes. */
+            hattrie_insert_dname(lookup_tree, *in_dname);
+        }
+}
+
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Adjusts one RDATA item by replacing domain name by one present in the
@@ -189,22 +207,9 @@ static void knot_zone_contents_adjust_rdata_dname(knot_zone_contents_t *zone,
                                                   knot_node_t *node,
                                                   knot_dname_t **in_dname)
 {
-	assert(in_dname && *in_dname);
-	/* First thing - make sure dname is not duplicated. */
-	knot_dname_t *found_dname = hattrie_get_dname(lookup_tree, *in_dname);
-	if (found_dname != NULL && found_dname != *in_dname) {
-		/* Duplicate. */
-		knot_dname_release(*in_dname);
-		knot_dname_retain(found_dname);
-		*in_dname = found_dname;
-	} else {
-		assert(found_dname == NULL || found_dname == *in_dname);
-		/* Into the tree it goes. */
-		hattrie_insert_dname(lookup_tree, *in_dname);
-	}
+	knot_zone_contents_insert_dname_into_table(in_dname, lookup_tree);
 	
 	knot_dname_t *dname = *in_dname;
-	
 	/*
 	 * The case when dname.node is already set is handled here.
 	 * No use to check it later.
@@ -264,8 +269,8 @@ static void knot_zone_contents_adjust_rdata_dname(knot_zone_contents_t *zone,
 					free(name2);
 				);
 			}
-		}
 	}
+}
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -388,6 +393,8 @@ dbg_zone_exec_detail(
 		   && node != zone->apex) {
 		knot_node_set_deleg_point(node);
 	}
+		
+	knot_zone_contents_insert_dname_into_table(&node->owner, lookup_tree);
 
 	// assure that owner has proper node
 	if (knot_dname_node(knot_node_owner(node)) == NULL) {
