@@ -245,6 +245,7 @@ int main(int argc, char **argv)
 	log_server_info("\n");
 
 	/* Alter privileges. */
+	log_update_privileges(conf()->uid, conf()->gid);
 	proc_update_privileges(conf()->uid, conf()->gid);
 	
 	/* Load zones and add hook. */
