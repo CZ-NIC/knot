@@ -441,7 +441,7 @@ dbg_zone_exec_verb(
 	knot_zone_contents_t *zone = args->zone;
 	
 	/*
-	 * 2) Do other adjusting (flags, closest enclosers, wildcard children,
+	 *    Do other adjusting (flags, closest enclosers, wildcard children,
 	 *    etc.).
 	 */
 	knot_zone_contents_adjust_node(node, args->lookup_tree, zone);
@@ -535,10 +535,12 @@ static void knot_zone_contents_adjust_nsec3_node_in_tree(
 	if (knot_dname_node(knot_node_owner(node)) == NULL) {
 		knot_dname_set_node(knot_node_get_owner(node), node);
 	}
-
+	
 	/*
-	 * Store domain names to dname table.
+	 * We assume, that NSEC3 nodes have none DNAMEs in their RDATA and
+	 * that node owners are all unique. \todo Harmful?
 	 */
+
 	knot_zone_contents_t *zone = args->zone;
 	assert(zone != NULL);
 }
