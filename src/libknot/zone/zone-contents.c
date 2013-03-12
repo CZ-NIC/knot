@@ -208,10 +208,8 @@ static void knot_zone_contents_adjust_rdata_dname(knot_zone_contents_t *zone,
                                                   knot_dname_t **in_dname)
 {
 	const knot_node_t *old_dname_node = (*in_dname)->node;
-	printf("DNAME before table = %s\n", knot_dname_to_str(*in_dname));
 	knot_zone_contents_insert_dname_into_table(in_dname, lookup_tree);
 	assert((*in_dname)->node == old_dname_node || old_dname_node == NULL);
-	printf("DNAME after table = %s\n", knot_dname_to_str(*in_dname));
 	
 	knot_dname_t *dname = *in_dname;
 	/*

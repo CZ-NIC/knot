@@ -2948,6 +2948,10 @@ dbg_xfrin_exec_detail(
 			dbg_xfrin("Failed to remove node from zone!\n");
 			return KNOT_ENONODE;
 		}
+		// LS: REVIEW
+		if (zone_node->owner->node == zone_node) {
+			zone_node->owner->node = NULL;
+		}
 		free(zone_node);
 		changes->old_nodes[i] = NULL;
 	}
