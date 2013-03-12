@@ -207,9 +207,9 @@ static void knot_zone_contents_adjust_rdata_dname(knot_zone_contents_t *zone,
                                                   knot_node_t *node,
                                                   knot_dname_t **in_dname)
 {
-	const knot_node_t *old_dname_node = (*in_dname)->node;
+//	const knot_node_t *old_dname_node = (*in_dname)->node;
 	knot_zone_contents_insert_dname_into_table(in_dname, lookup_tree);
-	assert((*in_dname)->node == old_dname_node || old_dname_node == NULL);
+//	assert((*in_dname)->node == old_dname_node || old_dname_node == NULL);
 	
 	knot_dname_t *dname = *in_dname;
 	/*
@@ -397,9 +397,9 @@ dbg_zone_exec_detail(
 		knot_node_set_deleg_point(node);
 	}
 	
-	const knot_node_t *old_dname_node = node->owner->node;
+//	const knot_node_t *old_dname_node = node->owner->node;
 	knot_zone_contents_insert_dname_into_table(&node->owner, lookup_tree);
-	assert(node->owner->node == old_dname_node || old_dname_node == NULL);
+//	assert(node->owner->node == old_dname_node || old_dname_node == NULL);
 
 	// assure that owner has proper node
 	if (knot_dname_node(knot_node_owner(node)) == NULL) {

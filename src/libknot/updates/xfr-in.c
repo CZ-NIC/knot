@@ -2948,6 +2948,7 @@ dbg_xfrin_exec_detail(
 			dbg_xfrin("Failed to remove node from zone!\n");
 			return KNOT_ENONODE;
 		}
+		zone_node->owner->node = NULL;
 		free(zone_node);
 		changes->old_nodes[i] = NULL;
 	}
@@ -2969,6 +2970,7 @@ dbg_xfrin_exec_detail(
 			dbg_xfrin("Failed to remove NSEC3 node from zone!\n");
 			return KNOT_ENONODE;
 		}
+		zone_node->owner->node = NULL;
 		free(zone_node);
 		changes->old_nsec3[i] = NULL;
 	}
@@ -3117,10 +3119,22 @@ int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
 	 * - ???
 	 */
 	
+	/*
+	 * Select and remove empty nodes from zone trees. Do not free them right
+	 * away as they may be referenced by some domain names.
+	 */
+	int ret = xfrin_remove_empty_nodes(contents_copy, changes);
+	if (ret != KNOT_EOK) {
+		dbg_xfrin("Failed to remove empty nodes: %s\n",
+		          knot_strerror(ret));
+//		xfrin_rollback_update(old_contents, &contents_copy, &changes);
+		return ret;
+	}
+
 	dbg_xfrin("Adjusting zone contents.\n");
 	dbg_xfrin_verb("Old contents apex: %p, new apex: %p\n",
 	               old_contents->apex, contents_copy->apex);
-	int ret = knot_zone_contents_adjust(contents_copy, NULL, NULL);
+	ret = knot_zone_contents_adjust(contents_copy, NULL, NULL);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to finalize zone contents: %s\n",
 		          knot_strerror(ret));
@@ -3129,17 +3143,6 @@ int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
 	}
 	assert(knot_zone_contents_apex(contents_copy) != NULL);
 
-	/*
-	 * Select and remove empty nodes from zone trees. Do not free them right
-	 * away as they may be referenced by some domain names.
-	 */
-	ret = xfrin_remove_empty_nodes(contents_copy, changes);
-	if (ret != KNOT_EOK) {
-		dbg_xfrin("Failed to remove empty nodes: %s\n",
-		          knot_strerror(ret));
-//		xfrin_rollback_update(old_contents, &contents_copy, &changes);
-		return ret;
-	}
 
 	dbg_xfrin("Checking zone for CNAME loops.\n");
 	ret = knot_zone_contents_check_loops(contents_copy);
