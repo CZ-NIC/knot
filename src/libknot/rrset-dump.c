@@ -357,11 +357,13 @@ static void wire_data_encode_to_str(rrset_dump_params_t *p,
 
 		// Loop which wraps base64 block in more lines.
 		for (src_begin = 0; src_begin < ret; src_begin += BLOCK_WIDTH) {
-			// Write indent block.
-			dump_string(p, BLOCK_INDENT);
-			if (p->ret != 0) {
-				free(buf);
-				return;
+			if (src_begin > 0) {
+				// Write indent block.
+				dump_string(p, BLOCK_INDENT);
+				if (p->ret != 0) {
+					free(buf);
+					return;
+				}
 			}
 
 			// Compute block length (the last one can be shorter).
@@ -1093,8 +1095,12 @@ static void wire_gateway_to_str(rrset_dump_params_t *p)
 	}
 
 	if (alg > 0) {
-		// Write space.
-		dump_string(p, " ");
+		// If wrap mode wrap line.
+		if (p->style->wrap) {
+			dump_string(p, BLOCK_INDENT);
+		} else {
+			dump_string(p, " ");
+		}
 		if (p->ret != 0) {
 			return;
 		}
@@ -1135,6 +1141,14 @@ static void wire_unknown_to_str(rrset_dump_params_t *p)
 
 	// Write hex data if any.
 	if (in_len > 0) {
+		// If wrap mode wrap line.
+		if (p->style->wrap) {
+			dump_string(p, BLOCK_INDENT);
+			if (p->ret != 0) {
+				return;
+			}
+		}
+
 		wire_data_encode_to_str(p, &hex_encode, &hex_encode_alloc);
 		if (p->ret != 0) {
 			return;
@@ -1148,10 +1162,16 @@ static void wire_unknown_to_str(rrset_dump_params_t *p)
 			const size_t out_max, const knot_dump_style_t *style
 #define DUMP_INIT	rrset_dump_params_t p = { .style = style, .in = in, \
 			.in_max = in_len, .out = out, .out_max = out_max };
-//#define	DUMP_END	return (p.in_max == 0 ? p.total : -1);
-#define	DUMP_END	return p.total;
+#define	DUMP_END	return (p.in_max == 0 ? p.total : KNOT_EPARSEFAIL);
 
 #define CHECK_RET(p)	if (p.ret != 0) return -1;
+
+#define WRAP_INIT	dump_string(&p, "(" BLOCK_INDENT); CHECK_RET(p);
+#define WRAP_END	dump_string(&p, BLOCK_INDENT ")"); CHECK_RET(p);
+#define WRAP_LINE	dump_string(&p, BLOCK_INDENT); CHECK_RET(p);
+
+#define COMMENT(s)	if (p.style->verbose) { dump_string(&p, "\t; " s); \
+			CHECK_RET(p); }
 
 #define DUMP_SPACE	dump_string(&p, " "); CHECK_RET(p);
 #define DUMP_NUM8	wire_num8_to_str(&p); CHECK_RET(p);
@@ -1200,13 +1220,23 @@ static int dump_soa(DUMP_PARAMS)
 {
 	DUMP_INIT;
 
-	DUMP_DNAME; DUMP_SPACE;
-	DUMP_DNAME; DUMP_SPACE;
-	DUMP_NUM32; DUMP_SPACE;
-	DUMP_TIME; DUMP_SPACE;
-	DUMP_TIME; DUMP_SPACE;
-	DUMP_TIME; DUMP_SPACE;
-	DUMP_TIME;
+	if (p.style->wrap) {
+		DUMP_DNAME; DUMP_SPACE;
+		DUMP_DNAME; DUMP_SPACE; WRAP_INIT;
+		DUMP_NUM32; COMMENT("serial"); WRAP_LINE;
+		DUMP_TIME;  COMMENT("refresh"); WRAP_LINE;
+		DUMP_TIME;  COMMENT("retry"); WRAP_LINE;
+		DUMP_TIME;  COMMENT("expire"); WRAP_LINE;
+		DUMP_TIME;  COMMENT("minimum"); WRAP_END;
+	} else {
+		DUMP_DNAME; DUMP_SPACE;
+		DUMP_DNAME; DUMP_SPACE;
+		DUMP_NUM32; DUMP_SPACE;
+		DUMP_TIME;  DUMP_SPACE;
+		DUMP_TIME;  DUMP_SPACE;
+		DUMP_TIME;  DUMP_SPACE;
+		DUMP_TIME;
+	}
 
 	DUMP_END;
 }
@@ -1260,10 +1290,18 @@ static int dump_dnskey(DUMP_PARAMS)
 {
 	DUMP_INIT;
 
-	DUMP_NUM16; DUMP_SPACE;
-	DUMP_NUM8; DUMP_SPACE;
-	DUMP_NUM8; DUMP_SPACE;
-	DUMP_BASE64;
+	if (p.style->wrap) {
+		DUMP_NUM16; DUMP_SPACE;
+		DUMP_NUM8;  DUMP_SPACE;
+		DUMP_NUM8;  DUMP_SPACE; WRAP_INIT;
+		DUMP_BASE64;
+		WRAP_END;
+	} else {
+		DUMP_NUM16; DUMP_SPACE;
+		DUMP_NUM8;  DUMP_SPACE;
+		DUMP_NUM8;  DUMP_SPACE;
+		DUMP_BASE64;
+	}
 
 	DUMP_END;
 }
@@ -1304,9 +1342,9 @@ static int dump_naptr(DUMP_PARAMS)
 
 	DUMP_NUM16; DUMP_SPACE;
 	DUMP_NUM16; DUMP_SPACE;
-	DUMP_TEXT; DUMP_SPACE;
-	DUMP_TEXT; DUMP_SPACE;
-	DUMP_TEXT; DUMP_SPACE;
+	DUMP_TEXT;  DUMP_SPACE;
+	DUMP_TEXT;  DUMP_SPACE;
+	DUMP_TEXT;  DUMP_SPACE;
 	DUMP_DNAME;
 
 	DUMP_END;
@@ -1316,10 +1354,18 @@ static int dump_cert(DUMP_PARAMS)
 {
 	DUMP_INIT;
 
-	DUMP_NUM16; DUMP_SPACE;
-	DUMP_NUM16; DUMP_SPACE;
-	DUMP_NUM8; DUMP_SPACE;
-	DUMP_BASE64;
+	if (p.style->wrap) {
+		DUMP_NUM16;  DUMP_SPACE;
+		DUMP_NUM16;  DUMP_SPACE;
+		DUMP_NUM8;   DUMP_SPACE; WRAP_INIT;
+		DUMP_BASE64;
+		WRAP_END;
+	} else {
+		DUMP_NUM16;  DUMP_SPACE;
+		DUMP_NUM16;  DUMP_SPACE;
+		DUMP_NUM8;   DUMP_SPACE;
+		DUMP_BASE64;
+	}
 
 	DUMP_END;
 }
@@ -1343,10 +1389,18 @@ static int dump_ds(DUMP_PARAMS)
 {
 	DUMP_INIT;
 
-	DUMP_NUM16; DUMP_SPACE;
-	DUMP_NUM8; DUMP_SPACE;
-	DUMP_NUM8; DUMP_SPACE;
-	DUMP_HEX;
+	if (p.style->wrap) {
+		DUMP_NUM16; DUMP_SPACE;
+		DUMP_NUM8;  DUMP_SPACE;
+		DUMP_NUM8;  DUMP_SPACE; WRAP_INIT;
+		DUMP_HEX;
+		WRAP_END;
+	} else {
+		DUMP_NUM16; DUMP_SPACE;
+		DUMP_NUM8;  DUMP_SPACE;
+		DUMP_NUM8;  DUMP_SPACE;
+		DUMP_HEX;
+	}
 
 	DUMP_END;
 }
@@ -1355,9 +1409,16 @@ static int dump_sshfp(DUMP_PARAMS)
 {
 	DUMP_INIT;
 
-	DUMP_NUM8; DUMP_SPACE;
-	DUMP_NUM8; DUMP_SPACE;
-	DUMP_HEX;
+	if (p.style->wrap) {
+		DUMP_NUM8; DUMP_SPACE;
+		DUMP_NUM8; DUMP_SPACE; WRAP_INIT;
+		DUMP_HEX;
+		WRAP_END;
+	} else {
+		DUMP_NUM8; DUMP_SPACE;
+		DUMP_NUM8; DUMP_SPACE;
+		DUMP_HEX;
+	}
 
 	DUMP_END;
 }
@@ -1366,8 +1427,14 @@ static int dump_ipseckey(DUMP_PARAMS)
 {
 	DUMP_INIT;
 
-	DUMP_NUM8; DUMP_SPACE;
-	DUMP_GATEWAY;
+	if (p.style->wrap) {
+		DUMP_NUM8; DUMP_SPACE; WRAP_INIT;
+		DUMP_GATEWAY;
+		WRAP_END;
+	} else {
+		DUMP_NUM8; DUMP_SPACE;
+		DUMP_GATEWAY;
+	}
 
 	DUMP_END;
 }
@@ -1376,15 +1443,28 @@ static int dump_rrsig(DUMP_PARAMS)
 {
 	DUMP_INIT;
 
-	DUMP_TYPE; DUMP_SPACE;
-	DUMP_NUM8; DUMP_SPACE;
-	DUMP_NUM8; DUMP_SPACE;
-	DUMP_NUM32; DUMP_SPACE;
-	DUMP_TIMESTAMP; DUMP_SPACE;
-	DUMP_TIMESTAMP; DUMP_SPACE;
-	DUMP_NUM16; DUMP_SPACE;
-	DUMP_DNAME; DUMP_SPACE;
-	DUMP_BASE64;
+	if (p.style->wrap) {
+		DUMP_TYPE;   DUMP_SPACE;
+		DUMP_NUM8;   DUMP_SPACE;
+		DUMP_NUM8;   DUMP_SPACE;
+		DUMP_NUM32;  DUMP_SPACE;
+		DUMP_TIMESTAMP; DUMP_SPACE; WRAP_INIT;
+		DUMP_TIMESTAMP; DUMP_SPACE;
+		DUMP_NUM16;  DUMP_SPACE;
+		DUMP_DNAME;  WRAP_LINE;
+		DUMP_BASE64;
+		WRAP_END;
+	} else {
+		DUMP_TYPE;   DUMP_SPACE;
+		DUMP_NUM8;   DUMP_SPACE;
+		DUMP_NUM8;   DUMP_SPACE;
+		DUMP_NUM32;  DUMP_SPACE;
+		DUMP_TIMESTAMP; DUMP_SPACE;
+		DUMP_TIMESTAMP; DUMP_SPACE;
+		DUMP_NUM16;  DUMP_SPACE;
+		DUMP_DNAME;  DUMP_SPACE;
+		DUMP_BASE64;
+	}
 
 	DUMP_END;
 }
@@ -1403,7 +1483,13 @@ static int dump_dhcid(DUMP_PARAMS)
 {
 	DUMP_INIT;
 
-	DUMP_BASE64;
+	if (p.style->wrap) {
+		WRAP_INIT;
+		DUMP_BASE64;
+		WRAP_END;
+	} else {
+		DUMP_BASE64;
+	}
 
 	DUMP_END;
 }
@@ -1412,12 +1498,22 @@ static int dump_nsec3(DUMP_PARAMS)
 {
 	DUMP_INIT;
 
-	DUMP_NUM8; DUMP_SPACE;
-	DUMP_NUM8; DUMP_SPACE;
-	DUMP_NUM16; DUMP_SPACE;
-	DUMP_SALT; DUMP_SPACE;
-	DUMP_HASH; DUMP_SPACE;
-	DUMP_BITMAP;
+	if (p.style->wrap) {
+		DUMP_NUM8;   DUMP_SPACE;
+		DUMP_NUM8;   DUMP_SPACE;
+		DUMP_NUM16;  DUMP_SPACE;
+		DUMP_SALT;   DUMP_SPACE; WRAP_INIT;
+		DUMP_HASH;   DUMP_SPACE; WRAP_LINE;
+		DUMP_BITMAP;
+		WRAP_END;
+	} else {
+		DUMP_NUM8;  DUMP_SPACE;
+		DUMP_NUM8;  DUMP_SPACE;
+		DUMP_NUM16; DUMP_SPACE;
+		DUMP_SALT;  DUMP_SPACE;
+		DUMP_HASH;  DUMP_SPACE;
+		DUMP_BITMAP;
+	}
 
 	DUMP_END;
 }
@@ -1426,8 +1522,8 @@ static int dump_nsec3param(DUMP_PARAMS)
 {
 	DUMP_INIT;
 
-	DUMP_NUM8; DUMP_SPACE;
-	DUMP_NUM8; DUMP_SPACE;
+	DUMP_NUM8;  DUMP_SPACE;
+	DUMP_NUM8;  DUMP_SPACE;
 	DUMP_NUM16; DUMP_SPACE;
 	DUMP_SALT;
 
@@ -1438,10 +1534,18 @@ static int dump_tlsa(DUMP_PARAMS)
 {
 	DUMP_INIT;
 
-	DUMP_NUM8; DUMP_SPACE;
-	DUMP_NUM8; DUMP_SPACE;
-	DUMP_NUM8; DUMP_SPACE;
-	DUMP_HEX;
+	if (p.style->wrap) {
+		DUMP_NUM8; DUMP_SPACE;
+		DUMP_NUM8; DUMP_SPACE;
+		DUMP_NUM8; DUMP_SPACE; WRAP_INIT;
+		DUMP_HEX;
+		WRAP_END;
+	} else {
+		DUMP_NUM8; DUMP_SPACE;
+		DUMP_NUM8; DUMP_SPACE;
+		DUMP_NUM8; DUMP_SPACE;
+		DUMP_HEX;
+	}
 
 	DUMP_END;
 }
@@ -1450,7 +1554,13 @@ static int dump_unknown(DUMP_PARAMS)
 {
 	DUMP_INIT;
 
-	DUMP_UNKNOWN;
+	if (p.style->wrap) {
+		WRAP_INIT;
+		DUMP_UNKNOWN;
+		WRAP_END;
+	} else {
+		DUMP_UNKNOWN;
+	}
 
 	DUMP_END;
 }
@@ -1573,7 +1683,7 @@ int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
 
 	// Dump rrset owner.
 	char *name = knot_dname_to_str(rrset->owner);
-	// If reduced style don't print non-first records in rrset or rrsigs.
+	// If reduced style don't print non-first headers in rrset or rrsigs.
 	if (style->reduce && (pos > 0 || rrset->type == KNOT_RRTYPE_RRSIG)) {
 		// Fill buffer with tabs.
 		memset(buf, '\t', sizeof(buf));
@@ -1591,7 +1701,11 @@ int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
 			// If reduced style don't print extra spaces.
 			ret = snprintf(dst + len, maxlen - len, "%s\t", name);
 		} else {
-			ret = snprintf(dst + len, maxlen - len, "%-20s\t", name);
+			// Set white space separation character.
+			char sep = strlen(name) < 4 * TAB_WIDTH ? '\t' : ' ';
+
+			ret = snprintf(dst + len, maxlen - len, "%-20s%c",
+			               name, sep);
 		}
 	}
 	free(name);
@@ -1599,6 +1713,9 @@ int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
 		return KNOT_ESPACE;
 	}
 	len += ret;
+
+	// Set white space separation character.
+	char sep = style->wrap ? ' ' : '\t';
 
 	// Dump rrset ttl.
 	if (style->show_ttl) {
@@ -1608,18 +1725,17 @@ int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
 			if (ret < 0) {
 				return KNOT_ESPACE;
 			}
-			ret = snprintf(dst + len, maxlen - len, "%s\t", buf);
+			ret = snprintf(dst + len, maxlen - len, "%s%c",
+			               buf, sep);
 		} else {
-			ret = snprintf(dst + len, maxlen - len, "%6u\t",
-			               rrset->ttl);
+			ret = snprintf(dst + len, maxlen - len, "%u%c",
+			               rrset->ttl, sep);
 		}
-	} else {
-		ret = snprintf(dst + len, maxlen - len, "     \t");
+		if (ret < 0 || ret >= maxlen - len) {
+			return KNOT_ESPACE;
+		}
+		len += ret;
 	}
-	if (ret < 0 || ret >= maxlen - len) {
-		return KNOT_ESPACE;
-	}
-	len += ret;
 
 	// Dump rrset class.
 	if (style->show_class) {
@@ -1627,20 +1743,18 @@ int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
 		{
 			return KNOT_ESPACE;
 		}
-		ret = snprintf(dst + len, maxlen - len, "%-2s\t", buf);
-	} else {
-		ret = snprintf(dst + len, maxlen - len, "  \t");
+		ret = snprintf(dst + len, maxlen - len, "%-2s%c", buf, sep);
+		if (ret < 0 || ret >= maxlen - len) {
+			return KNOT_ESPACE;
+		}
+		len += ret;
 	}
-	if (ret < 0 || ret >= maxlen - len) {
-		return KNOT_ESPACE;
-	}
-	len += ret;
 
 	// Dump rrset type.
 	if (knot_rrtype_to_string(rrset->type, buf, sizeof(buf)) < 0) {
 		return KNOT_ESPACE;
 	}
-	ret = snprintf(dst + len, maxlen - len, "%-5s\t", buf);
+	ret = snprintf(dst + len, maxlen - len, "%s%c", buf, sep);
 	if (ret < 0 || ret >= maxlen - len) {
 		return KNOT_ESPACE;
 	}
