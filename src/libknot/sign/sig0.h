@@ -65,10 +65,10 @@ typedef struct algorithm_callbacks algorithm_callbacks_t;
  * \brief DNSSEC key representation.
  */
 struct knot_dnssec_key {
-	knot_dname_t *name;		    //!< Key name (idenfies signer).
-	knot_dnssec_algorithm_t algorithm;  //!< Algorithm identification.
-	const algorithm_callbacks_t *callbacks; //!< Algorithm callbacks.
-	void *algorithm_data;		    //!< Algorithm custom data.
+	knot_dname_t *name;			//!< Key name (idenfies signer).
+	knot_dnssec_algorithm_t algorithm;	//!< Algorithm identification.
+	const algorithm_callbacks_t *callbacks;	//!< Algorithm callbacks.
+	void *algorithm_data;			//!< Algorithm state data.
 };
 
 typedef struct knot_dnssec_key knot_dnssec_key_t;

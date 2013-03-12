@@ -12,6 +12,15 @@
 
 /*----------------------------------------------------------------------------*/
 
+struct rsa_algorithm_data {
+	RSA *context;
+	union {
+		SHA_CTX sha1;
+	};
+};
+
+typedef struct rsa_algorithm_data rsa_algorithm_data_t;
+
 static int rsa_init(knot_dnssec_key_t *key, const knot_key_params_t *params)
 {
 	if (!key || !params)
@@ -32,10 +41,31 @@ static int rsa_init(knot_dnssec_key_t *key, const knot_key_params_t *params)
 
 	if (RSA_check_key(rsa) != 1) {
 		RSA_free(rsa);
-		return KNOT_EINVAL; //! \todo Better error code?
+		return KNOT_EINVAL; //! \todo Better error code.
 	}
 
-	key->algorithm_data = (void *)rsa;
+	// TEMPORARY
+	if (params->algorithm != KNOT_DNSSEC_ALG_RSASHA1) {
+		RSA_free(rsa);
+		return KNOT_ENOTSUP;
+	}
+
+	SHA_CTX sha_ctx = { 0 };
+	if (SHA1_Init(&sha_ctx) != 1) {
+		RSA_free(rsa);
+		return KNOT_ERROR; //! \todo Better error code.
+	}
+
+	rsa_algorithm_data_t *data = calloc(1, sizeof(rsa_algorithm_data_t));
+	if (!data) {
+		RSA_free(rsa);
+		return KNOT_ENOMEM;
+	}
+
+	data->context = rsa;
+	data->sha1 = sha_ctx;
+	key->algorithm_data = (void *)data;
+
 	return KNOT_EOK;
 }
 
@@ -44,20 +74,20 @@ static int rsa_clean(knot_dnssec_key_t *key)
 	if (!key)
 		return KNOT_EINVAL;
 
-	RSA *rsa = (RSA *)key->algorithm_data;
-	if (rsa)
-		RSA_free(rsa);
+	rsa_algorithm_data_t *data = (rsa_algorithm_data_t *)key->algorithm_data;
+	if (data)
+		RSA_free(data->context);
 
 	return KNOT_EOK;
 }
 
-static size_t rsa_digest_size(knot_dnssec_key_t *key)
+static size_t rsa_signature_size(knot_dnssec_key_t *key)
 {
-	RSA *rsa = (RSA *)key->algorithm_data;
-	if (!rsa)
+	rsa_algorithm_data_t *data = (rsa_algorithm_data_t *)key->algorithm_data;
+	if (!data)
 		return 0;
 
-	return RSA_size(rsa);
+	return RSA_size(data->context);
 }
 
 static int rsa_digest_type(knot_dnssec_key_t *key)
@@ -69,22 +99,41 @@ static int rsa_digest_type(knot_dnssec_key_t *key)
 	}
 }
 
-static int rsa_sign(knot_dnssec_key_t *key, const uint8_t *data, size_t length,
-		    uint8_t *signature)
+static int rsa_add_data(knot_dnssec_key_t *key, const uint8_t *data, size_t len)
 {
-	if (!key | !data | !signature)
+	if (!key | !data)
 		return KNOT_EINVAL;
 
-	RSA *rsa = (RSA *)key->algorithm_data;
-	if (!rsa)
+	rsa_algorithm_data_t *ad = (rsa_algorithm_data_t *)key->algorithm_data;
+	int result;
+
+	result = SHA1_Update(&ad->sha1, (unsigned char *)data, len);
+
+	if (result != 1)
+		return KNOT_ERROR;
+
+	return KNOT_EOK;
+}
+
+static int rsa_sign(knot_dnssec_key_t *key, uint8_t *signature)
+{
+	if (!key || !signature)
 		return KNOT_EINVAL;
+
+	rsa_algorithm_data_t *ad = (rsa_algorithm_data_t *)key->algorithm_data;
+	RSA *rsa = ad->context;
 
 	int type = rsa_digest_type(key);
 	if (type == 0)
 		return KNOT_ENOTSUP;
 
-	unsigned int digest_len = rsa_digest_size(key);
-	int result = RSA_sign(type, data, length, signature, &digest_len, rsa);
+	uint8_t digest[SHA_DIGEST_LENGTH] = { 0 };
+	if (SHA1_Final(digest, &ad->sha1) != 1)
+		return KNOT_ERROR;
+
+	unsigned int signature_length = rsa_signature_size(key);
+	int result = RSA_sign(type, digest, SHA_DIGEST_LENGTH,
+			      signature, &signature_length, rsa);
 
 	return result == 1 ? KNOT_EOK : KNOT_ERROR;
 }
@@ -95,15 +144,15 @@ struct algorithm_callbacks {
 	knot_dnssec_algorithm_t algorithm;
 	int (*init)(knot_dnssec_key_t *, const knot_key_params_t *);
 	int (*clean)(knot_dnssec_key_t *);
-	int (*sign)(knot_dnssec_key_t *, const uint8_t *, size_t, uint8_t *);
-	size_t (*digest_size)(knot_dnssec_key_t *);
+	size_t (*signature_size)(knot_dnssec_key_t *);
+	int (*add_data)(knot_dnssec_key_t *, const uint8_t *, size_t);
+	int (*sign)(knot_dnssec_key_t *, uint8_t *);
 };
 
-typedef struct algorithm_callbacks algorithm_callbacks_t;
-
 static const algorithm_callbacks_t ALGORITHM_MECHANISMS[] = {
-	{ KNOT_DNSSEC_ALG_RSASHA1, rsa_init, rsa_clean, rsa_sign, rsa_digest_size },
-	{ 0, NULL, NULL, NULL, 0 }
+	{ KNOT_DNSSEC_ALG_RSASHA1, rsa_init, rsa_clean, rsa_signature_size,
+				   rsa_add_data, rsa_sign },
+	{ 0 }
 };
 
 static const algorithm_callbacks_t *get_callbacks(knot_dnssec_algorithm_t alg)
@@ -194,8 +243,8 @@ static size_t knot_sig0_rdata_size(knot_dnssec_key_t *key)
 
 	// variable part
 
-	size += sizeof(knot_dname_t *);		   // pointer to signer
-	size += key->callbacks->digest_size(key);  // signature
+	size += sizeof(knot_dname_t *);			// pointer to signer
+	size += key->callbacks->signature_size(key);	// signature
 
 	return size;
 }
@@ -248,35 +297,25 @@ static int knot_sig0_write_rdata(knot_dnssec_key_t *key, uint8_t *rdata)
 /*!
  * \todo Skip from wire RR to RDATA more clearly.
  *
- * (Computed from the size of owner [root], type, class, ttl.)
+ * (Computed from the size of owner (== root), type, class, ttl.)
  */
-#define SIG0_RR_HEADER_SIZE 9
+#define SIG0_RR_HEADER_SIZE 11
 
 static int knot_sig0_write_signature(uint8_t* wire, size_t request_size,
 				     size_t sig_rr_size,
 				     knot_dnssec_key_t *key)
 {
-	size_t signature_size = key->callbacks->digest_size(key);
-	uint8_t *wire_sig_rdata = wire + request_size + SIG0_RR_HEADER_SIZE;
-	size_t wire_sig_rdata_size = sig_rr_size - SIG0_RR_HEADER_SIZE
-				     - signature_size;
+	size_t signature_size = key->callbacks->signature_size(key);
 
-	size_t data_size = request_size + wire_sig_rdata_size;
-	uint8_t *data = (uint8_t *)malloc(data_size);
-	if (!data)
-		return KNOT_ENOMEM;
+	uint8_t *sig_rdata = wire + request_size + SIG0_RR_HEADER_SIZE;
+	size_t sig_rdata_size = sig_rr_size - SIG0_RR_HEADER_SIZE - signature_size;
 
-	memcpy(data, wire_sig_rdata, wire_sig_rdata_size);
-	memcpy(data + wire_sig_rdata_size, wire, request_size);
+	key->callbacks->add_data(key, sig_rdata, sig_rdata_size);
+	key->callbacks->add_data(key, wire, request_size);
 
-	uint8_t *wire_signature = wire + request_size + sig_rr_size
-				  - signature_size;
+	uint8_t *signature = wire + request_size + sig_rr_size - signature_size;
 
-	int result = key->callbacks->sign(key, data, data_size, wire_signature);
-
-	free(data);
-
-	return result;
+	return key->callbacks->sign(key, signature);
 }
 
 int knot_sig0_sign(uint8_t *wire, size_t *wire_size, size_t wire_max_size,
