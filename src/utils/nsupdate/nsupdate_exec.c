@@ -512,7 +512,6 @@ static int sign_packet(nsupdate_params_t *params, uint8_t *wire,
 		knot_dnssec_key_t *key = &sign_ctx->dnssec_key;
 		result = knot_sig0_sign(wire, wire_size, max_size, key);
 
-		fprintf(stderr, "DEBUG: sign_packet with DNSSEC %d\n", result);
 		return result;
 	}
 
@@ -542,8 +541,10 @@ static int check_sign(nsupdate_params_t *params, size_t wire_size,
 	}
 
 	if (key_type == KNOT_KEY_DNSSEC) {
-		//! \todo not implemented yet
-		return KNOT_ERROR;
+		// Uses public key cryptography, server cannot sign the
+		// response, because the private key should be known only
+		// to the client.
+		return KNOT_EOK;
 	}
 
 	return KNOT_EINVAL;
