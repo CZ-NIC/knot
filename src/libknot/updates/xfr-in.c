@@ -2973,8 +2973,13 @@ dbg_xfrin_exec_detail(
 			dbg_xfrin("Failed to remove NSEC3 node from zone!\n");
 			return KNOT_ENONODE;
 		}
-
+		
+		// LS: REVIEW
+		if (zone_node->owner->node == zone_node) {
+			zone_node->owner->node = NULL;
+		}
 		free(zone_node);
+		changes->old_nsec3[i] = NULL;
 	}
 
 	return KNOT_EOK;
