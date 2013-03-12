@@ -488,6 +488,13 @@ static void knot_zone_contents_adjust_node_in_tree_ptr(
 	/*
 	 * 1) Set previous node pointer.
 	 */
+dbg_zone_exec_detail(
+	char *name1 = knot_dname_to_str(node->owner);
+	char *name2 = args->previous_node ? knot_dname_to_str(args->previous_node) : "null";
+	dbg_zone_detail("zc: setting previous for %s, prev = %s\n", name1, name2);
+	free(name1);
+	free(name2);
+);
 	knot_node_set_previous(node, args->previous_node);
 
 	if (args->first_node == NULL) {
