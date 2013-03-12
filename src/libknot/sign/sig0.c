@@ -14,6 +14,11 @@
 
 /*----------------------------------------------------------------------------*/
 
+// TODO
+// 2.) add support for other functions
+// 3.) refactor variable names
+// 4.) add comments
+
 static int create_rsa_pkey_from_params(const knot_key_params_t *params,
 				       void **result)
 {
@@ -151,17 +156,17 @@ static int sign_finish(algorithm_data_t *algorithm_data, uint8_t *signature)
 	if (!algorithm_data || !signature)
 		return KNOT_EINVAL;
 
-	unsigned int signature_len;
+	unsigned int signature_size;
 	int result;
 
 	result = EVP_SignFinal(algorithm_data->context, signature,
-			       &signature_len, algorithm_data->private_key);
+			       &signature_size, algorithm_data->private_key);
 
 	if (!result)
 		return KNOT_DNSSEC_SIGNING_FAILED;
 
 	//! \todo EVP_PKEY_size() can be actually larger than signature, when?
-	assert(sign_get_size == sign_get_size(algorithm_data));
+	assert(signature_size == sign_get_size(algorithm_data));
 
 	return KNOT_EOK;
 }
