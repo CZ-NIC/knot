@@ -823,7 +823,7 @@ static int knot_ddns_check_remove_rr2(knot_changeset_t *changeset,
 		if (knot_dname_compare(knot_rrset_owner(changeset->add[i]),
 		                       owner) == 0) {
 			// Removing one or all RRSets
-			if (rr == NULL
+			if ((knot_rrset_rdata_rr_count(rr) == 0)
 			    && (knot_rrset_type(rr) == knot_rrset_type(changeset->add[i])
 			        || knot_rrset_type(rr) == KNOT_RRTYPE_ANY)) {
 				dbg_ddns_detail("Removing one or all RRSets\n");
