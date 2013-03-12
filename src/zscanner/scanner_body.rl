@@ -1085,19 +1085,96 @@
 	       $!_base32hex_char_error;
 	# END
 
-	# BEGIN - Gateway
-	action _write_0 {
+	# BEGIN - Simple number write functions.
+	action _write8_0 {
 		*(rdata_tail++) = 0;
 	}
-	action _write_1 {
+	action _write8_1 {
 		*(rdata_tail++) = 1;
 	}
-	action _write_2 {
+	action _write8_2 {
 		*(rdata_tail++) = 2;
 	}
-	action _write_3 {
+	action _write8_3 {
 		*(rdata_tail++) = 3;
 	}
+	action _write8_5 {
+		*(rdata_tail++) = 5;
+	}
+	action _write8_6 {
+		*(rdata_tail++) = 6;
+	}
+	action _write8_7 {
+		*(rdata_tail++) = 7;
+	}
+	action _write8_8 {
+		*(rdata_tail++) = 8;
+	}
+	action _write8_10 {
+		*(rdata_tail++) = 10;
+	}
+	action _write8_12 {
+		*(rdata_tail++) = 12;
+	}
+	action _write8_13 {
+		*(rdata_tail++) = 13;
+	}
+	action _write8_14 {
+		*(rdata_tail++) = 14;
+	}
+	action _write8_252 {
+		*(rdata_tail++) = 252;
+	}
+	action _write8_253 {
+		*(rdata_tail++) = 253;
+	}
+	action _write8_254 {
+		*(rdata_tail++) = 254;
+	}
+
+	action _write16_1 {
+		*((uint16_t *)rdata_tail) = htons(1);
+		rdata_tail += 2;
+	}
+	action _write16_2 {
+		*((uint16_t *)rdata_tail) = htons(2);
+		rdata_tail += 2;
+	}
+	action _write16_3 {
+		*((uint16_t *)rdata_tail) = htons(3);
+		rdata_tail += 2;
+	}
+	action _write16_4 {
+		*((uint16_t *)rdata_tail) = htons(4);
+		rdata_tail += 2;
+	}
+	action _write16_5 {
+		*((uint16_t *)rdata_tail) = htons(5);
+		rdata_tail += 2;
+	}
+	action _write16_6 {
+		*((uint16_t *)rdata_tail) = htons(6);
+		rdata_tail += 2;
+	}
+	action _write16_7 {
+		*((uint16_t *)rdata_tail) = htons(7);
+		rdata_tail += 2;
+	}
+	action _write16_8 {
+		*((uint16_t *)rdata_tail) = htons(8);
+		rdata_tail += 2;
+	}
+	action _write16_253 {
+		*((uint16_t *)rdata_tail) = htons(253);
+		rdata_tail += 2;
+	}
+	action _write16_254 {
+		*((uint16_t *)rdata_tail) = htons(254);
+		rdata_tail += 2;
+	}
+	# END
+
+	# BEGIN - Gateway
 	action _gateway_error {
 		SCANNER_WARNING(ZSCANNER_EBAD_GATEWAY);
 		fhold; fgoto err_line;
@@ -1107,10 +1184,10 @@
 		fhold; fgoto err_line;
 	}
 
-	gateway = (( ('0' $_write_0 . sep . num8 . sep . '.')
-	           | ('1' $_write_1 . sep . num8 . sep . ipv4_addr_write)
-	           | ('2' $_write_2 . sep . num8 . sep . ipv6_addr_write)
-	           | ('3' $_write_3 . sep . num8 . sep . r_dname)
+	gateway = (( ('0' $_write8_0 . sep . num8 . sep . '.')
+	           | ('1' $_write8_1 . sep . num8 . sep . ipv4_addr_write)
+	           | ('2' $_write8_2 . sep . num8 . sep . ipv6_addr_write)
+	           | ('3' $_write8_3 . sep . num8 . sep . r_dname)
 	           ) $!_gateway_error .
 	           # If algorithm is 0 then key isn't present and vice versa.
 	           ( ((sep . base64) when { s->number64 != 0 })
@@ -1419,6 +1496,52 @@
 		 | (length_number . sep . type_data %_ret . end_wchar)
 		 )
 		) $!_hex_r_data_error;
+	# END
+
+	# BEGIN - Mnemomic names processing
+	action _dns_alg_error {
+		SCANNER_WARNING(ZSCANNER_EBAD_ALGORITHM);
+		fhold; fgoto err_line;
+	}
+	action _cert_type_error {
+		SCANNER_WARNING(ZSCANNER_EBAD_CERT_TYPE);
+		fhold; fgoto err_line;
+	}
+
+	dns_alg_ :=
+		( "RSAMD5"i             %_write8_1
+		| "DH"i                 %_write8_2
+		| "DSA"i                %_write8_3
+		| "RSASHA1"i            %_write8_5
+		| "DSA-NSEC3-SHA1"i     %_write8_6
+		| "RSASHA1-NSEC3-SHA1"i %_write8_7
+		| "RSASHA256"i          %_write8_8
+		| "RSASHA512"i          %_write8_10
+		| "ECC-GOST"i           %_write8_12
+		| "ECDSAP256SHA256"i    %_write8_13
+		| "ECDSAP384SHA384"i    %_write8_14
+		| "INDIRECT"i           %_write8_252
+		| "PRIVATEDNS"i         %_write8_253
+		| "PRIVATEOID"i         %_write8_254
+		| num8
+		) $!_dns_alg_error %_ret . all_wchar;
+	dns_alg = alnum $!_dns_alg_error ${ fhold; fcall dns_alg_; };
+
+	cert_type_ :=
+		( "PKIX"i    %_write16_1
+		| "SPKI"i    %_write16_2
+		| "PGP"i     %_write16_3
+		| "IPKIX"i   %_write16_4
+		| "ISPKI"i   %_write16_5
+		| "IPGP"i    %_write16_6
+		| "ACPKIX"i  %_write16_7
+		| "IACPKIX"i %_write16_8
+		| "URI"i     %_write16_253
+		| "OID"i     %_write16_254
+		| num16
+		) $!_cert_type_error %_ret . all_wchar;
+	cert_type = alnum $!_cert_type_error ${ fhold; fcall cert_type_; };
+	# END
 
 	# BEGIN - Rdata processing
 	action _r_data_init {
@@ -1478,7 +1601,7 @@
 		$!_r_data_error %_ret . all_wchar;
 
 	r_data_cert :=
-		(num16 . sep . num16 . sep . num8 . sep . base64)
+		(cert_type . sep . num16 . sep . dns_alg . sep . base64)
 		$!_r_data_error %_ret . end_wchar;
 
 	r_data_apl :=
@@ -1486,7 +1609,7 @@
 		$!_r_data_error %_ret . end_wchar;
 
 	r_data_ds :=
-		(num16 . sep . num8 . sep . num8 . sep . hex_array)
+		(num16 . sep . dns_alg . sep . num8 . sep . hex_array)
 		$!_r_data_error %_ret . end_wchar;
 
 	r_data_sshfp :=
@@ -1498,7 +1621,7 @@
 		$!_r_data_error %_ret . end_wchar;
 
 	r_data_rrsig :=
-		(type_num . sep . num8 . sep . num8 . sep . num32 . sep .
+		(type_num . sep . dns_alg . sep . num8 . sep . num32 . sep .
 		 timestamp . sep . timestamp . sep . num16 . blk_sep .  sep .
 		 r_dname . blk_sep . sep . base64)
 		$!_r_data_error %_ret . end_wchar;
@@ -1508,7 +1631,7 @@
 		$!_r_data_error %_ret . all_wchar;
 
 	r_data_dnskey :=
-		(num16 . sep . num8 . sep . num8 . sep . base64)
+		(num16 . sep . num8 . sep . dns_alg . sep . base64)
 		$!_r_data_error %_ret . end_wchar;
 
 	r_data_dhcid :=

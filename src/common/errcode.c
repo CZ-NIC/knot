@@ -135,6 +135,8 @@ const error_table_t knot_error_msgs[] = {
 	{ZSCANNER_EBAD_HEX_DATA, "Bad hexadecimal rdata format!"},
 	{ZSCANNER_EBAD_LOC_DATA, "Bad zone location data!"},
 	{ZSCANNER_EUNKNOWN_BLOCK, "Unknown rdata block!"},
+	{ZSCANNER_EBAD_ALGORITHM, "Bad algorithm!"},
+	{ZSCANNER_EBAD_CERT_TYPE, "Bad certificate type!"},
 
 	{KNOT_ERROR, 0} /* Terminator */
 };

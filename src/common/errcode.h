@@ -149,6 +149,8 @@ enum knot_error {
 	ZSCANNER_EBAD_HEX_DATA,
 	ZSCANNER_EBAD_LOC_DATA,
 	ZSCANNER_EUNKNOWN_BLOCK,
+	ZSCANNER_EBAD_ALGORITHM,
+	ZSCANNER_EBAD_CERT_TYPE,
 };
 
 /*! \brief Table linking error messages to error codes. */
