@@ -2850,6 +2850,8 @@ static void xfrin_mark_empty(knot_node_t *node, void *data)
 			node->parent = NULL;
 		}
 	}
+	dbg_xfrin_detail("Space for nodes reserved, old node count = %d\n",
+	                 changes->old_nodes_count);
 }
 
 /*----------------------------------------------------------------------------*/
