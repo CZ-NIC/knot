@@ -557,8 +557,10 @@ static int rrset_find_rr_pos_for_pointer(const knot_rrset_t *rrset,
 		return 0;
 	}
 	for (uint16_t i = 0; i < rrset->rdata_count; ++i) {
-		if (rrset_rdata_offset(rrset, i) >= offset) {
-			/* [code-review] Shouldn't it be 'i-1'? */
+		if (rrset_rdata_offset(rrset, i) > offset) {
+			*pos = i - 1;
+			return KNOT_EOK;
+		} else if (rrset_rdata_offset(rrset, i) == offset) {
 			*pos = i;
 			return KNOT_EOK;
 		}

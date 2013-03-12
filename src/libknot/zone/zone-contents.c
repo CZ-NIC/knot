@@ -207,7 +207,11 @@ static void knot_zone_contents_adjust_rdata_dname(knot_zone_contents_t *zone,
                                                   knot_node_t *node,
                                                   knot_dname_t **in_dname)
 {
+	const knot_node_t *old_dname_node = (*in_dname)->node;
+	printf("DNAME before table = %s\n", knot_dname_to_str(*in_dname));
 	knot_zone_contents_insert_dname_into_table(in_dname, lookup_tree);
+	assert((*in_dname)->node == old_dname_node || old_dname_node == NULL);
+	printf("DNAME after table = %s\n", knot_dname_to_str(*in_dname));
 	
 	knot_dname_t *dname = *in_dname;
 	/*
@@ -334,6 +338,7 @@ static void knot_zone_contents_adjust_rrsets(knot_node_t *node,
 		knot_rrset_t *rrsigs = rrsets[r]->rrsigs;
 		if (rrsigs != NULL) {
 			dbg_zone("Adjusting next RRSIGs.\n");
+			knot_rrset_dump(rrsigs);
 			knot_zone_contents_adjust_rdata_in_rrset(rrsigs,
 		                                         lookup_tree, zone,
 			                                         node);
@@ -393,8 +398,10 @@ dbg_zone_exec_detail(
 		   && node != zone->apex) {
 		knot_node_set_deleg_point(node);
 	}
-		
+	
+	const knot_node_t *old_dname_node = node->owner->node;
 	knot_zone_contents_insert_dname_into_table(&node->owner, lookup_tree);
+	assert(node->owner->node == old_dname_node || old_dname_node == NULL);
 
 	// assure that owner has proper node
 	if (knot_dname_node(knot_node_owner(node)) == NULL) {
@@ -821,10 +828,10 @@ static void knot_zone_contents_check_loops_in_tree(knot_node_t **tnode,
 		if (next_node == NULL) {
 			// try to find the name in the zone
 			const knot_node_t *ce = NULL;
-//			ret = knot_zone_contents_find_dname_hash(
-//			                        args->zone, next_name,
-//			                        &next_node, &ce);
-
+			const knot_node_t *prev = NULL;
+			ret = knot_zone_contents_find_dname(
+			                        args->zone, next_name,
+			                        &next_node, &ce, &prev);
 			if (ret != KNOT_ZONE_NAME_FOUND
 			    && ce != NULL) {
 				// try to find wildcard child
