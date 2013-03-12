@@ -20,7 +20,7 @@ AC_DEFUN([AX_MSG_WAITFORONE],
     AC_RUN_IFELSE(
     [
       AC_LANG_PROGRAM(
-      [
+      [[
 #ifndef _GNU_SOURCE
   #define _GNU_SOURCE
 #endif
@@ -39,7 +39,7 @@ volatile int _intr = 0;
 void sighandle(int s) {
      _intr = 1;	   
 }
-      ],[
+      ]],[[
 #ifndef MSG_WAITFORONE
   return 3; /* Not supported. */
 #else
@@ -87,7 +87,7 @@ void sighandle(int s) {
 
   return _intr; /* OK if not interrupted. */
 #endif
-    ])],
+    ]])],
   [ax_cv_have_msg_waitforone=yes],
   [ax_cv_have_msg_waitforone=no],
   [ax_cv_have_msg_waitforone=no])])
