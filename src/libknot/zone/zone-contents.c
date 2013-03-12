@@ -387,6 +387,11 @@ dbg_zone_exec_detail(
 		dbg_zone_detail("No parent!\n");
 	}
 );
+	
+//	const knot_node_t *old_dname_node = node->owner->node;
+	knot_zone_contents_insert_dname_into_table(&node->owner, lookup_tree);
+//	assert(node->owner->node == old_dname_node || old_dname_node == NULL);
+	
 	// delegation point / non-authoritative node
 	if (knot_node_parent(node)
 	    && (knot_node_is_deleg_point(knot_node_parent(node))
@@ -396,10 +401,6 @@ dbg_zone_exec_detail(
 		   && node != zone->apex) {
 		knot_node_set_deleg_point(node);
 	}
-	
-//	const knot_node_t *old_dname_node = node->owner->node;
-	knot_zone_contents_insert_dname_into_table(&node->owner, lookup_tree);
-//	assert(node->owner->node == old_dname_node || old_dname_node == NULL);
 
 	// assure that owner has proper node
 	if (knot_dname_node(knot_node_owner(node)) == NULL) {

@@ -1638,18 +1638,6 @@ dbg_xfrin_exec_detail(
 		return 1;
 	}
 	
-dbg_xfrin_exec_detail(
-//	dbg_xfrin_detail("Removed rdata: \n");
-//	knot_rdata_t *r = rdata;
-//	if (r != NULL) {
-//		do {
-//			dbg_xfrin_detail("pointer: %p\n", r);
-//			knot_rdata_dump(r, knot_rrset_type(remove), 0);
-//			r = r->next;
-//		} while (r != NULL && r != rdata);
-//	}
-);
-
 	if (rr_remove->rdata_count != 0) {
 		int count = 1;
 		// connect the RDATA to the list of old RDATA
@@ -1676,7 +1664,8 @@ dbg_xfrin_exec_detail(
 		
 		knot_rrset_t *tmp = knot_node_remove_rrset(node,
 		                                     knot_rrset_type(*rrset));
-		dbg_xfrin_detail("Removed whole RRSet (%p).\n", tmp);
+		dbg_xfrin_detail("Removed whole RRSet (%p). Node rr count=%d\n",
+		                 tmp, knot_node_rrset_count(node));
 		
 		// add the removed RRSet to list of old RRSets
 		
