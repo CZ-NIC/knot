@@ -58,17 +58,13 @@ enum knot_dnssec_key_usage {
 
 typedef enum knot_dnssec_key_usage knot_dnssec_key_usage_t;
 
-struct algorithm_callbacks;
-typedef struct algorithm_callbacks algorithm_callbacks_t;
-
 /*!
  * \brief DNSSEC key representation.
  */
 struct knot_dnssec_key {
 	knot_dname_t *name;			//!< Key name (idenfies signer).
 	knot_dnssec_algorithm_t algorithm;	//!< Algorithm identification.
-	const algorithm_callbacks_t *callbacks;	//!< Algorithm callbacks.
-	void *algorithm_data;			//!< Algorithm state data.
+	void *algorithm_data;			//!< Implementation context.
 };
 
 typedef struct knot_dnssec_key knot_dnssec_key_t;

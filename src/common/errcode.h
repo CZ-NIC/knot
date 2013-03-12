@@ -150,6 +150,10 @@ enum knot_error {
 	ZSCANNER_EUNKNOWN_BLOCK,
 	ZSCANNER_EBAD_ALGORITHM,
 	ZSCANNER_EBAD_CERT_TYPE,
+
+	/* Key signing errors. */
+	KNOT_DNSSEC_INVALID_KEY,
+	KNOT_DNSSEC_SIGNING_FAILED,
 };
 
 /*! \brief Table linking error messages to error codes. */

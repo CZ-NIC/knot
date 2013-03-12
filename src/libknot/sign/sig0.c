@@ -1,6 +1,5 @@
 #include <openssl/rsa.h>
-#include <openssl/sha.h>
-#include <openssl/objects.h>
+#include <openssl/evp.h>
 #include <assert.h>
 #include <time.h>
 #include "common/descriptor.h"
@@ -12,18 +11,10 @@
 
 /*----------------------------------------------------------------------------*/
 
-struct rsa_algorithm_data {
-	RSA *context;
-	union {
-		SHA_CTX sha1;
-	};
-};
-
-typedef struct rsa_algorithm_data rsa_algorithm_data_t;
-
-static int rsa_init(knot_dnssec_key_t *key, const knot_key_params_t *params)
+static int create_rsa_pkey_from_params(const knot_key_params_t *params,
+				       void **result)
 {
-	if (!key || !params)
+	if (!result)
 		return KNOT_EINVAL;
 
 	RSA *rsa = RSA_new();
@@ -41,130 +32,178 @@ static int rsa_init(knot_dnssec_key_t *key, const knot_key_params_t *params)
 
 	if (RSA_check_key(rsa) != 1) {
 		RSA_free(rsa);
-		return KNOT_EINVAL; //! \todo Better error code.
+		return KNOT_DNSSEC_INVALID_KEY;
 	}
 
-	// TEMPORARY
-	if (params->algorithm != KNOT_DNSSEC_ALG_RSASHA1) {
-		RSA_free(rsa);
-		return KNOT_ENOTSUP;
-	}
+	*result = rsa;
+	return KNOT_EOK;
+}
 
-	SHA_CTX sha_ctx = { 0 };
-	if (SHA1_Init(&sha_ctx) != 1) {
-		RSA_free(rsa);
-		return KNOT_ERROR; //! \todo Better error code.
-	}
+static int create_pkey_from_params(const knot_key_params_t *params,
+				   EVP_PKEY **result_key)
+{
+	if (!result_key)
+		return KNOT_EINVAL;
 
-	rsa_algorithm_data_t *data = calloc(1, sizeof(rsa_algorithm_data_t));
-	if (!data) {
-		RSA_free(rsa);
+	EVP_PKEY *private_key = EVP_PKEY_new();
+	if (!private_key)
 		return KNOT_ENOMEM;
-	}
 
-	data->context = rsa;
-	data->sha1 = sha_ctx;
-	key->algorithm_data = (void *)data;
-
-	return KNOT_EOK;
-}
-
-static int rsa_clean(knot_dnssec_key_t *key)
-{
-	if (!key)
-		return KNOT_EINVAL;
-
-	rsa_algorithm_data_t *data = (rsa_algorithm_data_t *)key->algorithm_data;
-	if (data)
-		RSA_free(data->context);
-
-	return KNOT_EOK;
-}
-
-static size_t rsa_signature_size(knot_dnssec_key_t *key)
-{
-	rsa_algorithm_data_t *data = (rsa_algorithm_data_t *)key->algorithm_data;
-	if (!data)
-		return 0;
-
-	return RSA_size(data->context);
-}
-
-static int rsa_digest_type(knot_dnssec_key_t *key)
-{
-	switch (key->algorithm) {
-	case KNOT_DNSSEC_ALG_RSASHA1: return NID_sha1;
-	default:
-		return 0;
-	}
-}
-
-static int rsa_add_data(knot_dnssec_key_t *key, const uint8_t *data, size_t len)
-{
-	if (!key | !data)
-		return KNOT_EINVAL;
-
-	rsa_algorithm_data_t *ad = (rsa_algorithm_data_t *)key->algorithm_data;
+	void *key = NULL;
+	int key_type = 0;
 	int result;
 
-	result = SHA1_Update(&ad->sha1, (unsigned char *)data, len);
+	switch (params->algorithm) {
+	case KNOT_DNSSEC_ALG_RSASHA1:
+		key_type = EVP_PKEY_RSA;
+		result = create_rsa_pkey_from_params(params, &key);
+		break;
+	default:
+		result = KNOT_ENOTSUP;
+		break;
+	}
 
-	if (result != 1)
+	if (result != KNOT_EOK) {
+		EVP_PKEY_free(private_key);
+		return result;
+	}
+
+	// Assigning the 'key' causes binding it into EVP_PKEY struct,
+	// it will be freed automatically when EVP_PKEY_free() is called.
+	if (!EVP_PKEY_assign(private_key, key_type, key)) {
+		EVP_PKEY_free(private_key);
 		return KNOT_ERROR;
+	}
 
+	*result_key = private_key;
 	return KNOT_EOK;
-}
-
-static int rsa_sign(knot_dnssec_key_t *key, uint8_t *signature)
-{
-	if (!key || !signature)
-		return KNOT_EINVAL;
-
-	rsa_algorithm_data_t *ad = (rsa_algorithm_data_t *)key->algorithm_data;
-	RSA *rsa = ad->context;
-
-	int type = rsa_digest_type(key);
-	if (type == 0)
-		return KNOT_ENOTSUP;
-
-	uint8_t digest[SHA_DIGEST_LENGTH] = { 0 };
-	if (SHA1_Final(digest, &ad->sha1) != 1)
-		return KNOT_ERROR;
-
-	unsigned int signature_length = rsa_signature_size(key);
-	int result = RSA_sign(type, digest, SHA_DIGEST_LENGTH,
-			      signature, &signature_length, rsa);
-
-	return result == 1 ? KNOT_EOK : KNOT_ERROR;
 }
 
 /*----------------------------------------------------------------------------*/
 
-struct algorithm_callbacks {
-	knot_dnssec_algorithm_t algorithm;
-	int (*init)(knot_dnssec_key_t *, const knot_key_params_t *);
-	int (*clean)(knot_dnssec_key_t *);
-	size_t (*signature_size)(knot_dnssec_key_t *);
-	int (*add_data)(knot_dnssec_key_t *, const uint8_t *, size_t);
-	int (*sign)(knot_dnssec_key_t *, uint8_t *);
+struct algorithm_data {
+	EVP_MD_CTX *context;
+	EVP_PKEY *private_key;
 };
 
-static const algorithm_callbacks_t ALGORITHM_MECHANISMS[] = {
-	{ KNOT_DNSSEC_ALG_RSASHA1, rsa_init, rsa_clean, rsa_signature_size,
-				   rsa_add_data, rsa_sign },
-	{ 0 }
-};
+typedef struct algorithm_data algorithm_data_t;
 
-static const algorithm_callbacks_t *get_callbacks(knot_dnssec_algorithm_t alg)
+/*----------------------------------------------------------------------------*/
+
+static int create_sign_context(const knot_key_params_t *params,
+			       EVP_MD_CTX **result_context)
 {
-	const algorithm_callbacks_t *result = ALGORITHM_MECHANISMS;
-	while (result->algorithm != 0 && result->algorithm != alg)
-		result += 1;
+	if (!result_context)
+		return KNOT_EINVAL;
 
-	if (result->algorithm != 0)
+	const EVP_MD *digest_type;
+
+	switch (params->algorithm) {
+	case KNOT_DNSSEC_ALG_RSASHA1:
+		digest_type = EVP_sha1();
+		break;
+	default:
+		return KNOT_ENOTSUP;
+	}
+
+	assert(digest_type); // used libcrypto function should not fail
+
+	EVP_MD_CTX *context = EVP_MD_CTX_create();
+	if (!context)
+		return KNOT_ENOMEM;
+
+	if (!EVP_SignInit_ex(context, digest_type, NULL)) {
+		EVP_MD_CTX_destroy(context);
+		return KNOT_ERROR;
+	}
+
+	*result_context = context;
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static size_t sign_get_size(algorithm_data_t *algorithm_data)
+{
+	if (!algorithm_data)
+		return 0;
+
+	return (size_t)EVP_PKEY_size(algorithm_data->private_key);
+}
+
+static int sign_add_data(algorithm_data_t *algorithm_data,
+			 const uint8_t *data, size_t len)
+{
+	if (!algorithm_data | !data)
+		return KNOT_EINVAL;
+
+	if (!EVP_SignUpdate(algorithm_data->context, data, len))
+		return KNOT_DNSSEC_SIGNING_FAILED;
+
+	return KNOT_EOK;
+}
+
+static int sign_finish(algorithm_data_t *algorithm_data, uint8_t *signature)
+{
+	if (!algorithm_data || !signature)
+		return KNOT_EINVAL;
+
+	unsigned int signature_len;
+	int result;
+
+	result = EVP_SignFinal(algorithm_data->context, signature,
+			       &signature_len, algorithm_data->private_key);
+
+	if (!result)
+		return KNOT_DNSSEC_SIGNING_FAILED;
+
+	//! \todo EVP_PKEY_size() can be actually larger than signature, when?
+	assert(sign_get_size == sign_get_size(algorithm_data));
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int clean_algorithm_data(algorithm_data_t *data)
+{
+	if (!data)
+		return KNOT_EINVAL;
+
+	if (data->private_key) {
+		EVP_PKEY_free(data->private_key);
+		data->private_key = NULL;
+	}
+
+	if (data->context) {
+		EVP_MD_CTX_destroy(data->context);
+		data->context = NULL;
+	}
+
+	return KNOT_EOK;
+}
+
+static int init_algorithm_data(const knot_key_params_t *params,
+			       algorithm_data_t *data)
+{
+	if (!params || !data)
+		return KNOT_EINVAL;
+
+	int result;
+
+	result = create_sign_context(params, &data->context);
+	if (result != KNOT_EOK) {
+		clean_algorithm_data(data);
 		return result;
-	else
-		return NULL;
+	}
+
+	result = create_pkey_from_params(params, &data->private_key);
+	if (result != KNOT_EOK) {
+		clean_algorithm_data(data);
+		return result;
+	}
+
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -175,25 +214,26 @@ int knot_dnssec_key_from_params(const knot_key_params_t *params,
 	if (!key || !params)
 		return KNOT_EINVAL;
 
-	const algorithm_callbacks_t *callbacks = get_callbacks(params->algorithm);
-	if (!callbacks)
-		return KNOT_ENOTSUP;
-
 	knot_dname_t *name = knot_dname_new_from_nonfqdn_str(params->name,
 							     strlen(params->name),
 							     NULL);
 	if (!name)
 		return KNOT_ENOMEM;
 
-	int result = callbacks->init(key, params);
+
+	algorithm_data_t *algorithm_data = calloc(1, sizeof(algorithm_data_t));
+	if (!algorithm_data)
+		return KNOT_ENOMEM;
+
+	int result = init_algorithm_data(params, algorithm_data);
 	if (result != KNOT_EOK) {
-		free(name);
+		free(algorithm_data);
 		return result;
 	}
 
 	key->name = name;
 	key->algorithm = params->algorithm;
-	key->callbacks = callbacks;
+	key->algorithm_data = algorithm_data;
 
 	return KNOT_EOK;
 }
@@ -206,8 +246,11 @@ int knot_dnssec_key_free(knot_dnssec_key_t *key)
 	if (key->name)
 		knot_dname_release(key->name);
 
-	if (key->callbacks)
-		key->callbacks->clean(key);
+	if (key->algorithm_data) {
+		algorithm_data_t *algorithm_data = key->algorithm_data;
+		clean_algorithm_data(algorithm_data);
+		free(algorithm_data);
+	}
 
 	memset(key, '\0', sizeof(knot_dnssec_key_t));
 
@@ -218,7 +261,7 @@ int knot_dnssec_key_free(knot_dnssec_key_t *key)
 
 static knot_rrset_t *knot_sig0_create_rrset(void)
 {
-    knot_dname_t *root = knot_dname_new_from_str(".", 1, NULL);
+	knot_dname_t *root = knot_dname_new_from_str(".", 1, NULL);
 	uint32_t ttl = 0;
 	knot_rrset_t *sig_record = knot_rrset_new(root, KNOT_RRTYPE_SIG,
 						  KNOT_CLASS_ANY, ttl);
@@ -244,7 +287,7 @@ static size_t knot_sig0_rdata_size(knot_dnssec_key_t *key)
 	// variable part
 
 	size += sizeof(knot_dname_t *);			// pointer to signer
-	size += key->callbacks->signature_size(key);	// signature
+	size += sign_get_size(key->algorithm_data);	// signature
 
 	return size;
 }
@@ -305,17 +348,17 @@ static int knot_sig0_write_signature(uint8_t* wire, size_t request_size,
 				     size_t sig_rr_size,
 				     knot_dnssec_key_t *key)
 {
-	size_t signature_size = key->callbacks->signature_size(key);
+	size_t signature_size = sign_get_size(key->algorithm_data);
 
 	uint8_t *sig_rdata = wire + request_size + SIG0_RR_HEADER_SIZE;
 	size_t sig_rdata_size = sig_rr_size - SIG0_RR_HEADER_SIZE - signature_size;
 
-	key->callbacks->add_data(key, sig_rdata, sig_rdata_size);
-	key->callbacks->add_data(key, wire, request_size);
+	sign_add_data(key->algorithm_data, sig_rdata, sig_rdata_size);
+	sign_add_data(key->algorithm_data, wire, request_size);
 
 	uint8_t *signature = wire + request_size + sig_rr_size - signature_size;
 
-	return key->callbacks->sign(key, signature);
+	return sign_finish(key->algorithm_data, signature);
 }
 
 int knot_sig0_sign(uint8_t *wire, size_t *wire_size, size_t wire_max_size,

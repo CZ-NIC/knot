@@ -137,5 +137,9 @@ const error_table_t knot_error_msgs[] = {
 	{ZSCANNER_EBAD_ALGORITHM, "Bad algorithm!"},
 	{ZSCANNER_EBAD_CERT_TYPE, "Bad certificate type!"},
 
+        /* Key signing errors. */
+        {KNOT_DNSSEC_INVALID_KEY, "The key for signing is invalid."},
+        {KNOT_DNSSEC_SIGNING_FAILED, "Cannot create the signature."},
+
 	{KNOT_ERROR, 0} /* Terminator */
 };
