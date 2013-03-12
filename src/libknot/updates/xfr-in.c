@@ -2948,10 +2948,6 @@ dbg_xfrin_exec_detail(
 			dbg_xfrin("Failed to remove node from zone!\n");
 			return KNOT_ENONODE;
 		}
-		// LS: REVIEW
-		if (zone_node->owner->node == zone_node) {
-			zone_node->owner->node = NULL;
-		}
 		free(zone_node);
 		changes->old_nodes[i] = NULL;
 	}
@@ -2972,11 +2968,6 @@ dbg_xfrin_exec_detail(
 		if (ret != KNOT_EOK) {
 			dbg_xfrin("Failed to remove NSEC3 node from zone!\n");
 			return KNOT_ENONODE;
-		}
-		
-		// LS: REVIEW
-		if (zone_node->owner->node == zone_node) {
-			zone_node->owner->node = NULL;
 		}
 		free(zone_node);
 		changes->old_nsec3[i] = NULL;
@@ -3125,6 +3116,18 @@ int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
 	 * - do adjusting of nodes and RDATA
 	 * - ???
 	 */
+	
+	dbg_xfrin("Adjusting zone contents.\n");
+	dbg_xfrin_verb("Old contents apex: %p, new apex: %p\n",
+	               old_contents->apex, contents_copy->apex);
+	ret = knot_zone_contents_adjust(contents_copy, NULL, NULL);
+	if (ret != KNOT_EOK) {
+		dbg_xfrin("Failed to finalize zone contents: %s\n",
+		          knot_strerror(ret));
+//		xfrin_rollback_update(old_contents, &contents_copy, &changes);
+		return ret;
+	}
+	assert(knot_zone_contents_apex(contents_copy) != NULL);
 
 	/*
 	 * Select and remove empty nodes from zone trees. Do not free them right
@@ -3137,18 +3140,6 @@ int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
 //		xfrin_rollback_update(old_contents, &contents_copy, &changes);
 		return ret;
 	}
-
-	dbg_xfrin("Adjusting zone contents.\n");
-	dbg_xfrin_verb("Old contents apex: %p, new apex: %p\n",
-	               old_contents->apex, contents_copy->apex);
-	ret = knot_zone_contents_adjust(contents_copy, NULL, NULL);
-	if (ret != KNOT_EOK) {
-		dbg_xfrin("Failed to finalize zone contents: %s\n",
-		          knot_strerror(ret));
-//		xfrin_rollback_update(old_contents, &contents_copy, &changes);
-		return ret;
-	}
-	assert(knot_zone_contents_apex(contents_copy) != NULL);
 
 	dbg_xfrin("Checking zone for CNAME loops.\n");
 	ret = knot_zone_contents_check_loops(contents_copy);
