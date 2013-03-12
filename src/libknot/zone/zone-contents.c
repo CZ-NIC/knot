@@ -371,37 +371,10 @@ static void knot_zone_contents_adjust_node(knot_node_t *node,
 	knot_zone_contents_adjust_rrsets(node, lookup_tree,
 	                                 zone);
 
-dbg_zone_exec_detail(
-	if (knot_node_parent(node)) {
-		char *name = knot_dname_to_str(knot_node_owner(
-				knot_node_parent(node)));
-		dbg_zone_detail("Parent: %s\n", name);
-		dbg_zone_detail("Parent is delegation point: %s\n",
-		       knot_node_is_deleg_point(knot_node_parent(node))
-		       ? "yes" : "no");
-		dbg_zone_detail("Parent is non-authoritative: %s\n",
-		       knot_node_is_non_auth(knot_node_parent(node))
-		       ? "yes" : "no");
-		free(name);
-	} else {
-		dbg_zone_detail("No parent!\n");
-	}
-);
-	
 //	const knot_node_t *old_dname_node = node->owner->node;
 	knot_zone_contents_insert_dname_into_table(&node->owner, lookup_tree);
 //	assert(node->owner->node == old_dname_node || old_dname_node == NULL);
 	
-	// delegation point / non-authoritative node
-	if (knot_node_parent(node)
-	    && (knot_node_is_deleg_point(knot_node_parent(node))
-		|| knot_node_is_non_auth(knot_node_parent(node)))) {
-		knot_node_set_non_auth(node);
-	} else if (knot_node_rrset(node, KNOT_RRTYPE_NS) != NULL
-		   && node != zone->apex) {
-		knot_node_set_deleg_point(node);
-	}
-
 	// assure that owner has proper node
 	if (knot_dname_node(knot_node_owner(node)) == NULL) {
 		knot_dname_set_node(knot_node_get_owner(node), node);
@@ -485,16 +458,39 @@ static void knot_zone_contents_adjust_node_in_tree_ptr(
 	knot_zone_adjust_arg_t *args = (knot_zone_adjust_arg_t *)data;
 	knot_node_t *node = *tnode;
 
-	/*
-	 * 1) Set previous node pointer.
-	 */
-dbg_zone_exec_detail(
-	char *name1 = knot_dname_to_str(node->owner);
-	char *name2 = args->previous_node ? knot_dname_to_str(args->previous_node) : "null";
-	dbg_zone_detail("zc: setting previous for %s, prev = %s\n", name1, name2);
-	free(name1);
-	free(name2);
+	dbg_zone_exec_detail(
+	if (knot_node_parent(node)) {
+		char *name = knot_dname_to_str(knot_node_owner(
+				knot_node_parent(node)));
+		dbg_zone_detail("Parent: %s\n", name);
+		dbg_zone_detail("Parent is delegation point: %s\n",
+		       knot_node_is_deleg_point(knot_node_parent(node))
+		       ? "yes" : "no");
+		dbg_zone_detail("Parent is non-authoritative: %s\n",
+		       knot_node_is_non_auth(knot_node_parent(node))
+		       ? "yes" : "no");
+		free(name);
+	} else {
+		dbg_zone_detail("No parent!\n");
+	}
 );
+	/*
+	 * 1) delegation point / non-authoritative node
+	 */
+	if (knot_node_parent(node)
+	    && (knot_node_is_deleg_point(knot_node_parent(node))
+		|| knot_node_is_non_auth(knot_node_parent(node)))) {
+		knot_node_set_non_auth(node);
+	} else if (knot_node_rrset(node, KNOT_RRTYPE_NS) != NULL
+		   && node != args->zone->apex) {
+		knot_node_set_deleg_point(node);
+	} else {
+		knot_node_set_auth(node);
+	}
+
+	/*
+	 * 2) Set previous node pointer.
+	 */
 	knot_node_set_previous(node, args->previous_node);
 
 	if (args->first_node == NULL) {
@@ -502,7 +498,7 @@ dbg_zone_exec_detail(
 	}
 
 	/*
-	 * 2) Store previous node depending on the type of this node.
+	 * 3) Store previous node depending on the type of this node.
 	 */
 	if (!knot_node_is_non_auth(node)
 	    && knot_node_rrset_count(node) > 0) {
