@@ -3120,7 +3120,7 @@ int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
 	dbg_xfrin("Adjusting zone contents.\n");
 	dbg_xfrin_verb("Old contents apex: %p, new apex: %p\n",
 	               old_contents->apex, contents_copy->apex);
-	ret = knot_zone_contents_adjust(contents_copy, NULL, NULL);
+	int ret = knot_zone_contents_adjust(contents_copy, NULL, NULL);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to finalize zone contents: %s\n",
 		          knot_strerror(ret));
@@ -3133,7 +3133,7 @@ int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
 	 * Select and remove empty nodes from zone trees. Do not free them right
 	 * away as they may be referenced by some domain names.
 	 */
-	int ret = xfrin_remove_empty_nodes(contents_copy, changes);
+	ret = xfrin_remove_empty_nodes(contents_copy, changes);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to remove empty nodes: %s\n",
 		          knot_strerror(ret));
