@@ -86,6 +86,7 @@ static int cmd_reload(int argc, char *argv[], unsigned flags, int jobs);
 static int cmd_refresh(int argc, char *argv[], unsigned flags, int jobs);
 static int cmd_flush(int argc, char *argv[], unsigned flags, int jobs);
 static int cmd_status(int argc, char *argv[], unsigned flags, int jobs);
+static int cmd_zonestatus(int argc, char *argv[], unsigned flags, int jobs);
 static int cmd_checkconf(int argc, char *argv[], unsigned flags, int jobs);
 static int cmd_checkzone(int argc, char *argv[], unsigned flags, int jobs);
 static int cmd_compile(int argc, char *argv[], unsigned flags, int jobs);
@@ -99,6 +100,7 @@ knot_cmd_t knot_cmd_tbl[] = {
 	{"refresh",   &cmd_refresh,"Refresh slave zones (all if not specified).",0},
 	{"flush",     &cmd_flush, "\tFlush journal and update zone files.",0},
 	{"status",    &cmd_status, "\tCheck if server is running.",0},
+	{"zonestatus",&cmd_zonestatus, "\tShow status of configured zones.",0},
 	{"checkconf", &cmd_checkconf, "Check server configuration.",1},
 	{"checkzone", &cmd_checkzone, "Check specified zone files.",1},
 	{"compile",   &cmd_compile, "Compile zone files (all if not specified).",1},
@@ -281,12 +283,7 @@ static int cmd_remote_print_reply(const knot_rrset_t *rr)
 		}
 
 		/* Parse TXT. */
-		char* txt = remote_parse_txt(rd);
-		if (txt) {
-			log_server_info("Server reply: %s\n", txt);
-		}
-		free(txt);
-
+		remote_print_txt(rd);
 		rd = knot_rrset_rdata_next(rr, rd);
 	}
 	
@@ -362,7 +359,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 			break;
 		case KNOT_RRTYPE_TXT:
 		default:
-			rd = remote_create_txt(argv[i]);
+			rd = remote_create_txt(argv[i], strlen(argv[i]));
 			break;
 		}
 		knot_rrset_add_rdata(rr, rd);
@@ -390,8 +387,11 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	
 	/* Wait for reply. */
 	if (rc == 0) {
-		int ret = cmd_remote_reply(s);
-		if (ret != KNOT_EOK) {
+		int ret = KNOT_EOK;
+		while (ret != KNOT_ECONN) {
+			ret = cmd_remote_reply(s);
+		}
+		if (ret != KNOT_EOK && ret != KNOT_ECONN) {
 			log_server_warning("Remote command reply: %s\n",
 			                   knot_strerror(ret));
 			rc = 1;
@@ -399,6 +399,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	}
 	
 	/* Cleanup. */
+	printf("\n");
 	knot_rrset_deep_free(&rr, 1, 1, 1);
 	
 	/* Close connection. */
@@ -651,6 +652,8 @@ int main(int argc, char **argv)
 				                 optarg);
 				help(argc, argv);
 				log_close();
+				free(config_fn);
+				free(default_config);
 				return 1;
 			}
 
@@ -658,12 +661,16 @@ int main(int argc, char **argv)
 		case 'V':
 			printf("%s, version %s\n", "Knot DNS", PACKAGE_VERSION);
 			log_close();
+			free(config_fn);
+			free(default_config);
 			return 0;
 		case 'h':
 		case '?':
 		default:
 			help(argc, argv);
 			log_close();
+			free(config_fn);
+			free(default_config);
 			return 1;
 		}
 	}
@@ -673,6 +680,8 @@ int main(int argc, char **argv)
 		help(argc, argv);
 		tsig_key_cleanup(&r_key);
 		log_close();
+		free(config_fn);
+		free(default_config);
 		return 1;
 	}
 	
@@ -688,9 +697,10 @@ int main(int argc, char **argv)
 	/* Command not found. */
 	if (!cmd->name) {
 		log_server_error("Invalid command: '%s'\n", argv[optind]);
-		free(config_fn);
 		tsig_key_cleanup(&r_key);
 		log_close();
+		free(config_fn);
+		free(default_config);
 		return 1;
 	}
 
@@ -699,10 +709,6 @@ int main(int argc, char **argv)
 		if(conf_open(default_config) != KNOT_EOK) {
 			flags |= F_NOCONF;
 		}
-	}
-	if (flags & F_NOCONF) {
-		s_config = conf_new(NULL);
-		flags |= F_NOCONF;
 	}
 	
 	/* Create remote iface if not present in config. */
@@ -947,6 +953,11 @@ static int cmd_flush(int argc, char *argv[], unsigned flags, int jobs)
 static int cmd_status(int argc, char *argv[], unsigned flags, int jobs)
 {
 	return cmd_remote("status", KNOT_RRTYPE_TXT, 0, NULL);
+}
+
+static int cmd_zonestatus(int argc, char *argv[], unsigned flags, int jobs)
+{
+	return cmd_remote("zonestatus", KNOT_RRTYPE_TXT, 0, NULL);
 }
 
 static int cmd_checkconf(int argc, char *argv[], unsigned flags, int jobs)
