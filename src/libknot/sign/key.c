@@ -29,6 +29,7 @@
 #include "sign/key.h"
 #include "sign/sig0.h"
 #include "tsig.h"
+#include "zscanner/scanner.h"
 
 /*!
  * \brief Calculates keytag for RSA/MD5 algorithm.
@@ -80,32 +81,66 @@ static char *strndup_with_suffix(const char *base, int length, char *suffix)
 	return result;
 }
 
-/*!
- * \brief Reads RR in the public key file and retrieves a key name.
- *
- * \note Currently we guess the key name from filename.
- * \note Expected input file name: K{name}.+{algorithm}.+{random}.public
- *
- * \todo #2360 read key name from RR record in .key file
- */
-static char *get_key_name_from_public_key(const char *filename)
+static void key_scan_noop(const scanner_t *s)
 {
-	assert(filename);
+}
 
-	char *begin = strrchr(filename, '/');
-	if (!begin)
-		begin = (char *)filename;
-	else
-		begin += 1;
+/*!
+ * \brief Reads RR in the public key file and retrieves basic key information.
+ */
+static int get_key_info_from_public_key(const char *filename,
+                                        knot_dname_t **name,
+                                        uint16_t *keytag)
+{
+	if (!filename || !name || !keytag)
+		return KNOT_EINVAL;
 
-	if (*begin == 'K')
-		begin += 1;
+	FILE *keyfile = fopen(filename, "r");
+	if (!keyfile)
+		return KNOT_ERROR; //! \todo Specific error code.
 
-	char *end = strstr(begin, ".+");
-	if (!end)
-		return NULL;
+	scanner_t *scanner = scanner_create(filename);
+	if (!scanner) {
+		fclose(keyfile);
+		return KNOT_ENOMEM;
+	}
 
-	return strndup(begin, end - begin);
+	scanner->process_record = key_scan_noop;
+	scanner->process_error = key_scan_noop;
+
+	char *buffer = NULL;
+	size_t buffer_size;
+	ssize_t read = knot_getline(&buffer, &buffer_size, keyfile);
+
+	fclose(keyfile);
+
+	if (read == -1) {
+		scanner_free(scanner);
+		return KNOT_ERROR; //! \todo Specific error code.
+	}
+
+	if (scanner_process(buffer, buffer + read, false, scanner) != 0) {
+		free(buffer);
+		scanner_free(scanner);
+		return KNOT_ERROR; //! \todo Specific error code.
+	}
+
+	free(buffer);
+
+	knot_dname_t *owner = knot_dname_new_from_wire(scanner->r_owner,
+						       scanner->r_owner_length,
+						       NULL);
+	if (!owner) {
+		scanner_free(scanner);
+		return KNOT_ENOMEM;
+	}
+
+	*name = owner;
+	*keytag = knot_keytag(scanner->r_data, scanner->r_data_length);
+
+	scanner_free(scanner);
+
+	return KNOT_EOK;
 }
 
 /*!
@@ -193,6 +228,8 @@ struct key_parameter {
 
 /*!
  * \brief Table of know attributes in private key file.
+ *
+ * \todo Save some space, save base64 encoded strings as binary data.
  */
 static const struct key_parameter key_parameters[] = {
 	{ "Algorithm",       key_offset(algorithm),        key_param_int },
@@ -268,8 +305,10 @@ int knot_load_key_params(const char *filename, knot_key_params_t *key_params)
 		return result;
 	}
 
-	key_name = get_key_name_from_public_key(public_key);
-	if (!key_name) {
+	knot_dname_t *name;
+	uint16_t keytag;
+	result = get_key_info_from_public_key(public_key, &name, &keytag);
+	if (result != KNOT_EOK) {
 		free(public_key);
 		free(private_key);
 		return KNOT_ERROR; //!< \todo better error code
@@ -283,16 +322,23 @@ int knot_load_key_params(const char *filename, knot_key_params_t *key_params)
 		return KNOT_ERROR; //!< \todo better error code
 	}
 
-	key_params->name = key_name;
+	key_params->name = name;
+	key_params->keytag = keytag;
 
 	char *buffer = NULL;
-	size_t read = 0;
-	while ((buffer = getline_wrap(fp, &read)) != NULL && read > 0) {
+	size_t buffer_size = 0;
+	ssize_t read;
+	while((read = knot_getline(&buffer, &buffer_size, fp)) > 0) {
+		if (buffer[read - 1] == '\n') {
+			read -= 1;
+			buffer[read] = '\0';
+		}
 		result = parse_keyfile_line(key_params, buffer, read);
-		free(buffer);
 		if (result != KNOT_EOK)
 			break;
 	}
+	if (buffer)
+		free(buffer);
 
 	fclose(fp);
 	free(public_key);
@@ -307,11 +353,16 @@ static void free_string_if_set(char *string)
 		free(string);
 }
 
+/*!
+ * \brief Frees the key parameters.
+ */
 int knot_free_key_params(knot_key_params_t *key_params)
 {
 	assert(key_params);
 
-	free_string_if_set(key_params->name);
+	if (key_params->name)
+		knot_dname_release(key_params->name);
+
 	free_string_if_set(key_params->secret);
 	free_string_if_set(key_params->modulus);
 	free_string_if_set(key_params->public_exponent);
@@ -327,6 +378,9 @@ int knot_free_key_params(knot_key_params_t *key_params)
 	return KNOT_EOK;
 }
 
+/*!
+ * \brief Get the type of the key.
+ */
 knot_key_type_t knot_get_key_type(const knot_key_params_t *key_params)
 {
 	assert(key_params);
@@ -344,43 +398,74 @@ knot_key_type_t knot_get_key_type(const knot_key_params_t *key_params)
 	return KNOT_KEY_UNKNOWN;
 }
 
-int knot_tsig_create_key(const char *name, int algorithm,
-                         const char *b64secret, knot_tsig_key_t *key)
+/*!
+ * \brief Creates TSIG key from function arguments.
+ *
+ * \param name		Key name (aka owner name).
+ * \param algorithm	Algorithm number.
+ * \param b64secret	Shared secret encoded in Base64.
+ * \param key		Output TSIG key.
+ *
+ * \return Error code, KNOT_EOK when succeeded.
+ */
+static int knot_tsig_create_key_from_args(knot_dname_t *name, int algorithm,
+                                          const char *b64secret,
+                                          knot_tsig_key_t *key)
 {
 	if (!name || !b64secret || !key)
 		return KNOT_EINVAL;
 
-	knot_dname_t *dname = knot_dname_new_from_nonfqdn_str(name,
-	                                                      strlen(name),
-							      NULL);
-	if (!dname)
-		return KNOT_ENOMEM;
-
 	knot_binary_t secret;
 	int result = knot_binary_from_base64(b64secret, &secret);
 
-	if (result != KNOT_EOK) {
-		knot_dname_free(&dname);
+	if (result != KNOT_EOK)
 		return result;
-	}
 
-	key->name = dname;
+	knot_dname_retain(name);
+
+	key->name = name;
 	key->secret = secret;
 	key->algorithm = algorithm;
 
 	return KNOT_EOK;
 }
 
+/*!
+ * \brief Creates TSIG key.
+ */
+int knot_tsig_create_key(const char *name, int algorithm,
+                         const char *b64secret, knot_tsig_key_t *key)
+{
+	knot_dname_t *dname;
+	dname = knot_dname_new_from_nonfqdn_str(name, strlen(name), NULL);
+	if (!dname)
+		return KNOT_ENOMEM;
+
+	int res;
+	res = knot_tsig_create_key_from_args(dname, algorithm, b64secret, key);
+
+	knot_dname_release(dname);
+
+	return res;
+}
+
+
+/*!
+ * \brief Creates TSIG key from key parameters.
+ */
 int knot_tsig_key_from_params(const knot_key_params_t *params,
                               knot_tsig_key_t *key)
 {
 	if (!params)
 		return KNOT_EINVAL;
 
-	return knot_tsig_create_key(params->name, params->algorithm,
-	                            params->secret, key);
+	return knot_tsig_create_key_from_args(params->name, params->algorithm,
+					      params->secret, key);
 }
 
+/*!
+ * \brief Frees TSIG key.
+ */
 int knot_tsig_key_free(knot_tsig_key_t *key)
 {
 	if (!key)

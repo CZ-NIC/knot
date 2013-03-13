@@ -402,7 +402,7 @@ int params_parse_tsig(const char *value, knot_key_params_t *key_params)
 	}
 
 	/* Set key name and secret. */
-	key_params->name = strndup(k, strlen(k));
+	key_params->name = knot_dname_new_from_nonfqdn_str(k, strlen(k), NULL);
 	key_params->secret = strdup(s);
 
 	DBG("%s: parsed name '%s'\n", __func__, k);
