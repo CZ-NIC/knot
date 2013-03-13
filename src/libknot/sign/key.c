@@ -31,6 +31,41 @@
 #include "tsig.h"
 
 /*!
+ * \brief Calculates keytag for RSA/MD5 algorithm.
+ */
+static uint16_t keytag_rsa_md5(const uint8_t *rdata, uint16_t rdata_len)
+{
+	uint16_t ac = 0;
+	if (rdata_len > 4) {
+		memmove(&ac, rdata + rdata_len - 3, 2);
+	}
+
+	ac = ntohs(ac);
+	return ac;
+}
+
+/*!
+ * \brief Calculates keytag from key wire.
+ */
+uint16_t knot_keytag(const uint8_t *rdata, uint16_t rdata_len)
+{
+	uint32_t ac = 0; /* assumed to be 32 bits or larger */
+
+	if (rdata[3] == 1) {
+		// different algorithm for RSA/MD5 (historical reasons)
+		return keytag_rsa_md5(rdata, rdata_len);
+	} else {
+		for(int i = 0; i < rdata_len; i++) {
+			ac += (i & 1) ? rdata[i] : rdata[i] << 8;
+		}
+
+		ac += (ac >> 16) & 0xFFFF;
+		return (uint16_t)ac & 0xFFFF;
+	}
+}
+
+
+/*!
  * \brief Acts like strndup, except it adds a suffix to duplicated string.
  */
 static char *strndup_with_suffix(const char *base, int length, char *suffix)

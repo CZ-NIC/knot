@@ -17,6 +17,7 @@
 #ifndef _KNOT_SIGN_KEY_H_
 #define _KNOT_SIGN_KEY_H_
 
+#include <stdint.h>
 #include "dname.h"
 #include "tsig.h"
 
@@ -51,6 +52,20 @@ enum knot_key_type {
 };
 
 typedef enum knot_key_type knot_key_type_t;
+
+/*----------------------------------------------------------------------------*/
+
+/*!
+ * \brief Calculates keytag from key wire.
+ *
+ * \param rdata		Key wireformat.
+ * \param rdata_len	Wireformat size.
+ *
+ * \return uint16_t	Calculated keytag.
+ */
+uint16_t knot_keytag(const uint8_t *rdata, uint16_t rdata_len);
+
+/*----------------------------------------------------------------------------*/
 
 int knot_load_key_params(const char *filename, knot_key_params_t *key_params);
 int knot_free_key_params(knot_key_params_t *key_params);

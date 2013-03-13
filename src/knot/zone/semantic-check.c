@@ -8,6 +8,7 @@
 #include "knot/common.h"
 #include "knot/other/debug.h"
 #include "libknot/libknot.h"
+#include "libknot/sign/key.h"
 #include "common/base32hex.h"
 #include "common/crc.h"
 #include "common/descriptor.h"
@@ -466,50 +467,6 @@ static int check_dnskey_rdata(const knot_rrset_t *rrset, size_t rdata_pos)
 }
 
 /*!
- * \brief Calculates keytag for RSA/SHA algorithm.
- *
- * \param key Key wireformat.
- * \param keysize Wireformat size.
- *
- * \return uint16_t Calculated keytag.
- */
-static uint16_t keytag_1(uint8_t *key, uint16_t keysize)
-{
-	uint16_t ac = 0;
-	if (keysize > 4) {
-		memmove(&ac, key + keysize - 3, 2);
-	}
-
-	ac = ntohs(ac);
-	return ac;
-}
-
-/*!
- * \brief Calculates keytag from key wire.
- *
- * \param key Key wireformat.
- * \param keysize Wireformat size.
- *
- * \return uint16_t Calculated keytag.
- */
-static uint16_t keytag(uint8_t *key, uint16_t keysize )
-{
-	uint32_t ac = 0; /* assumed to be 32 bits or larger */
-
-	/* algorithm RSA/SHA */
-	if (key[3] == 1) {
-		return keytag_1(key, keysize);
-	} else {
-		for(int i = 0; i < keysize; i++) {
-			ac += (i & 1) ? key[i] : key[i] << 8;
-		}
-
-		ac += (ac >> 16) & 0xFFFF;
-		return (uint16_t)ac & 0xFFFF;
-	}
-}
-
-/*!
  * \brief Semantic check - RRSIG rdata.
  *
  * \param rdata_rrsig RRSIG rdata to be checked.
@@ -606,7 +563,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 		knot_rrset_rdata_dnskey_key(dnskey_rrset, i, &key, &key_size);
 		assert(key_size);
 		/* Calculate keytag. */
-		uint16_t dnskey_key_tag = keytag(key, key_size);
+		uint16_t dnskey_key_tag = knot_keytag(key, key_size);
 		if (key_tag_rrsig != dnskey_key_tag) {
 			continue;
 		}
