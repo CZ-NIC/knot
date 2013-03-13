@@ -635,6 +635,7 @@ int remote_create_txt(knot_rrset_t *rr, const char *v)
 	}
 	
 	memcpy(rdata, data, v_len + 1);
+	free(data);
 	
 	return KNOT_EOK;
 }
