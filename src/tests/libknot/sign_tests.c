@@ -29,7 +29,7 @@ unit_api sign_tests_api = {
 
 static int sign_tests_count(int argc, char *argv[])
 {
-	return 31;
+	return 25;
 }
 
 static int sign_tests_run(int argc, char *argv[])
@@ -54,35 +54,7 @@ static int sign_tests_run(int argc, char *argv[])
 		free(result);
 	}
 
-	// 4-8. - get_key_name_from_public_key()
-	{
-		char *result;
-
-		result = get_key_name_from_public_key("Kexample.com.+0.+0.public");
-		ok(result && strcmp(result, "example.com") == 0,
-		   "get_key_name_from_public_key(), name with K");
-		free(result);
-
-		result = get_key_name_from_public_key("example.cz.+0.+0.public");
-		ok(result && strcmp(result, "example.cz") == 0,
-		   "get_key_name_from_public_key(), name without K");
-		free(result);
-
-		result = get_key_name_from_public_key("../Knic.cz.+0.+0.public");
-		ok(result && strcmp(result, "nic.cz") == 0,
-		   "get_key_name_from_public_key(), name with path and K");
-		free(result);
-
-		result = get_key_name_from_public_key("../foo.+0.+0.public");
-		ok(result && strcmp(result, "foo") == 0,
-		   "get_key_name_from_public_key(), name with path, without K");
-		free(result);
-
-		result = get_key_name_from_public_key("../invalid.public");
-		ok(!result, "get_key_name_from_public_key(), invalid name");
-	}
-
-	// 9.-14. - get_key_filenames()
+	// 4.-9. - get_key_filenames()
 	{
 		char *public, *private;
 		int result;
@@ -90,16 +62,16 @@ static int sign_tests_run(int argc, char *argv[])
 		result = get_key_filenames("Kexample.com.+1.+2.private",
 		                           &public, &private);
 		ok(result == KNOT_EOK &&
-		   strcmp(public, "Kexample.com.+1.+2.public") == 0 &&
+		   strcmp(public, "Kexample.com.+1.+2.key") == 0 &&
 		   strcmp(private, "Kexample.com.+1.+2.private") == 0,
 		   "get_key_filenames(), from private key");
 		free(public);
 		free(private);
 
-		result = get_key_filenames("Kexample.com.+4.+8.public",
+		result = get_key_filenames("Kexample.com.+4.+8.key",
 		                           &public, &private);
 		ok(result == KNOT_EOK &&
-		   strcmp(public, "Kexample.com.+4.+8.public") == 0 &&
+		   strcmp(public, "Kexample.com.+4.+8.key") == 0 &&
 		   strcmp(private, "Kexample.com.+4.+8.private") == 0,
 		   "get_key_filenames(), from public key");
 		free(public);
@@ -108,7 +80,7 @@ static int sign_tests_run(int argc, char *argv[])
 		result = get_key_filenames("nic.cz.+4.+8",
 		                           &public, &private);
 		ok(result == KNOT_EOK &&
-		   strcmp(public, "nic.cz.+4.+8.public") == 0 &&
+		   strcmp(public, "nic.cz.+4.+8.key") == 0 &&
 		   strcmp(private, "nic.cz.+4.+8.private") == 0,
 		   "get_key_filenames(), without extension");
 		free(public);
@@ -117,7 +89,7 @@ static int sign_tests_run(int argc, char *argv[])
 		result = get_key_filenames("nic.cz.+0.+1.",
 		                           &public, &private);
 		ok(result == KNOT_EOK &&
-		   strcmp(public, "nic.cz.+0.+1.public") == 0 &&
+		   strcmp(public, "nic.cz.+0.+1.key") == 0 &&
 		   strcmp(private, "nic.cz.+0.+1.private") == 0,
 		   "get_key_filenames(), empty extension");
 		free(public);
@@ -126,7 +98,7 @@ static int sign_tests_run(int argc, char *argv[])
 		result = get_key_filenames("../keys/Kfoo.bar.+5.+10.private",
 		                           &public, &private);
 		ok(result == KNOT_EOK &&
-		   strcmp(public, "../keys/Kfoo.bar.+5.+10.public") == 0 &&
+		   strcmp(public, "../keys/Kfoo.bar.+5.+10.key") == 0 &&
 		   strcmp(private, "../keys/Kfoo.bar.+5.+10.private") == 0,
 		   "get_key_filenames(), with path");
 		free(public);
@@ -135,14 +107,14 @@ static int sign_tests_run(int argc, char *argv[])
 		result = get_key_filenames("keys/something.txt",
 		                           &public, &private);
 		ok(result == KNOT_EOK &&
-		   strcmp(public, "keys/something.txt.public") == 0 &&
+		   strcmp(public, "keys/something.txt.key") == 0 &&
 		   strcmp(private, "keys/something.txt.private") == 0,
 		   "get_key_filenames(), nonstandard name");
 		free(public);
 		free(private);
 	}
 
-	// 15. - key_param_string()
+	// 10. - key_param_string()
 	{
 		char *output = NULL;
 		int result;
@@ -153,7 +125,7 @@ static int sign_tests_run(int argc, char *argv[])
 		free(output);
 	}
 
-	// 16-21. - key_param_int()
+	// 11-16. - key_param_int()
 	{
 		int output = 0;
 		int result;
@@ -187,7 +159,7 @@ static int sign_tests_run(int argc, char *argv[])
 		   "key_param_int(), number and text");
 	}
 
-	// 22-25. - parse_keyfile_line()
+	// 17-20. - parse_keyfile_line()
 	{
 		knot_key_params_t key = { 0 };
 		int result;
@@ -213,13 +185,7 @@ static int sign_tests_run(int argc, char *argv[])
 		free(line);
 	}
 
-	// 26. - knot_load_key_params()
-	{
-		//! \todo write unit tests for knot_load_key_params()
-		ok(1, "knot_load_key_params(), TODO");
-	}
-
-	// 27. - knot_free_key_params()
+	// 21. - knot_free_key_params()
 	{
 		int result;
 		knot_key_params_t params = { 0 };
@@ -234,11 +200,15 @@ static int sign_tests_run(int argc, char *argv[])
 		   "knot_free_key_params(), regular free");
 	}
 
-	// 28-31. - knot_tsig_key_from_params()
+	// 22-25. - knot_tsig_key_from_params()
 	{
 		int result;
 		knot_key_params_t params = { 0 };
 		knot_tsig_key_t tsig_key;
+		const char *owner = "shared.example.com.";
+		knot_dname_t *name = knot_dname_new_from_str(owner,
+							     strlen(owner),
+							     NULL);
 
 		result = knot_tsig_key_from_params(&params, &tsig_key);
 		ok(result == KNOT_EINVAL,
@@ -249,13 +219,13 @@ static int sign_tests_run(int argc, char *argv[])
 		ok(result == KNOT_EINVAL,
 		   "knot_tsig_key_from_params(), no key name");
 
-		params.name = "shared.example.com";
+		params.name = name;
 		params.secret = NULL;
 		result = knot_tsig_key_from_params(&params, &tsig_key);
 		ok(result == KNOT_EINVAL,
 		   "knot_tsig_key_from_params(), no shared secret");
 
-		params.name = "shared.example.com";
+		params.name = name;
 		params.secret = "Ok6NmA==";
 		uint8_t decoded_secret[] = { 0x3a, 0x4e, 0x8d, 0x98 };
 		result = knot_tsig_key_from_params(&params, &tsig_key);
@@ -265,8 +235,14 @@ static int sign_tests_run(int argc, char *argv[])
 		             sizeof(decoded_secret)) == 0,
 		   "knot_tsig_key_from_params(), secret set properly");
 
+		knot_dname_release(name);
 		knot_tsig_key_free(&tsig_key);
 	}
+
+	//! \todo knot_keytag()
+	//! \todo get_key_info_from_public_key() -- working with files required
+	//! \todo knot_load_key_params() -- working with files required
+	//! \todo knot_get_key_type()
 
 	return 0;
 }
