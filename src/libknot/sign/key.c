@@ -112,7 +112,7 @@ static char *get_key_name_from_public_key(const char *filename)
  * \brief Extract private and public key file names from input filename.
  *
  * If the input file name has an empty extension (ends with a dot),
- * extension 'private', or extension 'public', the appropriate filenames are
+ * extension 'private', or extension 'key', the appropriate filenames are
  * derived from the previous part of the string. Otherwise, just append the
  * extensions.
  */
@@ -126,7 +126,7 @@ static int get_key_filenames(const char *input, char **pubname, char **privname)
 	size_t base_length;
 
 	if (name_end && (*(name_end + 1) == '\0' ||
-			 strcmp(name_end, ".public") == 0 ||
+			 strcmp(name_end, ".key") == 0 ||
 			 strcmp(name_end, ".private") == 0)
 	) {
 		base_length = name_end - input;
@@ -134,7 +134,7 @@ static int get_key_filenames(const char *input, char **pubname, char **privname)
 		base_length = strlen(input);
 	}
 
-	*pubname = strndup_with_suffix(input, base_length, ".public");
+	*pubname = strndup_with_suffix(input, base_length, ".key");
 	if (!*pubname) {
 		return KNOT_ENOMEM;
 	}
