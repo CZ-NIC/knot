@@ -27,8 +27,9 @@
  * \brief Key attributes loaded from keyfile.
  */
 struct knot_key_params {
-	char *name;
+	knot_dname_t *name;
 	int algorithm;
+	uint16_t keytag;
 	// parameters for symmetric cryptography
 	char *secret;
 	// parameters for public key cryptography
@@ -67,18 +68,69 @@ uint16_t knot_keytag(const uint8_t *rdata, uint16_t rdata_len);
 
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief Reads the key files and extracts key parameters.
+ *
+ * \param filename	The name of the file with stored key. It can be either
+ *                      the name with '.key' or '.private' suffix or without
+ *                      the suffix at all.
+ * \param key_params	Output key parameters.
+ *
+ * \returns Error code, KNOT_EOK when succeeded.
+ */
 int knot_load_key_params(const char *filename, knot_key_params_t *key_params);
+
+/*!
+ * \brief Frees the key parameters.
+ *
+ * \param key_params	Key parameters to be freed.
+ *
+ * \return Error code, KNOT_EOK when succeeded.
+ */
 int knot_free_key_params(knot_key_params_t *key_params);
+
+/*!
+ * \brief Get the type of the key.
+ *
+ * \param key_params	Key parameters.
+ *
+ * \return Key type.
+ */
 knot_key_type_t knot_get_key_type(const knot_key_params_t *key_params);
 
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief Creates TSIG key.
+ *
+ * \param name		Key name (aka owner name).
+ * \param algorithm	Algorithm number.
+ * \param b64secret	Shared secret encoded in Base64.
+ * \param key		Output TSIG key.
+ *
+ * \return Error code, KNOT_EOK when succeeded.
+ */
 int knot_tsig_create_key(const char *name, int algorithm,
                          const char *b64secret, knot_tsig_key_t *key);
 
+/*!
+ * \brief Creates TSIG key from key parameters.
+ *
+ * \param params	Structure with key parameters.
+ * \param key		Output TSIG key.
+ *
+ * \return Error code, KNOT_EOK when succeeded.
+ */
 int knot_tsig_key_from_params(const knot_key_params_t *params,
                               knot_tsig_key_t *key);
 
+/*!
+ * \brief Frees TSIG key.
+ *
+ * \param key		TSIG key structure to be freed.
+ *
+ * \return Error code, KNOT_EOK when succeeded.
+ */
 int knot_tsig_key_free(knot_tsig_key_t *key);
 
 #endif // _KNOT_SIGN_KEY_H_
