@@ -63,6 +63,7 @@ typedef enum knot_dnssec_key_usage knot_dnssec_key_usage_t;
  */
 struct knot_dnssec_key {
 	knot_dname_t *name;			//!< Key name (idenfies signer).
+	uint16_t keytag;			//!< Key tag (for fast lookup).
 	knot_dnssec_algorithm_t algorithm;	//!< Algorithm identification.
 	void *algorithm_data;			//!< Implementation context.
 };

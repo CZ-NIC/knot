@@ -9,6 +9,9 @@
 #include "sign/sig0.h"
 #include "sign/bnutils.h"
 
+//! \brief RFC recommends 5 minute lifetime for SIG(0) signature.
+#define SIG0_LIFETIME_SECONDS 300
+
 /*----------------------------------------------------------------------------*/
 
 static int create_rsa_pkey_from_params(const knot_key_params_t *params,
@@ -214,9 +217,7 @@ int knot_dnssec_key_from_params(const knot_key_params_t *params,
 	if (!key || !params)
 		return KNOT_EINVAL;
 
-	knot_dname_t *name = knot_dname_new_from_nonfqdn_str(params->name,
-							     strlen(params->name),
-							     NULL);
+	knot_dname_t *name = knot_dname_deep_copy(params->name);
 	if (!name)
 		return KNOT_ENOMEM;
 
@@ -232,6 +233,7 @@ int knot_dnssec_key_from_params(const knot_key_params_t *params,
 	}
 
 	key->name = name;
+	key->keytag = params->keytag;
 	key->algorithm = params->algorithm;
 	key->algorithm_data = algorithm_data;
 
@@ -314,8 +316,7 @@ static int knot_sig0_write_rdata(knot_dnssec_key_t *key, uint8_t *rdata)
 	assert(rdata);
 
 	uint32_t incepted = (uint32_t)time(NULL);
-	uint32_t expires = incepted + 300; // RFC recommends 5 minutes.
-	uint16_t keytag = 59040; //! TODO: HARDCODED
+	uint32_t expires = incepted + SIG0_LIFETIME_SECONDS;
 
 	uint8_t *w = rdata;
 
@@ -328,7 +329,7 @@ static int knot_sig0_write_rdata(knot_dnssec_key_t *key, uint8_t *rdata)
 	w += sizeof(uint32_t);
 	knot_wire_write_u32(w, incepted);	// signature inception
 	w += sizeof(uint32_t);
-	knot_wire_write_u16(w, keytag);		// key footprint
+	knot_wire_write_u16(w, key->keytag);	// key footprint
 	w += sizeof(uint16_t);
 
 	assert(w == rdata + 18);
