@@ -43,5 +43,20 @@
  */
 char* getline_wrap(FILE *stream, size_t *len);
 
+/*!
+ * \brief Reads a line from a stream.
+ *
+ * This function has the same semantics as POSIX.1-2008 getline().
+ * If necessary, the output buffer will be allocated/reallocated.
+ *
+ * \param lineptr	Output buffer.
+ * \param n		Output buffer size.
+ * \param stream	Input stream.
+ *
+ * \return Number of characters read, including new line delimiter,
+ *         not including terminating. -1 on error or EOF.
+ */
+ssize_t knot_getline(char **lineptr, size_t *n, FILE *stream);
+
 #endif // _KNOTD_COMMON_GETLINE_WRAP_H_
 

@@ -69,3 +69,22 @@ char* getline_wrap(FILE *stream, size_t *len)
 #endif
 }
 
+ssize_t knot_getline(char **lineptr, size_t *n, FILE *stream)
+{
+#ifdef HAVE_GETLINE
+	return getline(lineptr, n, stream);
+#elif HAVE_FGETLN
+	size_t length = 0;
+	char *buffer = fgetln(stream, *length);
+	if (data == NULL)
+		return -1;
+
+	if (*lineptr)
+		free(*lineptr);
+
+	*lineptr = buffer;
+	*n = length;
+
+	return length;
+#endif
+}
