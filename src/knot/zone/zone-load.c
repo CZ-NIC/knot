@@ -259,6 +259,7 @@ static int add_rdata_to_rr(knot_rrset_t *rrset, const scanner_t *scanner)
 				//TODO handle
 				return KNOT_ERROR;
 			}
+			knot_dname_to_lower(dname);
 dbg_zp_exec_detail(
 			char *name = knot_dname_to_str(dname);
 			dbg_zp_detail("zp: arr_rdata_to_rr: "
@@ -351,6 +352,7 @@ static void process_rr(const scanner_t *scanner)
 		knot_dname_new_from_wire(scanner->r_owner,
 	                         scanner->r_owner_length,
 	                         NULL);
+	knot_dname_to_lower(current_owner);
 	current_rrset = knot_rrset_new(current_owner,
 	               scanner->r_type,
 	               scanner->r_class,
