@@ -645,9 +645,6 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	/* Set the MAC. */
 	tsig_rdata_set_mac(tmp_tsig, digest_tmp_len, digest_tmp);
 	
-	/* Set algorithm. */
-	tsig_rdata_set_alg(tmp_tsig, key->algorithm);
-	
 	/* Set original id. */
 	tsig_rdata_set_orig_id(tmp_tsig, knot_wire_get_id(msg));
 	
