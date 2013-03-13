@@ -166,7 +166,7 @@ static int parse_partial_rr(scanner_t *s, const char *lp, unsigned flags) {
 	if (owner == NULL) {
 		return KNOT_EPARSEFAIL;
 	}
-	
+
 	/* ISC nsupdate doesn't do this, but it seems right to me. */
 	if (!knot_dname_is_fqdn(owner)) {
 		knot_dname_t* suf = knot_dname_new_from_wire(s->zone_origin,
