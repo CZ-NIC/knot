@@ -1411,7 +1411,7 @@ dbg_packet_exec(
 		// function (for reallocating rrset array)
 		// TODO sort out freeing, this WILL leak.
 		knot_rrset_deep_free(
-			&(((knot_rrset_t **)(pkt->tmp_rrsets))[i]), 1, 0);
+			&(((knot_rrset_t **)(pkt->tmp_rrsets))[i]), 1, 1);
 	}
 }
 
