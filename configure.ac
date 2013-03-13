@@ -138,8 +138,7 @@ AC_ARG_ENABLE([lto],
       yes) AX_CHECK_COMPILER_FLAGS("-flto", [CFLAGS="$CFLAGS -flto"], []) ;;
       no) ;;
       *)  AC_MSG_ERROR([bad value ${enableval} for --enable-lto]) ;;
-    esac], [
-    ])
+    esac])
 
 AX_CHECK_COMPILER_FLAGS("-fpredictive-commoning", [CFLAGS="$CFLAGS -fpredictive-commoning"], [])
 
