@@ -104,6 +104,7 @@ int zone_dump_text(knot_zone_contents_t *zone, FILE *file)
 	// Allocate auxiliary buffer for dumping operations.
 	char *buf = malloc(DUMP_BUF_LEN);
 	if (buf == NULL) {
+		ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
 
@@ -129,6 +130,8 @@ int zone_dump_text(knot_zone_contents_t *zone, FILE *file)
 	if (params.ret != KNOT_EOK) {
 		return params.ret;
 	}
+	
+	free(buf);
 
 	return KNOT_EOK;
 }

@@ -588,7 +588,7 @@ static void process_rr(const scanner_t *scanner)
 		parser->ret = ret;
 		return;
 	} else if (ret > 0) {
-		knot_rrset_deep_free(&current_rrset, 0, 0);
+		knot_rrset_deep_free(&current_rrset, 1, 0);
 	}
 	assert(parser->current_zone && node);
 	int sem_fatal_error = 0;
@@ -639,6 +639,7 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 	assert(context->origin_from_config);
 	context->last_node = knot_node_new(context->origin_from_config,
 	                                   NULL, 0);
+	knot_dname_release(context->origin_from_config);
 	knot_zone_t *zone = knot_zone_new(context->last_node);
 	context->current_zone = knot_zone_get_contents(zone);
 	context->node_rrsigs = NULL;
@@ -685,7 +686,6 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	
 	parser_context_t *c = loader->context;
 	assert(c);
-	
 	file_loader_process(loader->file_loader);
 	if (c->last_node && c->node_rrsigs) {
 		process_rrsigs_in_node(c, c->current_zone, c->last_node);
@@ -746,7 +746,6 @@ void knot_zload_close(zloader_t *loader)
 
 	free(loader->source);
 	free(loader->origin);
-	knot_dname_release(loader->context->origin_from_config);
 	free(loader->context);
 	free(loader->err_handler);
 	free(loader);
