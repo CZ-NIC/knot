@@ -18,4 +18,3 @@
 - NSEC3 hash is with padding (but RFC 5155 section 3.3 says "unpadded")
 - date version of timestamp in RRSIG is limited to the end of the year 2105
   (for better checking of 32bit integer)
-- algorithm, certificate and flags (in KEY) mnemonics aren't supported

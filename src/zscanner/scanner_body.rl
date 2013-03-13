@@ -700,10 +700,10 @@
 	include_file_ :=
 		(sep . text >_incl_filename_init %_incl_filename_exit
 		 $!_incl_filename_error .
-	         (sep . absolute_dname >_incl_origin_init %_incl_origin_exit
-	          $!_incl_origin_error
+		 (sep . absolute_dname >_incl_origin_init %_incl_origin_exit
+		  $!_incl_origin_error
 		 )? . rest
-	        ) %_include_exit %_ret newline;
+		) %_include_exit %_ret newline;
 	include_file = all_wchar ${ fhold; fcall include_file_; };
 	# END
 
@@ -890,8 +890,8 @@
 		if (rdata_tail <= rdata_stop) {
 			*rdata_tail = first_hex_to_num[(uint8_t)fc];
 		} else {
-		   SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
-		   fhold; fgoto err_line;
+			SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
+			fhold; fgoto err_line;
 		}
 	}
 	action _second_hex_char {
@@ -939,8 +939,8 @@
 		if (rdata_tail <= rdata_stop) {
 			*rdata_tail = first_base64_to_num[(uint8_t)fc];
 		} else {
-		   SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
-		   fhold; fgoto err_line;
+			SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
+			fhold; fgoto err_line;
 		}
 	}
 	action _second_base64_char {
@@ -949,8 +949,8 @@
 		if (rdata_tail <= rdata_stop) {
 			*rdata_tail = second_right_base64_to_num[(uint8_t)fc];
 		} else {
-		   SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
-		   fhold; fgoto err_line;
+			SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
+			fhold; fgoto err_line;
 		}
 	}
 	action _third_base64_char {
@@ -959,8 +959,8 @@
 		if (rdata_tail <= rdata_stop) {
 			*rdata_tail = third_right_base64_to_num[(uint8_t)fc];
 		} else {
-		   SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
-		   fhold; fgoto err_line;
+			SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
+			fhold; fgoto err_line;
 		}
 	}
 	action _fourth_base64_char {
@@ -997,8 +997,8 @@
 		if (rdata_tail <= rdata_stop) {
 			*rdata_tail = first_base32hex_to_num[(uint8_t)fc];
 		} else {
-		   SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
-		   fhold; fgoto err_line;
+			SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
+			fhold; fgoto err_line;
 		}
 	}
 	action _second_base32hex_char {
@@ -1007,8 +1007,8 @@
 		if (rdata_tail <= rdata_stop) {
 			*rdata_tail = second_right_base32hex_to_num[(uint8_t)fc];
 		} else {
-		   SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
-		   fhold; fgoto err_line;
+			SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
+			fhold; fgoto err_line;
 		}
 	}
 	action _third_base32hex_char {
@@ -1020,8 +1020,8 @@
 		if (rdata_tail <= rdata_stop) {
 			*rdata_tail = fourth_right_base32hex_to_num[(uint8_t)fc];
 		} else {
-		   SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
-		   fhold; fgoto err_line;
+			SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
+			fhold; fgoto err_line;
 		}
 	}
 	action _fifth_base32hex_char {
@@ -1030,8 +1030,8 @@
 		if (rdata_tail <= rdata_stop) {
 			*rdata_tail = fifth_right_base32hex_to_num[(uint8_t)fc];
 		} else {
-		   SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
-		   fhold; fgoto err_line;
+			SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
+			fhold; fgoto err_line;
 		}
 	}
 	action _sixth_base32hex_char {
@@ -1043,8 +1043,8 @@
 		if (rdata_tail <= rdata_stop) {
 			*rdata_tail = seventh_right_base32hex_to_num[(uint8_t)fc];
 		} else {
-		   SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
-		   fhold; fgoto err_line;
+			SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
+			fhold; fgoto err_line;
 		}
 	}
 	action _eighth_base32hex_char {
@@ -1509,7 +1509,8 @@
 	}
 
 	dns_alg_ :=
-		( "RSAMD5"i             %_write8_1
+		( number                %_num8_write
+		| "RSAMD5"i             %_write8_1
 		| "DH"i                 %_write8_2
 		| "DSA"i                %_write8_3
 		| "RSASHA1"i            %_write8_5
@@ -1523,12 +1524,12 @@
 		| "INDIRECT"i           %_write8_252
 		| "PRIVATEDNS"i         %_write8_253
 		| "PRIVATEOID"i         %_write8_254
-		| num8
 		) $!_dns_alg_error %_ret . all_wchar;
-	dns_alg = alnum $!_dns_alg_error ${ fhold; fcall dns_alg_; };
+	dns_alg = alnum ${ fhold; fcall dns_alg_; };
 
 	cert_type_ :=
-		( "PKIX"i    %_write16_1
+		( number     %_num16_write
+		| "PKIX"i    %_write16_1
 		| "SPKI"i    %_write16_2
 		| "PGP"i     %_write16_3
 		| "IPKIX"i   %_write16_4
@@ -1538,9 +1539,8 @@
 		| "IACPKIX"i %_write16_8
 		| "URI"i     %_write16_253
 		| "OID"i     %_write16_254
-		| num16
 		) $!_cert_type_error %_ret . all_wchar;
-	cert_type = alnum $!_cert_type_error ${ fhold; fcall cert_type_; };
+	cert_type = alnum ${ fhold; fcall cert_type_; };
 	# END
 
 	# BEGIN - Rdata processing

@@ -4,6 +4,7 @@ $TTL	1
 ; OK
 @	DNSKEY	0	0	0	AA==		; The simplest variant
 @	DNSKEY	65535	255	255	AA==		; Maximal numbers
+@	DNSKEY	0	0	RSAMD5	AA==		; Algorithm mnemonic
 @	DNSKEY	0	0	0	Zm8=		; One char padding
 @	DNSKEY	0	0	0	Zm9v		; Without padding
 @	DNSKEY	0	0	0	Zm9vYg==	; Two base64 blocks 

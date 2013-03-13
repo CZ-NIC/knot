@@ -4,6 +4,7 @@ $TTL	1
 ; OK
 @	DS	0	0	0	00		; The simplest variant
 @	DS	65535	255	255	00		; Maximal numbers
+@	DS	0	RSAMD5	0	00		; Algorithm mnemonic
 @	DS	0	0	0	01 02 0304	; Hex block with blank spaces between them
 @	TYPE43	\# 5 0000000000				; TYPE + Hexadecimal rdata
 @	TYPE43	0	0	0	00		; TYPE

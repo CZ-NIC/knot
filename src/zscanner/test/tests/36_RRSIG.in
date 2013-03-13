@@ -5,6 +5,7 @@ $TTL	1
 @	RRSIG	TYPE0	0	0	0	0	0	0	.	AA==	; The simplest variant
 @	RRSIG	A	2	3	4	5	6	7	\008.	CQ==	; Human visual test - block numbering
 @	RRSIG	TYPE65535	255	255	4294967295	4294967295	4294967295	65535	.	AA==	; Maximal numbers
+@	RRSIG	TYPE0	RSAMD5	0	0	0	0	0	.	AA==	; Algorithm mnemonic
 @	RRSIG	A	0	0	0	19700101000000	0	0	.	AA==	; Minimal date format	
 @	RRSIG	A	0	0	0	0	21051231235959	0	.	AA==	; Maximal date format (zscanner limit)
 @	RRSIG	TYPE0	0	0	0	0	0	0	\0320\ \\\"\.\@\*.tld.	AA==	; Special chars in domain name
