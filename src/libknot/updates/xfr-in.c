@@ -687,7 +687,6 @@ dbg_xfrin_exec_detail(
 					dbg_xfrin("Failed to save orphan"
 					          " RRSIGs.\n");
 					knot_packet_free(&packet);
-					knot_node_free(&node); // ???
 					knot_rrset_deep_free(&rr, 1, 1);
 					return ret;
 				}
@@ -695,7 +694,6 @@ dbg_xfrin_exec_detail(
 				dbg_xfrin("Failed to add RRSIGs (%s).\n",
 				               knot_strerror(ret));
 				knot_packet_free(&packet);
-				knot_node_free(&node); // ???
 				knot_rrset_deep_free(&rr, 1, 1);
 				return KNOT_ERROR;  /*! \todo Other error code. */
 			} else if (ret == 1) {
