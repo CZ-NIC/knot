@@ -820,16 +820,21 @@ static int knot_ddns_check_remove_rr2(knot_changeset_t *changeset,
 	dbg_ddns_verb("Removing possible redundant RRs from changeset.\n");
 	for (int i = 0; i < changeset->add_count; ++i) {
 		// Removing RR(s) from this owner
-		if (knot_dname_compare(knot_rrset_owner(changeset->add[i]),
-		                       owner) == 0) {
+dbg_ddns_exec_detail(
+		char *name = knot_dname_to_str(changeset->add[i]->owner);
+		dbg_ddns_detail("ddns: remove_rr2: Removing RR of type=%u owned by %s\n",
+                                knot_rrset_type(changeset->add[i]), name);
+);
+		if (knot_dname_compare_non_canon(knot_rrset_owner(changeset->add[i]),
+		                                 owner) == 0) {
 			// Removing one or all RRSets
 			if ((knot_rrset_rdata_rr_count(rr) == 0)
 			    && (knot_rrset_type(rr) == knot_rrset_type(changeset->add[i])
 			        || knot_rrset_type(rr) == KNOT_RRTYPE_ANY)) {
 				dbg_ddns_detail("Removing one or all RRSets\n");
-					remove = knot_changeset_remove_rr(
-					              changeset->add,
-					              &changeset->add_count, i);
+				remove = knot_changeset_remove_rr(
+				              changeset->add,
+				              &changeset->add_count, i);
 			} else if (knot_rrset_type(rr) ==
 			           knot_rrset_type(changeset->add[i])) {
 				// Removing specific RR
