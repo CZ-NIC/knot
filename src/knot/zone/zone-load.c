@@ -654,6 +654,7 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 	knot_zone_t *zone = knot_zone_new(context->last_node);
 	context->current_zone = knot_zone_get_contents(zone);
 	context->node_rrsigs = NULL;
+	context->ret = KNOT_EOK;
 	
 	/* Create file loader. */
 	file_loader_t *loader = file_loader_create(source, origin,
