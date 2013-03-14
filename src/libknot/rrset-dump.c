@@ -774,7 +774,7 @@ static void wire_dname_to_str(rrset_dump_params_t *p)
 
 	// Write dname string.
 	char *dname_str = knot_dname_to_str(dname);
-	free(dname);
+	knot_dname_release(dname);
 	int ret = snprintf(p->out, p->out_max, "%s", dname_str);
 	free(dname_str);
 	if (ret < 0 || ret >= p->out_max) {
