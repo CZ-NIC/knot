@@ -2318,15 +2318,17 @@ void xfrin_cleanup_successful_update(knot_changes_t **changes)
 	for (int i = 0; i < (*changes)->old_rrsets_count; ++i) {
 		dbg_xfrin_detail("Deleting old RRSet: %p\n",
 		                 (*changes)->old_rrsets[i]);
-		assert((*changes)->old_rrsets[i]->rdata_count == 0);
-		knot_rrset_free(&(*changes)->old_rrsets[i]);
+		if ((*changes)->old_rrsets[i]->rdata_count == 0) {
+			knot_rrset_free(&(*changes)->old_rrsets[i]);
+		}
 	}
 
 	// delete old RDATA
 	for (int i = 0; i < (*changes)->old_rdata_count; ++i) {
+		assert((*changes)->old_rdata[i]->rdata_count != 0);
 		knot_rrset_dump((*changes)->old_rdata[i]);
 		// RDATA are stored separately so do not delete the whole chain
-		knot_rrset_deep_free(&(*changes)->old_rdata[i], 1, 0);
+		knot_rrset_deep_free(&(*changes)->old_rdata[i], 1, 1);
 	}
 
 	// free the empty nodes
