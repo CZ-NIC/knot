@@ -589,7 +589,7 @@ dbg_xfrin_exec(
 		} else if (ret > 0) {
 			dbg_xfrin("Merged SOA RRSet.\n");
 			// merged, free the RRSet
-			knot_rrset_free(&rr);
+			knot_rrset_deep_free(&rr, 1, 0);
 		}
 
 		// take next RR
@@ -808,7 +808,7 @@ dbg_xfrin_exec_verb(
 				return KNOT_ERROR;
 			} else if (ret > 0) {
 				// merged, free the RRSet
-				knot_rrset_free(&rr);
+				knot_rrset_deep_free(&rr, 1, 0);
 			}
 
 		}
