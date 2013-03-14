@@ -137,6 +137,7 @@ static knot_rrset_t *ns_synth_from_wildcard(
 	
 	knot_dname_t *dname_copy = knot_dname_deep_copy(qname);
 	knot_rrset_set_owner(rrset, dname_copy);
+	knot_dname_release(dname_copy);
 
 	return rrset;
 }
