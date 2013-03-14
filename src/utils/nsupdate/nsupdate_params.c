@@ -30,6 +30,19 @@
 #define DEFAULT_RETRIES_NSUPDATE	3
 #define DEFAULT_TIMEOUT_NSUPDATE	1
 
+static const style_t DEFAULT_STYLE = {
+	.format = FORMAT_NSUPDATE,
+	.style = { .wrap = false, .show_class = true, .show_ttl = true,
+	           .verbose = false, .reduce = false },
+	.show_header = true,
+	.show_footer = false,
+	.show_query = false,
+	.show_question = true,
+	.show_answer = true,
+	.show_authority = true,
+	.show_additional = true,
+};
+
 static void parse_rr(const scanner_t *s) {
 	return; /* Dummy */
 }
@@ -80,7 +93,6 @@ static int nsupdate_init(nsupdate_params_t *params)
 
 	/* Default style. */
 	params->style = DEFAULT_STYLE;
-	params->style.format = FORMAT_NSUPDATE;
 
 	/* Initialize RR parser. */
 	params->rrp = scanner_create(".");

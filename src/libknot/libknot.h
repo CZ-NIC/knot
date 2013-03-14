@@ -39,6 +39,7 @@
 #include "packet/response.h"
 #include "rrset.h"
 #include "rrset-dump.h"
+#include "tsig.h"
 #include "util/tolower.h"
 #include "util/utils.h"
 #include "zone/zone.h"

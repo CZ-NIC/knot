@@ -30,8 +30,8 @@
 #include <stdint.h>			// uint16_t
 #include <stdbool.h>			// bool
 
+#include "libknot/libknot.h"
 #include "common/lists.h"		// list
-#include "libknot/tsig.h"		// knot_key_t
 
 #define DEFAULT_IPV4_NAME	"127.0.0.1"
 #define DEFAULT_IPV6_NAME	"::1"
@@ -56,18 +56,16 @@ typedef enum {
 	PROTO_UDP
 } protocol_t;
 
-/*! \brief Variants of text output format. */
+/*! \brief Variants of output type. */
 typedef enum {
+	/*!< Verbose output (same for host and dig). */
+	FORMAT_FULL,
 	/*!< Short dig output. */
 	FORMAT_DIG,
 	/*!< Brief host output. */
 	FORMAT_HOST,
 	/*!< Brief nsupdate output. */
 	FORMAT_NSUPDATE,
-	/*!< Verbose output (same for host and dig). */
-	FORMAT_VERBOSE,
-	/*!< Verbose multiline output. */
-	FORMAT_MULTILINE,
 } format_t;
 
 /*! \brief Text output settings. */
@@ -75,31 +73,26 @@ typedef struct {
 	/*!< Output format. */
 	format_t	format;
 
+	/*!< Style of rrset dump. */
+	knot_dump_style_t	style;
+
 	/*!< Show header info. */
-	bool		show_header;
+	bool	show_header;
 	/*!< Show footer info. */
-	bool		show_footer;
+	bool	show_footer;
 
 	/*!< Show query packet. */
-	bool		show_query;
+	bool	show_query;
 
 	/*!< Show QUERY/ZONE section. */
-	bool		show_question;
+	bool	show_question;
 	/*!< Show ANSWER/PREREQ section. */
-	bool		show_answer;
+	bool	show_answer;
 	/*!< Show UPDATE/AUTHORITY section. */
-	bool		show_authority;
+	bool	show_authority;
 	/*!< Show ADDITIONAL section. */
-	bool		show_additional;
-
-	/*!< Show class. */
-	bool		show_class;
-	/*!< Show ttl. */
-	bool		show_ttl;
+	bool	show_additional;
 } style_t;
-
-/*! \brief Default style settings. */
-extern const style_t DEFAULT_STYLE;
 
 char* get_reverse_name(const char *name);
 

@@ -41,6 +41,7 @@ static int host_init(dig_params_t *params)
 	}
 
 	// Set host specific defaults.
+	free(params->config->port);
 	params->config->port = strdup(DEFAULT_DNS_PORT);
 	params->config->retries = DEFAULT_RETRIES_HOST;
 	params->config->wait = DEFAULT_TIMEOUT_HOST;
@@ -186,7 +187,7 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 			break;
 		case 'a':
 			conf->type_num = KNOT_RRTYPE_ANY;
-			conf->style.format = FORMAT_VERBOSE;
+			conf->style.format = FORMAT_FULL;
 			break;
 		case 'C':
 			conf->type_num = KNOT_RRTYPE_SOA;
@@ -196,7 +197,7 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 			msg_enable_debug(1);
 			break;
 		case 'v':
-			conf->style.format = FORMAT_VERBOSE;
+			conf->style.format = FORMAT_FULL;
 			break;
 		case 'l':
 			conf->type_num = KNOT_RRTYPE_AXFR;

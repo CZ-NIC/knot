@@ -103,9 +103,6 @@ typedef struct {
 	query_t	*config;
 } dig_params_t;
 
-/*! \brief Default header flags. */ 
-extern const flags_t DEFAULT_FLAGS;
-
 query_t* query_create(const char *owner, const query_t *config);
 void query_free(query_t *query);
 void complete_queries(list *queries, const query_t *conf);

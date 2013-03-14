@@ -27,9 +27,9 @@
 #ifndef _UTILS__EXEC_H_
 #define _UTILS__EXEC_H_
 
-#include "libknot/packet/packet.h"	// knot_packet_t
 #include "utils/common/netio.h"		// net_t
 #include "utils/common/params.h"	// style_t
+#include "libknot/libknot.h"
 
 extern knot_lookup_table_t opcodes[];
 extern knot_lookup_table_t rcodes[];

@@ -31,7 +31,7 @@
 #define DEFAULT_RETRIES_DIG	3
 #define DEFAULT_TIMEOUT_DIG	5
 
-const flags_t DEFAULT_FLAGS = {
+static const flags_t DEFAULT_FLAGS = {
 	.aa_flag = false,
 	.tc_flag = false,
 	.rd_flag = true,
@@ -40,6 +40,19 @@ const flags_t DEFAULT_FLAGS = {
 	.ad_flag = false,
 	.cd_flag = false,
 	.do_flag = false
+};
+
+static const style_t DEFAULT_STYLE = {
+	.format = FORMAT_FULL,
+	.style = { .wrap = false, .show_class = true, .show_ttl = true,
+	           .verbose = true, .reduce = false },
+	.show_header = true,
+	.show_footer = true,
+	.show_query = false,
+	.show_question = true,
+	.show_answer = true,
+	.show_authority = true,
+	.show_additional = true,
 };
 
 query_t* query_create(const char *owner, const query_t *conf)
@@ -78,7 +91,6 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->xfr_serial = 0;
 		query->flags = DEFAULT_FLAGS;
 		query->style = DEFAULT_STYLE;
-		query->style.format = FORMAT_VERBOSE;
 	} else {
 		query->operation = conf->operation;
 		query->ip = conf->ip;
@@ -518,14 +530,14 @@ static int parse_opt2(const char *value, dig_params_t *params)
 
 	// Check for format option.
 	if (strcmp(value, "multiline") == 0) {
-		query->style.format = FORMAT_MULTILINE;
+		query->style.style.wrap = true;
 	} else if (strcmp(value, "nomultiline") == 0) {
-		query->style.format = FORMAT_VERBOSE;
+		query->style.style.wrap = false;
 	}
 	else if (strcmp(value, "short") == 0) {
 		query->style.format = FORMAT_DIG;
 	} else if (strcmp(value, "noshort") == 0) {
-		query->style.format = FORMAT_VERBOSE;
+		query->style.format = FORMAT_FULL;
 	}
 
 	// Check for flag option.
@@ -611,14 +623,14 @@ static int parse_opt2(const char *value, dig_params_t *params)
 		query->style.show_additional = false;
 	}
 	else if (strcmp(value, "cl") == 0) {
-		query->style.show_class = true;
+		query->style.style.show_class = true;
 	} else if (strcmp(value, "nocl") == 0) {
-		query->style.show_class = false;
+		query->style.style.show_class = false;
 	}
 	else if (strcmp(value, "ttl") == 0) {
-		query->style.show_ttl = true;
+		query->style.style.show_ttl = true;
 	} else if (strcmp(value, "nottl") == 0) {
-		query->style.show_ttl = false;
+		query->style.style.show_ttl = false;
 	}
 	else if (strncmp(value, "time=", 5) == 0) {
 		if (params_parse_wait(value + 5, &query->wait)

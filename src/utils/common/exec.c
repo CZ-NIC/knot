@@ -340,8 +340,7 @@ void print_header_xfr(const style_t *style, const uint16_t type)
 	}
 
 	switch (style->format) {
-	case FORMAT_VERBOSE:
-	case FORMAT_MULTILINE:
+	case FORMAT_FULL:
 		printf(";; %s transfer\n\n", name);
 		break;
 	case FORMAT_DIG:
@@ -366,8 +365,7 @@ void print_data_xfr(const style_t       *style,
 	case FORMAT_HOST:
 		print_section_host(packet->answer, packet->an_rrsets);
 		break;
-	case FORMAT_VERBOSE:
-	case FORMAT_MULTILINE:
+	case FORMAT_FULL:
 		print_section_verbose(packet->answer, packet->an_rrsets);
 		break;
 	default:
@@ -387,8 +385,7 @@ void print_footer_xfr(const net_t    *net,
 	}
 
 	switch (style->format) {
-	case FORMAT_VERBOSE:
-	case FORMAT_MULTILINE:
+	case FORMAT_FULL:
 		print_footer(net, elapsed, total_len, msg_count);
 		break;
 	case FORMAT_DIG:
@@ -452,8 +449,7 @@ void print_packet(const net_t         *net,
 			                      packet->ar_rrsets);
 		}
 		break;
-	case FORMAT_VERBOSE:
-	case FORMAT_MULTILINE:
+	case FORMAT_FULL:
 		print_header(style, packet);
 
 		if (knot_edns_get_version(&packet->opt_rr)
