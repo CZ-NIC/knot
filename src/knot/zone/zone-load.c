@@ -141,7 +141,8 @@ static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
 		dbg_zp("zp: find_rr_for_sig: Cannot add RRSIG.\n");
 		return KNOT_EINVAL;
 	} else if (ret > 0) {
-		knot_rrset_deep_free(&rrsig, 0, 0);
+		/* Merged, free data + owner, but not DNAMEs inside RDATA. */
+		knot_rrset_deep_free(&rrsig, 1, 0);
 	}
 	assert(tmp_rrset->rrsigs != NULL);
 
@@ -181,7 +182,8 @@ static void process_rrsigs_in_node(parser_context_t *parser,
 	while (tmp != NULL) {
 		if (find_rrset_for_rrsig_in_node(zone, node,
 						 tmp->data) != KNOT_EOK) {
-			fprintf(stderr, "Could not add RRSIG to zone!\n");
+			parser->ret = KNOT_ERROR;
+			log_zone_error("Could not add RRSIG to zone!\n");
 			return;
 		}
 		tmp = tmp->next;
@@ -440,8 +442,8 @@ static void process_rr(const scanner_t *scanner)
 		knot_rrset_t *tmp_rrsig = current_rrset;
 
 		if (parser->last_node &&
-		    knot_dname_compare(parser->last_node->owner,
-		                         current_rrset->owner) != 0) {
+		    knot_dname_compare_non_canon(parser->last_node->owner,
+		                                 current_rrset->owner) != 0) {
 			/* RRSIG is first in the node, so we have to create it
 			 * before we return
 			 */

@@ -1492,7 +1492,7 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
 	}
 	
 	if ((*rrset)->rrsigs != NULL) {
-		knot_rrset_deep_free(&(*rrset)->rrsigs, 1, free_rdata_dnames);
+		knot_rrset_deep_free(&(*rrset)->rrsigs, free_owner, free_rdata_dnames);
 	}
 	
 	if (free_rdata_dnames) {
