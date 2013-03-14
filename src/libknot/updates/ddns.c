@@ -1264,7 +1264,7 @@ static int knot_ddns_add_rr_merge_normal(knot_rrset_t *node_rrset_copy,
 		return ret;
 	}
 
-	knot_rrset_free(rr_copy);
+	knot_rrset_deep_free(rr_copy, 1, 0);
 
 	if (rdata_in_copy == ret) {
 		/* All RDATA have been removed, because they were duplicates
@@ -1327,7 +1327,7 @@ static int knot_ddns_add_rr_merge_rrsig(knot_rrset_t *node_rrset_copy,
 			return KNOT_ERROR;
 		}
 		
-		knot_rrset_free(rr_copy);
+		knot_rrset_deep_free(rr_copy, 1, 0);
 
 		if (rdata_in_copy == ret) {
 			/* All RDATA have been removed, because they were

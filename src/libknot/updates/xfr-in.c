@@ -308,7 +308,7 @@ static int xfrin_process_orphan_rrsigs(knot_zone_contents_t *zone,
 		                                    &rrset, &node, 
 		                                    KNOT_RRSET_DUPL_MERGE);
 		if (ret > 0) {
-			knot_rrset_free(&(*last)->rrsig);
+			knot_rrset_deep_free(&(*last)->rrsig, 1, 0);
 		} else if (ret != KNOT_EOK) {
 			dbg_xfrin("Failed to add orphan RRSIG to zone.\n");
 			return ret;
@@ -682,7 +682,7 @@ dbg_xfrin_exec_detail(
 
 				if (ret > 0) {
 					dbg_xfrin_detail("Merged RRSIGs.\n");
-					knot_rrset_free(&rr);
+					knot_rrset_deep_free(&rr, 1, 0);
 				} else if (ret != KNOT_EOK) {
 					dbg_xfrin("Failed to save orphan"
 					          " RRSIGs.\n");
@@ -2730,8 +2730,8 @@ dbg_xfrin_exec_detail(
 				// the copy of the RRSet was used, but it was
 				// already stored in the new RRSets list
 				// just delete the add RRSet, but without RDATA
-				// as these were merged to the copied RRSet
-				knot_rrset_free(&chset->add[i]);
+				// DNAMES as these were merged to the copied RRSet
+				knot_rrset_deep_free(&chset->add[i], 1, 0);
 
 				// In this case, the RDATA does not have to be
 				// stored in the list of new RDATA, because

@@ -1064,7 +1064,7 @@ int zones_changesets_from_binary(knot_changesets_t *chgsets)
 				} else {
 					/* Final SOA. */
 					dbg_xfr_verb("xfr: extra SOA\n");
-					knot_rrset_free(&rrset);
+					knot_rrset_deep_free(&rrset, 1, 1);
 					break;
 				}
 			} else {
