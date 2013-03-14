@@ -134,7 +134,7 @@ int knot_changeset_add_rr(knot_rrset_t ***rrsets, size_t *count,
 			return KNOT_ERROR;
 		}
 
-		knot_rrset_free(&rr);
+		knot_rrset_deep_free(&rr, 1, 0);
 		return KNOT_EOK;
 	} else {
 		return knot_changeset_add_rrset(rrsets, count, allocated, rr);
