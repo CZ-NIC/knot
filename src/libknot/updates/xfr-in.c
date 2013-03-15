@@ -1312,7 +1312,7 @@ int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 	}
 
 	count = 1;
-	count += (*copy)->rrsigs ? 1 : 0;
+	count += old->rrsigs ? 1 : 0;
 
 	// and old RDATA to the list of old RDATA
 	ret = knot_changes_rdata_reserve(&changes->old_rdata,
@@ -1374,7 +1374,7 @@ dbg_xfrin_exec_detail(
 	dbg_xfrin_detail("Copied old rrset %p to new %p.\n", old, *rrset);
 	
 	// replace the RRSet in the node copy by the new one
-	ret = knot_node_add_rrset_no_merge(node, *rrset);
+	ret = knot_node_add_rrset_replace(node, *rrset);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to add RRSet copy to node\n");
 		return KNOT_ERROR;
@@ -2321,7 +2321,6 @@ void xfrin_cleanup_successful_update(knot_changes_t **changes)
 
 	// delete old RDATA
 	for (int i = 0; i < (*changes)->old_rdata_count; ++i) {
-		assert((*changes)->old_rdata[i]->rdata_count != 0);
 		knot_rrset_dump((*changes)->old_rdata[i]);
 		// RDATA are stored separately so do not delete the whole chain
 		knot_rrset_deep_free(&(*changes)->old_rdata[i], 1, 1);
@@ -2938,9 +2937,9 @@ dbg_xfrin_exec_detail(
 			dbg_xfrin("Failed to remove node from zone!\n");
 			return KNOT_ENONODE;
 		}
-		zone_node->owner->node = NULL;
+//		zone_node->owner->node = NULL;
 		free(zone_node);
-		changes->old_nodes[i] = NULL;
+//		changes->old_nodes[i] = NULL;
 	}
 
 	// remove NSEC3 nodes

@@ -150,6 +150,7 @@ knot_node_t *knot_node_new(knot_dname_t *owner, knot_node_t *parent,
 	return ret;
 }
 
+
 int knot_node_add_rrset_no_merge(knot_node_t *node, knot_rrset_t *rrset)
 {
 	if (node == NULL) {
@@ -165,6 +166,21 @@ int knot_node_add_rrset_no_merge(knot_node_t *node, knot_rrset_t *rrset)
 	node->rrset_tree[node->rrset_count] = rrset;
 	++node->rrset_count;
 	return KNOT_EOK;
+}
+
+int knot_node_add_rrset_replace(knot_node_t *node, knot_rrset_t *rrset)
+{
+        if (node == NULL) {
+            return KNOT_EINVAL;
+        }
+        
+        for (unsigned i = 0; i < node->rrset_count; ++i) {
+            if (node->rrset_tree[i]->type == rrset->type) {
+		    node->rrset_tree[i] = rrset;
+            }
+        }
+        
+        return knot_node_add_rrset_no_merge(node, rrset);
 }
 
 int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset)

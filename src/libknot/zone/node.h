@@ -132,6 +132,8 @@ knot_node_t *knot_node_new(knot_dname_t *owner, knot_node_t *parent,
  */
 int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset);
 
+int knot_node_add_rrset_replace(knot_node_t *node, knot_rrset_t *rrset);
+
 int knot_node_add_rrset_no_merge(knot_node_t *node, knot_rrset_t *rrset);
 
 /*!
