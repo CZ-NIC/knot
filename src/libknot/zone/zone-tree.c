@@ -52,7 +52,6 @@
 static int dname_lf(char *dst, const knot_dname_t *src, size_t maxlen) {
 	if (!src || !dst) return KNOT_EINVAL;
 	if (src->size > maxlen) return KNOT_ESPACE;
-	char *b = dst;
 	*dst = src->size - 1;
 	if (*dst == 0) ++*dst; /* root special case */
 	*++dst = '\0';

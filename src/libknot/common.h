@@ -49,6 +49,7 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 /*! \brief Eliminate compiler warning with unused parameters. */
 #define UNUSED(param) (void)(param)
 
+#if 0 // Disabled due to a conflict with system MIN and MAX on BSDs.
 /*! \brief Type-safe minimum macro. */
 #define MIN(a, b) \
 	({ typeof (a) _a = (a); typeof (b) _b = (b); _a < _b ? _a : _b; })
@@ -56,6 +57,7 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 /*! \brief Type-safe maximum macro. */
 #define MAX(a, b) \
 	({ typeof (a) _a = (a); typeof (b) _b = (b); _a > _b ? _a : _b; })
+#endif
 
 /* Optimisation macros. */
 #ifndef knot_likely
