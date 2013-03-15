@@ -70,10 +70,11 @@ knot_lookup_table_t rtypes[] = {
 	{ 0, NULL }
 };
 
-knot_packet_t* create_empty_packet(knot_packet_prealloc_type_t t, int max_size)
+knot_packet_t* create_empty_packet(const knot_packet_prealloc_type_t type,
+                                   const size_t                      max_size)
 {
 	// Create packet skeleton.
-	knot_packet_t *packet = knot_packet_new(t);
+	knot_packet_t *packet = knot_packet_new(type);
 	if (packet == NULL) {
 		DBG_NULL;
 		return NULL;

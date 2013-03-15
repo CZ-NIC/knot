@@ -35,7 +35,8 @@ extern knot_lookup_table_t opcodes[];
 extern knot_lookup_table_t rcodes[];
 extern knot_lookup_table_t rtypes[];
 
-knot_packet_t* create_empty_packet(knot_packet_prealloc_type_t t, int max_size);
+knot_packet_t* create_empty_packet(const knot_packet_prealloc_type_t type,
+                                   const size_t                      max_size);
 
 void print_header_xfr(const style_t *style, const uint16_t type);
 
