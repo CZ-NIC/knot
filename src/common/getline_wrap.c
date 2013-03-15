@@ -41,7 +41,7 @@ char* getline_wrap(FILE *stream, size_t *len)
 
 	return buf;
 #elif HAVE_FGETLN
-	buf = fgetln(stream, *len);
+	buf = fgetln(stream, len);
 
 	if (buf == NULL) {
 		return NULL;

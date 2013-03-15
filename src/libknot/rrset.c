@@ -458,13 +458,14 @@ static int knot_rrset_to_wire_aux(const knot_rrset_t *rrset, uint8_t **pos,
 		compr_info.wire_pos = comp->wire_pos;
 		compr_info.owner.pos = 0;
 		compr_info.owner.wire = comp->owner_tmp;
-		compr_info.owner.size =
-			knot_response_compress_dname(rrset->owner, &compr_info,
-			                             comp->owner_tmp, max_size,
-		                                     comp->compr_cs);
-		if (compr_info.owner.size < 0) {
+
+		int ret = knot_response_compress_dname(rrset->owner, &compr_info,
+		                                       comp->owner_tmp, max_size,
+		                                       comp->compr_cs);
+		if (ret < 0) {
 			return KNOT_ESPACE;
 		}
+		compr_info.owner.size = ret;
 		
 		dbg_response_detail("Compressed owner has size=%d\n",
 		                    compr_info.owner.size);

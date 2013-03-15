@@ -88,7 +88,6 @@ src/common/latency.c
 src/common/latency.h
 src/common/skip-list.c
 src/common/skip-list.h
-
 src/common/base32hex.h
 src/common/base32hex.c
 src/common/evqueue.c
@@ -99,6 +98,8 @@ src/common/errcode.h
 src/common/errcode.c
 src/common/errors.h
 src/common/errors.c
+src/common/getline_wrap.h
+src/common/getline_wrap.c
 src/common/acl.c
 src/common/acl.h
 src/common/sockaddr.h
