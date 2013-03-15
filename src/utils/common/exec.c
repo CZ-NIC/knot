@@ -185,7 +185,8 @@ static void print_opt_section(const knot_opt_rr_t *rr)
 
 static void print_section_question(const knot_dname_t *owner,
                                    const uint16_t     qclass,
-                                   const uint16_t     qtype)
+                                   const uint16_t     qtype,
+                                   const style_t      *style)
 {
 	size_t buflen = 8192;
 	char   *buf = malloc(buflen);
@@ -193,7 +194,8 @@ static void print_section_question(const knot_dname_t *owner,
 	knot_rrset_t *question = knot_rrset_new((knot_dname_t *)owner, qtype,
 	                                        qclass, 0);
 
-	if (knot_rrset_txt_dump_header(question, 0, buf, buflen, &KNOT_DUMP_STYLE_DEFAULT) < 0) {
+	if (knot_rrset_txt_dump_header(question, 0, buf, buflen, &(style->style))
+	    < 0) {
 		WARN("can't dump whole question section\n");
 	}
 
@@ -203,14 +205,16 @@ static void print_section_question(const knot_dname_t *owner,
 	free(buf);
 }
 
-static void print_section_verbose(const knot_rrset_t **rrsets,
-                                  const uint16_t     count)
+static void print_section_full(const knot_rrset_t **rrsets,
+                               const uint16_t     count,
+                               const style_t      *style)
 {
 	size_t buflen = 8192;
 	char   *buf = malloc(buflen);
 
 	for (uint16_t i = 0; i < count; i++) {
-        while (knot_rrset_txt_dump(rrsets[i], buf, buflen, &KNOT_DUMP_STYLE_DEFAULT) < 0) {
+	while (knot_rrset_txt_dump(rrsets[i], buf, buflen, &(style->style)) < 0)
+	{
 			buflen += 4096;
 			buf = realloc(buf, buflen);
 
@@ -227,7 +231,8 @@ static void print_section_verbose(const knot_rrset_t **rrsets,
 }
 
 static void print_section_dig(const knot_rrset_t **rrsets,
-                              const uint16_t     count)
+                              const uint16_t     count,
+                              const style_t      *style)
 {
 	size_t buflen = 8192;
 	char   *buf = malloc(buflen);
@@ -236,8 +241,8 @@ static void print_section_dig(const knot_rrset_t **rrsets,
 		const knot_rrset_t *rrset = rrsets[i];
 
 		for (size_t j = 0; j < rrset->rdata_count; j++) {
-			while (knot_rrset_txt_dump_data(rrset, j, buf, buflen, &KNOT_DUMP_STYLE_DEFAULT)
-			       < 0) {
+			while (knot_rrset_txt_dump_data(rrset, j, buf, buflen,
+			                                &(style->style)) < 0) {
 				buflen += 4096;
 				buf = realloc(buf, buflen);
 
@@ -255,7 +260,8 @@ static void print_section_dig(const knot_rrset_t **rrsets,
 }
 
 static void print_section_host(const knot_rrset_t **rrsets,
-                               const uint16_t     count)
+                               const uint16_t     count,
+                               const style_t      *style)
 {
 	size_t buflen = 8192;
 	char   *buf = malloc(buflen);
@@ -270,8 +276,8 @@ static void print_section_host(const knot_rrset_t **rrsets,
 		descr = knot_lookup_by_id(rtypes, rrset->type);
 
 		for (size_t j = 0; j < rrset->rdata_count; j++) {
-			while (knot_rrset_txt_dump_data(rrset, j, buf, buflen, &KNOT_DUMP_STYLE_DEFAULT)
-			       < 0) {
+			while (knot_rrset_txt_dump_data(rrset, j, buf, buflen,
+			                                &(style->style)) < 0) {
 				buflen += 4096;
 				buf = realloc(buf, buflen);
 
@@ -360,13 +366,13 @@ void print_data_xfr(const style_t       *style,
 
 	switch (style->format) {
 	case FORMAT_DIG:
-		print_section_dig(packet->answer, packet->an_rrsets);
+		print_section_dig(packet->answer, packet->an_rrsets, style);
 		break;
 	case FORMAT_HOST:
-		print_section_host(packet->answer, packet->an_rrsets);
+		print_section_host(packet->answer, packet->an_rrsets, style);
 		break;
 	case FORMAT_FULL:
-		print_section_verbose(packet->answer, packet->an_rrsets);
+		print_section_full(packet->answer, packet->an_rrsets, style);
 		break;
 	default:
 		break;
@@ -410,12 +416,14 @@ void print_packet(const net_t         *net,
 	switch (style->format) {
 	case FORMAT_DIG:
 		if (packet->an_rrsets > 0) {
-			print_section_dig(packet->answer, packet->an_rrsets);
+			print_section_dig(packet->answer, packet->an_rrsets,
+			                  style);
 		}
 		break;
 	case FORMAT_HOST:
 		if (packet->an_rrsets > 0) {
-			print_section_host(packet->answer, packet->an_rrsets);
+			print_section_host(packet->answer, packet->an_rrsets,
+			                   style);
 		} else {
 			uint8_t rcode = knot_wire_get_rcode(packet->wireformat);
 			print_error_host(rcode, &packet->question);
@@ -428,25 +436,29 @@ void print_packet(const net_t         *net,
 			printf("\n;; ZONE SECTION:\n;; ");
 			print_section_question(packet->question.qname,
 			                       packet->question.qclass,
-			                       packet->question.qtype);
+			                       packet->question.qtype,
+			                       style);
 		}
 
 		if (packet->an_rrsets > 0) {
 			printf("\n;; PREREQUISITE SECTION:\n");
-			print_section_verbose(packet->answer,
-			                      packet->an_rrsets);
+			print_section_full(packet->answer,
+			                   packet->an_rrsets,
+			                   style);
 		}
 
 		if (packet->ns_rrsets > 0) {
 			printf("\n;; UPDATE SECTION:\n");
-			print_section_verbose(packet->authority,
-			                      packet->ns_rrsets);
+			print_section_full(packet->authority,
+			                   packet->ns_rrsets,
+			                   style);
 		}
 
 		if (packet->ar_rrsets > 0) {
 			printf("\n;; ADDITIONAL DATA:\n");
-			print_section_verbose(packet->additional,
-			                      packet->ar_rrsets);
+			print_section_full(packet->additional,
+			                   packet->ar_rrsets,
+			                   style);
 		}
 		break;
 	case FORMAT_FULL:
@@ -462,19 +474,22 @@ void print_packet(const net_t         *net,
 			printf("\n;; QUESTION SECTION:\n;; ");
 			print_section_question(packet->question.qname,
 			                       packet->question.qclass,
-			                       packet->question.qtype);
+			                       packet->question.qtype,
+			                       style);
 		}
 
 		if (packet->an_rrsets > 0) {
 			printf("\n;; ANSWER SECTION:\n");
-			print_section_verbose(packet->answer,
-			                      packet->an_rrsets);
+			print_section_full(packet->answer,
+			                   packet->an_rrsets,
+			                   style);
 		}
 
 		if (packet->ns_rrsets > 0) {
 			printf("\n;; AUTHORITY SECTION:\n");
-			print_section_verbose(packet->authority,
-			                      packet->ns_rrsets);
+			print_section_full(packet->authority,
+			                   packet->ns_rrsets,
+			                   style);
 		}
 
 		if (packet->ar_rrsets > 0) {
@@ -482,11 +497,13 @@ void print_packet(const net_t         *net,
 
 			if (knot_edns_get_version(&packet->opt_rr)
 			    != EDNS_NOT_SUPPORTED) {
-				print_section_verbose(packet->additional,
-				                      packet->ar_rrsets - 1);
+				print_section_full(packet->additional,
+				                   packet->ar_rrsets - 1,
+				                   style);
 			} else {
-				print_section_verbose(packet->additional,
-				                      packet->ar_rrsets);
+				print_section_full(packet->additional,
+				                   packet->ar_rrsets,
+				                   style);
 			}
 		}
 
