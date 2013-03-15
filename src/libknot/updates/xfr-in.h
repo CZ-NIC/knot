@@ -190,8 +190,7 @@ int xfrin_prepare_zone_copy(knot_zone_contents_t *old_contents,
                             knot_changes_t **changes);
 
 int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
-                                knot_changes_t *changes,
-                                knot_zone_contents_t *old_contents);
+                                knot_changes_t *changes);
 
 int xfrin_switch_zone(knot_zone_t *zone,
                       knot_zone_contents_t *new_contents,

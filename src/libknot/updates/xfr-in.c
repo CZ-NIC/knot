@@ -1227,10 +1227,6 @@ static void xfrin_zone_contents_free(knot_zone_contents_t **contents)
 {
 	/*! \todo This should be all in some API!! */
 	
-//	if ((*contents)->table != NULL) {
-//		ck_destroy_table(&(*contents)->table, NULL, 0);
-//	}
-
 	// free the zone tree with nodes
 	dbg_zone("Destroying zone tree.\n");
 	knot_zone_tree_deep_free(&(*contents)->nodes);
@@ -1250,7 +1246,7 @@ int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 {
 	dbg_xfrin_detail("Copying old RRSet: %p\n", old);
 	// create new RRSet by copying the old one
-	int ret = knot_rrset_deep_copy(old, copy, 0);
+	int ret = knot_rrset_deep_copy(old, copy, 1);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to create RRSet copy.\n");
 		return KNOT_ENOMEM;
@@ -1261,18 +1257,18 @@ int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 	// add the RRSet to the list of new RRSets
 	// create place also for RRSIGs
 	if (save_new) {
+		count = 1;
+		count += (*copy)->rrsigs ? 1 : 0;
 		ret = knot_changes_rrsets_reserve(&changes->new_rrsets,
 						  &changes->new_rrsets_count,
 						  &changes->new_rrsets_allocated,
-		                                  2);
+		                                  count);
 		if (ret != KNOT_EOK) {
 			dbg_xfrin("Failed to add new RRSet to list.\n");
 			knot_rrset_deep_free(copy, 1, 1);
 			return ret;
 		}
 
-		count = 1;
-		count += (*copy)->rrsigs ? 1 : 0;
 	
 		// add the copied RDATA to the list of new RDATA
 		ret = knot_changes_rdata_reserve(&changes->new_rdata,
@@ -2468,7 +2464,9 @@ void xfrin_rollback_update(knot_zone_contents_t *old_contents,
 		// discard new RRSets
 		for (int i = 0; i < (*changes)->new_rrsets_count; ++i) {
 			//knot_rrset_deep_free(&changes->new_rrsets[i], 0, 1, 1);
-			knot_rrset_free(&(*changes)->new_rrsets[i]);
+			if ((*changes)->new_rrsets[i]->rdata_count == 0) {
+				knot_rrset_free(&(*changes)->new_rrsets[i]);
+			}
 		}
 
 		for (int i = 0; i < (*changes)->new_rdata_count; ++i) {
@@ -2493,7 +2491,7 @@ void xfrin_rollback_update(knot_zone_contents_t *old_contents,
 			 * the first RDATA in each.
 			 */
 
-			knot_rrset_deep_free(&(*changes)->new_rdata[i], 1, 0);
+			knot_rrset_deep_free(&(*changes)->new_rdata[i], 1, 1);
 		}
 
 		// free allocated arrays of nodes and rrsets
@@ -3096,10 +3094,9 @@ int xfrin_prepare_zone_copy(knot_zone_contents_t *old_contents,
 /*----------------------------------------------------------------------------*/
 
 int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
-                                knot_changes_t *changes,
-                                knot_zone_contents_t *old_contents)
+                                knot_changes_t *changes)
 {
-	if (contents_copy == NULL || changes == NULL || old_contents == NULL) {
+	if (contents_copy == NULL || changes == NULL) {
 		return KNOT_EINVAL;
 	}
 	
@@ -3109,6 +3106,7 @@ int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
 	 * - parse NSEC3PARAM
 	 * - do adjusting of nodes and RDATA
 	 * - ???
+	 * - PROFIT
 	 */
 	
 	/*
@@ -3119,18 +3117,14 @@ int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to remove empty nodes: %s\n",
 		          knot_strerror(ret));
-//		xfrin_rollback_update(old_contents, &contents_copy, &changes);
 		return ret;
 	}
 
 	dbg_xfrin("Adjusting zone contents.\n");
-	dbg_xfrin_verb("Old contents apex: %p, new apex: %p\n",
-	               old_contents->apex, contents_copy->apex);
 	ret = knot_zone_contents_adjust(contents_copy, NULL, NULL);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to finalize zone contents: %s\n",
 		          knot_strerror(ret));
-//		xfrin_rollback_update(old_contents, &contents_copy, &changes);
 		return ret;
 	}
 	assert(knot_zone_contents_apex(contents_copy) != NULL);
@@ -3140,7 +3134,6 @@ int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
 	ret = knot_zone_contents_check_loops(contents_copy);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("CNAME loop check failed: %s\n", knot_strerror(ret));
-//		xfrin_rollback_update(old_contents, &contents_copy, &changes);
 		return ret;
 	}
 	
@@ -3201,7 +3194,7 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 	 */
 
 	dbg_xfrin_verb("Finalizing updated zone...\n");
-	ret = xfrin_finalize_updated_zone(contents_copy, changes, old_contents);
+	ret = xfrin_finalize_updated_zone(contents_copy, changes);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to finalize updated zone: %s\n",
 		          knot_strerror(ret));

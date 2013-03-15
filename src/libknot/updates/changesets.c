@@ -315,9 +315,9 @@ void knot_free_changeset(knot_changeset_t **changeset)
 		knot_rrset_deep_free(&(*changeset)->remove[j], 1, 1);
 	}
 	free((*changeset)->remove);
-
-	knot_rrset_deep_free(&(*changeset)->soa_from, 1, 0);
-	knot_rrset_deep_free(&(*changeset)->soa_to, 1, 0);
+	
+	knot_rrset_deep_free(&(*changeset)->soa_from, 1, 1);
+	knot_rrset_deep_free(&(*changeset)->soa_to, 1, 1);
 
 	free((*changeset)->data);
 
@@ -467,8 +467,11 @@ void knot_changes_add_rdata(knot_rrset_t **rdatas, int *count,
 	if (rdatas == NULL || count == NULL || rrset == NULL) {
 		return;
 	}
+	
+	rrset->rrsigs = NULL;
 
-	rdatas[*count++] = rrset;
+	rdatas[*count] = rrset;
+	*count += 1;
 }
 
 /*----------------------------------------------------------------------------*/

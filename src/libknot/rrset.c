@@ -2329,6 +2329,7 @@ int rrset_deserialize(uint8_t *stream, size_t *stream_size,
 	if (*rrset == NULL) {
 		return KNOT_ENOMEM;
 	}
+	knot_dname_release(owner);
 	
 	(*rrset)->rdata_indices = rdata_indices;
 	(*rrset)->rdata_count = rdata_count;
