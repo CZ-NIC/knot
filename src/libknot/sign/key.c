@@ -243,6 +243,12 @@ static const struct key_parameter key_parameters[] = {
 	{ "Exponent1",       key_offset(exponent_one),     key_param_string },
 	{ "Exponent2",       key_offset(exponent_two),     key_param_string },
 	{ "Coefficient",     key_offset(coefficient),      key_param_string },
+	{ "Prime(p)",        key_offset(prime),            key_param_string },
+	{ "Subprime(q)",     key_offset(subprime),         key_param_string },
+	{ "Generator(g)",    key_offset(generator),        key_param_string },
+	{ "Base(g)",         key_offset(base),             key_param_string },
+	{ "Private_value(x)",key_offset(private_value),    key_param_string },
+	{ "Public_value(y)", key_offset(public_value),     key_param_string },
 	{ NULL }
 };
 
@@ -390,7 +396,7 @@ knot_key_type_t knot_get_key_type(const knot_key_params_t *key_params)
 		return KNOT_KEY_TSIG;
 	}
 
-	if (key_params->prime_one) {
+	if (key_params->modulus || key_params->prime) {
 		return KNOT_KEY_DNSSEC;
 	}
 

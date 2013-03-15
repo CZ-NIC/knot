@@ -33,6 +33,7 @@ struct knot_key_params {
 	// parameters for symmetric cryptography
 	char *secret;
 	// parameters for public key cryptography
+	// RSA
 	char *modulus;
 	char *public_exponent;
 	char *private_exponent;
@@ -41,6 +42,13 @@ struct knot_key_params {
 	char *exponent_one;
 	char *exponent_two;
 	char *coefficient;
+	// DH, DSA
+	char *prime;
+	char *generator;
+	char *subprime;
+	char *base;
+	char *private_value;
+	char *public_value;
 };
 
 typedef struct knot_key_params knot_key_params_t;
