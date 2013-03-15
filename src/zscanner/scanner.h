@@ -29,7 +29,6 @@
 
 #include <stdint.h>			// uint32_t
 #include <stdbool.h>			// bool
-#include <arpa/inet.h>			// htons
 
 /*! \brief Maximal length of rdata. */
 #define MAX_RDATA_LENGTH	       65535

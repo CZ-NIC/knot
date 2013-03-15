@@ -23,8 +23,10 @@
 #include <stdbool.h>			// bool
 #include <math.h>			// pow
 #include <string.h>			// strdup
+#include <sys/types.h>			// (OpenBSD)
 #include <sys/socket.h>			// AF_INET (BSD)
 #include <netinet/in.h>			// in_addr (BSD)
+#include <arpa/inet.h>			// inet_pton
 
 #include "common/errcode.h"		// error codes
 #include "common/descriptor_new.h"	// KNOT_RRTYPE_A

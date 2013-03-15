@@ -25,8 +25,10 @@
 #include <stdbool.h>			// bool
 #include <math.h>			// pow
 #include <string.h>			// strdup
+#include <sys/types.h>			// (OpenBSD)
 #include <sys/socket.h>			// AF_INET (BSD)
 #include <netinet/in.h>			// in_addr (BSD)
+#include <arpa/inet.h>			// inet_pton
 
 #include "common/errcode.h"		// error codes
 #include "common/descriptor_new.h"	// KNOT_RRTYPE_A
@@ -74,7 +76,7 @@ static inline void window_add_bit(const uint16_t type, scanner_t *s) {
 
 // Include scanner file (in Ragel).
 
-#line 78 "zscanner/scanner.c"
+#line 80 "zscanner/scanner.c"
 static const short _zone_scanner_actions[] = {
 	0, 1, 0, 1, 1, 1, 2, 1, 
 	3, 1, 4, 1, 6, 1, 9, 1, 
@@ -4631,7 +4633,7 @@ static const int zone_scanner_en_r_data_tlsa = 972;
 static const int zone_scanner_en_main = 985;
 
 
-#line 80 "zscanner/scanner.rl"
+#line 82 "zscanner/scanner.rl"
 
 
 scanner_t* scanner_create(const char *file_name)
@@ -4694,7 +4696,7 @@ int scanner_process(const char *start,
 
 	// Writing scanner body (in C).
 	
-#line 4698 "zscanner/scanner.c"
+#line 4700 "zscanner/scanner.c"
 	{
 	int _klen;
 	unsigned int _trans;
@@ -7020,7 +7022,7 @@ _match:
 		s->process_record(s);
 	}
 	break;
-#line 7024 "zscanner/scanner.c"
+#line 7026 "zscanner/scanner.c"
 		}
 	}
 
@@ -7260,7 +7262,7 @@ _again:
 		p--; {cs = 230; goto _again;}
 	}
 	break;
-#line 7264 "zscanner/scanner.c"
+#line 7266 "zscanner/scanner.c"
 		}
 	}
 	}
@@ -7268,7 +7270,7 @@ _again:
 	_out: {}
 	}
 
-#line 142 "zscanner/scanner.rl"
+#line 144 "zscanner/scanner.rl"
 
 	// Check if scanner state machine is in uncovered state.
 	if (cs == zone_scanner_error) {
