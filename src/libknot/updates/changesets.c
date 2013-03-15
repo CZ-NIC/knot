@@ -22,6 +22,7 @@
 #include "libknot/common.h"
 #include "common/descriptor_new.h"
 #include "rrset.h"
+#include "util/debug.h"
 
 static const size_t KNOT_CHANGESET_COUNT = 5;
 static const size_t KNOT_CHANGESET_STEP = 5;
