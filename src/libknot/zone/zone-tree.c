@@ -341,14 +341,20 @@ void knot_zone_tree_free(knot_zone_tree_t **tree)
 
 /*----------------------------------------------------------------------------*/
 
+static void knot_zone_tree_free_node(knot_node_t **node, void *data)
+{
+	if (node) {
+		knot_node_free(node);
+	}
+}
+
 void knot_zone_tree_deep_free(knot_zone_tree_t **tree)
 {
 	if (tree == NULL || *tree == NULL) {
 		return;
 	}
 	
-	/*! \todo free node data */
-	
+	knot_zone_tree_apply(*tree, knot_zone_tree_free_node, NULL);
 	knot_zone_tree_free(tree);
 }
 
