@@ -297,23 +297,31 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 		uint16_t msg_len;
 		uint32_t total = 0;
 
-		// Wait for data.
-		if (poll(&pfd, 1, 1000 * net->wait) != 1) {
-			WARN("can't wait for leading TCP bytes from %s#%i\n",
-			     net->addr, net->port);
-			return KNOT_ERROR;
-		}
-
 		// Receive TCP message header.
-		if (recv(net->sockfd, &msg_len, sizeof(msg_len), 0) !=
-		    sizeof(msg_len)) {
-			WARN("can't receive leading TCP bytes from %s#%i\n",
-			     net->addr, net->port);
-			return KNOT_ERROR;
+		while (total < sizeof(msg_len)) {
+			if (poll(&pfd, 1, 1000 * net->wait) != 1) {
+				WARN("can't wait for TCP answer from %s#%i\n",
+				     net->addr, net->port);
+				return KNOT_ERROR;
+			}
+
+			// Receive piece of message.
+			ret = recv(net->sockfd, (uint8_t *)&msg_len + total,
+			           sizeof(msg_len) - total, 0);
+
+			if (ret <= 0) {
+				WARN("can't receive TCP answer from %s#%i\n",
+				     net->addr, net->port);
+				return KNOT_ERROR;
+			}
+
+			total += ret;
 		}
 
 		// Convert number to host format.
 		msg_len = ntohs(msg_len);
+
+		total = 0;
 
 		// Receive whole answer message by parts.
 		while (total < msg_len) {
