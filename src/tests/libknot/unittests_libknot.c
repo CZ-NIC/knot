@@ -26,6 +26,9 @@
 //#include "tests/libknot/libknot/rdata_tests.h"
 //#include "tests/libknot/libknot/response_tests.h"
 #include "tests/libknot/libknot/rrset_tests.h"
+#include "tests/libknot/wire_tests.h"
+#include "tests/libknot/dname_tests.h"
+#include "tests/libknot/ztree_tests.h"
 //#include "tests/libknot/libknot/zone_tests.h"
 //#include "tests/libknot/libknot/dname_table_tests.h"
 //#include "tests/libknot/libknot/nsec3_tests.h"
@@ -44,9 +47,15 @@ int main(int argc, char *argv[])
 	// Build test set
 	unit_api *tests[] = {
 
-		/* DNS units */
-		&rrset_tests_api,    //! DNS library (rrset) unit
-		NULL
+	        /* DNS units */
+	        &rrset_tests_api,    //! DNS library (rrset) unit
+	        
+	        /* Library. */
+	        &wire_tests_api,
+	        &dname_tests_api,
+	        &ztree_tests_api,
+	        
+	        NULL
 	};
 
 	// Plan number of tests

@@ -110,10 +110,6 @@ unittests_SOURCES =				\
 	tests/knot/server_tests.h		\
 	tests/knot/rrl_tests.h			\
 	tests/knot/rrl_tests.c			\
-	tests/libknot/wire_tests.c		\
-	tests/libknot/wire_tests.h		\
-	tests/libknot/dname_tests.c		\
-	tests/libknot/dname_tests.h		\
 	tests/unittests_main.c
 
 unittests_xfr_SOURCES = 			\
@@ -122,6 +118,12 @@ unittests_xfr_SOURCES = 			\
 	
 unittests_libknot_SOURCES = 			\
 	tests/libknot/unittests_libknot.c	\
+	tests/libknot/dname_tests.h		\
+	tests/libknot/dname_tests.c		\
+	tests/libknot/ztree_tests.h		\
+	tests/libknot/ztree_tests.c		\
+	tests/libknot/wire_tests.h		\
+	tests/libknot/wire_tests.c		\
 	tests/libknot/libknot/rrset_tests.h	\
 	tests/libknot/libknot/rrset_tests.c
 
