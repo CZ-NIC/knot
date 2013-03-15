@@ -52,8 +52,10 @@
 static int dname_lf(char *dst, const knot_dname_t *src, size_t maxlen) {
 	if (!src || !dst) return KNOT_EINVAL;
 	if (src->size > maxlen) return KNOT_ESPACE;
-	*dst++ = src->size - 1;
-	*dst = '\0';
+	char *b = dst;
+	*dst = src->size - 1;
+	if (*dst == 0) ++*dst; /* root special case */
+	*++dst = '\0';
 	uint8_t* l = src->name;
 	uint8_t lstack[127];
 	uint8_t *sp = lstack;
@@ -67,7 +69,6 @@ static int dname_lf(char *dst, const knot_dname_t *src, size_t maxlen) {
 		dst += *l;
 		*dst++ = '\0';         /* label separator */
 	}
-	
 	return KNOT_EOK;
 }
 
