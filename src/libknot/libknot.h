@@ -40,6 +40,7 @@
 #include "rrset.h"
 #include "rrset-dump.h"
 #include "tsig.h"
+#include "tsig-op.h"
 #include "util/tolower.h"
 #include "util/utils.h"
 #include "zone/zone.h"

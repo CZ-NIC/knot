@@ -1679,16 +1679,6 @@ const knot_node_t *knot_zone_contents_find_previous_nsec3(
 
 /*----------------------------------------------------------------------------*/
 
-static void knot_zone_contents_left_chop(char *name, size_t *size)
-{
-	short label_size = (unsigned char)name[0];
-	
-	memmove(name, name + label_size + 1, *size -label_size - 1);
-	*size = *size - label_size - 1;
-}
-
-/*----------------------------------------------------------------------------*/
-
 const knot_node_t *knot_zone_contents_find_nsec3_node(
 	const knot_zone_contents_t *zone, const knot_dname_t *name)
 {

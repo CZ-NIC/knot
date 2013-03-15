@@ -971,8 +971,8 @@ int knot_zone_contents_diff(const knot_zone_contents_t *zone1,
 	return KNOT_EOK;
 }
 
-//#ifdef KNOT_ZONEDIFF_DEBUG
-//#ifdef DEBUG_ENABLE_DETAILS
+#ifdef KNOT_ZONEDIFF_DEBUG
+#ifdef DEBUG_ENABLE_DETAILS
 static void knot_zone_diff_dump_changeset(knot_changeset_t *ch)
 {
 	dbg_zonediff_detail("Changeset FROM: %d\n", ch->serial_from);
@@ -997,8 +997,8 @@ static void knot_zone_diff_dump_changeset(knot_changeset_t *ch)
 		dbg_zonediff_detail("\n");
 	}
 }
-//#endif
-//#endif
+#endif
+#endif
 
 int knot_zone_diff_create_changesets(const knot_zone_contents_t *z1,
                                      const knot_zone_contents_t *z2,

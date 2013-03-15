@@ -89,7 +89,7 @@ static int cmd_flush(int argc, char *argv[], unsigned flags, int jobs);
 static int cmd_status(int argc, char *argv[], unsigned flags, int jobs);
 static int cmd_checkconf(int argc, char *argv[], unsigned flags, int jobs);
 static int cmd_checkzone(int argc, char *argv[], unsigned flags, int jobs);
-static int cmd_compile(int argc, char *argv[], unsigned flags, int jobs);
+//static int cmd_compile(int argc, char *argv[], unsigned flags, int jobs);
 
 /*! \brief Table of remote commands. */
 knot_cmd_t knot_cmd_tbl[] = {
@@ -132,58 +132,7 @@ void help(int argc, char **argv)
 	}
 }
 
-/*!
- * \brief Check if the zone needs recompilation.
- *
- * \param db Path to zone db file.
- * \param source Path to zone source file.
- *
- * \retval KNOT_EOK if up to date.
- * \retval KNOT_ERROR if needs recompilation.
- */
-static int check_zone(const char *db, const char *source)
-{
-	return 0;
-	/* Check zonefile. */
-	struct stat st;
-	if (stat(source, &st) != 0) {
-		int reason = errno;
-		const char *emsg = "";
-		switch (reason) {
-		case EACCES:
-			emsg = "Not enough permissions to access zone file '%s'.\n";
-			break;
-		case ENOENT:
-			emsg = "Zone file '%s' doesn't exist.\n";
-			break;
-		default:
-			emsg = "Unable to stat zone file '%s'.\n";
-			break;
-		}
-		log_zone_error(emsg, source);
-		return KNOT_ENOENT;
-	}
-
-	/* Read zonedb header. */
-	assert(0); // TODO replace with checking actual zone file.
-//	zloader_t *zl = 0;
-//	knot_zload_open(&zl, db);
-//	if (!zl) {
-//		return KNOT_ERROR;
-//	}
-
-//	/* Check source files and mtime. */
-//	int ret = KNOT_ERROR;
-//	int src_changed = strcmp(source, zl->source) != 0;
-//	if (!src_changed && !knot_zload_needs_update(zl)) {
-//		ret = KNOT_EOK;
-//	}
-
-//	knot_zload_close(zl);
-//	return ret;
-	return KNOT_EOK;
-}
-
+#if 0
 /*! \brief Zone compiler task. */
 typedef struct {
 	conf_zone_t *zone;
@@ -267,6 +216,7 @@ static int zctask_add(knotc_zctask_t *tasks, int count, pid_t pid,
 	/* Free space not found. */
 	return -1;
 }
+#endif
 
 static int cmd_remote_print_reply(const knot_rrset_t *rr)
 {
@@ -930,6 +880,7 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags, int jobs)
 	return 0;
 }
 
+#if 0
 static int cmd_compile(int argc, char *argv[], unsigned flags, int jobs)
 {
 	/* Print job count */
@@ -1030,3 +981,4 @@ static int cmd_compile(int argc, char *argv[], unsigned flags, int jobs)
 	free(tasks);
 	return rc;
 }
+#endif

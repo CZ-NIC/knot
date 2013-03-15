@@ -507,28 +507,6 @@ static uint16_t keytag(uint8_t *key, uint16_t keysize )
 }
 
 /*!
- * \brief Converts DNSKEY rdata to wireformat.
- *
- * \param rdata DNSKEY rdata to be converted.
- * \param wire Created wire.
- * \param size Size of created wire.
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_ENOMEM on memory error.
- */
-static int dnskey_to_wire(const knot_rrset_t *rrset, size_t rr_pos, uint8_t **wire,
-			  uint *size)
-{
-	/* DNSKEY RDATA - all binary. */
-	uint16_t item_size = rrset_rdata_item_size(rrset, rr_pos);
-	*wire = xmalloc(item_size);
-	memcpy(*wire, knot_rrset_get_rdata(rrset, rr_pos), item_size);
-	*size = item_size;
-
-	return KNOT_EOK;
-}
-
-/*!
  * \brief Semantic check - RRSIG rdata.
  *
  * \param rdata_rrsig RRSIG rdata to be checked.
