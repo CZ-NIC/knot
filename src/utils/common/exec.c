@@ -430,9 +430,11 @@ void print_packet(const net_t         *net,
 		}
 		break;
 	case FORMAT_NSUPDATE:
-		print_header(style, packet);
+		if (style->show_header) {
+			print_header(style, packet);
+		}
 
-		if (packet->header.qdcount > 0) {
+		if (style->show_question && packet->header.qdcount > 0) {
 			printf("\n;; ZONE SECTION:\n;; ");
 			print_section_question(packet->question.qname,
 			                       packet->question.qclass,
@@ -440,21 +442,21 @@ void print_packet(const net_t         *net,
 			                       style);
 		}
 
-		if (packet->an_rrsets > 0) {
+		if (style->show_answer && packet->an_rrsets > 0) {
 			printf("\n;; PREREQUISITE SECTION:\n");
 			print_section_full(packet->answer,
 			                   packet->an_rrsets,
 			                   style);
 		}
 
-		if (packet->ns_rrsets > 0) {
+		if (style->show_authority && packet->ns_rrsets > 0) {
 			printf("\n;; UPDATE SECTION:\n");
 			print_section_full(packet->authority,
 			                   packet->ns_rrsets,
 			                   style);
 		}
 
-		if (packet->ar_rrsets > 0) {
+		if (style->show_additional && packet->ar_rrsets > 0) {
 			printf("\n;; ADDITIONAL DATA:\n");
 			print_section_full(packet->additional,
 			                   packet->ar_rrsets,
@@ -462,7 +464,9 @@ void print_packet(const net_t         *net,
 		}
 		break;
 	case FORMAT_FULL:
-		print_header(style, packet);
+		if (style->show_header) {
+			print_header(style, packet);
+		}
 
 		if (knot_edns_get_version(&packet->opt_rr)
 		    != EDNS_NOT_SUPPORTED) {
@@ -470,7 +474,7 @@ void print_packet(const net_t         *net,
 			print_opt_section(&packet->opt_rr);
 		}
 
-		if (packet->header.qdcount > 0) {
+		if (style->show_question && packet->header.qdcount > 0) {
 			printf("\n;; QUESTION SECTION:\n;; ");
 			print_section_question(packet->question.qname,
 			                       packet->question.qclass,
@@ -478,21 +482,21 @@ void print_packet(const net_t         *net,
 			                       style);
 		}
 
-		if (packet->an_rrsets > 0) {
+		if (style->show_answer && packet->an_rrsets > 0) {
 			printf("\n;; ANSWER SECTION:\n");
 			print_section_full(packet->answer,
 			                   packet->an_rrsets,
 			                   style);
 		}
 
-		if (packet->ns_rrsets > 0) {
+		if (style->show_authority && packet->ns_rrsets > 0) {
 			printf("\n;; AUTHORITY SECTION:\n");
 			print_section_full(packet->authority,
 			                   packet->ns_rrsets,
 			                   style);
 		}
 
-		if (packet->ar_rrsets > 0) {
+		if (style->show_additional && packet->ar_rrsets > 0) {
 			printf("\n;; ADDITIONAL SECTION:\n");
 
 			if (knot_edns_get_version(&packet->opt_rr)
@@ -507,11 +511,12 @@ void print_packet(const net_t         *net,
 			}
 		}
 
-		if (net == NULL) {
-			break;
+		if (style->show_footer) {
+			if (net == NULL) {
+				break;
+			}
+			print_footer(net, elapsed, total_len, msg_count);
 		}
-
-		print_footer(net, elapsed, total_len, msg_count);
 		break;
 	default:
 		break;
