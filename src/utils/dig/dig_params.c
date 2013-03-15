@@ -241,10 +241,23 @@ static void complete_servers(query_t *query, const query_t *conf)
 		def_port = DEFAULT_DNS_PORT;
 	}
 
-	// Use servers from config if any.
-	if (list_size(&conf->servers) > 0) {
-		server_t *server;
+	// Complete specified nameservers if any.
+	if (list_size(&query->servers) > 0) {
+		WALK_LIST(n, query->servers) {
+			server_t *s = (server_t *)n;
 
+			// If the port isn't specified yet use the default one.
+			if (strlen(s->service) == 0) {
+				free(s->service);
+				s->service = strdup(def_port);
+				if (s->service == NULL) {
+					WARN("can't set port %s\n", def_port);
+					return;
+				}
+			}
+		}
+	// Use servers from config if any.
+	} else if (list_size(&conf->servers) > 0) {
 		WALK_LIST(n, conf->servers) {
 			server_t *s = (server_t *)n;
 			char     *port = def_port;
@@ -254,8 +267,7 @@ static void complete_servers(query_t *query, const query_t *conf)
 				port = s->service;
 			}
 
-			server = server_create(s->name, port);
-
+			server_t *server = server_create(s->name, port);
 			if (server == NULL) {
 				WARN("can't set nameserver %s port %s\n",
 				     s->name, s->service);
@@ -313,10 +325,8 @@ void complete_queries(list *queries, const query_t *conf)
 			}
 		}
 
-		// Fill nameserver list if empty.
-		if (list_size(&q->servers) == 0) {
-			complete_servers(q, conf);
-		}
+		// Complete nameservers list.
+		complete_servers(q, conf);
 	}
 }
 
