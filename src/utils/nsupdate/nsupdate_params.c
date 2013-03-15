@@ -74,7 +74,7 @@ static int parser_set_default(scanner_t *s, const char *fmt, ...)
 
 static int nsupdate_init(nsupdate_params_t *params)
 {
-	memset(params, 0, sizeof(*params));
+	memset(params, 0, sizeof(nsupdate_params_t));
 
 	/* Initialize list. */
 	init_list(&params->qfiles);
