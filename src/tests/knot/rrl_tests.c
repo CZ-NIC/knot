@@ -22,9 +22,16 @@
 #include "libknot/packet/response.h"
 #include "libknot/packet/query.h"
 #include "libknot/nameserver/name-server.h"
+#include "common/prng.h"
 
 /* Enable time-dependent tests. */
 //#define ENABLE_TIMED_TESTS
+#define RRL_SIZE (786433) /* prime */
+#define RRL_INSERTS (629146) /* fill=0.8 */
+struct bucketmap_t {
+	unsigned i;
+	uint64_t x;
+};
 
 static int rrl_tests_count(int argc, char *argv[]);
 static int rrl_tests_run(int argc, char *argv[]);
@@ -44,7 +51,7 @@ unit_api rrl_tests_api = {
 
 static int rrl_tests_count(int argc, char *argv[])
 {
-	int c = 6;
+	int c = 7;
 #ifndef ENABLE_TIMED_TESTS
 	c -= 2;
 #endif
@@ -77,7 +84,7 @@ static int rrl_tests_run(int argc, char *argv[])
 	rq.flags = 0;
 	
 	/* 1. create rrl table */
-	rrl_table_t *rrl = rrl_create(101);
+	rrl_table_t *rrl = rrl_create(RRL_SIZE);
 	ok(rrl != NULL, "rrl: create");
 	
 	/* 2. set rate limit */
@@ -123,7 +130,29 @@ static int rrl_tests_run(int argc, char *argv[])
 	                  ret += rrl_query(rrl, 0, 0, 0); // -1
 	                  ret += rrl_query(rrl, (void*)0x1, 0, 0); // -1
 	                  ret += rrl_destroy(0); // -1
-	}, "dthreads: not crashed while executing functions on NULL context");
+	}, "rrl: not crashed while executing functions on NULL context");
+	
+	/* 7. hopscotch test */
+	int lk = 0;
+	int passed = 1;
+	uint32_t now = time(NULL);
+	struct bucketmap_t *m = malloc(RRL_INSERTS * sizeof(struct bucketmap_t));
+	for (unsigned i = 0; i < RRL_INSERTS; ++i) {
+		m[i].i = tls_rand() * UINT32_MAX;
+		addr.addr4.sin_addr.s_addr = m[i].i;
+		rrl_item_t *b =  rrl_hash(rrl, &addr, &rq, zone, now, &lk);
+		m[i].x = b->pref;
+	}
+	for (unsigned i = 0; i < RRL_INSERTS; ++i) {
+		addr.addr4.sin_addr.s_addr = m[i].i;
+		rrl_item_t *b = rrl_hash(rrl, &addr, &rq, zone, now, &lk);
+		if (b->pref != m[i].x) {
+			passed = 0;
+			//break;
+		}
+	}
+	free(m);
+	ok(passed, "rrl: hashtable is ~ consistent\n");
 	
 	knot_dname_release(qst.qname);
 	knot_dname_release(apex);

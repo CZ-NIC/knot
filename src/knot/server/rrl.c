@@ -28,6 +28,8 @@
 #include "common/prng.h"
 #include "common/errors.h"
 
+/* Hopscotch defines. */
+#define HOP_LEN (sizeof(unsigned)*8)
 /* Limits */
 #define RRL_CLSBLK_MAXLEN (4 + 8 + 1 + 256)
 /* CIDR block prefix lengths for v4/v6 */
@@ -212,51 +214,34 @@ static int rrl_classify(char *dst, size_t maxlen, const sockaddr_t *a,
 	return blklen;
 }
 
-static rrl_item_t* rrl_hash(rrl_table_t *t, const sockaddr_t *a, rrl_req_t *p,
-                            const knot_zone_t *zone, uint32_t stamp, int *lk)
-{
-	char buf[RRL_CLSBLK_MAXLEN];
-	int len = rrl_classify(buf, sizeof(buf), a, p, zone, t->seed);
-	if (len < 0) {
-		return NULL;
-	}
-	
-	uint32_t id = hash(buf, len) % t->size;
-	
-	/* Check locking. */
-	*lk = -1;
-	if (t->lk_count > 0) {
-		*lk = id % t->lk_count;
-		rrl_lock_mx(t, *lk);
-	}
-	
-	rrl_item_t *b = t->arr + id;
-	dbg_rrl("%s: classified pkt as '0x%x' bucket=%p\n", __func__, id, b);
+static int bucket_free(rrl_item_t *b, uint32_t now) {
+	return b->cls == CLS_NULL || (b->time + 1 < now);
+}
 
-	/* Inspect bucket state. */
-	uint64_t nprefix = *((uint64_t*)(buf + sizeof(uint8_t)));
-	if (b->cls == CLS_NULL) {
-		b->cls = *buf; /* Stored as a first byte in clsblock. */
-		b->flags = RRL_BF_NULL;
-		b->ntok = t->rate;
-		b->time = stamp;
-		b->pref = nprefix; /* Invalidate */
+static int bucket_match(rrl_item_t *b, uint8_t cls, uint64_t addr)
+{
+	return b->cls == cls && b->pref == addr;
+}
+
+static unsigned find_free(rrl_table_t *t, unsigned i, uint8_t cls, uint64_t addr, uint32_t now)
+{
+	rrl_item_t *np = t->arr + t->size;
+	rrl_item_t *b = NULL;
+	for (b = t->arr + i; b != np; ++b) {
+		if (bucket_free(b, now)) {
+			return b - (t->arr + i);
+		}
 	}
-	/* Check for collisions. */
-	if (b->pref != nprefix) {
-		dbg_rrl("%s: collision in bucket '0x%4x'\n", __func__, id);
-		if (!(b->flags & RRL_BF_SSTART)) {
-			b->pref = nprefix;
-			b->cls = *buf;
-			b->flags = RRL_BF_NULL; /* Reset flags. */
-			b->time = stamp; /* Reset time */
-			b->ntok = t->rate / RRL_SSTART;
-			b->flags |= RRL_BF_SSTART;
-			dbg_rrl("%s: bucket '0x%4x' slow-start\n", __func__, id);
+	np = t->arr + i;
+	for (b = t->arr; b != np; ++b) {
+		if (bucket_free(b, now)) {
+			return (b - t->arr) + (t->size - i);
 		}
 	}
 	
-	return b;
+	/* this happens if table is full... force vacate current elm */
+	dbg_rrl("%s: out of free buckets, freeing bucket %u\n", __func__, i);
+	return i;
 }
 
 static void rrl_log_state(const sockaddr_t *a, uint16_t flags, uint8_t cls)
@@ -274,6 +259,8 @@ static void rrl_log_state(const sockaddr_t *a, uint16_t flags, uint8_t cls)
 	                  saddr, what, rrl_clsstr(cls));
 #endif
 }
+
+
 
 rrl_table_t *rrl_create(size_t size)
 {
@@ -331,6 +318,100 @@ int rrl_setlocks(rrl_table_t *rrl, size_t granularity)
 	
 	dbg_rrl("%s: set granularity to '%zu'\n", __func__, granularity);
 	return KNOT_EOK;
+}
+
+rrl_item_t* rrl_hash(rrl_table_t *t, const sockaddr_t *a, rrl_req_t *p,
+                     const knot_zone_t *zone, uint32_t stamp, int *lk)
+{
+	char buf[RRL_CLSBLK_MAXLEN];
+	int len = rrl_classify(buf, sizeof(buf), a, p, zone, t->seed);
+	if (len < 0) {
+		return NULL;
+	}
+	
+	uint32_t id = hash(buf, len) % t->size;
+	
+	/*! \todo locking is wrong now, need to map to regions and check */
+	*lk = -1;
+	if (t->lk_count > 0) {
+		*lk = id % t->lk_count;
+		rrl_lock_mx(t, *lk);
+	}
+	
+	/* Find an exact match in <id, id+K). */
+	unsigned f = 0;
+	unsigned d = 0;
+	uint64_t nprefix = *((uint64_t*)(buf + sizeof(uint8_t)));
+	unsigned match = t->arr[id].hop;
+	while (match != 0) {
+		d = __builtin_ctz(match);
+		f = (id + d) % t->size;
+		if (bucket_match(t->arr + f, buf[0], nprefix)) {
+			break;
+		} else {
+			match &= ~(1<<d); /* clear potential match */
+		}
+	}
+
+	if (match == 0) { /* not an exact match, find free element [f] */
+		d = find_free(t, id, buf[0], nprefix, stamp); 
+		f = (id + d) % t->size;
+	}
+	while (d >= HOP_LEN) {
+		unsigned rd = HOP_LEN - 1;
+		while (rd > 0) {
+			unsigned s = (t->size + f - rd) % t->size; /* bucket to be vacated */
+			unsigned o = __builtin_ctz(t->arr[s].hop); /* offset of first valid bucket */
+			if (t->arr[s].hop != 0 && o < rd) {        /* only offsets in <s, f> are interesting */
+				unsigned e = (s + o) % t->size;    /* this item will be displaced to [f] */
+				unsigned keep_hop = t->arr[f].hop; /* unpredictable padding */
+				memcpy(t->arr + f, t->arr + e, sizeof(rrl_item_t));
+				t->arr[f].hop = keep_hop;
+				t->arr[e].cls = CLS_NULL;
+				t->arr[s].hop &= ~(1<<o);
+				t->arr[s].hop |= 1<<rd;
+				f = e;
+				d -= (rd - o);
+				break;
+			}
+			--rd;
+		}
+		if (rd == 0) { /* this happens with p=1/fact(HOP_LEN) */
+			f = id;
+			d = 0; /* force vacate initial element */
+			dbg_rrl("%s: no potential relocation, freeing bucket %u\n", __func__, id);
+		}
+	}
+	/* found free elm 'k' which is in <id, id + HOP_LEN) */
+	t->arr[id].hop |= (1 << d);
+	rrl_item_t* b = t->arr + f;
+	assert(f == (id+d) % t->size);
+	dbg_rrl("%s: classified pkt as %u '%u+%u' bucket=%p \n", __func__, f, id, d, b);
+
+	/* Inspect bucket state. */
+	if (b->cls == CLS_NULL) {
+		b->cls = *buf; /* Stored as a first byte in clsblock. */
+		b->flags = RRL_BF_NULL;
+		b->ntok = t->rate;
+		b->time = stamp;
+		b->pref = nprefix; /* Invalidate */
+	}
+	/* Check for collisions. */
+	/* \todo <prefix, imputed(qname), cls> */
+	if (!bucket_match(b, buf[0], nprefix)) {
+		dbg_rrl("%s: collision in bucket '0x%4x'\n", __func__, id);
+		if (!(b->flags & RRL_BF_SSTART)) {
+			b->pref = nprefix;
+			b->cls = *buf;
+			b->flags = RRL_BF_NULL; /* Reset flags. */
+			b->time = stamp; /* Reset time */
+			b->ntok = t->rate + t->rate / RRL_SSTART;
+			b->flags |= RRL_BF_SSTART;
+			dbg_rrl("%s: bucket '0x%4x' slow-start\n", __func__, id);
+		}
+	}
+	
+	return b;
 }
 
 int rrl_query(rrl_table_t *rrl, const sockaddr_t *a, rrl_req_t *req,

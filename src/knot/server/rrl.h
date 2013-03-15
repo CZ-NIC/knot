@@ -40,6 +40,7 @@
  * \brief RRL hash bucket.
  */
 typedef struct rrl_item {
+	unsigned hop;        /* Hop bitmap. */
 	uint64_t pref;       /* Prefix associated. */
 	uint16_t ntok;       /* Tokens available */
 	uint8_t  cls;        /* Bucket class */
@@ -116,6 +117,19 @@ uint32_t rrl_setrate(rrl_table_t *rrl, uint32_t rate);
  * \retval KNOT_EINVAL
  */
 int rrl_setlocks(rrl_table_t *rrl, size_t granularity);
+
+/*!
+ * \brief Get bucket for current combination of parameters.
+ * \param t RRL table.
+ * \param a Source address.
+ * \param p RRL request.
+ * \param zone Relate zone.
+ * \param stamp Timestamp (current time).
+ * \param lk Destination for assigned lock (*lk will be set to a value).
+ * \return assigned bucket
+ */
+rrl_item_t* rrl_hash(rrl_table_t *t, const sockaddr_t *a, rrl_req_t *p,
+                     const knot_zone_t *zone, uint32_t stamp, int *lk);
 
 /*!
  * \brief Query the RRL table for accept or deny, when the rate limit is reached.
