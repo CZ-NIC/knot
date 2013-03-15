@@ -69,50 +69,6 @@ enum {
 	T_PKEY_PUBLISH
 };
 
-static int params_parse_keyline(char *lp, int len, void *arg)
-{
-	/* Discard nline */
-	if (lp[len - 1] == '\n') {
-		lp[len - 1] = '\0';
-		len -= 1;
-	}
-
-	knot_key_t *key = (knot_key_t *)arg;
-	int lpm = -1;
-	int bp = 0;
-	if ((bp = tok_scan(lp, pkey_tbl, &lpm)) < 0) {
-		DBG("%s: unknown token on line '%s', ignoring\n", __func__, lp);
-		return KNOT_EOK;
-	}
-
-	/* Found valid key. */
-	const char *k = pkey_tbl[bp];
-	char *v = (char *)tok_skipspace(lp + TOK_L(k));
-	size_t vlen = 0;
-	uint32_t n = 0;
-	switch(bp) {
-	case T_PKEY_ALGO:
-		vlen = strcspn(v, SEP_CHARS);
-		v[vlen] = '\0'; /* Term after first tok */
-		if (params_parse_num(v, &n) != KNOT_EOK) {
-			return KNOT_EPARSEFAIL;
-		}
-		key->algorithm = n;
-		DBG("%s: algo = %u\n", __func__, n);
-		break;
-	case T_PKEY_KEY:
-		if (key->secret) free(key->secret);
-		key->secret = strndup(v, len);
-		DBG("%s: secret = '%s'\n", __func__, key->secret);
-		break;
-	default:
-		DBG("%s: %s = '%s' (ignoring)\n", __func__, TOK_S(k), v);
-		break;
-	}
-
-	return KNOT_EOK;
-}
-
 char* get_reverse_name(const char *name)
 {
 	struct in_addr	addr4;
