@@ -468,6 +468,11 @@ void knot_changes_add_rdata(knot_rrset_t **rdatas, int *count,
 		return;
 	}
 	
+	if (rrset->rdata_count == 0) {
+		dbg_xfrin("Inserting empty RDATA!\n");
+		return;
+	}
+	
 	rrset->rrsigs = NULL;
 
 	rdatas[*count] = rrset;
