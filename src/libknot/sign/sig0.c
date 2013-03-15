@@ -27,7 +27,7 @@ static int create_rsa_pkey_from_params(const knot_key_params_t *params,
 
 	RSA *rsa = RSA_new();
 	if (rsa == NULL)
-		return KNOT_ERROR;
+		return KNOT_ENOMEM;
 
 	rsa->n    = knot_b64_to_bignum(params->modulus);
 	rsa->e    = knot_b64_to_bignum(params->public_exponent);
@@ -62,7 +62,11 @@ static int create_pkey_from_params(const knot_key_params_t *params,
 	int result;
 
 	switch (params->algorithm) {
+	case KNOT_DNSSEC_ALG_RSAMD5:
 	case KNOT_DNSSEC_ALG_RSASHA1:
+	case KNOT_DNSSEC_ALG_RSASHA1_NSEC3_SHA1:
+	case KNOT_DNSSEC_ALG_RSASHA256:
+	case KNOT_DNSSEC_ALG_RSASHA512:
 		key_type = EVP_PKEY_RSA;
 		result = create_rsa_pkey_from_params(params, &key);
 		break;
@@ -108,7 +112,17 @@ static int create_sign_context(const knot_key_params_t *params,
 
 	switch (params->algorithm) {
 	case KNOT_DNSSEC_ALG_RSASHA1:
+	case KNOT_DNSSEC_ALG_RSASHA1_NSEC3_SHA1:
 		digest_type = EVP_sha1();
+		break;
+	case KNOT_DNSSEC_ALG_RSAMD5:
+		digest_type = EVP_md5();
+		break;
+	case KNOT_DNSSEC_ALG_RSASHA256:
+		digest_type = EVP_sha256();
+		break;
+	case KNOT_DNSSEC_ALG_RSASHA512:
+		digest_type = EVP_sha512();
 		break;
 	default:
 		return KNOT_ENOTSUP;
