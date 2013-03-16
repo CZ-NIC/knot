@@ -773,7 +773,7 @@ int knot_rrset_remove_rdata_pos(knot_rrset_t *rrset, size_t pos)
 			rrset->rdata_indices[i] = rrset->rdata_indices[i + 1] - removed_size;
 		}
 	
-		/* Save size of the whole RDATA array. */
+		/* Save size of the whole RDATA array. Note: probably not needed! */
 		rrset->rdata_indices[rrset->rdata_count - 2] = new_size;
 	
 		/* Resize indices, might not be needed, but we'll do it to be proper. */

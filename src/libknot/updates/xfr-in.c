@@ -2324,7 +2324,6 @@ void xfrin_cleanup_successful_update(knot_changes_t **changes)
 
 	// delete old RDATA
 	for (int i = 0; i < (*changes)->old_rdata_count; ++i) {
-		knot_rrset_dump((*changes)->old_rdata[i]);
 		// RDATA are stored separately so do not delete the whole chain
 		knot_rrset_deep_free_no_sig(&(*changes)->old_rdata[i], 1, 1);
 	}

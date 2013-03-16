@@ -309,7 +309,7 @@ static int knot_ddns_check_exist(const knot_zone_contents_t *zone,
 	assert(zone != NULL);
 	assert(rrset != NULL);
 	assert(rcode != NULL);
-	assert(knot_rrset_rdata_rr_count(rrset));
+	assert(knot_rrset_rdata_rr_count(rrset) == 0);
 	assert(knot_rrset_type(rrset) != KNOT_RRTYPE_ANY);
 	assert(knot_rrset_ttl(rrset) == 0);
 	assert(knot_rrset_class(rrset) == KNOT_CLASS_ANY);
@@ -342,7 +342,7 @@ static int knot_ddns_check_exist_full(const knot_zone_contents_t *zone,
 	assert(zone != NULL);
 	assert(rrset != NULL);
 	assert(rcode != NULL);
-	assert(knot_rrset_rdata_rr_count(rrset));
+	assert(knot_rrset_rdata_rr_count(rrset) == 0);
 	assert(knot_rrset_type(rrset) != KNOT_RRTYPE_ANY);
 	assert(knot_rrset_ttl(rrset) == 0);
 	assert(knot_rrset_class(rrset) == KNOT_CLASS_ANY);
@@ -387,7 +387,7 @@ static int knot_ddns_check_not_exist(const knot_zone_contents_t *zone,
 	assert(zone != NULL);
 	assert(rrset != NULL);
 	assert(rcode != NULL);
-	assert(knot_rrset_rdata_rr_count(rrset));
+	assert(knot_rrset_rdata_rr_count(rrset) == 0);
 	assert(knot_rrset_type(rrset) != KNOT_RRTYPE_ANY);
 	assert(knot_rrset_ttl(rrset) == 0);
 	assert(knot_rrset_class(rrset) == KNOT_CLASS_NONE);
@@ -660,7 +660,7 @@ int knot_ddns_process_update(const knot_zone_contents_t *zone,
 						  KNOT_RRTYPE_SOA);
 	knot_rrset_t *soa_begin = NULL;
 	knot_rrset_t *soa_end = NULL;
-	ret = knot_rrset_deep_copy(soa, &soa_begin, 0);
+	ret = knot_rrset_deep_copy(soa, &soa_begin, 1);
 	if (ret == KNOT_EOK) {
 		knot_changeset_store_soa(&changeset->soa_from,
 		                         &changeset->serial_from, soa_begin);
@@ -1262,9 +1262,10 @@ static int knot_ddns_add_rr_merge_normal(knot_rrset_t *node_rrset_copy,
 		dbg_ddns("Failed to merge UPDATE RR to node RRSet: %s."
 		         "\n", knot_strerror(ret));
 		return ret;
+	} else if (ret > 0) {
+		knot_rrset_deep_free(rr_copy, 1, 0);
 	}
-
-	knot_rrset_deep_free(rr_copy, 1, 0);
+	//LS this will not work: Merge does not return count of merged RRs
 
 	if (rdata_in_copy == ret) {
 		/* All RDATA have been removed, because they were duplicates
@@ -1325,9 +1326,9 @@ static int knot_ddns_add_rr_merge_rrsig(knot_rrset_t *node_rrset_copy,
 			dbg_xfrin("Failed to merge UPDATE RRSIG to copy: %s.\n",
 			          knot_strerror(ret));
 			return KNOT_ERROR;
+		} else if (ret > 0) {
+			knot_rrset_deep_free(rr_copy, 1, 0);
 		}
-		
-		knot_rrset_deep_free(rr_copy, 1, 0);
 
 		if (rdata_in_copy == ret) {
 			/* All RDATA have been removed, because they were
