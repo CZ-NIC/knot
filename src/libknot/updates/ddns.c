@@ -135,6 +135,7 @@ static int knot_ddns_add_prereq(knot_ddns_prereq_t *prereqs,
 	assert(rrset != NULL);
 
 	if (knot_rrset_ttl(rrset) != 0) {
+		dbg_ddns("ddns: add_prereq: Wrong TTL.\n");
 		return KNOT_EMALF;
 	}
 
@@ -142,6 +143,7 @@ static int knot_ddns_add_prereq(knot_ddns_prereq_t *prereqs,
 
 	if (knot_rrset_class(rrset) == KNOT_CLASS_ANY) {
 		if (knot_rrset_rdata_rr_count(rrset) == 0) {
+			dbg_ddns("ddns: add_prereq: No data\n");
 			return KNOT_EMALF;
 		}
 		if (knot_rrset_type(rrset) == KNOT_RRTYPE_ANY) {
@@ -157,6 +159,7 @@ static int knot_ddns_add_prereq(knot_ddns_prereq_t *prereqs,
 		}
 	} else if (knot_rrset_class(rrset) == KNOT_CLASS_NONE) {
 		if (knot_rrset_rdata_rr_count(rrset) == 0) {
+			dbg_ddns("ddns: add_prereq: No data\n");
 			return KNOT_EMALF;
 		}
 		if (knot_rrset_type(rrset) == KNOT_RRTYPE_ANY) {
@@ -176,6 +179,7 @@ static int knot_ddns_add_prereq(knot_ddns_prereq_t *prereqs,
 		                                 &prereqs->exist_full_count,
 		                                 &prereqs->exist_full_allocd);
 	} else {
+		dbg_ddns("ddns: add_prereq: Bad class.\n");
 		return KNOT_EMALF;
 	}
 
