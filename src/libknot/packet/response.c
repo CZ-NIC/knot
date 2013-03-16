@@ -533,7 +533,6 @@ dbg_response_exec(
 	if (ret != KNOT_EOK) {
 		dbg_response("Failed to convert RRSet to wire. (%s).\n,",
 		             knot_strerror(ret));
-		return ret;
 	}
 
 	if (rr_count > 0) {
@@ -548,7 +547,7 @@ dbg_response_exec(
 		knot_wire_set_tc(resp->wireformat);
 	}
 
-	return rr_count;
+	return rr_count > 0 ? rr_count : ret;
 }
 
 /*----------------------------------------------------------------------------*/
