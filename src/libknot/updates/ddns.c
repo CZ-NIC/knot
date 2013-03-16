@@ -2271,7 +2271,7 @@ int knot_ddns_process_update2(knot_zone_contents_t *zone,
 						  KNOT_RRTYPE_SOA);
 	knot_rrset_t *soa_begin = NULL;
 	knot_rrset_t *soa_end = NULL;
-	ret = knot_rrset_deep_copy(soa, &soa_begin, 0);
+	ret = knot_rrset_deep_copy(soa, &soa_begin, 1);
 	if (ret == KNOT_EOK) {
 		knot_changeset_store_soa(&changeset->soa_from,
 		                         &changeset->serial_from, soa_begin);
