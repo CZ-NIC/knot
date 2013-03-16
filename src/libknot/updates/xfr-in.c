@@ -2948,9 +2948,8 @@ dbg_xfrin_exec_detail(
 			dbg_xfrin("Failed to remove node from zone!\n");
 			return KNOT_ENONODE;
 		}
-		zone_node->owner->node = NULL;
-		free(zone_node);
-		changes->old_nodes[i] = NULL;
+		
+		assert(changes->old_nodes[i] == zone_node);
 	}
 
 	// remove NSEC3 nodes
@@ -2970,9 +2969,7 @@ dbg_xfrin_exec_detail(
 			dbg_xfrin("Failed to remove NSEC3 node from zone!\n");
 			return KNOT_ENONODE;
 		}
-		zone_node->owner->node = NULL;
-		free(zone_node);
-		changes->old_nsec3[i] = NULL;
+		assert(changes->old_nodes[i] == zone_node);
 	}
 
 	return KNOT_EOK;
