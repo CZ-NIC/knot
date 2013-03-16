@@ -1515,6 +1515,32 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
 	*rrset = NULL;
 }
 
+void knot_rrset_deep_free_no_sig(knot_rrset_t **rrset, int free_owner,
+                                 int free_rdata_dnames)
+{
+	if (rrset == NULL || *rrset == NULL) {
+		return;
+	}
+	
+	if (free_rdata_dnames) {
+		int ret = rrset_dnames_apply(*rrset, rrset_release_dnames_in_rr,
+		                             NULL);
+		if (ret != KNOT_EOK) {
+			dbg_rrset("rr: deep_free: Could not free DNAMEs in RDATA.\n");
+		}
+	}
+	
+	free((*rrset)->rdata);
+	free((*rrset)->rdata_indices);
+
+	if (free_owner) {
+		knot_dname_release((*rrset)->owner);
+	}
+
+	free(*rrset);
+	*rrset = NULL;
+}
+
 int knot_rrset_merge(void **r1, void **r2)
 {
 	/* [code-review] Missing parameter checks. */

@@ -330,6 +330,9 @@ void knot_rrset_free(knot_rrset_t **rrset);
 void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
                           int free_rdata_dnames);
 
+void knot_rrset_deep_free_no_sig(knot_rrset_t **rrset, int free_owner,
+                                 int free_rdata_dnames);
+
 int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
                        size_t max_size, uint16_t *rr_count, void *comp_data);
 

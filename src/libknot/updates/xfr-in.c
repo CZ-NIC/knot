@@ -2260,6 +2260,9 @@ dbg_xfrin_exec_detail(
 			dbg_xfrin("Failed to add RRSIGs to the RRSet.\n");
 			return KNOT_ERROR;
 		}
+		
+		dbg_xfrin_detail("RRSet after added RRSIG:\n");
+		knot_rrset_dump(*rrset);
 
 		assert(ret == 0);
 		
@@ -2323,7 +2326,7 @@ void xfrin_cleanup_successful_update(knot_changes_t **changes)
 	for (int i = 0; i < (*changes)->old_rdata_count; ++i) {
 		knot_rrset_dump((*changes)->old_rdata[i]);
 		// RDATA are stored separately so do not delete the whole chain
-		knot_rrset_deep_free(&(*changes)->old_rdata[i], 1, 1);
+		knot_rrset_deep_free_no_sig(&(*changes)->old_rdata[i], 1, 1);
 	}
 
 	// free the empty nodes
@@ -2490,7 +2493,7 @@ void xfrin_rollback_update(knot_zone_contents_t *old_contents,
 			 * the first RDATA in each.
 			 */
 
-			knot_rrset_deep_free(&(*changes)->new_rdata[i], 1, 1);
+			knot_rrset_deep_free_no_sig(&(*changes)->new_rdata[i], 1, 1);
 		}
 
 		// free allocated arrays of nodes and rrsets

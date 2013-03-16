@@ -474,8 +474,6 @@ void knot_changes_add_rdata(knot_rrset_t **rdatas, int *count,
 		return;
 	}
 	
-	rrset->rrsigs = NULL;
-
 	rdatas[*count] = rrset;
 	*count += 1;
 }
