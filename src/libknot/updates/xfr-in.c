@@ -1374,7 +1374,7 @@ dbg_xfrin_exec_detail(
 	dbg_xfrin_detail("Copied old rrset %p to new %p.\n", old, *rrset);
 	
 	// replace the RRSet in the node copy by the new one
-	ret = knot_node_add_rrset(node, *rrset);
+	ret = knot_node_add_rrset_replace(node, *rrset);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to add RRSet copy to node\n");
 		return KNOT_ERROR;
