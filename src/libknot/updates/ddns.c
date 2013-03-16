@@ -142,8 +142,8 @@ static int knot_ddns_add_prereq(knot_ddns_prereq_t *prereqs,
 	int ret;
 
 	if (knot_rrset_class(rrset) == KNOT_CLASS_ANY) {
-		if (knot_rrset_rdata_rr_count(rrset) == 0) {
-			dbg_ddns("ddns: add_prereq: No data\n");
+		if (knot_rrset_rdata_rr_count(rrset)) {
+			dbg_ddns("ddns: add_prereq: Extra data\n");
 			return KNOT_EMALF;
 		}
 		if (knot_rrset_type(rrset) == KNOT_RRTYPE_ANY) {
@@ -158,8 +158,8 @@ static int knot_ddns_add_prereq(knot_ddns_prereq_t *prereqs,
 			                                &prereqs->exist_allocd);
 		}
 	} else if (knot_rrset_class(rrset) == KNOT_CLASS_NONE) {
-		if (knot_rrset_rdata_rr_count(rrset) == 0) {
-			dbg_ddns("ddns: add_prereq: No data\n");
+		if (knot_rrset_rdata_rr_count(rrset)) {
+			dbg_ddns("ddns: add_prereq: Extra data\n");
 			return KNOT_EMALF;
 		}
 		if (knot_rrset_type(rrset) == KNOT_RRTYPE_ANY) {
