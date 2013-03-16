@@ -2314,16 +2314,19 @@ dbg_xfrin_exec_detail(
 
 void xfrin_cleanup_successful_update(knot_changes_t **changes)
 {
-	for (int i = 0; i < (*changes)->old_rrsets_count; ++i) {
-		dbg_xfrin_detail("Deleting old RRSet: %p\n",
-		                 (*changes)->old_rrsets[i]);
-		
+	for (int i = 0; i < (*changes)->old_rrsets_count; ++i) {	
 		//TODO temporary fix!
 		if ((*changes)->old_rrsets[i] == NULL) {
 			log_server_warning("NULL RRSet to be freed in DDNS!\n");
 			continue;
 		}
 		if ((*changes)->old_rrsets[i]->rdata_count == 0) {
+dbg_xfrin_exec_detail(
+		char *name = knot_dname_to_str((*changes)->old_rrsets[i]->owner);
+		dbg_xfrin_detail("Deleting old RRSet: %s type %u\n",
+		                 name, (*changes)->old_rrsets[i]->type);
+		free(name);
+);
 			knot_rrset_free(&(*changes)->old_rrsets[i]);
 		}
 	}
