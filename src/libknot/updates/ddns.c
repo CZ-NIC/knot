@@ -529,6 +529,8 @@ int knot_ddns_process_prereqs(const knot_packet_t *query,
 	for (int i = 0; i < knot_packet_answer_rrset_count(query); ++i) {
 		// we must copy the RRSets, because all those stored in the
 		// packet will be destroyed
+		dbg_ddns_detail("Creating prereqs from following RRSet:\n");
+		knot_rrset_dump(knot_packet_answer_rrset(query, i));
 		ret = knot_ddns_add_prereq(*prereqs,
 		                           knot_packet_answer_rrset(query, i),
 		                           knot_packet_qclass(query));
