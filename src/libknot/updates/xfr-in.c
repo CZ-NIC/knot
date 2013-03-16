@@ -2137,6 +2137,7 @@ dbg_xfrin_exec_detail(
 		dbg_xfrin("Failed to merge changeset RRSet.\n");
 		return ret;
 	}
+	
 	dbg_xfrin_detail("Merge returned: %d\n", ret);
 	knot_rrset_dump(*rrset);
 
@@ -2299,6 +2300,9 @@ dbg_xfrin_exec_detail(
 			dbg_xfrin("Failed to merge changeset RRSIG to copy: %s"
 			          ".\n", knot_strerror(ret));
 			return KNOT_ERROR;
+		}
+		if (ret > 0) {
+			knot_rrset_deep_free(&add, 1, 0);
 		}
 		
 		return 2;
