@@ -259,7 +259,7 @@ static int knot_ddns_add_update(knot_changeset_t *changeset,
 	 *        copy.
 	 */
 	*rrset_copy = NULL;
-	ret = knot_rrset_deep_copy(rrset, rrset_copy, 0);
+	ret = knot_rrset_deep_copy(rrset, rrset_copy, 1);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

@@ -2317,6 +2317,7 @@ void xfrin_cleanup_successful_update(knot_changes_t **changes)
 	for (int i = 0; i < (*changes)->old_rrsets_count; ++i) {
 		dbg_xfrin_detail("Deleting old RRSet: %p\n",
 		                 (*changes)->old_rrsets[i]);
+		assert((*changes)->old_rrsets[i]);
 		if ((*changes)->old_rrsets[i]->rdata_count == 0) {
 			knot_rrset_free(&(*changes)->old_rrsets[i]);
 		}
