@@ -444,6 +444,7 @@ int knot_changes_rdata_reserve(knot_rrset_t ***rdatas,
 	/* Allocate new memory block. */
 	knot_rrset_t **rdatas_new = malloc(new_count * sizeof(knot_rrset_t *));
 	if (rdatas_new == NULL) {
+		ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
 

@@ -1301,18 +1301,18 @@ int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 						(*copy)->rrsigs);
 		}
 	}
+	
+	count = 1;
+	count += old->rrsigs ? 1 : 0;
 
 	// add the old RRSet to the list of old RRSets
 	ret = knot_changes_rrsets_reserve(&changes->old_rrsets,
 	                                 &changes->old_rrsets_count,
-	                                 &changes->old_rrsets_allocated, 2);
+	                                 &changes->old_rrsets_allocated, count);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to add old RRSet to list.\n");
 		return ret;
 	}
-
-	count = 1;
-	count += old->rrsigs ? 1 : 0;
 
 	// and old RDATA to the list of old RDATA
 	ret = knot_changes_rdata_reserve(&changes->old_rdata,
@@ -2322,10 +2322,10 @@ void xfrin_cleanup_successful_update(knot_changes_t **changes)
 		}
 		if ((*changes)->old_rrsets[i]->rdata_count == 0) {
 dbg_xfrin_exec_detail(
-		char *name = knot_dname_to_str((*changes)->old_rrsets[i]->owner);
-		dbg_xfrin_detail("Deleting old RRSet: %s type %u\n",
-		                 name, (*changes)->old_rrsets[i]->type);
-		free(name);
+			char *name = knot_dname_to_str((*changes)->old_rrsets[i]->owner);
+			dbg_xfrin_detail("Deleting old RRSet: %s type %u\n",
+		        	         name, (*changes)->old_rrsets[i]->type);
+			free(name);
 );
 			knot_rrset_free(&(*changes)->old_rrsets[i]);
 		}

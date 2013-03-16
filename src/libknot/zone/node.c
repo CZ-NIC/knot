@@ -241,16 +241,20 @@ knot_rrset_t *knot_node_remove_rrset(knot_node_t *node, uint16_t type)
 	unsigned i = 0;
 	knot_rrset_t *ret = NULL;
 	knot_rrset_t **rrs = node->rrset_tree;
-	for (; i < node->rrset_count; ++i) {
+	for (; i < node->rrset_count && ret == NULL; ++i) {
 		if (rrs[i]->type == type) {
 			ret = rrs[i];
 			memmove(rrs + i, rrs + i + 1, (node->rrset_count - i - 1) * sizeof(knot_rrset_t *));
 			--node->rrset_count;
-			return ret;
 		}
 	}
-
-	return NULL;
+	
+	void *tmp = realloc(node->rrset_tree,
+	                    node->rrset_count * sizeof(knot_rrset_t *));
+	assert(tmp || node->rrset_count == 0); //Realloc to smaller memory, if it fails, something is really odd.
+	node->rrset_tree = tmp;
+	
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
