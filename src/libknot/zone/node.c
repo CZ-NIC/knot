@@ -249,6 +249,8 @@ knot_rrset_t *knot_node_remove_rrset(knot_node_t *node, uint16_t type)
 		}
 	}
 	
+
+	/*!< \todo I've added this to fix a leak, but probably this wasn't the cause. Remove once tests are availabe. */	
 	void *tmp = realloc(node->rrset_tree,
 	                    node->rrset_count * sizeof(knot_rrset_t *));
 	assert(tmp || node->rrset_count == 0); //Realloc to smaller memory, if it fails, something is really odd.
