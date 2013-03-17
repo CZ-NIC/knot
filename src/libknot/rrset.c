@@ -2070,8 +2070,8 @@ void knot_rrset_rdata_nsec3_next_hashed(const knot_rrset_t *rrset, size_t pos,
 	}
 	
 	uint8_t salt_size = knot_rrset_rdata_nsec3_salt_length(rrset, pos);
-	*name = knot_rrset_get_rdata(rrset, pos) + 4 + salt_size + 2;
 	*name_size = *(knot_rrset_get_rdata(rrset, pos) + 4 + salt_size + 1);
+	*name = knot_rrset_get_rdata(rrset, pos) + 4 + salt_size + 2;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -2083,7 +2083,7 @@ const uint8_t *knot_rrset_rdata_nsec3_salt(const knot_rrset_t *rrset,
 		return NULL;
 	}
 	
-	return rrset_rdata_pointer(rrset, pos) + 4;
+	return rrset_rdata_pointer(rrset, pos) + 5;
 }
 
 knot_dname_t **knot_rrset_get_next_rr_dname(const knot_rrset_t *rrset,
