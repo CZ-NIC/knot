@@ -538,11 +538,10 @@ dbg_packet_exec_verb(
     if ((flags & KNOT_PACKET_DUPL_NO_MERGE) == 0) {
 		// try to find the RRSet in this array of RRSets
 		for (int i = 0; i < *rrset_count; ++i) {
-
 dbg_packet_exec_detail(
 			char *name = knot_dname_to_str((*rrsets)[i]->owner);
 			dbg_packet_detail("Comparing to RRSet: owner: %s, "
-			                  "type: %s\n", name,
+			                  "type: %u\n", name,
 			                  (*rrsets)[i]->type);
 			free(name);
 );
