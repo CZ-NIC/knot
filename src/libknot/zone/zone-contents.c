@@ -394,6 +394,7 @@ static void knot_zone_contents_adjust_node(knot_node_t *node,
 	int ret = knot_zone_contents_nsec3_name(zone, knot_node_owner(node),
 	                                        &nsec3_name);
 	if (ret == KNOT_EOK) {
+		knot_dname_to_lower(nsec3_name);
 		assert(nsec3_name);
 		knot_zone_tree_get(zone->nsec3_nodes, nsec3_name, &nsec3);
 		knot_node_set_nsec3_node(node, nsec3);

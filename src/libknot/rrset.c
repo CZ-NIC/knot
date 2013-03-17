@@ -2046,7 +2046,7 @@ const uint8_t *knot_rrset_rdata_nsec3param_salt(const knot_rrset_t *rrset)
 		return NULL;
 	}
 	
-	return rrset_rdata_pointer(rrset, 0) + 4;
+	return rrset_rdata_pointer(rrset, 0) + 5;
 }
 
 /*---------------------------------------------------------------------------*/

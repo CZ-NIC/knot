@@ -55,7 +55,7 @@ int knot_nsec3_params_from_wire(knot_nsec3_params_t *params,
 		params->salt = (uint8_t *)malloc(params->salt_length);
 		CHECK_ALLOC_LOG(params->salt, KNOT_ENOMEM);
 		memcpy(params->salt,
-		       knot_rrset_rdata_nsec3param_salt,
+		       knot_rrset_rdata_nsec3param_salt(nsec3param),
 		       params->salt_length);
 	} else {
 		params->salt = NULL;
