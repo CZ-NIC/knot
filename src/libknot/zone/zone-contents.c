@@ -1776,19 +1776,26 @@ dbg_zone_exec_detail(
 	assert(nsec3_rrset);
 	const knot_node_t *original_prev = *nsec3_previous;
 	
-	while (nsec3_rrset) {
-		for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(nsec3_rrset); i++) {
+	int match = 0;
+	
+	while (nsec3_rrset && !match) {
+		for (uint16_t i = 0;
+		     i < knot_rrset_rdata_rr_count(nsec3_rrset) && !match;
+		     i++) {
 			if (knot_zc_nsec3_parameters_match(nsec3_rrset,
 			                                    &zone->nsec3_params,
 			                                    i)) {
-				/* Matching NSEC3PARAM found at position nr.: i. */
-				break;
+				/* Matching NSEC3PARAM match at position nr.: i. */
+				match = 1;
 			}
+		}
+		
+		if (match) {
+			break;
 		}
 		
 		/* This RRSET was not a match, try the one from previous node. */
 		*nsec3_previous = knot_node_previous(*nsec3_previous);
-		assert(*nsec3_previous);
 		nsec3_rrset = knot_node_rrset(*nsec3_previous, 
 		                              KNOT_RRTYPE_NSEC3);
 		dbg_zone_exec_detail(
