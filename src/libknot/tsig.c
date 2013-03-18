@@ -206,23 +206,9 @@ int tsig_rdata_set_mac(knot_rrset_t *tsig, uint16_t length, const uint8_t *mac)
 	}
 	
 	/*! \note Cannot change length, as rdata is already preallocd. */
-	
-	if (length != 0) {
-		/* Copy the actual MAC. */
-		memcpy(rd, mac, length);
-	} else {
-		/* Set MAC length to 0. */
-		knot_wire_write_u16(tsig_rdata_seek(tsig, TSIG_MACLEN_O, 2), 0);
-		/* Get algorithm. */
-		tsig_algorithm_t alg = tsig_rdata_alg(tsig);
-		uint16_t alg_len = tsig_alg_digest_length(alg);
-		/* Move RDATA, copy stuff after MAC to position after alg len. */
-		memmove(rd, rd + alg_len,
-		        tsig_rdata_seek(tsig, TSIG_OTHER_O, 0) - rd);
-		assert(tsig->rdata_count == 1);
-		/* Adjust RDATA item length. */
-		tsig->rdata_indices[0] -= alg_len;
-	}
+
+	/* Copy the actual MAC. */
+	memcpy(rd, mac, length);
 	return KNOT_EOK;
 }
 
