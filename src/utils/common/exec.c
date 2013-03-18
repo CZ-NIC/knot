@@ -92,7 +92,7 @@ knot_packet_t* create_empty_packet(const knot_packet_prealloc_type_t type,
 	return packet;
 }
 
-static void print_header(const style_t *style, const knot_packet_t *packet)
+static void print_header(const knot_packet_t *packet, const style_t *style)
 {
 	char    flags[64] = "";
 	uint8_t rcode_id, opcode_id;
@@ -213,7 +213,7 @@ static void print_section_full(const knot_rrset_t **rrsets,
 	size_t buflen = 8192;
 	char   *buf = malloc(buflen);
 
-	for (uint16_t i = 0; i < count; i++) {
+	for (size_t i = 0; i < count; i++) {
 	while (knot_rrset_txt_dump(rrsets[i], buf, buflen, &(style->style)) < 0)
 	{
 			buflen += 4096;
@@ -267,7 +267,7 @@ static void print_section_host(const knot_rrset_t **rrsets,
 	size_t buflen = 8192;
 	char   *buf = malloc(buflen);
 
-	for (uint16_t i = 0; i < count; i++) {
+	for (size_t i = 0; i < count; i++) {
 		const knot_rrset_t  *rrset = rrsets[i];
 		knot_lookup_table_t *descr;
 		char                type[32] = "NULL";
@@ -326,7 +326,7 @@ static void print_error_host(const uint8_t         code,
 	free(owner);
 }
 
-void print_header_xfr(const style_t *style, const uint16_t type)
+void print_header_xfr(const uint16_t type, const style_t *style)
 {
 	if (style == NULL) {
 		DBG_NULL;
@@ -357,10 +357,10 @@ void print_header_xfr(const style_t *style, const uint16_t type)
 	}
 }
 
-void print_data_xfr(const style_t       *style,
-                    const knot_packet_t *packet)
+void print_data_xfr(const knot_packet_t *packet,
+                    const style_t       *style)
 {
-	if (style == NULL || packet == NULL) {
+	if (packet == NULL || style == NULL) {
 		DBG_NULL;
 		return;
 	}
@@ -381,10 +381,10 @@ void print_data_xfr(const style_t       *style,
 }
 
 void print_footer_xfr(const net_t    *net,
-                      const style_t  *style,
                       const float    elapsed,
                       const size_t   total_len,
-                      const size_t   msg_count)
+                      const size_t   msg_count,
+                      const style_t  *style)
 {
 	if (net == NULL || style == NULL) {
 		DBG_NULL;
@@ -402,18 +402,36 @@ void print_footer_xfr(const net_t    *net,
 	}
 }
 
-void print_packet(const net_t         *net,
-                  const style_t       *style,
-                  const knot_packet_t *packet,
+void print_packet(const knot_packet_t *packet,
                   const float         elapsed,
                   const size_t        total_len,
-                  const size_t        msg_count)
+                  const size_t        msg_count,
+                  const net_t         *net,
+                  const style_t       *style)
 {
-	if (style == NULL || packet == NULL) {
+	if (packet == NULL || style == NULL) {
 		DBG_NULL;
 		return;
 	}
 
+	size_t additional_cnt = packet->ar_rrsets;
+
+	// Print packet information header.
+	if (style->show_header) {
+		print_header(packet, style);
+	}
+
+	// Print EDNS section.
+	if (knot_edns_get_version(&packet->opt_rr) != EDNS_NOT_SUPPORTED) {
+		if (style->show_edns) {
+			printf("\n;; EDNS PSEUDOSECTION:\n;; ");
+			print_opt_section(&packet->opt_rr);
+		}
+
+		additional_cnt--;
+	}
+
+	// Print DNS sections.
 	switch (style->format) {
 	case FORMAT_DIG:
 		if (packet->an_rrsets > 0) {
@@ -431,10 +449,6 @@ void print_packet(const net_t         *net,
 		}
 		break;
 	case FORMAT_NSUPDATE:
-		if (style->show_header) {
-			print_header(style, packet);
-		}
-
 		if (style->show_question && packet->header.qdcount > 0) {
 			printf("\n;; ZONE SECTION:\n;; ");
 			print_section_question(packet->question.qname,
@@ -457,24 +471,14 @@ void print_packet(const net_t         *net,
 			                   style);
 		}
 
-		if (style->show_additional && packet->ar_rrsets > 0) {
+		if (style->show_additional && additional_cnt > 0) {
 			printf("\n;; ADDITIONAL DATA:\n");
 			print_section_full(packet->additional,
-			                   packet->ar_rrsets,
+			                   additional_cnt,
 			                   style);
 		}
 		break;
 	case FORMAT_FULL:
-		if (style->show_header) {
-			print_header(style, packet);
-		}
-
-		if (knot_edns_get_version(&packet->opt_rr)
-		    != EDNS_NOT_SUPPORTED) {
-			printf("\n;; EDNS PSEUDOSECTION:\n;; ");
-			print_opt_section(&packet->opt_rr);
-		}
-
 		if (style->show_question && packet->header.qdcount > 0) {
 			printf("\n;; QUESTION SECTION:\n;; ");
 			print_section_question(packet->question.qname,
@@ -497,29 +501,19 @@ void print_packet(const net_t         *net,
 			                   style);
 		}
 
-		if (style->show_additional && packet->ar_rrsets > 0) {
+		if (style->show_additional && additional_cnt > 0) {
 			printf("\n;; ADDITIONAL SECTION:\n");
-
-			if (knot_edns_get_version(&packet->opt_rr)
-			    != EDNS_NOT_SUPPORTED) {
 				print_section_full(packet->additional,
-				                   packet->ar_rrsets - 1,
+				                   additional_cnt,
 				                   style);
-			} else {
-				print_section_full(packet->additional,
-				                   packet->ar_rrsets,
-				                   style);
-			}
-		}
-
-		if (style->show_footer) {
-			if (net == NULL) {
-				break;
-			}
-			print_footer(net, elapsed, total_len, msg_count);
 		}
 		break;
 	default:
 		break;
+	}
+	
+	// Print packet statistics.
+	if (style->show_footer && net != NULL) {
+		print_footer(net, elapsed, total_len, msg_count);
 	}
 }

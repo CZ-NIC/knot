@@ -78,12 +78,10 @@ typedef struct {
 
 	/*!< Show header info. */
 	bool	show_header;
-	/*!< Show footer info. */
-	bool	show_footer;
-
 	/*!< Show query packet. */
 	bool	show_query;
-
+	/*!< Show EDNS info. */
+	bool	show_edns;
 	/*!< Show QUERY/ZONE section. */
 	bool	show_question;
 	/*!< Show ANSWER/PREREQ section. */
@@ -92,6 +90,8 @@ typedef struct {
 	bool	show_authority;
 	/*!< Show ADDITIONAL section. */
 	bool	show_additional;
+	/*!< Show footer info. */
+	bool	show_footer;
 } style_t;
 
 char* get_reverse_name(const char *name);

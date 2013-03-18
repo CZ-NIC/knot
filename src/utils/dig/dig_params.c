@@ -546,6 +546,8 @@ static int parse_opt2(const char *value, dig_params_t *params)
 	}
 	else if (strcmp(value, "short") == 0) {
 		query->style.format = FORMAT_DIG;
+		query->style.show_header = false;
+		query->style.show_footer = false;
 	} else if (strcmp(value, "noshort") == 0) {
 		query->style.format = FORMAT_FULL;
 	}
@@ -596,11 +598,13 @@ static int parse_opt2(const char *value, dig_params_t *params)
 
 	// Check for display option.
 	else if (strcmp(value, "all") == 0) {
+		query->style.show_edns = true;
 		query->style.show_question = true;
 		query->style.show_answer = true;
 		query->style.show_authority = true;
 		query->style.show_additional = true;
 	} else if (strcmp(value, "noall") == 0) {
+		query->style.show_edns = false;
 		query->style.show_query = false;
 		query->style.show_question = false;
 		query->style.show_answer = false;
@@ -631,6 +635,11 @@ static int parse_opt2(const char *value, dig_params_t *params)
 		query->style.show_additional = true;
 	} else if (strcmp(value, "noadditional") == 0) {
 		query->style.show_additional = false;
+	}
+	else if (strcmp(value, "stats") == 0) {
+		query->style.show_footer = true;
+	} else if (strcmp(value, "nostats") == 0) {
+		query->style.show_footer = false;
 	}
 	else if (strcmp(value, "cl") == 0) {
 		query->style.style.show_class = true;

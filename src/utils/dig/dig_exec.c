@@ -383,8 +383,8 @@ void process_query(const query_t *query)
 			total_len += in_len;
 
 			// Print formated data.
-			print_packet(&net, &query->style, in_packet, elapsed,
-			             total_len, msg_count);
+			print_packet(in_packet, elapsed, total_len,
+			             msg_count, &net, &query->style);
 
 			knot_packet_free(&in_packet);
 
@@ -399,9 +399,9 @@ void process_query(const query_t *query)
 		total_len += in_len;
 
 		// Start XFR dump.
-		print_header_xfr(&query->style, query->type_num);
+		print_header_xfr(query->type_num, &query->style);
 
-		print_data_xfr(&query->style, in_packet);
+		print_data_xfr(in_packet, &query->style);
 
 		// Read first SOA serial.
 		int64_t serial = first_serial_check(in_packet);
@@ -458,7 +458,7 @@ void process_query(const query_t *query)
 			}
 
 			// Dump message data.
-			print_data_xfr(&query->style, in_packet);
+			print_data_xfr(in_packet, &query->style);
 
 			// Count non-first XFR message.
 			msg_count++;
@@ -474,8 +474,8 @@ void process_query(const query_t *query)
 			elapsed = (t_end.tv_sec - t_start.tv_sec) * 1000 +
 			          ((t_end.tv_usec - t_start.tv_usec) / 1000.0);
 
-			print_footer_xfr(&net, &query->style, elapsed,
-			                 total_len, msg_count);
+			print_footer_xfr(&net, elapsed, total_len,
+			                 msg_count, &query->style);
 
 			knot_packet_free(&in_packet);
 		}
