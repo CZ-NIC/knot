@@ -130,15 +130,14 @@ static int tsig_rdata_set_tsig_error(knot_rrset_t *tsig, uint16_t tsig_error)
 	return KNOT_EOK;
 }
 
-int tsig_create_rdata(knot_rrset_t *rr, tsig_algorithm_t alg, uint16_t tsig_err)
+int tsig_create_rdata(knot_rrset_t *rr, uint16_t maclen, uint16_t tsig_err)
 {
 	if (!rr) {
 		return KNOT_EINVAL;
 	}
 	
 	/* We already checked rr and know rdlen > 0, no need to check rets. */
-	uint16_t alen = tsig_alg_digest_length(alg);
-	size_t rdlen = TSIG_FIXED_RDLEN + alen;
+	size_t rdlen = TSIG_FIXED_RDLEN + maclen;
 	if (tsig_err != KNOT_TSIG_RCODE_BADTIME) {
 		rdlen -= TSIG_OTHER_MAXLEN;
 	}
@@ -147,7 +146,7 @@ int tsig_create_rdata(knot_rrset_t *rr, tsig_algorithm_t alg, uint16_t tsig_err)
 	
 	/* Set MAC variable length in advance. */
 	rd += TSIG_OFF_MACLEN;
-	knot_wire_write_u16(rd, alen);
+	knot_wire_write_u16(rd, maclen);
 	
 	/* Set error. */
 	tsig_rdata_set_tsig_error(rr, tsig_err);

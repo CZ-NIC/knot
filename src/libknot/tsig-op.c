@@ -486,7 +486,7 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	}
 
 	/* Create rdata for TSIG RR. */
-	tsig_create_rdata(tmp_tsig, key->algorithm, 
+	tsig_create_rdata(tmp_tsig, tsig_alg_digest_length(key->algorithm), 
 	                  (tsig_rcode == KNOT_TSIG_RCODE_BADTIME) 
 	                    ? tsig_rcode
 	                    : 0);
@@ -591,7 +591,7 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	}
 	
 	/* Create rdata for TSIG RR. */
-	tsig_create_rdata(tmp_tsig, key->algorithm, 0);
+	tsig_create_rdata(tmp_tsig, tsig_alg_digest_length(key->algorithm), 0);
 	tsig_rdata_set_alg(tmp_tsig, key->algorithm);
 	tsig_rdata_store_current_time(tmp_tsig);
 	tsig_rdata_set_fudge(tmp_tsig, KNOT_TSIG_FUDGE_DEFAULT);
@@ -881,7 +881,7 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	}
 	
 	assert(tsig_rcode != KNOT_TSIG_RCODE_BADTIME);
-	tsig_create_rdata(tmp_tsig, alg, tsig_rcode);
+	tsig_create_rdata(tmp_tsig, 0, tsig_rcode); /* No digest. */
 
 	tsig_rdata_set_alg_name(tmp_tsig, alg_name);
 	tsig_rdata_set_time_signed(tmp_tsig, tsig_rdata_time_signed(tsig_rr));
