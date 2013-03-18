@@ -1705,6 +1705,9 @@ int knot_zone_contents_find_nsec3_for_name(const knot_zone_contents_t *zone,
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
+	if (nsec3_name != NULL) {
+		knot_dname_to_lower(nsec3_name);
+	}
 
 	// check if the NSEC3 tree is not empty
 	if (knot_zone_tree_weight(zone->nsec3_nodes) == 0) {
