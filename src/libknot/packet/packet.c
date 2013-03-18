@@ -290,6 +290,7 @@ static int knot_packet_parse_question(const uint8_t *wire, size_t *pos,
 		if (question->qname == NULL) {
 			return KNOT_ENOMEM;
 		}
+		knot_dname_to_lower(question->qname);
 	} else {
 		assert(question->qname != NULL); /* When alloc=0, must be set. */
 		void *parsed = knot_dname_parse_from_wire(wire, pos,
@@ -298,6 +299,7 @@ static int knot_packet_parse_question(const uint8_t *wire, size_t *pos,
 		if (!parsed) {
 			return KNOT_EMALF;
 		}
+		knot_dname_to_lower(question->qname);
 	}
 	question->qtype = knot_wire_read_u16(wire + i + 1);
 	question->qclass = knot_wire_read_u16(wire + i + 3);

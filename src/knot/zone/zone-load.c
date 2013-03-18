@@ -650,6 +650,7 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 	context->origin_from_config =
 		knot_dname_new_from_str(origin, strlen(origin), NULL);
 	assert(context->origin_from_config);
+	knot_dname_to_lower(context->origin_from_config);
 	context->last_node = knot_node_new(context->origin_from_config,
 	                                   NULL, 0);
 	knot_dname_release(context->origin_from_config);
