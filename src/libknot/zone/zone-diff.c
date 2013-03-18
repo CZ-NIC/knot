@@ -344,7 +344,7 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 	* After the list has been traversed, we have a list of
 	* changed/removed rdatas. This has awful computation time.
 	*/
-	dbg_zonediff_detail("zone_diff: diff_rdata: Diff of %s, type=%d. "
+	dbg_zonediff_detail("zone_diff: diff_rdata: Diff of %s, type=%u. "
 	              "RR count 1=%d RR count 2=%d.\n",
 	              knot_dname_to_str(rrset1->owner), rrset1->type,
 	              knot_rrset_rdata_rr_count(rrset1),
@@ -371,7 +371,7 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 		if (ret == KNOT_ENOENT) {
 			/* No such RR is present in 'rrset2'. */
 			dbg_zonediff("zone_diff: diff_rdata: "
-			       "No match for RR (type=%d owner=%s).\n",
+			       "No match for RR (type=%u owner=%s).\n",
 			       knot_rrset_type(rrset1),
 			       knot_dname_to_str(rrset1->owner));
 			/* We'll copy index 'i' into 'changes' RRSet. */
@@ -514,7 +514,7 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 			 * Fill the RDATA so that the change gets saved. All RRs can
 			 * be copied because TTLs are the same for all of them.
 			 */
-			knot_rrset_free(&to_remove);
+			knot_rrset_free(&to_add);
 			int ret = knot_rrset_deep_copy(rrset1, &to_add, 1);
 			if (ret != KNOT_EOK) {
 				dbg_zonediff("zone_diff: diff_rdata: Cannot copy RRSet "
