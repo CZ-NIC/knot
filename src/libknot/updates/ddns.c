@@ -830,6 +830,7 @@ dbg_ddns_exec_detail(
 		char *name = knot_dname_to_str(changeset->add[i]->owner);
 		dbg_ddns_detail("ddns: remove_rr2: Removing RR of type=%u owned by %s\n",
                                 knot_rrset_type(changeset->add[i]), name);
+		free(name);
 );
 		if (knot_dname_compare_non_canon(knot_rrset_owner(changeset->add[i]),
 		                                 owner) == 0) {
@@ -1700,11 +1701,13 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 	 * Set some variables needed, according to the modified RR type.
 	 */
 	
-	int rdata_count = 1;
+	int rdata_count = 0;
 	knot_rrset_t *to_modify;
 	if (type == KNOT_RRTYPE_RRSIG) {
+		rdata_count = knot_rrset_rdata_rr_count(knot_rrset_rrsigs(rrset_copy));
 		to_modify = knot_rrset_get_rrsigs(rrset_copy);
 	} else {
+		rdata_count = knot_rrset_rdata_rr_count(rrset_copy);
 		to_modify = rrset_copy;
 	}
 	
@@ -2077,6 +2080,9 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rrset,
 	/* 4 a) Remove redundant RRs from the ADD section of the changeset. */
 	knot_rrset_t *empty_rrset =
 		knot_rrset_new(rrset->owner, type, rrset->rclass, rrset->ttl);
+	if (empty_rrset == NULL) {
+		return KNOT_ENOMEM;
+	}
 	ret = knot_ddns_check_remove_rr2(changeset, knot_node_owner(node),
 	                                 empty_rrset, &from_chgset,
 	                                 &from_chgset_count);
@@ -2088,10 +2094,10 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rrset,
 		}
 		free(from_chgset);
 		free(to_chgset);
-		knot_rrset_deep_free(&empty_rrset, 1, 0);
+		knot_rrset_free(&empty_rrset);
 		return ret;
 	}
-	knot_rrset_deep_free(&empty_rrset, 1, 0);
+	knot_rrset_free(&empty_rrset);
 
 	/* 4 b) Remove these RRs from the copy of the RRSets removed from zone*/
 	for (int j = 0; j < removed_count; ++j) {
