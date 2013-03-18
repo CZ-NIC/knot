@@ -433,6 +433,7 @@ static knot_rrset_t *knot_packet_parse_rr(const uint8_t *wire, size_t *pos,
 	if (owner == NULL) {
 		return NULL;
 	}
+	knot_dname_to_lower(owner);
 
 dbg_packet_exec_verb(
 	char *name = knot_dname_to_str(owner);

@@ -1201,6 +1201,7 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 			if (dname == NULL) {
 				return KNOT_EMALF;
 			}
+			knot_dname_to_lower(dname);
 			memcpy(rdata_buffer + offset, &dname,
 			       sizeof(knot_dname_t *));
 			parsed += pos2 - *pos;

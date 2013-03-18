@@ -877,7 +877,7 @@ static knot_dname_t *ns_next_closer(const knot_dname_t *closest_encloser,
  * \param resp Response where to add the RRSets.
  */
 static int ns_put_nsec3_from_node(const knot_node_t *node,
-                                   knot_packet_t *resp)
+                                  knot_packet_t *resp)
 {
 	assert(DNSSEC_ENABLED
 	       && knot_query_dnssec_requested(knot_packet_query(resp)));
