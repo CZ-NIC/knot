@@ -93,6 +93,7 @@ int remote_parse(knot_packet_t* pkt, const uint8_t* buf, size_t buflen);
 /*!
  * \brief Execute command and prepare answer for client.
  *
+ * \param fd Remote client
  * \param s Server instance.
  * \param pkt Parsed RC command.
  * \param rwire Buffer for response.
@@ -101,7 +102,7 @@ int remote_parse(knot_packet_t* pkt, const uint8_t* buf, size_t buflen);
  * \retval KNOT_EOK on success.
  * \retval knot_error else.
  */
-int remote_answer(server_t *s, knot_packet_t *pkt, uint8_t* rwire, size_t *rlen);
+int remote_answer(int fd, server_t *s, knot_packet_t *pkt, uint8_t* rwire, size_t rlen);
 
 /*!
  * \brief Accept new client, receive command, process it and send response.
@@ -173,9 +174,11 @@ knot_rrset_t* remote_build_rr(const char *k, uint16_t t);
 /*!
  * \brief Create a TXT rdata.
  * \param v Text as a string.
+ * \param v_len Text length.
  * \return Created rdata or NULL.
  */
-int remote_create_txt(knot_rrset_t *rr, const char *v);
+int remote_create_txt(knot_rrset_t *rr, const char *v, size_t v_len);
+
 
 /*!
  * \brief Create a CNAME rdata.
@@ -185,11 +188,11 @@ int remote_create_txt(knot_rrset_t *rr, const char *v);
 int remote_create_cname(knot_rrset_t *rr, const char *d);
 
 /*!
- * \brief Parse TXT rdata to string.
+ * \brief Print TXT rdata to stdout.
  * \param rd TXT rdata.
- * \return Parsed string or NULL.
+ * \return KNOT_EOK
  */
-char* remote_parse_txt(const knot_rrset_t *rrset, size_t rr_pos);
+int remote_print_txt(const knot_rrset_t *rrset, uint16_t i);
 
 /*!
  * \brief Create dname from str and make sure the name is FQDN.

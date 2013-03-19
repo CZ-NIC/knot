@@ -18,14 +18,74 @@
 #include <sys/socket.h>
 #include "tests/knot/rrl_tests.h"
 #include "knot/server/rrl.h"
+#include "knot/server/dthreads.h"
 #include "knot/common.h"
 #include "libknot/packet/response.h"
 #include "libknot/packet/query.h"
 #include "libknot/nameserver/name-server.h"
 #include "common/descriptor_new.h"
+#include "common/prng.h"
 
 /* Enable time-dependent tests. */
 //#define ENABLE_TIMED_TESTS
+#define RRL_SIZE 196613
+#define RRL_THREADS 16
+#define RRL_INSERTS (0.5*(RRL_SIZE/RRL_THREADS)) /* lf = 0.5 */
+#define RRL_LOCKS 64
+
+struct bucketmap_t {
+	unsigned i;
+	uint64_t x;
+};
+
+/*! \brief Unit runnable. */
+struct runnable_data {
+	int passed;
+	rrl_table_t *rrl;
+	sockaddr_t *addr;
+	rrl_req_t *rq;
+	knot_zone_t *zone;
+};
+
+static void* rrl_runnable(void *arg)
+{
+	struct runnable_data* d = (struct runnable_data*)arg;
+	sockaddr_t addr;
+	memcpy(&addr, d->addr, sizeof(sockaddr_t));
+	sockaddr_update(&addr);
+	int lock = -1;
+	uint32_t now = time(NULL);
+	struct bucketmap_t *m = malloc(RRL_INSERTS * sizeof(struct bucketmap_t));
+	for (unsigned i = 0; i < RRL_INSERTS; ++i) {
+		m[i].i = tls_rand() * UINT32_MAX;
+		addr.addr4.sin_addr.s_addr = m[i].i;
+		rrl_item_t *b =  rrl_hash(d->rrl, &addr, d->rq, d->zone, now, &lock);
+		rrl_unlock(d->rrl, lock);
+		m[i].x = b->netblk;
+	}
+	for (unsigned i = 0; i < RRL_INSERTS; ++i) {
+		addr.addr4.sin_addr.s_addr = m[i].i;
+		rrl_item_t *b = rrl_hash(d->rrl, &addr, d->rq, d->zone, now, &lock);
+		rrl_unlock(d->rrl, lock);
+		if (b->netblk != m[i].x) {
+			d->passed = 0;
+		}
+	}
+	free(m);
+	return NULL;
+}
+
+static void rrl_hopscotch(struct runnable_data* rd)
+{
+	rd->passed = 1;
+	pthread_t thr[RRL_THREADS];
+	for (unsigned i = 0; i < RRL_THREADS; ++i) {
+		pthread_create(thr + i, NULL, &rrl_runnable, rd);
+	}
+	for (unsigned i = 0; i < RRL_THREADS; ++i) {
+		pthread_join(thr[i], NULL);
+	}
+}
 
 static int rrl_tests_count(int argc, char *argv[]);
 static int rrl_tests_run(int argc, char *argv[]);
@@ -45,7 +105,7 @@ unit_api rrl_tests_api = {
 
 static int rrl_tests_count(int argc, char *argv[])
 {
-	int c = 6;
+	int c = 10;
 #ifndef ENABLE_TIMED_TESTS
 	c -= 2;
 #endif
@@ -78,22 +138,26 @@ static int rrl_tests_run(int argc, char *argv[])
 	rq.flags = 0;
 	
 	/* 1. create rrl table */
-	rrl_table_t *rrl = rrl_create(101);
+	rrl_table_t *rrl = rrl_create(RRL_SIZE);
 	ok(rrl != NULL, "rrl: create");
 	
 	/* 2. set rate limit */
 	uint32_t rate = 10;
 	rrl_setrate(rrl, rate);
 	ok(rate == rrl_rate(rrl), "rrl: setrate");
+	
+	/* 3. setlocks */
+	int ret = rrl_setlocks(rrl, RRL_LOCKS);
+	ok(ret == KNOT_EOK, "rrl: setlocks");
 
-	/* 3. N unlimited requests. */
+	/* 4. N unlimited requests. */
 	knot_dname_t *apex = knot_dname_new_from_str("rrl.", 4, NULL);
 	knot_zone_t *zone = knot_zone_new(knot_node_new(apex, NULL, 0));
 	sockaddr_t addr;
 	sockaddr_t addr6;
 	sockaddr_set(&addr, AF_INET, "1.2.3.4", 0);
 	sockaddr_set(&addr6, AF_INET6, "1122:3344:5566:7788::aabb", 0);
-	int ret = 0;
+	ret = 0;
 	for (unsigned i = 0; i < rate; ++i) {
 		if (rrl_query(rrl, &addr, &rq, zone) != KNOT_EOK ||
 		    rrl_query(rrl, &addr6, &rq, zone) != KNOT_EOK) {
@@ -104,16 +168,16 @@ static int rrl_tests_run(int argc, char *argv[])
 	ok(ret == 0, "rrl: unlimited IPv4/v6 requests");
 
 #ifdef ENABLE_TIMED_TESTS
-	/* 4. limited request */
+	/* 5. limited request */
 	ret = rrl_query(rrl, &addr, &rq, zone);
 	ok(ret != 0, "rrl: throttled IPv4 request");
 
-	/* 5. limited IPv6 request */
+	/* 6. limited IPv6 request */
 	ret = rrl_query(rrl, &addr6, &rq, zone);
 	ok(ret != 0, "rrl: throttled IPv6 request");
 #endif
 	
-	/* 6. invalid values. */
+	/* 7. invalid values. */
 	ret = 0;
 	lives_ok( {
 	                  rrl_create(0);            // NULL
@@ -125,6 +189,20 @@ static int rrl_tests_run(int argc, char *argv[])
 	                  ret += rrl_query(rrl, (void*)0x1, 0, 0); // -1
 	                  ret += rrl_destroy(0); // -1
 	}, "rrl: not crashed while executing functions on NULL context");
+	
+	/* 8. hopscotch test */
+	struct runnable_data rd = {
+		1, rrl, &addr, &rq, zone
+	};
+	rrl_hopscotch(&rd);
+	ok(rd.passed, "rrl: hashtable is ~ consistent");
+	
+	/* 9. reseed */
+	ok(rrl_reseed(rrl) == 0, "rrl: reseed");
+	
+	/* 10. hopscotch after reseed. */
+	rrl_hopscotch(&rd);
+	ok(rd.passed, "rrl: hashtable is ~ consistent");
 	
 	knot_dname_release(qst.qname);
 	knot_dname_release(apex);

@@ -88,7 +88,7 @@ int main(int argc, char **argv)
 	int c = 0, li = 0;
 	int verbose = 0;
 	int daemonize = 0;
-	char* config_fn = 0;
+	char* config_fn = NULL;
 	
 	/* Long options. */
 	struct option opts[] = {
@@ -118,6 +118,7 @@ int main(int argc, char **argv)
 		case 'h':
 		case '?':
 		default:
+			free(config_fn);
 			help(argc, argv);
 			return 1;
 		}
@@ -126,6 +127,7 @@ int main(int argc, char **argv)
 	// Now check if we want to daemonize
 	if (daemonize) {
 		if (daemon(1, 0) != 0) {
+			free(config_fn);
 			fprintf(stderr, "Daemonization failed, "
 					"shutting down...\n");
 			return 1;
@@ -157,15 +159,6 @@ int main(int argc, char **argv)
 	// Initialize pseudorandom number generator
 	srand(time(0));
 
-	// Create server
-	server_t *server = server_create();
-
-	// Initialize configuration
-	rcu_read_lock();
-	conf_add_hook(conf(), CONF_LOG, log_conf_hook, 0);
-	conf_add_hook(conf(), CONF_ALL, server_conf_hook, server);
-	rcu_read_unlock();
-
 	// Find implicit configuration file
 	if (!config_fn) {
 		config_fn = conf_find_default();
@@ -179,12 +172,22 @@ int main(int argc, char **argv)
 		if (rpath == NULL) {
 			log_server_error("Couldn't get absolute path for configuration file '%s' - "
 			                 "%s.\n", config_fn, strerror(errno));
+			free(config_fn);
 			return 1;
 		} else {
 			free(config_fn);
 			config_fn = rpath;
 		}
 	}
+	
+	// Create server
+	server_t *server = server_create();
+
+	// Initialize configuration
+	rcu_read_lock();
+	conf_add_hook(conf(), CONF_LOG, log_conf_hook, 0);
+	conf_add_hook(conf(), CONF_ALL, server_conf_hook, server);
+	rcu_read_unlock();
 	
 	/* POSIX 1003.1e capabilities. */
 #ifdef HAVE_CAP_NG_H
@@ -245,6 +248,7 @@ int main(int argc, char **argv)
 	log_server_info("\n");
 
 	/* Alter privileges. */
+	log_update_privileges(conf()->uid, conf()->gid);
 	proc_update_privileges(conf()->uid, conf()->gid);
 	
 	/* Load zones and add hook. */

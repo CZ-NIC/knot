@@ -201,10 +201,12 @@ Default value: @kbd{0 (disabled)}
 @vindex rate-limit-size
 
 Option controls the size of a hashtable of buckets. The larger the hashtable, the lesser probability of a hash collision, but
-at the expense of additional memory costs. Each bucket is estimated roughly to 16B.
+at the expense of additional memory costs. Each bucket is estimated roughly to 32B.
 Size should be selected as a reasonably large prime due to the better hash function distribution properties.
+Hash table is internally chained and works well up to a fill rate of 90%, general rule of thumb is to select a prime near
+@kbd{1.2 * maximum_qps}.
 
-Default value: @kbd{1572869}
+Default value: @kbd{393241}
 
 @node rate-limit-slip
 @subsubsection rate-limit-slip
@@ -664,7 +666,9 @@ Remotes are defined in @code{remotes} section of configuration file (@pxref{remo
 @vindex semantic-checks 
 
 @code{semantic-checks} statement turns on optional semantic checks for this particular zone.
-See @ref{zones List of zone semantic checks} for more information. Possible values are @code{on} and @code{off}.
+See @ref{zones List of zone semantic checks} for more information.
+
+Possible values are @code{on} and @code{off}.
 Most checks are disabled by default.
 
 @node ixfr-from-differences
@@ -673,7 +677,9 @@ Most checks are disabled by default.
 
 EXPERIMENTAL: option @code{ixfr-from-differences} is only relevant if you are running Knot DNS as a master for this zone.
 By turning the feature on you tell Knot to create differences from changes you made to a zone file upon server reload.
-See @ref{Controlling running daemon} for more information. Possible values are @code{on} and @code{off}. Disabled by default.
+See @ref{Controlling running daemon} for more information. 
+
+Possible values are @code{on} and @code{off}. Disabled by default.
 
 @node disable-any
 @subsubsection disable-any

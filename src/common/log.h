@@ -203,6 +203,15 @@ void hex_log(int source, const char *data, int length);
 #define log_zone_info(msg...)        log_msg(LOG_ZONE, LOG_INFO, msg)
 #define log_zone_debug(msg...)       log_msg(LOG_ZONE, LOG_DEBUG, msg)
 
+/*!
+ * \brief Update open files ownership.
+ * \param uid New owner id.
+ * \param gid New group id.
+ * \retval KNOT_EOK if success
+ * \retval KNOT_ERROR on error
+ */
+int log_update_privileges(int uid, int gid);
+
 #endif /* _KNOTD_LOG_H_ */
 
 /*! @} */
