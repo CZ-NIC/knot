@@ -48,18 +48,53 @@ typedef struct {
 /*! \brief Default dump style. */
 extern const knot_dump_style_t KNOT_DUMP_STYLE_DEFAULT;
 
+/*!
+ * \brief Dumps rrset header.
+ *
+ * \param rrset		RRset to dump.
+ * \param pos		Position of the record to dump.
+ * \param dst		Output buffer.
+ * \param maxlen	Otuput buffer size.
+ * \param style		Output style.
+ *
+ * \retval output length	if success.
+ * \retval < 0			if error.
+ */
 int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
                                const size_t            pos,
                                char                    *dst,
                                const size_t            maxlen,
                                const knot_dump_style_t *style);
 
+/*!
+ * \brief Dumps rrset data.
+ *
+ * \param rrset		RRset to dump.
+ * \param pos		Position of the record to dump.
+ * \param dst		Output buffer.
+ * \param maxlen	Otuput buffer size.
+ * \param style		Output style.
+ *
+ * \retval output length	if success.
+ * \retval < 0			if error.
+ */
 int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
                              const size_t            pos,
                              char                    *dst,
                              const size_t            maxlen,
                              const knot_dump_style_t *style);
 
+/*!
+ * \brief Dumps rrset.
+ *
+ * \param rrset		RRset to dump.
+ * \param dst		Output buffer.
+ * \param maxlen	Otuput buffer size.
+ * \param style		Output style.
+ *
+ * \retval output length	if success.
+ * \retval < 0			if error.
+ */
 int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
                         char                    *dst,
                         const size_t            maxlen,

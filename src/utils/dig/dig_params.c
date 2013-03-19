@@ -31,7 +31,7 @@
 #define DEFAULT_RETRIES_DIG	3
 #define DEFAULT_TIMEOUT_DIG	5
 
-static const flags_t DEFAULT_FLAGS = {
+static const flags_t DEFAULT_FLAGS_DIG = {
 	.aa_flag = false,
 	.tc_flag = false,
 	.rd_flag = true,
@@ -42,17 +42,18 @@ static const flags_t DEFAULT_FLAGS = {
 	.do_flag = false
 };
 
-static const style_t DEFAULT_STYLE = {
+static const style_t DEFAULT_STYLE_DIG = {
 	.format = FORMAT_FULL,
 	.style = { .wrap = false, .show_class = true, .show_ttl = true,
-	           .verbose = true, .reduce = false },
+	           .verbose = false, .reduce = false },
 	.show_header = true,
-	.show_footer = true,
 	.show_query = false,
+	.show_edns = true,
 	.show_question = true,
 	.show_answer = true,
 	.show_authority = true,
 	.show_additional = true,
+	.show_footer = true,
 };
 
 query_t* query_create(const char *owner, const query_t *conf)
@@ -89,8 +90,8 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->class_num = -1;
 		query->type_num = -1;
 		query->xfr_serial = 0;
-		query->flags = DEFAULT_FLAGS;
-		query->style = DEFAULT_STYLE;
+		query->flags = DEFAULT_FLAGS_DIG;
+		query->style = DEFAULT_STYLE_DIG;
 	} else {
 		query->operation = conf->operation;
 		query->ip = conf->ip;
@@ -541,12 +542,18 @@ static int parse_opt2(const char *value, dig_params_t *params)
 	// Check for format option.
 	if (strcmp(value, "multiline") == 0) {
 		query->style.style.wrap = true;
+		query->style.format = FORMAT_FULL;
+		query->style.show_header = true;
+		query->style.show_edns = true;
+		query->style.show_footer = true;
+		query->style.style.verbose = true;
 	} else if (strcmp(value, "nomultiline") == 0) {
 		query->style.style.wrap = false;
 	}
 	else if (strcmp(value, "short") == 0) {
 		query->style.format = FORMAT_DIG;
 		query->style.show_header = false;
+		query->style.show_edns = false;
 		query->style.show_footer = false;
 	} else if (strcmp(value, "noshort") == 0) {
 		query->style.format = FORMAT_FULL;
@@ -598,18 +605,22 @@ static int parse_opt2(const char *value, dig_params_t *params)
 
 	// Check for display option.
 	else if (strcmp(value, "all") == 0) {
+		query->style.show_header = true;
 		query->style.show_edns = true;
 		query->style.show_question = true;
 		query->style.show_answer = true;
 		query->style.show_authority = true;
 		query->style.show_additional = true;
+		query->style.show_footer = true;
 	} else if (strcmp(value, "noall") == 0) {
+		query->style.show_header = false;
 		query->style.show_edns = false;
 		query->style.show_query = false;
 		query->style.show_question = false;
 		query->style.show_answer = false;
 		query->style.show_authority = false;
 		query->style.show_additional = false;
+		query->style.show_footer = false;
 	}
 	else if (strcmp(value, "qr") == 0) {
 		query->style.show_query = true;

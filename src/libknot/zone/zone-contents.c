@@ -648,7 +648,7 @@ dbg_zone_exec_verb(
 		dbg_zone("Error while creating domain name for hashed name.\n");
 		return KNOT_ERROR;
 	}
-	knot_dname_to_lower(nsec3_name);
+	knot_dname_to_lower(*nsec3_name);
 
 	assert(zone->apex->owner != NULL);
 	knot_dname_t *ret = knot_dname_cat(*nsec3_name, zone->apex->owner);

@@ -153,10 +153,12 @@ static void print_header(const knot_packet_t *packet, const style_t *style)
 	}
 }
 
-static void print_footer(const net_t  *net,
+static void print_footer(const size_t total_len,
+                         const size_t msg_count,
+                         const size_t rr_count,
+                         const net_t  *net,
                          const float  elapsed,
-                         const size_t total_len,
-                         const size_t msg_count)
+                         const bool   incoming)
 {
 	struct tm tm;
 	char      date[64];
@@ -168,12 +170,41 @@ static void print_footer(const net_t  *net,
 	// Create formated date-time string.
 	strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S %Z", &tm);
 
-	// Print formated info.
-	printf("\n;; Received %zu B (%zu messages)\n"
-	       ";; From %s#%i over %s in %.1f ms\n"
-	       ";; On %s\n",
-	       total_len, msg_count, net->addr, net->port, net->proto,
-	       elapsed, date);
+	// Print messages statistics.
+	if (incoming) {
+		printf("\n;; Received %zu B", total_len);
+	} else {
+		printf("\n;; Sent %zu B", total_len);
+	}
+
+	// If multimessage (XFR) print additional statistics.
+	if (msg_count > 0) {
+		printf(" (%zu messages, %zu records)\n", msg_count, rr_count);
+	} else {
+		printf("\n");
+	}
+
+	// Print connection statistics.
+	if (net != NULL) {
+		if (incoming) {
+			printf(";; From %s#%i over %s",
+			       net->addr, net->port, net->proto);
+		} else {
+			printf(";; To %s#%i over %s",
+			       net->addr, net->port, net->proto);
+		}
+
+		if (elapsed >= 0) {
+			printf(" in %.1f ms\n", elapsed);
+
+		} else {
+			printf("\n");
+
+		}
+	}
+
+	// Print date.
+	printf(";; On %s\n", date);
 }
 
 static void print_opt_section(const knot_opt_rr_t *rr)
@@ -197,7 +228,7 @@ static void print_section_question(const knot_dname_t *owner,
 
 	if (knot_rrset_txt_dump_header(question, 0, buf, buflen, &(style->style))
 	    < 0) {
-		WARN("can't dump whole question section\n");
+		WARN("can't print whole question section\n");
 	}
 
 	printf("%s\n", buf);
@@ -326,34 +357,29 @@ static void print_error_host(const uint8_t         code,
 	free(owner);
 }
 
-void print_header_xfr(const uint16_t type, const style_t *style)
+void print_header_xfr(const char     *owner,
+                      const uint16_t type,
+                      const style_t  *style)
 {
 	if (style == NULL) {
 		DBG_NULL;
 		return;
 	}
 
-	char name[16] = "";
+	char xfr[16] = "AXFR";
 
 	switch (type) {
 	case KNOT_RRTYPE_AXFR:
-		strcpy(name, "AXFR");
 		break;
 	case KNOT_RRTYPE_IXFR:
-		strcpy(name, "IXFR");
+		xfr[0] = 'I';
 		break;
 	default:
 		return;
 	}
 
-	switch (style->format) {
-	case FORMAT_FULL:
-		printf(";; %s transfer\n\n", name);
-		break;
-	case FORMAT_DIG:
-	case FORMAT_HOST:
-	default:
-		break;
+	if (style->show_header) {
+		printf(";; %s for %s\n", xfr, owner);
 	}
 }
 
@@ -380,33 +406,28 @@ void print_data_xfr(const knot_packet_t *packet,
 	}
 }
 
-void print_footer_xfr(const net_t    *net,
-                      const float    elapsed,
-                      const size_t   total_len,
+void print_footer_xfr(const size_t   total_len,
                       const size_t   msg_count,
+                      const size_t   rr_count,
+                      const net_t    *net,
+                      const float    elapsed,
                       const style_t  *style)
 {
-	if (net == NULL || style == NULL) {
+	if (style == NULL) {
 		DBG_NULL;
 		return;
 	}
 
-	switch (style->format) {
-	case FORMAT_FULL:
-		print_footer(net, elapsed, total_len, msg_count);
-		break;
-	case FORMAT_DIG:
-	case FORMAT_HOST:
-	default:
-		break;
+	if (style->show_footer) {
+		print_footer(total_len, msg_count, rr_count, net, elapsed, true);
 	}
 }
 
 void print_packet(const knot_packet_t *packet,
-                  const float         elapsed,
                   const size_t        total_len,
-                  const size_t        msg_count,
                   const net_t         *net,
+                  const float         elapsed,
+                  const bool          incoming,
                   const style_t       *style)
 {
 	if (packet == NULL || style == NULL) {
@@ -513,7 +534,7 @@ void print_packet(const knot_packet_t *packet,
 	}
 	
 	// Print packet statistics.
-	if (style->show_footer && net != NULL) {
-		print_footer(net, elapsed, total_len, msg_count);
+	if (style->show_footer) {
+		print_footer(total_len, 0, 0, net, elapsed, incoming);
 	}
 }
