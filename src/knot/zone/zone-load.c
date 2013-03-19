@@ -544,53 +544,22 @@ static void process_rr(const scanner_t *scanner)
 		}
 	}
 	
-//	rrset = knot_node_get_rrset(node, current_rrset->type);
-//	if (!rrset) {
-//		rrset = current_rrset;
-//	} else {
-//		merged = 1;
-//	}
-///	if (!rrset) {
-//		int ret = knot_rrset_deep_copy(current_rrset, &rrset, 1);
-//		if (ret != KNOT_EOK) {
-//			dbg_zp("zp: Cannot copy RRSet.\n");
-//			return ret;
-//		}
-//		rrset = knot_rrset_new(current_rrset->owner,
-//					 current_rrset->type,
-//					 current_rrset->rclass,
-//					 current_rrset->ttl);
-//		if (rrset == NULL) {
-//			dbg_zp("zp: process_rr: Cannot "
-//			       "create new RRSet.\n");
-//			return KNOTDZCOMPILE_ENOMEM;
-//		}
-
-//		if (knot_rrset_add_rdata(rrset, current_rrset->rdata) != 0) {
-//			knot_rrset_free(&rrset);
-//			dbg_zp("zp: process_rr: Cannot "
-//			       "add RDATA to RRSet.\n");
-//			return KNOTDZCOMPILE_EBRDATA;
-//		}
-		
-		/* Selected merge option does not really matter here. */
-//		if (knot_zone_contents_add_rrset(contents, current_rrset, &node,
-//		                   KNOT_RRSET_DUPL_MERGE, 1) < 0) {
-//			knot_rrset_free(&rrset);
-//			dbg_zp("zp: process_rr: Cannot "
-//			       "add RDATA to RRSet.\n");
-//			return KNOTDZCOMPILE_EBRDATA;
-//		}
-//	} else {
-//	TODO needs solving
-//	if (current_rrset->type !=
-//			KNOT_RRTYPE_RRSIG && rrset->ttl !=
-//			current_rrset->ttl) {
-//		fprintf(stderr, 
-//			"TTL does not match the TTL of the RRSet. "
-//			"Changing to %d.\n", rrset->ttl);
-//	}
-
+	if (current_rrset->type != KNOT_RRTYPE_RRSIG) {
+		/*
+		 * If there's already an RRSet of this type in a node, check
+		 * that TTLs are the same, if not, give warning a change TTL. 
+		 */
+		const knot_rrset_t *rrset_in_node =        
+			knot_node_rrset(node, current_rrset->type);
+		if (rrset_in_node &&
+		    current_rrset->ttl != rrset_in_node->ttl) {
+			log_zone_warning("TTL does not match TTL of its RRSet."
+			                 "Changing to %"PRIu32"\n",
+			                 rrset_in_node->ttl);
+			/* Actual change will happen in merge. */
+		}
+	}
+	
 	ret = knot_zone_contents_add_rrset(contents, current_rrset,
 	                                   &node,
 	                                   KNOT_RRSET_DUPL_MERGE);
