@@ -666,7 +666,9 @@ Remotes are defined in @code{remotes} section of configuration file (@pxref{remo
 @vindex semantic-checks 
 
 @code{semantic-checks} statement turns on optional semantic checks for this particular zone.
-See @ref{zones List of zone semantic checks} for more information. Possible values are @code{on} and @code{off}.
+See @ref{zones List of zone semantic checks} for more information.
+
+Possible values are @code{on} and @code{off}.
 Most checks are disabled by default.
 
 @node ixfr-from-differences
@@ -675,7 +677,9 @@ Most checks are disabled by default.
 
 EXPERIMENTAL: option @code{ixfr-from-differences} is only relevant if you are running Knot DNS as a master for this zone.
 By turning the feature on you tell Knot to create differences from changes you made to a zone file upon server reload.
-See @ref{Controlling running daemon} for more information. Possible values are @code{on} and @code{off}. Disabled by default.
+See @ref{Controlling running daemon} for more information. 
+
+Possible values are @code{on} and @code{off}. Disabled by default.
 
 @node disable-any
 @subsubsection disable-any
