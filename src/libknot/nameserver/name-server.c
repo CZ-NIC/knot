@@ -1314,7 +1314,7 @@ dbg_ns_exec_verb(
 			return ret;
 		}
 		rrset = knot_rrset_get_rrsigs(rrset);
-		if (rrset == NULL || knot_rrset_rdata_rr_count(rrset)) {
+		if (rrset == NULL || knot_rrset_rdata_rr_count(rrset) == 0) {
 			// bad zone, ignore
 			return KNOT_EOK;
 		}
