@@ -32,6 +32,10 @@
 #define RRL_INSERTS (RRL_SIZE/(5*RRL_THREADS)) /* lf = 1/5 */
 #define RRL_LOCKS 64
 
+/* Disabled as default as it depends on random input.
+ * Table may be consistent even if some collision occur (and they may occur).
+ */
+#ifdef ENABLE_TIMED_TESTS
 struct bucketmap_t {
 	unsigned i;
 	uint64_t x;
@@ -85,6 +89,7 @@ static void rrl_hopscotch(struct runnable_data* rd)
 		pthread_join(thr[i], NULL);
 	}
 }
+#endif
 
 static int rrl_tests_count(int argc, char *argv[]);
 static int rrl_tests_run(int argc, char *argv[]);
@@ -104,9 +109,9 @@ unit_api rrl_tests_api = {
 
 static int rrl_tests_count(int argc, char *argv[])
 {
-	int c = 10;
-#ifndef ENABLE_TIMED_TESTS
-	c -= 2;
+	int c = 5;
+#ifdef ENABLE_TIMED_TESTS
+	c += 5;
 #endif
 	return c;
 }
@@ -189,6 +194,7 @@ static int rrl_tests_run(int argc, char *argv[])
 	                  ret += rrl_destroy(0); // -1
 	}, "rrl: not crashed while executing functions on NULL context");
 	
+#ifdef ENABLE_TIMED_TESTS
 	/* 8. hopscotch test */
 	struct runnable_data rd = {
 		1, rrl, &addr, &rq, zone
@@ -202,6 +208,7 @@ static int rrl_tests_run(int argc, char *argv[])
 	/* 10. hopscotch after reseed. */
 	rrl_hopscotch(&rd);
 	ok(rd.passed, "rrl: hashtable is ~ consistent");
+#endif
 	
 	knot_dname_release(qst.qname);
 	knot_dname_release(apex);
