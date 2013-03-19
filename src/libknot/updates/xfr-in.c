@@ -2397,7 +2397,7 @@ static int xfrin_switch_nodes(knot_zone_contents_t *contents_copy)
 	// stored in that node. The node itself should be new.
 	knot_zone_contents_tree_apply_inorder(contents_copy,
 	                                      xfrin_switch_nodes_in_node, NULL);
-
+	
 	knot_zone_contents_nsec3_apply_inorder(contents_copy,
 	                                      xfrin_switch_nodes_in_node, NULL);
 	return KNOT_EOK;
@@ -2948,7 +2948,7 @@ dbg_xfrin_exec_detail(
 			dbg_xfrin("Failed to remove node from zone!\n");
 			return KNOT_ENONODE;
 		}
-//		assert(changes->old_nodes[i] == zone_node);
+		assert(changes->old_nodes[i] == zone_node);
 	}
 
 	// remove NSEC3 nodes
@@ -2968,8 +2968,7 @@ dbg_xfrin_exec_detail(
 			dbg_xfrin("Failed to remove NSEC3 node from zone!\n");
 			return KNOT_ENONODE;
 		}
-		/*!< \todo These asserts should imho hold, but test 13nsec fails here. */
-//		assert(changes->old_nodes[i] == zone_node);
+		assert(changes->old_nsec3[i] == zone_node);
 	}
 
 	return KNOT_EOK;
@@ -3082,7 +3081,7 @@ int xfrin_prepare_zone_copy(knot_zone_contents_t *old_contents,
 		return ret;
 	}
 
-	assert(knot_zone_contents_apex(contents_copy) != NULL);
+        assert(knot_zone_contents_apex(contents_copy) != NULL);
 
 	/*
 	 * Fix references to new nodes. Some references in new nodes may point
@@ -3208,7 +3207,7 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 		xfrin_rollback_update(old_contents, &contents_copy, &changes);
 		return ret;
 	}
-
+	
 	chsets->changes = changes;
 	*new_contents = contents_copy;
 
