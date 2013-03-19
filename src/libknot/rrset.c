@@ -109,10 +109,10 @@ static uint16_t rrset_rdata_naptr_bin_chunk_size(const knot_rrset_t *rrset,
 void knot_rrset_rdata_dump(const knot_rrset_t *rrset, size_t rdata_pos)
 {
 dbg_rrset_exec_detail(
-	fprintf(stderr, "      ------- RDATA pos=%zu -------\n", rdata_pos);
+	dbg_rrset_detail("      ------- RDATA pos=%zu -------\n", rdata_pos);
 	if (rrset->rdata_count == 0) {
-		fprintf(stderr, "      There are no rdata in this RRset!\n");
-		fprintf(stderr, "      ------- RDATA -------\n");
+		dbg_rrset_detail("      There are no rdata in this RRset!\n");
+		dbg_rrset_detail("      ------- RDATA -------\n");
 		return;
 	}
 	const rdata_descriptor_t *desc =
@@ -128,32 +128,32 @@ dbg_rrset_exec_detail(
 			memcpy(&dname, rdata + offset, sizeof(knot_dname_t *));
 			char *name = knot_dname_to_str(dname);
 			if (dname == NULL) {
-				fprintf(stderr, "DNAME error.\n");
+				dbg_rrset_detail("DNAME error.\n");
 				return;
 			}
-			fprintf(stderr, "block=%d: (%p) DNAME=%s\n",
+			dbg_rrset_detail("block=%d: (%p) DNAME=%s\n",
 			        i, dname, name);
 			free(name);
 			offset += sizeof(knot_dname_t *);
 		} else if (descriptor_item_is_fixed(item)) {
-			fprintf(stderr, "block=%d Raw data (size=%d):\n",
+			dbg_rrset_detail("block=%d Raw data (size=%d):\n",
 			        i, item);
-			hex_print((char *)(rdata + offset), item);
+                dbg_rrset_hex_detail((char *)(rdata + offset), item);
 			offset += item;
 		} else if (descriptor_item_is_remainder(item)) {
-			fprintf(stderr, "block=%d Remainder (size=%zu):\n",
+			dbg_rrset_detail("block=%d Remainder (size=%zu):\n",
 			        i, rrset_rdata_item_size(rrset,
 			                                 rdata_pos) - offset);
-			hex_print((char *)(rdata + offset),
+			dbg_rrset_hex_detail((char *)(rdata + offset),
 			          rrset_rdata_item_size(rrset,
 			                                rdata_pos) - offset);
 		} else {
 			assert(rrset->type == KNOT_RRTYPE_NAPTR);
 			uint16_t naptr_chunk_size =
 				rrset_rdata_naptr_bin_chunk_size(rrset, rdata_pos);
-			fprintf(stderr, "NAPTR, REGEXP block (size=%u):\n",
+			dbg_rrset_detail("NAPTR, REGEXP block (size=%u):\n",
 			        naptr_chunk_size);
-			hex_print((char *)(rdata + offset), naptr_chunk_size);
+			dbg_rrset_hex_detail((char *)(rdata + offset), naptr_chunk_size);
 			offset += naptr_chunk_size;
 		}
 	}
@@ -2176,33 +2176,33 @@ dbg_rrset_exec_detail(
 		return;
 	}
 	
-	fprintf(stderr, "      ------- RRSET -------\n");
+	dbg_rrset_detail("      ------- RRSET -------\n");
 	
 	char *name = knot_dname_to_str(rrset->owner);
-	fprintf(stderr, "  owner: %s\n", name);
+	dbg_rrset_detail("  owner: %s\n", name);
 	free(name);
-	fprintf(stderr, "  type: %u\n", rrset->type);
-	fprintf(stderr, "  class: %d\n",  rrset->rclass);
-	fprintf(stderr, "  ttl: %d\n", rrset->ttl);
-	fprintf(stderr, "  RDATA count: %d\n", rrset->rdata_count);
+	dbg_rrset_detail("  type: %u\n", rrset->type);
+	dbg_rrset_detail("  class: %d\n",  rrset->rclass);
+	dbg_rrset_detail("  ttl: %d\n", rrset->ttl);
+	dbg_rrset_detail("  RDATA count: %d\n", rrset->rdata_count);
 	
-	fprintf(stderr, "  RRSIGs:\n");
+	dbg_rrset_detail("  RRSIGs:\n");
 	if (rrset->rrsigs != NULL) {
 	        knot_rrset_dump(rrset->rrsigs);
 	} else {
-	        fprintf(stderr, "  none\n");
+	        dbg_rrset_detail("  none\n");
 	}
 	
-	fprintf(stderr, "RDATA indices (total=%d):\n",
+	dbg_rrset_detail("RDATA indices (total=%d):\n",
 	        rrset_rdata_size_total(rrset));
 	
 	for (uint16_t i = 0; i < rrset->rdata_count; i++) {
-		fprintf(stderr, "%d=%d ", i, rrset_rdata_offset(rrset, i));
+		dbg_rrset_detail("%d=%d ", i, rrset_rdata_offset(rrset, i));
 	}
-	fprintf(stderr, "\n");
+	dbg_rrset_detail("\n");
 	
 	if (knot_rrset_rdata_rr_count(rrset) == 0) {
-		fprintf(stderr, "NO RDATA\n");
+		dbg_rrset_detail("NO RDATA\n");
 	}
 	
 	for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(rrset); i++) {
@@ -2525,22 +2525,10 @@ int rrset_rr_dnames_apply(knot_rrset_t *rrset, size_t rdata_pos,
 	}
 
 	
-dbg_rrset_exec_detail(
-	char *name = knot_dname_to_str(rrset->owner);
-	dbg_rrset_detail("rr: dnames_apply: Appling function to RRSet owned "
-	                 "by %s type=%d\n", name, rrset->type);
-	free(name);
-);
-	
 	knot_dname_t **dname = NULL;
 	while ((dname = knot_rrset_get_next_rr_dname(rrset, dname,
 	                                             rdata_pos))) {
 		assert(dname && *dname);
-dbg_rrset_exec_detail(
-		char *name = knot_dname_to_str(*dname);
-		dbg_rrset_detail("rr: dnames_apply: Got dname %s.\n", name);
-		free(name);
-);
 		int ret = func(*dname, data);
 		if (ret != KNOT_EOK) {
 			dbg_rrset("rr: rr_dnames_apply: Function could not be"
