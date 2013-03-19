@@ -4059,7 +4059,7 @@ int zones_verify_tsig_query(const knot_packet_t *query,
 	 */
 	tsig_algorithm_t alg = tsig_rdata_alg(tsig_rr);
 	if (tsig_alg_digest_length(alg) == 0) {
-		log_server_info("Unsupported digest algorithm "
+		log_answer_info("Unsupported digest algorithm "
 		                "requested, treating as bad key\n");
 		/*! \todo [TSIG] It is unclear from RFC if I
 		 *               should treat is as a bad key
