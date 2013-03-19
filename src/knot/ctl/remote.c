@@ -47,7 +47,7 @@ typedef struct remote_cmdargs_t {
 typedef int (*remote_cmdf_t)(server_t*, remote_cmdargs_t*);
 
 /*! \brief Callback prototype for per-zone operations. */
-typedef int (remote_zonef_t)(server_t*, knot_zone_t *);
+typedef int (remote_zonef_t)(server_t*, const knot_zone_t *);
 
 /*! \brief Remote command table item. */
 typedef struct remote_cmd_t {
@@ -117,7 +117,7 @@ static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *
 }
 
 /*! \brief Zone refresh callback. */
-static int remote_zone_refresh(server_t *s, knot_zone_t *z)
+static int remote_zone_refresh(server_t *s, const knot_zone_t *z)
 {
 	if (!s || !z) {
 		return KNOT_EINVAL;
@@ -141,7 +141,7 @@ static int remote_zone_refresh(server_t *s, knot_zone_t *z)
 }
 
 /*! \brief Zone flush callback. */
-static int remote_zone_flush(server_t *s, knot_zone_t *z)
+static int remote_zone_flush(server_t *s, const knot_zone_t *z)
 {
 	if (!s || !z) {
 		return KNOT_EINVAL;
@@ -341,8 +341,17 @@ static int remote_c_flush(server_t *s, remote_cmdargs_t* a)
 	/* Flush all. */
 	dbg_server("remote: %s\n", __func__);
 	if (a->argc == 0) {
+		int ret = 0;
 		dbg_server_verb("remote: flushing all zones\n");
-		return KNOT_ENOTSUP;
+		rcu_read_lock();
+		knot_nameserver_t *ns =  s->nameserver;
+		const knot_zone_t **zones = knot_zonedb_zones(ns->zone_db);
+		for (unsigned i = 0; i < knot_zonedb_zone_count(ns->zone_db); ++i) {
+			ret = remote_zone_flush(s, zones[i]);
+		}
+		rcu_read_unlock();
+		free(zones);
+		return ret;
 	}
 	
 	/* Flush specific zones. */
