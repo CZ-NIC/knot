@@ -272,6 +272,7 @@ void process_query(const query_t *query)
 	struct timeval	t_start, t_end;
 	size_t		total_len = 0;
 	size_t		msg_count = 0;
+	size_t		rr_count = 0;
 
 	if (query == NULL) {
 		DBG_NULL;
@@ -383,8 +384,8 @@ void process_query(const query_t *query)
 			total_len += in_len;
 
 			// Print formated data.
-			print_packet(in_packet, elapsed, total_len,
-			             msg_count, &net, &query->style);
+			print_packet(in_packet, total_len, &net, elapsed,
+			             true, &query->style);
 
 			knot_packet_free(&in_packet);
 
@@ -396,10 +397,11 @@ void process_query(const query_t *query)
 
 		// Count first XFR message.
 		msg_count++;
+		rr_count += in_packet->an_rrsets;
 		total_len += in_len;
 
 		// Start XFR dump.
-		print_header_xfr(query->type_num, &query->style);
+		print_header_xfr(query->owner, query->type_num, &query->style);
 
 		print_data_xfr(in_packet, &query->style);
 
@@ -462,6 +464,7 @@ void process_query(const query_t *query)
 
 			// Count non-first XFR message.
 			msg_count++;
+			rr_count += in_packet->an_rrsets;
 			total_len += in_len;
 		}
 
@@ -474,8 +477,8 @@ void process_query(const query_t *query)
 			elapsed = (t_end.tv_sec - t_start.tv_sec) * 1000 +
 			          ((t_end.tv_usec - t_start.tv_usec) / 1000.0);
 
-			print_footer_xfr(&net, elapsed, total_len,
-			                 msg_count, &query->style);
+			print_footer_xfr(total_len, msg_count, rr_count, &net,
+			                 elapsed, &query->style);
 
 			knot_packet_free(&in_packet);
 		}

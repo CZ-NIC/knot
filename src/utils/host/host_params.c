@@ -31,6 +31,20 @@
 #define DEFAULT_RETRIES_HOST	1
 #define DEFAULT_TIMEOUT_HOST	1
 
+static const style_t DEFAULT_STYLE_HOST = {
+	.format = FORMAT_HOST,
+	.style = { .wrap = false, .show_class = true, .show_ttl = true,
+	           .verbose = true, .reduce = false },
+	.show_header = false,
+	.show_query = false,
+	.show_edns = false,
+	.show_question = true,
+	.show_answer = true,
+	.show_authority = true,
+	.show_additional = true,
+	.show_footer = false,
+};
+
 static int host_init(dig_params_t *params)
 {
 	// Initialize params with dig defaults.
@@ -46,7 +60,7 @@ static int host_init(dig_params_t *params)
 	params->config->retries = DEFAULT_RETRIES_HOST;
 	params->config->wait = DEFAULT_TIMEOUT_HOST;
 	params->config->class_num = KNOT_CLASS_IN;
-	params->config->style.format = FORMAT_HOST;
+	params->config->style = DEFAULT_STYLE_HOST;
 
 	// Check port.
 	if (params->config->port == NULL) {
@@ -188,6 +202,9 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 		case 'a':
 			conf->type_num = KNOT_RRTYPE_ANY;
 			conf->style.format = FORMAT_FULL;
+			conf->style.show_header = true;
+			conf->style.show_edns = true;
+			conf->style.show_footer = true;
 			break;
 		case 'C':
 			conf->type_num = KNOT_RRTYPE_SOA;
@@ -198,6 +215,9 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 			break;
 		case 'v':
 			conf->style.format = FORMAT_FULL;
+			conf->style.show_header = true;
+			conf->style.show_edns = true;
+			conf->style.show_footer = true;
 			break;
 		case 'l':
 			conf->type_num = KNOT_RRTYPE_AXFR;

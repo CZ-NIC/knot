@@ -38,22 +38,25 @@ extern knot_lookup_table_t rtypes[];
 knot_packet_t* create_empty_packet(const knot_packet_prealloc_type_t type,
                                    const size_t                      max_size);
 
-void print_header_xfr(const uint16_t type, const style_t *style);
+void print_header_xfr(const char     *owner,
+                      const uint16_t type,
+                      const style_t  *style);
 
 void print_data_xfr(const knot_packet_t *packet,
                     const style_t       *style);
 
-void print_footer_xfr(const net_t    *net,
-                      const float    elapsed,
-                      const size_t   total_len,
+void print_footer_xfr(const size_t   total_len,
                       const size_t   msg_count,
+                      const size_t   rr_count,
+                      const net_t    *net,
+                      const float    elapsed,
                       const style_t  *style);
 
 void print_packet(const knot_packet_t *packet,
-                  const float         elapsed,
                   const size_t        total_len,
-                  const size_t        msg_count,
                   const net_t         *net,
+                  const float         elapsed,
+                  const bool          incoming,
                   const style_t       *style);
 
 #endif // _UTILS__EXEC_H_
