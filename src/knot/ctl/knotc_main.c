@@ -100,7 +100,7 @@ knot_cmd_t knot_cmd_tbl[] = {
 	{"refresh",   &cmd_refresh,"Refresh slave zones (all if not specified).",0},
 	{"flush",     &cmd_flush, "\tFlush journal and update zone files.",0},
 	{"status",    &cmd_status, "\tCheck if server is running.",0},
-	{"zonestatus",&cmd_zonestatus, "\tShow status of configured zones.",0},
+	{"zonestatus",&cmd_zonestatus, "Show status of configured zones.",0},
 	{"checkconf", &cmd_checkconf, "Check server configuration.",1},
 	{"checkzone", &cmd_checkzone, "Check specified zone files.",1},
 	{"compile",   &cmd_compile, "Compile zone files (all if not specified).",1},
