@@ -132,7 +132,6 @@ const error_table_t knot_error_msgs[] = {
 	{ZSCANNER_EUNOPENED_INCLUDE, "Include file opening error!"},
 	{ZSCANNER_EBAD_RDATA_LENGTH, "The rdata length statement is incorrect!"},
 	{ZSCANNER_ECANNOT_TEXT_DATA, "Unable to process text form for this type!"},
-	{ZSCANNER_EBAD_HEX_DATA, "Bad hexadecimal rdata format!"},
 	{ZSCANNER_EBAD_LOC_DATA, "Bad zone location data!"},
 	{ZSCANNER_EUNKNOWN_BLOCK, "Unknown rdata block!"},
 	{ZSCANNER_EBAD_ALGORITHM, "Bad algorithm!"},
