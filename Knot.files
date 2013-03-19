@@ -154,6 +154,8 @@ src/knot/server/journal.c
 src/knot/server/journal.h
 src/knot/server/notify.c
 src/knot/server/notify.h
+src/knot/server/rrl.c
+src/knot/server/rrl.h
 src/knot/ctl/process.c
 src/knot/ctl/process.h
 src/knot/conf/cf-lex.l
