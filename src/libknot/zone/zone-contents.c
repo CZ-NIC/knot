@@ -397,6 +397,8 @@ static void knot_zone_contents_adjust_node(knot_node_t *node,
 		assert(nsec3_name);
 		knot_zone_tree_get(zone->nsec3_nodes, nsec3_name, &nsec3);
 		knot_node_set_nsec3_node(node, nsec3);
+	} else {
+		knot_node_set_nsec3_node(node, NULL);
 	}
 	knot_dname_free(&nsec3_name);
 
@@ -1474,7 +1476,7 @@ int knot_zone_contents_remove_nsec3_node(knot_zone_contents_t *contents,
 	if (ret != KNOT_EOK) {
 		return KNOT_ENONODE;
 	}
-
+	
 	return KNOT_EOK;
 }
 
