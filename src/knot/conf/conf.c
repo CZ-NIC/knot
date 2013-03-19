@@ -357,8 +357,8 @@ void __attribute__ ((constructor)) conf_init()
 	/* Create default interface. */
 	conf_iface_t * iface = malloc(sizeof(conf_iface_t));
 	memset(iface, 0, sizeof(conf_iface_t));
-	iface->name = strdup("any");
-	iface->address = strdup("0.0.0.0");
+	iface->name = strdup("localhost");
+	iface->address = strdup("127.0.0.1");
 	iface->port = CONFIG_DEFAULT_PORT;
 	add_tail(&s_config->ifaces, &iface->n);
 	++s_config->ifaces_count;

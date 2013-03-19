@@ -34,22 +34,20 @@
 #include "libknot/zone/zone.h"
 
 /* Defaults */
-#define RRL_LOCK_GRANULARITY 10 /* Last digit granularity */
+#define RRL_LOCK_GRANULARITY 32 /* Last digit granularity */
 
 /*!
  * \brief RRL hash bucket.
  */
 typedef struct rrl_item {
-	uint64_t pref;       /* Prefix associated. */
+	unsigned hop;        /* Hop bitmap. */
+	uint64_t netblk;     /* Prefix associated. */
 	uint16_t ntok;       /* Tokens available */
 	uint8_t  cls;        /* Bucket class */
 	uint8_t  flags;      /* Flags */
+	uint32_t qname;      /* imputed(QNAME) hash */
 	uint32_t time;       /* Timestamp */
 } rrl_item_t;
-
-typedef struct rrl_lock {    /* Wrapper around lock struct. */
-	pthread_mutex_t mx;
-} rrl_lock_t;
 
 /*!
  * \brief RRL hash bucket table.
@@ -66,8 +64,9 @@ typedef struct rrl_lock {    /* Wrapper around lock struct. */
 typedef struct rrl_table {
 	uint32_t rate;       /* Configured RRL limit */
 	uint32_t seed;       /* Pseudorandom seed for hashing. */
-	rrl_lock_t *lk;      /* Table locks. */
-	size_t lk_count;     /* Table lock count (granularity). */
+	pthread_mutex_t ll;
+	pthread_mutex_t *lk;      /* Table locks. */
+	unsigned lk_count;   /* Table lock count (granularity). */
 	size_t size;         /* Number of buckets */
 	rrl_item_t arr[];    /* Buckets */
 } rrl_table_t;
@@ -115,7 +114,20 @@ uint32_t rrl_setrate(rrl_table_t *rrl, uint32_t rate);
  * \retval KNOT_EOK
  * \retval KNOT_EINVAL
  */
-int rrl_setlocks(rrl_table_t *rrl, size_t granularity);
+int rrl_setlocks(rrl_table_t *rrl, unsigned granularity);
+
+/*!
+ * \brief Get bucket for current combination of parameters.
+ * \param t RRL table.
+ * \param a Source address.
+ * \param p RRL request.
+ * \param zone Relate zone.
+ * \param stamp Timestamp (current time).
+ * \param lock Held lock.
+ * \return assigned bucket
+ */
+rrl_item_t* rrl_hash(rrl_table_t *t, const sockaddr_t *a, rrl_req_t *p,
+                     const knot_zone_t *zone, uint32_t stamp, int* lock);
 
 /*!
  * \brief Query the RRL table for accept or deny, when the rate limit is reached.
@@ -137,6 +149,30 @@ int rrl_query(rrl_table_t *rrl, const sockaddr_t *a, rrl_req_t *req,
  */
 int rrl_destroy(rrl_table_t *rrl);
 
+/*!
+ * \brief Reseed RRL table secret.
+ * \param rrl RRL table.
+ * \return KNOT_EOK
+ */
+int rrl_reseed(rrl_table_t *rrl);
+
+/*!
+ * \brief Lock specified element lock.
+ * \param rrl RRL table.
+ * \param lk_id Specified lock.
+ * \retval KNOT_EOK
+ * \retval KNOT_ERROR
+ */
+int rrl_lock(rrl_table_t *rrl, int lk_id);
+
+/*!
+ * \brief Unlock specified element lock.
+ * \param rrl RRL table.
+ * \param lk_id Specified lock.
+ * \retval KNOT_EOK
+ * \retval KNOT_ERROR
+ */
+int rrl_unlock(rrl_table_t *rrl, int lk_id);
 
 #endif /* _KNOTD_RRL_H_ */
 

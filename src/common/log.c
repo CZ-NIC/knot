@@ -331,3 +331,14 @@ void hex_log(int source, const char *data, int length)
 		log_msg(source, LOG_DEBUG, "%s\n", lbuf);
 	}
 }
+
+int log_update_privileges(int uid, int gid)
+{
+	for (unsigned i = 0; i < LOG_FDS_OPEN; ++i) {
+		if (fchown(fileno(LOG_FDS[i]), uid, gid) < 0) {
+			return KNOT_ERROR;
+		}
+		
+	}
+	return KNOT_EOK;
+}

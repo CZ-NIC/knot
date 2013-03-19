@@ -86,6 +86,7 @@ static int cmd_reload(int argc, char *argv[], unsigned flags, int jobs);
 static int cmd_refresh(int argc, char *argv[], unsigned flags, int jobs);
 static int cmd_flush(int argc, char *argv[], unsigned flags, int jobs);
 static int cmd_status(int argc, char *argv[], unsigned flags, int jobs);
+static int cmd_zonestatus(int argc, char *argv[], unsigned flags, int jobs);
 static int cmd_checkconf(int argc, char *argv[], unsigned flags, int jobs);
 static int cmd_checkzone(int argc, char *argv[], unsigned flags, int jobs);
 static int cmd_compile(int argc, char *argv[], unsigned flags, int jobs);
@@ -99,6 +100,7 @@ knot_cmd_t knot_cmd_tbl[] = {
 	{"refresh",   &cmd_refresh,"Refresh slave zones (all if not specified).",0},
 	{"flush",     &cmd_flush, "\tFlush journal and update zone files.",0},
 	{"status",    &cmd_status, "\tCheck if server is running.",0},
+	{"zonestatus",&cmd_zonestatus, "Show status of configured zones.",0},
 	{"checkconf", &cmd_checkconf, "Check server configuration.",1},
 	{"checkzone", &cmd_checkzone, "Check specified zone files.",1},
 	{"compile",   &cmd_compile, "Compile zone files (all if not specified).",1},
@@ -281,12 +283,7 @@ static int cmd_remote_print_reply(const knot_rrset_t *rr)
 		}
 
 		/* Parse TXT. */
-		char* txt = remote_parse_txt(rd);
-		if (txt) {
-			log_server_info("Server reply: %s\n", txt);
-		}
-		free(txt);
-
+		remote_print_txt(rd);
 		rd = knot_rrset_rdata_next(rr, rd);
 	}
 	
@@ -362,7 +359,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 			break;
 		case KNOT_RRTYPE_TXT:
 		default:
-			rd = remote_create_txt(argv[i]);
+			rd = remote_create_txt(argv[i], strlen(argv[i]));
 			break;
 		}
 		knot_rrset_add_rdata(rr, rd);
@@ -390,8 +387,11 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	
 	/* Wait for reply. */
 	if (rc == 0) {
-		int ret = cmd_remote_reply(s);
-		if (ret != KNOT_EOK) {
+		int ret = KNOT_EOK;
+		while (ret != KNOT_ECONN) {
+			ret = cmd_remote_reply(s);
+		}
+		if (ret != KNOT_EOK && ret != KNOT_ECONN) {
 			log_server_warning("Remote command reply: %s\n",
 			                   knot_strerror(ret));
 			rc = 1;
@@ -399,6 +399,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	}
 	
 	/* Cleanup. */
+	printf("\n");
 	knot_rrset_deep_free(&rr, 1, 1, 1);
 	
 	/* Close connection. */
@@ -556,8 +557,10 @@ static int tsig_parse_file(knot_key_t *k, const char *f)
 
 static void tsig_key_cleanup(knot_key_t *k)
 {
-	knot_dname_free(&k->name);
-	free(k->secret);
+	if (k) {
+		knot_dname_free(&k->name);
+		free(k->secret);
+	}
 }
 
 int main(int argc, char **argv)
@@ -567,16 +570,18 @@ int main(int argc, char **argv)
 	unsigned jobs = 1;
 	unsigned flags = F_NULL;
 	char *config_fn = NULL;
+	char *default_config = conf_find_default();
 	
 	/* Remote server descriptor. */
 	int ret = KNOT_EOK;
-	const char *r_addr = "127.0.0.1";
-	int r_port = REMOTE_DPORT;
+	const char *r_addr = NULL;
+	int r_port = -1;
 	knot_key_t r_key;
 	memset(&r_key, 0, sizeof(knot_key_t));
 	
 	/* Initialize. */
 	log_init();
+	log_levels_set(LOG_SYSLOG, LOG_ANY, 0);
 	
 	/* Long options. */
 	struct option opts[] = {
@@ -647,6 +652,8 @@ int main(int argc, char **argv)
 				                 optarg);
 				help(argc, argv);
 				log_close();
+				free(config_fn);
+				free(default_config);
 				return 1;
 			}
 
@@ -654,12 +661,16 @@ int main(int argc, char **argv)
 		case 'V':
 			printf("%s, version %s\n", "Knot DNS", PACKAGE_VERSION);
 			log_close();
+			free(config_fn);
+			free(default_config);
 			return 0;
 		case 'h':
 		case '?':
 		default:
 			help(argc, argv);
 			log_close();
+			free(config_fn);
+			free(default_config);
 			return 1;
 		}
 	}
@@ -669,6 +680,8 @@ int main(int argc, char **argv)
 		help(argc, argv);
 		tsig_key_cleanup(&r_key);
 		log_close();
+		free(config_fn);
+		free(default_config);
 		return 1;
 	}
 	
@@ -684,38 +697,33 @@ int main(int argc, char **argv)
 	/* Command not found. */
 	if (!cmd->name) {
 		log_server_error("Invalid command: '%s'\n", argv[optind]);
-		free(config_fn);
 		tsig_key_cleanup(&r_key);
 		log_close();
+		free(config_fn);
+		free(default_config);
 		return 1;
 	}
 
 	/* Open config, allow if not exists. */
-	if (cmd->need_conf) {
-		if (!config_fn) {
-			config_fn = conf_find_default();
-		}
-		if (conf_open(config_fn) != KNOT_EOK) {
+	if (conf_open(config_fn) != KNOT_EOK) {
+		if(conf_open(default_config) != KNOT_EOK) {
 			flags |= F_NOCONF;
 		}
-		free(config_fn);
-		config_fn = NULL;
 	}
 	
-	/* Discard remote interface. */
+	/* Create remote iface if not present in config. */
 	conf_iface_t *ctl_if = conf()->ctl.iface;
-	conf_free_iface(ctl_if);
-	
-	/* Update remote interface. */
-	ctl_if = malloc(sizeof(conf_iface_t));
-	if (ctl_if) {
+	if (!ctl_if) {
+		ctl_if = malloc(sizeof(conf_iface_t));
+		assert(ctl_if);
+		conf()->ctl.iface = ctl_if;
 		memset(ctl_if, 0, sizeof(conf_iface_t));
-		ctl_if->address = strdup(r_addr);
-		ctl_if->port = r_port;
-		ctl_if->family = AF_INET;
-		if (strchr(r_addr, ':')) { /* Dumb way to check for v6 addr. */
-			ctl_if->family = AF_INET6;
-		}
+		
+		/* Fill defaults. */
+		if (!r_addr) r_addr = "127.0.0.1";
+		if (r_port < 0) r_port =  REMOTE_DPORT;
+
+		/* Create empty key. */
 		if (r_key.name) {
 			ctl_if->key = malloc(sizeof(knot_key_t));
 			if (ctl_if->key) {
@@ -723,7 +731,22 @@ int main(int argc, char **argv)
 			}
 		}
 	}
-	conf()->ctl.iface = ctl_if;
+	
+	/* Override from command line. */
+	if (r_addr) {
+		free(ctl_if->address);
+		ctl_if->address = strdup(r_addr);
+		ctl_if->family = AF_INET;
+		if (strchr(r_addr, ':')) { /* Dumb way to check for v6 addr. */
+			ctl_if->family = AF_INET6;
+		}
+	}
+	if (r_port > -1) ctl_if->port = r_port;
+	if (r_key.name != NULL) {
+		tsig_key_cleanup(ctl_if->key);
+		ctl_if->key = &r_key;
+	}
+	
 
 	/* Verbose mode. */
 	if (has_flag(flags, F_VERBOSE)) {
@@ -737,6 +760,8 @@ int main(int argc, char **argv)
 	/* Finish */
 	tsig_key_cleanup(&r_key); /* Not cleaned by config deinit. */
 	log_close();
+	free(config_fn);
+	free(default_config);
 	return rc;
 }
 
@@ -928,6 +953,11 @@ static int cmd_flush(int argc, char *argv[], unsigned flags, int jobs)
 static int cmd_status(int argc, char *argv[], unsigned flags, int jobs)
 {
 	return cmd_remote("status", KNOT_RRTYPE_TXT, 0, NULL);
+}
+
+static int cmd_zonestatus(int argc, char *argv[], unsigned flags, int jobs)
+{
+	return cmd_remote("zonestatus", KNOT_RRTYPE_TXT, 0, NULL);
 }
 
 static int cmd_checkconf(int argc, char *argv[], unsigned flags, int jobs)

@@ -53,8 +53,7 @@ typedef enum {
 
 /*! \brief Log sources (max. LOG_SRC_BITS bits). */
 typedef enum {
-	LOG_SERVER = 0, /*!< Server module. */
-	LOG_ANSWER = 1, /*!< Query answering module. */
+	LOG_SERVER = 1, /*!< Server module. */
 	LOG_ZONE   = 2, /*!< Zone manipulation module. */
 	LOG_ANY    = 7  /*!< Any module. */
 } logsrc_t;
@@ -189,19 +188,21 @@ void hex_log(int source, const char *data, int length);
 #define log_server_info(msg...)      log_msg(LOG_SERVER, LOG_INFO, msg)
 #define log_server_debug(msg...)     log_msg(LOG_SERVER, LOG_DEBUG, msg)
 
-#define log_answer_fatal(msg...)     log_msg(LOG_ANSWER, LOG_FATAL, msg)
-#define log_answer_error(msg...)     log_msg(LOG_ANSWER, LOG_ERR, msg)
-#define log_answer_warning(msg...)   log_msg(LOG_ANSWER, LOG_WARNING, msg)
-#define log_answer_notice(msg...)    log_msg(LOG_ANSWER, LOG_NOTICE, msg)
-#define log_answer_info(msg...)      log_msg(LOG_ANSWER, LOG_INFO, msg)
-#define log_answer_debug(msg...)     log_msg(LOG_ANSWER, LOG_DEBUG, msg)
-
 #define log_zone_fatal(msg...)       log_msg(LOG_ZONE, LOG_FATAL, msg)
 #define log_zone_error(msg...)       log_msg(LOG_ZONE, LOG_ERR, msg)
 #define log_zone_warning(msg...)     log_msg(LOG_ZONE, LOG_WARNING, msg)
 #define log_zone_notice(msg...)      log_msg(LOG_ZONE, LOG_NOTICE, msg)
 #define log_zone_info(msg...)        log_msg(LOG_ZONE, LOG_INFO, msg)
 #define log_zone_debug(msg...)       log_msg(LOG_ZONE, LOG_DEBUG, msg)
+
+/*!
+ * \brief Update open files ownership.
+ * \param uid New owner id.
+ * \param gid New group id.
+ * \retval KNOT_EOK if success
+ * \retval KNOT_ERROR on error
+ */
+int log_update_privileges(int uid, int gid);
 
 #endif /* _KNOTD_LOG_H_ */
 

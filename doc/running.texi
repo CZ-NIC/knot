@@ -13,9 +13,9 @@ effort, so each time the zone file changes you need to compile it.
 @example
 $ knotc -c knot.conf compile
 @end example
-Or alternatively, you can compile automatically using the @code{-a} flag.
+Knot DNS automatically compiles zones on some actions (@code{start|restart}).
 @example
-$ knotc -a -c knot.conf start|reload|restart
+$ knotc -c knot.conf start|reload|restart
 @end example
 
 The tool @code{knotc} is designed as a front-end for user, making it easier
@@ -40,8 +40,6 @@ Parameters:
         Wait for the server to finish start/stop operations.
  -i, --interactive          
         Interactive mode (do not daemonize).
- -a, --auto                 
-        Enable automatic recompilation (start or reload).
  -h, --help                 
         Print help and usage.
 
@@ -129,7 +127,8 @@ When the server is running, you can control the daemon, see @ref{Controlling run
 @section Running a master server
 
 Knot DNS first needs to compile the zones before it can load them, therefore you need to
-compile them with the @code{knotc compile} action or use flag @code{-a} to compile the zones automatically.
+compile them with the @code{knotc compile} action.
+Some actions like @code{start} or @code{restart} compile zones automatically.
 
 If you want to just check the zone files first before starting,
 you can use @code{knotc checkzone} action.
@@ -146,7 +145,7 @@ $ knotc -w -c master.conf start
 Or you can compile it automatically:
 @example
 $ knotc -c master.conf checkconf # check configuration
-$ knotc -a -w -c master.conf start
+$ knotc -w -c master.conf start
 @end example
 
 @node Controlling running daemon
@@ -162,12 +161,7 @@ $ knotc -c master.conf compile # compile updated zones
 $ knotc -c master.conf reload  # reconfigure and load updated zones
 @end example
 
-Or use the @code{-a} again.
-@example
-$ knotc -a -c master.conf reload # compile zones and reconfigure
-@end example
-
-If you want @emph{IXFR-out} differences created from changes you make to a zone file, enable @code{ixfr-from-differences}
+If you want @emph{IXFR-out} differences created from changes you make to a zone file, enable @ref{ixfr-from-differences}
 in @code{zones} statement, then compile the zone and reload your server as seen above.
 If @emph{SOA}'s @emph{serial} is not changed no differences will be created. Please note
 that this feature is in @emph{experimental} stage and should be used with care.
