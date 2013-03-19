@@ -29,8 +29,8 @@
 /* Enable time-dependent tests. */
 //#define ENABLE_TIMED_TESTS
 #define RRL_SIZE 196613
-#define RRL_THREADS 16
-#define RRL_INSERTS (0.5*(RRL_SIZE/RRL_THREADS)) /* lf = 0.5 */
+#define RRL_THREADS 8 
+#define RRL_INSERTS (0.1*(RRL_SIZE/RRL_THREADS)) /* lf = 0.5 */
 #define RRL_LOCKS 64
 
 struct bucketmap_t {
