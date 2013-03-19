@@ -336,7 +336,8 @@ void knot_zone_tree_free(knot_zone_tree_t **tree)
 	if (tree == NULL || *tree == NULL) {
 		return;
 	}
-	hattrie_free((*tree));
+	hattrie_free(*tree);
+	*tree = NULL;
 }
 
 /*----------------------------------------------------------------------------*/

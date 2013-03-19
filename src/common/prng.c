@@ -40,6 +40,7 @@ static void tls_prng_deinit(void *ptr)
 static void tls_prng_deinit_main()
 {
 	tls_prng_deinit(pthread_getspecific(tls_prng_key));
+	(void)pthread_setspecific(tls_prng_key, NULL);
 }
 
 static void tls_prng_init()
