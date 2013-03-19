@@ -853,7 +853,6 @@ Knot DNS allows user to choose from these logging categories:
 @itemize
 @item @emph{server} - Messages related to general operation of the server.
 @item @emph{zone} - Messages related to zones, zone parsing and loading.
-@item @emph{answering} - Messages regarding query processing and response creation.
 @item @emph{any} - All categories.
 @end itemize
 
