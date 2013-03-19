@@ -72,21 +72,21 @@ void knot_node_dump(knot_node_t *node)
 	//char loaded_zone = *((char*) data);
 	char *name;
 
-	fprintf(stderr, "------- NODE --------\n");
+	dbg_node_detail("------- NODE --------\n");
 	name = knot_dname_to_str(node->owner);
-	fprintf(stderr, "owner: %s\n", name);
+	dbg_node_detail("owner: %s\n", name);
 	free(name);
-	fprintf(stderr, "labels: ");
+	dbg_node_detail("labels: ");
 	hex_print((char *)node->owner->labels, node->owner->label_count);
-	fprintf(stderr, "node: %p\n", node);
-	fprintf(stderr, "node (in node's owner): %p\n", node->owner->node);
+	dbg_node_detail("node: %p\n", node);
+	dbg_node_detail("node (in node's owner): %p\n", node->owner->node);
 
 	if (knot_node_is_deleg_point(node)) {
-		fprintf(stderr, "delegation point\n");
+		dbg_node_detail("delegation point\n");
 	}
 
 	if (knot_node_is_non_auth(node)) {
-		fprintf(stderr, "non-authoritative node\n");
+		dbg_node_detail("non-authoritative node\n");
 	}
 
 	if (node->parent != NULL) {
@@ -94,62 +94,62 @@ void knot_node_dump(knot_node_t *node)
 		 *        e.g. when applying changesets.
 		 */
 		name = knot_dname_to_str(node->parent->owner);
-		fprintf(stderr, "parent: %s\n", name);
+		dbg_node_detail("parent: %s\n", name);
 		free(name);
 	} else {
-		fprintf(stderr, "no parent\n");
+		dbg_node_detail("no parent\n");
 	}
 
 	if (node->prev != NULL) {
-		fprintf(stderr, "previous node: %p\n", node->prev);
+		dbg_node_detail("previous node: %p\n", node->prev);
 		/*! \todo This causes segfault when prev was free'd,
 		 *        e.g. when applying changesets.
 		 */
 		name = knot_dname_to_str(node->prev->owner);
-		fprintf(stderr, "previous node: %s\n", name);
+		dbg_node_detail("previous node: %s\n", name);
 		free(name);
 	} else {
-		fprintf(stderr, "previous node: none\n");
+		dbg_node_detail("previous node: none\n");
 	}
 
 	knot_rrset_t **rrsets = knot_node_get_rrsets(node);
 
-	fprintf(stderr, "Wildcard child: ");
+	dbg_node_detail("Wildcard child: ");
 
 	if (node->wildcard_child != NULL) {
 		/*! \todo This causes segfault when wildcard child was free'd,
 		 *        e.g. when applying changesets.
 		 */
 		name = knot_dname_to_str(node->wildcard_child->owner);
-		fprintf(stderr, "%s\n", name);
+		dbg_node_detail("%s\n", name);
 		free(name);
 	} else {
-		fprintf(stderr, "none\n");
+		dbg_node_detail("none\n");
 	}
 
-	fprintf(stderr, "NSEC3 node: ");
+	dbg_node_detail("NSEC3 node: ");
 
 	if (node->nsec3_node != NULL) {
 		/*! \todo This causes segfault when n	sec3_node was free'd,
 		 *        e.g. when applying changesets.
 		 */
-		name = knot_dname_to_str(node->nsec3_node->owner);
-		fprintf(stderr, "%s\n", name);
+    		name = knot_dname_to_str(node->nsec3_node->owner);
+		dbg_node_detail("%s\n", name);
 		free(name);
 	} else {
-		fprintf(stderr, "none\n");
+		dbg_node_detail("none\n");
 	}
 	
-	fprintf(stderr, "Zone: %p\n", node->zone);
+	dbg_node_detail("Zone: %p\n", node->zone);
 
-	fprintf(stderr, "RRSet count: %d\n", node->rrset_count);
+	dbg_node_detail("RRSet count: %d\n", node->rrset_count);
 
 	for (int i = 0; i < node->rrset_count; i++) {
 		knot_rrset_dump(rrsets[i]);
 	}
 	free(rrsets);
 	//assert(node->owner->node == node);
-	fprintf(stderr, "------- NODE --------\n");
+	dbg_node_detail("------- NODE --------\n");
 #endif
 }
 
@@ -157,20 +157,20 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone)
 {
 #if defined(KNOT_ZONE_DEBUG)
 	if (!zone) {
-		fprintf(stderr, "------- STUB ZONE --------\n");
+		dbg_zone_detail("------- STUB ZONE --------\n");
 		return;
 	}
 
-	fprintf(stderr, "------- ZONE --------\n");
+	dbg_zone_detail("------- ZONE --------\n");
 
 	knot_zone_contents_tree_apply_inorder(zone, knot_node_dump, NULL);
 
-	fprintf(stderr, "------- ZONE --------\n");
+	dbg_zone_detail("------- ZONE --------\n");
 	
-	fprintf(stderr, "------- NSEC 3 tree -\n");
+	dbg_zone_detail("------- NSEC 3 tree -\n");
 
 	knot_zone_contents_nsec3_apply_inorder(zone, knot_node_dump, NULL);
 
-	fprintf(stderr, "------- NSEC 3 tree -\n");
+	dbg_zone_detail("------- NSEC 3 tree -\n");
 #endif
 }
