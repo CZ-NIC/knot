@@ -1269,10 +1269,10 @@ static int knot_ddns_add_rr_merge_normal(knot_rrset_t *node_rrset_copy,
 		dbg_ddns("Failed to merge UPDATE RR to node RRSet: %s."
 		         "\n", knot_strerror(ret));
 		return ret;
-	} else if (ret > 0) {
-		knot_rrset_deep_free(rr_copy, 1, 0);
 	}
-	//LS this will not work: Merge does not return count of merged RRs
+
+	knot_rrset_deep_free(rr_copy, 1, 0);
+	
 
 	if (rdata_in_copy == ret) {
 		/* All RDATA have been removed, because they were duplicates
@@ -1333,9 +1333,9 @@ static int knot_ddns_add_rr_merge_rrsig(knot_rrset_t *node_rrset_copy,
 			dbg_xfrin("Failed to merge UPDATE RRSIG to copy: %s.\n",
 			          knot_strerror(ret));
 			return KNOT_ERROR;
-		} else if (ret > 0) {
-			knot_rrset_deep_free(rr_copy, 1, 0);
 		}
+		knot_rrset_deep_free(rr_copy, 1, 0);
+		
 
 		if (rdata_in_copy == ret) {
 			/* All RDATA have been removed, because they were
@@ -1422,6 +1422,7 @@ static int knot_ddns_add_rr(knot_node_t *node, const knot_rrset_t *rr,
 			dbg_ddns("Failed to add new RR to node.\n");
 			return ret;
 		}
+		dbg_ddns_detail("RRSet added successfully.\n");
 	} else {
 		/* We have copied the RRSet from the node. */
 dbg_ddns_exec_detail(
@@ -1746,7 +1747,7 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 	/* If we removed NS from apex, there should be at least one more. */
 	assert(!is_apex || type != KNOT_RRTYPE_NS 
 	       || knot_rrset_rdata_rr_count(rrset_copy));
-
+	
 	/*
 	 * 3) Store the removed RDATA in 'changes'.
 	 */
@@ -1769,7 +1770,7 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 			knot_rrset_t *rrsig = knot_rrset_get_rrsigs(rrset_copy);
 			dbg_xfrin_detail("Removed RRSIG RRSet (%p).\n", rrsig);
 			
-			assert(rrsig == to_modify);
+			assert(rrsig && rrsig == to_modify);
 
 			// add the removed RRSet to list of old RRSets
 			changes->old_rrsets[changes->old_rrsets_count++]
