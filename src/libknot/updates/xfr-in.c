@@ -1269,28 +1269,26 @@ int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 			return ret;
 		}
 
-		if ((*copy)->rdata_count != 0) {
-			// add the copied RDATA to the list of new RDATA
-			ret = knot_changes_rdata_reserve(&changes->new_rdata,
-							 changes->new_rdata_count,
-							 &changes->new_rdata_allocated,
-							 count);
-			if (ret != KNOT_EOK) {
-				dbg_xfrin("Failed to add new RRSet to list.\n");
-				knot_rrset_deep_free(copy, 1, 1);		
-				return ret;
-			}
-
-                        dbg_xfrin_detail("Adding RDATA from the RRSet copy to new RDATA list."
-                                 "\n");
-                        knot_changes_add_rdata(changes->new_rdata,
-                                    &changes->new_rdata_count,
-                                    *copy);
+	
+		// add the copied RDATA to the list of new RDATA
+		ret = knot_changes_rdata_reserve(&changes->new_rdata,
+						 changes->new_rdata_count,
+						 &changes->new_rdata_allocated,
+						 count);
+		if (ret != KNOT_EOK) {
+			dbg_xfrin("Failed to add new RRSet to list.\n");
+			knot_rrset_deep_free(copy, 1, 1);
+			return ret;
 		}
-		
 	
 		changes->new_rrsets[changes->new_rrsets_count++] = *copy;
 	
+		dbg_xfrin_detail("Adding RDATA from the RRSet copy to new RDATA list."
+				 "\n");
+		knot_changes_add_rdata(changes->new_rdata,
+					&changes->new_rdata_count,
+					*copy);
+
 		if ((*copy)->rrsigs != NULL) {
 			assert(old->rrsigs != NULL);
 			changes->new_rrsets[changes->new_rrsets_count++] =
@@ -1298,11 +1296,9 @@ int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 	
 			dbg_xfrin_detail("Adding RDATA from RRSIG of the RRSet copy to "
 					 "new RDATA list.\n");
-			if ((*copy)->rrsigs && (*copy)->rrsigs->rdata_count) {
-				knot_changes_add_rdata(changes->new_rdata,
-							&changes->new_rdata_count,
-							(*copy)->rrsigs);
-			}
+			knot_changes_add_rdata(changes->new_rdata,
+						&changes->new_rdata_count,
+						(*copy)->rrsigs);
 		}
 	}
 	
@@ -1330,7 +1326,6 @@ int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 	changes->old_rrsets[changes->old_rrsets_count++] = old;
 
 	dbg_xfrin_detail("Adding RDATA from old RRSet to old RDATA list.\n");
-//	assert(old->rdata_count != 0); Fails, why?
 	knot_changes_add_rdata(changes->old_rdata, &changes->old_rdata_count,
 	                       old);
 
@@ -1484,20 +1479,18 @@ static int xfrin_apply_remove_rrsigs(knot_changes_t *changes,
 	}
 	/*!< \todo This RRSet will be created even when nothing was removed. */
 	assert(rr_removed);
-	
-	if (rr_removed->rdata_count != 0) {
-		int count = 1;//knot_rrset_rdata_rr_count(rr_removed);
-		// connect the RDATA to the list of old RDATA
-		ret = knot_changes_rdata_reserve(&changes->old_rdata,
-		                                 changes->old_rdata_count,
-	        	                         &changes->old_rdata_allocated, count);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
 
-		knot_changes_add_rdata(changes->old_rdata, &changes->old_rdata_count,
-			               rr_removed);
+	int count = 1;//knot_rrset_rdata_rr_count(rr_removed);
+	// connect the RDATA to the list of old RDATA
+	ret = knot_changes_rdata_reserve(&changes->old_rdata,
+	                                 changes->old_rdata_count,
+	                                 &changes->old_rdata_allocated, count);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
+
+	knot_changes_add_rdata(changes->old_rdata, &changes->old_rdata_count,
+	                       rr_removed);
 	
 	// if the RRSet is empty, remove from node and add to old RRSets
 	// check if there is no RRSIGs; if there are, leave the RRSet
@@ -1801,7 +1794,6 @@ dbg_xfrin_exec_verb(
 			return ret;
 		}
 		
-		assert(rrsets[i]->rdata_count != 0);
 		knot_changes_add_rdata(changes->old_rdata,
 					&changes->old_rdata_count,
 					rrsets[i]);
@@ -1907,7 +1899,6 @@ int xfrin_replace_rrset_in_node(knot_node_t *node,
 
 	dbg_xfrin_verb("Adding RDATA from old RRSet to the list of old RDATA."
 	               "\n");
-	assert(rrset_old->rdata_count != 0);
 	knot_changes_add_rdata(changes->old_rdata, &changes->old_rdata_count,
 	                       rrset_old);
 
@@ -1929,7 +1920,6 @@ int xfrin_replace_rrset_in_node(knot_node_t *node,
 
 	dbg_xfrin_verb("Adding RDATA from new RRSet to the list of new RDATA."
 	               "\n");
-	assert(rrset_new->rdata_count != 0);
 	knot_changes_add_rdata(changes->new_rdata, &changes->new_rdata_count,
 	                       rrset_new);
 
@@ -2325,6 +2315,11 @@ dbg_xfrin_exec_detail(
 void xfrin_cleanup_successful_update(knot_changes_t **changes)
 {
 	for (int i = 0; i < (*changes)->old_rrsets_count; ++i) {	
+		//TODO temporary fix!
+		if ((*changes)->old_rrsets[i] == NULL) {
+			log_server_warning("NULL RRSet to be freed in DDNS!\n");
+			continue;
+		}
 		if ((*changes)->old_rrsets[i]->rdata_count == 0) {
 dbg_xfrin_exec_detail(
 			char *name = knot_dname_to_str((*changes)->old_rrsets[i]->owner);
@@ -2476,19 +2471,37 @@ void xfrin_rollback_update(knot_zone_contents_t *old_contents,
 	dbg_xfrin("Rolling back changeset application.\n");
 
 	if (*changes != NULL) {
-		for (int i = 0; i < (*changes)->new_rdata_count; ++i) {
-			if ((*changes)->new_rdata[i]->rdata_count) {
-				/* If there are no RDATA, they've been removed after insertion to this list. */
-				knot_rrset_deep_free_no_sig(&(*changes)->new_rdata[i], 1, 1);
+		// discard new RRSets
+		for (int i = 0; i < (*changes)->new_rrsets_count; ++i) {
+			//knot_rrset_deep_free(&changes->new_rrsets[i], 0, 1, 1);
+			if ((*changes)->new_rrsets[i]->rdata_count == 0) {
+				knot_rrset_free(&(*changes)->new_rrsets[i]);
 			}
 		}
 
-		// discard new RRSets
-		for (int i = 0; i < (*changes)->new_rrsets_count; ++i) {
-			if ((*changes)->new_rrsets[i]->rdata_count == 0) {
-				/* TODO: Would result in a double free if adding and removing identical RR via update. */
-//				knot_rrset_free(&(*changes)->new_rrsets[i]);
-			}
+		for (int i = 0; i < (*changes)->new_rdata_count; ++i) {
+			dbg_xfrin_detail("Freeing %d. RDATA: %p\n", i,
+			                 (*changes)->new_rdata[i]);
+
+			/*
+			 * In some case, the same RDATA may be stored in
+			 * different positions in different RDATA chains, so
+			 * some ivalid reads occur.
+			 *
+			 * More precisely, the same chain is stored multiple
+			 * times, but starting from different RDATA.
+			 *
+			 * We may check every RDATA against every one
+			 * already deleted, but that may be very time-consuming.
+			 */
+
+			/*
+			 * Every RDATA from a chain is stored separately.
+			 * We thus do not follow the RDATA chains and free only
+			 * the first RDATA in each.
+			 */
+
+			knot_rrset_deep_free_no_sig(&(*changes)->new_rdata[i], 1, 1);
 		}
 
 		// free allocated arrays of nodes and rrsets
@@ -2718,8 +2731,7 @@ dbg_xfrin_exec_detail(
 				if (res != KNOT_EOK) {
 					return res;
 				}
-				
-				assert(chset->add[i]->rdata_count != 0);
+
 				knot_changes_add_rdata(changes->new_rdata,
 				            &changes->new_rdata_count,
 				            chset->add[i]);
