@@ -248,8 +248,8 @@ libknots_la_SOURCES =				\
 	common/fdset_kqueue.c			\
 	common/fdset_epoll.h			\
 	common/fdset_epoll.c			\
-	common/getline_wrap.h			\
-	common/getline_wrap.c			\
+	common/getline.h			\
+	common/getline.c			\
 	common/log.c				\
 	common/log.h				\
 	common/hattrie/ahtable.c		\

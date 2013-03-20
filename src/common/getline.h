@@ -14,34 +14,21 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file getline_wrap.h
+ * \file getline.h
  *
  * \author Daniel Salzman <daniel.salzman@nic.cz>
+ * \author Jan Vcelak <jan.vcelak@nic.cz>
  *
- * \brief getline wrapper.
+ * \brief Multiplatform getline wrapper.
  *
  * \addtogroup common_lib
  * @{
  */
 
-#ifndef _KNOTD_COMMON_GETLINE_WRAP_H_
-#define _KNOTD_COMMON_GETLINE_WRAP_H_
+#ifndef _GETLINE_H_
+#define _GETLINE_H_
 
-#include <stdio.h>		// size_t
-
-/*!
- * \brief Reads a line from stream.
- *
- * This wrapper switches between getline (Linux) and fgetln (BSD).
- *
- * \note It is necessary to free buffer after use.
- *
- * \param stream	input stream.
- * \param len		length of output buffer.
- *
- * \retval pointer to a buffer.
- */
-char* getline_wrap(FILE *stream, size_t *len);
+#include <stdio.h>
 
 /*!
  * \brief Reads a line from a stream.
@@ -58,5 +45,4 @@ char* getline_wrap(FILE *stream, size_t *len);
  */
 ssize_t knot_getline(char **lineptr, size_t *n, FILE *stream);
 
-#endif // _KNOTD_COMMON_GETLINE_WRAP_H_
-
+#endif // _GETLINE_H_

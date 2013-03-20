@@ -25,7 +25,7 @@
 
 #include "binary.h"
 #include "common.h"
-#include "common/getline_wrap.h"
+#include "common/getline.h"
 #include "dname.h"
 #include "sign/key.h"
 #include "sign/sig0.h"

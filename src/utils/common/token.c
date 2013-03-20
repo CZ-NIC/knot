@@ -22,7 +22,7 @@
 #include <string.h>			// memcmp
 
 #include "common/errcode.h"		// KNOT_EOK
-#include "common/getline_wrap.h"	// getline_wrap
+#include "common/getline.h"		// knot_getline
 #include "utils/common/msg.h"		// ERR
 
 int tok_scan(const char* lp, const char **tbl, int *lpm)
@@ -123,13 +123,14 @@ int tok_process_lines(FILE *fp, lparse_f cb, void *arg)
 	
 	/* Parse lines. */
 	char *buf = NULL;
-	size_t rb = 0;
-	while ((buf = getline_wrap(fp, &rb)) != NULL && rb > 0) {
+	size_t buflen = 0;
+	ssize_t rb = 0;
+	while ((rb = knot_getline(&buf, &buflen, fp)) != -1) {
 		ret = cb(buf, rb, arg);
-		free(buf);
 		if (ret != KNOT_EOK) break;
 	}
-	
+
+	free(buf);
 	return ret;
 }
 

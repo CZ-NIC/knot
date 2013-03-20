@@ -98,8 +98,8 @@ src/common/errcode.h
 src/common/errcode.c
 src/common/errors.h
 src/common/errors.c
-src/common/getline_wrap.h
-src/common/getline_wrap.c
+src/common/getline.h
+src/common/getline.c
 src/common/acl.c
 src/common/acl.h
 src/common/sockaddr.h
