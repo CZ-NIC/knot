@@ -922,10 +922,10 @@ int knot_rrset_add_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs,
 		if (dupl == KNOT_RRSET_DUPL_MERGE) {
 			rc = knot_rrset_merge_no_dupl((void **)&rrset->rrsigs,
 			                              (void **)&rrsigs);
-			if (rc != KNOT_EOK) {
-				return rc;
-			} else {
+			if (rc > 0) {
 				return 1;
+			} else {
+				return rc;
 			}
 		} else if (dupl == KNOT_RRSET_DUPL_SKIP) {
 			return 2;
@@ -1498,11 +1498,8 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
 	}
 	
 	if (free_rdata_dnames) {
-		int ret = rrset_dnames_apply(*rrset, rrset_release_dnames_in_rr,
-		                             NULL);
-		if (ret != KNOT_EOK) {
-			dbg_rrset("rr: deep_free: Could not free DNAMEs in RDATA.\n");
-		}
+		rrset_dnames_apply(*rrset, rrset_release_dnames_in_rr,
+	                           NULL);
 	}
 	
 	free((*rrset)->rdata);
@@ -1630,6 +1627,7 @@ dbg_rrset_exec_detail(
 		return KNOT_EINVAL;
 	}
 	
+	int merged = 0;
 	/* For each item in second RRSet, make sure it is not duplicated. */
 	for (uint16_t i = 0; i < rrset2->rdata_count; i++) {
 		int duplicated = 0;
@@ -1641,6 +1639,7 @@ dbg_rrset_exec_detail(
 		}
 		
 		if (!duplicated) {
+			merged++;
 			// This index goes to merged RRSet.
 			int ret = knot_rrset_add_rdata(rrset1,
 			                               rrset_rdata_pointer(rrset2, i),
@@ -1654,7 +1653,7 @@ dbg_rrset_exec_detail(
 		}
 	}
 	
-	return KNOT_EOK;
+	return merged;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2604,6 +2603,7 @@ int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
 	}
 	/* Reset RDATA of returned RRSet. */
 	knot_rrset_rdata_reset(return_rr);
+	return_rr->rrsigs = NULL;
 
 	for (uint16_t i = 0; i < what->rdata_count; ++i) {
 		/*
@@ -2659,18 +2659,22 @@ int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
 int knot_rrset_remove_rr_using_rrset_del(knot_rrset_t *from,
                                          const knot_rrset_t *what)
 {
-	for (uint16_t i = 0; i < what->rdata_count; ++i) {
-		int ret = knot_rrset_remove_rr(from, what, i);
-		if (ret != KNOT_ENOENT || ret != KNOT_EOK) {
-			/* NOENT is OK, but other errors are not. */
-			dbg_rrset("rrset: remove_rr_using_rrset: "
-			          "RRSet removal failed (%s).\n",
-			          knot_strerror(ret));
-			return ret;
-		}
-	}
+	knot_rrset_t *rr_removed = NULL;
+	int ret = knot_rrset_remove_rr_using_rrset(from, what, &rr_removed, 0);
+	knot_rrset_deep_free(&rr_removed, 1, 1);
+	return ret;
+//	for (uint16_t i = 0; i < what->rdata_count; ++i) {
+//		int ret = knot_rrset_remove_rr(from, what, i);
+//		if (ret != KNOT_ENOENT || ret != KNOT_EOK) {
+//			/* NOENT is OK, but other errors are not. */
+//			dbg_rrset("rrset: remove_rr_using_rrset: "
+//			          "RRSet removal failed (%s).\n",
+//			          knot_strerror(ret));
+//			return ret;
+//		}
+//	}
 	
-	return KNOT_EOK;
+//	return KNOT_EOK;
 }
 
 void knot_rrset_set_class(knot_rrset_t *rrset, uint16_t rclass)
