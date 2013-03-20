@@ -466,12 +466,7 @@ int knot_changes_rdata_reserve(knot_rrset_t ***rdatas,
 void knot_changes_add_rdata(knot_rrset_t **rdatas, int *count,
                             knot_rrset_t *rrset)
 {
-	if (rdatas == NULL || count == NULL || rrset == NULL) {
-		return;
-	}
-	
-	if (rrset->rdata_count == 0) {
-		dbg_xfrin("Inserting empty RDATA!\n");
+	if (rdatas == NULL || count == NULL || rrset == NULL || rrset->rdata_count == 0) {
 		return;
 	}
 	
@@ -524,7 +519,6 @@ int knot_changes_add_old_rrsets(knot_rrset_t **rrsets, int count,
 			}
 	
 			/* Remove old RDATA. */
-			
 			ret = knot_changes_rdata_reserve(&changes->old_rdata,
 			                          changes->old_rdata_count,
 			                          &changes->old_rdata_allocated,
@@ -546,7 +540,9 @@ int knot_changes_add_old_rrsets(knot_rrset_t **rrsets, int count,
 		/* Disconnect RRsigs from rrset. */
 		knot_rrset_set_rrsigs(rrsets[i], NULL);
 		changes->old_rrsets[changes->old_rrsets_count++] = rrsets[i];
-		changes->old_rrsets[changes->old_rrsets_count++] = rrsigs;
+		if (rrsigs) {
+			changes->old_rrsets[changes->old_rrsets_count++] = rrsigs;
+		}
 	}
 
 	return KNOT_EOK;
@@ -580,11 +576,10 @@ int knot_changes_add_new_rrsets(knot_rrset_t **rrsets, int count,
 		}
 		
 		if (add_rdata) {
-			int rdata_count = knot_rrset_rdata_rr_count(rrsets[i]);
 			ret = knot_changes_rdata_reserve(&changes->new_rdata,
 			                          changes->new_rdata_count,
 			                          &changes->new_rdata_allocated,
-			                          rdata_count);
+			                          1);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
