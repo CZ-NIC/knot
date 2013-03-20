@@ -17,8 +17,11 @@
 #include "knot/zone/zone-dump.h"
 
 #include <config.h>
+#include <inttypes.h>
 
 #include "common/descriptor_new.h"
+#include "knot/conf/conf.h"
+#include "knot/server/zones.h"
 #include "libknot/libknot.h"
 
 /*! \brief Size of auxiliary buffer. */
@@ -26,10 +29,11 @@
 
 /*! \brief Dump parameters. */
 typedef struct {
-	int    ret;
-	FILE   *file;
-	char   *buf;
-	size_t buflen;
+	int      ret;
+	FILE     *file;
+	char     *buf;
+	size_t   buflen;
+	uint64_t rr_count;
 	const knot_dname_t *origin;
 	const knot_dump_style_t *style;
 } dump_params_t;
@@ -44,6 +48,10 @@ static void apex_node_dump_text(knot_node_t *node, dump_params_t *params)
 		params->ret = KNOT_ENOMEM;
 		return;
 	}
+	params->rr_count += rr->rdata_count;
+	if (rr->rrsigs != NULL) {
+		params->rr_count += rr->rrsigs->rdata_count;
+	}
 	fprintf(params->file, "%s", params->buf);
 
 	const knot_rrset_t **rrsets = knot_node_rrsets(node);
@@ -57,6 +65,11 @@ static void apex_node_dump_text(knot_node_t *node, dump_params_t *params)
 				params->ret = KNOT_ENOMEM;
 				free(rrsets);
 				return;
+			}
+			params->rr_count += rrsets[i]->rdata_count;
+			if (rrsets[i]->rrsigs != NULL) {
+				params->rr_count +=
+					rrsets[i]->rrsigs->rdata_count;
 			}
 			fprintf(params->file, "%s", params->buf);
 		}
@@ -87,6 +100,10 @@ static void node_dump_text(knot_node_t *node, void *data)
 			free(rrsets);
 			return;
 		}
+		params->rr_count += rrsets[i]->rdata_count;
+		if (rrsets[i]->rrsigs != NULL) {
+			params->rr_count += rrsets[i]->rrsigs->rdata_count;
+		}
 		fprintf(params->file, "%s", params->buf);
 	}
 
@@ -108,7 +125,7 @@ int zone_dump_text(knot_zone_contents_t *zone, FILE *file)
 		return KNOT_ENOMEM;
 	}
 
-	fprintf(file, ";; Dumped using Knot DNS %s\n", PACKAGE_VERSION);
+	fprintf(file, ";; Zone dump (Knot DNS %s)\n", PACKAGE_VERSION);
 
 	// Set structure with parameters.
 	dump_params_t params;
@@ -116,6 +133,7 @@ int zone_dump_text(knot_zone_contents_t *zone, FILE *file)
 	params.file = file;
 	params.buf = buf;
 	params.buflen = DUMP_BUF_LEN;
+	params.rr_count = 0;
 	params.origin = knot_node_owner(knot_zone_contents_apex(zone));
 	params.style = &KNOT_DUMP_STYLE_DEFAULT;
 
@@ -130,7 +148,34 @@ int zone_dump_text(knot_zone_contents_t *zone, FILE *file)
 	if (params.ret != KNOT_EOK) {
 		return params.ret;
 	}
-	
+
+	// Create formated date-time string.
+	time_t now = time(NULL);
+	struct tm tm;
+	localtime_r(&now, &tm);
+	char date[64];
+	strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S %Z", &tm);
+
+	// Get master information.
+	int  port = -1;
+	char addr[INET6_ADDRSTRLEN] = "NULL";
+
+	sockaddr_t *master = &((zonedata_t *)zone->zone->data)->xfr_in.master;
+
+	if (master->family == AF_INET) {
+		port = ntohs(master->addr4.sin_port);
+		inet_ntop(AF_INET, &master->addr4.sin_addr, addr, sizeof(addr));
+	} else { // AF_INET6
+		port = ntohs(master->addr6.sin6_port);
+		inet_ntop(AF_INET6, &master->addr6.sin6_addr, addr, sizeof(addr));
+	}
+
+	// Dump trailing statistics.
+	fprintf(file, ";; Written %"PRIu64" records\n"
+	              ";; Transfered from %s#%i\n"
+	              ";; On %s\n",
+	        params.rr_count, addr, port, date);
+
 	free(buf);
 
 	return KNOT_EOK;
