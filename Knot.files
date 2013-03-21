@@ -20,12 +20,6 @@ src/libknot/edns.c
 src/libknot/nsec3.h
 src/libknot/nsec3.c
 src/libknot/consts.h
-src/libknot/hash/cuckoo-hash-table.c
-src/libknot/hash/cuckoo-hash-table.h
-src/libknot/hash/hash-functions.c
-src/libknot/hash/hash-functions.h
-src/libknot/hash/universal-system.c
-src/libknot/hash/universal-system.h
 src/libknot/nameserver/name-server.c
 src/libknot/nameserver/name-server.h
 src/libknot/packet/packet.h

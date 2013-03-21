@@ -162,12 +162,6 @@ libknot_la_SOURCES =				\
 	libknot/zone/node.c			\
 	libknot/zone/zone-diff.h		\
 	libknot/zone/zone-diff.c		\
-	libknot/hash/hash-functions.c		\
-	libknot/hash/cuckoo-hash-table.c	\
-	libknot/hash/universal-system.c		\
-	libknot/hash/universal-system.h		\
-	libknot/hash/cuckoo-hash-table.h	\
-	libknot/hash/hash-functions.h		\
 	libknot/nameserver/name-server.h	\
 	libknot/nameserver/name-server.c	\
 	libknot/updates/changesets.h		\
