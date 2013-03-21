@@ -16,7 +16,7 @@
 
 // FreeBSD POSIX2008 getline
 #ifndef _WITH_GETLINE
-	#define _WITH_GETLINE
+#define _WITH_GETLINE
 #endif
 
 #include "common/getline.h"
@@ -31,7 +31,8 @@ ssize_t knot_getline(char **lineptr, size_t *n, FILE *stream)
 {
 #ifdef HAVE_GETLINE
 	return getline(lineptr, n, stream);
-#elif HAVE_FGETLN
+#else
+#ifdef HAVE_FGETLN
 	size_t length = 0;
 	char *buffer = fgetln(stream, &length);
 	if (buffer == NULL) {
@@ -56,5 +57,6 @@ ssize_t knot_getline(char **lineptr, size_t *n, FILE *stream)
 	*n = length;
 
 	return length;
+#endif
 #endif
 }
