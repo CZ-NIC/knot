@@ -38,6 +38,7 @@
 #include "packet/response.h"
 #include "rrset.h"
 #include "rrset-dump.h"
+#include "sign/key.h"
 #include "tsig.h"
 #include "tsig-op.h"
 #include "util/tolower.h"

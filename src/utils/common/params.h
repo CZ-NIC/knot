@@ -32,7 +32,6 @@
 
 #include "libknot/libknot.h"
 #include "common/lists.h"		// list
-#include "libknot/sign/key.h"		// knot_params_key_t
 
 #define DEFAULT_IPV4_NAME	"127.0.0.1"
 #define DEFAULT_IPV6_NAME	"::1"
@@ -113,7 +112,7 @@ int params_parse_bufsize(const char *value, int32_t *dst);
 
 int params_parse_tsig(const char *value, knot_key_params_t *key_params);
 
-int params_parse_keyfile(const char *filename, knot_key_params_t *key_params);
+int params_parse_keyfile(const char *value, knot_key_params_t *key_params);
 
 #endif // _UTILS__PARAMS_H_
 

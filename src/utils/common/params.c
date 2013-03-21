@@ -34,41 +34,6 @@
 #define IPV4_REVERSE_DOMAIN	"in-addr.arpa."
 #define IPV6_REVERSE_DOMAIN	"ip6.arpa."
 
-static knot_dname_t* create_fqdn_from_str(const char *str, size_t len)
-{
-	knot_dname_t *d = NULL;
-	if (str[len - 1] != '.') {
-		char *fqdn = strcdup(str, ".");
-		d = knot_dname_new_from_str(fqdn, len + 1, NULL);
-		free(fqdn);
-	} else {
-		d = knot_dname_new_from_str(str, len, NULL);
-	}
-	return d;
-}
-
-/* Table of known keys in private-key-format */
-static const char *pkey_tbl[] = {
-	"\x09" "Activate:",
-	"\x0a" "Algorithm:",
-	"\x05" "Bits:",
-	"\x08" "Created:",
-	"\x04" "Key:",
-	"\x13" "Private-key-format:",
-	"\x08" "Publish:",
-	NULL
-};
-
-enum {
-	T_PKEY_ACTIVATE = 0,
-	T_PKEY_ALGO,
-	T_PKEY_BITS,
-	T_PKEY_CREATED,
-	T_PKEY_KEY,
-	T_PKEY_FORMAT,
-	T_PKEY_PUBLISH
-};
-
 char* get_reverse_name(const char *name)
 {
 	struct in_addr	addr4;
@@ -368,10 +333,16 @@ int params_parse_tsig(const char *value, knot_key_params_t *key_params)
 	return KNOT_EOK;
 }
 
-int params_parse_keyfile(const char *filename, knot_key_params_t *key_params)
+int params_parse_keyfile(const char *value, knot_key_params_t *key_params)
 {
-	if (key_params->name)
-		knot_free_key_params(key_params);
+	if (value == NULL || key_params == NULL) {
+		DBG_NULL;
+		return KNOT_EINVAL;
+	}
 
-	return knot_load_key_params(filename, key_params);
+	if (key_params->name) {
+		knot_free_key_params(key_params);
+	}
+
+	return knot_load_key_params(value, key_params);
 }
