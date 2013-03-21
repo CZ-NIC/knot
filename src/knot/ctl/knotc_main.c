@@ -485,7 +485,7 @@ int main(int argc, char **argv)
 	const char *r_addr = NULL;
 	int r_port = -1;
 	knot_tsig_key_t r_key;
-	memset(&r_key, 0, sizeof(knot_key_t));
+	memset(&r_key, 0, sizeof(knot_tsig_key_t));
 	
 	/* Initialize. */
 	log_init();
@@ -651,7 +651,7 @@ int main(int argc, char **argv)
 	}
 	if (r_port > -1) ctl_if->port = r_port;
 	if (r_key.name != NULL) {
-		tsig_key_cleanup(ctl_if->key);
+		knot_tsig_key_free(ctl_if->key);
 		ctl_if->key = &r_key;
 	}
 	
