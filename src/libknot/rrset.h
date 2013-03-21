@@ -538,6 +538,7 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
                                    const uint8_t *wire, size_t *pos,
                                    size_t total_size, size_t rdlength);
 
+int knot_rrset_ds_check(const knot_rrset_t *rrset);
 #endif /* _KNOT_RRSET_H_ */
 
 /*! @} */

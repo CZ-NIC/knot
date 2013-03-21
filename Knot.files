@@ -76,8 +76,8 @@ src/common/libtap/tap.h
 src/common/libtap/tap_unit.h
 src/common/mempattern.c
 src/common/mempattern.h
-src/common/descriptor_new.c
-src/common/descriptor_new.h
+src/common/descriptor.c
+src/common/descriptor.h
 src/common/lists.h
 src/common/lists.c
 src/common/heap.h

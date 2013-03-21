@@ -115,24 +115,35 @@ enum knot_rdata_wireformat {
 	KNOT_RDATA_WF_END                =   0,
 };
 
-/*! \brief Constants for DNSSEC algorithm types.
+/*!
+ * \brief DNSSEC Algorithm Numbers
  *
- * Source: http://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xml
+ * http://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xml
  */
-enum knot_dnssec_algorithm
-{
+enum knot_dnssec_algorithm {
+	// 0 reserved
 	KNOT_DNSSEC_ALG_RSAMD5 = 1,
 	KNOT_DNSSEC_ALG_DH = 2,
 	KNOT_DNSSEC_ALG_DSA = 3,
+	// 4 reserved
 	KNOT_DNSSEC_ALG_RSASHA1 = 5,
 	KNOT_DNSSEC_ALG_DSA_NSEC3_SHA1 = 6,
 	KNOT_DNSSEC_ALG_RSASHA1_NSEC3_SHA1 = 7,
 	KNOT_DNSSEC_ALG_RSASHA256 = 8,
+	// 9 reserved
 	KNOT_DNSSEC_ALG_RSASHA512 = 10,
+	// 11 reserved
 	KNOT_DNSSEC_ALG_ECC_GOST = 12,
 	KNOT_DNSSEC_ALG_ECDSAP256SHA256 = 13,
-	KNOT_DNSSEC_ALG_ECDSAP384SHA384 = 14
+	KNOT_DNSSEC_ALG_ECDSAP384SHA384 = 14,
+	// 15-122 unassigned
+	// 123-151 reserved
+	// 252 reserved for indirect keys
+	// 253 private algorithm
+	// 254 private algorithm OID
+	// 255 reserved
 };
+typedef enum knot_dnssec_algorithm knot_dnssec_algorithm_t;
 
 /*! \brief Constants for DNSSEC algorithm types.
  *
