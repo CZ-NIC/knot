@@ -157,18 +157,12 @@ int zone_dump_text(knot_zone_contents_t *zone, FILE *file)
 	strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S %Z", &tm);
 
 	// Get master information.
-	int  port = -1;
-	char addr[INET6_ADDRSTRLEN] = "NULL";
-
 	sockaddr_t *master = &((zonedata_t *)zone->zone->data)->xfr_in.master;
 
-	if (master->family == AF_INET) {
-		port = ntohs(master->addr4.sin_port);
-		inet_ntop(AF_INET, &master->addr4.sin_addr, addr, sizeof(addr));
-	} else { // AF_INET6
-		port = ntohs(master->addr6.sin6_port);
-		inet_ntop(AF_INET6, &master->addr6.sin6_addr, addr, sizeof(addr));
-	}
+	int  port = sockaddr_portnum(master);
+	char addr[INET6_ADDRSTRLEN] = "NULL";
+
+	sockaddr_tostr(master, addr, sizeof(addr));
 
 	// Dump trailing statistics.
 	fprintf(file, ";; Written %"PRIu64" records\n"
