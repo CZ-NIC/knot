@@ -1386,6 +1386,8 @@ int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
 
 	(*to)->owner = knot_dname_deep_copy(from->owner);
 	if ((*to)->owner == NULL) {
+		free(*to);
+		*to = NULL;
 		return KNOT_ENOMEM;
 	}
 	
