@@ -36,6 +36,15 @@ static knot_lookup_table_t dns_classes[] = {
 	{ 0, NULL }
 };
 
+/*! \brief DS digest lengths. */
+enum knot_ds_algorithm_len
+{
+	KNOT_DS_DIGEST_LEN_SHA1 = 20,	/* 20B - RFC 3658 */
+	KNOT_DS_DIGEST_LEN_SHA256 = 32,	/* 32B - RFC 4509 */
+	KNOT_DS_DIGEST_LEN_GOST = 32,	/* 32B - RFC 5933 */
+	KNOT_DS_DIGEST_LEN_SHA384 = 48	/* 48B - RFC 6605 */
+};
+
 /*!
  * \brief RR type descriptors.
  */
@@ -280,5 +289,22 @@ int knot_rrtype_is_metatype(const uint16_t type)
 	        type == KNOT_RRTYPE_AXFR ||
 	        type == KNOT_RRTYPE_SIG ||
 	        type == KNOT_RRTYPE_ANY);
+}
+
+
+size_t knot_ds_digest_length(uint8_t algorithm)
+{
+	switch (algorithm) {
+		case KNOT_DS_ALG_SHA1:
+			return KNOT_DS_DIGEST_LEN_SHA1;
+		case KNOT_DS_ALG_SHA256:
+			return KNOT_DS_DIGEST_LEN_SHA256;
+		case KNOT_DS_ALG_GOST:
+			return KNOT_DS_DIGEST_LEN_GOST;
+		case KNOT_DS_ALG_SHA384:
+			return KNOT_DS_DIGEST_LEN_SHA384;
+		default:
+			return 0;
+	}
 }
 
