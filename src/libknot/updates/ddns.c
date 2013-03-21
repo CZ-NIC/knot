@@ -26,7 +26,7 @@
 #include "common/mempattern.h"
 #include "nameserver/name-server.h"  // ns_serial_compare() - TODO: extract
 #include "updates/xfr-in.h"
-#include "common/descriptor_new.h"
+#include "common/descriptor.h"
 
 /*----------------------------------------------------------------------------*/
 // Copied from XFR - maybe extract somewhere else

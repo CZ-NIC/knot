@@ -10,7 +10,7 @@
 #include "libknot/libknot.h"
 #include "common/base32hex.h"
 #include "common/crc.h"
-#include "common/descriptor_new.h"
+#include "common/descriptor.h"
 #include "common/mempattern.h"
 
 #include "semantic-check.h"

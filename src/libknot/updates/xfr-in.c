@@ -30,7 +30,7 @@
 #include "updates/changesets.h"
 #include "tsig.h"
 #include "tsig-op.h"
-#include "common/descriptor_new.h"
+#include "common/descriptor.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */

@@ -40,7 +40,7 @@
 #include "libknot/tsig-op.h"
 #include "common/evsched.h"
 #include "common/prng.h"
-#include "common/descriptor_new.h"
+#include "common/descriptor.h"
 #include "libknot/rrset.h"
 
 /* Constants */

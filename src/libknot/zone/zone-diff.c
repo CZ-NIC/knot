@@ -22,7 +22,7 @@
 #include "common/errcode.h"
 #include "zone-diff.h"
 #include "libknot/nameserver/name-server.h"
-#include "common/descriptor_new.h"
+#include "common/descriptor.h"
 
 struct zone_diff_param {
 	const knot_zone_contents_t *contents;

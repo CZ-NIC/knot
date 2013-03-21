@@ -30,7 +30,7 @@
 #include "common/errcode.h"		// KNOT_EOK
 #include "common/base64.h"		// base64
 #include "common/base32hex.h"		// base32hex
-#include "common/descriptor_new.h"	// KNOT_RRTYPE
+#include "common/descriptor.h"		// KNOT_RRTYPE
 #include "libknot/util/utils.h"		// knot_wire_read_u16
 
 #define TAB_WIDTH		8

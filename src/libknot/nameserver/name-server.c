@@ -31,7 +31,7 @@
 #include "packet/response.h"
 #include "packet/query.h"
 #include "consts.h"
-#include "common/descriptor_new.h"
+#include "common/descriptor.h"
 #include "updates/changesets.h"
 #include "updates/ddns.h"
 #include "tsig-op.h"

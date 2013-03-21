@@ -36,7 +36,7 @@
 #include "libknot/nameserver/name-server.h"
 #include "libknot/updates/changesets.h"
 #include "libknot/tsig-op.h"
-#include "common/descriptor_new.h"
+#include "common/descriptor.h"
 #include "libknot/packet/response.h"
 #include "libknot/zone/zone-diff.h"
 #include "libknot/updates/ddns.h"

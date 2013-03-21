@@ -34,7 +34,6 @@
 #include <urcu.h>
 
 #include "libknot/dname.h"
-#include "libknot/util/descriptor.h"
 #include "libknot/tsig.h"
 #include "common/lists.h"
 #include "common/log.h"

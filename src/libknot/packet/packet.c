@@ -20,7 +20,7 @@
 #include "packet/packet.h"
 #include "util/debug.h"
 #include "common.h"
-#include "common/descriptor_new.h"
+#include "common/descriptor.h"
 #include "util/wire.h"
 #include "tsig.h"
 

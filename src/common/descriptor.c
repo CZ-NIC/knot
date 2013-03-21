@@ -14,7 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "common/descriptor_new.h"
+#include "common/descriptor.h"
 #include "libknot/util/utils.h"		// knot_lookup_table_t
 
 #include <stdio.h>			// snprintf

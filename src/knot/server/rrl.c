@@ -26,7 +26,7 @@
 #include "libknot/util/wire.h"
 #include "common/hattrie/murmurhash3.h"
 #include "common/prng.h"
-#include "common/descriptor_new.h"
+#include "common/descriptor.h"
 #include "common/errors.h"
 
 /* Hopscotch defines. */

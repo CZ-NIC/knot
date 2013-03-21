@@ -28,7 +28,6 @@
 #define _KNOT_CONSTS_H_
 
 #include <stdint.h>
-#include "util/descriptor.h"
 
 /*
  * OPCODEs
@@ -83,18 +82,6 @@ typedef enum knot_tsig_rcode {
 	KNOT_TSIG_RCODE_BADKEY  = 17,
 	KNOT_TSIG_RCODE_BADTIME = 18
 } knot_tsig_rcode_t;
-
-/*
- * CLASSes
- */
-//typedef enum knot_class {
-//	KNOT_CLASS_IN = 1,	/* Class IN */
-//	KNOT_CLASS_CS = 2,	/* Class CS */
-//	KNOT_CLASS_CH = 3,	/* Class CHAOS */
-//	KNOT_CLASS_HS = 4,	/* Class HS */
-//	KNOT_CLASS_NONE = 254,	/* Class NONE rfc2136 */
-//	KNOT_CLASS_ANY = 255	/* Class ANY */
-//} knot_class_t;
 
 /*
  * Other

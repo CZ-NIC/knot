@@ -20,7 +20,7 @@
 
 #include "updates/changesets.h"
 #include "libknot/common.h"
-#include "common/descriptor_new.h"
+#include "common/descriptor.h"
 #include "rrset.h"
 #include "util/debug.h"
 

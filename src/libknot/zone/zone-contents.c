@@ -20,7 +20,7 @@
 #include "util/debug.h"
 #include "libknot/rrset.h"
 #include "common/base32hex.h"
-#include "common/descriptor_new.h"
+#include "common/descriptor.h"
 #include "common/hattrie/hat-trie.h"
 #include "libknot/zone/zone-tree.h"
 #include "consts.h"

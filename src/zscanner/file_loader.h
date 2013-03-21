@@ -29,7 +29,7 @@
 
 #include <stdint.h>			// uint32_t
 
-#include "common/descriptor_new.h"	// KNOT_CLASS_IN
+#include "common/descriptor.h"		// KNOT_CLASS_IN
 #include "zscanner/scanner.h"		// scanner_t
 
 /*! \brief Settings block size in bytes. */

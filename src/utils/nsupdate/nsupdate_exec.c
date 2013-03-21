@@ -30,7 +30,7 @@
 #include "utils/common/token.h"
 #include "common/errcode.h"
 #include "common/mempattern.h"
-#include "common/descriptor_new.h"
+#include "common/descriptor.h"
 #include "libknot/libknot.h"
 
 /* Declarations of cmd parse functions. */

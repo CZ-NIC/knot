@@ -18,7 +18,7 @@
 #include <stdint.h>
 
 #include "tests/libknot/libknot/rrset_tests.h"
-#include "common/descriptor_new.h"
+#include "common/descriptor.h"
 #include "common/errcode.h"
 #include "common/print.h"
 #include "libknot/rrset.h"

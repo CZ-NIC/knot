@@ -20,7 +20,7 @@
 #include <stdlib.h>
 
 #include "common/errcode.h"
-#include "common/descriptor_new.h"
+#include "common/descriptor.h"
 #include "zscanner/scanner.h"
 
 const uint8_t digit_to_num[] = {

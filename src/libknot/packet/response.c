@@ -18,7 +18,6 @@
 
 #include "packet/response.h"
 #include "util/wire.h"
-#include "util/descriptor.h"
 #include "common.h"
 #include "util/debug.h"
 #include "rrset.h"

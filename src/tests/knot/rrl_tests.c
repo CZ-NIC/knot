@@ -23,7 +23,7 @@
 #include "libknot/packet/response.h"
 #include "libknot/packet/query.h"
 #include "libknot/nameserver/name-server.h"
-#include "common/descriptor_new.h"
+#include "common/descriptor.h"
 #include "common/prng.h"
 
 /* Enable time-dependent tests. */

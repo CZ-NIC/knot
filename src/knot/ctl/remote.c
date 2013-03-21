@@ -25,7 +25,7 @@
 #include "knot/server/zones.h"
 #include "libknot/util/wire.h"
 #include "libknot/packet/query.h"
-#include "common/descriptor_new.h"
+#include "common/descriptor.h"
 #include "libknot/packet/response.h"
 #include "libknot/nameserver/name-server.h"
 #include "libknot/tsig-op.h"

@@ -26,7 +26,7 @@
 #include <unistd.h>			// close
 
 #include "utils/common/msg.h"		// WARN
-#include "common/descriptor_new.h"	// KNOT_CLASS_IN
+#include "common/descriptor.h"		// KNOT_CLASS_IN
 #include "common/errcode.h"		// KNOT_E
 
 server_t* server_create(const char *name, const char *service)

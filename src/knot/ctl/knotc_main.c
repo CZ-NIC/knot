@@ -33,7 +33,7 @@
 #endif
 
 #include "knot/common.h"
-#include "common/descriptor_new.h"
+#include "common/descriptor.h"
 #include "knot/ctl/process.h"
 #include "knot/ctl/remote.h"
 #include "knot/conf/conf.h"

@@ -24,7 +24,7 @@
 
 #include "nsec3.h"
 #include "common.h"
-#include "common/descriptor_new.h"
+#include "common/descriptor.h"
 #include "util/utils.h"
 #include "util/tolower.h"
 #include "util/debug.h"

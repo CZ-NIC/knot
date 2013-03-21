@@ -47,8 +47,6 @@ src/libknot/util/tolower.h
 src/libknot/util/tolower.c
 src/libknot/util/utils.h
 src/libknot/util/utils.c
-src/libknot/util/descriptor.h
-src/libknot/util/descriptor.c
 src/libknot/util/endian.h
 src/libknot/zone/zonedb.h
 src/libknot/zone/zonedb.c

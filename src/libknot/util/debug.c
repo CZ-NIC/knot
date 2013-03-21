@@ -23,7 +23,7 @@
 #include "util/utils.h"
 #include "util/debug.h"
 #include "libknot/rrset.h"
-#include "common/descriptor_new.h"
+#include "common/descriptor.h"
 #include "common/print.h"
 
 void knot_rdata_dump(const knot_rrset_t *rrset, size_t rdata_pos)

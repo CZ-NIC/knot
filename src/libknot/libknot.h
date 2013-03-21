@@ -28,7 +28,6 @@
 #define _KNOT_LIBKNOT_H_
 
 #include "consts.h"
-#include "util/descriptor.h"
 #include "dname.h"
 #include "edns.h"
 #include "zone/node.h"

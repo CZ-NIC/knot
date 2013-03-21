@@ -20,7 +20,7 @@
 #include <stdio.h>			// printf
 
 #include "common/errcode.h"		// knot_strerror
-#include "common/descriptor_new.h"	// knot_rrtype_to_string
+#include "common/descriptor.h"		// knot_rrtype_to_string
 #include "zscanner/scanner.h"		// scanner_t
 
 #define ERROR_CODE_TO_STRING(code) [code - ZSCANNER_UNCOVERED_STATE] = #code

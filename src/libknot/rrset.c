@@ -23,7 +23,7 @@
 #include "common.h"
 #include "common/mempattern.h"
 #include "rrset.h"
-#include "common/descriptor_new.h"
+#include "common/descriptor.h"
 #include "util/debug.h"
 #include "util/utils.h"
 #include "packet/response.h"

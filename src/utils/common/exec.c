@@ -22,7 +22,7 @@
 #include "libknot/libknot.h"
 #include "common/lists.h"		// list
 #include "common/errcode.h"		// KNOT_EOK
-#include "common/descriptor_new.h"	// KNOT_RRTYPE_
+#include "common/descriptor.h"		// KNOT_RRTYPE_
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/params.h"	// params_t
 #include "utils/common/netio.h"		// send_msg
