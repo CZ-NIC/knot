@@ -260,7 +260,7 @@ static int xfr_process_udp_resp(xfrworker_t *w, int fd, knot_ns_xfr_t *data)
 		n = tcp_recv(data->session, data->wire, resp_len, &data->addr);
 	} else {
 		n = recvfrom(data->session, data->wire, resp_len,
-		             0, data->addr.ptr, &data->addr.len);
+		             0, (struct sockaddr *)&data->addr, &data->addr.len);
 	}
 	
 	if (n <= 0) {
@@ -400,8 +400,6 @@ static knot_ns_xfr_t *xfr_register_task(xfrworker_t *w, const knot_ns_xfr_t *req
 	}
 
 	memcpy(t, req, sizeof(knot_ns_xfr_t));
-	sockaddr_update(&t->addr);
-	sockaddr_update(&t->saddr);
 
 	/* Update request. */
 	t->wire = 0; /* Invalidate shared buffer. */
@@ -834,19 +832,22 @@ static int xfr_client_start(xfrworker_t *w, knot_ns_xfr_t *data)
 
 	/* Connect to remote. */
 	if (data->session <= 0) {
-		int fd = socket_create(data->addr.family, SOCK_STREAM);
+		int fd = socket_create(sockaddr_family(&data->addr), SOCK_STREAM);
 		if (fd >= 0) {
 			/* Bind to specific address - if set. */
-			sockaddr_update(&data->saddr);
 			if (data->saddr.len > 0) {
 				/* Presume port is already preset. */
-				ret = bind(fd, data->saddr.ptr, data->saddr.len);
+				ret = bind(fd,
+				           (struct sockaddr *)&data->saddr,
+				           data->saddr.len);
 			}
 			if (ret < 0) {
 				log_server_warning("%s Failed to create socket.\n",
 				                   data->msgpref);
 			} else {
-				ret = connect(fd, data->addr.ptr, data->addr.len);
+				ret = connect(fd,
+				              (struct sockaddr *)&data->addr,
+				              data->addr.len);
 				if (ret < 0) {
 					dbg_xfr("%s: couldn't connect to "
 					        "remote host\n", data->msgpref);

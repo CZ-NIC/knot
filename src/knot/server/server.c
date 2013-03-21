@@ -39,8 +39,7 @@
 /*! \brief Event scheduler loop. */
 static int evsched_run(dthread_t *thread)
 {
-	iohandler_t *sched_h = (iohandler_t *)thread->data;
-	evsched_t *s = (evsched_t*)sched_h->data;
+	evsched_t *s = (evsched_t*)thread->data;
 	if (!s) {
 		return KNOT_EINVAL;
 	}
@@ -84,23 +83,13 @@ typedef struct pnode_t {
 static void server_remove_iface(iface_t *iface)
 {
 	/* Free UDP handler. */
-	iohandler_t *handler = iface->handler[UDP_ID];
-	if (handler) {
-		server_remove_handler(handler->server, handler);
-	} else {
-		if (iface->fd[UDP_ID] > -1) {
-			close(iface->fd[UDP_ID]);
-		}
+	if (iface->fd[IO_UDP] > -1) {
+		close(iface->fd[IO_UDP]);
 	}
 
 	/* Free TCP handler. */
-	handler = iface->handler[TCP_ID];
-	if (handler) {
-		server_remove_handler(handler->server, handler);
-	} else {
-		if (iface->fd[TCP_ID] > -1) {
-			close(iface->fd[TCP_ID]);
-		}
+	if (iface->fd[IO_TCP] > -1) {
+		close(iface->fd[IO_TCP]);
 	}
 
 	/* Free interface. */
@@ -125,8 +114,6 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	int ret = 0;
 	int sock = 0;
 	char errbuf[256] = {0};
-	int opt = 1024 * 1024;
-	int snd_opt = 1024 * 1024;
 	memset(new_if, 0, sizeof(iface_t));
 
 	/* Create UDP socket. */
@@ -149,25 +136,30 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 		return ret;
 	}
 
-	new_if->fd[UDP_ID] = sock;
-	new_if->type[UDP_ID] = cfg_if->family;
+	new_if->fd[IO_UDP] = sock;
+	new_if->type = cfg_if->family;
+	new_if->port = cfg_if->port;
+	new_if->addr = strdup(cfg_if->address);
 
 	/* Set socket options - voluntary. */
-	char ebuf[256] = {0};
-	if (setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &snd_opt, sizeof(snd_opt)) < 0) {
-		strerror_r(errno, ebuf, sizeof(ebuf));	
-//		log_server_warning("Failed to configure socket "
-//		                   "write buffers: %s.\n", ebuf);
-	}
-	if (setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(opt)) < 0) {
-		strerror_r(errno, ebuf, sizeof(ebuf));	
-//		log_server_warning("Failed to configure socket read buffers: %s.\n", ebuf);
-	}
+//	int opt = 1024 * 1024;
+//	int snd_opt = 1024 * 1024;
+//	if (setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &snd_opt, sizeof(snd_opt)) < 0) {
+//		ret = KNOT_ENOTSUP;
+////		strerror_r(errno, ebuf, sizeof(ebuf));	
+////		log_server_warning("Failed to configure socket "
+////		                   "write buffers: %s.\n", ebuf);
+//	}
+//	if (setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(opt)) < 0) {
+//		ret = KNOT_ENOTSUP;
+////		strerror_r(errno, ebuf, sizeof(ebuf));	
+////		log_server_warning("Failed to configure socket read buffers: %s.\n", ebuf);
+//	}
 
 	/* Create TCP socket. */
 	ret = socket_create(cfg_if->family, SOCK_STREAM);
 	if (ret < 0) {
-		socket_close(new_if->fd[UDP_ID]);
+		socket_close(new_if->fd[IO_UDP]);
 		strerror_r(errno, errbuf, sizeof(errbuf));
 		log_server_error("Could not create TCP socket: %s.\n",
 				 errbuf);
@@ -175,10 +167,21 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	} else {
 		sock = ret;
 	}
+	
+	/* Set socket options. */
+#ifndef DISABLE_IPV6
+	int flag = 1;
+	if (cfg_if->family == AF_INET6) {
+		/* Disable dual-stack for performance reasons. */
+		if(setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &flag, sizeof(flag)) < 0) {
+			dbg_net("udp: failed to set IPV6_V6ONLY to socket, using default config\n");
+		}
+	}
+#endif
 
 	ret = socket_bind(sock, cfg_if->family, cfg_if->address, cfg_if->port);
 	if (ret < 0) {
-		socket_close(new_if->fd[UDP_ID]);
+		socket_close(new_if->fd[IO_UDP]);
 		socket_close(sock);
 		log_server_error("Could not bind to "
 		                 "TCP interface %s port %d.\n",
@@ -188,7 +191,7 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 
 	ret = socket_listen(sock, TCP_BACKLOG_SIZE);
 	if (ret < 0) {
-		socket_close(new_if->fd[UDP_ID]);
+		socket_close(new_if->fd[IO_UDP]);
 		socket_close(sock);
 		log_server_error("Failed to listen on "
 		                 "TCP interface %s port %d.\n",
@@ -196,11 +199,26 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 		return ret;
 	}
 
-	new_if->fd[TCP_ID] = sock;
-	new_if->type[TCP_ID] = cfg_if->family;
-	new_if->port = cfg_if->port;
-	new_if->addr = strdup(cfg_if->address);
+	new_if->fd[IO_TCP] = sock;
 	return KNOT_EOK;
+}
+
+static void remove_ifacelist(struct ref_t *p)
+{
+	ifacelist_t *ifaces = (ifacelist_t *)p;
+		
+	/* Remove deprecated interfaces. */
+	iface_t *n = NULL, *m = NULL;
+	WALK_LIST_DELSAFE(n, m, ifaces->u) {
+		log_server_info("Removing interface %s port %d.\n",
+		                n->addr, n->port);
+		server_remove_iface(n);
+	}
+	WALK_LIST_DELSAFE(n, m, ifaces->l) {
+		free(n);
+	}
+	
+	free(ifaces);
 }
 
 /*!
@@ -209,7 +227,7 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
  * \param server Server instance.
  * \return number of added sockets.
  */
-static int server_bind_sockets(server_t *server)
+static int server_bind_sockets(server_t *s)
 {
 	/*! \todo This requires locking to disable parallel updates (issue #278).
 	 *  However, this is only used when RCU is read-locked, so count with that.
@@ -220,28 +238,18 @@ static int server_bind_sockets(server_t *server)
 
 	/* Prepare helper lists. */
 	int bound = 0;
-	node *m = 0;
-	list *newlist, unmatched;
-	newlist = malloc(sizeof(list));
-	init_list(newlist);
-	init_list(&unmatched);
+	iface_t *m = 0;
+	ifacelist_t *newlist = malloc(sizeof(ifacelist_t));
+	ref_init(&newlist->ref, &remove_ifacelist);
+	ref_retain(&newlist->ref);
+	init_list(&newlist->u);
+	init_list(&newlist->l);
+	
 
 	/* Duplicate current list. */
 	/*! \note Pointers to addr, handlers etc. will be shared. */
-	list_dup(&unmatched, server->ifaces, sizeof(iface_t));
-
-	/* Update pointers. */
-	WALK_LIST(m, unmatched) {
-
-		/* Interfaces. */
-		iface_t *m_if = (iface_t*)m;
-		for (int i = 0; i <= TCP_ID; ++i) {
-			iohandler_t *h = m_if->handler[i];
-			if (h) {
-				h->iface = m_if;
-			}
-
-		}
+	if (s->ifaces) {
+		list_dup(&s->ifaces->u, &s->ifaces->l, sizeof(iface_t));
 	}
 
 	/* Update bound interfaces. */
@@ -251,12 +259,10 @@ static int server_bind_sockets(server_t *server)
 		/* Find already matching interface. */
 		int found_match = 0;
 		conf_iface_t *cfg_if = (conf_iface_t*)n;
-		WALK_LIST(m, unmatched) {
-			iface_t *srv_if = (iface_t*)m;
-
+		if (s->ifaces) WALK_LIST(m, s->ifaces->u) {
 			/* Matching port and address. */
-			if (cfg_if->port == srv_if->port) {
-				if (strcmp(cfg_if->address, srv_if->addr) == 0) {
+			if (cfg_if->port == m->port) {
+				if (strcmp(cfg_if->address, m->addr) == 0) {
 					found_match = 1;
 					break;
 				}
@@ -265,14 +271,14 @@ static int server_bind_sockets(server_t *server)
 
 		/* Found already bound interface. */
 		if (found_match) {
-			rem_node(m);
+			rem_node((node *)m);
 		} else {
 			log_server_info("Binding to interface %s port %d.\n",
 			                cfg_if->address, cfg_if->port);
 
 			/* Create new interface. */
 			m = malloc(sizeof(iface_t));
-			if (server_init_iface((iface_t*)m, cfg_if) < 0) {
+			if (server_init_iface(m, cfg_if) < 0) {
 				free(m);
 				m = 0;
 			}
@@ -280,128 +286,42 @@ static int server_bind_sockets(server_t *server)
 
 		/* Move to new list. */
 		if (m) {
-			add_tail(newlist, m);
+			add_tail(&newlist->l, (node *)m);
 			++bound;
 		}
 	}
 
+	/* Publish new list. */
+	ifacelist_t *oldlist = rcu_xchg_pointer(&s->ifaces, newlist);
+	
 	/* Unlock configuration. */
 	rcu_read_unlock();
 
-	/* Publish new list. */
-	list* oldlist = rcu_xchg_pointer(&server->ifaces, newlist);
-
 	/* Ensure no one is reading old interfaces. */
 	synchronize_rcu();
-
-	/* Remove deprecated interfaces. */
-	WALK_LIST_DELSAFE(n, m, unmatched) {
-		iface_t *rm_if = (iface_t*)n;
-		log_server_info("Removing interface %s port %d.\n",
-		                rm_if->addr, rm_if->port);
-		server_remove_iface(rm_if);
+	
+	/* Notify handlers about removed ifaces. */
+	dt_unit_t *tu = s->h[IO_UDP].unit;
+	for (unsigned j = 0; j < tu->size; ++j) {
+		ref_retain((ref_t *)newlist);
+		s->h[IO_UDP].state[j].s |= ServerReload;
+		if (s->state & ServerRunning) {
+			dt_activate(tu->threads[j]);
+			dt_signalize(tu->threads[j], SIGALRM);
+		}
+		
 	}
-
-	/* Free original list. */
-	WALK_LIST_DELSAFE(n, m, *oldlist) {
-		/*! \note Need to keep internal pointers, as they are shared
-		 *        with the newly published list. */
-		free(n);
+	s->h[IO_TCP].state[0].s |= ServerReload;
+	if (s->state & ServerRunning) {
+		dthread_t *m_thr = s->h[IO_TCP].unit->threads[0];
+		dt_activate(m_thr);
+		dt_signalize(m_thr, SIGALRM);
 	}
-	free(oldlist);
+	ref_retain((ref_t *)newlist);
+
+	ref_release(&oldlist->ref);
 
 	return bound;
-}
-
-/*!
- * \brief Update socket handlers according to configuration.
- *
- * \param server Server instance.
- * \retval 0 if successful (EOK).
- * \retval <0 on errors (EINVAL).
- */
-static int server_bind_handlers(server_t *server)
-{
-	if (!server || !server->ifaces) {
-		return KNOT_EINVAL;
-	}
-	
-	/* Lock config. */
-	rcu_read_lock();
-
-	/* Estimate number of threads/manager. */
-	int thr_count = 0;
-	int tcp_unit_size = 0;
-	if (conf()->workers < 1) {
-		thr_count = dt_optimal_size();
-		tcp_unit_size = (thr_count * 2) + 1; /* Will be always odd. */
-	} else {
-		thr_count = conf()->workers;
-		tcp_unit_size = thr_count + 1; /* Force configured value. */
-	}
-	
-	dbg_server("server: configured %d worker%s per UDP iface\n",
-	           thr_count, thr_count > 1 ? "s" : "");
-	dbg_server("server: configured %d worker%s per TCP iface\n",
-	           tcp_unit_size - 1, (tcp_unit_size - 1) > 1 ? "s" : "");
-
-	/* Create socket handlers. */
-	node *n = 0;
-	iohandler_t* h = 0;
-	WALK_LIST(n, *server->ifaces) {
-
-		iface_t *iface = (iface_t*)n;
-		assert(iface);
-
-		/* Create UDP handlers. */
-		dt_unit_t *unit = 0;
-		if (!iface->handler[UDP_ID]) {
-			unit = dt_create_coherent(thr_count, &udp_master, 0);
-			if (!unit) {
-				continue;
-			}
-			h = server_create_handler(server, iface->fd[UDP_ID], unit);
-			if (!h) {
-				dt_delete(&unit);
-				continue;
-			}
-			h->type = iface->type[UDP_ID];
-			h->iface = iface;
-
-			/* Save pointer. */
-			iface->handler[UDP_ID] = h;  /* No need for cmpxchg */
-			dbg_server("server: creating UDP socket handlers for '%s:%d'\n",
-			             iface->addr, iface->port);
-
-		}
-
-		/* Create TCP handlers. */
-		if (!iface->handler[TCP_ID]) {
-			unit = dt_create(tcp_unit_size);
-			if (!unit) {
-				continue;
-			}
-			h = server_create_handler(server, iface->fd[TCP_ID], unit);
-			if (!h) {
-				dt_delete(&unit);
-				continue;
-			}
-			tcp_loop_unit(h, unit);
-			h->type = iface->type[TCP_ID];
-			h->iface = iface;
-
-			/* Save pointer. */
-			iface->handler[TCP_ID] = h; /* No need for cmpxchg */
-			dbg_server("server: creating TCP socket handlers for '%s:%d'\n",
-			             iface->addr, iface->port);
-		}
-
-	}
-
-	/* Unlock config. */
-	rcu_read_unlock();
-
-	return KNOT_EOK;
 }
 
 server_t *server_create()
@@ -414,18 +334,10 @@ server_t *server_create()
 	}
 	memset(server, 0, sizeof(server_t));
 
-	server->state = ServerIdle;
-	init_list(&server->handlers);
-	server->ifaces = malloc(sizeof(list));
-	init_list(server->ifaces);
-
 	// Create event scheduler
 	dbg_server("server: creating event scheduler\n");
 	server->sched = evsched_new();
-	dt_unit_t *unit = dt_create_coherent(1, evsched_run, 0);
-	iohandler_t *h = server_create_handler(server, -1, unit);
-	
-	h->data = server->sched;
+	server->iosched = dt_create_coherent(1, evsched_run, server->sched);
 
 	// Create name server
 	dbg_server("server: creating Name Server structure\n");
@@ -439,8 +351,8 @@ server_t *server_create()
 	OpenSSL_add_all_digests();
 
 	// Create XFR handler
-	server->xfr_h = xfr_create(XFR_THREADS_COUNT, server->nameserver);
-	if (!server->xfr_h) {
+	server->xfr = xfr_create(XFR_THREADS_COUNT, server->nameserver);
+	if (!server->xfr) {
 		knot_ns_destroy(&server->nameserver);
 		free(server);
 		return NULL;
@@ -450,178 +362,87 @@ server_t *server_create()
 	return server;
 }
 
-iohandler_t *server_create_handler(server_t *server, int fd, dt_unit_t *unit)
+int server_init_handler(iohandler_t * h, server_t *s, dt_unit_t *tu, void *d)
 {
-	// Create new worker
-	iohandler_t *handler = malloc(sizeof(iohandler_t));
-	if (handler == 0) {
-		ERR_ALLOC_FAILED;
-		return 0;
-	}
+	/* Initialize */
+	memset(h, 0, sizeof(iohandler_t));
+	h->server = s;
+	h->unit = tu;
+	h->data = d;
+	h->state = malloc(tu->size * sizeof(iostate_t));
 
-	// Initialize
-	handler->fd = fd;
-	handler->type = 0;
-	handler->state = ServerIdle;
-	handler->server = server;
-	handler->unit = unit;
-	handler->iface = 0;
-	handler->data = 0;
-	handler->interrupt = 0;
-
-	// Update unit data object
-	for (int i = 0; i < unit->size; ++i) {
-		dthread_t *thread = unit->threads[i];
+	/* Update unit data object */
+	for (int i = 0; i < tu->size; ++i) {
+		dthread_t *thread = tu->threads[i];
+		h->state[i].h = h;
+		h->state[i].s = 0;
 		if (thread->run) {
-			dt_repurpose(thread, thread->run, handler);
+			dt_repurpose(thread, thread->run, h->state + i);
 		}
 	}
 
-	/*! \todo This requires locking to disable parallel updates (issue #278).
-	 *  However, this is only used when RCU is read-locked, so count with that.
-	 */
-
-	/* Lock RCU. */
-	rcu_read_lock();
-
-	// Update list
-	add_tail(&server->handlers, (node*)handler);
-
-	/* Unlock RCU. */
-	rcu_read_unlock();
-
-	return handler;
-}
-
-int server_remove_handler(server_t *server, iohandler_t *h)
-{
-	// Check
-	if (h == 0) {
-		return KNOT_EINVAL;
-	}
-
-	/* Lock RCU. */
-	rcu_read_lock();
-
-	/*! \todo This requires locking to disable parallel updates (issue #278).
-	 *  However, this is only used when RCU is read-locked, so count with that.
-	 */
-
-	// Remove node
-	rem_node((node*)h);
-
-	// Wait for dispatcher to finish
-	if (h->state & ServerRunning) {
-		h->state = ServerIdle;
-		dt_stop(h->unit);
-
-		/* Call interrupt handler. */
-		if (h->interrupt) {
-			h->interrupt(h);
-		}
-
-		dt_join(h->unit);
-	}
-
-	// Close socket
-	if (h->fd >= 0) {
-		socket_close(h->fd);
-		h->fd = -1;
-	}
-
-	// Update interface
-	if (h->iface) {
-		int id = UDP_ID;
-		if (h->iface->handler[TCP_ID] == h) {
-			id = TCP_ID;
-		}
-
-		h->iface->fd[id] = h->fd;
-		h->iface->handler[id] = 0;
-	}
-
-	/* Unlock RCU. */
-	rcu_read_unlock();
-
-	/* RCU synchronize. */
-	synchronize_rcu();
-
-	// Destroy dispatcher and worker
-	dt_delete(&h->unit);
-	free(h);
 	return KNOT_EOK;
 }
 
-int server_start(server_t *server)
+int server_free_handler(iohandler_t *h)
+{
+	/* Wait for dispatcher to finish */
+	if (!h || !h->server) return KNOT_EINVAL;
+	if (h->server->state & ServerRunning) {
+		dt_stop(h->unit);
+		if (h->interrupt) {
+			h->interrupt(h);
+		}
+		dt_join(h->unit);
+	}
+
+	/* Destroy dispatcher and worker */
+	dt_delete(&h->unit);
+	free(h->state);
+	memset(h, 0, sizeof(iohandler_t));
+	return KNOT_EOK;
+}
+
+int server_start(server_t *s)
 {
 	// Check server
-	if (server == 0) {
+	if (s == 0) {
 		return KNOT_EINVAL;
 	}
 
 	dbg_server("server: starting server instance\n");
 
 	/* Start XFR handler. */
-	xfr_start(server->xfr_h);
-
-	/* Lock configuration. */
-	rcu_read_lock();
-
-	// Start dispatchers
+	xfr_start(s->xfr);
+	
+	/* Start evsched handler. */
+	dt_start(s->iosched);
+	
+	/* Start I/O handlers. */
 	int ret = KNOT_EOK;
-	server->state |= ServerRunning;
-	iohandler_t *h = 0;
-	WALK_LIST(h, server->handlers) {
-
-		/* Already running. */
-		if (h->state & ServerRunning) {
-			continue;
-		}
-
-		h->state = ServerRunning;
-		ret = dt_start(h->unit);
-		if (ret < 0) {
-			break;
-		}
+	s->state |= ServerRunning;
+	for (unsigned i = 0; i < IO_COUNT; ++i) {
+		ret = dt_start(s->h[i].unit);
 	}
-
-	/* Unlock configuration. */
-	rcu_read_unlock();
+	
 
 	dbg_server("server: server started\n");
 
 	return ret;
 }
 
-int server_wait(server_t *server)
+int server_wait(server_t *s)
 {
-	/* Join threading unit. */
-	xfr_join(server->xfr_h);
+	if (!s) return KNOT_EINVAL;
 	
-	/* Lock RCU. */
-	rcu_read_lock();
-
-	// Wait for handlers to finish
-	int ret = 0;
-	iohandler_t *h = 0, *nxt = 0;
-	WALK_LIST_DELSAFE(h, nxt, server->handlers) {
-
-		/* Unlock RCU. */
-		rcu_read_unlock();
-
-		/* Remove handler. */
-		int dret = dt_join(h->unit);
-		if (dret < 0) {
-			ret = dret;
+	xfr_join(s->xfr);
+	dt_join(s->iosched);
+	int ret = KNOT_EOK;
+	for (unsigned i = 0; i < IO_COUNT; ++i) {
+		if ((ret = server_free_handler(s->h + i)) != KNOT_EOK) {
+			break;
 		}
-		server_remove_handler(server, h);
-
-		/* Relock RCU. */
-		rcu_read_lock();
 	}
-
-	/* Unlock RCU. */
-	rcu_read_unlock();
 
 	return ret;
 }
@@ -700,69 +521,51 @@ void server_stop(server_t *server)
 	evsched_schedule_term(server->sched, 0);
 
 	/* Interrupt XFR handler execution. */
-	if (server->xfr_h->interrupt) {
-		server->xfr_h->interrupt(server->xfr_h);
+	if (server->xfr->interrupt) {
+		server->xfr->interrupt(server->xfr);
 	}
-
-	/* Lock RCU. */
-	rcu_read_lock();
 
 	/* Notify servers to stop. */
 	log_server_info("Stopping server...\n");
 	server->state &= ~ServerRunning;
-	iohandler_t *h = 0;
-	WALK_LIST(h, server->handlers) {
-		h->state = ServerIdle;
-		dt_stop(h->unit);
+	iohandler_t *h = server->h;
+	for (unsigned i = 0; i < IO_COUNT; ++i) {
+		dt_stop(h[i].unit);
 
 		/* Call interrupt handler. */
-		if (h->interrupt) {
-			h->interrupt(h);
+		if (h[i].interrupt) {
+			h[i].interrupt(h + i);
 		}
 	}
-
-	/* Unlock RCU. */
-	rcu_read_unlock();
 }
 
 void server_destroy(server_t **server)
 {
 	// Check server
-	if (!server) {
-		return;
-	}
-	if (!*server) {
+	if (!server || !*server) {
 		return;
 	}
 	
 	dbg_server("server: destroying server instance\n");
 	
-	// Free XFR master
-	xfr_free((*server)->xfr_h);
-
-	// Free interfaces
-	node *n = 0, *nxt = 0;
-	if ((*server)->ifaces) {
-		WALK_LIST_DELSAFE(n, nxt, *(*server)->ifaces) {
-			iface_t *iface = (iface_t*)n;
-			server_remove_iface(iface);
+	/* Free remaining interfaces. */
+	ifacelist_t *ifaces = (*server)->ifaces;
+	iface_t *n = NULL, *m = NULL;
+	if (ifaces) {
+		WALK_LIST_DELSAFE(n, m, ifaces->l) {
+			server_remove_iface(n);
 		}
-		free((*server)->ifaces);
+		free(ifaces);
+		(*server)->ifaces = NULL;
 	}
-
+	
+	xfr_free((*server)->xfr);
 	stat_static_gath_free();
 	knot_ns_destroy(&(*server)->nameserver);
-
-	// Delete event scheduler
 	evsched_delete(&(*server)->sched);
-	
-	/* Delete rate limiting table. */
 	rrl_destroy((*server)->rrl);
-
 	free(*server);
-
 	EVP_cleanup();
-
 	*server = NULL;
 }
 
@@ -772,6 +575,34 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 
 	if (!server) {
 		return KNOT_EINVAL;
+	}
+	
+	/* Estimate number of threads/manager. */
+	int ret = KNOT_EOK;
+	int tu_size = conf->workers;
+	if (tu_size < 1) {
+		tu_size = dt_optimal_size();
+	}
+	if (tu_size != server->tu_size) {
+		/* Free old handlers */
+		if (server->tu_size > 0) {
+			for (unsigned i = 0; i < IO_COUNT; ++i) {
+				ret = server_free_handler(server->h + i);
+			}
+		}
+		
+		/* Initialize I/O handlers. */
+		dt_unit_t *tu = dt_create_coherent(tu_size, &udp_master, NULL);
+		server_init_handler(server->h + IO_UDP, server, tu, NULL);
+		tu = dt_create(tu_size * 2);
+		server_init_handler(server->h + IO_TCP, server, tu, NULL);
+		tcp_loop_unit(server->h + IO_TCP, tu);
+		if (server->state & ServerRunning) {
+			for (unsigned i = 0; i < IO_COUNT; ++i) {
+				ret = dt_start(server->h[i].unit);
+			}
+		}
+		server->tu_size = tu_size;
 	}
 	
 	/* Rate limiting. */
@@ -790,39 +621,11 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 			                conf->rrl);
 		} /* At this point, old buckets will converge to new rate. */
 	}
-
+	
 	/* Update bound sockets. */
-	int ret = KNOT_EOK;
 	if ((ret = server_bind_sockets(server)) < 0) {
 		log_server_error("Failed to bind configured "
 		                 "interfaces.\n");
-	} else {
-		/* Update handlers. */
-		if ((ret = server_bind_handlers(server)) < 0) {
-			log_server_error("Failed to create handlers for "
-			                 "configured interfaces.\n");
-		}
-	}
-
-	/* Exit if the server is not running. */
-	if (ret != KNOT_EOK || !(server->state & ServerRunning)) {
-		return KNOT_ENOTRUNNING;
-	}
-
-	/* Start new handlers. */
-	iohandler_t *h = 0;
-	WALK_LIST(h, server->handlers) {
-		if (!(h->state & ServerRunning)) {
-			h->state = ServerRunning;
-			ret = dt_start(h->unit);
-			if (ret < 0) {
-				log_server_error("Handler for '%s@%d' "
-				                 "has failed to start.\n",
-				                  h->iface->addr,
-				                  h->iface->port);
-				break;
-			}
-		}
 	}
 
 	return ret;

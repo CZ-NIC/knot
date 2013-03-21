@@ -60,7 +60,7 @@ static int zones_send_cb(int fd, sockaddr_t *addr, uint8_t *msg, size_t msglen)
 
 static int zones_send_udp(int fd, sockaddr_t *addr, uint8_t *msg, size_t msglen)
 {
-	return sendto(fd, msg, msglen, 0, addr->ptr, addr->len);
+	return sendto(fd, msg, msglen, 0, (struct sockaddr *)addr, addr->len);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -461,7 +461,7 @@ static int zones_refresh_ev(event_t *e)
 		
 		/* Mark as finished to prevent stalling. */
 		evsched_event_finished(e->parent);
-		int ret = xfr_request(zd->server->xfr_h, &xfr_req);
+		int ret = xfr_request(zd->server->xfr, &xfr_req);
 		dbg_zones("zones: issued request, ret = %d\n", ret);
 		if (ret != KNOT_EOK) {
 			knot_zone_release(xfr_req.zone); /* Discard */
@@ -535,12 +535,12 @@ static int zones_refresh_ev(event_t *e)
 	if (ret == KNOT_EOK) {
 
 		/* Create socket on random port. */
-		sock = socket_create(master->family, SOCK_DGRAM);
+		sock = socket_create(sockaddr_family(master), SOCK_DGRAM);
 		
 		/* Check requested source. */
 		sockaddr_t *via = &zd->xfr_in.via;
 		if (via->len > 0) {
-			if (bind(sock, via->ptr, via->len) < 0) {
+			if (bind(sock, (struct sockaddr *)via, via->len) < 0) {
 				socket_close(sock);
 				sock = -1;
 				char r_addr[SOCKADDR_STRLEN];
@@ -554,7 +554,7 @@ static int zones_refresh_ev(event_t *e)
 		ret = KNOT_ERROR;
 		if (sock > -1) {
 			int sent = sendto(sock, qbuf, buflen, 0,
-			                  master->ptr, master->len);
+			                  (struct sockaddr *)master, master->len);
 		
 			/* Store ID of the awaited response. */
 			if (sent == buflen) {
@@ -591,13 +591,11 @@ static int zones_refresh_ev(event_t *e)
 	req.wire = NULL;
 	memcpy(&req.addr, master, sizeof(sockaddr_t));
 	memcpy(&req.saddr, &zd->xfr_in.via, sizeof(sockaddr_t));
-	sockaddr_update(&req.addr);
-	sockaddr_update(&req.saddr);
 	
 	/* Retain pointer to zone and issue. */
 	knot_zone_retain(req.zone);
 	if (ret == KNOT_EOK) {
-		ret = xfr_request(zd->server->xfr_h, &req);
+		ret = xfr_request(zd->server->xfr, &req);
 	}
 	if (ret != KNOT_EOK) {
 		free(req.digest);
@@ -687,11 +685,13 @@ static int zones_notify_send(event_t *e)
 	if (ret == KNOT_EOK && zd->server) {
 
 		/* Create socket on random port. */
-		int sock = socket_create(ev->addr.family, SOCK_DGRAM);
+		int sock = socket_create(sockaddr_family(&ev->addr), SOCK_DGRAM);
 		
 		/* Check requested source. */
 		if (ev->saddr.len > 0) {
-			if (bind(sock, ev->saddr.ptr, ev->saddr.len) < 0) {
+			if (bind(sock,
+			         (struct sockaddr *)&ev->saddr,
+			         ev->saddr.len) < 0) {
 				socket_close(sock);
 				sock = -1;
 			}
@@ -701,7 +701,8 @@ static int zones_notify_send(event_t *e)
 		ret = -1;
 		if (sock > -1) {
 			ret = sendto(sock, qbuf, buflen, 0,
-				     ev->addr.ptr, ev->addr.len);
+				     (struct sockaddr *)&ev->addr,
+			             ev->addr.len);
 		}
 
 		/* Store ID of the awaited response. */
@@ -725,7 +726,7 @@ static int zones_notify_send(event_t *e)
 		
 		/* Retain pointer to zone and issue request. */
 		knot_zone_retain(req.zone);
-		ret = xfr_request(zd->server->xfr_h, &req);
+		ret = xfr_request(zd->server->xfr, &req);
 		if (ret != KNOT_EOK) {
 			knot_zone_release(req.zone); /* Discard */
 		}
@@ -1863,13 +1864,13 @@ static int zones_update_forward(int fd, knot_ns_transport_t ttype,
 	if (ttype == NS_TRANSPORT_TCP) {
 		stype = SOCK_STREAM;
 	}
-	int nfd = socket_create(master->family, stype);
+	int nfd = socket_create(sockaddr_family(master), stype);
 	
 	/* Check requested source. */
 	char strbuf[256] = "Generic error.";
 	sockaddr_t *via = &zd->xfr_in.via;
 	if (via->len > 0) {
-		if (bind(nfd, via->ptr, via->len) < 0) {
+		if (bind(nfd, (struct sockaddr *)via, via->len) < 0) {
 			socket_close(nfd);
 			nfd = -1;
 			char r_addr[SOCKADDR_STRLEN];
@@ -1904,7 +1905,9 @@ static int zones_update_forward(int fd, knot_ns_transport_t ttype,
 	if (nfd > -1) {
 		/* Connect on TCP. */
 		if (ttype == NS_TRANSPORT_TCP) {
-			if (connect(nfd, master->ptr, master->len) < 0) {
+			if (connect(nfd,
+			            (struct sockaddr *)master,
+			            master->len) < 0) {
 				ret = KNOT_ECONNREFUSED;
 			}
 		}
@@ -1937,13 +1940,11 @@ static int zones_update_forward(int fd, knot_ns_transport_t ttype,
 	req.packet_nr = orig_id;
 	memcpy(&req.addr, master, sizeof(sockaddr_t));
 	memcpy(&req.saddr, from, sizeof(sockaddr_t));
-	sockaddr_update(&req.addr);
-	sockaddr_update(&req.saddr);
 	
 	/* Retain pointer to zone and issue. */
 	knot_zone_retain(req.zone);
 	if (ret == KNOT_EOK) {
-		ret = xfr_request(zd->server->xfr_h, &req);
+		ret = xfr_request(zd->server->xfr, &req);
 	}
 	if (ret != KNOT_EOK) {
 		knot_zone_release(req.zone); /* Discard */
@@ -2962,7 +2963,7 @@ int zones_process_response(knot_nameserver_t *nameserver,
 		/* Retain pointer to zone for processing. */
 		knot_zone_retain(xfr_req.zone);
 		ret = xfr_request(((server_t *)knot_ns_get_data(
-		                  nameserver))->xfr_h, &xfr_req);
+		                  nameserver))->xfr, &xfr_req);
 		if (ret != KNOT_EOK) {
 			knot_zone_release(xfr_req.zone); /* Discard */
 		}

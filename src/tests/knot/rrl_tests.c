@@ -56,7 +56,6 @@ static void* rrl_runnable(void *arg)
 	struct runnable_data* d = (struct runnable_data*)arg;
 	sockaddr_t addr;
 	memcpy(&addr, d->addr, sizeof(sockaddr_t));
-	sockaddr_update(&addr);
 	int lock = -1;
 	uint32_t now = time(NULL);
 	struct bucketmap_t *m = malloc(RRL_INSERTS * sizeof(struct bucketmap_t));

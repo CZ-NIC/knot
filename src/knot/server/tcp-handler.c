@@ -156,12 +156,7 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 
 	/* Check address type. */
 	sockaddr_t addr;
-	if (sockaddr_init(&addr, w->ioh->type) != KNOT_EOK) {
-		log_server_error("Socket type %d is not supported, "
-				 "IPv6 support is probably disabled.\n",
-				 w->ioh->type);
-		return KNOT_EINVAL;
-	}
+	sockaddr_prep(&addr);
 
 	/* Receive data. */
 	int n = tcp_recv(fd, qbuf, qbuf_maxlen, &addr);
@@ -457,7 +452,7 @@ int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 	/* Get peer name. */
 	if (addr) {
 		socklen_t alen = addr->len;
-		if (getpeername(fd, addr->ptr, &alen) < 0) {
+		if (getpeername(fd, (struct sockaddr *)addr, &alen) < 0) {
 			return KNOT_EMALF;
 		}
 	}
@@ -479,45 +474,81 @@ int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 
 int tcp_loop_master(dthread_t *thread)
 {
-	iohandler_t *handler = (iohandler_t *)thread->data;
-	dt_unit_t *unit = thread->unit;
-
-	/* Check socket. */
-	if (!handler || handler->fd < 0 || handler->data == NULL) {
-		dbg_net("tcp: failed to initialize master thread\n");
+	if (!thread || !thread->data) {
 		return KNOT_EINVAL;
 	}
 	
-	tcp_worker_t **workers = handler->data;
+	iostate_t *st = (iostate_t *)thread->data;
+	iohandler_t *h = st->h;
+	dt_unit_t *unit = thread->unit;
+	tcp_worker_t **workers = h->data;
+	
+	/* Prepare structures for bound sockets. */
+	fdset_it_t it;
+	fdset_t *fds = NULL;
+	iface_t *i = NULL;
+	ifacelist_t *ifaces = NULL;
 
 	/* Accept connections. */
 	int id = 0;
 	dbg_net("tcp: created 1 master with %d workers, backend is '%s' \n",
 	        unit->size - 1, fdset_method());
-	while(1) {
+	for(;;) {
+		
+		/* Check handler state. */
+		if (knot_unlikely(st->s & ServerReload)) {
+			st->s &= ~ServerReload;
+			rcu_read_lock();
+			fdset_destroy(fds);
+			fds = fdset_new();
+			ref_release((ref_t *)ifaces);
+			ifaces = h->server->ifaces;
+			if (ifaces) {
+				WALK_LIST(i, ifaces->l) {
+					fdset_add(fds, i->fd[IO_TCP], OS_EV_READ);
+				}
+				
+			}
+			rcu_read_unlock();
+		}
+		
 		/* Check for cancellation. */
 		if (dt_is_cancelled(thread)) {
 			break;
 		}
-
-		/* Accept client. */
-		int client = tcp_accept(handler->fd);
-		if (client < 0) {
-			continue;
+		
+		/* Wait for events. */
+		int nfds = fdset_wait(fds, OS_EV_FOREVER);
+		if (nfds <= 0) {
+			if (nfds == EINTR) continue;
+			break;
 		}
-
-		/* Add to worker in RR fashion. */
-		if (write(workers[id]->pipe[1], &client, sizeof(int)) < 0) {
-			dbg_net("tcp: failed to register fd=%d to worker=%d\n",
-			        client, id);
-			close(client);
-			continue;
+		
+		fdset_begin(fds, &it);
+		while(nfds > 0) {
+			/* Accept client. */
+			int client = tcp_accept(it.fd);
+			if (client > -1) {
+				/* Add to worker in RR fashion. */
+				if (write(workers[id]->pipe[1], &client, sizeof(int)) < 0) {
+					dbg_net("tcp: failed to register fd=%d to worker=%d\n",
+					        client, id);
+					close(client);
+					continue;
+				}
+				id = get_next_rr(id, unit->size - 1);
+			}
+			
+			if (fdset_next(fds, &it) != 0) {
+				break;
+			}
 		}
-		id = get_next_rr(id, unit->size - 1);
 	}
 
 	dbg_net("tcp: master thread finished\n");
 	free(workers);
+	fdset_destroy(fds);
+	ref_release((ref_t *)ifaces);
 	
 	return KNOT_EOK;
 }
@@ -681,7 +712,7 @@ int tcp_loop_unit(iohandler_t *ioh, dt_unit_t *unit)
 	}
 
 	/* Repurpose first thread as master (unit controller). */
-	dt_repurpose(unit->threads[0], tcp_loop_master, ioh);
+	dt_repurpose(unit->threads[0], tcp_loop_master, ioh->state + 0);
 
 	return KNOT_EOK;
 }

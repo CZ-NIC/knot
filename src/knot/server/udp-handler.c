@@ -48,28 +48,6 @@
 #include "knot/server/zones.h"
 #include "knot/server/notify.h"
 
-/* Check for sendmmsg syscall. */
-#ifdef HAVE_SENDMMSG
-  #define ENABLE_SENDMMSG 1
-#else
-  #ifdef SYS_sendmmsg
-    #define ENABLE_SENDMMSG 1
-  #endif
-#endif
-
-/* UDP request struct. */
-struct udp_req_t {
-	sockaddr_t *addr;
-	uint8_t *qbuf;
-	size_t qbuflen;
-	size_t *resplen;
-	rrl_table_t *rrl;
-	unsigned slip;
-};
-
-/*! \brief Pointer to selected UDP master implementation. */
-static int (*_udp_master)(dthread_t *, stat_t *) = 0;
-
 /*! \brief RRL reject procedure. */
 static size_t udp_rrl_reject(const knot_nameserver_t *ns,
                              const knot_packet_t *packet,
@@ -223,118 +201,90 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 	return res;
 }
 
-static inline int udp_master_recvfrom(dthread_t *thread, stat_t *thread_stat)
-{
-	iohandler_t *h = (iohandler_t *)thread->data;
-	if (h == NULL || h->server == NULL || h->server->nameserver == NULL) {
-		dbg_net("udp: invalid parameters for udp_master_recvfrom\n");
-		return KNOT_EINVAL;
-	}
-	
-	/* Set CPU affinity to improve load distribution on multicore systems.
-	 * Partial overlapping mask to be nice to scheduler.
-	 */
-	int cpcount = dt_online_cpus();
-	if (cpcount > 0) {
-		unsigned cpu[2];
-		cpu[0] = dt_get_id(thread);
-		cpu[1] = (cpu[0] + 1) % cpcount;
-		cpu[0] = cpu[0] % cpcount;
-		dt_setaffinity(thread, cpu, 2);
-	}
-	
-	knot_nameserver_t *ns = h->server->nameserver;
+/* Check for sendmmsg syscall. */
+#ifdef HAVE_SENDMMSG
+  #define ENABLE_SENDMMSG 1
+#else
+  #ifdef SYS_sendmmsg
+    #define ENABLE_SENDMMSG 1
+  #endif
+#endif
 
-	/* Initialize remote party address. */
+/*! \brief Pointer to selected UDP master implementation. */
+static void* (*_udp_init)(void) = 0;
+static int (*_udp_deinit)(void *) = 0;
+static int (*_udp_handle)(server_t *, int, void *) = 0;
+
+/* UDP recvfrom() request struct. */
+struct udp_recvfrom {
 	sockaddr_t addr;
-	if (sockaddr_init(&addr, h->type) != KNOT_EOK) {
-		log_server_error("Socket type %d is not supported, "
-				 "IPv6 support is probably disabled.\n",
-				 h->type);
-		return KNOT_ENOTSUP;
+	uint8_t *buf;
+	size_t buflen;
+	unsigned slip;
+};
+
+static void *udp_recvfrom_init(void)
+{
+	struct udp_recvfrom *rq = malloc(sizeof(struct udp_recvfrom));
+	if (rq) {
+		rq->buflen = SOCKET_MTU_SZ;
+		rq->buf = malloc(rq->buflen);
+		rq->slip = 0;
 	}
-	
-	/* Allocate buffer for answering. */
-	uint8_t *qbuf = malloc(SOCKET_MTU_SZ);
-	if (qbuf == NULL) {
-		dbg_net("udp: out of memory when allocating buffer.\n");
-		return KNOT_ENOMEM;
+	return rq;
+}
+
+static int udp_recvfrom_deinit(void *d)
+{
+	struct udp_recvfrom *rq = (struct udp_recvfrom *)d;
+	if (rq) {
+		free(rq->buf);
+		free(rq);
 	}
+	return 0;
+}
+
+static int udp_recvfrom_handle(server_t *s, int fd, void *d)
+{
+	struct udp_recvfrom *rq = (struct udp_recvfrom *)d;
+	sockaddr_prep(&rq->addr);
 	
-	/* Duplicate socket for performance reasons on some OS's */
-	int sock = h->fd;
-	int sock_dup = dup(h->fd);
-	if (sock_dup < 0) {
-		log_server_warning("Couldn't duplicate UDP socket for listening.\n");
-	} else {
-		sock = sock_dup;
-	}
+	/* Receive packet. */
+	int rc = 0;
+	for (;;) {
+		int n = recvfrom(fd, rq->buf, rq->buflen, MSG_DONTWAIT,
+		                 (struct sockaddr *)&rq->addr, &rq->addr.len);
 	
-	/* Initialize RRL if configured. */
-	unsigned rrl_slip = 0; 
-	rrl_table_t *rrl = h->server->rrl;
-
-	/* Loop until all data is read. */
-	ssize_t n = 0;
-	while (n >= 0) {
-
-		/* Receive packet. */
-		n = recvfrom(sock, qbuf, SOCKET_MTU_SZ, 0, addr.ptr, &addr.len);
-
-		/* Cancellation point. */
-		if (dt_is_cancelled(thread)) {
-			break;
-		}
-
 		/* Error and interrupt handling. */
 		if (knot_unlikely(n <= 0)) {
-			if (errno != EINTR && errno != 0) {
-				dbg_net("udp: recvmsg() failed: %d\n",
-					  errno);
-			}
-
-			if (!(h->state & ServerRunning)) {
-				break;
-			} else {
-				continue;
-			}
+			break;
 		}
 
 		/* Handle received pkt. */
 		size_t resp_len = 0;
-		int rc = udp_handle(sock, qbuf, n, &resp_len, &addr, ns,
-		                    rrl, &rrl_slip);
-
+		rc = udp_handle(fd, rq->buf, n, &resp_len, &rq->addr,
+		                s->nameserver, s->rrl, &rq->slip);
+		
 		/* Send response. */
 		if (rc == KNOT_EOK && resp_len > 0) {
-
+			
 			dbg_net("udp: on fd=%d, sending answer size=%zd.\n",
-			        sock, resp_len);
-
+			        fd, resp_len);
+			
 			// Send datagram
-			rc = sendto(sock, qbuf, resp_len,
-				    0, addr.ptr, addr.len);
-
-			// Check result
+			rc = sendto(fd, rq->buf, resp_len, 0,
+			            (struct sockaddr *)&rq->addr, rq->addr.len);
 			if (rc != (int)resp_len) {
 				dbg_net("udp: sendto(): failed: %d - %d.\n",
 				        rc, errno);
 			}
 		}
 	}
-
-	/* Free allocd resources. */
-	if (sock_dup >= 0) {
-		close(sock_dup);
-	}
 	
-	free(qbuf);
-
-	return KNOT_EOK;
+	return rc;
 }
 
 #ifdef ENABLE_RECVMMSG
-#ifdef MSG_WAITFORONE
 
 /*! \brief Pointer to selected UDP send implementation. */
 static int (*_send_mmsg)(int, sockaddr_t *, struct mmsghdr *, size_t) = 0;
@@ -357,7 +307,7 @@ int udp_sendto(int sock, sockaddr_t * addrs, struct mmsghdr *msgs, size_t count)
 			sockaddr_t *addr = addrs + i;
 			struct iovec *cvec = msgs[i].msg_hdr.msg_iov;
 			int res = sendto(sock, cvec->iov_base, resp_len,
-					 0, addr->ptr, addr->len);
+					 0, (struct sockaddr*)addr, addr->len);
 
 			// Check result
 			if (res != (int)resp_len) {
@@ -397,141 +347,123 @@ int udp_sendmmsg(int sock, sockaddr_t *_, struct mmsghdr *msgs, size_t count)
 }
 #endif
 
-static inline int udp_master_recvmmsg(dthread_t *thread, stat_t *thread_stat)
+/* UDP recvmmsg() request struct. */
+struct udp_recvmmsg {
+	char *iobuf;
+	sockaddr_t *addrs;
+	struct iovec *iov;
+	struct mmsghdr *msgs;
+	unsigned slip;
+};
+
+static void *udp_recvmmsg_init(void)
 {
-	iohandler_t *h = (iohandler_t *)thread->data;
-	knot_nameserver_t *ns = h->server->nameserver;
-	int sock = dup(h->fd);
-	
-	/* Check socket. */
-	if (sock < 0) {
-		dbg_net("udp: unable to dup() socket, finishing.\n");
-		return KNOT_EINVAL;
+	struct udp_recvmmsg *rq = malloc(sizeof(struct udp_recvmmsg));
+	if (rq) {
+		rq->iobuf = malloc(SOCKET_MTU_SZ * RECVMMSG_BATCHLEN);
+		rq->addrs = malloc(sizeof(sockaddr_t) * RECVMMSG_BATCHLEN);
+		rq->iov = malloc(sizeof(struct iovec) * RECVMMSG_BATCHLEN);
+		rq->msgs = malloc(sizeof(struct mmsghdr) * RECVMMSG_BATCHLEN);
+		if (!rq->iobuf || !rq->addrs || !rq->iov || !rq->msgs) {
+			free(rq->iobuf);
+			free(rq->addrs);
+			free(rq->iov);
+			free(rq->msgs);
+			free(rq);
+			return NULL;
+		}
+		memset(rq->msgs, 0, sizeof(struct mmsghdr) * RECVMMSG_BATCHLEN);
+		for (unsigned i = 0; i < RECVMMSG_BATCHLEN; ++i) {
+			sockaddr_prep(rq->addrs + i);
+			rq->iov[i].iov_base = rq->iobuf + i * SOCKET_MTU_SZ;
+			rq->iov[i].iov_len = SOCKET_MTU_SZ;
+			rq->msgs[i].msg_hdr.msg_iov = rq->iov + i;
+			rq->msgs[i].msg_hdr.msg_iovlen = 1;
+			rq->msgs[i].msg_hdr.msg_name = rq->addrs + i;
+			rq->msgs[i].msg_hdr.msg_namelen = rq->addrs[i].len;
+		}
+		rq->slip = 0;
 	}
+	return rq;
+}
 
-	/* Allocate batch for N packets. */
-	char *iobuf = malloc(SOCKET_MTU_SZ * RECVMMSG_BATCHLEN);
-	sockaddr_t *addrs = malloc(sizeof(sockaddr_t) * RECVMMSG_BATCHLEN);
-	struct iovec *iov = malloc(sizeof(struct iovec) * RECVMMSG_BATCHLEN);
-	struct mmsghdr *msgs = malloc(sizeof(struct mmsghdr) * RECVMMSG_BATCHLEN);
-	
-	/* Check, free(NULL) is valid, so no need to nitpick. */
-	if (iobuf == NULL || addrs == NULL || iov == NULL || msgs == NULL) {
-		free(iobuf);
-		free(addrs);
-		free(iov);
-		free(msgs);
-		close(sock);
-		return KNOT_ENOMEM;
+static int udp_recvmmsg_deinit(void *d)
+{
+	struct udp_recvmmsg *rq = (struct udp_recvmmsg *)d;
+	if (rq) {
+		free(rq->iobuf);
+		free(rq->addrs);
+		free(rq->iov);
+		free(rq->msgs);
+		free(rq);
 	}
+	return 0;
+}
 
-	/* Prepare batch. */
-	memset(msgs, 0, sizeof(struct mmsghdr) * RECVMMSG_BATCHLEN);
-	for (unsigned i = 0; i < RECVMMSG_BATCHLEN; ++i) {
-		sockaddr_init(addrs + i, h->type);
-		iov[i].iov_base = iobuf + i * SOCKET_MTU_SZ;
-		iov[i].iov_len = SOCKET_MTU_SZ;
-		msgs[i].msg_hdr.msg_iov = iov + i;
-		msgs[i].msg_hdr.msg_iovlen = 1;
-		msgs[i].msg_hdr.msg_name = addrs[i].ptr;
-		msgs[i].msg_hdr.msg_namelen = addrs[i].len;
-	}
-	
-	/* Set CPU affinity to improve load distribution on multicore systems.
-	 * Partial overlapping mask to be nice to scheduler.
-	 */
-	int cpcount = dt_online_cpus();
-	if (cpcount > 0) {
-		unsigned cpu[2];
-		cpu[0] = dt_get_id(thread);
-		cpu[1] = (cpu[0] + 1) % cpcount;
-		cpu[0] = cpu[0] % cpcount;
-		dt_setaffinity(thread, cpu, 2);
-	}
-	
-	/* Initialize RRL if configured. */
-	unsigned rrl_slip = 0; 
-	rrl_table_t *rrl = h->server->rrl;
+static int udp_recvmmsg_handle(server_t *s, int fd, void *d)
+{
+	struct udp_recvmmsg *rq = (struct udp_recvmmsg *)d;
 
 	/* Loop until all data is read. */
+	int rc = 0;
 	ssize_t n = 0;
 	while (n >= 0) {
 
 		/* Receive multiple messages. */
-		n = recvmmsg(sock, msgs, RECVMMSG_BATCHLEN, MSG_WAITFORONE, 0);
-
-		/* Cancellation point. */
-		if (dt_is_cancelled(thread)) {
-			break;
-		}
+		n = recvmmsg(fd, rq->msgs, RECVMMSG_BATCHLEN, MSG_DONTWAIT, 0);
 
 		/* Error and interrupt handling. */
 		if (knot_unlikely(n <= 0)) {
-			if (errno != EINTR && errno != 0 && n < 0) {
-				log_server_error("I/O failure in UDP - errno %d "
-				                 "(Linux/recvmmsg)", errno);
-				dbg_net("udp: recvmmsg() failed: %d\n",
-				        errno);
-			}
-
-			if (!(h->state & ServerRunning)) {
-				break;
-			} else {
-				continue;
-			}
+			break;
 		}
 
 		/* Handle each received msg. */
 		int ret = 0;
 		for (unsigned i = 0; i < n; ++i) {
-			struct iovec *cvec = msgs[i].msg_hdr.msg_iov;
-			size_t resp_len = msgs[i].msg_len;
-			ret = udp_handle(sock, cvec->iov_base, resp_len, &resp_len,
-			                 addrs + i, ns, rrl, &rrl_slip);
+			struct iovec *cvec = rq->msgs[i].msg_hdr.msg_iov;
+			size_t resp_len = rq->msgs[i].msg_len;
+			ret = udp_handle(fd, cvec->iov_base, resp_len, &resp_len,
+			                 rq->addrs + i, s->nameserver, s->rrl, &rq->slip);
 			if (ret == KNOT_EOK) {
-				msgs[i].msg_len = resp_len;
-				iov[i].iov_len = resp_len;
+				rq->msgs[i].msg_len = resp_len;
+				rq->iov[i].iov_len = resp_len;
 			} else {
-				msgs[i].msg_len = 0;
-				iov[i].iov_len = 0;
+				rq->msgs[i].msg_len = 0;
+				rq->iov[i].iov_len = 0;
 			}
 			
 		}
 
 		/* Gather results. */
-		_send_mmsg(sock, addrs, msgs, n);
+		rc = _send_mmsg(fd, rq->addrs, rq->msgs, n);
 		
 		/* Reset iov buffer size. */
 		for (unsigned i = 0; i < n; ++i) {
-			iov[i].iov_len = SOCKET_MTU_SZ;
+			rq->iov[i].iov_len = SOCKET_MTU_SZ;
 		}
 	}
 
-	/* Free allocd resources. */
-	free(iobuf);
-	free(addrs);
-	free(iov);
-	free(msgs);
-	close(sock);
-	return KNOT_EOK;
+	return rc;
 }
-#endif
 #endif
 
 /*! \brief Initialize UDP master routine on run-time. */
 void __attribute__ ((constructor)) udp_master_init()
 {
 	/* Initialize defaults. */
-	_udp_master = udp_master_recvfrom;
+	_udp_init = udp_recvfrom_init;
+	_udp_deinit = udp_recvfrom_deinit;
+	_udp_handle = udp_recvfrom_handle;
 
 	/* Optimized functions. */
 #ifdef ENABLE_RECVMMSG
-#ifdef MSG_WAITFORONE
 	/* Check for recvmmsg() support. */
 	if (dlsym(RTLD_DEFAULT, "recvmmsg") != 0) {
 		recvmmsg(0, NULL, 0, 0, 0);
 		if (errno != ENOSYS) {
-			_udp_master = udp_master_recvmmsg;
+			_udp_init = udp_recvmmsg_init;
+			_udp_deinit = udp_recvmmsg_deinit;
+			_udp_handle = udp_recvmmsg_handle;
 		}
 	}
 	
@@ -543,55 +475,12 @@ void __attribute__ ((constructor)) udp_master_init()
 		_send_mmsg = udp_sendmmsg;
 	}
 #endif /* ENABLE_SENDMMSG */
-#endif /* MSG_WAITFORONE */
 #endif /* ENABLE_RECVMMSG */
 }
 	
 	
 int udp_master(dthread_t *thread)
 {
-	iohandler_t *handler = (iohandler_t *)thread->data;
-	int sock = handler->fd;
-
-	/* Check socket. */
-	if (sock < 0) {
-		dbg_net("udp: null socket recevied, finishing.\n");
-		return KNOT_EINVAL;
-	}
-
-	/* Set socket options. */
-	int flag = 1;
-#ifndef DISABLE_IPV6
-	if (handler->type == AF_INET6) {
-		/* Disable dual-stack for performance reasons. */
-		if(setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &flag, sizeof(flag)) < 0) {
-			dbg_net("udp: failed to set IPV6_V6ONLY to socket, using default config\n");
-		}
-
-		/* UDP packets will not exceed a minimum MTU size. */
-		/*flag = IPV6_MIN_MTU;
-		setsockopt(fd, IPPROTO_IPV6, IPV6_MTU, &flag, sizeof(flag));
-		flag = 1; */
-	}
-#endif
-	if (handler->type == AF_INET) {
-
-//#ifdef IP_PMTUDISC_DONT
-//		/* Disable fragmentation. */
-//		flag = IP_PMTUDISC_DONT;
-//		setsockopt(sock, IPPROTO_IP, IP_MTU_DISCOVER, &flag, sizeof(flag));
-//		flag = 1;
-//#endif
-	}
-
-	/* in case of STAT_COMPILE the following code will declare thread_stat
-	 * variable in following fashion: stat_t *thread_stat;
-	 */
-
-	stat_t *thread_stat = 0;
-	STAT_INIT(thread_stat); //XXX new stat instance every time.
-	stat_set_protocol(thread_stat, stat_UDP);
-	
 	/* Drop all capabilities on workers. */
 #ifdef HAVE_CAP_NG_H
 	if (capng_have_capability(CAPNG_EFFECTIVE, CAP_SETPCAP)) {
@@ -600,20 +489,79 @@ int udp_master(dthread_t *thread)
 	}
 #endif /* HAVE_CAP_NG_H */
 
+	int cpcount = dt_online_cpus();
+	if (cpcount > 0) {
+		unsigned cpu = dt_get_id(thread) % cpcount;
+		dt_setaffinity(thread, &cpu, 1);
+	}
 
 	/* Execute proper handler. */
 	dbg_net_verb("udp: thread started (worker %p).\n", thread);
-	int ret = _udp_master(thread, thread_stat);
-	if (ret != KNOT_EOK) {
-		log_server_warning("UDP answering module finished "
-		                   "with an error (%s).\n",
-		                   knot_strerror(ret));
+	iostate_t *st = (iostate_t *)thread->data;
+	if (!st) {
+		dbg_net("udp: invalid parameters for udp_master_recvfrom\n");
+		return KNOT_EINVAL;
 	}
+	
+	iohandler_t *h = st->h;
+	server_t *server = h->server;
+	
+	/* Allocate buffer for answering. */
+	void *rqdata = _udp_init();
+	
+	/* Prepare structures for bound sockets. */
+	fdset_it_t it;
+	fdset_t *fds = NULL;
+	iface_t *i = NULL;
+	ifacelist_t *ifaces = NULL;
 
-	stat_free(thread_stat);
+	/* Loop until all data is read. */
+	for (;;) {
+		
+		/* Check handler state. */
+		if (knot_unlikely(st->s & ServerReload)) {
+			st->s &= ~ServerReload;
+			rcu_read_lock();
+			fdset_destroy(fds);
+			fds = fdset_new();
+			ref_release((ref_t *)ifaces);
+			ifaces = h->server->ifaces;
+			if (ifaces) {
+				WALK_LIST(i, ifaces->l) {
+					fdset_add(fds, i->fd[IO_UDP], OS_EV_READ);
+				}
+				
+			}
+			rcu_read_unlock();
+		}
+		
+		/* Cancellation point. */
+		if (dt_is_cancelled(thread)) {
+			break;
+		}
+		
+		/* Wait for events. */
+		int nfds = fdset_wait(fds, OS_EV_FOREVER);
+		if (nfds <= 0) {
+			if (nfds == EINTR) continue;
+			break;
+		}
+		
+		fdset_begin(fds, &it);
+		while(nfds > 0) {
+			_udp_handle(server, it.fd, rqdata);
+			if (fdset_next(fds, &it) != 0) {
+				break;
+			}
+		}
+	}
+	
+	fdset_destroy(fds);
+	ref_release((ref_t *)ifaces);
+	_udp_deinit(rqdata);
+
 	dbg_net_verb("udp: worker %p finished.\n", thread);
 	
-	
-	return ret;
+	return KNOT_EOK;
 }
 
