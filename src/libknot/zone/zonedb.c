@@ -80,7 +80,7 @@ dbg_zonedb_exec(
 	*hattrie_get(db->zone_tree, key, klen) = zone;
 	db->zone_count++;
 
-	return (ret != 0) ? KNOT_ERROR : KNOT_EOK;
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
