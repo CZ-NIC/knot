@@ -1629,7 +1629,7 @@ dbg_rrset_exec_detail(
 		return KNOT_EINVAL;
 	}
 	
-	int merged = 0;
+	int deleted = 0;
 	/* For each item in second RRSet, make sure it is not duplicated. */
 	for (uint16_t i = 0; i < rrset2->rdata_count; i++) {
 		int duplicated = 0;
@@ -1641,7 +1641,6 @@ dbg_rrset_exec_detail(
 		}
 		
 		if (!duplicated) {
-			merged++;
 			// This index goes to merged RRSet.
 			int ret = knot_rrset_add_rdata(rrset1,
 			                               rrset_rdata_pointer(rrset2, i),
@@ -1652,10 +1651,12 @@ dbg_rrset_exec_detail(
 				          knot_strerror(ret));
 				return ret;
 			}
+		} else {
+			deleted += 1;
 		}
 	}
 	
-	return merged;
+	return deleted;
 }
 
 /*----------------------------------------------------------------------------*/
