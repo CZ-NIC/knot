@@ -2688,3 +2688,25 @@ void knot_rrset_set_class(knot_rrset_t *rrset, uint16_t rclass)
 	
 	rrset->rclass = rclass;
 }
+
+int knot_rrset_ds_check(const knot_rrset_t *rrset)
+{
+	// Check if the legth of the digest corresponds to the proper size of
+	// the digest according to the given algorithm
+	for (uint16_t i = 0; i < rrset->rdata_count; ++i) {
+		/* 4 bytes before actual digest. */
+		if (rrset_rdata_item_size(rrset, i) < 4) {
+			/* Not even keytag, alg and alg type. */
+			return KNOT_EMALF;
+		}
+		uint16_t len = rrset_rdata_item_size(rrset, i) - 4;
+		uint8_t type = *(rrset_rdata_pointer(rrset, i) + 3);
+		if (type == 0 || len == 0) {
+			return KNOT_EINVAL;
+		} else if (len != knot_ds_digest_length(type)) {
+			return KNOT_EDSDIGESTLEN;
+		}
+	}
+	return KNOT_EOK;
+}
+
