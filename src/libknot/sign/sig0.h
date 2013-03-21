@@ -47,16 +47,13 @@ enum knot_dnssec_algorithm {
 	// 254 private algorithm OID
 	// 255 reserved
 };
-
 typedef enum knot_dnssec_algorithm knot_dnssec_algorithm_t;
 
-enum knot_dnssec_key_usage {
-	KNOT_KEY_USAGE_NONE = 0,
-	KNOT_KEY_USAGE_ZONE_SIGN = 1,
-	KNOT_KEY_USAGE_TRANSACTION_SIGN = 2
-};
-
-typedef enum knot_dnssec_key_usage knot_dnssec_key_usage_t;
+/*!
+ * \brief Algorithm state data (internal).
+ */
+struct knot_dnssec_algorithm_context;
+typedef struct knot_dnssec_algorithm_context knot_dnssec_algorithm_context_t;
 
 /*!
  * \brief DNSSEC key representation.
@@ -65,16 +62,42 @@ struct knot_dnssec_key {
 	knot_dname_t *name;			//!< Key name (idenfies signer).
 	uint16_t keytag;			//!< Key tag (for fast lookup).
 	knot_dnssec_algorithm_t algorithm;	//!< Algorithm identification.
-	void *algorithm_data;			//!< Implementation context.
+	knot_dnssec_algorithm_context_t *context; //!< Implementation context.
 };
-
 typedef struct knot_dnssec_key knot_dnssec_key_t;
 
+/*!
+ * \brief Fill DNSSEC key structure according to key parameters.
+ *
+ * \param params	Key parameters.
+ * \param key		Output structure.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
 int knot_dnssec_key_from_params(const knot_key_params_t *params,
 				knot_dnssec_key_t *key);
 
+/*!
+ * \brief Free DNSSEC key structure content.
+ *
+ * \note Does not free the structure itself.
+ *
+ * \param key		DNSSEC key.
+ *
+ * \return Error code, always KNOT_EOK.
+ */
 int knot_dnssec_key_free(knot_dnssec_key_t *key);
 
+/*!
+ * \brief Sign a packet using SIG(0) mechanism.
+ *
+ * \param wire		Wire (packet content).
+ * \param wire_size	Size of the wire.
+ * \param wire_max_size	Capacity of the wire.
+ * \param key		DNSSEC key to be used for signature.
+ *
+ * \return Error code, KNOT_EOK if succeeded.
+ */
 int knot_sig0_sign(uint8_t *wire, size_t *wire_size, size_t wire_max_size,
 		   knot_dnssec_key_t *key);
 

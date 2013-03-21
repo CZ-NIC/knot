@@ -152,8 +152,11 @@ enum knot_error {
 	ZSCANNER_EBAD_CERT_TYPE,
 
 	/* Key signing errors. */
-	KNOT_DNSSEC_INVALID_KEY,
-	KNOT_DNSSEC_SIGNING_FAILED,
+	KNOT_DNSSEC_ENOTSUP,
+	KNOT_DNSSEC_EINVALID_KEY,
+	KNOT_DNSSEC_EASSIGN_KEY,
+	KNOT_DNSSEC_ECREATE_DIGEST_CONTEXT,
+	KNOT_DNSSEC_ESIGN
 };
 
 /*! \brief Table linking error messages to error codes. */
