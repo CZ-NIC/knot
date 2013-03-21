@@ -425,7 +425,8 @@ int remote_parse(knot_packet_t* pkt, const uint8_t* buf, size_t buflen)
 	return ret;
 }
 
-static int tmp_send(int c, knot_packet_t *pkt, const char* d, uint16_t dlen, uint8_t* rwire, size_t rlen)
+static int remote_send_chunk(int c, knot_packet_t *pkt, const char* d,
+                             uint16_t dlen, uint8_t* rwire, size_t rlen)
 {
 	int ret = KNOT_ERROR;
 	knot_packet_t *resp = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
@@ -465,7 +466,11 @@ static int tmp_send(int c, knot_packet_t *pkt, const char* d, uint16_t dlen, uin
 
 
 	size_t rrlen = rlen;
-	knot_rrset_to_wire(rr, rwire + len, &rrlen, rlen, &rr_count, NULL);
+	ret = knot_rrset_to_wire(rr, rwire + len, &rrlen, rlen, &rr_count, NULL);
+	if (ret != KNOT_EOK) {
+		knot_rrset_deep_free(&rr, 1, 1);
+		return ret;
+	}
 	knot_wire_set_nscount(rwire, rr_count);
 	len += rrlen;
 	rlen -= rrlen;
@@ -542,12 +547,12 @@ int remote_answer(int fd, server_t *s, knot_packet_t *pkt, uint8_t* rwire, size_
 	unsigned p = 0;
 	size_t chunk = 16384;
 	for (; p + chunk < args->rlen; p += chunk) {
-		tmp_send(fd, pkt, args->resp + p, chunk, rwire, rlen);
+		remote_send_chunk(fd, pkt, args->resp + p, chunk, rwire, rlen);
 	}
 
 	unsigned r = args->rlen - p;
 	if (r > 0) {
-		tmp_send(fd, pkt, args->resp + p, r, rwire, rlen);
+		remote_send_chunk(fd, pkt, args->resp + p, r, rwire, rlen);
 	}
 	
 	free(args);
