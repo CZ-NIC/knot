@@ -29,6 +29,7 @@
 #define _GETLINE_H_
 
 #include <stdio.h>
+#include <sys/types.h>
 
 /*!
  * \brief Reads a line from a stream.
