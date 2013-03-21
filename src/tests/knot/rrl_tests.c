@@ -126,7 +126,11 @@ static int rrl_tests_run(int argc, char *argv[])
 	qst.qname = knot_dname_new_from_str("beef.", 5, NULL);
 	knot_packet_t *query = knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
 	knot_query_init(query);
-	knot_packet_set_max_size(query, 512);
+	if (knot_packet_set_max_size(query, 512) < 0) {
+		knot_dname_free(&qst.qname);
+		knot_packet_free(&query);
+		return KNOT_ERROR; /* Fatal */
+	}
 	knot_query_set_question(query, &qst);
 	
 	/* Prepare response */
