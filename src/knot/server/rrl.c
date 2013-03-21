@@ -297,6 +297,10 @@ static void rrl_log_state(const sockaddr_t *a, uint16_t flags, uint8_t cls)
 
 rrl_table_t *rrl_create(size_t size)
 {
+	if (size == 0) {
+		return NULL;
+	}
+	
 	const size_t tbl_len = sizeof(rrl_table_t) + size * sizeof(rrl_item_t);
 	rrl_table_t *t = malloc(tbl_len);
 	if (!t) return NULL;
