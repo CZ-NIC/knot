@@ -638,6 +638,11 @@ int main(int argc, char **argv)
 				memcpy(ctl_if->key, &r_key, sizeof(knot_tsig_key_t));
 			}
 		}
+	} else {
+		if (r_key.name) {
+			tsig_key_cleanup(ctl_if->key);
+			ctl_if->key = &r_key;
+		}
 	}
 	
 	/* Override from command line. */
@@ -650,11 +655,6 @@ int main(int argc, char **argv)
 		}
 	}
 	if (r_port > -1) ctl_if->port = r_port;
-	if (r_key.name != NULL) {
-		knot_tsig_key_free(ctl_if->key);
-		ctl_if->key = &r_key;
-	}
-	
 
 	/* Verbose mode. */
 	if (has_flag(flags, F_VERBOSE)) {
@@ -681,6 +681,10 @@ static int cmd_start(int argc, char *argv[], unsigned flags, int jobs)
 		                 "continue.\n");
 		return 1;
 	}
+	
+	/* Alter privileges. */
+	log_update_privileges(conf()->uid, conf()->gid);
+	proc_update_privileges(conf()->uid, conf()->gid);
 	
 	/* Fetch PID. */
 	char *pidfile = pid_filename();
@@ -779,6 +783,10 @@ static int cmd_stop(int argc, char *argv[], unsigned flags, int jobs)
 		                 "continue.\n");
 		return 1;
 	}
+	
+	/* Alter privileges. */
+	log_update_privileges(conf()->uid, conf()->gid);
+	proc_update_privileges(conf()->uid, conf()->gid);
 	
 	/* Fetch PID. */
 	char *pidfile = pid_filename();
