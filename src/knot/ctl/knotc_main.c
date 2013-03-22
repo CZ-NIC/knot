@@ -640,7 +640,7 @@ int main(int argc, char **argv)
 		}
 	} else {
 		if (r_key.name) {
-			tsig_key_cleanup(ctl_if->key);
+			knot_tsig_key_free(ctl_if->key);
 			ctl_if->key = &r_key;
 		}
 	}
