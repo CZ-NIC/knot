@@ -5,6 +5,7 @@ Features:
 	* knotc 'zonestatus' command
 
 Bugfixes:
+	* Check for broken recvmmsg() implementation
 	* Changing logfile ownership before dropping privileges
 	* knotc respects 'control' section from configuration
 	* RRL: resolved bucket collisions
