@@ -1,3 +1,15 @@
+v1.2.0-rc4 - Mar 22, 2013
+-------------------------
+
+Features:
+	* knotc 'zonestatus' command
+
+Bugfixes:
+	* Changing logfile ownership before dropping privileges
+	* knotc respects 'control' section from configuration
+	* RRL: resolved bucket collisions
+	* RRL: updated bucket mapping to conform RRL technical memo
+
 v1.2.0-rc3 - Mar 1, 2013
 ------------------------
 
