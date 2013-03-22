@@ -248,17 +248,17 @@ static int dsa_sign_finish(algorithm_context_t *context, uint8_t *signature)
 /*- Algorithm specifications -------------------------------------------------*/
 
 static const algorithm_functions_t rsa_functions = {
-        rsa_create_pkey,
-        any_sign_size,
-        any_sign_add,
-        any_sign_finish
+	rsa_create_pkey,
+	any_sign_size,
+	any_sign_add,
+	any_sign_finish
 };
 
 static const algorithm_functions_t dsa_functions = {
-        dsa_create_pkey,
-        dsa_sign_size,
-        any_sign_add,
-        dsa_sign_finish
+	dsa_create_pkey,
+	dsa_sign_size,
+	any_sign_add,
+	dsa_sign_finish
 };
 
 /*!
