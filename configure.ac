@@ -65,7 +65,7 @@ AC_ARG_ENABLE([ldns],
        no)  ldns=false ;;
        *) AC_MSG_ERROR([bad value ${enableval} for --enable-ldns]) ;;
      esac],[ldns=false])
-     
+
 # Debug modules
 AC_ARG_ENABLE([debug],
     AS_HELP_STRING([--enable-debug=server,zones,xfr,packet,dname,rr,ns,hash,compiler,stash],
@@ -87,6 +87,13 @@ AC_ARG_ENABLE([debug],
     done
     ], [])
 
+# Set FSM type for Ragel
+AC_SUBST([FSM_TYPE], [-T0])
+AC_ARG_ENABLE([fastparser],
+    AS_HELP_STRING([--enable-fastparser], [Set to generate fast goto driven state machine (Ragel option G2)]),
+    AC_SUBST([FSM_TYPE], [-G2]),
+    [])
+
 # Debug level
 AC_ARG_ENABLE([debuglevel],
     AS_HELP_STRING([--enable-debuglevel=brief|verbose|details], [enable given debug level [default=disabled]]),
@@ -96,16 +103,16 @@ AC_ARG_ENABLE([debuglevel],
         AC_DEFINE([DEBUG_ENABLE_DETAILS], [1], [Enable details debugging messages.])
         AC_DEFINE([DEBUG_ENABLE_VERBOSE], [1], [Enable verbose debugging messages.])
         AC_DEFINE([DEBUG_ENABLE_BRIEF], [1], [Enable brief debugging messages.])
-	;;
+        ;;
       xverbose)
         AC_DEFINE([DEBUG_ENABLE_VERBOSE], [1], [Enable verbose debugging messages.])
         AC_DEFINE([DEBUG_ENABLE_BRIEF], [1], [Enable brief debugging messages.])
-	;;
+        ;;
       xbrief)
         AC_DEFINE([DEBUG_ENABLE_BRIEF], [1], [Enable brief debugging messages.])
         ;;
     esac], [])
-    
+
 AX_MSG_WAITFORONE
 # recvmmsg() (valgrind doesn't support it, so disable for debugging)
 AC_ARG_ENABLE([recvmmsg],
