@@ -517,7 +517,8 @@ static int sign_packet(nsupdate_params_t *params, uint8_t *wire,
 		return result;
 	}
 
-	return KNOT_EINVAL;
+	assert(key_type == KNOT_KEY_UNKNOWN);
+	return KNOT_DNSSEC_EINVALID_KEY;
 }
 
 static int check_sign(nsupdate_params_t *params, size_t wire_size,
