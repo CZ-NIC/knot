@@ -730,6 +730,11 @@ int main(int argc, char **argv)
 				memcpy(ctl_if->key, &r_key, sizeof(knot_key_t));
 			}
 		}
+	} else {
+		if (r_key.name) {
+			tsig_key_cleanup(ctl_if->key);
+			ctl_if->key = &r_key;
+		}
 	}
 	
 	/* Override from command line. */
@@ -742,11 +747,6 @@ int main(int argc, char **argv)
 		}
 	}
 	if (r_port > -1) ctl_if->port = r_port;
-	if (r_key.name != NULL) {
-		tsig_key_cleanup(ctl_if->key);
-		ctl_if->key = &r_key;
-	}
-	
 
 	/* Verbose mode. */
 	if (has_flag(flags, F_VERBOSE)) {
