@@ -13,7 +13,8 @@ SOURCES = [
     "*.ac", "*.am", "Makefile",
 
     # sources
-    "src/*.c", "src/*.h",
+    "src/*.c", "src/*.h", "src/*.rl", "src/*.l",
+    "src/*.y",
 ]
 
 OUTPUT_FILE = "Knot.files"
