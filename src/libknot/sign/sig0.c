@@ -231,11 +231,11 @@ static int dsa_sign_finish(algorithm_context_t *context, uint8_t *signature)
 	// convert to format defined by RFC 2536 (DSA keys and SIGs in DNS)
 
 	// T (1 byte), R (20 bytes), S (20 bytes)
-	uint8_t *signature_t = signature;
+	// int8_t *signature_t = signature; // Unused variable
 	uint8_t *signature_r = signature + 21 - BN_num_bytes(dsa_signature->r);
 	uint8_t *signature_s = signature + 41 - BN_num_bytes(dsa_signature->s);
 
-	signature_t = 0x00; //! \todo How to compute T? (Only recommended.)
+	// signature_t = 0x00; //! \todo How to compute T? (Only recommended.)
 	BN_bn2bin(dsa_signature->r, signature_r);
 	BN_bn2bin(dsa_signature->s, signature_s);
 
