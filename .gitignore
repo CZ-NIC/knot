@@ -6,7 +6,7 @@
 .libs/
 .deps/
 Knot.creator.user*
-./Makefile
+Makefile
 Makefile.in
 aclocal.m4
 ar-lib
@@ -22,8 +22,6 @@ configure.scan
 depcomp
 install-sh
 missing
-src/Makefile.in
-src/Makefile
 ylwrap
 autom4te.cache/
 config.h
