@@ -16,6 +16,7 @@
 
 #include <stddef.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "sign/bnutils.h"
 #include "common/base64.h"
