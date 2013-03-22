@@ -447,11 +447,14 @@ int knot_dnssec_key_from_params(const knot_key_params_t *params,
 		return KNOT_ENOMEM;
 
 	algorithm_context_t *context = calloc(1, sizeof(algorithm_context_t));
-	if (!context)
+	if (!context) {
+		knot_dname_release(name);
 		return KNOT_ENOMEM;
+	}
 
 	int result = init_algorithm_context(params, context);
 	if (result != KNOT_EOK) {
+		knot_dname_release(name);
 		free(context);
 		return result;
 	}
