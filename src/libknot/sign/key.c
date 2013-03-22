@@ -306,7 +306,6 @@ int knot_load_key_params(const char *filename, knot_key_params_t *key_params)
 	int result;
 	char *public_key = NULL;
 	char *private_key = NULL;
-	char *key_name = NULL;
 
 	result = get_key_filenames(filename, &public_key, &private_key);
 	if (result != KNOT_EOK) {
@@ -326,7 +325,7 @@ int knot_load_key_params(const char *filename, knot_key_params_t *key_params)
 	if (!fp) {
 		free(public_key);
 		free(private_key);
-		free(key_name);
+		knot_dname_release(name);
 		return KNOT_ERROR; //!< \todo better error code
 	}
 
