@@ -658,15 +658,19 @@ int knot_sig0_sign(uint8_t *wire, size_t *wire_size, size_t wire_max_size,
 	size_t wire_sig_size = 0;
 	uint16_t written_rr_count = 0;
 
-	knot_rrset_to_wire(sig_rrset, wire_end, &wire_sig_size,
-			   wire_avail_size, &written_rr_count, NULL);
-	assert(written_rr_count == 1);
-
+	int result = knot_rrset_to_wire(sig_rrset, wire_end, &wire_sig_size,
+					wire_avail_size, &written_rr_count,
+					NULL);
 	knot_rrset_deep_free(&sig_rrset, 1, 1);
+	if (result != KNOT_EOK) {
+		return result;
+	}
+
+	assert(written_rr_count == 1);
 
 	// create signature
 
-	int result = sig0_write_signature(wire, *wire_size, wire_sig_size, key);
+	result = sig0_write_signature(wire, *wire_size, wire_sig_size, key);
 	if (result != KNOT_EOK) {
 		return result;
 	}
