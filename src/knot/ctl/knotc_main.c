@@ -774,6 +774,10 @@ static int cmd_start(int argc, char *argv[], unsigned flags, int jobs)
 		return 1;
 	}
 	
+	/* Alter privileges. */
+	log_update_privileges(conf()->uid, conf()->gid);
+	proc_update_privileges(conf()->uid, conf()->gid);
+	
 	/* Fetch PID. */
 	char *pidfile = pid_filename();
 	pid_t pid = pid_read(pidfile);
@@ -871,6 +875,10 @@ static int cmd_stop(int argc, char *argv[], unsigned flags, int jobs)
 		                 "continue.\n");
 		return 1;
 	}
+	
+	/* Alter privileges. */
+	log_update_privileges(conf()->uid, conf()->gid);
+	proc_update_privileges(conf()->uid, conf()->gid);
 	
 	/* Fetch PID. */
 	char *pidfile = pid_filename();
