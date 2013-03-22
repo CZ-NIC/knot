@@ -524,8 +524,8 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 				             "(%s).\n", knot_strerror(ret));
 				return ret;
 			}
-			knot_rrset_set_ttl(to_add, knot_rrset_ttl(rrset2));
 		}
+		knot_rrset_set_ttl(to_add, knot_rrset_ttl(rrset2));
 	}
 
 	ret = knot_zone_diff_changeset_add_rrset(changeset,
