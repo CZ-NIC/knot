@@ -353,7 +353,7 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
  * \retval KNOT_EINVAL if the RRSets could not be merged, because their
  *         Owner, Type, Class or TTL does not match.
  */
-int knot_rrset_merge(void **r1, void **r2);
+int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2);
 
 
 /*!
@@ -366,7 +366,7 @@ int knot_rrset_merge(void **r1, void **r2);
  * \retval KNOT_EINVAL if the RRSets could not be merged, because their
  *         Owner, Type, Class or TTL does not match.
  */
-int knot_rrset_merge_no_dupl(void **r1, void **r2);
+int knot_rrset_merge_no_dupl(knot_rrset_t *rrset1, const knot_rrset_t *rrset2, int *merged, int *deleted_rrs);
 
 
 //TODO test

@@ -269,12 +269,15 @@ static int xfrin_add_orphan_rrsig(xfrin_orphan_rrsig_t **rrsigs,
 		                       KNOT_RRSET_COMPARE_HEADER) == 1
 		    && knot_rrset_rdata_rrsig_type_covered(last->rrsig)
 		       == knot_rrset_rdata_rrsig_type_covered(rr)) {
-			ret = knot_rrset_merge_no_dupl((void **)&last->rrsig,
-			                               (void **)&rr);
-			if (ret < 0) {
+			int merged, deleted_rrs;
+			ret = knot_rrset_merge_no_dupl(last->rrsig,
+			                               rr, &merged, &deleted_rrs);
+			if (ret != KNOT_EOK) {
 				return ret;
-			} else {
+			} else if (merged) {
 				return 1;
+			} else {
+				return 0;
 			}
 		}
 		last = last->next;
@@ -2132,7 +2135,8 @@ dbg_xfrin_exec_detail(
 		knot_rrset_set_ttl(*rrset, knot_rrset_ttl(add));
 	}
 
-	ret = knot_rrset_merge_no_dupl((void **)rrset, (void **)&add);
+	int merged, deleted_rrs;
+	ret = knot_rrset_merge_no_dupl(*rrset, add, &merged, &deleted_rrs);
 	if (ret < 0) {
 		dbg_xfrin("Failed to merge changeset RRSet.\n");
 		return ret;
@@ -2297,8 +2301,9 @@ dbg_xfrin_exec_detail(
 	
 		// merge the changeset RRSet to the copy
 		dbg_xfrin_detail("Merging RRSIG to the one in the RRSet.\n");
-		ret = knot_rrset_merge_no_dupl((void **)&rrsig, (void **)&add);
-		if (ret < 0) {
+		int merged, deleted_rrs;
+		ret = knot_rrset_merge_no_dupl(rrsig, add, &merged, &deleted_rrs);
+		if (ret != KNOT_EOK) {
 			dbg_xfrin("Failed to merge changeset RRSIG to copy: %s"
 			          ".\n", knot_strerror(ret));
 			return KNOT_ERROR;

@@ -555,7 +555,7 @@ dbg_packet_exec_detail(
 				// no duplicate checking here, the packet should
 				// look exactly as it came from wire
 				int rc = knot_rrset_merge(
-				    (void **)((*rrsets) + i), (void **)&rrset);
+				    ((knot_rrset_t *)(*rrsets)[i]), rrset);
 				if (rc != KNOT_EOK) {
 					return rc;
 				}

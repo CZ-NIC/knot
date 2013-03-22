@@ -920,12 +920,15 @@ int knot_rrset_add_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs,
 	int rc;
 	if (rrset->rrsigs != NULL) {
 		if (dupl == KNOT_RRSET_DUPL_MERGE) {
-			rc = knot_rrset_merge_no_dupl((void **)&rrset->rrsigs,
-			                              (void **)&rrsigs);
-			if (rc > 0) {
+			int merged, deleted_rrs;
+			rc = knot_rrset_merge_no_dupl(rrset->rrsigs, rrsigs,
+			                              &merged, &deleted_rrs);
+			if (rc != KNOT_EOK) {
+				return rc;
+			} else if (merged) {
 				return 1;
 			} else {
-				return rc;
+				return 0;
 			}
 		} else if (dupl == KNOT_RRSET_DUPL_SKIP) {
 			return 2;
@@ -1541,11 +1544,8 @@ void knot_rrset_deep_free_no_sig(knot_rrset_t **rrset, int free_owner,
 	*rrset = NULL;
 }
 
-int knot_rrset_merge(void **r1, void **r2)
+int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2)
 {
-	/* [code-review] Missing parameter checks. */
-	knot_rrset_t *rrset1 = (knot_rrset_t *)(*r1);
-	knot_rrset_t *rrset2 = (knot_rrset_t *)(*r2);
 	if (rrset1 == NULL || rrset2 == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -1601,15 +1601,9 @@ int knot_rrset_merge(void **r1, void **r2)
 	return KNOT_EOK;
 }
 
-int knot_rrset_merge_no_dupl(void **r1, void **r2)
+int knot_rrset_merge_no_dupl(knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
+                             int *merged, int *deleted_rrs)
 {
-	if (r1 == NULL || r2 == NULL) {
-		dbg_rrset("rrset: merge_no_dupl: NULL arguments.");
-		return KNOT_EINVAL;
-	}
-	
-	knot_rrset_t *rrset1 = (knot_rrset_t *)(*r1);
-	knot_rrset_t *rrset2 = (knot_rrset_t *)(*r2);
 	if (rrset1 == NULL || rrset2 == NULL) {
 		dbg_rrset("rrset: merge_no_dupl: NULL arguments.");
 		return KNOT_EINVAL;
@@ -1629,7 +1623,7 @@ dbg_rrset_exec_detail(
 		return KNOT_EINVAL;
 	}
 	
-	int deleted = 0;
+	*deleted_rrs = 0;
 	/* For each item in second RRSet, make sure it is not duplicated. */
 	for (uint16_t i = 0; i < rrset2->rdata_count; i++) {
 		int duplicated = 0;
@@ -1641,6 +1635,7 @@ dbg_rrset_exec_detail(
 		}
 		
 		if (!duplicated) {
+			*merged = 1; // = need to shallow free rrset2
 			// This index goes to merged RRSet.
 			int ret = knot_rrset_add_rdata(rrset1,
 			                               rrset_rdata_pointer(rrset2, i),
@@ -1652,11 +1647,11 @@ dbg_rrset_exec_detail(
 				return ret;
 			}
 		} else {
-			deleted += 1;
+			*deleted_rrs += 1;
 		}
 	}
 	
-	return deleted;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/

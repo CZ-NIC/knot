@@ -191,12 +191,15 @@ int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset)
 	
 	for (unsigned i = 0; i < node->rrset_count; ++i) {
 		if (node->rrset_tree[i]->type == rrset->type) {
-			int ret = knot_rrset_merge_no_dupl((void**)node->rrset_tree + i,
-			                                   (void**)&rrset);
-			if (ret > 0) {
+			int merged, deleted_rrs;
+			int ret = knot_rrset_merge_no_dupl(node->rrset_tree[i],
+			                                   rrset, &merged, &deleted_rrs);
+			if (ret != KNOT_EOK) {
+				return ret;
+			} else if (merged) {
 				return 1;
 			} else {
-				return ret;
+				return 0;
 			}
 		}
 	}
