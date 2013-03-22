@@ -1,0 +1,53 @@
+.TH "khost" "8" "April 2013" "CZ.NIC Labs" "Knot DNS, version 1.2.0-rc3"
+.SH NAME
+.B khost
+\- simple DNS lookup utility based on libknot
+.SH SYNOPSIS
+.B khost
+[\fIparameters\fR] {\fIname\fR} [\fIserver\fR]
+.SH OPTIONS
+.TP
+.B \-4
+Use IPv4 protocol only.
+.TP
+.B \-6
+Use IPv6 protocol only.
+.TP
+.B \-a
+Send ANY query with verbose mode.
+.TP
+.B \-C
+(NOT YET IMPLEMENTED)
+.TP
+.B \-d
+Enable debug messages.
+.TP
+.B \-v
+Enable verbose output.
+.TP
+.B \-l
+Send AXFR query.
+.TP
+.B \-r
+Set recursion (RD flag).
+.TP
+.B \-s
+Stop quering if servfail.
+.TP
+.B \-T
+Use TCP protocol
+.TP
+.B \-w
+Wait forever for the response.
+.TP
+.B \-c [class]
+Set class.
+.TP
+.B \-R [num]
+Set number of retries.
+.TP
+.B \-t [type]
+Set type.
+.TP
+.B \-W [num]
+Set wait interval.
