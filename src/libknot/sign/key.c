@@ -477,6 +477,8 @@ int knot_tsig_key_free(knot_tsig_key_t *key)
 {
 	if (!key)
 		return KNOT_EINVAL;
+	
+	knot_dname_release(key->name);
 
 	knot_binary_free(&key->secret);
 	memset(key, '\0', sizeof(knot_tsig_key_t));

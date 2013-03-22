@@ -489,6 +489,7 @@ keys:
              k->k.name = dname;
              k->k.algorithm = $3.alg;
              knot_binary_from_base64($4.t, &(k->k.secret));
+	     free($4.t);
              add_tail(&new_config->keys, &k->n);
              ++new_config->key_count;
 	 }
