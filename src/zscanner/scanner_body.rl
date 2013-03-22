@@ -673,7 +673,8 @@
 				fhold; fgoto err_line;
 			}
 		} else {
-			strcpy((char*)(s->buffer), (char*)(s->include_filename));
+			strncpy((char*)(s->buffer), (char*)(s->include_filename),
+			        sizeof(s->buffer));
 		}
 
 		// Create new file loader for included zone file.
