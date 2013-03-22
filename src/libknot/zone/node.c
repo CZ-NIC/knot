@@ -196,7 +196,7 @@ int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset)
 			                                   rrset, &merged, &deleted_rrs);
 			if (ret != KNOT_EOK) {
 				return ret;
-			} else if (merged) {
+			} else if (merged || deleted_rrs) {
 				return 1;
 			} else {
 				return 0;
