@@ -41,9 +41,11 @@
  * \param n		Output buffer size.
  * \param stream	Input stream.
  *
- * \return Number of characters read, including new line delimiter,
+ * \retval Number of characters read, including new line delimiter,
  *         not including terminating. -1 on error or EOF.
  */
 ssize_t knot_getline(char **lineptr, size_t *n, FILE *stream);
 
 #endif // _GETLINE_H_
+
+/*! @} */

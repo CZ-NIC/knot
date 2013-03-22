@@ -18,8 +18,8 @@
 
 #include <stdlib.h>			// free
 #include <sys/time.h>			// gettimeofday
-#include <sys/socket.h>                 // AF_INET
-#include <netinet/in.h>                 // sockaddr_in (BSD)
+#include <sys/socket.h>			// AF_INET
+#include <netinet/in.h>			// sockaddr_in (BSD)
 
 #include "libknot/libknot.h"
 #include "common/lists.h"		// list
