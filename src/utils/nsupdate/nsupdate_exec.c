@@ -441,7 +441,9 @@ static int nsupdate_process(nsupdate_params_t *params, FILE *fp)
 	}
 
 	/* Free last answer. */
-	knot_packet_free(&params->resp);
+	if (params->resp) {
+		knot_packet_free(&params->resp);
+	}
 
 	return ret;
 }
