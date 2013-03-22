@@ -1903,6 +1903,7 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone,
 	if (adjust_arg.err != KNOT_EOK) {
 		dbg_zone("Failed to set 'prev' pointers to NSEC3 nodes: %s\n",
 		         knot_strerror(adjust_arg.err));
+		hattrie_free(lookup_tree);
 		return adjust_arg.err;
 	}
 
@@ -1930,6 +1931,7 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone,
 	if (adjust_arg.err != KNOT_EOK) {
 		dbg_zone("Failed to set 'prev' pointers to normal nodes: %s\n",
 		         knot_strerror(adjust_arg.err));
+		hattrie_free(lookup_tree);
 		return adjust_arg.err;
 	}
 
@@ -1952,6 +1954,7 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone,
 	if (adjust_arg.err != KNOT_EOK) {
 		dbg_zone("Failed to adjust NSEC3 nodes: %s\n",
 		         knot_strerror(adjust_arg.err));
+		hattrie_free(lookup_tree);
 		return adjust_arg.err;
 	}
 
@@ -1964,6 +1967,7 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone,
 	if (adjust_arg.err != KNOT_EOK) {
 		dbg_zone("Failed to adjust normal nodes: %s\n",
 		         knot_strerror(adjust_arg.err));
+		hattrie_free(lookup_tree);
 		return adjust_arg.err;
 	}
 
