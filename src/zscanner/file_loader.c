@@ -50,8 +50,14 @@ static int load_settings(file_loader_t *fl)
 	scanner_t	*settings_scanner;
 
 	// Creating name for zone defaults.
-	settings_name = malloc(strlen(fl->file_name) + 100);
-	sprintf(settings_name, "ZONE DEFAULTS <%s>", fl->file_name);
+	size_t buf_len = strlen(fl->file_name) + 100;
+	settings_name = malloc(buf_len);
+	ret = snprintf(settings_name, buf_len, "ZONE DEFAULTS <%s>",
+	               fl->file_name);
+	if (ret < 0 || ret >= buf_len) {
+		free(settings_name);
+		return -1;
+	}
 
 	// Temporary scanner for zone settings.
 	settings_scanner = scanner_create(settings_name);

@@ -613,7 +613,8 @@
 	}
 	action _incl_filename_exit {
 		*rdata_tail = 0; // Ending filename string.
-		strcpy((char*)(s->include_filename), (char*)(s->r_data));
+		strncpy((char*)(s->include_filename), (char*)(s->r_data),
+		        sizeof(s->include_filename));
 
 		// Check for correct string copy.
 		if (strlen(s->include_filename) != rdata_tail - s->r_data) {
@@ -661,7 +662,8 @@
 					strdup((char*)(s->buffer));
 
 				// Creating full include file name.
-				sprintf((char*)(s->buffer), "%s/%s",
+				snprintf((char*)(s->buffer), sizeof(s->buffer),
+				        "%s/%s",
 				        dirname(full_current_zone_file_name),
 				        s->include_filename);
 

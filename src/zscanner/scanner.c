@@ -4752,14 +4752,14 @@ _resume:
 	case 3: {
 		_widec = (short)(2688 + ((*p) - -128));
 		if ( 
-#line 1193 "zscanner/scanner_body.rl"
+#line 1195 "zscanner/scanner_body.rl"
  s->number64 != 0  ) _widec += 256;
 		break;
 	}
 	case 4: {
 		_widec = (short)(4224 + ((*p) - -128));
 		if ( 
-#line 1194 "zscanner/scanner_body.rl"
+#line 1196 "zscanner/scanner_body.rl"
  s->number64 == 0  ) _widec += 256;
 		break;
 	}
@@ -4779,7 +4779,7 @@ _resume:
 #line 54 "zscanner/scanner_body.rl"
  s->multiline  ) _widec += 256;
 		if ( 
-#line 1193 "zscanner/scanner_body.rl"
+#line 1195 "zscanner/scanner_body.rl"
  s->number64 != 0  ) _widec += 512;
 		break;
 	}
@@ -4789,17 +4789,17 @@ _resume:
 #line 54 "zscanner/scanner_body.rl"
  s->multiline  ) _widec += 256;
 		if ( 
-#line 1194 "zscanner/scanner_body.rl"
+#line 1196 "zscanner/scanner_body.rl"
  s->number64 == 0  ) _widec += 512;
 		break;
 	}
 	case 8: {
 		_widec = (short)(5760 + ((*p) - -128));
 		if ( 
-#line 1193 "zscanner/scanner_body.rl"
+#line 1195 "zscanner/scanner_body.rl"
  s->number64 != 0  ) _widec += 256;
 		if ( 
-#line 1194 "zscanner/scanner_body.rl"
+#line 1196 "zscanner/scanner_body.rl"
  s->number64 == 0  ) _widec += 512;
 		break;
 	}
@@ -4812,7 +4812,7 @@ _resume:
 #line 63 "zscanner/scanner_body.rl"
  !s->multiline  ) _widec += 512;
 		if ( 
-#line 1194 "zscanner/scanner_body.rl"
+#line 1196 "zscanner/scanner_body.rl"
  s->number64 == 0  ) _widec += 1024;
 		break;
 	}
@@ -4822,10 +4822,10 @@ _resume:
 #line 54 "zscanner/scanner_body.rl"
  s->multiline  ) _widec += 256;
 		if ( 
-#line 1193 "zscanner/scanner_body.rl"
+#line 1195 "zscanner/scanner_body.rl"
  s->number64 != 0  ) _widec += 512;
 		if ( 
-#line 1194 "zscanner/scanner_body.rl"
+#line 1196 "zscanner/scanner_body.rl"
  s->number64 == 0  ) _widec += 1024;
 		break;
 	}
@@ -4838,10 +4838,10 @@ _resume:
 #line 63 "zscanner/scanner_body.rl"
  !s->multiline  ) _widec += 512;
 		if ( 
-#line 1193 "zscanner/scanner_body.rl"
+#line 1195 "zscanner/scanner_body.rl"
  s->number64 != 0  ) _widec += 1024;
 		if ( 
-#line 1194 "zscanner/scanner_body.rl"
+#line 1196 "zscanner/scanner_body.rl"
  s->number64 == 0  ) _widec += 2048;
 		break;
 	}
@@ -5558,7 +5558,8 @@ _match:
 #line 614 "zscanner/scanner_body.rl"
 	{
 		*rdata_tail = 0; // Ending filename string.
-		strcpy((char*)(s->include_filename), (char*)(s->r_data));
+		strncpy((char*)(s->include_filename), (char*)(s->r_data),
+		        sizeof(s->include_filename));
 
 		// Check for correct string copy.
 		if (strlen(s->include_filename) != rdata_tail - s->r_data) {
@@ -5571,33 +5572,33 @@ _match:
 	}
 	break;
 	case 73:
-#line 627 "zscanner/scanner_body.rl"
+#line 628 "zscanner/scanner_body.rl"
 	{
 		SCANNER_ERROR(ZSCANNER_EBAD_INCLUDE_FILENAME);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 74:
-#line 632 "zscanner/scanner_body.rl"
+#line 633 "zscanner/scanner_body.rl"
 	{
 		s->dname = s->r_data;
 	}
 	break;
 	case 75:
-#line 635 "zscanner/scanner_body.rl"
+#line 636 "zscanner/scanner_body.rl"
 	{
 		s->r_data_length = s->dname_tmp_length;
 	}
 	break;
 	case 76:
-#line 638 "zscanner/scanner_body.rl"
+#line 639 "zscanner/scanner_body.rl"
 	{
 		SCANNER_ERROR(ZSCANNER_EBAD_INCLUDE_ORIGIN);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 77:
-#line 643 "zscanner/scanner_body.rl"
+#line 644 "zscanner/scanner_body.rl"
 	{
 		char text_origin[MAX_DNAME_LENGTH];
 
@@ -5619,7 +5620,8 @@ _match:
 					strdup((char*)(s->buffer));
 
 				// Creating full include file name.
-				sprintf((char*)(s->buffer), "%s/%s",
+				snprintf((char*)(s->buffer), sizeof(s->buffer),
+				        "%s/%s",
 				        dirname(full_current_zone_file_name),
 				        s->include_filename);
 
@@ -5656,48 +5658,48 @@ _match:
 	}
 	break;
 	case 78:
-#line 707 "zscanner/scanner_body.rl"
+#line 709 "zscanner/scanner_body.rl"
 	{ p--; {stack[top++] = cs; cs = 276; goto _again;} }
 	break;
 	case 79:
-#line 713 "zscanner/scanner_body.rl"
+#line 715 "zscanner/scanner_body.rl"
 	{
 		s->stop = true;
 	}
 	break;
 	case 80:
-#line 717 "zscanner/scanner_body.rl"
+#line 719 "zscanner/scanner_body.rl"
 	{
 		s->stop = false;
 	}
 	break;
 	case 81:
-#line 720 "zscanner/scanner_body.rl"
+#line 722 "zscanner/scanner_body.rl"
 	{
 		SCANNER_ERROR(ZSCANNER_EBAD_DIRECTIVE);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 82:
-#line 732 "zscanner/scanner_body.rl"
+#line 734 "zscanner/scanner_body.rl"
 	{
 		s->r_class = s->default_class;
 	}
 	break;
 	case 83:
-#line 736 "zscanner/scanner_body.rl"
+#line 738 "zscanner/scanner_body.rl"
 	{
 		s->r_ttl = s->default_ttl;
 	}
 	break;
 	case 84:
-#line 740 "zscanner/scanner_body.rl"
+#line 742 "zscanner/scanner_body.rl"
 	{
 		s->r_class = KNOT_CLASS_IN;
 	}
 	break;
 	case 85:
-#line 744 "zscanner/scanner_body.rl"
+#line 746 "zscanner/scanner_body.rl"
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
@@ -5708,13 +5710,13 @@ _match:
 	}
 	break;
 	case 86:
-#line 759 "zscanner/scanner_body.rl"
+#line 761 "zscanner/scanner_body.rl"
 	{
 		s->buffer_length = 0;
 	}
 	break;
 	case 87:
-#line 762 "zscanner/scanner_body.rl"
+#line 764 "zscanner/scanner_body.rl"
 	{
 		if (s->buffer_length < MAX_RDATA_LENGTH) {
 			s->buffer[s->buffer_length++] = (*p);
@@ -5726,14 +5728,14 @@ _match:
 	}
 	break;
 	case 88:
-#line 771 "zscanner/scanner_body.rl"
+#line 773 "zscanner/scanner_body.rl"
 	{
 		SCANNER_WARNING(ZSCANNER_EBAD_ADDRESS_CHAR);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 89:
-#line 776 "zscanner/scanner_body.rl"
+#line 778 "zscanner/scanner_body.rl"
 	{
 		s->buffer[s->buffer_length] = 0;
 
@@ -5744,14 +5746,14 @@ _match:
 	}
 	break;
 	case 90:
-#line 784 "zscanner/scanner_body.rl"
+#line 786 "zscanner/scanner_body.rl"
 	{
 		memcpy(rdata_tail, &(addr4.s_addr), INET4_ADDR_LENGTH);
 		rdata_tail += INET4_ADDR_LENGTH;
 	}
 	break;
 	case 91:
-#line 789 "zscanner/scanner_body.rl"
+#line 791 "zscanner/scanner_body.rl"
 	{
 		s->buffer[s->buffer_length] = 0;
 
@@ -5762,38 +5764,38 @@ _match:
 	}
 	break;
 	case 92:
-#line 797 "zscanner/scanner_body.rl"
+#line 799 "zscanner/scanner_body.rl"
 	{
 		memcpy(rdata_tail, &(addr6.s6_addr), INET6_ADDR_LENGTH);
 		rdata_tail += INET6_ADDR_LENGTH;
 	}
 	break;
 	case 93:
-#line 814 "zscanner/scanner_body.rl"
+#line 816 "zscanner/scanner_body.rl"
 	{
 		memset(&(s->apl), 0, sizeof(s->apl));
 	}
 	break;
 	case 94:
-#line 817 "zscanner/scanner_body.rl"
+#line 819 "zscanner/scanner_body.rl"
 	{
 		s->apl.excl_flag = 128; // dec 128  = bin 10000000.
 	}
 	break;
 	case 95:
-#line 820 "zscanner/scanner_body.rl"
+#line 822 "zscanner/scanner_body.rl"
 	{
 		s->apl.addr_family = 1;
 	}
 	break;
 	case 96:
-#line 823 "zscanner/scanner_body.rl"
+#line 825 "zscanner/scanner_body.rl"
 	{
 		s->apl.addr_family = 2;
 	}
 	break;
 	case 97:
-#line 826 "zscanner/scanner_body.rl"
+#line 828 "zscanner/scanner_body.rl"
 	{
 		if ((s->apl.addr_family == 1 && s->number64 <= 32) ||
 		    (s->apl.addr_family == 2 && s->number64 <= 128)) {
@@ -5805,7 +5807,7 @@ _match:
 	}
 	break;
 	case 98:
-#line 835 "zscanner/scanner_body.rl"
+#line 837 "zscanner/scanner_body.rl"
 	{
 		// Write address family.
 		*((uint16_t *)rdata_tail) = htons(s->apl.addr_family);
@@ -5844,14 +5846,14 @@ _match:
 	}
 	break;
 	case 99:
-#line 871 "zscanner/scanner_body.rl"
+#line 873 "zscanner/scanner_body.rl"
 	{
 		SCANNER_WARNING(ZSCANNER_EBAD_APL);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 100:
-#line 889 "zscanner/scanner_body.rl"
+#line 891 "zscanner/scanner_body.rl"
 	{
 		if (rdata_tail <= rdata_stop) {
 			*rdata_tail = first_hex_to_num[(uint8_t)(*p)];
@@ -5862,21 +5864,21 @@ _match:
 	}
 	break;
 	case 101:
-#line 897 "zscanner/scanner_body.rl"
+#line 899 "zscanner/scanner_body.rl"
 	{
 		*rdata_tail += second_hex_to_num[(uint8_t)(*p)];
 		rdata_tail++;
 	}
 	break;
 	case 102:
-#line 901 "zscanner/scanner_body.rl"
+#line 903 "zscanner/scanner_body.rl"
 	{
 		SCANNER_WARNING(ZSCANNER_EBAD_HEX_CHAR);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 103:
-#line 915 "zscanner/scanner_body.rl"
+#line 917 "zscanner/scanner_body.rl"
 	{
 		if ((rdata_tail - s->r_data) != s->r_data_length) {
 			SCANNER_WARNING(ZSCANNER_EBAD_RDATA_LENGTH);
@@ -5891,14 +5893,14 @@ _match:
 	}
 	break;
 	case 104:
-#line 928 "zscanner/scanner_body.rl"
+#line 930 "zscanner/scanner_body.rl"
 	{
 		SCANNER_WARNING(ZSCANNER_EBAD_HEX_RDATA);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 105:
-#line 938 "zscanner/scanner_body.rl"
+#line 940 "zscanner/scanner_body.rl"
 	{
 		if (rdata_tail <= rdata_stop) {
 			*rdata_tail = first_base64_to_num[(uint8_t)(*p)];
@@ -5909,7 +5911,7 @@ _match:
 	}
 	break;
 	case 106:
-#line 946 "zscanner/scanner_body.rl"
+#line 948 "zscanner/scanner_body.rl"
 	{
 		*(rdata_tail++) += second_left_base64_to_num[(uint8_t)(*p)];
 
@@ -5922,7 +5924,7 @@ _match:
 	}
 	break;
 	case 107:
-#line 956 "zscanner/scanner_body.rl"
+#line 958 "zscanner/scanner_body.rl"
 	{
 		*(rdata_tail++) += third_left_base64_to_num[(uint8_t)(*p)];
 
@@ -5935,24 +5937,24 @@ _match:
 	}
 	break;
 	case 108:
-#line 966 "zscanner/scanner_body.rl"
+#line 968 "zscanner/scanner_body.rl"
 	{
 		*(rdata_tail++) += fourth_base64_to_num[(uint8_t)(*p)];
 	}
 	break;
 	case 109:
-#line 970 "zscanner/scanner_body.rl"
+#line 972 "zscanner/scanner_body.rl"
 	{
 		SCANNER_WARNING(ZSCANNER_EBAD_BASE64_CHAR);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 110:
-#line 992 "zscanner/scanner_body.rl"
+#line 994 "zscanner/scanner_body.rl"
 	{ p--; {stack[top++] = cs; cs = 294; goto _again;} }
 	break;
 	case 111:
-#line 996 "zscanner/scanner_body.rl"
+#line 998 "zscanner/scanner_body.rl"
 	{
 		if (rdata_tail <= rdata_stop) {
 			*rdata_tail = first_base32hex_to_num[(uint8_t)(*p)];
@@ -5963,7 +5965,7 @@ _match:
 	}
 	break;
 	case 112:
-#line 1004 "zscanner/scanner_body.rl"
+#line 1006 "zscanner/scanner_body.rl"
 	{
 		*(rdata_tail++) += second_left_base32hex_to_num[(uint8_t)(*p)];
 
@@ -5976,13 +5978,13 @@ _match:
 	}
 	break;
 	case 113:
-#line 1014 "zscanner/scanner_body.rl"
+#line 1016 "zscanner/scanner_body.rl"
 	{
 		*rdata_tail += third_base32hex_to_num[(uint8_t)(*p)];
 	}
 	break;
 	case 114:
-#line 1017 "zscanner/scanner_body.rl"
+#line 1019 "zscanner/scanner_body.rl"
 	{
 		*(rdata_tail++) += fourth_left_base32hex_to_num[(uint8_t)(*p)];
 
@@ -5995,7 +5997,7 @@ _match:
 	}
 	break;
 	case 115:
-#line 1027 "zscanner/scanner_body.rl"
+#line 1029 "zscanner/scanner_body.rl"
 	{
 		*(rdata_tail++) += fifth_left_base32hex_to_num[(uint8_t)(*p)];
 
@@ -6008,13 +6010,13 @@ _match:
 	}
 	break;
 	case 116:
-#line 1037 "zscanner/scanner_body.rl"
+#line 1039 "zscanner/scanner_body.rl"
 	{
 		*rdata_tail += sixth_base32hex_to_num[(uint8_t)(*p)];
 	}
 	break;
 	case 117:
-#line 1040 "zscanner/scanner_body.rl"
+#line 1042 "zscanner/scanner_body.rl"
 	{
 		*(rdata_tail++) += seventh_left_base32hex_to_num[(uint8_t)(*p)];
 
@@ -6027,329 +6029,329 @@ _match:
 	}
 	break;
 	case 118:
-#line 1050 "zscanner/scanner_body.rl"
+#line 1052 "zscanner/scanner_body.rl"
 	{
 		*(rdata_tail++) += eighth_base32hex_to_num[(uint8_t)(*p)];
 	}
 	break;
 	case 119:
-#line 1054 "zscanner/scanner_body.rl"
+#line 1056 "zscanner/scanner_body.rl"
 	{
 		SCANNER_WARNING(ZSCANNER_EBAD_BASE32HEX_CHAR);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 120:
-#line 1089 "zscanner/scanner_body.rl"
+#line 1091 "zscanner/scanner_body.rl"
 	{
 		*(rdata_tail++) = 0;
 	}
 	break;
 	case 121:
-#line 1092 "zscanner/scanner_body.rl"
+#line 1094 "zscanner/scanner_body.rl"
 	{
 		*(rdata_tail++) = 1;
 	}
 	break;
 	case 122:
-#line 1095 "zscanner/scanner_body.rl"
+#line 1097 "zscanner/scanner_body.rl"
 	{
 		*(rdata_tail++) = 2;
 	}
 	break;
 	case 123:
-#line 1098 "zscanner/scanner_body.rl"
+#line 1100 "zscanner/scanner_body.rl"
 	{
 		*(rdata_tail++) = 3;
 	}
 	break;
 	case 124:
-#line 1101 "zscanner/scanner_body.rl"
+#line 1103 "zscanner/scanner_body.rl"
 	{
 		*(rdata_tail++) = 5;
 	}
 	break;
 	case 125:
-#line 1104 "zscanner/scanner_body.rl"
+#line 1106 "zscanner/scanner_body.rl"
 	{
 		*(rdata_tail++) = 6;
 	}
 	break;
 	case 126:
-#line 1107 "zscanner/scanner_body.rl"
+#line 1109 "zscanner/scanner_body.rl"
 	{
 		*(rdata_tail++) = 7;
 	}
 	break;
 	case 127:
-#line 1110 "zscanner/scanner_body.rl"
+#line 1112 "zscanner/scanner_body.rl"
 	{
 		*(rdata_tail++) = 8;
 	}
 	break;
 	case 128:
-#line 1113 "zscanner/scanner_body.rl"
+#line 1115 "zscanner/scanner_body.rl"
 	{
 		*(rdata_tail++) = 10;
 	}
 	break;
 	case 129:
-#line 1116 "zscanner/scanner_body.rl"
+#line 1118 "zscanner/scanner_body.rl"
 	{
 		*(rdata_tail++) = 12;
 	}
 	break;
 	case 130:
-#line 1119 "zscanner/scanner_body.rl"
+#line 1121 "zscanner/scanner_body.rl"
 	{
 		*(rdata_tail++) = 13;
 	}
 	break;
 	case 131:
-#line 1122 "zscanner/scanner_body.rl"
+#line 1124 "zscanner/scanner_body.rl"
 	{
 		*(rdata_tail++) = 14;
 	}
 	break;
 	case 132:
-#line 1125 "zscanner/scanner_body.rl"
+#line 1127 "zscanner/scanner_body.rl"
 	{
 		*(rdata_tail++) = 252;
 	}
 	break;
 	case 133:
-#line 1128 "zscanner/scanner_body.rl"
+#line 1130 "zscanner/scanner_body.rl"
 	{
 		*(rdata_tail++) = 253;
 	}
 	break;
 	case 134:
-#line 1131 "zscanner/scanner_body.rl"
+#line 1133 "zscanner/scanner_body.rl"
 	{
 		*(rdata_tail++) = 254;
 	}
 	break;
 	case 135:
-#line 1135 "zscanner/scanner_body.rl"
+#line 1137 "zscanner/scanner_body.rl"
 	{
 		*((uint16_t *)rdata_tail) = htons(1);
 		rdata_tail += 2;
 	}
 	break;
 	case 136:
-#line 1139 "zscanner/scanner_body.rl"
+#line 1141 "zscanner/scanner_body.rl"
 	{
 		*((uint16_t *)rdata_tail) = htons(2);
 		rdata_tail += 2;
 	}
 	break;
 	case 137:
-#line 1143 "zscanner/scanner_body.rl"
+#line 1145 "zscanner/scanner_body.rl"
 	{
 		*((uint16_t *)rdata_tail) = htons(3);
 		rdata_tail += 2;
 	}
 	break;
 	case 138:
-#line 1147 "zscanner/scanner_body.rl"
+#line 1149 "zscanner/scanner_body.rl"
 	{
 		*((uint16_t *)rdata_tail) = htons(4);
 		rdata_tail += 2;
 	}
 	break;
 	case 139:
-#line 1151 "zscanner/scanner_body.rl"
+#line 1153 "zscanner/scanner_body.rl"
 	{
 		*((uint16_t *)rdata_tail) = htons(5);
 		rdata_tail += 2;
 	}
 	break;
 	case 140:
-#line 1155 "zscanner/scanner_body.rl"
+#line 1157 "zscanner/scanner_body.rl"
 	{
 		*((uint16_t *)rdata_tail) = htons(6);
 		rdata_tail += 2;
 	}
 	break;
 	case 141:
-#line 1159 "zscanner/scanner_body.rl"
+#line 1161 "zscanner/scanner_body.rl"
 	{
 		*((uint16_t *)rdata_tail) = htons(7);
 		rdata_tail += 2;
 	}
 	break;
 	case 142:
-#line 1163 "zscanner/scanner_body.rl"
+#line 1165 "zscanner/scanner_body.rl"
 	{
 		*((uint16_t *)rdata_tail) = htons(8);
 		rdata_tail += 2;
 	}
 	break;
 	case 143:
-#line 1167 "zscanner/scanner_body.rl"
+#line 1169 "zscanner/scanner_body.rl"
 	{
 		*((uint16_t *)rdata_tail) = htons(253);
 		rdata_tail += 2;
 	}
 	break;
 	case 144:
-#line 1171 "zscanner/scanner_body.rl"
+#line 1173 "zscanner/scanner_body.rl"
 	{
 		*((uint16_t *)rdata_tail) = htons(254);
 		rdata_tail += 2;
 	}
 	break;
 	case 145:
-#line 1178 "zscanner/scanner_body.rl"
+#line 1180 "zscanner/scanner_body.rl"
 	{
 		SCANNER_WARNING(ZSCANNER_EBAD_GATEWAY);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 146:
-#line 1182 "zscanner/scanner_body.rl"
+#line 1184 "zscanner/scanner_body.rl"
 	{
 		SCANNER_WARNING(ZSCANNER_EBAD_GATEWAY_KEY);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 147:
-#line 1200 "zscanner/scanner_body.rl"
+#line 1202 "zscanner/scanner_body.rl"
 	{
 		SCANNER_WARNING(ZSCANNER_EUNSUPPORTED_TYPE);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 148:
-#line 1206 "zscanner/scanner_body.rl"
+#line 1208 "zscanner/scanner_body.rl"
 	{ type_num(KNOT_RRTYPE_A, &rdata_tail); }
 	break;
 	case 149:
-#line 1207 "zscanner/scanner_body.rl"
+#line 1209 "zscanner/scanner_body.rl"
 	{ type_num(KNOT_RRTYPE_NS, &rdata_tail); }
 	break;
 	case 150:
-#line 1208 "zscanner/scanner_body.rl"
+#line 1210 "zscanner/scanner_body.rl"
 	{ type_num(KNOT_RRTYPE_CNAME, &rdata_tail); }
 	break;
 	case 151:
-#line 1209 "zscanner/scanner_body.rl"
+#line 1211 "zscanner/scanner_body.rl"
 	{ type_num(KNOT_RRTYPE_SOA, &rdata_tail); }
 	break;
 	case 152:
-#line 1210 "zscanner/scanner_body.rl"
+#line 1212 "zscanner/scanner_body.rl"
 	{ type_num(KNOT_RRTYPE_PTR, &rdata_tail); }
 	break;
 	case 153:
-#line 1211 "zscanner/scanner_body.rl"
+#line 1213 "zscanner/scanner_body.rl"
 	{ type_num(KNOT_RRTYPE_HINFO, &rdata_tail); }
 	break;
 	case 154:
-#line 1212 "zscanner/scanner_body.rl"
+#line 1214 "zscanner/scanner_body.rl"
 	{ type_num(KNOT_RRTYPE_MINFO, &rdata_tail); }
 	break;
 	case 155:
-#line 1213 "zscanner/scanner_body.rl"
+#line 1215 "zscanner/scanner_body.rl"
 	{ type_num(KNOT_RRTYPE_MX, &rdata_tail); }
 	break;
 	case 156:
-#line 1214 "zscanner/scanner_body.rl"
+#line 1216 "zscanner/scanner_body.rl"
 	{ type_num(KNOT_RRTYPE_TXT, &rdata_tail); }
 	break;
 	case 157:
-#line 1215 "zscanner/scanner_body.rl"
+#line 1217 "zscanner/scanner_body.rl"
 	{ type_num(KNOT_RRTYPE_RP, &rdata_tail); }
 	break;
 	case 158:
-#line 1216 "zscanner/scanner_body.rl"
+#line 1218 "zscanner/scanner_body.rl"
 	{ type_num(KNOT_RRTYPE_AFSDB, &rdata_tail); }
 	break;
 	case 159:
-#line 1217 "zscanner/scanner_body.rl"
+#line 1219 "zscanner/scanner_body.rl"
 	{ type_num(KNOT_RRTYPE_RT, &rdata_tail); }
 	break;
 	case 160:
-#line 1218 "zscanner/scanner_body.rl"
+#line 1220 "zscanner/scanner_body.rl"
 	{ type_num(KNOT_RRTYPE_KEY, &rdata_tail); }
 	break;
 	case 161:
-#line 1219 "zscanner/scanner_body.rl"
+#line 1221 "zscanner/scanner_body.rl"
 	{ type_num(KNOT_RRTYPE_AAAA, &rdata_tail); }
 	break;
 	case 162:
-#line 1220 "zscanner/scanner_body.rl"
+#line 1222 "zscanner/scanner_body.rl"
 	{ type_num(KNOT_RRTYPE_LOC, &rdata_tail); }
 	break;
 	case 163:
-#line 1221 "zscanner/scanner_body.rl"
+#line 1223 "zscanner/scanner_body.rl"
 	{ type_num(KNOT_RRTYPE_SRV, &rdata_tail); }
 	break;
 	case 164:
-#line 1222 "zscanner/scanner_body.rl"
+#line 1224 "zscanner/scanner_body.rl"
 	{ type_num(KNOT_RRTYPE_NAPTR, &rdata_tail); }
 	break;
 	case 165:
-#line 1223 "zscanner/scanner_body.rl"
+#line 1225 "zscanner/scanner_body.rl"
 	{ type_num(KNOT_RRTYPE_KX, &rdata_tail); }
 	break;
 	case 166:
-#line 1224 "zscanner/scanner_body.rl"
+#line 1226 "zscanner/scanner_body.rl"
 	{ type_num(KNOT_RRTYPE_CERT, &rdata_tail); }
 	break;
 	case 167:
-#line 1225 "zscanner/scanner_body.rl"
+#line 1227 "zscanner/scanner_body.rl"
 	{ type_num(KNOT_RRTYPE_DNAME, &rdata_tail); }
 	break;
 	case 168:
-#line 1226 "zscanner/scanner_body.rl"
+#line 1228 "zscanner/scanner_body.rl"
 	{ type_num(KNOT_RRTYPE_APL, &rdata_tail); }
 	break;
 	case 169:
-#line 1227 "zscanner/scanner_body.rl"
+#line 1229 "zscanner/scanner_body.rl"
 	{ type_num(KNOT_RRTYPE_DS, &rdata_tail); }
 	break;
 	case 170:
-#line 1228 "zscanner/scanner_body.rl"
+#line 1230 "zscanner/scanner_body.rl"
 	{ type_num(KNOT_RRTYPE_SSHFP, &rdata_tail); }
 	break;
 	case 171:
-#line 1229 "zscanner/scanner_body.rl"
+#line 1231 "zscanner/scanner_body.rl"
 	{ type_num(KNOT_RRTYPE_IPSECKEY, &rdata_tail); }
 	break;
 	case 172:
-#line 1230 "zscanner/scanner_body.rl"
+#line 1232 "zscanner/scanner_body.rl"
 	{ type_num(KNOT_RRTYPE_RRSIG, &rdata_tail); }
 	break;
 	case 173:
-#line 1231 "zscanner/scanner_body.rl"
+#line 1233 "zscanner/scanner_body.rl"
 	{ type_num(KNOT_RRTYPE_NSEC, &rdata_tail); }
 	break;
 	case 174:
-#line 1232 "zscanner/scanner_body.rl"
+#line 1234 "zscanner/scanner_body.rl"
 	{ type_num(KNOT_RRTYPE_DNSKEY, &rdata_tail); }
 	break;
 	case 175:
-#line 1233 "zscanner/scanner_body.rl"
+#line 1235 "zscanner/scanner_body.rl"
 	{ type_num(KNOT_RRTYPE_DHCID, &rdata_tail); }
 	break;
 	case 176:
-#line 1234 "zscanner/scanner_body.rl"
+#line 1236 "zscanner/scanner_body.rl"
 	{ type_num(KNOT_RRTYPE_NSEC3, &rdata_tail); }
 	break;
 	case 177:
-#line 1235 "zscanner/scanner_body.rl"
+#line 1237 "zscanner/scanner_body.rl"
 	{ type_num(KNOT_RRTYPE_NSEC3PARAM, &rdata_tail); }
 	break;
 	case 178:
-#line 1236 "zscanner/scanner_body.rl"
+#line 1238 "zscanner/scanner_body.rl"
 	{ type_num(KNOT_RRTYPE_TLSA, &rdata_tail); }
 	break;
 	case 179:
-#line 1237 "zscanner/scanner_body.rl"
+#line 1239 "zscanner/scanner_body.rl"
 	{ type_num(KNOT_RRTYPE_SPF, &rdata_tail); }
 	break;
 	case 180:
-#line 1243 "zscanner/scanner_body.rl"
+#line 1245 "zscanner/scanner_body.rl"
 	{
 		if (s->number64 <= UINT16_MAX) {
 			window_add_bit(s->number64, s);
@@ -6360,142 +6362,142 @@ _match:
 	}
 	break;
 	case 181:
-#line 1256 "zscanner/scanner_body.rl"
+#line 1258 "zscanner/scanner_body.rl"
 	{ window_add_bit(KNOT_RRTYPE_A, s); }
 	break;
 	case 182:
-#line 1257 "zscanner/scanner_body.rl"
+#line 1259 "zscanner/scanner_body.rl"
 	{ window_add_bit(KNOT_RRTYPE_NS, s); }
 	break;
 	case 183:
-#line 1258 "zscanner/scanner_body.rl"
+#line 1260 "zscanner/scanner_body.rl"
 	{ window_add_bit(KNOT_RRTYPE_CNAME, s); }
 	break;
 	case 184:
-#line 1259 "zscanner/scanner_body.rl"
+#line 1261 "zscanner/scanner_body.rl"
 	{ window_add_bit(KNOT_RRTYPE_SOA, s); }
 	break;
 	case 185:
-#line 1260 "zscanner/scanner_body.rl"
+#line 1262 "zscanner/scanner_body.rl"
 	{ window_add_bit(KNOT_RRTYPE_PTR, s); }
 	break;
 	case 186:
-#line 1261 "zscanner/scanner_body.rl"
+#line 1263 "zscanner/scanner_body.rl"
 	{ window_add_bit(KNOT_RRTYPE_HINFO, s); }
 	break;
 	case 187:
-#line 1262 "zscanner/scanner_body.rl"
+#line 1264 "zscanner/scanner_body.rl"
 	{ window_add_bit(KNOT_RRTYPE_MINFO, s); }
 	break;
 	case 188:
-#line 1263 "zscanner/scanner_body.rl"
+#line 1265 "zscanner/scanner_body.rl"
 	{ window_add_bit(KNOT_RRTYPE_MX, s); }
 	break;
 	case 189:
-#line 1264 "zscanner/scanner_body.rl"
+#line 1266 "zscanner/scanner_body.rl"
 	{ window_add_bit(KNOT_RRTYPE_TXT, s); }
 	break;
 	case 190:
-#line 1265 "zscanner/scanner_body.rl"
+#line 1267 "zscanner/scanner_body.rl"
 	{ window_add_bit(KNOT_RRTYPE_RP, s); }
 	break;
 	case 191:
-#line 1266 "zscanner/scanner_body.rl"
+#line 1268 "zscanner/scanner_body.rl"
 	{ window_add_bit(KNOT_RRTYPE_AFSDB, s); }
 	break;
 	case 192:
-#line 1267 "zscanner/scanner_body.rl"
+#line 1269 "zscanner/scanner_body.rl"
 	{ window_add_bit(KNOT_RRTYPE_RT, s); }
 	break;
 	case 193:
-#line 1268 "zscanner/scanner_body.rl"
+#line 1270 "zscanner/scanner_body.rl"
 	{ window_add_bit(KNOT_RRTYPE_KEY, s); }
 	break;
 	case 194:
-#line 1269 "zscanner/scanner_body.rl"
+#line 1271 "zscanner/scanner_body.rl"
 	{ window_add_bit(KNOT_RRTYPE_AAAA, s); }
 	break;
 	case 195:
-#line 1270 "zscanner/scanner_body.rl"
+#line 1272 "zscanner/scanner_body.rl"
 	{ window_add_bit(KNOT_RRTYPE_LOC, s); }
 	break;
 	case 196:
-#line 1271 "zscanner/scanner_body.rl"
+#line 1273 "zscanner/scanner_body.rl"
 	{ window_add_bit(KNOT_RRTYPE_SRV, s); }
 	break;
 	case 197:
-#line 1272 "zscanner/scanner_body.rl"
+#line 1274 "zscanner/scanner_body.rl"
 	{ window_add_bit(KNOT_RRTYPE_NAPTR, s); }
 	break;
 	case 198:
-#line 1273 "zscanner/scanner_body.rl"
+#line 1275 "zscanner/scanner_body.rl"
 	{ window_add_bit(KNOT_RRTYPE_KX, s); }
 	break;
 	case 199:
-#line 1274 "zscanner/scanner_body.rl"
+#line 1276 "zscanner/scanner_body.rl"
 	{ window_add_bit(KNOT_RRTYPE_CERT, s); }
 	break;
 	case 200:
-#line 1275 "zscanner/scanner_body.rl"
+#line 1277 "zscanner/scanner_body.rl"
 	{ window_add_bit(KNOT_RRTYPE_DNAME, s); }
 	break;
 	case 201:
-#line 1276 "zscanner/scanner_body.rl"
+#line 1278 "zscanner/scanner_body.rl"
 	{ window_add_bit(KNOT_RRTYPE_APL, s); }
 	break;
 	case 202:
-#line 1277 "zscanner/scanner_body.rl"
+#line 1279 "zscanner/scanner_body.rl"
 	{ window_add_bit(KNOT_RRTYPE_DS, s); }
 	break;
 	case 203:
-#line 1278 "zscanner/scanner_body.rl"
+#line 1280 "zscanner/scanner_body.rl"
 	{ window_add_bit(KNOT_RRTYPE_SSHFP, s); }
 	break;
 	case 204:
-#line 1279 "zscanner/scanner_body.rl"
+#line 1281 "zscanner/scanner_body.rl"
 	{ window_add_bit(KNOT_RRTYPE_IPSECKEY, s); }
 	break;
 	case 205:
-#line 1280 "zscanner/scanner_body.rl"
+#line 1282 "zscanner/scanner_body.rl"
 	{ window_add_bit(KNOT_RRTYPE_RRSIG, s); }
 	break;
 	case 206:
-#line 1281 "zscanner/scanner_body.rl"
+#line 1283 "zscanner/scanner_body.rl"
 	{ window_add_bit(KNOT_RRTYPE_NSEC, s); }
 	break;
 	case 207:
-#line 1282 "zscanner/scanner_body.rl"
+#line 1284 "zscanner/scanner_body.rl"
 	{ window_add_bit(KNOT_RRTYPE_DNSKEY, s); }
 	break;
 	case 208:
-#line 1283 "zscanner/scanner_body.rl"
+#line 1285 "zscanner/scanner_body.rl"
 	{ window_add_bit(KNOT_RRTYPE_DHCID, s); }
 	break;
 	case 209:
-#line 1284 "zscanner/scanner_body.rl"
+#line 1286 "zscanner/scanner_body.rl"
 	{ window_add_bit(KNOT_RRTYPE_NSEC3, s); }
 	break;
 	case 210:
-#line 1285 "zscanner/scanner_body.rl"
+#line 1287 "zscanner/scanner_body.rl"
 	{ window_add_bit(KNOT_RRTYPE_NSEC3PARAM, s); }
 	break;
 	case 211:
-#line 1286 "zscanner/scanner_body.rl"
+#line 1288 "zscanner/scanner_body.rl"
 	{ window_add_bit(KNOT_RRTYPE_TLSA, s); }
 	break;
 	case 212:
-#line 1287 "zscanner/scanner_body.rl"
+#line 1289 "zscanner/scanner_body.rl"
 	{ window_add_bit(KNOT_RRTYPE_SPF, s); }
 	break;
 	case 213:
-#line 1291 "zscanner/scanner_body.rl"
+#line 1293 "zscanner/scanner_body.rl"
 	{
 		memset(s->windows, 0, sizeof(s->windows));
 		s->last_window = -1;
 	}
 	break;
 	case 214:
-#line 1295 "zscanner/scanner_body.rl"
+#line 1297 "zscanner/scanner_body.rl"
 	{
 		for (window = 0; window <= s->last_window; window++) {
 			if ((s->windows[window]).length > 0) {
@@ -6521,18 +6523,18 @@ _match:
 	}
 	break;
 	case 215:
-#line 1318 "zscanner/scanner_body.rl"
+#line 1320 "zscanner/scanner_body.rl"
 	{
 		SCANNER_WARNING(ZSCANNER_EBAD_BITMAP);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 216:
-#line 1326 "zscanner/scanner_body.rl"
+#line 1328 "zscanner/scanner_body.rl"
 	{ p--; {stack[top++] = cs; cs = 301; goto _again;} }
 	break;
 	case 217:
-#line 1330 "zscanner/scanner_body.rl"
+#line 1332 "zscanner/scanner_body.rl"
 	{
 		if (s->number64 <= 90) {
 			s->loc.d1 = (uint32_t)(s->number64);
@@ -6543,7 +6545,7 @@ _match:
 	}
 	break;
 	case 218:
-#line 1338 "zscanner/scanner_body.rl"
+#line 1340 "zscanner/scanner_body.rl"
 	{
 		if (s->number64 <= 180) {
 			s->loc.d2 = (uint32_t)(s->number64);
@@ -6554,7 +6556,7 @@ _match:
 	}
 	break;
 	case 219:
-#line 1346 "zscanner/scanner_body.rl"
+#line 1348 "zscanner/scanner_body.rl"
 	{
 		if (s->number64 <= 59) {
 			s->loc.m1 = (uint32_t)(s->number64);
@@ -6565,7 +6567,7 @@ _match:
 	}
 	break;
 	case 220:
-#line 1354 "zscanner/scanner_body.rl"
+#line 1356 "zscanner/scanner_body.rl"
 	{
 		if (s->number64 <= 59) {
 			s->loc.m2 = (uint32_t)(s->number64);
@@ -6576,7 +6578,7 @@ _match:
 	}
 	break;
 	case 221:
-#line 1362 "zscanner/scanner_body.rl"
+#line 1364 "zscanner/scanner_body.rl"
 	{
 		if (s->number64 <= 59999) {
 			s->loc.s1 = (uint32_t)(s->number64);
@@ -6587,7 +6589,7 @@ _match:
 	}
 	break;
 	case 222:
-#line 1370 "zscanner/scanner_body.rl"
+#line 1372 "zscanner/scanner_body.rl"
 	{
 		if (s->number64 <= 59999) {
 			s->loc.s2 = (uint32_t)(s->number64);
@@ -6598,7 +6600,7 @@ _match:
 	}
 	break;
 	case 223:
-#line 1378 "zscanner/scanner_body.rl"
+#line 1380 "zscanner/scanner_body.rl"
 	{
 		if ((s->loc.alt_sign ==  1 && s->number64 <= 4284967295) ||
 		    (s->loc.alt_sign == -1 && s->number64 <=   10000000))
@@ -6611,7 +6613,7 @@ _match:
 	}
 	break;
 	case 224:
-#line 1388 "zscanner/scanner_body.rl"
+#line 1390 "zscanner/scanner_body.rl"
 	{
 		if (s->number64 <= 9000000000ULL) {
 			s->loc.siz = s->number64;
@@ -6622,7 +6624,7 @@ _match:
 	}
 	break;
 	case 225:
-#line 1396 "zscanner/scanner_body.rl"
+#line 1398 "zscanner/scanner_body.rl"
 	{
 		if (s->number64 <= 9000000000ULL) {
 			s->loc.hp = s->number64;
@@ -6633,7 +6635,7 @@ _match:
 	}
 	break;
 	case 226:
-#line 1404 "zscanner/scanner_body.rl"
+#line 1406 "zscanner/scanner_body.rl"
 	{
 		if (s->number64 <= 9000000000ULL) {
 			s->loc.vp = s->number64;
@@ -6644,25 +6646,25 @@ _match:
 	}
 	break;
 	case 227:
-#line 1412 "zscanner/scanner_body.rl"
+#line 1414 "zscanner/scanner_body.rl"
 	{
 		s->loc.lat_sign = -1;
 	}
 	break;
 	case 228:
-#line 1415 "zscanner/scanner_body.rl"
+#line 1417 "zscanner/scanner_body.rl"
 	{
 		s->loc.long_sign = -1;
 	}
 	break;
 	case 229:
-#line 1418 "zscanner/scanner_body.rl"
+#line 1420 "zscanner/scanner_body.rl"
 	{
 		s->loc.alt_sign = -1;
 	}
 	break;
 	case 230:
-#line 1435 "zscanner/scanner_body.rl"
+#line 1437 "zscanner/scanner_body.rl"
 	{
 		memset(&(s->loc), 0, sizeof(s->loc));
 		// Defaults.
@@ -6675,7 +6677,7 @@ _match:
 	}
 	break;
 	case 231:
-#line 1445 "zscanner/scanner_body.rl"
+#line 1447 "zscanner/scanner_body.rl"
 	{
 		// Write version.
 		*(rdata_tail) = 0;
@@ -6704,43 +6706,43 @@ _match:
 	}
 	break;
 	case 232:
-#line 1471 "zscanner/scanner_body.rl"
+#line 1473 "zscanner/scanner_body.rl"
 	{
 		SCANNER_WARNING(ZSCANNER_EBAD_LOC_DATA);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 233:
-#line 1484 "zscanner/scanner_body.rl"
+#line 1486 "zscanner/scanner_body.rl"
 	{
 		SCANNER_WARNING(ZSCANNER_EBAD_HEX_RDATA);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 234:
-#line 1502 "zscanner/scanner_body.rl"
+#line 1504 "zscanner/scanner_body.rl"
 	{
 		SCANNER_WARNING(ZSCANNER_EBAD_ALGORITHM);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 235:
-#line 1506 "zscanner/scanner_body.rl"
+#line 1508 "zscanner/scanner_body.rl"
 	{
 		SCANNER_WARNING(ZSCANNER_EBAD_CERT_TYPE);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 236:
-#line 1528 "zscanner/scanner_body.rl"
+#line 1530 "zscanner/scanner_body.rl"
 	{ p--; {stack[top++] = cs; cs = 426; goto _again;} }
 	break;
 	case 237:
-#line 1543 "zscanner/scanner_body.rl"
+#line 1545 "zscanner/scanner_body.rl"
 	{ p--; {stack[top++] = cs; cs = 521; goto _again;} }
 	break;
 	case 238:
-#line 1547 "zscanner/scanner_body.rl"
+#line 1549 "zscanner/scanner_body.rl"
 	{
 		s->r_data_blocks[0] = 0;
 		s->r_data_blocks_count = 0;
@@ -6748,14 +6750,14 @@ _match:
 	}
 	break;
 	case 239:
-#line 1552 "zscanner/scanner_body.rl"
+#line 1554 "zscanner/scanner_body.rl"
 	{
 		SCANNER_WARNING(ZSCANNER_EBAD_RDATA);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 240:
-#line 1654 "zscanner/scanner_body.rl"
+#line 1656 "zscanner/scanner_body.rl"
 	{
 		p--;
 		switch (s->r_type) {
@@ -6821,7 +6823,7 @@ _match:
 	}
 	break;
 	case 241:
-#line 1717 "zscanner/scanner_body.rl"
+#line 1719 "zscanner/scanner_body.rl"
 	{
 		switch (s->r_type) {
 		// Next types must not have empty rdata.
@@ -6865,153 +6867,153 @@ _match:
 	}
 	break;
 	case 242:
-#line 1759 "zscanner/scanner_body.rl"
+#line 1761 "zscanner/scanner_body.rl"
 	{
 		s->r_data_blocks[++(s->r_data_blocks_count)] =
 			(uint16_t)(rdata_tail - s->r_data);
 	}
 	break;
 	case 243:
-#line 1767 "zscanner/scanner_body.rl"
+#line 1769 "zscanner/scanner_body.rl"
 	{ p--; }
 	break;
 	case 244:
-#line 1774 "zscanner/scanner_body.rl"
+#line 1776 "zscanner/scanner_body.rl"
 	{
 		SCANNER_WARNING(ZSCANNER_EUNSUPPORTED_TYPE);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 245:
-#line 1780 "zscanner/scanner_body.rl"
+#line 1782 "zscanner/scanner_body.rl"
 	{ s->r_type = KNOT_RRTYPE_A; }
 	break;
 	case 246:
-#line 1781 "zscanner/scanner_body.rl"
+#line 1783 "zscanner/scanner_body.rl"
 	{ s->r_type = KNOT_RRTYPE_NS; }
 	break;
 	case 247:
-#line 1782 "zscanner/scanner_body.rl"
+#line 1784 "zscanner/scanner_body.rl"
 	{ s->r_type = KNOT_RRTYPE_CNAME; }
 	break;
 	case 248:
-#line 1783 "zscanner/scanner_body.rl"
+#line 1785 "zscanner/scanner_body.rl"
 	{ s->r_type = KNOT_RRTYPE_SOA; }
 	break;
 	case 249:
-#line 1784 "zscanner/scanner_body.rl"
+#line 1786 "zscanner/scanner_body.rl"
 	{ s->r_type = KNOT_RRTYPE_PTR; }
 	break;
 	case 250:
-#line 1785 "zscanner/scanner_body.rl"
+#line 1787 "zscanner/scanner_body.rl"
 	{ s->r_type = KNOT_RRTYPE_HINFO; }
 	break;
 	case 251:
-#line 1786 "zscanner/scanner_body.rl"
+#line 1788 "zscanner/scanner_body.rl"
 	{ s->r_type = KNOT_RRTYPE_MINFO; }
 	break;
 	case 252:
-#line 1787 "zscanner/scanner_body.rl"
+#line 1789 "zscanner/scanner_body.rl"
 	{ s->r_type = KNOT_RRTYPE_MX; }
 	break;
 	case 253:
-#line 1788 "zscanner/scanner_body.rl"
+#line 1790 "zscanner/scanner_body.rl"
 	{ s->r_type = KNOT_RRTYPE_TXT; }
 	break;
 	case 254:
-#line 1789 "zscanner/scanner_body.rl"
+#line 1791 "zscanner/scanner_body.rl"
 	{ s->r_type = KNOT_RRTYPE_RP; }
 	break;
 	case 255:
-#line 1790 "zscanner/scanner_body.rl"
+#line 1792 "zscanner/scanner_body.rl"
 	{ s->r_type = KNOT_RRTYPE_AFSDB; }
 	break;
 	case 256:
-#line 1791 "zscanner/scanner_body.rl"
+#line 1793 "zscanner/scanner_body.rl"
 	{ s->r_type = KNOT_RRTYPE_RT; }
 	break;
 	case 257:
-#line 1792 "zscanner/scanner_body.rl"
+#line 1794 "zscanner/scanner_body.rl"
 	{ s->r_type = KNOT_RRTYPE_KEY; }
 	break;
 	case 258:
-#line 1793 "zscanner/scanner_body.rl"
+#line 1795 "zscanner/scanner_body.rl"
 	{ s->r_type = KNOT_RRTYPE_AAAA; }
 	break;
 	case 259:
-#line 1794 "zscanner/scanner_body.rl"
+#line 1796 "zscanner/scanner_body.rl"
 	{ s->r_type = KNOT_RRTYPE_LOC; }
 	break;
 	case 260:
-#line 1795 "zscanner/scanner_body.rl"
+#line 1797 "zscanner/scanner_body.rl"
 	{ s->r_type = KNOT_RRTYPE_SRV; }
 	break;
 	case 261:
-#line 1796 "zscanner/scanner_body.rl"
+#line 1798 "zscanner/scanner_body.rl"
 	{ s->r_type = KNOT_RRTYPE_NAPTR; }
 	break;
 	case 262:
-#line 1797 "zscanner/scanner_body.rl"
+#line 1799 "zscanner/scanner_body.rl"
 	{ s->r_type = KNOT_RRTYPE_KX; }
 	break;
 	case 263:
-#line 1798 "zscanner/scanner_body.rl"
+#line 1800 "zscanner/scanner_body.rl"
 	{ s->r_type = KNOT_RRTYPE_CERT; }
 	break;
 	case 264:
-#line 1799 "zscanner/scanner_body.rl"
+#line 1801 "zscanner/scanner_body.rl"
 	{ s->r_type = KNOT_RRTYPE_DNAME; }
 	break;
 	case 265:
-#line 1800 "zscanner/scanner_body.rl"
+#line 1802 "zscanner/scanner_body.rl"
 	{ s->r_type = KNOT_RRTYPE_APL; }
 	break;
 	case 266:
-#line 1801 "zscanner/scanner_body.rl"
+#line 1803 "zscanner/scanner_body.rl"
 	{ s->r_type = KNOT_RRTYPE_DS; }
 	break;
 	case 267:
-#line 1802 "zscanner/scanner_body.rl"
+#line 1804 "zscanner/scanner_body.rl"
 	{ s->r_type = KNOT_RRTYPE_SSHFP; }
 	break;
 	case 268:
-#line 1803 "zscanner/scanner_body.rl"
+#line 1805 "zscanner/scanner_body.rl"
 	{ s->r_type = KNOT_RRTYPE_IPSECKEY; }
 	break;
 	case 269:
-#line 1804 "zscanner/scanner_body.rl"
+#line 1806 "zscanner/scanner_body.rl"
 	{ s->r_type = KNOT_RRTYPE_RRSIG; }
 	break;
 	case 270:
-#line 1805 "zscanner/scanner_body.rl"
+#line 1807 "zscanner/scanner_body.rl"
 	{ s->r_type = KNOT_RRTYPE_NSEC; }
 	break;
 	case 271:
-#line 1806 "zscanner/scanner_body.rl"
+#line 1808 "zscanner/scanner_body.rl"
 	{ s->r_type = KNOT_RRTYPE_DNSKEY; }
 	break;
 	case 272:
-#line 1807 "zscanner/scanner_body.rl"
+#line 1809 "zscanner/scanner_body.rl"
 	{ s->r_type = KNOT_RRTYPE_DHCID; }
 	break;
 	case 273:
-#line 1808 "zscanner/scanner_body.rl"
+#line 1810 "zscanner/scanner_body.rl"
 	{ s->r_type = KNOT_RRTYPE_NSEC3; }
 	break;
 	case 274:
-#line 1809 "zscanner/scanner_body.rl"
+#line 1811 "zscanner/scanner_body.rl"
 	{ s->r_type = KNOT_RRTYPE_NSEC3PARAM; }
 	break;
 	case 275:
-#line 1810 "zscanner/scanner_body.rl"
+#line 1812 "zscanner/scanner_body.rl"
 	{ s->r_type = KNOT_RRTYPE_TLSA; }
 	break;
 	case 276:
-#line 1811 "zscanner/scanner_body.rl"
+#line 1813 "zscanner/scanner_body.rl"
 	{ s->r_type = KNOT_RRTYPE_SPF; }
 	break;
 	case 277:
-#line 1817 "zscanner/scanner_body.rl"
+#line 1819 "zscanner/scanner_body.rl"
 	{
 		if (rdata_tail - s->r_data > UINT16_MAX) {
 			SCANNER_WARNING(ZSCANNER_ERDATA_OVERFLOW);
@@ -7022,7 +7024,7 @@ _match:
 		s->process_record(s);
 	}
 	break;
-#line 7026 "zscanner/scanner.c"
+#line 7028 "zscanner/scanner.c"
 		}
 	}
 
@@ -7124,145 +7126,145 @@ _again:
 	}
 	break;
 	case 73:
-#line 627 "zscanner/scanner_body.rl"
+#line 628 "zscanner/scanner_body.rl"
 	{
 		SCANNER_ERROR(ZSCANNER_EBAD_INCLUDE_FILENAME);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 76:
-#line 638 "zscanner/scanner_body.rl"
+#line 639 "zscanner/scanner_body.rl"
 	{
 		SCANNER_ERROR(ZSCANNER_EBAD_INCLUDE_ORIGIN);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 80:
-#line 717 "zscanner/scanner_body.rl"
+#line 719 "zscanner/scanner_body.rl"
 	{
 		s->stop = false;
 	}
 	break;
 	case 81:
-#line 720 "zscanner/scanner_body.rl"
+#line 722 "zscanner/scanner_body.rl"
 	{
 		SCANNER_ERROR(ZSCANNER_EBAD_DIRECTIVE);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 88:
-#line 771 "zscanner/scanner_body.rl"
+#line 773 "zscanner/scanner_body.rl"
 	{
 		SCANNER_WARNING(ZSCANNER_EBAD_ADDRESS_CHAR);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 99:
-#line 871 "zscanner/scanner_body.rl"
+#line 873 "zscanner/scanner_body.rl"
 	{
 		SCANNER_WARNING(ZSCANNER_EBAD_APL);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 102:
-#line 901 "zscanner/scanner_body.rl"
+#line 903 "zscanner/scanner_body.rl"
 	{
 		SCANNER_WARNING(ZSCANNER_EBAD_HEX_CHAR);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 104:
-#line 928 "zscanner/scanner_body.rl"
+#line 930 "zscanner/scanner_body.rl"
 	{
 		SCANNER_WARNING(ZSCANNER_EBAD_HEX_RDATA);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 109:
-#line 970 "zscanner/scanner_body.rl"
+#line 972 "zscanner/scanner_body.rl"
 	{
 		SCANNER_WARNING(ZSCANNER_EBAD_BASE64_CHAR);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 119:
-#line 1054 "zscanner/scanner_body.rl"
+#line 1056 "zscanner/scanner_body.rl"
 	{
 		SCANNER_WARNING(ZSCANNER_EBAD_BASE32HEX_CHAR);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 145:
-#line 1178 "zscanner/scanner_body.rl"
+#line 1180 "zscanner/scanner_body.rl"
 	{
 		SCANNER_WARNING(ZSCANNER_EBAD_GATEWAY);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 146:
-#line 1182 "zscanner/scanner_body.rl"
+#line 1184 "zscanner/scanner_body.rl"
 	{
 		SCANNER_WARNING(ZSCANNER_EBAD_GATEWAY_KEY);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 147:
-#line 1200 "zscanner/scanner_body.rl"
+#line 1202 "zscanner/scanner_body.rl"
 	{
 		SCANNER_WARNING(ZSCANNER_EUNSUPPORTED_TYPE);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 215:
-#line 1318 "zscanner/scanner_body.rl"
+#line 1320 "zscanner/scanner_body.rl"
 	{
 		SCANNER_WARNING(ZSCANNER_EBAD_BITMAP);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 232:
-#line 1471 "zscanner/scanner_body.rl"
+#line 1473 "zscanner/scanner_body.rl"
 	{
 		SCANNER_WARNING(ZSCANNER_EBAD_LOC_DATA);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 233:
-#line 1484 "zscanner/scanner_body.rl"
+#line 1486 "zscanner/scanner_body.rl"
 	{
 		SCANNER_WARNING(ZSCANNER_EBAD_HEX_RDATA);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 234:
-#line 1502 "zscanner/scanner_body.rl"
+#line 1504 "zscanner/scanner_body.rl"
 	{
 		SCANNER_WARNING(ZSCANNER_EBAD_ALGORITHM);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 235:
-#line 1506 "zscanner/scanner_body.rl"
+#line 1508 "zscanner/scanner_body.rl"
 	{
 		SCANNER_WARNING(ZSCANNER_EBAD_CERT_TYPE);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 239:
-#line 1552 "zscanner/scanner_body.rl"
+#line 1554 "zscanner/scanner_body.rl"
 	{
 		SCANNER_WARNING(ZSCANNER_EBAD_RDATA);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
 	case 244:
-#line 1774 "zscanner/scanner_body.rl"
+#line 1776 "zscanner/scanner_body.rl"
 	{
 		SCANNER_WARNING(ZSCANNER_EUNSUPPORTED_TYPE);
 		p--; {cs = 230; goto _again;}
 	}
 	break;
-#line 7266 "zscanner/scanner.c"
+#line 7268 "zscanner/scanner.c"
 		}
 	}
 	}
