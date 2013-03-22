@@ -1624,6 +1624,7 @@ dbg_rrset_exec_detail(
 	}
 	
 	*deleted_rrs = 0;
+	*merged = 0;
 	/* For each item in second RRSet, make sure it is not duplicated. */
 	for (uint16_t i = 0; i < rrset2->rdata_count; i++) {
 		int duplicated = 0;
@@ -1635,7 +1636,7 @@ dbg_rrset_exec_detail(
 		}
 		
 		if (!duplicated) {
-			*merged = 1; // = need to shallow free rrset2
+			*merged += 1; // = need to shallow free rrset2
 			// This index goes to merged RRSet.
 			int ret = knot_rrset_add_rdata(rrset1,
 			                               rrset_rdata_pointer(rrset2, i),
@@ -1647,7 +1648,7 @@ dbg_rrset_exec_detail(
 				return ret;
 			}
 		} else {
-			*deleted_rrs += 1;
+			*deleted_rrs += 1; // = need to shallow free rrset2
 		}
 	}
 	
