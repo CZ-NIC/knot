@@ -38,6 +38,7 @@ char* get_reverse_name(const char *name)
 {
 	struct in_addr	addr4;
 	struct in6_addr	addr6;
+	int		ret;
 	char		buf[128] = "\0";
 
 	if (name == NULL) {
@@ -45,30 +46,44 @@ char* get_reverse_name(const char *name)
 		return NULL;
 	}
 
-        // Check name for IPv4 address, IPv6 address or other.
+	// Check name for IPv4 address, IPv6 address or other.
 	if (inet_pton(AF_INET, name, &addr4) == 1) {
 		uint32_t num = ntohl(addr4.s_addr);
 
 		// Create IPv4 reverse FQD name.
-		sprintf(buf, "%u.%u.%u.%u.%s",
-		        (num >>  0) & 0xFF, (num >>  8) & 0xFF,
-		        (num >> 16) & 0xFF, (num >> 24) & 0xFF,
-		        IPV4_REVERSE_DOMAIN);
+		ret = snprintf(buf, sizeof(buf), "%u.%u.%u.%u.%s",
+		               (num >>  0) & 0xFF, (num >>  8) & 0xFF,
+		               (num >> 16) & 0xFF, (num >> 24) & 0xFF,
+		               IPV4_REVERSE_DOMAIN);
+		if (ret < 0 || ret >= sizeof(buf)) {
+			return NULL;
+		}
 
 		return strdup(buf);
 	} else if (inet_pton(AF_INET6, name, &addr6) == 1) {
 		char	*pos = buf;
+		size_t  len = sizeof(buf);
 		uint8_t left, right;
 
 		// Create IPv6 reverse name.
 		for (int i = 15; i >= 0; i--) {
 			left = ((addr6.s6_addr)[i] & 0xF0) >> 4;
 			right = (addr6.s6_addr)[i] & 0x0F;
-			pos += sprintf(pos, "%x.%x.", right, left);
+
+			ret = snprintf(pos, len, "%x.%x.", right, left);
+			if (ret < 0 || ret >= len) {
+				return NULL;
+			}
+
+			pos += ret;
+			len -= ret;
 		}
 
 		// Add IPv6 reverse domain.
-		strcat(buf, IPV6_REVERSE_DOMAIN);
+		ret = snprintf(pos, len, "%s", IPV6_REVERSE_DOMAIN);
+		if (ret < 0 || ret >= len) {
+			return NULL;
+		}
 
 		return strdup(buf);
 	} else {
@@ -85,14 +100,19 @@ char* get_fqd_name(const char *name)
 		return NULL;
 	}
 
-	// If name is FQD, make copy.
-	if (name[strlen(name) - 1] == '.') {
+	size_t name_len = strlen(name);
+
+	// If the name is FQDN, make a copy.
+	if (name[name_len - 1] == '.') {
 		fqd_name = strdup(name);
-	// Else append trailing dot.
+	// Else make a copy and append a trailing dot.
 	} else {
-		fqd_name = malloc(strlen(name) + 2);
-		strcpy(fqd_name, name);
-		strcat(fqd_name, ".");
+		fqd_name = malloc(name_len + 2);
+		if (fqd_name != NULL) {
+			strncpy(fqd_name, name, name_len + 2);
+			fqd_name[name_len] = '.';
+			fqd_name[name_len + 1] = 0;
+		}
 	}
 
 	return fqd_name;
