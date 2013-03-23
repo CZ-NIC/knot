@@ -4,50 +4,65 @@
 \- simple DNS lookup utility based on libknot
 .SH SYNOPSIS
 .B khost
-[\fIparameters\fR] {\fIname\fR} [\fIserver\fR]
-.SH OPTIONS
+[\fIoptions\fR] \fIname\fR [\fIserver\fR]
+.SH DESCRIPTION
+.TP 4
+\fI name\fR
+Is a domain name that is to be looked up.
+If the \fIname\fR is IPv4 or IPv6 address the \fIPTR\fR query type is used.
 .TP
-.B \-4
+\fI server\fR
+Is a name or an address of the nameserver to send a query to. The address
+can be specified using [address]:port notation. If no server is specified
+the servers from \fB/etc/resolv.conf\fR are used.
+.TP
+If no arguments are provided, \fBkhost\fR prints short help.
+.SH OPTIONS
+.TP 4
+.BI -4
 Use IPv4 protocol only.
 .TP
-.B \-6
+.BI -6
 Use IPv6 protocol only.
 .TP
-.B \-a
+.BI -a
 Send ANY query with verbose mode.
 .TP
-.B \-C
+.BI -C
 (NOT YET IMPLEMENTED)
 .TP
-.B \-d
-Enable debug messages.
+.BI -d
+Enable debug messages if any.
 .TP
-.B \-v
-Enable verbose output.
-.TP
-.B \-l
-Send AXFR query.
-.TP
-.B \-r
+.BI -r
 Set recursion (RD flag).
 .TP
-.B \-s
-Stop quering if servfail.
+.BI -s
+Stop quering next nameserver if servfail response is received.
 .TP
-.B \-T
-Use TCP protocol
+.BI -T
+Use TCP protocol.
 .TP
-.B \-w
-Wait forever for the response.
+.BI -v
+Enable verbose output.
 .TP
-.B \-c [class]
-Set class.
+.BI -w
+Wait forever for the reply.
 .TP
-.B \-R [num]
-Set number of retries.
+.BI -c \ class
+Set query class (e.g. \fICH\fR, \fICLASS4\fR). Default class is \fIIN\fR.
 .TP
-.B \-t [type]
-Set type.
+.BI -t \ type
+Set query type (e.g. \fINS\fR, \fIIXFR=12345\fR, \fITYPE65535\fR).
+The default behaviour is to send 3 queries wit types \fIA\fR, \fIAAAA\fR and \fIMX\fR.
 .TP
-.B \-W [num]
-Set wait interval.
+.BI -R \ retries
+The number of UDP retries to query a nameserver.
+.TP
+.BI -W \ wait
+The time to wait for a reply in seconds.
+.SH FILES
+.BI /etc/resolv.conf
+.SH SEE ALSO
+.BI kdig\fR(8),
+.BI knsupdate\fR(8).
