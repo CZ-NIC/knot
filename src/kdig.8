@@ -1,0 +1,23 @@
+.TH "kdig" "8" "April 2013" "CZ.NIC Labs" "Knot DNS, version 1.2.0-rc3"
+.SH NAME
+.B kdig
+\- Advanced DNS lookup utility based on libknot
+.SH SYNOPSIS
+.B kdig
+[\fIglobal-options\fR] [\fIquery\fR [\fIoptions\fR]]...
+.TP 5
+.B kdig
+-h
+.SH DESCRIPTION
+.TP 4
+\fI query\fR
+name [class] [type] [@server]
+.SH OPTIONS
+.TP 4
+.BI -4
+Use IPv4 protocol only.
+.SH FILES
+.BI /etc/resolv.conf
+.SH SEE ALSO
+.BI khost\fR(8),
+.BI knsupdate\fR(8).

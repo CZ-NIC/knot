@@ -1,7 +1,7 @@
 ACLOCAL_AMFLAGS = -I ../m4
 libexec_PROGRAMS = unittests unittests-xfr unittests-zscanner unittests-libknot
 sbin_PROGRAMS = knotc knotd kdig khost knsupdate
-dist_man_MANS = knot.conf.5 knotc.8 knotd.8 khost.8
+dist_man_MANS = knot.conf.5 knotc.8 knotd.8 kdig.8 khost.8 knsupdate.8
 
 # $(YACC) will generate header file
 AM_CFLAGS = -Wall -Ilibknot -DLIBEXECDIR='"$(libexecdir)"' -DSYSCONFDIR='"$(sysconfdir)"' -DSBINDIR='"$(sbindir)"'
