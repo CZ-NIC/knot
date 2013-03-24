@@ -167,8 +167,8 @@ dbg_zone_exec_detail(
 	}
 }
 
-static void knot_zone_contents_insert_dname_into_table(knot_dname_t **in_dname,
-                                                       hattrie_t *lookup_tree)
+void knot_zone_contents_insert_dname_into_table(knot_dname_t **in_dname,
+                                                hattrie_t *lookup_tree)
 {
 	if (lookup_tree == NULL) {
 		/* = Do not check duplicates. */
