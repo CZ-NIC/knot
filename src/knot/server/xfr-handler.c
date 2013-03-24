@@ -133,6 +133,9 @@ static void xfr_free_task(knot_ns_xfr_t *task)
 		return;
 	}
 	
+	/* Free DNAME trie. */
+	hattrie_free(task->lookup_tree);
+	
 	/* Remove from fdset. */
 	if (w->fdset) {
 		dbg_xfr("xfr_free_task: freeing fd=%d.\n", task->session);
@@ -1278,6 +1281,13 @@ int xfr_request_init(knot_ns_xfr_t *r, int type, int flags, knot_packet_t *pkt)
 		memcpy(wire_copy, pkt->wireformat, pkt->size);
 		pkt->wireformat = wire_copy;
 		r->query = pkt;
+	}
+	
+	/* Create trie for DNAME duplicate handling. */
+	r->lookup_tree = hattrie_create();
+	if (r->lookup_tree == NULL) {
+		free(pkt->wireformat);
+		return KNOT_ENOMEM;
 	}
 	
 	return KNOT_EOK;

@@ -135,6 +135,8 @@ typedef struct knot_ns_xfr {
 	 * number counted from last TSIG check.
 	 */
 	int packet_nr;
+	
+	hattrie_t *lookup_tree;
 } knot_ns_xfr_t;
 
 
