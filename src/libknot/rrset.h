@@ -420,6 +420,9 @@ const knot_dname_t *knot_rrset_rdata_nsec_next(const knot_rrset_t *rrset,
                                                size_t rr_pos);
 void knot_rrset_rdata_nsec_bitmap(const knot_rrset_t *rrset, size_t rr_pos,
                                   uint8_t **bitmap, uint16_t *size);
+
+void knot_rrset_rdata_nsec3_bitmap(const knot_rrset_t *rrset, size_t rr_pos,
+                                   uint8_t **bitmap, uint16_t *size);
 //TODO test
 uint8_t knot_rrset_rdata_nsec3_algorithm(const knot_rrset_t *rrset,
                                          size_t pos);

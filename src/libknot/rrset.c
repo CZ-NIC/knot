@@ -1964,6 +1964,29 @@ void knot_rrset_rdata_nsec_bitmap(const knot_rrset_t *rrset, size_t rr_pos,
 	*size = rrset_rdata_item_size(rrset, rr_pos) - sizeof(knot_dname_t *);
 }
 
+void knot_rrset_rdata_nsec3_bitmap(const knot_rrset_t *rrset, size_t rr_pos,
+                                   uint8_t **bitmap, uint16_t *size)
+{
+	if (rrset == NULL || rr_pos >= rrset->rdata_count) {
+		return;
+	}
+	
+	/* Bitmap is last, skip all the items. */
+	size_t offset = 1; //hash alg.
+	offset += 1; //flags
+	offset += 2; //iterations
+	offset += 1; //salt lenght
+	offset += knot_rrset_rdata_nsec3_salt_length(rrset, rr_pos); //sal
+	uint8_t *next_hashed = NULL;
+	uint8_t next_hashed_size = 0;
+	knot_rrset_rdata_nsec3_next_hashed(rrset, rr_pos, &next_hashed,
+	                                   &next_hashed_size);
+	offset += 1; //hash length
+	offset += next_hashed_size; //hash
+	*bitmap = knot_rrset_get_rdata(rrset, rr_pos) + offset;
+	*size = rrset_rdata_item_size(rrset, rr_pos) - offset;
+}
+
 /*---------------------------------------------------------------------------*/
 
 uint8_t knot_rrset_rdata_nsec3_algorithm(const knot_rrset_t *rrset,
