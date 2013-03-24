@@ -685,23 +685,28 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	knot_zone_contents_adjust(c->current_zone, &first_nsec3_node,
 	                          &last_nsec3_node, 0);
 	
-//	if (loader->semantic_checks) {
-//		int check_level = 1;
-//		const knot_rrset_t *soa_rr =
-//			knot_node_rrset(knot_zone_contents_apex(c->current_zone),
-//		                        KNOT_RRTYPE_SOA);
-//		assert(soa_rr); // In this point, SOA has to exist
-//		if (soa_rr->rrsigs) {
-//			/* Set check level to DNSSEC. */
-//			check_level = 2;
-//		}
-//		zone_do_sem_checks(c->current_zone, check_level,
-//		                   loader->err_handler, first_nsec3_node,
-//		                   last_nsec3_node);
-//		char *zname = knot_dname_to_str(knot_rrset_owner(soa_rr));
-//		log_zone_info("Semantic checks completed for zone=%s\n", zname);
-//		free(zname);
-//	}
+	if (loader->semantic_checks) {
+		int check_level = 1;
+		const knot_rrset_t *soa_rr =
+			knot_node_rrset(knot_zone_contents_apex(c->current_zone),
+		                        KNOT_RRTYPE_SOA);
+		assert(soa_rr); // In this point, SOA has to exist
+		const knot_rrset_t *nsec3param_rr =
+			knot_node_rrset(knot_zone_contents_apex(c->current_zone),
+		                        KNOT_RRTYPE_NSEC3PARAM);
+		if (soa_rr->rrsigs && nsec3param_rr == NULL) {
+			/* Set check level to DNSSEC. */
+			check_level = 2;
+		} else if (soa_rr->rrsigs && nsec3param_rr) {
+			check_level = 3;
+		}
+		zone_do_sem_checks(c->current_zone, check_level,
+		                   loader->err_handler, first_nsec3_node,
+		                   last_nsec3_node);
+		char *zname = knot_dname_to_str(knot_rrset_owner(soa_rr));
+		log_zone_info("Semantic checks completed for zone=%s\n", zname);
+		free(zname);
+	}
 	
 	return c->current_zone->zone;
 }
