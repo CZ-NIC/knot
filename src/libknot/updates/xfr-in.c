@@ -969,6 +969,8 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 		return KNOT_EMALF;
 	}
 	
+	xfrin_insert_rrset_dnames_to_table(rr, xfr->lookup_tree);
+	
 	if (*chs == NULL) {
 		dbg_xfrin_verb("Changesets empty, creating new.\n");
 		

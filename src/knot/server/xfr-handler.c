@@ -1421,6 +1421,7 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 	/* Cleanup. */
 	free(xfr->digest);
 	free(xfr->query->wireformat);   /* Free wireformat. */
+	hattrie_free(xfr->lookup_tree); /* Free lookup tree. */
 	knot_packet_free(&xfr->query);  /* Free query. */
 	knot_packet_free(&xfr->response);  /* Free response. */
 	knot_free_changesets((knot_changesets_t **)(&xfr->data));
