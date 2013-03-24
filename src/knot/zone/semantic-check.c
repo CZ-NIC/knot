@@ -915,7 +915,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 	}
 	
 	/* Check that the node only contains NSEC3 and RRSIG. */
-	const knot_rrset_t **rrsets = knot_node_rrsets(nsec3_node);
+	const knot_rrset_t **rrsets = knot_node_rrsets_no_copy(nsec3_node);
 	if (rrsets == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -1121,7 +1121,8 @@ static int sem_check_node_optional(knot_zone_contents_t *zone,
 								 ZC_ERR_GLUE_RECORD,
 								 NULL);
 					}
-				}
+				}	
+				knot_dname_free(&wildcard);
 			} else {
 				if ((knot_node_rrset(glue_node,
 					       KNOT_RRTYPE_A) == NULL) &&
@@ -1202,7 +1203,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 	char auth = !knot_node_is_non_auth(node);
 	char deleg = knot_node_is_deleg_point(node);
 	uint rrset_count = knot_node_rrset_count(node);
-	const knot_rrset_t **rrsets = knot_node_rrsets(node);
+	const knot_rrset_t **rrsets = knot_node_rrsets_no_copy(node);
 	const knot_rrset_t *dnskey_rrset =
 		knot_node_rrset(knot_zone_contents_apex(zone),
 				  KNOT_RRTYPE_DNSKEY);
@@ -1309,12 +1310,10 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 				              "Checking of NSEC3 node "
 				              "failed. Reason: %s.\n",
 				              knot_strerror(ret));
-				free(rrsets);
 				return ret;
 			}
 		}
 	}
-	free(rrsets);
 
 	return KNOT_EOK;
 }
