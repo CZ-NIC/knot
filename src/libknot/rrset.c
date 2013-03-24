@@ -1553,10 +1553,15 @@ int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2)
 	/* Check, that we really merge RRSets? */
 	if (rrset1->type != rrset2->type ||
 	    rrset1->rclass != rrset2->rclass ||
-	    (knot_dname_compare_non_canon(rrset1->owner, rrset2->owner) != 0) ||
-	    (rrset1->rdata_count == 0 && rrset2->rdata_count == 0)) {
+	    (knot_dname_compare_non_canon(rrset1->owner, rrset2->owner) != 0)) {
 		return KNOT_EINVAL;
 	}
+	                
+	/* Merging empty RRSets is OK. */	
+	if (rrset1->rdata_count == 0 && rrset2->rdata_count == 0) {
+		return KNOT_EOK;
+	}
+	                
 	/* Add all RDATAs from rrset2 to rrset1 (i.e. concatenate two arrays) */
 	
 	/*! \note The following code should work for
