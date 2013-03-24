@@ -1249,14 +1249,6 @@ dbg_zone_exec_detail(
 
 	int ret = rc;
 
-	// replace RRSet's owner with the node's owner (that is already in the
-	// table)
-	if (ret >= 0 && rrset->owner != (*node)->owner) {
-		knot_rrset_set_owner(rrset, (*node)->owner);
-	}
-	
-	assert(!(ret >= 0) || rrset->owner == (*node)->owner);
-
 	dbg_zone_detail("RRSet OK (%d).\n", ret);
 	return ret;
 }
@@ -1350,12 +1342,6 @@ dbg_zone_exec(
 		ret = 1;
 	}
 
-	// replace RRSet's owner with the node's owner (that is already in the
-	// table)
-	if (ret >= 0 && (*rrset)->owner != (*rrset)->rrsigs->owner) {
-		knot_rrset_set_owner((*rrset)->rrsigs, (*rrset)->owner);
-	}
-
 	dbg_zone_detail("RRSIGs OK\n");
 	return ret;
 }
@@ -1440,12 +1426,6 @@ int knot_zone_contents_add_nsec3_rrset(knot_zone_contents_t *zone,
 	}
 
 	int ret = rc;
-
-	// replace RRSet's owner with the node's owner (that is already in the
-	// table)
-	if (rrset->owner != (*node)->owner) {
-		knot_rrset_set_owner(rrset, (*node)->owner);
-	}
 
 	dbg_zone_detail("NSEC3 OK\n");
 	return ret;
