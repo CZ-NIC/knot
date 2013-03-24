@@ -29,7 +29,7 @@
 #include "utils/common/resolv.h"	// get_nameservers
 
 #define DEFAULT_RETRIES_HOST	1
-#define DEFAULT_TIMEOUT_HOST	1
+#define DEFAULT_TIMEOUT_HOST	2
 
 static const style_t DEFAULT_STYLE_HOST = {
 	.format = FORMAT_HOST,
