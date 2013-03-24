@@ -3973,7 +3973,7 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		assert(zone != NULL);
 
 		dbg_ns_verb("ns_process_axfrin: adjusting zone.\n");
-		int rc = knot_zone_contents_adjust(zone, NULL, NULL, 0);
+		int rc = knot_zone_contents_adjust(zone, NULL, NULL, 1);
 		if (rc != KNOT_EOK) {
 			return rc;
 		}

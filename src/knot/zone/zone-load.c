@@ -697,7 +697,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	knot_node_t *last_nsec3_node = NULL;
 	rrset_list_delete(&c->node_rrsigs);
 	knot_zone_contents_adjust(c->current_zone, &first_nsec3_node,
-	                          &last_nsec3_node, 0);
+	                          &last_nsec3_node, 1);
 	
 //	if (loader->semantic_checks) {
 //		int check_level = 1;
