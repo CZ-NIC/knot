@@ -170,6 +170,10 @@ dbg_zone_exec_detail(
 static void knot_zone_contents_insert_dname_into_table(knot_dname_t **in_dname,
                                                        hattrie_t *lookup_tree)
 {
+	if (lookup_tree == NULL) {
+		/* = Do not check duplicates. */
+		return;
+	}
         assert(in_dname && *in_dname);
         /* First thing - make sure dname is not duplicated. */
         knot_dname_t *found_dname = hattrie_get_dname(lookup_tree, *in_dname);
@@ -1865,7 +1869,7 @@ knot_node_t *knot_zone_contents_get_apex(const knot_zone_contents_t *zone)
 
 int knot_zone_contents_adjust(knot_zone_contents_t *zone,
                               knot_node_t **first_nsec3_node,
-                              knot_node_t **last_nsec3_node)
+                              knot_node_t **last_nsec3_node, int dupl_check)
 {
 	if (zone == NULL) {
 		return KNOT_EINVAL;
@@ -1878,10 +1882,13 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone,
 	// load NSEC3PARAM (needed on adjusting function)
 	knot_zone_contents_load_nsec3param(zone);
 	
-	hattrie_t *lookup_tree = hattrie_create();
-	if (lookup_tree == NULL) {
-		dbg_zone("Failed to create out of zone lookup structure.\n");
-		return KNOT_ERROR;
+	hattrie_t *lookup_tree = NULL;
+	if (dupl_check) {
+		lookup_tree = hattrie_create();
+		if (lookup_tree == NULL) {
+			dbg_zone("Failed to create out of zone lookup structure.\n");
+			return KNOT_ERROR;
+		}
 	}
 	
 	knot_zone_adjust_arg_t adjust_arg;

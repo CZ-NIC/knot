@@ -3132,7 +3132,7 @@ int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
 	}
 
 	dbg_xfrin("Adjusting zone contents.\n");
-	ret = knot_zone_contents_adjust(contents_copy, NULL, NULL);
+	ret = knot_zone_contents_adjust(contents_copy, NULL, NULL, 1);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to finalize zone contents: %s\n",
 		          knot_strerror(ret));

@@ -340,7 +340,7 @@ knot_node_t *knot_zone_contents_get_apex(
  */
 int knot_zone_contents_adjust(knot_zone_contents_t *contents,
                               knot_node_t **first_nsec3_node,
-                              knot_node_t **last_nsec3_node);
+                              knot_node_t **last_nsec3_node, int dupl_check);
 
 int knot_zone_contents_check_loops(knot_zone_contents_t *zone);
 
