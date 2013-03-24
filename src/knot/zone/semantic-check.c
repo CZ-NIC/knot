@@ -532,7 +532,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 
 	/* signer's name is same as in the zone apex */
 	const knot_dname_t *signer_name =
-		knot_rrset_rdata_rrsig_signer_name(rrset, rr_pos);
+		knot_rrset_rdata_rrsig_signer_name(rrsig, rr_pos);
 
 	/* dnskey is in the apex node */
 	if (knot_dname_compare(signer_name,
@@ -705,14 +705,22 @@ static int rdata_nsec_to_type_array(const knot_rrset_t *rrset, size_t pos,
 				    uint16_t **array, size_t *count)
 {
 	assert(*array == NULL);
+	assert(rrset->type == KNOT_RRTYPE_NSEC || rrset->type == KNOT_RRTYPE_NSEC3);
 	
 	uint8_t *data = NULL;
-	uint16_t bitmap_size = 0;
-	knot_rrset_rdata_nsec_bitmap(rrset, pos, &data, &bitmap_size);
+	uint16_t rr_bitmap_size = 0;
+	if (rrset->type == KNOT_RRTYPE_NSEC) {
+		knot_rrset_rdata_nsec_bitmap(rrset, pos, &data, &rr_bitmap_size);
+	} else {
+		knot_rrset_rdata_nsec3_bitmap(rrset, pos, &data, &rr_bitmap_size);
+	}
+	if (data == NULL) {
+		return KNOT_EMALF;
+	}
 	
 	*count = 0;
 	int increment = 0;
-	for (int i = 0; i < bitmap_size; i += increment) {
+	for (int i = 0; i < rr_bitmap_size; i += increment) {
 		increment = 0;
 		uint8_t window = data[i];
 		increment++;
@@ -862,6 +870,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 	CHECK_ALLOC_LOG(next_dname, KNOT_ENOMEM);
 
 	free(next_dname_decoded);
+	knot_dname_to_lower(next_dname);
 	
 	if (knot_dname_cat(next_dname,
 		     knot_node_owner(knot_zone_contents_apex(zone))) == NULL) {
@@ -888,7 +897,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 		             knot_strerror(ret));
 		return ret;
 	}
-
+	
 	uint16_t type = 0;
 	for (int j = 0; j < arr_size; j++) {
 		/* test for each type's presence */
@@ -896,6 +905,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 		if (type == KNOT_RRTYPE_RRSIG) {
 		       continue;
 		}
+		
 		if (knot_node_rrset(node,
 				      type) == NULL) {
 			err_handler_handle_error(handler, node,
@@ -1435,6 +1445,7 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 		}
 
 		free(next_dname_decoded);
+		knot_dname_to_lower(next_dname);
 
 		/*! \todo #1887 Free result and dname! */
 		if (knot_dname_cat(next_dname,
@@ -1455,8 +1466,8 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 						 ZC_ERR_NSEC3_RDATA_CHAIN, NULL);
 		} else {
 			/* Compare with the actual first NSEC3 node. */
-			if (knot_dname_compare(first_nsec3_node->owner,
-			                         next_dname) != 0) {
+			if (knot_dname_compare_non_canon(first_nsec3_node->owner,
+			                                 next_dname) != 0) {
 				err_handler_handle_error(handler, last_nsec3_node,
 							 ZC_ERR_NSEC3_RDATA_CHAIN, NULL);
 			}
