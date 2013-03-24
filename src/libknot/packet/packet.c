@@ -532,9 +532,7 @@ dbg_packet_exec_verb(
 
 	if ((flags & KNOT_PACKET_DUPL_SKIP) &&
 	    knot_packet_contains(packet, rrset, KNOT_RRSET_COMPARE_PTR)) {
-		/*! \todo This should also return > 0, as it means that the
-		          RRSet was not used actually. */
-		return KNOT_EOK;
+		return 2;
 	}
 
 	// Try to merge rdata to rrset if flag NO_MERGE isn't set.
@@ -613,9 +611,12 @@ static int knot_packet_parse_rrs(const uint8_t *wire, size_t *pos,
 		                            max_rrsets, default_rrsets, packet, flags);
 		if (err < 0) {
 			break;
-		} else if (err > 0) {	// merged
+		} else if (err == 1) {	// merged, shallow data copy
 			dbg_packet_detail("RRSet merged, freeing.\n");
-			knot_rrset_deep_free(&rrset, 1, 0);  // TODO: ok??
+			knot_rrset_deep_free(&rrset, 1, 0);
+			continue;
+		} else if (err == 2) { // skipped
+			knot_rrset_deep_free(&rrset, 1, 1);
 			continue;
 		}
 
