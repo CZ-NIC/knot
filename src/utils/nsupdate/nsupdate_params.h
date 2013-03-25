@@ -34,6 +34,7 @@
 #include "zscanner/scanner.h"		// scanner_t
 #include "utils/common/netio.h"		// server_t
 #include "utils/common/params.h"	// protocol_t
+#include "libknot/sign/key.h"		// knot_key_params_t
 
 /*! Parser init string. */
 #define PARSER_INIT_STR "$ORIGIN %s\n$TTL %u\n"
@@ -70,8 +71,8 @@ typedef struct {
 	knot_packet_t	*resp;
 	/*!< Buffer for response. */
 	uint8_t		rwire[MAX_PACKET_SIZE];
-	/*!< TSIG key used. */
-	knot_key_t	key;
+	/*!< Key parameters. */
+	knot_key_params_t key_params;
 	/*!< Default output settings. */
 	style_t		style;
 } nsupdate_params_t;

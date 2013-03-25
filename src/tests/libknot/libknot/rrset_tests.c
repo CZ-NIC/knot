@@ -794,8 +794,8 @@ static int test_rrset_merge()
 	                     &merge_from, 1);
 	assert(merge_to);
 	assert(merge_from);
-	int ret = knot_rrset_merge((void **)&merge_to, (void **)&merge_from);
-	if (ret) {
+	int ret = knot_rrset_merge(merge_to, merge_from);
+	if (ret != KNOT_EOK) {
 		diag("Could not merge RRSets.\n");
 		knot_rrset_deep_free(&merge_to, 1, 1);
 		knot_rrset_deep_free(&merge_from, 1, 1);
@@ -857,8 +857,8 @@ static int test_rrset_merge_no_dupl()
 	knot_rrset_t *merge_from = NULL;
 	knot_rrset_deep_copy(&test_rrset_array[TEST_RRSET_MERGE_UNIQUE1].rrset,
 	                     &merge_from, 1);
-	int ret = knot_rrset_merge_no_dupl((void **)&merge_to,
-	                                   (void **)&merge_from);
+	int merged, removed_rrs;
+	int ret = knot_rrset_merge_no_dupl(merge_to, merge_from, &merged, &removed_rrs);
 	if (ret != KNOT_EOK) {
 		diag("Merge of identical RRSets failed.\n");
 		return 0;
@@ -887,8 +887,8 @@ static int test_rrset_merge_no_dupl()
 	assert(merge_to);
 	assert(merge_from);
 	
-	ret = knot_rrset_merge_no_dupl((void **)&merge_to,
-	                               (void **)&merge_from);
+	ret = knot_rrset_merge_no_dupl(merge_to, merge_from, &merged,
+	                               &removed_rrs);
 	if (ret != KNOT_EOK) {
 		diag("Merge of identical RRSets failed.\n");
 		return 0;
@@ -919,7 +919,8 @@ static int test_rrset_merge_no_dupl()
 	assert(merge_to);
 	assert(merge_from);
 	
-	ret = knot_rrset_merge_no_dupl((void **)&merge_to, (void **)&merge_from);
+	ret = knot_rrset_merge_no_dupl(merge_to, merge_from, &merged,
+	                               &removed_rrs);
 	if (ret != KNOT_EOK) {
 		diag("Merge of identical RRSets failed.\n");
 		return 0;

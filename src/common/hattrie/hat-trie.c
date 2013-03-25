@@ -249,6 +249,9 @@ static void hattrie_free_node(node_ptr node, bool free_nodes)
 
 void hattrie_free(hattrie_t* T)
 {
+    if (T == NULL) {
+	return;
+    }
     hattrie_free_node(T->root, false);
     slab_cache_destroy(&T->slab);
     free(T);

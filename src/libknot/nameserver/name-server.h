@@ -114,9 +114,9 @@ typedef struct knot_ns_xfr {
 	 *  freed at the end. During the transfer it is only rewritten.
 	 */
 	uint8_t *tsig_data;
-	size_t tsig_data_size; /*!< Size of the message(s) in bytes */
-	size_t tsig_size;      /*!< Size of the TSIG RR wireformat in bytes.*/
-	knot_key_t *tsig_key;  /*!< Associated TSIG key for signing. */
+	size_t tsig_data_size;	/*!< Size of the message(s) in bytes */
+	size_t tsig_size;	/*!< Size of the TSIG RR wireformat in bytes.*/
+	knot_tsig_key_t *tsig_key; /*!< Associated TSIG key for signing. */
 	
 	uint8_t *digest;     /*!< Buffer for counting digest. */
 	size_t digest_size;  /*!< Size of the digest. */
@@ -135,6 +135,8 @@ typedef struct knot_ns_xfr {
 	 * number counted from last TSIG check.
 	 */
 	int packet_nr;
+	
+	hattrie_t *lookup_tree;
 } knot_ns_xfr_t;
 
 

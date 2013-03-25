@@ -14,6 +14,7 @@
 #include <grp.h>
 #include "common/sockaddr.h"
 #include "libknot/dname.h"
+#include "libknot/binary.h"
 #include "knot/conf/conf.h"
 #include "libknotd_la-cf-parse.h" /* Automake generated header. */
 
@@ -141,7 +142,7 @@ static int conf_key_exists(void *scanner, char *item)
     return 0;
 }
 
-static int conf_key_add(void *scanner, knot_key_t **key, char *item)
+static int conf_key_add(void *scanner, knot_tsig_key_t **key, char *item)
 {
     /* Reset */
     *key = 0;
@@ -484,9 +485,11 @@ keys:
 	 } else {
              conf_key_t *k = malloc(sizeof(conf_key_t));
              memset(k, 0, sizeof(conf_key_t));
+
              k->k.name = dname;
              k->k.algorithm = $3.alg;
-             k->k.secret = $4.t;
+             knot_binary_from_base64($4.t, &(k->k.secret));
+	     free($4.t);
              add_tail(&new_config->keys, &k->n);
              ++new_config->key_count;
 	 }

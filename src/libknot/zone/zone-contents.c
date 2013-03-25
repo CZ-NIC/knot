@@ -167,9 +167,13 @@ dbg_zone_exec_detail(
 	}
 }
 
-static void knot_zone_contents_insert_dname_into_table(knot_dname_t **in_dname,
-                                                       hattrie_t *lookup_tree)
+void knot_zone_contents_insert_dname_into_table(knot_dname_t **in_dname,
+                                                hattrie_t *lookup_tree)
 {
+	if (lookup_tree == NULL) {
+		/* = Do not check duplicates. */
+		return;
+	}
         assert(in_dname && *in_dname);
         /* First thing - make sure dname is not duplicated. */
         knot_dname_t *found_dname = hattrie_get_dname(lookup_tree, *in_dname);
@@ -311,11 +315,11 @@ static void knot_zone_contents_adjust_rdata_in_rrset(knot_rrset_t *rrset,
  * \param node Zone node to adjust the RRSets in.
  * \param zone Zone to which the node belongs.
  */
-static void knot_zone_contents_adjust_rrsets(knot_node_t *node,
+static int knot_zone_contents_adjust_rrsets(knot_node_t *node,
                                              hattrie_t *lookup_tree,
                                              knot_zone_contents_t *zone)
 {
-	knot_rrset_t **rrsets = knot_node_get_rrsets(node);
+	knot_rrset_t **rrsets = knot_node_get_rrsets_no_copy(node);
 	short count = knot_node_rrset_count(node);
 
 	assert(count == 0 || rrsets != NULL);
@@ -341,9 +345,17 @@ static void knot_zone_contents_adjust_rrsets(knot_node_t *node,
 		                                         lookup_tree, zone,
 			                                         node);
 		}
+		
+		if (rrsets[r]->type == KNOT_RRTYPE_DS) {
+			int ret = knot_rrset_ds_check(rrsets[r]);
+			if (ret != KNOT_EOK) {
+				dbg_zone("DS RDATA check failed: %s\n", knot_strerror(ret));
+				return KNOT_EMALF;
+			}
+		}
 	}
 
-	free(rrsets);
+	return KNOT_EOK;
 }
 /*----------------------------------------------------------------------------*/
 /*!
@@ -362,14 +374,16 @@ static void knot_zone_contents_adjust_rrsets(knot_node_t *node,
  *       in the inserting function, though that may not be always used (e.g.
  *       old changeset processing).
  */
-static void knot_zone_contents_adjust_node(knot_node_t *node,
-                                           hattrie_t *lookup_tree,
-                                           knot_zone_contents_t *zone)
+static int knot_zone_contents_adjust_node(knot_node_t *node,
+                                          hattrie_t *lookup_tree,
+                                          knot_zone_contents_t *zone)
 {
 	// adjust domain names in RDATA
-	/*! \note Enabled again after a LONG time. Should test thoroughly. */
-	knot_zone_contents_adjust_rrsets(node, lookup_tree,
-	                                 zone);
+	int ret = knot_zone_contents_adjust_rrsets(node, lookup_tree,
+				                   zone);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 
 //	const knot_node_t *old_dname_node = node->owner->node;
 	knot_zone_contents_insert_dname_into_table(&node->owner, lookup_tree);
@@ -391,14 +405,18 @@ static void knot_zone_contents_adjust_node(knot_node_t *node,
 	/* This is faster, as it doesn't need ordered access. */
 	knot_node_t *nsec3 = NULL;
 	knot_dname_t *nsec3_name = NULL;
-	int ret = knot_zone_contents_nsec3_name(zone, knot_node_owner(node),
-	                                        &nsec3_name);
+	ret = knot_zone_contents_nsec3_name(zone, knot_node_owner(node),
+ 	                                    &nsec3_name);
 	if (ret == KNOT_EOK) {
 		assert(nsec3_name);
 		knot_zone_tree_get(zone->nsec3_nodes, nsec3_name, &nsec3);
 		knot_node_set_nsec3_node(node, nsec3);
-	} else {
+	} else if (ret == KNOT_ENSEC3PAR) {
 		knot_node_set_nsec3_node(node, NULL);
+	} else {
+		/* Something could be in DNAME. */
+		knot_dname_free(&nsec3_name);
+		return ret;
 	}
 	knot_dname_free(&nsec3_name);
 
@@ -407,6 +425,7 @@ static void knot_zone_contents_adjust_node(knot_node_t *node,
 	                knot_node_is_deleg_point(node) ? "yes" : "no");
 	dbg_zone_detail("Non-authoritative: %s\n",
 	                knot_node_is_non_auth(node) ? "yes" : "no");
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -446,7 +465,7 @@ dbg_zone_exec_verb(
 	 *    Do other adjusting (flags, closest enclosers, wildcard children,
 	 *    etc.).
 	 */
-	knot_zone_contents_adjust_node(node, args->lookup_tree, zone);
+	args->err = knot_zone_contents_adjust_node(node, args->lookup_tree, zone);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1230,14 +1249,6 @@ dbg_zone_exec_detail(
 
 	int ret = rc;
 
-	// replace RRSet's owner with the node's owner (that is already in the
-	// table)
-	if (ret >= 0 && rrset->owner != (*node)->owner) {
-		knot_rrset_set_owner(rrset, (*node)->owner);
-	}
-	
-	assert(!(ret >= 0) || rrset->owner == (*node)->owner);
-
 	dbg_zone_detail("RRSet OK (%d).\n", ret);
 	return ret;
 }
@@ -1331,12 +1342,6 @@ dbg_zone_exec(
 		ret = 1;
 	}
 
-	// replace RRSet's owner with the node's owner (that is already in the
-	// table)
-	if (ret >= 0 && (*rrset)->owner != (*rrset)->rrsigs->owner) {
-		knot_rrset_set_owner((*rrset)->rrsigs, (*rrset)->owner);
-	}
-
 	dbg_zone_detail("RRSIGs OK\n");
 	return ret;
 }
@@ -1421,12 +1426,6 @@ int knot_zone_contents_add_nsec3_rrset(knot_zone_contents_t *zone,
 	}
 
 	int ret = rc;
-
-	// replace RRSet's owner with the node's owner (that is already in the
-	// table)
-	if (rrset->owner != (*node)->owner) {
-		knot_rrset_set_owner(rrset, (*node)->owner);
-	}
 
 	dbg_zone_detail("NSEC3 OK\n");
 	return ret;
@@ -1850,7 +1849,7 @@ knot_node_t *knot_zone_contents_get_apex(const knot_zone_contents_t *zone)
 
 int knot_zone_contents_adjust(knot_zone_contents_t *zone,
                               knot_node_t **first_nsec3_node,
-                              knot_node_t **last_nsec3_node)
+                              knot_node_t **last_nsec3_node, int dupl_check)
 {
 	if (zone == NULL) {
 		return KNOT_EINVAL;
@@ -1863,10 +1862,13 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone,
 	// load NSEC3PARAM (needed on adjusting function)
 	knot_zone_contents_load_nsec3param(zone);
 	
-	hattrie_t *lookup_tree = hattrie_create();
-	if (lookup_tree == NULL) {
-		dbg_zone("Failed to create out of zone lookup structure.\n");
-		return KNOT_ERROR;
+	hattrie_t *lookup_tree = NULL;
+	if (dupl_check) {
+		lookup_tree = hattrie_create();
+		if (lookup_tree == NULL) {
+			dbg_zone("Failed to create out of zone lookup structure.\n");
+			return KNOT_ERROR;
+		}
 	}
 	
 	knot_zone_adjust_arg_t adjust_arg;
@@ -1888,6 +1890,7 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone,
 	if (adjust_arg.err != KNOT_EOK) {
 		dbg_zone("Failed to set 'prev' pointers to NSEC3 nodes: %s\n",
 		         knot_strerror(adjust_arg.err));
+		hattrie_free(lookup_tree);
 		return adjust_arg.err;
 	}
 
@@ -1915,6 +1918,7 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone,
 	if (adjust_arg.err != KNOT_EOK) {
 		dbg_zone("Failed to set 'prev' pointers to normal nodes: %s\n",
 		         knot_strerror(adjust_arg.err));
+		hattrie_free(lookup_tree);
 		return adjust_arg.err;
 	}
 
@@ -1937,6 +1941,7 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone,
 	if (adjust_arg.err != KNOT_EOK) {
 		dbg_zone("Failed to adjust NSEC3 nodes: %s\n",
 		         knot_strerror(adjust_arg.err));
+		hattrie_free(lookup_tree);
 		return adjust_arg.err;
 	}
 
@@ -1949,6 +1954,7 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone,
 	if (adjust_arg.err != KNOT_EOK) {
 		dbg_zone("Failed to adjust normal nodes: %s\n",
 		         knot_strerror(adjust_arg.err));
+		hattrie_free(lookup_tree);
 		return adjust_arg.err;
 	}
 

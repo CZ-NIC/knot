@@ -12,28 +12,19 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+#ifndef _KNOT_SIGN_BNUTILS_H_
+#define _KNOT_SIGN_BNUTILS_H_
+
+#include <openssl/bn.h>
+
+/*!
+ * \brief Convert Base64 encoded number into OpenSSL BIGNUM format.
+ *
+ * \param input Base64 encoded input number
+ * \return Input number represented in OpenSSL BIGNUM format.
  */
+BIGNUM *knot_b64_to_bignum(const char *input);
 
-#ifndef _KNOT_ENDIAN_H
-#define _KNOT_ENDIAN_H
-
-#if defined(__linux__)
-#	include <endian.h>
-#elif defined(__FreeBSD__) || defined(__NetBSD__)
-#	include <sys/endian.h>
-#elif defined(__OpenBSD__)
-#	include <sys/types.h>
-#	define be16toh(x) betoh16(x)
-#	define be32toh(x) betoh32(x)
-#	define be64toh(x) betoh64(x)
-#elif defined(__APPLE__)
-#       include <libkern/OSByteOrder.h>
-#       define be16toh(x) OSSwapBigToHostInt16(x)
-#       define be32toh(x) OSSwapBigToHostInt32(x)
-#       define be64toh(x) OSSwapBigToHostInt64(x)
-#       define htobe16(x) OSSwapHostToBigInt16(x)
-#       define htobe32(x) OSSwapHostToBigInt32(x)
-#       define htobe64(x) OSSwapHostToBigInt64(x)
-#endif
-
-#endif /* _KNOT_ENDIAN_H_ */
+#endif // _KNOT_SIGN_BNUTILS_H_

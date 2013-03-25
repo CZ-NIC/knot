@@ -920,12 +920,15 @@ int knot_rrset_add_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs,
 	int rc;
 	if (rrset->rrsigs != NULL) {
 		if (dupl == KNOT_RRSET_DUPL_MERGE) {
-			rc = knot_rrset_merge_no_dupl((void **)&rrset->rrsigs,
-			                              (void **)&rrsigs);
-			if (rc > 0) {
+			int merged, deleted_rrs;
+			rc = knot_rrset_merge_no_dupl(rrset->rrsigs, rrsigs,
+			                              &merged, &deleted_rrs);
+			if (rc != KNOT_EOK) {
+				return rc;
+			} else if (merged || deleted_rrs) {
 				return 1;
 			} else {
-				return rc;
+				return 0;
 			}
 		} else if (dupl == KNOT_RRSET_DUPL_SKIP) {
 			return 2;
@@ -1541,11 +1544,8 @@ void knot_rrset_deep_free_no_sig(knot_rrset_t **rrset, int free_owner,
 	*rrset = NULL;
 }
 
-int knot_rrset_merge(void **r1, void **r2)
+int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2)
 {
-	/* [code-review] Missing parameter checks. */
-	knot_rrset_t *rrset1 = (knot_rrset_t *)(*r1);
-	knot_rrset_t *rrset2 = (knot_rrset_t *)(*r2);
 	if (rrset1 == NULL || rrset2 == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -1553,10 +1553,15 @@ int knot_rrset_merge(void **r1, void **r2)
 	/* Check, that we really merge RRSets? */
 	if (rrset1->type != rrset2->type ||
 	    rrset1->rclass != rrset2->rclass ||
-	    (knot_dname_compare_non_canon(rrset1->owner, rrset2->owner) != 0) ||
-	    (rrset1->rdata_count == 0 && rrset2->rdata_count == 0)) {
+	    (knot_dname_compare_non_canon(rrset1->owner, rrset2->owner) != 0)) {
 		return KNOT_EINVAL;
 	}
+	                
+	/* Merging empty RRSets is OK. */	
+	if (rrset1->rdata_count == 0 && rrset2->rdata_count == 0) {
+		return KNOT_EOK;
+	}
+	                
 	/* Add all RDATAs from rrset2 to rrset1 (i.e. concatenate two arrays) */
 	
 	/*! \note The following code should work for
@@ -1601,15 +1606,9 @@ int knot_rrset_merge(void **r1, void **r2)
 	return KNOT_EOK;
 }
 
-int knot_rrset_merge_no_dupl(void **r1, void **r2)
+int knot_rrset_merge_no_dupl(knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
+                             int *merged, int *deleted_rrs)
 {
-	if (r1 == NULL || r2 == NULL) {
-		dbg_rrset("rrset: merge_no_dupl: NULL arguments.");
-		return KNOT_EINVAL;
-	}
-	
-	knot_rrset_t *rrset1 = (knot_rrset_t *)(*r1);
-	knot_rrset_t *rrset2 = (knot_rrset_t *)(*r2);
 	if (rrset1 == NULL || rrset2 == NULL) {
 		dbg_rrset("rrset: merge_no_dupl: NULL arguments.");
 		return KNOT_EINVAL;
@@ -1629,7 +1628,8 @@ dbg_rrset_exec_detail(
 		return KNOT_EINVAL;
 	}
 	
-	int merged = 0;
+	*deleted_rrs = 0;
+	*merged = 0;
 	/* For each item in second RRSet, make sure it is not duplicated. */
 	for (uint16_t i = 0; i < rrset2->rdata_count; i++) {
 		int duplicated = 0;
@@ -1641,7 +1641,7 @@ dbg_rrset_exec_detail(
 		}
 		
 		if (!duplicated) {
-			merged++;
+			*merged += 1; // = need to shallow free rrset2
 			// This index goes to merged RRSet.
 			int ret = knot_rrset_add_rdata(rrset1,
 			                               rrset_rdata_pointer(rrset2, i),
@@ -1652,10 +1652,12 @@ dbg_rrset_exec_detail(
 				          knot_strerror(ret));
 				return ret;
 			}
+		} else {
+			*deleted_rrs += 1; // = need to shallow free rrset2
 		}
 	}
 	
-	return merged;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1960,6 +1962,29 @@ void knot_rrset_rdata_nsec_bitmap(const knot_rrset_t *rrset, size_t rr_pos,
 	
 	*bitmap = knot_rrset_get_rdata(rrset, rr_pos) + sizeof(knot_dname_t *);
 	*size = rrset_rdata_item_size(rrset, rr_pos) - sizeof(knot_dname_t *);
+}
+
+void knot_rrset_rdata_nsec3_bitmap(const knot_rrset_t *rrset, size_t rr_pos,
+                                   uint8_t **bitmap, uint16_t *size)
+{
+	if (rrset == NULL || rr_pos >= rrset->rdata_count) {
+		return;
+	}
+	
+	/* Bitmap is last, skip all the items. */
+	size_t offset = 1; //hash alg.
+	offset += 1; //flags
+	offset += 2; //iterations
+	offset += 1; //salt lenght
+	offset += knot_rrset_rdata_nsec3_salt_length(rrset, rr_pos); //sal
+	uint8_t *next_hashed = NULL;
+	uint8_t next_hashed_size = 0;
+	knot_rrset_rdata_nsec3_next_hashed(rrset, rr_pos, &next_hashed,
+	                                   &next_hashed_size);
+	offset += 1; //hash length
+	offset += next_hashed_size; //hash
+	*bitmap = knot_rrset_get_rdata(rrset, rr_pos) + offset;
+	*size = rrset_rdata_item_size(rrset, rr_pos) - offset;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -2687,3 +2712,25 @@ void knot_rrset_set_class(knot_rrset_t *rrset, uint16_t rclass)
 	
 	rrset->rclass = rclass;
 }
+
+int knot_rrset_ds_check(const knot_rrset_t *rrset)
+{
+	// Check if the legth of the digest corresponds to the proper size of
+	// the digest according to the given algorithm
+	for (uint16_t i = 0; i < rrset->rdata_count; ++i) {
+		/* 4 bytes before actual digest. */
+		if (rrset_rdata_item_size(rrset, i) < 4) {
+			/* Not even keytag, alg and alg type. */
+			return KNOT_EMALF;
+		}
+		uint16_t len = rrset_rdata_item_size(rrset, i) - 4;
+		uint8_t type = *(rrset_rdata_pointer(rrset, i) + 3);
+		if (type == 0 || len == 0) {
+			return KNOT_EINVAL;
+		} else if (len != knot_ds_digest_length(type)) {
+			return KNOT_EDSDIGESTLEN;
+		}
+	}
+	return KNOT_EOK;
+}
+

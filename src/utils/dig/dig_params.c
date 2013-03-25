@@ -385,14 +385,34 @@ static int parse_port(const char *value, query_t *query)
 	return KNOT_EOK;
 }
 
-static void dig_help(const bool verbose)
+static void dig_help()
 {
-	if (verbose == true) {
-		printf("Big help\n");
-	} else {
-		printf("Usage: [-aCdlrsTvw] [-4] [-6] [-c class] [-R retries]\n"
-		       "       [-t type] [-W time] name [server]\n");
-	}
+	printf("Usage: kdig [-4] [-6] [-dh] [-c class] [-p port] [-q name]\n"
+	       "            [-t type] [-x address] name @server\n\n"
+               "       +[no]multiline  Wrap long records to more lines.\n"
+               "       +[no]short      Show record data only.\n"
+               "       +[no]aaflag     Set AA flag.\n"
+               "       +[no]tcflag     Set TC flag.\n"
+               "       +[no]rdflag     Set RD flag.\n"
+               "       +[no]recurse    Same as +[no]rdflag\n"
+               "       +[no]raflag     Set RA flag.\n"
+               "       +[no]zflag      Set zero flag bit.\n"
+               "       +[no]adflag     Set AD flag.\n"
+               "       +[no]cdflag     Set CD flag.\n"
+               "       +[no]dnssec     Set DO flag.\n"
+               "       +[no]all        Show all packet sections.\n"
+               "       +[no]question   Show question section.\n"
+               "       +[no]answer     Show answer section.\n"
+               "       +[no]authority  Show authority section.\n"
+               "       +[no]additional Show additional section.\n"
+               "       +[no]stats      Show trailing packet statistics.\n"
+               "       +[no]cl         Show DNS class.\n"
+               "       +[no]ttl        Show TTL value.\n"
+               "       +time=T         Set wait for reply interval in seconds.\n"
+               "       +tries=N        Set number of retries.\n"
+               "       +bufsize=B      Set EDNS buffer size.\n"
+               "       +[no]tcp        Use TCP protocol.\n"
+               "       +[no]fail       Stop if SERVFAIL.\n");
 }
 
 static int parse_server(const char *value, dig_params_t *params)
@@ -447,6 +467,17 @@ static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
 
 		query->ip = IP_6;
 		break;
+	case 'd':
+		msg_enable_debug(1);
+		break;
+	case 'h':
+		if (len > 1) {
+			ERR("invalid option -%s\n", opt);
+			return KNOT_ENOTSUP;
+		}
+
+		dig_help();
+		return KNOT_ESTOP;;
 	case 'c':
 		if (val == NULL) {
 			ERR("missing class\n");
@@ -459,17 +490,6 @@ static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
 		}
 		*index += add;
 		break;
-	case 'd':
-		msg_enable_debug(1);
-		break;
-	case 'h':
-		if (len > 1) {
-			ERR("invalid option -%s\n", opt);
-			return KNOT_ENOTSUP;
-		}
-
-		dig_help(true);
-		return KNOT_ESTOP;;
 	case 'p':
 		if (val == NULL) {
 			ERR("missing port\n");
@@ -764,7 +784,7 @@ int dig_parse(dig_params_t *params, int argc, char *argv[])
 		case KNOT_EOK:
 			break;
 		case KNOT_ENOTSUP:
-			dig_help(false);
+			dig_help();
 		default: // Fall through.
 			return ret;
 		}

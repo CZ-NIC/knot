@@ -1,13 +1,3 @@
-/*!
- * \file libknot.h
- *
- * \author Jan Kadlec <jan.kadlec@nic.cz>
- *
- * \brief Convenience header for including whole library.
- *
- * \addtogroup libknot
- * @{
- */
 /*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
@@ -22,30 +12,29 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+*/
 
-#ifndef _KNOT_LIBKNOT_H_
-#define _KNOT_LIBKNOT_H_
+#include <stddef.h>
+#include <string.h>
+#include <stdlib.h>
 
-#include "consts.h"
-#include "dname.h"
-#include "edns.h"
-#include "zone/node.h"
-#include "nsec3.h"
-#include "util/wire.h"
-#include "packet/packet.h"
-#include "packet/query.h"
-#include "packet/response.h"
-#include "rrset.h"
-#include "rrset-dump.h"
-#include "sign/key.h"
-#include "tsig.h"
-#include "tsig-op.h"
-#include "util/tolower.h"
-#include "util/utils.h"
-#include "zone/zone.h"
-#include "zone/zonedb.h"
+#include "sign/bnutils.h"
+#include "common/base64.h"
 
-#endif
+BIGNUM *knot_b64_to_bignum(const char *input)
+{
+	size_t size = strlen(input);
+	uint8_t *decoded;
+	int32_t decoded_size;
+	BIGNUM *result;
 
-/*! @} */
+	decoded_size = base64_decode_alloc((uint8_t *)input, size, &decoded);
+	if (decoded_size < 0) {
+		return NULL;
+	}
+
+	result = BN_bin2bn((unsigned char *)decoded, (int)decoded_size, NULL);
+	free(decoded);
+
+	return result;
+}

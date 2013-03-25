@@ -340,7 +340,7 @@ knot_node_t *knot_zone_contents_get_apex(
  */
 int knot_zone_contents_adjust(knot_zone_contents_t *contents,
                               knot_node_t **first_nsec3_node,
-                              knot_node_t **last_nsec3_node);
+                              knot_node_t **last_nsec3_node, int dupl_check);
 
 int knot_zone_contents_check_loops(knot_zone_contents_t *zone);
 
@@ -527,6 +527,8 @@ int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
                                            const knot_dname_t *name,
                                            knot_dname_t **nsec3_name);
 
+void knot_zone_contents_insert_dname_into_table(knot_dname_t **in_dname,
+                                                hattrie_t *lookup_tree);
 #endif
 
 /*! @} */

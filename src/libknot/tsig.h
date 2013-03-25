@@ -30,6 +30,7 @@
 #include <stdint.h>
 
 #include "rrset.h"
+#include "binary.h"
 #include "util/utils.h"
 
 /* The assigned numbers should not begin with 0 - reserved for error. */
@@ -46,13 +47,13 @@ enum tsig_algorithm {
 
 typedef enum tsig_algorithm tsig_algorithm_t;
 
-struct knot_key {
-	knot_dname_t *name;   /*!< Key name. */
-	tsig_algorithm_t algorithm; /*!< Key algorithm.  */
-	char *secret;         /*!< Key data. */
+struct knot_tsig_key {
+	knot_dname_t *name;
+	tsig_algorithm_t algorithm;
+	knot_binary_t secret;
 };
 
-typedef struct knot_key knot_key_t;
+typedef struct knot_tsig_key knot_tsig_key_t;
 
 /*!< \todo FIND ALG LENGTHS */
 enum tsig_algorithm_digest_length {
@@ -141,7 +142,7 @@ uint16_t tsig_alg_digest_length(tsig_algorithm_t alg);
  *
  * \return RRSET wire size.
  */
-size_t tsig_wire_maxsize(const knot_key_t *key);
+size_t tsig_wire_maxsize(const knot_tsig_key_t *key);
 size_t tsig_wire_actsize(const knot_rrset_t *tsig);
 
 int tsig_rdata_is_ok(const knot_rrset_t *tsig);

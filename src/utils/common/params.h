@@ -110,9 +110,9 @@ int params_parse_num(const char *value, uint32_t *dst);
 
 int params_parse_bufsize(const char *value, int32_t *dst);
 
-int params_parse_tsig(const char *value, knot_key_t *key);
+int params_parse_tsig(const char *value, knot_key_params_t *key_params);
 
-int params_parse_keyfile(const char *filename, knot_key_t *key);
+int params_parse_keyfile(const char *value, knot_key_params_t *key_params);
 
 #endif // _UTILS__PARAMS_H_
 

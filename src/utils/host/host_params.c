@@ -29,7 +29,7 @@
 #include "utils/common/resolv.h"	// get_nameservers
 
 #define DEFAULT_RETRIES_HOST	1
-#define DEFAULT_TIMEOUT_HOST	1
+#define DEFAULT_TIMEOUT_HOST	2
 
 static const style_t DEFAULT_STYLE_HOST = {
 	.format = FORMAT_HOST,
@@ -168,9 +168,23 @@ static int parse_name(const char *value, list *queries, const query_t *conf)
 
 static void host_help(int argc, char *argv[])
 {
-	printf("Usage: %s [-aCdlrsTvw] [-4] [-6] [-c class] [-R retries]\n"
-	       "       %*c [-t type] [-W time] name [server]\n",
-	       argv[0], (int)strlen(argv[0]), ' ');
+	printf("Usage: khost [-4] [-6] [-aCdrsTvw] [-c class] [-t type]\n"
+	       "             [-R retries] [-W time] name [server]\n\n"
+	       "       -4  Use IPv4 protocol only.\n"
+	       "       -6  Use IPv6 procotol only.\n"
+	       "       -a  Same as -t ANY -v.\n"
+	       "       -C  (NOT YET IMPLEMENTED)\n"
+	       "       -d  Allow debug messages.\n"
+	       "       -r  Set RD flag.\n"
+	       "       -s  Stop if servfail.\n"
+	       "       -T  Use TCP procotol.\n"
+	       "       -v  Verbose output.\n"
+	       "       -w  Wait forever.\n"
+	       "       -c  Set query class.\n"
+	       "       -t  Set query type.\n"
+	       "       -R  Set number of UDP retries.\n"
+	       "       -W  Set wait interval.\n"
+	      );
 }
 
 int host_parse(dig_params_t *params, int argc, char *argv[])
@@ -191,7 +205,7 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 	uint32_t serial;
 
 	// Command line options processing.
-	while ((opt = getopt(argc, argv, "46aCdlrsTvwc:R:t:W:")) != -1) {
+	while ((opt = getopt(argc, argv, "46aCdrsTvwc:t:R:W:")) != -1) {
 		switch (opt) {
 		case '4':
 			conf->ip = IP_4;
@@ -213,15 +227,6 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 		case 'd':
 			msg_enable_debug(1);
 			break;
-		case 'v':
-			conf->style.format = FORMAT_FULL;
-			conf->style.show_header = true;
-			conf->style.show_edns = true;
-			conf->style.show_footer = true;
-			break;
-		case 'l':
-			conf->type_num = KNOT_RRTYPE_AXFR;
-			break;
 		case 'r':
 			conf->flags.rd_flag = false;
 			break;
@@ -230,6 +235,12 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 			break;
 		case 'T':
 			conf->protocol = PROTO_TCP;
+			break;
+		case 'v':
+			conf->style.format = FORMAT_FULL;
+			conf->style.show_header = true;
+			conf->style.show_edns = true;
+			conf->style.show_footer = true;
 			break;
 		case 'w':
 			conf->wait = -1;
@@ -242,12 +253,6 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 			}
 			conf->class_num = rclass;
 			break;
-		case 'R':
-			if (params_parse_num(optarg, &conf->retries)
-			    != KNOT_EOK) {
-				return KNOT_EINVAL;
-			}
-			break;
 		case 't':
 			if (params_parse_type(optarg, &rtype, &serial)
 			    != KNOT_EOK) {
@@ -256,6 +261,12 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 			}
 			conf->type_num = rtype;
 			conf->xfr_serial = serial;
+			break;
+		case 'R':
+			if (params_parse_num(optarg, &conf->retries)
+			    != KNOT_EOK) {
+				return KNOT_EINVAL;
+			}
 			break;
 		case 'W':
 			if (params_parse_wait(optarg, &conf->wait)

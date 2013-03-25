@@ -30,9 +30,9 @@
 #include "common/crc.h"
 #include "libknot/common.h"
 #include "knot/zone/semantic-check.h"
+#include "libknot/zone/zone-contents.h"
 #include "knot/other/debug.h"
 #include "knot/zone/zone-load.h"
-#include "libknot/libknot.h"
 #include "zscanner/file_loader.h"
 
 /* ZONE LOADING FROM FILE USING RAGEL PARSER */
@@ -233,6 +233,8 @@ static int add_rdata_to_rr(knot_rrset_t *rrset, const scanner_t *scanner)
 		return KNOT_EINVAL;
 	}
 	
+	parser_context_t *parser = scanner->data;
+	
 	const rdata_descriptor_t *desc =
 		get_rdata_descriptor(knot_rrset_type(rrset));
 	assert(desc);
@@ -251,14 +253,12 @@ static int add_rdata_to_rr(knot_rrset_t *rrset, const scanner_t *scanner)
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
 		int item = desc->block_types[i];
 		if (descriptor_item_is_dname(item)) {
-			/* TODO another function perhaps? */
 			knot_dname_t *dname =
 				knot_dname_new_from_wire(scanner->r_data +
 			                                 scanner->r_data_blocks[i],
 			                                 scanner->r_data_blocks[i + 1] - scanner->r_data_blocks[i],
 			                                 NULL);
 			if (dname == NULL) {
-				//TODO handle
 				return KNOT_ERROR;
 			}
 			knot_dname_to_lower(dname);
@@ -269,9 +269,11 @@ dbg_zp_exec_detail(
 			              offset, name, dname);
 			free(name);
 );
+			/* Handle DNAME duplications. */
+			knot_zone_contents_insert_dname_into_table(&dname,
+							parser->lookup_tree);
 			memcpy(rdata + offset, &dname, sizeof(knot_dname_t *));
 			offset += sizeof(knot_dname_t *);
-			//parse dname from binary
 		} else if (descriptor_item_is_fixed(item)) {
 			//copy the whole thing
 			// TODO check the size
@@ -282,7 +284,6 @@ dbg_zp_exec_detail(
 			       item);
 			offset += item;
 		} else {
-			//copy the rest TODO, should work for NAPTR as well, but needs test
 			memcpy(rdata + offset,
 			       scanner->r_data + scanner->r_data_blocks[i],
 			       scanner->r_data_blocks[i + 1] -
@@ -300,61 +301,39 @@ static void process_rr(const scanner_t *scanner)
 	/*!< \todo Refactor, too long. */
 	dbg_zp_detail("Owner from parser=%s\n",
 	              scanner->r_owner);
-//	char add = 1;
 	parser_context_t *parser = scanner->data;
 	if (parser->ret != KNOT_EOK) {
 		return;
 	}
 	knot_zone_contents_t *contents = parser->current_zone;
-	/* Create rrset. TODO will not be always needed. */
 	knot_dname_t *current_owner = NULL;
 	knot_rrset_t *current_rrset = NULL;
-	// TODO this needs to work again, but does not merge as it is now.
-//	if (parser->last_node &&
-//	    (scanner->r_owner_length == parser->last_node->owner->size) &&
-//	    (strncmp((char *)parser->last_node->owner->name,
-//	            (char *)scanner->r_owner, scanner->r_owner_length) == 0)) {
-//		// no need to create new dname;
-//		current_owner = parser->last_node->owner;
-//		// what about RRSet, do we need a new one?
-//		current_rrset = knot_node_get_rrset(parser->last_node,
-//		                                    scanner->r_type);
-//		if (current_rrset == NULL) {
-//			add = 1;
-//			current_rrset =
-//				knot_rrset_new(current_owner,
-//				               scanner->r_type,
-//				               scanner->r_class,
-//				               scanner->r_ttl);
-//		}
-//	} else {
-//		add = 1;
-////		if (strncmp((char *)parser->last_node->owner->name,
-////	                (char *)scanner->r_owner, scanner->r_owner_length)) {
-////			new_dname_count++;
-////			current_owner = 
-////		                knot_dname_new_from_wire(scanner->r_owner,
-////	                                         scanner->r_owner_length,
-////	                                         NULL);
-////		} else {
-////			current_owner = parser->last_node->owner;
-////		}
-//		current_owner = 
-//			knot_dname_new_from_wire(scanner->r_owner,
-//			                         scanner->r_owner_length,
-//			                         NULL);
-//		current_rrset =
-//			knot_rrset_new(current_owner,
-//			               scanner->r_type,
-//			               scanner->r_class,
-//			               scanner->r_ttl);
-//		knot_dname_release(current_owner);
-//	}
-	current_owner = 
-		knot_dname_new_from_wire(scanner->r_owner,
-	                         scanner->r_owner_length,
-	                         NULL);
-	knot_dname_to_lower(current_owner);
+    	if (parser->last_node &&
+    	    (scanner->r_owner_length == parser->last_node->owner->size) &&
+    	    (strncmp((char *)parser->last_node->owner->name,
+    	            (char *)scanner->r_owner, scanner->r_owner_length) == 0)) {
+    		// no need to create new dname;
+    		current_owner = parser->last_node->owner;
+		knot_dname_retain(current_owner);
+    	} else {
+    		current_owner = 
+    			knot_dname_new_from_wire(scanner->r_owner,
+    			                         scanner->r_owner_length,
+    			                         NULL);
+	    	if (current_owner == NULL) {
+			parser->ret = KNOT_ERROR;
+			return;
+		}
+        	knot_dname_to_lower(current_owner);
+		/*!< \todo
+		 * If name is already in the table, we might not need to create
+		 * dname object, just compare wires.
+		 */
+		knot_zone_contents_insert_dname_into_table(&current_owner,
+		                                           parser->lookup_tree);
+	}
+	
+	/*!< \todo Do not create RRSet each time - merging needs to be sorted though. */
 	current_rrset = knot_rrset_new(current_owner,
 	               scanner->r_type,
 	               scanner->r_class,
@@ -362,8 +341,8 @@ static void process_rr(const scanner_t *scanner)
 	knot_dname_release(current_owner);
 	
 	assert(current_owner);
-	parser->current_rrset = current_rrset;
 	assert(current_rrset);
+	parser->current_rrset = current_rrset;
 	
 	int ret = add_rdata_to_rr(current_rrset, scanner);
 	if (ret != KNOT_EOK) {
@@ -376,7 +355,8 @@ static void process_rr(const scanner_t *scanner)
 	            parser->current_rrset->type);
 
 	assert(current_rrset->rdata_count);
-
+	
+	/* Node add/get functions. */
 	int (*node_add_func)(knot_zone_contents_t *, knot_node_t *, int,
 	                     uint8_t);
 	knot_node_t *(*node_get_func)(const knot_zone_contents_t *,
@@ -385,7 +365,6 @@ static void process_rr(const scanner_t *scanner)
 
 	/* If we have RRSIG of NSEC3 type first node will have
 	 * to be created in NSEC3 part of the zone */
-
 	uint16_t type_covered = 0;
 	if (current_rrset->type == KNOT_RRTYPE_RRSIG) {
 		type_covered =
@@ -422,8 +401,6 @@ static void process_rr(const scanner_t *scanner)
 		}
 	}
 
-	/*!< \todo Make sure the maximum RDLENGTH does not exceed 65535 bytes.*/
-
 	if (current_rrset->type == KNOT_RRTYPE_SOA) {
 		if (knot_dname_compare(current_rrset->owner,
 					parser->origin_from_config) != 0) {
@@ -432,7 +409,6 @@ static void process_rr(const scanner_t *scanner)
 				"in config! \n");
 			/* Such SOA cannot even be added, because
 			 * it would not be in the zone apex. */
-			/*!< \todo consider a new error */
 			parser->ret = KNOT_EBADZONE;
 			return;
 		}
@@ -505,7 +481,7 @@ static void process_rr(const scanner_t *scanner)
 	knot_node_t *node = NULL;
 	/* \note this could probably be much simpler */
 	if (parser->last_node && current_rrset->type != KNOT_RRTYPE_SOA &&
-	    knot_dname_compare(parser->last_node->owner,
+	    knot_dname_compare_non_canon(parser->last_node->owner,
 				 current_rrset->owner) ==
 	    0) {
 		node = parser->last_node;
@@ -515,9 +491,7 @@ static void process_rr(const scanner_t *scanner)
 			                       contents,
 			                       parser->last_node);
 		}
-
 		rrset_list_delete(&parser->node_rrsigs);
-
 		/* new node */
 		node = node_get_func(contents, current_rrset->owner);
 	}
@@ -573,6 +547,7 @@ static void process_rr(const scanner_t *scanner)
 		knot_rrset_deep_free(&current_rrset, 1, 0);
 	}
 	assert(parser->current_zone && node);
+	/* Do mandatory semantic checks. */
 	int sem_fatal_error = 0;
 	ret = sem_check_node_plain(parser->current_zone, node, -1,
 	                           parser->err_handler, 1,
@@ -616,10 +591,20 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 	
 	/* Create context. */
 	parser_context_t *context = xmalloc(sizeof(parser_context_t));
+	
+	/* Create trie for DNAME duplicits. */
+	context->lookup_tree = hattrie_create();
+	if (context->lookup_tree == NULL) {
+		return KNOT_ENOMEM;
+	}
+	
 	context->origin_from_config =
 		knot_dname_new_from_str(origin, strlen(origin), NULL);
 	assert(context->origin_from_config);
 	knot_dname_to_lower(context->origin_from_config);
+	/* Add first DNAME to lookup tree. */
+        knot_zone_contents_insert_dname_into_table(&context->origin_from_config,
+	                                           context->lookup_tree);	
 	context->last_node = knot_node_new(context->origin_from_config,
 	                                   NULL, 0);
 	knot_dname_release(context->origin_from_config);
@@ -637,6 +622,7 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 		dbg_zload("Could not create file loader.\n");
 		return KNOT_ERROR;
 	}
+	
 
 	/* Allocate new loader. */
 	zloader_t *zl = xmalloc(sizeof(zloader_t));
@@ -656,7 +642,7 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 	}
 	
 	context->err_handler = zl->err_handler;
-
+	
 	return KNOT_EOK;
 }
 
@@ -695,27 +681,32 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	
 	knot_node_t *first_nsec3_node = NULL;
 	knot_node_t *last_nsec3_node = NULL;
-	knot_zone_contents_adjust(c->current_zone, &first_nsec3_node,
-	                          &last_nsec3_node);
 	rrset_list_delete(&c->node_rrsigs);
+	knot_zone_contents_adjust(c->current_zone, &first_nsec3_node,
+	                          &last_nsec3_node, 0);
 	
-//	if (loader->semantic_checks) {
-//		int check_level = 1;
-//		const knot_rrset_t *soa_rr =
-//			knot_node_rrset(knot_zone_contents_apex(c->current_zone),
-//		                        KNOT_RRTYPE_SOA);
-//		assert(soa_rr); // In this point, SOA has to exist
-//		if (soa_rr->rrsigs) {
-//			/* Set check level to DNSSEC. */
-//			check_level = 2;
-//		}
-//		zone_do_sem_checks(c->current_zone, check_level,
-//		                   loader->err_handler, first_nsec3_node,
-//		                   last_nsec3_node);
-//		char *zname = knot_dname_to_str(knot_rrset_owner(soa_rr));
-//		log_zone_info("Semantic checks completed for zone=%s\n", zname);
-//		free(zname);
-//	}
+	if (loader->semantic_checks) {
+		int check_level = 1;
+		const knot_rrset_t *soa_rr =
+			knot_node_rrset(knot_zone_contents_apex(c->current_zone),
+		                        KNOT_RRTYPE_SOA);
+		assert(soa_rr); // In this point, SOA has to exist
+		const knot_rrset_t *nsec3param_rr =
+			knot_node_rrset(knot_zone_contents_apex(c->current_zone),
+		                        KNOT_RRTYPE_NSEC3PARAM);
+		if (soa_rr->rrsigs && nsec3param_rr == NULL) {
+			/* Set check level to DNSSEC. */
+			check_level = 2;
+		} else if (soa_rr->rrsigs && nsec3param_rr) {
+			check_level = 3;
+		}
+		zone_do_sem_checks(c->current_zone, check_level,
+		                   loader->err_handler, first_nsec3_node,
+		                   last_nsec3_node);
+		char *zname = knot_dname_to_str(knot_rrset_owner(soa_rr));
+		log_zone_info("Semantic checks completed for zone=%s\n", zname);
+		free(zname);
+	}
 	
 	return c->current_zone->zone;
 }
@@ -725,6 +716,8 @@ void knot_zload_close(zloader_t *loader)
 	if (!loader) {
 		return;
 	}
+	
+	hattrie_free(loader->context->lookup_tree);
 	
 	file_loader_free(loader->file_loader);
 

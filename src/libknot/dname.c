@@ -22,6 +22,7 @@
 #include <ctype.h>	// tolower()
 
 #include "common.h"
+#include "common/mempattern.h"
 #include "dname.h"
 #include "consts.h"
 #include "util/tolower.h"
@@ -433,6 +434,24 @@ dbg_dname_exec_verb(
 	assert(dname->name != NULL);
 
 	dname->node = node;
+	return dname;
+}
+
+/*----------------------------------------------------------------------------*/
+
+knot_dname_t *knot_dname_new_from_nonfqdn_str(const char *name, uint size,
+                                                  struct knot_node *node)
+{
+	knot_dname_t *dname = NULL;
+
+	if (name[size - 1] != '.') {
+		char *fqdn = strcdup(name, ".");
+		dname = knot_dname_new_from_str(fqdn, size + 1, node);
+		free(fqdn);
+	} else {
+		dname = knot_dname_new_from_str(name, size, node);
+	}
+
 	return dname;
 }
 

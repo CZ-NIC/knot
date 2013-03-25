@@ -75,8 +75,7 @@ static int knot_ddns_add_prereq_rrset(const knot_rrset_t *rrset,
 	for (int i = 0; i < *count; ++i) {
 		if (knot_rrset_equal(rrset, (*rrsets)[i],
 		                       KNOT_RRSET_COMPARE_HEADER) == 1) {
-			ret = knot_rrset_merge((void **)&((*rrsets)[i]),
-			                       (void **)&rrset);
+			ret = knot_rrset_merge((*rrsets)[i], rrset);
 			if (ret != KNOT_EOK) {
 				return ret;
 			} else {
@@ -1261,11 +1260,12 @@ static int knot_ddns_add_rr_merge_normal(knot_rrset_t *node_rrset_copy,
 	}
 
 	int rdata_in_copy = knot_rrset_rdata_rr_count(*rr_copy);
-	int ret = knot_rrset_merge_no_dupl((void **)&node_rrset_copy, 
-	                                   (void **)rr_copy);
+	int merged, deleted_rrs;
+	int ret = knot_rrset_merge_no_dupl(node_rrset_copy, *rr_copy, &merged,
+	                                   &deleted_rrs);
 	dbg_ddns_detail("Merge returned: %d\n", ret);
 
-	if (ret < 0) {
+	if (ret != KNOT_EOK) {
 		dbg_ddns("Failed to merge UPDATE RR to node RRSet: %s."
 		         "\n", knot_strerror(ret));
 		return ret;
@@ -1274,7 +1274,7 @@ static int knot_ddns_add_rr_merge_normal(knot_rrset_t *node_rrset_copy,
 	knot_rrset_deep_free(rr_copy, 1, 0);
 	
 
-	if (rdata_in_copy == ret) {
+	if (rdata_in_copy == deleted_rrs) {
 		/* All RDATA have been removed, because they were duplicates
 		 * or there were none (0). In general this means, that no
 		 * change was made.
@@ -1327,8 +1327,9 @@ static int knot_ddns_add_rr_merge_rrsig(knot_rrset_t *node_rrset_copy,
 		dbg_ddns_detail("Merging RRSIG to the one in the RRSet.\n");
 
 		int rdata_in_copy = knot_rrset_rdata_rr_count(*rr_copy);
-		ret = knot_rrset_merge_no_dupl(
-		    (void **)&rrsigs_copy, (void **)rr_copy);
+		int merged, deleted_rrs;
+		ret = knot_rrset_merge_no_dupl(rrsigs_copy, *rr_copy, &merged,
+		                               &deleted_rrs);
 		if (ret < 0) {
 			dbg_xfrin("Failed to merge UPDATE RRSIG to copy: %s.\n",
 			          knot_strerror(ret));
@@ -1337,7 +1338,7 @@ static int knot_ddns_add_rr_merge_rrsig(knot_rrset_t *node_rrset_copy,
 		knot_rrset_deep_free(rr_copy, 1, 0);
 		
 
-		if (rdata_in_copy == ret) {
+		if (rdata_in_copy == deleted_rrs) {
 			/* All RDATA have been removed, because they were
 			 * duplicates or there were none (0). In general this
 			 * means, that no change was made.

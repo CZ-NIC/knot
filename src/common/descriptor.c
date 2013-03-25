@@ -29,11 +29,22 @@ const int KNOT_RRTYPE_LAST = KNOT_RRTYPE_ANY;
  * \brief Table with DNS classes.
  */
 static knot_lookup_table_t dns_classes[] = {
-	{ KNOT_CLASS_IN,   "IN" },
-	{ KNOT_CLASS_CH,   "CH" },
-	{ KNOT_CLASS_NONE, "NONE" },
-	{ KNOT_CLASS_ANY,  "ANY" },
+	{ KNOT_CLASS_IN,	"IN" },
+	{ KNOT_CLASS_CH,	"CH" },
+	{ KNOT_CLASS_NONE,	"NONE" },
+	{ KNOT_CLASS_ANY,	"ANY" },
 	{ 0, NULL }
+};
+
+/*!
+ * \brief DS digest lengths.
+ */
+enum knot_ds_algorithm_len
+{
+	KNOT_DS_DIGEST_LEN_SHA1		= 20,	/* 20B - RFC 3658 */
+	KNOT_DS_DIGEST_LEN_SHA256	= 32,	/* 32B - RFC 4509 */
+	KNOT_DS_DIGEST_LEN_GOST		= 32,	/* 32B - RFC 5933 */
+	KNOT_DS_DIGEST_LEN_SHA384	= 48,	/* 48B - RFC 6605 */
 };
 
 /*!
@@ -68,6 +79,9 @@ static const rdata_descriptor_t rdata_descriptors[] = {
 	                               KNOT_RDATA_WF_END }, "AFSDB" },
 	[KNOT_RRTYPE_RT]         = { { 2, KNOT_RDATA_WF_COMPRESSED_DNAME,
 	                               KNOT_RDATA_WF_END }, "RT" },
+	[KNOT_RRTYPE_SIG]        = { { 18, KNOT_RDATA_WF_COMPRESSED_DNAME,
+	                               KNOT_RDATA_WF_REMAINDER,
+	                               KNOT_RDATA_WF_END }, "SIG" },
 	[KNOT_RRTYPE_KEY]        = { { KNOT_RDATA_WF_REMAINDER,
 	                               KNOT_RDATA_WF_END }, "KEY" },
 	[KNOT_RRTYPE_AAAA]       = { { 16, KNOT_RDATA_WF_END }, "AAAA" },
@@ -240,7 +254,7 @@ int knot_rrclass_from_string(const char *name, uint16_t *num)
 
 int descriptor_item_is_dname(const int item)
 {
-	return item == KNOT_RDATA_WF_LITERAL_DNAME ||
+	return item == KNOT_RDATA_WF_LITERAL_DNAME    ||
 	       item == KNOT_RDATA_WF_COMPRESSED_DNAME ||
 	       item == KNOT_RDATA_WF_UNCOMPRESSED_DNAME;
 }
@@ -270,11 +284,27 @@ int descriptor_item_is_remainder(const int item)
 
 int knot_rrtype_is_metatype(const uint16_t type)
 {
-	return (type == KNOT_RRTYPE_OPT ||
-	        type == KNOT_RRTYPE_TKEY ||
-	        type == KNOT_RRTYPE_TSIG ||
-	        type == KNOT_RRTYPE_IXFR ||
-	        type == KNOT_RRTYPE_AXFR ||
-	        type == KNOT_RRTYPE_ANY);
+	return type == KNOT_RRTYPE_SIG  ||
+	       type == KNOT_RRTYPE_OPT  ||
+	       type == KNOT_RRTYPE_TKEY ||
+	       type == KNOT_RRTYPE_TSIG ||
+	       type == KNOT_RRTYPE_IXFR ||
+	       type == KNOT_RRTYPE_AXFR ||
+	       type == KNOT_RRTYPE_ANY;
 }
 
+size_t knot_ds_digest_length(const uint8_t algorithm)
+{
+	switch (algorithm) {
+	case KNOT_DS_ALG_SHA1:
+		return KNOT_DS_DIGEST_LEN_SHA1;
+	case KNOT_DS_ALG_SHA256:
+		return KNOT_DS_DIGEST_LEN_SHA256;
+	case KNOT_DS_ALG_GOST:
+		return KNOT_DS_DIGEST_LEN_GOST;
+	case KNOT_DS_ALG_SHA384:
+		return KNOT_DS_DIGEST_LEN_SHA384;
+	default:
+		return 0;
+	}
+}

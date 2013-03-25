@@ -446,6 +446,8 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 	if (rrset1 && rrset2 && 
 	    (knot_rrset_ttl(rrset1) != knot_rrset_ttl(rrset2)) &&
 	    knot_rrset_rdata_rr_count(to_remove) == 0) {
+		dbg_zonediff_detail("zone_diff: diff_rdata: Remove RR: Old TTL=%llu, New=%llu\n",
+		                    rrset1->ttl, rrset2->ttl);
 		/* We have to remove old TTL. */
 		assert(knot_rrset_ttl(to_remove) == knot_rrset_ttl(rrset1));
 		/*
@@ -508,7 +510,8 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 	if (rrset1 && rrset2 &&
 	    knot_rrset_ttl(rrset1) != knot_rrset_ttl(rrset2)) {
 		/* We have to add newer TTL. */
-		knot_rrset_set_ttl(to_add, knot_rrset_ttl(rrset2));
+		dbg_zonediff_detail("zone_diff: diff_rdata: Add RR: Old TTL=%llu, New=%llu\n",
+		                    rrset1->ttl, rrset2->ttl);
 		if (knot_rrset_rdata_rr_count(to_add) == 0) {
 			/*
 			 * Fill the RDATA so that the change gets saved. All RRs can
@@ -522,6 +525,7 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 				return ret;
 			}
 		}
+		knot_rrset_set_ttl(to_add, knot_rrset_ttl(rrset2));
 	}
 
 	ret = knot_zone_diff_changeset_add_rrset(changeset,

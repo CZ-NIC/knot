@@ -16,56 +16,47 @@
 
 // FreeBSD POSIX2008 getline
 #ifndef _WITH_GETLINE
- #define _WITH_GETLINE
+#define _WITH_GETLINE
 #endif
 
-#include "common/getline_wrap.h"
+#include "common/getline.h"
+
 #include "config.h"		// HAVE_
 
 #include <stdio.h>		// getline or fgetln
 #include <stdlib.h>		// free
 #include <string.h>		// memcpy
 
-char* getline_wrap(FILE *stream, size_t *len)
+ssize_t knot_getline(char **lineptr, size_t *n, FILE *stream)
 {
-	char *buf = NULL;
-
 #ifdef HAVE_GETLINE
-	ssize_t size = getline(&buf, len, stream);
-
-	if (size <= 0) {
-		return NULL;
-	}
-
-	*len = size;
-
-	return buf;
-#elif HAVE_FGETLN
-	buf = fgetln(stream, len);
-
-	if (buf == NULL) {
-		return NULL;
-	}
-
-	if (buf[*len - 1] == '\n') {
-		buf[*len - 1] = '\0';
-	} else {
-		char *lbuf = NULL;
-
-		if ((lbuf = (char *)malloc(*len + 1)) == NULL) {
-			free(buf);
-			return NULL;
-		}
-
-		memcpy(lbuf, buf, *len);
-		lbuf[*len] = '\0';
-		free(buf);
-		buf = lbuf;
-	}
-
-	return buf;
+	return getline(lineptr, n, stream);
 #else
-#error Missing getline or fgetln function
+#ifdef HAVE_FGETLN
+	size_t length = 0;
+	char *buffer = fgetln(stream, &length);
+	if (buffer == NULL) {
+		return -1;
+	}
+
+	/* NOTE: Function fgetln doesn't return terminated string!
+	 *       Output buffer from the fgetln can't be freed.
+	 */
+
+	// If the output buffer is not specified or is small, extend it.
+	if (*lineptr == NULL || *n <= length) {
+		char *tmp = realloc(*lineptr, length + 1);
+		if (tmp == NULL) {
+			return -1;
+		}
+		*lineptr = tmp;
+	}
+		
+	memcpy(*lineptr, buffer, length);
+	(*lineptr)[length] = '\0';
+	*n = length;
+
+	return length;
+#endif
 #endif
 }
-

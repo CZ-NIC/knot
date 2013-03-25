@@ -133,6 +133,9 @@ static void xfr_free_task(knot_ns_xfr_t *task)
 		return;
 	}
 	
+	/* Free DNAME trie. */
+	hattrie_free(task->lookup_tree);
+	
 	/* Remove from fdset. */
 	if (w->fdset) {
 		dbg_xfr("xfr_free_task: freeing fd=%d.\n", task->session);
@@ -494,7 +497,7 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode, char **tag)
 	/* Parse rest of the packet. */
 	int ret = KNOT_EOK;
 	knot_packet_t *qry = xfr->query;
-	knot_key_t *key = 0;
+	knot_tsig_key_t *key = 0;
 	const knot_rrset_t *tsig_rr = 0;
 
 	/* Find TSIG key name from query. */
@@ -1281,6 +1284,13 @@ int xfr_request_init(knot_ns_xfr_t *r, int type, int flags, knot_packet_t *pkt)
 		r->query = pkt;
 	}
 	
+	/* Create trie for DNAME duplicate handling. */
+	r->lookup_tree = hattrie_create();
+	if (r->lookup_tree == NULL) {
+		free(pkt->wireformat);
+		return KNOT_ENOMEM;
+	}
+	
 	return KNOT_EOK;
 }
 
@@ -1412,6 +1422,7 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 	/* Cleanup. */
 	free(xfr->digest);
 	free(xfr->query->wireformat);   /* Free wireformat. */
+	hattrie_free(xfr->lookup_tree); /* Free lookup tree. */
 	knot_packet_free(&xfr->query);  /* Free query. */
 	knot_packet_free(&xfr->response);  /* Free response. */
 	knot_free_changesets((knot_changesets_t **)(&xfr->data));
@@ -1635,7 +1646,7 @@ int xfr_worker(dthread_t *thread)
 	return KNOT_EOK;
 }
 
-int xfr_prepare_tsig(knot_ns_xfr_t *xfr, knot_key_t *key)
+int xfr_prepare_tsig(knot_ns_xfr_t *xfr, knot_tsig_key_t *key)
 {
 	if (xfr == NULL || key == NULL) {
 		return KNOT_EINVAL;
@@ -1644,8 +1655,7 @@ int xfr_prepare_tsig(knot_ns_xfr_t *xfr, knot_key_t *key)
 	int ret = KNOT_EOK;
 	xfr->tsig_key = key;
 	xfr->tsig_size = tsig_wire_maxsize(key);
-	xfr->digest_max_size = tsig_alg_digest_length(
-				key->algorithm);
+	xfr->digest_max_size = tsig_alg_digest_length(key->algorithm);
 	xfr->digest = malloc(xfr->digest_max_size);
 	if (xfr->digest == NULL) {
 		xfr->tsig_key = NULL;

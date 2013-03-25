@@ -269,12 +269,15 @@ static int xfrin_add_orphan_rrsig(xfrin_orphan_rrsig_t **rrsigs,
 		                       KNOT_RRSET_COMPARE_HEADER) == 1
 		    && knot_rrset_rdata_rrsig_type_covered(last->rrsig)
 		       == knot_rrset_rdata_rrsig_type_covered(rr)) {
-			ret = knot_rrset_merge_no_dupl((void **)&last->rrsig,
-			                               (void **)&rr);
-			if (ret < 0) {
+			int merged, deleted_rrs;
+			ret = knot_rrset_merge_no_dupl(last->rrsig,
+			                               rr, &merged, &deleted_rrs);
+			if (ret != KNOT_EOK) {
 				return ret;
-			} else {
+			} else if (merged) {
 				return 1;
+			} else {
+				return 0;
 			}
 		}
 		last = last->next;
@@ -323,6 +326,21 @@ static int xfrin_process_orphan_rrsigs(knot_zone_contents_t *zone,
 }
 
 /*----------------------------------------------------------------------------*/
+
+static int xfrin_insert_rdata_dnames_to_table(knot_dname_t *dname, void *data)
+{
+	hattrie_t *lookup_tree = data;
+	knot_zone_contents_insert_dname_into_table(&dname, lookup_tree);
+	return KNOT_EOK;
+}
+
+static int xfrin_insert_rrset_dnames_to_table(knot_rrset_t *rrset,
+                                              hattrie_t *lookup_tree)
+{
+	knot_zone_contents_insert_dname_into_table(&rrset->owner, lookup_tree);
+	rrset_dnames_apply(rrset, xfrin_insert_rdata_dnames_to_table, lookup_tree);
+	return KNOT_EOK;
+}
 
 void xfrin_free_orphan_rrsigs(xfrin_orphan_rrsig_t **rrsigs)
 {
@@ -493,6 +511,9 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 	/*! \todo We should probably test whether the Question of the first
 	 *        message corresponds to the SOA RR.
 	 */
+	
+	/* RR parsed - sort out DNAME duplications. */
+	xfrin_insert_rrset_dnames_to_table(rr, xfr->lookup_tree);
 
 	knot_node_t *node = NULL;
 	int in_zone = 0;
@@ -606,6 +627,8 @@ dbg_xfrin_exec(
 
 		dbg_rrset_detail("\nNext RR:\n\n");
 		knot_rrset_dump(rr);
+		/* RR parsed - sort out DNAME duplications. */
+		xfrin_insert_rrset_dnames_to_table(rr, xfr->lookup_tree);
 
 		if (node != NULL
 		    && knot_dname_compare(rr->owner, node->owner) != 0) {
@@ -945,6 +968,8 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 		/*! \todo Some other action??? */
 		return KNOT_EMALF;
 	}
+	
+	xfrin_insert_rrset_dnames_to_table(rr, xfr->lookup_tree);
 	
 	if (*chs == NULL) {
 		dbg_xfrin_verb("Changesets empty, creating new.\n");
@@ -2132,7 +2157,8 @@ dbg_xfrin_exec_detail(
 		knot_rrset_set_ttl(*rrset, knot_rrset_ttl(add));
 	}
 
-	ret = knot_rrset_merge_no_dupl((void **)rrset, (void **)&add);
+	int merged, deleted_rrs;
+	ret = knot_rrset_merge_no_dupl(*rrset, add, &merged, &deleted_rrs);
 	if (ret < 0) {
 		dbg_xfrin("Failed to merge changeset RRSet.\n");
 		return ret;
@@ -2297,8 +2323,9 @@ dbg_xfrin_exec_detail(
 	
 		// merge the changeset RRSet to the copy
 		dbg_xfrin_detail("Merging RRSIG to the one in the RRSet.\n");
-		ret = knot_rrset_merge_no_dupl((void **)&rrsig, (void **)&add);
-		if (ret < 0) {
+		int merged, deleted_rrs;
+		ret = knot_rrset_merge_no_dupl(rrsig, add, &merged, &deleted_rrs);
+		if (ret != KNOT_EOK) {
 			dbg_xfrin("Failed to merge changeset RRSIG to copy: %s"
 			          ".\n", knot_strerror(ret));
 			return KNOT_ERROR;
@@ -3127,7 +3154,7 @@ int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
 	}
 
 	dbg_xfrin("Adjusting zone contents.\n");
-	ret = knot_zone_contents_adjust(contents_copy, NULL, NULL);
+	ret = knot_zone_contents_adjust(contents_copy, NULL, NULL, 1);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to finalize zone contents: %s\n",
 		          knot_strerror(ret));

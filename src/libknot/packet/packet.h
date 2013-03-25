@@ -284,7 +284,7 @@ enum {
 typedef enum {
 	// Don't add duplicate rdata to rrset.
 	KNOT_PACKET_DUPL_NO_MERGE = 1,
-	// Try to merge duplicate rdata to one rrset.
+	// Skip RR if RRSet is not empty
 	KNOT_PACKET_DUPL_SKIP     = 2
 } knot_packet_flag_t;
 

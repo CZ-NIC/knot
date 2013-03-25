@@ -13,35 +13,12 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*!
- * \file getline_wrap.h
- *
- * \author Daniel Salzman <daniel.salzman@nic.cz>
- *
- * \brief getline wrapper.
- *
- * \addtogroup common_lib
- * @{
- */
 
-#ifndef _KNOTD_COMMON_GETLINE_WRAP_H_
-#define _KNOTD_COMMON_GETLINE_WRAP_H_
+#ifndef _KNOTD_SIGN_TESTS_
+#define _KNOTD_SIGN_TESTS_
 
-#include <stdio.h>		// size_t
+#include "common/libtap/tap_unit.h"
 
-/*!
- * \brief Reads a line from stream.
- *
- * This wrapper switches between getline (Linux) and fgetln (BSD).
- *
- * \note It is necessary to free buffer after use.
- *
- * \param stream	input stream.
- * \param len		length of output buffer.
- *
- * \retval pointer to a buffer.
- */
-char* getline_wrap(FILE *stream, size_t *len);
+unit_api sign_tests_api;
 
-#endif // _KNOTD_COMMON_GETLINE_WRAP_H_
-
+#endif

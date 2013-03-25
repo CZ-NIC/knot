@@ -1,7 +1,7 @@
 ACLOCAL_AMFLAGS = -I ../m4
-libexec_PROGRAMS = unittests unittests-xfr unittests-zscanner unittests-libknot kdig khost knsupdate
-sbin_PROGRAMS = knotc knotd
-dist_man_MANS = knot.conf.5 knotc.8 knotd.8
+libexec_PROGRAMS = unittests unittests-xfr unittests-zscanner unittests-libknot
+sbin_PROGRAMS = knotc knotd kdig khost knsupdate
+dist_man_MANS = knot.conf.5 knotc.8 knotd.8 kdig.8 khost.8 knsupdate.8
 
 # $(YACC) will generate header file
 AM_CFLAGS = -Wall -Ilibknot -DLIBEXECDIR='"$(libexecdir)"' -DSYSCONFDIR='"$(sysconfdir)"' -DSBINDIR='"$(sbindir)"'
@@ -78,10 +78,10 @@ knsupdate_SOURCES =				\
 	utils/common/exec.c			\
 	utils/common/exec.h			\
 	utils/nsupdate/nsupdate_main.c		\
-	utils/nsupdate/nsupdate_params.c	\
 	utils/nsupdate/nsupdate_params.h	\
-	utils/nsupdate/nsupdate_exec.c		\
-	utils/nsupdate/nsupdate_exec.h
+	utils/nsupdate/nsupdate_params.c	\
+	utils/nsupdate/nsupdate_exec.h		\
+	utils/nsupdate/nsupdate_exec.c
 
 unittests_SOURCES =				\
 	tests/common/acl_tests.c		\
@@ -125,7 +125,9 @@ unittests_libknot_SOURCES = 			\
 	tests/libknot/wire_tests.h		\
 	tests/libknot/wire_tests.c		\
 	tests/libknot/libknot/rrset_tests.h	\
-	tests/libknot/libknot/rrset_tests.c
+	tests/libknot/libknot/rrset_tests.c	\
+	tests/libknot/sign_tests.c		\
+	tests/libknot/sign_tests.h
 
 nodist_unittests_SOURCES =			\
 	tests/sample_conf.rc
@@ -185,7 +187,15 @@ libknot_la_SOURCES =				\
 	libknot/tsig.h				\
 	libknot/tsig.c				\
 	libknot/tsig-op.h			\
-	libknot/tsig-op.c
+	libknot/tsig-op.c			\
+	libknot/binary.h			\
+	libknot/binary.c			\
+	libknot/sign/key.h			\
+	libknot/sign/key.c			\
+	libknot/sign/bnutils.h			\
+	libknot/sign/bnutils.c			\
+	libknot/sign/sig0.h			\
+	libknot/sign/sig0.c
 
 libknots_la_SOURCES =				\
 	common/slab/slab.c			\
@@ -238,8 +248,8 @@ libknots_la_SOURCES =				\
 	common/fdset_kqueue.c			\
 	common/fdset_epoll.h			\
 	common/fdset_epoll.c			\
-	common/getline_wrap.h			\
-	common/getline_wrap.c			\
+	common/getline.h			\
+	common/getline.c			\
 	common/log.c				\
 	common/log.h				\
 	common/hattrie/ahtable.c		\
@@ -295,7 +305,7 @@ libknotd_la_SOURCES =				\
 	knot/server/server.h
 
 zscanner/scanner.c: zscanner/scanner.rl zscanner/scanner_body.rl
-	$(RAGEL) -s -o zscanner/scanner.c zscanner/scanner.rl
+	$(RAGEL) $(FSM_TYPE) -s -o zscanner/scanner.c zscanner/scanner.rl
 
 unittests_zscanner_SOURCES =			\
 	zscanner/test/zscanner_test.c		\

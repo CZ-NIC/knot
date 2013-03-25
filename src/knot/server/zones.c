@@ -1481,7 +1481,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 
 		/* Update master server address. */
 		zd->xfr_in.has_master = 0;
-		memset(&zd->xfr_in.tsig_key, 0, sizeof(knot_key_t));
+		memset(&zd->xfr_in.tsig_key, 0, sizeof(knot_tsig_key_t));
 		sockaddr_init(&zd->xfr_in.master, -1);
 		sockaddr_init(&zd->xfr_in.via, -1);
 		if (!EMPTY_LIST(z->acl.xfr_in)) {
@@ -1500,7 +1500,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 			if (cfg_if->key) {
 				memcpy(&zd->xfr_in.tsig_key,
 				       cfg_if->key,
-				       sizeof(knot_key_t));
+				       sizeof(knot_tsig_key_t));
 			}
 
 			dbg_zones("zones: using '%s@%d' as XFR master "
@@ -1803,7 +1803,7 @@ static int zones_check_tsig_query(const knot_zone_t *zone,
                                   const sockaddr_t *addr,
                                   knot_rcode_t *rcode,
                                   uint16_t *tsig_rcode,
-                                  knot_key_t **tsig_key_zone,
+                                  knot_tsig_key_t **tsig_key_zone,
                                   uint64_t *tsig_prev_time_signed)
 {
 	assert(zone != NULL);
@@ -2008,7 +2008,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
                                      uint8_t *resp_wire, size_t *rsize,
                                      knot_rcode_t *rcode,
                                      const sockaddr_t *addr,
-                                     knot_key_t *tsig_key)
+                                     knot_tsig_key_t *tsig_key)
 {
 	int ret = KNOT_EOK;
 	dbg_zones_verb("TSIG check successful. Answering query.\n");
@@ -2361,7 +2361,7 @@ int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal)
 /*----------------------------------------------------------------------------*/
 
 int zones_query_check_zone(const knot_zone_t *zone, uint8_t q_opcode,
-                           const sockaddr_t *addr, knot_key_t **tsig_key,
+                           const sockaddr_t *addr, knot_tsig_key_t **tsig_key,
                            knot_rcode_t *rcode)
 {
 	if (addr == NULL || tsig_key == NULL || rcode == NULL) {
@@ -2511,7 +2511,7 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 		assert(resp != NULL);
 		assert(rcode == KNOT_RCODE_NOERROR);
 		uint16_t tsig_rcode = 0;
-		knot_key_t *tsig_key_zone = NULL;
+		knot_tsig_key_t *tsig_key_zone = NULL;
 		uint64_t tsig_prev_time_signed = 0;
 		/*! \todo Verify, as it was uninitialized! */
 
@@ -2710,7 +2710,7 @@ int zones_process_update(knot_nameserver_t *nameserver,
 	knot_zone_t *zone = NULL;
 	knot_rcode_t rcode = KNOT_RCODE_NOERROR;
 	size_t rsize_max = *rsize;
-	knot_key_t *tsig_key_zone = NULL;
+	knot_tsig_key_t *tsig_key_zone = NULL;
 	uint16_t tsig_rcode = 0;
 	uint64_t tsig_prev_time_signed = 0;
 	const knot_rrset_t *tsig_rr = NULL; 
@@ -3787,7 +3787,7 @@ int zones_process_update_response(knot_ns_xfr_t *data, uint8_t *rwire, size_t *r
 
 
 int zones_verify_tsig_query(const knot_packet_t *query,
-                            const knot_key_t *key,
+                            const knot_tsig_key_t *key,
                             knot_rcode_t *rcode, uint16_t *tsig_rcode,
                             uint64_t *tsig_prev_time_signed)
 {

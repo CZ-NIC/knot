@@ -14,7 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file descriptor_new.h
+ * \file descriptor.h
  *
  * \author Jan Kadlec <jan.kadlec@nic.cz>
  *
@@ -22,8 +22,8 @@
  * @{
  */
 
-#ifndef _KNOT_DESCRIPTOR_NEW_H_
-#define _KNOT_DESCRIPTOR_NEW_H_
+#ifndef _KNOT_DESCRIPTOR_H_
+#define _KNOT_DESCRIPTOR_H_
 
 #include <stdint.h>			// uint16_t
 #include <stdio.h>			// size_t
@@ -60,6 +60,7 @@ enum knot_rr_type {
 
 	KNOT_RRTYPE_RT         =  21, /*!< For route through. */
 
+	KNOT_RRTYPE_SIG        =  24, /*!< Transaction signature, RFC 2535. */
 	KNOT_RRTYPE_KEY        =  25, /*!< For security key. */
 
 	KNOT_RRTYPE_AAAA       =  28, /*!< IPv6 address. */
@@ -115,6 +116,41 @@ enum knot_rdata_wireformat {
 };
 
 /*!
+ * \brief DNSSEC Algorithm Numbers
+ *
+ * http://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xml
+ */
+typedef enum {
+	KNOT_DNSSEC_ALG_RSAMD5			=  1,
+	KNOT_DNSSEC_ALG_DH			=  2,
+	KNOT_DNSSEC_ALG_DSA			=  3,
+
+	KNOT_DNSSEC_ALG_RSASHA1			=  5,
+	KNOT_DNSSEC_ALG_DSA_NSEC3_SHA1		=  6,
+	KNOT_DNSSEC_ALG_RSASHA1_NSEC3_SHA1	=  7,
+	KNOT_DNSSEC_ALG_RSASHA256		=  8,
+
+	KNOT_DNSSEC_ALG_RSASHA512 		= 10,
+
+	KNOT_DNSSEC_ALG_ECC_GOST 		= 12,
+	KNOT_DNSSEC_ALG_ECDSAP256SHA256 	= 13,
+	KNOT_DNSSEC_ALG_ECDSAP384SHA384 	= 14,
+} knot_dnssec_algorithm_t;
+
+/*! 
+ * \brief Constants for DNSSEC algorithm types.
+ *
+ * Source: http://www.iana.org/assignments/ds-rr-types/ds-rr-types.xml
+ */
+enum knot_ds_algorithm
+{
+	KNOT_DS_ALG_SHA1	= 1,
+	KNOT_DS_ALG_SHA256	= 2,
+	KNOT_DS_ALG_GOST	= 3,
+	KNOT_DS_ALG_SHA384	= 4,
+};
+
+/*!
  * \brief Structure describing rdata.
  */
 typedef struct {
@@ -127,9 +163,9 @@ typedef struct {
 /*!
  * \brief Gets rdata descriptor for given RR name.
  *
- * \param name Mnemonic of RR type whose descriptor should be returned.
+ * \param name Mnemonic of RR type whose descriptor should be retvaled.
  *
- * \return RR descriptor for given name, NULL descriptor if
+ * \retval RR descriptor for given name, NULL descriptor if
  *         unknown type.
  */
 const rdata_descriptor_t *get_rdata_descriptor(const uint16_t type);
@@ -141,8 +177,8 @@ const rdata_descriptor_t *get_rdata_descriptor(const uint16_t type);
  * \param out     Output buffer.
  * \param out_len Length of the output buffer.
  *
- * \return Length of output string.
- * \return -1 if error.
+ * \retval Length of output string.
+ * \retval -1 if error.
  */
 int knot_rrtype_to_string(const uint16_t rrtype,
                           char           *out,
@@ -154,8 +190,8 @@ int knot_rrtype_to_string(const uint16_t rrtype,
  * \param name Mnemonic string to be converted.
  * \param num  Output variable.
  *
- * \return  0 if OK.
- * \return -1 if error.
+ * \retval  0 if OK.
+ * \retval -1 if error.
  */
 int knot_rrtype_from_string(const char *name, uint16_t *num);
 
@@ -166,8 +202,8 @@ int knot_rrtype_from_string(const char *name, uint16_t *num);
  * \param out     Output buffer.
  * \param out_len Length of the output buffer.
  *
- * \return Length of output string.
- * \return -1 if error.
+ * \retval Length of output string.
+ * \retval -1 if error.
  */
 int knot_rrclass_to_string(const uint16_t rrclass,
                            char           *out,
@@ -179,8 +215,8 @@ int knot_rrclass_to_string(const uint16_t rrclass,
  * \param name Mnemonic string to be converted.
  * \param num  Output variable.
  *
- * \return  0 if OK.
- * \return -1 if error.
+ * \retval  0 if OK.
+ * \retval -1 if error.
  */
 int knot_rrclass_from_string(const char *name, uint16_t *num);
 
@@ -189,8 +225,8 @@ int knot_rrclass_from_string(const char *name, uint16_t *num);
  *
  * \param item Item value.
  *
- * \return 1 if YES.
- * \return 0 if NO.
+ * \retval 1 if YES.
+ * \retval 0 if NO.
  */
 int descriptor_item_is_dname(const int item);
 
@@ -199,8 +235,8 @@ int descriptor_item_is_dname(const int item);
  *
  * \param item Item value.
  *
- * \return 1 if YES.
- * \return 0 if NO.
+ * \retval 1 if YES.
+ * \retval 0 if NO.
  */
 int descriptor_item_is_compr_dname(const int item);
 
@@ -209,8 +245,8 @@ int descriptor_item_is_compr_dname(const int item);
  *
  * \param item Item value.
  *
- * \return 1 if YES.
- * \return 0 if NO.
+ * \retval 1 if YES.
+ * \retval 0 if NO.
  */
 int descriptor_item_is_fixed(const int item);
 
@@ -219,8 +255,8 @@ int descriptor_item_is_fixed(const int item);
  *
  * \param item Item value.
  *
- * \return 1 if YES.
- * \return 0 if NO.
+ * \retval 1 if YES.
+ * \retval 0 if NO.
  */
 int descriptor_item_is_remainder(const int item);
 
@@ -229,11 +265,20 @@ int descriptor_item_is_remainder(const int item);
  *
  * \param item Item value.
  *
- * \return 1 if YES.
- * \return 0 if NO.
+ * \retval 1 if YES.
+ * \retval 0 if NO.
  */
 int knot_rrtype_is_metatype(const uint16_t type);
 
-#endif // _KNOT_DESCRIPTOR_NEW_H_
+/*!
+ * \brief Returns length of DS digest for given algorithm.
+ *
+ * \param algorithm Algorithm code to be used.
+ *
+ * \retval Digest length for given algorithm. 
+ */
+size_t knot_ds_digest_length(const uint8_t algorithm);
+
+#endif // _KNOT_DESCRIPTOR_H_
 
 /*! @} */

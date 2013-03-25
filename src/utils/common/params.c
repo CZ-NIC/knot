@@ -26,6 +26,7 @@
 #include "common/errcode.h"		// KNOT_EOK
 #include "common/mempattern.h"		// strcdup
 #include "common/descriptor.h"		// KNOT_RRTYPE_ 
+#include "libknot/sign/key.h"		// knot_key_params_t
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/resolv.h"	// parse_nameserver
 #include "utils/common/token.h"		// token
@@ -33,89 +34,11 @@
 #define IPV4_REVERSE_DOMAIN	"in-addr.arpa."
 #define IPV6_REVERSE_DOMAIN	"ip6.arpa."
 
-static knot_dname_t* create_fqdn_from_str(const char *str, size_t len)
-{
-	knot_dname_t *d = NULL;
-	if (str[len - 1] != '.') {
-		char *fqdn = strcdup(str, ".");
-		d = knot_dname_new_from_str(fqdn, len + 1, NULL);
-		free(fqdn);
-	} else {
-		d = knot_dname_new_from_str(str, len, NULL);
-	}
-	return d;
-}
-
-/* Table of known keys in private-key-format */
-static const char *pkey_tbl[] = {
-	"\x09" "Activate:",
-	"\x0a" "Algorithm:",
-	"\x05" "Bits:",
-	"\x08" "Created:",
-	"\x04" "Key:",
-	"\x13" "Private-key-format:",
-	"\x08" "Publish:",
-	NULL
-};
-
-enum {
-	T_PKEY_ACTIVATE = 0,
-	T_PKEY_ALGO,
-	T_PKEY_BITS,
-	T_PKEY_CREATED,
-	T_PKEY_KEY,
-	T_PKEY_FORMAT,
-	T_PKEY_PUBLISH
-};
-
-static int params_parse_keyline(char *lp, int len, void *arg)
-{
-	/* Discard nline */
-	if (lp[len - 1] == '\n') {
-		lp[len - 1] = '\0';
-		len -= 1;
-	}
-
-	knot_key_t *key = (knot_key_t *)arg;
-	int lpm = -1;
-	int bp = 0;
-	if ((bp = tok_scan(lp, pkey_tbl, &lpm)) < 0) {
-		DBG("%s: unknown token on line '%s', ignoring\n", __func__, lp);
-		return KNOT_EOK;
-	}
-
-	/* Found valid key. */
-	const char *k = pkey_tbl[bp];
-	char *v = (char *)tok_skipspace(lp + TOK_L(k));
-	size_t vlen = 0;
-	uint32_t n = 0;
-	switch(bp) {
-	case T_PKEY_ALGO:
-		vlen = strcspn(v, SEP_CHARS);
-		v[vlen] = '\0'; /* Term after first tok */
-		if (params_parse_num(v, &n) != KNOT_EOK) {
-			return KNOT_EPARSEFAIL;
-		}
-		key->algorithm = n;
-		DBG("%s: algo = %u\n", __func__, n);
-		break;
-	case T_PKEY_KEY:
-		if (key->secret) free(key->secret);
-		key->secret = strndup(v, len);
-		DBG("%s: secret = '%s'\n", __func__, key->secret);
-		break;
-	default:
-		DBG("%s: %s = '%s' (ignoring)\n", __func__, TOK_S(k), v);
-		break;
-	}
-
-	return KNOT_EOK;
-}
-
 char* get_reverse_name(const char *name)
 {
 	struct in_addr	addr4;
 	struct in6_addr	addr6;
+	int		ret;
 	char		buf[128] = "\0";
 
 	if (name == NULL) {
@@ -123,30 +46,44 @@ char* get_reverse_name(const char *name)
 		return NULL;
 	}
 
-        // Check name for IPv4 address, IPv6 address or other.
+	// Check name for IPv4 address, IPv6 address or other.
 	if (inet_pton(AF_INET, name, &addr4) == 1) {
 		uint32_t num = ntohl(addr4.s_addr);
 
 		// Create IPv4 reverse FQD name.
-		sprintf(buf, "%u.%u.%u.%u.%s",
-		        (num >>  0) & 0xFF, (num >>  8) & 0xFF,
-		        (num >> 16) & 0xFF, (num >> 24) & 0xFF,
-		        IPV4_REVERSE_DOMAIN);
+		ret = snprintf(buf, sizeof(buf), "%u.%u.%u.%u.%s",
+		               (num >>  0) & 0xFF, (num >>  8) & 0xFF,
+		               (num >> 16) & 0xFF, (num >> 24) & 0xFF,
+		               IPV4_REVERSE_DOMAIN);
+		if (ret < 0 || ret >= sizeof(buf)) {
+			return NULL;
+		}
 
 		return strdup(buf);
 	} else if (inet_pton(AF_INET6, name, &addr6) == 1) {
 		char	*pos = buf;
+		size_t  len = sizeof(buf);
 		uint8_t left, right;
 
 		// Create IPv6 reverse name.
 		for (int i = 15; i >= 0; i--) {
 			left = ((addr6.s6_addr)[i] & 0xF0) >> 4;
 			right = (addr6.s6_addr)[i] & 0x0F;
-			pos += sprintf(pos, "%x.%x.", right, left);
+
+			ret = snprintf(pos, len, "%x.%x.", right, left);
+			if (ret < 0 || ret >= len) {
+				return NULL;
+			}
+
+			pos += ret;
+			len -= ret;
 		}
 
 		// Add IPv6 reverse domain.
-		strcat(buf, IPV6_REVERSE_DOMAIN);
+		ret = snprintf(pos, len, "%s", IPV6_REVERSE_DOMAIN);
+		if (ret < 0 || ret >= len) {
+			return NULL;
+		}
 
 		return strdup(buf);
 	} else {
@@ -163,14 +100,19 @@ char* get_fqd_name(const char *name)
 		return NULL;
 	}
 
-	// If name is FQD, make copy.
-	if (name[strlen(name) - 1] == '.') {
+	size_t name_len = strlen(name);
+
+	// If the name is FQDN, make a copy.
+	if (name[name_len - 1] == '.') {
 		fqd_name = strdup(name);
-	// Else append trailing dot.
+	// Else make a copy and append a trailing dot.
 	} else {
-		fqd_name = malloc(strlen(name) + 2);
-		strcpy(fqd_name, name);
-		strcat(fqd_name, ".");
+		fqd_name = malloc(name_len + 2);
+		if (fqd_name != NULL) {
+			strncpy(fqd_name, name, name_len + 2);
+			fqd_name[name_len] = '.';
+			fqd_name[name_len + 1] = 0;
+		}
 	}
 
 	return fqd_name;
@@ -351,19 +293,16 @@ int params_parse_bufsize(const char *value, int32_t *dst)
 	return KNOT_EOK;
 }
 
-int params_parse_tsig(const char *value, knot_key_t *key)
+int params_parse_tsig(const char *value, knot_key_params_t *key_params)
 {
-	if (value == NULL || key == NULL) {
+	if (value == NULL || key_params == NULL) {
 		DBG_NULL;
 		return KNOT_EINVAL;
 	}
 
 	/* Invalidate previous key. */
-	if (key->name) {
-		knot_dname_free(&key->name);
-		key->algorithm = KNOT_TSIG_ALG_NULL;
-		free(key->secret);
-		key->secret = NULL;
+	if (key_params->name) {
+		knot_free_key_params(key_params);
 	}
 
 	char *h = strdup(value);
@@ -379,14 +318,14 @@ int params_parse_tsig(const char *value, knot_key_t *key)
 	}
 
 	/* Determine algorithm. */
-	key->algorithm = KNOT_TSIG_ALG_HMAC_MD5;
+	key_params->algorithm = KNOT_TSIG_ALG_HMAC_MD5;
 	if (s) {
 		*s++ = '\0';               /* Last part separator */
 		knot_lookup_table_t *alg = NULL;
 		alg = knot_lookup_by_name(tsig_alg_table, h);
 		if (alg) {
 			DBG("%s: parsed algorithm '%s'\n", __func__, h);
-			key->algorithm = alg->id;
+			key_params->algorithm = alg->id;
 		} else {
 			ERR("invalid TSIG algorithm name '%s'\n", h);
 			free(h);
@@ -403,18 +342,9 @@ int params_parse_tsig(const char *value, knot_key_t *key)
 		return KNOT_EINVAL;
 	}
 
-	/* Parse key name. */
-	key->name = create_fqdn_from_str(k, strlen(k));
-	key->secret = strdup(s);
-
-	/* Check name and secret. */
-	if (!key->name || !key->secret) {
-		knot_dname_free(&key->name); /* Sets to NULL */
-		free(key->secret);
-		key->secret = NULL;
-		free(h);
-		return KNOT_EINVAL;
-	}
+	/* Set key name and secret. */
+	key_params->name = knot_dname_new_from_nonfqdn_str(k, strlen(k), NULL);
+	key_params->secret = strdup(s);
 
 	DBG("%s: parsed name '%s'\n", __func__, k);
 	DBG("%s: parsed secret '%s'\n", __func__, s);
@@ -423,44 +353,16 @@ int params_parse_tsig(const char *value, knot_key_t *key)
 	return KNOT_EOK;
 }
 
-int params_parse_keyfile(const char *filename, knot_key_t *key)
+int params_parse_keyfile(const char *value, knot_key_params_t *key_params)
 {
-	int ret = KNOT_EOK;
-
-	if (filename == NULL || key == NULL) {
+	if (value == NULL || key_params == NULL) {
 		DBG_NULL;
 		return KNOT_EINVAL;
 	}
 
-	/*! \todo #2360 read key name from RR record in .key file */
-
-	/* Fetch keyname from filename. */
-	const char *bn = strrchr(filename, '/');
-	if (!bn) bn = filename;
-	else     ++bn; /* Skip final slash */
-	if (*bn == 'K') ++bn; /* Skip K */
-	const char* np = strchr(bn, '+');
-	if (np) { /* Attempt to extract dname */
-		key->name = knot_dname_new_from_str(bn, np-bn, NULL);
-	}
-	if (!key->name) {
-		ERR("keyfile not in format K{name}.+157+{rnd}.private\n");
-		return KNOT_ERROR;
+	if (key_params->name) {
+		knot_free_key_params(key_params);
 	}
 
-	FILE *fp = fopen(filename, "r"); /* Open file */
-	if (!fp) {
-		ERR("could not open key file '%s': %s\n",
-		    filename, strerror(errno));
-		return KNOT_ERROR;
-	}
-
-	/* Set defaults. */
-	key->algorithm = KNOT_TSIG_ALG_HMAC_MD5;
-
-	/* Parse lines. */
-	ret = tok_process_lines(fp, params_parse_keyline, key);
-
-	fclose(fp);
-	return ret;
+	return knot_load_key_params(value, key_params);
 }

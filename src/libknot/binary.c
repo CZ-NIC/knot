@@ -14,26 +14,41 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_ENDIAN_H
-#define _KNOT_ENDIAN_H
+#include <stdlib.h>
+#include <string.h>
 
-#if defined(__linux__)
-#	include <endian.h>
-#elif defined(__FreeBSD__) || defined(__NetBSD__)
-#	include <sys/endian.h>
-#elif defined(__OpenBSD__)
-#	include <sys/types.h>
-#	define be16toh(x) betoh16(x)
-#	define be32toh(x) betoh32(x)
-#	define be64toh(x) betoh64(x)
-#elif defined(__APPLE__)
-#       include <libkern/OSByteOrder.h>
-#       define be16toh(x) OSSwapBigToHostInt16(x)
-#       define be32toh(x) OSSwapBigToHostInt32(x)
-#       define be64toh(x) OSSwapBigToHostInt64(x)
-#       define htobe16(x) OSSwapHostToBigInt16(x)
-#       define htobe32(x) OSSwapHostToBigInt32(x)
-#       define htobe64(x) OSSwapHostToBigInt64(x)
-#endif
+#include "binary.h"
+#include "common/base64.h"
+#include "common/errcode.h"
 
-#endif /* _KNOT_ENDIAN_H_ */
+int knot_binary_from_base64(const char *base64, knot_binary_t *binary)
+{
+	if (!binary)
+		return KNOT_EINVAL;
+
+	uint8_t *data;
+	int32_t size;
+
+	size = base64_decode_alloc((uint8_t *)base64, strlen(base64), &data);
+	if (size < 0)
+		return KNOT_ENOMEM;
+
+	binary->data = data;
+	binary->size = size;
+
+	return KNOT_EOK;
+}
+
+int knot_binary_free(knot_binary_t *binary)
+{
+	if (!binary)
+		return KNOT_EINVAL;
+
+	if (binary->data) {
+		free(binary->data);
+		binary->data = NULL;
+		binary->size = 0;
+	}
+
+	return KNOT_EOK;
+}

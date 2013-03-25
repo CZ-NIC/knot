@@ -130,8 +130,8 @@ int knot_changeset_add_rr(knot_rrset_t ***rrsets, size_t *count,
 	    && knot_changeset_rrsets_match((*rrsets)[*count - 1], rr)) {
 		// Create changesets exactly as they came, with possibly
 		// duplicate records
-		if (knot_rrset_merge((void **)&(*rrsets)[*count - 1],
-		                     (void **)&rr) != KNOT_EOK) {
+		if (knot_rrset_merge((*rrsets)[*count - 1],
+		                     rr) != KNOT_EOK) {
 			return KNOT_ERROR;
 		}
 

@@ -353,7 +353,7 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
  * \retval KNOT_EINVAL if the RRSets could not be merged, because their
  *         Owner, Type, Class or TTL does not match.
  */
-int knot_rrset_merge(void **r1, void **r2);
+int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2);
 
 
 /*!
@@ -366,7 +366,7 @@ int knot_rrset_merge(void **r1, void **r2);
  * \retval KNOT_EINVAL if the RRSets could not be merged, because their
  *         Owner, Type, Class or TTL does not match.
  */
-int knot_rrset_merge_no_dupl(void **r1, void **r2);
+int knot_rrset_merge_no_dupl(knot_rrset_t *rrset1, const knot_rrset_t *rrset2, int *merged, int *deleted_rrs);
 
 
 //TODO test
@@ -420,6 +420,9 @@ const knot_dname_t *knot_rrset_rdata_nsec_next(const knot_rrset_t *rrset,
                                                size_t rr_pos);
 void knot_rrset_rdata_nsec_bitmap(const knot_rrset_t *rrset, size_t rr_pos,
                                   uint8_t **bitmap, uint16_t *size);
+
+void knot_rrset_rdata_nsec3_bitmap(const knot_rrset_t *rrset, size_t rr_pos,
+                                   uint8_t **bitmap, uint16_t *size);
 //TODO test
 uint8_t knot_rrset_rdata_nsec3_algorithm(const knot_rrset_t *rrset,
                                          size_t pos);
@@ -538,6 +541,7 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
                                    const uint8_t *wire, size_t *pos,
                                    size_t total_size, size_t rdlength);
 
+int knot_rrset_ds_check(const knot_rrset_t *rrset);
 #endif /* _KNOT_RRSET_H_ */
 
 /*! @} */

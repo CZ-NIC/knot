@@ -35,6 +35,7 @@
 
 #include "libknot/dname.h"
 #include "libknot/tsig.h"
+#include "libknot/sign/key.h"
 #include "common/lists.h"
 #include "common/log.h"
 #include "common/acl.h"
@@ -61,13 +62,13 @@
  */
 typedef struct conf_iface_t {
 	node n;
-	char *name;       /*!< Internal name for the interface. */
-	char *address;    /*!< IP (IPv4/v6) address for this interface */
-	unsigned prefix;  /*!< IP subnet prefix. */
-	int port;         /*!< Port number for this interface */
-	int family;       /*!< Address family. */
-	knot_key_t *key;  /*!< TSIG key (only valid for remotes). */
-	sockaddr_t  via;  /*!< Used for remotes to specify qry endpoint.*/
+	char *name;           /*!< Internal name for the interface. */
+	char *address;        /*!< IP (IPv4/v6) address for this interface */
+	unsigned prefix;      /*!< IP subnet prefix. */
+	int port;             /*!< Port number for this interface */
+	int family;           /*!< Address family. */
+	knot_tsig_key_t *key; /*!< TSIG key (only valid for remotes). */
+	sockaddr_t  via;      /*!< Used for remotes to specify qry endpoint.*/
 } conf_iface_t;
 
 /*!
@@ -147,7 +148,7 @@ typedef enum conf_section_t {
  */
 typedef struct conf_key_t {
 	node n;
-	knot_key_t k;
+	knot_tsig_key_t k;
 } conf_key_t;
 
 /*!

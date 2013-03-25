@@ -323,9 +323,12 @@ void hex_log(int source, const char *data, int length)
 			log_msg(source, LOG_DEBUG, "%s\n", lbuf);
 			llen = 0;
 		}
-		int n = sprintf(lbuf + llen, "0x%02x ",
-		        (unsigned char)*(data + ptr));
-		llen += n;
+		int ret = snprintf(lbuf + llen, sizeof(lbuf) - llen, "0x%02x ",
+		                   (unsigned char)*(data + ptr));
+		if (ret < 0 || ret >= sizeof(lbuf) - llen) {
+			return;
+		}
+		llen += ret;
 	}
 	if (llen > 0) {
 		log_msg(source, LOG_DEBUG, "%s\n", lbuf);

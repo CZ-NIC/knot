@@ -1,0 +1,39 @@
+.TH "knsupdate" "8" "April 2013" "CZ.NIC Labs" "Knot DNS, version 1.2.0-rc3"
+.SH NAME
+.TP 10
+.B knsupdate
+\- Dynamic DNS update utility (libknot equivalent of ISC
+  nsupdate)
+.SH SYNOPSIS
+.B knsupdate
+[\fIoptions\fR] [\fIfilename\fR]
+.SH DESCRIPTION
+
+.SH OPTIONS
+.TP 4
+.BI -d
+Enable debug messages if any.
+.TP
+.BI -v
+Use TCP protocol.
+.TP
+.BI -p \ port
+Set the default port.
+.TP
+.BI -t \ timeout
+The query timeout.
+.TP
+.BI -r \ retries
+The number of UDP retries.
+.TP
+.BI -y \ \fR[\fIhmac:\fR]\fIname:key\fR]
+Use TSIG.
+.SH FILES
+.BI /etc/resolv.conf
+.SH AUTHOR
+Marek Vavruša (\fBhttp://knot-dns.cz\fR)
+.TP
+Please send any bugs or comments to \fBknot-dns@labs.nic.cz\fR
+.SH SEE ALSO
+.BI khost\fR(8),
+.BI kdig\fR(8).
