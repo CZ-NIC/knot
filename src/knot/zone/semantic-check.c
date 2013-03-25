@@ -801,6 +801,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 						&nsec3_previous) != 0) {
 				err_handler_handle_error(handler, node,
 						 ZC_ERR_NSEC3_NOT_FOUND, NULL);
+				return KNOT_EOK;
 			}
 
 			if (nsec3_node == NULL) {
@@ -1410,7 +1411,9 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 {
 	if (do_checks == 3) {
 		/* Each NSEC3 node should only contain one RRSET. */
-		assert(last_nsec3_node && first_nsec3_node);
+		if (last_nsec3_node == NULL || first_nsec3_node == NULL) {
+			return;
+		}
 		const knot_rrset_t *nsec3_rrset =
 			knot_node_rrset(last_nsec3_node,
 		                              KNOT_RRTYPE_NSEC3);
