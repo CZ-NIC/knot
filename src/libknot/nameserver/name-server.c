@@ -1877,6 +1877,9 @@ static knot_rrset_t *ns_cname_from_dname(const knot_rrset_t *dname_rrset,
 
 	knot_rrset_t *cname_rrset = knot_rrset_new(
 		owner, KNOT_RRTYPE_CNAME, KNOT_CLASS_IN, SYNTH_CNAME_TTL);
+	if (cname_rrset == NULL) {
+		return NULL;
+	}
 
 	/* Release owner, as it's retained in rrset. */
 	knot_dname_release(owner);
@@ -1889,6 +1892,10 @@ static knot_rrset_t *ns_cname_from_dname(const knot_rrset_t *dname_rrset,
 	knot_dname_t *cname = knot_dname_replace_suffix(qname,
 	      knot_dname_size(knot_rrset_owner(dname_rrset)),
 	      knot_rrset_rdata_dname_target(dname_rrset));
+	if (cname == NULL) {
+		knot_rrset_free(&cname_rrset);
+		return NULL;
+	}
 dbg_ns_exec(
 	char *name = knot_dname_to_str(cname);
 	dbg_ns_verb("CNAME canonical name: %s.\n", name);
@@ -1898,6 +1905,8 @@ dbg_ns_exec(
 	                                               sizeof(knot_dname_t *));
 	if (cname_rdata == NULL) {
 		dbg_ns("ns: cname_from_dname: Cannot cerate CNAME RDATA.\n");
+		knot_rrset_free(&cname_rrset);
+		knot_dname_release(cname);
 		return NULL;
 	}
 	

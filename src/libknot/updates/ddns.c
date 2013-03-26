@@ -1935,7 +1935,10 @@ static int knot_ddns_process_rem_rrsigs(knot_node_t *node,
 	short rrset_count = knot_node_rrset_count(node);
 	
 	*removed = malloc(rrset_count * sizeof(knot_rrset_t *));
-	CHECK_ALLOC_LOG(*removed, KNOT_ENOMEM);
+	if (*removed == NULL) {
+		ERR_ALLOC_FAILED;
+		free(rrsets);
+	}
 	*removed_count = 0;
 	
 	/* Remove all the RRSets from the node, so that we may insert the copies
@@ -1950,6 +1953,9 @@ static int knot_ddns_process_rem_rrsigs(knot_node_t *node,
 		                                  &rrsig);
 		if (ret != KNOT_EOK) {
 			dbg_ddns("Failed to remove RRSIG.\n");
+			free(rrsets);
+			free(*removed);
+			*removed = NULL;
 			return ret;
 		}
 		/* Store the RRSIGs to the array of removed RRSets. */
@@ -2010,6 +2016,11 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rrset,
 		/* Remove all RRSIGs from the node. */
 		ret = knot_ddns_process_rem_rrsigs(node, changes, &removed,
 		                                   &removed_count);
+		if (ret != KNOT_EOK) {
+			dbg_ddns("Failed to remove RRSIGs. (%s)\n",
+			         knot_strerror(ret));
+			return ret;
+		}
 	} else {
 		/* Remove the RRSet from the node. */
 		removed = malloc(sizeof(knot_rrset_t *));
@@ -2029,8 +2040,9 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rrset,
 	                removed_count);
 
 	// no such RR
-	if (removed_count == 0 || removed == NULL) {
+	if (removed_count == 0) {
 		// ignore
+		free(removed);
 		return KNOT_EOK;
 	}
 
@@ -2115,7 +2127,9 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rrset,
 			if (ret != KNOT_EOK) {
 				dbg_ddns("Failed to remove RR from RRSet"
 				         "(%s).\n", knot_strerror(ret));
-				
+				free(from_chgset);
+				free(to_chgset);
+				return ret;
 			}
 		}
 	}
