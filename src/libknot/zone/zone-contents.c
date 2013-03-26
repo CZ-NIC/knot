@@ -2757,7 +2757,7 @@ static void find_dname_in_rdata(knot_node_t **tnode, void *data)
 	}
 	
 	/* For all RRSets in node. */
-	const knot_rrset_t **rrsets = knot_node_rrsets(*tnode);
+	const knot_rrset_t **rrsets = knot_node_rrsets_no_copy(*tnode);
 	if (rrsets == NULL) {
 		return;
 	}
@@ -2779,7 +2779,6 @@ static void find_dname_in_rdata(knot_node_t **tnode, void *data)
 		}
 	}
 	
-	free(rrsets);
 	assert(in_data->stopped == 0);
 }
 
