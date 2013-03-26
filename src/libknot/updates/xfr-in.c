@@ -1666,6 +1666,7 @@ dbg_xfrin_exec_detail(
 		                                &changes->old_rdata_allocated,
 		                                count);
 		if (ret != KNOT_EOK) {
+			knot_rrset_free(&rr_remove);
 			return ret;
 		}
 
