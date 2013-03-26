@@ -1935,7 +1935,10 @@ static int knot_ddns_process_rem_rrsigs(knot_node_t *node,
 	short rrset_count = knot_node_rrset_count(node);
 	
 	*removed = malloc(rrset_count * sizeof(knot_rrset_t *));
-	CHECK_ALLOC_LOG(*removed, KNOT_ENOMEM);
+	if (*removed == NULL) {
+		ERR_ALLOC_FAILED;
+		free(rrsets);
+	}
 	*removed_count = 0;
 	
 	/* Remove all the RRSets from the node, so that we may insert the copies
