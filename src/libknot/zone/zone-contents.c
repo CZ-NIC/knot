@@ -2456,15 +2456,6 @@ static void knot_zc_integrity_check_parent(const knot_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
-static void knot_zc_integrity_check_rrset_count(const knot_node_t *node,
-                                                check_data_t *check_data,
-                                                const char *name)
-{
-	//TODO;
-}
-
-/*----------------------------------------------------------------------------*/
-
 typedef struct find_dname_data {
 	const knot_dname_t *to_find;
 	const knot_dname_t *found;
@@ -2514,9 +2505,6 @@ static void knot_zc_integrity_check_node(knot_node_t *node, void *data)
 	// check if the node is child of the saved parent & children count
 	// & wildcard child
 	knot_zc_integrity_check_parent(node, check_data, name);
-
-	// check RRSet count
-	knot_zc_integrity_check_rrset_count(node, check_data, name);
 
 	// check owner
 	knot_zc_integrity_check_owner(node, check_data, name);
