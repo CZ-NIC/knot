@@ -857,6 +857,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 	                               next_dname_size, &next_dname_decoded);
 	if (real_size <= 0 || next_dname_decoded == NULL) {
 		dbg_semcheck("Could not encode base32 string!\n");
+		free(next_dname_decoded);
 		return KNOT_ERROR;
 	}
 
@@ -1439,6 +1440,7 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 		                               next_dname_size, &next_dname_decoded);
 		if (real_size <= 0 || next_dname_decoded == NULL) {
 			dbg_semcheck("Could not encode base32 string!\n");
+			free(next_dname_decoded);
 			return;
 		}
 
