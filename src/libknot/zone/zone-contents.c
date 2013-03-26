@@ -2538,9 +2538,6 @@ static void knot_zc_integrity_check_nsec3(knot_node_t *node, void *data)
 		++check_data->errors;
 	}
 
-	// check RRSet count
-	knot_zc_integrity_check_rrset_count(node, check_data, name);
-
 	// check owner
 	knot_zc_integrity_check_owner(node, check_data, name);
 
@@ -2618,7 +2615,7 @@ static void reset_new_nodes(knot_node_t **tnode, void *data)
 	knot_node_set_new_node(node, NULL);
 }
 
-///*----------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 
 static void count_nsec3_nodes(knot_node_t **tnode, void *data)
 {
@@ -2639,13 +2636,12 @@ int knot_zc_integrity_check_child_count(check_data_t *data)
 
 	// do shallow copy of the node tree
 	knot_zone_tree_t *nodes_copy = NULL;
-	if (nodes_copy == NULL) {
-		return 1;
-	}
 
 	int ret = knot_zone_tree_deep_copy(data->contents->nodes, &nodes_copy);
 	assert(ret == KNOT_EOK);
-
+	if (nodes_copy == NULL) {
+		return 1;
+	}
 
 	// set children count of all nodes to 0
 	// in the same walkthrough find the apex
@@ -2680,7 +2676,7 @@ int knot_zc_integrity_check_child_count(check_data_t *data)
 	return errors;
 }
 
-///*----------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 
 int knot_zone_contents_integrity_check(const knot_zone_contents_t *contents)
 {
