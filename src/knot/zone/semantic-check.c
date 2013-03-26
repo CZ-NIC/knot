@@ -868,14 +868,19 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 	knot_dname_t *next_dname =
 		knot_dname_new_from_str((char *)next_dname_decoded,
 					   real_size, NULL);
-	CHECK_ALLOC_LOG(next_dname, KNOT_ENOMEM);
-
+	if (next_dname == NULL) {
+		free(next_dname_decoded);
+		log_zone_warning("Could not create new dname!\n");
+		return KNOT_ERROR;
+	}
+	
 	free(next_dname_decoded);
 	knot_dname_to_lower(next_dname);
 	
 	if (knot_dname_cat(next_dname,
 		     knot_node_owner(knot_zone_contents_apex(zone))) == NULL) {
 		log_zone_warning("Could not concatenate dnames!\n");
+		knot_dname_free(&next_dname);
 		return KNOT_ERROR;
 
 	}
@@ -1443,19 +1448,20 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 						real_size, NULL);
 		if (next_dname == NULL) {
 			dbg_semcheck(stderr, "Could not allocate dname!\n");
+			free(next_dname_decoded);
 			return;
 		}
 
 		free(next_dname_decoded);
 		knot_dname_to_lower(next_dname);
 
-		/*! \todo #1887 Free result and dname! */
 		if (knot_dname_cat(next_dname,
 			     knot_node_owner(knot_zone_contents_apex(zone))) ==
 		                NULL) {
-			log_zone_warning("Could not concatenate dnames!\n");
+			dbg_semcheck("Could not concatenate dnames!\n");
 			err_handler_handle_error(handler, last_nsec3_node,
 						 ZC_ERR_NSEC3_RDATA_CHAIN, NULL);
+			knot_dname_free(&next_dname);
 			return;
 		}
 
