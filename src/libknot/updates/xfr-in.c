@@ -1505,12 +1505,13 @@ static int xfrin_apply_remove_rrsigs(knot_changes_t *changes,
 	/*!< \todo This RRSet will be created even when nothing was removed. */
 	assert(rr_removed);
 
-	int count = 1;//knot_rrset_rdata_rr_count(rr_removed);
+	int count = 1;
 	// connect the RDATA to the list of old RDATA
 	ret = knot_changes_rdata_reserve(&changes->old_rdata,
 	                                 changes->old_rdata_count,
 	                                 &changes->old_rdata_allocated, count);
 	if (ret != KNOT_EOK) {
+		knot_rrset_deep_free(&rr_removed, 1, 1);
 		return ret;
 	}
 
@@ -1670,6 +1671,9 @@ dbg_xfrin_exec_detail(
 
 		knot_changes_add_rdata(changes->old_rdata,
 		                        &changes->old_rdata_count, rr_remove);
+	} else {
+		/* Discard empty RRSet. */
+		knot_rrset_free(&rr_remove);
 	}
 	
 	// if the RRSet is empty, remove from node and add to old RRSets
