@@ -963,7 +963,7 @@ static int zone_is_secure(const knot_zone_contents_t *z)
 	const knot_rrset_t *soa_rr =
 		knot_node_rrset(knot_zone_contents_apex(z),
 	                        KNOT_RRTYPE_SOA);
-	return (soa_rr->rrsigs ? 1 : 0);
+	return (soa_rr && soa_rr->rrsigs ? 1 : 0);
 }
 
 static int sem_check_node_mandatory(knot_zone_contents_t *zone,
