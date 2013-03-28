@@ -364,5 +364,11 @@ int params_parse_keyfile(const char *value, knot_key_params_t *key_params)
 		knot_free_key_params(key_params);
 	}
 
-	return knot_load_key_params(value, key_params);
+	int result = knot_load_key_params(value, key_params);
+	if (result != KNOT_EOK) {
+		ERR("could not read key file: %s\n", knot_strerror(result));
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
 }

@@ -137,11 +137,18 @@ const error_table_t knot_error_msgs[] = {
 	{ZSCANNER_EBAD_ALGORITHM, "Bad algorithm!"},
 	{ZSCANNER_EBAD_CERT_TYPE, "Bad certificate type!"},
 
+        /* Key parsing errors. */
+        { KNOT_KEY_EPUBLIC_KEY_OPEN, "Cannot open public key file." },
+        { KNOT_KEY_EPRIVATE_KEY_OPEN, "Cannot open private key file." },
+        { KNOT_KEY_EPUBLIC_KEY_INVALID, "Public key file is invalid." },
+
         /* Key signing errors. */
         { KNOT_DNSSEC_ENOTSUP, "Signing algorithm is not supported." },
         { KNOT_DNSSEC_EINVALID_KEY, "The signing key is invalid." },
         { KNOT_DNSSEC_EASSIGN_KEY, "Cannot assign the key." },
         { KNOT_DNSSEC_ECREATE_DIGEST_CONTEXT, "Cannot create digest context." },
+        { KNOT_DNSSEC_EUNEXPECTED_SIGNATURE_SIZE, "Unexpected signature size." },
+        { KNOT_DNSSEC_EDECODE_RAW_SIGNATURE, "Cannot decode the raw signature." },
         { KNOT_DNSSEC_ESIGN, "Cannot create the signature." },
 
 	{KNOT_ERROR, 0} /* Terminator */
