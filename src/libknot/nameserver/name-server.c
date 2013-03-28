@@ -1884,10 +1884,6 @@ static knot_rrset_t *ns_cname_from_dname(const knot_rrset_t *dname_rrset,
 	/* Release owner, as it's retained in rrset. */
 	knot_dname_release(owner);
 
-	if (cname_rrset == NULL) {
-		return NULL;
-	}
-
 	// replace last labels of qname with DNAME
 	knot_dname_t *cname = knot_dname_replace_suffix(qname,
 	      knot_dname_size(knot_rrset_owner(dname_rrset)),
