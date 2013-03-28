@@ -1,6 +1,9 @@
 #include <assert.h>
+#include <openssl/opensslconf.h>
 #include <openssl/dsa.h>
+#ifndef OPENSSL_NO_ECDSA
 #include <openssl/ecdsa.h>
+#endif
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
 #include <time.h>
@@ -10,8 +13,6 @@
 #include "sign/key.h"
 #include "sign/sig0.h"
 #include "util/wire.h"
-
-//! \todo Add support for Eliptic Curves (EC).
 
 /*!
  * \brief Lifetime fudge of the SIG(0) packets in seconds.
@@ -284,6 +285,8 @@ static int dsa_sign_write(knot_dnssec_key_t *key, uint8_t *signature)
 
 /*- EC specific --------------------------------------------------------------*/
 
+#ifndef OPENSSL_NO_ECDSA
+
 /*!
  * \brief Create ECDSA private key from key parameters.
  * \see rsa_create_pkey
@@ -391,6 +394,8 @@ static int ecdsa_sign_write(knot_dnssec_key_t *key, uint8_t *signature)
 	return KNOT_EOK;
 }
 
+#endif
+
 /*- Algorithm specifications -------------------------------------------------*/
 
 static const algorithm_functions_t rsa_functions = {
@@ -407,12 +412,14 @@ static const algorithm_functions_t dsa_functions = {
 	dsa_sign_write
 };
 
+#ifndef OPENSSL_NO_ECDSA
 static const algorithm_functions_t ecdsa_functions = {
 	ecdsa_create_pkey,
 	ecdsa_sign_size,
 	any_sign_add,
 	ecdsa_sign_write
 };
+#endif
 
 /*!
  * \brief Get implementation specific callbacks for a given algorithm.
@@ -435,7 +442,9 @@ static const algorithm_functions_t *get_implementation(int algorithm)
 		return &dsa_functions;
 	case KNOT_DNSSEC_ALG_ECDSAP256SHA256:
 	case KNOT_DNSSEC_ALG_ECDSAP384SHA384:
+#ifndef OPENSSL_NO_ECDSA
 		return &ecdsa_functions;
+#endif
 	default:
 		return NULL;
 	}
