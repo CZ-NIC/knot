@@ -142,6 +142,8 @@ const error_table_t knot_error_msgs[] = {
         { KNOT_DNSSEC_EINVALID_KEY, "The signing key is invalid." },
         { KNOT_DNSSEC_EASSIGN_KEY, "Cannot assign the key." },
         { KNOT_DNSSEC_ECREATE_DIGEST_CONTEXT, "Cannot create digest context." },
+        { KNOT_DNSSEC_EUNEXPECTED_SIGNATURE_SIZE, "Unexpected signature size." },
+        { KNOT_DNSSEC_EDECODE_RAW_SIGNATURE, "Cannot decode the raw signature." },
         { KNOT_DNSSEC_ESIGN, "Cannot create the signature." },
 
 	{KNOT_ERROR, 0} /* Terminator */

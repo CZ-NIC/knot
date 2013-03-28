@@ -41,7 +41,7 @@ struct algorithm_functions {
 	//! \brief Callback: cover supplied data with the signature.
 	int (*sign_add)(knot_dnssec_key_t *, const uint8_t *, size_t);
 	//! \brief Callback: finish the signing and write out the signature.
-	int (*sign_finish)(knot_dnssec_key_t *, uint8_t *);
+	int (*sign_write)(knot_dnssec_key_t *, uint8_t *);
 };
 
 /*- Algorithm independent ----------------------------------------------------*/
@@ -82,34 +82,43 @@ static int any_sign_add(knot_dnssec_key_t *key,
 }
 
 /*!
- * \brief Finish the signing and write out the signature.
+ * \brief Finish the signing and get the RAW signature.
  *
- * \param key		DNSSEC key.
- * \param signature	Output buffer with signature.
+ * Caller should free the memory returned via signature parameter.
+ *
+ * \param key		  DNSSEC key.
+ * \param signature	  Pointer to signature (output).
+ * \param signature_size  Signature size (output).
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int any_sign_finish(knot_dnssec_key_t *key, uint8_t *signature)
+static int any_sign_finish(knot_dnssec_key_t *key, uint8_t **signature,
+			   size_t *signature_size)
 {
 	assert(key);
 	assert(signature);
+	assert(signature_size);
 
-	int result;
-	unsigned int signature_size;
-	knot_dnssec_algorithm_context_t *context = key->context;
+	size_t max_size = (size_t)EVP_PKEY_size(key->context->private_key);
+	uint8_t *output = calloc(1, max_size);
+	if (!output)
+		return KNOT_ENOMEM;
 
-	result = EVP_SignFinal(context->digest_context, signature,
-			       &signature_size, context->private_key);
-
-	if (!result)
+	unsigned int actual_size;
+	int result = EVP_SignFinal(key->context->digest_context, output,
+				   &actual_size, key->context->private_key);
+	if (!result) {
+		free(output);
 		return KNOT_DNSSEC_ESIGN;
+	}
 
-	//! \todo EVP_PKEY_size() can be actually larger, not for RSA and DSA
-	assert(signature_size == context->functions->signature_size(key));
+	assert(actual_size <= max_size);
+
+	*signature = output;
+	*signature_size = actual_size;
 
 	return KNOT_EOK;
 }
-
 
 /*- RSA specific -------------------------------------------------------------*/
 
@@ -147,6 +156,39 @@ static int rsa_create_pkey(const knot_key_params_t *params, EVP_PKEY *key)
 		RSA_free(rsa);
 		return KNOT_DNSSEC_EASSIGN_KEY;
 	}
+
+	return KNOT_EOK;
+}
+
+/*!
+ * \brief Finish the signing and write out the RSA signature.
+ *
+ * \param key		DNSSEC key.
+ * \param signature	Pointer to memory where the signature will be written.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+static int rsa_sign_write(knot_dnssec_key_t *key, uint8_t *signature)
+{
+	assert(key);
+	assert(signature);
+
+	int result;
+	uint8_t *raw_signature;
+	size_t raw_signature_size;
+
+	result = any_sign_finish(key, &raw_signature, &raw_signature_size);
+	if (result != KNOT_EOK) {
+		return result;
+	}
+
+	if (raw_signature_size != key->context->functions->signature_size(key)) {
+		free(raw_signature);
+		return KNOT_DNSSEC_EUNEXPECTED_SIGNATURE_SIZE;
+	}
+
+	memcpy(signature, raw_signature, raw_signature_size);
+	free(raw_signature);
 
 	return KNOT_EOK;
 }
@@ -191,55 +233,51 @@ static size_t dsa_sign_size(knot_dnssec_key_t *key)
 
 /*!
  * \brief Finish the signing and write out the DSA signature.
- * \see any_sign_finish
+ * \see rsa_sign_write
  */
-static int dsa_sign_finish(knot_dnssec_key_t *key, uint8_t *signature)
+static int dsa_sign_write(knot_dnssec_key_t *key, uint8_t *signature)
 {
 	assert(key);
 	assert(signature);
 
-	size_t digest_size = (size_t)EVP_PKEY_size(key->context->private_key);
-	uint8_t *digest = calloc(1, digest_size);
-	if (!digest) {
+	int result;
+	uint8_t *raw_signature;
+	size_t raw_signature_size;
+
+	result = any_sign_finish(key, &raw_signature, &raw_signature_size);
+	if (result != KNOT_EOK) {
+		return result;
+	}
+
+	// decode signature, X.509 Dss-Sig-Value (RFC2459)
+
+	DSA_SIG *decoded = DSA_SIG_new();
+	if (!decoded) {
+		free(raw_signature);
 		return KNOT_ENOMEM;
 	}
 
-	int result = EVP_SignFinal(key->context->digest_context, digest,
-				   (unsigned int *)&digest_size,
-				   key->context->private_key);
-	if (!result) {
-		free(digest);
-		return KNOT_DNSSEC_ESIGN;
+	const uint8_t *decode_scan = raw_signature;
+	if (!d2i_DSA_SIG(&decoded, &decode_scan, (long)raw_signature_size)) {
+		DSA_SIG_free(decoded);
+		free(raw_signature);
+		return KNOT_DNSSEC_EDECODE_RAW_SIGNATURE;
 	}
 
-	// decode signature using Dss-Sig-Value structure (RFC2459)
-
-	DSA_SIG *dsa_signature = DSA_SIG_new();
-	if (!dsa_signature) {
-		free(digest);
-		return KNOT_ENOMEM;
-	}
-
-	const uint8_t *digest_scan = digest;
-	if (d2i_DSA_SIG(&dsa_signature, &digest_scan, (long)digest_size) == NULL) {
-		DSA_SIG_free(dsa_signature);
-		free(digest);
-		return KNOT_DNSSEC_ESIGN;
-	}
+	free(raw_signature);
 
 	// convert to format defined by RFC 2536 (DSA keys and SIGs in DNS)
 
 	// T (1 byte), R (20 bytes), S (20 bytes)
 	uint8_t *signature_t = signature;
-	uint8_t *signature_r = signature + 21 - BN_num_bytes(dsa_signature->r);
-	uint8_t *signature_s = signature + 41 - BN_num_bytes(dsa_signature->s);
+	uint8_t *signature_r = signature + 21 - BN_num_bytes(decoded->r);
+	uint8_t *signature_s = signature + 41 - BN_num_bytes(decoded->s);
 
 	*signature_t = 0x00; //! \todo How to compute T? (Only recommended.)
-	BN_bn2bin(dsa_signature->r, signature_r);
-	BN_bn2bin(dsa_signature->s, signature_s);
+	BN_bn2bin(decoded->r, signature_r);
+	BN_bn2bin(decoded->s, signature_s);
 
-	DSA_SIG_free(dsa_signature);
-	free(digest);
+	DSA_SIG_free(decoded);
 
 	return KNOT_EOK;
 }
@@ -302,49 +340,53 @@ static size_t ecdsa_sign_size(knot_dnssec_key_t *key)
 
 /*!
  * \brief Finish the signing and write out the ECDSA signature.
- * \see any_sign_finish
+ * \see rsa_sign_write
  */
-static int ecdsa_sign_finish(knot_dnssec_key_t *key, uint8_t *signature)
+static int ecdsa_sign_write(knot_dnssec_key_t *key, uint8_t *signature)
 {
 	assert(key);
 	assert(signature);
 
-	size_t digest_size = (size_t)EVP_PKEY_size(key->context->private_key);
-	uint8_t *digest = calloc(1, digest_size);
-	if (!digest) {
+	int result;
+	uint8_t *raw_signature;
+	size_t raw_signature_size;
+
+	result = any_sign_finish(key, &raw_signature, &raw_signature_size);
+	if (result != KNOT_EOK) {
+		return result;
+	}
+
+	// decode signature
+
+	ECDSA_SIG *decoded = ECDSA_SIG_new();
+	if (!decoded) {
+		free(raw_signature);
 		return KNOT_ENOMEM;
 	}
 
-	int result = EVP_SignFinal(key->context->digest_context, digest,
-				   (unsigned int *)&digest_size,
-				   key->context->private_key);
-	if (!result) {
-		free(digest);
-		return KNOT_DNSSEC_ESIGN;
+	const uint8_t *decode_scan = raw_signature;
+	if (!d2i_ECDSA_SIG(&decoded, &decode_scan, (long)raw_signature_size)) {
+		ECDSA_SIG_free(decoded);
+		free(raw_signature);
+		return KNOT_DNSSEC_EDECODE_RAW_SIGNATURE;
 	}
 
-	ECDSA_SIG *ecdsa_signature = ECDSA_SIG_new();
-	if (!ecdsa_signature) {
-		free(digest);
-		return KNOT_ENOMEM;
-	}
+	free(raw_signature);
 
-	const uint8_t *digest_scan = digest;
-	if (d2i_ECDSA_SIG(&ecdsa_signature, &digest_scan, (long)digest_size) == NULL) {
-		ECDSA_SIG_free(ecdsa_signature);
-		free(digest);
-		return KNOT_DNSSEC_ESIGN;
-	}
+	// convert to format defined by RFC 6605 (EC DSA for DNSSEC)
+	// R and S parameters are encoded in halves of the output signature
 
-	size_t out_size = ecdsa_sign_size(key);
-	uint8_t *signature_r = signature + out_size/2 - BN_num_bytes(ecdsa_signature->r);
-	uint8_t *signature_s = signature + out_size   - BN_num_bytes(ecdsa_signature->s);
+	uint8_t *signature_r;
+	uint8_t *signature_s;
+	size_t param_size = ecdsa_sign_size(key) / 2;
 
-	BN_bn2bin(ecdsa_signature->r, signature_r);
-	BN_bn2bin(ecdsa_signature->s, signature_s);
+	signature_r = signature + param_size - BN_num_bytes(decoded->r);
+	signature_s = signature + 2 * param_size - BN_num_bytes(decoded->s);
 
-	ECDSA_SIG_free(ecdsa_signature);
-	free(digest);
+	BN_bn2bin(decoded->r, signature_r);
+	BN_bn2bin(decoded->s, signature_s);
+
+	ECDSA_SIG_free(decoded);
 
 	return KNOT_EOK;
 }
@@ -355,21 +397,21 @@ static const algorithm_functions_t rsa_functions = {
 	rsa_create_pkey,
 	any_sign_size,
 	any_sign_add,
-	any_sign_finish
+	rsa_sign_write
 };
 
 static const algorithm_functions_t dsa_functions = {
 	dsa_create_pkey,
 	dsa_sign_size,
 	any_sign_add,
-	dsa_sign_finish
+	dsa_sign_write
 };
 
 static const algorithm_functions_t ecdsa_functions = {
 	ecdsa_create_pkey,
 	ecdsa_sign_size,
 	any_sign_add,
-	ecdsa_sign_finish
+	ecdsa_sign_write
 };
 
 /*!
@@ -747,7 +789,7 @@ static int sig0_write_signature(uint8_t* wire, size_t request_size,
 	functions->sign_add(key, sig_rdata, sig_rdata_size - signature_size);
 	functions->sign_add(key, wire, request_size);
 
-	return functions->sign_finish(key, signature);
+	return functions->sign_write(key, signature);
 }
 
 /*- SIG(0) public ------------------------------------------------------------*/
