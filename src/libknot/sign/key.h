@@ -49,6 +49,8 @@ struct knot_key_params {
 	char *base;
 	char *private_value;
 	char *public_value;
+	// EC
+	char *private_key;
 };
 
 typedef struct knot_key_params knot_key_params_t;

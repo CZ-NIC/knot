@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <openssl/dsa.h>
+#include <openssl/ecdsa.h>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
 #include <time.h>
@@ -243,6 +244,111 @@ static int dsa_sign_finish(knot_dnssec_key_t *key, uint8_t *signature)
 	return KNOT_EOK;
 }
 
+/*- EC specific --------------------------------------------------------------*/
+
+/*!
+ * \brief Create ECDSA private key from key parameters.
+ * \see rsa_create_pkey
+ */
+static int ecdsa_create_pkey(const knot_key_params_t *params, EVP_PKEY *key)
+{
+	assert(key);
+
+	int curve;
+	if (params->algorithm == KNOT_DNSSEC_ALG_ECDSAP256SHA256) {
+		curve = NID_X9_62_prime256v1; // == secp256r1
+	} else if (params->algorithm == KNOT_DNSSEC_ALG_ECDSAP384SHA384) {
+		curve = NID_secp384r1;
+	} else {
+		return KNOT_DNSSEC_ENOTSUP;
+	}
+
+	EC_KEY *ec_key = EC_KEY_new_by_curve_name(curve);
+	if (ec_key == NULL)
+		return KNOT_ENOMEM; //! \todo add error code
+
+	EC_KEY_set_private_key(ec_key, knot_b64_to_bignum(params->private_key));
+
+	// EC_KEY_check_key() could be added, but fails without public key
+
+	if (!EVP_PKEY_assign_EC_KEY(key, ec_key)) {
+		EC_KEY_free(ec_key);
+		return KNOT_DNSSEC_EASSIGN_KEY;
+	}
+
+	return KNOT_EOK;
+}
+
+/*!
+ * \brief Get size of the resulting signature for ECDSA algorithm.
+ * \see any_sign_size
+ */
+static size_t ecdsa_sign_size(knot_dnssec_key_t *key)
+{
+	assert(key);
+
+	// RFC 6605 (section 4 - DNSKEY and RRSIG Resource Records for ECDSA)
+
+	switch (key->algorithm) {
+	case KNOT_DNSSEC_ALG_ECDSAP256SHA256:
+		return 2 * 32;
+	case KNOT_DNSSEC_ALG_ECDSAP384SHA384:
+		return 2 * 48;
+	default:
+		assert(0);
+		return 0;
+	}
+}
+
+/*!
+ * \brief Finish the signing and write out the ECDSA signature.
+ * \see any_sign_finish
+ */
+static int ecdsa_sign_finish(knot_dnssec_key_t *key, uint8_t *signature)
+{
+	assert(key);
+	assert(signature);
+
+	size_t digest_size = (size_t)EVP_PKEY_size(key->context->private_key);
+	uint8_t *digest = calloc(1, digest_size);
+	if (!digest) {
+		return KNOT_ENOMEM;
+	}
+
+	int result = EVP_SignFinal(key->context->digest_context, digest,
+				   (unsigned int *)&digest_size,
+				   key->context->private_key);
+	if (!result) {
+		free(digest);
+		return KNOT_DNSSEC_ESIGN;
+	}
+
+	ECDSA_SIG *ecdsa_signature = ECDSA_SIG_new();
+	if (!ecdsa_signature) {
+		free(digest);
+		return KNOT_ENOMEM;
+	}
+
+	const uint8_t *digest_scan = digest;
+	if (d2i_ECDSA_SIG(&ecdsa_signature, &digest_scan, (long)digest_size) == NULL) {
+		ECDSA_SIG_free(ecdsa_signature);
+		free(digest);
+		return KNOT_DNSSEC_ESIGN;
+	}
+
+	size_t out_size = ecdsa_sign_size(key);
+	uint8_t *signature_r = signature + out_size/2 - BN_num_bytes(ecdsa_signature->r);
+	uint8_t *signature_s = signature + out_size   - BN_num_bytes(ecdsa_signature->s);
+
+	BN_bn2bin(ecdsa_signature->r, signature_r);
+	BN_bn2bin(ecdsa_signature->s, signature_s);
+
+	ECDSA_SIG_free(ecdsa_signature);
+	free(digest);
+
+	return KNOT_EOK;
+}
+
 /*- Algorithm specifications -------------------------------------------------*/
 
 static const algorithm_functions_t rsa_functions = {
@@ -257,6 +363,13 @@ static const algorithm_functions_t dsa_functions = {
 	dsa_sign_size,
 	any_sign_add,
 	dsa_sign_finish
+};
+
+static const algorithm_functions_t ecdsa_functions = {
+	ecdsa_create_pkey,
+	ecdsa_sign_size,
+	any_sign_add,
+	ecdsa_sign_finish
 };
 
 /*!
@@ -278,6 +391,9 @@ static const algorithm_functions_t *get_implementation(int algorithm)
 	case KNOT_DNSSEC_ALG_DSA:
 	case KNOT_DNSSEC_ALG_DSA_NSEC3_SHA1:
 		return &dsa_functions;
+	case KNOT_DNSSEC_ALG_ECDSAP256SHA256:
+	case KNOT_DNSSEC_ALG_ECDSAP384SHA384:
+		return &ecdsa_functions;
 	default:
 		return NULL;
 	}
@@ -303,7 +419,10 @@ static const EVP_MD *get_digest_type(knot_dnssec_algorithm_t algorithm)
 	case KNOT_DNSSEC_ALG_RSAMD5:
 		return EVP_md5();
 	case KNOT_DNSSEC_ALG_RSASHA256:
+	case KNOT_DNSSEC_ALG_ECDSAP256SHA256:
 		return EVP_sha256();
+	case KNOT_DNSSEC_ALG_ECDSAP384SHA384:
+		return EVP_sha384();
 	case KNOT_DNSSEC_ALG_RSASHA512:
 		return EVP_sha512();
 	default:

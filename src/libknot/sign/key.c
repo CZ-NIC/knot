@@ -250,6 +250,7 @@ static const struct key_parameter key_parameters[] = {
 	{ "Base(g)",         key_offset(base),             key_param_string },
 	{ "Private_value(x)",key_offset(private_value),    key_param_string },
 	{ "Public_value(y)", key_offset(public_value),     key_param_string },
+	{ "PrivateKey",      key_offset(private_key),      key_param_string },
 	{ NULL }
 };
 
@@ -396,7 +397,7 @@ knot_key_type_t knot_get_key_type(const knot_key_params_t *key_params)
 		return KNOT_KEY_TSIG;
 	}
 
-	if (key_params->modulus || key_params->prime) {
+	if (key_params->modulus || key_params->prime || key_params->private_key) {
 		return KNOT_KEY_DNSSEC;
 	}
 
