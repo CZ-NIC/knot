@@ -99,7 +99,7 @@ static int get_key_info_from_public_key(const char *filename,
 
 	FILE *keyfile = fopen(filename, "r");
 	if (!keyfile)
-		return KNOT_ERROR; //! \todo Specific error code.
+		return KNOT_KEY_EPUBLIC_KEY_OPEN;
 
 	scanner_t *scanner = scanner_create(filename);
 	if (!scanner) {
@@ -118,13 +118,13 @@ static int get_key_info_from_public_key(const char *filename,
 
 	if (read == -1) {
 		scanner_free(scanner);
-		return KNOT_ERROR; //! \todo Specific error code.
+		return KNOT_KEY_EPUBLIC_KEY_INVALID;
 	}
 
 	if (scanner_process(buffer, buffer + read, false, scanner) != 0) {
 		free(buffer);
 		scanner_free(scanner);
-		return KNOT_ERROR; //! \todo Specific error code.
+		return KNOT_KEY_EPUBLIC_KEY_INVALID;
 	}
 
 	free(buffer);
@@ -319,7 +319,7 @@ int knot_load_key_params(const char *filename, knot_key_params_t *key_params)
 	if (result != KNOT_EOK) {
 		free(public_key);
 		free(private_key);
-		return KNOT_ERROR; //!< \todo better error code
+		return result;
 	}
 
 	FILE *fp = fopen(private_key, "r");
@@ -327,7 +327,7 @@ int knot_load_key_params(const char *filename, knot_key_params_t *key_params)
 		free(public_key);
 		free(private_key);
 		knot_dname_release(name);
-		return KNOT_ERROR; //!< \todo better error code
+		return KNOT_KEY_EPRIVATE_KEY_OPEN;
 	}
 
 	key_params->name = name;

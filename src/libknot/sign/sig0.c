@@ -306,7 +306,7 @@ static int ecdsa_create_pkey(const knot_key_params_t *params, EVP_PKEY *key)
 
 	EC_KEY *ec_key = EC_KEY_new_by_curve_name(curve);
 	if (ec_key == NULL)
-		return KNOT_ENOMEM; //! \todo add error code
+		return KNOT_ENOMEM;
 
 	EC_KEY_set_private_key(ec_key, knot_b64_to_bignum(params->private_key));
 
