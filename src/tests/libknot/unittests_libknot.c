@@ -25,7 +25,7 @@
 //#include "tests/libknot/libknot/node_tests.h"
 //#include "tests/libknot/libknot/rdata_tests.h"
 //#include "tests/libknot/libknot/response_tests.h"
-#include "tests/libknot/libknot/rrset_tests.h"
+#include "tests/libknot/rrset_tests.h"
 #include "tests/libknot/wire_tests.h"
 #include "tests/libknot/dname_tests.h"
 #include "tests/libknot/ztree_tests.h"

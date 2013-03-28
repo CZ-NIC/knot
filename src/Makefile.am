@@ -124,8 +124,8 @@ unittests_libknot_SOURCES = 			\
 	tests/libknot/ztree_tests.c		\
 	tests/libknot/wire_tests.h		\
 	tests/libknot/wire_tests.c		\
-	tests/libknot/libknot/rrset_tests.h	\
-	tests/libknot/libknot/rrset_tests.c	\
+	tests/libknot/rrset_tests.h		\
+	tests/libknot/rrset_tests.c		\
 	tests/libknot/sign_tests.c		\
 	tests/libknot/sign_tests.h
 
