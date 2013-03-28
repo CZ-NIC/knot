@@ -1938,6 +1938,7 @@ static int knot_ddns_process_rem_rrsigs(knot_node_t *node,
 	if (*removed == NULL) {
 		ERR_ALLOC_FAILED;
 		free(rrsets);
+		return KNOT_ENOMEM;
 	}
 	*removed_count = 0;
 	
