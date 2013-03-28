@@ -532,9 +532,9 @@ int knot_rrset_find_rr_pos(const knot_rrset_t *rr_search_in,
                            size_t *pos_out);
 
 int rrset_rr_dnames_apply(knot_rrset_t *rrset, size_t rdata_pos,
-                          int (*func)(knot_dname_t *, void *), void *data);
+                          int (*func)(knot_dname_t **, void *), void *data);
 
-int rrset_dnames_apply(knot_rrset_t *rrset, int (*func)(knot_dname_t *, void *),
+int rrset_dnames_apply(knot_rrset_t *rrset, int (*func)(knot_dname_t **, void *),
                        void *data);
 
 int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset, 
