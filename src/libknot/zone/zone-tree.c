@@ -364,10 +364,7 @@ void knot_zone_tree_deep_free(knot_zone_tree_t **tree)
 
 void hattrie_insert_dname(hattrie_t *tr, knot_dname_t *dname)
 {
-	char lf[DNAME_LFT_MAXLEN];
-	dname_lf(lf, dname, sizeof(lf));
-
-	*hattrie_get(tr, lf+1, *lf) = dname;
+	*hattrie_get(tr, (char *)dname->name, dname->size) = dname;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -378,10 +375,7 @@ knot_dname_t *hattrie_get_dname(hattrie_t *tr, knot_dname_t *dname)
 		return NULL;
 	}
 	
-	char lf[DNAME_LFT_MAXLEN];
-	dname_lf(lf, dname, sizeof(lf));
-
-	value_t *val = hattrie_tryget(tr, lf+1, *lf);
+	value_t *val = hattrie_tryget(tr, (char *)dname->name, dname->size);
 	if (val == NULL) {
 		return NULL;
 	} else {

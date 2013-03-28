@@ -35,25 +35,25 @@ static const size_t KNOT_RESPONSE_MAX_PTR = 16383;
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
 
-static int rrset_retain_dnames_in_rr(knot_dname_t *dname, void *data)
+static int rrset_retain_dnames_in_rr(knot_dname_t **dname, void *data)
 {
 	UNUSED(data);
-	if (dname == NULL) {
+	if (dname == NULL || *dname == NULL) {
 		return KNOT_EINVAL;
 	}
 	
-	knot_dname_retain(dname);
+	knot_dname_retain(*dname);
 	return KNOT_EOK;
 }
 
-static int rrset_release_dnames_in_rr(knot_dname_t *dname, void *data)
+static int rrset_release_dnames_in_rr(knot_dname_t **dname, void *data)
 {
 	UNUSED(data);
-	if (dname == NULL) {
+	if (dname == NULL || *dname == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	knot_dname_release(dname);
+	knot_dname_release(*dname);
 	return KNOT_EOK;
 }
 
@@ -2544,7 +2544,7 @@ int knot_rrset_rdata_reset(knot_rrset_t *rrset)
 }
 
 int rrset_rr_dnames_apply(knot_rrset_t *rrset, size_t rdata_pos,
-                          int (*func)(knot_dname_t *, void *), void *data)
+                          int (*func)(knot_dname_t **, void *), void *data)
 {
 	if (rrset == NULL || rdata_pos >= rrset->rdata_count || func == NULL) {
 		return KNOT_EINVAL;
@@ -2555,7 +2555,7 @@ int rrset_rr_dnames_apply(knot_rrset_t *rrset, size_t rdata_pos,
 	while ((dname = knot_rrset_get_next_rr_dname(rrset, dname,
 	                                             rdata_pos))) {
 		assert(dname && *dname);
-		int ret = func(*dname, data);
+		int ret = func(dname, data);
 		if (ret != KNOT_EOK) {
 			dbg_rrset("rr: rr_dnames_apply: Function could not be"
 			          "applied (%s).\n", knot_strerror(ret));
@@ -2566,7 +2566,7 @@ int rrset_rr_dnames_apply(knot_rrset_t *rrset, size_t rdata_pos,
 	return KNOT_EOK;
 }
 
-int rrset_dnames_apply(knot_rrset_t *rrset, int (*func)(knot_dname_t *, void *),
+int rrset_dnames_apply(knot_rrset_t *rrset, int (*func)(knot_dname_t **, void *),
                        void *data)
 {
 	if (rrset == NULL || rrset->rdata_count == 0 || func == NULL) {

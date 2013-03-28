@@ -420,6 +420,7 @@ static int zones_refresh_ev(event_t *e)
 		memcpy(&xfr_req.saddr, &zd->xfr_in.via, sizeof(sockaddr_t));
 		xfr_req.data = (void *)zone;
 		xfr_req.send = zones_send_cb;
+		xfr_req.lookup_tree = hattrie_create();
 
 		/* Select transfer method. */
 		xfr_req.type = XFR_TYPE_AIN;

@@ -302,9 +302,7 @@ static int pkt_append(nsupdate_params_t *p, int sect)
 		knot_question_t q;
 		q.qclass = p->class_num;
 		q.qtype = p->type_num;
-		q.qname = knot_dname_new_from_wire(s->zone_origin,
-		                                   s->zone_origin_length,
-		                                   NULL);
+		q.qname = knot_dname_new_from_nonfqdn_str(p->zone, strlen(p->zone), NULL);
 		ret = knot_query_set_question(p->pkt, &q);
 		if (ret != KNOT_EOK) {
 			return ret;
@@ -871,10 +869,7 @@ int cmd_zone(const char* lp, nsupdate_params_t *params)
 		return KNOT_EPARSEFAIL;
 	}
 	
-	/* Extract name. */
-	char *zone = strndup(lp, len);
-	nsupdate_set_origin(params, zone);
-	free(zone);
+	params->zone = strndup(lp, len);
 	return KNOT_EOK;
 }
 

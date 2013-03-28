@@ -17,7 +17,7 @@
 #include <assert.h>
 #include <stdint.h>
 
-#include "tests/libknot/libknot/rrset_tests.h"
+#include "tests/libknot/rrset_tests.h"
 #include "common/descriptor.h"
 #include "common/errcode.h"
 #include "common/print.h"

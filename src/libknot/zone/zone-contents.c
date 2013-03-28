@@ -174,19 +174,20 @@ void knot_zone_contents_insert_dname_into_table(knot_dname_t **in_dname,
 		/* = Do not check duplicates. */
 		return;
 	}
-        assert(in_dname && *in_dname);
-        /* First thing - make sure dname is not duplicated. */
-        knot_dname_t *found_dname = hattrie_get_dname(lookup_tree, *in_dname);
-        if (found_dname != NULL && found_dname != *in_dname) {
-            /* Duplicate. */
-            knot_dname_release(*in_dname);
-            knot_dname_retain(found_dname);
-            *in_dname = found_dname;
-        } else {
-            assert(found_dname == NULL || found_dname == *in_dname);
-            /* Into the tree it goes. */
-            hattrie_insert_dname(lookup_tree, *in_dname);
-        }
+	assert(in_dname && *in_dname);
+	/* First thing - make sure dname is not duplicated. */
+	knot_dname_t *found_dname = hattrie_get_dname(lookup_tree, *in_dname);
+	if (found_dname != NULL && found_dname != *in_dname) {
+		/* Duplicate. */
+		knot_dname_release(*in_dname);
+		knot_dname_retain(found_dname);
+		*in_dname = found_dname;
+	} else if (found_dname == NULL) {
+		/* Into the tree it goes. */
+		hattrie_insert_dname(lookup_tree, *in_dname);
+	} else {
+		assert(found_dname == *in_dname);
+	}
 }
 
 /*----------------------------------------------------------------------------*/

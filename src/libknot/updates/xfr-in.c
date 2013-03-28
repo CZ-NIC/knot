@@ -327,10 +327,10 @@ static int xfrin_process_orphan_rrsigs(knot_zone_contents_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_insert_rdata_dnames_to_table(knot_dname_t *dname, void *data)
+static int xfrin_insert_rdata_dnames_to_table(knot_dname_t **dname, void *data)
 {
 	hattrie_t *lookup_tree = data;
-	knot_zone_contents_insert_dname_into_table(&dname, lookup_tree);
+	knot_zone_contents_insert_dname_into_table(dname, lookup_tree);
 	return KNOT_EOK;
 }
 
@@ -511,7 +511,7 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 	/*! \todo We should probably test whether the Question of the first
 	 *        message corresponds to the SOA RR.
 	 */
-	
+
 	/* RR parsed - sort out DNAME duplications. */
 	xfrin_insert_rrset_dnames_to_table(rr, xfr->lookup_tree);
 
@@ -631,7 +631,7 @@ dbg_xfrin_exec(
 		xfrin_insert_rrset_dnames_to_table(rr, xfr->lookup_tree);
 
 		if (node != NULL
-		    && knot_dname_compare(rr->owner, node->owner) != 0) {
+		    && knot_dname_compare_non_canon(rr->owner, node->owner) != 0) {
 dbg_xfrin_exec_detail(
 			char *name = knot_dname_to_str(node->owner);
 			dbg_xfrin_detail("Node owner: %s\n", name);
@@ -3248,15 +3248,15 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_switch_node_in_rdata(knot_dname_t *dname, void *data)
+static int xfrin_switch_node_in_rdata(knot_dname_t **dname, void *data)
 {
 	UNUSED(data);
-	if (dname == NULL) {
+	if (dname == NULL || *dname == NULL) {
 		return KNOT_EINVAL;
 	}
 	
-	if (dname->node != NULL) {
-		knot_dname_update_node(dname);
+	if ((*dname)->node != NULL) {
+		knot_dname_update_node(*dname);
 	}
 	
 	return KNOT_EOK;
