@@ -109,6 +109,10 @@ static int get_key_info_from_public_key(const char *filename,
 
 	scanner->process_record = key_scan_noop;
 	scanner->process_error = key_scan_noop;
+	scanner->default_ttl = 0;
+	scanner->default_class = KNOT_CLASS_IN;
+	scanner->zone_origin[0] = '\0';
+	scanner->zone_origin_length = 1;
 
 	char *buffer = NULL;
 	size_t buffer_size;
@@ -121,7 +125,7 @@ static int get_key_info_from_public_key(const char *filename,
 		return KNOT_KEY_EPUBLIC_KEY_INVALID;
 	}
 
-	if (scanner_process(buffer, buffer + read, false, scanner) != 0) {
+	if (scanner_process(buffer, buffer + read, true, scanner) != 0) {
 		free(buffer);
 		scanner_free(scanner);
 		return KNOT_KEY_EPUBLIC_KEY_INVALID;
