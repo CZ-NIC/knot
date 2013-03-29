@@ -1,4 +1,4 @@
-.TH "khost" "8" "April 2013" "CZ.NIC Labs" "Knot DNS, version 1.2.0-rc3"
+.TH "khost" "8" "April 2013" "CZ.NIC Labs" "Knot DNS, version @VERSION@"
 .SH NAME
 .B khost
 \- Simple DNS lookup utility (libknot equivalent of ISC host)

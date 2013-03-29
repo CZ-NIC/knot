@@ -1,4 +1,4 @@
-.TH "knsupdate" "8" "April 2013" "CZ.NIC Labs" "Knot DNS, version 1.2.0-rc3"
+.TH "knsupdate" "8" "April 2013" "CZ.NIC Labs" "Knot DNS, version @VERSION@"
 .SH NAME
 .TP 10
 .B knsupdate

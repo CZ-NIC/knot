@@ -1,2 +1,2 @@
 ACLOCAL_AMFLAGS = -I m4
-SUBDIRS = src samples doc
+SUBDIRS = src samples doc man

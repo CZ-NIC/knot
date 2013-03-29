@@ -1,4 +1,4 @@
-.TH "kdig" "8" "April 2013" "CZ.NIC Labs" "Knot DNS, version 1.2.0-rc3"
+.TH "kdig" "8" "April 2013" "CZ.NIC Labs" "Knot DNS, version @VERSION@"
 .SH NAME
 .B kdig
 \- Advanced DNS lookup utility (libknot equivalent of ISC dig)
