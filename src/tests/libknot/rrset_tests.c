@@ -577,7 +577,8 @@ static int test_rrset_rdata_item_size()
 	                                      3600);
 	
 	knot_rrset_create_rdata(rrset1, 16);
-	knot_rrset_add_rdata(rrset1, (uint8_t *)"somedatathatdonotmatter", 25);
+	knot_rrset_add_rdata(rrset1,
+	                     (uint8_t *)"thesearesomedatathatdonotmatter", 25);
 	knot_rrset_create_rdata(rrset1, 38);
 	
 	if (rrset_rdata_item_size(rrset1, 0) != 16) {
@@ -1235,18 +1236,18 @@ static int test_rrset_next_dname()
 		return 0;
 	}
 	/* Now try MX. */
-        rrset = &test_rrset_array[TEST_RRSET_MX_BIN_GT].rrset;
-        dname = NULL;
-        dname = knot_rrset_get_next_dname(rrset, dname);
-        if (knot_dname_compare_non_canon(*dname, test_dnames[2])) {
-            diag("Got wrong DNAME from NS RDATA. on index %d\n", i);
-            return 0;
-        }
-        dname = knot_rrset_get_next_dname(rrset, dname);
-        if (dname != NULL) {
-            diag("Got DNAME from RRSet even though all had been extracted previously. (MX)\n");
-            return 0;
-        }
+	rrset = &test_rrset_array[TEST_RRSET_MX_BIN_GT].rrset;
+	dname = NULL;
+	dname = knot_rrset_get_next_dname(rrset, dname);
+	if (knot_dname_compare_non_canon(*dname, test_dnames[2])) {
+		diag("Got wrong DNAME from NS RDATA. on index %d\n", i);
+		return 0;
+	}
+	dname = knot_rrset_get_next_dname(rrset, dname);
+	if (dname != NULL) {
+		diag("Got DNAME from RRSet even though all had been extracted previously. (MX)\n");
+		return 0;
+	}
 	
 	/* Try writes into DNAMEs you've gotten. */
 	knot_rrset_deep_copy(&test_rrset_array[TEST_RRSET_MINFO_MULTIPLE].rrset,
@@ -1282,7 +1283,6 @@ static int test_rrset_next_dname()
 		return 0;
 	}
 	
-	knot_rrset_deep_free(&rrset, 1, 1);
 	return 1;
 }
 
@@ -1303,15 +1303,22 @@ static int test_rrset_find_pos()
 	size_t rr_pos = 0;
 	int ret = knot_rrset_find_rr_pos(rrset_source, rrset_find_in, 0, &rr_pos);
 	if (ret != KNOT_EOK) {
+		knot_rrset_deep_free(&rrset_source, 1, 1);
+		knot_rrset_deep_free(&rrset_find_in, 1, 1);
 		diag("RR was not found, even though it should have been.");
 		return 0;
 	}
 	if (rr_pos != 0) {
+		knot_rrset_deep_free(&rrset_source, 1, 1);
+		knot_rrset_deep_free(&rrset_find_in, 1, 1);
 		diag("Wrong index returned. Should be 0, was %zu", rr_pos);
 		return 0;
 	}
 	
 	/* Add second RR. */
+	knot_rrset_deep_free(&rrset_find_in, 1, 1);
+	knot_rrset_shallow_copy(rrset_source, &rrset_find_in);
+	knot_rrset_rdata_reset(rrset_find_in);
 	rdata = knot_rrset_create_rdata(rrset_find_in, 10);
 	memcpy(rdata, mock_data ,10);
 	knot_rrset_dump(rrset_find_in);
@@ -1324,6 +1331,9 @@ static int test_rrset_find_pos()
 		diag("Wrong index returned. Should be 1, was %zu", rr_pos);
 		return 0;
 	}
+	
+	knot_rrset_deep_free(&rrset_source, 1, 1);
+	knot_rrset_deep_free(&rrset_find_in, 1, 1);
 	
 	return 1;
 }
@@ -1367,6 +1377,10 @@ static int test_rrset_remove_rr()
 		diag("Got wrong data in return rrset.");
 		return 0;
 	}
+	
+	knot_rrset_deep_free(&rrset_source, 1, 1);
+	knot_rrset_deep_free(&rrset_dest, 1, 1);
+	knot_rrset_deep_free(&returned_rr, 1, 1);
 	
 	return 1;
 }
