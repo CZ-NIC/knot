@@ -172,6 +172,9 @@ static int parse_partial_rr(scanner_t *s, const char *lp, unsigned flags) {
 		knot_dname_t* suf = knot_dname_new_from_wire(s->zone_origin,
 		                                             s->zone_origin_length,
 		                                             NULL);
+		if (suf == NULL) {
+			return KNOT_ENOMEM;
+		}
 		knot_dname_cat(owner, suf);
 		knot_dname_free(&suf);
 	}
