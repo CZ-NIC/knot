@@ -783,6 +783,9 @@ int remote_create_cname(knot_rrset_t *rr, const char *d)
 
 	/* Create dname. */
 	knot_dname_t *dn = remote_dname_fqdn(d);
+	if (!dn) {
+		return KNOT_ERROR;
+	}
 	
 	/* Build RDATA. */
 	uint8_t *rdata = knot_rrset_create_rdata(rr, knot_dname_size(dn));
@@ -791,6 +794,7 @@ int remote_create_cname(knot_rrset_t *rr, const char *d)
 		return KNOT_ERROR;
 	}
 	memcpy(rdata, knot_dname_name(dn), knot_dname_size(dn));
+	knot_dname_free(&dn);
 	
 	return KNOT_EOK;
 }
