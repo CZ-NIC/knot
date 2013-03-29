@@ -1458,6 +1458,7 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 	/* Check if the zone is not discarded. */
 	if (knot_zone_flags(xfr.zone) & KNOT_ZONE_DISCARDED) {
 		dbg_xfr_verb("xfr: request on a discarded zone, ignoring\n");
+		hattrie_free(xfr.lookup_tree);
 		xfr_request_deinit(&xfr);
 		knot_zone_release(xfr.zone);
 		rcu_read_unlock();
