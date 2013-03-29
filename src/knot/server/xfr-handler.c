@@ -1492,6 +1492,8 @@ static int xfr_process_request(xfrworker_t *w, uint8_t *buf, size_t buflen)
 				log_server_error("%s %s\n",
 				                 xfr.msgpref, knot_strerror(ret));
 			}
+			hattrie_free(xfr.lookup_tree);
+			xfr.lookup_tree = NULL;
 			knot_zone_release(xfr.zone); /* No further access to zone. */
 		}
 		
