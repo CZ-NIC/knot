@@ -37,20 +37,7 @@
 #include "common/sockaddr.h"
 #include "libknot/nameserver/name-server.h"
 
-/*!
- * \brief Pending NOTIFY event.
- * \see knot_zone_t.notify_pending
- */
-typedef struct notify_ev_t {
-	node n;
-	int timeout;           /*!< Timeout for events. */
-	int retries;           /*!< Number of retries. */
-	int msgid;             /*!< ID of pending NOTIFY. */
-	sockaddr_t addr;       /*!< Slave server address. */
-	sockaddr_t saddr;      /*!< Transit interface address. */
-	struct event_t *timer; /*!< Event timer. */
-	knot_zone_t *zone;   /*!< Associated zone. */
-} notify_ev_t;
+#define NOTIFY_TIMEOUT 3 /*!< Interval between NOTIFY retries. */
 
 /*!
  * \brief Creates a NOTIFY request message for SOA RR of the given zone.
@@ -108,21 +95,14 @@ int notify_process_request(knot_nameserver_t *nameserver,
 /*!
  * \brief Processes NOTIFY response packet.
  *
- * \param nameserver Name server structure to provide the needed data.
- * \param from Address of the response sender.
- * \param packet Parsed response packet.
- * \param response_wire Place for the response in wire format.
- * \param rsize Input: maximum acceptable size of the response. Output: real
- *              size of the response.
+ * \param notify Parsed response packet.
+ * \param msgid Expected message ID.
  *
  * \retval KNOT_EOK if a valid response was created.
  * \retval KNOT_EINVAL on invalid parameters or packet.
- * \retval KNOT_EMALF if an error occured and the response is not valid.
+ * \retval KNOT_ERROR on message ID mismatch
  */
-int notify_process_response(knot_nameserver_t *nameserver,
-                            knot_packet_t *notify,
-                            sockaddr_t *from,
-                            uint8_t *buffer, size_t *size);
+int notify_process_response(knot_packet_t *notify, int msgid);
 
 #endif /* _KNOTD_NOTIFY_H_ */
 

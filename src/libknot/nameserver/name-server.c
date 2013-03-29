@@ -3764,7 +3764,9 @@ dbg_ns_exec(
 	dbg_ns("Found zone for name %s\n", name2_str);
 	free(name2_str);
 );
+	knot_zone_retain(zone);
 	xfr->zone = zone;
+	
 	
 	return KNOT_EOK;
 }

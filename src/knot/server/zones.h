@@ -44,7 +44,7 @@
 /* Constants. */
 #define ZONES_JITTER_PCT    10 /*!< +-N% jitter to timers. */
 #define IXFR_DBSYNC_TIMEOUT (60*1000) /*!< Database sync timeout = 60s. */
-#define AXFR_BOOTSTRAP_RETRY (60*1000) /*!< Interval between AXFR BS retries. */
+#define AXFR_BOOTSTRAP_RETRY (30*1000) /*!< Interval between AXFR BS retries. */
 
 /*!
  * \brief Zone-related data.
@@ -74,16 +74,9 @@ typedef struct zonedata_t
 		knot_tsig_key_t tsig_key; /*!< Master TSIG key. */
 		struct event_t *timer;    /*!< Timer for REFRESH/RETRY. */
 		struct event_t *expire;   /*!< Timer for REFRESH. */
-		pthread_mutex_t lock;     /*!< Pending XFR/IN lock. */
-		void           *wrkr;     /*!< Pending XFR/IN worker. */
-		int next_id;              /*!< ID of the next awaited SOA resp.*/
 		uint32_t bootstrap_retry; /*!< AXFR/IN bootstrap retry. */
-		unsigned       scheduled; /*!< Scheduled operations. */
 		int has_master;           /*!< True if it has master set. */
 	} xfr_in;
-
-	/*! \brief List of pending NOTIFY events. */
-	list notify_pending;
 
 	/*! \brief Zone IXFR history. */
 	journal_t *ixfr_db;
@@ -177,6 +170,7 @@ int zones_process_update(knot_nameserver_t *nameserver,
  * \retval KNOT_EMALF if an error occured and the response is not valid.
  */
 int zones_process_response(knot_nameserver_t *nameserver, 
+                           int exp_msgid,
                            sockaddr_t *from,
                            knot_packet_t *packet, uint8_t *response_wire,
                            size_t *rsize);
@@ -306,31 +300,22 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
  *
  * REFRESH/RETRY/EXPIRE timers are updated according to SOA.
  *
- * \param sched Event scheduler.
  * \param zone Related zone.
- * \param cfzone Related zone contents. If NULL, configuration is
- *               reused.
  *
  * \retval KNOT_EOK
  * \retval KNOT_EINVAL
  * \retval KNOT_ERROR
  */
-int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch);
+int zones_schedule_refresh(knot_zone_t *zone);
 
 /*!
- * \brief Cancel pending NOTIFY timer.
- *
- * \warning Expects locked zonedata lock.
- *
- * \param zd Zone data.
- * \param ev NOTIFY event.
+ * \brief Schedule NOTIFY after zone update.
+ * \param zone Related zone.
  *
  * \retval KNOT_EOK
  * \retval KNOT_ERROR
- * \retval KNOT_EINVAL
  */
-int zones_cancel_notify(zonedata_t *zd, notify_ev_t *ev);
-
+int zones_schedule_notify(knot_zone_t *zone);
 
 /*!
  * \brief Processes forwarded UPDATE response packet.

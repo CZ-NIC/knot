@@ -61,18 +61,6 @@ static inline int tcp_throttle() {
 	return (rand() % TCP_THROTTLE_HI) + TCP_THROTTLE_LO; 
 }
 
-/*! \brief Wrapper for TCP send. */
-static int xfr_send_cb(int session, sockaddr_t *addr, uint8_t *msg, size_t msglen)
-{
-	UNUSED(addr);
-	int ret = tcp_send(session, msg, msglen);
-	if (ret < 0) {
-		return KNOT_ECONN;
-	}
-	
-	return ret;
-}
-
 /*! \brief Send reply. */
 static int tcp_reply(int fd, uint8_t *qbuf, size_t resp_len)
 {
@@ -178,8 +166,7 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 	/* Parse query. */
 	size_t resp_len = qbuf_maxlen; // 64K
 	knot_packet_type_t qtype = KNOT_QUERY_NORMAL;
-	knot_packet_t *packet =
-		knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
+	knot_packet_t *packet = knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
 	if (packet == NULL) {
 		int ret = knot_ns_error_response_from_query_wire(ns, qbuf, n,
 		                                            KNOT_RCODE_SERVFAIL,
@@ -208,7 +195,7 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 
 	/* Handle query. */
 	int xfrt = -1;
-	knot_ns_xfr_t xfr;
+	knot_ns_xfr_t *xfr = NULL;
 	int res = KNOT_ERROR;
 	switch(qtype) {
 
@@ -229,23 +216,23 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 			xfrt = XFR_TYPE_AOUT;
 		}
 		
-		/* Prepare context. */
-		res = xfr_request_init(&xfr, xfrt, XFR_FLAG_TCP, packet);
-		if (res != KNOT_EOK) {
+		/* Answer from query. */
+		xfr = xfr_task_create(NULL, xfrt, XFR_FLAG_TCP);
+		if (xfr == NULL) {
 			knot_ns_error_response_from_query(ns, packet,
 			                                  KNOT_RCODE_SERVFAIL,
 			                                  qbuf, &resp_len);
 			res = KNOT_EOK;
 			break;
 		}
-		xfr.send = xfr_send_cb;
-		xfr.session = fd;
-		xfr.wire = qbuf;
-		xfr.wire_size = qbuf_maxlen;
-		memcpy(&xfr.addr, &addr, sizeof(sockaddr_t));
-		
-		/* Answer. */
-		return xfr_answer(ns, &xfr);
+		xfr->session = fd;
+		xfr->wire = qbuf;
+		xfr->wire_size = qbuf_maxlen;
+		xfr->query = packet;
+		xfr_task_setaddr(xfr, &addr, NULL);
+		res = xfr_answer(ns, xfr);
+		knot_packet_free(&packet);
+		return res;
 		
 	case KNOT_QUERY_UPDATE:
 //		knot_ns_error_response_from_query(ns, packet,
@@ -451,8 +438,7 @@ int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 	
 	/* Get peer name. */
 	if (addr) {
-		socklen_t alen = addr->len;
-		if (getpeername(fd, (struct sockaddr *)addr, &alen) < 0) {
+		if (getpeername(fd, (struct sockaddr *)addr, &addr->len) < 0) {
 			return KNOT_EMALF;
 		}
 	}
@@ -486,8 +472,8 @@ int tcp_loop_master(dthread_t *thread)
 	/* Prepare structures for bound sockets. */
 	fdset_it_t it;
 	fdset_t *fds = NULL;
-	iface_t *i = NULL;
-	ifacelist_t *ifaces = NULL;
+	ref_t *ref = NULL;
+	int if_cnt = 0;
 
 	/* Accept connections. */
 	int id = 0;
@@ -498,18 +484,9 @@ int tcp_loop_master(dthread_t *thread)
 		/* Check handler state. */
 		if (knot_unlikely(st->s & ServerReload)) {
 			st->s &= ~ServerReload;
-			rcu_read_lock();
-			fdset_destroy(fds);
-			fds = fdset_new();
-			ref_release((ref_t *)ifaces);
-			ifaces = h->server->ifaces;
-			if (ifaces) {
-				WALK_LIST(i, ifaces->l) {
-					fdset_add(fds, i->fd[IO_TCP], OS_EV_READ);
-				}
-				
-			}
-			rcu_read_unlock();
+			ref_release(ref);
+			ref = server_set_ifaces(h->server, &fds, &if_cnt, IO_TCP);
+			if (if_cnt == 0) break;
 		}
 		
 		/* Check for cancellation. */
@@ -520,7 +497,7 @@ int tcp_loop_master(dthread_t *thread)
 		/* Wait for events. */
 		int nfds = fdset_wait(fds, OS_EV_FOREVER);
 		if (nfds <= 0) {
-			if (nfds == EINTR) continue;
+			if (errno == EINTR) continue;
 			break;
 		}
 		
@@ -548,7 +525,7 @@ int tcp_loop_master(dthread_t *thread)
 	dbg_net("tcp: master thread finished\n");
 	free(workers);
 	fdset_destroy(fds);
-	ref_release((ref_t *)ifaces);
+	ref_release(ref);
 	
 	return KNOT_EOK;
 }
@@ -619,8 +596,7 @@ int tcp_loop_worker(dthread_t *thread)
 				             "client %d\n",
 				             w, client);
 				fdset_add(w->fdset, client, OS_EV_READ);
-				fdset_set_watchdog(w->fdset, client,
-				                   max_hs);
+				fdset_set_watchdog(w->fdset, client, max_hs);
 				dbg_net("tcp: watchdog for fd=%d set to %ds\n",
 				        client, max_hs);
 			} else {

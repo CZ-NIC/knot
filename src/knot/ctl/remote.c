@@ -229,12 +229,14 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 		
 		/* Evaluate zone state. */
 		char *when = NULL;
-		int locked = pthread_mutex_trylock(&zd->xfr_in.lock);
-		if (locked == 0) pthread_mutex_unlock(&zd->xfr_in.lock);
+//		int locked = pthread_mutex_trylock(&zd->xfr_in.lock);
+//		if (locked == 0) pthread_mutex_unlock(&zd->xfr_in.lock);
+		int locked = 0;
+		fprintf(stderr, "TODO: use something else\n");
 		if (locked != 0) {
 			when = strdup("pending");
-		} else if (zd->xfr_in.scheduled) {
-			when = strdup("scheduled");
+//		} else if (zd->xfr_in.scheduled) {
+//			when = strdup("scheduled");
 		} else if (zd->xfr_in.timer) {
 			struct timeval now, dif;
 			gettimeofday(&now, 0);
@@ -571,6 +573,7 @@ int remote_process(server_t *s, int r, uint8_t* buf, size_t buflen)
 	/* Initialize remote party address. */
 	rcu_read_lock();
 	sockaddr_t a;
+	sockaddr_prep(&a);
 	conf_iface_t *ctl_if = conf()->ctl.iface;
 	if (ctl_if) {
 		sockaddr_init(&a, ctl_if->family);

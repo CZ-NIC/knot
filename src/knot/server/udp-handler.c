@@ -512,8 +512,8 @@ int udp_master(dthread_t *thread)
 	/* Prepare structures for bound sockets. */
 	fdset_it_t it;
 	fdset_t *fds = NULL;
-	iface_t *i = NULL;
-	ifacelist_t *ifaces = NULL;
+	ref_t *ref = NULL;
+	int if_cnt = 0;
 
 	/* Loop until all data is read. */
 	for (;;) {
@@ -521,18 +521,9 @@ int udp_master(dthread_t *thread)
 		/* Check handler state. */
 		if (knot_unlikely(st->s & ServerReload)) {
 			st->s &= ~ServerReload;
-			rcu_read_lock();
-			fdset_destroy(fds);
-			fds = fdset_new();
-			ref_release((ref_t *)ifaces);
-			ifaces = h->server->ifaces;
-			if (ifaces) {
-				WALK_LIST(i, ifaces->l) {
-					fdset_add(fds, i->fd[IO_UDP], OS_EV_READ);
-				}
-				
-			}
-			rcu_read_unlock();
+			ref_release(ref);
+			ref = server_set_ifaces(h->server, &fds, &if_cnt, IO_UDP);
+			if (if_cnt == 0) break;
 		}
 		
 		/* Cancellation point. */
@@ -543,7 +534,7 @@ int udp_master(dthread_t *thread)
 		/* Wait for events. */
 		int nfds = fdset_wait(fds, OS_EV_FOREVER);
 		if (nfds <= 0) {
-			if (nfds == EINTR) continue;
+			if (errno == EINTR) continue;
 			break;
 		}
 		
@@ -557,7 +548,7 @@ int udp_master(dthread_t *thread)
 	}
 	
 	fdset_destroy(fds);
-	ref_release((ref_t *)ifaces);
+	ref_release(ref);
 	_udp_deinit(rqdata);
 
 	dbg_net_verb("udp: worker %p finished.\n", thread);
