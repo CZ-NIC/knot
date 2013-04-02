@@ -946,7 +946,7 @@ int xfr_worker(dthread_t *thread)
 	}
 	unsigned thread_capacity = limit / w->master->unit->size;
 	w->pool.fds = fdset_new();
-	w->pool.t = ahtable_create_n((limit/64 + 1)*64);
+	w->pool.t = ahtable_create();
 	w->pending = 0;
 
 	/* Accept requests. */
