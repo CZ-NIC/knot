@@ -36,7 +36,7 @@ unit_api dthreads_tests_api = {
 /*
  *  Unit implementation.
  */
-static const int DT_TEST_COUNT = 19;
+static const int DT_TEST_COUNT = 18;
 
 /* Unit runnable data. */
 static pthread_mutex_t _runnable_mx;
@@ -140,87 +140,6 @@ static inline int dt_test_reanimate(dt_unit_t *unit)
 	return ret == 0;
 }
 
-/*! \brief Resize unit. */
-static inline int dt_test_resize(dt_unit_t *unit, int size)
-{
-	// Resize
-	int ret = 0;
-	ret = dt_resize(unit, size);
-	if (ret < 0) {
-		return 0;
-	}
-
-	// Check outcome
-	if (unit->size != size) {
-		return 0;
-	}
-
-	// Repurpose all
-	_runnable_i = 0;
-	for (int i = 0; i < size; ++i) {
-		ret += dt_repurpose(unit->threads[i], &runnable, 0);
-	}
-	ret += dt_start(unit);
-
-	// Wait for finish
-	ret += dt_join(unit);
-
-	// Verify
-	int expected = size * _runnable_cycles;
-	note("resize test: %d threads, %d ticks, %d expected",
-	     size, _runnable_i, expected);
-	if (_runnable_i != expected) {
-		return 0;
-	}
-
-	// Check return codes
-	return ret == 0;
-}
-
-/*! \brief Resize unit while threads are active. */
-static inline int dt_test_liveresize(dt_unit_t *unit)
-{
-	// Size
-	int size = unit->size;
-	int size_hi = size + 2;
-	int size_lo = size - 1;
-
-	// Expand
-	int ret = 0;
-	ret = dt_resize(unit, size_hi);
-	if (ret < 0) {
-		return 0;
-	}
-
-	// Repurpose all
-	for (int i = 0; i < unit->size; ++i) {
-		ret += dt_repurpose(unit->threads[i], &runnable, 0);
-	}
-
-	// Restart
-	_runnable_i = 0;
-	ret += dt_start(unit);
-
-	// Shrink
-	ret += dt_resize(unit, size_lo);
-
-	// Wait for finish
-	ret += dt_join(unit);
-
-	// Verify
-	int expected_hi = size_hi * _runnable_cycles;
-	int expected_lo = size_lo * _runnable_cycles;
-	note("resize test: %d->%d->%d threads, %d ticks, <%d,%d> expected",
-	     size, size_hi, size_lo, _runnable_i, expected_lo, expected_hi);
-
-	if (_runnable_i > expected_hi || _runnable_i < expected_lo) {
-		return 0;
-	}
-
-	// Check return codes
-	return ret == 0;
-}
-
 /*! \brief Start unit. */
 static inline int dt_test_start(dt_unit_t *unit)
 {
@@ -266,7 +185,7 @@ static int dt_tests_run(int argc, char *argv[])
 	pthread_mutex_init(&_runnable_mx, NULL);
 
 	/* Test 1: Create unit */
-	dt_unit_t *unit = dt_test_create(4);
+	dt_unit_t *unit = dt_test_create(2);
 	ok(unit != 0, "dthreads: create unit (optimal size %d)", unit->size);
 	skip(unit == 0, DT_TEST_COUNT - 1);
 
@@ -321,45 +240,23 @@ static int dt_tests_run(int argc, char *argv[])
 	cmp_ok(_runnable_i, "<=", expected_hi,
 	       "dthreads: result %d is <= %d", _runnable_i, expected_hi);
 
-//	/* Test 13: Reanimate dead threads. */
-//	ok(dt_test_reanimate(unit), "dthreads: reanimate dead threads");
+	/* Test 13: Reanimate dead threads. */
+	ok(dt_test_reanimate(unit), "dthreads: reanimate dead threads");
 
-//	/* Test 14: Expand unit by 100%. */
-//	int size = unit->size * 2;
-//	ok(dt_test_resize(unit, size),
-//	   "dthreads: expanding unit to size * 2 (%d threads)", size);
-
-//	/* Test 15: Shrink unit to half. */
-//	size = unit->size / 2;
-//	ok(dt_test_resize(unit, size),
-//	   "dthreads: shrinking unit to size / 2 (%d threads)", size);
-
-//	/* Test 16: Resize while threads are active. */
-//	ok(dt_test_liveresize(unit), "dthreads: resizing unit while active");
-
-	/* Test 17: Deinitialize */
+	/* Test 14: Deinitialize */
 	dt_delete(&unit);
 	ok(unit == 0, "dthreads: delete unit");
 	endskip;
 
-	/* Test 18: Wrong values. */
+	/* Test 15: Wrong values. */
 	unit = dt_create(-1);
 	ok(unit == 0, "dthreads: create with negative count");
 	unit = dt_create_coherent(dt_optimal_size(), 0, 0);
 
-	/* Test 19: NULL runnable. */
+	/* Test 16: NULL runnable. */
 	cmp_ok(dt_start(unit), "==", 0, "dthreads: start with NULL runnable");
 
-	/* Test 20: resize to negative value. */
-	cmp_ok(dt_resize(unit, -19),
-	       "<", 0, "dthreads: resize to negative size");
-
-	/* Test 21: resize to zero value. */
-	cmp_ok(dt_resize(unit, 0), "<", 0, "dthreads: resize to NULL size");
-	dt_join(unit);
-	dt_delete(&unit);
-
-	/* Test 22: NULL operations crashing. */
+	/* Test 17: NULL operations crashing. */
 	int op_count = 14;
 	int expected_min = op_count * -1;
 	// All functions must return -1 at least
@@ -372,7 +269,6 @@ static int dt_tests_run(int argc, char *argv[])
 		ret += dt_is_cancelled(0);          // 0
 		ret += dt_join(0);                  // -1
 		ret += dt_repurpose(0, 0, 0);       // -1
-		ret += dt_resize(0, 0);             // -1
 		ret += dt_signalize(0, SIGALRM);    // -1
 		ret += dt_start(0);                 // -1
 		ret += dt_start_id(0);              // -1
@@ -382,7 +278,7 @@ static int dt_tests_run(int argc, char *argv[])
 		ret += dt_unit_unlock(0);           // -1
 	}, "dthreads: not crashed while executing functions on NULL context");
 
-	/* Test 23: expected results. */
+	/* Test 18: expected results. */
 	cmp_ok(ret, "<=", expected_min,
 	       "dthreads: correct values when passed NULL context "
 	       "(%d, min: %d)", ret, expected_min);
