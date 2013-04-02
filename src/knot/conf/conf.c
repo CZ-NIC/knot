@@ -38,6 +38,7 @@ static const char *DEFAULT_CONFIG[] = {
 };
 
 #define DEFAULT_CONF_COUNT 1 /*!< \brief Number of default config paths. */
+#define ERROR_BUFFER_SIZE 512 /*!< \brief Error buffer size. */
 
 /*
  * Utilities.
@@ -56,8 +57,7 @@ conf_t *new_config = 0; /*!< \brief Currently parsed config. */
 static volatile int _parser_res = 0; /*!< \brief Parser result. */
 static pthread_mutex_t _parser_lock = PTHREAD_MUTEX_INITIALIZER;
 
-/*! \brief Config error report. */
-void cf_error(void *scanner, const char *msg)
+static void cf_print_error(void *scanner, const char *msg)
 {
 	int lineno = -1;
 	char *text = "???";
@@ -71,6 +71,19 @@ void cf_error(void *scanner, const char *msg)
 
 
 	_parser_res = KNOT_EPARSEFAIL;
+}
+
+/*! \brief Config error report. */
+void cf_error(void *scanner, const char *format, ...)
+{
+	char buffer[ERROR_BUFFER_SIZE];
+	va_list ap;
+
+	va_start(ap, format);
+	vsnprintf(buffer, sizeof(buffer), format, ap);
+	va_end(ap);
+
+	cf_print_error(scanner, buffer);
 }
 
 static void conf_parse_begin(conf_t *conf)

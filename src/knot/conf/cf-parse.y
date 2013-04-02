@@ -19,7 +19,7 @@
 #include "libknotd_la-cf-parse.h" /* Automake generated header. */
 
 extern int cf_lex (YYSTYPE *lvalp, void *scanner);
-extern void cf_error(void *scanner, const char *msg);
+extern void cf_error(void *scanner, const char *format, ...);
 extern conf_t *new_config;
 static conf_iface_t *this_iface = 0;
 static conf_iface_t *this_remote = 0;
@@ -75,9 +75,7 @@ static void conf_remote_set_via(void *scanner, char *item) {
    
    /* Check */
    if (!found) {
-      char buf[512];
-      snprintf(buf, sizeof(buf), "interface '%s' is not defined", item);
-      cf_error(scanner, buf);
+      cf_error(scanner, "interface '%s' is not defined", item);
    } else {
       sockaddr_set(&this_remote->via, found->family, found->address, 0);
    }
@@ -96,9 +94,7 @@ static void conf_acl_item(void *scanner, char *item)
 
       /* Append to list if found. */
      if (!found) {
-	char buf[512];
-	snprintf(buf, sizeof(buf), "remote '%s' is not defined", item);
-	cf_error(scanner, buf);
+	cf_error(scanner, "remote '%s' is not defined", item);
      } else {
 	/* check port if xfrin/notify-out */
 	if (this_list == &this_zone->acl.xfr_in ||
@@ -127,12 +123,10 @@ static int conf_key_exists(void *scanner, char *item)
 {
     /* Find existing node in keys. */
     knot_dname_t *sample = knot_dname_new_from_str(item, strlen(item), 0);
-    char buf[512];
     conf_key_t* r = 0;
     WALK_LIST (r, new_config->keys) {
         if (knot_dname_compare(r->k.name, sample) == 0) {
-           snprintf(buf, sizeof(buf), "key '%s' is already defined", item);
-           cf_error(scanner, buf);
+           cf_error(scanner, "key '%s' is already defined", item);
 	   knot_dname_free(&sample);
            return 1;
         }
@@ -159,9 +153,7 @@ static int conf_key_add(void *scanner, knot_tsig_key_t **key, char *item)
         }
     }
 
-    char buf[512];
-    snprintf(buf, sizeof(buf), "key '%s' is not defined", item);
-    cf_error(scanner, buf);
+    cf_error(scanner, "key '%s' is not defined", item);
     knot_dname_free(&sample);
     return 1;
 }
@@ -196,7 +188,6 @@ static void conf_zone_start(void *scanner, char *name) {
    }
 
    /* Check domain name. */
-   char buf[512];
    knot_dname_t *dn = NULL;
    if (this_zone->name != NULL) {
       dn = knot_dname_new_from_str(this_zone->name, nlen, 0);
@@ -209,15 +200,14 @@ static void conf_zone_start(void *scanner, char *name) {
    } else {
      /* Check for duplicates. */
      if (hattrie_tryget(new_config->names, (const char*)dn->name, dn->size) != NULL) {
-           snprintf(buf, sizeof(buf), "zone '%s' is already present, "
-                                      "refusing to duplicate", this_zone->name);
+           cf_error(scanner, "zone '%s' is already present, refusing to "
+			     "duplicate", this_zone->name);
            knot_dname_free(&dn);
            free(this_zone->name);
            this_zone->name = NULL;
            /* Must not free, some versions of flex might continue after error and segfault.
             * free(this_zone); this_zone = NULL;
             */
-           cf_error(scanner, buf);
            return;
      }
 
@@ -238,11 +228,8 @@ static void conf_zone_start(void *scanner, char *name) {
 
 static int conf_mask(void* scanner, int nval, int prefixlen) {
     if (nval < 0 || nval > prefixlen) {
-        char buf[512];
-        snprintf(buf, sizeof(buf), "IPv%c subnet prefix '%d' is "
-                 "out of range <0,%d>",
+        cf_error(scanner, "IPv%c subnet prefix '%d' is out of range <0,%d>",
                  prefixlen == IPV4_PREFIXLEN ? '4' : '6', nval, prefixlen);
-        cf_error(scanner, buf);
         return prefixlen; /* single host */
     }
     return nval;
@@ -387,9 +374,7 @@ interfaces:
    INTERFACES '{'
  | interfaces interface_start '{' interface '}' {
    if (this_iface->address == 0) {
-     char buf[512];
-     snprintf(buf, sizeof(buf), "interface '%s' has no defined address", this_iface->name);
-     cf_error(scanner, buf);
+     cf_error(scanner, "interface '%s' has no defined address", this_iface->name);
    }
  }
  ;
@@ -415,7 +400,6 @@ system:
      }
  }
  | system USER TEXT ';' {
-     char buf[512];
      new_config->uid = new_config->gid = -1; // Invalidate
      char* dpos = strchr($3.t, '.'); // Find uid.gid format
      if (dpos != NULL) {
@@ -423,8 +407,7 @@ system:
         if (grp != NULL) {
           new_config->gid = grp->gr_gid;
         } else {
-          snprintf(buf, sizeof(buf), "invalid group name '%s'", dpos + 1);
-          cf_error(scanner, buf);
+          cf_error(scanner, "invalid group name '%s'", dpos + 1);
         }
         *dpos = '\0'; // Cut off
      }
@@ -432,8 +415,7 @@ system:
      if (pwd != NULL) {
        new_config->uid = pwd->pw_uid;
      } else {
-       snprintf(buf, sizeof(buf), "invalid user name '%s'", $3.t);
-       cf_error(scanner, buf);
+       cf_error(scanner, "invalid user name '%s'", $3.t);
      }
      
      free($3.t);
@@ -479,10 +461,8 @@ keys:
      if (fqdn != NULL && !conf_key_exists(scanner, fqdn)) {
          knot_dname_t *dname = knot_dname_new_from_str(fqdn, fqdnl, 0);
 	 if (!dname) {
-	     char buf[512];
-             snprintf(buf, sizeof(buf), "key name '%s' not in valid domain "
-	                                "name format", fqdn);
-             cf_error(scanner, buf);
+             cf_error(scanner, "key name '%s' not in valid domain name format",
+		      fqdn);
 	     free($4.t);
 	 } else {
              conf_key_t *k = malloc(sizeof(conf_key_t));
@@ -608,9 +588,7 @@ remotes:
    REMOTES '{'
  | remotes remote_start '{' remote '}' {
      if (this_remote->address == 0) {
-       char buf[512];
-       snprintf(buf, sizeof(buf), "remote '%s' has no defined address", this_remote->name);
-       cf_error(scanner, buf);
+       cf_error(scanner, "remote '%s' has no defined address", this_remote->name);
      }
    }
  ;
@@ -659,9 +637,7 @@ zone_acl:
 
       /* Append to list if found. */
       if (!found) {
-	 char buf[256];
-	 snprintf(buf, sizeof(buf), "remote '%s' is not defined", $2.t);
-	 cf_error(scanner, buf);
+	 cf_error(scanner, "remote '%s' is not defined", $2.t);
       } else {
 	 conf_remote_t *remote = malloc(sizeof(conf_remote_t));
 	 if (!remote) {
@@ -686,9 +662,7 @@ zone_start:
  | CONTROL    { conf_zone_start(scanner, strdup($1.t)); }
  | NUM '/' TEXT {
     if ($1.i < 0 || $1.i > 255) {
-        char buf[256] = "";
-        snprintf(buf, sizeof(buf), "rfc2317 origin prefix '%ld' out of bounds", $1.i);
-        cf_error(scanner, buf);
+        cf_error(scanner, "rfc2317 origin prefix '%ld' out of bounds", $1.i);
     }
     size_t len = 3 + 1 + strlen($3.t) + 1; /* <0,255> '/' rest */
     char *name = malloc(len * sizeof(char));
