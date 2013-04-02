@@ -507,6 +507,7 @@ conf_t *conf_new(const char* path)
 	c->ixfr_fslimit = -1;
 	c->uid = -1;
 	c->gid = -1;
+	c->rrl_slip = -1;
 	c->build_diffs = 0; /* Disable by default. */
 	
 	/* ACLs. */
