@@ -42,8 +42,9 @@ else.
   [ @code{max-conn-idle} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
   [ @code{max-conn-hs} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
   [ @code{max-conn-reply} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
+  [ @code{transfers} @kbd{integer}@code{;} ]
   [ @code{rate-limit} @kbd{integer}@code{;} ]
-  [ @code{rate-limit-size} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
+  [ @code{rate-limit-size} @kbd{integer}@code{;} ]
   [ @code{rate-limit-slip} @kbd{integer}@code{;} ]
 @code{@}}
 @end example
@@ -62,6 +63,7 @@ else.
 * max-conn-idle::               
 * max-conn-hs::                 
 * max-conn-reply::              
+* transfers::
 * rate-limit::
 * rate-limit-size::
 * rate-limit-slip::
@@ -183,6 +185,14 @@ that already made at least 1 meaningful query.
 @vindex max-conn-reply
 
 Maximum time to wait for a reply to an issued SOA query.
+
+@node transfers
+@subsubsection transfers
+@vindex transfers
+
+Maximum parallel transfers, including pending SOA queries.
+Lowest possible number is the number of CPUs.
+Default is 10.
 
 @node rate-limit
 @subsubsection rate-limit

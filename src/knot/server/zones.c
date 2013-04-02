@@ -3227,6 +3227,7 @@ int zones_schedule_refresh(knot_zone_t *zone)
 
 	/* Check XFR/IN master server. */
 	rcu_read_lock();
+	zd->xfr_in.state = XFR_IDLE;
 	if (zd->xfr_in.has_master) {
 
 		/* Schedule REFRESH timer. */
@@ -3234,12 +3235,13 @@ int zones_schedule_refresh(knot_zone_t *zone)
 		if (knot_zone_contents(zone)) {
 			refresh_tmr = zones_jitter(zones_soa_refresh(zone));
 		} else {
-			refresh_tmr = AXFR_BOOTSTRAP_RETRY * tls_rand();
+			refresh_tmr = zd->xfr_in.bootstrap_retry;
 		}
 		zd->xfr_in.timer = evsched_schedule_cb(sch, zones_refresh_ev,
 		                                       zone, refresh_tmr);
 		dbg_zones("zone: REFRESH '%s' set to %u\n",
 		          zd->conf->name, refresh_tmr);
+		zd->xfr_in.state = XFR_SCHED;
 	}
 	rcu_read_unlock();
 

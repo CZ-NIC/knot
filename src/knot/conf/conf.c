@@ -178,6 +178,9 @@ static int conf_process(conf_t *conf)
 	if (conf->rrl_size == 0) {
 		conf->rrl_size = CONFIG_RRL_SIZE;
 	}
+	
+	/* Default parallel transfers. */
+	if (conf->xfers <= 0) conf->xfers = CONFIG_XFERS;
 
 	// Postprocess zones
 	int ret = KNOT_EOK;
@@ -496,6 +499,7 @@ conf_t *conf_new(const char* path)
 	c->ixfr_fslimit = -1;
 	c->uid = -1;
 	c->gid = -1;
+	c->xfers = -1;
 	c->build_diffs = 0; /* Disable by default. */
 	
 	/* ACLs. */

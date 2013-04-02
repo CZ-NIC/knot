@@ -36,6 +36,13 @@
 
 struct xfrhandler_t;
 
+/*! \brief Transfer state. */
+enum xfrstate_t {
+	XFR_IDLE = 0,
+	XFR_SCHED,
+	XFR_PENDING,
+};
+
 /*!
  * \brief XFR worker structure.
  */

@@ -45,7 +45,6 @@
 
 /* Constants */
 #define XFR_CHUNKLEN 3 /*! Number of requests assigned in a single pass. */
-#define XFR_QLEN 10 /*! Maximum pending transfers. \todo Configurable? */
 #define XFR_SWEEP_INTERVAL 2 /*! [seconds] between sweeps. */
 #define XFR_BUFFER_SIZE 65535 /*! Do not change this - maximum value for UDP packet length. */
 #define XFR_MSG_DLTTR 9 /*! Index of letter differentiating IXFR/AXFR in log msg. */
@@ -473,12 +472,12 @@ static int xfr_task_process(xfrworker_t *w, knot_ns_xfr_t* rq, uint8_t *buf, siz
 	switch(rq->type) {
 	case XFR_TYPE_AIN:
 	case XFR_TYPE_IIN:
+		zd->xfr_in.state = XFR_PENDING;
 		rq->lookup_tree = hattrie_create();
 		if (ret != KNOT_EOK && ret != KNOT_EACCES) {
 			if (zd != NULL && !knot_zone_contents(rq->zone)) {
 				/* Reschedule request delay. */
-				int tmr_s = AXFR_BOOTSTRAP_RETRY;
-				tmr_s += (int)((tmr_s) * tls_rand());
+				int tmr_s = AXFR_BOOTSTRAP_RETRY * tls_rand();
 				event_t *ev = zd->xfr_in.timer;
 				if (ev) {
 					evsched_cancel(ev->parent, ev);
@@ -705,7 +704,6 @@ static int xfr_task_xfer(xfrworker_t *w, knot_ns_xfr_t *rq)
 			ret = xfr_task_finalize(w, rq);
 			
 			/* AXFR bootstrap timeout. */
-			/*! \todo This is probably unneccesary. */
 			rcu_read_lock();
 			zonedata_t *zd = (zonedata_t *)knot_zone_data(rq->zone);
 			if (ret != KNOT_EOK && !knot_zone_contents(rq->zone)) {
@@ -941,9 +939,9 @@ int xfr_worker(dthread_t *thread)
 	time_now(&next_sweep);
 	next_sweep.tv_sec += XFR_SWEEP_INTERVAL;
 
-	unsigned thread_capacity = XFR_QLEN / w->master->unit->size;
+	unsigned thread_capacity = conf()->xfers / w->master->unit->size;
 	w->pool.fds = fdset_new();
-	w->pool.t = ahtable_create_n(XFR_QLEN);
+	w->pool.t = ahtable_create_n(conf()->xfers);
 	w->pending = 0;
 
 	/* Accept requests. */
@@ -952,7 +950,7 @@ int xfr_worker(dthread_t *thread)
 	for (;;) {
 		
 		/* Populate pool with new requests. */
-		if (w->pending < thread_capacity) {
+		if (w->pending <= thread_capacity) {
 			pthread_mutex_lock(&xfr->mx);
 			unsigned was_pending = w->pending;
 			while (!EMPTY_LIST(xfr->queue)) { /* Take first request. */
@@ -1142,12 +1140,8 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *rq)
 	
 	rcu_read_lock();
 	int ret = knot_ns_init_xfr(ns, rq);
-
-	int xfr_failed = (ret != KNOT_EOK);
-	const char *errstr = knot_strerror(ret);
 	
-	// use the QNAME as the zone name to get names also for
-	// zones that are not in the server
+	/* Use the QNAME as the zone name. */
 	const knot_dname_t *qname = knot_packet_qname(rq->query);
 	if (qname != NULL) {
 		rq->zname = knot_dname_to_str(qname);
@@ -1156,20 +1150,15 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *rq)
 	}
 
 	/* Check requested zone. */
-	if (!xfr_failed) {
-		int zcheck_ret = zones_xfr_check_zone(rq, &rq->rcode);
-		xfr_failed = (zcheck_ret != KNOT_EOK);
-		errstr = knot_strerror(zcheck_ret);
+	if (ret == KNOT_EOK) {
+		ret = zones_xfr_check_zone(rq, &rq->rcode);
 	}
 
 	/* Check TSIG. */
 	char *keytag = NULL;
-	if (!xfr_failed && rq->tsig_key != NULL) {
+	if (ret == KNOT_EOK && rq->tsig_key != NULL) {
 		ret = xfr_check_tsig(rq, &rq->rcode, &keytag);
-		xfr_failed = (ret != KNOT_EOK);
-		errstr = knot_strerror(ret);
 	}
-	
 	if (xfr_task_setmsg(rq, keytag) != KNOT_EOK) {
 		rq->msg = strdup("XFR:");
 	}
@@ -1207,7 +1196,7 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *rq)
 	}
 	
 	/* Finally, answer AXFR/IXFR. */
-	if (!xfr_failed) {
+	if (ret == KNOT_EOK) {
 		switch(rq->type) {
 		case XFR_TYPE_AOUT:
 			ret = xfr_answer_axfr(ns, rq);
@@ -1219,19 +1208,16 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *rq)
 			ret = KNOT_ENOTSUP;
 			break;
 		}
-		
-		xfr_failed = (ret != KNOT_EOK);
-		errstr = knot_strerror(ret);
 	} else {
+		/*! \todo Sign with TSIG for some errors. */
 		knot_ns_error_response_from_query(ns, rq->query,  rq->rcode,
 		                                  rq->wire, &rq->wire_size);
-		/*! \todo Sign with TSIG for some errors. */
 		ret = rq->send(rq->session, &rq->addr, rq->wire, rq->wire_size);
 	}
 	
 	/* Check results. */
-	if (xfr_failed) {
-		log_server_notice("%s %s\n", rq->msg, errstr);
+	if (ret != KNOT_EOK) {
+		log_server_notice("%s %s\n", rq->msg, knot_strerror(ret));
 	} else {
 		log_server_info("%s Finished.\n", rq->msg);
 	}
@@ -1244,11 +1230,7 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *rq)
 	/* Free request. */
 	xfr_task_free(rq);
 	rcu_read_unlock();
-	if (xfr_failed) {
-		return KNOT_ERROR;
-	}
-	
-	return KNOT_EOK;
+	return ret;
 }
 
 knot_ns_xfr_t *xfr_task_create(knot_zone_t *z, int type, int flags)

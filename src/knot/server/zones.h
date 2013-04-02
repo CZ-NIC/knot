@@ -76,6 +76,7 @@ typedef struct zonedata_t
 		struct event_t *expire;   /*!< Timer for REFRESH. */
 		uint32_t bootstrap_retry; /*!< AXFR/IN bootstrap retry. */
 		int has_master;           /*!< True if it has master set. */
+		unsigned state;
 	} xfr_in;
 
 	/*! \brief Zone IXFR history. */

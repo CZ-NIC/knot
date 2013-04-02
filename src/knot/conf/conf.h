@@ -52,6 +52,7 @@
 #define CONFIG_IDLE_WD  60 /*!< [secs] of allowed inactivity between requests */
 #define CONFIG_RRL_SLIP 2 /*!< Default slip value. */
 #define CONFIG_RRL_SIZE 393241 /*!< Htable default size. */
+#define CONFIG_XFERS 10
 
 /*!
  * \brief Configuration for the interface
@@ -185,6 +186,7 @@ typedef struct conf_t {
 	int    rrl;      /*!< Rate limit (in responses per second). */
 	size_t rrl_size; /*!< Rate limit htable size. */
 	int    rrl_slip;  /*!< Rate limit SLIP. */
+	int    xfers;     /*!< Number of parallel transfers. */
 
 	/*
 	 * Log
