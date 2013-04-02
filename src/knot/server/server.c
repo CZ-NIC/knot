@@ -567,6 +567,7 @@ void server_destroy(server_t **server)
 	stat_static_gath_free();
 	knot_ns_destroy(&(*server)->nameserver);
 	evsched_delete(&(*server)->sched);
+	dt_delete(&(*server)->iosched);
 	rrl_destroy((*server)->rrl);
 	free(*server);
 	EVP_cleanup();
