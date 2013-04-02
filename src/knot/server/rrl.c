@@ -177,7 +177,7 @@ static int rrl_classify(char *dst, size_t maxlen, const sockaddr_t *a,
 	
 	/* Address (in network byteorder, adjust masks). */
 	uint64_t nb = 0;
-	if (a->family == AF_INET6) { /* Take the /56 prefix. */
+	if (sockaddr_family(a) == AF_INET6) { /* Take the /56 prefix. */
 		nb = *((uint64_t*)&a->addr6.sin6_addr) & RRL_V6_PREFIX;
 	} else {                     /* Take the /24 prefix */
 		nb = (uint32_t)a->addr4.sin_addr.s_addr & RRL_V4_PREFIX;
@@ -358,7 +358,7 @@ int rrl_setlocks(rrl_table_t *rrl, unsigned granularity)
 		return KNOT_ERROR;
 	}
 	
-	dbg_rrl("%s: set granularity to '%zu'\n", __func__, granularity);
+	dbg_rrl("%s: set granularity to '%u'\n", __func__, granularity);
 	return KNOT_EOK;
 }
 

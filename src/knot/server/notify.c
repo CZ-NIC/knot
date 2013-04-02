@@ -289,59 +289,17 @@ int notify_process_request(knot_nameserver_t *ns,
 
 /*----------------------------------------------------------------------------*/
 
-int notify_process_response(knot_nameserver_t *nameserver,
-                            knot_packet_t *notify,
-                            sockaddr_t *from,
-                            uint8_t *buffer, size_t *size)
+int notify_process_response(knot_packet_t *notify, int msgid)
 {
-	if (nameserver == NULL || notify == NULL || from == NULL 
-	    || buffer == NULL || size == NULL) {
+	if (!notify) {
 		return KNOT_EINVAL;
 	}
 
-	/* Assert no response size. */
-	*size = 0;
-
-	/* Find matching zone. */
-	rcu_read_lock();
-	const knot_dname_t *zone_name = knot_packet_qname(notify);
-	knot_zone_t *zone = knot_zonedb_find_zone(nameserver->zone_db,
-	                                              zone_name);
-	if (!zone) {
-		rcu_read_unlock();
-		return KNOT_ENOENT;
-	}
-	if (!knot_zone_data(zone)) {
-		rcu_read_unlock();
-		return KNOT_ENOENT;
-	}
-
 	/* Match ID against awaited. */
-	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
-	pthread_mutex_lock(&zd->lock);
 	uint16_t pkt_id = knot_packet_id(notify);
-	notify_ev_t *ev = 0, *match = 0;
-	WALK_LIST(ev, zd->notify_pending) {
-		if ((int)pkt_id == ev->msgid) {
-			match = ev;
-			break;
-		}
-	}
-
-	/* Found waiting NOTIFY query? */
-	if (!match) {
-		rcu_read_unlock();
-		pthread_mutex_unlock(&zd->lock);
+	if (pkt_id != msgid) {
 		return KNOT_ERROR;
 	}
-
-	/* NOTIFY is now finished. */
-	zones_cancel_notify(zd, match);
-
-	/* Zone was removed/reloaded. */
-	pthread_mutex_unlock(&zd->lock);
-	
-	rcu_read_unlock();
 
 	return KNOT_EOK;
 }

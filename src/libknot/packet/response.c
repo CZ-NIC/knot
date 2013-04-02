@@ -696,7 +696,9 @@ int knot_response_init_from_query(knot_packet_t *response,
 	}
 
 	assert(response->max_size >= to_copy);
-	memcpy(response->wireformat, query->wireformat, to_copy);
+	if (response->wireformat != query->wireformat) {
+		memcpy(response->wireformat, query->wireformat, to_copy);
+	}
 	response->size = to_copy;
 
 	// set the qr bit to 1

@@ -299,6 +299,7 @@ static int conf_mask(void* scanner, int nval, int prefixlen) {
 %token <tok> RATE_LIMIT
 %token <tok> RATE_LIMIT_SIZE
 %token <tok> RATE_LIMIT_SLIP
+%token <tok> TRANSFERS
 
 %token <tok> INTERFACES ADDRESS PORT
 %token <tok> IPA
@@ -444,6 +445,7 @@ system:
  | system RATE_LIMIT_SIZE SIZE ';' { new_config->rrl_size = $3.l; }
  | system RATE_LIMIT_SIZE NUM ';' { new_config->rrl_size = $3.i; }
  | system RATE_LIMIT_SLIP NUM ';' { new_config->rrl_slip = $3.i; }
+ | system TRANSFERS NUM ';' { new_config->xfers = $3.i; }
  ;
 
 keys:

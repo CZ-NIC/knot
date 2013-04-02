@@ -32,17 +32,27 @@
 #include "common/evqueue.h"
 #include "common/fdset.h"
 #include "common/skip-list.h"
+#include "common/hattrie/ahtable.h"
 
 struct xfrhandler_t;
+
+/*! \brief Transfer state. */
+enum xfrstate_t {
+	XFR_IDLE = 0,
+	XFR_SCHED,
+	XFR_PENDING,
+};
 
 /*!
  * \brief XFR worker structure.
  */
 typedef struct xfrworker_t
 {
-	knot_nameserver_t *ns;  /*!< \brief Pointer to nameserver.*/
-	evqueue_t          *q;  /*!< \brief Shared XFR requests queue.*/
-	fdset_t        *fdset; /*!< \brief File descriptor set. */
+	struct {
+		ahtable_t *t;
+		fdset_t   *fds;
+	} pool;
+	unsigned pending;
 	struct xfrhandler_t *master; /*! \brief Worker master. */
 } xfrworker_t;
 
@@ -51,13 +61,11 @@ typedef struct xfrworker_t
  */
 typedef struct xfrhandler_t
 {
+	list queue;
+	pthread_mutex_t mx; /*!< \brief Tasks synchronisation. */
+	knot_nameserver_t *ns;
 	dt_unit_t       *unit;  /*!< \brief Threading unit. */
-	xfrworker_t **workers;  /*!< \brief Workers. */
-	skip_list_t *tasks; /*!< \brief Pending tasks. */
-	pthread_mutex_t tasks_mx; /*!< \brief Tasks synchronisation. */
-	void (*interrupt)(struct xfrhandler_t *h); /*!< Interrupt handler. */
-	unsigned rr; /*!< \brief Round-Robin counter. */
-	pthread_mutex_t rr_mx; /*!< \brief RR mutex. */
+	xfrworker_t workers[];  /*!< \brief Workers. */
 } xfrhandler_t;
 
 /*!
@@ -79,71 +87,57 @@ xfrhandler_t *xfr_create(size_t thrcount, knot_nameserver_t *ns);
  *
  * \warning Threading unit must be stopped and joined.
  *
- * \param handler XFR handler.
+ * \param xfr XFR handler.
  *
  * \retval KNOT_EOK on success.
  * \retval KNOT_EINVAL on NULL handler.
  * \retval KNOT_ERROR on error.
  */
-int xfr_free(xfrhandler_t *handler);
+int xfr_free(xfrhandler_t *xfr);
 
 /*!
  * \brief Start XFR handler.
  *
- * \param handler XFR handler.
+ * \param xfr XFR handler.
  *
  * \retval KNOT_EOK on success.
  * \retval KNOT_ERROR on error.
  */
-static inline int xfr_start(xfrhandler_t *handler) {
-	return dt_start(handler->unit);
+static inline int xfr_start(xfrhandler_t *xfr) {
+	return dt_start(xfr->unit);
 }
 
 /*!
  * \brief Stop XFR handler.
  *
- * \param handler XFR handler.
+ * \param xfr XFR handler.
  *
  * \retval KNOT_EOK on success.
  * \retval KNOT_ERROR on error.
  */
-int xfr_stop(xfrhandler_t *handler);
+int xfr_stop(xfrhandler_t *xfr);
 
 /*!
  * \brief Wait for XFR handler to finish.
  *
- * \param handler XFR handler.
+ * \param xfr XFR handler.
  *
  * \retval KNOT_EOK on success.
  * \retval KNOT_ERROR on error.
  */
-int xfr_join(xfrhandler_t *handler);
-
-/*!
- * \brief Prepare XFR request.
- *
- * \param r XFR request.
- * \param type Request type.
- * \param flags Request flags.
- * \param pkt Query packet or NULL.
- *
- * \retval KNOT_EOK
- * \retval KNOT_ENOMEM
- * \retval KNOT_EINVAL
- */
-int xfr_request_init(knot_ns_xfr_t *r, int type, int flags, knot_packet_t *pkt);
+int xfr_join(xfrhandler_t *xfr);
 
 /*!
  * \brief Enqueue XFR request.
  *
- * \param handler XFR handler instance.
+ * \param xfr XFR handler instance.
  * \param req XFR request.
  *
  * \retval KNOT_EOK on success.
  * \retval KNOT_EINVAL on NULL handler or request.
  * \retval KNOT_ERROR on error.
  */
-int xfr_request(xfrhandler_t *handler, knot_ns_xfr_t *req);
+int xfr_enqueue(xfrhandler_t *xfr, knot_ns_xfr_t *rq);
 
 /*!
  * \brief Answer XFR query.
@@ -155,31 +149,35 @@ int xfr_request(xfrhandler_t *handler, knot_ns_xfr_t *req);
  * \retval KNOT_EINVAL on NULL handler or request.
  * \retval KNOT_ERROR on error.
  */
-int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *req);
+int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *rq);
 
 /*!
- * \brief XFR master runnable.
+ * \brief Prepare XFR request.
  *
- * Processes incoming AXFR/IXFR requests asynchonously.
- * When no thread is available at the moment, request is enqueued.
+ * \param z Related zone.
+ * \param type Request type.
+ * \param flags Request flags.
  *
- * \param thread Associated thread from DThreads unit.
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL invalid parameters.
+ * \return new request
  */
-int xfr_worker(dthread_t *thread);
+knot_ns_xfr_t *xfr_task_create(knot_zone_t *z, int type, int flags);
 
 /*!
- * \brief Prepare TSIG for XFR.
- * \param xfr XFR request.
- * \param key Used TSIG key.
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on NULL parameters.
- * \retval KNOT_ENOMEM when out of memory.
+ * \brief Free XFR request.
+ * \param rq Request.
+ * \return KNOT_EOK or KNOT_EINVAL
  */
-int xfr_prepare_tsig(knot_ns_xfr_t *xfr, knot_tsig_key_t *key);
+int xfr_task_free(knot_ns_xfr_t *rq);
+
+/*!
+ * \brief Set XFR request destination/source address.
+ *
+ * \param rq XFR request,
+ * \param to Destination address.
+ * \param from Source address.
+ * \return 
+ */
+int xfr_task_setaddr(knot_ns_xfr_t *rq, sockaddr_t *to, sockaddr_t *from);
 
 /*!
  * \brief Return formatted string of the remote as 'ip@port key $key'.

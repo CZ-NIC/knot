@@ -44,6 +44,7 @@
 #include "tsig.h"
 #include "packet/packet.h"
 #include "common/sockaddr.h"
+#include "common/lists.h"
 #include "updates/changesets.h"
 
 struct conf_t;
@@ -79,6 +80,7 @@ typedef int (*xfr_callback_t)(int session, sockaddr_t *addr,
  * Used for communication with XFR handler.
  */
 typedef struct knot_ns_xfr {
+	node n;
 	int type;
 	int flags;
 	sockaddr_t addr, saddr;
@@ -86,8 +88,8 @@ typedef struct knot_ns_xfr {
 	knot_packet_t *response;
 	knot_rcode_t rcode;
 	xfr_callback_t send;
+	xfr_callback_t recv;
 	int session;
-	int session_closed;
 	
 	/*!
 	 * XFR-out: Output buffer.
@@ -100,12 +102,12 @@ typedef struct knot_ns_xfr {
 	 * XFR-in: Size of the current packet. 
 	 */
 	size_t wire_size;
+	size_t wire_maxlen;
 	void *data;
 	knot_zone_t *zone;
 	char* zname;
-	void *owner;
 	knot_zone_contents_t *new_contents;
-	char *msgpref;
+	char *msg;
 	
 	/*! \note [TSIG] TSIG fields */
 	/*! \brief Message(s) to sign in wireformat. 
@@ -163,14 +165,14 @@ typedef enum knot_ns_transport {
  */
 typedef enum knot_ns_xfr_type_t {
 	/* DNS events. */
-	XFR_TYPE_AIN = 1 << 0,    /*!< AXFR-IN request (start transfer). */
-	XFR_TYPE_AOUT= 1 << 1,    /*!< AXFR-OUT request (incoming transfer). */
-	XFR_TYPE_IIN = 1 << 2,    /*!< IXFR-IN request (start transfer). */
-	XFR_TYPE_IOUT = 1 << 3,   /*!< IXFR-OUT request (incoming transfer). */
-	XFR_TYPE_SOA = 1 << 4,    /*!< Pending SOA request. */
-	XFR_TYPE_NOTIFY = 1 << 5, /*!< Pending NOTIFY query. */
-	XFR_TYPE_UPDATE = 1 << 6, /*!< UPDATE request (incoming UPDATE). */
-	XFR_TYPE_FORWARD = 1 << 7 /*!< UPDATE forward request. */
+	XFR_TYPE_AIN = 0, /*!< AXFR-IN request (start transfer). */
+	XFR_TYPE_AOUT,    /*!< AXFR-OUT request (incoming transfer). */
+	XFR_TYPE_IIN,     /*!< IXFR-IN request (start transfer). */
+	XFR_TYPE_IOUT,    /*!< IXFR-OUT request (incoming transfer). */
+	XFR_TYPE_SOA,     /*!< Pending SOA request. */
+	XFR_TYPE_NOTIFY,  /*!< Pending NOTIFY query. */
+	XFR_TYPE_UPDATE,  /*!< UPDATE request (incoming UPDATE). */
+	XFR_TYPE_FORWARD  /*!< UPDATE forward request. */
 } knot_ns_xfr_type_t;
 
 /*----------------------------------------------------------------------------*/
