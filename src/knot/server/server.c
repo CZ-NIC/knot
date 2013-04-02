@@ -421,8 +421,10 @@ int server_start(server_t *s)
 	/* Start I/O handlers. */
 	int ret = KNOT_EOK;
 	s->state |= ServerRunning;
-	for (unsigned i = 0; i < IO_COUNT; ++i) {
-		ret = dt_start(s->h[i].unit);
+	if (s->tu_size > 0) {
+		for (unsigned i = 0; i < IO_COUNT; ++i) {
+			ret = dt_start(s->h[i].unit);
+		}
 	}
 	
 
@@ -437,6 +439,10 @@ int server_wait(server_t *s)
 	
 	xfr_join(s->xfr);
 	dt_join(s->iosched);
+	if (s->tu_size == 0) {
+		return KNOT_EOK;
+	}
+
 	int ret = KNOT_EOK;
 	for (unsigned i = 0; i < IO_COUNT; ++i) {
 		if ((ret = server_free_handler(s->h + i)) != KNOT_EOK) {

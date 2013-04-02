@@ -939,9 +939,13 @@ int xfr_worker(dthread_t *thread)
 	time_now(&next_sweep);
 	next_sweep.tv_sec += XFR_SWEEP_INTERVAL;
 
-	unsigned thread_capacity = conf()->xfers / w->master->unit->size;
+	int limit = XFR_CHUNKLEN * 2;
+	if (conf() && conf()->xfers > 0) {
+		limit = conf()->xfers;
+	}
+	unsigned thread_capacity = limit / w->master->unit->size;
 	w->pool.fds = fdset_new();
-	w->pool.t = ahtable_create_n(conf()->xfers);
+	w->pool.t = ahtable_create_n(limit);
 	w->pending = 0;
 
 	/* Accept requests. */

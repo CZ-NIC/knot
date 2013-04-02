@@ -645,7 +645,7 @@ int dt_start(dt_unit_t *unit)
 	dt_unit_unlock(unit);
 	pthread_cond_broadcast(&unit->_notify);
 	pthread_mutex_unlock(&unit->_notify_mx);
-	return 0;
+	return KNOT_EOK;
 }
 
 int dt_start_id(dthread_t *thread)
