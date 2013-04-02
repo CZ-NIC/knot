@@ -45,9 +45,6 @@
 struct dthread_t;
 struct dt_unit_t;
 
-/* Constants. */
-#define DTHREADS_STACKSIZE (1024*1024) /* 1M lightweight stack size. */
-
 /*!
  * \brief Thread state enumeration.
  */
@@ -144,28 +141,6 @@ dt_unit_t *dt_create_coherent(int count, runnable_t runnable, void *data);
 void dt_delete(dt_unit_t **unit);
 
 /*!
- * \brief Resize unit to given number.
- *
- * \note Newly created dthreads will have no runnable or data, their state
- *       will be ThreadJoined (that means no thread will be physically created
- *       until the next dt_start()).
- *
- * \warning Be careful when shrinking unit, joined and idle threads are
- *          reclaimed first, but it may kill your active threads
- *          as a last resort.
- *          Threads will stop at their nearest cancellation point,
- *          so this is potentially an expensive and blocking operation.
- *
- * \param unit Unit to be resized.
- * \param size New unit size.
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
- * \retval KNOT_ENOMEM out of memory error.
- */
-int dt_resize(dt_unit_t *unit, int size);
-
-/*!
  * \brief Start all threads in selected unit.
  *
  * \param unit Unit to be started.
@@ -234,21 +209,6 @@ int dt_stop_id(dthread_t *thread);
  * \retval KNOT_EINVAL on invalid parameters.
  */
 int dt_stop(dt_unit_t *unit);
-
-/*!
- * \brief Modify thread priority.
- *
- * \param thread Target thread instance.
- * \param prio Requested priority (positive integer, default is 0).
- *
- * \warning Thread priority setting is disabled as the compatible scheduler
- *          has significant performance deficiencies (SCHED_OTHER).
- *          (issue #1809)
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
- */
-//int dt_setprio(dthread_t *thread, int prio);
 
 /*!
  * \brief Set thread affinity to masked CPU's.
