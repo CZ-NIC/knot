@@ -617,6 +617,7 @@ static int xfr_task_resp(xfrworker_t *w, knot_ns_xfr_t *rq)
 		if (ret == KNOT_EOK) {
 			log_server_info("%s Forwarded response.\n", rq->msg);
 		}
+		break;
 	default:
 		ret = KNOT_EINVAL;
 		break;
