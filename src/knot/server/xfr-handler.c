@@ -396,6 +396,7 @@ static int xfr_task_start(knot_ns_xfr_t *rq)
 		break;
 	case XFR_TYPE_FORWARD:
 		ret = knot_ns_create_forward_query(rq->query, rq->wire, &rq->wire_size);
+		break;
 	default:
 		ret = KNOT_EINVAL;
 		break;
@@ -440,7 +441,7 @@ static int xfr_task_process(xfrworker_t *w, knot_ns_xfr_t* rq, uint8_t *buf, siz
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(rq->zone);
 	
 	/* Check if the zone is not discarded. */
-	if (knot_zone_flags(rq->zone) & KNOT_ZONE_DISCARDED) {
+	if (!zd || knot_zone_flags(rq->zone) & KNOT_ZONE_DISCARDED) {
 		dbg_xfr_verb("xfr: request on a discarded zone, ignoring\n");
 		rcu_read_unlock();
 		return KNOT_EINVAL;
@@ -616,7 +617,6 @@ static int xfr_task_resp(xfrworker_t *w, knot_ns_xfr_t *rq)
 		if (ret == KNOT_EOK) {
 			log_server_info("%s Forwarded response.\n", rq->msg);
 		}
-		break;
 	default:
 		ret = KNOT_EINVAL;
 		break;
@@ -1108,8 +1108,7 @@ int xfr_free(xfrhandler_t *xfr)
 int xfr_stop(xfrhandler_t *xfr)
 {
 	xfr_enqueue(xfr, NULL);
-	dt_stop(xfr->unit);
-	return KNOT_EOK;
+	return dt_stop(xfr->unit);
 }
 
 int xfr_join(xfrhandler_t *xfr) {
