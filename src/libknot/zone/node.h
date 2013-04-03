@@ -74,7 +74,7 @@ struct knot_node {
 	
 	unsigned int children;
 
-	unsigned short rrset_count; /*!< Number of RRSets stored in the node. */
+	uint16_t rrset_count; /*!< Number of RRSets stored in the node. */
 
 	/*!
 	 * \brief Various flags.

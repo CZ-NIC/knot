@@ -170,17 +170,17 @@ int knot_node_add_rrset_no_merge(knot_node_t *node, knot_rrset_t *rrset)
 
 int knot_node_add_rrset_replace(knot_node_t *node, knot_rrset_t *rrset)
 {
-        if (node == NULL) {
-            return KNOT_EINVAL;
-        }
-        
-        for (unsigned i = 0; i < node->rrset_count; ++i) {
-            if (node->rrset_tree[i]->type == rrset->type) {
-		    node->rrset_tree[i] = rrset;
-            }
-        }
-        
-        return knot_node_add_rrset_no_merge(node, rrset);
+	if (node == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	for (uint16_t i = 0; i < node->rrset_count; ++i) {
+		if (node->rrset_tree[i]->type == rrset->type) {
+		node->rrset_tree[i] = rrset;
+		}
+	}
+
+	return knot_node_add_rrset_no_merge(node, rrset);
 }
 
 int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset)
@@ -189,7 +189,7 @@ int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset)
 		return KNOT_EINVAL;
 	}
 	
-	for (unsigned i = 0; i < node->rrset_count; ++i) {
+	for (uint16_t i = 0; i < node->rrset_count; ++i) {
 		if (node->rrset_tree[i]->type == rrset->type) {
 			int merged, deleted_rrs;
 			int ret = knot_rrset_merge_no_dupl(node->rrset_tree[i],
@@ -224,7 +224,7 @@ knot_rrset_t *knot_node_get_rrset(const knot_node_t *node, uint16_t type)
 	}
 	
 	knot_rrset_t **rrs = node->rrset_tree;
-	for (unsigned i = 0; i < node->rrset_count; ++i) {
+	for (uint16_t i = 0; i < node->rrset_count; ++i) {
 		if (rrs[i]->type == type) {
 			return rrs[i];
 		}
@@ -241,7 +241,7 @@ knot_rrset_t *knot_node_remove_rrset(knot_node_t *node, uint16_t type)
 		return NULL;
 	}
 
-	unsigned i = 0;
+	uint16_t i = 0;
 	knot_rrset_t *ret = NULL;
 	knot_rrset_t **rrs = node->rrset_tree;
 	for (; i < node->rrset_count && ret == NULL; ++i) {
@@ -252,7 +252,6 @@ knot_rrset_t *knot_node_remove_rrset(knot_node_t *node, uint16_t type)
 		}
 	}
 	
-
 	/*!< \todo I've added this to fix a leak, but probably this wasn't the cause. Remove once tests are availabe. */	
 	void *tmp = realloc(node->rrset_tree,
 	                    node->rrset_count * sizeof(knot_rrset_t *));
@@ -690,7 +689,7 @@ void knot_node_free_rrsets(knot_node_t *node, int free_rdata_dnames)
 	}
 
 	knot_rrset_t **rrs = node->rrset_tree;
-	for (unsigned i = 0; i < node->rrset_count; ++i) {
+	for (uint16_t i = 0; i < node->rrset_count; ++i) {
 		knot_rrset_deep_free(&(rrs[i]), 1, free_rdata_dnames);
 	}
 }

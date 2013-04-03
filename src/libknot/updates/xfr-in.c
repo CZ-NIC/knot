@@ -3291,7 +3291,7 @@ static void xfrin_switch_node_in_node(knot_node_t **node, void *data)
 	}
 
 	knot_rrset_t **rr_array = knot_node_get_rrsets_no_copy(*node);
-	for (int i = 0; i < (*node)->rrset_count; ++i) {
+	for (uint16_t i = 0; i < (*node)->rrset_count; ++i) {
 		xfrin_switch_node_in_rrset(rr_array[i]);
 	}
 }

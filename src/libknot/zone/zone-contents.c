@@ -2747,8 +2747,7 @@ static void find_dname_in_rdata(knot_node_t **tnode, void *data)
 		return;
 	}
 
-	
-	for (unsigned short i = 0; i < (*tnode)->rrset_count; i++) {
+	for (uint16_t i = 0; i < (*tnode)->rrset_count; i++) {
 		knot_dname_t **dname = NULL;
 		while ((dname = knot_rrset_get_next_dname(rrsets[i], dname))) {
 			if (*dname == in_data->dname) {

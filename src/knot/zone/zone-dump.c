@@ -57,7 +57,7 @@ static void apex_node_dump_text(knot_node_t *node, dump_params_t *params)
 	const knot_rrset_t **rrsets = knot_node_rrsets(node);
 
 	// Dump other records.
-	for (int i = 0; i < node->rrset_count; i++) {
+	for (uint16_t i = 0; i < node->rrset_count; i++) {
 		if (rrsets[i]->type != KNOT_RRTYPE_SOA) {
 			if (knot_rrset_txt_dump(rrsets[i], params->buf,
 			                        params->buflen, params->style)
@@ -93,7 +93,7 @@ static void node_dump_text(knot_node_t *node, void *data)
 	const knot_rrset_t **rrsets = knot_node_rrsets(node);
 
 	// Dump non-apex rrsets.
-	for (int i = 0; i < node->rrset_count; i++) {
+	for (uint16_t i = 0; i < node->rrset_count; i++) {
 		if (knot_rrset_txt_dump(rrsets[i], params->buf, params->buflen,
 		                        params->style) < 0) {
 			params->ret = KNOT_ENOMEM;
