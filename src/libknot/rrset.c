@@ -163,18 +163,11 @@ dbg_rrset_exec_detail(
 static size_t rrset_rdata_remainder_size(const knot_rrset_t *rrset,
                                          size_t offset, size_t pos)
 {
-	/* [code-review] This does the same thing. */
 	assert(rrset_rdata_item_size(rrset, pos) != 0);
 	
 	size_t ret = rrset_rdata_item_size(rrset, pos) - offset;
 	assert(ret <= rrset_rdata_size_total(rrset));
 	return ret;
-//	if (pos == 0) {
-//		return rrset->rdata_indices[1] - offset;
-//	} else {
-//		return (rrset->rdata_indices[pos + 1] -
-//		        rrset->rdata_indices[pos]) - offset;
-//	}
 }
 
 /* [code-review] Please document at least parameters & return values. */
@@ -192,7 +185,7 @@ static int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
 	const rdata_descriptor_t *desc = get_rdata_descriptor(rrset1->type);
 	int cmp = 0;
 	size_t offset = 0;
-
+	
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
 		if (descriptor_item_is_dname(desc->block_types[i])) {
 			knot_dname_t *dname1 = NULL;
@@ -1068,7 +1061,8 @@ int knot_rrset_compare_rdata(const knot_rrset_t *r1, const knot_rrset_t *r2)
 
 int knot_rrset_rdata_equal(const knot_rrset_t *r1, const knot_rrset_t *r2)
 {
-	if (r1 == NULL || r2 == NULL ||( r1->type != r2->type)) {
+	if (r1 == NULL || r2 == NULL ||( r1->type != r2->type) ||
+	                r1->rdata_count == 0 || r2->rdata_count == 0) {
 		return KNOT_EINVAL;
 	}
 
@@ -1077,7 +1071,7 @@ int knot_rrset_rdata_equal(const knot_rrset_t *r1, const knot_rrset_t *r2)
 	if (desc == NULL) {
 		return KNOT_EINVAL;
 	}
-
+	
 	// compare RDATA sets (order is not significant)
 
 	// find all RDATA from r1 in r2
@@ -1097,7 +1091,7 @@ int knot_rrset_rdata_equal(const knot_rrset_t *r1, const knot_rrset_t *r2)
 	for (uint16_t i = 0; i < r2->rdata_count; i++) {
 		found = 0;
 		for (uint16_t j = 0; j < r1->rdata_count && !found; j++) {
-			found = !rrset_rdata_compare_one(r1, r2, i, j);
+			found = !rrset_rdata_compare_one(r1, r2, j, i);
 		}
 	}
 	
