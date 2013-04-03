@@ -1120,14 +1120,6 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 		zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 		assert(zd != NULL);
 		
-		/* Log bootstrapped zone. */
-		if (is_bootstrapped) {
-			log_server_info("Will attempt to bootstrap zone"
-			                " %s from AXFR master in %us.\n",
-			                z->name,
-			                zd->xfr_in.bootstrap_retry / 1000);
-		}
-
 		/* Update refs. */
 		if (zd->conf != z) {
 			conf_free_zone(zd->conf);
