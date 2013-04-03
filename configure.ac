@@ -15,6 +15,7 @@ m4_pattern_allow([AM_PROG_AR]) # for automake 1.12
 AM_PROG_AR
 
 # Initialize libtool
+AC_DISABLE_STATIC
 AC_PROG_LIBTOOL
 LT_INIT
 
