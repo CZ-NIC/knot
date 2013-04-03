@@ -38,7 +38,5 @@ done
 
 if [ $# -eq 0 ]; then
 	echo "\nFinished"
-else
-	return 0
 fi
 
