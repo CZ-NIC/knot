@@ -169,6 +169,13 @@ static void create_test_dnames()
 	}
 }
 
+static void cleanup_test_dnames()
+{
+	for (int i = 0; i < TEST_DNAME_COUNT; i++) {
+		knot_dname_free(&test_dnames[i]);
+	}
+}
+
 static void create_test_rdata()
 {
 	/* NS, MX and MINFO types need init. */
@@ -1131,7 +1138,6 @@ static int test_rrset_compare()
 	if (knot_rrset_compare(rrset1, rrset2,
 	                       KNOT_RRSET_COMPARE_HEADER) <= 0) {
 		diag("Wrong RRSet comparison, should be 0.\n");
-		knot_rrset_deep_free(&rrset2, 1, 1);
 		return 0;
 	}
 	
@@ -1158,10 +1164,8 @@ static int test_rrset_equal()
 	}
 	
 	/* Create equal RRSets. */
-	knot_rrset_t *rrs1 = NULL;
-	knot_rrset_deep_copy(&test_rrset_array[TEST_RRSET_A_GT].rrset, &rrs1, 1);
-	knot_rrset_t *rrs2 = NULL;
-	knot_rrset_deep_copy(&test_rrset_array[TEST_RRSET_A_GT].rrset, &rrs2, 1);
+	knot_rrset_t *rrs1 = &test_rrset_array[TEST_RRSET_A_GT].rrset;
+	knot_rrset_t *rrs2 = &test_rrset_array[TEST_RRSET_A_GT].rrset;
 	/* Test header comparison. */
 	ret = knot_rrset_equal(rrs1, rrs2, KNOT_RRSET_COMPARE_HEADER);
 	if (!ret) {
@@ -1186,21 +1190,18 @@ static int test_rrset_equal()
 	rrs2->rclass = KNOT_CLASS_IN;
 	
 	/* Test whole comparison. */
-        ret = knot_rrset_equal(rrs1, rrs2, KNOT_RRSET_COMPARE_WHOLE);
-        if (!ret) {
-            diag("Whole comparison failed (Same RRSets).\n");
-            return 0;
-        }
+	ret = knot_rrset_equal(rrs1, rrs2, KNOT_RRSET_COMPARE_WHOLE);
+	if (!ret) {
+		diag("Whole comparison failed (Same RRSets).\n");
+		return 0;
+	}
 	
-	knot_rrset_deep_free(&rrs2, 1, 1);
-	knot_rrset_deep_copy(&test_rrset_array[TEST_RRSET_A_LESS].rrset, &rrs2, 1);
-        ret = knot_rrset_equal(rrs1, rrs2, KNOT_RRSET_COMPARE_WHOLE);
-        if (ret) {
-            diag("Whole comparison failed (Different RRSets).\n");
-            return 0;
-        }
-	knot_rrset_deep_free(&rrs1, 1, 1);
-	knot_rrset_deep_free(&rrs2, 1, 1);
+	rrs2 = &test_rrset_array[TEST_RRSET_A_LESS].rrset;
+	ret = knot_rrset_equal(rrs1, rrs2, KNOT_RRSET_COMPARE_WHOLE);
+	if (ret) {
+		diag("Whole comparison failed (Different RRSets).\n");
+		return 0;
+	}
 	
 	return 1;
 }
@@ -1259,7 +1260,7 @@ static int test_rrset_next_dname()
 	rrset = &test_rrset_array[TEST_RRSET_MX_BIN_GT].rrset;
 	dname = NULL;
 	dname = knot_rrset_get_next_dname(rrset, dname);
-	if (knot_dname_compare_non_canon(*dname, test_dnames[2])) {
+	if (dname == NULL || knot_dname_compare_non_canon(*dname, test_dnames[2])) {
 		diag("Got wrong DNAME from NS RDATA. on index %d\n", i);
 		return 0;
 	}
@@ -1282,6 +1283,7 @@ static int test_rrset_next_dname()
 	
 	if (i != 8) {
 		diag("Not all DNAMEs were traversed (%d).\n", i);
+		knot_rrset_deep_free(&rrset, 1, 1);
 		return 0;
 	}
 	
@@ -1292,7 +1294,7 @@ static int test_rrset_next_dname()
 		if (*dname_read != test_dnames[i]) {
 			diag("Rewriting of DNAMEs in RDATA was "
 			     "not successful.\n");
-			knot_rrset_deep_free(&rrset, 1, 1);
+			knot_rrset_deep_free(&rrset, 1, 0);
 			return 0;
 		}
 		i++;
@@ -1300,8 +1302,11 @@ static int test_rrset_next_dname()
 	
 	if (i != 8) {
 		diag("Not all DNAMEs were traversed (%d).\n", i);
+		knot_rrset_deep_free(&rrset, 1, 0);
 		return 0;
 	}
+	
+	knot_rrset_deep_free(&rrset, 1, 0);
 	
 	return 1;
 }
@@ -1341,8 +1346,7 @@ static int test_rrset_find_pos()
 	knot_rrset_rdata_reset(rrset_find_in);
 	rdata = knot_rrset_create_rdata(rrset_find_in, 10);
 	memcpy(rdata, mock_data ,10);
-	knot_rrset_dump(rrset_find_in);
-	ret = knot_rrset_find_rr_pos(rrset_source, rrset_find_in, 1, &rr_pos);
+	ret = knot_rrset_find_rr_pos(rrset_source, rrset_find_in, 0, &rr_pos);
 	if (ret != KNOT_EOK) {
 		diag("RR was not found, even though it should have been.");
 		return 0;
@@ -1392,9 +1396,9 @@ static int test_rrset_remove_rr()
 	knot_rrset_dump(rrset_source);
 	diag("Destinantion\n");
 	knot_rrset_dump(rrset_dest);
-
+	
 	/* Only one RR within RRSet, needs to be the same. */
-	if (knot_rrset_equal(rrset_source, returned_rr,
+	if (!knot_rrset_equal(rrset_source, returned_rr,
 	                     KNOT_RRSET_COMPARE_WHOLE)) {
 		diag("Got wrong data in return rrset.");
 		knot_rrset_deep_free(&rrset_source, 1, 1);
@@ -1492,6 +1496,8 @@ static int knot_rrset_tests_run(int argc, char *argv[])
 	res = test_rrset_find_pos();
 	ok(res, "rrset: find pos");
 	res_final *= res;
+	
+	cleanup_test_dnames();
 	
 	return res_final;
 }
