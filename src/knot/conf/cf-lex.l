@@ -74,6 +74,7 @@ storage         { lval.t = yytext; return STORAGE; }
 key             { lval.t = yytext; return KEY; }
 keys            { lval.t = yytext; return KEYS; }
 remotes         { lval.t = yytext; return REMOTES; }
+groups          { lval.t = yytext; return GROUPS; }
 
 zones           { lval.t = yytext; return ZONES; }
 file            { lval.t = yytext; return FILENAME; }

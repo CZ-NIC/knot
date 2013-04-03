@@ -83,6 +83,25 @@ typedef struct conf_remote_t {
 } conf_remote_t;
 
 /*!
+ * \brief Group of remotes list item.
+ *
+ * Holds the name of a remote in the list.
+ */
+typedef struct conf_group_remote_t {
+	node n;
+	char *name;
+} conf_group_remote_t;
+
+/*!
+ * \brief Group of remotes.
+ */
+typedef struct conf_group_t {
+	node n;		/*!< List node. */
+	char *name;	/*!< Unique name of the group. */
+	list remotes;	/*!< List of remote names. */
+} conf_group_t;
+
+/*!
  * \brief Zone configuration.
  *
  * This structure holds the configuration for the zone.  In it's most
@@ -211,6 +230,11 @@ typedef struct conf_t {
 	 */
 	list remotes;     /*!< List of remotes. */
 	int remotes_count;/*!< Count of remotes. */
+
+	/*
+	 * Groups of remotes.
+	 */
+	list groups;      /*!< List of groups of remotes. */
 
 	/*
 	 * Zones
@@ -380,6 +404,9 @@ void conf_free_iface(conf_iface_t *iface);
 
 /*! \brief Free remotes config. */
 void conf_free_remote(conf_remote_t *r);
+
+/*! \brief Free group config. */
+void conf_free_group(conf_group_t *group);
 
 /*! \brief Free log config. */
 void conf_free_log(conf_log_t *log);

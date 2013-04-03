@@ -24,6 +24,7 @@ extern conf_t *new_config;
 static conf_iface_t *this_iface = 0;
 static conf_iface_t *this_remote = 0;
 static conf_zone_t *this_zone = 0;
+static conf_group_t *this_group = 0;
 static list *this_list = 0;
 static conf_log_t *this_log = 0;
 static conf_log_map_t *this_logmap = 0;
@@ -98,43 +99,150 @@ static void conf_remote_set_via(void *scanner, char *item) {
    }
 }
 
+static conf_group_t *conf_get_group(const char *name)
+{
+	conf_group_t *group;
+	WALK_LIST (group, new_config->groups) {
+		if (strcmp(group->name, name) == 0) {
+			return group;
+		}
+	}
+
+	return NULL;
+}
+
+static void conf_start_group(void *scanner, char *name)
+{
+	conf_group_t *group = conf_get_group(name);
+	if (group) {
+		cf_error(scanner, "group '%s' already defined", name);
+		return;
+	}
+
+	if (conf_get_remote(name) != NULL) {
+		cf_error(scanner, "group name '%s' conflicts with remote name",
+		         name);
+		free(name);
+		return;
+	}
+
+	/* Add new group. */
+
+	group = calloc(1, sizeof(conf_group_t));
+	if (!group) {
+		cf_error(scanner, "out of memory");
+		free(name);
+		return;
+	}
+
+	group->name = name;
+	init_list(&group->remotes);
+
+	add_tail(&new_config->groups, &group->n);
+	this_group = group;
+}
+
+static void conf_add_member_into_group(void *scanner, char *name)
+{
+	if (!this_group) {
+		cf_error(scanner, "parser error, variable 'this_group' null");
+		free(name);
+		return;
+	}
+
+	if (conf_get_remote(name) == NULL) {
+		cf_error(scanner, "remote '%s' is not defined", name);
+		free(name);
+		return;
+	}
+
+	// add the remote into the group while silently ignoring duplicates
+
+	conf_group_remote_t *remote;
+	node *n;
+	WALK_LIST (n, this_group->remotes) {
+		remote = (conf_group_remote_t *)n;
+		if (strcmp(remote->name, name) == 0) {
+			free(name);
+			return;
+		}
+	}
+
+	remote = calloc(1, sizeof(conf_group_remote_t));
+	remote->name = name;
+	add_tail(&this_group->remotes, &remote->n);
+}
+
+static bool set_remote_or_group(void *scanner, char *name,
+				void (*install)(void *, conf_iface_t *))
+{
+	// search remotes
+
+	conf_iface_t *remote = conf_get_remote(name);
+	if (remote) {
+		install(scanner, remote);
+		return true;
+	}
+
+	// search groups
+
+	conf_group_t *group = conf_get_group(name);
+	if (group) {
+		conf_group_remote_t *group_remote;
+		WALK_LIST (group_remote, group->remotes) {
+			remote = conf_get_remote(group_remote->name);
+			if (!remote)
+				continue;
+			install(scanner, remote);
+		}
+
+		return true;
+	}
+
+	return false;
+}
+
+static void conf_acl_item_install(void *scanner, conf_iface_t *found)
+{
+	// silently skip duplicates
+
+	conf_remote_t *remote;
+	WALK_LIST (remote, *this_list) {
+		if (remote->remote == found) {
+			return;
+		}
+	}
+
+	// additional check for transfers
+
+	if ((this_list == &this_zone->acl.xfr_in ||
+	    this_list == &this_zone->acl.notify_out) && found->port == 0)
+	{
+		cf_error(scanner, "remote specified for XFR/IN or "
+		"NOTIFY/OUT needs to have valid port!");
+		return;
+	}
+
+	// add into the list
+
+	remote = malloc(sizeof(conf_remote_t));
+	if (!remote) {
+		cf_error(scanner, "out of memory");
+		return;
+	}
+
+	remote->remote = found;
+	add_tail(this_list, &remote->n);
+}
+
 static void conf_acl_item(void *scanner, char *item)
 {
-      /* Find existing node in remotes. */
-      node* r = 0; conf_iface_t* found = 0;
-      WALK_LIST (r, new_config->remotes) {
-	 if (strcmp(((conf_iface_t*)r)->name, item) == 0) {
-	    found = (conf_iface_t*)r;
-	    break;
-	 }
-      }
-
-      /* Append to list if found. */
-     if (!found) {
-	cf_error(scanner, "remote '%s' is not defined", item);
-     } else {
-	/* check port if xfrin/notify-out */
-	if (this_list == &this_zone->acl.xfr_in ||
-	   this_list == &this_zone->acl.notify_out) {
-	   if (found->port == 0) {
-	      cf_error(scanner, "remote specified for XFR/IN or NOTIFY/OUT "
-				" needs to have valid port!");
-	      free(item);
-	      return;
-	   }
+	if (!set_remote_or_group(scanner, item, conf_acl_item_install)) {
+		cf_error(scanner, "remote or group '%s' not defined", item);
 	}
-	conf_remote_t *remote = malloc(sizeof(conf_remote_t));
-	if (!remote) {
-	   cf_error(scanner, "out of memory");
-	} else {
-	   remote->remote = found;
-	   add_tail(this_list, &remote->n);
-	}
-     }
 
-     /* Free text token. */
-     free(item);
-   }
+	free(item);
+}
 
 static int conf_key_exists(void *scanner, char *item)
 {
@@ -283,6 +391,8 @@ static int conf_mask(void* scanner, int nval, int prefixlen) {
 %token <tok> PIDFILE
 
 %token <tok> REMOTES
+
+%token <tok> GROUPS
 
 %token <tok> ZONES FILENAME
 %token <tok> DISABLE_ANY
@@ -610,6 +720,25 @@ remotes:
    }
  ;
 
+group_member:
+ TEXT { conf_add_member_into_group(scanner, $1.t); }
+ ;
+
+group:
+ /* empty */
+ | group_member
+ | group ',' group_member
+ ;
+
+group_start:
+ TEXT { conf_start_group(scanner, $1.t); }
+ ;
+
+groups:
+   GROUPS '{'
+ | groups group_start '{' group '}'
+ ;
+
 zone_acl_start:
    XFR_IN {
       this_list = &this_zone->acl.xfr_in;
@@ -862,7 +991,7 @@ control:
  | control ctl_allow_start zone_acl_list
  ; 
 
-conf: ';' | system '}' | interfaces '}' | keys '}' | remotes '}' | zones '}' | log '}' | control '}';
+conf: ';' | system '}' | interfaces '}' | keys '}' | remotes '}' | groups '}' | zones '}' | log '}' | control '}';
 
 %%
 

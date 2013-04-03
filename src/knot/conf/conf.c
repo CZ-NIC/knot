@@ -501,6 +501,7 @@ conf_t *conf_new(const char* path)
 	init_list(&c->zones);
 	init_list(&c->hooks);
 	init_list(&c->remotes);
+	init_list(&c->groups);
 	init_list(&c->keys);
 	init_list(&c->ctl.allow);
 
@@ -628,6 +629,12 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 	}
 	conf->remotes_count = 0;
 	init_list(&conf->remotes);
+
+	// Free groups of remotes
+	WALK_LIST_DELSAFE(n, nxt, conf->groups) {
+		conf_free_group((conf_group_t *)n);
+	}
+	init_list(&conf->groups);
 
 	// Free zones
 	WALK_LIST_DELSAFE(n, nxt, conf->zones) {
@@ -878,6 +885,17 @@ void conf_free_iface(conf_iface_t *iface)
 void conf_free_remote(conf_remote_t *r)
 {
 	free(r);
+}
+
+void conf_free_group(conf_group_t *group)
+{
+	conf_group_remote_t *remote, *next;
+	WALK_LIST_DELSAFE(remote, next, group->remotes) {
+		free(remote->name);
+		free(remote);
+	}
+
+	free(group);
 }
 
 void conf_free_log(conf_log_t *log)
