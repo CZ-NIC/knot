@@ -48,14 +48,31 @@ static void conf_start_iface(void *scanner, char* ifname)
    ++new_config->ifaces_count;
 }
 
+static conf_iface_t *conf_get_remote(const char *name)
+{
+	conf_iface_t *remote;
+	WALK_LIST (remote, new_config->remotes) {
+		if (strcmp(remote->name, name) == 0) {
+			return remote;
+		}
+	}
+
+	return NULL;
+}
+
 static void conf_start_remote(void *scanner, char *remote)
 {
+   if (conf_get_remote(remote) != NULL) {
+      cf_error(scanner, "remote '%s' already defined", remote);
+      return;
+   }
+
    this_remote = malloc(sizeof(conf_iface_t));
    if (this_remote == NULL) {
       cf_error(scanner, "not enough memory when allocating remote");
       return;
    }
-   
+
    memset(this_remote, 0, sizeof(conf_iface_t));
    this_remote->name = remote;
    add_tail(&new_config->remotes, &this_remote->n);
