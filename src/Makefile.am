@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I ../m4
-libexec_PROGRAMS = unittests unittests-xfr unittests-zscanner unittests-libknot
+libexec_PROGRAMS = unittests unittests-xfr unittests-libknot zscanner-tool
 sbin_PROGRAMS = knotc knotd kdig khost knsupdate
 
 # $(YACC) will generate header file
@@ -109,6 +109,8 @@ unittests_SOURCES =				\
 	tests/knot/server_tests.h		\
 	tests/knot/rrl_tests.h			\
 	tests/knot/rrl_tests.c			\
+	tests/zscanner/zscanner_tests.h		\
+	tests/zscanner/zscanner_tests.c		\
 	tests/libknot/dname_tests.h		\
 	tests/libknot/dname_tests.c		\
 	tests/libknot/ztree_tests.h		\
@@ -122,7 +124,7 @@ unittests_SOURCES =				\
 unittests_xfr_SOURCES = 			\
 	tests/xfr_tests.c			\
 	tests/xfr_tests.h
-	
+
 unittests_libknot_SOURCES = 			\
 	tests/libknot/unittests_libknot.c	\
 	tests/libknot/dname_tests.h		\
@@ -314,13 +316,13 @@ libknotd_la_SOURCES =				\
 zscanner/scanner.c: zscanner/scanner.rl zscanner/scanner_body.rl
 	$(RAGEL) $(FSM_TYPE) -s -o zscanner/scanner.c zscanner/scanner.rl
 
-unittests_zscanner_SOURCES =			\
-	zscanner/test/zscanner_test.c		\
+zscanner_tool_SOURCES =				\
+	zscanner/test/zscanner-tool.c		\
 	zscanner/test/tests.h			\
 	zscanner/test/tests.c			\
 	zscanner/test/processing.h		\
 	zscanner/test/processing.c
-	
+
 libzscanner_la_SOURCES =			\
 	zscanner/file_loader.h			\
 	zscanner/file_loader.c			\
@@ -340,11 +342,10 @@ knsupdate_LDADD = libknotd.la libknot.la libknots.la libzscanner.la @LIBOBJS@
 unittests_LDADD = libknotd.la libknots.la @LIBOBJS@
 unittests_libknot_LDADD = libknotd.la libknots.la @LIBOBJS@
 unittests_xfr_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
-unittests_zscanner_LDADD = libknots.la libknot.la libknotd.la libzscanner.la @LIBOBJS@
+zscanner_tool_LDADD = libknots.la libknot.la libknotd.la libzscanner.la @LIBOBJS@
 
 # automake complains on % rules:
 #   `%'-style pattern rules are a GNU make extension
 
 tests/sample_conf.rc: tests/files/sample_conf
 	../resource.sh tests/files/sample_conf >$@
-
