@@ -1247,7 +1247,7 @@ static int test_rrset_next_dname()
 	rrset = &test_rrset_array[TEST_RRSET_NS_GT].rrset;
 	dname = NULL;
 	dname = knot_rrset_get_next_dname(rrset, dname);
-	if (knot_dname_compare_non_canon(*dname, test_dnames[TEST_DNAME_GENERIC])) {
+	if (dname == NULL || knot_dname_compare_non_canon(*dname, test_dnames[TEST_DNAME_GENERIC])) {
 		diag("Got wrong DNAME from NS RDATA. on index %d\n", i);
 		return 0;
 	}
