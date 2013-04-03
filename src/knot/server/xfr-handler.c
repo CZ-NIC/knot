@@ -545,7 +545,8 @@ static int xfr_task_finalize(xfrworker_t *w, knot_ns_xfr_t *rq)
 		                                    &rq->new_contents,
 		                                    rq->msg, 
 		                                    XFR_TYPE_IIN);
-		rq->data = NULL; /* Do not free. */
+		rq->data = NULL; /* Freed or applied in prev function. */
+		rq->new_contents = NULL; /* Do not free */
 	}
 
 	return ret;
