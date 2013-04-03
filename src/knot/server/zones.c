@@ -2511,7 +2511,7 @@ int zones_process_response(knot_nameserver_t *nameserver,
 		
 		/* Prepare XFR client transfer. */
 		int rqtype = zones_transfer_to_use(zd);
-		knot_ns_xfr_t *rq = xfr_task_create(zone, rqtype, XFR_FLAG_UDP);
+		knot_ns_xfr_t *rq = xfr_task_create(zone, rqtype, XFR_FLAG_TCP);
 		if (!rq) {
 			rcu_read_unlock();
 			return KNOT_ENOMEM;

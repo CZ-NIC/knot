@@ -4131,7 +4131,7 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 			      knot_rrset_rdata_soa_serial(chgsets->first_soa),
 			      knot_rrset_rdata_soa_serial(zone_soa))
 			    > 0) {
-				if ((xfr->flags & XFR_FLAG_UDP) > 0) {
+				if ((xfr->flags & XFR_FLAG_UDP) != 0) {
 					// IXFR over UDP
 					dbg_ns("Update did not fit.\n");
 					return KNOT_EIXFRSPACE;
