@@ -448,7 +448,7 @@ static int test_rrset_create_rdata()
 	/* Two cases need to be tested - empty RRSet and non-empty RRSet. */
 	
 	
-	knot_rrset_t *rrset = knot_rrset_new(NULL, 0, 0, 0);
+	knot_rrset_t *rrset = knot_rrset_new(test_dnames[0], 0, 0, 0);
 	assert(rrset);
 	
 	/*
@@ -461,6 +461,7 @@ static int test_rrset_create_rdata()
 	if (write_pointer == NULL) {
 		diag("Could not create data of size %d\n",
 		     test_rdata_array[0].size);
+		knot_rrset_deep_free(&rrset, 1, 1);
 		return 0;
 	}
 	
@@ -471,12 +472,14 @@ static int test_rrset_create_rdata()
 	/* Check that indices are set right. */
 	if (rrset->rdata_indices[0] != test_rdata_array[0].size) {
 		diag("Wrong RDATA index after inserting RDATA to RRSet.\n");
+		knot_rrset_deep_free(&rrset, 1, 1);
 		return 0;
 	}
 	
 	/* Rdata count must be equal to one. */
 	if (rrset->rdata_count != 1) {
 		diag("Wrong RDATA count after inserting RDATA to RRSet.\n");
+		knot_rrset_deep_free(&rrset, 1, 1);
 		return 0;
 	}
 	
@@ -485,6 +488,7 @@ static int test_rrset_create_rdata()
 	                 test_rdata_array[0].size);
 	if (ret) {
 		diag("Wrong data inserted into RRSet.\n");
+		knot_rrset_deep_free(&rrset, 1, 1);
 		return 0;
 	}
 	
@@ -494,6 +498,7 @@ static int test_rrset_create_rdata()
 	if (write_pointer == NULL) {
 		diag("Could not create data of size %d\n",
 		     test_rdata_array[1].size);
+		knot_rrset_deep_free(&rrset, 1, 1);
 		return 0;
 	}
 	
@@ -505,6 +510,7 @@ static int test_rrset_create_rdata()
 	if (rrset->rdata_indices[0] != test_rdata_array[1].size) {
 		diag("Wrong RDATA first index after "
 		     "inserting RDATA to RRSet.\n");
+		knot_rrset_deep_free(&rrset, 1, 1);
 		return 0;
 	}
 	
@@ -512,6 +518,7 @@ static int test_rrset_create_rdata()
 	    test_rdata_array[0].size + test_rdata_array[1].size) {
 		diag("Wrong RDATA last index after "
 		     "inserting RDATA to RRSet.\n");
+		knot_rrset_deep_free(&rrset, 1, 1);
 		return 0;
 	}
 	
@@ -519,6 +526,7 @@ static int test_rrset_create_rdata()
 	if (rrset->rdata_count != 2) {
 		diag("Wrong RDATA count after inserting second "
 		     "RDATA to RRSet.\n");
+		knot_rrset_deep_free(&rrset, 1, 1);
 		return 0;
 	}
 	
@@ -527,6 +535,7 @@ static int test_rrset_create_rdata()
 	             test_rdata_array[1].rdata, test_rdata_array[1].size);
 	if (ret) {
 		diag("Wrong data inserted into RRSet.\n");
+		knot_rrset_deep_free(&rrset, 1, 1);
 		return 0;
 	}
 	
@@ -534,9 +543,11 @@ static int test_rrset_create_rdata()
 	void *ret_ptr = knot_rrset_create_rdata(rrset, 0);
 	if (ret_ptr != NULL) {
 		diag("Empty RDATA inserted.\n");
+		knot_rrset_deep_free(&rrset, 1, 1);
 		return 0;
 	}
 	
+	knot_rrset_deep_free(&rrset, 1, 1);
 	return 1;
 }
 
@@ -566,11 +577,11 @@ static int test_rrset_rdata_item_size()
 		return 0;
 	}
 	
-        rrset = &test_rrset_array[TEST_RRSET_MX_BIN_GT].rrset;
-        if (rrset_rdata_item_size(rrset, 0) != 2 + sizeof(knot_dname_t *)) {
-            diag("Wrong item length read from A RRSet.\n");
-            return 0;
-        }
+	rrset = &test_rrset_array[TEST_RRSET_MX_BIN_GT].rrset;
+	if (rrset_rdata_item_size(rrset, 0) != 2 + sizeof(knot_dname_t *)) {
+		diag("Wrong item length read from A RRSet.\n");
+		return 0;
+	}
 	
 	knot_rrset_t *rrset1 = knot_rrset_new(rrset->owner,
 	                                      KNOT_RRTYPE_TXT, KNOT_CLASS_IN,
@@ -583,19 +594,23 @@ static int test_rrset_rdata_item_size()
 	
 	if (rrset_rdata_item_size(rrset1, 0) != 16) {
 		diag("Wrong item lenght in read (first).\n");
+		knot_rrset_deep_free(&rrset1, 1, 1);
 		return 0;
 	}
 	
 	if (rrset_rdata_item_size(rrset1, 1) != 25) {
 		diag("Wrong item lenght in read (middle).\n");
+		knot_rrset_deep_free(&rrset1, 1, 1);
 		return 0;
 	}
 	
 	if (rrset_rdata_item_size(rrset1, 2) != 38) {
 		diag("Wrong item lenght in read (last).\n");
+		knot_rrset_deep_free(&rrset1, 1, 1);
 		return 0;
 	}
 	
+	knot_rrset_deep_free(&rrset1, 1, 1);
 	return 1;
 }
 
@@ -663,6 +678,8 @@ static int test_rrset_shallow_copy()
 			knot_rrset_free(&rrset_copy);
 			return 0;
 		}
+		
+		knot_rrset_free(&rrset_copy);
 	}
 	
 	return 1;
@@ -803,7 +820,7 @@ static int test_rrset_merge()
 		return 0;
 	}
 	
-	//TODO check that merge operation does not cahgne second rr
+	//TODO check that merge operation does not change second rr
 	//TODO check that two RRSet that are not mergable will not merge
 	if (!knot_rrset_equal(&test_rrset_array[TEST_RRSET_MERGE_UNIQUE2].rrset,
 	                      merge_from,
@@ -1208,9 +1225,12 @@ static int test_rrset_next_dname()
 	while ((dname = knot_rrset_get_next_dname(rrset, dname))) {
 		if (knot_dname_compare_non_canon(extracted_dnames[i], *dname)) {
 			diag("Got wrong DNAME from RDATA. on index %d\n", i);
+			char *ext_name = knot_dname_to_str(extracted_dnames[i]);
+			char *act_name = knot_dname_to_str(*dname);
 			diag("DNAME should be %s, but was %s (%p - %p)\n",
-			     knot_dname_to_str(extracted_dnames[i]), knot_dname_to_str(*dname),
-			     extracted_dnames[i], *dname);
+			     ext_name, act_name, extracted_dnames[i], *dname);
+			free(ext_name);
+			free(act_name);
 			return 0;
 		}
 		i++;
