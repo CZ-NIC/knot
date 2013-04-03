@@ -1361,6 +1361,8 @@ static int test_rrset_remove_rr()
 	int ret = knot_rrset_remove_rr_using_rrset(rrset_dest, rrset_source, &returned_rr, 0);
 	if (ret != KNOT_EOK) {
 		diag("Could not remove");
+		knot_rrset_deep_free(&rrset_source, 1, 1);
+		knot_rrset_deep_free(&returned_rr, 1, 1);
 		return 0;
 	}
 	
@@ -1375,6 +1377,8 @@ static int test_rrset_remove_rr()
 	if (knot_rrset_equal(rrset_source, returned_rr,
 	                     KNOT_RRSET_COMPARE_WHOLE)) {
 		diag("Got wrong data in return rrset.");
+		knot_rrset_deep_free(&rrset_source, 1, 1);
+		knot_rrset_deep_free(&rrset_source, 1, 1);
 		return 0;
 	}
 	
