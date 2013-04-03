@@ -1378,7 +1378,7 @@ static int test_rrset_remove_rr()
 	                     KNOT_RRSET_COMPARE_WHOLE)) {
 		diag("Got wrong data in return rrset.");
 		knot_rrset_deep_free(&rrset_source, 1, 1);
-		knot_rrset_deep_free(&rrset_source, 1, 1);
+		knot_rrset_deep_free(&returned_rr, 1, 1);
 		return 0;
 	}
 	
