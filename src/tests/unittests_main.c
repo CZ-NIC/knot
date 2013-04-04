@@ -37,6 +37,7 @@
 #include "tests/libknot/dname_tests.h"
 #include "tests/libknot/ztree_tests.h"
 #include "tests/libknot/sign_tests.h"
+#include "tests/libknot/rrset_tests.h"
 
 // Run all loaded units
 int main(int argc, char *argv[])
@@ -74,6 +75,7 @@ int main(int argc, char *argv[])
 	        &dname_tests_api,
 	        &ztree_tests_api,
 	        &sign_tests_api,	//! Key manipulation.
+		//&rrset_tests_api,
 
 	        NULL
 	};

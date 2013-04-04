@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I ../m4
-libexec_PROGRAMS = unittests unittests-xfr unittests-libknot zscanner-tool
+libexec_PROGRAMS = unittests unittests-xfr zscanner-tool
 sbin_PROGRAMS = knotc knotd kdig khost knsupdate
 
 # $(YACC) will generate header file
@@ -124,19 +124,6 @@ unittests_SOURCES =				\
 unittests_xfr_SOURCES = 			\
 	tests/xfr_tests.c			\
 	tests/xfr_tests.h
-
-unittests_libknot_SOURCES = 			\
-	tests/libknot/unittests_libknot.c	\
-	tests/libknot/dname_tests.h		\
-	tests/libknot/dname_tests.c		\
-	tests/libknot/ztree_tests.h		\
-	tests/libknot/ztree_tests.c		\
-	tests/libknot/wire_tests.h		\
-	tests/libknot/wire_tests.c		\
-	tests/libknot/rrset_tests.h		\
-	tests/libknot/rrset_tests.c		\
-	tests/libknot/sign_tests.c		\
-	tests/libknot/sign_tests.h
 
 nodist_unittests_SOURCES =			\
 	tests/sample_conf.rc
@@ -340,7 +327,6 @@ kdig_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 khost_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 knsupdate_LDADD = libknotd.la libknot.la libknots.la libzscanner.la @LIBOBJS@
 unittests_LDADD = libknotd.la libknots.la @LIBOBJS@
-unittests_libknot_LDADD = libknotd.la libknots.la @LIBOBJS@
 unittests_xfr_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 zscanner_tool_LDADD = libknots.la libknot.la libknotd.la libzscanner.la @LIBOBJS@
 

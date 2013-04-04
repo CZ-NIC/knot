@@ -35,9 +35,6 @@ src/*.h
 *.rc
 # Binaries
 src/unittests
-src/unittests-libknot
-src/unittests-libknot-realdata
-src/unittests-zcompile
 src/zscanner-tool
 src/knotc
 src/knotd
