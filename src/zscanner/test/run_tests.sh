@@ -42,5 +42,7 @@ done
 
 if [ $# -eq 0 ]; then
 	echo "\nFinished"
+else
+	rm -rf ${OUTS_DIR}
 fi
 
