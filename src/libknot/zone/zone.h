@@ -146,11 +146,8 @@ void knot_zone_free(knot_zone_t **zone);
  * Also sets the given pointer to NULL.
  *
  * \param zone Zone to be freed.
- * \param free_rdata_dnames Set to <> 0 if you want to delete ALL domain names
- *                          present in RDATA. Set to 0 otherwise. (See
- *                          knot_rdata_deep_free().)
  */
-void knot_zone_deep_free(knot_zone_t **zone, int destroy_dname_table);
+void knot_zone_deep_free(knot_zone_t **zone);
 
 /*!
  * \brief Set destructor and initialize reference counter to 1.

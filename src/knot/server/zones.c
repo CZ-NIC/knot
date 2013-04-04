@@ -579,7 +579,7 @@ static int zones_load_zone(knot_zone_t **dst, const char *zone_name,
 		log_server_error("Origin of the zone db file is "
 				 "different than '%s'\n",
 				 zone_name);
-		knot_zone_deep_free(dst, 0);
+		knot_zone_deep_free(dst);
 		ret = KNOT_EZONEINVAL;
 	} else {
 		/* Save the timestamp from the zone db file. */
@@ -587,7 +587,7 @@ static int zones_load_zone(knot_zone_t **dst, const char *zone_name,
 		if (stat(source, &st) < 0) {
 			dbg_zones("zones: failed to stat() zone db, "
 				  "something is seriously wrong\n");
-			knot_zone_deep_free(dst, 0);
+			knot_zone_deep_free(dst);
 			ret = KNOT_EZONEINVAL;
 		} else {
 			knot_zone_set_version(*dst, st.st_mtime);
@@ -1313,7 +1313,7 @@ static int zonewalker(dthread_t *thread)
 		if (knot_zonedb_add_zone(zw->db_new, zones[i]) != KNOT_EOK) {
 			log_server_error("Failed to insert zone '%s' "
 			                 "into database.\n", zd->conf->name);
-			knot_zone_deep_free(zones + i, 0);
+			knot_zone_deep_free(zones + i);
 		} else {
 			/* Unlink zone config from conf(),
 			 * transferring ownership to zonedata. */

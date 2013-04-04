@@ -216,7 +216,7 @@ static int rrl_tests_run(int argc, char *argv[])
 	
 	knot_dname_release(qst.qname);
 	knot_dname_release(apex);
-	knot_zone_deep_free(&zone, 0);
+	knot_zone_deep_free(&zone);
 	knot_ns_destroy(&ns);
 	knot_packet_free(&query);
 	rrl_destroy(rrl);

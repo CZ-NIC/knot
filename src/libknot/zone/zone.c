@@ -32,7 +32,7 @@
 /*! \brief Adaptor for knot_zone_deep_free() */
 static void knot_zone_dtor(struct ref_t *p) {
 	knot_zone_t *z = (knot_zone_t *)p;
-	knot_zone_deep_free(&z, 0);
+	knot_zone_deep_free(&z);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -223,7 +223,7 @@ void knot_zone_free(knot_zone_t **zone)
 
 /*----------------------------------------------------------------------------*/
 
-void knot_zone_deep_free(knot_zone_t **zone, int destroy_dname_table)
+void knot_zone_deep_free(knot_zone_t **zone)
 {
 	if (zone == NULL || *zone == NULL) {
 		return;
