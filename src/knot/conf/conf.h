@@ -113,7 +113,7 @@ typedef struct conf_group_t {
 typedef struct conf_zone_t {
 	node n;
 	char *name;               /*!< Zone name. */
-	uint16_t cls;   /*!< Zone class (IN or CH). */
+	uint16_t cls;             /*!< Zone class (IN or CH). */
 	char *file;               /*!< Path to a zone file. */
 	char *db;                 /*!< Path to a database file. */
 	char *ixfr_db;            /*!< Path to a IXFR database file. */
@@ -129,7 +129,7 @@ typedef struct conf_zone_t {
 		list xfr_out;     /*!< Remotes accepted for xfr-out.*/
 		list notify_in;   /*!< Remotes accepted for notify-in.*/
 		list notify_out;  /*!< Remotes accepted for notify-out.*/
-		list update_in;  /*!< Remotes accepted for DDNS.*/
+		list update_in;   /*!< Remotes accepted for DDNS.*/
 	} acl;
 } conf_zone_t;
 

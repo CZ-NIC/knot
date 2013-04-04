@@ -43,6 +43,7 @@
 #include "libknot/util/wire.h"
 #include "libknot/packet/query.h"
 #include "libknot/packet/response.h"
+#include "knot/zone/zone-load.h"
 
 /*! \brief Controller constants. */
 enum knotc_constants_t {
@@ -90,7 +91,6 @@ static int cmd_status(int argc, char *argv[], unsigned flags, int jobs);
 static int cmd_zonestatus(int argc, char *argv[], unsigned flags, int jobs);
 static int cmd_checkconf(int argc, char *argv[], unsigned flags, int jobs);
 static int cmd_checkzone(int argc, char *argv[], unsigned flags, int jobs);
-//static int cmd_compile(int argc, char *argv[], unsigned flags, int jobs);
 
 /*! \brief Table of remote commands. */
 knot_cmd_t knot_cmd_tbl[] = {
@@ -133,92 +133,6 @@ void help(int argc, char **argv)
 		++c;
 	}
 }
-
-#if 0
-/*! \brief Zone compiler task. */
-typedef struct {
-	conf_zone_t *zone;
-	pid_t proc;
-} knotc_zctask_t;
-
-/*! \brief Create set of watched tasks. */
-static knotc_zctask_t *zctask_create(int count)
-{
-	if (count <= 0) {
-		return 0;
-	}
-
-	knotc_zctask_t *t = malloc(count * sizeof(knotc_zctask_t));
-	for (unsigned i = 0; i < count; ++i) {
-		t[i].proc = -1;
-		t[i].zone = 0;
-	}
-
-	return t;
-}
-
-/*! \brief Wait for single task to finish. */
-static int zctask_wait(knotc_zctask_t *tasks, int count, int is_checkzone)
-{
-	/* Wait for children to finish. */
-	int rc = 0;
-	pid_t pid = pid_wait(-1, &rc);
-	
-	/* Find task. */
-	conf_zone_t *z = 0;
-	for (unsigned i = 0; i < count; ++i) {
-		if (tasks[i].proc == pid) {
-			tasks[i].proc = -1;     /* Invalidate. */
-			z = tasks[i].zone;
-			break;
-		}
-	}
-
-	if (z == 0) {
-		log_server_error("Failed to find zone for finished "
-		                 "zone compilation process.\n");
-		return 1;
-	}
-
-	/* Evaluate. */
-	if (!WIFEXITED(rc)) {
-		log_server_error("%s of '%s' failed, process was killed.\n",
-		                 is_checkzone ? "Checking" : "Compilation",
-		                 z->name);
-		return 1;
-	} else {
-		if (rc < 0 || WEXITSTATUS(rc) != 0) {
-			if (!is_checkzone) {
-				log_zone_error("Compilation of "
-				               "'%s' failed, knot-zcompile "
-				               "return code was '%d'\n",
-				               z->name, WEXITSTATUS(rc));
-			}
-
-			return 1;
-		}
-	}
-
-	return 0;
-}
-
-/*! \brief Register running zone compilation process. */
-static int zctask_add(knotc_zctask_t *tasks, int count, pid_t pid,
-                      conf_zone_t *zone)
-{
-	/* Find free space. */
-	for (unsigned i = 0; i < count; ++i) {
-		if (tasks[i].proc == -1) {
-			tasks[i].proc = pid;
-			tasks[i].zone = zone;
-			return 0;
-		}
-	}
-
-	/* Free space not found. */
-	return -1;
-}
-#endif
 
 static int cmd_remote_print_reply(const knot_rrset_t *rr)
 {
@@ -892,26 +806,9 @@ static int cmd_checkconf(int argc, char *argv[], unsigned flags, int jobs)
 
 static int cmd_checkzone(int argc, char *argv[], unsigned flags, int jobs)
 {
-//	return cmd_compile(argc, argv, flags | F_DRYRUN, jobs);
-	return 0;
-}
-
-#if 0
-static int cmd_compile(int argc, char *argv[], unsigned flags, int jobs)
-{
-	/* Print job count */
-	if (jobs > 1 && argc == 0) {
-		log_server_warning("Will attempt to compile %d zones "
-		                   "in parallel, this increases memory "
-		                   "consumption for large zones.\n", jobs);
-	}
-
 	/* Zone checking */
 	int rc = 0;
 	node *n = 0;
-	int running = 0;
-	int is_checkzone = has_flag(flags, F_DRYRUN);
-	knotc_zctask_t *tasks = zctask_create(jobs);
 	
 	/* Generate databases for all zones */
 	WALK_LIST(n, conf()->zones) {
@@ -932,69 +829,36 @@ static int cmd_compile(int argc, char *argv[], unsigned flags, int jobs)
 		}
 
 		if (!zone_match && argc > 0) {
+			/* WALK_LIST is a for-cycle. */
 			continue;
 		}
-
-		/* Check source files and mtime */
-		int zone_status = check_zone(zone->db, zone->file);
-		if (zone_status == KNOT_EOK && !is_checkzone) {
-			log_zone_info("Zone '%s' is up-to-date.\n", zone->name);
-			if (has_flag(flags, F_FORCE)) {
-				log_zone_info("Forcing zone "
-				              "recompilation.\n");
-			} else {
-				continue;
-			}
-		}
-
-		/* Check for not existing source */
-		if (zone_status == KNOT_ENOENT) {
+		
+		/* Create zone loader context. */
+		zloader_t *l = NULL;
+		int ret = knot_zload_open(&l, zone->file, zone->name,
+		                          zone->enable_checks);
+		if (ret != KNOT_EOK) {
+			log_zone_error("Could not open zone %s (%s).\n",
+			               zone->name, knot_strerror(ret));
+			knot_zload_close(l);
+			rc = 1;
 			continue;
 		}
-
-		/* Evaluate space for new task. */
-		if (running == jobs) {
-			rc |= zctask_wait(tasks, jobs, is_checkzone);
-			--running;
+		
+		knot_zone_t *z = knot_zload_load(l);
+		if (z == NULL) {
+			log_zone_error("Loading of zone %s failed.\n",
+			               zone->name);
+			knot_zload_close(l);
+			rc = 1;
+			continue;
 		}
-
-		/* Build executable command. */
-		int ac = 0;
-		const char *args[7] = { NULL };
-		args[ac++] = ZONEPARSER_EXEC;
-		if (zone->enable_checks) {
-			args[ac++] = "-s";
-		}
-		if (has_flag(flags, F_VERBOSE)) {
-			args[ac++] = "-v";
-		}
-		if (!is_checkzone) {
-			args[ac++] = "-o";
-			args[ac++] = zone->db;
-		}
-		args[ac++] = zone->name;
-		args[ac++] = zone->file;
-
-		/* Execute command */
-		if (has_flag(flags, F_VERBOSE) && !is_checkzone) {
-			log_zone_info("Compiling '%s' as '%s'...\n",
-			              zone->name, zone->db);
-		}
-		fflush(stdout);
-		fflush(stderr);
-		pid_t zcpid = pid_start(args, ac,
-		                        has_flag(flags, F_UNPRIVILEGED));
-		zctask_add(tasks, jobs, zcpid, zone);
-		++running;
+		
+		knot_zone_deep_free(&z);
+		knot_zload_close(l);
+		
+		log_zone_info("Zone %s OK.\n", zone->name);
 	}
 
-	/* Wait for all running tasks. */
-	while (running > 0) {
-		rc |= zctask_wait(tasks, jobs, is_checkzone);
-		--running;
-	}
-
-	free(tasks);
 	return rc;
 }
-#endif

@@ -193,13 +193,15 @@ static void process_rrsigs_in_node(parser_context_t *parser,
 static void process_error(const scanner_t *s)
 {
 	if (s->stop == true) {
-		log_zone_error("FATAL ERROR=%s on line=%"PRIu64"\n",
-		               knot_strerror(s->error_code), s->line_counter);
+		log_zone_error("Fatal error in zone file %s:%"PRIu64": %s "
+		               "Stopping zone loading.\n",
+		               s->file_name, s->line_counter,
+		               knot_strerror(s->error_code));
 	} else {
-		log_zone_error("ERROR=%s on line=%"PRIu64"\n",
-		               knot_strerror(s->error_code), s->line_counter);
+		log_zone_error("Error in zone file %s:%"PRIu64": %s\n",
+		               s->file_name, s->line_counter,
+		               knot_strerror(s->error_code));
 	}
-	fflush(stdout);
 }
 
 // TODO this could be a part of the cycle below, but we'd need a buffer.
