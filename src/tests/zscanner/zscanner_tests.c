@@ -36,6 +36,8 @@ static int zscanner_tests_count(int argc, char *argv[])
 
 static int zscanner_tests_run(int argc, char *argv[])
 {
+	int ret;
+
 	// Set appropriate working directory.
 	char *path = realpath(argv[0], NULL);
 	if (path != NULL) {
@@ -45,7 +47,12 @@ static int zscanner_tests_run(int argc, char *argv[])
 	}
 
 	// Run zscanner unittests via external tool.
-	int ret = system("./zscanner/test/run_tests.sh brief");
+	if (access("./zscanner/test/run_tests.sh", F_OK) != -1) {
+		ret = system("./zscanner/test/run_tests.sh brief");
+	// If unittests is a script which points to .libs.
+	} else {
+		ret = system("../zscanner/test/run_tests.sh brief");
+	}
 	cmp_ok(ret, "==", 0, "zscanner unittests");
 
 	return 0;
