@@ -17,8 +17,8 @@
 #include "tests/zscanner/zscanner_tests.h"
 
 #include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
+#include <unistd.h>
+#include <libgen.h>
 
 static int zscanner_tests_count(int argc, char *argv[]);
 static int zscanner_tests_run(int argc, char *argv[]);
@@ -36,11 +36,18 @@ static int zscanner_tests_count(int argc, char *argv[])
 
 static int zscanner_tests_run(int argc, char *argv[])
 {
-	int ret;
+	// Set appropriate working directory.
+	char *path = realpath(argv[0], NULL);
+	if (path != NULL) {
+		// If removes unchecked warning.
+		if (chdir(dirname(path)));
+		free(path);
+	}
 
 	// Run zscanner unittests via external tool.
-	ret = system("cd ./zscanner/test; ./run_tests.sh brief");
+	int ret = system("./zscanner/test/run_tests.sh brief");
 	cmp_ok(ret, "==", 0, "zscanner unittests");
 
 	return 0;
 }
+

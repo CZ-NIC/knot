@@ -9,6 +9,9 @@ if [ $# -eq 0 ]; then
 	echo "Launching zscanner tests"
 fi
 
+# Change working directory due to relative paths usage.
+cd `dirname $0`
+
 # Create output directory and copy include zone files.
 mkdir -p ${OUTS_DIR}/${TESTS_DIR}
 cp -r ${TESTS_DIR}/includes ${OUTS_DIR}
