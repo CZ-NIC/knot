@@ -1051,7 +1051,6 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 
 	/* Reload zone file. */
 	int is_new = 0;
-	int is_bootstrapped = 0;
 	int ret = KNOT_ERROR;
 	if (zone_changed) {
 		/* Zone file not exists and has master set. */
@@ -1065,7 +1064,6 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 			zone = knot_zone_new_empty(owner);
 			if (zone != NULL) {
 				ret = KNOT_EOK;
-				is_bootstrapped = 1;
 			} else {
 				dbg_zones("zones: failed to create "
 				          "stub zone '%s'.\n", z->name);
