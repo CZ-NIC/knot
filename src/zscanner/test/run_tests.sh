@@ -34,6 +34,7 @@ for file in `find ${TESTS_DIR} -name "*.in" | sort`; do
 			diff ${OUTS_DIR}/${fileout} ${fileout}
 		# Return error and exit.
 		else
+			rm -rf ${OUTS_DIR}
 			return 1
 		fi
 	fi

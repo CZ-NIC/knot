@@ -42,7 +42,7 @@ static int zscanner_tests_run(int argc, char *argv[])
 	char *path = realpath(argv[0], NULL);
 	if (path != NULL) {
 		// If removes unchecked warning.
-		if (chdir(dirname(path)));
+		ret = chdir(dirname(path));
 		free(path);
 	}
 
