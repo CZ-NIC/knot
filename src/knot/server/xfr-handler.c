@@ -1169,6 +1169,9 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *rq)
 	}
 	free(keytag);
 	
+	/* Initialize response. */
+	ret = knot_ns_init_xfr_resp(ns, rq);
+	
 	/* Update request. */
 	rq->send = &xfr_send_udp;
 	rq->recv = &xfr_recv_udp;
@@ -1186,18 +1189,6 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *rq)
 		break;
 	default:
 		break;
-	}
-	
-	/* Prepare place for TSIG data */
-	rq->tsig_data = malloc(KNOT_NS_TSIG_DATA_MAX_SIZE);
-	if (rq->tsig_data) {
-		dbg_xfr("xfr: TSIG data allocated: %zu.\n",
-		        KNOT_NS_TSIG_DATA_MAX_SIZE);
-		rq->tsig_data_size = 0;
-	} else {
-		dbg_xfr("xfr: failed to allocate TSIG data "
-		        "buffer (%zu kB)\n",
-		        KNOT_NS_TSIG_DATA_MAX_SIZE / 1024);
 	}
 	
 	/* Finally, answer AXFR/IXFR. */

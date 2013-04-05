@@ -3699,45 +3699,8 @@ dbg_ns_exec_verb(
 	knot_packet_dump(xfr->query);
 );
 
-	// initialize response packet structure
-	knot_packet_t *response = knot_packet_new(
-	                               KNOT_PACKET_PREALLOC_RESPONSE);
-	if (response == NULL) {
-		dbg_ns("Failed to create packet structure.\n");
-		/*! \todo xfr->wire is not NULL, will fail on assert! */
-		knot_ns_error_response_from_query(nameserver, xfr->query,
-		                                  KNOT_RCODE_SERVFAIL,
-		                                  xfr->wire, &xfr->wire_size);
-		ret = xfr->send(xfr->session, &xfr->addr, xfr->wire, 
-		                xfr->wire_size);
-		return ret;
-	}
-
-	response->wireformat = xfr->wire;
-	response->max_size = xfr->wire_size;
-
-	ret = knot_response_init_from_query(response, xfr->query, 1);
-
-	if (ret != KNOT_EOK) {
-		dbg_ns("Failed to init response structure.\n");
-		/*! \todo xfr->wire is not NULL, will fail on assert! */
-		knot_ns_error_response_from_query(nameserver, xfr->query,
-		                                  KNOT_RCODE_SERVFAIL,
-		                                  xfr->wire, &xfr->wire_size);
-		int res = xfr->send(xfr->session, &xfr->addr, xfr->wire, 
-		                    xfr->wire_size);
-		knot_packet_free(&response);
-		return res;
-	}
-
-	xfr->response = response;
-	
 	knot_zonedb_t *zonedb = rcu_dereference(nameserver->zone_db);
-	
-	const knot_dname_t *qname = knot_packet_qname(xfr->response);
-
-	assert(knot_packet_qtype(xfr->response) == KNOT_RRTYPE_AXFR ||
-	       knot_packet_qtype(xfr->response) == KNOT_RRTYPE_IXFR);
+	const knot_dname_t *qname = knot_packet_qname(xfr->query);
 
 dbg_ns_exec_verb(
 	char *name_str = knot_dname_to_str(qname);
@@ -3765,6 +3728,45 @@ dbg_ns_exec(
 	
 	
 	return KNOT_EOK;
+}
+
+int knot_ns_init_xfr_resp(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
+{
+	int ret = KNOT_EOK;
+	knot_packet_t *resp = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
+	if (resp == NULL) {
+		dbg_ns("Failed to create packet structure.\n");
+		/*! \todo xfr->wire is not NULL, will fail on assert! */
+		knot_ns_error_response_from_query(nameserver, xfr->query,
+		                                  KNOT_RCODE_SERVFAIL,
+		                                  xfr->wire, &xfr->wire_size);
+		ret = xfr->send(xfr->session, &xfr->addr, xfr->wire, 
+		                xfr->wire_size);
+		return ret;
+	}
+
+	resp->wireformat = xfr->wire;
+	resp->max_size = xfr->wire_size;
+
+	ret = knot_response_init_from_query(resp, xfr->query, 1);
+
+	if (ret != KNOT_EOK) {
+		dbg_ns("Failed to init response structure.\n");
+		/*! \todo xfr->wire is not NULL, will fail on assert! */
+		knot_ns_error_response_from_query(nameserver, xfr->query,
+		                                  KNOT_RCODE_SERVFAIL,
+		                                  xfr->wire, &xfr->wire_size);
+		int res = xfr->send(xfr->session, &xfr->addr, xfr->wire, 
+		                    xfr->wire_size);
+		knot_packet_free(&resp);
+		return res;
+	}
+
+	xfr->response = resp;
+	
+	assert(knot_packet_qtype(xfr->response) == KNOT_RRTYPE_AXFR ||
+	       knot_packet_qtype(xfr->response) == KNOT_RRTYPE_IXFR);
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/

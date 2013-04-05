@@ -262,6 +262,7 @@ int knot_ns_answer_ixfr_udp(knot_nameserver_t *nameserver,
                             uint8_t *response_wire, size_t *rsize);
 
 int knot_ns_init_xfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr);
+int knot_ns_init_xfr_resp(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr);
 
 /*! 
  * \brief Compares two zone serials.
