@@ -60,7 +60,7 @@ enum knot_rr_type {
 
 	KNOT_RRTYPE_RT         =  21, /*!< For route through. */
 
-	KNOT_RRTYPE_SIG        =  24, /*!< Transaction signature, RFC 2535. */
+	KNOT_RRTYPE_SIG        =  24, /*!< METATYPE. Transaction signature. */
 	KNOT_RRTYPE_KEY        =  25, /*!< For security key. */
 
 	KNOT_RRTYPE_AAAA       =  28, /*!< IPv6 address. */
@@ -88,6 +88,9 @@ enum knot_rr_type {
 	KNOT_RRTYPE_TLSA       =  52, /*!< DANE record. */
 
 	KNOT_RRTYPE_SPF        =  99, /*!< Sender policy framework. */
+
+	KNOT_RRTYPE_EUI48      = 108, /*!< 48-bit extended unique identifier. */
+	KNOT_RRTYPE_EUI64      = 109, /*!< 64-bit extended unique identifier. */
 
 	KNOT_RRTYPE_TKEY       = 249, /*!< METATYPE. Transaction key. */
 	KNOT_RRTYPE_TSIG       = 250, /*!< METATYPE. Transaction signature. */

@@ -1071,8 +1071,8 @@
 	                  base32hex_char      $_seventh_base32hex_char . # ABCDEFG
 	                  ( base32hex_char    $_eighth_base32hex_char    # ABCDEFGH
 	                  | base32hex_padd{1}                            # ABCDEFG=
-			  )
-			)
+	                  )
+	                )
 	              | base32hex_padd{3}                                # ABCDE===
 	              )
 	            )
@@ -1238,6 +1238,8 @@
 	    | "NSEC3PARAM"i %{ type_num(KNOT_RRTYPE_NSEC3PARAM, &rdata_tail); }
 	    | "TLSA"i       %{ type_num(KNOT_RRTYPE_TLSA, &rdata_tail); }
 	    | "SPF"i        %{ type_num(KNOT_RRTYPE_SPF, &rdata_tail); }
+	    | "EUI48"i      %{ type_num(KNOT_RRTYPE_EUI48, &rdata_tail); }
+	    | "EUI64"i      %{ type_num(KNOT_RRTYPE_EUI64, &rdata_tail); }
 	    | "TYPE"i      . num16 # TYPE0-TYPE65535.
 	    ) $!_type_error;
 	# END
@@ -1288,6 +1290,8 @@
 	    | "NSEC3PARAM"i %{ window_add_bit(KNOT_RRTYPE_NSEC3PARAM, s); }
 	    | "TLSA"i       %{ window_add_bit(KNOT_RRTYPE_TLSA, s); }
 	    | "SPF"i        %{ window_add_bit(KNOT_RRTYPE_SPF, s); }
+	    | "EUI48"i      %{ window_add_bit(KNOT_RRTYPE_EUI48, s); }
+	    | "EUI64"i      %{ window_add_bit(KNOT_RRTYPE_EUI64, s); }
 	    | "TYPE"i      . type_bitmap # TYPE0-TYPE65535.
 	    );
 
@@ -1501,6 +1505,33 @@
 		) $!_hex_r_data_error;
 	# END
 
+	# BEGIN - EUI processing
+	action _eui_init {
+		s->item_length = 0;
+	}
+	action _eui_count {
+		s->item_length++;
+	}
+	action _eui48_exit {
+		if (s->item_length != 6) {
+			SCANNER_WARNING(ZSCANNER_EBAD_EUI_LENGTH);
+			fhold; fgoto err_line;
+		}
+	}
+	action _eui64_exit {
+		if (s->item_length != 8) {
+			SCANNER_WARNING(ZSCANNER_EBAD_EUI_LENGTH);
+			fhold; fgoto err_line;
+		}
+	}
+
+	eui48 = (hex_char %_eui_count . ('-' . hex_char %_eui_count)+
+		) $!_hex_char_error >_eui_init %_eui48_exit;
+
+	eui64 = (hex_char %_eui_count . ('-' . hex_char %_eui_count)+
+		) $!_hex_char_error >_eui_init %_eui64_exit;
+	# END
+
 	# BEGIN - Mnemomic names processing
 	action _dns_alg_error {
 		SCANNER_WARNING(ZSCANNER_EBAD_ALGORITHM);
@@ -1654,6 +1685,14 @@
 		(num8 . sep . num8 . sep . num8 . sep . hex_array)
 		$!_r_data_error %_ret . end_wchar;
 
+	r_data_eui48 :=
+		(eui48)
+		$!_r_data_error %_ret . all_wchar;
+
+	r_data_eui64 :=
+		(eui64)
+		$!_r_data_error %_ret . all_wchar;
+
 	action _text_r_data {
 		fhold;
 		switch (s->r_type) {
@@ -1712,6 +1751,10 @@
 			fcall r_data_nsec3param;
 		case KNOT_RRTYPE_TLSA:
 			fcall r_data_tlsa;
+		case KNOT_RRTYPE_EUI48:
+			fcall r_data_eui48;
+		case KNOT_RRTYPE_EUI64:
+			fcall r_data_eui64;
 		default:
 			SCANNER_WARNING(ZSCANNER_ECANNOT_TEXT_DATA);
 			fgoto err_line;
@@ -1751,6 +1794,8 @@
 		case KNOT_RRTYPE_NSEC3:
 		case KNOT_RRTYPE_NSEC3PARAM:
 		case KNOT_RRTYPE_TLSA:
+		case KNOT_RRTYPE_EUI48:
+		case KNOT_RRTYPE_EUI64:
 			fcall nonempty_hex_r_data;
 		// Next types can have empty rdata.
 		case KNOT_RRTYPE_APL:
@@ -1812,6 +1857,8 @@
 		| "NSEC3PARAM"i %{ s->r_type = KNOT_RRTYPE_NSEC3PARAM; }
 		| "TLSA"i       %{ s->r_type = KNOT_RRTYPE_TLSA; }
 		| "SPF"i        %{ s->r_type = KNOT_RRTYPE_SPF; }
+		| "EUI48"i      %{ s->r_type = KNOT_RRTYPE_EUI48; }
+		| "EUI64"i      %{ s->r_type = KNOT_RRTYPE_EUI64; }
 		| "TYPE"i      . type_number
 		) $!_r_type_error;
 	# END

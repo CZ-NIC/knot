@@ -1116,6 +1116,39 @@ static void wire_gateway_to_str(rrset_dump_params_t *p)
 	p->ret = 0;
 }
 
+static void wire_eui_to_str(rrset_dump_params_t *p)
+{
+	p->ret = -1;
+
+	// Data can't have zero length.
+	if (p->in_max < 2) {
+		return;
+	}
+
+	// Write EUI hexadecimal pairs.
+	while (p->in_max > 0) {
+		int ret = hex_encode(p->in, 1, (uint8_t *)(p->out), p->out_max);
+		if (ret <= 0) {
+			return;
+		}
+		p->in++;
+		p->in_max--;
+		p->out += ret;
+		p->out_max -= ret;
+		p->total += ret;
+
+		// Write separation character.
+		if (p->in_max > 0) {
+			dump_string(p, "-");
+			if (p->ret != 0) {
+				return;
+			}
+		}
+	}
+
+	p->ret = 0;
+}
+
 static void wire_unknown_to_str(rrset_dump_params_t *p)
 {
 	int    ret;
@@ -1197,6 +1230,7 @@ static void wire_unknown_to_str(rrset_dump_params_t *p)
 #define DUMP_APL	wire_apl_to_str(&p); CHECK_RET(p);
 #define DUMP_LOC	wire_loc_to_str(&p); CHECK_RET(p);
 #define DUMP_GATEWAY	wire_gateway_to_str(&p); CHECK_RET(p);
+#define DUMP_EUI	wire_eui_to_str(&p); CHECK_RET(p);
 #define DUMP_UNKNOWN	wire_unknown_to_str(&p); CHECK_RET(p);
 
 static int dump_a(DUMP_PARAMS)
@@ -1551,6 +1585,15 @@ static int dump_tlsa(DUMP_PARAMS)
 	DUMP_END;
 }
 
+static int dump_eui(DUMP_PARAMS)
+{
+	DUMP_INIT;
+
+	DUMP_EUI;
+
+	DUMP_END;
+}
+
 static int dump_unknown(DUMP_PARAMS)
 {
 	DUMP_INIT;
@@ -1659,6 +1702,10 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
 			break;
 		case KNOT_RRTYPE_TLSA:
 			ret = dump_tlsa(data, data_len, dst, maxlen, style);
+			break;
+		case KNOT_RRTYPE_EUI48:
+		case KNOT_RRTYPE_EUI64:
+			ret = dump_eui(data, data_len, dst, maxlen, style);
 			break;
 		default:
 			ret = dump_unknown(data, data_len, dst, maxlen, style);
