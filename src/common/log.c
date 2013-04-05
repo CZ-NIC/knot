@@ -217,12 +217,17 @@ static int _log_msg(logsrc_t src, int level, const char *msg)
 	struct tm lt;
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
-	if (localtime_r(&tv.tv_sec, &lt) != NULL) {
-		tlen = strftime(tstr, sizeof(tstr) - 1,
+	time_t sec = tv.tv_sec;
+	if (localtime_r(&sec, &lt) != NULL) {
+		tlen = strftime(tstr, sizeof(tstr),
 				"%Y-%m-%dT%H:%M:%S", &lt);
 		if (tlen > 0) {
-			char pm = (lt.tm_gmtoff > 0)?'+':'-';
-			snprintf(tstr+tlen, 128-tlen-1, ".%.6lu%c%.2u:%.2u ", (unsigned long)tv.tv_usec, pm, (unsigned int)lt.tm_gmtoff/3600, (unsigned int)(lt.tm_gmtoff/60)%60);
+			char pm = (lt.tm_gmtoff > 0) ? '+' : '-';
+			snprintf(tstr + tlen, sizeof(tstr) - tlen,
+			         ".%.6lu%c%.2u:%.2u ",
+			         (unsigned long)tv.tv_usec, pm,
+			         (unsigned int)lt.tm_gmtoff / 3600,
+			         (unsigned int)(lt.tm_gmtoff / 60) % 60);
 		}
 	}
 
