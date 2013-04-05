@@ -14,8 +14,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdlib.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "knot/conf/includes.h"
@@ -59,6 +60,22 @@ bool conf_includes_can_push(conf_includes_t *includes)
 	return includes->free_index < includes->capacity;
 }
 
+static char *path_relative_to(const char *filename, const char *reference)
+{
+	char *path_end = strrchr(reference, '/');
+	if (!path_end)
+		return strdup(filename);
+
+	int path_len = (int)(path_end - reference);
+	size_t result_len = path_len + 1 + strlen(filename) + 1;
+	char *result = malloc(result_len * sizeof(char));
+	if (!result)
+		return NULL;
+
+	snprintf(result, result_len, "%.*s/%s", path_len, reference, filename);
+	return result;
+}
+
 bool conf_includes_push(conf_includes_t *includes, const char *filename)
 {
 	if (!includes || !filename)
@@ -67,16 +84,17 @@ bool conf_includes_push(conf_includes_t *includes, const char *filename)
 	if (!conf_includes_can_push(includes))
 		return false;
 
-	includes->names[includes->free_index++] = strdup(filename);
-	return true;
-}
+	char *store = NULL;
 
-char *conf_includes_top(conf_includes_t *includes)
-{
-	if (!includes || includes->free_index == 0)
-		return NULL;
+	if (includes->free_index == 0 || filename[0] == '/') {
+		store = strdup(filename);
+	} else {
+		char *previous = includes->names[includes->free_index - 1];
+		store = path_relative_to(filename, previous);
+	}
 
-	return includes->names[includes->free_index - 1];
+	includes->names[includes->free_index++] = store;
+	return store != NULL;
 }
 
 char *conf_includes_pop(conf_includes_t *includes)
@@ -86,4 +104,12 @@ char *conf_includes_pop(conf_includes_t *includes)
 		includes->free_index -= 1;
 
 	return result;
+}
+
+char *conf_includes_top(conf_includes_t *includes)
+{
+	if (!includes || includes->free_index == 0)
+		return NULL;
+
+	return includes->names[includes->free_index - 1];
 }

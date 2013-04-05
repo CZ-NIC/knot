@@ -301,18 +301,22 @@ hmac-sha512     { lval.alg = KNOT_TSIG_ALG_HMAC_SHA512; return TSIG_ALGO_NAME; }
 	yyleng -= 2;
 	yytext[yyleng] = '\0';
 
-	if (!conf_includes_can_push(yyextra->includes)) {
+	if (!conf_includes_push(yyextra->includes, yytext)) {
 		cf_error(yyscanner, "includes nested too deeply");
 		return END;
 	}
 
-	FILE *included = fopen(yytext, "r");
+	// retrieved relative to previous config
+	char *filename = conf_includes_top(yyextra->includes);
+
+	FILE *included = fopen(filename, "r");
 	if (!included) {
-		cf_error(yyscanner, "cannot open file '%s'", yytext);
+		cf_error(yyscanner, "cannot open file '%s'", filename);
+		conf_includes_pop(yyextra->includes);
+		free(filename);
 		return END;
 	}
 
-	conf_includes_push(yyextra->includes, yytext);
 	YY_BUFFER_STATE bs = yy_create_buffer(included, YY_BUF_SIZE, yyscanner);
 	yypush_buffer_state(bs, yyscanner);
 }
