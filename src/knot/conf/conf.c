@@ -47,11 +47,13 @@ static const char *DEFAULT_CONFIG[] = {
 /* Prototypes for cf-parse.y */
 extern int cf_parse(void *scanner);
 extern int cf_get_lineno(void *scanner);
+extern void cf_set_error(void *scanner);
 extern char *cf_get_text(void *scanner);
 extern int cf_lex_init(void *scanner);
 extern void cf_set_in(FILE *f, void *scanner);
 extern void cf_lex_destroy(void *scanner);
 extern void switch_input(const char *str, void *scanner);
+extern char *cf_current_filename(void *scanner);
 
 conf_t *new_config = 0; /*!< \brief Currently parsed config. */
 static volatile int _parser_res = 0; /*!< \brief Parser result. */
@@ -60,16 +62,20 @@ static pthread_mutex_t _parser_lock = PTHREAD_MUTEX_INITIALIZER;
 static void cf_print_error(void *scanner, const char *msg)
 {
 	int lineno = -1;
-	char *text = "???";
+	char *text = "?";
 	if (scanner) {
 		lineno = cf_get_lineno(scanner);
-		text = (char *)cf_get_text(scanner);
+		text = cf_get_text(scanner);
 	}
 
-	log_server_error("Config '%s' - %s on line %d (current token '%s').\n",
-			 new_config->filename, msg, lineno, text);
+	char *filename = cf_current_filename(scanner);
+	if (!filename)
+		filename = new_config->filename;
 
+	log_server_error("Config error in '%s' (line %d token '%s') - %s\n",
+			 filename, lineno, text, msg);
 
+	cf_set_error(scanner);
 	_parser_res = KNOT_EPARSEFAIL;
 }
 

@@ -391,7 +391,6 @@ static int conf_mask(void* scanner, int nval, int prefixlen) {
 %token <tok> PIDFILE
 
 %token <tok> REMOTES
-
 %token <tok> GROUPS
 
 %token <tok> ZONES FILENAME
@@ -989,7 +988,7 @@ control:
  }
  | control ctl_allow_start '{' zone_acl '}'
  | control ctl_allow_start zone_acl_list
- ; 
+ ;
 
 conf: ';' | system '}' | interfaces '}' | keys '}' | remotes '}' | groups '}' | zones '}' | log '}' | control '}';
 

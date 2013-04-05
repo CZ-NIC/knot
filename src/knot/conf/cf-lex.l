@@ -12,6 +12,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <stdbool.h>
 
 #include "common/sockaddr.h"
 #include "knot/conf/conf.h"
@@ -20,7 +21,7 @@
 
 /* Imported symbols. */
 #define lval (yylval->tok)
-extern void cf_error(void *scanner, const char *msg);
+extern void cf_error(void *scanner, const char *format, ...);
 extern int (*cf_read_hook)(char *buf, size_t nbytes);
 void switch_input(const char *str, void *scanner)
 {
@@ -41,6 +42,69 @@ int hex2bin(const char* src, char *dst, size_t len) {
 	return 0;
 }
 
+/* Scanner extra data. */
+
+#define MAX_INCLUSION_DEPTH 8
+
+typedef struct {
+	char *names[MAX_INCLUSION_DEPTH];
+	int free_index;
+} cf_includes_t;
+
+typedef struct {
+	bool error;
+	cf_includes_t includes;
+} cf_extra_t;
+
+#define YY_USER_INIT yyextra = calloc(1, sizeof(cf_extra_t))
+
+/* Functions to control scanner extra data. */
+
+static bool names_stack_has_space(cf_extra_t *extra)
+{
+	if (!extra)
+		return false;
+
+	return extra->includes.free_index < MAX_INCLUSION_DEPTH;
+}
+
+static void names_stack_push(cf_extra_t *extra, char *name)
+{
+	if (!extra)
+		return;
+
+	extra->includes.names[extra->includes.free_index] = name;
+	extra->includes.free_index += 1;
+}
+
+static char *names_stack_pop(cf_extra_t *extra)
+{
+	if (!extra || extra->includes.free_index == 0)
+		return NULL;
+
+	extra->includes.free_index -= 1;
+	return extra->includes.names[extra->includes.free_index];
+}
+
+/* Public interface to extra data in scanner. */
+
+extern cf_extra_t *cf_get_extra(yyscan_t scanner);
+
+void cf_set_error(yyscan_t scanner)
+{
+	cf_extra_t *extra = cf_get_extra(scanner);
+	if (!extra)
+		return;
+
+	extra->error = true;
+}
+
+char *cf_current_filename(yyscan_t scanner)
+{
+	cf_extra_t *extra = cf_get_extra(scanner);
+	return names_stack_pop(extra);
+}
+
 //#define YY_INPUT(buf,result,max) result = cf_read_hook(buf, max);
 #define YY_NO_UNPUT
 
@@ -55,6 +119,9 @@ int hex2bin(const char* src, char *dst, size_t len) {
 %option yylineno
 %option prefix = "cf_"
 %option outfile = "lex.yy.c"
+%option extra-type = "cf_extra_t *"
+
+%x include
 
 ALPHA [a-zA-Z_]
 DIGIT [0-9]
@@ -66,7 +133,7 @@ BLANK [ \t\n]
 \#.*\n          /* Ignore comments */;
 {BLANK}+        /* Ignore whitespace */;
 [\!\$\%\^\&\*\(\)\/\+\-\@\{\}\;\,] { return yytext[0]; }
-system          { lval.t = yytext;  return SYSTEM; }
+system          { lval.t = yytext; return SYSTEM; }
 identity        { lval.t = yytext; return IDENTITY; }
 version         { lval.t = yytext; return SVERSION; }
 nsid            { lval.t = yytext; return NSID; }
@@ -134,6 +201,8 @@ on|off {
   }
   return BOOL;
 }
+
+include BEGIN(include);
 
 {DIGIT}+[smhd] {
   size_t mpos = strlen(yytext) - 1;
@@ -270,7 +339,43 @@ hmac-sha512     { lval.alg = KNOT_TSIG_ALG_HMAC_SHA512; return TSIG_ALGO_NAME; }
 }
 
 : /* Optional : in assignments. */;
-<<EOF>> return END;
+
+<<EOF>> {
+	char *name = names_stack_pop(yyextra);
+	free(name);
+	yypop_buffer_state(yyscanner);
+	if (!YY_CURRENT_BUFFER)
+		return END;
+}
+
+<include>{BLANK}+
+<include>["][^"\n]*["] {
+	BEGIN(INITIAL);
+
+	// silently skip includes if there was a former error
+	if (yyextra->error) {
+		return END;
+	}
+
+	if (!names_stack_has_space(yyextra)) {
+		cf_error(yyscanner, "includes nested too deeply");
+		return END;
+	}
+
+	char *filename = strndup(yytext + 1, yyleng - 2);
+	FILE *included = fopen(filename, "r");
+	if (!included) {
+		cf_error(yyscanner, "cannot open file '%s'", filename);
+		free(filename);
+		return END;
+	}
+
+	YY_BUFFER_STATE bs = yy_create_buffer(included, YY_BUF_SIZE, yyscanner);
+	yypush_buffer_state(bs, yyscanner);
+	names_stack_push(yyextra, filename);
+}
+
+<include>["][^"\n]*\n cf_error(yyscanner, "Unterminated string.");
 
 %%
 
