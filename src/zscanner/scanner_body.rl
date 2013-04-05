@@ -469,7 +469,7 @@
 		} else if (s->buffer_length <= 10) { // Timestamp format.
 			char *end;
 
-			s->number64 = strtoul((char *)(s->buffer), &end,  10);
+			s->number64 = strtoull((char *)(s->buffer), &end,  10);
 
 			if (end == (char *)(s->buffer) || *end != '\0') {
 				SCANNER_WARNING(ZSCANNER_EBAD_TIMESTAMP);
