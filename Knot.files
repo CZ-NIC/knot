@@ -219,7 +219,6 @@ src/tests/libknot/rrset_tests.c
 src/tests/libknot/rrset_tests.h
 src/tests/libknot/sign_tests.c
 src/tests/libknot/sign_tests.h
-src/tests/libknot/unittests_libknot.c
 src/tests/libknot/wire_tests.c
 src/tests/libknot/wire_tests.h
 src/tests/libknot/ztree_tests.c
