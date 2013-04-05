@@ -6,7 +6,8 @@ TEST_BIN="../../zscanner-tool -m 2"
 
 # If verbose (default - no parameter) mode.
 if [ $# -eq 0 ]; then
-	echo "Launching zscanner tests"
+	RESULT_DIR=`mktemp -d /tmp/zscanner_tests.XXXX`
+	echo "ZSCANNER TEST ${RESULT_DIR}"
 fi
 
 # Change working directory due to relative paths usage.
@@ -41,7 +42,8 @@ for file in `find ${TESTS_DIR} -name "*.in" | sort`; do
 done
 
 if [ $# -eq 0 ]; then
-	echo "\nFinished"
+	mv ${OUTS_DIR} ${RESULT_DIR}
+	echo "\nFINISHED ${RESULT_DIR}"
 else
 	rm -rf ${OUTS_DIR}
 fi

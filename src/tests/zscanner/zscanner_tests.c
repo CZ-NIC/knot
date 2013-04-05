@@ -37,7 +37,7 @@ static int zscanner_tests_count(int argc, char *argv[])
 static int zscanner_tests_run(int argc, char *argv[])
 {
 	/* It's very hard to get maximal buffer size! NetBSD requires it. */
-	char path[65535];
+	char path[4096];
 	int  ret;
 
 	// Set appropriate working directory.
