@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <assert.h>
 #include <stdarg.h>
 #include <string.h>
 #include <stdlib.h>
@@ -25,6 +26,7 @@
 
 #include <urcu.h>
 #include "knot/conf/conf.h"
+#include "knot/conf/extra.h"
 #include "knot/common.h"
 #include "knot/ctl/remote.h"
 
@@ -39,6 +41,7 @@ static const char *DEFAULT_CONFIG[] = {
 
 #define DEFAULT_CONF_COUNT 1 /*!< \brief Number of default config paths. */
 #define ERROR_BUFFER_SIZE 512 /*!< \brief Error buffer size. */
+#define INCLUDES_MAX_DEPTH 8 /*!< \brief Max depth of config inclusion. */
 
 /*
  * Utilities.
@@ -49,7 +52,8 @@ extern int cf_parse(void *scanner);
 extern int cf_get_lineno(void *scanner);
 extern void cf_set_error(void *scanner);
 extern char *cf_get_text(void *scanner);
-extern int cf_lex_init(void *scanner);
+extern conf_extra_t *cf_get_extra(void *scanner);
+extern int cf_lex_init_extra(void *, void *scanner);
 extern void cf_set_in(FILE *f, void *scanner);
 extern void cf_lex_destroy(void *scanner);
 extern void switch_input(const char *str, void *scanner);
@@ -68,14 +72,15 @@ static void cf_print_error(void *scanner, const char *msg)
 		text = cf_get_text(scanner);
 	}
 
-	char *filename = cf_current_filename(scanner);
+	conf_extra_t *extra = cf_get_extra(scanner);
+	char *filename = conf_includes_top(extra->includes);
 	if (!filename)
 		filename = new_config->filename;
 
 	log_server_error("Config error in '%s' (line %d token '%s') - %s\n",
 			 filename, lineno, text, msg);
 
-	cf_set_error(scanner);
+	extra->error = true;
 	_parser_res = KNOT_EPARSEFAIL;
 }
 
@@ -444,10 +449,12 @@ static int conf_fparser(conf_t *conf)
 	_parser_res = KNOT_EOK;
 	new_config->filename = conf->filename;
 	void *sc = NULL;
-	cf_lex_init(&sc);
+	conf_extra_t *extra = conf_extra_init(conf->filename, INCLUDES_MAX_DEPTH);
+	cf_lex_init_extra(extra, &sc);
 	cf_set_in(f, sc);
 	cf_parse(sc);
 	cf_lex_destroy(sc);
+	conf_extra_free(extra);
 	ret = _parser_res;
 	fclose(f);
 	// }
@@ -476,10 +483,12 @@ static int conf_strparser(conf_t *conf, const char *src)
 	char *oldfn = new_config->filename;
 	new_config->filename = "(stdin)";
 	void *sc = NULL;
-	cf_lex_init(&sc);
+	conf_extra_t *extra = conf_extra_init("", INCLUDES_MAX_DEPTH);
+	cf_lex_init_extra(extra, &sc);
 	switch_input(src, sc);
 	cf_parse(sc);
 	cf_lex_destroy(sc);
+	conf_extra_free(extra);
 	new_config->filename = oldfn;
 	ret = _parser_res;
 	// }

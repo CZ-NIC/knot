@@ -264,12 +264,16 @@ libknotd_la_SOURCES =				\
 	knot/stat/stat.h			\
 	knot/common.h				\
 	knot/other/debug.h			\
-	knot/conf/cf-parse.y			\
 	knot/conf/cf-lex.l			\
+	knot/conf/cf-parse.y			\
 	knot/conf/conf.c			\
+	knot/conf/conf.h			\
+	knot/conf/extra.c			\
+	knot/conf/extra.h			\
+	knot/conf/includes.c			\
+	knot/conf/includes.h			\
 	knot/conf/logconf.c			\
 	knot/conf/logconf.h			\
-	knot/conf/conf.h			\
 	knot/ctl/process.c			\
 	knot/ctl/process.h			\
 	knot/ctl/remote.c			\
