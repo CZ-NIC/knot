@@ -36,14 +36,13 @@ static int zscanner_tests_count(int argc, char *argv[])
 
 static int zscanner_tests_run(int argc, char *argv[])
 {
-	int ret;
+	/* It's very hard to get maximal buffer size! NetBSD requires it. */
+	char path[65535];
+	int  ret;
 
 	// Set appropriate working directory.
-	char *path = realpath(argv[0], NULL);
-	if (path != NULL) {
-		// If removes unchecked warning.
+	if (realpath(argv[0], path) != NULL) {
 		ret = chdir(dirname(path));
-		free(path);
 	}
 
 	// Run zscanner unittests via external tool.
