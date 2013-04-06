@@ -21,12 +21,18 @@
 
 #include "knot/conf/includes.h"
 
+/*!
+ * \brief Structure to store names of files included into the config.
+ */
 struct conf_includes {
-	int free_index;
-	int capacity;
-	char *names[0];
+	int free_index;		//!< First free index in 'names'.
+	int capacity;		//!< Maximal capacity.
+	char *names[0];		//!< Pointers to store file names.
 };
 
+/*!
+ * \brief Initialize structure for storing names of included files.
+ */
 conf_includes_t *conf_includes_init(int capacity)
 {
 	if (capacity <= 0)
@@ -41,6 +47,9 @@ conf_includes_t *conf_includes_init(int capacity)
 	return result;
 }
 
+/*!
+ * \brief Free structure for storing the names of included files.
+ */
 void conf_includes_free(conf_includes_t *includes)
 {
 	if (!includes)
@@ -52,6 +61,9 @@ void conf_includes_free(conf_includes_t *includes)
 	free(includes);
 }
 
+/**
+ * \brief Check if there is a capacity to insert new file..
+ */
 bool conf_includes_can_push(conf_includes_t *includes)
 {
 	if (!includes)
@@ -60,6 +72,16 @@ bool conf_includes_can_push(conf_includes_t *includes)
 	return includes->free_index < includes->capacity;
 }
 
+/**
+ * \brief Constructs a path relative to a reference file.
+ *
+ * e.g. path_relative_to("b.conf", "samples/a.conf") == "samples/b.conf"
+ *
+ * \param filename   File name of the target file.
+ * \param reference  Referece file name (just path is used).
+ *
+ * \return Relative path to a reference file.
+ */
 static char *path_relative_to(const char *filename, const char *reference)
 {
 	char *path_end = strrchr(reference, '/');
@@ -76,6 +98,9 @@ static char *path_relative_to(const char *filename, const char *reference)
 	return result;
 }
 
+/**
+ * \brief Pushes a file name onto the stack of files.
+ */
 bool conf_includes_push(conf_includes_t *includes, const char *filename)
 {
 	if (!includes || !filename)
@@ -97,6 +122,20 @@ bool conf_includes_push(conf_includes_t *includes, const char *filename)
 	return store != NULL;
 }
 
+/**
+ * \brief Returns a file name on the top of the stack.
+ */
+char *conf_includes_top(conf_includes_t *includes)
+{
+	if (!includes || includes->free_index == 0)
+		return NULL;
+
+	return includes->names[includes->free_index - 1];
+}
+
+/**
+ * \brief Returns a file name on the top of the stack and removes it.
+ */
 char *conf_includes_pop(conf_includes_t *includes)
 {
 	char *result = conf_includes_top(includes);
@@ -104,12 +143,4 @@ char *conf_includes_pop(conf_includes_t *includes)
 		includes->free_index -= 1;
 
 	return result;
-}
-
-char *conf_includes_top(conf_includes_t *includes)
-{
-	if (!includes || includes->free_index == 0)
-		return NULL;
-
-	return includes->names[includes->free_index - 1];
 }

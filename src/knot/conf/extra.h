@@ -20,12 +20,29 @@
 
 #include "knot/conf/includes.h"
 
+/*!
+ * \brief Custom data held within the parser context.
+ */
 typedef struct {
-	bool error;
-	conf_includes_t *includes;
+	bool error;		   //!< Indicates that error was set.
+	conf_includes_t *includes; //!< Used to handle filenames in includes.
 } conf_extra_t;
 
-conf_extra_t *conf_extra_init(const char *file, int includes_capacity);
+/*!
+ * \brief Init structure with custom data for config parser.
+ *
+ * \param file		      Name of the main configuration file.
+ * \param includes_max_depth  Max depth of file inclusions.
+ *
+ * \return Initialized stucture or NULL.
+ */
+conf_extra_t *conf_extra_init(const char *file, int includes_max_depth);
+
+/*!
+ * \brief Free structure with custom data for config parser.
+ *
+ * \param extra  Structure to be freed.
+ */
 void conf_extra_free(conf_extra_t *extra);
 
 #endif /* _KNOT_CONF_EXTRA_H_ */

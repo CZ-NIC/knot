@@ -18,15 +18,53 @@
 
 #include <stdbool.h>
 
+/*!
+ * \brief Structure to store names of files included into the config.
+ */
 struct conf_includes;
 typedef struct conf_includes conf_includes_t;
 
+/*!
+ * \brief Initialize structure for storing names of included files.
+ *
+ * \param capacity  Max depth of the inclusion.
+ */
 conf_includes_t *conf_includes_init(int capacity);
+
+/*!
+ * \brief Free structure for storing the names of included files.
+ */
 void conf_includes_free(conf_includes_t *includes);
 
+/**
+ * \brief Check if there is a capacity to insert new file..
+ */
 bool conf_includes_can_push(conf_includes_t *includes);
+
+/**
+ * \brief Pushes a file name onto the stack of files.
+ *
+ * If the file name is not absolute (or first inserted), the name is changed
+ * to be relative to previously inserted file name.
+ *
+ * \param filename  File name to be stored (and processed). It is copied.
+ *
+ * \return Success.
+ */
 bool conf_includes_push(conf_includes_t *includes, const char *filename);
+
+/**
+ * \brief Returns a file name on the top of the stack.
+ *
+ * \return File name on the top of the stack. Do not free it.
+ */
 char *conf_includes_top(conf_includes_t *includes);
+
+/**
+ * \brief Returns a file name on the top of the stack and removes it.
+ *
+ * \return File name on the top of the stack. Caller should free the result.
+ */
 char *conf_includes_pop(conf_includes_t *includes);
 
 #endif /* _KNOT_CONF_INCLUDES_H_ */
