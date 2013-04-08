@@ -679,7 +679,7 @@ int dt_setaffinity(dthread_t *thread, unsigned* cpu_id, size_t cpu_count)
 	}
 	cpuset_zero(set);
 	for (unsigned i = 0; i < cpu_count; ++i) {
-		cpuset_set(cpu_id[i], &set);
+		cpuset_set(cpu_id[i], set);
 	}
 	ret = pthread_setaffinity_np(thread->_thr, cpuset_size(set), set);
 	cpuset_destroy(set);
