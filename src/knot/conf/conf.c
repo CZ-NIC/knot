@@ -65,22 +65,25 @@ static pthread_mutex_t _parser_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static void cf_print_error(void *scanner, const char *msg)
 {
+	conf_extra_t *extra = NULL;
 	int lineno = -1;
 	char *text = "?";
+	char *filename = NULL;
 	if (scanner) {
+		extra = cf_get_extra(scanner);
 		lineno = cf_get_lineno(scanner);
 		text = cf_get_text(scanner);
+		filename = conf_includes_top(extra->includes);
+
+		extra->error = true;
 	}
 
-	conf_extra_t *extra = cf_get_extra(scanner);
-	char *filename = conf_includes_top(extra->includes);
 	if (!filename)
 		filename = new_config->filename;
 
 	log_server_error("Config error in '%s' (line %d token '%s') - %s\n",
 			 filename, lineno, text, msg);
 
-	extra->error = true;
 	_parser_res = KNOT_EPARSEFAIL;
 }
 
