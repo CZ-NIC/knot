@@ -38,6 +38,7 @@ conf_extra_t *conf_extra_init(const char *file, int includes_max_depth)
 	}
 
 	if (!conf_includes_push(includes, file)) {
+		conf_includes_free(includes);
 		free(extra);
 		return NULL;
 	}
