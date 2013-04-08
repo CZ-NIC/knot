@@ -606,8 +606,11 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 	
 	/* Prepare additional info string. */
 	char info_str[50];
-	sprintf(info_str, "Record type: %d.",
-	        knot_rrset_type(rrset));
+	int ret = snprintf(info_str, sizeof(info_str), "Record type: %d.",
+	                   knot_rrset_type(rrset));
+	if (ret < 0 || ret >= sizeof(info_str)) {
+		return KNOT_ENOMEM;
+	}
 	
 	assert(dnskey_rrset && rrset);
 
