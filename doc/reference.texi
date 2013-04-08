@@ -568,25 +568,25 @@ One remote can be a member of multiple groups.
 
 @example
 remotes @{
-	ctl @{
-		# ...
-	@}
-	alice @{
-		# ...
-	@}
-	bob @{
-		# ...
-	@}
+  ctl @{
+    # ...
+  @}
+  alice @{
+    # ...
+  @}
+  bob @{
+    # ...
+  @}
 @}
 
 groups @{
-	admins @{ alice, bob @}
+  admins @{ alice, bob @}
 @}
 
 # example usage:
 control @{
-	# ...
-	allow ctl, admins;
+  # ...
+  allow ctl, admins;
 @}
 @end example
 
