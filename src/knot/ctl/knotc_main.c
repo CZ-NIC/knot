@@ -308,7 +308,7 @@ static int tsig_parse_line(knot_tsig_key_t *k, char *l)
 	n = a = s = NULL;
 	int fw = 1; /* 0 = reading word, 1 = between words */
 	while (*l != '\0') {
-		if (isspace(*l) || *l == '"') {
+		if (isspace((unsigned char)(*l)) || *l == '"') {
 			*l = '\0';
 			fw = 1; /* End word. */
 		} else if (fw) {

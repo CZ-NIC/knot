@@ -204,7 +204,7 @@ static int parse_partial_rr(scanner_t *s, const char *lp, unsigned flags) {
 	/*! \todo support for fancy time format in ttl */
 	char *np = NULL;
 	long ttl = strtol(lp, &np, 10);
-	if (ttl >= 0 && np && (*np == '\0' || isspace(*np))) {
+	if (ttl >= 0 && np && (*np == '\0' || isspace((unsigned char)(*np)))) {
 		s->r_ttl = ttl;
 		DBG("%s: parsed ttl=%lu\n", __func__, ttl);
 		lp = tok_skipspace(np);

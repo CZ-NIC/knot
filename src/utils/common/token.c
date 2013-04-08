@@ -37,7 +37,7 @@ int tok_scan(const char* lp, const char **tbl, int *lpm)
 	unsigned char len = 0;   /* Read length. */
 	for(;;) {
 		const char *tok = tbl[i];
-		if (*lp == '\0' || isspace(*lp)) {
+		if (*lp == '\0' || isspace((unsigned char)(*lp))) {
 			if (tok && TOK_L(tok) == len) { /* Consumed whole w? */
 				return i; /* Identifier */
 			} else { /* Word is shorter than cmd? */
@@ -109,7 +109,7 @@ const char* tok_skipspace(const char *lp)
 		return NULL;
 	}
 
-	while (isspace(*lp)) ++lp; return lp;
+	while (isspace((unsigned char)(*lp))) ++lp; return lp;
 }
 
 int tok_process_lines(FILE *fp, lparse_f cb, void *arg)

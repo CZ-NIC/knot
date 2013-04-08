@@ -216,7 +216,8 @@ static int key_param_int(const void *save_to, char *value)
 	char *value_end;
 	int numeric_value = strtol(value, &value_end, 10);
 
-	if (value == value_end || (*value_end != '\0' && !isspace(*value_end)))
+	if (value == value_end ||
+	    (*value_end != '\0' && !isspace((unsigned char)(*value_end))))
 		return KNOT_EINVAL;
 
 	*parameter = numeric_value;
@@ -291,7 +292,7 @@ static int parse_keyfile_line(knot_key_params_t *key_params,
 		assert(current->handler);
 
 		char *value = separator + 1;
-		while (isspace(*value))
+		while (isspace((unsigned char)(*value)))
 			value++;
 
 		void *save_to = (void *)key_params + current->offset;

@@ -473,7 +473,7 @@ static void wire_text_to_str(rrset_dump_params_t *p)
 	for (size_t i = 0; i < in_len; i++) {
 		char ch = (char)(p->in)[i];
 
-		if (isprint(ch) != 0) {
+		if (isprint((unsigned char)(ch)) != 0) {
 			// For special character print leading slash.
 			if (ch == '\\' || ch == '"') {
 				dump_string(p, "\\");
