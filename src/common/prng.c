@@ -97,9 +97,6 @@ double tls_rand()
 #endif
 		dsfmt_init_gen_rand(s, seed);
 		(void)pthread_setspecific(tls_prng_key, s);
-	} else {
-		fprintf(stderr, "error: PRNG: can't set thread state\n");
-		return .0;
 	}
 
 	return dsfmt_genrand_close_open(s);
