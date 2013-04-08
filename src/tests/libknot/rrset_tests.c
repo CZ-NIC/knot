@@ -1172,11 +1172,15 @@ static int test_rrset_equal()
 	rrs1->owner = test_dnames[4];
 	ret = knot_rrset_equal(rrs1, rrs2, KNOT_RRSET_COMPARE_HEADER);
 	if (ret) {
+		char *owner1 = knot_dname_to_str(rrs1->owner);
+		char *owner2 = knot_dname_to_str(rrs2->owner);
 		diag("Header comparison failed "
-		     "(DNAMEs different (%s %s), but ret=%d).\n", knot_dname_to_str(rrs1->owner),
-		     knot_dname_to_str(rrs2->owner), ret);
+		     "(DNAMEs different (%s %s), but ret=%d).\n", owner1,
+		     owner2, ret);
 		rrs1->owner = test_dnames[0];
 		knot_rrset_deep_free(&rrs1, 1, 1);
+		free(owner1);
+		free(owner2);
 		return 0;
 	}
 	rrs1->owner = test_dnames[0];
