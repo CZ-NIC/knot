@@ -94,7 +94,7 @@ int main(int argc, char **argv)
 	int c = 0, li = 0;
 	int verbose = 0;
 	int daemonize = 0;
-	char* config_fn = NULL;
+	char *config_fn = NULL;
 	char *zone = NULL;
 	
 	/* Long options. */
@@ -108,7 +108,6 @@ int main(int argc, char **argv)
 		{0, 0, 0, 0}
 	};
 	
-	char *buffer = NULL;
 	while ((c = getopt_long(argc, argv, "c:z:dvVh", opts, &li)) != -1) {
 		switch (c)
 		{
@@ -125,10 +124,11 @@ int main(int argc, char **argv)
 			printf("%s, version %s\n", "Knot DNS", PACKAGE_VERSION);
 			return 0;
 		case 'z':
-			buffer = malloc(strlen(optarg) + 2);
-			strcpy(buffer, optarg);
-			strcat(buffer, ".");
-			zone = buffer;
+			if (optarg[strlen(optarg) - 1] != '.') {
+				zone = strcdup(optarg, ".");
+			} else {
+				zone = strdup(optarg);
+			}
 			break;
 		case 'h':
 		case '?':
