@@ -290,6 +290,8 @@ static void xfr_task_cleanup(knot_ns_xfr_t *rq)
 		knot_free_changesets(&chs);
 		rq->data = NULL;
 		assert(rq->new_contents == NULL);
+	} else if (rq->type == XFR_TYPE_FORWARD) {
+		knot_packet_free(&rq->query);
 	}
 
 	/* Cleanup other data - so that the structure may be reused. */

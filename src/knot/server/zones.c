@@ -1522,8 +1522,27 @@ static int zones_update_forward(int fd, knot_ns_transport_t ttype,
 		return KNOT_ENOMEM;
 	}
 	xfr_task_setaddr(rq, &zd->xfr_in.master, &zd->xfr_in.via);
+	
+	/* Copy query originator data. */
 	rq->fwd_src_fd = fd;
+	memcpy(&rq->fwd_addr, from, sizeof(sockaddr_t));
 	rq->packet_nr = (int)knot_packet_id(query);
+	
+	/* Duplicate query to keep it in memory during forwarding. */
+	rq->query = knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
+	if (!rq->query) {
+		xfr_task_free(rq);
+		return KNOT_ENOMEM;
+	}
+	rq->query->size = knot_packet_size(query);
+	rq->query->wireformat = malloc(rq->query->size);
+	if (!rq->query->wireformat) {
+		knot_packet_free(&rq->query);
+		xfr_task_free(rq);
+		return KNOT_ENOMEM;
+	}
+	rq->query->free_wireformat = 1;
+	memcpy(rq->query->wireformat, query->wireformat, knot_packet_size(query));
 
 	/* Retain pointer to zone and issue. */
 	rcu_read_unlock();
@@ -3247,7 +3266,7 @@ int zones_process_update_response(knot_ns_xfr_t *data, uint8_t *rwire, size_t *r
 	knot_wire_set_id(rwire, (uint16_t)data->packet_nr);
 
 	/* Forward the response. */
-	ret = data->send(data->fwd_src_fd, &data->saddr, rwire, *rsize);
+	ret = data->send(data->fwd_src_fd, &data->fwd_addr, rwire, *rsize);
 	if (ret != *rsize) {
 		ret = KNOT_ECONN;
 	} else {

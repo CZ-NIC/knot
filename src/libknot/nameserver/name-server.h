@@ -126,6 +126,7 @@ typedef struct knot_ns_xfr {
 	
 	/*! \note [DDNS] Update forwarding fields. */
 	int fwd_src_fd;           /*!< Query originator fd. */
+	sockaddr_t fwd_addr;
 
 	uint16_t tsig_rcode;
 	uint64_t tsig_prev_time_signed;
