@@ -16,6 +16,8 @@
 
 // strptime under Linux
 #define _XOPEN_SOURCE
+// OpenBSD requires following to disable warning
+#define _XOPEN_SOURCE_EXTENDED 1
 
 #include "zscanner/test/tests.h"
 
