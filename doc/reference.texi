@@ -8,6 +8,7 @@ This reference describes every configuration option in Knot DNS server.
 * keys::                        
 * interfaces::                  
 * remotes::                     
+* groups::
 * control::
 * zones::                       
 * log::                         
@@ -509,6 +510,73 @@ remotes @{
   @}
 @}
 
+@end example
+
+@node groups
+@section @code{groups} Statement
+@stindex groups
+
+The @code{groups} statement is used to create groups of remote machines defined
+in @ref{remotes} statement. The group can substitute multiple machines
+specification anywhere in the configuration where the list of remotes is
+allowed to be used (namely @code{allow} in @ref{control} section and ACLs in
+@ref{zones} section).
+
+The remotes definitions must exist prior to using them in group definitions.
+One remote can be a member of multiple groups.
+
+@menu
+* groups Syntax::
+* groups Statement Definition and Grammar::
+* groups Examples::
+@end menu
+
+@node groups Syntax
+@subsection Syntax
+
+@example
+@code{groups} @code{@{}
+  @kbd{group_id} @code{@{} @kbd{remote_id} [ @code{,} @kbd{...} ] @code{@}}
+  [ @kbd{...} ]
+@code{@}}
+@end example
+
+@node groups Statement Definition and Grammar
+@subsection Statement Definition and Grammar
+
+@menu
+* group_id::
+* remote_id:groups_remote_id.
+@end menu
+
+@node group_id
+@subsubsection @kbd{group_id}
+@vindex group_id
+
+@kbd{group_id} contains a symbolic name for a group of remotes.
+
+@node groups_remote_id
+@subsubsection @kbd{remote_id}
+@vindex groups_remote_id
+
+@kbd{remote_id} contains a symbolic name for a remote server as specified in
+@ref{remotes} section.
+
+@node groups Examples
+@subsection Examples
+
+@example
+groups @{
+	intranet @{ server0, server1 @}
+	dmz @{ server0 @}
+	admins @{ alice, bob @}
+@}
+
+# example usage:
+control @{
+	# ...
+	allow ctl, admins;
+@}
 @end example
 
 @node control 
