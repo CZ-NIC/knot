@@ -68,19 +68,6 @@ knot_lookup_table_t *knot_lookup_by_name(knot_lookup_table_t *table,
 knot_lookup_table_t *knot_lookup_by_id(knot_lookup_table_t *table,
                                            int id);
 
-/*!
- * \brief Strlcpy - safe string copy function, based on FreeBSD implementation.
- *
- * http://www.openbsd.org/cgi-bin/cvsweb/src/lib/libc/string/
- *
- * \param dst Destination string.
- * \param src Source string.
- * \param size How many characters to copy - 1.
- *
- * \return strlen(src), if retval >= siz, truncation occurred.
- */
-size_t knot_strlcpy(char *dst, const char *src, size_t size);
-
 /*
  * Writing / reading arbitrary data to / from wireformat.
  */
@@ -189,14 +176,8 @@ static inline void knot_wire_write_u64(uint8_t *pos, uint64_t data)
 }
 
 /*!
- * \brief Linear congruential generator.
- *
- * Simple pseudorandom generator for general purpose.
- * \warning Do not use for cryptography.
- * \return Random number <0, (size_t)~0>
+ * \brief Get random packet id.
  */
-size_t knot_quick_rand();
-
 uint16_t knot_random_id();
 
 /*!
@@ -212,4 +193,3 @@ struct flock* knot_file_lock(short type, short whence);
 #endif /* _KNOT_UTILS_H_ */
 
 /*! @} */
-
