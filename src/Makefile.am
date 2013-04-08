@@ -1,6 +1,8 @@
 ACLOCAL_AMFLAGS = -I ../m4
-libexec_PROGRAMS = unittests unittests-xfr zscanner-tool
+
 sbin_PROGRAMS = knotc knotd kdig khost knsupdate
+noinst_PROGRAMS = unittests unittests-xfr zscanner-tool
+noinst_LTLIBRARIES = libknot.la libknotd.la libknots.la libzscanner.la
 
 # $(YACC) will generate header file
 AM_CFLAGS = -Wall -Ilibknot -DLIBEXECDIR='"$(libexecdir)"' -DSYSCONFDIR='"$(sysconfdir)"' -DSBINDIR='"$(sbindir)"'
@@ -20,8 +22,14 @@ CLEANFILES =					\
 	libknotd_la-cf-parse.c			\
 	libknotd_la-cf-parse.h
 
+nodist_unittests_SOURCES =			\
+	tests/sample_conf.rc
+
 knotc_SOURCES =					\
 	knot/ctl/knotc_main.c
+
+knotd_SOURCES =					\
+	knot/main.c
 
 kdig_SOURCES =					\
 	utils/common/msg.h			\
@@ -126,14 +134,6 @@ unittests_SOURCES =				\
 unittests_xfr_SOURCES = 			\
 	tests/xfr_tests.c			\
 	tests/xfr_tests.h
-
-nodist_unittests_SOURCES =			\
-	tests/sample_conf.rc
-
-knotd_SOURCES =					\
-	knot/main.c
-
-noinst_LTLIBRARIES = libknot.la libknotd.la libknots.la libzscanner.la
 
 libknot_la_SOURCES =				\
 	libknot/util/utils.c			\
