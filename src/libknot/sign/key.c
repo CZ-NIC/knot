@@ -79,8 +79,10 @@ static char *strndup_with_suffix(const char *base, int length, char *suffix)
 		return NULL;
 
 	int ret = snprintf(result, result_length, "%.*s%s", length, base, suffix);
-	if (ret < 0 || ret >= result_length)
+	if (ret < 0 || ret >= result_length) {
+		free(result);
 		return NULL;
+	}
 
 	return result;
 }
