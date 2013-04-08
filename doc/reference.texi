@@ -567,9 +567,19 @@ One remote can be a member of multiple groups.
 @subsection Examples
 
 @example
+remotes @{
+	ctl @{
+		# ...
+	@}
+	alice @{
+		# ...
+	@}
+	bob @{
+		# ...
+	@}
+@}
+
 groups @{
-	intranet @{ server0, server1 @}
-	dmz @{ server0 @}
 	admins @{ alice, bob @}
 @}
 
