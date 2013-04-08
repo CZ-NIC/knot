@@ -26,7 +26,7 @@ vstrdupf (const char *fmt, va_list args) {
         fmt = "";
     size = vsnprintf(NULL, 0, fmt, args2) + 2;
     str = malloc(size);
-    vsprintf(str, fmt, args);
+    vsnprintf(str, size, fmt, args);
     va_end(args2);
     return str;
 }
