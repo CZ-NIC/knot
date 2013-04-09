@@ -43,7 +43,7 @@
  * It's a simple table of domain names and their offsets in wire format of the
  * packet.
  *
- * \todo Consider using some better lookup structure, such as skip-list.
+ * \todo Consider using some better lookup structure.
  */
 struct knot_compressed_dnames {
 	const knot_dname_t **dnames;  /*!< Domain names present in packet. */

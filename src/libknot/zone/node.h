@@ -29,7 +29,6 @@
 #define _KNOT_NODE_H_
 
 #include "dname.h"
-#include "common/skip-list.h"
 #include "rrset.h"
 
 struct knot_zone;
@@ -39,7 +38,7 @@ struct knot_zone;
  * \brief Structure representing one node in a domain name tree, i.e. one domain
  *        name in a zone.
  *
- * RRSets are ordered by type and stored in a skip-list to allow fast lookup.
+ * RRSets are stored in an array.
  */
 struct knot_node {
 	knot_dname_t *owner; /*!< Domain name being the owner of this node. */

@@ -24,7 +24,6 @@
 #include <unistd.h>
 
 #include "fdset_epoll.h"
-#include "skip-list.h"
 
 #define OS_FDS_CHUNKSIZE 8   /*!< Number of pollfd structs in a chunk. */
 

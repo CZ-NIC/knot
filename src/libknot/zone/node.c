@@ -24,7 +24,6 @@
 #include "common.h"
 #include "zone/node.h"
 #include "rrset.h"
-#include "common/skip-list.h"
 #include "util/debug.h"
 
 /*----------------------------------------------------------------------------*/

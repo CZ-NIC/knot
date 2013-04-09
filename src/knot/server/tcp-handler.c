@@ -30,7 +30,6 @@
 #endif /* HAVE_CAP_NG_H */
 
 #include "common/sockaddr.h"
-#include "common/skip-list.h"
 #include "common/fdset.h"
 #include "knot/common.h"
 #include "knot/server/tcp-handler.h"
