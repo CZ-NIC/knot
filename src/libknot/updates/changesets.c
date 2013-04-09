@@ -43,21 +43,16 @@ static int knot_changeset_check_count(knot_rrset_t ***rrsets, size_t count,
 	size_t extra = (count - *allocated) % KNOT_CHANGESET_RRSET_STEP;
 	extra = (extra + 1) * KNOT_CHANGESET_RRSET_STEP;
 
-	/* Allocate new memory block. */
+	/* Reallocate memory block. */
 	const size_t item_len = sizeof(knot_rrset_t *);
 	const size_t new_count = *allocated + extra;
-	knot_rrset_t **rrsets_new = malloc(new_count * item_len);
-	if (rrsets_new == NULL) {
+	void *tmp = realloc(*rrsets, new_count * item_len);
+	if (tmp == NULL) {
 		return KNOT_ENOMEM;
 	}
-
-	/* Clear old memory block and copy old data. */
-	memset(rrsets_new, 0, new_count * item_len);
-	memcpy(rrsets_new, *rrsets, (*allocated) * item_len);
-
-	/* Replace old rrsets. */
-	free(*rrsets);
-	*rrsets = rrsets_new;
+	*rrsets = tmp;
+	/* Init new data. */
+	memset(*rrsets + (*allocated * item_len), 0, extra * item_len);
 	*allocated = new_count;
 
 	return KNOT_EOK;
