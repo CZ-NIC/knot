@@ -28,10 +28,6 @@
 #include "common/errcode.h"
 #include "common/mempattern.h"
 
-#ifdef HAVE_LIBLDNS
-#define TEST_WITH_LDNS
-#endif
-
 #ifndef _KNOT_COMMON_H_
 #define _KNOT_COMMON_H_
 
@@ -42,9 +38,6 @@
 typedef unsigned int uint; /*!< \brief Unsigned. */
 #define UINT_DEFINED
 #endif
-
-/*! \brief If defined, zone structures will use hash table for lookup. */
-#define USE_HASH_TABLE
 
 /*! \brief Eliminate compiler warning with unused parameters. */
 #define UNUSED(param) (void)(param)

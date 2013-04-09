@@ -47,25 +47,23 @@ AM_PROG_LEX
 
 AC_PROG_YACC
 YACC_BISON=`bison --version | awk '{print $1;exit}'`
-AS_IF([test "x$YACC_BISON" != "xbison"],	    
+AS_IF([test "x$YACC_BISON" != "xbison"],
     [AC_MSG_ERROR([GNU bison needed for reentrant parsers, set the \$YACC variable before running configure])])
 AC_PROG_INSTALL
 
 # Check for Ragel
 AC_PATH_PROG([RAGEL], [ragel], [echo !UNPROCESSED! ragel])
 
+# Set FSM type for Ragel
+AC_SUBST([FSM_TYPE], [-T0])
+AC_ARG_ENABLE([fastparser],
+    AS_HELP_STRING([--enable-fastparser], [Set to generate fast goto driven state machine (Ragel option G2)]),
+    AC_SUBST([FSM_TYPE], [-G2]),
+    [])
+
 # Set compiler compatibility flags
 AC_PROG_CPP_WERROR
 AC_PROG_CC_C99
-
-AC_ARG_ENABLE([ldns],
-     AS_HELP_STRING([--enable-ldns=yes|no], [Enable tests with ldns [default=no]]),
-     [case "${enableval}" in
-       yes) AC_SEARCH_LIBS([ldns_rr_list_pop_rrset], [ldns], [AC_DEFINE([HAVE_LDNS], [1], [ldns present])],
-       AC_MSG_ERROR([ldns not found])) ;;
-       no)  ldns=false ;;
-       *) AC_MSG_ERROR([bad value ${enableval} for --enable-ldns]) ;;
-     esac],[ldns=false])
 
 # Debug modules
 AC_ARG_ENABLE([debug],
@@ -87,13 +85,6 @@ AC_ARG_ENABLE([debug],
         esac
     done
     ], [])
-
-# Set FSM type for Ragel
-AC_SUBST([FSM_TYPE], [-T0])
-AC_ARG_ENABLE([fastparser],
-    AS_HELP_STRING([--enable-fastparser], [Set to generate fast goto driven state machine (Ragel option G2)]),
-    AC_SUBST([FSM_TYPE], [-G2]),
-    [])
 
 # Debug level
 AC_ARG_ENABLE([debuglevel],
@@ -130,7 +121,7 @@ AC_ARG_ENABLE([recvmmsg],
       no)
           recvmmsg=false
           ;;
-      *) 
+      *)
           AC_MSG_ERROR([bad value ${enableval} for --enable-recvmmsg])
           ;;
     esac], [
@@ -171,7 +162,6 @@ AC_SEARCH_LIBS([clock_gettime], [rt])
 AC_SEARCH_LIBS([OpenSSL_add_all_digests], [crypto],[], [AC_MSG_ERROR([libcrypto not found])])
 AC_SEARCH_LIBS([capng_apply], [cap-ng])
 AC_SEARCH_LIBS([adler32], [z])
-#AC_SEARCH_LIBS([ldns_rr_list_pop_rrset], [ldns], [], [AC_MSG_ERROR([libldns not found])])
 
 # Checks for header files.
 AC_HEADER_RESOLV

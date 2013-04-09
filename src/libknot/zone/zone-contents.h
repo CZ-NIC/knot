@@ -27,8 +27,6 @@
 #ifndef _KNOT_ZONE_CONTENTS_H_
 #define _KNOT_ZONE_CONTENTS_H_
 
-//#include <time.h>
-
 #include "zone/node.h"
 #include "dname.h"
 #include "nsec3.h"
@@ -252,28 +250,6 @@ const knot_node_t *knot_zone_contents_find_previous_nsec3(
 
 knot_node_t *knot_zone_contents_get_previous_nsec3(
 	const knot_zone_contents_t *contents, const knot_dname_t *name);
-
-#ifdef USE_HASH_TABLE
-/*!
- * \brief Tries to find domain name in the given zone using the hash table.
- *
- * \param[in] zone Zone to search for the name.
- * \param[in] name Domain name to search for.
- * \param[out] node The found node (if it was found, otherwise it may contain
- *                  arbitrary node).
- * \param[out] closest_encloser Closest encloser of the given name in the zone.
- * \param[out] previous Previous domain name in canonical order.
- *
- * \retval KNOT_ZONE_NAME_FOUND if node with owner \a name was found.
- * \retval KNOT_ZONE_NAME_NOT_FOUND if it was not found.
- * \retval KNOT_EINVAL
- * \retval KNOT_EBADZONE
- */
-int knot_zone_contents_find_dname_hash(const knot_zone_contents_t *contents,
-                                const knot_dname_t *name,
-                                const knot_node_t **node,
-                                const knot_node_t **closest_encloser);
-#endif
 
 /*!
  * \brief Tries to find a node with the specified name among the NSEC3 nodes
