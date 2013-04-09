@@ -17,8 +17,7 @@
 #include "tests/zscanner/zscanner_tests.h"
 
 #include <stdlib.h>
-#include <unistd.h>
-#include <libgen.h>
+#include <config.h>
 
 static int zscanner_tests_count(int argc, char *argv[]);
 static int zscanner_tests_run(int argc, char *argv[]);
@@ -36,22 +35,9 @@ static int zscanner_tests_count(int argc, char *argv[])
 
 static int zscanner_tests_run(int argc, char *argv[])
 {
-	/* It's very hard to get maximal buffer size! NetBSD requires it. */
-	char path[4096];
 	int  ret;
 
-	// Set appropriate working directory.
-	if (realpath(argv[0], path) != NULL) {
-		ret = chdir(dirname(path));
-	}
-
-	// Run zscanner unittests via external tool.
-	if (access("./zscanner/test/run_tests.sh", F_OK) != -1) {
-		ret = system("./zscanner/test/run_tests.sh brief");
-	// If unittests is a script which points to .libs.
-	} else {
-		ret = system("../zscanner/test/run_tests.sh brief");
-	}
+	ret = system(SOURCE_ABSOLUTE_DIR "/src/zscanner/test/run_tests.sh test");
 	cmp_ok(ret, "==", 0, "zscanner unittests");
 
 	return 0;
