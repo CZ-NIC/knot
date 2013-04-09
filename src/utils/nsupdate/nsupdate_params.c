@@ -28,7 +28,7 @@
 #include "libknot/libknot.h"
 
 #define DEFAULT_RETRIES_NSUPDATE	3
-#define DEFAULT_TIMEOUT_NSUPDATE	1
+#define DEFAULT_TIMEOUT_NSUPDATE	300
 
 static const style_t DEFAULT_STYLE_NSUPDATE = {
 	.format = FORMAT_NSUPDATE,
@@ -191,6 +191,18 @@ int nsupdate_parse(nsupdate_params_t *params, int argc, char *argv[])
 		default:
 			nsupdate_help(argc, argv);
 			return KNOT_ENOTSUP;
+		}
+	}
+
+	/* No retries for TCP. */
+	if (params->protocol == PROTO_TCP) {
+		params->retries = 0;
+	} else {
+		/* If wait/tries < 1 s, set 1 second for each try. */
+		if (params->wait > 0 && params->wait < ( 1 + params->retries)) {
+			params->wait = 1;
+		} else {
+			params->wait /= (1 + params->retries);
 		}
 	}
 

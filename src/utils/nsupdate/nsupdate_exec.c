@@ -799,14 +799,11 @@ int cmd_send(const char* lp, nsupdate_params_t *params)
 			return ret;
 		}
 	}
-	
-	/* Send/recv message (N retries). */
-	int retries = params->retries;
-	if (params->protocol == PROTO_TCP) {
-		retries = 1; /* No retries for TCP. */
-	}
+
 	int rb = 0;
-	for (; retries > 0; --retries) {
+	/* Send/recv message (1 try + N retries). */
+	int tries = 1 + params->retries;
+	for (; tries > 0; --tries) {
 		memset(params->rwire, 0, MAX_PACKET_SIZE);
 		rb = pkt_sendrecv(params, wire, len,
 		                  params->rwire, MAX_PACKET_SIZE);

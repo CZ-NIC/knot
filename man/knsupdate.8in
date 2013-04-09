@@ -21,10 +21,10 @@ Use TCP protocol.
 Set the default port.
 .TP
 .BI -t \ timeout
-The query timeout.
+The query timeout (default 300 seconds).
 .TP
 .BI -r \ retries
-The number of UDP retries.
+The number of UDP retries (default 3).
 .TP
 .BI -y \ \fR[\fIhmac:\fR]\fIname:key\fR]
 Use TSIG.
