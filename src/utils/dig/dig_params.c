@@ -28,7 +28,7 @@
 #include "utils/common/params.h"	// parse_class
 #include "utils/common/resolv.h"	// get_nameservers
 
-#define DEFAULT_RETRIES_DIG	3
+#define DEFAULT_RETRIES_DIG	2
 #define DEFAULT_TIMEOUT_DIG	5
 
 static const flags_t DEFAULT_FLAGS_DIG = {
@@ -409,7 +409,7 @@ static void dig_help()
                "       +[no]cl         Show DNS class.\n"
                "       +[no]ttl        Show TTL value.\n"
                "       +time=T         Set wait for reply interval in seconds.\n"
-               "       +tries=N        Set number of retries.\n"
+               "       +retries=N      Set number of retries.\n"
                "       +bufsize=B      Set EDNS buffer size.\n"
                "       +[no]tcp        Use TCP protocol.\n"
                "       +[no]fail       Stop if SERVFAIL.\n");
@@ -688,8 +688,8 @@ static int parse_opt2(const char *value, dig_params_t *params)
 			return KNOT_EINVAL;
 		}
 	}
-	else if (strncmp(value, "tries=", 6) == 0) {
-		if (params_parse_num(value + 6, &query->retries)
+	else if (strncmp(value, "retries=", 8) == 0) {
+		if (params_parse_num(value + 8, &query->retries)
 		    != KNOT_EOK) {
 			return KNOT_EINVAL;
 		}

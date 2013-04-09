@@ -119,13 +119,13 @@ Show DNS class.
 Show TTL value.
 .TP
 \fI+time=T
-Set wait for reply interval in seconds.
+Set wait for reply interval in seconds (default is 5 seconds).
 .TP
-\fI+tries=N
-Set number of retries.
+\fI+retries=N
+Set number of retries (default is 2).
 .TP
 \fI+bufsize=B
-Set EDNS buffer size in bytes.
+Set EDNS buffer size in bytes (default is 512 bytes).
 .TP
 \fI+\fR[\fIno\fR]\fItcp
 Use TCP protocol.
