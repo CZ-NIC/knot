@@ -52,7 +52,7 @@ static int knot_changeset_check_count(knot_rrset_t ***rrsets, size_t count,
 	}
 	*rrsets = tmp;
 	/* Init new data. */
-	memset(*rrsets + (*allocated * item_len), 0, extra * item_len);
+	memset(*rrsets + *allocated, 0, extra * item_len);
 	*allocated = new_count;
 
 	return KNOT_EOK;
