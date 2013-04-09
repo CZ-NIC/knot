@@ -177,6 +177,28 @@ void dig_clean(dig_params_t *params)
 	memset(params, 0, sizeof(*params));
 }
 
+static int parse_class(const char *value, query_t *query)
+{
+	uint16_t rclass;
+
+	if (params_parse_class(value, &rclass) != KNOT_EOK) {
+		return KNOT_EINVAL;
+	}
+
+	query->class_num = rclass;
+
+	return KNOT_EOK;
+}
+
+static int parse_keyfile(const char *value, query_t *query)
+{
+	if (params_parse_keyfile(value, &query->key_params) != KNOT_EOK) {
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}
+
 static int parse_name(const char *value, list *queries, const query_t *conf)
 {
 	query_t *query = NULL;
@@ -195,6 +217,32 @@ static int parse_name(const char *value, list *queries, const query_t *conf)
 
 	// Add new query to the queries.
 	add_tail(queries, (node *)query);
+
+	return KNOT_EOK;
+}
+
+static int parse_port(const char *value, query_t *query)
+{
+	char **port;
+
+	// Set current server port (last or query default).
+	if (list_size(&query->servers) > 0) {
+		server_t *server = TAIL(query->servers);
+		port = &(server->service);
+	} else {
+		port = &(query->port);
+	}
+
+	char *new_port = strdup(value);
+
+	if (new_port == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	// Deallocate old string.
+	free(*port);
+
+	*port = new_port;
 
 	return KNOT_EOK;
 }
@@ -224,6 +272,44 @@ static int parse_reverse(const char *value, list *queries, const query_t *conf)
 
 	// Add new query to the queries.
 	add_tail(queries, (node *)query);
+
+	return KNOT_EOK;
+}
+
+static int parse_server(const char *value, dig_params_t *params)
+{
+	query_t *query;
+
+	// Set current query (last or config).
+	if (list_size(&params->queries) > 0) {
+		query = TAIL(params->queries);
+	} else {
+		query = params->config;
+	}
+
+	return params_parse_server(value, &query->servers, query->port);
+}
+
+static int parse_tsig(const char *value, query_t *query)
+{
+	if (params_parse_tsig(value, &query->key_params) != KNOT_EOK) {
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}
+
+static int parse_type(const char *value, query_t *query)
+{
+	uint16_t rtype;
+	uint32_t serial;
+
+	if (params_parse_type(value, &rtype, &serial) != KNOT_EOK) {
+		return KNOT_EINVAL;
+	}
+
+	query->type_num = rtype;
+	query->xfr_serial = serial;
 
 	return KNOT_EOK;
 }
@@ -331,60 +417,6 @@ void complete_queries(list *queries, const query_t *conf)
 	}
 }
 
-static int parse_class(const char *value, query_t *query)
-{
-	uint16_t rclass;
-
-	if (params_parse_class(value, &rclass) != KNOT_EOK) {
-		return KNOT_EINVAL;
-	}
-
-	query->class_num = rclass;
-
-	return KNOT_EOK;
-}
-
-static int parse_type(const char *value, query_t *query)
-{
-	uint16_t rtype;
-	uint32_t serial;
-
-	if (params_parse_type(value, &rtype, &serial) != KNOT_EOK) {
-		return KNOT_EINVAL;
-	}
-
-	query->type_num = rtype;
-	query->xfr_serial = serial;
-
-	return KNOT_EOK;
-}
-
-static int parse_port(const char *value, query_t *query)
-{
-	char **port;
-
-	// Set current server port (last or query default).
-	if (list_size(&query->servers) > 0) {
-		server_t *server = TAIL(query->servers);
-		port = &(server->service);
-	} else {
-		port = &(query->port);
-	}
-
-	char *new_port = strdup(value);
-
-	if (new_port == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	// Deallocate old string.
-	free(*port);
-
-	*port = new_port;
-
-	return KNOT_EOK;
-}
-
 static void dig_help()
 {
 	printf("Usage: kdig [-4] [-6] [-dh] [-c class] [-p port] [-q name]\n"
@@ -413,20 +445,6 @@ static void dig_help()
                "       +bufsize=B      Set EDNS buffer size.\n"
                "       +[no]tcp        Use TCP protocol.\n"
                "       +[no]fail       Stop if SERVFAIL.\n");
-}
-
-static int parse_server(const char *value, dig_params_t *params)
-{
-	query_t *query;
-
-	// Set current query (last or config).
-	if (list_size(&params->queries) > 0) {
-		query = TAIL(params->queries);
-	} else {
-		query = params->config;
-	}
-
-	return params_parse_server(value, &query->servers, query->port);
 }
 
 static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
@@ -490,6 +508,18 @@ static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
 		}
 		*index += add;
 		break;
+	case 'k':
+		if (val == NULL) {
+			ERR("missing filename\n");
+			return KNOT_EINVAL;
+		}
+
+		if (parse_keyfile(val, query) != KNOT_EOK) {
+			ERR("bad keyfile %s\n", value);
+			return KNOT_EINVAL;
+		}
+		*index += add;
+		break;
 	case 'p':
 		if (val == NULL) {
 			ERR("missing port\n");
@@ -536,6 +566,18 @@ static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
 		if (parse_reverse(val, &params->queries, params->config)
 		    != KNOT_EOK) {
 			ERR("bad reverse name %s\n", val);
+			return KNOT_EINVAL;
+		}
+		*index += add;
+		break;
+	case 'y':
+		if (val == NULL) {
+			ERR("missing key\n");
+			return KNOT_EINVAL;
+		}
+
+		if (parse_tsig(val, query) != KNOT_EOK) {
+			ERR("bad key %s\n", value);
 			return KNOT_EINVAL;
 		}
 		*index += add;

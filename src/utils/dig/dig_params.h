@@ -93,6 +93,8 @@ typedef struct {
 	flags_t		flags;
 	/*!< Output settings. */
 	style_t		style;
+	/*!< Key parameters. */
+	knot_key_params_t key_params;
 } query_t;
 
 /*! \brief Settings for dig. */
