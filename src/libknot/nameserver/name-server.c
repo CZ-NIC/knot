@@ -3130,6 +3130,7 @@ int knot_ns_parse_packet(const uint8_t *query_wire, size_t qsize,
 	dbg_ns_verb("Parsing packet...\n");
 
 	int ret = 0;
+	*type = KNOT_QUERY_INVALID;
 
 	if ((ret = knot_packet_parse_from_wire(packet, query_wire,
 	                                         qsize, 1, 0)) != 0) {

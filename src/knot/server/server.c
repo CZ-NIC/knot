@@ -127,6 +127,16 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 		sock = ret;
 	}
 	
+	/* Set socket options. */
+#ifndef DISABLE_IPV6
+	int flag = 1;
+	if (cfg_if->family == AF_INET6) {
+		/* Disable dual-stack for performance reasons. */
+		if(setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &flag, sizeof(flag)) < 0) {
+			dbg_net("udp: failed to set IPV6_V6ONLY to socket, using default config\n");
+		}
+	}
+#endif
 	ret = socket_bind(sock, cfg_if->family, cfg_if->address, cfg_if->port);
 	if (ret < 0) {
 		socket_close(sock);
@@ -140,21 +150,6 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	new_if->type = cfg_if->family;
 	new_if->port = cfg_if->port;
 	new_if->addr = strdup(cfg_if->address);
-
-	/* Set socket options - voluntary. */
-//	int opt = 1024 * 1024;
-//	int snd_opt = 1024 * 1024;
-//	if (setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &snd_opt, sizeof(snd_opt)) < 0) {
-//		ret = KNOT_ENOTSUP;
-////		strerror_r(errno, ebuf, sizeof(ebuf));	
-////		log_server_warning("Failed to configure socket "
-////		                   "write buffers: %s.\n", ebuf);
-//	}
-//	if (setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(opt)) < 0) {
-//		ret = KNOT_ENOTSUP;
-////		strerror_r(errno, ebuf, sizeof(ebuf));	
-////		log_server_warning("Failed to configure socket read buffers: %s.\n", ebuf);
-//	}
 
 	/* Create TCP socket. */
 	ret = socket_create(cfg_if->family, SOCK_STREAM);
@@ -170,11 +165,9 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	
 	/* Set socket options. */
 #ifndef DISABLE_IPV6
-	int flag = 1;
 	if (cfg_if->family == AF_INET6) {
-		/* Disable dual-stack for performance reasons. */
 		if(setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &flag, sizeof(flag)) < 0) {
-			dbg_net("udp: failed to set IPV6_V6ONLY to socket, using default config\n");
+			dbg_net("tcp: failed to set IPV6_V6ONLY to socket, using default config\n");
 		}
 	}
 #endif

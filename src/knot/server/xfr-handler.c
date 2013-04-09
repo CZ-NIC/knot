@@ -974,7 +974,7 @@ int xfr_worker(dthread_t *thread)
 		}
 
 		/* Check pending threads. */
-		if (w->pending == 0) {
+		if (dt_is_cancelled(thread) || w->pending == 0) {
 			break;
 		}
 		
@@ -982,11 +982,6 @@ int xfr_worker(dthread_t *thread)
 		int nfds = fdset_wait(w->pool.fds, (XFR_SWEEP_INTERVAL/2) * 1000);
 		if (nfds < 0) {
 			if (errno == EINTR) continue;
-			break;
-		}
-		
-		/* Check for cancellation. */
-		if (dt_is_cancelled(thread)) {
 			break;
 		}
 		

@@ -86,51 +86,25 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 	        strfrom, sockaddr_portnum(addr));
 #endif
 	
-	knot_packet_type_t qtype = KNOT_QUERY_NORMAL;
+	int res = KNOT_EOK;
+	int rcode = KNOT_RCODE_NOERROR;
+	knot_packet_type_t qtype = KNOT_QUERY_INVALID;
 	*resp_len = SOCKET_MTU_SZ;
 
-	knot_packet_t *packet =
-		knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
+	knot_packet_t *packet = knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
 	if (packet == NULL) {
 		dbg_net("udp: failed to create packet on fd=%d\n", fd);
-
 		int ret = knot_ns_error_response_from_query_wire(ns, qbuf, qbuflen,
 		                                            KNOT_RCODE_SERVFAIL,
 		                                            qbuf, resp_len);
-
-		if (ret != KNOT_EOK) {
-			return KNOT_EMALF;
-		}
-
-		return KNOT_EOK; /* Created error response. */
+		return ret;
 	}
 	
-	/* Prepare RRL structs. */
-	rrl_req_t rrl_rq;
-	memset(&rrl_rq, 0, sizeof(rrl_req_t));
-	rrl_rq.w = qbuf; /* Wire */
-	
 	/* Parse query. */
-	int res = knot_ns_parse_packet(qbuf, qbuflen, packet, &qtype);
-	if (rrl) rrl_rq.qst = &packet->question;
-	if (knot_unlikely(res != KNOT_EOK)) {
+	rcode = knot_ns_parse_packet(qbuf, qbuflen, packet, &qtype);
+	if (rcode < KNOT_RCODE_NOERROR) {
 		dbg_net("udp: failed to parse packet on fd=%d\n", fd);
-		if (res > 0) { /* Returned RCODE */
-			res = knot_ns_error_response_from_query(
-			       ns, packet, res, qbuf, resp_len);
-			if (res != KNOT_EOK) {
-				knot_packet_free(&packet);
-				return KNOT_EMALF;
-			}
-		} else {
-			res = knot_ns_error_response_from_query_wire(
-			       ns, qbuf, qbuflen, KNOT_RCODE_SERVFAIL, qbuf, 
-			       resp_len);
-			if (res != KNOT_EOK) {
-				knot_packet_free(&packet);
-				return res;
-			}
-		}
+		rcode = KNOT_RCODE_SERVFAIL;
 	}
 	
 	/* Handle query. */
@@ -143,10 +117,9 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		/* RFC1034, p.28 requires reliable transfer protocol.
 		 * Bind responds with FORMERR.
  		 */
-		knot_ns_error_response_from_query(ns, packet,
-		                                  KNOT_RCODE_FORMERR, qbuf,
-		                                  resp_len);
-		res = KNOT_EOK;
+		res = knot_ns_error_response_from_query(ns, packet,
+		                                        KNOT_RCODE_FORMERR, qbuf,
+		                                        resp_len);
 		break;
 	case KNOT_QUERY_IXFR:
 		/* According to RFC1035, respond with SOA. */
@@ -167,23 +140,26 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 	/* Unhandled opcodes. */
 	case KNOT_RESPONSE_AXFR: /*!< Processed in XFR handler. */
 	case KNOT_RESPONSE_IXFR: /*!< Processed in XFR handler. */
-		knot_ns_error_response_from_query(ns, packet,
-		                                  KNOT_RCODE_REFUSED, qbuf,
-		                                  resp_len);
-		res = KNOT_EOK;
+		res = knot_ns_error_response_from_query(ns, packet,
+		                                        KNOT_RCODE_REFUSED, qbuf,
+		                                        resp_len);
 		break;
 			
 	/* Unknown opcodes */
 	default:
-		knot_ns_error_response_from_query(ns, packet,
-		                                  KNOT_RCODE_FORMERR, qbuf,
-		                                  resp_len);
-		res = KNOT_EOK;
+		res = knot_ns_error_response_from_query(ns, packet,
+		                                        rcode, qbuf,
+		                                        resp_len);
 		break;
 	}
 	
 	/* Process RRL. */
-	if (rrl) {
+	if (knot_unlikely(rrl != NULL)) {
+		rrl_req_t rrl_rq;
+		memset(&rrl_rq, 0, sizeof(rrl_req_t));
+		rrl_rq.w = qbuf; /* Wire */
+		rrl_rq.qst = &packet->question;
+
 		rcu_read_lock();
 		rrl_rq.flags = packet->flags;
 		if (rrl_query(rrl, addr, &rrl_rq, packet->zone) != KNOT_EOK) {
@@ -539,7 +515,7 @@ int udp_master(dthread_t *thread)
 		}
 		
 		fdset_begin(fds, &it);
-		while(nfds > 0) {
+		for (;;) {
 			_udp_handle(server, it.fd, rqdata);
 			if (fdset_next(fds, &it) != 0) {
 				break;

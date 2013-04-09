@@ -834,11 +834,6 @@ int dt_optimal_size()
 	return DEFAULT_THR_COUNT;
 }
 
-/*!
- * \note Use memory barriers or asynchronous read-only access, locking
- *       poses a thread performance decrease by 1.31%.
- */
-
 int dt_is_cancelled(dthread_t *thread)
 {
 	// Check input
@@ -846,10 +841,7 @@ int dt_is_cancelled(dthread_t *thread)
 		return 0;
 	}
 
-	lock_thread_rw(thread);
-	int ret = thread->state & ThreadCancelled;
-	unlock_thread_rw(thread);
-	return ret;
+	return thread->state & ThreadCancelled; /* No need to be locked. */
 }
 
 unsigned dt_get_id(dthread_t *thread)

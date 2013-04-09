@@ -48,6 +48,7 @@ typedef enum knot_opcode {
  * OPCODE and the QTYPE.
  */
 typedef enum knot_packet_type {
+	KNOT_QUERY_INVALID,   /*!< Invalid query. */
 	KNOT_QUERY_NORMAL,    /*!< Normal query. */
 	KNOT_QUERY_AXFR,      /*!< Request for AXFR transfer. */
 	KNOT_QUERY_IXFR,      /*!< Request for IXFR transfer. */
