@@ -19,6 +19,7 @@
 #include <openssl/hmac.h>
 #include <openssl/evp.h>
 #include <time.h>
+#include <inttypes.h>
 
 #include "common.h"
 #include "common/descriptor.h"
@@ -101,9 +102,9 @@ static int knot_tsig_compute_digest(const uint8_t *wire, size_t wire_len,
 		return KNOT_TSIG_EBADSIG;
 	}
 
-	dbg_tsig_detail("TSIG: key size: %d\n", key->secret.size);
+	dbg_tsig_detail("TSIG: key size: %zu\n", key->secret.size);
 	dbg_tsig_detail("TSIG: key:\n");
-	dbg_tsig_hex_detail(key->secret.data, key->secret.size);
+	dbg_tsig_hex_detail((char *)key->secret.data, key->secret.size);
 	dbg_tsig_detail("Wire for signing is %zu bytes long.\n", wire_len);
 
 	/* Compute digest. */
@@ -193,7 +194,7 @@ static int knot_tsig_write_tsig_variables(uint8_t *wire,
 	memcpy(wire + offset, knot_dname_name(tsig_owner),
 	       sizeof(uint8_t) * knot_dname_size(tsig_owner));
 	dbg_tsig_verb("TSIG: write variables: written owner (tsig alg): \n");
-	dbg_tsig_hex_verb(wire + offset, knot_dname_size(tsig_owner));
+	dbg_tsig_hex_verb((char *)(wire + offset), knot_dname_size(tsig_owner));
 	offset += knot_dname_size(tsig_owner);
 
 	/*!< \todo which order? */
@@ -202,14 +203,14 @@ static int knot_tsig_write_tsig_variables(uint8_t *wire,
 	knot_wire_write_u16(wire + offset, knot_rrset_class(tsig_rr));
 	dbg_tsig_verb("TSIG: write variables: written CLASS: %u - \n",
 	               knot_rrset_class(tsig_rr));
-	dbg_tsig_hex_detail(wire + offset, sizeof(uint16_t));
+	dbg_tsig_hex_detail((char *)(wire + offset), sizeof(uint16_t));
 	offset += sizeof(uint16_t);
 
 	/* Copy TTL - always 0. */
 	knot_wire_write_u32(wire + offset, knot_rrset_ttl(tsig_rr));
 	dbg_tsig_verb("TSIG: write variables: written TTL: %u - \n",
 	              knot_rrset_ttl(tsig_rr));
-	dbg_tsig_hex_detail(wire + offset, sizeof(uint32_t));
+	dbg_tsig_hex_detail((char *)(wire + offset), sizeof(uint32_t));
 	offset += sizeof(uint32_t);
 
 	/* Copy alg name. */
@@ -243,9 +244,9 @@ static int knot_tsig_write_tsig_variables(uint8_t *wire,
 	/* Time signed. */
 	knot_wire_write_u48(wire + offset, tsig_rdata_time_signed(tsig_rr));
 	offset += 6;
-	dbg_tsig_verb("TSIG: write variables: time signed: %llu \n",
+	dbg_tsig_verb("TSIG: write variables: time signed: %"PRIu64" \n",
 	              tsig_rdata_time_signed(tsig_rr));
-	dbg_tsig_hex_detail(wire + offset - 6, 6);
+	dbg_tsig_hex_detail((char *)(wire + offset - 6), 6);
 	/* Fudge. */
 	knot_wire_write_u16(wire + offset, tsig_rdata_fudge(tsig_rr));
 	offset += sizeof(uint16_t);
@@ -338,7 +339,7 @@ static int knot_tsig_create_sign_wire(const uint8_t *msg, size_t msg_len,
 	dbg_tsig_verb("Copying request mac.\n");
 	memcpy(pos, request_mac, sizeof(uint8_t) * request_mac_len);
 	dbg_tsig_detail("TSIG: create wire: request mac:\n");
-	dbg_tsig_hex_detail(pos, request_mac_len);
+	dbg_tsig_hex_detail((char *)pos, request_mac_len);
 	pos += request_mac_len;
 	/* Copy the original message. */
 	dbg_tsig_verb("Copying original message.\n");
@@ -408,7 +409,7 @@ static int knot_tsig_create_sign_wire_next(const uint8_t *msg, size_t msg_len,
 	dbg_tsig_verb("Copying request mac.\n");
 	memcpy(wire + 2, prev_mac, sizeof(uint8_t) * prev_mac_len);
 	dbg_tsig_detail("TSIG: create wire: request mac:\n");
-	dbg_tsig_hex_detail(wire + 2, prev_mac_len);
+	dbg_tsig_hex_detail((char *)(wire + 2), prev_mac_len);
 	/* Copy the original message. */
 	dbg_tsig_verb("Copying original message.\n");
 	memcpy(wire + prev_mac_len + 2, msg, msg_len);
@@ -600,10 +601,10 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	                            tmp_tsig);
 
 	dbg_tsig_detail("Previous digest: \n");
-	dbg_tsig_hex_detail(prev_digest, prev_digest_len);
+	dbg_tsig_hex_detail((char *)prev_digest, prev_digest_len);
 
 	dbg_tsig_detail("Timers: \n");
-	dbg_tsig_hex_detail(wire + prev_digest_len + *msg_len,
+	dbg_tsig_hex_detail((char *)(wire + prev_digest_len + *msg_len),
 			    KNOT_TSIG_TIMERS_LENGTH);
 
 	int ret = KNOT_ERROR;
@@ -768,10 +769,10 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
 	}
 
 	dbg_tsig_verb("TSIG: calc digest :\n");
-	dbg_tsig_hex_verb(digest_tmp, digest_tmp_len);
+	dbg_tsig_hex_verb((char *)digest_tmp, digest_tmp_len);
 
 	dbg_tsig_verb("TSIG: given digest:\n");
-	dbg_tsig_hex_verb(tsig_mac, mac_length);
+	dbg_tsig_hex_verb((char *)tsig_mac, mac_length);
 
 	if (strncasecmp((char *)(tsig_mac), (char *)digest_tmp,
 	                mac_length) != 0) {

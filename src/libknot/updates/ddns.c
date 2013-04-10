@@ -16,6 +16,7 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include <inttypes.h>
 
 #include "updates/ddns.h"
 #include "updates/changesets.h"
@@ -2036,8 +2037,8 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rrset,
 		removed_count = 1;
 	}
 
-	dbg_ddns_detail("Removed: %p (first item: %p), removed count: %d\n",
-	                removed, (removed == NULL) ? "none" : *removed,
+	dbg_ddns_detail("Removed: %p (first item: %p), removed count: %zu\n",
+	                removed, (removed == NULL) ? (void *)"none" : *removed,
 	                removed_count);
 
 	// no such RR
@@ -2385,8 +2386,8 @@ int knot_ddns_process_update2(knot_zone_contents_t *zone,
 		// we need the RR copy, that's why this code is here
 		if (knot_rrset_type(rr) == KNOT_RRTYPE_SOA) {
 			int64_t sn_rr = knot_rrset_rdata_soa_serial(rr);
-			dbg_ddns_verb("Replacing SOA. Old serial: %d, new "
-			              "serial: %d\n", sn_new, sn_rr);
+			dbg_ddns_verb("Replacing SOA. Old serial: %"PRId64", "
+			              "new serial: %"PRId64"\n", sn_new, sn_rr);
 			assert(ns_serial_compare(sn_rr, sn_new) >= 0);
 			assert(rr_copy != NULL);
 			sn_new = sn_rr;

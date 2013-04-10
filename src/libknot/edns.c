@@ -184,7 +184,7 @@ int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr,
 			// data
 			if (size - pos < opt_size) {
 				dbg_edns("Not enough data to parse options: "
-				         "size - pos=%d, opt_size=%d\n",
+				         "size - pos=%zu, opt_size=%d\n",
 				         size - pos, opt_size);
 				return KNOT_EMALF;
 			}

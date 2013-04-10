@@ -187,7 +187,7 @@ int knot_nsec3_sha1(const knot_nsec3_params_t *params,
 	uint16_t iterations = params->iterations;
 
 	dbg_nsec3_verb("Hashing: \n");
-	dbg_nsec3_verb("  Data: %.*s \n", size, data);
+	dbg_nsec3_verb("  Data: %.*s \n", (int)size, data);
 	dbg_nsec3_hex_verb((const char *)data, size);
 	dbg_nsec3_verb(" (size %d)\n  Iterations: %u\n", (int)size, iterations);
 	dbg_nsec3_verb("  Salt length: %u\n", salt_length);
@@ -243,7 +243,7 @@ int knot_nsec3_sha1(const knot_nsec3_params_t *params,
 
 	*digest_size = SHA_DIGEST_LENGTH;
 
-	dbg_nsec3_verb("Hash: %.*s\n", *digest_size, *digest);
+	dbg_nsec3_verb("Hash: %.*s\n", (int)*digest_size, *digest);
 	dbg_nsec3_hex_verb((const char *)*digest, *digest_size);
 	dbg_nsec3_verb("\n");
 

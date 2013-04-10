@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <stdio.h>
+#include <inttypes.h>
 
 #include "common.h"
 #include "common/mempattern.h"
@@ -2261,7 +2262,7 @@ int rrset_serialize(const knot_rrset_t *rrset, uint8_t *stream, size_t *size)
 	}
 	
 	uint64_t rrset_length = rrset_binary_size(rrset);
-	dbg_rrset_detail("rr: serialize: Binary size=%llu\n", rrset_length);
+	dbg_rrset_detail("rr: serialize: Binary size=%"PRIu64"\n", rrset_length);
 	memcpy(stream, &rrset_length, sizeof(uint64_t));
 	
 	size_t offset = sizeof(uint64_t);
@@ -2338,7 +2339,7 @@ int rrset_deserialize(uint8_t *stream, size_t *stream_size,
 	memcpy(&rrset_length, stream, sizeof(uint64_t));
 	if (rrset_length > *stream_size) {
 		dbg_rrset("rr: deserialize: No space for whole RRSet. "
-		          "(given=%zu needed=%llu)\n", *stream_size,
+		          "(given=%zu needed=%"PRIu64")\n", *stream_size,
 		          rrset_length);
 		return KNOT_ESPACE;
 	}
@@ -2403,7 +2404,7 @@ int rrset_deserialize(uint8_t *stream, size_t *stream_size,
 		}
 		/* TODO handle malformations. */
 		dbg_rrset_detail("rr: deserialaze: RR read size=%zu,"
-		                 "actual=%lu\n", read, rdata_size);
+		                 "actual=%"PRIu32"\n", read, rdata_size);
 		assert(read == rdata_size);
 		offset += read;
 	}

@@ -1452,7 +1452,7 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 			knot_dname_new_from_str((char *)next_dname_decoded,
 						real_size, NULL);
 		if (next_dname == NULL) {
-			dbg_semcheck(stderr, "Could not allocate dname!\n");
+			dbg_semcheck("Could not allocate dname!\n");
 			free(next_dname_decoded);
 			return;
 		}
