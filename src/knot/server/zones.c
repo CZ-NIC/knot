@@ -1337,7 +1337,7 @@ static int zonewalker(dthread_t *thread)
  * \return Number of inserted zones.
  */
 static int zones_insert_zones(knot_nameserver_t *ns,
-			      const list *zone_conf,
+                              const list *zone_conf,
                               knot_zonedb_t *db_new)
 {
 	int inserted = 0;
@@ -1357,27 +1357,27 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 		zw->inserted = 0;
 		if (pthread_mutex_init(&zw->lock, NULL) < 0) {
 			free(zw);
-			zw = NULL;
-		} else {
-			unsigned i = 0;
-			WALK_LIST(z, *zone_conf) {
-				zw->q[i++] = z;
-			}
-			zw->qhead = 0;
-			zw->qtail = zcount;
+			return KNOT_ENOMEM;
 		}
+		
+		unsigned i = 0;
+		WALK_LIST(z, *zone_conf) {
+			zw->q[i++] = z;
+		}
+		zw->qhead = 0;
+		zw->qtail = zcount;
 	}
 	
 	/* Initialize threads. */
-	dt_unit_t *unit = NULL;
-	if (zw != NULL) {
-		unit = dt_create_coherent(dt_optimal_size(), &zonewalker, zw);
-	}
-	/* Single-thread fallback. */
+	size_t thrs = dt_optimal_size();
+	if (thrs > zcount) thrs = zcount;
+	dt_unit_t *unit =  dt_create_coherent(thrs, &zonewalker, zw);
 	if (unit == NULL) {
+		pthread_mutex_destroy(&zw->lock);
+		free(zw);
 		log_server_error("Couldn't initialize zone loading - %s\n",
 		                 knot_strerror(KNOT_ENOMEM));
-		return 0;
+		return KNOT_ENOMEM;
 	}
 	
 	/* Start loading. */
