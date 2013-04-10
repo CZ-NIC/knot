@@ -20,6 +20,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <inttypes.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
 
@@ -724,7 +725,7 @@ int journal_read(journal_t *journal, uint64_t id, journal_cmp_t cf, char *dst)
 
 int journal_read_node(journal_t *journal, journal_node_t *n, char *dst)
 {
-	dbg_journal("journal: reading node with id=%llu, data=<%u, %u>, flags=0x%hx\n",
+	dbg_journal("journal: reading node with id=%"PRIu64", data=<%u, %u>, flags=0x%hx\n",
 	            n->id, n->pos, n->pos + n->len, n->flags);
 
 	/* Check valid flag. */

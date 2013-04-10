@@ -267,7 +267,7 @@ static int add_rdata_to_rr(knot_rrset_t *rrset, const scanner_t *scanner)
 dbg_zp_exec_detail(
 			char *name = knot_dname_to_str(dname);
 			dbg_zp_detail("zp: arr_rdata_to_rr: "
-			              "Offset=%d:Adding dname=%s (%p)\n",
+			              "Offset=%zu:Adding dname=%s (%p)\n",
 			              offset, name, dname);
 			free(name);
 );

@@ -17,6 +17,7 @@
 #include <assert.h>
 #include <config.h>
 #include <stdlib.h>
+#include <inttypes.h>
 
 #include "libknot/util/debug.h"
 #include "common/errcode.h"
@@ -84,7 +85,7 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 	if (ns_serial_compare(soa_serial1, soa_serial2) == 0) {
 		dbg_zonediff("zone_diff: "
 		             "second zone must have higher serial than the "
-		             "first one. (%lld vs. %lld)\n",
+		             "first one. (%"PRId64" vs. %"PRId64")\n",
 		             soa_serial1, soa_serial2);
 		return KNOT_ENODIFF;
 	}
@@ -92,7 +93,7 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 	if (ns_serial_compare(soa_serial1, soa_serial2) > 0) {
 		dbg_zonediff("zone_diff: "
 		             "second zone must have higher serial than the "
-		             "first one. (%lld vs. %lld)\n",
+		             "first one. (%"PRId64" vs. %"PRId64")\n",
 		             soa_serial1, soa_serial2);
 		return KNOT_ERANGE;
 	}
@@ -131,7 +132,7 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 	changeset->serial_from = soa_serial1;
 	changeset->serial_to = soa_serial2;
 	
-	dbg_zonediff_verb("zone_diff: load_soas: SOAs diffed. (%lld -> %lld)\n",
+	dbg_zonediff_verb("zone_diff: load_soas: SOAs diffed. (%"PRId64" -> %"PRId64")\n",
 	            soa_serial1, soa_serial2);
 
 	return KNOT_EOK;
@@ -446,7 +447,7 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 	if (rrset1 && rrset2 && 
 	    (knot_rrset_ttl(rrset1) != knot_rrset_ttl(rrset2)) &&
 	    knot_rrset_rdata_rr_count(to_remove) == 0) {
-		dbg_zonediff_detail("zone_diff: diff_rdata: Remove RR: Old TTL=%llu, New=%llu\n",
+		dbg_zonediff_detail("zone_diff: diff_rdata: Remove RR: Old TTL=%"PRIu32", New=%"PRIu32"\n",
 		                    rrset1->ttl, rrset2->ttl);
 		/* We have to remove old TTL. */
 		assert(knot_rrset_ttl(to_remove) == knot_rrset_ttl(rrset1));
@@ -510,7 +511,7 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 	if (rrset1 && rrset2 &&
 	    knot_rrset_ttl(rrset1) != knot_rrset_ttl(rrset2)) {
 		/* We have to add newer TTL. */
-		dbg_zonediff_detail("zone_diff: diff_rdata: Add RR: Old TTL=%llu, New=%llu\n",
+		dbg_zonediff_detail("zone_diff: diff_rdata: Add RR: Old TTL=%"PRIu32", New=%"PRIu32"\n",
 		                    rrset1->ttl, rrset2->ttl);
 		if (knot_rrset_rdata_rr_count(to_add) == 0) {
 			/*
@@ -985,8 +986,8 @@ static void knot_zone_diff_dump_changeset(knot_changeset_t *ch)
 	dbg_zonediff_detail("Changeset TO: %d\n", ch->serial_to);
 	knot_rrset_dump(ch->soa_to);
 	dbg_zonediff_detail("\n");
-	dbg_zonediff_detail("Adding %d RRs.\n", ch->add_count);
-	dbg_zonediff_detail("Removing %d RRs.\n", ch->remove_count);
+	dbg_zonediff_detail("Adding %zu RRs.\n", ch->add_count);
+	dbg_zonediff_detail("Removing %zu RRs.\n", ch->remove_count);
 	
 	dbg_zonediff_detail("ADD section:\n");
 	dbg_zonediff_detail("**********************************************\n");
