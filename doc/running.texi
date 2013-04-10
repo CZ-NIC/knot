@@ -7,19 +7,15 @@
 * Controlling running daemon::       
 @end menu
 
-Knot DNS is designed to compile zone files before loading them into server.
-The reason for this is to speed up server startup, but requires a bit of user
-effort, so each time the zone file changes you need to compile it.
-@example
-$ knotc -c knot.conf compile
-@end example
-Knot DNS automatically compiles zones on some actions (@code{start|restart}).
+Use knotc tool for convenience when working with the server daemon.
+As of Knot DNS 1.3.0, the zones are not compiled anymore. That makes working
+with the server much more user friendly.
 @example
 $ knotc -c knot.conf start|reload|restart
 @end example
 
 The tool @code{knotc} is designed as a front-end for user, making it easier
-to do everything from zone compilation to controlling the server daemon.
+to do everything from server startup to state checking of a running server daemon.
 If you want to control the daemon directly, use @code{SIGINT} to quit the process or @code{SIGHUP} to reload configuration.
 
 @example
@@ -51,7 +47,6 @@ Actions:
  zonestatus			Show status of configured zones.
  checkconf			Check server configuration.
  checkzone			Check specified zone files.
- compile			Compile zone files (all if not specified).
 @end example
 
 If you want to run Knot DNS daemon directly, you can use @code{knotd} binary
@@ -73,19 +68,12 @@ PID file can be placed elsewhere using the @code{pidfile} statement (@pxref{pidf
 Slave zones with relative path specified will be placed in the @code{storage} as well.
 @itemize @bullet
 @item
-@emph{Compiled zones} - preprocessed zones, for example zone @code{example.com} will be
-placed in @file{STORAGE/example.com.db}.
-@item
 @emph{Journal files} - each zone has a journal file to store differences for IXFR and
 dynamic updates. Journal for zone @code{example.com} will be
 placed in @file{STORAGE/example.com.diff.db}.
 @item
 @emph{PID file} - unless specified differently by the @code{pidfile}, it will be placed
 in the @file{STORAGE/knot.pid}.
-@item
-@emph{Checksum files} - in order to identify compiled zone corruption, it
-has a separate checksum file. For @code{example.com} will be
-placed in @file{STORAGE/example.com.db.crc}.
 @end itemize
 
 @node Running a slave server
@@ -93,12 +81,10 @@ placed in @file{STORAGE/example.com.db.crc}.
 
 Running the server as a slave is very straightforward as you usually bootstrap
 zones over AXFR and thus avoid any manual zone compilation.
-When a zone is transferred over AXFR, both the compiled zone and the zone file is
-updated, so no further compilation is needed.
-However when IXFR transfer finishes, it stores the differences in a journal file
-and doesn't update the zone file nor compiled zone immediately,
-but there is a timer that checks periodically for new differences and
-updates both zone file and the compiled zone. You can configure this timer
+In contrast to AXFR, when the incremental transfer finishes, it stores the differences in a journal file
+and doesn't update the zone file immediately.
+There is a timer that checks periodically for new differences and
+updates the zone file. You can configure this timer
 with the @code{zonefile-sync} statement in @code{zones} (@pxref{zones}).
 
 There are two ways to start the server - directly or with the @code{knotc} controller tool.
@@ -124,10 +110,6 @@ When the server is running, you can control the daemon, see @ref{Controlling run
 @node Running a master server
 @section Running a master server
 
-Knot DNS first needs to compile the zones before it can load them, therefore you need to
-compile them with the @code{knotc compile} action.
-Some actions like @code{start} or @code{restart} compile zones automatically.
-
 If you want to just check the zone files first before starting,
 you can use @code{knotc checkzone} action.
 @example
@@ -136,13 +118,6 @@ $ knotc -c master.conf checkzone example.com
 
 Starting and stopping the daemon is the same as with the slave server in the previous section.
 @example
-$ knotc -c master.conf compile
-$ knotc -w -c master.conf start
-@end example
-
-Or you can compile it automatically:
-@example
-$ knotc -c master.conf checkconf # check configuration
 $ knotc -w -c master.conf start
 @end example
 
@@ -155,17 +130,17 @@ also add or remove zones without restarting the server. This can be done with th
 @code{knotc reload} action. 
 
 @example
-$ knotc -c master.conf compile # compile updated zones
 $ knotc -c master.conf reload  # reconfigure and load updated zones
 @end example
 
 If you want @emph{IXFR-out} differences created from changes you make to a zone file, enable @ref{ixfr-from-differences}
-in @code{zones} statement, then compile the zone and reload your server as seen above.
+in @code{zones} statement, then reload your server as seen above.
 If @emph{SOA}'s @emph{serial} is not changed no differences will be created. Please note
 that this feature is in @emph{experimental} stage and should be used with care.
 If you encounter a bug using this feature, please send it to Knot developers (@pxref{Submitting a bugreport}).
 
 You can also choose to tear-down the server fully and restart with the @code{knotc restart} action.
+Note that some actions like start, stop and restart cannot be done remotely.
 @example
 $ knotc -c master.conf running # check if running
 $ knotc -c master.conf restart # fully restart

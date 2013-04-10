@@ -106,6 +106,8 @@ Not all prerequisites are preinstalled for OS X.
   - liburcu requires gcc-4.6 from MacPorts, as it depends on __thread keyword
   $ CC=gcc-mp-4.6 ARCH=x86_64 ./configure
   $ make && sudo make install
+- liburcu >= 0.7.0 works with supplied compiler, however ARCH must still be set
+  - alternative is to set it with configure parameter --target
 
 Compiling Knot DNS with gcc-mp-4.6 is recommended, but not necessary. 
 
@@ -122,19 +124,11 @@ Configuration zone has to specify:
 
 $ cp samples/knot.min.conf myserver.conf
 $ vim myserver.conf # or your favourite text editor
-
-Second, zone files have to be compiled to binary form in order for server to
-load them. Binary 'knotc' (controller) offers functionality for everything from
-zone file management to controlling server instance. Most important parameter 
-is '-c' that specifies config file for our server. Compiled zones are saved to 
-storage defined in 'storage' variable in configuration.
-
 $ knotc -h # see what it can do
 
-Copy zone to the specified directory and compile.
+Prepare working directory.
 
 $ mkdir -p /tmp/knot-minimal/samples; cp samples/example.com.zone /tmp/knot-minimal/samples/
-$ knotc -c myserver.conf compile # compile zone files to binary format
 
 Third, lets load server. You can do this by running 'knotd' directly, or with
 'knotc' as well. Server is able to run in daemonized or interactive mode.
@@ -155,29 +149,3 @@ $ dig @$ADDR -p $PORT example.com # issue a query and see result
 $ ...
 $ knotc -c myserver.conf -w stop  # stop server
 
-Also, keep in mind that zone files have to be compiled before they are loaded
-to server. Workflow is as follows:
-
-$ knotc -c myserver.conf -w start
-$ <edit zonefile>
-$ knotc -c myserver.conf compile  # compile zones to binary format
-$ knotc -c myserver.conf reload   # reconfigures server on-the-fly
-$ dig @$ADDR -p $PORT example.com # issue a query and see result
-$ ...
-$ knotc -c myserver.conf stop
-
-Supported features
-==================
-
-DNS functions:
-* AXFR/IXFR (master and slave)
-* EDNS0
-* DNSSEC
-* NSEC3
-* Unknown RR types
-
-Server features:
-* Adding/removing zones on-the-fly
-* Reconfiguring server instance on-the-fly
-* IPv6 support
-* Semantic checks of loaded zone
