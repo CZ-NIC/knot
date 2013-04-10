@@ -941,6 +941,9 @@ int cmd_key(const char* lp, nsupdate_params_t *params)
 		ERR("command 'key' without {secret} specified\n");
 		ret = KNOT_EINVAL;
 	} else {
+		// override existing key
+		knot_free_key_params(&params->key_params);
+
 		kstr[len] = ':'; /* Replace ' ' with ':' sep */
 		ret = params_parse_tsig(kstr, &params->key_params);
 	}
