@@ -209,19 +209,24 @@ static inline value_t hattrie_setval(value_t v) {
     return v;
 }
 
-hattrie_t* hattrie_create()
+/* initialize root node */
+static void hattrie_initroot(hattrie_t *T)
 {
-    hattrie_t* T = malloc(sizeof(hattrie_t));
-    memset(T, 0, sizeof(hattrie_t));
-    slab_cache_init(&T->slab, sizeof(trie_node_t));
-
     node_ptr node;
     node.b = ahtable_create();
     node.b->flag = NODE_TYPE_HYBRID_BUCKET;
     node.b->c0 = 0x00;
     node.b->c1 = TRIE_MAXCHAR;
     T->root.t = alloc_trie_node(T, node);
+}
 
+hattrie_t* hattrie_create()
+{
+    hattrie_t* T = malloc(sizeof(hattrie_t));
+    memset(T, 0, sizeof(hattrie_t));
+    slab_cache_init(&T->slab, sizeof(trie_node_t));
+
+    hattrie_initroot(T);
     return T;
 }
 
@@ -250,11 +255,21 @@ static void hattrie_free_node(node_ptr node, bool free_nodes)
 void hattrie_free(hattrie_t* T)
 {
     if (T == NULL) {
-	return;
+        return;
     }
     hattrie_free_node(T->root, false);
     slab_cache_destroy(&T->slab);
     free(T);
+}
+
+void hattrie_clear(hattrie_t* T)
+{
+    if (T == NULL) {
+        return;
+    }
+    hattrie_free_node(T->root, false);
+    hattrie_initroot(T);
+    T->m = 0;
 }
 
 hattrie_t* hattrie_dup(const hattrie_t* T, value_t (*nval)(value_t))

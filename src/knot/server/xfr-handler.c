@@ -660,6 +660,7 @@ static int xfr_task_xfer(xfrworker_t *w, knot_ns_xfr_t *rq)
 	if (ret == KNOT_ENOIXFR) {
 		assert(rq->type == XFR_TYPE_IIN);
 		log_server_notice("%s Fallback to AXFR.\n", rq->msg);
+		xfr_task_cleanup(rq);
 		rq->type = XFR_TYPE_AIN;
 		rq->msg[XFR_MSG_DLTTR] = 'A';
 		ret = knot_ns_process_axfrin(ns, rq);
@@ -677,7 +678,7 @@ static int xfr_task_xfer(xfrworker_t *w, knot_ns_xfr_t *rq)
 		/* Send AXFR/IN query. */
 		if (ret == KNOT_EOK) {
 			ret = rq->send(rq->session, &rq->addr,
-			                 rq->wire, rq->wire_size);
+			               rq->wire, rq->wire_size);
 			/* Switch to AXFR and return. */
 			if (ret == rq->wire_size) {
 				xfr_task_cleanup(rq);

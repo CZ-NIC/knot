@@ -4086,12 +4086,14 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 	
 	if (ret == XFRIN_RES_FALLBACK) {
 		dbg_ns("ns_process_ixfrin: Fallback to AXFR.\n");
-		knot_free_changesets((knot_changesets_t **)&xfr->data);
-		knot_packet_free(&xfr->query);
-		return KNOT_ENOIXFR;
+		ret = KNOT_ENOIXFR;
 	}
-	
-	if (ret > 0) {
+
+	if (ret < 0) {
+		knot_packet_free(&xfr->query);
+		hattrie_clear(xfr->lookup_tree);
+		return ret;
+	} else if (ret > 0) {
 		dbg_ns("ns_process_ixfrin: IXFR finished\n");
 
 		knot_changesets_t *chgsets = (knot_changesets_t *)xfr->data;
