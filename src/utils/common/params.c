@@ -316,7 +316,8 @@ int params_parse_tsig(const char *value, knot_key_params_t *key_params)
 
 	/* Invalidate previous key. */
 	if (key_params->name) {
-		knot_free_key_params(key_params);
+		ERR("Key specified multiple times.\n");
+		return KNOT_EINVAL;
 	}
 
 	char *h = strdup(value);
@@ -375,7 +376,8 @@ int params_parse_keyfile(const char *value, knot_key_params_t *key_params)
 	}
 
 	if (key_params->name) {
-		knot_free_key_params(key_params);
+		ERR("Key specified multiple times.\n");
+		return KNOT_EINVAL;
 	}
 
 	int result = knot_load_key_params(value, key_params);
