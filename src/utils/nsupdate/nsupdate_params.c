@@ -28,7 +28,7 @@
 #include "libknot/libknot.h"
 
 #define DEFAULT_RETRIES_NSUPDATE	3
-#define DEFAULT_TIMEOUT_NSUPDATE	300
+#define DEFAULT_TIMEOUT_NSUPDATE	12
 
 static const style_t DEFAULT_STYLE_NSUPDATE = {
 	.format = FORMAT_NSUPDATE,
