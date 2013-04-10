@@ -1,29 +1,29 @@
 /*!
- * \file errcode.h
- *
- * \author Lubos Slovak <lubos.slovak@nic.cz>
- * \author Marek Vavrusa <marek.vavrusa@nic.cz>
- *
- * \brief Error codes and function for getting error message.
- *
- * \addtogroup common_lib
- * @{
- */
+* \file errcode.h
+*
+* \author Lubos Slovak <lubos.slovak@nic.cz>
+* \author Marek Vavrusa <marek.vavrusa@nic.cz>
+*
+* \brief Error codes and function for getting error message.
+*
+* \addtogroup common_lib
+* @{
+*/
 /*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 
 #ifndef _KNOTD_COMMON_ERRCODE_H_
 #define _KNOTD_COMMON_ERRCODE_H_
@@ -32,19 +32,19 @@
 
 /*! \brief Error codes used in the library. */
 enum knot_error {
-	KNOT_EOK = 0,                  /*!< OK */
-	
+	KNOT_EOK = 0,             /*!< OK */
+
 	/* TSIG errors. */
-	KNOT_TSIG_EBADSIG = -16,       /*!< Failed to verify TSIG MAC. */
-	KNOT_TSIG_EBADKEY = -17,       /*!< TSIG key not recognized or invalid. */
-	KNOT_TSIG_EBADTIME = -18,      /*!< TSIG signing time out of range. */
-	
+	KNOT_TSIG_EBADSIG = -16,  /*!< Failed to verify TSIG MAC. */
+	KNOT_TSIG_EBADKEY = -17,  /*!< TSIG key not recognized or invalid. */
+	KNOT_TSIG_EBADTIME = -18, /*!< TSIG signing time out of range. */
+
 	/* Directly mapped error codes. */
 	KNOT_ENOMEM = -ENOMEM,             /*!< Out of memory. */
 	KNOT_EINVAL = -EINVAL,             /*!< Invalid parameter passed. */
 	KNOT_ENOTSUP = -ENOTSUP,           /*!< Parameter not supported. */
 	KNOT_EBUSY = -EBUSY,               /*!< Requested resource is busy. */
-	KNOT_EAGAIN = -EAGAIN,            /*!< OS lacked necessary resources. */
+	KNOT_EAGAIN = -EAGAIN,             /*!< OS lacked necessary resources. */
 	KNOT_EACCES = -EACCES,             /*!< Permission is denied. */
 	KNOT_ECONNREFUSED = -ECONNREFUSED, /*!< Connection is refused. */
 	KNOT_EISCONN = -EISCONN,           /*!< Already connected. */
@@ -84,7 +84,87 @@ enum knot_error {
 	KNOT_ECNAME,          /*!< CNAME loop found in zone. */
 	KNOT_ENODIFF,         /*!< No zone diff can be created. */
 	KNOT_EDSDIGESTLEN,    /*!< DS digest length does not match digest type. */
-	KNOT_ELIMIT           /*!< Exceeded response rate limit. */
+	KNOT_ENOTSIG,         /*!< Expected a TSIG or SIG(0). */
+	KNOT_ESTOP,           /*!< Stop doing something. */
+	KNOT_ELIMIT,          /*!< Exceeded response rate limit. */
+
+	/* Zone file loader errors. */
+	FLOADER_EFSTAT,
+	FLOADER_EDIRECTORY,
+	FLOADER_EEMPTY,
+	FLOADER_EDEFAULTS,
+	FLOADER_EMMAP,
+	FLOADER_EMUNMAP,
+	FLOADER_ESCANNER,
+
+	/* Zone scanner errors. */
+	ZSCANNER_UNCOVERED_STATE,
+	ZSCANNER_ELEFT_PARENTHESIS,
+	ZSCANNER_ERIGHT_PARENTHESIS,
+	ZSCANNER_EUNSUPPORTED_TYPE,
+	ZSCANNER_EBAD_PREVIOUS_OWNER,
+	ZSCANNER_EBAD_DNAME_CHAR,
+	ZSCANNER_EBAD_OWNER,
+	ZSCANNER_ELABEL_OVERFLOW,
+	ZSCANNER_EDNAME_OVERFLOW,
+	ZSCANNER_EBAD_NUMBER,
+	ZSCANNER_ENUMBER64_OVERFLOW,
+	ZSCANNER_ENUMBER32_OVERFLOW,
+	ZSCANNER_ENUMBER16_OVERFLOW,
+	ZSCANNER_ENUMBER8_OVERFLOW,
+	ZSCANNER_EFLOAT_OVERFLOW,
+	ZSCANNER_ERDATA_OVERFLOW,
+	ZSCANNER_EITEM_OVERFLOW,
+	ZSCANNER_EBAD_ADDRESS_CHAR,
+	ZSCANNER_EBAD_IPV4,
+	ZSCANNER_EBAD_IPV6,
+	ZSCANNER_EBAD_GATEWAY,
+	ZSCANNER_EBAD_GATEWAY_KEY,
+	ZSCANNER_EBAD_APL,
+	ZSCANNER_EBAD_RDATA,
+	ZSCANNER_EBAD_HEX_RDATA,
+	ZSCANNER_EBAD_HEX_CHAR,
+	ZSCANNER_EBAD_BASE64_CHAR,
+	ZSCANNER_EBAD_BASE32HEX_CHAR,
+	ZSCANNER_EBAD_REST,
+	ZSCANNER_EBAD_TIMESTAMP_CHAR,
+	ZSCANNER_EBAD_TIMESTAMP_LENGTH,
+	ZSCANNER_EBAD_TIMESTAMP,
+	ZSCANNER_EBAD_DATE,
+	ZSCANNER_EBAD_TIME,
+	ZSCANNER_EBAD_TIME_UNIT,
+	ZSCANNER_EBAD_BITMAP,
+	ZSCANNER_ETEXT_OVERFLOW,
+	ZSCANNER_EBAD_TEXT_CHAR,
+	ZSCANNER_EBAD_TEXT,
+	ZSCANNER_EBAD_DIRECTIVE,
+	ZSCANNER_EBAD_TTL,
+	ZSCANNER_EBAD_ORIGIN,
+	ZSCANNER_EBAD_INCLUDE_FILENAME,
+	ZSCANNER_EBAD_INCLUDE_ORIGIN,
+	ZSCANNER_EUNPROCESSED_INCLUDE,
+	ZSCANNER_EUNOPENED_INCLUDE,
+	ZSCANNER_EBAD_RDATA_LENGTH,
+	ZSCANNER_ECANNOT_TEXT_DATA,
+	ZSCANNER_EBAD_LOC_DATA,
+	ZSCANNER_EUNKNOWN_BLOCK,
+	ZSCANNER_EBAD_ALGORITHM,
+	ZSCANNER_EBAD_CERT_TYPE,
+	ZSCANNER_EBAD_EUI_LENGTH,
+
+	/* Key parsing errors. */
+	KNOT_KEY_EPUBLIC_KEY_OPEN,
+	KNOT_KEY_EPRIVATE_KEY_OPEN,
+	KNOT_KEY_EPUBLIC_KEY_INVALID,
+
+	/* Key signing errors. */
+	KNOT_DNSSEC_ENOTSUP,
+	KNOT_DNSSEC_EINVALID_KEY,
+	KNOT_DNSSEC_EASSIGN_KEY,
+	KNOT_DNSSEC_ECREATE_DIGEST_CONTEXT,
+	KNOT_DNSSEC_EUNEXPECTED_SIGNATURE_SIZE,
+	KNOT_DNSSEC_EDECODE_RAW_SIGNATURE,
+	KNOT_DNSSEC_ESIGN
 };
 
 /*! \brief Table linking error messages to error codes. */

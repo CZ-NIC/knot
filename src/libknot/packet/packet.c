@@ -15,11 +15,12 @@
  */
 
 #include <assert.h>
+#include <stdlib.h>
 
 #include "packet/packet.h"
 #include "util/debug.h"
 #include "common.h"
-#include "util/descriptor.h"
+#include "common/descriptor.h"
 #include "util/wire.h"
 #include "tsig.h"
 
@@ -35,13 +36,6 @@
 			? DEFAULT_##type##_QUERY  \
 			: DEFAULT_##type)
 
-
-
-typedef enum {
-	KNOT_PACKET_DUPL_IGNORE,
-	KNOT_PACKET_DUPL_SKIP,
-	KNOT_PACKET_DUPL_MERGE
-} knot_packet_duplicate_handling_t;
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
@@ -232,10 +226,8 @@ static int knot_packet_parse_header(const uint8_t *wire, size_t *pos,
 	}
 
 	header->id = knot_wire_get_id(wire);
-	// copy some of the flags: OPCODE and RD
-	// do this by copying flags1 and setting QR to 1, AA to 0 and TC to 0
 	header->flags1 = knot_wire_get_flags1(wire);
-	// do not copy flags2 (all set by server)
+	header->flags2 = knot_wire_get_flags2(wire);
 
 	header->qdcount = knot_wire_get_qdcount(wire);
 	header->ancount = knot_wire_get_ancount(wire);
@@ -298,6 +290,7 @@ static int knot_packet_parse_question(const uint8_t *wire, size_t *pos,
 		if (question->qname == NULL) {
 			return KNOT_ENOMEM;
 		}
+		knot_dname_to_lower(question->qname);
 	} else {
 		assert(question->qname != NULL); /* When alloc=0, must be set. */
 		void *parsed = knot_dname_parse_from_wire(wire, pos,
@@ -306,6 +299,7 @@ static int knot_packet_parse_question(const uint8_t *wire, size_t *pos,
 		if (!parsed) {
 			return KNOT_EMALF;
 		}
+		knot_dname_to_lower(question->qname);
 	}
 	question->qtype = knot_wire_read_u16(wire + i + 1);
 	question->qclass = knot_wire_read_u16(wire + i + 3);
@@ -356,26 +350,74 @@ static int knot_packet_realloc_rrsets(const knot_rrset_t ***rrsets,
 
 /*----------------------------------------------------------------------------*/
 
-static knot_rdata_t *knot_packet_parse_rdata(const uint8_t *wire,
-	size_t *pos, size_t total_size, size_t rdlength,
-	const knot_rrtype_descriptor_t *desc)
+static int knot_packet_parse_rdata(knot_rrset_t *rr, const uint8_t *wire,
+                                   size_t *pos, size_t total_size,
+                                   size_t rdlength)
 {
-	knot_rdata_t *rdata = knot_rdata_new();
-	if (rdata == NULL) {
-		return NULL;
+	if (!rr || !wire || !pos || rdlength == 0) {
+		return KNOT_EINVAL;
 	}
-
-	int rc = knot_rdata_from_wire(rdata, wire, pos, total_size, rdlength,
-	                                desc);
-
-	if (rc != KNOT_EOK) {
-		dbg_packet("rdata_from_wire() returned: %s\n",
-		           knot_strerror(rc));
-		knot_rdata_free(&rdata);
-		return NULL;
+	
+	
+	
+	/*! \todo As I'm revising it, seems highly inefficient to me.
+	 *        We just need to skim through the packet,
+	 *        check if it is in valid format and store pointers to various
+	 *        parts in rdata instead of copying memory blocks and
+	 *        parsing domain names (with additional allocation) and then
+	 *        use use the wireformat for lookup again. Compression could
+	 *        be handled in-situ without additional memory allocs...
+	 */
+	
+	int ret = knot_rrset_rdata_from_wire_one(rr, wire, pos, total_size,
+	                                         rdlength);
+	if (ret != KNOT_EOK) {
+		dbg_packet("packet: parse_rdata: Failed to parse RDATA (%s).\n",
+		           knot_strerror(ret));
+		return ret;
 	}
+	
+//	uint8_t* rd = knot_rrset_create_rdata(rr, rdlength);
+//	if (!rd) {
+//		return KNOT_ERROR;
+//	}
+//	uint8_t* np = rd + rdlength;
+	
+//	const rdata_descriptor_t *desc = get_rdata_descriptor(knot_rrset_type(rr));
+//	if (!desc) {
+//		/*! \todo Free rdata mem ? Not essential, but nice. */
+//		return KNOT_EINVAL;
+//	}
 
-	return rdata;
+//	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
+//		const int id = desc->block_types[i];
+//		if (descriptor_item_is_dname(id)) {
+//			knot_dname_t *dn = NULL;
+//			dn = knot_dname_parse_from_wire(wire, pos, total_size, NULL, NULL);
+//			if (dn == NULL) {
+//				return KNOT_EMALF;
+//			}
+//			/* Store ptr in rdata. */
+//			*((knot_dname_t**)rd) = dn;
+//			rd += sizeof(knot_dname_t*);
+//		} else if (descriptor_item_is_fixed(id)) {
+//			memcpy(rd, wire + *pos, id);
+//			rd += id; /* Item represents fixed len here */
+//			*pos += id;
+//		} else if (descriptor_item_is_remainder(id)) {
+//			size_t rchunk = np - rd;
+//			memcpy(rd, wire + *pos, rchunk);
+//			rd += rchunk;
+//			*pos += rchunk;
+//		} else {
+//			//NAPTR
+//			assert(knot_rrset_type(rr) == KNOT_RRTYPE_NAPTR);
+//			assert(0);
+//		}
+		
+//	}
+
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -393,6 +435,7 @@ static knot_rrset_t *knot_packet_parse_rr(const uint8_t *wire, size_t *pos,
 	if (owner == NULL) {
 		return NULL;
 	}
+	knot_dname_to_lower(owner);
 
 dbg_packet_exec_verb(
 	char *name = knot_dname_to_str(owner);
@@ -435,7 +478,7 @@ dbg_packet_exec_verb(
 	if (size - *pos < rdlength) {
 		dbg_packet("Malformed RR: Not enough data to parse RR"
 		           " RDATA (size: %zu, position: %zu).\n", size, *pos);
-		knot_rrset_deep_free(&rrset, 1, 1, 0);
+		knot_rrset_deep_free(&rrset, 1, 1);
 		return NULL;
 	}
 
@@ -444,21 +487,15 @@ dbg_packet_exec_verb(
 	if (rdlength == 0) {
 		return rrset;
 	}
-
+	
+	
 	// parse RDATA
-	knot_rdata_t *rdata = knot_packet_parse_rdata(wire, pos, size,
-	                         rdlength,
-	                         knot_rrtype_descriptor_by_type(rrset->type));
-	if (rdata == NULL) {
+	/*! \todo Merge with add_rdata_to_rr in zcompile, should be a rrset func
+	 *        probably. */
+	int ret = knot_packet_parse_rdata(rrset, wire, pos, size, rdlength);
+	if (ret != KNOT_EOK) {
 		dbg_packet("Malformed RR: Could not parse RDATA.\n");
-		knot_rrset_deep_free(&rrset, 1, 1, 0);
-		return NULL;
-	}
-
-	if (knot_rrset_add_rdata(rrset, rdata) != KNOT_EOK) {
-		dbg_packet("Malformed RR: Could not add RDATA to RRSet.\n");
-		knot_rdata_free(&rdata);
-		knot_rrset_deep_free(&rrset, 1, 1, 0);
+		knot_rrset_deep_free(&rrset, 1, 1);
 		return NULL;
 	}
 
@@ -473,7 +510,7 @@ static int knot_packet_add_rrset(knot_rrset_t *rrset,
                                  short *max_rrsets,
                                  short default_rrsets,
                                  const knot_packet_t *packet,
-                                 knot_packet_duplicate_handling_t dupl)
+                                 knot_packet_flag_t flags)
 {
 	assert(rrset != NULL);
 	assert(rrsets != NULL);
@@ -482,8 +519,8 @@ static int knot_packet_add_rrset(knot_rrset_t *rrset,
 
 dbg_packet_exec_verb(
 	char *name = knot_dname_to_str(rrset->owner);
-	dbg_packet_verb("packet_add_rrset(), owner: %s, type: %s\n",
-	                name, knot_rrtype_to_string(rrset->type));
+	dbg_packet_verb("packet_add_rrset(), owner: %s, type: %u\n",
+	                name, rrset->type);
 	free(name);
 );
 
@@ -493,33 +530,30 @@ dbg_packet_exec_verb(
 		return KNOT_ENOMEM;
 	}
 
-	if (dupl == KNOT_PACKET_DUPL_SKIP &&
+	if ((flags & KNOT_PACKET_DUPL_SKIP) &&
 	    knot_packet_contains(packet, rrset, KNOT_RRSET_COMPARE_PTR)) {
-		/*! \todo This should also return > 0, as it means that the
-		          RRSet was not used actually. */
-		return KNOT_EOK;
+		return 2;
 	}
 
-	if (dupl == KNOT_PACKET_DUPL_MERGE) {
+	// Try to merge rdata to rrset if flag NO_MERGE isn't set.
+    if ((flags & KNOT_PACKET_DUPL_NO_MERGE) == 0) {
 		// try to find the RRSet in this array of RRSets
 		for (int i = 0; i < *rrset_count; ++i) {
-
 dbg_packet_exec_detail(
 			char *name = knot_dname_to_str((*rrsets)[i]->owner);
 			dbg_packet_detail("Comparing to RRSet: owner: %s, "
-			                  "type: %s\n", name,
-			                  knot_rrtype_to_string(
-			                       (*rrsets)[i]->type));
+			                  "type: %u\n", name,
+			                  (*rrsets)[i]->type);
 			free(name);
 );
 
-			if (knot_rrset_match((*rrsets)[i], rrset,
+			if (knot_rrset_equal((*rrsets)[i], rrset,
 			                         KNOT_RRSET_COMPARE_HEADER)) {
 				/*! \todo Test this!!! */
 				// no duplicate checking here, the packet should
 				// look exactly as it came from wire
 				int rc = knot_rrset_merge(
-				    (void **)((*rrsets) + i), (void **)&rrset);
+				    ((knot_rrset_t *)(*rrsets)[i]), rrset);
 				if (rc != KNOT_EOK) {
 					return rc;
 				}
@@ -542,7 +576,8 @@ static int knot_packet_parse_rrs(const uint8_t *wire, size_t *pos,
                                  const knot_rrset_t ***rrsets,
                                  short *rrset_count, short *max_rrsets,
                                  short default_rrsets,
-                                 knot_packet_t *packet)
+                                 knot_packet_t *packet,
+                                 knot_packet_flag_t flags)
 {
 	assert(pos != NULL);
 	assert(wire != NULL);
@@ -573,13 +608,15 @@ static int knot_packet_parse_rrs(const uint8_t *wire, size_t *pos,
 		++(*parsed_rrs);
 
 		err = knot_packet_add_rrset(rrset, rrsets, rrset_count,
-		                            max_rrsets, default_rrsets, packet,
-		                            KNOT_PACKET_DUPL_MERGE);
+		                            max_rrsets, default_rrsets, packet, flags);
 		if (err < 0) {
 			break;
-		} else if (err > 0) {	// merged
+		} else if (err == 1) {	// merged, shallow data copy
 			dbg_packet_detail("RRSet merged, freeing.\n");
-			knot_rrset_deep_free(&rrset, 1, 0, 0);  // TODO: ok??
+			knot_rrset_deep_free(&rrset, 1, 0);
+			continue;
+		} else if (err == 2) { // skipped
+			knot_rrset_deep_free(&rrset, 1, 1);
 			continue;
 		}
 
@@ -588,7 +625,7 @@ static int knot_packet_parse_rrs(const uint8_t *wire, size_t *pos,
 			// remove the last RRSet from the list of RRSets
 			// - just decrement the count
 			--(*rrset_count);
-			knot_rrset_deep_free(&rrset, 1, 1, 1);
+			knot_rrset_deep_free(&rrset, 1, 1);
 			break;
 		}
 
@@ -656,8 +693,8 @@ static void knot_packet_free_allocated_space(knot_packet_t *pkt)
 
 /*----------------------------------------------------------------------------*/
 
-static int knot_packet_parse_rr_sections(knot_packet_t *packet,
-                                           size_t *pos)
+static int knot_packet_parse_rr_sections(knot_packet_t *packet, size_t *pos,
+                                         knot_packet_flag_t flags)
 {
 	assert(packet != NULL);
 	assert(packet->wireformat != NULL);
@@ -673,7 +710,7 @@ static int knot_packet_parse_rr_sections(knot_packet_t *packet,
 	if ((err = knot_packet_parse_rrs(packet->wireformat, pos,
 	   packet->size, packet->header.ancount, &packet->parsed_an,
 	   &packet->answer, &packet->an_rrsets, &packet->max_an_rrsets,
-	   DEFAULT_RRSET_COUNT(ANCOUNT, packet), packet)) != KNOT_EOK) {
+	   DEFAULT_RRSET_COUNT(ANCOUNT, packet), packet, flags)) != KNOT_EOK) {
 		return err;
 	}
 
@@ -686,7 +723,7 @@ static int knot_packet_parse_rr_sections(knot_packet_t *packet,
 	if ((err = knot_packet_parse_rrs(packet->wireformat, pos,
 	   packet->size, packet->header.nscount, &packet->parsed_ns,
 	   &packet->authority, &packet->ns_rrsets, &packet->max_ns_rrsets,
-	   DEFAULT_RRSET_COUNT(NSCOUNT, packet), packet)) != KNOT_EOK) {
+	   DEFAULT_RRSET_COUNT(NSCOUNT, packet), packet, flags)) != KNOT_EOK) {
 		return err;
 	}
 
@@ -699,7 +736,7 @@ static int knot_packet_parse_rr_sections(knot_packet_t *packet,
 	if ((err = knot_packet_parse_rrs(packet->wireformat, pos,
 	   packet->size, packet->header.arcount, &packet->parsed_ar,
 	   &packet->additional, &packet->ar_rrsets, &packet->max_ar_rrsets,
-	   DEFAULT_RRSET_COUNT(ARCOUNT, packet), packet)) != KNOT_EOK) {
+	   DEFAULT_RRSET_COUNT(ARCOUNT, packet), packet, flags)) != KNOT_EOK) {
 		return err;
 	}
 
@@ -781,7 +818,7 @@ knot_packet_t *knot_packet_new(knot_packet_prealloc_type_t prealloc)
 
 int knot_packet_parse_from_wire(knot_packet_t *packet,
                                   const uint8_t *wireformat, size_t size,
-                                  int question_only)
+                                  int question_only, knot_packet_flag_t flags)
 {
 	if (packet == NULL || wireformat == NULL) {
 		return KNOT_EINVAL;
@@ -838,7 +875,7 @@ dbg_packet_exec_detail(
 	}
 
 	/*! \todo Replace by call to parse_rest()? */
-	err = knot_packet_parse_rest(packet);
+	err = knot_packet_parse_rest(packet, flags);
 
 dbg_packet_exec_detail(
 	knot_packet_dump(packet);
@@ -849,7 +886,7 @@ dbg_packet_exec_detail(
 
 /*----------------------------------------------------------------------------*/
 
-int knot_packet_parse_rest(knot_packet_t *packet)
+int knot_packet_parse_rest(knot_packet_t *packet, knot_packet_flag_t flags)
 {
 	if (packet == NULL) {
 		return KNOT_EINVAL;
@@ -870,7 +907,7 @@ int knot_packet_parse_rest(knot_packet_t *packet)
 	/*! \todo If we already parsed some part of the packet, it is not ok
 	 *        to begin parsing from the Answer section.
 	 */
-	return knot_packet_parse_rr_sections(packet, &pos);
+	return knot_packet_parse_rr_sections(packet, &pos, flags);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -981,6 +1018,13 @@ size_t knot_packet_size(const knot_packet_t *packet)
 
 /*----------------------------------------------------------------------------*/
 
+size_t knot_packet_max_size(const knot_packet_t *packet)
+{
+	return packet->max_size;
+}
+
+/*----------------------------------------------------------------------------*/
+
 size_t knot_packet_question_size(const knot_packet_t *packet)
 {
 	return (KNOT_WIRE_HEADER_SIZE + 4
@@ -1068,6 +1112,14 @@ uint8_t knot_packet_opcode(const knot_packet_t *packet)
 
 /*----------------------------------------------------------------------------*/
 
+knot_question_t *knot_packet_question(knot_packet_t *packet)
+{
+	if (packet == NULL) return NULL;
+	return &packet->question;
+}
+
+/*----------------------------------------------------------------------------*/
+
 const knot_dname_t *knot_packet_qname(const knot_packet_t *packet)
 {
 	if (packet == NULL) {
@@ -1087,7 +1139,7 @@ uint16_t knot_packet_qtype(const knot_packet_t *packet)
 
 /*----------------------------------------------------------------------------*/
 
-void knot_packet_set_qtype(knot_packet_t *packet, knot_rr_type_t qtype)
+void knot_packet_set_qtype(knot_packet_t *packet, uint16_t qtype)
 {
 	assert(packet != NULL);
 	packet->question.qtype = qtype;
@@ -1290,19 +1342,19 @@ int knot_packet_contains(const knot_packet_t *packet,
 	}
 
 	for (int i = 0; i < packet->an_rrsets; ++i) {
-		if (knot_rrset_match(packet->answer[i], rrset, cmp)) {
+		if (knot_rrset_equal(packet->answer[i], rrset, cmp)) {
 			return 1;
 		}
 	}
 
 	for (int i = 0; i < packet->ns_rrsets; ++i) {
-		if (knot_rrset_match(packet->authority[i], rrset, cmp)) {
+		if (knot_rrset_equal(packet->authority[i], rrset, cmp)) {
 			return 1;
 		}
 	}
 
 	for (int i = 0; i < packet->ar_rrsets; ++i) {
-		if (knot_rrset_match(packet->additional[i], rrset, cmp)) {
+		if (knot_rrset_equal(packet->additional[i], rrset, cmp)) {
 			return 1;
 		}
 	}
@@ -1351,18 +1403,18 @@ dbg_packet_exec(
 		char *name = knot_dname_to_str(
 			(((knot_rrset_t **)(pkt->tmp_rrsets))[i])->owner);
 		dbg_packet_verb("Freeing tmp RRSet on ptr: %p (ptr to ptr:"
-		       " %p, type: %s, owner: %s)\n",
+		       " %p, type: %u, owner: %s)\n",
 		       (((knot_rrset_t **)(pkt->tmp_rrsets))[i]),
 		       &(((knot_rrset_t **)(pkt->tmp_rrsets))[i]),
-		       knot_rrtype_to_string(
-		            (((knot_rrset_t **)(pkt->tmp_rrsets))[i])->type),
+		       (((knot_rrset_t **)(pkt->tmp_rrsets))[i])->type,
 		       name);
 		free(name);
 );
 		// TODO: this is quite ugly, but better than copying whole
 		// function (for reallocating rrset array)
+		// TODO sort out freeing, this WILL leak.
 		knot_rrset_deep_free(
-			&(((knot_rrset_t **)(pkt->tmp_rrsets))[i]), 1, 1, 1);
+			&(((knot_rrset_t **)(pkt->tmp_rrsets))[i]), 1, 1);
 	}
 }
 
@@ -1527,7 +1579,7 @@ static void knot_packet_dump_rrsets(const knot_rrset_t **rrsets,
 	assert((rrsets != NULL && *rrsets != NULL) || count < 1);
 
 	for (int i = 0; i < count; ++i) {
-		knot_rrset_dump(rrsets[i], 0);
+		knot_rrset_dump(rrsets[i]);
 	}
 }
 #endif
@@ -1566,10 +1618,10 @@ void knot_packet_dump(const knot_packet_t *packet)
 		char *qname = knot_dname_to_str(packet->question.qname);
 		dbg_packet("  QNAME: %s\n", qname);
 		free(qname);
-		dbg_packet("  QTYPE: %u (%s)\n", packet->question.qtype,
-		       knot_rrtype_to_string(packet->question.qtype));
-		dbg_packet("  QCLASS: %u (%s)\n", packet->question.qclass,
-		       knot_rrclass_to_string(packet->question.qclass));
+		dbg_packet("  QTYPE: %u (%u)\n", packet->question.qtype,
+		           packet->question.qtype);
+		dbg_packet("  QCLASS: %u (%u)\n", packet->question.qclass,
+		           packet->question.qclass);
 	}
 
 	dbg_packet("\nAnswer RRSets:\n");
@@ -1590,5 +1642,21 @@ void knot_packet_dump(const knot_packet_t *packet)
 	dbg_packet("\nPacket size: %zu\n", packet->size);
 	dbg_packet("\n-----------------------------\n");
 #endif
+}
+
+static int knot_packet_free_section(const knot_rrset_t **s, short count) {
+	/*! \todo The API is really incompatible here. */
+	for (short i = 0; i < count; ++i)
+		knot_rrset_deep_free((knot_rrset_t **)s + i, 1, 1);
+	return count;
+}
+
+int knot_packet_free_rrsets(knot_packet_t *packet)
+{
+	int ret = 0;
+	ret += knot_packet_free_section(packet->answer, packet->an_rrsets);
+	ret += knot_packet_free_section(packet->authority, packet->ns_rrsets);
+	ret += knot_packet_free_section(packet->additional, packet->ar_rrsets);
+	return ret;
 }
 

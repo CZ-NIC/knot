@@ -23,6 +23,7 @@
 #include "libknot/packet/response.h"
 #include "libknot/packet/query.h"
 #include "libknot/nameserver/name-server.h"
+#include "common/descriptor.h"
 #include "common/prng.h"
 
 /* Enable time-dependent tests. */
@@ -55,7 +56,6 @@ static void* rrl_runnable(void *arg)
 	struct runnable_data* d = (struct runnable_data*)arg;
 	sockaddr_t addr;
 	memcpy(&addr, d->addr, sizeof(sockaddr_t));
-	sockaddr_update(&addr);
 	int lock = -1;
 	uint32_t now = time(NULL);
 	struct bucketmap_t *m = malloc(RRL_INSERTS * sizeof(struct bucketmap_t));
@@ -160,7 +160,7 @@ static int rrl_tests_run(int argc, char *argv[])
 
 	/* 4. N unlimited requests. */
 	knot_dname_t *apex = knot_dname_new_from_str("rrl.", 4, NULL);
-	knot_zone_t *zone = knot_zone_new(knot_node_new(apex, NULL, 0), 0, 0);
+	knot_zone_t *zone = knot_zone_new(knot_node_new(apex, NULL, 0));
 	sockaddr_t addr;
 	sockaddr_t addr6;
 	sockaddr_set(&addr, AF_INET, "1.2.3.4", 0);
@@ -216,7 +216,7 @@ static int rrl_tests_run(int argc, char *argv[])
 	
 	knot_dname_release(qst.qname);
 	knot_dname_release(apex);
-	knot_zone_deep_free(&zone, 0);
+	knot_zone_deep_free(&zone);
 	knot_ns_destroy(&ns);
 	knot_packet_free(&query);
 	rrl_destroy(rrl);

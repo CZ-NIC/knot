@@ -33,6 +33,7 @@
 #endif
 
 #include "knot/common.h"
+#include "common/descriptor.h"
 #include "knot/ctl/process.h"
 #include "knot/ctl/remote.h"
 #include "knot/conf/conf.h"
@@ -42,6 +43,7 @@
 #include "libknot/util/wire.h"
 #include "libknot/packet/query.h"
 #include "libknot/packet/response.h"
+#include "knot/zone/zone-load.h"
 
 /*! \brief Controller constants. */
 enum knotc_constants_t {
@@ -89,7 +91,6 @@ static int cmd_status(int argc, char *argv[], unsigned flags, int jobs);
 static int cmd_zonestatus(int argc, char *argv[], unsigned flags, int jobs);
 static int cmd_checkconf(int argc, char *argv[], unsigned flags, int jobs);
 static int cmd_checkzone(int argc, char *argv[], unsigned flags, int jobs);
-static int cmd_compile(int argc, char *argv[], unsigned flags, int jobs);
 
 /*! \brief Table of remote commands. */
 knot_cmd_t knot_cmd_tbl[] = {
@@ -103,7 +104,6 @@ knot_cmd_t knot_cmd_tbl[] = {
 	{"zonestatus",&cmd_zonestatus, "Show status of configured zones.",0},
 	{"checkconf", &cmd_checkconf, "Check server configuration.",1},
 	{"checkzone", &cmd_checkzone, "Check specified zone files.",1},
-	{"compile",   &cmd_compile, "Compile zone files (all if not specified).",1},
 	{NULL, NULL, NULL,0}
 };
 
@@ -134,139 +134,6 @@ void help(int argc, char **argv)
 	}
 }
 
-/*!
- * \brief Check if the zone needs recompilation.
- *
- * \param db Path to zone db file.
- * \param source Path to zone source file.
- *
- * \retval KNOT_EOK if up to date.
- * \retval KNOT_ERROR if needs recompilation.
- */
-static int check_zone(const char *db, const char *source)
-{
-	/* Check zonefile. */
-	struct stat st;
-	if (stat(source, &st) != 0) {
-		int reason = errno;
-		const char *emsg = "";
-		switch (reason) {
-		case EACCES:
-			emsg = "Not enough permissions to access zone file '%s'.\n";
-			break;
-		case ENOENT:
-			emsg = "Zone file '%s' doesn't exist.\n";
-			break;
-		default:
-			emsg = "Unable to stat zone file '%s'.\n";
-			break;
-		}
-		log_zone_error(emsg, source);
-		return KNOT_ENOENT;
-	}
-
-	/* Read zonedb header. */
-	zloader_t *zl = 0;
-	knot_zload_open(&zl, db);
-	if (!zl) {
-		return KNOT_ERROR;
-	}
-
-	/* Check source files and mtime. */
-	int ret = KNOT_ERROR;
-	int src_changed = strcmp(source, zl->source) != 0;
-	if (!src_changed && !knot_zload_needs_update(zl)) {
-		ret = KNOT_EOK;
-	}
-
-	knot_zload_close(zl);
-	return ret;
-}
-
-/*! \brief Zone compiler task. */
-typedef struct {
-	conf_zone_t *zone;
-	pid_t proc;
-} knotc_zctask_t;
-
-/*! \brief Create set of watched tasks. */
-static knotc_zctask_t *zctask_create(int count)
-{
-	if (count <= 0) {
-		return 0;
-	}
-
-	knotc_zctask_t *t = malloc(count * sizeof(knotc_zctask_t));
-	for (unsigned i = 0; i < count; ++i) {
-		t[i].proc = -1;
-		t[i].zone = 0;
-	}
-
-	return t;
-}
-
-/*! \brief Wait for single task to finish. */
-static int zctask_wait(knotc_zctask_t *tasks, int count, int is_checkzone)
-{
-	/* Wait for children to finish. */
-	int rc = 0;
-	pid_t pid = pid_wait(-1, &rc);
-	
-	/* Find task. */
-	conf_zone_t *z = 0;
-	for (unsigned i = 0; i < count; ++i) {
-		if (tasks[i].proc == pid) {
-			tasks[i].proc = -1;     /* Invalidate. */
-			z = tasks[i].zone;
-			break;
-		}
-	}
-
-	if (z == 0) {
-		log_server_error("Failed to find zone for finished "
-		                 "zone compilation process.\n");
-		return 1;
-	}
-
-	/* Evaluate. */
-	if (!WIFEXITED(rc)) {
-		log_server_error("%s of '%s' failed, process was killed.\n",
-		                 is_checkzone ? "Checking" : "Compilation",
-		                 z->name);
-		return 1;
-	} else {
-		if (rc < 0 || WEXITSTATUS(rc) != 0) {
-			if (!is_checkzone) {
-				log_zone_error("Compilation of "
-				               "'%s' failed, knot-zcompile "
-				               "return code was '%d'\n",
-				               z->name, WEXITSTATUS(rc));
-			}
-
-			return 1;
-		}
-	}
-
-	return 0;
-}
-
-/*! \brief Register running zone compilation process. */
-static int zctask_add(knotc_zctask_t *tasks, int count, pid_t pid,
-                      conf_zone_t *zone)
-{
-	/* Find free space. */
-	for (unsigned i = 0; i < count; ++i) {
-		if (tasks[i].proc == -1) {
-			tasks[i].proc = pid;
-			tasks[i].zone = zone;
-			return 0;
-		}
-	}
-
-	/* Free space not found. */
-	return -1;
-}
-
 static int cmd_remote_print_reply(const knot_rrset_t *rr)
 {
 	/* Process first RRSet in data section. */
@@ -274,17 +141,9 @@ static int cmd_remote_print_reply(const knot_rrset_t *rr)
 		return KNOT_EMALF;
 	}
 	
-	const knot_rdata_t *rd = knot_rrset_rdata(rr);
-	while (rd != NULL) {
-		/* Skip empty nodes. */
-		if (knot_rdata_item_count(rd) < 1) {
-			rd = knot_rrset_rdata_next(rr, rd);
-			continue;
-		}
-
+	for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(rr); i++) {
 		/* Parse TXT. */
-		remote_print_txt(rd);
-		rd = knot_rrset_rdata_next(rr, rd);
+		remote_print_txt(rr, i);
 	}
 	
 	return KNOT_EOK;
@@ -350,24 +209,21 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	}
 	
 	/* Build query data. */
-	knot_rdata_t *rd = NULL;
 	knot_rrset_t *rr = remote_build_rr("data.", rrt);
 	for (int i = 0; i < argc; ++i) {
 		switch(rrt) {
 		case KNOT_RRTYPE_CNAME:
-			rd = remote_create_cname(argv[i]);
+			remote_create_cname(rr, argv[i]);
 			break;
 		case KNOT_RRTYPE_TXT:
 		default:
-			rd = remote_create_txt(argv[i], strlen(argv[i]));
+			remote_create_txt(rr, argv[i], strlen(argv[i]));
 			break;
 		}
-		knot_rrset_add_rdata(rr, rd);
-		rd = NULL;
 	}
 	remote_query_append(qr, rr);
 	if (knot_packet_to_wire(qr, &buf, &buflen) != KNOT_EOK) {
-		knot_rrset_deep_free(&rr, 1, 1, 1);
+		knot_rrset_deep_free(&rr, 1, 1);
 		knot_packet_free(&qr);
 		return 1;
 	}
@@ -400,7 +256,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	
 	/* Cleanup. */
 	printf("\n");
-	knot_rrset_deep_free(&rr, 1, 1, 1);
+	knot_rrset_deep_free(&rr, 1, 1);
 	
 	/* Close connection. */
 	socket_close(s);
@@ -408,18 +264,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	return rc;
 }
 
-static knot_lookup_table_t tsig_algn_tbl[] = {
-	{ KNOT_TSIG_ALG_NULL,       "gss-tsig" },
-	{ KNOT_TSIG_ALG_HMAC_MD5,    "hmac-md5" },
-	{ KNOT_TSIG_ALG_HMAC_SHA1,   "hmac-sha1" },
-	{ KNOT_TSIG_ALG_HMAC_SHA224, "hmac-sha224" },
-	{ KNOT_TSIG_ALG_HMAC_SHA256, "hmac-sha256" },
-	{ KNOT_TSIG_ALG_HMAC_SHA384, "hmac-sha384" },
-	{ KNOT_TSIG_ALG_HMAC_SHA512, "hmac-sha512" },
-	{ KNOT_TSIG_ALG_NULL, NULL }
-};
-
-static int tsig_parse_str(knot_key_t *key, const char *str)
+static int tsig_parse_str(knot_tsig_key_t *key, const char *str)
 {
 	char *h = strdup(str);
 	if (!h) {
@@ -433,13 +278,14 @@ static int tsig_parse_str(knot_key_t *key, const char *str)
 	}
 	
 	/* Determine algorithm. */
-	key->algorithm = KNOT_TSIG_ALG_HMAC_MD5;
+
+	int algorithm = KNOT_TSIG_ALG_HMAC_MD5;
 	if (s) {
 		*s++ = '\0';               /* Last part separator */
 		knot_lookup_table_t *alg = NULL;
-		alg = knot_lookup_by_name(tsig_algn_tbl, h);
+		alg = knot_lookup_by_name(tsig_alg_table, h);
 		if (alg) {
-			key->algorithm = alg->id;
+			algorithm = alg->id;
 		} else {
 			free(h);
 			return KNOT_EINVAL;
@@ -450,25 +296,19 @@ static int tsig_parse_str(knot_key_t *key, const char *str)
 	}
 	
 	/* Parse key name. */
-	key->name = remote_dname_fqdn(k);
-	key->secret = strdup(s);
+
+	int result = knot_tsig_create_key(k, algorithm, s, key);
 	free(h);
-	
-	/* Check name and secret. */
-	if (!key->name || !key->secret) {
-		return KNOT_EINVAL;
-	}
-	
-	return KNOT_EOK;
+	return result;
 }
 
-static int tsig_parse_line(knot_key_t *k, char *l)
+static int tsig_parse_line(knot_tsig_key_t *k, char *l)
 {
 	const char *n, *a, *s;
 	n = a = s = NULL;
 	int fw = 1; /* 0 = reading word, 1 = between words */
 	while (*l != '\0') {
-		if (isspace(*l) || *l == '"') {
+		if (isspace((unsigned char)(*l)) || *l == '"') {
 			*l = '\0';
 			fw = 1; /* End word. */
 		} else if (fw) {
@@ -491,27 +331,17 @@ static int tsig_parse_line(knot_key_t *k, char *l)
 		a = "hmac-md5";
 	}
 	
-	/* Set algorithm. */
-	knot_lookup_table_t *alg = knot_lookup_by_name(tsig_algn_tbl, a);
-	if (alg) {
-		k->algorithm = alg->id;
-	} else {
+	/* Lookup algorithm. */
+	knot_lookup_table_t *alg = knot_lookup_by_name(tsig_alg_table, a);
+	if (!alg) {
 		return KNOT_EMALF;
 	}
 	
-	/* Set name. */
-	k->name = remote_dname_fqdn(n);
-	k->secret = strdup(s);
-	
-	/* Check name and secret. */
-	if (!k->name || !k->secret) {
-		return KNOT_EINVAL;
-	}
-
-	return KNOT_EOK;
+	/* Create the key data. */
+	return knot_tsig_create_key(n, alg->id, s, k);
 }
 
-static int tsig_parse_file(knot_key_t *k, const char *f)
+static int tsig_parse_file(knot_tsig_key_t *k, const char *f)
 {
 	FILE* fp = fopen(f, "r");
 	if (!fp) {
@@ -555,14 +385,6 @@ static int tsig_parse_file(knot_key_t *k, const char *f)
 	return ret;
 }
 
-static void tsig_key_cleanup(knot_key_t *k)
-{
-	if (k) {
-		knot_dname_free(&k->name);
-		free(k->secret);
-	}
-}
-
 int main(int argc, char **argv)
 {
 	/* Parse command line arguments */
@@ -576,8 +398,8 @@ int main(int argc, char **argv)
 	int ret = KNOT_EOK;
 	const char *r_addr = NULL;
 	int r_port = -1;
-	knot_key_t r_key;
-	memset(&r_key, 0, sizeof(knot_key_t));
+	knot_tsig_key_t r_key;
+	memset(&r_key, 0, sizeof(knot_tsig_key_t));
 	
 	/* Initialize. */
 	log_init();
@@ -613,7 +435,7 @@ int main(int argc, char **argv)
 			if (ret != KNOT_EOK) {
 				log_server_error("Couldn't parse TSIG key '%s' "
 				                 "\n", optarg);
-				tsig_key_cleanup(&r_key);
+				knot_tsig_key_free(&r_key);
 				log_close();
 				return 1;
 			}
@@ -623,7 +445,7 @@ int main(int argc, char **argv)
 			if (ret != KNOT_EOK) {
 				log_server_error("Couldn't parse TSIG key file "
 				                 "'%s'\n", optarg);
-				tsig_key_cleanup(&r_key);
+				knot_tsig_key_free(&r_key);
 				log_close();
 				return 1;
 			}
@@ -678,7 +500,7 @@ int main(int argc, char **argv)
 	/* Check if there's at least one remaining non-option. */
 	if (argc - optind < 1) {
 		help(argc, argv);
-		tsig_key_cleanup(&r_key);
+		knot_tsig_key_free(&r_key);
 		log_close();
 		free(config_fn);
 		free(default_config);
@@ -697,7 +519,7 @@ int main(int argc, char **argv)
 	/* Command not found. */
 	if (!cmd->name) {
 		log_server_error("Invalid command: '%s'\n", argv[optind]);
-		tsig_key_cleanup(&r_key);
+		knot_tsig_key_free(&r_key);
 		log_close();
 		free(config_fn);
 		free(default_config);
@@ -725,14 +547,14 @@ int main(int argc, char **argv)
 
 		/* Create empty key. */
 		if (r_key.name) {
-			ctl_if->key = malloc(sizeof(knot_key_t));
+			ctl_if->key = malloc(sizeof(knot_tsig_key_t));
 			if (ctl_if->key) {
-				memcpy(ctl_if->key, &r_key, sizeof(knot_key_t));
+				memcpy(ctl_if->key, &r_key, sizeof(knot_tsig_key_t));
 			}
 		}
 	} else {
 		if (r_key.name) {
-			tsig_key_cleanup(ctl_if->key);
+			knot_tsig_key_free(ctl_if->key);
 			ctl_if->key = &r_key;
 		}
 	}
@@ -758,7 +580,7 @@ int main(int argc, char **argv)
 	int rc = cmd->cb(argc - optind - 1, argv + optind + 1, flags, jobs);
 
 	/* Finish */
-	tsig_key_cleanup(&r_key); /* Not cleaned by config deinit. */
+	knot_tsig_key_free(&r_key); /* Not cleaned by config deinit. */
 	log_close();
 	free(config_fn);
 	free(default_config);
@@ -819,7 +641,7 @@ static int cmd_start(int argc, char *argv[], unsigned flags, int jobs)
 	}
 	
 	/* Recompile zones if needed. */
-	cmd_compile(argc, argv, flags, jobs);
+//	cmd_compile(argc, argv, flags, jobs);
 
 	/* Prepare command */
 	const char *cfg = conf()->filename;
@@ -984,24 +806,9 @@ static int cmd_checkconf(int argc, char *argv[], unsigned flags, int jobs)
 
 static int cmd_checkzone(int argc, char *argv[], unsigned flags, int jobs)
 {
-	return cmd_compile(argc, argv, flags | F_DRYRUN, jobs);
-}
-
-static int cmd_compile(int argc, char *argv[], unsigned flags, int jobs)
-{
-	/* Print job count */
-	if (jobs > 1 && argc == 0) {
-		log_server_warning("Will attempt to compile %d zones "
-		                   "in parallel, this increases memory "
-		                   "consumption for large zones.\n", jobs);
-	}
-
 	/* Zone checking */
 	int rc = 0;
 	node *n = 0;
-	int running = 0;
-	int is_checkzone = has_flag(flags, F_DRYRUN);
-	knotc_zctask_t *tasks = zctask_create(jobs);
 	
 	/* Generate databases for all zones */
 	WALK_LIST(n, conf()->zones) {
@@ -1022,68 +829,36 @@ static int cmd_compile(int argc, char *argv[], unsigned flags, int jobs)
 		}
 
 		if (!zone_match && argc > 0) {
+			/* WALK_LIST is a for-cycle. */
 			continue;
 		}
-
-		/* Check source files and mtime */
-		int zone_status = check_zone(zone->db, zone->file);
-		if (zone_status == KNOT_EOK && !is_checkzone) {
-			log_zone_info("Zone '%s' is up-to-date.\n", zone->name);
-			if (has_flag(flags, F_FORCE)) {
-				log_zone_info("Forcing zone "
-				              "recompilation.\n");
-			} else {
-				continue;
-			}
-		}
-
-		/* Check for not existing source */
-		if (zone_status == KNOT_ENOENT) {
+		
+		/* Create zone loader context. */
+		zloader_t *l = NULL;
+		int ret = knot_zload_open(&l, zone->file, zone->name,
+		                          zone->enable_checks);
+		if (ret != KNOT_EOK) {
+			log_zone_error("Could not open zone %s (%s).\n",
+			               zone->name, knot_strerror(ret));
+			knot_zload_close(l);
+			rc = 1;
 			continue;
 		}
-
-		/* Evaluate space for new task. */
-		if (running == jobs) {
-			rc |= zctask_wait(tasks, jobs, is_checkzone);
-			--running;
+		
+		knot_zone_t *z = knot_zload_load(l);
+		if (z == NULL) {
+			log_zone_error("Loading of zone %s failed.\n",
+			               zone->name);
+			knot_zload_close(l);
+			rc = 1;
+			continue;
 		}
-
-		/* Build executable command. */
-		int ac = 0;
-		const char *args[7] = { NULL };
-		args[ac++] = ZONEPARSER_EXEC;
-		if (zone->enable_checks) {
-			args[ac++] = "-s";
-		}
-		if (has_flag(flags, F_VERBOSE)) {
-			args[ac++] = "-v";
-		}
-		if (!is_checkzone) {
-			args[ac++] = "-o";
-			args[ac++] = zone->db;
-		}
-		args[ac++] = zone->name;
-		args[ac++] = zone->file;
-
-		/* Execute command */
-		if (has_flag(flags, F_VERBOSE) && !is_checkzone) {
-			log_zone_info("Compiling '%s' as '%s'...\n",
-			              zone->name, zone->db);
-		}
-		fflush(stdout);
-		fflush(stderr);
-		pid_t zcpid = pid_start(args, ac,
-		                        has_flag(flags, F_UNPRIVILEGED));
-		zctask_add(tasks, jobs, zcpid, zone);
-		++running;
+		
+		knot_zone_deep_free(&z);
+		knot_zload_close(l);
+		
+		log_zone_info("Zone %s OK.\n", zone->name);
 	}
 
-	/* Wait for all running tasks. */
-	while (running > 0) {
-		rc |= zctask_wait(tasks, jobs, is_checkzone);
-		--running;
-	}
-
-	free(tasks);
 	return rc;
 }

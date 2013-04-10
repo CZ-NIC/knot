@@ -21,19 +21,16 @@
 #include <time.h>
 
 #include "common.h"
-#include "common/base64.h"
+#include "common/descriptor.h"
 #include "tsig.h"
 #include "tsig-op.h"
 #include "util/wire.h"
 #include "util/debug.h"
 #include "consts.h"
-
+#include "sign/key.h"
 
 const int KNOT_TSIG_MAX_DIGEST_SIZE = 64;    // size of HMAC-SHA512 digest
 const uint16_t KNOT_TSIG_FUDGE_DEFAULT = 300;  // default Fudge value
-enum b64_const {
-	B64BUFSIZE = 65535
-};
 
 static int knot_tsig_check_algorithm(const knot_rrset_t *tsig_rr)
 {
@@ -57,7 +54,7 @@ static int knot_tsig_check_algorithm(const knot_rrset_t *tsig_rr)
 }
 
 static int knot_tsig_check_key(const knot_rrset_t *tsig_rr,
-                               const knot_key_t *tsig_key)
+                               const knot_tsig_key_t *tsig_key)
 {
 	if (tsig_rr == NULL || tsig_key == NULL) {
 		return KNOT_EINVAL;
@@ -86,7 +83,7 @@ static int knot_tsig_check_key(const knot_rrset_t *tsig_rr,
 
 static int knot_tsig_compute_digest(const uint8_t *wire, size_t wire_len,
                                     uint8_t *digest, size_t *digest_len,
-                                    const knot_key_t *key)
+                                    const knot_tsig_key_t *key)
 {
 	if (!wire || !digest || !digest_len || !key) {
 		dbg_tsig("TSIG: digest: bad args.\n");
@@ -104,23 +101,9 @@ static int knot_tsig_compute_digest(const uint8_t *wire, size_t wire_len,
 		return KNOT_TSIG_EBADSIG;
 	}
 
-	/* Decode key from Base64. */
-	char decoded_key[B64BUFSIZE];
-	memset(decoded_key, 0, sizeof(decoded_key));
-	
-	int32_t ret = base64_decode((uint8_t *)key->secret, strlen(key->secret),
-	                            (uint8_t *)decoded_key, B64BUFSIZE);
-
-	if (ret < 0) {
-		dbg_tsig("TSIG: Could not decode Base64\n");
-		return KNOT_ERROR;
-	}
-	
-	size_t decoded_key_size = ret;
-
-	dbg_tsig_detail("TSIG: decoded key size: %d\n", decoded_key_size);
-	dbg_tsig_detail("TSIG: decoded key:\n");
-	dbg_tsig_hex_detail(decoded_key, decoded_key_size);
+	dbg_tsig_detail("TSIG: key size: %d\n", key->secret.size);
+	dbg_tsig_detail("TSIG: key:\n");
+	dbg_tsig_hex_detail(key->secret.data, key->secret.size);
 	dbg_tsig_detail("Wire for signing is %zu bytes long.\n", wire_len);
 
 	/* Compute digest. */
@@ -128,16 +111,16 @@ static int knot_tsig_compute_digest(const uint8_t *wire, size_t wire_len,
 
 	switch (tsig_alg) {
 		case KNOT_TSIG_ALG_HMAC_MD5:
-			HMAC_Init(&ctx, decoded_key,
-			          decoded_key_size, EVP_md5());
+			HMAC_Init(&ctx, key->secret.data,
+			          key->secret.size, EVP_md5());
 			break;
 		case KNOT_TSIG_ALG_HMAC_SHA1:
-			HMAC_Init(&ctx, decoded_key,
-			          decoded_key_size, EVP_sha1());
+			HMAC_Init(&ctx, key->secret.data,
+			          key->secret.size, EVP_sha1());
 			break;
 		case KNOT_TSIG_ALG_HMAC_SHA256:
-			HMAC_Init(&ctx, decoded_key,
-			          decoded_key_size, EVP_sha256());
+			HMAC_Init(&ctx, key->secret.data,
+			          key->secret.size, EVP_sha256());
 			break;
 		default:
 			return KNOT_ENOTSUP;
@@ -315,7 +298,7 @@ static int knot_tsig_create_sign_wire(const uint8_t *msg, size_t msg_len,
 		                      size_t request_mac_len,
 		                      uint8_t *digest, size_t *digest_len,
 				      const knot_rrset_t *tmp_tsig,
-		                      const knot_key_t *key)
+		                      const knot_tsig_key_t *key)
 {
 	if (!msg || !key || digest_len == NULL) {
 		dbg_tsig("TSIG: create wire: bad args.\n");
@@ -391,7 +374,7 @@ static int knot_tsig_create_sign_wire_next(const uint8_t *msg, size_t msg_len,
                                            size_t prev_mac_len,
                                            uint8_t *digest, size_t *digest_len,
                                            const knot_rrset_t *tmp_tsig,
-                                           const knot_key_t *key)
+                                           const knot_tsig_key_t *key)
 {
 	if (!msg || !key || digest_len == NULL) {
 		dbg_tsig("TSIG: create wire: bad args.\n");
@@ -461,7 +444,7 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
                    size_t msg_max_len, const uint8_t *request_mac,
                    size_t request_mac_len,
                    uint8_t *digest, size_t *digest_len,
-                   const knot_key_t *key, uint16_t tsig_rcode,
+                   const knot_tsig_key_t *key, uint16_t tsig_rcode,
                    uint64_t request_time_signed)
 {
 	if (!msg || !msg_len || !key || digest == NULL || digest_len == NULL) {
@@ -485,49 +468,14 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	}
 
 	/* Create rdata for TSIG RR. */
-	knot_rdata_t *rdata = knot_rdata_new();
-	if (!rdata) {
-		dbg_tsig("TSIG: rdata = NULL\n");
-		knot_rrset_free(&tmp_tsig);
-		return KNOT_ENOMEM;
-	}
-
-	knot_rrset_add_rdata(tmp_tsig, rdata);
-
-	/* Create items for TSIG RR. */
-	knot_rrtype_descriptor_t *desc =
-		knot_rrtype_descriptor_by_type(KNOT_RRTYPE_TSIG);
-	assert(desc);
-
-	knot_rdata_item_t *items =
-		malloc(sizeof(knot_rdata_item_t) * desc->length);
-	if (!items) {
-		dbg_tsig("TSIG: items = NULL\n");
-		ERR_ALLOC_FAILED;
-		knot_rrset_free(&tmp_tsig);
-		knot_rdata_free(&rdata);
-		return KNOT_ENOMEM;
-	}
-
-	memset(items, 0, sizeof(knot_rdata_item_t) * desc->length);
-
-	int ret = knot_rdata_set_items(rdata, items, desc->length);
-	if (ret != KNOT_EOK) {
-		dbg_tsig("TSIG: rdata_set_items returned %s\n",
-		         knot_strerror(ret));
-		free(items);
-		knot_rrset_free(&tmp_tsig);
-		knot_rdata_free(&rdata);
-		return ret;
-	}
-	free(items);
-
+	tsig_create_rdata(tmp_tsig, tsig_alg_digest_length(key->algorithm), 
+	                  (tsig_rcode == KNOT_TSIG_RCODE_BADTIME) 
+	                    ? tsig_rcode
+	                    : 0);
 	tsig_rdata_set_alg(tmp_tsig, key->algorithm);
 
 	/* Distinguish BADTIME response. */
 	if (tsig_rcode == KNOT_TSIG_RCODE_BADTIME) {
-		/* Set error */
-		tsig_rdata_set_tsig_error(tmp_tsig, tsig_rcode);
 		/* Set client's time signed into the time signed field. */
 		tsig_rdata_set_time_signed(tmp_tsig, request_time_signed);
 
@@ -541,7 +489,6 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 		tsig_rdata_set_other_data(tmp_tsig, 6, time_signed);
 	} else {
 		tsig_rdata_store_current_time(tmp_tsig);
-		tsig_rdata_set_tsig_error(tmp_tsig, 0);
 
 		/* Set other len. */
 		tsig_rdata_set_other_data(tmp_tsig, 0, 0);
@@ -555,9 +502,12 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	uint8_t digest_tmp[KNOT_TSIG_MAX_DIGEST_SIZE];
 	size_t digest_tmp_len = 0;
 
+dbg_rrset_exec_detail(
 	dbg_tsig_detail("tmp_tsig before sign_wire():\n");
-	knot_rrset_dump(tmp_tsig, 0);
+	knot_rrset_dump(tmp_tsig);
+);
 
+	int ret = KNOT_ERROR;
 	ret = knot_tsig_create_sign_wire(msg, *msg_len, /*msg_max_len,*/
 	                                     request_mac, request_mac_len,
 	                                     digest_tmp, &digest_tmp_len,
@@ -565,29 +515,31 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	if (ret != KNOT_EOK) {
 		dbg_tsig("TSIG: could not create wire or sign wire: %s\n",
 		         knot_strerror(ret));
-		knot_rrset_deep_free(&tmp_tsig, 1, 1, 1);
+		knot_rrset_deep_free(&tmp_tsig, 1, 1);
 		return ret;
 	}
 
 	/* Set the digest. */
-	size_t tsig_wire_len = msg_max_len - *msg_len;
+	size_t tsig_wire_len = 0;
 	dbg_tsig("TSIG: msg_len=%zu, msg_max_len=%zu, tsig_max_len=%zu\n",
 		 *msg_len, msg_max_len, tsig_wire_len);
-	int rr_count = 0;
+	uint16_t rr_count = 0;
 	tsig_rdata_set_mac(tmp_tsig, digest_tmp_len, digest_tmp);
 
 	/* Write RRSet to wire */
 	ret = knot_rrset_to_wire(tmp_tsig, msg + *msg_len,
-	                         &tsig_wire_len, &rr_count);
+	                         &tsig_wire_len, msg_max_len - *msg_len,
+	                         &rr_count, NULL);
 	if (ret != KNOT_EOK) {
 		dbg_tsig("TSIG: rrset_to_wire = %s\n", knot_strerror(ret));
 		*digest_len = 0;
-		knot_rrset_deep_free(&tmp_tsig, 1, 1, 1);
+		knot_rrset_deep_free(&tmp_tsig, 1, 1);
 		return ret;
 	}
 
-	knot_rrset_deep_free(&tmp_tsig, 1, 1, 1);
+	knot_rrset_deep_free(&tmp_tsig, 1, 1);
 
+	dbg_tsig("TSIG: written TSIG RR (wire len %zu)\n", tsig_wire_len);
 	*msg_len += tsig_wire_len;
 
 	uint16_t arcount = knot_wire_get_arcount(msg);
@@ -603,7 +555,7 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
                         const uint8_t *prev_digest, size_t prev_digest_len,
                         uint8_t *digest, size_t *digest_len,
-                        const knot_key_t *key, uint8_t *to_sign,
+                        const knot_tsig_key_t *key, uint8_t *to_sign,
                         size_t to_sign_len)
 {
 	if (!msg || !msg_len || !key || !key || !digest || !digest_len) {
@@ -621,51 +573,8 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	}
 	
 	/* Create rdata for TSIG RR. */
-	knot_rdata_t *rdata = knot_rdata_new();
-	if (!rdata) {
-		dbg_tsig("TSIG: rdata = NULL\n");
-		knot_rrset_free(&tmp_tsig);
-		return KNOT_ENOMEM;
-	}
-	
-	int ret = 0;
-
-	ret = knot_rrset_add_rdata(tmp_tsig, rdata);
-	if (ret != KNOT_EOK) {
-		dbg_tsig("TSIG: could not add rdata\n");
-		knot_rrset_free(&tmp_tsig);
-		knot_rdata_free(&rdata);
-		return ret;
-	}
-
-	/* Create items for TSIG RR. */
-	knot_rrtype_descriptor_t *desc =
-		knot_rrtype_descriptor_by_type(KNOT_RRTYPE_TSIG);
-	assert(desc);
-
-	knot_rdata_item_t *items =
-		malloc(sizeof(knot_rdata_item_t) * desc->length);
-	if (!items) {
-		dbg_tsig("TSIG: items = NULL\n");
-		ERR_ALLOC_FAILED;
-		knot_rrset_free(&tmp_tsig);
-		knot_rdata_free(&rdata);
-		return KNOT_ENOMEM;
-	}
-
-	memset(items, 0, sizeof(knot_rdata_item_t) * desc->length);
-
-	ret = knot_rdata_set_items(rdata, items, desc->length);
-	if (ret != KNOT_EOK) {
-		dbg_tsig("TSIG: rdata_set_items returned %s\n",
-		         knot_strerror(ret));
-		knot_rrset_free(&tmp_tsig);
-		knot_rdata_free(&rdata);
-		free(items);
-		return ret;
-	}
-	free(items);
-
+	tsig_create_rdata(tmp_tsig, tsig_alg_digest_length(key->algorithm), 0);
+	tsig_rdata_set_alg(tmp_tsig, key->algorithm);
 	tsig_rdata_store_current_time(tmp_tsig);
 	tsig_rdata_set_fudge(tmp_tsig, KNOT_TSIG_FUDGE_DEFAULT);
 	
@@ -675,8 +584,7 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	uint8_t *wire = malloc(wire_len);
 	if (!wire) {
 		ERR_ALLOC_FAILED;
-		knot_rrset_free(&tmp_tsig);
-		knot_rdata_deep_free(&rdata, KNOT_RRTYPE_TSIG, 0);
+		knot_rrset_deep_free(&tmp_tsig, 1, 1);
 		return KNOT_ENOMEM;
 	}
 	memset(wire, 0, wire_len);
@@ -698,19 +606,20 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	dbg_tsig_hex_detail(wire + prev_digest_len + *msg_len,
 			    KNOT_TSIG_TIMERS_LENGTH);
 
+	int ret = KNOT_ERROR;
 	ret = knot_tsig_compute_digest(wire, wire_len,
 	                               digest_tmp, &digest_tmp_len, key);
 	
 	/* No matter how the function did, this data is no longer needed. */
 	free(wire);
 	if (ret != KNOT_EOK) {
-		knot_rrset_deep_free(&tmp_tsig, 1, 1, 1);
+		knot_rrset_deep_free(&tmp_tsig, 1, 1);
 		*digest_len = 0;
 		return ret;
 	}
 	
 	if (digest_tmp_len > *digest_len) {
-		knot_rrset_deep_free(&tmp_tsig, 1, 1, 1);
+		knot_rrset_deep_free(&tmp_tsig, 1, 1);
 		*digest_len = 0;
 		return KNOT_ESPACE;
 	}
@@ -718,14 +627,8 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	/* Set the MAC. */
 	tsig_rdata_set_mac(tmp_tsig, digest_tmp_len, digest_tmp);
 	
-	/* Set algorithm. */
-	tsig_rdata_set_alg(tmp_tsig, key->algorithm);
-	
 	/* Set original id. */
 	tsig_rdata_set_orig_id(tmp_tsig, knot_wire_get_id(msg));
-
-	/* Set TSIG error. */
-	tsig_rdata_set_tsig_error(tmp_tsig, 0);
 	
 	/* Set other data. */
 	tsig_rdata_set_other_data(tmp_tsig, 0, NULL);
@@ -733,23 +636,24 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	dbg_tsig_verb("Message max length: %zu, message length: %zu\n",
 	              msg_max_len, *msg_len);
 
-	size_t tsig_wire_size = msg_max_len - *msg_len;
-	int rr_count = 0;
+	size_t tsig_wire_size = 0;
+	uint16_t rr_count = 0;
 	ret = knot_rrset_to_wire(tmp_tsig, msg + *msg_len,
-	                         &tsig_wire_size, &rr_count);
+	                         &tsig_wire_size, msg_max_len - *msg_len,
+	                         &rr_count, NULL);
 	if (ret != KNOT_EOK) {
-		knot_rrset_deep_free(&tmp_tsig, 1, 1, 1);
+		knot_rrset_deep_free(&tmp_tsig, 1, 1);
 		*digest_len = 0;
 		return ret;
 	}
 
 	/* This should not happen, at least one rr has to be converted. */
 	if (rr_count == 0) {
-		knot_rrset_deep_free(&tmp_tsig, 1, 1, 1);
+		knot_rrset_deep_free(&tmp_tsig, 1, 1);
 		return KNOT_EINVAL;
 	}
 
-	knot_rrset_deep_free(&tmp_tsig, 1, 1, 1);
+	knot_rrset_deep_free(&tmp_tsig, 1, 1);
 
 	*msg_len += tsig_wire_size;
 	uint16_t arcount = knot_wire_get_arcount(msg);
@@ -765,7 +669,7 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
                                   const uint8_t *wire, size_t size,
                                   const uint8_t *request_mac,
                                   size_t request_mac_len,
-                                  const knot_key_t *tsig_key,
+                                  const knot_tsig_key_t *tsig_key,
                                   uint64_t prev_time_signed,
                                   int use_times)
 {
@@ -879,7 +783,7 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
 
 int knot_tsig_server_check(const knot_rrset_t *tsig_rr,
                            const uint8_t *wire, size_t size,
-                           const knot_key_t *tsig_key)
+                           const knot_tsig_key_t *tsig_key)
 {
 	dbg_tsig("tsig_server_check()\n");
 	return knot_tsig_check_digest(tsig_rr, wire, size, NULL, 0, tsig_key,
@@ -889,7 +793,7 @@ int knot_tsig_server_check(const knot_rrset_t *tsig_rr,
 int knot_tsig_client_check(const knot_rrset_t *tsig_rr,
                            const uint8_t *wire, size_t size,
                            const uint8_t *request_mac, size_t request_mac_len,
-                           const knot_key_t *tsig_key,
+                           const knot_tsig_key_t *tsig_key,
                            uint64_t prev_time_signed)
 {
 	dbg_tsig("tsig_client_check()\n");
@@ -902,7 +806,7 @@ int knot_tsig_client_check_next(const knot_rrset_t *tsig_rr,
                                 const uint8_t *wire, size_t size,
                                 const uint8_t *prev_digest,
                                 size_t prev_digest_len,
-                                const knot_key_t *tsig_key,
+                                const knot_tsig_key_t *tsig_key,
                                 uint64_t prev_time_signed)
 {
 	dbg_tsig("tsig_client_check_next()\n");
@@ -940,47 +844,26 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	/* Already referenced in tmp_tsig, release. */
 	knot_dname_release(key_name);
 
-	/* Create rdata for TSIG RR. */
-	knot_rdata_t *rdata = knot_rdata_new();
-	if (!rdata) {
-		dbg_tsig("TSIG: rdata = NULL\n");
-		knot_rrset_deep_free(&tmp_tsig, 1, 1, 1);
-		return KNOT_ENOMEM;
-	}
-
-	knot_rrset_add_rdata(tmp_tsig, rdata);
-
-	/* Create items for TSIG RR. */
-	knot_rrtype_descriptor_t *desc =
-		knot_rrtype_descriptor_by_type(KNOT_RRTYPE_TSIG);
-	assert(desc);
-
-	knot_rdata_item_t *items =
-		malloc(sizeof(knot_rdata_item_t) * desc->length);
-	if (items == NULL) {
-		dbg_tsig("TSIG: items = NULL\n");
-		knot_rrset_deep_free(&tmp_tsig, 1, 1, 1);
-		return KNOT_ENOMEM;
-	}
-
-	memset(items, 0, sizeof(knot_rdata_item_t) * desc->length);
-
-	int ret = knot_rdata_set_items(rdata, items, desc->length);
-	free(items);
-	if (ret != KNOT_EOK) {
-		dbg_tsig("TSIG: rdata_set_items returned %s\n",
-		         knot_strerror(ret));
-		knot_rrset_deep_free(&tmp_tsig, 1, 1, 1);
-		return ret;
-	}
-
 	knot_dname_t *alg_name =
 			knot_dname_deep_copy(tsig_rdata_alg_name(tsig_rr));
 	if (alg_name == NULL) {
 		dbg_tsig("TSIG: failed to copy alg name\n");
-		knot_rrset_deep_free(&tmp_tsig, 1, 1, 1);
+		knot_rrset_deep_free(&tmp_tsig, 1, 1);
 		return KNOT_ERROR;
 	}
+	
+	
+	/* Create rdata for TSIG RR. */
+	tsig_algorithm_t alg = tsig_alg_from_name(alg_name);
+	if (alg == KNOT_TSIG_ALG_NULL) {
+		dbg_tsig("TSIG: refusing to use NULL algorithm\n");
+		knot_rrset_deep_free(&tmp_tsig, 1, 1);
+		knot_dname_free(&alg_name);
+		return KNOT_ERROR;
+	}
+	
+	assert(tsig_rcode != KNOT_TSIG_RCODE_BADTIME);
+	tsig_create_rdata(tmp_tsig, 0, tsig_rcode); /* No digest. */
 
 	tsig_rdata_set_alg_name(tmp_tsig, alg_name);
 	tsig_rdata_set_time_signed(tmp_tsig, tsig_rdata_time_signed(tsig_rr));
@@ -995,27 +878,26 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	/* Set original ID */
 	tsig_rdata_set_orig_id(tmp_tsig, knot_wire_get_id(msg));
 
-	/* Set error */
-	tsig_rdata_set_tsig_error(tmp_tsig, tsig_rcode);
-
-	assert(tsig_rcode != KNOT_TSIG_RCODE_BADTIME);
+	
 	/* Set other len. */
 	tsig_rdata_set_other_data(tmp_tsig, 0, 0);
 
-	size_t tsig_wire_len = msg_max_len - *msg_len;
-	int rr_count = 0;
+	size_t tsig_wire_len = 0;
+	uint16_t rr_count = 0;
 
 	/* Write RRSet to wire */
+	int ret = KNOT_ERROR;
 	ret = knot_rrset_to_wire(tmp_tsig, msg + *msg_len,
-	                         &tsig_wire_len, &rr_count);
+	                         &tsig_wire_len, msg_max_len - *msg_len,
+	                         &rr_count, NULL);
 	if (ret != KNOT_EOK) {
 		dbg_tsig("TSIG: rrset_to_wire = %s\n", knot_strerror(ret));
-		knot_rrset_deep_free(&tmp_tsig, 1, 1, 1);
+		knot_rrset_deep_free(&tmp_tsig, 1, 1);
 		return ret;
 	}
 
 	/* key_name already referenced in RRSet, no need to free separately. */
-	knot_rrset_deep_free(&tmp_tsig, 1, 1, 1);
+	knot_rrset_deep_free(&tmp_tsig, 1, 1);
 
 	*msg_len += tsig_wire_len;
 

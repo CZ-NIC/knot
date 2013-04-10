@@ -44,7 +44,7 @@
 /* Constants. */
 #define ZONES_JITTER_PCT    10 /*!< +-N% jitter to timers. */
 #define IXFR_DBSYNC_TIMEOUT (60*1000) /*!< Database sync timeout = 60s. */
-#define AXFR_BOOTSTRAP_RETRY (60*1000) /*!< Interval between AXFR BS retries. */
+#define AXFR_BOOTSTRAP_RETRY (30*1000) /*!< Interval between AXFR BS retries. */
 
 /*!
  * \brief Zone-related data.
@@ -68,22 +68,16 @@ typedef struct zonedata_t
 
 	/*! \brief XFR-IN scheduler. */
 	struct {
-		acl_t         *acl;      /*!< ACL for xfr-in.*/
-		sockaddr_t     master;   /*!< Master server for xfr-in.*/
-		sockaddr_t     via;      /*!< Master server transit interface.*/
-		knot_key_t    tsig_key;  /*!< Master TSIG key. */
-		struct event_t *timer;   /*!< Timer for REFRESH/RETRY. */
-		struct event_t *expire;  /*!< Timer for REFRESH. */
-		pthread_mutex_t lock;    /*!< Pending XFR/IN lock. */
-		void           *wrkr;    /*!< Pending XFR/IN worker. */
-		int next_id;             /*!< ID of the next awaited SOA resp.*/
-		uint32_t bootstrap_retry;/*!< AXFR/IN bootstrap retry. */
-		unsigned       scheduled;/*!< Scheduled operations. */ 
-		int has_master;          /*!< True if it has master set. */
+		acl_t          *acl;      /*!< ACL for xfr-in.*/
+		sockaddr_t      master;   /*!< Master server for xfr-in.*/
+		sockaddr_t      via;      /*!< Master server transit interface.*/
+		knot_tsig_key_t tsig_key; /*!< Master TSIG key. */
+		struct event_t *timer;    /*!< Timer for REFRESH/RETRY. */
+		struct event_t *expire;   /*!< Timer for REFRESH. */
+		uint32_t bootstrap_retry; /*!< AXFR/IN bootstrap retry. */
+		int has_master;           /*!< True if it has master set. */
+		unsigned state;
 	} xfr_in;
-
-	/*! \brief List of pending NOTIFY events. */
-	list notify_pending;
 
 	/*! \brief Zone IXFR history. */
 	journal_t *ixfr_db;
@@ -138,7 +132,7 @@ int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal);
  * \todo Document me.
  */
 int zones_query_check_zone(const knot_zone_t *zone, uint8_t q_opcode,
-                           const sockaddr_t *addr, knot_key_t **tsig_key,
+                           const sockaddr_t *addr, knot_tsig_key_t **tsig_key,
                            knot_rcode_t *rcode);
 
 /*!
@@ -177,6 +171,7 @@ int zones_process_update(knot_nameserver_t *nameserver,
  * \retval KNOT_EMALF if an error occured and the response is not valid.
  */
 int zones_process_response(knot_nameserver_t *nameserver, 
+                           int exp_msgid,
                            sockaddr_t *from,
                            knot_packet_t *packet, uint8_t *response_wire,
                            size_t *rsize);
@@ -306,31 +301,22 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
  *
  * REFRESH/RETRY/EXPIRE timers are updated according to SOA.
  *
- * \param sched Event scheduler.
  * \param zone Related zone.
- * \param cfzone Related zone contents. If NULL, configuration is
- *               reused.
  *
  * \retval KNOT_EOK
  * \retval KNOT_EINVAL
  * \retval KNOT_ERROR
  */
-int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch);
+int zones_schedule_refresh(knot_zone_t *zone);
 
 /*!
- * \brief Cancel pending NOTIFY timer.
- *
- * \warning Expects locked zonedata lock.
- *
- * \param zd Zone data.
- * \param ev NOTIFY event.
+ * \brief Schedule NOTIFY after zone update.
+ * \param zone Related zone.
  *
  * \retval KNOT_EOK
  * \retval KNOT_ERROR
- * \retval KNOT_EINVAL
  */
-int zones_cancel_notify(zonedata_t *zd, notify_ev_t *ev);
-
+int zones_schedule_notify(knot_zone_t *zone);
 
 /*!
  * \brief Processes forwarded UPDATE response packet.
@@ -350,7 +336,7 @@ int zones_process_update_response(knot_ns_xfr_t *data, uint8_t *rwire, size_t *r
  * \return KNOT_EOK if verified or error if not.
  */
 int zones_verify_tsig_query(const knot_packet_t *query,
-                            const knot_key_t *key,
+                            const knot_tsig_key_t *key,
                             knot_rcode_t *rcode, uint16_t *tsig_rcode,
                             uint64_t *tsig_prev_time_signed);
 #endif // _KNOTD_ZONES_H_

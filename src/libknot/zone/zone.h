@@ -32,10 +32,7 @@
 #include "zone/node.h"
 #include "dname.h"
 #include "nsec3.h"
-#include "zone/dname-table.h"
-#include "common/tree.h"
 #include "common/ref.h"
-#include "hash/cuckoo-hash-table.h"
 
 #include "zone-tree.h"
 
@@ -105,12 +102,10 @@ knot_zone_t *knot_zone_new_empty(knot_dname_t *name);
  * \brief Creates new DNS zone.
  *
  * \param apex Node representing the zone apex.
- * \param node_count Number of authorative nodes in the zone.
  *
  * \return The initialized zone structure or NULL if an error occured.
  */
-knot_zone_t *knot_zone_new(knot_node_t *apex, uint node_count,
-                               int use_domain_table);
+knot_zone_t *knot_zone_new(knot_node_t *apex);
 
 knot_zone_contents_t *knot_zone_get_contents(
 	const knot_zone_t *zone);
@@ -151,11 +146,8 @@ void knot_zone_free(knot_zone_t **zone);
  * Also sets the given pointer to NULL.
  *
  * \param zone Zone to be freed.
- * \param free_rdata_dnames Set to <> 0 if you want to delete ALL domain names
- *                          present in RDATA. Set to 0 otherwise. (See
- *                          knot_rdata_deep_free().)
  */
-void knot_zone_deep_free(knot_zone_t **zone, int destroy_dname_table);
+void knot_zone_deep_free(knot_zone_t **zone);
 
 /*!
  * \brief Set destructor and initialize reference counter to 1.

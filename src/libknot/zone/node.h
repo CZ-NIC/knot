@@ -31,8 +31,6 @@
 #include "dname.h"
 #include "common/skip-list.h"
 #include "rrset.h"
-#include "common/tree.h"
-#include "common/general-tree.h"
 
 struct knot_zone;
 
@@ -48,7 +46,7 @@ struct knot_node {
 	struct knot_node *parent; /*!< Parent node in the name hierarchy. */
 
 	/*! \brief Type-ordered list of RRSets belonging to this node. */
-	general_tree_t *rrset_tree;
+	knot_rrset_t **rrset_tree;
 
 	/*! \brief Wildcard node being the direct descendant of this node. */
 	struct knot_node *wildcard_child;
@@ -70,15 +68,13 @@ struct knot_node {
 	 */
 	struct knot_node *nsec3_node;
 
-	struct knot_node *nsec3_referer;
-
 	const struct knot_zone *zone;
 
 	struct knot_node *new_node;
 	
 	unsigned int children;
 
-	unsigned short rrset_count; /*!< Number of RRSets stored in the node. */
+	uint16_t rrset_count; /*!< Number of RRSets stored in the node. */
 
 	/*!
 	 * \brief Various flags.
@@ -134,10 +130,11 @@ knot_node_t *knot_node_new(knot_dname_t *owner, knot_node_t *parent,
  * \retval KNOT_EOK on success.
  * \retval KNOT_ERROR if the RRSet could not be inserted.
  */
-int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset,
-                          int merge);
+int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset);
 
-int knot_node_add_rrset_no_dupl(knot_node_t *node, knot_rrset_t *rrset);
+int knot_node_add_rrset_replace(knot_node_t *node, knot_rrset_t *rrset);
+
+int knot_node_add_rrset_no_merge(knot_node_t *node, knot_rrset_t *rrset);
 
 /*!
  * \brief Returns the RRSet of the given type from the node.
@@ -195,6 +192,8 @@ knot_rrset_t **knot_node_get_rrsets(const knot_node_t *node);
  * \return Newly allocated array of RRSets or NULL if an error occured.
  */
 const knot_rrset_t **knot_node_rrsets(const knot_node_t *node);
+const knot_rrset_t **knot_node_rrsets_no_copy(const knot_node_t *node);
+knot_rrset_t **knot_node_get_rrsets_no_copy(const knot_node_t *node);
 
 int knot_node_count_rrsets(const knot_node_t *node);
 

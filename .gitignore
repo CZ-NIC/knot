@@ -6,7 +6,7 @@
 .libs/
 .deps/
 Knot.creator.user*
-./Makefile
+Makefile
 Makefile.in
 aclocal.m4
 ar-lib
@@ -22,23 +22,20 @@ configure.scan
 depcomp
 install-sh
 missing
-src/Makefile.in
-src/Makefile
 ylwrap
 autom4te.cache/
 config.h
 config.h.in
 samples/knot.sample.conf
 src/stamp-*
+html/
 # Generated sources
 src/*.c
 src/*.h
 *.rc
 # Binaries
 src/unittests
-src/unittests-libknot
-src/unittests-libknot-realdata
-src/unittests-zcompile
+src/zscanner-tool
 src/knotc
 src/knotd
 src/knot-zcompile
@@ -49,3 +46,6 @@ m4/ltversion.m4
 m4/lt~obsolete.m4
 src/unittests-xfr
 INSTALL
+kdig
+khost
+knsupdate

@@ -1,0 +1,14 @@
+$ORIGIN	.
+$TTL	1
+
+; The KX is the same as the MX, so there are the differences and basics only.
+
+; OK
+@	KX	1	mail		; Relative dname
+@	KX	\# 3 0001 00		; Hexadecimal rdata
+@	TYPE36	\# 3 0001 00		; TYPE + Hexadecimal rdata
+@	TYPE36	1	@		; TYPE
+@	kx	1	@		; Type in lower-case
+
+; KO
+@	KX

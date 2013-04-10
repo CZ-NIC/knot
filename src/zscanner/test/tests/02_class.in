@@ -1,0 +1,10 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	IN	NS	@	; The only accepted class IN
+@	in	NS	@	; Class in lower-case
+
+; KO
+@	CH	NS	@	; Unsupported class
+@	CLASS1	NS	@	; Unsupported notation

@@ -26,10 +26,7 @@
 
 #include <config.h>
 #include "common/errcode.h"
-
-#ifdef HAVE_LIBLDNS
-#define TEST_WITH_LDNS
-#endif
+#include "common/mempattern.h"
 
 #ifndef _KNOT_COMMON_H_
 #define _KNOT_COMMON_H_
@@ -42,12 +39,10 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 #define UINT_DEFINED
 #endif
 
-/*! \brief If defined, zone structures will use hash table for lookup. */
-#define USE_HASH_TABLE
-
 /*! \brief Eliminate compiler warning with unused parameters. */
 #define UNUSED(param) (void)(param)
 
+#if 0 // Disabled due to a conflict with system MIN and MAX on BSDs.
 /*! \brief Type-safe minimum macro. */
 #define MIN(a, b) \
 	({ typeof (a) _a = (a); typeof (b) _b = (b); _a < _b ? _a : _b; })
@@ -55,6 +50,7 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 /*! \brief Type-safe maximum macro. */
 #define MAX(a, b) \
 	({ typeof (a) _a = (a); typeof (b) _b = (b); _a > _b ? _a : _b; })
+#endif
 
 /* Optimisation macros. */
 #ifndef knot_likely

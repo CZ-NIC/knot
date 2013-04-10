@@ -43,6 +43,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 @author Lubos Slovak (@email{lubos.slovak@@nic.cz})
 @author Ondrej Sury (@email{ondrej@@sury.org})
 @author Marek Vavrusa (@email{marek.vavrusa@@nic.cz})
+@author Jan Vcelak (@email{jan.vcelak@@nic.cz})
 @page
 @vskip 0pt plus 1filll
 @insertcopying
@@ -153,8 +154,10 @@ Knot DNS Configuration Reference
 * keys::                        
 * interfaces::                  
 * remotes::                     
+* groups::
 * zones::                       
 * log::                         
+* include::
 
 @code{system} Statement
 
@@ -203,6 +206,11 @@ Statement Definition and Usage
 * remotes Syntax::              
 * remotes Statement Definition and Grammar::  
 
+@code{groups} Statement
+
+* groups Syntax::
+* groups Statement Definition and Grammar::
+
 @code{zones} Statement
 
 * zones Syntax::                
@@ -213,6 +221,10 @@ Statement Definition and Usage
 
 * log Syntax::                  
 * log Statement Definition and Grammar::  
+
+@code{include} Statement
+
+* include Syntax::
 
 @end detailmenu
 @end menu

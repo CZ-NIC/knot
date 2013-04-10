@@ -1,69 +1,23 @@
-$TTL 1h                  ; The default expiration time of a resource record without its own TTL value
 $ORIGIN example.com.
-@  IN  SOA  ns.example.com. username.example.com. (
-              2007120713 ; serial number of this zone file
-              10         ; slave refresh (10 seconds)
-              30         ; slave retry time in case of a problem (30 seconds)
-              4w         ; slave expiration time (4 weeks)
-              1h         ; minimum caching time in case of failed lookups (1 hour)
-              )
-  NS    ns                    ; ns.example.com is the nameserver for example.com
-  NS    ns.somewhere.com.     ; ns.somewhere.com is a backup nameserver for example.com
-  MX    10 mail.example.com.  ; mail.example.com is the mailserver for example.com
-@             MX    20 mail2.example.com. ; Similar to above line, but using "@" to say "use $ORIGIN"
-             MX    50 mail3              ; Similar to above line, but using a host within this domain
-  A     10.0.0.1              ; ip address for "example.com"
-ns            A     10.0.0.2              ; ip address for "ns.example.com". Since there is no "." after ns, $ORIGIN is attached
-www           CNAME ns                    ; "www.example.com" is an alias for "ns.example.com"
-wwwtest	CNAME www                   ; "wwwtest.example.com" is another alias for "www.example.com"
-mail          A     10.0.0.3              ; ip address for "mail.example.com", any MX record host must be
-ns.sub	A	10.1.0.1	; glue
+$TTL 3600
 
-;ns.sub TYPE23444 \# abcedfg
+@	SOA	dns1.example.com. hostmaster.example.com. (
+		2010111213	; serial
+		6h		; refresh
+		1h		; retry
+		1w		; expire
+		1d )		; minimum
 
-a	A	10.0.0.4
-*.a	A	10.0.0.5
+	NS	dns1
+	NS	dns2
+	MX	10 mail
 
-c	CNAME	c.a.example.com.
-@	NS	ns2
-ns2	A	10.0.0.6
-@	NS	c.a.example.com.
+dns1	A	192.0.2.1
+	AAAA	2001:DB8::1
 
-sub2	NS	ns.sub2.example.com.
-*.sub2	A	10.2.0.1
+dns2	A	192.0.2.2
+	AAAA	2001:DB8::2
 
-_foobar._tcp    SRV 0 1 9 old-slow-box.example.com.
-                SRV 0 3 9 new-fast-box.example.com.
-; if neither old-slow-box or new-fast-box is up, switch to
-; using the sysdmin's box and the server
-                SRV 1 0 9 sysadmins-box.example.com.
-                SRV 1 0 9 server.example.com.
-server           A   172.30.79.10
-old-slow-box     A   172.30.79.11
-sysadmins-box    A   172.30.79.12
-new-fast-box     A   172.30.79.13
-; NO other services are supported
-*._tcp          SRV  0 0 0 .
-*._udp          SRV  0 0 0 .
+mail	A	192.0.2.3
+	AAAA	2001:DB8::3
 
-sub3	NS	ns.sub2.example.com.
-sub4	NS	ns.example.com.
-
-d	CNAME	non-existing.example.com.
-e	DNAME	bogus25.com.
-f	CNAME	e.example.com.
-g	CNAME	www.bogus25.com.
-
-f.g	A	10.0.0.20
-h.i.j.k	A	10.0.0.21
-*.j.k	A	10.0.0.22
-
-sub5	CNAME	sub3
-*.l	CNAME	c.example.com.
-;*.m	NS	ns.sub2.example.com.
-*.n	DNAME	bogus25.com.
-o	CNAME	a.e.example.com.
-p	CNAME	a.sub.example.com.
-r	CNAME	a.l.example.com.
-*.s	CNAME	s
-s	A	10.1.1.1

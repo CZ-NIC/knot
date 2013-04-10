@@ -44,6 +44,8 @@
 #include <stdint.h>
 #include <fcntl.h>
 
+#include "knot/zone/zone-load.h"
+
 /*!
  * \brief Journal entry flags.
  */

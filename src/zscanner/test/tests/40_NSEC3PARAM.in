@@ -1,0 +1,26 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	NSEC3PARAM	0	0	0	-		; The simplest variant
+@	NSEC3PARAM	255	255	65535	-		; Maximal numbers
+@	NSEC3PARAM	0	0	0	0102FF		; Hex string
+@	TYPE51	\# 5 0000000000					; TYPE + Hexadecimal rdata
+@	TYPE51		0       0       0       -		; TYPE
+@	nsec3param	0       0       0       -		; Type in lower-case
+
+; KO
+@	NSEC3PARAM
+@	NSEC3PARAM						; Empty rdata
+@	NSEC3PARAM	\# 0					; Hex empty rdata
+@	NSEC3PARAM	\#					; Missing hex length
+@	NSEC3PARAM	256	0	0	00		; Algorithm overflow
+@	NSEC3PARAM	0	256	0	00		; Flags overflow
+@	NSEC3PARAM	0	0	65536	00		; Iterations overflow
+@	NSEC3PARAM	0	0	0	0		; Hex block length must be multiple of 2
+@	NSEC3PARAM	0	0	0	0x		; Bad hex char
+@	NSEC3PARAM	0	0	0	00 00		; Hex block must not contain blank spaces
+@	NSEC3PARAM	0	0	0	00 x		; Unexpected item
+@	NSEC3PARAM	0	0	0			; Missing item
+@	NSEC3PARAM	\# 5 000000000000			; Too long rdata
+@	NSEC3PARAM	\# 6 0000000000				; Bad rdata length

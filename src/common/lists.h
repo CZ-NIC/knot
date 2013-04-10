@@ -81,6 +81,7 @@ void add_tail_list(list *, list *);
 void init_list(list *);
 void insert_node(node *, node *);
 void list_dup(list *dst, list *src, size_t itemsz);
+size_t list_size(const list *);
 
 /*!
  * \brief List item for string lists.

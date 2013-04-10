@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <assert.h>
 #include <stdarg.h>
 #include <string.h>
 #include <stdlib.h>
@@ -25,6 +26,7 @@
 
 #include <urcu.h>
 #include "knot/conf/conf.h"
+#include "knot/conf/extra.h"
 #include "knot/common.h"
 #include "knot/ctl/remote.h"
 
@@ -38,6 +40,8 @@ static const char *DEFAULT_CONFIG[] = {
 };
 
 #define DEFAULT_CONF_COUNT 1 /*!< \brief Number of default config paths. */
+#define ERROR_BUFFER_SIZE 512 /*!< \brief Error buffer size. */
+#define INCLUDES_MAX_DEPTH 8 /*!< \brief Max depth of config inclusion. */
 
 /*
  * Utilities.
@@ -46,54 +50,66 @@ static const char *DEFAULT_CONFIG[] = {
 /* Prototypes for cf-parse.y */
 extern int cf_parse(void *scanner);
 extern int cf_get_lineno(void *scanner);
+extern void cf_set_error(void *scanner);
 extern char *cf_get_text(void *scanner);
-extern int cf_lex_init(void *scanner);
+extern conf_extra_t *cf_get_extra(void *scanner);
+extern int cf_lex_init_extra(void *, void *scanner);
 extern void cf_set_in(FILE *f, void *scanner);
 extern void cf_lex_destroy(void *scanner);
 extern void switch_input(const char *str, void *scanner);
+extern char *cf_current_filename(void *scanner);
 
 conf_t *new_config = 0; /*!< \brief Currently parsed config. */
 static volatile int _parser_res = 0; /*!< \brief Parser result. */
 static pthread_mutex_t _parser_lock = PTHREAD_MUTEX_INITIALIZER;
 
-/*! \brief Config error report. */
-void cf_error(void *scanner, const char *msg)
+static void cf_print_error(void *scanner, const char *msg)
 {
+	conf_extra_t *extra = NULL;
 	int lineno = -1;
-	char *text = "???";
+	char *text = "?";
+	char *filename = NULL;
 	if (scanner) {
+		extra = cf_get_extra(scanner);
 		lineno = cf_get_lineno(scanner);
-		text = (char *)cf_get_text(scanner);
+		text = cf_get_text(scanner);
+		filename = conf_includes_top(extra->includes);
+
+		extra->error = true;
 	}
 
-	log_server_error("Config '%s' - %s on line %d (current token '%s').\n",
-			 new_config->filename, msg, lineno, text);
+	if (!filename)
+		filename = new_config->filename;
 
+	log_server_error("Config error in '%s' (line %d token '%s') - %s\n",
+			 filename, lineno, text, msg);
 
 	_parser_res = KNOT_EPARSEFAIL;
 }
 
-static int conf_ztree_compare(void *p1, void *p2)
+/*! \brief Config error report. */
+void cf_error(void *scanner, const char *format, ...)
 {
-	return knot_dname_compare((knot_dname_t*)p1, (knot_dname_t*)p2);
-}
+	char buffer[ERROR_BUFFER_SIZE];
+	va_list ap;
 
-static void conf_ztree_free(void *node, void *data)
-{
-	UNUSED(data);
-	knot_dname_t *zname = (knot_dname_t*)node;
-	knot_dname_free(&zname);
+	va_start(ap, format);
+	vsnprintf(buffer, sizeof(buffer), format, ap);
+	va_end(ap);
+
+	cf_print_error(scanner, buffer);
 }
 
 static void conf_parse_begin(conf_t *conf)
 {
-	conf->zone_tree = gen_tree_new(conf_ztree_compare);
+	conf->names = hattrie_create();
 }
 
 static void conf_parse_end(conf_t *conf) 
 {
-	if (conf->zone_tree) {
-		gen_tree_destroy(&conf->zone_tree, conf_ztree_free, NULL);
+	if (conf->names) {
+		hattrie_free(conf->names);
+		conf->names = NULL;
 	}
 }
 
@@ -189,6 +205,9 @@ static int conf_process(conf_t *conf)
 	if (conf->rrl_size == 0) {
 		conf->rrl_size = CONFIG_RRL_SIZE;
 	}
+	
+	/* Default parallel transfers. */
+	if (conf->xfers <= 0) conf->xfers = CONFIG_XFERS;
 
 	// Postprocess zones
 	int ret = KNOT_EOK;
@@ -433,10 +452,12 @@ static int conf_fparser(conf_t *conf)
 	_parser_res = KNOT_EOK;
 	new_config->filename = conf->filename;
 	void *sc = NULL;
-	cf_lex_init(&sc);
+	conf_extra_t *extra = conf_extra_init(conf->filename, INCLUDES_MAX_DEPTH);
+	cf_lex_init_extra(extra, &sc);
 	cf_set_in(f, sc);
 	cf_parse(sc);
 	cf_lex_destroy(sc);
+	conf_extra_free(extra);
 	ret = _parser_res;
 	fclose(f);
 	// }
@@ -465,10 +486,12 @@ static int conf_strparser(conf_t *conf, const char *src)
 	char *oldfn = new_config->filename;
 	new_config->filename = "(stdin)";
 	void *sc = NULL;
-	cf_lex_init(&sc);
+	conf_extra_t *extra = conf_extra_init("", INCLUDES_MAX_DEPTH);
+	cf_lex_init_extra(extra, &sc);
 	switch_input(src, sc);
 	cf_parse(sc);
 	cf_lex_destroy(sc);
+	conf_extra_free(extra);
 	new_config->filename = oldfn;
 	ret = _parser_res;
 	// }
@@ -496,6 +519,7 @@ conf_t *conf_new(const char* path)
 	init_list(&c->zones);
 	init_list(&c->hooks);
 	init_list(&c->remotes);
+	init_list(&c->groups);
 	init_list(&c->keys);
 	init_list(&c->ctl.allow);
 
@@ -507,6 +531,7 @@ conf_t *conf_new(const char* path)
 	c->ixfr_fslimit = -1;
 	c->uid = -1;
 	c->gid = -1;
+	c->xfers = -1;
 	c->rrl_slip = -1;
 	c->build_diffs = 0; /* Disable by default. */
 	
@@ -622,6 +647,12 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 	}
 	conf->remotes_count = 0;
 	init_list(&conf->remotes);
+
+	// Free groups of remotes
+	WALK_LIST_DELSAFE(n, nxt, conf->groups) {
+		conf_free_group((conf_group_t *)n);
+	}
+	init_list(&conf->groups);
 
 	// Free zones
 	WALK_LIST_DELSAFE(n, nxt, conf->zones) {
@@ -773,25 +804,6 @@ int conf_open(const char* path)
 	return KNOT_EOK;
 }
 
-char* strcdup(const char *s1, const char *s2)
-{
-	if (!s1 || !s2) {
-		return NULL;
-	}
-	
-	size_t slen = strlen(s1);
-	size_t s2len = strlen(s2);
-	size_t nlen = slen + s2len + 1;
-	char* dst = malloc(nlen);
-	if (dst == NULL) {
-		return NULL;
-	}
-
-	memcpy(dst, s1, slen);
-	strncpy(dst + slen, s2, s2len + 1); // With trailing '\0'
-	return dst;
-}
-
 char* strcpath(char *path)
 {
 	// NULL path
@@ -873,12 +885,7 @@ void conf_free_zone(conf_zone_t *zone)
 
 void conf_free_key(conf_key_t *k)
 {
-	/* Secure erase. */
-	if (k->k.secret) {
-		memset(k->k.secret, 0, strlen(k->k.secret));
-	}
-	free(k->k.secret);
-	knot_dname_free(&k->k.name);
+	knot_tsig_key_free(&k->k);
 	free(k);
 }
 
@@ -896,6 +903,17 @@ void conf_free_iface(conf_iface_t *iface)
 void conf_free_remote(conf_remote_t *r)
 {
 	free(r);
+}
+
+void conf_free_group(conf_group_t *group)
+{
+	conf_group_remote_t *remote, *next;
+	WALK_LIST_DELSAFE(remote, next, group->remotes) {
+		free(remote->name);
+		free(remote);
+	}
+
+	free(group);
 }
 
 void conf_free_log(conf_log_t *log)

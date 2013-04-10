@@ -26,11 +26,18 @@
 #include "tests/common/fdset_tests.h"
 #include "tests/common/base64_tests.h"
 #include "tests/common/base32hex_tests.h"
+#include "tests/common/descriptor_tests.h"
 #include "tests/knot/dthreads_tests.h"
 #include "tests/knot/journal_tests.h"
 #include "tests/knot/server_tests.h"
 #include "tests/knot/conf_tests.h"
 #include "tests/knot/rrl_tests.h"
+#include "tests/zscanner/zscanner_tests.h"
+#include "tests/libknot/wire_tests.h"
+#include "tests/libknot/dname_tests.h"
+#include "tests/libknot/ztree_tests.h"
+#include "tests/libknot/sign_tests.h"
+#include "tests/libknot/rrset_tests.h"
 
 // Run all loaded units
 int main(int argc, char *argv[])
@@ -43,22 +50,34 @@ int main(int argc, char *argv[])
 
 	// Build test set
 	unit_api *tests[] = {
-		/* Core data structures. */
-		&journal_tests_api,	//! Journal unit
-		&slab_tests_api,	//! SLAB allocator unit
-		&skiplist_tests_api,	//! Skip list unit
-		&dthreads_tests_api,	//! DThreads testing unit
-		&events_tests_api,	//! Events testing unit
-		&acl_tests_api,		//! ACLs
-		&fdset_tests_api,	//! FDSET polling wrapper
-		&base64_tests_api,	//! Base64 encoding
-		&base32hex_tests_api,	//! Base32hex encoding
+	        /* Core data structures. */
+	        &journal_tests_api,	//! Journal unit
+	        &slab_tests_api,	//! SLAB allocator unit
+	        &skiplist_tests_api,	//! Skip list unit
+	        &dthreads_tests_api,	//! DThreads testing unit
+	        &events_tests_api,	//! Events testing unit
+	        &acl_tests_api,		//! ACLs
+	        &fdset_tests_api,	//! FDSET polling wrapper
+	        &base64_tests_api,	//! Base64 encoding
+	        &base32hex_tests_api,	//! Base32hex encoding
+	        &descriptor_tests_api,	//! RR descriptors
 
-		/* Server parts. */
-		&conf_tests_api,	//! Configuration parser tests
-		&server_tests_api,	//! Server unit
-		&rrl_tests_api,		//! RRL tests
-		NULL
+	        /* Server parts. */
+	        &conf_tests_api,	//! Configuration parser tests
+	        &server_tests_api,	//! Server unit
+	        &rrl_tests_api,		//! RRL tests
+
+	        /* Zone scanner. */
+	        &zscanner_tests_api,	//! Wrapper for external unittests
+
+	        /* Libknot library. */
+	        &wire_tests_api,
+	        &dname_tests_api,
+	        &ztree_tests_api,
+	        &sign_tests_api,	//! Key manipulation.
+		&rrset_tests_api,
+
+	        NULL
 	};
 
 	// Plan number of tests

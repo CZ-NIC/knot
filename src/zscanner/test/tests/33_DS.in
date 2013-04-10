@@ -1,0 +1,26 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	DS	0	0	0	00		; The simplest variant
+@	DS	65535	255	255	00		; Maximal numbers
+@	DS	0	RSAMD5	0	00		; Algorithm mnemonic
+@	DS	0	0	0	01 02 0304	; Hex block with blank spaces between them
+@	TYPE43	\# 5 0000000000				; TYPE + Hexadecimal rdata
+@	TYPE43	0	0	0	00		; TYPE
+@	ds	0	0	0	00		; Type in lower-case
+
+; KO
+@	DS
+@	DS						; Empty rdata
+@	DS	\# 0					; Hex empty rdata
+@	DS	\#					; Missing hex length
+@	DS	65536	0	0	00		; Key tag overflow
+@	DS	0	256	0	00		; Algorithm overflow
+@	DS	0	0	256	00		; Digest type overflow
+@	DS	0	0	0	0		; Continuous block length must be multiple of 2
+@	DS	0	0	0	00 0		; Continuous block length must be multiple of 2
+@	DS	0	0	0	XX		; Bad hex character
+@	DS	0	0	0			; Missing item
+@	DS	\# 5 000000000000			; Too long rdata
+@	DS	\# 6 0000000000				; Bad rdata length

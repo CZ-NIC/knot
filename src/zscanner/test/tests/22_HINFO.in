@@ -1,0 +1,29 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	HINFO	"" ""				; Blank string
+@	HINFO	a b				; One char string
+@	HINFO	\  \ 				; One space char
+@	HINFO	"\ " "\ "			; One space char in quotes
+@	HINFO	\021 \022			; One unprintable char
+@	HINFO	"\\ \""	"\\ \""			; Special chars
+@	HINFO	first \#			; Array with special string
+@	HINFO	\# 2 00	00			; Hexadecimal rdata
+@	TYPE13	\# 2 00	00			; TYPE + Hexadecimal rdata
+@	TYPE13	"" ""				; TYPE
+@	HINFO	"abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMN1234\053" ""	; Text string of maximal length (255 chars)
+@	hinfo	"" ""				; Type in lower-case
+
+; KO
+@	HINFO
+@	HINFO			; Empty rdata
+@	HINFO	\# 0		; Hex empty rdata
+@	HINFO	\#		; Missing hex length
+@	HINFO	\# second	; Hex notation with second text string
+@	HINFO	\01 ""		; Missing digit in decimal notation
+@	HINFO	\256 ""		; 8bit overflow in decimal notation
+@	HINFO	\# 3 0000	; Bad rdata length
+@	HINFO	""" ""		; '"' char without forward slash
+@	HINFO	"" "" ""	; Unexpected item
+@	HINFO	"abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMN1234\0536" ""	; Maximal length overflow

@@ -54,7 +54,7 @@ static int acl_compare(void *k1, void *k2)
 	}
 
 	/* Compare integers if IPv4. */
-	if (a1->family == AF_INET) {
+	if (sockaddr_family(a1) == AF_INET) {
 		
 		/* Compute mask .*/
 		uint32_t mask = acl_fill_mask32(a1->prefix);
@@ -69,7 +69,7 @@ static int acl_compare(void *k1, void *k2)
 
 	/* IPv6 matching. */
 #ifndef DISABLE_IPV6
-	if (a1->family == AF_INET6) {
+	if (sockaddr_family(a1) == AF_INET6) {
 		
 		/* Get mask .*/
 		short chunk = a1->prefix;
@@ -174,7 +174,6 @@ int acl_create(acl_t *acl, const sockaddr_t* addr, acl_rule_t rule, void *val,
 	}
 	
 	memcpy(&key->addr, addr, sizeof(sockaddr_t));
-	sockaddr_update(&key->addr);
 	key->rule = rule;
 	key->val = val;
 

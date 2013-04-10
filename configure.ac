@@ -15,6 +15,7 @@ m4_pattern_allow([AM_PROG_AR]) # for automake 1.12
 AM_PROG_AR
 
 # Initialize libtool
+AC_DISABLE_STATIC
 AC_PROG_LIBTOOL
 LT_INIT
 
@@ -46,23 +47,28 @@ AM_PROG_LEX
 
 AC_PROG_YACC
 YACC_BISON=`bison --version | awk '{print $1;exit}'`
-AS_IF([test "x$YACC_BISON" != "xbison"],	    
+AS_IF([test "x$YACC_BISON" != "xbison"],
     [AC_MSG_ERROR([GNU bison needed for reentrant parsers, set the \$YACC variable before running configure])])
 AC_PROG_INSTALL
+
+# Full path to Knot source
+abs_srcdir=`(cd $srcdir && pwd)`
+AC_DEFINE_UNQUOTED([SOURCE_ABSOLUTE_DIR], ["$abs_srcdir"], [Knot source full path.])
+
+# Check for Ragel
+AC_PATH_PROG([RAGEL], [ragel], [echo !UNPROCESSED! ragel])
+
+# Set FSM type for Ragel
+AC_SUBST([FSM_TYPE], [-T0])
+AC_ARG_ENABLE([fastparser],
+    AS_HELP_STRING([--enable-fastparser], [Set to generate fast goto driven state machine (Ragel option G2)]),
+    AC_SUBST([FSM_TYPE], [-G2]),
+    [])
 
 # Set compiler compatibility flags
 AC_PROG_CPP_WERROR
 AC_PROG_CC_C99
 
-AC_ARG_ENABLE([ldns],
-     AS_HELP_STRING([--enable-ldns=yes|no], [Enable tests with ldns [default=no]]),
-     [case "${enableval}" in
-       yes) AC_SEARCH_LIBS([ldns_rr_list_pop_rrset], [ldns], [AC_DEFINE([HAVE_LDNS], [1], [ldns present])],
-       AC_MSG_ERROR([ldns not found])) ;;
-       no)  ldns=false ;;
-       *) AC_MSG_ERROR([bad value ${enableval} for --enable-ldns]) ;;
-     esac],[ldns=false])
-     
 # Debug modules
 AC_ARG_ENABLE([debug],
     AS_HELP_STRING([--enable-debug=server,zones,xfr,packet,dname,rr,ns,hash,compiler,stash],
@@ -93,16 +99,16 @@ AC_ARG_ENABLE([debuglevel],
         AC_DEFINE([DEBUG_ENABLE_DETAILS], [1], [Enable details debugging messages.])
         AC_DEFINE([DEBUG_ENABLE_VERBOSE], [1], [Enable verbose debugging messages.])
         AC_DEFINE([DEBUG_ENABLE_BRIEF], [1], [Enable brief debugging messages.])
-	;;
+        ;;
       xverbose)
         AC_DEFINE([DEBUG_ENABLE_VERBOSE], [1], [Enable verbose debugging messages.])
         AC_DEFINE([DEBUG_ENABLE_BRIEF], [1], [Enable brief debugging messages.])
-	;;
+        ;;
       xbrief)
         AC_DEFINE([DEBUG_ENABLE_BRIEF], [1], [Enable brief debugging messages.])
         ;;
     esac], [])
-    
+
 AX_MSG_WAITFORONE
 # recvmmsg() (valgrind doesn't support it, so disable for debugging)
 AC_ARG_ENABLE([recvmmsg],
@@ -119,7 +125,7 @@ AC_ARG_ENABLE([recvmmsg],
       no)
           recvmmsg=false
           ;;
-      *) 
+      *)
           AC_MSG_ERROR([bad value ${enableval} for --enable-recvmmsg])
           ;;
     esac], [
@@ -142,6 +148,10 @@ AC_ARG_ENABLE([lto],
 
 AX_CHECK_COMPILER_FLAGS("-fpredictive-commoning", [CFLAGS="$CFLAGS -fpredictive-commoning"], [])
 
+# Disable strict aliasing
+# FIXME: we break strict aliasing on many occurenes, disable it until resolved or kept
+AX_CHECK_COMPILER_FLAGS("-fno-strict-aliasing", [CFLAGS="$CFLAGS -fno-strict-aliasing"], [])
+
 # Checks for libraries.
 # FIXME: Replace `main' with a function in `-lm':
 # TODO: check if paths exist before appending
@@ -156,31 +166,22 @@ AC_SEARCH_LIBS([clock_gettime], [rt])
 AC_SEARCH_LIBS([OpenSSL_add_all_digests], [crypto],[], [AC_MSG_ERROR([libcrypto not found])])
 AC_SEARCH_LIBS([capng_apply], [cap-ng])
 AC_SEARCH_LIBS([adler32], [z])
-#AC_SEARCH_LIBS([ldns_rr_list_pop_rrset], [ldns], [], [AC_MSG_ERROR([libldns not found])])
 
 # Checks for header files.
 AC_HEADER_RESOLV
-AC_CHECK_HEADERS([arpa/inet.h fcntl.h inttypes.h limits.h malloc.h netdb.h netinet/in_systm.h netinet/in.h stdint.h stdlib.h string.h strings.h sys/socket.h sys/time.h sys/select.h sys/wait.h sys/stat.h cap-ng.h syslog.h unistd.h urcu.h ev.h pthread_np.h signal.h])
+AC_CHECK_HEADERS([arpa/inet.h cap-ng.h ev.h fcntl.h inttypes.h limits.h malloc.h math.h netdb.h netinet/in.h netinet/in_systm.h pthread_np.h signal.h stdbool.h stdint.h stdlib.h string.h strings.h syslog.h sys/select.h sys/socket.h sys/stat.h sys/time.h sys/wait.h unistd.h urcu.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
-AC_HEADER_STDBOOL
 AC_C_INLINE
-AC_TYPE_INT64_T
 AC_TYPE_PID_T
 AC_TYPE_SIZE_T
 AC_TYPE_SSIZE_T
-AC_TYPE_UINT16_T
-AC_TYPE_UINT32_T
-AC_TYPE_UINT64_T
-AC_TYPE_UINT8_T
 
 # Set PRNG parameters
 AC_DEFINE([DSFMT_MEXP], [521], [DSFMT parameters.])
 
 # Checks for library functions.
-AC_FUNC_FORK
-AC_FUNC_MMAP
-AC_CHECK_FUNCS([gethostbyname gettimeofday clock_gettime memalign memmove memset munmap regcomp pselect select socket sqrt strcasecmp strchr strdup strerror strncasecmp strtol strtoul poll epoll_wait kqueue setgroups sendmmsg madvise pthread_setaffinity_np])
+AC_CHECK_FUNCS([clock_gettime epoll_wait fgetln getline kqueue madvise poll posix_memalign pselect pthread_setaffinity_np regcomp select sendmmsg setgroups])
 
 # Check for cpu_set_t/cpuset_t compatibility
 AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <pthread.h>]], [[cpu_set_t set; CPU_ZERO(&set);]])],
@@ -192,6 +193,7 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <sched.h>]], [[cpuset_t* set = cpuset
 
 AC_CONFIG_FILES([Makefile
 		 samples/Makefile
-                 src/Makefile
-		 doc/Makefile])
+		 src/Makefile
+		 doc/Makefile
+		 man/Makefile])
 AC_OUTPUT

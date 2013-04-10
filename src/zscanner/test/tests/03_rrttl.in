@@ -1,0 +1,26 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	0		NS	@	; Minimal ttl
+@	3600		NS	@	; Inner value
+@	4294967295	NS	@	; Maximal ttl
+@	1S		NS	@	; 1 second (upper-case)
+@	1s		NS	@	; 1 second (lower-case)
+@	1M		NS	@	; 1 minute (upper-case)
+@	1m		NS	@	; 1 minute (lower-case)
+@	1H		NS	@	; 1 hour (upper-case)
+@	1h		NS	@	; 1 hour (lower-case)
+@	1D		NS	@	; 1 day (upper-case)
+@	1d		NS	@	; 1 day (lower-case)
+@	1W		NS	@	; 1 week (upper-case)
+@	1w		NS	@	; 1 week (lower-case)
+@	1w1d1h1m1s	NS	@	; More time units
+@	1s1m1m		NS	@	; Same time units, non decreasing order
+
+; KO
+@	-1		NS	@	; Negative ttl
+@	4294967296	NS	@	; 32bit overflow
+@	100000000W	NS	@	; 32bit overflow
+@	4294967295s1w	NS	@	; 32bit overflow
+@	1x		NS	@	; Unknown time unit

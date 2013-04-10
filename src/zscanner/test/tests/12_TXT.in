@@ -1,0 +1,39 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	TXT	""				; Blank string
+@	TXT	a				; One char string
+@	TXT	\ 				; One space char
+@	TXT	"\ "				; One space char in quotes
+@	TXT	\021				; One unprintable char
+@	TXT	"\\ \""				; Special chars
+@	TXT	"" "test1" "\255" test2		; Array of text strings
+@	TXT	"" "" ""			; Array of blank strings
+@	TXT	first \# "\#"			; Array with special string
+@	TXT	\0320\ \\\"\.\@\*.tld.		; Special domain as a string
+@	TXT	" !\"#$%&'()*+,-./0123456789:;<=>?@"	; First part of all printables
+@	TXT	"ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`"	; Second part of all printables
+@	TXT	"abcdefghijklmnopqrstuvwxyz{|}~"	; Third part of all printables
+@	TXT	\# 1 00				; Hexadecimal rdata
+@	TYPE16	\# 1 00				; TYPE + Hexadecimal rdata
+@	TYPE16	""				; TYPE
+@	TXT	(				; Special multi-line string
+"first
+second"
+third						; Second string
+)
+@	TXT	"abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMN1234\053"	; Text string of maximal length (255 chars)
+@	txt	""				; Type in lower-case
+
+; KO
+@	TXT
+@	TXT			; Empty rdata
+@	TXT	\# 0		; Hex empty rdata
+@	TXT	\#		; Missing hex length
+@	TXT	\# second	; Hex notation with second text string
+@	TXT	\01		; Missing digit in decimal notation
+@	TXT	\256		; 8bit overflow in decimal notation
+@	TXT	\# 2 ""		; Bad length
+@	TXT	"""		; '"' char without forward slash
+@	TXT	"abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMN1234\0536"	; Maximal length overflow

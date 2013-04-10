@@ -25,6 +25,7 @@
 #include "knot/server/zones.h"
 #include "libknot/util/wire.h"
 #include "libknot/packet/query.h"
+#include "common/descriptor.h"
 #include "libknot/packet/response.h"
 #include "libknot/nameserver/name-server.h"
 #include "libknot/tsig-op.h"
@@ -91,24 +92,24 @@ static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *
 		
 		/* Process all zones in data section. */
 		const knot_rrset_t *rr = a->arg[i];
-		if (knot_rrset_type(rr) != KNOT_RRTYPE_CNAME) {
+		//REVIEW MV: had to be changed to NS, CNAME can only have on RDATA.
+		if (knot_rrset_type(rr) != KNOT_RRTYPE_NS) {
 			continue;
 		}
 		
-		const knot_rdata_t *rd = knot_rrset_rdata(rr);
-		while (rd != NULL) {
-			/* Skip empty nodes. */
-			if (knot_rdata_item_count(rd) < 1) {
-				rd = knot_rrset_rdata_next(rr, rd);
-				continue;
-			}
+		for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(rr); i++) {
+			/* Skip empty nodes. */ // REWIEW MV: still relevant?
+//			if (knot_rdata_item_count(rd) < 1) {
+//				rd = knot_rrset_rdata_next(rr, rd);
+//				continue;
+//			}
 			/* Refresh zones. */
-			const knot_dname_t *dn = knot_rdata_item(rd, 0)->dname;
+			const knot_dname_t *dn =
+				knot_rrset_rdata_ns_name(rr, i);
 			zone = knot_zonedb_find_zone(ns->zone_db, dn);
 			if (cb(s, zone) != KNOT_EOK) {
 				a->rc = KNOT_RCODE_SERVFAIL;
 			}
-			rd = knot_rrset_rdata_next(rr, rd);
 		}
 		rcu_read_unlock();
 	}
@@ -164,25 +165,6 @@ static int remote_zone_flush(server_t *s, const knot_zone_t *z)
 	return KNOT_EOK;
 }
 
-/*! \brief Helper to build RDATA from RDATA item. */
-knot_rdata_t* remote_build_rdata(knot_rdata_item_t *i, unsigned c)
-{
-	/* Create RDATA. */
-	knot_rdata_t *rd = knot_rdata_new();
-	if (!rd) {
-		return NULL;
-	}
-	
-	/* Set RDATA items. */
-	int ret = knot_rdata_set_items(rd, i, c);
-	if (ret != KNOT_EOK) {
-		knot_rdata_free(&rd);
-		return NULL;
-	}
-	
-	return rd;
-}
-
 /*!
  * \brief Remote command 'reload' handler.
  *
@@ -228,20 +210,13 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 		
 		/* Fetch latest serial. */
 		const knot_rrset_t *soa_rrs = 0;
-		const knot_rdata_t *soa_rr = 0;
 		uint32_t serial = 0;
 		knot_zone_contents_t *contents = knot_zone_get_contents(zones[i]);
 		if (contents) {
 			soa_rrs = knot_node_rrset(knot_zone_contents_apex(contents),
 			                          KNOT_RRTYPE_SOA);
 			assert(soa_rrs != NULL);
-			
-			soa_rr = knot_rrset_rdata(soa_rrs);
-			
-			int64_t serial_ret = knot_rdata_soa_serial(soa_rr);
-			if (serial_ret > 0) {
-				serial = (uint32_t)serial_ret;
-			}
+			serial = knot_rrset_rdata_soa_serial(soa_rrs);
 		}
 		
 		/* Evalute zone type. */
@@ -254,12 +229,8 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 		
 		/* Evaluate zone state. */
 		char *when = NULL;
-		int locked = pthread_mutex_trylock(&zd->xfr_in.lock);
-		if (locked == 0) pthread_mutex_unlock(&zd->xfr_in.lock);
-		if (locked != 0) {
+		if (zd->xfr_in.state == XFR_PENDING) {
 			when = strdup("pending");
-		} else if (zd->xfr_in.scheduled) {
-			when = strdup("scheduled");
 		} else if (zd->xfr_in.timer) {
 			struct timeval now, dif;
 			gettimeofday(&now, 0);
@@ -441,7 +412,7 @@ int remote_parse(knot_packet_t* pkt, const uint8_t* buf, size_t buflen)
 		dbg_server("remote: failed to parse packet\n");
 		return KNOT_EINVAL;
 	}
-	ret = knot_packet_parse_rest(pkt);
+	ret = knot_packet_parse_rest(pkt, 0);
 	if (ret != KNOT_EOK) {
 		dbg_server("remote: failed to parse packet data\n");
 		return KNOT_EINVAL;
@@ -450,7 +421,8 @@ int remote_parse(knot_packet_t* pkt, const uint8_t* buf, size_t buflen)
 	return ret;
 }
 
-static int tmp_send(int c, knot_packet_t *pkt, const char* d, uint16_t dlen, uint8_t* rwire, size_t rlen)
+static int remote_send_chunk(int c, knot_packet_t *pkt, const char* d,
+                             uint16_t dlen, uint8_t* rwire, size_t rlen)
 {
 	int ret = KNOT_ERROR;
 	knot_packet_t *resp = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
@@ -484,17 +456,21 @@ static int tmp_send(int c, knot_packet_t *pkt, const char* d, uint16_t dlen, uin
 	}
 	
 	/* Evaluate output. */
-	int rr_count = 0;
+	uint16_t rr_count = 0;
 	knot_rrset_t *rr = remote_build_rr("result.", KNOT_RRTYPE_TXT);
-	knot_rdata_t *rd = remote_create_txt(d, dlen);
-	knot_rrset_add_rdata(rr, rd);
+	remote_create_txt(rr, d, dlen);
+
 
 	size_t rrlen = rlen;
-	knot_rrset_to_wire(rr, rwire + len, &rrlen, &rr_count);
+	ret = knot_rrset_to_wire(rr, rwire + len, &rrlen, rlen, &rr_count, NULL);
+	if (ret != KNOT_EOK) {
+		knot_rrset_deep_free(&rr, 1, 1);
+		return ret;
+	}
 	knot_wire_set_nscount(rwire, rr_count);
 	len += rrlen;
 	rlen -= rrlen;
-	knot_rrset_deep_free(&rr, 1, 1, 1);
+	knot_rrset_deep_free(&rr, 1, 1);
 	
 	if (len > 0) {
 		return tcp_send(c, rwire, len);
@@ -567,13 +543,13 @@ int remote_answer(int fd, server_t *s, knot_packet_t *pkt, uint8_t* rwire, size_
 	unsigned p = 0;
 	size_t chunk = 16384;
 	for (; p + chunk < args->rlen; p += chunk) {
-		tmp_send(fd, pkt, args->resp + p, chunk, rwire, rlen);
+		remote_send_chunk(fd, pkt, args->resp + p, chunk, rwire, rlen);
 	}
+
 	unsigned r = args->rlen - p;
 	if (r > 0) {
-		tmp_send(fd, pkt, args->resp + p, r, rwire, rlen);
+		remote_send_chunk(fd, pkt, args->resp + p, r, rwire, rlen);
 	}
-	
 	
 	free(args);
 	free(cmd);
@@ -591,6 +567,7 @@ int remote_process(server_t *s, int r, uint8_t* buf, size_t buflen)
 	/* Initialize remote party address. */
 	rcu_read_lock();
 	sockaddr_t a;
+	sockaddr_prep(&a);
 	conf_iface_t *ctl_if = conf()->ctl.iface;
 	if (ctl_if) {
 		sockaddr_init(&a, ctl_if->family);
@@ -612,7 +589,7 @@ int remote_process(server_t *s, int r, uint8_t* buf, size_t buflen)
 		
 		/* Check ACL list. */
 		rcu_read_lock();
-		knot_key_t *k = NULL;
+		knot_tsig_key_t *k = NULL;
 		acl_key_t *m = NULL;
 		knot_rcode_t ts_rc = 0;
 		uint16_t ts_trc = 0;
@@ -657,7 +634,7 @@ int remote_process(server_t *s, int r, uint8_t* buf, size_t buflen)
 	return ret;
 }
 
-knot_packet_t* remote_query(const char *query, const knot_key_t *key)
+knot_packet_t* remote_query(const char *query, const knot_tsig_key_t *key)
 {
 	if (!query) {
 		return NULL;
@@ -709,15 +686,16 @@ int remote_query_append(knot_packet_t *qry, knot_rrset_t *data)
 	}
 	
 	uint8_t *sp = qry->wireformat + qry->size;
-	uint8_t *np   = qry->wireformat + qry->max_size;
+//	uint8_t *np   = qry->wireformat + qry->max_size;
 	uint8_t *p = sp;
-	const knot_rdata_t *rd = knot_rrset_rdata(data);
-	while (rd != NULL) {
-		int ret = knot_query_rr_to_wire(data, rd, &p, np);
+	for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(data); i++) {
+		assert(0);
+		//TODO this function does not exist
+//		int ret = knot_query_rr_to_wire(data, i, &p, np);
+		int ret = 0;
 		if (ret == KNOT_EOK) {
 			qry->header.nscount += 1;
 		}
-		rd = knot_rrset_rdata_next(data, rd);
 	}
 
 	/* Finalize packet size. */
@@ -727,7 +705,7 @@ int remote_query_append(knot_packet_t *qry, knot_rrset_t *data)
 
 
 int remote_query_sign(uint8_t *wire, size_t *size, size_t maxlen,
-                      const knot_key_t *key)
+                      const knot_tsig_key_t *key)
 {
 	if (!wire || !size || !key) {
 		return KNOT_EINVAL;
@@ -764,24 +742,16 @@ knot_rrset_t* remote_build_rr(const char *k, uint16_t t)
 	return rr;
 }
 
-knot_rdata_t* remote_create_txt(const char *v, size_t v_len)
+int remote_create_txt(knot_rrset_t *rr, const char *v, size_t v_len)
 {
-	if (!v) {
-		return NULL;
+	if (!rr || !v) {
+		return KNOT_EINVAL;
 	}
 	
 	/* Number of chunks. */
 	const size_t K = 255;
 	unsigned chunks = v_len / K + 1;
-
-	/* Create raw_data item. */
-	knot_rdata_item_t rditem;
-	rditem.raw_data = malloc(sizeof(uint16_t) + chunks + v_len);
-	if (!rditem.raw_data) {
-		return NULL;
-	}
-	rditem.raw_data[0] = v_len + chunks;
-	uint8_t *raw = (uint8_t*)(rditem.raw_data + 1);
+	uint8_t *raw = knot_rrset_create_rdata(rr, v_len + chunks);
 	
 	/* Write TXT item. */
 	unsigned p = 0;
@@ -799,50 +769,44 @@ knot_rdata_t* remote_create_txt(const char *v, size_t v_len)
 		raw += K;
 	}
 
-	knot_rdata_t *rd = remote_build_rdata(&rditem, 1);
-	if (!rd) {
-		free(rditem.raw_data);
-	}
-	
-	return rd;
+	return KNOT_EOK;
 }
 
-knot_rdata_t* remote_create_cname(const char *d)
+int remote_create_cname(knot_rrset_t *rr, const char *d)
 {
-	if (!d) {
-		return NULL;
+	if (!rr || !d) {
+		return KNOT_EINVAL;
 	}
 
-	/* Create dname item. */
-	knot_rdata_item_t i;
+	/* Create dname. */
 	knot_dname_t *dn = remote_dname_fqdn(d);
-	i.dname = dn;
+	if (!dn) {
+		return KNOT_ERROR;
+	}
 	
 	/* Build RDATA. */
-	knot_rdata_t *rd = remote_build_rdata(&i, 1);
-	if (!rd) {
-		knot_dname_release(dn);
+	uint8_t *rdata = knot_rrset_create_rdata(rr, knot_dname_size(dn));
+	if (!rdata) {
+		knot_dname_free(&dn);
+		return KNOT_ERROR;
 	}
+	memcpy(rdata, knot_dname_name(dn), knot_dname_size(dn));
+	knot_dname_free(&dn);
 	
-	return rd;
+	return KNOT_EOK;
 }
 
-int remote_print_txt(const knot_rdata_t *rd)
+int remote_print_txt(const knot_rrset_t *rr, uint16_t i)
 {
-	if (!rd || knot_rdata_count(rd) < 1) {
-		return KNOT_EINVAL;
+	if (!rr || knot_rrset_rdata_rr_count(rr) < 1) {
+		return -1;
 	}
-	
-	const knot_rdata_item_t *ri = knot_rdata_item(rd, 0);
-	if (!ri) {
-		return KNOT_EINVAL;
-	}
-	
+
 	/* Packet parser should have already checked the packet validity. */
 	char buf[256];
 	uint16_t parsed = 0;
-	uint16_t rlen = ri->raw_data[0];
-	uint8_t *p = (uint8_t*)(ri->raw_data + 1);
+	uint16_t rlen = rrset_rdata_item_size(rr, i);
+	uint8_t *p = knot_rrset_get_rdata(rr, i);
 	while (parsed < rlen) {
 		memcpy(buf, (const char*)(p+1), *p);
 		buf[*p] = '\0';

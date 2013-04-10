@@ -34,13 +34,13 @@
 #include <urcu.h>
 
 #include "libknot/dname.h"
-#include "libknot/util/descriptor.h"
 #include "libknot/tsig.h"
+#include "libknot/sign/key.h"
 #include "common/lists.h"
 #include "common/log.h"
 #include "common/acl.h"
 #include "common/sockaddr.h"
-#include "common/general-tree.h"
+#include "common/hattrie/hat-trie.h"
 
 /* Constants. */
 #define CONFIG_DEFAULT_PORT 53
@@ -52,6 +52,7 @@
 #define CONFIG_IDLE_WD  60 /*!< [secs] of allowed inactivity between requests */
 #define CONFIG_RRL_SLIP 2 /*!< Default slip value. */
 #define CONFIG_RRL_SIZE 393241 /*!< Htable default size. */
+#define CONFIG_XFERS 10
 
 /*!
  * \brief Configuration for the interface
@@ -62,13 +63,13 @@
  */
 typedef struct conf_iface_t {
 	node n;
-	char *name;       /*!< Internal name for the interface. */
-	char *address;    /*!< IP (IPv4/v6) address for this interface */
-	unsigned prefix;  /*!< IP subnet prefix. */
-	int port;         /*!< Port number for this interface */
-	int family;       /*!< Address family. */
-	knot_key_t *key;  /*!< TSIG key (only valid for remotes). */
-	sockaddr_t  via;  /*!< Used for remotes to specify qry endpoint.*/
+	char *name;           /*!< Internal name for the interface. */
+	char *address;        /*!< IP (IPv4/v6) address for this interface */
+	unsigned prefix;      /*!< IP subnet prefix. */
+	int port;             /*!< Port number for this interface */
+	int family;           /*!< Address family. */
+	knot_tsig_key_t *key; /*!< TSIG key (only valid for remotes). */
+	sockaddr_t  via;      /*!< Used for remotes to specify qry endpoint.*/
 } conf_iface_t;
 
 /*!
@@ -82,6 +83,25 @@ typedef struct conf_remote_t {
 } conf_remote_t;
 
 /*!
+ * \brief Group of remotes list item.
+ *
+ * Holds the name of a remote in the list.
+ */
+typedef struct conf_group_remote_t {
+	node n;
+	char *name;
+} conf_group_remote_t;
+
+/*!
+ * \brief Group of remotes.
+ */
+typedef struct conf_group_t {
+	node n;		/*!< List node. */
+	char *name;	/*!< Unique name of the group. */
+	list remotes;	/*!< List of remote names. */
+} conf_group_t;
+
+/*!
  * \brief Zone configuration.
  *
  * This structure holds the configuration for the zone.  In it's most
@@ -93,7 +113,7 @@ typedef struct conf_remote_t {
 typedef struct conf_zone_t {
 	node n;
 	char *name;               /*!< Zone name. */
-	enum knot_rr_class cls;   /*!< Zone class (IN or CH). */
+	uint16_t cls;             /*!< Zone class (IN or CH). */
 	char *file;               /*!< Path to a zone file. */
 	char *db;                 /*!< Path to a database file. */
 	char *ixfr_db;            /*!< Path to a IXFR database file. */
@@ -109,7 +129,7 @@ typedef struct conf_zone_t {
 		list xfr_out;     /*!< Remotes accepted for xfr-out.*/
 		list notify_in;   /*!< Remotes accepted for notify-in.*/
 		list notify_out;  /*!< Remotes accepted for notify-out.*/
-		list update_in;  /*!< Remotes accepted for DDNS.*/
+		list update_in;   /*!< Remotes accepted for DDNS.*/
 	} acl;
 } conf_zone_t;
 
@@ -148,7 +168,7 @@ typedef enum conf_section_t {
  */
 typedef struct conf_key_t {
 	node n;
-	knot_key_t k;
+	knot_tsig_key_t k;
 } conf_key_t;
 
 /*!
@@ -185,6 +205,7 @@ typedef struct conf_t {
 	int    rrl;      /*!< Rate limit (in responses per second). */
 	size_t rrl_size; /*!< Rate limit htable size. */
 	int    rrl_slip;  /*!< Rate limit SLIP. */
+	int    xfers;     /*!< Number of parallel transfers. */
 
 	/*
 	 * Log
@@ -211,6 +232,11 @@ typedef struct conf_t {
 	int remotes_count;/*!< Count of remotes. */
 
 	/*
+	 * Groups of remotes.
+	 */
+	list groups;      /*!< List of groups of remotes. */
+
+	/*
 	 * Zones
 	 */
 	list zones;       /*!< List of zones. */
@@ -222,7 +248,7 @@ typedef struct conf_t {
 	int dbsync_timeout; /*!< Default interval between syncing to zonefile.*/
 	size_t ixfr_fslimit; /*!< File size limit for IXFR journal. */
 	int build_diffs;     /*!< Calculate differences from changes. */
-	general_tree_t *zone_tree; /*!< Zone tree for duplicate checking. */
+	hattrie_t *names; /*!< Zone tree for duplicate checking. */
 	
 	/*
 	 * Remote control interface.
@@ -359,17 +385,6 @@ static inline conf_t* conf() {
  */
 
 /*!
- * \brief Create new string from a concatenation of s1 and s2.
- *
- * \param s1 First string.
- * \param s2 Second string.
- *
- * \retval Newly allocated string on success.
- * \retval NULL on error.
- */
-char* strcdup(const char *s1, const char *s2);
-
-/*!
  * \brief Normalize file path and expand '~' placeholders.
  *
  * \note Old pointer may be freed.
@@ -389,6 +404,9 @@ void conf_free_iface(conf_iface_t *iface);
 
 /*! \brief Free remotes config. */
 void conf_free_remote(conf_remote_t *r);
+
+/*! \brief Free group config. */
+void conf_free_group(conf_group_t *group);
 
 /*! \brief Free log config. */
 void conf_free_log(conf_log_t *log);

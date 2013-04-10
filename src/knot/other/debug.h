@@ -478,7 +478,7 @@
 #define dbg_zload_exec_detail(cmds)
 #endif
 
-#ifdef KNOTD_COMPILER_DEBUG
+#ifdef KNOTD_COMPILE_DEBUG
 
 /* Brief messages. */
 #ifdef DEBUG_ENABLE_BRIEF

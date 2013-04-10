@@ -1,0 +1,86 @@
+.TH "khost" "8" "April 2013" "CZ.NIC Labs" "Knot DNS, version @VERSION@"
+.SH NAME
+.B khost
+\- Simple DNS lookup utility (libknot equivalent of ISC host)
+.SH SYNOPSIS
+.B khost
+[\fIoptions\fR] \fIname\fR [\fIserver\fR]
+.SH DESCRIPTION
+This utility sends a DNS query for the \fIname\fR to the \fIserver\fR and prints
+a reply in more user-readable form. For more advanced DNS queries use \fBkdig\fR instead.
+.TP 4
+\fI name\fR
+Is a domain name that is to be looked up.
+If the \fIname\fR is IPv4 or IPv6 address the \fIPTR\fR query type is used.
+.TP
+\fI server\fR
+Is a name or an address of the nameserver to send a query to. The address
+can be specified using [address]:port notation. If no server is specified
+the servers from \fB/etc/resolv.conf\fR are used.
+.TP
+If no arguments are provided, \fBkhost\fR prints short help.
+.SH OPTIONS
+.TP 4
+.BI -4
+Use IPv4 protocol only.
+.TP
+.BI -6
+Use IPv6 protocol only.
+.TP
+.BI -a
+Send ANY query with verbose mode.
+.TP
+.BI -C
+(NOT YET IMPLEMENTED)
+.TP
+.BI -d
+Enable debug messages if any.
+.TP
+.BI -r
+Set recursion (RD flag).
+.TP
+.BI -s
+Stop quering next nameserver if SERVFAIL response is received.
+.TP
+.BI -T
+Use TCP protocol.
+.TP
+.BI -v
+Enable verbose output.
+.TP
+.BI -w
+Wait forever for the reply.
+.TP
+.BI -c \ class
+Set query class (e.g. \fICH\fR, \fICLASS4\fR). The default class is \fIIN\fR.
+.TP
+.BI -t \ type
+Set query type (e.g. \fINS\fR, \fIIXFR=12345\fR, \fITYPE65535\fR).
+The default is to send 3 queries (\fIA\fR, \fIAAAA\fR and \fIMX\fR).
+.TP
+.BI -R \ retries
+The number of UDP retries to query a nameserver. The default is \fI1\fR.
+.TP
+.BI -W \ wait
+The time to wait for a reply in seconds. The default is \fI2\fR seconds.
+.SH EXAMPLES
+.B Example 1. Get A, AAAA and MX records for example.com:
+.TP
+# khost example.com
+.TP
+.B Example 2. Get reverse record for address 192.0.2.1:
+.TP
+# khost 192.0.2.1
+.TP
+.B Example 3. Perform verbose zone transfer for zone example.com:
+.TP
+# khost -t AXFR -v example.com
+.SH FILES
+.BI /etc/resolv.conf
+.SH AUTHOR
+Daniel Salzman (\fBhttp://knot-dns.cz\fR)
+.TP
+Please send any bugs or comments to \fBknot-dns@labs.nic.cz\fR
+.SH SEE ALSO
+.BI kdig\fR(8),
+.BI knsupdate\fR(8).

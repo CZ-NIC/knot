@@ -217,12 +217,17 @@ static int _log_msg(logsrc_t src, int level, const char *msg)
 	struct tm lt;
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
-	if (localtime_r(&tv.tv_sec, &lt) != NULL) {
-		tlen = strftime(tstr, sizeof(tstr) - 1,
+	time_t sec = tv.tv_sec;
+	if (localtime_r(&sec, &lt) != NULL) {
+		tlen = strftime(tstr, sizeof(tstr),
 				"%Y-%m-%dT%H:%M:%S", &lt);
 		if (tlen > 0) {
-			char pm = (lt.tm_gmtoff > 0)?'+':'-';
-			snprintf(tstr+tlen, 128-tlen-1, ".%.6lu%c%.2u:%.2u ", (unsigned long)tv.tv_usec, pm, (unsigned int)lt.tm_gmtoff/3600, (unsigned int)(lt.tm_gmtoff/60)%60);
+			char pm = (lt.tm_gmtoff > 0) ? '+' : '-';
+			snprintf(tstr + tlen, sizeof(tstr) - tlen,
+			         ".%.6lu%c%.2u:%.2u ",
+			         (unsigned long)tv.tv_usec, pm,
+			         (unsigned int)lt.tm_gmtoff / 3600,
+			         (unsigned int)(lt.tm_gmtoff / 60) % 60);
 		}
 	}
 
@@ -323,9 +328,12 @@ void hex_log(int source, const char *data, int length)
 			log_msg(source, LOG_DEBUG, "%s\n", lbuf);
 			llen = 0;
 		}
-		int n = sprintf(lbuf + llen, "0x%02x ",
-		        (unsigned char)*(data + ptr));
-		llen += n;
+		int ret = snprintf(lbuf + llen, sizeof(lbuf) - llen, "0x%02x ",
+		                   (unsigned char)*(data + ptr));
+		if (ret < 0 || ret >= sizeof(lbuf) - llen) {
+			return;
+		}
+		llen += ret;
 	}
 	if (llen > 0) {
 		log_msg(source, LOG_DEBUG, "%s\n", lbuf);

@@ -30,13 +30,14 @@
 #include <stdint.h>
 
 #include "rrset.h"
+#include "binary.h"
 #include "util/utils.h"
 
 /* The assigned numbers should not begin with 0 - reserved for error. */
 enum tsig_algorithm {
 	KNOT_TSIG_ALG_NULL = 0,
 	KNOT_TSIG_ALG_GSS_TSIG = 128, /*!< \brief gss-tsig. */
-	KNOT_TSIG_ALG_HMAC_MD5, /*!< \brief HMAC-MD5.SIG-ALG.REG.INT. */
+	KNOT_TSIG_ALG_HMAC_MD5 = 157, /*!< \brief HMAC-MD5.SIG-ALG.REG.INT. */
 	KNOT_TSIG_ALG_HMAC_SHA1, /*!< \brief hmac-sha1. */
 	KNOT_TSIG_ALG_HMAC_SHA224, /*!< \brief hmac-sha224. */
 	KNOT_TSIG_ALG_HMAC_SHA256, /*!< \brief hmac-sha256. */
@@ -46,14 +47,13 @@ enum tsig_algorithm {
 
 typedef enum tsig_algorithm tsig_algorithm_t;
 
-struct knot_key {
-	knot_dname_t *name;   /*!< Key name. */
-	tsig_algorithm_t algorithm; /*!< Key algorithm.  */
-	char *secret;         /*!< Key data. */
-	size_t secret_size;   /*!< Key length. */
+struct knot_tsig_key {
+	knot_dname_t *name;
+	tsig_algorithm_t algorithm;
+	knot_binary_t secret;
 };
 
-typedef struct knot_key knot_key_t;
+typedef struct knot_tsig_key knot_tsig_key_t;
 
 /*!< \todo FIND ALG LENGTHS */
 enum tsig_algorithm_digest_length {
@@ -78,6 +78,10 @@ enum tsig_consts {
 	                          + 6			// time signed
 };
 
+/*! TSIG algorithm/string table. */
+#define TSIG_ALG_TABLE_SIZE 8
+extern knot_lookup_table_t tsig_alg_table[TSIG_ALG_TABLE_SIZE];
+
 /*! TSIG errors are defined in common/errcode.h
  *  and present negative value of the TSIG error to
  *  comply with other parts of the library.
@@ -90,6 +94,7 @@ enum tsig_consts {
 /*!
  * \note Uses the given domain name, do not deallocate it!
  */
+int tsig_create_rdata(knot_rrset_t *rr,  uint16_t maclen, uint16_t tsig_err);
 int tsig_rdata_set_alg_name(knot_rrset_t *tsig, knot_dname_t *alg_name);
 int tsig_rdata_set_alg(knot_rrset_t *tsig, tsig_algorithm_t alg);
 int tsig_rdata_set_time_signed(knot_rrset_t *tsig, uint64_t time);
@@ -98,7 +103,7 @@ int tsig_rdata_set_fudge(knot_rrset_t *tsig, uint16_t fudge);
 int tsig_rdata_set_mac(knot_rrset_t *tsig, uint16_t length,
                        const uint8_t *mac);
 int tsig_rdata_set_orig_id(knot_rrset_t *tsig, uint16_t id);
-int tsig_rdata_set_tsig_error(knot_rrset_t *tsig, uint16_t tsig_error);
+//int tsig_rdata_set_tsig_error(knot_rrset_t *tsig, uint16_t tsig_error);
 int tsig_rdata_set_other_data(knot_rrset_t *tsig, uint16_t length,
                               const uint8_t *other_data);
 
@@ -137,7 +142,7 @@ uint16_t tsig_alg_digest_length(tsig_algorithm_t alg);
  *
  * \return RRSET wire size.
  */
-size_t tsig_wire_maxsize(const knot_key_t *key);
+size_t tsig_wire_maxsize(const knot_tsig_key_t *key);
 size_t tsig_wire_actsize(const knot_rrset_t *tsig);
 
 int tsig_rdata_is_ok(const knot_rrset_t *tsig);

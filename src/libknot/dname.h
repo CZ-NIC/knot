@@ -47,13 +47,12 @@ struct knot_dname {
 	uint8_t *name;	/*!< Wire format of the domain name. */
 	uint8_t *labels;
 	struct knot_node *node; /*!< Zone node the domain name belongs to. */
-	unsigned int id; /*!< ID of domain name used in zone dumping. */
 
 	/*!
 	 * \brief Size of the domain name in octets.
 	 * \todo Is this needed? Every dname should end with \0 or pointer.
 	 */
-	unsigned int size;
+	unsigned short size;
 
 	unsigned short label_count;
 };
@@ -94,6 +93,20 @@ knot_dname_t *knot_dname_new();
  */
 knot_dname_t *knot_dname_new_from_str(const char *name, unsigned int size,
                                           struct knot_node *node);
+
+/*!
+ * \brief Creates a dname structure from domain name possibly given in
+ *        non-presentation format.
+ *
+ * Works the same as knot_dname_new_from_str but makes sure, that the name
+ * is terminated with a dot.
+ *
+ * \see knot_dname_new_from_str
+ *
+ */
+knot_dname_t *knot_dname_new_from_nonfqdn_str(const char *name,
+                                              unsigned int size,
+                                              struct knot_node *node);
 
 /*!
  * \brief Creates a dname structure from domain name given in wire format.
@@ -213,8 +226,6 @@ const uint8_t *knot_dname_name(const knot_dname_t *dname);
  * \return Size of the domain name in wire format in octets.
  */
 unsigned int knot_dname_size(const knot_dname_t *dname);
-
-unsigned int knot_dname_id(const knot_dname_t *dname);
 
 /*!
  * \brief Returns size of a part of domain name.
@@ -377,6 +388,8 @@ int knot_dname_compare(const knot_dname_t *d1, const knot_dname_t *d2);
  * \retval 0 if the domain names are identical.
  */
 int knot_dname_compare_cs(const knot_dname_t *d1, const knot_dname_t *d2);
+int knot_dname_compare_non_canon(const knot_dname_t *d1,
+                                 const knot_dname_t *d2);
 
 /*!
  * \brief Concatenates two domain names.
@@ -390,10 +403,6 @@ int knot_dname_compare_cs(const knot_dname_t *d1, const knot_dname_t *d2);
  *         the operation is not valid (e.g. \a d1 is a FQDN).
  */
 knot_dname_t *knot_dname_cat(knot_dname_t *d1, const knot_dname_t *d2);
-
-void knot_dname_set_id(knot_dname_t *dname, unsigned int id);
-
-unsigned int knot_dname_get_id(const knot_dname_t *dname);
 
 /*!
  * \brief Increment reference counter for dname.

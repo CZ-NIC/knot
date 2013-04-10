@@ -21,7 +21,29 @@
 #include <config.h>
 #include <stdarg.h>
 
+#include "common/log.h"
 #include "common/slab/alloc-common.h"
+
+void* xmalloc(size_t l)
+{
+	void *p = malloc(l);
+	if (p == NULL) {
+		log_server_fatal("Failed to allocate %zu bytes.\n", l);
+		abort();
+	}
+	return p;
+}
+
+void *xrealloc(void *p, size_t l)
+{
+	p = realloc(p, l);
+	if (p == NULL) {
+		log_server_fatal("Failed to reallocate to %zu bytes from %p.\n",
+		                 l, p);
+		abort();
+	}
+	return p;
+}
 
 
 int mreserve(char **p, size_t tlen, size_t min, size_t allow, size_t *reserved)
@@ -82,6 +104,25 @@ char* sprintf_alloc(const char *fmt, ...)
 	
 	/* Should never get here. */
 	return p;
+}
+
+char* strcdup(const char *s1, const char *s2)
+{
+	if (!s1 || !s2) {
+		return NULL;
+	}
+	
+	size_t slen = strlen(s1);
+	size_t s2len = strlen(s2);
+	size_t nlen = slen + s2len + 1;
+	char* dst = malloc(nlen);
+	if (dst == NULL) {
+		return NULL;
+	}
+
+	memcpy(dst, s1, slen);
+	strncpy(dst + slen, s2, s2len + 1); // With trailing '\0'
+	return dst;
 }
 
 #ifdef MEM_DEBUG

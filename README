@@ -87,6 +87,7 @@ Prerequisites:
   - patch is located in "scripts/urcu-tls-compat.patch"
 - patch compatible with liburcu-0.6.7
 - liburcu >= 0.7.0 works out of the box
+- flex and bison from packages
 
 $ mkdir liburcu && cd liburcu
 $ wget "http://lttng.org/files/urcu/userspace-rcu-0.6.7.tar.bz2"

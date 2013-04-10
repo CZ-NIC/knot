@@ -8,9 +8,11 @@ This reference describes every configuration option in Knot DNS server.
 * keys::                        
 * interfaces::                  
 * remotes::                     
+* groups::
 * control::
 * zones::                       
 * log::                         
+* include::
 @end menu
 
 @node system
@@ -42,8 +44,9 @@ else.
   [ @code{max-conn-idle} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
   [ @code{max-conn-hs} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
   [ @code{max-conn-reply} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
+  [ @code{transfers} @kbd{integer}@code{;} ]
   [ @code{rate-limit} @kbd{integer}@code{;} ]
-  [ @code{rate-limit-size} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
+  [ @code{rate-limit-size} @kbd{integer}@code{;} ]
   [ @code{rate-limit-slip} @kbd{integer}@code{;} ]
 @code{@}}
 @end example
@@ -62,6 +65,7 @@ else.
 * max-conn-idle::               
 * max-conn-hs::                 
 * max-conn-reply::              
+* transfers::
 * rate-limit::
 * rate-limit-size::
 * rate-limit-slip::
@@ -183,6 +187,14 @@ that already made at least 1 meaningful query.
 @vindex max-conn-reply
 
 Maximum time to wait for a reply to an issued SOA query.
+
+@node transfers
+@subsubsection transfers
+@vindex transfers
+
+Maximum parallel transfers, including pending SOA queries.
+Lowest possible number is the number of CPUs.
+Default is 10.
 
 @node rate-limit
 @subsubsection rate-limit
@@ -499,6 +511,83 @@ remotes @{
   @}
 @}
 
+@end example
+
+@node groups
+@section @code{groups} Statement
+@stindex groups
+
+The @code{groups} statement is used to create groups of remote machines defined
+in @ref{remotes} statement. The group can substitute multiple machines
+specification anywhere in the configuration where the list of remotes is
+allowed to be used (namely @code{allow} in @ref{control} section and ACLs in
+@ref{zones} section).
+
+The remotes definitions must exist prior to using them in group definitions.
+One remote can be a member of multiple groups.
+
+@menu
+* groups Syntax::
+* groups Statement Definition and Grammar::
+* groups Examples::
+@end menu
+
+@node groups Syntax
+@subsection Syntax
+
+@example
+@code{groups} @code{@{}
+  @kbd{group_id} @code{@{} @kbd{remote_id} [ @code{,} @kbd{...} ] @code{@}}
+  [ @kbd{...} ]
+@code{@}}
+@end example
+
+@node groups Statement Definition and Grammar
+@subsection Statement Definition and Grammar
+
+@menu
+* group_id::
+* remote_id:groups_remote_id.
+@end menu
+
+@node group_id
+@subsubsection @kbd{group_id}
+@vindex group_id
+
+@kbd{group_id} contains a symbolic name for a group of remotes.
+
+@node groups_remote_id
+@subsubsection @kbd{remote_id}
+@vindex groups_remote_id
+
+@kbd{remote_id} contains a symbolic name for a remote server as specified in
+@ref{remotes} section.
+
+@node groups Examples
+@subsection Examples
+
+@example
+remotes @{
+  ctl @{
+    # ...
+  @}
+  alice @{
+    # ...
+  @}
+  bob @{
+    # ...
+  @}
+@}
+
+groups @{
+  admins @{ alice, bob @}
+@}
+
+# example usage:
+control @{
+  # ...
+  allow ctl, admins;
+@}
 @end example
 
 @node control 
@@ -904,3 +993,40 @@ log @{
 
 @end example
 
+@node include
+@section @code{include} Statement
+@stindex include
+
+The @code{include} statement is a special statement which can be used almost
+anywhere on any level in the configuration file. It makes inclusion of another
+file possible.
+
+The path of the included file can be either absolute or relative to a
+configuration file currently being processed.
+
+@menu
+* include Syntax::
+* include Examples::
+@end menu
+
+@node include Syntax
+@subsection Syntax
+
+@example
+@code{include} "filename"@code{;}
+@end example
+
+@node include Examples
+@subsection Examples
+
+@example
+include "keys.conf";
+
+remotes @{
+  ctl @{
+    address 127.0.0.1;
+    key knotc-key;
+  @}
+  include "remotes.conf";
+@}
+@end example

@@ -27,13 +27,15 @@
 #ifndef _KNOT_SEMANTIC_CHECK_H_
 #define _KNOT_SEMANTIC_CHECK_H_
 
+#include "libknot/zone/node.h"
+#include "libknot/zone/zone-contents.h"
+
 /*!
  *\brief Internal error constants. General errors are added for convenience,
  *       so that code does not have to change if new errors are added.
  */
 enum zonechecks_errors {
-	ZC_ERR_ALLOC = -50,
-	ZC_ERR_UNKNOWN,
+	ZC_ERR_UNKNOWN = -50,
 
 	ZC_ERR_MISSING_SOA,
 	ZC_ERR_MISSING_NS_DEL_POINT,
@@ -93,6 +95,7 @@ enum zonechecks_errors {
 /*!
  * \brief Arguments to be used with tree traversal functions. Uses void pointers
  *        to be more versatile.
+ * \todo This is not needed. Just enumerate all the variables.
  *
  */
 struct arg {
@@ -125,7 +128,7 @@ struct handler_options {
 struct err_handler {
 	/* Consider moving error messages here */
 	struct handler_options options; /*!< Handler options. */
-	uint errors[(-ZC_ERR_ALLOC) + 1]; /*!< Array with error messages */
+	uint errors[(-ZC_ERR_UNKNOWN) + 1]; /*!< Array with error messages */
 	uint error_count; /*!< Total error count */
 };
 
@@ -142,9 +145,8 @@ typedef struct err_handler err_handler_t;
  *
  * \return err_handler_t * Created error handler.
  */
-err_handler_t *handler_new(char log_cname, char log_glue,
-				  char log_rrsigs, char log_nsec,
-				  char log_nsec3);
+err_handler_t *handler_new(int log_cname, int log_glue, int log_rrsigs,
+                           int log_nsec, int log_nsec3);
 
 /*!
  * \brief Called when error has been encountered in node. Will either log error
@@ -153,6 +155,7 @@ err_handler_t *handler_new(char log_cname, char log_glue,
  * \param handler Error handler.
  * \param node Node with semantic error in it.
  * \param error Type of error.
+ * \param data Additional info in string.
  *
  * \retval KNOT_EOK on success.
  * \retval ZC_ERR_UNKNOWN if unknown error.
@@ -160,7 +163,7 @@ err_handler_t *handler_new(char log_cname, char log_glue,
  */
 int err_handler_handle_error(err_handler_t *handler,
 				    const knot_node_t *node,
-				    int error);
+				    int error, const char *data);
 
 /*!
  * \brief Checks if last node in NSEC/NSEC3 chain points to first node in the
@@ -190,14 +193,20 @@ void err_handler_log_all(err_handler_t *handler);
  *        calls function that does the actual work.
  *
  * \param zone Zone to be searched / checked
- * \param list Skip list of closests enclosers.
- * \param do_checks Level of semantic checks.
+ * \param check_level Level of semantic checks.
  * \param handler Semantic error handler.
- * \param last_node Last checked node, which is part of NSEC(3) chain.
+ * \param last_node Last checked node, that is a part of NSEC(3) chain.
  */
-int zone_do_sem_checks(knot_zone_contents_t *zone, char do_checks,
-                        err_handler_t *handler,
-                        knot_node_t **last_node);
+int zone_do_sem_checks(knot_zone_contents_t *zone, int check_level,
+                       err_handler_t *handler, knot_node_t *first_nsec3_node,
+                       knot_node_t *last_nsec3_node);
+
+int sem_check_node_plain(knot_zone_contents_t *zone,
+                         knot_node_t *node,
+                         int do_checks,
+                         err_handler_t *handler,
+                         int only_mandatory,
+                         int *fatal_error);
 
 #endif // _KNOT_SEMANTIC_CHECK_H_
 

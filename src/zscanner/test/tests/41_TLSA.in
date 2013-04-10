@@ -1,0 +1,24 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	TLSA	0	0	0	00		; The simplest variant
+@	TLSA	255	255	255	00		; Maximal numbers
+@	TLSA	0	0	0	0102 00 FF	; Hex string with blank spaces inside
+@	TYPE52	\# 4 00000000				; TYPE + Hexadecimal rdata
+@	TYPE52	0       0       0       00		; TYPE
+@	tlsa	0       0       0       00		; Type in lower-case
+
+; KO
+@	TLSA
+@	TLSA						; Empty rdata
+@	TLSA	\# 0					; Hex empty rdata
+@	TLSA	\#					; Missing hex length
+@	TLSA	256	0	0	00		; Algorithm overflow
+@	TLSA	0	256	0	00		; Flags overflow
+@	TLSA	0	0	256	00		; Iterations overflow
+@	TLSA	0	0	0	0		; Hex block length must be multiple of 2
+@	TLSA	0	0	0	0x		; Bad hex char
+@	TLSA	0	0	0			; Missing item
+@	TLSA	\# 4 0000000000				; Too long rdata
+@	TLSA	\# 5 00000000				; Bad rdata length

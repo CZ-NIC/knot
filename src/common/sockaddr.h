@@ -37,16 +37,14 @@
 
 /*! \brief Universal socket address. */
 typedef struct sockaddr_t {
-	int family; /*!< Address family. */
-	short prefix; /*!< Address prefix. */
-	struct sockaddr* ptr; /*!< Pointer to used sockaddr. */
-	socklen_t len;              /*!< Length of used sockaddr. */
 	union {
 		struct sockaddr_in addr4; /*!< IPv4 sockaddr. */
 #ifndef DISABLE_IPV6
 		struct sockaddr_in6 addr6; /*!< IPv6 sockaddr. */
 #endif
 	};
+	socklen_t len;              /*!< Length of used sockaddr. */
+	short prefix; /*!< Address prefix. */
 } sockaddr_t;
 
 /* Subnet maximum prefix length. */
@@ -82,16 +80,6 @@ int sockaddr_init(sockaddr_t *addr, int af);
  * \retval false otherwise.
  */
 int sockaddr_isvalid(sockaddr_t *addr);
-
-/*!
- * \brief Update internal pointers according to length.
- *
- * \param addr Socket address structure.
- *
- * \retval 0 on success.
- * \retval -1 on invalid size.
- */
-int sockaddr_update(sockaddr_t *addr);
 
 /*!
  * \brief Copy socket address structure.
@@ -151,6 +139,19 @@ int sockaddr_tostr(const sockaddr_t *addr, char *dst, size_t size);
  * \retval -1 on errors.
  */
 int sockaddr_portnum(const sockaddr_t *addr);
+
+/*!
+ * \brief Return socket address family.
+ * \param addr Socket address structure.
+ * \return address family
+ */
+int sockaddr_family(const sockaddr_t *addr);
+
+/*!
+ * \brief Prepare to maximum largest size.
+ * \return KNOT_EOK
+ */
+void sockaddr_prep(sockaddr_t *addr);
 
 #endif /* _KNOTD_SOCKADDR_H_ */
 

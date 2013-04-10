@@ -1,0 +1,26 @@
+$ORIGIN	.
+$TTL	1
+
+; For more tests on dname see NS test (same processing)
+
+; OK
+@	MX	0	@		; Minimal priority
+@	MX	65535	@		; Maximal priority
+@	MX	1	mail		; Relative dname
+@	MX	1	mail.tld.	; Absolute dname
+@	MX	\# 3 0001 00		; Hexadecimal rdata
+@	TYPE15	\# 3 0001 00		; TYPE + Hexadecimal rdata
+@	TYPE15	1	@		; TYPE
+@	mx	1	@		; Type in lower-case
+
+; KO
+@	MX
+@	MX				; Empty rdata
+@	MX	\# 0			; Hex empty rdata
+@	MX	\#			; Missing hex length
+@	MX	-1	@		; Negative number
+@	MX	65536	@		; 16bit overflow
+@	MX	1	$		; Bad dname
+@	MX	0	@ x		; Unexpected item
+@	MX	\# 4 0001 0001		; Too long rdata
+@	MX	\# 4 0001 00		; Bad rdata length

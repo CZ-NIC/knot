@@ -51,10 +51,14 @@ static int base64_tests_run(int argc, char *argv[])
 	ref_len = strlen((char *)ref);
 	ret = base64_encode(in, in_len, out, BUF_LEN);
 	cmp_ok(ret, "==", ref_len, "1. test vector - ENC output length");
+	skip(ret < 0, 1);
 	ok(memcmp(out, ref, ret) == 0, "1. test vector - ENC output content");
+	endskip;
 	ret = base64_decode(out, ret, out2, BUF_LEN);
 	cmp_ok(ret, "==", in_len, "1. test vector - DEC output length");
+	skip(ret < 0, 1);
 	ok(memcmp(out2, in, ret) == 0, "1. test vector - DEC output content");
+	endskip;
 
 	// 2. test vector -> ENC -> DEC
 	strcpy((char *)in, "f");
@@ -63,10 +67,14 @@ static int base64_tests_run(int argc, char *argv[])
 	ref_len = strlen((char *)ref);
 	ret = base64_encode(in, in_len, out, BUF_LEN);
 	cmp_ok(ret, "==", ref_len, "2. test vector - ENC output length");
+	skip(ret < 0, 1);
 	ok(memcmp(out, ref, ret) == 0, "2. test vector - ENC output content");
+	endskip;
 	ret = base64_decode(out, ret, out2, BUF_LEN);
 	cmp_ok(ret, "==", in_len, "2. test vector - DEC output length");
+	skip(ret < 0, 1);
 	ok(memcmp(out2, in, ret) == 0, "2. test vector - DEC output content");
+	endskip;
 
 	// 3. test vector -> ENC -> DEC
 	strcpy((char *)in, "fo");
@@ -75,10 +83,14 @@ static int base64_tests_run(int argc, char *argv[])
 	ref_len = strlen((char *)ref);
 	ret = base64_encode(in, in_len, out, BUF_LEN);
 	cmp_ok(ret, "==", ref_len, "3. test vector - ENC output length");
+	skip(ret < 0, 1);
 	ok(memcmp(out, ref, ret) == 0, "3. test vector - ENC output content");
+	endskip;
 	ret = base64_decode(out, ret, out2, BUF_LEN);
 	cmp_ok(ret, "==", in_len, "3. test vector - DEC output length");
+	skip(ret < 0, 1);
 	ok(memcmp(out2, in, ret) == 0, "3. test vector - DEC output content");
+	endskip;
 
 	// 4. test vector -> ENC -> DEC
 	strcpy((char *)in, "foo");
@@ -87,10 +99,14 @@ static int base64_tests_run(int argc, char *argv[])
 	ref_len = strlen((char *)ref);
 	ret = base64_encode(in, in_len, out, BUF_LEN);
 	cmp_ok(ret, "==", ref_len, "4. test vector - ENC output length");
+	skip(ret < 0, 1);
 	ok(memcmp(out, ref, ret) == 0, "4. test vector - ENC output content");
+	endskip;
 	ret = base64_decode(out, ret, out2, BUF_LEN);
 	cmp_ok(ret, "==", in_len, "4. test vector - DEC output length");
+	skip(ret < 0, 1);
 	ok(memcmp(out2, in, ret) == 0, "4. test vector - DEC output content");
+	endskip;
 
 	// 5. test vector -> ENC -> DEC
 	strcpy((char *)in, "foob");
@@ -99,10 +115,14 @@ static int base64_tests_run(int argc, char *argv[])
 	ref_len = strlen((char *)ref);
 	ret = base64_encode(in, in_len, out, BUF_LEN);
 	cmp_ok(ret, "==", ref_len, "5. test vector - ENC output length");
+	skip(ret < 0, 1);
 	ok(memcmp(out, ref, ret) == 0, "5. test vector - ENC output content");
+	endskip;
 	ret = base64_decode(out, ret, out2, BUF_LEN);
 	cmp_ok(ret, "==", in_len, "5. test vector - DEC output length");
+	skip(ret < 0, 1);
 	ok(memcmp(out2, in, ret) == 0, "5. test vector - DEC output content");
+	endskip;
 
 	// 6. test vector -> ENC -> DEC
 	strcpy((char *)in, "fooba");
@@ -111,10 +131,14 @@ static int base64_tests_run(int argc, char *argv[])
 	ref_len = strlen((char *)ref);
 	ret = base64_encode(in, in_len, out, BUF_LEN);
 	cmp_ok(ret, "==", ref_len, "6. test vector - ENC output length");
+	skip(ret < 0, 1);
 	ok(memcmp(out, ref, ret) == 0, "6. test vector - ENC output content");
+	endskip;
 	ret = base64_decode(out, ret, out2, BUF_LEN);
 	cmp_ok(ret, "==", in_len, "6. test vector - DEC output length");
+	skip(ret < 0, 1);
 	ok(memcmp(out2, in, ret) == 0, "6. test vector - DEC output content");
+	endskip;
 
 	// 7. test vector -> ENC -> DEC
 	strcpy((char *)in, "foobar");
@@ -123,10 +147,14 @@ static int base64_tests_run(int argc, char *argv[])
 	ref_len = strlen((char *)ref);
 	ret = base64_encode(in, in_len, out, BUF_LEN);
 	cmp_ok(ret, "==", ref_len, "7. test vector - ENC output length");
+	skip(ret < 0, 1);
 	ok(memcmp(out, ref, ret) == 0, "7. test vector - ENC output content");
+	endskip;
 	ret = base64_decode(out, ret, out2, BUF_LEN);
 	cmp_ok(ret, "==", in_len, "7. test vector - DEC output length");
+	skip(ret < 0, 1);
 	ok(memcmp(out2, in, ret) == 0, "7. test vector - DEC output content");
+	endskip;
 
 	// Bad paddings
         ret = base64_decode((uint8_t *)"A===", 4, out, BUF_LEN);

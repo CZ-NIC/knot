@@ -29,6 +29,7 @@
 #include "knot/common.h"
 #include "knot/ctl/process.h"
 #include "knot/conf/conf.h"
+#include "common/mempattern.h"
 
 char* pid_filename()
 {
@@ -74,7 +75,8 @@ pid_t pid_read(const char* fn)
 		// Convert pid
 		char* ep = 0;
 		unsigned long pid = strtoul(buf, &ep, 10);
-		if ((errno == ERANGE) || (*ep && !isspace(*ep))) {
+		if ((errno == ERANGE) ||
+		    (*ep && !isspace((unsigned char)(*ep)))) {
 			return KNOT_ERANGE;
 		}
 

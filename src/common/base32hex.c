@@ -258,22 +258,31 @@ int32_t base32hex_encode_alloc(const uint8_t  *in,
 			       const uint32_t in_len,
 			       uint8_t        **out)
 {
+	int32_t  ret;
 	uint32_t out_len = ((in_len + 4) / 5) * 8;
 
-	// Checking inputs.
+	// Check inputs.
 	if (in_len > MAX_BIN_DATA_LEN) {
 		return -1;
 	}
 
-	// Allocating output buffer.
+	// Allocate output buffer.
 	*out = malloc(out_len);
 
 	if (*out == NULL) {
 		return -1;
 	}
 
-	// Encoding data.
-	return base32hex_encode(in, in_len, *out, out_len);
+	// Encode data.
+	ret = base32hex_encode(in, in_len, *out, out_len);
+
+	// Check return.
+	if (ret < 0) {
+		free(*out);
+		return -1;
+	} else {
+		return ret;
+	}
 }
 
 int32_t base32hex_decode(const uint8_t  *in,

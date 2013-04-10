@@ -27,14 +27,9 @@
 #ifndef _KNOT_ZONE_CONTENTS_H_
 #define _KNOT_ZONE_CONTENTS_H_
 
-//#include <time.h>
-
 #include "zone/node.h"
 #include "dname.h"
 #include "nsec3.h"
-#include "zone/dname-table.h"
-#include "common/tree.h"
-#include "hash/cuckoo-hash-table.h"
 
 #include "zone-tree.h"
 
@@ -45,11 +40,8 @@ struct knot_zone;
 typedef struct knot_zone_contents_t {
 	knot_node_t *apex;       /*!< Apex node of the zone (holding SOA) */
 
-	ck_hash_table_t *table;     /*!< Hash table for holding zone nodes. */
 	knot_zone_tree_t *nodes;
 	knot_zone_tree_t *nsec3_nodes;
-
-	knot_dname_table_t *dname_table;
 
 	struct knot_zone *zone;
 
@@ -58,7 +50,7 @@ typedef struct knot_zone_contents_t {
 	/*!
 	 * \todo Unify the use of this field - authoritative nodes vs. all.
 	 */
-	uint node_count;
+	size_t node_count;
 
 	/*! \brief Various flags
 	 * 
@@ -80,8 +72,6 @@ typedef struct knot_zone_contents_t {
 /*----------------------------------------------------------------------------*/
 
 knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
-                                             uint node_count,
-                                             int use_domain_table,
                                              struct knot_zone *zone);
 
 int knot_zone_contents_gen_is_old(const knot_zone_contents_t *contents);
@@ -119,7 +109,7 @@ uint16_t knot_zone_contents_class(const knot_zone_contents_t *contents);
  */
 int knot_zone_contents_add_node(knot_zone_contents_t *contents,
                                   knot_node_t *node, int create_parents,
-                                  uint8_t flags, int use_domain_table);
+                                  uint8_t flags);
 
 /*!
  * \brief Adds a RRSet to the given zone.
@@ -146,14 +136,12 @@ int knot_zone_contents_add_node(knot_zone_contents_t *contents,
 int knot_zone_contents_add_rrset(knot_zone_contents_t *contents,
                           knot_rrset_t *rrset,
                           knot_node_t **node,
-                          knot_rrset_dupl_handling_t dupl,
-                          int use_domain_table);
+                          knot_rrset_dupl_handling_t dupl);
 
 int knot_zone_contents_add_rrsigs(knot_zone_contents_t *contents,
                            knot_rrset_t *rrsigs,
                            knot_rrset_t **rrset, knot_node_t **node,
-                           knot_rrset_dupl_handling_t dupl,
-                           int use_domain_table);
+                           knot_rrset_dupl_handling_t dupl);
 
 /*!
  * \brief Adds a node holding NSEC3 records to the given zone.
@@ -172,30 +160,18 @@ int knot_zone_contents_add_rrsigs(knot_zone_contents_t *contents,
  */
 int knot_zone_contents_add_nsec3_node(knot_zone_contents_t *contents,
                                         knot_node_t *node, int create_parents,
-                                        uint8_t flags, int use_domain_table);
+                                        uint8_t flags);
 
 int knot_zone_contents_add_nsec3_rrset(knot_zone_contents_t *contents,
                                          knot_rrset_t *rrset,
                                          knot_node_t **node,
-                                         knot_rrset_dupl_handling_t dupl,
-                                         int use_domain_table);
+                                         knot_rrset_dupl_handling_t dupl);
 
 int knot_zone_contents_remove_node(knot_zone_contents_t *contents, 
-	const knot_node_t *node, knot_zone_tree_node_t **removed_tree, 
-	ck_hash_table_item_t **removed_hash);
+	const knot_node_t *node, knot_node_t **removed_tree);
 
 int knot_zone_contents_remove_nsec3_node(knot_zone_contents_t *contents, 
-	const knot_node_t *node, knot_zone_tree_node_t **removed);
-
-/*!
- * \warning Always call knot_zone_adjust_dnames() prior to calling this
- *          function. Otherwise the node count would not be set.
- *
- * \note Currently, all nodes (even non-authoritative) are inserted into the
- *       hash table.
- */
-int knot_zone_contents_create_and_fill_hash_table(
-	knot_zone_contents_t *contents);
+	const knot_node_t *node, knot_node_t **removed);
 
 /*!
  * \brief Tries to find a node with the specified name in the zone.
@@ -275,28 +251,6 @@ const knot_node_t *knot_zone_contents_find_previous_nsec3(
 knot_node_t *knot_zone_contents_get_previous_nsec3(
 	const knot_zone_contents_t *contents, const knot_dname_t *name);
 
-#ifdef USE_HASH_TABLE
-/*!
- * \brief Tries to find domain name in the given zone using the hash table.
- *
- * \param[in] zone Zone to search for the name.
- * \param[in] name Domain name to search for.
- * \param[out] node The found node (if it was found, otherwise it may contain
- *                  arbitrary node).
- * \param[out] closest_encloser Closest encloser of the given name in the zone.
- * \param[out] previous Previous domain name in canonical order.
- *
- * \retval KNOT_ZONE_NAME_FOUND if node with owner \a name was found.
- * \retval KNOT_ZONE_NAME_NOT_FOUND if it was not found.
- * \retval KNOT_EINVAL
- * \retval KNOT_EBADZONE
- */
-int knot_zone_contents_find_dname_hash(const knot_zone_contents_t *contents,
-                                const knot_dname_t *name,
-                                const knot_node_t **node,
-                                const knot_node_t **closest_encloser);
-#endif
-
 /*!
  * \brief Tries to find a node with the specified name among the NSEC3 nodes
  *        of the zone.
@@ -354,10 +308,15 @@ knot_node_t *knot_zone_contents_get_apex(
 /*!
  * \brief Optimizes zone by replacing domain names in RDATA with references to
  *        domain names present in zone (as node owners).
- *
+ * \param first_nsec3_node First node in NSEC3 tree - needed in sem. checks.
+ *        Will not be saved if set to NULL.
+ * \param last_nsec3_node Last node in NSEC3 tree - needed in sem. checks.
+ *        Will not be saved if set to NULL.
  * \param zone Zone to adjust domain names in.
  */
-int knot_zone_contents_adjust(knot_zone_contents_t *contents);
+int knot_zone_contents_adjust(knot_zone_contents_t *contents,
+                              knot_node_t **first_nsec3_node,
+                              knot_node_t **last_nsec3_node, int dupl_check);
 
 int knot_zone_contents_check_loops(knot_zone_contents_t *zone);
 
@@ -410,20 +369,6 @@ const knot_nsec3_params_t *knot_zone_contents_nsec3params(
 /*!
  * \brief Applies the given function to each regular node in the zone.
  *
- * This function uses post-order depth-first forward traversal, i.e. the
- * function is first recursively applied to subtrees and then to the root.
- *
- * \param zone Nodes of this zone will be used as parameters for the function.
- * \param function Function to be applied to each node of the zone.
- * \param data Arbitrary data to be passed to the function.
- */
-int knot_zone_contents_tree_apply_postorder(knot_zone_contents_t *contents,
-                              void (*function)(knot_node_t *node, void *data),
-                              void *data);
-
-/*!
- * \brief Applies the given function to each regular node in the zone.
- *
  * This function uses in-order depth-first forward traversal, i.e. the function
  * is first recursively applied to left subtree, then to the root and then to
  * the right subtree.
@@ -456,21 +401,6 @@ int knot_zone_contents_tree_apply_inorder(knot_zone_contents_t *contents,
 int knot_zone_contents_tree_apply_inorder_reverse(
 	knot_zone_contents_t *contents,
 	void (*function)(knot_node_t *node, void *data), void *data);
-
-/*!
- * \brief Applies the given function to each NSEC3 node in the zone.
- *
- * This function uses post-order depth-first forward traversal, i.e. the
- * function is first recursively applied to subtrees and then to the root.
- *
- * \param zone NSEC3 nodes of this zone will be used as parameters for the
- *             function.
- * \param function Function to be applied to each node of the zone.
- * \param data Arbitrary data to be passed to the function.
- */
-int knot_zone_contents_nsec3_apply_postorder(knot_zone_contents_t *contents,
-                              void (*function)(knot_node_t *node, void *data),
-                              void *data);
 
 /*!
  * \brief Applies the given function to each NSEC3 node in the zone.
@@ -516,9 +446,6 @@ knot_zone_tree_t *knot_zone_contents_get_nodes(
 knot_zone_tree_t *knot_zone_contents_get_nsec3_nodes(
 		knot_zone_contents_t *contents);
 
-ck_hash_table_t *knot_zone_contents_get_hash_table(
-		knot_zone_contents_t *contents);
-
 int knot_zone_contents_dname_table_apply(knot_zone_contents_t *contents,
                                            void (*function)(knot_dname_t *,
                                                             void *),
@@ -548,11 +475,36 @@ int knot_zone_contents_shallow_copy2(const knot_zone_contents_t *from,
 
 void knot_zone_contents_free(knot_zone_contents_t **contents);
 
-void knot_zone_contents_deep_free(knot_zone_contents_t **contents,
-                                  int destroy_dname_table);
+void knot_zone_contents_deep_free(knot_zone_contents_t **contents);
 
 int knot_zone_contents_integrity_check(const knot_zone_contents_t *contents);
 
+const knot_dname_t *knot_zone_contents_find_dname_in_rdata(
+	const knot_zone_contents_t *zone,
+	const knot_dname_t *dname);
+
+/*!
+ * \brief Creates a NSEC3 hashed name for the given domain name.
+ *
+ * \note The zone's NSEC3PARAM record must be parsed prior to calling this
+ *       function (see knot_zone_load_nsec3param()).
+ *
+ * \param zone Zone from which to take the NSEC3 parameters.
+ * \param name Domain name to hash.
+ * \param nsec3_name Hashed name.
+ *
+ * \retval KNOT_EOK
+ * \retval KNOT_ENSEC3PAR
+ * \retval KNOT_ECRYPTO
+ * \retval KNOT_ERROR if an error occured while creating a new domain name
+ *                      from the hash or concatenating it with the zone name.
+ */
+int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
+                                           const knot_dname_t *name,
+                                           knot_dname_t **nsec3_name);
+
+void knot_zone_contents_insert_dname_into_table(knot_dname_t **in_dname,
+                                                hattrie_t *lookup_tree);
 #endif
 
 /*! @} */

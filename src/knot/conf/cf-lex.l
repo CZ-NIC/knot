@@ -12,15 +12,18 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <stdbool.h>
 
 #include "common/sockaddr.h"
 #include "knot/conf/conf.h"
+#include "knot/conf/includes.h"
+#include "knot/conf/extra.h"
 #include "common/log.h"
 #include "libknotd_la-cf-parse.h" /* Automake generated header. */
 
 /* Imported symbols. */
 #define lval (yylval->tok)
-extern void cf_error(void *scanner, const char *msg);
+extern void cf_error(void *scanner, const char *format, ...);
 extern int (*cf_read_hook)(char *buf, size_t nbytes);
 void switch_input(const char *str, void *scanner)
 {
@@ -55,6 +58,9 @@ int hex2bin(const char* src, char *dst, size_t len) {
 %option yylineno
 %option prefix = "cf_"
 %option outfile = "lex.yy.c"
+%option extra-type = "conf_extra_t *"
+
+%x include
 
 ALPHA [a-zA-Z_]
 DIGIT [0-9]
@@ -66,7 +72,7 @@ BLANK [ \t\n]
 \#.*\n          /* Ignore comments */;
 {BLANK}+        /* Ignore whitespace */;
 [\!\$\%\^\&\*\(\)\/\+\-\@\{\}\;\,] { return yytext[0]; }
-system          { lval.t = yytext;  return SYSTEM; }
+system          { lval.t = yytext; return SYSTEM; }
 identity        { lval.t = yytext; return IDENTITY; }
 version         { lval.t = yytext; return SVERSION; }
 nsid            { lval.t = yytext; return NSID; }
@@ -74,6 +80,7 @@ storage         { lval.t = yytext; return STORAGE; }
 key             { lval.t = yytext; return KEY; }
 keys            { lval.t = yytext; return KEYS; }
 remotes         { lval.t = yytext; return REMOTES; }
+groups          { lval.t = yytext; return GROUPS; }
 
 zones           { lval.t = yytext; return ZONES; }
 file            { lval.t = yytext; return FILENAME; }
@@ -98,6 +105,7 @@ max-conn-reply  { lval.t = yytext; return MAX_CONN_REPLY; }
 rate-limit      { lval.t = yytext; return RATE_LIMIT; }
 rate-limit-size { lval.t = yytext; return RATE_LIMIT_SIZE; }
 rate-limit-slip { lval.t = yytext; return RATE_LIMIT_SLIP; }
+transfers       { lval.t = yytext; return TRANSFERS; }
 
 interfaces      { lval.t = yytext; return INTERFACES; }
 address         { lval.t = yytext; return ADDRESS; }
@@ -132,6 +140,8 @@ on|off {
   }
   return BOOL;
 }
+
+include BEGIN(include);
 
 {DIGIT}+[smhd] {
   size_t mpos = strlen(yytext) - 1;
@@ -268,7 +278,50 @@ hmac-sha512     { lval.alg = KNOT_TSIG_ALG_HMAC_SHA512; return TSIG_ALGO_NAME; }
 }
 
 : /* Optional : in assignments. */;
-<<EOF>> return END;
+
+<<EOF>> {
+	char *name = conf_includes_pop(yyextra->includes);
+	free(name);
+	yypop_buffer_state(yyscanner);
+	if (!YY_CURRENT_BUFFER)
+		return END;
+}
+
+<include>{BLANK}+
+<include>["][^"\n]*["] {
+	BEGIN(INITIAL);
+
+	// silently skip includes if there was a former error
+	if (yyextra->error) {
+		return END;
+	}
+
+	// remove quotes
+	yytext += 1;
+	yyleng -= 2;
+	yytext[yyleng] = '\0';
+
+	if (!conf_includes_push(yyextra->includes, yytext)) {
+		cf_error(yyscanner, "includes nested too deeply");
+		return END;
+	}
+
+	// retrieved relative to previous config
+	char *filename = conf_includes_top(yyextra->includes);
+
+	FILE *included = fopen(filename, "r");
+	if (!included) {
+		cf_error(yyscanner, "cannot open file '%s'", filename);
+		conf_includes_pop(yyextra->includes);
+		free(filename);
+		return END;
+	}
+
+	YY_BUFFER_STATE bs = yy_create_buffer(included, YY_BUF_SIZE, yyscanner);
+	yypush_buffer_state(bs, yyscanner);
+}
+
+<include>["][^"\n]*\n cf_error(yyscanner, "Unterminated string.");
 
 %%
 

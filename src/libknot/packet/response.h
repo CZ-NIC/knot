@@ -24,8 +24,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_response_H_
-#define _KNOT_response_H_
+#ifndef _KNOT_RESPONSE_H_
+#define _KNOT_RESPONSE_H_
 
 #include <stdint.h>
 #include <string.h>
@@ -35,6 +35,50 @@
 #include "dname.h"
 #include "rrset.h"
 #include "edns.h"
+
+/*!
+ * \brief Holds information about compressed domain name.
+ *
+ * Used only to pass information between functions.
+ *
+ * \todo This description should be revised and clarified.
+ */
+struct knot_compr_owner {
+	/*!
+	 * \brief Place where the name is stored in the wire format of the
+	 * packet.
+	 */
+	uint8_t *wire;
+	uint8_t size; /*!< Size of the domain name in bytes. */
+	/*! \brief Position of the name relative to the start of the packet. */
+	size_t pos;
+};
+
+typedef struct knot_compr_owner knot_compr_owner_t;
+
+/*!
+ * \brief Holds information about compressed domain names in packet.
+ *
+ * Used only to pass information between functions.
+ *
+ * \todo This description should be revised and clarified.
+ */
+struct knot_compr {
+	knot_compressed_dnames_t *table;  /*!< Compression table. */
+	size_t wire_pos;            /*!< Current position in the wire format. */
+	knot_compr_owner_t owner; /*!< Information about the current name. */
+};
+
+typedef struct knot_compr knot_compr_t;
+
+struct compression_param {
+	size_t wire_pos;
+	uint8_t *owner_tmp;
+	knot_compressed_dnames_t *compressed_dnames;
+	int compr_cs;
+};
+
+typedef struct compression_param compression_param_t;
 
 /*!
  * \brief Default maximum DNS response size
@@ -201,6 +245,24 @@ int knot_response_add_nsid(knot_packet_t *response, const uint8_t *data,
 int knot_response_add_wildcard_node(knot_packet_t *response,
                                     const knot_node_t *node,
                                     const knot_dname_t *sname);
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Tries to compress domain name and creates its wire format.
+ *
+ * \param dname Domain name to convert and compress.
+ * \param compr Compression table holding information about offsets of domain
+ *              names in the packet.
+ * \param dname_wire Place where to put the wire format of the name.
+ * \param max Maximum available size of the place for the wire format.
+ * \param compr_cs Set to <> 0 if dname compression should use case sensitive
+ *                 comparation. Set to 0 otherwise.
+ *
+ * \return Size of the domain name's wire format or KNOT_ESPACE if it did not
+ *         fit into the provided space.
+ */
+int knot_response_compress_dname(const knot_dname_t *dname,
+	knot_compr_t *compr, uint8_t *dname_wire, size_t max, int compr_cs);
+
 
 #endif /* _KNOT_response_H_ */
 

@@ -27,6 +27,12 @@
 #ifndef _KNOTD_COMMON_MALLOC_H_
 #define _KNOTD_COMMON_MALLOC_H_
 
+/*! \brief Allocate memory or die. */
+void* xmalloc(size_t l);
+
+/*! \brief Reallocate memory or die. */
+void *xrealloc(void *p, size_t l);
+
 /*!
  * \brief Reserve new or trim excessive memory.
  *
@@ -63,6 +69,17 @@ int mreserve(char **p, size_t tlen, size_t min, size_t allow, size_t *reserved);
  * \return formatted message or NULL.
  */
 char* sprintf_alloc(const char *fmt, ...);
+
+/*!
+ * \brief Create new string from a concatenation of s1 and s2.
+ *
+ * \param s1 First string.
+ * \param s2 Second string.
+ *
+ * \retval Newly allocated string on success.
+ * \retval NULL on error.
+ */
+char* strcdup(const char *s1, const char *s2);
 
 /*! \brief Print usage statistics.
  *

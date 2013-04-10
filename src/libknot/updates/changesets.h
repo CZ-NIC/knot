@@ -76,10 +76,9 @@ typedef struct {
 	int old_rrsets_allocated;
 
 	/*!
-	 * Deleted after successful update.
+	 * Deleted after successful update. Contains only relevant RDATA.
 	 */
-	knot_rdata_t **old_rdata;
-	uint16_t *old_rdata_types;
+	knot_rrset_t **old_rdata;
 	int old_rdata_count;
 	int old_rdata_allocated;
 
@@ -93,10 +92,9 @@ typedef struct {
 	int new_rrsets_allocated;
 
 	/*!
-	 * Deleted after failed update.
+	 * Deleted after failed update. Contains only relevant RDATA.
 	 */
-	knot_rdata_t **new_rdata;
-	uint16_t *new_rdata_types;
+	knot_rrset_t **new_rdata;
 	int new_rdata_count;
 	int new_rdata_allocated;
 
@@ -174,11 +172,11 @@ int knot_changes_rrsets_reserve(knot_rrset_t ***rrsets,
 int knot_changes_nodes_reserve(knot_node_t ***nodes,
                                int *count, int *allocated);
 
-int knot_changes_rdata_reserve(knot_rdata_t ***rdatas, uint16_t **types,
+int knot_changes_rdata_reserve(knot_rrset_t ***rdatas,
                                int count, int *allocated, int to_add);
 
-void knot_changes_add_rdata(knot_rdata_t **rdatas, uint16_t *types,
-                            int *count, knot_rdata_t *rdata, uint16_t type);
+void knot_changes_add_rdata(knot_rrset_t **rdatas, int *count,
+                            knot_rrset_t *rrset);
 
 /*!
  * \note Also processes RRSIGs. May be switched by a parameter later, if needed.

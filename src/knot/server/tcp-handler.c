@@ -61,18 +61,6 @@ static inline int tcp_throttle() {
 	return (rand() % TCP_THROTTLE_HI) + TCP_THROTTLE_LO; 
 }
 
-/*! \brief Wrapper for TCP send. */
-static int xfr_send_cb(int session, sockaddr_t *addr, uint8_t *msg, size_t msglen)
-{
-	UNUSED(addr);
-	int ret = tcp_send(session, msg, msglen);
-	if (ret < 0) {
-		return KNOT_ECONN;
-	}
-	
-	return ret;
-}
-
 /*! \brief Send reply. */
 static int tcp_reply(int fd, uint8_t *qbuf, size_t resp_len)
 {
@@ -156,12 +144,7 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 
 	/* Check address type. */
 	sockaddr_t addr;
-	if (sockaddr_init(&addr, w->ioh->type) != KNOT_EOK) {
-		log_server_error("Socket type %d is not supported, "
-				 "IPv6 support is probably disabled.\n",
-				 w->ioh->type);
-		return KNOT_EINVAL;
-	}
+	sockaddr_prep(&addr);
 
 	/* Receive data. */
 	int n = tcp_recv(fd, qbuf, qbuf_maxlen, &addr);
@@ -183,8 +166,7 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 	/* Parse query. */
 	size_t resp_len = qbuf_maxlen; // 64K
 	knot_packet_type_t qtype = KNOT_QUERY_NORMAL;
-	knot_packet_t *packet =
-		knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
+	knot_packet_t *packet = knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
 	if (packet == NULL) {
 		int ret = knot_ns_error_response_from_query_wire(ns, qbuf, n,
 		                                            KNOT_RCODE_SERVFAIL,
@@ -213,7 +195,7 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 
 	/* Handle query. */
 	int xfrt = -1;
-	knot_ns_xfr_t xfr;
+	knot_ns_xfr_t *xfr = NULL;
 	int res = KNOT_ERROR;
 	switch(qtype) {
 
@@ -234,23 +216,23 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 			xfrt = XFR_TYPE_AOUT;
 		}
 		
-		/* Prepare context. */
-		res = xfr_request_init(&xfr, xfrt, XFR_FLAG_TCP, packet);
-		if (res != KNOT_EOK) {
+		/* Answer from query. */
+		xfr = xfr_task_create(NULL, xfrt, XFR_FLAG_TCP);
+		if (xfr == NULL) {
 			knot_ns_error_response_from_query(ns, packet,
 			                                  KNOT_RCODE_SERVFAIL,
 			                                  qbuf, &resp_len);
 			res = KNOT_EOK;
 			break;
 		}
-		xfr.send = xfr_send_cb;
-		xfr.session = fd;
-		xfr.wire = qbuf;
-		xfr.wire_size = qbuf_maxlen;
-		memcpy(&xfr.addr, &addr, sizeof(sockaddr_t));
-		
-		/* Answer. */
-		return xfr_answer(ns, &xfr);
+		xfr->session = fd;
+		xfr->wire = qbuf;
+		xfr->wire_size = qbuf_maxlen;
+		xfr->query = packet;
+		xfr_task_setaddr(xfr, &addr, NULL);
+		res = xfr_answer(ns, xfr);
+		knot_packet_free(&packet);
+		return res;
 		
 	case KNOT_QUERY_UPDATE:
 //		knot_ns_error_response_from_query(ns, packet,
@@ -418,7 +400,9 @@ int tcp_send(int fd, uint8_t *msg, size_t msglen)
 	/* Uncork only if corked successfuly. */
 	if (uncork == 0) {
 		cork = 0;
-		setsockopt(fd, SOL_TCP, TCP_CORK, &cork, sizeof(cork));
+		if (setsockopt(fd, SOL_TCP, TCP_CORK, &cork, sizeof(cork)) < 0) {
+			dbg_net("tcp: failed to uncork socket\n");
+		}
 	}
 #endif
 	return sent;
@@ -454,8 +438,7 @@ int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 	
 	/* Get peer name. */
 	if (addr) {
-		socklen_t alen = addr->len;
-		if (getpeername(fd, addr->ptr, &alen) < 0) {
+		if (getpeername(fd, (struct sockaddr *)addr, &addr->len) < 0) {
 			return KNOT_EMALF;
 		}
 	}
@@ -477,45 +460,72 @@ int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 
 int tcp_loop_master(dthread_t *thread)
 {
-	iohandler_t *handler = (iohandler_t *)thread->data;
-	dt_unit_t *unit = thread->unit;
-
-	/* Check socket. */
-	if (!handler || handler->fd < 0 || handler->data == NULL) {
-		dbg_net("tcp: failed to initialize master thread\n");
+	if (!thread || !thread->data) {
 		return KNOT_EINVAL;
 	}
 	
-	tcp_worker_t **workers = handler->data;
+	iostate_t *st = (iostate_t *)thread->data;
+	iohandler_t *h = st->h;
+	dt_unit_t *unit = thread->unit;
+	tcp_worker_t **workers = h->data;
+	
+	/* Prepare structures for bound sockets. */
+	fdset_it_t it;
+	fdset_t *fds = NULL;
+	ref_t *ref = NULL;
+	int if_cnt = 0;
 
 	/* Accept connections. */
 	int id = 0;
 	dbg_net("tcp: created 1 master with %d workers, backend is '%s' \n",
 	        unit->size - 1, fdset_method());
-	while(1) {
+	for(;;) {
+		
+		/* Check handler state. */
+		if (knot_unlikely(st->s & ServerReload)) {
+			st->s &= ~ServerReload;
+			ref_release(ref);
+			ref = server_set_ifaces(h->server, &fds, &if_cnt, IO_TCP);
+			if (if_cnt == 0) break;
+		}
+		
 		/* Check for cancellation. */
 		if (dt_is_cancelled(thread)) {
 			break;
 		}
-
-		/* Accept client. */
-		int client = tcp_accept(handler->fd);
-		if (client < 0) {
-			continue;
+		
+		/* Wait for events. */
+		int nfds = fdset_wait(fds, OS_EV_FOREVER);
+		if (nfds <= 0) {
+			if (errno == EINTR) continue;
+			break;
 		}
-
-		/* Add to worker in RR fashion. */
-		if (write(workers[id]->pipe[1], &client, sizeof(int)) < 0) {
-			dbg_net("tcp: failed to register fd=%d to worker=%d\n",
-			        client, id);
-			close(client);
-			continue;
+		
+		fdset_begin(fds, &it);
+		while(nfds > 0) {
+			/* Accept client. */
+			int client = tcp_accept(it.fd);
+			if (client > -1) {
+				/* Add to worker in RR fashion. */
+				if (write(workers[id]->pipe[1], &client, sizeof(int)) < 0) {
+					dbg_net("tcp: failed to register fd=%d to worker=%d\n",
+					        client, id);
+					close(client);
+					continue;
+				}
+				id = get_next_rr(id, unit->size - 1);
+			}
+			
+			if (fdset_next(fds, &it) != 0) {
+				break;
+			}
 		}
-		id = get_next_rr(id, unit->size - 1);
 	}
 
 	dbg_net("tcp: master thread finished\n");
 	free(workers);
+	fdset_destroy(fds);
+	ref_release(ref);
 	
 	return KNOT_EOK;
 }
@@ -586,8 +596,7 @@ int tcp_loop_worker(dthread_t *thread)
 				             "client %d\n",
 				             w, client);
 				fdset_add(w->fdset, client, OS_EV_READ);
-				fdset_set_watchdog(w->fdset, client,
-				                   max_hs);
+				fdset_set_watchdog(w->fdset, client, max_hs);
 				dbg_net("tcp: watchdog for fd=%d set to %ds\n",
 				        client, max_hs);
 			} else {
@@ -679,7 +688,7 @@ int tcp_loop_unit(iohandler_t *ioh, dt_unit_t *unit)
 	}
 
 	/* Repurpose first thread as master (unit controller). */
-	dt_repurpose(unit->threads[0], tcp_loop_master, ioh);
+	dt_repurpose(unit->threads[0], tcp_loop_master, ioh->state + 0);
 
 	return KNOT_EOK;
 }

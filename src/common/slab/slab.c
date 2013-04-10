@@ -463,14 +463,8 @@ int slab_cache_init(slab_cache_t* cache, size_t bufsize)
 		return -1;
 	}
 
-	cache->empty = 0;
+	memset(cache, 0, sizeof(slab_cache_t));
 	cache->bufsize = bufsize;
-	cache->slabs_free = cache->slabs_full = 0;
-	cache->color = 0;
-
-	/* Initialize stats */
-	cache->stat_allocs = cache->stat_frees = 0;
-
 	dbg_mem("%s: created cache of size %zu\n",
 	          __func__, bufsize);
 

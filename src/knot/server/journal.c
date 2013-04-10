@@ -24,8 +24,8 @@
 #include <sys/mman.h>
 
 #include "common/crc.h"
+#include "common.h"
 #include "knot/other/debug.h"
-#include "knot/zone/zone-dump.h"
 #include "journal.h"
 
 /*! \brief Infinite file size limit. */
@@ -406,7 +406,9 @@ int journal_create(const char *fn, uint16_t max_nodes)
 		if (!sfwrite(&jn, sizeof(journal_node_t), fd)) {
 			fcntl(fd, F_SETLK, &fl);
 			close(fd);
-			remove(fn);
+			if (remove(fn) < 0) {
+				dbg_journal("journal: failed to remove journal file after error\n");
+			}
 			return KNOT_ERROR;
 		}
 	}
@@ -415,7 +417,9 @@ int journal_create(const char *fn, uint16_t max_nodes)
 	if (journal_update_crc(fd) != KNOT_EOK) {
 		fcntl(fd, F_SETLK, &fl);
 		close(fd);
-		remove(fn);
+		if(remove(fn) < 0) {
+			dbg_journal("journal: failed to remove journal file after error\n");
+		}
 		return KNOT_ERROR;
 	}
 	

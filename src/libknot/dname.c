@@ -22,6 +22,7 @@
 #include <ctype.h>	// tolower()
 
 #include "common.h"
+#include "common/mempattern.h"
 #include "dname.h"
 #include "consts.h"
 #include "util/tolower.h"
@@ -382,7 +383,6 @@ knot_dname_t *knot_dname_new()
 	dname->node = NULL;
 	dname->labels = NULL;
 	dname->label_count = -1;
-	dname->id = 0;
 
 	/* Initialize reference counting. */
 	ref_init(&dname->ref, knot_dname_dtor);
@@ -434,7 +434,23 @@ dbg_dname_exec_verb(
 	assert(dname->name != NULL);
 
 	dname->node = node;
-	dname->id = 0;
+	return dname;
+}
+
+/*----------------------------------------------------------------------------*/
+
+knot_dname_t *knot_dname_new_from_nonfqdn_str(const char *name, uint size,
+                                                  struct knot_node *node)
+{
+	knot_dname_t *dname = NULL;
+
+	if (name[size - 1] != '.') {
+		char *fqdn = strcdup(name, ".");
+		dname = knot_dname_new_from_str(fqdn, size + 1, node);
+		free(fqdn);
+	} else {
+		dname = knot_dname_new_from_str(name, size, node);
+	}
 
 	return dname;
 }
@@ -473,8 +489,6 @@ knot_dname_t *knot_dname_new_from_wire(const uint8_t *name, uint size,
 	}
 
 	dname->node = node;
-	dname->id = 0;
-
 	return dname;
 }
 
@@ -591,7 +605,6 @@ int knot_dname_from_wire(const uint8_t *name, uint size,
 	memcpy(target->name, name, size);
 	target->size = size;
 	target->node = node;
-	target->id = 0;
 
 	return knot_dname_find_labels(target, 0);
 }
@@ -643,42 +656,73 @@ char *knot_dname_to_str(const knot_dname_t *dname)
 		return 0;
 	}
 
-	char *name;
-
-	// root => special treatment
-	if (dname->size == 1) {
-		assert(dname->name[0] == 0);
-		name = (char *)malloc(2 * sizeof(char));
-		name[0] = '.';
-		name[1] = '\0';
-		return name;
-	}
-
-	name = (char *)malloc(dname->size * sizeof(char));
+	// Allocate space for dname string + 1 char termination.
+	size_t alloc_size = dname->size + 1;
+	char *name = malloc(alloc_size);
 	if (name == NULL) {
 		return NULL;
 	}
 
-	uint8_t *w = dname->name;
-	char *ch = name;
-	int i = 0;
+	uint8_t label_len = 0;
+	size_t  str_len = 0;
 
-	do {
-		assert(*w != 0);
-		int label_size = *(w++);
-		// copy the label
-		memcpy(ch, w, label_size);
-		i += label_size;
-		ch += label_size;
-		w += label_size;
-		if (w - dname->name < dname->size) { // another label following
-			*(ch++) = '.';
-			++i;
+	for (uint i = 0; i < dname->size; i++) {
+		uint8_t c = dname->name[i];
+
+		// Read next label size.
+		if (label_len == 0) {
+			label_len = c;
+
+			// Write label separation.
+			if (str_len > 0 || dname->size == 1) {
+				name[str_len++] = '.';
+			}
+
+			continue;
 		}
-	} while (i < dname->size - 1);
 
-	*ch = 0;
-	assert(ch - name == dname->size - 1);
+		if (isalnum(c) != 0 || c == '-' || c == '_' || c == '*' ||
+		    c == '/') {
+			name[str_len++] = c;
+		} else if (ispunct(c) != 0) {
+			// Increase output size for \x format.
+			alloc_size += 1;
+			char *extended = realloc(name, alloc_size);
+			if (extended == NULL) {
+				free(name);
+				return NULL;
+			}
+			name = extended;
+
+			// Write encoded character.
+			name[str_len++] = '\\';
+			name[str_len++] = c;
+		} else {
+			// Increase output size for \DDD format.
+			alloc_size += 3;
+			char *extended = realloc(name, alloc_size);
+			if (extended == NULL) {
+				free(name);
+				return NULL;
+			}
+			name = extended;
+
+			// Write encoded character.
+			int ret = snprintf(name + str_len, alloc_size - str_len,
+			                   "\\%03u", c);
+			if (ret <= 0 || ret >= alloc_size - str_len) {
+				free(name);
+				return NULL;
+			}
+
+			str_len += ret;
+		}
+
+		label_len--;
+	} 
+
+	// String_termination.
+	name[str_len] = 0;
 
 	return name;
 }
@@ -724,13 +768,6 @@ const uint8_t *knot_dname_name(const knot_dname_t *dname)
 uint knot_dname_size(const knot_dname_t *dname)
 {
 	return dname->size;
-}
-
-/*----------------------------------------------------------------------------*/
-
-unsigned int knot_dname_id(const knot_dname_t *dname)
-{
-	return dname->id;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1104,6 +1141,17 @@ int knot_dname_compare_cs(const knot_dname_t *d1, const knot_dname_t *d2)
 	return knot_dname_cmp(d1, d2, 1);
 }
 
+int knot_dname_compare_non_canon(const knot_dname_t *d1, const knot_dname_t *d2)
+{
+	int ret = memcmp(d1->name, d2->name,
+	                 d1->size > d2->size ? d2->size : d1->size);
+	if (d1->size != d2->size && ret == 0) {
+		return d1->size < d2->size ? -1 : 1;
+	} else {
+		return ret;
+	}
+}
+
 /*----------------------------------------------------------------------------*/
 
 knot_dname_t *knot_dname_cat(knot_dname_t *d1, const knot_dname_t *d2)
@@ -1158,16 +1206,3 @@ knot_dname_t *knot_dname_cat(knot_dname_t *d1, const knot_dname_t *d2)
 	return d1;
 }
 
-void knot_dname_set_id(knot_dname_t *dname, unsigned int id)
-{
-	dname->id = id;
-}
-
-unsigned int knot_dname_get_id(const knot_dname_t *dname)
-{
-	if (dname != NULL) {
-		return dname->id;
-	} else {
-		return 0; /* 0 should never be used and is reserved for err. */
-	}
-}

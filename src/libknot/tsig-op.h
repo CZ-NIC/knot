@@ -31,6 +31,7 @@
 
 #include "tsig.h"
 #include "rrset.h"
+#include "sign/key.h"
 
 /*!
  * \brief Generate TSIG signature of a message.
@@ -63,7 +64,7 @@
 int knot_tsig_sign(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
                    const uint8_t *request_mac, size_t request_mac_len,
                    uint8_t *digest, size_t *digest_len,
-                   const knot_key_t *key, uint16_t tsig_rcode,
+                   const knot_tsig_key_t *key, uint16_t tsig_rcode,
                    uint64_t request_time_signed);
 
 /*!
@@ -97,7 +98,7 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
                         const uint8_t *prev_digest, size_t prev_digest_len,
                         uint8_t *digest, size_t *digest_len,
-                        const knot_key_t *key, uint8_t *to_sign,
+                        const knot_tsig_key_t *key, uint8_t *to_sign,
                         size_t to_sign_len);
 
 /*!
@@ -115,7 +116,7 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
  */
 int knot_tsig_server_check(const knot_rrset_t *tsig_rr,
                            const uint8_t *wire, size_t size,
-                           const knot_key_t *tsig_key);
+                           const knot_tsig_key_t *tsig_key);
 
 /*!
  * \brief Checks incoming response.
@@ -135,7 +136,7 @@ int knot_tsig_server_check(const knot_rrset_t *tsig_rr,
 int knot_tsig_client_check(const knot_rrset_t *tsig_rr,
                            const uint8_t *wire, size_t size,
                            const uint8_t *request_mac, size_t request_mac_len,
-                           const knot_key_t *key,
+                           const knot_tsig_key_t *key,
                            uint64_t prev_time_signed);
 
 /*!
@@ -157,7 +158,7 @@ int knot_tsig_client_check_next(const knot_rrset_t *tsig_rr,
                                 const uint8_t *wire, size_t size,
                                 const uint8_t *prev_digest,
                                 size_t prev_digest_len,
-                                const knot_key_t *key,
+                                const knot_tsig_key_t *key,
                                 uint64_t prev_time_signed);
 
 int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,

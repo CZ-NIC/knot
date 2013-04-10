@@ -595,7 +595,8 @@ INPUT                  = src/common \
                          src/libknot \
                          src/common \
                          src/knot \
-                         src/zcompile \
+                         src/zscanner \
+                         src/utils \
                          Doxy.page.h
 
 # This tag can be used to specify the character encoding of the source files 

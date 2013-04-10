@@ -1,0 +1,287 @@
+/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+/*!
+ * \file descriptor.h
+ *
+ * \author Jan Kadlec <jan.kadlec@nic.cz>
+ *
+ * \addtogroup common_lib
+ * @{
+ */
+
+#ifndef _KNOT_DESCRIPTOR_H_
+#define _KNOT_DESCRIPTOR_H_
+
+#include <stdint.h>			// uint16_t
+#include <stdio.h>			// size_t
+
+#define KNOT_MAX_RDATA_BLOCKS	8
+
+/*!
+ * \brief Resource record class codes.
+ */
+enum knot_rr_class {
+	KNOT_CLASS_IN   =   1,
+	KNOT_CLASS_CH   =   2,
+	KNOT_CLASS_NONE = 254,
+	KNOT_CLASS_ANY  = 255,
+};
+
+/*!
+ * \brief Resource record type constants.
+ */
+enum knot_rr_type {
+	KNOT_RRTYPE_A          =   1, /*!< An IPv4 host address. */
+	KNOT_RRTYPE_NS         =   2, /*!< An authoritative name server. */
+
+	KNOT_RRTYPE_CNAME      =   5, /*!< The canonical name for an alias. */
+	KNOT_RRTYPE_SOA        =   6, /*!< The start of a zone of authority. */
+
+	KNOT_RRTYPE_PTR        =  12, /*!< A domain name pointer. */
+	KNOT_RRTYPE_HINFO      =  13, /*!< A host information. */
+	KNOT_RRTYPE_MINFO      =  14, /*!< A mailbox information. */
+	KNOT_RRTYPE_MX         =  15, /*!< Mail exchange. */
+	KNOT_RRTYPE_TXT        =  16, /*!< Text strings. */
+	KNOT_RRTYPE_RP         =  17, /*!< For responsible person. */
+	KNOT_RRTYPE_AFSDB      =  18, /*!< For AFS Data Base location. */
+
+	KNOT_RRTYPE_RT         =  21, /*!< For route through. */
+
+	KNOT_RRTYPE_SIG        =  24, /*!< METATYPE. Transaction signature. */
+	KNOT_RRTYPE_KEY        =  25, /*!< For security key. */
+
+	KNOT_RRTYPE_AAAA       =  28, /*!< IPv6 address. */
+	KNOT_RRTYPE_LOC        =  29, /*!< Location information. */
+
+	KNOT_RRTYPE_SRV        =  33, /*!< Server selection. */
+
+	KNOT_RRTYPE_NAPTR      =  35, /*!< Naming authority pointer . */
+	KNOT_RRTYPE_KX         =  36, /*!< Key exchanger. */
+	KNOT_RRTYPE_CERT       =  37, /*!< Certificate record. */
+
+	KNOT_RRTYPE_DNAME      =  39, /*!< Delegation name. */
+
+	KNOT_RRTYPE_OPT        =  41, /*!< METATYPE. Option for EDNS. */
+	KNOT_RRTYPE_APL        =  42, /*!< Address prefix list. */
+	KNOT_RRTYPE_DS         =  43, /*!< Delegation signer. */
+	KNOT_RRTYPE_SSHFP      =  44, /*!< SSH public key fingerprint. */
+	KNOT_RRTYPE_IPSECKEY   =  45, /*!< IPSEC key. */
+	KNOT_RRTYPE_RRSIG      =  46, /*!< DNSSEC signature. */
+	KNOT_RRTYPE_NSEC       =  47, /*!< Next-secure record. */
+	KNOT_RRTYPE_DNSKEY     =  48, /*!< DNS key. */
+	KNOT_RRTYPE_DHCID      =  49, /*!< DHCP identifier. */
+	KNOT_RRTYPE_NSEC3      =  50, /*!< NSEC version 3. */
+	KNOT_RRTYPE_NSEC3PARAM =  51, /*!< NSEC3 parameters. */
+	KNOT_RRTYPE_TLSA       =  52, /*!< DANE record. */
+
+	KNOT_RRTYPE_SPF        =  99, /*!< Sender policy framework. */
+
+	KNOT_RRTYPE_EUI48      = 108, /*!< 48-bit extended unique identifier. */
+	KNOT_RRTYPE_EUI64      = 109, /*!< 64-bit extended unique identifier. */
+
+	KNOT_RRTYPE_TKEY       = 249, /*!< METATYPE. Transaction key. */
+	KNOT_RRTYPE_TSIG       = 250, /*!< METATYPE. Transaction signature. */
+	KNOT_RRTYPE_IXFR       = 251, /*!< QTYPE. Incremental zone transfer. */
+	KNOT_RRTYPE_AXFR       = 252, /*!< QTYPE. Authoritative zone transfer. */
+
+	KNOT_RRTYPE_ANY        = 255, /*!< QTYPE. Any record. */
+};
+
+/*!
+ * \brief Constants characterising the wire format of RDATA items.
+ */
+enum knot_rdata_wireformat {
+	/*!< Possibly compressed dname. */
+	KNOT_RDATA_WF_COMPRESSED_DNAME   = -10,
+	/*!< Uncompressed dname. */
+	KNOT_RDATA_WF_UNCOMPRESSED_DNAME,
+	/*!< Dname with preserved letter cases. */
+	KNOT_RDATA_WF_LITERAL_DNAME,
+	/*!< Initial part of NAPTR record before dname. */
+	KNOT_RDATA_WF_NAPTR_HEADER,
+	/*!< Uninteresting final part of a record. */
+	KNOT_RDATA_WF_REMAINDER,
+	/*!< The last descriptor in array. */
+	KNOT_RDATA_WF_END                =   0,
+};
+
+/*!
+ * \brief DNSSEC Algorithm Numbers
+ *
+ * http://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xml
+ */
+typedef enum {
+	KNOT_DNSSEC_ALG_RSAMD5			=  1,
+	KNOT_DNSSEC_ALG_DH			=  2,
+	KNOT_DNSSEC_ALG_DSA			=  3,
+
+	KNOT_DNSSEC_ALG_RSASHA1			=  5,
+	KNOT_DNSSEC_ALG_DSA_NSEC3_SHA1		=  6,
+	KNOT_DNSSEC_ALG_RSASHA1_NSEC3_SHA1	=  7,
+	KNOT_DNSSEC_ALG_RSASHA256		=  8,
+
+	KNOT_DNSSEC_ALG_RSASHA512 		= 10,
+
+	KNOT_DNSSEC_ALG_ECC_GOST 		= 12,
+	KNOT_DNSSEC_ALG_ECDSAP256SHA256 	= 13,
+	KNOT_DNSSEC_ALG_ECDSAP384SHA384 	= 14,
+} knot_dnssec_algorithm_t;
+
+/*! 
+ * \brief Constants for DNSSEC algorithm types.
+ *
+ * Source: http://www.iana.org/assignments/ds-rr-types/ds-rr-types.xml
+ */
+enum knot_ds_algorithm
+{
+	KNOT_DS_ALG_SHA1	= 1,
+	KNOT_DS_ALG_SHA256	= 2,
+	KNOT_DS_ALG_GOST	= 3,
+	KNOT_DS_ALG_SHA384	= 4,
+};
+
+/*!
+ * \brief Structure describing rdata.
+ */
+typedef struct {
+	/*!< Item types describing rdata. */
+	const int  block_types[KNOT_MAX_RDATA_BLOCKS];
+	/*!< RR type name. */
+	const char *type_name;
+} rdata_descriptor_t;
+
+/*!
+ * \brief Gets rdata descriptor for given RR name.
+ *
+ * \param name Mnemonic of RR type whose descriptor should be retvaled.
+ *
+ * \retval RR descriptor for given name, NULL descriptor if
+ *         unknown type.
+ */
+const rdata_descriptor_t *get_rdata_descriptor(const uint16_t type);
+
+/*!
+ * \brief Converts numeric type representation to mnemonic string.
+ *
+ * \param rrtype  Type RR type code to be converted.
+ * \param out     Output buffer.
+ * \param out_len Length of the output buffer.
+ *
+ * \retval Length of output string.
+ * \retval -1 if error.
+ */
+int knot_rrtype_to_string(const uint16_t rrtype,
+                          char           *out,
+                          const size_t   out_len);
+
+/*!
+ * \brief Converts mnemonic string representation of a type to numeric one.
+ *
+ * \param name Mnemonic string to be converted.
+ * \param num  Output variable.
+ *
+ * \retval  0 if OK.
+ * \retval -1 if error.
+ */
+int knot_rrtype_from_string(const char *name, uint16_t *num);
+
+/*!
+ * \brief Converts numeric class representation to the string one.
+ *
+ * \param rrclass Class code to be converted.
+ * \param out     Output buffer.
+ * \param out_len Length of the output buffer.
+ *
+ * \retval Length of output string.
+ * \retval -1 if error.
+ */
+int knot_rrclass_to_string(const uint16_t rrclass,
+                           char           *out,
+                           const size_t   out_len);
+
+/*!
+ * \brief Converts string representation of a class to numeric one.
+ *
+ * \param name Mnemonic string to be converted.
+ * \param num  Output variable.
+ *
+ * \retval  0 if OK.
+ * \retval -1 if error.
+ */
+int knot_rrclass_from_string(const char *name, uint16_t *num);
+
+/*!
+ * \brief Checks if given item is one of dname types.
+ *
+ * \param item Item value.
+ *
+ * \retval 1 if YES.
+ * \retval 0 if NO.
+ */
+int descriptor_item_is_dname(const int item);
+
+/*!
+ * \brief Checks if given item is compressible dname.
+ *
+ * \param item Item value.
+ *
+ * \retval 1 if YES.
+ * \retval 0 if NO.
+ */
+int descriptor_item_is_compr_dname(const int item);
+
+/*!
+ * \brief Checks if given item has fixed size.
+ *
+ * \param item Item value.
+ *
+ * \retval 1 if YES.
+ * \retval 0 if NO.
+ */
+int descriptor_item_is_fixed(const int item);
+
+/*!
+ * \brief Checks if given item is remainder.
+ *
+ * \param item Item value.
+ *
+ * \retval 1 if YES.
+ * \retval 0 if NO.
+ */
+int descriptor_item_is_remainder(const int item);
+
+/*!
+ * \brief Checks if given item is one of metatypes or qtypes.
+ *
+ * \param item Item value.
+ *
+ * \retval 1 if YES.
+ * \retval 0 if NO.
+ */
+int knot_rrtype_is_metatype(const uint16_t type);
+
+/*!
+ * \brief Returns length of DS digest for given algorithm.
+ *
+ * \param algorithm Algorithm code to be used.
+ *
+ * \retval Digest length for given algorithm. 
+ */
+size_t knot_ds_digest_length(const uint8_t algorithm);
+
+#endif // _KNOT_DESCRIPTOR_H_
+
+/*! @} */

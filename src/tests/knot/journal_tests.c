@@ -152,7 +152,7 @@ static int journal_tests_run(int argc, char *argv[])
 	int chk_key = 0;
 	char chk_buf[64] = {'\0'};
 	ret = 0;
-	const int itcount = 1;//jsize * 5 + 5;
+	const int itcount = jsize * 5 + 5;
 	for (int i = 0; i < itcount; ++i) {
 		int key = rand() % 65535;
 		randstr(tmpbuf, sizeof(tmpbuf));

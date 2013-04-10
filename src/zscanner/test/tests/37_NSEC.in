@@ -1,0 +1,23 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	NSEC	.					; The simplest variant - without bitmap
+@	NSEC	\0320\ \\\"\.\@\*.tld.			; Special chars in domain name
+@	NSEC	.	TYPE0				; Minimal type number
+@	NSEC	.	TYPE65535			; Maximal type number
+@	NSEC	.	TYPE0 A NS			; First bitmap window
+@	NSEC	.	TYPE0 TYPE256 TYPE512 TYPE32768	; First, second, third and 128. bitmap window
+@	TYPE47	\# 1 00					; TYPE + Hexadecimal rdata
+@	TYPE47	.					; TYPE
+@	nsec	.					; Type in lower-case
+
+; KO
+@	NSEC
+@	NSEC						; Empty rdata
+@	NSEC	\# 0					; Hex empty rdata
+@	NSEC	\#					; Missing hex length
+@	NSEC	.	TYPE65536			; Type number overflow
+@	NSEC	.	X				; Unknown type
+@	NSEC	\# 1 0000				; Too long rdata
+@	NSEC	\# 2 00					; Bad rdata length

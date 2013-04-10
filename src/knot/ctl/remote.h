@@ -31,7 +31,7 @@
 #include "knot/conf/conf.h"
 #include "libknot/packet/packet.h"
 #include "libknot/rrset.h"
-#include "libknot/rdata.h"
+#include "libknot/sign/key.h"
 #include "knot/server/server.h"
 
 /*! \brief Default remote control tool port. */
@@ -133,7 +133,7 @@ int remote_process(server_t *s, int r, uint8_t* buf, size_t buflen);
  * \retval KNOT_EOK on success.
  * \retval knot_error else.
  */
-knot_packet_t* remote_query(const char *query, const knot_key_t *key);
+knot_packet_t* remote_query(const char *query, const knot_tsig_key_t *key);
 
 /*!
  * \brief Append extra data to RC command packet.
@@ -158,7 +158,7 @@ int remote_query_append(knot_packet_t *qry, knot_rrset_t *data);
  * \retval knot_error else.
  */
 int remote_query_sign(uint8_t *wire, size_t *size, size_t maxlen,
-                      const knot_key_t *key);
+                      const knot_tsig_key_t *key);
 
 /*! \todo #1291 RR building should be a part of DNS library. */
 
@@ -178,21 +178,22 @@ knot_rrset_t* remote_build_rr(const char *k, uint16_t t);
  * \param v_len Text length.
  * \return Created rdata or NULL.
  */
-knot_rdata_t* remote_create_txt(const char *v, size_t v_len);
+int remote_create_txt(knot_rrset_t *rr, const char *v, size_t v_len);
+
 
 /*!
  * \brief Create a CNAME rdata.
  * \param d Domain name as a string.
  * \return Created rdata or NULL.
  */
-knot_rdata_t* remote_create_cname(const char *d);
+int remote_create_cname(knot_rrset_t *rr, const char *d);
 
 /*!
  * \brief Print TXT rdata to stdout.
  * \param rd TXT rdata.
  * \return KNOT_EOK
  */
-int remote_print_txt(const knot_rdata_t *rd);
+int remote_print_txt(const knot_rrset_t *rrset, uint16_t i);
 
 /*!
  * \brief Create dname from str and make sure the name is FQDN.
