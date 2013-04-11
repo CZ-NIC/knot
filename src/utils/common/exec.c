@@ -70,28 +70,6 @@ knot_lookup_table_t rtypes[] = {
 	{ 0, NULL }
 };
 
-knot_packet_t* create_empty_packet(const knot_packet_prealloc_type_t type,
-                                   const size_t                      max_size)
-{
-	// Create packet skeleton.
-	knot_packet_t *packet = knot_packet_new(type);
-	if (packet == NULL) {
-		DBG_NULL;
-		return NULL;
-	}
-
-	// Set packet buffer size.
-	knot_packet_set_max_size(packet, max_size);
-
-	// Set random sequence id.
-	knot_packet_set_random_id(packet);
-
-	// Initialize query packet.
-	knot_query_init(packet);
-
-	return packet;
-}
-
 static void print_header(const knot_packet_t *packet, const style_t *style)
 {
 	char    flags[64] = "";
@@ -357,6 +335,28 @@ static void print_error_host(const uint8_t         code,
 	free(owner);
 }
 
+knot_packet_t* create_empty_packet(const knot_packet_prealloc_type_t type,
+                                   const size_t                      max_size)
+{
+	// Create packet skeleton.
+	knot_packet_t *packet = knot_packet_new(type);
+	if (packet == NULL) {
+		DBG_NULL;
+		return NULL;
+	}
+
+	// Set packet buffer size.
+	knot_packet_set_max_size(packet, max_size);
+
+	// Set random sequence id.
+	knot_packet_set_random_id(packet);
+
+	// Initialize query packet.
+	knot_query_init(packet);
+
+	return packet;
+}
+
 void print_header_xfr(const char     *owner,
                       const uint16_t type,
                       const style_t  *style)
@@ -536,5 +536,124 @@ void print_packet(const knot_packet_t *packet,
 	// Print packet statistics.
 	if (style->show_footer) {
 		print_footer(total_len, 0, 0, net, elapsed, incoming);
+	}
+}
+
+void free_sign_context(sign_context_t *ctx)
+{
+	if (ctx == NULL) {
+		DBG_NULL;
+		return;
+	}
+
+	if (ctx->tsig_key.name) {
+		knot_tsig_key_free(&ctx->tsig_key);
+	}
+
+	if (ctx->dnssec_key.name) {
+		knot_dnssec_key_free(&ctx->dnssec_key);
+	}
+
+	if (ctx->digest) {
+		free(ctx->digest);
+	}
+
+	memset(ctx, '\0', sizeof(sign_context_t));
+}
+
+int sign_packet(knot_packet_t           *pkt,
+                sign_context_t          *sign_ctx,
+                const knot_key_params_t *key_params)
+{
+	int result;
+
+	if (pkt == NULL || sign_ctx == NULL || key_params == NULL) {
+		DBG_NULL;
+		return KNOT_EINVAL;
+	}
+
+	uint8_t *wire = pkt->wireformat;
+	size_t  *wire_size = &pkt->size;
+	size_t  max_size = knot_packet_max_size(pkt);
+
+	switch (knot_get_key_type(key_params)) {
+	case KNOT_KEY_TSIG:
+	{
+		result = knot_tsig_key_from_params(key_params,
+		                                   &sign_ctx->tsig_key);
+		if (result != KNOT_EOK) {
+			return result;
+		}
+
+		knot_tsig_key_t *key = &sign_ctx->tsig_key;
+
+		sign_ctx->digest_size = tsig_alg_digest_length(key->algorithm);
+		sign_ctx->digest = malloc(sign_ctx->digest_size);
+
+		size_t tsig_size = tsig_wire_maxsize(key);
+		knot_packet_set_tsig_size(pkt, tsig_size);
+
+		result = knot_tsig_sign(wire, wire_size, max_size, NULL, 0,
+		                        sign_ctx->digest, &sign_ctx->digest_size,
+		                        key, 0, 0);
+
+		return result;
+	}
+	case KNOT_KEY_DNSSEC:
+	{
+		result = knot_dnssec_key_from_params(key_params,
+		                                     &sign_ctx->dnssec_key);
+		if (result != KNOT_EOK) {
+			return result;
+		}
+
+		knot_dnssec_key_t *key = &sign_ctx->dnssec_key;
+		result = knot_sig0_sign(wire, wire_size, max_size, key);
+
+		return result;
+	}
+	default:
+		return KNOT_DNSSEC_EINVALID_KEY;
+	}
+}
+
+int verify_packet(const knot_packet_t     *pkt,
+                  const sign_context_t    *sign_ctx,
+                  const knot_key_params_t *key_params)
+{
+	int result;
+
+	if (pkt == NULL || sign_ctx == NULL || key_params == NULL) {
+		DBG_NULL;
+		return KNOT_EINVAL;
+	}
+
+	const uint8_t *wire = pkt->wireformat;
+	const size_t  *wire_size = &pkt->size;
+
+	switch (knot_get_key_type(key_params)) {
+	case KNOT_KEY_TSIG:
+	{
+		const knot_rrset_t *tsig_rr = knot_packet_tsig(pkt);
+		if (tsig_rr == NULL) {
+			return KNOT_ENOTSIG;
+		}
+
+		result = knot_tsig_client_check(tsig_rr, wire, *wire_size,
+		                                sign_ctx->digest,
+		                                sign_ctx->digest_size,
+		                                &sign_ctx->tsig_key, 0);
+
+		return result;
+	}
+	case KNOT_KEY_DNSSEC:
+	{
+		// Uses public key cryptography, server cannot sign the
+		// response, because the private key should be known only
+		// to the client.
+		return KNOT_EOK;
+	}
+	default:
+		return KNOT_EINVAL;
 	}
 }

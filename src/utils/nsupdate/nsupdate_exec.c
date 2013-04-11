@@ -32,8 +32,6 @@
 #include "common/mempattern.h"
 #include "common/descriptor.h"
 #include "libknot/libknot.h"
-#include "libknot/tsig-op.h"
-#include "libknot/sign/sig0.h"
 
 /* Declarations of cmd parse functions. */
 typedef int (*cmd_handle_f)(const char *lp, nsupdate_params_t *params);
@@ -450,112 +448,6 @@ static int nsupdate_process(nsupdate_params_t *params, FILE *fp)
 	return ret;
 }
 
-//! \brief Holds data required between signing and signature verification.
-struct sign_context {
-	knot_tsig_key_t tsig_key;
-	knot_dnssec_key_t dnssec_key;
-	uint8_t *digest;
-	size_t digest_size;
-};
-
-typedef struct sign_context sign_context_t;
-
-static void free_sign_context(sign_context_t *ctx)
-{
-	if (ctx->tsig_key.name)
-		knot_tsig_key_free(&ctx->tsig_key);
-
-	if (ctx->dnssec_key.name)
-		knot_dnssec_key_free(&ctx->dnssec_key);
-
-	if (ctx->digest)
-		free(ctx->digest);
-
-	memset(ctx, '\0', sizeof(sign_context_t));
-}
-
-static int sign_packet(nsupdate_params_t *params, uint8_t *wire,
-                       size_t *wire_size, sign_context_t *sign_ctx)
-{
-	if (!sign_ctx)
-		return KNOT_EINVAL;
-
-	int result;
-
-	knot_packet_t *packet = params->pkt;
-	size_t max_size = knot_packet_max_size(packet);
-	knot_key_type_t key_type = knot_get_key_type(&params->key_params);
-
-	if (key_type == KNOT_KEY_TSIG) {
-		result = knot_tsig_key_from_params(&params->key_params,
-		                                   &sign_ctx->tsig_key);
-		if (result != KNOT_EOK)
-			return result;
-
-		knot_tsig_key_t *key = &sign_ctx->tsig_key;
-
-		sign_ctx->digest_size = tsig_alg_digest_length(key->algorithm);
-		sign_ctx->digest = malloc(sign_ctx->digest_size);
-
-		size_t tsig_size = tsig_wire_maxsize(key);
-		knot_packet_set_tsig_size(packet, tsig_size);
-
-		result = knot_tsig_sign(wire, wire_size, max_size, NULL, 0,
-		                        sign_ctx->digest,
-		                        &sign_ctx->digest_size, key, 0, 0);
-
-		return result;
-	}
-
-	if (key_type == KNOT_KEY_DNSSEC) {
-		result = knot_dnssec_key_from_params(&params->key_params,
-						     &sign_ctx->dnssec_key);
-		if (result != KNOT_EOK)
-			return result;
-
-		knot_dnssec_key_t *key = &sign_ctx->dnssec_key;
-		result = knot_sig0_sign(wire, wire_size, max_size, key);
-
-		return result;
-	}
-
-	assert(key_type == KNOT_KEY_UNKNOWN);
-	return KNOT_DNSSEC_EINVALID_KEY;
-}
-
-static int check_sign(nsupdate_params_t *params, size_t wire_size,
-                      sign_context_t *sign_ctx)
-{
-	if (!sign_ctx)
-		return KNOT_EINVAL;
-
-	int result;
-	knot_key_type_t key_type = knot_get_key_type(&params->key_params);
-
-	if (key_type == KNOT_KEY_TSIG) {
-		const knot_rrset_t *tsig_rr = knot_packet_tsig(params->resp);
-		if (!tsig_rr)
-			return KNOT_ENOTSIG;
-
-		result = knot_tsig_client_check(tsig_rr, params->rwire,
-		                                wire_size, sign_ctx->digest,
-						sign_ctx->digest_size,
-		                                &sign_ctx->tsig_key, 0);
-
-		return result;
-	}
-
-	if (key_type == KNOT_KEY_DNSSEC) {
-		// Uses public key cryptography, server cannot sign the
-		// response, because the private key should be known only
-		// to the client.
-		return KNOT_EOK;
-	}
-
-	return KNOT_EINVAL;
-}
-
-
 int nsupdate_exec(nsupdate_params_t *params)
 {
 	if (!params) {
@@ -792,36 +684,43 @@ int cmd_send(const char* lp, nsupdate_params_t *params)
 
 	/* Sign if key specified. */
 	if (params->key_params.name) {
-		ret = sign_packet(params, wire, &len, &sign_ctx);
+		ret = sign_packet(params->pkt, &sign_ctx, &params->key_params);
 		if (ret != KNOT_EOK) {
 			ERR("failed to sign UPDATE message - %s\n",
 			    knot_strerror(ret));
 			return ret;
 		}
+		len = params->pkt->size;
 	}
 
 	int rb = 0;
 	/* Send/recv message (1 try + N retries). */
 	int tries = 1 + params->retries;
 	for (; tries > 0; --tries) {
-		memset(params->rwire, 0, MAX_PACKET_SIZE);
+		memset(params->rwire, 0, sizeof(params->rwire));
 		rb = pkt_sendrecv(params, wire, len,
-		                  params->rwire, MAX_PACKET_SIZE);
+		                  params->rwire, sizeof(params->rwire));
 		if (rb > 0) break;
 	}
-	
-	/* Clear previous response. */
-	if (params->resp) knot_packet_free(&params->resp);
-	if (rb <= 0) {
-		free_sign_context(&sign_ctx);
-		return KNOT_ECONNREFUSED;
-	}
-	
-	/* Clear sent packet and parse response. */
+
+	/* Clear sent packet. */
 	knot_question_t *q = knot_packet_question(params->pkt);
 	knot_dname_release(q->qname);
 	knot_packet_free_rrsets(params->pkt);
 	knot_packet_free(&params->pkt);
+
+	/* Clear previous response. */
+	if (params->resp) {
+		knot_packet_free(&params->resp);
+	}
+
+	/* Check Send/recv result. */
+	if (rb <= 0) {
+		free_sign_context(&sign_ctx);
+		return KNOT_ECONNREFUSED;
+	}
+
+	/* Parse response. */
 	params->resp = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
 	if (!params->resp) {
 		free_sign_context(&sign_ctx);
@@ -836,7 +735,7 @@ int cmd_send(const char* lp, nsupdate_params_t *params)
 	
 	/* Check signature if expected. */
 	if (params->key_params.name) {
-		ret = check_sign(params, rb, &sign_ctx);
+		ret = verify_packet(params->resp, &sign_ctx, &params->key_params);
 		free_sign_context(&sign_ctx);
 	}
 	if (ret != KNOT_EOK) { /* Collect TSIG error. */
