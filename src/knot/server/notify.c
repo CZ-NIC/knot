@@ -189,19 +189,9 @@ static int notify_check_and_schedule(knot_nameserver_t *nameserver,
 	if (from) {
 		if (acl_match(zd->notify_in, from, 0) == ACL_DENY) {
 			/* rfc1996: Ignore request and report incident. */
-			char straddr[SOCKADDR_STRLEN];
-			sockaddr_tostr(from, straddr, sizeof(straddr));
-			log_zone_notice("Unauthorized NOTIFY query "
-			                "from '%s@%d' to zone '%s'.\n",
-			                straddr, sockaddr_portnum(from),
-			                zd->conf->name);
-			return KNOT_ERROR;
-		} else {
-			dbg_notify("notify: authorized NOTIFY query.\n");
+			return KNOT_EXFRDENIED;
 		}
 	}
-
-	/*! \todo Packet may contain updated RRs. */
 
 	/* Cancel REFRESH/RETRY timer. */
 	evsched_t *sched = ((server_t *)knot_ns_get_data(nameserver))->sched;
@@ -270,21 +260,44 @@ int notify_process_request(knot_nameserver_t *ns,
 
 	// find the zone
 	rcu_read_lock();
+	ret = KNOT_ENOZONE;
+	unsigned serial = 0;
 	const knot_dname_t *qname = knot_packet_qname(notify);
-	const knot_zone_t *z = knot_zonedb_find_zone_for_name(
-			ns->zone_db, qname);
-	if (z == NULL) {
-		rcu_read_unlock();
-		dbg_notify("notify: failed to find zone by name\n");
-		knot_ns_error_response_from_query(ns, notify,
-		                                  KNOT_RCODE_FORMERR, buffer,
-		                                  size);
-		return KNOT_EOK;
+	const knot_zone_t *z = knot_zonedb_find_zone_for_name(ns->zone_db, qname);
+	if (z != NULL) {
+		ret = notify_check_and_schedule(ns, z, from);
+		knot_zone_contents_t *cont = knot_zone_get_contents(z);
+		if (cont) {
+			const knot_rrset_t *apex = NULL;
+			apex = knot_node_rrset(knot_zone_contents_apex(cont),
+			                            KNOT_RRTYPE_SOA);
+			serial = knot_rrset_rdata_soa_serial(apex);
+		}
+		
 	}
-
-	notify_check_and_schedule(ns, z, from);
+	int rcode = KNOT_RCODE_NOERROR;
+	switch (ret) {
+	case KNOT_ENOZONE: rcode = KNOT_RCODE_NOTAUTH; break;
+	case KNOT_EACCES:  rcode = KNOT_RCODE_REFUSED; break;
+	default: break;
+	}
+	
+	const char* fmt = "NOTIFY query of '%s' SOA=%u from %s: %s\n";
+	char *qstr = knot_dname_to_str(qname);
+	char *fromstr = xfr_remote_str(from, NULL);
+	if (rcode != KNOT_RCODE_NOERROR) {
+		knot_ns_error_response_from_query(ns, notify, KNOT_RCODE_REFUSED,
+		                                  buffer, size);
+		log_server_warning(fmt, qstr, serial, fromstr, knot_strerror(ret));
+		ret = KNOT_EOK; /* Send response. */
+	} else {
+		log_server_info(fmt, qstr, serial, fromstr, knot_strerror(ret));
+	}
+	free(qstr);
+	free(fromstr);
+	
 	rcu_read_unlock();
-	return KNOT_EOK;
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
