@@ -34,6 +34,20 @@
 #define IPV4_REVERSE_DOMAIN	"in-addr.arpa."
 #define IPV6_REVERSE_DOMAIN	"ip6.arpa."
 
+/*!
+ * \brief TSIG key algorithms table.
+ * \see params_parse_tsig
+ */
+knot_lookup_table_t key_alg_table[] = {
+	{ KNOT_TSIG_ALG_HMAC_MD5, "hmac-md5" },
+	{ KNOT_TSIG_ALG_HMAC_SHA1, "hmac-sha1" },
+	{ KNOT_TSIG_ALG_HMAC_SHA224, "hmac-sha224" },
+	{ KNOT_TSIG_ALG_HMAC_SHA256, "hmac-sha256" },
+	{ KNOT_TSIG_ALG_HMAC_SHA384, "hmac-sha384" },
+	{ KNOT_TSIG_ALG_HMAC_SHA512, "hmac-sha512" },
+	{ KNOT_TSIG_ALG_NULL, NULL }
+};
+
 char* get_reverse_name(const char *name)
 {
 	struct in_addr	addr4;
@@ -322,7 +336,7 @@ int params_parse_tsig(const char *value, knot_key_params_t *key_params)
 	if (s) {
 		*s++ = '\0';               /* Last part separator */
 		knot_lookup_table_t *alg = NULL;
-		alg = knot_lookup_by_name(tsig_alg_table, h);
+		alg = knot_lookup_by_name(key_alg_table, h);
 		if (alg) {
 			DBG("%s: parsed algorithm '%s'\n", __func__, h);
 			key_params->algorithm = alg->id;
