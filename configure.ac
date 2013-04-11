@@ -146,6 +146,11 @@ AC_ARG_ENABLE([lto],
       *)  AC_MSG_ERROR([bad value ${enableval} for --enable-lto]) ;;
     esac])
 
+# Check for shortlog
+AC_ARG_ENABLE([shortlog],
+    AS_HELP_STRING([--enable-shortlog], [enable shorter date format in log messages [default=no]]),
+    AC_DEFINE([ENABLE_SHORTLOG], [1], [short log format]))
+
 AX_CHECK_COMPILER_FLAGS("-fpredictive-commoning", [CFLAGS="$CFLAGS -fpredictive-commoning"], [])
 
 # Disable strict aliasing

@@ -220,15 +220,17 @@ static int _log_msg(logsrc_t src, int level, const char *msg)
 	time_t sec = tv.tv_sec;
 	if (localtime_r(&sec, &lt) != NULL) {
 		tlen = strftime(tstr, sizeof(tstr),
-				"%Y-%m-%dT%H:%M:%S", &lt);
+				"%Y-%m-%dT%H:%M:%S ", &lt);
+#ifndef ENABLE_SHORTLOG
 		if (tlen > 0) {
 			char pm = (lt.tm_gmtoff > 0) ? '+' : '-';
-			snprintf(tstr + tlen, sizeof(tstr) - tlen,
+			snprintf(tstr + tlen - 1, sizeof(tstr) - tlen + 1,
 			         ".%.6lu%c%.2u:%.2u ",
 			         (unsigned long)tv.tv_usec, pm,
 			         (unsigned int)lt.tm_gmtoff / 3600,
 			         (unsigned int)(lt.tm_gmtoff / 60) % 60);
 		}
+#endif /* ENABLE_SHORTLOG */
 	}
 
 	// Log streams
