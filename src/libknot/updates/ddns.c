@@ -373,7 +373,7 @@ static int knot_ddns_check_exist_full(const knot_zone_contents_t *zone,
 		assert(knot_rrset_type(found) == knot_rrset_type(rrset));
 		assert(knot_dname_compare(knot_rrset_owner(found),
 		                          knot_rrset_owner(rrset)) == 0);
-		if (knot_rrset_compare_rdata(found, rrset) <= 0) {
+		if (knot_rrset_rdata_equal(found, rrset) <= 0) {
 			*rcode = KNOT_RCODE_NXRRSET;
 			return KNOT_EPREREQ;
 		}
