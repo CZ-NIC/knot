@@ -66,6 +66,12 @@ void knot_rdata_dump(const knot_rrset_t *rrset, size_t rdata_pos)
 //#endif
 //}
 
+static void knot_node_dump_from_tree(knot_node_t *node, void *data)
+{
+	UNUSED(data);
+	knot_node_dump(node);
+}
+
 void knot_node_dump(knot_node_t *node)
 {
 #if defined(KNOT_ZONE_DEBUG) || defined(KNOT_NODE_DEBUG)
@@ -163,13 +169,15 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone)
 
 	dbg_zone_detail("------- ZONE --------\n");
 
-	knot_zone_contents_tree_apply_inorder(zone, knot_node_dump, NULL);
+	knot_zone_contents_tree_apply_inorder(zone, knot_node_dump_from_tree,
+	                                      NULL);
 
 	dbg_zone_detail("------- ZONE --------\n");
 	
 	dbg_zone_detail("------- NSEC 3 tree -\n");
 
-	knot_zone_contents_nsec3_apply_inorder(zone, knot_node_dump, NULL);
+	knot_zone_contents_nsec3_apply_inorder(zone, knot_node_dump_from_tree,
+	                                       NULL);
 
 	dbg_zone_detail("------- NSEC 3 tree -\n");
 #endif
