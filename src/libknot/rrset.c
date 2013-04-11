@@ -1035,31 +1035,6 @@ knot_rrset_t *knot_rrset_get_rrsigs(knot_rrset_t *rrset)
 	}
 }
 
-/*----------------------------------------------------------------------------*/
-
-int knot_rrset_compare_rdata(const knot_rrset_t *r1, const knot_rrset_t *r2)
-{
-	if (r1 == NULL || r2 == NULL ||( r1->type != r2->type)) {
-		return KNOT_EINVAL;
-	}
-
-	const rdata_descriptor_t *desc =
-		get_rdata_descriptor(r1->type);
-	if (desc == NULL) {
-		return KNOT_EINVAL;
-	}
-	
-	/*
-	 * This actually does not make a lot of sense, but easiest solution
-	 * is to order the arrays before we compare them all. It is okay since
-	 * this full compare operation is needed scarcely.
-	 */
-	
-	/* TODO */
-	
-	return 0;
-}
-
 int knot_rrset_rdata_equal(const knot_rrset_t *r1, const knot_rrset_t *r2)
 {
 	if (r1 == NULL || r2 == NULL ||( r1->type != r2->type) ||
@@ -1301,46 +1276,6 @@ dbg_rrset_exec_detail(
 	memcpy(rdata, rdata_buffer, offset);
 	
 	return KNOT_EOK;
-}
-
-int knot_rrset_compare(const knot_rrset_t *r1,
-                       const knot_rrset_t *r2,
-                       knot_rrset_compare_type_t cmp)
-{
-	/* [code-review] Missing parameter checks. */
-	
-	if (cmp == KNOT_RRSET_COMPARE_PTR) {
-		if ((size_t)r1 > (size_t)r2) {
-			return 1;
-		} else if ((size_t)r1 < (size_t)r2) {
-			return -1;
-		} else {
-			return 0;
-		}
-	}
-
-	int res = knot_dname_compare(r1->owner, r2->owner);
-	if (res) {
-		return res;
-	}
-	
-	if (r1->rclass > r2->rclass) {
-		return 1;
-	} else if (r1->rclass < r2->rclass) {
-		return -1;
-	}
-	
-	if (r1->type > r2->type) {
-		return 1;
-	} else if (r1->type < r2->type) {
-		return -1;
-	}
-	
-	if (cmp == KNOT_RRSET_COMPARE_WHOLE) {
-		res = knot_rrset_compare_rdata(r1, r2);
-	}
-
-	return res;
 }
 
 int knot_rrset_equal(const knot_rrset_t *r1,
