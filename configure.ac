@@ -169,7 +169,7 @@ AC_SEARCH_LIBS([adler32], [z])
 
 # Checks for header files.
 AC_HEADER_RESOLV
-AC_CHECK_HEADERS([arpa/inet.h cap-ng.h ev.h fcntl.h inttypes.h limits.h malloc.h math.h netdb.h netinet/in.h netinet/in_systm.h pthread_np.h signal.h stdbool.h stdint.h stdlib.h string.h strings.h syslog.h sys/select.h sys/socket.h sys/stat.h sys/time.h sys/wait.h unistd.h urcu.h])
+AC_CHECK_HEADERS([arpa/inet.h cap-ng.h ev.h fcntl.h math.h netinet/in_systm.h pthread_np.h signal.h stdbool.h syslog.h sys/select.h sys/socket.h sys/time.h sys/wait.h urcu.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE

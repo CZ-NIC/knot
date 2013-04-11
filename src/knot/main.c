@@ -19,7 +19,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <getopt.h>
-#include <limits.h>
 
 #ifdef HAVE_CAP_NG_H
 #include <cap-ng.h>
