@@ -17,6 +17,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <inttypes.h>
 #include <assert.h>
 #include <time.h>
 
@@ -77,7 +78,8 @@ static uint8_t* tsig_rdata_seek(const knot_rrset_t *rr, tsig_off_t id, size_t nb
 	/* Check if fixed part is readable. */
 	uint16_t lim = rrset_rdata_item_size(rr, 0);
 	if (lim < TSIG_NAMELEN + 5 * sizeof(uint16_t)) {
-		dbg_tsig("TSIG: rdata: not enough items (has %u, min %lu).\n",
+		dbg_tsig("TSIG: rdata: not enough items "
+		         "(has %"PRIu16", min %"PRIu16").\n",
 		         lim, TSIG_NAMELEN + 5 * sizeof(uint16_t));
 		return NULL;
 	}
@@ -227,7 +229,7 @@ int tsig_rdata_set_other_data(knot_rrset_t *tsig, uint16_t len,
                               const uint8_t *other_data)
 {
 	if (len > TSIG_OTHER_MAXLEN) {
-		dbg_tsig("TSIG: rdata: other len > %luB\n", TSIG_OTHER_MAXLEN);
+		dbg_tsig("TSIG: rdata: other len > %"PRIu16"B\n", TSIG_OTHER_MAXLEN);
 		return KNOT_EINVAL;
 	}
 
