@@ -66,11 +66,13 @@ void knot_rdata_dump(const knot_rrset_t *rrset, size_t rdata_pos)
 //#endif
 //}
 
+#if defined(KNOT_ZONE_DEBUG)
 static void knot_node_dump_from_tree(knot_node_t *node, void *data)
 {
 	UNUSED(data);
 	knot_node_dump(node);
 }
+#endif
 
 void knot_node_dump(knot_node_t *node)
 {
