@@ -2785,3 +2785,11 @@ const knot_dname_t *knot_zone_contents_find_dname_in_rdata(
 	}
 }
 
+unsigned knot_zone_serial(const knot_zone_contents_t *zone)
+{
+	if (!zone) return 0;
+	const knot_rrset_t *soa = NULL;
+	soa = knot_node_rrset(knot_zone_contents_apex(zone), KNOT_RRTYPE_SOA);
+	return knot_rrset_rdata_soa_serial(soa);
+}
+

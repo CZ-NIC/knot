@@ -505,6 +505,17 @@ int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
 
 void knot_zone_contents_insert_dname_into_table(knot_dname_t **in_dname,
                                                 hattrie_t *lookup_tree);
+
+
+/*!
+ * \brief Fetch zone serial.
+ * 
+ * \param zone Zone.
+ * 
+ * \return serial or 0
+ */
+unsigned knot_zone_serial(const knot_zone_contents_t *zone);
+
 #endif
 
 /*! @} */
