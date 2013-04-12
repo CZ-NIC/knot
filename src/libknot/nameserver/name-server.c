@@ -2491,7 +2491,7 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 	} else if (xfr->tsig_rcode != 0) {
 		dbg_ns_verb("Adding TSIG without signing, TSIG RCODE: %d.\n",
 		            xfr->tsig_rcode);
-		assert(xfr->tsig_rcode != KNOT_TSIG_RCODE_BADTIME);
+		assert(xfr->tsig_rcode != KNOT_RCODE_BADTIME);
 		// add TSIG without signing
 		assert(xfr->query != NULL);
 		assert(knot_packet_additional_rrset_count(xfr->query) > 0);

@@ -29,25 +29,60 @@
 
 #include <stdint.h>
 
-/*
- * OPCODEs
+/*!
+ * \brief Basic limits for domain names (RFC 1035).
  */
-typedef enum knot_opcode {
-	KNOT_OPCODE_QUERY  = 0, /* a standard query (QUERY) */
-	KNOT_OPCODE_IQUERY = 1, /* an inverse query (IQUERY) */
-	KNOT_OPCODE_STATUS = 2, /* a server status request (STATUS) */
-	KNOT_OPCODE_NOTIFY = 4, /* NOTIFY */
-	KNOT_OPCODE_UPDATE = 5, /* Dynamic update */
-	KNOT_OPCODE_OFFSET = 14
+typedef enum {
+	KNOT_MAX_DNAME_LENGTH = 255, /*!< 1-byte maximum. */
+	KNOT_MAX_DNAME_LABELS = 127  /*!< 1-char labels. */
+} knot_const_t;
+
+/*!
+ * \brief DNS operation codes (OPCODEs).
+ *
+ * http://www.iana.org/assignments/dns-parameters/dns-parameters.xml
+ */
+typedef enum {
+	KNOT_OPCODE_QUERY  = 0, /*!< Standard query. */
+	KNOT_OPCODE_IQUERY = 1, /*!< Inverse query. */
+	KNOT_OPCODE_STATUS = 2, /*!< Server status request. */
+	KNOT_OPCODE_NOTIFY = 4, /*!< Notify message. */
+	KNOT_OPCODE_UPDATE = 5  /*!< Dynamic update. */
 } knot_opcode_t;
 
 /*!
- * \brief Query types (internal use only).
+ * \brief DNS reply codes (RCODEs).
+ *
+ * http://www.iana.org/assignments/dns-parameters/dns-parameters.xml
+ */
+typedef enum {
+	KNOT_RCODE_NOERROR  =  0, /*!< No error. */
+	KNOT_RCODE_FORMERR  =  1, /*!< Format error. */
+	KNOT_RCODE_SERVFAIL =  2, /*!< Server failure. */
+	KNOT_RCODE_NXDOMAIN =  3, /*!< Non-existend domain. */
+	KNOT_RCODE_NOTIMPL  =  4, /*!< Not implemented. */
+	KNOT_RCODE_REFUSED  =  5, /*!< Refused. */
+	KNOT_RCODE_YXDOMAIN =  6, /*!< Name should not exist. */
+	KNOT_RCODE_YXRRSET  =  7, /*!< RR set should not exist. */
+	KNOT_RCODE_NXRRSET  =  8, /*!< RR set does not exist. */
+	KNOT_RCODE_NOTAUTH  =  9, /*!< Server not authoritative. */
+	KNOT_RCODE_NOTZONE  = 10, /*!< Name is not inside zone. */
+	KNOT_RCODE_BADSIG   = 16, /*!< TSIG signature failed. */
+	KNOT_RCODE_BADKEY   = 17, /*!< Key is not supported. */
+	KNOT_RCODE_BADTIME  = 18, /*!< Signature out of time window. */
+	KNOT_RCODE_BADMODE  = 19, /*!< Bad TKEY mode. */
+	KNOT_RCODE_BADNAME  = 20, /*!< Duplicate key name. */
+	KNOT_RCODE_BADALG   = 21, /*!< Algorithm not supported. */
+	KNOT_RCODE_BADTRUNC = 22  /*!< Bad truncation. */
+} knot_rcode_t;
+
+/*!
+ * \brief DNS query types (internal use only).
  *
  * This type encompasses the different query types distinguished by both the
  * OPCODE and the QTYPE.
  */
-typedef enum knot_packet_type {
+typedef enum {
 	KNOT_QUERY_INVALID,   /*!< Invalid query. */
 	KNOT_QUERY_NORMAL,    /*!< Normal query. */
 	KNOT_QUERY_AXFR,      /*!< Request for AXFR transfer. */
@@ -60,37 +95,6 @@ typedef enum knot_packet_type {
 	KNOT_RESPONSE_NOTIFY, /*!< NOTIFY response. */
 	KNOT_RESPONSE_UPDATE  /*!< Dynamic update response. */
 } knot_packet_type_t;
-
-/*
- * RCODEs
- */
-typedef enum knot_rcode {
-	KNOT_RCODE_NOERROR  = 0,  /* No error condition */
-	KNOT_RCODE_FORMERR  = 1,  /* Format error */
-	KNOT_RCODE_SERVFAIL = 2,  /* Server failure */
-	KNOT_RCODE_NXDOMAIN = 3,  /* Name Error */
-	KNOT_RCODE_NOTIMPL  = 4,  /* Not implemented */
-	KNOT_RCODE_REFUSED  = 5,  /* Refused */
-	KNOT_RCODE_YXDOMAIN = 6,  /* name should not exist */
-	KNOT_RCODE_YXRRSET  = 7,  /* rrset should not exist */
-	KNOT_RCODE_NXRRSET  = 8,  /* rrset does not exist */
-	KNOT_RCODE_NOTAUTH  = 9,  /* server not authoritative */
-	KNOT_RCODE_NOTZONE  = 10,  /* name not inside zone */
-} knot_rcode_t;
-
-typedef enum knot_tsig_rcode {
-	KNOT_TSIG_RCODE_BADSIG  = 16,
-	KNOT_TSIG_RCODE_BADKEY  = 17,
-	KNOT_TSIG_RCODE_BADTIME = 18
-} knot_tsig_rcode_t;
-
-/*
- * Other
- */
-typedef enum knot_const {
-	KNOT_MAX_DNAME_LENGTH = 255,
-	KNOT_MAX_DNAME_LABELS = 127  // 1-char labels
-} knot_const_t;
 
 #endif /* _KNOT_CONSTS_H_ */
 

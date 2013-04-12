@@ -1489,7 +1489,7 @@ static int zones_check_tsig_query(const knot_zone_t *zone,
 				// no key configured for zone, return BADKEY
 				dbg_zones_verb("TSIG used, but not configured "
 				               "for this zone, ret=BADKEY.\n");
-				*tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
+				*tsig_rcode = KNOT_RCODE_BADKEY;
 				*rcode = KNOT_RCODE_NOTAUTH;
 				ret = KNOT_TSIG_EBADKEY;
 			}
@@ -2121,7 +2121,7 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 			// treat as BADKEY error
 			/*! \todo Is this OK?? */
 			rcode = KNOT_RCODE_NOTAUTH;
-			tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
+			tsig_rcode = KNOT_RCODE_BADKEY;
 			ret = KNOT_TSIG_EBADKEY;
 		} else {
 			dbg_zones_verb("Checking TSIG in query.\n");
@@ -2231,7 +2231,7 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 
 				// then add the TSIG to the wire format
 				if (ret == KNOT_EOK &&
-				    tsig_rcode != KNOT_TSIG_RCODE_BADTIME) {
+				    tsig_rcode != KNOT_RCODE_BADTIME) {
 					dbg_zones_verb("Adding TSIG.\n");
 					ret = knot_tsig_add(resp_wire,
 					                    &answer_size,
@@ -2242,7 +2242,7 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 					*rsize = answer_size;
 
 				} else if (tsig_rcode
-				           == KNOT_TSIG_RCODE_BADTIME) {
+				           == KNOT_RCODE_BADTIME) {
 					dbg_zones_verb("Signing error resp.\n");
 					//*rsize = answer_size;
 
@@ -2332,11 +2332,11 @@ int zones_process_update(knot_nameserver_t *nameserver,
 	const knot_zone_contents_t *contents = knot_zone_contents(zone);
 	if (zone && (knot_zone_flags(zone) & KNOT_ZONE_DISCARDED)) {
 		rcode = KNOT_RCODE_SERVFAIL; /* It's ok, temporarily. */
-		tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
+		tsig_rcode = KNOT_RCODE_BADKEY;
 		ret = KNOT_ENOZONE;
 	} else if (!zone || !contents) {     /* Treat as BADKEY. */
 		rcode = KNOT_RCODE_NOTAUTH;
-		tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
+		tsig_rcode = KNOT_RCODE_BADKEY;
 		ret = KNOT_TSIG_EBADKEY;
 		dbg_zones_verb("No zone or empty, refusing UPDATE.\n");
 	}
@@ -2419,7 +2419,7 @@ int zones_process_update(knot_nameserver_t *nameserver,
 	}
 	
 	/* Just add TSIG RR on most errors. */
-	if (tsig_rcode != 0 && tsig_rcode != KNOT_TSIG_RCODE_BADTIME) {
+	if (tsig_rcode != 0 && tsig_rcode != KNOT_RCODE_BADTIME) {
 		ret = knot_tsig_add(resp_wire, rsize, rsize_max,
 		                    tsig_rcode, tsig_rr);
 		dbg_zones_verb("Adding TSIG = %s\n", knot_strerror(ret));
@@ -3307,7 +3307,7 @@ int zones_verify_tsig_query(const knot_packet_t *query,
 		 *               or some other error.
 		 */
 		*rcode = KNOT_RCODE_NOTAUTH;
-		*tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
+		*tsig_rcode = KNOT_RCODE_BADKEY;
 		return KNOT_TSIG_EBADKEY;
 	}
 
@@ -3323,7 +3323,7 @@ int zones_verify_tsig_query(const knot_packet_t *query,
 		dbg_zones_verb("Found claimed TSIG key for comparison\n");
 	} else {
 		*rcode = KNOT_RCODE_NOTAUTH;
-		*tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
+		*tsig_rcode = KNOT_RCODE_BADKEY;
 		return KNOT_TSIG_EBADKEY;
 	}
 
@@ -3369,15 +3369,15 @@ int zones_verify_tsig_query(const knot_packet_t *query,
 			*rcode = KNOT_RCODE_NOERROR;
 			break;
 		case KNOT_TSIG_EBADKEY:
-			*tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
+			*tsig_rcode = KNOT_RCODE_BADKEY;
 			*rcode = KNOT_RCODE_NOTAUTH;
 			break;
 		case KNOT_TSIG_EBADSIG:
-			*tsig_rcode = KNOT_TSIG_RCODE_BADSIG;
+			*tsig_rcode = KNOT_RCODE_BADSIG;
 			*rcode = KNOT_RCODE_NOTAUTH;
 			break;
 		case KNOT_TSIG_EBADTIME:
-			*tsig_rcode = KNOT_TSIG_RCODE_BADTIME;
+			*tsig_rcode = KNOT_RCODE_BADTIME;
 			// store the time signed from the query
 			*tsig_prev_time_signed = tsig_rdata_time_signed(tsig_rr);
 			*rcode = KNOT_RCODE_NOTAUTH;

@@ -838,7 +838,7 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode, char **tag)
 		if (tsig_alg_digest_length(alg) == 0) {
 			*rcode = KNOT_RCODE_NOTAUTH;
 			xfr->tsig_key = NULL;
-			xfr->tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
+			xfr->tsig_rcode = KNOT_RCODE_BADKEY;
 			xfr->tsig_prev_time_signed =
 			                tsig_rdata_time_signed(tsig_rr);
 			return KNOT_TSIG_EBADKEY;
@@ -858,7 +858,7 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode, char **tag)
 		        ", treating as bad key\n");
 		*rcode = KNOT_RCODE_NOTAUTH;
 		ret = KNOT_TSIG_EBADKEY;
-		xfr->tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
+		xfr->tsig_rcode = KNOT_RCODE_BADKEY;
 		key = NULL; /* Invalidate, ret already set to BADKEY */
 	}
 	
@@ -896,17 +896,17 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode, char **tag)
 			*rcode = KNOT_RCODE_NOERROR;
 			break;
 		case KNOT_TSIG_EBADKEY:
-			xfr->tsig_rcode = KNOT_TSIG_RCODE_BADKEY;
+			xfr->tsig_rcode = KNOT_RCODE_BADKEY;
 			xfr->tsig_key = NULL;
 			*rcode = KNOT_RCODE_NOTAUTH;
 			break;
 		case KNOT_TSIG_EBADSIG:
-			xfr->tsig_rcode = KNOT_TSIG_RCODE_BADSIG;
+			xfr->tsig_rcode = KNOT_RCODE_BADSIG;
 			xfr->tsig_key = NULL;
 			*rcode = KNOT_RCODE_NOTAUTH;
 			break;
 		case KNOT_TSIG_EBADTIME:
-			xfr->tsig_rcode = KNOT_TSIG_RCODE_BADTIME;
+			xfr->tsig_rcode = KNOT_RCODE_BADTIME;
 			// store the time signed from the query
 			assert(tsig_rr != NULL);
 			xfr->tsig_prev_time_signed =

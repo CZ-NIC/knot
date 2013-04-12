@@ -470,13 +470,13 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 
 	/* Create rdata for TSIG RR. */
 	tsig_create_rdata(tmp_tsig, tsig_alg_digest_length(key->algorithm), 
-	                  (tsig_rcode == KNOT_TSIG_RCODE_BADTIME) 
+	                  (tsig_rcode == KNOT_RCODE_BADTIME) 
 	                    ? tsig_rcode
 	                    : 0);
 	tsig_rdata_set_alg(tmp_tsig, key->algorithm);
 
 	/* Distinguish BADTIME response. */
-	if (tsig_rcode == KNOT_TSIG_RCODE_BADTIME) {
+	if (tsig_rcode == KNOT_RCODE_BADTIME) {
 		/* Set client's time signed into the time signed field. */
 		tsig_rdata_set_time_signed(tmp_tsig, request_time_signed);
 
@@ -863,7 +863,7 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 		return KNOT_ERROR;
 	}
 	
-	assert(tsig_rcode != KNOT_TSIG_RCODE_BADTIME);
+	assert(tsig_rcode != KNOT_RCODE_BADTIME);
 	tsig_create_rdata(tmp_tsig, 0, tsig_rcode); /* No digest. */
 
 	tsig_rdata_set_alg_name(tmp_tsig, alg_name);
