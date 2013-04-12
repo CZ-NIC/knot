@@ -29,6 +29,7 @@
 
 #ifndef _KNOTD_COMMON_PRINT_H_
 #define _KNOTD_COMMON_PRINT_H_
+#include <sys/time.h>
 
 typedef int (*printf_t)(const char *fmt, ...);
 
@@ -66,6 +67,16 @@ void bit_print(const char *data, int length);
  * \param print_handler Handler for printing.
  */
 void bit_printf(const char *data, int length, printf_t print_handler);
+
+/*!
+ * \brief Get time diff in miliseconds.
+ *
+ * \param begin
+ * \param end
+ *
+ * \return time diff
+ */
+float time_diff(struct timeval *begin, struct timeval *end);
 
 #endif /* _KNOTD_COMMON_PRINT_H_ */
 

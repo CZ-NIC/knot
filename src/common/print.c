@@ -53,3 +53,10 @@ void bit_print(const char *data, int length)
 {
 	bit_printf(data, length, &printf);
 }
+
+float time_diff(struct timeval *begin, struct timeval *end)
+{
+	return (end->tv_sec - begin->tv_sec) * 1000 +
+	       (end->tv_usec - begin->tv_usec) / 1000.0;
+	
+}
