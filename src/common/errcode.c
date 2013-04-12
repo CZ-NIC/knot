@@ -64,7 +64,7 @@ const error_table_t knot_error_msgs[] = {
 	{KNOT_ENOXFR, "Transfer was not sent."},
 	{KNOT_ENOIXFR, "Transfer is not IXFR (is in AXFR format)."},
 	{KNOT_EXFRREFUSED, "Zone transfer refused by the server."},
-	{KNOT_EXFRDENIED, "Not allowed."},
+	{KNOT_EDENIED, "Not allowed."},
 	{KNOT_ECONN, "Connection reset."},
 	{KNOT_EIXFRSPACE, "IXFR reply did not fit in."},
 	{KNOT_ECNAME, "CNAME loop found in zone."},

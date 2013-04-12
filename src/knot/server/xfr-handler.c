@@ -837,7 +837,7 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode, char **tag)
 		// return REFUSED
 		xfr->tsig_key = 0;
 		*rcode = KNOT_RCODE_REFUSED;
-		return KNOT_EXFRDENIED;
+		return KNOT_EDENIED;
 	}
 	if (tsig_rr) {
 		tsig_algorithm_t alg = tsig_rdata_alg(tsig_rr);
@@ -1187,7 +1187,7 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *rq)
 	
 	/* Announce. */
 	switch (ret) {
-	case KNOT_EXFRDENIED:
+	case KNOT_EDENIED:
 		log_server_info("%s TSIG required, but not found in query.\n",
 		                rq->msg);
 		break;

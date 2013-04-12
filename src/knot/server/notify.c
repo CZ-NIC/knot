@@ -194,7 +194,7 @@ static int notify_check_and_schedule(knot_nameserver_t *nameserver,
 	if (from) {
 		if (acl_match(zd->notify_in, from, 0) == ACL_DENY) {
 			/* rfc1996: Ignore request and report incident. */
-			return KNOT_EXFRDENIED;
+			return KNOT_EDENIED;
 		}
 	}
 
@@ -276,8 +276,6 @@ int notify_process_request(knot_nameserver_t *ns,
 		if (soa_rr && knot_rrset_type(soa_rr) == KNOT_RRTYPE_SOA) {
 			serial = knot_rrset_rdata_soa_serial(soa_rr);
 		}
-	
-		
 	}
 	int rcode = KNOT_RCODE_NOERROR;
 	switch (ret) {
@@ -296,7 +294,6 @@ int notify_process_request(knot_nameserver_t *ns,
 		ret = KNOT_EOK; /* Send response. */
 	} else {
 		log_server_info(NOTIFY_MSG NOTIFY_XMSG "\n", qstr, fromstr, serial);
-		
 	}
 	free(qstr);
 	free(fromstr);
