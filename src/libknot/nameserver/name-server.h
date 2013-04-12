@@ -37,6 +37,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <sys/time.h>
 
 #include "zone/zonedb.h"
 #include "edns.h"
@@ -90,6 +91,7 @@ typedef struct knot_ns_xfr {
 	xfr_callback_t send;
 	xfr_callback_t recv;
 	int session;
+	struct timeval t_start, t_end;
 	
 	/*!
 	 * XFR-out: Output buffer.

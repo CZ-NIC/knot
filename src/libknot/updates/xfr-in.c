@@ -1075,6 +1075,7 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 	 *        changesets structure, or in some place persistent between
 	 *        calls to this function.
 	 */
+	knot_changeset_t *cur = (*chs)->sets + ((*chs)->count - 1);
 	if (state != -1) {
 		dbg_xfrin_detail("State is not -1, deciding...\n");
 		// there should be at least one started changeset right now
@@ -1085,9 +1086,9 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 		}
 		
 		// a changeset should be created only when there is a SOA
-		assert((*chs)->sets[(*chs)->count - 1].soa_from != NULL);
+		assert(cur->soa_from != NULL);
 		
-		if ((*chs)->sets[(*chs)->count - 1].soa_to == NULL) {
+		if (cur->soa_to == NULL) {
 			state = KNOT_CHANGESET_REMOVE;
 		} else {
 			state = KNOT_CHANGESET_ADD;
@@ -1143,16 +1144,17 @@ dbg_xfrin_exec_verb(
 			} else {
 				// normal SOA, start new changeset
 				(*chs)->count++;
+				++cur;
 				if ((ret = knot_changesets_check_size(*chs))
 				     != KNOT_EOK) {
 					(*chs)->count--;
+					--cur;
 					knot_rrset_deep_free(&rr, 1, 1);
 					goto cleanup;
 				}
 						
-				ret = knot_changeset_add_soa(
-					&(*chs)->sets[(*chs)->count - 1], rr, 
-					KNOT_CHANGESET_REMOVE);
+				ret = knot_changeset_add_soa(cur, rr,
+				                             KNOT_CHANGESET_REMOVE);
 				if (ret != KNOT_EOK) {
 					knot_rrset_deep_free(&rr, 1, 1);
 					goto cleanup;
@@ -1167,12 +1169,10 @@ dbg_xfrin_exec_verb(
 			// ADD
 			if (knot_rrset_type(rr) == KNOT_RRTYPE_SOA) {
 				// we should not be here if soa_from is not set
-				assert((*chs)->sets[(*chs)->count - 1].soa_from
-				       != NULL);
+				assert(cur->soa_from != NULL);
 				
-				ret = knot_changeset_add_soa(
-					&(*chs)->sets[(*chs)->count - 1], rr, 
-					KNOT_CHANGESET_ADD);
+				ret = knot_changeset_add_soa(cur, rr, 
+				                             KNOT_CHANGESET_ADD);
 				if (ret != KNOT_EOK) {
 					knot_rrset_deep_free(&rr, 1, 1);
 					goto cleanup;
@@ -1182,9 +1182,9 @@ dbg_xfrin_exec_verb(
 			} else {
 				// just add the RR to the REMOVE part and
 				// continue
-				if ((ret = knot_changeset_add_new_rr(
-				         &(*chs)->sets[(*chs)->count - 1], rr,
-				         KNOT_CHANGESET_REMOVE)) != KNOT_EOK) {
+				ret = knot_changeset_add_new_rr(cur, rr,
+				                                KNOT_CHANGESET_REMOVE);
+				if (ret != KNOT_EOK) {
 					knot_rrset_deep_free(&rr, 1, 1);
 					goto cleanup;
 				}
@@ -1194,14 +1194,18 @@ dbg_xfrin_exec_verb(
 			// if the next RR is SOA change to state -1 and do not
 			// parse next RR
 			if (knot_rrset_type(rr) == KNOT_RRTYPE_SOA) {
+				log_zone_info("%s serial %u -> %u.\n",
+				              xfr->msg,
+				              knot_rrset_rdata_soa_serial(cur->soa_from),
+				              knot_rrset_rdata_soa_serial(cur->soa_to));
 				state = -1;
 				continue;
 			} else {
 				
 				// just add the RR to the ADD part and continue
-				if ((ret = knot_changeset_add_new_rr(
-				            &(*chs)->sets[(*chs)->count - 1], rr,
-				            KNOT_CHANGESET_ADD)) != KNOT_EOK) {
+				ret = knot_changeset_add_new_rr(cur, rr,
+				                                KNOT_CHANGESET_ADD);
+				if (ret != KNOT_EOK) {
 					knot_rrset_deep_free(&rr, 1, 1);
 					goto cleanup;
 				}

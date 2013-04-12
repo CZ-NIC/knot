@@ -52,21 +52,21 @@
 /* Messages */
 
 static knot_lookup_table_t xfr_type_table[] = {
-        { XFR_TYPE_AIN, "Incoming AXFR transfer of '%s' with %s:" },
-        { XFR_TYPE_IIN, "Incoming IXFR transfer of '%s' with %s:" },
-        { XFR_TYPE_AOUT, "Outgoing AXFR transfer of '%s' to %s:" },
-        { XFR_TYPE_IOUT, "Outgoing IXFR transfer of '%s' to %s:" },
-        { XFR_TYPE_NOTIFY, "NOTIFY query of '%s' to %s:" },
+        { XFR_TYPE_AIN, "Incoming AXFR of '%s' with %s:" },
+        { XFR_TYPE_IIN, "Incoming IXFR of '%s' with %s:" },
+        { XFR_TYPE_AOUT, "Outgoing AXFR of '%s' to %s:" },
+        { XFR_TYPE_IOUT, "Outgoing IXFR of '%s' to %s:" },
+        { XFR_TYPE_NOTIFY, "NOTIFY of '%s' to %s:" },
         { XFR_TYPE_SOA, "SOA query of '%s' to %s:" },
         { XFR_TYPE_FORWARD, "UPDATE forwarded query of '%s' to %s:" },
         { XFR_TYPE_AIN, NULL }
 };
 static knot_lookup_table_t xfr_result_table[] = {
-        { XFR_TYPE_AIN, "Started." },
-        { XFR_TYPE_IIN, "Started." },
-        { XFR_TYPE_SOA, "Query issued." },
-        { XFR_TYPE_NOTIFY, "Query issued." },
-        { XFR_TYPE_FORWARD, "Forwarded query." },
+        { XFR_TYPE_AIN, "Started" },
+        { XFR_TYPE_IIN, "Started" },
+        { XFR_TYPE_SOA, "Query issued" },
+        { XFR_TYPE_NOTIFY, "Query issued" },
+        { XFR_TYPE_FORWARD, "Forwarded query" },
         { XFR_TYPE_AIN, NULL }
 };
 
@@ -124,6 +124,8 @@ static int xfr_answer_ixfr(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 	ret = ns_ixfr_load_serials(xfr, &serial_from, &serial_to);
 	dbg_xfr_verb("xfr: loading changesets for IXFR %u-%u\n",
 	             serial_from, serial_to);
+	log_server_info("%s Started (serial %u -> %u).\n",
+	                xfr->msg, serial_from, serial_to);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -133,9 +135,8 @@ static int xfr_answer_ixfr(knot_nameserver_t *ns, knot_ns_xfr_t *xfr)
 	if (chsload != KNOT_EOK) {
 		/* History cannot be reconstructed, fallback to AXFR. */
 		if (chsload == KNOT_ERANGE || chsload == KNOT_ENOENT) {
-			log_server_info("%s Failed to load data from journal: "
-			                " Incomplete history. "
-			                "Fallback to AXFR.\n",
+			log_server_info("%s Incomplete history, "
+			                "fallback to AXFR.\n",
 			                xfr->msg);
 			xfr->type = XFR_TYPE_AOUT;
 			xfr->msg[XFR_MSG_DLTTR] = 'A';
@@ -329,7 +330,8 @@ static int xfr_task_expire(fdset_t *fds, knot_ns_xfr_t *rq)
 			notify_create_request(contents, rq->wire, &rq->wire_size);
 			fdset_set_watchdog(fds, rq->session, NOTIFY_TIMEOUT);
 			rq->send(rq->session, &rq->addr, rq->wire, rq->wire_size);
-			log_zone_info("%s Query issued.\n", rq->msg);
+			log_zone_info("%s Query issued (serial %u).\n",
+			              rq->msg, knot_zone_serial(contents));
 			rq->packet_nr = knot_wire_get_id(rq->wire);
 			rcu_read_unlock();
 			return KNOT_EOK; /* Keep state. */
@@ -416,6 +418,7 @@ static int xfr_task_start(knot_ns_xfr_t *rq)
 	}
 	
 	/* Start transfer. */
+	gettimeofday(&rq->t_start, NULL);
 	if (rq->wire_size > 0) {
 		ret = rq->send(rq->session, &rq->addr, rq->wire, rq->wire_size);
 		if (ret != rq->wire_size) {
@@ -510,9 +513,9 @@ static int xfr_task_process(xfrworker_t *w, knot_ns_xfr_t* rq, uint8_t *buf, siz
 
 	if (ret == KNOT_EOK) {
 		xfr_task_set(w, rq->session, rq);
-		log_server_info("%s %s\n", rq->msg, msg);
+		log_server_info("%s %s.\n", rq->msg, msg);
 	} else {
-		log_server_error("%s %s\n", rq->msg, msg);
+		log_server_error("%s %s.\n", rq->msg, msg);
 	}
 
 	rcu_read_unlock();
@@ -529,10 +532,7 @@ static int xfr_task_finalize(xfrworker_t *w, knot_ns_xfr_t *rq)
 		ret = zones_save_zone(rq);
 		if (ret == KNOT_EOK) {
 			ret = knot_ns_switch_zone(ns, rq);
-			if (ret == KNOT_EOK) {
-				log_zone_info("%s Finished.\n", rq->msg);
-				rq->new_contents = NULL; /* Do not free. */
-			} else {
+			if (ret != KNOT_EOK) {
 				log_zone_error("%s Failed to switch in-memory "
 				               "zone - %s\n",  rq->msg,
 				               knot_strerror(ret));
@@ -548,7 +548,17 @@ static int xfr_task_finalize(xfrworker_t *w, knot_ns_xfr_t *rq)
 		                                    rq->msg, 
 		                                    XFR_TYPE_IIN);
 		rq->data = NULL; /* Freed or applied in prev function. */
-		rq->new_contents = NULL; /* Do not free */
+	}
+	
+	if (ret == KNOT_EOK) {
+		struct timeval t_end;
+		gettimeofday(&t_end, NULL);
+		log_zone_info("%s Finished in %.02fs "
+		              "(finalization %.02fs).\n",
+		              rq->msg,
+		              time_diff(&rq->t_start, &t_end) / 1000.0,
+		              time_diff(&rq->t_end, &t_end) / 1000.0);
+		rq->new_contents = NULL; /* Do not free. */
 	}
 
 	return ret;
@@ -628,7 +638,9 @@ static int xfr_task_resp(xfrworker_t *w, knot_ns_xfr_t *rq)
 	
 	knot_packet_free(&re);
 	if (ret == KNOT_EUPTODATE) {  /* Check up-to-date zone. */
-		log_server_info("%s %s\n", rq->msg, knot_strerror(ret));
+		log_server_info("%s %s (serial %u)\n", rq->msg,
+		                knot_strerror(ret),
+		                knot_zone_serial(knot_zone_contents(rq->zone)));
 		ret = KNOT_ECONNREFUSED;
 	} else if (ret == KNOT_EOK) { /* Disconnect if everything went well. */
 		ret = KNOT_ECONNREFUSED; 
@@ -700,36 +712,30 @@ static int xfr_task_xfer(xfrworker_t *w, knot_ns_xfr_t *rq)
 	}
 	
 	rcu_read_unlock();
-
-	/* Check finished zone (ret < 0 is error, ret > 0 is success). */
-	if (ret != KNOT_EOK) {
-
-		/* Only for successful xfers. */
-		if (ret > 0) {
-			ret = xfr_task_finalize(w, rq);
-			
-			/* AXFR bootstrap timeout. */
-			rcu_read_lock();
-			zonedata_t *zd = (zonedata_t *)knot_zone_data(rq->zone);
-			if (ret != KNOT_EOK && !knot_zone_contents(rq->zone)) {
-				int tmr_s = AXFR_BOOTSTRAP_RETRY * tls_rand();
-				zd->xfr_in.bootstrap_retry = tmr_s;
-				log_zone_info("%s Next attempt to bootstrap "
-				              "in %d seconds.\n",
-				              rq->msg, tmr_s / 1000);
-			} else {
-				zones_schedule_notify(rq->zone); /* NOTIFY */
-			}
-
-			/* Update REFRESH/RETRY */
-			zones_schedule_refresh(rq->zone);
-			rcu_read_unlock();
-		}
-		
-		/* Disconnect. */
-		return KNOT_ECONNREFUSED; /* Make it disconnect. */
-	}
 	
+	/* Only for successful xfers. */
+	if (ret > 0) {
+		ret = xfr_task_finalize(w, rq);
+
+		/* AXFR bootstrap timeout. */
+		rcu_read_lock();
+		zonedata_t *zd = (zonedata_t *)knot_zone_data(rq->zone);
+		if (ret != KNOT_EOK && !knot_zone_contents(rq->zone)) {
+			int tmr_s = AXFR_BOOTSTRAP_RETRY * tls_rand();
+			zd->xfr_in.bootstrap_retry = tmr_s;
+			log_zone_info("%s Next attempt to bootstrap "
+			              "in %d seconds.\n",
+			              rq->msg, tmr_s / 1000);
+		} else {
+			zones_schedule_notify(rq->zone); /* NOTIFY */
+		}
+
+		/* Update REFRESH/RETRY */
+		zones_schedule_refresh(rq->zone);
+		rcu_read_unlock();
+		ret = KNOT_ECONNREFUSED; /* Disconnect */
+	}
+
 	return ret;
 }
 
@@ -1142,6 +1148,7 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *rq)
 	}
 	
 	rcu_read_lock();
+	gettimeofday(&rq->t_start, NULL);
 	int ret = knot_ns_init_xfr(ns, rq);
 	
 	/* Use the QNAME as the zone name. */
@@ -1179,7 +1186,6 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *rq)
 	}
 	
 	/* Announce. */
-	log_server_info("%s Started.\n", rq->msg);
 	switch (ret) {
 	case KNOT_EXFRDENIED:
 		log_server_info("%s TSIG required, but not found in query.\n",
@@ -1190,9 +1196,12 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *rq)
 	}
 	
 	/* Finally, answer AXFR/IXFR. */
+	const knot_zone_contents_t *cont = knot_zone_contents(rq->zone);
 	if (ret == KNOT_EOK) {
 		switch(rq->type) {
 		case XFR_TYPE_AOUT:
+			log_server_info("%s Started (serial %u).\n", rq->msg,
+			                knot_zone_serial(cont));
 			ret = xfr_answer_axfr(ns, rq);
 			break;
 		case XFR_TYPE_IOUT:
@@ -1210,10 +1219,12 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *rq)
 	}
 	
 	/* Check results. */
+	gettimeofday(&rq->t_end, NULL);
 	if (ret != KNOT_EOK) {
 		log_server_notice("%s %s\n", rq->msg, knot_strerror(ret));
 	} else {
-		log_server_info("%s Finished.\n", rq->msg);
+		log_server_info("%s Finished in %.02fs.\n",
+		                rq->msg, time_diff(&rq->t_start, &rq->t_end));
 	}
 	
 	/* Cleanup. */

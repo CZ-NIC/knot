@@ -34,6 +34,11 @@
 #include "knot/other/debug.h"
 #include "knot/server/server.h"
 
+
+/* Messages. */
+#define NOTIFY_MSG "NOTIFY of '%s' from %s: "
+#define NOTIFY_XMSG "received serial %u."
+
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
@@ -258,7 +263,7 @@ int notify_process_request(knot_nameserver_t *ns,
 		return KNOT_EOK;
 	}
 
-	// find the zone
+	/* Process notification. */
 	rcu_read_lock();
 	ret = KNOT_ENOZONE;
 	unsigned serial = 0;
@@ -266,13 +271,12 @@ int notify_process_request(knot_nameserver_t *ns,
 	const knot_zone_t *z = knot_zonedb_find_zone_for_name(ns->zone_db, qname);
 	if (z != NULL) {
 		ret = notify_check_and_schedule(ns, z, from);
-		knot_zone_contents_t *cont = knot_zone_get_contents(z);
-		if (cont) {
-			const knot_rrset_t *apex = NULL;
-			apex = knot_node_rrset(knot_zone_contents_apex(cont),
-			                            KNOT_RRTYPE_SOA);
-			serial = knot_rrset_rdata_soa_serial(apex);
+		const knot_rrset_t *soa_rr = NULL;
+		soa_rr = knot_packet_answer_rrset(notify, 0);
+		if (soa_rr && knot_rrset_type(soa_rr) == KNOT_RRTYPE_SOA) {
+			serial = knot_rrset_rdata_soa_serial(soa_rr);
 		}
+	
 		
 	}
 	int rcode = KNOT_RCODE_NOERROR;
@@ -282,16 +286,17 @@ int notify_process_request(knot_nameserver_t *ns,
 	default: break;
 	}
 	
-	const char* fmt = "NOTIFY query of '%s' SOA=%u from %s: %s\n";
+	/* Format resulting log message. */
 	char *qstr = knot_dname_to_str(qname);
 	char *fromstr = xfr_remote_str(from, NULL);
 	if (rcode != KNOT_RCODE_NOERROR) {
 		knot_ns_error_response_from_query(ns, notify, KNOT_RCODE_REFUSED,
 		                                  buffer, size);
-		log_server_warning(fmt, qstr, serial, fromstr, knot_strerror(ret));
+		log_server_warning(NOTIFY_MSG "%s\n", qstr, fromstr, knot_strerror(ret));
 		ret = KNOT_EOK; /* Send response. */
 	} else {
-		log_server_info(fmt, qstr, serial, fromstr, knot_strerror(ret));
+		log_server_info(NOTIFY_MSG NOTIFY_XMSG "\n", qstr, fromstr, serial);
+		
 	}
 	free(qstr);
 	free(fromstr);

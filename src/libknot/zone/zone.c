@@ -28,6 +28,7 @@
 #include "util/debug.h"
 #include "util/utils.h"
 #include "zone/zone-contents.h"
+#include "common/descriptor.h"
 
 /*! \brief Adaptor for knot_zone_deep_free() */
 static void knot_zone_dtor(struct ref_t *p) {
@@ -271,3 +272,4 @@ void knot_zone_set_flag(knot_zone_t *zone, knot_zone_flag_t flag, unsigned on)
 		}
 	}
 }
+

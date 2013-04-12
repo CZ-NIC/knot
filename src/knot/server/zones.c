@@ -962,6 +962,9 @@ static int zones_journal_apply(knot_zone_t *zone)
 				                      &chsets->changes);
 			} else {
 				/* Switch zone immediately. */
+				log_server_info("Zone '%s' serial %u -> %u.\n",
+				                zd->conf->name,
+				                serial, knot_zone_serial(contents));
 				rcu_read_unlock();
 				apply_ret = xfrin_switch_zone(zone, contents,
 							      XFR_TYPE_IIN);
@@ -3167,7 +3170,6 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
 	/* Free changesets, but not the data. */
 	knot_free_changesets(&chs);
 	assert(ret == KNOT_EOK);
-	log_zone_info("%s Finished.\n", msgpref);
 	return KNOT_EOK;
 }
 

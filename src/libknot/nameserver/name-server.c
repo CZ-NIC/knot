@@ -2846,11 +2846,17 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 
 	// 5) put the changesets into the response while they fit in
 	for (int i = 0; i < chgsets->count; ++i) {
-		res = ns_ixfr_put_changeset(xfr, &chgsets->sets[i]);
+		knot_changeset_t *chs = chgsets->sets + i;
+		res = ns_ixfr_put_changeset(xfr, chs);
 		if (res != KNOT_EOK) {
 			// answer is sent
 			rcu_read_unlock();
 			return res;
+		} else {
+			log_zone_info("%s serial %u -> %u.\n",
+			              xfr->msg,
+			              knot_rrset_rdata_soa_serial(chs->soa_from),
+			              knot_rrset_rdata_soa_serial(chs->soa_to));
 		}
 	}
 
@@ -3973,6 +3979,9 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 
 	if (ret > 0) { // transfer finished
 		dbg_ns("ns_process_axfrin: AXFR finished, zone created.\n");
+		
+		gettimeofday(&xfr->t_end, NULL);
+		
 		/*
 		 * Adjust zone so that node count is set properly and nodes are
 		 * marked authoritative / delegation point.
@@ -3981,6 +3990,9 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 				(xfrin_constructed_zone_t *)xfr->data;
 		knot_zone_contents_t *zone = constr_zone->contents;
 		assert(zone != NULL);
+		log_zone_info("%s serial %u -> %u\n", xfr->msg,
+		              knot_zone_serial(knot_zone_contents(xfr->zone)),
+		              knot_zone_serial(zone))
 
 		dbg_ns_verb("ns_process_axfrin: adjusting zone.\n");
 		int rc = knot_zone_contents_adjust(zone, NULL, NULL, 0);
@@ -4095,6 +4107,7 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 		return ret;
 	} else if (ret > 0) {
 		dbg_ns("ns_process_ixfrin: IXFR finished\n");
+		gettimeofday(&xfr->t_end, NULL);
 
 		knot_changesets_t *chgsets = (knot_changesets_t *)xfr->data;
 		if (chgsets == NULL || chgsets->first_soa == NULL) {
