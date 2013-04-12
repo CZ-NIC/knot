@@ -597,6 +597,7 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 	/* Create trie for DNAME duplicits. */
 	context->lookup_tree = hattrie_create();
 	if (context->lookup_tree == NULL) {
+		free(context);
 		return KNOT_ENOMEM;
 	}
 	
@@ -605,8 +606,8 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 	assert(context->origin_from_config);
 	knot_dname_to_lower(context->origin_from_config);
 	/* Add first DNAME to lookup tree. */
-        knot_zone_contents_insert_dname_into_table(&context->origin_from_config,
-	                                           context->lookup_tree);	
+	knot_zone_contents_insert_dname_into_table(&context->origin_from_config,
+	                                           context->lookup_tree);
 	context->last_node = knot_node_new(context->origin_from_config,
 	                                   NULL, 0);
 	knot_dname_release(context->origin_from_config);
@@ -622,10 +623,11 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 	                                           context);
 	if (loader == NULL) {
 		dbg_zload("Could not create file loader.\n");
+		hattrie_free(context->lookup_tree);
+		free(context);
 		return KNOT_ERROR;
 	}
 	
-
 	/* Allocate new loader. */
 	zloader_t *zl = xmalloc(sizeof(zloader_t));
 	
@@ -639,8 +641,10 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 	/* Log all information for now - possibly more config options. */
 	zl->err_handler = handler_new(1, 1, 1, 1, 1);
 	if (zl->err_handler == NULL) {
-		dbg_zones("zones: zone_load: Could not create semantic "
-		          "checks handler.\n");
+		/* Not a reason to stop. */
+		log_zone_warning("Could not create semantic checks handler. "
+		                 "Semantic check skipped for zone %s\n",
+		                 origin);
 	}
 	
 	context->err_handler = zl->err_handler;
