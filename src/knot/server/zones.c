@@ -791,10 +791,16 @@ static int zones_load_changesets(const knot_zone_t *zone,
 	}
 
 	rcu_read_lock();
+	/* Check journal file existence. */
+	struct stat st;
+	if (stat(zd->conf->ixfr_db, &st) == -1) {
+		rcu_read_unlock();
+		return KNOT_ERANGE; /* Not existent, no changesets available. */
+	}
 	dbg_xfr("xfr: loading changesets for zone '%s' from serial %u to %u\n",
 	        zd->conf->name, from, to);
 	rcu_read_unlock();
-	
+
 	/* Retain journal for changeset loading. */
 	journal_t *j = journal_retain(zd->ixfr_db);
 	if (j == NULL) {
@@ -811,7 +817,7 @@ static int zones_load_changesets(const knot_zone_t *zone,
 		journal_release(j);
 		return ret;
 	}
-	
+
 	while (n != 0 && n != journal_end(j)) {
 
 		/* Check for history end. */
@@ -1413,19 +1419,17 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 static int zones_remove_zones(const knot_zonedb_t *db_new,
                               knot_zonedb_t *db_old)
 {
-	const knot_zone_t **new_zones = knot_zonedb_zones(db_new);
-	if (new_zones == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	for (int i = 0; i < knot_zonedb_zone_count(db_new); ++i) {
+	hattrie_iter_t *i = hattrie_iter_begin(db_new->zone_tree, 0);
+	while(!hattrie_iter_finished(i)) {
+		
 		/* try to find the new zone in the old DB
 		 * if the pointers match, remove the zone from old DB
 		 */
 		/*! \todo Find better way of removing zone with given pointer.*/
+		knot_zone_t *new_zone = (knot_zone_t *)(*hattrie_iter_val(i));
 		knot_zone_t *old_zone = knot_zonedb_find_zone(
-		                        db_old, knot_zone_name(new_zones[i]));
-		if (old_zone == new_zones[i]) {
+		                        db_old, knot_zone_name(new_zone));
+		if (old_zone == new_zone) {
 dbg_zones_exec(
 			char *name = knot_dname_to_str(knot_zone_name(old_zone));
 			dbg_zones_verb("zones: zone pointers match, removing zone %s "
@@ -1449,9 +1453,10 @@ dbg_zones_exec(
 			                              knot_zone_name(old_zone));
 			assert(rm == old_zone);
 		}
+		hattrie_iter_next(i);
 	}
-
-	free(new_zones);
+	
+	hattrie_iter_free(i);
 
 	return KNOT_EOK;
 }

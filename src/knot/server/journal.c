@@ -440,11 +440,26 @@ journal_t* journal_open(const char *fn, size_t fslimit, int mode, uint16_t bflag
 		return NULL;
 	}
 	
+	/* Check for lazy mode. */
+	if (mode & JOURNAL_LAZY) {
+		dbg_journal("journal: opening journal %s lazily\n", fn);
+		journal_t *j = malloc(sizeof(journal_t));
+		if (j != NULL) {
+			memset(j, 0, sizeof(journal_t));
+			j->fd = -1;
+			j->path = strdup(fn);
+			j->fslimit = fslimit;
+			j->bflags = bflags;
+			j->refs = 1;
+		}
+		return j;
+	}
+	
 	/* Open journal file for r/w (returns error if not exists). */
 	int fd = open(fn, O_RDWR);
 	if (fd < 0) {
 		if (errno == ENOENT) {
-                	if(journal_create(fn, JOURNAL_NCOUNT) == KNOT_EOK) {
+			if(journal_create(fn, JOURNAL_NCOUNT) == KNOT_EOK) {
 				return journal_open(fn, fslimit, mode, bflags);
 			}
 		}
@@ -532,23 +547,6 @@ journal_t* journal_open(const char *fn, size_t fslimit, int mode, uint16_t bflag
 			return journal_open(fn, fslimit, mode, bflags);
 		}
 		return NULL;
-	}
-	
-	/* Check for lazy mode. */
-	if (mode & JOURNAL_LAZY) {
-		dbg_journal("journal: opening journal %s lazily\n", fn);
-		journal_t *j = malloc(sizeof(journal_t));
-		if (j != NULL) {
-			memset(j, 0, sizeof(journal_t));
-			j->fd = -1;
-			j->path = strdup(fn);
-			j->fslimit = fslimit;
-			j->bflags = bflags;
-			j->refs = 1;
-		}
-		fcntl(fd, F_SETLK, &fl);
-		close(fd);
-		return j;
 	}
 
 	/* Read maximum number of entries. */
