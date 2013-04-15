@@ -1247,8 +1247,8 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *rq)
 	free(rq->zname);
 	
 	/* Free request. */
-	xfr_task_free(rq);
 	rcu_read_unlock();
+	xfr_task_free(rq);
 	return ret;
 }
 

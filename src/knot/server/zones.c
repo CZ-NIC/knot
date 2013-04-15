@@ -363,12 +363,13 @@ static int zones_refresh_ev(event_t *e)
 		/* Bootstrap over TCP. */
 		rq->type = XFR_TYPE_AIN;
 		rq->flags = XFR_FLAG_TCP;
+		rcu_read_unlock();
+		evsched_event_finished(e->parent);
 		
 		/* Check transfer state. */
 		pthread_mutex_lock(&zd->lock);
 		if (zd->xfr_in.state == XFR_PENDING) {
 			pthread_mutex_unlock(&zd->lock);
-			rcu_read_unlock();
 			xfr_task_free(rq);
 			return KNOT_EOK;
 		} else {
@@ -376,8 +377,6 @@ static int zones_refresh_ev(event_t *e)
 		}
 		
 		/* Issue request. */
-		rcu_read_unlock();
-		evsched_event_finished(e->parent);
 		ret = xfr_enqueue(zd->server->xfr, rq);
 		if (ret != KNOT_EOK) {
 			xfr_task_free(rq);
@@ -1553,6 +1552,7 @@ static int zones_update_forward(int fd, knot_ns_transport_t ttype,
 	rq->query = knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
 	if (!rq->query) {
 		xfr_task_free(rq);
+		rcu_read_unlock();
 		return KNOT_ENOMEM;
 	}
 	rq->query->size = knot_packet_size(query);
@@ -1560,6 +1560,7 @@ static int zones_update_forward(int fd, knot_ns_transport_t ttype,
 	if (!rq->query->wireformat) {
 		knot_packet_free(&rq->query);
 		xfr_task_free(rq);
+		rcu_read_unlock();
 		return KNOT_ENOMEM;
 	}
 	rq->query->free_wireformat = 1;
@@ -2696,14 +2697,8 @@ int zones_save_zone(const knot_ns_xfr_t *xfr)
 	
 	/* dump the zone into text zone file */
 	int ret = zones_dump_zone_text(new_zone, zonefile);
-	if (ret != KNOT_EOK) {
-		rcu_read_unlock();
-		return KNOT_ERROR;
-	}
-	
 	rcu_read_unlock();
-	
-	return KNOT_EOK;
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
