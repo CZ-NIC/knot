@@ -92,17 +92,11 @@ static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *
 		
 		/* Process all zones in data section. */
 		const knot_rrset_t *rr = a->arg[i];
-		//REVIEW MV: had to be changed to NS, CNAME can only have on RDATA.
 		if (knot_rrset_type(rr) != KNOT_RRTYPE_NS) {
 			continue;
 		}
 		
 		for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(rr); i++) {
-			/* Skip empty nodes. */ // REWIEW MV: still relevant?
-//			if (knot_rdata_item_count(rd) < 1) {
-//				rd = knot_rrset_rdata_next(rr, rd);
-//				continue;
-//			}
 			/* Refresh zones. */
 			const knot_dname_t *dn =
 				knot_rrset_rdata_ns_name(rr, i);
@@ -686,20 +680,15 @@ int remote_query_append(knot_packet_t *qry, knot_rrset_t *data)
 	}
 	
 	uint8_t *sp = qry->wireformat + qry->size;
-//	uint8_t *np   = qry->wireformat + qry->max_size;
-	uint8_t *p = sp;
-	for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(data); i++) {
-		assert(0);
-		//TODO this function does not exist
-//		int ret = knot_query_rr_to_wire(data, i, &p, np);
-		int ret = 0;
-		if (ret == KNOT_EOK) {
-			qry->header.nscount += 1;
-		}
+	uint16_t rrs = 0;
+	size_t bsize = 0;
+	int ret = knot_rrset_to_wire(data, sp, &bsize, qry->max_size, &rrs, 0);
+	if (ret == KNOT_EOK) {
+		qry->header.nscount += rrs;
 	}
-
+	
 	/* Finalize packet size. */
-	qry->size += (p - sp);
+	qry->size += bsize;
 	return KNOT_EOK;
 }
 
@@ -731,7 +720,7 @@ knot_rrset_t* remote_build_rr(const char *k, uint16_t t)
 	}
 	
 	/* Assert K is FQDN. */
-	knot_dname_t *key = remote_dname_fqdn(k);
+	knot_dname_t *key = knot_dname_new_from_nonfqdn_str(k, strlen(k), 0);
 	if (!key) {
 		return NULL;
 	}
@@ -772,26 +761,25 @@ int remote_create_txt(knot_rrset_t *rr, const char *v, size_t v_len)
 	return KNOT_EOK;
 }
 
-int remote_create_cname(knot_rrset_t *rr, const char *d)
+int remote_create_ns(knot_rrset_t *rr, const char *d)
 {
 	if (!rr || !d) {
 		return KNOT_EINVAL;
 	}
 
 	/* Create dname. */
-	knot_dname_t *dn = remote_dname_fqdn(d);
+	knot_dname_t *dn = knot_dname_new_from_nonfqdn_str(d, strlen(d), NULL);
 	if (!dn) {
 		return KNOT_ERROR;
 	}
 	
 	/* Build RDATA. */
-	uint8_t *rdata = knot_rrset_create_rdata(rr, knot_dname_size(dn));
+	uint8_t *rdata = knot_rrset_create_rdata(rr, sizeof(knot_dname_t *));
 	if (!rdata) {
 		knot_dname_free(&dn);
 		return KNOT_ERROR;
 	}
-	memcpy(rdata, knot_dname_name(dn), knot_dname_size(dn));
-	knot_dname_free(&dn);
+	memcpy(rdata, &dn, sizeof(knot_dname_t *));
 	
 	return KNOT_EOK;
 }
@@ -816,19 +804,3 @@ int remote_print_txt(const knot_rrset_t *rr, uint16_t i)
 	}
 	return KNOT_EOK;
 }
-
-knot_dname_t* remote_dname_fqdn(const char *k)
-{
-	/*! \todo #2035 knot_dname_new_from_str() should ensure final '.' */
-	knot_dname_t *key = NULL;
-	size_t key_len = strlen(k);
-	if (k[key_len - 1] != '.') {
-		char *fqdn = strcdup(k, ".");
-		key = knot_dname_new_from_str(fqdn, key_len + 1, NULL);
-		free(fqdn);
-	} else {
-		key = knot_dname_new_from_str(k, key_len, NULL);
-	}
-	return key;
-}
-

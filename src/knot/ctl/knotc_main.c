@@ -212,8 +212,8 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	knot_rrset_t *rr = remote_build_rr("data.", rrt);
 	for (int i = 0; i < argc; ++i) {
 		switch(rrt) {
-		case KNOT_RRTYPE_CNAME:
-			remote_create_cname(rr, argv[i]);
+		case KNOT_RRTYPE_NS:
+			remote_create_ns(rr, argv[i]);
 			break;
 		case KNOT_RRTYPE_TXT:
 		default:
@@ -774,12 +774,12 @@ static int cmd_reload(int argc, char *argv[], unsigned flags, int jobs)
 
 static int cmd_refresh(int argc, char *argv[], unsigned flags, int jobs)
 {
-	return cmd_remote("refresh", KNOT_RRTYPE_CNAME, argc, argv);
+	return cmd_remote("refresh", KNOT_RRTYPE_NS, argc, argv);
 }
 
 static int cmd_flush(int argc, char *argv[], unsigned flags, int jobs)
 {
-	return cmd_remote("flush", KNOT_RRTYPE_CNAME, argc, argv);
+	return cmd_remote("flush", KNOT_RRTYPE_NS, argc, argv);
 }
 
 static int cmd_status(int argc, char *argv[], unsigned flags, int jobs)

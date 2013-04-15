@@ -186,7 +186,7 @@ int remote_create_txt(knot_rrset_t *rr, const char *v, size_t v_len);
  * \param d Domain name as a string.
  * \return Created rdata or NULL.
  */
-int remote_create_cname(knot_rrset_t *rr, const char *d);
+int remote_create_ns(knot_rrset_t *rr, const char *d);
 
 /*!
  * \brief Print TXT rdata to stdout.
@@ -194,13 +194,6 @@ int remote_create_cname(knot_rrset_t *rr, const char *d);
  * \return KNOT_EOK
  */
 int remote_print_txt(const knot_rrset_t *rrset, uint16_t i);
-
-/*!
- * \brief Create dname from str and make sure the name is FQDN.
- * \param k Domain name as string.
- * \return Created FQDN or NULL.
- */
-knot_dname_t* remote_dname_fqdn(const char *k);
 
 #endif // _KNOTD_REMOTE_H_
 
