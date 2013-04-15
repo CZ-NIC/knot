@@ -89,19 +89,19 @@ knot_zone_t *knot_zonedb_remove_zone(knot_zonedb_t *db,
                                      const knot_dname_t *zone_name)
 {
 	/* Fetch if exists. */
-	const char *key = (const char*)knot_dname_name(zone_name);
-	size_t klen = knot_dname_size(zone_name);
-	value_t *val = hattrie_tryget(db->zone_tree, key, klen);
-	if (!val) return NULL;
+	knot_zone_t *oldzone = knot_zonedb_find_zone(db, zone_name);
+	if (oldzone == NULL) return NULL;
 	
 	/* Remove from db. */
+	const char *key = (const char*)knot_dname_name(zone_name);
+	size_t klen = knot_dname_size(zone_name);
 	int ret = hattrie_del(db->zone_tree, key, klen);
 	if (ret < 0) {
 		return NULL;
 	}
 	
 	--db->zone_count;
-	return (knot_zone_t *)*val;
+	return oldzone;
 }
 
 /*----------------------------------------------------------------------------*/
