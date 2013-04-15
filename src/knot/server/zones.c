@@ -2183,7 +2183,7 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 				      knot_packet_tsig(knot_packet_query(resp));
 
 				size_t digest_max_size =
-				                tsig_alg_digest_length(
+				                knot_tsig_digest_length(
 				                      tsig_key_zone->algorithm);
 				uint8_t *digest = (uint8_t *)malloc(
 				                        digest_max_size);
@@ -2254,7 +2254,7 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 					          knot_packet_query(resp));
 
 					size_t digest_max_size =
-					           tsig_alg_digest_length(
+					           knot_tsig_digest_length(
 					              tsig_key_zone->algorithm);
 					uint8_t *digest = (uint8_t *)malloc(
 					                       digest_max_size);
@@ -2428,7 +2428,7 @@ int zones_process_update(knot_nameserver_t *nameserver,
 		dbg_zones_verb("Adding TSIG = %s\n", knot_strerror(ret));
 	} else if (tsig_key_zone) {
 		dbg_zones_verb("Signing message with TSIG.\n");
-		size_t digest_len = tsig_alg_digest_length(tsig_key_zone->algorithm);
+		size_t digest_len = knot_tsig_digest_length(tsig_key_zone->algorithm);
 		uint8_t *digest = (uint8_t *)malloc(digest_len);
 		if (digest == NULL) {
 			knot_packet_free(&resp);
@@ -3300,8 +3300,8 @@ int zones_verify_tsig_query(const knot_packet_t *query,
 	/*
 	 * 1) Check if we support the requested algorithm.
 	 */
-	tsig_algorithm_t alg = tsig_rdata_alg(tsig_rr);
-	if (tsig_alg_digest_length(alg) == 0) {
+	knot_tsig_algorithm_t alg = tsig_rdata_alg(tsig_rr);
+	if (knot_tsig_digest_length(alg) == 0) {
 		log_answer_info("Unsupported digest algorithm "
 		                "requested, treating as bad key\n");
 		/*! \todo [TSIG] It is unclear from RFC if I
@@ -3335,7 +3335,7 @@ int zones_verify_tsig_query(const knot_packet_t *query,
 	/* Prepare variables for TSIG */
 	/*! \todo These need to be saved to the response somehow. */
 	//size_t tsig_size = tsig_wire_maxsize(key);
-	size_t digest_max_size = tsig_alg_digest_length(key->algorithm);
+	size_t digest_max_size = knot_tsig_digest_length(key->algorithm);
 	//size_t digest_size = 0;
 	//uint64_t tsig_prev_time_signed = 0;
 	//uint8_t *digest = (uint8_t *)malloc(digest_max_size);

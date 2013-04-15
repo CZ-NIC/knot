@@ -372,7 +372,7 @@ static int conf_mask(void* scanner, int nval, int prefixlen) {
        char *t;
        long i;
        size_t l;
-       tsig_algorithm_t alg;
+       knot_tsig_algorithm_t alg;
     } tok;
 }
 
@@ -560,7 +560,7 @@ keys:
    KEYS '{'
  | keys TEXT TSIG_ALGO_NAME TEXT ';' {
      /* Check algorithm length. */
-     if (tsig_alg_digest_length($3.alg) == 0) {
+     if (knot_tsig_digest_length($3.alg) == 0) {
         cf_error(scanner, "unsupported digest algorithm");
      }
      

@@ -29,18 +29,6 @@
 #include "dname.h"
 #include "consts.h"
 
-/*! \brief TSIG algorithms table. */
-knot_lookup_table_t tsig_alg_table[TSIG_ALG_TABLE_SIZE] = {
-	{ KNOT_TSIG_ALG_NULL, "gss-tsig." },
-	{ KNOT_TSIG_ALG_HMAC_MD5, "hmac-md5.sig-alg.reg.int." },
-	{ KNOT_TSIG_ALG_HMAC_SHA1, "hmac-sha1." },
-	{ KNOT_TSIG_ALG_HMAC_SHA224, "hmac-sha224." },
-	{ KNOT_TSIG_ALG_HMAC_SHA256, "hmac-sha256." },
-	{ KNOT_TSIG_ALG_HMAC_SHA384, "hmac-sha384." },
-	{ KNOT_TSIG_ALG_HMAC_SHA512, "hmac-sha512." },
-	{ KNOT_TSIG_ALG_NULL, NULL }
-};
-
 /*! \brief TSIG field offsets. */
 typedef enum tsig_off_t {
 	TSIG_ALGNAME_O = 0,
@@ -168,7 +156,7 @@ int tsig_rdata_set_alg_name(knot_rrset_t *tsig, knot_dname_t *alg_name)
 	return KNOT_EOK;
 }
 
-int tsig_rdata_set_alg(knot_rrset_t *tsig, tsig_algorithm_t alg)
+int tsig_rdata_set_alg(knot_rrset_t *tsig, knot_tsig_algorithm_t alg)
 {
 	const char *s = tsig_alg_to_str(alg);
 	knot_dname_t *alg_name = knot_dname_new_from_str(s, strlen(s), NULL);
@@ -255,7 +243,7 @@ const knot_dname_t *tsig_rdata_alg_name(const knot_rrset_t *tsig)
 	return *((knot_dname_t**)rd);
 }
 
-tsig_algorithm_t tsig_rdata_alg(const knot_rrset_t *tsig)
+knot_tsig_algorithm_t tsig_rdata_alg(const knot_rrset_t *tsig)
 {
 	/* Get the algorithm name. */
 	const knot_dname_t *alg_name = tsig_rdata_alg_name(tsig);
@@ -271,7 +259,8 @@ tsig_algorithm_t tsig_rdata_alg(const knot_rrset_t *tsig)
 		return KNOT_TSIG_ALG_NULL;
 	}
 
-	knot_lookup_table_t *item = knot_lookup_by_name(tsig_alg_table, name);
+	knot_lookup_table_t *item = knot_lookup_by_name(
+	                                      knot_tsig_alg_domain_names, name);
 	free(name);
 	if (!item) {
 		dbg_tsig("TSIG: rdata: unknown algorithm.\n");
@@ -365,7 +354,7 @@ int tsig_alg_from_name(const knot_dname_t *alg_name)
 	}
 
 	knot_lookup_table_t *found =
-		knot_lookup_by_name(tsig_alg_table, name);
+		knot_lookup_by_name(knot_tsig_alg_domain_names, name);
 
 	if (!found) {
 		dbg_tsig("Unknown algorithm: %s \n", name);
@@ -376,28 +365,6 @@ int tsig_alg_from_name(const knot_dname_t *alg_name)
 	free(name);
 
 	return found->id;
-}
-
-uint16_t tsig_alg_digest_length(tsig_algorithm_t alg)
-{
-	switch (alg) {
-		case KNOT_TSIG_ALG_GSS_TSIG:
-			return KNOT_TSIG_ALG_DIG_LENGTH_GSS_TSIG;
-		case KNOT_TSIG_ALG_HMAC_MD5:
-			return KNOT_TSIG_ALG_DIG_LENGTH_HMAC_MD5;
-		case KNOT_TSIG_ALG_HMAC_SHA1:
-			return KNOT_TSIG_ALG_DIG_LENGTH_SHA1;
-		case KNOT_TSIG_ALG_HMAC_SHA224:
-			return KNOT_TSIG_ALG_DIG_LENGTH_SHA224;
-		case KNOT_TSIG_ALG_HMAC_SHA256:
-			return KNOT_TSIG_ALG_DIG_LENGTH_SHA256;
-		case KNOT_TSIG_ALG_HMAC_SHA384:
-			return KNOT_TSIG_ALG_DIG_LENGTH_SHA384;
-		case KNOT_TSIG_ALG_HMAC_SHA512:
-			return KNOT_TSIG_ALG_DIG_LENGTH_SHA512;
-		default:
-			return 0;
-	} /* switch(alg) */
 }
 
 size_t tsig_rdata_tsig_variables_length(const knot_rrset_t *tsig)
@@ -440,16 +407,17 @@ int tsig_rdata_store_current_time(knot_rrset_t *tsig)
 	return KNOT_EOK;
 }
 
-const char* tsig_alg_to_str(tsig_algorithm_t alg)
+const char* tsig_alg_to_str(knot_tsig_algorithm_t alg)
 {
-	for (unsigned i = 0; i < TSIG_ALG_TABLE_SIZE; ++i) {
-		if (tsig_alg_table[i].id == alg) {
-			return tsig_alg_table[i].name;
-		}
-	}
+	knot_lookup_table_t *item;
 
-	/*! \todo Why not NULL? */
-	return "";
+	item = knot_lookup_by_id(knot_tsig_alg_domain_names, alg);
+
+	if (item != NULL) {
+		return item->name;
+	} else {
+		return "";
+	}
 }
 
 size_t tsig_wire_maxsize(const knot_tsig_key_t *key)
@@ -466,7 +434,7 @@ size_t tsig_wire_maxsize(const knot_tsig_key_t *key)
 	6 * sizeof(uint8_t) + /* Time signed */
 	sizeof(uint16_t) + /* Fudge */
 	sizeof(uint16_t) + /* MAC size */
-	tsig_alg_digest_length(key->algorithm) + /* MAC */
+	knot_tsig_digest_length(key->algorithm) + /* MAC */
 	sizeof(uint16_t) + /* Original ID */
 	sizeof(uint16_t) + /* Error */
 	sizeof(uint16_t) + /* Other len */
@@ -505,6 +473,3 @@ int tsig_rdata_is_ok(const knot_rrset_t *tsig)
 	        && tsig_rdata_alg_name(tsig) != NULL
 	        && tsig_rdata_time_signed(tsig) != 0);
 }
-
-
-

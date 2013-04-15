@@ -29,6 +29,8 @@
 
 #include <stdint.h>
 
+#include "libknot/util/utils.h"
+
 /*!
  * \brief Basic limits for domain names (RFC 1035).
  */
@@ -95,6 +97,118 @@ typedef enum {
 	KNOT_RESPONSE_NOTIFY, /*!< NOTIFY response. */
 	KNOT_RESPONSE_UPDATE  /*!< Dynamic update response. */
 } knot_packet_type_t;
+
+/*!
+ * \brief TSIG algorithm numbers.
+ *
+ * These constants were taken from the Bind file key format (dnssec-keygen).
+ */
+typedef enum {
+	KNOT_TSIG_ALG_NULL        =   0,
+	KNOT_TSIG_ALG_GSS_TSIG    = 128,
+	KNOT_TSIG_ALG_HMAC_MD5    = 157,
+	KNOT_TSIG_ALG_HMAC_SHA1   = 161,
+	KNOT_TSIG_ALG_HMAC_SHA224 = 162,
+	KNOT_TSIG_ALG_HMAC_SHA256 = 163,
+	KNOT_TSIG_ALG_HMAC_SHA384 = 164,
+	KNOT_TSIG_ALG_HMAC_SHA512 = 165
+} knot_tsig_algorithm_t;
+
+/*!
+ * \brief Lengths of TSIG algorithm digests.
+ */
+typedef enum {
+	KNOT_TSIG_ALG_DIG_LENGTH_GSS_TSIG =  0,
+	KNOT_TSIG_ALG_DIG_LENGTH_HMAC_MD5 = 16,
+	KNOT_TSIG_ALG_DIG_LENGTH_SHA1     = 20,
+	KNOT_TSIG_ALG_DIG_LENGTH_SHA224   = 28,
+	KNOT_TSIG_ALG_DIG_LENGTH_SHA256   = 32,
+	KNOT_TSIG_ALG_DIG_LENGTH_SHA384   = 48,
+	KNOT_TSIG_ALG_DIG_LENGTH_SHA512   = 64
+} knot_tsig_algorithm_digest_length_t;
+
+/*!
+ * \brief DNSSEC algorithm numbers.
+ *
+ * http://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xml
+ */
+typedef enum {
+	KNOT_DNSSEC_ALG_RSAMD5             =  1,
+	KNOT_DNSSEC_ALG_DH                 =  2,
+	KNOT_DNSSEC_ALG_DSA                =  3,
+
+	KNOT_DNSSEC_ALG_RSASHA1            =  5,
+	KNOT_DNSSEC_ALG_DSA_NSEC3_SHA1     =  6,
+	KNOT_DNSSEC_ALG_RSASHA1_NSEC3_SHA1 =  7,
+	KNOT_DNSSEC_ALG_RSASHA256          =  8,
+
+	KNOT_DNSSEC_ALG_RSASHA512          = 10,
+
+	KNOT_DNSSEC_ALG_ECC_GOST           = 12,
+	KNOT_DNSSEC_ALG_ECDSAP256SHA256    = 13,
+	KNOT_DNSSEC_ALG_ECDSAP384SHA384    = 14
+} knot_dnssec_algorithm_t;
+
+/*!
+ * \brief DS digest lengths.
+ */
+enum knot_ds_algorithm_len
+{
+	KNOT_DS_DIGEST_LEN_SHA1   = 20, /*!< RFC 3658 */
+	KNOT_DS_DIGEST_LEN_SHA256 = 32, /*!< RFC 4509 */
+	KNOT_DS_DIGEST_LEN_GOST   = 32, /*!< RFC 5933 */
+	KNOT_DS_DIGEST_LEN_SHA384 = 48  /*!< RFC 6605 */
+};
+
+/*!
+ * \brief Constants for DNSSEC algorithm types.
+ *
+ * Source: http://www.iana.org/assignments/ds-rr-types/ds-rr-types.xml
+ */
+typedef enum {
+	KNOT_DS_ALG_SHA1   = 1,
+	KNOT_DS_ALG_SHA256 = 2,
+	KNOT_DS_ALG_GOST   = 3,
+	KNOT_DS_ALG_SHA384 = 4
+} knot_ds_algorithm_t;
+
+/*!
+ * \brief DNS operation code names.
+ */
+extern knot_lookup_table_t knot_opcode_names[];
+
+/*!
+ * \brief DNS reply code names.
+ */
+extern knot_lookup_table_t knot_rcode_names[];
+
+/*!
+ * \brief TSIG key algorithm names.
+ */
+extern knot_lookup_table_t knot_tsig_alg_names[];
+
+/*!
+ * \brief TSIG key algorithm names in a domain form.
+ */
+extern knot_lookup_table_t knot_tsig_alg_domain_names[];
+
+/*!
+ * \brief Returns length of TSIG digest for given algorithm.
+ *
+ * \param algorithm Algorithm code to be used.
+ *
+ * \retval Digest length for given algorithm. 
+ */
+size_t knot_tsig_digest_length(const uint8_t algorithm);
+
+/*!
+ * \brief Returns length of DS digest for given algorithm.
+ *
+ * \param algorithm Algorithm code to be used.
+ *
+ * \retval Digest length for given algorithm. 
+ */
+size_t knot_ds_digest_length(const uint8_t algorithm);
 
 #endif /* _KNOT_CONSTS_H_ */
 

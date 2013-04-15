@@ -44,7 +44,7 @@ static int knot_tsig_check_algorithm(const knot_rrset_t *tsig_rr)
 		return KNOT_EMALF;
 	}
 
-	tsig_algorithm_t alg = tsig_alg_from_name(alg_name);
+	knot_tsig_algorithm_t alg = tsig_alg_from_name(alg_name);
 	if (alg == 0) {
 		/*!< \todo is this error OK? */
 		dbg_tsig("TSIG: unknown algorithm.\n");
@@ -96,7 +96,7 @@ static int knot_tsig_compute_digest(const uint8_t *wire, size_t wire_len,
 		return KNOT_EMALF;
 	}
 
-	tsig_algorithm_t tsig_alg = key->algorithm;
+	knot_tsig_algorithm_t tsig_alg = key->algorithm;
 	if (tsig_alg == 0) {
 		dbg_tsig("TSIG: digest: unknown algorithm\n");
 		return KNOT_TSIG_EBADSIG;
@@ -119,9 +119,21 @@ static int knot_tsig_compute_digest(const uint8_t *wire, size_t wire_len,
 			HMAC_Init(&ctx, key->secret.data,
 			          key->secret.size, EVP_sha1());
 			break;
+		case KNOT_TSIG_ALG_HMAC_SHA224:
+			HMAC_Init(&ctx, key->secret.data,
+			          key->secret.size, EVP_sha224());
+			break;
 		case KNOT_TSIG_ALG_HMAC_SHA256:
 			HMAC_Init(&ctx, key->secret.data,
 			          key->secret.size, EVP_sha256());
+			break;
+		case KNOT_TSIG_ALG_HMAC_SHA384:
+			HMAC_Init(&ctx, key->secret.data,
+			          key->secret.size, EVP_sha384());
+			break;
+		case KNOT_TSIG_ALG_HMAC_SHA512:
+			HMAC_Init(&ctx, key->secret.data,
+			          key->secret.size, EVP_sha512());
 			break;
 		default:
 			return KNOT_ENOTSUP;
@@ -469,7 +481,7 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	}
 
 	/* Create rdata for TSIG RR. */
-	tsig_create_rdata(tmp_tsig, tsig_alg_digest_length(key->algorithm), 
+	tsig_create_rdata(tmp_tsig, knot_tsig_digest_length(key->algorithm), 
 	                  (tsig_rcode == KNOT_RCODE_BADTIME) 
 	                    ? tsig_rcode
 	                    : 0);
@@ -574,7 +586,7 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	}
 	
 	/* Create rdata for TSIG RR. */
-	tsig_create_rdata(tmp_tsig, tsig_alg_digest_length(key->algorithm), 0);
+	tsig_create_rdata(tmp_tsig, knot_tsig_digest_length(key->algorithm), 0);
 	tsig_rdata_set_alg(tmp_tsig, key->algorithm);
 	tsig_rdata_store_current_time(tmp_tsig);
 	tsig_rdata_set_fudge(tmp_tsig, KNOT_TSIG_FUDGE_DEFAULT);
@@ -756,13 +768,13 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
 
 	/*!< \todo move to function. */
 	const knot_dname_t *alg_name = tsig_rdata_alg_name(tsig_rr);
-	tsig_algorithm_t alg = tsig_alg_from_name(alg_name);
+	knot_tsig_algorithm_t alg = tsig_alg_from_name(alg_name);
 
 	/*! \todo [TSIG] TRUNCATION */
 	uint16_t mac_length = tsig_rdata_mac_length(tsig_rr);
 	const uint8_t *tsig_mac = tsig_rdata_mac(tsig_rr);
 
-	if (mac_length != tsig_alg_digest_length(alg)) {
+	if (mac_length != knot_tsig_digest_length(alg)) {
 		dbg_tsig("TSIG: calculated digest length and given length do "
 		         "not match!\n");
 		return KNOT_TSIG_EBADSIG;
@@ -855,7 +867,7 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	
 	
 	/* Create rdata for TSIG RR. */
-	tsig_algorithm_t alg = tsig_alg_from_name(alg_name);
+	knot_tsig_algorithm_t alg = tsig_alg_from_name(alg_name);
 	if (alg == KNOT_TSIG_ALG_NULL) {
 		dbg_tsig("TSIG: refusing to use NULL algorithm\n");
 		knot_rrset_deep_free(&tmp_tsig, 1, 1);

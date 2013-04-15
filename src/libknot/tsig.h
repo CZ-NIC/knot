@@ -32,39 +32,15 @@
 #include "rrset.h"
 #include "binary.h"
 #include "util/utils.h"
-
-/* The assigned numbers should not begin with 0 - reserved for error. */
-enum tsig_algorithm {
-	KNOT_TSIG_ALG_NULL = 0,
-	KNOT_TSIG_ALG_GSS_TSIG = 128, /*!< \brief gss-tsig. */
-	KNOT_TSIG_ALG_HMAC_MD5 = 157, /*!< \brief HMAC-MD5.SIG-ALG.REG.INT. */
-	KNOT_TSIG_ALG_HMAC_SHA1, /*!< \brief hmac-sha1. */
-	KNOT_TSIG_ALG_HMAC_SHA224, /*!< \brief hmac-sha224. */
-	KNOT_TSIG_ALG_HMAC_SHA256, /*!< \brief hmac-sha256. */
-	KNOT_TSIG_ALG_HMAC_SHA384, /*!< \brief hmac-sha384. */
-	KNOT_TSIG_ALG_HMAC_SHA512 /*!< \brief hmac-sha512. */
-};
-
-typedef enum tsig_algorithm tsig_algorithm_t;
+#include "libknot/consts.h"
 
 struct knot_tsig_key {
 	knot_dname_t *name;
-	tsig_algorithm_t algorithm;
+	knot_tsig_algorithm_t algorithm;
 	knot_binary_t secret;
 };
 
 typedef struct knot_tsig_key knot_tsig_key_t;
-
-/*!< \todo FIND ALG LENGTHS */
-enum tsig_algorithm_digest_length {
-	KNOT_TSIG_ALG_DIG_LENGTH_GSS_TSIG = 0,
-	KNOT_TSIG_ALG_DIG_LENGTH_HMAC_MD5 = 16,
-	KNOT_TSIG_ALG_DIG_LENGTH_SHA1 = 20,
-	KNOT_TSIG_ALG_DIG_LENGTH_SHA224 = 0,
-	KNOT_TSIG_ALG_DIG_LENGTH_SHA256 = 32,
-	KNOT_TSIG_ALG_DIG_LENGTH_SHA384 = 0,
-	KNOT_TSIG_ALG_DIG_LENGTH_SHA512 = 0
-};
 
 enum tsig_consts {
 	KNOT_TSIG_ITEM_COUNT = 7,
@@ -78,25 +54,12 @@ enum tsig_consts {
 	                          + 6			// time signed
 };
 
-/*! TSIG algorithm/string table. */
-#define TSIG_ALG_TABLE_SIZE 8
-extern knot_lookup_table_t tsig_alg_table[TSIG_ALG_TABLE_SIZE];
-
-/*! TSIG errors are defined in common/errcode.h
- *  and present negative value of the TSIG error to
- *  comply with other parts of the library.
- *
- *  KNOT_TSIG_EBADSIG = -16
- *  KNOT_TSIG_EBADKEY = -17
- *  KNOT_TSIG_EBADTIME = -18
- */
-
 /*!
  * \note Uses the given domain name, do not deallocate it!
  */
 int tsig_create_rdata(knot_rrset_t *rr,  uint16_t maclen, uint16_t tsig_err);
 int tsig_rdata_set_alg_name(knot_rrset_t *tsig, knot_dname_t *alg_name);
-int tsig_rdata_set_alg(knot_rrset_t *tsig, tsig_algorithm_t alg);
+int tsig_rdata_set_alg(knot_rrset_t *tsig, knot_tsig_algorithm_t alg);
 int tsig_rdata_set_time_signed(knot_rrset_t *tsig, uint64_t time);
 int tsig_rdata_store_current_time(knot_rrset_t *tsig);
 int tsig_rdata_set_fudge(knot_rrset_t *tsig, uint16_t fudge);
@@ -108,7 +71,7 @@ int tsig_rdata_set_other_data(knot_rrset_t *tsig, uint16_t length,
                               const uint8_t *other_data);
 
 const knot_dname_t *tsig_rdata_alg_name(const knot_rrset_t *tsig);
-tsig_algorithm_t tsig_rdata_alg(const knot_rrset_t *tsig);
+knot_tsig_algorithm_t tsig_rdata_alg(const knot_rrset_t *tsig);
 uint64_t tsig_rdata_time_signed(const knot_rrset_t *tsig);
 uint16_t tsig_rdata_fudge(const knot_rrset_t *tsig);
 const uint8_t *tsig_rdata_mac(const knot_rrset_t *tsig);
@@ -131,9 +94,7 @@ int tsig_alg_from_name(const knot_dname_t *name);
  * \retval TSIG algorithm string name.
  * \retval Empty string if undefined.
  */
-const char* tsig_alg_to_str(tsig_algorithm_t alg);
-
-uint16_t tsig_alg_digest_length(tsig_algorithm_t alg);
+const char* tsig_alg_to_str(knot_tsig_algorithm_t alg);
 
 /*!
  * \brief Return TSIG RRSET maximum wire size for given algorithm.

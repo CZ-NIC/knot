@@ -283,7 +283,7 @@ static int tsig_parse_str(knot_tsig_key_t *key, const char *str)
 	if (s) {
 		*s++ = '\0';               /* Last part separator */
 		knot_lookup_table_t *alg = NULL;
-		alg = knot_lookup_by_name(tsig_alg_table, h);
+		alg = knot_lookup_by_name(knot_tsig_alg_domain_names, h);
 		if (alg) {
 			algorithm = alg->id;
 		} else {
@@ -332,7 +332,9 @@ static int tsig_parse_line(knot_tsig_key_t *k, char *l)
 	}
 	
 	/* Lookup algorithm. */
-	knot_lookup_table_t *alg = knot_lookup_by_name(tsig_alg_table, a);
+	knot_lookup_table_t *alg;
+	alg = knot_lookup_by_name(knot_tsig_alg_domain_names, a);
+
 	if (!alg) {
 		return KNOT_EMALF;
 	}

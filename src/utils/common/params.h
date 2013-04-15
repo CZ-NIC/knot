@@ -65,7 +65,7 @@ typedef enum {
 	/*!< Brief host output. */
 	FORMAT_HOST,
 	/*!< Brief nsupdate output. */
-	FORMAT_NSUPDATE,
+	FORMAT_NSUPDATE
 } format_t;
 
 /*! \brief Text output settings. */

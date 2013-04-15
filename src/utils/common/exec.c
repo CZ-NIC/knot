@@ -27,38 +27,7 @@
 #include "utils/common/params.h"	// params_t
 #include "utils/common/netio.h"		// send_msg
 
-knot_lookup_table_t opcodes[] = {
-	{ KNOT_OPCODE_QUERY,  "QUERY" },
-	{ KNOT_OPCODE_IQUERY, "IQUERY" },
-	{ KNOT_OPCODE_STATUS, "STATUS" },
-	{ KNOT_OPCODE_NOTIFY, "NOTIFY" },
-	{ KNOT_OPCODE_UPDATE, "UPDATE" },
-	{ 0, NULL }
-};
-
-knot_lookup_table_t rcodes[] = {
-	{ KNOT_RCODE_NOERROR,  "NOERROR" },
-	{ KNOT_RCODE_FORMERR,  "FORMERR" },
-	{ KNOT_RCODE_SERVFAIL, "SERVFAIL" },
-	{ KNOT_RCODE_NXDOMAIN, "NXDOMAIN" },
-	{ KNOT_RCODE_NOTIMPL,  "NOTIMPL" },
-	{ KNOT_RCODE_REFUSED,  "REFUSED" },
-	{ KNOT_RCODE_YXDOMAIN, "YXDOMAIN" },
-	{ KNOT_RCODE_YXRRSET,  "YXRRSET" },
-	{ KNOT_RCODE_NXRRSET,  "NXRRSET" },
-	{ KNOT_RCODE_NOTAUTH,  "NOTAUTH" },
-	{ KNOT_RCODE_NOTZONE,  "NOTZONE" },
-	{ KNOT_RCODE_BADSIG,   "BADSIG" },
-	{ KNOT_RCODE_BADKEY,   "BADKEY" },
-	{ KNOT_RCODE_BADTIME,  "BADTIME" },
-	{ KNOT_RCODE_BADMODE,  "BADMODE" },
-	{ KNOT_RCODE_BADNAME,  "BADNAME" },
-	{ KNOT_RCODE_BADALG,   "BADALG" },
-	{ KNOT_RCODE_BADTRUNC, "BADTRUNC" },
-	{ 0, NULL }
-};
-
-knot_lookup_table_t rtypes[] = {
+static knot_lookup_table_t rtypes[] = {
 	{ KNOT_RRTYPE_A,      "has IPv4 address" },
 	{ KNOT_RRTYPE_NS,     "nameserver is" },
 	{ KNOT_RRTYPE_CNAME,  "is an alias for" },
@@ -86,8 +55,8 @@ static void print_header(const knot_packet_t *packet, const style_t *style)
 	rcode_id = knot_wire_get_rcode(packet->wireformat);
 	opcode_id = knot_wire_get_opcode(packet->wireformat);
 
-	rcode = knot_lookup_by_id(rcodes, rcode_id);
-	opcode = knot_lookup_by_id(opcodes, opcode_id);
+	rcode = knot_lookup_by_id(knot_rcode_names, rcode_id);
+	opcode = knot_lookup_by_id(knot_opcode_names, opcode_id);
 
 	// Get flags.
 	if (knot_wire_get_qr(packet->wireformat) != 0) {
@@ -329,7 +298,7 @@ static void print_error_host(const uint8_t         code,
 	knot_lookup_table_t *rcode;
 
 	owner = knot_dname_to_str(question->qname);
-	rcode = knot_lookup_by_id(rcodes, code);
+	rcode = knot_lookup_by_id(knot_rcode_names, code);
 	knot_rrtype_to_string(question->qtype, type, sizeof(type));
 
 	if (code == KNOT_RCODE_NOERROR) {
@@ -593,7 +562,7 @@ int sign_packet(knot_packet_t           *pkt,
 
 		knot_tsig_key_t *key = &sign_ctx->tsig_key;
 
-		sign_ctx->digest_size = tsig_alg_digest_length(key->algorithm);
+		sign_ctx->digest_size = knot_tsig_digest_length(key->algorithm);
 		sign_ctx->digest = malloc(sign_ctx->digest_size);
 
 		size_t tsig_size = tsig_wire_maxsize(key);

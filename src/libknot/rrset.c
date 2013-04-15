@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <inttypes.h>
 
+#include "consts.h"
 #include "common.h"
 #include "common/mempattern.h"
 #include "rrset.h"

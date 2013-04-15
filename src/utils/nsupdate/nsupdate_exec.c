@@ -748,7 +748,7 @@ int cmd_send(const char* lp, nsupdate_params_t *params)
 	knot_lookup_table_t *rcode;
 	int rc = knot_packet_rcode(params->resp);
 	DBG("%s: received rcode=%d\n", __func__, rc);
-	rcode = knot_lookup_by_id(rcodes, rc);
+	rcode = knot_lookup_by_id(knot_rcode_names, rc);
 	if (rcode && rcode->id > KNOT_RCODE_NOERROR) {
 		ERR("update failed: %s\n", rcode->name);
 	}

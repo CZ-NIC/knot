@@ -213,7 +213,7 @@ static int xfr_task_setsig(knot_ns_xfr_t *rq, knot_tsig_key_t *key)
 	int ret = KNOT_EOK;
 	rq->tsig_key = key;
 	rq->tsig_size = tsig_wire_maxsize(key);
-	rq->digest_max_size = tsig_alg_digest_length(key->algorithm);
+	rq->digest_max_size = knot_tsig_digest_length(key->algorithm);
 	rq->digest = malloc(rq->digest_max_size);
 	if (rq->digest == NULL) {
 		rq->tsig_key = NULL;
@@ -840,8 +840,8 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode, char **tag)
 		return KNOT_EDENIED;
 	}
 	if (tsig_rr) {
-		tsig_algorithm_t alg = tsig_rdata_alg(tsig_rr);
-		if (tsig_alg_digest_length(alg) == 0) {
+		knot_tsig_algorithm_t alg = tsig_rdata_alg(tsig_rr);
+		if (knot_tsig_digest_length(alg) == 0) {
 			*rcode = KNOT_RCODE_NOTAUTH;
 			xfr->tsig_key = NULL;
 			xfr->tsig_rcode = KNOT_RCODE_BADKEY;

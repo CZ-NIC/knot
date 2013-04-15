@@ -135,6 +135,7 @@ src/knot/zone/zone-load.h
 src/libknot/binary.c
 src/libknot/binary.h
 src/libknot/common.h
+src/libknot/consts.c
 src/libknot/consts.h
 src/libknot/dname.c
 src/libknot/dname.h

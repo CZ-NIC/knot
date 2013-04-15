@@ -136,6 +136,8 @@ unittests_xfr_SOURCES = 			\
 	tests/xfr_tests.h
 
 libknot_la_SOURCES =				\
+	libknot/consts.h			\
+	libknot/consts.c			\
 	libknot/util/utils.c			\
 	libknot/util/debug.c			\
 	libknot/util/debug.h			\

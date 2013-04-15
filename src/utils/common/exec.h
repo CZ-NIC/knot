@@ -31,15 +31,6 @@
 #include "utils/common/params.h"	// style_t
 #include "libknot/libknot.h"
 
-/*! \brief Operation codes. */
-extern knot_lookup_table_t opcodes[];
-
-/*! \brief Response codes. */
-extern knot_lookup_table_t rcodes[];
-
-/*! \brief Messages for host-like output. */
-extern knot_lookup_table_t rtypes[];
-
 /*! \brief Holds data required between signing and signature verification. */
 typedef struct {
 	knot_tsig_key_t   tsig_key;
@@ -113,7 +104,6 @@ void print_packet(const knot_packet_t *packet,
                   const float         elapsed,
                   const bool          incoming,
                   const style_t       *style);
-
 
 /*!
  * \brief Cleans up sign context.
