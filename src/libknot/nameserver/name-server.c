@@ -3992,7 +3992,7 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		assert(zone != NULL);
 		log_zone_info("%s serial %u -> %u\n", xfr->msg,
 		              knot_zone_serial(knot_zone_contents(xfr->zone)),
-		              knot_zone_serial(zone))
+		              knot_zone_serial(zone));
 
 		dbg_ns_verb("ns_process_axfrin: adjusting zone.\n");
 		int rc = knot_zone_contents_adjust(zone, NULL, NULL, 0);
