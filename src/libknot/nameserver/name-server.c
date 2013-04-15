@@ -2853,7 +2853,7 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 			rcu_read_unlock();
 			return res;
 		} else {
-			log_zone_info("%s serial %u -> %u.\n",
+			log_zone_info("%s Serial %u -> %u.\n",
 			              xfr->msg,
 			              knot_rrset_rdata_soa_serial(chs->soa_from),
 			              knot_rrset_rdata_soa_serial(chs->soa_to));
@@ -3692,12 +3692,8 @@ int knot_ns_init_xfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to parse rest of the query: %s\n", 
 		       knot_strerror(ret));
-		knot_ns_error_response_from_query(nameserver, xfr->query,
-		                       (ret == KNOT_EMALF) ? KNOT_RCODE_FORMERR
-		                                          : KNOT_RCODE_SERVFAIL,
-		                       xfr->wire, &xfr->wire_size);
-		ret = xfr->send(xfr->session, &xfr->addr, xfr->wire, 
-		                xfr->wire_size);
+		xfr->rcode = (ret == KNOT_EMALF) ? KNOT_RCODE_FORMERR
+		                                 : KNOT_RCODE_SERVFAIL;
 		return ret;
 	}
 	
@@ -3720,8 +3716,7 @@ dbg_ns_exec_verb(
 	// if no zone found, return NotAuth
 	if (zone == NULL) {
 		dbg_ns("No zone found.\n");
-		knot_response_set_rcode(xfr->response, KNOT_RCODE_NOTAUTH);
-		ns_xfr_send_and_clear(xfr, 1);
+		xfr->rcode = KNOT_RCODE_NOTAUTH;
 		return KNOT_ENOZONE;
 	}
 
@@ -3990,7 +3985,7 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 				(xfrin_constructed_zone_t *)xfr->data;
 		knot_zone_contents_t *zone = constr_zone->contents;
 		assert(zone != NULL);
-		log_zone_info("%s serial %u -> %u\n", xfr->msg,
+		log_zone_info("%s Serial %u -> %u\n", xfr->msg,
 		              knot_zone_serial(knot_zone_contents(xfr->zone)),
 		              knot_zone_serial(zone));
 

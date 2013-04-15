@@ -304,13 +304,23 @@ static void xfr_task_cleanup(knot_ns_xfr_t *rq)
 static int xfr_task_close(xfrworker_t *w, int fd)
 {
 	knot_ns_xfr_t *rq = xfr_task_get(w, fd);
-	if (rq) {
-		xfr_task_clear(w, fd);
-		xfr_task_free(rq);
-		socket_close(fd);
-		return KNOT_EOK;
+	if (!rq) return KNOT_ENOENT;
+	
+	/* Update xfer state. */
+	if (rq->type == XFR_TYPE_AIN || rq->type == XFR_TYPE_IIN) {
+		zonedata_t *zd = (zonedata_t *)knot_zone_data(rq->zone);
+		pthread_mutex_lock(&zd->lock);
+		if (zd->xfr_in.state == XFR_PENDING) {
+			zd->xfr_in.state = XFR_IDLE;
+		}
+		pthread_mutex_unlock(&zd->lock);
 	}
-	return KNOT_ENOENT;
+	
+	/* Close socket and free task. */
+	xfr_task_clear(w, fd);
+	xfr_task_free(rq);
+	socket_close(fd);
+	return KNOT_EOK;
 }
 
 /*! \brief Timeout handler. */
@@ -475,28 +485,17 @@ static int xfr_task_process(xfrworker_t *w, knot_ns_xfr_t* rq, uint8_t *buf, siz
 		msg = xd->name;
 	}
 	
+	int bootstrap_fail = 0;
 	switch(rq->type) {
 	case XFR_TYPE_AIN:
 	case XFR_TYPE_IIN:
-		zd->xfr_in.state = XFR_PENDING;
 		rq->lookup_tree = hattrie_create();
-		if (ret != KNOT_EOK && ret != KNOT_EACCES) {
-			if (zd != NULL && !knot_zone_contents(rq->zone)) {
-				/* Reschedule request delay. */
-				int tmr_s = AXFR_BOOTSTRAP_RETRY * tls_rand();
-				event_t *ev = zd->xfr_in.timer;
-				if (ev) {
-					evsched_cancel(ev->parent, ev);
-					evsched_schedule(ev->parent, ev, tmr_s);
-				}
-				log_zone_notice("%s Bootstrap failed, next "
-				                "attempt in %d seconds.\n",
-				                rq->msg, tmr_s / 1000);
-				rcu_read_unlock();
-				return ret;
-			}
+		if (ret != KNOT_EOK) {
+			pthread_mutex_lock(&zd->lock);
+			zd->xfr_in.state = XFR_IDLE;
+			pthread_mutex_unlock(&zd->lock);
+			bootstrap_fail = !knot_zone_contents(rq->zone);
 		}
-		
 		break;
 	case XFR_TYPE_NOTIFY: /* Send on first timeout <0,5>s. */
 		fdset_set_watchdog(w->pool.fds, rq->session, (int)(tls_rand() * 5));
@@ -514,6 +513,16 @@ static int xfr_task_process(xfrworker_t *w, knot_ns_xfr_t* rq, uint8_t *buf, siz
 	if (ret == KNOT_EOK) {
 		xfr_task_set(w, rq->session, rq);
 		log_server_info("%s %s.\n", rq->msg, msg);
+	} else if (bootstrap_fail){
+		int tmr_s = AXFR_BOOTSTRAP_RETRY * tls_rand();
+		event_t *ev = zd->xfr_in.timer;
+		if (ev) {
+			evsched_cancel(ev->parent, ev);
+			evsched_schedule(ev->parent, ev, tmr_s);
+		}
+		log_zone_notice("%s Bootstrap failed, next "
+		                "attempt in %d seconds.\n",
+		                rq->msg, tmr_s / 1000);
 	} else {
 		log_server_error("%s %s.\n", rq->msg, msg);
 	}
@@ -950,11 +959,12 @@ int xfr_worker(dthread_t *thread)
 	time_now(&next_sweep);
 	next_sweep.tv_sec += XFR_SWEEP_INTERVAL;
 
-	int limit = XFR_CHUNKLEN * 2;
+	int limit = XFR_CHUNKLEN * 3;
 	if (conf() && conf()->xfers > 0) {
 		limit = conf()->xfers;
 	}
 	unsigned thread_capacity = limit / w->master->unit->size;
+	if (thread_capacity < 1) thread_capacity = 1;
 	w->pool.fds = fdset_new();
 	w->pool.t = ahtable_create();
 	w->pending = 0;
@@ -974,6 +984,7 @@ int xfr_worker(dthread_t *thread)
 				ret = xfr_task_process(w, rq, buf, buflen);
 				if (ret == KNOT_EOK)  ++w->pending;
 				else                  xfr_task_free(rq);
+
 				if (w->pending - was_pending > XFR_CHUNKLEN)
 					break;
 			}
@@ -1175,7 +1186,9 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *rq)
 	free(keytag);
 	
 	/* Initialize response. */
-	ret = knot_ns_init_xfr_resp(ns, rq);
+	if (ret == KNOT_EOK) {
+		ret = knot_ns_init_xfr_resp(ns, rq);
+	}
 	
 	/* Update request. */
 	rq->send = &xfr_send_udp;
@@ -1215,7 +1228,7 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *rq)
 		/*! \todo Sign with TSIG for some errors. */
 		knot_ns_error_response_from_query(ns, rq->query,  rq->rcode,
 		                                  rq->wire, &rq->wire_size);
-		ret = rq->send(rq->session, &rq->addr, rq->wire, rq->wire_size);
+		rq->send(rq->session, &rq->addr, rq->wire, rq->wire_size);
 	}
 	
 	/* Check results. */
@@ -1224,7 +1237,8 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *rq)
 		log_server_notice("%s %s\n", rq->msg, knot_strerror(ret));
 	} else {
 		log_server_info("%s Finished in %.02fs.\n",
-		                rq->msg, time_diff(&rq->t_start, &rq->t_end));
+		                rq->msg,
+		                time_diff(&rq->t_start, &rq->t_end) / 1000.0);
 	}
 	
 	/* Cleanup. */
@@ -1305,7 +1319,7 @@ char *xfr_remote_str(const sockaddr_t *addr, const char *key)
 	sockaddr_tostr(addr, r_addr, sizeof(r_addr));
 	
 	/* Prepare key strings. */
-	char *tag = "";
+	char *tag = ""; 
 	char *q = "'";
 	if (key) {
 		tag = " key "; /* Prefix */

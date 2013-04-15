@@ -344,7 +344,7 @@ static int zones_refresh_ev(event_t *e)
 		rcu_read_unlock();
 		return KNOT_EOK;
 	}
-	
+
 	/* Create XFR request. */
 	knot_ns_xfr_t *rq = xfr_task_create(zone, XFR_TYPE_SOA, XFR_FLAG_UDP);
 	if (!rq) {
@@ -364,13 +364,26 @@ static int zones_refresh_ev(event_t *e)
 		rq->type = XFR_TYPE_AIN;
 		rq->flags = XFR_FLAG_TCP;
 		
+		/* Check transfer state. */
+		pthread_mutex_lock(&zd->lock);
+		if (zd->xfr_in.state == XFR_PENDING) {
+			pthread_mutex_unlock(&zd->lock);
+			rcu_read_unlock();
+			xfr_task_free(rq);
+			return KNOT_EOK;
+		} else {
+			zd->xfr_in.state = XFR_PENDING;
+		}
+		
 		/* Issue request. */
 		rcu_read_unlock();
 		evsched_event_finished(e->parent);
 		ret = xfr_enqueue(zd->server->xfr, rq);
 		if (ret != KNOT_EOK) {
 			xfr_task_free(rq);
+			zd->xfr_in.state = XFR_SCHED; /* Revert state. */
 		}
+		pthread_mutex_unlock(&zd->lock);
 		return ret;
 		
 	}
@@ -2526,10 +2539,22 @@ int zones_process_response(knot_nameserver_t *nameserver,
 		
 		assert(ret > 0);
 		
+		/* Check zone transfer state. */
+		pthread_mutex_lock(&zd->lock);
+		if (zd->xfr_in.state == XFR_PENDING) {
+			pthread_mutex_unlock(&zd->lock);
+			rcu_read_unlock();
+			return KNOT_EOK; /* Already pending. */
+		} else {
+			zd->xfr_in.state = XFR_PENDING;
+		}
+		
 		/* Prepare XFR client transfer. */
+		server_t *srv = (server_t *)knot_ns_get_data(nameserver);
 		int rqtype = zones_transfer_to_use(zd);
 		knot_ns_xfr_t *rq = xfr_task_create(zone, rqtype, XFR_FLAG_TCP);
 		if (!rq) {
+			pthread_mutex_unlock(&zd->lock);
 			rcu_read_unlock();
 			return KNOT_ENOMEM;
 		}
@@ -2539,12 +2564,12 @@ int zones_process_response(knot_nameserver_t *nameserver,
 		}
 
 		rcu_read_unlock();
-
-		ret = xfr_enqueue(((server_t *)knot_ns_get_data(
-		                           nameserver))->xfr, rq);
+		ret = xfr_enqueue(srv->xfr, rq);
 		if (ret != KNOT_EOK) {
 			xfr_task_free(rq);
+			zd->xfr_in.state = XFR_SCHED; /* Revert state */
 		}
+		pthread_mutex_unlock(&zd->lock);
 	}
 
 	return KNOT_EOK;
@@ -3243,6 +3268,7 @@ int zones_schedule_refresh(knot_zone_t *zone)
 
 	/* Check XFR/IN master server. */
 	rcu_read_lock();
+	pthread_mutex_lock(&zd->lock);
 	zd->xfr_in.state = XFR_IDLE;
 	if (zd->xfr_in.has_master) {
 
@@ -3259,6 +3285,7 @@ int zones_schedule_refresh(knot_zone_t *zone)
 		          zd->conf->name, refresh_tmr);
 		zd->xfr_in.state = XFR_SCHED;
 	}
+	pthread_mutex_unlock(&zd->lock);
 	rcu_read_unlock();
 
 	return KNOT_EOK;

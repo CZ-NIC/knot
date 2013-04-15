@@ -1194,7 +1194,7 @@ dbg_xfrin_exec_verb(
 			// if the next RR is SOA change to state -1 and do not
 			// parse next RR
 			if (knot_rrset_type(rr) == KNOT_RRTYPE_SOA) {
-				log_zone_info("%s serial %u -> %u.\n",
+				log_zone_info("%s Serial %u -> %u.\n",
 				              xfr->msg,
 				              knot_rrset_rdata_soa_serial(cur->soa_from),
 				              knot_rrset_rdata_soa_serial(cur->soa_to));

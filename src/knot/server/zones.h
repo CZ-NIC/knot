@@ -339,6 +339,7 @@ int zones_verify_tsig_query(const knot_packet_t *query,
                             const knot_tsig_key_t *key,
                             knot_rcode_t *rcode, uint16_t *tsig_rcode,
                             uint64_t *tsig_prev_time_signed);
+
 #endif // _KNOTD_ZONES_H_
 
 /*! @} */
