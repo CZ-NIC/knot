@@ -49,14 +49,22 @@ static void print_header(const knot_packet_t *packet, const style_t *style)
 {
 	char    flags[64] = "";
 	uint8_t rcode_id, opcode_id;
+	const char *rcode_str = "NULL";
+	const char *opcode_str = "NULL";
 	knot_lookup_table_t *rcode, *opcode;
 
 	// Get codes.
 	rcode_id = knot_wire_get_rcode(packet->wireformat);
-	opcode_id = knot_wire_get_opcode(packet->wireformat);
-
 	rcode = knot_lookup_by_id(knot_rcode_names, rcode_id);
+	if (rcode != NULL) {
+		rcode_str = rcode->name;
+	}
+
+	opcode_id = knot_wire_get_opcode(packet->wireformat);
 	opcode = knot_lookup_by_id(knot_opcode_names, opcode_id);
+	if (opcode != NULL) {
+		opcode_str = opcode->name;
+	}
 
 	// Get flags.
 	if (knot_wire_get_qr(packet->wireformat) != 0) {
@@ -90,7 +98,7 @@ static void print_header(const knot_packet_t *packet, const style_t *style)
 		printf("\n;; ->>HEADER<<- opcode: %s, status: %s, id: %u\n"
 		       ";; Flags:%1s, "
 		       "ZONE: %u, PREREQ: %u, UPDATE: %u, ADDITIONAL: %u\n",
-		       opcode->name, rcode->name, knot_packet_id(packet),
+		       opcode_str, rcode_str, knot_packet_id(packet),
 		       flags, packet->header.qdcount, packet->an_rrsets,
 		       packet->ns_rrsets, packet->ar_rrsets);
 
@@ -99,7 +107,7 @@ static void print_header(const knot_packet_t *packet, const style_t *style)
 		printf("\n;; ->>HEADER<<- opcode: %s, status: %s, id: %u\n"
 		       ";; Flags:%1s, "
 		       "QUERY: %u, ANSWER: %u, AUTHORITY: %u, ADDITIONAL: %u\n",
-		       opcode->name, rcode->name, knot_packet_id(packet),
+		       opcode_str, rcode_str, knot_packet_id(packet),
 		       flags, packet->header.qdcount, packet->an_rrsets,
 		       packet->ns_rrsets, packet->ar_rrsets);
 		break;
@@ -292,6 +300,7 @@ static void print_section_host(const knot_rrset_t **rrsets,
 static void print_error_host(const uint8_t         code,
                              const knot_question_t *question)
 {
+	const char *rcode_str = "NULL";
 	char type[32] = "NULL";
 	char *owner;
 
@@ -299,12 +308,15 @@ static void print_error_host(const uint8_t         code,
 
 	owner = knot_dname_to_str(question->qname);
 	rcode = knot_lookup_by_id(knot_rcode_names, code);
+	if (rcode != NULL) {
+		rcode_str = rcode->name;
+	}
 	knot_rrtype_to_string(question->qtype, type, sizeof(type));
 
 	if (code == KNOT_RCODE_NOERROR) {
 		printf("Host %s has no %s record\n", owner, type);
 	} else { 
-		printf("Host %s type %s error: %s\n", owner, type, rcode->name);
+		printf("Host %s type %s error: %s\n", owner, type, rcode_str);
 	}
 
 	free(owner);
