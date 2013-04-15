@@ -1124,6 +1124,10 @@ int xfr_free(xfrhandler_t *xfr)
 
 int xfr_stop(xfrhandler_t *xfr)
 {
+	if (!xfr) {
+		return KNOT_EINVAL;
+	}
+	
 	xfr_enqueue(xfr, NULL);
 	return dt_stop(xfr->unit);
 }

@@ -130,7 +130,12 @@ static int rrl_tests_run(int argc, char *argv[])
 		knot_packet_free(&query);
 		return KNOT_ERROR; /* Fatal */
 	}
-	knot_query_set_question(query, &qst);
+	int ret = knot_query_set_question(query, &qst);
+	if (ret != KNOT_EOK) {
+		knot_dname_free(&qst.qname);
+		knot_packet_free(&query);
+		return KNOT_ERROR; /* Fatal */
+	}
 	
 	/* Prepare response */
 	knot_nameserver_t *ns = knot_ns_create();
@@ -155,7 +160,7 @@ static int rrl_tests_run(int argc, char *argv[])
 	ok(rate == rrl_rate(rrl), "rrl: setrate");
 	
 	/* 3. setlocks */
-	int ret = rrl_setlocks(rrl, RRL_LOCKS);
+	ret = rrl_setlocks(rrl, RRL_LOCKS);
 	ok(ret == KNOT_EOK, "rrl: setlocks");
 
 	/* 4. N unlimited requests. */

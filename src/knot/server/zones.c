@@ -1361,7 +1361,7 @@ static int zones_insert_zones(knot_nameserver_t *ns,
                               const list *zone_conf,
                               knot_zonedb_t *db_new)
 {
-	int inserted = 0;
+	int ret = 0;
 	size_t zcount = 0;
 	conf_zone_t *z = NULL;
 	WALK_LIST(z, *zone_conf) {
@@ -1371,48 +1371,43 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 	/* Initialize zonewalker. */
 	size_t zwlen = sizeof(struct zonewalk_t) + zcount * sizeof(conf_zone_t*);
 	struct zonewalk_t *zw = malloc(zwlen);
-	if (zw != NULL) {
-		memset(zw, 0, zwlen);
-		zw->ns = ns;
-		zw->db_new = db_new;
-		zw->inserted = 0;
-		if (pthread_mutex_init(&zw->lock, NULL) < 0) {
-			free(zw);
-			return KNOT_ENOMEM;
-		}
-		
-		unsigned i = 0;
-		WALK_LIST(z, *zone_conf) {
-			zw->q[i++] = z;
-		}
-		zw->qhead = 0;
-		zw->qtail = zcount;
+	if (zw == NULL) {
+		return KNOT_ENOMEM;
 	}
+	memset(zw, 0, zwlen);
+	zw->ns = ns;
+	zw->db_new = db_new;
+	zw->inserted = 0;
+	if (pthread_mutex_init(&zw->lock, NULL) < 0) {
+		free(zw);
+		return KNOT_ENOMEM;
+	}
+	unsigned i = 0;
+	WALK_LIST(z, *zone_conf) {
+		zw->q[i++] = z;
+	}
+	zw->qhead = 0;
+	zw->qtail = zcount;
 	
 	/* Initialize threads. */
 	size_t thrs = dt_optimal_size();
 	if (thrs > zcount) thrs = zcount;
 	dt_unit_t *unit =  dt_create_coherent(thrs, &zonewalker, zw);
-	if (unit == NULL) {
-		pthread_mutex_destroy(&zw->lock);
-		free(zw);
-		log_server_error("Couldn't initialize zone loading - %s\n",
-		                 knot_strerror(KNOT_ENOMEM));
-		return KNOT_ENOMEM;
+	if (unit != NULL) {
+		/* Start loading. */
+		dt_start(unit);
+		dt_join(unit);
+		dt_delete(&unit);
+		
+		/* Collect counts. */
+		ret = zw->inserted;
+	} else {
+		ret = KNOT_ENOMEM;
 	}
 	
-	/* Start loading. */
-	dt_start(unit);
-	
-	/* Wait for finish. */
-	dt_join(unit);
-	dt_delete(&unit);
-	
-	/* Collect counts. */
-	inserted = zw->inserted;
 	pthread_mutex_destroy(&zw->lock);
 	free(zw);
-	return inserted;
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
