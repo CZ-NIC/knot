@@ -41,9 +41,10 @@ unit_api rrset_tests_api = {
  */
 
 enum rrset_test_const {
-	TEST_RRSET_COUNT = 13,
-	TEST_RDATA_COUNT = 10,
+	TEST_RRSET_COUNT = 14,
+	TEST_RDATA_COUNT = 11,
 	TEST_DNAME_COUNT = 11,
+	
 	TEST_RDATA_A_LESS = 0,
 	TEST_RDATA_A_GT = 1,
 	TEST_RDATA_NS_LESS = 2,
@@ -54,6 +55,8 @@ enum rrset_test_const {
 	TEST_RDATA_MX_BIN_GT = 7,
 	TEST_RDATA_MINFO1 = 8,
 	TEST_RDATA_MINFO2 = 9,
+	TEST_RDATA_MINFO3 = 10,
+	
 	TEST_RRSET_A_LESS = 0,
 	TEST_RRSET_A_GT = 1,
 	TEST_RRSET_MERGE_UNIQUE1 = 0,
@@ -66,9 +69,11 @@ enum rrset_test_const {
 	TEST_RRSET_MX_DNAME_LESS = 6,
 	TEST_RRSET_MX_DNAME_GT = 7,
 	TEST_RRSET_MINFO = 8,
-	TEST_RRSET_MINFO_MULTIPLE = 9,
+	TEST_RRSET_MINFO_MULTIPLE1 = 9,
+	TEST_RRSET_MINFO_MULTIPLE2 = 13,
 	TEST_RRSET_OWNER_LESS = 11,
 	TEST_RRSET_OWNER_GT = 12,
+	
 	CHECK_LAST_INDEX = 0,
 	OMMIT_LAST_INDEX = 1,
 	TEST_DNAME_GENERIC = 0,
@@ -124,9 +129,10 @@ static test_rdata_t test_rdata_array[TEST_RDATA_COUNT] = {
 	[TEST_RDATA_MX_DNAME_LESS] = {NULL, NULL, sizeof(knot_dname_t *) + 2, 0},
 	[TEST_RDATA_MX_DNAME_GT] = {NULL, NULL, sizeof(knot_dname_t *) + 2, 0},
 	[TEST_RDATA_MX_BIN_LESS] = {NULL, NULL, sizeof(knot_dname_t *) + 2, 0},
-	[	TEST_RDATA_MX_BIN_GT] = {NULL, NULL, sizeof(knot_dname_t *) + 2, 0},
+	[TEST_RDATA_MX_BIN_GT] = {NULL, NULL, sizeof(knot_dname_t *) + 2, 0},
 	[TEST_RDATA_MINFO1] = {NULL, NULL, sizeof(knot_dname_t *) * 2, 0},
-	[TEST_RDATA_MINFO2] = {NULL, NULL, sizeof(knot_dname_t *) * 2, 0}
+	[TEST_RDATA_MINFO2] = {NULL, NULL, sizeof(knot_dname_t *) * 2, 0},
+	[TEST_RDATA_MINFO3] = {NULL, NULL, sizeof(knot_dname_t *) * 2, 0}
 };
 
 
@@ -149,8 +155,10 @@ test_rrset_t test_rrset_array[TEST_RRSET_COUNT] = {
           NULL, 0, NULL, 0, 1, {TEST_RDATA_MX_BIN_GT}, NULL},
 	 [TEST_RRSET_MINFO] = {TEST_DNAME_GENERIC, {NULL, KNOT_RRTYPE_MINFO, KNOT_CLASS_IN, 3600, NULL, NULL, 0, NULL},
           NULL, 0, NULL, 0, 1, {TEST_RDATA_MINFO1}, NULL},
-	 [TEST_RRSET_MINFO_MULTIPLE] = {TEST_DNAME_GENERIC, {NULL, KNOT_RRTYPE_MINFO, KNOT_CLASS_IN, 3600, NULL, NULL, 0, NULL},
+	 [TEST_RRSET_MINFO_MULTIPLE1] = {TEST_DNAME_GENERIC, {NULL, KNOT_RRTYPE_MINFO, KNOT_CLASS_IN, 3600, NULL, NULL, 0, NULL},
           NULL, 0, NULL, 0, 2, {TEST_RDATA_MINFO1, TEST_RDATA_MINFO2}, NULL},
+	 [TEST_RRSET_MINFO_MULTIPLE2] = {TEST_DNAME_GENERIC, {NULL, KNOT_RRTYPE_MINFO, KNOT_CLASS_IN, 3600, NULL, NULL, 0, NULL},
+          NULL, 0, NULL, 0, 2, {TEST_RDATA_MINFO2, TEST_RDATA_MINFO1}, NULL},
 	 [TEST_RRSET_MERGE_RESULT1] = {TEST_DNAME_GENERIC, {NULL, KNOT_RRTYPE_A, KNOT_CLASS_IN, 3600, NULL, NULL, 0, NULL},
           NULL, 0, NULL, 0, 2, {TEST_RDATA_A_LESS, TEST_RDATA_A_GT}, NULL},
 	 [TEST_RRSET_OWNER_LESS] = {TEST_DNAME_LESS, {NULL, KNOT_RRTYPE_A, KNOT_CLASS_IN, 3600, NULL, NULL, 0, NULL},
@@ -169,148 +177,148 @@ static void create_test_dnames()
 	}
 }
 
+static void init_test_rdata_with_dname(uint8_t **rdata, uint16_t *rdata_size,
+                                       uint8_t **wire, uint16_t *wire_size,
+                                       size_t pos, size_t wire_pos,
+                                       size_t alloc_size,
+                                       size_t wire_alloc_size,
+                                       knot_dname_t *dname)
+{
+	if (pos == 0) {
+		*rdata = xmalloc(alloc_size);
+		*rdata_size = 0;
+		*wire = xmalloc(wire_alloc_size);
+		*wire_size = 0;
+	}
+	memcpy(*rdata + pos, &dname, sizeof(knot_dname_t *));
+	*rdata_size += sizeof(knot_dname_t *);
+	memcpy(*wire + pos, dname->name, dname->size);
+	*wire_size += dname->size;
+	
+	knot_dname_retain(dname);
+}
+
+static void init_test_rdata_with_binary(uint8_t **rdata, uint16_t *rdata_size,
+                                        uint8_t **wire, uint16_t *wire_size,
+                                        size_t pos, size_t wire_pos,
+                                        size_t alloc_size,
+                                        size_t wire_alloc_size,
+                                        const void *data, size_t data_size)
+{
+	if (pos == 0) {
+		*rdata = xmalloc(alloc_size);
+		*rdata_size = 0;
+		*wire = xmalloc(wire_alloc_size);
+		*wire_size = 0;
+	}
+	memcpy(*rdata + pos, data, data_size);
+	*rdata_size += data_size;
+	memcpy(*wire + wire_pos, data, data_size);
+	*wire_size += data_size;
+}
+
 static void create_test_rdata()
 {
-	/* NS, MX and MINFO types need init. */
-	/* TODO use tmp variables, this is too big. This needs a rewrite, but i'm too tired now. */
-	test_rdata_array[TEST_RDATA_NS_LESS].rdata =
-		xmalloc(sizeof(knot_dname_t *));
-	memcpy(test_rdata_array[TEST_RDATA_NS_LESS].rdata, &test_dnames[0],
-	       sizeof(knot_dname_t *));
-	test_rdata_array[TEST_RDATA_NS_LESS].wire =
-		xmalloc(test_dnames[0]->size);
-	memcpy(test_rdata_array[TEST_RDATA_NS_LESS].wire, test_dnames[0]->name,
-	       test_dnames[0]->size);
-	test_rdata_array[TEST_RDATA_NS_LESS].wire_size = test_dnames[0]->size;
-	test_rdata_array[TEST_RDATA_NS_LESS].size = sizeof(knot_dname_t *);
+	/* NS, MX and MINFO types need an init. */
 	
+	/* NS RDATA DNAME = a.dname.com. */
+	init_test_rdata_with_dname(&test_rdata_array[TEST_RDATA_NS_LESS].rdata,
+	                           &test_rdata_array[TEST_RDATA_NS_LESS].size,
+	                           &test_rdata_array[TEST_RDATA_NS_LESS].wire,
+	                           &test_rdata_array[TEST_RDATA_NS_LESS].wire_size,
+	                           0, 0, sizeof(knot_dname_t *),
+	                           test_dnames[0]->size, test_dnames[0]);
 	
-	test_rdata_array[TEST_RDATA_NS_GT].rdata =
-		xmalloc(sizeof(knot_dname_t *));
-	memcpy(test_rdata_array[TEST_RDATA_NS_GT].rdata, &test_dnames[0],
-	       sizeof(knot_dname_t *));
-	test_rdata_array[TEST_RDATA_NS_GT].wire =
-		xmalloc(test_dnames[0]->size);
-	memcpy(test_rdata_array[TEST_RDATA_NS_GT].wire, test_dnames[0]->name,
-	       test_dnames[0]->size);
-	test_rdata_array[TEST_RDATA_NS_GT].wire_size = test_dnames[0]->size;
-	test_rdata_array[TEST_RDATA_NS_GT].size = sizeof(knot_dname_t *);
+	/* NS RDATA DNAME = b.dname.com. */
+	init_test_rdata_with_dname(&test_rdata_array[TEST_RDATA_NS_GT].rdata,
+	                           &test_rdata_array[TEST_RDATA_NS_GT].size,
+	                           &test_rdata_array[TEST_RDATA_NS_GT].wire,
+	                           &test_rdata_array[TEST_RDATA_NS_GT].wire_size,
+	                           0, 0, sizeof(knot_dname_t *),
+	                           test_dnames[1]->size, test_dnames[1]);
 	
+	/* MX RDATA - short = 10 DNAME = a.dname.com. */
+	uint16_t id = htobe16(10);
+	init_test_rdata_with_binary(&test_rdata_array[TEST_RDATA_MX_DNAME_LESS].rdata,
+	                            &test_rdata_array[TEST_RDATA_MX_DNAME_LESS].size,
+	                            &test_rdata_array[TEST_RDATA_MX_DNAME_LESS].wire,
+	                            &test_rdata_array[TEST_RDATA_MX_DNAME_LESS].wire_size,
+	                            0, 0, sizeof(knot_dname_t *) + 2,
+	                            test_dnames[1]->size + 2, &id, 2);
 	
-	test_rdata_array[TEST_RDATA_MX_DNAME_LESS].rdata =
-		xmalloc(2 + sizeof(knot_dname_t *));
-	uint16_t id = 10;
-	knot_wire_write_u16(test_rdata_array[TEST_RDATA_MX_DNAME_LESS].rdata, id);
-	memcpy(test_rdata_array[TEST_RDATA_MX_DNAME_LESS].rdata + 2, &test_dnames[0],
-	       sizeof(knot_dname_t *));
-	test_rdata_array[TEST_RDATA_MX_DNAME_LESS].wire =
-		xmalloc(test_dnames[0]->size + 2);
-	knot_wire_write_u16(test_rdata_array[TEST_RDATA_MX_DNAME_LESS].wire, id);
-	memcpy(test_rdata_array[TEST_RDATA_MX_DNAME_LESS].wire + 2,
-	       test_dnames[0]->name, test_dnames[0]->size);
-	test_rdata_array[TEST_RDATA_MX_DNAME_LESS].wire_size = test_dnames[0]->size + 2;
-	test_rdata_array[TEST_RDATA_MX_DNAME_LESS].size = sizeof(knot_dname_t *) + 2;
+	init_test_rdata_with_dname(&test_rdata_array[TEST_RDATA_MX_DNAME_LESS].rdata,
+	                           &test_rdata_array[TEST_RDATA_MX_DNAME_LESS].size,
+	                           &test_rdata_array[TEST_RDATA_MX_DNAME_LESS].wire,
+	                           &test_rdata_array[TEST_RDATA_MX_DNAME_LESS].wire_size,
+	                           2, 2, sizeof(knot_dname_t *),
+	                           test_dnames[1]->size, test_dnames[0]);
 	
+	/* MX RDATA - short = 10 DNAME = b.dname.com. */
+	init_test_rdata_with_binary(&test_rdata_array[TEST_RDATA_MX_DNAME_GT].rdata,
+	                            &test_rdata_array[TEST_RDATA_MX_DNAME_GT].size,
+	                            &test_rdata_array[TEST_RDATA_MX_DNAME_GT].wire,
+	                            &test_rdata_array[TEST_RDATA_MX_DNAME_GT].wire_size,
+	                            0, 0, sizeof(knot_dname_t *) + 2,
+	                            test_dnames[1]->size + 2, &id, 2);
 	
-	test_rdata_array[TEST_RDATA_MX_DNAME_GT].rdata =
-		xmalloc(2 + sizeof(knot_dname_t *));
-	id = 10;
-	knot_wire_write_u16(test_rdata_array[TEST_RDATA_MX_DNAME_GT].rdata, id);
-	memcpy(test_rdata_array[TEST_RDATA_MX_DNAME_GT].rdata + 2, &test_dnames[1],
-	       sizeof(knot_dname_t *));
-	test_rdata_array[TEST_RDATA_MX_DNAME_GT].wire =
-		xmalloc(test_dnames[1]->size + 2);
-	knot_wire_write_u16(test_rdata_array[TEST_RDATA_MX_DNAME_GT].wire, id);
-	memcpy(test_rdata_array[TEST_RDATA_MX_DNAME_GT].wire + 2,
-	       test_dnames[0]->name, test_dnames[1]->size);
-	test_rdata_array[TEST_RDATA_MX_DNAME_GT].wire_size = test_dnames[1]->size + 2;
-	test_rdata_array[TEST_RDATA_MX_DNAME_GT].size = sizeof(knot_dname_t *) + 2;
+	init_test_rdata_with_dname(&test_rdata_array[TEST_RDATA_MX_DNAME_GT].rdata,
+	                           &test_rdata_array[TEST_RDATA_MX_DNAME_GT].size,
+	                           &test_rdata_array[TEST_RDATA_MX_DNAME_GT].wire,
+	                           &test_rdata_array[TEST_RDATA_MX_DNAME_GT].wire_size,
+	                           2, 2, sizeof(knot_dname_t *),
+	                           test_dnames[1]->size, test_dnames[1]);
 	
-	
-	test_rdata_array[TEST_RDATA_MX_BIN_LESS].rdata =
-		xmalloc(2 + sizeof(knot_dname_t *));
-	id = 10;
-	knot_wire_write_u16(test_rdata_array[TEST_RDATA_MX_BIN_LESS].rdata, id);
-	memcpy(test_rdata_array[TEST_RDATA_MX_BIN_LESS].rdata + 2, &test_dnames[2],
-	       sizeof(knot_dname_t *));
-	test_rdata_array[TEST_RDATA_MX_BIN_LESS].wire =
-		xmalloc(test_dnames[0]->size + 2);
-	knot_wire_write_u16(test_rdata_array[TEST_RDATA_MX_BIN_LESS].wire, id);
-	memcpy(test_rdata_array[TEST_RDATA_MX_BIN_LESS].wire + 2,
-	       test_dnames[0]->name, test_dnames[0]->size);
-	test_rdata_array[TEST_RDATA_MX_BIN_LESS].wire_size = test_dnames[0]->size + 2;
-	test_rdata_array[TEST_RDATA_MX_BIN_LESS].size = sizeof(knot_dname_t *) + 2;
-	
-	
-	test_rdata_array[TEST_RDATA_MX_BIN_GT].rdata =
-		xmalloc(2 + sizeof(knot_dname_t *));
-	id = 20;
-	knot_wire_write_u16(test_rdata_array[TEST_RDATA_MX_BIN_GT].rdata, id);
-	memcpy(test_rdata_array[TEST_RDATA_MX_BIN_GT].rdata + 2, &test_dnames[2],
-	       sizeof(knot_dname_t *));
-	test_rdata_array[TEST_RDATA_MX_BIN_GT].wire =
-		xmalloc(test_dnames[0]->size + 2);
-	knot_wire_write_u16(test_rdata_array[TEST_RDATA_MX_BIN_GT].wire, id);
-	memcpy(test_rdata_array[TEST_RDATA_MX_BIN_GT].wire + 2,
-	       test_dnames[0]->name, test_dnames[0]->size);
-	test_rdata_array[TEST_RDATA_MX_BIN_GT].wire_size = test_dnames[0]->size + 2;
-	test_rdata_array[TEST_RDATA_MX_BIN_GT].size = sizeof(knot_dname_t *) + 2;
-	
-	test_rdata_array[TEST_RDATA_MINFO1].rdata =
-		xmalloc(sizeof(knot_dname_t *) * 2);
-	memcpy(test_rdata_array[TEST_RDATA_MINFO1].rdata, &test_dnames[0],
-	       sizeof(knot_dname_t *));
-	memcpy(test_rdata_array[TEST_RDATA_MINFO1].rdata + sizeof(knot_dname_t *),
-	       &test_dnames[1], sizeof(knot_dname_t *));
-	test_rdata_array[TEST_RDATA_MINFO1].wire =
-		xmalloc(test_dnames[0]->size + test_dnames[1]->size);
-	memcpy(test_rdata_array[TEST_RDATA_MINFO1].wire, test_dnames[0]->name,
-	       test_dnames[0]->size);
-	memcpy(test_rdata_array[TEST_RDATA_MINFO1].wire + test_dnames[0]->size,
-	       test_dnames[1]->name, test_dnames[1]->size);
-	test_rdata_array[TEST_RDATA_MINFO1].wire_size =
-		test_dnames[0]->size + test_dnames[1]->size;
-	test_rdata_array[TEST_RDATA_MINFO1].size = sizeof(knot_dname_t *) * 2;
-	
-	test_rdata_array[TEST_RDATA_MINFO2].rdata =
-		xmalloc(sizeof(knot_dname_t *) * 2);
-	memcpy(test_rdata_array[TEST_RDATA_MINFO2].rdata, &test_dnames[2],
-	       sizeof(knot_dname_t *));
-	memcpy(test_rdata_array[TEST_RDATA_MINFO2].rdata + sizeof(knot_dname_t *),
-	       &test_dnames[3], sizeof(knot_dname_t *));
-	test_rdata_array[TEST_RDATA_MINFO2].wire =
-		xmalloc(test_dnames[2]->size + test_dnames[3]->size);
-	memcpy(test_rdata_array[TEST_RDATA_MINFO2].wire, test_dnames[0]->name,
-	       test_dnames[0]->size);
-	memcpy(test_rdata_array[TEST_RDATA_MINFO2].wire + test_dnames[2]->size,
-	       test_dnames[3]->name, test_dnames[3]->size);
-	test_rdata_array[TEST_RDATA_MINFO2].wire_size =
-		test_dnames[2]->size + test_dnames[3]->size;
-	test_rdata_array[TEST_RDATA_MINFO2].size = sizeof(knot_dname_t *) * 2;
-	
-	/* TODO Quick fix, remove */
-	knot_dname_retain(test_dnames[0]);
-	knot_dname_retain(test_dnames[0]);
-	knot_dname_retain(test_dnames[0]);
-	knot_dname_retain(test_dnames[0]);
-	knot_dname_retain(test_dnames[0]);
-	knot_dname_retain(test_dnames[0]);
+	test_rdata_array[TEST_RDATA_MX_BIN_LESS] = test_rdata_array[TEST_RDATA_MX_DNAME_LESS];
 	knot_dname_retain(test_dnames[1]);
-	knot_dname_retain(test_dnames[1]);
-	knot_dname_retain(test_dnames[1]);
-	knot_dname_retain(test_dnames[1]);
-	knot_dname_retain(test_dnames[1]);
-	knot_dname_retain(test_dnames[2]);
-	knot_dname_retain(test_dnames[2]);
-	knot_dname_retain(test_dnames[2]);
-	knot_dname_retain(test_dnames[2]);
-	knot_dname_retain(test_dnames[3]);
-	knot_dname_retain(test_dnames[3]);
-	knot_dname_retain(test_dnames[3]);
-	knot_dname_retain(test_dnames[3]);
-	knot_dname_retain(test_dnames[3]);
-	knot_dname_retain(test_dnames[3]);
-	knot_dname_retain(test_dnames[3]);
+	
+	/* MX RDATA - short = 20 DNAME = b.dname.com. */
+	id = htobe16(20);
+	init_test_rdata_with_binary(&test_rdata_array[TEST_RDATA_MX_BIN_GT].rdata,
+	                            &test_rdata_array[TEST_RDATA_MX_BIN_GT].size,
+	                            &test_rdata_array[TEST_RDATA_MX_BIN_GT].wire,
+	                            &test_rdata_array[TEST_RDATA_MX_BIN_GT].wire_size,
+	                            0, 0, sizeof(knot_dname_t *) + 2,
+	                            test_dnames[1]->size + 2, &id, 2);
+	
+	init_test_rdata_with_dname(&test_rdata_array[TEST_RDATA_MX_BIN_GT].rdata,
+	                           &test_rdata_array[TEST_RDATA_MX_BIN_GT].size,
+	                           &test_rdata_array[TEST_RDATA_MX_BIN_GT].wire,
+	                           &test_rdata_array[TEST_RDATA_MX_BIN_GT].wire_size,
+	                           2, 2, sizeof(knot_dname_t *),
+	                           test_dnames[1]->size, test_dnames[1]);
+	
+	/* MINFO RRs. */
+	init_test_rdata_with_dname(&test_rdata_array[TEST_RDATA_MINFO1].rdata,
+	                           &test_rdata_array[TEST_RDATA_MINFO1].size,
+	                           &test_rdata_array[TEST_RDATA_MINFO1].wire,
+	                           &test_rdata_array[TEST_RDATA_MINFO1].wire_size,
+	                           0, 0, sizeof(knot_dname_t *) * 2,
+	                           test_dnames[0]->size + test_dnames[1]->size,
+	                           test_dnames[0]);
+	
+	init_test_rdata_with_dname(&test_rdata_array[TEST_RDATA_MINFO1].rdata,
+	                           &test_rdata_array[TEST_RDATA_MINFO1].size,
+	                           &test_rdata_array[TEST_RDATA_MINFO1].wire,
+	                           &test_rdata_array[TEST_RDATA_MINFO1].wire_size,
+	                           sizeof(knot_dname_t *), test_dnames[0]->size,
+	                           sizeof(knot_dname_t *),
+	                           test_dnames[1]->size, test_dnames[1]);
+	
+	init_test_rdata_with_dname(&test_rdata_array[TEST_RDATA_MINFO2].rdata,
+	                           &test_rdata_array[TEST_RDATA_MINFO2].size,
+	                           &test_rdata_array[TEST_RDATA_MINFO2].wire,
+	                           &test_rdata_array[TEST_RDATA_MINFO2].wire_size,
+	                           0, 0, sizeof(knot_dname_t *) * 2,
+	                           test_dnames[2]->size + test_dnames[3]->size,
+	                           test_dnames[2]);
+	
+	init_test_rdata_with_dname(&test_rdata_array[TEST_RDATA_MINFO2].rdata,
+	                           &test_rdata_array[TEST_RDATA_MINFO2].size,
+	                           &test_rdata_array[TEST_RDATA_MINFO2].wire,
+	                           &test_rdata_array[TEST_RDATA_MINFO2].wire_size,
+	                           sizeof(knot_dname_t *), test_dnames[2]->size,
+	                           sizeof(knot_dname_t *),
+	                           test_dnames[3]->size, test_dnames[3]);
 }
 
 static void create_test_rrsets()
@@ -555,7 +563,7 @@ static int test_rrset_rdata_item_size()
 {
 	/* Test that types containing DNAMEs only return OK values. */
 	knot_rrset_t *rrset =
-		&test_rrset_array[TEST_RRSET_MINFO_MULTIPLE].rrset;
+		&test_rrset_array[TEST_RRSET_MINFO_MULTIPLE1].rrset;
 	if (rrset_rdata_item_size(rrset, 0) != sizeof(knot_dname_t *) * 2) {
 		diag("Wrong item length read from RRSet (first item).\n");
 		return 0;
@@ -996,7 +1004,7 @@ static int test_rrset_equal()
 		return 0;
 	}
 	/* Change DNAME. */
-	rrs1->owner = test_dnames[4];
+	knot_rrset_set_owner(rrs1, test_dnames[4]);
 	ret = knot_rrset_equal(rrs1, rrs2, KNOT_RRSET_COMPARE_HEADER);
 	if (ret) {
 		char *owner1 = knot_dname_to_str(rrs1->owner);
@@ -1044,13 +1052,134 @@ static int test_rrset_equal()
 
 static int test_rrset_rdata_equal()
 {
+	/* Equal - raw data only. */
+	knot_rrset_t *rrset1 = &test_rrset_array[TEST_RRSET_A_LESS].rrset;
+	knot_rrset_t *rrset2 = &test_rrset_array[TEST_RRSET_A_LESS].rrset;
+	if (!knot_rrset_rdata_equal(rrset1, rrset2)) {
+		diag("rrset_rdata_equal() returned wrong "
+		     "value, should be 1. (raw data) %d %d\n",
+		     rrset1->type, rrset2->type);
+		return 0;
+	}
+	
+	/* Equal - DNAME only. */
+	rrset1 = &test_rrset_array[TEST_RRSET_NS_LESS].rrset;
+	rrset2 = &test_rrset_array[TEST_RRSET_NS_LESS].rrset;
+	if (!knot_rrset_rdata_equal(rrset1, rrset2)) {
+		diag("rrset_rdata_equal() returned wrong "
+		     "value, should be 1. (DNAME only)\n");
+		return 0;
+	}
+	
+	/* Equal - combination. */
+	rrset1 = &test_rrset_array[TEST_RRSET_MX_BIN_LESS].rrset;
+	rrset2 = &test_rrset_array[TEST_RRSET_MX_BIN_LESS].rrset;
+	if (!knot_rrset_rdata_equal(rrset1, rrset2)) {
+		diag("rrset_rdata_equal() returned wrong "
+		     "value, should be 1. (MX combination)\n");
+		return 0;
+	}
+	
+	/* Equal - combination, different order. */
+	rrset1 = &test_rrset_array[TEST_RRSET_MINFO_MULTIPLE1].rrset;
+	rrset2 = &test_rrset_array[TEST_RRSET_MINFO_MULTIPLE2].rrset;
+	if (!knot_rrset_rdata_equal(rrset1, rrset2)) {
+		diag("rrset_rdata_equal() returned wrong "
+		     "value, should be 1. (MINFO - order, combination)\n");
+		return 0;
+	}
+	
+	/* Not equal - second item missing. */
+	rrset1 = &test_rrset_array[TEST_RRSET_MINFO_MULTIPLE1].rrset;
+	rrset2 = &test_rrset_array[TEST_RRSET_MINFO].rrset;
+	if (knot_rrset_rdata_equal(rrset1, rrset2)) {
+		diag("rrset_rdata_equal() returned wrong "
+		     "value, should be 0. (MINFO - combination)\n");
+		return 0;
+	}
+	
+	/* Other way around. */
+	if (knot_rrset_rdata_equal(rrset2, rrset1)) {
+		diag("rrset_rdata_equal() returned wrong "
+		     "value, should be 0. (combination)\n");
+		return 0;
+	}
+	
+	/* Not equal - second item different. */
+	
+	/* Other way around. */
+	
+	/* Not equal - raw data only. */
+	rrset1 = &test_rrset_array[TEST_RRSET_A_LESS].rrset;
+	rrset2 = &test_rrset_array[TEST_RRSET_A_GT].rrset;
+	if (knot_rrset_rdata_equal(rrset1, rrset2) == 1) {
+		diag("rrset_rdata_equal() returned wrong "
+		     "value, should be 0. (raw data only)\n");
+		return 0;
+	}
+	
+	/* Not equal - raw data only. */
+	if (knot_rrset_rdata_equal(rrset2, rrset1) == 1) {
+		diag("rrset_rdata_equal() returned wrong "
+		     "value, should be 0. (raw data only)\n");
+		return 0;
+	}
+	
+	/* Not equal - DNAME only. */
+	rrset1 = &test_rrset_array[TEST_RRSET_NS_LESS].rrset;
+	rrset2 = &test_rrset_array[TEST_RRSET_NS_GT].rrset;
+	if (knot_rrset_rdata_equal(rrset1, rrset2) == 1) {
+		diag("rrset_rdata_equal() returned wrong "
+		     "value, should be 0. (DNAME only)\n");
+		return 0;
+	}
+	
+	/* Not equal - DNAME only. */
+	if (knot_rrset_rdata_equal(rrset2, rrset1) == 1) {
+		diag("rrset_rdata_equal() returned wrong "
+		     "value, should be 0. (DNAME only)\n");
+		return 0;
+	}
+	
+	/* Not equal - combination, difference in binary part. */
+	rrset1 = &test_rrset_array[TEST_RRSET_MX_BIN_LESS].rrset;
+	rrset2 = &test_rrset_array[TEST_RRSET_MX_BIN_GT].rrset;
+	if (knot_rrset_rdata_equal(rrset1, rrset2) == 1) {
+		diag("rrset_rdata_equal() returned wrong "
+		     "value, should be 0. (combination)\n");
+		return 0;
+	}
+	
+	/* Not equal - combination, difference in binary part. */
+	if (knot_rrset_rdata_equal(rrset2, rrset1) == 1) {
+		diag("rrset_rdata_equal() returned wrong "
+		     "value, should be 0. (combination)\n");
+		return 0;
+	}
+	
+	/* Not equal - combination, difference in DNAME part. */
+	rrset1 = &test_rrset_array[TEST_RRSET_MX_DNAME_LESS].rrset;
+	rrset2 = &test_rrset_array[TEST_RRSET_MX_DNAME_GT].rrset;
+	if (knot_rrset_rdata_equal(rrset1, rrset2) == 1) {
+		diag("rrset_rdata_equal() returned wrong "
+		     "value, should be 0. (combination)\n");
+		return 0;
+	}
+	
+	/* Not equal - combination, difference in DNAME part. */
+	if (knot_rrset_rdata_equal(rrset2, rrset1) == 1) {
+		diag("rrset_rdata_equal() returned wrong "
+		     "value, should be 0 (combination)\n");
+		return 0;
+	}
+		
 	return 1;
 }
 
 static int test_rrset_next_dname()
 {
 	/* Same test as in above, but we'll use multiple RRs within one SET. */
-	knot_rrset_t *rrset = &test_rrset_array[TEST_RRSET_MINFO_MULTIPLE].rrset;
+	knot_rrset_t *rrset = &test_rrset_array[TEST_RRSET_MINFO_MULTIPLE1].rrset;
 	knot_dname_t *extracted_dnames[4];
 	extracted_dnames[0] = test_dnames[0];
 	extracted_dnames[1] = test_dnames[1];
@@ -1079,11 +1208,12 @@ static int test_rrset_next_dname()
 	}
 	
 	/* Now try NS. */
-	rrset = &test_rrset_array[TEST_RRSET_NS_GT].rrset;
+	rrset = &test_rrset_array[TEST_RRSET_NS_LESS].rrset;
 	dname = NULL;
 	dname = knot_rrset_get_next_dname(rrset, dname);
 	if (dname == NULL || knot_dname_compare_non_canon(*dname, test_dnames[TEST_DNAME_GENERIC])) {
-		diag("Got wrong DNAME from NS RDATA. on index %d\n", i);
+		diag("Got wrong DNAME from NS RDATA. Was %p, should be %p \n",
+		     dname ? *dname: NULL, test_dnames[TEST_DNAME_GENERIC]);
 		return 0;
 	}
 	dname = knot_rrset_get_next_dname(rrset, dname);
@@ -1095,8 +1225,8 @@ static int test_rrset_next_dname()
 	rrset = &test_rrset_array[TEST_RRSET_MX_BIN_GT].rrset;
 	dname = NULL;
 	dname = knot_rrset_get_next_dname(rrset, dname);
-	if (dname == NULL || knot_dname_compare_non_canon(*dname, test_dnames[2])) {
-		diag("Got wrong DNAME from NS RDATA. on index %d\n", i);
+	if (dname == NULL || knot_dname_compare_non_canon(*dname, test_dnames[1])) {
+		diag("Got wrong DNAME from MX RDATA.\n");
 		return 0;
 	}
 	dname = knot_rrset_get_next_dname(rrset, dname);
@@ -1107,7 +1237,7 @@ static int test_rrset_next_dname()
 	
 	/* Try writes into DNAMEs you've gotten. */
 	rrset = NULL;
-	knot_rrset_deep_copy(&test_rrset_array[TEST_RRSET_MINFO_MULTIPLE].rrset,
+	knot_rrset_deep_copy(&test_rrset_array[TEST_RRSET_MINFO_MULTIPLE1].rrset,
 	                     &rrset, 1);
 	dname = NULL;
 	i = 4;
@@ -1279,10 +1409,8 @@ static int knot_rrset_tests_run(int argc, char *argv[])
 	ok(res, "rrset: rrset_equal");
 	res_final *= res;
 	
-	todo("Test not implemented");
 	res = test_rrset_rdata_equal();
 	ok(res, "rrset: rrset_rdata_equal");
-	endtodo;
 
 	res = test_rrset_shallow_copy();
 	ok(res, "rrset: shallow copy");
