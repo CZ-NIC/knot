@@ -978,12 +978,16 @@ int xfr_worker(dthread_t *thread)
 		if (w->pending <= thread_capacity) {
 			pthread_mutex_lock(&xfr->mx);
 			unsigned was_pending = w->pending;
-			while (!EMPTY_LIST(xfr->queue)) { /* Take first request. */
+			while (!EMPTY_LIST(xfr->queue)) {
 				knot_ns_xfr_t *rq = HEAD(xfr->queue);
 				rem_node(&rq->n);
+
+				/* Unlock queue and process request. */
+				pthread_mutex_unlock(&xfr->mx);
 				ret = xfr_task_process(w, rq, buf, buflen);
 				if (ret == KNOT_EOK)  ++w->pending;
 				else                  xfr_task_free(rq);
+				pthread_mutex_lock(&xfr->mx);
 
 				if (w->pending - was_pending > XFR_CHUNKLEN)
 					break;
