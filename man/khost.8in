@@ -37,7 +37,7 @@ Send ANY query with verbose mode.
 Enable debug messages if any.
 .TP
 .BI -r
-Set recursion (RD flag).
+Disable recursion.
 .TP
 .BI -s
 Stop quering next nameserver if SERVFAIL response is received.

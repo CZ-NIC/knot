@@ -175,7 +175,7 @@ static void host_help(int argc, char *argv[])
 	       "       -a  Same as -t ANY -v.\n"
 	       "       -C  (NOT YET IMPLEMENTED)\n"
 	       "       -d  Allow debug messages.\n"
-	       "       -r  Set RD flag.\n"
+	       "       -r  Disable recursion.\n"
 	       "       -s  Stop if servfail.\n"
 	       "       -T  Use TCP procotol.\n"
 	       "       -v  Verbose output.\n"
