@@ -86,6 +86,7 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->udp_size = -1;
 		query->retries = DEFAULT_RETRIES_DIG;
 		query->wait = DEFAULT_TIMEOUT_DIG;
+		query->ignore_tc = false;
 		query->servfail_stop = false;
 		query->class_num = -1;
 		query->type_num = -1;
@@ -100,6 +101,7 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->udp_size = conf->udp_size;
 		query->retries = conf->retries;
 		query->wait = conf->wait;
+		query->ignore_tc = conf->ignore_tc;
 		query->servfail_stop = conf->servfail_stop;
 		query->class_num = conf->class_num;
 		query->type_num = conf->type_num;
@@ -724,6 +726,8 @@ static int parse_opt2(const char *value, dig_params_t *params)
 	} else if (strcmp(value, "nottl") == 0) {
 		query->style.style.show_ttl = false;
 	}
+
+	// Check for query option.
 	else if (strncmp(value, "time=", 5) == 0) {
 		if (params_parse_wait(value + 5, &query->wait)
 		    != KNOT_EOK) {
@@ -742,8 +746,6 @@ static int parse_opt2(const char *value, dig_params_t *params)
 			return KNOT_EINVAL;
 		}
 	}
-
-	// Check for connection option.
 	else if (strcmp(value, "tcp") == 0) {
 		query->protocol = PROTO_TCP;
 	} else if (strcmp(value, "notcp") == 0) {
@@ -753,6 +755,11 @@ static int parse_opt2(const char *value, dig_params_t *params)
 		query->servfail_stop = true;
 	} else if (strcmp(value, "nofail") == 0) {
 		query->servfail_stop = false;
+	}
+	else if (strcmp(value, "ignore") == 0) {
+		query->ignore_tc = true;
+	} else if (strcmp(value, "noignore") == 0) {
+		query->ignore_tc = false;
 	}
 
 	// Unknown option.

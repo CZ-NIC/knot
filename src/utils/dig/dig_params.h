@@ -30,13 +30,14 @@
 #include <stdbool.h>			// bool
 
 #include "utils/common/params.h"	// params_t
+#include "utils/common/exec.h"		// sing_context_t
 
 /*! \brief Operation mode of dig. */
 typedef enum {
 	/*!< Classic queries in list. */
 	OPERATION_QUERY,
 	/*!< Query for NS and all authoritative SOA records. */
-	OPERATION_LIST_SOA,
+	OPERATION_LIST_SOA
 } operation_t;
 
 /*! \brief DNS header and EDNS flags. */
@@ -81,6 +82,8 @@ typedef struct {
 	uint32_t	retries;
 	/*!< Wait for network response in seconds (-1 means forever). */
 	int32_t		wait;
+	/*!< Ignore truncated response. */
+	bool		ignore_tc;
 	/*!< Stop quering if servfail. */
 	bool		servfail_stop;
 	/*!< Class number (16unsigned + -1 uninitialized). */
@@ -95,6 +98,8 @@ typedef struct {
 	style_t		style;
 	/*!< Key parameters. */
 	knot_key_params_t key_params;
+	/*!< Context for operations with signatures. */
+	sign_context_t	sign_ctx;
 } query_t;
 
 /*! \brief Settings for dig. */
