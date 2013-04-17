@@ -175,6 +175,20 @@ static knot_packet_t* create_query_packet(const query_t *query,
 		return NULL;
 	}
 
+	// Sign the packet if a key was specified.
+	if (query->key_params.name) {
+		int ret = sign_packet(packet, (sign_context_t *)&query->sign_ctx,
+		                      &query->key_params);
+		if (ret != KNOT_EOK) {
+			ERR("failed to sign query packet (%s)\n",
+			    knot_strerror(ret));
+			knot_dname_release(q.qname);
+			knot_packet_free(&packet);
+			return NULL;
+		}
+		*data_len = packet->size;
+	}
+
 	return packet;
 }
 
@@ -281,7 +295,6 @@ void process_query(const query_t *query)
 
 	// Create query packet.
 	out_packet = create_query_packet(query, &out, &out_len);
-
 	if (out_packet == NULL) {
 		return;
 	}
