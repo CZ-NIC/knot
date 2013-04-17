@@ -473,8 +473,6 @@ static void wire_len_data_encode_to_str(rrset_dump_params_t *p,
 		case 4:
 			wire_num32_to_str(p);
 			break;
-		default:
-			return;
 		}
 
 		if (p->ret != 0) {
