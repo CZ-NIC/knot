@@ -14,7 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_SIGN_SIG1_H_
+#ifndef _KNOT_SIGN_SIG0_H_
 #define _KNOT_SIGN_SIG0_H_
 
 #include "sign/key.h"
