@@ -460,10 +460,8 @@ static void wire_len_data_encode_to_str(rrset_dump_params_t *p,
 	default:
 		return;
 	}
-	p->in += len_len;
-	p->in_max -= len_len;
 
-	// If required print data length or empty string.
+	// If required print data length.
 	if (print_len == true) {
 		switch (len_len) {
 		case 1:
@@ -483,11 +481,16 @@ static void wire_len_data_encode_to_str(rrset_dump_params_t *p,
 			return;
 		}
 
-		// Write space.
-		dump_string(p, " ");
-		if (p->ret != 0) {
-			return;
+		// If something follows, print one space character.
+		if (in_len > 0 || *empty_str != '\0') {
+			dump_string(p, " ");
+			if (p->ret != 0) {
+				return;
+			}
 		}
+	} else {
+		p->in += len_len;
+		p->in_max -= len_len;
 	}
 
 	if (in_len > 0) {
@@ -496,11 +499,9 @@ static void wire_len_data_encode_to_str(rrset_dump_params_t *p,
 		if (ret <= 0) {
 			return;
 		}
-		size_t out_len = ret;
-	
-		p->out += out_len;
-		p->out_max -= out_len;
-		p->total += out_len;
+		p->out += ret;
+		p->out_max -= ret;
+		p->total += ret;
 	
 		// String termination.
 		if (p->out_max > 0) {
@@ -512,7 +513,7 @@ static void wire_len_data_encode_to_str(rrset_dump_params_t *p,
 		// Fill in output.
 		p->in += in_len;
 		p->in_max -= in_len;
-	} else {
+	} else if (*empty_str != '\0') {
 		dump_string(p, empty_str);
 		if (p->ret != 0) {
 			return;

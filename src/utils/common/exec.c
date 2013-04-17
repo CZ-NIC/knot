@@ -206,8 +206,9 @@ static void print_section_full(const knot_rrset_t **rrsets,
 	char   *buf = malloc(buflen);
 
 	for (size_t i = 0; i < count; i++) {
-	while (knot_rrset_txt_dump(rrsets[i], buf, buflen, &(style->style)) < 0)
-	{
+		while (knot_rrset_txt_dump(rrsets[i], buf, buflen,
+		                           &(style->style)) < 0)
+		{
 			buflen += 4096;
 			buf = realloc(buf, buflen);
 
