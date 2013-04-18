@@ -87,7 +87,7 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->retries = DEFAULT_RETRIES_DIG;
 		query->wait = DEFAULT_TIMEOUT_DIG;
 		query->ignore_tc = false;
-		query->servfail_stop = false;
+		query->servfail_stop = true;
 		query->class_num = -1;
 		query->type_num = -1;
 		query->xfr_serial = 0;
@@ -128,10 +128,14 @@ void query_free(query_t *query)
 		return;
 	}
 
-	// Clean up servers.
+	// Cleanup servers.
 	WALK_LIST_DELSAFE(n, nxt, query->servers) {
 		server_free((server_t *)n);
 	}
+
+	// Cleanup cryptographic content.
+	free_sign_context(&query->sign_ctx);
+	knot_free_key_params(&query->key_params);
 
 	free(query->owner);
 	free(query->port);
@@ -411,6 +415,24 @@ void complete_queries(list *queries, const query_t *conf)
 				q->xfr_serial = conf->xfr_serial;
 			} else {
 				q->type_num = KNOT_RRTYPE_A;
+			}
+		}
+
+		// Set zone transfer if any.
+		if (q->type_num == KNOT_RRTYPE_AXFR ||
+		    q->type_num == KNOT_RRTYPE_IXFR) {
+			q->operation = OPERATION_XFR;
+		}
+
+		// No retries for TCP.
+		if (q->protocol == PROTO_TCP) {
+			q->retries = 0;
+		// If wait/tries < 1 s, set 1 second for each try.
+		} else {
+			if (q->wait > 0 && q->wait < ( 1 + q->retries)) {
+				q->wait = 1;
+			} else {
+				q->wait /= (1 + q->retries);
 			}
 		}
 
@@ -750,6 +772,7 @@ static int parse_opt2(const char *value, dig_params_t *params)
 		query->protocol = PROTO_TCP;
 	} else if (strcmp(value, "notcp") == 0) {
 		query->protocol = PROTO_UDP;
+		query->ignore_tc = true;
 	}
 	else if (strcmp(value, "fail") == 0) {
 		query->servfail_stop = true;

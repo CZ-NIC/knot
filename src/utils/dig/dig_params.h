@@ -34,8 +34,10 @@
 
 /*! \brief Operation mode of dig. */
 typedef enum {
-	/*!< Classic queries in list. */
+	/*!< Standard 1-message query/reply. */
 	OPERATION_QUERY,
+	/*!< Zone transfer (AXFR or IXFR). */
+	OPERATION_XFR,
 	/*!< Query for NS and all authoritative SOA records. */
 	OPERATION_LIST_SOA
 } operation_t;

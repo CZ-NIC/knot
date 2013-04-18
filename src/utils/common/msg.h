@@ -30,10 +30,12 @@
 #include <stdio.h>			// printf
 
 #define ERROR_		"Error: "
+#define INFO_		"Info: "
 #define WARNING_	"Warning: "
 #define DEBUG_		"Debug: "
 
 #define ERR(m...)	{ printf(ERROR_ m); fflush(stdout); }
+#define INFO(m...)	{ printf(INFO_ m); fflush(stdout); }
 #define WARN(m...)	{ printf(WARNING_ m); fflush(stdout); }
 
 /*! \brief Enable/disable debugging. */
