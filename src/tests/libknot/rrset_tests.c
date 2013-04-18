@@ -16,6 +16,7 @@
 
 #include <assert.h>
 #include <stdint.h>
+#include <inttypes.h>
 
 #include "tests/libknot/rrset_tests.h"
 #include "common/descriptor.h"
@@ -42,7 +43,7 @@ unit_api rrset_tests_api = {
 
 enum rrset_test_const {
 	TEST_RRSET_COUNT = 14,
-	TEST_RDATA_COUNT = 11,
+	TEST_RDATA_COUNT = 10,
 	TEST_DNAME_COUNT = 11,
 	
 	TEST_RDATA_A_LESS = 0,
@@ -55,7 +56,6 @@ enum rrset_test_const {
 	TEST_RDATA_MX_BIN_GT = 7,
 	TEST_RDATA_MINFO1 = 8,
 	TEST_RDATA_MINFO2 = 9,
-	TEST_RDATA_MINFO3 = 10,
 	
 	TEST_RRSET_A_LESS = 0,
 	TEST_RRSET_A_GT = 1,
@@ -98,24 +98,22 @@ static char *test_dname_strings[TEST_DNAME_COUNT] = {
 static knot_dname_t *test_dnames[TEST_DNAME_COUNT];
 
 struct test_rdata {
-	uint8_t *rdata; // Rdata in knot internal format
-	uint8_t *wire; // Rdata in wireformat
-	uint16_t size;
-	uint16_t wire_size;
+	uint8_t *rdata; // RDATA in knot internal format
+	uint8_t *wire; // RDATA in wireformat
+	uint16_t size; // RDATA internal size
+	uint16_t wire_size; // Wireformat size
 };
 
 typedef struct test_rdata test_rdata_t;
 
 struct test_rrset {
-	int owner_id;
-	knot_rrset_t rrset;
-	uint8_t *header_wire;
-	size_t header_wire_size;
-	uint8_t *rdata_wire;
-	size_t rdata_wire_size;
-	size_t rr_count;
-	int test_rdata_ids[16];
-	test_rdata_t **test_rdata;
+	int owner_id; // Owners have to be dynamically allocated, IDs used to connect.
+	knot_rrset_t rrset; // Dynamically created knot_rrset_t structure.
+	uint8_t *header_wire; // Owner, class, TTL.
+	size_t header_wire_size; // Header size.
+	size_t rr_count; // RR count.
+	int test_rdata_ids[16]; // RDATA IDs - will be used to assign RDATA.
+	test_rdata_t **test_rdata; // Dynamically created test RDATA.
 };
 
 typedef struct test_rrset test_rrset_t;
@@ -132,39 +130,38 @@ static test_rdata_t test_rdata_array[TEST_RDATA_COUNT] = {
 	[TEST_RDATA_MX_BIN_GT] = {NULL, NULL, sizeof(knot_dname_t *) + 2, 0},
 	[TEST_RDATA_MINFO1] = {NULL, NULL, sizeof(knot_dname_t *) * 2, 0},
 	[TEST_RDATA_MINFO2] = {NULL, NULL, sizeof(knot_dname_t *) * 2, 0},
-	[TEST_RDATA_MINFO3] = {NULL, NULL, sizeof(knot_dname_t *) * 2, 0}
 };
 
 
 test_rrset_t test_rrset_array[TEST_RRSET_COUNT] = {
 	 [TEST_RRSET_A_LESS] = {TEST_DNAME_GENERIC, {NULL, KNOT_RRTYPE_A, KNOT_CLASS_IN, 3600, NULL, NULL, 0, NULL},
-          NULL, 0, NULL, 0, 1, {TEST_RDATA_A_LESS}, NULL},
+          NULL, 0, 1, {TEST_RDATA_A_LESS}, NULL},
 	 [TEST_RRSET_A_GT] = {TEST_DNAME_GENERIC, {NULL, KNOT_RRTYPE_A, KNOT_CLASS_IN, 3600, NULL, NULL, 0, NULL},
-          NULL, 0, NULL, 0, 1, {TEST_RDATA_A_GT}, NULL},
+          NULL, 0, 1, {TEST_RDATA_A_GT}, NULL},
 	 [TEST_RRSET_NS_LESS] = {TEST_DNAME_GENERIC, {NULL, KNOT_RRTYPE_NS, KNOT_CLASS_IN, 3600, NULL, NULL, 0, NULL},
-          NULL, 0, NULL, 0, 1, {TEST_RDATA_NS_LESS}, NULL},
+          NULL, 0, 1, {TEST_RDATA_NS_LESS}, NULL},
 	 [TEST_RRSET_NS_GT] = {TEST_DNAME_GENERIC, {NULL, KNOT_RRTYPE_NS, KNOT_CLASS_IN, 3600, NULL, NULL, 0, NULL},
-          NULL, 0, NULL, 0, 1, {TEST_RDATA_NS_GT}, NULL},
+          NULL, 0, 1, {TEST_RDATA_NS_GT}, NULL},
 	 [TEST_RRSET_MX_DNAME_LESS] = {TEST_DNAME_GENERIC, {NULL, KNOT_RRTYPE_MX, KNOT_CLASS_IN, 3600, NULL, NULL, 0, NULL},
-          NULL, 0, NULL, 0, 1, {TEST_RDATA_MX_DNAME_LESS}, NULL},
+          NULL, 0, 1, {TEST_RDATA_MX_DNAME_LESS}, NULL},
 	 [TEST_RRSET_MX_DNAME_GT] = {TEST_DNAME_GENERIC, {NULL, KNOT_RRTYPE_MX, KNOT_CLASS_IN, 3600, NULL, NULL, 0, NULL},
-          NULL, 0, NULL, 0, 1, {TEST_RDATA_MX_DNAME_GT}, NULL},
+          NULL, 0, 1, {TEST_RDATA_MX_DNAME_GT}, NULL},
 	 [TEST_RRSET_MX_BIN_LESS] = {TEST_DNAME_GENERIC, {NULL, KNOT_RRTYPE_MX, KNOT_CLASS_IN, 3600, NULL, NULL, 0, NULL},
-          NULL, 0, NULL, 0, 1, {TEST_RDATA_MX_BIN_LESS}, NULL},
+          NULL, 0, 1, {TEST_RDATA_MX_BIN_LESS}, NULL},
 	 [TEST_RRSET_MX_BIN_GT] = {TEST_DNAME_GENERIC, {NULL, KNOT_RRTYPE_MX, KNOT_CLASS_IN, 3600, NULL, NULL, 0, NULL},
-          NULL, 0, NULL, 0, 1, {TEST_RDATA_MX_BIN_GT}, NULL},
+          NULL, 0, 1, {TEST_RDATA_MX_BIN_GT}, NULL},
 	 [TEST_RRSET_MINFO] = {TEST_DNAME_GENERIC, {NULL, KNOT_RRTYPE_MINFO, KNOT_CLASS_IN, 3600, NULL, NULL, 0, NULL},
-          NULL, 0, NULL, 0, 1, {TEST_RDATA_MINFO1}, NULL},
+          NULL, 0, 1, {TEST_RDATA_MINFO1}, NULL},
 	 [TEST_RRSET_MINFO_MULTIPLE1] = {TEST_DNAME_GENERIC, {NULL, KNOT_RRTYPE_MINFO, KNOT_CLASS_IN, 3600, NULL, NULL, 0, NULL},
-          NULL, 0, NULL, 0, 2, {TEST_RDATA_MINFO1, TEST_RDATA_MINFO2}, NULL},
+          NULL, 0, 2, {TEST_RDATA_MINFO1, TEST_RDATA_MINFO2}, NULL},
 	 [TEST_RRSET_MINFO_MULTIPLE2] = {TEST_DNAME_GENERIC, {NULL, KNOT_RRTYPE_MINFO, KNOT_CLASS_IN, 3600, NULL, NULL, 0, NULL},
-          NULL, 0, NULL, 0, 2, {TEST_RDATA_MINFO2, TEST_RDATA_MINFO1}, NULL},
+          NULL, 0, 2, {TEST_RDATA_MINFO2, TEST_RDATA_MINFO1}, NULL},
 	 [TEST_RRSET_MERGE_RESULT1] = {TEST_DNAME_GENERIC, {NULL, KNOT_RRTYPE_A, KNOT_CLASS_IN, 3600, NULL, NULL, 0, NULL},
-          NULL, 0, NULL, 0, 2, {TEST_RDATA_A_LESS, TEST_RDATA_A_GT}, NULL},
+          NULL, 0, 2, {TEST_RDATA_A_LESS, TEST_RDATA_A_GT}, NULL},
 	 [TEST_RRSET_OWNER_LESS] = {TEST_DNAME_LESS, {NULL, KNOT_RRTYPE_A, KNOT_CLASS_IN, 3600, NULL, NULL, 0, NULL},
-          NULL, 0, NULL, 0, 1, {TEST_RDATA_A_LESS}, NULL},
+          NULL, 0, 1, {TEST_RDATA_A_LESS}, NULL},
 	 [TEST_RRSET_OWNER_GT] = {TEST_DNAME_GREATER, {NULL, KNOT_RRTYPE_A, KNOT_CLASS_IN, 3600, NULL, NULL, 0, NULL},
-          NULL, 0, NULL, 0, 1, {TEST_RDATA_A_LESS}, NULL}
+          NULL, 0, 1, {TEST_RDATA_A_LESS}, NULL}
 };
 
 static void create_test_dnames()
@@ -192,7 +189,7 @@ static void init_test_rdata_with_dname(uint8_t **rdata, uint16_t *rdata_size,
 	}
 	memcpy(*rdata + pos, &dname, sizeof(knot_dname_t *));
 	*rdata_size += sizeof(knot_dname_t *);
-	memcpy(*wire + pos, dname->name, dname->size);
+	memcpy(*wire + wire_pos, dname->name, dname->size);
 	*wire_size += dname->size;
 	
 	knot_dname_retain(dname);
@@ -206,6 +203,7 @@ static void init_test_rdata_with_binary(uint8_t **rdata, uint16_t *rdata_size,
                                         const void *data, size_t data_size)
 {
 	if (pos == 0) {
+		// New structure, allocate.
 		*rdata = xmalloc(alloc_size);
 		*rdata_size = 0;
 		*wire = xmalloc(wire_alloc_size);
@@ -324,11 +322,15 @@ static void create_test_rdata()
 static void create_test_rrsets()
 {
 	for (int i = 0; i < TEST_RRSET_COUNT; i++) {
+		/* Create memory representation. */
 		test_rrset_t *test_rrset = &test_rrset_array[i];
 		/* Assign owner. */
 		test_rrset->rrset.owner = test_dnames[test_rrset->owner_id];
+		
+		/* Create wire representation. */
+		
 		/* Create header wire. */
-		test_rrset->header_wire_size = test_rrset->rrset.owner->size + 8 + 2;
+		test_rrset->header_wire_size = test_rrset->rrset.owner->size + 8;
 		test_rrset->header_wire =
 			xmalloc(test_rrset->header_wire_size);
 		/* Copy owner wire to header wire. */
@@ -346,26 +348,22 @@ static void create_test_rrsets()
 		/* Copy TTL to wire. */
 		knot_wire_write_u32(test_rrset->header_wire + offset,
 		                    test_rrset->rrset.ttl);
-		offset += sizeof(uint32_t);
-		uint16_t rdlength = 0;
+		
+		/* Create RDATA. */
 		test_rrset->test_rdata =
 			xmalloc(sizeof(void *) * test_rrset->rr_count);
 		size_t actual_length = 0;
+		size_t rdlength = 0;
 		test_rrset->rrset.rdata_count = test_rrset->rr_count;
-		/* TODO all thing below into a cycle. */
 		for (int j = 0; j < test_rrset->rr_count; j++) {
-			test_rrset->test_rdata[j] = &test_rdata_array[test_rrset->test_rdata_ids[j]];
+			test_rrset->test_rdata[j] =
+				&test_rdata_array[test_rrset->test_rdata_ids[j]];
 			rdlength += test_rrset->test_rdata[j]->wire_size;
 			actual_length += test_rrset->test_rdata[j]->size;
 		}
-		/* Copy RDLENGTH to wire. */
-		knot_wire_write_u16(test_rrset->header_wire + offset,
-		                    rdlength);
 		/* Assign RDATA (including indices). */
 		offset = 0;
 		test_rrset->rrset.rdata = xmalloc(actual_length);
-		test_rrset->rdata_wire = xmalloc(rdlength + (test_rrset->rr_count * test_rrset->header_wire_size));
-		test_rrset->rdata_wire_size = rdlength;
 		test_rrset->rrset.rdata_indices =
 			xmalloc(sizeof(uint32_t) * test_rrset->rr_count);
 		for (int j = 0; j < test_rrset->rr_count; j++) {
@@ -382,15 +380,6 @@ static void create_test_rrsets()
 		/* Store sum of indices to the last index. */
 		test_rrset->rrset.rdata_indices[test_rrset->rr_count - 1] =
 			offset;
-		/* Store RDATA wire. */
-		offset = 0;
-		for (int j = 0; j < test_rrset->rr_count; j++) {
-			memcpy(test_rrset->rdata_wire + offset,
-			       test_rrset->test_rdata[j]->wire,
-			       test_rrset->test_rdata[j]->wire_size);
-			offset += test_rrset->test_rdata[j]->wire_size;
-		}
-		assert(offset == rdlength);
 	}
 }
 
@@ -624,30 +613,44 @@ static int test_rrset_rdata_item_size()
 
 static int test_rrset_get_rdata()
 {
-//	uint8_t *pointer = knot_rrset_get_rdata(rrset, 0);
-//	if (pointer == NULL) {
-//		diag("Could not ger RDATA from RRSet.\n");
-//		return 0;
-//	}
+	knot_rrset_t *rrset = knot_rrset_new(test_dnames[0],
+	                                     KNOT_RRTYPE_TXT, KNOT_CLASS_IN, 3600);
+	assert(rrset);
+	uint8_t *ref_pointer = knot_rrset_create_rdata(rrset, 16);
+	memcpy(ref_pointer, "badcafecafebabee", 16);
+	uint8_t *pointer = knot_rrset_get_rdata(rrset, 0);
+	if (pointer != ref_pointer) {
+		diag("Could not get RDATA from RRSet (%p vs %p).\n",
+		     pointer, ref_pointer);
+		knot_rrset_deep_free(&rrset, 1, 1);
+		return 0;
+	}
 	
-//	int ret = memcmp(pointer, RDATA_INIT_1, DATA1_LENGTH);
-//	if (ret) {
-//		diag("Got bad RDATA from RRSet.\n");
-//		return 0;
-//	}
+	int ret = memcmp(pointer, ref_pointer, 16);
+	if (ret) {
+		diag("Got bad RDATA from RRSet (comparison failed).\n");
+		knot_rrset_deep_free(&rrset, 1, 1);
+		return 0;
+	}
 	
-//	pointer = knot_rrset_get_rdata(rrset, 1);
-//	if (pointer == NULL) {
-//		diag("Could not ger RDATA from RRSet.\n");
-//		return 0;
-//	}
+	uint8_t *ref_pointer2 = knot_rrset_create_rdata(rrset, 16);
+	memcpy(ref_pointer2, "foobarfoobarfoob", 16);
+	pointer = knot_rrset_get_rdata(rrset, 1);
+	if (pointer != ref_pointer2) {
+		diag("Could not ger RDATA from RRSet (%p vs %p).\n",
+		     pointer, ref_pointer2);
+		knot_rrset_deep_free(&rrset, 1, 1);
+		return 0;
+	}
 	
-//	ret = memcmp(pointer, RDATA_INIT_2, DATA2_LENGTH);
-//	if (ret) {
-//		diag("Got bad RDATA from RRSet.\n");
-//		return 0;
-//	}
+	ret = memcmp(pointer, ref_pointer2, 16);
+	if (ret) {
+		diag("Got bad RDATA from RRSet (comparison failed).\n");
+		knot_rrset_deep_free(rrset, 1, 1);
+		return 0;
+	}
 	
+	knot_rrset_deep_free(&rrset, 1, 1);
 	return 1;
 }
 
@@ -743,71 +746,85 @@ static int test_rrset_to_wire()
 	size_t wire_size = 65535;
 	uint8_t wire[wire_size];
 	uint16_t rr_count = 0;
-	int failed = 0;
+	
+	/* Test correct conversions. */
 	for (int i = 0; i < TEST_RRSET_COUNT; i++) {
 		memset(wire, 0, wire_size);
 		wire_size = 65535;
 		/* Convert to wire. */
 		int ret = knot_rrset_to_wire(&test_rrset_array[i].rrset, wire,
 		                             &wire_size, 65535, &rr_count, NULL);
-		if (ret) {
-			diag("Could not convert RRSet to wire.\n");
+		if (ret != KNOT_EOK) {
+			diag("Could not convert RRSet to wire (%s).\n",
+			     knot_strerror(ret));
 			return 0;
 		}
 		
-		/* Check that the header is OK. */
-		ret = memcmp(wire, test_rrset_array[i].header_wire,
-		             test_rrset_array[i].header_wire_size);
-		if (ret) {
-			diag("Header of RRSet %d is wrongly converted.\n",
-			     i);
+		if (rr_count != test_rrset_array[i].rrset.rdata_count) {
+			diag("Wrong number of RRs converted.\n");
 			return 0;
 		}
 		
-		if (wire_size != test_rrset_array[i].rdata_wire_size +
-		    test_rrset_array[i].header_wire_size) {
+		size_t offset = 0;
+		for (int j = 0; j < rr_count; ++j) {
+			/* Check that header is OK. */
+			ret = memcmp(wire + offset,
+			             test_rrset_array[i].header_wire,
+			             test_rrset_array[i].header_wire_size);
+			if (ret) {
+				diag("Header of RRSet %d, RR %d is wrongly converted.\n",
+				     i, j);
+				return 0;
+			}
+		
+			offset += test_rrset_array[i].header_wire_size;
+			/* Check RDLENGTH. */
+			uint16_t rdlength = knot_wire_read_u16(wire + offset);
+			if (rdlength != test_rrset_array[i].test_rdata[j]->wire_size) {
+				diag("Wrong RDLENGTH\n");
+				return 0;
+			}
+			offset += sizeof(uint16_t);
+				
+			/* Check that the RDATA are OK. */
+			ret = memcmp(wire + offset,
+			             test_rrset_array[i].test_rdata[j]->wire,
+			             rdlength);
+			if (ret) {
+				diag("RDATA of RRSet %d, RR %d, "
+				     "are wrongly converted. Type=%"PRIu16"\n",
+				     i, j, test_rrset_array[i].rrset.type);
+				return 0;
+			}
+			offset += rdlength;
+		}
+		
+		if (offset != wire_size) {
 			diag("Wrong wire size, in RRSet=%d "
 			     "(should be=%d, is=%d).\n", i,
-			     test_rrset_array[i].rdata_wire_size +
-			     test_rrset_array[i].header_wire_size, wire_size);
-			failed = 1;
-			continue;
-		}
-		
-		/* Check that the RDATA are OK. */
-		ret = memcmp(wire + test_rrset_array[i].header_wire_size,
-		             test_rrset_array[i].rdata_wire,
-		             test_rrset_array[i].rdata_wire_size);
-		if (ret) {
-			diag("RDATA of RRSet %d are wrongly converted.\n",
-			     i);
-			failed = 1;
-			hex_print((char *)(wire + test_rrset_array[i].header_wire_size),
-			          test_rrset_array[i].rdata_wire_size);
-			hex_print((char *)(test_rrset_array[i].rdata_wire),
-			          test_rrset_array[i].rdata_wire_size);
+			     offset, wire_size);
+			return 0;
 		}
 	}
 	
 	/* Check that function does not crash if given small wire. */
-	wire_size = 5; // even header does not fit
 	int ret = knot_rrset_to_wire(&test_rrset_array[0].rrset, wire,
-	                         &wire_size, 65535, &rr_count, NULL);
+	                         &wire_size, 5, &rr_count, NULL);
 	if (ret != KNOT_ESPACE) {
 		diag("RRSet was converted to wire even though twe wire was"
 		     " not big enough.\n");
 		return 0;
 	}
-	wire_size = 25; // even RDATA do not fit TODO check those values
+	/* RDATA do not fit. */
 	ret = knot_rrset_to_wire(&test_rrset_array[0].rrset, wire,
-	                         &wire_size, 65335, &rr_count, NULL);
+	                         &wire_size, 25, &rr_count, NULL);
 	if (ret != KNOT_ESPACE) {
 		diag("RRSet was converted to wire even though twe wire was"
 		     " not big enough.\n");
 		return 0;
 	}
 	
-	return !failed;
+	return 1;
 }
 
 static int test_rrset_merge()
@@ -1420,11 +1437,9 @@ static int knot_rrset_tests_run(int argc, char *argv[])
 	ok(res, "rrset: deep copy");
 	res_final *= res;
 	
-	todo("Test needs to be re-implemented");
 	res = test_rrset_to_wire();
 	ok(res, "rrset: to wire");
 	res_final *= res;
-	endtodo;
 	
 	res = test_rrset_rdata_item_size();
 	ok(res, "rrset: rdata_item_size");
