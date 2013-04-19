@@ -435,8 +435,6 @@ static int test_rrset_new()
 	                                      0);
 	free(rrset);
 
-	diag("Total errors: %d", check_errors);
-
 	return (check_errors == 0);
 }
 
@@ -646,7 +644,7 @@ static int test_rrset_get_rdata()
 	ret = memcmp(pointer, ref_pointer2, 16);
 	if (ret) {
 		diag("Got bad RDATA from RRSet (comparison failed).\n");
-		knot_rrset_deep_free(rrset, 1, 1);
+		knot_rrset_deep_free(&rrset, 1, 1);
 		return 0;
 	}
 	
