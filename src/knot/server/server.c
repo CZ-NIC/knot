@@ -128,8 +128,8 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	}
 	
 	/* Set socket options. */
-#ifndef DISABLE_IPV6
 	int flag = 1;
+#ifndef DISABLE_IPV6
 	if (cfg_if->family == AF_INET6) {
 		/* Disable dual-stack for performance reasons. */
 		if(setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &flag, sizeof(flag)) < 0) {
@@ -137,6 +137,7 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 		}
 	}
 #endif
+	(void) setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));
 	ret = socket_bind(sock, cfg_if->family, cfg_if->address, cfg_if->port);
 	if (ret < 0) {
 		socket_close(sock);
@@ -171,9 +172,10 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 		}
 	}
 #endif
-
+	(void) setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));
 	ret = socket_bind(sock, cfg_if->family, cfg_if->address, cfg_if->port);
 	if (ret < 0) {
+		free(new_if->addr);
 		socket_close(new_if->fd[IO_UDP]);
 		socket_close(sock);
 		log_server_error("Could not bind to "
@@ -184,6 +186,7 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 
 	ret = socket_listen(sock, TCP_BACKLOG_SIZE);
 	if (ret < 0) {
+		free(new_if->addr);
 		socket_close(new_if->fd[IO_UDP]);
 		socket_close(sock);
 		log_server_error("Failed to listen on "
