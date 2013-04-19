@@ -54,13 +54,10 @@ knot_packet_t* create_empty_packet(const knot_packet_prealloc_type_t type,
 /*!
  * \brief Prints information header for transfer.
  *
- * \param owner		Name of the zone.
- * \param type		Transfer type.
+ * \param question	Packet question section.
  * \param style		Style of the output.
  */
-void print_header_xfr(const char     *owner,
-                      const uint16_t type,
-                      const style_t  *style);
+void print_header_xfr(const knot_question_t *question, const style_t *style);
 
 /*!
  * \brief Prints answer section for 1 transfer message.

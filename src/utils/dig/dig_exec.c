@@ -194,7 +194,7 @@ static knot_packet_t* create_query_packet(const query_t *query,
 }
 
 static bool check_reply_id(const knot_packet_t *reply,
-                                 const knot_packet_t *query)
+                           const knot_packet_t *query)
 {
 	uint16_t query_id = knot_wire_get_id(query->wireformat);
 	uint16_t reply_id = knot_wire_get_id(reply->wireformat);
@@ -224,6 +224,42 @@ static void check_reply_question(const knot_packet_t *reply,
 	    name_diff != 0) {
 		WARN("query/response question sections are different\n");
 		return;
+	}
+}
+
+static int64_t first_serial_check(const knot_packet_t *reply)
+{
+	if (reply->header.ancount <= 0) {
+		return -1;
+	}
+
+	const knot_rrset_t *first = *(reply->answer);
+
+	if (first->type != KNOT_RRTYPE_SOA) {
+		return -1;
+	} else {
+		return knot_rrset_rdata_soa_serial(first);
+	}
+}
+
+static bool last_serial_check(const uint32_t serial, const knot_packet_t *reply)
+{
+	if (reply->header.ancount <= 0) {
+		return false;
+	}
+
+	const knot_rrset_t *last = *(reply->answer + reply->header.ancount - 1);
+
+	if (last->type != KNOT_RRTYPE_SOA) {
+		return false;
+	} else {
+		int64_t last_serial = knot_rrset_rdata_soa_serial(last);
+
+		if (last_serial == serial) {
+			return true;
+		} else {
+			return false;
+		}
 	}
 }
 
@@ -282,7 +318,7 @@ static int process_query_packet(const knot_packet_t     *query,
 			return -1;
 		}
 
-		// Stop meassuring of query time.
+		// Stop meassuring of response time.
 		gettimeofday(&t_end, NULL);
 
 		// Create reply packet structure to fill up.
@@ -311,6 +347,8 @@ static int process_query_packet(const knot_packet_t     *query,
 			net_close(&net);
 			return -1;
 		}
+
+		knot_packet_free(&reply);
 	}
 
 	// Check for TC bit and repeat query with TCP if required.
@@ -374,7 +412,7 @@ void process_query(const query_t *query)
 	ip_t ip_type = get_iptype(query->ip);
 	int sock_type = get_socktype(query->protocol, query->type_num);
 
-	// Loop over server list.
+	// Loop over server list to process query.
 	WALK_LIST(server, query->servers) {
 		for (size_t i = 0; i <= query->retries; i++) {
 			ret = process_query_packet(out_packet,
@@ -389,14 +427,188 @@ void process_query(const query_t *query)
 				knot_packet_free(&out_packet);
 				return;
 			} else if (query->servfail_stop == true) {
-				INFO("no reply\n");
 				knot_packet_free(&out_packet);
 				return;
 			}
 		}
 	}
 
-	INFO("no reply\n");
+	knot_packet_free(&out_packet);
+}
+
+static int process_xfr_packet(const knot_packet_t     *query,
+                              const server_t          *server,
+                              const ip_t              ip_type,
+                              const int               sock_type,
+                              const int32_t           wait,
+                              const sign_context_t    *sign_ctx,
+                              const knot_key_params_t *key_params,
+                              const style_t           *style)
+{
+	struct timeval t_start, t_query, t_end;
+	knot_packet_t  *reply;
+	uint8_t        in[MAX_PACKET_SIZE];
+	int            in_len;
+	net_t          net;
+	int            ret;
+	int64_t        serial = 0;
+	size_t         total_len = 0;
+	size_t         msg_count = 0;
+	size_t         rr_count = 0;
+
+	// Get initial time.
+	gettimeofday(&t_start, NULL);
+
+	// Connect to the server.
+	ret = net_connect(NULL, server, ip_type, sock_type, wait, &net);
+	if (ret != KNOT_EOK) {
+		return -1;
+	}
+
+	INFO("quering server %s#%i over %s\n", net.addr, net.port, net.proto);
+
+	// Send query packet.
+	ret = net_send(&net, query->wireformat, query->size);
+
+	// Get query time.
+	gettimeofday(&t_query, NULL);
+
+	if (ret != KNOT_EOK) {
+		net_close(&net);
+		return -1;
+	}
+
+	// Print query packet if required.
+	if (style->show_query) {
+		print_packet(query, query->size, &net,
+		             time_diff(&t_start, &t_query),
+		             false, style);
+	}
+
+	// Print leading transfer information.
+	print_header_xfr(&query->question, style);
+
+	// Loop over reply messages unless first and last SOA serials differ.
+	while (true) {
+		// Receive a reply message.
+		in_len = net_receive(&net, in, sizeof(in));
+		if (in_len <= 0) {
+			net_close(&net);
+			return -1;
+		}
+
+		// Create reply packet structure to fill up.
+		reply = knot_packet_new(KNOT_PACKET_PREALLOC_NONE);
+		if (reply == NULL) {
+			net_close(&net);
+			return -1;
+		}
+	
+		// Parse reply to the packet structure.
+		if (knot_packet_parse_from_wire(reply, in, in_len, 0,
+		                                KNOT_PACKET_DUPL_NO_MERGE)
+		    != KNOT_EOK) {
+			ERR("Malformed reply packet\n");
+			knot_packet_free(&reply);
+			net_close(&net);
+			return -1;
+		}
+	
+		// Compare reply header id.
+		if (check_reply_id(reply, query) == false) {
+			return -1;
+		}
+	
+		// Check for reply error.
+		uint8_t rcode_id = knot_wire_get_rcode(in);
+		if (rcode_id != KNOT_RCODE_NOERROR) {
+			knot_lookup_table_t *rcode = 
+				knot_lookup_by_id(knot_rcode_names, rcode_id);
+			if (rcode != NULL) {
+				ERR("server respond %s\n", rcode->name);
+			} else {
+				ERR("server respond %i\n", rcode_id);
+			}
+
+			knot_packet_free(&reply);
+			net_close(&net);
+			return -1;
+		}
+
+		// The first message has a special treatment.
+		if (msg_count == 0) {
+			// Read first SOA serial.
+			serial = first_serial_check(reply);
+
+			if (serial < 0) {
+				ERR("first answer record isn't SOA\n");
+				knot_packet_free(&reply);
+				net_close(&net);
+				return -1;
+			}
+
+			// Check for question sections equality.
+			check_reply_question(reply, query);
+		}
+
+		msg_count++;
+		rr_count += reply->header.ancount;
+		total_len += in_len;
+
+		// Print reply packet.
+		print_data_xfr(reply, style);
+
+		// Stop if last SOA record has correct serial.
+		if (last_serial_check(serial, reply)) {
+			knot_packet_free(&reply);
+			break;
+		}
+
+		knot_packet_free(&reply);
+	}
+
+	// Stop meassuring of response time.
+	gettimeofday(&t_end, NULL);
+
+	// Print trailing transfer information.
+	print_footer_xfr(total_len, msg_count, rr_count, &net,
+	                 time_diff(&t_query, &t_end), style);
+
+	net_close(&net);
+
+	return 0;
+}
+
+void process_xfr(const query_t *query)
+{
+	knot_packet_t *out_packet;
+	uint8_t       *out = NULL;
+	size_t        out_len = 0;
+
+	if (query == NULL) {
+		DBG_NULL;
+		return;
+	}
+
+	// Create query packet.
+	out_packet = create_query_packet(query, &out, &out_len);
+	if (out_packet == NULL) {
+		return;
+	}
+
+	// Get connection parameters.
+	ip_t ip_type = get_iptype(query->ip);
+	int sock_type = get_socktype(query->protocol, query->type_num);
+
+	// Use first nameserver only to process transfer.
+	process_xfr_packet(out_packet,
+	                   HEAD(query->servers),
+	                   ip_type, sock_type,
+	                   query->wait,
+	                   &query->sign_ctx,
+	                   &query->key_params,
+	                   &query->style);
+
 	knot_packet_free(&out_packet);
 }
 
@@ -418,7 +630,7 @@ int dig_exec(const dig_params_t *params)
 			process_query(query);
 			break;
 		case OPERATION_XFR:
-// TODO
+			process_xfr(query);
 			break;
 		case OPERATION_LIST_SOA:
 			break;

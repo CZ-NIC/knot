@@ -160,7 +160,7 @@ int net_connect(const server_t *local,
 
 	// Get connection parameters.
 	if (getaddrinfo(remote->name, remote->service, &hints, &res) != 0) {
-		WARN("can't use server %s service %s\n",
+		WARN("can't use server %s, service %s\n",
 		     remote->name, remote->service);
 		return KNOT_ERROR;
 	}
