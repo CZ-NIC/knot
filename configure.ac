@@ -61,8 +61,8 @@ AC_PATH_PROG([RAGEL], [ragel], [echo !UNPROCESSED! ragel])
 # Set FSM type for Ragel
 AC_SUBST([FSM_TYPE], [-T0])
 AC_ARG_ENABLE([fastparser],
-    AS_HELP_STRING([--enable-fastparser], [Set to generate fast goto driven state machine (Ragel option G2)]),
-    AC_SUBST([FSM_TYPE], [-G2]),
+    AS_HELP_STRING([--enable-fastparser], [Generate fast zone parser (requires Ragel!)]),
+    [touch src/zscanner/scanner.rl; AC_SUBST([FSM_TYPE], [-G2])],
     [])
 
 # Set compiler compatibility flags
