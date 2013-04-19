@@ -161,7 +161,7 @@ static int cmd_remote_reply(int c)
 	
 	/* Read response packet. */
 	int n = tcp_recv(c, rwire, SOCKET_MTU_SZ, NULL);
-	if (n < 0) {
+	if (n <= 0) {
 		dbg_server("remote: couldn't receive response = %d\n", n);
 		knot_packet_free(&reply);
 		free(rwire);
@@ -173,10 +173,18 @@ static int cmd_remote_reply(int c)
 	if (ret == KNOT_EOK) {
 		/* Check RCODE */
 		ret = knot_packet_rcode(reply);
-		
-		/* Check extra data. */
-		if (knot_packet_authority_rrset_count(reply) > 0) {
-			ret = cmd_remote_print_reply(reply->authority[0]);
+		switch(ret) {
+		case KNOT_RCODE_NOERROR:
+			if (knot_packet_authority_rrset_count(reply) > 0) {
+				ret = cmd_remote_print_reply(reply->authority[0]);
+			}
+			break;
+		case KNOT_RCODE_REFUSED:
+			ret = KNOT_EDENIED;
+			break;
+		default:
+			ret = KNOT_ERROR;
+			break;
 		}
 	}
 	
@@ -244,18 +252,18 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	/* Wait for reply. */
 	if (rc == 0) {
 		int ret = KNOT_EOK;
-		while (ret != KNOT_ECONN) {
+		while (ret == KNOT_EOK) {
 			ret = cmd_remote_reply(s);
-		}
-		if (ret != KNOT_EOK && ret != KNOT_ECONN) {
-			log_server_warning("Remote command reply: %s\n",
-			                   knot_strerror(ret));
-			rc = 1;
+			if (ret != KNOT_EOK && ret != KNOT_ECONN) {
+				log_server_warning("Remote command reply: %s\n",
+				                   knot_strerror(ret));
+				rc = 1;
+			}
 		}
 	}
 	
 	/* Cleanup. */
-	printf("\n");
+	if (rc == 0) printf("\n");
 	knot_rrset_deep_free(&rr, 1, 1);
 	
 	/* Close connection. */

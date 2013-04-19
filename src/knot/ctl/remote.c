@@ -323,6 +323,20 @@ static int remote_c_flush(server_t *s, remote_cmdargs_t* a)
 	return remote_rdata_apply(s, a, &remote_zone_flush);
 }
 
+/*!
+ * \brief Prepare and send error response.
+ * \param c Client fd.
+ * \param buf Query buffer.
+ * \param buflen Query size.
+ * \return number of bytes sent
+ */
+static int remote_senderr(int c, uint8_t *qbuf, size_t buflen)
+{
+	knot_wire_set_qr(qbuf);
+	knot_wire_set_rcode(qbuf, KNOT_RCODE_REFUSED);
+	return tcp_send(c, qbuf, buflen);
+}
+
 /* Public APIs. */
 
 int remote_bind(conf_iface_t *desc)
@@ -478,7 +492,7 @@ int remote_answer(int fd, server_t *s, knot_packet_t *pkt, uint8_t* rwire, size_
 	if (fd < 0 || !s || !pkt || !rwire) {
 		return KNOT_EINVAL;
 	}
-	
+
 	/* Prerequisites:
 	 * QCLASS: CH
 	 * QNAME: <CMD>.KNOT_CTL_REALM.
@@ -488,7 +502,7 @@ int remote_answer(int fd, server_t *s, knot_packet_t *pkt, uint8_t* rwire, size_
 		dbg_server("remote: qclass != CH\n");
 		return KNOT_EMALF;
 	}
-	
+
 	knot_dname_t *realm = knot_dname_new_from_str(KNOT_CTL_REALM,
 	                                              KNOT_CTL_REALM_LEN, NULL);
 	if (!knot_dname_is_subdomain(qname, realm) != 0) {
@@ -518,7 +532,7 @@ int remote_answer(int fd, server_t *s, knot_packet_t *pkt, uint8_t* rwire, size_
 	args->arg = pkt->authority;
 	args->argc = knot_packet_authority_rrset_count(pkt);
 	args->rc = KNOT_RCODE_NOERROR;
-	
+
 	remote_cmd_t *c = remote_cmd_tbl;
 	while(c->name != NULL) {
 		if (strcmp(cmd, c->name) == 0) {
@@ -559,14 +573,8 @@ int remote_process(server_t *s, int r, uint8_t* buf, size_t buflen)
 	}
 	
 	/* Initialize remote party address. */
-	rcu_read_lock();
 	sockaddr_t a;
 	sockaddr_prep(&a);
-	conf_iface_t *ctl_if = conf()->ctl.iface;
-	if (ctl_if) {
-		sockaddr_init(&a, ctl_if->family);
-	}
-	rcu_read_unlock();
 	
 	/* Accept incoming connection and read packet. */
 	size_t wire_len = buflen;
@@ -582,6 +590,9 @@ int remote_process(server_t *s, int r, uint8_t* buf, size_t buflen)
 	if (ret == KNOT_EOK) {
 		
 		/* Check ACL list. */
+		char straddr[SOCKADDR_STRLEN];
+		sockaddr_tostr(&a, straddr, sizeof(straddr));
+		int rport = sockaddr_portnum(&a);
 		rcu_read_lock();
 		knot_tsig_key_t *k = NULL;
 		acl_key_t *m = NULL;
@@ -593,6 +604,10 @@ int remote_process(server_t *s, int r, uint8_t* buf, size_t buflen)
 			knot_packet_free(&pkt);
 			socket_close(c);
 			rcu_read_unlock();
+			log_server_warning("Denied remote control for '%s@%d' "
+			                   "(doesn't match ACL).\n",
+			                   straddr, rport);
+			remote_senderr(c, buf, wire_len);
 			return KNOT_EACCES;
 		}
 		if (m && m->val) {
@@ -603,17 +618,22 @@ int remote_process(server_t *s, int r, uint8_t* buf, size_t buflen)
 		/* Check TSIG. */
 		if (k) {
 			if (!tsig_rr) {
+				log_server_warning("Denied remote control for '%s@%d' "
+				                   "(key required).\n",
+				                   straddr, rport);
 				knot_packet_free(&pkt);
+				remote_senderr(c, buf, wire_len);
 				socket_close(c);
 				return KNOT_EACCES;
 			}
 			ret = zones_verify_tsig_query(pkt, k, &ts_rc,
 			                              &ts_trc, &ts_tmsigned);
 			if (ret != KNOT_EOK) {
-				dbg_server("remote: failed to verify TSIG, "
-				           "RC: %u TSIG_RC: %u\n",
-				           ts_rc, ts_trc);
+				log_server_warning("Denied remote control for '%s@%d' "
+				                   "(key verification failed).\n",
+				                   straddr, rport);
 				knot_packet_free(&pkt);
+				remote_senderr(c, buf, wire_len);
 				socket_close(c);
 				return KNOT_EACCES;
 			}
