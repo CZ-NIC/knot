@@ -67,7 +67,6 @@ uint16_t knot_keytag(const uint8_t *rdata, uint16_t rdata_len)
 	}
 }
 
-
 /*!
  * \brief Acts like strndup, except it adds a suffix to duplicated string.
  */
@@ -274,7 +273,7 @@ static int parse_keyfile_line(knot_key_params_t *key_params,
                               char *line, size_t length)
 {
 	// discard line termination
-	if (line[length - 1] == '\n') {
+	if (length > 0 && line[length - 1] == '\n') {
 		line[length - 1] = '\0';
 		length -= 1;
 	}
