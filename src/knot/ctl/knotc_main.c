@@ -70,7 +70,7 @@ static inline unsigned has_flag(unsigned flags, enum knotc_flag_t f)
 }
 
 /*! \brief Callback prototype for command. */
-typedef int (*knot_cmdf_t)(int argc, char *argv[], unsigned flags, int jobs);
+typedef int (*knot_cmdf_t)(int argc, char *argv[], unsigned flags);
 
 /*! \brief Command table item. */
 typedef struct knot_cmd_t {
@@ -81,16 +81,16 @@ typedef struct knot_cmd_t {
 } knot_cmd_t;
 
 /* Forward decls. */
-static int cmd_start(int argc, char *argv[], unsigned flags, int jobs);
-static int cmd_stop(int argc, char *argv[], unsigned flags, int jobs);
-static int cmd_restart(int argc, char *argv[], unsigned flags, int jobs);
-static int cmd_reload(int argc, char *argv[], unsigned flags, int jobs);
-static int cmd_refresh(int argc, char *argv[], unsigned flags, int jobs);
-static int cmd_flush(int argc, char *argv[], unsigned flags, int jobs);
-static int cmd_status(int argc, char *argv[], unsigned flags, int jobs);
-static int cmd_zonestatus(int argc, char *argv[], unsigned flags, int jobs);
-static int cmd_checkconf(int argc, char *argv[], unsigned flags, int jobs);
-static int cmd_checkzone(int argc, char *argv[], unsigned flags, int jobs);
+static int cmd_start(int argc, char *argv[], unsigned flags);
+static int cmd_stop(int argc, char *argv[], unsigned flags);
+static int cmd_restart(int argc, char *argv[], unsigned flags);
+static int cmd_reload(int argc, char *argv[], unsigned flags);
+static int cmd_refresh(int argc, char *argv[], unsigned flags);
+static int cmd_flush(int argc, char *argv[], unsigned flags);
+static int cmd_status(int argc, char *argv[], unsigned flags);
+static int cmd_zonestatus(int argc, char *argv[], unsigned flags);
+static int cmd_checkconf(int argc, char *argv[], unsigned flags);
+static int cmd_checkzone(int argc, char *argv[], unsigned flags);
 
 /*! \brief Table of remote commands. */
 knot_cmd_t knot_cmd_tbl[] = {
@@ -113,7 +113,6 @@ void help(int argc, char **argv)
 	printf("Usage: %sc [parameters] <action> [action_args]\n", PACKAGE_NAME);
 	printf("\nParameters:\n"
 	       " -c [file], --config=[file]\tSelect configuration file.\n"
-	       " -j [num], --jobs=[num]    \tNumber of parallel tasks to run when compiling.\n"
 	       " -s [server]               \tRemote server address (default %s)\n"
 	       " -p [port]                 \tRemote server port (default %d)\n"
 	       " -y [hmac:]name:key]       \tUse key_id specified on the command line.\n"
@@ -399,7 +398,6 @@ int main(int argc, char **argv)
 {
 	/* Parse command line arguments */
 	int c = 0, li = 0;
-	unsigned jobs = 1;
 	unsigned flags = F_NULL;
 	char *config_fn = NULL;
 	char *default_config = conf_find_default();
@@ -422,7 +420,6 @@ int main(int argc, char **argv)
 		{"config", required_argument, 0, 'c'},
 		{"verbose", no_argument, 0, 'v'},
 		{"interactive", no_argument, 0, 'i'},
-		{"jobs", required_argument, 0, 'j'},
 		{"version", no_argument, 0, 'V'},
 		{"help", no_argument, 0, 'h'},
 		{"server", required_argument, 0, 's' },
@@ -432,7 +429,7 @@ int main(int argc, char **argv)
 		{0, 0, 0, 0}
 	};
 
-	while ((c = getopt_long(argc, argv, "s:p:y:k:wfc:vij:Vh", opts, &li)) != -1) {
+	while ((c = getopt_long(argc, argv, "s:p:y:k:wfc:viVh", opts, &li)) != -1) {
 		switch (c) {
 		case 's':
 			r_addr = optarg;
@@ -474,21 +471,6 @@ int main(int argc, char **argv)
 			break;
 		case 'c':
 			config_fn = strdup(optarg);
-			break;
-		case 'j':
-			jobs = atoi(optarg);
-
-			if (jobs < 1) {
-				log_server_error("Invalid parameter '%s' to '-j'"
-				                 ", expects number <1..n>\n",
-				                 optarg);
-				help(argc, argv);
-				log_close();
-				free(config_fn);
-				free(default_config);
-				return 1;
-			}
-
 			break;
 		case 'V':
 			printf("%s, version %s\n", "Knot DNS", PACKAGE_VERSION);
@@ -587,7 +569,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Execute command. */
-	int rc = cmd->cb(argc - optind - 1, argv + optind + 1, flags, jobs);
+	int rc = cmd->cb(argc - optind - 1, argv + optind + 1, flags);
 
 	/* Finish */
 	knot_tsig_key_free(&r_key); /* Not cleaned by config deinit. */
@@ -597,7 +579,7 @@ int main(int argc, char **argv)
 	return rc;
 }
 
-static int cmd_start(int argc, char *argv[], unsigned flags, int jobs)
+static int cmd_start(int argc, char *argv[], unsigned flags)
 {
 	/* Check config. */
 	if (has_flag(flags, F_NOCONF)) {
@@ -650,9 +632,6 @@ static int cmd_start(int argc, char *argv[], unsigned flags, int jobs)
 		fclose(f);
 	}
 	
-	/* Recompile zones if needed. */
-//	cmd_compile(argc, argv, flags, jobs);
-
 	/* Prepare command */
 	const char *cfg = conf()->filename;
 	size_t args_c = 6;
@@ -699,7 +678,7 @@ static int cmd_start(int argc, char *argv[], unsigned flags, int jobs)
 	return rc;
 }
 
-static int cmd_stop(int argc, char *argv[], unsigned flags, int jobs)
+static int cmd_stop(int argc, char *argv[], unsigned flags)
 {
 	/* Check config. */
 	if (has_flag(flags, F_NOCONF)) {
@@ -760,7 +739,7 @@ static int cmd_stop(int argc, char *argv[], unsigned flags, int jobs)
 	return rc;
 }
 
-static int cmd_restart(int argc, char *argv[], unsigned flags, int jobs)
+static int cmd_restart(int argc, char *argv[], unsigned flags)
 {
 	/* Check config. */
 	if (has_flag(flags, F_NOCONF)) {
@@ -770,37 +749,37 @@ static int cmd_restart(int argc, char *argv[], unsigned flags, int jobs)
 	}
 	
 	int rc = 0;
-	rc |= cmd_stop(argc, argv, flags | F_WAIT, jobs);
-	rc |= cmd_start(argc, argv, flags, jobs);
+	rc |= cmd_stop(argc, argv, flags | F_WAIT);
+	rc |= cmd_start(argc, argv, flags);
 	return rc;
 }
 
-static int cmd_reload(int argc, char *argv[], unsigned flags, int jobs)
+static int cmd_reload(int argc, char *argv[], unsigned flags)
 {
 	return cmd_remote("reload", KNOT_RRTYPE_TXT, 0, NULL);
 }
 
-static int cmd_refresh(int argc, char *argv[], unsigned flags, int jobs)
+static int cmd_refresh(int argc, char *argv[], unsigned flags)
 {
 	return cmd_remote("refresh", KNOT_RRTYPE_NS, argc, argv);
 }
 
-static int cmd_flush(int argc, char *argv[], unsigned flags, int jobs)
+static int cmd_flush(int argc, char *argv[], unsigned flags)
 {
 	return cmd_remote("flush", KNOT_RRTYPE_NS, argc, argv);
 }
 
-static int cmd_status(int argc, char *argv[], unsigned flags, int jobs)
+static int cmd_status(int argc, char *argv[], unsigned flags)
 {
 	return cmd_remote("status", KNOT_RRTYPE_TXT, 0, NULL);
 }
 
-static int cmd_zonestatus(int argc, char *argv[], unsigned flags, int jobs)
+static int cmd_zonestatus(int argc, char *argv[], unsigned flags)
 {
 	return cmd_remote("zonestatus", KNOT_RRTYPE_TXT, 0, NULL);
 }
 
-static int cmd_checkconf(int argc, char *argv[], unsigned flags, int jobs)
+static int cmd_checkconf(int argc, char *argv[], unsigned flags)
 {
 	/* Check config. */
 	if (has_flag(flags, F_NOCONF)) {
@@ -814,7 +793,7 @@ static int cmd_checkconf(int argc, char *argv[], unsigned flags, int jobs)
 	return 0;
 }
 
-static int cmd_checkzone(int argc, char *argv[], unsigned flags, int jobs)
+static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 {
 	/* Zone checking */
 	int rc = 0;

@@ -10,9 +10,6 @@
 .HP
 \fB\-c\fR [file], \fB\-\-config\fR=\fI[file]\fR Select configuration file.
 .TP
-\fB\-j\fR [num], \fB\-\-jobs\fR=\fI[num]\fR
-Number of parallel tasks to run (only for 'compile').
-.TP
 \fB\-s\fR [server]\fR Remote server address (default 127.0.0.1) 
 .TP
 \fB\-p\fR [port]\fR Remote server port (default 5553)
@@ -38,9 +35,6 @@ Wait for the server to finish start/stop operations.
 \fB\-i\fR, \fB\-\-interactive\fR
 Interactive mode (do not daemonize).
 .TP
-\fB\-a\fR, \fB\-\-auto\fR
-Enable automatic recompilation (start or reload).
-.TP
 \fB\-h\fR, \fB\-\-help\fR
 Print help and usage.
 .SS "Actions:"
@@ -55,7 +49,7 @@ restart
 Stops and then starts knot server daemon.
 .TP
 reload
-Reload knot configuration and compiled zones.
+Reload knot configuration and zones.
 .TP
 flush
 Flush journal and update zone files.
@@ -65,9 +59,6 @@ Check if server is running.
 .TP
 zonestatus
 Show status of configured zones.
-.TP
-compile
-Compile zone file.
 .TP
 refresh
 Refresh slave zones (all if not specified).
