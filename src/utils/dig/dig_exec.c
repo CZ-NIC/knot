@@ -516,6 +516,8 @@ static int process_xfr_packet(const knot_packet_t     *query,
 	
 		// Compare reply header id.
 		if (check_reply_id(reply, query) == false) {
+			knot_packet_free(&reply);
+			net_close(&net);
 			return -1;
 		}
 	

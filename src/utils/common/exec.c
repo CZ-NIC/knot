@@ -364,16 +364,13 @@ void print_header_xfr(const knot_question_t *question, const style_t  *style)
 		return;
 	}
 
-	char *owner = knot_dname_to_str(question->qname);
-	if (owner == NULL) {
-		owner = "NULL";
-	}
-
 	if (style->show_header) {
-		printf(";; %s for %s\n", xfr, owner);
+		char *owner = knot_dname_to_str(question->qname);
+		if (owner != NULL) {
+			printf("\n;; %s for %s\n", xfr, owner);
+			free(owner);
+		}
 	}
-
-	free(owner);
 }
 
 void print_data_xfr(const knot_packet_t *packet,
