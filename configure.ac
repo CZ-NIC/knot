@@ -146,10 +146,10 @@ AC_ARG_ENABLE([lto],
       *)  AC_MSG_ERROR([bad value ${enableval} for --enable-lto]) ;;
     esac])
 
-# Check for shortlog
-AC_ARG_ENABLE([shortlog],
-    AS_HELP_STRING([--enable-shortlog], [enable shorter date format in log messages [default=no]]),
-    AC_DEFINE([ENABLE_SHORTLOG], [1], [short log format]))
+# Check for enable microseconds in log messages
+AC_ARG_ENABLE([microseconds-log],
+    AS_HELP_STRING([--enable-microseconds-log], [enable microseconds in log messages [default=no]]),
+    AC_DEFINE([ENABLE_MICROSECONDS_LOG], [1], [microseconds in log messages]))
 
 AX_CHECK_COMPILER_FLAGS("-fpredictive-commoning", [CFLAGS="$CFLAGS -fpredictive-commoning"], [])
 
