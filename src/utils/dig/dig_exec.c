@@ -290,8 +290,6 @@ static int process_query_packet(const knot_packet_t     *query,
 		return -1;
 	}
 
-	INFO("quering server %s#%i over %s\n", net.addr, net.port, net.proto);
-
 	// Send query packet.
 	ret = net_send(&net, query->wireformat, query->size);
 
@@ -355,7 +353,7 @@ static int process_query_packet(const knot_packet_t     *query,
 	// Check for TC bit and repeat query with TCP if required.
 	if (knot_wire_get_tc(reply->wireformat) != 0 &&
 	    ignore_tc == false && sock_type == SOCK_DGRAM) {
-		WARN("truncated reply\n");
+		WARN("truncated reply, using TCP instead\n");
 		knot_packet_free(&reply);
 		net_close(&net);
 
@@ -415,10 +413,12 @@ void process_query(const query_t *query)
 
 	// Loop over server list to process query.
 	WALK_LIST(server, query->servers) {
+		server_t *srv = (server_t *)server;
+
 		for (size_t i = 0; i <= query->retries; i++) {
 			ret = process_query_packet(out_packet,
 			                           query->local,
-			                           (server_t *)server,
+			                           srv,
 			                           ip_type, sock_type,
 			                           query->wait, query->ignore_tc,
 			                           &query->sign_ctx,
@@ -432,6 +432,9 @@ void process_query(const query_t *query)
 				knot_packet_free(&out_packet);
 				return;
 			}
+
+			WARN("failed to query server %s#%s\n",
+			     srv->name, srv->service);
 		}
 	}
 
@@ -467,8 +470,6 @@ static int process_xfr_packet(const knot_packet_t     *query,
 	if (ret != KNOT_EOK) {
 		return -1;
 	}
-
-	INFO("quering server %s#%i over %s\n", net.addr, net.port, net.proto);
 
 	// Send query packet.
 	ret = net_send(&net, query->wireformat, query->size);
@@ -589,6 +590,7 @@ void process_xfr(const query_t *query)
 	knot_packet_t *out_packet;
 	uint8_t       *out = NULL;
 	size_t        out_len = 0;
+	int           ret;
 
 	if (query == NULL) {
 		DBG_NULL;
@@ -605,15 +607,22 @@ void process_xfr(const query_t *query)
 	ip_t ip_type = get_iptype(query->ip);
 	int sock_type = get_socktype(query->protocol, query->type_num);
 
+	server_t *srv = HEAD(query->servers);
+
 	// Use first nameserver only to process transfer.
-	process_xfr_packet(out_packet,
-	                   query->local,
-	                   HEAD(query->servers),
-	                   ip_type, sock_type,
-	                   query->wait,
-	                   &query->sign_ctx,
-	                   &query->key_params,
-	                   &query->style);
+	ret = process_xfr_packet(out_packet,
+	                         query->local,
+	                         srv,
+	                         ip_type, sock_type,
+	                         query->wait,
+	                         &query->sign_ctx,
+	                         &query->key_params,
+	                         &query->style);
+
+	if (ret != 0) {
+		WARN("failed to query server %s#%s\n",
+		     srv->name, srv->service);
+	}
 
 	knot_packet_free(&out_packet);
 }

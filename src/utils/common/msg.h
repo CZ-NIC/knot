@@ -29,10 +29,10 @@
 
 #include <stdio.h>			// printf
 
-#define ERROR_		"Error: "
-#define INFO_		"Info: "
-#define WARNING_	"Warning: "
-#define DEBUG_		"Debug: "
+#define ERROR_		"; Error: "
+#define INFO_		"; Info: "
+#define WARNING_	"; Warning: "
+#define DEBUG_		"; Debug: "
 
 #define ERR(m...)	{ printf(ERROR_ m); fflush(stdout); }
 #define INFO(m...)	{ printf(INFO_ m); fflush(stdout); }
