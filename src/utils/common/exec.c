@@ -21,6 +21,7 @@
 
 #include "libknot/libknot.h"
 #include "common/lists.h"		// list
+#include "common/print.h"		// txt_print
 #include "common/errcode.h"		// KNOT_EOK
 #include "common/descriptor.h"		// KNOT_RRTYPE_
 #include "utils/common/msg.h"		// WARN
@@ -174,6 +175,20 @@ static void print_opt_section(const knot_opt_rr_t *rr)
 	       knot_edns_get_version(rr),
 	       (knot_edns_do(rr) != 0) ? "do" : "",
 	       knot_edns_get_payload(rr));
+
+	for (int i = 0; i < rr->option_count; i++) {
+		knot_opt_option_t *opt = &(rr->options[i]);
+
+		if (opt->code == EDNS_OPTION_NSID) {
+			printf(";; NSID: ");
+			short_hex_print(opt->data, opt->length);
+			printf(";;     :  ");
+			txt_print(opt->data, opt->length);
+		} else {
+			printf(";; Option (%u): ", opt->code);
+			short_hex_print(opt->data, opt->length);
+		}
+	}
 }
 
 static void print_section_question(const knot_dname_t *owner,

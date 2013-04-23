@@ -100,6 +100,8 @@ typedef struct {
 	flags_t		flags;
 	/*!< Output settings. */
 	style_t		style;
+	/*!< Query for NSID. */
+	bool		nsid;
 	/*!< Key parameters. */
 	knot_key_params_t key_params;
 	/*!< Context for operations with signatures. */

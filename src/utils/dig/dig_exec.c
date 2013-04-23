@@ -44,7 +44,7 @@ static knot_packet_t* create_query_packet(const query_t *query,
 		if (get_socktype(query->protocol, query->type_num)
 		    == SOCK_STREAM) {
 			max_size = MAX_PACKET_SIZE;
-		} else if (query->flags.do_flag == true) {
+		} else if (query->flags.do_flag || query->nsid) {
 			max_size = DEFAULT_EDNS_SIZE;
 		} else {
 			max_size = DEFAULT_UDP_SIZE;
@@ -140,8 +140,8 @@ static knot_packet_t* create_query_packet(const query_t *query,
 		}
 	}
 
-	// Set DO flag to EDNS section.
-	if (query->flags.do_flag == true) {
+	// Create EDNS section if required.
+	if (query->flags.do_flag || query->nsid) {
 		knot_opt_rr_t *opt_rr = knot_edns_new();
 
 		if (opt_rr == NULL) {
@@ -163,7 +163,23 @@ static knot_packet_t* create_query_packet(const query_t *query,
 			return NULL;
 		}
 
-		knot_edns_set_do(&packet->opt_rr);
+		// Set DO flag to EDNS section.
+		if (query->flags.do_flag) {
+			knot_edns_set_do(&packet->opt_rr);
+		}
+
+		if (query->nsid) {
+			if (knot_edns_add_option(&packet->opt_rr,
+			                         EDNS_OPTION_NSID,
+			                         0, NULL) != KNOT_EOK) {
+
+				ERR("can't set NSID query\n");
+				knot_edns_free(&opt_rr);
+				knot_dname_release(q.qname);
+				knot_packet_free(&packet);
+				return NULL;
+			}
+		}
 
 		knot_edns_free(&opt_rr);
 	}

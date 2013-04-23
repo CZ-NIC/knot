@@ -94,6 +94,7 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->xfr_serial = 0;
 		query->flags = DEFAULT_FLAGS_DIG;
 		query->style = DEFAULT_STYLE_DIG;
+		query->nsid = false;
 	} else {
 		if (conf->local != NULL) {
 			query->local = server_create(conf->local->name,
@@ -119,6 +120,7 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->xfr_serial = conf->xfr_serial;
 		query->flags = conf->flags;
 		query->style = conf->style;
+		query->nsid = conf->nsid;
 
 		if (knot_copy_key_params(&conf->key_params, &query->key_params)
 		    != KNOT_EOK) {
@@ -835,6 +837,11 @@ static int parse_opt2(const char *value, dig_params_t *params)
 		query->ignore_tc = true;
 	} else if (strcmp(value, "noignore") == 0) {
 		query->ignore_tc = false;
+	}
+	else if (strcmp(value, "nsid") == 0) {
+		query->nsid = true;
+	} else if (strcmp(value, "nonsid") == 0) {
+		query->nsid = false;
 	}
 
 	// Unknown option.
