@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include <assert.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 
 #include "knot/common.h"
 #include "knot/ctl/process.h"
@@ -51,6 +52,11 @@ pid_t pid_read(const char* fn)
 	char buf[64];
 
 	if (fn) {
+		struct stat st;
+		if (stat(fn, &st) != 0) {
+			return KNOT_ENOENT;
+		}
+
 		FILE *fp = fopen(fn, "r");
 		if (!fp) {
 			return KNOT_ENOENT;
@@ -130,7 +136,7 @@ int pid_running(pid_t pid)
 	return kill(pid, 0) == 0;
 }
 
-void proc_update_privileges(int uid, int gid)
+int proc_update_privileges(int uid, int gid)
 {
 #ifdef HAVE_SETGROUPS
 	/* Drop supplementary groups. */
@@ -160,17 +166,21 @@ void proc_update_privileges(int uid, int gid)
 	}
 	
 	/* Check storage writeability. */
+	int ret = KNOT_EOK;
 	char *lfile = strcdup(conf()->storage, "/knot.lock");
 	assert(lfile != NULL);
 	FILE* fp = fopen(lfile, "w");
 	if (fp == NULL) {
 		log_server_warning("Storage directory '%s' is not writeable.\n",
 		                   conf()->storage);
+		ret = KNOT_EACCES;
 	} else {
 		fclose(fp);
 		unlink(lfile);
 	}
+
 	free(lfile);
+	return ret;
 }
 
 pid_t pid_wait(pid_t proc, int *rc)

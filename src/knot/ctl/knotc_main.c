@@ -588,10 +588,6 @@ static int cmd_start(int argc, char *argv[], unsigned flags)
 		return 1;
 	}
 	
-	/* Alter privileges. */
-	log_update_privileges(conf()->uid, conf()->gid);
-	proc_update_privileges(conf()->uid, conf()->gid);
-	
 	/* Fetch PID. */
 	char *pidfile = pid_filename();
 	pid_t pid = pid_read(pidfile);
@@ -620,16 +616,6 @@ static int cmd_start(int argc, char *argv[], unsigned flags)
 			log_server_info("Forcing server start.\n");
 			pid_remove(pidfile);
 		}
-	} else {
-		/* Create empty PID file. */
-		FILE *f = fopen(pidfile, "w");
-		if (f == NULL) {
-			log_server_warning("PID file '%s' is not writeable.\n",
-			                   pidfile);
-			free(pidfile);
-			return 1;
-		}
-		fclose(f);
 	}
 	
 	/* Prepare command */
@@ -686,11 +672,7 @@ static int cmd_stop(int argc, char *argv[], unsigned flags)
 		                 "continue.\n");
 		return 1;
 	}
-	
-	/* Alter privileges. */
-	log_update_privileges(conf()->uid, conf()->gid);
-	proc_update_privileges(conf()->uid, conf()->gid);
-	
+
 	/* Fetch PID. */
 	char *pidfile = pid_filename();
 	pid_t pid = pid_read(pidfile);

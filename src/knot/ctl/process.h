@@ -89,8 +89,10 @@ int pid_running(pid_t pid);
  * \param uid New user ID.
  * \param gid New group ID.
  *
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EACCESS if storage is not writeable.
  */
-void proc_update_privileges(int uid, int gid);
+int proc_update_privileges(int uid, int gid);
 
 /*!
  * \brief Wait for process to finish.

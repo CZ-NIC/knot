@@ -248,7 +248,20 @@ int main(int argc, char **argv)
 
 	/* Alter privileges. */
 	log_update_privileges(conf()->uid, conf()->gid);
-	proc_update_privileges(conf()->uid, conf()->gid);
+	if (proc_update_privileges(conf()->uid, conf()->gid) != KNOT_EOK) {
+		return 1;
+	}
+
+	/* Create empty PID file. */
+	char* pidfile = pid_filename();
+	FILE *f = fopen(pidfile, "w");
+	if (f == NULL) {
+		log_server_warning("PID file '%s' is not writeable.\n",
+		                   pidfile);
+		free(pidfile);
+		return 1;
+	}
+	fclose(f);
 	
 	/* Load zones and add hook. */
 	zones_ns_conf_hook(conf(), server->nameserver);
@@ -257,7 +270,6 @@ int main(int argc, char **argv)
 	// Run server
 	int res = 0;
 	int has_pid = 0;
-	char* pidfile = pid_filename();
 	log_server_info("Starting server...\n");
 	if ((server_start(server)) == KNOT_EOK) {
 
