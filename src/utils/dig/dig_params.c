@@ -53,7 +53,7 @@ static const style_t DEFAULT_STYLE_DIG = {
 	.show_answer = true,
 	.show_authority = true,
 	.show_additional = true,
-	.show_footer = true,
+	.show_footer = true
 };
 
 query_t* query_create(const char *owner, const query_t *conf)
@@ -66,7 +66,7 @@ query_t* query_create(const char *owner, const query_t *conf)
 		return NULL;
 	}
 
-	// Set an owner if any.
+	// Set the query owner if any.
 	if (owner != NULL) {
 		if ((query->owner = strdup(owner)) == NULL) {
 			query_free(query);
@@ -79,6 +79,7 @@ query_t* query_create(const char *owner, const query_t *conf)
 
 	// Initialization with defaults or with reference query.
 	if (conf == NULL) {
+		query->local = NULL;
 		query->operation = OPERATION_QUERY;
 		query->ip = IP_ALL;
 		query->protocol = PROTO_ALL;
@@ -94,6 +95,16 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->flags = DEFAULT_FLAGS_DIG;
 		query->style = DEFAULT_STYLE_DIG;
 	} else {
+		if (conf->local != NULL) {
+			query->local = server_create(conf->local->name,
+			                             conf->local->service);
+			if (query->local == NULL) {
+				query_free(query);
+				return NULL;
+			}
+		} else {
+			query->local = NULL;
+		}
 		query->operation = conf->operation;
 		query->ip = conf->ip;
 		query->protocol = conf->protocol;
@@ -108,9 +119,15 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->xfr_serial = conf->xfr_serial;
 		query->flags = conf->flags;
 		query->style = conf->style;
+
+		if (knot_copy_key_params(&conf->key_params, &query->key_params)
+		    != KNOT_EOK) {
+			query_free(query);
+			return NULL;
+		}
 	}
 
-	// Check port.
+	// Check dynamic allocation.
 	if (query->port == NULL) {
 		query_free(query);
 		return NULL;
@@ -132,6 +149,9 @@ void query_free(query_t *query)
 	WALK_LIST_DELSAFE(n, nxt, query->servers) {
 		server_free((server_t *)n);
 	}
+
+	// Cleanup local address.
+	server_free(query->local);
 
 	// Cleanup cryptographic content.
 	free_sign_context(&query->sign_ctx);
@@ -198,9 +218,27 @@ static int parse_class(const char *value, query_t *query)
 
 static int parse_keyfile(const char *value, query_t *query)
 {
+	knot_free_key_params(&query->key_params);
+
 	if (params_parse_keyfile(value, &query->key_params) != KNOT_EOK) {
 		return KNOT_EINVAL;
 	}
+
+	return KNOT_EOK;
+}
+
+static int parse_local(const char *value, query_t *query)
+{
+	server_t *local = parse_nameserver(value, "0");
+	if (local == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	if (query->local != NULL) {
+		server_free(query->local);
+	}
+
+	query->local = local;
 
 	return KNOT_EOK;
 }
@@ -298,6 +336,8 @@ static int parse_server(const char *value, dig_params_t *params)
 
 static int parse_tsig(const char *value, query_t *query)
 {
+	knot_free_key_params(&query->key_params);
+
 	if (params_parse_tsig(value, &query->key_params) != KNOT_EOK) {
 		return KNOT_EINVAL;
 	}
@@ -508,6 +548,18 @@ static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
 		}
 
 		query->ip = IP_6;
+		break;
+	case 'b':
+		if (val == NULL) {
+			ERR("missing address\n");
+			return KNOT_EINVAL;
+		}
+
+		if (parse_local(val, query) != KNOT_EOK) {
+			ERR("bad address %s\n", val);
+			return KNOT_EINVAL;
+		}
+		*index += add;
 		break;
 	case 'd':
 		msg_enable_debug(1);

@@ -91,6 +91,16 @@ uint16_t knot_keytag(const uint8_t *rdata, uint16_t rdata_len);
 int knot_load_key_params(const char *filename, knot_key_params_t *key_params);
 
 /*!
+ * \brief Copies key params structure content.
+ *
+ * \param src		Source structure.
+ * \param dst		Destination structure.
+ *
+ * \return Error code, KNOT_EOK when succeeded.
+ */
+int knot_copy_key_params(const knot_key_params_t *src, knot_key_params_t *dst);
+
+/*!
  * \brief Frees the key parameters.
  *
  * \param key_params	Key parameters to be freed.

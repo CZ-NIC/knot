@@ -363,6 +363,67 @@ int knot_load_key_params(const char *filename, knot_key_params_t *key_params)
 	return result;
 }
 
+static int copy_string_if_set(const char *src, char **dst)
+{
+	if (src != NULL) {
+		*dst = strdup(src);
+
+		if (*dst == NULL) {
+			return -1;
+		}
+	} else {
+		*dst = NULL;
+	}
+
+	return 0;
+}
+
+int knot_copy_key_params(const knot_key_params_t *src, knot_key_params_t *dst)
+{
+	if (src == NULL || dst == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	int ret = 0;
+
+	if (src->name != NULL) {
+		dst->name = knot_dname_deep_copy(src->name);
+		if (dst->name == NULL) {
+			ret += -1;
+		}
+	}
+
+	dst->algorithm = src->algorithm;
+	dst->keytag = src->keytag;
+
+	ret += copy_string_if_set(src->secret, &dst->secret);
+
+	ret += copy_string_if_set(src->modulus, &dst->modulus);
+	ret += copy_string_if_set(src->public_exponent, &dst->public_exponent);
+	ret += copy_string_if_set(src->private_exponent, &dst->private_exponent);
+	ret += copy_string_if_set(src->prime_one, &dst->prime_one);
+	ret += copy_string_if_set(src->prime_two, &dst->prime_two);
+	ret += copy_string_if_set(src->exponent_one, &dst->exponent_one);
+	ret += copy_string_if_set(src->exponent_two, &dst->exponent_two);
+	ret += copy_string_if_set(src->coefficient, &dst->coefficient);
+
+	ret += copy_string_if_set(src->prime, &dst->prime);
+	ret += copy_string_if_set(src->generator, &dst->generator);
+	ret += copy_string_if_set(src->subprime, &dst->subprime);
+	ret += copy_string_if_set(src->base, &dst->base);
+	ret += copy_string_if_set(src->private_value, &dst->private_value);
+	ret += copy_string_if_set(src->public_value, &dst->public_value);
+
+	ret += copy_string_if_set(src->private_key, &dst->private_key);
+
+	if (ret < 0) {
+		knot_free_key_params(dst);
+		return KNOT_ENOMEM;
+	}
+
+	return KNOT_EOK;
+}
+
 static void free_string_if_set(char *string)
 {
 	if (string)
@@ -380,6 +441,7 @@ int knot_free_key_params(knot_key_params_t *key_params)
 		knot_dname_release(key_params->name);
 
 	free_string_if_set(key_params->secret);
+
 	free_string_if_set(key_params->modulus);
 	free_string_if_set(key_params->public_exponent);
 	free_string_if_set(key_params->private_exponent);
@@ -388,6 +450,15 @@ int knot_free_key_params(knot_key_params_t *key_params)
 	free_string_if_set(key_params->exponent_one);
 	free_string_if_set(key_params->exponent_two);
 	free_string_if_set(key_params->coefficient);
+
+	free_string_if_set(key_params->prime);
+	free_string_if_set(key_params->generator);
+	free_string_if_set(key_params->subprime);
+	free_string_if_set(key_params->base);
+	free_string_if_set(key_params->private_value);
+	free_string_if_set(key_params->public_value);
+
+	free_string_if_set(key_params->private_key);
 
 	memset(key_params, '\0', sizeof(knot_key_params_t));
 
@@ -486,7 +557,7 @@ int knot_tsig_key_free(knot_tsig_key_t *key)
 {
 	if (!key)
 		return KNOT_EINVAL;
-	
+
 	knot_dname_release(key->name);
 
 	knot_binary_free(&key->secret);

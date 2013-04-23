@@ -42,4 +42,3 @@ int main(int argc, char *argv[])
 	dig_clean(&params);
 	return ret;
 }
-

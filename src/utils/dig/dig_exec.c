@@ -264,6 +264,7 @@ static bool last_serial_check(const uint32_t serial, const knot_packet_t *reply)
 }
 
 static int process_query_packet(const knot_packet_t     *query,
+                                const server_t          *local,
                                 const server_t          *server,
                                 const ip_t              ip_type,
                                 const int               sock_type,
@@ -284,7 +285,7 @@ static int process_query_packet(const knot_packet_t     *query,
 	gettimeofday(&t_start, NULL);
 
 	// Connect to the server.
-	ret = net_connect(NULL, server, ip_type, sock_type, wait, &net);
+	ret = net_connect(local, server, ip_type, sock_type, wait, &net);
 	if (ret != KNOT_EOK) {
 		return -1;
 	}
@@ -358,9 +359,9 @@ static int process_query_packet(const knot_packet_t     *query,
 		knot_packet_free(&reply);
 		net_close(&net);
 
-		return process_query_packet(query, server, ip_type, SOCK_STREAM,
-		                            wait, true, sign_ctx, key_params,
-		                            style);
+		return process_query_packet(query, local, server, ip_type,
+		                            SOCK_STREAM, wait, true, sign_ctx,
+		                            key_params, style);
 	}
 
 	// Check for question sections equality.
@@ -416,6 +417,7 @@ void process_query(const query_t *query)
 	WALK_LIST(server, query->servers) {
 		for (size_t i = 0; i <= query->retries; i++) {
 			ret = process_query_packet(out_packet,
+			                           query->local,
 			                           (server_t *)server,
 			                           ip_type, sock_type,
 			                           query->wait, query->ignore_tc,
@@ -437,6 +439,7 @@ void process_query(const query_t *query)
 }
 
 static int process_xfr_packet(const knot_packet_t     *query,
+                              const server_t          *local,
                               const server_t          *server,
                               const ip_t              ip_type,
                               const int               sock_type,
@@ -460,7 +463,7 @@ static int process_xfr_packet(const knot_packet_t     *query,
 	gettimeofday(&t_start, NULL);
 
 	// Connect to the server.
-	ret = net_connect(NULL, server, ip_type, sock_type, wait, &net);
+	ret = net_connect(local, server, ip_type, sock_type, wait, &net);
 	if (ret != KNOT_EOK) {
 		return -1;
 	}
@@ -604,6 +607,7 @@ void process_xfr(const query_t *query)
 
 	// Use first nameserver only to process transfer.
 	process_xfr_packet(out_packet,
+	                   query->local,
 	                   HEAD(query->servers),
 	                   ip_type, sock_type,
 	                   query->wait,
