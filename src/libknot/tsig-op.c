@@ -826,7 +826,6 @@ int knot_tsig_client_check_next(const knot_rrset_t *tsig_rr,
 	return knot_tsig_check_digest(tsig_rr, wire, size, prev_digest,
 	                              prev_digest_len, tsig_key,
 	                              prev_time_signed, 1);
-	return KNOT_ENOTSUP;
 }
 
 int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,

@@ -48,6 +48,11 @@ server_t* server_create(const char *name, const char *service)
 	server->name = strdup(name);
 	server->service = strdup(service);
 
+	if (server->name == NULL || server->service == NULL) {
+		server_free(server);
+		return NULL;
+	}
+
 	// Return result.
 	return server;
 }
@@ -206,6 +211,9 @@ int net_connect(const server_t *local,
 			WARN("can't bind to %s#%s\n",
 			     local->name, local->service);
 		}
+
+		// Free getaddrr data.
+		freeaddrinfo(lres);
 	}
 
 	// Connect using socket.

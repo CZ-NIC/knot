@@ -115,6 +115,9 @@ void free_sign_context(sign_context_t *ctx);
  * \param pkt		Packet to sign.
  * \param sign_ctx	Sign context.
  * \param key_params	Key parameters.
+ *
+ * \retval KNOT_EOK	if success.
+ * \retval error code	if error.
  */
 int sign_packet(knot_packet_t           *pkt,
                 sign_context_t          *sign_ctx,
@@ -126,6 +129,9 @@ int sign_packet(knot_packet_t           *pkt,
  * \param pkt		Packet verify sign.
  * \param sign_ctx	Sign context.
  * \param key_params	Key parameters.
+ *
+ * \retval KNOT_EOK	if success.
+ * \retval error code	if error.
  */
 int verify_packet(const knot_packet_t     *pkt,
                   const sign_context_t    *sign_ctx,
