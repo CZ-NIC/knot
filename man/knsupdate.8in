@@ -41,8 +41,8 @@ file names or a name without the extension can be specified as \fIkeyfile\fR
 parameter.
 
 .TP
-.BI -y \ \fR[\fIhmac:\fR]\fIname:key\fR]
-Use TSIG key to to authenticate the request. The \fIhmac\fR part specifies the
+.BI -y \ \fR[\fIhmac:\fR]\fIname:key
+Use TSIG key to authenticate the request. The \fIhmac\fR part specifies the
 algorithm (the default is hmac\-md5), \fIname\fR specifies the key name, and
 \fIkey\fR specifies the shared secret encoded in Base64.
 

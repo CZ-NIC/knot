@@ -46,8 +46,8 @@ static const style_t DEFAULT_STYLE_DIG = {
 	.format = FORMAT_FULL,
 	.style = { .wrap = false, .show_class = true, .show_ttl = true,
 	           .verbose = false, .reduce = false },
-	.show_header = true,
 	.show_query = false,
+	.show_header = true,
 	.show_edns = true,
 	.show_question = true,
 	.show_answer = true,
@@ -485,32 +485,38 @@ void complete_queries(list *queries, const query_t *conf)
 
 static void dig_help()
 {
-	printf("Usage: kdig [-4] [-6] [-dh] [-c class] [-p port] [-q name]\n"
-	       "            [-t type] [-x address] name @server\n\n"
-               "       +[no]multiline  Wrap long records to more lines.\n"
-               "       +[no]short      Show record data only.\n"
-               "       +[no]aaflag     Set AA flag.\n"
-               "       +[no]tcflag     Set TC flag.\n"
-               "       +[no]rdflag     Set RD flag.\n"
-               "       +[no]recurse    Same as +[no]rdflag\n"
-               "       +[no]raflag     Set RA flag.\n"
-               "       +[no]zflag      Set zero flag bit.\n"
-               "       +[no]adflag     Set AD flag.\n"
-               "       +[no]cdflag     Set CD flag.\n"
-               "       +[no]dnssec     Set DO flag.\n"
-               "       +[no]all        Show all packet sections.\n"
-               "       +[no]question   Show question section.\n"
-               "       +[no]answer     Show answer section.\n"
-               "       +[no]authority  Show authority section.\n"
-               "       +[no]additional Show additional section.\n"
-               "       +[no]stats      Show trailing packet statistics.\n"
-               "       +[no]cl         Show DNS class.\n"
-               "       +[no]ttl        Show TTL value.\n"
-               "       +time=T         Set wait for reply interval in seconds.\n"
-               "       +retries=N      Set number of retries.\n"
-               "       +bufsize=B      Set EDNS buffer size.\n"
-               "       +[no]tcp        Use TCP protocol.\n"
-               "       +[no]fail       Stop if SERVFAIL.\n");
+	printf("Usage: kdig [-4] [-6] [-dh] [-b address] [-c class] [-p port]\n"
+	       "            [-q name] [-t type] [-x address] [-k keyfile]\n"
+	       "            [-y [algo:]keyname:key] name @server\n"
+	       "\n"
+	       "       +[no]multiline  Wrap long records to more lines.\n"
+	       "       +[no]short      Show record data only.\n"
+	       "       +[no]aaflag     Set AA flag.\n"
+	       "       +[no]tcflag     Set TC flag.\n"
+	       "       +[no]rdflag     Set RD flag.\n"
+	       "       +[no]recurse    Same as +[no]rdflag\n"
+	       "       +[no]raflag     Set RA flag.\n"
+	       "       +[no]zflag      Set zero flag bit.\n"
+	       "       +[no]adflag     Set AD flag.\n"
+	       "       +[no]cdflag     Set CD flag.\n"
+	       "       +[no]dnssec     Set DO flag.\n"
+	       "       +[no]all        Show all packet sections.\n"
+	       "       +[no]qr         Show query packet.\n"
+	       "       +[no]header     Show packet header.\n"
+	       "       +[no]question   Show question section.\n"
+	       "       +[no]answer     Show answer section.\n"
+	       "       +[no]authority  Show authority section.\n"
+	       "       +[no]additional Show additional section.\n"
+	       "       +[no]stats      Show trailing packet statistics.\n"
+	       "       +[no]cl         Show DNS class.\n"
+	       "       +[no]ttl        Show TTL value.\n"
+	       "       +time=T         Set wait for reply interval in seconds.\n"
+	       "       +retries=N      Set number of retries.\n"
+	       "       +bufsize=B      Set EDNS buffer size.\n"
+	       "       +[no]tcp        Use TCP protocol.\n"
+	       "       +[no]fail       Stop if SERVFAIL.\n"
+	       "       +[no]ignore     Don't use TCP automatically if truncated.\n"
+	       "       +[no]nsid       Request NSID.\n");
 }
 
 static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
@@ -766,6 +772,11 @@ static int parse_opt2(const char *value, dig_params_t *params)
 		query->style.show_query = true;
 	} else if (strcmp(value, "noqr") == 0) {
 		query->style.show_query = false;
+	}
+	else if (strcmp(value, "header") == 0) {
+		query->style.show_header = true;
+	} else if (strcmp(value, "noheader") == 0) {
+		query->style.show_header = false;
 	}
 	else if (strcmp(value, "question") == 0) {
 		query->style.show_question = true;

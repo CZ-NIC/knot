@@ -30,9 +30,6 @@ Use IPv6 protocol only.
 .BI -a
 Send ANY query with verbose mode.
 .TP
-.BI -C
-(NOT YET IMPLEMENTED)
-.TP
 .BI -d
 Enable debug messages if any.
 .TP
