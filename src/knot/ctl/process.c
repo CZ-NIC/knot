@@ -52,11 +52,6 @@ pid_t pid_read(const char* fn)
 	char buf[64];
 
 	if (fn) {
-		struct stat st;
-		if (stat(fn, &st) != 0) {
-			return KNOT_ENOENT;
-		}
-
 		FILE *fp = fopen(fn, "r");
 		if (!fp) {
 			return KNOT_ENOENT;

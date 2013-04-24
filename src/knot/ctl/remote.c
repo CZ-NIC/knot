@@ -601,13 +601,13 @@ int remote_process(server_t *s, int r, uint8_t* buf, size_t buflen)
 		uint64_t ts_tmsigned = 0;
 		const knot_rrset_t *tsig_rr = knot_packet_tsig(pkt);
 		if (acl_match(conf()->ctl.acl, &a, &m) == ACL_DENY) {
-			knot_packet_free(&pkt);
-			socket_close(c);
 			rcu_read_unlock();
+			knot_packet_free(&pkt);
 			log_server_warning("Denied remote control for '%s@%d' "
 			                   "(doesn't match ACL).\n",
 			                   straddr, rport);
 			remote_senderr(c, buf, wire_len);
+			socket_close(c);
 			return KNOT_EACCES;
 		}
 		if (m && m->val) {
