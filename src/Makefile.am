@@ -223,6 +223,8 @@ libknots_la_SOURCES =				\
 	common/base32hex.h			\
 	common/evqueue.h			\
 	common/evqueue.c			\
+	common/queue.h				\
+	common/queue.c				\
 	common/evsched.h			\
 	common/evsched.c			\
 	common/acl.h				\
