@@ -105,7 +105,7 @@ Installation from packages
 
 * Installing Knot DNS packages on Debian::  
 * Installing Knot DNS packages on Ubuntu::  
-* Installing Knot DNS RPMs on Fedora::  
+* Installing Knot DNS packages on Fedora::
 * Installing Knot DNS from ports on FreeBSD::  
 
 Installing Knot DNS packages on Ubuntu

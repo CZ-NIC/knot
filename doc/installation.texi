@@ -186,7 +186,7 @@ distribution, or in a ports tree.
 @menu
 * Installing Knot DNS packages on Debian::  
 * Installing Knot DNS packages on Ubuntu::  
-* Installing Knot DNS RPMs on Fedora::  
+* Installing Knot DNS packages on Fedora::
 * Installing Knot DNS from ports on FreeBSD::  
 @end menu
 
@@ -262,28 +262,50 @@ install Knot DNS on your system and keep it up-to-date
 in the future, when new versions are released.
 
 @page
-@node Installing Knot DNS RPMs on Fedora
-@subsection Installing Knot DNS RPMs on Fedora
+@node Installing Knot DNS packages on Fedora
+@subsection Installing Knot DNS packages on Fedora
 
-There are RPM packages for @code{Knot DNS} available for i386 and amd64 targets.
-If you want use the Fedora repository, add a file with the
-following lines into @file{/etc/yum.repos.d/}
+The RPM packages for @code{Knot DNS} are available in official Fedora
+repositories since Fedora@tie{}18 (Spherical Cow). Look for @code{knot}
+package in your package manager. To install the package using Yum, run
+a following command as the root user:
 
 @example
+
+# yum install knot
+
+@end example
+
+Using official distribution repository is highly recommended, however you may
+want to run @code{Knot DNS} on older releases of Fedora. In this case you can
+set up an unofficial repository by creating @file{/etc/yum.repos.d/knot.conf}
+file with the following content:
+
+@example
+
 [knot]
 name=Network.CZ Repository
 baseurl=ftp://repo.network.cz/pub/redhat/
 enabled=1
 gpgcheck=0
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-network.cz
+
 @end example
 
-When you have added a new repository, you can install Knot DNS as a
-regular package.
+After performing this action, you can install @code{knot} package the same way
+as described above. Please note that the unofficial repository contains only
+builds for i686 and x86_64 architecture.
+
+When upgrading to Fedora@tie{}18 or higher, backup the configuration and
+switch to the latest package provided in the official repository by running the
+following command as the root user:
 
 @example
-$ yum install knot
+
+# yum distro-sync knot
+
 @end example
+
 
 @node Installing Knot DNS from ports on FreeBSD
 @subsection Installing Knot DNS from ports on FreeBSD
