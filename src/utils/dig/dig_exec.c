@@ -559,6 +559,17 @@ static int process_xfr_packet(const knot_packet_t     *query,
 
 		// The first message has a special treatment.
 		if (msg_count == 0) {
+			// Verify 1. signature if a key was specified.
+			if (key_params->name != NULL) {
+				ret = verify_packet(reply, sign_ctx, key_params);
+				if (ret != KNOT_EOK) {
+					ERR("%s\n", knot_strerror(ret));
+					knot_packet_free(&reply);
+					net_close(&net);
+					return -1;
+				}
+			}
+
 			// Read first SOA serial.
 			serial = first_serial_check(reply);
 
