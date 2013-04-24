@@ -55,7 +55,7 @@ typedef enum {
  * \retval KNOT_EACCES process does not have appropriate privileges.
  * \retval KNOT_ERROR unspecified error.
  */
-int socket_create(int family, int type);
+int socket_create(int family, int type, int proto);
 
 /*!
  * \brief Connect to remote host.

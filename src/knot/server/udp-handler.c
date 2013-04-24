@@ -32,10 +32,13 @@
 #include <string.h>
 #include <assert.h>
 #include <errno.h>
+#include <limits.h>
+#include <sys/param.h>
 #ifdef HAVE_CAP_NG_H
 #include <cap-ng.h>
 #endif /* HAVE_CAP_NG_H */
 
+#include "common/queue.h"
 #include "common/sockaddr.h"
 #include "knot/common.h"
 #include "knot/server/udp-handler.h"
@@ -47,6 +50,14 @@
 #include "libknot/packet/packet.h"
 #include "knot/server/zones.h"
 #include "knot/server/notify.h"
+
+/* FD_COPY macro compat. */
+#ifndef FD_COPY
+ #define FD_COPY(dest,src) memcpy((dest), (src), sizeof(fd_set))
+#endif
+
+/* Mirror mode (no answering). */
+/* #define MIRROR_MODE 1 */
 
 /*! \brief RRL reject procedure. */
 static size_t udp_rrl_reject(const knot_nameserver_t *ns,
@@ -82,7 +93,7 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 	char strfrom[SOCKADDR_STRLEN];
 	memset(strfrom, 0, sizeof(strfrom));
 	sockaddr_tostr(addr, strfrom, sizeof(strfrom));
-	dbg_net("udp: fd=%d received %zd bytes from '%s@%d'.\n", fd, qbuflen,
+	dbg_net("udp: received %zd bytes from '%s@%d'.\n", qbuflen,
 	        strfrom, sockaddr_portnum(addr));
 #endif
 	
@@ -91,9 +102,15 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 	knot_packet_type_t qtype = KNOT_QUERY_INVALID;
 	*resp_len = SOCKET_MTU_SZ;
 
+#ifdef MIRROR_MODE
+	knot_wire_set_qr(qbuf);
+	*resp_len = qbuflen;
+	return KNOT_EOK;
+#endif
+
 	knot_packet_t *packet = knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
 	if (packet == NULL) {
-		dbg_net("udp: failed to create packet on fd=%d\n", fd);
+		dbg_net("udp: failed to create packet\n");
 		int ret = knot_ns_error_response_from_query_wire(ns, qbuf, qbuflen,
 		                                            KNOT_RCODE_SERVFAIL,
 		                                            qbuf, resp_len);
@@ -103,7 +120,7 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 	/* Parse query. */
 	rcode = knot_ns_parse_packet(qbuf, qbuflen, packet, &qtype);
 	if (rcode < KNOT_RCODE_NOERROR) {
-		dbg_net("udp: failed to parse packet on fd=%d\n", fd);
+		dbg_net("udp: failed to parse packet\n");
 		rcode = KNOT_RCODE_SERVFAIL;
 	}
 	
@@ -189,23 +206,34 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 /*! \brief Pointer to selected UDP master implementation. */
 static void* (*_udp_init)(void) = 0;
 static int (*_udp_deinit)(void *) = 0;
-static int (*_udp_handle)(server_t *, int, void *) = 0;
+static int (*_udp_recv)(int, void *) = 0;
+static int (*_udp_handle)(server_t *, void *, unsigned *) = 0;
+static int (*_udp_send)(void *) = 0;
 
 /* UDP recvfrom() request struct. */
 struct udp_recvfrom {
+	int fd;
 	sockaddr_t addr;
-	uint8_t *buf;
+	struct msghdr msg;
+	struct iovec iov;
+	uint8_t buf[SOCKET_MTU_SZ];
 	size_t buflen;
-	unsigned slip;
 };
 
 static void *udp_recvfrom_init(void)
 {
 	struct udp_recvfrom *rq = malloc(sizeof(struct udp_recvfrom));
 	if (rq) {
+		sockaddr_prep(&rq->addr);
 		rq->buflen = SOCKET_MTU_SZ;
-		rq->buf = malloc(rq->buflen);
-		rq->slip = 0;
+		rq->iov.iov_base = rq->buf;
+		rq->iov.iov_len = rq->buflen;
+		rq->msg.msg_name = &rq->addr;
+		rq->msg.msg_namelen = rq->addr.len;
+		rq->msg.msg_iov = &rq->iov;
+		rq->msg.msg_iovlen = 1;
+		rq->msg.msg_control = NULL;
+		rq->msg.msg_controllen = 0;
 	}
 	return rq;
 }
@@ -213,51 +241,39 @@ static void *udp_recvfrom_init(void)
 static int udp_recvfrom_deinit(void *d)
 {
 	struct udp_recvfrom *rq = (struct udp_recvfrom *)d;
-	if (rq) {
-		free(rq->buf);
-		free(rq);
-	}
+	free(rq);
 	return 0;
 }
 
-static int udp_recvfrom_handle(server_t *s, int fd, void *d)
+static int udp_recvfrom_recv(int fd, void *d)
 {
 	struct udp_recvfrom *rq = (struct udp_recvfrom *)d;
-	sockaddr_prep(&rq->addr);
-	
-	/* Receive packet. */
-	int rc = 0;
-	for (;;) {
-		int n = recvfrom(fd, rq->buf, rq->buflen, MSG_DONTWAIT,
-		                 (struct sockaddr *)&rq->addr, &rq->addr.len);
-	
-		/* Error and interrupt handling. */
-		if (knot_unlikely(n <= 0)) {
-			break;
-		}
-
-		/* Handle received pkt. */
-		size_t resp_len = 0;
-		rc = udp_handle(fd, rq->buf, n, &resp_len, &rq->addr,
-		                s->nameserver, s->rrl, &rq->slip);
-		
-		/* Send response. */
-		if (rc == KNOT_EOK && resp_len > 0) {
-			
-			dbg_net("udp: on fd=%d, sending answer size=%zd.\n",
-			        fd, resp_len);
-			
-			// Send datagram
-			rc = sendto(fd, rq->buf, resp_len, 0,
-			            (struct sockaddr *)&rq->addr, rq->addr.len);
-			if (rc != (int)resp_len) {
-				dbg_net("udp: sendto(): failed: %d - %d.\n",
-				        rc, errno);
-			}
-		}
+	int ret = recvmsg(fd, &rq->msg, MSG_DONTWAIT);
+	if (ret > 0) {
+		rq->fd = fd;
+		rq->buflen = ret;
+		return 1;
 	}
-	
-	return rc;
+
+	return 0;
+}
+
+static int udp_recvfrom_handle(server_t *s, void *d, unsigned *slip)
+{
+	struct udp_recvfrom *rq = (struct udp_recvfrom *)d;
+
+	/* Handle received pkt. */
+	return udp_handle(rq->fd, rq->buf, rq->buflen, &rq->iov.iov_len, &rq->addr,
+	                  s->nameserver, s->rrl, slip);
+}
+
+static int udp_recvfrom_send(void *d)
+{
+	struct udp_recvfrom *rq = (struct udp_recvfrom *)d;
+	int rc = sendmsg(rq->fd, &rq->msg, 0);
+	rq->iov.iov_len = SOCKET_MTU_SZ;
+	if (rc > 1) return 1; /* Return number of packets sent. */
+	return 0;
 }
 
 #ifdef ENABLE_RECVMMSG
@@ -268,32 +284,18 @@ static int (*_send_mmsg)(int, sockaddr_t *, struct mmsghdr *, size_t) = 0;
 /*!
  * \brief Send multiple packets.
  * 
- * Basic, sendto() based implementation.
+ * Basic, sendmsg() based implementation.
  */
-int udp_sendto(int sock, sockaddr_t * addrs, struct mmsghdr *msgs, size_t count)
+int udp_sendmsg(int sock, sockaddr_t * addrs, struct mmsghdr *msgs, size_t count)
 {
+	int sent = 0;
 	for (unsigned i = 0; i < count; ++i) {
-		
-		const size_t resp_len = msgs[i].msg_len;
-		if (resp_len > 0) {
-			dbg_net("udp: on fd=%d, sending answer size=%zd.\n",
-			        sock, resp_len);
-
-			// Send datagram
-			sockaddr_t *addr = addrs + i;
-			struct iovec *cvec = msgs[i].msg_hdr.msg_iov;
-			int res = sendto(sock, cvec->iov_base, resp_len,
-					 0, (struct sockaddr*)addr, addr->len);
-
-			// Check result
-			if (res != (int)resp_len) {
-				dbg_net("udp: sendto(): failed: %d - %d.\n",
-				        res, errno);
-			}
+		if (sendmsg(sock, &msgs[i].msg_hdr, 0) > 0) {
+			++sent;
 		}
 	}
 	
-	return KNOT_EOK;
+	return sent;
 }
 
 #ifdef ENABLE_SENDMMSG
@@ -314,22 +316,18 @@ static inline int sendmmsg(int fd, struct mmsghdr *mmsg, unsigned vlen,
 int udp_sendmmsg(int sock, sockaddr_t *_, struct mmsghdr *msgs, size_t count)
 {
 	UNUSED(_);
-	dbg_net("udp: sending multiple responses\n");
-	if (sendmmsg(sock, msgs, count, 0) < 0) {
-		return KNOT_ERROR;
-	}
-	
-	return KNOT_EOK;
+	return sendmmsg(sock, msgs, count, 0);
 }
 #endif
 
 /* UDP recvmmsg() request struct. */
 struct udp_recvmmsg {
+	int fd;
 	char *iobuf;
 	sockaddr_t *addrs;
 	struct iovec *iov;
 	struct mmsghdr *msgs;
-	unsigned slip;
+	unsigned rcvd;
 };
 
 static void *udp_recvmmsg_init(void)
@@ -358,7 +356,6 @@ static void *udp_recvmmsg_init(void)
 			rq->msgs[i].msg_hdr.msg_name = rq->addrs + i;
 			rq->msgs[i].msg_hdr.msg_namelen = rq->addrs[i].len;
 		}
-		rq->slip = 0;
 	}
 	return rq;
 }
@@ -376,49 +373,42 @@ static int udp_recvmmsg_deinit(void *d)
 	return 0;
 }
 
-static int udp_recvmmsg_handle(server_t *s, int fd, void *d)
+static int udp_recvmmsg_recv(int fd, void *d)
+{
+	struct udp_recvmmsg *rq = (struct udp_recvmmsg *)d;
+	int n = recvmmsg(fd, rq->msgs, RECVMMSG_BATCHLEN, MSG_DONTWAIT, NULL);
+	if (n > 0) {
+		rq->fd = fd;
+		rq->rcvd = n;
+	}
+	return n;
+}
+
+static int udp_recvmmsg_handle(server_t *s, void *d, unsigned *slip)
 {
 	struct udp_recvmmsg *rq = (struct udp_recvmmsg *)d;
 
-	/* Loop until all data is read. */
-	int rc = 0;
-	ssize_t n = 0;
-	while (n >= 0) {
-
-		/* Receive multiple messages. */
-		n = recvmmsg(fd, rq->msgs, RECVMMSG_BATCHLEN, MSG_DONTWAIT, 0);
-
-		/* Error and interrupt handling. */
-		if (knot_unlikely(n <= 0)) {
-			break;
-		}
-
-		/* Handle each received msg. */
-		int ret = 0;
-		for (unsigned i = 0; i < n; ++i) {
-			struct iovec *cvec = rq->msgs[i].msg_hdr.msg_iov;
-			size_t resp_len = rq->msgs[i].msg_len;
-			ret = udp_handle(fd, cvec->iov_base, resp_len, &resp_len,
-			                 rq->addrs + i, s->nameserver, s->rrl, &rq->slip);
-			if (ret == KNOT_EOK) {
-				rq->msgs[i].msg_len = resp_len;
-				rq->iov[i].iov_len = resp_len;
-			} else {
-				rq->msgs[i].msg_len = 0;
-				rq->iov[i].iov_len = 0;
-			}
-			
-		}
-
-		/* Gather results. */
-		rc = _send_mmsg(fd, rq->addrs, rq->msgs, n);
-		
-		/* Reset iov buffer size. */
-		for (unsigned i = 0; i < n; ++i) {
-			rq->iov[i].iov_len = SOCKET_MTU_SZ;
-		}
+	/* Handle each received msg. */
+	int ret = 0;
+	for (unsigned i = 0; i < rq->rcvd; ++i) {
+		struct iovec *cvec = rq->msgs[i].msg_hdr.msg_iov;
+		size_t rlen = 0;
+		ret = udp_handle(rq->fd, cvec->iov_base, rq->msgs[i].msg_len, &rlen,
+		                 rq->addrs + i, s->nameserver, s->rrl, slip);
+		if (ret != KNOT_EOK) rlen = 0;
+		cvec->iov_len = rlen;
 	}
+	return KNOT_EOK; /* Do not send. */
+}
 
+static int udp_recvmmsg_send(void *d)
+{
+	struct udp_recvmmsg *rq = (struct udp_recvmmsg *)d;
+	int rc = _send_mmsg(rq->fd, rq->addrs, rq->msgs, rq->rcvd);
+	for (unsigned i = 0; i < rq->rcvd; ++i) {
+		struct iovec *cvec = rq->msgs[i].msg_hdr.msg_iov;
+		cvec->iov_len = SOCKET_MTU_SZ;
+	}
 	return rc;
 }
 #endif
@@ -429,6 +419,8 @@ void __attribute__ ((constructor)) udp_master_init()
 	/* Initialize defaults. */
 	_udp_init = udp_recvfrom_init;
 	_udp_deinit = udp_recvfrom_deinit;
+	_udp_recv = udp_recvfrom_recv;
+	_udp_send = udp_recvfrom_send;
 	_udp_handle = udp_recvfrom_handle;
 
 	/* Optimized functions. */
@@ -439,12 +431,14 @@ void __attribute__ ((constructor)) udp_master_init()
 		if (errno != ENOSYS) {
 			_udp_init = udp_recvmmsg_init;
 			_udp_deinit = udp_recvmmsg_deinit;
+			_udp_recv = udp_recvmmsg_recv;
+			_udp_send = udp_recvmmsg_send;
 			_udp_handle = udp_recvmmsg_handle;
 		}
 	}
 	
 	/* Check for sendmmsg() support. */
-	_send_mmsg = udp_sendto;
+	_send_mmsg = udp_sendmsg;
 #ifdef ENABLE_SENDMMSG
 	sendmmsg(0, 0, 0, 0); /* Just check if syscall exists */
 	if (errno != ENOSYS) {
@@ -453,43 +447,88 @@ void __attribute__ ((constructor)) udp_master_init()
 #endif /* ENABLE_SENDMMSG */
 #endif /* ENABLE_RECVMMSG */
 }
-	
-	
-int udp_master(dthread_t *thread)
+
+struct udpstate_t {
+	unsigned rqlen;
+	void *rqs[QUEUE_ELEMS - 1];
+	queue_t rx, tx;
+};
+
+void* udp_create_ctx(void)
 {
-	/* Drop all capabilities on workers. */
-#ifdef HAVE_CAP_NG_H
-	if (capng_have_capability(CAPNG_EFFECTIVE, CAP_SETPCAP)) {
-		capng_clear(CAPNG_SELECT_BOTH);
-		capng_apply(CAPNG_SELECT_BOTH);
+	struct udpstate_t *ctx = malloc(sizeof(struct udpstate_t));
+	if (ctx == NULL) {
+		return NULL;
 	}
-#endif /* HAVE_CAP_NG_H */
+	memset(ctx, 0, sizeof(struct udpstate_t));
 
-	int cpcount = dt_online_cpus();
-	if (cpcount > 0) {
-		unsigned cpu = dt_get_id(thread) % cpcount;
-		dt_setaffinity(thread, &cpu, 1);
+	queue_init(&ctx->rx);
+	queue_init(&ctx->tx);
+
+	/* Fill queue with empty requests. */
+	for (unsigned i = 0; i < QUEUE_ELEMS - 1; ++i) {
+		if ((ctx->rqs[i] = _udp_init()) == NULL) {
+			break;
+		}
+		queue_insert(&ctx->rx, ctx->rqs[i]);
+		++ctx->rqlen;
+	}
+	return ctx;
+}
+
+void udp_free_ctx(void *ctx)
+{
+	struct udpstate_t *_ctx = (struct udpstate_t *)ctx;
+	queue_deinit(&_ctx->rx);
+	queue_deinit(&_ctx->tx);
+
+	/* Free requests. */
+	for (unsigned i = 0; i < _ctx->rqlen; ++i) {
+		_udp_deinit(_ctx->rqs[i]);
+	}
+}
+
+int udp_writer(iohandler_t *h, dthread_t *thread)
+{
+	struct udpstate_t *ctx = (struct udpstate_t *)h->data;
+	void *rq = NULL;
+	unsigned slip = 0;
+	while ((rq = queue_remove(&ctx->tx)) != NULL) {
+		if (_udp_handle(h->server, rq, &slip) == KNOT_EOK) {
+			_udp_send(rq);
+		}
+		queue_insert(&ctx->rx, rq); /* Return to readq. */
 	}
 
-	/* Execute proper handler. */
-	dbg_net_verb("udp: thread started (worker %p).\n", thread);
+	queue_insert(&ctx->tx, NULL); /* Signalize next to close. */
+	return KNOT_EOK;
+}
+
+int udp_reader(iohandler_t *h, dthread_t *thread)
+{
+	/* Bind reader to CPU0. It shouldn't matter much which, but it is good
+	 * to bind I/O to single process to avoid context switches.
+	 * Moreover CPU0 _usually_ gets most of the interrupts.
+	 */
+	unsigned cpu = dt_online_cpus();
+	if (cpu > 1) {
+		unsigned cpu_mask = 0;
+		dt_setaffinity(thread, &cpu_mask, 1);
+	}
+
 	iostate_t *st = (iostate_t *)thread->data;
-	if (!st) {
-		dbg_net("udp: invalid parameters for udp_master_recvfrom\n");
-		return KNOT_EINVAL;
-	}
-	
-	iohandler_t *h = st->h;
-	server_t *server = h->server;
-	
-	/* Allocate buffer for answering. */
-	void *rqdata = _udp_init();
-	
+	struct udpstate_t *ctx = (struct udpstate_t *)h->data;
+
 	/* Prepare structures for bound sockets. */
-	fdset_it_t it;
-	fdset_t *fds = NULL;
-	ref_t *ref = NULL;
-	int if_cnt = 0;
+	void *rq = queue_remove(&ctx->rx);
+	ifacelist_t *ref = NULL;
+
+	/* Chose select as epoll/kqueue has larger overhead for a
+	 * single or handful of sockets. */
+	fd_set fds;
+	FD_ZERO(&fds);
+	int minfd = 0, maxfd = 0;
+	int rcvd = 0;
 
 	/* Loop until all data is read. */
 	for (;;) {
@@ -497,9 +536,23 @@ int udp_master(dthread_t *thread)
 		/* Check handler state. */
 		if (knot_unlikely(st->s & ServerReload)) {
 			st->s &= ~ServerReload;
-			ref_release(ref);
-			ref = server_set_ifaces(h->server, &fds, &if_cnt, IO_UDP);
-			if (if_cnt == 0) break;
+			maxfd = 0;
+			minfd = INT_MAX;
+			FD_ZERO(&fds);
+
+			rcu_read_lock();
+			ref_release((ref_t *)ref);
+			ref = h->server->ifaces;
+			if (ref) {
+				iface_t *i = NULL;
+				WALK_LIST(i, ref->l) {
+					int fd = i->fd[IO_UDP];
+					FD_SET(fd, &fds);
+					maxfd = MAX(fd, maxfd);
+					minfd = MIN(fd, minfd);
+				}
+			}
+			rcu_read_unlock();
 		}
 		
 		/* Cancellation point. */
@@ -508,27 +561,48 @@ int udp_master(dthread_t *thread)
 		}
 		
 		/* Wait for events. */
-		int nfds = fdset_wait(fds, OS_EV_FOREVER);
+		fd_set rfds;
+		FD_COPY(&rfds, &fds);
+		int nfds = select(maxfd + 1, &rfds, NULL, NULL, NULL);
 		if (nfds <= 0) {
 			if (errno == EINTR) continue;
 			break;
 		}
-		
-		fdset_begin(fds, &it);
-		for (;;) {
-			_udp_handle(server, it.fd, rqdata);
-			if (fdset_next(fds, &it) != 0) {
-				break;
+		/* Bound sockets will be usually closely coupled. */
+		for (unsigned fd = minfd; fd <= maxfd; ++fd) {
+			if (FD_ISSET(fd, &rfds)) {
+				while ((rcvd = _udp_recv(fd, rq)) > 0) {
+					queue_insert(&ctx->tx, rq);
+					rq = queue_remove(&ctx->rx);
+				}
 			}
 		}
 	}
-	
-	fdset_destroy(fds);
-	ref_release(ref);
-	_udp_deinit(rqdata);
 
-	dbg_net_verb("udp: worker %p finished.\n", thread);
-	
+	queue_insert(&ctx->rx, rq); /* Return */
+	queue_insert(&ctx->tx, NULL);
+	ref_release((ref_t *)ref);
+
 	return KNOT_EOK;
+}
+
+int udp_master(dthread_t *thread)
+{
+	/* Drop all capabilities on all workers. */
+#ifdef HAVE_CAP_NG_H
+        if (capng_have_capability(CAPNG_EFFECTIVE, CAP_SETPCAP)) {
+                capng_clear(CAPNG_SELECT_BOTH);
+                capng_apply(CAPNG_SELECT_BOTH);
+        }
+#endif /* HAVE_CAP_NG_H */
+
+	iostate_t *st = (iostate_t *)thread->data;
+	if (!st) return KNOT_EINVAL;
+	iohandler_t *h = st->h;
+
+	switch(dt_get_id(thread)) {
+	case 0: return udp_reader(h, thread);
+	default: return udp_writer(h, thread);
+	}
 }
 

@@ -35,10 +35,10 @@
 #include "knot/common.h"
 #include "knot/server/socket.h"
 
-int socket_create(int family, int type)
+int socket_create(int family, int type, int proto)
 {
 	/* Create socket. */
-	int ret = socket(family, type, 0);
+	int ret = socket(family, type, proto);
 	if (ret < 0) {
 		return knot_map_errno(EACCES, EINVAL, ENOMEM);
 	}

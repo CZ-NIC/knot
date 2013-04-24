@@ -247,7 +247,7 @@ static int xfr_task_connect(knot_ns_xfr_t *rq)
 	if (rq->flags & XFR_FLAG_TCP) {
 		stype = SOCK_STREAM;
 	}
-	int fd = socket_create(sockaddr_family(&rq->addr), stype);
+	int fd = socket_create(sockaddr_family(&rq->addr), stype, 0);
 	if (fd < 0) {
 		return KNOT_ERROR;
 	}

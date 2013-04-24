@@ -240,7 +240,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	}
 	
 	/* Send query. */
-	int s = socket_create(r->family, SOCK_STREAM);
+	int s = socket_create(r->family, SOCK_STREAM, IPPROTO_TCP);
 	int conn_state = socket_connect(s, r->address, r->port);
 	if (conn_state != KNOT_EOK || tcp_send(s, buf, buflen) <= 0) {
 		log_server_error("Couldn't connect to remote host "

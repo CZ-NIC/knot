@@ -346,7 +346,7 @@ int remote_bind(conf_iface_t *desc)
 	}
 	
 	/* Create new socket. */
-	int s = socket_create(desc->family, SOCK_STREAM);
+	int s = socket_create(desc->family, SOCK_STREAM, IPPROTO_TCP);
 	if (s < 0) {
 		log_server_error("Couldn't create socket for remote "
 				 "control interface - %s",

@@ -117,7 +117,7 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	memset(new_if, 0, sizeof(iface_t));
 
 	/* Create UDP socket. */
-	ret = socket_create(cfg_if->family, SOCK_DGRAM);
+	ret = socket_create(cfg_if->family, SOCK_DGRAM, IPPROTO_UDP);
 	if (ret < 0) {
 		strerror_r(errno, errbuf, sizeof(errbuf));
 		log_server_error("Could not create UDP socket: %s.\n",
@@ -153,7 +153,7 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	new_if->addr = strdup(cfg_if->address);
 
 	/* Create TCP socket. */
-	ret = socket_create(cfg_if->family, SOCK_STREAM);
+	ret = socket_create(cfg_if->family, SOCK_STREAM, IPPROTO_TCP);
 	if (ret < 0) {
 		socket_close(new_if->fd[IO_UDP]);
 		strerror_r(errno, errbuf, sizeof(errbuf));
@@ -386,9 +386,7 @@ int server_free_handler(iohandler_t *h)
 	if (!h || !h->server) return KNOT_EINVAL;
 	if (h->server->state & ServerRunning) {
 		dt_stop(h->unit);
-		if (h->interrupt) {
-			h->interrupt(h);
-		}
+		if (h->dtor) h->dtor(h);
 		dt_join(h->unit);
 	}
 
@@ -531,11 +529,6 @@ void server_stop(server_t *server)
 	iohandler_t *h = server->h;
 	for (unsigned i = 0; i < IO_COUNT; ++i) {
 		dt_stop(h[i].unit);
-
-		/* Call interrupt handler. */
-		if (h[i].interrupt) {
-			h[i].interrupt(h + i);
-		}
 	}
 }
 
@@ -593,8 +586,11 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 		}
 		
 		/* Initialize I/O handlers. */
-		dt_unit_t *tu = dt_create_coherent(tu_size, &udp_master, NULL);
-		server_init_handler(server->h + IO_UDP, server, tu, NULL);
+		size_t udp_size = tu_size;
+		if (udp_size < 2) udp_size = 2;
+		dt_unit_t *tu = dt_create_coherent(udp_size, &udp_master, NULL);
+		server_init_handler(server->h + IO_UDP, server, tu, udp_create_ctx());
+		server->h[IO_UDP].dtor = udp_free_ctx;
 		tu = dt_create(tu_size * 2);
 		server_init_handler(server->h + IO_TCP, server, tu, NULL);
 		tcp_loop_unit(server->h + IO_TCP, tu);

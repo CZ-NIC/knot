@@ -64,7 +64,7 @@ typedef struct iohandler {
 	struct server_t    *server; /*!< Reference to server */
 	void               *data;   /*!< Persistent data for I/O handler. */
 	iostate_t          *state;
-	void (*interrupt)(struct iohandler *h); /*!< Interrupt handler. */
+	void (*dtor)(void *data); /*!< Data destructor. */
 } iohandler_t;
 
 /*! \brief Round-robin mechanism of switching.
