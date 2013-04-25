@@ -70,6 +70,8 @@ dbg_zonedb_exec(
 		ret = knot_zone_contents_load_nsec3param(
 				knot_zone_get_contents(zone));
 		if (ret != KNOT_EOK) {
+			log_zone_error("NSEC3 signed zone has invalid or no "
+			               "NSEC3PARAM record.\n");
 			return ret;
 		}
 	}

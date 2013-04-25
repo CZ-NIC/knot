@@ -1332,6 +1332,8 @@ static int zonewalker(dthread_t *thread)
 		if (knot_zonedb_add_zone(zw->db_new, zones[i]) != KNOT_EOK) {
 			log_server_error("Failed to insert zone '%s' "
 			                 "into database.\n", zd->conf->name);
+			/* Not doing this here would result in memory errors. */
+			rem_node(&zd->conf->n);
 			knot_zone_deep_free(zones + i);
 		} else {
 			/* Unlink zone config from conf(),

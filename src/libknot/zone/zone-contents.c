@@ -2008,7 +2008,11 @@ int knot_zone_contents_load_nsec3param(knot_zone_contents_t *zone)
 
 	if (rrset != NULL) {
 		int r = knot_nsec3_params_from_wire(&zone->nsec3_params, rrset);
-		assert(r == KNOT_EOK);
+		if (r != KNOT_EOK) {
+			dbg_zone("Failed to load NSEC3PARAM (%s).\n",
+			         knot_strerror(r));
+			return r;
+		}
 	} else {
 		memset(&zone->nsec3_params, 0, sizeof(knot_nsec3_params_t));
 	}

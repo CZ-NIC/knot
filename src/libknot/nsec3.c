@@ -34,7 +34,8 @@
 int knot_nsec3_params_from_wire(knot_nsec3_params_t *params,
                                   const knot_rrset_t *nsec3param)
 {
-	if (params == NULL || nsec3param == NULL) {
+	if (params == NULL || nsec3param == NULL ||
+	    knot_rrset_rdata_rr_count(nsec3param) == 0) {
 		return KNOT_EINVAL;
 	}
 
