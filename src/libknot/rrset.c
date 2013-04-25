@@ -344,10 +344,16 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 				return KNOT_ESPACE;
 			}
 			assert(ret + size + rdlength <= max_size);
-			dbg_response_detail("Compressed dname size: %d\n", ret);
+dbg_response_exec_detail(
+			char *name = knot_dname_to_str(dname);
+			dbg_response_detail("Compressed dname=%s size: %d\n",
+			                    name, ret);
+			free(name);
+);
 			*pos += ret;
 			rdlength += ret;
 			offset += sizeof(knot_dname_t *);
+			compr->wire_pos += ret;
 		} else if (descriptor_item_is_dname(item)) {
 			knot_dname_t *dname;
 			memcpy(&dname, rdata + offset, sizeof(knot_dname_t *));
@@ -369,6 +375,9 @@ dbg_rrset_exec_detail(
 			*pos += knot_dname_size(dname);
 			rdlength += knot_dname_size(dname);
 			offset += sizeof(knot_dname_t *);
+			if (compr) {
+				compr->wire_pos += knot_dname_size(dname);
+			}
 		} else if (descriptor_item_is_fixed(item)) {
 			dbg_rrset_detail("Saving static chunk, size=%d\n",
 			                 item);
@@ -380,6 +389,9 @@ dbg_rrset_exec_detail(
 			*pos += item;
 			rdlength += item;
 			offset += item;
+			if (compr) {
+				compr->wire_pos += item;
+			}
 		} else if (descriptor_item_is_remainder(item)) {
 			/* Check that the remainder fits to stream. */
 			size_t remainder_size =
@@ -398,6 +410,9 @@ dbg_rrset_exec_detail(
 			*pos += remainder_size;
 			rdlength += remainder_size;
 			offset += remainder_size;
+			if (compr) {
+				compr->wire_pos += remainder_size;
+			}
 		} else {
 			assert(rrset->type == KNOT_RRTYPE_NAPTR);
 			/* Store the binary chunk. */
@@ -412,9 +427,9 @@ dbg_rrset_exec_detail(
 			*pos += chunk_size;
 			rdlength += chunk_size;
 			offset += chunk_size;
-		}
-		if (compr) {
-			compr->wire_pos += rdlength;
+			if (compr) {
+				compr->wire_pos += chunk_size;
+			}
 		}
 	}
 
