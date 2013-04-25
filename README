@@ -6,13 +6,27 @@ Knot DNS has several dependencies:
 * flex >= 2.5.31
 * bison >= 2.3
 * libssl >= 0.9.8
-* liburcu >= 0.5.4 (available as packages or as a sources from http://lttng.org/urcu)
+* liburcu >= 0.5.4
 
 Optional packages:
 * libcap-ng >= 0.6.4 for POSIX 1003.1e capabilites(7)
+* ragel
+
+Dependencies for building documentation:
+* texinfo
 
 Installation
 ============
+
+Knot DNS may be already included in your operating system distribution and
+therefore can be installed from packages (Linux) or ports (BSD). This is
+always preferred unless you want to test the latest features, contribute to
+Knot development, or you just know what you are doing.
+
+Following sections describe how to build Knot DNS from the source code.
+
+Installation on Debian based distributions
+==========================================
 
 The following steps should work (verified in VirtualBox only)
 on the distribution/architecture/release combinations as listed bellow.
@@ -56,6 +70,39 @@ $ wget http://bd.archive.ubuntu.com/ubuntu/pool/universe/libu/liburcu/liburcu0_0
 $ wget http://bd.archive.ubuntu.com/ubuntu/pool/universe/libu/liburcu/liburcu-dev_0.5.4-1_i386.deb
 $ sudo dpkg -i liburcu0_0.5.4-1_i386.deb
 $ sudo dpkg -i liburcu-dev_0.5.4-1_i386.deb
+
+
+Installation on Fedora
+======================
+
+Notice: Knot DNS is available in official distribution repositories since
+Fedora 18 (Spherical Cow). Search for 'knot' package.
+
+All commands with the '#' prompt should be run as the root user, commands with
+the '$' prompt should be run as a regular non-root user.
+
+Update the system:
+# yum upgrade
+
+Ensure all base development tools are available:
+# yum install @buildsys-build
+
+Ensure all prerequisites are installed:
+# yum install libtool autoconf flex bison openssl-devel userspace-rcu-devel
+
+You can also install optional packages:
+# yum install libcap-ng-devel ragel
+
+Download the latest source code from Git and compile it:
+$ git clone git://git.nic.cz/knot-dns.git
+$ cd knot
+$ autoreconf -if
+$ ./configure
+$ make
+
+Install Knot DNS into system (run only if you really know what these commands do):
+# make install
+# ldconfig
 
 Installation on BSD
 ===================
