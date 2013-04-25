@@ -397,6 +397,7 @@ static void process_rr(const scanner_t *scanner)
 			} else {
 				log_zone_warning("encountered identical "
 				                 "extra SOA record");
+				knot_rrset_deep_free(&current_rrset, 1, 1);
 				parser->ret = KNOT_EOK;
 				return;
 			}
