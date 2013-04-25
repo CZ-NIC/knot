@@ -15,6 +15,10 @@ Optional packages:
 Dependencies for building documentation:
 * texinfo
 
+Knot DNS requires compiler to support atomic intrinsics.
+GCC version at least 4.1 supports legacy atomic builtins, however 4.7 or newer is preferred.
+Clang supports atomics since version 2.9.
+
 Installation
 ============
 

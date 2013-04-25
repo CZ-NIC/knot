@@ -205,6 +205,7 @@ libknots_la_SOURCES =				\
 	common/libtap/tap.c			\
 	common/libtap/tap.h			\
 	common/libtap/tap_unit.h		\
+	common/atomic.h				\
 	common/mempattern.h			\
 	common/mempattern.c			\
 	common/descriptor.h			\
