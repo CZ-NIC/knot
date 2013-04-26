@@ -88,8 +88,6 @@ static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *
 
 	/* Refresh specific zones. */
 	for (unsigned i = 0; i < a->argc; ++i) {
-		rcu_read_lock();
-
 		/* Process all zones in data section. */
 		const knot_rrset_t *rr = a->arg[i];
 		if (knot_rrset_type(rr) != KNOT_RRTYPE_NS) {
@@ -100,12 +98,13 @@ static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *
 			/* Refresh zones. */
 			const knot_dname_t *dn =
 				knot_rrset_rdata_ns_name(rr, i);
+			rcu_read_lock();
 			zone = knot_zonedb_find_zone(ns->zone_db, dn);
 			if (cb(s, zone) != KNOT_EOK) {
 				a->rc = KNOT_RCODE_SERVFAIL;
 			}
+			rcu_read_unlock();
 		}
-		rcu_read_unlock();
 	}
 
 	return ret;
@@ -593,7 +592,6 @@ int remote_process(server_t *s, int r, uint8_t* buf, size_t buflen)
 		char straddr[SOCKADDR_STRLEN];
 		sockaddr_tostr(&a, straddr, sizeof(straddr));
 		int rport = sockaddr_portnum(&a);
-		rcu_read_lock();
 		knot_tsig_key_t *k = NULL;
 		acl_key_t *m = NULL;
 		knot_rcode_t ts_rc = 0;
@@ -601,7 +599,6 @@ int remote_process(server_t *s, int r, uint8_t* buf, size_t buflen)
 		uint64_t ts_tmsigned = 0;
 		const knot_rrset_t *tsig_rr = knot_packet_tsig(pkt);
 		if (acl_match(conf()->ctl.acl, &a, &m) == ACL_DENY) {
-			rcu_read_unlock();
 			knot_packet_free(&pkt);
 			log_server_warning("Denied remote control for '%s@%d' "
 			                   "(doesn't match ACL).\n",
@@ -613,7 +610,6 @@ int remote_process(server_t *s, int r, uint8_t* buf, size_t buflen)
 		if (m && m->val) {
 			k = ((conf_iface_t *)m->val)->key;
 		}
-		rcu_read_unlock();
 
 		/* Check TSIG. */
 		if (k) {

@@ -363,7 +363,6 @@ int main(int argc, char **argv)
 			/* Events. */
 			if (ret > 0) {
 				remote_process(server, remote, buf, buflen);
-
 			}
 		}
 		pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);

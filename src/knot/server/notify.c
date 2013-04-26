@@ -264,10 +264,10 @@ int notify_process_request(knot_nameserver_t *ns,
 	}
 
 	/* Process notification. */
-	rcu_read_lock();
 	ret = KNOT_ENOZONE;
 	unsigned serial = 0;
 	const knot_dname_t *qname = knot_packet_qname(notify);
+	rcu_read_lock(); /* z */
 	const knot_zone_t *z = knot_zonedb_find_zone_for_name(ns->zone_db, qname);
 	if (z != NULL) {
 		ret = notify_check_and_schedule(ns, z, from);
@@ -277,6 +277,8 @@ int notify_process_request(knot_nameserver_t *ns,
 			serial = knot_rrset_rdata_soa_serial(soa_rr);
 		}
 	}
+	rcu_read_unlock();
+
 	int rcode = KNOT_RCODE_NOERROR;
 	switch (ret) {
 	case KNOT_ENOZONE: rcode = KNOT_RCODE_NOTAUTH; break;
@@ -298,7 +300,6 @@ int notify_process_request(knot_nameserver_t *ns,
 	free(qstr);
 	free(fromstr);
 
-	rcu_read_unlock();
 	return ret;
 }
 

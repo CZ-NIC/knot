@@ -172,8 +172,8 @@ static int xfr_task_setmsg(knot_ns_xfr_t *rq, const char *keytag)
 	if (!xd) {
 		return KNOT_EINVAL;
 	}
-
-	rcu_read_lock();
+	
+	/* Zone is refcounted, no need for RCU. */
 	char *kstr = NULL;
 	if (keytag) {
 		kstr = xfr_remote_str(&rq->addr, keytag);
@@ -191,7 +191,6 @@ static int xfr_task_setmsg(knot_ns_xfr_t *rq, const char *keytag)
 		zonedata_t *zd = (zonedata_t *)knot_zone_data(rq->zone);
 		if (zd == NULL) {
 			free(kstr);
-			rcu_read_unlock();
 			return KNOT_EINVAL;
 		} else {
 			zname = zd->conf->name;
@@ -199,7 +198,6 @@ static int xfr_task_setmsg(knot_ns_xfr_t *rq, const char *keytag)
 	}
 
 	rq->msg = sprintf_alloc(xd->name, zname, kstr ? kstr : "'unknown'");
-	rcu_read_unlock();
 	free(kstr);
 	return KNOT_EOK;
 }
@@ -326,9 +324,7 @@ static int xfr_task_close(xfrworker_t *w, int fd)
 /*! \brief Timeout handler. */
 static int xfr_task_expire(fdset_t *fds, knot_ns_xfr_t *rq)
 {
-	rcu_read_lock();
-
-	/* Fetch related zone. */
+	/* Fetch related zone (refcounted, no RCU). */
 	knot_zone_t *zone = (knot_zone_t *)rq->zone;
 	const knot_zone_contents_t *contents = knot_zone_contents(zone);
 
@@ -343,7 +339,6 @@ static int xfr_task_expire(fdset_t *fds, knot_ns_xfr_t *rq)
 			log_zone_info("%s Query issued (serial %u).\n",
 			              rq->msg, knot_zone_serial(contents));
 			rq->packet_nr = knot_wire_get_id(rq->wire);
-			rcu_read_unlock();
 			return KNOT_EOK; /* Keep state. */
 		}
 		break;
@@ -351,8 +346,6 @@ static int xfr_task_expire(fdset_t *fds, knot_ns_xfr_t *rq)
 		break;
 	}
 
-
-	rcu_read_unlock();
 	log_zone_info("%s Failed, timeout exceeded.\n", rq->msg);
 	return KNOT_ECONNREFUSED;
 }
@@ -364,14 +357,13 @@ static int xfr_task_start(knot_ns_xfr_t *rq)
 		return KNOT_EINVAL;
 	}
 
-	rcu_read_lock();
+	/* Zone is refcounted, no need for RCU. */
 	int ret = KNOT_EOK;
 	knot_zone_t *zone = (knot_zone_t *)rq->zone;
 
 	/* Fetch zone contents. */
 	const knot_zone_contents_t *contents = knot_zone_contents(zone);
 	if (!contents && rq->type == XFR_TYPE_IIN) {
-		rcu_read_unlock();
 		log_server_warning("%s Refusing to start IXFR on zone with no "
 				   "contents.\n", rq->msg);
 		return KNOT_ECONNREFUSED;
@@ -381,7 +373,6 @@ static int xfr_task_start(knot_ns_xfr_t *rq)
 	if (rq->session <= 0) {
 		ret = xfr_task_connect(rq);
 		if (ret != KNOT_EOK) {
-			rcu_read_unlock();
 			return ret;
 		}
 	}
@@ -416,10 +407,6 @@ static int xfr_task_start(knot_ns_xfr_t *rq)
 		break;
 	}
 
-
-	/* Unlock zone contents. */
-	rcu_read_unlock();
-
 	/* Handle errors. */
 	if (ret != KNOT_EOK) {
 		dbg_xfr("xfr: failed to create XFR query type %d: %s\n",
@@ -450,15 +437,12 @@ static int xfr_task_start(knot_ns_xfr_t *rq)
 
 static int xfr_task_process(xfrworker_t *w, knot_ns_xfr_t* rq, uint8_t *buf, size_t buflen)
 {
-	rcu_read_lock();
-
-	/* Check if not already processing. */
+	/* Check if not already processing, zone is refcounted. */
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(rq->zone);
 
 	/* Check if the zone is not discarded. */
 	if (!zd || knot_zone_flags(rq->zone) & KNOT_ZONE_DISCARDED) {
 		dbg_xfr_verb("xfr: request on a discarded zone, ignoring\n");
-		rcu_read_unlock();
 		return KNOT_EINVAL;
 	}
 
@@ -500,7 +484,6 @@ static int xfr_task_process(xfrworker_t *w, knot_ns_xfr_t* rq, uint8_t *buf, siz
 	case XFR_TYPE_NOTIFY: /* Send on first timeout <0,5>s. */
 		fdset_set_watchdog(w->pool.fds, rq->session, (int)(tls_rand() * 5));
 		xfr_task_set(w, rq->session, rq);
-		rcu_read_unlock();
 		return KNOT_EOK;
 	case XFR_TYPE_SOA:
 	case XFR_TYPE_FORWARD:
@@ -527,7 +510,6 @@ static int xfr_task_process(xfrworker_t *w, knot_ns_xfr_t* rq, uint8_t *buf, siz
 		log_server_error("%s %s.\n", rq->msg, msg);
 	}
 
-	rcu_read_unlock();
 	return ret;
 }
 
@@ -661,7 +643,6 @@ static int xfr_task_resp(xfrworker_t *w, knot_ns_xfr_t *rq)
 static int xfr_task_xfer(xfrworker_t *w, knot_ns_xfr_t *rq)
 {
 	/* Process incoming packet. */
-	rcu_read_lock();
 	int ret = KNOT_EOK;
 	knot_nameserver_t *ns = w->master->ns;
 	switch(rq->type) {
@@ -695,7 +676,6 @@ static int xfr_task_xfer(xfrworker_t *w, knot_ns_xfr_t *rq)
 		log_server_notice("%s Transfer failed, fallback to AXFR.\n", rq->msg);
 		rq->wire_size = rq->wire_maxlen; /* Reset maximum bufsize */
 		ret = xfrin_create_axfr_query(rq->zone->name, rq, &rq->wire_size, 1);
-		rcu_read_unlock();
 		/* Send AXFR/IN query. */
 		if (ret == KNOT_EOK) {
 			ret = rq->send(rq->session, &rq->addr,
@@ -720,16 +700,13 @@ static int xfr_task_xfer(xfrworker_t *w, knot_ns_xfr_t *rq)
 		log_server_error("%s %s\n", rq->msg, knot_strerror(ret));
 	}
 
-	rcu_read_unlock();
-
 	/* Only for successful xfers. */
 	if (ret > 0) {
 		ret = xfr_task_finalize(w, rq);
 
 		/* AXFR bootstrap timeout. */
-		rcu_read_lock();
-		zonedata_t *zd = (zonedata_t *)knot_zone_data(rq->zone);
 		if (ret != KNOT_EOK && !knot_zone_contents(rq->zone)) {
+			zonedata_t *zd = (zonedata_t *)knot_zone_data(rq->zone);
 			int tmr_s = AXFR_BOOTSTRAP_RETRY * tls_rand();
 			zd->xfr_in.bootstrap_retry = tmr_s;
 			log_zone_info("%s Next attempt to bootstrap "
@@ -739,9 +716,9 @@ static int xfr_task_xfer(xfrworker_t *w, knot_ns_xfr_t *rq)
 			zones_schedule_notify(rq->zone); /* NOTIFY */
 		}
 
+
 		/* Update REFRESH/RETRY */
 		zones_schedule_refresh(rq->zone);
-		rcu_read_unlock();
 		ret = KNOT_ECONNREFUSED; /* Disconnect */
 	}
 
@@ -1166,10 +1143,11 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *rq)
 		return KNOT_EINVAL;
 	}
 
-	rcu_read_lock();
 	gettimeofday(&rq->t_start, NULL);
+	rcu_read_lock(); /* About to guess zone from QNAME, so needs RCU. */
 	int ret = knot_ns_init_xfr(ns, rq);
-
+	rcu_read_unlock(); /* Now, the zone is either refcounted or NULL. */
+	
 	/* Use the QNAME as the zone name. */
 	const knot_dname_t *qname = knot_packet_qname(rq->query);
 	if (qname != NULL) {
@@ -1255,7 +1233,6 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *rq)
 	free(rq->zname);
 
 	/* Free request. */
-	rcu_read_unlock();
 	xfr_task_free(rq);
 	return ret;
 }
