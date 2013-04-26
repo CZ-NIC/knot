@@ -41,12 +41,12 @@
  * \param out_len	Size of output buffer.
  *
  * \retval >=0		length of output string.
- * \retval -1		if error.
+ * \retval errcode	if error.
  */
 int32_t base64_encode(const uint8_t  *in,
-		      const uint32_t in_len,
-		      uint8_t        *out,
-		      const uint32_t out_len);
+                      const uint32_t in_len,
+                      uint8_t        *out,
+                      const uint32_t out_len);
 
 /*!
  * \brief Encodes binary data using Base64 and output stores to own buffer.
@@ -61,11 +61,11 @@ int32_t base64_encode(const uint8_t  *in,
  * \param out		Output data buffer.
  *
  * \retval >=0		length of output string.
- * \retval -1		if error.
+ * \retval errcode	if error.
  */
 int32_t base64_encode_alloc(const uint8_t  *in,
-			    const uint32_t in_len,
-			    uint8_t        **out);
+                            const uint32_t in_len,
+                            uint8_t        **out);
 
 /*!
  * \brief Decodes text data using Base64.
@@ -80,13 +80,12 @@ int32_t base64_encode_alloc(const uint8_t  *in,
  * \param out_len	Size of output buffer.
  *
  * \retval >=0		length of output data.
- * \retval -1		if error.
- * \retval -2		if bad input data.
+ * \retval errcode	if error.
  */
 int32_t base64_decode(const uint8_t  *in,
-		      const uint32_t in_len,
-		      uint8_t        *out,
-		      const uint32_t out_len);
+                      const uint32_t in_len,
+                      uint8_t        *out,
+                      const uint32_t out_len);
 
 /*!
  * \brief Decodes text data using Base64 and output stores to own buffer.
@@ -102,12 +101,11 @@ int32_t base64_decode(const uint8_t  *in,
  * \param out		Output data buffer.
  *
  * \retval >=0		length of output data.
- * \retval -1		if error.
- * \retval -2		if bad input data.
+ * \retval errcode	if error.
  */
 int32_t base64_decode_alloc(const uint8_t  *in,
-			    const uint32_t in_len,
-			    uint8_t        **out);
+                            const uint32_t in_len,
+                            uint8_t        **out);
 
 #endif // _KNOTD_COMMON__BASE64_H_
 

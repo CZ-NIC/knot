@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "common/errcode.h"
 #include "common/base64.h"
 
 #define BUF_LEN 256
@@ -158,25 +159,25 @@ static int base64_tests_run(int argc, char *argv[])
 
 	// Bad paddings
         ret = base64_decode((uint8_t *)"A===", 4, out, BUF_LEN);
-        cmp_ok(ret, "==", -2, "Bad padding length 3");
+        cmp_ok(ret, "==", KNOT_BASE64_ECHAR, "Bad padding length 3");
         ret = base64_decode((uint8_t *)"====", 4, out, BUF_LEN);
-        cmp_ok(ret, "==", -2, "Bad padding length 4");
+        cmp_ok(ret, "==", KNOT_BASE64_ECHAR, "Bad padding length 4");
 
 	// Bad data length
         ret = base64_decode((uint8_t *)"A", 1, out, BUF_LEN);
-        cmp_ok(ret, "==", -1, "Bad data length 1");
+        cmp_ok(ret, "==", KNOT_BASE64_ESIZE, "Bad data length 1");
         ret = base64_decode((uint8_t *)"AA", 2, out, BUF_LEN);
-        cmp_ok(ret, "==", -1, "Bad data length 2");
+        cmp_ok(ret, "==", KNOT_BASE64_ESIZE, "Bad data length 2");
         ret = base64_decode((uint8_t *)"AAA", 3, out, BUF_LEN);
-        cmp_ok(ret, "==", -1, "Bad data length 3");
+        cmp_ok(ret, "==", KNOT_BASE64_ESIZE, "Bad data length 3");
         ret = base64_decode((uint8_t *)"AAAAA", 5, out, BUF_LEN);
-        cmp_ok(ret, "==", -1, "Bad data length 5");
+        cmp_ok(ret, "==", KNOT_BASE64_ESIZE, "Bad data length 5");
 
 	// Bad data character
         ret = base64_decode((uint8_t *)"AAA$", 4, out, BUF_LEN);
-        cmp_ok(ret, "==", -2, "Bad data character dollar");
+        cmp_ok(ret, "==", KNOT_BASE64_ECHAR, "Bad data character dollar");
         ret = base64_decode((uint8_t *)"AAA ", 4, out, BUF_LEN);
-        cmp_ok(ret, "==", -2, "Bad data character space");
+        cmp_ok(ret, "==", KNOT_BASE64_ECHAR, "Bad data character space");
 
 	return 0;
 }

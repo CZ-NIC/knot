@@ -30,8 +30,9 @@ int knot_binary_from_base64(const char *base64, knot_binary_t *binary)
 	int32_t size;
 
 	size = base64_decode_alloc((uint8_t *)base64, strlen(base64), &data);
-	if (size < 0)
-		return KNOT_ENOMEM;
+	if (size < 0) {
+		return size;
+	}
 
 	binary->data = data;
 	binary->size = size;

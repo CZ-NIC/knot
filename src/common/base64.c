@@ -15,6 +15,7 @@
  */
 
 #include "base64.h"
+#include "errcode.h"
 
 #include <stdlib.h>			// malloc
 #include <stdint.h>			// uint8_t
@@ -81,9 +82,9 @@ const uint8_t base64_dec[256] = {
 };
 
 int32_t base64_encode(const uint8_t  *in,
-		      const uint32_t in_len,
-		      uint8_t        *out,
-		      const uint32_t out_len)
+                      const uint32_t in_len,
+                      uint8_t        *out,
+                      const uint32_t out_len)
 {
 	uint8_t		rest_len = in_len % 3;
 	const uint8_t	*data = in;
@@ -92,9 +93,11 @@ int32_t base64_encode(const uint8_t  *in,
 	uint8_t		num;
 
 	// Checking inputs.
-	if (in == NULL || out == NULL || in_len > MAX_BIN_DATA_LEN ||
-	    out_len < ((in_len + 2) / 3) * 4) {
-		return -1;
+	if (in == NULL || out == NULL) {
+		return KNOT_EINVAL;
+	}
+	if (in_len > MAX_BIN_DATA_LEN || out_len < ((in_len + 2) / 3) * 4) {
+		return KNOT_ERANGE;
 	}
 
 	// Encoding loop takes 3 bytes and creates 4 characters.
@@ -121,7 +124,7 @@ int32_t base64_encode(const uint8_t  *in,
 	// Processing of padding, if any.
 	switch (rest_len) {
 	// Input data has 2-byte last block => 1-char padding.
-        case 2:
+	case 2:
 		// Computing 1. Base64 character.
 		num = *data >> 2;
 		*text++ = base64_enc[num];
@@ -138,9 +141,9 @@ int32_t base64_encode(const uint8_t  *in,
 		// 1 padding character.
 		*text++ = base64_pad;
 
-                break;
+		break;
 	// Input data has 1-byte last block => 2-char padding.
-        case 1:
+	case 1:
 		// Computing 1. Base64 character.
 		num = *data >> 2;
 		*text++ = base64_enc[num];
@@ -153,38 +156,43 @@ int32_t base64_encode(const uint8_t  *in,
 		*text++ = base64_pad;
 		*text++ = base64_pad;
 
-                break;
+		break;
 	}
 
 	return (text - out);
 }
 
 int32_t base64_encode_alloc(const uint8_t  *in,
-			    const uint32_t in_len,
-			    uint8_t        **out)
+                            const uint32_t in_len,
+                            uint8_t        **out)
 {
+	// Check input (output is longer).
+	if (in_len > MAX_BIN_DATA_LEN) {
+		return KNOT_ERANGE;
+	}
+
+	// Compute output buffer length.
 	uint32_t out_len = ((in_len + 2) / 3) * 4;
 
-	// Checking inputs.
-	if (in_len > MAX_BIN_DATA_LEN) {
-		return -1;
-	}
-
-	// Allocating output buffer.
+	// Allocate output buffer.
 	*out = malloc(out_len);
-
 	if (*out == NULL) {
-		return -1;
+		return KNOT_ENOMEM;
 	}
 
-	// Encoding data.
-	return base64_encode(in, in_len, *out, out_len);
+	// Encode data.
+	int32_t ret = base64_encode(in, in_len, *out, out_len);
+	if (ret < 0) {
+		free(*out);
+	}
+
+	return ret;
 }
 
 int32_t base64_decode(const uint8_t  *in,
-		      const uint32_t in_len,
-		      uint8_t        *out,
-		      const uint32_t out_len)
+                      const uint32_t in_len,
+                      uint8_t        *out,
+                      const uint32_t out_len)
 {
 	const uint8_t	*data = in;
 	const uint8_t	*stop = in + in_len;
@@ -193,9 +201,14 @@ int32_t base64_decode(const uint8_t  *in,
 	uint8_t		c1, c2, c3, c4;
 
 	// Checking inputs.
-	if (in == NULL || out == NULL || (in_len % 4) != 0 ||
-	    in_len > INT32_MAX || out_len < ((in_len + 3) / 4) * 3) {
-		return -1;
+	if (in == NULL || out == NULL) {
+		return KNOT_EINVAL;
+	}
+	if (in_len > INT32_MAX || out_len < ((in_len + 3) / 4) * 3) {
+		return KNOT_ERANGE;
+	}
+	if ((in_len % 4) != 0) {
+		return KNOT_BASE64_ESIZE;
 	}
 
 	// Decoding loop takes 4 characters and creates 3 bytes.
@@ -211,7 +224,7 @@ int32_t base64_decode(const uint8_t  *in,
 			if (c4 == PD) {
 				pad_len = 1;
 			} else {
-				return -2;
+				return KNOT_BASE64_ECHAR;
 			}
 		}
 
@@ -220,13 +233,13 @@ int32_t base64_decode(const uint8_t  *in,
 			if (c3 == PD) {
 				pad_len = 2;
 			} else {
-				return -2;
+				return KNOT_BASE64_ECHAR;
 			}
 		}
 
 		// 1. and 2. chars must not be padding.
 		if (c2 >= PD || c1 >= PD) {
-			return -2;
+			return KNOT_BASE64_ECHAR;
 		}
 
 		// Computing of output data based on padding length.
@@ -253,27 +266,23 @@ int32_t base64_decode(const uint8_t  *in,
 }
 
 int32_t base64_decode_alloc(const uint8_t  *in,
-			    const uint32_t in_len,
-			    uint8_t        **out)
+                            const uint32_t in_len,
+                            uint8_t        **out)
 {
-	int32_t  ret;
+	// Compute output buffer length.
 	uint32_t out_len = ((in_len + 3) / 4) * 3;
 
-	*out = malloc(out_len);
-
 	// Allocate output buffer.
+	*out = malloc(out_len);
 	if (*out == NULL) {
-		return -1;
+		return KNOT_ENOMEM;
 	}
 
 	// Decode data.
-	ret = base64_decode(in, in_len, *out, out_len);
-
-	// Check return.
+	int32_t ret = base64_decode(in, in_len, *out, out_len);
 	if (ret < 0) {
 		free(*out);
-		return -1;
-	} else {
-		return ret;
 	}
+
+	return ret;
 }
