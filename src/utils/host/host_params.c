@@ -174,7 +174,6 @@ static void host_help(int argc, char *argv[])
 	       "       -4  Use IPv4 protocol only.\n"
 	       "       -6  Use IPv6 procotol only.\n"
 	       "       -a  Same as -t ANY -v.\n"
-	       "       -C  (NOT YET IMPLEMENTED)\n"
 	       "       -d  Allow debug messages.\n"
 	       "       -r  Disable recursion.\n"
 	       "       -s  Stop if servfail.\n"
@@ -220,10 +219,6 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 			conf->style.show_header = true;
 			conf->style.show_edns = true;
 			conf->style.show_footer = true;
-			break;
-		case 'C':
-			conf->type_num = KNOT_RRTYPE_SOA;
-			conf->operation = OPERATION_LIST_SOA;
 			break;
 		case 'd':
 			msg_enable_debug(1);
