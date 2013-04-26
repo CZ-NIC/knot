@@ -40,7 +40,8 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 #define UINT_DEFINED
 #endif
 
-#define PROJECT_EXEC SBINDIR "/" "knotd" /*!< \brief  Project executable. */
+#define PROJECT_EXENAME "knotd"
+#define PROJECT_EXEC SBINDIR "/" PROJECT_EXENAME /*!< \brief  Project executable. */
 #define ZONEPARSER_EXEC LIBEXECDIR "/" "knot-zcompile" /*!< \brief  Zoneparser executable. */
 #define PID_FILE "knot.pid" /*!< \brief Server PID file name. */
 

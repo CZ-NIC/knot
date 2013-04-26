@@ -145,7 +145,7 @@ static int conf_process(conf_t *conf)
 {
 	// Check
 	if (conf->storage == NULL) {
-		conf->storage = strdup("/var/lib/"PROJECT_EXEC);
+		conf->storage = strdup("/var/lib/"PROJECT_EXENAME);
 		if (conf->storage == NULL) {
 			return KNOT_ENOMEM;
 		}
@@ -383,7 +383,7 @@ void __attribute__ ((constructor)) conf_init()
 	++s_config->ifaces_count;
 
 	/* Create default storage. */
-	s_config->storage = strdup("/var/lib/"PROJECT_EXEC);
+	s_config->storage = strdup("/var/lib/"PROJECT_EXENAME);
 
 	/* Create default logs. */
 
