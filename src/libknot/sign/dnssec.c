@@ -15,11 +15,16 @@
 struct algorithm_functions;
 typedef struct algorithm_functions algorithm_functions_t;
 
-//! \brief Algorithm state data.
-struct knot_dnssec_algorithm_context {
+//! \brief Algorithm private key data and algorithm implementation.
+struct knot_dnssec_key_data {
 	const algorithm_functions_t *functions;	//!< Implementation specific.
-	EVP_MD_CTX *digest_context;		//!< Digest computation context.
 	EVP_PKEY *private_key;			//!< Private key.
+};
+
+//! \brief DNSSEC signature contextual data.
+struct knot_dnssec_sign_context {
+	const knot_dnssec_key_t *key;		//!< Associated key.
+	EVP_MD_CTX *digest_context;		//!< Digest computation context.
 };
 
 /*!
@@ -29,11 +34,11 @@ struct algorithm_functions {
 	//! \brief Callback: create private key from key parameters.
 	int (*create_pkey)(const knot_key_params_t *, EVP_PKEY *);
 	//! \brief Callback: get signature size in bytes.
-	size_t (*sign_size)(knot_dnssec_key_t *);
+	size_t (*sign_size)(const knot_dnssec_key_t *);
 	//! \brief Callback: cover supplied data with the signature.
-	int (*sign_add)(knot_dnssec_key_t *, const uint8_t *, size_t);
+	int (*sign_add)(const knot_dnssec_sign_context_t *, const uint8_t *, size_t);
 	//! \brief Callback: finish the signing and write out the signature.
-	int (*sign_write)(knot_dnssec_key_t *, uint8_t *);
+	int (*sign_write)(const knot_dnssec_sign_context_t *, uint8_t *);
 };
 
 /*- Algorithm independent ----------------------------------------------------*/
@@ -45,29 +50,29 @@ struct algorithm_functions {
  *
  * \return Signature size in bytes.
  */
-static size_t any_sign_size(knot_dnssec_key_t *key)
+static size_t any_sign_size(const knot_dnssec_key_t *key)
 {
 	assert(key);
 
-	return (size_t)EVP_PKEY_size(key->context->private_key);
+	return (size_t)EVP_PKEY_size(key->data->private_key);
 }
 
 /*!
  * \brief Add data to be covered by the signature.
  *
- * \param key		DNSSEC key.
+ * \param context	DNSSEC signature context.
  * \param data		Data to be signed.
  * \param data_size	Size of the data to be signed.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int any_sign_add(knot_dnssec_key_t *key,
+static int any_sign_add(const knot_dnssec_sign_context_t *context,
                         const uint8_t *data, size_t data_size)
 {
-	assert(key);
+	assert(context);
 	assert(data);
 
-	if (!EVP_SignUpdate(key->context->digest_context, data, data_size))
+	if (!EVP_SignUpdate(context->digest_context, data, data_size))
 		return KNOT_DNSSEC_ESIGN;
 
 	return KNOT_EOK;
@@ -78,27 +83,27 @@ static int any_sign_add(knot_dnssec_key_t *key,
  *
  * Caller should free the memory returned via signature parameter.
  *
- * \param key		  DNSSEC key.
+ * \param context	  DNSSEC signature context.
  * \param signature	  Pointer to signature (output).
  * \param signature_size  Signature size (output).
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int any_sign_finish(knot_dnssec_key_t *key, uint8_t **signature,
-			   size_t *signature_size)
+static int any_sign_finish(const knot_dnssec_sign_context_t *context,
+			   uint8_t **signature, size_t *signature_size)
 {
-	assert(key);
+	assert(context);
 	assert(signature);
 	assert(signature_size);
 
-	size_t max_size = (size_t)EVP_PKEY_size(key->context->private_key);
+	size_t max_size = (size_t)EVP_PKEY_size(context->key->data->private_key);
 	uint8_t *output = calloc(1, max_size);
 	if (!output)
 		return KNOT_ENOMEM;
 
 	unsigned int actual_size;
-	int result = EVP_SignFinal(key->context->digest_context, output,
-				   &actual_size, key->context->private_key);
+	int result = EVP_SignFinal(context->digest_context, output,
+				   &actual_size, context->key->data->private_key);
 	if (!result) {
 		free(output);
 		return KNOT_DNSSEC_ESIGN;
@@ -155,26 +160,28 @@ static int rsa_create_pkey(const knot_key_params_t *params, EVP_PKEY *key)
 /*!
  * \brief Finish the signing and write out the RSA signature.
  *
- * \param key		DNSSEC key.
+ * \param context	DNSSEC signing context.
  * \param signature	Pointer to memory where the signature will be written.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int rsa_sign_write(knot_dnssec_key_t *key, uint8_t *signature)
+static int rsa_sign_write(const knot_dnssec_sign_context_t *context,
+			  uint8_t *signature)
 {
-	assert(key);
+	assert(context);
 	assert(signature);
 
 	int result;
 	uint8_t *raw_signature;
 	size_t raw_signature_size;
+	const knot_dnssec_key_t *key = context->key;
 
-	result = any_sign_finish(key, &raw_signature, &raw_signature_size);
+	result = any_sign_finish(context, &raw_signature, &raw_signature_size);
 	if (result != KNOT_EOK) {
 		return result;
 	}
 
-	if (raw_signature_size != key->context->functions->sign_size(key)) {
+	if (raw_signature_size != key->data->functions->sign_size(key)) {
 		free(raw_signature);
 		return KNOT_DNSSEC_EUNEXPECTED_SIGNATURE_SIZE;
 	}
@@ -217,7 +224,7 @@ static int dsa_create_pkey(const knot_key_params_t *params, EVP_PKEY *key)
  * \brief Get size of the resulting signature for DSA algorithm.
  * \see any_sign_size
  */
-static size_t dsa_sign_size(knot_dnssec_key_t *key)
+static size_t dsa_sign_size(const knot_dnssec_key_t *key)
 {
 	// RFC 2536 (section 3 - DSA SIG Resource Record)
 	return 41;
@@ -227,16 +234,17 @@ static size_t dsa_sign_size(knot_dnssec_key_t *key)
  * \brief Finish the signing and write out the DSA signature.
  * \see rsa_sign_write
  */
-static int dsa_sign_write(knot_dnssec_key_t *key, uint8_t *signature)
+static int dsa_sign_write(const knot_dnssec_sign_context_t *context,
+			  uint8_t *signature)
 {
-	assert(key);
+	assert(context);
 	assert(signature);
 
 	int result;
 	uint8_t *raw_signature;
 	size_t raw_signature_size;
 
-	result = any_sign_finish(key, &raw_signature, &raw_signature_size);
+	result = any_sign_finish(context, &raw_signature, &raw_signature_size);
 	if (result != KNOT_EOK) {
 		return result;
 	}
@@ -315,7 +323,7 @@ static int ecdsa_create_pkey(const knot_key_params_t *params, EVP_PKEY *key)
  * \brief Get size of the resulting signature for ECDSA algorithm.
  * \see any_sign_size
  */
-static size_t ecdsa_sign_size(knot_dnssec_key_t *key)
+static size_t ecdsa_sign_size(const knot_dnssec_key_t *key)
 {
 	assert(key);
 
@@ -336,16 +344,17 @@ static size_t ecdsa_sign_size(knot_dnssec_key_t *key)
  * \brief Finish the signing and write out the ECDSA signature.
  * \see rsa_sign_write
  */
-static int ecdsa_sign_write(knot_dnssec_key_t *key, uint8_t *signature)
+static int ecdsa_sign_write(knot_dnssec_sign_context_t *context,
+			    uint8_t *signature)
 {
-	assert(key);
+	assert(context);
 	assert(signature);
 
 	int result;
 	uint8_t *raw_signature;
 	size_t raw_signature_size;
 
-	result = any_sign_finish(key, &raw_signature, &raw_signature_size);
+	result = any_sign_finish(context, &raw_signature, &raw_signature_size);
 	if (result != KNOT_EOK) {
 		return result;
 	}
@@ -372,7 +381,7 @@ static int ecdsa_sign_write(knot_dnssec_key_t *key, uint8_t *signature)
 
 	uint8_t *signature_r;
 	uint8_t *signature_s;
-	size_t param_size = ecdsa_sign_size(key) / 2;
+	size_t param_size = ecdsa_sign_size(context->key) / 2;
 
 	signature_r = signature + param_size - BN_num_bytes(decoded->r);
 	signature_s = signature + 2 * param_size - BN_num_bytes(decoded->s);
@@ -506,17 +515,17 @@ static int create_pkey(const knot_key_params_t *params,
 /*!
  * \brief Create message digest context.
  *
- * \param params	  Key parameters.
+ * \param key		  DNSSEC key.
  * \param result_context  Output message digest context.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int create_digest_context(const knot_key_params_t *params,
+static int create_digest_context(const knot_dnssec_key_t *key,
 				 EVP_MD_CTX **result_context)
 {
 	assert(result_context);
 
-	const EVP_MD *digest_type = get_digest_type(params->algorithm);
+	const EVP_MD *digest_type = get_digest_type(key->algorithm);
 	if (digest_type == NULL)
 		return KNOT_DNSSEC_ENOTSUP;
 
@@ -534,56 +543,64 @@ static int create_digest_context(const knot_key_params_t *params,
 }
 
 /*!
- * \brief Free algorithm context data.
+ * \brief Destroy message digest context.
  *
- * \param context	  Algorithm context.
+ * \param context	Context to be freed.
  *
- * \return Error code, always KNOT_EOK.
+ * \return Always KNOT_EOK.
  */
-static int clean_algorithm_context(knot_dnssec_algorithm_context_t  *context)
+static int destroy_digest_context(EVP_MD_CTX **context)
 {
 	assert(context);
 
-	if (context->private_key) {
-		EVP_PKEY_free(context->private_key);
-		context->private_key = NULL;
-	}
-
-	if (context->digest_context) {
-		EVP_MD_CTX_destroy(context->digest_context);
-		context->digest_context = NULL;
+	if (*context) {
+		EVP_MD_CTX_destroy(*context);
+		*context = NULL;
 	}
 
 	return KNOT_EOK;
 }
 
 /*!
- * \brief Initialize algorithm context.
+ * \brief Free algorithm data.
+ *
+ * \param data	  Algorithm context.
+ *
+ * \return Error code, always KNOT_EOK.
+ */
+static int clean_algorithm_data(knot_dnssec_key_data_t  *data)
+{
+	assert(data);
+
+	if (data->private_key) {
+		EVP_PKEY_free(data->private_key);
+		data->private_key = NULL;
+	}
+
+	return KNOT_EOK;
+}
+
+/*!
+ * \brief Initialize algorithm data.
  *
  * \param params	Key parameters.
- * \param context	Algorithm context to be initialized.
+ * \param data	Algorithm context to be initialized.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int init_algorithm_context(const knot_key_params_t *params,
-                                  knot_dnssec_algorithm_context_t *context)
+static int init_algorithm_data(const knot_key_params_t *params,
+				  knot_dnssec_key_data_t *data)
 {
 	assert(params);
-	assert(context);
+	assert(data);
 
-	context->functions = get_implementation(params->algorithm);
-	if (!context->functions)
+	data->functions = get_implementation(params->algorithm);
+	if (!data->functions)
 		return KNOT_DNSSEC_ENOTSUP;
 
-	int result = create_digest_context(params, &context->digest_context);
+	int result = create_pkey(params, data->functions, &data->private_key);
 	if (result != KNOT_EOK) {
-		clean_algorithm_context(context);
-		return result;
-	}
-
-	result = create_pkey(params, context->functions, &context->private_key);
-	if (result != KNOT_EOK) {
-		clean_algorithm_context(context);
+		clean_algorithm_data(data);
 		return result;
 	}
 
@@ -605,24 +622,24 @@ int knot_dnssec_key_from_params(const knot_key_params_t *params,
 	if (!name)
 		return KNOT_ENOMEM;
 
-	knot_dnssec_algorithm_context_t *context;
-	context = calloc(1, sizeof(knot_dnssec_algorithm_context_t));
-	if (!context) {
+	knot_dnssec_key_data_t *data;
+	data = calloc(1, sizeof(knot_dnssec_key_data_t));
+	if (!data) {
 		knot_dname_release(name);
 		return KNOT_ENOMEM;
 	}
 
-	int result = init_algorithm_context(params, context);
+	int result = init_algorithm_data(params, data);
 	if (result != KNOT_EOK) {
 		knot_dname_release(name);
-		free(context);
+		free(data);
 		return result;
 	}
 
 	key->name = name;
 	key->keytag = params->keytag;
 	key->algorithm = params->algorithm;
-	key->context = context;
+	key->data = data;
 
 	return KNOT_EOK;
 }
@@ -638,9 +655,9 @@ int knot_dnssec_key_free(knot_dnssec_key_t *key)
 	if (key->name)
 		knot_dname_release(key->name);
 
-	if (key->context) {
-		clean_algorithm_context(key->context);
-		free(key->context);
+	if (key->data) {
+		clean_algorithm_data(key->data);
+		free(key->data);
 	}
 
 	memset(key, '\0', sizeof(knot_dnssec_key_t));
@@ -651,6 +668,41 @@ int knot_dnssec_key_free(knot_dnssec_key_t *key)
 /*- Public low level signing interface ---------------------------------------*/
 
 /*!
+ * \brief Initialize DNSSEC signing context.
+ */
+knot_dnssec_sign_context_t *knot_dnssec_sign_init(const knot_dnssec_key_t *key)
+{
+	if (!key)
+		return NULL;
+
+	knot_dnssec_sign_context_t *context = malloc(sizeof(*context));
+	if (!context)
+		return NULL;
+
+	context->key = key;
+
+	if (create_digest_context(key, &context->digest_context) != KNOT_EOK) {
+		free(context);
+		return NULL;
+	}
+
+	return context;
+}
+
+/*!
+ * \brief Free DNSSEC signing context.
+ */
+void knot_dnssec_sign_free(knot_dnssec_sign_context_t *context)
+{
+	if (!context)
+		return;
+
+	context->key = NULL;
+	destroy_digest_context(&context->digest_context);
+	free(context);
+}
+
+/*!
  * \brief Get DNSSEC signature size.
  */
 size_t knot_dnssec_sign_size(knot_dnssec_key_t *key)
@@ -658,28 +710,28 @@ size_t knot_dnssec_sign_size(knot_dnssec_key_t *key)
 	if (!key)
 		return 0;
 
-	return key->context->functions->sign_size(key);
+	return key->data->functions->sign_size(key);
 }
 
 /*!
  * \brief Add data into DNSSEC signature.
  */
-int knot_dnssec_sign_add(knot_dnssec_key_t *key, const uint8_t *data,
-			 size_t data_size)
+int knot_dnssec_sign_add(knot_dnssec_sign_context_t *context,
+			 const uint8_t *data, size_t data_size)
 {
-	if (!key || !data)
+	if (!context || !context->key || !data)
 		return KNOT_EINVAL;
 
-	return key->context->functions->sign_add(key, data, data_size);
+	return context->key->data->functions->sign_add(context, data, data_size);
 }
 
 /**
  * \brief Finish DNSSEC signing and write out the signature.
  */
-int knot_dnssec_sign_write(knot_dnssec_key_t *key, uint8_t *signature)
+int knot_dnssec_sign_write(knot_dnssec_sign_context_t *context, uint8_t *signature)
 {
-	if (!key || !signature)
+	if (!context || !context->key || !signature)
 		return KNOT_EINVAL;
 
-	return key->context->functions->sign_write(key, signature);
+	return context->key->data->functions->sign_write(context, signature);
 }

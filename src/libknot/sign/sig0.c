@@ -138,7 +138,11 @@ static int sig0_write_signature(uint8_t* wire, size_t request_size,
 				size_t sig_rr_size, knot_dnssec_key_t *key)
 {
 	assert(key);
-	assert(key->context);
+	assert(key->data);
+
+	knot_dnssec_sign_context_t *ctx = knot_dnssec_sign_init(key);
+	if (!ctx)
+		return KNOT_ENOMEM;
 
 	size_t signature_size = knot_dnssec_sign_size(key);
 	size_t sig_rr_header_size = 11; // owner (== root), type, class, TTL
@@ -147,10 +151,13 @@ static int sig0_write_signature(uint8_t* wire, size_t request_size,
 	uint8_t *sig_rdata = wire + request_size + sig_rr_header_size;
 	uint8_t *signature = wire + request_size + sig_rr_size - signature_size;
 
-	knot_dnssec_sign_add(key, sig_rdata, sig_rdata_size - signature_size);
-	knot_dnssec_sign_add(key, wire, request_size);
+	knot_dnssec_sign_add(ctx, sig_rdata, sig_rdata_size - signature_size);
+	knot_dnssec_sign_add(ctx, wire, request_size);
+	int result = knot_dnssec_sign_write(ctx, signature);
 
-	return knot_dnssec_sign_write(key, signature);
+	knot_dnssec_sign_free(ctx);
+
+	return result;
 }
 
 /*- SIG(0) public ------------------------------------------------------------*/

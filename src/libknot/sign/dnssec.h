@@ -21,21 +21,28 @@
 #include "common/descriptor.h"
 
 /*!
- * \brief Algorithm state data (internal).
+ * \brief Algorithm private key data and algorithm implementation (internal).
  */
-struct knot_dnssec_algorithm_context;
-typedef struct knot_dnssec_algorithm_context knot_dnssec_algorithm_context_t;
+struct knot_dnssec_key_data;
+typedef struct knot_dnssec_key_data knot_dnssec_key_data_t;
+
+/*!
+ * \brief DNSSEC signature contextual data (internal).
+ */
+struct knot_dnssec_sign_context;
+typedef struct knot_dnssec_sign_context knot_dnssec_sign_context_t;
 
 /*!
  * \brief DNSSEC key representation.
  */
-struct knot_dnssec_key {
+typedef struct {
 	knot_dname_t *name;			//!< Key name (identifies signer).
 	uint16_t keytag;			//!< Key tag (for fast lookup).
 	knot_dnssec_algorithm_t algorithm;	//!< Algorithm identification.
-	knot_dnssec_algorithm_context_t *context; //!< Implementation context.
-};
-typedef struct knot_dnssec_key knot_dnssec_key_t;
+	knot_dnssec_key_data_t *data;		//!< Private key data.
+} knot_dnssec_key_t;
+
+/*- DNSSEC private key manipulation ------------------------------------------*/
 
 /*!
  * \brief Fill DNSSEC key structure according to key parameters.
@@ -59,6 +66,24 @@ int knot_dnssec_key_from_params(const knot_key_params_t *params,
  */
 int knot_dnssec_key_free(knot_dnssec_key_t *key);
 
+
+/*- DNSSEC low level signing interface----------------------------------------*/
+
+/*!
+ * \brief Initialize DNSSEC signing context.
+ *
+ * \param key		DNSSEC key.
+ * \return DNSSEC signing context.
+ */
+knot_dnssec_sign_context_t *knot_dnssec_sign_init(const knot_dnssec_key_t *key);
+
+/*!
+ * \brief Free DNSSEC signing context.
+ *
+ * \param context	Context to be freed.
+ */
+void knot_dnssec_sign_free(knot_dnssec_sign_context_t *context);
+
 /*!
  * \brief Get DNSSEC signature size.
  *
@@ -71,23 +96,24 @@ size_t knot_dnssec_sign_size(knot_dnssec_key_t *key);
 /*!
  * \brief Add data into DNSSEC signature.
  *
- * \param key		Key parameters and signing state.
+ * \param context	DNSSEC signing context.
  * \param data		Pointer to data to be added.
  * \param data_size	Size of the data to be added.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_dnssec_sign_add(knot_dnssec_key_t *key, const uint8_t *data,
-			 size_t data_size);
+int knot_dnssec_sign_add(knot_dnssec_sign_context_t *context,
+			 const uint8_t *data, size_t data_size);
 
 /**
  * \brief Finish DNSSEC signing and write out the signature.
  *
- * \param key		Key parameters and signing state.
+ * \param context	DNSSEC signing context.
  * \param signature	Pointer to signature to be written.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_dnssec_sign_write(knot_dnssec_key_t *key, uint8_t *signature);
+int knot_dnssec_sign_write(knot_dnssec_sign_context_t *context,
+			   uint8_t *signature);
 
 #endif // _KNOT_SIGN_DNSSEC_H_
