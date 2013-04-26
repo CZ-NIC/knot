@@ -34,6 +34,9 @@
 #include <errno.h>
 #include <limits.h>
 #include <sys/param.h>
+#ifdef HAVE_SYS_UIO_H /* 'struct iovec' for OpenBSD */
+#include <sys/uio.h>
+#endif /* HAVE_SYS_UIO_H */
 #ifdef HAVE_CAP_NG_H
 #include <cap-ng.h>
 #endif /* HAVE_CAP_NG_H */
