@@ -82,7 +82,7 @@ int knot_zonedb_add_zone(knot_zonedb_t *db, knot_zone_t *zone);
  * \retval KNOT_EOK
  * \retval KNOT_ENOZONE
  */
-knot_zone_t * knot_zonedb_remove_zone(knot_zonedb_t *db, 
+knot_zone_t * knot_zonedb_remove_zone(knot_zonedb_t *db,
                                       const knot_dname_t *zone_name);
 
 /*!

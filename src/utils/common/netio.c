@@ -236,7 +236,7 @@ int net_connect(const server_t *local,
 		close(sockfd);
 		return KNOT_ERROR;
 	}
-	
+
 	// Check if NB socket is writeable.
 	cs = getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &err, &err_len);
 	if (cs < 0 || err != 0) {
@@ -385,4 +385,3 @@ void net_close(net_t *net)
 	close(net->sockfd);
 	net_clean(net);
 }
-

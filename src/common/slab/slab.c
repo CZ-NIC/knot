@@ -148,7 +148,7 @@ void __attribute__ ((constructor)) slab_init()
 	if (slab_size < 0) {
 		slab_size = SLAB_MINSIZE;
 	}
-	
+
 	// Fetch page size
 	SLAB_SZ = (size_t)slab_size;
 	unsigned slab_logsz = fastlog2(SLAB_SZ);
@@ -521,5 +521,3 @@ int slab_cache_reap(slab_cache_t* cache)
 	cache->empty = 0;
 	return count;
 }
-
-

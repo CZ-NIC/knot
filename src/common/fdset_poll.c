@@ -108,7 +108,7 @@ int fdset_poll_remove(fdset_t *fdset, int fd)
 	/* Trim excessive memory if possible (retval is not interesting). */
 	mreserve((char **)&fdset->fds, sizeof(struct pollfd), fdset->nfds,
 	         OS_FDS_CHUNKSIZE, &fdset->reserved);
-	
+
 	return 0;
 }
 

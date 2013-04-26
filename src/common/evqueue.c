@@ -133,4 +133,3 @@ int evqueue_add(evqueue_t *q, const event_t *ev)
 
 	return 0;
 }
-

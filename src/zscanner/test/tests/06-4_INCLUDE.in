@@ -3,4 +3,3 @@ $TTL	1
 
 ; KO
 $INCLUDE /tmp/zscanner_tests/_		; File doesn't exist
-

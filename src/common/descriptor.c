@@ -20,7 +20,7 @@
 #include <stdio.h>			// snprintf
 #include <stdlib.h>			// strtoul
 
-/*! 
+/*!
  * \brief The last RR type number in the descriptors table.
  */
 const int KNOT_RRTYPE_LAST = KNOT_RRTYPE_ANY;

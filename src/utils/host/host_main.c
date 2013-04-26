@@ -36,4 +36,3 @@ int main(int argc, char *argv[])
 	host_clean(&params);
 	return ret;
 }
-

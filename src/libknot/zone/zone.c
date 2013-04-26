@@ -57,13 +57,13 @@ knot_zone_t *knot_zone_new_empty(knot_dname_t *name)
 	// save the zone name
 	dbg_zone("Setting zone name.\n");
 	zone->name = name;
-	
+
 	/* Initialize reference counting. */
 	ref_init(&zone->ref, knot_zone_dtor);
-	
+
 	/* Set reference counter to 1, caller should release it after use. */
 	knot_zone_retain(zone);
-	
+
 	return zone;
 }
 
@@ -200,7 +200,7 @@ void knot_zone_free(knot_zone_t **zone)
 
 	dbg_zone("zone_free().\n");
 
-	if ((*zone)->contents 
+	if ((*zone)->contents
 	    && !knot_zone_contents_gen_is_old((*zone)->contents)) {
 		// zone is in the middle of an update, report
 		dbg_zone("Destroying zone that is in the middle of an "
@@ -228,7 +228,7 @@ void knot_zone_deep_free(knot_zone_t **zone)
 	if (zone == NULL || *zone == NULL) {
 		return;
 	}
-	
+
 	if ((*zone)->contents
 	    && !knot_zone_contents_gen_is_old((*zone)->contents)) {
 		// zone is in the middle of an update, report
@@ -271,4 +271,3 @@ void knot_zone_set_flag(knot_zone_t *zone, knot_zone_flag_t flag, unsigned on)
 		}
 	}
 }
-

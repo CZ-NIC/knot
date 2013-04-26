@@ -105,7 +105,7 @@ static void conf_parse_begin(conf_t *conf)
 	conf->names = hattrie_create();
 }
 
-static void conf_parse_end(conf_t *conf) 
+static void conf_parse_end(conf_t *conf)
 {
 	if (conf->names) {
 		hattrie_free(conf->names);
@@ -150,7 +150,7 @@ static int conf_process(conf_t *conf)
 			return KNOT_ENOMEM;
 		}
 	}
-	
+
 	// Normalize paths
 	conf->storage = strcpath(conf->storage);
 
@@ -175,7 +175,7 @@ static int conf_process(conf_t *conf)
 			return KNOT_ENOMEM;
 		}
 	}
-	
+
 	/* Default TCP/UDP limits. */
 	if (conf->max_conn_idle < 1) {
 		conf->max_conn_idle = CONFIG_IDLE_WD;
@@ -186,7 +186,7 @@ static int conf_process(conf_t *conf)
 	if (conf->max_conn_reply < 1) {
 		conf->max_conn_reply = CONFIG_REPLY_WD;
 	}
-	
+
 	// Postprocess interfaces
 	conf_iface_t *cfg_if = NULL;
 	WALK_LIST(cfg_if, conf->ifaces) {
@@ -197,7 +197,7 @@ static int conf_process(conf_t *conf)
 	if (conf->ctl.iface && conf->ctl.iface->port <= 0) {
 		conf->ctl.iface->port = REMOTE_DPORT;
 	}
-	
+
 	/* Default RRL limits. */
 	if (conf->rrl_slip < 0) {
 		conf->rrl_slip = CONFIG_RRL_SLIP;
@@ -205,7 +205,7 @@ static int conf_process(conf_t *conf)
 	if (conf->rrl_size == 0) {
 		conf->rrl_size = CONFIG_RRL_SIZE;
 	}
-	
+
 	/* Default parallel transfers. */
 	if (conf->xfers <= 0) conf->xfers = CONFIG_XFERS;
 
@@ -219,7 +219,7 @@ static int conf_process(conf_t *conf)
 		if (zone->dbsync_timeout < 0) {
 			zone->dbsync_timeout = conf->dbsync_timeout;
 		}
-		
+
 		// Default policy for ixfr-from-differences
 		if (zone->build_diffs < 0) {
 			zone->build_diffs = conf->build_diffs;
@@ -229,7 +229,7 @@ static int conf_process(conf_t *conf)
 		if (zone->enable_checks < 0) {
 			zone->enable_checks = conf->zone_checks;
 		}
-		
+
 		// Default policy for disabling ANY type queries for AA
 		if (zone->disable_any < 0) {
 			zone->disable_any = conf->disable_any;
@@ -249,7 +249,7 @@ static int conf_process(conf_t *conf)
 		if (zone->ixfr_fslimit == 0) {
 			zone->ixfr_fslimit = conf->ixfr_fslimit;
 		}
-		
+
 		// Default zone file
 		if (zone->file == NULL) {
 			zone->file = strcdup(zone->name, ".zone");
@@ -258,7 +258,7 @@ static int conf_process(conf_t *conf)
 				continue;
 			}
 		}
-		
+
 		// Relative zone filenames should be relative to storage
 		if (zone->file[0] != '/') {
 			size_t prefix_len = strlen(conf->storage) + 1; // + '\0'
@@ -295,7 +295,7 @@ static int conf_process(conf_t *conf)
 			continue;
 		}
 		char *dpos = dest;
-		
+
 		/* Since we have already allocd dest to accomodate
 		 * storage/zname length strcpy is safe. */
 		memcpy(dpos, conf->storage, stor_len + 1);
@@ -310,7 +310,7 @@ static int conf_process(conf_t *conf)
 		for (int i = 0; i < zname_len; ++i) {
 			if (dpos[i] == '/') dpos[i] = '_';
 		}
-		
+
 		memcpy(dpos + zname_len, "db", 3);
 		zone->db = dest;
 
@@ -327,7 +327,7 @@ static int conf_process(conf_t *conf)
 		memcpy(dpos, conf->storage, stor_len + 1);
 		dpos += stor_len;
 		if (conf->storage[stor_len - 1] != '/') {
-			*(dpos++) = '/';	
+			*(dpos++) = '/';
 			*dpos = '\0';
 		}
 
@@ -339,11 +339,11 @@ static int conf_process(conf_t *conf)
 		memcpy(dpos + zname_len, dbext, strlen(dbext) + 1);
 		zone->ixfr_db = dest;
 	}
-	
+
 	/* Update UID and GID. */
 	if (conf->uid < 0) conf->uid = getuid();
 	if (conf->gid < 0) conf->gid = getgid();
-	
+
 	/* Build remote control ACL. */
 	sockaddr_t addr;
 	conf_remote_t *r = NULL;
@@ -438,7 +438,7 @@ static int conf_fparser(conf_t *conf)
 
 	int ret = KNOT_EOK;
 	pthread_mutex_lock(&_parser_lock);
-	
+
 	// {
 	// Hook new configuration
 	new_config = conf;
@@ -462,7 +462,7 @@ static int conf_fparser(conf_t *conf)
 	fclose(f);
 	// }
 	pthread_mutex_unlock(&_parser_lock);
-	
+
 	return ret;
 }
 
@@ -534,7 +534,7 @@ conf_t *conf_new(const char* path)
 	c->xfers = -1;
 	c->rrl_slip = -1;
 	c->build_diffs = 0; /* Disable by default. */
-	
+
 	/* ACLs. */
 	c->ctl.acl = acl_new(ACL_DENY, "remote_ctl");
 	if (!c->ctl.acl) {
@@ -569,7 +569,7 @@ int conf_parse(conf_t *conf)
 	conf_parse_begin(conf);
 	int ret = conf_fparser(conf);
 	conf_parse_end(conf);
-	
+
 	/* Postprocess config. */
 	if (ret == 0) {
 		ret = conf_process(conf);
@@ -685,17 +685,17 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 		free(conf->nsid);
 		conf->nsid = 0;
 	}
-	
+
 	/* Free remote control list. */
 	WALK_LIST_DELSAFE(n, nxt, conf->ctl.allow) {
 		conf_free_remote((conf_remote_t*)n);
 	}
 	conf->remotes_count = 0;
 	init_list(&conf->remotes);
-	
+
 	/* Free remote control ACL. */
 	acl_truncate(conf->ctl.acl);
-	
+
 	/* Free remote control iface. */
 	conf_free_iface(conf->ctl.iface);
 }
@@ -708,7 +708,7 @@ void conf_free(conf_t *conf)
 
 	/* Truncate config. */
 	conf_truncate(conf, 1);
-	
+
 	/* Free remote control ACL. */
 	acl_delete(&conf->ctl.acl);
 
@@ -771,7 +771,7 @@ int conf_open(const char* path)
 		/* Postprocess config. */
 		ret = conf_process(nconf);
 	}
-	
+
 	if (ret != KNOT_EOK) {
 		conf_free(nconf);
 		return ret;
@@ -810,7 +810,7 @@ char* strcpath(char *path)
 	if (!path) {
 		return NULL;
 	}
-	
+
 	// Remote trailing slash
 	size_t plen = strlen(path);
 	if (path[plen - 1] == '/') {
@@ -850,7 +850,7 @@ char* strcpath(char *path)
 		npath[0] = '\0';
 		strncpy(npath, path, (size_t)(remainder - path));
 		strncat(npath, tild_exp, tild_len);
-		
+
 		// Append remainder
 		++remainder;
 		strncat(npath, remainder, strlen(remainder));
@@ -934,4 +934,3 @@ void conf_free_log(conf_log_t *log)
 
 	free(log);
 }
-

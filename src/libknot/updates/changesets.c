@@ -88,7 +88,7 @@ int knot_changeset_allocate(knot_changesets_t **changesets,
 		*changesets = NULL;
 		return KNOT_ENOMEM;
 	}
-	
+
 	return KNOT_EOK;
 }
 
@@ -311,7 +311,7 @@ void knot_free_changeset(knot_changeset_t **changeset)
 		knot_rrset_deep_free(&(*changeset)->remove[j], 1, 1);
 	}
 	free((*changeset)->remove);
-	
+
 	knot_rrset_deep_free(&(*changeset)->soa_from, 1, 1);
 	knot_rrset_deep_free(&(*changeset)->soa_to, 1, 1);
 
@@ -337,9 +337,9 @@ void knot_free_changesets(knot_changesets_t **changesets)
 	}
 
 	free((*changesets)->sets);
-	
+
 	knot_rrset_deep_free(&(*changesets)->first_soa, 1, 1);
-	
+
 	assert((*changesets)->changes == NULL);
 
 	free(*changesets);
@@ -356,7 +356,7 @@ int knot_changes_rrsets_reserve(knot_rrset_t ***rrsets,
 	if (rrsets == NULL || count == NULL || allocated == NULL) {
 		return KNOT_EINVAL;
 	}
-	
+
 	if (*count + to_add <= *allocated) {
 		return KNOT_EOK;
 	}
@@ -392,7 +392,7 @@ int knot_changes_nodes_reserve(knot_node_t ***nodes,
 	if (nodes == NULL || count == NULL || allocated == NULL) {
 		return KNOT_EINVAL;
 	}
-	
+
 	if (*count + 2 <= *allocated) {
 		return KNOT_EOK;
 	}
@@ -426,7 +426,7 @@ int knot_changes_rdata_reserve(knot_rrset_t ***rdatas,
 	if (rdatas == NULL || allocated == NULL) {
 		return KNOT_EINVAL;
 	}
-	
+
 	if (count + to_add <= *allocated) {
 		return KNOT_EOK;
 	}
@@ -464,7 +464,7 @@ void knot_changes_add_rdata(knot_rrset_t **rdatas, int *count,
 	if (rdatas == NULL || count == NULL || rrset == NULL || rrset->rdata_count == 0) {
 		return;
 	}
-	
+
 	rdatas[*count] = rrset;
 	*count += 1;
 }
@@ -499,20 +499,20 @@ int knot_changes_add_old_rrsets(knot_rrset_t **rrsets, int count,
 		if (rrsets[i] == NULL) {
 			continue;
 		}
-		
+
 		knot_rrset_t *rrsigs = knot_rrset_get_rrsigs(rrsets[i]);
-		
+
 		if (add_rdata) {
-			
+
 			/* RDATA count in the RRSet. */
 			int rdata_count = 1;
-			
+
 			if (rrsigs != NULL) {
-				/* Increment the RDATA count by the count of 
+				/* Increment the RDATA count by the count of
 				 * RRSIGs. */
 				rdata_count += 1;
 			}
-	
+
 			/* Remove old RDATA. */
 			ret = knot_changes_rdata_reserve(&changes->old_rdata,
 			                          changes->old_rdata_count,
@@ -526,12 +526,12 @@ int knot_changes_add_old_rrsets(knot_rrset_t **rrsets, int count,
 			knot_changes_add_rdata(changes->old_rdata,
 			                       &changes->old_rdata_count,
 			                       rrsets[i]);
-			
+
 			knot_changes_add_rdata(changes->old_rdata,
 			                       &changes->old_rdata_count,
 			                       rrsigs);
 		}
-		
+
 		/* Disconnect RRsigs from rrset. */
 		knot_rrset_set_rrsigs(rrsets[i], NULL);
 		changes->old_rrsets[changes->old_rrsets_count++] = rrsets[i];
@@ -569,7 +569,7 @@ int knot_changes_add_new_rrsets(knot_rrset_t **rrsets, int count,
 		if (rrsets[i] == NULL) {
 			continue;
 		}
-		
+
 		if (add_rdata) {
 			ret = knot_changes_rdata_reserve(&changes->new_rdata,
 			                          changes->new_rdata_count,
@@ -578,12 +578,12 @@ int knot_changes_add_new_rrsets(knot_rrset_t **rrsets, int count,
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
-			
+
 			knot_changes_add_rdata(changes->new_rdata,
 			                       &changes->new_rdata_count,
 			                       rrsets[i]);
-		}	
-		
+		}
+
 		changes->new_rrsets[changes->new_rrsets_count++] = rrsets[i];
 	}
 

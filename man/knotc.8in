@@ -10,13 +10,13 @@
 .HP
 \fB\-c\fR [file], \fB\-\-config\fR=\fI[file]\fR Select configuration file.
 .TP
-\fB\-s\fR [server]\fR Remote server address (default 127.0.0.1) 
+\fB\-s\fR [server]\fR Remote server address (default 127.0.0.1)
 .TP
 \fB\-p\fR [port]\fR Remote server port (default 5553)
 .TP
 \fB\-y\fR [hmac:]name:key]\fR Use key_id for specified on the command line.
 .TP
-\fB\-k\fR [file]\fR Use key file (as in config section 'keys'). 
+\fB\-k\fR [file]\fR Use key file (as in config section 'keys').
 f.e. echo "knotc-key hmac-md5 Wg==" > knotc.key
 If you omit algorithm, hmac-md5 will be used as default.
 .TP
@@ -68,11 +68,11 @@ Check server configuration.
 .TP
 checkzone
 Check zones before compiling (accepts specific zones, f.e. 'knotc checkzone example1.com example2.com').
-.SS "EXAMPLES" 
+.SS "EXAMPLES"
 .TP
 .B Setup a keyfile for remote control
 .TP
-1. Generate keys 
+1. Generate keys
 dnssec-keygen -a hmac-md5 -b 256 -n HOST knotc-key
 .TP
 2. Extract secret in base64 format and create keyfile

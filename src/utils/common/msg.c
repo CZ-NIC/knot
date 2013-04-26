@@ -38,4 +38,3 @@ int msg_debug(const char *fmt, ...)
 	}
 	return n;
 }
-

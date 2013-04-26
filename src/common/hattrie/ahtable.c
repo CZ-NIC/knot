@@ -129,7 +129,7 @@ void ahtable_clear(ahtable_t* T)
     const size_t sslen = 2 * T->n * sizeof(uint32_t); /* used | reserved */
     T->slot_sizes = realloc(T->slot_sizes, sslen);
     memset(T->slot_sizes, 0, sslen);
-    
+
     if (T->index) {
         free(T->index);
         T->index = NULL;
@@ -263,7 +263,7 @@ static value_t* insert_key(ahtable_t* T, uint32_t h, const char* key, size_t len
     value_t *val = NULL;
     ins_key(T->slots[h] + T->slot_sizes[h], key, len, &val);
     T->slot_sizes[h] = new_size;
-    
+
     return val;
 }
 
@@ -314,7 +314,7 @@ value_t* ahtable_get(ahtable_t* T, const char* key, size_t len)
     if (ret == NULL) { /* insert if not found */
         ret = insert_key(T, i, key, len);
     }
-    
+
     return ret;
 }
 
@@ -336,11 +336,11 @@ void ahtable_build_index(ahtable_t* T)
         free(T->index);
         T->index = NULL;
     }
-    
+
     if (T->m == 0) return;
-    
+
     T->index = malloc(T->m * sizeof(slot_t));
-    
+
     slot_t s;
     size_t j, k, u;
     for (j = 0, u = 0; j < T->n; ++j) {
@@ -352,7 +352,7 @@ void ahtable_build_index(ahtable_t* T)
             s += k + sizeof(value_t);
         }
     }
-    
+
     qsort(T->index, T->m, sizeof(slot_t), cmpkey);
 }
 
@@ -361,7 +361,7 @@ int ahtable_find_leq (ahtable_t* T, const char* key, size_t len, value_t** dst)
     *dst = NULL;
     if (T->m == 0) return 1;
     assert(T->index != NULL);
-    
+
     /* the array is T->m size and sorted, use binary search */
     int r = 0;
     int a = 0, b = T->m - 1, k = 0;
@@ -376,11 +376,11 @@ int ahtable_find_leq (ahtable_t* T, const char* key, size_t len, value_t** dst)
         } else {
             a = k + 1;
         }
-        
+
     }
-    
-    
-    if (r < 0) { 
+
+
+    if (r < 0) {
         --k;    /* k is after previous node */
         r = -1;
     } else if (r > 0) {
@@ -399,7 +399,7 @@ void ahtable_insert (ahtable_t* T, const char* key, size_t len, value_t val)
     if (T->m >= T->max_m) {
         ahtable_expand(T);
     }
-    
+
     uint32_t i = hash(key, len) % T->n;
     *insert_key(T, i, key, len) = val;
 }
@@ -456,7 +456,7 @@ static void ahtable_sorted_iter_begin(ahtable_t* T, ahtable_iter_t *i)
         i->flags |= AH_INDEXED;
         return;
     }
-    
+
     i->d.xs = malloc(T->m * sizeof(slot_t));
 
     slot_t s;
@@ -563,7 +563,7 @@ static void ahtable_unsorted_iter_del(ahtable_iter_t* i)
     memmove(i->d.s, t, i->T->slot_sizes[i->i] - (size_t)(t - i->T->slots[i->i]));
     i->T->slot_sizes[i->i] -= (size_t)(t - i->d.s);
     --i->T->m;
-    
+
     /* find next filled slot*/
     if ((size_t) (i->d.s - i->T->slots[i->i]) >= i->T->slot_sizes[i->i]) {
         do {
@@ -653,4 +653,3 @@ value_t* ahtable_iter_val(ahtable_iter_t* i)
     if (i->flags & AH_SORTED) return ahtable_sorted_iter_val(i);
     else                      return ahtable_unsorted_iter_val(i);
 }
-

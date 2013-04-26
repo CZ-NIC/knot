@@ -331,7 +331,7 @@ static void print_error_host(const uint8_t         code,
 
 	if (code == KNOT_RCODE_NOERROR) {
 		printf("Host %s has no %s record\n", owner, type);
-	} else { 
+	} else {
 		printf("Host %s type %s error: %s\n", owner, type, rcode_str);
 	}
 
@@ -549,7 +549,7 @@ void print_packet(const knot_packet_t *packet,
 	default:
 		break;
 	}
-	
+
 	// Print packet statistics.
 	if (style->show_footer) {
 		print_footer(total_len, 0, 0, net, elapsed, incoming);

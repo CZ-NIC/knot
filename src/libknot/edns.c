@@ -197,8 +197,8 @@ int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr,
 			pos += 4 + opt_size;
 		}
 	}
-	
-	
+
+
 	dbg_edns_verb("EDNS created.\n");
 
 	return KNOT_EOK;

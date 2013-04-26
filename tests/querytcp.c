@@ -161,7 +161,7 @@ struct dnsheader  {
  |QR|   Opcode  |AA|TC|RD|RA|   Z    |   RCODE   |
  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
 */
-	
+
 struct queries {
 	struct tcpdns {
 		unsigned short len;
@@ -709,7 +709,7 @@ void query()
 
 void usage()
 {
-	fprintf(stderr, 
+	fprintf(stderr,
 "querytcp [-d datafile] [-s server_addr] [-p port] [-q num_queries] [-t timeout] [l limit] [-4] [-6] [-h]\n"
 "  -d specifies the input data file (default: stdin)\n"
 "  -s sets the server to query (default: 127.0.0.1)\n"

@@ -128,7 +128,7 @@ typedef struct server_t {
 
 	/*! \brief List of interfaces. */
 	ifacelist_t* ifaces;
-	
+
 	/*! \brief Rate limiting. */
 	rrl_table_t *rrl;
 
@@ -203,7 +203,7 @@ int server_refresh(server_t *server);
  *
  * \param server Server instance.
  * \param cf Config file path.
- * \return 
+ * \return
  */
 int server_reload(server_t *server, const char *cf);
 

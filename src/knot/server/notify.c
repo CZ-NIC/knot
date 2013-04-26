@@ -131,7 +131,7 @@ int notify_create_response(knot_packet_t *request, uint8_t *buffer,
 	if (rc == KNOT_EOK) {
 		rc = knot_response_init_from_query(response, request, 1);
 	}
-	
+
 	/* Aggregated result check. */
 	if (rc != KNOT_EOK) {
 		dbg_notify("%s: failed to init response packet: %s",
@@ -188,7 +188,7 @@ static int notify_check_and_schedule(knot_nameserver_t *nameserver,
 	if (zone == NULL || from == NULL || knot_zone_data(zone) == NULL) {
 		return KNOT_EINVAL;
 	}
-	
+
 	/* Check ACL for notify-in. */
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 	if (from) {
@@ -208,7 +208,7 @@ static int notify_check_and_schedule(knot_nameserver_t *nameserver,
 		/* Set REFRESH timer for now. */
 		evsched_schedule(sched, refresh_ev, 0);
 	}
-	
+
 	return KNOT_EOK;
 }
 
@@ -283,7 +283,7 @@ int notify_process_request(knot_nameserver_t *ns,
 	case KNOT_EACCES:  rcode = KNOT_RCODE_REFUSED; break;
 	default: break;
 	}
-	
+
 	/* Format resulting log message. */
 	char *qstr = knot_dname_to_str(qname);
 	char *fromstr = xfr_remote_str(from, NULL);
@@ -297,7 +297,7 @@ int notify_process_request(knot_nameserver_t *ns,
 	}
 	free(qstr);
 	free(fromstr);
-	
+
 	rcu_read_unlock();
 	return ret;
 }
@@ -318,4 +318,3 @@ int notify_process_response(knot_packet_t *notify, int msgid)
 
 	return KNOT_EOK;
 }
-

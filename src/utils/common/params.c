@@ -25,7 +25,7 @@
 #include "libknot/libknot.h"
 #include "common/errcode.h"		// KNOT_EOK
 #include "common/mempattern.h"		// strcdup
-#include "common/descriptor.h"		// KNOT_RRTYPE_ 
+#include "common/descriptor.h"		// KNOT_RRTYPE_
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/resolv.h"	// parse_nameserver
 #include "utils/common/token.h"		// token

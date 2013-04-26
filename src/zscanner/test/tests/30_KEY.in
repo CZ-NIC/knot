@@ -6,7 +6,7 @@ $TTL	1
 @	KEY	65535	255	255	AA==		; Maximal numbers
 @	KEY	0	0	0	Zm8=		; One char padding
 @	KEY	0	0	0	Zm9v		; Without padding
-@	KEY	0	0	0	Zm9vYg==	; Two base64 blocks 
+@	KEY	0	0	0	Zm9vYg==	; Two base64 blocks
 @	KEY	0	0	0	Zm9v YmE=	; Two base64 blocks with blank space between them
 @	TYPE25	\# 5 0000000000				; TYPE + Hexadecimal rdata
 @	TYPE25	0	0	0	AA==		; TYPE

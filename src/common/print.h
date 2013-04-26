@@ -103,4 +103,3 @@ float time_diff(struct timeval *begin, struct timeval *end);
 #endif /* _KNOTD_COMMON_PRINT_H_ */
 
 /*! @} */
-

@@ -62,7 +62,7 @@ static uint8_t* tsig_rdata_seek(const knot_rrset_t *rr, tsig_off_t id, size_t nb
 	if (rd == NULL) {
 		return NULL;
 	}
-	
+
 	/* Check if fixed part is readable. */
 	uint16_t lim = rrset_rdata_item_size(rr, 0);
 	if (lim < TSIG_NAMELEN + 5 * sizeof(uint16_t)) {
@@ -71,7 +71,7 @@ static uint8_t* tsig_rdata_seek(const knot_rrset_t *rr, tsig_off_t id, size_t nb
 		         lim, TSIG_NAMELEN + 5 * sizeof(uint16_t));
 		return NULL;
 	}
-	
+
 	/* Not pretty, but fast. */
 	uint8_t *bp = rd;
 	switch(id) {
@@ -84,7 +84,7 @@ static uint8_t* tsig_rdata_seek(const knot_rrset_t *rr, tsig_off_t id, size_t nb
 		rd += TSIG_NAMELEN + 4 * sizeof(uint16_t);
 		rd += knot_wire_read_u16(rd) + sizeof(uint16_t);
 		break;
-		
+
 	case TSIG_ERROR_O:
 		rd += TSIG_NAMELEN + 4 * sizeof(uint16_t);
 		rd += knot_wire_read_u16(rd) + 2 * sizeof(uint16_t);
@@ -98,14 +98,14 @@ static uint8_t* tsig_rdata_seek(const knot_rrset_t *rr, tsig_off_t id, size_t nb
 		rd += knot_wire_read_u16(rd) + 4 * sizeof(uint16_t);
 		break;
 	}
-	
+
 	/* Check remaining bytes. */
 	if (rd + nb > bp + lim) {
 		dbg_tsig("TSIG: rdata: not enough items (needs %zu, has %u).\n",
 		         (rd-bp)+nb, lim);
 		return NULL;
 	}
-	
+
 	return rd;
 }
 
@@ -115,7 +115,7 @@ static int tsig_rdata_set_tsig_error(knot_rrset_t *tsig, uint16_t tsig_error)
 	if (!rd) {
 		return KNOT_ERROR;
 	}
-	
+
 	knot_wire_write_u16(rd, tsig_error);
 	return KNOT_EOK;
 }
@@ -125,7 +125,7 @@ int tsig_create_rdata(knot_rrset_t *rr, uint16_t maclen, uint16_t tsig_err)
 	if (!rr) {
 		return KNOT_EINVAL;
 	}
-	
+
 	/* We already checked rr and know rdlen > 0, no need to check rets. */
 	size_t rdlen = TSIG_FIXED_RDLEN + maclen;
 	if (tsig_err != KNOT_RCODE_BADTIME) {
@@ -133,11 +133,11 @@ int tsig_create_rdata(knot_rrset_t *rr, uint16_t maclen, uint16_t tsig_err)
 	}
 	uint8_t *rd = knot_rrset_create_rdata(rr, rdlen);
 	memset(rd, 0, rdlen);
-	
+
 	/* Set MAC variable length in advance. */
 	rd += TSIG_OFF_MACLEN;
 	knot_wire_write_u16(rd, maclen);
-	
+
 	/* Set error. */
 	tsig_rdata_set_tsig_error(rr, tsig_err);
 
@@ -150,7 +150,7 @@ int tsig_rdata_set_alg_name(knot_rrset_t *tsig, knot_dname_t *alg_name)
 	if (!rd) {
 		return KNOT_ERROR;
 	}
-	
+
 	memcpy(rd, &alg_name, sizeof(knot_dname_t*));
 	knot_dname_retain(alg_name);
 	return KNOT_EOK;
@@ -171,7 +171,7 @@ int tsig_rdata_set_time_signed(knot_rrset_t *tsig, uint64_t time)
 	if (!rd) {
 		return KNOT_ERROR;
 	}
-	
+
 	knot_wire_write_u48(rd, time);
 	return KNOT_EOK;
 }
@@ -182,7 +182,7 @@ int tsig_rdata_set_fudge(knot_rrset_t *tsig, uint16_t fudge)
 	if (!rd) {
 		return KNOT_ERROR;
 	}
-	
+
 	knot_wire_write_u16(rd, fudge);
 	return KNOT_EOK;
 }
@@ -193,7 +193,7 @@ int tsig_rdata_set_mac(knot_rrset_t *tsig, uint16_t length, const uint8_t *mac)
 	if (!rd) {
 		return KNOT_ERROR;
 	}
-	
+
 	/*! \note Cannot change length, as rdata is already preallocd. */
 
 	/* Copy the actual MAC. */
@@ -207,7 +207,7 @@ int tsig_rdata_set_orig_id(knot_rrset_t *tsig, uint16_t id)
 	if (!rd) {
 		return KNOT_ERROR;
 	}
-	
+
 	/* Write the length - 2. */
 	knot_wire_write_u16(rd, id);
 	return KNOT_EOK;
@@ -225,10 +225,10 @@ int tsig_rdata_set_other_data(knot_rrset_t *tsig, uint16_t len,
 	if (!rd) {
 		return KNOT_ERROR;
 	}
-	
+
 	/* Write the length. */
 	knot_wire_write_u16(rd, len);
-	
+
 	/* Copy the actual data. */
 	memcpy(rd + sizeof(uint16_t), other_data, len);
 	return KNOT_EOK;
@@ -446,7 +446,7 @@ size_t tsig_wire_actsize(const knot_rrset_t *tsig)
 	if (tsig == NULL) {
 		return 0;
 	}
-	
+
 	/*! \todo Used fixed size as a base. */
 	return knot_dname_size(knot_rrset_owner(tsig)) +
 	sizeof(uint16_t) + /* TYPE */
@@ -468,7 +468,7 @@ int tsig_rdata_is_ok(const knot_rrset_t *tsig)
 {
 	/*! \todo Check size, needs to check variable-length fields. */
 	return (tsig
-	        && knot_rrset_get_rdata(tsig, 0) != NULL 
+	        && knot_rrset_get_rdata(tsig, 0) != NULL
 	        && tsig_rdata_seek(tsig, TSIG_OTHER_O, 0) != NULL
 	        && tsig_rdata_alg_name(tsig) != NULL
 	        && tsig_rdata_time_signed(tsig) != 0);

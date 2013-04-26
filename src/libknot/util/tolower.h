@@ -42,7 +42,7 @@ extern const uint8_t char_table[CHAR_TABLE_SIZE];
 
 /*!
  * \brief Converts ASCII character to lowercase.
- * 
+ *
  * \param c ASCII character code.
  *
  * \return \a c converted to lowercase (or \a c if not applicable).

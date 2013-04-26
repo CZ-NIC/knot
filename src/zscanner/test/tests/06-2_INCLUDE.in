@@ -3,4 +3,3 @@ $TTL	1
 
 ; KO
 $INCLUDE ./includes/include1	%	; Bad origin
-

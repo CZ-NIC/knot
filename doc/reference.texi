@@ -4,14 +4,14 @@
 This reference describes every configuration option in Knot DNS server.
 
 @menu
-* system::                      
-* keys::                        
-* interfaces::                  
-* remotes::                     
+* system::
+* keys::
+* interfaces::
+* remotes::
 * groups::
 * control::
-* zones::                       
-* log::                         
+* zones::
+* log::
 * include::
 @end menu
 
@@ -24,9 +24,9 @@ operating system and other general options which do not fit anywhere
 else.
 
 @menu
-* system Syntax::               
-* system Statement Definition and Usage::  
-* system Example::              
+* system Syntax::
+* system Statement Definition and Usage::
+* system Example::
 @end menu
 
 @node system Syntax
@@ -55,16 +55,16 @@ else.
 @subsection Statement Definition and Usage
 
 @menu
-* identity::                    
-* version::                     
-* nsid::                        
-* storage::                     
-* pidfile::                     
-* workers::                     
-* user::                        
-* max-conn-idle::               
-* max-conn-hs::                 
-* max-conn-reply::              
+* identity::
+* version::
+* nsid::
+* storage::
+* pidfile::
+* workers::
+* user::
+* max-conn-idle::
+* max-conn-hs::
+* max-conn-reply::
 * transfers::
 * rate-limit::
 * rate-limit-size::
@@ -253,9 +253,9 @@ The @code{keys} statement sets up the TSIG keys used to authenticate
 zone transfers.
 
 @menu
-* keys Syntax::                 
-* keys Statement Definition and Usage::  
-* Example::                     
+* keys Syntax::
+* keys Statement Definition and Usage::
+* Example::
 @end menu
 
 @node keys Syntax
@@ -272,7 +272,7 @@ keys @{
 @subsection Statement Definition and Usage
 
 @menu
-* key_id::                      
+* key_id::
 @end menu
 
 @node key_id
@@ -305,10 +305,10 @@ You need to use bind or ldns utils to generate TSIG keys. Unfortunately, Knot DN
 
 $ dnssec-keygen -a HMAC-SHA256 -b 256 -n HOST foobar.example.com
 Kfoobar.example.com.+163+21239
-$ cat Kfoobar.example.com.+163+21239.key 
+$ cat Kfoobar.example.com.+163+21239.key
 foobar.example.com. ( IN KEY 512 3 163
                       rqv2WRyDgIUaHcJi03Zssor9jtG1kOpb3dPywxZfTeo= )
-	  
+
 @end example
 
 Key generated in previous paragraph would be written as:
@@ -319,7 +319,7 @@ keys @{
   foobar.example.com. hmac-sha256
   "rqv2WRyDgIUaHcJi03Zssor9jtG1kOpb3dPywxZfTeo=";
 @}
-	  
+
 @end example
 
 @node Example
@@ -332,7 +332,7 @@ keys @{
   key0.server0 hmac-md5 "Wg==";
   foobar.example.com. hmac-sha256 "RQ==";
 @}
-	
+
 @end example
 
 @node interfaces
@@ -342,9 +342,9 @@ keys @{
 The @code{interfaces} statement contains IP interfaces where Knot DNS listens for incoming queries.
 
 @menu
-* interfaces Syntax::           
-* interfaces Statement Definition and Usage::  
-* interfaces Examples::         
+* interfaces Syntax::
+* interfaces Statement Definition and Usage::
+* interfaces Examples::
 @end menu
 
 @node interfaces Syntax
@@ -363,7 +363,7 @@ The @code{interfaces} statement contains IP interfaces where Knot DNS listens fo
 @subsection Statement Definition and Usage
 
 @menu
-* interface_id::                
+* interface_id::
 @end menu
 
 @node interface_id
@@ -389,7 +389,7 @@ interfaces @{
     port 53;
   @}
 @}
-	
+
 @end example
 
 Short form:
@@ -399,7 +399,7 @@ Short form:
 interfaces @{
   my_second_ip @{ address 198.51.100.1@@53; @}
 @}
-	
+
 @end example
 
 Short form without port (defaults to 53):
@@ -409,7 +409,7 @@ Short form without port (defaults to 53):
 interfaces @{
   my_third_ip @{ address 203.0.113.1; @}
 @}
-	
+
 @end example
 
 @node remotes
@@ -424,8 +424,8 @@ client for one zone (e.g. downloading the updates) and as a master
 server for a different zone.
 
 @menu
-* remotes Syntax::              
-* remotes Statement Definition and Grammar::  
+* remotes Syntax::
+* remotes Statement Definition and Grammar::
 * remotes Examples::
 @end menu
 
@@ -496,9 +496,9 @@ server for a different zone.
 remotes @{
 
   # Format 1:
-  server0 @{            
-    address 127.0.0.1; 
-    port 53531;       
+  server0 @{
+    address 127.0.0.1;
+    port 53531;
     key key0.server0;
     via ipv4;             # reference to 'remotes'
     # via 82.35.64.59;    # direct IPv4
@@ -590,7 +590,7 @@ control @{
 @}
 @end example
 
-@node control 
+@node control
 @section @code{control} Statement
 
 The @code{control} statement specifies on which interface to listen for remote control commands.
@@ -600,8 +600,8 @@ for that reason, it is recommended to enable remote control only on private netw
 or loopback.
 
 @menu
-* control Syntax::              
-* control Statement Definition and Grammar::  
+* control Syntax::
+* control Statement Definition and Grammar::
 * control Examples::
 @end menu
 
@@ -647,10 +647,10 @@ control @{
 The @code{zones} statement contains definition of zones served by Knot DNS.
 
 @menu
-* zones Syntax::                
+* zones Syntax::
 * zones Statement Definition and Grammar::
 * zones Example::
-* zones List of zone semantic checks::     
+* zones List of zone semantic checks::
 @end menu
 
 @node zones Syntax
@@ -687,18 +687,18 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
 @menu
 * zone_id::
 * file::
-* xfr-in::                    
-* xfr-out::                     
-* notify-in::                        
-* notify-out::                     
+* xfr-in::
+* xfr-out::
+* notify-in::
+* notify-out::
 * update-in::
-* semantic-checks::                     
+* semantic-checks::
 * ixfr-from-differences::
-* disable-any::                     
-* notify-timeout::                     
-* notify-retries::                     
-* zonefile-sync::                    
-* ixfr-fslimit::                     
+* disable-any::
+* notify-timeout::
+* notify-retries::
+* zonefile-sync::
+* ixfr-fslimit::
 @end menu
 
 @node zone_id
@@ -752,7 +752,7 @@ Remotes are defined in @code{remotes} section of configuration file (@pxref{remo
 
 @node semantic-checks
 @subsubsection semantic-checks
-@vindex semantic-checks 
+@vindex semantic-checks
 
 @code{semantic-checks} statement turns on optional semantic checks for this particular zone.
 See @ref{zones List of zone semantic checks} for more information.
@@ -766,7 +766,7 @@ Most checks are disabled by default.
 
 EXPERIMENTAL: option @code{ixfr-from-differences} is only relevant if you are running Knot DNS as a master for this zone.
 By turning the feature on you tell Knot to create differences from changes you made to a zone file upon server reload.
-See @ref{Controlling running daemon} for more information. 
+See @ref{Controlling running daemon} for more information.
 
 Possible values are @code{on} and @code{off}. Disabled by default.
 
@@ -788,7 +788,7 @@ By default, this value is set to 60 seconds.
 @subsubsection notify-retries
 @vindex notify-retries
 
-@code{notify-retries} tells the server how many times it can retry to send a NOTIFY. Possible values 
+@code{notify-retries} tells the server how many times it can retry to send a NOTIFY. Possible values
 are 1 to INT_MAX and default value is 5.
 
 @node zonefile-sync
@@ -836,7 +836,7 @@ zones @{
 @end group
 @end example
 
-@node zones List of zone semantic checks 
+@node zones List of zone semantic checks
 @subsection List of zone semantic checks
 
 The @code{semantic-checks} statement turns on extra zone file semantic
@@ -856,7 +856,7 @@ These checks are the following:
 @end example
 
 Following checks have to be turned on using @code{semantic-checks} and
-a zone containing following errors will be 
+a zone containing following errors will be
 loaded even upon discovering an error:
 
 @example
@@ -882,7 +882,7 @@ loaded even upon discovering an error:
 @stindex log
 
 @menu
-* log Syntax::                  
+* log Syntax::
 * log Statement Definition and Grammar::
 * log Example::
 @end menu
@@ -896,7 +896,7 @@ loaded even upon discovering an error:
     [ @kbd{category} @kbd{severity} [ @kbd{severity} @dots{} ]@code{;} ]
   @code{@}} ]
   [ @code{log_file} @kbd{filename} @{
-    [ @kbd{category} @kbd{severity} [ @kbd{severity} @dots{} ]@code{;} ] 
+    [ @kbd{category} @kbd{severity} [ @kbd{severity} @dots{} ]@code{;} ]
   @} ]
 @code{@}}
 

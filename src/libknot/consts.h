@@ -197,7 +197,7 @@ extern knot_lookup_table_t knot_tsig_alg_domain_names[];
  *
  * \param algorithm Algorithm code to be used.
  *
- * \retval Digest length for given algorithm. 
+ * \retval Digest length for given algorithm.
  */
 size_t knot_tsig_digest_length(const uint8_t algorithm);
 
@@ -206,7 +206,7 @@ size_t knot_tsig_digest_length(const uint8_t algorithm);
  *
  * \param algorithm Algorithm code to be used.
  *
- * \retval Digest length for given algorithm. 
+ * \retval Digest length for given algorithm.
  */
 size_t knot_ds_digest_length(const uint8_t algorithm);
 

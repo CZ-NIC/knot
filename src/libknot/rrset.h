@@ -50,10 +50,10 @@ struct knot_rrset {
 	uint16_t type; /*!< TYPE of the RRset. */
 	uint16_t rclass; /*!< CLASS of the RRSet. */
 	uint32_t ttl; /*!< TTL of the RRSet. */
-	
+
 	/* [code-review] It would be fine to better describe the format of this
 	 * array and the meaning of the indices. Maybe even draw some simple
-	 * image :-) 
+	 * image :-)
 	 */
 	uint8_t *rdata; /*!< RDATA array (All RRs). */
 	/*! \brief Beginnings of RRs - first one does not contain 0, last
@@ -116,7 +116,7 @@ int knot_rrset_add_rdata(knot_rrset_t *rrset, const uint8_t *rdata,
 
 /*!
  * \brief Creates RDATA memory and returns a pointer to it.
- *        If the RRSet is not empty, function will return a memory 
+ *        If the RRSet is not empty, function will return a memory
  *        pointing to a beginning of a new RR. (Indices will be handled as well)
  *
  * \param rrset RRSet to add the RDATA to.
@@ -350,7 +350,7 @@ int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2);
 
 
 /*!
- * \brief Merges two RRSets, but will only merge unique items. 
+ * \brief Merges two RRSets, but will only merge unique items.
  *
  * \param r1 Pointer to RRSet to be merged into.
  * \param r2 Poitner to RRSet to be merged.
@@ -460,8 +460,8 @@ const knot_dname_t *knot_rrset_rdata_minfo_second_dname(const knot_rrset_t *rrse
  * \param prev_dname Pointer to previous dname.
  * \return next dname or NULL.
  */
-/* [code-review] Emphasize that the 'prev' pointer must point into the RDATA 
- * array of the given RRSet. 
+/* [code-review] Emphasize that the 'prev' pointer must point into the RDATA
+ * array of the given RRSet.
  */
 knot_dname_t **knot_rrset_get_next_dname(const knot_rrset_t *rrset,
                                                  knot_dname_t **prev);
@@ -530,7 +530,7 @@ int rrset_rr_dnames_apply(knot_rrset_t *rrset, size_t rdata_pos,
 int rrset_dnames_apply(knot_rrset_t *rrset, int (*func)(knot_dname_t **, void *),
                        void *data);
 
-int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset, 
+int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
                                    const uint8_t *wire, size_t *pos,
                                    size_t total_size, size_t rdlength);
 
@@ -538,4 +538,3 @@ int knot_rrset_ds_check(const knot_rrset_t *rrset);
 #endif /* _KNOT_RRSET_H_ */
 
 /*! @} */
-

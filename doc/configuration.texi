@@ -4,12 +4,12 @@
 In this chapter we provide suggested configurations and explain the meaning of individual configuration options.
 
 @menu
-* Minimal configuration::       
-* Slave configuration::       
-* Master configuration::       
-* Configuring multiple interfaces::       
+* Minimal configuration::
+* Slave configuration::
+* Master configuration::
+* Configuring multiple interfaces::
 * Using DNS UPDATE::
-* Remote control interface::       
+* Remote control interface::
 * Enabling zone semantic checks::
 * Creating IXFR differences from zone file changes::
 * Using Response Rate Limiting::
@@ -43,21 +43,21 @@ log @{
 @}
 
 zones @{
-  example.com @{  
+  example.com @{
     file "/etc/knot/example.com";
   @}
 @}
-	
+
 @end example
 
 @page
 Now let's go step by step through this minimal configuration file:
 
-@enumerate 
+@enumerate
 
 @item
 In @code{system} statement we have configured @code{storage}
-directory where Knot DNS will store compiled zone files, 
+directory where Knot DNS will store compiled zone files,
 PID file and for slave zone also their journal files. (See @ref{system} and @ref{storage})
 
 @item
@@ -103,7 +103,7 @@ remotes @{
   subnet1 @{ address 192.168.1.0/24; @}
 @}
 zones @{
-  example.com @{  
+  example.com @{
     file "example.com"; # relative to 'storage'
     xfr-in master;      # define 'master' for this zone
     notify-in master;   # also allow NOTIFY from 'master'
@@ -127,7 +127,7 @@ remotes @{
   master @{ address 127.0.0.1@@53; key key0; @}
 @}
 zones @{
-  example.com @{  
+  example.com @{
     file "example.com"; # relative to 'storage'
     xfr-in master;      # define 'master' for this zone
     notify-in master;   # also allow NOTIFY from 'master'
@@ -151,7 +151,7 @@ remotes @{
   subnet2 @{ address 192.168.2.0/8; @}
 @}
 zones @{
-  example.com @{  
+  example.com @{
     file "/var/zones/example.com";
     xfr-out subnet1, subnet2; # allow outgoing transfers
     notify-out slave;
@@ -170,7 +170,7 @@ remotes @{
   any @{ address 0.0.0.0/0; key key0; @}
 @}
 zones @{
-  example.com @{  
+  example.com @{
     file "/var/zones/example.com";
     xfr-out any; # uses 'any' remote secured with TSIG key 'key0'
   @}
@@ -195,7 +195,7 @@ interfaces @{
 
 As noted in examples for master and slave, it is possible to accept DNS UPDATE messages.
 When the zone is configured as a slave and DNS UPDATE messages is accepted, server forwards the
-message to its primary master specified by @code{xfr-in} directive. When it receives 
+message to its primary master specified by @code{xfr-in} directive. When it receives
 the response from primary master, it forwards it back to the originator. This finishes the transaction.
 
 However, if the zone is configured as master (i.e. not having any @code{xfr-in} directive), it accepts
@@ -238,7 +238,7 @@ remotes @{
 control @{
 	listen-on @{ address 127.0.0.1; @}
 	allow ctl;
-@} 
+@}
 @end example
 
 The @code{allow} keyword accepts an ACL list, similar to @code{xfr-in} or @code{xfr-out},
@@ -253,7 +253,7 @@ which checks are enabled by default and which are optional.
 
 @node Creating IXFR differences from zone file changes
 @section Creating IXFR differences from zone file changes
-If Knot is being run as a master server, experimental feature @code{ixfr-from-differences} 
+If Knot is being run as a master server, experimental feature @code{ixfr-from-differences}
 can be enabled to create IXFR differences from changes made to the master zone file.
 See @ref{Controlling running daemon} for more information. For more about @code{zones} statement see @ref{zones}.
 
@@ -280,8 +280,6 @@ Example configuration:
 @example
 system @{
 	rate-limit 200;    # Each flow is allowed to 200 resp. per second
-	rate-limit-slip 2; # Every other response is slipped (default) 
+	rate-limit-slip 2; # Every other response is slipped (default)
 @}
 @end example
-
-

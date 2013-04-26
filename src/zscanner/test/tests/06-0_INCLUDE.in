@@ -27,4 +27,3 @@ $INCLUDE /tmp/zscanner_tests/includes/include2	tld.	; Absolute path with origin
 
 ; KO
 $INCLUDE						; Empty parameters
-

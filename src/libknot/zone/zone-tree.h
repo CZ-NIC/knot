@@ -256,4 +256,3 @@ knot_dname_t *hattrie_get_dname(hattrie_t *tr, knot_dname_t *dname);
 #endif // _KNOT_ZONE_TREE_H_
 
 /*! @} */
-

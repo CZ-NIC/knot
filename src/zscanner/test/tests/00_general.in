@@ -17,7 +17,7 @@ t05			NS	@	; Missing CLASS and TTL
 	)	()	(		; Multiline 2/5
 
 				@	; Multiline 4/5
-		)	( 
+		)	(
 )					; Multiline 6/6
 
 ; KO

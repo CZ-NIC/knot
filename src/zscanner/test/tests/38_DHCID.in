@@ -5,7 +5,7 @@ $TTL	1
 @	DHCID	AA==		; The simplest variant
 @	DHCID	Zm8=		; One char padding
 @	DHCID	Zm9v		; Without padding
-@	DHCID	Zm9vYg==	; Two base64 blocks 
+@	DHCID	Zm9vYg==	; Two base64 blocks
 @	DHCID	Zm9v YmE=	; Two base64 blocks with blank space between them
 @	TYPE49	\# 1 00		; TYPE + Hexadecimal rdata
 @	TYPE49	AA==		; TYPE

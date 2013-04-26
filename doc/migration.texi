@@ -2,10 +2,10 @@
 @appendix Migration for other DNS servers
 
 @menu
-* Knot DNS for BIND users::     
-* Knot DNS for NSD users::      
-* Knot DNS for PowerDNS users::  
-* Knot DNS for djbdns users::   
+* Knot DNS for BIND users::
+* Knot DNS for NSD users::
+* Knot DNS for PowerDNS users::
+* Knot DNS for djbdns users::
 @end menu
 
 @node Knot DNS for BIND users

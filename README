@@ -67,7 +67,7 @@ $ sudo make install
 $ sudo ldconfig
 
 Alternative packages for I386:
-$ # the required version of liburcu is not available in the default package 
+$ # the required version of liburcu is not available in the default package
 $ # sources.
 $
 $ wget http://bd.archive.ubuntu.com/ubuntu/pool/universe/libu/liburcu/liburcu0_0.5.4-1_i386.deb
@@ -142,7 +142,7 @@ Prerequisites:
 
 $ mkdir liburcu && cd liburcu
 $ wget "http://lttng.org/files/urcu/userspace-rcu-0.6.7.tar.bz2"
-$ patch -p1 < ../scripts/urcu-tls-compat.patch 
+$ patch -p1 < ../scripts/urcu-tls-compat.patch
 $ autoconf && ./configure && make && sudo make install
 $ # or follow installation instructions in INSTALL
 
@@ -160,13 +160,13 @@ Not all prerequisites are preinstalled for OS X.
 - liburcu >= 0.7.0 works with supplied compiler, however ARCH must still be set
   - alternative is to set it with configure parameter --target
 
-Compiling Knot DNS with gcc-mp-4.6 is recommended, but not necessary. 
+Compiling Knot DNS with gcc-mp-4.6 is recommended, but not necessary.
 
 Running
 =======
 
-First, each server needs configuration file. 
-Please see samples/knot.sample.conf for reference. 
+First, each server needs configuration file.
+Please see samples/knot.sample.conf for reference.
 Minimal configuration can be found in samples/knot.min.conf
 Configuration zone has to specify:
 * storage for PID files, compiled zones etc.
@@ -192,11 +192,10 @@ Running as daemon
 
 Controller runs server in daemonized mode as default. Disadvantage is, that
 it closes stdout/stderr so you need to set up either syslog or logging to
-own files in the configuration. Controller parameter '-w' waits for the 
+own files in the configuration. Controller parameter '-w' waits for the
 operation to finish. Let's test server functionality.
 
 $ knotc -c myserver.conf -w start # start server
 $ dig @$ADDR -p $PORT example.com # issue a query and see result
 $ ...
 $ knotc -c myserver.conf -w stop  # stop server
-

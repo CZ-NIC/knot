@@ -981,4 +981,3 @@ int find_rdata_blocks(scanner_t *s)
 		return KNOT_EOK;
 	}
 }
-

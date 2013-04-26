@@ -18,8 +18,8 @@ $TTL	1
 
 ; KO
 @	APL	0:0.0.0.0/32		; Bad address family
-@	APL	x:0.0.0.0/32		; Bad address family 
-@	APL	!x:0.0.0.0/32		; Bad address family 
+@	APL	x:0.0.0.0/32		; Bad address family
+@	APL	!x:0.0.0.0/32		; Bad address family
 @	APL	1:0.0.0.0/33		; Prefix length is too long
 @	APL	2:0::0/129		; Prefix length is too long
 @	APL	2::/0			; Bad ipv6 address

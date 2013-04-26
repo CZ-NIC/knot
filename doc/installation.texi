@@ -2,10 +2,10 @@
 @chapter Knot DNS Installation
 
 @menu
-* Required build environment::  
-* Required libraries::          
-* Installation from the sources::  
-* Installation from packages::  
+* Required build environment::
+* Required libraries::
+* Installation from the sources::
+* Installation from packages::
 @end menu
 
 @node Required build environment
@@ -34,7 +34,7 @@ bison >= 2.3
 
 Knot DNS requires few libraries to be compiled:
 
-@itemize 
+@itemize
 
 @item
 OpenSSL, at least 0.9.8
@@ -46,7 +46,7 @@ Userspace RCU, at least 0.5.4
 libcap-ng, at least 0.6.4 (optional library)
 @end itemize
 
-If libcap-ng library is available, Knot DNS will take advantage of 
+If libcap-ng library is available, Knot DNS will take advantage of
 the POSIX 1003.1e capabilites(7) by sandboxing the exposed threads.
 Most rights are stripped from the exposed threads for security reasons.
 
@@ -56,7 +56,7 @@ your system or distribution.  If not, zlib resides at
 @url{http://www.openssl.org}.
 
 @menu
-* Userspace RCU::               
+* Userspace RCU::
 @end menu
 
 @node Userspace RCU
@@ -89,9 +89,9 @@ After unpacking the sources, the compilation and installation is
 a quite straightforward process using autotools.
 
 @menu
-* Configuring and generating Makefiles::  
-* Compilation::                 
-* Installation::                
+* Configuring and generating Makefiles::
+* Compilation::
+* Installation::
 @end menu
 
 @node Configuring and generating Makefiles
@@ -184,10 +184,10 @@ the Knot DNS might already be available in your favourite
 distribution, or in a ports tree.
 
 @menu
-* Installing Knot DNS packages on Debian::  
-* Installing Knot DNS packages on Ubuntu::  
+* Installing Knot DNS packages on Debian::
+* Installing Knot DNS packages on Ubuntu::
 * Installing Knot DNS packages on Fedora::
-* Installing Knot DNS from ports on FreeBSD::  
+* Installing Knot DNS from ports on FreeBSD::
 @end menu
 
 @node Installing Knot DNS packages on Debian
@@ -218,7 +218,7 @@ deb-src http://deb.knot-dns.cz/debian/ <codename> main
 EOF
 $ apt-get update
 $ apt-get install knot
-	
+
 @end example
 
 @node Installing Knot DNS packages on Ubuntu
@@ -238,7 +238,7 @@ the time of writing this manual this includes Ubuntu 10.04 LTS, 11.04,
 11.10 and 12.04 LTS.
 
 @menu
-* Adding official PPA repository for Knot DNS::  
+* Adding official PPA repository for Knot DNS::
 @end menu
 
 @node Adding official PPA repository for Knot DNS
@@ -253,7 +253,7 @@ the PPA.
 $ sudo add-apt-repository ppa:cz.nic-labs/knot-dns
 $ sudo apt-get update
 $ sudo apt-get install knot
-	  
+
 @end example
 
 @noindent
@@ -313,7 +313,6 @@ following command as the root user:
 Knot DNS is in ports tree under @code{dns/knot}.
 
 @example
-$ cd /usr/ports/dns/knot  
+$ cd /usr/ports/dns/knot
 $ sudo make install
 @end example
-

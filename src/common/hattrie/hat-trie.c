@@ -72,7 +72,7 @@ static trie_node_t* alloc_trie_node(hattrie_t* T, node_ptr child)
 static node_ptr hattrie_consume_ns(node_ptr **s, size_t *sp, size_t slen,
                                 const char **k, size_t *l, unsigned brk)
 {
-    
+
     node_ptr *bs = *s;
     node_ptr node = bs[*sp].t->xs[(unsigned char) **k];
     while (*node.flag & NODE_TYPE_TRIE && *l > brk) {
@@ -101,7 +101,7 @@ static node_ptr hattrie_consume_ns(node_ptr **s, size_t *sp, size_t slen,
         bs[*sp] = node;
         node = node.t->xs[(unsigned char) **k];
     }
-    
+
     /* stack top is always parent node */
     assert(*bs[*sp].flag & NODE_TYPE_TRIE);
     return node;
@@ -156,11 +156,11 @@ static value_t* hattrie_find_rightmost(node_ptr node)
         if (node.t->flag & NODE_HAS_VAL) {
             return &node.t->val;
         }
-        
+
         /* no non-empty children? */
         return NULL;
     }
-    
+
     /* node is ahtable */
     if (node.b->m == 0) {
         return NULL;
@@ -179,7 +179,7 @@ static node_ptr hattrie_find_ns(node_ptr **s, size_t *sp, size_t slen,
     if (*len == 0) return (*s)[*sp]; /* parent, as sp == 0 */
 
     node_ptr node = hattrie_consume_ns(s, sp, slen, key, len, 1);
-    
+
     /* if the trie node consumes value, use it */
     if (*node.flag & NODE_TYPE_TRIE) {
         if (!(node.t->flag & NODE_HAS_VAL)) {
@@ -190,10 +190,10 @@ static node_ptr hattrie_find_ns(node_ptr **s, size_t *sp, size_t slen,
 
     /* pure bucket holds only key suffixes, skip current char */
     if (*node.flag & NODE_TYPE_PURE_BUCKET) {
-        ++*key; 
+        ++*key;
         --*len;
     }
-    
+
     /* do not scan bucket, it's not needed for this operation */
     return node;
 }
@@ -275,7 +275,7 @@ void hattrie_clear(hattrie_t* T)
 hattrie_t* hattrie_dup(const hattrie_t* T, value_t (*nval)(value_t))
 {
     hattrie_t *N = hattrie_create();
-    
+
     /* assignment */
     if (!nval) nval = hattrie_setval;
 
@@ -382,7 +382,7 @@ int hattrie_split_mid(node_ptr node, unsigned *left_m, unsigned *right_m)
         }
         else break;
     }
-    
+
     return j;
 }
 
@@ -433,10 +433,10 @@ static void hattrie_split_fill(node_ptr src, node_ptr left, node_ptr right, uint
                 }
             }   /* keep the node in left */
         }
-        
+
         ahtable_iter_next(&i);
     }
-    
+
     ahtable_iter_free(&i);
 }
 
@@ -467,7 +467,7 @@ static void hattrie_split_h(node_ptr parent, node_ptr node)
         right.b = node.b;
         left.b = ahtable_create();
     }
-    
+
     /* setup created nodes */
     left.b->c0    = c0;
     left.b->c1    = j;
@@ -591,12 +591,12 @@ value_t* hattrie_tryget(hattrie_t* T, const char* key, size_t len)
     if (node.flag == NULL) {
         return NULL;
     }
-    
+
     /* if the trie node consumes value, use it */
     if (*node.flag & NODE_TYPE_TRIE) {
         return &node.t->val;
     }
-    
+
     return ahtable_tryget(node.b, key, len);
 }
 
@@ -622,17 +622,17 @@ static value_t* hattrie_walk(node_ptr* s, size_t sp,
         if (s[sp].t->flag & NODE_HAS_VAL) {
             return &s[sp].t->val;
         }
-        
+
         /* consumed whole stack */
         if (sp == 0) {
             break;
         }
-        
+
         /* pop stack */
         --key;
         --sp;
     }
-    
+
     return NULL;
 }
 
@@ -643,7 +643,7 @@ int hattrie_find_leq (hattrie_t* T, const char* key, size_t len, value_t** dst)
     node_ptr bs[NODESTACK_INIT];  /* base stack (will be enough mostly) */
     node_ptr *ns = bs;            /* generic ptr, could point to new mem */
     ns[sp] = T->root;
-    
+
     /* find node for given key */
     int ret = 1; /* no node on the left matches */
     node_ptr node = hattrie_find_ns(&ns, &sp, NODESTACK_INIT, &key, &len);
@@ -655,7 +655,7 @@ int hattrie_find_leq (hattrie_t* T, const char* key, size_t len, value_t** dst)
         }
         return 1; /* no previous key found */
     }
-    
+
     /* assign value from trie or find in table */
     if (*node.flag & NODE_TYPE_TRIE) {
         *dst = &node.t->val;
@@ -668,7 +668,7 @@ int hattrie_find_leq (hattrie_t* T, const char* key, size_t len, value_t** dst)
             ret = ahtable_find_leq(node.b, key, len, dst);
         }
     }
-    
+
     /* return if found equal or left in ahtable */
     if (*dst == 0) {
         *dst = hattrie_walk(ns, sp, key, hattrie_find_rightmost);
@@ -678,7 +678,7 @@ int hattrie_find_leq (hattrie_t* T, const char* key, size_t len, value_t** dst)
             ret = 1; /* no previous key found */
         }
     }
-    
+
     if (ns != bs) free(ns);
     return ret;
 }
@@ -694,7 +694,7 @@ int hattrie_del(hattrie_t* T, const char* key, size_t len)
     if (node.flag == NULL) {
         return -1;
     }
-    
+
     /* if consumed on a trie node, clear the value */
     if (*node.flag & NODE_TYPE_TRIE) {
         return hattrie_clrval(T, node);
@@ -704,10 +704,10 @@ int hattrie_del(hattrie_t* T, const char* key, size_t len)
     size_t m_old = ahtable_size(node.b);
     int ret =  ahtable_del(node.b, key, len);
     T->m -= (m_old - ahtable_size(node.b));
-    
+
     /* merge empty buckets */
     /*! \todo */
-    
+
     return ret;
 }
 
@@ -790,7 +790,7 @@ static void hattrie_iter_nextnode(hattrie_iter_t* i)
         /* push all child nodes from right to left */
         int j;
         for (j = TRIE_MAXCHAR; j >= 0; --j) {
-            
+
             /* skip repeated pointers to hybrid bucket */
             if (j < TRIE_MAXCHAR && node.t->xs[j].t == node.t->xs[j + 1].t) continue;
 

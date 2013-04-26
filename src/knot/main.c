@@ -51,13 +51,13 @@ void interrupt_handle(int s)
 		sig_req_reload = 1;
 		return;
 	}
-	
+
 	// Refresh
 	if (s == SIGUSR2) {
 		sig_req_refresh = 1;
 		return;
 	}
-	
+
 	// Stop server
 	if (s == SIGINT || s == SIGTERM) {
 		if (sig_stopping == 0) {
@@ -88,7 +88,7 @@ int main(int argc, char **argv)
 	int verbose = 0;
 	int daemonize = 0;
 	char* config_fn = NULL;
-	
+
 	/* Long options. */
 	struct option opts[] = {
 		{"config",    required_argument, 0, 'c'},
@@ -98,7 +98,7 @@ int main(int argc, char **argv)
 		{"help",      no_argument,       0, 'h'},
 		{0, 0, 0, 0}
 	};
-	
+
 	while ((c = getopt_long(argc, argv, "c:dvVh", opts, &li)) != -1) {
 		switch (c)
 		{
@@ -178,7 +178,7 @@ int main(int argc, char **argv)
 			config_fn = rpath;
 		}
 	}
-	
+
 	// Create server
 	server_t *server = server_create();
 
@@ -187,33 +187,33 @@ int main(int argc, char **argv)
 	conf_add_hook(conf(), CONF_LOG, log_conf_hook, 0);
 	conf_add_hook(conf(), CONF_ALL, server_conf_hook, server);
 	rcu_read_unlock();
-	
+
 	/* POSIX 1003.1e capabilities. */
 #ifdef HAVE_CAP_NG_H
-	
+
 	/* Drop all capabilities. */
 	if (capng_have_capability(CAPNG_EFFECTIVE, CAP_SETPCAP)) {
 		capng_clear(CAPNG_SELECT_BOTH);
-	
-	
+
+
 		/* Retain ability to set capabilities and FS access. */
 		capng_type_t tp = CAPNG_EFFECTIVE|CAPNG_PERMITTED;
 		capng_update(CAPNG_ADD, tp, CAP_SETPCAP);
 		capng_update(CAPNG_ADD, tp, CAP_DAC_OVERRIDE);
 		capng_update(CAPNG_ADD, tp, CAP_CHOWN); /* Storage ownership. */
-		
+
 		/* Allow binding to privileged ports.
 		 * (Not inheritable)
 		 */
 		capng_update(CAPNG_ADD, tp, CAP_NET_BIND_SERVICE);
-		
+
 		/* Allow setuid/setgid. */
 		capng_update(CAPNG_ADD, tp, CAP_SETUID);
 		capng_update(CAPNG_ADD, tp, CAP_SETGID);
-		
+
 		/* Allow priorities changing. */
 		capng_update(CAPNG_ADD, tp, CAP_SYS_NICE);
-		
+
 		/* Apply */
 		if (capng_apply(CAPNG_SELECT_BOTH) < 0) {
 			log_server_error("Couldn't set process capabilities - "
@@ -262,7 +262,7 @@ int main(int argc, char **argv)
 		return 1;
 	}
 	fclose(f);
-	
+
 	/* Load zones and add hook. */
 	zones_ns_conf_hook(conf(), server->nameserver);
 	conf_add_hook(conf(), CONF_ALL, zones_ns_conf_hook, server->nameserver);
@@ -330,8 +330,8 @@ int main(int argc, char **argv)
 		} else {
 			remote = evqueue()->fds[EVQUEUE_READFD];
 		}
-		
-		
+
+
 		/* Run event loop. */
 		for(;;) {
 			pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
@@ -357,7 +357,7 @@ int main(int argc, char **argv)
 					                 "slave zones - %s",
 					                 knot_strerror(cf_ret));
 				}
-				
+
 			}
 
 			/* Events. */
@@ -367,7 +367,7 @@ int main(int argc, char **argv)
 			}
 		}
 		pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
-		
+
 		/* Close remote control interface */
 		if (remote > -1) {
 			close(remote);
@@ -402,7 +402,7 @@ int main(int argc, char **argv)
 	// Destroy event loop
 	evqueue_t *q = evqueue();
 	evqueue_free(&q);
-	
+
 	rcu_unregister_thread();
 
 	// Free default config filename if exists

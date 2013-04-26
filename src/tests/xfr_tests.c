@@ -65,7 +65,7 @@ void interrupt_handle(int s)
 			exit(1);
 		}
 	}
-	
+
 	// Start zone integrity check
 	if (s == SIGUSR1) {
 		sig_integrity_check = 1;
@@ -96,7 +96,7 @@ int main(int argc, char **argv)
 	int daemonize = 0;
 	char *config_fn = NULL;
 	char *zone = NULL;
-	
+
 	/* Long options. */
 	struct option opts[] = {
 		{"config",    required_argument, 0, 'c'},
@@ -107,7 +107,7 @@ int main(int argc, char **argv)
 		{"help",      no_argument,       0, 'h'},
 		{0, 0, 0, 0}
 	};
-	
+
 	while ((c = getopt_long(argc, argv, "c:z:dvVh", opts, &li)) != -1) {
 		switch (c)
 		{
@@ -140,7 +140,7 @@ int main(int argc, char **argv)
 
 	// Now check if we want to daemonize
 	if (daemonize) {
-		if (daemon(1, 0) != 0) { 
+		if (daemon(1, 0) != 0) {
 			free(zone);
 			free(config_fn);
 			fprintf(stderr, "Daemonization failed, "
@@ -382,4 +382,3 @@ int main(int argc, char **argv)
 
 	return res;
 }
-

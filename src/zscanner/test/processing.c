@@ -205,4 +205,3 @@ void dump_rdata(const scanner_t *s)
 		}
 	}
 }
-

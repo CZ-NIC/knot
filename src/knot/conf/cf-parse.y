@@ -90,7 +90,7 @@ static void conf_remote_set_via(void *scanner, char *item) {
          break;
       }
    }
-   
+
    /* Check */
    if (!found) {
       cf_error(scanner, "interface '%s' is not defined", item);
@@ -265,10 +265,10 @@ static int conf_key_add(void *scanner, knot_tsig_key_t **key, char *item)
 {
     /* Reset */
     *key = 0;
-    
+
     /* Find in keys */
     knot_dname_t *sample = knot_dname_new_from_str(item, strlen(item), 0);
-    
+
     conf_key_t* r = 0;
     WALK_LIST (r, new_config->keys) {
         if (knot_dname_compare(r->k.name, sample) == 0) {
@@ -518,8 +518,8 @@ system:
 		     "and has no effect.\n");
      free($4.t);
  }
- | system WORKERS NUM ';' { 
-     if ($3.i <= 0) { 
+ | system WORKERS NUM ';' {
+     if ($3.i <= 0) {
         cf_error(scanner, "worker count must be greater than 0\n");
      } else {
         new_config->workers = $3.i;
@@ -543,7 +543,7 @@ system:
      } else {
        cf_error(scanner, "invalid user name '%s'", $3.t);
      }
-     
+
      free($3.t);
  }
  | system MAX_CONN_IDLE INTERVAL ';' { new_config->max_conn_idle = $3.i; }
@@ -563,13 +563,13 @@ keys:
      if (knot_tsig_digest_length($3.alg) == 0) {
         cf_error(scanner, "unsupported digest algorithm");
      }
-     
+
      /* Normalize to FQDN */
      char *fqdn = $2.t;
      size_t fqdnl = strlen(fqdn);
      if (fqdn[fqdnl - 1] != '.') {
         fqdnl = ((fqdnl + 2)/4+1)*4; /* '.', '\0' */
-        char* tmpdn = malloc(fqdnl); 
+        char* tmpdn = malloc(fqdnl);
 	if (!tmpdn) {
 	   cf_error(scanner, "out of memory when allocating string");
 	   free(fqdn);
@@ -604,7 +604,7 @@ keys:
      } else {
          free($4.t);
      }
-     
+
      free(fqdn);
 }
 
@@ -993,4 +993,3 @@ control:
 conf: ';' | system '}' | interfaces '}' | keys '}' | remotes '}' | groups '}' | zones '}' | log '}' | control '}';
 
 %%
-

@@ -3,7 +3,7 @@ $TTL	1
 
 ; OK
 @	LOC	1     N 1     E	0			; The simplest case
-@	LOC	0 1   N 1     E 0			; Combination of parameters 
+@	LOC	0 1   N 1     E 0			; Combination of parameters
 @	LOC	0 0 1 N 1     E 0			; Combination of parameters
 @	LOC	1     N 0 1   E 0			; Combination of parameters
 @	LOC	1     N 0 0 1 E 0			; Combination of parameters
@@ -22,7 +22,7 @@ $TTL	1
 @	LOC	0     S 0 0 1.0   W 0			; Float dd.ddd test
 @	LOC	0     S 0 0 10    W 0			; Float dd.ddd test
 @	LOC	0     S 0     W 0 0.01			; Number to [mantisa,exponent] test
-@	LOC	0     S 0     W 0 0.10			; Number to [mantisa,exponent] test 
+@	LOC	0     S 0     W 0 0.10			; Number to [mantisa,exponent] test
 @	LOC	0     S 0     W 0 1.0			; Number to [mantisa,exponent] test
 @	LOC	0     S 0     W 0 10			; Number to [mantisa,exponent] test
 @	LOC	0     S 0     W 0 100			; Number to [mantisa,exponent] test

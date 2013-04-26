@@ -500,7 +500,7 @@ static void wire_len_data_encode_to_str(rrset_dump_params_t *p,
 		p->out += ret;
 		p->out_max -= ret;
 		p->total += ret;
-	
+
 		// String termination.
 		if (p->out_max > 0) {
 			*p->out = '\0';
@@ -1057,14 +1057,14 @@ static void wire_loc_to_str(rrset_dump_params_t *p)
 		lon = lon_w - LOC_ZERO;
 	} else {
 		lon_mark = 'W';
-		lon = LOC_ZERO - lon_w; 
+		lon = LOC_ZERO - lon_w;
 	}
 
 	uint32_t d2 = lon / 3600000;
 	uint32_t m2 = (lon - 3600000 * d2) / 60000;
 	double s2 = 0.001 * (lon - 3600000 * d2 - 60000 * m2);
 
-	// Write latitude and longitude. 
+	// Write latitude and longitude.
 	ret = snprintf(p->out, p->out_max, "%u %u %.*f %c  %u %u %.*f %c",
 	               d1, m1, (uint32_t)s1 != s1 ? 3 : 0, s1, lat_mark,
 	               d2, m2, (uint32_t)s2 != s2 ? 3 : 0, s2, lon_mark);
@@ -1430,7 +1430,7 @@ static int dump_txt(DUMP_PARAMS)
 
 	// Other text strings if any.
 	while (p.in_max > 0) {
-		DUMP_SPACE; DUMP_TEXT; 
+		DUMP_SPACE; DUMP_TEXT;
 	}
 
 	DUMP_END;
@@ -1951,7 +1951,7 @@ int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
 		return KNOT_ESPACE;
 	}
 	len += ret;
-	
+
 	return len;
 }
 

@@ -46,7 +46,7 @@ knot_zonedb_t *knot_zonedb_new()
 		free(db);
 		return NULL;
 	}
-	
+
 	db->zone_count = 0;
 
 	return db;
@@ -91,7 +91,7 @@ knot_zone_t *knot_zonedb_remove_zone(knot_zonedb_t *db,
 	/* Fetch if exists. */
 	knot_zone_t *oldzone = knot_zonedb_find_zone(db, zone_name);
 	if (oldzone == NULL) return NULL;
-	
+
 	/* Remove from db. */
 	const char *key = (const char*)knot_dname_name(zone_name);
 	size_t klen = knot_dname_size(zone_name);
@@ -99,7 +99,7 @@ knot_zone_t *knot_zonedb_remove_zone(knot_zonedb_t *db,
 	if (ret < 0) {
 		return NULL;
 	}
-	
+
 	--db->zone_count;
 	return oldzone;
 }
@@ -135,7 +135,7 @@ const knot_zone_t *knot_zonedb_find_zone_for_name(knot_zonedb_t *db,
 	}
 
 	knot_zone_t *zone = (found) ? (knot_zone_t *)*found : NULL;
-	
+
 dbg_zonedb_exec(
 	char *name = knot_dname_to_str(dname);
 	dbg_zonedb("Found zone for name %s: %p\n", name, zone);
@@ -228,7 +228,7 @@ const knot_zone_t **knot_zonedb_zones(const knot_zonedb_t *db)
 		hattrie_iter_next(i);
 	}
 	hattrie_iter_free(i);
-	
+
 	assert(db->zone_count == args.count);
 
 	return args.zones;
@@ -250,7 +250,7 @@ static void delete_zone_from_db(value_t *node, void *data)
 	UNUSED(data);
 	assert(node);
 	if (*node == NULL) return;
-	
+
 	knot_zone_t *zone = (knot_zone_t *)(*node);
 	synchronize_rcu();
 	knot_zone_set_flag(zone, KNOT_ZONE_DISCARDED, 1);

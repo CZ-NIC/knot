@@ -252,7 +252,7 @@ include BEGIN(include);
        }
     }
   }
-  
+
   return HEXSTR;
 }
 
@@ -324,4 +324,3 @@ hmac-sha512     { lval.alg = KNOT_TSIG_ALG_HMAC_SHA512; return TSIG_ALGO_NAME; }
 <include>["][^"\n]*\n cf_error(yyscanner, "Unterminated string.");
 
 %%
-

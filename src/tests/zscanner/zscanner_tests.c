@@ -42,4 +42,3 @@ static int zscanner_tests_run(int argc, char *argv[])
 
 	return 0;
 }
-

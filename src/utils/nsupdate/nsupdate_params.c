@@ -246,4 +246,3 @@ int nsupdate_set_origin(nsupdate_params_t *params, const char *origin)
 	}
 	return ret;
 }
-

@@ -36,7 +36,7 @@ server_t* parse_nameserver(const char *nameserver, const char *def_port)
 	// OpenBSD notation: nameserver [address]:port
 	if (nameserver[0] == '[') {
 		char *addr, *port;
-	
+
 		char   *start = (char *)nameserver + 1;
 		char   *end = index(nameserver, ']');
 		size_t addr_len = end - start;

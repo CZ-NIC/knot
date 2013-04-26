@@ -19,12 +19,12 @@
 
 const error_table_t knot_error_msgs[] = {
 	{KNOT_EOK, "OK"},
-	
+
 	/* TSIG errors. */
 	{KNOT_TSIG_EBADSIG, "Failed to verify TSIG MAC." },
 	{KNOT_TSIG_EBADKEY, "TSIG key not recognized or invalid." },
 	{KNOT_TSIG_EBADTIME, "TSIG signing time out of range." },
-	
+
 	/* Directly mapped error codes. */
 	{KNOT_ENOMEM, "Not enough memory."},
 	{KNOT_EINVAL, "Invalid parameter."},
@@ -37,7 +37,7 @@ const error_table_t knot_error_msgs[] = {
 	{KNOT_EADDRINUSE, "Address already in use."},
 	{KNOT_ENOENT, "Resource not found."},
 	{KNOT_ERANGE, "Value is out of range."},
-	
+
 	/* General errors. */
 	{KNOT_ERROR, "General error."},
 	{KNOT_ENOTRUNNING, "Resource is not running."},

@@ -2,7 +2,7 @@
 .SH "NAME"
 .LP
 .B knot.conf
-\- Configuration file manual for Knot DNS server. 
+\- Configuration file manual for Knot DNS server.
 .SH "SYNOPSIS"
 .LP
 .B knot.conf
@@ -33,7 +33,7 @@ serves as an example of the configuration for knotc(8) and knotd(8).
   # Version of the server (see RFC 4892). Not used yet.
   version "1.2;
 
-  # Server identifier 
+  # Server identifier
   # Use string format "text"
   # Or hexstring 0x01ab00
   nsid "myserver0";
@@ -85,12 +85,12 @@ serves as an example of the configuration for knotc(8) and knotd(8).
   # it is recommended to do so as well due to better distribution.
   # Tweak if you experience a lot of hash collisions, estimated memory overhead
   # is approx. 16B per bucket
-  # Default: 1572869 
+  # Default: 1572869
   rate-limit-size 1572869;
 
-  # Rate limit SLIP 
+  # Rate limit SLIP
   # Each Nth blocked response will be sent as truncated, this is a way to allow
-  # legitimate requests to get a chance to reconnect using TCP 
+  # legitimate requests to get a chance to reconnect using TCP
   # Default: 2
   rate-limit-slip 2;
  }
@@ -119,11 +119,11 @@ serves as an example of the configuration for knotc(8) and knotd(8).
  interfaces {
 
   # Interface entry
-  # 
+  #
   # Format 1: <name> { address <address>; [port <port>;] }
   ipv4 {                # <name> is an arbitrary symbolic name
     address 127.0.0.1;  # <address> may be ither IPv4 or IPv6 address
-    port 53531;         # port is required for XFR/IN and NOTIFY/OUT 
+    port 53531;         # port is required for XFR/IN and NOTIFY/OUT
   }
 
   # Format 2: <name> { address <address>@<port>; }
@@ -173,7 +173,7 @@ serves as an example of the configuration for knotc(8) and knotd(8).
   #       with MitM type attacks, so you should keep the interface on localnet.
   # Default port is: 5553
   listen-on { address 127.0.0.1@5553; }
-  
+
   # Specifies ACL list for remote control
   # Same syntax as for ACLs in zones
   # List of remotes delimited by comma
@@ -195,7 +195,7 @@ serves as an example of the configuration for knotc(8) and knotd(8).
   # Possible values: on|off
   # Default value: off
   semantic-checks off;
-  
+
   # Disable ANY type queries for authoritative answers (if 'on')
   # Possible values: on|off
   # Default value: off
@@ -233,7 +233,7 @@ serves as an example of the configuration for knotc(8) and knotd(8).
     #   it is considered relative to the current directory from which the server
     #   was started.
     file "samples/example.com.zone";
-    
+
     # Build differences from zone file changes
     # Possible values: on|off
     # Default value: off
@@ -266,16 +266,16 @@ serves as an example of the configuration for knotc(8) and knotd(8).
     # f.e. 1s = 1 second, 1m = 1 minute, 1h = 1 hour, 1d = 1 day
     zonefile-sync 1h;
 
-    # XFR master server 
+    # XFR master server
     xfr-in server0;
 
     # ACL list of XFR slaves
     xfr-out server0, server1;
 
-    # ACL list of servers allowed to send NOTIFY queries 
+    # ACL list of servers allowed to send NOTIFY queries
     notify-in server0;
 
-    # List of servers to send NOTIFY to 
+    # List of servers to send NOTIFY to
     notify-out server0, server1;
 
     # List of servers to allow UPDATE queries
@@ -285,15 +285,15 @@ serves as an example of the configuration for knotc(8) and knotd(8).
 
  # Section 'log' configures logging of server messages.
  #
- # Logging recognizes 3 symbolic names of log devices: 
+ # Logging recognizes 3 symbolic names of log devices:
  #   stdout    - Standard output
  #   stderr    - Standard error output
  #   syslog    - Syslog
- # 
+ #
  # In addition, arbitrary number of log files may be specified (see below).
  #
  # Log messages are characterized by severity and category.
- # Supported severities: 
+ # Supported severities:
  #   debug     - Debug messages. Must be turned on at compile time.
  #   info      - Informational messages.
  #   notice    - Notices and hints.
@@ -312,8 +312,8 @@ serves as an example of the configuration for knotc(8) and knotd(8).
  #   any       - All categories
  #
  # More severities (separated by commas) may be listed for each category.
- # All applicable severities must be listed. 
- #   (I.e. specifying 'error' severity does mean: 'log error messages', 
+ # All applicable severities must be listed.
+ #   (I.e. specifying 'error' severity does mean: 'log error messages',
  #    and NOT 'log all messages of severity error and above'.)
  #
  # Default settings (in case there are no entries in 'log' section or the section
@@ -325,14 +325,14 @@ serves as an example of the configuration for knotc(8) and knotd(8).
 
   # Log entry
   #
-  # Format 1: 
-  # <log> { 
-  #   <category1> <severity1> [, <severity2> ...]; 
+  # Format 1:
+  # <log> {
+  #   <category1> <severity1> [, <severity2> ...];
   #   <category2> <severity1> [, <severity2> ...];
   #   ...
-  # } 
+  # }
   syslog {     # <log> is a symbolic name of a log device (see above)
-    # log errors of any category 
+    # log errors of any category
     any error;    # for <category> and <severity> see above
     # log also warnings and notices from category 'zone'
     zone warning, notice;

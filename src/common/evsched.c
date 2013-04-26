@@ -106,7 +106,7 @@ void evsched_delete(evsched_t **s)
 		heap_delmin(&(*s)->heap);
 		evsched_event_free((*s), e);
 	}
-	
+
 	free((*s)->heap.data);
 	(*s)->heap.data = NULL;;
 
@@ -195,7 +195,7 @@ event_t* evsched_next(evsched_t *s)
 					pthread_mutex_lock(&s->mx);
 					continue;
                 }
-				
+
 				return next_ev;
 			}
 
@@ -243,10 +243,10 @@ int evsched_schedule(evsched_t *s, event_t *ev, uint32_t dt)
 	/* Update event timer. */
 	evsched_settimer(ev, dt);
 	ev->parent = s;
-	
+
 	/* Lock calendar. */
 	pthread_mutex_lock(&s->mx);
-	
+
 	heap_insert(&s->heap, ev);
 
 	/* Unlock calendar. */
@@ -317,7 +317,7 @@ int evsched_cancel(evsched_t *s, event_t *ev)
 	if ((found = heap_find(&s->heap, ev))) {
 		heap_delete(&s->heap, found);
 	}
-	
+
 	/* Check if not being processed, invalidate if yes.
 	 * Could happen if next 'cur' was set, but
 	 * the evsched_next() waits until we release rl.
@@ -336,4 +336,3 @@ int evsched_cancel(evsched_t *s, event_t *ev)
 
 	return found;
 }
-

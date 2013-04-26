@@ -39,13 +39,13 @@ int knot_nsec3_params_from_wire(knot_nsec3_params_t *params,
 	}
 
 	assert(knot_rrset_type(nsec3param) == KNOT_RRTYPE_NSEC3PARAM);
-	
+
 	params->algorithm = knot_rrset_rdata_nsec3param_algorithm(nsec3param);
 	params->iterations = knot_rrset_rdata_nsec3param_iterations(nsec3param);
 	params->flags = knot_rrset_rdata_nsec3param_flags(nsec3param);
 	params->salt_length =
 		knot_rrset_rdata_nsec3param_salt_length(nsec3param);
-	
+
 	if (params->salt_length > 0) {
 		/* It is called also on reload, so we need to free if exists. */
 		if (params->salt != NULL) {

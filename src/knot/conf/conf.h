@@ -249,7 +249,7 @@ typedef struct conf_t {
 	size_t ixfr_fslimit; /*!< File size limit for IXFR journal. */
 	int build_diffs;     /*!< Calculate differences from changes. */
 	hattrie_t *names; /*!< Zone tree for duplicate checking. */
-	
+
 	/*
 	 * Remote control interface.
 	 */

@@ -143,7 +143,7 @@ int proc_update_privileges(int uid, int gid)
 		}
 	}
 #endif
-	
+
 	/* Watch uid/gid. */
 	if (gid != getgid()) {
 		log_server_info("Changing group id to '%d'.\n", gid);
@@ -159,7 +159,7 @@ int proc_update_privileges(int uid, int gid)
 			                 uid);
 		}
 	}
-	
+
 	/* Check storage writeability. */
 	int ret = KNOT_EOK;
 	char *lfile = strcdup(conf()->storage, "/knot.lock");
@@ -194,7 +194,7 @@ pid_t pid_start(const char *argv[], int argc, int drop_privs)
 {
 	pid_t chproc = fork();
 	if (chproc == 0) {
-	
+
 		/* Alter privileges. */
 		if (drop_privs) {
 			proc_update_privileges(conf()->uid, conf()->gid);
@@ -226,7 +226,7 @@ pid_t pid_start(const char *argv[], int argc, int drop_privs)
 		exit(1);
 		return -1;
 	}
-	
+
 	return chproc;
 }
 

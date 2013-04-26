@@ -206,7 +206,7 @@ char *knot_dname_to_str(const knot_dname_t *dname);
 
 int knot_dname_to_lower(knot_dname_t *dname);
 
-int knot_dname_to_lower_copy(const knot_dname_t *dname, char *name, 
+int knot_dname_to_lower_copy(const knot_dname_t *dname, char *name,
                              size_t size);
 
 /*!

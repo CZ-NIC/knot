@@ -86,4 +86,3 @@ float time_diff(struct timeval *begin, struct timeval *end)
 	       (end->tv_usec - begin->tv_usec) / 1000.0;
 
 }
-

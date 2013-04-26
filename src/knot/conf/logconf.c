@@ -98,4 +98,3 @@ int log_conf_hook(const struct conf_t *conf, void *data)
 
 	return KNOT_EOK;
 }
-

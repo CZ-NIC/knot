@@ -67,7 +67,7 @@ typedef struct knot_nameserver {
 	uint8_t *err_response;    /*!< Prepared generic error response. */
 	size_t err_resp_size;     /*!< Size of the prepared error response. */
 	knot_opt_rr_t *opt_rr;  /*!< OPT RR with the server's EDNS0 info. */
-	
+
 	void *data;
 } knot_nameserver_t;
 
@@ -92,16 +92,16 @@ typedef struct knot_ns_xfr {
 	xfr_callback_t recv;
 	int session;
 	struct timeval t_start, t_end;
-	
+
 	/*!
 	 * XFR-out: Output buffer.
 	 * XFR-in: Buffer for query or incoming packet.
 	 */
 	uint8_t *wire;
-	
-	/*! 
-	 * XFR-out: Size of the output buffer. 
-	 * XFR-in: Size of the current packet. 
+
+	/*!
+	 * XFR-out: Size of the output buffer.
+	 * XFR-in: Size of the current packet.
 	 */
 	size_t wire_size;
 	size_t wire_maxlen;
@@ -110,37 +110,37 @@ typedef struct knot_ns_xfr {
 	char* zname;
 	knot_zone_contents_t *new_contents;
 	char *msg;
-	
+
 	/*! \note [TSIG] TSIG fields */
-	/*! \brief Message(s) to sign in wireformat. 
+	/*! \brief Message(s) to sign in wireformat.
 	 *
-	 *  This field should be allocated at the start of transfer and 
+	 *  This field should be allocated at the start of transfer and
 	 *  freed at the end. During the transfer it is only rewritten.
 	 */
 	uint8_t *tsig_data;
 	size_t tsig_data_size;	/*!< Size of the message(s) in bytes */
 	size_t tsig_size;	/*!< Size of the TSIG RR wireformat in bytes.*/
 	knot_tsig_key_t *tsig_key; /*!< Associated TSIG key for signing. */
-	
+
 	uint8_t *digest;     /*!< Buffer for counting digest. */
 	size_t digest_size;  /*!< Size of the digest. */
 	size_t digest_max_size; /*!< Size of the buffer. */
-	
+
 	/*! \note [DDNS] Update forwarding fields. */
 	int fwd_src_fd;           /*!< Query originator fd. */
 	sockaddr_t fwd_addr;
 
 	uint16_t tsig_rcode;
 	uint64_t tsig_prev_time_signed;
-	
-	/*! 
+
+	/*!
 	 * \brief Number of the packet currently assembled.
 	 *
-	 * In case of XFR-in, this is not the overall number of packet, just 
+	 * In case of XFR-in, this is not the overall number of packet, just
 	 * number counted from last TSIG check.
 	 */
 	int packet_nr;
-	
+
 	hattrie_t *lookup_tree;
 } knot_ns_xfr_t;
 
@@ -256,7 +256,7 @@ int knot_ns_prep_update_response(knot_nameserver_t *nameserver,
  * \retval KNOT_EOK if a valid response was created.
  * \retval KNOT_EMALF if an error occured and the response is not valid.
  */
-int knot_ns_answer_normal(knot_nameserver_t *nameserver, 
+int knot_ns_answer_normal(knot_nameserver_t *nameserver,
                           const knot_zone_t *zone, knot_packet_t *resp,
                           uint8_t *response_wire, size_t *rsize, int check_any);
 
@@ -267,7 +267,7 @@ int knot_ns_answer_ixfr_udp(knot_nameserver_t *nameserver,
 int knot_ns_init_xfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr);
 int knot_ns_init_xfr_resp(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr);
 
-/*! 
+/*!
  * \brief Compares two zone serials.
  *
  * \retval < 0 if s1 is less than s2.
@@ -276,7 +276,7 @@ int knot_ns_init_xfr_resp(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr);
  */
 int ns_serial_compare(uint32_t s1, uint32_t s2);
 
-int ns_ixfr_load_serials(const knot_ns_xfr_t *xfr, uint32_t *serial_from, 
+int ns_ixfr_load_serials(const knot_ns_xfr_t *xfr, uint32_t *serial_from,
                          uint32_t *serial_to);
 
 int knot_ns_xfr_send_error(const knot_nameserver_t *nameserver,
@@ -322,11 +322,11 @@ int knot_ns_answer_ixfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr);
  * \param xfr Persistent transfer-specific data.
  *
  */
-int knot_ns_process_axfrin(knot_nameserver_t *nameserver, 
+int knot_ns_process_axfrin(knot_nameserver_t *nameserver,
                              knot_ns_xfr_t *xfr);
 
 /*! \todo Document me. */
-int knot_ns_switch_zone(knot_nameserver_t *nameserver, 
+int knot_ns_switch_zone(knot_nameserver_t *nameserver,
                           knot_ns_xfr_t *xfr);
 
 /*!
@@ -337,14 +337,14 @@ int knot_ns_switch_zone(knot_nameserver_t *nameserver,
  *
  * \retval KNOT_EOK If this packet was processed successfuly and another packet
  *                  is expected. (RFC1995bis, case c)
- * \retval KNOT_ENOXFR If the transfer is not taking place because server's 
+ * \retval KNOT_ENOXFR If the transfer is not taking place because server's
  *                     SERIAL is the same as this client's SERIAL. The client
  *                     should close the connection and do no further processing.
  *                     (RFC1995bis case a).
  * \retval KNOT_EAGAIN If the server could not fit the transfer into the packet.
  *                     This should happen only if UDP was used. In this case
  *                     the client should retry the request via TCP. If UDP was
- *                     not used, it should be considered that the transfer was 
+ *                     not used, it should be considered that the transfer was
  *                     malformed and the connection should be closed.
  *                     (RFC1995bis case b).
  * \retval >0 Transfer successully finished. Changesets are created and furter
@@ -353,16 +353,16 @@ int knot_ns_switch_zone(knot_nameserver_t *nameserver,
  *
  * \todo Document me.
  */
-int knot_ns_process_ixfrin(knot_nameserver_t *nameserver, 
+int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
                              knot_ns_xfr_t *xfr);
 
-int knot_ns_process_update(const knot_packet_t *query, 
-                           const knot_zone_contents_t *zone, 
+int knot_ns_process_update(const knot_packet_t *query,
+                           const knot_zone_contents_t *zone,
                            knot_changeset_t *changeset, knot_rcode_t *rcode);
 
-int knot_ns_process_update2(const knot_packet_t *query, 
-                            knot_zone_contents_t *old_contents, 
-                            knot_zone_contents_t **new_contents, 
+int knot_ns_process_update2(const knot_packet_t *query,
+                            knot_zone_contents_t *old_contents,
+                            knot_zone_contents_t **new_contents,
                             knot_changesets_t *chgs, knot_rcode_t *rcode);
 
 int knot_ns_create_forward_query(const knot_packet_t *query,

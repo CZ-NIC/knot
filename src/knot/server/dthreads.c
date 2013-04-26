@@ -138,7 +138,7 @@ static void *thread_ep(void *data)
 	rcu_register_thread();
 
 	dbg_dt("dthreads: [%p] entered ep\n", thread);
-	
+
 	/* Drop capabilities except FS access. */
 #ifdef HAVE_CAP_NG_H
 	if (capng_have_capability(CAPNG_EFFECTIVE, CAP_SETPCAP)) {
@@ -659,10 +659,10 @@ int dt_setaffinity(dthread_t *thread, unsigned* cpu_id, size_t cpu_count)
 	if (thread == NULL) {
 		return KNOT_EINVAL;
 	}
-	
+
 #ifdef HAVE_PTHREAD_SETAFFINITY_NP
 	int ret = -1;
-	
+
 /* Linux, FreeBSD interface. */
 #if defined(HAVE_CPUSET_LINUX) || defined(HAVE_CPUSET_BSD)
 	cpu_set_t set;
@@ -692,7 +692,7 @@ int dt_setaffinity(dthread_t *thread, unsigned* cpu_id, size_t cpu_count)
 #else /* HAVE_PTHREAD_SETAFFINITY_NP */
 	return KNOT_ENOTSUP;
 #endif
-	
+
 	return KNOT_EOK;
 }
 
@@ -829,7 +829,7 @@ int dt_optimal_size()
 	if (ret > 0) {
 		return ret + CPU_ESTIMATE_MAGIC;
 	}
-	
+
 	dbg_dt("dthreads: failed to fetch the number of online CPUs.");
 	return DEFAULT_THR_COUNT;
 }
@@ -856,7 +856,7 @@ unsigned dt_get_id(dthread_t *thread)
 			return tid;
 		}
 	}
-	
+
 	return 0;
 }
 

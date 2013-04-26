@@ -345,4 +345,3 @@ zscanner_tool_LDADD = libknots.la libknot.la libknotd.la libzscanner.la @LIBOBJS
 
 tests/sample_conf.rc: tests/files/sample_conf
 	../resource.sh tests/files/sample_conf >$@
-

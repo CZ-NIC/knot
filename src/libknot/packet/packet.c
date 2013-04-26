@@ -46,7 +46,7 @@
 static void knot_packet_init_pointers_response(knot_packet_t *pkt)
 {
 	dbg_packet_detail("Packet pointer: %p\n", pkt);
-	
+
 	char *pos = (char *)pkt + PREALLOC_PACKET;
 
 	// put QNAME directly after the structure
@@ -71,14 +71,14 @@ static void knot_packet_init_pointers_response(knot_packet_t *pkt)
 		pkt->answer = (const knot_rrset_t **)pos;
 		pos += DEFAULT_ANCOUNT * sizeof(const knot_rrset_t *);
 	}
-	
+
 	if (DEFAULT_NSCOUNT == 0) {
 		pkt->authority = NULL;
 	} else {
 		pkt->authority = (const knot_rrset_t **)pos;
 		pos += DEFAULT_NSCOUNT * sizeof(const knot_rrset_t *);
 	}
-	
+
 	if (DEFAULT_ARCOUNT == 0) {
 		pkt->additional = NULL;
 	} else {
@@ -139,7 +139,7 @@ static void knot_packet_init_pointers_response(knot_packet_t *pkt)
 static void knot_packet_init_pointers_query(knot_packet_t *pkt)
 {
 	dbg_packet_detail("Packet pointer: %p\n", pkt);
-	
+
 	char *pos = (char *)pkt + PREALLOC_PACKET;
 
 	// put QNAME directly after the structure
@@ -163,14 +163,14 @@ static void knot_packet_init_pointers_query(knot_packet_t *pkt)
 		pkt->answer = (const knot_rrset_t **)pos;
 		pos += DEFAULT_ANCOUNT_QUERY * sizeof(const knot_rrset_t *);
 	}
-	
+
 	if (DEFAULT_NSCOUNT_QUERY == 0) {
 		pkt->authority = NULL;
 	} else {
 		pkt->authority = (const knot_rrset_t **)pos;
 		pos += DEFAULT_NSCOUNT_QUERY * sizeof(const knot_rrset_t *);
 	}
-	
+
 	if (DEFAULT_ARCOUNT_QUERY == 0) {
 		pkt->additional = NULL;
 	} else {
@@ -357,9 +357,9 @@ static int knot_packet_parse_rdata(knot_rrset_t *rr, const uint8_t *wire,
 	if (!rr || !wire || !pos || rdlength == 0) {
 		return KNOT_EINVAL;
 	}
-	
-	
-	
+
+
+
 	/*! \todo As I'm revising it, seems highly inefficient to me.
 	 *        We just need to skim through the packet,
 	 *        check if it is in valid format and store pointers to various
@@ -368,7 +368,7 @@ static int knot_packet_parse_rdata(knot_rrset_t *rr, const uint8_t *wire,
 	 *        use use the wireformat for lookup again. Compression could
 	 *        be handled in-situ without additional memory allocs...
 	 */
-	
+
 	int ret = knot_rrset_rdata_from_wire_one(rr, wire, pos, total_size,
 	                                         rdlength);
 	if (ret != KNOT_EOK) {
@@ -376,13 +376,13 @@ static int knot_packet_parse_rdata(knot_rrset_t *rr, const uint8_t *wire,
 		           knot_strerror(ret));
 		return ret;
 	}
-	
+
 //	uint8_t* rd = knot_rrset_create_rdata(rr, rdlength);
 //	if (!rd) {
 //		return KNOT_ERROR;
 //	}
 //	uint8_t* np = rd + rdlength;
-	
+
 //	const rdata_descriptor_t *desc = get_rdata_descriptor(knot_rrset_type(rr));
 //	if (!desc) {
 //		/*! \todo Free rdata mem ? Not essential, but nice. */
@@ -414,7 +414,7 @@ static int knot_packet_parse_rdata(knot_rrset_t *rr, const uint8_t *wire,
 //			assert(knot_rrset_type(rr) == KNOT_RRTYPE_NAPTR);
 //			assert(0);
 //		}
-		
+
 //	}
 
 	return KNOT_EOK;
@@ -487,8 +487,8 @@ dbg_packet_exec_verb(
 	if (rdlength == 0) {
 		return rrset;
 	}
-	
-	
+
+
 	// parse RDATA
 	/*! \todo Merge with add_rdata_to_rr in zcompile, should be a rrset func
 	 *        probably. */
@@ -858,7 +858,7 @@ int knot_packet_parse_from_wire(knot_packet_t *packet,
 
 	if (packet->header.qdcount == 1) {
 		if ((err = knot_packet_parse_question(wireformat, &pos, size,
-		             &packet->question, packet->prealloc_type 
+		             &packet->question, packet->prealloc_type
 		                                == KNOT_PACKET_PREALLOC_NONE)
 		     ) != KNOT_EOK) {
 			return err;
@@ -901,7 +901,7 @@ int knot_packet_parse_rest(knot_packet_t *packet, knot_packet_flag_t flags)
 
 	// If there is less data then required, the next function will find out.
 	// If there is more data than required, it also returns EMALF.
-	
+
 	size_t pos = packet->parsed;
 
 	/*! \todo If we already parsed some part of the packet, it is not ok
@@ -935,7 +935,7 @@ int knot_packet_parse_next_rr_answer(knot_packet_t *packet,
 	if (packet->parsed_an == packet->header.ancount) {
 		assert(packet->parsed < packet->size);
 		//dbg_packet("Trailing garbage, ignoring...\n");
-		// there may be other data in the packet 
+		// there may be other data in the packet
 		// (authority or additional).
 		return KNOT_EOK;
 	}
@@ -948,7 +948,7 @@ int knot_packet_parse_next_rr_answer(knot_packet_t *packet,
 		dbg_packet_verb("Failed to parse RR!\n");
 		return KNOT_EMALF;
 	}
-	
+
 	dbg_packet_detail("Parsed. Pos: %zu.\n", pos);
 
 	packet->parsed = pos;
@@ -997,7 +997,7 @@ int knot_packet_parse_next_rr_additional(knot_packet_t *packet,
 		dbg_packet_verb("Failed to parse RR!\n");
 		return KNOT_EMALF;
 	}
-	
+
 	dbg_packet_detail("Parsed. Pos: %zu.\n", pos);
 
 	packet->parsed = pos;
@@ -1182,7 +1182,7 @@ int knot_packet_rcode(const knot_packet_t *packet)
 	if (packet == NULL) {
 		return KNOT_EINVAL;
 	}
-	
+
 	return knot_wire_flags_get_rcode(packet->header.flags2);
 }
 
@@ -1193,7 +1193,7 @@ int knot_packet_tc(const knot_packet_t *packet)
 	if (packet == NULL) {
 		return KNOT_EINVAL;
 	}
-	
+
 	return knot_wire_flags_get_tc(packet->header.flags1);
 }
 
@@ -1659,4 +1659,3 @@ int knot_packet_free_rrsets(knot_packet_t *packet)
 	ret += knot_packet_free_section(packet->additional, packet->ar_rrsets);
 	return ret;
 }
-

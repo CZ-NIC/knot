@@ -59,7 +59,7 @@ void knot_rdata_dump(const knot_rrset_t *rrset, size_t rdata_pos)
 //		fprintf(stderr, "  ------- RRSET -------\n");
 //		return;
 //	}
-	
+
 //	// TODO dump rdata
 
 //	fprintf(stderr, "  ------- RRSET -------\n");
@@ -141,13 +141,13 @@ void knot_node_dump(knot_node_t *node)
 		/*! \todo This causes segfault when n	sec3_node was free'd,
 		 *        e.g. when applying changesets.
 		 */
-    		name = knot_dname_to_str(node->nsec3_node->owner);
+		name = knot_dname_to_str(node->nsec3_node->owner);
 		dbg_node_detail("%s\n", name);
 		free(name);
 	} else {
 		dbg_node_detail("none\n");
 	}
-	
+
 	dbg_node_detail("Zone: %p\n", node->zone);
 
 	dbg_node_detail("RRSet count: %d\n", node->rrset_count);
@@ -172,14 +172,14 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone)
 	dbg_zone_detail("------- ZONE --------\n");
 
 	knot_zone_contents_tree_apply_inorder(zone, knot_node_dump_from_tree,
-	                                      NULL);
+					      NULL);
 
 	dbg_zone_detail("------- ZONE --------\n");
-	
+
 	dbg_zone_detail("------- NSEC 3 tree -\n");
 
 	knot_zone_contents_nsec3_apply_inorder(zone, knot_node_dump_from_tree,
-	                                       NULL);
+					       NULL);
 
 	dbg_zone_detail("------- NSEC 3 tree -\n");
 #endif

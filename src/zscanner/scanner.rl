@@ -184,4 +184,3 @@ int scanner_process(const char *start,
 
 	return 0;
 }
-

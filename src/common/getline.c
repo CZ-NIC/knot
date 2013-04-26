@@ -51,7 +51,7 @@ ssize_t knot_getline(char **lineptr, size_t *n, FILE *stream)
 		}
 		*lineptr = tmp;
 	}
-		
+
 	memcpy(*lineptr, buffer, length);
 	(*lineptr)[length] = '\0';
 	*n = length;

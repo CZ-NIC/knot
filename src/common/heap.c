@@ -86,7 +86,7 @@ static inline void _heap_bubble_up(struct heap *h, int e)
 		heap_swap(HELEMENT(h,e),HELEMENT(h,e1));
 		e = e1;
 	}
-		
+
 }
 
 void heap_delmin(struct heap *h)
@@ -142,4 +142,3 @@ void heap_delete(struct heap *h, int e)
 		h->data = realloc(h->data, (h->max_size + 1) * sizeof(heap_val_t));
 	}
 }
-

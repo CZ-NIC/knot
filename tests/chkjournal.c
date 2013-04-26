@@ -19,7 +19,7 @@
       (for this computer):  make chkjournal
       (for 32bit journals): make chkjournal-i386
       (for 64bit journal):  make chkjournal-amd64
-      
+
    !!! For specific versions, make sure the libknotd.la is compiled
    with -fpack-struct=4 for 32bit or -fpack-struct=8 for 64bit chkjournal.
    f.e.:
@@ -136,12 +136,12 @@ int fixcrc(const char *fname)
 	if (fd < 0) {
 		return 1;
 	}
-	
+
 	int ret = 1;
 	if (journal_update_crc(fd) == 0) {
 		ret = 0;
 	}
-	
+
 	close(fd);
 	return ret;
 }
@@ -175,7 +175,7 @@ int update(const char *fname)
 	if (fd < 0) {
 		return 1;
 	}
-	
+
 	/* Check source magic bytes. */
 	int rb = 0;
 	int ret = 0;
@@ -196,7 +196,7 @@ int update(const char *fname)
 			write(nfd, buf, sizeof(crc_t));
 			read(fd, buf, sizeof(uint16_t) * 3);
 			write(nfd, buf, sizeof(uint16_t) * 3);
-			
+
 			/* Copy nodes. */
 			uint16_t ncount = *((uint16_t*)buf) + 1;
 			printf("Will update %hu nodes.\n", ncount - 1);
@@ -211,7 +211,7 @@ int update(const char *fname)
 				read(fd, buf, PADDING);
 				write(nfd, buf, PADDING);
 			}
-			
+
 			/* Copy remaining. */
 			while((rb = read(fd, buf, sizeof(buf))) > 0) {
 				if (write(nfd, buf, rb) != rb) {
@@ -224,7 +224,7 @@ int update(const char *fname)
 				journal_update_crc(nfd);
 			}
 		}
-		
+
 		/* Replace if success. */
 		close(nfd);
 		close(fd);
@@ -243,7 +243,7 @@ int update(const char *fname)
 		int nfd = open(nfname, O_RDWR|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
 		size_t hs102 = (MAGIC_LENGTH + sizeof(crc_t) + sizeof(uint16_t) * 3);
 		const char nmbytes[] = "knot102";
-		
+
 		if (nfd >= 0) {
 			/* Copy header. */
 			lseek(fd, 0, SEEK_SET);
@@ -251,7 +251,7 @@ int update(const char *fname)
 			write(nfd, buf, hs102);
 			lseek(nfd, 0, SEEK_SET);
 			write(nfd, nmbytes, MAGIC_LENGTH);
-			
+
 			/* Read node count. */
 			lseek(fd, MAGIC_LENGTH + sizeof(crc_t), SEEK_SET);
 			uint16_t ncount = 0;
@@ -260,7 +260,7 @@ int update(const char *fname)
 			ncount += 1; /* Free segment. */
 			lseek(fd, hs102, SEEK_SET);
 			lseek(nfd, hs102, SEEK_SET);
-			
+
 			/* Extend nodes. */
 			/*! \todo Calculate offset from difference of struct size. */
 			for (uint16_t i = 0; i < ncount; ++i) {
@@ -270,7 +270,7 @@ int update(const char *fname)
 				/* Append 'next'. */
 				memset(buf, 0, sizeof(uint16_t));
 				write(nfd, buf, sizeof(uint16_t));
-				
+
 				/* Copy rest. */
 				read(fd, buf, a(2*sizeof(uint32_t)));
 				//*((uint32_t*)buf) += offs;
@@ -279,7 +279,7 @@ int update(const char *fname)
 				read(fd, buf, PADDING);
 				write(nfd, buf, PADDING);
 			}
-			
+
 			/* Copy remaining. */
 			while((rb = read(fd, buf, sizeof(buf))) > 0) {
 				if (write(nfd, buf, rb) != rb) {
@@ -292,7 +292,7 @@ int update(const char *fname)
 				journal_update_crc(nfd);
 			}
 		}
-		
+
 		/* Replace if success. */
 		close(nfd);
 		close(fd);
@@ -319,14 +319,14 @@ int update(const char *fname)
 		write(nfd, nmbytes, MAGIC_LENGTH);
 		journal_update_crc(nfd);
 		close(nfd);
-		
+
 		/* Fix crc. */
 		fixcrc(fname);
-		
+
 		/* Open as source journal. */
 		journal_t *src = journal_open(fname, 0, 0, 0);
 		assert(src != NULL);
-		
+
 		/* Recreate as new journal. */
 		char *nfname = malloc(strlen(fname) + 4 + 1);
 		assert(nfname != NULL);
@@ -335,7 +335,7 @@ int update(const char *fname)
 		journal_create(nfname, src->max_nodes);
 		journal_t *dst = journal_open(nfname, 0, 0, 0);
 		assert(dst != NULL);
-		
+
 		/* Convert journal entries, adding dummy flags. */
 		uint32_t flags = 1;
 		size_t i = src->qhead;
@@ -349,7 +349,7 @@ int update(const char *fname)
 		}
 		journal_close(src);
 		journal_close(dst);
-		
+
 		/* Switch journals. */
 		remove(fname);
 		rename(nfname, fname);
@@ -358,8 +358,8 @@ int update(const char *fname)
 	} else {
 		close(fd);
 	}
-	
-	
+
+
 	return ret;
 }
 
@@ -372,7 +372,7 @@ int xdump(const char *fname, uint64_t id)
 		fprintf(stderr, "error: couldn't open journal '%s'\n", fname);
 		return 1;
 	}
-	
+
 	int ret = 1;
 	journal_node_t *n = NULL;
 	journal_fetch(j, id, NULL, &n);
@@ -392,7 +392,7 @@ int xdump(const char *fname, uint64_t id)
 		free(buf);
 		ret = 0;
 	}
-	
+
 	journal_close(j);
 	return ret;
 }
@@ -406,14 +406,14 @@ int dump(const char *fname, uint64_t id)
 		fprintf(stderr, "error: couldn't open journal '%s'\n", fname);
 		return 1;
 	}
-	
+
 	journal_node_t *n = NULL;
 	journal_fetch(j, id, NULL, &n);
 	if (n == NULL) {
 		journal_close(j);
 		return 1;
 	}
-	
+
 	/* Reserve and read changeset. */
 	knot_changesets_t* chsets = malloc(sizeof(knot_changesets_t));
 	assert(chsets != NULL);
@@ -429,12 +429,12 @@ int dump(const char *fname, uint64_t id)
 	assert(chs->data != NULL);
 	journal_read(j, n->id, NULL, chs->data);
 	chs->size = chs->allocated = n->len;
-	
+
 	/* Unpack */
 	int ks = zones_changesets_from_binary(chsets);
 	printf("=== index %llu fpos=%u length=%u\n",
 	       (unsigned long long)id, n->pos, n->len);
-	
+
 	/* TODO: dump wireformat? */
 	printf("--- %zu records\n", chs->remove_count);
 	for (unsigned i = 0; i < chs->remove_count; ++i) {
@@ -466,7 +466,7 @@ int main(int argc, char *argv[])
 		{"help",   no_argument,       0, 'h'},
 		{0, 0, 0, 0}
 	};
-	
+
 	int c = 0, li = 0;
 	int action = SHOW;
 	uint64_t dump_id = 0;
@@ -500,20 +500,20 @@ int main(int argc, char *argv[])
 			return 1;
 		}
 	}
-	
+
 	/* Check if there's at least one remaining non-option. */
 	if (argc - optind < 1) {
 		help(argc, argv);
 		return 1;
 	}
 	const char *fname = argv[optind];
-	
+
 	/* Init log. */
 	log_init();
 	log_levels_set(LOGT_SYSLOG, LOG_ANY, 0);
 	log_levels_set(LOGT_STDERR, LOG_ANY, 0);
 	log_levels_set(LOGT_STDOUT, LOG_ANY, ~0);
-	
+
 	/* Execute operation. */
 	int ret = 0;
 	switch(action) {
@@ -536,6 +536,6 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Unsupported operation.\n");
 		break;
 	}
-	
+
 	return ret;
 }

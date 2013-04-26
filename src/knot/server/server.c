@@ -126,7 +126,7 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	} else {
 		sock = ret;
 	}
-	
+
 	/* Set socket options. */
 	int flag = 1;
 #ifndef DISABLE_IPV6
@@ -163,7 +163,7 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	} else {
 		sock = ret;
 	}
-	
+
 	/* Set socket options. */
 #ifndef DISABLE_IPV6
 	if (cfg_if->family == AF_INET6) {
@@ -202,7 +202,7 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 static void remove_ifacelist(struct ref_t *p)
 {
 	ifacelist_t *ifaces = (ifacelist_t *)p;
-		
+
 	/* Remove deprecated interfaces. */
 	iface_t *n = NULL, *m = NULL;
 	WALK_LIST_DELSAFE(n, m, ifaces->u) {
@@ -213,7 +213,7 @@ static void remove_ifacelist(struct ref_t *p)
 	WALK_LIST_DELSAFE(n, m, ifaces->l) {
 		free(n);
 	}
-	
+
 	free(ifaces);
 }
 
@@ -240,7 +240,7 @@ static int server_bind_sockets(server_t *s)
 	ref_retain(&newlist->ref);
 	init_list(&newlist->u);
 	init_list(&newlist->l);
-	
+
 
 	/* Duplicate current list. */
 	/*! \note Pointers to addr, handlers etc. will be shared. */
@@ -289,13 +289,13 @@ static int server_bind_sockets(server_t *s)
 
 	/* Publish new list. */
 	ifacelist_t *oldlist = rcu_xchg_pointer(&s->ifaces, newlist);
-	
+
 	/* Unlock configuration. */
 	rcu_read_unlock();
 
 	/* Ensure no one is reading old interfaces. */
 	synchronize_rcu();
-	
+
 	/* Notify handlers about removed ifaces. */
 	dt_unit_t *tu = s->h[IO_UDP].unit;
 	for (unsigned j = 0; j < tu->size; ++j) {
@@ -305,7 +305,7 @@ static int server_bind_sockets(server_t *s)
 			dt_activate(tu->threads[j]);
 			dt_signalize(tu->threads[j], SIGALRM);
 		}
-		
+
 	}
 	s->h[IO_TCP].state[0].s |= ServerReload;
 	if (s->state & ServerRunning) {
@@ -408,10 +408,10 @@ int server_start(server_t *s)
 
 	/* Start XFR handler. */
 	xfr_start(s->xfr);
-	
+
 	/* Start evsched handler. */
 	dt_start(s->iosched);
-	
+
 	/* Start I/O handlers. */
 	int ret = KNOT_EOK;
 	s->state |= ServerRunning;
@@ -420,7 +420,7 @@ int server_start(server_t *s)
 			ret = dt_start(s->h[i].unit);
 		}
 	}
-	
+
 
 	dbg_server("server: server started\n");
 
@@ -430,7 +430,7 @@ int server_start(server_t *s)
 int server_wait(server_t *s)
 {
 	if (!s) return KNOT_EINVAL;
-	
+
 	xfr_join(s->xfr);
 	dt_join(s->iosched);
 	if (s->tu_size == 0) {
@@ -452,7 +452,7 @@ int server_refresh(server_t *server)
 	if (server == NULL || server->nameserver == NULL) {
 		return KNOT_EINVAL;
 	}
-	
+
 	/* Lock RCU and fetch zones. */
 	rcu_read_lock();
 	knot_nameserver_t *ns =  server->nameserver;
@@ -462,7 +462,7 @@ int server_refresh(server_t *server)
 		rcu_read_unlock();
 		return KNOT_ENOMEM;
 	}
-	
+
 	/* REFRESH zones. */
 	for (unsigned i = 0; i < knot_zonedb_zone_count(ns->zone_db); ++i) {
 		zonedata_t *zd = (zonedata_t *)zones[i]->data;
@@ -477,7 +477,7 @@ int server_refresh(server_t *server)
 			/* Cumulative delay. */
 		}
 	}
-	
+
 	/* Unlock RCU. */
 	rcu_read_unlock();
 	free(zones);
@@ -489,7 +489,7 @@ int server_reload(server_t *server, const char *cf)
 	if (!server || !cf) {
 		return KNOT_EINVAL;
 	}
-	
+
 	log_server_info("Reloading configuration...\n");
 	int cf_ret = conf_open(cf);
 	switch (cf_ret) {
@@ -508,7 +508,7 @@ int server_reload(server_t *server, const char *cf)
 				 "reload failed.\n");
 		break;
 	}
-	
+
 	/*! \todo Close and bind to new remote control. */
 	return cf_ret;
 }
@@ -516,7 +516,7 @@ int server_reload(server_t *server, const char *cf)
 void server_stop(server_t *server)
 {
 	dbg_server("server: stopping server\n");
-	
+
 	/* Send termination event. */
 	evsched_schedule_term(server->sched, 0);
 
@@ -538,9 +538,9 @@ void server_destroy(server_t **server)
 	if (!server || !*server) {
 		return;
 	}
-	
+
 	dbg_server("server: destroying server instance\n");
-	
+
 	/* Free remaining interfaces. */
 	ifacelist_t *ifaces = (*server)->ifaces;
 	iface_t *n = NULL, *m = NULL;
@@ -551,7 +551,7 @@ void server_destroy(server_t **server)
 		free(ifaces);
 		(*server)->ifaces = NULL;
 	}
-	
+
 	xfr_free((*server)->xfr);
 	stat_static_gath_free();
 	knot_ns_destroy(&(*server)->nameserver);
@@ -570,7 +570,7 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 	if (!server) {
 		return KNOT_EINVAL;
 	}
-	
+
 	/* Estimate number of threads/manager. */
 	int ret = KNOT_EOK;
 	int tu_size = conf->workers;
@@ -584,7 +584,7 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 				ret = server_free_handler(server->h + i);
 			}
 		}
-		
+
 		/* Initialize I/O handlers. */
 		size_t udp_size = tu_size;
 		if (udp_size < 2) udp_size = 2;
@@ -601,7 +601,7 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 		}
 		server->tu_size = tu_size;
 	}
-	
+
 	/* Rate limiting. */
 	if (!server->rrl && conf->rrl > 0) {
 		server->rrl = rrl_create(conf->rrl_size);
@@ -618,7 +618,7 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 			                conf->rrl);
 		} /* At this point, old buckets will converge to new rate. */
 	}
-	
+
 	/* Update bound sockets. */
 	if ((ret = server_bind_sockets(server)) < 0) {
 		log_server_error("Failed to bind configured "
@@ -632,7 +632,7 @@ ref_t *server_set_ifaces(server_t *s, fdset_t **fds, int *count, int type)
 {
 	iface_t *i = NULL;
 	*count = 0;
-	
+
 	rcu_read_lock();
 	fdset_destroy(*fds);
 	*fds = fdset_new();
@@ -641,9 +641,8 @@ ref_t *server_set_ifaces(server_t *s, fdset_t **fds, int *count, int type)
 			fdset_add(*fds, i->fd[type], OS_EV_READ);
 			*count += 1;
 		}
-		
+
 	}
 	rcu_read_unlock();
 	return (ref_t *)s->ifaces;
 }
-

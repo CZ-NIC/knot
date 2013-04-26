@@ -55,7 +55,7 @@ static int acl_compare(void *k1, void *k2)
 
 	/* Compare integers if IPv4. */
 	if (sockaddr_family(a1) == AF_INET) {
-		
+
 		/* Compute mask .*/
 		uint32_t mask = acl_fill_mask32(a1->prefix);
 
@@ -70,14 +70,14 @@ static int acl_compare(void *k1, void *k2)
 	/* IPv6 matching. */
 #ifndef DISABLE_IPV6
 	if (sockaddr_family(a1) == AF_INET6) {
-		
+
 		/* Get mask .*/
 		short chunk = a1->prefix;
-		
+
 		/* Compare address by 32bit chunks. */
 		uint32_t* a1p = (uint32_t *)(&a1->addr6.sin6_addr);
 		uint32_t* a2p = (uint32_t *)(&a2->addr6.sin6_addr);
-		
+
 		/* Mask 0 = 0 bits to compare from LO->HO (in big-endian).
 		 * Mask 128 = 128 bits to compare.
 		 */
@@ -125,7 +125,7 @@ acl_t *acl_new(acl_rule_t default_rule, const char *name)
 		free(acl);
 		return 0;
 	}
-	
+
 	/* Initialize skip list for rules with TSIG. */
 	/*! \todo This needs a better structure to make
 	 *        nodes with TSIG preferred, but for now
@@ -172,12 +172,12 @@ int acl_create(acl_t *acl, const sockaddr_t* addr, acl_rule_t rule, void *val,
 	if (key == NULL) {
 		return ACL_ERROR;
 	}
-	
+
 	memcpy(&key->addr, addr, sizeof(sockaddr_t));
 	key->rule = rule;
 	key->val = val;
 
-	
+
 	if (flags & ACL_PREFER) {
 		skip_insert(acl->rules_pref, &key->addr, key, 0);
 	} else {
@@ -197,12 +197,12 @@ int acl_match(acl_t *acl, const sockaddr_t* addr, acl_key_t **key)
 	if (found == NULL) {
 		found = skip_find(acl->rules, (void*)addr);
 	}
-	
+
 	/* Set stored value if exists. */
 	if (key != NULL) {
 		*key = found;
 	}
-	
+
 	/* Return appropriate rule. */
 	if (found == NULL) {
 		return acl->default_rule;

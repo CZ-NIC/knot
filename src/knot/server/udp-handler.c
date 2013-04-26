@@ -81,11 +81,11 @@ static size_t udp_rrl_reject(const knot_nameserver_t *ns,
 			knot_wire_set_tc(resp); /* Set TC=1 */
 			break;
 		}
-		
+
 		*slip = 0; /* Restart SLIP interval. */
 		return rlen;
 	}
-	
+
 	return 0; /* Discard response. */
 }
 
@@ -99,7 +99,7 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 	dbg_net("udp: received %zd bytes from '%s@%d'.\n", qbuflen,
 	        strfrom, sockaddr_portnum(addr));
 #endif
-	
+
 	int res = KNOT_EOK;
 	int rcode = KNOT_RCODE_NOERROR;
 	knot_packet_type_t qtype = KNOT_QUERY_INVALID;
@@ -119,14 +119,14 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		                                            qbuf, resp_len);
 		return ret;
 	}
-	
+
 	/* Parse query. */
 	rcode = knot_ns_parse_packet(qbuf, qbuflen, packet, &qtype);
 	if (rcode < KNOT_RCODE_NOERROR) {
 		dbg_net("udp: failed to parse packet\n");
 		rcode = KNOT_RCODE_SERVFAIL;
 	}
-	
+
 	/* Handle query. */
 	switch(qtype) {
 	case KNOT_QUERY_NORMAL:
@@ -136,7 +136,7 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 	case KNOT_QUERY_AXFR:
 		/* RFC1034, p.28 requires reliable transfer protocol.
 		 * Bind responds with FORMERR.
- 		 */
+		 */
 		res = knot_ns_error_response_from_query(ns, packet,
 		                                        KNOT_RCODE_FORMERR, qbuf,
 		                                        resp_len);
@@ -144,19 +144,19 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 	case KNOT_QUERY_IXFR:
 		/* According to RFC1035, respond with SOA. */
 		res = zones_normal_query_answer(ns, packet, addr,
-		                                qbuf, resp_len, 
+		                                qbuf, resp_len,
 		                                NS_TRANSPORT_UDP);
 		break;
 	case KNOT_QUERY_NOTIFY:
 		res = notify_process_request(ns, packet, addr,
 		                             qbuf, resp_len);
 		break;
-		
+
 	case KNOT_QUERY_UPDATE:
 		res = zones_process_update(ns, packet, addr, qbuf, resp_len,
 		                           fd, NS_TRANSPORT_UDP);
 		break;
-		
+
 	/* Unhandled opcodes. */
 	case KNOT_RESPONSE_AXFR: /*!< Processed in XFR handler. */
 	case KNOT_RESPONSE_IXFR: /*!< Processed in XFR handler. */
@@ -164,7 +164,7 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		                                        KNOT_RCODE_REFUSED, qbuf,
 		                                        resp_len);
 		break;
-			
+
 	/* Unknown opcodes */
 	default:
 		res = knot_ns_error_response_from_query(ns, packet,
@@ -172,7 +172,7 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		                                        resp_len);
 		break;
 	}
-	
+
 	/* Process RRL. */
 	if (knot_unlikely(rrl != NULL)) {
 		rrl_req_t rrl_rq;
@@ -190,7 +190,7 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		}
 		rcu_read_unlock();
 	}
-	
+
 
 	knot_packet_free(&packet);
 
@@ -286,7 +286,7 @@ static int (*_send_mmsg)(int, sockaddr_t *, struct mmsghdr *, size_t) = 0;
 
 /*!
  * \brief Send multiple packets.
- * 
+ *
  * Basic, sendmsg() based implementation.
  */
 int udp_sendmsg(int sock, sockaddr_t * addrs, struct mmsghdr *msgs, size_t count)
@@ -297,7 +297,7 @@ int udp_sendmsg(int sock, sockaddr_t * addrs, struct mmsghdr *msgs, size_t count
 			++sent;
 		}
 	}
-	
+
 	return sent;
 }
 
@@ -313,7 +313,7 @@ static inline int sendmmsg(int fd, struct mmsghdr *mmsg, unsigned vlen,
 
 /*!
  * \brief Send multiple packets.
- * 
+ *
  * sendmmsg() implementation.
  */
 int udp_sendmmsg(int sock, sockaddr_t *_, struct mmsghdr *msgs, size_t count)
@@ -439,7 +439,7 @@ void __attribute__ ((constructor)) udp_master_init()
 			_udp_handle = udp_recvmmsg_handle;
 		}
 	}
-	
+
 	/* Check for sendmmsg() support. */
 	_send_mmsg = udp_sendmsg;
 #ifdef ENABLE_SENDMMSG
@@ -535,7 +535,7 @@ int udp_reader(iohandler_t *h, dthread_t *thread)
 
 	/* Loop until all data is read. */
 	for (;;) {
-		
+
 		/* Check handler state. */
 		if (knot_unlikely(st->s & ServerReload)) {
 			st->s &= ~ServerReload;
@@ -557,12 +557,12 @@ int udp_reader(iohandler_t *h, dthread_t *thread)
 			}
 			rcu_read_unlock();
 		}
-		
+
 		/* Cancellation point. */
 		if (dt_is_cancelled(thread)) {
 			break;
 		}
-		
+
 		/* Wait for events. */
 		fd_set rfds;
 		FD_COPY(&rfds, &fds);
@@ -608,4 +608,3 @@ int udp_master(dthread_t *thread)
 	default: return udp_writer(h, thread);
 	}
 }
-

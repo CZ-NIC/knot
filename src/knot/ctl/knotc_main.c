@@ -139,12 +139,12 @@ static int cmd_remote_print_reply(const knot_rrset_t *rr)
 	if (knot_rrset_type(rr) != KNOT_RRTYPE_TXT) {
 		return KNOT_EMALF;
 	}
-	
+
 	for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(rr); i++) {
 		/* Parse TXT. */
 		remote_print_txt(rr, i);
 	}
-	
+
 	return KNOT_EOK;
 }
 
@@ -157,7 +157,7 @@ static int cmd_remote_reply(int c)
 		knot_packet_free(&reply);
 		return KNOT_ENOMEM;
 	}
-	
+
 	/* Read response packet. */
 	int n = tcp_recv(c, rwire, SOCKET_MTU_SZ, NULL);
 	if (n <= 0) {
@@ -166,7 +166,7 @@ static int cmd_remote_reply(int c)
 		free(rwire);
 		return KNOT_ECONN;
 	}
-	
+
 	/* Parse packet and check response. */
 	int ret = remote_parse(reply, rwire, n);
 	if (ret == KNOT_EOK) {
@@ -186,7 +186,7 @@ static int cmd_remote_reply(int c)
 			break;
 		}
 	}
-	
+
 	/* Response cleanup. */
 	knot_packet_free(&reply);
 	free(rwire);
@@ -204,7 +204,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 		                 cmd);
 		return 1;
 	}
-	
+
 	/* Make query. */
 	uint8_t *buf = NULL;
 	size_t buflen = 0;
@@ -214,7 +214,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 		                   cmd);
 		return 1;
 	}
-	
+
 	/* Build query data. */
 	knot_rrset_t *rr = remote_build_rr("data.", rrt);
 	for (int i = 0; i < argc; ++i) {
@@ -238,7 +238,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	if (r->key) {
 		remote_query_sign(buf, &buflen, qr->max_size, r->key);
 	}
-	
+
 	/* Send query. */
 	int s = socket_create(r->family, SOCK_STREAM, IPPROTO_TCP);
 	int conn_state = socket_connect(s, r->address, r->port);
@@ -247,7 +247,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 		                 " %s@%d.\n", r->address, r->port);
 		rc = 1;
 	}
-	
+
 	/* Wait for reply. */
 	if (rc == 0) {
 		int ret = KNOT_EOK;
@@ -260,11 +260,11 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 			}
 		}
 	}
-	
+
 	/* Cleanup. */
 	if (rc == 0) printf("\n");
 	knot_rrset_deep_free(&rr, 1, 1);
-	
+
 	/* Close connection. */
 	socket_close(s);
 	knot_packet_free(&qr);
@@ -277,13 +277,13 @@ static int tsig_parse_str(knot_tsig_key_t *key, const char *str)
 	if (!h) {
 		return KNOT_ENOMEM;
 	}
-	
+
 	char *k = NULL, *s = NULL;
 	if ((k = (char*)strchr(h, ':'))) { /* Second part - NAME|SECRET */
 		*k++ = '\0';               /* String separator */
 		s = (char*)strchr(k, ':'); /* Thirt part - |SECRET */
 	}
-	
+
 	/* Determine algorithm. */
 
 	int algorithm = KNOT_TSIG_ALG_HMAC_MD5;
@@ -301,7 +301,7 @@ static int tsig_parse_str(knot_tsig_key_t *key, const char *str)
 		s = k; /* Ignore first part, push down. */
 		k = h;
 	}
-	
+
 	/* Parse key name. */
 
 	int result = knot_tsig_create_key(k, algorithm, s, key);
@@ -331,13 +331,13 @@ static int tsig_parse_line(knot_tsig_key_t *k, char *l)
 	if (!n) {
 		return KNOT_EMALF;
 	}
-	
+
 	/* Assume hmac-md5 if no algo specified. */
 	if (!s) {
 		s = a;
 		a = "hmac-md5";
 	}
-	
+
 	/* Lookup algorithm. */
 	knot_lookup_table_t *alg;
 	alg = knot_lookup_by_name(knot_tsig_alg_domain_names, a);
@@ -345,7 +345,7 @@ static int tsig_parse_line(knot_tsig_key_t *k, char *l)
 	if (!alg) {
 		return KNOT_EMALF;
 	}
-	
+
 	/* Create the key data. */
 	return knot_tsig_create_key(n, alg->id, s, k);
 }
@@ -357,7 +357,7 @@ static int tsig_parse_file(knot_tsig_key_t *k, const char *f)
 		log_server_error("Couldn't open key-file '%s'.\n", f);
 		return KNOT_EINVAL;
 	}
-	
+
 	int c = 0;
 	int ret = KNOT_EOK;
 	char *line = malloc(64);
@@ -366,7 +366,7 @@ static int tsig_parse_file(knot_tsig_key_t *k, const char *f)
 	if (line) {
 		lres = 64;
 	}
-	
+
 	while ((c = fgetc(fp)) != EOF) {
 		if (mreserve(&line, sizeof(char), llen + 1, 512, &lres) != 0) {
 			ret = KNOT_ENOMEM;
@@ -386,9 +386,9 @@ static int tsig_parse_file(knot_tsig_key_t *k, const char *f)
 		} else {
 			line[llen++] = (char)c;
 		}
-		
+
 	}
-	
+
 	free(line);
 	fclose(fp);
 	return ret;
@@ -401,18 +401,18 @@ int main(int argc, char **argv)
 	unsigned flags = F_NULL;
 	char *config_fn = NULL;
 	char *default_config = conf_find_default();
-	
+
 	/* Remote server descriptor. */
 	int ret = KNOT_EOK;
 	const char *r_addr = NULL;
 	int r_port = -1;
 	knot_tsig_key_t r_key;
 	memset(&r_key, 0, sizeof(knot_tsig_key_t));
-	
+
 	/* Initialize. */
 	log_init();
 	log_levels_set(LOG_SYSLOG, LOG_ANY, 0);
-	
+
 	/* Long options. */
 	struct option opts[] = {
 		{"wait", no_argument, 0, 'w'},
@@ -498,7 +498,7 @@ int main(int argc, char **argv)
 		free(default_config);
 		return 1;
 	}
-	
+
 	/* Find requested command. */
 	knot_cmd_t *cmd = knot_cmd_tbl;
 	while (cmd->name) {
@@ -507,7 +507,7 @@ int main(int argc, char **argv)
 		}
 		++cmd;
 	}
-	
+
 	/* Command not found. */
 	if (!cmd->name) {
 		log_server_error("Invalid command: '%s'\n", argv[optind]);
@@ -524,7 +524,7 @@ int main(int argc, char **argv)
 			flags |= F_NOCONF;
 		}
 	}
-	
+
 	/* Create remote iface if not present in config. */
 	conf_iface_t *ctl_if = conf()->ctl.iface;
 	if (!ctl_if) {
@@ -532,7 +532,7 @@ int main(int argc, char **argv)
 		assert(ctl_if);
 		conf()->ctl.iface = ctl_if;
 		memset(ctl_if, 0, sizeof(conf_iface_t));
-		
+
 		/* Fill defaults. */
 		if (!r_addr) r_addr = "127.0.0.1";
 		if (r_port < 0) r_port =  REMOTE_DPORT;
@@ -550,7 +550,7 @@ int main(int argc, char **argv)
 			ctl_if->key = &r_key;
 		}
 	}
-	
+
 	/* Override from command line. */
 	if (r_addr) {
 		free(ctl_if->address);
@@ -587,17 +587,17 @@ static int cmd_start(int argc, char *argv[], unsigned flags)
 		                 "continue.\n");
 		return 1;
 	}
-	
+
 	/* Fetch PID. */
 	char *pidfile = pid_filename();
 	pid_t pid = pid_read(pidfile);
 	log_server_info("Starting server...\n");
-	
+
 	/* Prevent concurrent daemon launch. */
 	int rc = 0;
 	struct stat st;
 	int is_pidf = 0;
-	
+
 	/* Check PID. */
 	if (pid > 0 && pid_running(pid)) {
 		log_server_error("Server PID found, already running.\n");
@@ -617,7 +617,7 @@ static int cmd_start(int argc, char *argv[], unsigned flags)
 			pid_remove(pidfile);
 		}
 	}
-	
+
 	/* Prepare command */
 	const char *cfg = conf()->filename;
 	size_t args_c = 6;
@@ -629,7 +629,7 @@ static int cmd_start(int argc, char *argv[], unsigned flags)
 		has_flag(flags, F_VERBOSE) ? "-v" : "",
 		argc > 0 ? argv[0] : ""
 	};
-	
+
 	/* Execute command */
 	if (has_flag(flags, F_INTERACTIVE)) {
 		log_server_info("Running in interactive mode.\n");
@@ -659,7 +659,7 @@ static int cmd_start(int argc, char *argv[], unsigned flags)
 			select(0, 0, 0, 0, &tv);
 		}
 	}
-	
+
 	free(pidfile);
 	return rc;
 }
@@ -678,7 +678,7 @@ static int cmd_stop(int argc, char *argv[], unsigned flags)
 	pid_t pid = pid_read(pidfile);
 	int rc = 0;
 	struct stat st;
-	
+
 	/* Check for non-existent PID file. */
 	int has_pidf = (stat(pidfile, &st) == 0);
 	if(has_pidf && pid <= 0) {
@@ -704,7 +704,7 @@ static int cmd_stop(int argc, char *argv[], unsigned flags)
 		pid_remove(pidfile);
 		rc = 1;
 	}
-	
+
 
 	/* Wait for finish */
 	if (rc == 0 && has_flag(flags, F_WAIT)) {
@@ -717,7 +717,7 @@ static int cmd_stop(int argc, char *argv[], unsigned flags)
 			pid = pid_read(pidfile); /* Update */
 		}
 	}
-	
+
 	return rc;
 }
 
@@ -729,7 +729,7 @@ static int cmd_restart(int argc, char *argv[], unsigned flags)
 		                 "continue.\n");
 		return 1;
 	}
-	
+
 	int rc = 0;
 	rc |= cmd_stop(argc, argv, flags | F_WAIT);
 	rc |= cmd_start(argc, argv, flags);
@@ -771,7 +771,7 @@ static int cmd_checkconf(int argc, char *argv[], unsigned flags)
 	} else {
 		log_server_info("OK, configuration is valid.\n");
 	}
-	
+
 	return 0;
 }
 
@@ -780,7 +780,7 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 	/* Zone checking */
 	int rc = 0;
 	node *n = 0;
-	
+
 	/* Generate databases for all zones */
 	WALK_LIST(n, conf()->zones) {
 		/* Fetch zone */
@@ -788,7 +788,7 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 		int zone_match = 0;
 		for (unsigned i = 0; i < argc; ++i) {
 			size_t len = strlen(zone->name);
-			
+
 			/* All (except root) without final dot */
 			if (len > 1) {
 				len -= 1;
@@ -803,7 +803,7 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 			/* WALK_LIST is a for-cycle. */
 			continue;
 		}
-		
+
 		/* Create zone loader context. */
 		zloader_t *l = NULL;
 		int ret = knot_zload_open(&l, zone->file, zone->name,
@@ -815,7 +815,7 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 			rc = 1;
 			continue;
 		}
-		
+
 		knot_zone_t *z = knot_zload_load(l);
 		if (z == NULL) {
 			log_zone_error("Loading of zone %s failed.\n",
@@ -824,10 +824,10 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 			rc = 1;
 			continue;
 		}
-		
+
 		knot_zone_deep_free(&z);
 		knot_zload_close(l);
-		
+
 		log_zone_info("Zone %s OK.\n", zone->name);
 	}
 

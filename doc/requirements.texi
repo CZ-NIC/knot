@@ -2,10 +2,10 @@
 @chapter Knot DNS Resource Requirements
 
 @menu
-* Hardware requirements::       
-* CPU requirements::            
-* Memory requirements::         
-* Supported operating system::  
+* Hardware requirements::
+* CPU requirements::
+* Memory requirements::
+* Supported operating system::
 @end menu
 
 @node Hardware requirements

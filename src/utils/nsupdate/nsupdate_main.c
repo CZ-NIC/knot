@@ -23,7 +23,7 @@
 int main(int argc, char *argv[])
 {
 	int ret = EXIT_SUCCESS;
-	
+
 	nsupdate_params_t params;
 	if (nsupdate_parse(&params, argc, argv) == KNOT_EOK) {
 		if (nsupdate_exec(&params) != KNOT_EOK) {
@@ -36,4 +36,3 @@ int main(int argc, char *argv[])
 	nsupdate_clean(&params);
 	return ret;
 }
-

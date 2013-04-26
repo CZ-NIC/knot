@@ -427,4 +427,3 @@ int32_t base32hex_decode_alloc(const uint8_t  *in,
 	// Decoding data.
 	return base32hex_decode(in, in_len, *out, out_len);
 }
-

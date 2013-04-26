@@ -46,14 +46,14 @@ typedef struct knot_zone_contents_t {
 	struct knot_zone *zone;
 
 	knot_nsec3_params_t nsec3_params;
-	
+
 	/*!
 	 * \todo Unify the use of this field - authoritative nodes vs. all.
 	 */
 	size_t node_count;
 
 	/*! \brief Various flags
-	 * 
+	 *
 	 * Two rightmost bits denote zone contents generation.
 	 *
 	 * Possible values:
@@ -167,10 +167,10 @@ int knot_zone_contents_add_nsec3_rrset(knot_zone_contents_t *contents,
                                          knot_node_t **node,
                                          knot_rrset_dupl_handling_t dupl);
 
-int knot_zone_contents_remove_node(knot_zone_contents_t *contents, 
+int knot_zone_contents_remove_node(knot_zone_contents_t *contents,
 	const knot_node_t *node, knot_node_t **removed_tree);
 
-int knot_zone_contents_remove_nsec3_node(knot_zone_contents_t *contents, 
+int knot_zone_contents_remove_nsec3_node(knot_zone_contents_t *contents,
 	const knot_node_t *node, knot_node_t **removed);
 
 /*!
@@ -509,9 +509,9 @@ void knot_zone_contents_insert_dname_into_table(knot_dname_t **in_dname,
 
 /*!
  * \brief Fetch zone serial.
- * 
+ *
  * \param zone Zone.
- * 
+ *
  * \return serial or 0
  */
 unsigned knot_zone_serial(const knot_zone_contents_t *zone);

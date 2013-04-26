@@ -440,7 +440,7 @@ void process_query(const query_t *query)
 			                           &query->sign_ctx,
 			                           &query->key_params,
 			                           &query->style);
-	
+
 			if (ret == 0) {
 				knot_packet_free(&out_packet);
 				return;
@@ -523,7 +523,7 @@ static int process_xfr_packet(const knot_packet_t     *query,
 			net_close(&net);
 			return -1;
 		}
-	
+
 		// Parse reply to the packet structure.
 		if (knot_packet_parse_from_wire(reply, in, in_len, 0,
 		                                KNOT_PACKET_DUPL_NO_MERGE)
@@ -533,18 +533,18 @@ static int process_xfr_packet(const knot_packet_t     *query,
 			net_close(&net);
 			return -1;
 		}
-	
+
 		// Compare reply header id.
 		if (check_reply_id(reply, query) == false) {
 			knot_packet_free(&reply);
 			net_close(&net);
 			return -1;
 		}
-	
+
 		// Check for reply error.
 		uint8_t rcode_id = knot_wire_get_rcode(in);
 		if (rcode_id != KNOT_RCODE_NOERROR) {
-			knot_lookup_table_t *rcode = 
+			knot_lookup_table_t *rcode =
 				knot_lookup_by_id(knot_rcode_names, rcode_id);
 			if (rcode != NULL) {
 				ERR("server respond %s\n", rcode->name);

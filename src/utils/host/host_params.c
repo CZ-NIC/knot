@@ -305,4 +305,3 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 
 	return KNOT_EOK;
 }
-

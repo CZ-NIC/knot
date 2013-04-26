@@ -30,7 +30,7 @@ $TTL	1
 @	CERT	0	0	PRIVATEOID	AA==		; Algorithm mnemo
 @	CERT	0	0	0	Zm8=		; One char padding
 @	CERT	0	0	0	Zm9v		; Without padding
-@	CERT	0	0	0	Zm9vYg==	; Two base64 blocks 
+@	CERT	0	0	0	Zm9vYg==	; Two base64 blocks
 @	CERT	0	0	0	Zm9v YmE=	; Two base64 blocks with blank space between them
 @	TYPE37	\# 6 000000000000			; TYPE + Hexadecimal rdata
 @	TYPE37	0	0	0	AA==		; TYPE

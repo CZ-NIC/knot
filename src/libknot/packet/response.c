@@ -208,7 +208,7 @@ dbg_response_exec_detail(
 		// and resulting in using the 0 offset.
 		// If case-sensitive search is in place, we should not save the
 		// node's parent's positions.
-		
+
 		// Added check to rule out wildcard-covered dnames
 		// (in such case the offset is not right)
 
@@ -311,7 +311,7 @@ static int knot_response_put_dname_ptr(const knot_dname_t *dname,
 	knot_wire_put_pointer(wire + size, offset);
 
 	dbg_response_detail("Size of the dname with ptr: %d\n", size + 2);
-	
+
 	return size + 2;
 }
 
@@ -378,7 +378,7 @@ dbg_response_exec_detail(
 			dbg_response_detail("compr_cs: %d\n", compr_cs);
 			dbg_response_detail("knot_dname_node(to_find, 1) == %p"
 			                    "\n", knot_dname_node(to_find));
-			
+
 			if (knot_dname_node(to_find) != NULL) {
 				dbg_response_detail("knot_node_owner(knot_dname_node("
 				             "to_find, 1)) = %p, to_find = %p\n",
@@ -408,7 +408,7 @@ dbg_response_exec_detail(
 #endif
 
 	dbg_response_detail("Max size available for domain name: %zu\n", max);
-	
+
 	if (offset > 0) {
 		// found such dname somewhere in the packet
 		// the pointer should be legal as no illegal pointers are stored
@@ -432,7 +432,7 @@ dbg_response_exec_detail(
 	}
 
 	// in either way, put info into the compression table
-	/*! \todo This is useless if the name was already in the table. 
+	/*! \todo This is useless if the name was already in the table.
 	 *        It is meaningful only if the found name is the one from QNAME
 	 *        and thus its parents are not stored yet.
 	 */
@@ -528,7 +528,7 @@ dbg_response_exec(
 	uint16_t rr_count = 0;
 	int ret = knot_rrset_to_wire(rrset, pos, &size, max_size,
 	                             &rr_count, &param);
-	
+
 	if (ret != KNOT_EOK) {
 		dbg_response("Failed to convert RRSet to wire. (%s).\n,",
 		             knot_strerror(ret));
@@ -708,11 +708,11 @@ int knot_response_init_from_query(knot_packet_t *response,
 	// clear TC flag
 	knot_wire_flags_clear_tc(&response->header.flags1);
 	knot_wire_clear_tc(response->wireformat);
-	
+
 	// clear AD flag
 	knot_wire_flags_clear_ad(&response->header.flags2);
 	knot_wire_clear_ad(response->wireformat);
-	
+
 	// clear RA flag
 	knot_wire_flags_clear_ra(&response->header.flags2);
 	knot_wire_clear_ad(response->wireformat);
@@ -981,7 +981,7 @@ int knot_response_add_rrset_additional(knot_packet_t *response,
 	                                        &response->ar_rrsets, response,
 	                                        response->max_size
 	                                        - response->size
-	                                        - response->tsig_size, rrset, 
+	                                        - response->tsig_size, rrset,
 	                                        tc, compr_cs);
 
 	if (rrs >= 0) {

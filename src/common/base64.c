@@ -277,4 +277,3 @@ int32_t base64_decode_alloc(const uint8_t  *in,
 		return ret;
 	}
 }
-

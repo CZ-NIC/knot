@@ -7,7 +7,7 @@ $TTL	1
 @	DNSKEY	0	0	RSAMD5	AA==		; Algorithm mnemonic
 @	DNSKEY	0	0	0	Zm8=		; One char padding
 @	DNSKEY	0	0	0	Zm9v		; Without padding
-@	DNSKEY	0	0	0	Zm9vYg==	; Two base64 blocks 
+@	DNSKEY	0	0	0	Zm9vYg==	; Two base64 blocks
 @	DNSKEY	0	0	0	Zm9v YmE=	; Two base64 blocks with blank space between them
 @	TYPE48	\# 5 0000000000				; TYPE + Hexadecimal rdata
 @	TYPE48	0	0	0	AA==		; TYPE

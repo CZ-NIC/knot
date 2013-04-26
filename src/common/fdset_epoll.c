@@ -43,11 +43,11 @@ fdset_t *fdset_epoll_new()
 	if (set) {
 		/* Blank memory. */
 		memset(set, 0, sizeof(fdset_t));
-	
+
 		/* Create epoll fd. */
 		set->epfd = epoll_create(OS_FDS_CHUNKSIZE);
 	}
-	
+
 	return set;
 }
 
@@ -110,7 +110,7 @@ int fdset_epoll_remove(fdset_t *fdset, int fd)
 	/* Trim excessive memory if possible (retval is not interesting). */
 	mreserve((char **)&fdset->events, sizeof(struct epoll_event),
 	         fdset->nfds + 1, OS_FDS_CHUNKSIZE, &fdset->reserved);
-	
+
 	return 0;
 }
 

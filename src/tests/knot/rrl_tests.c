@@ -29,7 +29,7 @@
 /* Enable time-dependent tests. */
 //#define ENABLE_TIMED_TESTS
 #define RRL_SIZE 196613
-#define RRL_THREADS 8 
+#define RRL_THREADS 8
 #define RRL_INSERTS (RRL_SIZE/(5*RRL_THREADS)) /* lf = 1/5 */
 #define RRL_LOCKS 64
 
@@ -136,29 +136,29 @@ static int rrl_tests_run(int argc, char *argv[])
 		knot_packet_free(&query);
 		return KNOT_ERROR; /* Fatal */
 	}
-	
+
 	/* Prepare response */
 	knot_nameserver_t *ns = knot_ns_create();
 	uint8_t rbuf[65535];
 	size_t rlen = sizeof(rbuf);
 	memset(rbuf, 0, sizeof(rbuf));
 	knot_ns_error_response_from_query(ns, query, KNOT_RCODE_NOERROR, rbuf, &rlen);
-	
+
 	rrl_req_t rq;
 	rq.w = rbuf;
 	rq.len = rlen;
 	rq.qst = &qst;
 	rq.flags = 0;
-	
+
 	/* 1. create rrl table */
 	rrl_table_t *rrl = rrl_create(RRL_SIZE);
 	ok(rrl != NULL, "rrl: create");
-	
+
 	/* 2. set rate limit */
 	uint32_t rate = 10;
 	rrl_setrate(rrl, rate);
 	ok(rate == rrl_rate(rrl), "rrl: setrate");
-	
+
 	/* 3. setlocks */
 	ret = rrl_setlocks(rrl, RRL_LOCKS);
 	ok(ret == KNOT_EOK, "rrl: setlocks");
@@ -189,7 +189,7 @@ static int rrl_tests_run(int argc, char *argv[])
 	ret = rrl_query(rrl, &addr6, &rq, zone);
 	ok(ret != 0, "rrl: throttled IPv6 request");
 #endif
-	
+
 	/* 7. invalid values. */
 	ret = 0;
 	lives_ok( {
@@ -202,7 +202,7 @@ static int rrl_tests_run(int argc, char *argv[])
 	                  ret += rrl_query(rrl, (void*)0x1, 0, 0); // -1
 	                  ret += rrl_destroy(0); // -1
 	}, "rrl: not crashed while executing functions on NULL context");
-	
+
 #ifdef ENABLE_TIMED_TESTS
 	/* 8. hopscotch test */
 	struct runnable_data rd = {
@@ -210,15 +210,15 @@ static int rrl_tests_run(int argc, char *argv[])
 	};
 	rrl_hopscotch(&rd);
 	ok(rd.passed, "rrl: hashtable is ~ consistent");
-	
+
 	/* 9. reseed */
 	ok(rrl_reseed(rrl) == 0, "rrl: reseed");
-	
+
 	/* 10. hopscotch after reseed. */
 	rrl_hopscotch(&rd);
 	ok(rd.passed, "rrl: hashtable is ~ consistent");
 #endif
-	
+
 	knot_dname_release(qst.qname);
 	knot_dname_release(apex);
 	knot_zone_deep_free(&zone);

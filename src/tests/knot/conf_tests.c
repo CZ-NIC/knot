@@ -123,7 +123,7 @@ static int conf_tests_run(int argc, char *argv[])
 	{
 	  is(log->file, "/var/log/knot/server.err", "log file matches");
 	} endskip;
-	
+
 	// Test 21: Load key dname
 	const char *sample_str = "key0.example.net";
 	knot_dname_t *sample = knot_dname_new_from_str(sample_str,
@@ -136,7 +136,7 @@ static int conf_tests_run(int argc, char *argv[])
 		ok(0, "TSIG key dname check - NO KEY FOUND");
 	}
 	knot_dname_free(&sample);
-	
+
 	} endskip;
 
 	// Deallocating config

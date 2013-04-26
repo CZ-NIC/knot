@@ -47,4 +47,3 @@ if [ $# -eq 0 ]; then
 else
 	rm -rf ${OUTS_DIR}
 fi
-

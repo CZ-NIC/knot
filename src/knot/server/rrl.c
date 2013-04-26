@@ -96,7 +96,7 @@ static uint8_t rrl_clsid(rrl_req_t *p)
 	if (ret == CLS_NORMAL && p->flags & KNOT_PF_WILDCARD) {
 		return CLS_WILDCARD;
 	}
-	
+
 	/* Check query type for spec. classes. */
 	if (p->qst) {
 		switch(p->qst->qtype) {
@@ -145,13 +145,13 @@ static int rrl_clsname(char *dst, size_t maxlen, uint8_t cls,
 		if (p->qst) dn = p->qst->qname;
 		break;
 	}
-	
+
 	if (dn) { /* Check used dname. */
 		assert(dn); /* Should be always set. */
 		n = knot_dname_name(dn);
 		nb = (int)knot_dname_size(dn);
 	}
-	
+
 	/* Write to wire */
 	if (nb > maxlen) return KNOT_ESPACE;
 	if (memcpy(dst, n, nb) == NULL) {
@@ -159,7 +159,7 @@ static int rrl_clsname(char *dst, size_t maxlen, uint8_t cls,
 		        __func__, n, nb);
 		return KNOT_ERROR;
 	}
-	
+
 	return nb;
 }
 
@@ -169,12 +169,12 @@ static int rrl_classify(char *dst, size_t maxlen, const sockaddr_t *a,
 	if (!dst || !p || !a || maxlen == 0) {
 		return KNOT_EINVAL;
 	}
-	
+
 	/* Class */
 	uint8_t cls = rrl_clsid(p);
 	*dst = cls;
 	int blklen = sizeof(cls);
-	
+
 	/* Address (in network byteorder, adjust masks). */
 	uint64_t nb = 0;
 	if (sockaddr_family(a) == AF_INET6) { /* Take the /56 prefix. */
@@ -193,13 +193,13 @@ static int rrl_classify(char *dst, size_t maxlen, const sockaddr_t *a,
 	if (len < 0) return len;
 	*nlen = len;
 	blklen += len;
-	
+
 	/* Seed. */
 	if (blklen + sizeof(seed) > maxlen) return KNOT_ESPACE;
 	if (memcpy(dst + blklen, (void*)&seed, sizeof(seed)) == 0) {
 		blklen += sizeof(seed);
 	}
-	
+
 	return blklen;
 }
 
@@ -229,7 +229,7 @@ static int find_free(rrl_table_t *t, unsigned i, uint32_t now)
 			return (b - t->arr) + (t->size - i);
 		}
 	}
-	
+
 	/* this happens if table is full... force vacate current elm */
 	dbg_rrl("%s: out of free buckets, freeing bucket %u\n", __func__, i);
 	return i;
@@ -272,7 +272,7 @@ static inline unsigned reduce_dist(rrl_table_t *t, unsigned id, unsigned d, unsi
 		}
 		--rd;
 	}
-	
+
 	assert(rd == 0); /* this happens with p=1/fact(HOP_LEN) */
 	*f = id;
 	d = 0; /* force vacate initial element */
@@ -290,7 +290,7 @@ static void rrl_log_state(const sockaddr_t *a, uint16_t flags, uint8_t cls)
 	if (flags & RRL_BF_ELIMIT) {
 		what = "enters";
 	}
-	
+
 	log_server_notice("Address '%s' %s rate-limiting (class '%s').\n",
 	                  saddr, what, rrl_clsstr(cls));
 #endif
@@ -301,7 +301,7 @@ rrl_table_t *rrl_create(size_t size)
 	if (size == 0) {
 		return NULL;
 	}
-	
+
 	const size_t tbl_len = sizeof(rrl_table_t) + size * sizeof(rrl_item_t);
 	rrl_table_t *t = malloc(tbl_len);
 	if (!t) return NULL;
@@ -331,16 +331,16 @@ int rrl_setlocks(rrl_table_t *rrl, unsigned granularity)
 	if (!rrl) return KNOT_EINVAL;
 	assert(!rrl->lk); /* Cannot change while locks are used. */
 	assert(granularity <= rrl->size / 10); /* Due to int. division err. */
-	
+
 	if (pthread_mutex_init(&rrl->ll, NULL) < 0) {
 		return KNOT_ENOMEM;
 	}
-	
+
 	/* Alloc new locks. */
 	rrl->lk = malloc(granularity * sizeof(pthread_mutex_t));
 	if (!rrl->lk) return KNOT_ENOMEM;
 	memset(rrl->lk, 0, granularity * sizeof(pthread_mutex_t));
-	
+
 	/* Initialize. */
 	for (size_t i = 0; i < granularity; ++i) {
 		if (pthread_mutex_init(rrl->lk + i, NULL) < 0) break;
@@ -357,7 +357,7 @@ int rrl_setlocks(rrl_table_t *rrl, unsigned granularity)
 		dbg_rrl("%s: failed to init locks\n", __func__);
 		return KNOT_ERROR;
 	}
-	
+
 	dbg_rrl("%s: set granularity to '%u'\n", __func__, granularity);
 	return KNOT_EOK;
 }
@@ -370,9 +370,9 @@ rrl_item_t* rrl_hash(rrl_table_t *t, const sockaddr_t *a, rrl_req_t *p,
 	if (len < 0) {
 		return NULL;
 	}
-	
+
 	uint32_t id = hash(buf, len) % t->size;
-	
+
 	/* Lock for lookup. */
 	pthread_mutex_lock(&t->ll);
 
@@ -388,13 +388,13 @@ rrl_item_t* rrl_hash(rrl_table_t *t, const sockaddr_t *a, rrl_req_t *p,
 	if (d > HOP_LEN) { /* not an exact match, find free element [f] */
 		d = find_free(t, id, stamp);
 	}
-	
+
 	/* Reduce distance to fit <id, id + HOP_LEN) */
 	unsigned f = (id + d) % t->size;
 	while (d >= HOP_LEN) {
 		d = reduce_dist(t, id, d, &f);
 	}
-	
+
 	/* Assign granular lock and unlock lookup. */
 	*lock = f % t->lk_count;
 	rrl_lock(t, *lock);
@@ -423,7 +423,7 @@ rrl_item_t* rrl_hash(rrl_table_t *t, const sockaddr_t *a, rrl_req_t *p,
 			dbg_rrl("%s: bucket '%4x' slow-start\n", __func__, id);
 		}
 	}
-	
+
 	return b;
 }
 
@@ -431,7 +431,7 @@ int rrl_query(rrl_table_t *rrl, const sockaddr_t *a, rrl_req_t *req,
               const knot_zone_t *zone)
 {
 	if (!rrl || !req || !a) return KNOT_EINVAL;
-	
+
 	/* Calculate hash and fetch */
 	int ret = KNOT_EOK;
 	int lock = -1;
@@ -442,7 +442,7 @@ int rrl_query(rrl_table_t *rrl, const sockaddr_t *a, rrl_req_t *req,
 		if (lock > -1) rrl_unlock(rrl, lock);
 		return KNOT_ERROR;
 	}
-	
+
 	/* Calculate rate for dT */
 	uint32_t dt = now - b->time;
 	if (dt > RRL_CAPACITY) {
@@ -459,7 +459,7 @@ int rrl_query(rrl_table_t *rrl, const sockaddr_t *a, rrl_req_t *req,
 			b->flags &= ~RRL_BF_ELIMIT;
 			rrl_log_state(a, b->flags, b->cls);
 		}
-	
+
 		/* Add new tokens. */
 		uint32_t dn = rrl->rate * dt;
 		if (b->flags & RRL_BF_SSTART) { /* Bucket in slow-start. */
@@ -472,7 +472,7 @@ int rrl_query(rrl_table_t *rrl, const sockaddr_t *a, rrl_req_t *req,
 			b->ntok = RRL_CAPACITY * rrl->rate;
 		}
 	}
-	
+
 	/* Last item taken. */
 	if (b->ntok == 1 && !(b->flags & RRL_BF_ELIMIT)) {
 		b->flags |= RRL_BF_ELIMIT;
@@ -485,7 +485,7 @@ int rrl_query(rrl_table_t *rrl, const sockaddr_t *a, rrl_req_t *req,
 	} else if (b->ntok == 0) {
 		ret = KNOT_ELIMIT;
 	}
-	
+
 	if (lock > -1) rrl_unlock(rrl, lock);
 	return ret;
 }
@@ -500,7 +500,7 @@ int rrl_destroy(rrl_table_t *rrl)
 		}
 		free(rrl->lk);
 	}
-	
+
 	free(rrl);
 	return KNOT_EOK;
 }
@@ -514,18 +514,18 @@ int rrl_reseed(rrl_table_t *rrl)
 			rrl_lock(rrl, i);
 		}
 	}
-	
+
 	memset(rrl->arr, 0, rrl->size * sizeof(rrl_item_t));
 	rrl->seed = (uint32_t)(tls_rand() * (double)UINT32_MAX);
 	dbg_rrl("%s: reseed to '%u'\n", __func__, rrl->seed);
-	
+
 	if (rrl->lk_count > 0) {
 		for (unsigned i = 0; i < rrl->lk_count; ++i) {
 			rrl_unlock(rrl, i);
 		}
 		pthread_mutex_unlock(&rrl->ll);
 	}
-	
+
 	return KNOT_EOK;
 }
 

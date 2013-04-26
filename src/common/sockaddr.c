@@ -57,7 +57,7 @@ int sockaddr_copy(sockaddr_t *dst, const sockaddr_t *src)
 	if (memcpy(dst, src, sizeof(sockaddr_t)) != NULL) {
 		return 0;
 	}
-	
+
 	return -1;
 }
 
@@ -104,7 +104,7 @@ int sockaddr_setprefix(sockaddr_t *dst, int prefix)
 	if (dst == NULL || prefix < 0) {
 		return -1;
 	}
-	
+
 	return dst->prefix = prefix;
 }
 

@@ -175,7 +175,7 @@ int xfr_task_free(knot_ns_xfr_t *rq);
  * \param rq XFR request,
  * \param to Destination address.
  * \param from Source address.
- * \return 
+ * \return
  */
 int xfr_task_setaddr(knot_ns_xfr_t *rq, sockaddr_t *to, sockaddr_t *from);
 
