@@ -778,7 +778,7 @@ int cmd_server(const char* lp, nsupdate_params_t *params)
 	DBG("%s: lp='%s'\n", __func__, lp);
 
 	/* Parse host. */
-	server_t *srv = parse_host(lp, DEFAULT_DNS_PORT);
+	server_t *srv = parse_host(lp, params->server->service);
 
 	/* Enqueue. */
 	if (!srv) return KNOT_ENOMEM;
