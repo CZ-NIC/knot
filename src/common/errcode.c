@@ -77,6 +77,7 @@ const error_table_t knot_error_msgs[] = {
 	/* Zone file loader errors. */
 	{FLOADER_EFSTAT, "Fstat error!"},
 	{FLOADER_EDIRECTORY, "Zone file is a directory!"},
+	{FLOADER_EWRITABLE, "Zone file is not writeable."},
 	{FLOADER_EEMPTY, "Empty zone file!"},
 	{FLOADER_EDEFAULTS, "Zone defaults processing error!"},
 	{FLOADER_EMMAP, "Mmap error!"},

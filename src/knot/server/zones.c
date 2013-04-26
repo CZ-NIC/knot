@@ -2607,9 +2607,7 @@ static int zones_dump_zone_text(knot_zone_contents_t *zone, const char *fname)
 	char *new_fname = NULL;
 	int fd = zones_open_free_filename(fname, &new_fname);
 	if (fd < 0) {
-		log_zone_warning("Failed to find filename for temporary "
-		                 "storage of the transferred zone.\n");
-		return KNOT_ERROR;
+		return FLOADER_EWRITABLE;
 	}
 
 	FILE *f = fdopen(fd, "w");

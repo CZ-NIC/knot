@@ -524,13 +524,15 @@ static int xfr_task_finalize(xfrworker_t *w, knot_ns_xfr_t *rq)
 		if (ret == KNOT_EOK) {
 			ret = knot_ns_switch_zone(ns, rq);
 			if (ret != KNOT_EOK) {
+				log_zone_error("%s %s\n", rq->msg, knot_strerror(ret));
 				log_zone_error("%s Failed to switch in-memory "
-				               "zone - %s\n",  rq->msg,
-				               knot_strerror(ret));
+				               "zone.\n", rq->msg);
 			}
 		} else {
-			log_zone_error("%s Failed to save transferred zone - %s\n",
+			log_zone_error("%s %s\n",
 			               rq->msg, knot_strerror(ret));
+			log_zone_error("%s Failed to save zonefile.\n",
+			               rq->msg);
 		}
 	} else if (rq->type == XFR_TYPE_IIN) {
 		knot_changesets_t *chs = (knot_changesets_t *)rq->data;
