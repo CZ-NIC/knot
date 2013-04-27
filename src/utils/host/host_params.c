@@ -205,7 +205,7 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 	uint32_t serial;
 
 	// Command line options processing.
-	while ((opt = getopt(argc, argv, "46aCdrsTvwc:t:R:W:")) != -1) {
+	while ((opt = getopt(argc, argv, "46adrsTvwc:t:R:W:")) != -1) {
 		switch (opt) {
 		case '4':
 			conf->ip = IP_4;
