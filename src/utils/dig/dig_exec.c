@@ -87,13 +87,14 @@ static knot_packet_t* create_query_packet(const query_t *query,
 	q.qname = knot_dname_new_from_str(query->owner, strlen(query->owner), 0);
 
 	if (q.qname == NULL) {
-		knot_dname_release(q.qname);
 		knot_packet_free(&packet);
 		return NULL;
 	}
 
 	// Set packet question.
 	if (knot_query_set_question(packet, &q) != KNOT_EOK) {
+		// It's necessary to release q.qname by hand as it isn't
+		// connected with the packet yet.
 		knot_dname_release(q.qname);
 		knot_packet_free(&packet);
 		return NULL;
@@ -112,7 +113,6 @@ static knot_packet_t* create_query_packet(const query_t *query,
 		                                   query->class_num,
 		                                   0);
 		if (soa == NULL) {
-			knot_dname_release(q.qname);
 			knot_packet_free(&packet);
 			return NULL;
 		}
@@ -122,7 +122,6 @@ static knot_packet_t* create_query_packet(const query_t *query,
 		                                    sizeof(wire), sizeof(wire));
 		if (ret != KNOT_EOK) {
 			free(soa);
-			knot_dname_release(q.qname);
 			knot_packet_free(&packet);
 			return NULL;
 		}
@@ -134,7 +133,6 @@ static knot_packet_t* create_query_packet(const query_t *query,
 		ret = knot_query_add_rrset_authority(packet, soa);
 		if (ret != KNOT_EOK) {
 			free(soa);
-			knot_dname_release(q.qname);
 			knot_packet_free(&packet);
 			return NULL;
 		}
@@ -147,7 +145,6 @@ static knot_packet_t* create_query_packet(const query_t *query,
 		if (opt_rr == NULL) {
 			ERR("can't create EDNS section\n");
 			knot_edns_free(&opt_rr);
-			knot_dname_release(q.qname);
 			knot_packet_free(&packet);
 			return NULL;
 		}
@@ -158,7 +155,6 @@ static knot_packet_t* create_query_packet(const query_t *query,
 		if (knot_response_add_opt(packet, opt_rr, 0, 0) != KNOT_EOK) {
 			ERR("can't set EDNS section\n");
 			knot_edns_free(&opt_rr);
-			knot_dname_release(q.qname);
 			knot_packet_free(&packet);
 			return NULL;
 		}
@@ -175,7 +171,6 @@ static knot_packet_t* create_query_packet(const query_t *query,
 
 				ERR("can't set NSID query\n");
 				knot_edns_free(&opt_rr);
-				knot_dname_release(q.qname);
 				knot_packet_free(&packet);
 				return NULL;
 			}
@@ -187,7 +182,6 @@ static knot_packet_t* create_query_packet(const query_t *query,
 	// Create wire query.
 	if (knot_packet_to_wire(packet, data, data_len) != KNOT_EOK) {
 		ERR("can't create wire query packet\n");
-		knot_dname_release(q.qname);
 		knot_packet_free(&packet);
 		return NULL;
 	}
@@ -199,7 +193,6 @@ static knot_packet_t* create_query_packet(const query_t *query,
 		if (ret != KNOT_EOK) {
 			ERR("failed to sign query packet (%s)\n",
 			    knot_strerror(ret));
-			knot_dname_release(q.qname);
 			knot_packet_free(&packet);
 			return NULL;
 		}
