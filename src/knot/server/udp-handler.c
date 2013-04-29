@@ -90,7 +90,8 @@ static size_t udp_rrl_reject(const knot_nameserver_t *ns,
 }
 
 int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
-	       sockaddr_t* addr, knot_nameserver_t *ns, rrl_table_t *rrl, unsigned *slip)
+               sockaddr_t* addr, knot_nameserver_t *ns, rrl_table_t *rrl,
+               unsigned *slip)
 {
 #ifdef DEBUG_ENABLE_BRIEF
 	char strfrom[SOCKADDR_STRLEN];
@@ -265,17 +266,35 @@ static int udp_recvfrom_handle(server_t *s, void *d, unsigned *slip)
 {
 	struct udp_recvfrom *rq = (struct udp_recvfrom *)d;
 
-	/* Handle received pkt. */
-	return udp_handle(rq->fd, rq->buf, rq->buflen, &rq->iov.iov_len, &rq->addr,
-	                  s->nameserver, s->rrl, slip);
+	/* Process received pkt. */
+	rq->addr.len = rq->msg.msg_namelen;
+	int ret = udp_handle(rq->fd, rq->buf, rq->buflen, &rq->iov.iov_len, &rq->addr,
+	                     s->nameserver, s->rrl, slip);
+	if (ret != KNOT_EOK) {
+		rq->iov.iov_len = 0;
+	}
+
+	return ret;
 }
 
 static int udp_recvfrom_send(void *d)
 {
 	struct udp_recvfrom *rq = (struct udp_recvfrom *)d;
-	int rc = sendmsg(rq->fd, &rq->msg, 0);
+	int rc = 0;
+	if (rq->iov.iov_len > 0) {
+		rc = sendmsg(rq->fd, &rq->msg, 0);
+	}
+
+	/* Reset buffer size and address len. */
 	rq->iov.iov_len = SOCKET_MTU_SZ;
-	if (rc > 1) return 1; /* Return number of packets sent. */
+	sockaddr_prep(&rq->addr);
+	rq->msg.msg_namelen = rq->addr.len;
+
+	/* Return number of packets sent. */
+	if (rc > 1) {
+		return 1;
+	}
+
 	return 0;
 }
 
@@ -396,12 +415,15 @@ static int udp_recvmmsg_handle(server_t *s, void *d, unsigned *slip)
 	for (unsigned i = 0; i < rq->rcvd; ++i) {
 		struct iovec *cvec = rq->msgs[i].msg_hdr.msg_iov;
 		size_t rlen = 0;
+		rq->addrs[i].len = rq->msgs[i].msg_hdr.msg_namelen;
 		ret = udp_handle(rq->fd, cvec->iov_base, rq->msgs[i].msg_len, &rlen,
 		                 rq->addrs + i, s->nameserver, s->rrl, slip);
-		if (ret != KNOT_EOK) rlen = 0;
+		if (ret != KNOT_EOK) { /* Do not send. */
+			rlen = 0;
+		}
 		cvec->iov_len = rlen;
 	}
-	return KNOT_EOK; /* Do not send. */
+	return KNOT_EOK;
 }
 
 static int udp_recvmmsg_send(void *d)
@@ -409,8 +431,12 @@ static int udp_recvmmsg_send(void *d)
 	struct udp_recvmmsg *rq = (struct udp_recvmmsg *)d;
 	int rc = _send_mmsg(rq->fd, rq->addrs, rq->msgs, rq->rcvd);
 	for (unsigned i = 0; i < rq->rcvd; ++i) {
+		/* Reset buffer size and address len. */
 		struct iovec *cvec = rq->msgs[i].msg_hdr.msg_iov;
 		cvec->iov_len = SOCKET_MTU_SZ;
+
+		sockaddr_prep(rq->addrs + i);
+		rq->msgs[i].msg_hdr.msg_namelen = rq->addrs[i].len;
 	}
 	return rc;
 }
@@ -497,9 +523,8 @@ int udp_writer(iohandler_t *h, dthread_t *thread)
 	void *rq = NULL;
 	unsigned slip = 0;
 	while ((rq = queue_remove(&ctx->tx)) != NULL) {
-		if (_udp_handle(h->server, rq, &slip) == KNOT_EOK) {
-			_udp_send(rq);
-		}
+		_udp_handle(h->server, rq, &slip);
+		_udp_send(rq);
 		queue_insert(&ctx->rx, rq); /* Return to readq. */
 	}
 
