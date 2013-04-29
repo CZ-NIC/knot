@@ -633,9 +633,13 @@ static int cmd_start(int argc, char *argv[], unsigned flags)
 	/* Execute command */
 	if (has_flag(flags, F_INTERACTIVE)) {
 		log_server_info("Running in interactive mode.\n");
-		fflush(stderr);
-		fflush(stdout);
+	} else {
+		log_server_info("Starting as daemon, 'stdout' and 'stderr' log "
+		                "sinks will be closed.\n");
 	}
+	fflush(stderr);
+	fflush(stdout);
+
 	if ((rc = cmd_exec(args, args_c)) < 0) {
 		pid_remove(pidfile);
 		rc = 1;
