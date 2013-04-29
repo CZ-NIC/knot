@@ -344,7 +344,7 @@ static size_t ecdsa_sign_size(const knot_dnssec_key_t *key)
  * \brief Finish the signing and write out the ECDSA signature.
  * \see rsa_sign_write
  */
-static int ecdsa_sign_write(knot_dnssec_sign_context_t *context,
+static int ecdsa_sign_write(const knot_dnssec_sign_context_t *context,
 			    uint8_t *signature)
 {
 	assert(context);
