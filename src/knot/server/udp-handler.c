@@ -515,6 +515,7 @@ void udp_free_ctx(void *ctx)
 	for (unsigned i = 0; i < _ctx->rqlen; ++i) {
 		_udp_deinit(_ctx->rqs[i]);
 	}
+	free(_ctx);
 }
 
 int udp_writer(iohandler_t *h, dthread_t *thread)

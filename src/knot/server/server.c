@@ -386,11 +386,14 @@ int server_free_handler(iohandler_t *h)
 	if (!h || !h->server) return KNOT_EINVAL;
 	if (h->server->state & ServerRunning) {
 		dt_stop(h->unit);
-		if (h->dtor) h->dtor(h);
 		dt_join(h->unit);
 	}
 
 	/* Destroy dispatcher and worker */
+	if (h->dtor) {
+		h->dtor(h->data);
+		h->data = NULL;
+	}
 	dt_delete(&h->unit);
 	free(h->state);
 	memset(h, 0, sizeof(iohandler_t));
