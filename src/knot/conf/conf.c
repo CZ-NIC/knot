@@ -922,9 +922,7 @@ void conf_free_log(conf_log_t *log)
 		return;
 	}
 
-	if (log->file) {
-		free(log->file);
-	}
+	free(log->file);
 
 	/* Free loglevel mapping. */
 	node *n = 0, *nxt = 0;

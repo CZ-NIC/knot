@@ -423,9 +423,7 @@ void knot_edns_free_options(knot_opt_rr_t *opt_rr)
 		/* Free the option data, if any. */
 		for (int i = 0; i < opt_rr->option_count; i++) {
 			knot_opt_option_t *option = &(opt_rr->options[i]);
-			if (option->data != NULL) {
-				free(option->data);
-			}
+			free(option->data);
 		}
 		free(opt_rr->options);
 	}

@@ -257,7 +257,5 @@ int knot_nsec3_sha1(const knot_nsec3_params_t *params,
 
 void knot_nsec3_params_free(knot_nsec3_params_t *params)
 {
-	if (params->salt != NULL) {
-		free(params->salt);
-	}
+	free(params->salt);
 }

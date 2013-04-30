@@ -200,8 +200,7 @@ static int key_param_string(const void *save_to, char *value)
 {
 	char **parameter = (char **)save_to;
 
-	if (*parameter)
-		free(*parameter);
+	free(*parameter);
 	*parameter = strdup(value);
 
 	return *parameter ? KNOT_EOK : KNOT_ENOMEM;
@@ -353,8 +352,7 @@ int knot_load_key_params(const char *filename, knot_key_params_t *key_params)
 		if (result != KNOT_EOK)
 			break;
 	}
-	if (buffer)
-		free(buffer);
+	free(buffer);
 
 	fclose(fp);
 	free(public_key);
@@ -424,12 +422,6 @@ int knot_copy_key_params(const knot_key_params_t *src, knot_key_params_t *dst)
 	return KNOT_EOK;
 }
 
-static void free_string_if_set(char *string)
-{
-	if (string)
-		free(string);
-}
-
 /*!
  * \brief Frees the key parameters.
  */
@@ -440,25 +432,25 @@ int knot_free_key_params(knot_key_params_t *key_params)
 	if (key_params->name)
 		knot_dname_release(key_params->name);
 
-	free_string_if_set(key_params->secret);
+	free(key_params->secret);
 
-	free_string_if_set(key_params->modulus);
-	free_string_if_set(key_params->public_exponent);
-	free_string_if_set(key_params->private_exponent);
-	free_string_if_set(key_params->prime_one);
-	free_string_if_set(key_params->prime_two);
-	free_string_if_set(key_params->exponent_one);
-	free_string_if_set(key_params->exponent_two);
-	free_string_if_set(key_params->coefficient);
+	free(key_params->modulus);
+	free(key_params->public_exponent);
+	free(key_params->private_exponent);
+	free(key_params->prime_one);
+	free(key_params->prime_two);
+	free(key_params->exponent_one);
+	free(key_params->exponent_two);
+	free(key_params->coefficient);
 
-	free_string_if_set(key_params->prime);
-	free_string_if_set(key_params->generator);
-	free_string_if_set(key_params->subprime);
-	free_string_if_set(key_params->base);
-	free_string_if_set(key_params->private_value);
-	free_string_if_set(key_params->public_value);
+	free(key_params->prime);
+	free(key_params->generator);
+	free(key_params->subprime);
+	free(key_params->base);
+	free(key_params->private_value);
+	free(key_params->public_value);
 
-	free_string_if_set(key_params->private_key);
+	free(key_params->private_key);
 
 	memset(key_params, '\0', sizeof(knot_key_params_t));
 

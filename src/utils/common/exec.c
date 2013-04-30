@@ -571,9 +571,7 @@ void free_sign_context(sign_context_t *ctx)
 		knot_dnssec_key_free(&ctx->dnssec_key);
 	}
 
-	if (ctx->digest) {
-		free(ctx->digest);
-	}
+	free(ctx->digest);
 
 	memset(ctx, '\0', sizeof(sign_context_t));
 }

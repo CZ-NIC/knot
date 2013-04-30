@@ -643,9 +643,7 @@ dbg_zone_exec_verb(
 		char *n = knot_dname_to_str(name);
 		dbg_zone("Error while encoding hashed name %s to base32.\n", n);
 		free(n);
-		if (name_b32 != NULL) {
-			free(name_b32);
-		}
+		free(name_b32);
 		return KNOT_ECRYPTO;
 	}
 

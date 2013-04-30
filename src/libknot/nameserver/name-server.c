@@ -448,9 +448,7 @@ dbg_ns_exec_verb(
 
 			++i;
 		}
-		if (rrsets != NULL) {
-			free(rrsets);
-		}
+		free(rrsets);
 		break;
 	}
 	case KNOT_RRTYPE_RRSIG: {
@@ -2645,9 +2643,7 @@ rrsigs:
 
 		++i;
 	}
-	if (rrsets != NULL) {
-		free(rrsets);
-	}
+	free(rrsets);
 
 	/*! \todo maybe distinguish some error codes. */
 	//params->ret = (ret == 0) ? KNOT_EOK : KNOT_ERROR;

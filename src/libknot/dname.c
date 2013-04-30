@@ -1113,13 +1113,9 @@ void knot_dname_free(knot_dname_t **dname)
 		return;
 	}
 
-	if ((*dname)->name != NULL) {
-		free((*dname)->name);
-	}
+	free((*dname)->name);
 
-	if((*dname)->labels != NULL) {
-		free((*dname)->labels);
-	}
+	free((*dname)->labels);
 
 
 //	slab_free(*dname);
