@@ -568,7 +568,7 @@ static int destroy_digest_context(EVP_MD_CTX **context)
  *
  * \return Error code, always KNOT_EOK.
  */
-static int clean_algorithm_data(knot_dnssec_key_data_t  *data)
+static int clean_algorithm_data(knot_dnssec_key_data_t *data)
 {
 	assert(data);
 
