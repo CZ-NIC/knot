@@ -244,11 +244,11 @@ uint32_t knot_rrset_ttl(const knot_rrset_t *rrset);
 uint8_t *knot_rrset_get_rdata(const knot_rrset_t *rrset, size_t rdata_pos);
 
 /*!
- * \brief Returns the TTL of the RRSet.
+ * \brief Returns the count of RRs in a given RRSet.
  *
- * \param rrset RRSet to get the TTL of.
+ * \param rrset RRSet to get the RRs count from.
  *
- * \return TTL of the given RRSet.
+ * \return Count of the RRs in a given RRSet.
  */
 uint16_t knot_rrset_rdata_rr_count(const knot_rrset_t *rrset);
 
