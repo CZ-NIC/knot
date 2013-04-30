@@ -374,14 +374,17 @@ int server_init_handler(iohandler_t * h, server_t *s, dt_unit_t *tu, void *d)
 
 int server_free_handler(iohandler_t *h)
 {
-	/* Wait for dispatcher to finish */
-	if (!h || !h->server) return KNOT_EINVAL;
-	if (h->server->state & ServerRunning) {
+	if (!h || !h->server) {
+		return KNOT_EINVAL;
+	}
+
+	/* Wait for threads to finish */
+	if (h->unit) {
 		dt_stop(h->unit);
 		dt_join(h->unit);
 	}
 
-	/* Destroy dispatcher and worker */
+	/* Destroy worker context. */
 	if (h->dtor) {
 		h->dtor(h->data);
 		h->data = NULL;
@@ -510,7 +513,7 @@ int server_reload(server_t *server, const char *cf)
 
 void server_stop(server_t *server)
 {
-	dbg_server("server: stopping server\n");
+	log_server_info("Stopping server...\n");
 
 	/* Send termination event. */
 	evsched_schedule_term(server->sched, 0);
@@ -518,13 +521,8 @@ void server_stop(server_t *server)
 	/* Interrupt XFR handler execution. */
 	xfr_stop(server->xfr);
 
-	/* Notify servers to stop. */
-	log_server_info("Stopping server...\n");
+	/* Clear 'running' flag. */
 	server->state &= ~ServerRunning;
-	iohandler_t *h = server->h;
-	for (unsigned i = 0; i < IO_COUNT; ++i) {
-		dt_stop(h[i].unit);
-	}
 }
 
 void server_destroy(server_t **server)
