@@ -297,23 +297,15 @@ static int server_bind_sockets(server_t *s)
 	synchronize_rcu();
 
 	/* Notify handlers about removed ifaces. */
-	dt_unit_t *tu = s->h[IO_UDP].unit;
-	for (unsigned j = 0; j < tu->size; ++j) {
+	for (unsigned i = IO_UDP; i <= IO_TCP; ++i) {
+		dt_unit_t *tu = s->h[i].unit;
 		ref_retain((ref_t *)newlist);
-		s->h[IO_UDP].state[j].s |= ServerReload;
+		s->h[i].state[0].s |= ServerReload;
 		if (s->state & ServerRunning) {
-			dt_activate(tu->threads[j]);
-			dt_signalize(tu->threads[j], SIGALRM);
+			dt_activate(tu->threads[0]);
+			dt_signalize(tu->threads[0], SIGALRM);
 		}
-
 	}
-	s->h[IO_TCP].state[0].s |= ServerReload;
-	if (s->state & ServerRunning) {
-		dthread_t *m_thr = s->h[IO_TCP].unit->threads[0];
-		dt_activate(m_thr);
-		dt_signalize(m_thr, SIGALRM);
-	}
-	ref_retain((ref_t *)newlist);
 
 	ref_release(&oldlist->ref);
 
