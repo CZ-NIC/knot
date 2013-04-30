@@ -769,7 +769,9 @@ int cmd_zone(const char* lp, nsupdate_params_t *params)
 		return KNOT_EPARSEFAIL;
 	}
 
+	free(params->zone);
 	params->zone = strndup(lp, len);
+
 	return KNOT_EOK;
 }
 

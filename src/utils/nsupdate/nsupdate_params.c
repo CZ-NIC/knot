@@ -239,7 +239,7 @@ int nsupdate_set_origin(nsupdate_params_t *params, const char *origin)
 	free(fqdn);
 
 	if (ret == KNOT_EOK) {
-		if (params->zone) free(params->zone);
+		free(params->zone);
 		params->zone = strdup(origin);
 	} else {
 		ERR("failed to set default origin, %s\n", knot_strerror(ret));
