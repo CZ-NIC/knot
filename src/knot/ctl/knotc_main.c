@@ -536,19 +536,11 @@ int main(int argc, char **argv)
 		/* Fill defaults. */
 		if (!r_addr) r_addr = "127.0.0.1";
 		if (r_port < 0) r_port =  REMOTE_DPORT;
+	}
 
-		/* Create empty key. */
-		if (r_key.name) {
-			ctl_if->key = malloc(sizeof(knot_tsig_key_t));
-			if (ctl_if->key) {
-				memcpy(ctl_if->key, &r_key, sizeof(knot_tsig_key_t));
-			}
-		}
-	} else {
-		if (r_key.name) {
-			knot_tsig_key_free(ctl_if->key);
-			ctl_if->key = &r_key;
-		}
+	/* Install the key. */
+	if (r_key.name) {
+		ctl_if->key = &r_key;
 	}
 
 	/* Override from command line. */
@@ -572,7 +564,7 @@ int main(int argc, char **argv)
 	int rc = cmd->cb(argc - optind - 1, argv + optind + 1, flags);
 
 	/* Finish */
-	knot_tsig_key_free(&r_key); /* Not cleaned by config deinit. */
+	knot_tsig_key_free(&r_key);
 	log_close();
 	free(config_fn);
 	free(default_config);
