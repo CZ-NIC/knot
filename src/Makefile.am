@@ -105,6 +105,8 @@ unittests_SOURCES =				\
 	tests/common/fdset_tests.h		\
 	tests/common/skiplist_tests.c		\
 	tests/common/skiplist_tests.h		\
+	tests/common/hattrie_tests.c		\
+	tests/common/hattrie_tests.h		\
 	tests/common/slab_tests.c		\
 	tests/common/slab_tests.h		\
 	tests/knot/conf_tests.c			\

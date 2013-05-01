@@ -209,6 +209,8 @@ src/tests/common/events_tests.c
 src/tests/common/events_tests.h
 src/tests/common/fdset_tests.c
 src/tests/common/fdset_tests.h
+src/tests/common/hattrie_tests.c
+src/tests/common/hattrie_tests.h
 src/tests/common/skiplist_tests.c
 src/tests/common/skiplist_tests.h
 src/tests/common/slab_tests.c
