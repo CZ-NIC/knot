@@ -127,30 +127,31 @@ const knot_zone_t *knot_zonedb_find_zone_for_name(knot_zonedb_t *db,
 		return NULL;
 	}
 
-	knot_dname_t *cd = knot_dname_deep_copy(dname);
-	value_t *found = NULL;
+	knot_zone_t *zone = NULL;
+	const char *name = (const char*)dname->name;
+	size_t len = dname->size;
 
-	found = hattrie_tryget(db->zone_tree, (const char*)cd->name, cd->size);
-	while (found == NULL && knot_dname_label_count(cd) > 0) {
-		knot_dname_left_chop_no_copy(cd);
-		found = hattrie_tryget(db->zone_tree, (const char*)cd->name, cd->size);
+	while (len > 0) {
+		value_t *found = hattrie_tryget(db->zone_tree, name, len);
+		if (found) {
+			zone = (knot_zone_t *)*found;
+			break;
+		} else {
+			/* Take label len + 1 and skip it.
+			 * ..from \x04lake\x03com\x00
+			 * ..to           \x03com\x00
+			 */
+			uint8_t to_chop = name[0] + 1;
+			len -= to_chop;
+			name += to_chop;
+		}
 	}
-
-	knot_zone_t *zone = (found) ? (knot_zone_t *)*found : NULL;
 
 dbg_zonedb_exec(
-	char *name = knot_dname_to_str(dname);
-	dbg_zonedb("Found zone for name %s: %p\n", name, zone);
-	free(name);
+	char *zname = knot_dname_to_str(dname);
+	dbg_zonedb("Found zone for name %s: %p\n", zname, zone);
+	free(zname);
 );
-	if (zone != NULL && zone->contents != NULL
-	    && knot_dname_compare(zone->contents->apex->owner, dname) != 0
-	    && !knot_dname_is_subdomain(dname, zone->contents->apex->owner)) {
-		zone = NULL;
-	}
-
-	knot_dname_free(&cd);
-
 	return zone;
 }
 
