@@ -62,6 +62,36 @@
 /* Mirror mode (no answering). */
 /* #define MIRROR_MODE 1 */
 
+/* PPS measurement. */
+/* #define MEASURE_PPS 1 */
+
+/* PPS measurement */
+#ifdef MEASURE_PPS
+
+/* Not thread-safe, used only for RX thread. */
+static struct timeval __pps_t0, __pps_t1;
+volatile static unsigned __pps_rx = 0;
+static inline void udp_pps_begin()
+{
+	gettimeofday(&__pps_t0, NULL);
+}
+
+static inline void udp_pps_sample(unsigned n)
+{
+	__pps_rx += n;
+	gettimeofday(&__pps_t1, NULL);
+	if (time_diff(&__pps_t0, &__pps_t1) >= 1000.0) {
+		unsigned pps = __pps_rx;
+		memcpy(&__pps_t0, &__pps_t1, sizeof(struct timeval));
+		__pps_rx = 0;
+		log_server_info("RX rate %u p/s.\n", pps);
+	}
+}
+#else
+static inline void udp_pps_begin() {}
+static inline void udp_pps_sample(unsigned n) {}
+#endif
+
 /*! \brief RRL reject procedure. */
 static size_t udp_rrl_reject(const knot_nameserver_t *ns,
                              const knot_packet_t *packet,
@@ -559,6 +589,8 @@ int udp_reader(iohandler_t *h, dthread_t *thread)
 	int minfd = 0, maxfd = 0;
 	int rcvd = 0;
 
+	udp_pps_begin();
+
 	/* Loop until all data is read. */
 	for (;;) {
 
@@ -602,6 +634,7 @@ int udp_reader(iohandler_t *h, dthread_t *thread)
 			if (FD_ISSET(fd, &rfds)) {
 				while ((rcvd = _udp_recv(fd, rq)) > 0) {
 					queue_insert(&ctx->tx, rq);
+					udp_pps_sample(rcvd);
 					rq = queue_remove(&ctx->rx);
 				}
 			}
