@@ -733,6 +733,17 @@ size_t knot_dnssec_sign_size(knot_dnssec_key_t *key)
 }
 
 /*!
+ * \brief Get DNSSEC key used by given signing context.
+ */
+const knot_dnssec_key_t *knot_dnssec_sign_key(knot_dnssec_sign_context_t *context)
+{
+	if (!context)
+		return NULL;
+
+	return context->key;
+}
+
+/*!
  * \brief Add data into DNSSEC signature.
  */
 int knot_dnssec_sign_add(knot_dnssec_sign_context_t *context,
