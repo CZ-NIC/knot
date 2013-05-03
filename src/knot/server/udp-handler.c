@@ -56,7 +56,7 @@
 
 /* FD_COPY macro compat. */
 #ifndef FD_COPY
- #define FD_COPY(dest,src) memcpy((dest), (src), sizeof(fd_set))
+#define FD_COPY(src, dest) memcpy((dest), (src), sizeof(fd_set))
 #endif
 
 /* Mirror mode (no answering). */
@@ -623,7 +623,7 @@ int udp_reader(iohandler_t *h, dthread_t *thread)
 
 		/* Wait for events. */
 		fd_set rfds;
-		FD_COPY(&rfds, &fds);
+		FD_COPY(&fds, &rfds);
 		int nfds = select(maxfd + 1, &rfds, NULL, NULL, NULL);
 		if (nfds <= 0) {
 			if (errno == EINTR) continue;
