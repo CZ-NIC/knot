@@ -259,6 +259,8 @@ libknots_la_SOURCES =				\
 	common/getline.c			\
 	common/log.c				\
 	common/log.h				\
+	common/mempool.c			\
+	common/mempool.h			\
 	common/hattrie/ahtable.c		\
 	common/hattrie/ahtable.h		\
 	common/hattrie/hat-trie.c		\

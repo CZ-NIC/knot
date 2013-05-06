@@ -71,6 +71,8 @@ src/common/log.c
 src/common/log.h
 src/common/mempattern.c
 src/common/mempattern.h
+src/common/mempool.c
+src/common/mempool.h
 src/common/print.c
 src/common/print.h
 src/common/prng.c
