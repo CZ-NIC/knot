@@ -52,8 +52,20 @@ struct hattrie_t_
 {
     node_ptr root; // root node
     size_t m;      // number of stored keys
+    unsigned bsize; // bucket size
     slab_cache_t slab; // trie-node allocator
 };
+
+/* Create an empty trie node. */
+static trie_node_t* alloc_empty_node(hattrie_t* T)
+{
+    trie_node_t* node = slab_cache_alloc(&T->slab);
+    node->flag = NODE_TYPE_TRIE;
+    node->val  = 0;
+
+    memset(node->xs, 0, sizeof(node_ptr) * NODE_CHILDS);
+    return node;
+}
 
 /* Create a new trie node with all pointer pointing to the given child (which
  * can be NULL). */
@@ -75,7 +87,7 @@ static node_ptr hattrie_consume_ns(node_ptr **s, size_t *sp, size_t slen,
 
     node_ptr *bs = *s;
     node_ptr node = bs[*sp].t->xs[(unsigned char) **k];
-    while (*node.flag & NODE_TYPE_TRIE && *l > brk) {
+    while (node.flag && *node.flag & NODE_TYPE_TRIE && *l > brk) {
         ++*k;
         --*l;
         /* build node stack if slen > 0 */
@@ -180,6 +192,11 @@ static node_ptr hattrie_find_ns(node_ptr **s, size_t *sp, size_t slen,
 
     node_ptr node = hattrie_consume_ns(s, sp, slen, key, len, 1);
 
+    /* using pure trie and couldn't find the key, return stack top */
+    if (node.flag == NULL) {
+        node = (*s)[*sp];
+    }
+
     /* if the trie node consumes value, use it */
     if (*node.flag & NODE_TYPE_TRIE) {
         if (!(node.t->flag & NODE_HAS_VAL)) {
@@ -213,52 +230,74 @@ static inline value_t hattrie_setval(value_t v) {
 static void hattrie_initroot(hattrie_t *T)
 {
     node_ptr node;
-    node.b = ahtable_create();
-    node.b->flag = NODE_TYPE_HYBRID_BUCKET;
-    node.b->c0 = 0x00;
-    node.b->c1 = TRIE_MAXCHAR;
-    T->root.t = alloc_trie_node(T, node);
+    if (T->bsize > 0) {
+        node.b = ahtable_create();
+        node.b->flag = NODE_TYPE_HYBRID_BUCKET;
+        node.b->c0 = 0x00;
+        node.b->c1 = TRIE_MAXCHAR;
+        T->root.t = alloc_trie_node(T, node);
+    } else {
+        T->root.t = alloc_empty_node(T);
+    }
 }
 
-hattrie_t* hattrie_create()
-{
-    hattrie_t* T = malloc(sizeof(hattrie_t));
-    memset(T, 0, sizeof(hattrie_t));
-    slab_cache_init(&T->slab, sizeof(trie_node_t));
-
-    hattrie_initroot(T);
-    return T;
-}
-
-
-static void hattrie_free_node(node_ptr node, bool free_nodes)
+/* Free hat-trie nodes recursively. */
+static void hattrie_free_node(node_ptr node)
 {
     if (*node.flag & NODE_TYPE_TRIE) {
         size_t i;
         for (i = 0; i < NODE_CHILDS; ++i) {
-            if (i > 0 && node.t->xs[i].t == node.t->xs[i - 1].t) continue;
+            if (i > 0 && node.t->xs[i].t && node.t->xs[i].t == node.t->xs[i - 1].t)
+                continue;
 
             /* XXX: recursion might not be the best choice here. It is possible
              * to build a very deep trie. */
-            if (node.t->xs[i].t) hattrie_free_node(node.t->xs[i], free_nodes);
+            if (node.t->xs[i].t) hattrie_free_node(node.t->xs[i]);
         }
-        if (free_nodes) {
-            slab_free(node.t);
-        }
+
     }
     else {
         ahtable_free(node.b);
     }
 }
 
+/* Initialize hat-trie. */
+static void hattrie_init(hattrie_t * T, unsigned bucket_size)
+{
+    memset(T, 0, sizeof(hattrie_t));
+    slab_cache_init(&T->slab, sizeof(trie_node_t));
+
+    T->bsize = bucket_size;
+    hattrie_initroot(T);
+}
+
+/* Deinitialize hat-trie. */
+static void hattrie_deinit(hattrie_t * T)
+{
+    if (T->bsize > 0) {
+        hattrie_free_node(T->root);
+    }
+    slab_cache_destroy(&T->slab);
+}
+
+hattrie_t* hattrie_create()
+{
+    return hattrie_create_n(TRIE_BUCKET_SIZE);
+}
+
+hattrie_t* hattrie_create_n(unsigned bucket_size)
+{
+    hattrie_t* T = malloc(sizeof(hattrie_t));
+    hattrie_init(T, bucket_size);
+    return T;
+}
 
 void hattrie_free(hattrie_t* T)
 {
     if (T == NULL) {
         return;
     }
-    hattrie_free_node(T->root, false);
-    slab_cache_destroy(&T->slab);
+    hattrie_deinit(T);
     free(T);
 }
 
@@ -267,14 +306,14 @@ void hattrie_clear(hattrie_t* T)
     if (T == NULL) {
         return;
     }
-    hattrie_free_node(T->root, false);
-    hattrie_initroot(T);
-    T->m = 0;
+
+    hattrie_deinit(T);
+    hattrie_init(T, T->bsize);
 }
 
 hattrie_t* hattrie_dup(const hattrie_t* T, value_t (*nval)(value_t))
 {
-    hattrie_t *N = hattrie_create();
+    hattrie_t *N = hattrie_create_n(T->bsize);
 
     /* assignment */
     if (!nval) nval = hattrie_setval;
@@ -536,6 +575,19 @@ value_t* hattrie_get(hattrie_t* T, const char* key, size_t len)
     node_ptr node = hattrie_consume(&parent, &key, &len, 0);
     assert(*parent.flag & NODE_TYPE_TRIE);
 
+    /* key wasn't consumed and using pure tries */
+    if (T->bsize == 0) {
+        node.t = parent.t;
+        while (len > 0) {
+            node.t->xs[(unsigned char) *key].t = alloc_empty_node(T);
+            node = node.t->xs[(unsigned char) *key];
+            ++key;
+            --len;
+        }
+
+        return hattrie_useval(T, node);
+    }
+
     /* if the key has been consumed on a trie node, use its value */
     if (len == 0) {
         if (*node.flag & NODE_TYPE_TRIE) {
@@ -546,9 +598,8 @@ value_t* hattrie_get(hattrie_t* T, const char* key, size_t len)
         }
     }
 
-
     /* preemptively split the bucket if it is full */
-    while (ahtable_size(node.b) >= TRIE_BUCKET_SIZE) {
+    while (ahtable_size(node.b) >= T->bsize) {
         hattrie_split(T, parent, node);
 
         /* after the split, the node pointer is invalidated, so we search from
