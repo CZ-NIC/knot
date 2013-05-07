@@ -327,9 +327,9 @@ int main(int argc, char **argv)
 					"to %s port %d.\n",
 					ctl_if->address, ctl_if->port);
 			remote = remote_bind(ctl_if);
-		} else {
-			remote = evqueue()->fds[EVQUEUE_READFD];
 		}
+		if (remote < 0)
+			remote = evqueue()->fds[EVQUEUE_READFD];
 
 
 		/* Run event loop. */
