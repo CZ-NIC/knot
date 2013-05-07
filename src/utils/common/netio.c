@@ -431,6 +431,7 @@ void net_close(net_t *net)
 	}
 
 	close(net->sockfd);
+	net->sockfd = -1;
 }
 
 void net_clean(net_t *net)
