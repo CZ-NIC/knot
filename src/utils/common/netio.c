@@ -24,6 +24,9 @@
 #include <netinet/in.h>			// ntohl (BSD)
 #include <arpa/inet.h>			// inet_ntop
 #include <unistd.h>			// close
+#ifdef HAVE_SYS_UIO_H			// struct iovec (OpenBSD)
+#include <sys/uio.h>
+#endif // HAVE_SYS_UIO_H
 
 #include "utils/common/msg.h"		// WARN
 #include "common/descriptor.h"		// KNOT_CLASS_IN
@@ -293,17 +296,21 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 	}
 
 	if (net->socktype == SOCK_STREAM) {
+		struct iovec iov[2];
+
+		// Leading packet length bytes.
 		uint16_t pktsize = htons(buf_len);
 
-		// Add leading length bytes.
-		if (send(net->sockfd, &pktsize, sizeof(pktsize), 0) !=
-		    sizeof(pktsize)) {
-			WARN("can't send query to %s\n", net->remote_str);
-			return KNOT_NET_ESEND;
-		}
+		iov[0].iov_base = &pktsize;
+		iov[0].iov_len = sizeof(pktsize);
+		iov[1].iov_base = (uint8_t *)buf;
+		iov[1].iov_len = buf_len;
+
+		// Compute packet total length.
+		ssize_t total = iov[0].iov_len + iov[1].iov_len;
 
 		// Send data.
-		if (send(net->sockfd, buf, buf_len, 0) != buf_len) {
+		if (writev(net->sockfd, iov, 2) != total) {
 			WARN("can't send query to %s\n", net->remote_str);
 			return KNOT_NET_ESEND;
 		}
