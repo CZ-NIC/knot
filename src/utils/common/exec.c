@@ -149,11 +149,9 @@ static void print_footer(const size_t total_len,
 	// Print connection statistics.
 	if (net != NULL) {
 		if (incoming) {
-			printf(";; From %s#%i over %s",
-			       net->addr, net->port, net->proto);
+			printf(";; From %s", net->remote_str);
 		} else {
-			printf(";; To %s#%i over %s",
-			       net->addr, net->port, net->proto);
+			printf(";; To %s", net->remote_str);
 		}
 
 		if (elapsed >= 0) {

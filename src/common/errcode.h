@@ -88,6 +88,14 @@ enum knot_error {
 	KNOT_ESTOP,           /*!< Stop doing something. */
 	KNOT_ELIMIT,          /*!< Exceeded response rate limit. */
 
+	/* Network errors. */
+	KNOT_NET_EADDR,
+	KNOT_NET_ESOCKET,
+	KNOT_NET_ECONNECT,
+	KNOT_NET_ESEND,
+	KNOT_NET_ERECV,
+	KNOT_NET_ETIMEOUT,
+
 	/* Zone file loader errors. */
 	FLOADER_EFSTAT,
 	FLOADER_EDIRECTORY,

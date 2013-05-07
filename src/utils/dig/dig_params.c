@@ -153,7 +153,9 @@ void query_free(query_t *query)
 	}
 
 	// Cleanup local address.
-	server_free(query->local);
+	if (query->local != NULL) {
+		server_free(query->local);
+	}
 
 	// Cleanup cryptographic content.
 	free_sign_context(&query->sign_ctx);
@@ -469,13 +471,6 @@ void complete_queries(list *queries, const query_t *conf)
 		// No retries for TCP.
 		if (q->protocol == PROTO_TCP) {
 			q->retries = 0;
-		// If wait/tries < 1 s, set 1 second for each try.
-		} else {
-			if (q->wait > 0 && q->wait < ( 1 + q->retries)) {
-				q->wait = 1;
-			} else {
-				q->wait /= (1 + q->retries);
-			}
 		}
 
 		// Complete nameservers list.

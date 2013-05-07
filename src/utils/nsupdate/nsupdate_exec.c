@@ -382,12 +382,14 @@ static int pkt_sendrecv(nsupdate_params_t *params,
 	net_t net;
 	int   ret;
 
-	ret = net_connect(params->srcif,
+	ret = net_init(params->srcif,
 	                  params->server,
 	                  get_iptype(params->ip),
 	                  get_socktype(params->protocol, KNOT_RRTYPE_SOA),
 	                  params->wait,
 	                  &net);
+
+	ret = net_connect(&net);
 	DBG("%s: send_msg = %d\n", __func__, net.sockfd);
 	if (ret != KNOT_EOK) return -1;
 
@@ -402,10 +404,12 @@ static int pkt_sendrecv(nsupdate_params_t *params,
 	DBG("%s: receive_msg = %d\n", __func__, rb);
 	if (rb <= 0) {
 		net_close(&net);
+		net_clean(&net);
 		return -1;
 	}
 
 	net_close(&net);
+	net_clean(&net);
 
 	return rb;
 }

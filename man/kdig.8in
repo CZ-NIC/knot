@@ -144,7 +144,7 @@ Show TTL value.
 Set wait for reply interval in seconds (default is 5 seconds).
 .TP
 \fI+retries=N\fR
-Set number of retries (default is 2).
+Set number of retries (default is 2). This doesn't apply to AXFR or IXFR.
 .TP
 \fI+bufsize=B\fR
 Set EDNS buffer size in bytes (default is 512 bytes).

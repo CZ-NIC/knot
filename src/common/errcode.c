@@ -74,6 +74,14 @@ const error_table_t knot_error_msgs[] = {
 	{KNOT_ESTOP, "Stop." },
 	{KNOT_ELIMIT, "Exceeded response rate limit." },
 
+	/* Network errors. */
+	{KNOT_NET_EADDR, "Bad address or host name."},
+	{KNOT_NET_ESOCKET, "Can't create socket."},
+	{KNOT_NET_ECONNECT, "Can't connect."},
+	{KNOT_NET_ESEND, "Can't send data."},
+	{KNOT_NET_ERECV, "Can't receive data."},
+	{KNOT_NET_ETIMEOUT, "Network timeout."},
+
 	/* Zone file loader errors. */
 	{FLOADER_EFSTAT, "Fstat error."},
 	{FLOADER_EDIRECTORY, "Zone file is a directory."},
