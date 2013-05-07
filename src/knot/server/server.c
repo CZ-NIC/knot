@@ -137,7 +137,6 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 		}
 	}
 #endif
-	(void) setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));
 	ret = socket_bind(sock, cfg_if->family, cfg_if->address, cfg_if->port);
 	if (ret < 0) {
 		socket_close(sock);
@@ -172,7 +171,6 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 		}
 	}
 #endif
-	(void) setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));
 	ret = socket_bind(sock, cfg_if->family, cfg_if->address, cfg_if->port);
 	if (ret < 0) {
 		free(new_if->addr);
