@@ -188,14 +188,15 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		                           fd, NS_TRANSPORT_UDP);
 		break;
 
-	/* Unhandled opcodes. */
+	/* Do not issue response to incoming response to avoid loops. */
 	case KNOT_RESPONSE_AXFR: /*!< Processed in XFR handler. */
 	case KNOT_RESPONSE_IXFR: /*!< Processed in XFR handler. */
-		res = knot_ns_error_response_from_query(ns, packet,
-		                                        KNOT_RCODE_REFUSED, qbuf,
-		                                        resp_len);
+	case KNOT_RESPONSE_NORMAL:
+	case KNOT_RESPONSE_NOTIFY:
+	case KNOT_RESPONSE_UPDATE:
+		res = KNOT_EOK;
+		*resp_len = 0;
 		break;
-
 	/* Unknown opcodes */
 	default:
 		res = knot_ns_error_response_from_query(ns, packet,
