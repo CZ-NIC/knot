@@ -1,7 +1,7 @@
 \input texinfo   @c -*-texinfo-*-
 @setfilename knot.info
 @include version.texi
-@documentencoding utf-8
+@documentencoding UTF-8
 @settitle Knot DNS @value{VERSION}
 
 @paragraphindent 0

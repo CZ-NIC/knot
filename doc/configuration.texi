@@ -107,7 +107,8 @@ zones @{
     file "example.com"; # relative to 'storage'
     xfr-in master;      # define 'master' for this zone
     notify-in master;   # also allow NOTIFY from 'master'
-    update-in subnet1;  # accept UPDATE msgs from subnet1 and forward to master
+    update-in subnet1;  # accept UPDATE msgs from subnet1 and forward
+                        # to master
   @}
 @}
 @end example
