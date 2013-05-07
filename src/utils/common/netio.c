@@ -162,7 +162,6 @@ static void get_addr_str(const struct sockaddr_storage *ss,
 
 	// Free previous string if any.
 	free(*dst);
-	*dst = NULL;
 
 	// Write formated information string.
 	int ret = snprintf(buf, sizeof(buf), "%s#%u(%s)", addr, port,
