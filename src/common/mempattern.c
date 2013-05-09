@@ -21,8 +21,21 @@
 #include <config.h>
 #include <stdarg.h>
 
+#include "mempattern.h"
 #include "common/log.h"
 #include "common/slab/alloc-common.h"
+
+static void *mm_malloc(void *ctx, size_t n)
+{
+	return malloc(n);
+}
+
+void mm_ctx_init(mm_ctx_t *mm)
+{
+	mm->ctx = NULL;
+	mm->alloc = mm_malloc;
+	mm->free = free;
+}
 
 void* xmalloc(size_t l)
 {
