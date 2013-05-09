@@ -15,6 +15,7 @@
  */
 
 #include <stdlib.h>
+#include <stdint.h>
 
 #include "packet/response.h"
 #include "util/wire.h"
@@ -24,426 +25,129 @@
 #include "packet/packet.h"
 #include "edns.h"
 
-#define COMPRESSION_PEDANTIC
-
 /*----------------------------------------------------------------------------*/
 
-static const size_t KNOT_RESPONSE_MAX_PTR = 16383;
-
-/*----------------------------------------------------------------------------*/
-/* Non-API functions                                                          */
-/*----------------------------------------------------------------------------*/
 /*!
- * \brief Reallocates space for compression table.
+ * \brief Compare suffixes and calculate score (number of matching labels).
  *
- * \param table Compression table to reallocate space for.
- *
- * \retval KNOT_EOK
- * \retval KNOT_ENOMEM
+ * Update current best score.
  */
-static int knot_response_realloc_compr(knot_compressed_dnames_t *table)
+static bool knot_response_compr_score(uint8_t *n, uint8_t *p, uint8_t *base, unsigned labels, knot_compr_ptr_t *match)
 {
-	int free_old = table->max != table->default_count;
-	size_t *old_offsets = table->offsets;
-	int *old_to_free = table->to_free;
-	const knot_dname_t **old_dnames = table->dnames;
-
-	short new_max_count = table->max + STEP_DOMAINS;
-
-	size_t *new_offsets = (size_t *)malloc(new_max_count * sizeof(size_t));
-	CHECK_ALLOC_LOG(new_offsets, -1);
-
-	int *new_to_free = (int *)malloc(new_max_count * sizeof(int));
-	if (new_to_free == NULL) {
-		ERR_ALLOC_FAILED;
-		free(new_offsets);
-		return KNOT_ENOMEM;
-	}
-
-	const knot_dname_t **new_dnames = (const knot_dname_t **)malloc(
-		new_max_count * sizeof(knot_dname_t *));
-	if (new_dnames == NULL) {
-		ERR_ALLOC_FAILED;
-		free(new_offsets);
-		free(new_to_free);
-		return KNOT_ENOMEM;
-	}
-
-	memcpy(new_offsets, table->offsets, table->max * sizeof(size_t));
-	memcpy(new_to_free, table->to_free, table->max * sizeof(int));
-	memcpy(new_dnames, table->dnames,
-	       table->max * sizeof(knot_dname_t *));
-
-	table->offsets = new_offsets;
-	table->to_free = new_to_free;
-	table->dnames = new_dnames;
-	table->max = new_max_count;
-
-	if (free_old) {
-		free(old_offsets);
-		free(old_to_free);
-		free(old_dnames);
-	}
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Stores new mapping between domain name and offset in the compression
- *        table.
- *
- * If the domain name is already present in the table, it is not inserted again.
- *
- * \param table Compression table to save the mapping into.
- * \param dname Domain name to insert.
- * \param pos Position of the domain name in the packet's wire format.
- */
-static void knot_response_compr_save(knot_compressed_dnames_t *table,
-                                     const knot_dname_t *dname, size_t pos,
-                                     int copied_dname)
-{
-	assert(table->count < table->max);
-
-	for (int i = 0; i < table->count; ++i) {
-		if (table->dnames[i] == dname) {
-			dbg_response("Already present, skipping..\n");
-			return;
-		}
-	}
-
-	table->dnames[table->count] = dname;
-	table->offsets[table->count] = pos;
-	table->to_free[table->count] = copied_dname;
-	++table->count;
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Stores domain name position and positions of its parent domain names
- *        to the compression table.
- *
- * If part of the domain name (\a dname) was not found previously in the
- * compression table, this part and all its parent domains is stored also, to
- * maximize compression potential.
- *
- * \param table Compression table to save the information into.
- * \param dname Domain name to save.
- * \param not_matched Count of labels not matched when previously searching in
- *                    the compression table for \a dname.
- * \param pos Position of the domain name in the wire format of the packet.
- * \param unmatched_offset Position of the unmatched parent domain of \a dname.
- *
- * \retval KNOT_EOK
- * \retval KNOT_ENOMEM
- */
-static int knot_response_store_dname_pos(knot_compressed_dnames_t *table,
-                                           const knot_dname_t *dname,
-                                           int not_matched, size_t pos,
-                                           size_t unmatched_offset,
-                                           int compr_cs)
-{
-dbg_response_exec(
-	char *name = knot_dname_to_str(dname);
-	dbg_response_detail("Putting dname %s into compression table."
-	                    " Labels not matched: %d, position: %zu,"
-	                    ", pointer: %p, unmatched off: %zu\n", name,
-	                    not_matched, pos, dname, unmatched_offset);
-	free(name);
-);
-	if (pos > KNOT_RESPONSE_MAX_PTR) {
-		dbg_response("Pointer larger than it can be, not saving\n");
-		return KNOT_EDNAMEPTR;
-	}
-
-	if (table->count == table->max &&
-	    knot_response_realloc_compr(table) != 0) {
-		return KNOT_ENOMEM;
-	}
-
-	/*
-	 * Store positions of ancestors if more than 1 label was not matched.
-	 *
-	 * In case the name is not in the zone, the counting to not_matched
-	 * may be limiting, because the search stopped before after the first
-	 * label (i.e. not_matched == 1). So we do not store the parents in
-	 * this case. However, storing them will require creating those domain
-	 * names, as they do not exist.
-	 *
-	 * The same problem is with domain names synthetized from wildcards.
-	 * These also do not have any node to follow.
-	 *
-	 * We accept this as performance has higher
-	 * priority than the best possible compression.
-	 */
-	const knot_dname_t *to_save = dname;
-	size_t parent_pos = pos;
-	int i = 0, copied = 0;
-
-	while (to_save != NULL && i < knot_dname_label_count(dname)
-	       && parent_pos <= KNOT_RESPONSE_MAX_PTR) {
-		if (i == not_matched) {
-			parent_pos = unmatched_offset;
-		}
-
-dbg_response_exec_detail(
-		char *name = knot_dname_to_str(to_save);
-		dbg_response_detail("Putting dname %s into compression table."
-		                    " Position: %zu, pointer: %p\n",
-		                    name, parent_pos, to_save);
-		free(name);
-);
-
-		if (table->count == table->max &&
-		    knot_response_realloc_compr(table) != 0) {
-			dbg_response("Unable to realloc.\n");
-			return KNOT_ENOMEM;
-		}
-
-		knot_response_compr_save(table, to_save, parent_pos, copied);
-
-		/*! \todo Remove '!compr_cs'. */
-		// This is a temporary hack to avoid the wrong behaviour
-		// when the wrong not_matched count is used to compare with i
-		// and resulting in using the 0 offset.
-		// If case-sensitive search is in place, we should not save the
-		// node's parent's positions.
-
-		// Added check to rule out wildcard-covered dnames
-		// (in such case the offset is not right)
-
-		/*! \todo The whole compression requires a serious refactoring.
-		 *        Or better - a rewrite!
-		 */
-		const knot_dname_t *to_save_new =
-		          (!compr_cs && knot_dname_node(to_save) != NULL
-		           && knot_node_owner(knot_dname_node(to_save))
-		              !=  to_save
-		           && knot_node_parent(knot_dname_node(to_save))
-		              != NULL)
-		                ? knot_node_owner(knot_node_parent(
-		                        knot_dname_node(to_save)))
-		                : NULL;
-
-#ifdef COMPRESSION_PEDANTIC
-		if (to_save_new == NULL) {
-			// copied name - must be freed later
-			to_save_new = knot_dname_left_chop(to_save);
-			copied = 1;
+	uint16_t score = 0;
+	uint16_t off = 0;
+	while (*n != '\0') {
+		/* Can't exceed current best coverage. */
+		if (score + labels <= match->lbcount)
+			return false; /* Early cut. */
+		/* Keep track of contiguous matches. */
+		if (*n == *p && memcmp(n + 1, p + 1, *n) == 0) {
+			if (score == 0)
+				off = (p - base);
+			++score;
 		} else {
-			copied = 0;
+			score = 0; /* Non-contiguous match. */
 		}
-#endif
-
-		to_save = to_save_new;
-
-		dbg_response("i: %d\n", i);
-		parent_pos += knot_dname_label_size(dname, i) + 1;
-		++i;
+		n = knot_wire_next_label(n, base);
+		p = knot_wire_next_label(p, base);
+		--labels;
 	}
 
-	if (copied == 1 && to_save != NULL) {
-		// The last name was not used, free it
-		dbg_response("Freeing last chopped dname.\n");
-		knot_dname_release((knot_dname_t *)to_save);
+	/* New best score. */
+	if (score > match->lbcount) {
+		match->lbcount = score;
+		match->off = off;
+		return true;
 	}
 
-	return KNOT_EOK;
+	return false;
 }
 
-/*---------------------------------------------------------------------------*/
 /*!
- * \brief Tries to find offset of domain name in the compression table.
- *
- * \param table Compression table to search in.
- * \param dname Domain name to search for.
- * \param compr_cs Set to <> 0 if dname compression should use case sensitive
- *                 comparation. Set to 0 otherwise.
- *
- * \return Offset of \a dname stored in the compression table or -1 if the name
- *         was not found in the table.
+ * \brief Align name and reference to a common number of suffix labels.
  */
-static size_t knot_response_find_dname_pos(
-               const knot_compressed_dnames_t *table,
-               const knot_dname_t *dname, int compr_cs)
+static unsigned knot_response_compr_align(uint8_t **name, uint8_t** ref, uint8_t *wire,
+                                             uint16_t nlabels, uint16_t reflabels)
 {
-	for (int i = 0; i < table->count; ++i) {
-		int ret = (compr_cs)
-		           ? knot_dname_compare_cs(table->dnames[i], dname)
-		           : knot_dname_compare(table->dnames[i], dname);
-		if (ret == 0) {
-			dbg_response_detail("Found offset: %zu\n",
-			                    table->offsets[i]);
-			return table->offsets[i];
-		}
-	}
-	return 0;
+	for(unsigned j = nlabels; j < reflabels; ++j)
+		*ref = knot_wire_next_label(*ref, wire);
+	for(unsigned j = reflabels; j < nlabels; ++j)
+		*name = knot_wire_next_label(*name, wire);
+
+	return (nlabels < reflabels) ? nlabels : reflabels;
 }
-
-/*---------------------------------------------------------------------------*/
-/*!
- * \brief Put a compressed domain name to the wire format of the packet.
- *
- * Puts the not matched part of the domain name to the wire format and puts
- * a pointer to the rest of the name after that.
- *
- * \param dname Domain name to put to the wire format.
- * \param not_matched Size of the part of domain name that cannot be compressed.
- * \param offset Position of the rest of the domain name in the packet's wire
- *               format.
- * \param wire Place where to put the wire format of the name.
- * \param max Maximum available size of the place for the wire format.
- *
- * \return Size of the compressed domain name put into the wire format or
- *         KNOT_ESPACE if it did not fit.
- */
-static int knot_response_put_dname_ptr(const knot_dname_t *dname,
-                                         int not_matched, size_t offset,
-                                         uint8_t *wire, size_t max)
-{
-	// put the not matched labels
-	short size = knot_dname_size_part(dname, not_matched);
-	if (size + 2 > max) {
-		return KNOT_ESPACE;
-	}
-
-	memcpy(wire, knot_dname_name(dname), size);
-	knot_wire_put_pointer(wire + size, offset);
-
-	dbg_response_detail("Size of the dname with ptr: %d\n", size + 2);
-
-	return size + 2;
-}
-
-/*----------------------------------------------------------------------------*/
 
 int knot_response_compress_dname(const knot_dname_t *dname,
-	knot_compr_t *compr, uint8_t *dname_wire, size_t max, int compr_cs)
+	knot_compr_t *compr, uint8_t *dst, size_t max, int compr_cs)
 {
-	int size = 0;
-	if (!dname || !compr || !dname_wire) {
+	if (!dname || !compr || !dst) {
 		return KNOT_EINVAL;
 	}
 
-	// try to find the name or one of its ancestors in the compr. table
-#ifdef COMPRESSION_PEDANTIC
-	knot_dname_t *to_find = (knot_dname_t *)dname;
-	int copied = 0;
-#else
-	const knot_dname_t *to_find = dname;
-#endif
-	size_t offset = 0;
-	int not_matched = 0;
-
-	while (to_find != NULL && knot_dname_label_count(to_find) != 0) {
-dbg_response_exec_detail(
-		char *name = knot_dname_to_str(to_find);
-		dbg_response_detail("Searching for name %s in the compression"
-		                    " table, not matched labels: %d\n", name,
-		                    not_matched);
-		free(name);
-);
-		offset = knot_response_find_dname_pos(compr->table, to_find,
-		                                        compr_cs);
-		if (offset == 0) {
-			++not_matched;
-		} else {
-			break;
+	/* Align and compare name and pointer in the compression table */
+	unsigned i = 0;
+	unsigned written = 0;
+	unsigned lbcount = 0;
+	unsigned match_id = 0;
+	knot_compr_ptr_t match = { 0, 0 };
+	for (; i < COMPR_MAXLEN && compr->table[i].off > 0; ++i) {
+		uint8_t *name = dname->name;
+		uint8_t *ref = compr->wire + compr->table[i].off;
+		lbcount = knot_response_compr_align(&name, &ref, compr->wire,
+		                                    dname->label_count,
+		                                    compr->table[i].lbcount);
+		if(knot_response_compr_score(name, ref, compr->wire,
+		                             lbcount, &match)) {
+			match_id = i;
+			if (match.lbcount == dname->label_count)
+				break; /* Best match, break. */
 		}
-#ifdef COMPRESSION_PEDANTIC
-		if (compr_cs || to_find->node == NULL
-		    || to_find->node->owner != to_find
-		    || to_find->node->parent == NULL) {
-			if (!copied) {
-				to_find = knot_dname_left_chop(to_find);
-				copied = 1;
-			} else {
-				knot_dname_left_chop_no_copy(to_find);
-			}
-		} else {
-			assert(knot_dname_node(to_find) !=
-			       knot_node_parent(knot_dname_node(to_find)));
-			assert(to_find != knot_node_owner(
-			    knot_node_parent(knot_dname_node(to_find))));
-			to_find = knot_node_get_owner(
-			            knot_node_parent(knot_dname_node(to_find)));
-		}
-		dbg_response_detail("New to_find: %p\n", to_find);
-#else
-		// if case-sensitive comparation, we cannot just take the parent
-		if (compr_cs || knot_dname_node(to_find) == NULL
-		    || knot_node_owner(knot_dname_node(to_find)) != to_find
-		    || knot_node_parent(knot_dname_node(to_find))
-		       == NULL) {
-			dbg_response_detail("compr_cs: %d\n", compr_cs);
-			dbg_response_detail("knot_dname_node(to_find, 1) == %p"
-			                    "\n", knot_dname_node(to_find));
-
-			if (knot_dname_node(to_find) != NULL) {
-				dbg_response_detail("knot_node_owner(knot_dname_node("
-				             "to_find, 1)) = %p, to_find = %p\n",
-				             knot_node_owner(knot_dname_node(to_find)),
-				             to_find);
-				dbg_response_detail("knot_node_parent(knot_dname_node("
-				                    "to_find, 1), 1) = %p\n",
-				      knot_node_parent(knot_dname_node(to_find)));
-			}
-			break;
-		} else {
-			assert(knot_dname_node(to_find) !=
-			     knot_node_parent(knot_dname_node(to_find)));
-			assert(to_find != knot_node_owner(
-			    knot_node_parent(knot_dname_node(to_find))));
-			to_find = knot_node_owner(
-			     knot_node_parent(knot_dname_node(to_find)));
-			dbg_response_detail("New to_find: %p\n", to_find);
-		}
-#endif
 	}
 
-#ifdef COMPRESSION_PEDANTIC
-	if (copied) {
-		knot_dname_free(&to_find);
-	}
-#endif
-
-	dbg_response_detail("Max size available for domain name: %zu\n", max);
-
-	if (offset > 0) {
-		// found such dname somewhere in the packet
-		// the pointer should be legal as no illegal pointers are stored
-		assert(offset <= KNOT_RESPONSE_MAX_PTR);
-		dbg_response_detail("Found name in the compression table.\n");
-		assert(offset >= KNOT_WIRE_HEADER_SIZE);
-		size = knot_response_put_dname_ptr(dname, not_matched, offset,
-		                                     dname_wire, max);
-		if (size <= 0) {
+	/* Write non-matching prefix. */
+	uint8_t *name = dname->name;
+	for (unsigned j = match.lbcount; j < dname->label_count; ++j) {
+		if (written + *name + 1 > max)
 			return KNOT_ESPACE;
-		}
+		memcpy(dst + written, name, *name + 1);
+		written += *name + 1;
+		name = knot_wire_next_label(name, compr->wire);
+	}
+
+	/* Write out pointer covering suffix. */
+	if (*name != '\0') {
+		if (written + sizeof(uint16_t) > max)
+			return KNOT_ESPACE;
+		knot_wire_put_pointer(dst + written, match.off);
+		written += sizeof(uint16_t);
 	} else {
-		dbg_response_detail("Not found, putting whole name.\n");
-		// now just copy the dname without compressing
-		if (dname->size > max) {
+		/* Not covered by compression table, write terminal. */
+		if (written + 1 > max)
 			return KNOT_ESPACE;
-		}
-
-		memcpy(dname_wire, dname->name, dname->size);
-		size = dname->size;
+		*(dst + written) = '\0';
+		written += 1;
 	}
 
-	// in either way, put info into the compression table
-	/*! \todo This is useless if the name was already in the table.
-	 *        It is meaningful only if the found name is the one from QNAME
-	 *        and thus its parents are not stored yet.
-	 */
-	// only put legal pointers (#2131)
-	if (knot_response_store_dname_pos(compr->table, dname, not_matched,
-	                                     compr->wire_pos, offset, compr_cs)
-	    != 0) {
-		dbg_response_detail("Compression info could not be stored.\n");
+	/* If table is full, elect name from the lower 1/4 of the table
+	 * and replace it. */
+	if (i == COMPR_MAXLEN - 1) {
+		i = COMPR_FIXEDLEN + rand() % COMPR_VOLATILE;
+		compr->table[i].off = 0;
+	}
+	/* Store in dname table. */
+	if (compr->table[i].off == 0) {
+		compr->table[i].off = (uint16_t) compr->wire_pos;
+		compr->table[i].lbcount = dname->label_count;
 	}
 
-	return size;
+	/* Promote good matches. */
+	if (match_id > 1) {
+		match = compr->table[match_id];
+		compr->table[match_id] = compr->table[match_id - 1];
+		compr->table[match_id - 1] = match;
+	}
+
+	return written;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -523,8 +227,9 @@ dbg_response_exec(
 	compression_param_t param;
 	param.compr_cs = compr_cs;
 	param.owner_tmp = resp->owner_tmp;
-	param.compressed_dnames = &resp->compression;
+	param.compressed_dnames = resp->compression;
 	param.wire_pos = resp->size;
+	param.wire = resp->wireformat;
 	uint16_t rr_count = 0;
 	int ret = knot_rrset_to_wire(rrset, pos, &size, max_size,
 	                             &rr_count, &param);
@@ -671,7 +376,6 @@ int knot_response_init_from_query(knot_packet_t *response,
 	// copy the header from the query
 	memcpy(&response->header, &query->header, sizeof(knot_header_t));
 
-	int err = 0;
 	/*! \todo Constant. */
 	size_t to_copy = 12;
 
@@ -680,13 +384,10 @@ int knot_response_init_from_query(knot_packet_t *response,
 		memcpy(&response->question, &query->question,
 		       sizeof(knot_question_t));
 
-		// put the qname into the compression table
-		// TODO: get rid of the numeric constants
-		if ((err = knot_response_store_dname_pos(&response->compression,
-			      response->question.qname, 0, 12, 12, 0))
-		                != KNOT_EOK) {
-			return err;
-		}
+		/* Insert QNAME into compression table. */
+		response->compression[0].off = KNOT_WIRE_HEADER_SIZE;
+		response->compression[0].lbcount = response->question.qname->label_count;
+
 
 		/*! \todo Constant. */
 		to_copy += 4 + knot_dname_size(response->question.qname);
@@ -745,14 +446,8 @@ void knot_response_clear(knot_packet_t *resp, int clear_question)
 	resp->ns_rrsets = 0;
 	resp->ar_rrsets = 0;
 
-	// free copied names for compression
-	for (int i = 0; i < resp->compression.count; ++i) {
-		if (resp->compression.to_free[i]) {
-			knot_dname_release(
-			           (knot_dname_t *)resp->compression.dnames[i]);
-		}
-	}
-	resp->compression.count = 0;
+	/* Clear compression table. */
+	memset(resp->compression, 0, COMPR_MAXLEN * sizeof(knot_compr_ptr_t));
 
 	/*! \todo Temporary RRSets are not deallocated, which may potentially
 	 *        lead to memory leaks should this function be used in other

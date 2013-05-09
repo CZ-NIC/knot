@@ -921,6 +921,15 @@ static inline size_t knot_wire_get_pointer(const uint8_t *pos)
 	return p2;
 }
 
+static inline uint8_t *knot_wire_next_label(uint8_t *lp, uint8_t *wire)
+{
+	lp = lp + (lp[0] + sizeof(uint8_t));
+	if (knot_wire_is_pointer(lp)) {
+		lp = wire + knot_wire_get_pointer(lp);
+	}
+	return lp;
+}
+
 #endif /* _KNOT_WIRE_H_ */
 
 /*! @} */

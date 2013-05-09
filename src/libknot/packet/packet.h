@@ -101,6 +101,18 @@ enum knot_packet_prealloc_type {
 
 typedef enum knot_packet_prealloc_type knot_packet_prealloc_type_t;
 
+/* Maximum number of compressed names. */
+#define COMPR_MAXLEN 64
+/* Volatile portion of the compression table. */
+#define COMPR_VOLATILE (COMPR_MAXLEN / 4)
+#define COMPR_FIXEDLEN (COMPR_MAXLEN - COMPR_VOLATILE)
+
+/* Compression table pointer. */
+typedef struct {
+	uint16_t lbcount;
+	uint16_t off;
+} knot_compr_ptr_t;
+
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Structure representing a DNS packet.
@@ -148,7 +160,7 @@ struct knot_packet {
 	size_t max_size;  /*!< Maximum allowed size of the packet. */
 
 	/*! \brief Information needed for compressing domain names in packet. */
-	knot_compressed_dnames_t compression;
+	knot_compr_ptr_t compression[COMPR_MAXLEN];
 
 	/*! \brief Wildcard nodes to be processed for NSEC/NSEC3. */
 	knot_wildcard_nodes_t wildcard_nodes;
@@ -253,9 +265,6 @@ enum {
 	PREALLOC_TO_FREE =
 		DEFAULT_DOMAINS_IN_RESPONSE * sizeof(int),
 
-	PREALLOC_COMPRESSION = PREALLOC_DOMAINS + PREALLOC_OFFSETS
-	                       + PREALLOC_TO_FREE,
-
 	PREALLOC_WC_NODES =
 		DEFAULT_WILDCARD_NODES * sizeof(knot_node_t *),
 	PREALLOC_WC_SNAMES =
@@ -276,7 +285,6 @@ enum {
 	                 + PREALLOC_RRSETS(DEFAULT_ANCOUNT)
 	                 + PREALLOC_RRSETS(DEFAULT_NSCOUNT)
 	                 + PREALLOC_RRSETS(DEFAULT_ARCOUNT)
-	                 + PREALLOC_COMPRESSION
 	                 + PREALLOC_WC
 	                 + PREALLOC_RRSETS(DEFAULT_TMP_RRSETS)
 };

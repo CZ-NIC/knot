@@ -465,10 +465,10 @@ static int knot_rrset_to_wire_aux(const knot_rrset_t *rrset, uint8_t **pos,
 		dbg_response_detail("Compressing RR owner: %s.\n",
 		                    rrset->owner->name);
 		compr_info.table = comp->compressed_dnames;
+		compr_info.wire = comp->wire;
 		compr_info.wire_pos = comp->wire_pos;
 		compr_info.owner.pos = 0;
 		compr_info.owner.wire = comp->owner_tmp;
-
 		int ret = knot_response_compress_dname(rrset->owner, &compr_info,
 		                                       comp->owner_tmp, max_size,
 		                                       comp->compr_cs);
