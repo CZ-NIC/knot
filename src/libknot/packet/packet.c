@@ -781,7 +781,14 @@ static int knot_packet_parse_rr_sections(knot_packet_t *packet, size_t *pos,
 
 knot_packet_t *knot_packet_new(knot_packet_prealloc_type_t prealloc)
 {
-	knot_packet_t *pkt;
+	mm_ctx_t mm;
+	mm_ctx_init(&mm);
+	return knot_packet_new_mm(prealloc, &mm);
+}
+
+knot_packet_t *knot_packet_new_mm(knot_packet_prealloc_type_t prealloc, mm_ctx_t *mm)
+{
+	knot_packet_t *pkt = NULL;
 	void (*init_pointers)(knot_packet_t *pkt) = NULL;
 	size_t size = 0;
 
@@ -799,9 +806,10 @@ knot_packet_t *knot_packet_new(knot_packet_prealloc_type_t prealloc)
 		break;
 	}
 
-	pkt = (knot_packet_t *)malloc(size);
+	pkt = (knot_packet_t *)mm->alloc(mm->ctx, size);
 	CHECK_ALLOC_LOG(pkt, NULL);
-	memset(pkt, 0, size);
+	memset(pkt, 0, PREALLOC_PACKET);
+	memcpy(&pkt->mm, mm, sizeof(mm_ctx_t));
 	if (init_pointers != NULL) {
 		init_pointers(pkt);
 	}
@@ -1049,7 +1057,7 @@ int knot_packet_set_max_size(knot_packet_t *packet, int max_size)
 	if (packet->max_size < max_size) {
 		// reallocate space for the wire format (and copy anything
 		// that might have been there before
-		uint8_t *wire_new = (uint8_t *)malloc(max_size);
+		uint8_t *wire_new = packet->mm.alloc(packet->mm.ctx, max_size);
 		if (wire_new == NULL) {
 			return KNOT_ENOMEM;
 		}
@@ -1060,7 +1068,8 @@ int knot_packet_set_max_size(knot_packet_t *packet, int max_size)
 		packet->wireformat = wire_new;
 
 		if (packet->max_size > 0 && packet->free_wireformat) {
-			free(wire_old);
+			if (packet->mm.free)
+				packet->mm.free(wire_old);
 		}
 
 		packet->free_wireformat = 1;
@@ -1560,14 +1569,16 @@ void knot_packet_free(knot_packet_t **packet)
 
 	// free the space for wireformat
 	if ((*packet)->wireformat != NULL && (*packet)->free_wireformat) {
-		free((*packet)->wireformat);
+		if ((*packet)->mm.free)
+			(*packet)->mm.free((*packet)->wireformat);
 	}
 
 	// free EDNS options
 	knot_edns_free_options(&(*packet)->opt_rr);
 
 	dbg_packet("Freeing packet structure\n");
-	free(*packet);
+	if ((*packet)->mm.free)
+		(*packet)->mm.free(*packet);
 	*packet = NULL;
 }
 

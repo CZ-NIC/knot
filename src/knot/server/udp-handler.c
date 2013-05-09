@@ -43,6 +43,8 @@
 
 #include "common/queue.h"
 #include "common/sockaddr.h"
+#include "common/mempattern.h"
+#include "common/mempool.h"
 #include "knot/common.h"
 #include "knot/server/udp-handler.h"
 #include "libknot/nameserver/name-server.h"
@@ -92,6 +94,15 @@ static inline void udp_pps_begin() {}
 static inline void udp_pps_sample(unsigned n) {}
 #endif
 
+
+/* Answering context. */
+struct answer_ctx
+{
+	server_t *srv;
+	mm_ctx_t *mm;
+	unsigned slip;
+};
+
 /*! \brief RRL reject procedure. */
 static size_t udp_rrl_reject(const knot_nameserver_t *ns,
                              const knot_packet_t *packet,
@@ -119,9 +130,9 @@ static size_t udp_rrl_reject(const knot_nameserver_t *ns,
 	return 0; /* Discard response. */
 }
 
-int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
-               sockaddr_t* addr, knot_nameserver_t *ns, rrl_table_t *rrl,
-               unsigned *slip)
+int udp_handle(struct answer_ctx *ans, int fd,
+               uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
+               sockaddr_t* addr)
 {
 #ifdef DEBUG_ENABLE_BRIEF
 	char strfrom[SOCKADDR_STRLEN];
@@ -133,6 +144,8 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 
 	int res = KNOT_EOK;
 	int rcode = KNOT_RCODE_NOERROR;
+	knot_nameserver_t *ns = ans->srv->nameserver;
+	rrl_table_t *rrl = ans->srv->rrl;
 	knot_packet_type_t qtype = KNOT_QUERY_INVALID;
 	*resp_len = SOCKET_MTU_SZ;
 
@@ -142,7 +155,7 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 	return KNOT_EOK;
 #endif
 
-	knot_packet_t *packet = knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
+	knot_packet_t *packet = knot_packet_new_mm(KNOT_PACKET_PREALLOC_QUERY, ans->mm);
 	if (packet == NULL) {
 		dbg_net("udp: failed to create packet\n");
 		int ret = knot_ns_error_response_from_query_wire(ns, qbuf, qbuflen,
@@ -218,7 +231,7 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 			*resp_len = udp_rrl_reject(ns, packet, qbuf,
 			                           SOCKET_MTU_SZ,
 			                           knot_wire_get_rcode(qbuf),
-			                           slip);
+			                           &ans->slip);
 		}
 		rcu_read_unlock();
 	}
@@ -242,7 +255,7 @@ int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 static void* (*_udp_init)(void) = 0;
 static int (*_udp_deinit)(void *) = 0;
 static int (*_udp_recv)(int, void *) = 0;
-static int (*_udp_handle)(server_t *, void *, unsigned *) = 0;
+static int (*_udp_handle)(struct answer_ctx *, void *) = 0;
 static int (*_udp_send)(void *) = 0;
 
 /* UDP recvfrom() request struct. */
@@ -293,14 +306,15 @@ static int udp_recvfrom_recv(int fd, void *d)
 	return 0;
 }
 
-static int udp_recvfrom_handle(server_t *s, void *d, unsigned *slip)
+static int udp_recvfrom_handle(struct answer_ctx *ans, void *d)
 {
 	struct udp_recvfrom *rq = (struct udp_recvfrom *)d;
 
 	/* Process received pkt. */
 	rq->addr.len = rq->msg.msg_namelen;
-	int ret = udp_handle(rq->fd, rq->buf, rq->buflen, &rq->iov.iov_len, &rq->addr,
-	                     s->nameserver, s->rrl, slip);
+	int ret = udp_handle(ans, rq->fd,
+	                     rq->buf, rq->buflen, &rq->iov.iov_len,
+	                     &rq->addr);
 	if (ret != KNOT_EOK) {
 		rq->iov.iov_len = 0;
 	}
@@ -437,7 +451,7 @@ static int udp_recvmmsg_recv(int fd, void *d)
 	return n;
 }
 
-static int udp_recvmmsg_handle(server_t *s, void *d, unsigned *slip)
+static int udp_recvmmsg_handle(struct answer_ctx *st, void *d)
 {
 	struct udp_recvmmsg *rq = (struct udp_recvmmsg *)d;
 
@@ -447,8 +461,9 @@ static int udp_recvmmsg_handle(server_t *s, void *d, unsigned *slip)
 		struct iovec *cvec = rq->msgs[i].msg_hdr.msg_iov;
 		size_t rlen = 0;
 		rq->addrs[i].len = rq->msgs[i].msg_hdr.msg_namelen;
-		ret = udp_handle(rq->fd, cvec->iov_base, rq->msgs[i].msg_len, &rlen,
-		                 rq->addrs + i, s->nameserver, s->rrl, slip);
+		ret = udp_handle(st, rq->fd, cvec->iov_base,
+		                 rq->msgs[i].msg_len, &rlen,
+		                 rq->addrs + i);
 		if (ret != KNOT_EOK) { /* Do not send. */
 			rlen = 0;
 		}
@@ -551,16 +566,31 @@ void udp_free_ctx(void *ctx)
 
 int udp_writer(iohandler_t *h, dthread_t *thread)
 {
-	struct udpstate_t *ctx = (struct udpstate_t *)h->data;
+	/* Create memory pool context. */
+	struct mempool *pool = mp_new(64 * 1024);
+	mm_ctx_t mm;
+	mm.ctx = pool;
+	mm.alloc = (mm_alloc_t)mp_alloc;
+	mm.free = NULL;
+
+	/* Create UDP answering context. */
+	struct answer_ctx ans_ctx;
+	ans_ctx.srv = h->server;
+	ans_ctx.slip = 0;
+	ans_ctx.mm = &mm;
+
+	/* Connect to request queue. */
 	void *rq = NULL;
-	unsigned slip = 0;
+	struct udpstate_t *ctx = (struct udpstate_t *)h->data;
 	while ((rq = queue_remove(&ctx->tx)) != NULL) {
-		_udp_handle(h->server, rq, &slip);
+		_udp_handle(&ans_ctx, rq);
 		_udp_send(rq);
+		mp_flush(mm.ctx);
 		queue_insert(&ctx->rx, rq); /* Return to readq. */
 	}
 
 	queue_insert(&ctx->tx, NULL); /* Signalize next to close. */
+	mp_delete(mm.ctx);
 	return KNOT_EOK;
 }
 

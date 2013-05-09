@@ -166,6 +166,7 @@ struct knot_packet {
 	knot_rrset_t *tsig_rr;  /*!< TSIG RR stored in the packet. */
 	uint16_t flags;         /*!< Packet flags. */
 	const knot_zone_t *zone; /*!< Associated zone. */
+	mm_ctx_t mm; /*!< Memory allocation context. */
 };
 
 typedef struct knot_packet knot_packet_t;
@@ -297,6 +298,13 @@ typedef enum {
  * \return New packet structure or NULL if an error occured.
  */
 knot_packet_t *knot_packet_new(knot_packet_prealloc_type_t prealloc);
+
+/*!
+ * \brief Memory managed version of new packet create.
+ *
+ * See knot_packet_new() for info about parameters and output.
+ */
+knot_packet_t *knot_packet_new_mm(knot_packet_prealloc_type_t prealloc, mm_ctx_t *mm);
 
 /*!
  * \brief Parses the DNS packet from wire format.

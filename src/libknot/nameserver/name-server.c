@@ -2917,7 +2917,7 @@ static int knot_ns_prepare_response(knot_packet_t *query, knot_packet_t **resp,
 	assert(max_size >= 500);
 
 	// initialize response packet structure
-	*resp = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
+	*resp = knot_packet_new_mm(KNOT_PACKET_PREALLOC_RESPONSE, &query->mm);
 	if (*resp == NULL) {
 		dbg_ns("Failed to create packet structure.\n");
 		return KNOT_ENOMEM;
