@@ -22,9 +22,10 @@
 extern "C" {
 #endif
 
-#include "common.h"
 #include <stdlib.h>
 #include <stdbool.h>
+#include "common.h"
+#include "common/mempattern.h"
 
 /* Hat-trie defines. */
 typedef void* value_t;         /* User pointers as value. */
@@ -36,10 +37,13 @@ typedef void* value_t;         /* User pointers as value. */
 typedef struct hattrie_t_ hattrie_t;
 
 hattrie_t* hattrie_create (void);             //< Create an empty hat-trie.
-hattrie_t* hattrie_create_n (unsigned);       //< Create an empty hat-trie.
 void       hattrie_free   (hattrie_t*);       //< Free all memory used by a trie.
 void       hattrie_clear  (hattrie_t*);       //< Remove all entries.
 size_t     hattrie_weight (hattrie_t*);       //< Number of entries
+
+/** Create new trie with custom bucket size and memory management.
+ */
+hattrie_t* hattrie_create_n (unsigned, const mm_ctx_t *);
 
 /** Duplicate an existing trie.
  */
