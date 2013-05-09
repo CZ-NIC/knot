@@ -1,5 +1,5 @@
 /*!
- * \file debug.h
+ * \file libknot/util/debug.h
  *
  * \author Jan Kadlec <jan.kadlec.@nic.cz>
  * \author Lubos Slovak <lubos.slovak@nic.cz>

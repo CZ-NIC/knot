@@ -54,3 +54,5 @@ int msg_debug(const char *fmt, ...);
 #define DBG_NULL	DBG("%s: null parameter\n", __func__)
 
 #endif // _UTILS__MSG_H_
+
+/*! @} */

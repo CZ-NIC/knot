@@ -1,5 +1,5 @@
 /*!
- * \file common.h
+ * \file libknot/common.h
  *
  * \author Lubos Slovak <lubos.slovak@nic.cz>
  *

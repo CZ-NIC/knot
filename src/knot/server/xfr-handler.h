@@ -180,7 +180,7 @@ int xfr_task_free(knot_ns_xfr_t *rq);
 int xfr_task_setaddr(knot_ns_xfr_t *rq, sockaddr_t *to, sockaddr_t *from);
 
 /*!
- * \brief Return formatted string of the remote as 'ip@port key $key'.
+ * \brief Return formatted string of the remote as 'ip\@port key $key'.
  *
  * \param addr Remote address.
  * \param keytag Used TSIG key name (or NULL).
