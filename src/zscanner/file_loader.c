@@ -136,13 +136,12 @@ file_loader_t* file_loader_create(const char	 *file_name,
 		       "$ORIGIN %s\n"
 		       "$TTL %u\n",
 		       zone_origin, default_ttl);
-
-	if (ret > 0) {
-		fl->settings_length = ret;
-	} else {
+	if (ret <= 0 || ret >= sizeof(fl->settings_buffer)) {
 		file_loader_free(fl);
 		return NULL;
 	}
+
+	fl->settings_length = ret;
 
 	return fl;
 }
