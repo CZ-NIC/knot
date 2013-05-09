@@ -60,10 +60,6 @@ static void knot_packet_init_pointers_response(knot_packet_t *pkt)
 	pkt->question.qname->labels = (uint8_t *)pos;
 	pos += PREALLOC_QNAME_LABELS;
 
-	pkt->owner_tmp = (uint8_t *)pos;
-	dbg_packet_detail("Tmp owner: %p\n", pkt->owner_tmp);
-	pos += PREALLOC_RR_OWNER;
-
 	// then answer, authority and additional sections
 	if (DEFAULT_ANCOUNT == 0) {
 		pkt->answer = NULL;

@@ -75,9 +75,7 @@ typedef struct knot_compr knot_compr_t;
 struct compression_param {
 	uint8_t *wire;
 	size_t wire_pos;
-	uint8_t *owner_tmp;
 	knot_compr_ptr_t *compressed_dnames;
-	int compr_cs;
 };
 
 typedef struct compression_param compression_param_t;
@@ -155,8 +153,6 @@ int knot_response_add_opt(knot_packet_t *resp,
  *           Otherwise set to 0.
  * \param check_duplicates Set to <> 0 if the RRSet should not be added to the
  *                         response in case it is already there.
- * \param compr_cs Set to <> 0 if dname compression should use case sensitive
- *                 comparation. Set to 0 otherwise.
  *
  * \retval KNOT_EOK if successful, or the RRSet was already in the answer.
  * \retval KNOT_ENOMEM
@@ -164,7 +160,7 @@ int knot_response_add_opt(knot_packet_t *resp,
  */
 int knot_response_add_rrset_answer(knot_packet_t *response,
                                    knot_rrset_t *rrset, int tc,
-                                   int check_duplicates, int compr_cs,
+                                   int check_duplicates,
                                    int rotate);
 
 /*!
@@ -176,8 +172,6 @@ int knot_response_add_rrset_answer(knot_packet_t *response,
  *           Otherwise set to 0.
  * \param check_duplicates Set to <> 0 if the RRSet should not be added to the
  *                         response in case it is already there.
- * \param compr_cs Set to <> 0 if dname compression should use case sensitive
- *                 comparation. Set to 0 otherwise.
  *
  * \retval KNOT_EOK if successful, or the RRSet was already in the answer.
  * \retval KNOT_ENOMEM
@@ -185,7 +179,7 @@ int knot_response_add_rrset_answer(knot_packet_t *response,
  */
 int knot_response_add_rrset_authority(knot_packet_t *response,
                                       knot_rrset_t *rrset, int tc,
-                                      int check_duplicates, int compr_cs,
+                                      int check_duplicates,
                                       int rotate);
 
 /*!
@@ -197,8 +191,6 @@ int knot_response_add_rrset_authority(knot_packet_t *response,
  *           Otherwise set to 0.
  * \param check_duplicates Set to <> 0 if the RRSet should not be added to the
  *                         response in case it is already there.
- * \param compr_cs Set to <> 0 if dname compression should use case sensitive
- *                 comparation. Set to 0 otherwise.
  *
  * \retval KNOT_EOK if successful, or the RRSet was already in the answer.
  * \retval KNOT_ENOMEM
@@ -206,7 +198,7 @@ int knot_response_add_rrset_authority(knot_packet_t *response,
  */
 int knot_response_add_rrset_additional(knot_packet_t *response,
                                        knot_rrset_t *rrset, int tc,
-                                       int check_duplicates, int compr_cs,
+                                       int check_duplicates,
                                        int rotate);
 
 /*!
@@ -256,14 +248,12 @@ int knot_response_add_wildcard_node(knot_packet_t *response,
  *              names in the packet.
  * \param dst Place where to put the wire format of the name.
  * \param max Maximum available size of the place for the wire format.
- * \param compr_cs Set to <> 0 if dname compression should use case sensitive
- *                 comparation. Set to 0 otherwise.
  *
  * \return Size of the domain name's wire format or KNOT_ESPACE if it did not
  *         fit into the provided space.
  */
 int knot_response_compress_dname(const knot_dname_t *dname,
-	knot_compr_t *compr, uint8_t *dst, size_t max, int compr_cs);
+	knot_compr_t *compr, uint8_t *dst, size_t max);
 
 
 #endif /* _KNOT_response_H_ */

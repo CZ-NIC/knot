@@ -246,7 +246,7 @@ static int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
 static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
                                         size_t rdata_pos, uint8_t **pos,
                                         size_t max_size, size_t *rr_size,
-                                        knot_compr_t *compr, int compr_cs)
+                                        knot_compr_t *compr)
 {
 	assert(rrset);
 	assert(pos);
@@ -339,7 +339,7 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 			assert(dname);
 			int ret = knot_response_compress_dname(dname,
 			            compr, *pos,
-			            max_size - size - rdlength, compr_cs);
+			            max_size - size - rdlength);
 			if (ret < 0) {
 				return KNOT_ESPACE;
 			}
@@ -451,6 +451,8 @@ static int knot_rrset_to_wire_aux(const knot_rrset_t *rrset, uint8_t **pos,
 	assert(pos != NULL);
 	assert(*pos != NULL);
 
+	uint8_t wf_owner[256];
+
 	dbg_rrset_detail("Max size: %zu, owner: %p, owner size: %d\n",
 	                 max_size, rrset->owner, rrset->owner->size);
 	knot_compr_t compr_info;
@@ -467,14 +469,14 @@ static int knot_rrset_to_wire_aux(const knot_rrset_t *rrset, uint8_t **pos,
 		compr_info.table = comp->compressed_dnames;
 		compr_info.wire = comp->wire;
 		compr_info.wire_pos = comp->wire_pos;
-		compr_info.owner.pos = 0;
-		compr_info.owner.wire = comp->owner_tmp;
 		int ret = knot_response_compress_dname(rrset->owner, &compr_info,
-		                                       comp->owner_tmp, max_size,
-		                                       comp->compr_cs);
+		                                       wf_owner, max_size);
 		if (ret < 0) {
 			return KNOT_ESPACE;
 		}
+
+		compr_info.owner.pos = 0;
+		compr_info.owner.wire = wf_owner;
 		compr_info.owner.size = ret;
 
 		dbg_response_detail("Compressed owner has size=%d\n",
@@ -491,8 +493,8 @@ static int knot_rrset_to_wire_aux(const knot_rrset_t *rrset, uint8_t **pos,
 			         max_size);
 		size_t rr_size = 0;
 		int ret = knot_rrset_rdata_to_wire_one(rrset, i, pos, max_size,
-		                                       &rr_size, comp ? &compr_info : NULL,
-		                                       comp ? comp->compr_cs : 0);
+		                                       &rr_size,
+		                                       comp ? &compr_info : NULL);
 		if (ret != KNOT_EOK) {
 			dbg_rrset("rrset: to_wire: Cannot convert RR. "
 			          "Reason: %s.\n", knot_strerror(ret));

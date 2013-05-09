@@ -132,8 +132,6 @@ struct knot_packet {
 	 */
 	knot_question_t question;
 
-	uint8_t *owner_tmp;  /*!< Allocated space for RRSet owner wire format.*/
-
 	const knot_rrset_t **answer;      /*!< Answer RRSets. */
 	const knot_rrset_t **authority;   /*!< Authority RRSets. */
 	const knot_rrset_t **additional;  /*!< Additional RRSets. */
@@ -248,12 +246,6 @@ enum {
 	PREALLOC_QNAME = PREALLOC_QNAME_DNAME
 	                 + PREALLOC_QNAME_NAME
 	                 + PREALLOC_QNAME_LABELS,
-	/*!
-	 * \brief Space for RR owner wire format.
-	 *
-	 * Temporary buffer, used when putting RRSets to the response.
-	 */
-	PREALLOC_RR_OWNER = 256,
 
 	/*! \brief Space for one part of the compression table (domain names).*/
 	PREALLOC_DOMAINS =
@@ -281,7 +273,6 @@ enum {
 	/*! \brief Total preallocated size for the response. */
 	PREALLOC_RESPONSE = PREALLOC_PACKET
 	                 + PREALLOC_QNAME
-	                 + PREALLOC_RR_OWNER
 	                 + PREALLOC_RRSETS(DEFAULT_ANCOUNT)
 	                 + PREALLOC_RRSETS(DEFAULT_NSCOUNT)
 	                 + PREALLOC_RRSETS(DEFAULT_ARCOUNT)

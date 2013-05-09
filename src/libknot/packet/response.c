@@ -78,7 +78,7 @@ static unsigned knot_response_compr_align(uint8_t **name, uint8_t** ref, uint8_t
 }
 
 int knot_response_compress_dname(const knot_dname_t *dname,
-	knot_compr_t *compr, uint8_t *dst, size_t max, int compr_cs)
+                                 knot_compr_t *compr, uint8_t *dst, size_t max)
 {
 	if (!dname || !compr || !dst) {
 		return KNOT_EINVAL;
@@ -211,8 +211,7 @@ static int knot_response_try_add_rrset(const knot_rrset_t **rrsets,
                                         short *rrset_count,
                                         knot_packet_t *resp,
                                         size_t max_size,
-                                        const knot_rrset_t *rrset, int tc,
-                                        int compr_cs)
+                                        const knot_rrset_t *rrset, int tc)
 {
 	//short size = knot_response_rrset_size(rrset, &resp->compression);
 
@@ -225,8 +224,6 @@ dbg_response_exec(
 	uint8_t *pos = resp->wireformat + resp->size;
 	size_t size = max_size;
 	compression_param_t param;
-	param.compr_cs = compr_cs;
-	param.owner_tmp = resp->owner_tmp;
 	param.compressed_dnames = resp->compression;
 	param.wire_pos = resp->size;
 	param.wire = resp->wireformat;
@@ -540,7 +537,7 @@ int knot_response_add_opt(knot_packet_t *resp,
 
 int knot_response_add_rrset_answer(knot_packet_t *response,
                                    knot_rrset_t *rrset, int tc,
-                                   int check_duplicates, int compr_cs,
+                                   int check_duplicates,
                                    int rotate)
 {
 	if (response == NULL || rrset == NULL) {
@@ -573,7 +570,7 @@ int knot_response_add_rrset_answer(knot_packet_t *response,
 	                                        - response->size
 	                                        - response->opt_rr.size
 	                                        - response->tsig_size,
-	                                        rrset, tc, compr_cs);
+	                                        rrset, tc);
 
 	if (rrs >= 0) {
 		response->header.ancount += rrs;
@@ -593,7 +590,7 @@ int knot_response_add_rrset_answer(knot_packet_t *response,
 
 int knot_response_add_rrset_authority(knot_packet_t *response,
                                       knot_rrset_t *rrset, int tc,
-                                      int check_duplicates, int compr_cs,
+                                      int check_duplicates,
                                       int rotate)
 {
 	if (response == NULL || rrset == NULL) {
@@ -622,7 +619,7 @@ int knot_response_add_rrset_authority(knot_packet_t *response,
 	                                        - response->size
 	                                        - response->opt_rr.size
 	                                        - response->tsig_size,
-	                                        rrset, tc, compr_cs);
+	                                        rrset, tc);
 
 	if (rrs >= 0) {
 		response->header.nscount += rrs;
@@ -642,7 +639,7 @@ int knot_response_add_rrset_authority(knot_packet_t *response,
 
 int knot_response_add_rrset_additional(knot_packet_t *response,
                                        knot_rrset_t *rrset, int tc,
-                                       int check_duplicates, int compr_cs,
+                                       int check_duplicates,
                                        int rotate)
 {
 	if (response == NULL || rrset == NULL) {
@@ -677,7 +674,7 @@ int knot_response_add_rrset_additional(knot_packet_t *response,
 	                                        response->max_size
 	                                        - response->size
 	                                        - response->tsig_size, rrset,
-	                                        tc, compr_cs);
+	                                        tc);
 
 	if (rrs >= 0) {
 		response->header.arcount += rrs;
