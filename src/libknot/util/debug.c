@@ -85,7 +85,7 @@ void knot_node_dump(knot_node_t *node)
 	dbg_node_detail("owner: %s\n", name);
 	free(name);
 	dbg_node_detail("labels: ");
-	hex_print((char *)node->owner->labels, node->owner->label_count);
+	hex_print(node->owner->labels, node->owner->label_count);
 	dbg_node_detail("node: %p\n", node);
 	dbg_node_detail("node (in node's owner): %p\n", node->owner->node);
 
