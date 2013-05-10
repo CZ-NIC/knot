@@ -220,6 +220,7 @@ mp_alloc_internal(struct mempool *pool, unsigned size)
   else {
     fprintf(stderr, "Cannot allocate %u bytes from a mempool", size);
     assert(0);
+    return NULL;
   }
 }
 
