@@ -39,7 +39,6 @@ static knot_packet_t* create_query_packet(const query_t *query,
 
 	// Set packet buffer size.
 	int max_size = query->udp_size;
-
 	if (max_size < 0) {
 		if (get_socktype(query->protocol, query->type_num)
 		    == SOCK_STREAM) {
@@ -53,7 +52,6 @@ static knot_packet_t* create_query_packet(const query_t *query,
 
 	// Create packet skeleton.
 	packet = create_empty_packet(KNOT_PACKET_PREALLOC_NONE, max_size);
-
 	if (packet == NULL) {
 		return NULL;
 	}
@@ -85,7 +83,6 @@ static knot_packet_t* create_query_packet(const query_t *query,
 	q.qclass = query->class_num;
 	q.qtype = query->type_num;
 	q.qname = knot_dname_new_from_str(query->owner, strlen(query->owner), 0);
-
 	if (q.qname == NULL) {
 		knot_packet_free(&packet);
 		return NULL;
@@ -141,7 +138,6 @@ static knot_packet_t* create_query_packet(const query_t *query,
 	// Create EDNS section if required.
 	if (query->flags.do_flag || query->nsid) {
 		knot_opt_rr_t *opt_rr = knot_edns_new();
-
 		if (opt_rr == NULL) {
 			ERR("can't create EDNS section\n");
 			knot_edns_free(&opt_rr);
@@ -168,7 +164,6 @@ static knot_packet_t* create_query_packet(const query_t *query,
 			if (knot_edns_add_option(&packet->opt_rr,
 			                         EDNS_OPTION_NSID,
 			                         0, NULL) != KNOT_EOK) {
-
 				ERR("can't set NSID query\n");
 				knot_edns_free(&opt_rr);
 				knot_packet_free(&packet);
@@ -196,6 +191,7 @@ static knot_packet_t* create_query_packet(const query_t *query,
 			knot_packet_free(&packet);
 			return NULL;
 		}
+
 		*data_len = packet->size;
 	}
 
@@ -285,7 +281,7 @@ static int process_query_packet(const knot_packet_t     *query,
 	int		in_len;
 	int		ret;
 
-	// Get initial time.
+	// Get start query time.
 	gettimeofday(&t_start, NULL);
 
 	// Connect to the server.
@@ -296,14 +292,13 @@ static int process_query_packet(const knot_packet_t     *query,
 
 	// Send query packet.
 	ret = net_send(net, query->wireformat, query->size);
-
-	// Get query time.
-	gettimeofday(&t_query, NULL);
-
 	if (ret != KNOT_EOK) {
 		net_close(net);
 		return -1;
 	}
+
+	// Get stop query time and start reply time.
+	gettimeofday(&t_query, NULL);
 
 	// Print query packet if required.
 	if (style->show_query) {
@@ -321,7 +316,7 @@ static int process_query_packet(const knot_packet_t     *query,
 			return -1;
 		}
 
-		// Stop meassuring of response time.
+		// Get stop reply time.
 		gettimeofday(&t_end, NULL);
 
 		// Create reply packet structure to fill up.
@@ -357,25 +352,15 @@ static int process_query_packet(const knot_packet_t     *query,
 	// Check for TC bit and repeat query with TCP if required.
 	if (knot_wire_get_tc(reply->wireformat) != 0 &&
 	    ignore_tc == false && net->socktype == SOCK_DGRAM) {
-		WARN("truncated reply, using TCP instead\n");
+		WARN("truncated reply from %s, retrying over TCP\n",
+		     net->remote_str);
 		knot_packet_free(&reply);
 		net_close(net);
 
-		net_t net_tcp;
+		net->socktype = SOCK_STREAM;
 
-		// Initialize new network structure with TCP.
-		ret = net_init(net->local, net->remote, net->iptype,
-		               SOCK_STREAM, net->wait, &net_tcp);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-
-		ret = process_query_packet(query, &net_tcp, true, sign_ctx,
-		                           key_params, style);
-
-		net_clean(&net_tcp);
-
-		return ret;
+		return process_query_packet(query, net, true, sign_ctx,
+		                            key_params, style);
 	}
 
 	// Check for question sections equality.
@@ -512,7 +497,7 @@ static int process_packet_xfr(const knot_packet_t     *query,
 	size_t         msg_count = 0;
 	size_t         rr_count = 0;
 
-	// Get initial time.
+	// Get start query time.
 	gettimeofday(&t_start, NULL);
 
 	// Connect to the server.
@@ -523,14 +508,14 @@ static int process_packet_xfr(const knot_packet_t     *query,
 
 	// Send query packet.
 	ret = net_send(net, query->wireformat, query->size);
-
-	// Get query time.
-	gettimeofday(&t_query, NULL);
-
 	if (ret != KNOT_EOK) {
 		net_close(net);
 		return -1;
 	}
+
+	// Get stop query time and start reply time.
+	gettimeofday(&t_query, NULL);
+
 
 	// Print query packet if required.
 	if (style->show_query) {
@@ -634,7 +619,7 @@ static int process_packet_xfr(const knot_packet_t     *query,
 		knot_packet_free(&reply);
 	}
 
-	// Stop meassuring of response time.
+	// Get stop reply time.
 	gettimeofday(&t_end, NULL);
 
 	// Print trailing transfer information.

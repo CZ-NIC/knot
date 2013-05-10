@@ -229,8 +229,7 @@ int net_connect(net_t *net)
 	             net->socktype, &net->remote_str);
 
 	// Create socket.
-	sockfd = socket(net->srv->ai_family, net->srv->ai_socktype,
-	                net->srv->ai_protocol);
+	sockfd = socket(net->srv->ai_family, net->socktype, 0);
 	if (sockfd == -1) {
 		WARN("can't create socket for %s\n", net->remote_str);
 		return KNOT_NET_ESOCKET;
@@ -379,7 +378,6 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 
 			// Receive piece of message.
 			ret = recv(net->sockfd, buf + total, msg_len - total, 0);
-
 			if (ret <= 0) {
 				WARN("can't receive reply from %s\n",
 				     net->remote_str);
