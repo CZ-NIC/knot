@@ -364,13 +364,6 @@ dbg_dname_exec_verb(
 	return 0;
 }
 
-/*! \brief Destructor for reference counter. */
-static void knot_dname_dtor(struct ref_t *p)
-{
-	knot_dname_t *dname = (knot_dname_t *)p;
-	knot_dname_free(&dname);
-}
-
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
@@ -378,17 +371,13 @@ static void knot_dname_dtor(struct ref_t *p)
 knot_dname_t *knot_dname_new()
 {
 	knot_dname_t *dname = knot_dname_alloc();
+
 	dname->name = NULL;
-	dname->size = 0;
-	dname->node = NULL;
 	dname->labels = NULL;
-	dname->label_count = -1;
-
-	/* Initialize reference counting. */
-	ref_init(&dname->ref, knot_dname_dtor);
-
-	/* Set reference counter to 1, caller should release it after use. */
-	knot_dname_retain(dname);
+	dname->node = NULL;
+	dname->count = 1;
+	dname->size = 0;
+	dname->label_count = 0;
 
 	return dname;
 }

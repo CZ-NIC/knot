@@ -30,7 +30,6 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
-#include "common/ref.h"
 
 struct knot_node;
 
@@ -43,18 +42,12 @@ struct knot_node;
  * \todo Consider restricting to FQDN only (see knot_dname_new_from_str()).
  */
 struct knot_dname {
-	ref_t ref;     /*!< Reference counting. */
-	uint8_t *name;	/*!< Wire format of the domain name. */
-	uint8_t *labels;
-	struct knot_node *node; /*!< Zone node the domain name belongs to. */
-
-	/*!
-	 * \brief Size of the domain name in octets.
-	 * \todo Is this needed? Every dname should end with \0 or pointer.
-	 */
-	unsigned short size;
-
-	unsigned short label_count;
+	uint8_t *name;		/*!< Wire format of the domain name. */
+	uint8_t *labels;	/*!< Array of labels positions in name. */
+	struct knot_node *node;	/*!< Zone node the domain name belongs to. */
+	uint32_t count;		/*!< Reference counter. */
+	uint8_t size;		/*!< Length of the domain name. */
+	uint8_t label_count;	/*!< Number of labels. */
 };
 
 typedef struct knot_dname knot_dname_t;
@@ -413,15 +406,9 @@ knot_dname_t *knot_dname_cat(knot_dname_t *d1, const knot_dname_t *d2);
  */
 static inline void knot_dname_retain(knot_dname_t *dname) {
 	if (dname) {
-		ref_retain(&dname->ref);
+		__sync_add_and_fetch(&dname->count, 1);
 	}
 }
-
-/*#define knot_dname_retain(d) \
-	knot_dname_retain_((d));\
-	if ((d))\
-	fprintf(stderr, "dname_retain: %s() at %s:%d, %p refcount=%zu\n",\
-	__func__, __FILE__, __LINE__, d, (d)->ref.count) */
 
 /*!
  * \brief Decrement reference counter for dname.
@@ -430,15 +417,11 @@ static inline void knot_dname_retain(knot_dname_t *dname) {
  */
 static inline void knot_dname_release(knot_dname_t *dname) {
 	if (dname) {
-		ref_release(&dname->ref);
+		if (__sync_sub_and_fetch(&dname->count, 1) == 0) {
+			knot_dname_free(&dname);
+		}
 	}
 }
-
-/*#define knot_dname_release(d) \
-	if ((d))\
-	fprintf(stderr, "dname_release: %s() at %s:%d, %p refcount=%zu\n",\
-	__func__, __FILE__, __LINE__, d, (d)->ref.count-1);\
-	knot_dname_release_((d)) */
 
 #endif /* _KNOT_DNAME_H_ */
 
