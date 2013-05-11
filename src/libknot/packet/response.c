@@ -27,15 +27,13 @@
 
 /*----------------------------------------------------------------------------*/
 
-/* Only last 14bits of 16bit ptr are reserved for offset. */
-#define COMPR_MAX_OFFSET 16383
-
 /*!
  * \brief Compare suffixes and calculate score (number of matching labels).
  *
  * Update current best score.
  */
-static bool knot_response_compr_score(uint8_t *n, uint8_t *p, uint8_t *base, unsigned labels, knot_compr_ptr_t *match)
+static bool knot_response_compr_score(uint8_t *n, uint8_t *p, uint8_t labels,
+                                      uint8_t *wire, knot_compr_ptr_t *match)
 {
 	uint16_t score = 0;
 	uint16_t off = 0;
@@ -46,13 +44,13 @@ static bool knot_response_compr_score(uint8_t *n, uint8_t *p, uint8_t *base, uns
 		/* Keep track of contiguous matches. */
 		if (*n == *p && memcmp(n + 1, p + 1, *n) == 0) {
 			if (score == 0)
-				off = (p - base);
+				off = (p - wire);
 			++score;
 		} else {
 			score = 0; /* Non-contiguous match. */
 		}
-		n = knot_wire_next_label(n, base);
-		p = knot_wire_next_label(p, base);
+		n = knot_wire_next_label(n, wire);
+		p = knot_wire_next_label(p, wire);
 		--labels;
 	}
 
@@ -69,38 +67,40 @@ static bool knot_response_compr_score(uint8_t *n, uint8_t *p, uint8_t *base, uns
 /*!
  * \brief Align name and reference to a common number of suffix labels.
  */
-static unsigned knot_response_compr_align(uint8_t **name, uint8_t** ref, uint8_t *wire,
-                                             uint16_t nlabels, uint16_t reflabels)
+static uint8_t knot_response_compr_align(uint8_t **name, uint8_t nlabels,
+                                         uint8_t **ref, uint8_t reflabels,
+                                         uint8_t *wire)
 {
-	for(unsigned j = nlabels; j < reflabels; ++j)
+	for (unsigned j = nlabels; j < reflabels; ++j)
 		*ref = knot_wire_next_label(*ref, wire);
-	for(unsigned j = reflabels; j < nlabels; ++j)
+
+	for (unsigned j = reflabels; j < nlabels; ++j)
 		*name = knot_wire_next_label(*name, wire);
 
 	return (nlabels < reflabels) ? nlabels : reflabels;
 }
 
-int knot_response_compress_dname(const knot_dname_t *dname,
-                                 knot_compr_t *compr, uint8_t *dst, size_t max)
+int knot_response_compress_dname(const knot_dname_t *dname, knot_compr_t *compr,
+                                 uint8_t *dst, size_t max)
 {
 	if (!dname || !compr || !dst) {
 		return KNOT_EINVAL;
 	}
 
-	/* Align and compare name and pointer in the compression table */
+	/* Align and compare name and pointer in the compression table. */
 	unsigned i = 0;
-	unsigned written = 0;
 	unsigned lbcount = 0;
 	unsigned match_id = 0;
 	knot_compr_ptr_t match = { 0, 0 };
 	for (; i < COMPR_MAXLEN && compr->table[i].off > 0; ++i) {
 		uint8_t *name = dname->name;
 		uint8_t *ref = compr->wire + compr->table[i].off;
-		lbcount = knot_response_compr_align(&name, &ref, compr->wire,
-		                                    dname->label_count,
-		                                    compr->table[i].lbcount);
-		if(knot_response_compr_score(name, ref, compr->wire,
-		                             lbcount, &match)) {
+		lbcount = knot_response_compr_align(&name, dname->label_count,
+		                                    &ref, compr->table[i].lbcount,
+		                                    compr->wire);
+
+		if (knot_response_compr_score(name, ref, lbcount, compr->wire,
+		                              &match)) {
 			match_id = i;
 			if (match.lbcount == dname->label_count)
 				break; /* Best match, break. */
@@ -109,6 +109,7 @@ int knot_response_compress_dname(const knot_dname_t *dname,
 
 	/* Write non-matching prefix. */
 	uint8_t *name = dname->name;
+	unsigned written = 0;
 	for (unsigned j = match.lbcount; j < dname->label_count; ++j) {
 		if (written + *name + 1 > max)
 			return KNOT_ESPACE;
@@ -132,7 +133,7 @@ int knot_response_compress_dname(const knot_dname_t *dname,
 	}
 
 	/* Do not insert if exceeds bounds. */
-	if (compr->wire_pos > COMPR_MAX_OFFSET)
+	if (compr->wire_pos > KNOT_WIRE_PTR_MAX)
 		return written;
 
 	/* If table is full, elect name from the lower 1/4 of the table
@@ -141,9 +142,10 @@ int knot_response_compress_dname(const knot_dname_t *dname,
 		i = COMPR_FIXEDLEN + rand() % COMPR_VOLATILE;
 		compr->table[i].off = 0;
 	}
+
 	/* Store in dname table. */
 	if (compr->table[i].off == 0) {
-		compr->table[i].off = (uint16_t) compr->wire_pos;
+		compr->table[i].off = (uint16_t)compr->wire_pos;
 		compr->table[i].lbcount = dname->label_count;
 	}
 
@@ -156,40 +158,6 @@ int knot_response_compress_dname(const knot_dname_t *dname,
 
 	return written;
 }
-
-/*---------------------------------------------------------------------------*/
-/*!
- * \brief Convert one RR into wire format.
- *
- * \param[in] rrset RRSet to which the RR belongs.
- * \param[in] rdata The actual RDATA of this RR.
- * \param[in] compr Information about compressed domain names in the packet.
- * \param[out] rrset_wire Place to put the wire format of the RR into.
- * \param[in] max_size Size of space available for the wire format.
- * \param[in] compr_cs Set to <> 0 if dname compression should use case
- *                     sensitive comparation. Set to 0 otherwise.
- *
- * \return Size of the RR's wire format or KNOT_ESPACE if it did not fit into
- *         the provided space.
- */
-
-/*---------------------------------------------------------------------------*/
-/*!
- * \brief Convert whole RRSet into wire format.
- *
- * \param[in] rrset RRSet to convert
- * \param[out] pos Place where to put the wire format.
- * \param[out] size Size of the converted wire format.
- * \param[in] max_size Maximum available space for the wire format.
- * \param wire_pos Current position in the wire format of the whole packet.
- * \param owner_tmp Wire format of the RRSet's owner, possibly compressed.
- * \param compr Information about compressed domain names in the packet.
- * \param compr_cs Set to <> 0 if dname compression should use case sensitive
- *                 comparation. Set to 0 otherwise.
- *
- * \return Size of the RRSet's wire format or KNOT_ESPACE if it did not fit
- *         into the provided space.
- */
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -208,8 +176,6 @@ int knot_response_compress_dname(const knot_dname_t *dname,
  * \param rrset RRSet to add.
  * \param tc Set to <> 0 if omitting the RRSet should cause the TC bit to be
  *           set in the response.
- * \param compr_cs Set to <> 0 if dname compression should use case sensitive
- *                 comparation. Set to 0 otherwise.
  *
  * \return Count of RRs added to the response or KNOT_ESPACE if the RRSet did
  *         not fit in the available space.

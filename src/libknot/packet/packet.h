@@ -109,8 +109,8 @@ typedef enum knot_packet_prealloc_type knot_packet_prealloc_type_t;
 
 /* Compression table pointer. */
 typedef struct {
-	uint16_t lbcount;
-	uint16_t off;
+	uint16_t off;		/*!< Packet data offset. */
+	uint8_t lbcount;	/*!< Dname label count. */
 } knot_compr_ptr_t;
 
 /*----------------------------------------------------------------------------*/
