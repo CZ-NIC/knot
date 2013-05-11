@@ -27,6 +27,9 @@
 
 /*----------------------------------------------------------------------------*/
 
+/* Only last 14bits of 16bit ptr are reserved for offset. */
+#define COMPR_MAX_OFFSET 16383
+
 /*!
  * \brief Compare suffixes and calculate score (number of matching labels).
  *
@@ -127,6 +130,10 @@ int knot_response_compress_dname(const knot_dname_t *dname,
 		*(dst + written) = '\0';
 		written += 1;
 	}
+
+	/* Do not insert if exceeds bounds. */
+	if (compr->wire_pos > COMPR_MAX_OFFSET)
+		return written;
 
 	/* If table is full, elect name from the lower 1/4 of the table
 	 * and replace it. */
