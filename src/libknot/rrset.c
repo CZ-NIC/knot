@@ -244,67 +244,54 @@ static int knot_rrset_header_to_wire(const knot_rrset_t *rrset,
                                      uint8_t **pos, size_t max_size,
                                      knot_compr_t *compr, size_t *size)
 {
-	assert(rrset);
-	assert(pos);
+	// Common size of items: type, class and ttl.
+	const size_t type_cls_ttl_len = 2 * sizeof(uint16_t) + sizeof(uint32_t);
+	// Rdata length item size.
+	const size_t rrlen_len = sizeof(uint16_t);
 
 	if (rrset->owner == NULL) {
 		return KNOT_EMALF;
 	}
 
+	const uint8_t *owner;
+	uint8_t owner_len;
+
+	// Use compressed owner.
 	if (compr) {
-	        dbg_response("Max size: %zu, owner pos: %zu, owner size: %d\n",
-		             max_size, compr->owner.pos, compr->owner.size);
-		if (*size + ((compr->owner.pos == 0
-		    || compr->owner.pos > KNOT_WIRE_PTR_MAX)
-		    ? compr->owner.size : 2) + 10 > max_size) {
-			return KNOT_ESPACE;
-		}
-
-		// put owner if needed (already compressed)
-		if (compr->owner.pos == 0 ||
-		    compr->owner.pos > KNOT_WIRE_PTR_MAX) {
-			memcpy(*pos, compr->owner.wire,
-			       compr->owner.size);
-			compr->owner.pos = compr->wire_pos;
-			*pos += compr->owner.size;
-			*size += compr->owner.size;
-			dbg_response_detail("Saving compressed owner: size %d\n",
-			                    compr->owner.size);
-		} else {
-			dbg_response_detail("Putting pointer: %zu\n",
-			                    compr->owner.pos);
-			knot_wire_put_pointer(*pos, compr->owner.pos);
-			*pos += 2;
-			*size += 2;
-		}
+		owner = compr->owner.wire + compr->owner.pos;
+		owner_len = compr->owner.size;
+	// Use rrset owner.
 	} else {
-		// check if owner fits
-		if (*size + knot_dname_size(rrset->owner) + 10 > max_size) {
-			dbg_rrset_detail("Owner does not fit into wire.\n");
-			return KNOT_ESPACE;
-		}
-
-		memcpy(*pos, knot_dname_name(rrset->owner),
-		       knot_dname_size(rrset->owner));
-		*pos += knot_dname_size(rrset->owner);
-		*size += knot_dname_size(rrset->owner);
+		owner = knot_dname_name(rrset->owner);
+		owner_len = knot_dname_size(rrset->owner);
 	}
 
-	dbg_rrset_detail("Max size: %zu, size: %zu\n", max_size, size);
+	dbg_response("Max size: %zu, compressed owner: %s, owner size: %u\n",
+	             max_size, compr ? "yes" : "no", owner_len);
 
-	// put rest of RR 'header'
-	knot_wire_write_u16(*pos, rrset->type);
+	// Check wire space for header.
+	if (*size + owner_len + type_cls_ttl_len + rrlen_len > max_size) {
+		dbg_rrset_detail("Header does not fit into wire.\n");
+		return KNOT_ESPACE;
+	}
+
+	// Write owner, type, class and ttl to wire.
+	memcpy(*pos, owner, owner_len);
+	*pos += owner_len;
+
 	dbg_rrset_detail("  Type: %u\n", rrset->type);
-	*pos += 2;
+	knot_wire_write_u16(*pos, rrset->type);
+	*pos += sizeof(uint16_t);
 
-	knot_wire_write_u16(*pos, rrset->rclass);
 	dbg_rrset_detail("  Class: %u\n", rrset->rclass);
-	*pos += 2;
+	knot_wire_write_u16(*pos, rrset->rclass);
+	*pos += sizeof(uint16_t);
 
-	knot_wire_write_u32(*pos, rrset->ttl);
 	dbg_rrset_detail("  TTL: %u\n", rrset->ttl);
-	*pos += 4;
-	*size += 8;
+	knot_wire_write_u32(*pos, rrset->ttl);
+	*pos += sizeof(uint32_t);
+
+	*size += owner_len + type_cls_ttl_len;
 
 	return KNOT_EOK;
 }
@@ -461,6 +448,7 @@ dbg_rrset_exec_detail(
 static int knot_rrset_to_wire_aux(const knot_rrset_t *rrset, uint8_t **pos,
                                   size_t max_size, compression_param_t *comp)
 {
+	uint8_t wf_owner[256];
 	size_t size = 0;
 
 	assert(rrset != NULL);
@@ -468,19 +456,11 @@ static int knot_rrset_to_wire_aux(const knot_rrset_t *rrset, uint8_t **pos,
 	assert(pos != NULL);
 	assert(*pos != NULL);
 
-	uint8_t wf_owner[256];
-
 	dbg_rrset_detail("Max size: %zu, owner: %p, owner size: %d\n",
 	                 max_size, rrset->owner, rrset->owner->size);
+
 	knot_compr_t compr_info;
 	if (comp) {
-		/*
-		 * We may pass the current position to the compression function
-		 * because if the owner will be put somewhere, it will be on the
-		 * current position (first item of a RR). If it will not be put into
-		 * the wireformat, we may remove the dname (and possibly its parents)
-		 * from the compression table.
-		 */
 		dbg_response_detail("Compressing RR owner: %s.\n",
 		                    rrset->owner->name);
 		compr_info.table = comp->compressed_dnames;
@@ -502,24 +482,25 @@ static int knot_rrset_to_wire_aux(const knot_rrset_t *rrset, uint8_t **pos,
 
 	dbg_rrset_detail("Max size: %zu, size: %zu\n", max_size, size);
 
-	const rdata_descriptor_t *desc = get_rdata_descriptor(rrset->type);
-	assert(desc);
-
+	// No RDATA, just save header and 0 RDLENGTH.
 	if (rrset->rdata_count == 0) {
-		// No RDATA, just save header and 0 RDLENGTH and be done with it
-		size_t header_size;
+		size_t header_size = 0;
 		int ret = knot_rrset_header_to_wire(rrset, pos, max_size,
 		                                    comp ? &compr_info : NULL,
 		                                    &header_size);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-		/* 'pos' has moved, save RDLENGTH. */
+
+		// Save zero rdata length.
 		knot_wire_write_u16(*pos, 0);
-		*pos += 2;
-		return KNOT_EOK;
+		*pos += sizeof(uint16_t);
+		header_size += sizeof(uint16_t);
+
+		return header_size;
 	}
 
+	// Save rrset records.
 	for (uint16_t i = 0; i < rrset->rdata_count; ++i) {
 		dbg_rrset_detail("rrset: to_wire: Current max_size=%zu\n",
 			         max_size);
@@ -540,6 +521,7 @@ static int knot_rrset_to_wire_aux(const knot_rrset_t *rrset, uint8_t **pos,
 	}
 
 	dbg_rrset_detail("Max size: %zu, size: %zu\n", max_size, size);
+
 	return size;
 }
 
