@@ -31,8 +31,6 @@
 #include "packet/response.h"
 #include "util/wire.h"
 
-static const size_t KNOT_RESPONSE_MAX_PTR = 16383;
-
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
@@ -257,14 +255,14 @@ static int knot_rrset_header_to_wire(const knot_rrset_t *rrset,
 	        dbg_response("Max size: %zu, owner pos: %zu, owner size: %d\n",
 		             max_size, compr->owner.pos, compr->owner.size);
 		if (*size + ((compr->owner.pos == 0
-		    || compr->owner.pos > KNOT_RESPONSE_MAX_PTR)
+		    || compr->owner.pos > KNOT_WIRE_PTR_MAX)
 		    ? compr->owner.size : 2) + 10 > max_size) {
 			return KNOT_ESPACE;
 		}
 
 		// put owner if needed (already compressed)
 		if (compr->owner.pos == 0 ||
-		    compr->owner.pos > KNOT_RESPONSE_MAX_PTR) {
+		    compr->owner.pos > KNOT_WIRE_PTR_MAX) {
 			memcpy(*pos, compr->owner.wire,
 			       compr->owner.size);
 			compr->owner.pos = compr->wire_pos;
@@ -307,7 +305,7 @@ static int knot_rrset_header_to_wire(const knot_rrset_t *rrset,
 	dbg_rrset_detail("  TTL: %u\n", rrset->ttl);
 	*pos += 4;
 	*size += 8;
-	
+
 	return KNOT_EOK;
 }
 
@@ -319,7 +317,7 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 {
 	assert(rrset);
 	assert(pos);
-	
+
 	/* Put RR header to wire. */
 	size_t size = 0;
 	int ret = knot_rrset_header_to_wire(rrset, pos, max_size,
@@ -329,7 +327,7 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 		             knot_strerror(ret));
 		return ret;
 	}
-	
+
 	// save space for RDLENGTH
 	uint8_t *rdlength_pos = *pos;
 	*pos += 2;
@@ -506,7 +504,7 @@ static int knot_rrset_to_wire_aux(const knot_rrset_t *rrset, uint8_t **pos,
 
 	const rdata_descriptor_t *desc = get_rdata_descriptor(rrset->type);
 	assert(desc);
-	
+
 	if (rrset->rdata_count == 0) {
 		// No RDATA, just save header and 0 RDLENGTH and be done with it
 		size_t header_size;
