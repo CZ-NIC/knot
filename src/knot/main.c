@@ -246,12 +246,6 @@ int main(int argc, char **argv)
 	}
 	log_server_info("\n");
 
-	/* Alter privileges. */
-	log_update_privileges(conf()->uid, conf()->gid);
-	if (proc_update_privileges(conf()->uid, conf()->gid) != KNOT_EOK) {
-		return 1;
-	}
-
 	/* Create empty PID file. */
 	char* pidfile = pid_filename();
 	FILE *f = fopen(pidfile, "w");
@@ -262,6 +256,19 @@ int main(int argc, char **argv)
 		return 1;
 	}
 	fclose(f);
+
+	/* Alter PID file privileges. */
+	if (chown(pidfile, conf()->uid, conf()->gid) < 0) {
+		log_server_warning("Cannot change PID file ownership\n");
+		free(pidfile);
+		return 1;
+	}
+
+	/* Alter privileges. */
+	log_update_privileges(conf()->uid, conf()->gid);
+	if (proc_update_privileges(conf()->uid, conf()->gid) != KNOT_EOK) {
+		return 1;
+	}
 
 	/* Load zones and add hook. */
 	zones_ns_conf_hook(conf(), server->nameserver);
