@@ -1967,6 +1967,24 @@ int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
 	size_t len = 0;
 	int    ret;
 
+	// If the rrset is empty, dump header only.
+	if (rrset->rdata_count == 0) {
+		// Dump rdata owner, class, ttl and type.
+		ret = knot_rrset_txt_dump_header(rrset, 0, dst + len,
+		                                 maxlen - len, style);
+		if (ret < 0) {
+			return KNOT_ESPACE;
+		}
+		len += ret;
+
+		// Terminate line.
+		if (len >= maxlen) {
+			return KNOT_ESPACE;
+		}
+		dst[len++] = '\n';
+		dst[len] = '\0';
+	}
+
 	// Loop over rdata in rrset.
 	for (size_t i = 0; i < rrset->rdata_count; i++) {
 		// Dump rdata owner, class, ttl and type.
