@@ -195,7 +195,7 @@ static void print_section_question(const knot_dname_t *owner,
                                    const style_t      *style)
 {
 	size_t buflen = 8192;
-	char   *buf = malloc(buflen);
+	char   *buf = calloc(buflen, 1);
 
 	knot_rrset_t *question = knot_rrset_new((knot_dname_t *)owner, qtype,
 	                                        qclass, 0);
@@ -216,7 +216,7 @@ static void print_section_full(const knot_rrset_t **rrsets,
                                const style_t      *style)
 {
 	size_t buflen = 8192;
-	char   *buf = malloc(buflen);
+	char   *buf = calloc(buflen, 1);
 
 	for (size_t i = 0; i < count; i++) {
 		while (knot_rrset_txt_dump(rrsets[i], buf, buflen,
@@ -242,7 +242,7 @@ static void print_section_dig(const knot_rrset_t **rrsets,
                               const style_t      *style)
 {
 	size_t buflen = 8192;
-	char   *buf = malloc(buflen);
+	char   *buf = calloc(buflen, 1);
 
 	for (size_t i = 0; i < count; i++) {
 		const knot_rrset_t *rrset = rrsets[i];
@@ -271,7 +271,7 @@ static void print_section_host(const knot_rrset_t **rrsets,
                                const style_t      *style)
 {
 	size_t buflen = 8192;
-	char   *buf = malloc(buflen);
+	char   *buf = calloc(buflen, 1);
 
 	for (size_t i = 0; i < count; i++) {
 		const knot_rrset_t  *rrset = rrsets[i];
