@@ -73,7 +73,7 @@ static inline unsigned has_flag(unsigned flags, enum knotc_flag_t f)
 typedef int (*knot_cmdf_t)(int argc, char *argv[], unsigned flags);
 
 /*! \brief Command table item. */
-typedef struct knot_cmd_t {
+typedef struct knot_cmd {
 	const char *name;
 	knot_cmdf_t cb;
 	const char *desc;
@@ -94,23 +94,23 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags);
 
 /*! \brief Table of remote commands. */
 knot_cmd_t knot_cmd_tbl[] = {
-	{"start",     &cmd_start, "\tStart server (no-op if running).", 1},
-	{"stop",      &cmd_stop, "\tStop server (no-op if running).", 1},
-	{"restart",   &cmd_restart, "Restarts server (no-op if running).", 1},
-	{"reload",    &cmd_reload, "\tReloads configuration and changed zones.",0},
-	{"refresh",   &cmd_refresh,"Refresh slave zones (all if not specified).",0},
-	{"flush",     &cmd_flush, "\tFlush journal and update zone files.",0},
-	{"status",    &cmd_status, "\tCheck if server is running.",0},
-	{"zonestatus",&cmd_zonestatus, "Show status of configured zones.",0},
-	{"checkconf", &cmd_checkconf, "Check server configuration.",1},
-	{"checkzone", &cmd_checkzone, "Check specified zone files.",1},
+	{"start",            &cmd_start,      "\t\tStart server (if not running).", 1},
+	{"stop",             &cmd_stop,       "\t\tStop server.", 1},
+	{"restart",          &cmd_restart,    "\tRestart server.", 1},
+	{"reload",           &cmd_reload,     "\t\tReload configuration and changed zones.", 0},
+	{"refresh [zone]",   &cmd_refresh,    "\tRefresh slave zone (all if not specified).", 0},
+	{"flush",            &cmd_flush,      "\t\tFlush journal and update zone files.", 0},
+	{"status",           &cmd_status,     "\t\tCheck if server is running.", 0},
+	{"zonestatus",       &cmd_zonestatus, "\tShow status of configured zones.", 0},
+	{"checkconf",        &cmd_checkconf,  "\tCheck current server configuration.", 1},
+	{"checkzone [zone]", &cmd_checkzone,  "Check zone (all if not specified).", 1},
 	{NULL, NULL, NULL,0}
 };
 
 /*! \brief Print help. */
 void help(int argc, char **argv)
 {
-	printf("Usage: %sc [parameters] <action> [action_args]\n", PACKAGE_NAME);
+	printf("Usage: %sc [parameters] <action>\n", PACKAGE_NAME);
 	printf("\nParameters:\n"
 	       " -c [file], --config=[file]\tSelect configuration file.\n"
 	       " -s [server]               \tRemote server address (default %s)\n"
@@ -128,7 +128,7 @@ void help(int argc, char **argv)
 	printf("\nActions:\n");
 	knot_cmd_t *c = knot_cmd_tbl;
 	while (c->name != NULL) {
-		printf(" %s\t\t\t%s\n", c->name, c->desc);
+		printf(" %s\t\t%s\n", c->name, c->desc);
 		++c;
 	}
 }
