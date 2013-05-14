@@ -633,7 +633,6 @@ static int cmd_start(int argc, char *argv[], unsigned flags)
 	fflush(stdout);
 
 	if ((rc = cmd_exec(args, args_c)) < 0) {
-		pid_remove(pidfile);
 		rc = 1;
 	}
 	fflush(stderr);

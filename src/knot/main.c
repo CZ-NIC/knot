@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <sys/stat.h>
 
 #ifdef HAVE_CAP_NG_H
 #include <cap-ng.h>
@@ -246,8 +247,28 @@ int main(int argc, char **argv)
 	}
 	log_server_info("\n");
 
-	/* Create empty PID file. */
+	/* Check PID. */
+	struct stat st;
+	unsigned do_start = 0;
 	char* pidfile = pid_filename();
+	int pid = pid_read(pidfile);
+	if (pid > 0 && pid_running(pid)) {
+		log_server_error("Server PID found, already running.\n");
+	} else if (stat(pidfile, &st) == 0) {
+		log_server_warning("PID file '%s' exists, another process "
+		                   "is starting or PID file is stale.\n",
+		                   pidfile);
+	} else {
+		do_start = 1;
+	}
+	if (!do_start) {
+		free(pidfile);
+		server_wait(server);
+		server_destroy(&server);
+		return 1;
+	}
+
+	/* Create empty PID file. */
 	FILE *f = fopen(pidfile, "w");
 	if (f == NULL) {
 		log_server_warning("PID file '%s' is not writeable.\n",
@@ -260,6 +281,7 @@ int main(int argc, char **argv)
 	/* Alter PID file privileges. */
 	if (chown(pidfile, conf()->uid, conf()->gid) < 0) {
 		log_server_warning("Cannot change PID file ownership\n");
+		pid_remove(pidfile);
 		free(pidfile);
 		return 1;
 	}
@@ -267,6 +289,7 @@ int main(int argc, char **argv)
 	/* Alter privileges. */
 	log_update_privileges(conf()->uid, conf()->gid);
 	if (proc_update_privileges(conf()->uid, conf()->gid) != KNOT_EOK) {
+		pid_remove(pidfile);
 		return 1;
 	}
 
