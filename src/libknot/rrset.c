@@ -117,7 +117,6 @@ dbg_rrset_exec_detail(
 	}
 	const rdata_descriptor_t *desc =
 		get_rdata_descriptor(knot_rrset_type(rrset));
-	assert(desc != NULL);
 
 	size_t offset = 0;
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
@@ -333,7 +332,6 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 	uint16_t rdlength = 0;
 
 	const rdata_descriptor_t *desc = get_rdata_descriptor(rrset->type);
-	assert(desc);
 
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
 		int item = desc->block_types[i];
@@ -601,7 +599,6 @@ static size_t rrset_binary_size_one(const knot_rrset_t *rrset,
 {
 	const rdata_descriptor_t *desc =
 		get_rdata_descriptor(knot_rrset_type(rrset));
-	assert(desc != NULL);
 
 	size_t offset = 0;
 	size_t size = 0;
@@ -641,7 +638,6 @@ static void rrset_serialize_rr(const knot_rrset_t *rrset, size_t rdata_pos,
 {
 	const rdata_descriptor_t *desc =
 		get_rdata_descriptor(knot_rrset_type(rrset));
-	assert(desc != NULL);
 
 	size_t offset = 0;
 	*size = 0;
@@ -690,7 +686,6 @@ static int rrset_deserialize_rr(knot_rrset_t *rrset, size_t rdata_pos,
 {
 	const rdata_descriptor_t *desc =
 		get_rdata_descriptor(knot_rrset_type(rrset));
-	assert(desc != NULL);
 
 	size_t stream_offset = 0;
 	size_t rdata_offset = 0;
@@ -1069,14 +1064,8 @@ knot_rrset_t *knot_rrset_get_rrsigs(knot_rrset_t *rrset)
 
 int knot_rrset_rdata_equal(const knot_rrset_t *r1, const knot_rrset_t *r2)
 {
-	if (r1 == NULL || r2 == NULL ||( r1->type != r2->type) ||
-	                r1->rdata_count == 0 || r2->rdata_count == 0) {
-		return KNOT_EINVAL;
-	}
-
-	const rdata_descriptor_t *desc =
-		get_rdata_descriptor(r1->type);
-	if (desc == NULL) {
+	if (r1 == NULL || r2 == NULL || (r1->type != r2->type) ||
+	    r1->rdata_count == 0 || r2->rdata_count == 0) {
 		return KNOT_EINVAL;
 	}
 
@@ -1115,16 +1104,9 @@ int knot_rrset_rdata_equal(const knot_rrset_t *r1, const knot_rrset_t *r2)
 int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
                        size_t max_size, uint16_t *rr_count, void *data)
 {
-	/* [code-review] Missing parameter checks. */
-
-	// if no RDATA in RRSet, return
-	if (rrset == NULL) {
-		*size = 0;
-		*rr_count = 0;
-		return KNOT_EOK;
+	if (rrset == NULL || wire == NULL || size == NULL || rr_count == NULL) {
+		return KNOT_EINVAL;
 	}
-
-	assert(rrset->rdata_count > 0);
 
 	compression_param_t *comp_data = (compression_param_t *)data;
 	uint8_t *pos = wire;
@@ -1135,9 +1117,6 @@ dbg_rrset_exec_detail(
 );
 
 	int ret = knot_rrset_to_wire_aux(rrset, &pos, max_size, comp_data);
-
-	assert(ret != 0);
-
 	if (ret < 0) {
 		// some RR didn't fit in, so no RRs should be used
 		// TODO: remove last entries from compression table
@@ -1145,14 +1124,16 @@ dbg_rrset_exec_detail(
 		return KNOT_ESPACE;
 	}
 
-	// the whole RRSet did fit in
+	// Check if the whole RRSet fit into packet.
 	assert(ret <= max_size);
 	assert(pos - wire == ret);
+
 	*size = ret;
 
 	dbg_rrset_detail("Size after: %zu\n", *size);
 
-	*rr_count = rrset->rdata_count;
+	// If the rrset is empty set record counter to 1.
+	*rr_count = rrset->rdata_count > 0 ? rrset->rdata_count : 1;
 
 	return KNOT_EOK;
 }
@@ -1176,7 +1157,6 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 
 	size_t extra_dname_size = 0;
 	const rdata_descriptor_t *desc = get_rdata_descriptor(rrset->type);
-	assert(desc);
 
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; ++i) {
 		if (descriptor_item_is_dname(desc->block_types[i])) {
