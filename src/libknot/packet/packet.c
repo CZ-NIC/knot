@@ -783,7 +783,7 @@ knot_packet_t *knot_packet_new_mm(knot_packet_prealloc_type_t prealloc, mm_ctx_t
 
 	pkt = (knot_packet_t *)mm->alloc(mm->ctx, size);
 	CHECK_ALLOC_LOG(pkt, NULL);
-	memset(pkt, 0, PREALLOC_PACKET);
+	memset(pkt, 0, size);
 	memcpy(&pkt->mm, mm, sizeof(mm_ctx_t));
 	if (init_pointers != NULL) {
 		init_pointers(pkt);
