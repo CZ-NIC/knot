@@ -2034,7 +2034,11 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rrset,
 		dbg_ddns_detail("Removing RRSet of type: %d\n", type);
 
 		*removed = knot_node_remove_rrset(node, type);
-		removed_count = 1;
+		if (*removed != NULL) {
+			removed_count = 1;
+		} else {
+			removed_count = 0;
+		}
 	}
 
 	dbg_ddns_detail("Removed: %p (first item: %p), removed count: %zu\n",
