@@ -419,10 +419,23 @@ static int nsupdate_process_line(char *lp, int len, void *arg)
 {
 	nsupdate_params_t *params = (nsupdate_params_t *)arg;
 
-	if (lp[len - 1] == '\n') lp[len - 1] = '\0'; /* Discard nline */
-	if (lp[0] == '\0' || lp[0] == ';') return KNOT_EOK; /* Empty/comment */
+	/* Remove trailing white space chars. */
+	for (int i = len - 1; i >= 0; i--) {
+		if (isspace((unsigned char)lp[i]) == 0) {
+			break;
+		}
+		lp[i] = '\0';
+	}
+
+	/* Check for empty line or comment. */
+	if (lp[0] == '\0' || lp[0] == ';') {
+		return KNOT_EOK;
+	}
+
 	int ret = tok_find(lp, cmd_array);
-	if (ret < 0) return ret; /* Syntax error */
+	if (ret < 0) {
+		return ret; /* Syntax error. */
+	}
 
 	const char *cmd = cmd_array[ret];
 	const char *val = tok_skipspace(lp + TOK_L(cmd));
