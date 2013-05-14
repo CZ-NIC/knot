@@ -828,7 +828,7 @@ int cmd_answer(const char* lp, nsupdate_params_t *params)
 	DBG("%s: lp='%s'\n", __func__, lp);
 	/* Show current answer. */
 	if (!params->resp) return KNOT_EOK;
-	printf("Answer:\n");
+	printf("\nAnswer:\n");
 	size_t len = knot_packet_size(params->resp);
 	print_packet(params->resp, len, NULL, -1, true, &params->style);
 	return KNOT_EOK;
