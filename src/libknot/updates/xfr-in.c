@@ -2980,9 +2980,17 @@ dbg_xfrin_exec_detail(
 		ret = knot_zone_contents_remove_node(
 			contents, changes->old_nodes[i], &zone_node);
 
-		if (ret != KNOT_EOK) {
+		if (ret == KNOT_ENONODE) {
+			assert(knot_node_rrset_count(changes->old_nodes[i]) == 1);
+			assert(knot_node_rrset(changes->old_nodes[i],
+			                       KNOT_RRTYPE_RRSIG));
+			char *name = knot_dname_to_str(changes->old_nodes[i]->owner);
+			log_zone_warning("Ignoring extra RRSIG for %s!\n",
+			                 name);
+			free(name);
+		} else if (ret != KNOT_EOK) {
 			dbg_xfrin("Failed to remove node from zone!\n");
-			return KNOT_ENONODE;
+			return ret;
 		}
 		assert(changes->old_nodes[i] == zone_node);
 	}
