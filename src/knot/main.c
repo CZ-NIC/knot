@@ -44,6 +44,9 @@ static volatile short sig_req_reload = 0;
 static volatile short sig_req_refresh = 0;
 static volatile short sig_stopping = 0;
 
+// Cleanup handler
+static void do_cleanup(server_t *server, char *configf, char *pidf);
+
 // SIGINT signal handler
 void interrupt_handle(int s)
 {
@@ -230,16 +233,13 @@ int main(int argc, char **argv)
 	log_server_info("Reading configuration '%s' ...\n", config_fn);
 	int conf_ret = conf_open(config_fn);
 	if (conf_ret != KNOT_EOK) {
-		if (conf_ret == KNOT_ENOENT) {
+		if (conf_ret == KNOT_ENOENT)
 			log_server_error("Couldn't open configuration file "
 					 "'%s'.\n", config_fn);
-		} else {
+		else
 			log_server_error("Failed to load configuration '%s'.\n",
 				config_fn);
-		}
-		server_wait(server);
-		server_destroy(&server);
-		free(config_fn);
+		do_cleanup(server, config_fn, NULL);
 		return 1;
 	} else {
 		log_server_info("Configured %d interfaces and %d zones.\n",
@@ -262,9 +262,7 @@ int main(int argc, char **argv)
 		do_start = 1;
 	}
 	if (!do_start) {
-		free(pidfile);
-		server_wait(server);
-		server_destroy(&server);
+		do_cleanup(server, config_fn, pidfile);
 		return 1;
 	}
 
@@ -273,7 +271,7 @@ int main(int argc, char **argv)
 	if (f == NULL) {
 		log_server_warning("PID file '%s' is not writeable.\n",
 		                   pidfile);
-		free(pidfile);
+		do_cleanup(server, config_fn, pidfile);
 		return 1;
 	}
 	fclose(f);
@@ -282,7 +280,7 @@ int main(int argc, char **argv)
 	if (chown(pidfile, conf()->uid, conf()->gid) < 0) {
 		log_server_warning("Cannot change PID file ownership\n");
 		pid_remove(pidfile);
-		free(pidfile);
+		do_cleanup(server, config_fn, pidfile);
 		return 1;
 	}
 
@@ -290,6 +288,7 @@ int main(int argc, char **argv)
 	log_update_privileges(conf()->uid, conf()->gid);
 	if (proc_update_privileges(conf()->uid, conf()->gid) != KNOT_EOK) {
 		pid_remove(pidfile);
+		do_cleanup(server, config_fn, pidfile);
 		return 1;
 	}
 
@@ -416,9 +415,6 @@ int main(int argc, char **argv)
 		res = 1;
 	}
 
-	// Stop server and close log
-	server_destroy(&server);
-
 	// Remove PID file
 	if (has_pid && pid_remove(pidfile) < 0) {
 		log_server_warning("Failed to remove PID file.\n");
@@ -426,16 +422,8 @@ int main(int argc, char **argv)
 
 	log_server_info("Shut down.\n");
 	log_close();
-	free(pidfile);
 
-	// Destroy event loop
-	evqueue_t *q = evqueue();
-	evqueue_free(&q);
-
-	rcu_unregister_thread();
-
-	// Free default config filename if exists
-	free(config_fn);
+	do_cleanup(server, config_fn, pidfile);
 
 	if (!daemonize) {
 		fflush(stdout);
@@ -443,4 +431,22 @@ int main(int argc, char **argv)
 	}
 
 	return res;
+}
+
+static void do_cleanup(server_t *server, char *configf, char *pidf)
+{
+	/* Free alloc'd variables. */
+	if (server) {
+		server_wait(server);
+		server_destroy(&server);
+	}
+	free(configf);
+	free(pidf);
+
+	/* Unhook from RCU */
+	rcu_unregister_thread();
+
+	/* Free event loop. */
+	evqueue_t *q = evqueue();
+	evqueue_free(&q);
 }

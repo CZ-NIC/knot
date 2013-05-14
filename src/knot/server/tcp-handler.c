@@ -368,6 +368,17 @@ void tcp_worker_free(tcp_worker_t* w)
 	free(w);
 }
 
+/* Free workers and associated data. */
+static void tcp_loop_free(void *data)
+{
+	tcp_worker_t **worker = (tcp_worker_t **)data;
+	iohandler_t *ioh = worker[0]->ioh;
+	for (unsigned i = 0; i < ioh->unit->size - 1; ++i)
+		tcp_worker_free(worker[i]);
+
+	free(worker);
+}
+
 /*
  * Public APIs.
  */
@@ -523,7 +534,6 @@ int tcp_loop_master(dthread_t *thread)
 	}
 
 	dbg_net("tcp: master thread finished\n");
-	free(workers);
 	fdset_destroy(fds);
 	ref_release(ref);
 
@@ -639,7 +649,6 @@ int tcp_loop_worker(dthread_t *thread)
 	/* Stop whole unit. */
 	free(qbuf);
 	dbg_net_verb("tcp: worker %p finished\n", w);
-	tcp_worker_free(w);
 	return KNOT_EOK;
 }
 
@@ -689,6 +698,9 @@ int tcp_loop_unit(iohandler_t *ioh, dt_unit_t *unit)
 
 	/* Repurpose first thread as master (unit controller). */
 	dt_repurpose(unit->threads[0], tcp_loop_master, ioh->state + 0);
+
+	/* Create data destructor. */
+	ioh->dtor = tcp_loop_free;
 
 	return KNOT_EOK;
 }

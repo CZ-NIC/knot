@@ -119,7 +119,6 @@ int pid_write(const char* fn)
 int pid_remove(const char* fn)
 {
 	if (unlink(fn) < 0) {
-		perror("unlink");
 		return KNOT_EINVAL;
 	}
 
