@@ -39,16 +39,16 @@ Parameters:
  -h, --help                 Print help and usage.
 
 Actions:
- start				Start server (no-op if running).
- stop				Stop server (no-op if running).
- restart			Restarts server (no-op if running).
- reload				Reloads configuration and changed zones.
- refresh			Refresh slave zones (all if not specified).
- flush				Flush journal and update zone files.
- status				Check if server is running.
- zonestatus			Show status of configured zones.
- checkconf			Check server configuration.
- checkzone			Check specified zone files.
+ start                      Start server (if not running).
+ stop                       Stop server.
+ restart                    Restart server.
+ reload                     Reload configuration and changed zones.
+ refresh [zone]             Refresh slave zone (all if not specified).
+ flush                      Flush journal and update zone files.
+ status                     Check if server is running.
+ zonestatus                 Show status of configured zones.
+ checkconf                  Check current server configuration.
+ checkzone [zone]           Check zone (all if not specified).
 @end example
 
 If you want to run Knot DNS daemon directly, you can use @code{knotd} binary
