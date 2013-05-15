@@ -748,8 +748,10 @@ int hattrie_find_lpr (hattrie_t* T, const char* key, size_t len, value_t** dst)
     /* consume trie nodes for key (thus building prefix chain) */
     node_ptr node = hattrie_find_ns(&ns, &sp, NODESTACK_INIT, &key, &len);
     if (node.flag == NULL) {
-        if (sp == 0) /* empty trie, no prefix match */
+        if (sp == 0) { /* empty trie, no prefix match */
+            if (ns != bs) free(ns);
             return -1;
+        }
         node = ns[--sp]; /* dead end, pop node */
     }
 
