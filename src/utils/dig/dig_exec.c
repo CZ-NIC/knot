@@ -330,7 +330,7 @@ static int process_query_packet(const knot_packet_t     *query,
 		if (knot_packet_parse_from_wire(reply, in, in_len, 0,
 		                                KNOT_PACKET_DUPL_NO_MERGE)
 		    != KNOT_EOK) {
-			ERR("Malformed reply packet\n");
+			ERR("malformed reply packet from %s\n", net->remote_str);
 			knot_packet_free(&reply);
 			net_close(net);
 			return -1;
@@ -372,7 +372,8 @@ static int process_query_packet(const knot_packet_t     *query,
 	if (key_params->name != NULL) {
 		ret = verify_packet(reply, sign_ctx, key_params);
 		if (ret != KNOT_EOK) {
-			ERR("%s\n", knot_strerror(ret));
+			ERR("reply verification for %s (%s)\n",
+			    net->remote_str, knot_strerror(ret));
 			knot_packet_free(&reply);
 			net_close(net);
 			return -1;
@@ -547,7 +548,7 @@ static int process_packet_xfr(const knot_packet_t     *query,
 		if (knot_packet_parse_from_wire(reply, in, in_len, 0,
 		                                KNOT_PACKET_DUPL_NO_MERGE)
 		    != KNOT_EOK) {
-			ERR("Malformed reply packet\n");
+			ERR("malformed reply packet from %s\n", net->remote_str);
 			knot_packet_free(&reply);
 			net_close(net);
 			return -1;
@@ -566,9 +567,11 @@ static int process_packet_xfr(const knot_packet_t     *query,
 			knot_lookup_table_t *rcode =
 				knot_lookup_by_id(knot_rcode_names, rcode_id);
 			if (rcode != NULL) {
-				ERR("server respond %s\n", rcode->name);
+				ERR("server %s respond %s\n",
+				    net->remote_str, rcode->name);
 			} else {
-				ERR("server respond %i\n", rcode_id);
+				ERR("server %s respond %i\n",
+				    net->remote_str, rcode_id);
 			}
 
 			knot_packet_free(&reply);
@@ -582,7 +585,8 @@ static int process_packet_xfr(const knot_packet_t     *query,
 			if (key_params->name != NULL) {
 				ret = verify_packet(reply, sign_ctx, key_params);
 				if (ret != KNOT_EOK) {
-					ERR("%s\n", knot_strerror(ret));
+					ERR("reply verification for %s (%s)\n",
+					    net->remote_str, knot_strerror(ret));
 					knot_packet_free(&reply);
 					net_close(net);
 					return -1;
