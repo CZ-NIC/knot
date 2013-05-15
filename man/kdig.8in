@@ -77,88 +77,88 @@ Use TSIG key with a name \fIkeyname\fR to authenticate the request. The \fIalgo\
 part specifies the algorithm (the default is hmac\-md5) and \fIkey\fR specifies
 the shared secret encoded in Base64.
 .TP
-\fI+\fR[\fIno\fR]\fImultiline\fR
+\fB+\fR[\fBno\fR]\fBmultiline\fR
 Wrap long records to more lines.
 .TP
-\fI+\fR[\fIno\fR]\fIshort\fR
+\fB+\fR[\fBno\fR]\fBshort\fR
 Show record data only.
 .TP
-\fI+\fR[\fIno\fR]\fIaaflag\fR
+\fB+\fR[\fBno\fR]\fBaaflag\fR
 Set AA flag.
 .TP
-\fI+\fR[\fIno\fR]\fItcflag\fR
+\fB+\fR[\fBno\fR]\fBtcflag\fR
 Set TC flag.
 .TP
-\fI+\fR[\fIno\fR]\fIrdflag\fR
+\fB+\fR[\fBno\fR]\fBrdflag\fR
 Set RD flag.
 .TP
-\fI+\fR[\fIno\fR]\fIrecurse\fR
-Same as +\fR[\fIno\fR]\fIrdflag\fR
+\fB+\fR[\fBno\fR]\fBrecurse\fR
+Same as +\fR[\fBno\fR]\fBrdflag\fR
 .TP
-\fI+\fR[\fIno\fR]\fIraflag\fR
+\fB+\fR[\fBno\fR]\fBraflag\fR
 Set RA flag.
 .TP
-\fI+\fR[\fIno\fR]\fIzflag\fR
+\fB+\fR[\fBno\fR]\fBzflag\fR
 Set zero flag bit.
 .TP
-\fI+\fR[\fIno\fR]\fIadflag\fR
+\fB+\fR[\fBno\fR]\fBadflag\fR
 Set AD flag.
 .TP
-\fI+\fR[\fIno\fR]\fIcdflag\fR
+\fB+\fR[\fBno\fR]\fBcdflag\fR
 Set CD flag.
 .TP
-\fI+\fR[\fIno\fR]\fIdnssec\fR
+\fB+\fR[\fBno\fR]\fBdnssec\fR
 Set DO flag.
 .TP
-\fI+\fR[\fIno\fR]\fIall\fR
+\fB+\fR[\fBno\fR]\fBall\fR
 Show all packet sections.
 .TP
-\fI+\fR[\fIno\fR]\fIqr\fR
+\fB+\fR[\fBno\fR]\fBqr\fR
 Show query packet.
 .TP
-\fI+\fR[\fIno\fR]\fIheader\fR
+\fB+\fR[\fBno\fR]\fBheader\fR
 Show packet header.
 .TP
-\fI+\fR[\fIno\fR]\fIquestion\fR
+\fB+\fR[\fBno\fR]\fBquestion\fR
 Show question section.
 .TP
-\fI+\fR[\fIno\fR]\fIanswer\fR
+\fB+\fR[\fBno\fR]\fBanswer\fR
 Show answer section.
 .TP
-\fI+\fR[\fIno\fR]\fIauthority\fR
+\fB+\fR[\fBno\fR]\fBauthority\fR
 Show authority section.
 .TP
-\fI+\fR[\fIno\fR]\fIadditional\fR
+\fB+\fR[\fBno\fR]\fBadditional\fR
 Show additional section.
 .TP
-\fI+\fR[\fIno\fR]\fIstats\fR
+\fB+\fR[\fBno\fR]\fBstats\fR
 Show trailing packet statistics.
 .TP
-\fI+\fR[\fIno\fR]\fIcl\fR
+\fB+\fR[\fBno\fR]\fBcl\fR
 Show DNS class.
 .TP
-\fI+\fR[\fIno\fR]\fIttl\fR
+\fB+\fR[\fBno\fR]\fBttl\fR
 Show TTL value.
 .TP
-\fI+time=T\fR
+\fB+time=\fIT\fR
 Set wait for reply interval in seconds (default is 5 seconds).
 .TP
-\fI+retries=N\fR
+\fB+retries=\fIN\fR
 Set number of retries (default is 2). This doesn't apply to AXFR or IXFR.
 .TP
-\fI+bufsize=B\fR
+\fB+bufsize=\fIB\fR
 Set EDNS buffer size in bytes (default is 512 bytes).
 .TP
-\fI+\fR[\fIno\fR]\fItcp\fR
+\fB+\fR[\fBno\fR]\fBtcp\fR
 Use TCP protocol.
 .TP
-\fI+\fR[\fIno\fR]\fIfail\fR
+\fB+\fR[\fBno\fR]\fBfail\fR
 Stop if SERVFAIL.
 .TP
-\fI+\fR[\fIno\fR]\fIignore\fR
+\fB+\fR[\fBno\fR]\fBignore\fR
 Don't use TCP automatically if truncated reply is received.
 .TP
-\fI+\fR[\fIno\fR]\fInsid\fR
+\fB+\fR[\fBno\fR]\fBnsid\fR
 Request nameserver identifier (NSID).
 .SH NOTE
 Options \fB-k\fR and \fB-y\fR cannot be used mutually.
