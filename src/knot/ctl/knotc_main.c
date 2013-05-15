@@ -74,10 +74,11 @@ typedef int (*knot_cmdf_t)(int argc, char *argv[], unsigned flags);
 
 /*! \brief Command table item. */
 typedef struct knot_cmd {
-	const char *name;
 	knot_cmdf_t cb;
-	const char *desc;
 	int need_conf;
+	const char *name;
+	const char *params;
+	const char *desc;
 } knot_cmd_t;
 
 /* Forward decls. */
@@ -94,17 +95,17 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags);
 
 /*! \brief Table of remote commands. */
 knot_cmd_t knot_cmd_tbl[] = {
-	{"start",            &cmd_start,      "\t\tStart server (if not running).", 1},
-	{"stop",             &cmd_stop,       "\t\tStop server.", 1},
-	{"restart",          &cmd_restart,    "\tRestart server.", 1},
-	{"reload",           &cmd_reload,     "\t\tReload configuration and changed zones.", 0},
-	{"refresh [zone]",   &cmd_refresh,    "\tRefresh slave zone (all if not specified).", 0},
-	{"flush",            &cmd_flush,      "\t\tFlush journal and update zone files.", 0},
-	{"status",           &cmd_status,     "\t\tCheck if server is running.", 0},
-	{"zonestatus",       &cmd_zonestatus, "\tShow status of configured zones.", 0},
-	{"checkconf",        &cmd_checkconf,  "\tCheck current server configuration.", 1},
-	{"checkzone [zone]", &cmd_checkzone,  "Check zone (all if not specified).", 1},
-	{NULL, NULL, NULL,0}
+	{&cmd_start,      1, "start",      "",       "\t\tStart server (if not running)."},
+	{&cmd_stop,       1, "stop",       "",       "\t\tStop server."},
+	{&cmd_restart,    1, "restart",    "",       "\tRestart server."},
+	{&cmd_reload,     0, "reload",     "",       "\tReload configuration and changed zones."},
+	{&cmd_refresh,    0, "refresh",    "[zone]", "\tRefresh slave zone (all if not specified)."},
+	{&cmd_flush,      0, "flush",      "",       "\t\tFlush journal and update zone files."},
+	{&cmd_status,     0, "status",     "",       "\tCheck if server is running."},
+	{&cmd_zonestatus, 0, "zonestatus", "",       "\tShow status of configured zones."},
+	{&cmd_checkconf,  1, "checkconf",  "",       "\tCheck current server configuration."},
+	{&cmd_checkzone,  1, "checkzone",  "[zone]", "Check zone (all if not specified)."},
+	{NULL, 0, NULL, NULL, NULL}
 };
 
 /*! \brief Print help. */
@@ -128,7 +129,7 @@ void help(int argc, char **argv)
 	printf("\nActions:\n");
 	knot_cmd_t *c = knot_cmd_tbl;
 	while (c->name != NULL) {
-		printf(" %s\t\t%s\n", c->name, c->desc);
+		printf(" %s %s\t\t%s\n", c->name, c->params, c->desc);
 		++c;
 	}
 }
