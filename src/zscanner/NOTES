@@ -1,7 +1,7 @@
 - supported types: A, NS, CNAME, PTR, DNAME, SOA, HINFO, MINFO, MX, AFSDB, RT,
                    KX, TXT, SPF, RP, AAAA, LOC, SRV, NAPTR, CERT, DS, SSHFP,
                    IPSECKEY, RRSIG, NSEC, KEY, DNSKEY, DHCID, NSEC3, NSEC3PARAM,
-                   TLSA, APL, UNKNOWN
+                   TLSA, APL, EUI48, EUI64, UNKNOWN
 - the class IN is supported only (CLASS12345 notation is not supported too)
 - the newline character is appended to each zone file during processing
   (for simplicity)
