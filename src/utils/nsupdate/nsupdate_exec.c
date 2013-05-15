@@ -594,9 +594,7 @@ int cmd_ttl(const char* lp, nsupdate_params_t *params)
 		return KNOT_EPARSEFAIL;
 	}
 
-	nsupdate_set_ttl(params, ttl);
-
-	return KNOT_EOK;
+	return nsupdate_set_ttl(params, ttl);
 }
 
 int cmd_debug(const char* lp, nsupdate_params_t *params)

@@ -93,15 +93,15 @@ cannot be set.
 .TP
 [\fBupdate\fR] \fBadd\fR \fIname\fR \fIttl\fR [\fIclass\fR] \fItype\fR \fIdata\fR
 
-Adds a request to add a new resource record into the zone. Please note that the
-\fIname\fR must be fully qualified domain name (zone name is not appended to it).
+Adds a request to add a new resource record into the zone. Please note that if the
+\fIname\fR is not fully qualified domain name, current \fIorigin\fR name is appended to it.
 
 .TP
-[\fBupdate\fR] \fBdel\fR[\fBete\fR] \fIname\fR \fIttl\fR [\fIclass\fR] \fItype\fR \fIdata\fR
+[\fBupdate\fR] \fBdel\fR[\fBete\fR] \fIname\fR [\fIttl\fR] [\fIclass\fR] [\fItype\fR] [\fIdata\fR]
 
-Adds a request to remove an existing resource record from the zone. There is
-the same requirement for the \fIname\fR parameter as in the \fBupdate add\fR
-command.
+Adds a request to remove all (or matching \fIclass\fR, \fItype\fR, \fIdata\fR)
+resource records from the zone. There is the same requirement for the
+\fIname\fR parameter as in the \fBupdate add\fR command. The \fIttl\fR item is ignored.
 
 .TP
 \fBshow\fR
