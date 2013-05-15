@@ -158,7 +158,7 @@ int zone_dump_text(knot_zone_contents_t *zone, FILE *file)
 
 	// Dump trailing statistics.
 	fprintf(file, ";; Written %"PRIu64" records\n"
-	              ";; On %s\n",
+	              ";; Time %s\n",
 	        params.rr_count, date);
 
 	// Get master information.

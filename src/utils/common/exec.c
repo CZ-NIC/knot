@@ -145,6 +145,8 @@ static void print_footer(const size_t total_len,
 	} else {
 		printf("\n");
 	}
+	// Print date.
+	printf(";; Time %s\n", date);
 
 	// Print connection statistics.
 	if (net != NULL) {
@@ -162,9 +164,6 @@ static void print_footer(const size_t total_len,
 
 		}
 	}
-
-	// Print date.
-	printf(";; On %s\n", date);
 }
 
 static void print_opt_section(const knot_opt_rr_t *rr)
