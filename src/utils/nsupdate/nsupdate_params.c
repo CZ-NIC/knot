@@ -101,6 +101,7 @@ static int nsupdate_init(nsupdate_params_t *params)
 	params->rrp->process_record = parse_rr;
 	params->rrp->process_error = parse_err;
 	params->rrp->default_class = params->class_num;
+	params->zone = strdup(".");
 	nsupdate_set_ttl(params, 0);
 	nsupdate_set_origin(params, ".");
 
@@ -238,10 +239,7 @@ int nsupdate_set_origin(nsupdate_params_t *params, const char *origin)
 
 	free(fqdn);
 
-	if (ret == KNOT_EOK) {
-		free(params->zone);
-		params->zone = strdup(origin);
-	} else {
+	if (ret != KNOT_EOK) {
 		ERR("failed to set default origin, %s\n", knot_strerror(ret));
 	}
 	return ret;

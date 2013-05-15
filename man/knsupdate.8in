@@ -72,6 +72,12 @@ Specifies that all updates are done within a zone named \fIname\fR. If not used,
 the default zone is the root zone.
 
 .TP
+\fBorigin\fR \fIname\fR
+
+Specifies fully qualified domain name suffix which is appended to
+non-fqd owners in update commands. The default origin is the root zone.
+
+.TP
 \fBclass\fR \fIname\fR
 
 Sets \fIname\fR as a default class for all updates. If not used, the default

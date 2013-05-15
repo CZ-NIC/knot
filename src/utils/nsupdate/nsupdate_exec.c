@@ -44,6 +44,7 @@ int cmd_gsstsig(const char* lp, nsupdate_params_t *params);
 int cmd_key(const char* lp, nsupdate_params_t *params);
 int cmd_local(const char* lp, nsupdate_params_t *params);
 int cmd_oldgsstsig(const char* lp, nsupdate_params_t *params);
+int cmd_origin(const char* lp, nsupdate_params_t *params);
 int cmd_prereq(const char* lp, nsupdate_params_t *params);
 int cmd_realm(const char* lp, nsupdate_params_t *params);
 int cmd_send(const char* lp, nsupdate_params_t *params);
@@ -68,6 +69,7 @@ const char* cmd_array[] = {
 	"\x3" "key",           /* {name} {secret} */
 	"\x5" "local",         /* {address} [port] */
 	"\xa" "oldgsstsig",
+	"\x6" "origin",        /* {name} */
 	"\x6" "prereq",        /* (nx|yx)(domain|rrset) {domain-name} ... */
 	"\x5" "realm",         /* {[realm_name]} */
 	"\x4" "send",
@@ -75,7 +77,7 @@ const char* cmd_array[] = {
 	"\x4" "show",
 	"\x3" "ttl",           /* {seconds} */
 	"\x6" "update",        /* (add|delete) {domain-name} ... */
-	"\x4" "zone",           /* {zonename} */
+	"\x4" "zone",          /* {zonename} */
 	NULL
 };
 
@@ -90,6 +92,7 @@ cmd_handle_f cmd_handle[] = {
 	cmd_key,
 	cmd_local,
 	cmd_oldgsstsig,
+	cmd_origin,
 	cmd_prereq,
 	cmd_realm,
 	cmd_send,
@@ -883,6 +886,26 @@ int cmd_oldgsstsig(const char* lp, nsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 	return KNOT_ENOTSUP;
+}
+
+int cmd_origin(const char* lp, nsupdate_params_t *params)
+{
+	DBG("%s: lp='%s'\n", __func__, lp);
+
+	/* Check zone name. */
+	size_t len = strcspn(lp, SEP_CHARS);
+	if (!dname_isvalid(lp, len)) {
+		ERR("failed to parse zone '%s'\n", lp);
+		return KNOT_EPARSEFAIL;
+	}
+
+	char *name = strndup(lp, len);
+
+	int ret = nsupdate_set_origin(params, name);
+
+	free(name);
+
+	return ret;
 }
 
 int cmd_realm(const char* lp, nsupdate_params_t *params)
