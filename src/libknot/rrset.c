@@ -297,7 +297,7 @@ static int knot_rrset_header_to_wire(const knot_rrset_t *rrset,
 
 /* [code-review] Split to more functions, this one's too long. */
 static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
-                                        size_t rdata_pos, uint8_t **pos,
+                                        uint16_t rdata_pos, uint8_t **pos,
                                         size_t max_size, size_t *rr_size,
                                         knot_compr_t *compr)
 {
@@ -1136,6 +1136,20 @@ dbg_rrset_exec_detail(
 	*rr_count = rrset->rdata_count > 0 ? rrset->rdata_count : 1;
 
 	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_rrset_to_wire_one(const knot_rrset_t *rrset, uint16_t rr_number,
+                           uint8_t *wire, size_t max_size, size_t *outsize,
+                           void *compr)
+{
+	if (!rrset || !wire || !outsize)
+		return KNOT_EINVAL;
+
+	uint8_t *pos = wire;
+	return knot_rrset_rdata_to_wire_one(rrset, rr_number, &pos, max_size,
+					    outsize, (knot_compr_t *)compr);
 }
 
 /*----------------------------------------------------------------------------*/

@@ -331,6 +331,13 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
                        size_t max_size, uint16_t *rr_count, void *comp_data);
 
 /*!
+ * \brief Write one RR from RRSet.
+ */
+int knot_rrset_to_wire_one(const knot_rrset_t *rrset, uint16_t rr_number,
+                           uint8_t *wire, size_t max_size, size_t *outsize,
+                           void *comp_data);
+
+/*!
  * \brief Merges two RRSets.
  *
  * Merges \a r1 into \a r2 by concatenating the list of RDATAs in \a r2 after
