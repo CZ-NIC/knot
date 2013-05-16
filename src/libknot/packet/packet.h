@@ -37,24 +37,6 @@
 #include "zone/zone.h"
 
 /*----------------------------------------------------------------------------*/
-/*!
- * \brief Structure for holding information needed for compressing domain names.
- *
- * It's a simple table of domain names and their offsets in wire format of the
- * packet.
- *
- * \todo Consider using some better lookup structure, such as skip-list.
- */
-struct knot_compressed_dnames {
-	const knot_dname_t **dnames;  /*!< Domain names present in packet. */
-	size_t *offsets;          /*!< Offsets of domain names in the packet. */
-	int *to_free;             /*< Indices of dnames to free. */
-	short count;              /*!< Count of items in the previous arrays. */
-	short max;                /*!< Capacity of the structure (allocated). */
-	short default_count;
-};
-
-typedef struct knot_compressed_dnames knot_compressed_dnames_t;
 
 struct knot_wildcard_nodes {
 	const knot_node_t **nodes; /*!< Wildcard nodes from CNAME processing. */
@@ -246,16 +228,6 @@ enum {
 	PREALLOC_QNAME = PREALLOC_QNAME_DNAME
 	                 + PREALLOC_QNAME_NAME
 	                 + PREALLOC_QNAME_LABELS,
-
-	/*! \brief Space for one part of the compression table (domain names).*/
-	PREALLOC_DOMAINS =
-		DEFAULT_DOMAINS_IN_RESPONSE * sizeof(knot_dname_t *),
-	/*! \brief Space for other part of the compression table (offsets). */
-	PREALLOC_OFFSETS =
-		DEFAULT_DOMAINS_IN_RESPONSE * sizeof(size_t),
-
-	PREALLOC_TO_FREE =
-		DEFAULT_DOMAINS_IN_RESPONSE * sizeof(int),
 
 	PREALLOC_WC_NODES =
 		DEFAULT_WILDCARD_NODES * sizeof(knot_node_t *),
