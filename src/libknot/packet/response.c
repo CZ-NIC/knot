@@ -87,6 +87,15 @@ int knot_response_compress_dname(const knot_dname_t *dname, knot_compr_t *compr,
 		return KNOT_EINVAL;
 	}
 
+	/* Do not compress small dnames. */
+	uint8_t *name = dname->name;
+	if (dname->size <= 2) {
+                if (dname->size > max)
+                        return KNOT_ESPACE;
+                memcpy(dst, name, dname->size);
+                return dname->size;
+	}
+
 	/* Align and compare name and pointer in the compression table. */
 	unsigned i = 0;
 	unsigned lbcount = 0;
@@ -108,7 +117,6 @@ int knot_response_compress_dname(const knot_dname_t *dname, knot_compr_t *compr,
 	}
 
 	/* Write non-matching prefix. */
-	uint8_t *name = dname->name;
 	unsigned written = 0;
 	for (unsigned j = match.lbcount; j < dname->label_count; ++j) {
 		if (written + *name + 1 > max)
