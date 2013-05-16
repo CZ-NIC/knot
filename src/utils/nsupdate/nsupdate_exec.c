@@ -740,7 +740,7 @@ int cmd_send(const char* lp, nsupdate_params_t *params)
 	}
 
 	/* Parse response. */
-	params->resp = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
+	params->resp = knot_packet_new(KNOT_PACKET_PREALLOC_NONE);
 	if (!params->resp) {
 		free_sign_context(&sign_ctx);
 		return KNOT_ENOMEM;
@@ -756,11 +756,11 @@ int cmd_send(const char* lp, nsupdate_params_t *params)
 	if (params->key_params.name) {
 		ret = verify_packet(params->resp, &sign_ctx, &params->key_params);
 		free_sign_context(&sign_ctx);
-	}
-	if (ret != KNOT_EOK) { /* Collect TSIG error. */
-		fprintf(stderr, "%s: %s\n", "; TSIG error with server",
-		        knot_strerror(ret));
-		return ret;
+		if (ret != KNOT_EOK) { /* Collect TSIG error. */
+			fprintf(stderr, "%s: %s\n", "; TSIG error with server",
+				knot_strerror(ret));
+			return ret;
+		}
 	}
 
 	/* Check return code. */
