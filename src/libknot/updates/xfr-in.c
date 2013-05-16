@@ -299,53 +299,6 @@ static int xfrin_add_orphan_rrsig(xfrin_orphan_rrsig_t **rrsigs,
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_add_orphan_rrsig_no_node(knot_zone_contents_t *zone,
-                                          knot_rrset_t *rrsig)
-{
-	// Create node
-	knot_node_t *node = knot_node_new(rrsig->owner, NULL, 0);
-	if (node == NULL) {
-		return KNOT_ERROR;
-	}
-
-	// Create RRSet
-	knot_rrset_t *rrset = knot_rrset_new(node->owner,
-		               knot_rrset_rdata_rrsig_type_covered(rrsig),
-	                       rrsig->rclass, rrsig->ttl);
-	if (rrset == NULL) {
-		knot_node_free(&node);
-		return KNOT_ERROR;
-	}
-
-	// Add RRSet to node
-	int ret = knot_node_add_rrset(node, rrset);
-	if (ret != KNOT_EOK) {
-		knot_rrset_free(&rrset);
-		knot_node_free(&node);
-		return ret;
-	}
-
-	// Add node to zone
-	ret = knot_zone_contents_add_node(zone, node, 1, 0);
-	if (ret != KNOT_EOK) {
-		knot_rrset_free(&rrset);
-		knot_node_free(&node);
-		return ret;
-	}
-
-	// Now RRSIG can be added using standard add function
-	ret = knot_zone_contents_add_rrsigs(zone, rrsig,
-					    &rrset, &node,
-					    KNOT_RRSET_DUPL_MERGE);
-	if (ret != KNOT_EOK) {
-		knot_rrset_free(&rrset);
-		knot_node_free(&node);
-		return ret;
-	}
-
-	return KNOT_EOK;
-}
-
 static int xfrin_process_orphan_rrsigs(knot_zone_contents_t *zone,
                                        xfrin_orphan_rrsig_t *rrsigs)
 {
@@ -360,23 +313,26 @@ static int xfrin_process_orphan_rrsigs(knot_zone_contents_t *zone,
 		if (ret > 0) {
 			knot_rrset_deep_free(&(*last)->rrsig, 1, 0);
 		} else if (ret == KNOT_ENONODE) {
-			assert(node == NULL);
-			/*
-			 * New node and RRSet have to be created
-			 * just for this RRSIG.
-			 */
-			ret = xfrin_add_orphan_rrsig_no_node(zone,
-			                                     (*last)->rrsig);
-			if (ret != KNOT_EOK) {
-				return ret;
-			}
+			// Nothing to cover - print warning
+			char *name = knot_dname_to_str((*last)->rrsig->owner);
+			char type[16];
+			knot_rrtype_to_string(
+			    knot_rrset_rdata_rrsig_type_covered((*last)->rrsig),
+			    type, 16);
+
+			log_zone_warning("No RRSet for RRSIG: "
+			                 "%s, covering type %s",
+			                 name, type);
+			free(name);
+
+			// discard RRSIG
+			knot_rrset_deep_free(&(*last)->rrsig, 1, 1);
 		} else if (ret != KNOT_EOK) {
 			dbg_xfrin("Failed to add orphan RRSIG to zone.\n");
 			return ret;
 		} else {
 			(*last)->rrsig = NULL;
 		}
-
 		last = &((*last)->next);
 	}
 
