@@ -55,7 +55,7 @@ static bool knot_response_compr_score(uint8_t *n, uint8_t *p, uint8_t labels,
 	}
 
 	/* New best score. */
-	if (score > match->lbcount) {
+	if (score > match->lbcount && off <= KNOT_WIRE_PTR_MAX) {
 		match->lbcount = score;
 		match->off = off;
 		return true;
