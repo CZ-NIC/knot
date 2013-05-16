@@ -1626,7 +1626,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	}
 	char *r_str = xfr_remote_str(addr, keytag);
 	const char *zone_name = ((zonedata_t*)knot_zone_data(zone))->conf->name;
-	char *msg  = sprintf_alloc("UPDATE of '%s' from %s:",
+	char *msg  = sprintf_alloc("UPDATE of '%s' from %s",
 	                           zone_name, r_str ? r_str : "'unknown'");
 	free(r_str);
 	free(keytag);
@@ -1670,7 +1670,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 		if (ret < 0) {
 			log_zone_error("%s %s\n", msg, knot_strerror(ret));
 		} else {
-			log_zone_notice("%s: No change to zone made.\n", msg);
+			log_zone_notice("%s No change to zone made.\n", msg);
 			knot_response_set_rcode(resp, KNOT_RCODE_NOERROR);
 			uint8_t *tmp_wire = NULL;
 			ret = knot_packet_to_wire(resp, &tmp_wire, rsize);
@@ -1706,7 +1706,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	knot_zone_release(zone);/* Release held pointer. */
 
 	if (ret != KNOT_EOK) {
-		log_zone_error("%s: Failed to replace current zone - %s\n",
+		log_zone_error("%s Failed to replace current zone - %s\n",
 		               msg, knot_strerror(ret));
 		// Cleanup old and new contents
 		xfrin_rollback_update(zone->contents, &new_contents,
@@ -1724,7 +1724,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	/* Free changesets, but not the data. */
 	knot_free_changesets(&chgsets);
 	assert(ret == KNOT_EOK);
-	log_zone_info("%s: Finished.\n", msg);
+	log_zone_info("%s Finished.\n", msg);
 
 	free(msg);
 	msg = NULL;
