@@ -490,6 +490,7 @@ static void dig_help()
 	       "       +[no]tcflag     Set TC flag.\n"
 	       "       +[no]rdflag     Set RD flag.\n"
 	       "       +[no]recurse    Same as +[no]rdflag\n"
+	       "       +[no]rec        Same as +[no]rdflag\n"
 	       "       +[no]raflag     Set RA flag.\n"
 	       "       +[no]zflag      Set zero flag bit.\n"
 	       "       +[no]adflag     Set AD flag.\n"
@@ -498,6 +499,7 @@ static void dig_help()
 	       "       +[no]all        Show all packet sections.\n"
 	       "       +[no]qr         Show query packet.\n"
 	       "       +[no]header     Show packet header.\n"
+	       "       +[no]edns       Show EDNS pseudosection.\n"
 	       "       +[no]question   Show question section.\n"
 	       "       +[no]answer     Show answer section.\n"
 	       "       +[no]authority  Show authority section.\n"
@@ -712,10 +714,12 @@ static int parse_opt2(const char *value, dig_params_t *params)
 		query->flags.tc_flag = false;
 	}
 	else if (strcmp(value, "rdflag") == 0 ||
-	         strcmp(value, "recurse") == 0) {
+	         strcmp(value, "recurse") == 0 ||
+	         strcmp(value, "rec") == 0) {
 		query->flags.rd_flag = true;
 	} else if (strcmp(value, "nordflag") == 0 ||
-	           strcmp(value, "norecurse") == 0) {
+	           strcmp(value, "norecurse") == 0 ||
+	           strcmp(value, "norec") == 0) {
 		query->flags.rd_flag = false;
 	}
 	else if (strcmp(value, "raflag") == 0) {
@@ -772,6 +776,11 @@ static int parse_opt2(const char *value, dig_params_t *params)
 		query->style.show_header = true;
 	} else if (strcmp(value, "noheader") == 0) {
 		query->style.show_header = false;
+	}
+	else if (strcmp(value, "edns") == 0) {
+		query->style.show_edns = true;
+	} else if (strcmp(value, "noedns") == 0) {
+		query->style.show_edns = false;
 	}
 	else if (strcmp(value, "question") == 0) {
 		query->style.show_question = true;

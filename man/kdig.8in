@@ -95,6 +95,9 @@ Set RD flag.
 \fB+\fR[\fBno\fR]\fBrecurse\fR
 Same as +\fR[\fBno\fR]\fBrdflag\fR
 .TP
+\fB+\fR[\fBno\fR]\fBrec\fR
+Same as +\fR[\fBno\fR]\fBrdflag\fR
+.TP
 \fB+\fR[\fBno\fR]\fBraflag\fR
 Set RA flag.
 .TP
@@ -118,6 +121,9 @@ Show query packet.
 .TP
 \fB+\fR[\fBno\fR]\fBheader\fR
 Show packet header.
+.TP
+\fB+\fR[\fBno\fR]\fBedns\fR
+Show EDNS pseudosectio.
 .TP
 \fB+\fR[\fBno\fR]\fBquestion\fR
 Show question section.
