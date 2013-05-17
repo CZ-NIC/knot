@@ -126,6 +126,17 @@ int knot_dnssec_sign_add(knot_dnssec_sign_context_t *context,
 int knot_dnssec_sign_write(knot_dnssec_sign_context_t *context,
                            uint8_t *signature);
 
+/**
+ * \brief Clean DNSSEC signing context to start a new signature.
+ *
+ * Need not be called after knot_dnssec_sign_init().
+ *
+ * \param context	DNSSEC signing context.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+int knot_dnssec_sign_new(knot_dnssec_sign_context_t *context);
+
 #endif // _KNOT_SIGN_DNSSEC_H_
 
 /*! @} */

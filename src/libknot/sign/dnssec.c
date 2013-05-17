@@ -765,3 +765,15 @@ int knot_dnssec_sign_write(knot_dnssec_sign_context_t *context, uint8_t *signatu
 
 	return context->key->data->functions->sign_write(context, signature);
 }
+
+/**
+ * \brief Clean DNSSEC signing context to start a new signature.
+ */
+int knot_dnssec_sign_new(knot_dnssec_sign_context_t *context)
+{
+	if (!context)
+		return KNOT_EINVAL;
+
+	destroy_digest_context(&context->digest_context);
+	return create_digest_context(context->key, &context->digest_context);
+}
