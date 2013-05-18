@@ -453,6 +453,11 @@ void net_clean(net_t *net)
 	free(net->local_str);
 	free(net->remote_str);
 
-	freeaddrinfo(net->remote_info);
-	freeaddrinfo(net->local_info);
+	if (net->local_info != NULL) {
+		freeaddrinfo(net->local_info);
+	}
+
+	if (net->remote_info != NULL) {
+		freeaddrinfo(net->remote_info);
+	}
 }
