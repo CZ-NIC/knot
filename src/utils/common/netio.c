@@ -248,6 +248,10 @@ int net_connect(net_t *net)
 
 	// Bind address to socket if specified.
 	if (net->local_info != NULL) {
+		// Set local information string.
+		get_addr_str((struct sockaddr_storage *)net->local_info->ai_addr,
+		             net->socktype, &net->local_str);
+
 		if (bind(sockfd, net->local_info->ai_addr,
 		         net->local_info->ai_addrlen) == -1) {
 			WARN("can't assign address %s\n", net->local_str);
