@@ -437,18 +437,18 @@ static int nsupdate_process_line(char *lp, int len, void *arg)
 
 	int ret = tok_find(lp, cmd_array);
 	if (ret < 0) {
-		return ret; /* Syntax error. */
+		return KNOT_EOK; /* Syntax error - do nothing. */
 	}
 
 	const char *cmd = cmd_array[ret];
 	const char *val = tok_skipspace(lp + TOK_L(cmd));
 	ret = cmd_handle[ret](val, params);
 	if (ret != KNOT_EOK) {
-		ERR("operation '%s' failed\n", TOK_S(cmd));
-		DBG("reason - %s\n", knot_strerror(ret));
+		DBG("operation '%s' failed (%s)\n",
+		    TOK_S(cmd), knot_strerror(ret));
 	}
 
-	return ret;
+	return KNOT_EOK;
 }
 
 static int nsupdate_process(nsupdate_params_t *params, FILE *fp)

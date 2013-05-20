@@ -95,7 +95,7 @@ int tok_find(const char *lp, const char **tbl)
 		} else {
 			ERR("unexpected literal: '%s'\n", lp);
 		}
-		ERR("syntax error\n");
+
 		return KNOT_EPARSEFAIL;
 	}
 
