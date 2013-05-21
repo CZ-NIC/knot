@@ -5,7 +5,7 @@ noinst_PROGRAMS = unittests unittests-xfr zscanner-tool
 noinst_LTLIBRARIES = libknot.la libknotd.la libknots.la libzscanner.la
 
 # $(YACC) will generate header file
-AM_CFLAGS = -Wall -Ilibknot -DSYSCONFDIR='"$(sysconfdir)"' -DSBINDIR='"$(sbindir)"'
+AM_CFLAGS = -std=gnu99 -D_GNU_SOURCE -Wall -Ilibknot -DSYSCONFDIR='"$(sysconfdir)"' -DSBINDIR='"$(sbindir)"'
 AM_YFLAGS = -d
 libknotd_la_YFLAGS = -pcf_ -d
 libknotd_la_LFLAGS = # TODO: reentrant parser, prefix

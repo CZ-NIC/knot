@@ -14,11 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-// strptime under Linux
-#define _XOPEN_SOURCE
-// OpenBSD requires following to disable warning
-#define _XOPEN_SOURCE_EXTENDED 1
-
 #include "zscanner/test/tests.h"
 
 #include <inttypes.h>			// PRIu64

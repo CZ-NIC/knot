@@ -14,10 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE /* Required for RTLD_DEFAULT. */
-#endif
-
 #include <dlfcn.h>
 #include <config.h>
 #include <time.h>
