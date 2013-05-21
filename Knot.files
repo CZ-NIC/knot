@@ -157,8 +157,6 @@ src/libknot/rrset-dump.c
 src/libknot/rrset-dump.h
 src/libknot/rrset.c
 src/libknot/rrset.h
-src/libknot/sign/bnutils.c
-src/libknot/sign/bnutils.h
 src/libknot/sign/dnssec.c
 src/libknot/sign/dnssec.h
 src/libknot/sign/key.c

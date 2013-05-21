@@ -196,16 +196,14 @@ static int get_key_filenames(const char *input, char **pubname, char **privname)
 }
 
 /*!
- * \brief Handle storing of string type key parameter.
+ * \brief Handle storing of base64 encoded data key parameter.
  */
-static int key_param_string(const void *save_to, char *value)
+static int key_param_base64(const void *save_to, char *value)
 {
-	char **parameter = (char **)save_to;
+	knot_binary_t *parameter = (knot_binary_t *)save_to;
+	knot_binary_free(parameter);
 
-	free(*parameter);
-	*parameter = strdup(value);
-
-	return *parameter ? KNOT_EOK : KNOT_ENOMEM;
+	return knot_binary_from_base64(value, parameter);
 }
 
 /*!
@@ -239,27 +237,24 @@ struct key_parameter {
 
 /*!
  * \brief Table of know attributes in private key file.
- *
- * \todo Save some space, save base64 encoded strings as binary data.
  */
 static const struct key_parameter key_parameters[] = {
 	{ "Algorithm",       key_offset(algorithm),        key_param_int },
-	{ "Key",             key_offset(secret),           key_param_string },
-	{ "Modulus",         key_offset(modulus),          key_param_string },
-	{ "PublicExponent",  key_offset(public_exponent),  key_param_string },
-	{ "PrivateExponent", key_offset(private_exponent), key_param_string },
-	{ "Prime1",          key_offset(prime_one),        key_param_string },
-	{ "Prime2",          key_offset(prime_two),        key_param_string },
-	{ "Exponent1",       key_offset(exponent_one),     key_param_string },
-	{ "Exponent2",       key_offset(exponent_two),     key_param_string },
-	{ "Coefficient",     key_offset(coefficient),      key_param_string },
-	{ "Prime(p)",        key_offset(prime),            key_param_string },
-	{ "Subprime(q)",     key_offset(subprime),         key_param_string },
-	{ "Generator(g)",    key_offset(generator),        key_param_string },
-	{ "Base(g)",         key_offset(base),             key_param_string },
-	{ "Private_value(x)",key_offset(private_value),    key_param_string },
-	{ "Public_value(y)", key_offset(public_value),     key_param_string },
-	{ "PrivateKey",      key_offset(private_key),      key_param_string },
+	{ "Key",             key_offset(secret),           key_param_base64 },
+	{ "Modulus",         key_offset(modulus),          key_param_base64 },
+	{ "PublicExponent",  key_offset(public_exponent),  key_param_base64 },
+	{ "PrivateExponent", key_offset(private_exponent), key_param_base64 },
+	{ "Prime1",          key_offset(prime_one),        key_param_base64 },
+	{ "Prime2",          key_offset(prime_two),        key_param_base64 },
+	{ "Exponent1",       key_offset(exponent_one),     key_param_base64 },
+	{ "Exponent2",       key_offset(exponent_two),     key_param_base64 },
+	{ "Coefficient",     key_offset(coefficient),      key_param_base64 },
+	{ "Prime(p)",        key_offset(prime),            key_param_base64 },
+	{ "Subprime(q)",     key_offset(subprime),         key_param_base64 },
+	{ "Base(g)",         key_offset(base),             key_param_base64 },
+	{ "Private_value(x)",key_offset(private_value),    key_param_base64 },
+	{ "Public_value(y)", key_offset(public_value),     key_param_base64 },
+	{ "PrivateKey",      key_offset(private_key),      key_param_base64 },
 	{ NULL }
 };
 
@@ -363,21 +358,6 @@ int knot_load_key_params(const char *filename, knot_key_params_t *key_params)
 	return result;
 }
 
-static int copy_string_if_set(const char *src, char **dst)
-{
-	if (src != NULL) {
-		*dst = strdup(src);
-
-		if (*dst == NULL) {
-			return -1;
-		}
-	} else {
-		*dst = NULL;
-	}
-
-	return 0;
-}
-
 int knot_copy_key_params(const knot_key_params_t *src, knot_key_params_t *dst)
 {
 	if (src == NULL || dst == NULL) {
@@ -396,25 +376,24 @@ int knot_copy_key_params(const knot_key_params_t *src, knot_key_params_t *dst)
 	dst->algorithm = src->algorithm;
 	dst->keytag = src->keytag;
 
-	ret += copy_string_if_set(src->secret, &dst->secret);
+	ret += knot_binary_dup(&src->secret, &dst->secret);
 
-	ret += copy_string_if_set(src->modulus, &dst->modulus);
-	ret += copy_string_if_set(src->public_exponent, &dst->public_exponent);
-	ret += copy_string_if_set(src->private_exponent, &dst->private_exponent);
-	ret += copy_string_if_set(src->prime_one, &dst->prime_one);
-	ret += copy_string_if_set(src->prime_two, &dst->prime_two);
-	ret += copy_string_if_set(src->exponent_one, &dst->exponent_one);
-	ret += copy_string_if_set(src->exponent_two, &dst->exponent_two);
-	ret += copy_string_if_set(src->coefficient, &dst->coefficient);
+	ret += knot_binary_dup(&src->modulus, &dst->modulus);
+	ret += knot_binary_dup(&src->public_exponent, &dst->public_exponent);
+	ret += knot_binary_dup(&src->private_exponent, &dst->private_exponent);
+	ret += knot_binary_dup(&src->prime_one, &dst->prime_one);
+	ret += knot_binary_dup(&src->prime_two, &dst->prime_two);
+	ret += knot_binary_dup(&src->exponent_one, &dst->exponent_one);
+	ret += knot_binary_dup(&src->exponent_two, &dst->exponent_two);
+	ret += knot_binary_dup(&src->coefficient, &dst->coefficient);
 
-	ret += copy_string_if_set(src->prime, &dst->prime);
-	ret += copy_string_if_set(src->generator, &dst->generator);
-	ret += copy_string_if_set(src->subprime, &dst->subprime);
-	ret += copy_string_if_set(src->base, &dst->base);
-	ret += copy_string_if_set(src->private_value, &dst->private_value);
-	ret += copy_string_if_set(src->public_value, &dst->public_value);
+	ret += knot_binary_dup(&src->prime, &dst->prime);
+	ret += knot_binary_dup(&src->subprime, &dst->subprime);
+	ret += knot_binary_dup(&src->base, &dst->base);
+	ret += knot_binary_dup(&src->private_value, &dst->private_value);
+	ret += knot_binary_dup(&src->public_value, &dst->public_value);
 
-	ret += copy_string_if_set(src->private_key, &dst->private_key);
+	ret += knot_binary_dup(&src->private_key, &dst->private_key);
 
 	if (ret < 0) {
 		knot_free_key_params(dst);
@@ -434,25 +413,24 @@ int knot_free_key_params(knot_key_params_t *key_params)
 	if (key_params->name)
 		knot_dname_release(key_params->name);
 
-	free(key_params->secret);
+	knot_binary_free(&key_params->secret);
 
-	free(key_params->modulus);
-	free(key_params->public_exponent);
-	free(key_params->private_exponent);
-	free(key_params->prime_one);
-	free(key_params->prime_two);
-	free(key_params->exponent_one);
-	free(key_params->exponent_two);
-	free(key_params->coefficient);
+	knot_binary_free(&key_params->modulus);
+	knot_binary_free(&key_params->public_exponent);
+	knot_binary_free(&key_params->private_exponent);
+	knot_binary_free(&key_params->prime_one);
+	knot_binary_free(&key_params->prime_two);
+	knot_binary_free(&key_params->exponent_one);
+	knot_binary_free(&key_params->exponent_two);
+	knot_binary_free(&key_params->coefficient);
 
-	free(key_params->prime);
-	free(key_params->generator);
-	free(key_params->subprime);
-	free(key_params->base);
-	free(key_params->private_value);
-	free(key_params->public_value);
+	knot_binary_free(&key_params->prime);
+	knot_binary_free(&key_params->subprime);
+	knot_binary_free(&key_params->base);
+	knot_binary_free(&key_params->private_value);
+	knot_binary_free(&key_params->public_value);
 
-	free(key_params->private_key);
+	knot_binary_free(&key_params->private_key);
 
 	memset(key_params, '\0', sizeof(knot_key_params_t));
 
@@ -466,11 +444,14 @@ knot_key_type_t knot_get_key_type(const knot_key_params_t *key_params)
 {
 	assert(key_params);
 
-	if (key_params->secret) {
+	if (key_params->secret.size > 0) {
 		return KNOT_KEY_TSIG;
 	}
 
-	if (key_params->modulus || key_params->prime || key_params->private_key) {
+	if (key_params->modulus.size > 0 ||
+	    key_params->prime.size > 0 ||
+	    key_params->private_key.size > 0
+	) {
 		return KNOT_KEY_DNSSEC;
 	}
 
@@ -480,56 +461,32 @@ knot_key_type_t knot_get_key_type(const knot_key_params_t *key_params)
 }
 
 /*!
- * \brief Creates TSIG key from function arguments.
- *
- * \param name       Key name (aka owner name).
- * \param algorithm  Algorithm number.
- * \param b64secret  Shared secret encoded in Base64.
- * \param key        Output TSIG key.
- *
- * \return Error code, KNOT_EOK when succeeded.
- */
-static int knot_tsig_create_key_from_args(knot_dname_t *name, int algorithm,
-                                          const char *b64secret,
-                                          knot_tsig_key_t *key)
-{
-	if (!name || !b64secret || !key)
-		return KNOT_EINVAL;
-
-	knot_binary_t secret;
-	int result = knot_binary_from_base64(b64secret, &secret);
-
-	if (result != KNOT_EOK)
-		return result;
-
-	knot_dname_retain(name);
-
-	key->name = name;
-	key->secret = secret;
-	key->algorithm = algorithm;
-
-	return KNOT_EOK;
-}
-
-/*!
  * \brief Creates TSIG key.
  */
 int knot_tsig_create_key(const char *name, int algorithm,
                          const char *b64secret, knot_tsig_key_t *key)
 {
+	if (!name || !b64secret || !key)
+		return KNOT_EINVAL;
+
 	knot_dname_t *dname;
 	dname = knot_dname_new_from_nonfqdn_str(name, strlen(name), NULL);
 	if (!dname)
 		return KNOT_ENOMEM;
 
-	int res;
-	res = knot_tsig_create_key_from_args(dname, algorithm, b64secret, key);
+	knot_binary_t secret;
+	int result = knot_binary_from_base64(b64secret, &secret);
+	if (result != KNOT_EOK) {
+		knot_dname_release(dname);
+		return result;
+	}
 
-	knot_dname_release(dname);
+	key->name = dname;
+	key->algorithm = algorithm;
+	key->secret = secret;
 
-	return res;
+	return KNOT_EOK;
 }
-
 
 /*!
  * \brief Creates TSIG key from key parameters.
@@ -537,11 +494,19 @@ int knot_tsig_create_key(const char *name, int algorithm,
 int knot_tsig_key_from_params(const knot_key_params_t *params,
                               knot_tsig_key_t *key)
 {
-	if (!params)
+	if (!params || !params->name || params->secret.size == 0)
 		return KNOT_EINVAL;
 
-	return knot_tsig_create_key_from_args(params->name, params->algorithm,
-					      params->secret, key);
+	int result = knot_binary_dup(&params->secret, &key->secret);
+	if (result != KNOT_EOK)
+		return result;
+
+	key->name = params->name;
+	knot_dname_retain(params->name);
+
+	key->algorithm = params->algorithm;
+
+	return KNOT_EOK;
 }
 
 /*!

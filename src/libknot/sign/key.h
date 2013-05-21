@@ -29,6 +29,7 @@
 
 #include <stdint.h>
 #include "dname.h"
+#include "binary.h"
 #include "tsig.h"
 
 /*----------------------------------------------------------------------------*/
@@ -37,30 +38,33 @@
  * \brief Key attributes loaded from keyfile.
  */
 struct knot_key_params {
+	// common parameters
 	knot_dname_t *name;
 	int algorithm;
 	uint16_t keytag;
-	// parameters for symmetric cryptography
-	char *secret;
-	// parameters for public key cryptography
+
+	// shared key
+	knot_binary_t secret;
+
 	// RSA
-	char *modulus;
-	char *public_exponent;
-	char *private_exponent;
-	char *prime_one;
-	char *prime_two;
-	char *exponent_one;
-	char *exponent_two;
-	char *coefficient;
-	// DH, DSA
-	char *prime;
-	char *generator;
-	char *subprime;
-	char *base;
-	char *private_value;
-	char *public_value;
+	knot_binary_t modulus;
+	knot_binary_t public_exponent;
+	knot_binary_t private_exponent;
+	knot_binary_t prime_one;
+	knot_binary_t prime_two;
+	knot_binary_t exponent_one;
+	knot_binary_t exponent_two;
+	knot_binary_t coefficient;
+
+	// DSA
+	knot_binary_t prime;
+	knot_binary_t subprime;
+	knot_binary_t base;
+	knot_binary_t private_value;
+	knot_binary_t public_value;
+
 	// EC
-	char *private_key;
+	knot_binary_t private_key;
 };
 
 typedef struct knot_key_params knot_key_params_t;

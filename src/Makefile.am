@@ -164,8 +164,6 @@ libknot_la_SOURCES =				\
 	libknot/binary.c			\
 	libknot/sign/key.h			\
 	libknot/sign/key.c			\
-	libknot/sign/bnutils.h			\
-	libknot/sign/bnutils.c			\
 	libknot/sign/dnssec.h			\
 	libknot/sign/dnssec.c			\
 	libknot/sign/sig0.h			\

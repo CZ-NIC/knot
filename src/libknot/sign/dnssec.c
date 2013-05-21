@@ -18,7 +18,6 @@
 #include "common.h"
 #include "common/descriptor.h"
 #include "common/errcode.h"
-#include "sign/bnutils.h"
 #include "sign/dnssec.h"
 #include "sign/key.h"
 #include <assert.h>
@@ -58,6 +57,14 @@ struct algorithm_functions {
 	//! \brief Callback: finish the signing and write out the signature.
 	int (*sign_write)(const knot_dnssec_sign_context_t *, uint8_t *);
 };
+
+/**
+ * \brief Convert binary data to OpenSSL BIGNUM format.
+ */
+static BIGNUM *binary_to_bn(const knot_binary_t *bin)
+{
+	return BN_bin2bn((unsigned char *)bin->data, (int)bin->size, NULL);
+}
 
 /*- Algorithm independent ----------------------------------------------------*/
 
@@ -153,14 +160,14 @@ static int rsa_create_pkey(const knot_key_params_t *params, EVP_PKEY *key)
 	if (rsa == NULL)
 		return KNOT_ENOMEM;
 
-	rsa->n    = knot_b64_to_bignum(params->modulus);
-	rsa->e    = knot_b64_to_bignum(params->public_exponent);
-	rsa->d    = knot_b64_to_bignum(params->private_exponent);
-	rsa->p    = knot_b64_to_bignum(params->prime_one);
-	rsa->q    = knot_b64_to_bignum(params->prime_two);
-	rsa->dmp1 = knot_b64_to_bignum(params->exponent_one);
-	rsa->dmq1 = knot_b64_to_bignum(params->exponent_two);
-	rsa->iqmp = knot_b64_to_bignum(params->coefficient);
+	rsa->n    = binary_to_bn(&params->modulus);
+	rsa->e    = binary_to_bn(&params->public_exponent);
+	rsa->d    = binary_to_bn(&params->private_exponent);
+	rsa->p    = binary_to_bn(&params->prime_one);
+	rsa->q    = binary_to_bn(&params->prime_two);
+	rsa->dmp1 = binary_to_bn(&params->exponent_one);
+	rsa->dmq1 = binary_to_bn(&params->exponent_two);
+	rsa->iqmp = binary_to_bn(&params->coefficient);
 
 	if (RSA_check_key(rsa) != 1) {
 		RSA_free(rsa);
@@ -224,11 +231,11 @@ static int dsa_create_pkey(const knot_key_params_t *params, EVP_PKEY *key)
 	if (dsa == NULL)
 		return KNOT_ENOMEM;
 
-	dsa->p        = knot_b64_to_bignum(params->prime);
-	dsa->q        = knot_b64_to_bignum(params->subprime);
-	dsa->g        = knot_b64_to_bignum(params->base);
-	dsa->priv_key = knot_b64_to_bignum(params->private_value);
-	dsa->pub_key  = knot_b64_to_bignum(params->public_value);
+	dsa->p        = binary_to_bn(&params->prime);
+	dsa->q        = binary_to_bn(&params->subprime);
+	dsa->g        = binary_to_bn(&params->base);
+	dsa->priv_key = binary_to_bn(&params->private_value);
+	dsa->pub_key  = binary_to_bn(&params->public_value);
 
 	if (!EVP_PKEY_assign_DSA(key, dsa)) {
 		DSA_free(dsa);
@@ -326,7 +333,7 @@ static int ecdsa_create_pkey(const knot_key_params_t *params, EVP_PKEY *key)
 	if (ec_key == NULL)
 		return KNOT_ENOMEM;
 
-	EC_KEY_set_private_key(ec_key, knot_b64_to_bignum(params->private_key));
+	EC_KEY_set_private_key(ec_key, binary_to_bn(&params->private_key));
 
 	// EC_KEY_check_key() could be added, but fails without public key
 

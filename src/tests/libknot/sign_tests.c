@@ -30,7 +30,7 @@ unit_api sign_tests_api = {
 
 static int sign_tests_count(int argc, char *argv[])
 {
-	return 25;
+	return 24;
 }
 
 static int sign_tests_run(int argc, char *argv[])
@@ -115,15 +115,18 @@ static int sign_tests_run(int argc, char *argv[])
 		free(private);
 	}
 
-	// 10. - key_param_string()
+	// 10. - key_param_base64()
 	{
-		char *output = NULL;
+		knot_binary_t output = { 0 };
 		int result;
 
-		result = key_param_string(&output, "ahoj DNS svete");
-		ok(result == KNOT_EOK && strcmp(output, "ahoj DNS svete") == 0,
-		   "key_param_string(), correct usage");
-		free(output);
+		result = key_param_base64(&output, "aGVsbG8gRE5TIHdvcmxk");
+
+		ok(result == KNOT_EOK && output.size == 15
+		   && memcmp((char *)output.data, "hello DNS world", 15) == 0,
+		   "key_param_base64(), correct usage");
+
+		knot_binary_free(&output);
 	}
 
 	// 11-16. - key_param_int()
@@ -172,14 +175,15 @@ static int sign_tests_run(int argc, char *argv[])
 		   "parse_keyfile_line(), simple line with algorithm");
 		free(line);
 
-		line = strdup("Key:   secret\n");
+		line = strdup("Key:   c2VjcmV0\n");
 		result = parse_keyfile_line(&key, line, strlen(line));
-		ok(result == KNOT_EOK && strcmp(key.secret, "secret") == 0,
+		ok(result == KNOT_EOK && key.secret.size == 6
+		   && memcmp((char *)key.secret.data, "secret", 6) == 0,
 		   "parse_keyfile_line(), new line terminated line with key");
-		free(key.secret);
+		knot_binary_free(&key.secret);
 		free(line);
 
-		line = strdup("Cool: Knot DNS");
+		line = strdup("Cool: S25vdCBETlM=");
 		result = parse_keyfile_line(&key, line, strlen(line));
 		ok(result == KNOT_EOK,
 		   "parse_keyfile_line(), unknown parameter");
@@ -193,7 +197,7 @@ static int sign_tests_run(int argc, char *argv[])
 		knot_key_params_t empty_params = { 0 };
 
 		params.algorithm = 42;
-		params.public_exponent = strdup("AQAB");
+		knot_binary_from_base64("AQAB", &params.public_exponent);
 
 		result = knot_free_key_params(&params);
 		ok(result == KNOT_EOK
@@ -201,11 +205,11 @@ static int sign_tests_run(int argc, char *argv[])
 		   "knot_free_key_params(), regular free");
 	}
 
-	// 22-25. - knot_tsig_key_from_params()
+	// 22-24. - knot_tsig_key_from_params()
 	{
 		int result;
 		knot_key_params_t params = { 0 };
-		knot_tsig_key_t tsig_key;
+		knot_tsig_key_t tsig_key = { 0 };
 		const char *owner = "shared.example.com.";
 		knot_dname_t *name = knot_dname_new_from_str(owner,
 							     strlen(owner),
@@ -215,26 +219,18 @@ static int sign_tests_run(int argc, char *argv[])
 		ok(result == KNOT_EINVAL,
 		   "knot_tsig_key_from_params(), empty parameters");
 
-		params.secret = "Ok6NmA==";
+		params.secret.data = (uint8_t *)"test";
+		params.secret.size = 4;
 		result = knot_tsig_key_from_params(&params, &tsig_key);
 		ok(result == KNOT_EINVAL,
 		   "knot_tsig_key_from_params(), no key name");
 
 		params.name = name;
-		params.secret = NULL;
+		params.secret.data = NULL;
+		params.secret.size = 0;
 		result = knot_tsig_key_from_params(&params, &tsig_key);
 		ok(result == KNOT_EINVAL,
 		   "knot_tsig_key_from_params(), no shared secret");
-
-		params.name = name;
-		params.secret = "Ok6NmA==";
-		uint8_t decoded_secret[] = { 0x3a, 0x4e, 0x8d, 0x98 };
-		result = knot_tsig_key_from_params(&params, &tsig_key);
-		ok(result == KNOT_EOK
-		   && tsig_key.secret.size == sizeof(decoded_secret)
-		   && memcmp(tsig_key.secret.data, decoded_secret,
-		             sizeof(decoded_secret)) == 0,
-		   "knot_tsig_key_from_params(), secret set properly");
 
 		knot_dname_release(name);
 		knot_tsig_key_free(&tsig_key);

@@ -56,6 +56,17 @@ int knot_binary_from_base64(const char *base64, knot_binary_t *binary);
  */
 int knot_binary_free(knot_binary_t *binary);
 
+/*!
+ * \brief Create deep copy of knot_binary_t structure.
+ *
+ * (Does nothing if source structure is empty.)
+ *
+ * \param from   Source structure.
+ * \param to     Target structure.
+ * \return Error code, KNOT_EOK if case of success.
+ */
+int knot_binary_dup(const knot_binary_t *from, knot_binary_t *to);
+
 #endif // _KNOT_BINARY_H
 
 /*! @} */
