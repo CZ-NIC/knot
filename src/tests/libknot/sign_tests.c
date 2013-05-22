@@ -30,7 +30,7 @@ unit_api sign_tests_api = {
 
 static int sign_tests_count(int argc, char *argv[])
 {
-	return 24;
+	return 25;
 }
 
 static int sign_tests_run(int argc, char *argv[])
@@ -163,7 +163,7 @@ static int sign_tests_run(int argc, char *argv[])
 		   "key_param_int(), number and text");
 	}
 
-	// 17-20. - parse_keyfile_line()
+	// 17-21. - parse_keyfile_line()
 	{
 		knot_key_params_t key = { 0 };
 		int result;
@@ -188,9 +188,15 @@ static int sign_tests_run(int argc, char *argv[])
 		ok(result == KNOT_EOK,
 		   "parse_keyfile_line(), unknown parameter");
 		free(line);
+
+		line = strdup("Activate: 20130521144259\n");
+		result = parse_keyfile_line(&key, line, strlen(line));
+		ok(result == KNOT_EOK && key.time_activate == 1369147379,
+		   "parse_keyfile_line(), timestamp parsing");
+		free(line);
 	}
 
-	// 21. - knot_free_key_params()
+	// 22. - knot_free_key_params()
 	{
 		int result;
 		knot_key_params_t params = { 0 };
@@ -205,7 +211,7 @@ static int sign_tests_run(int argc, char *argv[])
 		   "knot_free_key_params(), regular free");
 	}
 
-	// 22-24. - knot_tsig_key_from_params()
+	// 23-25. - knot_tsig_key_from_params()
 	{
 		int result;
 		knot_key_params_t params = { 0 };

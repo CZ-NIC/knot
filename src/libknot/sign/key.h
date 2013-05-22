@@ -28,6 +28,7 @@
 #define _KNOT_SIGN_KEY_H_
 
 #include <stdint.h>
+#include <time.h>
 #include "dname.h"
 #include "binary.h"
 #include "tsig.h"
@@ -65,6 +66,14 @@ struct knot_key_params {
 
 	// EC
 	knot_binary_t private_key;
+
+	// key lifetime
+	//time_t time_created;
+	//time_t time_publish;
+	time_t time_activate;
+	//time_t time_revoke;
+	time_t time_inactive;
+	//time_t time_delete;
 };
 
 typedef struct knot_key_params knot_key_params_t;

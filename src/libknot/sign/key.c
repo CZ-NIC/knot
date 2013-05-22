@@ -14,16 +14,17 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <config.h>
+#include <arpa/inet.h>
 #include <assert.h>
+#include <config.h>
 #include <ctype.h>
+#include <netinet/in.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
+#include <time.h>
 
 #include "binary.h"
 #include "common.h"
@@ -225,6 +226,21 @@ static int key_param_int(const void *save_to, char *value)
 }
 
 /*!
+ * \brief Handle storing of key lifetime parameter.
+ */
+static int key_param_time(const void *save_to, char *value)
+{
+	time_t *parameter = (time_t *)save_to;
+
+	struct tm parsed = { 0 };
+	if (!strptime(value, "%Y%m%d%H%M%S", &parsed))
+		return KNOT_EINVAL;
+
+	*parameter = timegm(&parsed);
+	return KNOT_EOK;
+}
+
+/*!
  * \brief Describes private key parameter used in key_parameters.
  */
 struct key_parameter {
@@ -255,6 +271,8 @@ static const struct key_parameter key_parameters[] = {
 	{ "Private_value(x)",key_offset(private_value),    key_param_base64 },
 	{ "Public_value(y)", key_offset(public_value),     key_param_base64 },
 	{ "PrivateKey",      key_offset(private_key),      key_param_base64 },
+	{ "Activate",        key_offset(time_activate),    key_param_time },
+	{ "Inactive",        key_offset(time_inactive),    key_param_time },
 	{ NULL }
 };
 
