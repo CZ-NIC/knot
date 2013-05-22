@@ -88,9 +88,9 @@ static char *strndup_with_suffix(const char *base, int length, char *suffix)
 	return result;
 }
 
-static void key_scan_noop(const scanner_t *s)
+static void key_scan_set_done(const scanner_t *s)
 {
-	UNUSED(s);
+	*((bool *)s->data) = true;
 }
 
 /*!
@@ -113,31 +113,38 @@ static int get_key_info_from_public_key(const char *filename,
 		return KNOT_ENOMEM;
 	}
 
-	scanner->process_record = key_scan_noop;
-	scanner->process_error = key_scan_noop;
+	bool scan_done = false;
+	bool last_block = false;
+
+	scanner->process_record = key_scan_set_done;
+	scanner->process_error = key_scan_set_done;
 	scanner->default_ttl = 0;
 	scanner->default_class = KNOT_CLASS_IN;
 	scanner->zone_origin[0] = '\0';
 	scanner->zone_origin_length = 1;
+	scanner->data = (void *)&scan_done;
 
 	char *buffer = NULL;
 	size_t buffer_size;
-	ssize_t read = knot_getline(&buffer, &buffer_size, keyfile);
+	ssize_t read;
+	int result = 0;
 
-	fclose(keyfile);
-
-	if (read == -1) {
-		scanner_free(scanner);
-		return KNOT_KEY_EPUBLIC_KEY_INVALID;
-	}
-
-	if (scanner_process(buffer, buffer + read, true, scanner) != 0) {
-		free(buffer);
-		scanner_free(scanner);
-		return KNOT_KEY_EPUBLIC_KEY_INVALID;
+	while (!scan_done && !last_block && result == 0) {
+		read = knot_getline(&buffer, &buffer_size, keyfile);
+		if (read <= 0) {
+			last_block = true;
+			read = 0;
+		}
+		result = scanner_process(buffer, buffer + read, last_block,
+		                         scanner);
 	}
 
 	free(buffer);
+
+	if (scanner->r_type != KNOT_RRTYPE_DNSKEY) {
+		scanner_free(scanner);
+		return KNOT_KEY_EPUBLIC_KEY_INVALID;
+	}
 
 	knot_dname_t *owner = knot_dname_new_from_wire(scanner->r_owner,
 	                                               scanner->r_owner_length,
