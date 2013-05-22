@@ -592,6 +592,7 @@ keys:
 		      fqdn);
 	     free($4.t);
 	 } else {
+             knot_dname_to_lower(dname);
              conf_key_t *k = malloc(sizeof(conf_key_t));
              memset(k, 0, sizeof(conf_key_t));
 
