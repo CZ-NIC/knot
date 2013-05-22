@@ -191,6 +191,7 @@ typedef struct conf_t {
 	 */
 	char *filename; /*!< Name of the config file. */
 	char *identity; /*!< Identity to return on CH TXT id.server. */
+	char *hostname; /*!< Host name to return on CH TXT hostname.{bind,server} */
 	char *version;  /*!< Version for CH TXT version.{bind|server} */
 	char *storage;  /*!< Persistent storage path for databases and such. */
 	char *pidfile;  /*!< PID file path. */
