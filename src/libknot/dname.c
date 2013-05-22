@@ -20,6 +20,7 @@
 #include <assert.h>
 #include <string.h>
 #include <ctype.h>	// tolower()
+#include <inttypes.h>
 
 #include "common.h"
 #include "common/mempattern.h"
@@ -286,7 +287,7 @@ static int knot_dname_find_labels(knot_dname_t *dname, int alloc)
 
 	if (pos - name > size || *pos != '\0' ) {
 		dbg_dname("Wrong wire format of domain name!\n");
-		dbg_dname("Position: %ld, character: %d, expected size: %d\n",
+		dbg_dname("Position: %"PRIuPTR", character: %d, expected size: %d\n",
 		          pos - name, *pos, size);
 		return -1;
 	}
