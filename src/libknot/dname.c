@@ -585,22 +585,6 @@ knot_dname_t *knot_dname_parse_from_wire(const uint8_t *wire,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_dname_from_wire(const uint8_t *name, uint size,
-                           struct knot_node *node, knot_dname_t *target)
-{
-	if (name == NULL || target == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	memcpy(target->name, name, size);
-	target->size = size;
-	target->node = node;
-
-	return knot_dname_find_labels(target, 0);
-}
-
-/*----------------------------------------------------------------------------*/
-
 knot_dname_t *knot_dname_deep_copy(const knot_dname_t *dname)
 {
 	//return knot_dname_new_from_wire(dname->name, dname->size, dname->node);

@@ -148,32 +148,6 @@ knot_dname_t *knot_dname_parse_from_wire(const uint8_t *wire,
                                          knot_dname_t *dname);
 
 /*!
- * \brief Initializes domain name by the name given in wire format.
- *
- * \note The name is copied into the structure.
- * \note If there is any name in the structure, it will be replaced.
- * \note If the given name is not a FQDN, the result will be neither.
- *
- * \param name Domain name in wire format.
- * \param size Size of the domain name in octets.
- * \param node Zone node the domain name belongs to. Set to NULL if not
- *             applicable.
- * \param target Domain name structure to initialize.
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_ENOMEM if allocation of labels info failed.
- * \retval KNOT_EINVAL if name or target is null.
- *
- * \todo This function does not check if the given data is in correct wire
- *       format at all. It thus creates a invalid domain name, which if passed
- *       e.g. to knot_dname_to_str() may result in crash. Decide whether it
- *       is OK to retain this and check the data in other functions before
- *       calling this one, or if it should verify the given data.
- */
-int knot_dname_from_wire(const uint8_t *name, unsigned int size,
-                           struct knot_node *node, knot_dname_t *target);
-
-/*!
  * \brief Duplicates the given domain name.
  *
  * \note Copied dname referense count is reset to 1, caller is responsible
