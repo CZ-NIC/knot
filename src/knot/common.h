@@ -42,7 +42,6 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 
 #define PROJECT_EXENAME "knotd"
 #define PROJECT_EXEC SBINDIR "/" PROJECT_EXENAME /*!< \brief  Project executable. */
-#define ZONEPARSER_EXEC LIBEXECDIR "/" "knot-zcompile" /*!< \brief  Zoneparser executable. */
 #define PID_FILE "knot.pid" /*!< \brief Server PID file name. */
 
 /*
@@ -55,23 +54,8 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 #define XFR_THREADS_COUNT 3  /*!< \brief Number of threads for XFR handler. */
 #define RECVMMSG_BATCHLEN 16 /*!< \brief Define for recvmmsg() batch size. */
 
-///*! \brief If defined, zone structures will use hash table for lookup. */
-//#define COMPRESSION_PEDANTIC
-
-///*!
-// * \brief If defined, tests will use ldns library to parse sample data.
-// *
-// * If not defined, some tests will be disabled.
-// */
-//#define TEST_WITH_LDNS
-
 ///*! \brief If defined, the statistics module will be enabled. */
 //#define STAT_COMPILE
-
-
-#ifdef HAVE_LDNS
-#define TEST_WITH_LDNS
-#endif
 
 /*
  * Common includes.
