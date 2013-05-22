@@ -1041,21 +1041,20 @@ dbg_ns_exec_verb(
 	 */
 	if (next_closer == NULL) {
 		// create the "next closer" name by appending from qname
-		next_closer = ns_next_closer(
+		knot_dname_t *new_next_closer = ns_next_closer(
 			knot_node_owner(*closest_encloser), qname);
 
-		if (next_closer == NULL) {
+		if (new_next_closer == NULL) {
 			return NS_ERR_SERVFAIL;
 		}
 dbg_ns_exec_verb(
-		char *name = knot_dname_to_str(next_closer);
+		char *name = knot_dname_to_str(new_next_closer);
 		dbg_ns_verb("Next closer name: %s\n", name);
 		free(name);
 );
-		ret = ns_put_covering_nsec3(zone, next_closer, resp);
+		ret = ns_put_covering_nsec3(zone, new_next_closer, resp);
 
-		// the cast is ugly, but no better way around it
-		knot_dname_release((knot_dname_t *)next_closer);
+		knot_dname_release(new_next_closer);
 	} else {
 		ret = ns_put_covering_nsec3(zone, next_closer, resp);
 	}
