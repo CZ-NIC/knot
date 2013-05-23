@@ -217,19 +217,23 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	}
 
 	/* Build query data. */
-	knot_rrset_t *rr = remote_build_rr("data.", rrt);
-	for (int i = 0; i < argc; ++i) {
-		switch(rrt) {
-		case KNOT_RRTYPE_NS:
-			remote_create_ns(rr, argv[i]);
-			break;
-		case KNOT_RRTYPE_TXT:
-		default:
-			remote_create_txt(rr, argv[i], strlen(argv[i]));
-			break;
+	knot_rrset_t *rr = NULL;
+	if (argc > 0) {
+		rr = remote_build_rr("data.", rrt);
+		for (int i = 0; i < argc; ++i) {
+			switch(rrt) {
+			case KNOT_RRTYPE_NS:
+				remote_create_ns(rr, argv[i]);
+				break;
+			case KNOT_RRTYPE_TXT:
+			default:
+				remote_create_txt(rr, argv[i], strlen(argv[i]));
+				break;
+			}
 		}
+		remote_query_append(qr, rr);
 	}
-	remote_query_append(qr, rr);
+
 	if (knot_packet_to_wire(qr, &buf, &buflen) != KNOT_EOK) {
 		knot_rrset_deep_free(&rr, 1, 1);
 		knot_packet_free(&qr);
