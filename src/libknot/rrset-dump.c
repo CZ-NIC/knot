@@ -57,6 +57,8 @@ const knot_dump_style_t KNOT_DUMP_STYLE_DEFAULT = {
 	.show_ttl = true,
 	.verbose = false,
 	.reduce = true,
+	.human_ttl = false,
+	.human_tmstamp = false
 };
 
 static void dump_string(rrset_dump_params_t *p, const char *str)
@@ -619,7 +621,7 @@ static void wire_timestamp_to_str(rrset_dump_params_t *p)
 
 	time_t timestamp = ntohl(data);
 
-	if (p->style->verbose) {
+	if (p->style->human_tmstamp) {
 		// Write timestamp in YYYYMMDDhhmmss format.
 		ret = strftime(p->out, p->out_max, "%Y%m%d%H%M%S",
 		               gmtime(&timestamp));
@@ -725,7 +727,7 @@ static void wire_ttl_to_str(rrset_dump_params_t *p)
 		return;
 	}
 
-	if (p->style->verbose) {
+	if (p->style->human_ttl) {
 		// Write time in human readable format.
 		ret = time_to_human_str(p->out, p->out_max, ntohl(data));
 		if (ret <= 0) {
@@ -1911,7 +1913,7 @@ int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
 
 	// Dump rrset ttl.
 	if (style->show_ttl) {
-		if (style->verbose) {
+		if (style->human_ttl) {
 			// Create human readable ttl string.
 			ret = time_to_human_str(buf, sizeof(buf), rrset->ttl);
 			if (ret < 0) {

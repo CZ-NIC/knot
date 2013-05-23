@@ -45,7 +45,8 @@ static const flags_t DEFAULT_FLAGS_DIG = {
 static const style_t DEFAULT_STYLE_DIG = {
 	.format = FORMAT_FULL,
 	.style = { .wrap = false, .show_class = true, .show_ttl = true,
-	           .verbose = false, .reduce = false },
+	           .verbose = false, .reduce = false, .human_ttl = false,
+	           .human_tmstamp = true },
 	.show_query = false,
 	.show_header = true,
 	.show_edns = true,
@@ -690,6 +691,7 @@ static int parse_opt2(const char *value, dig_params_t *params)
 		query->style.show_edns = true;
 		query->style.show_footer = true;
 		query->style.style.verbose = true;
+		query->style.style.human_ttl = true;
 	} else if (strcmp(value, "nomultiline") == 0) {
 		query->style.style.wrap = false;
 	}
