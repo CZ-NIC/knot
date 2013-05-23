@@ -218,6 +218,10 @@ static void print_section_full(const knot_rrset_t **rrsets,
 	char   *buf = calloc(buflen, 1);
 
 	for (size_t i = 0; i < count; i++) {
+		if (rrsets[i]->type == KNOT_RRTYPE_OPT) {
+			continue;
+		}
+
 		while (knot_rrset_txt_dump(rrsets[i], buf, buflen,
 		                           &(style->style)) < 0)
 		{
@@ -393,13 +397,6 @@ void print_data_xfr(const knot_packet_t *packet,
 		return;
 	}
 
-	uint16_t additionals = packet->header.arcount;
-
-	// Exclude EDNS record from additionals.
-	if (knot_edns_get_version(&packet->opt_rr) != EDNS_NOT_SUPPORTED) {
-		additionals--;
-	}
-
 	switch (style->format) {
 	case FORMAT_DIG:
 		print_section_dig(packet->answer, packet->header.ancount,style);
@@ -412,7 +409,9 @@ void print_data_xfr(const knot_packet_t *packet,
 
 		// Print TSIG record if any.
 		if (style->show_additional) {
-			print_section_full(packet->additional, additionals, style);
+			print_section_full(packet->additional,
+			                   packet->header.arcount,
+			                   style);
 		}
 		break;
 	default:
@@ -509,7 +508,7 @@ void print_packet(const knot_packet_t *packet,
 		if (style->show_additional && additionals > 0) {
 			printf("\n;; ADDITIONAL DATA:\n");
 			print_section_full(packet->additional,
-			                   additionals,
+			                   packet->header.arcount,
 			                   style);
 		}
 		break;
@@ -539,7 +538,7 @@ void print_packet(const knot_packet_t *packet,
 		if (style->show_additional && additionals > 0) {
 			printf("\n;; ADDITIONAL SECTION:\n");
 				print_section_full(packet->additional,
-				                   additionals,
+				                   packet->header.arcount,
 				                   style);
 		}
 		break;
