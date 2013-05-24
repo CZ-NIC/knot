@@ -667,10 +667,12 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	if (c->last_node && c->node_rrsigs) {
 		process_rrsigs_in_node(c, c->current_zone, c->last_node);
 	}
+
 	if (c->ret != KNOT_EOK) {
 		log_zone_error("Zone could not be loaded (%d).", c->ret);
-		/*!< \todo Depending on the error, free stuff. */
 		rrset_list_delete(&c->node_rrsigs);
+		knot_zone_t *zone_to_free = c->current_zone->zone;
+		knot_zone_deep_free(&zone_to_free);
 		return NULL;
 	}
 	
@@ -680,9 +682,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 		               loader->file_loader->scanner->error_counter);
 		rrset_list_delete(&c->node_rrsigs);
 		knot_zone_t *zone_to_free = c->current_zone->zone;
-		knot_zone_contents_deep_free(&c->current_zone);
-		zone_to_free->contents = NULL;
-		knot_zone_free(&zone_to_free);
+		knot_zone_deep_free(&zone_to_free);
 		return NULL;
 	}
 	
@@ -691,9 +691,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 		log_zone_error("No SOA record in the zone file.\n");
 		rrset_list_delete(&c->node_rrsigs);
 		knot_zone_t *zone_to_free = c->current_zone->zone;
-		knot_zone_contents_deep_free(&c->current_zone);
-		zone_to_free->contents = NULL;
-		knot_zone_free(&zone_to_free);
+		knot_zone_deep_free(&zone_to_free);
 		return NULL;
 	}
 	
