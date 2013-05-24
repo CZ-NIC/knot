@@ -68,6 +68,10 @@ typedef struct knot_nameserver {
 	size_t err_resp_size;     /*!< Size of the prepared error response. */
 	knot_opt_rr_t *opt_rr;  /*!< OPT RR with the server's EDNS0 info. */
 
+	const char *identity; //!< RFC 4892, server identity (id.server).
+	const char *version;  //!< RFC 4892, server version (version.server).
+	const char *hostname; //!< RFC 4892, server host name (hostname.server).
+
 	void *data;
 } knot_nameserver_t;
 

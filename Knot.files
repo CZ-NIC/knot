@@ -147,6 +147,8 @@ src/libknot/dname.h
 src/libknot/edns.c
 src/libknot/edns.h
 src/libknot/libknot.h
+src/libknot/nameserver/chaos.c
+src/libknot/nameserver/chaos.h
 src/libknot/nameserver/name-server.c
 src/libknot/nameserver/name-server.h
 src/libknot/nsec3.c

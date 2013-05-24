@@ -168,6 +168,8 @@ libknot_la_SOURCES =				\
 	libknot/zone/zone-diff.c		\
 	libknot/nameserver/name-server.h	\
 	libknot/nameserver/name-server.c	\
+	libknot/nameserver/chaos.h		\
+	libknot/nameserver/chaos.c		\
 	libknot/updates/changesets.h		\
 	libknot/updates/changesets.c		\
 	libknot/updates/xfr-in.h		\

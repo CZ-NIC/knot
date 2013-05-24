@@ -34,6 +34,7 @@
 #include "libknot/updates/xfr-in.h"
 #include "knot/server/zones.h"
 #include "libknot/nameserver/name-server.h"
+#include "libknot/nameserver/chaos.h"
 #include "libknot/updates/changesets.h"
 #include "libknot/tsig-op.h"
 #include "common/descriptor.h"
@@ -2051,28 +2052,16 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 {
 	rcu_read_lock();
 
+	knot_rcode_t rcode = 0;
 	knot_packet_t *resp = NULL;
 	const knot_zone_t *zone = NULL;
+	const uint16_t qclass = knot_packet_qclass(query);
 
 	dbg_zones_verb("Preparing response structure.\n");
 	int ret = knot_ns_prep_normal_response(nameserver, query, &resp, &zone,
 	                                       (transport == NS_TRANSPORT_TCP)
 	                                       ? *rsize : 0);
 	query->zone = zone;
-
-	// check for TSIG in the query
-	// not required, TSIG is already found if it is there
-//	if (knot_packet_additional_rrset_count(query) > 0) {
-//		/*! \todo warning */
-//		const knot_rrset_t *tsig = knot_packet_additional_rrset(query,
-//		                 knot_packet_additional_rrset_count(query) - 1);
-//		if (knot_rrset_type(tsig) == KNOT_RRTYPE_TSIG) {
-//			dbg_zones_verb("found TSIG in normal query\n");
-//			knot_packet_set_tsig(query, tsig);
-//		}
-//	}
-
-	knot_rcode_t rcode = 0;
 
 	switch (ret) {
 	case KNOT_EOK:
@@ -2088,14 +2077,15 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 		break;
 	}
 
-	if (rcode == KNOT_RCODE_NOERROR
-	    && ((zone == NULL && knot_packet_tsig(query) == NULL)
-	        || (knot_packet_qclass(query) != KNOT_CLASS_IN
-	            && knot_packet_qclass(query) != KNOT_CLASS_ANY))) {
-		/*! \todo If there is TSIG, this should be probably handled
-		 *        as a key error.
-		 */
-		rcode = KNOT_RCODE_REFUSED;
+	if (rcode == KNOT_RCODE_NOERROR) {
+		switch (qclass) {
+		case KNOT_CLASS_IN:
+		case KNOT_CLASS_CH:
+		case KNOT_CLASS_ANY:
+			break;
+		default:
+			rcode = KNOT_RCODE_REFUSED;
+		}
 	}
 
 	if (rcode != KNOT_RCODE_NOERROR) {
@@ -2124,25 +2114,19 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 		size_t answer_size = *rsize;
 		int ret = KNOT_EOK;
 
-		if (zone == NULL) {
-			assert(knot_packet_tsig(query) != NULL);
-			// treat as BADKEY error
-			/*! \todo Is this OK?? */
-			rcode = KNOT_RCODE_NOTAUTH;
-			tsig_rcode = KNOT_RCODE_BADKEY;
-			ret = KNOT_TSIG_EBADKEY;
-		} else {
+		const knot_rrset_t *tsig = knot_packet_tsig(query);
+		if (tsig != NULL) {
 			dbg_zones_verb("Checking TSIG in query.\n");
-			const knot_rrset_t *tsig = knot_packet_tsig(query);
-			if (tsig == NULL) {
-				// no TSIG, this is completely valid
-				tsig_rcode = 0;
-				ret = KNOT_EOK;
+			if (zone == NULL) {
+				// treat as BADKEY error
+				/*! \todo Is this OK?? */
+				rcode = KNOT_RCODE_NOTAUTH;
+				tsig_rcode = KNOT_RCODE_BADKEY;
+				ret = KNOT_TSIG_EBADKEY;
 			} else {
 				ret = zones_check_tsig_query(zone, query, addr,
-				                             &rcode, &tsig_rcode,
-				                             &tsig_key_zone,
-				                             &tsig_prev_time_signed);
+				      &rcode, &tsig_rcode, &tsig_key_zone,
+				      &tsig_prev_time_signed);
 			}
 		}
 
@@ -2165,11 +2149,14 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 				                              resp, resp_wire,
 				                              &answer_size);
 			} else {
-				ret = knot_ns_answer_normal(nameserver, zone,
-				                            resp, resp_wire,
-				                            &answer_size,
-				                            transport ==
-				                            NS_TRANSPORT_UDP);
+				if (qclass == KNOT_CLASS_CH) {
+					ret = knot_ns_answer_chaos(nameserver,
+					      resp, resp_wire, &answer_size);
+				} else {
+					ret = knot_ns_answer_normal(nameserver,
+					      zone, resp, resp_wire, &answer_size,
+					      transport == NS_TRANSPORT_UDP);
+				}
 				query->flags = resp->flags; /* Copy markers. */
 			}
 
@@ -2692,6 +2679,11 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 
 	/* Set NSID. */
 	knot_ns_set_nsid(ns, conf->nsid, conf->nsid_len);
+
+	/* Server identification, RFC 4892. */
+	ns->identity = conf->identity;
+	ns->version = conf->version;
+	ns->hostname = conf->hostname;
 
 	knot_zonedb_t *old_db = 0;
 

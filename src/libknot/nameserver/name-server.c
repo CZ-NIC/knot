@@ -3040,6 +3040,10 @@ knot_nameserver_t *knot_ns_create()
 		ns->opt_rr = NULL;
 	}
 
+	ns->identity = NULL;
+	ns->version = NULL;
+	ns->hostname = NULL;
+
 	knot_packet_free(&err);
 
 	return ns;
@@ -3404,10 +3408,6 @@ int knot_ns_prep_normal_response(knot_nameserver_t *nameserver,
 	            query->parsed, query->size);
 	dbg_ns_detail("Opt RR: version: %d, payload: %d\n",
 	              query->opt_rr.version, query->opt_rr.payload);
-
-	// get the answer for the query
-	knot_zonedb_t *zonedb = rcu_dereference(nameserver->zone_db);
-
 	dbg_ns_detail("EDNS supported in query: %d\n",
 	              knot_query_edns_supported(query));
 
@@ -3428,6 +3428,11 @@ int knot_ns_prep_normal_response(knot_nameserver_t *nameserver,
 
 	dbg_ns_verb("Response max size: %zu\n", (*resp)->max_size);
 
+	// search for zone only for IN and ANY classes
+	uint16_t qclass = knot_packet_qclass(*resp);
+	if (qclass != KNOT_CLASS_IN && qclass != KNOT_CLASS_ANY)
+		return KNOT_EOK;
+
 	const knot_dname_t *qname = knot_packet_qname(*resp);
 	assert(qname != NULL);
 
@@ -3438,6 +3443,7 @@ dbg_ns_exec_verb(
 	free(name_str);
 );
 	// find zone in which to search for the name
+	knot_zonedb_t *zonedb = rcu_dereference(nameserver->zone_db);
 	*zone = ns_get_zone_for_qname(zonedb, qname, qtype);
 
 	return KNOT_EOK;
