@@ -140,8 +140,9 @@ int knot_response_compress_dname(const knot_dname_t *dname, knot_compr_t *compr,
 		written += 1;
 	}
 
-	/* Do not insert if exceeds bounds. */
-	if (compr->wire_pos > KNOT_WIRE_PTR_MAX)
+	/* Do not insert if exceeds bounds or full match. */
+	if (match.lbcount == dname->label_count ||
+	    compr->wire_pos > KNOT_WIRE_PTR_MAX)
 		return written;
 
 	/* If table is full, elect name from the lower 1/4 of the table
