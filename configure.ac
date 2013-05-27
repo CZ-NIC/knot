@@ -150,7 +150,7 @@ AC_ARG_ENABLE([microseconds-log],
     AS_HELP_STRING([--enable-microseconds-log], [enable microseconds in log messages [default=no]]),
     AC_DEFINE([ENABLE_MICROSECONDS_LOG], [1], [microseconds in log messages]))
 
-AX_CHECK_COMPILE_FLAG("-fpredictive-commoning", [CFLAGS="$CFLAGS -fpredictive-commoning"], [])
+AX_CHECK_COMPILE_FLAG("-fpredictive-commoning", [CFLAGS="$CFLAGS -fpredictive-commoning"], [], "-Werror")
 
 # Disable strict aliasing
 # FIXME: we break strict aliasing on many occurenes, disable it until resolved or kept
