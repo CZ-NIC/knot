@@ -11,8 +11,7 @@ AX_EXT
 
 # Checks for programs.
 AC_PROG_CC
-m4_pattern_allow([AM_PROG_AR]) # for automake 1.12
-AM_PROG_AR
+m4_ifdef([AM_PROG_AR], [AM_PROG_AR]) # call AM_PROG_AR only if available
 
 # Initialize libtool
 AC_DISABLE_STATIC
