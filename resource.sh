@@ -15,12 +15,12 @@ hd="hexdump -v -e"
 fmt="\"0\" \"x\" 1/1 \"%02X\" \", \""
 
 # Preparse source file name
-header="${1%.*}_rc"
-header=`basename ${header}`
+# header="${1%.*}_rc"
+header=$(basename ${1}_rc)
 
 # Get file size and dump content
-size=`wc -c ${1} | awk '{print $1}' 2>/dev/null`
-dump=`${hd} "${fmt}" ${1} 2>/dev/null`
+size=$(wc -c "${1}" | awk '{print $1}' 2>/dev/null)
+dump=$(${hd} "${fmt}" "${1}" 2>/dev/null)
 
 # Format file size variable
 echo "static const unsigned ${header}_size = ${size};"

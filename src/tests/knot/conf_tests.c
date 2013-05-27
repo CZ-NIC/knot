@@ -20,7 +20,7 @@
 #include "knot/conf/conf.h"
 
 /* Resources. */
-#include "tests/sample_conf.rc"
+#include "sample_conf.rc"
 
 static int conf_tests_count(int argc, char *argv[]);
 static int conf_tests_run(int argc, char *argv[]);

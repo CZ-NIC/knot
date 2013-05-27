@@ -5,19 +5,25 @@ noinst_PROGRAMS = unittests unittests-xfr zscanner-tool
 noinst_LTLIBRARIES = libknot.la libknotd.la libknots.la libzscanner.la
 
 # $(YACC) will generate header file
-AM_CFLAGS = -std=gnu99 -D_GNU_SOURCE -Wall -Ilibknot -DSYSCONFDIR='"$(sysconfdir)"' -DSBINDIR='"$(sbindir)"'
+AM_CFLAGS = -std=gnu99 -D_GNU_SOURCE -Wall -I$(top_srcdir)/src/libknot -DSYSCONFDIR='"$(sysconfdir)"' -DSBINDIR='"$(sbindir)"'
 AM_YFLAGS = -d
 libknotd_la_YFLAGS = -pcf_ -d
 libknotd_la_LFLAGS = # TODO: reentrant parser, prefix
 
+EXTRA_DIST =					\
+	     tests/files/sample_conf		\
+	     zscanner/scanner.rl		\
+	     zscanner/scanner_body.rl
+
 BUILT_SOURCES =					\
-	tests/sample_conf.rc			\
+	sample_conf.rc				\
 	libknotd_la-cf-lex.c			\
 	libknotd_la-cf-parse.c			\
-	libknotd_la-cf-parse.h
+	libknotd_la-cf-parse.h			\
+	zscanner/scanner.c
 
 CLEANFILES =					\
-	tests/sample_conf.rc			\
+	sample_conf.rc				\
 	libknotd_la-cf-lex.c			\
 	libknotd_la-cf-parse.c			\
 	libknotd_la-cf-parse.h
@@ -138,6 +144,7 @@ unittests_xfr_SOURCES = 			\
 	tests/xfr_tests.h
 
 libknot_la_SOURCES =				\
+	libknot/common.h			\
 	libknot/consts.h			\
 	libknot/consts.c			\
 	libknot/util/utils.c			\
@@ -206,6 +213,7 @@ libknot_la_SOURCES =				\
 libknots_la_SOURCES =				\
 	common/slab/slab.c			\
 	common/slab/slab.h			\
+	common/slab/alloc-common.h		\
 	common/libtap/tap.c			\
 	common/libtap/tap.h			\
 	common/libtap/tap_unit.h		\
@@ -275,7 +283,9 @@ libknotd_la_SOURCES =				\
 	knot/stat/stat.c			\
 	knot/stat/gatherer.h			\
 	knot/stat/stat.h			\
+	knot/stat/stat-common.h			\
 	knot/common.h				\
+	common/latency.h			\
 	knot/other/debug.h			\
 	knot/conf/cf-lex.l			\
 	knot/conf/cf-parse.y			\
@@ -349,5 +359,5 @@ unittests_LDADD = libknotd.la libknots.la @LIBOBJS@
 unittests_xfr_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 zscanner_tool_LDADD = libknots.la libknot.la libknotd.la libzscanner.la @LIBOBJS@
 
-tests/sample_conf.rc: tests/files/sample_conf
-	../resource.sh tests/files/sample_conf >$@
+sample_conf.rc: tests/files/sample_conf
+	$(top_srcdir)/resource.sh $(srcdir)/tests/files/sample_conf >$@

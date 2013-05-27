@@ -1,10 +1,14 @@
 info_TEXINFOS = knot.texi
-knot_TEXINFOS = 		\
-	introduction.texi	\
-	requirements.texi	\
-	installation.texi	\
-	configuration.texi	\
-	reference.texi		\
-	security.texi		\
-	troubleshooting.texi	\
-	migration.texi
+knot_TEXINFOS = 				\
+		configuration.texi		\
+		indices.texi			\
+		installation.texi		\
+		introduction.texi		\
+		knot.texi			\
+		migration.texi			\
+		reference.texi			\
+		requirements.texi		\
+		running.texi			\
+		security.texi			\
+		troubleshooting.texi		\
+		version.texi
