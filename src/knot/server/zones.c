@@ -2639,11 +2639,11 @@ int zones_save_zone(const knot_ns_xfr_t *xfr)
 {
 	/* Zone is already referenced, no need for RCU locking. */
 
-	dbg_xfr("xfr: %s Saving new zone file.\n", xfr->msg);
-
 	if (xfr == NULL || xfr->new_contents == NULL || xfr->zone == NULL) {
 		return KNOT_EINVAL;
 	}
+
+	dbg_xfr("xfr: %s Saving new zone file.\n", xfr->msg);
 
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(xfr->zone);
 	knot_zone_contents_t *new_zone = xfr->new_contents;
