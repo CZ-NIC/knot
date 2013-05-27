@@ -20,5 +20,11 @@ install-data-local: knot.sample.conf
 	[ -f $(DESTDIR)/$(sysconfdir)/knot.sample.conf ] || \
 	  $(INSTALL_DATA) knot.sample.conf $(srcdir)/example.com.zone $(DESTDIR)/$(sysconfdir)
 
+uninstall-local:
+	[ -f $(DESTDIR)/$(sysconfdir)/knot.sample.conf ] && \
+	  rm -f $(DESTDIR)/$(sysconfdir)/knot.sample.conf
+	[ -f $(DESTDIR)/$(sysconfdir)/example.com.zone ] && \
+	  rm -f $(DESTDIR)/$(sysconfdir)/example.com.zone
+
 clean-local:
 	rm -f knot.sample.conf
