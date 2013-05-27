@@ -140,7 +140,7 @@ AC_ARG_ENABLE([recvmmsg],
 AC_ARG_ENABLE([lto],
     AS_HELP_STRING([--enable-lto=yes|no], [enable link-time optimizations, enable if not broken for some extra speed [default=no]]),
     [case "${enableval}" in
-      yes) AX_CHECK_COMPILER_FLAGS("-flto", [CFLAGS="$CFLAGS -flto"], []) ;;
+      yes) AX_CHECK_COMPILE_FLAG("-flto", [CFLAGS="$CFLAGS -flto"], []) ;;
       no) ;;
       *)  AC_MSG_ERROR([bad value ${enableval} for --enable-lto]) ;;
     esac])
@@ -150,11 +150,11 @@ AC_ARG_ENABLE([microseconds-log],
     AS_HELP_STRING([--enable-microseconds-log], [enable microseconds in log messages [default=no]]),
     AC_DEFINE([ENABLE_MICROSECONDS_LOG], [1], [microseconds in log messages]))
 
-AX_CHECK_COMPILER_FLAGS("-fpredictive-commoning", [CFLAGS="$CFLAGS -fpredictive-commoning"], [])
+AX_CHECK_COMPILE_FLAG("-fpredictive-commoning", [CFLAGS="$CFLAGS -fpredictive-commoning"], [])
 
 # Disable strict aliasing
 # FIXME: we break strict aliasing on many occurenes, disable it until resolved or kept
-AX_CHECK_COMPILER_FLAGS("-fno-strict-aliasing", [CFLAGS="$CFLAGS -fno-strict-aliasing"], [])
+AX_CHECK_COMPILE_FLAG("-fno-strict-aliasing", [CFLAGS="$CFLAGS -fno-strict-aliasing"], [])
 
 # Checks for libraries.
 # FIXME: Replace `main' with a function in `-lm':
