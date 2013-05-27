@@ -60,7 +60,7 @@ int heap_init(struct heap *h, int (*cmp)(void *, void *), int init_size)
 	h->data = malloc((isize + 1) * sizeof(heap_val_t)); /* Temp element unused. */
 
 	return h->data ? 1 : 0;
-};
+}
 
 static inline void _heap_bubble_down(struct heap *h, int e)
 {

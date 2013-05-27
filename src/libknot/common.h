@@ -45,11 +45,11 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 #if 0 // Disabled due to a conflict with system MIN and MAX on BSDs.
 /*! \brief Type-safe minimum macro. */
 #define MIN(a, b) \
-	({ typeof (a) _a = (a); typeof (b) _b = (b); _a < _b ? _a : _b; })
+	({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a < _b ? _a : _b; })
 
 /*! \brief Type-safe maximum macro. */
 #define MAX(a, b) \
-	({ typeof (a) _a = (a); typeof (b) _b = (b); _a > _b ? _a : _b; })
+	({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a > _b ? _a : _b; })
 #endif
 
 /* Optimisation macros. */
