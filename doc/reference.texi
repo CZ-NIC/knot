@@ -36,6 +36,7 @@ else.
 @code{system} @code{@{}
   [ @code{identity} @code{"}@kbd{string}@code{";} ]
   [ @code{version} @code{"}@kbd{string}@code{";} ]
+  [ @code{hostname} @code{"}@kbd{string}@code{";} ]
   [ @code{nsid} ( @code{"}@kbd{string}@code{"} | @kbd{hex_string} )@code{;} ]
   [ @code{storage} @code{"}@kbd{string}@code{";} ]
   [ @code{pidfile} @code{"}@kbd{string}@code{";} ]
@@ -57,6 +58,7 @@ else.
 @menu
 * identity::
 * version::
+* hostname::
 * nsid::
 * storage::
 * pidfile::
@@ -75,7 +77,11 @@ else.
 @subsubsection identity
 @vindex identity
 
-Identity of the server (see @url{http://tools.ietf.org/html/rfc4892,RFC 4892}). Not used yet.
+Identity of the server returned in a response for the query for TXT record
+@code{id.server.} in the CHAOS class
+(see @url{http://tools.ietf.org/html/rfc4892,RFC 4892}).
+
+If not specified or empty, the server returns REFUSED status code.
 
 @example
 system @{
@@ -87,11 +93,31 @@ system @{
 @subsubsection version
 @vindex version
 
-Version of the server (see @url{http://tools.ietf.org/html/rfc4892,RFC 4892}). Not used yet.
+Version of the server software returned in a response for the query for TXT
+record @code{version.server.} in the CHAOS class
+(see @url{http://tools.ietf.org/html/rfc4892,RFC 4892}).
+
+If not specified or empty, the server returns REFUSED status code.
 
 @example
 system @{
-  version "1.1.0";
+  version "1.3.0";
+@}
+@end example
+
+@node hostname
+@subsubsection hostname
+@vindex hostname
+
+Host name of the server returned in a response for the query for TXT record
+@code{hostname.server.} in the CHAOS class
+(see @url{http://tools.ietf.org/html/rfc4892,RFC 4892}).
+
+If not specified or empty, the server returns REFUSED status code.
+
+@example
+system @{
+  hostname "a.ns.example.com";
 @}
 @end example
 
