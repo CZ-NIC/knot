@@ -140,6 +140,13 @@ int knot_response_compress_dname(const knot_dname_t *dname, knot_compr_t *compr,
 		written += 1;
 	}
 
+	/* Promote good matches. */
+	if (match_id > 1) {
+		match = compr->table[match_id];
+		compr->table[match_id] = compr->table[match_id - 1];
+		compr->table[match_id - 1] = match;
+	}
+
 	/* Do not insert if exceeds bounds or full match. */
 	if (match.lbcount == dname->label_count ||
 	    compr->wire_pos > KNOT_WIRE_PTR_MAX)
@@ -156,13 +163,6 @@ int knot_response_compress_dname(const knot_dname_t *dname, knot_compr_t *compr,
 	if (compr->table[i].off == 0) {
 		compr->table[i].off = (uint16_t)compr->wire_pos;
 		compr->table[i].lbcount = dname->label_count;
-	}
-
-	/* Promote good matches. */
-	if (match_id > 1) {
-		match = compr->table[match_id];
-		compr->table[match_id] = compr->table[match_id - 1];
-		compr->table[match_id - 1] = match;
 	}
 
 	return written;
