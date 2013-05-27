@@ -24,7 +24,7 @@ static knot_rrset_t *sig0_create_rrset(void)
 	knot_dname_t *root = knot_dname_new_from_str(".", 1, NULL);
 	uint32_t ttl = 0;
 	knot_rrset_t *sig_record = knot_rrset_new(root, KNOT_RRTYPE_SIG,
-						  KNOT_CLASS_ANY, ttl);
+	                                          KNOT_CLASS_ANY, ttl);
 	knot_dname_release(root);
 
 	return sig_record;
@@ -33,7 +33,7 @@ static knot_rrset_t *sig0_create_rrset(void)
 /*!
  * \brief Get size of SIG(0) RDATA field.
  *
- * \param key	Signing key.
+ * \param key  Signing key.
  *
  * \return Size of the SIG(0) record in bytes.
  */
@@ -45,13 +45,13 @@ static size_t sig0_rdata_size(knot_dnssec_key_t *key)
 
 	// static part
 
-	size = sizeof(uint16_t)		// type covered
-	     + sizeof(uint8_t)		// algorithm
-	     + sizeof(uint8_t)		// labels
-	     + sizeof(uint32_t)		// original TTL
-	     + sizeof(uint32_t)		// signature expiration
-	     + sizeof(uint32_t)		// signature inception
-	     + sizeof(uint16_t);	// key tag (footprint)
+	size = sizeof(uint16_t)  // type covered
+	     + sizeof(uint8_t)   // algorithm
+	     + sizeof(uint8_t)   // labels
+	     + sizeof(uint32_t)  // original TTL
+	     + sizeof(uint32_t)  // signature expiration
+	     + sizeof(uint32_t)  // signature inception
+	     + sizeof(uint16_t); // key tag (footprint)
 
 	// variable part
 
@@ -64,8 +64,8 @@ static size_t sig0_rdata_size(knot_dnssec_key_t *key)
 /*!
  * \brief Create and zero SIG(0) RDATA field.
  *
- * \param rrset		SIG(0) RR set.
- * \param key		Signing key.
+ * \param rrset  SIG(0) RR set.
+ * \param key    Signing key.
  *
  * \return SIG(0) RDATA.
  */
@@ -87,8 +87,8 @@ static uint8_t *sig0_create_rdata(knot_rrset_t *rrset, knot_dnssec_key_t *key)
 /*!
  * \brief Fill SIG(0) RDATA field except the signature part.
  *
- * \param key		Signing key.
- * \param rdata		RDATA to be filled.
+ * \param key    Signing key.
+ * \param rdata  RDATA to be filled.
  *
  * \return Error code, KNOT_EOK if successful.
  */
@@ -102,16 +102,16 @@ static int sig0_write_rdata(knot_dnssec_key_t *key, uint8_t *rdata)
 
 	uint8_t *w = rdata;
 
-	w += sizeof(uint16_t);			// type covered
-	*w = key->algorithm;			// algorithm
+	w += sizeof(uint16_t);               // type covered
+	*w = key->algorithm;                 // algorithm
 	w += sizeof(uint8_t);
-	w += sizeof(uint8_t);			// labels
-	w += sizeof(uint32_t);			// original TTL
-	knot_wire_write_u32(w, expires);	// signature expiration
+	w += sizeof(uint8_t);                // labels
+	w += sizeof(uint32_t);               // original TTL
+	knot_wire_write_u32(w, expires);     // signature expiration
 	w += sizeof(uint32_t);
-	knot_wire_write_u32(w, incepted);	// signature inception
+	knot_wire_write_u32(w, incepted);    // signature inception
 	w += sizeof(uint32_t);
-	knot_wire_write_u16(w, key->keytag);	// key footprint
+	knot_wire_write_u16(w, key->keytag); // key footprint
 	w += sizeof(uint16_t);
 
 	assert(w == rdata + 18);
@@ -127,10 +127,10 @@ static int sig0_write_rdata(knot_dnssec_key_t *key, uint8_t *rdata)
  * whole preceeding request before the SIG(0) record was added (i.e. before the
  * AR count in header was increased).
  *
- * \param wire		Output wire to be signed.
- * \param request_size	Size of the request in the wire.
- * \param sig_rr_size	Size of the SIG(0) RR in the wire.
- * \param key		Signing key.
+ * \param wire          Output wire to be signed.
+ * \param request_size  Size of the request in the wire.
+ * \param sig_rr_size   Size of the SIG(0) RR in the wire.
+ * \param key           Signing key.
  *
  * \return Error code, KNOT_EOK if successful.
  */
@@ -166,7 +166,7 @@ static int sig0_write_signature(uint8_t* wire, size_t request_size,
  * \brief Sign a packet using SIG(0) mechanism.
  */
 int knot_sig0_sign(uint8_t *wire, size_t *wire_size, size_t wire_max_size,
-		   knot_dnssec_key_t *key)
+                   knot_dnssec_key_t *key)
 {
 	knot_rrset_t *sig_rrset = sig0_create_rrset();
 	if (!sig_rrset) {
@@ -189,8 +189,8 @@ int knot_sig0_sign(uint8_t *wire, size_t *wire_size, size_t wire_max_size,
 	uint16_t written_rr_count = 0;
 
 	int result = knot_rrset_to_wire(sig_rrset, wire_end, &wire_sig_size,
-					wire_avail_size, &written_rr_count,
-					NULL);
+	                                wire_avail_size, &written_rr_count,
+	                                NULL);
 	knot_rrset_deep_free(&sig_rrset, 1, 0);
 	if (result != KNOT_EOK) {
 		return result;

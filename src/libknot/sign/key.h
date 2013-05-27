@@ -13,6 +13,16 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+/*!
+ * \file key.h
+ *
+ * \author Jan Vcelak <jan.vcelak@nic.cz>
+ *
+ * \brief Interface for loding of keys.
+ *
+ * \addtogroup dnssec
+ * @{
+ */
 
 #ifndef _KNOT_SIGN_KEY_H_
 #define _KNOT_SIGN_KEY_H_
@@ -69,10 +79,10 @@ typedef enum knot_key_type knot_key_type_t;
 /*!
  * \brief Calculates keytag from key wire.
  *
- * \param rdata		Key wireformat.
- * \param rdata_len	Wireformat size.
+ * \param rdata      Key wireformat.
+ * \param rdata_len  Wireformat size.
  *
- * \return uint16_t	Calculated keytag.
+ * \return Calculated keytag.
  */
 uint16_t knot_keytag(const uint8_t *rdata, uint16_t rdata_len);
 
@@ -81,10 +91,10 @@ uint16_t knot_keytag(const uint8_t *rdata, uint16_t rdata_len);
 /*!
  * \brief Reads the key files and extracts key parameters.
  *
- * \param filename	The name of the file with stored key. It can be either
- *                      the name with '.key' or '.private' suffix or without
- *                      the suffix at all.
- * \param key_params	Output key parameters.
+ * \param filename    The name of the file with stored key. It can be either
+ *                    the name with '.key' or '.private' suffix or without
+ *                    the suffix at all.
+ * \param key_params  Output key parameters.
  *
  * \returns Error code, KNOT_EOK when succeeded.
  */
@@ -93,8 +103,8 @@ int knot_load_key_params(const char *filename, knot_key_params_t *key_params);
 /*!
  * \brief Copies key params structure content.
  *
- * \param src		Source structure.
- * \param dst		Destination structure.
+ * \param src  Source structure.
+ * \param dst  Destination structure.
  *
  * \return Error code, KNOT_EOK when succeeded.
  */
@@ -103,7 +113,7 @@ int knot_copy_key_params(const knot_key_params_t *src, knot_key_params_t *dst);
 /*!
  * \brief Frees the key parameters.
  *
- * \param key_params	Key parameters to be freed.
+ * \param key_params  Key parameters to be freed.
  *
  * \return Error code, KNOT_EOK when succeeded.
  */
@@ -123,10 +133,10 @@ knot_key_type_t knot_get_key_type(const knot_key_params_t *key_params);
 /*!
  * \brief Creates TSIG key.
  *
- * \param name		Key name (aka owner name).
- * \param algorithm	Algorithm number.
- * \param b64secret	Shared secret encoded in Base64.
- * \param key		Output TSIG key.
+ * \param name       Key name (aka owner name).
+ * \param algorithm  Algorithm number.
+ * \param b64secret  Shared secret encoded in Base64.
+ * \param key        Output TSIG key.
  *
  * \return Error code, KNOT_EOK when succeeded.
  */
@@ -136,8 +146,8 @@ int knot_tsig_create_key(const char *name, int algorithm,
 /*!
  * \brief Creates TSIG key from key parameters.
  *
- * \param params	Structure with key parameters.
- * \param key		Output TSIG key.
+ * \param params  Structure with key parameters.
+ * \param key     Output TSIG key.
  *
  * \return Error code, KNOT_EOK when succeeded.
  */
@@ -147,10 +157,12 @@ int knot_tsig_key_from_params(const knot_key_params_t *params,
 /*!
  * \brief Frees TSIG key.
  *
- * \param key		TSIG key structure to be freed.
+ * \param key  TSIG key structure to be freed.
  *
  * \return Error code, KNOT_EOK when succeeded.
  */
 int knot_tsig_key_free(knot_tsig_key_t *key);
 
 #endif // _KNOT_SIGN_KEY_H_
+
+/*! @} */

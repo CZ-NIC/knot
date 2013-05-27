@@ -17,7 +17,7 @@
 /*!
  * \file chaos.h
  *
- * \author Jan Vcelak <jvcelak@nic.cz>
+ * \author Jan Vcelak <jan.vcelak@nic.cz>
  *
  * \addtogroup query_processing
  * @{

@@ -137,8 +137,8 @@ static int get_key_info_from_public_key(const char *filename,
 	free(buffer);
 
 	knot_dname_t *owner = knot_dname_new_from_wire(scanner->r_owner,
-						       scanner->r_owner_length,
-						       NULL);
+	                                               scanner->r_owner_length,
+	                                               NULL);
 	if (!owner) {
 		scanner_free(scanner);
 		return KNOT_ENOMEM;
@@ -170,8 +170,8 @@ static int get_key_filenames(const char *input, char **pubname, char **privname)
 	size_t base_length;
 
 	if (name_end && (*(name_end + 1) == '\0' ||
-			 strcmp(name_end, ".key") == 0 ||
-			 strcmp(name_end, ".private") == 0)
+	                 strcmp(name_end, ".key") == 0 ||
+	                 strcmp(name_end, ".private") == 0)
 	) {
 		base_length = name_end - input;
 	} else {
@@ -264,9 +264,9 @@ static const struct key_parameter key_parameters[] = {
 /*!
  * \brief Parse one line of key file.
  *
- * \param key_params Key parameters to write the result into.
- * \param line       Input line pointer.
- * \param length     Input line length.
+ * \param key_params  Key parameters to write the result into.
+ * \param line        Input line pointer.
+ * \param length      Input line length.
  */
 static int parse_keyfile_line(knot_key_params_t *key_params,
                               char *line, size_t length)
@@ -480,10 +480,10 @@ knot_key_type_t knot_get_key_type(const knot_key_params_t *key_params)
 /*!
  * \brief Creates TSIG key from function arguments.
  *
- * \param name		Key name (aka owner name).
- * \param algorithm	Algorithm number.
- * \param b64secret	Shared secret encoded in Base64.
- * \param key		Output TSIG key.
+ * \param name       Key name (aka owner name).
+ * \param algorithm  Algorithm number.
+ * \param b64secret  Shared secret encoded in Base64.
+ * \param key        Output TSIG key.
  *
  * \return Error code, KNOT_EOK when succeeded.
  */

@@ -14,6 +14,17 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/*!
+ * \file includes.h
+ *
+ * \author Jan Vcelak <jan.vcelak@nic.cz>
+ *
+ * \brief Structures for binary data handling.
+ *
+ * \addtogroup libknot
+ * @{
+ */
+
 #ifndef _KNOT_BINARY_H_
 #define _KNOT_BINARY_H_
 
@@ -31,18 +42,20 @@ typedef struct knot_binary knot_binary_t;
 /*!
  * \brief Initialize knot_binary_t structure from Base64 encoded string.
  *
- * \param base64    Base64 encoded input data.
- * \param binary    Pointer to structure to write the result into.
- * \return          Error code, KNOT_EOK in case of success.
+ * \param base64  Base64 encoded input data.
+ * \param binary  Pointer to structure to write the result into.
+ * \return Error code, KNOT_EOK in case of success.
  */
 int knot_binary_from_base64(const char *base64, knot_binary_t *binary);
 
 /*!
  * \brief Free content of knot_binary_t structure.
  *
- * \param binary    Pointer to the structure.
- * \return          Error code, KNOT_EOK in case of success.
+ * \param binary  Pointer to the structure.
+ * \return Error code, KNOT_EOK in case of success.
  */
 int knot_binary_free(knot_binary_t *binary);
 
 #endif // _KNOT_BINARY_H
+
+/*! @} */

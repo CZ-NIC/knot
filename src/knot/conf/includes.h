@@ -13,6 +13,17 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+/*!
+ * \file includes.h
+ *
+ * \author Jan Vcelak <jan.vcelak@nic.cz>
+ *
+ * \brief Handing of includes in configuration file.
+ *
+ * \addtogroup config
+ * @{
+ */
+
 #ifndef _KNOT_CONF_INCLUDES_H_
 #define _KNOT_CONF_INCLUDES_H_
 
@@ -68,3 +79,5 @@ char *conf_includes_top(conf_includes_t *includes);
 char *conf_includes_pop(conf_includes_t *includes);
 
 #endif /* _KNOT_CONF_INCLUDES_H_ */
+
+/*! @} */

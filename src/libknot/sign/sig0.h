@@ -13,6 +13,16 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+/*!
+ * \file sig0.h
+ *
+ * \author Jan Vcelak <jan.vcelak@nic.cz>
+ *
+ * \brief Interface for packet signing using SIG(0).
+ *
+ * \addtogroup dnssec
+ * @{
+ */
 
 #ifndef _KNOT_SIGN_SIG0_H_
 #define _KNOT_SIGN_SIG0_H_
@@ -22,14 +32,16 @@
 /*!
  * \brief Sign a packet using SIG(0) mechanism.
  *
- * \param wire		Wire (packet content).
- * \param wire_size	Size of the wire.
- * \param wire_max_size	Capacity of the wire.
- * \param key		DNSSEC key to be used for signature.
+ * \param wire           Wire (packet content).
+ * \param wire_size      Size of the wire.
+ * \param wire_max_size  Capacity of the wire.
+ * \param key            DNSSEC key to be used for signature.
  *
  * \return Error code, KNOT_EOK if succeeded.
  */
 int knot_sig0_sign(uint8_t *wire, size_t *wire_size, size_t wire_max_size,
-		   knot_dnssec_key_t *key);
+                   knot_dnssec_key_t *key);
 
 #endif // _KNOT_SIGN_SIG0_H_
+
+/*! @} */

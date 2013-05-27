@@ -21,6 +21,9 @@
 #include "sign/bnutils.h"
 #include "common/base64.h"
 
+/*!
+ * \brief Convert Base64 encoded number into OpenSSL BIGNUM format.
+ */
 BIGNUM *knot_b64_to_bignum(const char *input)
 {
 	size_t size = strlen(input);

@@ -13,6 +13,16 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+/*!
+ * \file bnutils.h
+ *
+ * \author Jan Vcelak <jan.vcelak@nic.cz>
+ *
+ * \brief Conversion between Base64 and OpenSSL BIGNUM formats.
+ *
+ * \addtogroup dnssec
+ * @{
+ */
 
 #ifndef _KNOT_SIGN_BNUTILS_H_
 #define _KNOT_SIGN_BNUTILS_H_
@@ -22,9 +32,11 @@
 /*!
  * \brief Convert Base64 encoded number into OpenSSL BIGNUM format.
  *
- * \param input Base64 encoded input number
+ * \param input  Base64 encoded input number
  * \return Input number represented in OpenSSL BIGNUM format.
  */
 BIGNUM *knot_b64_to_bignum(const char *input);
 
 #endif // _KNOT_SIGN_BNUTILS_H_
+
+/*! @} */
