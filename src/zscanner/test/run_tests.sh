@@ -1,6 +1,6 @@
 #!/bin/sh
 
-TESTS_DIR="./tests"
+TESTS_DIR="./cases"
 OUTS_DIR="/tmp/zscanner_tests"
 TEST_BIN="../../zscanner-tool -m 2"
 

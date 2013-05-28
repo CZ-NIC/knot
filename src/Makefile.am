@@ -11,9 +11,11 @@ libknotd_la_YFLAGS = -pcf_ -d
 libknotd_la_LFLAGS = # TODO: reentrant parser, prefix
 
 EXTRA_DIST =					\
-	     tests/files/sample_conf		\
-	     zscanner/scanner.rl		\
-	     zscanner/scanner_body.rl
+	tests/files/sample_conf			\
+	zscanner/scanner.rl			\
+	zscanner/scanner_body.rl		\
+	zscanner/test/run_tests.sh		\
+	zscanner/test/cases
 
 BUILT_SOURCES =					\
 	sample_conf.rc				\

@@ -148,7 +148,7 @@ static int hattrie_tests_run(int argc, char *argv[])
 	/* Test 6: false LPR lookup */
 	const char *false_lpr = "Z";
 	int ret = hattrie_find_lpr(t, false_lpr, strlen(false_lpr), &v);
-	ok(ret != 0 && v == NULL, "hattrie: non-existent prefix lookup\n");
+	ok(ret != 0 && v == NULL, "hattrie: non-existent prefix lookup");
 
 
 	for (unsigned i = 0; i < dummy_count; ++i) {
