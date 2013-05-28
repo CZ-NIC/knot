@@ -1,0 +1,14 @@
+$ORIGIN	.
+$TTL	1
+
+; The NID is the same as the L64, so there are the differences and basics only.
+
+; OK
+@	NID	0	0000:0000:0000:0000	; The simplest case
+@	NID	\# 10 00000000000000000000	; Hexadecimal rdata
+@	TYPE104	\# 10 00000000000000000000	; TYPE + Hexadecimal rdata
+@	TYPE104	0	0000:0000:0000:0000	; TYPE
+@	nid	0	0000:0000:0000:0000	; Type in lower-case
+
+; KO
+@	NID

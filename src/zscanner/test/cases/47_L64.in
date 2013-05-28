@@ -1,0 +1,26 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	L64	0	0000:0000:0000:0000	; The simplest case
+@	L64	65535	FFFF:FFFF:FFFF:FFFF	; The maximal case
+@	L64	0	abcd:ef00:0000:0000	; Lower-case
+@	L64	\# 10 00000000000000000000	; Hexadecimal rdata
+@	TYPE106	\# 10 00000000000000000000	; TYPE + Hexadecimal rdata
+@	TYPE106	0	0000:0000:0000:0000	; TYPE
+@	l64	0	0000:0000:0000:0000	; Type in lower-case
+
+; KO
+@	L64
+@	L64					; Empty rdata
+@	L64	\# 0				; Hex empty rdata
+@	L64	\#				; Missing hex length
+@	L64	65536				; Too big preference
+@	L64	0	0000:0000:0000		; Missing label
+@	L64	0	0000:0000:0000:0000:0000	; Too many labels
+@	L64	0	0000:0000:0000:000	; Missing hex character
+@	L64	0	0000:0000:0000-0000	; Bad separator
+@	L64	0	0000:0000:0000:x000	; Bad hex character
+@	L64	0	0000:0000:0000:0000 x	; Unexpected item
+@	L64	\# 11 00000000000000000000 00	; Too long rdata
+@	L64	\# 11 00000000000000000000	; Bad rdata length

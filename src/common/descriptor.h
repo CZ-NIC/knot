@@ -94,6 +94,10 @@ enum knot_rr_type {
 
 	KNOT_RRTYPE_SPF        =  99, /*!< Sender policy framework. */
 
+	KNOT_RRTYPE_NID        = 104, /*!< Node identifier. */
+	KNOT_RRTYPE_L32        = 105, /*!< 32-bit network locator. */
+	KNOT_RRTYPE_L64        = 106, /*!< 64-bit network locator. */
+	KNOT_RRTYPE_LP         = 107, /*!< Subnetwork name. */
 	KNOT_RRTYPE_EUI48      = 108, /*!< 48-bit extended unique identifier. */
 	KNOT_RRTYPE_EUI64      = 109, /*!< 64-bit extended unique identifier. */
 

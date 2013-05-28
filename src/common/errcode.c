@@ -146,6 +146,8 @@ const error_table_t knot_error_msgs[] = {
 	{ ZSCANNER_EBAD_ALGORITHM, "Bad algorithm." },
 	{ ZSCANNER_EBAD_CERT_TYPE, "Bad certificate type." },
 	{ ZSCANNER_EBAD_EUI_LENGTH, "Bad EUI length." },
+	{ ZSCANNER_EBAD_L64_LENGTH, "Bad 64-bit locator." },
+	{ ZSCANNER_EBAD_CHAR_COLON, "Missing colon character." },
 
 	/* Encoding errors. */
 	{ KNOT_BASE64_ESIZE, "Invalid base64 string length." },
