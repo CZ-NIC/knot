@@ -2168,7 +2168,7 @@ have_node:
 	    && qtype != KNOT_RRTYPE_CNAME && qtype != KNOT_RRTYPE_RRSIG) {
 dbg_ns_exec(
 		char *name = knot_dname_to_str(node->owner);
-		dbg_ns_verb("Node %s has CNAME record, resolving...\n", name);
+		dbg_ns("Node %s has CNAME record, resolving...\n", name);
 		free(name);
 );
 		const knot_dname_t *act_name = qname;
@@ -3787,8 +3787,6 @@ int ns_ixfr_load_serials(const knot_ns_xfr_t *xfr, uint32_t *serial_from,
 {
 	if (xfr == NULL || xfr->zone == NULL || serial_from == NULL
 	    || serial_to == NULL) {
-		dbg_ns("Wrong parameters: xfr=%p,"
-		       " xfr->zone = %p\n", xfr, xfr->zone);
 		return KNOT_EINVAL;
 	}
 

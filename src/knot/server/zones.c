@@ -2992,8 +2992,6 @@ int zones_xfr_load_changesets(knot_ns_xfr_t *xfr, uint32_t serial_from,
                               uint32_t serial_to)
 {
 	if (!xfr || !xfr->zone || !knot_zone_contents(xfr->zone)) {
-		dbg_zones_detail("Wrong parameters: xfr=%p,"
-		                " xfr->zone = %p\n", xfr, xfr->zone);
 		return KNOT_EINVAL;
 	}
 

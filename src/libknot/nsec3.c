@@ -63,10 +63,10 @@ int knot_nsec3_params_from_wire(knot_nsec3_params_t *params,
 	}
 
 	dbg_nsec3("Parsed NSEC3PARAM:\n");
-	dbg_nsec3("Algorithm: %hu\n", params->algorithm);
-	dbg_nsec3("Flags: %hu\n", params->flags);
-	dbg_nsec3("Iterations: %hu\n", params->iterations);
-	dbg_nsec3("Salt length: %hu\n", params->salt_length);
+	dbg_nsec3("Algorithm: %u\n", params->algorithm);
+	dbg_nsec3("Flags: %u\n", params->flags);
+	dbg_nsec3("Iterations: %u\n", params->iterations);
+	dbg_nsec3("Salt length: %u\n", params->salt_length);
 	dbg_nsec3("Salt: \n");
 	if (params->salt != NULL) {
 		dbg_nsec3_hex((char *)params->salt,
