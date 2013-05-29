@@ -1532,11 +1532,17 @@
 			fhold; fgoto err_line;
 		}
 	}
+	action _eui_sep_error {
+		SCANNER_WARNING(ZSCANNER_EBAD_CHAR_DASH);                       
+		fhold; fgoto err_line;
+	}
 
-	eui48 = (hex_char %_eui_count . ('-' . hex_char %_eui_count)+
+	eui48 = (hex_char %_eui_count .
+	         ('-' >!_eui_sep_error . hex_char %_eui_count)+
 		) $!_hex_char_error >_eui_init %_eui48_exit;
 
-	eui64 = (hex_char %_eui_count . ('-' . hex_char %_eui_count)+
+	eui64 = (hex_char %_eui_count .
+	         ('-' >!_eui_sep_error . hex_char %_eui_count)+
 		) $!_hex_char_error >_eui_init %_eui64_exit;
 	# END
 
