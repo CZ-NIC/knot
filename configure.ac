@@ -1,22 +1,32 @@
 #                                               -*- Autoconf -*-
 
 AC_PREREQ([2.60])
-AC_INIT([knot], [1.2.0], [knot-dns@labs.nic.cz])
-AM_INIT_AUTOMAKE([gnu -Wall -Werror])
+AC_INIT([knot], [1.3.0-dev], [knot-dns@labs.nic.cz])
+AM_INIT_AUTOMAKE([gnu subdir-objects dist-xz -Wall -Werror])
 AC_CONFIG_SRCDIR([src/knot/main.c])
 AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AC_USE_SYSTEM_EXTENSIONS([_GNU_SOURCE])
+
+# Check SSE, SSE2 and SSE3 support
 AX_EXT
+CFLAGS="$CFLAGS $SIMD_FLAGS"
+
+# Set compiler compatibility flags
+AC_PROG_CC_C99
+AM_PROG_CC_C_O
+AC_PROG_CPP_WERROR
 
 # Checks for programs.
-AC_PROG_CC
 m4_ifdef([AM_PROG_AR], [AM_PROG_AR]) # call AM_PROG_AR only if available
 
 # Initialize libtool
 AC_DISABLE_STATIC
 AC_PROG_LIBTOOL
 LT_INIT
+
+# Use pkg-config
+PKG_PROG_PKG_CONFIG
 
 AC_CACHE_CHECK([for reentrant lex], [ac_cv_path_LEX],
   [AC_PATH_PROGS_FEATURE_CHECK([LEX], [$LEX flex gflex],
@@ -50,10 +60,6 @@ AS_IF([test "x$YACC_BISON" != "xbison"],
     [AC_MSG_ERROR([GNU bison needed for reentrant parsers, set the \$YACC variable before running configure])])
 AC_PROG_INSTALL
 
-# Full path to Knot source
-abs_srcdir=`(cd $srcdir && pwd)`
-AC_DEFINE_UNQUOTED([SOURCE_ABSOLUTE_DIR], ["$abs_srcdir"], [Knot source full path.])
-
 # Check for Ragel
 AC_PATH_PROG([RAGEL], [ragel], [echo !UNPROCESSED! ragel])
 
@@ -63,10 +69,6 @@ AC_ARG_ENABLE([fastparser],
     AS_HELP_STRING([--enable-fastparser], [Generate fast zone parser (requires Ragel!)]),
     [touch src/zscanner/scanner.rl; AC_SUBST([FSM_TYPE], [-G2])],
     [])
-
-# Set compiler compatibility flags
-AC_PROG_CPP_WERROR
-AC_PROG_CC_C99
 
 # Debug modules
 AC_ARG_ENABLE([debug],
@@ -158,16 +160,102 @@ AX_CHECK_COMPILE_FLAG("-fno-strict-aliasing", [CFLAGS="$CFLAGS -fno-strict-alias
 
 # Checks for libraries.
 # FIXME: Replace `main' with a function in `-lm':
-# TODO: check if paths exist before appending
-CFLAGS="$CFLAGS -I/usr/local/include $SIMD_FLAGS"
-LDFLAGS="$LDFLAGS -L/usr/local/lib"
+
+dnl Check for userspace-rcu library
+AC_ARG_WITH(urcu,
+[  --with-urcu=DIR        where to find userspace-rcu library])
+
+AS_IF([test "$with_urcu" != "no"], [
+  PKG_CHECK_MODULES([liburcu], liburcu, [
+    CPPFLAGS="$CPPFLAGS $liburcu_CFLAGS"
+    LIBS="$LIBS $liburcu_LIBS"
+    with_urcu=yes
+  ],[
+    for try_urcu in "$with_urcu" "" "/usr/local"; do
+      save_LIBS="$LIBS"
+      save_CPPFLAGS="$CPPFLAGS"
+
+      AS_IF([test -d "$try_urcu"], [
+        liburcu_CFLAGS="-I$try_urcu/include"
+        liburcu_LIBS="-L$try_urcu/lib"
+      ],[
+        liburcu_CFLAGS=""
+        liburcu_LIBS=""
+      ])
+
+      CPPFLAGS="$CPPFLAGS $liburcu_CFLAGS"
+      LIBS="$LIBS $liburcu_LIBS"
+
+      AC_SEARCH_LIBS([rcu_set_pointer_sym], [urcu], [
+        with_urcu=yes
+	break
+      ],[
+        with_urcu=no
+	# do not cache result of AC_SEARCH_LIBS test
+	unset ac_cv_search_rcu_set_pointer_sym
+      ])
+
+      CPPFLAGS="$save_CPPFLAGS"
+      LIBS="$save_LIBS"
+    done
+
+    AS_IF([test "$with_urcu" = "no"],[
+      AC_MSG_ERROR([liburcu is required])
+    ])
+  ])
+])
+
+AC_SEARCH_LIBS([urcu_init], [urcu], [AC_MSG_ERROR([liburcu is too old (< 0.4.0), urcu_init symbol found])], [])
+
+dnl Check for OpenSSL
+AC_ARG_WITH(openssl,
+[  --with-openssl=DIR        where to find openssl library])
+
+AS_IF([test "$with_openssl" != "no"],[
+  PKG_CHECK_MODULES([libcrypto], libcrypto, [
+    CPPFLAGS="$CPPFLAGS $libcrypto_CFLAGS"
+    LIBS="$LIBS $libcrypto_LIBS"
+    with_openssl=yes
+  ],[
+
+    for try_openssl in "$with_openssl" "" "/usr/local"; do
+      save_LIBS="$LIBS"
+      save_CPPFLAGS="$CPPFLAGS"
+
+      AS_IF([test -d "$try_openssl"], [
+        libcrypto_CFLAGS="-I$try_openssl/include"
+        libcrypto_LIBS="-L$try_openssl/lib"
+      ],[
+        libcrypto_CFLAGS=""
+        libcrypto_LIBS=""
+      ])
+
+      CPPFLAGS="$CPPFLAGS $libcrypto_CFLAGS"
+      LIBS="$LIBS $libcrypto_LIBS"
+
+      AC_SEARCH_LIBS([OpenSSL_add_all_digests], [crypto], [
+        with_openssl=yes
+	break
+      ],[
+        with_openssl=no
+	# do not cache result of AC_SEARCH_LIBS test
+	unset ac_cv_search_OpenSSL_add_all_digests
+      ])
+
+      CPPFLAGS="$save_CPPFLAGS"
+      LIBS="$save_LIBS"
+    done
+
+    AS_IF([test "$with_openssl" = "no"],[
+      AC_MSG_ERROR([libcrypto (part of OpenSSL) is required])
+    ])
+  ])
+])
+
 AC_SEARCH_LIBS([pow], [m])
 AC_SEARCH_LIBS([pthread_create], [pthread], [], [AC_MSG_ERROR([pthreads not found])])
-AC_SEARCH_LIBS([rcu_set_pointer_sym], [urcu], [], [AC_MSG_ERROR([liburcu not found])])
-AC_SEARCH_LIBS([urcu_init], [urcu], [AC_MSG_ERROR([liburcu is too old (< 0.4.0), urcu_init symbol found])], [])
 AC_SEARCH_LIBS([dlopen], [dl])
 AC_SEARCH_LIBS([clock_gettime], [rt])
-AC_SEARCH_LIBS([OpenSSL_add_all_digests], [crypto],[], [AC_MSG_ERROR([libcrypto not found])])
 AC_SEARCH_LIBS([capng_apply], [cap-ng])
 AC_SEARCH_LIBS([adler32], [z])
 
@@ -182,7 +270,7 @@ AC_TYPE_SIZE_T
 AC_TYPE_SSIZE_T
 
 # Set PRNG parameters
-AC_DEFINE([DSFMT_MEXP], [521], [DSFMT parameters.])
+AC_DEFINE([DSFMT_MEXP], [521], [DSFMT parameters])
 
 # Checks for library functions.
 AC_CHECK_FUNCS([clock_gettime gettimeofday epoll_wait fgetln getline kqueue madvise poll posix_memalign pselect pthread_setaffinity_np regcomp select sendmmsg setgroups])
@@ -201,6 +289,12 @@ CFLAGS="$CFLAGS $CFLAG_VISIBILITY"
 AC_CONFIG_FILES([Makefile
 		 samples/Makefile
 		 src/Makefile
+		 src/tests/Makefile
 		 doc/Makefile
-		 man/Makefile])
+		 man/Makefile
+		 src/zscanner/test/run_tests.sh
+		 src/zscanner/test/cases/06-3_INCLUDE.in:src/zscanner/test/cases/06-3_INCLUDE.inin
+		 src/zscanner/test/cases/06-4_INCLUDE.in:src/zscanner/test/cases/06-4_INCLUDE.inin
+		 src/zscanner/test/cases/06-0_INCLUDE.in:src/zscanner/test/cases/06-0_INCLUDE.inin
+		 ])
 AC_OUTPUT

@@ -1,0 +1,5 @@
+$ORIGIN .
+$TTL	1
+
+; KO
+$INCLUDE @abs_builddir@/zscanner_tests/file-doesnt-exist		; File doesn't exist

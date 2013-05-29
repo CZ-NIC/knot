@@ -1,5 +1,0 @@
-$ORIGIN .
-$TTL	1
-
-; KO
-$INCLUDE /tmp/zscanner_tests/		; Given file is a directory
