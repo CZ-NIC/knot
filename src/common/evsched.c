@@ -100,20 +100,21 @@ void evsched_delete(evsched_t **s)
 	pthread_mutex_destroy(&(*s)->mx);
 	pthread_cond_destroy(&(*s)->notify);
 
-	while (! EMPTY_HEAP(&(*s)->heap))	/* FIXME: Would be faster to simply walk through the array */
+#ifndef OPENBSD_SLAB_BROKEN
+	/* Free allocator (all events at once). */
+	slab_cache_destroy(&(*s)->cache.alloc);
+#else
+	while (! EMPTY_HEAP(&(*s)->heap))
 	{
 		event_t *e = *((event_t**)(HHEAD(&(*s)->heap)));
 		heap_delmin(&(*s)->heap);
 		evsched_event_free((*s), e);
 	}
+#endif
 
 	free((*s)->heap.data);
 	(*s)->heap.data = NULL;;
 
-#ifndef OPENBSD_SLAB_BROKEN
-	/* Free allocator. */
-	slab_cache_destroy(&(*s)->cache.alloc);
-#endif
 	pthread_mutex_destroy(&(*s)->cache.lock);
 
 	/* Free scheduler. */
