@@ -33,9 +33,6 @@
 #include "knot/zone/semantic-check.h"
 #include "zscanner/file_loader.h"
 
-#define MAGIC_LENGTH 8
-#define MAGIC "knotv130"
-
 /* TODO this structure is highly redundant, remove. Maybe use oh-so-great BIRD lists. */
 /*!
  * \brief One-purpose linked list holding pointers to RRSets.

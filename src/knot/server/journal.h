@@ -44,8 +44,6 @@
 #include <stdint.h>
 #include <fcntl.h>
 
-#include "knot/zone/zone-load.h"
-
 /*!
  * \brief Journal entry flags.
  */
@@ -129,9 +127,11 @@ typedef int (*journal_apply_t)(journal_t *j, journal_node_t *n);
  * Journal defaults and constants.
  */
 #define JOURNAL_NCOUNT 1024 /*!< Default node count. */
+#define JOURNAL_MAGIC {'k', 'n', 'o', 't', '1', '0', '5'}
+#define MAGIC_LENGTH 7
 /* HEADER = magic, crc, max_entries, qhead, qtail */
 #define JOURNAL_HSIZE (MAGIC_LENGTH + sizeof(crc_t) + sizeof(uint16_t) * 3)
-#define JOURNAL_MAGIC {'k', 'n', 'o', 't', '1', '0', '5'}
+
 
 /*!
  * \brief Create new journal.
