@@ -1,3 +1,21 @@
+v1.3.0-rc1 - soon, 2013
+---------------------------
+
+Features:
+        * faster zone parser
+        * full support for EUI and ILNP resource records
+        * lower memory footprint for large zones
+        * no compilation of zones
+        * improved scheduling of zone transfers
+        * logging of serials and timing information for zone transfers
+        * config: 'groups' keyword allowing to create groups of remotes
+        * config: 'include' keyword allowing other file includes
+        * client utilities: kdig, khost, knsupdate
+        * server identification using TXT/CH queries (RFC 4892)
+
+Bugfixes:
+        *
+
 v1.2.0 - Mar 29, 2013
 ---------------------
 
