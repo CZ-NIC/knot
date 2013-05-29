@@ -20,13 +20,21 @@ EXTRA_DIST =					\
 BUILT_SOURCES =					\
 	knot/conf/libknotd_la-cf-lex.c		\
 	knot/conf/libknotd_la-cf-parse.c	\
-	knot/conf/libknotd_la-cf-parse.h	\
-	zscanner/scanner.c
+	knot/conf/libknotd_la-cf-parse.h
 
 CLEANFILES =					\
 	knot/conf/libknotd_la-cf-lex.c		\
 	knot/conf/libknotd_la-cf-parse.c	\
 	knot/conf/libknotd_la-cf-parse.h
+
+if HAVE_RAGEL
+BUILT_SOURCES += zscanner/scanner.c
+CLEANFILES += zscanner/scanner.c
+
+zscanner/scanner.c: zscanner/scanner.rl zscanner/scanner_body.rl
+	$(RAGEL) $(FSM_TYPE) -s -o $@ $(srcdir)/zscanner/scanner.rl
+
+endif
 
 knotc_SOURCES =					\
 	knot/ctl/knotc_main.c
@@ -278,9 +286,6 @@ libknotd_la_SOURCES =				\
 	knot/zone/zone-load.h			\
 	knot/zone/zone-load.c			\
 	knot/server/server.h
-
-zscanner/scanner.c: zscanner/scanner.rl zscanner/scanner_body.rl
-	$(RAGEL) $(FSM_TYPE) -s -o $@ $(srcdir)/zscanner/scanner.rl
 
 zscanner_tool_SOURCES =				\
 	zscanner/test/zscanner-tool.c		\
