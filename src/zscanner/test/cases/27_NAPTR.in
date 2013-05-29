@@ -19,5 +19,5 @@ $TTL	1
 @	NAPTR	0	65536	""	""	""	@	; Preference overflow
 @	NAPTR	0	0	""	""	""	@  x	; Unexpected item
 @	NAPTR	0	0	""	""	""		; Missing item
-@	NAPTR	\# 8 0000000000000000 00			; Too long rdata
-@	NAPTR	\# 7 00000000000000 00				; Bad rdata length
+@	NAPTR	\# 9 00000000000000 00 00			; Too long rdata
+@	NAPTR	\# 9 00000000000000 00				; Bad rdata length

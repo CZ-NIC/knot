@@ -63,5 +63,5 @@ $TTL	1
 @	LOC	1     N 1     x	0			; Bad letter
 @	LOC	1     N 1     E				; Missing altitude
 @	LOC	0 0 0 N 0 0 0 E 0 0 0 0 x		; Unexpected item
-@	LOC	\# 16 00 00 00 00 00000000 00000000 00000000 00	; Too long rdata
+@	LOC	\# 17 00 00 00 00 00000000 00000000 00000000 00	; Too long rdata
 @	LOC	\# 17 00 00 00 00 00000000 00000000 00000000	; Bad rdata length

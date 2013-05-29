@@ -21,5 +21,5 @@ $TTL	1
 @	EUI64	00:00-00-00-00-00-00-00		; Bad separator
 @	EUI64	00-00-00-x0-00-00-00-00		; Bad character
 @	EUI64	00-00-00-00-00-00-00-00 x	; Unexpected item
-@	EUI64	\# 8 0000000000000000 00	; Too long rdata
+@	EUI64	\# 9 0000000000000000 00	; Too long rdata
 @	EUI64	\# 9 0000000000000000		; Bad rdata length
