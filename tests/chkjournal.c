@@ -29,6 +29,8 @@
      $ cd tests
      $ make chkjournal-i386
  */
+
+#include <config.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>

@@ -14,12 +14,12 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <config.h>
 #include <dlfcn.h>
 #include <string.h>
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
-#include <config.h>
 #include "common/fdset.h"
 
 /* Workarounds for clock_gettime() not available on some platforms. */

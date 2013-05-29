@@ -32,7 +32,6 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "config.h" /* autoconf generated */
 #include "common/log.h"
 
 /*

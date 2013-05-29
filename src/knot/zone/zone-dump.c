@@ -14,11 +14,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "knot/zone/zone-dump.h"
-
 #include <config.h>
 #include <inttypes.h>
 
+#include "knot/zone/zone-dump.h"
 #include "common/descriptor.h"
 #include "knot/conf/conf.h"
 #include "knot/server/zones.h"

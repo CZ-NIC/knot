@@ -14,11 +14,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <config.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/resource.h>
-#include <config.h>
 #include <stdarg.h>
 
 #include "mempattern.h"

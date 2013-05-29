@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <config.h>
 #include "tests/libknot/sign_tests.h"
 #include "libknot/sign/key.h"
 #include "libknot/sign/key.c" // testing static functions

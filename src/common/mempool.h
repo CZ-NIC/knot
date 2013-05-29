@@ -13,7 +13,6 @@
 
 #include <string.h>
 #include <stdint.h>
-#include "config.h"
 
 #if __GNUC__ >= 4
 #define LIKE_MALLOC __attribute__((malloc))                             /** Function returns a "new" pointer **/

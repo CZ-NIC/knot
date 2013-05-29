@@ -20,9 +20,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+
+#include <config.h>
 #include "queue.h"
 #include "atomic.h"
-#include "config.h"
 #include <stdbool.h>
 #include <string.h>
 #include <assert.h>

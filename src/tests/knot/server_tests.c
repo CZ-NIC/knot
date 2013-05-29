@@ -13,6 +13,8 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+#include <config.h>
 #include "tests/knot/server_tests.h"
 #include "knot/server/server.h"
 

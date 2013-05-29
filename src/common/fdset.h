@@ -32,7 +32,6 @@
 #ifndef _KNOTD_FDSET_H_
 #define _KNOTD_FDSET_H_
 
-#include "config.h"
 #include <stddef.h>
 #ifdef HAVE_SYS_SELECT_H
  #include <sys/select.h>

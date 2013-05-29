@@ -14,10 +14,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <config.h>
 #include <sys/time.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <config.h>
 
 #include "common/evsched.h"
 

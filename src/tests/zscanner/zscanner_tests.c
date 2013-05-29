@@ -14,10 +14,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <config.h>
 #include "tests/zscanner/zscanner_tests.h"
 
 #include <stdlib.h>
-#include <config.h>
 
 static int zscanner_tests_count(int argc, char *argv[]);
 static int zscanner_tests_run(int argc, char *argv[]);

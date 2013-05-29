@@ -1,5 +1,3 @@
-#include <config.h>
-
 #ifndef DSFMT_PARAMS_H
 #define DSFMT_PARAMS_H
 

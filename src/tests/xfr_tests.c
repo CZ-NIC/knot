@@ -21,8 +21,8 @@
  *    binary that an integrity check should be done
 */
 
-#include <time.h>
 #include <config.h>
+#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>

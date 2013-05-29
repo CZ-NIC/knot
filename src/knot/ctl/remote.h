@@ -27,7 +27,6 @@
 #ifndef _KNOTD_REMOTE_H_
 #define _KNOTD_REMOTE_H_
 
-#include <config.h>
 #include "knot/conf/conf.h"
 #include "libknot/packet/packet.h"
 #include "libknot/rrset.h"

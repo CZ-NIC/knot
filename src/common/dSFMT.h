@@ -28,8 +28,6 @@
  * unsigned int and 64-bit unsigned int in hexadecimal format.
  */
 
-#include <config.h>
-
 #ifndef DSFMT_H
 #define DSFMT_H
 

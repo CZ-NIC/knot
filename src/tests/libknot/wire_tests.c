@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <config.h>
 #include "tests/libknot/wire_tests.h"
 #include "libknot/util/utils.h"
 

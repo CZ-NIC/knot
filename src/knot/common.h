@@ -29,7 +29,6 @@
 
 #include <signal.h>
 #include <stdint.h>
-#include <config.h>
 
 /*
  * Common types and constants.

@@ -5,6 +5,7 @@
  *
  */
 
+#include <config.h>
 #include <assert.h>
 #include <string.h>
 #include "ahtable.h"
