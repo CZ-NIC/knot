@@ -731,7 +731,7 @@ void knot_dnssec_sign_free(knot_dnssec_sign_context_t *context)
 /*!
  * \brief Get DNSSEC signature size.
  */
-size_t knot_dnssec_sign_size(knot_dnssec_key_t *key)
+size_t knot_dnssec_sign_size(const knot_dnssec_key_t *key)
 {
 	if (!key)
 		return 0;

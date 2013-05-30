@@ -430,6 +430,7 @@ static int conf_mask(void* scanner, int nval, int prefixlen) {
 %token <tok> RATE_LIMIT_SIZE
 %token <tok> RATE_LIMIT_SLIP
 %token <tok> TRANSFERS
+%token <tok> KEYDIR
 
 %token <tok> INTERFACES ADDRESS PORT
 %token <tok> IPA
@@ -871,6 +872,7 @@ zone:
 	   this_zone->notify_timeout = $3.i;
        }
    }
+ | zone KEYDIR TEXT ';' { this_zone->keydir = $3.t; }
  ;
 
 zones:

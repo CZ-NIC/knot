@@ -116,6 +116,7 @@ typedef struct conf_zone_t {
 	uint16_t cls;             /*!< Zone class (IN or CH). */
 	char *file;               /*!< Path to a zone file. */
 	char *ixfr_db;            /*!< Path to a IXFR database file. */
+	char *keydir;             /*!< Path to key directory. */
 	size_t ixfr_fslimit;      /*!< File size limit for IXFR journal. */
 	int dbsync_timeout;       /*!< Interval between syncing to zonefile.*/
 	int enable_checks;        /*!< Semantic checks for parser.*/

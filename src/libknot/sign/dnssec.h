@@ -101,7 +101,7 @@ void knot_dnssec_sign_free(knot_dnssec_sign_context_t *context);
  *
  * \return DNSSEC signature size. Zero in case of error.
  */
-size_t knot_dnssec_sign_size(knot_dnssec_key_t *key);
+size_t knot_dnssec_sign_size(const knot_dnssec_key_t *key);
 
 /*!
  * \brief Add data into DNSSEC signature.

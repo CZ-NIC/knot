@@ -183,6 +183,8 @@ src/libknot/util/utils.h
 src/libknot/util/wire.h
 src/libknot/zone/node.c
 src/libknot/zone/node.h
+src/libknot/zone/sign.c
+src/libknot/zone/sign.h
 src/libknot/zone/zone-contents.c
 src/libknot/zone/zone-contents.h
 src/libknot/zone/zone-diff.c

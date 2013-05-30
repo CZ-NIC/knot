@@ -14,9 +14,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <config.h>
 #include <arpa/inet.h>
 #include <assert.h>
-#include <config.h>
 #include <ctype.h>
 #include <netinet/in.h>
 #include <stddef.h>
@@ -98,9 +98,10 @@ static void key_scan_set_done(const scanner_t *s)
  */
 static int get_key_info_from_public_key(const char *filename,
                                         knot_dname_t **name,
-                                        uint16_t *keytag)
+                                        uint16_t *keytag,
+					uint16_t *flags)
 {
-	if (!filename || !name || !keytag)
+	if (!filename || !name || !keytag || !flags)
 		return KNOT_EINVAL;
 
 	FILE *keyfile = fopen(filename, "r");
@@ -156,6 +157,7 @@ static int get_key_info_from_public_key(const char *filename,
 
 	*name = owner;
 	*keytag = knot_keytag(scanner->r_data, scanner->r_data_length);
+	*flags = knot_wire_read_u16(scanner->r_data);
 
 	scanner_free(scanner);
 
@@ -344,7 +346,8 @@ int knot_load_key_params(const char *filename, knot_key_params_t *key_params)
 
 	knot_dname_t *name;
 	uint16_t keytag;
-	result = get_key_info_from_public_key(public_key, &name, &keytag);
+	uint16_t flags;
+	result = get_key_info_from_public_key(public_key, &name, &keytag, &flags);
 	if (result != KNOT_EOK) {
 		free(public_key);
 		free(private_key);
@@ -361,6 +364,7 @@ int knot_load_key_params(const char *filename, knot_key_params_t *key_params)
 
 	key_params->name = name;
 	key_params->keytag = keytag;
+	key_params->flags = flags;
 
 	char *buffer = NULL;
 	size_t buffer_size = 0;

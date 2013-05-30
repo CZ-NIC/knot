@@ -79,6 +79,7 @@ static int cmd_zonestatus(int argc, char *argv[], unsigned flags);
 static int cmd_checkconf(int argc, char *argv[], unsigned flags);
 static int cmd_checkzone(int argc, char *argv[], unsigned flags);
 static int cmd_memstats(int argc, char *argv[], unsigned flags);
+static int cmd_signzone(int argc, char *argv[], unsigned flags);
 
 /*! \brief Table of remote commands. */
 knot_cmd_t knot_cmd_tbl[] = {
@@ -91,6 +92,7 @@ knot_cmd_t knot_cmd_tbl[] = {
 	{&cmd_checkconf,  1, "checkconf",  "",       "\tCheck current server configuration."},
 	{&cmd_checkzone,  1, "checkzone",  "[zone]", "Check zone (all if not specified)."},
 	{&cmd_memstats,  1, "memstats",  "[zone]", "Estimate memory use for zone (all if not specified)."},
+	{&cmd_signzone,   0, "signzone",   "[zone]", "Sign all zones with available DNSSEC keys."},
 	{NULL, 0, NULL, NULL, NULL}
 };
 
@@ -610,6 +612,11 @@ static int cmd_zonestatus(int argc, char *argv[], unsigned flags)
 	UNUSED(flags);
 
 	return cmd_remote("zonestatus", KNOT_RRTYPE_TXT, 0, NULL);
+}
+
+static int cmd_signzone(int argc, char *argv[], unsigned flags)
+{
+	return cmd_remote("signzone", KNOT_RRTYPE_NS, argc, argv);
 }
 
 static int cmd_checkconf(int argc, char *argv[], unsigned flags)

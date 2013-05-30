@@ -43,6 +43,7 @@ struct knot_key_params {
 	knot_dname_t *name;
 	int algorithm;
 	uint16_t keytag;
+	uint16_t flags;
 
 	// shared key
 	knot_binary_t secret;

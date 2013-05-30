@@ -30,6 +30,7 @@
 #include "libknot/packet/response.h"
 #include "libknot/nameserver/name-server.h"
 #include "libknot/tsig-op.h"
+#include "libknot/zone/sign.h"
 
 #define KNOT_CTL_REALM "knot."
 #define KNOT_CTL_REALM_EXT ("." KNOT_CTL_REALM)
@@ -64,6 +65,7 @@ static int remote_c_refresh(server_t *s, remote_cmdargs_t* a);
 static int remote_c_status(server_t *s, remote_cmdargs_t* a);
 static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a);
 static int remote_c_flush(server_t *s, remote_cmdargs_t* a);
+static int remote_c_signzone(server_t *s, remote_cmdargs_t* a);
 
 /*! \brief Table of remote commands. */
 struct remote_cmd_t remote_cmd_tbl[] = {
@@ -73,6 +75,7 @@ struct remote_cmd_t remote_cmd_tbl[] = {
 	{ "status",    &remote_c_status },
 	{ "zonestatus",&remote_c_zonestatus },
 	{ "flush",     &remote_c_flush },
+	{ "signzone",  &remote_c_signzone },
 	{ NULL,        NULL }
 };
 
@@ -158,6 +161,26 @@ static int remote_zone_flush(server_t *s, const knot_zone_t *z)
 		                 tls_rand() * 1000);
 	}
 
+	return KNOT_EOK;
+}
+
+/*! \brief Sign zone callback. */
+static int remote_sign_zone(server_t *server, const knot_zone_t *zone)
+{
+	if (!server || !zone) {
+		return KNOT_EINVAL;
+	}
+
+	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
+	const char *keydir = zd->conf->keydir;
+
+	if (!keydir) {
+		log_server_info("no keys set for %s\n",
+		                knot_dname_to_str(zone->name));
+		return KNOT_EOK;
+	}
+
+	knot_zone_sign(zone, keydir);
 	return KNOT_EOK;
 }
 
@@ -345,6 +368,23 @@ static int remote_c_flush(server_t *s, remote_cmdargs_t* a)
 
 	/* Flush specific zones. */
 	return remote_rdata_apply(s, a, &remote_zone_flush);
+}
+
+/*!
+ * \brief Remote command 'signzone' handler.
+ *
+ */
+static int remote_c_signzone(server_t *server, remote_cmdargs_t* arguments)
+{
+	dbg_server("remote: %s\n", __func__);
+
+	if (arguments->argc == 0) {
+		log_server_error("signzone for all zone was requested\n");
+		// TODO
+		return KNOT_ENOTSUP;
+	}
+
+	return remote_rdata_apply(server, arguments, remote_sign_zone);
 }
 
 /*!

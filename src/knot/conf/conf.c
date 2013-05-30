@@ -884,6 +884,7 @@ void conf_free_zone(conf_zone_t *zone)
 	free(zone->name);
 	free(zone->file);
 	free(zone->ixfr_db);
+	free(zone->keydir);
 	free(zone);
 }
 
