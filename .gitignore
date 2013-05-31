@@ -66,4 +66,8 @@
 /src/tests/libknot/raw_data_queries.rc
 /src/tests/libknot/realdata/
 /src/tests/sample_conf.rc
+src/zscanner/test/cases/06-0_INCLUDE.in
+src/zscanner/test/cases/06-3_INCLUDE.in
+src/zscanner/test/cases/06-4_INCLUDE.in
+src/zscanner/test/run_tests.sh
 /knot-*/
