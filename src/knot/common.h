@@ -51,7 +51,7 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 #define DEFAULT_THR_COUNT 2  /*!< \brief Default thread count. */
 #define TCP_BACKLOG_SIZE 10   /*!< \brief TCP listen backlog size. */
 #define XFR_THREADS_COUNT 3  /*!< \brief Number of threads for XFR handler. */
-#define RECVMMSG_BATCHLEN 16 /*!< \brief Define for recvmmsg() batch size. */
+#define RECVMMSG_BATCHLEN 64 /*!< \brief Define for recvmmsg() batch size. */
 
 ///*! \brief If defined, the statistics module will be enabled. */
 //#define STAT_COMPILE

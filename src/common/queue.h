@@ -25,7 +25,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 
-#define QUEUE_ELEMS 512
+#define QUEUE_ELEMS 32
 struct queue {
 	unsigned int head;
 	unsigned int prod_waiting;
