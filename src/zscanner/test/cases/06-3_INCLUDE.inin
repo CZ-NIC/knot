@@ -2,4 +2,4 @@ $ORIGIN .
 $TTL	1
 
 ; KO
-$INCLUDE @abs_builddir@/zscanner_tests/		; Given file is a directory
+$INCLUDE @abs_builddir@/		; Given file is a directory
