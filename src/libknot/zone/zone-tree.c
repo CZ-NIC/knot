@@ -194,7 +194,9 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
 		*found = NULL;
 	} else if (ret > 0) {
 		/* node is before first node in the trie */
-		assert(0);
+		*previous = knot_node_get_previous(*found);
+		/* left of leftmost node is the rightmost node */
+		*found = NULL;
 	}
 
 	/* Check if previous node is not an empty non-terminal. */
