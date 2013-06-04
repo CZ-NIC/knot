@@ -15,9 +15,6 @@ Features:
         * client utilities: kdig, khost, knsupdate
         * server identification using TXT/CH queries (RFC 4892)
 
-Bugfixes:
-        *
-
 v1.2.0 - Mar 29, 2013
 ---------------------
 
