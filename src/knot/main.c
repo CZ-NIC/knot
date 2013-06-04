@@ -120,6 +120,9 @@ int main(int argc, char **argv)
 			return 0;
 		case 'h':
 		case '?':
+			free(config_fn);
+			help(argc, argv);
+			return 0;
 		default:
 			free(config_fn);
 			help(argc, argv);

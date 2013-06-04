@@ -402,7 +402,7 @@ static int tsig_parse_file(knot_tsig_key_t *k, const char *f)
 int main(int argc, char **argv)
 {
 	/* Parse command line arguments */
-	int c = 0, li = 0;
+	int c = 0, li = 0, rc = 0;
 	unsigned flags = F_NULL;
 	char *config_fn = NULL;
 	char *default_config = conf_find_default();
@@ -478,30 +478,26 @@ int main(int argc, char **argv)
 			config_fn = strdup(optarg);
 			break;
 		case 'V':
+			rc = 0;
 			printf("%s, version %s\n", "Knot DNS", PACKAGE_VERSION);
-			log_close();
-			free(config_fn);
-			free(default_config);
-			return 0;
+			goto exit;
 		case 'h':
 		case '?':
-		default:
+			rc = 0;
 			help(argc, argv);
-			log_close();
-			free(config_fn);
-			free(default_config);
-			return 1;
+			goto exit;
+		default:
+			rc = 1;
+			help(argc, argv);
+			goto exit;
 		}
 	}
 
 	/* Check if there's at least one remaining non-option. */
 	if (argc - optind < 1) {
+		rc = 1;
 		help(argc, argv);
-		knot_tsig_key_free(&r_key);
-		log_close();
-		free(config_fn);
-		free(default_config);
-		return 1;
+		goto exit;
 	}
 
 	/* Find requested command. */
@@ -516,11 +512,8 @@ int main(int argc, char **argv)
 	/* Command not found. */
 	if (!cmd->name) {
 		log_server_error("Invalid command: '%s'\n", argv[optind]);
-		knot_tsig_key_free(&r_key);
-		log_close();
-		free(config_fn);
-		free(default_config);
-		return 1;
+		rc = 1;
+		goto exit;
 	}
 
 	/* Open config, allow if not exists. */
@@ -566,8 +559,9 @@ int main(int argc, char **argv)
 	}
 
 	/* Execute command. */
-	int rc = cmd->cb(argc - optind - 1, argv + optind + 1, flags);
+	rc = cmd->cb(argc - optind - 1, argv + optind + 1, flags);
 
+exit:
 	/* Finish */
 	knot_tsig_key_free(&r_key);
 	log_close();
