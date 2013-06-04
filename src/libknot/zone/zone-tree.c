@@ -195,10 +195,16 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
 		*previous = *found;
 		*found = NULL;
 	} else if (ret > 0) {
-		/* node is before first node in the trie */
-		*previous = knot_node_get_previous(*found);
-		/* left of leftmost node is the rightmost node */
+		/* Previous should be the rightmost node.
+		 * For regular zone it is the node left of apex, but for some
+		 * cases like NSEC3, there is no such sort of thing (name wise).
+		 */
+		/*! \todo We could store rightmost node in zonetree probably. */
+		hattrie_iter_t *i = hattrie_iter_begin(tree, 1);
+		*previous = *(knot_node_t **)hattrie_iter_val(i); /* leftmost */
+		*previous = knot_node_get_previous(*previous); /* rightmost */
 		*found = NULL;
+		hattrie_iter_free(i);
 	}
 
 	/* Check if previous node is not an empty non-terminal. */
