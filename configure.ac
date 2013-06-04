@@ -2,7 +2,8 @@
 
 AC_PREREQ([2.60])
 AC_INIT([knot], [1.3.0-dev], [knot-dns@labs.nic.cz])
-AM_INIT_AUTOMAKE([gnu subdir-objects dist-xz -Wall -Werror])
+AM_INIT_AUTOMAKE([gnu subdir-objects dist-bzip2 dist-xz -Wall -Werror])
+AM_SILENT_RULES([yes])
 AC_CONFIG_SRCDIR([src/knot/main.c])
 AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_MACRO_DIR([m4])
