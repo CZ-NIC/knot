@@ -52,7 +52,7 @@ static knot_packet_t* create_query_packet(const query_t *query,
 	}
 
 	// Create packet skeleton.
-	packet = create_empty_packet(KNOT_PACKET_PREALLOC_NONE, max_size);
+	packet = create_empty_packet(max_size);
 	if (packet == NULL) {
 		return NULL;
 	}
@@ -321,7 +321,7 @@ static int process_query_packet(const knot_packet_t     *query,
 		gettimeofday(&t_end, NULL);
 
 		// Create reply packet structure to fill up.
-		reply = knot_packet_new(KNOT_PACKET_PREALLOC_NONE);
+		reply = knot_packet_new();
 		if (reply == NULL) {
 			net_close(net);
 			return -1;
@@ -539,7 +539,7 @@ static int process_packet_xfr(const knot_packet_t     *query,
 		}
 
 		// Create reply packet structure to fill up.
-		reply = knot_packet_new(KNOT_PACKET_PREALLOC_NONE);
+		reply = knot_packet_new();
 		if (reply == NULL) {
 			net_close(net);
 			return -1;

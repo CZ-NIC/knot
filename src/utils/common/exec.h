@@ -42,14 +42,12 @@ typedef struct {
 /*!
  * \brief Allocates empty packet and sets packet size and random id.
  *
- * \param type		Packet preallocation type.
  * \param max_size	Maximal packet size.
  *
  * \retval packet	if success.
  * \retval NULL		if error.
  */
-knot_packet_t* create_empty_packet(const knot_packet_prealloc_type_t type,
-                                   const size_t                      max_size);
+knot_packet_t* create_empty_packet(const size_t                      max_size);
 
 /*!
  * \brief Prints information header for transfer.

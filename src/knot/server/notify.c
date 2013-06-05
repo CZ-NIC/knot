@@ -47,7 +47,7 @@
 static int notify_request(const knot_rrset_t *rrset,
                           uint8_t *buffer, size_t *size)
 {
-	knot_packet_t *pkt = knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
+	knot_packet_t *pkt = knot_packet_new();
 	CHECK_ALLOC_LOG(pkt, KNOT_ENOMEM);
 
 	/*! \todo Get rid of the numeric constant. */
@@ -123,8 +123,7 @@ static int notify_request(const knot_rrset_t *rrset,
 int notify_create_response(knot_packet_t *request, uint8_t *buffer,
                            size_t *size)
 {
-	knot_packet_t *response =
-		knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
+	knot_packet_t *response = knot_packet_new();
 	CHECK_ALLOC_LOG(response, KNOT_ENOMEM);
 
 	/* Set maximum packet size. */

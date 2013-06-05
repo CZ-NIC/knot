@@ -166,7 +166,7 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 	/* Parse query. */
 	size_t resp_len = qbuf_maxlen; // 64K
 	knot_packet_type_t qtype = KNOT_QUERY_NORMAL;
-	knot_packet_t *packet = knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
+	knot_packet_t *packet = knot_packet_new();
 	if (packet == NULL) {
 		int ret = knot_ns_error_response_from_query_wire(ns, qbuf, n,
 		                                            KNOT_RCODE_SERVFAIL,
@@ -268,8 +268,6 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 		break;
 	}
 
-	knot_packet_free(&packet);
-
 	/* Send answer. */
 	if (res == KNOT_EOK) {
 		tcp_reply(fd, qbuf, resp_len);
@@ -277,6 +275,8 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 		dbg_net("tcp: failed to respond to query type=%d on fd=%d - %s\n",
 		        qtype, fd, knot_strerror(res));;
 	}
+
+	knot_packet_free(&packet);
 
 	return res;
 }

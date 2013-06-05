@@ -303,8 +303,7 @@ static int pkt_append(nsupdate_params_t *p, int sect)
 	int ret = KNOT_EOK;
 	scanner_t *s = p->rrp;
 	if (!p->pkt) {
-		p->pkt = create_empty_packet(KNOT_PACKET_PREALLOC_RESPONSE,
-		                             MAX_PACKET_SIZE);
+		p->pkt = create_empty_packet(MAX_PACKET_SIZE);
 		knot_question_t q;
 		q.qclass = p->class_num;
 		q.qtype = p->type_num;
@@ -746,7 +745,7 @@ int cmd_send(const char* lp, nsupdate_params_t *params)
 	}
 
 	/* Parse response. */
-	params->resp = knot_packet_new(KNOT_PACKET_PREALLOC_NONE);
+	params->resp = knot_packet_new();
 	if (!params->resp) {
 		free_sign_context(&sign_ctx);
 		return KNOT_ENOMEM;
