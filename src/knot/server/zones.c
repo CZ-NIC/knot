@@ -144,9 +144,11 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 
 	if (zd->ixfr_db == NULL) {
 		char ebuf[256] = {0};
-		strerror_r(errno, ebuf, sizeof(ebuf));
-		log_server_warning("Couldn't open journal file for zone '%s', "
-		                   "disabling incoming IXFR. (%s)\n", cfg->name, ebuf);
+		if (strerror_r(errno, ebuf, sizeof(ebuf)) == 0) {
+			log_server_warning("Couldn't open journal file for "
+			                   "zone '%s', disabling incoming "
+			                   "IXFR. (%s)\n", cfg->name, ebuf);
+		}
 	}
 
 	/* Initialize IXFR database syncing event. */

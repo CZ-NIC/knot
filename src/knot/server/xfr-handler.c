@@ -420,9 +420,10 @@ static int xfr_task_start(knot_ns_xfr_t *rq)
 		ret = rq->send(rq->session, &rq->addr, rq->wire, rq->wire_size);
 		if (ret != rq->wire_size) {
 			char ebuf[256] = {0};
-			strerror_r(errno, ebuf, sizeof(ebuf));
-			log_server_info("%s Failed to send query (%s).\n",
-			                rq->msg, ebuf);
+			if (strerror_r(errno, ebuf, sizeof(ebuf)) == 0) {
+				log_server_info("%s Failed to send query (%s).\n",
+				                rq->msg, ebuf);
+			}
 			return KNOT_ECONNREFUSED;
 		}
 	}
