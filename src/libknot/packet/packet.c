@@ -33,37 +33,21 @@
 /*!
  * \brief Parses DNS header from the wire format.
  *
- * \note This function also adjusts the position (\a pos) and size of remaining
- *       bytes in the wire format (\a remaining) according to what was parsed
- *       (though it actually always parses the 12 bytes of the header).
- *
- * \param[in,out] pos Wire format to parse the header from.
- * \param[in,out] remaining Remaining size of the wire format.
- * \param[out] header Header structure to fill in.
+ * \todo This is deprecated.
  *
  * \retval KNOT_EOK
  * \retval KNOT_EFEWDATA
  */
 static int knot_packet_parse_header(const uint8_t *wire, size_t *pos,
-                                      size_t size, knot_header_t *header)
+                                      size_t size)
 {
 	assert(wire != NULL);
 	assert(pos != NULL);
-	assert(header != NULL);
 
 	if (size - *pos < KNOT_WIRE_HEADER_SIZE) {
 		dbg_packet("Not enough data to parse header.\n");
 		return KNOT_EFEWDATA;
 	}
-
-	header->id = knot_wire_get_id(wire);
-	header->flags1 = knot_wire_get_flags1(wire);
-	header->flags2 = knot_wire_get_flags2(wire);
-
-	header->qdcount = knot_wire_get_qdcount(wire);
-	header->ancount = knot_wire_get_ancount(wire);
-	header->nscount = knot_wire_get_nscount(wire);
-	header->arcount = knot_wire_get_arcount(wire);
 
 	*pos += KNOT_WIRE_HEADER_SIZE;
 
@@ -507,7 +491,7 @@ static int knot_packet_parse_rr_sections(knot_packet_t *packet, size_t *pos,
 
 	dbg_packet_verb("Parsing Answer RRs...\n");
 	if ((err = knot_packet_parse_rrs(packet->wireformat, pos,
-	   packet->size, packet->header.ancount, &packet->parsed_an,
+	   packet->size, knot_wire_get_ancount(packet->wireformat), &packet->parsed_an,
 	   &packet->answer, &packet->an_rrsets, &packet->max_an_rrsets,
 	                                 packet, flags)) != KNOT_EOK) {
 		return err;
@@ -520,7 +504,7 @@ static int knot_packet_parse_rr_sections(knot_packet_t *packet, size_t *pos,
 
 	dbg_packet_verb("Parsing Authority RRs...\n");
 	if ((err = knot_packet_parse_rrs(packet->wireformat, pos,
-	   packet->size, packet->header.nscount, &packet->parsed_ns,
+	   packet->size, knot_wire_get_nscount(packet->wireformat), &packet->parsed_ns,
 	   &packet->authority, &packet->ns_rrsets, &packet->max_ns_rrsets,
 	   packet, flags)) != KNOT_EOK) {
 		return err;
@@ -533,7 +517,7 @@ static int knot_packet_parse_rr_sections(knot_packet_t *packet, size_t *pos,
 
 	dbg_packet_verb("Parsing Additional RRs...\n");
 	if ((err = knot_packet_parse_rrs(packet->wireformat, pos,
-	   packet->size, packet->header.arcount, &packet->parsed_ar,
+	   packet->size, knot_wire_get_arcount(packet->wireformat), &packet->parsed_ar,
 	   &packet->additional, &packet->ar_rrsets, &packet->max_ar_rrsets,
 	   packet, flags)) != KNOT_EOK) {
 		return err;
@@ -627,19 +611,19 @@ int knot_packet_parse_from_wire(knot_packet_t *packet,
 
 	dbg_packet_verb("Parsing wire format of packet (size %zu).\nHeader\n",
 	                size);
-	if ((err = knot_packet_parse_header(wireformat, &pos, size,
-	                                      &packet->header)) != KNOT_EOK) {
+	if ((err = knot_packet_parse_header(wireformat, &pos, size)) != KNOT_EOK) {
 		return err;
 	}
 
 	packet->parsed = pos;
 
-	if (packet->header.qdcount > 1) {
+	uint16_t qdcount = knot_wire_get_qdcount(packet->wireformat);
+	if (qdcount > 1) {
 		dbg_packet("QDCOUNT larger than 1, FORMERR.\n");
 		return KNOT_EMALF;
 	}
 
-	if (packet->header.qdcount == 1) {
+	if (qdcount == 1) {
 		if ((err = knot_packet_parse_question(wireformat, &pos, size,
 		             &packet->question, 1)
 		     ) != KNOT_EOK) {
@@ -674,9 +658,9 @@ int knot_packet_parse_rest(knot_packet_t *packet, knot_packet_flag_t flags)
 		return KNOT_EINVAL;
 	}
 
-	if (packet->header.ancount == packet->parsed_an
-	    && packet->header.nscount == packet->parsed_ns
-	    && packet->header.arcount == packet->parsed_ar
+	if (knot_wire_get_ancount(packet->wireformat) == packet->parsed_an
+	    && knot_wire_get_nscount(packet->wireformat) == packet->parsed_ns
+	    && knot_wire_get_arcount(packet->wireformat) == packet->parsed_ar
 	    && packet->parsed == packet->size) {
 		return KNOT_EOK;
 	}
@@ -704,8 +688,8 @@ int knot_packet_parse_next_rr_answer(knot_packet_t *packet,
 	*rr = NULL;
 
 	if (packet->parsed >= packet->size) {
-		assert(packet->an_rrsets <= packet->header.ancount);
-		if (packet->parsed_an != packet->header.ancount) {
+		assert(packet->an_rrsets <= knot_wire_get_ancount(packet->wireformat));
+		if (packet->parsed_an != knot_wire_get_ancount(packet->wireformat)) {
 			dbg_packet("Parsed less RRs than expected.\n");
 			return KNOT_EMALF;
 		} else {
@@ -714,7 +698,7 @@ int knot_packet_parse_next_rr_answer(knot_packet_t *packet,
 		}
 	}
 
-	if (packet->parsed_an == packet->header.ancount) {
+	if (packet->parsed_an == knot_wire_get_ancount(packet->wireformat)) {
 		assert(packet->parsed < packet->size);
 		//dbg_packet("Trailing garbage, ignoring...\n");
 		// there may be other data in the packet
@@ -755,8 +739,8 @@ int knot_packet_parse_next_rr_additional(knot_packet_t *packet,
 	*rr = NULL;
 
 	if (packet->parsed >= packet->size) {
-		assert(packet->ar_rrsets <= packet->header.arcount);
-		if (packet->parsed_ar != packet->header.arcount) {
+		assert(packet->ar_rrsets <= knot_wire_get_arcount(packet->wireformat));
+		if (packet->parsed_ar != knot_wire_get_arcount(packet->wireformat)) {
 			dbg_packet("Parsed less RRs than expected.\n");
 			return KNOT_EMALF;
 		} else {
@@ -765,7 +749,7 @@ int knot_packet_parse_next_rr_additional(knot_packet_t *packet,
 		}
 	}
 
-	if (packet->parsed_ar == packet->header.arcount) {
+	if (packet->parsed_ar == knot_wire_get_arcount(packet->wireformat)) {
 		assert(packet->parsed < packet->size);
 		dbg_packet_verb("Trailing garbage, treating as malformed...\n");
 		return KNOT_EMALF;
@@ -855,18 +839,7 @@ int knot_packet_set_max_size(knot_packet_t *packet, int max_size)
 uint16_t knot_packet_id(const knot_packet_t *packet)
 {
 	assert(packet != NULL);
-	return packet->header.id;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_packet_set_id(knot_packet_t *packet, uint16_t id)
-{
-	if (packet == NULL) {
-		return;
-	}
-
-	packet->header.id = id;
+	return knot_wire_get_id(packet->wireformat);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -877,7 +850,7 @@ void knot_packet_set_random_id(knot_packet_t *packet)
 		return;
 	}
 
-	packet->header.id = knot_random_id();
+	knot_wire_set_id(packet->wireformat, knot_random_id());
 }
 
 /*----------------------------------------------------------------------------*/
@@ -885,7 +858,8 @@ void knot_packet_set_random_id(knot_packet_t *packet)
 uint8_t knot_packet_opcode(const knot_packet_t *packet)
 {
 	assert(packet != NULL);
-	return knot_wire_flags_get_opcode(packet->header.flags1);
+	uint8_t flags = knot_wire_get_flags1(packet->wireformat);
+	return knot_wire_flags_get_opcode(flags);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -939,7 +913,8 @@ int knot_packet_is_query(const knot_packet_t *packet)
 		return KNOT_EINVAL;
 	}
 
-	return (knot_wire_flags_get_qr(packet->header.flags1) == 0);
+	uint8_t flags = knot_wire_get_flags1(packet->wireformat);
+	return (knot_wire_flags_get_qr(flags) == 0);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -961,7 +936,8 @@ int knot_packet_rcode(const knot_packet_t *packet)
 		return KNOT_EINVAL;
 	}
 
-	return knot_wire_flags_get_rcode(packet->header.flags2);
+	uint8_t flags = knot_wire_get_flags2(packet->wireformat);
+	return knot_wire_flags_get_rcode(flags);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -972,7 +948,8 @@ int knot_packet_tc(const knot_packet_t *packet)
 		return KNOT_EINVAL;
 	}
 
-	return knot_wire_flags_get_tc(packet->header.flags1);
+	uint8_t flags = knot_wire_get_flags1(packet->wireformat);
+	return knot_wire_flags_get_tc(flags);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -983,7 +960,7 @@ int knot_packet_qdcount(const knot_packet_t *packet)
 		return KNOT_EINVAL;
 	}
 
-	return packet->header.qdcount;
+	return knot_wire_get_qdcount(packet->wireformat);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -994,7 +971,7 @@ int knot_packet_ancount(const knot_packet_t *packet)
 		return KNOT_EINVAL;
 	}
 
-	return packet->header.ancount;
+	return knot_wire_get_ancount(packet->wireformat);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1005,7 +982,7 @@ int knot_packet_nscount(const knot_packet_t *packet)
 		return KNOT_EINVAL;
 	}
 
-	return packet->header.nscount;
+	return knot_wire_get_nscount(packet->wireformat);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1016,7 +993,7 @@ int knot_packet_arcount(const knot_packet_t *packet)
 		return KNOT_EINVAL;
 	}
 
-	return packet->header.arcount;
+	return knot_wire_get_arcount(packet->wireformat);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1198,27 +1175,6 @@ dbg_packet_exec(
 
 /*----------------------------------------------------------------------------*/
 
-void knot_packet_header_to_wire(const knot_header_t *header,
-                                  uint8_t **pos, size_t *size)
-{
-	if (header == NULL || pos == NULL || *pos == NULL || size == NULL) {
-		return;
-	}
-
-	knot_wire_set_id(*pos, header->id);
-	knot_wire_set_flags1(*pos, header->flags1);
-	knot_wire_set_flags2(*pos, header->flags2);
-	knot_wire_set_qdcount(*pos, header->qdcount);
-	knot_wire_set_ancount(*pos, header->ancount);
-	knot_wire_set_nscount(*pos, header->nscount);
-	knot_wire_set_arcount(*pos, header->arcount);
-
-	*pos += KNOT_WIRE_HEADER_SIZE;
-	*size += KNOT_WIRE_HEADER_SIZE;
-}
-
-/*----------------------------------------------------------------------------*/
-
 int knot_packet_question_to_wire(knot_packet_t *packet)
 {
 	if (packet == NULL || packet->question.qname == NULL) {
@@ -1262,7 +1218,7 @@ int knot_packet_edns_to_wire(knot_packet_t *packet)
 	                                  packet->wireformat + packet->size,
 	                                  packet->max_size - packet->size);
 
-	packet->header.arcount += 1;
+	knot_wire_add_arcount(packet->wireformat, 1);
 
 	return KNOT_EOK;
 }
@@ -1280,19 +1236,10 @@ int knot_packet_to_wire(knot_packet_t *packet,
 	assert(packet->size <= packet->max_size);
 
 	// if there are no additional RRSets, add EDNS OPT RR
-	if (packet->header.arcount == 0
+	if (knot_wire_get_arcount(packet->wireformat) == 0
 	    && packet->opt_rr.version != EDNS_NOT_SUPPORTED) {
 	    knot_packet_edns_to_wire(packet);
 	}
-
-	// set QDCOUNT (in response it is already set, in query it is needed)
-	knot_wire_set_qdcount(packet->wireformat, packet->header.qdcount);
-	// set ANCOUNT to the packet
-	knot_wire_set_ancount(packet->wireformat, packet->header.ancount);
-	// set NSCOUNT to the packet
-	knot_wire_set_nscount(packet->wireformat, packet->header.nscount);
-	// set ARCOUNT to the packet
-	knot_wire_set_arcount(packet->wireformat, packet->header.arcount);
 
 	//assert(response->size == size);
 	*wire = packet->wireformat;

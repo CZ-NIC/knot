@@ -217,7 +217,7 @@ static bool check_reply_id(const knot_packet_t *reply,
 static void check_reply_question(const knot_packet_t *reply,
                                  const knot_packet_t *query)
 {
-	if (reply->header.qdcount < 1) {
+	if (knot_wire_get_qdcount(reply->wireformat) < 1) {
 		WARN("response doesn't have question section\n");
 		return;
 	}
@@ -235,7 +235,7 @@ static void check_reply_question(const knot_packet_t *reply,
 
 static int64_t first_serial_check(const knot_packet_t *reply)
 {
-	if (reply->header.ancount <= 0) {
+	if (knot_wire_get_ancount(reply->wireformat) <= 0) {
 		return -1;
 	}
 
@@ -250,11 +250,11 @@ static int64_t first_serial_check(const knot_packet_t *reply)
 
 static bool last_serial_check(const uint32_t serial, const knot_packet_t *reply)
 {
-	if (reply->header.ancount <= 0) {
+	if (knot_wire_get_ancount(reply->wireformat) <= 0) {
 		return false;
 	}
 
-	const knot_rrset_t *last = *(reply->answer + reply->header.ancount - 1);
+	const knot_rrset_t *last = *(reply->answer + knot_wire_get_ancount(reply->wireformat) - 1);
 
 	if (last->type != KNOT_RRTYPE_SOA) {
 		return false;
@@ -609,7 +609,7 @@ static int process_packet_xfr(const knot_packet_t     *query,
 		}
 
 		msg_count++;
-		rr_count += reply->header.ancount;
+		rr_count += knot_wire_get_ancount(reply->wireformat);
 		total_len += in_len;
 
 		// Print reply packet.
