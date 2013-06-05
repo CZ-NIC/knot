@@ -110,6 +110,8 @@ typedef struct {
 
 /*! \brief Settings for dig. */
 typedef struct {
+	/*!< Stop processing - just pring help, version,... */
+	bool	stop;
 	/*!< List of DNS queries to process. */
 	list	queries;
 	/*!< Default settings for queries. */

@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
 
 	dig_params_t params;
 	if (host_parse(&params, argc, argv) == KNOT_EOK) {
-		if (dig_exec(&params) != KNOT_EOK) {
+		if (!params.stop && dig_exec(&params) != KNOT_EOK) {
 			ret = EXIT_FAILURE;
 		}
 	} else {

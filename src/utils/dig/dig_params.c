@@ -177,6 +177,8 @@ int dig_init(dig_params_t *params)
 
 	memset(params, 0, sizeof(*params));
 
+	params->stop = false;
+
 	// Initialize list of queries.
 	init_list(&params->queries);
 
@@ -515,7 +517,10 @@ static void dig_help()
 	       "       +[no]tcp        Use TCP protocol.\n"
 	       "       +[no]fail       Stop if SERVFAIL.\n"
 	       "       +[no]ignore     Don't use TCP automatically if truncated.\n"
-	       "       +[no]nsid       Request NSID.\n");
+	       "       +[no]nsid       Request NSID.\n"
+	       "\n"
+	       "       -h, --help      Print help.\n"
+	       "       -V, --version   Print program version.\n");
 }
 
 static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
@@ -664,6 +669,18 @@ static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
 			return KNOT_EINVAL;
 		}
 		*index += add;
+		break;
+	case '-':
+		if (strcmp(opt, "-help") == 0) {
+			dig_help();
+			params->stop = true;
+		} else if (strcmp(opt, "-version") == 0) {
+			printf("%s, version %s\n", "kdig", PACKAGE_VERSION);
+			params->stop = true;
+		} else {
+			ERR("invalid option: -%s\n", opt);
+			return KNOT_ENOTSUP;
+		}
 		break;
 	default:
 		ERR("invalid option: -%s\n", opt);
@@ -931,6 +948,9 @@ int dig_parse(dig_params_t *params, int argc, char *argv[])
 		// Check return.
 		switch (ret) {
 		case KNOT_EOK:
+			if (params->stop) {
+				return KNOT_EOK;
+			}
 			break;
 		case KNOT_ENOTSUP:
 			dig_help();
