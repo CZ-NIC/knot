@@ -79,6 +79,8 @@ static int nsupdate_init(nsupdate_params_t *params)
 {
 	memset(params, 0, sizeof(nsupdate_params_t));
 
+	params->stop = false;
+
 	/* Initialize list. */
 	init_list(&params->qfiles);
 
@@ -145,7 +147,7 @@ static void nsupdate_help(int argc, char *argv[])
 
 int nsupdate_parse(nsupdate_params_t *params, int argc, char *argv[])
 {
-	int opt = 0;
+	int opt = 0, li = 0;
 	int ret = KNOT_EOK;
 
 	if (params == NULL || argv == NULL) {
@@ -157,16 +159,32 @@ int nsupdate_parse(nsupdate_params_t *params, int argc, char *argv[])
 		return ret;
 	}
 
+	// Long options.
+	struct option opts[] = {
+		{ "version", no_argument, 0, 'V' },
+		{ "help",    no_argument, 0, 'h' },
+		{ 0,         0,           0, 0 }
+	};
+
 	/* Command line options processing. */
-	while ((opt = getopt(argc, argv, "dDvp:t:r:y:k:")) != -1) {
+	while ((opt = getopt_long(argc, argv, "dhDvVp:t:r:y:k:", opts, &li))
+	       != -1) {
 		switch (opt) {
 		case 'd':
 		case 'D': /* Extra debugging. */
 			msg_enable_debug(1);
 			break;
+		case 'h':
+			nsupdate_help(argc, argv);
+			params->stop = true;
+			return KNOT_EOK;
 		case 'v':
 			params->protocol = PROTO_TCP;
 			break;
+		case 'V':
+			printf("%s, version %s\n", "knsupdate", PACKAGE_VERSION);
+			params->stop = true;
+			return KNOT_EOK;
 		case 'p':
 			free(params->server->service);
 			params->server->service = strdup(optarg);

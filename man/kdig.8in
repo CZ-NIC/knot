@@ -166,6 +166,12 @@ Don't use TCP automatically if truncated reply is received.
 .TP
 \fB+\fR[\fBno\fR]\fBnsid\fR
 Request nameserver identifier (NSID).
+.TP
+\fB\-\-help\fR
+Print help.
+.TP
+\fB\-\-version\fR
+Print program version.
 .SH NOTE
 Options \fB-k\fR and \fB-y\fR cannot be used mutually.
 .SH EXAMPLES

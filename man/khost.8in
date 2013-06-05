@@ -33,6 +33,9 @@ Send ANY query with verbose mode.
 .BI -d
 Enable debug messages if any.
 .TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help.
+.TP
 .BI -r
 Disable recursion.
 .TP
@@ -44,6 +47,9 @@ Use TCP protocol.
 .TP
 .BI -v
 Enable verbose output.
+.TP
+\fB\-V\fR, \fB\-\-version\fR
+Print program version.
 .TP
 .BI -w
 Wait forever for the reply.

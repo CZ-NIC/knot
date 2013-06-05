@@ -171,27 +171,29 @@ static int parse_name(const char *value, list *queries, const query_t *conf)
 
 static void host_help(int argc, char *argv[])
 {
-	printf("Usage: khost [-4] [-6] [-aCdrsTvw] [-c class] [-t type]\n"
+	printf("Usage: khost [-4] [-6] [-adhrsTvVw] [-c class] [-t type]\n"
 	       "             [-R retries] [-W time] name [server]\n\n"
-	       "       -4  Use IPv4 protocol only.\n"
-	       "       -6  Use IPv6 procotol only.\n"
-	       "       -a  Same as -t ANY -v.\n"
-	       "       -d  Allow debug messages.\n"
-	       "       -r  Disable recursion.\n"
-	       "       -s  Stop if servfail.\n"
-	       "       -T  Use TCP procotol.\n"
-	       "       -v  Verbose output.\n"
-	       "       -w  Wait forever.\n"
-	       "       -c  Set query class.\n"
-	       "       -t  Set query type.\n"
-	       "       -R  Set number of UDP retries.\n"
-	       "       -W  Set wait interval.\n"
+	       "       -4             Use IPv4 protocol only.\n"
+	       "       -6             Use IPv6 procotol only.\n"
+	       "       -a             Same as -t ANY -v.\n"
+	       "       -d             Allow debug messages.\n"
+	       "       -h, --help     Print help.\n"
+	       "       -r             Disable recursion.\n"
+	       "       -s             Stop if servfail.\n"
+	       "       -T             Use TCP procotol.\n"
+	       "       -v             Verbose output.\n"
+	       "       -V, --version  Print program version.\n"
+	       "       -w             Wait forever.\n"
+	       "       -c             Set query class.\n"
+	       "       -t             Set query type.\n"
+	       "       -R             Set number of UDP retries.\n"
+	       "       -W             Set wait interval.\n"
 	      );
 }
 
 int host_parse(dig_params_t *params, int argc, char *argv[])
 {
-	int opt = 0;
+	int opt = 0, li = 0;
 
 	if (params == NULL || argv == NULL) {
 		DBG_NULL;
@@ -206,8 +208,16 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 	uint16_t rclass, rtype;
 	uint32_t serial;
 
+	// Long options.
+	struct option opts[] = {
+		{ "version", no_argument, 0, 'V' },
+		{ "help",    no_argument, 0, 'h' },
+		{ 0,         0,           0, 0 }
+	};
+
 	// Command line options processing.
-	while ((opt = getopt(argc, argv, "46adrsTvwc:t:R:W:")) != -1) {
+	while ((opt = getopt_long(argc, argv, "46adhrsTvVwc:t:R:W:", opts, &li))
+	       != -1) {
 		switch (opt) {
 		case '4':
 			conf->ip = IP_4;
@@ -225,6 +235,10 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 		case 'd':
 			msg_enable_debug(1);
 			break;
+		case 'h':
+			host_help(argc, argv);
+			params->stop = false;
+			return KNOT_EOK;
 		case 'r':
 			conf->flags.rd_flag = false;
 			break;
@@ -240,6 +254,10 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 			conf->style.show_edns = true;
 			conf->style.show_footer = true;
 			break;
+		case 'V':
+			printf("%s, version %s\n", "khost", PACKAGE_VERSION);
+			params->stop = false;
+			return KNOT_EOK;
 		case 'w':
 			conf->wait = -1;
 			break;

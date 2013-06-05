@@ -41,6 +41,8 @@
 
 /*! \brief nsupdate-specific params data. */
 typedef struct {
+	/*!< Stop processing - just pring help, version,... */
+	bool		stop;
 	/*!< List of files with query data. */
 	list		qfiles;
 	/*!< List of nameservers to query to. */

@@ -47,6 +47,14 @@ algorithm (the default is hmac\-md5), \fIname\fR specifies the key name, and
 \fIkey\fR specifies the shared secret encoded in Base64.
 
 .TP
+\fB\-\-help\fR
+Print help.
+
+.TP
+\fB\-\-version\fR
+Print program version.
+
+.TP
 Options \fB-k\fR and \fB-y\fR cannot be used mutually.
 
 .SH INPUT FORMAT
