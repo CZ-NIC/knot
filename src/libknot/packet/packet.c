@@ -137,9 +137,6 @@ int knot_packet_realloc_rrsets(const knot_rrset_t ***rrsets,
                                       short *max_count,
                                       mm_ctx_t *mm)
 {
-	dbg_packet_verb("Max count: %d, default max count: %d\n",
-	       *max_count, default_max_count);
-
 	short new_max_count = *max_count + RRSET_ALLOC_STEP;
 	const knot_rrset_t **new_rrsets = mm->alloc(mm->ctx,
 		new_max_count * sizeof(knot_rrset_t *));
@@ -1304,26 +1301,26 @@ void knot_packet_dump(const knot_packet_t *packet)
 	}
 
 #ifdef KNOT_PACKET_DEBUG
+	uint8_t flags1 = knot_wire_get_flags1(packet->wireformat);
+	uint8_t flags2 = knot_wire_get_flags2(packet->wireformat);
 	dbg_packet("DNS packet:\n-----------------------------\n");
 
 	dbg_packet("\nHeader:\n");
-	dbg_packet("  ID: %u\n", packet->header.id);
+	dbg_packet("  ID: %u\n", knot_wire_get_id(packet->wireformat));
 	dbg_packet("  FLAGS: %s %s %s %s %s %s %s\n",
-	       knot_wire_flags_get_qr(packet->header.flags1) ? "qr" : "",
-	       knot_wire_flags_get_aa(packet->header.flags1) ? "aa" : "",
-	       knot_wire_flags_get_tc(packet->header.flags1) ? "tc" : "",
-	       knot_wire_flags_get_rd(packet->header.flags1) ? "rd" : "",
-	       knot_wire_flags_get_ra(packet->header.flags2) ? "ra" : "",
-	       knot_wire_flags_get_ad(packet->header.flags2) ? "ad" : "",
-	       knot_wire_flags_get_cd(packet->header.flags2) ? "cd" : "");
-	dbg_packet("  RCODE: %u\n", knot_wire_flags_get_rcode(
-	                   packet->header.flags2));
-	dbg_packet("  OPCODE: %u\n", knot_wire_flags_get_opcode(
-	                   packet->header.flags1));
-	dbg_packet("  QDCOUNT: %u\n", packet->header.qdcount);
-	dbg_packet("  ANCOUNT: %u\n", packet->header.ancount);
-	dbg_packet("  NSCOUNT: %u\n", packet->header.nscount);
-	dbg_packet("  ARCOUNT: %u\n", packet->header.arcount);
+	       knot_wire_flags_get_qr(flags1) ? "qr" : "",
+	       knot_wire_flags_get_aa(flags1) ? "aa" : "",
+	       knot_wire_flags_get_tc(flags1) ? "tc" : "",
+	       knot_wire_flags_get_rd(flags1) ? "rd" : "",
+	       knot_wire_flags_get_ra(flags2) ? "ra" : "",
+	       knot_wire_flags_get_ad(flags2) ? "ad" : "",
+	       knot_wire_flags_get_cd(flags2) ? "cd" : "");
+	dbg_packet("  RCODE: %u\n", knot_wire_flags_get_rcode(flags2));
+	dbg_packet("  OPCODE: %u\n", knot_wire_flags_get_opcode(flags1));
+	dbg_packet("  QDCOUNT: %u\n", knot_wire_get_qdcount(packet->wireformat));
+	dbg_packet("  ANCOUNT: %u\n", knot_wire_get_ancount(packet->wireformat));
+	dbg_packet("  NSCOUNT: %u\n", knot_wire_get_nscount(packet->wireformat));
+	dbg_packet("  ARCOUNT: %u\n", knot_wire_get_arcount(packet->wireformat));
 
 	if (knot_packet_qdcount(packet) > 0) {
 		dbg_packet("\nQuestion:\n");
