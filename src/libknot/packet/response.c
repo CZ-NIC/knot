@@ -236,43 +236,6 @@ dbg_response_exec(
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Reallocate space for RRSets.
- *
- * \param rrsets Space for RRSets.
- * \param max_count Size of the space available for the RRSets.
- * \param default_max_count Size of the space pre-allocated for the RRSets when
- *        the response structure was initialized.
- * \param step How much the space should be increased.
- *
- * \retval KNOT_EOK
- * \retval KNOT_ENOMEM
- */
-static int knot_response_realloc_rrsets(const knot_rrset_t ***rrsets,
-                                          short *max_count,
-                                          short default_max_count, short step)
-{
-	int free_old = (*max_count) != default_max_count;
-	const knot_rrset_t **old = *rrsets;
-
-	short new_max_count = *max_count + step;
-	const knot_rrset_t **new_rrsets = (const knot_rrset_t **)malloc(
-		new_max_count * sizeof(knot_rrset_t *));
-	CHECK_ALLOC_LOG(new_rrsets, KNOT_ENOMEM);
-
-	memcpy(new_rrsets, *rrsets, (*max_count) * sizeof(knot_rrset_t *));
-
-	*rrsets = new_rrsets;
-	*max_count = new_max_count;
-
-	if (free_old) {
-		free(old);
-	}
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
  * \brief Reallocate space for Wildcard nodes.
  *
  * \retval KNOT_EOK
@@ -281,25 +244,22 @@ static int knot_response_realloc_rrsets(const knot_rrset_t ***rrsets,
 static int knot_response_realloc_wc_nodes(const knot_node_t ***nodes,
                                           const knot_dname_t ***snames,
                                           short *max_count,
-                                          short default_max_count, short step)
+                                          mm_ctx_t *mm)
 {
-	dbg_packet_detail("Max count: %d, default max count: %d\n",
-	                  *max_count, default_max_count);
-	int free_old = (*max_count) != default_max_count;
 
 	const knot_node_t **old_nodes = *nodes;
 	const knot_dname_t **old_snames = *snames;
 
-	short new_max_count = *max_count + step;
+	short new_max_count = *max_count + RRSET_ALLOC_STEP;
 
-	const knot_node_t **new_nodes = (const knot_node_t **)malloc(
+	const knot_node_t **new_nodes = mm->alloc(mm->ctx,
 		new_max_count * sizeof(knot_node_t *));
 	CHECK_ALLOC_LOG(new_nodes, KNOT_ENOMEM);
 
-	const knot_dname_t **new_snames = (const knot_dname_t **)malloc(
+	const knot_dname_t **new_snames = mm->alloc(mm->ctx,
 	                        new_max_count * sizeof(knot_dname_t *));
 	if (new_snames == NULL) {
-		free(new_nodes);
+		mm->free(new_nodes);
 		return KNOT_ENOMEM;
 	}
 
@@ -310,10 +270,9 @@ static int knot_response_realloc_wc_nodes(const knot_node_t ***nodes,
 	*snames = new_snames;
 	*max_count = new_max_count;
 
-	if (free_old) {
-		free(old_nodes);
-		free(old_snames);
-	}
+
+	mm->free(old_nodes);
+	mm->free(old_snames);
 
 	return KNOT_EOK;
 }
@@ -363,6 +322,7 @@ int knot_response_init_from_query(knot_packet_t *response,
 		// copy the Question section (but do not copy the QNAME)
 		memcpy(&response->question, &query->question,
 		       sizeof(knot_question_t));
+		knot_dname_retain(response->question.qname);
 
 		/* Insert QNAME into compression table. */
 		response->compression[0].off = KNOT_WIRE_HEADER_SIZE;
@@ -532,8 +492,8 @@ int knot_response_add_rrset_answer(knot_packet_t *response,
 	assert(response->header.nscount == 0);
 
 	if (response->an_rrsets == response->max_an_rrsets
-	    && knot_response_realloc_rrsets(&response->answer,
-	          &response->max_an_rrsets, DEFAULT_ANCOUNT, STEP_ANCOUNT)
+	    && knot_packet_realloc_rrsets(&response->answer,
+	          &response->max_an_rrsets, &response->mm)
 	       != KNOT_EOK) {
 		return KNOT_ENOMEM;
 	}
@@ -583,8 +543,8 @@ int knot_response_add_rrset_authority(knot_packet_t *response,
 	assert(response->header.arcount == 0);
 
 	if (response->ns_rrsets == response->max_ns_rrsets
-	    && knot_response_realloc_rrsets(&response->authority,
-			&response->max_ns_rrsets, DEFAULT_NSCOUNT, STEP_NSCOUNT)
+	    && knot_packet_realloc_rrsets(&response->authority,
+			&response->max_ns_rrsets, &response->mm)
 		!= 0) {
 		return KNOT_ENOMEM;
 	}
@@ -639,8 +599,8 @@ int knot_response_add_rrset_additional(knot_packet_t *response,
 	}
 
 	if (response->ar_rrsets == response->max_ar_rrsets
-	    && knot_response_realloc_rrsets(&response->additional,
-			&response->max_ar_rrsets, DEFAULT_ARCOUNT, STEP_ARCOUNT)
+	    && knot_packet_realloc_rrsets(&response->additional,
+			&response->max_ar_rrsets, &response->mm)
 		!= 0) {
 		return KNOT_ENOMEM;
 	}
@@ -736,8 +696,7 @@ int knot_response_add_wildcard_node(knot_packet_t *response,
 	    && knot_response_realloc_wc_nodes(&response->wildcard_nodes.nodes,
 	                                      &response->wildcard_nodes.snames,
 	                                      &response->wildcard_nodes.max,
-	                                      DEFAULT_WILDCARD_NODES,
-	                                     STEP_WILDCARD_NODES) != KNOT_EOK) {
+	                                      &response->mm) != KNOT_EOK) {
 		return KNOT_ENOMEM;
 	}
 

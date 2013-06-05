@@ -442,7 +442,7 @@ static int remote_send_chunk(int c, knot_packet_t *pkt, const char* d,
                              uint16_t dlen, uint8_t* rwire, size_t rlen)
 {
 	int ret = KNOT_ERROR;
-	knot_packet_t *resp = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
+	knot_packet_t *resp = knot_packet_new();
 	if (!resp) {
 		return ret;
 	}
@@ -575,7 +575,7 @@ int remote_answer(int fd, server_t *s, knot_packet_t *pkt, uint8_t* rwire, size_
 
 int remote_process(server_t *s, int r, uint8_t* buf, size_t buflen)
 {
-	knot_packet_t *pkt =  knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
+	knot_packet_t *pkt =  knot_packet_new();
 	if (!pkt) {
 		dbg_server("remote: not enough space to allocate query\n");
 		return KNOT_ENOMEM;
@@ -660,7 +660,7 @@ knot_packet_t* remote_query(const char *query, const knot_tsig_key_t *key)
 		return NULL;
 	}
 
-	knot_packet_t *qr = knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
+	knot_packet_t *qr = knot_packet_new();
 	if (!qr) {
 		return NULL;
 	}

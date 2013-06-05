@@ -41,7 +41,7 @@ static int xfrin_create_query(knot_dname_t *qname, uint16_t qtype,
 			      uint16_t qclass, knot_ns_xfr_t *xfr, size_t *size,
 			      const knot_rrset_t *soa, int use_tsig)
 {
-	knot_packet_t *pkt = knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
+	knot_packet_t *pkt = knot_packet_new();
 	CHECK_ALLOC_LOG(pkt, KNOT_ENOMEM);
 
 	/*! \todo Get rid of the numeric constant. */
@@ -488,8 +488,7 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 
 	/*! \todo Should TC bit be checked? */
 
-	knot_packet_t *packet =
-			knot_packet_new(KNOT_PACKET_PREALLOC_NONE);
+	knot_packet_t *packet = knot_packet_new();
 	if (packet == NULL) {
 		dbg_xfrin("Could not create packet structure.\n");
 		return KNOT_ENOMEM;
@@ -912,7 +911,7 @@ static int xfrin_parse_first_rr(knot_packet_t **packet, const uint8_t *pkt,
 	assert(packet != NULL);
 	assert(rr != NULL);
 
-	*packet = knot_packet_new(KNOT_PACKET_PREALLOC_NONE);
+	*packet = knot_packet_new();
 	if (*packet == NULL) {
 		dbg_xfrin("Could not create packet structure.\n");
 		return KNOT_ENOMEM;

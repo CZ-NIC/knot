@@ -3001,7 +3001,7 @@ static int knot_ns_prepare_response(knot_packet_t *query, knot_packet_t **resp,
 	assert(max_size >= 500);
 
 	// initialize response packet structure
-	*resp = knot_packet_new_mm(KNOT_PACKET_PREALLOC_RESPONSE, &query->mm);
+	*resp = knot_packet_new_mm(&query->mm);
 	if (*resp == NULL) {
 		dbg_ns("Failed to create packet structure.\n");
 		return KNOT_ENOMEM;
@@ -3056,7 +3056,7 @@ knot_nameserver_t *knot_ns_create()
 	}
 
 	// prepare empty response with SERVFAIL error
-	knot_packet_t *err = knot_packet_new(KNOT_PACKET_PREALLOC_NONE);
+	knot_packet_t *err = knot_packet_new();
 	if (err == NULL) {
 		ERR_ALLOC_FAILED;
 		free(ns);
@@ -3821,7 +3821,7 @@ dbg_ns_exec(
 int knot_ns_init_xfr_resp(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 {
 	int ret = KNOT_EOK;
-	knot_packet_t *resp = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
+	knot_packet_t *resp = knot_packet_new();
 	if (resp == NULL) {
 		dbg_ns("Failed to create packet structure.\n");
 		/*! \todo xfr->wire is not NULL, will fail on assert! */

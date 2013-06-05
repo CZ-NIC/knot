@@ -1541,7 +1541,7 @@ static int zones_update_forward(int fd, knot_ns_transport_t ttype,
 	rq->packet_nr = (int)knot_packet_id(query);
 
 	/* Duplicate query to keep it in memory during forwarding. */
-	rq->query = knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
+	rq->query = knot_packet_new();
 	if (!rq->query) {
 		xfr_task_free(rq);
 		rcu_read_unlock();
@@ -1555,7 +1555,7 @@ static int zones_update_forward(int fd, knot_ns_transport_t ttype,
 		rcu_read_unlock();
 		return KNOT_ENOMEM;
 	}
-	rq->query->free_wireformat = 1;
+	rq->query->flags |= KNOT_PF_FREE_WIRE;
 	memcpy(rq->query->wireformat, query->wireformat, knot_packet_size(query));
 
 	/* Retain pointer to zone and issue. */

@@ -562,7 +562,7 @@ static int xfr_task_finalize(xfrworker_t *w, knot_ns_xfr_t *rq)
 static int xfr_task_resp(xfrworker_t *w, knot_ns_xfr_t *rq)
 {
 	knot_nameserver_t *ns = w->master->ns;
-	knot_packet_t *re = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
+	knot_packet_t *re = knot_packet_new();
 	if (re == NULL) {
 		return KNOT_ENOMEM;
 	}

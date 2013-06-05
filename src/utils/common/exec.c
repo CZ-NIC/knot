@@ -340,11 +340,10 @@ static void print_error_host(const uint8_t         code,
 	free(owner);
 }
 
-knot_packet_t* create_empty_packet(const knot_packet_prealloc_type_t type,
-                                   const size_t                      max_size)
+knot_packet_t* create_empty_packet(const size_t max_size)
 {
 	// Create packet skeleton.
-	knot_packet_t *packet = knot_packet_new(type);
+	knot_packet_t *packet = knot_packet_new();
 	if (packet == NULL) {
 		DBG_NULL;
 		return NULL;
