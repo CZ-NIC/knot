@@ -78,7 +78,6 @@ static int notify_request(const knot_rrset_t *rrset,
 
 	/* Set random query ID. */
 	knot_packet_set_random_id(pkt);
-	knot_wire_set_id(pkt->wireformat, pkt->header.id);
 
 	/*! \todo add the SOA RR to the Answer section as a hint */
 	/*! \todo this should not use response API!! */

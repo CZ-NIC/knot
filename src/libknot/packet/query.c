@@ -63,10 +63,7 @@ int knot_query_init(knot_packet_t *query)
 		return KNOT_EINVAL;
 	}
 	// set the qr bit to 0
-	knot_wire_flags_clear_qr(&query->header.flags1);
-
-	uint8_t *pos = query->wireformat;
-	knot_packet_header_to_wire(&query->header, &pos, &query->size);
+	knot_wire_clear_qr(query->wireformat);
 
 	return KNOT_EOK;
 }
@@ -83,7 +80,7 @@ int knot_query_set_question(knot_packet_t *query,
 	query->question.qname = question->qname;
 	query->question.qclass = question->qclass;
 	query->question.qtype = question->qtype;
-	query->header.qdcount = 1;
+	knot_wire_set_qdcount(query->wireformat, 1);
 
 	// convert the Question to wire format right away
 	return knot_packet_question_to_wire(query);
@@ -96,8 +93,7 @@ int knot_query_set_opcode(knot_packet_t *query, uint8_t opcode)
 	if (query == NULL) {
 		return KNOT_EINVAL;
 	}
-	// set the OPCODE in the structure
-	knot_wire_flags_set_opcode(&query->header.flags1, opcode);
+
 	// set the OPCODE in the wire format
 	knot_wire_set_opcode(query->wireformat, opcode);
 
@@ -151,7 +147,7 @@ int knot_query_add_rrset_authority(knot_packet_t *query,
 	}
 	query->size += written;
 	++query->ns_rrsets;
-	++query->header.nscount;
+	knot_wire_add_nscount(query->wireformat, 1);
 
 	return KNOT_EOK;
 }

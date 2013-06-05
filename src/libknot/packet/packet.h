@@ -52,20 +52,6 @@ struct knot_wildcard_nodes {
 typedef struct knot_wildcard_nodes knot_wildcard_nodes_t;
 
 /*----------------------------------------------------------------------------*/
-/*!
- * \brief Structure representing the DNS packet header.
- */
-struct knot_header {
-	uint16_t id;      /*!< ID stored in host byte order. */
-	uint8_t flags1;   /*!< First octet of header flags. */
-	uint8_t flags2;   /*!< Second octet of header flags. */
-	uint16_t qdcount; /*!< Number of Question RRs, in host byte order. */
-	uint16_t ancount; /*!< Number of Answer RRs, in host byte order. */
-	uint16_t nscount; /*!< Number of Authority RRs, in host byte order. */
-	uint16_t arcount; /*!< Number of Additional RRs, in host byte order. */
-};
-
-typedef struct knot_header knot_header_t;
 
 /*!
  * \brief Structure representing one Question entry in the DNS packet.
@@ -95,9 +81,6 @@ typedef struct {
  * \brief Structure representing a DNS packet.
  */
 struct knot_packet {
-	/*! \brief DNS header. */
-	knot_header_t header;
-
 	/*!
 	 * \brief Question section.
 	 *
@@ -246,8 +229,6 @@ size_t knot_packet_parsed(const knot_packet_t *packet);
 int knot_packet_set_max_size(knot_packet_t *packet, int max_size);
 
 uint16_t knot_packet_id(const knot_packet_t *packet);
-
-void knot_packet_set_id(knot_packet_t *packet, uint16_t id);
 
 void knot_packet_set_random_id(knot_packet_t *packet);
 
@@ -425,19 +406,6 @@ int knot_packet_add_tmp_rrset(knot_packet_t *response,
 
 void knot_packet_free_tmp_rrsets(knot_packet_t *pkt);
 
-/*!
- * \brief Converts the header structure to wire format.
- *
- * \note This function also adjusts the position (\a pos) according to
- *       the size of the converted wire format.
- *
- * \param[in] header DNS header structure to convert.
- * \param[out] pos Position where to put the converted header. The space has
- *                 to be allocated before calling this function.
- * \param[out] size Size of the wire format of the header in bytes.
- */
-void knot_packet_header_to_wire(const knot_header_t *header,
-                                  uint8_t **pos, size_t *size);
 
 int knot_packet_question_to_wire(knot_packet_t *packet);
 

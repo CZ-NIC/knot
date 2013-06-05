@@ -738,7 +738,7 @@ int remote_query_append(knot_packet_t *qry, knot_rrset_t *data)
 	size_t bsize = 0;
 	int ret = knot_rrset_to_wire(data, sp, &bsize, qry->max_size, &rrs, 0);
 	if (ret == KNOT_EOK) {
-		qry->header.nscount += rrs;
+		knot_wire_add_nscount(qry->wireformat, rrs);
 	}
 
 	/* Finalize packet size. */

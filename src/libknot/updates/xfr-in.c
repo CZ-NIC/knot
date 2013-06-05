@@ -66,7 +66,6 @@ static int xfrin_create_query(knot_dname_t *qname, uint16_t qtype,
 
 	/* Set random query ID. */
 	knot_packet_set_random_id(pkt);
-	knot_wire_set_id(pkt->wireformat, pkt->header.id);
 
 	// this is ugly!!
 	question.qname = (knot_dname_t *)qname;

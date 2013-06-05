@@ -227,7 +227,6 @@ dbg_response_exec(
 		                  resp->size);
 	} else if (tc) {
 		dbg_response_verb("Setting TC bit.\n");
-		knot_wire_flags_set_tc(&resp->header.flags1);
 		knot_wire_set_tc(resp->wireformat);
 	}
 
@@ -292,11 +291,11 @@ int knot_response_init(knot_packet_t *response)
 	}
 
 	// set the qr bit to 1
-	knot_wire_flags_set_qr(&response->header.flags1);
+	memset(response->wireformat, 0, KNOT_WIRE_HEADER_SIZE);
 
-	uint8_t *pos = response->wireformat;
-	knot_packet_header_to_wire(&response->header, &pos,
-	                                &response->size);
+	uint8_t flags = knot_wire_get_flags1(response->wireformat);
+	knot_wire_flags_set_qr(&flags);
+	knot_wire_set_flags1(response->wireformat, flags);
 
 	return KNOT_EOK;
 }
@@ -312,12 +311,7 @@ int knot_response_init_from_query(knot_packet_t *response,
 		return KNOT_EINVAL;
 	}
 
-	// copy the header from the query
-	memcpy(&response->header, &query->header, sizeof(knot_header_t));
-
-	/*! \todo Constant. */
-	size_t to_copy = 12;
-
+	size_t to_copy = KNOT_WIRE_HEADER_SIZE;
 	if (copy_question) {
 		// copy the Question section (but do not copy the QNAME)
 		memcpy(&response->question, &query->question,
@@ -332,7 +326,6 @@ int knot_response_init_from_query(knot_packet_t *response,
 		/*! \todo Constant. */
 		to_copy += 4 + knot_dname_size(response->question.qname);
 	} else {
-		response->header.qdcount = 0;
 		knot_wire_set_qdcount(response->wireformat, 0);
 	}
 
@@ -343,27 +336,20 @@ int knot_response_init_from_query(knot_packet_t *response,
 	response->size = to_copy;
 
 	// set the qr bit to 1
-	knot_wire_flags_set_qr(&response->header.flags1);
 	knot_wire_set_qr(response->wireformat);
 
 	// clear TC flag
-	knot_wire_flags_clear_tc(&response->header.flags1);
 	knot_wire_clear_tc(response->wireformat);
 
 	// clear AD flag
-	knot_wire_flags_clear_ad(&response->header.flags2);
 	knot_wire_clear_ad(response->wireformat);
 
 	// clear RA flag
-	knot_wire_flags_clear_ra(&response->header.flags2);
-	knot_wire_clear_ad(response->wireformat);
+	knot_wire_clear_ra(response->wireformat);
 
 	// set counts to 0
-	response->header.ancount = 0;
 	knot_wire_set_ancount(response->wireformat, 0);
-	response->header.nscount = 0;
 	knot_wire_set_nscount(response->wireformat, 0);
-	response->header.arcount = 0;
 	knot_wire_set_arcount(response->wireformat, 0);
 
 	response->query = query;
@@ -400,9 +386,9 @@ void knot_response_clear(knot_packet_t *resp, int clear_question)
 	 *        the list of wildcard nodes should be cleared here.
 	 */
 
-	resp->header.ancount = 0;
-	resp->header.nscount = 0;
-	resp->header.arcount = 0;
+	knot_wire_set_ancount(resp->wireformat, 0);
+	knot_wire_set_nscount(resp->wireformat, 0);
+	knot_wire_set_arcount(resp->wireformat, 0);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -488,8 +474,8 @@ int knot_response_add_rrset_answer(knot_packet_t *response,
 	}
 
 	dbg_response_verb("add_rrset_answer()\n");
-	assert(response->header.arcount == 0);
-	assert(response->header.nscount == 0);
+	assert(knot_wire_get_arcount(response->wireformat) == 0);
+	assert(knot_wire_get_nscount(response->wireformat) == 0);
 
 	if (response->an_rrsets == response->max_an_rrsets
 	    && knot_packet_realloc_rrsets(&response->answer,
@@ -516,7 +502,7 @@ int knot_response_add_rrset_answer(knot_packet_t *response,
 	                                        rrset, tc);
 
 	if (rrs >= 0) {
-		response->header.ancount += rrs;
+		knot_wire_add_ancount(response->wireformat, rrs);
 
 		if (rotate) {
 			// do round-robin rotation of the RRSet
@@ -540,7 +526,7 @@ int knot_response_add_rrset_authority(knot_packet_t *response,
 		return KNOT_EINVAL;
 	}
 
-	assert(response->header.arcount == 0);
+	assert(knot_wire_get_arcount(response->wireformat) == 0);
 
 	if (response->ns_rrsets == response->max_ns_rrsets
 	    && knot_packet_realloc_rrsets(&response->authority,
@@ -565,7 +551,7 @@ int knot_response_add_rrset_authority(knot_packet_t *response,
 	                                        rrset, tc);
 
 	if (rrs >= 0) {
-		response->header.nscount += rrs;
+		knot_wire_add_nscount(response->wireformat, rrs);
 
 		if (rotate) {
 			// do round-robin rotation of the RRSet
@@ -592,7 +578,7 @@ int knot_response_add_rrset_additional(knot_packet_t *response,
 	int ret;
 
 	// if this is the first additional RRSet, add EDNS OPT RR first
-	if (response->header.arcount == 0
+	if (knot_wire_get_arcount(response->wireformat) == 0
 	    && response->opt_rr.version != EDNS_NOT_SUPPORTED
 	    && (ret = knot_packet_edns_to_wire(response)) != KNOT_EOK) {
 		return ret;
@@ -620,7 +606,7 @@ int knot_response_add_rrset_additional(knot_packet_t *response,
 	                                        tc);
 
 	if (rrs >= 0) {
-		response->header.arcount += rrs;
+		knot_wire_add_arcount(response->wireformat, rrs);
 
 		if (rotate) {
 			// do round-robin rotation of the RRSet
@@ -641,8 +627,9 @@ void knot_response_set_rcode(knot_packet_t *response, short rcode)
 		return;
 	}
 
-	knot_wire_flags_set_rcode(&response->header.flags2, rcode);
-	knot_wire_set_rcode(response->wireformat, rcode);
+	uint8_t flags = knot_wire_get_flags2(response->wireformat);
+	knot_wire_flags_set_rcode(&flags, rcode);
+	knot_wire_set_flags2(response->wireformat, flags);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -653,7 +640,6 @@ void knot_response_set_aa(knot_packet_t *response)
 		return;
 	}
 
-	knot_wire_flags_set_aa(&response->header.flags1);
 	knot_wire_set_aa(response->wireformat);
 }
 
@@ -665,7 +651,6 @@ void knot_response_set_tc(knot_packet_t *response)
 		return;
 	}
 
-	knot_wire_flags_set_tc(&response->header.flags1);
 	knot_wire_set_tc(response->wireformat);
 }
 
