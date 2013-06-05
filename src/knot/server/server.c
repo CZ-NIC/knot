@@ -119,9 +119,10 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	/* Create UDP socket. */
 	ret = socket_create(cfg_if->family, SOCK_DGRAM, IPPROTO_UDP);
 	if (ret < 0) {
-		strerror_r(errno, errbuf, sizeof(errbuf));
-		log_server_error("Could not create UDP socket: %s.\n",
-				 errbuf);
+		if (strerror_r(errno, errbuf, sizeof(errbuf)) == 0) {
+			log_server_error("Could not create UDP socket: %s.\n",
+					 errbuf);
+		}
 		return ret;
 	} else {
 		sock = ret;
@@ -155,9 +156,10 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	ret = socket_create(cfg_if->family, SOCK_STREAM, IPPROTO_TCP);
 	if (ret < 0) {
 		socket_close(new_if->fd[IO_UDP]);
-		strerror_r(errno, errbuf, sizeof(errbuf));
-		log_server_error("Could not create TCP socket: %s.\n",
-				 errbuf);
+		if (strerror_r(errno, errbuf, sizeof(errbuf)) == 0) {
+			log_server_error("Could not create TCP socket: %s.\n",
+					 errbuf);
+		}
 		return ret;
 	} else {
 		sock = ret;
