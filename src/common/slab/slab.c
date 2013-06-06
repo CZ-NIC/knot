@@ -71,7 +71,7 @@ static slab_depot_t _depot_g; /*! \brief Global slab depot. */
  */
 static void* slab_depot_alloc(size_t bufsize)
 {
-    void *page = 0;
+	void *page = 0;
 #ifdef MEM_SLAB_DEPOT
 	if (_depot_g.available) {
 		for (int i = _depot_g.available - 1; i > -1 ; --i) {
@@ -91,12 +91,14 @@ static void* slab_depot_alloc(size_t bufsize)
 
 	}
 #else // MEM_SLAB_DEPOT
-    if(posix_memalign(&page, SLAB_SZ, SLAB_SZ) == 0) {
-	((slab_t*)page)->bufsize = 0;
-    } else {
-	page = 0;
-    }
+	(void)bufsize;
+	if(posix_memalign(&page, SLAB_SZ, SLAB_SZ) == 0) {
+		((slab_t*)page)->bufsize = 0;
+	} else {
+		page = 0;
+	}
 #endif // MEM_SLAB_DEPOT
+	(void)bufsize;
 
 	return page;
 }
@@ -155,7 +157,7 @@ void __attribute__ ((constructor)) slab_init()
 
 	// Compute slab page mask
 	SLAB_MASK = 0;
-	for (int i = 0; i < slab_logsz; ++i) {
+	for (unsigned i = 0; i < slab_logsz; ++i) {
 		SLAB_MASK |= 1 << i;
 	}
 	SLAB_MASK = ~SLAB_MASK;

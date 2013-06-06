@@ -42,7 +42,7 @@ static knot_lookup_table_t dns_classes[] = {
  */
 static const rdata_descriptor_t rdata_descriptors[] = {
 	[0]                      = { { KNOT_RDATA_WF_REMAINDER,
-	                               KNOT_RDATA_WF_END } },
+	                               KNOT_RDATA_WF_END }, "" },
 	[KNOT_RRTYPE_A]          = { { 4, KNOT_RDATA_WF_END }, "A" },
 	[KNOT_RRTYPE_NS]         = { { KNOT_RDATA_WF_COMPRESSED_DNAME,
 	                               KNOT_RDATA_WF_END }, "NS" },
@@ -159,7 +159,7 @@ int knot_rrtype_to_string(const uint16_t rrtype,
 		ret = snprintf(out, out_len, "TYPE%u", rrtype);
 	}
 
-	if (ret <= 0 || ret >= out_len) {
+	if (ret <= 0 || (size_t)ret >= out_len) {
 		return -1;
 	} else {
 		return ret;
@@ -168,8 +168,8 @@ int knot_rrtype_to_string(const uint16_t rrtype,
 
 int knot_rrtype_from_string(const char *name, uint16_t *num)
 {
+	int i;
 	char *end;
-	unsigned i;
 	unsigned long n;
 
 	// Try to find name in descriptors table.
@@ -212,7 +212,7 @@ int knot_rrclass_to_string(const uint16_t rrclass,
 		ret = snprintf(out, out_len, "CLASS%u", rrclass);
 	}
 
-	if (ret <= 0 || ret >= out_len) {
+	if (ret <= 0 || (size_t)ret >= out_len) {
 		return -1;
 	} else {
 		return ret;

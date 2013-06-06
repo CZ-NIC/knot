@@ -27,6 +27,7 @@
 
 static void *mm_malloc(void *ctx, size_t n)
 {
+	(void)ctx;
 	return malloc(n);
 }
 

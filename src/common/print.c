@@ -61,9 +61,9 @@ void txt_print(const uint8_t *data, unsigned length)
 void bit_printf(const uint8_t *data, unsigned length, printf_t print_handler)
 {
 	unsigned char mask = 0x01;
-	int ptr = 0;
+	unsigned ptr;
 	int bit = 0;
-	for (; ptr < length; ptr++) {
+	for (ptr = 0; ptr < length; ptr++) {
 		for (bit = 7; bit >= 0; bit--) {
 			if ((mask << bit) & (unsigned char)*(data + ptr)) {
 				print_handler("1");

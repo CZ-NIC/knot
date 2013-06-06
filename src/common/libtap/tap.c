@@ -226,6 +226,7 @@ exit_status () {
 
 int
 bail_out (int ignore, const char *fmt, ...) {
+    (void)ignore;
     va_list args;
     va_start(args, fmt);
     printf("Bail out!  ");
@@ -252,6 +253,7 @@ skippy (int n, const char *fmt, ...) {
 
 void
 ctodo (int ignore, const char *fmt, ...) {
+    (void)ignore;
     va_list args;
     va_start(args, fmt);
     todo_mesg = vstrdupf(fmt, args);

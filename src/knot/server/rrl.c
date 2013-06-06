@@ -154,7 +154,7 @@ static int rrl_clsname(char *dst, size_t maxlen, uint8_t cls,
 	}
 
 	/* Write to wire */
-	if (nb > maxlen) return KNOT_ESPACE;
+	if ((size_t)nb > maxlen) return KNOT_ESPACE;
 	if (memcpy(dst, n, nb) == NULL) {
 		dbg_rrl("%s: failed to serialize name=%p len=%u\n",
 		        __func__, n, nb);
