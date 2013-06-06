@@ -169,7 +169,7 @@ static int parse_name(const char *value, list *queries, const query_t *conf)
 	return KNOT_EOK;
 }
 
-static void host_help(int argc, char *argv[])
+static void host_help()
 {
 	printf("Usage: khost [-4] [-6] [-adhrsTvVw] [-c class] [-t type]\n"
 	       "             [-R retries] [-W time] name [server]\n\n"
@@ -236,7 +236,7 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 			msg_enable_debug(1);
 			break;
 		case 'h':
-			host_help(argc, argv);
+			host_help();
 			params->stop = false;
 			return KNOT_EOK;
 		case 'r':
@@ -291,7 +291,7 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 			}
 			break;
 		default:
-			host_help(argc, argv);
+			host_help();
 			return KNOT_ENOTSUP;
 		}
 	}
@@ -311,7 +311,7 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 		}
 		break;
 	default:
-		host_help(argc, argv);
+		host_help();
 		return KNOT_ENOTSUP;
 	}
 

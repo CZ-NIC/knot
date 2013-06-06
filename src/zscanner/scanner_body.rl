@@ -266,7 +266,7 @@
 		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 (fc <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)fc <= (UINT64_MAX % 10) + ASCII_0)
 			)
 		   ) {
 			s->number64 *= 10;
@@ -617,7 +617,8 @@
 		        sizeof(s->include_filename));
 
 		// Check for correct string copy.
-		if (strlen(s->include_filename) != rdata_tail - s->r_data) {
+		if (strlen(s->include_filename) !=
+		    (size_t)(rdata_tail - s->r_data)) {
 			SCANNER_ERROR(ZSCANNER_EBAD_INCLUDE_FILENAME);
 			fhold; fgoto err_line;
 		}

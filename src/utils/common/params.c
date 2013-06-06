@@ -55,7 +55,7 @@ char* get_reverse_name(const char *name)
 		               (num >>  0) & 0xFF, (num >>  8) & 0xFF,
 		               (num >> 16) & 0xFF, (num >> 24) & 0xFF,
 		               IPV4_REVERSE_DOMAIN);
-		if (ret < 0 || ret >= sizeof(buf)) {
+		if (ret < 0 || (size_t)ret >= sizeof(buf)) {
 			return NULL;
 		}
 
@@ -71,7 +71,7 @@ char* get_reverse_name(const char *name)
 			right = (addr6.s6_addr)[i] & 0x0F;
 
 			ret = snprintf(pos, len, "%x.%x.", right, left);
-			if (ret < 0 || ret >= len) {
+			if (ret < 0 || (size_t)ret >= len) {
 				return NULL;
 			}
 
@@ -81,7 +81,7 @@ char* get_reverse_name(const char *name)
 
 		// Add IPv6 reverse domain.
 		ret = snprintf(pos, len, "%s", IPV6_REVERSE_DOMAIN);
-		if (ret < 0 || ret >= len) {
+		if (ret < 0 || (size_t)ret >= len) {
 			return NULL;
 		}
 

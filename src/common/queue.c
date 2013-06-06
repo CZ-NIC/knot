@@ -43,6 +43,7 @@ static void sleep_consumer(struct queue *q)
 
 static void sleep_producer(struct queue *q)
 {
+	(void)q;
 	/* sleep_consumer(q); */
 }
 
@@ -55,6 +56,7 @@ static void wake_consumer(struct queue *q)
 
 static void wake_producer(struct queue *q)
 {
+	(void)q;
 	/* wake_consumer(q); */
 }
 

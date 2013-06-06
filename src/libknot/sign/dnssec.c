@@ -243,6 +243,7 @@ static int dsa_create_pkey(const knot_key_params_t *params, EVP_PKEY *key)
  */
 static size_t dsa_sign_size(const knot_dnssec_key_t *key)
 {
+	(void)key;
 	// RFC 2536 (section 3 - DSA SIG Resource Record)
 	return 41;
 }

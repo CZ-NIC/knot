@@ -80,19 +80,6 @@
 #include "common/print.h"
 
 /*!
- * \brief Dumps RDATA of the given type.
- *
- * This function is empty if neither KNOT_ZONE_DEBUG nor KNOT_RDATA_DEBUG
- * is defined.
- *
- * \param rdata RDATA to dump.
- * \param type Type of the RDATA (needed to properly parse the RDATA).
- * \param loaded_zone Set to <> 0 if the RDATA is part of a zone loaded into
- *                    the server. Set to 0 otherwise.
- */
-void knot_rdata_dump(const knot_rrset_t *rrset, size_t rdata_pos);
-
-/*!
  * \brief Dumps RRSet.
  *
  * This function is empty if neither KNOT_ZONE_DEBUG nor KNOT_RRSET_DEBUG

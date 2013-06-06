@@ -29,9 +29,7 @@
 
 #include "zscanner/scanner.h"
 
-void empty_process_record(const scanner_t *scanner);
-
-void empty_process_error(const scanner_t *scanner);
+void empty_process(const scanner_t *scanner);
 
 void debug_process_error(const scanner_t *scanner);
 

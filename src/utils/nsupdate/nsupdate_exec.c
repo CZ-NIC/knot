@@ -603,14 +603,18 @@ int cmd_ttl(const char* lp, nsupdate_params_t *params)
 
 int cmd_debug(const char* lp, nsupdate_params_t *params)
 {
+	UNUSED(params);
 	DBG("%s: lp='%s'\n", __func__, lp);
+
 	msg_enable_debug(1);
 	return KNOT_EOK;
 }
 
 int cmd_prereq_domain(const char *lp, nsupdate_params_t *params, unsigned type)
 {
+	UNUSED(type);
 	DBG("%s: lp='%s'\n", __func__, lp);
+
 	scanner_t *s = params->rrp;
 	int ret = parse_partial_rr(s, lp, PARSE_NODEFAULT|PARSE_NAMEONLY);
 	if (ret != KNOT_EOK) {
@@ -622,6 +626,7 @@ int cmd_prereq_domain(const char *lp, nsupdate_params_t *params, unsigned type)
 
 int cmd_prereq_rrset(const char *lp, nsupdate_params_t *params, unsigned type)
 {
+	UNUSED(type);
 	DBG("%s: lp='%s'\n", __func__, lp);
 
 	scanner_t *rrp = params->rrp;
@@ -830,6 +835,7 @@ int cmd_local(const char* lp, nsupdate_params_t *params)
 int cmd_show(const char* lp, nsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
+
 	/* Show current packet. */
 	if (!params->pkt) return KNOT_EOK;
 	printf("Outgoing update query:\n");
@@ -841,6 +847,7 @@ int cmd_show(const char* lp, nsupdate_params_t *params)
 int cmd_answer(const char* lp, nsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
+
 	/* Show current answer. */
 	if (!params->resp) return KNOT_EOK;
 	printf("\nAnswer:\n");
@@ -852,9 +859,9 @@ int cmd_answer(const char* lp, nsupdate_params_t *params)
 int cmd_key(const char* lp, nsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
+
 	char *kstr = strdup(lp); /* Convert to default format. */
 	if (!kstr) return KNOT_ENOMEM;
-
 
 	int ret = KNOT_EOK;
 	size_t len = strcspn(lp, SEP_CHARS);
@@ -879,13 +886,17 @@ int cmd_key(const char* lp, nsupdate_params_t *params)
 
 int cmd_gsstsig(const char* lp, nsupdate_params_t *params)
 {
+	UNUSED(params);
 	DBG("%s: lp='%s'\n", __func__, lp);
+
 	return KNOT_ENOTSUP;
 }
 
 int cmd_oldgsstsig(const char* lp, nsupdate_params_t *params)
 {
+	UNUSED(params);
 	DBG("%s: lp='%s'\n", __func__, lp);
+
 	return KNOT_ENOTSUP;
 }
 
@@ -911,6 +922,8 @@ int cmd_origin(const char* lp, nsupdate_params_t *params)
 
 int cmd_realm(const char* lp, nsupdate_params_t *params)
 {
+	UNUSED(params);
 	DBG("%s: lp='%s'\n", __func__, lp);
+
 	return KNOT_ENOTSUP;
 }

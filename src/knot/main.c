@@ -73,7 +73,7 @@ void interrupt_handle(int s)
 	}
 }
 
-void help(int argc, char **argv)
+void help()
 {
 	printf("Usage: %sd [parameters]\n",
 	       PACKAGE_NAME);
@@ -121,11 +121,11 @@ int main(int argc, char **argv)
 		case 'h':
 		case '?':
 			free(config_fn);
-			help(argc, argv);
+			help();
 			return 0;
 		default:
 			free(config_fn);
-			help(argc, argv);
+			help();
 			return 1;
 		}
 	}

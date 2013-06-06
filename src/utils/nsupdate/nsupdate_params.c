@@ -46,8 +46,9 @@ static const style_t DEFAULT_STYLE_NSUPDATE = {
 	.show_footer = false,
 };
 
-static void parse_rr(const scanner_t *s) {
-	return; /* Dummy */
+static void parse_rr(const scanner_t *s)
+{
+	UNUSED(s);
 }
 
 static void parse_err(const scanner_t *s) {
@@ -63,7 +64,7 @@ static int parser_set_default(scanner_t *s, const char *fmt, ...)
 	int n = vsnprintf(buf, sizeof(buf), fmt, ap);
 	va_end(ap);
 
-	if (n < 0 || n >= sizeof(buf)) {
+	if (n < 0 || (size_t)n >= sizeof(buf)) {
 		return KNOT_ESPACE;
 	}
 
@@ -138,11 +139,10 @@ void nsupdate_clean(nsupdate_params_t *params)
 	memset(params, 0, sizeof(*params));
 }
 
-static void nsupdate_help(int argc, char *argv[])
+static void nsupdate_help()
 {
-	printf("Usage: %s [-d] [-v] [-k keyfile | -y [hmac:]name:key] "
-	       "[-p port] [-t timeout] [-r retries] [filename]\n",
-	       argv[0]);
+	printf("Usage: knsupdate [-d] [-v] [-k keyfile | -y [hmac:]name:key]\n"
+	       "                 [-p port] [-t timeout] [-r retries] [filename]\n");
 }
 
 int nsupdate_parse(nsupdate_params_t *params, int argc, char *argv[])
@@ -175,7 +175,7 @@ int nsupdate_parse(nsupdate_params_t *params, int argc, char *argv[])
 			msg_enable_debug(1);
 			break;
 		case 'h':
-			nsupdate_help(argc, argv);
+			nsupdate_help();
 			params->stop = true;
 			return KNOT_EOK;
 		case 'v':
@@ -210,7 +210,7 @@ int nsupdate_parse(nsupdate_params_t *params, int argc, char *argv[])
 			if (ret != KNOT_EOK) return ret;
 			break;
 		default:
-			nsupdate_help(argc, argv);
+			nsupdate_help();
 			return KNOT_ENOTSUP;
 		}
 	}
@@ -220,7 +220,8 @@ int nsupdate_parse(nsupdate_params_t *params, int argc, char *argv[])
 		params->retries = 0;
 	} else {
 		/* If wait/tries < 1 s, set 1 second for each try. */
-		if (params->wait > 0 && params->wait < ( 1 + params->retries)) {
+		if (params->wait > 0 &&
+		    (uint32_t)params->wait < ( 1 + params->retries)) {
 			params->wait = 1;
 		} else {
 			params->wait /= (1 + params->retries);

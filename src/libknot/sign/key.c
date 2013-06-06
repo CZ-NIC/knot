@@ -89,6 +89,7 @@ static char *strndup_with_suffix(const char *base, int length, char *suffix)
 
 static void key_scan_noop(const scanner_t *s)
 {
+	UNUSED(s);
 }
 
 /*!

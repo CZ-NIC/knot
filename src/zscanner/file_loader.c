@@ -55,7 +55,7 @@ static int load_settings(file_loader_t *fl)
 	settings_name = malloc(buf_len);
 	ret = snprintf(settings_name, buf_len, "ZONE DEFAULTS <%s>",
 		       fl->file_name);
-	if (ret < 0 || ret >= buf_len) {
+	if (ret < 0 || (size_t)ret >= buf_len) {
 		free(settings_name);
 		return -1;
 	}
@@ -137,7 +137,7 @@ file_loader_t* file_loader_create(const char	 *file_name,
 		       "$ORIGIN %s\n"
 		       "$TTL %u\n",
 		       zone_origin, default_ttl);
-	if (ret <= 0 || ret >= sizeof(fl->settings_buffer)) {
+	if (ret <= 0 || (size_t)ret >= sizeof(fl->settings_buffer)) {
 		file_loader_free(fl);
 		return NULL;
 	}

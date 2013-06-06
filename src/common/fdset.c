@@ -35,6 +35,7 @@ typedef struct timeval timev_t;
 #endif
 
 struct fdset_backend_t _fdset_backend = {
+	NULL
 };
 
 /*! \brief Set backend implementation. */

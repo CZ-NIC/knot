@@ -753,7 +753,8 @@ int date_to_timestamp(uint8_t *buff, uint32_t *timestamp)
 	if (is_leap_year[year]) {
 		if (month > 2) {
 			leap_day = 1; // Add one day in case of leap year.
-		} else if (month == 2 && day > (days_in_months[month] + 1)) {
+		} else if (month == 2 &&
+		           day > (uint32_t)(days_in_months[month] + 1)) {
 			return ZSCANNER_EBAD_DATE;
 		}
 	} else if (day > days_in_months[month]){

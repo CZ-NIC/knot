@@ -102,9 +102,10 @@ static void print_wire_dname(const uint8_t *dname, uint32_t dname_length)
 	}
 }
 
-void empty_process_record(const scanner_t *s) { }
-
-void empty_process_error(const scanner_t *s) { }
+void empty_process(const scanner_t *s)
+{
+	(void)s;
+}
 
 void debug_process_error(const scanner_t *s)
 {

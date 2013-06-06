@@ -109,7 +109,7 @@ knot_cmd_t knot_cmd_tbl[] = {
 };
 
 /*! \brief Print help. */
-void help(int argc, char **argv)
+void help()
 {
 	printf("Usage: %sc [parameters] <action>\n", PACKAGE_NAME);
 	printf("\nParameters:\n"
@@ -484,11 +484,11 @@ int main(int argc, char **argv)
 		case 'h':
 		case '?':
 			rc = 0;
-			help(argc, argv);
+			help();
 			goto exit;
 		default:
 			rc = 1;
-			help(argc, argv);
+			help();
 			goto exit;
 		}
 	}
@@ -496,7 +496,7 @@ int main(int argc, char **argv)
 	/* Check if there's at least one remaining non-option. */
 	if (argc - optind < 1) {
 		rc = 1;
-		help(argc, argv);
+		help();
 		goto exit;
 	}
 
@@ -660,6 +660,9 @@ static int cmd_start(int argc, char *argv[], unsigned flags)
 
 static int cmd_stop(int argc, char *argv[], unsigned flags)
 {
+	UNUSED(argc);
+	UNUSED(argv);
+
 	/* Check config. */
 	if (has_flag(flags, F_NOCONF)) {
 		log_server_error("Couldn't parse config file, refusing to "
@@ -732,31 +735,51 @@ static int cmd_restart(int argc, char *argv[], unsigned flags)
 
 static int cmd_reload(int argc, char *argv[], unsigned flags)
 {
+	UNUSED(argc);
+	UNUSED(argv);
+	UNUSED(flags);
+
 	return cmd_remote("reload", KNOT_RRTYPE_TXT, 0, NULL);
 }
 
 static int cmd_refresh(int argc, char *argv[], unsigned flags)
 {
+	UNUSED(flags);
+
 	return cmd_remote("refresh", KNOT_RRTYPE_NS, argc, argv);
 }
 
 static int cmd_flush(int argc, char *argv[], unsigned flags)
 {
+	UNUSED(flags);
+
 	return cmd_remote("flush", KNOT_RRTYPE_NS, argc, argv);
 }
 
 static int cmd_status(int argc, char *argv[], unsigned flags)
 {
+	UNUSED(argc);
+	UNUSED(argv);
+	UNUSED(flags);
+
 	return cmd_remote("status", KNOT_RRTYPE_TXT, 0, NULL);
 }
 
 static int cmd_zonestatus(int argc, char *argv[], unsigned flags)
 {
+	UNUSED(argc);
+	UNUSED(argv);
+	UNUSED(flags);
+
 	return cmd_remote("zonestatus", KNOT_RRTYPE_TXT, 0, NULL);
 }
 
 static int cmd_checkconf(int argc, char *argv[], unsigned flags)
 {
+	UNUSED(argc);
+	UNUSED(argv);
+	UNUSED(flags);
+
 	/* Check config. */
 	if (has_flag(flags, F_NOCONF)) {
 		log_server_error("Couldn't parse config file, refusing to "
@@ -771,6 +794,8 @@ static int cmd_checkconf(int argc, char *argv[], unsigned flags)
 
 static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 {
+	UNUSED(flags);
+
 	/* Zone checking */
 	int rc = 0;
 	node *n = 0;
@@ -780,7 +805,7 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 		/* Fetch zone */
 		conf_zone_t *zone = (conf_zone_t *) n;
 		int zone_match = 0;
-		for (unsigned i = 0; i < argc; ++i) {
+		for (unsigned i = 0; i < (unsigned)argc; ++i) {
 			size_t len = strlen(zone->name);
 
 			/* All (except root) without final dot */
