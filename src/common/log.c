@@ -25,7 +25,6 @@
 
 #include "common/log.h"
 #include "common/lists.h"
-#include "knot/common.h"
 #include "knot/conf/conf.h"
 
 /*! Log source table. */

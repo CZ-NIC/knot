@@ -19,7 +19,7 @@
 #include "common/log.h"
 #include "common/fdset.h"
 #include "common/prng.h"
-#include "knot/common.h"
+#include "knot/knot.h"
 #include "knot/conf/conf.h"
 #include "knot/server/socket.h"
 #include "knot/server/tcp-handler.h"

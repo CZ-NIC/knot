@@ -26,7 +26,7 @@
 #include "knot/conf/conf.h"
 #include "common/log.h"
 #include "common/lists.h"
-#include "knot/common.h"
+#include "knot/knot.h"
 
 int log_conf_hook(const struct conf_t *conf, void *data)
 {

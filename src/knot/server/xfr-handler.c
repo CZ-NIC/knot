@@ -28,7 +28,7 @@
 #include <assert.h>
 #include <urcu.h>
 
-#include "knot/common.h"
+#include "knot/knot.h"
 #include "knot/server/xfr-handler.h"
 #include "libknot/nameserver/name-server.h"
 #include "knot/server/socket.h"

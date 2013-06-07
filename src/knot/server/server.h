@@ -36,7 +36,6 @@
 #ifndef _KNOTD_SERVER_H_
 #define _KNOTD_SERVER_H_
 
-#include "knot/common.h"
 #include "libknot/nameserver/name-server.h"
 #include "knot/server/xfr-handler.h"
 #include "knot/server/socket.h"

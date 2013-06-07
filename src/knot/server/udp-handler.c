@@ -41,7 +41,7 @@
 #include "common/sockaddr.h"
 #include "common/mempattern.h"
 #include "common/mempool.h"
-#include "knot/common.h"
+#include "knot/knot.h"
 #include "knot/server/udp-handler.h"
 #include "libknot/nameserver/name-server.h"
 #include "knot/stat/stat.h"

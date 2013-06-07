@@ -32,7 +32,7 @@
 #include <netinet/ip.h>
 #include <arpa/inet.h>
 
-#include "knot/common.h"
+#include "knot/knot.h"
 #include "knot/server/socket.h"
 
 int socket_create(int family, int type, int proto)

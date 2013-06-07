@@ -15,7 +15,7 @@
  */
 
 #include <config.h>
-#include "knot/common.h"
+#include "knot/knot.h"
 #include "common/libtap/tap_unit.h"
 
 // Units to test

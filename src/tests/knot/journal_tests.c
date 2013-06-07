@@ -19,7 +19,7 @@
 
 #include "tests/knot/journal_tests.h"
 #include "knot/server/journal.h"
-#include "knot/common.h"
+#include "knot/knot.h"
 
 static int journal_tests_count(int argc, char *argv[]);
 static int journal_tests_run(int argc, char *argv[]);

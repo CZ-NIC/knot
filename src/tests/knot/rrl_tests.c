@@ -20,7 +20,7 @@
 #include "tests/knot/rrl_tests.h"
 #include "knot/server/rrl.h"
 #include "knot/server/dthreads.h"
-#include "knot/common.h"
+#include "knot/knot.h"
 #include "libknot/packet/response.h"
 #include "libknot/packet/query.h"
 #include "libknot/nameserver/name-server.h"
