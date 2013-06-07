@@ -726,51 +726,22 @@ static int knot_zone_contents_find_in_tree(knot_zone_tree_t *tree,
 
 /*----------------------------------------------------------------------------*/
 
-//static void knot_zone_contents_node_to_hash(knot_node_t *tnode,
-//                                              void *data)
-//{
-//	assert(0);
-//	assert(tnode != NULL && tnode->node != NULL
-//	       && tnode->node->owner != NULL && data != NULL);
-
-//	knot_node_t *node = tnode->node;
-
-//	knot_zone_contents_t *zone = (knot_zone_contents_t *)data;
-//	/*
-//	 * By the original approach, only authoritative nodes and delegation
-//	 * points should be added to the hash table, but currently, all nodes
-//	 * are being added when the zone is created (don't know why actually:),
-//	 * so we will do no distinction here neither.
-//	 */
-
-//}
-
-/*----------------------------------------------------------------------------*/
-/* CNAME chain checking                                                       */
-/*----------------------------------------------------------------------------*/
-
-typedef struct cname_chain {
-	const knot_node_t *node;
-	struct cname_chain *next;
-} cname_chain_t;
-
-/*----------------------------------------------------------------------------*/
-
-static int cname_chain_add(cname_chain_t **last, const knot_node_t *node)
+int cname_chain_add(cname_chain_t **head, const knot_node_t *node)
 {
-	assert(last != NULL);
+	assert(head != NULL);
 
 	cname_chain_t *new_cname =
 			(cname_chain_t *)malloc(sizeof(cname_chain_t));
 	CHECK_ALLOC_LOG(new_cname, KNOT_ENOMEM);
 
 	new_cname->node = node;
-	new_cname->next = NULL;
 
-	if (*last != NULL) {
-		(*last)->next = new_cname;
+	if (*head != NULL) {
+		new_cname->next = *head;
+		*head = new_cname;
 	} else {
-		*last = new_cname;
+		*head = new_cname;
+		(*head)->next = NULL;
 	}
 
 	return KNOT_EOK;
@@ -778,7 +749,7 @@ static int cname_chain_add(cname_chain_t **last, const knot_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
-static int cname_chain_contains(cname_chain_t *chain, const knot_node_t *node)
+int cname_chain_contains(cname_chain_t *chain, const knot_node_t *node)
 {
 	cname_chain_t *act = chain;
 	while (act != NULL) {
@@ -793,7 +764,7 @@ static int cname_chain_contains(cname_chain_t *chain, const knot_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
-static void cname_chain_free(cname_chain_t *chain)
+void cname_chain_free(cname_chain_t *chain)
 {
 	cname_chain_t *act = chain;
 
@@ -802,90 +773,6 @@ static void cname_chain_free(cname_chain_t *chain)
 		free(act);
 		act = chain;
 	}
-}
-
-/*----------------------------------------------------------------------------*/
-
-typedef struct loop_check_data {
-	knot_zone_contents_t *zone;
-	int err;
-} loop_check_data_t;
-
-/*----------------------------------------------------------------------------*/
-
-static void knot_zone_contents_check_loops_in_tree(knot_node_t **tnode,
-                                                   void *data)
-{
-	//TODO no hash
-	assert(tnode != NULL);
-	assert(data != NULL);
-
-	loop_check_data_t *args = (loop_check_data_t *)data;
-	const knot_node_t *node = *tnode;
-
-	assert(args->zone != NULL);
-
-	if (args->err != KNOT_EOK) {
-		dbg_xfrin_detail("Error during CNAME loop checking, skipping "
-				 "node.\n");
-		return;
-	}
-
-	// if there is CNAME in the node
-	const knot_rrset_t *cname = knot_node_rrset(node, KNOT_RRTYPE_CNAME);
-	cname_chain_t *chain = NULL;
-	cname_chain_t **act_cname = &chain;
-	int ret = 0;
-
-	while (cname != NULL && !cname_chain_contains(chain, node)) {
-		ret = cname_chain_add(act_cname, node);
-		if (ret != KNOT_EOK) {
-			cname_chain_free(chain);
-			args->err = ret;
-			return;
-		}
-		act_cname = &(*act_cname)->next;
-
-		// follow the CNAME chain, including wildcards and
-		// remember the nodes passed through
-		const knot_dname_t *next_name = knot_rrset_rdata_cname_name(cname);
-		assert(next_name != NULL);
-		const knot_node_t *next_node = knot_dname_node(next_name);
-		if (next_node == NULL) {
-			// try to find the name in the zone
-			const knot_node_t *ce = NULL;
-			const knot_node_t *prev = NULL;
-			ret = knot_zone_contents_find_dname(
-						args->zone, next_name,
-						&next_node, &ce, &prev);
-			if (ret != KNOT_ZONE_NAME_FOUND
-			    && ce != NULL) {
-				// try to find wildcard child
-				assert(knot_dname_is_subdomain(next_name,
-							  knot_node_owner(ce)));
-				next_node = knot_node_wildcard_child(ce);
-			}
-
-			assert(next_node == NULL || knot_dname_compare(
-				   knot_node_owner(next_node), next_name) == 0
-			 || knot_dname_is_wildcard(knot_node_owner(next_node)));
-		}
-
-		if (next_node == NULL) {
-			// no CNAME node to follow
-			cname = NULL;
-		} else {
-			node = next_node;
-			cname = knot_node_rrset(node, KNOT_RRTYPE_CNAME);
-		}
-	}
-
-	if (cname != NULL) {
-		// this means the node is in the chain already
-		args->err = KNOT_ECNAME;
-	}
-
-	cname_chain_free(chain);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1963,35 +1850,6 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone,
 	hattrie_free(lookup_tree);
 
 	return ret;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_zone_contents_check_loops(knot_zone_contents_t *zone)
-{
-	if (zone == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	dbg_zone("Checking CNAME and wildcard loops.\n");
-
-	loop_check_data_t data;
-	data.err = KNOT_EOK;
-	data.zone = zone;
-
-	assert(zone->nodes != NULL);
-	knot_zone_tree_apply_inorder(zone->nodes,
-					 knot_zone_contents_check_loops_in_tree,
-					 (void *)&data);
-
-	if (data.err != KNOT_EOK) {
-		dbg_zone("Found CNAME loop in data. Aborting transfer.\n");
-		return data.err;
-	}
-
-	dbg_zone("Done\n");
-
-	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/

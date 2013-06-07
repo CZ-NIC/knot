@@ -3194,14 +3194,6 @@ int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
 	}
 	assert(knot_zone_contents_apex(contents_copy) != NULL);
 
-
-	dbg_xfrin("Checking zone for CNAME loops.\n");
-	ret = knot_zone_contents_check_loops(contents_copy);
-	if (ret != KNOT_EOK) {
-		dbg_xfrin("CNAME loop check failed: %s\n", knot_strerror(ret));
-		return ret;
-	}
-
 	return KNOT_EOK;
 }
 
