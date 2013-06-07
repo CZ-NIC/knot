@@ -482,7 +482,7 @@ void complete_queries(list *queries, const query_t *conf)
 	}
 }
 
-static void dig_help()
+static void dig_help(void)
 {
 	printf("Usage: kdig [-4] [-6] [-dh] [-b address] [-c class] [-p port]\n"
 	       "            [-q name] [-t type] [-x address] [-k keyfile]\n"

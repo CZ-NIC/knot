@@ -169,7 +169,7 @@ static int parse_name(const char *value, list *queries, const query_t *conf)
 	return KNOT_EOK;
 }
 
-static void host_help()
+static void host_help(void)
 {
 	printf("Usage: khost [-4] [-6] [-adhrsTvVw] [-c class] [-t type]\n"
 	       "             [-R retries] [-W time] name [server]\n\n"

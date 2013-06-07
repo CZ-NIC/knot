@@ -109,7 +109,7 @@ knot_cmd_t knot_cmd_tbl[] = {
 };
 
 /*! \brief Print help. */
-void help()
+void help(void)
 {
 	printf("Usage: %sc [parameters] <action>\n", PACKAGE_NAME);
 	printf("\nParameters:\n"

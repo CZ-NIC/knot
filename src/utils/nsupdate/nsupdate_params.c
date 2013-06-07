@@ -139,7 +139,7 @@ void nsupdate_clean(nsupdate_params_t *params)
 	memset(params, 0, sizeof(*params));
 }
 
-static void nsupdate_help()
+static void nsupdate_help(void)
 {
 	printf("Usage: knsupdate [-d] [-v] [-k keyfile | -y [hmac:]name:key]\n"
 	       "                 [-p port] [-t timeout] [-r retries] [filename]\n");
