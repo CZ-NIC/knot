@@ -192,13 +192,12 @@ AS_IF([test "$with_urcu" != "no"], [
         with_urcu=yes
 	break
       ],[
+        CPPFLAGS="$save_CPPFLAGS"
+        LIBS="$save_LIBS"
         with_urcu=no
 	# do not cache result of AC_SEARCH_LIBS test
 	unset ac_cv_search_rcu_set_pointer_sym
       ])
-
-      CPPFLAGS="$save_CPPFLAGS"
-      LIBS="$save_LIBS"
     done
 
     AS_IF([test "$with_urcu" = "no"],[
