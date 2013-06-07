@@ -271,10 +271,24 @@ static int ns_follow_cname(const knot_node_t **node,
 
 	int ret = 0;
 
+	cname_chain_t *cname_chain = NULL;
+
 	while (*node != NULL
+	       && !cname_chain_contains(cname_chain, *node)
 	       && (cname_rrset = knot_node_get_rrset(*node, KNOT_RRTYPE_CNAME))
 	          != NULL
 	       && (knot_rrset_rdata_rr_count(cname_rrset))) {
+		/*
+		 * Store node to chain list to sort out duplicates and cycles.
+		 * Even if we follow wildcard, the result is always the same.
+		 * so duplicate check does not need synthesized DNAMEs.
+		 */
+		if (cname_chain_add(&cname_chain, *node) != KNOT_EOK) {
+			dbg_ns("Failed to add node to CNAME chain\n");
+			cname_chain_free(cname_chain);
+			return KNOT_ENOMEM;
+		}
+
 		/* put the CNAME record to answer, but replace the possible
 		   wildcard name with qname */
 
@@ -293,6 +307,7 @@ static int ns_follow_cname(const knot_node_t **node,
 			if (rrset == NULL) {
 				dbg_ns("Failed to synthetize RRSet from "
 				       "wildcard RRSet followed from CNAME.\n");
+				cname_chain_free(cname_chain);
 				return KNOT_ERROR; /*! \todo Better error. */
 			}
 
@@ -302,6 +317,7 @@ static int ns_follow_cname(const knot_node_t **node,
 				       "follow) to the tmp RRSets in response."
 				       "\n");
 				knot_rrset_deep_free(&rrset, 1, 1);
+				cname_chain_free(cname_chain);
 				return ret;
 			}
 
@@ -309,6 +325,7 @@ static int ns_follow_cname(const knot_node_t **node,
 			if (ret != KNOT_EOK) {
 				dbg_ns("Failed to add synthetized RRSet (CNAME "
 				       "follow) to the response.\n");
+				cname_chain_free(cname_chain);
 				return ret;
 			}
 
@@ -318,6 +335,7 @@ static int ns_follow_cname(const knot_node_t **node,
 				dbg_ns("Failed to add RRSIG for the synthetized"
 				       "RRSet (CNAME follow) to the response."
 				       "\n");
+				cname_chain_free(cname_chain);
 				return ret;
 			}
 
@@ -326,6 +344,7 @@ static int ns_follow_cname(const knot_node_t **node,
 			if (ret != KNOT_EOK) {
 				dbg_ns("Failed to add wildcard node for later "
 				       "processing.\n");
+				cname_chain_free(cname_chain);
 				return ret;
 			}
 		} else {
@@ -334,6 +353,7 @@ static int ns_follow_cname(const knot_node_t **node,
 			if (ret != KNOT_EOK) {
 				dbg_ns("Failed to add followed RRSet into"
 				       "the response.\n");
+				cname_chain_free(cname_chain);
 				return ret;
 			}
 
@@ -343,6 +363,7 @@ static int ns_follow_cname(const knot_node_t **node,
 			if (ret != KNOT_EOK) {
 				dbg_ns("Failed to add RRSIG for followed RRSet "
 				       "into the response.\n");
+				cname_chain_free(cname_chain);
 				return ret;
 			}
 		}
@@ -367,6 +388,10 @@ dbg_ns_exec_verb(
 		// save the new name which should be used for replacing wildcard
 		*qname = cname;
 	}
+
+	dbg_ns_detail("Last node duplicated = %d\n",
+	              cname_chain_contains(cname_chain, *node));
+	cname_chain_free(cname_chain);
 
 	return KNOT_EOK;
 }
@@ -3987,12 +4012,6 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 
 		dbg_ns_verb("ns_process_axfrin: adjusting zone.\n");
 		int rc = knot_zone_contents_adjust(zone, NULL, NULL, 0);
-		if (rc != KNOT_EOK) {
-			return rc;
-		}
-
-		dbg_ns_verb("ns_process_axfrin: checking loops.\n");
-		rc = knot_zone_contents_check_loops(zone);
 		if (rc != KNOT_EOK) {
 			return rc;
 		}
