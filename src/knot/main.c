@@ -73,7 +73,7 @@ void interrupt_handle(int s)
 	}
 }
 
-void help()
+void help(void)
 {
 	printf("Usage: %sd [parameters]\n",
 	       PACKAGE_NAME);

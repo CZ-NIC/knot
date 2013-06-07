@@ -27,7 +27,7 @@
 
 #define DEFAULT_MODE	1
 
-void help()
+void help(void)
 {
 	printf("\nZone scanner testing tool.\n"
 	       "Usage: zscanner-tool [parameters] origin zonefile\n"
