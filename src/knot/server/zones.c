@@ -1362,6 +1362,8 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 	WALK_LIST(z, *zone_conf) {
 		++zcount;
 	}
+	if (zcount == 0)
+		return 0;
 
 	/* Initialize zonewalker. */
 	size_t zwlen = sizeof(struct zonewalk_t) + zcount * sizeof(conf_zone_t*);
@@ -1839,7 +1841,11 @@ int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
 	/*! \warning RCU must not be locked as some contents switching will
 	             be required. */
 	int inserted = zones_insert_zones(ns, &conf->zones, db_new);
-
+	if (inserted < 0) {
+		log_server_warning("Failed to load zones - %s\n",
+		                   knot_strerror(inserted));
+		inserted = 0;
+	}
 	log_server_info("Loaded %d out of %d zones.\n", inserted,
 	                conf->zones_count);
 
