@@ -63,7 +63,7 @@ int knot_edns_new_from_wire(knot_opt_rr_t *opt_rr, const uint8_t *wire,
 		return KNOT_EINVAL;
 	}
 
-	if (max_size < KNOT_EDNS_MIN_SIZE) {
+	if ((int)max_size < KNOT_EDNS_MIN_SIZE) {
 		dbg_edns("Not enough data to parse OPT RR header.\n");
 		return KNOT_EFEWDATA;
 	}
@@ -355,9 +355,9 @@ short knot_edns_to_wire(const knot_opt_rr_t *opt_rr, uint8_t *wire,
 		return KNOT_EINVAL;
 	}
 
-	assert(KNOT_EDNS_MIN_SIZE <= max_size);
+	assert(KNOT_EDNS_MIN_SIZE <= (int)max_size);
 
-	if (max_size < opt_rr->size) {
+	if ((int)max_size < opt_rr->size) {
 		dbg_edns("Not enough place for OPT RR wire format.\n");
 		return KNOT_ESPACE;
 	}

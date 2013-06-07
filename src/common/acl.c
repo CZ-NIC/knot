@@ -83,7 +83,7 @@ static int acl_compare(void *k1, void *k2)
 		 */
 		while (chunk > 0) {
 			uint32_t mask = 0xffffffff;
-			if (chunk > sizeof(mask) << 3) {
+			if ((size_t)chunk > sizeof(mask) << 3) {
 				chunk -= sizeof(mask) << 3;
 			} else {
 				mask = acl_fill_mask32(chunk);

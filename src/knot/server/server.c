@@ -570,7 +570,7 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 	if (tu_size < 1) {
 		tu_size = dt_optimal_size();
 	}
-	if (tu_size != server->tu_size) {
+	if ((unsigned)tu_size != server->tu_size) {
 		/* Free old handlers */
 		if (server->tu_size > 0) {
 			for (unsigned i = 0; i < IO_COUNT; ++i) {
@@ -605,7 +605,7 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 		}
 	}
 	if (server->rrl) {
-		if (rrl_rate(server->rrl) != conf->rrl) {
+		if (rrl_rate(server->rrl) != (uint32_t)conf->rrl) {
 			rrl_setrate(server->rrl, conf->rrl);
 			log_server_info("Rate limiting set to %u responses/sec.\n",
 			                conf->rrl);

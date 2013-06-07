@@ -85,7 +85,7 @@ static uint8_t *knot_nsec3_to_lowercase(const uint8_t *data, size_t size)
 	uint8_t *out = (uint8_t *)malloc(size);
 	CHECK_ALLOC_LOG(out, NULL);
 
-	for (int i = 0; i < size; ++i) {
+	for (size_t i = 0; i < size; ++i) {
 		out[i] = knot_tolower(data[i]);
 	}
 

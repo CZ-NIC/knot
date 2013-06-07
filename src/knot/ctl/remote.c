@@ -167,6 +167,7 @@ static int remote_zone_flush(server_t *s, const knot_zone_t *z)
  */
 static int remote_c_reload(server_t *s, remote_cmdargs_t* a)
 {
+	UNUSED(a);
 	return server_reload(s, conf()->filename);
 }
 
@@ -178,6 +179,8 @@ static int remote_c_reload(server_t *s, remote_cmdargs_t* a)
  */
 static int remote_c_status(server_t *s, remote_cmdargs_t* a)
 {
+	UNUSED(s);
+	UNUSED(a);
 	/*! \todo #2035 Add some TXT RRs with stats. */
 	dbg_server("remote: %s\n", __func__);
 	return KNOT_EOK;
@@ -248,14 +251,15 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 
 		/* Workaround, some platforms ignore 'size' with snprintf() */
 		char buf[256];
-		int n = snprintf(buf, sizeof(buf), "%s\ttype=%s | serial=%u | %s %s\n",
+		int n = snprintf(buf, sizeof(buf),
+		                 "%s\ttype=%s | serial=%u | %s %s\n",
 		                 zd->conf->name,
 		                 zd->xfr_in.has_master ? "slave" : "master",
 		                 serial,
 		                 state ? state : "",
 		                 when ? when : "");
 		free(when);
-		if (n > rb) {
+		if (n < 0 || (size_t)n > rb) {
 			*dst = '\0';
 			ret = KNOT_ESPACE;
 			break;

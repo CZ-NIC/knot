@@ -134,7 +134,7 @@ int proc_update_privileges(int uid, int gid)
 {
 #ifdef HAVE_SETGROUPS
 	/* Drop supplementary groups. */
-	if (uid != getuid() || gid != getgid()) {
+	if ((uid_t)uid != getuid() || (gid_t)gid != getgid()) {
 		if (setgroups(0, NULL) < 0) {
 			log_server_warning("Failed to drop supplementary groups"
 			                   " for uid '%d' (%s).\n",
@@ -144,14 +144,14 @@ int proc_update_privileges(int uid, int gid)
 #endif
 
 	/* Watch uid/gid. */
-	if (gid != getgid()) {
+	if ((gid_t)gid != getgid()) {
 		log_server_info("Changing group id to '%d'.\n", gid);
 		if (setregid(gid, gid) < 0) {
 			log_server_error("Failed to change gid to '%d'.\n",
 			                 gid);
 		}
 	}
-	if (uid != getuid()) {
+	if ((uid_t)uid != getuid()) {
 		log_server_info("Changing user id to '%d'.\n", uid);
 		if (setreuid(uid, uid) < 0) {
 			log_server_error("Failed to change uid to '%d'.\n",

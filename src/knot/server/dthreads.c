@@ -851,7 +851,7 @@ unsigned dt_get_id(dthread_t *thread)
 	}
 
 	dt_unit_t *unit = thread->unit;
-	for(unsigned tid = 0; tid < unit->size; ++tid) {
+	for(int tid = 0; tid < unit->size; ++tid) {
 		if (thread == unit->threads[tid]) {
 			return tid;
 		}

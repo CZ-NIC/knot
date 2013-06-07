@@ -150,11 +150,10 @@ static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
 }
 
 static knot_node_t *create_node(knot_zone_contents_t *zone,
-	knot_rrset_t *current_rrset,
-	int (*node_add_func)(knot_zone_contents_t *zone, knot_node_t *node,
-	                     int create_parents, uint8_t),
-	knot_node_t *(*node_get_func)(const knot_zone_contents_t *zone,
-					const knot_dname_t *owner))
+                                knot_rrset_t *current_rrset,
+                                int (*node_add_func)(knot_zone_contents_t *zone,
+                                                     knot_node_t *node,
+                                                     int create_parents, uint8_t))
 {
 	dbg_zp_verb("zp: create_node: Creating node using RRSet: %p.\n",
 	            current_rrset);
@@ -453,8 +452,9 @@ static void process_rr(const scanner_t *scanner)
 			if (parser->last_node == NULL) {
 				/* Still NULL, node has to be created. */
 				if ((parser->last_node = create_node(contents,
-				                                     current_rrset, node_add_func,
-				                                     node_get_func)) == NULL) {
+				                                     current_rrset,
+				                                     node_add_func))
+				    == NULL) {
 					knot_rrset_free(&tmp_rrsig);
 					dbg_zp("zp: process_rr: Cannot "
 					       "create new node.\n");
@@ -507,8 +507,7 @@ static void process_rr(const scanner_t *scanner)
 		}
 
 		if ((node = create_node(contents, current_rrset,
-					node_add_func,
-					node_get_func)) == NULL) {
+		                        node_add_func)) == NULL) {
 			dbg_zp("zp: process_rr: Cannot "
 			       "create new node.\n");
 			/*!< \todo consider a new error */
