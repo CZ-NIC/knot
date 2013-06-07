@@ -1855,7 +1855,7 @@ int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
 	                 "new db: %p\n", ns->zone_db, *db_old, db_new);
 
 	/* Switch the databases. */
-	(void)rcu_xchg_pointer(&ns->zone_db, db_new);
+	UNUSED(rcu_xchg_pointer(&ns->zone_db, db_new));
 
 	dbg_zones_detail("db in nameserver: %p, old db stored: %p, new db: %p\n",
 	                 ns->zone_db, *db_old, db_new);
@@ -2578,7 +2578,7 @@ static int zones_open_free_filename(const char *old_name, char **new_name)
 	dbg_zones_verb("zones: creating temporary zone file\n");
 	mode_t old_mode = umask(077);
 	int fd = mkstemp(*new_name);
-	(void) umask(old_mode);
+	UNUSED(umask(old_mode));
 	if (fd < 0) {
 		dbg_zones_verb("zones: couldn't create temporary zone file\n");
 		free(*new_name);

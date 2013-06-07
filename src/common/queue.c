@@ -22,6 +22,7 @@
  */
 
 #include <config.h>
+#include "common.h"
 #include "queue.h"
 #include "atomic.h"
 #include <stdbool.h>
@@ -43,7 +44,7 @@ static void sleep_consumer(struct queue *q)
 
 static void sleep_producer(struct queue *q)
 {
-	(void)q;
+	UNUSED(q);
 	/* sleep_consumer(q); */
 }
 
@@ -56,7 +57,7 @@ static void wake_consumer(struct queue *q)
 
 static void wake_producer(struct queue *q)
 {
-	(void)q;
+	UNUSED(q);
 	/* wake_consumer(q); */
 }
 

@@ -91,14 +91,14 @@ static void* slab_depot_alloc(size_t bufsize)
 
 	}
 #else // MEM_SLAB_DEPOT
-	(void)bufsize;
+	UNUSED(bufsize);
 	if(posix_memalign(&page, SLAB_SZ, SLAB_SZ) == 0) {
 		((slab_t*)page)->bufsize = 0;
 	} else {
 		page = 0;
 	}
 #endif // MEM_SLAB_DEPOT
-	(void)bufsize;
+	UNUSED(bufsize);
 
 	return page;
 }

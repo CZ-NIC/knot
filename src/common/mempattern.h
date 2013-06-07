@@ -27,6 +27,8 @@
 #ifndef _KNOTD_COMMON_MALLOC_H_
 #define _KNOTD_COMMON_MALLOC_H_
 
+#include <stddef.h>
+
 /* Memory allocation function prototypes. */
 typedef void* (*mm_alloc_t)(void* ctx, size_t len);
 typedef void (*mm_free_t)(void *p);
