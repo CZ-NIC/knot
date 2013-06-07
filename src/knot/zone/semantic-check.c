@@ -22,7 +22,7 @@
 #include <netinet/in.h>	
 #include <arpa/inet.h>
 
-#include "knot/common.h"
+#include "knot/knot.h"
 #include "knot/other/debug.h"
 #include "libknot/libknot.h"
 #include "libknot/sign/key.h"

@@ -27,7 +27,7 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 
-#include "knot/common.h"
+#include "knot/knot.h"
 #include "knot/ctl/process.h"
 #include "knot/conf/conf.h"
 #include "common/mempattern.h"

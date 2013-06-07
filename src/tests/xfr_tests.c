@@ -29,7 +29,7 @@
 #include <getopt.h>
 #include <assert.h>
 
-#include "knot/common.h"
+#include "knot/knot.h"
 #include "knot/server/server.h"
 #include "knot/ctl/process.h"
 #include "knot/conf/conf.h"

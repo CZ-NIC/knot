@@ -32,7 +32,7 @@
 #include <sys/wait.h>
 #endif
 
-#include "knot/common.h"
+#include "knot/knot.h"
 #include "common/descriptor.h"
 #include "knot/ctl/process.h"
 #include "knot/ctl/remote.h"

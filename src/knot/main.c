@@ -27,7 +27,7 @@
 
 #include "common.h"
 #include "common/evqueue.h"
-#include "knot/common.h"
+#include "knot/knot.h"
 #include "knot/server/server.h"
 #include "knot/ctl/process.h"
 #include "knot/ctl/remote.h"

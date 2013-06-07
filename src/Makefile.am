@@ -242,8 +242,7 @@ libknotd_la_SOURCES =				\
 	knot/stat/gatherer.h			\
 	knot/stat/stat.h			\
 	knot/stat/stat-common.h			\
-	knot/common.h				\
-	common/latency.h			\
+	knot/knot.h				\
 	knot/other/debug.h			\
 	knot/conf/cf-lex.l			\
 	knot/conf/cf-parse.y			\

@@ -32,7 +32,7 @@
 #include "common/sockaddr.h"
 #include "common/skip-list.h"
 #include "common/fdset.h"
-#include "knot/common.h"
+#include "knot/knot.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/server/xfr-handler.h"
 #include "knot/server/zones.h"

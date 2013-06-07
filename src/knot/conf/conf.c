@@ -28,7 +28,7 @@
 #include <urcu.h>
 #include "knot/conf/conf.h"
 #include "knot/conf/extra.h"
-#include "knot/common.h"
+#include "knot/knot.h"
 #include "knot/ctl/remote.h"
 
 /*

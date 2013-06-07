@@ -30,7 +30,7 @@
 #include <pthread_np.h>
 #endif /* HAVE_PTHREAD_NP_H */
 
-#include "knot/common.h"
+#include "knot/knot.h"
 #include "knot/server/dthreads.h"
 #include "common/log.h"
 
