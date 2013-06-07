@@ -1018,7 +1018,7 @@ static int knot_ddns_process_add_cname(knot_node_t *node,
 		}
 
 		/* c) And remove it from the node. */
-		(void)knot_node_remove_rrset(node, KNOT_RRTYPE_CNAME);
+		UNUSED(knot_node_remove_rrset(node, KNOT_RRTYPE_CNAME));
 
 		/* d) Check if this CNAME was not previously added by
 		 *    the UPDATE. If yes, remove it from the ADD
@@ -1132,7 +1132,7 @@ static int knot_ddns_process_add_soa(knot_node_t *node,
 		}
 
 		/* 2) And remove it from the node. */
-		(void)knot_node_remove_rrset(node, KNOT_RRTYPE_SOA);
+		UNUSED(knot_node_remove_rrset(node, KNOT_RRTYPE_SOA));
 
 		/* No changeset processing needed in this case. */
 	} else {

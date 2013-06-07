@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #endif
 
+#include "common.h"
 #include "prng.h"
 #include "dSFMT.h"
 
@@ -41,19 +42,19 @@ static void tls_prng_deinit(void *ptr)
 static void tls_prng_deinit_main()
 {
 	tls_prng_deinit(pthread_getspecific(tls_prng_key));
-	(void)pthread_setspecific(tls_prng_key, NULL);
+	UNUSED(pthread_setspecific(tls_prng_key, NULL));
 }
 
 static void tls_prng_init()
 {
-	(void) pthread_key_create(&tls_prng_key, tls_prng_deinit);
+	UNUSED(pthread_key_create(&tls_prng_key, tls_prng_deinit));
 	atexit(tls_prng_deinit_main); // Main thread cleanup
 }
 
 double tls_rand()
 {
 	/* Setup PRNG state for current thread. */
-	(void)pthread_once(&tls_prng_once, tls_prng_init);
+	UNUSED(pthread_once(&tls_prng_once, tls_prng_init));
 
 	/* Create PRNG state if not exists. */
 	dsfmt_t* s = pthread_getspecific(tls_prng_key);
@@ -97,7 +98,7 @@ double tls_rand()
 		}
 #endif
 		dsfmt_init_gen_rand(s, seed);
-		(void)pthread_setspecific(tls_prng_key, s);
+		UNUSED(pthread_setspecific(tls_prng_key, s));
 	}
 
 	return dsfmt_genrand_close_open(s);
