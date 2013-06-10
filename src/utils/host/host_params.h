@@ -29,6 +29,8 @@
 
 #include "utils/dig/dig_params.h"	// dig_params_t
 
+#define KHOST_VERSION "khost, version " PACKAGE_VERSION "\n"
+
 int host_parse(dig_params_t *params, int argc, char *argv[]);
 void host_clean(dig_params_t *params);
 

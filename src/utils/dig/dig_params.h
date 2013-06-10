@@ -29,8 +29,10 @@
 
 #include <stdbool.h>			// bool
 
-#include "utils/common/params.h"	// params_t
-#include "utils/common/exec.h"		// sing_context_t
+#include "utils/common/params.h"	// protocol_t
+#include "utils/common/exec.h"		// sign_context_t
+
+#define KDIG_VERSION "kdig, version " PACKAGE_VERSION "\n"
 
 /*! \brief Operation mode of dig. */
 typedef enum {

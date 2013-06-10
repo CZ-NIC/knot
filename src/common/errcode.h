@@ -85,7 +85,6 @@ enum knot_error {
 	KNOT_ENODIFF,         /*!< No zone diff can be created. */
 	KNOT_EDSDIGESTLEN,    /*!< DS digest length does not match digest type. */
 	KNOT_ENOTSIG,         /*!< Expected a TSIG or SIG(0). */
-	KNOT_ESTOP,           /*!< Stop doing something. */
 	KNOT_ELIMIT,          /*!< Exceeded response rate limit. */
 
 	/* Network errors. */
