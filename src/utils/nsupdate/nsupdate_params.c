@@ -182,7 +182,7 @@ int nsupdate_parse(nsupdate_params_t *params, int argc, char *argv[])
 			params->protocol = PROTO_TCP;
 			break;
 		case 'V':
-			printf("%s, version %s\n", "knsupdate", PACKAGE_VERSION);
+			printf(KNSUPDATE_VERSION);
 			params->stop = true;
 			return KNOT_EOK;
 		case 'p':

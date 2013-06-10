@@ -255,7 +255,7 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 			conf->style.show_footer = true;
 			break;
 		case 'V':
-			printf("%s, version %s\n", "khost", PACKAGE_VERSION);
+			printf(KHOST_VERSION);
 			params->stop = false;
 			return KNOT_EOK;
 		case 'w':
