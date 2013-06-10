@@ -28,7 +28,7 @@
 #include <netinet/in.h>			// in_addr (BSD)
 #include <arpa/inet.h>			// inet_pton
 
-#include "common/errcode.h"		// error codes
+#include "zscanner/error.h"		// error codes
 #include "common/descriptor.h"		// KNOT_RRTYPE_A
 #include "zscanner/file_loader.h"	// file_loader
 #include "zscanner/scanner_functions.h"	// Base64

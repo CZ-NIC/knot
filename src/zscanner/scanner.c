@@ -30,7 +30,7 @@
 #include <netinet/in.h>			// in_addr (BSD)
 #include <arpa/inet.h>			// inet_pton
 
-#include "common/errcode.h"		// error codes
+#include "zscanner/error.h"		// error codes
 #include "common/descriptor.h"		// KNOT_RRTYPE_A
 #include "zscanner/file_loader.h"	// file_loader
 #include "zscanner/scanner_functions.h"	// Base64
@@ -5297,7 +5297,7 @@ _match:
 		s->process_error(s);
 
 		// Reset.
-		s->error_code = KNOT_EOK;
+		s->error_code = ZSCANNER_OK;
 		s->multiline = false;
 
 		// In case of serious error, stop scanner.
@@ -5712,7 +5712,7 @@ _match:
 		if (s->buffer_length == 14) { // Date; 14 = len("YYYYMMDDHHmmSS").
 			ret = date_to_timestamp(s->buffer, &timestamp);
 
-			if (ret == KNOT_EOK) {
+			if (ret == ZSCANNER_OK) {
 				*((uint32_t *)rdata_tail) = htonl(timestamp);
 				rdata_tail += 4;
 			} else {
@@ -6204,7 +6204,7 @@ _match:
 		}
 
 		ret = find_rdata_blocks(s);
-		if (ret != KNOT_EOK) {
+		if (ret != ZSCANNER_OK) {
 			SCANNER_WARNING(ret);
 			p--; {cs = 247; goto _again;}
 		}

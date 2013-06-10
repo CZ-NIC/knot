@@ -20,7 +20,7 @@
 #include <stdlib.h>			// atoi
 #include <getopt.h>			// getopt
 
-#include "common/errcode.h"		// knot_strerror
+#include "zscanner/error.h"		// knot_strerror
 #include "zscanner/file_loader.h"	// file_loader
 #include "zscanner/test/processing.h"	// processing functions
 #include "zscanner/test/tests.h"	// test functions
@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
 			ret = file_loader_process(fl);
 
 			switch (ret) {
-			case KNOT_EOK:
+			case ZSCANNER_OK:
 				if (mode == DEFAULT_MODE) {
 					printf("Zone file has been processed "
 					       "successfully\n");
@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
 
 			default:
 				if (mode == DEFAULT_MODE) {
-					printf("%s\n", knot_strerror(ret));
+					printf("%s\n", zscanner_strerror(ret));
 				}
 				file_loader_free(fl);
 				return EXIT_FAILURE;

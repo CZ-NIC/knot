@@ -86,7 +86,7 @@
 		s->process_error(s);
 
 		// Reset.
-		s->error_code = KNOT_EOK;
+		s->error_code = ZSCANNER_OK;
 		s->multiline = false;
 
 		// In case of serious error, stop scanner.
@@ -459,7 +459,7 @@
 		if (s->buffer_length == 14) { // Date; 14 = len("YYYYMMDDHHmmSS").
 			ret = date_to_timestamp(s->buffer, &timestamp);
 
-			if (ret == KNOT_EOK) {
+			if (ret == ZSCANNER_OK) {
 				*((uint32_t *)rdata_tail) = htonl(timestamp);
 				rdata_tail += 4;
 			} else {
@@ -923,7 +923,7 @@
 		}
 
 		ret = find_rdata_blocks(s);
-		if (ret != KNOT_EOK) {
+		if (ret != ZSCANNER_OK) {
 			SCANNER_WARNING(ret);
 			fhold; fgoto err_line;
 		}

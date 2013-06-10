@@ -294,6 +294,8 @@ zscanner_tool_SOURCES =				\
 	zscanner/test/processing.c
 
 libzscanner_la_SOURCES =			\
+	zscanner/error.h			\
+	zscanner/error.c			\
 	zscanner/file_loader.h			\
 	zscanner/file_loader.c			\
 	zscanner/scanner.h			\

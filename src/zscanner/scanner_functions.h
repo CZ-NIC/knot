@@ -117,7 +117,7 @@ uint8_t loc64to8(uint64_t number);
  *
  * \param s		Zone scanner.
  *
- * \retval KNOT_EOK	if success.
+ * \retval ZSCANNER_OK	if success.
  * \retval error_code	if error.
  */
 int find_rdata_blocks(scanner_t *s);

@@ -20,7 +20,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "common/errcode.h"
+#include "zscanner/error.h"
 #include "common/descriptor.h"
 #include "zscanner/scanner.h"
 
@@ -770,7 +770,7 @@ int date_to_timestamp(uint8_t *buff, uint32_t *timestamp)
 		     days_across_months[month] +
 		     day - 1 + leap_day) * 86400;
 
-	return KNOT_EOK;
+	return ZSCANNER_OK;
 }
 
 void wire_dname_to_str(const uint8_t  *data,
@@ -980,6 +980,6 @@ int find_rdata_blocks(scanner_t *s)
 		return ZSCANNER_EBAD_HEX_RDATA;
 	}
 	else {
-		return KNOT_EOK;
+		return ZSCANNER_OK;
 	}
 }

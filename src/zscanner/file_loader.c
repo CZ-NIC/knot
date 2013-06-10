@@ -27,7 +27,7 @@
 #include <sys/stat.h>			// fstat
 #include <sys/mman.h>			// mmap
 
-#include "common/errcode.h"		// error codes
+#include "zscanner/error.h"		// error codes
 
 /*! \brief Mmap block size in bytes. */
 #define BLOCK_SIZE      30000000
@@ -251,5 +251,5 @@ int file_loader_process(file_loader_t *fl)
 		return FLOADER_ESCANNER;
 	}
 
-	return KNOT_EOK;
+	return ZSCANNER_OK;
 }

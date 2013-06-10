@@ -20,7 +20,7 @@
 #include <inttypes.h>			// PRIu64
 #include <stdio.h>			// printf
 
-#include "common/errcode.h"		// knot_strerror
+#include "zscanner/error.h"		// knot_strerror
 #include "common/descriptor.h"		// knot_rrtype_to_string
 #include "zscanner/scanner.h"		// scanner_t
 
@@ -112,13 +112,13 @@ void debug_process_error(const scanner_t *s)
 	if (s->stop == true) {
 		printf("LINE(%03"PRIu64") ERROR(%s) FILE(%s) NEAR(%s)\n",
 		       s->line_counter,
-		       knot_strerror(s->error_code),
+		       zscanner_strerror(s->error_code),
 		       s->file_name,
 		       s->buffer);
 	} else {
 		printf("LINE(%03"PRIu64") WARNING(%s) FILE(%s) NEAR(%s)\n",
 		       s->line_counter,
-		       knot_strerror(s->error_code),
+		       zscanner_strerror(s->error_code),
 		       s->file_name,
 		       s->buffer);
 	}
