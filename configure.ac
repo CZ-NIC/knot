@@ -290,6 +290,7 @@ CFLAGS="$CFLAGS $CFLAG_VISIBILITY"
 AC_CONFIG_FILES([Makefile
 		 samples/Makefile
 		 src/Makefile
+		 src/zscanner/Makefile
 		 src/tests/Makefile
 		 doc/Makefile
 		 man/Makefile
