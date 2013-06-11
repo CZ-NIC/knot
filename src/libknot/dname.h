@@ -397,6 +397,24 @@ static inline void knot_dname_release(knot_dname_t *dname) {
 	}
 }
 
+/* ! New nocopy based API.
+ * \note Temporary, subject to name changes.
+ */
+
+int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
+                          const uint8_t *pkt);
+
+/*! Calculate wire size.
+ *  \note Expects already checked name.
+ *  \note pkt Supply if name uses dname compression, NULL otherwise.
+ */
+int knot_dname_wire_size(const uint8_t *name, const uint8_t *pkt);
+
+/*! Calculate label count.
+ *  \note Expects already checked name.
+ */
+int knot_dname_wire_labels(const uint8_t *name, const uint8_t *pkt);
+
 #endif /* _KNOT_DNAME_H_ */
 
 /*! @} */
