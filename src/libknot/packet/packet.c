@@ -30,95 +30,28 @@
 /*----------------------------------------------------------------------------*/
 
 /*----------------------------------------------------------------------------*/
-/*!
- * \brief Parses DNS header from the wire format.
- *
- * \todo This is deprecated.
- *
- * \retval KNOT_EOK
- * \retval KNOT_EFEWDATA
- */
-static int knot_packet_parse_header(const uint8_t *wire, size_t *pos,
-                                      size_t size)
-{
-	assert(wire != NULL);
-	assert(pos != NULL);
-
-	if (size - *pos < KNOT_WIRE_HEADER_SIZE) {
-		dbg_packet("Not enough data to parse header.\n");
-		return KNOT_EFEWDATA;
-	}
-
-	*pos += KNOT_WIRE_HEADER_SIZE;
-
-	return KNOT_EOK;
-}
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Parses DNS Question entry from the wire format.
- *
- * \note This function also adjusts the position (\a pos) and size of remaining
- *       bytes in the wire format (\a remaining) according to what was parsed.
- *
- * \param[in,out] pos Wire format to parse the Question from.
- * \param[in,out] remaining Remaining size of the wire format.
- * \param[out] question DNS Question structure to be filled.
- *
- * \retval KNOT_EOK
- * \retval KNOT_EFEWDATA
- * \retval KNOT_ENOMEM
+ * \brief Processes DNS Question entry from the wire format.
  */
-static int knot_packet_parse_question(const uint8_t *wire, size_t *pos,
-                                        size_t size,
-                                        knot_question_t *question, int alloc)
+static int knot_packet_parse_question(knot_packet_t *pkt)
 {
-	assert(pos != NULL);
-	assert(wire != NULL);
-	assert(question != NULL);
+	assert(pkt != NULL);
 
-	if (size - *pos < KNOT_WIRE_QUESTION_MIN_SIZE) {
-		dbg_packet("Not enough data to parse question.\n");
-		return KNOT_EFEWDATA;  // malformed
-	}
+	dbg_packet("Parsing Question starting on position %zu.\n", pkt->parsed);
 
-	dbg_packet("Parsing Question starting on position %zu.\n", *pos);
+	/* Process question. */
+	int len = knot_dname_wire_check(pkt->wireformat + pkt->parsed,
+	                                pkt->wireformat + pkt->size,
+	                                pkt->wireformat);
+	if (len <= 0)
+		return KNOT_EMALF;
 
-	// domain name must end with 0, so just search for 0
-	int i = *pos;
-	while (i < size && wire[i] != 0) {
-		++i;
-	}
-
-	if (size - i - 1 < 4) {
-		dbg_packet("Not enough data to parse question.\n");
-		return KNOT_EFEWDATA;  // no 0 found or not enough data left
-	}
-
-	dbg_packet_verb("Parsing dname starting on position %zu and "
-	                      "%zu bytes long.\n", *pos, i - *pos + 1);
-	dbg_packet_verb("Alloc: %d\n", alloc);
-	if (alloc) {
-		question->qname = knot_dname_parse_from_wire(wire, pos,
-		                                             i + 1,
-		                                             NULL, NULL);
-		if (question->qname == NULL) {
-			return KNOT_ENOMEM;
-		}
-		knot_dname_to_lower(question->qname);
-	} else {
-		assert(question->qname != NULL); /* When alloc=0, must be set. */
-		void *parsed = knot_dname_parse_from_wire(wire, pos,
-		                                     i + 1,
-	                                             NULL, question->qname);
-		if (!parsed) {
-			return KNOT_EMALF;
-		}
-		knot_dname_to_lower(question->qname);
-	}
-	question->qtype = knot_wire_read_u16(wire + i + 1);
-	question->qclass = knot_wire_read_u16(wire + i + 3);
-	*pos += 4;
+	/*! \todo Question case should be preserved. */
+	/* knot_dname_to_lower(question->qname); */
+	pkt->parsed += len + 2 * sizeof(uint16_t); /* Class + Type */
+	pkt->qname_size = len;
 
 	return KNOT_EOK;
 }
@@ -460,8 +393,6 @@ static int knot_packet_parse_rrs(const uint8_t *wire, size_t *pos,
 static void knot_packet_free_allocated_space(knot_packet_t *pkt)
 {
 	dbg_packet_verb("Freeing additional space in packet.\n");
-	dbg_packet_detail("Freeing QNAME.\n");
-	knot_dname_release(pkt->question.qname);
 
 	pkt->mm.free(pkt->answer);
 	pkt->mm.free(pkt->authority);
@@ -587,46 +518,25 @@ int knot_packet_parse_from_wire(knot_packet_t *packet,
                                   const uint8_t *wireformat, size_t size,
                                   int question_only, knot_packet_flag_t flags)
 {
-	if (packet == NULL || wireformat == NULL) {
+	if (packet == NULL || wireformat == NULL || size < KNOT_WIRE_HEADER_SIZE)
 		return KNOT_EINVAL;
-	}
 
-	int err;
 
-	// save the wireformat in the packet
-	// TODO: can we just save the pointer, or we have to copy the data??
+	int err = KNOT_EOK;
+
 	assert(packet->wireformat == NULL);
 	packet->wireformat = (uint8_t*)wireformat;
 	packet->size = size;
 	packet->flags &= ~KNOT_PF_FREE_WIRE;
-
-	if (size < 2) {
-		return KNOT_EMALF;
-	}
-
-	size_t pos = 0;
-
-	dbg_packet_verb("Parsing wire format of packet (size %zu).\nHeader\n",
-	                size);
-	if ((err = knot_packet_parse_header(wireformat, &pos, size)) != KNOT_EOK) {
-		return err;
-	}
-
-	packet->parsed = pos;
+	packet->parsed = KNOT_WIRE_HEADER_SIZE;
 
 	uint16_t qdcount = knot_wire_get_qdcount(packet->wireformat);
-	if (qdcount > 1) {
+	if (qdcount == 1) {
+		if ((err = knot_packet_parse_question(packet)) != KNOT_EOK)
+			return err;
+	} else if (qdcount > 1) {
 		dbg_packet("QDCOUNT larger than 1, FORMERR.\n");
 		return KNOT_EMALF;
-	}
-
-	if (qdcount == 1) {
-		if ((err = knot_packet_parse_question(wireformat, &pos, size,
-		             &packet->question, 1)
-		     ) != KNOT_EOK) {
-			return err;
-		}
-		packet->parsed = pos;
 	}
 
 dbg_packet_exec_detail(
@@ -790,8 +700,7 @@ size_t knot_packet_max_size(const knot_packet_t *packet)
 
 size_t knot_packet_question_size(const knot_packet_t *packet)
 {
-	return (KNOT_WIRE_HEADER_SIZE + 4
-	        + knot_dname_size(packet->question.qname));
+	return KNOT_WIRE_HEADER_SIZE + packet->qname_size + 2 * sizeof(uint16_t);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -799,6 +708,16 @@ size_t knot_packet_question_size(const knot_packet_t *packet)
 size_t knot_packet_parsed(const knot_packet_t *packet)
 {
 	return packet->parsed;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_packet_set_size(knot_packet_t *packet, int size)
+{
+	if (packet == NULL || size > packet->max_size)
+		return KNOT_EINVAL;
+
+	return packet->size = size;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -861,21 +780,17 @@ uint8_t knot_packet_opcode(const knot_packet_t *packet)
 
 /*----------------------------------------------------------------------------*/
 
-knot_question_t *knot_packet_question(knot_packet_t *packet)
-{
-	if (packet == NULL) return NULL;
-	return &packet->question;
-}
-
-/*----------------------------------------------------------------------------*/
-
 const knot_dname_t *knot_packet_qname(const knot_packet_t *packet)
 {
 	if (packet == NULL) {
 		return NULL;
 	}
 
-	return packet->question.qname;
+	/*! \todo This will leak until dname API is finished, it's just placeholder
+	 *        to make it compile and work.
+	 */
+	const uint8_t *qname = packet->wireformat + KNOT_WIRE_HEADER_SIZE;
+	return knot_dname_new_from_wire(qname, knot_dname_wire_size(qname, NULL), 0);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -883,15 +798,8 @@ const knot_dname_t *knot_packet_qname(const knot_packet_t *packet)
 uint16_t knot_packet_qtype(const knot_packet_t *packet)
 {
 	assert(packet != NULL);
-	return packet->question.qtype;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_packet_set_qtype(knot_packet_t *packet, uint16_t qtype)
-{
-	assert(packet != NULL);
-	packet->question.qtype = qtype;
+	unsigned off = KNOT_WIRE_HEADER_SIZE + packet->qname_size;
+	return knot_wire_read_u16(packet->wireformat + off);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -899,7 +807,8 @@ void knot_packet_set_qtype(knot_packet_t *packet, uint16_t qtype)
 uint16_t knot_packet_qclass(const knot_packet_t *packet)
 {
 	assert(packet != NULL);
-	return packet->question.qclass;
+	unsigned off = KNOT_WIRE_HEADER_SIZE + packet->qname_size + sizeof(uint16_t);
+	return knot_wire_read_u16(packet->wireformat + off);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1168,39 +1077,6 @@ dbg_packet_exec(
 		knot_rrset_deep_free(
 			&(((knot_rrset_t **)(pkt->tmp_rrsets))[i]), 1, 1);
 	}
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_packet_question_to_wire(knot_packet_t *packet)
-{
-	if (packet == NULL || packet->question.qname == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	if (packet->size > KNOT_WIRE_HEADER_SIZE) {
-		return KNOT_ERROR;
-	}
-
-	// TODO: get rid of the numeric constants
-	size_t qsize = 4 + knot_dname_size(packet->question.qname);
-	if (qsize > packet->max_size - KNOT_WIRE_HEADER_SIZE) {
-		return KNOT_ESPACE;
-	}
-
-	// create the wireformat of Question
-	uint8_t *pos = packet->wireformat + KNOT_WIRE_HEADER_SIZE;
-	memcpy(pos, knot_dname_name(packet->question.qname),
-	       knot_dname_size(packet->question.qname));
-
-	pos += knot_dname_size(packet->question.qname);
-	knot_wire_write_u16(pos, packet->question.qtype);
-	pos += 2;
-	knot_wire_write_u16(pos, packet->question.qclass);
-
-	packet->size += knot_dname_size(packet->question.qname) + 4;
-
-	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
