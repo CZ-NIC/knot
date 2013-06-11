@@ -294,9 +294,11 @@ AC_CONFIG_FILES([Makefile
 		 samples/Makefile
 		 src/tests/Makefile
 		 src/zscanner/Makefile
-		 src/zscanner/test/run_tests.sh
 		 src/zscanner/test/cases/06-3_INCLUDE.in:src/zscanner/test/cases/06-3_INCLUDE.inin
 		 src/zscanner/test/cases/06-4_INCLUDE.in:src/zscanner/test/cases/06-4_INCLUDE.inin
 		 src/zscanner/test/cases/06-0_INCLUDE.in:src/zscanner/test/cases/06-0_INCLUDE.inin
 		 ])
+
+AC_CONFIG_FILE([src/zscanner/test/run_tests.sh], [chmod a+x src/zscanner/test/run_tests.sh])
+
 AC_OUTPUT
