@@ -33,7 +33,7 @@
 #include "zscanner/error.h"		// error codes
 #include "zscanner/file_loader.h"	// file_loader
 #include "zscanner/scanner_functions.h"	// Base64
-#include "common/descriptor.h"		// KNOT_RRTYPE_A
+#include "zscanner/descriptor.h"	// KNOT_RRTYPE_A
 
 /*! \brief Shorthand for setting warning data. */
 #define SCANNER_WARNING(code) { s->error_code = code; }

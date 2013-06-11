@@ -18,6 +18,8 @@ CLEANFILES = descriptor.h descriptor.c
 nodist_libzscanner_la_SOURCES = descriptor.h descriptor.c
 
 descriptor.h: ../common/descriptor.h
+	cp $< $@
+
 descriptor.c: ../common/descriptor.c
 	cp $< $@
 
