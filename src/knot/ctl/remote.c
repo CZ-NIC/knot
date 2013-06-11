@@ -550,7 +550,7 @@ int remote_answer(int fd, server_t *s, knot_packet_t *pkt, uint8_t* rwire, size_
 	/* Command:
 	 * QNAME: leftmost label of QNAME
 	 */
-	size_t cmd_len = knot_dname_label_size(qname, 0);
+	size_t cmd_len = *knot_dname_name(qname);
 	char *cmd = strndup((char*)qname->name + 1, cmd_len);
 
 	/* Data:

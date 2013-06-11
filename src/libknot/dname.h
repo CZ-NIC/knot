@@ -55,18 +55,6 @@ typedef struct knot_dname knot_dname_t;
 /*----------------------------------------------------------------------------*/
 
 /*!
- * \brief Creates empty dname structure (no name, no owner node).
- *
- * \note Newly created dname is referenced, caller is responsible for releasing
- *       it after use.
- *
- * \return Newly allocated and initialized dname structure.
- *
- * \todo Possibly useless.
- */
-knot_dname_t *knot_dname_new();
-
-/*!
  * \brief Creates a dname structure from domain name given in presentation
  *        format.
  *
@@ -195,16 +183,6 @@ const uint8_t *knot_dname_name(const knot_dname_t *dname);
 unsigned int knot_dname_size(const knot_dname_t *dname);
 
 /*!
- * \brief Returns size of a part of domain name.
- *
- * \param dname Domain name.
- * \param labels Count of labels to get the size of (counted from left).
- *
- * \return Size of first \a labels labels of \a dname, counted from left.
- */
-uint8_t knot_dname_size_part(const knot_dname_t *dname, int labels);
-
-/*!
  * \brief Returns the zone node the domain name belongs to.
  *
  * \param dname Domain name to get the zone node of.
@@ -212,8 +190,6 @@ uint8_t knot_dname_size_part(const knot_dname_t *dname, int labels);
  * \return Zone node the domain name belongs to or NULL if none.
  */
 const struct knot_node *knot_dname_node(const knot_dname_t *dname);
-
-struct knot_node *knot_dname_get_node(const knot_dname_t *dname);
 
 void knot_dname_update_node(knot_dname_t *dname);
 
@@ -293,16 +269,6 @@ int knot_dname_matched_labels(const knot_dname_t *dname1,
  * \todo Find out if this counts the root label also.
  */
 int knot_dname_label_count(const knot_dname_t *dname);
-
-/*!
- * \brief Returns the size of the requested label in the domain name.
- *
- * \param dname Domain name to get the label size from.
- * \param i Index of the label (0 is the leftmost label).
- *
- * \return Size of \a i-th label in \a dname (counted from left).
- */
-uint8_t knot_dname_label_size(const knot_dname_t *dname, int i);
 
 /*!
  * \brief Replaces the suffix of given size in one domain name with other domain
