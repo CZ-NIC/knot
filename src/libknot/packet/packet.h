@@ -46,23 +46,11 @@ struct knot_wildcard_nodes {
 	const knot_dname_t **snames;  /*!< SNAMEs related to the nodes. */
 	short count;             /*!< Count of items in the previous arrays. */
 	short max;               /*!< Capacity of the structure (allocated). */
-	short default_count;
 };
 
 typedef struct knot_wildcard_nodes knot_wildcard_nodes_t;
 
 /*----------------------------------------------------------------------------*/
-
-/*!
- * \brief Structure representing one Question entry in the DNS packet.
- */
-struct knot_question {
-	knot_dname_t *qname;  /*!< Question domain name. */
-	uint16_t qtype;         /*!< Question TYPE. */
-	uint16_t qclass;        /*!< Question CLASS. */
-};
-
-typedef struct knot_question knot_question_t;
 
 /* Maximum number of compressed names. */
 #define COMPR_MAXLEN 64
@@ -81,12 +69,6 @@ typedef struct {
  * \brief Structure representing a DNS packet.
  */
 struct knot_packet {
-	/*!
-	 * \brief Question section.
-	 *
-	 * \note Only one Question is supported!
-	 */
-	knot_question_t question;
 
 	const knot_rrset_t **answer;      /*!< Answer RRSets. */
 	const knot_rrset_t **authority;   /*!< Authority RRSets. */
@@ -109,6 +91,7 @@ struct knot_packet {
 	uint16_t parsed_ns;
 	uint16_t parsed_ar;
 
+	uint8_t qname_size; /*!< QNAME size. */
 	size_t size;      /*!< Current wire size of the packet. */
 	size_t max_size;  /*!< Maximum allowed size of the packet. */
 
@@ -228,6 +211,8 @@ size_t knot_packet_parsed(const knot_packet_t *packet);
  */
 int knot_packet_set_max_size(knot_packet_t *packet, int max_size);
 
+int knot_packet_set_size(knot_packet_t *packet, int size);
+
 uint16_t knot_packet_id(const knot_packet_t *packet);
 
 void knot_packet_set_random_id(knot_packet_t *packet);
@@ -240,15 +225,6 @@ void knot_packet_set_random_id(knot_packet_t *packet);
  * \return OPCODE stored in the packet.
  */
 uint8_t knot_packet_opcode(const knot_packet_t *packet);
-
-/*!
- * \brief Return question section from the packet.
- *
- * \param packet Packet instance.
- *
- * \return pointer to question section.
- */
-knot_question_t *knot_packet_question(knot_packet_t *packet);
 
 /*!
  * \brief Returns the QNAME from the packet.

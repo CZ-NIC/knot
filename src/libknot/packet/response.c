@@ -246,9 +246,6 @@ static int knot_response_realloc_wc_nodes(const knot_node_t ***nodes,
                                           mm_ctx_t *mm)
 {
 
-	const knot_node_t **old_nodes = *nodes;
-	const knot_dname_t **old_snames = *snames;
-
 	short new_max_count = *max_count + RRSET_ALLOC_STEP;
 
 	const knot_node_t **new_nodes = mm->alloc(mm->ctx,
@@ -265,13 +262,12 @@ static int knot_response_realloc_wc_nodes(const knot_node_t ***nodes,
 	memcpy(new_nodes, *nodes, (*max_count) * sizeof(knot_node_t *));
 	memcpy(new_snames, *snames, (*max_count) * sizeof(knot_dname_t *));
 
+	mm->free(*nodes);
+	mm->free(*snames);
+
 	*nodes = new_nodes;
 	*snames = new_snames;
 	*max_count = new_max_count;
-
-
-	mm->free(old_nodes);
-	mm->free(old_snames);
 
 	return KNOT_EOK;
 }
@@ -302,72 +298,52 @@ int knot_response_init(knot_packet_t *response)
 
 /*----------------------------------------------------------------------------*/
 
-int knot_response_init_from_query(knot_packet_t *response,
-                                  knot_packet_t *query,
-                                  int copy_question)
+int knot_response_init_from_query(knot_packet_t *response, knot_packet_t *query)
 {
-
 	if (response == NULL || query == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	size_t to_copy = KNOT_WIRE_HEADER_SIZE;
-	if (copy_question) {
-		// copy the Question section (but do not copy the QNAME)
-		memcpy(&response->question, &query->question,
-		       sizeof(knot_question_t));
-		knot_dname_retain(response->question.qname);
-
-		/* Insert QNAME into compression table. */
-		response->compression[0].off = KNOT_WIRE_HEADER_SIZE;
-		response->compression[0].lbcount = response->question.qname->label_count;
-
-
-		/*! \todo Constant. */
-		to_copy += 4 + knot_dname_size(response->question.qname);
-	} else {
-		knot_wire_set_qdcount(response->wireformat, 0);
-	}
-
-	assert(response->max_size >= to_copy);
+	/* Header + question size. */
+	size_t to_copy = knot_packet_question_size(query);
+	assert(to_copy <= response->max_size);
 	if (response->wireformat != query->wireformat) {
 		memcpy(response->wireformat, query->wireformat, to_copy);
 	}
-	response->size = to_copy;
 
-	// set the qr bit to 1
+	/* Insert QNAME into compression table. */
+	uint8_t *qname = response->wireformat + KNOT_WIRE_HEADER_SIZE;
+	response->compression[0].off = KNOT_WIRE_HEADER_SIZE;
+	response->compression[0].lbcount = knot_dname_wire_labels(qname, NULL);
+
+	/* Update size and flags. */
+	knot_wire_set_qdcount(response->wireformat, 1);
 	knot_wire_set_qr(response->wireformat);
-
-	// clear TC flag
 	knot_wire_clear_tc(response->wireformat);
-
-	// clear AD flag
 	knot_wire_clear_ad(response->wireformat);
-
-	// clear RA flag
 	knot_wire_clear_ra(response->wireformat);
 
-	// set counts to 0
+	/* Reset RR counts */
 	knot_wire_set_ancount(response->wireformat, 0);
 	knot_wire_set_nscount(response->wireformat, 0);
 	knot_wire_set_arcount(response->wireformat, 0);
 
 	response->query = query;
-
+	response->size = to_copy;
+	response->qname_size = query->qname_size;
 	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
-void knot_response_clear(knot_packet_t *resp, int clear_question)
+void knot_response_clear(knot_packet_t *resp)
 {
 	if (resp == NULL) {
 		return;
 	}
 
-	resp->size = (clear_question) ? KNOT_WIRE_HEADER_SIZE
-	              : KNOT_WIRE_HEADER_SIZE + 4
-	                + knot_dname_size(resp->question.qname);
+	/* Keep question. */
+	resp->size = knot_packet_question_size(resp);
 	resp->an_rrsets = 0;
 	resp->ns_rrsets = 0;
 	resp->ar_rrsets = 0;

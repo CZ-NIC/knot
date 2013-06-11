@@ -64,7 +64,8 @@ int knot_query_edns_supported(const knot_packet_t *query);
 int knot_query_init(knot_packet_t *query);
 
 int knot_query_set_question(knot_packet_t *query,
-                              const knot_question_t *question);
+                            const knot_dname_t *qname,
+                            uint16_t qclass, uint16_t qtype);
 
 int knot_query_set_opcode(knot_packet_t *query, uint8_t opcode);
 
