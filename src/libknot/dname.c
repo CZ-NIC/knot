@@ -31,80 +31,24 @@
 #include "util/utils.h"
 #include "util/wire.h"
 
-/*! \todo dnames allocated from TLS cache will be discarded after thread
- *        termination. This shouldn't happpen.
- */
-#if 0
-/*
- * Memory cache.
- */
-#include "common/slab/slab.h"
-#include <stdio.h>
-#include <pthread.h>
-
-/*! \brief TLS unique key for each thread cache. */
-static pthread_key_t dname_ckey;
-static pthread_once_t dname_once = PTHREAD_ONCE_INIT;
-
-/*! \brief Destroy thread dname cache (automatically called). */
-static void knot_dname_cache_free(void *ptr)
-{
-	slab_cache_t* cache = (slab_cache_t*)ptr;
-	if (cache) {
-		slab_cache_destroy(cache);
-		free(cache);
-	}
-}
-
-/*! \brief Cleanup for main() TLS. */
-static void knot_dname_cache_main_free()
-{
-	knot_dname_cache_free(pthread_getspecific(dname_ckey));
-}
-
-static void knot_dname_cache_init()
-{
-	(void) pthread_key_create(&dname_ckey, knot_dname_cache_free);
-	atexit(knot_dname_cache_main_free); // Main thread cleanup
-}
-#endif
-
-/*!
- * \brief Allocate item from thread cache.
- * \retval Allocated dname instance on success.
- * \retval NULL on error.
- */
-static knot_dname_t* knot_dname_alloc()
-{
-	return malloc(sizeof(knot_dname_t));
-
-	/*! \todo dnames allocated from TLS cache will be discarded after thread
-	 *        termination. This shouldn't happpen.
-	 */
-#if 0
-	/* Initialize dname cache TLS key. */
-	(void)pthread_once(&dname_once, knot_dname_cache_init);
-
-	/* Create cache if not exists. */
-	slab_cache_t* cache = pthread_getspecific(dname_ckey);
-	if (knot_unlikely(!cache)) {
-		cache = malloc(sizeof(slab_cache_t));
-		if (!cache) {
-			return 0;
-		}
-
-		/* Initialize cache. */
-		slab_cache_init(cache, sizeof(knot_dname_t));
-		(void)pthread_setspecific(dname_ckey, cache);
-	}
-
-	return slab_cache_alloc(cache);
-#endif
-}
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
+
+static knot_dname_t *knot_dname_new()
+{
+	knot_dname_t *dname = malloc(sizeof(knot_dname_t));
+
+	dname->name = NULL;
+	dname->labels = NULL;
+	dname->node = NULL;
+	dname->count = 1;
+	dname->size = 0;
+	dname->label_count = 0;
+
+	return dname;
+}
 
 static int knot_dname_set(knot_dname_t *dname, uint8_t *wire,
                             short wire_size, const uint8_t *labels,
@@ -367,22 +311,6 @@ dbg_dname_exec_verb(
 
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
-/*----------------------------------------------------------------------------*/
-
-knot_dname_t *knot_dname_new()
-{
-	knot_dname_t *dname = knot_dname_alloc();
-
-	dname->name = NULL;
-	dname->labels = NULL;
-	dname->node = NULL;
-	dname->count = 1;
-	dname->size = 0;
-	dname->label_count = 0;
-
-	return dname;
-}
-
 /*----------------------------------------------------------------------------*/
 
 knot_dname_t *knot_dname_new_from_str(const char *name, uint size,
@@ -746,24 +674,8 @@ uint knot_dname_size(const knot_dname_t *dname)
 
 /*----------------------------------------------------------------------------*/
 
-uint8_t knot_dname_size_part(const knot_dname_t *dname, int labels)
-{
-	assert(labels < dname->label_count);
-	assert(dname->labels != NULL);
-	return (dname->labels[labels]);
-}
-
-/*----------------------------------------------------------------------------*/
-
 const struct knot_node *knot_dname_node(const knot_dname_t *dname)
 
-{
-	return knot_dname_get_node(dname);
-}
-
-/*----------------------------------------------------------------------------*/
-
-struct knot_node *knot_dname_get_node(const knot_dname_t *dname)
 {
 	if (dname == NULL) {
 		return NULL;
@@ -1023,17 +935,6 @@ int knot_dname_matched_labels(const knot_dname_t *dname1,
 int knot_dname_label_count(const knot_dname_t *dname)
 {
 	return dname->label_count;
-}
-
-/*----------------------------------------------------------------------------*/
-
-uint8_t knot_dname_label_size(const knot_dname_t *dname, int i)
-{
-	assert(i >= 0);
-	assert(dname->size == 1 || i + 1 == dname->label_count
-	       || dname->labels[i + 1] - dname->labels[i] - 1
-	          == dname->name[dname->labels[i]]);
-	return dname->name[dname->labels[i]];
 }
 
 /*----------------------------------------------------------------------------*/
