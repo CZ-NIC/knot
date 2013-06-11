@@ -294,6 +294,8 @@ zscanner_tool_SOURCES =				\
 	zscanner/test/processing.c
 
 libzscanner_la_SOURCES =			\
+	common/descriptor.h			\
+	common/descriptor.c			\
 	zscanner/error.h			\
 	zscanner/error.c			\
 	zscanner/file_loader.h			\
@@ -311,4 +313,4 @@ knotc_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 kdig_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 khost_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 knsupdate_LDADD = libknotd.la libknot.la libknots.la libzscanner.la @LIBOBJS@
-zscanner_tool_LDADD = libknots.la libknot.la libknotd.la libzscanner.la @LIBOBJS@
+zscanner_tool_LDADD = libzscanner.la @LIBOBJS@
