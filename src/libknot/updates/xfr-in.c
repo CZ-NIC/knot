@@ -57,22 +57,10 @@ static int xfrin_create_query(knot_dname_t *qname, uint16_t qtype,
 		return KNOT_ERROR;
 	}
 
-	knot_question_t question;
-
-	/* Retain qname until the question is freed. */
-	knot_dname_retain(qname);
-
 	/* Set random query ID. */
 	knot_packet_set_random_id(pkt);
-
-	// this is ugly!!
-	question.qname = (knot_dname_t *)qname;
-	question.qtype = qtype;
-	question.qclass = qclass;
-
-	rc = knot_query_set_question(pkt, &question);
+	rc = knot_query_set_question(pkt, qname, qclass, qtype);
 	if (rc != KNOT_EOK) {
-		knot_dname_release(question.qname);
 		knot_packet_free(&pkt);
 		return KNOT_ERROR;
 	}
@@ -96,7 +84,6 @@ static int xfrin_create_query(knot_dname_t *qname, uint16_t qtype,
 	rc = knot_packet_to_wire(pkt, &wire, &wire_size);
 	if (rc != KNOT_EOK) {
 		dbg_xfrin("Failed to write packet to wire.\n");
-		knot_dname_release(question.qname);
 		knot_packet_free(&pkt);
 		return KNOT_ERROR;
 	}
@@ -137,9 +124,6 @@ static int xfrin_create_query(knot_dname_t *qname, uint16_t qtype,
 	knot_packet_dump(pkt);
 
 	knot_packet_free(&pkt);
-
-	/* Release qname. */
-	knot_dname_release(question.qname);
 
 	return KNOT_EOK;
 }

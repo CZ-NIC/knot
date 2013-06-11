@@ -442,7 +442,7 @@ static int remote_send_chunk(int c, knot_packet_t *pkt, const char* d,
                              uint16_t dlen, uint8_t* rwire, size_t rlen)
 {
 	int ret = KNOT_ERROR;
-	knot_packet_t *resp = knot_packet_new();
+	knot_packet_t *resp = knot_packet_new_mm(&pkt->mm);
 	if (!resp) {
 		return ret;
 	}
@@ -453,7 +453,7 @@ static int remote_send_chunk(int c, knot_packet_t *pkt, const char* d,
 		knot_packet_free(&resp);
 		return ret;
 	}
-	ret = knot_response_init_from_query(resp, pkt, 1);
+	ret = knot_response_init_from_query(resp, pkt);
 	if (ret != KNOT_EOK)  {
 		knot_packet_free(&resp);
 		return ret;
@@ -675,25 +675,23 @@ knot_packet_t* remote_query(const char *query, const knot_tsig_key_t *key)
 	}
 
 	/* Question section. */
-	knot_question_t q;
 	char *qname = strcdup(query, KNOT_CTL_REALM_EXT);
-	q.qname = knot_dname_new_from_str(qname, strlen(qname), 0);
-	if (!q.qname) {
+	knot_dname_t *dname = knot_dname_new_from_str(qname, strlen(qname), 0);
+	if (!dname) {
 		knot_packet_free(&qr);
 		free(qname);
 		return NULL;
 	}
-	q.qtype = KNOT_RRTYPE_ANY;
-	q.qclass = KNOT_CLASS_CH;
 
 	/* Cannot return != KNOT_EOK, but still. */
-	if (knot_query_set_question(qr, &q) != KNOT_EOK) {
+	if (knot_query_set_question(qr, dname, KNOT_CLASS_CH, KNOT_RRTYPE_ANY) != KNOT_EOK) {
 		knot_packet_free(&qr);
+		knot_dname_free(&dname);
 		free(qname);
 		return NULL;
 	}
 
-	knot_dname_release(q.qname);
+	knot_dname_free(&dname);
 	free(qname);
 
 	return qr;
