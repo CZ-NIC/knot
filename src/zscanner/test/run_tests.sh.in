@@ -34,6 +34,8 @@ for file in $(find "${TESTS_DIR}" -name "*.in" | sort -n); do
 		if [ $# -ne 0 ]; then
 			echo "\n=== ${fileout} DIFF ======================"
 			diff "${OUTS_DIR}/${fileout}" "${TESTS_DIR}/${fileout}"
+		else
+			exit $RET
 		fi
 	fi
 done
