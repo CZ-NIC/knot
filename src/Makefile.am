@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I $(top_srcdir)/m4
-SUBDIRS = . tests zscanner
+SUBDIRS = zscanner . tests
 
 sbin_PROGRAMS = knotc knotd kdig khost knsupdate
 noinst_LTLIBRARIES = libknot.la libknotd.la libknots.la
