@@ -13,9 +13,17 @@ EXTRA_DIST =				\
 	test/run_tests.sh		\
 	test/cases
 
+BUILT_SOURCES = descriptor.h descriptor.c
+CLEANFILES = descriptor.h descriptor.c
+nodist_libzscanner_la_SOURCES = descriptor.h descriptor.c
+
+descriptor.h: ../common/descriptor.h
+descriptor.c: ../common/descriptor.c
+	cp $< $@
+
 if HAVE_RAGEL
-BUILT_SOURCES = scanner.c
-CLEANFILES = scanner.c
+BUILT_SOURCES += scanner.c
+CLEANFILES += scanner.c
 
 scanner.c: scanner.rl scanner_body.rl
 	$(RAGEL) $(FSM_TYPE) -s -o $@ $(srcdir)/scanner.rl
@@ -36,9 +44,7 @@ libzscanner_la_SOURCES =		\
 	scanner.h			\
 	scanner.c			\
 	scanner_functions.h		\
-	scanner_functions.c		\
-	../common/descriptor.h		\
-	../common/descriptor.c
+	scanner_functions.c
 
 libzscanner_la_LIBADD = @LIBOBJS@
 zscanner_tool_LDADD = libzscanner.la @LIBOBJS@
