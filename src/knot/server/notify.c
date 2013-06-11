@@ -63,14 +63,7 @@ static int notify_request(const knot_rrset_t *rrset,
 		return KNOT_ERROR;
 	}
 
-	knot_question_t question;
-
-	// this is ugly!!
-	question.qname = rrset->owner;
-	question.qtype = rrset->type;
-	question.qclass = rrset->rclass;
-
-	rc = knot_query_set_question(pkt, &question);
+	rc = knot_query_set_question(pkt, rrset->owner, rrset->rclass, rrset->type);
 	if (rc != KNOT_EOK) {
 		knot_packet_free(&pkt);
 		return KNOT_ERROR;
@@ -122,13 +115,13 @@ static int notify_request(const knot_rrset_t *rrset,
 int notify_create_response(knot_packet_t *request, uint8_t *buffer,
                            size_t *size)
 {
-	knot_packet_t *response = knot_packet_new();
+	knot_packet_t *response = knot_packet_new_mm(&request->mm);
 	CHECK_ALLOC_LOG(response, KNOT_ENOMEM);
 
 	/* Set maximum packet size. */
 	int rc = knot_packet_set_max_size(response, *size);
 	if (rc == KNOT_EOK) {
-		rc = knot_response_init_from_query(response, request, 1);
+		rc = knot_response_init_from_query(response, request);
 	}
 
 	/* Aggregated result check. */

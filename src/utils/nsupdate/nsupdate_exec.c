@@ -301,17 +301,18 @@ static int pkt_append(nsupdate_params_t *p, int sect)
 {
 	/* Check packet state first. */
 	int ret = KNOT_EOK;
+	knot_dname_t * qname = NULL;
 	scanner_t *s = p->rrp;
 	if (!p->pkt) {
 		p->pkt = create_empty_packet(MAX_PACKET_SIZE);
-		knot_question_t q;
-		q.qclass = p->class_num;
-		q.qtype = p->type_num;
-		q.qname = knot_dname_new_from_nonfqdn_str(p->zone, strlen(p->zone), NULL);
-		ret = knot_query_set_question(p->pkt, &q);
-		if (ret != KNOT_EOK) {
+		qname = knot_dname_new_from_nonfqdn_str(p->zone,
+		                                        strlen(p->zone),
+		                                        NULL);
+		ret = knot_query_set_question(p->pkt, qname, p->class_num, p->type_num);
+		knot_dname_free(&qname);
+		if (ret != KNOT_EOK)
 			return ret;
-		}
+
 		knot_query_set_opcode(p->pkt, KNOT_OPCODE_UPDATE);
 	}
 
@@ -728,8 +729,6 @@ int cmd_send(const char* lp, nsupdate_params_t *params)
 	}
 
 	/* Clear sent packet. */
-	knot_question_t *q = knot_packet_question(params->pkt);
-	knot_dname_release(q->qname);
 	knot_packet_free_rrsets(params->pkt);
 	knot_packet_free(&params->pkt);
 

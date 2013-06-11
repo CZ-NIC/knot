@@ -320,7 +320,7 @@ static void print_section_host(const knot_rrset_t **rrsets,
 }
 
 static void print_error_host(const uint8_t         code,
-                             const knot_question_t *question)
+                             const knot_packet_t   *packet)
 {
 	const char *rcode_str = "NULL";
 	char type[32] = "NULL";
@@ -328,12 +328,12 @@ static void print_error_host(const uint8_t         code,
 
 	knot_lookup_table_t *rcode;
 
-	owner = knot_dname_to_str(question->qname);
+	owner = knot_dname_to_str(knot_packet_qname(packet));
 	rcode = knot_lookup_by_id(knot_rcode_names, code);
 	if (rcode != NULL) {
 		rcode_str = rcode->name;
 	}
-	knot_rrtype_to_string(question->qtype, type, sizeof(type));
+	knot_rrtype_to_string(knot_packet_qtype(packet), type, sizeof(type));
 
 	if (code == KNOT_RCODE_NOERROR) {
 		printf("Host %s has no %s record\n", owner, type);
@@ -365,7 +365,7 @@ knot_packet_t* create_empty_packet(const size_t max_size)
 	return packet;
 }
 
-void print_header_xfr(const knot_question_t *question, const style_t  *style)
+void print_header_xfr(const knot_packet_t *packet, const style_t  *style)
 {
 	if (style == NULL) {
 		DBG_NULL;
@@ -374,7 +374,7 @@ void print_header_xfr(const knot_question_t *question, const style_t  *style)
 
 	char xfr[16] = "AXFR";
 
-	switch (question->qtype) {
+	switch (knot_packet_qtype(packet)) {
 	case KNOT_RRTYPE_AXFR:
 		break;
 	case KNOT_RRTYPE_IXFR:
@@ -385,7 +385,7 @@ void print_header_xfr(const knot_question_t *question, const style_t  *style)
 	}
 
 	if (style->show_header) {
-		char *owner = knot_dname_to_str(question->qname);
+		char *owner = knot_dname_to_str(knot_packet_qname(packet));
 		if (owner != NULL) {
 			printf("\n;; %s for %s\n", xfr, owner);
 			free(owner);
@@ -487,15 +487,15 @@ void print_packet(const knot_packet_t *packet,
 			print_section_host(packet->answer, ancount,
 			                   style);
 		} else {
-			print_error_host(rcode, &packet->question);
+			print_error_host(rcode, packet);
 		}
 		break;
 	case FORMAT_NSUPDATE:
 		if (style->show_question && qdcount > 0) {
 			printf("\n;; ZONE SECTION:\n;; ");
-			print_section_question(packet->question.qname,
-			                       packet->question.qclass,
-			                       packet->question.qtype,
+			print_section_question(knot_packet_qname(packet),
+			                       knot_packet_qclass(packet),
+			                       knot_packet_qtype(packet),
 			                       style);
 		}
 
@@ -523,9 +523,9 @@ void print_packet(const knot_packet_t *packet,
 	case FORMAT_FULL:
 		if (style->show_question && qdcount > 0) {
 			printf("\n;; QUESTION SECTION:\n;; ");
-			print_section_question(packet->question.qname,
-			                       packet->question.qclass,
-			                       packet->question.qtype,
+			print_section_question(knot_packet_qname(packet),
+			                       knot_packet_qclass(packet),
+			                       knot_packet_qtype(packet),
 			                       style);
 		}
 

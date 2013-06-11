@@ -99,8 +99,8 @@ static uint8_t rrl_clsid(rrl_req_t *p)
 	}
 
 	/* Check query type for spec. classes. */
-	if (p->qst) {
-		switch(p->qst->qtype) {
+	if (p->query) {
+		switch(knot_packet_qtype(p->query)) {
 		case KNOT_RRTYPE_ANY:      /* ANY spec. class */
 			return CLS_ANY;
 			break;
@@ -143,7 +143,7 @@ static int rrl_clsname(char *dst, size_t maxlen, uint8_t cls,
 		dbg_rrl_verb("%s: using zone/fallback name\n", __func__);
 		break;
 	default:
-		if (p->qst) dn = p->qst->qname;
+		if (p->query) dn = knot_packet_qname(p->query);
 		break;
 	}
 

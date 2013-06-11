@@ -52,10 +52,10 @@ knot_packet_t* create_empty_packet(const size_t                      max_size);
 /*!
  * \brief Prints information header for transfer.
  *
- * \param question	Packet question section.
+ * \param packet	Parsed packet.
  * \param style		Style of the output.
  */
-void print_header_xfr(const knot_question_t *question, const style_t *style);
+void print_header_xfr(const knot_packet_t *packet, const style_t *style);
 
 /*!
  * \brief Prints answer section for 1 transfer message.

@@ -2605,7 +2605,7 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 
 	// Clean the response structure
 	dbg_ns_verb("Clearing response structure..\n");
-	knot_response_clear(xfr->response, 0);
+	knot_response_clear(xfr->response);
 
 	// increment the packet number
 	++xfr->packet_nr;
@@ -2996,7 +2996,7 @@ static int ns_ixfr(knot_ns_xfr_t *xfr)
 /*----------------------------------------------------------------------------*/
 
 static int knot_ns_prepare_response(knot_packet_t *query, knot_packet_t **resp,
-                                    size_t max_size, int copy_question)
+                                    size_t max_size)
 {
 	assert(max_size >= 500);
 
@@ -3015,7 +3015,7 @@ static int knot_ns_prepare_response(knot_packet_t *query, knot_packet_t **resp,
 		return ret;
 	}
 
-	ret = knot_response_init_from_query(*resp, query, copy_question);
+	ret = knot_response_init_from_query(*resp, query);
 
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to init response structure.\n");
@@ -3350,8 +3350,7 @@ int knot_ns_error_response_from_query(const knot_nameserver_t *nameserver,
 	if (query->parsed > KNOT_WIRE_HEADER_SIZE
 	                    + KNOT_WIRE_QUESTION_MIN_SIZE) {
 		// in this case the whole question was parsed, append it
-		size_t question_size = 4 + knot_dname_size(
-		                        knot_packet_qname(query));
+		size_t question_size = knot_packet_question_size(query);
 
 		if (max_size > KNOT_WIRE_HEADER_SIZE + question_size) {
 			/*
@@ -3488,7 +3487,7 @@ int knot_ns_prep_normal_response(knot_nameserver_t *nameserver,
 		resp_max_size = MAX_UDP_PAYLOAD;
 	}
 
-	ret = knot_ns_prepare_response(query, resp, resp_max_size, 1);
+	ret = knot_ns_prepare_response(query, resp, resp_max_size);
 	if (ret != KNOT_EOK) {
 		return KNOT_ERROR;
 	}
@@ -3627,10 +3626,14 @@ int knot_ns_prep_update_response(knot_nameserver_t *nameserver,
 		resp_max_size = MAX_UDP_PAYLOAD;
 	}
 
-	ret = knot_ns_prepare_response(query, resp, resp_max_size, 0);
+	ret = knot_ns_prepare_response(query, resp, resp_max_size);
 	if (ret != KNOT_EOK) {
 		return KNOT_ERROR;
 	}
+
+	/* Trim question for DDNS answer. */
+	knot_packet_set_size(query, KNOT_WIRE_HEADER_SIZE);
+	knot_wire_set_qdcount(query->wireformat, 0);
 
 	dbg_ns_verb("Query - parsed: %zu, total wire size: %zu\n",
 	            query->parsed, query->size);
@@ -3821,7 +3824,7 @@ dbg_ns_exec(
 int knot_ns_init_xfr_resp(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 {
 	int ret = KNOT_EOK;
-	knot_packet_t *resp = knot_packet_new();
+	knot_packet_t *resp = knot_packet_new_mm(&xfr->query->mm);
 	if (resp == NULL) {
 		dbg_ns("Failed to create packet structure.\n");
 		/*! \todo xfr->wire is not NULL, will fail on assert! */
@@ -3836,7 +3839,7 @@ int knot_ns_init_xfr_resp(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	resp->wireformat = xfr->wire;
 	resp->max_size = xfr->wire_size;
 
-	ret = knot_response_init_from_query(resp, xfr->query, 1);
+	ret = knot_response_init_from_query(resp, xfr->query);
 
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to init response structure.\n");

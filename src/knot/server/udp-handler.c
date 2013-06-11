@@ -220,7 +220,7 @@ int udp_handle(struct answer_ctx *ans, int fd,
 		rrl_req_t rrl_rq;
 		memset(&rrl_rq, 0, sizeof(rrl_req_t));
 		rrl_rq.w = qbuf; /* Wire */
-		rrl_rq.qst = &packet->question;
+		rrl_rq.query = packet;
 
 		rcu_read_lock();
 		rrl_rq.flags = packet->flags;
