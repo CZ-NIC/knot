@@ -237,7 +237,12 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 				ret = KNOT_ENOMEM;
 				break;
 			}
-			if (snprintf(when, 64, "in %luh%lum%lus",
+			/*! Workaround until proper zone fetching API and locking
+			 *  is implemented (ref #31)
+			 */
+			if (dif.tv_sec < 0) {
+				memcpy(when, "busy", 5);
+			} else if (snprintf(when, 64, "in %luh%lum%lus",
 			             dif.tv_sec/3600,
 			             (dif.tv_sec % 3600)/60,
 			             dif.tv_sec % 60) < 0) {
