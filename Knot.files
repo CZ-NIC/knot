@@ -270,6 +270,9 @@ src/utils/nsupdate/nsupdate_exec.h
 src/utils/nsupdate/nsupdate_main.c
 src/utils/nsupdate/nsupdate_params.c
 src/utils/nsupdate/nsupdate_params.h
+src/zscanner/Makefile.am
+src/zscanner/error.c
+src/zscanner/error.h
 src/zscanner/file_loader.c
 src/zscanner/file_loader.h
 src/zscanner/scanner.c

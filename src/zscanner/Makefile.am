@@ -1,7 +1,11 @@
 ACLOCAL_AMFLAGS = -I $(top_srcdir)/m4
 
+AM_CPPFLAGS = -I$(top_srcdir)/src/zscanner -I$(top_srcdir)/src -DSYSCONFDIR='"$(sysconfdir)"' -DSBINDIR='"$(sbindir)"'
+
 noinst_PROGRAMS = zscanner-tool
 noinst_LTLIBRARIES = libzscanner.la
+
+TESTS = test/run_tests.sh
 
 EXTRA_DIST =				\
 	scanner.rl			\
@@ -25,8 +29,6 @@ zscanner_tool_SOURCES =			\
 	test/processing.c
 
 libzscanner_la_SOURCES =		\
-	../common/descriptor.h		\
-	../common/descriptor.c		\
 	error.h				\
 	error.c				\
 	file_loader.h			\
@@ -34,7 +36,9 @@ libzscanner_la_SOURCES =		\
 	scanner.h			\
 	scanner.c			\
 	scanner_functions.h		\
-	scanner_functions.c
+	scanner_functions.c		\
+	../common/descriptor.h		\
+	../common/descriptor.c
 
 libzscanner_la_LIBADD = @LIBOBJS@
 zscanner_tool_LDADD = libzscanner.la @LIBOBJS@

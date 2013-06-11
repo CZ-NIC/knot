@@ -15,14 +15,13 @@
  */
 
 #include <config.h>
-#include "zscanner/scanner_functions.h"
-
 #include <inttypes.h>			// PRIu64
 #include <stdio.h>			// printf
 
-#include "zscanner/error.h"		// knot_strerror
-#include "common/descriptor.h"		// knot_rrtype_to_string
+#include "zscanner/test/processing.h"
+#include "zscanner/error.h"		// zscanner_strerror
 #include "zscanner/scanner.h"		// scanner_t
+#include "common/descriptor.h"		// knot_rrtype_to_string
 
 #define ERROR_CODE_TO_STRING(code) [code - ZSCANNER_UNCOVERED_STATE] = #code
 const char *error_names[] = {

@@ -288,12 +288,12 @@ gl_VISIBILITY()
 CFLAGS="$CFLAGS $CFLAG_VISIBILITY"
 
 AC_CONFIG_FILES([Makefile
-		 samples/Makefile
-		 src/Makefile
-		 src/zscanner/Makefile
-		 src/tests/Makefile
 		 doc/Makefile
 		 man/Makefile
+		 src/Makefile
+		 samples/Makefile
+		 src/tests/Makefile
+		 src/zscanner/Makefile
 		 src/zscanner/test/run_tests.sh
 		 src/zscanner/test/cases/06-3_INCLUDE.in:src/zscanner/test/cases/06-3_INCLUDE.inin
 		 src/zscanner/test/cases/06-4_INCLUDE.in:src/zscanner/test/cases/06-4_INCLUDE.inin

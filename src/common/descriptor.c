@@ -15,11 +15,11 @@
  */
 
 #include <config.h>
-#include "common/descriptor.h"
-
 #include <stdio.h>			// snprintf
 #include <stdlib.h>			// strtoul
 #include <strings.h>			// strcasecmp
+
+#include <common/descriptor.h>
 
 /*!
  * \brief Table with DNS classes.

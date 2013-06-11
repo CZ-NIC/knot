@@ -15,8 +15,6 @@
  */
 
 #include <config.h>
-#include "zscanner/file_loader.h"
-
 #include <inttypes.h>			// PRIu64
 #include <unistd.h>			// sysconf
 #include <stdio.h>			// sprintf
@@ -27,6 +25,7 @@
 #include <sys/stat.h>			// fstat
 #include <sys/mman.h>			// mmap
 
+#include "zscanner/file_loader.h"
 #include "zscanner/error.h"		// error codes
 
 /*! \brief Mmap block size in bytes. */

@@ -29,8 +29,8 @@
 
 #include <stdint.h>			// uint32_t
 
-#include "common/descriptor.h"		// KNOT_CLASS_IN
 #include "zscanner/scanner.h"		// scanner_t
+#include "common/descriptor.h"		// KNOT_CLASS_IN
 
 /*! \brief Settings block size in bytes. */
 #define SETTINGS_BUFFER_LENGTH		 1024

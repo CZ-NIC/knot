@@ -15,14 +15,13 @@
  */
 
 #include <config.h>
-#include "zscanner/scanner_functions.h"
-
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "zscanner/error.h"
-#include "common/descriptor.h"
-#include "zscanner/scanner.h"
+#include "zscanner/scanner_functions.h"
+#include "zscanner/error.h"		// error codes
+#include "zscanner/scanner.h"		// scanner_t
+#include "common/descriptor.h"		// KNOT_RDATA_WF_END
 
 const uint8_t digit_to_num[] = {
     ['0'] = 0, ['1'] = 1, ['2'] = 2, ['3'] = 3, ['4'] = 4,

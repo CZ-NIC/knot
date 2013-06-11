@@ -10,10 +10,6 @@ AM_YFLAGS = -d
 libknotd_la_YFLAGS = -pcf_ -d
 libknotd_la_LFLAGS = # TODO: reentrant parser, prefix
 
-EXTRA_DIST =					\
-	zscanner/test/run_tests.sh		\
-	zscanner/test/cases
-
 BUILT_SOURCES =					\
 	knot/conf/libknotd_la-cf-lex.c		\
 	knot/conf/libknotd_la-cf-parse.c	\
