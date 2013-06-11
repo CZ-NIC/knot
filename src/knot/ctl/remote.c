@@ -241,8 +241,7 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 			 *  is implemented (ref #31)
 			 */
 			if (dif.tv_sec < 0) {
-				const char *busy = "busy";
-				memcpy(when, busy, strlen(busy));
+				memcpy(when, "busy", 5);
 			} else if (snprintf(when, 64, "in %luh%lum%lus",
 			             dif.tv_sec/3600,
 			             (dif.tv_sec % 3600)/60,
