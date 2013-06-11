@@ -155,7 +155,7 @@ int knot_response_compress_dname(const knot_dname_t *dname, knot_compr_t *compr,
 
 	/* If table is full, elect name from the lower 1/4 of the table
 	 * and replace it. */
-	if (i == COMPR_MAXLEN - 1) {
+	if (i == COMPR_MAXLEN) {
 		i = COMPR_FIXEDLEN + rand() % COMPR_VOLATILE;
 		compr->table[i].off = 0;
 	}
