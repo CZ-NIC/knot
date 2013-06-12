@@ -37,7 +37,6 @@
 #include <cap-ng.h>
 #endif /* HAVE_CAP_NG_H */
 
-#include "common/queue.h"
 #include "common/sockaddr.h"
 #include "common/mempattern.h"
 #include "common/mempool.h"
@@ -74,20 +73,22 @@ static inline void udp_pps_begin()
 	gettimeofday(&__pps_t0, NULL);
 }
 
-static inline void udp_pps_sample(unsigned n)
+static inline void udp_pps_sample(unsigned n, unsigned thr_id)
 {
 	__pps_rx += n;
-	gettimeofday(&__pps_t1, NULL);
-	if (time_diff(&__pps_t0, &__pps_t1) >= 1000.0) {
-		unsigned pps = __pps_rx;
-		memcpy(&__pps_t0, &__pps_t1, sizeof(struct timeval));
-		__pps_rx = 0;
-		log_server_info("RX rate %u p/s.\n", pps);
+	if (thr_id == 0) {
+		gettimeofday(&__pps_t1, NULL);
+		if (time_diff(&__pps_t0, &__pps_t1) >= 1000.0) {
+			unsigned pps = __pps_rx;
+			memcpy(&__pps_t0, &__pps_t1, sizeof(struct timeval));
+			__pps_rx = 0;
+			log_server_info("RX rate %u p/s.\n", pps);
+		}
 	}
 }
 #else
 static inline void udp_pps_begin() {}
-static inline void udp_pps_sample(unsigned n) {}
+static inline void udp_pps_sample(unsigned n, unsigned thr_id) {}
 #endif
 
 
@@ -519,49 +520,16 @@ void __attribute__ ((constructor)) udp_master_init()
 #endif /* ENABLE_RECVMMSG */
 }
 
-struct udpstate_t {
-	unsigned rqlen;
-	void *rqs[QUEUE_ELEMS - 1];
-	queue_t rx, tx;
-};
-
-void* udp_create_ctx(void)
+int udp_reader(iohandler_t *h, dthread_t *thread)
 {
-	struct udpstate_t *ctx = malloc(sizeof(struct udpstate_t));
-	if (ctx == NULL) {
-		return NULL;
-	}
-	memset(ctx, 0, sizeof(struct udpstate_t));
 
-	queue_init(&ctx->rx);
-	queue_init(&ctx->tx);
+	iostate_t *st = (iostate_t *)thread->data;
 
-	/* Fill queue with empty requests. */
-	for (unsigned i = 0; i < QUEUE_ELEMS - 1; ++i) {
-		if ((ctx->rqs[i] = _udp_init()) == NULL) {
-			break;
-		}
-		queue_insert(&ctx->rx, ctx->rqs[i]);
-		++ctx->rqlen;
-	}
-	return ctx;
-}
+	/* Prepare structures for bound sockets. */
+	unsigned thr_id = dt_get_id(thread);
+	void *rq = _udp_init();
+	ifacelist_t *ref = NULL;
 
-void udp_free_ctx(void *ctx)
-{
-	struct udpstate_t *_ctx = (struct udpstate_t *)ctx;
-	queue_deinit(&_ctx->rx);
-	queue_deinit(&_ctx->tx);
-
-	/* Free requests. */
-	for (unsigned i = 0; i < _ctx->rqlen; ++i) {
-		_udp_deinit(_ctx->rqs[i]);
-	}
-	free(_ctx);
-}
-
-int udp_writer(iohandler_t *h, dthread_t *thread)
-{
 	/* Create memory pool context. */
 	struct mempool *pool = mp_new(64 * 1024);
 	mm_ctx_t mm;
@@ -574,40 +542,6 @@ int udp_writer(iohandler_t *h, dthread_t *thread)
 	ans_ctx.srv = h->server;
 	ans_ctx.slip = 0;
 	ans_ctx.mm = &mm;
-
-	/* Connect to request queue. */
-	void *rq = NULL;
-	struct udpstate_t *ctx = (struct udpstate_t *)h->data;
-	while ((rq = queue_remove(&ctx->tx)) != NULL) {
-		_udp_handle(&ans_ctx, rq);
-		_udp_send(rq);
-		mp_flush(mm.ctx);
-		queue_insert(&ctx->rx, rq); /* Return to readq. */
-	}
-
-	queue_insert(&ctx->tx, NULL); /* Signalize next to close. */
-	mp_delete(mm.ctx);
-	return KNOT_EOK;
-}
-
-int udp_reader(iohandler_t *h, dthread_t *thread)
-{
-	/* Bind reader to CPU0. It shouldn't matter much which, but it is good
-	 * to bind I/O to single process to avoid context switches.
-	 * Moreover CPU0 _usually_ gets most of the interrupts.
-	 */
-	unsigned cpu = dt_online_cpus();
-	if (cpu > 1) {
-		unsigned cpu_mask = 0;
-		dt_setaffinity(thread, &cpu_mask, 1);
-	}
-
-	iostate_t *st = (iostate_t *)thread->data;
-	struct udpstate_t *ctx = (struct udpstate_t *)h->data;
-
-	/* Prepare structures for bound sockets. */
-	void *rq = queue_remove(&ctx->rx);
-	ifacelist_t *ref = NULL;
 
 	/* Chose select as epoll/kqueue has larger overhead for a
 	 * single or handful of sockets. */
@@ -660,23 +594,31 @@ int udp_reader(iohandler_t *h, dthread_t *thread)
 		for (unsigned fd = minfd; fd <= maxfd; ++fd) {
 			if (FD_ISSET(fd, &rfds)) {
 				while ((rcvd = _udp_recv(fd, rq)) > 0) {
-					queue_insert(&ctx->tx, rq);
-					udp_pps_sample(rcvd);
-					rq = queue_remove(&ctx->rx);
+					_udp_handle(&ans_ctx, rq);
+					_udp_send(rq);
+					mp_flush(mm.ctx);
+					udp_pps_sample(rcvd, thr_id);
 				}
 			}
 		}
 	}
 
-	queue_insert(&ctx->rx, rq); /* Return */
-	queue_insert(&ctx->tx, NULL);
+	_udp_deinit(rq);
 	ref_release((ref_t *)ref);
-
+	mp_delete(mm.ctx);
 	return KNOT_EOK;
 }
 
 int udp_master(dthread_t *thread)
 {
+	unsigned cpu = dt_online_cpus();
+	if (cpu > 1) {
+		unsigned cpu_mask[2];
+		cpu_mask[0] = dt_get_id(thread) % cpu;
+		cpu_mask[1] = (cpu_mask[0] + 2) % cpu;
+		dt_setaffinity(thread, cpu_mask, 2);
+	}
+
 	/* Drop all capabilities on all workers. */
 #ifdef HAVE_CAP_NG_H
         if (capng_have_capability(CAPNG_EFFECTIVE, CAP_SETPCAP)) {
@@ -688,9 +630,5 @@ int udp_master(dthread_t *thread)
 	iostate_t *st = (iostate_t *)thread->data;
 	if (!st) return KNOT_EINVAL;
 	iohandler_t *h = st->h;
-
-	switch(dt_get_id(thread)) {
-	case 0: return udp_reader(h, thread);
-	default: return udp_writer(h, thread);
-	}
+	return udp_reader(h, thread);
 }

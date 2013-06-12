@@ -77,8 +77,6 @@ src/common/print.c
 src/common/print.h
 src/common/prng.c
 src/common/prng.h
-src/common/queue.c
-src/common/queue.h
 src/common/ref.c
 src/common/ref.h
 src/common/skip-list.c
