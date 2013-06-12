@@ -195,11 +195,11 @@ static void process_error(const scanner_t *s)
 		log_zone_error("Fatal error in zone file %s:%"PRIu64": %s "
 		               "Stopping zone loading.\n",
 		               s->file_name, s->line_counter,
-		               knot_strerror(s->error_code));
+		               zscanner_strerror(s->error_code));
 	} else {
 		log_zone_error("Error in zone file %s:%"PRIu64": %s\n",
 		               s->file_name, s->line_counter,
-		               knot_strerror(s->error_code));
+		               zscanner_strerror(s->error_code));
 	}
 }
 
