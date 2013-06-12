@@ -39,6 +39,7 @@ zscanner_tool_SOURCES =			\
 	test/processing.c
 
 libzscanner_la_SOURCES =		\
+	zscanner.h			\
 	error.h				\
 	error.c				\
 	file_loader.h			\

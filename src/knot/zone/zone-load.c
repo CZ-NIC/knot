@@ -33,7 +33,7 @@
 #include "libknot/zone/zone-contents.h"
 #include "knot/other/debug.h"
 #include "knot/zone/zone-load.h"
-#include "zscanner/file_loader.h"
+#include "zscanner/zscanner.h"
 
 /* ZONE LOADING FROM FILE USING RAGEL PARSER */
 

@@ -32,7 +32,7 @@
 #include "sign/key.h"
 #include "sign/sig0.h"
 #include "tsig.h"
-#include "zscanner/scanner.h"
+#include "zscanner/zscanner.h"
 
 /*!
  * \brief Calculates keytag for RSA/MD5 algorithm.
