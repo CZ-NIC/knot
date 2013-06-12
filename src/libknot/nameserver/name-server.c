@@ -270,11 +270,19 @@ static int ns_follow_cname(const knot_node_t **node,
 	knot_rrset_t *cname_rrset;
 
 	int ret = 0;
+	int wc = 0;
+
+	/*
+	 * If stop == 1, cycle was detected, but one last entry has to be put
+	 * in the packet (because of wildcard).
+	 * If stop == 2, we should quit right away.
+	 */
+	int stop = 0;
 
 	cname_chain_t *cname_chain = NULL;
 
 	while (*node != NULL
-	       && !cname_chain_contains(cname_chain, *node)
+	       && stop != 2
 	       && (cname_rrset = knot_node_get_rrset(*node, KNOT_RRTYPE_CNAME))
 	          != NULL
 	       && (knot_rrset_rdata_rr_count(cname_rrset))) {
@@ -301,6 +309,7 @@ static int ns_follow_cname(const knot_node_t **node,
 
 		// ignoring other than the first record
 		if (knot_dname_is_wildcard(knot_node_owner(*node))) {
+			wc = 1;
 			/* if wildcard node, we must copy the RRSet and
 			   replace its owner */
 			rrset = ns_synth_from_wildcard(cname_rrset, *qname);
@@ -387,10 +396,22 @@ dbg_ns_exec_verb(
 
 		// save the new name which should be used for replacing wildcard
 		*qname = cname;
+
+		// Decide if we stop or not
+		if (stop == 1) {
+			// Exit loop
+			stop = 2;
+		} else if (cname_chain_contains(cname_chain, *node)) {
+			if (wc) {
+				// Do one more loop
+				stop = 1;
+			} else {
+				// No wc, exit right away
+				stop = 2;
+			}
+		}
 	}
 
-	dbg_ns_detail("Last node duplicated = %d\n",
-	              cname_chain_contains(cname_chain, *node));
 	cname_chain_free(cname_chain);
 
 	return KNOT_EOK;
