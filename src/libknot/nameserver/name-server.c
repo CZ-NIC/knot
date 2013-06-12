@@ -27,6 +27,7 @@
 #include "libknot.h"
 #include "common/errcode.h"
 #include "common.h"
+#include "common/lists.h"
 #include "util/debug.h"
 #include "packet/packet.h"
 #include "packet/response.h"
@@ -245,6 +246,46 @@ static int ns_add_rrsigs(knot_rrset_t *rrset, knot_packet_t *resp,
 	return KNOT_EOK;
 }
 
+/* Wrapper functions for lists. */
+typedef struct chain_node {
+	node n;
+	const knot_node_t *kn_node;
+} chain_node_t;
+
+static int cname_chain_add(list *chain, const knot_node_t *kn_node)
+{
+	assert(chain != NULL);
+	chain_node_t *new_node = malloc(sizeof(chain_node_t));
+	CHECK_ALLOC_LOG(new_node, KNOT_ENOMEM);
+
+	new_node->kn_node = kn_node;
+	add_tail(chain, (node *)new_node);
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int cname_chain_contains(const list *chain, const knot_node_t *kn_node)
+{
+	node *n = NULL;
+	WALK_LIST(n, *chain) {
+		chain_node_t *l_node = (chain_node_t *)n;
+		if (l_node->kn_node == kn_node) {
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static void cname_chain_free(list *chain)
+{
+	WALK_LIST_FREE(*chain);
+}
+
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Resolves CNAME chain starting in \a node, stores all the CNAMEs in the
@@ -279,7 +320,8 @@ static int ns_follow_cname(const knot_node_t **node,
 	 */
 	int stop = 0;
 
-	cname_chain_t *cname_chain = NULL;
+	list cname_chain;
+	init_list(&cname_chain);
 
 	while (*node != NULL
 	       && stop != 2
@@ -293,7 +335,7 @@ static int ns_follow_cname(const knot_node_t **node,
 		 */
 		if (cname_chain_add(&cname_chain, *node) != KNOT_EOK) {
 			dbg_ns("Failed to add node to CNAME chain\n");
-			cname_chain_free(cname_chain);
+			cname_chain_free(&cname_chain);
 			return KNOT_ENOMEM;
 		}
 
@@ -316,7 +358,7 @@ static int ns_follow_cname(const knot_node_t **node,
 			if (rrset == NULL) {
 				dbg_ns("Failed to synthetize RRSet from "
 				       "wildcard RRSet followed from CNAME.\n");
-				cname_chain_free(cname_chain);
+				cname_chain_free(&cname_chain);
 				return KNOT_ERROR; /*! \todo Better error. */
 			}
 
@@ -326,7 +368,7 @@ static int ns_follow_cname(const knot_node_t **node,
 				       "follow) to the tmp RRSets in response."
 				       "\n");
 				knot_rrset_deep_free(&rrset, 1, 1);
-				cname_chain_free(cname_chain);
+				cname_chain_free(&cname_chain);
 				return ret;
 			}
 
@@ -334,7 +376,7 @@ static int ns_follow_cname(const knot_node_t **node,
 			if (ret != KNOT_EOK) {
 				dbg_ns("Failed to add synthetized RRSet (CNAME "
 				       "follow) to the response.\n");
-				cname_chain_free(cname_chain);
+				cname_chain_free(&cname_chain);
 				return ret;
 			}
 
@@ -344,7 +386,7 @@ static int ns_follow_cname(const knot_node_t **node,
 				dbg_ns("Failed to add RRSIG for the synthetized"
 				       "RRSet (CNAME follow) to the response."
 				       "\n");
-				cname_chain_free(cname_chain);
+				cname_chain_free(&cname_chain);
 				return ret;
 			}
 
@@ -353,7 +395,7 @@ static int ns_follow_cname(const knot_node_t **node,
 			if (ret != KNOT_EOK) {
 				dbg_ns("Failed to add wildcard node for later "
 				       "processing.\n");
-				cname_chain_free(cname_chain);
+				cname_chain_free(&cname_chain);
 				return ret;
 			}
 		} else {
@@ -362,7 +404,7 @@ static int ns_follow_cname(const knot_node_t **node,
 			if (ret != KNOT_EOK) {
 				dbg_ns("Failed to add followed RRSet into"
 				       "the response.\n");
-				cname_chain_free(cname_chain);
+				cname_chain_free(&cname_chain);
 				return ret;
 			}
 
@@ -372,7 +414,7 @@ static int ns_follow_cname(const knot_node_t **node,
 			if (ret != KNOT_EOK) {
 				dbg_ns("Failed to add RRSIG for followed RRSet "
 				       "into the response.\n");
-				cname_chain_free(cname_chain);
+				cname_chain_free(&cname_chain);
 				return ret;
 			}
 		}
@@ -401,7 +443,7 @@ dbg_ns_exec_verb(
 		if (stop == 1) {
 			// Exit loop
 			stop = 2;
-		} else if (cname_chain_contains(cname_chain, *node)) {
+		} else if (cname_chain_contains(&cname_chain, *node)) {
 			if (wc) {
 				// Do one more loop
 				stop = 1;
@@ -412,7 +454,7 @@ dbg_ns_exec_verb(
 		}
 	}
 
-	cname_chain_free(cname_chain);
+	cname_chain_free(&cname_chain);
 
 	return KNOT_EOK;
 }
