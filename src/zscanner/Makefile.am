@@ -17,11 +17,11 @@ BUILT_SOURCES = descriptor.h descriptor.c
 CLEANFILES = descriptor.h descriptor.c
 nodist_libzscanner_la_SOURCES = descriptor.h descriptor.c
 
-descriptor.h: ../common/descriptor.h
-	cp ../common/descriptor.h $@
+descriptor.h: $(top_srcdir)/src/common/descriptor.h
+	cp $(top_srcdir)/src/common/descriptor.h $@
 
-descriptor.c: ../common/descriptor.c
-	cp ../common/descriptor.c $@
+descriptor.c: $(top_srcdir)/src/common/descriptor.c
+	cp $(top_srcdir)/src/common/descriptor.c $@
 
 if HAVE_RAGEL
 BUILT_SOURCES += scanner.c
