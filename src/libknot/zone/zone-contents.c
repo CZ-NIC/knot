@@ -726,57 +726,6 @@ static int knot_zone_contents_find_in_tree(knot_zone_tree_t *tree,
 
 /*----------------------------------------------------------------------------*/
 
-int cname_chain_add(cname_chain_t **head, const knot_node_t *node)
-{
-	assert(head != NULL);
-
-	cname_chain_t *new_cname =
-			(cname_chain_t *)malloc(sizeof(cname_chain_t));
-	CHECK_ALLOC_LOG(new_cname, KNOT_ENOMEM);
-
-	new_cname->node = node;
-
-	if (*head != NULL) {
-		new_cname->next = *head;
-		*head = new_cname;
-	} else {
-		*head = new_cname;
-		(*head)->next = NULL;
-	}
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int cname_chain_contains(cname_chain_t *chain, const knot_node_t *node)
-{
-	cname_chain_t *act = chain;
-	while (act != NULL) {
-		if (act->node == node) {
-			return 1;
-		}
-		act = act->next;
-	}
-
-	return 0;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void cname_chain_free(cname_chain_t *chain)
-{
-	cname_chain_t *act = chain;
-
-	while (act != NULL) {
-		chain = chain->next;
-		free(act);
-		act = chain;
-	}
-}
-
-/*----------------------------------------------------------------------------*/
-
 static int knot_zc_nsec3_parameters_match(const knot_rrset_t *rrset,
                                           const knot_nsec3_params_t *params,
                                           size_t rdata_pos)

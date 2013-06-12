@@ -513,35 +513,6 @@ void knot_zone_contents_insert_dname_into_table(knot_dname_t **in_dname,
                                                 hattrie_t *lookup_tree);
 
 /*!
- * \brief Check if node is in a CNAME chain.
- *
- * \param head First node in the chain.
- * \param node Node to be checked.
- *
- * \retval 0 if node is not present.
- * \retval 1 if node is present.
- */
-int cname_chain_contains(cname_chain_t *chain, const knot_node_t *node);
-
-/*!
- * \brief Add node to a CNAME chain.
- *
- * \param head First node in the chain.
- * \param node Node to be added.
- *
- * \retval KNOT_EOK
- * \retval KNOT_ENOMEM
- */
-int cname_chain_add(cname_chain_t **head, const knot_node_t *node);
-
-/*!
- * \brief Frees CNAME chain.
- *
- * \param head Chain head.
- */
-void cname_chain_free(cname_chain_t *chain);
-
-/*!
  * \brief Fetch zone serial.
  *
  * \param zone Zone.
