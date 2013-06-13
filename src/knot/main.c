@@ -256,7 +256,7 @@ int main(int argc, char **argv)
 	char* pidfile = pid_filename();
 	int pid = pid_read(pidfile);
 	if (pid > 0 && pid_running(pid)) {
-		log_server_error("Server PID found, already running.\n");
+		log_server_warning("Server PID found, already running.\n");
 	} else if (stat(pidfile, &st) == 0) {
 		log_server_warning("PID file '%s' exists, another process "
 		                   "is starting or PID file is stale.\n",
@@ -265,6 +265,7 @@ int main(int argc, char **argv)
 		do_start = 1;
 	}
 	if (!do_start) {
+		log_server_error("Server start failed.\n");
 		do_cleanup(server, config_fn, pidfile);
 		return 1;
 	}
