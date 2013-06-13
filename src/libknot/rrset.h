@@ -59,7 +59,6 @@ struct knot_rrset {
 	/*! \brief Beginnings of RRs - first one does not contain 0, last
 	 *         last one holds total length of all RRs together
 	 */
-	/* [code-review] Does this have to be 32b integer? Isn't 16b enough? */
 	uint32_t *rdata_indices; /*!< Indices to beginnings of RRs (without 0)*/
 	uint16_t rdata_count; /*!< Count of RRs in this RRSet. */
 	struct knot_rrset *rrsigs; /*!< Set of RRSIGs covering this RRSet. */
@@ -360,36 +359,25 @@ int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2);
  *         Owner, Type, Class or TTL does not match.
  */
 int knot_rrset_merge_no_dupl(knot_rrset_t *rrset1, const knot_rrset_t *rrset2, int *merged, int *deleted_rrs);
+int knot_rrset_merge_no_dupl_sort(knot_rrset_t *rrset1,
+                                  const knot_rrset_t *rrset2,
+                                  int *merged, int *deleted_rrs);
 
-
-//TODO test
 const knot_dname_t *knot_rrset_rdata_cname_name(const knot_rrset_t *rrset);
-//TODO test
 const knot_dname_t *knot_rrset_rdata_dname_target(const knot_rrset_t *rrset);
-//TODO test
 void knot_rrset_rdata_set_cname_name(knot_rrset_t *rrset,
                                      const knot_dname_t *name);
-//TODO test
 void knot_rrset_rdata_set_dname_target(knot_rrset_t *rrset,
                                        const knot_dname_t *target);
-//TODO test
 const knot_dname_t *knot_rrset_rdata_soa_primary_ns(const knot_rrset_t *rrset);
-//TODO test
 const knot_dname_t *knot_rrset_rdata_soa_mailbox(const knot_rrset_t *rrset);
 uint32_t knot_rrset_rdata_soa_serial(const knot_rrset_t *rrset);
-//TODO test
 void knot_rrset_rdata_soa_serial_set(knot_rrset_t *rrset, uint32_t serial);
-//TODO test
 uint32_t knot_rrset_rdata_soa_refresh(const knot_rrset_t *rrset);
-//TODO test
 uint32_t knot_rrset_rdata_soa_retry(const knot_rrset_t *rrset);
-//TODO test
 uint32_t knot_rrset_rdata_soa_expire(const knot_rrset_t *rrset);
-//TODO test
 uint32_t knot_rrset_rdata_soa_minimum(const knot_rrset_t *rrset);
-//TODO test
 uint16_t knot_rrset_rdata_rrsig_type_covered(const knot_rrset_t *rrset);
-/* TODO not all of these need to have rr_pos as a parameter. */
 uint8_t knot_rrset_rdata_rrsig_algorithm(const knot_rrset_t *rrset,
                                          size_t rr_pos);
 uint8_t knot_rrset_rdata_rrsig_labels(const knot_rrset_t *rrset, size_t rr_pos);
@@ -416,32 +404,22 @@ void knot_rrset_rdata_nsec_bitmap(const knot_rrset_t *rrset, size_t rr_pos,
 
 void knot_rrset_rdata_nsec3_bitmap(const knot_rrset_t *rrset, size_t rr_pos,
                                    uint8_t **bitmap, uint16_t *size);
-//TODO test
 uint8_t knot_rrset_rdata_nsec3_algorithm(const knot_rrset_t *rrset,
                                          size_t pos);
 uint8_t knot_rrset_rdata_nsec3_flags(const knot_rrset_t *rrset,
                                      size_t pos);
-//TODO test
 uint16_t knot_rrset_rdata_nsec3_iterations(const knot_rrset_t *rrset,
                                            size_t pos);
-//TODO test
 uint8_t knot_rrset_rdata_nsec3_salt_length(const knot_rrset_t *rrset,
                                            size_t pos);
-// TODO same as salt, size and data
 void knot_rrset_rdata_nsec3_next_hashed(const knot_rrset_t *rrset, size_t pos,
                                         uint8_t **name, uint8_t *name_size);
-//TODO test
 const uint8_t *knot_rrset_rdata_nsec3_salt(const knot_rrset_t *rrset,
                                            size_t pos);
-//TODO test
 uint8_t knot_rrset_rdata_nsec3param_algorithm(const knot_rrset_t *rrset);
-//TODO test
 uint8_t knot_rrset_rdata_nsec3param_flags(const knot_rrset_t *rrset);
-//TODO test
 uint16_t knot_rrset_rdata_nsec3param_iterations(const knot_rrset_t *rrset);
-//TODO test
 uint8_t knot_rrset_rdata_nsec3param_salt_length(const knot_rrset_t *rrset);
-//TODO test
 const uint8_t *knot_rrset_rdata_nsec3param_salt(const knot_rrset_t *rrset);
 
 const knot_dname_t *knot_rrset_rdata_rp_first_dname(const knot_rrset_t *rrset,
@@ -458,6 +436,7 @@ const knot_dname_t *knot_rrset_rdata_minfo_second_dname(const knot_rrset_t *rrse
  *
  * \param rrset Inspected rrset.
  * \param prev_dname Pointer to previous dname.
+ *        This pointer *has* to be obtained by this function or be NULL.
  * \return next dname or NULL.
  */
 /* [code-review] Emphasize that the 'prev' pointer must point into the RDATA
@@ -478,16 +457,12 @@ knot_dname_t **knot_rrset_get_next_dname(const knot_rrset_t *rrset,
 knot_dname_t **knot_rrset_get_next_rr_dname(const knot_rrset_t *rrset,
                                             knot_dname_t **prev_dname,
                                             size_t rr_pos);
-
 const knot_dname_t *knot_rrset_rdata_ns_name(const knot_rrset_t *rrset,
                                              size_t rdata_pos);
-
 const knot_dname_t *knot_rrset_rdata_mx_name(const knot_rrset_t *rrset,
                                              size_t rdata_pos);
-
 const knot_dname_t *knot_rrset_rdata_srv_name(const knot_rrset_t *rrset,
                                               size_t rdata_pos);
-
 const knot_dname_t *knot_rrset_rdata_name(const knot_rrset_t *rrset,
                                           size_t rdata_pos);
 
