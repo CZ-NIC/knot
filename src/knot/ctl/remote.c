@@ -30,6 +30,7 @@
 #include "libknot/packet/response.h"
 #include "libknot/nameserver/name-server.h"
 #include "libknot/tsig-op.h"
+#include "libknot/zone/zone-nsec.h"
 #include "libknot/zone/sign.h"
 
 #define KNOT_CTL_REALM "knot."
@@ -170,6 +171,11 @@ static int remote_sign_zone(server_t *server, const knot_zone_t *zone)
 	if (!server || !zone) {
 		return KNOT_EINVAL;
 	}
+
+	// generate NSEC records
+
+	knot_zone_create_nsec_chain(zone);
+
 
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 	const char *keydir = zd->conf->keydir;

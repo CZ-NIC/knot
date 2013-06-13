@@ -189,6 +189,8 @@ src/libknot/zone/zone-contents.c
 src/libknot/zone/zone-contents.h
 src/libknot/zone/zone-diff.c
 src/libknot/zone/zone-diff.h
+src/libknot/zone/zone-nsec.c
+src/libknot/zone/zone-nsec.h
 src/libknot/zone/zone-tree.c
 src/libknot/zone/zone-tree.h
 src/libknot/zone/zone.c

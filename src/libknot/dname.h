@@ -31,6 +31,8 @@
 #include <string.h>
 #include <stdio.h>
 
+#define KNOT_DNAME_MAX_LENGTH 255
+
 struct knot_node;
 
 /*----------------------------------------------------------------------------*/

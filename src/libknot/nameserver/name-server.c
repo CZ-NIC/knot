@@ -1342,7 +1342,7 @@ dbg_ns_exec_verb(
 	}
 
 	rrset = knot_rrset_get_rrsigs(rrset);
-	assert(rrset != NULL);
+	//assert(rrset != NULL);
 	ret = knot_response_add_rrset_authority(resp, rrset, 1, 0, 1);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to add RRSIGs for NSEC for NXDOMAIN to response:"
@@ -1586,7 +1586,7 @@ static int ns_put_nsec_wildcard(const knot_zone_contents_t *zone,
 		                                        1);
 		if (ret == KNOT_EOK) {
 			rrset = knot_rrset_get_rrsigs(rrset);
-			assert(rrset != NULL);
+			//assert(rrset != NULL);
 			ret = knot_response_add_rrset_authority(resp, rrset, 1,
 			                                        0, 1);
 		}
