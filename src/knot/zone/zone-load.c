@@ -668,7 +668,8 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	}
 
 	if (c->ret != KNOT_EOK) {
-		log_zone_error("Zone could not be loaded (%d).", c->ret);
+		log_zone_error("Zone could not be loaded (%s).\n",
+		               knot_strerror(c->ret));
 		rrset_list_delete(&c->node_rrsigs);
 		knot_zone_t *zone_to_free = c->current_zone->zone;
 		knot_zone_deep_free(&zone_to_free);

@@ -69,6 +69,12 @@ typedef struct knot_zone_contents_t {
 	uint8_t flags;
 } knot_zone_contents_t;
 
+/*!< \brief Helper linked list list for CNAME loop checking */
+typedef struct cname_chain {
+	const knot_node_t *node;
+	struct cname_chain *next;
+} cname_chain_t;
+
 /*----------------------------------------------------------------------------*/
 
 knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
@@ -505,7 +511,6 @@ int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
 
 void knot_zone_contents_insert_dname_into_table(knot_dname_t **in_dname,
                                                 hattrie_t *lookup_tree);
-
 
 /*!
  * \brief Fetch zone serial.
