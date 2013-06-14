@@ -933,8 +933,8 @@ static int ns_put_authority_soa(const knot_zone_contents_t *zone,
 static knot_dname_t *ns_next_closer(const knot_dname_t *closest_encloser,
                                       const knot_dname_t *name)
 {
-	int ce_labels = knot_dname_label_count(closest_encloser);
-	int qname_labels = knot_dname_label_count(name);
+	int ce_labels = knot_dname_wire_labels(closest_encloser->name, NULL);
+	int qname_labels = knot_dname_wire_labels(name->name, NULL);
 
 	assert(ce_labels < qname_labels);
 
@@ -949,7 +949,9 @@ static knot_dname_t *ns_next_closer(const knot_dname_t *closest_encloser,
 	}
 
 	for (int i = 0; i < (qname_labels - ce_labels - 1); ++i) {
-		knot_dname_left_chop_no_copy(next_closer);
+		knot_dname_t *old_next_closer = next_closer;
+		next_closer = knot_dname_left_chop(next_closer);
+		knot_dname_free(&old_next_closer);
 	}
 
 	return next_closer;
@@ -2011,9 +2013,9 @@ static int ns_dname_is_too_long(const knot_rrset_t *rrset,
                                 const knot_dname_t *qname)
 {
 	// TODO: add function for getting DNAME target
-	if (knot_dname_label_count(qname)
-	        - knot_dname_label_count(knot_rrset_owner(rrset))
-	        + knot_dname_label_count(knot_rrset_rdata_dname_target(rrset))
+	if (knot_dname_wire_labels(qname->name, NULL)
+	        - knot_dname_wire_labels(knot_rrset_owner(rrset)->name, NULL)
+	        + knot_dname_wire_labels(knot_rrset_rdata_dname_target(rrset)->name, NULL)
 	        > KNOT_MAX_DNAME_LENGTH) {
 		return 1;
 	} else {

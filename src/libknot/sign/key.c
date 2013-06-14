@@ -518,7 +518,7 @@ int knot_tsig_create_key(const char *name, int algorithm,
                          const char *b64secret, knot_tsig_key_t *key)
 {
 	knot_dname_t *dname;
-	dname = knot_dname_new_from_nonfqdn_str(name, strlen(name), NULL);
+	dname = knot_dname_new_from_str(name, strlen(name), NULL);
 	if (!dname)
 		return KNOT_ENOMEM;
 

@@ -308,7 +308,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	/* label number at the 2nd index should be same as owner's */
 	uint8_t labels_rdata = knot_rrset_rdata_rrsig_labels(rrsig, rr_pos);
 
-	int tmp = knot_dname_label_count(knot_rrset_owner(rrset)) -
+	int tmp = knot_dname_wire_labels(knot_rrset_owner(rrset)->name, NULL) -
 		  labels_rdata;
 
 	if (tmp != 0) {
@@ -899,7 +899,9 @@ static int sem_check_node_optional(knot_zone_contents_t *zone,
 					return KNOT_ENOMEM;
 				}
 				
-				knot_dname_left_chop_no_copy(ns_dname);
+				knot_dname_t *old_ns_dname = ns_dname;
+				ns_dname = knot_dname_left_chop(ns_dname);
+				knot_dname_free(&old_ns_dname);
 		
 				if (knot_dname_cat(wildcard,
 				                   ns_dname) == NULL) {

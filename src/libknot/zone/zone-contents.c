@@ -933,8 +933,7 @@ dbg_zone_exec_detail(
 		knot_dname_left_chop(knot_node_owner(node));
 	if(chopped == NULL) {
 		/* Root domain and root domain only. */
-		assert(node->owner && node->owner->labels &&
-		       node->owner->labels[0] == 0);
+		assert(node->owner && *node->owner->name == '\0');
 		return KNOT_EOK;
 	}
 
@@ -1441,8 +1440,8 @@ dbg_zone_detail("Search function returned %d, node %s (%p) and prev: %s (%p)\n",
 
 		int matched_labels = knot_dname_matched_labels(
 				knot_node_owner((*closest_encloser)), name);
-		while (matched_labels < knot_dname_label_count(
-				knot_node_owner((*closest_encloser)))) {
+		while (matched_labels < knot_dname_wire_labels(
+				knot_node_owner((*closest_encloser))->name, NULL)) {
 			(*closest_encloser) =
 				knot_node_parent((*closest_encloser));
 			assert(*closest_encloser);
@@ -2219,7 +2218,7 @@ static void knot_zc_integrity_check_parent(const knot_node_t *node,
 	// if direct child
 	if (knot_dname_is_subdomain(node_owner, parent_owner)
 	    && knot_dname_matched_labels(node_owner, parent_owner)
-	       == knot_dname_label_count(parent_owner)) {
+	       == knot_dname_wire_labels(parent_owner->name, NULL)) {
 
 		// check the parent pointer
 		const knot_node_t *parent = knot_node_parent(node);

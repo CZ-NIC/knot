@@ -955,7 +955,7 @@ static inline uint16_t knot_wire_get_pointer(const uint8_t *pos)
 	return (knot_wire_read_u16(pos) - KNOT_WIRE_PTR_BASE);	// Return offset.
 }
 
-static inline uint8_t *knot_wire_next_label(uint8_t *lp, uint8_t *wire)
+static inline const uint8_t *knot_wire_next_label(const uint8_t *lp, const uint8_t *wire)
 {
 	lp = lp + (lp[0] + sizeof(uint8_t));
 	if (knot_wire_is_pointer(lp)) {
