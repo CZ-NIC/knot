@@ -36,12 +36,6 @@ Use IPv4 protocol only.
 .BI -6
 Use IPv6 protocol only.
 .TP
-.BI -d
-Enable debug messages if any.
-.TP
-.BI -h
-Print short help.
-.TP
 .BI -b \ address
 Set the source IP address of the query to \fIaddress\fR. The address
 can be specified using [address]:port notation.
@@ -50,6 +44,12 @@ can be specified using [address]:port notation.
 Set query class (e.g. \fICH\fR, \fICLASS4\fR).
 An explicit variant of \fIclass\fR specification.
 The default class is \fIIN\fR.
+.TP
+.BI -d
+Enable debug messages if any.
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print short help.
 .TP
 .BI -k \ keyfile
 Use TSIG or SIG\-0 key stored in a file \fIkeyfile\fR to authenticate the request.
@@ -68,6 +68,9 @@ Set query name. An explicit variant of \fIname\fR specification.
 .BI -t \ type
 Set query type (e.g. \fINS\fR, \fIIXFR=12345\fR, \fITYPE65535\fR).
 An explicit variant of \fItype\fR specification. The default type is \fIA\fR.
+.TP
+\fB\-v\fR, \fB\-\-version\fR
+Print program version.
 .TP
 .BI -x \ address
 Send \fIPTR\fR query for IPv4 or IPv6 \fIaddress\fR.
@@ -166,12 +169,6 @@ Don't use TCP automatically if truncated reply is received.
 .TP
 \fB+\fR[\fBno\fR]\fBnsid\fR
 Request nameserver identifier (NSID).
-.TP
-\fB\-\-help\fR
-Print help.
-.TP
-\fB\-\-version\fR
-Print program version.
 .SH NOTE
 Options \fB-k\fR and \fB-y\fR cannot be used mutually.
 .SH EXAMPLES
