@@ -43,14 +43,14 @@ struct knot_node;
  */
 struct knot_dname {
 	uint8_t *name;		/*!< Wire format of the domain name. */
-	uint8_t *labels;	/*!< Array of labels positions in name. */
 	struct knot_node *node;	/*!< Zone node the domain name belongs to. */
 	uint32_t count;		/*!< Reference counter. */
 	uint8_t size;		/*!< Length of the domain name. */
-	uint8_t label_count;	/*!< Number of labels. */
 };
 
 typedef struct knot_dname knot_dname_t;
+
+#define DNAME_LFT_MAXLEN 255 /* maximum lookup format length */
 
 /*----------------------------------------------------------------------------*/
 
@@ -74,20 +74,6 @@ typedef struct knot_dname knot_dname_t;
  */
 knot_dname_t *knot_dname_new_from_str(const char *name, unsigned int size,
                                           struct knot_node *node);
-
-/*!
- * \brief Creates a dname structure from domain name possibly given in
- *        non-presentation format.
- *
- * Works the same as knot_dname_new_from_str but makes sure, that the name
- * is terminated with a dot.
- *
- * \see knot_dname_new_from_str
- *
- */
-knot_dname_t *knot_dname_new_from_nonfqdn_str(const char *name,
-                                              unsigned int size,
-                                              struct knot_node *node);
 
 /*!
  * \brief Creates a dname structure from domain name given in wire format.
@@ -219,13 +205,6 @@ int knot_dname_is_fqdn(const knot_dname_t *dname);
 knot_dname_t *knot_dname_left_chop(const knot_dname_t *dname);
 
 /*!
- * \brief Removes leftmost label from \a dname.
- *
- * \param dname Domain name to remove the first label from.
- */
-void knot_dname_left_chop_no_copy(knot_dname_t *dname);
-
-/*!
  * \brief Checks if one domain name is a subdomain of other.
  *
  * \param sub Domain name to be the possible subdomain.
@@ -257,18 +236,7 @@ int knot_dname_is_wildcard(const knot_dname_t *dname);
  * \return Number of labels common for the two domain names.
  */
 int knot_dname_matched_labels(const knot_dname_t *dname1,
-                                const knot_dname_t *dname2);
-
-/*!
- * \brief Returns the number of labels in the domain name.
- *
- * \param dname Domain name to get the label count of.
- *
- * \return Number of labels in \a dname.
- *
- * \todo Find out if this counts the root label also.
- */
-int knot_dname_label_count(const knot_dname_t *dname);
+                              const knot_dname_t *dname2);
 
 /*!
  * \brief Replaces the suffix of given size in one domain name with other domain
@@ -380,6 +348,49 @@ int knot_dname_wire_size(const uint8_t *name, const uint8_t *pkt);
  *  \note Expects already checked name.
  */
 int knot_dname_wire_labels(const uint8_t *name, const uint8_t *pkt);
+
+/*!
+ * \brief Align name and reference to a common number of suffix labels.
+ */
+int knot_dname_align(const uint8_t **d1, uint8_t d1_labels,
+                     const uint8_t **d2, uint8_t d2_labels,
+                     uint8_t *wire);
+
+/*!
+ * \brief Compare domain name by labels.
+ *
+ * \todo No case insensitivity, flags...
+ *
+ * \param d1 Domain name.
+ * \param d2 Domain name.
+ * \param pkt Packet wire related to names (or NULL).
+ * \return
+ */
+int knot_dname_wire_cmp(const knot_dname_t *d1, const knot_dname_t *d2,
+                        const uint8_t *pkt);
+
+/*!
+ * \brief Convert domain name from wire to lookup format.
+ *
+ * Formats names from rightmost label to the leftmost, separated by the lowest
+ * possible character (\x00). Sorting such formatted names also gives
+ * correct canonical order (for NSEC/NSEC3).
+ *
+ * Example:
+ * Name: lake.example.com. Wire: \x04lake\x07example\x03com\x00
+ * Lookup format com\x00example\x00lake\x00
+ *
+ * Maximum length of such a domain name is DNAME_LFT_MAXLEN characters.
+ *
+ * \param dst Memory to store converted name into.
+ * \param maxlen Maximum memory length.
+ * \param src Source domain name.
+ *
+ * \retval KNOT_EOK if successful
+ * \retval KNOT_ESPACE when not enough memory.
+ * \retval KNOT_EINVAL on invalid parameters
+ */
+int dname_lf(uint8_t *dst, const knot_dname_t *src, size_t maxlen);
 
 #endif /* _KNOT_DNAME_H_ */
 
