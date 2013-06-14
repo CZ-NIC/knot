@@ -1,5 +1,15 @@
 Knot DNS NEWS
 
+v1.3.0-rc2 - Jun 14, 2013
+
+-------------------------
+
+Bugfixes:
+	* Label compression related bug
+	* Proper resolution of some CNAME chains
+	* Unstable response rate in rare cases
+	* Several log messages
+
 v1.3.0-rc1 - Jun 4, 2013
 ---------------------------
 
