@@ -744,7 +744,7 @@ knot_rrset_t* remote_build_rr(const char *k, uint16_t t)
 	}
 
 	/* Assert K is FQDN. */
-	knot_dname_t *key = knot_dname_new_from_nonfqdn_str(k, strlen(k), 0);
+	knot_dname_t *key = knot_dname_new_from_str(k, strlen(k), 0);
 	if (!key) {
 		return NULL;
 	}
@@ -792,7 +792,7 @@ int remote_create_ns(knot_rrset_t *rr, const char *d)
 	}
 
 	/* Create dname. */
-	knot_dname_t *dn = knot_dname_new_from_nonfqdn_str(d, strlen(d), NULL);
+	knot_dname_t *dn = knot_dname_new_from_str(d, strlen(d), NULL);
 	if (!dn) {
 		return KNOT_ERROR;
 	}

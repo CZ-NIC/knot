@@ -305,7 +305,7 @@ static int pkt_append(nsupdate_params_t *p, int sect)
 	scanner_t *s = p->rrp;
 	if (!p->pkt) {
 		p->pkt = create_empty_packet(MAX_PACKET_SIZE);
-		qname = knot_dname_new_from_nonfqdn_str(p->zone,
+		qname = knot_dname_new_from_str(p->zone,
 		                                        strlen(p->zone),
 		                                        NULL);
 		ret = knot_query_set_question(p->pkt, qname, p->class_num, p->type_num);

@@ -33,7 +33,8 @@
  *
  * Update current best score.
  */
-static bool knot_response_compr_score(uint8_t *n, uint8_t *p, uint8_t labels,
+static bool knot_response_compr_score(const uint8_t *n, const uint8_t *p,
+                                      uint8_t labels,
                                       uint8_t *wire, knot_compr_ptr_t *match)
 {
 	uint16_t score = 0;
@@ -65,22 +66,6 @@ static bool knot_response_compr_score(uint8_t *n, uint8_t *p, uint8_t labels,
 	return false;
 }
 
-/*!
- * \brief Align name and reference to a common number of suffix labels.
- */
-static uint8_t knot_response_compr_align(uint8_t **name, uint8_t nlabels,
-                                         uint8_t **ref, uint8_t reflabels,
-                                         uint8_t *wire)
-{
-	for (unsigned j = nlabels; j < reflabels; ++j)
-		*ref = knot_wire_next_label(*ref, wire);
-
-	for (unsigned j = reflabels; j < nlabels; ++j)
-		*name = knot_wire_next_label(*name, wire);
-
-	return (nlabels < reflabels) ? nlabels : reflabels;
-}
-
 int knot_response_compress_dname(const knot_dname_t *dname, knot_compr_t *compr,
                                  uint8_t *dst, size_t max)
 {
@@ -90,6 +75,7 @@ int knot_response_compress_dname(const knot_dname_t *dname, knot_compr_t *compr,
 
 	/* Do not compress small dnames. */
 	uint8_t *name = dname->name;
+	unsigned name_labels = knot_dname_wire_labels(name, NULL);
 	if (dname->size <= 2) {
                 if (dname->size > max)
                         return KNOT_ESPACE;
@@ -103,28 +89,28 @@ int knot_response_compress_dname(const knot_dname_t *dname, knot_compr_t *compr,
 	unsigned match_id = 0;
 	knot_compr_ptr_t match = { 0, 0 };
 	for (; i < COMPR_MAXLEN && compr->table[i].off > 0; ++i) {
-		uint8_t *name = dname->name;
-		uint8_t *ref = compr->wire + compr->table[i].off;
-		lbcount = knot_response_compr_align(&name, dname->label_count,
-		                                    &ref, compr->table[i].lbcount,
-		                                    compr->wire);
+		const uint8_t *sample = dname->name;
+		const uint8_t *ref = compr->wire + compr->table[i].off;
+		lbcount = knot_dname_align(&sample, name_labels,
+		                           &ref, compr->table[i].lbcount,
+		                           compr->wire);
 
-		if (knot_response_compr_score(name, ref, lbcount, compr->wire,
+		if (knot_response_compr_score(sample, ref, lbcount, compr->wire,
 		                              &match)) {
 			match_id = i;
-			if (match.lbcount == dname->label_count)
+			if (match.lbcount == name_labels)
 				break; /* Best match, break. */
 		}
 	}
 
 	/* Write non-matching prefix. */
 	unsigned written = 0;
-	for (unsigned j = match.lbcount; j < dname->label_count; ++j) {
+	for (unsigned j = match.lbcount; j < name_labels; ++j) {
 		if (written + *name + 1 > max)
 			return KNOT_ESPACE;
 		memcpy(dst + written, name, *name + 1);
 		written += *name + 1;
-		name = knot_wire_next_label(name, compr->wire);
+		name = (uint8_t *)knot_wire_next_label(name, compr->wire);
 	}
 
 	/* Write out pointer covering suffix. */
@@ -149,7 +135,7 @@ int knot_response_compress_dname(const knot_dname_t *dname, knot_compr_t *compr,
 	}
 
 	/* Do not insert if exceeds bounds or full match. */
-	if (match.lbcount == dname->label_count ||
+	if (match.lbcount == name_labels ||
 	    compr->wire_pos > KNOT_WIRE_PTR_MAX)
 		return written;
 
@@ -163,7 +149,7 @@ int knot_response_compress_dname(const knot_dname_t *dname, knot_compr_t *compr,
 	/* Store in dname table. */
 	if (compr->table[i].off == 0) {
 		compr->table[i].off = (uint16_t)compr->wire_pos;
-		compr->table[i].lbcount = dname->label_count;
+		compr->table[i].lbcount = name_labels;
 	}
 
 	return written;
