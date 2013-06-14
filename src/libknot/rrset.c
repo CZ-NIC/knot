@@ -866,12 +866,17 @@ static uint8_t* knot_rrset_create_rdata_at_pos(knot_rrset_t *rrset,
 	uint32_t total_size = rrset_rdata_size_total(rrset);
 
 	// Realloc indices. We will allocate exact size to save space.
-	rrset->rdata_indices =
-		xrealloc(rrset->rdata_indices,
+	void *tmp = realloc(rrset->rdata_indices,
 	                 (rrset->rdata_count + 1) * sizeof(uint32_t));
+	if (tmp) {
+		rrset->rdata_indices = tmp;
+	} else {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
 
 	// Realloc actual data.
-	void *tmp = realloc(rrset->rdata, total_size + size);
+	tmp = realloc(rrset->rdata, total_size + size);
 	if (tmp) {
 		rrset->rdata = tmp;
 	} else {
@@ -885,10 +890,8 @@ static uint8_t* knot_rrset_create_rdata_at_pos(knot_rrset_t *rrset,
 	 */
 	uint8_t *old_pointer = rrset_rdata_pointer(rrset, pos);
 	assert(old_pointer);
-	size_t old_size = rrset_rdata_item_size(rrset, pos);
 	memmove(old_pointer + size, old_pointer,
-	        rrset_rdata_remainder_size(rrset,
-	                                   rrset_rdata_offset(rrset, pos), pos));
+	        rrset_rdata_size_total(rrset) - rrset_rdata_offset(rrset, pos));
 
 	// Realloc indices.
 	++rrset->rdata_count;
@@ -902,8 +905,8 @@ static uint8_t* knot_rrset_create_rdata_at_pos(knot_rrset_t *rrset,
 
 	// Update indices.
 	memmove(rrset->rdata_indices + pos + 1, rrset->rdata_indices + pos,
-	        rrset->rdata_count - pos);
-	rrset->rdata_indices[pos] = 0;
+	        (rrset->rdata_count - pos) * sizeof(uint32_t));
+	rrset->rdata_indices[pos] = pos ? rrset->rdata_indices[pos - 1] : 0;
 	for (uint16_t i = pos; i < rrset->rdata_count; ++i) {
 		rrset->rdata_indices[i] += size;
 	}
