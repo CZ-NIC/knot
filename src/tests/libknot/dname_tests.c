@@ -35,12 +35,12 @@ unit_api dname_tests_api = {
 
 static int dname_tests_count(int argc, char *argv[])
 {
-	return 11;
+	return 15;
 }
 
 static int dname_tests_run(int argc, char *argv[])
 {
-	knot_dname_t *d = NULL;
+	knot_dname_t *d = NULL, *d2 = NULL;
 	const char *w = NULL, *t = NULL;
 	unsigned len = 0;
 
@@ -92,6 +92,33 @@ static int dname_tests_run(int argc, char *argv[])
 	t = "..";
 	d = knot_dname_new_from_str(t, strlen(t), NULL);
 	ok(d == NULL, "dname_fromstr: parsed incorrect name");
+
+	/* 12. equal name is subdomain */
+	t = "ab.cd.ef";
+	d2 = knot_dname_new_from_str(t, strlen(t), NULL);
+	t = "ab.cd.ef";
+	d = knot_dname_new_from_str(t, strlen(t), NULL);
+	ok(!knot_dname_is_subdomain(d, d2), "dname_subdomain: equal name");
+	knot_dname_free(&d);
+
+	/* 13. true subdomain */
+	t = "0.ab.cd.ef";
+	d = knot_dname_new_from_str(t, strlen(t), NULL);
+	ok(knot_dname_is_subdomain(d, d2), "dname_subdomain: true subdomain");
+	knot_dname_free(&d);
+
+	/* 14. not subdomain */
+	t = "cd.ef";
+	d = knot_dname_new_from_str(t, strlen(t), NULL);
+	ok(!knot_dname_is_subdomain(d, d2), "dname_subdomain: not subdomain");
+	knot_dname_free(&d);
+
+	/* 15. root subdomain */
+	t = ".";
+	d = knot_dname_new_from_str(t, strlen(t), NULL);
+	ok(knot_dname_is_subdomain(d2, d), "dname_subdomain: root subdomain");
+	knot_dname_free(&d);
+	knot_dname_free(&d2);
 
 	return 0;
 }

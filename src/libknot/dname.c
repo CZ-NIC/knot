@@ -88,7 +88,7 @@ static int knot_dname_str_to_wire(const char *name, uint size,
 	const uint8_t *np = ch + size;
 	uint8_t *label = wire;
 	uint8_t *w = wire + 1; /* Reserve 1 for label len */
-	while (*ch != *np) {
+	while (ch != np) {
 		if (*ch == '.') {
 			/* Zero-length label inside a dname - invalid. */
 			if (*label == 0) {
@@ -564,8 +564,8 @@ int knot_dname_is_subdomain(const knot_dname_t *sub,
 	int sub_l = knot_dname_wire_labels(sub_p, NULL);
 	int domain_l = knot_dname_wire_labels(domain_p, NULL);
 
-	/* Subdomain can't have >= labels as parent. */
-	if (sub_l >= domain_l)
+	/* Subdomain must have more labels as parent. */
+	if (sub_l <= domain_l)
 		return 0;
 
 	/* Align end-to-end to common suffix. */
@@ -713,10 +713,6 @@ knot_dname_t *knot_dname_cat(knot_dname_t *d1, const knot_dname_t *d2)
 		return d1;
 	}
 
-	if (knot_dname_is_fqdn(d1)) {
-		return NULL;
-	}
-
 	// allocate new space
 	uint8_t *new_dname = (uint8_t *)malloc(d1->size + d2->size);
 	CHECK_ALLOC_LOG(new_dname, NULL);
@@ -827,6 +823,7 @@ int knot_dname_wire_labels(const uint8_t *name, const uint8_t *pkt)
 {
 	uint8_t count = 0;
 	while (*name != '\0') {
+		++count;
 		name = knot_wire_next_label((uint8_t *)name, (uint8_t *)pkt);
 		if (!name)
 			return KNOT_EMALF;
