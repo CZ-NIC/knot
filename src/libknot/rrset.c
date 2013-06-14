@@ -901,9 +901,11 @@ static uint8_t* knot_rrset_create_rdata_at_pos(knot_rrset_t *rrset,
 	}
 
 	// Update indices.
-	for (uint16_t i = pos; i < rrset->rdata_count - 1; ++i) {
-		rrset->rdata_indices[i] =
-			rrset->rdata_indices[i - 1] + size;
+	memmove(rrset->rdata_indices + pos + 1, rrset->rdata_indices + pos,
+	        rrset->rdata_count - pos);
+	rrset->rdata_indices[pos] = 0;
+	for (uint16_t i = pos; i < rrset->rdata_count; ++i) {
+		rrset->rdata_indices[i] += size;
 	}
 
 	// Return pointer from correct position (now contains bogus data).
