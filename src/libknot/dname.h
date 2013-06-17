@@ -31,9 +31,6 @@
 #include <string.h>
 #include <stdio.h>
 
-struct knot_node;
-
-/*----------------------------------------------------------------------------*/
 /*!
  * \brief Structure for representing a domain name.
  *
@@ -43,7 +40,6 @@ struct knot_node;
  */
 struct knot_dname {
 	uint8_t *name;		/*!< Wire format of the domain name. */
-	struct knot_node *node;	/*!< Zone node the domain name belongs to. */
 	uint32_t count;		/*!< Reference counter. */
 	uint8_t size;		/*!< Length of the domain name. */
 };
@@ -66,14 +62,11 @@ typedef struct knot_dname knot_dname_t;
  *
  * \param name Domain name in presentation format (labels separated by dots).
  * \param size Size of the domain name (count of characters with all dots).
- * \param node Zone node the domain name belongs to. Set to NULL if not
- *             applicable.
  *
  * \return Newly allocated and initialized dname structure representing the
  *         given domain name.
  */
-knot_dname_t *knot_dname_new_from_str(const char *name, unsigned int size,
-                                          struct knot_node *node);
+knot_dname_t *knot_dname_new_from_str(const char *name, unsigned int size);
 
 /*!
  * \brief Creates a dname structure from domain name given in wire format.
@@ -85,8 +78,6 @@ knot_dname_t *knot_dname_new_from_str(const char *name, unsigned int size,
  *
  * \param name Domain name in wire format.
  * \param size Size of the domain name in octets.
- * \param node Zone node the domain name belongs to. Set to NULL if not
- *             applicable.
  *
  * \return Newly allocated and initialized dname structure representing the
  *         given domain name.
@@ -100,9 +91,7 @@ knot_dname_t *knot_dname_new_from_str(const char *name, unsigned int size,
  * \warning Actually, right now this function does not accept non-FQDN dnames.
  *          For some reason there is a check for this.
  */
-knot_dname_t *knot_dname_new_from_wire(const uint8_t *name,
-                                           unsigned int size,
-                                           struct knot_node *node);
+knot_dname_t *knot_dname_new_from_wire(const uint8_t *name, unsigned int size);
 
 /*!
  * \brief Parse dname from wire.
@@ -162,19 +151,6 @@ const uint8_t *knot_dname_name(const knot_dname_t *dname);
  * \return Size of the domain name in wire format in octets.
  */
 unsigned int knot_dname_size(const knot_dname_t *dname);
-
-/*!
- * \brief Returns the zone node the domain name belongs to.
- *
- * \param dname Domain name to get the zone node of.
- *
- * \return Zone node the domain name belongs to or NULL if none.
- */
-const struct knot_node *knot_dname_node(const knot_dname_t *dname);
-
-void knot_dname_update_node(knot_dname_t *dname);
-
-void knot_dname_set_node(knot_dname_t *dname, struct knot_node *node);
 
 /*!
  * \brief Checks if the given domain name is a fully-qualified domain name.

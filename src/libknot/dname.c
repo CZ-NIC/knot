@@ -41,7 +41,6 @@ static knot_dname_t *knot_dname_new()
 	knot_dname_t *dname = malloc(sizeof(knot_dname_t));
 
 	dname->name = NULL;
-	dname->node = NULL;
 	dname->count = 1;
 	dname->size = 0;
 
@@ -126,8 +125,7 @@ static int knot_label_is_equal(const uint8_t *lb1, const uint8_t *lb2)
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-knot_dname_t *knot_dname_new_from_str(const char *name, uint size,
-                                          struct knot_node *node)
+knot_dname_t *knot_dname_new_from_str(const char *name, uint size)
 {
 	if (name == NULL || size == 0) {
 		return NULL;
@@ -154,14 +152,12 @@ knot_dname_t *knot_dname_new_from_str(const char *name, uint size,
 	}
 	assert(dname->name != NULL);
 
-	dname->node = node;
 	return dname;
 }
 
 /*----------------------------------------------------------------------------*/
 
-knot_dname_t *knot_dname_new_from_wire(const uint8_t *name, uint size,
-                                           struct knot_node *node)
+knot_dname_t *knot_dname_new_from_wire(const uint8_t *name, uint size)
 {
 	if (name == NULL) { /* && size != 0) { !OS: Nerozumjaju */
 		dbg_dname("No name given!\n");
@@ -185,7 +181,6 @@ knot_dname_t *knot_dname_new_from_wire(const uint8_t *name, uint size,
 	/*! \todo this won't work for non-linear names */
 	memcpy(dname->name, name, size);
 	dname->size = size;
-	dname->node = node;
 	return dname;
 }
 
@@ -200,7 +195,7 @@ knot_dname_t *knot_dname_parse_from_wire(const uint8_t *wire,
 	if (parsed < 0)
 		return NULL;
 
-	knot_dname_t *dname = knot_dname_new_from_wire(name, parsed, NULL);
+	knot_dname_t *dname = knot_dname_new_from_wire(name, parsed);
 	if (dname)
 		*pos += parsed;
 
@@ -211,7 +206,6 @@ knot_dname_t *knot_dname_parse_from_wire(const uint8_t *wire,
 
 knot_dname_t *knot_dname_deep_copy(const knot_dname_t *dname)
 {
-	//return knot_dname_new_from_wire(dname->name, dname->size, dname->node);
 	/* dname_new_from_wire() does not accept non-FQDN dnames, so we
 	 * do the copy by hand. It's faster anyway */
 
@@ -230,8 +224,6 @@ knot_dname_t *knot_dname_deep_copy(const knot_dname_t *dname)
 
 	memcpy(copy->name, dname->name, dname->size);
 	copy->size = dname->size;
-
-	copy->node = dname->node;
 
 	return copy;
 }
@@ -349,81 +341,6 @@ const uint8_t *knot_dname_name(const knot_dname_t *dname)
 uint knot_dname_size(const knot_dname_t *dname)
 {
 	return dname->size;
-}
-
-/*----------------------------------------------------------------------------*/
-
-const struct knot_node *knot_dname_node(const knot_dname_t *dname)
-
-{
-	if (dname == NULL) {
-		return NULL;
-	}
-
-	knot_node_t *node = dname->node;
-
-	/*
-	 * If the zone contains new zone contents (during an update), we should
-	 * return new node. Check if the node has the new node set. If it does
-	 * not, it means this is already the new node. If it has, return the
-	 * new node. If the new node is empty, return NULL, as the node will be
-	 * deleted later.
-	 */
-dbg_dname_exec_detail(
-	dbg_dname_detail("Getting node from dname: node: %p, zone: %p\n", node,
-			 knot_node_zone(node));
-	if (node != NULL && knot_node_zone(node) != NULL
-	    && knot_zone_contents(knot_node_zone(node)) != NULL) {
-		dbg_dname_detail("zone contents gen: %d, new node of the node: "
-			 "%p, is empty: %d\n",
-			 knot_zone_contents_gen_is_new(knot_zone_contents(
-							 knot_node_zone(node))),
-			 knot_node_new_node(node),
-			 knot_node_new_node(node)
-			       ? knot_node_is_empty(knot_node_new_node(node))
-			       : -1);
-	}
-);
-
-	if (node && knot_node_zone(node)
-	    && knot_zone_contents(knot_node_zone(node))
-	    && knot_zone_contents_gen_is_new(knot_zone_contents(
-		knot_node_zone(node)))
-	    && knot_node_new_node(node) != NULL) {
-		node = knot_node_get_new_node(node);
-		if (knot_node_is_empty(node)) {
-			node = NULL;
-		}
-	}
-
-	return node;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_dname_set_node(knot_dname_t *dname, knot_node_t *node)
-{
-	dname->node = node;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_dname_update_node(knot_dname_t *dname)
-{
-dbg_dname_exec_detail(
-	char *name = knot_dname_to_str(dname);
-	dbg_dname_detail("Updating node pointer in dname %p: %s. Before: %p\n",
-	                 dname, name, dname->node);
-	free(name);
-);
-
-	knot_node_update_ref(&dname->node);
-	dbg_dname_detail("After: %p\n", dname->node);
-
-	if (knot_node_is_empty(dname->node)) {
-		dbg_dname_detail("Node is empty, setting to NULL.\n");
-		dname->node = NULL;
-	}
 }
 
 /*----------------------------------------------------------------------------*/
