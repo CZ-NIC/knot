@@ -1,5 +1,11 @@
 Knot DNS NEWS
 
+v1.3.0-rc3 - ??
+---------------
+
+Bugfixes:
+	* IXFR with an arbitrary number of diffs
+
 v1.3.0-rc2 - Jun 14, 2013
 
 -------------------------

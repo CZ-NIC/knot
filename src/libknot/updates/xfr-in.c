@@ -1159,15 +1159,14 @@ dbg_xfrin_exec_verb(
 			} else {
 				// normal SOA, start new changeset
 				(*chs)->count++;
-				++cur;
 				if ((ret = knot_changesets_check_size(*chs))
 				     != KNOT_EOK) {
 					(*chs)->count--;
-					--cur;
 					knot_rrset_deep_free(&rr, 1, 1);
 					goto cleanup;
 				}
 
+				cur = (*chs)->sets + ((*chs)->count - 1);
 				ret = knot_changeset_add_soa(cur, rr,
 							     KNOT_CHANGESET_REMOVE);
 				if (ret != KNOT_EOK) {
