@@ -35,7 +35,7 @@ unit_api dname_tests_api = {
 
 static int dname_tests_count(int argc, char *argv[])
 {
-	return 15;
+	return 17;
 }
 
 static int dname_tests_run(int argc, char *argv[])
@@ -120,5 +120,19 @@ static int dname_tests_run(int argc, char *argv[])
 	knot_dname_free(&d);
 	knot_dname_free(&d2);
 
-	return 0;
+	/* 16-17. dname cat (valid) */
+	w = "\x03""cat";
+	len = 5;
+	d = knot_dname_new_from_wire((const uint8_t *)w, len, NULL);
+	t = "*";
+	d2 = knot_dname_new_from_str(t, strlen(t), NULL);
+	d2 = knot_dname_cat(d2, d);
+	t = "\x01""*""\x03""cat";
+	len = 2 + 4 + 1;
+	ok (d2 && len == d2->size, "dname_cat: valid concatenation size");
+	ok(memcmp(d2->name, t, len) == 0, "dname_cat: valid concatenation");
+	knot_dname_free(&d);
+	knot_dname_free(&d2);
+
+	done_testing();
 }
