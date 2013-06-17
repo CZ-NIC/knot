@@ -257,8 +257,7 @@ static int add_rdata_to_rr(knot_rrset_t *rrset, const scanner_t *scanner)
 			knot_dname_t *dname =
 				knot_dname_new_from_wire(scanner->r_data +
 			                                 scanner->r_data_blocks[i],
-			                                 scanner->r_data_blocks[i + 1] - scanner->r_data_blocks[i],
-			                                 NULL);
+			                                 scanner->r_data_blocks[i + 1] - scanner->r_data_blocks[i]);
 			if (dname == NULL) {
 				return KNOT_ERROR;
 			}
@@ -319,8 +318,7 @@ static void process_rr(const scanner_t *scanner)
     	} else {
     		current_owner = 
     			knot_dname_new_from_wire(scanner->r_owner,
-    			                         scanner->r_owner_length,
-    			                         NULL);
+		                                 scanner->r_owner_length);
 	    	if (current_owner == NULL) {
 			parser->ret = KNOT_ERROR;
 			return;
@@ -602,7 +600,7 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 	}
 	
 	context->origin_from_config =
-		knot_dname_new_from_str(origin, strlen(origin), NULL);
+		knot_dname_new_from_str(origin, strlen(origin));
 	assert(context->origin_from_config);
 	knot_dname_to_lower(context->origin_from_config);
 	/* Add first DNAME to lookup tree. */

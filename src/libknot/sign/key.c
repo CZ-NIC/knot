@@ -139,8 +139,7 @@ static int get_key_info_from_public_key(const char *filename,
 	free(buffer);
 
 	knot_dname_t *owner = knot_dname_new_from_wire(scanner->r_owner,
-	                                               scanner->r_owner_length,
-	                                               NULL);
+	                                               scanner->r_owner_length);
 	if (!owner) {
 		scanner_free(scanner);
 		return KNOT_ENOMEM;
@@ -517,8 +516,7 @@ static int knot_tsig_create_key_from_args(knot_dname_t *name, int algorithm,
 int knot_tsig_create_key(const char *name, int algorithm,
                          const char *b64secret, knot_tsig_key_t *key)
 {
-	knot_dname_t *dname;
-	dname = knot_dname_new_from_str(name, strlen(name), NULL);
+	knot_dname_t *dname = knot_dname_new_from_str(name, strlen(name));
 	if (!dname)
 		return KNOT_ENOMEM;
 

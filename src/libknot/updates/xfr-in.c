@@ -2456,17 +2456,6 @@ static void xfrin_zone_contents_free2(knot_zone_contents_t **contents)
 
 /*----------------------------------------------------------------------------*/
 
-static void xfrin_cleanup_old_nodes(knot_node_t *node, void *data)
-{
-	UNUSED(data);
-	assert(node != NULL);
-
-	knot_node_set_new_node(node, NULL);
-	knot_dname_set_node(knot_node_get_owner(node), node);
-}
-
-/*----------------------------------------------------------------------------*/
-
 static void xfrin_cleanup_failed_update(knot_zone_contents_t *old_contents,
                                         knot_zone_contents_t **new_contents)
 {
@@ -2477,18 +2466,6 @@ static void xfrin_cleanup_failed_update(knot_zone_contents_t *old_contents,
 	if (*new_contents != NULL) {
 		// destroy the shallow copy of zone
 		xfrin_zone_contents_free2(new_contents);
-	}
-
-	if (old_contents != NULL) {
-		// cleanup old zone tree - reset pointers to new node to NULL
-		// also set pointers from dnames to old nodes
-		knot_zone_contents_tree_apply_inorder(old_contents,
-						      xfrin_cleanup_old_nodes,
-						      NULL);
-
-		knot_zone_contents_nsec3_apply_inorder(old_contents,
-						       xfrin_cleanup_old_nodes,
-						       NULL);
 	}
 }
 
@@ -3248,56 +3225,6 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_switch_node_in_rdata(knot_dname_t **dname, void *data)
-{
-	UNUSED(data);
-	if (dname == NULL || *dname == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	if ((*dname)->node != NULL) {
-		knot_dname_update_node(*dname);
-	}
-
-	return KNOT_EOK;
-}
-
-static void xfrin_switch_node_in_rrset(knot_rrset_t *rrset)
-{
-	if (rrset == NULL) {
-		return;
-	}
-
-	if (rrset->rrsigs) {
-		xfrin_switch_node_in_rrset(rrset->rrsigs);
-	}
-
-	if (rrset->owner->node != NULL) {
-		knot_dname_update_node(rrset->owner);
-	}
-
-	rrset_dnames_apply(rrset, xfrin_switch_node_in_rdata, NULL);
-}
-
-static void xfrin_switch_node_in_node(knot_node_t **node, void *data)
-{
-	UNUSED(data);
-	if (node == NULL || *node == NULL) {
-		return;
-	}
-
-	if ((*node)->owner->node != NULL) {
-		knot_dname_update_node((*node)->owner);
-	}
-
-	knot_rrset_t **rr_array = knot_node_get_rrsets_no_copy(*node);
-	for (uint16_t i = 0; i < (*node)->rrset_count; ++i) {
-		xfrin_switch_node_in_rrset(rr_array[i]);
-	}
-}
-
-/*----------------------------------------------------------------------------*/
-
 int xfrin_switch_zone(knot_zone_t *zone,
                       knot_zone_contents_t *new_contents,
                       int transfer_type)
@@ -3316,17 +3243,6 @@ int xfrin_switch_zone(knot_zone_t *zone,
 
 	dbg_xfrin_verb("Old contents: %p, apex: %p, new apex: %p\n",
 		       old, (old) ? old->apex : NULL, new_contents->apex);
-
-	// switch pointers in domain names, now only the new zone is used
-	if (transfer_type == XFR_TYPE_IIN || transfer_type == XFR_TYPE_UPDATE) {
-		/* Switch node references in owner DNAMEs and RDATA dnames. */
-		int ret = knot_zone_tree_apply(new_contents->nodes,
-					       xfrin_switch_node_in_node, NULL);
-		assert(ret == KNOT_EOK);
-		ret = knot_zone_tree_apply(new_contents->nsec3_nodes,
-					   xfrin_switch_node_in_node, NULL);
-		assert(ret == KNOT_EOK);
-	}
 
 	// set generation to old, so that the flags may be used in next transfer
 	// and we do not search for new nodes anymore

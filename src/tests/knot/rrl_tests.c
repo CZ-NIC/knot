@@ -127,7 +127,7 @@ static int rrl_tests_run(int argc, char *argv[])
 	}
 	knot_query_init(query);
 
-	knot_dname_t *qname = knot_dname_new_from_str("beef.", 5, NULL);
+	knot_dname_t *qname = knot_dname_new_from_str("beef.", 5);
 	int ret = knot_query_set_question(query, qname, KNOT_CLASS_IN, KNOT_RRTYPE_A);
 	knot_dname_free(&qname);
 	if (ret != KNOT_EOK) {
@@ -163,7 +163,7 @@ static int rrl_tests_run(int argc, char *argv[])
 	ok(ret == KNOT_EOK, "rrl: setlocks");
 
 	/* 4. N unlimited requests. */
-	knot_dname_t *apex = knot_dname_new_from_str("rrl.", 4, NULL);
+	knot_dname_t *apex = knot_dname_new_from_str("rrl.", 4);
 	knot_zone_t *zone = knot_zone_new(knot_node_new(apex, NULL, 0));
 	sockaddr_t addr;
 	sockaddr_t addr6;

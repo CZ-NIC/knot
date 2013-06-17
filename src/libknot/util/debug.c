@@ -44,10 +44,7 @@ void knot_node_dump(knot_node_t *node)
 	name = knot_dname_to_str(node->owner);
 	dbg_node_detail("owner: %s\n", name);
 	free(name);
-	dbg_node_detail("labels: ");
-	hex_print(node->owner->labels, node->owner->label_count);
 	dbg_node_detail("node: %p\n", node);
-	dbg_node_detail("node (in node's owner): %p\n", node->owner->node);
 
 	if (knot_node_is_deleg_point(node)) {
 		dbg_node_detail("delegation point\n");

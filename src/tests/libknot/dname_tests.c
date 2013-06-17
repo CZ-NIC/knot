@@ -77,46 +77,46 @@ static int dname_tests_run(int argc, char *argv[])
 	len = 10;
 	w = "\x04""abcd""\x03""efg";
 	t = "abcd.efg";
-	d = knot_dname_new_from_str(t, strlen(t), NULL);
+	d = knot_dname_new_from_str(t, strlen(t));
 	ok(d && d->size == len && memcmp(d->name, w, len) == 0,
 	   "dname_fromstr: parsed correct non-FQDN name");
 	knot_dname_free(&d);
 
 	/* 10. parse FQDN from string (correct) .*/
 	t = "abcd.efg.";
-	d = knot_dname_new_from_str(t, strlen(t), NULL);
+	d = knot_dname_new_from_str(t, strlen(t));
 	ok(d && d->size == len && memcmp(d->name, w, len) == 0,
 	   "dname_fromstr: parsed correct FQDN name");
 	knot_dname_free(&d);
 
 	/* 11. parse name from string (incorrect) .*/
 	t = "..";
-	d = knot_dname_new_from_str(t, strlen(t), NULL);
+	d = knot_dname_new_from_str(t, strlen(t));
 	ok(d == NULL, "dname_fromstr: parsed incorrect name");
 
 	/* 12. equal name is subdomain */
 	t = "ab.cd.ef";
-	d2 = knot_dname_new_from_str(t, strlen(t), NULL);
+	d2 = knot_dname_new_from_str(t, strlen(t));
 	t = "ab.cd.ef";
-	d = knot_dname_new_from_str(t, strlen(t), NULL);
+	d = knot_dname_new_from_str(t, strlen(t));
 	ok(!knot_dname_is_subdomain(d, d2), "dname_subdomain: equal name");
 	knot_dname_free(&d);
 
 	/* 13. true subdomain */
 	t = "0.ab.cd.ef";
-	d = knot_dname_new_from_str(t, strlen(t), NULL);
+	d = knot_dname_new_from_str(t, strlen(t));
 	ok(knot_dname_is_subdomain(d, d2), "dname_subdomain: true subdomain");
 	knot_dname_free(&d);
 
 	/* 14. not subdomain */
 	t = "cd.ef";
-	d = knot_dname_new_from_str(t, strlen(t), NULL);
+	d = knot_dname_new_from_str(t, strlen(t));
 	ok(!knot_dname_is_subdomain(d, d2), "dname_subdomain: not subdomain");
 	knot_dname_free(&d);
 
 	/* 15. root subdomain */
 	t = ".";
-	d = knot_dname_new_from_str(t, strlen(t), NULL);
+	d = knot_dname_new_from_str(t, strlen(t));
 	ok(knot_dname_is_subdomain(d2, d), "dname_subdomain: root subdomain");
 	knot_dname_free(&d);
 	knot_dname_free(&d2);
@@ -124,9 +124,9 @@ static int dname_tests_run(int argc, char *argv[])
 	/* 16-17. dname cat (valid) */
 	w = "\x03""cat";
 	len = 5;
-	d = knot_dname_new_from_wire((const uint8_t *)w, len, NULL);
+	d = knot_dname_new_from_wire((const uint8_t *)w, len);
 	t = "*";
-	d2 = knot_dname_new_from_str(t, strlen(t), NULL);
+	d2 = knot_dname_new_from_str(t, strlen(t));
 	d2 = knot_dname_cat(d2, d);
 	t = "\x01""*""\x03""cat";
 	len = 2 + 4 + 1;

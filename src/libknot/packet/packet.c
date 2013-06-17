@@ -789,7 +789,7 @@ const knot_dname_t *knot_packet_qname(const knot_packet_t *packet)
 	 *        to make it compile and work.
 	 */
 	const uint8_t *qname = packet->wireformat + KNOT_WIRE_HEADER_SIZE;
-	return knot_dname_new_from_wire(qname, knot_dname_wire_size(qname, NULL), 0);
+	return knot_dname_new_from_wire(qname, knot_dname_wire_size(qname, NULL));
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1199,13 +1199,11 @@ void knot_packet_dump(const knot_packet_t *packet)
 
 	if (knot_packet_qdcount(packet) > 0) {
 		dbg_packet("\nQuestion:\n");
-		char *qname = knot_dname_to_str(packet->question.qname);
+		char *qname = knot_dname_to_str(knot_packet_qname(packet));
 		dbg_packet("  QNAME: %s\n", qname);
 		free(qname);
-		dbg_packet("  QTYPE: %u (%u)\n", packet->question.qtype,
-		           packet->question.qtype);
-		dbg_packet("  QCLASS: %u (%u)\n", packet->question.qclass,
-		           packet->question.qclass);
+		dbg_packet("  QTYPE: %u\n", knot_packet_qtype(packet));
+		dbg_packet("  QCLASS: %u\n", knot_packet_qclass(packet));
 	}
 
 	dbg_packet("\nAnswer RRSets:\n");

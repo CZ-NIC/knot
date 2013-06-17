@@ -170,8 +170,7 @@ static void create_test_dnames()
 	for (int i = 0; i < TEST_DNAME_COUNT; i++) {
 		test_dnames[i] =
 			knot_dname_new_from_str(test_dname_strings[i],
-		                                strlen(test_dname_strings[i]),
-		                                NULL);
+		                                strlen(test_dname_strings[i]));
 	}
 }
 

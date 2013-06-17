@@ -685,7 +685,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 	/* Local allocation, will be discarded. */
 	knot_dname_t *next_dname =
 		knot_dname_new_from_str((char *)next_dname_decoded,
-					   real_size, NULL);
+					   real_size);
 	if (next_dname == NULL) {
 		free(next_dname_decoded);
 		log_zone_warning("Could not create new dname!\n");
@@ -893,7 +893,7 @@ static int sem_check_node_optional(knot_zone_contents_t *zone,
 			if (glue_node == NULL) {
 				/* Try wildcard. */
 				knot_dname_t *wildcard =
-					knot_dname_new_from_str("*", 1, NULL);
+					knot_dname_new_from_str("*", 1);
 				if (wildcard == NULL) {
 					knot_dname_free(&ns_dname);
 					return KNOT_ENOMEM;
@@ -1246,7 +1246,7 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 		/* Local allocation, will be discarded. */
 		knot_dname_t *next_dname =
 			knot_dname_new_from_str((char *)next_dname_decoded,
-						real_size, NULL);
+						real_size);
 		if (next_dname == NULL) {
 			dbg_semcheck("Could not allocate dname!\n");
 			free(next_dname_decoded);
