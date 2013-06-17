@@ -865,18 +865,8 @@ static uint8_t* knot_rrset_create_rdata_at_pos(knot_rrset_t *rrset,
 
 	uint32_t total_size = rrset_rdata_size_total(rrset);
 
-	// Realloc indices. We will allocate exact size to save space.
-	void *tmp = realloc(rrset->rdata_indices,
-	                 (rrset->rdata_count + 1) * sizeof(uint32_t));
-	if (tmp) {
-		rrset->rdata_indices = tmp;
-	} else {
-		ERR_ALLOC_FAILED;
-		return NULL;
-	}
-
 	// Realloc actual data.
-	tmp = realloc(rrset->rdata, total_size + size);
+	void *tmp = realloc(rrset->rdata, total_size + size);
 	if (tmp) {
 		rrset->rdata = tmp;
 	} else {
@@ -892,21 +882,23 @@ static uint8_t* knot_rrset_create_rdata_at_pos(knot_rrset_t *rrset,
 	assert(old_pointer);
 	memmove(old_pointer + size, old_pointer,
 	        rrset_rdata_size_total(rrset) - rrset_rdata_offset(rrset, pos));
-
-	// Realloc indices.
-	++rrset->rdata_count;
-	tmp = realloc(rrset->rdata_indices, rrset->rdata_count);
+	
+	// Realloc indices. We will allocate exact size to save space.
+	tmp = realloc(rrset->rdata_indices,
+	              (rrset->rdata_count + 1) * sizeof(uint32_t));
 	if (tmp) {
 		rrset->rdata_indices = tmp;
 	} else {
 		ERR_ALLOC_FAILED;
 		return NULL;
 	}
-
-	// Update indices.
+	// Move indices.
 	memmove(rrset->rdata_indices + pos + 1, rrset->rdata_indices + pos,
 	        (rrset->rdata_count - pos) * sizeof(uint32_t));
+	// Init new index
 	rrset->rdata_indices[pos] = pos ? rrset->rdata_indices[pos - 1] : 0;
+	++rrset->rdata_count;
+	// Adjust all following items
 	for (uint16_t i = pos; i < rrset->rdata_count; ++i) {
 		rrset->rdata_indices[i] += size;
 	}
@@ -1647,10 +1639,6 @@ int knot_rrset_merge_no_dupl_sort(knot_rrset_t *rrset1,
 		return KNOT_EINVAL;
 	}
 
-	char str[1280];
-	knot_rrset_txt_dump(rrset1, str, 1280, &KNOT_DUMP_STYLE_DEFAULT);
-	printf("before merge:\n%s\n", str);
-
 dbg_rrset_exec_detail(
 	char *name = knot_dname_to_str(rrset1->owner);
 	dbg_rrset_detail("rrset: merge_no_dupl_sort: Merging %s.\n", name);
@@ -1667,22 +1655,23 @@ dbg_rrset_exec_detail(
 
 	*deleted_rrs = 0;
 	*merged = 0;
-	/* For each item in second RRSet, make sure it is not duplicated. */
 	for (uint16_t i = 0; i < rrset2->rdata_count; ++i) {
-		int duplicated = 0;
-		int found = 0;
-		/* Compare with all RRs in the first RRSet. */
+		int duplicated = 0; // Track duplicates
+		int found = 0; // 
+		// Compare with all RRs in the first RRSet.
 		uint16_t j = 0;
 		size_t insert_to = 0;
-		for (;j < rrset1->rdata_count && !duplicated; ++j) {
+		for (;j < rrset1->rdata_count && (!duplicated && !found); ++j) {
 			int cmp = rrset_rdata_compare_one(rrset1, rrset2, j, i);
 			if (cmp == 0) {
 				// Duplication - no need to merge this RR
 				duplicated = 1;
-			} else if (cmp == 1 && !found) {
+			} else if (cmp > 0) {
 				// Found position to insert
 				found = 1;
-				insert_to = j;
+			} else {
+				// Not yet - it might be next position
+				insert_to = j + 1;
 			}
 		}
 
@@ -1703,10 +1692,6 @@ dbg_rrset_exec_detail(
 			*deleted_rrs += 1; // = need to shallow free rrset2
 		}
 	}
-
-	knot_rrset_txt_dump(rrset1, str, 1280, &KNOT_DUMP_STYLE_DEFAULT);
-	printf("after merge:\n%s\n", str);
-	knot_rrset_dump(rrset1);
 
 	return KNOT_EOK;
 }
