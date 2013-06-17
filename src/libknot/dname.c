@@ -714,7 +714,8 @@ knot_dname_t *knot_dname_cat(knot_dname_t *d1, const knot_dname_t *d2)
 	}
 
 	// allocate new space
-	uint8_t *new_dname = (uint8_t *)malloc(d1->size + d2->size);
+	size_t new_size = d1->size + d2->size - 1; /* Trim the d1 \0 label */
+	uint8_t *new_dname = (uint8_t *)malloc(new_size);
 	CHECK_ALLOC_LOG(new_dname, NULL);
 
 	dbg_dname_detail("1: copying %d bytes from adress %p to %p\n",
@@ -725,13 +726,14 @@ knot_dname_t *knot_dname_cat(knot_dname_t *d1, const knot_dname_t *d2)
 	dbg_dname_detail("2: copying %d bytes from adress %p to %p\n",
 	                 d2->size, d2->name, new_dname + d1->size);
 
-	memcpy(new_dname + d1->size, d2->name, d2->size);
+	/* Overwrite the d1 \0 label. */
+	memcpy(new_dname + d1->size - 1, d2->name, d2->size);
 
 	uint8_t *old_name = d1->name;
 	d1->name = new_dname;
 	free(old_name);
 
-	d1->size += d2->size;
+	d1->size = new_size;
 
 	return d1;
 }
