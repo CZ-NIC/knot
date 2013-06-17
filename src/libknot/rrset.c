@@ -1183,7 +1183,7 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 		if (descriptor_item_is_dname(item)) {
 			pos2 = *pos;
 			knot_dname_t *dname = knot_dname_parse_from_wire(
-					wire, &pos2, total_size, NULL, NULL);
+					wire, &pos2, total_size);
 			if (dname == NULL) {
 				return KNOT_EMALF;
 			}

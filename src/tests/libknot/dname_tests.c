@@ -35,7 +35,7 @@ unit_api dname_tests_api = {
 
 static int dname_tests_count(int argc, char *argv[])
 {
-	return 17;
+	return 21;
 }
 
 static int dname_tests_run(int argc, char *argv[])
@@ -43,6 +43,7 @@ static int dname_tests_run(int argc, char *argv[])
 	knot_dname_t *d = NULL, *d2 = NULL;
 	const char *w = NULL, *t = NULL;
 	unsigned len = 0;
+	size_t pos = 0;
 
 	/* 1. NULL wire */
 	ok(!test_fw(0, NULL), "parsing NULL dname");
@@ -133,6 +134,23 @@ static int dname_tests_run(int argc, char *argv[])
 	ok(memcmp(d2->name, t, len) == 0, "dname_cat: valid concatenation");
 	knot_dname_free(&d);
 	knot_dname_free(&d2);
+
+	/* 18-19. parse from wire (valid) */
+	t = "\x04""abcd""\x03""efg";
+	len = 10;
+	pos = 0;
+	d = knot_dname_parse_from_wire((const uint8_t *)t, &pos, len);
+	ok(d != NULL, "dname_parse: valid name");
+	cmp_ok(pos, "==", len, "dname_parse: valid name (parsed length)");
+	knot_dname_free(&d);
+
+	/* 20-21. parse from wire (invalid) */
+	t = "\x08""dddd";
+	len = 5;
+	pos = 0;
+	d = knot_dname_parse_from_wire((const uint8_t *)t, &pos, len);
+	ok(d == NULL, "dname_parse: bad name");
+	cmp_ok(pos, "==", 0, "dname_parse: bad name (parsed length)");
 
 	done_testing();
 }

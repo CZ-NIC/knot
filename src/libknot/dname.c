@@ -192,96 +192,17 @@ knot_dname_t *knot_dname_new_from_wire(const uint8_t *name, uint size,
 /*----------------------------------------------------------------------------*/
 
 knot_dname_t *knot_dname_parse_from_wire(const uint8_t *wire,
-                                         size_t *pos, size_t size,
-                                         knot_node_t *node,
-                                         knot_dname_t *dname)
+                                         size_t *pos, size_t size)
 {
-	uint8_t name[KNOT_MAX_DNAME_LENGTH];
-	uint8_t labels[KNOT_MAX_DNAME_LABELS];
-
-	short l = 0;
-	size_t i = 0, p = *pos;
-	int pointer_used = 0;
-
-	while (p < size && wire[p] != 0) {
-		/* Check maximum number of labels (may overflow). */
-		if (l == KNOT_MAX_DNAME_LABELS) {
-			return NULL;
-		}
-		labels[l] = i;
-		dbg_dname_detail("Next label (%d.) position: %zu\n", l, i);
-
-		if (knot_wire_is_pointer(wire + p)) {
-			// pointer.
-			size_t ptr = knot_wire_get_pointer(wire + p);
-
-			/* Check that the pointer points backwards
-			 * otherwise it could result in infinite loop
-			 */
-			if (ptr >= p) {
-				return NULL;
-			}
-
-			p = ptr;
-
-			if (!pointer_used) {
-				*pos += 2;
-				pointer_used = 1;
-			}
-			if (p >= size) {
-				return NULL;
-			}
-		} else {
-			// label; first byte is label length
-			uint8_t length = *(wire + p);
-			/* Check label length (maximum 63 bytes allowed). */
-			if (length > 63) {
-				return NULL;
-			}
-			/* Check if there's enough space. */
-			if (i + length + 2 > KNOT_MAX_DNAME_LENGTH) {
-				return NULL;
-			}
-			//printf("Label %d (max %d), length: %u.\n", l, KNOT_MAX_DNAME_LABELS, length);
-			memcpy(name + i, wire + p, length + 1);
-			p += length + 1;
-			i += length + 1;
-			if (!pointer_used) {
-				*pos += length + 1;
-			}
-			++l;
-		}
-	}
-	if (p >= size) {
+	const uint8_t *name = wire + *pos;
+	const uint8_t *endp = wire + size;
+	int parsed = knot_dname_wire_check(name, endp, wire);
+	if (parsed < 0)
 		return NULL;
-	}
 
-	name[i] = 0;
-	if (!pointer_used) {
-		*pos += 1;
-	}
-
-	/* Allocate if NULL. */
-	if (dname == NULL) {
-		dname = knot_dname_new();
-		if (dname)
-			dname->name = (uint8_t *)malloc((i + 1) * sizeof(uint8_t));
-	}
-
-	if (dname == NULL) {
-		ERR_ALLOC_FAILED;
-		return NULL;
-	}
-
-	if (dname->name == NULL) {
-		ERR_ALLOC_FAILED;
-		knot_dname_free(&dname);
-		return NULL;
-	}
-
-	memcpy(dname->name, name, i + 1);
-	dname->size = i + 1;
-	dname->node = node;
+	knot_dname_t *dname = knot_dname_new_from_wire(name, parsed, NULL);
+	if (dname)
+		*pos += parsed;
 
 	return dname;
 }

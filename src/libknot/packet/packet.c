@@ -163,8 +163,7 @@ static knot_rrset_t *knot_packet_parse_rr(const uint8_t *wire, size_t *pos,
 	dbg_packet("Parsing RR from position: %zu, total size: %zu\n",
 	           *pos, size);
 
-	knot_dname_t *owner = knot_dname_parse_from_wire(wire, pos, size,
-	                                                     NULL, NULL);
+	knot_dname_t *owner = knot_dname_parse_from_wire(wire, pos, size);
 	dbg_packet_detail("Created owner: %p, actual position: %zu\n", owner,
 	                  *pos);
 	if (owner == NULL) {
