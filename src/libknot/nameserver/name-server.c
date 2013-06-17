@@ -432,8 +432,16 @@ dbg_ns_exec_verb(
 		const knot_dname_t *cname =
 			knot_rrset_rdata_cname_name(cname_rrset);
 		dbg_ns_detail("CNAME name from RDATA: %p\n", cname);
-		// change the node to the node of that name
-		*node = knot_dname_node(cname);
+
+		/* Attempt to find mentioned name in zone. */
+		rcu_read_lock();
+		const knot_zone_t *zone = resp->zone;
+		knot_zone_contents_t *contents = knot_zone_get_contents(zone);
+		const knot_node_t *encloser = NULL, *prev = NULL;
+		knot_zone_contents_find_dname(contents, cname, node, &encloser, &prev);
+		if (*node == NULL && encloser && encloser->wildcard_child)
+			*node = encloser->wildcard_child;
+		rcu_read_unlock();
 		dbg_ns_detail("This name's node: %p\n", *node);
 
 		// save the new name which should be used for replacing wildcard
@@ -639,7 +647,7 @@ dbg_ns_exec_verb(
 static int ns_put_additional_for_rrset(knot_packet_t *resp,
                                        const knot_rrset_t *rrset)
 {
-	const knot_node_t *node = NULL;
+	const knot_node_t *node = NULL, *encloser = NULL, *prev = NULL;
 
 	int ret = 0;
 
@@ -656,15 +664,15 @@ dbg_ns_exec_detail(
 		free(name);
 );
 		assert(dname != NULL);
-		node = knot_dname_node(dname);
 
-		dbg_ns_detail("Node saved in RDATA dname: %p\n", node);
-		if (node != NULL && node->owner != dname) {
-			// the stored node should be the wildcard covering the
-			// name
-			dbg_ns_detail("Node is wildcard.\n");
-			assert(knot_dname_is_wildcard(knot_node_owner(node)));
-		}
+		/* Attempt to find mentioned name in zone. */
+		rcu_read_lock();
+		const knot_zone_t *zone = resp->zone;
+		knot_zone_contents_t *contents = knot_zone_get_contents(zone);
+		knot_zone_contents_find_dname(contents, dname, &node, &encloser, &prev);
+		if (node == NULL && encloser && encloser->wildcard_child)
+			node = encloser->wildcard_child;
+		rcu_read_unlock();
 
 		knot_rrset_t *rrset_add;
 
@@ -1165,7 +1173,7 @@ static knot_dname_t *ns_wildcard_child_name(const knot_dname_t *name)
 {
 	assert(name != NULL);
 
-	knot_dname_t *wildcard = knot_dname_new_from_str("*", 1, NULL);
+	knot_dname_t *wildcard = knot_dname_new_from_str("*", 1);
 	if (wildcard == NULL) {
 		return NULL;
 	}
@@ -3535,6 +3543,10 @@ dbg_ns_exec_verb(
 	// find zone in which to search for the name
 	knot_zonedb_t *zonedb = rcu_dereference(nameserver->zone_db);
 	*zone = ns_get_zone_for_qname(zonedb, qname, qtype);
+
+	/* Assign zone to packets. */
+	query->zone = *zone;
+	(*resp)->zone = *zone;
 
 	return KNOT_EOK;
 }

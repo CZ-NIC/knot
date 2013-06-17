@@ -208,8 +208,7 @@ static int sign_tests_run(int argc, char *argv[])
 		knot_tsig_key_t tsig_key;
 		const char *owner = "shared.example.com.";
 		knot_dname_t *name = knot_dname_new_from_str(owner,
-							     strlen(owner),
-							     NULL);
+							     strlen(owner));
 
 		result = knot_tsig_key_from_params(&params, &tsig_key);
 		ok(result == KNOT_EINVAL,
