@@ -137,6 +137,48 @@ static knot_dname_t *name_to_hashed_name(const knot_dname_t *name,
 	return result;
 }
 
+/* - NSEC chain iteration --------------------------------------------------- */
+
+typedef int (*chain_iterate_cb)(knot_node_t *, knot_node_t *, void *);
+
+/*!
+ * \brief Iterate over
+ */
+static int chain_iterate(knot_zone_tree_t *nodes, chain_iterate_cb callback,
+                         void *data)
+{
+	bool sorted = true;
+	hattrie_iter_t *it = hattrie_iter_begin(nodes, sorted);
+
+	if (!it)
+		return KNOT_ENOMEM;
+
+	if (hattrie_iter_finished(it))
+		return KNOT_EINVAL;
+
+	knot_node_t *first = (knot_node_t *)*hattrie_iter_val(it);
+	knot_node_t *previous = first;
+	knot_node_t *current = first;
+	hattrie_iter_next(it);
+
+	while (!hattrie_iter_finished(it)) {
+		current = (knot_node_t *)*hattrie_iter_val(it);
+
+		int result = callback(previous, current, data);
+		if (result != KNOT_EOK) {
+			hattrie_iter_free(it);
+			return result;
+		}
+
+		previous = current;
+		hattrie_iter_next(it);
+	}
+
+	hattrie_iter_free(it);
+
+	return callback(current, first, data);
+}
+
 /* - NSEC3 nodes construction ----------------------------------------------- */
 
 static knot_rrset_t *create_nsec3_rrset(knot_dname_t *owner,
@@ -205,8 +247,10 @@ static knot_node_t *create_nsec3_node(knot_dname_t *owner,
 	return new_node;
 }
 
-static void connect_nsec3_nodes(knot_node_t *current, const knot_node_t *next)
+static int connect_nsec3_nodes(knot_node_t *current, knot_node_t *next, void *data)
 {
+	UNUSED(data);
+
 	// TODO: a bit fragile, needs refactoring...
 
 	assert(current);
@@ -223,37 +267,13 @@ static void connect_nsec3_nodes(knot_node_t *current, const knot_node_t *next)
 
 	uint8_t *rdata_hash = current->rrset_tree[0]->rdata;
 
-
 	rdata_hash += 4;
 	rdata_hash += 1 + *rdata_hash;
 	assert(*rdata_hash == NSEC3_HASH_LENGTH);
 	rdata_hash += 1;
 	memcpy(rdata_hash, hash, NSEC3_HASH_LENGTH);
-}
 
-static void connect_nsec3_chain(knot_zone_tree_t *nsec3_nodes)
-{
-	bool sorted = true;
-	hattrie_iter_t *it = hattrie_iter_begin(nsec3_nodes, sorted);
-
-	assert(!hattrie_iter_finished(it));
-
-	knot_node_t *first    = (knot_node_t *)*hattrie_iter_val(it);
-	knot_node_t *previous = first;
-	knot_node_t *current  = first;
-	hattrie_iter_next(it);
-
-	while (!hattrie_iter_finished(it)) {
-		current = (knot_node_t *)*hattrie_iter_val(it);
-
-		connect_nsec3_nodes(previous, current);
-
-		previous = current;
-		hattrie_iter_next(it);
-	}
-
-	connect_nsec3_nodes(current, first);
-
+	return KNOT_EOK;
 }
 
 static int create_nsec3_chain(knot_zone_t *zone, uint32_t ttl)
@@ -299,7 +319,9 @@ static int create_nsec3_chain(knot_zone_t *zone, uint32_t ttl)
 
 	free(apex);
 
-	connect_nsec3_chain(nsec3_nodes);
+	int result = chain_iterate(nsec3_nodes, connect_nsec3_nodes, NULL);
+	if (result != KNOT_EOK)
+		return result;
 
 	// TODO: atomic
 	knot_zone_tree_deep_free(&zone->contents->nsec3_nodes);
@@ -337,8 +359,10 @@ static knot_rrset_t *create_nsec_rrset(knot_dname_t *owner, knot_dname_t *next,
 	return rrset;
 }
 
-static int add_nsec_connection(knot_node_t *node, knot_node_t *next, uint32_t ttl)
+static int add_nsec_connection(knot_node_t *node, knot_node_t *next, void *data)
 {
+	uint32_t ttl = *(uint32_t *)data;
+
 	bitmap_t bitmap = { 0 };
 	bitmap_add_type(&bitmap, KNOT_RRTYPE_NSEC);
 	for (int i = 0; i < node->rrset_count; i++) {
@@ -358,31 +382,7 @@ static int create_nsec_chain(knot_zone_t *zone, uint32_t ttl)
 	assert(zone->contents);
 	assert(zone->contents->nodes);
 
-	int sorted = true;
-	hattrie_iter_t *it = hattrie_iter_begin(zone->contents->nodes, sorted);
-
-	if (hattrie_iter_finished(it)) {
-		// empty zone
-		return KNOT_EOK;
-	}
-
-	knot_node_t *first    = (knot_node_t *)*hattrie_iter_val(it);
-	knot_node_t *previous = first;
-	knot_node_t *current  = first;
-	hattrie_iter_next(it);
-
-	while (!hattrie_iter_finished(it)) {
-		current = (knot_node_t *)*hattrie_iter_val(it);
-
-		add_nsec_connection(previous, current, ttl);
-
-		previous = current;
-		hattrie_iter_next(it);
-	}
-
-	add_nsec_connection(current, first, ttl);
-
-	return KNOT_ENOTSUP;
+	return chain_iterate(zone->contents->nodes, add_nsec_connection, &ttl);
 }
 
 /* - temporary helpers ------------------------------------------------------ */
