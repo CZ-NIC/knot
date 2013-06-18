@@ -18,6 +18,13 @@
 
 #include "zone.h"
 
+/*!
+ * \brief Create NSEC or NSEC3 chain in the zone.
+ *
+ * \param zone  Zone for which the NSEC(3) chain will be created.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
 int knot_zone_create_nsec_chain(knot_zone_t *zone);
 
 #endif // _KNOT_ZONE_NSEC_H_

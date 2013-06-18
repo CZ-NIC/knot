@@ -28,25 +28,31 @@
 #include "zone-contents.h"
 #include "zone-nsec.h"
 
-/* - RR types bitmap -------------------------------------------------------- */
+/* - RR types bitmap -- RFC 4034 ------------------------------------------- */
 
 #define BITMAP_WINDOW_SIZE 256
 #define BITMAP_WINDOW_BYTES (BITMAP_WINDOW_SIZE/CHAR_BIT)
 #define BITMAP_WINDOW_COUNT 256
 
-#define NSEC3_HASH_LENGTH 20
-#define NSEC3_ENCODED_HASH_LENGTH 32
-
+/*!
+ * \brief One window of a bitmap.
+ */
 typedef struct {
 	uint8_t used;
 	uint8_t data[BITMAP_WINDOW_BYTES];
 } bitmap_window_t;
 
+/*!
+ * \brief Bitmap of RR types.
+ */
 typedef struct {
 	int used;
 	bitmap_window_t windows[BITMAP_WINDOW_COUNT];
 } bitmap_t;
 
+/*!
+ * \brief Add one RR type into the bitmap.
+ */
 static void bitmap_add_type(bitmap_t *bitmap, uint16_t type)
 {
 	int win = type / BITMAP_WINDOW_SIZE;
@@ -64,6 +70,20 @@ static void bitmap_add_type(bitmap_t *bitmap, uint16_t type)
 		window->used = win_byte + 1;
 }
 
+/*!
+ * \brief Add all RR types from a RR set into the bitmap.
+ */
+static void bitmap_add_rrset(bitmap_t *bitmap, knot_rrset_t *rrset[],
+                             int rrset_count)
+{
+	for (int i = 0; i < rrset_count; i++) {
+		bitmap_add_type(bitmap, rrset[i]->type);
+	}
+}
+
+/*!
+ * \brief Compute the size of the bitmap in NSEC RDATA format.
+ */
 static size_t bitmap_size(const bitmap_t *bitmap)
 {
 	size_t result = 0;
@@ -73,12 +93,15 @@ static size_t bitmap_size(const bitmap_t *bitmap)
 		if (used == 0)
 			continue;
 
-		result += 2 + used; // windows ID, window size, bitmap
+		result += 2 + used; // windows number, window size, data
 	}
 
 	return result;
 }
 
+/*!
+ * \brief Write bitmap in NSEC RDATA format.
+ */
 static void bitmap_write(const bitmap_t *bitmap, uint8_t *output)
 {
 	uint8_t *write_ptr = output;
@@ -98,55 +121,28 @@ static void bitmap_write(const bitmap_t *bitmap, uint8_t *output)
 	}
 }
 
-/* - NSEC3 names conversion ------------------------------------------------- */
-
-static knot_dname_t *nsec3_hash_to_dname(const uint8_t *hash, size_t hash_size,
-					 const char *apex, size_t apex_size)
-{
-	char name[KNOT_DNAME_MAX_LENGTH];
-	size_t endp;
-
-	endp = base32hex_encode(hash, hash_size, (uint8_t *)name, sizeof(name));
-	assert(endp > 0);
-
-	name[endp] = '.';
-	endp += 1;
-
-	memcpy(name + endp, apex, apex_size);
-	endp += apex_size;
-
-	knot_dname_t *dname = knot_dname_new_from_str(name, endp, NULL);
-	knot_dname_to_lower(dname);
-
-	return dname;
-}
-
-static knot_dname_t *name_to_hashed_name(const knot_dname_t *name,
-                                         const knot_nsec3_params_t *params,
-                                         const char *apex, size_t apex_size)
-{
-	uint8_t *hash = NULL;
-	size_t hash_size = 0;
-
-	if (knot_nsec3_sha1(params, name->name, name->size, &hash, &hash_size) != KNOT_EOK)
-		return NULL;
-
-	knot_dname_t *result = nsec3_hash_to_dname(hash, hash_size, apex, apex_size);
-	free(hash);
-
-	return result;
-}
-
-/* - NSEC chain iteration --------------------------------------------------- */
+/* - NSEC chain iteration -------------------------------------------------- */
 
 typedef int (*chain_iterate_cb)(knot_node_t *, knot_node_t *, void *);
 
 /*!
- * \brief Iterate over
+ * \brief Call a function for each piece of the chain formed by sorted nodes.
+ *
+ * \note If the callback function returns anything other than KNOT_EOK, the
+ *       iteration is terminated and the error code is propagated.
+ *
+ * \param nodes     Zone nodes.
+ * \param callback  Callback function.
+ * \param data      Custom data supplied to the callback function.
+ *
+ * \return Error code, KNOT_EOK if successful.
  */
 static int chain_iterate(knot_zone_tree_t *nodes, chain_iterate_cb callback,
                          void *data)
 {
+	assert(nodes);
+	assert(callback);
+
 	bool sorted = true;
 	hattrie_iter_t *it = hattrie_iter_begin(nodes, sorted);
 
@@ -179,27 +175,170 @@ static int chain_iterate(knot_zone_tree_t *nodes, chain_iterate_cb callback,
 	return callback(current, first, data);
 }
 
-/* - NSEC3 nodes construction ----------------------------------------------- */
 
-static knot_rrset_t *create_nsec3_rrset(knot_dname_t *owner,
-                                        const knot_nsec3_params_t *params,
-                                        const bitmap_t *bitmap,
-                                        uint32_t ttl)
+/* - NSEC nodes construction ----------------------------------------------- */
+
+/*!
+ * \brief Create NSEC RR set.
+ *
+ * \param owner     Record owner.
+ * \param next      Owner of the immeditatelly following node.
+ * \param rr_types  Bitmap with RR types of the owning node.
+ * \param ttl       Record TTL.
+ *
+ * \return NSEC RR set, NULL on error.
+ */
+static knot_rrset_t *create_nsec_rrset(knot_dname_t *owner, knot_dname_t *next,
+				       const bitmap_t *rr_types, uint32_t ttl)
 {
 	knot_rrset_t *rrset;
-	rrset = knot_rrset_new(owner, KNOT_RRTYPE_NSEC3, KNOT_CLASS_IN, ttl);
+	rrset = knot_rrset_new(owner, KNOT_RRTYPE_NSEC, KNOT_CLASS_IN, ttl);
 	if (!rrset)
 		return NULL;
 
-	size_t rdata_size = 6 + params->salt_length + NSEC3_HASH_LENGTH
-			    + bitmap_size(bitmap);
-
+	size_t rdata_size = sizeof(knot_dname_t *) + bitmap_size(rr_types);
 	uint8_t *rdata = knot_rrset_create_rdata(rrset, rdata_size);
 	if (!rdata) {
 		knot_rrset_free(&rrset);
 		return NULL;
 	}
 
+	knot_dname_retain(next);
+	memcpy(rdata, &next, sizeof(knot_dname_t *));
+	bitmap_write(rr_types, rdata + sizeof(knot_dname_t *));
+
+	return rrset;
+}
+
+/*!
+ * \brief Connect two nodes by adding a NSEC RR set into the first node.
+ *
+ * Callback function, signature chain_iterate_cb.
+ *
+ * \param a     First node.
+ * \param b     Second node (immediate follower of a).
+ * \param data  Pointer to uint32_t variable holding TTL for the new NSEC node.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b, void *data)
+{
+	uint32_t ttl = *(uint32_t *)data;
+
+	bitmap_t rr_types = { 0 };
+	bitmap_add_rrset(&rr_types, a->rrset_tree, a->rrset_count);
+	bitmap_add_type(&rr_types, KNOT_RRTYPE_NSEC);
+	bitmap_add_type(&rr_types, KNOT_RRTYPE_RRSIG);
+
+	knot_rrset_t *nsec = create_nsec_rrset(a->owner, b->owner, &rr_types, ttl);
+	if (!nsec)
+		return KNOT_ENOMEM;
+
+	return knot_node_add_rrset_no_merge(a, nsec);
+}
+
+/*!
+ * \brief Add NSEC records into the zone.
+ *
+ * \note Expects that no NSEC records are present in the zone.
+ *
+ * \param zone Zone.
+ * \param ttl TTL for created NSEC records.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+static int create_nsec_chain(knot_zone_t *zone, uint32_t ttl)
+{
+	assert(zone);
+	assert(zone->contents);
+	assert(zone->contents->nodes);
+
+	return chain_iterate(zone->contents->nodes, connect_nsec_nodes, &ttl);
+}
+
+
+/* - NSEC3 names conversion ------------------------------------------------ */
+
+/*!
+ * \brief Create NSEC3 owner name from hash and zone apex.
+ *
+ * \param hash       Raw hash.
+ * \param hash_size  Size of the hash.
+ * \param apex       Zone apex.
+ * \param apex_size  Size of the zone apex.
+ *
+ * \return NSEC3 owner name, NULL in case of error.
+ */
+static knot_dname_t *nsec3_hash_to_dname(const uint8_t *hash, size_t hash_size,
+					 const char *apex, size_t apex_size)
+{
+	char name[KNOT_DNAME_MAX_LENGTH];
+	size_t endp;
+
+	endp = base32hex_encode(hash, hash_size, (uint8_t *)name, sizeof(name));
+	if (endp <= 0)
+		return NULL;
+
+	name[endp] = '.';
+	endp += 1;
+
+	memcpy(name + endp, apex, apex_size);
+	endp += apex_size;
+
+	knot_dname_t *dname = knot_dname_new_from_str(name, endp, NULL);
+	knot_dname_to_lower(dname);
+
+	return dname;
+}
+
+/*!
+ * \brief Create NSEC3 owner name from regular owner name.
+ *
+ * \param owner      Node owner name.
+ * \param params     Params for NSEC3 hashing function.
+ * \param apex       Apex size.
+ * \param apex_size  Size of the zone apex.
+ *
+ * \return NSEC3 owner name, NULL in case of error.
+ */
+static knot_dname_t *create_nsec3_owner(const knot_dname_t *owner,
+                                        const knot_nsec3_params_t *params,
+                                        const char *apex, size_t apex_size)
+{
+	uint8_t *name = owner->name;
+	size_t name_size = owner->size;
+	uint8_t *hash = NULL;
+	size_t hash_size = 0;
+
+	if (knot_nsec3_sha1(params, name, name_size, &hash, &hash_size) != KNOT_EOK)
+		return NULL;
+
+	knot_dname_t *result = nsec3_hash_to_dname(hash, hash_size, apex, apex_size);
+	free(hash);
+
+	return result;
+}
+
+/* - NSEC3 nodes construction ---------------------------------------------- */
+
+/*!
+ * \brief Get NSEC3 RDATA size.
+ */
+static size_t nsec3_rdata_size(const knot_nsec3_params_t *params,
+                               const bitmap_t *rr_types)
+{
+	return 6 + params->salt_length + KNOT_NSEC3_HASH_LENGTH
+	       + bitmap_size(rr_types);
+}
+
+/*!
+ * \brief Fill NSEC3 RDATA.
+ *
+ * \note Content of next hash field is not changed.
+ */
+static void nsec3_fill_rdata(uint8_t *rdata, const knot_nsec3_params_t *params,
+                             const bitmap_t *rr_types, uint32_t ttl)
+{
 	*rdata = params->algorithm;                       // hash algorithm
 	rdata += 1;
 	*rdata = 0;                                       // flags
@@ -210,27 +349,52 @@ static knot_rrset_t *create_nsec3_rrset(knot_dname_t *owner,
 	rdata += 1;
 	memcpy(rdata, params->salt, params->salt_length); // salt
 	rdata += params->salt_length;
-	*rdata = NSEC3_HASH_LENGTH;                       // hash length
+	*rdata = KNOT_NSEC3_HASH_LENGTH;                  // hash length
 	rdata += 1;
-	memset(rdata, '\0', NSEC3_HASH_LENGTH);           // hash
-	rdata += NSEC3_HASH_LENGTH;
-	bitmap_write(bitmap, rdata);                      // bit map
+	/*memset(rdata, '\0', KNOT_NSEC3_HASH_LENGTH);*/  // hash (unknown)
+	rdata += KNOT_NSEC3_HASH_LENGTH;
+	bitmap_write(rr_types, rdata);                    // RR types bit map
+}
+
+/*!
+ * \brief Create NSEC3 RR set.
+ */
+static knot_rrset_t *create_nsec3_rrset(knot_dname_t *owner,
+                                        const knot_nsec3_params_t *params,
+                                        const bitmap_t *rr_types,
+                                        uint32_t ttl)
+{
+	knot_rrset_t *rrset;
+	rrset = knot_rrset_new(owner, KNOT_RRTYPE_NSEC3, KNOT_CLASS_IN, ttl);
+	if (!rrset)
+		return NULL;
+
+	size_t rdata_size = nsec3_rdata_size(params, rr_types);
+	uint8_t *rdata = knot_rrset_create_rdata(rrset, rdata_size);
+	if (!rdata) {
+		knot_rrset_free(&rrset);
+		return NULL;
+	}
+
+	nsec3_fill_rdata(rdata, params, rr_types, ttl);
 
 	return rrset;
 }
 
+/*!
+ * \brief Create NSEC3 node and add it into the zone.
+ */
 static knot_node_t *create_nsec3_node(knot_dname_t *owner,
+                                      const knot_nsec3_params_t *nsec3_params,
+                                      knot_node_t *apex_node,
                                       const bitmap_t *rr_types,
-                                      const knot_zone_t *zone,
                                       uint32_t ttl)
 {
 	uint8_t flags = 0;
-	knot_node_t *apex_node = zone->contents->apex;
 	knot_node_t *new_node = knot_node_new(owner, apex_node, flags);
 	if (!new_node)
 		return NULL;
 
-	const knot_nsec3_params_t *nsec3_params = &zone->contents->nsec3_params;
 	knot_rrset_t *nsec3_rrset;
 	nsec3_rrset = create_nsec3_rrset(owner, nsec3_params, rr_types, ttl);
 	if (!nsec3_rrset) {
@@ -247,151 +411,201 @@ static knot_node_t *create_nsec3_node(knot_dname_t *owner,
 	return new_node;
 }
 
-static int connect_nsec3_nodes(knot_node_t *current, knot_node_t *next, void *data)
+/*!
+ * \brief Get position of hash field in NSEC3 rdata.
+ */
+static uint8_t *nsec3_rdata_hash(uint8_t *rdata)
+{
+	rdata += 4;           // algorithm, flags, iterations
+	rdata += 1 + *rdata;  // salt length, salt
+	assert(*rdata == KNOT_NSEC3_HASH_LENGTH);
+	rdata += 1;           // hash length
+
+	return rdata;
+}
+
+/*!
+ * \brief Connect two nodes by filling 'hash' field of NSEC3 RDATA of the node.
+ *
+ * \param a     First node.
+ * \param b     Second node (immediate follower of a).
+ * \param data  Unused parameter.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+static int connect_nsec3_nodes(knot_node_t *a, knot_node_t *b, void *data)
 {
 	UNUSED(data);
+	assert(a);
+	assert(b);
 
-	// TODO: a bit fragile, needs refactoring...
+	assert(a->rrset_count == 1);
+	uint8_t *rdata_hash = nsec3_rdata_hash(a->rrset_tree[0]->rdata);
 
-	assert(current);
-	assert(next);
+	uint8_t *b32_hash = (uint8_t *)knot_dname_to_str(b->owner);
+	if (!b32_hash)
+		return KNOT_ENOMEM;
 
-	uint8_t *encoded_hash = (uint8_t *)knot_dname_to_str(next->owner);
-	assert(encoded_hash);
+	int written = base32hex_decode(b32_hash, KNOT_NSEC3_HASH_B32_LENGTH,
+	                               rdata_hash, KNOT_NSEC3_HASH_LENGTH);
 
-	uint8_t hash[NSEC3_HASH_LENGTH];
+	free(b32_hash);
 
-	int r = base32hex_decode(encoded_hash, NSEC3_ENCODED_HASH_LENGTH,
-				hash, NSEC3_HASH_LENGTH);
-	assert(r == NSEC3_HASH_LENGTH);
-
-	uint8_t *rdata_hash = current->rrset_tree[0]->rdata;
-
-	rdata_hash += 4;
-	rdata_hash += 1 + *rdata_hash;
-	assert(*rdata_hash == NSEC3_HASH_LENGTH);
-	rdata_hash += 1;
-	memcpy(rdata_hash, hash, NSEC3_HASH_LENGTH);
+	if (written != KNOT_NSEC3_HASH_LENGTH)
+		return KNOT_EINVAL;
 
 	return KNOT_EOK;
 }
 
-static int create_nsec3_chain(knot_zone_t *zone, uint32_t ttl)
+/*!
+ * \brief Get zone apex as a string.
+ */
+static bool get_zone_apex_str(knot_zone_t *zone, char **apex, size_t *apex_size)
 {
 	assert(zone);
-	assert(zone->contents);
-	assert(zone->contents->nodes);
+	assert(apex);
+	assert(apex_size);
 
-	knot_zone_tree_t *nsec3_nodes = knot_zone_tree_create();
-	if (!nsec3_nodes)
+	*apex = knot_dname_to_str(zone->name);
+	if (!*apex)
+		return false;
+
+	*apex_size = strlen(*apex);
+
+	return true;
+}
+
+/*!
+ * \brief Create new NSEC3 node for given regular node.
+ *
+ * \note Parameters 'apex' and 'apex_size' are added for performace reasons.
+ *
+ * \param node       Node for which the NSEC3 node is created.
+ * \param apex_node  Zone apex node.
+ * \param apex       Zone apex.
+ * \param apex_size  Size fo zone apex.
+ * \param params     NSEC3 hash function parameters.
+ * \param ttl        TTL of the new NSEC3 node.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+static knot_node_t *create_nsec3_node_for_node(knot_node_t *node,
+                                               knot_node_t *apex_node,
+                                               char *apex, size_t apex_size,
+                                               const knot_nsec3_params_t *params,
+                                               uint32_t ttl)
+{
+	knot_dname_t *nsec3_owner;
+	nsec3_owner = create_nsec3_owner(node->owner, params, apex, apex_size);
+	if (!nsec3_owner)
+		return NULL;
+
+	bitmap_t rr_types = { 0 };
+	bitmap_add_rrset(&rr_types, node->rrset_tree, node->rrset_count);
+	bitmap_add_type(&rr_types, KNOT_RRTYPE_RRSIG);
+
+	knot_node_t *nsec3_node;
+	nsec3_node = create_nsec3_node(nsec3_owner, params, apex_node, &rr_types, ttl);
+	knot_dname_release(nsec3_owner);
+
+	return nsec3_node;
+}
+
+/*!
+ * \brief Create NSEC3 node for each regular node in the zone.
+ *
+ * \param zone         Zone.
+ * \param ttl          TTL for the created NSEC records.
+ * \param nsec3_nodes  Tree whereto new NSEC3 nodes will be added.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+static int create_nsec3_nodes(knot_zone_t *zone, uint32_t ttl,
+                              knot_zone_tree_t *nsec3_nodes)
+{
+	const knot_nsec3_params_t *params = &zone->contents->nsec3_params;
+	knot_node_t *apex_node = zone->contents->apex;
+
+	char *apex = NULL;
+	size_t apex_size;
+	if (!get_zone_apex_str(zone, &apex, &apex_size))
 		return KNOT_ENOMEM;
 
-	char *apex = knot_dname_to_str(zone->name);
-	assert(apex);
-	size_t apex_size = strlen(apex);
-
-	const knot_nsec3_params_t *nsec3_params = &zone->contents->nsec3_params;
+	int result = KNOT_EOK;
 
 	int sorted = false;
 	hattrie_iter_t *it = hattrie_iter_begin(zone->contents->nodes, sorted);
 	while (!hattrie_iter_finished(it)) {
 		knot_node_t *node = (knot_node_t *)*hattrie_iter_val(it);
 
-		knot_dname_t *nsec3_owner;
-		nsec3_owner = name_to_hashed_name(node->owner, nsec3_params,
-						  apex, apex_size);
-		assert(nsec3_owner);
-
-		// TODO: move outside?
-		bitmap_t bitmap = { 0 };
-		for (int i = 0; i < node->rrset_count; i++) {
-			bitmap_add_type(&bitmap, node->rrset_tree[i]->type);
+		knot_node_t *nsec3_node;
+		nsec3_node = create_nsec3_node_for_node(node, apex_node, apex,
+		                                        apex_size, params, ttl);
+		if (!nsec3_node) {
+			result = KNOT_ENOMEM;
+			break;
 		}
 
-		knot_node_t *new_node = create_nsec3_node(nsec3_owner,
-							  &bitmap, zone, ttl);
+		result = knot_zone_tree_insert(nsec3_nodes, nsec3_node);
+		if (result != KNOT_EOK)
+			break;
 
-		int r = knot_zone_tree_insert(nsec3_nodes, new_node);
-		assert(r == KNOT_EOK);
+		node->nsec3_node = nsec3_node;
 
 		hattrie_iter_next(it);
 	}
 
+	hattrie_iter_free(it);
 	free(apex);
 
-	int result = chain_iterate(nsec3_nodes, connect_nsec3_nodes, NULL);
-	if (result != KNOT_EOK)
-		return result;
+	return result;
+}
 
-	// TODO: atomic
+/*!
+ * \brief Create new NSEC3 chain and add it into the zone.
+ */
+static int create_nsec3_chain(knot_zone_t *zone, uint32_t ttl)
+{
+	assert(zone);
+
+	int result;
+
+	knot_zone_tree_t *nsec3_nodes = knot_zone_tree_create();
+	if (!nsec3_nodes)
+		return KNOT_ENOMEM;
+
+	result = create_nsec3_nodes(zone, ttl, nsec3_nodes);
+	if (result != KNOT_EOK) {
+		knot_zone_tree_free(&nsec3_nodes);
+		return result;
+	}
+
+	result = chain_iterate(nsec3_nodes, connect_nsec3_nodes, NULL);
+	if (result != KNOT_EOK) {
+		knot_zone_tree_free(&nsec3_nodes);
+		return result;
+	}
+
 	knot_zone_tree_deep_free(&zone->contents->nsec3_nodes);
 	zone->contents->nsec3_nodes = nsec3_nodes;
-
-	int r = knot_zone_contents_adjust(zone->contents, NULL, NULL, 0);
-	assert(r == KNOT_EOK);
-
 
 	return KNOT_EOK;
 }
 
+/* - helper functions ------------------------------------------------------ */
 
-/* - NSEC nodes construction ------------------------------------------------ */
-
-static knot_rrset_t *create_nsec_rrset(knot_dname_t *owner, knot_dname_t *next,
-				       const bitmap_t *bitmap, uint32_t ttl)
-{
-	knot_rrset_t *rrset;
-	rrset = knot_rrset_new(owner, KNOT_RRTYPE_NSEC, KNOT_CLASS_IN, ttl);
-	if (!rrset)
-		return NULL;
-
-	size_t rdata_size = sizeof(knot_dname_t *) + bitmap_size(bitmap);
-	uint8_t *rdata = knot_rrset_create_rdata(rrset, rdata_size);
-	if (!rdata) {
-		knot_rrset_free(&rrset);
-		return NULL;
-	}
-
-	knot_dname_retain(next);
-	memcpy(rdata, &next, sizeof(knot_dname_t *));
-	bitmap_write(bitmap, rdata + sizeof(knot_dname_t *));
-
-	return rrset;
-}
-
-static int add_nsec_connection(knot_node_t *node, knot_node_t *next, void *data)
-{
-	uint32_t ttl = *(uint32_t *)data;
-
-	bitmap_t bitmap = { 0 };
-	bitmap_add_type(&bitmap, KNOT_RRTYPE_NSEC);
-	for (int i = 0; i < node->rrset_count; i++) {
-		bitmap_add_type(&bitmap, node->rrset_tree[i]->type);
-	}
-
-	knot_rrset_t *nsec = create_nsec_rrset(node->owner, next->owner, &bitmap, ttl);
-	if (!nsec)
-		return KNOT_ENOMEM;
-
-	return knot_node_add_rrset_no_merge(node, nsec);
-}
-
-static int create_nsec_chain(knot_zone_t *zone, uint32_t ttl)
-{
-	assert(zone);
-	assert(zone->contents);
-	assert(zone->contents->nodes);
-
-	return chain_iterate(zone->contents->nodes, add_nsec_connection, &ttl);
-}
-
-/* - temporary helpers ------------------------------------------------------ */
-
+/*!
+ * Check if NSEC3 is enabled for the given zone.
+ */
 static bool is_nsec3_enabled(const knot_zone_t *zone)
 {
 	return zone->contents->nsec3_params.salt_length > 0;
 }
 
+/*!
+ * \brief Get minimum TTL from zone SOA.
+ * \note Value should be used for NSEC records.
+ */
 static bool get_zone_soa_min_ttl(const knot_zone_t *zone, uint32_t *ttl)
 {
 	assert(zone);
@@ -399,129 +613,43 @@ static bool get_zone_soa_min_ttl(const knot_zone_t *zone, uint32_t *ttl)
 	assert(zone->contents->apex);
 	assert(ttl);
 
-	knot_rrset_t *soa = knot_node_get_rrset(zone->contents->apex, KNOT_RRTYPE_SOA);
+	knot_node_t *apex = zone->contents->apex;
+	knot_rrset_t *soa = knot_node_get_rrset(apex, KNOT_RRTYPE_SOA);
 	if (!soa)
 		return false;
 
-	*ttl = knot_rrset_rdata_soa_minimum(soa);
+	uint32_t result =  knot_rrset_rdata_soa_minimum(soa);
+	if (result == 0)
+		return false;
+
+	*ttl = result;
 	return true;
 }
 
-/* - future public API------------------------------------------------------- */
+/* - public API ------------------------------------------------------------ */
 
+/*!
+ * \brief Create NSEC or NSEC3 chain in the zone.
+ */
 int knot_zone_create_nsec_chain(knot_zone_t *zone)
 {
 	if (!zone)
 		return KNOT_EINVAL;
 
+	// TODO: create zone copy here and then switch atomically
+
 	uint32_t nsec_ttl = 0;
 	if (!get_zone_soa_min_ttl(zone, &nsec_ttl))
 		return KNOT_ERROR;
 
+	int result;
 	if (is_nsec3_enabled(zone))
-		return create_nsec3_chain(zone, nsec_ttl);
+		result = create_nsec3_chain(zone, nsec_ttl);
 	else
-		return create_nsec_chain(zone, nsec_ttl);
+		result = create_nsec_chain(zone, nsec_ttl);
+
+	if (result != KNOT_EOK)
+		return result;
+
+	return knot_zone_contents_adjust(zone->contents, NULL, NULL, 0);
 }
-
-#if 0
-
-static bool is_dnssec_type(uint16_t type)
-{
-	switch (type) {
-	case KNOT_RRTYPE_RRSIG:
-	case KNOT_RRTYPE_NSEC:
-	case KNOT_RRTYPE_NSEC3:
-		return true;
-	default:
-		return false;
-	}
-}
-
-static bool only_dnssec_node(const knot_node_t *node)
-{
-	assert(node);
-
-	for (int i = 0; i < node->rrset_count; i++) {
-		uint16_t type = node->rrset_tree[i]->type;
-		if (!is_dnssec_type(type))
-			return true;
-	}
-
-	return false;
-}
-
-static knot_node_t *copy_nodnssec_node(const knot_node_t *from)
-{
-	knot_node_t *parent = NULL;
-	uint8_t flags = 0;
-	knot_node_t *copy = knot_node_new(from->owner, parent, flags);
-
-	if (!copy)
-		return NULL;
-
-	for (int i = 0; i < from->rrset_count; i++) {
-		if (is_dnssec_type(from->rrset_tree[i]->type))
-			continue;
-
-		knot_rrset_t *rrset = NULL;
-		int result;
-
-		result = knot_rrset_shallow_copy(from->rrset_tree[i], &rrset);
-		if (result != KNOT_EOK) {
-			knot_node_free_rrsets(copy, 1);
-			knot_node_free(&copy);
-			return NULL;
-		}
-
-		result = knot_node_add_rrset_no_merge(copy, rrset);
-		if (result != KNOT_EOK) {
-			knot_node_free_rrsets(copy, 1);
-			knot_node_free(&copy);
-			return NULL;
-		}
-	}
-
-	return copy;
-}
-
-/*!
- * \brief Copies the zone content while skipping all NSEC(3) and RRSIG records.
- */
-static knot_zone_contents_t *zone_strip_dnssec(const knot_zone_contents_t *current)
-{
-	assert(current);
-	knot_zone_contents_t *stripped;
-
-	stripped = knot_zone_contents_new(current->apex, current->zone);
-	if (!stripped)
-		return NULL;
-
-	bool sorted = false;
-	hattrie_iter_t *it = hattrie_iter_begin(current->nodes, sorted);
-	while (!hattrie_iter_finished(it)) {
-		knot_node_t *node = (knot_node_t *)*hattrie_iter_val(it);
-
-		if (only_dnssec_node(node)) {
-			hattrie_iter_next(it);
-			continue;
-		}
-
-		knot_node_t *copy = copy_nodnssec_node(node);
-		if (!copy) {
-			knot_zone_contents_free(&stripped);
-			return NULL;
-		}
-
-		if (knot_zone_contents_add_node(stripped, node, 1, 0) != KNOT_EOK) {
-			knot_zone_contents_free(&stripped);
-			return NULL;
-		}
-
-		hattrie_iter_next(it);
-	}
-
-	return stripped;
-}
-
-#endif

@@ -35,6 +35,18 @@
 #define KNOT_NSEC3_SHA_USE_EVP 0
 
 /*----------------------------------------------------------------------------*/
+
+/*!
+ * \brief Length of raw NSEC3 hash in bytes.
+ */
+#define KNOT_NSEC3_HASH_LENGTH 20
+
+/*!
+ * \brief Length of the a NSEC3 hash encoded in Base32 encoding.
+ */
+#define KNOT_NSEC3_HASH_B32_LENGTH 32
+
+/*----------------------------------------------------------------------------*/
 /*!
  * \brief Structure representing the NSEC3PARAM resource record.
  */
