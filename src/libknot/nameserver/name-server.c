@@ -1347,7 +1347,7 @@ dbg_ns_exec_verb(
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to add RRSIGs for NSEC for NXDOMAIN to response:"
 		       "%s\n", knot_strerror(ret));
-		return ret;
+		//return ret;
 	}
 	// 2) NSEC proving that there is no wildcard covering the name
 	// this is only different from 1) if the wildcard would be
@@ -1406,7 +1406,7 @@ dbg_ns_exec_verb(
 		if (ret != KNOT_EOK) {
 			dbg_ns("Failed to add RRSIGs for second NSEC for "
 			       "NXDOMAIN to response: %s\n", knot_strerror(ret));
-			return ret;
+			//return ret;
 		}
 	}
 
