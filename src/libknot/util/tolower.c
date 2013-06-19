@@ -17,7 +17,7 @@
 #include <config.h>
 #include "util/tolower.h"
 
-const uint8_t char_table[CHAR_TABLE_SIZE] = {
+const uint8_t char_table[KNOT_CHAR_TABLE_SIZE] = {
 	'\x00',
 	'\x01',
 	'\x02',
