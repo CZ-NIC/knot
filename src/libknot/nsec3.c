@@ -15,248 +15,145 @@
  */
 
 #include <config.h>
-#include <stdint.h>
 #include <assert.h>
+#include <stdint.h>
 #include <stdlib.h>
-#include <sys/time.h>
-
 #include <openssl/evp.h>
 #include <openssl/sha.h>
 
-#include "nsec3.h"
 #include "common.h"
 #include "common/descriptor.h"
-#include "util/utils.h"
+#include "common/memdup.h"
+#include "nsec3.h"
 #include "util/tolower.h"
-#include "util/debug.h"
 
-/*----------------------------------------------------------------------------*/
-
-int knot_nsec3_params_from_wire(knot_nsec3_params_t *params,
-                                  const knot_rrset_t *nsec3param)
+/*!
+ * \brief Compute NSEC3 SHA1 hash.
+ *
+ * \param[in]  salt         Salt.
+ * \param[in]  salt_length  Salt length.
+ * \param[in]  iterations   Interation count of the SHA1 computation.
+ * \param[in]  data         Input data to be hashed.
+ * \param[in]  data_size    Input data size.
+ * \param[out] digest       Result of the computation (will be allocated).
+ * \param[out] digest_size  Size of the result.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+static int nsec3_sha1(const uint8_t *salt, uint8_t salt_length,
+                      uint16_t iterations, const uint8_t *data,
+                      size_t data_size, uint8_t **digest, size_t *digest_size)
 {
-	if (params == NULL || nsec3param == NULL ||
-	    knot_rrset_rdata_rr_count(nsec3param) == 0) {
+	assert(data);
+	assert(digest);
+	assert(digest_size);
+
+	if (!salt)
 		return KNOT_EINVAL;
-	}
-
-	assert(knot_rrset_type(nsec3param) == KNOT_RRTYPE_NSEC3PARAM);
-
-	params->algorithm = knot_rrset_rdata_nsec3param_algorithm(nsec3param);
-	params->iterations = knot_rrset_rdata_nsec3param_iterations(nsec3param);
-	params->flags = knot_rrset_rdata_nsec3param_flags(nsec3param);
-	params->salt_length =
-		knot_rrset_rdata_nsec3param_salt_length(nsec3param);
-
-	if (params->salt_length > 0) {
-		/* It is called also on reload, so we need to free if exists. */
-		if (params->salt != NULL) {
-			free(params->salt);
-			params->salt = NULL;
-		}
-		params->salt = (uint8_t *)malloc(params->salt_length);
-		CHECK_ALLOC_LOG(params->salt, KNOT_ENOMEM);
-		memcpy(params->salt,
-		       knot_rrset_rdata_nsec3param_salt(nsec3param),
-		       params->salt_length);
-	} else {
-		params->salt = NULL;
-	}
-
-	dbg_nsec3("Parsed NSEC3PARAM:\n");
-	dbg_nsec3("Algorithm: %u\n", params->algorithm);
-	dbg_nsec3("Flags: %u\n", params->flags);
-	dbg_nsec3("Iterations: %u\n", params->iterations);
-	dbg_nsec3("Salt length: %u\n", params->salt_length);
-	dbg_nsec3("Salt: \n");
-	if (params->salt != NULL) {
-		dbg_nsec3_hex((char *)params->salt,
-		                       params->salt_length);
-		dbg_nsec3("\n");
-	} else {
-		dbg_nsec3("none\n");
-	}
-
-	return KNOT_EOK;
-}
-
-static uint8_t *knot_nsec3_to_lowercase(const uint8_t *data, size_t size)
-{
-	uint8_t *out = (uint8_t *)malloc(size);
-	CHECK_ALLOC_LOG(out, NULL);
-
-	for (size_t i = 0; i < size; ++i) {
-		out[i] = knot_tolower(data[i]);
-	}
-
-	return out;
-}
-
-/*----------------------------------------------------------------------------*/
-#if KNOT_NSEC3_SHA_USE_EVP
-int knot_nsec3_sha1(const knot_nsec3_params_t *params,
-                      const uint8_t *data, size_t size, uint8_t **digest,
-                      size_t *digest_size)
-{
-	if (digest == NULL || digest_size == NULL || data == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	uint8_t *salt = params->salt;
-	uint8_t salt_length = params->salt_length;
-	uint16_t iterations = params->iterations;
 
 	EVP_MD_CTX mdctx;
 	EVP_MD_CTX_init(&mdctx);
 
-	*digest = (uint8_t *)malloc(EVP_MD_size(EVP_sha1()));
-	if (*digest == NULL) {
-		ERR_ALLOC_FAILED;
-		return -1;
+	unsigned int result_size = 0;
+	uint8_t *result = (uint8_t *)malloc(EVP_MD_size(EVP_sha1()));
+	if (result == NULL) {
+		EVP_MD_CTX_cleanup(&mdctx);
+		return KNOT_ENOMEM;
 	}
 
-	uint8_t *data_low = knot_nsec3_to_lowercase(data, size);
+	uint8_t *data_low = knot_strtolower(data, data_size);
 	if (data_low == NULL) {
-		free(*digest);
-		return -1;
+		free(result);
+		EVP_MD_CTX_cleanup(&mdctx);
+		return KNOT_ENOMEM;
 	}
 
 	const uint8_t *in = data_low;
-	unsigned in_size = size;
+	unsigned int in_size = data_size;
 
-	int res = 0;
-
-#ifdef KNOT_NSEC3_DEBUG
-	unsigned long long total_time = 0;
-	unsigned long calls = 0;
-	long time = 0;
-#endif
-
-	for (int i = 0; i <= iterations; ++i) {
-#ifdef KNOT_NSEC3_DEBUG
-		perf_begin();
-#endif
-
+	for (int i = 0; i <= iterations; i++) {
 		EVP_DigestInit_ex(&mdctx, EVP_sha1(), NULL);
 
-		res = EVP_DigestUpdate(&mdctx, in, in_size);
+		int success_ops =
+			EVP_DigestUpdate(&mdctx, in, in_size) +
+			EVP_DigestUpdate(&mdctx, salt, salt_length) +
+			EVP_DigestFinal_ex(&mdctx, result, &result_size);
 
-		if (salt_length > 0) {
-			res = EVP_DigestUpdate(&mdctx, salt, salt_length);
-		}
-
-		EVP_DigestFinal_ex(&mdctx, *digest, digest_size);
-		in = *digest;
-		in_size = *digest_size;
-
-#ifdef KNOT_NSEC3_DEBUG
-		perf_end(time);
-		total_time += time;
-		++calls;
-#endif
-
-		if (res != 1) {
-			dbg_nsec3("Error calculating SHA-1 hash.\n");
+		if (success_ops != 3) {
+			EVP_MD_CTX_cleanup(&mdctx);
+			free(result);
 			free(data_low);
-			free(*digest);
-			return -2;
+			return KNOT_NSEC3_ECOMPUTE_HASH;
 		}
+
+		in = result;
+		in_size = result_size;
 	}
 
 	EVP_MD_CTX_cleanup(&mdctx);
-
-	dbg_nsec3_verb("NSEC3 hashing: calls: %lu, avg time per call: %f."
-	               "\n", calls, (double)(total_time) / calls);
-
 	free(data_low);
-	return 0;
-}
 
-/*----------------------------------------------------------------------------*/
-#else
+	*digest = result;
+	*digest_size = (size_t)result_size;
 
-int knot_nsec3_sha1(const knot_nsec3_params_t *params,
-                      const uint8_t *data, size_t size, uint8_t **digest,
-                      size_t *digest_size)
-{
-	if (params == NULL || digest == NULL || digest_size == NULL
-	    || data == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	uint8_t *salt = params->salt;
-	uint8_t salt_length = params->salt_length;
-	uint16_t iterations = params->iterations;
-
-	dbg_nsec3_verb("Hashing: \n");
-	dbg_nsec3_verb("  Data: %.*s \n", (int)size, data);
-	dbg_nsec3_hex_verb((const char *)data, size);
-	dbg_nsec3_verb(" (size %d)\n  Iterations: %u\n", (int)size, iterations);
-	dbg_nsec3_verb("  Salt length: %u\n", salt_length);
-	dbg_nsec3_verb("  Salt: \n");
-	if (salt_length > 0) {
-		dbg_nsec3_hex_verb((char *)salt, salt_length);
-		dbg_nsec3_verb("\n");
-	} else {
-		dbg_nsec3_verb("none\n");
-	}
-
-	SHA_CTX ctx;
-
-	*digest = (uint8_t *)malloc(SHA_DIGEST_LENGTH);
-	if (*digest == NULL) {
-		ERR_ALLOC_FAILED;
-		return KNOT_ENOMEM;
-	}
-
-	uint8_t *data_low = knot_nsec3_to_lowercase(data, size);
-	if (data_low == NULL) {
-		free(*digest);
-		return KNOT_ENOMEM;
-	}
-
-	const uint8_t *in = data_low;
-	unsigned in_size = size;
-
-	int res = 0;
-
-	// other iterations
-	for (int i = 0; i <= iterations; ++i) {
-		SHA1_Init(&ctx);
-
-		res = SHA1_Update(&ctx, in, in_size);
-
-		if (salt_length > 0) {
-			res = SHA1_Update(&ctx, salt, salt_length);
-		}
-
-		SHA1_Final(*digest, &ctx);
-
-		in = *digest;
-		in_size = SHA_DIGEST_LENGTH;
-
-		if (res != 1) {
-			dbg_nsec3("Error calculating SHA-1 hash.\n");
-			free(data_low);
-			free(*digest);
-			return KNOT_ECRYPTO;
-		}
-	}
-
-	*digest_size = SHA_DIGEST_LENGTH;
-
-	dbg_nsec3_verb("Hash: %.*s\n", (int)*digest_size, *digest);
-	dbg_nsec3_hex_verb((const char *)*digest, *digest_size);
-	dbg_nsec3_verb("\n");
-
-	free(data_low);
 	return KNOT_EOK;
 }
-#endif
 
-/*----------------------------------------------------------------------------*/
+/* - public API -------------------------------------------------------------*/
 
+/*!
+ * \brief Initialize the structure with NSEC3 params from NSEC3PARAM RR set.
+ */
+int knot_nsec3_params_from_wire(knot_nsec3_params_t *params,
+                                const knot_rrset_t *rrset)
+{
+	if (params == NULL || rrset == NULL || rrset->rdata_count == 0)
+		return KNOT_EINVAL;
+
+	assert(rrset->type == KNOT_RRTYPE_NSEC3PARAM);
+
+	knot_nsec3_params_t result = { 0 };
+
+	result.algorithm   = knot_rrset_rdata_nsec3param_algorithm(rrset);
+	result.iterations  = knot_rrset_rdata_nsec3param_iterations(rrset);
+	result.flags       = knot_rrset_rdata_nsec3param_flags(rrset);
+	result.salt_length = knot_rrset_rdata_nsec3param_salt_length(rrset);
+
+	if (result.salt_length > 0) {
+		result.salt = knot_memdup(knot_rrset_rdata_nsec3param_salt(rrset),
+		                          result.salt_length);
+		if (!result.salt)
+			return KNOT_ENOMEM;
+	} else {
+		result.salt = NULL;
+	}
+
+	knot_nsec3_params_free(params);
+	*params = result;
+
+	return KNOT_EOK;
+}
+
+/*!
+ * \brief Clean up structure with NSEC3 params (do not deallocate).
+ */
 void knot_nsec3_params_free(knot_nsec3_params_t *params)
 {
 	free(params->salt);
+}
+
+/*!
+ * \brief Compute NSEC3 hash for given data.
+ */
+int knot_nsec3_hash(const knot_nsec3_params_t *params, const uint8_t *data,
+                    size_t data_size, uint8_t **digest, size_t *digest_size)
+{
+	if (!params || !data || !digest || !digest_size)
+		return KNOT_EINVAL;
+
+	if (params->algorithm != 1)
+		return KNOT_ENOTSUP;
+
+	return nsec3_sha1(params->salt, params->salt_length, params->iterations,
+	                  data, data_size, digest, digest_size);
 }

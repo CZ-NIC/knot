@@ -621,9 +621,8 @@ dbg_zone_exec_verb(
 	free(n);
 );
 
-	int res = knot_nsec3_sha1(nsec3_params, knot_dname_name(name),
-				    knot_dname_size(name), &hashed_name,
-				    &hash_size);
+	int res = knot_nsec3_hash(nsec3_params, name->name, name->size,
+	                          &hashed_name, &hash_size);
 
 	if (res != 0) {
 		char *n = knot_dname_to_str(name);

@@ -310,7 +310,7 @@ static knot_dname_t *create_nsec3_owner(const knot_dname_t *owner,
 	uint8_t *hash = NULL;
 	size_t hash_size = 0;
 
-	if (knot_nsec3_sha1(params, name, name_size, &hash, &hash_size) != KNOT_EOK)
+	if (knot_nsec3_hash(params, name, name_size, &hash, &hash_size) != KNOT_EOK)
 		return NULL;
 
 	knot_dname_t *result = nsec3_hash_to_dname(hash, hash_size, apex, apex_size);
