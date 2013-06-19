@@ -63,6 +63,7 @@ src/common/lists.c
 src/common/lists.h
 src/common/log.c
 src/common/log.h
+src/common/memdup.h
 src/common/mempattern.c
 src/common/mempattern.h
 src/common/mempool.c
