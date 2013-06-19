@@ -31,6 +31,7 @@
 #include "libknot/common.h"
 #include "knot/zone/semantic-check.h"
 #include "libknot/zone/zone-contents.h"
+#include "libknot/zone/zone-nsec.h"
 #include "knot/other/debug.h"
 #include "knot/zone/zone-load.h"
 #include "zscanner/file_loader.h"
@@ -696,12 +697,32 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 		return NULL;
 	}
 
+	int ret;
+
 	knot_node_t *first_nsec3_node = NULL;
 	knot_node_t *last_nsec3_node = NULL;
 	rrset_list_delete(&c->node_rrsigs);
-	knot_zone_contents_adjust(c->current_zone, &first_nsec3_node,
-	                          &last_nsec3_node, 0);
+	ret = knot_zone_contents_adjust(c->current_zone, &first_nsec3_node,
+	                                &last_nsec3_node, 0);
+	if (ret != KNOT_EOK)  {
+		log_zone_error("Failed to finalize zone contents: %s\n",
+		               knot_strerror(ret));
+		rrset_list_delete(&c->node_rrsigs);
+		knot_zone_t *zone_to_free = c->current_zone->zone;
+		knot_zone_deep_free(&zone_to_free);
+		return NULL;
+	}
 
+	ret = knot_zone_connect_nsec_nodes(c->current_zone);
+	if (ret != KNOT_EOK)  {
+		log_zone_error("Failed to connect regular and NSEC3 nodes: %s\n",
+		               knot_strerror(ret));
+		rrset_list_delete(&c->node_rrsigs);
+		knot_zone_t *zone_to_free = c->current_zone->zone;
+		knot_zone_deep_free(&zone_to_free);
+		return NULL;
+	}
+	
 	if (loader->semantic_checks) {
 		int check_level = 1;
 		const knot_rrset_t *soa_rr =

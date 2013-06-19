@@ -37,6 +37,7 @@
 #include "updates/changesets.h"
 #include "updates/ddns.h"
 #include "tsig-op.h"
+#include "zone/zone-nsec.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -4079,9 +4080,11 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 
 		dbg_ns_verb("ns_process_axfrin: adjusting zone.\n");
 		int rc = knot_zone_contents_adjust(zone, NULL, NULL, 0);
-		if (rc != KNOT_EOK) {
+		if (rc != KNOT_EOK)
 			return rc;
-		}
+		rc = knot_zone_connect_nsec_nodes(zone);
+		if (rc != KNOT_EOK)
+			return rc;
 
 		// save the zone contents to the xfr->data
 		xfr->new_contents = zone;

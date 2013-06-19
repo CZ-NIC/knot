@@ -27,4 +27,17 @@
  */
 int knot_zone_create_nsec_chain(knot_zone_t *zone);
 
+/*!
+ * \brief Connect regular and NSEC3 nodes in the zone.
+ *
+ * \note No need to call this function after 'knot_zone_create_nsec_chain'.
+ * \note Exits succesfully if NSEC3 is not enabled.
+ * \note Skips nodes with missing related NSEC3 nodes.
+ *
+ * \param zone  Zone for which the operation is performed.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+int knot_zone_connect_nsec_nodes(knot_zone_contents_t *zone);
+
 #endif // _KNOT_ZONE_NSEC_H_

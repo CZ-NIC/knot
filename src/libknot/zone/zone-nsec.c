@@ -653,3 +653,58 @@ int knot_zone_create_nsec_chain(knot_zone_t *zone)
 
 	return knot_zone_contents_adjust(zone->contents, NULL, NULL, 0);
 }
+
+/*!
+ * \brief Connect regular and NSEC3 nodes in the zone.
+ */
+int knot_zone_connect_nsec_nodes(knot_zone_contents_t *zone)
+{
+	// TODO: little cleanup will be useful (zone->zone, ...)
+
+	if (!zone)
+		return KNOT_EINVAL;
+
+	if (!is_nsec3_enabled(zone->zone))
+		return KNOT_EOK;
+
+	char *apex;
+	size_t apex_size;
+	if (!get_zone_apex_str(zone->zone, &apex, &apex_size))
+		return KNOT_ENOMEM;
+
+	bool sorted = false;
+	hattrie_iter_t *it = hattrie_iter_begin(zone->nodes, sorted);
+	if (!it) {
+		free(apex);
+		return KNOT_ENOMEM;
+	}
+
+	int result = KNOT_EOK;
+
+	while (!hattrie_iter_finished(it)) {
+		knot_node_t *node = (knot_node_t *)*hattrie_iter_val(it);
+
+		knot_dname_t *nsec3_name;
+		nsec3_name = create_nsec3_owner(node->owner, &zone->nsec3_params, apex, apex_size);
+		if (!nsec3_name) {
+			result = KNOT_ENOMEM;
+			break;
+		}
+
+		knot_node_t *nsec3_node = NULL;
+		result = knot_zone_tree_get(zone->nsec3_nodes, nsec3_name, &nsec3_node);
+		if (result != KNOT_EOK)
+			break;
+
+		if (nsec3_node != NULL)
+			node->nsec3_node = nsec3_node;
+
+		knot_dname_release(nsec3_name);
+		hattrie_iter_next(it);
+	}
+
+	free(apex);
+	hattrie_iter_free(it);
+
+	return result;
+}

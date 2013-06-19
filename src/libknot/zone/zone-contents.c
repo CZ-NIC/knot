@@ -402,26 +402,6 @@ static int knot_zone_contents_adjust_node(knot_node_t *node,
 		knot_node_set_wildcard_child(knot_node_get_parent(node), node);
 	}
 
-	// NSEC3 node (only if NSEC3 tree is not empty)
-	/*! \todo We need only exact matches, what if node has no nsec3 node? */
-	/* This is faster, as it doesn't need ordered access. */
-	knot_node_t *nsec3 = NULL;
-	knot_dname_t *nsec3_name = NULL;
-	ret = knot_zone_contents_nsec3_name(zone, knot_node_owner(node),
-					    &nsec3_name);
-	if (ret == KNOT_EOK) {
-		assert(nsec3_name);
-		knot_zone_tree_get(zone->nsec3_nodes, nsec3_name, &nsec3);
-		knot_node_set_nsec3_node(node, nsec3);
-	} else if (ret == KNOT_ENSEC3PAR) {
-		knot_node_set_nsec3_node(node, NULL);
-	} else {
-		/* Something could be in DNAME. */
-		knot_dname_free(&nsec3_name);
-		return ret;
-	}
-	knot_dname_free(&nsec3_name);
-
 	dbg_zone_detail("Set flags to the node: \n");
 	dbg_zone_detail("Delegation point: %s\n",
 			knot_node_is_deleg_point(node) ? "yes" : "no");
@@ -592,9 +572,9 @@ static void knot_zone_contents_adjust_nsec3_node_in_tree_ptr(
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
-                                           const knot_dname_t *name,
-                                           knot_dname_t **nsec3_name)
+static int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
+                                         const knot_dname_t *name,
+                                         knot_dname_t **nsec3_name)
 {
 	assert(nsec3_name != NULL);
 
@@ -603,23 +583,11 @@ int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
 	const knot_nsec3_params_t *nsec3_params =
 		knot_zone_contents_nsec3params(zone);
 
-	if (nsec3_params == NULL) {
-dbg_zone_exec(
-		char *n = knot_dname_to_str(zone->apex->owner);
-		dbg_zone("No NSEC3PARAM for zone %s.\n", n);
-		free(n);
-);
+	if (nsec3_params == NULL)
 		return KNOT_ENSEC3PAR;
-	}
 
 	uint8_t *hashed_name = NULL;
 	size_t hash_size = 0;
-
-dbg_zone_exec_verb(
-	char *n = knot_dname_to_str(name);
-	dbg_zone_verb("Hashing name %s.\n", n);
-	free(n);
-);
 
 	int res = knot_nsec3_hash(nsec3_params, name->name, name->size,
 	                          &hashed_name, &hash_size);
@@ -641,7 +609,6 @@ dbg_zone_exec_verb(
 
 	if (size == 0) {
 		char *n = knot_dname_to_str(name);
-		dbg_zone("Error while encoding hashed name %s to base32.\n", n);
 		free(n);
 		free(name_b32);
 		return KNOT_ECRYPTO;
@@ -650,31 +617,20 @@ dbg_zone_exec_verb(
 	assert(name_b32 != NULL);
 	free(hashed_name);
 
-dbg_zone_exec_verb(
-	/* name_b32 is not 0-terminated. */
-	char b32_string[hash_size + 1];
-	memset(b32_string, 0, hash_size + 1);
-	memcpy(b32_string, name_b32, hash_size);
-	dbg_zone_verb("Base32-encoded hash: %s\n", b32_string);
-);
-
 	/* Will be returned to caller, make sure it is released after use. */
 	*nsec3_name = knot_dname_new_from_str((char *)name_b32, size, NULL);
 
 	free(name_b32);
 
-	if (*nsec3_name == NULL) {
-		dbg_zone("Error while creating domain name for hashed name.\n");
+	if (*nsec3_name == NULL)
 		return KNOT_ERROR;
-	}
+
 	knot_dname_to_lower(*nsec3_name);
 
 	assert(zone->apex->owner != NULL);
 	knot_dname_t *ret = knot_dname_cat(*nsec3_name, zone->apex->owner);
 
 	if (ret == NULL) {
-		dbg_zone("Error while creating NSEC3 domain name for "
-			 "hashed name.\n");
 		knot_dname_release(*nsec3_name);
 		return KNOT_ERROR;
 	}
