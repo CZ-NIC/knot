@@ -172,5 +172,8 @@ const error_table_t knot_error_msgs[] = {
 	{ KNOT_DNSSEC_EDECODE_RAW_SIGNATURE, "Cannot decode the raw signature." },
 	{ KNOT_DNSSEC_ESIGN, "Cannot create the signature." },
 
+	/* NSEC3 errors. */
+	{ KNOT_NSEC3_ECOMPUTE_HASH, "Cannot compute NSEC3 hash." },
+
 	{ KNOT_ERROR, 0 } /* Terminator */
 };
