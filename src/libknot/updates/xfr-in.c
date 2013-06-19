@@ -18,6 +18,8 @@
 #include <assert.h>
 #include <urcu.h>
 
+#include "knot/server/journal.h"
+
 #include "updates/xfr-in.h"
 
 #include "nameserver/name-server.h"
@@ -1159,8 +1161,13 @@ dbg_xfrin_exec_verb(
 			} else {
 				// normal SOA, start new changeset
 				(*chs)->count++;
-				if ((ret = knot_changesets_check_size(*chs))
-				     != KNOT_EOK) {
+				ret = knot_changesets_check_size(*chs);
+
+				/* Check changesets for maximum count (so they fit into journal). */
+				if ((*chs)->count > JOURNAL_NCOUNT)
+					ret = KNOT_ESPACE;
+
+				if (ret != KNOT_EOK) {
 					(*chs)->count--;
 					knot_rrset_deep_free(&rr, 1, 1);
 					goto cleanup;
