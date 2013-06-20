@@ -643,6 +643,31 @@ static int xfr_task_resp(xfrworker_t *w, knot_ns_xfr_t *rq)
 
 	return ret;
 }
+
+/*! \brief This will fall back to AXFR on active connection.
+ *  \note The active connection is expected to be force shut.
+ */
+static int xfr_start_axfr(xfrworker_t *w, knot_ns_xfr_t *rq, const char *reason)
+{
+	log_zone_notice("%s %s\n", rq->msg, reason);
+
+	/* Copy current xfer data. */
+	knot_ns_xfr_t *axfr = xfr_task_create(rq->zone, XFR_TYPE_AIN, XFR_FLAG_TCP);
+	if (axfr == NULL) {
+		log_zone_warning("%s Couldn't fall back to AXFR.\n", rq->msg);
+		return KNOT_ECONNREFUSED; /* Disconnect */
+	}
+
+	xfr_task_setaddr(axfr, &rq->addr, &rq->saddr);
+	axfr->tsig_key = rq->tsig_key;
+
+	/* Enqueue new request and close the original. */
+	log_server_notice("%s Retrying with AXFR.\n", rq->msg);
+	xfr_enqueue(w->master, axfr);
+	return KNOT_ECONNREFUSED;
+}
+
+/*! \brief This will fall back to AXFR on idle connection. */
 static int xfr_fallback_axfr(knot_ns_xfr_t *rq)
 {
 	log_server_notice("%s Retrying with AXFR.\n", rq->msg);
@@ -698,11 +723,11 @@ static int xfr_task_xfer(xfrworker_t *w, knot_ns_xfr_t *rq)
 	dbg_xfr_verb("xfr: processed XFR pkt (%s)\n", knot_strerror(ret));
 
 	/* IXFR refused, try again with AXFR. */
+	const char *diff_nospace_msg = "Can't fit the differences in the journal.";
 	if (rq->type == XFR_TYPE_IIN) {
 		switch(ret) {
 		case KNOT_ESPACE: /* Fallthrough */
-			log_server_notice("%s Exceeded journal size limit.\n",
-			                  rq->msg);
+			return xfr_start_axfr(w, rq, diff_nospace_msg);
 		case KNOT_EXFRREFUSED:
 			return xfr_fallback_axfr(rq);
 		default:
@@ -730,11 +755,7 @@ static int xfr_task_xfer(xfrworker_t *w, knot_ns_xfr_t *rq)
 			              "in %d seconds.\n",
 			              rq->msg, tmr_s / 1000);
 		} else if (ret == KNOT_EBUSY && rq->type == XFR_TYPE_IIN) {
-
-			/* Attempt to retry with AXFR. */
-			ret = xfr_fallback_axfr(rq);
-			if (ret == KNOT_EOK)
-				return ret;
+			return xfr_start_axfr(w, rq, diff_nospace_msg);
 		} else {
 
 			/* Passed, schedule NOTIFYs. */
