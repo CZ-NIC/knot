@@ -430,7 +430,8 @@ static int conf_mask(void* scanner, int nval, int prefixlen) {
 %token <tok> RATE_LIMIT_SIZE
 %token <tok> RATE_LIMIT_SLIP
 %token <tok> TRANSFERS
-%token <tok> KEYDIR
+%token <tok> DNSSEC_ENABLE
+%token <tok> DNSSEC_KEYDIR
 
 %token <tok> INTERFACES ADDRESS PORT
 %token <tok> IPA
@@ -872,7 +873,8 @@ zone:
 	   this_zone->notify_timeout = $3.i;
        }
    }
- | zone KEYDIR TEXT ';' { this_zone->keydir = $3.t; }
+ | zone DNSSEC_ENABLE BOOL ';' { this_zone->dnssec_enable =
+                                 $3.i ? CONF_BOOL_TRUE : CONF_BOOL_FALSE; }
  ;
 
 zones:
@@ -905,6 +907,9 @@ zones:
        }
  }
  | zones DBSYNC_TIMEOUT INTERVAL ';' { new_config->dbsync_timeout = $3.i; }
+ | zones DNSSEC_ENABLE BOOL ';' { new_config->dnssec_enable =
+                                  $3.i ? CONF_BOOL_TRUE : CONF_BOOL_FALSE; }
+ | zones DNSSEC_KEYDIR TEXT ';' { new_config->dnssec_keydir = $3.t; }
  ;
 
 log_prios_start: {

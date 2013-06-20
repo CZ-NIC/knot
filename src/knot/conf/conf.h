@@ -55,6 +55,15 @@
 #define CONFIG_XFERS 10
 
 /*!
+ * \brief Boolean with undefined default value.
+ */
+typedef enum {
+	CONF_BOOL_DEFAULT = 0,
+	CONF_BOOL_FALSE,
+	CONF_BOOL_TRUE,
+} conf_bool_t;
+
+/*!
  * \brief Configuration for the interface
  *
  * This structure holds the configuration of the various interfaces
@@ -112,18 +121,18 @@ typedef struct conf_group_t {
  */
 typedef struct conf_zone_t {
 	node n;
-	char *name;               /*!< Zone name. */
-	uint16_t cls;             /*!< Zone class (IN or CH). */
-	char *file;               /*!< Path to a zone file. */
-	char *ixfr_db;            /*!< Path to a IXFR database file. */
-	char *keydir;             /*!< Path to key directory. */
-	size_t ixfr_fslimit;      /*!< File size limit for IXFR journal. */
-	int dbsync_timeout;       /*!< Interval between syncing to zonefile.*/
-	int enable_checks;        /*!< Semantic checks for parser.*/
-	int disable_any;          /*!< Disable ANY type queries for AA.*/
-	int notify_retries;       /*!< NOTIFY query retries. */
-	int notify_timeout;       /*!< Timeout for NOTIFY response (s). */
-	int build_diffs;          /*!< Calculate differences from changes. */
+	char *name;                /*!< Zone name. */
+	uint16_t cls;              /*!< Zone class (IN or CH). */
+	char *file;                /*!< Path to a zone file. */
+	char *ixfr_db;             /*!< Path to a IXFR database file. */
+	conf_bool_t dnssec_enable; /*!< DNSSEC: Online signing enabled. */
+	size_t ixfr_fslimit;       /*!< File size limit for IXFR journal. */
+	int dbsync_timeout;        /*!< Interval between syncing to zonefile.*/
+	int enable_checks;         /*!< Semantic checks for parser.*/
+	int disable_any;           /*!< Disable ANY type queries for AA.*/
+	int notify_retries;        /*!< NOTIFY query retries. */
+	int notify_timeout;        /*!< Timeout for NOTIFY response (s). */
+	int build_diffs;           /*!< Calculate differences from changes. */
 	struct {
 		list xfr_in;      /*!< Remotes accepted for for xfr-in.*/
 		list xfr_out;     /*!< Remotes accepted for xfr-out.*/
@@ -252,6 +261,8 @@ typedef struct conf_t {
 	size_t ixfr_fslimit; /*!< File size limit for IXFR journal. */
 	int build_diffs;     /*!< Calculate differences from changes. */
 	hattrie_t *names; /*!< Zone tree for duplicate checking. */
+	conf_bool_t dnssec_enable; /*!< DNSSEC: Online signing enabled. */
+	char *dnssec_keydir;       /*!< DNSSEC: Path to key directory. */
 
 	/*
 	 * Remote control interface.

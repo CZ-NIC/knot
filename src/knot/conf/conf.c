@@ -252,6 +252,11 @@ static int conf_process(conf_t *conf)
 	if (conf->xfers <= 0)
 		conf->xfers = CONFIG_XFERS;
 
+	/* Defaults for DNSSEC. */
+	if (conf->dnssec_enable == CONF_BOOL_DEFAULT) {
+		conf->dnssec_enable = CONF_BOOL_TRUE;
+	}
+
 	// Postprocess zones
 	int ret = KNOT_EOK;
 	node *n = 0;
@@ -334,6 +339,14 @@ static int conf_process(conf_t *conf)
 		}
 		memcpy(dpos + zname_len, dbext, strlen(dbext) + 1);
 		zone->ixfr_db = dest;
+
+		// DNSSEC
+		if (conf->dnssec_keydir == NULL) {
+			zone->dnssec_enable = CONF_BOOL_FALSE;
+		} else if (zone->dnssec_enable == CONF_BOOL_DEFAULT) {
+			zone->dnssec_enable = conf->dnssec_enable;
+		}
+		assert(zone->dnssec_enable != CONF_BOOL_DEFAULT);
 	}
 
 	/* Update UID and GID. */
@@ -532,6 +545,9 @@ conf_t *conf_new(const char* path)
 	c->build_diffs = 0; /* Disable by default. */
 	c->logs_count = -1;
 
+	/* DNSSEC. */
+	c->dnssec_enable = true;
+
 	/* ACLs. */
 	c->ctl.acl = acl_new(ACL_DENY, "remote_ctl");
 	if (!c->ctl.acl) {
@@ -658,38 +674,25 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 	conf->zones_count = 0;
 	init_list(&conf->zones);
 
-	if (conf->filename) {
-		free(conf->filename);
-		conf->filename = 0;
-	}
-	if (conf->identity) {
-		free(conf->identity);
-		conf->identity = 0;
-	}
-	if (conf->hostname) {
-		free(conf->hostname);
-		conf->hostname = 0;
-	}
-	if (conf->version) {
-		free(conf->version);
-		conf->version = 0;
-	}
-	if (conf->storage) {
-		free(conf->storage);
-		conf->storage = 0;
-	}
-	if (conf->rundir) {
-		free(conf->rundir);
-		conf->rundir = 0;
-	}
-	if (conf->pidfile) {
-		free(conf->pidfile);
-		conf->pidfile = 0;
-	}
-	if (conf->nsid) {
-		free(conf->nsid);
-		conf->nsid = 0;
-	}
+	conf->dnssec_enable = false;
+	free(conf->dnssec_keydir);
+	conf->dnssec_keydir = NULL;
+	free(conf->filename);
+	conf->filename = NULL;
+	free(conf->identity);
+	conf->identity = NULL;
+	free(conf->hostname);
+	conf->hostname = NULL;
+	free(conf->version);
+	conf->version = NULL;
+	free(conf->storage);
+	conf->storage = NULL;
+	free(conf->rundir);
+	conf->rundir = NULL;
+	free(conf->pidfile);
+	conf->pidfile = NULL;
+	free(conf->nsid);
+	conf->nsid = NULL;
 
 	/* Free remote control list. */
 	WALK_LIST_DELSAFE(n, nxt, conf->ctl.allow) {
@@ -884,7 +887,6 @@ void conf_free_zone(conf_zone_t *zone)
 	free(zone->name);
 	free(zone->file);
 	free(zone->ixfr_db);
-	free(zone->keydir);
 	free(zone);
 }
 

@@ -168,25 +168,23 @@ static int remote_zone_flush(server_t *s, const knot_zone_t *z)
 /*! \brief Sign zone callback. */
 static int remote_sign_zone(server_t *server, const knot_zone_t *zone)
 {
-	if (!server || !zone) {
+	if (!server || !zone)
 		return KNOT_EINVAL;
-	}
 
 	// generate NSEC records
 
 	knot_zone_create_nsec_chain(zone);
 
+//	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
+//	const char *keydir = zd->conf->keydir;
+//
+//	if (!keydir) {
+//		log_server_info("no keys set for %s\n",
+//		                knot_dname_to_str(zone->name));
+//		return KNOT_EOK;
+//	}
+//	knot_zone_sign(zone, keydir);
 
-	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
-	const char *keydir = zd->conf->keydir;
-
-	if (!keydir) {
-		log_server_info("no keys set for %s\n",
-		                knot_dname_to_str(zone->name));
-		return KNOT_EOK;
-	}
-
-	knot_zone_sign(zone, keydir);
 	return KNOT_EOK;
 }
 

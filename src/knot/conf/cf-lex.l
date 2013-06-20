@@ -124,7 +124,8 @@ rate-limit      { lval.t = yytext; return RATE_LIMIT; }
 rate-limit-size { lval.t = yytext; return RATE_LIMIT_SIZE; }
 rate-limit-slip { lval.t = yytext; return RATE_LIMIT_SLIP; }
 transfers       { lval.t = yytext; return TRANSFERS; }
-keydir          { lval.t = yytext; return KEYDIR; }
+dnssec-enable   { lval.t = yytext; return DNSSEC_ENABLE; }
+dnssec-keydir   { lval.t = yytext; return DNSSEC_KEYDIR; }
 
 interfaces      { lval.t = yytext; return INTERFACES; }
 address         { lval.t = yytext; return ADDRESS; }
