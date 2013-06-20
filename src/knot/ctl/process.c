@@ -37,9 +37,9 @@ char* pid_filename()
 	rcu_read_lock();
 
 	/* Read configuration. */
-	char* ret = 0;
-	if (conf() && conf()->pidfile != NULL) {
-		ret = strdup(conf()->pidfile);
+	char* ret = NULL;
+	if (conf() && conf()->rundir != NULL) {
+		ret = strcdup(conf()->rundir, "/knot.pid");
 	}
 
 	rcu_read_unlock();

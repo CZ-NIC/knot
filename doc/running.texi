@@ -65,17 +65,12 @@ Parameters:
 @end example
 
 Also, the server needs to create several files in order to run properly.
-All files are placed in the directory described by @code{storage} (@pxref{storage}).
-PID file can be placed elsewhere using the @code{pidfile} statement (@pxref{pidfile}).
-Slave zones with relative path specified will be placed in the @code{storage} as well.
+Zones and related data are stored in the directory described by @code{storage} (@pxref{storage}).
 @itemize @bullet
 @item
 @emph{Journal files} - each zone has a journal file to store differences for IXFR and
 dynamic updates. Journal for zone @code{example.com} will be
 placed in @file{STORAGE/example.com.diff.db}.
-@item
-@emph{PID file} - unless specified differently by the @code{pidfile}, it will be placed
-in the @file{STORAGE/knot.pid}.
 @end itemize
 
 @node Running a slave server

@@ -146,7 +146,7 @@ static int conf_process(conf_t *conf)
 {
 	// Check
 	if (conf->storage == NULL) {
-		conf->storage = strdup("/var/lib/"PROJECT_EXENAME);
+		conf->storage = strdup(STORAGE_DIR);
 		if (conf->storage == NULL) {
 			return KNOT_ENOMEM;
 		}
@@ -170,9 +170,9 @@ static int conf_process(conf_t *conf)
 	}
 
 	// Create PID file
-	if (conf->pidfile == NULL) {
-		conf->pidfile = strcdup(conf->storage, "/" PID_FILE);
-		if (conf->pidfile == NULL) {
+	if (conf->rundir == NULL) {
+		conf->rundir = strdup(RUN_DIR);
+		if (conf->rundir == NULL) {
 			return KNOT_ENOMEM;
 		}
 	}
@@ -384,7 +384,7 @@ void __attribute__ ((constructor)) conf_init()
 	++s_config->ifaces_count;
 
 	/* Create default storage. */
-	s_config->storage = strdup("/var/lib/"PROJECT_EXENAME);
+	s_config->storage = strdup(STORAGE_DIR);
 
 	/* Create default logs. */
 
@@ -682,9 +682,9 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 		free(conf->storage);
 		conf->storage = 0;
 	}
-	if (conf->pidfile) {
-		free(conf->pidfile);
-		conf->pidfile = 0;
+	if (conf->rundir) {
+		free(conf->rundir);
+		conf->rundir = 0;
 	}
 	if (conf->nsid) {
 		free(conf->nsid);

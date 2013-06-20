@@ -7,7 +7,6 @@
 
 system {
   identity "@package@ @version@";
-  storage "@localstatedir@/@package@";
 }
 
 interfaces {
