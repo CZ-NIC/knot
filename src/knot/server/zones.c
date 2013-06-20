@@ -1136,6 +1136,20 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 			zd->conf = z;
 		}
 
+		/* DNSSEC. */
+		if (z->dnssec_enable == CONF_BOOL_TRUE &&
+		     (
+		       !EMPTY_LIST(z->acl.notify_in) ||
+		       !EMPTY_LIST(z->acl.xfr_in)
+		     )
+		   ) {
+			log_server_warning("DNSSEC signing enabled for zone "
+			                   "'%s', disabling incoming XFR.\n",
+			                   z->name);
+			WALK_LIST_FREE(z->acl.notify_in);
+			WALK_LIST_FREE(z->acl.xfr_in);
+		}
+
 		/* Update ACLs. */
 		dbg_zones("Updating zone ACLs.\n");
 		zones_set_acl(&zd->xfr_in.acl, &z->acl.xfr_in);
