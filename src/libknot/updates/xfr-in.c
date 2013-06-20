@@ -553,6 +553,16 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 			return KNOT_EMALF;
 		}
 
+
+		/* Check for SOA name and type. */
+		if (knot_packet_qname(packet) == NULL) {
+			dbg_xfrin("Invalid packet in sequence, ignoring.\n");
+			knot_packet_free(&packet);
+			knot_node_free(&node);
+			knot_rrset_deep_free(&rr, 1, 1);
+			return KNOT_EOK;
+		}
+
 		if (knot_dname_compare(knot_rrset_owner(rr),
 				       knot_packet_qname(packet)) != 0) {
 dbg_xfrin_exec(
