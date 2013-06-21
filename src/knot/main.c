@@ -307,7 +307,7 @@ int main(int argc, char **argv)
 		int remote = -1;
 		if (ctl_if != NULL) {
 			log_server_info("Binding remote control interface "
-					"to %s port %d.\n",
+					"to %s@%d.\n",
 					ctl_if->address, ctl_if->port);
 			remote = remote_bind(ctl_if);
 		}
@@ -323,7 +323,7 @@ int main(int argc, char **argv)
 
 			/* Events. */
 			if (ret > 0) {
-				ret = remote_process(server, remote, buf, buflen);
+				ret = remote_process(server, ctl_if, remote, buf, buflen);
 				switch(ret) {
 				case KNOT_CTL_RESTART:
 					sig_req_rst = 1; /* Fall through */

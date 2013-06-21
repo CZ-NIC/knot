@@ -133,6 +133,25 @@ static void conf_update_hooks(conf_t *conf)
 	}
 }
 
+/*! \brief Make relative path absolute to given directory.
+ *  \param basedir Base directory.
+ *  \param file Relative file name.
+ */
+static char* conf_abs_path(const char *basedir, char *file)
+{
+	/* Make path absolute to the directory. */
+	if (file[0] != '/') {
+		char *basepath = strcdup(basedir, "/");
+		char *path = strcdup(basepath, file);
+		free(basepath);
+		free(file);
+		file = path;
+	}
+
+	/* Normalize. */
+	return strcpath(file);
+}
+
 /*!
  * \brief Process parsed configuration.
  *
@@ -195,8 +214,21 @@ static int conf_process(conf_t *conf)
 			cfg_if->port = CONFIG_DEFAULT_PORT;
 		}
 	}
-	if (conf->ctl.iface && conf->ctl.iface->port <= 0) {
-		conf->ctl.iface->port = REMOTE_DPORT;
+
+	/* Control interface. */
+	conf_iface_t *ctl_if = conf->ctl.iface;
+	if (ctl_if) {
+		if (ctl_if->family == AF_UNIX) {
+			ctl_if->address = conf_abs_path(conf->rundir,
+			                                ctl_if->address);
+			/* Check for ACL existence. */
+			if (!EMPTY_LIST(conf->ctl.allow)) {
+				log_server_warning("Control 'allow' statement "
+				                   "does not affect UNIX sockets.\n");
+			}
+		} else if (ctl_if->port <= 0) {
+			ctl_if->port = REMOTE_DPORT;
+		}
 	}
 
 	/* Default RRL limits. */
@@ -261,24 +293,7 @@ static int conf_process(conf_t *conf)
 		}
 
 		// Relative zone filenames should be relative to storage
-		if (zone->file[0] != '/') {
-			size_t prefix_len = strlen(conf->storage) + 1; // + '\0'
-			size_t zp_len = strlen(zone->file) + 1;
-			char *ap = malloc(prefix_len + zp_len);
-			if (ap != NULL) {
-				memcpy(ap, conf->storage, prefix_len);
-				ap[prefix_len - 1] = '/';
-				memcpy(ap + prefix_len, zone->file, zp_len);
-				free(zone->file);
-				zone->file = ap;
-			} else {
-				ret = KNOT_ENOMEM;
-				continue;
-			}
-		}
-
-		// Normalize zone filename
-		zone->file = strcpath(zone->file);
+		zone->file = conf_abs_path(conf->storage, zone->file);
 		if (zone->file == NULL) {
 			zone->db = NULL;
 			ret = KNOT_ENOMEM;

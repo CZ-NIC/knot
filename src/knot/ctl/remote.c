@@ -384,7 +384,7 @@ int remote_bind(conf_iface_t *desc)
 	}
 
 	/* Create new socket. */
-	int s = socket_create(desc->family, SOCK_STREAM, IPPROTO_TCP);
+	int s = socket_create(desc->family, SOCK_STREAM, 0);
 	if (s < 0) {
 		log_server_error("Couldn't create socket for remote "
 				 "control interface - %s",
@@ -602,7 +602,8 @@ int remote_answer(int fd, server_t *s, knot_packet_t *pkt, uint8_t* rwire, size_
 	return ret;
 }
 
-int remote_process(server_t *s, int r, uint8_t* buf, size_t buflen)
+int remote_process(server_t *s, conf_iface_t *ctl_if, int r,
+                   uint8_t* buf, size_t buflen)
 {
 	knot_packet_t *pkt =  knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
 	if (!pkt) {
@@ -625,7 +626,7 @@ int remote_process(server_t *s, int r, uint8_t* buf, size_t buflen)
 
 	/* Parse packet and answer if OK. */
 	int ret = remote_parse(pkt, buf, wire_len);
-	if (ret == KNOT_EOK) {
+	if (ret == KNOT_EOK && ctl_if->family != AF_UNIX) {
 
 		/* Check ACL list. */
 		char straddr[SOCKADDR_STRLEN];
@@ -673,10 +674,11 @@ int remote_process(server_t *s, int r, uint8_t* buf, size_t buflen)
 				return KNOT_EACCES;
 			}
 		}
-
-		/* Answer packet. */
-		ret = remote_answer(c, s, pkt, buf, buflen);
 	}
+
+	/* Answer packet. */
+	if (ret == KNOT_EOK)
+		ret = remote_answer(c, s, pkt, buf, buflen);
 
 	knot_packet_free(&pkt);
 	socket_close(c);

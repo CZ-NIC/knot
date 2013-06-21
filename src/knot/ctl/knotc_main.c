@@ -107,8 +107,8 @@ void help(void)
 	printf("Usage: %sc [parameters] <action>\n", PACKAGE_NAME);
 	printf("\nParameters:\n"
 	       " -c [file], --config=[file]\tSelect configuration file.\n"
-	       " -s [server]               \tRemote server address (default %s)\n"
-	       " -p [port]                 \tRemote server port (default %d)\n"
+	       " -s [server]               \tRemote UNIX socket/IP address (default %s).\n"
+	       " -p [port]                 \tRemote server port (only for IP).\n"
 	       " -y [[hmac:]name:key]      \tUse key_id specified on the command line.\n"
 	       " -k [file]                 \tUse key file (as in config section 'keys').\n"
 	       "                           \t  Example: echo \"knotc-key hmac-md5 Wg==\" > knotc.key\n"
@@ -117,7 +117,7 @@ void help(void)
 	       " -V, --version             \tPrint %s server version.\n"
 	       " -i, --interactive         \tInteractive mode (do not daemonize).\n"
 	       " -h, --help                \tPrint help and usage.\n",
-	       "127.0.0.1", REMOTE_DPORT, PACKAGE_NAME);
+	       RUN_DIR "/knot.sock", PACKAGE_NAME);
 	printf("\nActions:\n");
 	knot_cmd_t *c = knot_cmd_tbl;
 	while (c->name != NULL) {
@@ -237,11 +237,11 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	}
 
 	/* Send query. */
-	int s = socket_create(r->family, SOCK_STREAM, IPPROTO_TCP);
-	int conn_state = socket_connect(s, r->address, r->port);
+	int s = socket_create(r->family, SOCK_STREAM, 0);
+	int conn_state = socket_connect(s, r->family, r->address, r->port);
 	if (conn_state != KNOT_EOK || tcp_send(s, buf, buflen) <= 0) {
 		log_server_error("Couldn't connect to remote host "
-		                 " %s@%d.\n", r->address, r->port);
+		                 "%s@%d.\n", r->address, r->port);
 		rc = 1;
 	}
 
@@ -524,8 +524,10 @@ int main(int argc, char **argv)
 		memset(ctl_if, 0, sizeof(conf_iface_t));
 
 		/* Fill defaults. */
-		if (!r_addr) r_addr = "127.0.0.1";
-		if (r_port < 0) r_port =  REMOTE_DPORT;
+		if (!r_addr)
+			r_addr = RUN_DIR "/knot.sock";
+		else if (r_port < 0)
+			r_port = REMOTE_DPORT;
 	}
 
 	/* Install the key. */
@@ -538,8 +540,17 @@ int main(int argc, char **argv)
 		free(ctl_if->address);
 		ctl_if->address = strdup(r_addr);
 		ctl_if->family = AF_INET;
-		if (strchr(r_addr, ':')) { /* Dumb way to check for v6 addr. */
+
+		/* Check for v6 address. */
+		if (strchr(r_addr, ':'))
 			ctl_if->family = AF_INET6;
+		/* Check if address is a UNIX socket. */
+		struct stat st;
+		if (stat(r_addr, &st) == 0) {
+			if (S_ISSOCK(st.st_mode)) {
+				ctl_if->family = AF_UNIX;
+				r_port = 0; /* Override. */
+			}
 		}
 	}
 	if (r_port > -1) ctl_if->port = r_port;

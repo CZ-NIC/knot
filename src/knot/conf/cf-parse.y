@@ -1010,6 +1010,12 @@ control:
        new_config->ctl.iface = this_iface;
      }
  }
+ | control ctl_listen_start TEXT ';' {
+     this_iface->address = $3.t;
+     this_iface->family = AF_UNIX;
+     this_iface->port = 0;
+     new_config->ctl.iface = this_iface;
+ }
  | control ctl_allow_start '{' zone_acl '}'
  | control ctl_allow_start zone_acl_list
  ;
