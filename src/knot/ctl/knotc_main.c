@@ -44,6 +44,7 @@
 #include "libknot/packet/query.h"
 #include "libknot/packet/response.h"
 #include "knot/zone/zone-load.h"
+#include "knot/zone/estimator.h"
 
 /*! \brief Controller constants. */
 enum knotc_constants_t {
@@ -92,6 +93,7 @@ static int cmd_status(int argc, char *argv[], unsigned flags);
 static int cmd_zonestatus(int argc, char *argv[], unsigned flags);
 static int cmd_checkconf(int argc, char *argv[], unsigned flags);
 static int cmd_checkzone(int argc, char *argv[], unsigned flags);
+static int cmd_memstats(int argc, char *argv[], unsigned flags);
 
 /*! \brief Table of remote commands. */
 knot_cmd_t knot_cmd_tbl[] = {
@@ -105,6 +107,7 @@ knot_cmd_t knot_cmd_tbl[] = {
 	{&cmd_zonestatus, 0, "zonestatus", "",       "\tShow status of configured zones."},
 	{&cmd_checkconf,  1, "checkconf",  "",       "\tCheck current server configuration."},
 	{&cmd_checkzone,  1, "checkzone",  "[zone]", "Check zone (all if not specified)."},
+	{&cmd_memstats,  1, "memstats",  "[zone]", "Estimate memory use for zone (all if not specified)."},
 	{NULL, 0, NULL, NULL, NULL}
 };
 
@@ -848,6 +851,69 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 		knot_zload_close(l);
 
 		log_zone_info("Zone %s OK.\n", zone->name);
+	}
+
+	return rc;
+}
+
+static int cmd_memstats(int argc, char *argv[], unsigned flags)
+{
+	UNUSED(flags);
+
+	/* Zone checking */
+	int rc = 0;
+	node *n = 0;
+
+	/* Generate databases for all zones */
+	WALK_LIST(n, conf()->zones) {
+		/* Fetch zone */
+		conf_zone_t *zone = (conf_zone_t *) n;
+		int zone_match = 0;
+		for (unsigned i = 0; i < (unsigned)argc; ++i) {
+			size_t len = strlen(zone->name);
+
+			/* All (except root) without final dot */
+			if (len > 1) {
+				len -= 1;
+			}
+			if (strncmp(zone->name, argv[i], len) == 0) {
+				zone_match = 1;
+				break;
+			}
+		}
+
+		if (!zone_match && argc > 0) {
+			/* WALK_LIST is a for-cycle. */
+			continue;
+		}
+
+		zone_estim_t est = {.table = ahtable_create(),
+		                    .size = 0, .record_count = 0,
+		                    .signed_count = 0 };
+		if (est.table == NULL) {
+			log_server_error("Not enough memory.\n");
+		}
+
+		/* Create file loader. */
+		file_loader_t *loader = file_loader_create(zone->file, zone->name,
+		                                           KNOT_CLASS_IN, 3600,
+		                                           rrset_memsize_wrap,
+		                                           process_error,
+		                                           &est);
+		if (loader == NULL) {
+			log_server_error("Could not load zone.\n");
+			ahtable_free(est.table);
+			return KNOT_ERROR;
+		}
+
+		file_loader_process(loader);
+		ahtable_free(est.table);
+
+		log_zone_info("Zone %s: %zu records, signed=%f%%, estimated size in memory=%fMB\n",
+		              zone->name, est.record_count,
+		              est.signed_count ? ((double)est.record_count / est.signed_count) * 100 : 0.0,
+		              (double)est.size / (1024 * 1024));
+		file_loader_free(loader);
 	}
 
 	return rc;
