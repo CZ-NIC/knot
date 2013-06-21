@@ -26,6 +26,7 @@
 #include <assert.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 
 #include "knot/knot.h"
 #include "knot/ctl/process.h"
@@ -89,31 +90,28 @@ pid_t pid_read(const char* fn)
 
 int pid_write(const char* fn)
 {
-	if (!fn) {
+	if (!fn)
 		return KNOT_EINVAL;
-	}
 
-	// Convert
+	/* Convert. */
 	char buf[64];
-	int wbytes = 0;
-	wbytes = snprintf(buf, sizeof(buf), "%lu", (unsigned long) getpid());
-	if (wbytes < 0) {
+	int len = 0;
+	len = snprintf(buf, sizeof(buf), "%lu", (unsigned long) getpid());
+	if (len < 0)
 		return KNOT_EINVAL;
+
+	/* Create file. */
+	int ret = KNOT_EOK;
+	int fd = open(fn, O_RDWR|O_CREAT, 0644);
+	if (fd) {
+		if (write(fd, buf, len) != len)
+			ret = KNOT_ERROR;
+		close(fd);
+	} else {
+		ret = knot_map_errno(errno);
 	}
 
-	// Write
-	FILE *fp = fopen(fn, "w");
-	if (fp) {
-		int rc = fwrite(buf, wbytes, 1, fp);
-		fclose(fp);
-		if (rc < 0) {
-			return KNOT_ERROR;
-		}
-
-		return 0;
-	}
-
-	return KNOT_ENOENT;
+	return ret;
 }
 
 int pid_remove(const char* fn)
@@ -175,4 +173,31 @@ int proc_update_privileges(int uid, int gid)
 
 	free(lfile);
 	return ret;
+}
+
+char *pid_check_and_create()
+{
+	struct stat st;
+	char* pidfile = pid_filename();
+	pid_t pid = pid_read(pidfile);
+
+	/* Check PID for existence and liveness. */
+	if (pid > 0 && pid_running(pid)) {
+		log_server_error("Server PID found, already running.\n");
+		free(pidfile);
+		return NULL;
+	} else if (stat(pidfile, &st) == 0) {
+		log_server_warning("Removing stale PID file '%s'.\n", pidfile);
+		pid_remove(pidfile);
+	}
+
+	/* Create a PID file. */
+	int ret = pid_write(pidfile);
+	if (ret != KNOT_EOK) {
+		log_server_error("Couldn't create a PID file '%s'.\n", pidfile);
+		free(pidfile);
+		return NULL;
+	}
+
+	return pidfile;
 }

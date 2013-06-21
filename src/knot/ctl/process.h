@@ -94,6 +94,14 @@ int pid_running(pid_t pid);
  */
 int proc_update_privileges(int uid, int gid);
 
+
+/*!
+ * \brief Check if PID file exists and create it if possible.
+ * \retval NULL if failed
+ * \retval Created PID file path
+ */
+char *pid_check_and_create();
+
 #endif // _KNOTD_PROCESS_H_
 
 /*! @} */
