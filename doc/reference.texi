@@ -648,12 +648,24 @@ or loopback.
 @node control Statement Definition and Grammar
 @subsection Statement Definition and Grammar
 
-Control interface @code{listen-on} definition is equal to @code{interface} definition in @ref{interfaces}.
-Default port for control interface is @code{5553}.
+Control interface @code{listen-on} either defines a UNIX socket or an
+IPv4/IPv6 @code{interface} definition as in @ref{interfaces}.
+Default port for IPv4/v6 control interface is @code{5533},
+however UNIX socket is preferred.
+UNIX socke address is relative to @code{rundir} if not specified as an absolute
+path.
 
 @node control Examples
 @subsection Examples
 
+UNIX socket example:
+@example
+control @{
+        listen-on "knot.sock";
+@}
+@end example
+
+IPv4 socket example:
 @example
 keys @{
         knotc-key hmac-md5 "Wg==";

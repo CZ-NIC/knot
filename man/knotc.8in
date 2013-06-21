@@ -10,9 +10,9 @@
 .HP
 \fB\-c\fR [file], \fB\-\-config\fR=\fI[file]\fR Select configuration file.
 .TP
-\fB\-s\fR [server]\fR Remote server address (default 127.0.0.1)
+\fB\-s\fR [server]\fR Remote UNIX socket/IP address (default @rundir@/knot.sock)
 .TP
-\fB\-p\fR [port]\fR Remote server port (default 5553)
+\fB\-p\fR [port]\fR Remote server port (only for IP).
 .TP
 \fB\-y\fR [hmac:]name:key]\fR Use key_id for specified on the command line.
 .TP
