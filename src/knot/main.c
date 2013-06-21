@@ -40,6 +40,7 @@
 
 /* Signal flags. */
 static volatile short sig_req_stop = 0;
+static volatile short sig_req_rst = 0;
 static volatile short sig_req_reload = 0;
 static volatile short sig_req_refresh = 0;
 static volatile short sig_stopping = 0;
@@ -371,6 +372,20 @@ int main(int argc, char **argv)
 			int ret = remote_poll(remote);
 			pthread_sigmask(SIG_BLOCK, &sa.sa_mask, NULL);
 
+			/* Events. */
+			if (ret > 0) {
+				ret = remote_process(server, remote, buf, buflen);
+				switch(ret) {
+				case KNOT_CTL_RESTART:
+					sig_req_rst = 1; /* Fall through */
+				case KNOT_CTL_STOP:
+					sig_req_stop = 1;
+					break;
+				default:
+					break;
+				}
+			}
+
 			/* Interrupts. */
 			if (sig_req_stop) {
 				sig_req_stop = 0;
@@ -391,11 +406,6 @@ int main(int argc, char **argv)
 					                 knot_strerror(cf_ret));
 				}
 
-			}
-
-			/* Events. */
-			if (ret > 0) {
-				remote_process(server, remote, buf, buflen);
 			}
 		}
 		pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
@@ -433,6 +443,10 @@ int main(int argc, char **argv)
 		fflush(stdout);
 		fflush(stderr);
 	}
+
+	/* Restart hook. */
+	if (sig_req_rst)
+		return execvp(argv[0], argv);
 
 	return res;
 }

@@ -45,11 +45,6 @@
 #include "libknot/packet/response.h"
 #include "knot/zone/zone-load.h"
 
-/*! \brief Controller constants. */
-enum knotc_constants_t {
-	WAITPID_TIMEOUT = 120   /*!< \brief Timeout for waiting for process. */
-};
-
 /*! \brief Controller flags. */
 enum knotc_flag_t {
 	F_NULL = 0 << 0,
@@ -82,7 +77,6 @@ typedef struct knot_cmd {
 } knot_cmd_t;
 
 /* Forward decls. */
-static int cmd_start(int argc, char *argv[], unsigned flags);
 static int cmd_stop(int argc, char *argv[], unsigned flags);
 static int cmd_restart(int argc, char *argv[], unsigned flags);
 static int cmd_reload(int argc, char *argv[], unsigned flags);
@@ -95,9 +89,8 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags);
 
 /*! \brief Table of remote commands. */
 knot_cmd_t knot_cmd_tbl[] = {
-	{&cmd_start,      1, "start",      "",       "\t\tStart server (if not running)."},
-	{&cmd_stop,       1, "stop",       "",       "\t\tStop server."},
-	{&cmd_restart,    1, "restart",    "",       "\tRestart server."},
+	{&cmd_stop,       0, "stop",       "",       "\t\tStop server."},
+	{&cmd_restart,    0, "restart",    "",       "\tRestart server."},
 	{&cmd_reload,     0, "reload",     "",       "\tReload configuration and changed zones."},
 	{&cmd_refresh,    0, "refresh",    "[zone]", "\tRefresh slave zone (all if not specified)."},
 	{&cmd_flush,      0, "flush",      "",       "\t\tFlush journal and update zone files."},
@@ -122,7 +115,6 @@ void help(void)
 	       " -f, --force               \tForce operation - override some checks.\n"
 	       " -v, --verbose             \tVerbose mode - additional runtime information.\n"
 	       " -V, --version             \tPrint %s server version.\n"
-	       " -w, --wait                \tWait for the server to finish start/stop operations.\n"
 	       " -i, --interactive         \tInteractive mode (do not daemonize).\n"
 	       " -h, --help                \tPrint help and usage.\n",
 	       "127.0.0.1", REMOTE_DPORT, PACKAGE_NAME);
@@ -570,167 +562,22 @@ exit:
 	return rc;
 }
 
-static int cmd_start(int argc, char *argv[], unsigned flags)
-{
-	/* Check config. */
-	if (has_flag(flags, F_NOCONF)) {
-		log_server_error("Couldn't parse config file, refusing to "
-		                 "continue.\n");
-		return 1;
-	}
-
-	/* Fetch PID. */
-	char *pidfile = pid_filename();
-	pid_t pid = pid_read(pidfile);
-	log_server_info("Starting server...\n");
-
-	/* Prevent concurrent daemon launch. */
-	int rc = 0;
-	struct stat st;
-	int is_pidf = 0;
-
-	/* Check PID. */
-	if (pid > 0 && pid_running(pid)) {
-		log_server_error("Server PID found, already running.\n");
-		is_pidf = 1;
-	} else if (stat(pidfile, &st) == 0) {
-		log_server_warning("PID file '%s' exists, another process "
-		                   "is starting or PID file is stale.\n",
-		                   pidfile);
-		is_pidf = 1;
-	}
-	if (is_pidf) {
-		if (!has_flag(flags, F_FORCE)) {
-			free(pidfile);
-			return 1;
-		} else {
-			log_server_info("Forcing server start.\n");
-			pid_remove(pidfile);
-		}
-	}
-
-	/* Prepare command */
-	const char *cfg = conf()->filename;
-	size_t args_c = 6;
-	const char *args[] = {
-		PROJECT_EXEC,
-		has_flag(flags, F_INTERACTIVE) ? "" : "-d",
-		cfg ? "-c" : "",
-		cfg ? cfg : "",
-		has_flag(flags, F_VERBOSE) ? "-v" : "",
-		argc > 0 ? argv[0] : ""
-	};
-
-	/* Execute command */
-	if (has_flag(flags, F_INTERACTIVE)) {
-		log_server_info("Running in interactive mode.\n");
-	} else {
-		log_server_info("Starting as daemon, 'stdout' and 'stderr' log "
-		                "sinks will be closed.\n");
-	}
-	fflush(stderr);
-	fflush(stdout);
-
-	if ((rc = cmd_exec(args, args_c)) < 0) {
-		rc = 1;
-	}
-	fflush(stderr);
-	fflush(stdout);
-
-	/* Wait for finish */
-	if (has_flag(flags, F_WAIT) && !has_flag(flags, F_INTERACTIVE)) {
-		if (has_flag(flags, F_VERBOSE)) {
-			log_server_info("Waiting for server to load.\n");
-		}
-
-		/* Periodically read pidfile and wait for valid result. */
-		pid = 0;
-		while (pid == 0 || !pid_running(pid)) {
-			pid = pid_read(pidfile);
-			struct timeval tv;
-			tv.tv_sec = 0;
-			tv.tv_usec = 500 * 1000;
-			select(0, 0, 0, 0, &tv);
-		}
-	}
-
-	free(pidfile);
-	return rc;
-}
-
 static int cmd_stop(int argc, char *argv[], unsigned flags)
 {
 	UNUSED(argc);
 	UNUSED(argv);
+	UNUSED(flags);
 
-	/* Check config. */
-	if (has_flag(flags, F_NOCONF)) {
-		log_server_error("Couldn't parse config file, refusing to "
-		                 "continue.\n");
-		return 1;
-	}
-
-	/* Fetch PID. */
-	char *pidfile = pid_filename();
-	pid_t pid = pid_read(pidfile);
-	int rc = 0;
-	struct stat st;
-
-	/* Check for non-existent PID file. */
-	int has_pidf = (stat(pidfile, &st) == 0);
-	if(has_pidf && pid <= 0) {
-		log_server_warning("Empty PID file '%s' exists, daemon process "
-		                   "is starting or PID file is stale.\n",
-		                   pidfile);
-		free(pidfile);
-		return 1;
-	} else if (pid <= 0 || !pid_running(pid)) {
-		log_server_warning("Server PID not found, "
-		                   "probably not running.\n");
-		if (!has_flag(flags, F_FORCE)) {
-			free(pidfile);
-			return 1;
-		} else {
-			log_server_info("Forcing server stop.\n");
-		}
-	}
-
-	/* Stop */
-	log_server_info("Stopping server...\n");
-	if (kill(pid, SIGTERM) < 0) {
-		pid_remove(pidfile);
-		rc = 1;
-	}
-
-
-	/* Wait for finish */
-	if (rc == 0 && has_flag(flags, F_WAIT)) {
-		log_server_info("Waiting for server to finish.\n");
-		while (pid_running(pid)) {
-			struct timeval tv;
-			tv.tv_sec = 0;
-			tv.tv_usec = 500 * 1000;
-			select(0, 0, 0, 0, &tv);
-			pid = pid_read(pidfile); /* Update */
-		}
-	}
-
-	return rc;
+	return cmd_remote("stop", KNOT_RRTYPE_TXT, 0, NULL);
 }
 
 static int cmd_restart(int argc, char *argv[], unsigned flags)
 {
-	/* Check config. */
-	if (has_flag(flags, F_NOCONF)) {
-		log_server_error("Couldn't parse config file, refusing to "
-		                 "continue.\n");
-		return 1;
-	}
+	UNUSED(argc);
+	UNUSED(argv);
+	UNUSED(flags);
 
-	int rc = 0;
-	rc |= cmd_stop(argc, argv, flags | F_WAIT);
-	rc |= cmd_start(argc, argv, flags);
-	return rc;
+	return cmd_remote("restart", KNOT_RRTYPE_TXT, 0, NULL);
 }
 
 static int cmd_reload(int argc, char *argv[], unsigned flags)
