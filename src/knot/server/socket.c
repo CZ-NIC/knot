@@ -182,8 +182,8 @@ int socket_bind(int socket, int family, const char *addr, unsigned short port)
 		addrlen = sizeof(struct sockaddr_un);
 
 		/* Prepare AF_UNIX sockaddr struct. */
-		uaddr.sun_family = AF_UNIX;
 		memset(&uaddr, 0, sizeof(struct sockaddr_un));
+		uaddr.sun_family = AF_UNIX;
 		strncpy(uaddr.sun_path, addr, sizeof(uaddr.sun_path) - 1);
 
 		/* Unlink existing socket. */
@@ -193,8 +193,7 @@ int socket_bind(int socket, int family, const char *addr, unsigned short port)
 	}
 
 	/* Reuse old address if taken. */
-	ret = setsockopt(socket, SOL_SOCKET, SO_REUSEADDR,
-	                     &flag, sizeof(flag));
+	ret = setsockopt(socket, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));
 	if (ret < 0) {
 		return KNOT_EINVAL;
 	}
