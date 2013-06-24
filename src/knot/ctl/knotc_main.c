@@ -345,7 +345,7 @@ static int tsig_parse_line(knot_tsig_key_t *k, char *l)
 
 	/* Lookup algorithm. */
 	knot_lookup_table_t *alg;
-	alg = knot_lookup_by_name(knot_tsig_alg_domain_names, a);
+	alg = knot_lookup_by_name(knot_tsig_alg_names, a);
 
 	if (!alg) {
 		return KNOT_EMALF;
