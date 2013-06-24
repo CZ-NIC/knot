@@ -763,7 +763,7 @@ static int xfr_task_xfer(xfrworker_t *w, knot_ns_xfr_t *rq)
 		}
 
 		/* Update REFRESH/RETRY */
-		zones_schedule_refresh(rq->zone);
+		zones_schedule_refresh(rq->zone, 0);
 		ret = KNOT_ECONNREFUSED; /* Disconnect */
 	}
 

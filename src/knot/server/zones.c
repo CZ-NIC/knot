@@ -1188,24 +1188,12 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 			                   z->name, knot_strerror(ar));
 		}
 
-
-		/* Update events scheduled for zone. */
-		evsched_t *sch = ((server_t *)knot_ns_get_data(ns))->sched;
-		zones_schedule_refresh(zone);
-		zones_schedule_notify(zone);
-
-		/* Refresh new slave zones (almost) immediately. */
-		if(is_new && zd->xfr_in.timer) {
-			evsched_cancel(sch, zd->xfr_in.timer);
-			evsched_schedule(sch, zd->xfr_in.timer,
-			                 zd->xfr_in.bootstrap_retry / 2);
-		}
-
 		/* Schedule IXFR database syncing. */
 		/*! \note This has to remain separate as it must not be
 		 *        triggered by a zone update or SOA response.
 		 */
 		/* Fetch zone data. */
+		evsched_t *sch = ((server_t *)knot_ns_get_data(ns))->sched;
 		int sync_tmr = z->dbsync_timeout * 1000; /* s -> ms. */
 		if (zd->ixfr_dbsync != NULL) {
 			evsched_cancel(sch, zd->ixfr_dbsync);
@@ -2515,7 +2503,7 @@ int zones_process_response(knot_nameserver_t *nameserver,
 
 		/* No updates available. */
 		if (ret == 0) {
-			zones_schedule_refresh(zone);
+			zones_schedule_refresh(zone, 0);
 			rcu_read_unlock();
 			return KNOT_EUPTODATE;
 		}
@@ -2708,6 +2696,25 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 
 	/* Delete all deprecated zones and delete the old database. */
 	knot_zonedb_deep_free(&old_db);
+
+	/* Update events scheduled for zone. */
+	rcu_read_lock();
+	knot_zone_t **zones = (knot_zone_t **)knot_zonedb_zones(ns->zone_db);
+	if (zones == NULL) {
+		rcu_read_unlock();
+		return KNOT_ENOMEM;
+	}
+
+	/* REFRESH zones. */
+	for (unsigned i = 0; i < knot_zonedb_zone_count(ns->zone_db); ++i) {
+		/* Refresh new slave zones (almost) immediately. */
+		zones_schedule_refresh(zones[i], tls_rand() * 500 + i/2);
+		zones_schedule_notify(zones[i]);
+	}
+
+	/* Unlock RCU. */
+	rcu_read_unlock();
+	free(zones);
 
 	return KNOT_EOK;
 }
@@ -3179,7 +3186,7 @@ int zones_schedule_notify(knot_zone_t *zone)
 	return KNOT_EOK;
 }
 
-int zones_schedule_refresh(knot_zone_t *zone)
+int zones_schedule_refresh(knot_zone_t *zone, unsigned time)
 {
 	if (!zone || !zone->data) {
 		return KNOT_EINVAL;
@@ -3208,11 +3215,13 @@ int zones_schedule_refresh(knot_zone_t *zone)
 	if (zd->xfr_in.has_master) {
 
 		/* Schedule REFRESH timer. */
-		uint32_t refresh_tmr = 0;
-		if (knot_zone_contents(zone)) {
-			refresh_tmr = zones_jitter(zones_soa_refresh(zone));
-		} else {
-			refresh_tmr = zd->xfr_in.bootstrap_retry;
+		uint32_t refresh_tmr = time;
+		if (refresh_tmr == 0) {
+			if (knot_zone_contents(zone)) {
+				refresh_tmr = zones_jitter(zones_soa_refresh(zone));
+			} else {
+				refresh_tmr = zd->xfr_in.bootstrap_retry;
+			}
 		}
 		zd->xfr_in.timer = evsched_schedule_cb(sch, zones_refresh_ev,
 		                                       zone, refresh_tmr);
