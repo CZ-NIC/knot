@@ -387,8 +387,7 @@ int remote_bind(conf_iface_t *desc)
 	int s = socket_create(desc->family, SOCK_STREAM, 0);
 	if (s < 0) {
 		log_server_error("Couldn't create socket for remote "
-				 "control interface - %s",
-				 knot_strerror(s));
+				 "control interface - %s", knot_strerror(s));
 		return KNOT_ERROR;
 	}
 
@@ -398,10 +397,8 @@ int remote_bind(conf_iface_t *desc)
 		r = socket_listen(s, TCP_BACKLOG_SIZE);
 	}
 	if (r != KNOT_EOK) {
+		log_server_error("Could not bind to remote control interface.\n");
 		socket_close(s);
-		log_server_error("Could not bind to "
-				 "remote control interface %s port %d.\n",
-				 desc->address, desc->port);
 		return r;
 	}
 

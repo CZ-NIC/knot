@@ -306,9 +306,13 @@ int main(int argc, char **argv)
 		conf_iface_t *ctl_if = conf()->ctl.iface;
 		int remote = -1;
 		if (ctl_if != NULL) {
+			memset(buf, 0, buflen);
+			if (ctl_if->port)
+				snprintf((char*)buf, buflen, "@%d", ctl_if->port);
+			/* Log control interface description. */
 			log_server_info("Binding remote control interface "
-					"to %s@%d.\n",
-					ctl_if->address, ctl_if->port);
+					"to %s%s\n",
+					ctl_if->address, (char*)buf);
 			remote = remote_bind(ctl_if);
 		}
 		if (remote < 0)
