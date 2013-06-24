@@ -87,6 +87,10 @@ enum knot_error {
 	KNOT_ENOTSIG,         /*!< Expected a TSIG or SIG(0). */
 	KNOT_ELIMIT,          /*!< Exceeded response rate limit. */
 
+	/* Control states. */
+	KNOT_CTL_STOP,        /*!< Stop requested. */
+	KNOT_CTL_RESTART,     /*!< Restart requested. */
+
 	/* Network errors. */
 	KNOT_NET_EADDR,
 	KNOT_NET_ESOCKET,

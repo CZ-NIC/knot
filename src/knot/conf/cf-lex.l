@@ -115,6 +115,7 @@ notify-out      { lval.t = yytext; return NOTIFY_OUT; }
 workers         { lval.t = yytext; return WORKERS; }
 user            { lval.t = yytext; return USER; }
 pidfile         { lval.t = yytext; return PIDFILE; }
+rundir          { lval.t = yytext; return RUNDIR; }
 ixfr-from-differences { lval.t = yytext; return BUILD_DIFFS; }
 max-conn-idle   { lval.t = yytext; return MAX_CONN_IDLE; }
 max-conn-handshake { lval.t = yytext; return MAX_CONN_HS; }

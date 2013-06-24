@@ -45,11 +45,6 @@
 #include "libknot/packet/response.h"
 #include "knot/zone/zone-load.h"
 
-/*! \brief Controller constants. */
-enum knotc_constants_t {
-	WAITPID_TIMEOUT = 120   /*!< \brief Timeout for waiting for process. */
-};
-
 /*! \brief Controller flags. */
 enum knotc_flag_t {
 	F_NULL = 0 << 0,
@@ -82,7 +77,6 @@ typedef struct knot_cmd {
 } knot_cmd_t;
 
 /* Forward decls. */
-static int cmd_start(int argc, char *argv[], unsigned flags);
 static int cmd_stop(int argc, char *argv[], unsigned flags);
 static int cmd_restart(int argc, char *argv[], unsigned flags);
 static int cmd_reload(int argc, char *argv[], unsigned flags);
@@ -95,9 +89,8 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags);
 
 /*! \brief Table of remote commands. */
 knot_cmd_t knot_cmd_tbl[] = {
-	{&cmd_start,      1, "start",      "",       "\t\tStart server (if not running)."},
-	{&cmd_stop,       1, "stop",       "",       "\t\tStop server."},
-	{&cmd_restart,    1, "restart",    "",       "\tRestart server."},
+	{&cmd_stop,       0, "stop",       "",       "\t\tStop server."},
+	{&cmd_restart,    0, "restart",    "",       "\tRestart server."},
 	{&cmd_reload,     0, "reload",     "",       "\tReload configuration and changed zones."},
 	{&cmd_refresh,    0, "refresh",    "[zone]", "\tRefresh slave zone (all if not specified)."},
 	{&cmd_flush,      0, "flush",      "",       "\t\tFlush journal and update zone files."},
@@ -114,18 +107,17 @@ void help(void)
 	printf("Usage: %sc [parameters] <action>\n", PACKAGE_NAME);
 	printf("\nParameters:\n"
 	       " -c [file], --config=[file]\tSelect configuration file.\n"
-	       " -s [server]               \tRemote server address (default %s)\n"
-	       " -p [port]                 \tRemote server port (default %d)\n"
+	       " -s [server]               \tRemote UNIX socket/IP address (default %s).\n"
+	       " -p [port]                 \tRemote server port (only for IP).\n"
 	       " -y [[hmac:]name:key]      \tUse key_id specified on the command line.\n"
 	       " -k [file]                 \tUse key file (as in config section 'keys').\n"
 	       "                           \t  Example: echo \"knotc-key hmac-md5 Wg==\" > knotc.key\n"
 	       " -f, --force               \tForce operation - override some checks.\n"
 	       " -v, --verbose             \tVerbose mode - additional runtime information.\n"
 	       " -V, --version             \tPrint %s server version.\n"
-	       " -w, --wait                \tWait for the server to finish start/stop operations.\n"
 	       " -i, --interactive         \tInteractive mode (do not daemonize).\n"
 	       " -h, --help                \tPrint help and usage.\n",
-	       "127.0.0.1", REMOTE_DPORT, PACKAGE_NAME);
+	       RUN_DIR "/knot.sock", PACKAGE_NAME);
 	printf("\nActions:\n");
 	knot_cmd_t *c = knot_cmd_tbl;
 	while (c->name != NULL) {
@@ -245,11 +237,11 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	}
 
 	/* Send query. */
-	int s = socket_create(r->family, SOCK_STREAM, IPPROTO_TCP);
-	int conn_state = socket_connect(s, r->address, r->port);
+	int s = socket_create(r->family, SOCK_STREAM, 0);
+	int conn_state = socket_connect(s, r->family, r->address, r->port);
 	if (conn_state != KNOT_EOK || tcp_send(s, buf, buflen) <= 0) {
 		log_server_error("Couldn't connect to remote host "
-		                 " %s@%d.\n", r->address, r->port);
+		                 "%s@%d.\n", r->address, r->port);
 		rc = 1;
 	}
 
@@ -532,8 +524,10 @@ int main(int argc, char **argv)
 		memset(ctl_if, 0, sizeof(conf_iface_t));
 
 		/* Fill defaults. */
-		if (!r_addr) r_addr = "127.0.0.1";
-		if (r_port < 0) r_port =  REMOTE_DPORT;
+		if (!r_addr)
+			r_addr = RUN_DIR "/knot.sock";
+		else if (r_port < 0)
+			r_port = REMOTE_DPORT;
 	}
 
 	/* Install the key. */
@@ -546,8 +540,17 @@ int main(int argc, char **argv)
 		free(ctl_if->address);
 		ctl_if->address = strdup(r_addr);
 		ctl_if->family = AF_INET;
-		if (strchr(r_addr, ':')) { /* Dumb way to check for v6 addr. */
+
+		/* Check for v6 address. */
+		if (strchr(r_addr, ':'))
 			ctl_if->family = AF_INET6;
+		/* Check if address is a UNIX socket. */
+		struct stat st;
+		if (stat(r_addr, &st) == 0) {
+			if (S_ISSOCK(st.st_mode)) {
+				ctl_if->family = AF_UNIX;
+				r_port = 0; /* Override. */
+			}
 		}
 	}
 	if (r_port > -1) ctl_if->port = r_port;
@@ -570,167 +573,22 @@ exit:
 	return rc;
 }
 
-static int cmd_start(int argc, char *argv[], unsigned flags)
-{
-	/* Check config. */
-	if (has_flag(flags, F_NOCONF)) {
-		log_server_error("Couldn't parse config file, refusing to "
-		                 "continue.\n");
-		return 1;
-	}
-
-	/* Fetch PID. */
-	char *pidfile = pid_filename();
-	pid_t pid = pid_read(pidfile);
-	log_server_info("Starting server...\n");
-
-	/* Prevent concurrent daemon launch. */
-	int rc = 0;
-	struct stat st;
-	int is_pidf = 0;
-
-	/* Check PID. */
-	if (pid > 0 && pid_running(pid)) {
-		log_server_error("Server PID found, already running.\n");
-		is_pidf = 1;
-	} else if (stat(pidfile, &st) == 0) {
-		log_server_warning("PID file '%s' exists, another process "
-		                   "is starting or PID file is stale.\n",
-		                   pidfile);
-		is_pidf = 1;
-	}
-	if (is_pidf) {
-		if (!has_flag(flags, F_FORCE)) {
-			free(pidfile);
-			return 1;
-		} else {
-			log_server_info("Forcing server start.\n");
-			pid_remove(pidfile);
-		}
-	}
-
-	/* Prepare command */
-	const char *cfg = conf()->filename;
-	size_t args_c = 6;
-	const char *args[] = {
-		PROJECT_EXEC,
-		has_flag(flags, F_INTERACTIVE) ? "" : "-d",
-		cfg ? "-c" : "",
-		cfg ? cfg : "",
-		has_flag(flags, F_VERBOSE) ? "-v" : "",
-		argc > 0 ? argv[0] : ""
-	};
-
-	/* Execute command */
-	if (has_flag(flags, F_INTERACTIVE)) {
-		log_server_info("Running in interactive mode.\n");
-	} else {
-		log_server_info("Starting as daemon, 'stdout' and 'stderr' log "
-		                "sinks will be closed.\n");
-	}
-	fflush(stderr);
-	fflush(stdout);
-
-	if ((rc = cmd_exec(args, args_c)) < 0) {
-		rc = 1;
-	}
-	fflush(stderr);
-	fflush(stdout);
-
-	/* Wait for finish */
-	if (has_flag(flags, F_WAIT) && !has_flag(flags, F_INTERACTIVE)) {
-		if (has_flag(flags, F_VERBOSE)) {
-			log_server_info("Waiting for server to load.\n");
-		}
-
-		/* Periodically read pidfile and wait for valid result. */
-		pid = 0;
-		while (pid == 0 || !pid_running(pid)) {
-			pid = pid_read(pidfile);
-			struct timeval tv;
-			tv.tv_sec = 0;
-			tv.tv_usec = 500 * 1000;
-			select(0, 0, 0, 0, &tv);
-		}
-	}
-
-	free(pidfile);
-	return rc;
-}
-
 static int cmd_stop(int argc, char *argv[], unsigned flags)
 {
 	UNUSED(argc);
 	UNUSED(argv);
+	UNUSED(flags);
 
-	/* Check config. */
-	if (has_flag(flags, F_NOCONF)) {
-		log_server_error("Couldn't parse config file, refusing to "
-		                 "continue.\n");
-		return 1;
-	}
-
-	/* Fetch PID. */
-	char *pidfile = pid_filename();
-	pid_t pid = pid_read(pidfile);
-	int rc = 0;
-	struct stat st;
-
-	/* Check for non-existent PID file. */
-	int has_pidf = (stat(pidfile, &st) == 0);
-	if(has_pidf && pid <= 0) {
-		log_server_warning("Empty PID file '%s' exists, daemon process "
-		                   "is starting or PID file is stale.\n",
-		                   pidfile);
-		free(pidfile);
-		return 1;
-	} else if (pid <= 0 || !pid_running(pid)) {
-		log_server_warning("Server PID not found, "
-		                   "probably not running.\n");
-		if (!has_flag(flags, F_FORCE)) {
-			free(pidfile);
-			return 1;
-		} else {
-			log_server_info("Forcing server stop.\n");
-		}
-	}
-
-	/* Stop */
-	log_server_info("Stopping server...\n");
-	if (kill(pid, SIGTERM) < 0) {
-		pid_remove(pidfile);
-		rc = 1;
-	}
-
-
-	/* Wait for finish */
-	if (rc == 0 && has_flag(flags, F_WAIT)) {
-		log_server_info("Waiting for server to finish.\n");
-		while (pid_running(pid)) {
-			struct timeval tv;
-			tv.tv_sec = 0;
-			tv.tv_usec = 500 * 1000;
-			select(0, 0, 0, 0, &tv);
-			pid = pid_read(pidfile); /* Update */
-		}
-	}
-
-	return rc;
+	return cmd_remote("stop", KNOT_RRTYPE_TXT, 0, NULL);
 }
 
 static int cmd_restart(int argc, char *argv[], unsigned flags)
 {
-	/* Check config. */
-	if (has_flag(flags, F_NOCONF)) {
-		log_server_error("Couldn't parse config file, refusing to "
-		                 "continue.\n");
-		return 1;
-	}
+	UNUSED(argc);
+	UNUSED(argv);
+	UNUSED(flags);
 
-	int rc = 0;
-	rc |= cmd_stop(argc, argv, flags | F_WAIT);
-	rc |= cmd_start(argc, argv, flags);
-	return rc;
+	return cmd_remote("restart", KNOT_RRTYPE_TXT, 0, NULL);
 }
 
 static int cmd_reload(int argc, char *argv[], unsigned flags)

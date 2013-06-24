@@ -39,7 +39,7 @@ else.
   [ @code{hostname} @code{"}@kbd{string}@code{";} ]
   [ @code{nsid} ( @code{"}@kbd{string}@code{"} | @kbd{hex_string} )@code{;} ]
   [ @code{storage} @code{"}@kbd{string}@code{";} ]
-  [ @code{pidfile} @code{"}@kbd{string}@code{";} ]
+  [ @code{rundir} @code{"}@kbd{string}@code{";} ]
   [ @code{workers} @kbd{integer}@code{;} ]
   [ @code{user} @kbd{string}[@code{.}@kbd{string}]@code{;} ]
   [ @code{max-conn-idle} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
@@ -61,7 +61,7 @@ else.
 * hostname::
 * nsid::
 * storage::
-* pidfile::
+* rundir::
 * workers::
 * user::
 * max-conn-idle::
@@ -139,7 +139,9 @@ system @{
 @subsubsection storage
 @vindex storage
 
-The working directory of Knot DNS, it is used to store compiled zone files and it is also a default location of the PID file.
+The working directory of Knot DNS, it is used to store compiled zone files and
+other persistent data.
+Default: @file{$@{sharedstatedir@}/knot}, configured with @code{--with-storage=path}
 
 @example
 system @{
@@ -147,17 +149,16 @@ system @{
 @}
 @end example
 
-@node pidfile
-@subsubsection pidfile
-@vindex pidfile
+@node rundir
+@subsubsection rundir
+@vindex rundir
 
-Specifies a custom PID file location.
-
-Default value: @file{knot.pid} in @code{storage} directory.
+Path for storing run-time data, for example PID file and unix sockets.
+Default: @file{$@{localstatedir@}/run/knot}, configured with @code{--with-rundir=path}
 
 @example
 system @{
-  pidfile "/var/run/knot.pid";
+  rundir "/var/run/knot";
 @}
 @end example
 
@@ -265,7 +266,7 @@ system @{
   version "@value{VERSION}";
   nsid    "amaterasu";
   storage "/var/lib/knot";
-  pidfile "/var/run/knot.pid";
+  rundir "/var/run/knot";
   workers 16;
   user knot.knot;
 @}
@@ -647,12 +648,24 @@ or loopback.
 @node control Statement Definition and Grammar
 @subsection Statement Definition and Grammar
 
-Control interface @code{listen-on} definition is equal to @code{interface} definition in @ref{interfaces}.
-Default port for control interface is @code{5553}.
+Control interface @code{listen-on} either defines a UNIX socket or an
+IPv4/IPv6 @code{interface} definition as in @ref{interfaces}.
+Default port for IPv4/v6 control interface is @code{5533},
+however UNIX socket is preferred.
+UNIX socke address is relative to @code{rundir} if not specified as an absolute
+path.
 
 @node control Examples
 @subsection Examples
 
+UNIX socket example:
+@example
+control @{
+        listen-on "knot.sock";
+@}
+@end example
+
+IPv4 socket example:
 @example
 keys @{
         knotc-key hmac-md5 "Wg==";

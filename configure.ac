@@ -160,6 +160,19 @@ AX_CHECK_COMPILE_FLAG("-fpredictive-commoning", [CFLAGS="$CFLAGS -fpredictive-co
 # FIXME: we break strict aliasing on many occurenes, disable it until resolved or kept
 AX_CHECK_COMPILE_FLAG("-fno-strict-aliasing", [CFLAGS="$CFLAGS -fno-strict-aliasing"], [])
 
+# Default directories
+run_dir="${localstatedir}/run/knot"
+AC_ARG_WITH([rundir],
+        AC_HELP_STRING([--with-rundir=path], [Path to run-time variable data (pid, sockets...). [default=`eval echo ${localstatedir}`/run/knot]]),
+        [run_dir=$withval])
+AC_SUBST(run_dir)
+
+storage_dir="${sharedstatedir}/knot"
+AC_ARG_WITH([storage],
+        AC_HELP_STRING([--with-storage=path], [Default storage directory (slave zones, persistent data). [default=$(sharedstatedir)/knot]]),
+        [storage_dir=$withval])
+AC_SUBST(storage_dir)
+
 # Checks for libraries.
 # FIXME: Replace `main' with a function in `-lm':
 

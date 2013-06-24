@@ -404,6 +404,7 @@ static int conf_mask(void* scanner, int nval, int prefixlen) {
 %token <tok> TSIG_ALGO_NAME
 %token <tok> WORKERS
 %token <tok> USER
+%token <tok> RUNDIR
 %token <tok> PIDFILE
 
 %token <tok> REMOTES
@@ -529,7 +530,12 @@ system:
  | system NSID HEXSTR ';' { new_config->nsid = $3.t; new_config->nsid_len = $3.l; }
  | system NSID TEXT ';' { new_config->nsid = $3.t; new_config->nsid_len = strlen(new_config->nsid); }
  | system STORAGE TEXT ';' { new_config->storage = $3.t; }
- | system PIDFILE TEXT ';' { new_config->pidfile = $3.t; }
+ | system RUNDIR TEXT ';' { new_config->rundir = $3.t; }
+ | system PIDFILE TEXT ';' {
+      fprintf(stderr, "warning: Config option 'system.pidfile' is deprecated "
+	         "and has no effect. Use 'rundir' instead.\n");
+      free($3.t);
+ }
  | system KEY TSIG_ALGO_NAME TEXT ';' {
      fprintf(stderr, "warning: Config option 'system.key' is deprecated "
 		     "and has no effect.\n");
@@ -1003,6 +1009,12 @@ control:
      } else {
        new_config->ctl.iface = this_iface;
      }
+ }
+ | control ctl_listen_start TEXT ';' {
+     this_iface->address = $3.t;
+     this_iface->family = AF_UNIX;
+     this_iface->port = 0;
+     new_config->ctl.iface = this_iface;
  }
  | control ctl_allow_start '{' zone_acl '}'
  | control ctl_allow_start zone_acl_list
