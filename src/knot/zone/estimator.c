@@ -19,11 +19,13 @@
 
 #include "estimator.h"
 #include "dname.h"
+#include "common/lists.h"
 #include "libknot/zone/node.h"
 #include "common/hattrie/ahtable.h"
 #include "zscanner/scanner.h"
 #include "common/descriptor.h"
 
+// Constants used for tweaking
 enum estim_consts {
 	DNAME_MULT = 1,
 	DNAME_ADD = 0,
@@ -35,62 +37,39 @@ enum estim_consts {
 	NODE_ADD = 0
 };
 
+typedef struct type_list_item {
+	node n;
+	uint16_t type;
+} type_list_item_t;
+
 typedef struct dummy_node {
-	// Types are enough for now, later we can add more
-	uint16_t *types;
-	size_t allocated;
-	size_t used;
+	// For now only contains list of RR types
+	list node_list;
 } dummy_node_t;
 
-// Insert value to position - move the rest of the array
-static void insert_on_pos(dummy_node_t *n, size_t pos, uint16_t t)
-{
-	assert(pos <= n->used);
-	memmove(n->types + pos + 1, n->types + pos, n->used - pos);
-	n->types[pos] = t;
-	n->used++;
-}
-
-// Binary search in sorted array
-static int find_in_array(dummy_node_t *n, uint16_t t, size_t *pos, size_t bound)
-{
-	if (*pos < 0) {
-		*pos = 0;
-		return 0;
-	} else if (*pos > n->used) {
-		*pos = n->used;
-		return 0;
-	} else if (bound == 0) {
-		return 0;
-	} else if (n->types[*pos] == t) {
-		return 1;
-	} else if (n->types[*pos] > t) {
-		*pos -= bound / 2;
-		return find_in_array(n, t, pos, bound / 2);
-	} else {
-		*pos += bound / 2;
-		return find_in_array(n, t, pos, bound / 2);
-	}
-}
-
 // return: 0 not present, 1 - present
+static int find_in_list(list *node_list, uint16_t type)
+{
+	node *n = NULL;
+	WALK_LIST(n, *node_list) {
+		type_list_item_t *l_entr = (type_list_item_t *)n;
+		assert(l_entr);
+		if (l_entr->type == type) {
+			return 1;
+		}
+	}
+
+	type_list_item_t *new_entry = xmalloc(sizeof(type_list_item_t));
+	new_entry->type = type;
+
+	add_head(node_list, (node *)new_entry);
+	return 0;
+}
+
+// return: 0 not present (added), 1 - present
 static int dummy_node_add_type(dummy_node_t *n, uint16_t t)
 {
-	size_t pos = n->used / 2;
-	int found = find_in_array(n, t, &pos, n->used);
-	if (found) {
-		// Found, nothing to do
-		return 1;
-	} else {
-		// Not found, need to insert and possibly realloc
-		if (n->used + 1 >= n->allocated) {
-			n->allocated *= 2;
-			n->types = xrealloc(n->types,
-			                    n->allocated * sizeof(uint16_t));
-		}
-		insert_on_pos(n, pos, t);
-		return 0;
-	}
+	return find_in_list(&n->node_list, t);
 }
 
 static size_t dname_memsize(const knot_dname_t *d)
@@ -103,20 +82,16 @@ static size_t dname_memsize(const knot_dname_t *d)
 static int insert_dname_into_table(zone_estim_t *est, knot_dname_t *d,
                                    dummy_node_t **n)
 {
-	value_t *val = ahtable_tryget(est->table, d->name, d->size);
+	value_t *val = hattrie_tryget(est->table, d->name, d->size);
 	if (val == NULL) {
 		// Create new dummy node to use for this dname
 		*n = xmalloc(sizeof(dummy_node_t));
-		(*n)->allocated = 16;
-		(*n)->used = 0;
-		(*n)->types = xmalloc(16 * sizeof(uint16_t));
-		memset((*n)->types, 0, 16 * sizeof(uint16_t))	;
-		*ahtable_get(est->table, d->name, d->size) = *n;
+		init_list(&(*n)->node_list);
+		*hattrie_get(est->table, d->name, d->size) = *n;
 		return 0;
 	} else {
 		// Return previously found dummy node
 		*n = (dummy_node_t *)(*val);
-		assert((*n)->allocated);
 		return 1;
 	}
 }
@@ -141,10 +116,10 @@ static size_t rdata_memsize(zone_estim_t *est, const scanner_t *scanner)
 			}
 
 			knot_dname_to_lower(dname);
-			dummy_node_t *n;
+			dummy_node_t *n = NULL;
 			if (insert_dname_into_table(est, dname, &n) == 0) {
 				// First time we see this dname, add size
-				size += dname_memsize(dname);
+				est->dname_size += dname_memsize(dname);
 			}
 			knot_dname_free(&dname);
 		} else if (descriptor_item_is_fixed(item)) {
@@ -170,39 +145,51 @@ static void rrset_memsize(zone_estim_t *est, const scanner_t *scanner)
 	                         NULL);
 	dummy_node_t *n;
 	if (insert_dname_into_table(est, owner, &n) == 0) {
-		// First time we see this dname
-		est->size += dname_memsize(owner);
-		// Add node constants
-		est->size += sizeof(knot_node_t) * NODE_MULT + NODE_ADD;
+		// First time we see this name == new node
+		est->trie_size += sizeof(knot_node_t) * NODE_MULT + NODE_ADD;
+		// Also, RRSet's owner will now contain full dname
+		est->dname_size += dname_memsize(owner);
+		// Trie's nodes handled at the end of computation
 	}
 	knot_dname_free(&owner);
 	assert(n);
 
 	// We will always add RDATA
 	size_t rdlen = rdata_memsize(est, scanner);
-	est->size += rdlen;
+	// DNAME's size not included (handled inside rdata_memsize())
+	est->rdata_size += rdlen;
 
 	est->record_count++;
 	est->signed_count += scanner->r_type == KNOT_RRTYPE_RRSIG ? 1 : 0;
 
 	/*
-	 * RDATA size done, now add static part of RRSet to size, included
-	 * owner. Do not add for RRs that would be merged.
+	 * RDATA size done, now add static part of RRSet to size.
+	 * Do not add for RRs that would be merged.
 	 * All possible duplicates will be added to total size.
 	 */
 
 	if (dummy_node_add_type(n, scanner->r_type) == 0) {
 		// New RR type, add actual RRSet struct's size
-		est->size += sizeof(knot_rrset_t) * RRSET_MULT + RRSET_ADD;
+		est->rrset_size += (sizeof(knot_rrset_t) + sizeof(uint32_t))
+		                   * RRSET_MULT + RRSET_ADD;
 		// Add pointer in node's array
-		est->size += sizeof(knot_rrset_t *);
+		est->trie_size += sizeof(knot_rrset_t *);
 	} else {
 		// Merge would happen, so just RDATA index is added
-		est->size += sizeof(uint32_t);
+		est->rrset_size += sizeof(uint32_t);
 	}
 }
 
-void rrset_memsize_wrap(const scanner_t *scanner) {
+void estimator_rrset_memsize_wrap(const scanner_t *scanner)
+{
 	rrset_memsize(scanner->data, scanner);
+}
+
+void estimator_free_trie_node(value_t *val, void *data)
+{
+	UNUSED(data);
+	dummy_node_t *trie_n = (dummy_node_t *)(*val);
+	WALK_LIST_FREE(trie_n->node_list);
+	free(trie_n);
 }
 

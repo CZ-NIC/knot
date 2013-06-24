@@ -18,10 +18,14 @@
 #include "zscanner/scanner.h"
 
 typedef struct zone_estim {
-	ahtable_t *table;
-	size_t size;
+	hattrie_t *table;
+	size_t rdata_size;
+	size_t dname_size;
+	size_t trie_size;
+	size_t rrset_size;
 	size_t record_count;
 	size_t signed_count;
 } zone_estim_t;
 
-void rrset_memsize_wrap(const scanner_t *scanner);
+void estimator_rrset_memsize_wrap(const scanner_t *scanner);
+void estimator_free_trie_node(value_t *val, void *data);

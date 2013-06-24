@@ -853,6 +853,7 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 		log_zone_info("Zone %s OK.\n", zone->name);
 	}
 
+	getchar();
 	return rc;
 }
 
@@ -887,9 +888,10 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 			continue;
 		}
 
-		zone_estim_t est = {.table = ahtable_create(),
-		                    .size = 0, .record_count = 0,
-		                    .signed_count = 0 };
+		zone_estim_t est = {.table = hattrie_create(),
+		                    .dname_size = 0, .rrset_size = 0,
+		                    .trie_size = 0, .rdata_size = 0,
+		                    .record_count = 0, .signed_count = 0 };
 		if (est.table == NULL) {
 			log_server_error("Not enough memory.\n");
 		}
@@ -897,22 +899,36 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 		/* Create file loader. */
 		file_loader_t *loader = file_loader_create(zone->file, zone->name,
 		                                           KNOT_CLASS_IN, 3600,
-		                                           rrset_memsize_wrap,
+		                                           estimator_rrset_memsize_wrap,
 		                                           process_error,
 		                                           &est);
 		if (loader == NULL) {
-			log_server_error("Could not load zone.\n");
-			ahtable_free(est.table);
+			log_zone_error("Could not load zone.\n");
+			hattrie_apply_rev(est.table, estimator_free_trie_node, NULL);
+			hattrie_free(est.table);
 			return KNOT_ERROR;
 		}
 
-		file_loader_process(loader);
-		ahtable_free(est.table);
+		int ret = file_loader_process(loader);
+		if (ret != KNOT_EOK) {
+			log_zone_error("Failed to parse zone.\n");
+			hattrie_apply_rev(est.table, estimator_free_trie_node, NULL);
+			hattrie_free(est.table);
+		}
 
-		log_zone_info("Zone %s: %zu records, signed=%f%%, estimated size in memory=%fMB\n",
+		hattrie_apply_rev(est.table, estimator_free_trie_node, NULL);
+		hattrie_free(est.table);
+
+//		log_zone_info("dname=%zu\nrrset=%zu\ntrie=%zu\nrdata=%zu\n",
+//		       est.dname_size / (1024 * 1024),
+//		       est.rrset_size / (1024 * 1024),
+//		       est.trie_size / (1024 * 1024),
+//		       est.rdata_size / (1024 * 1024));
+
+		log_zone_info("Zone %s: %zu RRs, signed=%.2f%%, used memory estimate=%zuMB\n",
 		              zone->name, est.record_count,
-		              est.signed_count ? ((double)est.record_count / est.signed_count) * 100 : 0.0,
-		              (double)est.size / (1024 * 1024));
+		              est.signed_count ? ((double)(est.record_count - est.signed_count)/ est.record_count) * 100 : 0.0,
+		              (est.rdata_size + est.trie_size + est.rrset_size + est.dname_size )/ (1024 * 1024));
 		file_loader_free(loader);
 	}
 
