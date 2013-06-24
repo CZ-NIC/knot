@@ -13,32 +13,23 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+/*!
+ * \file zscanner.h
+ *
+ * \author Daniel Salzman <daniel.salzman@nic.cz>
+ *
+ * \brief Public interface for zscanner.
+ * @{
+ */
 
-#include <config.h>
-#include "tests/zscanner/zscanner_tests.h"
+#ifndef _ZSCANNER__ZSCANNER_H_
+#define _ZSCANNER__ZSCANNER_H_
 
-#include <stdlib.h>
+#include "zscanner/error.h"
+#include "zscanner/scanner.h"
+#include "zscanner/descriptor.h"
+#include "zscanner/file_loader.h"
 
-static int zscanner_tests_count(int argc, char *argv[]);
-static int zscanner_tests_run(int argc, char *argv[]);
+#endif // _ZSCANNER__ZSCANNER_H_
 
-unit_api zscanner_tests_api = {
-	"Zone scanner",
-	&zscanner_tests_count,
-	&zscanner_tests_run
-};
-
-static int zscanner_tests_count(int argc, char *argv[])
-{
-	return 1;
-}
-
-static int zscanner_tests_run(int argc, char *argv[])
-{
-	int  ret;
-
-	ret = system("/bin/sh ../zscanner/test/run_tests.sh test");
-	cmp_ok(ret, "==", 0, "zscanner unittests");
-
-	return 0;
-}
+/*! @} */

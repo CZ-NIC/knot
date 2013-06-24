@@ -31,7 +31,7 @@
 
 #include "libknot/libknot.h"
 #include "common/lists.h"		// list
-#include "zscanner/scanner.h"		// scanner_t
+#include "zscanner/zscanner.h"		// scanner_t
 #include "utils/common/netio.h"		// server_t
 #include "utils/common/params.h"	// protocol_t
 #include "libknot/sign/key.h"		// knot_key_params_t

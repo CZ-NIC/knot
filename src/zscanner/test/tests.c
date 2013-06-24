@@ -15,13 +15,13 @@
  */
 
 #include <config.h>
-#include "zscanner/test/tests.h"
-
 #include <inttypes.h>			// PRIu64
+#include <stdlib.h>			// putenv
 #include <stdio.h>			// printf
 #include <time.h>			// mktime
-#include <stdlib.h>			// printf
-#include "../scanner_functions.h"	// date_to_timestamp
+
+#include "zscanner/test/tests.h"
+#include "zscanner/scanner_functions.h"	// date_to_timestamp
 
 int test__date_to_timestamp()
 {

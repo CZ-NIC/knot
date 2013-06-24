@@ -16,6 +16,7 @@
 /*!
  * \file descriptor.h
  *
+ * \author Daniel Salzman <daniel.salzman@nic.cz>
  * \author Jan Kadlec <jan.kadlec@nic.cz>
  *
  * \addtogroup common_lib
@@ -32,6 +33,8 @@
 
 /*!
  * \brief Resource record class codes.
+ *
+ * http://www.iana.org/assignments/dns-parameters/dns-parameters.xml
  */
 enum knot_rr_class {
 	KNOT_CLASS_IN   =   1,
@@ -121,7 +124,7 @@ enum knot_rdata_wireformat {
 	KNOT_RDATA_WF_LITERAL_DNAME,
 	/*!< Initial part of NAPTR record before dname. */
 	KNOT_RDATA_WF_NAPTR_HEADER,
-	/*!< Uninteresting final part of a record. */
+	/*!< Final part of a record. */
 	KNOT_RDATA_WF_REMAINDER,
 	/*!< The last descriptor in array. */
 	KNOT_RDATA_WF_END                =   0
@@ -140,7 +143,7 @@ typedef struct {
 /*!
  * \brief Gets rdata descriptor for given RR name.
  *
- * \param name Mnemonic of RR type whose descriptor should be retvaled.
+ * \param name Mnemonic of RR type whose descriptor should be returned.
  *
  * \retval RR descriptor for given name, NULL descriptor if
  *         unknown type.

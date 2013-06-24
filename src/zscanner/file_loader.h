@@ -29,8 +29,8 @@
 
 #include <stdint.h>			// uint32_t
 
-#include "common/descriptor.h"		// KNOT_CLASS_IN
 #include "zscanner/scanner.h"		// scanner_t
+#include "zscanner/descriptor.h"	// KNOT_CLASS_IN
 
 /*! \brief Settings block size in bytes. */
 #define SETTINGS_BUFFER_LENGTH		 1024
@@ -94,7 +94,7 @@ void file_loader_free(file_loader_t *file_loader);
  *
  * \param file_loader	File loader structure.
  *
- * \retval KNOT_EOK	if success.
+ * \retval ZSCANNER_OK	if success.
  * \retval error_code   if error.
  */
 int file_loader_process(file_loader_t *file_loader);
