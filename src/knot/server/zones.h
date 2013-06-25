@@ -302,12 +302,13 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
  * REFRESH/RETRY/EXPIRE timers are updated according to SOA.
  *
  * \param zone Related zone.
+ * \param time Specific time or 0 for default.
  *
  * \retval KNOT_EOK
  * \retval KNOT_EINVAL
  * \retval KNOT_ERROR
  */
-int zones_schedule_refresh(knot_zone_t *zone);
+int zones_schedule_refresh(knot_zone_t *zone, unsigned time);
 
 /*!
  * \brief Schedule NOTIFY after zone update.

@@ -520,7 +520,7 @@ static void dig_help(void)
 	       "       +[no]nsid       Request NSID.\n"
 	       "\n"
 	       "       -h, --help      Print help.\n"
-	       "       -V, --version   Print program version.\n");
+	       "       -v, --version   Print program version.\n");
 }
 
 static int parse_opt1(const char *opt, const char *value, dig_params_t *params,

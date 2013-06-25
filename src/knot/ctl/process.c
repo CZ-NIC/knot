@@ -26,6 +26,7 @@
 #include <assert.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 
 #include "knot/knot.h"
 #include "knot/ctl/process.h"
@@ -37,9 +38,9 @@ char* pid_filename()
 	rcu_read_lock();
 
 	/* Read configuration. */
-	char* ret = 0;
-	if (conf() && conf()->pidfile != NULL) {
-		ret = strdup(conf()->pidfile);
+	char* ret = NULL;
+	if (conf() && conf()->rundir != NULL) {
+		ret = strcdup(conf()->rundir, "/knot.pid");
 	}
 
 	rcu_read_unlock();
@@ -89,31 +90,28 @@ pid_t pid_read(const char* fn)
 
 int pid_write(const char* fn)
 {
-	if (!fn) {
+	if (!fn)
 		return KNOT_EINVAL;
-	}
 
-	// Convert
+	/* Convert. */
 	char buf[64];
-	int wbytes = 0;
-	wbytes = snprintf(buf, sizeof(buf), "%lu", (unsigned long) getpid());
-	if (wbytes < 0) {
+	int len = 0;
+	len = snprintf(buf, sizeof(buf), "%lu", (unsigned long) getpid());
+	if (len < 0)
 		return KNOT_EINVAL;
+
+	/* Create file. */
+	int ret = KNOT_EOK;
+	int fd = open(fn, O_RDWR|O_CREAT, 0644);
+	if (fd >= 0) {
+		if (write(fd, buf, len) != len)
+			ret = KNOT_ERROR;
+		close(fd);
+	} else {
+		ret = knot_map_errno(errno);
 	}
 
-	// Write
-	FILE *fp = fopen(fn, "w");
-	if (fp) {
-		int rc = fwrite(buf, wbytes, 1, fp);
-		fclose(fp);
-		if (rc < 0) {
-			return KNOT_ERROR;
-		}
-
-		return 0;
-	}
-
-	return KNOT_ENOENT;
+	return ret;
 }
 
 int pid_remove(const char* fn)
@@ -177,62 +175,29 @@ int proc_update_privileges(int uid, int gid)
 	return ret;
 }
 
-pid_t pid_wait(pid_t proc, int *rc)
+char *pid_check_and_create()
 {
-	/* Wait for finish. */
-	sigset_t newset;
-	sigfillset(&newset);
-	sigprocmask(SIG_BLOCK, &newset, 0);
-	proc = waitpid(proc, rc, 0);
-	sigprocmask(SIG_UNBLOCK, &newset, 0);
-	return proc;
-}
+	struct stat st;
+	char* pidfile = pid_filename();
+	pid_t pid = pid_read(pidfile);
 
-
-pid_t pid_start(const char *argv[], int argc, int drop_privs)
-{
-	pid_t chproc = fork();
-	if (chproc == 0) {
-
-		/* Alter privileges. */
-		if (drop_privs) {
-			proc_update_privileges(conf()->uid, conf()->gid);
-		}
-
-		/* Duplicate, it doesn't run from stack address anyway. */
-		char **args = malloc((argc + 1) * sizeof(char*));
-		memset(args, 0, (argc + 1) * sizeof(char*));
-		int ci = 0;
-		for (int i = 0; i < argc; ++i) {
-			if (strlen(argv[i]) > 0) {
-				args[ci++] = strdup(argv[i]);
-			}
-		}
-		args[ci] = 0;
-
-		/* Execute command. */
-		fflush(stdout);
-		fflush(stderr);
-		execvp(args[0], args);
-
-		/* Execute failed. */
-		log_server_error("Failed to run executable '%s'\n", args[0]);
-		for (int i = 0; i < argc; ++i) {
-			free(args[i]);
-		}
-		free(args);
-
-		exit(1);
-		return -1;
+	/* Check PID for existence and liveness. */
+	if (pid > 0 && pid_running(pid)) {
+		log_server_error("Server PID found, already running.\n");
+		free(pidfile);
+		return NULL;
+	} else if (stat(pidfile, &st) == 0) {
+		log_server_warning("Removing stale PID file '%s'.\n", pidfile);
+		pid_remove(pidfile);
 	}
 
-	return chproc;
-}
+	/* Create a PID file. */
+	int ret = pid_write(pidfile);
+	if (ret != KNOT_EOK) {
+		log_server_error("Couldn't create a PID file '%s'.\n", pidfile);
+		free(pidfile);
+		return NULL;
+	}
 
-int cmd_exec(const char *argv[], int argc)
-{
-	int ret = 0;
-	pid_t proc = pid_start(argv, argc, 0);
-	pid_wait(proc, &ret);
-	return ret;
+	return pidfile;
 }

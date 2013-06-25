@@ -88,6 +88,10 @@ enum knot_error {
 	KNOT_ELIMIT,          /*!< Exceeded response rate limit. */
 	KNOT_EWRITABLE,       /*!< File is not writable. */
 
+	/* Control states. */
+	KNOT_CTL_STOP,        /*!< Stop requested. */
+	KNOT_CTL_RESTART,     /*!< Restart requested. */
+
 	/* Network errors. */
 	KNOT_NET_EADDR,
 	KNOT_NET_ESOCKET,

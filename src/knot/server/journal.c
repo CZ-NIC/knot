@@ -189,7 +189,7 @@ int journal_write_in(journal_t *j, journal_node_t **rn, uint64_t id, size_t len)
 
 		/* Check if it has been synced to disk. */
 		if (head->flags & JOURNAL_DIRTY) {
-			return KNOT_EAGAIN;
+			return KNOT_EBUSY;
 		}
 
 		/* Write back evicted node. */

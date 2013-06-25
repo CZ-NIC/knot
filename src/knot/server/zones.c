@@ -1188,24 +1188,12 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 			                   z->name, knot_strerror(ar));
 		}
 
-
-		/* Update events scheduled for zone. */
-		evsched_t *sch = ((server_t *)knot_ns_get_data(ns))->sched;
-		zones_schedule_refresh(zone);
-		zones_schedule_notify(zone);
-
-		/* Refresh new slave zones (almost) immediately. */
-		if(is_new && zd->xfr_in.timer) {
-			evsched_cancel(sch, zd->xfr_in.timer);
-			evsched_schedule(sch, zd->xfr_in.timer,
-			                 zd->xfr_in.bootstrap_retry / 2);
-		}
-
 		/* Schedule IXFR database syncing. */
 		/*! \note This has to remain separate as it must not be
 		 *        triggered by a zone update or SOA response.
 		 */
 		/* Fetch zone data. */
+		evsched_t *sch = ((server_t *)knot_ns_get_data(ns))->sched;
 		int sync_tmr = z->dbsync_timeout * 1000; /* s -> ms. */
 		if (zd->ixfr_dbsync != NULL) {
 			evsched_cancel(sch, zd->ixfr_dbsync);
@@ -2515,7 +2503,7 @@ int zones_process_response(knot_nameserver_t *nameserver,
 
 		/* No updates available. */
 		if (ret == 0) {
-			zones_schedule_refresh(zone);
+			zones_schedule_refresh(zone, 0);
 			rcu_read_unlock();
 			return KNOT_EUPTODATE;
 		}
@@ -2709,6 +2697,25 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 	/* Delete all deprecated zones and delete the old database. */
 	knot_zonedb_deep_free(&old_db);
 
+	/* Update events scheduled for zone. */
+	rcu_read_lock();
+	knot_zone_t **zones = (knot_zone_t **)knot_zonedb_zones(ns->zone_db);
+	if (zones == NULL) {
+		rcu_read_unlock();
+		return KNOT_ENOMEM;
+	}
+
+	/* REFRESH zones. */
+	for (unsigned i = 0; i < knot_zonedb_zone_count(ns->zone_db); ++i) {
+		/* Refresh new slave zones (almost) immediately. */
+		zones_schedule_refresh(zones[i], tls_rand() * 500 + i/2);
+		zones_schedule_notify(zones[i]);
+	}
+
+	/* Unlock RCU. */
+	rcu_read_unlock();
+	free(zones);
+
 	return KNOT_EOK;
 }
 
@@ -2836,48 +2843,6 @@ static int zones_store_changeset(const knot_changeset_t *chs, journal_t *j,
 	/* Reserve space for the journal entry. */
 	char *journal_entry = NULL;
 	ret = journal_map(j, k, &journal_entry, entry_size);
-
-	/* Sync to zonefile may be needed. */
-	while (ret == KNOT_EAGAIN) {
-		/* Cancel sync timer. */
-		event_t *tmr = zd->ixfr_dbsync;
-		if (tmr) {
-			dbg_xfr_verb("xfr: cancelling zonefile "
-			             "SYNC timer of '%s'\n",
-			             zd->conf->name);
-			evsched_cancel(tmr->parent, tmr);
-		}
-
-		/* Synchronize. */
-		dbg_xfr_verb("xfr: forcing zonefile SYNC "
-		             "of '%s'\n",
-		             zd->conf->name);
-		ret = zones_zonefile_sync(zone, j);
-		if (ret != KNOT_EOK && ret != KNOT_ERANGE) {
-			continue;
-		}
-
-		/* Reschedule sync timer. */
-		if (tmr) {
-			/* Fetch sync timeout. */
-			rcu_read_lock();
-			int timeout = zd->conf->dbsync_timeout;
-			timeout *= 1000; /* Convert to ms. */
-			rcu_read_unlock();
-
-			/* Reschedule. */
-			dbg_xfr_verb("xfr: resuming SYNC "
-			             "of '%s'\n",
-			             zd->conf->name);
-			evsched_schedule(tmr->parent, tmr,
-			                 timeout);
-
-		}
-
-		/* Attempt to map again. */
-		ret = journal_map(j, k, &journal_entry, entry_size);
-	}
-
 	if (ret != KNOT_EOK) {
 		dbg_xfr("Failed to map space for journal entry: %s.\n",
 		        knot_strerror(ret));
@@ -2960,8 +2925,7 @@ int zones_store_changesets(knot_zone_t *zone, knot_changesets_t *src)
 		return KNOT_EINVAL;
 	}
 
-//	knot_zone_t *zone = xfr->zone;
-//	knot_changesets_t *src = (knot_changesets_t *)xfr->data;
+	int ret = KNOT_EOK;
 
 	/* Fetch zone-specific data. */
 	zonedata_t *zd = (zonedata_t *)zone->data;
@@ -2974,7 +2938,6 @@ int zones_store_changesets(knot_zone_t *zone, knot_changesets_t *src)
 	if (j == NULL) {
 		return KNOT_EBUSY;
 	}
-	int ret = 0;
 
 	/* Begin writing to journal. */
 	for (unsigned i = 0; i < src->count; ++i) {
@@ -2982,17 +2945,24 @@ int zones_store_changesets(knot_zone_t *zone, knot_changesets_t *src)
 		knot_changeset_t* chs = src->sets + i;
 
 		ret = zones_store_changeset(chs, j, zone, zd);
-		if (ret != KNOT_EOK) {
-			journal_release(j);
-			return ret;
-		}
+		if (ret != KNOT_EOK)
+			break;
 	}
 
 	/* Release journal. */
 	journal_release(j);
 
+	/* Flush if the journal is full. */
+	event_t *tmr = zd->ixfr_dbsync;
+	if (ret == KNOT_EBUSY && tmr) {
+		log_server_notice("Journal for '%s' is full, flushing.\n",
+		                  zd->conf->name);
+		evsched_cancel(tmr->parent, tmr);
+		evsched_schedule(tmr->parent, tmr, 0);
+	}
+
 	/* Written changesets to journal. */
-	return KNOT_EOK;
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -3125,8 +3095,7 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
 	}
 	if (ret != KNOT_EOK) {
 		log_zone_error("%s Failed to serialize and store "
-		               "changesets - %s\n", msgpref,
-		               knot_strerror(ret));
+		               "changesets.\n", msgpref);
 		/* Free changesets, but not the data. */
 		zones_store_changesets_rollback(transaction);
 		knot_free_changesets(&chs);
@@ -3137,8 +3106,7 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
 	apply_ret = xfrin_apply_changesets(zone, chs, new_contents);
 
 	if (apply_ret != KNOT_EOK) {
-		log_zone_error("%s Failed to apply changesets - %s\n",
-		               msgpref, knot_strerror(apply_ret));
+		log_zone_error("%s Failed to apply changesets.\n", msgpref);
 
 		/* Free changesets, but not the data. */
 		zones_store_changesets_rollback(transaction);
@@ -3150,8 +3118,7 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
 	ret = zones_store_changesets_commit(transaction);
 	if (ret != KNOT_EOK) {
 		/*! \todo THIS WILL LEAK!! xfrin_rollback_update() needed. */
-		log_zone_error("%s Failed to commit stored changesets "
-		               "- %s\n", msgpref, knot_strerror(apply_ret));
+		log_zone_error("%s Failed to commit stored changesets.\n", msgpref);
 		knot_free_changesets(&chs);
 		return ret;
 	}
@@ -3160,8 +3127,7 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
 	switch_ret = xfrin_switch_zone(zone, *new_contents, type);
 
 	if (switch_ret != KNOT_EOK) {
-		log_zone_error("%s Failed to replace current zone - %s\n",
-		               msgpref, knot_strerror(switch_ret));
+		log_zone_error("%s Failed to replace current zone.\n", msgpref);
 		// Cleanup old and new contents
 		xfrin_rollback_update(zone->contents, new_contents,
 		                      &chs->changes);
@@ -3220,7 +3186,7 @@ int zones_schedule_notify(knot_zone_t *zone)
 	return KNOT_EOK;
 }
 
-int zones_schedule_refresh(knot_zone_t *zone)
+int zones_schedule_refresh(knot_zone_t *zone, unsigned time)
 {
 	if (!zone || !zone->data) {
 		return KNOT_EINVAL;
@@ -3249,11 +3215,13 @@ int zones_schedule_refresh(knot_zone_t *zone)
 	if (zd->xfr_in.has_master) {
 
 		/* Schedule REFRESH timer. */
-		uint32_t refresh_tmr = 0;
-		if (knot_zone_contents(zone)) {
-			refresh_tmr = zones_jitter(zones_soa_refresh(zone));
-		} else {
-			refresh_tmr = zd->xfr_in.bootstrap_retry;
+		uint32_t refresh_tmr = time;
+		if (refresh_tmr == 0) {
+			if (knot_zone_contents(zone)) {
+				refresh_tmr = zones_jitter(zones_soa_refresh(zone));
+			} else {
+				refresh_tmr = zd->xfr_in.bootstrap_retry;
+			}
 		}
 		zd->xfr_in.timer = evsched_schedule_cb(sch, zones_refresh_ev,
 		                                       zone, refresh_tmr);

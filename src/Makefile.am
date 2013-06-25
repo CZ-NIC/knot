@@ -5,7 +5,9 @@ sbin_PROGRAMS = knotc knotd kdig khost knsupdate
 noinst_LTLIBRARIES = libknot.la libknotd.la libknots.la
 
 # $(YACC) will generate header file
-AM_CPPFLAGS = -I$(top_srcdir)/src/libknot -DSYSCONFDIR='"$(sysconfdir)"' -DSBINDIR='"$(sbindir)"'
+AM_CPPFLAGS = -I$(top_srcdir)/src/libknot -DSYSCONFDIR='"$(sysconfdir)"' \
+	-DSBINDIR='"$(sbindir)"' -DSTORAGE_DIR='"${storage_dir}"' \
+	-DRUN_DIR='"${run_dir}"'
 AM_YFLAGS = -d
 libknotd_la_YFLAGS = -pcf_ -d
 libknotd_la_LFLAGS = # TODO: reentrant parser, prefix
@@ -275,3 +277,8 @@ knotc_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 kdig_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 khost_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 knsupdate_LDADD = libknotd.la libknot.la libknots.la zscanner/libzscanner.la @LIBOBJS@
+
+# Create storage and run-time directories
+install-data-hook:
+	$(INSTALL) -d @run_dir@
+	$(INSTALL) -d @storage_dir@

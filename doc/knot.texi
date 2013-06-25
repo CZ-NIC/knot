@@ -171,7 +171,7 @@ Statement Definition and Usage
 * version::
 * nsid::
 * storage::
-* pidfile::
+* rundir::
 * workers::
 * user::
 * max-conn-idle::
