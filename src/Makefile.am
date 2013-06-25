@@ -1,7 +1,8 @@
 ACLOCAL_AMFLAGS = -I $(top_srcdir)/m4
 SUBDIRS = . tests
 
-sbin_PROGRAMS = knotc knotd kdig khost knsupdate
+sbin_PROGRAMS = knotc knotd
+bin_PROGRAMS = kdig khost knsupdate
 noinst_PROGRAMS = zscanner-tool
 noinst_LTLIBRARIES = libknot.la libknotd.la libknots.la libzscanner.la
 
