@@ -403,7 +403,7 @@ int main(int argc, char **argv)
 
 	/* Restart hook. */
 	if (sig_req_rst)
-		return execvp(argv[0], argv);
+		return execvp(PROJECT_EXEC, argv);
 
 	return res;
 }
