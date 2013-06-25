@@ -18,6 +18,8 @@
 #include <assert.h>
 #include <urcu.h>
 
+#include "knot/server/journal.h"
+
 #include "updates/xfr-in.h"
 
 #include "nameserver/name-server.h"
@@ -549,6 +551,16 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 			knot_rrset_deep_free(&rr, 1, 1);
 			/*! \todo Cleanup. */
 			return KNOT_EMALF;
+		}
+
+
+		/* Check for SOA name and type. */
+		if (knot_packet_qname(packet) == NULL) {
+			dbg_xfrin("Invalid packet in sequence, ignoring.\n");
+			knot_packet_free(&packet);
+			knot_node_free(&node);
+			knot_rrset_deep_free(&rr, 1, 1);
+			return KNOT_EOK;
 		}
 
 		if (knot_dname_compare(knot_rrset_owner(rr),
@@ -1159,8 +1171,13 @@ dbg_xfrin_exec_verb(
 			} else {
 				// normal SOA, start new changeset
 				(*chs)->count++;
-				if ((ret = knot_changesets_check_size(*chs))
-				     != KNOT_EOK) {
+				ret = knot_changesets_check_size(*chs);
+
+				/* Check changesets for maximum count (so they fit into journal). */
+				if ((*chs)->count > JOURNAL_NCOUNT)
+					ret = KNOT_ESPACE;
+
+				if (ret != KNOT_EOK) {
 					(*chs)->count--;
 					knot_rrset_deep_free(&rr, 1, 1);
 					goto cleanup;
