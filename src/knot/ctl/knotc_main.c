@@ -240,8 +240,11 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	int s = socket_create(r->family, SOCK_STREAM, 0);
 	int conn_state = socket_connect(s, r->family, r->address, r->port);
 	if (conn_state != KNOT_EOK || tcp_send(s, buf, buflen) <= 0) {
+		char portstr[32] = { '\0' };
+		if (r->family != AF_UNIX)
+			snprintf(portstr, sizeof(portstr), "@%d", r->port);
 		log_server_error("Couldn't connect to remote host "
-		                 "%s@%d.\n", r->address, r->port);
+		                 "%s%s\n", r->address, portstr);
 		rc = 1;
 	}
 
@@ -544,13 +547,18 @@ int main(int argc, char **argv)
 		/* Check for v6 address. */
 		if (strchr(r_addr, ':'))
 			ctl_if->family = AF_INET6;
-		/* Check if address is a UNIX socket. */
-		struct stat st;
-		if (stat(r_addr, &st) == 0) {
-			if (S_ISSOCK(st.st_mode)) {
-				ctl_if->family = AF_UNIX;
-				r_port = 0; /* Override. */
+
+		/* Check if address could be a UNIX socket. */
+		if (strchr(r_addr, '/')) {
+			/* Check if file is really a socket. */
+			struct stat st;
+			if (stat(r_addr, &st) == 0 && !S_ISSOCK(st.st_mode)) {
+				log_server_warning("Address '%s' is not a "
+				                   "UNIX socket.\n", r_addr);
 			}
+
+			ctl_if->family = AF_UNIX;
+			r_port = 0; /* Override. */
 		}
 	}
 	if (r_port > -1) ctl_if->port = r_port;
