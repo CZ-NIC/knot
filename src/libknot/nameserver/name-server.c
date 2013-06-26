@@ -1315,6 +1315,10 @@ static int ns_put_nsec_nxdomain(const knot_dname_t *qname,
 		previous = knot_zone_contents_find_previous(zone, qname);
 		assert(previous != NULL);
 
+		/*!
+		 * \todo isn't this handled in adjusting?
+		 * knot_zone_contents_adjust_node_in_tree_ptr()
+		 */
 		while (!knot_node_is_auth(previous)) {
 			previous = knot_node_previous(previous);
 		}
@@ -1571,6 +1575,10 @@ static int ns_put_nsec_wildcard(const knot_zone_contents_t *zone,
 		previous = knot_zone_contents_find_previous(zone, qname);
 		assert(previous != NULL);
 
+		/*!
+		 * \todo isn't this handled in adjusting?
+		 * knot_zone_contents_adjust_node_in_tree_ptr()
+		 */
 		while (!knot_node_is_auth(previous)) {
 			previous = knot_node_previous(previous);
 		}
