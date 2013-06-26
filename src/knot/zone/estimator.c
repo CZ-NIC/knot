@@ -79,15 +79,15 @@ static size_t dname_memsize(const knot_dname_t *d)
 }
 
 // return: 0 - unique, 1 - duplicate
-static int insert_dname_into_table(zone_estim_t *est, knot_dname_t *d,
+static int insert_dname_into_table(hattrie_t *table, knot_dname_t *d,
                                    dummy_node_t **n)
 {
-	value_t *val = hattrie_tryget(est->table, d->name, d->size);
+	value_t *val = hattrie_tryget(table, d->name, d->size);
 	if (val == NULL) {
 		// Create new dummy node to use for this dname
 		*n = xmalloc(sizeof(dummy_node_t));
 		init_list(&(*n)->node_list);
-		*hattrie_get(est->table, d->name, d->size) = *n;
+		*hattrie_get(table, d->name, d->size) = *n;
 		return 0;
 	} else {
 		// Return previously found dummy node
@@ -96,6 +96,7 @@ static int insert_dname_into_table(zone_estim_t *est, knot_dname_t *d,
 	}
 }
 
+// return: RDATA memsize, minus size of dnames inside
 static size_t rdata_memsize(zone_estim_t *est, const scanner_t *scanner)
 {
 	const rdata_descriptor_t *desc = get_rdata_descriptor(scanner->r_type);
@@ -117,7 +118,8 @@ static size_t rdata_memsize(zone_estim_t *est, const scanner_t *scanner)
 
 			knot_dname_to_lower(dname);
 			dummy_node_t *n = NULL;
-			if (insert_dname_into_table(est, dname, &n) == 0) {
+			if (insert_dname_into_table(est->dname_table,
+			                            dname, &n) == 0) {
 				// First time we see this dname, add size
 				est->dname_size += dname_memsize(dname);
 			}
@@ -144,9 +146,9 @@ static void rrset_memsize(zone_estim_t *est, const scanner_t *scanner)
 	                         scanner->r_owner_length,
 	                         NULL);
 	dummy_node_t *n;
-	if (insert_dname_into_table(est, owner, &n) == 0) {
+	if (insert_dname_into_table(est->node_table, owner, &n) == 0) {
 		// First time we see this name == new node
-		est->trie_size += sizeof(knot_node_t) * NODE_MULT + NODE_ADD;
+		est->node_size += sizeof(knot_node_t) * NODE_MULT + NODE_ADD;
 		// Also, RRSet's owner will now contain full dname
 		est->dname_size += dname_memsize(owner);
 		// Trie's nodes handled at the end of computation
@@ -173,11 +175,43 @@ static void rrset_memsize(zone_estim_t *est, const scanner_t *scanner)
 		est->rrset_size += (sizeof(knot_rrset_t) + sizeof(uint32_t))
 		                   * RRSET_MULT + RRSET_ADD;
 		// Add pointer in node's array
-		est->trie_size += sizeof(knot_rrset_t *);
+		est->node_size += sizeof(knot_rrset_t *);
 	} else {
 		// Merge would happen, so just RDATA index is added
 		est->rrset_size += sizeof(uint32_t);
 	}
+}
+
+void *estimator_malloc(void *ctx, size_t len)
+{
+	size_t *count = (size_t *)ctx;
+	*count += len;
+	return xmalloc(len);
+}
+
+void estimator_free(void *p)
+{
+	free(p);
+}
+
+static void get_ahtable_size(void *t, void *d)
+{
+	ahtable_t *table = (ahtable_t *)t;
+	size_t *size = (size_t *)d;
+	for (size_t i = table->n; i < table->n * 2; ++i) {
+		*size += table->slot_sizes[i];
+	}
+}
+
+size_t estimator_trie_ahtable_memsize(hattrie_t *table)
+{
+	/*
+	 * Iterate through trie's node, and get stats from each ahtable.
+	 * Space taken up by the trie itself is measured using malloc wrapper.
+	 */
+	size_t size = 0;
+	hattrie_apply_rev_ahtable(table, get_ahtable_size, &size);
+	return size;
 }
 
 void estimator_rrset_memsize_wrap(const scanner_t *scanner)

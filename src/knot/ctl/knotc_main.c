@@ -888,12 +888,32 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 			continue;
 		}
 
-		zone_estim_t est = {.table = hattrie_create(),
+		/* Init malloc wrapper for trie size estimation. */
+		size_t malloc_size = 0;
+		mm_ctx_t mem_ctx = { .ctx = &malloc_size,
+		                     .alloc = estimator_malloc,
+		                     .free = estimator_free };
+
+		/* Init memory estimation context. */
+		zone_estim_t est = {.node_table = hattrie_create_n(TRIE_BUCKET_SIZE, &mem_ctx),
+		                    .dname_table = hattrie_create_n(TRIE_BUCKET_SIZE, &mem_ctx),
 		                    .dname_size = 0, .rrset_size = 0,
-		                    .trie_size = 0, .rdata_size = 0,
-		                    .record_count = 0, .signed_count = 0 };
-		if (est.table == NULL) {
+		                    .node_size = 0, .ahtable_size = 0,
+		                    .rdata_size = 0, .record_count = 0,
+		                    .signed_count = 0 };
+		if (est.node_table == NULL) {
+			if (est.dname_table) {
+				hattrie_free(est.dname_table);
+			}
 			log_server_error("Not enough memory.\n");
+			continue;
+		}
+		if (est.dname_table == NULL) {
+			if (est.node_table) {
+				hattrie_free(est.node_table);
+			}
+			log_server_error("Not enough memory.\n");
+			continue;
 		}
 
 		/* Create file loader. */
@@ -904,31 +924,46 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 		                                           &est);
 		if (loader == NULL) {
 			log_zone_error("Could not load zone.\n");
-			hattrie_apply_rev(est.table, estimator_free_trie_node, NULL);
-			hattrie_free(est.table);
+			hattrie_apply_rev(est.node_table, estimator_free_trie_node, NULL);
+			hattrie_apply_rev(est.dname_table, estimator_free_trie_node, NULL);
+			hattrie_free(est.node_table);
+			hattrie_free(est.dname_table);
 			return KNOT_ERROR;
 		}
 
+		/* Do a parser run, but do not actually create the zone. */
 		int ret = file_loader_process(loader);
 		if (ret != KNOT_EOK) {
 			log_zone_error("Failed to parse zone.\n");
-			hattrie_apply_rev(est.table, estimator_free_trie_node, NULL);
-			hattrie_free(est.table);
+			hattrie_apply_rev(est.node_table, estimator_free_trie_node, NULL);
+			hattrie_apply_rev(est.dname_table, estimator_free_trie_node, NULL);
+			hattrie_free(est.node_table);
+			hattrie_free(est.dname_table);
+			return KNOT_ERROR;
 		}
 
-		hattrie_apply_rev(est.table, estimator_free_trie_node, NULL);
-		hattrie_free(est.table);
+		/* Only size of ahtables inside trie's nodes is missing. */
+		assert(est.ahtable_size == 0);
+		est.ahtable_size = estimator_trie_ahtable_memsize(est.node_table);
 
-//		log_zone_info("dname=%zu\nrrset=%zu\ntrie=%zu\nrdata=%zu\n",
+		/* Cleanup */
+		hattrie_apply_rev(est.node_table, estimator_free_trie_node, NULL);
+		hattrie_apply_rev(est.dname_table, estimator_free_trie_node, NULL);
+		hattrie_free(est.node_table);
+		hattrie_free(est.dname_table);
+
+//		log_zone_info("dname=%zu\nrrset=%zu\nnode=%zu\nrdata=%zu\ntrie_alloc=%zu\ntrie_ahtable=%zu\n",
 //		       est.dname_size / (1024 * 1024),
 //		       est.rrset_size / (1024 * 1024),
-//		       est.trie_size / (1024 * 1024),
-//		       est.rdata_size / (1024 * 1024));
+//		       est.node_size / (1024 * 1024),
+//		       est.rdata_size / (1024 * 1024),
+//		       malloc_size / (1024 * 1024),
+//		       est.ahtable_size / (1024 * 1024));
 
 		log_zone_info("Zone %s: %zu RRs, signed=%.2f%%, used memory estimate=%zuMB\n",
 		              zone->name, est.record_count,
 		              est.signed_count ? ((double)(est.record_count - est.signed_count)/ est.record_count) * 100 : 0.0,
-		              (est.rdata_size + est.trie_size + est.rrset_size + est.dname_size )/ (1024 * 1024));
+		              (est.rdata_size + est.node_size + est.rrset_size + est.dname_size + est.ahtable_size + malloc_size)/ (1024 * 1024));
 		file_loader_free(loader);
 	}
 
