@@ -215,8 +215,17 @@ static int conf_process(conf_t *conf)
 		}
 	}
 
-	/* Control interface. */
+	/* Default interface. */
 	conf_iface_t *ctl_if = conf->ctl.iface;
+	if (!conf->ctl.have && ctl_if == NULL) {
+		ctl_if = malloc(sizeof(conf_iface_t));
+		memset(ctl_if, 0, sizeof(conf_iface_t));
+		ctl_if->family = AF_UNIX;
+		ctl_if->address = strdup("knot.sock");
+		conf->ctl.iface = ctl_if;
+	}
+
+	/* Control interface. */
 	if (ctl_if) {
 		if (ctl_if->family == AF_UNIX) {
 			ctl_if->address = conf_abs_path(conf->rundir,
