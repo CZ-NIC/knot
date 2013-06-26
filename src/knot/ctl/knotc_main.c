@@ -853,7 +853,6 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 		log_zone_info("Zone %s OK.\n", zone->name);
 	}
 
-	getchar();
 	return rc;
 }
 
