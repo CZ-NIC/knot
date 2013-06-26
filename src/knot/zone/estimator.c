@@ -25,16 +25,18 @@
 #include "zscanner/scanner.h"
 #include "common/descriptor.h"
 
-// Constants used for tweaking
+// Constants used for tweaking, mostly malloc overhead
 enum estim_consts {
 	DNAME_MULT = 1,
-	DNAME_ADD = 0,
+	DNAME_ADD = sizeof(size_t) * 3, // dname itself, labels, name
 	RDATA_MULT = 1,
-	RDATA_ADD = 0,
+	RDATA_ADD = sizeof(size_t), // just raw rdata, but allocation is there
 	RRSET_MULT = 1,
-	RRSET_ADD = 0,
+	RRSET_ADD = sizeof(size_t) * 3, // rrset itself, rdata array, indices
 	NODE_MULT = 1,
-	NODE_ADD = 0
+	NODE_ADD = sizeof(size_t) * 2, // node itself, rrset array
+	AHTABLE_ADD = sizeof(size_t) * 3, // table, slots, slot sizes
+	MALLOC_MIN = 3 * sizeof(size_t) // minimun size of malloc'd chunk, -overhead
 };
 
 typedef struct type_list_item {
@@ -74,7 +76,16 @@ static int dummy_node_add_type(dummy_node_t *n, uint16_t t)
 
 static size_t dname_memsize(const knot_dname_t *d)
 {
-	return (sizeof(knot_dname_t) + d->size + d->label_count)
+	size_t d_size = d->size;
+	size_t l_size = d->label_count;
+	if (d->size < MALLOC_MIN) {
+		d_size = MALLOC_MIN;
+	}
+	if (d->label_count < MALLOC_MIN) {
+		l_size = MALLOC_MIN;
+	}
+	
+	return (sizeof(knot_dname_t) + d_size + l_size)
 	       * DNAME_MULT + DNAME_ADD;
 }
 
@@ -158,6 +169,9 @@ static void rrset_memsize(zone_estim_t *est, const scanner_t *scanner)
 
 	// We will always add RDATA
 	size_t rdlen = rdata_memsize(est, scanner);
+	if (rdlen < MALLOC_MIN) {
+		rdlen = MALLOC_MIN;
+	}
 	// DNAME's size not included (handled inside rdata_memsize())
 	est->rdata_size += rdlen;
 
@@ -171,21 +185,28 @@ static void rrset_memsize(zone_estim_t *est, const scanner_t *scanner)
 	 */
 
 	if (dummy_node_add_type(n, scanner->r_type) == 0) {
-		// New RR type, add actual RRSet struct's size
-		est->rrset_size += (sizeof(knot_rrset_t) + sizeof(uint32_t))
+		/*
+		 * New RR type, add actual RRSet struct's size:
+		 * MALLOC_MIN is added because of index array - usually not many RRs
+		 * are in the RRSet and values in the array are type uint32, so
+		 * 3 would be needed on 32bit system and 6 on 32bit system in order to
+		 * be larger than MALLOC_MIN, so we use it instead. Of course, if there
+		 * are more than 3/6 records in RRSet, measurement will not be precise.
+		 */
+		est->rrset_size += (sizeof(knot_rrset_t) + MALLOC_MIN)
 		                   * RRSET_MULT + RRSET_ADD;
 		// Add pointer in node's array
 		est->node_size += sizeof(knot_rrset_t *);
 	} else {
 		// Merge would happen, so just RDATA index is added
-		est->rrset_size += sizeof(uint32_t);
+		//est->rrset_size += sizeof(uint32_t);
 	}
 }
 
 void *estimator_malloc(void *ctx, size_t len)
 {
 	size_t *count = (size_t *)ctx;
-	*count += len;
+	*count += len + sizeof(size_t);
 	return xmalloc(len);
 }
 
@@ -198,9 +219,19 @@ static void get_ahtable_size(void *t, void *d)
 {
 	ahtable_t *table = (ahtable_t *)t;
 	size_t *size = (size_t *)d;
+	// info about allocated chunks starts at table->n-th index
 	for (size_t i = table->n; i < table->n * 2; ++i) {
+		// add actual slot size (= allocated for slot)
 		*size += table->slot_sizes[i];
+		// each non-empty slot means allocation overhead
+		*size += table->slot_sizes[i] ? sizeof(size_t) : 0;
 	}
+	*size += sizeof(ahtable_t);
+	// slot sizes + allocated sizes
+	*size += (table->n * 2) * sizeof(uint32_t);
+	// slots
+	*size += table->n * sizeof(void *);
+	*size += AHTABLE_ADD;
 }
 
 size_t estimator_trie_ahtable_memsize(hattrie_t *table)
@@ -208,6 +239,7 @@ size_t estimator_trie_ahtable_memsize(hattrie_t *table)
 	/*
 	 * Iterate through trie's node, and get stats from each ahtable.
 	 * Space taken up by the trie itself is measured using malloc wrapper.
+	 * (Even for large zones, space taken by trie itself is very small)
 	 */
 	size_t size = 0;
 	hattrie_apply_rev_ahtable(table, get_ahtable_size, &size);

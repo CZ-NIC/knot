@@ -849,7 +849,6 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 
 		knot_zone_deep_free(&z);
 		knot_zload_close(l);
-
 		log_zone_info("Zone %s OK.\n", zone->name);
 	}
 
@@ -951,18 +950,16 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 		hattrie_free(est.node_table);
 		hattrie_free(est.dname_table);
 
-//		log_zone_info("dname=%zu\nrrset=%zu\nnode=%zu\nrdata=%zu\ntrie_alloc=%zu\ntrie_ahtable=%zu\n",
-//		       est.dname_size / (1024 * 1024),
-//		       est.rrset_size / (1024 * 1024),
-//		       est.node_size / (1024 * 1024),
-//		       est.rdata_size / (1024 * 1024),
-//		       malloc_size / (1024 * 1024),
-//		       est.ahtable_size / (1024 * 1024));
-
 		log_zone_info("Zone %s: %zu RRs, signed=%.2f%%, used memory estimate=%zuMB\n",
 		              zone->name, est.record_count,
-		              est.signed_count ? ((double)(est.record_count - est.signed_count)/ est.record_count) * 100 : 0.0,
-		              (est.rdata_size + est.node_size + est.rrset_size + est.dname_size + est.ahtable_size + malloc_size)/ (1024 * 1024));
+		              est.signed_count ?
+		                      ((double)(est.record_count - est.signed_count)/ est.record_count) * 100 : 0.0,
+		              (size_t)(((double)(est.rdata_size +
+		                                est.node_size +
+		                                est.rrset_size +
+		                                est.dname_size +
+		                                est.ahtable_size +
+		                                malloc_size) * 1.15) / (1024.0 * 1024.0)));
 		file_loader_free(loader);
 	}
 
