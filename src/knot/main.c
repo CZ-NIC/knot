@@ -268,7 +268,8 @@ int main(int argc, char **argv)
 		log_server_info("PID stored in '%s'\n", pidf);
 		if ((cwd = malloc(PATH_MAX)) != NULL)
 			cwd = getcwd(cwd, PATH_MAX);
-		chdir("/");
+		if (chdir("/") != 0)
+			log_server_warning("Server can't change working directory.\n");
 	} else {
 		log_server_info("Server started in foreground, PID = %ld\n", pid);
 		log_server_info("Server running without PID file.\n");
@@ -397,7 +398,8 @@ int main(int argc, char **argv)
 
 	/* Return to original working directory. */
 	if (cwd) {
-		chdir(cwd);
+		if (chdir(cwd) != 0)
+			log_server_warning("Server can't change working directory.\n");
 		free(cwd);
 	}
 
