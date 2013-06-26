@@ -2644,7 +2644,6 @@ int zones_save_zone(const knot_ns_xfr_t *xfr)
 	knot_zone_contents_t *new_zone = xfr->new_contents;
 
 	const char *zonefile = zd->conf->file;
-	const char *zonedb = zd->conf->db;
 
 	/* Check if the new zone apex dname matches zone name. */
 	knot_dname_t *cur_name = knot_dname_new_from_str(zd->conf->name,
@@ -2658,7 +2657,7 @@ int zones_save_zone(const knot_ns_xfr_t *xfr)
 		return KNOT_EINVAL;
 	}
 
-	assert(zonefile != NULL && zonedb != NULL);
+	assert(zonefile != NULL);
 
 	/* dump the zone into text zone file */
 	int ret = zones_dump_zone_text(new_zone, zonefile);
