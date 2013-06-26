@@ -30,6 +30,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "common/errors.h"
 
+/* errno -> Knot error mapping.
+ * \note offset is required, otherwise it would interfere with TSIG errors.
+ */
+#define ERRBASE 100
+#define err2code(x) (-(ERRBASE + (x)))
+
 /*! \brief Error codes used in the library. */
 enum knot_error {
 	KNOT_EOK = 0,             /*!< OK */
@@ -40,17 +46,17 @@ enum knot_error {
 	KNOT_TSIG_EBADTIME = -18, /*!< TSIG signing time out of range. */
 
 	/* Directly mapped error codes. */
-	KNOT_ENOMEM = -ENOMEM,             /*!< Out of memory. */
-	KNOT_EINVAL = -EINVAL,             /*!< Invalid parameter passed. */
-	KNOT_ENOTSUP = -ENOTSUP,           /*!< Parameter not supported. */
-	KNOT_EBUSY = -EBUSY,               /*!< Requested resource is busy. */
-	KNOT_EAGAIN = -EAGAIN,             /*!< OS lacked necessary resources. */
-	KNOT_EACCES = -EACCES,             /*!< Permission is denied. */
-	KNOT_ECONNREFUSED = -ECONNREFUSED, /*!< Connection is refused. */
-	KNOT_EISCONN = -EISCONN,           /*!< Already connected. */
-	KNOT_EADDRINUSE = -EADDRINUSE,     /*!< Address already in use. */
-	KNOT_ENOENT = -ENOENT,             /*!< Resource not found. */
-	KNOT_ERANGE = -ERANGE,             /*!< Value is out of range. */
+	KNOT_ENOMEM = err2code(ENOMEM),             /*!< Out of memory. */
+	KNOT_EINVAL = err2code(EINVAL),             /*!< Invalid parameter passed. */
+	KNOT_ENOTSUP = err2code(ENOTSUP),           /*!< Parameter not supported. */
+	KNOT_EBUSY = err2code(EBUSY),               /*!< Requested resource is busy. */
+	KNOT_EAGAIN = err2code(EAGAIN),             /*!< OS lacked necessary resources. */
+	KNOT_EACCES = err2code(EACCES),             /*!< Permission is denied. */
+	KNOT_ECONNREFUSED = err2code(ECONNREFUSED), /*!< Connection is refused. */
+	KNOT_EISCONN = err2code(EISCONN),           /*!< Already connected. */
+	KNOT_EADDRINUSE = err2code(EADDRINUSE),     /*!< Address already in use. */
+	KNOT_ENOENT = err2code(ENOENT),             /*!< Resource not found. */
+	KNOT_ERANGE = err2code(ERANGE),             /*!< Value is out of range. */
 
 	/* General errors. */
 	KNOT_ERROR = -10000,  /*!< General error. */
