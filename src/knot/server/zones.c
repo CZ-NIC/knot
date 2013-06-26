@@ -1090,6 +1090,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 		if (st_zone.st_mtime > st_db.st_mtime) {
 			ret = zones_discard_journal(z);
 			if (ret != KNOT_EOK)
+				knot_dname_free(&dname);
 				return ret;
 		}
 	}
