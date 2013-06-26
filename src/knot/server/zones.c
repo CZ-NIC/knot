@@ -1028,6 +1028,7 @@ static int zones_discard_journal(conf_zone_t *z)
 	/* This would be very strange since 'storage' is checked for 'rw' */
 	if (unlink(file_bak) != 0 || rename(z->ixfr_db, file_bak) != 0) {
 		log_server_error("Couldn't remove journal file '%s'.\n", z->ixfr_db);
+		free(file_bak);
 		return KNOT_ERROR;
 	}
 
