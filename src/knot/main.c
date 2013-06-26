@@ -304,9 +304,9 @@ int main(int argc, char **argv)
 		/* Bind to control interface. */
 		uint8_t buf[65535]; /*! \todo #2035 should be on heap */
 		size_t buflen = sizeof(buf);
-		conf_iface_t *ctl_if = conf()->ctl.iface;
 		int remote = -1;
-		if (ctl_if != NULL) {
+		if (conf()->ctl.iface != NULL) {
+			conf_iface_t *ctl_if = conf()->ctl.iface;
 			memset(buf, 0, buflen);
 			if (ctl_if->port)
 				snprintf((char*)buf, buflen, "@%d", ctl_if->port);
@@ -328,7 +328,8 @@ int main(int argc, char **argv)
 
 			/* Events. */
 			if (ret > 0) {
-				ret = remote_process(server, ctl_if, remote, buf, buflen);
+				ret = remote_process(server, conf()->ctl.iface,
+				                     remote, buf, buflen);
 				switch(ret) {
 				case KNOT_CTL_RESTART:
 					sig_req_rst = 1; /* Fall through */

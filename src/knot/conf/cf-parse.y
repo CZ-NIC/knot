@@ -1002,7 +1002,7 @@ ctl_allow_start:
   ;
 
 control:
-   CONTROL '{'
+   CONTROL '{' { new_config->ctl.have = true; }
  | control ctl_listen_start '{' interface '}' {
      if (this_iface->address == 0) {
        cf_error(scanner, "control interface has no defined address");
