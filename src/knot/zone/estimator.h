@@ -13,25 +13,70 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+/*!
+ * \file estimator.h
+ *
+ * \author Jan Kadlec <jan.kadlec@nic.cz>
+ *
+ * \brief Memory estimation for zone files.
+ *
+ * \addtogroup config
+ * @{
+ */
 
-#include "common/hattrie/ahtable.h"
+#include "common/hattrie/hat-trie.h"
 #include "zscanner/scanner.h"
 
+/*!
+ * \brief Memory estimation context.
+ */
 typedef struct zone_estim {
-	hattrie_t *node_table;
-	hattrie_t *dname_table;
-	size_t rdata_size;
-	size_t dname_size;
-	size_t node_size;
-	size_t ahtable_size;
-	size_t rrset_size;
-	size_t record_count;
-	size_t signed_count;
+	hattrie_t *node_table; /*!< Same trie is in actual zone. */
+	hattrie_t *dname_table; /*!< RDATA section DNAMEs. */
+	size_t rdata_size; /*!< Estimated RDATA size. */
+	size_t dname_size; /*!< Estimated DNAME size. */
+	size_t node_size; /*!< Estimated node size. */
+	size_t ahtable_size; /*!< Estimated ahtable size. */
+	size_t rrset_size; /*!< Estimated RRSet size. */
+	size_t record_count; /*!< Total record count for zone. */
+	size_t signed_count; /*!< RRSIG count. */
 } zone_estim_t;
 
-
+/*!
+ * \brief Size counting malloc wrapper.
+ *
+ * \param ctx Data for malloc wrapper.
+ * \param len Size to allocate.
+ *
+ * \retval Alloc'd data on succes.
+ * \retval NULL on error.
+ */
 void *estimator_malloc(void* ctx, size_t len);
+
+/*!
+ * \brief Size counting free wrapper.
+ *
+ * \param p Data to free.
+ */
 void estimator_free(void *p);
+
+/*!
+ * \brief Goes through trie's ahtables and estimates their memory requirements.
+ *
+ * \param table Trie to traverse.
+ */
 size_t estimator_trie_ahtable_memsize(hattrie_t *table);
+
+/*!
+ * \brief For use with scanner - counts memsize of RRSets.
+ *
+ * \param scanner Scanner context.
+ */
 void estimator_rrset_memsize_wrap(const scanner_t *scanner);
+
+/*!
+ * \brief Cleanup function for use with hattrie.
+ *
+ * \param p Data to free.
+ */
 void estimator_free_trie_node(value_t *val, void *data);
