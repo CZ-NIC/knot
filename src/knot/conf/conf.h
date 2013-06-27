@@ -115,7 +115,6 @@ typedef struct conf_zone_t {
 	char *name;               /*!< Zone name. */
 	uint16_t cls;             /*!< Zone class (IN or CH). */
 	char *file;               /*!< Path to a zone file. */
-	char *db;                 /*!< Path to a database file. */
 	char *ixfr_db;            /*!< Path to a IXFR database file. */
 	size_t ixfr_fslimit;      /*!< File size limit for IXFR journal. */
 	int dbsync_timeout;       /*!< Interval between syncing to zonefile.*/
@@ -178,6 +177,7 @@ typedef struct conf_control_t {
 	conf_iface_t *iface; /*!< Remote control interface. */
 	list allow;          /*!< List of allowed remotes. */
 	acl_t* acl;          /*!< ACL. */
+	bool have;           /*!< Set if configured. */
 } conf_control_t;
 
 /*!

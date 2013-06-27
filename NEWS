@@ -1,13 +1,22 @@
 Knot DNS NEWS
 
-v1.3.0-rc3 - ??
----------------
+v1.3.0-rc3 - Jun 28, 2013
+-------------------------
+
+Features:
+	* Utility to estimate memory consumption (see 'knotc memstats')
+	* PID file is not created when running on foreground
+	* UNIX sockets support for knotc
+	* Configurable 'rundir' and 'storage'
 
 Bugfixes:
 	* IXFR with an arbitrary number of diffs
+	* Processing of knotc TSIG keyfile
+	* Atomic PID file writing, removed deprecated 'knotc start'
+	* Performance regression when RRSIGs came before covered RRs in AXFR
+	* Checks for inconsistent zone file / journal
 
 v1.3.0-rc2 - Jun 14, 2013
-
 -------------------------
 
 Bugfixes:

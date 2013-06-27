@@ -328,6 +328,13 @@ static void conf_zone_start(void *scanner, char *name) {
       this_zone->name = name; /* Already FQDN */
    }
 
+   /* Initialize ACL lists. */
+   init_list(&this_zone->acl.xfr_in);
+   init_list(&this_zone->acl.xfr_out);
+   init_list(&this_zone->acl.notify_in);
+   init_list(&this_zone->acl.notify_out);
+   init_list(&this_zone->acl.update_in);
+
    /* Check domain name. */
    knot_dname_t *dn = NULL;
    if (this_zone->name != NULL) {
@@ -357,13 +364,6 @@ static void conf_zone_start(void *scanner, char *name) {
      *hattrie_get(new_config->names, (const char*)dn->name, dn->size) = (void *)1;
      ++new_config->zones_count;
      knot_dname_free(&dn);
-
-     /* Initialize ACL lists. */
-     init_list(&this_zone->acl.xfr_in);
-     init_list(&this_zone->acl.xfr_out);
-     init_list(&this_zone->acl.notify_in);
-     init_list(&this_zone->acl.notify_out);
-     init_list(&this_zone->acl.update_in);
    }
 }
 
@@ -1002,7 +1002,7 @@ ctl_allow_start:
   ;
 
 control:
-   CONTROL '{'
+   CONTROL '{' { new_config->ctl.have = true; }
  | control ctl_listen_start '{' interface '}' {
      if (this_iface->address == 0) {
        cf_error(scanner, "control interface has no defined address");

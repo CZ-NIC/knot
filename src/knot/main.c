@@ -268,7 +268,8 @@ int main(int argc, char **argv)
 		log_server_info("PID stored in '%s'\n", pidf);
 		if ((cwd = malloc(PATH_MAX)) != NULL)
 			cwd = getcwd(cwd, PATH_MAX);
-		chdir("/");
+		if (chdir("/") != 0)
+			log_server_warning("Server can't change working directory.\n");
 	} else {
 		log_server_info("Server started in foreground, PID = %ld\n", pid);
 		log_server_info("Server running without PID file.\n");
@@ -303,9 +304,9 @@ int main(int argc, char **argv)
 		/* Bind to control interface. */
 		uint8_t buf[65535]; /*! \todo #2035 should be on heap */
 		size_t buflen = sizeof(buf);
-		conf_iface_t *ctl_if = conf()->ctl.iface;
 		int remote = -1;
-		if (ctl_if != NULL) {
+		if (conf()->ctl.iface != NULL) {
+			conf_iface_t *ctl_if = conf()->ctl.iface;
 			memset(buf, 0, buflen);
 			if (ctl_if->port)
 				snprintf((char*)buf, buflen, "@%d", ctl_if->port);
@@ -327,7 +328,8 @@ int main(int argc, char **argv)
 
 			/* Events. */
 			if (ret > 0) {
-				ret = remote_process(server, ctl_if, remote, buf, buflen);
+				ret = remote_process(server, conf()->ctl.iface,
+				                     remote, buf, buflen);
 				switch(ret) {
 				case KNOT_CTL_RESTART:
 					sig_req_rst = 1; /* Fall through */
@@ -397,7 +399,8 @@ int main(int argc, char **argv)
 
 	/* Return to original working directory. */
 	if (cwd) {
-		chdir(cwd);
+		if (chdir(cwd) != 0)
+			log_server_warning("Server can't change working directory.\n");
 		free(cwd);
 	}
 

@@ -623,8 +623,7 @@ control @{
 The @code{control} statement specifies on which interface to listen for remote control commands.
 Caution: The control protocol is not encrypted,
 and susceptible to replay attack in a short timeframe until message digest expires,
-for that reason, it is recommended to enable remote control only on private networks
-or loopback.
+for that reason, it is recommended to use default UNIX sockets.
 
 @menu
 * control Syntax::
@@ -652,8 +651,8 @@ Control interface @code{listen-on} either defines a UNIX socket or an
 IPv4/IPv6 @code{interface} definition as in @ref{interfaces}.
 Default port for IPv4/v6 control interface is @code{5533},
 however UNIX socket is preferred.
-UNIX socke address is relative to @code{rundir} if not specified as an absolute
-path.
+UNIX socket address is relative to @code{rundir} if not specified as an absolute
+path. Without any configuration, the socket will be created in @code{rundir/knot.sock}.
 
 @node control Examples
 @subsection Examples
@@ -661,7 +660,7 @@ path.
 UNIX socket example:
 @example
 control @{
-        listen-on "knot.sock";
+        listen-on "/var/run/knot/knot.sock";
 @}
 @end example
 

@@ -20,6 +20,8 @@ doc/troubleshooting.texi
 man/Makefile.am
 samples/Makefile.am
 src/Makefile.am
+src/Makefile.am
+src/Makefile.am
 src/common/acl.c
 src/common/acl.h
 src/common/atomic.h
@@ -129,6 +131,8 @@ src/knot/stat/gatherer.h
 src/knot/stat/stat-common.h
 src/knot/stat/stat.c
 src/knot/stat/stat.h
+src/knot/zone/estimator.c
+src/knot/zone/estimator.h
 src/knot/zone/semantic-check.c
 src/knot/zone/semantic-check.h
 src/knot/zone/zone-dump.c

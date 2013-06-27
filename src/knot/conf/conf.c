@@ -215,8 +215,17 @@ static int conf_process(conf_t *conf)
 		}
 	}
 
-	/* Control interface. */
+	/* Default interface. */
 	conf_iface_t *ctl_if = conf->ctl.iface;
+	if (!conf->ctl.have && ctl_if == NULL) {
+		ctl_if = malloc(sizeof(conf_iface_t));
+		memset(ctl_if, 0, sizeof(conf_iface_t));
+		ctl_if->family = AF_UNIX;
+		ctl_if->address = strdup("knot.sock");
+		conf->ctl.iface = ctl_if;
+	}
+
+	/* Control interface. */
 	if (ctl_if) {
 		if (ctl_if->family == AF_UNIX) {
 			ctl_if->address = conf_abs_path(conf->rundir,
@@ -295,51 +304,21 @@ static int conf_process(conf_t *conf)
 		// Relative zone filenames should be relative to storage
 		zone->file = conf_abs_path(conf->storage, zone->file);
 		if (zone->file == NULL) {
-			zone->db = NULL;
 			ret = KNOT_ENOMEM;
 			continue;
 		}
 
-		// Create zone db filename
+		/* Create journal filename. */
 		size_t zname_len = strlen(zone->name);
 		size_t stor_len = strlen(conf->storage);
-		size_t size = stor_len + zname_len + 4; // /db,\0
+		size_t size = stor_len + zname_len + 9; // /diff.db,\0
 		char *dest = malloc(size);
-		if (dest == NULL) {
-			zone->db = NULL; /* Not enough memory. */
-			ret = KNOT_ENOMEM; /* Error report. */
-			continue;
-		}
-		char *dpos = dest;
-
-		/* Since we have already allocd dest to accomodate
-		 * storage/zname length strcpy is safe. */
-		memcpy(dpos, conf->storage, stor_len + 1);
-		dpos += stor_len;
-		if (*(dpos - 1) != '/') {
-			*(dpos++) = '/';
-			*dpos = '\0';
-		}
-
-		/* Copy origin and remove bad characters. */
-		memcpy(dpos, zone->name, zname_len + 1);
-		for (size_t i = 0; i < zname_len; ++i) {
-			if (dpos[i] == '/') dpos[i] = '_';
-		}
-
-		memcpy(dpos + zname_len, "db", 3);
-		zone->db = dest;
-
-		// Create IXFR db filename
-		stor_len = strlen(conf->storage);
-		size = stor_len + zname_len + 9; // /diff.db,\0
-		dest = malloc(size);
 		if (dest == NULL) {
 			zone->ixfr_db = NULL; /* Not enough memory. */
 			ret = KNOT_ENOMEM; /* Error report. */
 			continue;
 		}
-		dpos = dest;
+		char *dpos = dest;
 		memcpy(dpos, conf->storage, stor_len + 1);
 		dpos += stor_len;
 		if (conf->storage[stor_len - 1] != '/') {
@@ -898,7 +877,6 @@ void conf_free_zone(conf_zone_t *zone)
 
 	free(zone->name);
 	free(zone->file);
-	free(zone->db);
 	free(zone->ixfr_db);
 	free(zone);
 }

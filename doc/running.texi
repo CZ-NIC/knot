@@ -63,6 +63,7 @@ Actions:
  zonestatus                 Show status of configured zones.
  checkconf                  Check current server configuration.
  checkzone [zone]           Check zone (all if not specified).
+ memstats [zone]            Estimate memory consumption for zone (all if not specified).
 @end example
 
 Also, the server needs to create several files in order to run properly.
@@ -104,8 +105,9 @@ $ knotd -c slave.conf
 
 To start it as a daemon, just add a @code{-d} parameter. Unlike the foreground mode,
 PID file will be created in @code{rundir} directory.
+
 @example
-$ knotd -d -c slave.conf start # start the daemon
+$ knotd -d -c slave.conf # start the daemon
 $ knotc -c slave.conf stop # stop the daemon
 @end example
 
@@ -118,6 +120,16 @@ If you want to just check the zone files first before starting,
 you can use @code{knotc checkzone} action.
 @example
 $ knotc -c master.conf checkzone example.com
+@end example
+
+For an approximate estimate of server's memory consumption, you can use the @code{knotc memstats} action.
+This action prints count of resource records, percentage of signed records and finally estimation
+of memory consumption for each zone, unless specified otherwise. Please note that estimated values might
+differ from the actual consumption. Also, for slave servers with incoming transfers enabled,
+be aware that the actual memory consumption might be double or more during transfers.
+
+@example
+$ knotc -c master.conf memstats example.com
 @end example
 
 Starting and stopping the daemon is the same as with the slave server in the previous section.
@@ -143,7 +155,7 @@ If you encounter a bug using this feature, please send it to Knot developers (@p
 You can also choose to tear-down the server fully and restart with the @code{knotc restart} action.
 Note that some actions like start, stop and restart cannot be done remotely.
 @example
-$ knotc -c master.conf running # check if running
+$ knotc -c master.conf status # check if running
 $ knotc -c master.conf restart # fully restart
 @end example
 

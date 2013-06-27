@@ -1,7 +1,8 @@
 ACLOCAL_AMFLAGS = -I $(top_srcdir)/m4
 SUBDIRS = zscanner . tests
 
-sbin_PROGRAMS = knotc knotd kdig khost knsupdate
+sbin_PROGRAMS = knotc knotd
+bin_PROGRAMS = kdig khost knsupdate
 noinst_LTLIBRARIES = libknot.la libknotd.la libknots.la
 
 # $(YACC) will generate header file
@@ -268,6 +269,8 @@ libknotd_la_SOURCES =				\
 	knot/zone/zone-dump.c			\
 	knot/zone/zone-load.h			\
 	knot/zone/zone-load.c			\
+	knot/zone/estimator.h			\
+	knot/zone/estimator.c			\
 	knot/server/server.h
 
 libknotd_la_LIBADD = libknot.la libknots.la @LIBOBJS@

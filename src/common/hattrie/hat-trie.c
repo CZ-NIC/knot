@@ -382,9 +382,28 @@ static void node_apply(node_ptr node, void (*f)(value_t*,void*), void* d)
     }
 }
 
+static void node_apply_ahtable(node_ptr node, void (*f)(void*,void*), void* d)
+{
+    if (*node.flag & NODE_TYPE_TRIE) {
+        size_t i;
+        for (i = 0; i < NODE_CHILDS; ++i) {
+            if (i > 0 && node.t->xs[i].t == node.t->xs[i - 1].t) continue;
+            if (node.t->xs[i].t) node_apply_ahtable(node.t->xs[i], f, d);
+        }
+    }
+    else {
+	    f(node.b, d);
+	}
+}
+
 void hattrie_apply_rev(hattrie_t* T, void (*f)(value_t*,void*), void* d)
 {
 	node_apply(T->root, f, d);
+}
+
+void hattrie_apply_rev_ahtable(hattrie_t* T, void (*f)(void*,void*), void* d)
+{
+	node_apply_ahtable(T->root, f, d);
 }
 
 int hattrie_split_mid(node_ptr node, unsigned *left_m, unsigned *right_m)
