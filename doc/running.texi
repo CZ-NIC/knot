@@ -99,7 +99,7 @@ depends on what you passed to the @code{./configure}, usually @code{/etc}.
 $ knotc -c slave.conf checkconf # check configuration
 $ knotd -c slave.conf
 @end example
- Estimate memory consumption for zone  start it as a daemon, @code{knotc} tool should be used.
+ However to start it as a daemon, @code{knotc} tool should be used.
 The @code{knotc} tool accepts parameter @code{-w} to wait until the requested operation finishes.
 When the action is "start" for example, it waits until the server starts to serve zones.
 @example
@@ -118,7 +118,7 @@ you can use @code{knotc checkzone} action.
 $ knotc -c master.conf checkzone example.com
 @end example
 
-For an aproximate estimate of server's memory consumption, you can use the @code{knotc memstats} action.
+For an approximate estimate of server's memory consumption, you can use the @code{knotc memstats} action.
 This action prints count of resource records, percentage of signed records and finally estimation
 of memory consumption for each zone, unless specified otherwise. Please note that estimated values might 
 differ from the actual consumption. Also, for slave servers with incoming transfers enabled,
