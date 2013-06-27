@@ -27,16 +27,17 @@
 
 // Constants used for tweaking, mostly malloc overhead
 enum estim_consts {
+	MALLOC_OVER = sizeof(size_t),
 	DNAME_MULT = 1,
-	DNAME_ADD = sizeof(size_t) * 3, // dname itself, labels, name
+	DNAME_ADD = MALLOC_OVER * 3, // dname itself, labels, name
 	RDATA_MULT = 1,
-	RDATA_ADD = sizeof(size_t), // just raw rdata, but allocation is there
+	RDATA_ADD = MALLOC_OVER, // just raw rdata, but allocation is there
 	RRSET_MULT = 1,
-	RRSET_ADD = sizeof(size_t) * 3, // rrset itself, rdata array, indices
+	RRSET_ADD = MALLOC_OVER * 3, // rrset itself, rdata array, indices
 	NODE_MULT = 1,
-	NODE_ADD = sizeof(size_t) * 2, // node itself, rrset array
-	AHTABLE_ADD = sizeof(size_t) * 3, // table, slots, slot sizes
-	MALLOC_MIN = 3 * sizeof(size_t) // minimun size of malloc'd chunk, -overhead
+	NODE_ADD = MALLOC_OVER * 2, // node itself, rrset array
+	AHTABLE_ADD = MALLOC_OVER * 3, // table, slots, slot sizes
+	MALLOC_MIN = 3 * MALLOC_OVER // minimun size of malloc'd chunk, -overhead
 };
 
 typedef struct type_list_item {
@@ -206,7 +207,7 @@ static void rrset_memsize(zone_estim_t *est, const scanner_t *scanner)
 void *estimator_malloc(void *ctx, size_t len)
 {
 	size_t *count = (size_t *)ctx;
-	*count += len + sizeof(size_t);
+	*count += len + MALLOC_OVER;
 	return xmalloc(len);
 }
 
@@ -224,7 +225,7 @@ static void get_ahtable_size(void *t, void *d)
 		// add actual slot size (= allocated for slot)
 		*size += table->slot_sizes[i];
 		// each non-empty slot means allocation overhead
-		*size += table->slot_sizes[i] ? sizeof(size_t) : 0;
+		*size += table->slot_sizes[i] ? MALLOC_OVER : 0;
 	}
 	*size += sizeof(ahtable_t);
 	// slot sizes + allocated sizes
