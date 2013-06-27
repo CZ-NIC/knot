@@ -281,3 +281,5 @@ src/zscanner/test/processing.h
 src/zscanner/test/tests.c
 src/zscanner/test/tests.h
 src/zscanner/test/zscanner-tool.c
+src/knot/zone/estimator.c
+src/knot/zone/estimator.h

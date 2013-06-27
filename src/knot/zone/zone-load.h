@@ -101,6 +101,8 @@ knot_zone_t *knot_zload_load(zloader_t *loader);
  */
 void knot_zload_close(zloader_t *loader);
 
+void process_error(const scanner_t *scanner);
+
 #endif /* _KNOTD_ZONELOAD_H_ */
 
 /*! @} */

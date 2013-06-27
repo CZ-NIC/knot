@@ -189,7 +189,7 @@ static void process_rrsigs_in_node(parser_context_t *parser,
 	}
 }
 
-static void process_error(const scanner_t *s)
+void process_error(const scanner_t *s)
 {
 	if (s->stop == true) {
 		log_zone_error("Fatal error in zone file %s:%"PRIu64": %s "

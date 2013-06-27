@@ -285,6 +285,8 @@ libknotd_la_SOURCES =				\
 	knot/zone/zone-dump.c			\
 	knot/zone/zone-load.h			\
 	knot/zone/zone-load.c			\
+	knot/zone/estimator.h			\
+	knot/zone/estimator.c			\
 	knot/server/server.h
 
 zscanner_tool_SOURCES =				\

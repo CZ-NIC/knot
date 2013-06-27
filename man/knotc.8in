@@ -68,6 +68,9 @@ Check server configuration.
 .TP
 checkzone
 Check zones before compiling (accepts specific zones, f.e. 'knotc checkzone example1.com example2.com').
+.TP
+memstats
+Estimate memory consumption for zone files. Useful mainly for big zones.
 .SS "EXAMPLES"
 .TP
 .B Setup a keyfile for remote control
