@@ -137,7 +137,7 @@ static knot_packet_t* create_query_packet(const query_t *query,
 	}
 
 	// Create EDNS section if required.
-	if (query->flags.do_flag || query->nsid) {
+	if (query->udp_size > 0 || query->flags.do_flag || query->nsid) {
 		knot_opt_rr_t *opt_rr = knot_edns_new();
 		if (opt_rr == NULL) {
 			ERR("can't create EDNS section\n");

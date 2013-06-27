@@ -41,7 +41,7 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 /*! \brief Eliminate compiler warning with unused parameters. */
 #define UNUSED(param) (void)(param)
 
-#if 0 // Disabled due to a conflict with system MIN and MAX on BSDs.
+#ifndef MIN
 /*! \brief Type-safe minimum macro. */
 #define MIN(a, b) \
 	({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a < _b ? _a : _b; })
@@ -61,20 +61,11 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 #define knot_unlikely(x)     __builtin_expect((x),0)
 #endif
 
-/* Optimisation macros. */
-#ifndef knot_likely
-/*! \brief Optimize for x to be true value. */
-#define knot_likely(x)       __builtin_expect((x),1)
-#endif
-#ifndef knot_unlikely
-/*! \brief Optimize for x to be false value. */
-#define knot_unlikely(x)     __builtin_expect((x),0)
-#endif
-
 /*! \todo Refactor theese. We should have an allocator function handling this.*/
 #ifndef ERR_ALLOC_FAILED
-#define ERR_ALLOC_FAILED fprintf(stderr, "Allocation failed at %s:%d (%s ver.%s)\n", \
-				 __FILE__, __LINE__, KNOT_NAME, KNOT_VER)
+#define ERR_ALLOC_FAILED fprintf(stderr, \
+                                 "Allocation failed at %s:%d (%s ver.%s)\n", \
+                                 __FILE__, __LINE__, KNOT_NAME, KNOT_VER)
 #endif
 
 #ifndef CHECK_ALLOC_LOG

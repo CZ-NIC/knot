@@ -22,7 +22,6 @@
 
 #include "tests/common/slab_tests.h"
 #include "common/slab/slab.h"
-#include "knot/common.h"
 
 /*! \brief Type-safe maximum macro. */
 #define SLAB_MAX(a, b) \

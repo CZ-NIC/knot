@@ -36,6 +36,8 @@
 #include "utils/common/params.h"	// protocol_t
 #include "libknot/sign/key.h"		// knot_key_params_t
 
+#define KNSUPDATE_VERSION "knsupdate, version " PACKAGE_VERSION "\n"
+
 /*! Parser init string. */
 #define PARSER_INIT_STR "$ORIGIN %s\n$TTL %u\n"
 

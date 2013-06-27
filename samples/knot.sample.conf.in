@@ -1,10 +1,16 @@
+#
+# This is a sample of a minimal configuration file for Knot DNS.
+#
+# For exhaustive list of all options see samples/knot.full.conf
+# in the source directory or refer to user manual.
+#
+
 system {
   identity "@package@ @version@";
-  storage "@localstatedir@/@package@";
 }
 
 interfaces {
-  my-iface { address 127.0.0.1@5353; }
+  my-iface { address 127.0.0.1@53533; }
 }
 
 zones {

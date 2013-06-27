@@ -4176,7 +4176,6 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 
 	if (ret < 0) {
 		knot_packet_free(&xfr->query);
-		hattrie_clear(xfr->lookup_tree);
 		return ret;
 	} else if (ret > 0) {
 		dbg_ns("ns_process_ixfrin: IXFR finished\n");

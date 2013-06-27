@@ -28,7 +28,7 @@
 #include <assert.h>
 #include <urcu.h>
 
-#include "knot/common.h"
+#include "knot/knot.h"
 #include "knot/server/xfr-handler.h"
 #include "libknot/nameserver/name-server.h"
 #include "knot/server/socket.h"
@@ -296,6 +296,7 @@ static void xfr_task_cleanup(knot_ns_xfr_t *rq)
 	/* Cleanup other data - so that the structure may be reused. */
 	rq->packet_nr = 0;
 	rq->tsig_data_size = 0;
+	hattrie_clear(rq->lookup_tree);
 }
 
 /*! \brief Close and free task. */
@@ -643,6 +644,53 @@ static int xfr_task_resp(xfrworker_t *w, knot_ns_xfr_t *rq)
 	return ret;
 }
 
+/*! \brief This will fall back to AXFR on active connection.
+ *  \note The active connection is expected to be force shut.
+ */
+static int xfr_start_axfr(xfrworker_t *w, knot_ns_xfr_t *rq, const char *reason)
+{
+	log_zone_notice("%s %s\n", rq->msg, reason);
+
+	/* Copy current xfer data. */
+	knot_ns_xfr_t *axfr = xfr_task_create(rq->zone, XFR_TYPE_AIN, XFR_FLAG_TCP);
+	if (axfr == NULL) {
+		log_zone_warning("%s Couldn't fall back to AXFR.\n", rq->msg);
+		return KNOT_ECONNREFUSED; /* Disconnect */
+	}
+
+	xfr_task_setaddr(axfr, &rq->addr, &rq->saddr);
+	axfr->tsig_key = rq->tsig_key;
+
+	/* Enqueue new request and close the original. */
+	log_server_notice("%s Retrying with AXFR.\n", rq->msg);
+	xfr_enqueue(w->master, axfr);
+	return KNOT_ECONNREFUSED;
+}
+
+/*! \brief This will fall back to AXFR on idle connection. */
+static int xfr_fallback_axfr(knot_ns_xfr_t *rq)
+{
+	log_server_notice("%s Retrying with AXFR.\n", rq->msg);
+	rq->wire_size = rq->wire_maxlen; /* Reset maximum bufsize */
+	int ret = xfrin_create_axfr_query(rq->zone->name, rq, &rq->wire_size, 1);
+	/* Send AXFR/IN query. */
+	if (ret == KNOT_EOK) {
+		ret = rq->send(rq->session, &rq->addr,
+		               rq->wire, rq->wire_size);
+		/* Switch to AXFR and return. */
+		if (ret == rq->wire_size) {
+			xfr_task_cleanup(rq);
+			rq->type = XFR_TYPE_AIN;
+			rq->msg[XFR_MSG_DLTTR] = 'A';
+			ret = KNOT_EOK;
+		} else {
+			ret = KNOT_ERROR;
+		}
+	}
+
+	return ret;
+}
+
 static int xfr_task_xfer(xfrworker_t *w, knot_ns_xfr_t *rq)
 {
 	/* Process incoming packet. */
@@ -675,25 +723,16 @@ static int xfr_task_xfer(xfrworker_t *w, knot_ns_xfr_t *rq)
 	dbg_xfr_verb("xfr: processed XFR pkt (%s)\n", knot_strerror(ret));
 
 	/* IXFR refused, try again with AXFR. */
-	if (rq->type == XFR_TYPE_IIN && ret == KNOT_EXFRREFUSED) {
-		log_server_notice("%s Transfer failed, fallback to AXFR.\n", rq->msg);
-		rq->wire_size = rq->wire_maxlen; /* Reset maximum bufsize */
-		ret = xfrin_create_axfr_query(rq->zone->name, rq, &rq->wire_size, 1);
-		/* Send AXFR/IN query. */
-		if (ret == KNOT_EOK) {
-			ret = rq->send(rq->session, &rq->addr,
-			               rq->wire, rq->wire_size);
-			/* Switch to AXFR and return. */
-			if (ret == rq->wire_size) {
-				xfr_task_cleanup(rq);
-				rq->type = XFR_TYPE_AIN;
-				rq->msg[XFR_MSG_DLTTR] = 'A';
-				return KNOT_EOK;
-			} else {
-				ret = KNOT_ERROR;
-			}
+	const char *diff_nospace_msg = "Can't fit the differences in the journal.";
+	if (rq->type == XFR_TYPE_IIN) {
+		switch(ret) {
+		case KNOT_ESPACE: /* Fallthrough */
+			return xfr_start_axfr(w, rq, diff_nospace_msg);
+		case KNOT_EXFRREFUSED:
+			return xfr_fallback_axfr(rq);
+		default:
+			break;
 		}
-		return ret; /* Something failed in fallback. */
 	}
 
 	/* Handle errors. */
@@ -706,22 +745,25 @@ static int xfr_task_xfer(xfrworker_t *w, knot_ns_xfr_t *rq)
 	/* Only for successful xfers. */
 	if (ret > 0) {
 		ret = xfr_task_finalize(w, rq);
-
-		/* AXFR bootstrap timeout. */
 		if (ret != KNOT_EOK && !knot_zone_contents(rq->zone)) {
+
+			/* AXFR bootstrap timeout. */
 			zonedata_t *zd = (zonedata_t *)knot_zone_data(rq->zone);
 			int tmr_s = AXFR_BOOTSTRAP_RETRY * tls_rand();
 			zd->xfr_in.bootstrap_retry = tmr_s;
 			log_zone_info("%s Next attempt to bootstrap "
 			              "in %d seconds.\n",
 			              rq->msg, tmr_s / 1000);
+		} else if (ret == KNOT_EBUSY && rq->type == XFR_TYPE_IIN) {
+			return xfr_start_axfr(w, rq, diff_nospace_msg);
 		} else {
-			zones_schedule_notify(rq->zone); /* NOTIFY */
+
+			/* Passed, schedule NOTIFYs. */
+			zones_schedule_notify(rq->zone);
 		}
 
-
 		/* Update REFRESH/RETRY */
-		zones_schedule_refresh(rq->zone);
+		zones_schedule_refresh(rq->zone, 0);
 		ret = KNOT_ECONNREFUSED; /* Disconnect */
 	}
 
@@ -1264,6 +1306,7 @@ int xfr_task_free(knot_ns_xfr_t *rq)
 
 	/* Free DNAME trie. */
 	hattrie_free(rq->lookup_tree);
+	rq->lookup_tree = NULL;
 
 	/* Free TSIG buffers. */
 	free(rq->digest);

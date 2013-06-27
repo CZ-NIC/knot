@@ -24,7 +24,7 @@
 #include <assert.h>
 
 #include "common/prng.h"
-#include "knot/common.h"
+#include "knot/knot.h"
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
@@ -296,15 +296,24 @@ static int server_bind_sockets(server_t *s)
 	/* Ensure no one is reading old interfaces. */
 	synchronize_rcu();
 
-	/* Notify handlers about removed ifaces. */
-	for (unsigned i = IO_UDP; i <= IO_TCP; ++i) {
-		dt_unit_t *tu = s->h[i].unit;
+	/* Update UDP ifacelist (reload all threads). */
+	dt_unit_t *tu = s->h[IO_UDP].unit;
+	for (unsigned i = 0; i < tu->size; ++i) {
 		ref_retain((ref_t *)newlist);
-		s->h[i].state[0].s |= ServerReload;
+		s->h[IO_UDP].state[i].s |= ServerReload;
 		if (s->state & ServerRunning) {
-			dt_activate(tu->threads[0]);
-			dt_signalize(tu->threads[0], SIGALRM);
+			dt_activate(tu->threads[i]);
+			dt_signalize(tu->threads[i], SIGALRM);
 		}
+	}
+
+	/* Update TCP ifacelist (reload master thread). */
+	tu = s->h[IO_TCP].unit;
+	ref_retain((ref_t *)newlist);
+	s->h[IO_TCP].state[0].s |= ServerReload;
+	if (s->state & ServerRunning) {
+		dt_activate(tu->threads[0]);
+		dt_signalize(tu->threads[0], SIGALRM);
 	}
 
 	ref_release(&oldlist->ref);
@@ -582,8 +591,7 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 		size_t udp_size = tu_size;
 		if (udp_size < 2) udp_size = 2;
 		dt_unit_t *tu = dt_create_coherent(udp_size, &udp_master, NULL);
-		server_init_handler(server->h + IO_UDP, server, tu, udp_create_ctx());
-		server->h[IO_UDP].dtor = udp_free_ctx;
+		server_init_handler(server->h + IO_UDP, server, tu, NULL);
 		tu = dt_create(tu_size * 2);
 		server_init_handler(server->h + IO_TCP, server, tu, NULL);
 		tcp_loop_unit(server->h + IO_TCP, tu);

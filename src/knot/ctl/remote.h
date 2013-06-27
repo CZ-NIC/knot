@@ -34,7 +34,7 @@
 #include "knot/server/server.h"
 
 /*! \brief Default remote control tool port. */
-#define REMOTE_DPORT 5553
+#define REMOTE_DPORT 5533
 
 /*!
  * \brief Bind RC interface according to configuration.
@@ -110,6 +110,7 @@ int remote_answer(int fd, server_t *s, knot_packet_t *pkt, uint8_t* rwire, size_
  * \note This should be used as a high-level API for workers.
  *
  * \param s Server instance.
+ * \param ctl_if Control interface.
  * \param r RC interface socket.
  * \param buf Buffer for commands/responses.
  * \param buflen Maximum buffer size.
@@ -117,7 +118,8 @@ int remote_answer(int fd, server_t *s, knot_packet_t *pkt, uint8_t* rwire, size_
  * \retval KNOT_EOK on success.
  * \retval knot_error else.
  */
-int remote_process(server_t *s, int r, uint8_t* buf, size_t buflen);
+int remote_process(server_t *s, conf_iface_t *ctl_if, int r,
+                   uint8_t* buf, size_t buflen);
 
 /* Functions for creating RC packets. */
 

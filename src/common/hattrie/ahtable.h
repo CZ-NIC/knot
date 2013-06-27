@@ -57,7 +57,7 @@ size_t     ahtable_size   (const ahtable_t*); // Number of stored keys.
 
 
 /** Find the given key in the table, inserting it if it does not exist, and
- * returning a pointer to it's key.
+ * returning a pointer to its key.
  *
  * This pointer is not guaranteed to be valid after additional calls to
  * ahtable_get, ahtable_del, ahtable_clear, or other functions that modifies the

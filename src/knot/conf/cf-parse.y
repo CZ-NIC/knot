@@ -328,6 +328,13 @@ static void conf_zone_start(void *scanner, char *name) {
       this_zone->name = name; /* Already FQDN */
    }
 
+   /* Initialize ACL lists. */
+   init_list(&this_zone->acl.xfr_in);
+   init_list(&this_zone->acl.xfr_out);
+   init_list(&this_zone->acl.notify_in);
+   init_list(&this_zone->acl.notify_out);
+   init_list(&this_zone->acl.update_in);
+
    /* Check domain name. */
    knot_dname_t *dn = NULL;
    if (this_zone->name != NULL) {
@@ -357,13 +364,6 @@ static void conf_zone_start(void *scanner, char *name) {
      *hattrie_get(new_config->names, (const char*)dn->name, dn->size) = (void *)1;
      ++new_config->zones_count;
      knot_dname_free(&dn);
-
-     /* Initialize ACL lists. */
-     init_list(&this_zone->acl.xfr_in);
-     init_list(&this_zone->acl.xfr_out);
-     init_list(&this_zone->acl.notify_in);
-     init_list(&this_zone->acl.notify_out);
-     init_list(&this_zone->acl.update_in);
    }
 }
 
@@ -404,6 +404,7 @@ static int conf_mask(void* scanner, int nval, int prefixlen) {
 %token <tok> TSIG_ALGO_NAME
 %token <tok> WORKERS
 %token <tok> USER
+%token <tok> RUNDIR
 %token <tok> PIDFILE
 
 %token <tok> REMOTES
@@ -529,7 +530,12 @@ system:
  | system NSID HEXSTR ';' { new_config->nsid = $3.t; new_config->nsid_len = $3.l; }
  | system NSID TEXT ';' { new_config->nsid = $3.t; new_config->nsid_len = strlen(new_config->nsid); }
  | system STORAGE TEXT ';' { new_config->storage = $3.t; }
- | system PIDFILE TEXT ';' { new_config->pidfile = $3.t; }
+ | system RUNDIR TEXT ';' { new_config->rundir = $3.t; }
+ | system PIDFILE TEXT ';' {
+      fprintf(stderr, "warning: Config option 'system.pidfile' is deprecated "
+	         "and has no effect. Use 'rundir' instead.\n");
+      free($3.t);
+ }
  | system KEY TSIG_ALGO_NAME TEXT ';' {
      fprintf(stderr, "warning: Config option 'system.key' is deprecated "
 		     "and has no effect.\n");
@@ -996,13 +1002,19 @@ ctl_allow_start:
   ;
 
 control:
-   CONTROL '{'
+   CONTROL '{' { new_config->ctl.have = true; }
  | control ctl_listen_start '{' interface '}' {
      if (this_iface->address == 0) {
        cf_error(scanner, "control interface has no defined address");
      } else {
        new_config->ctl.iface = this_iface;
      }
+ }
+ | control ctl_listen_start TEXT ';' {
+     this_iface->address = $3.t;
+     this_iface->family = AF_UNIX;
+     this_iface->port = 0;
+     new_config->ctl.iface = this_iface;
  }
  | control ctl_allow_start '{' zone_acl '}'
  | control ctl_allow_start zone_acl_list

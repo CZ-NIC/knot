@@ -7,11 +7,25 @@
 * Controlling running daemon::
 @end menu
 
+Knot DNS can run either in the foreground or in a background, with the @code{-d}
+option. When run in foreground, it doesn't create a PID file. Other than that,
+there are no differences and you can control it just the same way.
+@example
+Usage: knotd [parameters]
+
+Parameters:
+ -c, --config [file] Select configuration file.
+ -d, --daemonize     Run server as a daemon.
+ -v, --verbose       Verbose mode - additional runtime information.
+ -V, --version       Print version of the server.
+ -h, --help          Print help and usage.
+@end example
+
 Use knotc tool for convenience when working with the server daemon.
 As of Knot DNS 1.3.0, the zones are not compiled anymore. That makes working
 with the server much more user friendly.
 @example
-$ knotc -c knot.conf start|reload|restart
+$ knotc -c knot.conf reload|restart
 @end example
 
 The tool @code{knotc} is designed as a front-end for user, making it easier
@@ -23,8 +37,8 @@ Usage: knotc [parameters] <action> [action_args]
 
 Parameters:
  -c [file], --config=[file] Select configuration file.
- -s [server]                Remote server address (default 127.0.0.1)
- -p [port]                  Remote server port (default 5553)
+ -s [server]                Remote UNIX socket/IP address (default $@{rundir@}/knot.sock).
+ -p [port]                  Remote server port (only for IP).
  -y [[hmac:]name:key]       Use key_id specified on the command line.
  -k [file]                  Use key file (as in config section 'keys').
                               Example:
@@ -49,33 +63,24 @@ Actions:
  zonestatus                 Show status of configured zones.
  checkconf                  Check current server configuration.
  checkzone [zone]           Check zone (all if not specified).
-@end example
-
-If you want to run Knot DNS daemon directly, you can use @code{knotd} binary
-to do that. It accepts just configuration file and option to run in background.
-@example
-Usage: knotd [parameters]
-
-Parameters:
- -c, --config [file] Select configuration file.
- -d, --daemonize     Run server as a daemon.
- -v, --verbose       Verbose mode - additional runtime information.
- -V, --version       Print version of the server.
- -h, --help          Print help and usage.
+ memstats [zone]            Estimate memory consumption for zone (all if not specified).
 @end example
 
 Also, the server needs to create several files in order to run properly.
-All files are placed in the directory described by @code{storage} (@pxref{storage}).
-PID file can be placed elsewhere using the @code{pidfile} statement (@pxref{pidfile}).
-Slave zones with relative path specified will be placed in the @code{storage} as well.
+Zones and related data are stored in the directory described by @code{storage} (@pxref{storage}).
 @itemize @bullet
 @item
 @emph{Journal files} - each zone has a journal file to store differences for IXFR and
 dynamic updates. Journal for zone @code{example.com} will be
 placed in @file{STORAGE/example.com.diff.db}.
+
 @item
-@emph{PID file} - unless specified differently by the @code{pidfile}, it will be placed
-in the @file{STORAGE/knot.pid}.
+@emph{PID file} - is created automatically in @code{rundir} (@pxref{rundir}) when
+the server is run in background.
+
+@item
+@emph{Control sockets} - as a default, UNIX sockets are created in @code{rundir} (@pxref{rundir}),
+but can be overriden.
 @end itemize
 
 @node Running a slave server
@@ -89,21 +94,20 @@ There is a timer that checks periodically for new differences and
 updates the zone file. You can configure this timer
 with the @code{zonefile-sync} statement in @code{zones} (@pxref{zones}).
 
-There are two ways to start the server - directly or with the @code{knotc} controller tool.
-First, let us start it directly. If you do not pass any configuration, it will try to
+There are two ways to start the server - in foreground or background.
+First, let's start in foreground. If you do not pass any configuration, it will try to
 search configuration in default path that is @code{SYSCONFDIR/knot.conf}. The @code{SYSCONFDIR}
 depends on what you passed to the @code{./configure}, usually @code{/etc}.
 
 @example
-$ knotc -c slave.conf checkconf # check configuration
 $ knotd -c slave.conf
 @end example
 
-However to start it as a daemon, @code{knotc} tool should be used.
-The @code{knotc} tool accepts parameter @code{-w} to wait until the requested operation finishes.
-When the action is "start" for example, it waits until the server starts to serve zones.
+To start it as a daemon, just add a @code{-d} parameter. Unlike the foreground mode,
+PID file will be created in @code{rundir} directory.
+
 @example
-$ knotc -w -c slave.conf start # start the daemon
+$ knotd -d -c slave.conf # start the daemon
 $ knotc -c slave.conf stop # stop the daemon
 @end example
 
@@ -118,10 +122,17 @@ you can use @code{knotc checkzone} action.
 $ knotc -c master.conf checkzone example.com
 @end example
 
-Starting and stopping the daemon is the same as with the slave server in the previous section.
+For an approximate estimate of server's memory consumption, you can use the @code{knotc memstats} action.
+This action prints count of resource records, percentage of signed records and finally estimation
+of memory consumption for each zone, unless specified otherwise. Please note that estimated values might
+differ from the actual consumption. Also, for slave servers with incoming transfers enabled,
+be aware that the actual memory consumption might be double or more during transfers.
+
 @example
-$ knotc -w -c master.conf start
+$ knotc -c master.conf memstats example.com
 @end example
+
+Starting and stopping the daemon is the same as with the slave server in the previous section.
 
 @node Controlling running daemon
 @section Controlling running daemon
@@ -144,7 +155,7 @@ If you encounter a bug using this feature, please send it to Knot developers (@p
 You can also choose to tear-down the server fully and restart with the @code{knotc restart} action.
 Note that some actions like start, stop and restart cannot be done remotely.
 @example
-$ knotc -c master.conf running # check if running
+$ knotc -c master.conf status # check if running
 $ knotc -c master.conf restart # fully restart
 @end example
 

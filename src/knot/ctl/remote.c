@@ -19,7 +19,7 @@
 #include "common/log.h"
 #include "common/fdset.h"
 #include "common/prng.h"
-#include "knot/common.h"
+#include "knot/knot.h"
 #include "knot/conf/conf.h"
 #include "knot/server/socket.h"
 #include "knot/server/tcp-handler.h"
@@ -58,6 +58,8 @@ typedef struct remote_cmd_t {
 } remote_cmd_t;
 
 /* Forward decls. */
+static int remote_c_stop(server_t *s, remote_cmdargs_t* a);
+static int remote_c_restart(server_t *s, remote_cmdargs_t* a);
 static int remote_c_reload(server_t *s, remote_cmdargs_t* a);
 static int remote_c_refresh(server_t *s, remote_cmdargs_t* a);
 static int remote_c_status(server_t *s, remote_cmdargs_t* a);
@@ -66,6 +68,8 @@ static int remote_c_flush(server_t *s, remote_cmdargs_t* a);
 
 /*! \brief Table of remote commands. */
 struct remote_cmd_t remote_cmd_tbl[] = {
+	{ "stop",      &remote_c_stop },
+	{ "restart",   &remote_c_restart },
 	{ "reload",    &remote_c_reload },
 	{ "refresh",   &remote_c_refresh },
 	{ "status",    &remote_c_status },
@@ -160,6 +164,31 @@ static int remote_zone_flush(server_t *s, const knot_zone_t *z)
 }
 
 /*!
+ * \brief Remote command 'stop' handler.
+ *
+ * QNAME: stop
+ * DATA: NULL
+ */
+static int remote_c_stop(server_t *s, remote_cmdargs_t* a)
+{
+	UNUSED(a);
+	UNUSED(s);
+	return KNOT_CTL_STOP;
+}
+
+/*!
+ * \brief Remote command 'restart' handler.
+ *
+ * QNAME: restart
+ * DATA: NULL
+ */
+static int remote_c_restart(server_t *s, remote_cmdargs_t* a)
+{
+	UNUSED(a);
+	return KNOT_CTL_RESTART;
+}
+
+/*!
  * \brief Remote command 'reload' handler.
  *
  * QNAME: reload
@@ -237,7 +266,12 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 				ret = KNOT_ENOMEM;
 				break;
 			}
-			if (snprintf(when, 64, "in %luh%lum%lus",
+			/*! Workaround until proper zone fetching API and locking
+			 *  is implemented (ref #31)
+			 */
+			if (dif.tv_sec < 0) {
+				memcpy(when, "busy", 5);
+			} else if (snprintf(when, 64, "in %luh%lum%lus",
 			             dif.tv_sec/3600,
 			             (dif.tv_sec % 3600)/60,
 			             dif.tv_sec % 60) < 0) {
@@ -350,11 +384,10 @@ int remote_bind(conf_iface_t *desc)
 	}
 
 	/* Create new socket. */
-	int s = socket_create(desc->family, SOCK_STREAM, IPPROTO_TCP);
+	int s = socket_create(desc->family, SOCK_STREAM, 0);
 	if (s < 0) {
 		log_server_error("Couldn't create socket for remote "
-				 "control interface - %s",
-				 knot_strerror(s));
+				 "control interface - %s", knot_strerror(s));
 		return KNOT_ERROR;
 	}
 
@@ -364,10 +397,8 @@ int remote_bind(conf_iface_t *desc)
 		r = socket_listen(s, TCP_BACKLOG_SIZE);
 	}
 	if (r != KNOT_EOK) {
+		log_server_error("Could not bind to remote control interface.\n");
 		socket_close(s);
-		log_server_error("Could not bind to "
-				 "remote control interface %s port %d.\n",
-				 desc->address, desc->port);
 		return r;
 	}
 
@@ -568,7 +599,8 @@ int remote_answer(int fd, server_t *s, knot_packet_t *pkt, uint8_t* rwire, size_
 	return ret;
 }
 
-int remote_process(server_t *s, int r, uint8_t* buf, size_t buflen)
+int remote_process(server_t *s, conf_iface_t *ctl_if, int r,
+                   uint8_t* buf, size_t buflen)
 {
 	knot_packet_t *pkt =  knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
 	if (!pkt) {
@@ -591,7 +623,7 @@ int remote_process(server_t *s, int r, uint8_t* buf, size_t buflen)
 
 	/* Parse packet and answer if OK. */
 	int ret = remote_parse(pkt, buf, wire_len);
-	if (ret == KNOT_EOK) {
+	if (ret == KNOT_EOK && ctl_if->family != AF_UNIX) {
 
 		/* Check ACL list. */
 		char straddr[SOCKADDR_STRLEN];
@@ -639,10 +671,11 @@ int remote_process(server_t *s, int r, uint8_t* buf, size_t buflen)
 				return KNOT_EACCES;
 			}
 		}
-
-		/* Answer packet. */
-		remote_answer(c, s, pkt, buf, buflen);
 	}
+
+	/* Answer packet. */
+	if (ret == KNOT_EOK)
+		ret = remote_answer(c, s, pkt, buf, buflen);
 
 	knot_packet_free(&pkt);
 	socket_close(c);

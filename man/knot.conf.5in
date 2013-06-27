@@ -11,27 +11,23 @@
 serves as an example of the configuration for knotc(8) and knotd(8).
 .SH "EXAMPLE"
 .LP
- #
- # knot.sample.conf
- #
- # This is a sample configuration file for Knot DNS server.
- #
-
- # This is a comment.
 
  #
- # There are 5 main sections of this config file:
- #   system, zones, interfaces, control and log
+ # There are 7 main sections of this config file:
+ #   system, interfaces, remotes, groups, zones, control and log
  #
 
  # Section 'system' contains general options for the server
  system {
 
-  # Identity of the server (see RFC 4892). Not used yet.
+  # Identity of the server (see RFC 4892).
   identity "I have no mouth and must scream";
 
-  # Version of the server (see RFC 4892). Not used yet.
-  version "1.2;
+  # Version of the server (see RFC 4892).
+  version "1.3";
+
+  # Host name of the server (see RFC 4892).
+  hostname "myserver0.ns.example.com";
 
   # Server identifier
   # Use string format "text"
@@ -40,11 +36,12 @@ serves as an example of the configuration for knotc(8) and knotd(8).
 
   # Working directory of the server
   # Used to store compiled zones and PID file
-  storage "/tmp/knot-sample";
+  # default: ${sharedstatedir}/knot, configured with --with-storage
+  storage "/var/lib/knot";
 
-  # Custom pidfile path
-  # default: pidfile is created in 'storage'.
-  pidfile "/tmp/knot.pid";
+  # Directory for storing run-time data
+  # default: ${localstatedir}/run/knot, configured with --with-rundir
+  rundir "/var/run/knot";
 
   # Number of workers per interface
   # This option is used to force number of threads used per interface
@@ -74,6 +71,12 @@ serves as an example of the configuration for knotc(8) and knotd(8).
   # Default: 10s
   max-conn-reply 10s;
 
+  # Number of parallel transfers
+  # This number also includes pending SOA queries
+  # Minimal value is number of CPUs
+  # Default: 10
+  transfers 10;
+
   # Rate limit
   # in queries / second
   # Default: off (=0)
@@ -83,10 +86,10 @@ serves as an example of the configuration for knotc(8) and knotd(8).
   # Number of hashtable buckets, set to reasonable value as default.
   # We chose a reasonably large prime number as it's used for hashtable size,
   # it is recommended to do so as well due to better distribution.
-  # Tweak if you experience a lot of hash collisions, estimated memory overhead
-  # is approx. 16B per bucket
-  # Default: 1572869
-  rate-limit-size 1572869;
+  # Rule of thumb is to set it to about 1.2 * (maximum_qps)
+  # Memory cost is approx. 32B per bucket
+  # Default: 393241
+  rate-limit-size 393241;
 
   # Rate limit SLIP
   # Each Nth blocked response will be sent as truncated, this is a way to allow
@@ -95,25 +98,31 @@ serves as an example of the configuration for knotc(8) and knotd(8).
   rate-limit-slip 2;
  }
 
+ # Includes can be placed anywhere at any level in the configuration file. The
+ # file name can be relative to current file or absolute.
+ #
+ # This include includes keys which are commented out in next section.
+ include "knot.keys.conf";
+
  # Section 'keys' contains list of TSIG keys
- keys {
-
-  # TSIG key
-  #
-  # format: name key-type "<key>";
-  # where key-type may be one of the following:
-  #   hmac-md5
-  #   hmac-sha1
-  #   hmac-sha224
-  #   hmac-sha256
-  #   hmac-sha384
-  #   hmac-sha512
-  # and <key> is the private key
-  key0.server0 hmac-md5 "Wg==";
-
-  # TSIG key for zone
-  key0.example.com hmac-md5 "==gW";
- }
+ #keys {
+ #
+ #  # TSIG key
+ #  #
+ #  # format: name key-type "<key>";
+ #  # where key-type may be one of the following:
+ #  #   hmac-md5
+ #  #   hmac-sha1
+ #  #   hmac-sha224
+ #  #   hmac-sha256
+ #  #   hmac-sha384
+ #  #   hmac-sha512
+ #  # and <key> is the private key
+ #  key0.server0 hmac-md5 "Wg==";
+ #
+ #  # TSIG key for zone
+ #  key0.example.com hmac-md5 "==gW";
+ #}
 
  # Section 'interfaces' contains definitions of listening interfaces.
  interfaces {
@@ -163,21 +172,35 @@ serves as an example of the configuration for knotc(8) and knotd(8).
   server1 {
     address 127.0.0.1@53001;
   }
+
+  admin-alice {
+    address 192.168.100.1;
+  }
+
+  admin-bob {
+    address 192.168.100.2;
+  }
+ }
+
+ groups {
+  admins { admin-alice, admin-bob }
  }
 
  # Section 'control' specifies on which interface to listen for RC commands
  control {
 
   # Specifies interface, syntax is exactly the same as in 'interfaces' section
-  # Note: as of now, it is possible replay commands in a short time frame
-  #       with MitM type attacks, so you should keep the interface on localnet.
-  # Default port is: 5553
-  listen-on { address 127.0.0.1@5553; }
+  # Default: OFF
+  listen-on "knot.sock";
+
+  # As an alternative, you can use an IPv4/v6 address and port
+  # listen-on { address 127.0.0.1@5533; }
 
   # Specifies ACL list for remote control
   # Same syntax as for ACLs in zones
-  # List of remotes delimited by comma
-  allow server0;
+  # List of remotes or groups delimited by comma
+  # Notice: keep in mind that ACLs bear no effect with UNIX sockets
+  # allow server0, admins;
  }
 
  # Section 'zones' contains information about zones to be served.
@@ -279,7 +302,7 @@ serves as an example of the configuration for knotc(8) and knotd(8).
     notify-out server0, server1;
 
     # List of servers to allow UPDATE queries
-    update-in server0;
+    update-in server0, admins;
   }
  }
 

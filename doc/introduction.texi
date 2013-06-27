@@ -53,9 +53,11 @@ For more info and downloads see
 Git repository:
 @url{git://git.nic.cz/knot-dns.git, git://git.nic.cz/knot-dns.git}
 
+Git repository browser:
+@url{https://gitlab.labs.nic.cz/knot/tree/master, gitlab.labs.nic.cz/knot/tree/master}
+
 Knot DNS issue tracker:
-@url{https://git.nic.cz/redmine/projects/knot-dns,
-git.nic.cz/redmine/projects/knot-dns}
+@url{https://gitlab.labs.nic.cz/knot/issues, gitlab.labs.nic.cz/knot/issues}
 
 Knot DNS users mailing list:
 @url{mailto:knot-dns-users@@lists.nic.cz, knot-dns-users@@lists.nic.cz}

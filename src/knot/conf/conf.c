@@ -28,7 +28,7 @@
 #include <urcu.h>
 #include "knot/conf/conf.h"
 #include "knot/conf/extra.h"
-#include "knot/common.h"
+#include "knot/knot.h"
 #include "knot/ctl/remote.h"
 
 /*
@@ -133,6 +133,25 @@ static void conf_update_hooks(conf_t *conf)
 	}
 }
 
+/*! \brief Make relative path absolute to given directory.
+ *  \param basedir Base directory.
+ *  \param file Relative file name.
+ */
+static char* conf_abs_path(const char *basedir, char *file)
+{
+	/* Make path absolute to the directory. */
+	if (file[0] != '/') {
+		char *basepath = strcdup(basedir, "/");
+		char *path = strcdup(basepath, file);
+		free(basepath);
+		free(file);
+		file = path;
+	}
+
+	/* Normalize. */
+	return strcpath(file);
+}
+
 /*!
  * \brief Process parsed configuration.
  *
@@ -146,7 +165,7 @@ static int conf_process(conf_t *conf)
 {
 	// Check
 	if (conf->storage == NULL) {
-		conf->storage = strdup("/var/lib/"PROJECT_EXENAME);
+		conf->storage = strdup(STORAGE_DIR);
 		if (conf->storage == NULL) {
 			return KNOT_ENOMEM;
 		}
@@ -170,9 +189,9 @@ static int conf_process(conf_t *conf)
 	}
 
 	// Create PID file
-	if (conf->pidfile == NULL) {
-		conf->pidfile = strcdup(conf->storage, "/" PID_FILE);
-		if (conf->pidfile == NULL) {
+	if (conf->rundir == NULL) {
+		conf->rundir = strdup(RUN_DIR);
+		if (conf->rundir == NULL) {
 			return KNOT_ENOMEM;
 		}
 	}
@@ -195,8 +214,30 @@ static int conf_process(conf_t *conf)
 			cfg_if->port = CONFIG_DEFAULT_PORT;
 		}
 	}
-	if (conf->ctl.iface && conf->ctl.iface->port <= 0) {
-		conf->ctl.iface->port = REMOTE_DPORT;
+
+	/* Default interface. */
+	conf_iface_t *ctl_if = conf->ctl.iface;
+	if (!conf->ctl.have && ctl_if == NULL) {
+		ctl_if = malloc(sizeof(conf_iface_t));
+		memset(ctl_if, 0, sizeof(conf_iface_t));
+		ctl_if->family = AF_UNIX;
+		ctl_if->address = strdup("knot.sock");
+		conf->ctl.iface = ctl_if;
+	}
+
+	/* Control interface. */
+	if (ctl_if) {
+		if (ctl_if->family == AF_UNIX) {
+			ctl_if->address = conf_abs_path(conf->rundir,
+			                                ctl_if->address);
+			/* Check for ACL existence. */
+			if (!EMPTY_LIST(conf->ctl.allow)) {
+				log_server_warning("Control 'allow' statement "
+				                   "does not affect UNIX sockets.\n");
+			}
+		} else if (ctl_if->port <= 0) {
+			ctl_if->port = REMOTE_DPORT;
+		}
 	}
 
 	/* Default RRL limits. */
@@ -261,70 +302,23 @@ static int conf_process(conf_t *conf)
 		}
 
 		// Relative zone filenames should be relative to storage
-		if (zone->file[0] != '/') {
-			size_t prefix_len = strlen(conf->storage) + 1; // + '\0'
-			size_t zp_len = strlen(zone->file) + 1;
-			char *ap = malloc(prefix_len + zp_len);
-			if (ap != NULL) {
-				memcpy(ap, conf->storage, prefix_len);
-				ap[prefix_len - 1] = '/';
-				memcpy(ap + prefix_len, zone->file, zp_len);
-				free(zone->file);
-				zone->file = ap;
-			} else {
-				ret = KNOT_ENOMEM;
-				continue;
-			}
-		}
-
-		// Normalize zone filename
-		zone->file = strcpath(zone->file);
+		zone->file = conf_abs_path(conf->storage, zone->file);
 		if (zone->file == NULL) {
-			zone->db = NULL;
 			ret = KNOT_ENOMEM;
 			continue;
 		}
 
-		// Create zone db filename
+		/* Create journal filename. */
 		size_t zname_len = strlen(zone->name);
 		size_t stor_len = strlen(conf->storage);
-		size_t size = stor_len + zname_len + 4; // /db,\0
+		size_t size = stor_len + zname_len + 9; // /diff.db,\0
 		char *dest = malloc(size);
-		if (dest == NULL) {
-			zone->db = NULL; /* Not enough memory. */
-			ret = KNOT_ENOMEM; /* Error report. */
-			continue;
-		}
-		char *dpos = dest;
-
-		/* Since we have already allocd dest to accomodate
-		 * storage/zname length strcpy is safe. */
-		memcpy(dpos, conf->storage, stor_len + 1);
-		dpos += stor_len;
-		if (*(dpos - 1) != '/') {
-			*(dpos++) = '/';
-			*dpos = '\0';
-		}
-
-		/* Copy origin and remove bad characters. */
-		memcpy(dpos, zone->name, zname_len + 1);
-		for (size_t i = 0; i < zname_len; ++i) {
-			if (dpos[i] == '/') dpos[i] = '_';
-		}
-
-		memcpy(dpos + zname_len, "db", 3);
-		zone->db = dest;
-
-		// Create IXFR db filename
-		stor_len = strlen(conf->storage);
-		size = stor_len + zname_len + 9; // /diff.db,\0
-		dest = malloc(size);
 		if (dest == NULL) {
 			zone->ixfr_db = NULL; /* Not enough memory. */
 			ret = KNOT_ENOMEM; /* Error report. */
 			continue;
 		}
-		dpos = dest;
+		char *dpos = dest;
 		memcpy(dpos, conf->storage, stor_len + 1);
 		dpos += stor_len;
 		if (conf->storage[stor_len - 1] != '/') {
@@ -384,7 +378,7 @@ void __attribute__ ((constructor)) conf_init()
 	++s_config->ifaces_count;
 
 	/* Create default storage. */
-	s_config->storage = strdup("/var/lib/"PROJECT_EXENAME);
+	s_config->storage = strdup(STORAGE_DIR);
 
 	/* Create default logs. */
 
@@ -682,9 +676,9 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 		free(conf->storage);
 		conf->storage = 0;
 	}
-	if (conf->pidfile) {
-		free(conf->pidfile);
-		conf->pidfile = 0;
+	if (conf->rundir) {
+		free(conf->rundir);
+		conf->rundir = 0;
 	}
 	if (conf->nsid) {
 		free(conf->nsid);
@@ -883,7 +877,6 @@ void conf_free_zone(conf_zone_t *zone)
 
 	free(zone->name);
 	free(zone->file);
-	free(zone->db);
 	free(zone->ixfr_db);
 	free(zone);
 }

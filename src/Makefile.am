@@ -1,12 +1,15 @@
 ACLOCAL_AMFLAGS = -I $(top_srcdir)/m4
 SUBDIRS = . tests
 
-sbin_PROGRAMS = knotc knotd kdig khost knsupdate
+sbin_PROGRAMS = knotc knotd
+bin_PROGRAMS = kdig khost knsupdate
 noinst_PROGRAMS = zscanner-tool
 noinst_LTLIBRARIES = libknot.la libknotd.la libknots.la libzscanner.la
 
 # $(YACC) will generate header file
-AM_CPPFLAGS = -I$(top_srcdir)/src/libknot -DSYSCONFDIR='"$(sysconfdir)"' -DSBINDIR='"$(sbindir)"'
+AM_CPPFLAGS = -I$(top_srcdir)/src/libknot -DSYSCONFDIR='"$(sysconfdir)"' \
+	-DSBINDIR='"$(sbindir)"' -DSTORAGE_DIR='"${storage_dir}"' \
+	-DRUN_DIR='"${run_dir}"'
 AM_YFLAGS = -d
 libknotd_la_YFLAGS = -pcf_ -d
 libknotd_la_LFLAGS = # TODO: reentrant parser, prefix
@@ -194,8 +197,6 @@ libknots_la_SOURCES =				\
 	common/base32hex.h			\
 	common/evqueue.h			\
 	common/evqueue.c			\
-	common/queue.h				\
-	common/queue.c				\
 	common/evsched.h			\
 	common/evsched.c			\
 	common/acl.h				\
@@ -242,8 +243,7 @@ libknotd_la_SOURCES =				\
 	knot/stat/gatherer.h			\
 	knot/stat/stat.h			\
 	knot/stat/stat-common.h			\
-	knot/common.h				\
-	common/latency.h			\
+	knot/knot.h				\
 	knot/other/debug.h			\
 	knot/conf/cf-lex.l			\
 	knot/conf/cf-parse.y			\
@@ -285,6 +285,8 @@ libknotd_la_SOURCES =				\
 	knot/zone/zone-dump.c			\
 	knot/zone/zone-load.h			\
 	knot/zone/zone-load.c			\
+	knot/zone/estimator.h			\
+	knot/zone/estimator.c			\
 	knot/server/server.h
 
 zscanner_tool_SOURCES =				\
@@ -311,3 +313,8 @@ kdig_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 khost_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 knsupdate_LDADD = libknotd.la libknot.la libknots.la libzscanner.la @LIBOBJS@
 zscanner_tool_LDADD = libknots.la libknot.la libknotd.la libzscanner.la @LIBOBJS@
+
+# Create storage and run-time directories
+install-data-hook:
+	$(INSTALL) -d @run_dir@
+	$(INSTALL) -d @storage_dir@

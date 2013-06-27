@@ -520,7 +520,7 @@ static void dig_help(void)
 	       "       +[no]nsid       Request NSID.\n"
 	       "\n"
 	       "       -h, --help      Print help.\n"
-	       "       -V, --version   Print program version.\n");
+	       "       -v, --version   Print program version.\n");
 }
 
 static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
@@ -583,7 +583,8 @@ static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
 		}
 
 		dig_help();
-		return KNOT_ESTOP;;
+		params->stop = true;
+		break;
 	case 'c':
 		if (val == NULL) {
 			ERR("missing class\n");
@@ -645,6 +646,15 @@ static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
 		}
 		*index += add;
 		break;
+	case 'v':
+		if (len > 1) {
+			ERR("invalid option -%s\n", opt);
+			return KNOT_ENOTSUP;
+		}
+
+		printf(KDIG_VERSION);
+		params->stop = true;
+		break;
 	case 'x':
 		if (val == NULL) {
 			ERR("missing address\n");
@@ -675,7 +685,7 @@ static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
 			dig_help();
 			params->stop = true;
 		} else if (strcmp(opt, "-version") == 0) {
-			printf("%s, version %s\n", "kdig", PACKAGE_VERSION);
+			printf(KDIG_VERSION);
 			params->stop = true;
 		} else {
 			ERR("invalid option: -%s\n", opt);

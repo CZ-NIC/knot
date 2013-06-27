@@ -18,6 +18,8 @@
 #include <assert.h>
 #include <urcu.h>
 
+#include "knot/server/journal.h"
+
 #include "updates/xfr-in.h"
 
 #include "nameserver/name-server.h"
@@ -248,46 +250,8 @@ int xfrin_create_ixfr_query(const knot_zone_contents_t *zone,
 static int xfrin_add_orphan_rrsig(xfrin_orphan_rrsig_t **rrsigs,
                                   knot_rrset_t *rr)
 {
-	// try to find similar RRSIGs (check owner and type covered) in the list
 	assert(knot_rrset_type(rr) == KNOT_RRTYPE_RRSIG);
 
-	if (*rrsigs == NULL) {
-		/* First item, nothing to iterate. */
-		*rrsigs = malloc(sizeof(xfrin_orphan_rrsig_t));
-		CHECK_ALLOC_LOG(*rrsigs, KNOT_ENOMEM);
-		(*rrsigs)->rrsig = rr;
-		(*rrsigs)->next = NULL;
-		return KNOT_EOK;
-	}
-
-	int ret = 0;
-	xfrin_orphan_rrsig_t *last = *rrsigs;
-	assert(last);
-	while (last != NULL) {
-		// check if the RRSIG is not similar to the one we want to add
-		assert(last->rrsig != NULL);
-		if (knot_rrset_equal(last->rrsig, rr,
-				       KNOT_RRSET_COMPARE_HEADER) == 1
-		    && knot_rrset_rdata_rrsig_type_covered(last->rrsig)
-		       == knot_rrset_rdata_rrsig_type_covered(rr)) {
-			int merged, deleted_rrs;
-			ret = knot_rrset_merge_no_dupl(last->rrsig,
-						       rr, &merged, &deleted_rrs);
-			if (ret != KNOT_EOK) {
-				return ret;
-			} else if (merged) {
-				return 1;
-			} else {
-				return 0;
-			}
-		}
-		last = last->next;
-	}
-
-	assert(last == NULL);
-	assert(&last != rrsigs);
-
-	// the RRSIG is not in the list, add to the front
 	xfrin_orphan_rrsig_t *new_item = malloc(sizeof(xfrin_orphan_rrsig_t));
 	CHECK_ALLOC_LOG(new_item, KNOT_ENOMEM);
 	new_item->rrsig = rr;
@@ -549,6 +513,16 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 			knot_rrset_deep_free(&rr, 1, 1);
 			/*! \todo Cleanup. */
 			return KNOT_EMALF;
+		}
+
+
+		/* Check for SOA name and type. */
+		if (knot_packet_qname(packet) == NULL) {
+			dbg_xfrin("Invalid packet in sequence, ignoring.\n");
+			knot_packet_free(&packet);
+			knot_node_free(&node);
+			knot_rrset_deep_free(&rr, 1, 1);
+			return KNOT_EOK;
 		}
 
 		if (knot_dname_compare(knot_rrset_owner(rr),
@@ -1159,15 +1133,19 @@ dbg_xfrin_exec_verb(
 			} else {
 				// normal SOA, start new changeset
 				(*chs)->count++;
-				++cur;
-				if ((ret = knot_changesets_check_size(*chs))
-				     != KNOT_EOK) {
+				ret = knot_changesets_check_size(*chs);
+
+				/* Check changesets for maximum count (so they fit into journal). */
+				if ((*chs)->count > JOURNAL_NCOUNT)
+					ret = KNOT_ESPACE;
+
+				if (ret != KNOT_EOK) {
 					(*chs)->count--;
-					--cur;
 					knot_rrset_deep_free(&rr, 1, 1);
 					goto cleanup;
 				}
 
+				cur = (*chs)->sets + ((*chs)->count - 1);
 				ret = knot_changeset_add_soa(cur, rr,
 							     KNOT_CHANGESET_REMOVE);
 				if (ret != KNOT_EOK) {

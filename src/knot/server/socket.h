@@ -61,6 +61,7 @@ int socket_create(int family, int type, int proto);
  * \brief Connect to remote host.
  *
  * \param fd     Socket filedescriptor.
+ * \param family Socket family.
  * \param addr   Requested address.
  * \param port   Requested port.
  *
@@ -73,7 +74,7 @@ int socket_create(int family, int type, int proto);
  * \retval KNOT_EISCONN already connected.
  * \retval KNOT_ERROR unspecified error.
  */
-int socket_connect(int fd, const char *addr, unsigned short port);
+int socket_connect(int fd, int family, const char *addr, unsigned short port);
 
 /*!
  * \brief Listen on given socket.

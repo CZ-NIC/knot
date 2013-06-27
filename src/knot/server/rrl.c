@@ -22,7 +22,7 @@
 #include <assert.h>
 
 #include "knot/server/rrl.h"
-#include "knot/common.h"
+#include "knot/knot.h"
 #include "libknot/consts.h"
 #include "libknot/util/wire.h"
 #include "common/hattrie/murmurhash3.h"
