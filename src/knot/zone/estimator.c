@@ -27,7 +27,7 @@
 
 // Constants used for tweaking, mostly malloc overhead
 enum estim_consts {
-	MALLOC_OVER = sizeof(size_t),
+	MALLOC_OVER = sizeof(size_t), // according to malloc.c, this is minimum
 	DNAME_MULT = 1,
 	DNAME_ADD = MALLOC_OVER * 3, // dname itself, labels, name
 	RDATA_MULT = 1,
@@ -94,12 +94,12 @@ static size_t dname_memsize(const knot_dname_t *d)
 static int insert_dname_into_table(hattrie_t *table, knot_dname_t *d,
                                    dummy_node_t **n)
 {
-	value_t *val = hattrie_tryget(table, d->name, d->size);
+	value_t *val = hattrie_tryget(table, (char *)d->name, d->size);
 	if (val == NULL) {
 		// Create new dummy node to use for this dname
 		*n = xmalloc(sizeof(dummy_node_t));
 		init_list(&(*n)->node_list);
-		*hattrie_get(table, d->name, d->size) = *n;
+		*hattrie_get(table, (char *)d->name, d->size) = *n;
 		return 0;
 	} else {
 		// Return previously found dummy node
@@ -177,7 +177,6 @@ static void rrset_memsize(zone_estim_t *est, const scanner_t *scanner)
 	est->rdata_size += rdlen;
 
 	est->record_count++;
-	est->signed_count += scanner->r_type == KNOT_RRTYPE_RRSIG ? 1 : 0;
 
 	/*
 	 * RDATA size done, now add static part of RRSet to size.

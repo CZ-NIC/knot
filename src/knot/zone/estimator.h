@@ -24,8 +24,14 @@
  * @{
  */
 
+#ifndef _KNOT_ESTIMATOR_H_
+#define _KNOT_ESTIMATOR_H_
+
 #include "common/hattrie/hat-trie.h"
 #include "zscanner/scanner.h"
+
+// Mutiplicative constant, needed because of malloc's fragmentation
+static const double ESTIMATE_MAGIC = 1.2;
 
 /*!
  * \brief Memory estimation context.
@@ -39,7 +45,6 @@ typedef struct zone_estim {
 	size_t ahtable_size; /*!< Estimated ahtable size. */
 	size_t rrset_size; /*!< Estimated RRSet size. */
 	size_t record_count; /*!< Total record count for zone. */
-	size_t signed_count; /*!< RRSIG count. */
 } zone_estim_t;
 
 /*!
@@ -80,3 +85,5 @@ void estimator_rrset_memsize_wrap(const scanner_t *scanner);
  * \param p Data to free.
  */
 void estimator_free_trie_node(value_t *val, void *data);
+
+#endif /* _KNOT_ESTIMATOR_H_ */

@@ -898,8 +898,7 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 		                    .dname_table = hattrie_create_n(TRIE_BUCKET_SIZE, &mem_ctx),
 		                    .dname_size = 0, .rrset_size = 0,
 		                    .node_size = 0, .ahtable_size = 0,
-		                    .rdata_size = 0, .record_count = 0,
-		                    .signed_count = 0 };
+		                    .rdata_size = 0, .record_count = 0 };
 		if (est.node_table == NULL) {
 			if (est.dname_table) {
 				hattrie_free(est.dname_table);
@@ -952,23 +951,20 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 		hattrie_free(est.dname_table);
 		
 		size_t zone_size = (size_t)(((double)(est.rdata_size +
-                                              est.node_size +
-                                              est.rrset_size +
-                                              est.dname_size +
-                                              est.ahtable_size +
-                                              malloc_size) * 1.2) / (1024.0 * 1024.0));
+		                   est.node_size +
+		                   est.rrset_size +
+		                   est.dname_size +
+		                   est.ahtable_size +
+		                   malloc_size) * ESTIMATE_MAGIC) / (1024.0 * 1024.0));
 
-		log_zone_info("Zone %s: %zu RRs, signed=%.2f%%, used memory estimation=%zuMB.\n",
-		              zone->name, est.record_count,
-		              est.signed_count ?
-		                      ((double)(est.signed_count) / (est.record_count - est.signed_count)) * 100 : 0.0,
-		              zone_size);
+		log_zone_info("Zone %s: %zu RRs, used memory estimation is %zuMB.\n",
+		              zone->name, est.record_count, zone_size);
 		file_loader_free(loader);
 		total_size += zone_size;
 	}
 	
 	if (argc == 0) { // for all zones
-		log_zone_info("Estimated memory consumption for all zones=%zuMB.\n", total_size);
+		log_zone_info("Estimated memory consumption for all zones is %zuMB.\n", total_size);
 	}
 
 	return rc;
