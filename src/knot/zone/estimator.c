@@ -151,12 +151,14 @@ static size_t rdata_memsize(zone_estim_t *est, const scanner_t *scanner)
 
 static void rrset_memsize(zone_estim_t *est, const scanner_t *scanner)
 {
-	const rdata_descriptor_t *desc = get_rdata_descriptor(scanner->r_type);
-
 	// Handle RRSet's owner
 	knot_dname_t *owner = knot_dname_new_from_wire(scanner->r_owner,
 	                         scanner->r_owner_length,
 	                         NULL);
+	if (owner == NULL) {
+		return;
+	}
+
 	dummy_node_t *n;
 	if (insert_dname_into_table(est->node_table, owner, &n) == 0) {
 		// First time we see this name == new node
