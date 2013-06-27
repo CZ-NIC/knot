@@ -161,8 +161,8 @@ static knot_node_t *create_node(knot_zone_contents_t *zone,
 		knot_node_new(current_rrset->owner, NULL, 0);
 	int ret = node_add_func(zone, node, 1, 0);
 	if (ret != KNOT_EOK) {
-		log_zone_error("Node could not be added (%s).\n",
-		               knot_strerror(ret));
+		log_zone_warning("Node could not be added (%s).\n",
+		                 knot_strerror(ret));
 		return NULL;
 	}
 	
@@ -510,12 +510,13 @@ static void process_rr(const scanner_t *scanner)
 		                        node_add_func)) == NULL) {
 			dbg_zp("zp: process_rr: Cannot "
 			       "create new node.\n");
-			/*!< \todo consider a new error */
+			char *zone_name = knot_dname_to_str(contents->apex->owner);
 			char *name = knot_dname_to_str(current_rrset->owner);
-			log_zone_error("Cannot create new node owned by %s.\n",
-			               name);
+			log_zone_warning("Zone %s: Cannot create new "
+			                 "node owned by %s, skipping.\n",
+			                 zone_name, name);
 			free(name);
-			parser->ret = KNOT_ERROR;
+			free(zone_name);
 			return;
 		}
 	}
