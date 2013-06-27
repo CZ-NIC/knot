@@ -49,6 +49,7 @@ Actions:
  zonestatus                 Show status of configured zones.
  checkconf                  Check current server configuration.
  checkzone [zone]           Check zone (all if not specified).
+ memstats [zone]            Estimate memory consumption for zone (all if not specified).
 @end example
 
 If you want to run Knot DNS daemon directly, you can use @code{knotd} binary
@@ -98,8 +99,7 @@ depends on what you passed to the @code{./configure}, usually @code{/etc}.
 $ knotc -c slave.conf checkconf # check configuration
 $ knotd -c slave.conf
 @end example
-
-However to start it as a daemon, @code{knotc} tool should be used.
+ Estimate memory consumption for zone  start it as a daemon, @code{knotc} tool should be used.
 The @code{knotc} tool accepts parameter @code{-w} to wait until the requested operation finishes.
 When the action is "start" for example, it waits until the server starts to serve zones.
 @example
@@ -116,6 +116,16 @@ If you want to just check the zone files first before starting,
 you can use @code{knotc checkzone} action.
 @example
 $ knotc -c master.conf checkzone example.com
+@end example
+
+For an aproximate estimate of server's memory consumption, you can use the @code{knotc memstats} action.
+This action prints count of resource records, percentage of signed records and finally estimation
+of memory consumption for each zone, unless specified otherwise. Please note that estimated values might 
+differ from the actual consumption. Also, for slave servers with incoming transfers enabled,
+be aware that the actual memory consumption might be double or more during transfers.
+
+@example
+$ knotc -c master.conf memstats example.com
 @end example
 
 Starting and stopping the daemon is the same as with the slave server in the previous section.
