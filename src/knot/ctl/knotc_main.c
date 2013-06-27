@@ -803,6 +803,7 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 			hattrie_apply_rev(est.dname_table, estimator_free_trie_node, NULL);
 			hattrie_free(est.node_table);
 			hattrie_free(est.dname_table);
+			file_loader_free(loader);
 			return KNOT_ERROR;
 		}
 
