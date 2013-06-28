@@ -54,6 +54,8 @@ src/common/hattrie/murmurhash3.c
 src/common/hattrie/murmurhash3.h
 src/common/heap.c
 src/common/heap.h
+src/common/hex.c
+src/common/hex.h
 src/common/latency.c
 src/common/latency.h
 src/common/libtap/tap.c
