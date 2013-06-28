@@ -83,6 +83,7 @@ src/common/slab/slab.c
 src/common/slab/slab.h
 src/common/sockaddr.c
 src/common/sockaddr.h
+src/common/strtonum.h
 src/knot/conf/cf-lex.l
 src/knot/conf/cf-parse.y
 src/knot/conf/conf.c

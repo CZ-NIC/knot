@@ -234,7 +234,8 @@ libknots_la_SOURCES =				\
 	common/hattrie/murmurhash3.c		\
 	common/hattrie/murmurhash3.h		\
 	common/hex.c				\
-	common/hex.h
+	common/hex.h				\
+	common/strtonum.h
 
 libknotd_la_SOURCES =				\
 	knot/stat/gatherer.c			\
