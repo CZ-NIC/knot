@@ -2,7 +2,7 @@ ACLOCAL_AMFLAGS = -I $(top_srcdir)/m4
 SUBDIRS = . tests
 
 sbin_PROGRAMS = knotc knotd
-bin_PROGRAMS = kdig khost knsupdate
+bin_PROGRAMS = kdig khost knsupdate knsec3hash
 noinst_PROGRAMS = zscanner-tool
 noinst_LTLIBRARIES = libknot.la libknotd.la libknots.la libzscanner.la
 
@@ -103,6 +103,9 @@ knsupdate_SOURCES =				\
 	utils/nsupdate/nsupdate_params.c	\
 	utils/nsupdate/nsupdate_exec.h		\
 	utils/nsupdate/nsupdate_exec.c
+
+knsec3hash_SOURCES =				\
+	utils/nsec3hash/nsec3hash_main.c
 
 libknot_la_SOURCES =				\
 	libknot/common.h			\
@@ -312,6 +315,7 @@ knotc_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 kdig_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 khost_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 knsupdate_LDADD = libknotd.la libknot.la libknots.la libzscanner.la @LIBOBJS@
+knsec3hash_LDADD = libknot.la libknots.la @LIBOBJS@
 zscanner_tool_LDADD = libknots.la libknot.la libknotd.la libzscanner.la @LIBOBJS@
 
 # Create storage and run-time directories
