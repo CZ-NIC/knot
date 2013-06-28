@@ -143,5 +143,5 @@ Please note that there are slight differences from ISC nsupdate and some
 features are not supported. Any bugs, comments, or feature requests can be sent
 to \fBknot-dns@labs.nic.cz\fR.
 .SH SEE ALSO
-.BI khost\fR(8),
-.BI kdig\fR(8).
+.BI khost\fR(1),
+.BI kdig\fR(1).

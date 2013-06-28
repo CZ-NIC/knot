@@ -85,5 +85,5 @@ Daniel Salzman (\fBhttp://knot-dns.cz\fR)
 .TP
 Please send any bugs or comments to \fBknot-dns@labs.nic.cz\fR
 .SH SEE ALSO
-.BI kdig\fR(8),
-.BI knsupdate\fR(8).
+.BI kdig\fR(1),
+.BI knsupdate\fR(1).
