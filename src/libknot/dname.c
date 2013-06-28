@@ -434,7 +434,7 @@ knot_dname_t *knot_dname_new_from_nonfqdn_str(const char *name, uint size,
 {
 	knot_dname_t *dname = NULL;
 
-	if (name[size - 1] != '.') {
+	if (size == 0 || name[size - 1] != '.') {
 		char *fqdn = strcdup(name, ".");
 		dname = knot_dname_new_from_str(fqdn, size + 1, node);
 		free(fqdn);
