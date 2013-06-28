@@ -17,8 +17,8 @@
 \fB\-y\fR [hmac:]name:key]\fR Use key_id for specified on the command line.
 .TP
 \fB\-k\fR [file]\fR Use key file (as in config section 'keys').
-f.e. echo "knotc-key hmac-md5 Wg==" > knotc.key
-If you omit algorithm, hmac-md5 will be used as default.
+f.e. echo "knotc\-key hmac\-md5 Wg==" > knotc.key
+If you omit algorithm, hmac\-md5 will be used as default.
 .TP
 \fB\-f\fR, \fB\-\-force\fR
 Force operation \- override some checks.
@@ -76,17 +76,17 @@ Estimate memory consumption for zone files. Useful mainly for big zones.
 .B Setup a keyfile for remote control
 .TP
 1. Generate keys
-dnssec-keygen -a hmac-md5 -b 256 -n HOST knotc-key
+dnssec\-keygen \-a hmac\-md5 \-b 256 \-n HOST knotc\-key
 .TP
 2. Extract secret in base64 format and create keyfile
-echo "knotc-key hmac-md5 <secret>" > knotc.key
+echo "knotc\-key hmac\-md5 <secret>" > knotc.key
 
 Make sure the key can be read/written only by owner for
 security reasons.
 .TP
 
 .B Reload server remotely
-knotc -s 127.0.0.1 -k knotc.key reload
+knotc \-s 127.0.0.1 \-k knotc.key reload
 .SH "SEE ALSO"
 The full documentation for
 .B Knot

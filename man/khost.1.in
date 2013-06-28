@@ -7,7 +7,7 @@
 [\fIoptions\fR] \fIname\fR [\fIserver\fR]
 .SH DESCRIPTION
 This utility sends a DNS query for the \fIname\fR to the \fIserver\fR and prints
-a reply in more user-readable form. For more advanced DNS queries use \fBkdig\fR instead.
+a reply in more user\-readable form. For more advanced DNS queries use \fBkdig\fR instead.
 .TP 4
 \fI name\fR
 Is a domain name that is to be looked up.
@@ -21,50 +21,50 @@ the servers from \fB/etc/resolv.conf\fR are used.
 If no arguments are provided, \fBkhost\fR prints short help.
 .SH OPTIONS
 .TP 4
-.BI -4
+.BI \-4
 Use IPv4 protocol only.
 .TP
-.BI -6
+.BI \-6
 Use IPv6 protocol only.
 .TP
-.BI -a
+.BI \-a
 Send ANY query with verbose mode.
 .TP
-.BI -d
+.BI \-d
 Enable debug messages if any.
 .TP
 \fB\-h\fR, \fB\-\-help\fR
 Print help.
 .TP
-.BI -r
+.BI \-r
 Disable recursion.
 .TP
-.BI -s
+.BI \-s
 Stop quering next nameserver if SERVFAIL response is received.
 .TP
-.BI -T
+.BI \-T
 Use TCP protocol.
 .TP
-.BI -v
+.BI \-v
 Enable verbose output.
 .TP
 \fB\-V\fR, \fB\-\-version\fR
 Print program version.
 .TP
-.BI -w
+.BI \-w
 Wait forever for the reply.
 .TP
-.BI -c \ class
+.BI \-c \ class
 Set query class (e.g. \fICH\fR, \fICLASS4\fR). The default class is \fIIN\fR.
 .TP
-.BI -t \ type
+.BI \-t \ type
 Set query type (e.g. \fINS\fR, \fIIXFR=12345\fR, \fITYPE65535\fR).
 The default is to send 3 queries (\fIA\fR, \fIAAAA\fR and \fIMX\fR).
 .TP
-.BI -R \ retries
+.BI \-R \ retries
 The number of UDP retries to query a nameserver. The default is \fI1\fR.
 .TP
-.BI -W \ wait
+.BI \-W \ wait
 The time to wait for a reply in seconds. The default is \fI2\fR seconds.
 .SH EXAMPLES
 .B Example 1. Get A, AAAA and MX records for example.com:
@@ -77,13 +77,13 @@ The time to wait for a reply in seconds. The default is \fI2\fR seconds.
 .TP
 .B Example 3. Perform verbose zone transfer for zone example.com:
 .TP
-# khost -t AXFR -v example.com
+# khost \-t AXFR \-v example.com
 .SH FILES
 .BI /etc/resolv.conf
 .SH AUTHOR
-Daniel Salzman (\fBhttp://knot-dns.cz\fR)
+Daniel Salzman (\fBhttp://knot\-dns.cz\fR)
 .TP
-Please send any bugs or comments to \fBknot-dns@labs.nic.cz\fR
+Please send any bugs or comments to \fBknot\-dns@labs.nic.cz\fR
 .SH SEE ALSO
 .BI kdig\fR(1),
 .BI knsupdate\fR(1).
