@@ -363,6 +363,9 @@ int knot_rrset_merge_no_dupl_sort(knot_rrset_t *rrset1,
                                   const knot_rrset_t *rrset2,
                                   int *merged, int *deleted_rrs);
 
+int knot_rrset_add_rr(knot_rrset_t *rrset, const knot_rrset_t *rr,
+                      int *merged, int *deleted_rrs);
+
 const knot_dname_t *knot_rrset_rdata_cname_name(const knot_rrset_t *rrset);
 const knot_dname_t *knot_rrset_rdata_dname_target(const knot_rrset_t *rrset);
 void knot_rrset_rdata_set_cname_name(knot_rrset_t *rrset,
@@ -479,11 +482,6 @@ int rrset_serialize_alloc(const knot_rrset_t *rrset, uint8_t **stream,
 //TODO test
 int rrset_deserialize(uint8_t *stream, size_t *stream_size,
                       knot_rrset_t **rrset);
-
-int knot_rrset_remove_rr(knot_rrset_t *dest,
-                         const knot_rrset_t *source, size_t rdata_pos);
-
-int knot_rrset_rdata_reset(knot_rrset_t *rrset);
 
 int knot_rrset_add_rr_from_rrset(knot_rrset_t *dest, const knot_rrset_t *source,
                                  size_t rdata_pos);

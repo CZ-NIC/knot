@@ -784,9 +784,6 @@ int knot_rrset_remove_rdata_pos(knot_rrset_t *rrset, size_t pos)
 		 * Handle RDATA indices. All indices larger than the removed one
 		 * have to be adjusted. Last index will be changed later.
 		 */
-		/* [code-review] The upper bound should be rdata_count - 2, it
-		 *               has not yet been adjusted.
-		 */
 		for (uint16_t i = pos; i < rrset->rdata_count - 1; ++i) {
 			rrset->rdata_indices[i] = rrset->rdata_indices[i + 1] - removed_size;
 		}
@@ -815,7 +812,7 @@ uint32_t rrset_rdata_size_total(const knot_rrset_t *rrset)
 		return 0;
 	}
 
-	/* Last index denotes end of all RRs. */
+	// Last index denotes end of all RRs.
 	return (rrset->rdata_indices[rrset->rdata_count - 1]);
 }
 
@@ -828,7 +825,7 @@ knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
 	ret->rdata_count = 0;
 	ret->rdata_indices = NULL;
 
-	/* Retain reference to owner. */
+	// Retain reference to owner.
 	knot_dname_retain(owner);
 
 	ret->owner = owner;
@@ -1696,6 +1693,74 @@ dbg_rrset_exec_detail(
 	return KNOT_EOK;
 }
 
+int knot_rrset_add_rr(knot_rrset_t *rrset, const knot_rrset_t *rr,
+                      int *merged, int *deleted_rrs)
+{
+    if (rrset == NULL || rr == NULL) {
+		dbg_rrset("rrset: add_rr_sort: NULL arguments.");
+		return KNOT_EINVAL;
+	}
+
+dbg_rrset_exec_detail(
+	char *name = knot_dname_to_str(rrset->owner);
+	dbg_rrset_detail("rrset: add_rr_sort: Merging %s.\n", name);
+	free(name);
+);
+
+	if ((knot_dname_compare_non_canon(rrset->owner, rr->owner) != 0)
+	    || rrset->rclass != rr->rclass
+	    || rrset->type != rr->type) {
+		dbg_rrset("rrset: add_rr_sort: Trying to merge "
+		          "different RRs.\n");
+		return KNOT_EINVAL;
+	}
+	
+	if (rr->rdata_count != 1) {
+		// "There can be only one!"
+		return KNOT_EINVAL;
+	}
+
+	*deleted_rrs = 0;
+	*merged = 0;
+	int found = 0;
+	int duplicated = 0;
+	// Compare RR with all RRs in the first RRSet.
+	uint16_t j = 0;
+	size_t insert_to = 0;
+	for (;j < rrset->rdata_count && (!duplicated && !found); ++j) {
+		int cmp = rrset_rdata_compare_one(rrset, rr, j, 0);
+		if (cmp == 0) {
+			// Duplication - no need to merge this RR
+			duplicated = 1;
+		} else if (cmp > 0) {
+			// Found position to insert
+			found = 1;
+		} else {
+			// Not yet - it might be next position
+			insert_to = j + 1;
+		}
+	}
+
+	if (!duplicated) {
+		*merged += 1; // = need to shallow free rrset2
+		// Insert RR to RRSet
+		int ret = knot_rrset_add_rdata_at_pos(rrset, insert_to,
+			                  rrset_rdata_pointer(rr, 0),
+			                  rrset_rdata_item_size(rr, 0));
+		if (ret != KNOT_EOK) {
+			dbg_rrset("rrset: add_rr: Could not "
+			          "add RDATA to RRSet. (%s)\n",
+			          knot_strerror(ret));
+			return ret;
+		}
+	} else {
+		assert(!found);
+		*deleted_rrs += 1; // = need to deep free rr
+	}
+
+	return KNOT_EOK;
+}
+
 const knot_dname_t *knot_rrset_rdata_cname_name(const knot_rrset_t *rrset)
 {
 	if (rrset == NULL) {
@@ -2529,10 +2594,9 @@ int knot_rrset_find_rr_pos(const knot_rrset_t *rr_search_in,
 	return found ? KNOT_EOK : KNOT_ENOENT;
 }
 
-int knot_rrset_remove_rr(knot_rrset_t *rrset,
-                         const knot_rrset_t *rr_from, size_t rdata_pos)
+static int knot_rrset_remove_rr(knot_rrset_t *rrset,
+                                const knot_rrset_t *rr_from, size_t rdata_pos)
 {
-	/* [code-review] Missing parameter checks. */
 	/*
 	 * Position in first and second rrset can differ, we have
 	 * to search for position first.
@@ -2560,7 +2624,7 @@ int knot_rrset_remove_rr(knot_rrset_t *rrset,
 	return KNOT_EOK;
 }
 
-int knot_rrset_rdata_reset(knot_rrset_t *rrset)
+static int knot_rrset_rdata_reset(knot_rrset_t *rrset)
 {
 	if (rrset == NULL) {
 		return KNOT_EINVAL;
@@ -2720,18 +2784,18 @@ int knot_rrset_remove_rr_using_rrset_del(knot_rrset_t *from,
 	int ret = knot_rrset_remove_rr_using_rrset(from, what, &rr_removed, 0);
 	knot_rrset_deep_free(&rr_removed, 1, 1);
 	return ret;
-//	for (uint16_t i = 0; i < what->rdata_count; ++i) {
-//		int ret = knot_rrset_remove_rr(from, what, i);
-//		if (ret != KNOT_ENOENT || ret != KNOT_EOK) {
-//			/* NOENT is OK, but other errors are not. */
-//			dbg_rrset("rrset: remove_rr_using_rrset: "
-//			          "RRSet removal failed (%s).\n",
-//			          knot_strerror(ret));
-//			return ret;
-//		}
-//	}
+	for (uint16_t i = 0; i < what->rdata_count; ++i) {
+		int ret = knot_rrset_remove_rr(from, what, i);
+		if (ret != KNOT_ENOENT || ret != KNOT_EOK) {
+			/* NOENT is OK, but other errors are not. */
+			dbg_rrset("rrset: remove_rr_using_rrset: "
+			          "RRSet removal failed (%s).\n",
+			          knot_strerror(ret));
+			return ret;
+		}
+	}
 
-//	return KNOT_EOK;
+	return KNOT_EOK;
 }
 
 void knot_rrset_set_class(knot_rrset_t *rrset, uint16_t rclass)
