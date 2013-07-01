@@ -1577,6 +1577,10 @@ static int knot_zone_contents_adjust_nodes(knot_zone_tree_t *nodes,
 	assert(adjust_arg);
 	assert(callback);
 
+	adjust_arg->err = KNOT_EOK;
+	adjust_arg->first_node = NULL;
+	adjust_arg->previous_node = NULL;
+
 	hattrie_build_index(nodes);
 	int result = knot_zone_tree_apply_inorder(nodes, callback, adjust_arg);
 	assert(result == KNOT_EOK);
@@ -1605,12 +1609,9 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone,
 			return KNOT_ENOMEM;
 	}
 
-	knot_zone_adjust_arg_t adjust_arg;
+	knot_zone_adjust_arg_t adjust_arg = { 0 };
 	adjust_arg.zone = zone;
-	adjust_arg.first_node = NULL;
-	adjust_arg.previous_node = NULL;
 	adjust_arg.lookup_tree = lookup_tree;
-	adjust_arg.err = KNOT_EOK;
 
 	int result;
 
@@ -1630,9 +1631,6 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone,
 
 	if (last_nsec3_node)
 		*last_nsec3_node = adjust_arg.previous_node;
-
-	adjust_arg.first_node = NULL;
-	adjust_arg.previous_node = NULL;
 
 	// adjust normal nodes
 
