@@ -10,7 +10,7 @@
 .HP
 \fB\-c\fR [file], \fB\-\-config\fR=\fI[file]\fR Select configuration file.
 .TP
-\fB\-s\fR [server]\fR Remote UNIX socket/IP address (default @rundir@/knot.sock)
+\fB\-s\fR [server]\fR Remote UNIX socket/IP address (default @run_dir@/knot.sock)
 .TP
 \fB\-p\fR [port]\fR Remote server port (only for IP).
 .TP
