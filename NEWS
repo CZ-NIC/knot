@@ -14,7 +14,6 @@ Bugfixes:
 	* Processing of knotc TSIG keyfile
 	* Atomic PID file writing, removed deprecated 'knotc start'
 	* Performance regression when RRSIGs came before covered RRs in AXFR
-	* Checks for inconsistent zone file / journal
 
 v1.3.0-rc2 - Jun 14, 2013
 -------------------------

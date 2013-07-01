@@ -1010,32 +1010,6 @@ static int zones_journal_apply(knot_zone_t *zone)
 	return ret;
 }
 
-/*----------------------------------------------------------------------------*/
-
-/* Backup journal and remove it.
- * This is required when a zone file is manually updated (=> newer) while there
- * are unprocessed changes in the journal file to prevent inconsistencies.
- */
-static int zones_discard_journal(conf_zone_t *z)
-{
-	log_server_warning("Journal file out of sync with '%s'.\n", z->name);
-	log_server_warning("Creating backup '%s.bak' and clearing it.\n", z->ixfr_db);
-
-	char *file_bak = strcdup(z->ixfr_db, ".bak");
-	if (file_bak == NULL)
-		return KNOT_ENOMEM;
-
-	/* This would be very strange since 'storage' is checked for 'rw' */
-	if (unlink(file_bak) != 0 || rename(z->ixfr_db, file_bak) != 0) {
-		log_server_error("Couldn't remove journal file '%s'.\n", z->ixfr_db);
-		free(file_bak);
-		return KNOT_ERROR;
-	}
-
-	free(file_bak);
-	return KNOT_EOK;
-}
-
 /*!
  * \brief Insert new zone to the database.
  *
@@ -1075,7 +1049,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 	/* Attempt to bootstrap if db or source does not exist. */
 	int ret = KNOT_ERROR;
 	int zone_changed = 0;
-	struct stat st_db, st_zone;
+	struct stat st_zone;
 	int stat_ret = stat(z->file, &st_zone);
 	if (zone != NULL) {
 		if (stat_ret == 0 && knot_zone_version(zone) < st_zone.st_mtime) {
@@ -1083,17 +1057,6 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 		}
 	} else {
 		zone_changed = 1;
-	}
-
-	/* Check for inconsistent zone <-> journal file. */
-	if (stat_ret == 0 && stat(z->ixfr_db, &st_db) == 0) {
-		if (st_zone.st_mtime > st_db.st_mtime) {
-			ret = zones_discard_journal(z);
-			if (ret != KNOT_EOK) {
-				knot_dname_free(&dname);
-				return ret;
-			}
-		}
 	}
 
 	/* Reload zone file. */
