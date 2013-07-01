@@ -30,7 +30,7 @@ Verbose mode \- additional runtime information.
 Print knot server version.
 .TP
 \fB\-w\fR, \fB\-\-wait\fR
-Wait for the server to finish start/stop operations.
+Wait for the server to finish stop operation.
 .TP
 \fB\-i\fR, \fB\-\-interactive\fR
 Interactive mode (do not daemonize).
@@ -38,9 +38,6 @@ Interactive mode (do not daemonize).
 \fB\-h\fR, \fB\-\-help\fR
 Print help and usage.
 .SS "Actions:"
-.TP
-start
-Start knot server daemon (no\-op if running).
 .TP
 stop
 Stop knot server daemon (no\-op if not running).
