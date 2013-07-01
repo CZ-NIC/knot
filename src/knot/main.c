@@ -331,8 +331,6 @@ int main(int argc, char **argv)
 				ret = remote_process(server, conf()->ctl.iface,
 				                     remote, buf, buflen);
 				switch(ret) {
-				case KNOT_CTL_RESTART:
-					sig_req_rst = 1; /* Fall through */
 				case KNOT_CTL_STOP:
 					sig_req_stop = 1;
 					break;
