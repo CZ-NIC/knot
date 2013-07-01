@@ -25,7 +25,7 @@ Use knotc tool for convenience when working with the server daemon.
 As of Knot DNS 1.3.0, the zones are not compiled anymore. That makes working
 with the server much more user friendly.
 @example
-$ knotc -c knot.conf reload|restart
+$ knotc -c knot.conf reload
 @end example
 
 The tool @code{knotc} is designed as a front-end for user, making it easier
@@ -54,7 +54,6 @@ Parameters:
 
 Actions:
  stop                       Stop server.
- restart                    Restart server.
  reload                     Reload configuration and changed zones.
  refresh [zone]             Refresh slave zone (all if not specified).
  flush                      Flush journal and update zone files.
@@ -150,13 +149,6 @@ in @code{zones} statement, then reload your server as seen above.
 If @emph{SOA}'s @emph{serial} is not changed no differences will be created. Please note
 that this feature is in @emph{experimental} stage and should be used with care.
 If you encounter a bug using this feature, please send it to Knot developers (@pxref{Submitting a bugreport}).
-
-You can also choose to tear-down the server fully and restart with the @code{knotc restart} action.
-Note that some actions like start, stop and restart cannot be done remotely.
-@example
-$ knotc -c master.conf status # check if running
-$ knotc -c master.conf restart # fully restart
-@end example
 
 If you want to force refresh the slave zones, you can do this with the @code{knotc refresh} action.
 @example

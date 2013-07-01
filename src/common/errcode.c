@@ -76,7 +76,6 @@ const error_table_t knot_error_msgs[] = {
 
 	/* Control states. */
 	{ KNOT_CTL_STOP, "Stopping server." },
-	{ KNOT_CTL_RESTART, "Restarting server." },
 
 	/* Network errors. */
 	{ KNOT_NET_EADDR, "Bad address or host name." },

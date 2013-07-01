@@ -41,7 +41,6 @@
 
 /* Signal flags. */
 static volatile short sig_req_stop = 0;
-static volatile short sig_req_rst = 0;
 static volatile short sig_req_reload = 0;
 static volatile short sig_req_refresh = 0;
 static volatile short sig_stopping = 0;
@@ -331,8 +330,6 @@ int main(int argc, char **argv)
 				ret = remote_process(server, conf()->ctl.iface,
 				                     remote, buf, buflen);
 				switch(ret) {
-				case KNOT_CTL_RESTART:
-					sig_req_rst = 1; /* Fall through */
 				case KNOT_CTL_STOP:
 					sig_req_stop = 1;
 					break;
@@ -403,10 +400,6 @@ int main(int argc, char **argv)
 			log_server_warning("Server can't change working directory.\n");
 		free(cwd);
 	}
-
-	/* Restart hook. */
-	if (sig_req_rst)
-		return execvp(PROJECT_EXEC, argv);
 
 	return res;
 }

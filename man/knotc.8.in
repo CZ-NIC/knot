@@ -42,9 +42,6 @@ Print help and usage.
 stop
 Stop knot server daemon (no\-op if not running).
 .TP
-restart
-Stops and then starts knot server daemon.
-.TP
 reload
 Reload knot configuration and zones.
 .TP
