@@ -1,39 +1,39 @@
 .TH "kdig" "1" "April 2013" "CZ.NIC Labs" "Knot DNS, version @VERSION@"
 .SH NAME
+.TP 5
 .B kdig
 \- Advanced DNS lookup utility (libknot equivalent of ISC dig)
 .SH SYNOPSIS
 .B kdig
 [\fIcommon\-settings\fR] [\fIquery\fR [\fIsettings\fR]]...
 .TP 5
-.B kdig
-\fB\-h\fR
+.B kdig \-h
 .SH DESCRIPTION
 This utility sends one or more DNS \fIqueries\fR to a nameserver. Each query can
 have individual \fIsettings\fR, or it can be specified globally via \fIcommon\-settings\fR,
 which must precede \fIquery\fR specification.
 .TP 4
-\fIquery
+.I query
 \fIname\fR | \fB\-q\fR \fIname\fR | \fB\-x\fR \fIaddress\fR
 .TP
-\fIcommon\-settings, settings
+.I common\-settings, settings
 [\fIclass\fR] [\fItype\fR] [\fB@\fIserver\fR]... [\fIoptions\fR]
 .TP
-\fIname\fR
+.I name
 Is a domain name that is to be looked up.
 .TP
-\fIserver\fR
+.I server
 Is a name or an address of the nameserver to send a query to. The address
 can be specified using [address]:port notation. If no server is specified
 the servers from \fB/etc/resolv.conf\fR are used.
 .TP
-If no arguments are provided, \fBkdig\fR sends \fINS\fR query for root zone.
+If no arguments are provided, \fBkdig\fR sends \fINS\fR query for the root zone.
 .SH OPTIONS
 .TP 4
-.BI \-4
+.B \-4
 Use IPv4 protocol only.
 .TP
-.BI \-6
+.B \-6
 Use IPv6 protocol only.
 .TP
 .BI \-b \ address
@@ -41,14 +41,13 @@ Set the source IP address of the query to \fIaddress\fR. The address
 can be specified using [address]:port notation.
 .TP
 .BI \-c \ class
-Set query class (e.g. \fICH\fR, \fICLASS4\fR).
-An explicit variant of \fIclass\fR specification.
-The default class is \fIIN\fR.
+Set query class (e.g. \fICH\fR, \fICLASS4\fR). An explicit variant of
+\fIclass\fR specification. The default class is \fIIN\fR.
 .TP
-.BI \-d
+.B \-d
 Enable debug messages if any.
 .TP
-\fB\-h\fR, \fB\-\-help\fR
+.BR \-h ,\  \-\-help
 Print short help.
 .TP
 .BI \-k \ keyfile
@@ -69,105 +68,105 @@ Set query name. An explicit variant of \fIname\fR specification.
 Set query type (e.g. \fINS\fR, \fIIXFR=12345\fR, \fITYPE65535\fR).
 An explicit variant of \fItype\fR specification. The default type is \fIA\fR.
 .TP
-\fB\-v\fR, \fB\-\-version\fR
+.BR \-v ,\  \-\-version
 Print program version.
 .TP
 .BI \-x \ address
 Send \fIPTR\fR query for IPv4 or IPv6 \fIaddress\fR.
 .TP
-.BI \-y \ \fR[\fIalgo:\fR]\fIkeyname:key\fR
+.B \-y \fR[\fIalgo:\fR]\fIkeyname:key\fR
 Use TSIG key with a name \fIkeyname\fR to authenticate the request. The \fIalgo\fR
 part specifies the algorithm (the default is hmac\-md5) and \fIkey\fR specifies
 the shared secret encoded in Base64.
 .TP
-\fB+\fR[\fBno\fR]\fBmultiline\fR
+.BR + [ no ] multiline
 Wrap long records to more lines.
 .TP
-\fB+\fR[\fBno\fR]\fBshort\fR
+.BR + [ no ] short
 Show record data only.
 .TP
-\fB+\fR[\fBno\fR]\fBaaflag\fR
+.BR + [ no ] aaflag
 Set AA flag.
 .TP
-\fB+\fR[\fBno\fR]\fBtcflag\fR
+.BR + [ no ] tcflag
 Set TC flag.
 .TP
-\fB+\fR[\fBno\fR]\fBrdflag\fR
+.BR + [ no ] rdflag
 Set RD flag.
 .TP
-\fB+\fR[\fBno\fR]\fBrecurse\fR
-Same as +\fR[\fBno\fR]\fBrdflag\fR
+.BR + [ no ] recurse
+.RB "Same as " + [ no ] rdflag
 .TP
-\fB+\fR[\fBno\fR]\fBrec\fR
-Same as +\fR[\fBno\fR]\fBrdflag\fR
+.BR + [ no ] rec
+.RB "Same as " + [ no ] rdflag
 .TP
-\fB+\fR[\fBno\fR]\fBraflag\fR
+.BR + [ no ] raflag
 Set RA flag.
 .TP
-\fB+\fR[\fBno\fR]\fBzflag\fR
+.BR + [ no ] zflag
 Set zero flag bit.
 .TP
-\fB+\fR[\fBno\fR]\fBadflag\fR
+.BR + [ no ] adflag
 Set AD flag.
 .TP
-\fB+\fR[\fBno\fR]\fBcdflag\fR
+.BR + [ no ] cdflag
 Set CD flag.
 .TP
-\fB+\fR[\fBno\fR]\fBdnssec\fR
+.BR + [ no ] dnssec
 Set DO flag.
 .TP
-\fB+\fR[\fBno\fR]\fBall\fR
+.BR + [ no ] all
 Show all packet sections.
 .TP
-\fB+\fR[\fBno\fR]\fBqr\fR
+.BR + [ no ] qr
 Show query packet.
 .TP
-\fB+\fR[\fBno\fR]\fBheader\fR
+.BR + [ no ] header
 Show packet header.
 .TP
-\fB+\fR[\fBno\fR]\fBedns\fR
+.BR + [ no ] edns
 Show EDNS pseudosectio.
 .TP
-\fB+\fR[\fBno\fR]\fBquestion\fR
+.BR + [ no ] question
 Show question section.
 .TP
-\fB+\fR[\fBno\fR]\fBanswer\fR
+.BR + [ no ] answer
 Show answer section.
 .TP
-\fB+\fR[\fBno\fR]\fBauthority\fR
+.BR + [ no ] authority
 Show authority section.
 .TP
-\fB+\fR[\fBno\fR]\fBadditional\fR
+.BR + [ no ] additional
 Show additional section.
 .TP
-\fB+\fR[\fBno\fR]\fBstats\fR
+.BR + [ no ] stats
 Show trailing packet statistics.
 .TP
-\fB+\fR[\fBno\fR]\fBcl\fR
+.BR + [ no ] cl
 Show DNS class.
 .TP
-\fB+\fR[\fBno\fR]\fBttl\fR
+.BR + [ no ] ttl
 Show TTL value.
 .TP
-\fB+time=\fIT\fR
+.BI +time= T
 Set wait for reply interval in seconds (default is 5 seconds).
 .TP
-\fB+retries=\fIN\fR
+.BI +retries= N
 Set number of retries (default is 2). This doesn't apply to AXFR or IXFR.
 .TP
-\fB+bufsize=\fIB\fR
+.BI +bufsize= B
 Set EDNS buffer size in bytes (default is 512 bytes).
 .TP
-\fB+\fR[\fBno\fR]\fBtcp\fR
+.BR + [ no ] tcp
 Use TCP protocol.
 .TP
-\fB+\fR[\fBno\fR]\fBfail\fR
+.BR + [ no ] fail
 Stop if SERVFAIL.
 .TP
-\fB+\fR[\fBno\fR]\fBignore\fR
+.BR + [ no ] ignore
 Don't use TCP automatically if truncated reply is received.
 .TP
-\fB+\fR[\fBno\fR]\fBnsid\fR
+.BR + [ no ] nsid
 Request nameserver identifier (NSID).
 .SH NOTE
 Options \fB\-k\fR and \fB\-y\fR cannot be used mutually.
@@ -179,17 +178,17 @@ Options \fB\-k\fR and \fB\-y\fR cannot be used mutually.
 .B Example 2. Perform AXFR for zone example.com from the server 192.0.2.1:
 .TP
 # kdig example.com \-t AXFR @192.0.2.1
-.TP 12
+.TP
 .B Example 3. Send one A query for example.com from 192.0.2.1 and one reverse \
 lookup for address 2001:DB8::1 from 192.0.2.2. Both using TCP protocol:
 .TP
 # kdig +tcp example.com \-t A @192.0.2.1 \-x 2001:DB8::1 @192.0.2.2
 .SH FILES
-.BI /etc/resolv.conf
+.I /etc/resolv.conf
 .SH AUTHOR
-Daniel Salzman (\fBhttp://knot\-dns.cz\fR)
+Daniel Salzman (\fBwww.knot\-dns.cz\fR)
 .TP
-Please send any bugs or comments to \fBknot\-dns@labs.nic.cz\fR
+Please send any bug reports or comments to \fBknot\-dns@labs.nic.cz\fR
 .SH SEE ALSO
-.BI khost\fR(1),
-.BI knsupdate\fR(1).
+.BR khost (1),
+.BR knsupdate (1).
