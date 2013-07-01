@@ -79,7 +79,6 @@ typedef struct knot_cmd {
 
 /* Forward decls. */
 static int cmd_stop(int argc, char *argv[], unsigned flags);
-static int cmd_restart(int argc, char *argv[], unsigned flags);
 static int cmd_reload(int argc, char *argv[], unsigned flags);
 static int cmd_refresh(int argc, char *argv[], unsigned flags);
 static int cmd_flush(int argc, char *argv[], unsigned flags);
@@ -92,7 +91,6 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags);
 /*! \brief Table of remote commands. */
 knot_cmd_t knot_cmd_tbl[] = {
 	{&cmd_stop,       0, "stop",       "",       "\t\tStop server."},
-	{&cmd_restart,    0, "restart",    "",       "\tRestart server."},
 	{&cmd_reload,     0, "reload",     "",       "\tReload configuration and changed zones."},
 	{&cmd_refresh,    0, "refresh",    "[zone]", "\tRefresh slave zone (all if not specified)."},
 	{&cmd_flush,      0, "flush",      "",       "\t\tFlush journal and update zone files."},
@@ -591,15 +589,6 @@ static int cmd_stop(int argc, char *argv[], unsigned flags)
 	UNUSED(flags);
 
 	return cmd_remote("stop", KNOT_RRTYPE_TXT, 0, NULL);
-}
-
-static int cmd_restart(int argc, char *argv[], unsigned flags)
-{
-	UNUSED(argc);
-	UNUSED(argv);
-	UNUSED(flags);
-
-	return cmd_remote("restart", KNOT_RRTYPE_TXT, 0, NULL);
 }
 
 static int cmd_reload(int argc, char *argv[], unsigned flags)
