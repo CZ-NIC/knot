@@ -34,8 +34,6 @@
  * Common types and constants.
  */
 
-#define PROJECT_EXENAME "knotd"
-#define PROJECT_EXEC SBINDIR "/" PROJECT_EXENAME /*!< \brief  Project executable. */
 #define PID_FILE "knot.pid" /*!< \brief Server PID file name. */
 
 /*
