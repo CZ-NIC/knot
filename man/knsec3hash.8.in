@@ -1,0 +1,37 @@
+.TH "knsec3hash" "8" "June 2013" "CZ.NIC Labs" "Knot DNS, version @VERSION@"
+.SH NAME
+.B knsec3hash
+\- Simple utility to compute NSEC3 hash (libknot equivalent of ISC nsec3hash)
+.SH SYNOPSIS
+.B knsec3hash
+{\fIsalt\fR} {\fIalgorithm\fR} {\fIiterations\fR} {\fIdomain-name\fR}
+.SH DESCRIPTION
+This utility generates NSEC3 hash for a given domain name and parameters of
+NSEC3 hash.
+.SH ARGUMENTS
+.TP
+\fIsalt\fR
+Specifies binary salt encoded as a hexadecimal string.
+.TP
+\fIalgorithm\fR
+Specifies hashing algorithm number. Currently the only supported algorithm is
+SHA-1 (number 1).
+.TP
+\fIiterations\fR
+Specifies the number of additional iterations of the hashing algorithm.
+.TP
+\fIdomain-name\fR
+Specifies the domain name to be hashed.
+.SH SEE ALSO
+RFC 5155 - DNS Security (DNSSEC) Hashed Authenticated Denial of Existence.
+.SH EXAMPLE
+$ knsec3hash c01dcafe 1 10 knot-dns.cz
+.br
+7PTVGE7QV67EM61ROS9238P5RAKR2DM7 (salt=c01dcafe, hash=1, iterations=10)
+.SH AUTHOR
+Jan Vcelak (\fBhttp://knot-dns.cz\fR)
+.TP
+Please send any bugs or comments to \fBknot-dns@labs.nic.cz\fR
+.SH SEE ALSO
+.BI knotc\fR(8),
+.BI knotd\fR(8).

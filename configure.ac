@@ -325,5 +325,6 @@ AC_CONFIG_FILES([Makefile
 		 man/kdig.1
 		 man/knsupdate.1
 		 man/knot.conf.5
+		 man/knsec3hash.8
 		 ])
 AC_OUTPUT
