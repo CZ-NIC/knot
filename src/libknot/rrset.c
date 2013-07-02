@@ -1071,6 +1071,13 @@ int knot_rrset_rdata_equal(const knot_rrset_t *r1, const knot_rrset_t *r2)
 
 	// compare RDATA sets (order is not significant)
 
+	/*!
+	 * \todo This is heavily ineffective. What about comparing
+	 * rdata_count and then doing just one comparison loop, instead of
+	 * checking from left and then from the right? That would simplify
+	 * things a little bit.
+	 */
+
 	// find all RDATA from r1 in r2
 	int found = 0;
 	for (uint16_t i = 0; i < r1->rdata_count; i++) {
