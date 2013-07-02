@@ -63,10 +63,20 @@ Set query type (e.g. \fINS\fR, \fIIXFR=12345\fR, \fITYPE65535\fR).
 The default is to send 3 queries (\fIA\fR, \fIAAAA\fR and \fIMX\fR).
 .TP
 .BI \-R \ retries
-The number of UDP retries to query a nameserver. The default is \fI1\fR.
+The number (>=0) of UDP retries to query a nameserver. The default is \fI1\fR.
 .TP
 .BI \-W \ wait
-The time to wait for a reply in seconds. The default is \fI2\fR seconds.
+The time to wait for a reply in seconds. This timeout applies to each query try.
+The default is \fI2\fR seconds.
+.SH NOTES
+.SS Missing features with regard to ISC host
+Options \fB\-C, \-i, \-l, \-m, \-N\fR.
+.SS Differences with regard to ISC host
+Option \fB\-d\fR is not equivalent to \fB-v\fR, but enables debug messages.
+.TP
+The number of retries can be set to zero.
+.TP
+Verbose mode has slightly different format (same as \fBkdig\fR).
 .SH EXAMPLES
 .B Example 1. Get A, AAAA and MX records for example.com:
 .TP

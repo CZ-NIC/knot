@@ -23,8 +23,8 @@ which must precede \fIquery\fR specification.
 Is a domain name that is to be looked up.
 .TP
 .I server
-Is a name or an address of the nameserver to send a query to. The address
-can be specified using [address]:port notation. If no server is specified
+Is a domain name or an IPv4 or IPv6 address of the nameserver to send a query to.
+The address can be specified using [address]:port notation. If no server is specified,
 the servers from \fB/etc/resolv.conf\fR are used.
 .TP
 If no arguments are provided, \fBkdig\fR sends \fINS\fR query for the root zone.
@@ -38,7 +38,8 @@ Use IPv6 protocol only.
 .TP
 .BI \-b \ address
 Set the source IP address of the query to \fIaddress\fR. The address
-can be specified using [address]:port notation.
+must be a valid address for local interface or :: or 0.0.0.0.
+Optional port can be specified using [address]:port notation.
 .TP
 .BI \-c \ class
 Set query class (e.g. \fICH\fR, \fICLASS4\fR). An explicit variant of
@@ -72,7 +73,8 @@ An explicit variant of \fItype\fR specification. The default type is \fIA\fR.
 Print program version.
 .TP
 .BI \-x \ address
-Send \fIPTR\fR query for IPv4 or IPv6 \fIaddress\fR.
+Send reverse (\fIPTR\fR) query for IPv4 or IPv6 \fIaddress\fR. Correct name,
+class and type is set automatically.
 .TP
 .B \-y \fR[\fIalgo:\fR]\fIkeyname:key\fR
 Use TSIG key with a name \fIkeyname\fR to authenticate the request. The \fIalgo\fR
@@ -80,7 +82,7 @@ part specifies the algorithm (the default is hmac\-md5) and \fIkey\fR specifies
 the shared secret encoded in Base64.
 .TP
 .BR + [ no ] multiline
-Wrap long records to more lines.
+Wrap long records to more lines and improve human readability.
 .TP
 .BR + [ no ] short
 Show record data only.
@@ -150,18 +152,19 @@ Show TTL value.
 .TP
 .BI +time= T
 Set wait for reply interval in seconds (default is 5 seconds).
+This timeout applies to each query try.
 .TP
 .BI +retries= N
-Set number of retries (default is 2). This doesn't apply to AXFR or IXFR.
+Set number (>=0) of UDP retries (default is 2). This doesn't apply to AXFR/IXFR.
 .TP
 .BI +bufsize= B
 Set EDNS buffer size in bytes (default is 512 bytes).
 .TP
 .BR + [ no ] tcp
-Use TCP protocol.
+Use TCP protocol (default is UDP for standard query and TCP for AXFR/IXFR).
 .TP
 .BR + [ no ] fail
-Stop if SERVFAIL.
+Stop quering next nameserver if SERVFAIL response is received.
 .TP
 .BR + [ no ] ignore
 Don't use TCP automatically if truncated reply is received.
@@ -170,6 +173,32 @@ Don't use TCP automatically if truncated reply is received.
 Request nameserver identifier (NSID).
 .SH NOTE
 Options \fB\-k\fR and \fB\-y\fR cannot be used mutually.
+.SS Missing features with regard to ISC dig
+Options \fB\-f\fR and \fB\-m\fR and query options:
+.br
+.BR +split=\fIW\fR ,\  +tries=\fIT\fR ,\  +ndots=\fID\fR ,
+.br
+.BR +domain=\fIsomename\fR , +trusted\-key=\fI####\fR ,
+.br
+.BR + [ no ] vc ,\  + [ no ] search ,\  + [ no ] showsearch ,
+.br
+.BR + [ no ] defname ,\  + [ no ] aaonly ,\  + [ no ] cmd ,
+.br
+.BR + [ no ] identify ,\  + [ no ] comments ,\  + [ no ] rrcomments ,
+.br
+.BR + [ no ] onesoa ,\  + [ no ] besteffort ,\  + [ no ] sigchase ,
+.br
+.BR + [ no ] topdown ,\  + [ no ] nssearch ,\  + [ no ] trace.
+.TP
+Per-user file configuration via ${HOME}/.digrc.
+.SS Differences with regard to ISC dig
+Optional port specification has a form of [address]:port instead of address#port.
+.TP
+.BR + [ no ] ttl " instead of " + [ no ] ttlid
+.TP
+.BR +retries=T " instead of " +retry=T
+.TP
+Trailing information is formatted slightly different.
 .SH EXAMPLES
 .B Example 1. Get A record for example.com:
 .TP
