@@ -404,7 +404,6 @@ int main(int argc, char **argv)
 	char *default_config = conf_find_default();
 
 	/* Remote server descriptor. */
-	int ret = KNOT_EOK;
 	const char *r_addr = NULL;
 	int r_port = -1;
 	knot_tsig_key_t r_key;
@@ -439,23 +438,19 @@ int main(int argc, char **argv)
 			r_port = atoi(optarg);
 			break;
 		case 'y':
-			ret = tsig_parse_str(&r_key, optarg);
-			if (ret != KNOT_EOK) {
+			if (tsig_parse_str(&r_key, optarg) != KNOT_EOK) {
+				rc = 1;
 				log_server_error("Couldn't parse TSIG key '%s' "
 				                 "\n", optarg);
-				knot_tsig_key_free(&r_key);
-				log_close();
-				return 1;
+				goto exit;
 			}
 			break;
 		case 'k':
-			ret = tsig_parse_file(&r_key, optarg);
-			if (ret != KNOT_EOK) {
+			if (tsig_parse_file(&r_key, optarg) != KNOT_EOK) {
+				rc = 1;
 				log_server_error("Couldn't parse TSIG key file "
 				                 "'%s'\n", optarg);
-				knot_tsig_key_free(&r_key);
-				log_close();
-				return 1;
+				goto exit;
 			}
 			break;
 		case 'w':
