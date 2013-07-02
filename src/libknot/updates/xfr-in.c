@@ -525,8 +525,8 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 			return KNOT_EOK;
 		}
 
-		if (knot_dname_compare(knot_rrset_owner(rr),
-				       knot_packet_qname(packet)) != 0) {
+		if (knot_dname_compare_non_canon(knot_rrset_owner(rr),
+		                                 knot_packet_qname(packet)) != 0) {
 dbg_xfrin_exec(
 			char *rr_owner =
 				knot_dname_to_str(knot_rrset_owner(rr));
@@ -587,7 +587,7 @@ dbg_xfrin_exec(
 		assert(zone->apex->owner == rr->owner);
 		// add the RRSet to the node
 		ret = knot_zone_contents_add_rrset(zone, rr, &node,
-						    KNOT_RRSET_DUPL_MERGE);
+		                                   KNOT_RRSET_DUPL_MERGE);
 		if (ret < 0) {
 			dbg_xfrin("Failed to add RRSet to zone node: %s.\n",
 				  knot_strerror(ret));
@@ -1935,7 +1935,7 @@ int xfrin_replace_rrset_in_node(knot_node_t *node,
 	// insert the new RRSet to the node
 	dbg_xfrin_verb("Adding new RRSet.\n");
 	ret = knot_zone_contents_add_rrset(contents, rrset_new, &node,
-					   KNOT_RRSET_DUPL_SKIP);
+	                                   KNOT_RRSET_DUPL_SKIP);
 
 	if (ret < 0) {
 		dbg_xfrin("Failed to add RRSet to node.\n");
@@ -2101,15 +2101,11 @@ dbg_xfrin_exec_detail(
 		free(name);
 );
 		// add the RRSet from the changeset to the node
-		/*! \todo What about domain names?? Shouldn't we use the
-		 *        zone-contents' version of this function??
-		 */
 		/*!
 		 * \note The new zone must be adjusted nevertheless, so it
 		 *       doesn't matter whether there are some extra dnames to
 		 *       be added to the table or not.
 		 */
-//		ret = knot_node_add_rrset(node, add, 0);
 		ret = knot_zone_contents_add_rrset(contents, add, &node,
 						   KNOT_RRSET_DUPL_SKIP);
 
@@ -2160,7 +2156,7 @@ dbg_xfrin_exec_detail(
 	}
 
 	int merged, deleted_rrs;
-	ret = knot_rrset_merge_no_dupl(*rrset, add, &merged, &deleted_rrs);
+	ret = knot_rrset_merge_sort(*rrset, add, &merged, &deleted_rrs);
 	if (ret < 0) {
 		dbg_xfrin("Failed to merge changeset RRSet.\n");
 		return ret;
@@ -2326,7 +2322,7 @@ dbg_xfrin_exec_detail(
 		// merge the changeset RRSet to the copy
 		dbg_xfrin_detail("Merging RRSIG to the one in the RRSet.\n");
 		int merged, deleted_rrs;
-		ret = knot_rrset_merge_no_dupl(rrsig, add, &merged, &deleted_rrs);
+		ret = knot_rrset_merge_sort(rrsig, add, &merged, &deleted_rrs);
 		if (ret != KNOT_EOK) {
 			dbg_xfrin("Failed to merge changeset RRSIG to copy: %s"
 				  ".\n", knot_strerror(ret));

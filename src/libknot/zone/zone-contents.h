@@ -140,9 +140,8 @@ int knot_zone_contents_add_node(knot_zone_contents_t *contents,
  * \retval KNOT_EBADZONE
  */
 int knot_zone_contents_add_rrset(knot_zone_contents_t *contents,
-                          knot_rrset_t *rrset,
-                          knot_node_t **node,
-                          knot_rrset_dupl_handling_t dupl);
+                                 knot_rrset_t *rrset, knot_node_t **node,
+                                 knot_rrset_dupl_handling_t dupl);
 
 int knot_zone_contents_add_rrsigs(knot_zone_contents_t *contents,
                            knot_rrset_t *rrsigs,

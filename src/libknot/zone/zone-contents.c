@@ -1053,16 +1053,14 @@ dbg_zone_exec_detail(
 );
 
 	// check if the RRSet belongs to the zone
-	if (knot_dname_compare(knot_rrset_owner(rrset),
-				 zone->apex->owner) != 0
-	    && !knot_dname_is_subdomain(knot_rrset_owner(rrset),
-					  zone->apex->owner)) {
+	if (knot_dname_compare_non_canon(rrset->owner, zone->apex->owner) != 0
+	    && !knot_dname_is_subdomain(rrset->owner, zone->apex->owner)) {
 		return KNOT_EBADZONE;
 	}
 
 	if ((*node) == NULL
 	    && (*node = knot_zone_contents_get_node(zone,
-				    knot_rrset_owner(rrset))) == NULL) {
+	                                            rrset->owner)) == NULL) {
 		return KNOT_ENONODE;
 	}
 
