@@ -816,7 +816,7 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 		total_size += zone_size;
 	}
 
-	if (argc == 0) { // for all zones
+	if (rc == 0 && argc == 0) { // for all zones
 		log_zone_info("Estimated memory consumption for all zones is %zuMB.\n", total_size);
 	}
 
