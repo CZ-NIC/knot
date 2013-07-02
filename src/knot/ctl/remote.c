@@ -173,6 +173,9 @@ static int remote_sign_zone(server_t *server, const knot_zone_t *zone)
 
 	// generate NSEC records
 
+	char *zone_name = knot_dname_to_str(zone->name);
+	log_server_info("performing DNSSEC magic for %s\n", zone_name);
+	free(zone_name);
 
 	return knot_zone_create_nsec_chain(zone->contents);
 //	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);

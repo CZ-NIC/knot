@@ -175,6 +175,106 @@ static int chain_iterate(knot_zone_tree_t *nodes, chain_iterate_cb callback,
 	return callback(current, first, data);
 }
 
+/* - RRSIGs recyclation ---------------------------------------------------- */
+
+/*!
+ * \brief Perform some basic checks that the node is valid NSEC3 node.
+ */
+inline static bool valid_nsec3_node(const knot_node_t *node)
+{
+	if (node->rrset_count != 1)
+		return false;
+
+	if (node->rrset_tree[0]->type != KNOT_RRTYPE_NSEC3)
+		return false;
+
+	if (node->rrset_tree[0]->rdata_count != 1)
+		return false;
+
+	return true;
+}
+
+/*!
+ * \brief Check if two NSEC3 nodes contain equal RDATA.
+ *
+ * \note Much simpler than 'knot_rrset_rdata_equal'.
+ */
+static bool are_nsec3_nodes_equal(const knot_node_t *a, const knot_node_t *b)
+{
+	assert(valid_nsec3_node(a));
+	assert(valid_nsec3_node(b));
+
+	knot_rrset_t *a_rrset = a->rrset_tree[0];
+	knot_rrset_t *b_rrset = b->rrset_tree[0];
+
+	uint32_t rdata_size = rrset_rdata_item_size(a_rrset, 0);
+	if (rdata_size != rrset_rdata_item_size(b_rrset, 0))
+		return false;
+
+	uint8_t *a_rdata = knot_rrset_get_rdata(a_rrset, 0);
+	uint8_t *b_rdata = knot_rrset_get_rdata(b_rrset, 0);
+
+	return memcmp(a_rdata, b_rdata, (size_t)rdata_size) == 0;
+}
+
+/*!
+ * \brief Move NSEC3 signatures from the one node to the second one.
+ */
+static void move_signatures(knot_node_t *from, knot_node_t *to)
+{
+	assert(valid_nsec3_node(from));
+	assert(valid_nsec3_node(to));
+
+	knot_rrset_t *from_rrset = from->rrset_tree[0];
+	knot_rrset_t *to_rrset = to->rrset_tree[0];
+
+	assert(to_rrset->rrsigs == NULL);
+
+	to_rrset->rrsigs = from_rrset->rrsigs;
+	from_rrset->rrsigs = NULL;
+}
+
+/*!
+ * \brief Recycle NSEC3 signatatures by moving them from one tree to another.
+ *
+ * When the zone is loaded, new NSEC3 tree is constructed as the hashes have
+ * to be recomputed to be able to connect regular nodes with NSEC3 nodes. Any
+ * existing signatures from the NSEC3 tree are the moved to the new tree, if
+ * the NSEC3 nodes are matching. The old NSEC3 tree can be then freed.
+ */
+static int recycle_signatures(knot_zone_tree_t *from, knot_zone_tree_t *to)
+{
+	assert(to);
+
+	if (!from)
+		return KNOT_EINVAL;
+
+	/*
+	 * BEWARE: After this point, the function has to succeed. Otherwise
+	 * we might modify 'from' zone tree and make it inconsistent.
+	 */
+
+	bool sorted = false;
+	hattrie_iter_t *it = hattrie_iter_begin(from, sorted);
+
+	for (/* NOP */; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
+		knot_node_t *node_from = (knot_node_t *)*hattrie_iter_val(it);
+		knot_node_t *node_to = NULL;
+
+		knot_zone_tree_get(to, node_from->owner, &node_to);
+		if (node_to == NULL)
+			continue;
+
+		if (!are_nsec3_nodes_equal(node_from, node_to))
+			continue;
+
+		move_signatures(node_from, node_to);
+	}
+
+	hattrie_iter_free(it);
+
+	return KNOT_EOK;
+}
 
 /* - NSEC nodes construction ----------------------------------------------- */
 
@@ -582,6 +682,12 @@ static int create_nsec3_chain(knot_zone_contents_t *zone, uint32_t ttl)
 	}
 
 	result = chain_iterate(nsec3_nodes, connect_nsec3_nodes, NULL);
+	if (result != KNOT_EOK) {
+		knot_zone_tree_free(&nsec3_nodes);
+		return result;
+	}
+
+	result = recycle_signatures(zone->nsec3_nodes, nsec3_nodes);
 	if (result != KNOT_EOK) {
 		knot_zone_tree_free(&nsec3_nodes);
 		return result;
