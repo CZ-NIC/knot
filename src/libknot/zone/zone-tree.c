@@ -27,53 +27,6 @@
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
 
-#define DNAME_LFT_MAXLEN 255 /* maximum lookup format length */
-
-/*!
- * \brief Convert domain name from wire to lookup format.
- *
- * Formats names from rightmost label to the leftmost, separated by the lowest
- * possible character (\x00). Sorting such formatted names also gives
- * correct canonical order (for NSEC/NSEC3).
- *
- * Example:
- * Name: lake.example.com. Wire: \x04lake\x07example\x03com\x00
- * Lookup format com\x00example\x00lake\x00
- *
- * Maximum length of such a domain name is DNAME_LFT_MAXLEN characters.
- *
- * \param dst Memory to store converted name into.
- * \param maxlen Maximum memory length.
- * \param src Source domain name.
- *
- * \retval KNOT_EOK if successful
- * \retval KNOT_ESPACE when not enough memory.
- * \retval KNOT_EINVAL on invalid parameters
- */
-static int dname_lf(uint8_t *dst, const knot_dname_t *src, size_t maxlen) {
-	if (src->size > maxlen)
-		return KNOT_ESPACE;
-	*dst = (uint8_t)src->size;
-	/* need to save last \x00 for root dname */
-	if (*dst > 1)
-		*dst -= 1;
-	*++dst = '\0';
-	uint8_t* l = src->name;
-	uint8_t lstack[DNAME_LFT_MAXLEN];
-	uint8_t *sp = lstack;
-	while(*l != 0) { /* build label stack */
-		*sp++ = (l - src->name);
-		l += 1 + *l;
-	}
-	while(sp != lstack) {          /* consume stack */
-		l = src->name + *--sp; /* fetch rightmost label */
-		memcpy(dst, l+1, *l);  /* write label */
-		dst += *l;
-		*dst++ = '\0';         /* label separator */
-	}
-	return KNOT_EOK;
-}
-
 static value_t knot_zone_node_copy(value_t v)
 {
 	return v;

@@ -696,7 +696,7 @@ static int rrset_deserialize_rr(knot_rrset_t *rrset, size_t rdata_pos,
 			stream_offset += 1;
 			knot_dname_t *dname =
 				knot_dname_new_from_wire(stream + stream_offset,
-			                                 dname_size, NULL);
+			                                 dname_size);
 			if (dname == NULL) {
 				return KNOT_ERROR;
 			}
@@ -1208,7 +1208,7 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 		if (descriptor_item_is_dname(item)) {
 			pos2 = *pos;
 			knot_dname_t *dname = knot_dname_parse_from_wire(
-					wire, &pos2, total_size, NULL, NULL);
+					wire, &pos2, total_size);
 			if (dname == NULL) {
 				return KNOT_EMALF;
 			}
@@ -2320,7 +2320,7 @@ int rrset_deserialize(uint8_t *stream, size_t *stream_size,
 	uint8_t owner_size = *(stream + offset);
 	offset += 1;
 	knot_dname_t *owner = knot_dname_new_from_wire(stream + offset,
-	                                               owner_size, NULL);
+	                                               owner_size);
 	assert(owner);
 	offset += owner_size;
 	/* Read type. */

@@ -581,7 +581,7 @@ static int zones_load_zone(knot_zone_t **dst, const char *zone_name,
 	/* Check if loaded origin matches. */
 	const knot_dname_t *dname = knot_zone_name(*dst);
 	knot_dname_t *dname_req = NULL;
-	dname_req = knot_dname_new_from_str(zone_name, strlen(zone_name), 0);
+	dname_req = knot_dname_new_from_str(zone_name, strlen(zone_name));
 	if (knot_dname_compare(dname, dname_req) != 0) {
 		log_server_error("Origin of the zone db file is "
 				 "different than '%s'\n",
@@ -1035,8 +1035,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 
 	/* Convert the zone name into a domain name. */
 	/* Local allocation, will be discarded. */
-	knot_dname_t *dname = knot_dname_new_from_str(z->name, strlen(z->name),
-	                                              NULL);
+	knot_dname_t *dname = knot_dname_new_from_str(z->name, strlen(z->name));
 	if (dname == NULL) {
 		log_server_error("Error creating domain name from zone"
 		                 " name\n");
@@ -1521,7 +1520,7 @@ static int zones_update_forward(int fd, knot_ns_transport_t ttype,
 	rq->packet_nr = (int)knot_packet_id(query);
 
 	/* Duplicate query to keep it in memory during forwarding. */
-	rq->query = knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
+	rq->query = knot_packet_new();
 	if (!rq->query) {
 		xfr_task_free(rq);
 		rcu_read_unlock();
@@ -1535,7 +1534,7 @@ static int zones_update_forward(int fd, knot_ns_transport_t ttype,
 		rcu_read_unlock();
 		return KNOT_ENOMEM;
 	}
-	rq->query->free_wireformat = 1;
+	rq->query->flags |= KNOT_PF_FREE_WIRE;
 	memcpy(rq->query->wireformat, query->wireformat, knot_packet_size(query));
 
 	/* Retain pointer to zone and issue. */
@@ -2050,7 +2049,6 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 	int ret = knot_ns_prep_normal_response(nameserver, query, &resp, &zone,
 	                                       (transport == NS_TRANSPORT_TCP)
 	                                       ? *rsize : 0);
-	query->zone = zone;
 
 	switch (ret) {
 	case KNOT_EOK:
@@ -2641,8 +2639,7 @@ int zones_save_zone(const knot_ns_xfr_t *xfr)
 
 	/* Check if the new zone apex dname matches zone name. */
 	knot_dname_t *cur_name = knot_dname_new_from_str(zd->conf->name,
-	                                                 strlen(zd->conf->name),
-	                                                 NULL);
+	                                                 strlen(zd->conf->name));
 	const knot_dname_t *new_name = NULL;
 	new_name = knot_node_owner(knot_zone_contents_apex(new_zone));
 	int r = knot_dname_compare(cur_name, new_name);

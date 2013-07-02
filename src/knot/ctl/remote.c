@@ -454,7 +454,7 @@ static int remote_send_chunk(int c, knot_packet_t *pkt, const char* d,
                              uint16_t dlen, uint8_t* rwire, size_t rlen)
 {
 	int ret = KNOT_ERROR;
-	knot_packet_t *resp = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
+	knot_packet_t *resp = knot_packet_new_mm(&pkt->mm);
 	if (!resp) {
 		return ret;
 	}
@@ -465,7 +465,7 @@ static int remote_send_chunk(int c, knot_packet_t *pkt, const char* d,
 		knot_packet_free(&resp);
 		return ret;
 	}
-	ret = knot_response_init_from_query(resp, pkt, 1);
+	ret = knot_response_init_from_query(resp, pkt);
 	if (ret != KNOT_EOK)  {
 		knot_packet_free(&resp);
 		return ret;
@@ -525,7 +525,7 @@ int remote_answer(int fd, server_t *s, knot_packet_t *pkt, uint8_t* rwire, size_
 	}
 
 	knot_dname_t *realm = knot_dname_new_from_str(KNOT_CTL_REALM,
-	                                              KNOT_CTL_REALM_LEN, NULL);
+	                                              KNOT_CTL_REALM_LEN);
 	if (!knot_dname_is_subdomain(qname, realm) != 0) {
 		dbg_server("remote: qname != *%s\n", KNOT_CTL_REALM_EXT);
 		knot_dname_free(&realm);
@@ -536,7 +536,7 @@ int remote_answer(int fd, server_t *s, knot_packet_t *pkt, uint8_t* rwire, size_
 	/* Command:
 	 * QNAME: leftmost label of QNAME
 	 */
-	size_t cmd_len = knot_dname_label_size(qname, 0);
+	size_t cmd_len = *knot_dname_name(qname);
 	char *cmd = strndup((char*)qname->name + 1, cmd_len);
 
 	/* Data:
@@ -588,7 +588,7 @@ int remote_answer(int fd, server_t *s, knot_packet_t *pkt, uint8_t* rwire, size_
 int remote_process(server_t *s, conf_iface_t *ctl_if, int r,
                    uint8_t* buf, size_t buflen)
 {
-	knot_packet_t *pkt =  knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
+	knot_packet_t *pkt =  knot_packet_new();
 	if (!pkt) {
 		dbg_server("remote: not enough space to allocate query\n");
 		return KNOT_ENOMEM;
@@ -674,7 +674,7 @@ knot_packet_t* remote_query(const char *query, const knot_tsig_key_t *key)
 		return NULL;
 	}
 
-	knot_packet_t *qr = knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
+	knot_packet_t *qr = knot_packet_new();
 	if (!qr) {
 		return NULL;
 	}
@@ -689,25 +689,23 @@ knot_packet_t* remote_query(const char *query, const knot_tsig_key_t *key)
 	}
 
 	/* Question section. */
-	knot_question_t q;
 	char *qname = strcdup(query, KNOT_CTL_REALM_EXT);
-	q.qname = knot_dname_new_from_str(qname, strlen(qname), 0);
-	if (!q.qname) {
+	knot_dname_t *dname = knot_dname_new_from_str(qname, strlen(qname));
+	if (!dname) {
 		knot_packet_free(&qr);
 		free(qname);
 		return NULL;
 	}
-	q.qtype = KNOT_RRTYPE_ANY;
-	q.qclass = KNOT_CLASS_CH;
 
 	/* Cannot return != KNOT_EOK, but still. */
-	if (knot_query_set_question(qr, &q) != KNOT_EOK) {
+	if (knot_query_set_question(qr, dname, KNOT_CLASS_CH, KNOT_RRTYPE_ANY) != KNOT_EOK) {
 		knot_packet_free(&qr);
+		knot_dname_free(&dname);
 		free(qname);
 		return NULL;
 	}
 
-	knot_dname_release(q.qname);
+	knot_dname_free(&dname);
 	free(qname);
 
 	return qr;
@@ -724,7 +722,7 @@ int remote_query_append(knot_packet_t *qry, knot_rrset_t *data)
 	size_t bsize = 0;
 	int ret = knot_rrset_to_wire(data, sp, &bsize, qry->max_size, &rrs, 0);
 	if (ret == KNOT_EOK) {
-		qry->header.nscount += rrs;
+		knot_wire_add_nscount(qry->wireformat, rrs);
 	}
 
 	/* Finalize packet size. */
@@ -760,7 +758,7 @@ knot_rrset_t* remote_build_rr(const char *k, uint16_t t)
 	}
 
 	/* Assert K is FQDN. */
-	knot_dname_t *key = knot_dname_new_from_nonfqdn_str(k, strlen(k), 0);
+	knot_dname_t *key = knot_dname_new_from_str(k, strlen(k));
 	if (!key) {
 		return NULL;
 	}
@@ -808,7 +806,7 @@ int remote_create_ns(knot_rrset_t *rr, const char *d)
 	}
 
 	/* Create dname. */
-	knot_dname_t *dn = knot_dname_new_from_nonfqdn_str(d, strlen(d), NULL);
+	knot_dname_t *dn = knot_dname_new_from_str(d, strlen(d));
 	if (!dn) {
 		return KNOT_ERROR;
 	}

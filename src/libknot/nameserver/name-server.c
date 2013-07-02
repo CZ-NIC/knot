@@ -432,8 +432,16 @@ dbg_ns_exec_verb(
 		const knot_dname_t *cname =
 			knot_rrset_rdata_cname_name(cname_rrset);
 		dbg_ns_detail("CNAME name from RDATA: %p\n", cname);
-		// change the node to the node of that name
-		*node = knot_dname_node(cname);
+
+		/* Attempt to find mentioned name in zone. */
+		rcu_read_lock();
+		const knot_zone_t *zone = resp->zone;
+		knot_zone_contents_t *contents = knot_zone_get_contents(zone);
+		const knot_node_t *encloser = NULL, *prev = NULL;
+		knot_zone_contents_find_dname(contents, cname, node, &encloser, &prev);
+		if (*node == NULL && encloser && encloser->wildcard_child)
+			*node = encloser->wildcard_child;
+		rcu_read_unlock();
 		dbg_ns_detail("This name's node: %p\n", *node);
 
 		// save the new name which should be used for replacing wildcard
@@ -639,7 +647,7 @@ dbg_ns_exec_verb(
 static int ns_put_additional_for_rrset(knot_packet_t *resp,
                                        const knot_rrset_t *rrset)
 {
-	const knot_node_t *node = NULL;
+	const knot_node_t *node = NULL, *encloser = NULL, *prev = NULL;
 
 	int ret = 0;
 
@@ -656,15 +664,15 @@ dbg_ns_exec_detail(
 		free(name);
 );
 		assert(dname != NULL);
-		node = knot_dname_node(dname);
 
-		dbg_ns_detail("Node saved in RDATA dname: %p\n", node);
-		if (node != NULL && node->owner != dname) {
-			// the stored node should be the wildcard covering the
-			// name
-			dbg_ns_detail("Node is wildcard.\n");
-			assert(knot_dname_is_wildcard(knot_node_owner(node)));
-		}
+		/* Attempt to find mentioned name in zone. */
+		rcu_read_lock();
+		const knot_zone_t *zone = resp->zone;
+		knot_zone_contents_t *contents = knot_zone_get_contents(zone);
+		knot_zone_contents_find_dname(contents, dname, &node, &encloser, &prev);
+		if (node == NULL && encloser && encloser->wildcard_child)
+			node = encloser->wildcard_child;
+		rcu_read_unlock();
 
 		knot_rrset_t *rrset_add;
 
@@ -933,8 +941,8 @@ static int ns_put_authority_soa(const knot_zone_contents_t *zone,
 static knot_dname_t *ns_next_closer(const knot_dname_t *closest_encloser,
                                       const knot_dname_t *name)
 {
-	int ce_labels = knot_dname_label_count(closest_encloser);
-	int qname_labels = knot_dname_label_count(name);
+	int ce_labels = knot_dname_wire_labels(closest_encloser->name, NULL);
+	int qname_labels = knot_dname_wire_labels(name->name, NULL);
 
 	assert(ce_labels < qname_labels);
 
@@ -949,7 +957,9 @@ static knot_dname_t *ns_next_closer(const knot_dname_t *closest_encloser,
 	}
 
 	for (int i = 0; i < (qname_labels - ce_labels - 1); ++i) {
-		knot_dname_left_chop_no_copy(next_closer);
+		knot_dname_t *old_next_closer = next_closer;
+		next_closer = knot_dname_left_chop(next_closer);
+		knot_dname_free(&old_next_closer);
 	}
 
 	return next_closer;
@@ -1163,7 +1173,7 @@ static knot_dname_t *ns_wildcard_child_name(const knot_dname_t *name)
 {
 	assert(name != NULL);
 
-	knot_dname_t *wildcard = knot_dname_new_from_str("*", 1, NULL);
+	knot_dname_t *wildcard = knot_dname_new_from_str("*", 1);
 	if (wildcard == NULL) {
 		return NULL;
 	}
@@ -2011,9 +2021,9 @@ static int ns_dname_is_too_long(const knot_rrset_t *rrset,
                                 const knot_dname_t *qname)
 {
 	// TODO: add function for getting DNAME target
-	if (knot_dname_label_count(qname)
-	        - knot_dname_label_count(knot_rrset_owner(rrset))
-	        + knot_dname_label_count(knot_rrset_rdata_dname_target(rrset))
+	if (knot_dname_wire_labels(qname->name, NULL)
+	        - knot_dname_wire_labels(knot_rrset_owner(rrset)->name, NULL)
+	        + knot_dname_wire_labels(knot_rrset_rdata_dname_target(rrset)->name, NULL)
 	        > KNOT_MAX_DNAME_LENGTH) {
 		return 1;
 	} else {
@@ -2605,7 +2615,7 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 
 	// Clean the response structure
 	dbg_ns_verb("Clearing response structure..\n");
-	knot_response_clear(xfr->response, 0);
+	knot_response_clear(xfr->response);
 
 	// increment the packet number
 	++xfr->packet_nr;
@@ -2996,12 +3006,12 @@ static int ns_ixfr(knot_ns_xfr_t *xfr)
 /*----------------------------------------------------------------------------*/
 
 static int knot_ns_prepare_response(knot_packet_t *query, knot_packet_t **resp,
-                                    size_t max_size, int copy_question)
+                                    size_t max_size)
 {
 	assert(max_size >= 500);
 
 	// initialize response packet structure
-	*resp = knot_packet_new_mm(KNOT_PACKET_PREALLOC_RESPONSE, &query->mm);
+	*resp = knot_packet_new_mm(&query->mm);
 	if (*resp == NULL) {
 		dbg_ns("Failed to create packet structure.\n");
 		return KNOT_ENOMEM;
@@ -3015,7 +3025,7 @@ static int knot_ns_prepare_response(knot_packet_t *query, knot_packet_t **resp,
 		return ret;
 	}
 
-	ret = knot_response_init_from_query(*resp, query, copy_question);
+	ret = knot_response_init_from_query(*resp, query);
 
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to init response structure.\n");
@@ -3056,7 +3066,7 @@ knot_nameserver_t *knot_ns_create()
 	}
 
 	// prepare empty response with SERVFAIL error
-	knot_packet_t *err = knot_packet_new(KNOT_PACKET_PREALLOC_NONE);
+	knot_packet_t *err = knot_packet_new();
 	if (err == NULL) {
 		ERR_ALLOC_FAILED;
 		free(ns);
@@ -3350,8 +3360,7 @@ int knot_ns_error_response_from_query(const knot_nameserver_t *nameserver,
 	if (query->parsed > KNOT_WIRE_HEADER_SIZE
 	                    + KNOT_WIRE_QUESTION_MIN_SIZE) {
 		// in this case the whole question was parsed, append it
-		size_t question_size = 4 + knot_dname_size(
-		                        knot_packet_qname(query));
+		size_t question_size = knot_packet_question_size(query);
 
 		if (max_size > KNOT_WIRE_HEADER_SIZE + question_size) {
 			/*
@@ -3488,7 +3497,7 @@ int knot_ns_prep_normal_response(knot_nameserver_t *nameserver,
 		resp_max_size = MAX_UDP_PAYLOAD;
 	}
 
-	ret = knot_ns_prepare_response(query, resp, resp_max_size, 1);
+	ret = knot_ns_prepare_response(query, resp, resp_max_size);
 	if (ret != KNOT_EOK) {
 		return KNOT_ERROR;
 	}
@@ -3534,6 +3543,10 @@ dbg_ns_exec_verb(
 	// find zone in which to search for the name
 	knot_zonedb_t *zonedb = rcu_dereference(nameserver->zone_db);
 	*zone = ns_get_zone_for_qname(zonedb, qname, qtype);
+
+	/* Assign zone to packets. */
+	query->zone = *zone;
+	(*resp)->zone = *zone;
 
 	return KNOT_EOK;
 }
@@ -3627,10 +3640,14 @@ int knot_ns_prep_update_response(knot_nameserver_t *nameserver,
 		resp_max_size = MAX_UDP_PAYLOAD;
 	}
 
-	ret = knot_ns_prepare_response(query, resp, resp_max_size, 0);
+	ret = knot_ns_prepare_response(query, resp, resp_max_size);
 	if (ret != KNOT_EOK) {
 		return KNOT_ERROR;
 	}
+
+	/* Trim question for DDNS answer. */
+	knot_packet_set_size(query, KNOT_WIRE_HEADER_SIZE);
+	knot_wire_set_qdcount(query->wireformat, 0);
 
 	dbg_ns_verb("Query - parsed: %zu, total wire size: %zu\n",
 	            query->parsed, query->size);
@@ -3821,7 +3838,7 @@ dbg_ns_exec(
 int knot_ns_init_xfr_resp(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 {
 	int ret = KNOT_EOK;
-	knot_packet_t *resp = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
+	knot_packet_t *resp = knot_packet_new_mm(&xfr->query->mm);
 	if (resp == NULL) {
 		dbg_ns("Failed to create packet structure.\n");
 		/*! \todo xfr->wire is not NULL, will fail on assert! */
@@ -3836,7 +3853,7 @@ int knot_ns_init_xfr_resp(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	resp->wireformat = xfr->wire;
 	resp->max_size = xfr->wire_size;
 
-	ret = knot_response_init_from_query(resp, xfr->query, 1);
+	ret = knot_response_init_from_query(resp, xfr->query);
 
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to init response structure.\n");

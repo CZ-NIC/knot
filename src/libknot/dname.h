@@ -31,9 +31,6 @@
 #include <string.h>
 #include <stdio.h>
 
-struct knot_node;
-
-/*----------------------------------------------------------------------------*/
 /*!
  * \brief Structure for representing a domain name.
  *
@@ -43,28 +40,15 @@ struct knot_node;
  */
 struct knot_dname {
 	uint8_t *name;		/*!< Wire format of the domain name. */
-	uint8_t *labels;	/*!< Array of labels positions in name. */
-	struct knot_node *node;	/*!< Zone node the domain name belongs to. */
 	uint32_t count;		/*!< Reference counter. */
 	uint8_t size;		/*!< Length of the domain name. */
-	uint8_t label_count;	/*!< Number of labels. */
 };
 
 typedef struct knot_dname knot_dname_t;
 
-/*----------------------------------------------------------------------------*/
+#define DNAME_LFT_MAXLEN 255 /* maximum lookup format length */
 
-/*!
- * \brief Creates empty dname structure (no name, no owner node).
- *
- * \note Newly created dname is referenced, caller is responsible for releasing
- *       it after use.
- *
- * \return Newly allocated and initialized dname structure.
- *
- * \todo Possibly useless.
- */
-knot_dname_t *knot_dname_new();
+/*----------------------------------------------------------------------------*/
 
 /*!
  * \brief Creates a dname structure from domain name given in presentation
@@ -78,28 +62,11 @@ knot_dname_t *knot_dname_new();
  *
  * \param name Domain name in presentation format (labels separated by dots).
  * \param size Size of the domain name (count of characters with all dots).
- * \param node Zone node the domain name belongs to. Set to NULL if not
- *             applicable.
  *
  * \return Newly allocated and initialized dname structure representing the
  *         given domain name.
  */
-knot_dname_t *knot_dname_new_from_str(const char *name, unsigned int size,
-                                          struct knot_node *node);
-
-/*!
- * \brief Creates a dname structure from domain name possibly given in
- *        non-presentation format.
- *
- * Works the same as knot_dname_new_from_str but makes sure, that the name
- * is terminated with a dot.
- *
- * \see knot_dname_new_from_str
- *
- */
-knot_dname_t *knot_dname_new_from_nonfqdn_str(const char *name,
-                                              unsigned int size,
-                                              struct knot_node *node);
+knot_dname_t *knot_dname_new_from_str(const char *name, unsigned int size);
 
 /*!
  * \brief Creates a dname structure from domain name given in wire format.
@@ -111,8 +78,6 @@ knot_dname_t *knot_dname_new_from_nonfqdn_str(const char *name,
  *
  * \param name Domain name in wire format.
  * \param size Size of the domain name in octets.
- * \param node Zone node the domain name belongs to. Set to NULL if not
- *             applicable.
  *
  * \return Newly allocated and initialized dname structure representing the
  *         given domain name.
@@ -126,9 +91,7 @@ knot_dname_t *knot_dname_new_from_nonfqdn_str(const char *name,
  * \warning Actually, right now this function does not accept non-FQDN dnames.
  *          For some reason there is a check for this.
  */
-knot_dname_t *knot_dname_new_from_wire(const uint8_t *name,
-                                           unsigned int size,
-                                           struct knot_node *node);
+knot_dname_t *knot_dname_new_from_wire(const uint8_t *name, unsigned int size);
 
 /*!
  * \brief Parse dname from wire.
@@ -136,16 +99,11 @@ knot_dname_t *knot_dname_new_from_wire(const uint8_t *name,
  * \param wire Message in wire format.
  * \param pos Position of the domain name on wire.
  * \param size Domain name length.
- * \param node Zone node the domain name belongs to. Set to NULL if not
- *             applicable.
- * \param dname Destination dname (will allocate new when NULL).
  *
  * \return parsed domain name or NULL.
  */
 knot_dname_t *knot_dname_parse_from_wire(const uint8_t *wire,
-                                         size_t *pos, size_t size,
-                                         struct knot_node *node,
-                                         knot_dname_t *dname);
+                                         size_t *pos, size_t size);
 
 /*!
  * \brief Duplicates the given domain name.
@@ -195,31 +153,6 @@ const uint8_t *knot_dname_name(const knot_dname_t *dname);
 unsigned int knot_dname_size(const knot_dname_t *dname);
 
 /*!
- * \brief Returns size of a part of domain name.
- *
- * \param dname Domain name.
- * \param labels Count of labels to get the size of (counted from left).
- *
- * \return Size of first \a labels labels of \a dname, counted from left.
- */
-uint8_t knot_dname_size_part(const knot_dname_t *dname, int labels);
-
-/*!
- * \brief Returns the zone node the domain name belongs to.
- *
- * \param dname Domain name to get the zone node of.
- *
- * \return Zone node the domain name belongs to or NULL if none.
- */
-const struct knot_node *knot_dname_node(const knot_dname_t *dname);
-
-struct knot_node *knot_dname_get_node(const knot_dname_t *dname);
-
-void knot_dname_update_node(knot_dname_t *dname);
-
-void knot_dname_set_node(knot_dname_t *dname, struct knot_node *node);
-
-/*!
  * \brief Checks if the given domain name is a fully-qualified domain name.
  *
  * \param dname Domain name to check.
@@ -241,13 +174,6 @@ int knot_dname_is_fqdn(const knot_dname_t *dname);
  *         leftmost label, which is removed.
  */
 knot_dname_t *knot_dname_left_chop(const knot_dname_t *dname);
-
-/*!
- * \brief Removes leftmost label from \a dname.
- *
- * \param dname Domain name to remove the first label from.
- */
-void knot_dname_left_chop_no_copy(knot_dname_t *dname);
 
 /*!
  * \brief Checks if one domain name is a subdomain of other.
@@ -281,28 +207,7 @@ int knot_dname_is_wildcard(const knot_dname_t *dname);
  * \return Number of labels common for the two domain names.
  */
 int knot_dname_matched_labels(const knot_dname_t *dname1,
-                                const knot_dname_t *dname2);
-
-/*!
- * \brief Returns the number of labels in the domain name.
- *
- * \param dname Domain name to get the label count of.
- *
- * \return Number of labels in \a dname.
- *
- * \todo Find out if this counts the root label also.
- */
-int knot_dname_label_count(const knot_dname_t *dname);
-
-/*!
- * \brief Returns the size of the requested label in the domain name.
- *
- * \param dname Domain name to get the label size from.
- * \param i Index of the label (0 is the leftmost label).
- *
- * \return Size of \a i-th label in \a dname (counted from left).
- */
-uint8_t knot_dname_label_size(const knot_dname_t *dname, int i);
+                              const knot_dname_t *dname2);
 
 /*!
  * \brief Replaces the suffix of given size in one domain name with other domain
@@ -396,6 +301,67 @@ static inline void knot_dname_release(knot_dname_t *dname) {
 		}
 	}
 }
+
+/* ! New nocopy based API.
+ * \note Temporary, subject to name changes.
+ */
+
+int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
+                          const uint8_t *pkt);
+
+/*! Calculate wire size.
+ *  \note Expects already checked name.
+ *  \note pkt Supply if name uses dname compression, NULL otherwise.
+ */
+int knot_dname_wire_size(const uint8_t *name, const uint8_t *pkt);
+
+/*! Calculate label count.
+ *  \note Expects already checked name.
+ */
+int knot_dname_wire_labels(const uint8_t *name, const uint8_t *pkt);
+
+/*!
+ * \brief Align name and reference to a common number of suffix labels.
+ */
+int knot_dname_align(const uint8_t **d1, uint8_t d1_labels,
+                     const uint8_t **d2, uint8_t d2_labels,
+                     uint8_t *wire);
+
+/*!
+ * \brief Compare domain name by labels.
+ *
+ * \todo No case insensitivity, flags...
+ *
+ * \param d1 Domain name.
+ * \param d2 Domain name.
+ * \param pkt Packet wire related to names (or NULL).
+ * \return
+ */
+int knot_dname_wire_cmp(const knot_dname_t *d1, const knot_dname_t *d2,
+                        const uint8_t *pkt);
+
+/*!
+ * \brief Convert domain name from wire to lookup format.
+ *
+ * Formats names from rightmost label to the leftmost, separated by the lowest
+ * possible character (\x00). Sorting such formatted names also gives
+ * correct canonical order (for NSEC/NSEC3).
+ *
+ * Example:
+ * Name: lake.example.com. Wire: \x04lake\x07example\x03com\x00
+ * Lookup format com\x00example\x00lake\x00
+ *
+ * Maximum length of such a domain name is DNAME_LFT_MAXLEN characters.
+ *
+ * \param dst Memory to store converted name into.
+ * \param maxlen Maximum memory length.
+ * \param src Source domain name.
+ *
+ * \retval KNOT_EOK if successful
+ * \retval KNOT_ESPACE when not enough memory.
+ * \retval KNOT_EINVAL on invalid parameters
+ */
+int dname_lf(uint8_t *dst, const knot_dname_t *src, size_t maxlen);
 
 #endif /* _KNOT_DNAME_H_ */
 

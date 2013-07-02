@@ -20,18 +20,8 @@
 
 /* Test dname_parse_from_wire */
 static int test_fw(size_t l, const char *w) {
-	size_t p = 0;
-	knot_dname_t *d = NULL;
-	d = knot_dname_parse_from_wire((const uint8_t*)w, &p, l, NULL, NULL);
-	int ret = (d != NULL);
-//	d = knot_dname_new_from_wire((const uint8_t*)w, l, 0);
-//	if (d) {
-//		for(unsigned i = 0; i < d->label_count; ++i) {
-//			diag("%d", knot_dname_label_size(d, i));
-//		}
-//	}
-	knot_dname_free(&d);
-	return ret;
+	const uint8_t *np = (const uint8_t *)w + l;
+	return knot_dname_wire_check((const uint8_t *)w, np, NULL) > 0;
 }
 
 static int dname_tests_count(int argc, char *argv[]);
@@ -45,12 +35,15 @@ unit_api dname_tests_api = {
 
 static int dname_tests_count(int argc, char *argv[])
 {
-	return 8;
+	return 21;
 }
 
 static int dname_tests_run(int argc, char *argv[])
 {
-	const char *w = NULL;
+	knot_dname_t *d = NULL, *d2 = NULL;
+	const char *w = NULL, *t = NULL;
+	unsigned len = 0;
+	size_t pos = 0;
 
 	/* 1. NULL wire */
 	ok(!test_fw(0, NULL), "parsing NULL dname");
@@ -80,5 +73,84 @@ static int dname_tests_run(int argc, char *argv[])
 	w = "\x20\x68\x6d\x6e\x63\x62\x67\x61\x61\x61\x61\x65\x72\x6b\x30\x30\x30\x30\x64\x6c\x61\x61\x61\x61\x61\x61\x61\x61\x62\x65\x6a\x61\x6d\x20\x67\x6e\x69\x64\x68\x62\x61\x61\x61\x61\x65\x6c\x64\x30\x30\x30\x30\x64\x6c\x61\x61\x61\x61\x61\x61\x61\x61\x62\x65\x6a\x61\x6d\x20\x61\x63\x6f\x63\x64\x62\x61\x61\x61\x61\x65\x6b\x72\x30\x30\x30\x30\x64\x6c\x61\x61\x61\x61\x61\x61\x61\x61\x62\x65\x6a\x61\x6d\x20\x69\x62\x63\x6d\x6a\x6f\x61\x61\x61\x61\x65\x72\x6a\x30\x30\x30\x30\x64\x6c\x61\x61\x61\x61\x61\x61\x61\x61\x62\x65\x6a\x61\x6d\x20\x6f\x6c\x6e\x6c\x67\x68\x61\x61\x61\x61\x65\x73\x72\x30\x30\x30\x30\x64\x6c\x61\x61\x61\x61\x61\x61\x61\x61\x62\x65\x6a\x61\x6d\x20\x6a\x6b\x64\x66\x66\x67\x61\x61\x61\x61\x65\x6c\x68\x30\x30\x30\x30\x64\x6c\x61\x61\x61\x61\x61\x61\x61\x61\x62\x65\x6a\x61\x6d\x20\x67\x67\x6c\x70\x70\x61\x61\x61\x61\x61\x65\x73\x72\x30\x30\x30\x30\x64\x6c\x61\x61\x61\x61\x61\x61\x61\x61\x62\x65\x6a\x61\x6d\x20\x65\x6b\x6c\x67\x70\x66\x61\x61\x61\x61\x65\x6c\x68\x30\x30\x30\x30\x64\x6c\x61\x61\x61\x61\x61\x0\x21\x42\x63\x84\xa5\xc6\xe7\x8\xa\xd\x11\x73\x3\x6e\x69\x63\x2\x43\x5a";
 	ok(!test_fw(277, w), "parsing invalid label (spec. case 1)");
 
-	return 0;
+	/* 9. parse from string (correct) .*/
+	len = 10;
+	w = "\x04""abcd""\x03""efg";
+	t = "abcd.efg";
+	d = knot_dname_new_from_str(t, strlen(t));
+	ok(d && d->size == len && memcmp(d->name, w, len) == 0,
+	   "dname_fromstr: parsed correct non-FQDN name");
+	knot_dname_free(&d);
+
+	/* 10. parse FQDN from string (correct) .*/
+	t = "abcd.efg.";
+	d = knot_dname_new_from_str(t, strlen(t));
+	ok(d && d->size == len && memcmp(d->name, w, len) == 0,
+	   "dname_fromstr: parsed correct FQDN name");
+	knot_dname_free(&d);
+
+	/* 11. parse name from string (incorrect) .*/
+	t = "..";
+	d = knot_dname_new_from_str(t, strlen(t));
+	ok(d == NULL, "dname_fromstr: parsed incorrect name");
+
+	/* 12. equal name is subdomain */
+	t = "ab.cd.ef";
+	d2 = knot_dname_new_from_str(t, strlen(t));
+	t = "ab.cd.ef";
+	d = knot_dname_new_from_str(t, strlen(t));
+	ok(!knot_dname_is_subdomain(d, d2), "dname_subdomain: equal name");
+	knot_dname_free(&d);
+
+	/* 13. true subdomain */
+	t = "0.ab.cd.ef";
+	d = knot_dname_new_from_str(t, strlen(t));
+	ok(knot_dname_is_subdomain(d, d2), "dname_subdomain: true subdomain");
+	knot_dname_free(&d);
+
+	/* 14. not subdomain */
+	t = "cd.ef";
+	d = knot_dname_new_from_str(t, strlen(t));
+	ok(!knot_dname_is_subdomain(d, d2), "dname_subdomain: not subdomain");
+	knot_dname_free(&d);
+
+	/* 15. root subdomain */
+	t = ".";
+	d = knot_dname_new_from_str(t, strlen(t));
+	ok(knot_dname_is_subdomain(d2, d), "dname_subdomain: root subdomain");
+	knot_dname_free(&d);
+	knot_dname_free(&d2);
+
+	/* 16-17. dname cat (valid) */
+	w = "\x03""cat";
+	len = 5;
+	d = knot_dname_new_from_wire((const uint8_t *)w, len);
+	t = "*";
+	d2 = knot_dname_new_from_str(t, strlen(t));
+	d2 = knot_dname_cat(d2, d);
+	t = "\x01""*""\x03""cat";
+	len = 2 + 4 + 1;
+	ok (d2 && len == d2->size, "dname_cat: valid concatenation size");
+	ok(memcmp(d2->name, t, len) == 0, "dname_cat: valid concatenation");
+	knot_dname_free(&d);
+	knot_dname_free(&d2);
+
+	/* 18-19. parse from wire (valid) */
+	t = "\x04""abcd""\x03""efg";
+	len = 10;
+	pos = 0;
+	d = knot_dname_parse_from_wire((const uint8_t *)t, &pos, len);
+	ok(d != NULL, "dname_parse: valid name");
+	cmp_ok(pos, "==", len, "dname_parse: valid name (parsed length)");
+	knot_dname_free(&d);
+
+	/* 20-21. parse from wire (invalid) */
+	t = "\x08""dddd";
+	len = 5;
+	pos = 0;
+	d = knot_dname_parse_from_wire((const uint8_t *)t, &pos, len);
+	ok(d == NULL, "dname_parse: bad name");
+	cmp_ok(pos, "==", 0, "dname_parse: bad name (parsed length)");
+
+	done_testing();
 }

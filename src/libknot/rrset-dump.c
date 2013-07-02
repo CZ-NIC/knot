@@ -846,7 +846,7 @@ static void wire_dname_to_str(rrset_dump_params_t *p)
 	} while (label_len > 0);
 
 	// Create dname.
-	dname = knot_dname_new_from_wire(p->in - in_len, in_len, NULL);
+	dname = knot_dname_new_from_wire(p->in - in_len, in_len);
 	if (dname == NULL) {
 		return;
 	}

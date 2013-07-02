@@ -707,13 +707,6 @@ void knot_node_free(knot_node_t **node)
 		(*node)->rrset_count = 0;
 	}
 
-	// set owner's node pointer to NULL, but only if the 'node' does
-	// not point to the owner's node
-	if (node != &(*node)->owner->node
-	    && knot_dname_node(knot_node_owner(*node)) == *node) {
-		knot_dname_set_node((*node)->owner, NULL);
-	}
-
 	knot_dname_release((*node)->owner);
 
 	free(*node);

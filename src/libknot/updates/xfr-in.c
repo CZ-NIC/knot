@@ -43,7 +43,7 @@ static int xfrin_create_query(knot_dname_t *qname, uint16_t qtype,
 			      uint16_t qclass, knot_ns_xfr_t *xfr, size_t *size,
 			      const knot_rrset_t *soa, int use_tsig)
 {
-	knot_packet_t *pkt = knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
+	knot_packet_t *pkt = knot_packet_new();
 	CHECK_ALLOC_LOG(pkt, KNOT_ENOMEM);
 
 	/*! \todo Get rid of the numeric constant. */
@@ -59,23 +59,10 @@ static int xfrin_create_query(knot_dname_t *qname, uint16_t qtype,
 		return KNOT_ERROR;
 	}
 
-	knot_question_t question;
-
-	/* Retain qname until the question is freed. */
-	knot_dname_retain(qname);
-
 	/* Set random query ID. */
 	knot_packet_set_random_id(pkt);
-	knot_wire_set_id(pkt->wireformat, pkt->header.id);
-
-	// this is ugly!!
-	question.qname = (knot_dname_t *)qname;
-	question.qtype = qtype;
-	question.qclass = qclass;
-
-	rc = knot_query_set_question(pkt, &question);
+	rc = knot_query_set_question(pkt, qname, qclass, qtype);
 	if (rc != KNOT_EOK) {
-		knot_dname_release(question.qname);
 		knot_packet_free(&pkt);
 		return KNOT_ERROR;
 	}
@@ -99,7 +86,6 @@ static int xfrin_create_query(knot_dname_t *qname, uint16_t qtype,
 	rc = knot_packet_to_wire(pkt, &wire, &wire_size);
 	if (rc != KNOT_EOK) {
 		dbg_xfrin("Failed to write packet to wire.\n");
-		knot_dname_release(question.qname);
 		knot_packet_free(&pkt);
 		return KNOT_ERROR;
 	}
@@ -140,9 +126,6 @@ static int xfrin_create_query(knot_dname_t *qname, uint16_t qtype,
 	knot_packet_dump(pkt);
 
 	knot_packet_free(&pkt);
-
-	/* Release qname. */
-	knot_dname_release(question.qname);
 
 	return KNOT_EOK;
 }
@@ -452,8 +435,7 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 
 	/*! \todo Should TC bit be checked? */
 
-	knot_packet_t *packet =
-			knot_packet_new(KNOT_PACKET_PREALLOC_NONE);
+	knot_packet_t *packet = knot_packet_new();
 	if (packet == NULL) {
 		dbg_xfrin("Could not create packet structure.\n");
 		return KNOT_ENOMEM;
@@ -886,7 +868,7 @@ static int xfrin_parse_first_rr(knot_packet_t **packet, const uint8_t *pkt,
 	assert(packet != NULL);
 	assert(rr != NULL);
 
-	*packet = knot_packet_new(KNOT_PACKET_PREALLOC_NONE);
+	*packet = knot_packet_new();
 	if (*packet == NULL) {
 		dbg_xfrin("Could not create packet structure.\n");
 		return KNOT_ENOMEM;
@@ -2449,17 +2431,6 @@ static void xfrin_zone_contents_free2(knot_zone_contents_t **contents)
 
 /*----------------------------------------------------------------------------*/
 
-static void xfrin_cleanup_old_nodes(knot_node_t *node, void *data)
-{
-	UNUSED(data);
-	assert(node != NULL);
-
-	knot_node_set_new_node(node, NULL);
-	knot_dname_set_node(knot_node_get_owner(node), node);
-}
-
-/*----------------------------------------------------------------------------*/
-
 static void xfrin_cleanup_failed_update(knot_zone_contents_t *old_contents,
                                         knot_zone_contents_t **new_contents)
 {
@@ -2470,18 +2441,6 @@ static void xfrin_cleanup_failed_update(knot_zone_contents_t *old_contents,
 	if (*new_contents != NULL) {
 		// destroy the shallow copy of zone
 		xfrin_zone_contents_free2(new_contents);
-	}
-
-	if (old_contents != NULL) {
-		// cleanup old zone tree - reset pointers to new node to NULL
-		// also set pointers from dnames to old nodes
-		knot_zone_contents_tree_apply_inorder(old_contents,
-						      xfrin_cleanup_old_nodes,
-						      NULL);
-
-		knot_zone_contents_nsec3_apply_inorder(old_contents,
-						       xfrin_cleanup_old_nodes,
-						       NULL);
 	}
 }
 
@@ -3241,56 +3200,6 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_switch_node_in_rdata(knot_dname_t **dname, void *data)
-{
-	UNUSED(data);
-	if (dname == NULL || *dname == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	if ((*dname)->node != NULL) {
-		knot_dname_update_node(*dname);
-	}
-
-	return KNOT_EOK;
-}
-
-static void xfrin_switch_node_in_rrset(knot_rrset_t *rrset)
-{
-	if (rrset == NULL) {
-		return;
-	}
-
-	if (rrset->rrsigs) {
-		xfrin_switch_node_in_rrset(rrset->rrsigs);
-	}
-
-	if (rrset->owner->node != NULL) {
-		knot_dname_update_node(rrset->owner);
-	}
-
-	rrset_dnames_apply(rrset, xfrin_switch_node_in_rdata, NULL);
-}
-
-static void xfrin_switch_node_in_node(knot_node_t **node, void *data)
-{
-	UNUSED(data);
-	if (node == NULL || *node == NULL) {
-		return;
-	}
-
-	if ((*node)->owner->node != NULL) {
-		knot_dname_update_node((*node)->owner);
-	}
-
-	knot_rrset_t **rr_array = knot_node_get_rrsets_no_copy(*node);
-	for (uint16_t i = 0; i < (*node)->rrset_count; ++i) {
-		xfrin_switch_node_in_rrset(rr_array[i]);
-	}
-}
-
-/*----------------------------------------------------------------------------*/
-
 int xfrin_switch_zone(knot_zone_t *zone,
                       knot_zone_contents_t *new_contents,
                       int transfer_type)
@@ -3309,17 +3218,6 @@ int xfrin_switch_zone(knot_zone_t *zone,
 
 	dbg_xfrin_verb("Old contents: %p, apex: %p, new apex: %p\n",
 		       old, (old) ? old->apex : NULL, new_contents->apex);
-
-	// switch pointers in domain names, now only the new zone is used
-	if (transfer_type == XFR_TYPE_IIN || transfer_type == XFR_TYPE_UPDATE) {
-		/* Switch node references in owner DNAMEs and RDATA dnames. */
-		int ret = knot_zone_tree_apply(new_contents->nodes,
-					       xfrin_switch_node_in_node, NULL);
-		assert(ret == KNOT_EOK);
-		ret = knot_zone_tree_apply(new_contents->nsec3_nodes,
-					   xfrin_switch_node_in_node, NULL);
-		assert(ret == KNOT_EOK);
-	}
 
 	// set generation to old, so that the flags may be used in next transfer
 	// and we do not search for new nodes anymore

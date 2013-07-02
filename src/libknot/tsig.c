@@ -160,7 +160,7 @@ int tsig_rdata_set_alg_name(knot_rrset_t *tsig, knot_dname_t *alg_name)
 int tsig_rdata_set_alg(knot_rrset_t *tsig, knot_tsig_algorithm_t alg)
 {
 	const char *s = tsig_alg_to_str(alg);
-	knot_dname_t *alg_name = knot_dname_new_from_str(s, strlen(s), NULL);
+	knot_dname_t *alg_name = knot_dname_new_from_str(s, strlen(s));
 	int ret = tsig_rdata_set_alg_name(tsig, alg_name);
 	knot_dname_release(alg_name);
 	return ret;
