@@ -247,13 +247,12 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b, void *data)
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int create_nsec_chain(knot_zone_t *zone, uint32_t ttl)
+static int create_nsec_chain(knot_zone_contents_t *zone, uint32_t ttl)
 {
 	assert(zone);
-	assert(zone->contents);
-	assert(zone->contents->nodes);
+	assert(zone->nodes);
 
-	return chain_iterate(zone->contents->nodes, connect_nsec_nodes, &ttl);
+	return chain_iterate(zone->nodes, connect_nsec_nodes, &ttl);
 }
 
 
@@ -460,13 +459,15 @@ static int connect_nsec3_nodes(knot_node_t *a, knot_node_t *b, void *data)
 /*!
  * \brief Get zone apex as a string.
  */
-static bool get_zone_apex_str(knot_zone_t *zone, char **apex, size_t *apex_size)
+static bool get_zone_apex_str(knot_zone_contents_t *zone,
+			      char **apex, size_t *apex_size)
 {
 	assert(zone);
+	assert(zone->apex);
 	assert(apex);
 	assert(apex_size);
 
-	*apex = knot_dname_to_str(zone->name);
+	*apex = knot_dname_to_str(zone->apex->owner);
 	if (!*apex)
 		return false;
 
@@ -521,11 +522,10 @@ static knot_node_t *create_nsec3_node_for_node(knot_node_t *node,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int create_nsec3_nodes(knot_zone_t *zone, uint32_t ttl,
+static int create_nsec3_nodes(knot_zone_contents_t *zone, uint32_t ttl,
                               knot_zone_tree_t *nsec3_nodes)
 {
-	const knot_nsec3_params_t *params = &zone->contents->nsec3_params;
-	knot_node_t *apex_node = zone->contents->apex;
+	const knot_nsec3_params_t *params = &zone->nsec3_params;
 
 	char *apex = NULL;
 	size_t apex_size;
@@ -535,12 +535,12 @@ static int create_nsec3_nodes(knot_zone_t *zone, uint32_t ttl,
 	int result = KNOT_EOK;
 
 	int sorted = false;
-	hattrie_iter_t *it = hattrie_iter_begin(zone->contents->nodes, sorted);
+	hattrie_iter_t *it = hattrie_iter_begin(zone->nodes, sorted);
 	while (!hattrie_iter_finished(it)) {
 		knot_node_t *node = (knot_node_t *)*hattrie_iter_val(it);
 
 		knot_node_t *nsec3_node;
-		nsec3_node = create_nsec3_node_for_node(node, apex_node, apex,
+		nsec3_node = create_nsec3_node_for_node(node, zone->apex, apex,
 		                                        apex_size, params, ttl);
 		if (!nsec3_node) {
 			result = KNOT_ENOMEM;
@@ -565,7 +565,7 @@ static int create_nsec3_nodes(knot_zone_t *zone, uint32_t ttl,
 /*!
  * \brief Create new NSEC3 chain and add it into the zone.
  */
-static int create_nsec3_chain(knot_zone_t *zone, uint32_t ttl)
+static int create_nsec3_chain(knot_zone_contents_t *zone, uint32_t ttl)
 {
 	assert(zone);
 
@@ -587,8 +587,8 @@ static int create_nsec3_chain(knot_zone_t *zone, uint32_t ttl)
 		return result;
 	}
 
-	knot_zone_tree_deep_free(&zone->contents->nsec3_nodes);
-	zone->contents->nsec3_nodes = nsec3_nodes;
+	knot_zone_tree_deep_free(&zone->nsec3_nodes);
+	zone->nsec3_nodes = nsec3_nodes;
 
 	return KNOT_EOK;
 }
@@ -598,23 +598,22 @@ static int create_nsec3_chain(knot_zone_t *zone, uint32_t ttl)
 /*!
  * Check if NSEC3 is enabled for the given zone.
  */
-static bool is_nsec3_enabled(const knot_zone_t *zone)
+static bool is_nsec3_enabled(const knot_zone_contents_t *zone)
 {
-	return zone->contents->nsec3_params.salt_length > 0;
+	return zone->nsec3_params.salt_length > 0;
 }
 
 /*!
  * \brief Get minimum TTL from zone SOA.
  * \note Value should be used for NSEC records.
  */
-static bool get_zone_soa_min_ttl(const knot_zone_t *zone, uint32_t *ttl)
+static bool get_zone_soa_min_ttl(const knot_zone_contents_t *zone, uint32_t *ttl)
 {
 	assert(zone);
-	assert(zone->contents);
-	assert(zone->contents->apex);
+	assert(zone->apex);
 	assert(ttl);
 
-	knot_node_t *apex = zone->contents->apex;
+	knot_node_t *apex = zone->apex;
 	knot_rrset_t *soa = knot_node_get_rrset(apex, KNOT_RRTYPE_SOA);
 	if (!soa)
 		return false;
@@ -632,12 +631,10 @@ static bool get_zone_soa_min_ttl(const knot_zone_t *zone, uint32_t *ttl)
 /*!
  * \brief Create NSEC or NSEC3 chain in the zone.
  */
-int knot_zone_create_nsec_chain(knot_zone_t *zone)
+int knot_zone_create_nsec_chain(knot_zone_contents_t *zone)
 {
 	if (!zone)
 		return KNOT_EINVAL;
-
-	// TODO: create zone copy here and then switch atomically
 
 	uint32_t nsec_ttl = 0;
 	if (!get_zone_soa_min_ttl(zone, &nsec_ttl))
@@ -652,7 +649,7 @@ int knot_zone_create_nsec_chain(knot_zone_t *zone)
 	if (result != KNOT_EOK)
 		return result;
 
-	return knot_zone_contents_adjust(zone->contents, NULL, NULL, 0);
+	return knot_zone_contents_adjust(zone, NULL, NULL, 0);
 }
 
 /*!
@@ -660,17 +657,15 @@ int knot_zone_create_nsec_chain(knot_zone_t *zone)
  */
 int knot_zone_connect_nsec_nodes(knot_zone_contents_t *zone)
 {
-	// TODO: little cleanup will be useful (zone->zone, ...)
-
 	if (!zone)
 		return KNOT_EINVAL;
 
-	if (!is_nsec3_enabled(zone->zone))
+	if (!is_nsec3_enabled(zone))
 		return KNOT_EOK;
 
 	char *apex;
 	size_t apex_size;
-	if (!get_zone_apex_str(zone->zone, &apex, &apex_size))
+	if (!get_zone_apex_str(zone, &apex, &apex_size))
 		return KNOT_ENOMEM;
 
 	bool sorted = false;

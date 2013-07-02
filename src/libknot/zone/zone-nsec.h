@@ -25,7 +25,7 @@
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_zone_create_nsec_chain(knot_zone_t *zone);
+int knot_zone_create_nsec_chain(knot_zone_contents_t *zone);
 
 /*!
  * \brief Connect regular and NSEC3 nodes in the zone.

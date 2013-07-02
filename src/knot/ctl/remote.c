@@ -173,8 +173,8 @@ static int remote_sign_zone(server_t *server, const knot_zone_t *zone)
 
 	// generate NSEC records
 
-	knot_zone_create_nsec_chain(zone);
 
+	return knot_zone_create_nsec_chain(zone->contents);
 //	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 //	const char *keydir = zd->conf->keydir;
 //
@@ -185,7 +185,6 @@ static int remote_sign_zone(server_t *server, const knot_zone_t *zone)
 //	}
 //	knot_zone_sign(zone, keydir);
 
-	return KNOT_EOK;
 }
 
 /*!
