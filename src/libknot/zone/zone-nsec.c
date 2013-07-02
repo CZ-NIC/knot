@@ -502,7 +502,8 @@ static knot_node_t *create_nsec3_node_for_node(knot_node_t *node,
 
 	bitmap_t rr_types = { 0 };
 	bitmap_add_rrset(&rr_types, node->rrset_tree, node->rrset_count);
-	bitmap_add_type(&rr_types, KNOT_RRTYPE_RRSIG);
+	if (node->rrset_count > 0)
+		bitmap_add_type(&rr_types, KNOT_RRTYPE_RRSIG);
 
 	knot_node_t *nsec3_node;
 	nsec3_node = create_nsec3_node(nsec3_owner, params, apex_node, &rr_types, ttl);
