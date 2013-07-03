@@ -128,8 +128,8 @@ const knot_zone_t *knot_zonedb_find_zone_for_name(knot_zonedb_t *db,
 	}
 
 	knot_zone_t *zone = NULL;
-	const char *name = (const char*)dname->name;
-	size_t len = dname->size;
+	const char *name = (const char*)dname;
+	size_t len = knot_dname_wire_size(dname, NULL);
 
 	while (len > 0) {
 		value_t *found = hattrie_tryget(db->zone_tree, name, len);

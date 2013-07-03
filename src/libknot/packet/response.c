@@ -74,13 +74,14 @@ int knot_response_compress_dname(const knot_dname_t *dname, knot_compr_t *compr,
 	}
 
 	/* Do not compress small dnames. */
-	uint8_t *name = dname->name;
+	const uint8_t *name = dname;
 	unsigned name_labels = knot_dname_wire_labels(name, NULL);
-	if (dname->size <= 2) {
-                if (dname->size > max)
-                        return KNOT_ESPACE;
-                memcpy(dst, name, dname->size);
-                return dname->size;
+	uint8_t dname_size = knot_dname_wire_size(name, NULL);
+	if (dname_size <= 2) {
+		if (dname_size > max)
+			return KNOT_ESPACE;
+		memcpy(dst, name, dname_size);
+		return dname_size;
 	}
 
 	/* Align and compare name and pointer in the compression table. */
@@ -89,7 +90,7 @@ int knot_response_compress_dname(const knot_dname_t *dname, knot_compr_t *compr,
 	unsigned match_id = 0;
 	knot_compr_ptr_t match = { 0, 0 };
 	for (; i < COMPR_MAXLEN && compr->table[i].off > 0; ++i) {
-		const uint8_t *sample = dname->name;
+		const uint8_t *sample = dname;
 		const uint8_t *ref = compr->wire + compr->table[i].off;
 		lbcount = knot_dname_align(&sample, name_labels,
 		                           &ref, compr->table[i].lbcount,

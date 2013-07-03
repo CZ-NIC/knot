@@ -941,8 +941,8 @@ static int ns_put_authority_soa(const knot_zone_contents_t *zone,
 static knot_dname_t *ns_next_closer(const knot_dname_t *closest_encloser,
                                       const knot_dname_t *name)
 {
-	int ce_labels = knot_dname_wire_labels(closest_encloser->name, NULL);
-	int qname_labels = knot_dname_wire_labels(name->name, NULL);
+	int ce_labels = knot_dname_wire_labels(closest_encloser, NULL);
+	int qname_labels = knot_dname_wire_labels(name, NULL);
 
 	assert(ce_labels < qname_labels);
 
@@ -2021,9 +2021,9 @@ static int ns_dname_is_too_long(const knot_rrset_t *rrset,
                                 const knot_dname_t *qname)
 {
 	// TODO: add function for getting DNAME target
-	if (knot_dname_wire_labels(qname->name, NULL)
-	        - knot_dname_wire_labels(knot_rrset_owner(rrset)->name, NULL)
-	        + knot_dname_wire_labels(knot_rrset_rdata_dname_target(rrset)->name, NULL)
+	if (knot_dname_wire_labels(qname, NULL)
+	        - knot_dname_wire_labels(knot_rrset_owner(rrset), NULL)
+	        + knot_dname_wire_labels(knot_rrset_rdata_dname_target(rrset), NULL)
 	        > KNOT_MAX_DNAME_LENGTH) {
 		return 1;
 	} else {
