@@ -154,7 +154,7 @@ Show TTL value.
 Set wait for reply interval in seconds (default is 5 seconds).
 This timeout applies to each query try.
 .TP
-.BI +retries= N
+.BI +retry= N
 Set number (>=0) of UDP retries (default is 2). This doesn't apply to AXFR/IXFR.
 .TP
 .BI +bufsize= B
@@ -195,8 +195,6 @@ Per-user file configuration via ${HOME}/.digrc.
 Optional port specification has a form of [address]:port instead of address#port.
 .TP
 .BR + [ no ] ttl " instead of " + [ no ] ttlid
-.TP
-.BR +retries=T " instead of " +retry=T
 .TP
 Trailing information is formatted slightly different.
 .SH EXAMPLES
