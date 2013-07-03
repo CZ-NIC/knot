@@ -55,11 +55,16 @@ and are not processed.
 .TP
 List of commands format and their description:
 .TP
-.BI server \ name \ [\fIport\fR]
+.BI server \ name \ \fR[\fIport\fR]
 Specifies a receiving server of the dynamic update message. Parameter \fIname\fR
 can be either a host name or an IP address. If the \fIport\fR is not specified,
 default port is used. The default port value can be controlled using program
 option \fB\-p\fR.
+.TP
+.BI local \ address \ \fR[\fIport\fR]
+Specifies outgoing \fIaddress\fR and \fIport\fR. If no local is specified,
+the address and port are set by the system automatically. Default port number
+is \fI0\fR.
 .TP
 .BI zone \ name
 Specifies that all updates are done within a zone named \fIname\fR. If not used,
@@ -71,18 +76,18 @@ non\-fqd owners in update commands. The default origin is the root zone.
 .TP
 .BI class \ name
 Sets \fIname\fR as a default class for all updates. If not used, the default
-class is IN.
+class is \fIIN\fR.
 .TP
 .BI ttl \ value
 Sets \fIvalue\fR as a default TTL (time to live) in seconds. If not used, the
-default value is zero.
+default value is \fI0\fR.
 .TP
 .BI key \ name \ \fIkey\fR
 Specifies TSIG key to authenticate the request. This command has the same
 semantics as the program option \fB\-y\fR, except that the MAC algorithm
 cannot be set.
 .TP
-[\fBupdate\fR] \fBadd\fR \fIname\fR \fIttl\fR [\fIclass\fR] \fItype\fR \fIdata\fR
+[\fBupdate\fR] \fBadd\fR \fIname\fR [\fIttl\fR] [\fIclass\fR] \fItype\fR \fIdata\fR
 Adds a request to add a new resource record into the zone. Please note that if the
 \fIname\fR is not fully qualified domain name, current \fIorigin\fR name is appended to it.
 .TP
@@ -102,6 +107,35 @@ Displays the last answer from the server.
 .TP
 .B debug
 Enable debugging. This command has the same meaning as program option \fB\-d\fR.
+.SH NOTE
+.SS Missing features with regard to ISC nsupdate
+Options \fB\-D\fR, \fB\-g\fR, \fB\-o\fR, \fB\-l\fR, \fB\-L\fR, \fB\-R\fR, \fB\-u\fR.
+.TP
+Commands: \fBgsstsig\fR, \fBoldgsstsig\fR, \fBrealm\fR, \fBprereq\fR (\fBnxdomain\fR, \fByxdomain\fR, \fBnxrrset\fR, \fByxrrset\fR).
+.SS Differences with regard to ISC nsupdate
+Zone name/server guessing, if the zone name/server is not specified.
+.TP 0
+Empty line doesn't send an update.
+.TP
+Bind-like key format (\fBddns\-confgen\fR output) is not supported.
+.TP
+Command \fBadd\fR doesn't require \fIttl\fR item to be set. In such case,
+the default ttl value is used.
+.SH EXAMPLES
+.B Example 1. Add two records to the zone example.com.:
+.TP 0
+.nf
+knsupdate
+server 192.168.1.1
+zone example.com.
+origin example.com.
+ttl 3600
+add test1.example.com. 7200 A 192.168.2.2
+add test2 TXT "hello"
+show
+send
+answer
+.fi
 .SH AUTHOR
 Marek Vavruša, Daniel Salzman, Jan Včelák (\fBwww.knot\-dns.cz\fR)
 .TP
