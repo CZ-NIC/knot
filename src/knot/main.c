@@ -367,6 +367,11 @@ int main(int argc, char **argv)
 			close(remote);
 		}
 
+		/* Remove control socket.  */
+		if (remote > -1 && conf()->ctl.iface->family == AF_UNIX) {
+			unlink(conf()->ctl.iface->address);
+		}
+
 		if ((server_wait(server)) != KNOT_EOK) {
 			log_server_error("An error occured while "
 					 "waiting for server to finish.\n");
