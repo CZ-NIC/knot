@@ -49,9 +49,28 @@ control {
   # allow server0, admins;
 }
 
+#remotes {
+#  master0 {
+#    address 198.51.100.1@53;
+#  }
+#  slave0 {
+#    address 203.0.113.1@53;
+#  }
+#}
+
 zones {
+#  Example master zone
 #  example.com {
 #    file "@sysconfdir@/example.com.zone";
+#    xfr-out slave0;
+#    notify-out slave0;
+#  }
+#
+#  Example slave zone
+#  example.net {
+#    file "@localstatedir@/example.net.zone
+#    xfr-in master0;
+#    notify-in master0;
 #  }
 }
 
