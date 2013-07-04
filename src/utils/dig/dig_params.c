@@ -512,7 +512,7 @@ static void dig_help(void)
 	       "       +[no]cl         Show DNS class.\n"
 	       "       +[no]ttl        Show TTL value.\n"
 	       "       +time=T         Set wait for reply interval in seconds.\n"
-	       "       +retries=N      Set number of retries.\n"
+	       "       +retry=N        Set number of retries.\n"
 	       "       +bufsize=B      Set EDNS buffer size.\n"
 	       "       +[no]tcp        Use TCP protocol.\n"
 	       "       +[no]fail       Stop if SERVFAIL.\n"
@@ -855,8 +855,8 @@ static int parse_opt2(const char *value, dig_params_t *params)
 			return KNOT_EINVAL;
 		}
 	}
-	else if (strncmp(value, "retries=", 8) == 0) {
-		if (params_parse_num(value + 8, &query->retries)
+	else if (strncmp(value, "retry=", 6) == 0) {
+		if (params_parse_num(value + 6, &query->retries)
 		    != KNOT_EOK) {
 			return KNOT_EINVAL;
 		}

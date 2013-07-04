@@ -96,7 +96,6 @@ enum knot_error {
 
 	/* Control states. */
 	KNOT_CTL_STOP,        /*!< Stop requested. */
-	KNOT_CTL_RESTART,     /*!< Restart requested. */
 
 	/* Network errors. */
 	KNOT_NET_EADDR,

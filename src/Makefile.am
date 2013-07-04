@@ -283,5 +283,5 @@ knsupdate_LDADD = libknotd.la libknot.la libknots.la zscanner/libzscanner.la @LI
 
 # Create storage and run-time directories
 install-data-hook:
-	$(INSTALL) -d @run_dir@
-	$(INSTALL) -d @storage_dir@
+	$(INSTALL) -d $(DESTDIR)/@run_dir@
+	$(INSTALL) -d $(DESTDIR)/@storage_dir@

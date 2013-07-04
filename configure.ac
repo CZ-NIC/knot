@@ -310,6 +310,12 @@ AC_CONFIG_FILES([Makefile
 		 src/zscanner/test/cases/06-3_INCLUDE.in:src/zscanner/test/cases/06-3_INCLUDE.inin
 		 src/zscanner/test/cases/06-4_INCLUDE.in:src/zscanner/test/cases/06-4_INCLUDE.inin
 		 src/zscanner/test/cases/06-0_INCLUDE.in:src/zscanner/test/cases/06-0_INCLUDE.inin
+		 man/khost.1
+		 man/knotc.8
+		 man/knotd.8
+		 man/kdig.1
+		 man/knsupdate.1
+		 man/knot.conf.5
 		 ])
 
 AC_CONFIG_FILES([src/zscanner/test/run_tests.sh], [chmod a+x src/zscanner/test/run_tests.sh])
