@@ -177,6 +177,12 @@ AC_ARG_WITH([storage],
         [storage_dir=$withval])
 AC_SUBST(storage_dir)
 
+config_dir="${sysconfdir}/knot"
+AC_ARG_WITH([configdir],
+        AC_HELP_STRING([--with-configdir=path], [Default directory for configuration. [default=$(sysconfdir)/knot]]),
+        [config_dir=$withval])
+AC_SUBST(config_dir)
+
 # Checks for libraries.
 # FIXME: Replace `main' with a function in `-lm':
 

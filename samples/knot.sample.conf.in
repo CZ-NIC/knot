@@ -61,7 +61,7 @@ control {
 zones {
 #  Example master zone
 #  example.com {
-#    file "@sysconfdir@/example.com.zone";
+#    file "@config_dir@/example.com.zone";
 #    xfr-out slave0;
 #    notify-out slave0;
 #  }
