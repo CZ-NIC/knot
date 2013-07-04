@@ -4,7 +4,9 @@ edit = sed \
 	-e 's|@localstatedir[@]|$(localstatedir)|g' \
 	-e 's|@prefix[@]|$(prefix)|g' \
 	-e 's|@sysconfdir[@]|$(sysconfdir)|g' \
-	-e 's|@config_dir[@]|$(config_dir)|g'
+	-e 's|@config_dir[@]|$(config_dir)|g' \
+	-e 's|@storage_dir[@]|$(storage_dir)|g' \
+	-e 's|@run_dir[@]|$(run_dir)|g'
 
 knot.sample.conf: knot.sample.conf.in
 	rm -f $@ $@.tmp

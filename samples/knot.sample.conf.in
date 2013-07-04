@@ -16,11 +16,11 @@ system {
   # Working directory of the server
   # Used to store compiled zones and PID file
   # default: ${sharedstatedir}/knot, configured with --with-storage
-  # storage "/var/lib/knot";
+  # storage "@storage_dir@";
 
   # Directory for storing run-time data
   # default: ${localstatedir}/run/knot, configured with --with-rundir
-  # rundir "/var/run/knot";
+  # rundir "@run_dir@";
 }
 
 interfaces {
@@ -36,7 +36,7 @@ interfaces {
 
 control {
   # Specifies interface, syntax is exactly the same as in 'interfaces' section
-  # Default: $(run_dir)/knot.sock
+  # Default: knot.sock (relative to rundir)
   listen-on "knot.sock";
 
   # As an alternative, you can use an IPv4/v6 address and port
@@ -68,7 +68,7 @@ zones {
 #
 #  Example slave zone
 #  example.net {
-#    file "@localstatedir@/example.net.zone
+#    file "@storage_dir@/example.net.zone
 #    xfr-in master0;
 #    notify-in master0;
 #  }
