@@ -9,6 +9,10 @@ AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AC_USE_SYSTEM_EXTENSIONS([_GNU_SOURCE])
 
+# Automatically update release date based on configure.ac date
+release_date=`doc/mdate-sh configure.ac`
+AC_SUBST([RELEASE_DATE], $release_date)
+
 # Check SSE, SSE2 and SSE3 support
 AX_EXT
 CFLAGS="$CFLAGS $SIMD_FLAGS"

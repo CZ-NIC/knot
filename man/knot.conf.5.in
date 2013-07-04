@@ -1,4 +1,4 @@
-.TH "knot.conf" "5" "September 2012" "CZ.NIC Labs" "Knot DNS, version @VERSION@"
+.TH "knot.conf" "5" "@RELEASE_DATE@" "CZ.NIC Labs" "Knot DNS, version @VERSION@"
 .SH "NAME"
 .LP
 .B knot.conf
