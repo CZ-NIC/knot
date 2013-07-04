@@ -127,7 +127,7 @@ Show query packet.
 Show packet header.
 .TP
 .BR + [ no ] edns
-Show EDNS pseudosectio.
+Show EDNS pseudosection.
 .TP
 .BR + [ no ] question
 Show question section.
