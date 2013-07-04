@@ -680,6 +680,10 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 		free(conf->rundir);
 		conf->rundir = 0;
 	}
+	if (conf->pidfile) {
+		free(conf->pidfile);
+		conf->pidfile = 0;
+	}
 	if (conf->nsid) {
 		free(conf->nsid);
 		conf->nsid = 0;
