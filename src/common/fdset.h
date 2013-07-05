@@ -92,6 +92,7 @@ struct fdset_backend_t
 	int (*fdset_destroy)(fdset_t*);
 	int (*fdset_add)(fdset_t*, int, int);
 	int (*fdset_remove)(fdset_t*, int);
+	int (*fdset_set_events)(fdset_t*, int, int);
 	int (*fdset_wait)(fdset_t*, int);
 	int (*fdset_begin)(fdset_t*, fdset_it_t*);
 	int (*fdset_end)(fdset_t*, fdset_it_t*);
@@ -148,6 +149,19 @@ static inline int fdset_add(fdset_t *fdset, int fd, int events) {
  * \retval -1 on errors.
  */
 int fdset_remove(fdset_t *fdset, int fd);
+
+/*!
+ * \brief Change descriptor watched events mask.
+ *
+ * \param fdset Target set.
+ * \param fd Related file descriptor.
+ *
+ * \retval 0 if successful.
+ * \retval -1 if not found.
+ */
+static inline int fdset_set_events(fdset_t *fdset, int fd, int events) {
+	return _fdset_backend.fdset_set_events(fdset, fd, events);
+}
 
 /*!
  * \brief Poll set for new events.

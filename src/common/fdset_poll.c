@@ -73,8 +73,15 @@ int fdset_poll_add(fdset_t *fdset, int fd, int events)
 	/* Append. */
 	int nid = fdset->nfds++;
 	fdset->fds[nid].fd = fd;
-	fdset->fds[nid].events = POLLIN;
 	fdset->fds[nid].revents = 0;
+
+	/* Build mask. */
+	fdset->fds[nid].events = 0;
+	if (events & OS_EV_READ)
+		fdset->fds[nid].events |= POLLIN;
+	if (events & OS_EV_WRITE)
+		fdset->fds[nid].events |= POLLOUT;
+
 	return 0;
 }
 
@@ -112,6 +119,23 @@ int fdset_poll_remove(fdset_t *fdset, int fd)
 	return 0;
 }
 
+int fdset_poll_set_events(fdset_t *fdset, int fd, int events)
+{
+	struct pollfd *pfd = fdset->fds;
+	for (size_t i = 0; i < fdset->nfds; ++i) {
+		if (pfd[i].fd == fd) {
+			pfd[i].events = 0;
+			if (events & OS_EV_READ)
+				pfd[i].events |= POLLIN;
+			if (events & OS_EV_WRITE)
+				pfd[i].events |= POLLOUT;
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
 int fdset_poll_wait(fdset_t *fdset, int timeout)
 {
 	if (fdset == NULL || fdset->nfds < 1 || fdset->fds == NULL) {
@@ -125,7 +149,7 @@ int fdset_poll_wait(fdset_t *fdset, int timeout)
 	/* Poll for events. */
 	int ret = poll(fdset->fds, fdset->nfds, timeout);
 	if (ret < 0) {
-		return -1;
+		return ret;
 	}
 
 	/* Set pointers for iterating. */
@@ -161,7 +185,7 @@ int fdset_poll_end(fdset_t *fdset, fdset_it_t *it)
 	/* Trace last matching item from the end. */
 	struct pollfd* pfd = fdset->fds + fdset->nfds - 1;
 	while (pfd != fdset->fds) {
-		if (pfd->events & pfd->revents) {
+		if (pfd->revents != 0) {
 			it->fd = pfd->fd;
 			it->pos = pfd - fdset->fds;
 			return 0;
@@ -183,7 +207,7 @@ int fdset_poll_next(fdset_t *fdset, fdset_it_t *it)
 	/* Find next with matching flags. */
 	for (; it->pos < fdset->nfds; ++it->pos) {
 		struct pollfd* pfd = fdset->fds + it->pos;
-		if (pfd->events & pfd->revents) {
+		if (pfd->revents != 0) {
 			it->fd = pfd->fd;
 			it->events = pfd->revents;
 			++it->pos; /* Next will start after current. */
@@ -208,6 +232,7 @@ struct fdset_backend_t FDSET_POLL = {
 	.fdset_destroy = fdset_poll_destroy,
 	.fdset_add = fdset_poll_add,
 	.fdset_remove = fdset_poll_remove,
+	.fdset_set_events = fdset_poll_set_events,
 	.fdset_wait = fdset_poll_wait,
 	.fdset_begin = fdset_poll_begin,
 	.fdset_end = fdset_poll_end,

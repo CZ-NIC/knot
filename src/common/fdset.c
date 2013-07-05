@@ -62,20 +62,20 @@ static void fdset_set_backend(struct fdset_backend_t *backend) {
 void __attribute__ ((constructor)) fdset_init()
 {
 	/* Preference: epoll */
-#ifdef HAVE_EPOLL_WAIT
-	if (dlsym(RTLD_DEFAULT, "epoll_wait") != 0) {
-		fdset_set_backend(&FDSET_EPOLL);
-		return;
-	}
-#endif
+//#ifdef HAVE_EPOLL_WAIT
+//	if (dlsym(RTLD_DEFAULT, "epoll_wait") != 0) {
+//		fdset_set_backend(&FDSET_EPOLL);
+//		return;
+//	}
+//#endif
 
 	/* Preference: kqueue */
-#ifdef HAVE_KQUEUE
-	if (dlsym(RTLD_DEFAULT, "kqueue") != 0) {
-		fdset_set_backend(&FDSET_KQUEUE);
-		return;
-	}
-#endif
+//#ifdef HAVE_KQUEUE
+//	if (dlsym(RTLD_DEFAULT, "kqueue") != 0) {
+//		fdset_set_backend(&FDSET_KQUEUE);
+//		return;
+//	}
+//#endif
 
 	/* Fallback: poll */
 #ifdef HAVE_POLL

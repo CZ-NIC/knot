@@ -71,6 +71,17 @@ int fdset_poll_add(fdset_t *fdset, int fd, int events);
 int fdset_poll_remove(fdset_t *fdset, int fd);
 
 /*!
+ * \brief Change descriptor watched events mask.
+ *
+ * \param fdset Target set.
+ * \param fd Related file descriptor.
+ *
+ * \retval 0 if successful.
+ * \retval -1 if not found.
+ */
+int fdset_poll_set_events(fdset_t *fdset, int fd, int events);
+
+/*!
  * \brief Poll set for new events.
  *
  * \param fdset Target set.

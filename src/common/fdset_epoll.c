@@ -81,8 +81,13 @@ int fdset_epoll_add(fdset_t *fdset, int fd, int events)
 	/* Add to epoll set. */
 	struct epoll_event ev;
 	memset(&ev, 0, sizeof(struct epoll_event));
-	ev.events = EPOLLIN;
 	ev.data.fd = fd;
+	/* Build mask. */
+	ev.events = 0;
+	if (events & OS_EV_READ)
+		ev.events = EPOLLIN;
+	if (events & OS_EV_WRITE)
+		ev.events = EPOLLOUT;
 	if (epoll_ctl(fdset->epfd, EPOLL_CTL_ADD, fd, &ev) < 0) {
 		return -1;
 	}
@@ -113,6 +118,27 @@ int fdset_epoll_remove(fdset_t *fdset, int fd)
 
 	return 0;
 }
+
+int fdset_epoll_set_events(fdset_t *fdset, int fd, int events)
+{
+	/* Add to epoll set. */
+	struct epoll_event ev;
+	memset(&ev, 0, sizeof(struct epoll_event));
+	ev.data.fd = fd;
+
+	/* Build mask. */
+	ev.events = 0;
+	if (events & OS_EV_READ)
+		ev.events = EPOLLIN;
+	if (events & OS_EV_WRITE)
+		ev.events = EPOLLOUT;
+
+	if (epoll_ctl(fdset->epfd, EPOLL_CTL_MOD, fd, &ev) < 0) {
+		return -1;
+	}
+	return 0;
+}
+
 
 int fdset_epoll_wait(fdset_t *fdset, int timeout)
 {
@@ -195,6 +221,7 @@ struct fdset_backend_t FDSET_EPOLL = {
 	.fdset_destroy = fdset_epoll_destroy,
 	.fdset_add = fdset_epoll_add,
 	.fdset_remove = fdset_epoll_remove,
+	.fdset_set_events = fdset_epoll_set_events,
 	.fdset_wait = fdset_epoll_wait,
 	.fdset_begin = fdset_epoll_begin,
 	.fdset_end = fdset_epoll_end,

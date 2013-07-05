@@ -91,10 +91,15 @@ int fdset_kqueue_add(fdset_t *fdset, int fd, int events)
 		return ret;
 	}
 
+	/* Build mask. */
+	int mask = 0;
+	if (events & OS_EV_READ)
+		mask |= EVFILT_READ;
+	if (events & OS_EV_WRITE)
+		mask |= EVFILT_WRITE;
+
 	/* Add to kqueue set. */
-	int evfilt = EVFILT_READ;
-	EV_SET(&fdset->events[fdset->nfds], fd, evfilt,
-	       EV_ADD|EV_ENABLE, 0, 0, 0);
+	EV_SET(&fdset->events[fdset->nfds], fd, mask, EV_ADD|EV_ENABLE, 0, 0, 0);
 	memset(fdset->revents + fdset->nfds, 0, sizeof(struct kevent));
 
 	++fdset->nfds;
@@ -152,6 +157,27 @@ int fdset_kqueue_remove(fdset_t *fdset, int fd)
 	         fdset->nfds, OS_FDS_CHUNKSIZE, &fdset->rreserved);
 
 	return 0;
+}
+
+int fdset_kqueue_set_events(fdset_t *fdset, int fd, int events)
+{
+	/* Build mask. */
+	int mask = 0;
+	if (events & OS_EV_READ)
+		mask |= EVFILT_READ;
+	if (events & OS_EV_WRITE)
+		mask |= EVFILT_WRITE;
+
+	/* Find in set. */
+	struct kevent *evs = fdset->events;
+	for (int i = 0; i < fdset->nfds; ++i) {
+		if (evs[i].ident == fd) {
+			EV_SET(evs + i, fd, mask, EV_ADD|EV_ENABLE, 0, 0, 0);
+			return 0;
+		}
+	}
+
+	return -1;
 }
 
 int fdset_kqueue_wait(fdset_t *fdset, int timeout)
@@ -250,6 +276,7 @@ struct fdset_backend_t FDSET_KQUEUE = {
 	.fdset_destroy = fdset_kqueue_destroy,
 	.fdset_add = fdset_kqueue_add,
 	.fdset_remove = fdset_kqueue_remove,
+	.fdset_set_events = fdset_kqueue_set_events,
 	.fdset_wait = fdset_kqueue_wait,
 	.fdset_begin = fdset_kqueue_begin,
 	.fdset_end = fdset_kqueue_end,
