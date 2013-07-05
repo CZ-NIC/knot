@@ -151,9 +151,6 @@ int main(int argc, char **argv)
 	sigaction(SIGPIPE, &emptyset, NULL); // Mask
 	rcu_register_thread();
 
-	// Setup event queue
-	evqueue_set(evqueue_new());
-
 	// Initialize log
 	log_init();
 
@@ -315,9 +312,6 @@ int main(int argc, char **argv)
 					ctl_if->address, (char*)buf);
 			remote = remote_bind(ctl_if);
 		}
-		if (remote < 0)
-			remote = evqueue()->fds[EVQUEUE_READFD];
-
 
 		/* Run event loop. */
 		for(;;) {
@@ -422,8 +416,5 @@ static int do_cleanup(server_t *server, char *configf, char *pidf)
 	/* Unhook from RCU */
 	rcu_unregister_thread();
 
-	/* Free event loop. */
-	evqueue_t *q = evqueue();
-	evqueue_free(&q);
 	return 1;
 }

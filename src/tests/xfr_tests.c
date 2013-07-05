@@ -280,9 +280,10 @@ int main(int argc, char **argv)
 		pthread_sigmask(SIG_BLOCK, &sa.sa_mask, NULL);
 
 		/* Run event loop. */
+		evqueue_t *evq = evqueue_new();
 		for(;;) {
 			pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
-			int ret = evqueue_poll(evqueue(), 0, 0);
+			int ret = evqueue_poll(evq, 0, 0);
 			pthread_sigmask(SIG_BLOCK, &sa.sa_mask, NULL);
 
 			/* Interrupts. */
@@ -354,6 +355,7 @@ int main(int argc, char **argv)
 		log_server_fatal("An error occured while "
 				 "starting the server.\n");
 	}
+	evqueue_free(&evq);
 
 	// Stop server and close log
 	server_destroy(&server);
@@ -366,10 +368,6 @@ int main(int argc, char **argv)
 	log_server_info("Shut down.\n");
 	log_close();
 	free(pidfile);
-
-	// Destroy event loop
-	evqueue_t *q = evqueue();
-	evqueue_free(&q);
 
 	// Free default config filename if exists
 	free(zone);
