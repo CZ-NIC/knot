@@ -394,15 +394,21 @@ int tcp_send(int fd, uint8_t *msg, size_t msglen)
 	int uncork = setsockopt(fd, SOL_TCP, TCP_CORK, &cork, sizeof(cork));
 #endif
 
+	/* Flags. */
+	int flags = 0;
+#ifdef MSG_NOSIGNAL
+	flags |= MSG_NOSIGNAL;
+#endif
+
 	/* Send message size. */
 	unsigned short pktsize = htons(msglen);
-	int sent = send(fd, &pktsize, sizeof(pktsize), 0);
+	int sent = send(fd, &pktsize, sizeof(pktsize), flags);
 	if (sent < 0) {
 		return KNOT_ERROR;
 	}
 
 	/* Send message data. */
-	sent = send(fd, msg, msglen, 0);
+	sent = send(fd, msg, msglen, flags);
 	if (sent < 0) {
 		return KNOT_ERROR;
 	}
@@ -421,9 +427,15 @@ int tcp_send(int fd, uint8_t *msg, size_t msglen)
 
 int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 {
+	/* Flags. */
+	int flags = MSG_WAITALL;
+#ifdef MSG_NOSIGNAL
+	flags |= MSG_NOSIGNAL;
+#endif
+
 	/* Receive size. */
 	unsigned short pktsize = 0;
-	int n = recv(fd, &pktsize, sizeof(unsigned short), MSG_WAITALL);
+	int n = recv(fd, &pktsize, sizeof(unsigned short), flags);
 	if (n < 0) {
 		if (errno == EAGAIN) {
 			return KNOT_EAGAIN;
@@ -455,7 +467,7 @@ int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 	}
 
 	/* Receive payload. */
-	n = recv(fd, buf, pktsize, MSG_WAITALL);
+	n = recv(fd, buf, pktsize, flags);
 	if (n < 0) {
 		if (errno == EAGAIN) {
 			return KNOT_EAGAIN;
