@@ -95,7 +95,12 @@ static knot_ns_xfr_t* xfr_task_get(xfrworker_t *w, int fd)
 
 static void xfr_task_set(xfrworker_t *w, int fd, knot_ns_xfr_t *rq)
 {
-	fdset_add(w->pool.fds, fd, OS_EV_READ);
+	int events = OS_EV_READ;
+	/* Asynchronous connect, watch for writability. */
+	if (rq->flags & XFR_FLAG_CONNECTING)
+		events = OS_EV_WRITE;
+
+	fdset_add(w->pool.fds, fd, events);
 	value_t *val = ahtable_get(w->pool.t, (const char*)&fd, sizeof(int));
 	*val = rq;
 }
@@ -241,10 +246,8 @@ static int xfr_task_setsig(knot_ns_xfr_t *rq, knot_tsig_key_t *key)
 static int xfr_task_connect(knot_ns_xfr_t *rq)
 {
 	/* Create socket by type. */
-	int stype = SOCK_DGRAM;
-	if (rq->flags & XFR_FLAG_TCP) {
-		stype = SOCK_STREAM;
-	}
+	int ret = 0;
+	int stype = (rq->flags & XFR_FLAG_TCP) ? SOCK_STREAM : SOCK_DGRAM;
 	int fd = socket_create(sockaddr_family(&rq->addr), stype, 0);
 	if (fd < 0) {
 		return KNOT_ERROR;
@@ -257,12 +260,19 @@ static int xfr_task_connect(knot_ns_xfr_t *rq)
 			return KNOT_ERROR;
 		}
 	}
+
 	/* Connect if TCP. */
 	if (rq->flags & XFR_FLAG_TCP) {
-		if (connect(fd, (struct sockaddr *)&rq->addr, rq->addr.len) < 0) {
+		if (fcntl(fd, F_SETFL, O_NONBLOCK) < 0)
+			; /* Go silently with blocking if it fails. */
+
+		ret = connect(fd, (struct sockaddr *)&rq->addr, rq->addr.len);
+		if (ret != 0 && errno != EINPROGRESS) {
 			socket_close(fd);
 			return KNOT_ECONNREFUSED;
 		}
+
+		rq->flags |= XFR_FLAG_CONNECTING;
 	}
 
 	/* Store new socket descriptor. */
@@ -299,15 +309,12 @@ static void xfr_task_cleanup(knot_ns_xfr_t *rq)
 	hattrie_clear(rq->lookup_tree);
 }
 
-/*! \brief Close and free task. */
-static int xfr_task_close(xfrworker_t *w, int fd)
+/*! \brief End task properly and free it. */
+static int xfr_task_close(knot_ns_xfr_t *rq)
 {
-	knot_ns_xfr_t *rq = xfr_task_get(w, fd);
-	if (!rq) return KNOT_ENOENT;
-
 	/* Update xfer state. */
+	zonedata_t *zd = (zonedata_t *)knot_zone_data(rq->zone);
 	if (rq->type == XFR_TYPE_AIN || rq->type == XFR_TYPE_IIN) {
-		zonedata_t *zd = (zonedata_t *)knot_zone_data(rq->zone);
 		pthread_mutex_lock(&zd->lock);
 		if (zd->xfr_in.state == XFR_PENDING) {
 			zd->xfr_in.state = XFR_IDLE;
@@ -315,11 +322,39 @@ static int xfr_task_close(xfrworker_t *w, int fd)
 		pthread_mutex_unlock(&zd->lock);
 	}
 
+	/* Reschedule failed bootstrap. */
+	if (rq->type == XFR_TYPE_AIN && !knot_zone_contents(rq->zone)) {
+		int tmr_s = AXFR_BOOTSTRAP_RETRY * tls_rand();
+		event_t *ev = zd->xfr_in.timer;
+		if (ev) {
+			evsched_cancel(ev->parent, ev);
+			evsched_schedule(ev->parent, ev, tmr_s);
+		}
+		log_zone_notice("%s Bootstrap failed, next attempt in %d seconds.\n",
+		                rq->msg, tmr_s / 1000);
+	}
+
 	/* Close socket and free task. */
-	xfr_task_clear(w, fd);
 	xfr_task_free(rq);
-	socket_close(fd);
 	return KNOT_EOK;
+}
+
+/*! \brief Close and free task. */
+static int xfr_task_remove(xfrworker_t *w, int fd)
+{
+	knot_ns_xfr_t *rq = xfr_task_get(w, fd);
+	if (!rq)
+		return KNOT_ENOENT;
+
+	/* End the task properly. */
+	int ret = xfr_task_close(rq);
+
+	/* Remove from set and close. */
+	xfr_task_clear(w, fd);
+	socket_close(fd);
+	--w->pending;
+
+	return ret;
 }
 
 /*! \brief Timeout handler. */
@@ -368,14 +403,6 @@ static int xfr_task_start(knot_ns_xfr_t *rq)
 		log_server_warning("%s Refusing to start IXFR on zone with no "
 				   "contents.\n", rq->msg);
 		return KNOT_ECONNREFUSED;
-	}
-
-	/* Connect to remote. */
-	if (rq->session <= 0) {
-		ret = xfr_task_connect(rq);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
 	}
 
 	/* Prepare TSIG key if set. */
@@ -437,19 +464,43 @@ static int xfr_task_start(knot_ns_xfr_t *rq)
 	return KNOT_EOK;
 }
 
+static int xfr_task_process_begin(xfrworker_t *w, knot_ns_xfr_t* rq)
+{
+	/* Update XFR message prefix. */
+	int ret = KNOT_EOK;
+	xfr_task_setmsg(rq, NULL);
+
+	/* Connect to remote. */
+	if (rq->session <= 0)
+		ret = xfr_task_connect(rq);
+
+	/* Watch socket if valid. */
+	if (ret == KNOT_EOK)
+		xfr_task_set(w, rq->session, rq);
+
+	return ret;
+}
+
 static int xfr_task_process(xfrworker_t *w, knot_ns_xfr_t* rq, uint8_t *buf, size_t buflen)
 {
-	/* Check if not already processing, zone is refcounted. */
-	zonedata_t *zd = (zonedata_t *)knot_zone_data(rq->zone);
+	/* Connected, drop the extra flags. */
+	if (rq->flags & XFR_FLAG_CONNECTING) {
+		int err = EINVAL;
+		socklen_t len = sizeof(int);
+		if (getsockopt(rq->session, SOL_SOCKET, SO_ERROR, &err, &len) < 0)
+			;
+		/* Connection failure. */
+		if (err != 0)
+			return KNOT_ECONNREFUSED;
 
-	/* Check if the zone is not discarded. */
-	if (!zd || knot_zone_flags(rq->zone) & KNOT_ZONE_DISCARDED) {
-		dbg_xfr_verb("xfr: request on a discarded zone, ignoring\n");
-		return KNOT_EINVAL;
+		/* Watch for incoming data from now on. */
+		rq->flags &= ~XFR_FLAG_CONNECTING;
+		fdset_set_events(w->pool.fds, rq->session, OS_EV_READ);
+
+		/* Drop asynchronous mode. */
+		if (fcntl(rq->session, F_SETFL, 0) < 0)
+			;
 	}
-
-	/* Update XFR message prefix. */
-	xfr_task_setmsg(rq, NULL);
 
 	/* Update request. */
 	rq->wire = buf;
@@ -462,6 +513,15 @@ static int xfr_task_process(xfrworker_t *w, knot_ns_xfr_t* rq, uint8_t *buf, siz
 		rq->recv = &xfr_recv_tcp;
 	}
 
+	/* Check if not already processing, zone is refcounted. */
+	zonedata_t *zd = (zonedata_t *)knot_zone_data(rq->zone);
+
+	/* Check if the zone is not discarded. */
+	if (!zd || knot_zone_flags(rq->zone) & KNOT_ZONE_DISCARDED) {
+		dbg_xfr_verb("xfr: request on a discarded zone, ignoring\n");
+		return KNOT_EINVAL;
+	}
+
 	/* Handle request. */
 	dbg_xfr("%s processing request type '%d'\n", rq->msg, rq->type);
 	int ret = xfr_task_start(rq);
@@ -471,7 +531,6 @@ static int xfr_task_process(xfrworker_t *w, knot_ns_xfr_t* rq, uint8_t *buf, siz
 		msg = xd->name;
 	}
 
-	int bootstrap_fail = 0;
 	switch(rq->type) {
 	case XFR_TYPE_AIN:
 	case XFR_TYPE_IIN:
@@ -480,7 +539,6 @@ static int xfr_task_process(xfrworker_t *w, knot_ns_xfr_t* rq, uint8_t *buf, siz
 			pthread_mutex_lock(&zd->lock);
 			zd->xfr_in.state = XFR_IDLE;
 			pthread_mutex_unlock(&zd->lock);
-			bootstrap_fail = !knot_zone_contents(rq->zone);
 		}
 		break;
 	case XFR_TYPE_NOTIFY: /* Send on first timeout <0,5>s. */
@@ -496,18 +554,7 @@ static int xfr_task_process(xfrworker_t *w, knot_ns_xfr_t* rq, uint8_t *buf, siz
 	}
 
 	if (ret == KNOT_EOK) {
-		xfr_task_set(w, rq->session, rq);
 		log_server_info("%s %s.\n", rq->msg, msg);
-	} else if (bootstrap_fail){
-		int tmr_s = AXFR_BOOTSTRAP_RETRY * tls_rand();
-		event_t *ev = zd->xfr_in.timer;
-		if (ev) {
-			evsched_cancel(ev->parent, ev);
-			evsched_schedule(ev->parent, ev, tmr_s);
-		}
-		log_zone_notice("%s Bootstrap failed, next "
-		                "attempt in %d seconds.\n",
-		                rq->msg, tmr_s / 1000);
 	} else {
 		log_server_error("%s %s.\n", rq->msg, msg);
 	}
@@ -745,16 +792,7 @@ static int xfr_task_xfer(xfrworker_t *w, knot_ns_xfr_t *rq)
 	/* Only for successful xfers. */
 	if (ret > 0) {
 		ret = xfr_task_finalize(w, rq);
-		if (ret != KNOT_EOK && !knot_zone_contents(rq->zone)) {
-
-			/* AXFR bootstrap timeout. */
-			zonedata_t *zd = (zonedata_t *)knot_zone_data(rq->zone);
-			int tmr_s = AXFR_BOOTSTRAP_RETRY * tls_rand();
-			zd->xfr_in.bootstrap_retry = tmr_s;
-			log_zone_info("%s Next attempt to bootstrap "
-			              "in %d seconds.\n",
-			              rq->msg, tmr_s / 1000);
-		} else if (ret == KNOT_EBUSY && rq->type == XFR_TYPE_IIN) {
+		if (ret == KNOT_EBUSY && rq->type == XFR_TYPE_IIN) {
 			return xfr_start_axfr(w, rq, diff_nospace_msg);
 		} else {
 
@@ -829,8 +867,7 @@ static void xfr_sweep(fdset_t *set, int fd, void *data)
 	}
 
 	if (ret != KNOT_EOK) {
-		xfr_task_close(w, fd);
-		--w->pending;
+		xfr_task_remove(w, fd);
 	}
 }
 
@@ -986,7 +1023,8 @@ int xfr_worker(dthread_t *thread)
 		limit = conf()->xfers;
 	}
 	unsigned thread_capacity = limit / w->master->unit->size;
-	if (thread_capacity < 1) thread_capacity = 1;
+	if (thread_capacity < 1)
+		thread_capacity = 1;
 	w->pool.fds = fdset_new();
 	w->pool.t = ahtable_create();
 	w->pending = 0;
@@ -1004,14 +1042,18 @@ int xfr_worker(dthread_t *thread)
 				knot_ns_xfr_t *rq = HEAD(xfr->queue);
 				rem_node(&rq->n);
 
-				/* Unlock queue and process request. */
-				pthread_mutex_unlock(&xfr->mx);
-				ret = xfr_task_process(w, rq, buf, buflen);
-				if (ret == KNOT_EOK)  ++w->pending;
-				else                  xfr_task_free(rq);
-				pthread_mutex_lock(&xfr->mx);
+				/* Start asynchronous connect. */
+				ret = xfr_task_process_begin(w, rq);
+				if (ret == KNOT_EOK)
+					++w->pending;
+				else
+					xfr_task_close(rq);
 
+				/* Balance pending tasks among threads. */
 				if (w->pending - was_pending > XFR_CHUNKLEN)
+					break;
+				/* Do not exceed thread capacity. */
+				if (w->pending >= thread_capacity)
 					break;
 			}
 			pthread_mutex_unlock(&xfr->mx);
@@ -1025,7 +1067,8 @@ int xfr_worker(dthread_t *thread)
 		/* Poll fdset. */
 		int nfds = fdset_wait(w->pool.fds, (XFR_SWEEP_INTERVAL/2) * 1000);
 		if (nfds < 0) {
-			if (errno == EINTR) continue;
+			if (errno == EINTR)
+				continue;
 			break;
 		}
 
@@ -1040,10 +1083,15 @@ int xfr_worker(dthread_t *thread)
 			             "fd=%d data=%p.\n",
 			             w, it.fd, rq);
 			if (rq) {
-				ret = xfr_process_event(w, rq);
+				/* Check task state. */
+				if (rq->flags & XFR_FLAG_CONNECTING) {
+					ret = xfr_task_process(w, rq, buf, buflen);
+				} else {
+					ret = xfr_process_event(w, rq);
+				}
+
 				if (ret != KNOT_EOK) {
-					xfr_task_close(w, it.fd);
-					--w->pending;
+					xfr_task_remove(w, it.fd);
 					--it.pos; /* Reset iterator */
 				}
 			}
@@ -1071,7 +1119,7 @@ int xfr_worker(dthread_t *thread)
 	ahtable_iter_begin(w->pool.t, &i, false);
 	while (!ahtable_iter_finished(&i)) {
 		int *key = (int *)ahtable_iter_key(&i, &keylen);
-		xfr_task_close(w, *key);
+		xfr_task_remove(w, *key);
 		ahtable_iter_next(&i);
 	}
 	ahtable_iter_free(&i);

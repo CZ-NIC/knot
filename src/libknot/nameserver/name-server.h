@@ -159,7 +159,8 @@ static const size_t KNOT_NS_TSIG_DATA_MAX_SIZE = 100 * 64 * 1024;
 enum knot_ns_xfr_flag_t {
 	XFR_FLAG_TCP = 1 << 0, /*!< XFR request is on TCP. */
 	XFR_FLAG_UDP = 1 << 1,  /*!< XFR request is on UDP. */
-	XFR_FLAG_AXFR_FINISHED = 1 << 2 /*!< Transfer is finished. */
+	XFR_FLAG_AXFR_FINISHED = 1 << 2, /*!< Transfer is finished. */
+	XFR_FLAG_CONNECTING = 1 << 3 /*!< In connecting phase. */
 };
 
 typedef enum knot_ns_transport {
