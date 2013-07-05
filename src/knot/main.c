@@ -365,11 +365,11 @@ int main(int argc, char **argv)
 		/* Close remote control interface */
 		if (remote > -1) {
 			close(remote);
-		}
 
-		/* Remove control socket.  */
-		if (remote > -1 && conf()->ctl.iface->family == AF_UNIX) {
-			unlink(conf()->ctl.iface->address);
+			/* Remove control socket.  */
+			conf_iface_t *ctl_if = conf()->ctl.iface;
+			if (ctl_if && ctl_if->family == AF_UNIX)
+				unlink(conf()->ctl.iface->address);
 		}
 
 		if ((server_wait(server)) != KNOT_EOK) {
