@@ -2141,14 +2141,16 @@ static int ns_answer_from_zone(const knot_zone_contents_t *zone,
 	uint16_t qtype = knot_packet_qtype(resp);
 
 search:
-	find_ret = knot_zone_contents_find_dname(zone, qname, &node,
-	                                          &closest_encloser, &previous);
-//	node = knot_node_current(node);
-//	closest_encloser = knot_node_current(closest_encloser);
-//	previous = knot_node_current(previous);
-	previous = NULL; // TODO REVIEW LS
-		if (find_ret == KNOT_EINVAL) {
-		return NS_ERR_SERVFAIL;
+	// Searching for a name directly is faster than when we need previous dname
+	node = knot_zone_contents_find_node(zone, qname);
+	if (node != NULL) {
+		// If node is found, closest_encloser is equal to node itself
+		closest_encloser = node;
+		find_ret = KNOT_ZONE_NAME_FOUND;
+	} else {
+		// We need previous and closest encloser, full search has to be done
+		find_ret = knot_zone_contents_find_dname(zone, qname, &node,
+		                                         &closest_encloser, &previous);
 	}
 
 dbg_ns_exec_verb(
