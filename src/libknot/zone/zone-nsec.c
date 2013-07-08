@@ -249,11 +249,6 @@ static int recycle_signatures(knot_zone_tree_t *from, knot_zone_tree_t *to)
 	if (!from)
 		return KNOT_EINVAL;
 
-	/*
-	 * BEWARE: After this point, the function has to succeed. Otherwise
-	 * we might modify 'from' zone tree and make it inconsistent.
-	 */
-
 	bool sorted = false;
 	hattrie_iter_t *it = hattrie_iter_begin(from, sorted);
 
@@ -687,13 +682,34 @@ static int create_nsec3_chain(knot_zone_contents_t *zone, uint32_t ttl)
 		return result;
 	}
 
-	result = recycle_signatures(zone->nsec3_nodes, nsec3_nodes);
+	/*
+	 * Signatures recyclation:
+	 *
+	 * TODO: rewrite, when we have RDATA reference counting
+	 *
+	 * 1. create shallow copy of the old NSEC3 tree
+	 * 2. steal signatures by setting the pointer in the new tree and
+	 *    setting the original pointer in the copied tree to NULL
+	 * 3. set new NSEC3 tree in the zone
+	 * 4. deep free the copied tree, shallow free the old tree
+	 */
+
+	knot_zone_tree_t *copy;
+	result = knot_zone_tree_shallow_copy(zone->nsec3_nodes, &copy);
 	if (result != KNOT_EOK) {
 		knot_zone_tree_free(&nsec3_nodes);
 		return result;
 	}
 
-	knot_zone_tree_deep_free(&zone->nsec3_nodes);
+	result = recycle_signatures(copy, nsec3_nodes);
+	if (result != KNOT_EOK) {
+		knot_zone_tree_free(&nsec3_nodes);
+		knot_zone_tree_free(&copy);
+		return result;
+	}
+
+	knot_zone_tree_deep_free(&copy);
+	knot_zone_tree_free(&zone->nsec3_nodes);
 	zone->nsec3_nodes = nsec3_nodes;
 
 	return KNOT_EOK;
