@@ -102,6 +102,15 @@ enum err_codes {
  */
 const char* zscanner_strerror(const int code);
 
+/*!
+ * \brief Returns error code name of the given error code.
+ *
+ * \param code Error code.
+ *
+ * \return String containing the error code name.
+ */
+const char* zscanner_errorname(const int code);
+
 #endif // _ZSCANNER__ERROR_H_
 
 /*! @} */

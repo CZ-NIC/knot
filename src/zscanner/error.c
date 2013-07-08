@@ -21,88 +21,167 @@
 
 typedef struct {
 	int        code;
-	const char *name;
+	const char *text;
+	const char *code_name;
 } err_table_t;
 
+#define ERR_ITEM(code, text) { code, text, #code }
+
 const err_table_t err_msgs[] = {
-	{ ZSCANNER_OK, "OK" },
+	ERR_ITEM( ZSCANNER_OK, "OK" ),
 
 	/* Zone file loader errors. */
-	{ FLOADER_EFSTAT, "Fstat error." },
-	{ FLOADER_EDIRECTORY, "Zone file is a directory." },
-	{ FLOADER_EEMPTY, "Empty zone file." },
-	{ FLOADER_EMMAP, "Mmap error." },
-	{ FLOADER_EMUNMAP, "Munmap error." },
-	{ FLOADER_ESCANNER, "Zone processing error." },
+	ERR_ITEM( FLOADER_EFSTAT,
+	          "Fstat error." ),
+	ERR_ITEM( FLOADER_EDIRECTORY,
+	          "Zone file is a directory." ),
+	ERR_ITEM( FLOADER_EEMPTY,
+	          "Empty zone file." ),
+	ERR_ITEM( FLOADER_EMMAP,
+	          "Mmap error." ),
+	ERR_ITEM( FLOADER_EMUNMAP,
+	          "Munmap error." ),
+	ERR_ITEM( FLOADER_ESCANNER,
+	          "Zone processing error." ),
 
 	/* Zone scanner errors. */
-	{ ZSCANNER_UNCOVERED_STATE, "General scanner error." },
-	{ ZSCANNER_ELEFT_PARENTHESIS, "Too many left parentheses." },
-	{ ZSCANNER_ERIGHT_PARENTHESIS, "Too many right parentheses." },
-	{ ZSCANNER_EUNSUPPORTED_TYPE, "Unsupported record type." },
-	{ ZSCANNER_EBAD_PREVIOUS_OWNER, "Previous owner is invalid." },
-	{ ZSCANNER_EBAD_DNAME_CHAR, "Bad domain name character." },
-	{ ZSCANNER_EBAD_OWNER, "Owner is invalid." },
-	{ ZSCANNER_ELABEL_OVERFLOW, "Maximal domain name label length has exceeded." },
-	{ ZSCANNER_EDNAME_OVERFLOW, "Maximal domain name length has exceeded." },
-	{ ZSCANNER_EBAD_NUMBER, "Bad number." },
-	{ ZSCANNER_ENUMBER64_OVERFLOW, "Number is too big." },
-	{ ZSCANNER_ENUMBER32_OVERFLOW, "Number is bigger than 32 bits." },
-	{ ZSCANNER_ENUMBER16_OVERFLOW, "Number is bigger than 16 bits." },
-	{ ZSCANNER_ENUMBER8_OVERFLOW, "Number is bigger than 8 bits." },
-	{ ZSCANNER_EFLOAT_OVERFLOW, "Float number overflow." },
-	{ ZSCANNER_ERDATA_OVERFLOW, "Maximal record data length has exceeded." },
-	{ ZSCANNER_EITEM_OVERFLOW, "Maximal item length has exceeded." },
-	{ ZSCANNER_EBAD_ADDRESS_CHAR, "Bad address character." },
-	{ ZSCANNER_EBAD_IPV4, "Bad IPv4 address." },
-	{ ZSCANNER_EBAD_IPV6, "Bad IPv6 address." },
-	{ ZSCANNER_EBAD_GATEWAY, "Bad gateway." },
-	{ ZSCANNER_EBAD_GATEWAY_KEY, "Bad gateway key." },
-	{ ZSCANNER_EBAD_APL, "Bad adress prefix list." },
-	{ ZSCANNER_EBAD_RDATA, "Bad record data." },
-	{ ZSCANNER_EBAD_HEX_RDATA, "Bad record data in hex format." },
-	{ ZSCANNER_EBAD_HEX_CHAR, "Bad hexadecimal character." },
-	{ ZSCANNER_EBAD_BASE64_CHAR, "Bad Base64 character." },
-	{ ZSCANNER_EBAD_BASE32HEX_CHAR, "Bad Base32hex character." },
-	{ ZSCANNER_EBAD_REST, "Unexpected data." },
-	{ ZSCANNER_EBAD_TIMESTAMP_CHAR, "Bad timestamp character." },
-	{ ZSCANNER_EBAD_TIMESTAMP_LENGTH, "Bad timestamp length." },
-	{ ZSCANNER_EBAD_TIMESTAMP, "Bad timestamp." },
-	{ ZSCANNER_EBAD_DATE, "Bad date." },
-	{ ZSCANNER_EBAD_TIME, "Bad time." },
-	{ ZSCANNER_EBAD_TIME_UNIT, "Bad time unit." },
-	{ ZSCANNER_EBAD_BITMAP, "Bad bitmap." },
-	{ ZSCANNER_ETEXT_OVERFLOW, "Text is too long." },
-	{ ZSCANNER_EBAD_TEXT_CHAR, "Bad text character." },
-	{ ZSCANNER_EBAD_TEXT, "Bad text string." },
-	{ ZSCANNER_EBAD_DIRECTIVE, "Bad directive." },
-	{ ZSCANNER_EBAD_TTL, "Bad zone TTL." },
-	{ ZSCANNER_EBAD_ORIGIN, "Bad zone origin." },
-	{ ZSCANNER_EBAD_INCLUDE_FILENAME, "Bad filename in include directive." },
-	{ ZSCANNER_EBAD_INCLUDE_ORIGIN, "Bad origin in include directive." },
-	{ ZSCANNER_EUNPROCESSED_INCLUDE, "Include file processing error." },
-	{ ZSCANNER_EUNOPENED_INCLUDE, "Include file opening error." },
-	{ ZSCANNER_EBAD_RDATA_LENGTH, "The rdata length statement is incorrect." },
-	{ ZSCANNER_ECANNOT_TEXT_DATA, "Unable to process text form for this type." },
-	{ ZSCANNER_EBAD_LOC_DATA, "Bad zone location data." },
-	{ ZSCANNER_EUNKNOWN_BLOCK, "Unknown rdata block." },
-	{ ZSCANNER_EBAD_ALGORITHM, "Bad algorithm." },
-	{ ZSCANNER_EBAD_CERT_TYPE, "Bad certificate type." },
-	{ ZSCANNER_EBAD_EUI_LENGTH, "Bad EUI length." },
-	{ ZSCANNER_EBAD_L64_LENGTH, "Bad 64-bit locator." },
-	{ ZSCANNER_EBAD_CHAR_COLON, "Missing colon character." },
-	{ ZSCANNER_EBAD_CHAR_DASH, "Missing dash character." },
+	ERR_ITEM( ZSCANNER_UNCOVERED_STATE,
+	          "General scanner error." ),
+	ERR_ITEM( ZSCANNER_ELEFT_PARENTHESIS,
+	          "Too many left parentheses." ),
+	ERR_ITEM( ZSCANNER_ERIGHT_PARENTHESIS,
+	          "Too many right parentheses." ),
+	ERR_ITEM( ZSCANNER_EUNSUPPORTED_TYPE,
+	          "Unsupported record type." ),
+	ERR_ITEM( ZSCANNER_EBAD_PREVIOUS_OWNER,
+	          "Previous owner is invalid." ),
+	ERR_ITEM( ZSCANNER_EBAD_DNAME_CHAR,
+	          "Bad domain name character." ),
+	ERR_ITEM( ZSCANNER_EBAD_OWNER,
+	          "Owner is invalid." ),
+	ERR_ITEM( ZSCANNER_ELABEL_OVERFLOW,
+	          "Maximal domain name label length has exceeded." ),
+	ERR_ITEM( ZSCANNER_EDNAME_OVERFLOW,
+	          "Maximal domain name length has exceeded." ),
+	ERR_ITEM( ZSCANNER_EBAD_NUMBER,
+	          "Bad number." ),
+	ERR_ITEM( ZSCANNER_ENUMBER64_OVERFLOW,
+	          "Number is too big." ),
+	ERR_ITEM( ZSCANNER_ENUMBER32_OVERFLOW,
+	          "Number is bigger than 32 bits." ),
+	ERR_ITEM( ZSCANNER_ENUMBER16_OVERFLOW,
+	          "Number is bigger than 16 bits." ),
+	ERR_ITEM( ZSCANNER_ENUMBER8_OVERFLOW,
+	          "Number is bigger than 8 bits." ),
+	ERR_ITEM( ZSCANNER_EFLOAT_OVERFLOW,
+	          "Float number overflow." ),
+	ERR_ITEM( ZSCANNER_ERDATA_OVERFLOW,
+	          "Maximal record data length has exceeded." ),
+	ERR_ITEM( ZSCANNER_EITEM_OVERFLOW,
+	          "Maximal item length has exceeded." ),
+	ERR_ITEM( ZSCANNER_EBAD_ADDRESS_CHAR,
+	          "Bad address character." ),
+	ERR_ITEM( ZSCANNER_EBAD_IPV4,
+	          "Bad IPv4 address." ),
+	ERR_ITEM( ZSCANNER_EBAD_IPV6,
+	          "Bad IPv6 address." ),
+	ERR_ITEM( ZSCANNER_EBAD_GATEWAY,
+	          "Bad gateway." ),
+	ERR_ITEM( ZSCANNER_EBAD_GATEWAY_KEY,
+	          "Bad gateway key." ),
+	ERR_ITEM( ZSCANNER_EBAD_APL,
+	          "Bad adress prefix list." ),
+	ERR_ITEM( ZSCANNER_EBAD_RDATA,
+	          "Bad record data." ),
+	ERR_ITEM( ZSCANNER_EBAD_HEX_RDATA,
+	          "Bad record data in hex format." ),
+	ERR_ITEM( ZSCANNER_EBAD_HEX_CHAR,
+	          "Bad hexadecimal character." ),
+	ERR_ITEM( ZSCANNER_EBAD_BASE64_CHAR,
+	          "Bad Base64 character." ),
+	ERR_ITEM( ZSCANNER_EBAD_BASE32HEX_CHAR,
+	          "Bad Base32hex character." ),
+	ERR_ITEM( ZSCANNER_EBAD_REST,
+	          "Unexpected data." ),
+	ERR_ITEM( ZSCANNER_EBAD_TIMESTAMP_CHAR,
+	          "Bad timestamp character." ),
+	ERR_ITEM( ZSCANNER_EBAD_TIMESTAMP_LENGTH,
+	          "Bad timestamp length." ),
+	ERR_ITEM( ZSCANNER_EBAD_TIMESTAMP,
+	          "Bad timestamp." ),
+	ERR_ITEM( ZSCANNER_EBAD_DATE,
+	          "Bad date." ),
+	ERR_ITEM( ZSCANNER_EBAD_TIME,
+	          "Bad time." ),
+	ERR_ITEM( ZSCANNER_EBAD_TIME_UNIT,
+	          "Bad time unit." ),
+	ERR_ITEM( ZSCANNER_EBAD_BITMAP,
+	          "Bad bitmap." ),
+	ERR_ITEM( ZSCANNER_ETEXT_OVERFLOW,
+	          "Text is too long." ),
+	ERR_ITEM( ZSCANNER_EBAD_TEXT_CHAR,
+	          "Bad text character." ),
+	ERR_ITEM( ZSCANNER_EBAD_TEXT,
+	          "Bad text string." ),
+	ERR_ITEM( ZSCANNER_EBAD_DIRECTIVE,
+	          "Bad directive." ),
+	ERR_ITEM( ZSCANNER_EBAD_TTL,
+	          "Bad zone TTL." ),
+	ERR_ITEM( ZSCANNER_EBAD_ORIGIN,
+	          "Bad zone origin." ),
+	ERR_ITEM( ZSCANNER_EBAD_INCLUDE_FILENAME,
+	          "Bad filename in include directive." ),
+	ERR_ITEM( ZSCANNER_EBAD_INCLUDE_ORIGIN,
+	          "Bad origin in include directive." ),
+	ERR_ITEM( ZSCANNER_EUNPROCESSED_INCLUDE,
+	          "Include file processing error." ),
+	ERR_ITEM( ZSCANNER_EUNOPENED_INCLUDE,
+	          "Include file opening error." ),
+	ERR_ITEM( ZSCANNER_EBAD_RDATA_LENGTH,
+	          "The rdata length statement is incorrect." ),
+	ERR_ITEM( ZSCANNER_ECANNOT_TEXT_DATA,
+	          "Unable to process text form for this type." ),
+	ERR_ITEM( ZSCANNER_EBAD_LOC_DATA,
+	          "Bad zone location data." ),
+	ERR_ITEM( ZSCANNER_EUNKNOWN_BLOCK,
+	          "Unknown rdata block." ),
+	ERR_ITEM( ZSCANNER_EBAD_ALGORITHM,
+	          "Bad algorithm." ),
+	ERR_ITEM( ZSCANNER_EBAD_CERT_TYPE,
+	          "Bad certificate type." ),
+	ERR_ITEM( ZSCANNER_EBAD_EUI_LENGTH,
+	          "Bad EUI length." ),
+	ERR_ITEM( ZSCANNER_EBAD_L64_LENGTH,
+	          "Bad 64-bit locator." ),
+	ERR_ITEM( ZSCANNER_EBAD_CHAR_COLON,
+	          "Missing colon character." ),
+	ERR_ITEM( ZSCANNER_EBAD_CHAR_DASH,
+	          "Missing dash character." ),
 
-	{ 0, NULL } // Terminator
+	ERR_ITEM( 0, NULL ) // Terminator
 };
 
 const char* zscanner_strerror(const int code)
 {
 	const err_table_t *err = err_msgs;
 
-	while (err->name != NULL) {
+	while (err->text != NULL) {
 		if (err->code == code) {
-			return err->name;
+			return err->text;
+		}
+		err++;
+	}
+
+	return NULL;
+}
+
+const char* zscanner_errorname(const int code)
+{
+	const err_table_t *err = err_msgs;
+
+	while (err->text != NULL) {
+		if (err->code == code) {
+			return err->code_name;
 		}
 		err++;
 	}
