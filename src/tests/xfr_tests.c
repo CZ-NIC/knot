@@ -157,9 +157,6 @@ int main(int argc, char **argv)
 	emptyset.sa_flags = 0;
 	sigaction(SIGALRM, &emptyset, NULL); // Interrupt
 
-	// Setup event queue
-	evqueue_set(evqueue_new());
-
 	// Initialize log
 	log_init();
 
@@ -333,7 +330,7 @@ int main(int argc, char **argv)
 			/* Events. */
 			if (ret > 0) {
 				event_t ev;
-				if (evqueue_get(evqueue(), &ev) == 0) {
+				if (evqueue_get(evq, &ev) == 0) {
 					dbg_server_verb("Event: "
 					                "received new event.\n");
 					if (ev.cb) {
@@ -343,6 +340,7 @@ int main(int argc, char **argv)
 			}
 		}
 		pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
+		evqueue_free(&evq);
 
 		if ((res = server_wait(server)) != KNOT_EOK) {
 			log_server_error("An error occured while "
@@ -355,7 +353,6 @@ int main(int argc, char **argv)
 		log_server_fatal("An error occured while "
 				 "starting the server.\n");
 	}
-	evqueue_free(&evq);
 
 	// Stop server and close log
 	server_destroy(&server);
