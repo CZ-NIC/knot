@@ -13,12 +13,12 @@ system {
   # May also specify user.group (e.g. knot.knot)
   user knot.knot;
 
-  # Working directory of the server
-  # Used to store compiled zones and PID file
+  # This is a default directory to place slave zone files, journals etc.
   # default: ${sharedstatedir}/knot, configured with --with-storage
   # storage "@storage_dir@";
 
   # Directory for storing run-time data
+  # e.g. PID file and control sockets
   # default: ${localstatedir}/run/knot, configured with --with-rundir
   # rundir "@run_dir@";
 }
