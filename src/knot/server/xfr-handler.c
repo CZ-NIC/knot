@@ -352,7 +352,8 @@ static int xfr_task_remove(xfrworker_t *w, int fd)
 
 	/* Remove from set and close. */
 	xfr_task_clear(w, fd);
-	socket_close(fd);
+	if (fd > 0)
+		socket_close(fd);
 	--w->pending;
 
 	return ret;
@@ -1115,12 +1116,14 @@ int xfr_worker(dthread_t *thread)
 	}
 
 	/* Cancel existing connections. */
-	size_t keylen = 0;
 	ahtable_iter_t i;
 	ahtable_iter_begin(w->pool.t, &i, false);
 	while (!ahtable_iter_finished(&i)) {
-		int *key = (int *)ahtable_iter_key(&i, &keylen);
-		xfr_task_remove(w, *key);
+		/* Free all tasks, do not retry cancelled. */
+		knot_ns_xfr_t *rq = (knot_ns_xfr_t *)(*ahtable_iter_val(&i));
+		if (rq->session > 0)
+			socket_close(rq->session);
+		xfr_task_free(rq);
 		ahtable_iter_next(&i);
 	}
 	ahtable_iter_free(&i);
